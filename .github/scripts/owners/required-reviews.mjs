@@ -193,16 +193,16 @@ export async function findLargeScaleChangeExemption(pullRequestNumber, pullReque
 }
 
 /**
- * @param { string[] } missingTeams Team handles without an approving member.
+ * @param { Map<string, number> } missingApprovals Remaining approvals by team handle.
  * @param { number } requiredCount Total number of required teams.
  * @returns {{ state: 'success' | 'pending', description: string }}
  */
-export function buildStatus(missingTeams, requiredCount) {
+export function buildStatus(missingApprovals, requiredCount) {
 	if (requiredCount === 0) {
 		return { state: 'success', description: 'No team approval is required for these changes' };
 	}
 
-	if (missingTeams.length === 0) {
+	if (missingApprovals.size === 0) {
 		return {
 			state: 'success',
 			description: `All required team approvals are present (${requiredCount} team${requiredCount === 1 ? '' : 's'})`,
@@ -211,9 +211,13 @@ export function buildStatus(missingTeams, requiredCount) {
 
 	// Pending, not failure: an unreviewed PR waits, it is not broken. Anything
 	// other than success still blocks the merge.
+	const teams = [...missingApprovals].map(([team, count]) => {
+		const slug = teamHandleToSlug(team);
+		return count === 1 ? slug : `${slug} (${count})`;
+	});
 	return {
 		state: 'pending',
-		description: `Waiting for approval from: ${missingTeams.map(teamHandleToSlug).join(', ')}`,
+		description: `Waiting for approval from: ${teams.join(', ')}`,
 	};
 }
 
@@ -231,8 +235,8 @@ async function evaluateRequiredReviews(pullRequestNumber) {
 	const changedFiles = await getChangedFiles(pullRequestNumber);
 	const requiredTeams = resolveRequiredTeams(changedFiles, parseOwnersFile());
 
-	/** @type { string[] } */
-	const missingTeams = [];
+	/** @type { Map<string, number> } */
+	const missingApprovals = new Map();
 
 	if (requiredTeams.size > 0) {
 		const approvers = collectApprovers(await getPrReviews(pullRequestNumber));
@@ -244,7 +248,7 @@ async function evaluateRequiredReviews(pullRequestNumber) {
 			return { state: 'success', description: 'Owners check skipped by n8n Release Helper' };
 		}
 
-		for (const [team, files] of requiredTeams) {
+		for (const [team, { files, count }] of requiredTeams) {
 			const slug = teamHandleToSlug(team);
 			// Per-approver membership checks instead of fetching the roster:
 			// approvers are few, teams can be large.
@@ -252,18 +256,19 @@ async function evaluateRequiredReviews(pullRequestNumber) {
 			for (const login of approvers) {
 				if (await isTeamMember(slug, login)) teamApprovers.push(login);
 			}
-			const verdict = teamApprovers.length > 0 ? `approved by ${teamApprovers.join(', ')}` : 'approval missing';
+			const remaining = count - teamApprovers.length;
+			if (remaining > 0) missingApprovals.set(team, remaining);
 
-			console.log(`${team}: ${verdict} — owns ${files.length} changed file(s):`);
+			console.log(
+				`${team}: ${teamApprovers.length}/${count} approvals (${teamApprovers.join(', ') || 'none'}) — owns ${files.length} changed file(s):`,
+			);
 			for (const file of files) console.log(`  - ${file}`);
-
-			if (teamApprovers.length === 0) missingTeams.push(team);
 		}
 	} else {
 		console.log('No changed file matches a `required` OWNERS entry.');
 	}
 
-	return buildStatus(missingTeams, requiredTeams.size);
+	return buildStatus(missingApprovals, requiredTeams.size);
 }
 
 export async function run() {

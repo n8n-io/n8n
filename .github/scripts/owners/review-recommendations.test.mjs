@@ -30,7 +30,7 @@ let parseOwnersFileImpl = () => [];
 let assignOwnershipImpl = () => new Map();
 /** @type {(ownerships: Map<string, string[]>) => Array<{ team: string, fileCount: number }>} */
 let ownershipsToAllocationsImpl = () => [];
-/** @type {(files: Set<string>, entries: any[]) => Map<string, string[]>} */
+/** @type {typeof import('./owners.mjs').resolveRequiredTeams} */
 let resolveRequiredTeamsImpl = () => new Map();
 
 mock.module('./owners.mjs', {
@@ -322,25 +322,25 @@ describe('buildRequiredReviewsSection', () => {
 		assert.equal(buildRequiredReviewsSection(new Map()), null);
 	});
 
-	it('lists each required team with its file count and owned files', () => {
+	it('lists each required team with its approval count and owned files', () => {
 		const section = buildRequiredReviewsSection(
 			new Map([
-				['@n8n-io/qa-dx', ['a.yml', 'b.yml']],
-				['@n8n-io/migrations-review', ['m.ts']],
+				['@n8n-io/qa-dx', { files: ['a.yml', 'b.yml'], count: 3 }],
+				['@n8n-io/migrations-review', { files: ['m.ts'], count: 1 }],
 			]),
 		);
 
 		assert.match(section, /### Required reviews/);
 		assert.match(
 			section,
-			/\| @n8n-io\/qa-dx \| 2 \| <code>a\.yml<\/code><br><code>b\.yml<\/code> \|/,
+			/\| @n8n-io\/qa-dx \| 3 \| 2 \| <code>a\.yml<\/code><br><code>b\.yml<\/code> \|/,
 		);
-		assert.match(section, /\| @n8n-io\/migrations-review \| 1 \| <code>m\.ts<\/code> \|/);
+		assert.match(section, /\| @n8n-io\/migrations-review \| 1 \| 1 \| <code>m\.ts<\/code> \|/);
 	});
 
 	it('shows no more than five files for each team', () => {
 		const section = buildRequiredReviewsSection(
-			new Map([['@n8n-io/qa-dx', ['a.yml', 'b.yml', 'c.yml', 'd.yml', 'e.yml', 'f.yml', 'g.yml']]]),
+			new Map([['@n8n-io/qa-dx', { files: ['a.yml', 'b.yml', 'c.yml', 'd.yml', 'e.yml', 'f.yml', 'g.yml'], count: 1 }]]),
 		);
 
 		assert.match(section, /<code>a\.yml<\/code>/);
@@ -351,18 +351,18 @@ describe('buildRequiredReviewsSection', () => {
 
 	it('escapes file paths before adding them to the table', () => {
 		const section = buildRequiredReviewsSection(
-			new Map([['@n8n-io/qa-dx', ['packages/a|b/<script>.ts']]]),
+			new Map([['@n8n-io/qa-dx', { files: ['packages/a|b/<script>.ts'], count: 1 }]]),
 		);
 
 		assert.match(section, /<code>packages\/a&#124;b\/&lt;script&gt;\.ts<\/code>/);
 	});
 
 	it('prompts to request review from the team, plural when several teams are required', () => {
-		const singular = buildRequiredReviewsSection(new Map([['@n8n-io/qa-dx', ['a.yml']]]));
+		const singular = buildRequiredReviewsSection(new Map([['@n8n-io/qa-dx', { files: ['a.yml'], count: 1 }]]));
 		const plural = buildRequiredReviewsSection(
 			new Map([
-				['@n8n-io/qa-dx', ['a.yml']],
-				['@n8n-io/migrations-review', ['m.ts']],
+				['@n8n-io/qa-dx', { files: ['a.yml'], count: 1 }],
+				['@n8n-io/migrations-review', { files: ['m.ts'], count: 1 }],
 			]),
 		);
 
@@ -461,15 +461,15 @@ describe('run', () => {
 	it('includes the required reviews section with the team review prompt', async () => {
 		getPrFilesImpl = async () => [{ filename: '.github/workflows/ci.yml', additions: 1, deletions: 0 }];
 		parseOwnersFileImpl = () => [
-			{ pattern: '.github/workflows/', team: '@n8n-io/qa-dx', required: true, line: 1 },
+			{ pattern: '.github/workflows/', team: '@n8n-io/qa-dx', requiredApprovals: 2, line: 1 },
 		];
-		resolveRequiredTeamsImpl = () => new Map([['@n8n-io/qa-dx', ['.github/workflows/ci.yml']]]);
+		resolveRequiredTeamsImpl = () => new Map([['@n8n-io/qa-dx', { files: ['.github/workflows/ci.yml'], count: 2 }]]);
 
 		await run(42);
 
 		const body = postOrUpdateComment.mock.calls[0].arguments[1];
 		assert.match(body, /### Required reviews/);
-		assert.match(body, /\| @n8n-io\/qa-dx \| 1 \| <code>\.github\/workflows\/ci\.yml<\/code> \|/);
+		assert.match(body, /\| @n8n-io\/qa-dx \| 2 \| 1 \| <code>\.github\/workflows\/ci\.yml<\/code> \|/);
 		assert.match(body, /Request a review from the team —/);
 	});
 });

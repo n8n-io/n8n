@@ -229,23 +229,23 @@ export function buildOverviewTable(allocations, changedFiles, totalLineStats, li
  * assigns reviewers according to the team's own review settings (assignment
  * algorithm, excluded members), which the API does not let us read.
  *
- * @param { Map<string, string[]> } requiredTeamFiles Required team handle -> files that triggered the requirement.
+ * @param { import('./owners.mjs').RequiredTeams } requiredTeams
  * @returns { string | null }
  */
-export function buildRequiredReviewsSection(requiredTeamFiles) {
-	if (requiredTeamFiles.size === 0) return null;
+export function buildRequiredReviewsSection(requiredTeams) {
+	if (requiredTeams.size === 0) return null;
 
-	const plural = requiredTeamFiles.size > 1;
+	const plural = requiredTeams.size > 1;
 
 	return [
 		'### Required reviews',
 		'',
-		'Some changed files have a `required` owner in `OWNERS`. A member of each of these teams must approve this PR before it can merge:',
+		'Before this PR can merge, it needs the listed number of approvals from distinct members of each team:',
 		'',
-		'| Team | Files owned | Owned files |',
-		'| --- | ---: | --- |',
-		...[...requiredTeamFiles].map(
-			([team, files]) => `| ${team} | ${files.length} | ${formatRequiredFiles(files)} |`,
+		'| Team | Approvals required | Files owned | Owned files |',
+		'| --- | ---: | ---: | --- |',
+		...[...requiredTeams].map(
+			([team, { files, count }]) => `| ${team} | ${count} | ${files.length} | ${formatRequiredFiles(files)} |`,
 		),
 		'',
 		`Request a review from the team${plural ? 's' : ''} — GitHub assigns reviewers according to the team's review settings. The \`Auto-assign reviewers\` label does this for all owning teams.`,
@@ -308,8 +308,8 @@ export async function run(pullRequestNumber) {
 	const topAllocations = sortedAllocations.slice(0, 3);
 	const otherAllocations = sortedAllocations.slice(3);
 
-	const requiredTeamFiles = resolveRequiredTeams(changedFiles, owners);
-	const requiredSection = buildRequiredReviewsSection(requiredTeamFiles);
+	const requiredTeams = resolveRequiredTeams(changedFiles, owners);
+	const requiredSection = buildRequiredReviewsSection(requiredTeams);
 
 	const body = buildComment(topAllocations, changedFiles, lineStats, lineStatsByTeam, otherAllocations, requiredSection);
 

@@ -7,13 +7,15 @@ import { isTestFile } from "../test-files.mjs";
  * @typedef OwnersEntry
  * @property { string } pattern
  * @property { string } team
- * @property { boolean } required A member of the team must approve before merge.
+ * @property { number } requiredApprovals Minimum number of team members who must approve.
  * @property { number } line 1-based line number in the OWNERS file.
  * */
 
 /**
  * @typedef { Map<string, string[]> } Ownerships
  * */
+
+/** @typedef { Map<string, { files: string[], count: number }> } RequiredTeams */
 
 /**
  * @typedef Allocation
@@ -31,12 +33,6 @@ export const OWNERS_FILE = join(REPO_ROOT, "OWNERS");
 const TEAM_TOKEN = /^@[\w.-]+\/[\w.-]+$/;
 
 /**
- * Line grammar: `<pattern> <@org/team> [required]`
- * New option keywords go here.
- */
-const OPTION_TOKENS = new Set(["required"]);
-
-/**
  * @param { string } line
  * @returns { string }
  */
@@ -46,7 +42,7 @@ function stripComment(line) {
 }
 
 /**
- * Parse OWNERS file content into structured entries.
+ * Parse `<pattern> <@org/team> [required[=<count>]]` lines.
  *
  * Throws on lines that do not follow the grammar, so a malformed OWNERS
  * file fails loudly in every consumer instead of being silently ignored.
@@ -66,23 +62,26 @@ export function parseOwnersContent(content) {
 		const [pattern, ...tokens] = line.split(/\s+/);
 		/** @type { string | null } */
 		let team = null;
-		let required = false;
-		let sawOption = false;
+		let requiredApprovals = 0;
 
 		for (const token of tokens) {
 			if (TEAM_TOKEN.test(token)) {
-				if (sawOption) {
+				if (requiredApprovals > 0) {
 					throw new Error(`OWNERS line ${lineNumber}: team "${token}" must come before options`);
 				}
 				if (team) {
 					throw new Error(`OWNERS line ${lineNumber}: only one team per pattern is supported`);
 				}
 				team = token;
-			} else if (token === "required") {
-				required = true;
-				sawOption = true;
-			} else if (OPTION_TOKENS.has(token)) {
-				throw new Error(`OWNERS line ${lineNumber}: option "${token}" is not handled`);
+			} else if (token === "required" || token.startsWith("required=")) {
+				if (requiredApprovals > 0) {
+					throw new Error(`OWNERS line ${lineNumber}: duplicate "required" option`);
+				}
+				const count = token === "required" ? "1" : token.slice("required=".length);
+				if (!/^[1-9]\d*$/.test(count) || !Number.isSafeInteger(Number(count))) {
+					throw new Error(`OWNERS line ${lineNumber}: required count must be a positive integer`);
+				}
+				requiredApprovals = Number(count);
 			} else {
 				throw new Error(`OWNERS line ${lineNumber}: unknown token "${token}"`);
 			}
@@ -92,7 +91,7 @@ export function parseOwnersContent(content) {
 			throw new Error(`OWNERS line ${lineNumber}: no team for pattern "${pattern}"`);
 		}
 
-		entries.push({ pattern, team, required, line: lineNumber });
+		entries.push({ pattern, team, requiredApprovals, line: lineNumber });
 	});
 
 	return entries;
@@ -237,29 +236,29 @@ export function assignOwnership(files, entries) {
 }
 
 /**
- * Determine which teams must approve the changeset: a team is required when
- * its `required` entry wins (last-match) for a changed non-test file.
+ * Use the highest count from each team's winning rules for changed non-test files.
  *
  * @param { Set<string> } files
  * @param { OwnersEntry[] } entries
- * @returns { Ownerships } required team -> files that triggered the requirement
+ * @returns { RequiredTeams }
  * */
 export function resolveRequiredTeams(files, entries) {
-	/** @type { Ownerships } */
+	/** @type { RequiredTeams } */
 	const teamToFiles = new Map();
 
 	for (const file of [...files].sort()) {
 		if (isTestFile(file)) continue;
 
 		const entry = findOwningEntry(file, entries);
-		if (!entry?.required) continue;
+		if (!entry?.requiredApprovals) continue;
 
 		const bucket = teamToFiles.get(entry.team);
 
 		if (bucket) {
-			bucket.push(file);
+			bucket.files.push(file);
+			bucket.count = Math.max(bucket.count, entry.requiredApprovals);
 		} else {
-			teamToFiles.set(entry.team, [file]);
+			teamToFiles.set(entry.team, { files: [file], count: entry.requiredApprovals });
 		}
 	}
 
@@ -319,7 +318,7 @@ function runCheck() {
 		process.exit(1);
 	}
 
-	const requiredCount = entries.filter((entry) => entry.required).length;
+	const requiredCount = entries.filter((entry) => entry.requiredApprovals > 0).length;
 	console.log(`OWNERS is valid: ${entries.length} entries, ${requiredCount} with required review.`);
 }
 

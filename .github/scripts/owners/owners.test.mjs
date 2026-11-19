@@ -19,7 +19,7 @@ import {
 
 /** @param {Partial<import('./owners.mjs').OwnersEntry>} entry */
 function entry(entry) {
-	return { team: '@n8n-io/some-team', required: false, line: 1, pattern: '*', ...entry };
+	return { team: '@n8n-io/some-team', requiredApprovals: 0, line: 1, pattern: '*', ...entry };
 }
 
 describe('parseOwnersContent', () => {
@@ -33,9 +33,9 @@ describe('parseOwnersContent', () => {
 		].join('\n');
 
 		assert.deepEqual(parseOwnersContent(content), [
-			{ pattern: '*', team: '@n8n-io/catalysts', required: false, line: 3 },
-			{ pattern: 'packages/cli/', team: '@n8n-io/cli-team', required: false, line: 4 },
-			{ pattern: 'packages/foo/bar.ts', team: '@n8n-io/some-team', required: false, line: 5 },
+			{ pattern: '*', team: '@n8n-io/catalysts', requiredApprovals: 0, line: 3 },
+			{ pattern: 'packages/cli/', team: '@n8n-io/cli-team', requiredApprovals: 0, line: 4 },
+			{ pattern: 'packages/foo/bar.ts', team: '@n8n-io/some-team', requiredApprovals: 0, line: 5 },
 		]);
 	});
 
@@ -43,8 +43,29 @@ describe('parseOwnersContent', () => {
 		const entries = parseOwnersContent('pkg/  @n8n-io/keepers required');
 
 		assert.deepEqual(entries, [
-			{ pattern: 'pkg/', team: '@n8n-io/keepers', required: true, line: 1 },
+			{ pattern: 'pkg/', team: '@n8n-io/keepers', requiredApprovals: 1, line: 1 },
 		]);
+	});
+
+	it('parses an explicit approval count', () => {
+		const [owner] = parseOwnersContent('pkg/ @n8n-io/r-d required=2');
+		assert.equal(owner.requiredApprovals, 2);
+	});
+
+	for (const count of ['', '0', '-1', '1.5', '2e1', 'two', '9007199254740992']) {
+		it(`rejects the approval count ${JSON.stringify(count)}`, () => {
+			assert.throws(
+				() => parseOwnersContent(`# comment\npkg/ @n8n-io/keepers required=${count}`),
+				/OWNERS line 2: required count must be a positive integer/,
+			);
+		});
+	}
+
+	it('rejects duplicate required options', () => {
+		assert.throws(
+			() => parseOwnersContent('pkg/ @n8n-io/keepers required required=2'),
+			/OWNERS line 1: duplicate "required" option/,
+		);
 	});
 
 	it('throws on a second team', () => {
@@ -272,8 +293,8 @@ describe('resolveRequiredTeams', () => {
 	const owners = [
 		entry({ pattern: '*', team: '@n8n-io/catalysts' }),
 		entry({ pattern: '.github/', team: '@n8n-io/qa-dx' }),
-		entry({ pattern: '.github/workflows/', team: '@n8n-io/qa-dx', required: true }),
-		entry({ pattern: 'db/migrations/', team: '@n8n-io/migrations-review', required: true }),
+		entry({ pattern: '.github/workflows/', team: '@n8n-io/qa-dx', requiredApprovals: 1 }),
+		entry({ pattern: 'db/migrations/', team: '@n8n-io/migrations-review', requiredApprovals: 1 }),
 	];
 
 	it('collects the teams of `required` entries that win for a changed file', () => {
@@ -282,9 +303,24 @@ describe('resolveRequiredTeams', () => {
 			owners,
 		);
 
-		assert.deepEqual(result.get('@n8n-io/qa-dx'), ['.github/workflows/ci.yml']);
-		assert.deepEqual(result.get('@n8n-io/migrations-review'), ['db/migrations/1-init.ts']);
+		assert.deepEqual(result.get('@n8n-io/qa-dx'), { files: ['.github/workflows/ci.yml'], count: 1 });
+		assert.deepEqual(result.get('@n8n-io/migrations-review'), { files: ['db/migrations/1-init.ts'], count: 1 });
 		assert.equal(result.size, 2);
+	});
+
+	it('uses the highest winning count for each team without adding counts together', () => {
+		const entries = parseOwnersContent([
+			'src/ @n8n-io/r-d required=4',
+			'src/a.ts @n8n-io/r-d required=2',
+			'src/b.ts @n8n-io/r-d required',
+			'src/c.ts @n8n-io/backend required=3',
+		].join('\n'));
+		const result = resolveRequiredTeams(new Set(['src/a.ts', 'src/b.ts', 'src/c.ts']), entries);
+
+		assert.deepEqual([...result], [
+			['@n8n-io/r-d', { files: ['src/a.ts', 'src/b.ts'], count: 2 }],
+			['@n8n-io/backend', { files: ['src/c.ts'], count: 3 }],
+		]);
 	});
 
 	it('ignores files whose winning entry is not required', () => {
@@ -301,17 +337,17 @@ describe('resolveRequiredTeams', () => {
 				'.github/workflows/ci.yml',
 			]),
 			[
-				entry({ pattern: '.github/scripts/', team: '@n8n-io/qa-dx', required: true }),
-				entry({ pattern: '.github/workflows/', team: '@n8n-io/qa-dx', required: true }),
+				entry({ pattern: '.github/scripts/', team: '@n8n-io/qa-dx', requiredApprovals: 2 }),
+				entry({ pattern: '.github/workflows/', team: '@n8n-io/qa-dx', requiredApprovals: 1 }),
 			],
 		);
 
-		assert.deepEqual(result.get('@n8n-io/qa-dx'), ['.github/workflows/ci.yml']);
+		assert.deepEqual(result.get('@n8n-io/qa-dx'), { files: ['.github/workflows/ci.yml'], count: 1 });
 	});
 
 	it('a later non-required entry overrides an earlier required one', () => {
 		const result = resolveRequiredTeams(new Set(['db/migrations/1-init.ts']), [
-			entry({ pattern: 'db/', team: '@n8n-io/migrations-review', required: true }),
+			entry({ pattern: 'db/', team: '@n8n-io/migrations-review', requiredApprovals: 1 }),
 			entry({ pattern: 'db/migrations/', team: '@n8n-io/catalysts' }),
 		]);
 
@@ -324,7 +360,7 @@ describe('resolveRequiredTeams', () => {
 			owners,
 		);
 
-		assert.deepEqual(result.get('@n8n-io/qa-dx'), [
+		assert.deepEqual(result.get('@n8n-io/qa-dx')?.files, [
 			'.github/workflows/a.yml',
 			'.github/workflows/z.yml',
 		]);

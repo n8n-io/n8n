@@ -1,5 +1,6 @@
 import { beforeEach, describe, it, mock } from 'node:test';
 import assert from 'node:assert/strict';
+import { parseOwnersContent, resolveRequiredTeams, teamHandleToSlug } from './owners.mjs';
 
 /**
  * Run these tests by running
@@ -42,15 +43,13 @@ mock.module('../github-helpers.mjs', {
 
 /** @type {() => Array<import('./owners.mjs').OwnersEntry>} */
 let parseOwnersFileImpl = () => [];
-/** @type {(files: Set<string>, entries: any[]) => Map<string, string[]>} */
-let resolveRequiredTeamsImpl = () => new Map();
+const qaDxRequired = () => parseOwnersContent('a.ts @n8n-io/qa-dx required');
 
 mock.module('./owners.mjs', {
 	namedExports: {
 		parseOwnersFile: () => parseOwnersFileImpl(),
-		resolveRequiredTeams: (files, entries) => resolveRequiredTeamsImpl(files, entries),
-		// Mirrors the real implementation; the mock replaces the whole module.
-		teamHandleToSlug: (team) => team.replace(/^@[^/]+\//, ''),
+		resolveRequiredTeams,
+		teamHandleToSlug,
 	},
 });
 
@@ -367,24 +366,24 @@ describe('findLargeScaleChangeExemption', () => {
 
 describe('buildStatus', () => {
 	it('succeeds when nothing is required', () => {
-		const status = buildStatus([], 0);
+		const status = buildStatus(new Map(), 0);
 
 		assert.equal(status.state, 'success');
 		assert.match(status.description, /No team approval is required/);
 	});
 
 	it('succeeds when all required teams approved', () => {
-		const status = buildStatus([], 2);
+		const status = buildStatus(new Map(), 2);
 
 		assert.equal(status.state, 'success');
 		assert.match(status.description, /2 teams/);
 	});
 
 	it('stays pending with the missing team slugs', () => {
-		const status = buildStatus(['@n8n-io/qa-dx', '@n8n-io/migrations-review'], 2);
+		const status = buildStatus(new Map([['@n8n-io/qa-dx', 2], ['@n8n-io/migrations-review', 1]]), 2);
 
 		assert.equal(status.state, 'pending');
-		assert.equal(status.description, 'Waiting for approval from: qa-dx, migrations-review');
+		assert.equal(status.description, 'Waiting for approval from: qa-dx (2), migrations-review');
 	});
 });
 
@@ -405,7 +404,6 @@ describe('run', () => {
 		getPrEventsImpl = async () => [];
 		isTeamMemberImpl = async () => false;
 		parseOwnersFileImpl = () => [];
-		resolveRequiredTeamsImpl = () => new Map();
 		setCommitStatus = mock.fn(async () => {});
 		setCommitStatusImpl = setCommitStatus;
 	});
@@ -427,7 +425,7 @@ describe('run', () => {
 	});
 
 	it('sets a pending status when a required team has not approved', async () => {
-		resolveRequiredTeamsImpl = () => new Map([['@n8n-io/qa-dx', ['a.ts']]]);
+		parseOwnersFileImpl = qaDxRequired;
 		getPrReviewsImpl = async () => [
 			{ user: { login: 'outsider' }, state: 'APPROVED', submitted_at: '2026-01-01T00:00:00Z' },
 		];
@@ -441,7 +439,7 @@ describe('run', () => {
 	});
 
 	it('skips required team approvals when n8n Release Helper approved', async () => {
-		resolveRequiredTeamsImpl = () => new Map([['@n8n-io/qa-dx', ['a.ts']]]);
+		parseOwnersFileImpl = qaDxRequired;
 		getPrReviewsImpl = async () => [
 			{
 				user: { login: RELEASE_HELPER_LOGIN },
@@ -461,7 +459,7 @@ describe('run', () => {
 	});
 
 	it('does not skip required team approvals after the Release Helper approval is dismissed', async () => {
-		resolveRequiredTeamsImpl = () => new Map([['@n8n-io/qa-dx', ['a.ts']]]);
+		parseOwnersFileImpl = qaDxRequired;
 		getPrReviewsImpl = async () => [
 			{
 				user: { login: RELEASE_HELPER_LOGIN },
@@ -495,11 +493,9 @@ describe('run', () => {
 	});
 
 	it('sets a success status when a member of each required team approved', async () => {
-		resolveRequiredTeamsImpl = () =>
-			new Map([
-				['@n8n-io/qa-dx', ['a.ts']],
-				['@n8n-io/migrations-review', ['m.ts']],
-			]);
+		getChangedFilesImpl = async () => new Set(['a.ts', 'm.ts']);
+		parseOwnersFileImpl = () =>
+			parseOwnersContent('a.ts @n8n-io/qa-dx required\nm.ts @n8n-io/migrations-review required');
 		getPrReviewsImpl = async () => [
 			{ user: { login: 'poly' }, state: 'APPROVED', submitted_at: '2026-01-01T00:00:00Z' },
 		];
@@ -512,8 +508,38 @@ describe('run', () => {
 		assert.equal(status.state, 'success');
 	});
 
+	it('requires two distinct current approvals from the named team', async () => {
+		parseOwnersFileImpl = () => parseOwnersContent('a.ts @n8n-io/r-d required=2');
+		const reviews = [];
+		getPrReviewsImpl = async () => reviews;
+		isTeamMemberImpl = async (slug, login) => slug === 'r-d' && ['ana', 'bo'].includes(login);
+
+		const addReview = (login, state = 'APPROVED') => {
+			reviews.push({
+				user: { login },
+				state,
+				submitted_at: new Date(reviews.length * 1000).toISOString(),
+			});
+		};
+		const reportedState = () => setCommitStatus.mock.calls.at(-1).arguments[1].state;
+
+		addReview('ana');
+		addReview('ana');
+		addReview('outsider');
+		await run();
+		assert.equal(reportedState(), 'pending');
+
+		addReview('bo');
+		await run();
+		assert.equal(reportedState(), 'success');
+
+		addReview('bo', 'DISMISSED');
+		await run();
+		assert.equal(reportedState(), 'pending');
+	});
+
 	it('checks membership per approver and required team', async () => {
-		resolveRequiredTeamsImpl = () => new Map([['@n8n-io/qa-dx', ['a.ts']]]);
+		parseOwnersFileImpl = qaDxRequired;
 		getPrReviewsImpl = async () => [
 			{ user: { login: 'poly' }, state: 'APPROVED', submitted_at: '2026-01-01T00:00:00Z' },
 		];
@@ -529,7 +555,7 @@ describe('run', () => {
 	});
 
 	it('does not check membership when there is no approval', async () => {
-		resolveRequiredTeamsImpl = () => new Map([['@n8n-io/qa-dx', ['a.ts']]]);
+		parseOwnersFileImpl = qaDxRequired;
 		const isTeamMember = mock.fn(async () => true);
 		isTeamMemberImpl = isTeamMember;
 
@@ -541,7 +567,7 @@ describe('run', () => {
 	});
 
 	it('does not count an approval that was later dismissed', async () => {
-		resolveRequiredTeamsImpl = () => new Map([['@n8n-io/qa-dx', ['a.ts']]]);
+		parseOwnersFileImpl = qaDxRequired;
 		getPrReviewsImpl = async () => [
 			{ user: { login: 'poly' }, state: 'APPROVED', submitted_at: '2026-01-01T00:00:00Z' },
 			{ user: { login: 'poly' }, state: 'DISMISSED', submitted_at: '2026-01-02T00:00:00Z' },
@@ -568,7 +594,7 @@ describe('run', () => {
 
 	it('evaluates PRs into branches other than master', async () => {
 		getPullRequestByIdImpl = async () => pullRequestFor('feature/x', 'release-candidate/2.9.x');
-		resolveRequiredTeamsImpl = () => new Map([['@n8n-io/qa-dx', ['a.ts']]]);
+		parseOwnersFileImpl = qaDxRequired;
 
 		await run();
 
@@ -581,7 +607,7 @@ describe('run', () => {
 		getPullRequestByIdImpl = async () => pullRequestFor('sync/master-to-3x', '3.x');
 		const getChangedFiles = mock.fn(async () => new Set(['a.ts']));
 		getChangedFilesImpl = getChangedFiles;
-		resolveRequiredTeamsImpl = () => new Map([['@n8n-io/qa-dx', ['a.ts']]]);
+		parseOwnersFileImpl = qaDxRequired;
 
 		await run();
 
@@ -622,7 +648,7 @@ describe('run', () => {
 		getPrEventsImpl = async () => [
 			{ event: 'labeled', label: { name: LARGE_SCALE_CHANGE_LABEL }, actor: { login: 'outsider' } },
 		];
-		resolveRequiredTeamsImpl = () => new Map([['@n8n-io/qa-dx', ['a.ts']]]);
+		parseOwnersFileImpl = qaDxRequired;
 
 		await run();
 
@@ -633,7 +659,7 @@ describe('run', () => {
 
 	it('does not exempt a fork branch that is named like an exempt route', async () => {
 		getPullRequestByIdImpl = async () => pullRequestFor('sync/master-to-3x', '3.x', 'someone/n8n');
-		resolveRequiredTeamsImpl = () => new Map([['@n8n-io/qa-dx', ['a.ts']]]);
+		parseOwnersFileImpl = qaDxRequired;
 
 		await run();
 

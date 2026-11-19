@@ -1,16 +1,16 @@
 # n8n OWNERS
 #
-# Format: <pattern> <@org/team> [required]
+# Format: <pattern> <@org/team> [required[=<count>]]
 #
 # Examples:
 #   packages/foo/        @n8n-io/team-a            advisory reviewer recommendation
 #   packages/foo/bar.ts  @n8n-io/team-b required   team approval blocks merge
+#   packages/foo/baz.ts  @n8n-io/r-d required=2    needs two distinct R&D approvals
 #
 # Last-match-wins: specific rules MUST come AFTER general rules.
 #
-# The `required` option makes team approval mandatory for non-test files: a
-# member of the team must approve the PR before merge. This is enforced by the
-# "Required Reviews" commit status (ci-owners-required-reviews.yml).
+# For non-test files, `required` needs one approval and `required=N` needs N
+# approvals from distinct team members. The "Required Reviews" status enforces this.
 # All other entries are advisory (reviewer recommendations and opt-in
 # reviewer auto-assignment).
 #

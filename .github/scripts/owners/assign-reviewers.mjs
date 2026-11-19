@@ -9,7 +9,6 @@ import {
 } from '../github-helpers.mjs';
 import {
 	assignOwnership,
-	ownershipsToAllocations,
 	parseOwnersFile,
 	resolveRequiredTeams,
 	teamHandleToSlug,
@@ -31,9 +30,7 @@ export function resolveOwnerTeamSlugs(changedFiles, requiredOnly = false) {
 	const ownerships = requiredOnly
 		? resolveRequiredTeams(changedFiles, owners)
 		: assignOwnership(changedFiles, owners);
-	const allocations = ownershipsToAllocations(ownerships);
-
-	return allocations.map((allocation) => teamHandleToSlug(allocation.team));
+	return [...ownerships.keys()].map(teamHandleToSlug);
 }
 
 /**

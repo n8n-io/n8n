@@ -909,7 +909,7 @@ Team ownership lives in the top-level `OWNERS` file. The scripts that consume
 it live in `.github/scripts/owners/`. Line format:
 
 ```
-<pattern> <@org/team> [required]
+<pattern> <@org/team> [required[=<count>]]
 ```
 
 Patterns are a catch-all (`*`), a directory prefix (`packages/x/`), or an
@@ -919,7 +919,7 @@ after general rules.
 The format is strict, enforced by `node .github/scripts/owners/owners.mjs --check`:
 
 - Tokens on a line come in a fixed order: pattern, one team, then options
-  such as `required`.
+  such as `required` or `required=2`. The count must be a positive integer.
 - Directory patterns end with `/` and must be existing directories; all other
   patterns must be existing files. Duplicate patterns are rejected.
 
@@ -950,10 +950,16 @@ update can try again.
 
 ### Required reviews
 
-An entry with the `required` option makes team approval mandatory: when a PR
-changes a non-test file whose winning entry carries `required`, a member of each
-listed team must approve the PR. Test files match the shared patterns in
-`test-files.mjs` and do not trigger required reviews.
+When a PR changes a non-test file, its winning entry can require team approval.
+`required` needs one approval. `required=N` needs approvals from N distinct
+members of the named team, including members of its GitHub subteams. For example,
+`packages/foo/ @n8n-io/r-d required=2` needs two distinct approvals from R&D.
+When several winning entries name the same team, the highest count applies.
+Auto-assignment requests each team once. GitHub's team settings determine how
+many reviewers it assigns, so request more reviewers if necessary.
+Test files match the shared patterns in `test-files.mjs` and do not trigger
+required reviews.
+
 `ci-owners-required-reviews.yml` evaluates this on
 PR changes and review events, and reports a commit status
 named **Required Reviews** on the head SHA. A missing approval reports

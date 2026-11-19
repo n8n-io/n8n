@@ -34,7 +34,7 @@ mock.module('../github-helpers.mjs', {
 });
 
 const ownersContent = `
-src/ @n8n-io/catalysts required
+src/ @n8n-io/catalysts required=2
 src/optional/ @n8n-io/qa-dx
 tests/ @n8n-io/test-owners required
 `;
@@ -104,7 +104,7 @@ describe('run', () => {
 		assert.deepEqual(requestTeamReviewers.mock.calls[0].arguments, [42, allTeamSlugs]);
 	});
 
-	it('requests only required teams for changed non-test files', async () => {
+	it('requests each required team once, even when it needs multiple approvals', async () => {
 		labels = [AUTO_ASSIGN_REQUIRED_LABEL];
 
 		await run(42);
