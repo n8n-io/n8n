@@ -15,6 +15,8 @@ export interface HttpVendorProfile {
 	placeholderSeed: unknown;
 	// Adds fields to a real JSON answer that the model needs to copy it (decoded text, flat headers).
 	enrich?: (json: unknown) => unknown;
+	// Last change to an overlay, after the checks. Code adds data here that the real data does not hold.
+	finalize?: (overlay: Record<string, unknown>) => Record<string, unknown>;
 	// Real reads for the objects that a call needs in the gym, before the first model turn.
 	lookups?: (
 		tool: string,
@@ -103,6 +105,31 @@ const idsOf = (result: unknown, key: string): string[] => {
 	return items.flatMap((item) => (isRecord(item) && typeof item.id === 'string' ? [item.id] : []));
 };
 
+const PLACEHOLDER_ACCOUNT = 'guard@unknown.invalid';
+
+// The gym placeholder account is the only mailbox that the credential of the tenant reads. The checks
+// of the plan remove text that the real data lacks, so code sets the account, not the model.
+export function withMailbox(overlay: Record<string, unknown>): Record<string, unknown> {
+	const native = isRecord(overlay.native) ? overlay.native : undefined;
+	const gmail = native && isRecord(native.gmail) ? native.gmail : undefined;
+	if (!native || !gmail) return overlay;
+	const place = (items: unknown) =>
+		Array.isArray(items)
+			? items.map((item) => (isRecord(item) ? { ...item, account: PLACEHOLDER_ACCOUNT } : item))
+			: items;
+	return {
+		...overlay,
+		native: {
+			...native,
+			gmail: {
+				...gmail,
+				...(gmail.messages !== undefined && { messages: place(gmail.messages) }),
+				...(gmail.labels !== undefined && { labels: place(gmail.labels) }),
+			},
+		},
+	};
+}
+
 export const GMAIL_PROFILE: HttpVendorProfile = {
 	name: 'gmail',
 	defaultAdminUrl: 'http://127.0.0.1:9093',
@@ -111,9 +138,10 @@ export const GMAIL_PROFILE: HttpVendorProfile = {
 	credentialField: 'oauthTokenData.access_token',
 	placeholderSeed: {
 		world_version: 1,
-		persona: { ref: 'person:me', name: 'Guard', email: 'guard@unknown.invalid' },
+		persona: { ref: 'person:me', name: 'Guard', email: PLACEHOLDER_ACCOUNT },
 	},
 	enrich: enrichGmail,
+	finalize: withMailbox,
 	lookups: (tool, args, result) => {
 		// A list shows only ids. The messages themselves come from reads, and the model copies them.
 		if (tool === 'read_list_messages') {

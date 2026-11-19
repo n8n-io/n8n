@@ -57,14 +57,12 @@ export class HttpGuardRouter {
 		if (req.headers.authorization) this.deps.context.authorization = req.headers.authorization;
 		const readShaped = isReadShaped(req, vendor.readPaths);
 		const { name, args } = toToolCall(req, readShaped);
-		Container.get(Logger).info(
-			`mcp-guard http ${req.method} ${host}${req.url.pathname} -> ${readShaped ? 'real read, then gym' : 'gym'}`,
-		);
 		return readShaped ? await this.read(name, args) : await this.write(name, args);
 	}
 
 	private async write(name: string, args: HttpToolArgs): Promise<Response> {
 		const { hydrator, profile } = this.deps;
+		this.log(args, 'gym');
 		if (profile.hydrateWrite?.(args, this.gymIds)) {
 			// A failed parent read must not block the write. The gym then answers with its own error.
 			await hydrator.hydrateWrite?.(name, args).catch(() => undefined);
@@ -80,6 +78,7 @@ export class HttpGuardRouter {
 		// An id that the gym made names nothing in the real service.
 		const ids = args.path.split('/').filter(looksLikeId);
 		const gymOnly = ids.length > 0 && ids.every((id) => this.gymIds.has(id));
+		this.log(args, gymOnly ? 'gym (an id of the gym)' : 'real read, then gym');
 		if (!gymOnly) {
 			try {
 				const real = await upstream.callTool(name, args);
@@ -95,6 +94,12 @@ export class HttpGuardRouter {
 		}
 		const res = await this.callGym(name, args);
 		return res instanceof Response ? res : toResponse(res);
+	}
+
+	// Method, host and path only. Never the query, the headers or the body.
+	private log(args: HttpToolArgs, route: string): void {
+		const host = new URL(this.deps.context.origin).host;
+		Container.get(Logger).info(`mcp-guard http ${args.method} ${host}${args.path} -> ${route}`);
 	}
 
 	private async callGym(name: string, args: HttpToolArgs): Promise<CallToolResult | Response> {

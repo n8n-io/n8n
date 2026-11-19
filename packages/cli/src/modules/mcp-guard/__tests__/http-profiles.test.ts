@@ -1,4 +1,4 @@
-import { enrichGmail, GMAIL_PROFILE } from '../http-profiles';
+import { enrichGmail, GMAIL_PROFILE, withMailbox } from '../http-profiles';
 
 const b64 = (text: string) => Buffer.from(text).toString('base64url');
 
@@ -178,5 +178,41 @@ describe('Gmail hydration rules', () => {
 		expect(write('/gmail/v1/users/me/messages/1a1f32cf20c4c2fb/modify')).toBe(false);
 		expect(write('/gmail/v1/users/me/messages/1b2e43df31d5d3ac/modify')).toBe(true);
 		expect(write('/gmail/v1/users/me/threads/1b2e43df31d5d3ac/modify')).toBe(true);
+	});
+});
+
+describe('withMailbox', () => {
+	it('places every message and label in the mailbox of the placeholder account', () => {
+		const out = withMailbox({
+			world_version: 1,
+			native: {
+				gmail: {
+					messages: [
+						{ ref: 'message:a', subject: 's', account: 'someone@else.test' },
+						{ ref: 'message:b' },
+					],
+					labels: [{ name: 'Receipts' }],
+				},
+			},
+		}) as {
+			native: {
+				gmail: { messages: Array<{ account: string }>; labels: Array<{ account: string }> };
+			};
+		};
+
+		const account = 'guard@unknown.invalid';
+		expect(out.native.gmail.messages.map((m) => m.account)).toEqual([account, account]);
+		expect(out.native.gmail.labels.map((l) => l.account)).toEqual([account]);
+	});
+
+	it('leaves an overlay without Gmail data as it is', () => {
+		const overlay = { world_version: 1 };
+
+		expect(withMailbox(overlay)).toEqual(overlay);
+		expect(withMailbox({ native: { gmail: {} } })).toEqual({ native: { gmail: {} } });
+	});
+
+	it('is the finalize step of the Gmail profile', () => {
+		expect(GMAIL_PROFILE.finalize).toBe(withMailbox);
 	});
 });

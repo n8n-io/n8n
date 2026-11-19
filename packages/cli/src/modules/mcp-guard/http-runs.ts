@@ -89,6 +89,7 @@ export class HttpRunRegistry {
 			instructions: `${PLAN_INSTRUCTIONS}\n${vendor.instructions}`,
 			llm: createPlanLlm(model),
 			lookups: profile.lookups,
+			finalize: profile.finalize,
 		});
 		const router = new HttpGuardRouter({
 			upstream,
