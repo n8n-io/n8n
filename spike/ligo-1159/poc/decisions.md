@@ -28,10 +28,14 @@ exist. The proof of concept uses this rule, in `PromotionAccessService`:
 
 ### D2. Settings field for old clients
 
+Superseded by S1: the field does not exist any more.
+
 `allowIncomplete` defaults to `false` when a client does not send it, on create
 and on update. A stored environment without the field is strict.
 
 ### D3. Shape of a confirmation
+
+Partly superseded by S1: every operation with gaps sends `confirmedGapIds`, not only an "incomplete" one.
 
 An incomplete operation sends `confirmedGapIds`: the ids of the gaps that the
 user saw. The server compares them with the current gaps. When they differ, it
@@ -68,6 +72,8 @@ the name, the provider type, the branch and the settings. It does not return
 the remote URL.
 
 ### D7. A strict environment and the status `gaps-changed`
+
+Partly superseded by S1: no environment is strict, so a gap never sets `blocked`.
 
 There is no separate status for "strict environment with gaps". The operation
 compares `confirmedGapIds` (empty when not sent) with the current gaps. When
@@ -107,10 +113,14 @@ No telemetry event changes. A Promote that returns `gaps-changed` counts as
 
 ### D12. Existing tests
 
+Partly superseded by S1: the fixtures of the tests now fail for the opposite reason, they still send `allowIncomplete`.
+
 The foundation changes make some existing test files fail the typecheck
 (mostly fixtures without `allowIncomplete`). They are left as they are.
 
 ### D13. Dependency check engine (stream B)
+
+Partly superseded by S1: there is one mode, and each credential gap whose id the destination does not hold gets the placeholder flag.
 
 The engine is in `packages/cli/src/modules/promotions.ee/dependency-check/`. It decided these
 points:
@@ -414,6 +424,8 @@ project". The route accepts `confirmedGapIds`, and its result carries
 
 ### G4. Which status an Apply returns when it stops
 
+Partly superseded by S1: the cause "the environment is strict and gaps exist" does not exist any more.
+
 - `gaps-changed`, before any write and before any grant: the gaps differ from
   `confirmedGapIds`, the environment is strict and gaps exist, the report has a
   hard block, or `deletionCallers` is not empty and `confirmDeletionCallers` is
@@ -439,6 +451,8 @@ creates the credential there. The preview revision is computed before this
 step, so it does not depend on the report.
 
 ### G6. What the import gets from the check
+
+Partly superseded by S1: the check gives the placeholders on every environment.
 
 - `credentialOwnerPolicy: 'follow-package'` is in every Apply request, also in
   the previews, so a move is a change row of the credential.
@@ -720,6 +734,8 @@ workflows and projects that reconciliation keeps.
 
 ### J11. A gap of an unknown group cannot be confirmed
 
+Partly superseded by S1: the rule stays, the words "also on an environment that allows incomplete operations" do not apply.
+
 The page disables the operation, also on an environment that allows
 incomplete operations, and says to update n8n or close the gap.
 
@@ -952,6 +968,8 @@ then.
 
 ### K8. The placeholder marker and the placeholder home
 
+Partly superseded by S1: "an incomplete Apply" is now every Apply with gaps.
+
 - The marker goes away only when the saved data holds a value: a text that is
   not blank, a number, or a list or an object with such a value. A switch alone
   is not a value. This narrows D13.
@@ -1061,3 +1079,65 @@ proof of concept adds no event, so the move of an Apply writes none either.
 - A `broken-on-source` warning adds the sentence of its `cause`.
 - A home choice without a candidate shows the sentence of `noCandidateReason`
   in place of an empty selector. This case was not run.
+
+## Decision of 2026-11-19: one mode
+
+### S1. Promote and Apply with gaps is the default. The setting is removed.
+
+Date: 2026-11-19. The user decided: "Remove the setting to opt in to
+promote/apply with gaps. This is the default behaviour from now on. Promoting
+and applying with gaps is just part of the user experience."
+
+What changed:
+
+- The environment setting `allowIncomplete` ("Allow incomplete promotions",
+  "Allow incomplete applies") does not exist any more. There is no strict
+  mode. Each Promote and each Apply can continue with gaps.
+- The user still sees the gaps and confirms them before the operation writes.
+  The operation takes `confirmedGapIds`. When the ids differ from the current
+  gaps, it writes nothing and returns `gaps-changed` with the new report. The
+  commit message and the review description still list the gaps, and the
+  requirement rows still get `reason`.
+- The exits of a gap ("Include it", "Ask the owner", "Open the review",
+  "Restore it", "Remove the deletion from the selection", and the others) stay.
+  They are the ways to make the operation complete. They are not conditions to
+  continue.
+- The exit `continue-incomplete` is removed from the enum. Each gap can
+  continue, so the exit said nothing.
+- `PromotionDependencyReport.allowIncomplete` is removed. `blocked` is true
+  only for a hard block, or for a top-level credential without a home.
+- An Apply plans a placeholder for each credential gap whose id the
+  destination does not hold (solution 3.7), and creates it after the user
+  confirms the gaps. The other rules stay: no placeholder when the id is
+  taken, and the user needs `credential:create` in the consumer project
+  (`placeholder-create-forbidden` when not). A credential reference without a
+  reason on a branch of an earlier version still gets no placeholder (K8).
+- Hard blocks, grants that are not confirmed, missing bindings, the
+  confirmation of deletion callers, destructive confirmations and moves stop
+  the operation as before. Warnings and notes did not change.
+- A gap of a group that the client does not know still stops the operation in
+  the page and in the CLI (J11).
+
+Stored settings and old clients:
+
+- A stored environment can still hold `allowIncomplete`. The settings schemas
+  are strict, so `resolveStoredConfig` removes the field before it parses a
+  stored row. Each read (the list, the detail, the project lookup, the
+  operations) then works. The next save of the environment writes the row
+  without the field. There is no migration.
+- A write that still sends `allowIncomplete` is refused with status 400, like
+  each other unknown settings field. Accept-and-ignore was not selected: it
+  keeps a dead field in the DTO, and a client that sends `false` would think
+  that the environment is strict.
+- The value of the stored field has no effect. An environment that stored
+  `false` now continues with gaps.
+
+Names in the code: the dialog component is `PromotionGapsDialog.vue` (was
+`PromotionIncompleteDialog.vue`), with the test ids `promotion-gaps-*`. The
+`?fixture=` development mode has the names `gaps` (the default), `blocked`,
+`changed` and `clean`. An old name such as `strict` or `incomplete` shows the
+default.
+
+Supersedes: D2. Partly: D3, D7, D12, D13 (the two points on modes), G4, G6,
+J11, K8 (the wording). The journeys 4.1, 4.2 and 4.4 of the README changed
+with it.

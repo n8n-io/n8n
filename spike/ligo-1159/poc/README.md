@@ -10,21 +10,23 @@ not for merge: it has no tests and no telemetry.
   a workflow to a credential, a sub-workflow and an error workflow.
 - A dependency report with gaps, warnings, notes and hard blocks. A report
   shows only what the user can access.
-- The environment setting "Allow incomplete". A strict environment stops on a
-  gap. An environment that allows incomplete operations continues after the
-  user confirms each gap.
+- Promote and Apply with gaps. A gap never stops an operation: the user sees
+  the list of gaps, confirms it, and the operation continues. A hard block
+  still stops it. There is no setting for this (decision S1 of 2026-11-19).
 - Project-level rights. A project admin can promote and apply the project
   without a global scope. A project reader gets a read-only changes view.
 - A changes view for one environment across projects. One Promote writes one
   commit for many projects.
 - The exits of a gap: "Include it", "Ask the owner" (a request in the Inbox of
-  the owner project), "Continue incomplete", and the others of the solution.
+  the owner project), and the others of the solution. They make the operation
+  complete. The user can also continue without them.
 - Credentials under the folder of their owner project on the branch. Apply
   moves the owner on the destination to follow the branch and keeps the access
   of the other projects.
 - Access grants on Apply, after the user confirms each one.
-- Placeholder credentials on an incomplete Apply. A workflow that uses a
-  placeholder cannot be published until the credential has values.
+- Placeholder credentials on an Apply with gaps: one for each credential gap
+  whose id the destination does not hold. A workflow that uses a placeholder
+  cannot be published until the credential has values.
 - Moves of a workflow between two team projects, as one change.
 - Protection of deletions: an instance Apply keeps a workflow that the branch
   still calls, and a selection asks before it deletes one.
@@ -73,7 +75,7 @@ The instances serve the built UI. After a frontend change, run
 Regression scripts:
 
 - Backend: `.context/poc/e2e/scripts/regress-1.sh` to `regress-4.sh`
-  (108 checks through the public API).
+  (121 checks through the public API).
 - UI: `.context/poc/e2e/ui/final.sh` (headless Playwright, writes
   `.context/poc/e2e/shots/final/`).
 
@@ -81,27 +83,32 @@ Regression scripts:
 
 Each step names the user, the page, and the screenshot in `screenshots/`.
 
-### 4.1 Builder with one project, strict environment
+### 4.1 Builder with one project: see the gaps, ask the owners
 
-1. builder on dev: project Sales, the Promote badge in the header, tab
-   "Dependencies". Two gaps, no project names, Promote is disabled.
+1. builder on dev: project Sales, the Promote badge in the header. The page
+   says that 2 dependencies are not part of the promotion. The button reads
+   "Promote with 2 gaps".
+   ![](screenshots/4.1-01-builder-changes-with-gaps.png)
+2. builder: tab "Dependencies". Two gaps, no project names.
    ![](screenshots/4.1-02-builder-gaps-no-access.png)
-2. builder: "Ask the owner" on each row. The row then reads "Request sent".
-3. plat on dev: Inbox, the request, "Promote CRM key".
+3. builder: "Ask the owner" on each row. The row then reads "Request sent".
+   The builder can also continue now: see journey 4.2.
+4. plat on dev: Inbox, the request, "Promote CRM key".
    ![](screenshots/4.1-04-platform-inbox-request.png)
-4. plat: the page opens with only the credential selected. Promote.
+5. plat: the page opens with only the credential selected. Promote.
    ![](screenshots/4.1-05-plat-deep-link-preview.png)
-5. ops does the same for "Normalize". builder then has no gap and promotes.
+6. ops does the same for "Normalize". builder then has no gap and promotes.
 
-### 4.2 The same builder, the Promote environment allows incomplete
+### 4.2 The same builder continues with the gaps
 
-1. owner on dev: Settings, Environments, edit the environment, "Allow
-   incomplete promotions".
-2. builder: "Promote with 2 gaps", then the confirmation.
+1. builder on dev: "Promote with 2 gaps", then the confirmation. It lists the
+   gaps and what happens next.
    ![](screenshots/4.2-03-promote-with-2-gaps-dialog.png)
-3. builder on prod (strict): project Sales, the Apply badge, tab
-   "Dependencies". Apply is disabled.
-   ![](screenshots/4.2-06-strict-apply-not-on-branch.png)
+2. builder on prod: project Sales, the Apply badge, tab "Dependencies". The
+   branch does not hold the two dependencies. The Apply shows them as gaps
+   and plans a placeholder for "CRM key". The button reads "Apply with 2
+   gaps". Journey 4.4 continues from here.
+   ![](screenshots/4.2-06-apply-gaps-not-on-branch.png)
 
 ### 4.3 A user with the three projects
 
@@ -114,9 +121,9 @@ Each step names the user, the page, and the screenshot in `screenshots/`.
 4. Tab "Dependencies": confirm the access for Sales, then Apply.
    ![](screenshots/4.3-15-grant-confirmed.png)
 
-### 4.4 Incomplete Apply, then the real credential
+### 4.4 Apply with gaps, then the real credential
 
-1. Start: the branch of journey 4.2. prod allows incomplete applies.
+1. Start: the branch of journey 4.2.
 2. builder on prod: project Sales, Apply, tab "Dependencies".
    ![](screenshots/4.4-02-gaps-and-placeholder.png)
 3. "Apply with 2 gaps". The result names the placeholder.
@@ -140,6 +147,8 @@ Each step names the user, the page, and the screenshot in `screenshots/`.
 | A data table of another project | ![](screenshots/T-02-promote-data-table-of-other-project.png) |
 | A published workflow gets a placeholder | ![](screenshots/L-02-apply-result-live-placeholder.png) |
 | A project viewer reads the changes | ![](screenshots/V-02-viewer-read-only-view.png) |
+| The gaps changed after the preview: the page shows the new list | ![](screenshots/B-05-gaps-changed-notice.png) |
+| The environment form has no setting for gaps | ![](screenshots/S-02-dev-environment-form.png) |
 
 ## New routes
 
@@ -175,12 +184,64 @@ Changed: `promote-selection`, `apply-selection` and `apply-selection-continue`
 take `--credential` and `--confirmGap`. The Apply commands also take
 `--confirmGrant`, `--confirmDeletion`, `--confirmDeletionCallers` and
 `--credentialHome`. A command that stops on the dependencies prints the
-report and exits with code 4.
+report and exits with code 4. It continues with gaps when each gap id is in
+`--confirmGap`.
 
 ## Database
 
 Two migrations: `isPlaceholder` on the credentials table, and the table
 `promotion_owner_request`.
+
+## Differences from solution.md after S1
+
+Decision S1 (see [decisions.md](decisions.md)) removed the setting "Allow
+incomplete" and the strict mode. The solution and the feature files were not
+changed. These parts still describe the removed setting:
+
+`spike/ligo-1159/review/final/solution.md`:
+
+| Section | What no longer applies |
+|---|---|
+| 1 Summary | The table rows "continue incomplete when the environment allows it" and "on a strict environment: Block". The principles 1 ("Strict by default"), 2 (the opt-in setting) and 10 (personal dependencies block on a strict environment). |
+| 2 Terms | "Strict environment". "Incomplete operation" is now each operation with gaps. |
+| 3.2 Dependency report | The words "Continue incomplete when allowed" in the table. Each gap can continue. |
+| 3.3 Promote check | The decision "Environment allows incomplete?" of the diagram. A gap always goes to the confirmation. |
+| 3.4 Apply check | The same decision of the diagram, "On a strict environment the fix is to restore", and "A strict Apply stops" for a confirmed gap. |
+| 3.5 "Allow incomplete" setting | The whole section, except the confirmation of the list of gaps. |
+| 3.7 Credentials | "Placeholder (incomplete Apply only)": each Apply with a credential gap can create one. |
+| 3.10 Personal resources | The two modes. A personal reference is always a gap with the fix in the message. |
+| 3.13 What does not change | The note on "Allow incomplete" for one repository for each project. |
+| 4.1, 4.2, 4.4 User journeys | "strict environment", the setting on the promote environment, step 4 of 4.2 ("the Apply blocks"), step 1 of 4.4 ("the apply environment allows incomplete"). |
+| 6 Technical approach | Nothing in the mechanism. Only the names "Incomplete Promote" and "Incomplete Apply". |
+| 7 Feedback and answers | The answers "Strict by default" and "opt-in (3.5)". The default is now what the feedback asked for. |
+| 8 Alternatives | "Allow incomplete as an instance setting" and "Default allow incomplete on. Rejected". S1 goes further than the rejected option: there is no setting. |
+| 9 Open decisions | Decision 7: "A strict Apply then stops" as the use of the reason on the requirement row. The reason now only tells a gap from a warning. |
+| 10 Not decided | "Strict by default meets existing branches". |
+
+`spike/ligo-1159/spec/*.feature`:
+
+| File | Scenarios that describe the removed setting |
+|---|---|
+| `allow-incomplete.feature` | The rule of the setting (lines 15 to 35: "A new environment is strict", "The setting sits next to the review setting", "Each direction has its own setting", "The setting needs no extra permission"). The rule "A strict apply environment still stops on the gaps of an incomplete Promote" (lines 82 to 104). Each `Given "Allow incomplete ..." is on` of the other backgrounds: the scenarios still hold without it. |
+| `promote-dependencies.feature` | The background line "the promote environment is strict". The rule "On a strict environment a gap stops the Promote": "A gap stops the Promote and nothing is written" and "A strict environment offers no way to continue with a gap". |
+| `apply-dependencies.feature` | The background line "the apply environment is strict". "A gap stops a strict Apply before any write". "An archived dependency stops a strict Apply". |
+| `apply-deletions.feature` | The background line "the apply environment is strict". The scenarios still hold. |
+| `apply-credentials.feature` | The two rows of modes in the examples of "A credential with the same id and another type blocks the Apply" and "The destination does not hold an instance credential" (lines 50, 51, 380, 381). The result is the same for the one mode. |
+| `existing-branches.feature` | "The gap stops a strict Promote". The two rows of modes of "The Apply dialog shows the home selector" (lines 57, 58). The line "the apply environment is strict" of "A reference to a credential that is not on the branch is a gap on Apply": the gap stays, the stop does not. |
+| `instance-promote.feature` | The rule "On a strict environment a personal dependency stops the whole instance Promote" (3 scenarios): it stops only until the user confirms the gap. The `Given` of the rule 'With "allow incomplete", the user can confirm the gaps of an instance Promote'. |
+| `permissions.feature` | The rule '"Allow incomplete" needs no extra permission' and the `Given` lines 90 and 132. The scenarios still hold without the setting. |
+| `promote-credentials.feature` | The line "the promote environment is strict" of "A consumer project does not write the credential of another project". |
+| `selection-across-projects.feature` | "Two owners who each can promote one project cannot close a cycle": each owner can now promote with the gap confirmed. The line "the promote environment is strict" of "A user who can promote both projects promotes the cycle in one Promote". |
+| `dependency-report.feature` | The exits "Continue incomplete when allowed" in the examples (lines 62, 64). |
+
+`ask-the-owner.feature`, `moves.feature`, `promote-deletions.feature` and
+`scope.feature` do not mention the setting.
+
+The pages that were made from these files still show the setting too:
+`spike/ligo-1159/visual/solution.html` and the feature viewer
+(`spike/ligo-1159/spec/index.html`, `spike/ligo-1159/spec/viewer/`). The
+other documents under `spike/ligo-1159/` (the reviews and the earlier
+proposals) are history and were not checked.
 
 ## Known limits
 
