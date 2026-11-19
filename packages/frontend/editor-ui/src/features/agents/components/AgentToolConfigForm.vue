@@ -43,6 +43,7 @@ import AgentToolConfigNodeContent from './AgentToolConfigNodeContent.vue';
 import AgentToolConfigWorkflowContent from './AgentToolConfigWorkflowContent.vue';
 import AgentToolGuardrailsSection, {
 	type ToolGuardrailsWiring,
+	type OpenGuardrailRequest,
 } from './AgentToolGuardrailsSection.vue';
 
 interface ToolModalData {
@@ -89,6 +90,8 @@ const emit = defineEmits<{
 	'update:title': [title: string];
 	'credential-deleted': [];
 	'update:restricted': [restricted: boolean];
+	/** A guardrail edit/create that replaces the modal this form lives in. */
+	'open-guardrail': [request: OpenGuardrailRequest];
 }>();
 
 const i18n = useI18n();
@@ -463,6 +466,7 @@ defineExpose({ canSave, confirm, remove, changeTitle });
 			v-if="guardrailsSection"
 			:tool-ref="guardrailsSection.toolRef"
 			v-bind="guardrailsSection.wiring"
+			@open-guardrail="emit('open-guardrail', $event)"
 		/>
 	</div>
 </template>

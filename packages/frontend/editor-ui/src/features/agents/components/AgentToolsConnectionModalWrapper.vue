@@ -98,7 +98,8 @@ import {
 	nodeTypeToNewMcpServer,
 } from '../composables/useMcpServerAdapter';
 import type { AgentJsonMcpServerConfig, AgentJsonToolRef } from '../types';
-import type { ToolGuardrailsWiring } from './AgentToolGuardrailsSection.vue';
+import { AGENT_GUARDRAIL_MODAL_KEY } from '../constants';
+import type { OpenGuardrailRequest, ToolGuardrailsWiring } from './AgentToolGuardrailsSection.vue';
 import {
 	isAiGatewayMcpEntry,
 	toMcpEntryAuth,
@@ -140,6 +141,11 @@ const props = defineProps<{
 		supportsToolApproval?: boolean;
 		/** Agent-level guardrails wiring, threaded into the config step for existing tools. */
 		guardrails?: ToolGuardrailsWiring;
+		/**
+		 * Set while a guardrail edit replaces this modal: on reopen, the picker
+		 * jumps back to the config step of this tool instead of the list.
+		 */
+		resumeToolRef?: AgentJsonToolRef;
 		onConfirm: (payload: {
 			tools?: AgentJsonToolRef[];
 			mcpServers?: AgentJsonMcpServerConfig[];
@@ -254,6 +260,8 @@ const configSession = ref(0);
 const mcpCatalog = ref<McpRegistryServerResponse[]>([]);
 const credentialPicker = ref<InstanceType<typeof AgentToolConfigCredentialPicker> | null>(null);
 const configIsRestricted = ref(false);
+/** The tool whose config step is open, for the guardrail handover's resume. */
+let activeConfigEntry: WorkingToolEntry | null = null;
 
 const isCredentialModalOpen = computed(
 	() => uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY]?.open === true,
@@ -303,13 +311,60 @@ function openConfigModal(data: AgentToolConfigData) {
 function closeModal() {
 	uiStore.closeModal(props.modalName);
 	configData.value = null;
+	activeConfigEntry = null;
 	configIsRestricted.value = false;
 }
 
 function backToPicker() {
 	configData.value = null;
+	activeConfigEntry = null;
 	configIsRestricted.value = false;
 	configTitle.value = '';
+}
+
+/**
+ * A guardrail edit replaces this modal: stash which tool was being configured,
+ * close (the data stays in the store), and hand over to the guardrail modal.
+ * Its exit callback reopens this modal; the stashed ref lands it back on the
+ * config step instead of the picker.
+ */
+function handleOpenGuardrail(request: OpenGuardrailRequest) {
+	const data = configData.value;
+	const wiring =
+		data && data.kind !== 'mcpServer' && data.kind !== 'registryMcpServer'
+			? data.guardrails
+			: undefined;
+	const entry = activeConfigEntry;
+	if (!wiring || !entry) return;
+	uiStore.setModalData({
+		name: props.modalName,
+		data: { ...props.data, resumeToolRef: entry.ref },
+	});
+	closeModal();
+	uiStore.openModalWithData({
+		name: AGENT_GUARDRAIL_MODAL_KEY,
+		data: {
+			guardrail: request.guardrail,
+			...(request.kind ? { kind: request.kind } : {}),
+			getGuardrails: wiring.getGuardrails,
+			getTools: wiring.getTools,
+			onUpdateGuardrails: wiring.onUpdateGuardrails,
+			onExit: () => uiStore.openModal(props.modalName),
+		},
+	});
+}
+
+/** Consume the stashed ref from a guardrail edit: reopen on that tool's config step. */
+function resumeToolConfigStep() {
+	const { resumeToolRef } = props.data;
+	if (!resumeToolRef) return;
+	// Consume once, so a later manual open starts at the picker.
+	uiStore.setModalData({
+		name: props.modalName,
+		data: { ...props.data, resumeToolRef: undefined },
+	});
+	const entry = workingToolEntries.value.find((candidate) => candidate.ref === resumeToolRef);
+	if (entry) openConfigForToolEntry(entry);
 }
 
 function updateConfigTitle(value: string) {
@@ -368,6 +423,9 @@ onMounted(() => {
 		void aiGatewayStore.fetchConfig();
 		void aiGatewayStore.fetchWallet();
 	}
+	// A guardrail edit reopens this modal through the stashed ref: land back on
+	// the tool's config step instead of the picker.
+	resumeToolConfigStep();
 });
 
 const credentialListeners = effectScope(true);
@@ -661,6 +719,7 @@ async function handleCreateWorkflow() {
 
 function openConfigForToolEntry(entry: WorkingToolEntry) {
 	const toolRef = entry.ref;
+	activeConfigEntry = entry;
 	openConfigModal({
 		toolRef,
 		projectId: props.data.projectId,
@@ -1301,6 +1360,7 @@ function handleRowActivate(item: ToolConnectionItem) {
 			@update:title="configTitle = $event"
 			@update:restricted="configIsRestricted = $event"
 			@request-credential-picker="openRegistryCredentialPicker"
+			@open-guardrail="handleOpenGuardrail"
 		/>
 
 		<template v-if="configData?.onRemove" #footerLeft>

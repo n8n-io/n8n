@@ -20,7 +20,6 @@ vi.mock('@n8n/i18n', () => ({
 				'agents.builder.guardrails.description': 'Checks on what tools receive and return.',
 				'agents.builder.guardrails.add': 'Add guardrail',
 				'agents.builder.guardrails.chip.allTools': 'All tools',
-				'agents.builder.guardrails.chip.nTools': '{count} tool | {count} tools',
 				'agents.builder.guardrails.chip.metaKind': '· {kind}',
 				'agents.builder.guardrails.chip.metaTools': '· {kind} · {tools}',
 				'agents.builder.guardrails.kind.keywords': 'Blocked keywords',
@@ -36,15 +35,6 @@ vi.mock('@n8n/i18n', () => ({
 			);
 		},
 	}),
-}));
-
-vi.mock('../components/AgentGuardrailModal.vue', () => ({
-	default: {
-		name: 'AgentGuardrailModal',
-		props: ['open', 'guardrail', 'kind', 'tools', 'disabled'],
-		emits: ['update:open', 'save', 'remove'],
-		template: '<div data-testid="agent-guardrail-modal-stub" />',
-	},
 }));
 
 const TOOL: AgentJsonToolRef = {
@@ -216,44 +206,27 @@ describe('AgentToolGuardrailsSection', () => {
 		);
 	});
 
-	it('renders the chips disabled and does not open the modal on chip click', async () => {
+	it('renders the chips enabled and emits an edit request on chip click', async () => {
 		const { wrapper } = mountSection();
 
 		const chips = wrapper.findAllComponents({ name: 'AgentChipButton' });
-		expect(chips[0].props('disabled')).toBe(true);
-		expect(chips[1].props('disabled')).toBe(true);
+		expect(chips[0].props('disabled')).toBe(false);
+		expect(chips[1].props('disabled')).toBe(false);
 
 		await wrapper.get('[data-testid="agent-tool-guardrails-chip"]').trigger('click');
-		await wrapper.get('[data-testid="agent-tool-guardrails-wildcard-chip"]').trigger('click');
+		expect(wrapper.emitted('open-guardrail')).toEqual([[{ guardrail: NAMED_GUARDRAIL }]]);
 
-		expect(wrapper.getComponent({ name: 'AgentGuardrailModal' }).props('open')).toBe(false);
+		await wrapper.get('[data-testid="agent-tool-guardrails-wildcard-chip"]').trigger('click');
+		expect(wrapper.emitted('open-guardrail')?.at(-1)).toEqual([{ guardrail: WILDCARD_GUARDRAIL }]);
 	});
 
-	it('opens the modal in create mode with the picked kind and the agent tools', async () => {
+	it('emits a create request with the picked kind and no guardrail', async () => {
 		const { wrapper } = mountSection();
 
 		await openAddMenu(wrapper);
 		await pickKind('jailbreak');
 
-		const modal = wrapper.getComponent({ name: 'AgentGuardrailModal' });
-		expect(modal.props('open')).toBe(true);
-		expect(modal.props('kind')).toBe('jailbreak');
-		expect(modal.props('guardrail')).toBeNull();
-		expect(modal.props('tools')).toEqual(agentTools());
-	});
-
-	it('appends a created guardrail through the update callback', async () => {
-		const { wrapper, onUpdateGuardrails } = mountSection();
-
-		await openAddMenu(wrapper);
-		await pickKind('jailbreak');
-		const created = { kind: 'jailbreak', id: 'g-new', stage: 'before' };
-		wrapper.getComponent({ name: 'AgentGuardrailModal' }).vm.$emit('save', created);
-
-		expect(onUpdateGuardrails).toHaveBeenCalledTimes(1);
-		const next = onUpdateGuardrails.mock.calls[0]?.[0] as Array<Record<string, unknown>>;
-		expect(next).toHaveLength(guardrailsFor().length + 1);
-		expect(next.at(-1)).toEqual(created);
+		expect(wrapper.emitted('open-guardrail')).toEqual([[{ guardrail: null, kind: 'jailbreak' }]]);
 	});
 
 	it('marks a chip invalid only for its own guardrail issues', () => {
@@ -270,9 +243,9 @@ describe('AgentToolGuardrailsSection', () => {
 		expect(chips[1].props('invalid')).toBe(false);
 	});
 
-	it('keeps the modal closed until a kind is picked from the add menu', () => {
+	it('emits nothing until a chip is clicked or a kind is picked', () => {
 		const { wrapper } = mountSection();
 
-		expect(wrapper.getComponent({ name: 'AgentGuardrailModal' }).props('open')).toBe(false);
+		expect(wrapper.emitted('open-guardrail')).toBeUndefined();
 	});
 });

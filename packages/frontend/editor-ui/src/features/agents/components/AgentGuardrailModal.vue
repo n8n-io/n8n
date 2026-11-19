@@ -13,6 +13,7 @@ import {
 	N8nOption,
 	N8nRadioGroup,
 	N8nRadioGroupItem,
+	N8nSegmentControl,
 	N8nSelect,
 	N8nSwitch2,
 	N8nText,
@@ -107,21 +108,27 @@ watch(
 		selectedKind.value = guardrail?.kind ?? props.kind;
 		resetKindFields();
 		if (guardrail) {
-			if (guardrail.kind === 'keywords') {
-				keywords.value = [...guardrail.keywords];
-			} else if (guardrail.kind === 'pii') {
-				piiType.value = guardrail.type;
-				piiEntities.value = guardrail.type === 'selected' ? [...(guardrail.entities ?? [])] : [];
-			} else if (guardrail.kind === 'secretKeys') {
-				permissiveness.value = guardrail.permissiveness;
-			} else if (guardrail.kind === 'urls') {
-				allowedUrls.value = [...(guardrail.allowedUrls ?? [])];
-				allowedSchemes.value = [...(guardrail.allowedSchemes ?? ['https'])];
-				blockUserinfo.value = guardrail.blockUserinfo ?? true;
-				allowSubdomains.value = guardrail.allowSubdomains ?? false;
-			} else {
-				prompt.value = guardrail.prompt ?? '';
-				threshold.value = guardrail.threshold;
+			switch (guardrail.kind) {
+				case 'keywords':
+					keywords.value = [...guardrail.keywords];
+					break;
+				case 'pii':
+					piiType.value = guardrail.type;
+					piiEntities.value = guardrail.type === 'selected' ? [...(guardrail.entities ?? [])] : [];
+					break;
+				case 'secretKeys':
+					permissiveness.value = guardrail.permissiveness;
+					break;
+				case 'urls':
+					allowedUrls.value = [...(guardrail.allowedUrls ?? [])];
+					allowedSchemes.value = [...(guardrail.allowedSchemes ?? ['https'])];
+					blockUserinfo.value = guardrail.blockUserinfo ?? true;
+					allowSubdomains.value = guardrail.allowSubdomains ?? false;
+					break;
+				default:
+					// The model-based kinds: jailbreak, nsfw, topicalAlignment.
+					prompt.value = guardrail.prompt ?? '';
+					threshold.value = guardrail.threshold;
 			}
 		}
 		stage.value = guardrail?.stage ?? 'before';
@@ -310,25 +317,25 @@ function onRemove() {
 
 				<template v-else-if="selectedKind === 'pii'">
 					<div :class="$style.field">
-						<N8nText size="small" bold>
-							{{ i18n.baseText('agents.builder.guardrails.pii.label') }}
-						</N8nText>
-						<N8nRadioGroup
-							:model-value="piiType"
-							:class="$style.radioGroup"
-							@update:model-value="piiType = $event as 'all' | 'selected'"
-						>
-							<N8nRadioGroupItem
-								value="all"
-								:label="i18n.baseText('agents.builder.guardrails.pii.all')"
-								data-testid="agent-guardrail-pii-all"
-							/>
-							<N8nRadioGroupItem
-								value="selected"
-								:label="i18n.baseText('agents.builder.guardrails.pii.selected')"
-								data-testid="agent-guardrail-pii-selected"
-							/>
-						</N8nRadioGroup>
+						<div :class="$style.switchRow">
+							<N8nText size="small" bold>
+								{{ i18n.baseText('agents.builder.guardrails.pii.label') }}
+							</N8nText>
+							<!-- On, every entity is covered. Off narrows to the picked list below. -->
+							<div :class="$style.allToggle">
+								<N8nText size="small">
+									{{ i18n.baseText('agents.builder.guardrails.pii.all') }}
+								</N8nText>
+								<N8nSwitch2
+									:model-value="piiType === 'all'"
+									:disabled="disabled"
+									size="small"
+									:aria-label="i18n.baseText('agents.builder.guardrails.pii.all')"
+									data-testid="agent-guardrail-pii-all"
+									@update:model-value="piiType = $event ? 'all' : 'selected'"
+								/>
+							</div>
+						</div>
 					</div>
 					<div v-if="piiType === 'selected'" :class="$style.field">
 						<N8nText size="small" bold>
@@ -358,19 +365,13 @@ function onRemove() {
 						<N8nText size="small" bold>
 							{{ i18n.baseText('agents.builder.guardrails.secretKeys.label') }}
 						</N8nText>
-						<N8nSelect
+						<N8nSegmentControl
 							:model-value="permissiveness"
+							:options="permissivenessOptions"
 							:disabled="disabled"
 							data-testid="agent-guardrail-permissiveness"
 							@update:model-value="permissiveness = $event"
-						>
-							<N8nOption
-								v-for="option in permissivenessOptions"
-								:key="option.value"
-								:value="option.value"
-								:label="option.label"
-							/>
-						</N8nSelect>
+						/>
 					</div>
 				</template>
 
@@ -594,6 +595,13 @@ function onRemove() {
 	align-items: center;
 	justify-content: space-between;
 	gap: var(--spacing--sm);
+}
+
+/* The "All entities" switch sits at the row's right end, label beside it. */
+.allToggle {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
 }
 
 .thresholdInput {

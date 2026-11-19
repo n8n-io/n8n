@@ -24,6 +24,7 @@ import type {
 	AgentJsonConfig,
 	AgentJsonMcpServerConfig,
 	AgentJsonToolConfig,
+	AgentJsonToolRef,
 	AgentResource,
 	AgentSkill,
 } from '../types';
@@ -309,7 +310,7 @@ describe('useAgentCapabilitiesActions — tools modal host seam', () => {
 				nodeTypeVersion: 4.2,
 				nodeParameters: { url: 'https://api.example.com' },
 			},
-		} as AgentJsonToolConfig;
+		} as Extract<AgentJsonToolRef, { type: 'node' }>;
 		localConfig.value = makeConfig({
 			tools: [nodeTool],
 			config: {
@@ -329,7 +330,7 @@ describe('useAgentCapabilitiesActions — tools modal host seam', () => {
 
 		actions.onOpenToolFromList({ kind: 'tool', toolType: 'node', id: 'HTTP Request' });
 		const modalData = uiStore.modalsById[AGENT_TOOL_CONFIG_MODAL_KEY].data as unknown as {
-			onConfirm: (tool: AgentJsonToolConfig) => void;
+			onConfirm: (tool: AgentJsonToolRef) => void;
 		};
 		modalData.onConfirm({ ...nodeTool, name: 'Fetch data' });
 
@@ -357,7 +358,7 @@ describe('useAgentCapabilitiesActions — tools modal host seam', () => {
 				nodeTypeVersion: 4.2,
 				nodeParameters: { url: 'https://api.example.com' },
 			},
-		} as AgentJsonToolConfig;
+		} as Extract<AgentJsonToolRef, { type: 'node' }>;
 		localConfig.value = makeConfig({
 			tools: [nodeTool],
 			config: {

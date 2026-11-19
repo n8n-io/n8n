@@ -14,7 +14,6 @@ vi.mock('@n8n/i18n', () => ({
 				'agents.builder.guardrails.keywords.label': 'Keywords',
 				'agents.builder.guardrails.keywords.placeholder': 'Type a keyword and press Enter',
 				'agents.builder.guardrails.pii.all': 'All entities',
-				'agents.builder.guardrails.pii.selected': 'Selected entities',
 				'agents.builder.guardrails.pii.entities': 'Entities to detect',
 				'agents.builder.guardrails.trigger.before': 'Block execution',
 				'agents.builder.guardrails.trigger.after': 'Block output',
@@ -326,10 +325,11 @@ describe('AgentGuardrailModal', () => {
 		]);
 	});
 
-	it('requires entities for selected PII detection and writes them on save', async () => {
+	it('requires entities once the PII "all" switch is turned off, and writes them on save', async () => {
 		const wrapper = mountModal({ kind: 'pii' });
 
-		await wrapper.find('[data-testid="agent-guardrail-pii-selected"]').trigger('click');
+		// The switch starts on: every entity is covered. Toggling it off narrows the scope.
+		await wrapper.get('[data-testid="agent-guardrail-pii-all"]').trigger('click');
 		expect(saveButton(wrapper).attributes('disabled')).toBeDefined();
 
 		await selectMultiple(wrapper, 'agent-guardrail-pii-entities', ['EMAIL_ADDRESS', 'US_SSN']);
@@ -392,7 +392,9 @@ describe('AgentGuardrailModal', () => {
 		await wrapper.find('[data-testid="agent-guardrail-block-userinfo"]').trigger('click');
 		await selectSingle(wrapper, 'agent-guardrail-trigger', 'after');
 		await selectSingle(wrapper, 'agent-guardrail-type', 'secretKeys');
-		await selectSingle(wrapper, 'agent-guardrail-permissiveness', 'strict');
+		// The permissiveness picker is a segment control; its options carry
+		// radio-button-<value> ids.
+		await wrapper.get('[data-test-id="radio-button-strict"]').trigger('click');
 		await saveButton(wrapper).trigger('click');
 
 		const saved = savedConfig(wrapper);

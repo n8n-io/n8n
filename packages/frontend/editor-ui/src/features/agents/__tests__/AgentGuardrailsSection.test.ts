@@ -18,8 +18,6 @@ vi.mock('@n8n/i18n', () => ({
 			const copy: Record<string, string> = {
 				'agents.builder.guardrails.add': 'Add guardrail',
 				'agents.builder.guardrails.chip.allTools': 'All tools',
-				'agents.builder.guardrails.chip.nTools': '{count} tool | {count} tools',
-				'agents.builder.guardrails.chip.metaTools': '· {kind} · {tools}',
 				'agents.builder.guardrails.kind.keywords': 'Blocked keywords',
 				'agents.builder.guardrails.kind.jailbreak': 'Jailbreak detection',
 				'agents.builder.guardrails.kind.nsfw': 'NSFW detection',
@@ -74,6 +72,23 @@ vi.mock('../components/AgentItemContextMenu.vue', () => ({
 	},
 }));
 
+vi.mock('@/app/components/NodeIcon.vue', () => ({
+	default: {
+		name: 'NodeIcon',
+		props: ['nodeType', 'size'],
+		template: '<span data-testid="guardrail-chip-tool-icon" />',
+	},
+}));
+
+vi.mock('@/app/stores/nodeTypes.store', () => ({
+	useNodeTypesStore: () => ({
+		getNodeType: (name: string) =>
+			['n8n-nodes-base.httpRequest', 'n8n-nodes-base.slack'].includes(name)
+				? { name, displayName: name }
+				: null,
+	}),
+}));
+
 const KEYWORDS_GUARDRAIL = {
 	kind: 'keywords',
 	id: 'keywords-all',
@@ -95,9 +110,22 @@ const PII_GUARDRAIL = {
 	],
 } as const;
 
+const HTTP_NODE_TYPE = 'n8n-nodes-base.httpRequest';
+const SLACK_NODE_TYPE = 'n8n-nodes-base.slack';
+
+function nodeTool(name: string, nodeType: string): AgentJsonToolRef {
+	return {
+		type: 'node',
+		name,
+		node: { nodeType, nodeTypeVersion: 4.2, nodeParameters: {} },
+	} as AgentJsonToolRef;
+}
+
 function agentTools(): AgentJsonToolRef[] {
 	return [
-		{ type: 'node', name: 'HTTP Request' },
+		nodeTool('HTTP Request', HTTP_NODE_TYPE),
+		nodeTool('Slack A', SLACK_NODE_TYPE),
+		nodeTool('Slack B', SLACK_NODE_TYPE),
 		{ type: 'workflow', workflow: 'Sync customers', workflowId: 'wf-1' },
 	] as AgentJsonToolRef[];
 }
@@ -188,16 +216,65 @@ afterEach(() => {
 });
 
 describe('AgentGuardrailsSection', () => {
-	it('renders one chip per configured guardrail with kind and tools summary', () => {
+	it('renders one chip per configured guardrail with covered-tool icons', () => {
 		const wrapper = mountSection();
 
 		const chips = wrapper.findAll('[data-testid="agent-guardrails-chip"]');
 		expect(chips).toHaveLength(2);
+		// A guardrail without a tools list covers every tool: text, no icons.
 		expect(chips[0].text()).toContain('Block secrets');
-		expect(chips[0].text()).toContain('Blocked keywords');
 		expect(chips[0].text()).toContain('All tools');
+		expect(chips[0].find('[data-testid="guardrail-chip-tool-icon"]').exists()).toBe(false);
+		expect(chips[0].find('[data-testid="guardrail-chip-tool-fallback-icon"]').exists()).toBe(false);
+		// The chip shows the covered tools, not the guardrail kind.
 		expect(chips[1].text()).toContain('PII on nodes');
-		expect(chips[1].text()).toContain('2 tools');
+		expect(chips[1].text()).not.toContain('PII detection');
+		expect(chips[1].findAll('[data-testid="guardrail-chip-tool-icon"]')).toHaveLength(1);
+		expect(chips[1].find('[data-testid="guardrail-chip-tool-fallback-icon"]').exists()).toBe(true);
+	});
+
+	it('groups several tools of one node type behind a single icon with a count', () => {
+		const multiSlack = {
+			kind: 'keywords',
+			id: 'slack-guard',
+			name: 'Slack guard',
+			stage: 'before',
+			keywords: ['x'],
+			tools: [
+				{ type: 'node', name: 'Slack A' },
+				{ type: 'node', name: 'Slack B' },
+				{ type: 'workflow', workflowId: 'wf-1' },
+			],
+		} as const;
+		const wrapper = mountSection({ config: config([multiSlack]) });
+
+		const chip = wrapper.get('[data-testid="agent-guardrails-chip"]');
+		// Two Slack tools collapse into one node icon with a count.
+		const nodeIcons = chip.findAll('[data-testid="guardrail-chip-tool-icon"]');
+		expect(nodeIcons).toHaveLength(1);
+		expect(chip.text()).toContain('2');
+		// The workflow keeps its own icon, so two icon groups render.
+		expect(chip.findAll('[data-testid="guardrail-chip-tool-fallback-icon"]')).toHaveLength(1);
+		const groups = chip.findAll('[data-testid="guardrail-chip-tool-group"]');
+		expect(groups).toHaveLength(2);
+		// The group tooltip names every covered tool.
+		expect(nodeIcons[0].element.parentElement?.getAttribute('title')).toBe('Slack A, Slack B');
+	});
+
+	it('stays silent about refs that match no configured tool', () => {
+		const dangling = {
+			kind: 'keywords',
+			id: 'dangling-guard',
+			name: 'Dangling',
+			stage: 'before',
+			keywords: ['x'],
+			tools: [{ type: 'node', name: 'Gone tool' }],
+		} as const;
+		const wrapper = mountSection({ config: config([dangling]) });
+
+		const chip = wrapper.get('[data-testid="agent-guardrails-chip"]');
+		expect(chip.find('[data-testid="guardrail-chip-tool-icon"]').exists()).toBe(false);
+		expect(chip.find('[data-testid="guardrail-chip-tool-fallback-icon"]').exists()).toBe(false);
 	});
 
 	it('offers the seven kinds on the add menu', async () => {

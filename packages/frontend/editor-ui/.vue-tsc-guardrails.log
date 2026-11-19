@@ -1,0 +1,12 @@
+$ cross-env NODE_OPTIONS="--max-old-space-size=8192" vue-tsc --noEmit
+src/features/agents/__tests__/AgentGuardrailModalHost.test.ts(47,4): error TS2322: Type '{ getGuardrails: () => ({ id: string; name?: string | undefined; stage?: "after" | "before" | undefined; tools?: ({ type: "workflow"; workflowId: string; } | { type: "node"; name: string; })[] | undefined; kind: "keywords"; keywords: string[]; } | ... 5 more ... | { ...; })[]; ... 4 more ...; guardrail: { id: string...' is not assignable to type 'AgentGuardrailModalData'.
+  Types of property 'kind' are incompatible.
+    Type 'string | undefined' is not assignable to type '"keywords" | "pii" | "secretKeys" | "urls" | "jailbreak" | "nsfw" | "topicalAlignment" | undefined'.
+      Type 'string' is not assignable to type '"keywords" | "pii" | "secretKeys" | "urls" | "jailbreak" | "nsfw" | "topicalAlignment" | undefined'.
+src/features/agents/__tests__/AgentToolConfigModal.test.ts(690,25): error TS2352: Conversion of type 'Record<string, unknown> | undefined' to type 'AgentGuardrailModalData' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type 'Record<string, unknown>' is missing the following properties from type 'AgentGuardrailModalData': guardrail, getGuardrails, getTools, onUpdateGuardrails, onExit
+src/features/agents/__tests__/useAgentCapabilitiesActions.test.ts(312,16): error TS2304: Cannot find name 'AgentJsonToolRef'.
+src/features/agents/__tests__/useAgentCapabilitiesActions.test.ts(332,22): error TS2304: Cannot find name 'AgentJsonToolRef'.
+src/features/agents/__tests__/useAgentCapabilitiesActions.test.ts(360,16): error TS2304: Cannot find name 'AgentJsonToolRef'.
+[ELIFECYCLE] Command failed with exit code 1.
+EXIT:1

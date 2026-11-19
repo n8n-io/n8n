@@ -8,6 +8,8 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import { toolRefToNode } from '../composables/useAgentToolRefAdapter';
+import { AGENT_GUARDRAIL_MODAL_KEY } from '../constants';
+import type { OpenGuardrailRequest } from './AgentToolGuardrailsSection.vue';
 import AgentModal from './modals/AgentModal.vue';
 import AgentToolConfigContent, { type AgentToolConfigData } from './AgentToolConfigContent.vue';
 import AgentToolConfigCredentialPicker from './AgentToolConfigCredentialPicker.vue';
@@ -88,6 +90,31 @@ function handleConfirm() {
 async function handleRemove() {
 	if (await content.value?.remove()) closeDialog();
 }
+
+/**
+ * A guardrail edit replaces this modal: close it (its data stays in the store,
+ * the kept ref) and hand over to the guardrail modal. Its exit callback reopens
+ * this modal with the same tool, so the form returns with live guardrail chips.
+ */
+function handleOpenGuardrail(request: OpenGuardrailRequest) {
+	const wiring =
+		props.data.kind !== 'mcpServer' && props.data.kind !== 'registryMcpServer'
+			? props.data.guardrails
+			: undefined;
+	if (!wiring) return;
+	closeDialog();
+	uiStore.openModalWithData({
+		name: AGENT_GUARDRAIL_MODAL_KEY,
+		data: {
+			guardrail: request.guardrail,
+			...(request.kind ? { kind: request.kind } : {}),
+			getGuardrails: wiring.getGuardrails,
+			getTools: wiring.getTools,
+			onUpdateGuardrails: wiring.onUpdateGuardrails,
+			onExit: () => uiStore.openModal(props.modalName),
+		},
+	});
+}
 </script>
 
 <template>
@@ -128,6 +155,7 @@ async function handleRemove() {
 			@update:title="formTitle = $event"
 			@update:restricted="isRestricted = $event"
 			@request-credential-picker="credentialPicker?.open()"
+			@open-guardrail="handleOpenGuardrail"
 		/>
 
 		<template v-if="data.onRemove" #footerLeft>

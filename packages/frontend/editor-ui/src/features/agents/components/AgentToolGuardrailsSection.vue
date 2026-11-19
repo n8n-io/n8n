@@ -6,7 +6,7 @@ import type {
 } from '@n8n/api-types';
 import { N8nButton, N8nDropdownMenu, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed, ref, toValue, type MaybeRefOrGetter } from 'vue';
+import { computed, toValue, type MaybeRefOrGetter } from 'vue';
 
 import { useAgentCapabilityIssueMessages } from '../composables/useAgentCapabilityIssueMessages';
 import type { AgentJsonToolRef } from '../types';
@@ -16,7 +16,15 @@ import {
 	TOOL_GUARDRAIL_KINDS,
 } from '../utils/guardrails';
 import AgentChipButton from './AgentChipButton.vue';
-import AgentGuardrailModal from './AgentGuardrailModal.vue';
+
+/**
+ * What the host needs to open the guardrail modal that replaces this one.
+ * `guardrail` null means create, with `kind` preselected.
+ */
+export interface OpenGuardrailRequest {
+	guardrail: AgentToolGuardrailConfig | null;
+	kind?: AgentToolGuardrailKind;
+}
 
 /**
  * Guardrails wiring for a tool-config modal. Getters keep the chips live: a
@@ -38,6 +46,10 @@ const props = defineProps<{
 	validationIssues?: MaybeRefOrGetter<AgentConfigValidationIssue[]>;
 }>();
 
+const emit = defineEmits<{
+	'open-guardrail': [request: OpenGuardrailRequest];
+}>();
+
 const i18n = useI18n();
 
 const guardrails = computed(() => props.getGuardrails());
@@ -54,9 +66,6 @@ const { groupIssueMessages } = useAgentCapabilityIssueMessages(
 const guardrailIssueMessages = computed(() =>
 	groupIssueMessages('guardrail', (issue) => issue.capability.id),
 );
-
-const modalOpen = ref(false);
-const createKind = ref<AgentToolGuardrailKind>('keywords');
 
 const addItems = computed(() =>
 	TOOL_GUARDRAIL_KINDS.map((kind) => ({
@@ -91,12 +100,11 @@ function issueReasons(guardrail: AgentToolGuardrailConfig): string[] {
 }
 
 function onAddSelect(kind: string) {
-	createKind.value = kind as AgentToolGuardrailKind;
-	modalOpen.value = true;
+	emit('open-guardrail', { guardrail: null, kind: kind as AgentToolGuardrailKind });
 }
 
-function onModalSave(guardrail: AgentToolGuardrailConfig) {
-	props.onUpdateGuardrails([...guardrails.value, guardrail]);
+function onOpenGuardrail(guardrail: AgentToolGuardrailConfig) {
+	emit('open-guardrail', { guardrail });
 }
 </script>
 
@@ -110,14 +118,12 @@ function onModalSave(guardrail: AgentToolGuardrailConfig) {
 		</div>
 		<div :class="$style.box" data-testid="agent-tool-guardrails-chips">
 			<div :class="$style.chips">
-				<!-- View-only for now: the chips show what covers this tool; the +
-				     below is the only way in to the guardrail modal. -->
 				<div v-for="guardrail in toolGuardrails" :key="guardrail.id" :class="$style.chipGroup">
 					<AgentChipButton
-						disabled
 						:invalid="issueReasons(guardrail).length > 0"
 						:invalid-reasons="issueReasons(guardrail)"
 						data-testid="agent-tool-guardrails-chip"
+						@click="onOpenGuardrail(guardrail)"
 					>
 						<span :class="$style.chipLabel">
 							<span :class="$style.chipName">{{ guardrail.name ?? guardrail.id }}</span>
@@ -127,11 +133,10 @@ function onModalSave(guardrail: AgentToolGuardrailConfig) {
 				</div>
 				<div v-for="guardrail in wildcardGuardrails" :key="guardrail.id" :class="$style.chipGroup">
 					<AgentChipButton
-						disabled
-						icon="globe"
 						:invalid="issueReasons(guardrail).length > 0"
 						:invalid-reasons="issueReasons(guardrail)"
 						data-testid="agent-tool-guardrails-wildcard-chip"
+						@click="onOpenGuardrail(guardrail)"
 					>
 						<span :class="$style.chipLabel">
 							<span :class="$style.chipName">{{ guardrail.name ?? guardrail.id }}</span>
@@ -181,16 +186,6 @@ function onModalSave(guardrail: AgentToolGuardrailConfig) {
 				</N8nDropdownMenu>
 			</div>
 		</div>
-
-		<AgentGuardrailModal
-			:open="modalOpen"
-			:guardrail="null"
-			:kind="createKind"
-			:tools="getTools()"
-			:existing-ids="guardrails.map((guardrail) => guardrail.id)"
-			@update:open="modalOpen = $event"
-			@save="onModalSave"
-		/>
 	</div>
 </template>
 

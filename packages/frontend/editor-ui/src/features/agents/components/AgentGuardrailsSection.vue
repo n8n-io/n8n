@@ -5,14 +5,21 @@ import type {
 	AgentToolGuardrailKind,
 } from '@n8n/api-types';
 import { N8nButton, N8nDropdownMenu, N8nIcon, N8nTooltip } from '@n8n/design-system';
+import type { IconName } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, ref } from 'vue';
+import type { INodeTypeDescription } from 'n8n-workflow';
+
+import NodeIcon from '@/app/components/NodeIcon.vue';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 
 import { useAgentCapabilityIssueMessages } from '../composables/useAgentCapabilityIssueMessages';
+import { toolRefToNode } from '../composables/useAgentToolRefAdapter';
 import type { AgentJsonConfig, AgentJsonToolRef } from '../types';
 import {
 	configuredToolGuardrails,
 	guardrailKindLabelKey,
+	guardrailRefMatchesTool,
 	TOOL_GUARDRAIL_KINDS,
 	withToolGuardrails,
 } from '../utils/guardrails';
@@ -45,6 +52,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const nodeTypesStore = useNodeTypesStore();
 
 const guardrails = computed(() => configuredToolGuardrails(props.config));
 const { groupIssueMessages } = useAgentCapabilityIssueMessages(() => props.validationIssues);
@@ -67,24 +75,67 @@ const addItems = computed(() =>
 
 const addLabel = computed(() => i18n.baseText('agents.builder.guardrails.add'));
 
-function kindLabel(guardrail: AgentToolGuardrailConfig): string {
-	return i18n.baseText(guardrailKindLabelKey(guardrail.kind));
+/** One icon per covered-tool kind on a guardrail chip. */
+interface GuardrailToolIconGroup {
+	/** Grouping key: the node type, or the shared fallback icon. */
+	key: string;
+	/** Covered tool names, shown as the group's tooltip. */
+	title: string;
+	count: number;
+	nodeType: INodeTypeDescription | null;
+	fallbackIcon: IconName;
 }
 
-function toolsSummary(guardrail: AgentToolGuardrailConfig): string {
-	return guardrail.tools
-		? i18n.baseText('agents.builder.guardrails.chip.nTools', {
-				interpolate: { count: guardrail.tools.length },
-				adjustToNumber: guardrail.tools.length,
-			})
-		: i18n.baseText('agents.builder.guardrails.chip.allTools');
-}
+/**
+ * Icons of the tools a guardrail covers, grouped where they share one look:
+ * node tools by node type (several Slack tools collapse into one icon plus a
+ * count), workflows behind their shared workflow icon, unresolved node refs
+ * behind a help mark. Refs that match no configured tool stay silent — the
+ * invalid state from validation issues already names them.
+ */
+function toolIconGroups(guardrail: AgentToolGuardrailConfig): GuardrailToolIconGroup[] {
+	if (!guardrail.tools) return [];
+	const groups = new Map<string, GuardrailToolIconGroup>();
+	const label = (tool: AgentJsonToolRef): string => {
+		if (tool.type === 'workflow') return tool.name ?? tool.workflow;
+		// Custom tools carry an id, not a display name; node tools carry both.
+		return tool.type === 'node' ? tool.name : tool.id;
+	};
 
-/** One translated string, so a locale can reorder kind and tools around the separators. */
-function metaSummary(guardrail: AgentToolGuardrailConfig): string {
-	return i18n.baseText('agents.builder.guardrails.chip.metaTools', {
-		interpolate: { kind: kindLabel(guardrail), tools: toolsSummary(guardrail) },
-	});
+	for (const ref of guardrail.tools) {
+		const tool = props.tools.find((candidate) => guardrailRefMatchesTool(ref, candidate));
+		if (!tool) continue;
+
+		let key = 'unresolved-node';
+		let fallbackIcon: IconName = 'circle-help';
+		let nodeType: INodeTypeDescription | null = null;
+		if (tool.type === 'workflow') {
+			key = 'workflow';
+			fallbackIcon = 'workflow';
+		} else if (tool.type === 'node') {
+			const node = toolRefToNode(tool);
+			const resolved = node ? nodeTypesStore.getNodeType(node.type, node.typeVersion) : null;
+			if (resolved) {
+				key = resolved.name;
+				nodeType = resolved;
+			}
+		}
+
+		const group = groups.get(key);
+		if (group) {
+			group.count += 1;
+			group.title += `, ${label(tool)}`;
+		} else {
+			groups.set(key, {
+				key,
+				title: label(tool),
+				count: 1,
+				nodeType,
+				fallbackIcon,
+			});
+		}
+	}
+	return [...groups.values()];
 }
 
 function onAddSelect(kind: string) {
@@ -129,7 +180,6 @@ function onModalRemove() {
 			<div v-for="guardrail in guardrails" :key="guardrail.id" :class="$style.chipGroup">
 				<AgentItemContextMenu :disabled="disabled" @remove="removeGuardrail(guardrail.id)">
 					<AgentChipButton
-						:icon="guardrail.tools ? undefined : 'globe'"
 						:invalid="(guardrailIssueMessages.get(guardrail.id) ?? []).length > 0"
 						:invalid-reasons="guardrailIssueMessages.get(guardrail.id) ?? []"
 						:disabled="disabled"
@@ -138,7 +188,37 @@ function onModalRemove() {
 					>
 						<span :class="$style.chipLabel">
 							<span :class="$style.chipName">{{ guardrail.name ?? guardrail.id }}</span>
-							<span :class="$style.chipMeta">{{ metaSummary(guardrail) }}</span>
+							<span :class="$style.chipMeta">
+								<span aria-hidden="true">·</span>
+								<template v-if="guardrail.tools">
+									<span
+										v-for="group in toolIconGroups(guardrail)"
+										:key="group.key"
+										:class="$style.toolIcon"
+										:title="group.title"
+										data-testid="guardrail-chip-tool-group"
+									>
+										<NodeIcon
+											v-if="group.nodeType"
+											:node-type="group.nodeType"
+											:size="14"
+											data-testid="guardrail-chip-tool-icon"
+										/>
+										<N8nIcon
+											v-else
+											:icon="group.fallbackIcon"
+											:size="14"
+											data-testid="guardrail-chip-tool-fallback-icon"
+										/>
+										<span v-if="group.count > 1" :class="$style.toolIconCount">
+											{{ group.count }}
+										</span>
+									</span>
+								</template>
+								<template v-else>
+									{{ i18n.baseText('agents.builder.guardrails.chip.allTools') }}
+								</template>
+							</span>
 						</span>
 					</AgentChipButton>
 				</AgentItemContextMenu>
@@ -242,7 +322,7 @@ function onModalRemove() {
 
 .chipLabel {
 	display: inline-flex;
-	align-items: baseline;
+	align-items: center;
 	gap: var(--spacing--4xs);
 	min-width: 0;
 	max-width: 100%;
@@ -257,10 +337,26 @@ function onModalRemove() {
 
 .chipMeta {
 	flex-shrink: 0;
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
 	color: var(--text-color--subtler);
 	font-size: var(--font-size--xs);
 	font-weight: var(--font-weight--normal);
 	white-space: nowrap;
+}
+
+/* One covered-tool kind: an icon and, when several tools share it, a count. */
+.toolIcon {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--5xs);
+}
+
+.toolIconCount {
+	color: var(--text-color--subtler);
+	font-size: var(--font-size--2xs);
+	line-height: 1;
 }
 
 .emptyAddButton {
