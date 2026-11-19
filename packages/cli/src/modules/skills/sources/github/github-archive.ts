@@ -34,8 +34,8 @@ export const DEFAULT_ARCHIVE_LIMITS: ArchiveLimits = {
 export type RepositoryArchive = {
 	paths: string[];
 	text: Map<string, string>;
-	/** Content identifiers for files over the size limit. Their text is not kept. */
-	oversized: Map<string, string>;
+	/** SHA-256 hashes for files over the size limit. Null means the reader did not fetch the file. */
+	oversized: Map<string, string | null>;
 };
 
 /** About the bytes that an archive holds in memory, for the cache budget. */
@@ -43,7 +43,7 @@ export function archiveSize(archive: RepositoryArchive): number {
 	let bytes = 0;
 	for (const path of archive.paths) bytes += path.length;
 	for (const text of archive.text.values()) bytes += text.length;
-	for (const hash of archive.oversized.values()) bytes += hash.length;
+	for (const hash of archive.oversized.values()) bytes += hash?.length ?? 0;
 	return bytes;
 }
 

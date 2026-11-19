@@ -1,5 +1,6 @@
 import { OutboundHttp } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
+import { sha256 } from '@n8n/utils/sha256';
 import nock from 'nock';
 
 import { FakeGitHub } from './test-utils/fake-github';
@@ -497,6 +498,24 @@ describe('GitHubSkillSourceClient', () => {
 			const fresh = clientWithLimits(limits);
 			expect(await fresh.fetchLatest(folder, items[0], undefined, revision)).toEqual(fetched);
 			expect(github.requests).toEqual({ refs: 2, archives: 0, trees: 6, files: 4 });
+		});
+
+		it.each([false, true])('hashes an oversized SKILL.md (private: %s)', async (privately) => {
+			const content = 'é'.repeat(101);
+			github.push('acme/skills', { 'pdf/SKILL.md': content }, 'main', { private: privately });
+			if (privately) github.grant(TOKEN, ['acme/skills']);
+			const auth = privately ? tokenAuth : undefined;
+			const small = clientWithLimits({ maxTextFileBytes: 200, maxTextBytes: 200 });
+			const locator = await small.parseLocator(
+				'https://github.com/acme/skills/tree/main/pdf',
+				auth,
+			);
+
+			await expect(small.fetchLatest(locator, { path: 'pdf' }, auth)).rejects.toMatchObject({
+				constructor: SkillParseError,
+				contentHash: await sha256(content),
+			});
+			expect(github.requests).toEqual({ refs: 2, archives: 0, trees: 2, files: 1 });
 		});
 
 		it.each([{ maxEntries: 1 }, { maxUncompressedBytes: 1 }, { maxTextBytes: 1 }])(

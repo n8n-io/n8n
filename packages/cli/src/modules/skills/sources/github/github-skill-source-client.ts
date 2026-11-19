@@ -282,7 +282,7 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 		if (archive.oversized.has(skillFile)) {
 			throw new SkillParseError(
 				`The SKILL.md of ${path || '/'} is larger than 1 MB.`,
-				archive.oversized.get(skillFile),
+				archive.oversized.get(skillFile) ?? undefined,
 			);
 		}
 		const skillText = archive.text.get(skillFile);
@@ -450,6 +450,16 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 		const { owner, repository, path } = locator;
 		const [o, r] = [owner, repository].map(encodeURIComponent);
 		const base = `${API}/repos/${o}/${r}/git`;
+		const fileTarget = (file: string, blob: string) =>
+			auth
+				? {
+						url: `${base}/blobs/${blob}`,
+						headers: { ...bearer(auth), Accept: 'application/vnd.github.raw+json' },
+					}
+				: {
+						// Public file reads do not count against the REST API rate limit.
+						url: `https://raw.githubusercontent.com/${o}/${r}/${sha}/${file.split('/').map(encodeURIComponent).join('/')}`,
+					};
 		const tooLarge = archiveTooLarge(path);
 		const deadline = new AbortController();
 		const timer = setTimeout(() => deadline.abort(), DOWNLOAD_MS);
@@ -468,22 +478,13 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 						limit: limit(bytes),
 						signal: deadline.signal,
 					}),
-				async (file, blob) => {
-					// Public file reads do not count against the REST API rate limit.
-					const target = auth
-						? {
-								url: `${base}/blobs/${blob}`,
-								headers: { ...bearer(auth), Accept: 'application/vnd.github.raw+json' },
-							}
-						: {
-								url: `https://raw.githubusercontent.com/${o}/${r}/${sha}/${file.split('/').map(encodeURIComponent).join('/')}`,
-							};
-					return await this.send(
-						{ ...target, method: 'GET', abortSignal: deadline.signal },
+				async (file, blob) =>
+					await this.send(
+						{ ...fileTarget(file, blob), method: 'GET', abortSignal: deadline.signal },
 						auth,
 						limit(Math.max(this.archiveLimits.maxTextFileBytes, 1024)),
-					);
-				},
+					),
+				async (file, blob) => await this.sendStream(fileTarget(file, blob), auth, deadline.signal),
 			);
 		} finally {
 			clearTimeout(timer);
@@ -512,27 +513,8 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 		const deadline = new AbortController();
 		const timer = setTimeout(() => deadline.abort(), DOWNLOAD_MS);
 		try {
-			let response;
-			try {
-				response = await this.http.request<Readable>({
-					...target,
-					method: 'GET',
-					encoding: 'stream',
-					json: false,
-					returnFullResponse: true,
-					ignoreHttpStatusErrors: true,
-					abortSignal: deadline.signal,
-				});
-			} catch (error) {
-				throw new SkillSourceReadError('unreachable', 'n8n could not reach GitHub.', {
-					cause: error,
-				});
-			}
-			if (!isSuccess(response.statusCode)) {
-				response.body.destroy();
-				throwForStatus(response.statusCode, response.headers, auth);
-			}
-			return await readRepositoryArchive(response.body, {
+			const body = await this.sendStream(target, auth, deadline.signal);
+			return await readRepositoryArchive(body, {
 				signal: deadline.signal,
 				limits: this.archiveLimits,
 			});
@@ -541,6 +523,34 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 			// Frees the connection when the read stopped early.
 			deadline.abort();
 		}
+	}
+
+	private async sendStream(
+		target: { url: string; headers?: Record<string, string> },
+		auth: SkillSourceAuth | undefined,
+		abortSignal: AbortSignal,
+	): Promise<Readable> {
+		let response;
+		try {
+			response = await this.http.request<Readable>({
+				...target,
+				method: 'GET',
+				encoding: 'stream',
+				json: false,
+				returnFullResponse: true,
+				ignoreHttpStatusErrors: true,
+				abortSignal,
+			});
+		} catch (error) {
+			throw new SkillSourceReadError('unreachable', 'n8n could not reach GitHub.', {
+				cause: error,
+			});
+		}
+		if (!isSuccess(response.statusCode)) {
+			response.body.destroy();
+			throwForStatus(response.statusCode, response.headers, auth);
+		}
+		return response.body;
 	}
 
 	/** One page of a REST answer as JSON. */
