@@ -153,6 +153,7 @@ export const SKILL_SCAN_RULES = [
 	'file_unstorable',
 	'hidden_unicode',
 	'new_url',
+	'risky_url',
 	'permission_change',
 	'lossy_conversion',
 ] as const;
@@ -183,7 +184,7 @@ export type SkillScanFinding = {
 	file?: string;
 	/** English text for logs and for a reviewer. Telemetry sends only the rule. */
 	detail: string;
-	/** The linked domain of a `new_url` finding. */
+	/** The linked domain of a `new_url` or `risky_url` finding. */
 	domain?: string;
 	/** Set for a rule that finds text. A frontmatter finding marks its top-level key. */
 	location?: SkillScanLocation;

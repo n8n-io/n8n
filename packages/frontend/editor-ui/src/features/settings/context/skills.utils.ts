@@ -130,6 +130,7 @@ const SKILL_SCAN_RULE_KEYS = {
 	file_unstorable: 'settings.context.skills.connect.check.rule.fileUnstorable',
 	hidden_unicode: 'settings.context.skills.connect.check.rule.hiddenUnicode',
 	new_url: 'settings.context.skills.connect.check.rule.newUrl',
+	risky_url: 'settings.context.skills.connect.check.rule.riskyUrl',
 	permission_change: 'settings.context.skills.connect.check.rule.permissionChange',
 	lossy_conversion: 'settings.context.skills.connect.check.rule.lossyConversion',
 } satisfies Record<SkillScanRule, BaseTextKey>;
@@ -182,14 +183,18 @@ export function useSkillSourceReasons() {
 	}
 
 	/**
-	 * The findings that need review or block the skill, each rule and file one time. `info`
-	 * findings change nothing, and the picker lists skipped files on their own line.
+	 * The findings that need review or block the skill. The picker lists skipped files separately.
 	 */
 	function findingsText(findings: SkillScanFinding[]): string {
 		const texts = findings
 			.filter((finding) => finding.severity !== 'info')
-			.map(({ rule, file }) => {
-				const finding = i18n.baseText(SKILL_SCAN_RULE_KEYS[rule]);
+			.map(({ rule, file, domain }) => {
+				const finding =
+					rule === 'risky_url' && domain
+						? i18n.baseText('settings.context.skills.connect.check.riskyUrlDomain', {
+								interpolate: { domain },
+							})
+						: ruleText(rule);
 				return file
 					? i18n.baseText('settings.context.skills.connect.check.findingInFile', {
 							interpolate: { finding, file },
@@ -199,14 +204,13 @@ export function useSkillSourceReasons() {
 		return [...new Set(texts)].join('. ');
 	}
 
-	/**
-	 * The domains that a skill links to. At import a link needs no review, but the user still
-	 * sees where the skill can send an agent.
-	 */
+	/** The domains that a skill links to, including links that need review. */
 	function linkedDomainsText(findings: SkillScanFinding[]): string {
 		const domains = new Set(
 			findings.flatMap((finding) =>
-				finding.rule === 'new_url' && finding.domain ? [finding.domain] : [],
+				(finding.rule === 'new_url' || finding.rule === 'risky_url') && finding.domain
+					? [finding.domain]
+					: [],
 			),
 		);
 		if (domains.size === 0) return '';

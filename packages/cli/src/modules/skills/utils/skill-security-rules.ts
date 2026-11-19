@@ -1,5 +1,6 @@
 import { agentSkillSchema, type SkillScanFinding, type SkillScanLocation } from '@n8n/api-types';
 import { kebabCase } from 'change-case';
+import { isIP } from 'node:net';
 import { isDeepStrictEqual } from 'node:util';
 import type { ZodIssue } from 'zod';
 
@@ -113,61 +114,72 @@ export function findHiddenUnicode(input: SkillScanInput): SkillScanFinding[] {
 const URL_PATTERN =
 	/\b(?:https?|wss?|ftp):\/\/(?:[^\s<>"'`()[\]{}/?#@]*@)?(?:\[[\d:a-f.]+\])?[^\s<>"'`()[\]{}]*/gi;
 
+const REVIEW_DOMAIN_GROUPS = [
+	{ domains: ['pastebin.com', 'paste.ee'], reason: 'it uses a paste site' },
+	{ domains: ['webhook.site', 'requestbin.com'], reason: 'it uses a webhook catcher' },
+	{ domains: ['bit.ly', 'tinyurl.com'], reason: 'it uses a URL shortener' },
+];
+
 /**
- * A new domain can be a place where a model sends data, so an update with a domain that the
- * previous version did not have needs review. A new link on a known domain does not. At
- * import there is no previous version, so each domain is only listed.
+ * An update needs review if it links to a new domain. At import, list each domain and flag
+ * destinations that need review even without a previous version.
  */
 export function findNewUrls({ content, previous }: SkillScanInput): SkillScanFinding[] {
-	const known = previous ? new Set(domainsByFile(previous).keys()) : new Set<string>();
-	return [...domainsByFile(content)]
-		.filter(([domain]) => !known.has(domain))
-		.map(([domain, { file, location }]) =>
-			previous
-				? {
-						rule: 'new_url',
-						severity: 'needs_review',
-						file,
-						domain,
-						detail: `The update links to ${domain}, a domain that the current version does not use.`,
-						location,
-					}
-				: {
-						rule: 'new_url',
-						severity: 'info',
-						file,
-						domain,
-						detail: `The skill links to ${domain}.`,
-						location,
-					},
-		);
+	const known = previous ? domainsByFile(previous) : undefined;
+	return [...domainsByFile(content, !previous)]
+		.filter(([domain]) => !known?.has(domain))
+		.map(([domain, { file, location, reviewReason }]) => ({
+			rule: reviewReason ? 'risky_url' : 'new_url',
+			severity: previous || reviewReason ? 'needs_review' : 'info',
+			file,
+			domain,
+			detail: previous
+				? `The update links to ${domain}, a domain that the current version does not use.`
+				: reviewReason
+					? `The link to ${domain} needs review because ${reviewReason}.`
+					: `The skill links to ${domain}.`,
+			location,
+		}));
 }
 
-/** Each domain that the skill links to, with the first file and place that has it. */
+type DomainOccurrence = { file: string; location: SkillScanLocation; reviewReason?: string };
+
+/** Keep the first link per domain. At import, prefer the first link that needs review. */
 function domainsByFile(
 	content: SkillContent,
-): Map<string, { file: string; location: SkillScanLocation }> {
-	const domains = new Map<string, { file: string; location: SkillScanLocation }>();
+	checkImportRisk = false,
+): Map<string, DomainOccurrence> {
+	const domains = new Map<string, DomainOccurrence>();
 	for (const { file, texts } of textsByFile(content)) {
 		for (const entry of texts) {
 			for (const match of entry.text.matchAll(URL_PATTERN)) {
-				const domain = domainOf(match[0]);
-				if (!domain || domains.has(domain)) continue;
+				const url = URL.parse(match[0]);
+				if (!url) continue;
+				// A dot that ends a sentence can follow the host.
+				const domain = url.hostname.toLowerCase().replace(/\.+$/, '');
+				if (!domain) continue;
+				const reviewReason = checkImportRisk ? linkReviewReason(url, domain) : undefined;
+				const existing = domains.get(domain);
+				if (existing && (!reviewReason || existing.reviewReason)) continue;
 				const index = match.index;
-				domains.set(domain, { file, location: entry.locate(index, index + match[0].length) });
+				domains.set(domain, {
+					file,
+					location: entry.locate(index, index + match[0].length),
+					reviewReason,
+				});
 			}
 		}
 	}
 	return domains;
 }
 
-function domainOf(url: string): string | undefined {
-	try {
-		// A dot that ends a sentence can follow the host, as in "see https://example.com."
-		return new URL(url).hostname.toLowerCase().replace(/\.+$/, '') || undefined;
-	} catch {
-		return undefined;
-	}
+function linkReviewReason(url: URL, domain: string): string | undefined {
+	const address = domain.startsWith('[') ? domain.slice(1, -1) : domain;
+	if (isIP(address)) return 'it uses an IP address';
+	if (url.protocol !== 'https:') return 'it does not use HTTPS';
+	return REVIEW_DOMAIN_GROUPS.find(({ domains }) =>
+		domains.some((base) => domain === base || domain.endsWith(`.${base}`)),
+	)?.reason;
 }
 
 /**
