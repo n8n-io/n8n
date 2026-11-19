@@ -44,14 +44,10 @@ export const InboxModule = defineFrontendModule({
 			name: 'Inbox',
 		},
 		{
-			// Static sample items for a shared inbox layout. Development builds keep the route.
+			// Static sample items for a shared inbox layout. Prototype branch only.
 			path: '/inbox/prototype',
 			name: INBOX_PROTOTYPE_VIEW,
 			component: async () => await import('./prototype/PrototypeInboxView.vue'),
-			beforeEnter() {
-				if (!import.meta.env.DEV) return '/';
-				return true;
-			},
 			meta: { layout: 'default', middleware: ['authenticated', 'custom'] },
 		},
 		{

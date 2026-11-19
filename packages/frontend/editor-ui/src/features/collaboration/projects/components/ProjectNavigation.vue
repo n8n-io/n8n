@@ -238,7 +238,7 @@ const inbox = computed<IMenuItem>(() => ({
 	label: locale.baseText('inbox.title'),
 	route: { to: { name: INBOX_VIEW } },
 }));
-const showInboxPrototype = import.meta.env.DEV;
+const showInboxPrototype = true;
 const inboxPrototype = computed<IMenuItem>(() => ({
 	id: 'inbox-prototype',
 	icon: 'inbox',
