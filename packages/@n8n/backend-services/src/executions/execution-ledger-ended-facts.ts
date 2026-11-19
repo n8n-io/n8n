@@ -1,8 +1,7 @@
 import type { CrashedExecution } from '@n8n/db';
 import type { IRun, IWorkflowBase, WorkflowExecutionSource } from 'n8n-workflow';
-import { isTerminalExecutionStatus } from 'n8n-workflow';
 
-import { toLedgerFact } from './counting-rules';
+import { toLedgerFact, toLedgerOutcome } from './counting-rules';
 import type { ExecutionLedgerEndedFacts } from './execution-ledger-writer';
 import { computeTimeSavedMinutes } from './time-saved';
 
@@ -21,16 +20,22 @@ export function toEndedFactsFromRun({
 	run: IRun;
 	source?: WorkflowExecutionSource;
 }): ExecutionLedgerEndedFacts | undefined {
-	if (!isTerminalExecutionStatus(run.status) || !workflow.id) return undefined;
+	const ended = toLedgerOutcome(run);
+	if (ended.outcome === 'none' || !workflow.id) return undefined;
 
-	return {
+	const facts = {
 		executionId,
 		workflowId: workflow.id,
 		workflowName: workflow.name,
 		mode: run.mode,
 		source,
 		occurredAt: run.stoppedAt ?? new Date(),
-		outcome: run.status,
+	};
+	if (ended.outcome === 'blocked') return { ...facts, ...ended };
+
+	return {
+		...facts,
+		outcome: ended.outcome,
 		runtimeMs: run.stoppedAt ? run.stoppedAt.getTime() - run.startedAt.getTime() : 0,
 		timeSavedMin:
 			computeTimeSavedMinutes({
@@ -42,21 +47,25 @@ export function toEndedFactsFromRun({
 	};
 }
 
-/** The `ended` facts of a row that a crash sweep claimed. A run that never started has no runtime. */
-export function toEndedFactsFromCrash(
-	execution: CrashedExecution,
-	stoppedAtOverride?: Date,
-): ExecutionLedgerEndedFacts {
-	const stoppedAt = stoppedAtOverride ?? execution.stoppedAt;
+/** The `ended` facts of a row that a crash sweep claimed. A run that no runner took ends blocked. */
+export function toEndedFactsFromCrash(execution: CrashedExecution): ExecutionLedgerEndedFacts {
+	const { mode, startedAt, stoppedAt } = execution;
+	const ended = toLedgerOutcome({ mode, status: 'crashed', startedAt });
 
-	return {
+	const facts = {
 		executionId: execution.id,
 		workflowId: execution.workflowId,
 		workflowName: execution.workflowName ?? '',
-		mode: execution.mode,
+		projectId: execution.project?.id,
+		mode,
 		occurredAt: stoppedAt,
+	};
+	if (ended.outcome === 'blocked') return { ...facts, ...ended };
+
+	return {
+		...facts,
 		outcome: 'crashed',
-		runtimeMs: execution.startedAt ? stoppedAt.getTime() - execution.startedAt.getTime() : 0,
+		runtimeMs: startedAt ? stoppedAt.getTime() - startedAt.getTime() : 0,
 		timeSavedMin: 0,
 	};
 }

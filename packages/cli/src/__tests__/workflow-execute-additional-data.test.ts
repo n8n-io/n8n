@@ -763,7 +763,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 
 				await expect(runSubWorkflow(false)).rejects.toThrow('cannot be called by this workflow');
 
-				expect(executionPersistence.updateExistingExecution).toHaveBeenCalledWith(
+				expect(executionPersistence.saveExecutionOutcome).toHaveBeenCalledWith(
 					EXECUTION_ID,
 					expect.objectContaining({
 						data: expect.objectContaining({

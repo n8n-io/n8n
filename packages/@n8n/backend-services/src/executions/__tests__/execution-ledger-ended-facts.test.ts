@@ -1,6 +1,8 @@
 import type { CrashedExecution } from '@n8n/db';
 import type {
+	ExecutionBlockedReason,
 	ExecutionStatus,
+	FailedBeforeStartMarker,
 	IRun,
 	IRunData,
 	IWorkflowBase,
@@ -185,6 +187,81 @@ describe('toEndedFactsFromRun', () => {
 	);
 });
 
+describe('toEndedFactsFromRun for a run that failed before its first node', () => {
+	const makeFailedBeforeStart = (
+		failedBeforeStart: FailedBeforeStartMarker,
+		status: 'error' | 'crashed' = 'error',
+	) =>
+		makeRun({
+			status,
+			data: createRunExecutionData({ resultData: { runData: {}, failedBeforeStart } }),
+		});
+
+	test.each<ExecutionBlockedReason>([
+		'policy',
+		'credentialAccess',
+		'invalidWorkflow',
+		'contextHook',
+		'startFailed',
+	])('records a blocked outcome with the reason %s', (reason) => {
+		const facts = toEndedFactsFromRun({
+			executionId: 'execution-1',
+			workflow: makeWorkflow(),
+			run: makeFailedBeforeStart(reason),
+		});
+
+		expect(facts).toMatchObject({ outcome: 'blocked', blockedBy: reason });
+	});
+
+	test('maps the marker true to the reason startFailed', () => {
+		const facts = toEndedFactsFromRun({
+			executionId: 'execution-1',
+			workflow: makeWorkflow(),
+			run: makeFailedBeforeStart(true),
+		});
+
+		expect(facts).toMatchObject({ outcome: 'blocked', blockedBy: 'startFailed' });
+	});
+
+	test('records a blocked outcome for a crashed run with the marker', () => {
+		const facts = toEndedFactsFromRun({
+			executionId: 'execution-1',
+			workflow: makeWorkflow(),
+			run: makeFailedBeforeStart('policy', 'crashed'),
+		});
+
+		expect(facts).toMatchObject({ outcome: 'blocked', blockedBy: 'policy' });
+	});
+
+	test('records no runtime and no time saved for a blocked run', () => {
+		const facts = toEndedFactsFromRun({
+			executionId: 'execution-1',
+			workflow: makeWorkflow({ settings: { timeSavedPerExecution: 12 } }),
+			run: makeFailedBeforeStart('policy'),
+		});
+
+		expect(facts).not.toHaveProperty('runtimeMs');
+		expect(facts).not.toHaveProperty('timeSavedMin');
+	});
+
+	test('keeps the identifiers and the stop time on a blocked run', () => {
+		const facts = toEndedFactsFromRun({
+			executionId: 'execution-1',
+			workflow: makeWorkflow({ id: 'workflow-9', name: 'Order Sync' }),
+			run: makeFailedBeforeStart('policy'),
+			source: 'user',
+		});
+
+		expect(facts).toMatchObject({
+			executionId: 'execution-1',
+			workflowId: 'workflow-9',
+			workflowName: 'Order Sync',
+			source: 'user',
+			occurredAt: stoppedAt,
+		});
+	});
+});
+
 describe('toEndedFactsFromCrash', () => {
 	const makeCrashed = (overrides: Partial<CrashedExecution> = {}): CrashedExecution => ({
 		id: 'execution-1',
@@ -228,19 +305,31 @@ describe('toEndedFactsFromCrash', () => {
 		expect(facts.runtimeMs).toBe(5000);
 	});
 
-	test('records a runtime of 0 when the execution never started', () => {
+	test('records a blocked outcome with the reason startFailed when the execution never started', () => {
 		const facts = toEndedFactsFromCrash(makeCrashed({ startedAt: null }));
 
-		expect(facts.runtimeMs).toBe(0);
+		expect(facts).toMatchObject({ outcome: 'blocked', blockedBy: 'startFailed' });
 	});
 
-	test('uses the stop time override for the occurrence time and the runtime', () => {
-		const override = new Date('2026-01-01T10:01:00.000Z');
+	test('records no runtime and no time saved when the execution never started', () => {
+		const facts = toEndedFactsFromCrash(makeCrashed({ startedAt: null }));
 
-		const facts = toEndedFactsFromCrash(makeCrashed(), override);
+		expect(facts).not.toHaveProperty('runtimeMs');
+		expect(facts).not.toHaveProperty('timeSavedMin');
+	});
 
-		expect(facts.occurredAt).toBe(override);
-		expect(facts.runtimeMs).toBe(60_000);
+	test('passes the project id through', () => {
+		const facts = toEndedFactsFromCrash(
+			makeCrashed({ project: { id: 'project-4', customTelemetryTags: [] } }),
+		);
+
+		expect(facts.projectId).toBe('project-4');
+	});
+
+	test('leaves the project id unset when the execution has no project', () => {
+		const facts = toEndedFactsFromCrash(makeCrashed({ project: undefined }));
+
+		expect(facts.projectId).toBeUndefined();
 	});
 
 	test('uses an empty workflow name when the name is missing', () => {
