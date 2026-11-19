@@ -665,6 +665,14 @@ export class ModuleGenerator {
 			}
 			const parent = b.graph.nodes.get(e.from);
 			if (!parent) return { reason: 'a node on the way is not there' };
+			// A node whose input is the one item of `target`: each of its items pairs with that
+			// item, also when the node keeps paired items that can have none (new items of code).
+			const one = single ? this.oneItemInto(b, e.from, target) : null;
+			if (one !== null) {
+				const again = this.runsAgainFirst(b, target, [...path, ...one]);
+				if (again !== null) return { reason: again };
+				return { hops, direct: false, first: true, output: 0, adjacent: false };
+			}
 			const pairs = b.pairs.get(`${e.from}|${e.output}`);
 			if (!parent.executeOnce && (ONE_TO_ONE.has(parent.type) || parent.disabled)) {
 				cur = e.from;
@@ -674,12 +682,6 @@ export class ModuleGenerator {
 				hops.push({ ...pairs, name: b.short(e.from) });
 				cur = e.from;
 				continue;
-			}
-			const one = single ? this.oneItemInto(b, e.from, target) : null;
-			if (one !== null) {
-				const again = this.runsAgainFirst(b, target, [...path, ...one]);
-				if (again !== null) return { reason: again };
-				return { hops, direct: false, first: true, output: 0, adjacent: false };
 			}
 			const type = this.typeOf(b, e.from);
 			if (parent.executeOnce) return { reason: `executeOnce on ${type}` };
