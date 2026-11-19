@@ -243,8 +243,6 @@ function handleEscapeKeyDown(event: KeyboardEvent) {
 	max-height: calc(100dvh - var(--spacing--lg));
 
 	border-radius: var(--radius--lg);
-	// Clip the body to the rounded frame. A full-height sidebar otherwise covers the corner.
-	overflow: clip;
 	background-color: light-dark(var(--background--surface), var(--background--subtle));
 	outline: 1px solid var(--border-color);
 	box-shadow:
