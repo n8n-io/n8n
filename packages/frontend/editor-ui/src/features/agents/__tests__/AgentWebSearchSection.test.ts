@@ -216,6 +216,7 @@ describe('AgentWebSearchSection', () => {
 		aiGatewayState.isEnabled = false;
 		aiGatewayState.servedTypes = new Set();
 		aiGatewayState.balance = undefined;
+		sessionStorage.removeItem('N8N_AGENT_WEB_SEARCH_GUARDRAILS_CALLOUT_DISMISSED');
 	});
 
 	function getManagedOption(wrapper: ReturnType<typeof mount>) {
@@ -710,5 +711,51 @@ describe('AgentWebSearchSection', () => {
 		const last = events[events.length - 1][0] as Partial<AgentJsonConfig>;
 		expect(getWebSearchConfig(last)).toEqual({ enabled: true, provider: 'brave' });
 		expect(last.providerTools).toEqual({ 'openai.image_generation': {} });
+	});
+
+	/** Mounts the panel with native web search active (Anthropic model, no fallback provider). */
+	function mountNativeWebSearch() {
+		return mount(AgentWebSearchSection, {
+			props: {
+				config: makeConfig({
+					config: { webSearch: { enabled: true, provider: 'native' } },
+				} as Partial<AgentJsonConfig>),
+			},
+			global: { stubs: globalStubs },
+		});
+	}
+
+	it('shows the guardrails notice once native web search is active', () => {
+		const wrapper = mountNativeWebSearch();
+
+		const notice = wrapper.find('[data-testid="agent-web-search-guardrails-notice"]');
+		expect(notice.exists()).toBe(true);
+		expect(notice.text()).toContain('agents.builder.advanced.webSearch.guardrailsNotice');
+	});
+
+	it('hides the notice for the fallback providers and for web search off', () => {
+		const off = mount(AgentWebSearchSection, {
+			props: { config: makeConfig() },
+			global: { stubs: globalStubs },
+		});
+		expect(off.find('[data-testid="agent-web-search-guardrails-notice"]').exists()).toBe(false);
+
+		const fallback = mountWithFallbackPicker();
+		expect(fallback.find('[data-testid="agent-web-search-guardrails-notice"]').exists()).toBe(
+			false,
+		);
+	});
+
+	it('keeps the notice dismissed for the session after its close button', async () => {
+		const wrapper = mountNativeWebSearch();
+		await wrapper.find('[data-testid="agent-web-search-guardrails-dismiss"]').trigger('click');
+
+		expect(wrapper.find('[data-testid="agent-web-search-guardrails-notice"]').exists()).toBe(false);
+
+		// A remount in the same session keeps the notice away.
+		const remounted = mountNativeWebSearch();
+		expect(remounted.find('[data-testid="agent-web-search-guardrails-notice"]').exists()).toBe(
+			false,
+		);
 	});
 });
