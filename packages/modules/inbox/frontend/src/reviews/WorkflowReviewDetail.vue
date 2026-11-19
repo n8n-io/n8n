@@ -91,8 +91,7 @@ function asSentence(message: string) {
 async function runReviewAction<T extends WorkflowReviewRequestSummary>(
 	submit: (id: string) => Promise<T>,
 	errorTitle: BaseTextKey,
-	onSuccess?: (result: T, ownsSelectionNow: boolean, isActiveNow: boolean) => void,
-) {
+): Promise<T | undefined> {
 	const id = props.reviewId;
 	const revision = selectionRevision;
 
@@ -111,8 +110,6 @@ async function runReviewAction<T extends WorkflowReviewRequestSummary>(
 		const { state, decision, updatedAt } = result;
 		onItemChange({ type: 'workflow_review', id, state, decision, updatedAt });
 
-		onSuccess?.(result, ownsSelection(id, revision), isActive());
-
 		if (isSelected(id)) {
 			void activityStore.fetchFeed(id);
 
@@ -120,6 +117,8 @@ async function runReviewAction<T extends WorkflowReviewRequestSummary>(
 				void loadDetail(id, reviewStore.selectionRevision);
 			}
 		}
+
+		return result;
 	} catch (error) {
 		onItemChange({ type: 'workflow_review', id });
 
@@ -137,42 +136,51 @@ async function runReviewAction<T extends WorkflowReviewRequestSummary>(
 				selectedId === id ? activityStore.fetchFeed(id) : undefined,
 			]);
 		}
+
+		return undefined;
 	} finally {
 		deciding.value = false;
 	}
 }
 
 async function onDecide(input: WorkflowReviewDecisionInput) {
-	await runReviewAction(
-		async (id) => await reviewStore.decideOnReview(id, input),
+	const id = props.reviewId;
+	const revision = selectionRevision;
+	const isActive = props.isActive;
+
+	const result = await runReviewAction(
+		async (reviewId) => await reviewStore.decideOnReview(reviewId, input),
 		'workflowReviews.decision.error.title',
-		({ autoPublish }, ownsSelectionNow, isActiveNow) => {
-			if (ownsSelectionNow) {
-				activityStore.clearDecisionNote(input.note ?? '');
-			}
-
-			if (!isActiveNow) {
-				return;
-			}
-
-			if (autoPublish?.status === 'published') {
-				showMessage({
-					type: 'success',
-					title: i18n.baseText('workflowReviews.decision.approved.published.title'),
-					message: i18n.baseText('workflowReviews.decision.approved.published.message'),
-				});
-			} else if (autoPublish?.status === 'failed') {
-				showMessage({
-					type: 'warning',
-					duration: 0,
-					title: i18n.baseText('workflowReviews.decision.approved.publishFailed.title'),
-					message: i18n.baseText('workflowReviews.decision.approved.publishFailed.message', {
-						interpolate: { message: asSentence(autoPublish.message) },
-					}),
-				});
-			}
-		},
 	);
+	if (!result) {
+		return;
+	}
+
+	if (ownsSelection(id, revision)) {
+		activityStore.clearDecisionNote(input.note ?? '');
+	}
+
+	if (!isActive()) {
+		return;
+	}
+
+	const { autoPublish } = result;
+	if (autoPublish?.status === 'published') {
+		showMessage({
+			type: 'success',
+			title: i18n.baseText('workflowReviews.decision.approved.published.title'),
+			message: i18n.baseText('workflowReviews.decision.approved.published.message'),
+		});
+	} else if (autoPublish?.status === 'failed') {
+		showMessage({
+			type: 'warning',
+			duration: 0,
+			title: i18n.baseText('workflowReviews.decision.approved.publishFailed.title'),
+			message: i18n.baseText('workflowReviews.decision.approved.publishFailed.message', {
+				interpolate: { message: asSentence(autoPublish.message) },
+			}),
+		});
+	}
 }
 
 async function onClose() {

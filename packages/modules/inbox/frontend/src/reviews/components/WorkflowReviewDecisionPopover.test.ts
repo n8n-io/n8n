@@ -279,10 +279,7 @@ describe('WorkflowReviewDecisionPopover', () => {
 	])(
 		'offers %s only the review actions they may take',
 		(_label, props, offersDecision, offersClose) => {
-			const hint = 'You contributed a version to this review.';
-			const { getByTestId, queryByTestId, queryByText } = renderComponent({
-				props: { ...props, ineligibilityHint: props.viewerCanDecide ? '' : hint },
-			});
+			const { getByTestId, queryByTestId } = renderComponent({ props });
 
 			expect(getByTestId('workflow-review-decision-trigger').hasAttribute('disabled')).toBe(
 				!offersDecision && !offersClose,
@@ -292,10 +289,20 @@ describe('WorkflowReviewDecisionPopover', () => {
 			);
 			expect(queryByTestId('workflow-review-decision-note') !== null).toBe(offersDecision);
 			expect(queryByTestId('workflow-review-decision-close-button') !== null).toBe(offersClose);
-			// A viewer who may only close still learns why they cannot decide.
-			expect(queryByText(hint) !== null).toBe(!offersDecision && offersClose);
 		},
 	);
+
+	it('tells a viewer who may only close why they cannot decide', () => {
+		const { getByText } = renderComponent({
+			props: {
+				viewerCanDecide: false,
+				viewerCanClose: true,
+				ineligibilityHint: 'You contributed a version to this review.',
+			},
+		});
+
+		expect(getByText('You contributed a version to this review.')).toBeInTheDocument();
+	});
 
 	it('closes the review and explains what closing does', async () => {
 		const { getByTestId, emitted } = renderComponent();

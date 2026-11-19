@@ -46,9 +46,8 @@ const closedReasonKeys: Record<WorkflowReviewClosedReason, BaseTextKey> = {
 };
 
 /**
- * A close concludes the feed, so it renders as a callout rather than one more sentence. The
- * body is a keypath, and a lifecycle close needs its stored reason, so it has nothing to fall
- * back to. A user close carries no payload and names the user instead.
+ * A close ends the feed, so it renders as a callout. A system close takes its body from the
+ * stored reason and renders nothing without it. A user close has no payload and names the user.
  */
 const closedCallout = computed<{ title: string; bodyKey: BaseTextKey } | null>(() => {
 	const entry = props.entry;

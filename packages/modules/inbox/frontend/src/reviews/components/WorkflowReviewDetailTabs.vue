@@ -78,11 +78,12 @@ provide(
 
 const ineligibilityHint = computed(() => {
 	if (!detail.value || detail.value.viewerCanDecide) return '';
-	// Any reason other than 'author' gets the generic permission hint, so new
-	// backend reasons degrade gracefully instead of breaking the UI.
-	return detail.value.viewerDecisionIneligibilityReason === 'author'
-		? i18n.baseText('workflowReviews.detail.decision.ineligible.author')
-		: i18n.baseText('generic.missing.permissions');
+	if (detail.value.viewerDecisionIneligibilityReason === 'author') {
+		return i18n.baseText('workflowReviews.detail.decision.ineligible.author');
+	}
+	// Any other reason gets the generic permission hint, so new backend reasons degrade
+	// gracefully. A viewer who may close gets none: it would sit next to a working button.
+	return detail.value.viewerCanClose ? '' : i18n.baseText('generic.missing.permissions');
 });
 
 /**

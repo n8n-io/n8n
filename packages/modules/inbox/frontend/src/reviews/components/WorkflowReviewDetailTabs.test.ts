@@ -514,6 +514,7 @@ describe('WorkflowReviewDetailTabs', () => {
 					review: makeDetail({
 						viewerCanDecide: false,
 						viewerDecisionIneligibilityReason: 'missing_reviewer_permission',
+						viewerCanClose: false,
 					}),
 					tab: 'activity',
 					deciding: false,
@@ -525,6 +526,25 @@ describe('WorkflowReviewDetailTabs', () => {
 			expect(popover).toHaveAttribute(
 				'data-ineligibility-hint',
 				'Missing permissions to perform this action',
+			);
+		});
+
+		it('shows no permission hint to a viewer who may still close the review', () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					review: makeDetail({
+						viewerCanDecide: false,
+						viewerDecisionIneligibilityReason: 'missing_permission',
+						viewerCanClose: true,
+					}),
+					tab: 'activity',
+					deciding: false,
+				},
+			});
+
+			expect(getByTestId('workflow-review-decision-popover')).toHaveAttribute(
+				'data-ineligibility-hint',
+				'',
 			);
 		});
 	});

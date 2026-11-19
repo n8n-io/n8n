@@ -14,7 +14,7 @@ const props = defineProps<{
 	viewerCanDecide: boolean;
 	viewerCanComment: boolean;
 	viewerCanClose: boolean;
-	/** Why the viewer may not decide; empty when they may. */
+	/** Why the viewer may not decide. Empty when they may, or when only a permission blocks a closer. */
 	ineligibilityHint: string;
 }>();
 
@@ -105,11 +105,7 @@ async function onComment() {
 				and the focus it gets back on close. -->
 			<span v-if="!canOpen">
 				<N8nTooltip :content="ineligibilityHint" :show-after="300">
-					<N8nButton
-						size="small"
-						:disabled="deciding || !canOpen"
-						data-test-id="workflow-review-decision-trigger"
-					>
+					<N8nButton size="small" disabled data-test-id="workflow-review-decision-trigger">
 						{{ i18n.baseText('workflowReviews.detail.decision.trigger') }}
 						<N8nIcon icon="chevron-down" />
 					</N8nButton>
@@ -118,7 +114,7 @@ async function onComment() {
 			<N8nButton
 				v-else
 				size="small"
-				:disabled="deciding || !canOpen"
+				:disabled="deciding"
 				data-test-id="workflow-review-decision-trigger"
 			>
 				{{ i18n.baseText('workflowReviews.detail.decision.trigger') }}
@@ -184,7 +180,7 @@ async function onComment() {
 						</N8nButton>
 					</div>
 				</template>
-				<N8nText v-else-if="viewerCanClose && ineligibilityHint" size="small" color="text-light">
+				<N8nText v-else-if="ineligibilityHint" size="small" color="text-light">
 					{{ ineligibilityHint }}
 				</N8nText>
 				<div v-if="viewerCanClose" :class="$style.closeRow">

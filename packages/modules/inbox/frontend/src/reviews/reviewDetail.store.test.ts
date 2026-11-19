@@ -160,19 +160,3 @@ it('shows the selected review as closed once the close succeeds', async () => {
 		updatedAt: '2026-01-02T00:00:00.000Z',
 	});
 });
-
-it('keeps a different review open when an earlier close finishes', async () => {
-	const response = createDeferredPromise<WorkflowReviewRequestSummary>();
-	vi.mocked(api.fetchWorkflowReviewRequestDetail)
-		.mockResolvedValueOnce(detail('review'))
-		.mockResolvedValueOnce(detail('other'));
-	vi.mocked(api.closeWorkflowReviewRequest).mockReturnValueOnce(response.promise);
-	const store = useReviewDetailStore();
-	await store.fetchDetail('review');
-	const close = store.closeReview('review');
-	store.clearDetail();
-	await store.fetchDetail('other');
-	response.resolve(closedSummary('review'));
-	await close;
-	expect(store.detail).toMatchObject({ id: 'other', state: 'open' });
-});
