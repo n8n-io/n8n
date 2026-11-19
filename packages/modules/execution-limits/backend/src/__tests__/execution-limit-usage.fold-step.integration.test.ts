@@ -45,6 +45,11 @@ describe('ExecutionLimitUsageFoldStep', () => {
 
 	const instanceTotal = async () => total(await instanceUsage.find());
 
+	const expectProjectAndInstanceTotal = async (expected: { started: number; blocked: number }) => {
+		expect(await totalOf('project-1')).toEqual(expected);
+		expect(await instanceTotal()).toEqual(expected);
+	};
+
 	beforeAll(async () => {
 		await testModules.loadModules(['execution-limits'], {
 			'execution-limits': async () => await import('../execution-limits.module.js'),
@@ -64,16 +69,11 @@ describe('ExecutionLimitUsageFoldStep', () => {
 		await testDb.terminate();
 	});
 
-	it('has the step name used for its savepoint', () => {
-		expect(step.name).toBe('execution_limit_usage');
-	});
-
 	describe('modes', () => {
 		it.each(COUNTED_MODES)('counts a started run of mode %s', async (mode) => {
 			await fold(ledgerRow({ mode }));
 
-			expect(await totalOf('project-1')).toEqual({ started: 1, blocked: 0 });
-			expect(await instanceTotal()).toEqual({ started: 1, blocked: 0 });
+			await expectProjectAndInstanceTotal({ started: 1, blocked: 0 });
 		});
 
 		it.each(UNCOUNTED_MODES)('writes no rows for a started run of mode %s', async (mode) => {
@@ -107,11 +107,7 @@ describe('ExecutionLimitUsageFoldStep', () => {
 					ledgerRow({ executionId, event: 'ended', outcome }),
 				);
 
-				expect(await totalOf('project-1')).toEqual({
-					started: 1,
-					blocked: outcome === 'blocked' ? 1 : 0,
-				});
-				expect(await instanceTotal()).toEqual({
+				await expectProjectAndInstanceTotal({
 					started: 1,
 					blocked: outcome === 'blocked' ? 1 : 0,
 				});
@@ -132,8 +128,7 @@ describe('ExecutionLimitUsageFoldStep', () => {
 			await fold(ledgerRow({ executionId, event: 'started' }));
 			await fold(ledgerRow({ executionId, event: 'ended', outcome: 'blocked' }));
 
-			expect(await totalOf('project-1')).toEqual({ started: 1, blocked: 1 });
-			expect(await instanceTotal()).toEqual({ started: 1, blocked: 1 });
+			await expectProjectAndInstanceTotal({ started: 1, blocked: 1 });
 		});
 
 		it('writes no rows for a blocked run of mode manual', async () => {

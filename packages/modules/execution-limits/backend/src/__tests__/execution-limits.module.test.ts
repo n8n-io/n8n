@@ -11,6 +11,15 @@ import { ExecutionLimitsSnapshot } from '../execution-limits-snapshot';
 import { ProjectExecutionLimit } from '../project-execution-limit.entity';
 
 describe('ExecutionLimitsModule', () => {
+	let registry: FoldStepRegistry;
+
+	beforeEach(() => {
+		registry = new FoldStepRegistry();
+		Container.set(FoldStepRegistry, registry);
+		// The repository of the step reads the manager when it is built.
+		Container.set(DataSource, { manager: {} } as unknown as DataSource);
+	});
+
 	it('registers the module entrypoint', () => {
 		expect(Container.get(ModuleMetadata).get('execution-limits')?.class).toBe(
 			ExecutionLimitsModule,
@@ -22,10 +31,6 @@ describe('ExecutionLimitsModule', () => {
 	});
 
 	it('init registers the usage fold step', async () => {
-		const registry = new FoldStepRegistry();
-		Container.set(FoldStepRegistry, registry);
-		// The repository of the step reads the manager when it is built.
-		Container.set(DataSource, { manager: {} } as unknown as DataSource);
 		mockInstance(ExecutionLimitsSnapshot);
 
 		await new ExecutionLimitsModule().init();
@@ -34,8 +39,6 @@ describe('ExecutionLimitsModule', () => {
 	});
 
 	it('loads the limits on init, before the process takes work', async () => {
-		Container.set(FoldStepRegistry, new FoldStepRegistry());
-		Container.set(DataSource, { manager: {} } as unknown as DataSource);
 		const snapshot = mockInstance(ExecutionLimitsSnapshot);
 		let finishStart = () => {};
 		snapshot.start.mockReturnValue(new Promise<void>((resolve) => (finishStart = resolve)));

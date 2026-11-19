@@ -11,7 +11,7 @@ export type InstanceUsageDelta = {
 };
 
 /** Counts to add to the row of one project. */
-export type ProjectUsageDelta = InstanceUsageDelta & { projectId: string };
+type ProjectUsageDelta = InstanceUsageDelta & { projectId: string };
 
 export type UsageDeltas = {
 	projects: ProjectUsageDelta[];
@@ -33,31 +33,29 @@ export function toUsageDeltas(rows: readonly ExecutionLedgerRow[]): UsageDeltas 
 		if (delta === 0) continue;
 
 		const column = delta === 1 ? 'startedCount' : 'blockedCount';
-		const projectId = delta === 1 ? row.projectId : blockedProjectIdOf(row);
-		const { entityType } = row;
+		const { projectId, entityType } = row;
 		const day = row.occurredAt.toISOString().slice(0, 10);
 		const zero = { day, entityType, startedCount: 0, blockedCount: 0 };
 
-		const projectKey = `${projectId}|${day}|${entityType}`;
-		const projectDelta = projects.get(projectKey) ?? { projectId, ...zero };
-		projectDelta[column] += 1;
-		projects.set(projectKey, projectDelta);
-
-		const instanceKey = `${day}|${entityType}`;
-		const instanceDelta = instance.get(instanceKey) ?? { ...zero };
-		instanceDelta[column] += 1;
-		instance.set(instanceKey, instanceDelta);
+		addOne(projects, `${projectId}|${day}|${entityType}`, { projectId, ...zero }, column);
+		addOne(instance, `${day}|${entityType}`, zero, column);
 	}
 
 	return { projects: sortedByKey(projects), instance: sortedByKey(instance) };
 }
 
-// Concurrent writers that lock rows in the same order cannot deadlock.
-function sortedByKey<T>(deltas: Map<string, T>): T[] {
-	return [...deltas.entries()].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)).map(([, d]) => d);
+function addOne<T extends InstanceUsageDelta>(
+	deltas: Map<string, T>,
+	key: string,
+	zero: T,
+	column: 'startedCount' | 'blockedCount',
+): void {
+	const delta = deltas.get(key) ?? zero;
+	delta[column] += 1;
+	deltas.set(key, delta);
 }
 
-/** The project that counted the start of a blocked run. */
-function blockedProjectIdOf(row: ExecutionLedgerRow): string {
-	return row.projectId;
+// Concurrent writers that lock rows in the same order cannot deadlock.
+function sortedByKey<T>(deltas: Map<string, T>): T[] {
+	return [...deltas].sort(([a], [b]) => (a < b ? -1 : 1)).map(([, delta]) => delta);
 }
