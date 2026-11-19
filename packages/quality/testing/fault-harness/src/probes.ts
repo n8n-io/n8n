@@ -4,6 +4,7 @@ import { sleep } from '@n8n/utils/sleep';
 type Exec = (command: string[]) => Promise<string>;
 
 export const FINAL_STATUSES: readonly string[] = ['success', 'error', 'crashed', 'canceled'];
+export const ENGINE_FINAL_STATUSES: readonly string[] = ['completed', 'failed', 'cancelled'];
 const PENDING_STATUSES = ['', 'new', 'running', 'waiting'];
 
 export interface ExecutionState {
