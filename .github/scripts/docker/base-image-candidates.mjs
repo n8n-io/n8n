@@ -84,6 +84,7 @@ export function compareScans(pinned, newest) {
 		removed: pinned.findings.filter((finding) => !newestKeys.has(keyOf(finding))),
 		added: newest.findings.filter((finding) => !pinnedKeys.has(keyOf(finding))),
 		addedPackages: newest.packages.filter((name) => !pinnedPackages.has(name)),
+		remaining: newest.findings,
 	};
 }
 
@@ -201,8 +202,8 @@ export function renderSummary(results) {
 	const lines = [
 		'## Base image candidates',
 		'',
-		'| Source | Status | Published | Auto-merge | Platform | Removed | Added | New packages |',
-		'| --- | --- | --- | --- | --- | --- | --- | --- |',
+		'| Source | Status | Published | Auto-merge | Platform | Removed | Added | Left | New packages |',
+		'| --- | --- | --- | --- | --- | --- | --- | --- | --- |',
 	];
 	const errors = [];
 	const notes = [];
@@ -222,12 +223,12 @@ export function renderSummary(results) {
 		const head = `| \`${result.source}\` | ${result.status} | ${published} | ${autoMerge}`;
 		if (result.publisher?.error) errors.push(`- \`${result.source}\`: ${result.publisher.error}`);
 		if (result.platforms.length === 0) {
-			lines.push(`${head} | - | - | - | - |`);
+			lines.push(`${head} | - | - | - | - | - |`);
 			continue;
 		}
 		for (const platform of result.platforms) {
 			lines.push(
-				`${head} | ${platform.platform} | ${count(platform.removed)} | ${count(platform.added)} | ${platform.addedPackages.join(', ') || '-'} |`,
+				`${head} | ${platform.platform} | ${count(platform.removed)} | ${count(platform.added)} | ${count(platform.remaining)} | ${platform.addedPackages.join(', ') || '-'} |`,
 			);
 		}
 	}
