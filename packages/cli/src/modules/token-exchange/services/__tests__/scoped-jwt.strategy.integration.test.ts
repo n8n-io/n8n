@@ -124,7 +124,7 @@ describe('ScopedJwtStrategy (integration)', () => {
 		const actor = await createMember();
 		const req = makeBearerReq(makeScopedJwt(subject.id, actor.id));
 
-		expect(await strategy.authenticate(req)).toBe(true);
+		expect(await strategy.authenticate(req)).toEqual({ outcome: 'authenticated' });
 		expect(req.user.id).toBe(actor.id);
 		expect(req.tokenGrant?.subject.id).toBe(subject.id);
 		expect(req.tokenGrant?.actor?.id).toBe(actor.id);

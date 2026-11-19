@@ -47,7 +47,7 @@ function save() {
 <template>
 	<AgentModal
 		:open="open"
-		size="small"
+		size="medium"
 		:title="i18n.baseText('agents.builder.budget.session.modalTitle')"
 		data-testid="agent-budget-session-modal"
 		@update:open="emit('update:open', $event)"

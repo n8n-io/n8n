@@ -26,6 +26,8 @@ export interface ButtonProps {
 	class?: ClassValue;
 	/** @deprecated Use slot instead */
 	icon?: IconName;
+	/** Icon to draw when no icon set has `icon` */
+	fallbackIcon?: IconName;
 	iconSize?: IconSize;
 	/** @deprecated Use slot instead */
 	label?: string;

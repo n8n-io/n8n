@@ -14,6 +14,9 @@ on:
       - created
 
 jobs:
+  pr-policy:
+    uses: ./.github/workflows/ci-pr-policy-reusable.yml
+
   handle-size-override:
     name: Handle /size-limit-override
     # Re-requests the PR Size Limit check run on the PR's HEAD commit, so it re-runs
@@ -76,11 +79,13 @@ jobs:
 
   changes:
     name: Detect Changes
+    needs: pr-policy
     if: |
-      (github.event_name == 'pull_request' &&
-       github.event.action != 'labeled' &&
-       github.event.action != 'unlabeled') ||
-      github.event_name == 'merge_group'
+      needs.pr-policy.outputs.skip-ci != 'true' &&
+      ((github.event_name == 'pull_request' &&
+        github.event.action != 'labeled' &&
+        github.event.action != 'unlabeled') ||
+       github.event_name == 'merge_group')
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -132,7 +137,10 @@ jobs:
     name: Unused Dependencies
     # Runs on every PR, not only on manifest changes: a PR that deletes the last
     # import of a dependency also makes that dependency unused.
-    if: github.event_name == 'pull_request' || github.event_name == 'merge_group'
+    needs: pr-policy
+    if: >-
+      needs.pr-policy.outputs.skip-ci != 'true' &&
+      (github.event_name == 'merge_group' || github.event_name == 'pull_request')
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -154,32 +162,45 @@ jobs:
 
   check-do-not-merge:
     name: Do Not Merge
-    # Fails while the 'Do Not Merge' label is present. Re-runs on labeled/unlabeled
-    # so the gate flips as the label is toggled on the current commit.
-    if: github.event_name == 'pull_request'
+    # Read current labels because concurrent PR events can have stale labels.
+    needs: pr-policy
+    if: >-
+      needs.pr-policy.outputs.skip-ci != 'true' && github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    permissions: {}
+    permissions:
+      contents: read
+      pull-requests: read
     steps:
-      - name: Fail if 'Do Not Merge' label is present
-        if: contains(github.event.pull_request.labels.*.name, 'Do Not Merge')
-        run: |
-          echo "::error::This PR has the 'Do Not Merge' label and cannot be merged."
-          exit 1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout: .github
+
+      - name: Check current PR labels
+        uses: ./.github/actions/run-workflow-script
+        with:
+          script: .github/scripts/quality/check-do-not-merge.mjs
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
   required-pr-quality-checks:
     name: Required PR Quality Checks
-    needs: [check-pr-size, check-static-analysis, check-knip, check-do-not-merge]
+    needs: [pr-policy, check-pr-size, check-static-analysis, check-knip, check-do-not-merge]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Checkout CI filter
+        if: needs.pr-policy.outputs.skip-ci != 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           sparse-checkout: .github/actions/ci-filter
           sparse-checkout-cone-mode: false
       - name: Validate required checks
+        if: needs.pr-policy.outputs.skip-ci != 'true'
         uses: ./.github/actions/ci-filter
         with:
           mode: validate
           job-results: ${{ toJSON(needs) }}
+      - name: Pass automated release PR
+        if: needs.pr-policy.outputs.skip-ci == 'true'
+        run: echo 'CI is not required for automated release PRs.'

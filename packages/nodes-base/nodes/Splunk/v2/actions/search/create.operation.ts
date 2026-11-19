@@ -1,4 +1,5 @@
 import type { INodeProperties, IExecuteFunctions, IDataObject } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 import { populate, toUnixEpoch } from '../../helpers/utils';
@@ -247,10 +248,10 @@ export async function execute(
 		body,
 	);
 
-	const endpoint = '/services/search/jobs';
+	const endpoint = requestPath`/services/search/jobs`;
 	const responseData = await splunkApiRequest.call(this, 'POST', endpoint, body);
 
-	const getEndpoint = `/services/search/jobs/${responseData.response.sid}`;
+	const getEndpoint = requestPath`/services/search/jobs/${responseData.response.sid}`;
 	const returnData = await splunkApiJsonRequest.call(this, 'GET', getEndpoint);
 	return returnData;
 }

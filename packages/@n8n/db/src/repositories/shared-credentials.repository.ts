@@ -4,14 +4,31 @@ import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import type { EntityManager, FindOptionsWhere, SelectQueryBuilder } from '@n8n/typeorm';
 import { DataSource, In, Not, Repository } from '@n8n/typeorm';
 
+import { BaseRepository } from './base-repository';
 import type { CredentialsEntity, User } from '../entities';
 import { Project, ProjectRelation, SharedCredentials } from '../entities';
+import { type OperationContext, TransactionRunner } from '../services/transaction';
 import { chunkIds } from '../utils/chunk-ids';
+
+// private to this file; only the ctx methods below use it
+class SharedCredentialsTable extends BaseRepository<SharedCredentials> {
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(SharedCredentials, dataSource.manager, transactionRunner);
+	}
+
+	override managerFor(ctx: OperationContext) {
+		return super.managerFor(ctx);
+	}
+}
 
 @Service()
 export class SharedCredentialsRepository extends Repository<SharedCredentials> {
-	constructor(dataSource: DataSource) {
+	// ponytail: hybrid until the generic callers move to composition; the table is the only ctx seam
+	private readonly table: SharedCredentialsTable;
+
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
 		super(SharedCredentials, dataSource.manager);
+		this.table = new SharedCredentialsTable(dataSource, transactionRunner);
 	}
 
 	async findByCredentialIds(credentialIds: string[], role: CredentialSharingRole) {
@@ -98,13 +115,34 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 		).map((s) => s.credentialsId);
 	}
 
-	async findCredentialOwningProject(credentialsId: string) {
+	async findCredentialOwningProject(credentialsId: string, ctx: OperationContext = {}) {
 		return (
-			await this.findOne({
+			await this.table.managerFor(ctx).findOne(SharedCredentials, {
 				where: { credentialsId, role: 'credential:owner' },
 				relations: { project: true },
 			})
 		)?.project;
+	}
+
+	/** Instance credentials are instance-owned and keep no project sharing rows. */
+	async removeAllForCredential(credentialsId: string, ctx: OperationContext = {}) {
+		await this.table.managerFor(ctx).delete(SharedCredentials, { credentialsId });
+	}
+
+	/** Gives `projectId` ownership only when the credential has no owner yet. */
+	async ensureOwner(credentialsId: string, projectId: string, ctx: OperationContext = {}) {
+		const manager = this.table.managerFor(ctx);
+		const owned = await manager.existsBy(SharedCredentials, {
+			credentialsId,
+			role: 'credential:owner',
+		});
+		if (owned) return;
+
+		await manager.upsert(
+			SharedCredentials,
+			{ credentialsId, projectId, role: 'credential:owner' },
+			['credentialsId', 'projectId'],
+		);
 	}
 
 	async getAllRelationsForCredentials(credentialIds: string[]) {

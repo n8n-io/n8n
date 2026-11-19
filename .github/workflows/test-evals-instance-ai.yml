@@ -60,7 +60,7 @@ on:
         type: string
         default: ''
       model:
-        description: 'Model override (provider/model). Empty = anthropic/claude-opus-4-8. Vertex Claude: google-vertex-anthropic/<model>. OpenAI-compat experiments use custom/<model> + model-url + model-key. See evaluations/README.md.'
+        description: 'Model override (provider/model). Empty = anthropic/claude-opus-5-5. Vertex Claude: google-vertex-anthropic/<model>. OpenAI-compat experiments use custom/<model> + model-url + model-key. See evaluations/README.md.'
         required: false
         type: string
         default: ''
@@ -125,7 +125,7 @@ on:
         required: false
         default: ''
       model:
-        description: 'Model for all Instance AI agents (provider/model). Empty = backend default (anthropic/claude-opus-4-8). Vertex Claude: google-vertex-anthropic/<model>. OpenAI-compat experiments: custom/<model> + model-url + model-key.'
+        description: 'Model for all Instance AI agents (provider/model). Empty = backend default (anthropic/claude-opus-5-5). Vertex Claude: google-vertex-anthropic/<model>. OpenAI-compat experiments: custom/<model> + model-url + model-key.'
         required: false
         default: ''
       model-url:
@@ -235,16 +235,27 @@ jobs:
           HOSTED_SANDBOX_API_KEY: ${{ secrets.N8N_SANDBOX_SERVICE_API_KEY }}
         run: |
           if [ -n "$HOSTED_SANDBOX_URL" ]; then
-            # Authenticated so a revoked key fails here rather than mid-eval;
-            # /healthz is unauthenticated and would pass with a bad key.
-            if curl -fsS -m 10 -o /dev/null \
-              -H "X-Api-Key: $HOSTED_SANDBOX_API_KEY" \
-              "${HOSTED_SANDBOX_URL%/}/sandboxes"; then
+            # Create and delete one sandbox. A list request answers 200 for a
+            # tenant whose quota is full, and then every build fails on its
+            # first sandbox. The probe is ephemeral, so the service removes it
+            # if the delete fails.
+            base="${HOSTED_SANDBOX_URL%/}"
+            rm -f /tmp/sandbox-probe.json
+            status=$(curl -sS -m 30 -o /tmp/sandbox-probe.json -w '%{http_code}' \
+              -X POST -H "X-Api-Key: $HOSTED_SANDBOX_API_KEY" \
+              -H 'Content-Type: application/json' -d '{"ephemeral":true}' \
+              "$base/sandboxes" || true)
+            probe_id=$(jq -r '.id // empty' /tmp/sandbox-probe.json 2>/dev/null || true)
+            if [[ "$status" == 2* ]] && [ -n "$probe_id" ]; then
+              curl -fsS -m 10 -o /dev/null -X DELETE \
+                -H "X-Api-Key: $HOSTED_SANDBOX_API_KEY" "$base/sandboxes/$probe_id" \
+                || echo "::warning::Could not delete probe sandbox $probe_id."
               echo "Hosted sandbox service healthy — skipping the local stack."
               echo "SANDBOX_HOSTED_OK=true" >> "$GITHUB_ENV"
               exit 0
             fi
-            echo "::warning::Hosted sandbox service is not usable — falling back to the local sandbox stack."
+            reason=$(head -c 200 /tmp/sandbox-probe.json 2>/dev/null | tr -d '\r\n' || true)
+            echo "::warning::Hosted sandbox service is not usable (HTTP $status $reason). Falling back to the local sandbox stack."
           fi
           pnpm --filter n8n-containers services --services sandbox --network n8n-eval-net --name n8n-svc-sandbox
 
@@ -450,6 +461,7 @@ jobs:
               -e EXECUTIONS_DATA_PRUNE=true \
               -e EXECUTIONS_DATA_MAX_AGE=1 \
               -e E2E_TESTS=true \
+              -e N8N_INSTANCE_AI_ENABLED=true \
               -e N8N_ENABLED_MODULES=instance-ai,agents \
               -e N8N_AI_ENABLED=true \
               -e INSTANCE_AI_BRAVE_SEARCH_API_KEY="$INSTANCE_AI_BRAVE_SEARCH_API_KEY" \
@@ -457,6 +469,8 @@ jobs:
               -e N8N_AI_ASSISTANT_BASE_URL="" \
               -e N8N_INSTANCE_AI_SANDBOX_ENABLED=true \
               -e N8N_INSTANCE_AI_SANDBOX_EPHEMERAL=true \
+              -e N8N_AGENTS_AI_SANDBOX_EPHEMERAL=true \
+              -e N8N_INSTANCE_AI_EVAL_INSTANCE=true \
               "${SANDBOX_ARGS[@]}" \
               "${MODEL_ARGS[@]}" \
               -e LANGSMITH_TRACING=true \
@@ -506,14 +520,13 @@ jobs:
               }'
           done
 
-      # Belt-and-suspenders: env vars set sandbox/model config but persisted
+      # Belt-and-suspenders: env vars set sandbox config but persisted
       # settings can override. Per-lane assertion catches env-injection hiccups
       # or unexpected DB-side state. A single misconfigured lane would silently
-      # route some builds through tool mode or the wrong model and pollute results.
-      - name: Assert sandbox and model config on every lane
+      # route some builds through tool mode and pollute results.
+      - name: Assert sandbox config on every lane
         env:
           SANDBOX_PROVIDER: ${{ inputs.sandbox-provider || 'n8n-sandbox' }}
-          INSTANCE_AI_MODEL: ${{ inputs.model }}
         run: |
           read -ra PORTS <<< "$LANE_PORTS"
           bad=0
@@ -524,29 +537,18 @@ jobs:
               -H "Content-Type: application/json" \
               -d '{"emailOrLdapLoginId":"nathan@n8n.io","password":"PlaywrightTest123"}' \
               -c "/tmp/cookies-$port.txt" -o /dev/null
-            cfg=$(curl -sf -b "/tmp/cookies-$port.txt" \
-              "http://localhost:$port/rest/instance-ai/settings" \
-              | jq -r '.data | "\(.sandboxEnabled) \(.sandboxProvider)"')
+            # Branches older than the move of the settings routes serve them
+            # under /rest/instance-ai. Remove this fallback when those branches are gone.
+            settings=$(curl -sf -b "/tmp/cookies-$port.txt" \
+              "http://localhost:$port/rest/assistant/settings" \
+              || curl -sf -b "/tmp/cookies-$port.txt" \
+                "http://localhost:$port/rest/instance-ai/settings")
+            cfg=$(echo "$settings" | jq -r '.data | "\(.sandboxEnabled) \(.sandboxProvider)"')
             if [ "$cfg" != "true $SANDBOX_PROVIDER" ]; then
               echo "::error::lane $lane (port $port): expected 'true $SANDBOX_PROVIDER', got '$cfg'"
               bad=$((bad+1))
             else
               echo "  lane $lane: sandboxEnabled=true sandboxProvider=$SANDBOX_PROVIDER ok"
-            fi
-            # /preferences returns the effective model name (user pref || config),
-            # i.e. everything after the first provider/ segment (openrouter/moonshotai/kimi-k3
-            # → moonshotai/kimi-k3). Use #*/ not ##*/ so nested OpenRouter ids match.
-            if [ -n "$INSTANCE_AI_MODEL" ]; then
-              expected_model="${INSTANCE_AI_MODEL#*/}"
-              effective=$(curl -sf -b "/tmp/cookies-$port.txt" \
-                "http://localhost:$port/rest/instance-ai/preferences" \
-                | jq -r '.data.modelName')
-              if [ "$effective" != "$expected_model" ]; then
-                echo "::error::lane $lane (port $port): expected model '$expected_model', got '$effective'"
-                bad=$((bad+1))
-              else
-                echo "  lane $lane: model=$effective ok"
-              fi
             fi
           done
           if [ "$bad" -gt 0 ]; then

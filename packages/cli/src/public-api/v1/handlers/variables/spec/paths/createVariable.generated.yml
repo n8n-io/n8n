@@ -2,7 +2,10 @@ operationId: createVariable
 tags:
   - Variables
 summary: Create a variable
-description: Create a variable in your instance.
+description: |-
+  Create a variable in your instance.
+
+  Requires the `variable:create` API key scope.
 x-required-scope: variable:create
 parameters:
   - $ref: ../../../../shared/spec/parameters/idempotencyKey.yml
@@ -51,3 +54,5 @@ responses:
     $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
   '422':
     $ref: ../../../../shared/spec/responses/unprocessableEntity.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml

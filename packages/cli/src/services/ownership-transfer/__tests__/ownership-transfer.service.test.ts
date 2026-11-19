@@ -7,6 +7,7 @@ import type {
 	SharedCredentialsRepository,
 	SharedWorkflow,
 	SharedWorkflowRepository,
+	User,
 	UserRepository,
 	WorkflowEntity,
 	WorkflowRepository,
@@ -184,5 +185,42 @@ describe('OwnershipTransferService', () => {
 		expect(handler.deleteAll).toHaveBeenCalledWith('p-1');
 		expect(handler.deleteAll).toHaveBeenCalledWith('p-2');
 		expect(manager.transaction).not.toHaveBeenCalled();
+	});
+
+	describe('deleteUserOwnedModuleResources', () => {
+		it('runs the user-keyed delete of every handler that has one, for each user', async () => {
+			const userHandler = mock<ProjectOwnershipTransferHandler<EntityManager>>();
+			// A handler without the optional method, like the data-table handler.
+			const projectOnlyHandler: ProjectOwnershipTransferHandler<EntityManager> = {
+				resource: 'project-only',
+				transferAll: vi.fn(),
+				deleteAll: vi.fn(),
+			};
+			const transferHandlers = new OwnershipTransferHandlerRegistry<EntityManager>();
+			transferHandlers.register(projectOnlyHandler);
+			transferHandlers.register(userHandler);
+			service = new OwnershipTransferService(
+				userRepository,
+				workflowService,
+				credentialsService,
+				folderService,
+				ownershipService,
+				transferHandlers,
+				sharedWorkflowRepository,
+				workflowRepository,
+				sharedCredentialsRepository,
+				policyEnforcementService,
+			);
+
+			const deletion = { actor: mock<User>({ id: 'actor-1' }), transferId: 'target-1' };
+			await service.deleteUserOwnedModuleResources(['u-1', 'u-2'], deletion);
+
+			expect(userHandler.deleteAllForUser).toHaveBeenCalledWith('u-1', deletion);
+			expect(userHandler.deleteAllForUser).toHaveBeenCalledWith('u-2', deletion);
+			expect(projectOnlyHandler.deleteAll).not.toHaveBeenCalled();
+			expect(projectOnlyHandler.transferAll).not.toHaveBeenCalled();
+			expect(userHandler.deleteAll).not.toHaveBeenCalled();
+			expect(manager.transaction).not.toHaveBeenCalled();
+		});
 	});
 });

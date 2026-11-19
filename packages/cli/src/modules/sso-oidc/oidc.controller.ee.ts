@@ -10,6 +10,7 @@ import { Request, Response } from 'express';
 import { AuthService } from '@/auth/auth.service';
 import { OIDC_NONCE_COOKIE_NAME, OIDC_STATE_COOKIE_NAME } from '@/constants';
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
+import { validateRedirectUrl } from '@n8n/utils/validate-redirect-url';
 import {
 	SSO_ACCESS_DENIED_REDIRECT_PATH,
 	SSO_LOGIN_FAILED_REDIRECT_PATH,
@@ -18,7 +19,6 @@ import { SsoAccessDeniedError } from '@/modules/provisioning.ee/errors/sso-acces
 import { AuthlessRequest } from '@/requests';
 import { isOidcCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
 import { getChangedFields } from '@/utils/changed-fields';
-import { validateRedirectUrl } from '@/utils/validate-redirect-url';
 
 import {
 	OIDC_CLIENT_SECRET_REDACTED_VALUE,
@@ -244,6 +244,8 @@ export class OidcController {
 
 		const encryptedIdToken: unknown = req.cookies[OIDC_ID_TOKEN_COOKIE_NAME];
 		res.clearCookie(OIDC_ID_TOKEN_COOKIE_NAME);
+
+		this.eventService.emit('user-logged-out', { user: req.user });
 
 		// Only sessions established through OIDC carry the ID token cookie:
 		// email or LDAP sessions must never trigger a logout at the provider.

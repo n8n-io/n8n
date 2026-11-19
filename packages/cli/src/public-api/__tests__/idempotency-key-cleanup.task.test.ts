@@ -18,6 +18,14 @@ beforeEach(() => {
 });
 
 describe('IdempotencyKeyCleanupTask', () => {
+	it('should run on any main with retries, and on the fallback timer as soon as a leader takes over', () => {
+		expect(task.target).toEqual({
+			scope: 'cluster',
+			scheduler: { retryOnFailure: true },
+			leaderTimer: { runOnTakeover: true },
+		});
+	});
+
 	describe('run', () => {
 		it('should delete keys older than 12 hours and log the total', async () => {
 			idempotencyKeyService.deleteOlderThan.mockResolvedValue(10);

@@ -6,19 +6,21 @@ import type {
 	JsonObject,
 	IRequestOptions,
 	IHttpRequestMethods,
+	RequestPath,
+	RequestUrl,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestPath, requestUrl } from 'n8n-workflow';
 
 export async function harvestApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
 	qs: IDataObject,
-	path: string,
+	path: RequestPath,
 	body: IDataObject = {},
-	option: IDataObject = {},
-	uri?: string,
+	uri?: RequestUrl,
 ): Promise<any> {
-	let options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {
 			'Harvest-Account-Id': `${this.getNodeParameter('accountId', 0)}`,
 			'User-Agent': 'Harvest App',
@@ -26,12 +28,11 @@ export async function harvestApiRequest(
 		},
 		method,
 		body,
-		uri: uri || `https://api.harvestapp.com/v2/${path}`,
+		uri: uri ?? requestUrl`https://api.harvestapp.com/v2/${path}`,
 		qs,
 		json: true,
 	};
 
-	options = Object.assign({}, options, option);
 	if (Object.keys(options.body as IDataObject).length === 0) {
 		delete options.body;
 	}
@@ -61,17 +62,16 @@ export async function harvestApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
 	qs: IDataObject,
-	uri: string,
+	uri: RequestPath,
 	resource: string,
 	body: IDataObject = {},
-	option: IDataObject = {},
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
 
 	do {
-		responseData = await harvestApiRequest.call(this, method, qs, uri, body, option);
+		responseData = await harvestApiRequest.call(this, method, qs, uri, body);
 		qs.page = responseData.next_page;
 		returnData.push.apply(returnData, responseData[resource] as IDataObject[]);
 	} while (responseData.next_page);
@@ -87,7 +87,7 @@ export async function getAllResource(
 	resource: string,
 	i: number,
 ) {
-	const endpoint = resource;
+	const endpoint = requestPath`${resource}`;
 	const qs: IDataObject = {};
 	const requestMethod = 'GET';
 

@@ -9,25 +9,26 @@ description: >-
 
 Use this reference when the table needs design judgment, import mapping,
 cleanup, or a careful mutation. Keep the working set small: list/schema first,
-then use IDs and narrow filters.
+then use IDs and narrow filters. Every write is a change in a
+`change_data_tables` call, shown below as `action(table, ...)`.
 
 ## Fast Routing
 
-- **Find/show tables**: `list`.
-- **Explain a table**: `list` if needed -> `schema` -> optional small `query`.
-- **Create from requirements**: `list` -> design schema -> `create`.
-- **Seed rows**: `list` -> `schema` -> `insert-rows` in batches of 100.
-- **Import attachment**: `parse-file` preview -> `list` -> create/schema ->
-  `insert-rows` batches.
-- **Rename a column**: `list` -> `schema` -> `rename-column` with `columnId`.
-- **Change rows**: `list` -> `schema` -> `query` count/sample ->
-  `update-rows` with the same precise filter.
-- **Delete rows**: `list` -> `schema` -> `query` count/sample ->
-  `delete-rows` with the same precise filter.
-- **Delete table**: `list` -> `delete` with `dataTableName`.
-- **Fix a wrong schema**: `list` -> `schema` -> `add-column` for missing
-  columns / `delete-column` for extras; for a wrong column type, `delete` +
-  `create` when the table is empty, or stop and ask when it holds data.
+- **Find/show tables**: `list_data_tables`.
+- **Explain a table**: `list_data_tables` if needed -> `get_data_table_schema`
+  -> optional small `query_data_table`.
+- **Create from requirements**: `list_data_tables` -> design every table and
+  its seed rows -> one call with all `create` and `insert-rows` changes.
+- **Seed rows**: `list_data_tables` -> `get_data_table_schema` ->
+  `insert-rows` changes of at most 100 rows each.
+- **Import attachment**: `parse-file` preview -> see Tool Recipes.
+- **Rename a column**: `list_data_tables` -> `get_data_table_schema` ->
+  `rename-column`.
+- **Change or delete rows**: `list_data_tables` -> `get_data_table_schema` ->
+  `query_data_table` count/sample -> `update-rows` or `delete-rows` with the
+  same precise filter.
+- **Delete table**: `list_data_tables` -> `delete`.
+- **Fix a wrong schema**: follow the skill's Fixing A Wrong Schema rules.
 
 ## Schema Patterns
 
@@ -129,59 +130,65 @@ Imported 1,000 rows into Leads. The file has more rows; import stopped at the 10
 
 ## Tool Recipes
 
-Create a designed table:
+Create designed tables with seed rows in one call:
 
 ```text
-1. data-tables list
-2. data-tables create { name, projectId?, columns }
+1. list_data_tables
+2. change_data_tables {
+     projectId: "<optional>",
+     changes: [
+       { action: "create", name: "Customers",
+         columns: [{ name: "customer_id", type: "string" }, { name: "tier", type: "string" }] },
+       { action: "create", name: "Orders",
+         columns: [{ name: "order_id", type: "string" }, { name: "customer_id", type: "string" },
+                   { name: "amount", type: "number" }] },
+       { action: "insert-rows", table: "Customers",
+         rows: [{ customer_id: "c_1", tier: "gold" }] }
+     ]
+   }
+```
+
+Later, add rows to a table you created in this conversation (no new approval card):
+
+```text
+change_data_tables { changes: [
+  { action: "insert-rows", table: "<Orders ID>", rows: [{ order_id: "o_1", customer_id: "c_1", amount: 40 }] }
+] }
 ```
 
 Import a CSV into a new table:
 
 ```text
-1. parse-file { attachmentIndex: 0, maxRows: 20 }
-2. data-tables list
-3. data-tables create with chosen column names/types
-4. data-tables insert-rows, max 100 rows
-5. parse-file next page with startRow=nextStartRow; repeat up to safety limit
+1. parse-file { maxRows: 20 } with the file field of the parse-file schema (fileId or attachmentIndex)
+2. list_data_tables
+3. change_data_tables with a create change and the first insert-rows (max 100 rows)
+4. parse-file next page with startRow=nextStartRow; insert-rows for each page, up to the safety limit
 ```
 
 Import into an existing table:
 
 ```text
-1. data-tables list
-2. data-tables schema with dataTableId; projectId is optional when dataTableId is present
+1. list_data_tables
+2. get_data_table_schema with dataTableId; projectId is optional when dataTableId is present
 3. parse-file preview
 4. Map source columns to existing schema names
-5. insert-rows in batches of 100
+5. insert-rows changes of at most 100 rows each
 ```
 
-Update rows:
+Update or delete rows:
 
 ```text
-1. data-tables schema
-2. data-tables query with precise filter and small limit
-3. If matches are right, data-tables update-rows with the same filter and data
-```
-
-Delete rows:
-
-```text
-1. data-tables schema
-2. data-tables query with precise filter and small limit
-3. If matches are right, data-tables delete-rows with the same filter
+1. get_data_table_schema
+2. query_data_table with precise filter and small limit
+3. If matches are right, an update-rows (filter and data) or delete-rows change with the same filter
 ```
 
 ## Recovery And Edge Cases
 
 - **Name conflict**: list tables, inspect the matching schema, then reuse it or
   ask whether to create a differently named table.
-- **Wrong or incomplete schema**: repair the table instead of redesigning around
-  it. Add missing columns with `add-column`; remove extras with `delete-column`.
-  Column types cannot be changed in place; for an empty or just-created table,
-  `delete` then `create` with the correct columns; for a populated table, stop
-  and ask before recreating. Never weaken a workflow's design to fit a wrong
-  schema.
+- **Wrong or incomplete schema**: follow the skill's Fixing A Wrong Schema rules.
+- **Failed change**: follow the skill's Planning Writes rules.
 - **Ambiguous project**: ask which project before creating or deleting. Do not
   guess when the same table name exists in multiple projects.
 - **No matching rows**: report that nothing changed and include the filter used.

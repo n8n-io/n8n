@@ -1,0 +1,42 @@
+type: object
+properties:
+  data:
+    type: array
+    items:
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+            - agent
+            - credential
+            - dataTable
+            - errorWorkflow
+            - errorWorkflowParent
+            - parentWorkflow
+            - subWorkflow
+          description: 'The relation to the requested resource. `credential`, `dataTable`, `subWorkflow`, `errorWorkflow`: the requested workflow uses this dependency. `parentWorkflow`: this workflow uses the requested resource. `errorWorkflowParent`: this workflow uses the requested workflow as its error workflow. `agent`: this agent uses the requested resource.'
+        id:
+          type: string
+          example: 2tUt1wbLX592XDdX
+        name:
+          type: string
+          example: Sync customers
+        projectId:
+          type: string
+          description: The project that owns the dependency, when it is known.
+      required:
+        - type
+        - id
+        - name
+  nextCursor:
+    type: string
+    nullable: true
+  inaccessibleCount:
+    type: integer
+    minimum: 0
+    description: The number of dependencies that you do not have access to. They are not listed.
+required:
+  - data
+  - nextCursor
+  - inaccessibleCount

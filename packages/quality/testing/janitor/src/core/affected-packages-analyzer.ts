@@ -11,6 +11,7 @@ import { join, relative } from 'node:path';
 import { parse as parseYaml } from 'yaml';
 
 import { matchesGlobalTrigger } from './global-triggers.js';
+import { LOCKFILE } from './read-lockfile-impact.js';
 import { findWorkspaceRoot, toPosix } from './path-utils.js';
 
 function parseJsonFile<T>(path: string): T {
@@ -109,6 +110,9 @@ export interface AnalyzeOptions {
 	rootDir?: string;
 	/** Repo-root-relative, forward slashes. `null` = no signal → all packages. */
 	changedFiles: string[] | null;
+	/** Packages whose resolved dependencies changed in pnpm-lock.yaml. With it, a
+	 *  lockfile change affects only these packages; without it, every package. */
+	lockfileImpactedPackages?: string[] | null;
 }
 
 function loadWorkspacePackages(rootDir: string): WorkspacePackage[] {
@@ -218,7 +222,11 @@ export function affectedPackages(options: AnalyzeOptions): string[] {
 	// No signal (local dev, missing env) → safest default: everything.
 	if (options.changedFiles === null) return allNames;
 
-	if (options.changedFiles.some(matchesGlobalTrigger)) return allNames;
+	const lockfileImpact = options.lockfileImpactedPackages;
+	const globalTrigger = options.changedFiles.some(
+		(file) => matchesGlobalTrigger(file) && !(file === LOCKFILE && lockfileImpact),
+	);
+	if (globalTrigger) return allNames;
 
 	const direct = new Set<string>();
 	for (const file of options.changedFiles) {
@@ -248,6 +256,11 @@ export function affectedPackages(options: AnalyzeOptions): string[] {
 		if (affected.has(name)) continue;
 		affected.add(name);
 		queue.push(...(dependents.get(name) ?? []));
+	}
+	// The lockfile impact already follows workspace links, so its packages need
+	// no dependents walk: a devDependency change does not reach a dependent.
+	if (lockfileImpact && options.changedFiles.includes(LOCKFILE)) {
+		for (const name of lockfileImpact) if (allNames.includes(name)) affected.add(name);
 	}
 	return [...affected].sort();
 }

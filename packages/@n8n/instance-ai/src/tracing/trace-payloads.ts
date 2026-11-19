@@ -11,12 +11,12 @@ import { isSensitiveKey } from '@n8n/utils/redaction/sensitive-key';
 import { createHash } from 'node:crypto';
 
 import {
-	DOMAIN_TOOL_IDS,
 	ORCHESTRATION_TOOL_IDS,
 	ORCHESTRATION_TOOL_NAMES,
 	WORKSPACE_TOOL_IDS,
 } from '../tools/tool-ids';
 import type { InstanceAiToolRegistry } from '../types';
+import { classifyToolCategory, classifyToolSideEffect } from './tool-classification';
 import { formatAgentRoleLabel, formatTraceLabel } from './trace-labels';
 import { modelConfigId } from '../utils/model-config-id';
 
@@ -103,7 +103,7 @@ export interface AgentTraceInputOptions {
 	tools?: InstanceAiToolRegistry;
 	deferredTools?: InstanceAiToolRegistry;
 	runtimeTools?: InstanceAiToolRegistry;
-	runtimeSkills?: RuntimeSkillRegistry;
+	skills?: RuntimeSkillRegistry;
 	modelId?: unknown;
 	memory?: unknown;
 	toolSearchEnabled?: boolean;
@@ -1114,47 +1114,6 @@ function classifyToolSource(name: string, toolRecord: Record<string, unknown>): 
 	return 'domain';
 }
 
-function classifyToolCategory(name: string): string {
-	if (name.includes('credential')) return 'credential';
-	if (name.includes('browser')) return 'browser';
-	if (name.includes('data-table')) return 'data-table';
-	if (name.includes('workflow')) {
-		return 'workflow';
-	}
-	if (name === DOMAIN_TOOL_IDS.NODES || name === 'materialize-node-type') return 'node';
-	if (name === DOMAIN_TOOL_IDS.EXECUTIONS) return 'execution';
-	if (name.includes('research')) return 'research';
-	if (name.includes('plan') || name === ORCHESTRATION_TOOL_IDS.CREATE_TASKS) {
-		return 'planning';
-	}
-	if (name.startsWith('workspace_')) return 'workspace';
-	if (name.includes('file') || name.includes('filesystem')) return 'filesystem';
-	return 'other';
-}
-
-function classifyToolSideEffect(name: string): string {
-	if (name.includes('browser')) return 'browser';
-	if (name.includes('research')) return 'network';
-	if (name === DOMAIN_TOOL_IDS.EXECUTIONS || name.includes('execute') || name.includes('run')) {
-		return 'execute';
-	}
-	if (
-		name.includes('write') ||
-		name.includes('submit') ||
-		name.includes('apply') ||
-		name.includes('build') ||
-		name.includes('create') ||
-		name.includes('update') ||
-		name.includes('delete') ||
-		name.includes('remove') ||
-		name.includes('complete')
-	) {
-		return 'write';
-	}
-	if (name.includes(DOMAIN_TOOL_IDS.ASK_USER) || name.includes('pause-for-user')) return 'none';
-	return 'read';
-}
-
 function getToolInputSchema(tool: unknown): unknown {
 	if (!isRecord(tool)) {
 		return undefined;
@@ -1252,7 +1211,8 @@ function summarizeMemoryBinding(memory: unknown): Record<string, unknown> {
 	};
 }
 
-function summarizeRuntimeSkillRegistry(
+/** The `runtime_skill_*` keys stay as they are, because trace queries read them. */
+function summarizeSkillRegistry(
 	registry: RuntimeSkillRegistry | undefined,
 ): Record<string, unknown> {
 	if (!registry || registry.skills.length === 0) {
@@ -1401,6 +1361,6 @@ export function buildAgentTraceInputs(options: AgentTraceInputOptions): Record<s
 		...summarizeToolSet('loaded', options.tools),
 		...summarizeToolSet('deferred', options.deferredTools),
 		...summarizeToolSet('runtime', options.runtimeTools),
-		...summarizeRuntimeSkillRegistry(options.runtimeSkills),
+		...summarizeSkillRegistry(options.skills),
 	});
 }

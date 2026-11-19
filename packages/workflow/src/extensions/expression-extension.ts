@@ -431,6 +431,23 @@ export const extendTransform = (expression: string): { code: string } | undefine
 			},
 		});
 
+		// recast adds parentheses by operator precedence only, but JavaScript
+		// rejects `&&` or `||` as an operand of `??` without parentheses.
+		// The ast-types definitions do not declare `extra`, which recast reads.
+		visit(ast, {
+			visitLogicalExpression(path) {
+				this.traverse(path);
+
+				if (path.node.operator !== '??') return;
+
+				for (const operand of [path.node.left, path.node.right]) {
+					if (operand.type === 'LogicalExpression' && operand.operator !== '??') {
+						Object.assign(operand, { extra: { parenthesized: true } });
+					}
+				}
+			},
+		});
+
 		return print(ast);
 	} catch (e) {
 		return;

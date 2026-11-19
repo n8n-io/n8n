@@ -1,5 +1,5 @@
 import type { ProtectedResource } from '../contracts';
-import { extractBearer, inboundFrom, inboundRequestOf } from '../inbound';
+import { extractBearer, inboundFrom, inboundRequestOf, isUrlIssuer } from '../inbound';
 import type { Inbound, Verified } from '../pipeline';
 
 const resourceUrl = 'https://n8n.example/mcp-server/http';
@@ -132,6 +132,22 @@ describe('extractBearer', () => {
 			ok: false,
 			reason: 'malformed-credential',
 		});
+	});
+});
+
+describe('isUrlIssuer', () => {
+	it.each(['https://idp.example', 'http://localhost:5678'])('routes %s as a URL issuer', (iss) => {
+		expect(isUrlIssuer(iss)).toBe(true);
+	});
+
+	it.each([
+		['the API-key issuer', 'n8n'],
+		['the token-exchange issuer', 'n8n-token-exchange'],
+		['a non-http URL', 'ftp://idp.example'],
+		['a number', 42],
+		['no issuer', undefined],
+	])('does not route %s as a URL issuer', (_label, iss) => {
+		expect(isUrlIssuer(iss)).toBe(false);
 	});
 });
 

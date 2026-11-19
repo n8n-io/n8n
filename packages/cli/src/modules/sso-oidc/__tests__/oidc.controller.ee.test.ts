@@ -3,7 +3,7 @@ import type { Logger } from '@n8n/backend-common';
 import type { EventService, UrlService } from '@n8n/backend-services';
 import type { GlobalConfig, InstanceSettingsLoaderConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import { GLOBAL_MEMBER_ROLE, type AuthenticatedRequest, type User } from '@n8n/db';
+import { GLOBAL_MEMBER_ROLE, type AuthenticatedRequest, type Person } from '@n8n/db';
 import { type Request, type Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
@@ -44,7 +44,7 @@ const controller = new OidcController(
 	instanceSettingsLoaderConfig,
 );
 
-const user = mock<User>({
+const person = mock<Person>({
 	id: '456',
 	email: 'oidc-user@example.com',
 	firstName: 'OIDC',
@@ -84,7 +84,7 @@ describe('OidcController', () => {
 			);
 
 			// Mock successful OIDC login
-			oidcService.loginUser.mockResolvedValueOnce({ user });
+			oidcService.loginUser.mockResolvedValueOnce({ user: person });
 
 			await controller.callbackHandler(req, res);
 
@@ -96,9 +96,9 @@ describe('OidcController', () => {
 			);
 
 			// Verify that issueCookie was called with MFA flag set to true
-			expect(authService.issueCookie).toHaveBeenCalledWith(res, user, true, req.browserId);
+			expect(authService.issueCookie).toHaveBeenCalledWith(res, person, true, req.browserId);
 			expect(eventService.emit).toHaveBeenCalledWith('user-logged-in', {
-				user,
+				user: person,
 				authenticationMethod: 'oidc',
 			});
 
@@ -120,7 +120,7 @@ describe('OidcController', () => {
 				state: 'n8n_state:uuid',
 				redirectUrl: '/workflow/abc?tab=1',
 			});
-			oidcService.loginUser.mockResolvedValueOnce({ user });
+			oidcService.loginUser.mockResolvedValueOnce({ user: person });
 
 			await controller.callbackHandler(req, res);
 
@@ -141,7 +141,7 @@ describe('OidcController', () => {
 				state: 'n8n_state:uuid',
 				redirectUrl: '//evil.example/phish',
 			});
-			oidcService.loginUser.mockResolvedValueOnce({ user });
+			oidcService.loginUser.mockResolvedValueOnce({ user: person });
 
 			await controller.callbackHandler(req, res);
 
@@ -164,7 +164,7 @@ describe('OidcController', () => {
 				'http://localhost:5678/sso/oidc/callback?code=different_code&state=different_state&session_state=session123',
 			);
 
-			oidcService.loginUser.mockResolvedValueOnce({ user });
+			oidcService.loginUser.mockResolvedValueOnce({ user: person });
 
 			await controller.callbackHandler(req, res);
 
@@ -173,7 +173,7 @@ describe('OidcController', () => {
 				'state_value',
 				'nonce_value',
 			);
-			expect(authService.issueCookie).toHaveBeenCalledWith(res, user, true, req.browserId);
+			expect(authService.issueCookie).toHaveBeenCalledWith(res, person, true, req.browserId);
 			expect(res.redirect).toHaveBeenCalledWith('/');
 		});
 
@@ -190,7 +190,7 @@ describe('OidcController', () => {
 
 			const expectedCallbackUrl = new URL('http://localhost:5678/sso/oidc/callback');
 
-			oidcService.loginUser.mockResolvedValueOnce({ user });
+			oidcService.loginUser.mockResolvedValueOnce({ user: person });
 
 			await controller.callbackHandler(req, res);
 
@@ -199,7 +199,7 @@ describe('OidcController', () => {
 				'state_value',
 				'nonce_value',
 			);
-			expect(authService.issueCookie).toHaveBeenCalledWith(res, user, true, undefined);
+			expect(authService.issueCookie).toHaveBeenCalledWith(res, person, true, undefined);
 			expect(res.redirect).toHaveBeenCalledWith('/');
 		});
 
@@ -306,7 +306,7 @@ describe('OidcController', () => {
 
 			// loginUser resolves, but OIDC is disabled while it was awaiting: the
 			// pre-issue re-check redirects to the sign-in page before a cookie is minted.
-			oidcService.loginUser.mockResolvedValueOnce({ user });
+			oidcService.loginUser.mockResolvedValueOnce({ user: person });
 			oidcService.assertOidcLoginEnabled.mockImplementationOnce(() => {
 				throw new ForbiddenError('OIDC login is not enabled');
 			});
@@ -334,7 +334,7 @@ describe('OidcController', () => {
 			});
 			const res = mock<Response>();
 
-			oidcService.loginUser.mockResolvedValueOnce({ user, idToken: 'raw-id-token' });
+			oidcService.loginUser.mockResolvedValueOnce({ user: person, idToken: 'raw-id-token' });
 			oidcService.encryptIdToken.mockResolvedValueOnce('encrypted-id-token');
 
 			await controller.callbackHandler(req, res);
@@ -363,7 +363,7 @@ describe('OidcController', () => {
 			});
 			const res = mock<Response>();
 
-			oidcService.loginUser.mockResolvedValueOnce({ user, idToken: 'raw-id-token' });
+			oidcService.loginUser.mockResolvedValueOnce({ user: person, idToken: 'raw-id-token' });
 			oidcService.encryptIdToken.mockResolvedValueOnce('x'.repeat(5000));
 
 			await controller.callbackHandler(req, res);
@@ -375,7 +375,7 @@ describe('OidcController', () => {
 			);
 			expect(logger.warn).toHaveBeenCalled();
 			// Login itself must still succeed
-			expect(authService.issueCookie).toHaveBeenCalledWith(res, user, true, req.browserId);
+			expect(authService.issueCookie).toHaveBeenCalledWith(res, person, true, req.browserId);
 			expect(res.redirect).toHaveBeenCalledWith('/');
 		});
 
@@ -390,7 +390,7 @@ describe('OidcController', () => {
 			});
 			const res = mock<Response>();
 
-			oidcService.loginUser.mockResolvedValueOnce({ user, idToken: 'raw-id-token' });
+			oidcService.loginUser.mockResolvedValueOnce({ user: person, idToken: 'raw-id-token' });
 			oidcService.encryptIdToken.mockRejectedValueOnce(new Error('encryption failed'));
 
 			await controller.callbackHandler(req, res);
@@ -403,7 +403,7 @@ describe('OidcController', () => {
 			);
 			expect(logger.warn).toHaveBeenCalled();
 			expect(eventService.emit).toHaveBeenCalledWith('user-logged-in', {
-				user,
+				user: person,
 				authenticationMethod: 'oidc',
 			});
 			expect(res.redirect).toHaveBeenCalledWith('/');
@@ -636,7 +636,7 @@ describe('OidcController', () => {
 
 	describe('logout', () => {
 		const makeLogoutReq = (cookies: Record<string, string>) =>
-			mock<AuthenticatedRequest>({ cookies });
+			mock<AuthenticatedRequest>({ cookies, user: person });
 
 		beforeEach(() => {
 			vi.mocked(isOidcCurrentAuthenticationMethod).mockReturnValue(true);
@@ -672,6 +672,8 @@ describe('OidcController', () => {
 			expect(result).toEqual({
 				redirectUrl: 'https://idp.example.com/logout?id_token_hint=raw-id-token',
 			});
+			expect(eventService.emit).toHaveBeenCalledTimes(1);
+			expect(eventService.emit).toHaveBeenCalledWith('user-logged-out', { user: person });
 		});
 
 		test('Should return a null redirect URL when the session was not established through OIDC', async () => {
@@ -685,6 +687,8 @@ describe('OidcController', () => {
 			// The n8n session is still terminated
 			expect(authService.invalidateToken).toHaveBeenCalledWith(req);
 			expect(authService.clearCookie).toHaveBeenCalledWith(res);
+			expect(eventService.emit).toHaveBeenCalledTimes(1);
+			expect(eventService.emit).toHaveBeenCalledWith('user-logged-out', { user: person });
 		});
 
 		test('Should return a null redirect URL when OIDC is no longer the authentication method', async () => {
@@ -732,6 +736,8 @@ describe('OidcController', () => {
 			expect(authService.invalidateToken).toHaveBeenCalledWith(req);
 			expect(authService.clearCookie).toHaveBeenCalledWith(res);
 			expect(logger.warn).toHaveBeenCalled();
+			expect(eventService.emit).toHaveBeenCalledTimes(1);
+			expect(eventService.emit).toHaveBeenCalledWith('user-logged-out', { user: person });
 		});
 	});
 

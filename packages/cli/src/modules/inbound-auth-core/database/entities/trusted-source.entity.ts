@@ -28,6 +28,10 @@ export class TrustedSourceEntity extends WithTimestampsAndStringId {
 	@Column({ type: 'text', nullable: true })
 	lastError: string | null;
 
+	/** Set once, by the first request the source authenticated; an update never clears it. */
+	@DateTimeColumn({ nullable: true })
+	firstAuthenticatedAt: Date | null;
+
 	@DateTimeColumn({ nullable: true })
 	lastCheckedAt: Date | null;
 

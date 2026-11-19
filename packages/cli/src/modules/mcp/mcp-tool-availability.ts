@@ -1,23 +1,31 @@
-import { CONTEXT_PREFERENCES_ENABLED_VARIANT, CONTEXT_PREFERENCES_FLAG } from '@n8n/api-types';
+import { MIGRATION_REPORT_TARGET_VERSION } from '@n8n/api-types';
 import type { ModuleRegistry } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import { hasGlobalScope, type AuthPrincipal } from '@n8n/permissions';
-import type { FeatureFlags } from 'n8n-workflow';
 
 import type { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
 
 import type { McpConfig } from './mcp.config';
 
 /**
- * Whether the preference tools should be registered for a caller with these
- * flags. Multivariate experiment: only the `variant` arm enables them.
- *
- * Consent uses this same predicate: a control user must not see the
- * `aiPreference:*` scopes on the consent screen, or the arm that is meant to
- * be unaware of the feature has been shown it.
+ * Whether this instance has a migration report to serve: a target version is
+ * set and the module that builds the report is active. Consent and registration
+ * both use it, so the scope is never offered for tools that cannot register.
  */
-export function arePreferenceToolsEnabled(flags: FeatureFlags): boolean {
-	return flags[CONTEXT_PREFERENCES_FLAG] === CONTEXT_PREFERENCES_ENABLED_VARIANT;
+export function isMigrationReportAvailable(moduleRegistry: ModuleRegistry): boolean {
+	return MIGRATION_REPORT_TARGET_VERSION !== null && moduleRegistry.isActive('breaking-changes');
+}
+
+/**
+ * Whether the migration report tools register for this caller. The REST routes need the
+ * same permission. A fix or a status also needs edit access to the workflow, which each
+ * tool checks.
+ */
+export function canReadMigrationReport(
+	moduleRegistry: ModuleRegistry,
+	user: AuthPrincipal,
+): boolean {
+	return isMigrationReportAvailable(moduleRegistry) && hasGlobalScope(user, 'breakingChanges:list');
 }
 
 export function areAgentToolsAvailable(

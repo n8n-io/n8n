@@ -10,7 +10,8 @@ import type {
 	IPairedItemData,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-import { getResolvables, updateDisplayOptions } from '@utils/utilities';
+import { resolveQueryReplacementSegments } from '@utils/sql-query-parameters';
+import { resolveExpressions, updateDisplayOptions } from '@utils/utilities';
 
 import { numberInputsProperty } from '../../helpers/descriptions';
 import { modifySelectQuery, rowToExecutionData } from '../../helpers/utils';
@@ -75,7 +76,7 @@ export const properties: INodeProperties[] = [
 				default: 'empty',
 				displayOptions: {
 					show: {
-						'@version': [3.2],
+						'@version': [{ _cnd: { gte: 3.2 } }],
 					},
 				},
 			},
@@ -150,6 +151,7 @@ function validateQueryParameterValue(
 }
 
 function getQueryParameterValues(
+	this: IExecuteFunctions,
 	node: INode,
 	queryParameters: OperationOptions['queryParameters'],
 ): QueryParameterValue[] {
@@ -164,7 +166,12 @@ function getQueryParameterValues(
 		});
 	}
 
-	return queryParameters.split(',').map((entry) => parseQueryParameterValue(entry.trim()));
+	const values = resolveQueryReplacementSegments.call(this, 0, queryParameters, 'queryParameters');
+
+	return values.map((value, index) => {
+		const parsed = typeof value === 'string' ? parseQueryParameterValue(value) : value;
+		return validateQueryParameterValue(node, parsed, index);
+	});
 }
 
 async function executeSelectWithMappedPairedItems(
@@ -215,14 +222,14 @@ export async function execute(
 	const options = this.getNodeParameter('options', 0, {}) as OperationOptions;
 	const workflowId = this.getWorkflow().id;
 
-	let query = this.getNodeParameter('query', 0) as string;
-
-	for (const resolvable of getResolvables(query)) {
-		query = query.replace(resolvable, this.evaluateExpression(resolvable, 0) as string);
-	}
+	const query = resolveExpressions(
+		this.getNodeParameter('query', 0) as string,
+		(resolvable) => this.evaluateExpression(resolvable, 0),
+		{ legacy: node.typeVersion < 3.3 },
+	);
 
 	// the value is resolved once, not on each execution, because merge mode runs once for all items
-	const parameters = getQueryParameterValues(node, options.queryParameters);
+	const parameters = getQueryParameterValues.call(this, node, options.queryParameters);
 
 	const isSelectQuery = node.typeVersion >= 3.1 ? query.toLowerCase().startsWith('select') : false;
 	const returnSuccessItemIfEmpty =

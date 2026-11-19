@@ -8,6 +8,7 @@ import {
 	type Jwk,
 } from '@n8n/inbound-auth';
 
+import { AccessTokenRepository } from './database/repositories/oauth-access-token.repository';
 import { OAuthSigningJwksProvider } from './oauth-signing-jwks.provider';
 
 /**
@@ -20,6 +21,7 @@ export class OAuthServerLocalAuthorizationServer extends LocalAuthorizationServe
 		private readonly urlService: UrlService,
 		private readonly resourceRegistry: ProtectedResourceRegistry,
 		private readonly jwksProvider: OAuthSigningJwksProvider,
+		private readonly accessTokens: AccessTokenRepository,
 	) {
 		super();
 	}
@@ -62,5 +64,10 @@ export class OAuthServerLocalAuthorizationServer extends LocalAuthorizationServe
 	/** The `sig` keys of the published JWKS: the active key and the retired keys still in grace. */
 	async getJwks(): Promise<{ keys: Jwk[] }> {
 		return { keys: JwkSchema.array().parse(await this.jwksProvider.getPublicJwks()) };
+	}
+
+	/** Revocation deletes the row; the JWT itself stays verifiable until `exp`. */
+	async isAccessTokenActive(token: string): Promise<boolean> {
+		return await this.accessTokens.isActive(token);
 	}
 }

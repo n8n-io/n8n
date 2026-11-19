@@ -18,6 +18,8 @@ class TestCommand extends BaseCommand {
 }
 
 const logger = mockInstance(Logger);
+// One shared mock: a second mockInstance(License) in another describe would replace this one for every test.
+const license = mockInstance(License);
 
 afterEach(() => {
 	vi.resetAllMocks();
@@ -56,7 +58,6 @@ describe('logError', () => {
 describe('initBinaryDataService', () => {
 	const binaryDataConfig = mockInstance(BinaryDataConfig, { mode: 's3' });
 	const binaryDataService = mockInstance(BinaryDataService);
-	const license = mockInstance(License);
 	mockInstance(DatabaseManager);
 
 	it('should exit before the store starts when the write mode is not licensed', async () => {
@@ -115,5 +116,39 @@ describe('initSystemTasks', () => {
 
 		expect(metadata.register.mock.calls.flat()).toEqual([DummySystemTask]);
 		expect(runner.init).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe('keepsDerivedInstanceId', () => {
+	class SeedingCommand extends TestCommand {
+		override seedsInstanceIdentity = true;
+	}
+
+	it('should keep the derived ID for a command that does not seed, without reading the certificate', async () => {
+		// @ts-expect-error Protected method
+		expect(await new TestCommand().keepsDerivedInstanceId()).toBe(true);
+		expect(license.loadCertStr).not.toHaveBeenCalled();
+	});
+
+	it('should keep the derived ID for a seeding command when a license certificate exists', async () => {
+		license.loadCertStr.mockResolvedValue('cert');
+
+		// @ts-expect-error Protected method
+		expect(await new SeedingCommand().keepsDerivedInstanceId()).toBe(true);
+	});
+
+	it('should not keep the derived ID for a seeding command without a license certificate', async () => {
+		license.loadCertStr.mockResolvedValue('');
+
+		// @ts-expect-error Protected method
+		expect(await new SeedingCommand().keepsDerivedInstanceId()).toBe(false);
+	});
+
+	it('should keep the derived ID when the certificate check fails, so a licensed install keeps its ID', async () => {
+		license.loadCertStr.mockRejectedValue(new Error('permission denied'));
+
+		// @ts-expect-error Protected method
+		expect(await new SeedingCommand().keepsDerivedInstanceId()).toBe(true);
+		expect(logger.warn).toHaveBeenCalled();
 	});
 });

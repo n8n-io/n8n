@@ -1,9 +1,12 @@
 import type { InstanceAiPermissions } from '@n8n/api-types';
 import type { Mock } from 'vitest';
+import { z } from 'zod';
 
 import { executeTool } from '../../__tests__/tool-test-utils';
+import { OutsideThreadProjectError } from '../../errors/outside-thread-project.error';
 import type { InstanceAiContext } from '../../types';
-import { createWorkspaceTool } from '../workspace.tool';
+import { createWorkspaceTools } from '../workspace.tool';
+import { createWorkspaceToolRouter as createWorkspaceTool } from './workspace-tools-test-utils';
 
 function createMockContext(
 	overrides: Partial<Omit<InstanceAiContext, 'permissions'>> & {
@@ -68,7 +71,51 @@ function createMockContext(
 	} as unknown as InstanceAiContext;
 }
 
-describe('workspace tool', () => {
+function contextWithFolderActions(overrides: Parameters<typeof createMockContext>[0] = {}) {
+	const context = createMockContext(overrides);
+	context.workspaceService!.listFolders = vi.fn();
+	context.workspaceService!.createFolder = vi.fn();
+	context.workspaceService!.deleteFolder = vi.fn();
+	context.workspaceService!.moveWorkflowToFolder = vi.fn();
+	return context;
+}
+
+describe('workspace tools', () => {
+	describe('createWorkspaceTools', () => {
+		it('builds one tool for each action, without the action field', () => {
+			const tools = createWorkspaceTools(contextWithFolderActions());
+
+			expect(tools.map((tool) => tool.name)).toEqual([
+				'list_projects',
+				'list_tags',
+				'tag_workflow',
+				'cleanup_test_executions',
+				'list_folders',
+				'create_folder',
+				'delete_folder',
+				'move_workflow_to_folder',
+			]);
+		});
+
+		it('gives no tool an action field in its input schema', () => {
+			for (const tool of createWorkspaceTools(contextWithFolderActions())) {
+				expect(tool.inputSchema).toBeInstanceOf(z.ZodObject);
+				expect((tool.inputSchema as z.AnyZodObject).shape).not.toHaveProperty('action');
+			}
+		});
+
+		it('omits the folder tools when the workspace service has no folder support', () => {
+			const tools = createWorkspaceTools(createMockContext());
+
+			expect(tools.map((tool) => tool.name)).toEqual([
+				'list_projects',
+				'list_tags',
+				'tag_workflow',
+				'cleanup_test_executions',
+			]);
+		});
+	});
+
 	describe('when workspaceService is missing', () => {
 		it('should return an error tool', async () => {
 			const context = createMockContext({ workspaceService: undefined });
@@ -147,6 +194,25 @@ describe('workspace tool', () => {
 			});
 		});
 
+		it('stores a grant when the user always allows it, and skips the next approval', async () => {
+			const context = createMockContext();
+			context.grantSessionToolApproval = vi.fn(async () => {});
+			const tool = createWorkspaceTool(context);
+			const input = { action: 'tag-workflow', workflowId: 'wf1', tags: ['prod'] };
+
+			await executeTool(tool, input, {
+				resumeData: { approved: true, scope: 'session' },
+			} as never);
+
+			expect(context.grantSessionToolApproval).toHaveBeenCalledWith('workspace:tag-workflow');
+
+			context.sessionApprovedToolKeys = new Set(['workspace:tag-workflow']);
+			const suspend = vi.fn();
+			await executeTool(tool, input, { suspend } as never);
+
+			expect(suspend).not.toHaveBeenCalled();
+		});
+
 		it('should suspend for confirmation when permission requires approval', async () => {
 			const context = createMockContext();
 			const suspend = vi.fn();
@@ -217,12 +283,9 @@ describe('workspace tool', () => {
 
 	describe('folder actions', () => {
 		it('should accept folder actions when listFolders is present', async () => {
-			const context = createMockContext();
+			const context = contextWithFolderActions();
 			const folders = [{ id: 'f1', name: 'Test Folder', parentFolderId: null }];
-			context.workspaceService!.listFolders = vi.fn().mockResolvedValue(folders);
-			context.workspaceService!.createFolder = vi.fn();
-			context.workspaceService!.deleteFolder = vi.fn();
-			context.workspaceService!.moveWorkflowToFolder = vi.fn();
+			(context.workspaceService!.listFolders as Mock).mockResolvedValue(folders);
 
 			const tool = createWorkspaceTool(context);
 			const result = await executeTool(
@@ -236,19 +299,6 @@ describe('workspace tool', () => {
 	});
 
 	describe('create-folder', () => {
-		function contextWithFolderActions(
-			overrides: Partial<Omit<InstanceAiContext, 'permissions'>> & {
-				permissions?: Partial<InstanceAiPermissions>;
-			} = {},
-		) {
-			const context = createMockContext(overrides);
-			context.workspaceService!.listFolders = vi.fn();
-			context.workspaceService!.createFolder = vi.fn();
-			context.workspaceService!.deleteFolder = vi.fn();
-			context.workspaceService!.moveWorkflowToFolder = vi.fn();
-			return context;
-		}
-
 		it('rejects a folder name containing a slash, before asking for confirmation', async () => {
 			const context = contextWithFolderActions();
 			const tool = createWorkspaceTool(context);
@@ -317,12 +367,7 @@ describe('workspace tool', () => {
 
 	describe('delete-folder', () => {
 		it('should suspend with destructive severity for confirmation', async () => {
-			const context = createMockContext();
-			context.workspaceService!.listFolders = vi.fn();
-			context.workspaceService!.createFolder = vi.fn();
-			context.workspaceService!.deleteFolder = vi.fn();
-			context.workspaceService!.moveWorkflowToFolder = vi.fn();
-
+			const context = contextWithFolderActions();
 			const suspend = vi.fn();
 			const tool = createWorkspaceTool(context);
 
@@ -345,12 +390,7 @@ describe('workspace tool', () => {
 		});
 
 		it('should execute deletion when approved', async () => {
-			const context = createMockContext();
-			const deleteFolder = vi.fn().mockResolvedValue(undefined);
-			context.workspaceService!.listFolders = vi.fn();
-			context.workspaceService!.createFolder = vi.fn();
-			context.workspaceService!.deleteFolder = deleteFolder;
-			context.workspaceService!.moveWorkflowToFolder = vi.fn();
+			const context = contextWithFolderActions();
 
 			const tool = createWorkspaceTool(context);
 			const result = await executeTool(
@@ -359,7 +399,7 @@ describe('workspace tool', () => {
 				{ resumeData: { approved: true } } as never,
 			);
 
-			expect(deleteFolder).toHaveBeenCalledWith('f1', 'p1', undefined);
+			expect(context.workspaceService!.deleteFolder).toHaveBeenCalledWith('f1', 'p1', undefined);
 			expect(result).toEqual({ success: true });
 		});
 	});
@@ -410,5 +450,79 @@ describe('workspace tool', () => {
 				expect(result).toEqual({ error: expect.stringContaining('greater than 0') });
 			},
 		);
+
+		it('stores a per-workflow grant that skips the approval only for that workflow', async () => {
+			const context = createMockContext();
+			context.grantSessionToolApproval = vi.fn(async () => {});
+			(context.workspaceService!.cleanupTestExecutions as Mock).mockResolvedValue({
+				deletedCount: 0,
+			});
+			const tool = createWorkspaceTool(context);
+
+			await executeTool(tool, { action: 'cleanup-test-executions', workflowId: 'wf1' }, {
+				resumeData: { approved: true, scope: 'session' },
+			} as never);
+
+			expect(context.grantSessionToolApproval).toHaveBeenCalledWith(
+				'workspace:cleanup-test-executions:wf1',
+			);
+
+			context.sessionApprovedToolKeys = new Set(['workspace:cleanup-test-executions:wf1']);
+			const sameWorkflowSuspend = vi.fn();
+			await executeTool(tool, { action: 'cleanup-test-executions', workflowId: 'wf1' }, {
+				suspend: sameWorkflowSuspend,
+			} as never);
+			expect(sameWorkflowSuspend).not.toHaveBeenCalled();
+
+			const otherWorkflowSuspend = vi.fn();
+			await executeTool(tool, { action: 'cleanup-test-executions', workflowId: 'wf2' }, {
+				suspend: otherWorkflowSuspend,
+			} as never);
+			expect(otherWorkflowSuspend).toHaveBeenCalled();
+		});
 	});
+
+	it.each([
+		{
+			input: { action: 'tag-workflow', workflowId: 'wf1', tags: ['prod'] },
+			target: { kind: 'workflow', id: 'wf1' },
+			method: 'tagWorkflow',
+		},
+		{
+			input: { action: 'cleanup-test-executions', workflowId: 'wf1' },
+			target: { kind: 'workflow', id: 'wf1' },
+			method: 'cleanupTestExecutions',
+		},
+		{
+			input: { action: 'create-folder', name: 'Reports', projectId: 'p2' },
+			target: { kind: 'project', id: 'p2' },
+			method: 'createFolder',
+		},
+		{
+			input: { action: 'delete-folder', folderId: 'f1', projectId: 'p2' },
+			target: { kind: 'project', id: 'p2' },
+			method: 'deleteFolder',
+		},
+		{
+			input: { action: 'move-workflow-to-folder', workflowId: 'wf1', folderId: 'f1' },
+			target: { kind: 'workflow', id: 'wf1' },
+			method: 'moveWorkflowToFolder',
+		},
+	] as const)(
+		'should reject $input.action outside the thread project before asking for approval',
+		async ({ input, target, method }) => {
+			const assertInThreadProject = vi.fn().mockRejectedValue(new OutsideThreadProjectError());
+			const context = contextWithFolderActions({ assertInThreadProject });
+			const suspend = vi.fn();
+
+			const tool = createWorkspaceTool(context);
+			await expect(
+				executeTool(tool, input, { suspend, resumeData: undefined } as never),
+			).rejects.toThrow(OutsideThreadProjectError);
+
+			expect(assertInThreadProject).toHaveBeenCalledWith(target);
+			expect(suspend).not.toHaveBeenCalled();
+			expect(context.workspaceService![method]).not.toHaveBeenCalled();
+		},
+	);
 });
