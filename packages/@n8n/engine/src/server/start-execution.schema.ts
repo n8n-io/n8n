@@ -8,11 +8,18 @@ export const MAX_TRIGGER_SLOTS = MAX_SLOT_INDEX + 1;
 const stepTypeSchema = z.enum(['trigger', 'v1-node', 'wait', 'subworkflow', 'batch']);
 
 // Non-empty: lifecycle events reship both as identifiers.
+// The bounds live in `validateExecutableGraph`, which names the node in its error.
+const retryPolicySchema = z.object({
+	maxTries: z.number(),
+	waitBetweenTriesMs: z.number(),
+});
+
 const graphNodeSchema = z.object({
 	id: z.string().min(1),
 	name: z.string().min(1),
 	type: stepTypeSchema,
 	config: z.unknown().optional(),
+	retry: retryPolicySchema.optional(),
 });
 
 const graphEdgeSchema = z.object({

@@ -141,9 +141,11 @@ export type SeededSteps = Record<string, StepSlots[]>;
  *
  * The executor produces the first two variants (`ExecutorWaitDeclaration`). A
  * deadline can end the wait. A resume request can end it. A declaration can
- * name both, and then the first of the two ends it. A deadline comes paired
- * with the slots it emits, because the step is never re-run. The engine writes
- * the third variant itself, when it suspends a step on a sub-execution.
+ * name both, and then the first of the two ends it. Such a deadline comes
+ * paired with the slots it emits, because the step is not run again. The
+ * engine writes the last two variants itself: one when it suspends a step on
+ * a sub-execution, and one between two tries of a step that failed, whose
+ * deadline runs the node again (`RetryWaitDeclaration`).
  */
 export type WaitDeclaration =
 	| {
@@ -153,12 +155,14 @@ export type WaitDeclaration =
 			outputsAtDeadline: StepSlots;
 			/** Which resume request may end the wait early. If absent, none can. */
 			resumeBinding?: ResumeBinding;
+			retry?: never;
 	  }
 	| {
 			/** No deadline, so only a resume request ends this wait. */
 			resumeAt?: never;
 			outputsAtDeadline?: never;
 			resumeBinding: ResumeBinding;
+			retry?: never;
 	  }
 	| {
 			/**
@@ -169,13 +173,46 @@ export type WaitDeclaration =
 			resumeAt?: never;
 			outputsAtDeadline?: never;
 			resumeBinding?: never;
-	  };
+			retry?: never;
+	  }
+	| RetryWaitDeclaration;
 
 /**
- * The waits an executor may declare. A wait on a sub-execution is the
- * engine's own: an executor asks for one with a sub-execution declaration.
+ * The wait between two tries of a step whose node has a retry policy. The
+ * deadline is the next try. Unlike the other deadline wait, the step runs its
+ * node again when it fires, so it captures no outputs; and no resume request
+ * may end it, so it names no binding. The attempt count lives here, on the row
+ * the step keeps across its tries, so a try needs no row of its own.
  */
-export type ExecutorWaitDeclaration = Exclude<WaitDeclaration, { subExecutionId: string }>;
+export interface RetryWaitDeclaration {
+	/** The next try, ISO-8601. */
+	resumeAt: string;
+	retry: {
+		/** How many tries have failed so far. */
+		attempt: number;
+		/** The error of the last one, the one the step fails with if no try succeeds. */
+		lastError: StepError;
+	};
+	outputsAtDeadline?: never;
+	resumeBinding?: never;
+	subExecutionId?: never;
+}
+
+export function isRetryWaitDeclaration(
+	wait: WaitDeclaration | null | undefined,
+): wait is RetryWaitDeclaration {
+	return wait?.retry !== undefined;
+}
+
+/**
+ * The waits an executor may declare. A wait on a sub-execution and the wait
+ * between two tries are the engine's own: an executor asks for the first with
+ * a sub-execution declaration, and for the second by failing.
+ */
+export type ExecutorWaitDeclaration = Exclude<
+	WaitDeclaration,
+	{ subExecutionId: string } | RetryWaitDeclaration
+>;
 
 /** What a resume request for a wait must name (ADR-20260904-a-derived-token-authorizes-a-resume-request). */
 export type ResumeBinding = 'execution' | 'step';
@@ -207,10 +244,11 @@ export type SubExecutionOutcome =
 
 /**
  * What ended a step's wait, recorded on the row when it resumed. A deadline
- * carries nothing: the declaration already holds the outputs to emit. A request
- * carries the outputs the node's resume path produced where the request
- * arrived, and the engine emits them unread. Neither runs node code; a sub-execution
- * resume does, see `SubExecutionResumeCause`.
+ * carries nothing: the declaration already holds the outputs to emit, or, for
+ * a retry wait, says to run the node again. A request carries the outputs the
+ * node's resume path produced where the request arrived, and the engine emits
+ * them unread. Only the deadline of a retry wait and a sub-execution resume
+ * run node code, see `RetryWaitDeclaration` and `SubExecutionResumeCause`.
  */
 export type ResumeCause =
 	| { kind: 'deadline' }

@@ -57,12 +57,6 @@ export const engineRefusals: EngineRefusal[] = [
 		check: { code: 'CONTINUE_ERROR_OUTPUT' },
 	},
 	{
-		name: 'a node has Retry On Fail on',
-		workflow: fromTrigger('Node', [{ ...noOp('Node'), retryOnFail: true }]),
-		engineError: 'Retry On Fail',
-		check: { code: 'RETRY_ON_FAIL' },
-	},
-	{
 		name: 'a node has Execute Once on',
 		workflow: fromTrigger('Node', [{ ...noOp('Node'), executeOnce: true }]),
 		engineError: 'Execute Once',
@@ -108,6 +102,12 @@ export const engineRefusals: EngineRefusal[] = [
 		name: 'a Split In Batches node has Always Output Data on',
 		workflow: fromTrigger('Loop', [{ ...splitInBatches('Loop'), alwaysOutputData: true }]),
 		engineError: 'Split In Batches node with Always Output Data',
+		check: { code: 'SPLIT_IN_BATCHES_NODE_SETTING' },
+	},
+	{
+		name: 'a Split In Batches node has Retry On Fail on',
+		workflow: fromTrigger('Loop', [{ ...splitInBatches('Loop'), retryOnFail: true }]),
+		engineError: 'Split In Batches node with Retry On Fail',
 		check: { code: 'SPLIT_IN_BATCHES_NODE_SETTING' },
 	},
 	{

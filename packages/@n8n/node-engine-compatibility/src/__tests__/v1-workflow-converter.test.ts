@@ -350,6 +350,38 @@ describe('V1WorkflowConverter', () => {
 			expect(noOp?.config).toMatchObject({ continueOnFail: false });
 		});
 
+		describe('Retry On Fail', () => {
+			const convert = (extra: Partial<INode>) =>
+				converter
+					.convert(
+						workflow({
+							nodes: [manualTrigger, node('noop-uuid', 'No Operation', extra)],
+							connections: { 'When clicking Execute': { main: [[main('No Operation')]] } },
+						}),
+					)
+					.nodes.find((n) => n.id === 'noop-uuid');
+
+			it('puts a retry policy on the graph node, with the v1 defaults', () => {
+				expect(convert({ retryOnFail: true })).toMatchObject({
+					retry: { maxTries: 3, waitBetweenTriesMs: 1000 },
+				});
+			});
+
+			it('clamps the tries to 2..5 and the wait to 0..5000 ms, as v1 does', () => {
+				expect(convert({ retryOnFail: true, maxTries: 1, waitBetweenTries: -1 })).toMatchObject({
+					retry: { maxTries: 2, waitBetweenTriesMs: 0 },
+				});
+				expect(convert({ retryOnFail: true, maxTries: 10, waitBetweenTries: 9000 })).toMatchObject({
+					retry: { maxTries: 5, waitBetweenTriesMs: 5000 },
+				});
+			});
+
+			it('puts no retry policy on a node that does not retry', () => {
+				expect(convert({ retryOnFail: false, maxTries: 4 })).not.toHaveProperty('retry');
+				expect(convert({})).not.toHaveProperty('retry');
+			});
+		});
+
 		it('keeps Always Output Data in the config only when it is on', () => {
 			const convert = (alwaysOutputData?: boolean) =>
 				converter
@@ -453,42 +485,42 @@ describe('V1WorkflowConverter', () => {
 				}),
 			);
 
-		it.each<{ setting: string; extra: Partial<INode>; error: string }>([
-			{ setting: 'Retry On Fail', extra: { retryOnFail: true }, error: 'Retry On Fail' },
-			{ setting: 'Execute Once', extra: { executeOnce: true }, error: 'Execute Once' },
-		])('rejects a node with $setting on', ({ extra, error }) => {
-			expect(convertNoOp(extra)).toThrow(UnsupportedWorkflowError);
-			expect(convertNoOp(extra)).toThrow(error);
+		it('rejects a node with Execute Once on', () => {
+			expect(convertNoOp({ executeOnce: true })).toThrow(UnsupportedWorkflowError);
+			expect(convertNoOp({ executeOnce: true })).toThrow('Execute Once');
 		});
 
-		it('rejects a Split In Batches node with Always Output Data on, which the engine runs itself', () => {
-			const loop = node('loop-uuid', 'Loop', {
-				type: 'n8n-nodes-base.splitInBatches',
-				typeVersion: 3,
-				alwaysOutputData: true,
-			});
-			expect(() =>
-				converter.convert(
-					workflow({
-						nodes: [manualTrigger, loop],
-						connections: { 'When clicking Execute': { main: [[main('Loop')]] } },
-					}),
-				),
-			).toThrow('Split In Batches node with Always Output Data');
-		});
+		it.each<{ setting: string; extra: Partial<INode> }>([
+			{ setting: 'Always Output Data', extra: { alwaysOutputData: true } },
+			{ setting: 'Retry On Fail', extra: { retryOnFail: true } },
+		])(
+			'rejects a Split In Batches node with $setting on, which the engine runs itself',
+			({ setting, extra }) => {
+				const loop = node('loop-uuid', 'Loop', {
+					type: 'n8n-nodes-base.splitInBatches',
+					typeVersion: 3,
+					...extra,
+				});
+				expect(() =>
+					converter.convert(
+						workflow({
+							nodes: [manualTrigger, loop],
+							connections: { 'When clicking Execute': { main: [[main('Loop')]] } },
+						}),
+					),
+				).toThrow(`Split In Batches node with ${setting}`);
+			},
+		);
 
-		it('accepts a node with the execution settings explicitly off', () => {
-			expect(convertNoOp({ retryOnFail: false, executeOnce: false })).not.toThrow();
+		it('accepts a node with Execute Once explicitly off', () => {
+			expect(convertNoOp({ executeOnce: false })).not.toThrow();
 		});
 
 		it('ignores the execution settings of the fired trigger', () => {
 			expect(() =>
 				converter.convert(
 					workflow({
-						nodes: [
-							{ ...manualTrigger, retryOnFail: true, executeOnce: true },
-							node('noop-uuid', 'No Operation'),
-						],
+						nodes: [{ ...manualTrigger, executeOnce: true }, node('noop-uuid', 'No Operation')],
 						connections: toNoOp,
 					}),
 				),

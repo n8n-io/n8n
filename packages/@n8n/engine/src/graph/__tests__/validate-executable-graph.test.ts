@@ -28,6 +28,56 @@ describe('validateExecutableGraph', () => {
 		expect(() => validateExecutableGraph(graph)).toThrow('no trigger node');
 	});
 
+	describe('retry policy', () => {
+		const withRetry = (
+			retry: unknown,
+			type: WorkflowGraph['nodes'][number]['type'] = 'v1-node',
+		) => ({
+			nodes: [
+				validGraph.nodes[0],
+				{ id: 'a', name: 'A', type, retry } as WorkflowGraph['nodes'][number],
+			],
+			edges: validGraph.edges,
+		});
+
+		it('accepts a policy on a v1-node step', () => {
+			expect(() =>
+				validateExecutableGraph(withRetry({ maxTries: 3, waitBetweenTriesMs: 0 })),
+			).not.toThrow();
+		});
+
+		it.each([
+			{
+				shape: 'a step of another type',
+				graph: withRetry({ maxTries: 3, waitBetweenTriesMs: 0 }, 'wait'),
+				error: 'only a v1-node step retries',
+			},
+			{
+				shape: 'maxTries below 1',
+				graph: withRetry({ maxTries: 0, waitBetweenTriesMs: 0 }),
+				error: 'at least 1',
+			},
+			{
+				shape: 'a fractional maxTries',
+				graph: withRetry({ maxTries: 2.5, waitBetweenTriesMs: 0 }),
+				error: 'whole number',
+			},
+			{
+				shape: 'a negative wait',
+				graph: withRetry({ maxTries: 3, waitBetweenTriesMs: -1 }),
+				error: 'from 0 to',
+			},
+			{
+				shape: 'a wait past the bound',
+				graph: withRetry({ maxTries: 3, waitBetweenTriesMs: 1e16 }),
+				error: 'from 0 to',
+			},
+		])('rejects $shape', ({ graph, error }) => {
+			expect(() => validateExecutableGraph(graph)).toThrow(GraphValidationError);
+			expect(() => validateExecutableGraph(graph)).toThrow(error);
+		});
+	});
+
 	it('rejects a graph with more than one trigger node', () => {
 		const graph: WorkflowGraph = {
 			nodes: [...validGraph.nodes, { id: 'trigger-2', name: 'T2', type: 'trigger' }],

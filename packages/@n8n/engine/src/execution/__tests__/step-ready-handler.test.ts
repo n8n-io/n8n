@@ -1041,6 +1041,164 @@ describe('StepReadyHandler waits', () => {
 	);
 });
 
+describe('StepReadyHandler retries', () => {
+	const retryGraph: WorkflowGraph = {
+		...graph,
+		nodes: graph.nodes.map((node) =>
+			node.id === 'a' ? { ...node, retry: { maxTries: 3, waitBetweenTriesMs: 2_000 } } : node,
+		),
+	};
+	const failingExecutor = (): IStepExecutor => ({
+		execute: vi.fn().mockRejectedValue(new TypeError('node blew up')),
+	});
+
+	it('suspends the step until its next try instead of failing it, announcing nothing', async () => {
+		const stepStore = makeStepStore();
+		const queue = makeQueue();
+		const executionStore = makeExecutionStore({ graph: retryGraph });
+		const lifecycleEventPublisher = makeLifecycleEventPublisher();
+		const onStepSuspended = vi.fn();
+		const handler = makeHandler(
+			executionStore,
+			stepStore,
+			queue,
+			{ v1StepExecutor: failingExecutor() },
+			lifecycleEventPublisher,
+			noopExecutionResponseSender,
+			onStepSuspended,
+		);
+
+		const before = Date.now();
+		await handler.handle(event);
+
+		expect(stepStore.failStep).not.toHaveBeenCalled();
+		expect(stepStore.suspendStep).toHaveBeenCalledWith('step-a', {
+			resumeAt: expect.any(String),
+			retry: {
+				attempt: 1,
+				lastError: expect.objectContaining({ name: 'TypeError', message: 'node blew up' }),
+			},
+		});
+		const { resumeAt } = (stepStore.suspendStep as ReturnType<typeof vi.fn>).mock
+			.calls[0][1] as WaitDeclaration;
+		expect(Date.parse(resumeAt!) - before).toBeGreaterThanOrEqual(2_000);
+		expect(Date.parse(resumeAt!) - before).toBeLessThan(3_000);
+		// The sweeper fires the next try; nothing else learns of the failed one.
+		expect(onStepSuspended).toHaveBeenCalledTimes(1);
+		expect(queue.publish).not.toHaveBeenCalled();
+		expect(lifecycleEventPublisher.publish).not.toHaveBeenCalledWith(
+			expect.objectContaining({ type: 'step:waiting' }),
+		);
+		expect(lifecycleEventPublisher.publish).not.toHaveBeenCalledWith(
+			expect.objectContaining({ type: 'step:failed' }),
+		);
+		expect(executionStore.refreshLiveStatus).not.toHaveBeenCalled();
+	});
+
+	it('runs the node again, on fresh inputs, when the deadline of a retry wait dispatches the step', async () => {
+		const stepStore = makeStepStore({
+			waitDeclaration: {
+				resumeAt: '2020-01-01T00:00:00.000Z',
+				retry: { attempt: 1, lastError: { name: 'TypeError', message: 'node blew up' } },
+			},
+			resumeCause: { kind: 'deadline' },
+		});
+		const queue = makeQueue();
+		const executor = makeExecutor();
+		const handler = makeHandler(makeExecutionStore({ graph: retryGraph }), stepStore, queue, {
+			v1StepExecutor: executor,
+		});
+
+		await handler.handle(event);
+
+		expect(stepStore.loadStepsByKeys).toHaveBeenCalled();
+		expect(executor.execute).toHaveBeenCalledTimes(1);
+		expect(stepStore.completeStep).toHaveBeenCalledWith('step-a', [[{ json: { ok: true } }]]);
+		expect(queue.publish).toHaveBeenCalledWith({
+			type: 'step:settled',
+			executionId: 'exec-1',
+			stepId: 'step-a',
+		});
+	});
+
+	it('fails the step when the executor itself declares a retry wait', async () => {
+		const stepStore = makeStepStore();
+		const handler = makeHandler(makeExecutionStore(), stepStore, makeQueue(), {
+			v1StepExecutor: makeExecutor({
+				wait: {
+					resumeAt: '2099-01-01T00:00:00.000Z',
+					retry: { attempt: 1, lastError: { name: 'Error', message: 'faked' } },
+				},
+			}),
+		});
+
+		await handler.handle(event);
+
+		expect(stepStore.suspendStep).not.toHaveBeenCalled();
+		expect(stepStore.failStep).toHaveBeenCalledWith(
+			'step-a',
+			expect.objectContaining({ message: expect.stringContaining('retry wait') as string }),
+		);
+	});
+
+	it('does not retry a detached sub-execution that cannot start', async () => {
+		const stepStore = makeStepStore();
+		const subExecutionStarter: SubExecutionStarter = {
+			start: vi.fn().mockRejectedValue(new Error('admittance rejected')),
+		};
+		const detached = {
+			executionId: 'exec-sub',
+			workflowId: 'wf-sub',
+			graph: { nodes: [], edges: [] },
+			workflow: {},
+			triggerOutputs: [],
+			awaited: false as const,
+			outputs: [[]],
+		};
+		const handler = makeHandler(
+			makeExecutionStore({ graph: retryGraph }),
+			stepStore,
+			makeQueue(),
+			{ v1StepExecutor: makeExecutor({ subExecution: detached }) },
+			makeLifecycleEventPublisher(),
+			undefined,
+			undefined,
+			subExecutionStarter,
+		);
+
+		await handler.handle(event);
+
+		expect(stepStore.suspendStep).not.toHaveBeenCalled();
+		expect(stepStore.failStep).toHaveBeenCalledWith(
+			'step-a',
+			expect.objectContaining({ message: 'admittance rejected' }),
+		);
+	});
+
+	it('fails the step on its last try', async () => {
+		const stepStore = makeStepStore({
+			waitDeclaration: {
+				resumeAt: '2020-01-01T00:00:00.000Z',
+				retry: { attempt: 2, lastError: { name: 'TypeError', message: 'node blew up' } },
+			},
+			resumeCause: { kind: 'deadline' },
+		});
+		const queue = makeQueue();
+		const handler = makeHandler(makeExecutionStore({ graph: retryGraph }), stepStore, queue, {
+			v1StepExecutor: failingExecutor(),
+		});
+
+		await handler.handle(event);
+
+		expect(stepStore.suspendStep).not.toHaveBeenCalled();
+		expect(stepStore.failStep).toHaveBeenCalledWith(
+			'step-a',
+			expect.objectContaining({ name: 'TypeError', message: 'node blew up' }),
+		);
+		expect(queue.publish).toHaveBeenCalledWith(expect.objectContaining({ type: 'step:settled' }));
+	});
+});
+
 describe('StepReadyHandler resumes', () => {
 	const timeWait: WaitDeclaration = {
 		resumeAt: '2099-01-01T00:00:00.000Z',

@@ -42,9 +42,6 @@ function findNodeReasons(node: INode): EngineV2Reason[] {
 	if (node.onError === 'continueErrorOutput') {
 		reasons.push(temporaryReason(node, 'CONTINUE_ERROR_OUTPUT', 'it uses the error output'));
 	}
-	if (node.retryOnFail === true) {
-		reasons.push(temporaryReason(node, 'RETRY_ON_FAIL', 'it uses Retry On Fail'));
-	}
 	if (node.executeOnce === true) {
 		reasons.push(temporaryReason(node, 'EXECUTE_ONCE', 'it uses Execute Once'));
 	}
@@ -90,15 +87,20 @@ function findSplitInBatchesReasons(node: INode): EngineV2Reason[] {
 	const reasons: EngineV2Reason[] = [];
 	const { options } = node.parameters;
 
-	// The engine runs a batch node itself, and does not apply this setting.
-	if (node.alwaysOutputData === true) {
-		reasons.push(
-			temporaryReason(
-				node,
-				'SPLIT_IN_BATCHES_NODE_SETTING',
-				'it is a Loop Over Items node with Always Output Data',
-			),
-		);
+	// The engine runs a batch node itself, and applies neither setting.
+	for (const [key, label] of [
+		['alwaysOutputData', 'Always Output Data'],
+		['retryOnFail', 'Retry On Fail'],
+	] as const) {
+		if (node[key] === true) {
+			reasons.push(
+				temporaryReason(
+					node,
+					'SPLIT_IN_BATCHES_NODE_SETTING',
+					`it is a Loop Over Items node with ${label}`,
+				),
+			);
+		}
 	}
 
 	if (typeof options === 'string') {

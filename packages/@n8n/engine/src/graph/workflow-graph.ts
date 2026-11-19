@@ -30,6 +30,18 @@ export function isBatchStepConfig(config: unknown): config is BatchStepConfig {
 	return typeof batchSize === 'number' && Number.isInteger(batchSize) && batchSize >= 1;
 }
 
+/**
+ * How the engine runs a node again after its step fails. Each failed try
+ * suspends the step until the next one, as a wait with a deadline; the last
+ * try's failure fails the step.
+ */
+export interface RetryPolicy {
+	/** How many runs in total, the first one included. At least 1. */
+	maxTries: number;
+	/** How long the step waits between two tries. At least 0. */
+	waitBetweenTriesMs: number;
+}
+
 export interface GraphNode {
 	/** Deterministic from the source workflow, so re-converting yields the same graph. */
 	id: string;
@@ -38,6 +50,11 @@ export interface GraphNode {
 	type: StepType;
 	/** Step-type-specific configuration; some step types (e.g. trigger) carry none. */
 	config?: StepConfig;
+	/**
+	 * Absent for a node that runs once, whatever the outcome. Only a `v1-node`
+	 * step honours it; `validateExecutableGraph` refuses it on any other type.
+	 */
+	retry?: RetryPolicy;
 }
 
 export interface GraphEdge {
