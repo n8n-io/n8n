@@ -76,6 +76,7 @@ describe('ExecutionLedgerRowWriter', () => {
 			await expect(write(ctx)).resolves.toBe(true);
 
 			expect(sharedWorkflowRepository.getWorkflowOwningProjectId).toHaveBeenCalledWith('wf-1', ctx);
+			expect(workflowProjectService.getWorkflowProjectCached).not.toHaveBeenCalled();
 			expect(repository.append).toHaveBeenCalledWith(
 				expect.objectContaining({ projectId: 'owner' }),
 				ctx,
