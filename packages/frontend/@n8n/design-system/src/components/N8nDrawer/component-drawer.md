@@ -14,13 +14,14 @@ Build it on the Reka UI Dialog parts that `N8nDialog` already uses. Reka UI also
 ```
 N8nDrawer (reka-ui DialogRoot)
 └── DialogPortal
-    ├── N8nDrawerOverlay (reka-ui DialogOverlay) — rendered only when `modal` is true
-    └── N8nDrawerContent (reka-ui DialogContent)
-        ├── Visually hidden DialogTitle when `ariaLabel` is set and no N8nDrawerTitle is present
-        ├── Visually hidden DialogDescription when `ariaDescription` is set and no N8nDrawerDescription is present
-        ├── N8nDrawerHeader + N8nDrawerTitle when the `header` prop is set
-        ├── default slot
-        └── N8nDrawerClose when `showCloseButton` is true
+    └── portaled layer (`class`, `style`, `containerClass`)
+        ├── N8nDrawerOverlay (reka-ui DialogOverlay) — rendered only when `modal` is true
+        └── N8nDrawerContent (reka-ui DialogContent)
+            ├── Visually hidden DialogTitle when `ariaLabel` is set and no N8nDrawerTitle is present
+            ├── Visually hidden DialogDescription when `ariaDescription` is set and no N8nDrawerDescription is present
+            ├── N8nDrawerHeader + N8nDrawerTitle when the `header` prop is set
+            ├── default slot
+            └── N8nDrawerClose when `showCloseButton` is true
 ```
 
 The root does not render a trigger. The parent owns the open state, the same way `N8nDialog` does.
@@ -74,7 +75,7 @@ A click on portaled UI that belongs to a control inside the drawer must not coun
 
 Default: `medium`.
 
-The size class sets `--n8n-drawer--size`. Override that variable for a length that is not in the scale. The updates panel is 520px wide. Set the variable. Do not add a raw CSS length to the `size` prop.
+The size class sets `--n8n-drawer--size-preset` on the panel. The panel length is `var(--n8n-drawer--size, var(--n8n-drawer--size-preset))`. Set `--n8n-drawer--size` on the portaled layer for a length that is not in the scale. That value wins over the preset. The updates panel is 520px wide. Set the variable. Do not add a raw CSS length to the `size` prop.
 
 ```css
 .updates-drawer {
@@ -84,9 +85,11 @@ The size class sets `--n8n-drawer--size`. Override that variable for a length th
 
 ## Stacking
 
-The content z-index is `var(--n8n-drawer--z-index, 1950)`. `1950` is `APP_Z_INDEXES.DIALOGS`, the same level as `N8nDialog`. The overlay is one step below the content. `stacked` adds 2 to both.
+The portaled layer wraps the overlay and the panel. Both read `--n8n-drawer--z-index` from that layer.
 
-The NPS survey currently uses z-index `3001` so it paints above toasts and the assistant button. Set `--n8n-drawer--z-index: 3001` on that drawer. There is no `zIndex` prop.
+The panel z-index is `var(--n8n-drawer--z-index, 1950)`. The overlay z-index is `calc(var(--n8n-drawer--z-index, 1950) - 1)`. `stacked` adds 2 to each value. `1950` is `APP_Z_INDEXES.DIALOGS`, the same level as `N8nDialog`.
+
+The NPS survey currently uses z-index `3001` so the mask and the panel paint above toasts and the assistant button. Set `--n8n-drawer--z-index: 3001` on the portaled layer. The overlay is then `3000` and the panel is `3001`. A variable set only on the panel leaves the overlay at `1949`. There is no `zIndex` prop.
 
 ## Public API Definition
 
@@ -98,8 +101,8 @@ The NPS survey currently uses z-index `3001` so it paints above toasts and the a
 - `size?: DrawerSize` — Main-axis length. See [Sizes](#sizes). Default: `'medium'`
 - `modal?: boolean` — When `true`, the drawer shows the overlay, traps focus, and locks scroll. When `false`, the page stays visible and interactive. Default: `true`
 - `forceMount?: boolean` — Keep the content mounted for animation control
-- `trapFocus?: boolean` — Trap focus inside the drawer. Default: `true`
-- `disableOutsidePointerEvents?: boolean` — Block pointer events outside the drawer. Default: `true`
+- `trapFocus?: boolean` — Trap focus inside the drawer. When omitted, the value follows `modal`. Pass `true` or `false` to override that
+- `disableOutsidePointerEvents?: boolean` — Block pointer events outside the drawer. When omitted, the value follows `modal`. Pass `true` or `false` to override that
 - `closeOnOverlayClick?: boolean` — Close when the user clicks the overlay. Escape and the close button still close the drawer. Default: `true`
 - `closeOnEscape?: boolean` — Close when the user presses Escape. An overlay click and the close button still close the drawer. Default: `true`
 - `showCloseButton?: boolean` — Show the close button. The button is the last stop in the tab order. Default: `true`
@@ -107,7 +110,7 @@ The NPS survey currently uses z-index `3001` so it paints above toasts and the a
 - `ariaDescription?: string` — Accessible description when no `N8nDrawerDescription` is rendered. The description is visually hidden
 - `header?: string` — Renders `N8nDrawerHeader` and `N8nDrawerTitle` with this text. For a custom header, omit this prop and compose the parts in the default slot
 - `stacked?: boolean` — Paint this drawer above another open dialog or drawer. Default: `false`
-- `containerClass?: string` — Extra class on the panel
+- `containerClass?: string` — Extra class on the portaled layer. Use it to set `--n8n-drawer--size` or `--n8n-drawer--z-index`
 
 ```typescript
 type DrawerSize =
@@ -135,7 +138,7 @@ Give every drawer an accessible name. Set `header`, render `N8nDrawerTitle`, or 
 
 **Attributes**
 
-- `inheritAttrs` is `false`. `class`, `style`, `aria-*`, and `data-*` fall through to the panel, not the root
+- `inheritAttrs` is `false`. `class` and `style` apply to the portaled layer, so custom properties reach the overlay and the panel. `aria-*` and `data-*` apply to the panel
 - The close button sets `data-test-id="drawer-close-button"` and `aria-label` from `t('drawer.close')` (`Close drawer`)
 
 **Slots**
@@ -284,7 +287,9 @@ The Enter listener and the event-bus `close` event stay in `ModalDrawer`. The co
     <slot name="header" />
   </N8nDrawerHeader>
   <N8nDrawerBody>
-    <slot name="content" />
+    <span @keydown.stop>
+      <slot name="content" />
+    </span>
   </N8nDrawerBody>
 </N8nDrawer>
 ```
@@ -315,7 +320,7 @@ After the move:
 - [ ] Export the components and the `DrawerSize` and `DrawerSide` types from the design-system barrel
 - [ ] Add `drawer.close` (`Close drawer`) next to `dialog.close` in `src/locale/lang/en.ts`
 - [ ] Add Storybook stories under `Core/Drawer` for side, size, scroll, no close button, stacked, and controlled open
-- [ ] Add unit tests for open and close, Escape, overlay click, the close button name, focus move and restore, `modal="false"`, each side, and the portaled-popper exception
+- [ ] Add unit tests for open and close, Escape, overlay click, the close button name, focus move and restore, `modal="false"` (page stays interactive), each side, the overlay z-index following `--n8n-drawer--z-index`, and the portaled-popper exception
 - [ ] Allow this folder to import Reka Dialog parts. Ban `ElDrawer` everywhere
 - [ ] Point `ModalDrawer.vue` at `N8nDrawer` and keep its store, Enter, and `beforeClose` behavior
 - [ ] Remove the unused Element Plus drawer styles
