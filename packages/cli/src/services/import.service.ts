@@ -61,8 +61,8 @@ import { DATA_TABLE_ROWS_FILE_PREFIX } from './data-table-export.constants';
  * the old name itself.
  */
 const LEGACY_ENTITY_FILE_NAMES: Readonly<Record<string, string>> = {
-	// `AgentFile` became `KnowledgeFile` when it moved into the knowledge module.
-	agentfile: 'knowledgefile',
+	// `KnowledgeFile` became `AgentFile` again; releases 2.48 and 2.49 wrote `agent_files` rows to `knowledgefile.jsonl`.
+	knowledgefile: 'agentfile',
 };
 
 /** The entity name an archive file was written for: `user.2.jsonl` is `user`. */

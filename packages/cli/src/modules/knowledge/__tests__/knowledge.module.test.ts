@@ -6,7 +6,7 @@ import { ModuleMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
-import { KnowledgeFile } from '../entities/knowledge-file.entity';
+import { AgentFile } from '../entities/agent-file.entity';
 import { KnowledgeFileStore } from '../files/knowledge-file-store';
 import { KnowledgeConfig } from '../knowledge.config';
 import { KnowledgeModule } from '../knowledge.module';
@@ -52,7 +52,7 @@ describe('KnowledgeModule', () => {
 	});
 
 	it('registers the knowledge file entity', async () => {
-		await expect(new KnowledgeModule().entities()).resolves.toEqual([KnowledgeFile]);
+		await expect(new KnowledgeModule().entities()).resolves.toEqual([AgentFile]);
 	});
 
 	it('registers the configured blob backends on the knowledge file store on init', async () => {

@@ -7,7 +7,7 @@ Guidance for the knowledge module (`packages/cli/src/modules/knowledge`). See th
 The module owns knowledge for Agents: uploaded files and their retrieval, and external vector-store connections. The implementation moved here from `packages/cli/src/modules/agents/` in P0 of the plan, with no user-facing change. The agents module is the only consumer today. Background and decisions: [Knowledge module plan](https://app.notion.com/p/3f85b6e0c94f8147b598e8bb4508ac86) (internal).
 
 - `files/` holds uploaded-file knowledge: the file store (`init()` wires it to the configured blob backends), `KnowledgeFileService` (upload, list, delete; scope-based), the upload middleware, the storage naming helpers and the upload error.
-- `entities/` holds `KnowledgeFile` (table `agent_files`); `repositories/` holds its repository.
+- `entities/` holds `AgentFile` (table `agent_files`); `repositories/` holds its repository.
 - `retrieval/` holds the sandbox mirror (`KnowledgeMirrorService`), the shell commands and their parsers, the request and result schemas, and `KnowledgeRetrievalService`, the entry point for consumers.
 - `vector-stores/` holds vector-store construction, embedding credential resolution, the connection test and the error sanitiser. Agents calls them and supplies the credential provider.
 - `telemetry/` holds the helpers that the knowledge telemetry events share.
@@ -71,7 +71,7 @@ vector-stores/                           external vector-store connections, conn
 
 ## Disabled module
 
-`N8N_DISABLED_MODULES=knowledge` skips the module's `init()` and `entities()`. `KnowledgeFile` is then not registered with TypeORM while the `agent_files` table still exists, and an unguarded `KnowledgeFileRepository` call fails with a metadata error. The guards below keep every caller away from the repository while the module is off.
+`N8N_DISABLED_MODULES=knowledge` skips the module's `init()` and `entities()`. `AgentFile` is then not registered with TypeORM while the `agent_files` table still exists, and an unguarded `KnowledgeFileRepository` call fails with a metadata error. The guards below keep every caller away from the repository while the module is off.
 
 `knowledge-availability.service.ts` (`KnowledgeAvailabilityService`) is the one place that answers whether knowledge is available: `isModuleActive()` and `isFileKnowledgeEnabled()` (module active and sandbox on). Every consumer asks it before a knowledge call, derives its own flags from it, and raises the error that fits its own surface. The check runs at two levels on purpose: the controllers answer the user with the same 404 as the sandbox gate, and the facade protects the callers that bypass the controllers, today the deletion cascades. With the module off:
 

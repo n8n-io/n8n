@@ -336,24 +336,24 @@ describe('ImportService', () => {
 			// @ts-expect-error Accessing private property for testing
 			mockDataSource.entityMetadatas = [
 				{
-					name: 'KnowledgeFile',
+					name: 'AgentFile',
 					tableName: 'agent_files',
 					columns: [{ databaseName: 'id' }, { databaseName: 'agentId' }],
 				},
 			] as any;
-			// An export from before the rename holds `agentfile.jsonl`, numbered when large.
-			const mockFiles = ['agentfile.jsonl', 'agentfile.2.jsonl'];
+			// An export from before the rename holds `knowledgefile.jsonl`, numbered when large.
+			const mockFiles = ['knowledgefile.jsonl', 'knowledgefile.2.jsonl'];
 
 			vi.mocked(readdir).mockResolvedValue(mockFiles as any);
 			vi.mocked(safeJoinPath)
-				.mockReturnValueOnce('/test/input/agentfile.jsonl')
-				.mockReturnValueOnce('/test/input/agentfile.2.jsonl');
+				.mockReturnValueOnce('/test/input/knowledgefile.jsonl')
+				.mockReturnValueOnce('/test/input/knowledgefile.2.jsonl');
 
 			const result = await importService.getImportMetadata('/test/input');
 
 			expect(result).toEqual({
 				entityFiles: {
-					knowledgefile: ['/test/input/agentfile.jsonl', '/test/input/agentfile.2.jsonl'],
+					agentfile: ['/test/input/knowledgefile.jsonl', '/test/input/knowledgefile.2.jsonl'],
 				},
 				tableNames: ['agent_files'],
 				dataTableFiles: {},
@@ -364,43 +364,13 @@ describe('ImportService', () => {
 			// @ts-expect-error Accessing private property for testing
 			mockDataSource.entityMetadatas = [
 				{
-					name: 'KnowledgeFile',
+					name: 'AgentFile',
 					tableName: 'agent_files',
 					columns: [{ databaseName: 'id' }, { databaseName: 'agentId' }],
 				},
 			] as any;
 			// One export never writes both names: the old file is a leftover of an earlier run.
-			const mockFiles = ['agentfile.jsonl', 'agentfile.2.jsonl', 'knowledgefile.jsonl'];
-
-			vi.mocked(readdir).mockResolvedValue(mockFiles as any);
-			vi.mocked(safeJoinPath).mockReturnValueOnce('/test/input/knowledgefile.jsonl');
-
-			const result = await importService.getImportMetadata('/test/input');
-
-			expect(result).toEqual({
-				entityFiles: { knowledgefile: ['/test/input/knowledgefile.jsonl'] },
-				tableNames: ['agent_files'],
-				dataTableFiles: {},
-			});
-			expect(mockLogger.warn).toHaveBeenCalledWith(expect.stringContaining('agentfile.jsonl'));
-			expect(mockLogger.warn).toHaveBeenCalledWith(expect.stringContaining('agentfile.2.jsonl'));
-		});
-
-		it('should not remap an old-name file while an entity carries that name', async () => {
-			// @ts-expect-error Accessing private property for testing
-			mockDataSource.entityMetadatas = [
-				{
-					name: 'AgentFile',
-					tableName: 'agent_file_other',
-					columns: [{ databaseName: 'id' }],
-				},
-				{
-					name: 'KnowledgeFile',
-					tableName: 'agent_files',
-					columns: [{ databaseName: 'id' }, { databaseName: 'agentId' }],
-				},
-			] as any;
-			const mockFiles = ['agentfile.jsonl'];
+			const mockFiles = ['knowledgefile.jsonl', 'knowledgefile.2.jsonl', 'agentfile.jsonl'];
 
 			vi.mocked(readdir).mockResolvedValue(mockFiles as any);
 			vi.mocked(safeJoinPath).mockReturnValueOnce('/test/input/agentfile.jsonl');
@@ -409,7 +379,39 @@ describe('ImportService', () => {
 
 			expect(result).toEqual({
 				entityFiles: { agentfile: ['/test/input/agentfile.jsonl'] },
-				tableNames: ['agent_file_other'],
+				tableNames: ['agent_files'],
+				dataTableFiles: {},
+			});
+			expect(mockLogger.warn).toHaveBeenCalledWith(expect.stringContaining('knowledgefile.jsonl'));
+			expect(mockLogger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('knowledgefile.2.jsonl'),
+			);
+		});
+
+		it('should not remap an old-name file while an entity carries that name', async () => {
+			// @ts-expect-error Accessing private property for testing
+			mockDataSource.entityMetadatas = [
+				{
+					name: 'KnowledgeFile',
+					tableName: 'knowledge_file',
+					columns: [{ databaseName: 'id' }],
+				},
+				{
+					name: 'AgentFile',
+					tableName: 'agent_files',
+					columns: [{ databaseName: 'id' }, { databaseName: 'agentId' }],
+				},
+			] as any;
+			const mockFiles = ['knowledgefile.jsonl'];
+
+			vi.mocked(readdir).mockResolvedValue(mockFiles as any);
+			vi.mocked(safeJoinPath).mockReturnValueOnce('/test/input/knowledgefile.jsonl');
+
+			const result = await importService.getImportMetadata('/test/input');
+
+			expect(result).toEqual({
+				entityFiles: { knowledgefile: ['/test/input/knowledgefile.jsonl'] },
+				tableNames: ['knowledge_file'],
 				dataTableFiles: {},
 			});
 		});
