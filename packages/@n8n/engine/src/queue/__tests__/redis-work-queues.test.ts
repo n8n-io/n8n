@@ -29,7 +29,7 @@ function create(concurrency = { orchestration: 1, step: 1 }) {
 	return { publisher, consumers, orchestrationConsumer, stepConsumer, queues, close };
 }
 
-/** Starts both queues with handlers that wait until `release` is called. */
+/** Starts both queues with handlers that block until `stop()`. */
 function startBlocked({ queues }: ReturnType<typeof create>) {
 	let release = () => {};
 	const blocked = new Promise<void>((resolve) => (release = resolve));

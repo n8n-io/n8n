@@ -11,7 +11,7 @@ const silentLogger: EngineLogger = {
 	error: () => {},
 };
 
-/** Publishes `orchestration` and `step` messages to handlers that wait until `release` is called. */
+/** Publishes to both queues, whose handlers block until `stop()`. */
 async function startBlocked(
 	queues: EngineWorkQueues,
 	published: { orchestration: number; step: number },
