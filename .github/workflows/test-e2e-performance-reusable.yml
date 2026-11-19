@@ -6,6 +6,15 @@ permissions:
 on:
   workflow_call:
   workflow_dispatch:
+    inputs:
+      page-load-iterations:
+        description: 'Measured runs per page for the page-load benchmark (tests/performance/pages). Empty keeps the default of 10.'
+        type: string
+        default: ''
+      timeout-minutes:
+        description: 'Job timeout in minutes. 50 runs per page need about 90.'
+        type: number
+        default: 30
   schedule:
     - cron: '0 0 * * *' # Runs daily at midnight
 
@@ -20,8 +29,11 @@ jobs:
     uses: ./.github/workflows/test-e2e-reusable.yml
     with:
       test-mode: docker-artifact
-      test-command: pnpm --filter=n8n-playwright test:performance
+      # The reusable workflow runs the command as a bash word list, so an env
+      # prefix would not parse; `env` sets PERF_ITERATIONS for a dispatched run.
+      test-command: ${{ inputs.page-load-iterations && format('pnpm --filter=n8n-playwright exec env PERF_ITERATIONS={0} playwright test --project=performance', inputs.page-load-iterations) || 'pnpm --filter=n8n-playwright test:performance' }}
       workers: '1'
+      timeout-minutes: ${{ inputs.timeout-minutes || 30 }}
       pre-generated-matrix: '[{"shard":1,"images":""},{"shard":2,"images":""}]'
       currents-project-id: 'O9BJaN'
       artifact-prefix: performance

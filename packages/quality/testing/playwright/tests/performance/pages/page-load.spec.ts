@@ -29,7 +29,8 @@ import { attachMetric } from '../../../utils/metrics';
  * A load that fails is recorded with diagnostics and the run continues; the
  * test fails at the end, after the data files are written.
  */
-const ITERATIONS = Number(process.env.PERF_ITERATIONS ?? 10);
+// `|| 10` also covers an empty or non-numeric value from a CI input.
+const ITERATIONS = Number(process.env.PERF_ITERATIONS) || 10;
 const TRACE_MODE = parseTraceMode(process.env.PERF_TRACE);
 const COLD_CACHE = process.env.PERF_COLD_CACHE === 'true';
 const TRACE_SCREENSHOTS = process.env.PERF_TRACE_SCREENSHOTS === 'true';
@@ -50,7 +51,8 @@ test.describe(
 	'Editor page load',
 	{ annotation: [{ type: 'owner', description: 'Identity & Access' }] },
 	() => {
-		test.setTimeout(60 * 60_000);
+		// 50 runs per page on the stand take about an hour.
+		test.setTimeout(2 * 60 * 60_000);
 
 		test('measures the most visited pages', async ({ n8n, api, baseURL, sut }, testInfo) => {
 			const startedAt = new Date().toISOString();
