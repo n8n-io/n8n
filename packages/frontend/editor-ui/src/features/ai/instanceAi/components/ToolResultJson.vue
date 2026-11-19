@@ -67,10 +67,15 @@ const jsonString = computed(() => {
 const isTruncated = computed(() => jsonString.value.length > MAX_JSON_DISPLAY_LENGTH);
 
 const highlighted = computed(() => {
-	const text = isTruncated.value
-		? jsonString.value.slice(0, MAX_JSON_DISPLAY_LENGTH)
-		: jsonString.value;
-	return highlightJson(text);
+	// A cut-off JSON string has no structure to walk, so show it as plain text.
+	if (isTruncated.value) return escapeHtml(jsonString.value.slice(0, MAX_JSON_DISPLAY_LENGTH));
+	// Walk the parsed string, not the raw value, so the output matches
+	// JSON.stringify (toJSON, dropped undefined values).
+	try {
+		return highlightJson(JSON.parse(jsonString.value));
+	} catch {
+		return escapeHtml(jsonString.value);
+	}
 });
 
 function downloadFullJson() {
