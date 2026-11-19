@@ -66,6 +66,7 @@ describe('LogsViewRunData', () => {
 		// so they cannot continue after the test environment is torn down.
 		await flushPromises();
 		await vi.dynamicImportSettled();
+		runDataDisplayModeRegistry.clear();
 	});
 
 	it('shows the credential cause without a sharing action', () => {

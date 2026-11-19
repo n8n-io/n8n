@@ -209,8 +209,9 @@ its section. Two links with the same `order` keep their registration order. A li
 `section` is listed before the first heading. Neither field is part of `IMenuItem`.
 
 All the register functions are in `editor-ui/src/app/moduleInitializer/moduleInitializer.ts`.
-`main.ts` registers `routes` before the mount. `app/init/index.ts` registers the other surfaces
-after the login.
+`main.ts` registers `routes` before the mount. `app/init/index.ts` registers
+`runDataDisplayModes` before the login check, so a visitor in preview mode sees run data. It
+registers the other surfaces after the login.
 
 `pushHandlers` has one more rule. Only an **active** module registers its handlers. A module
 handler also stops the built-in handler of the shell for that push type. A handler from an

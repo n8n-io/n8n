@@ -1829,7 +1829,7 @@ defineExpose({ enterEditMode });
 					!props.compact &&
 					hasNodeRun &&
 					!isSearchInSchemaView &&
-					((dataCount > 0 && maxRunIndex === 0) || search) &&
+					((dataCount > 0 && maxRunIndex === 0) || activeSearch) &&
 					!isArtificialRecoveredEventItem &&
 					!displaysMultipleNodes &&
 					!isExecutionRedacted
@@ -2153,7 +2153,7 @@ defineExpose({ enterEditMode });
 			</div>
 
 			<div v-else-if="shouldShowNoDataInBranch" :class="$style.center">
-				<NDVEmptyState v-if="search" :title="i18n.baseText('ndv.search.noMatch.title')">
+				<NDVEmptyState v-if="activeSearch" :title="i18n.baseText('ndv.search.noMatch.title')">
 					<I18nT keypath="ndv.search.noMatch.description" tag="span" scope="global">
 						<template #link>
 							<a href="#" @click.prevent="onSearchClear">
