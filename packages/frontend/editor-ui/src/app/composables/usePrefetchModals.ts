@@ -1,4 +1,4 @@
-import { onBeforeUnmount, onMounted } from 'vue';
+import { onBeforeUnmount, onMounted, watch, type WatchStopHandle } from 'vue';
 import { isRecord } from '@n8n/utils/is-record';
 import { MODAL_PREFETCH_FALLBACK_DELAY, MODAL_PREFETCH_IDLE_TIMEOUT } from '@/app/constants';
 import { lazyModalLoaders, type LazyModalKey } from '@/app/modals/lazyModals';
@@ -45,12 +45,17 @@ async function prefetch(key: LazyModalKey): Promise<void> {
  * Loads the code of the given modals after the page mounts, one modal for each idle period,
  * in list order. The first open of these modals then makes no network request.
  * Does nothing when the user turned on data saving.
+ *
+ * `enabled` tells if the page can open the modals now. The prefetch starts when it first
+ * returns true, so it can depend on data that loads after mount.
  */
 export function usePrefetchModals(
 	keys: readonly LazyModalKey[],
 	options: { enabled?: () => boolean } = {},
 ): void {
 	let cancelPending: (() => void) | undefined;
+	let stopWatching: WatchStopHandle | undefined;
+	let started = false;
 	let unmounted = false;
 
 	function prefetchFrom(index: number) {
@@ -63,13 +68,30 @@ export function usePrefetchModals(
 		});
 	}
 
-	onMounted(() => {
-		if (options.enabled?.() === false || isSaveDataOn()) return;
+	function start() {
+		if (started) return;
+		started = true;
+		stopWatching?.();
 		prefetchFrom(0);
+	}
+
+	onMounted(() => {
+		if (isSaveDataOn()) return;
+
+		const { enabled } = options;
+		if (!enabled) {
+			start();
+			return;
+		}
+
+		stopWatching = watch(enabled, (isEnabled) => isEnabled && start(), { immediate: true });
+		// With `immediate`, `start` can run before `stopWatching` exists.
+		if (started) stopWatching();
 	});
 
 	onBeforeUnmount(() => {
 		unmounted = true;
+		stopWatching?.();
 		cancelPending?.();
 	});
 }

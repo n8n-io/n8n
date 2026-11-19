@@ -57,8 +57,6 @@ const documentTitle = useDocumentTitle();
 const pageRedirectionHelper = usePageRedirectionHelper();
 const userRoleProvisioningStore = useUserRoleProvisioningStore();
 
-usePrefetchModals([INVITE_USER_MODAL_KEY, DELETE_USER_MODAL_KEY]);
-
 const i18n = useI18n();
 
 const search = ref('');
@@ -82,6 +80,17 @@ const isExpressionMappingEnabled = computed(
 );
 
 const isSSOEnabled = computed(() => !!ssoStore.isSamlLoginEnabled || !!ssoStore.isOidcLoginEnabled);
+
+// The same conditions as the invite button and the delete action.
+usePrefetchModals([INVITE_USER_MODAL_KEY], {
+	enabled: () =>
+		!isSSOEnabled.value &&
+		usersStore.usersLimitNotReached &&
+		!isInstanceRoleProvisioningEnabled.value,
+});
+usePrefetchModals([DELETE_USER_MODAL_KEY], {
+	enabled: () => hasPermission(['rbac'], { rbac: { scope: 'user:delete' } }),
+});
 
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.users'));

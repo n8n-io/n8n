@@ -30,8 +30,6 @@ const loading = ref(false);
 const router = useRouter();
 const pushConnection = usePushConnection({ router });
 const pushStore = usePushConnectionStore();
-
-usePrefetchModals([COMMUNITY_PACKAGE_INSTALL_MODAL_KEY]);
 const externalHooks = useExternalHooks();
 const i18n = useI18n();
 const telemetry = useTelemetry();
@@ -50,6 +48,8 @@ const isManagedByEnv = computed((): boolean => {
 const canInstall = computed((): boolean => {
 	return settingsStore.isUnverifiedPackagesEnabled && !isManagedByEnv.value;
 });
+
+usePrefetchModals([COMMUNITY_PACKAGE_INSTALL_MODAL_KEY], { enabled: () => canInstall.value });
 
 const getEmptyStateTitle = computed(() => {
 	if (!settingsStore.isUnverifiedPackagesEnabled) {

@@ -12,6 +12,9 @@ import SettingsUsersView from './SettingsUsersView.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { useEmitters } from '@/__tests__/utils';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
+import { isModalPrefetchEnabled } from '@/__tests__/prefetchModals';
+
+vi.mock('@/app/composables/usePrefetchModals');
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
@@ -1263,6 +1266,30 @@ describe('SettingsUsersView', () => {
 					},
 				});
 			});
+		});
+	});
+
+	describe('modal prefetch', () => {
+		it('prefetches the delete modal only with the user:delete scope', () => {
+			const spy = vi.spyOn(permissions, 'hasPermission').mockReturnValue(false);
+			renderComponent();
+			expect(isModalPrefetchEnabled(DELETE_USER_MODAL_KEY)).toBe(false);
+
+			spy.mockImplementation((_features, options) => options?.rbac?.scope === 'user:delete');
+			expect(isModalPrefetchEnabled(DELETE_USER_MODAL_KEY)).toBe(true);
+			spy.mockRestore();
+		});
+
+		it('prefetches the invite modal only when the user can invite', () => {
+			renderComponent();
+			expect(isModalPrefetchEnabled(INVITE_USER_MODAL_KEY)).toBe(true);
+
+			usersStore.usersLimitNotReached = false;
+			expect(isModalPrefetchEnabled(INVITE_USER_MODAL_KEY)).toBe(false);
+
+			usersStore.usersLimitNotReached = true;
+			ssoStore.isSamlLoginEnabled = true;
+			expect(isModalPrefetchEnabled(INVITE_USER_MODAL_KEY)).toBe(false);
 		});
 	});
 });

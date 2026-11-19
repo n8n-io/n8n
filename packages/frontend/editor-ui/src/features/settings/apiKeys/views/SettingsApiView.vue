@@ -54,7 +54,9 @@ const i18n = useI18n();
 const { goToUpgrade } = usePageRedirectionHelper();
 const telemetry = useTelemetry();
 
-usePrefetchModals([API_KEY_CREATE_OR_EDIT_MODAL_KEY]);
+usePrefetchModals([API_KEY_CREATE_OR_EDIT_MODAL_KEY], {
+	enabled: () => settingsStore.isPublicApiEnabled,
+});
 
 const loading = ref(false);
 const apiKeysStore = useApiKeysStore();

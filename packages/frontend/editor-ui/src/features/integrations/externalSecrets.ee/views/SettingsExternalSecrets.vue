@@ -18,7 +18,9 @@ const toast = useToast();
 const documentTitle = useDocumentTitle();
 const pageRedirectionHelper = usePageRedirectionHelper();
 
-usePrefetchModals([EXTERNAL_SECRETS_PROVIDER_MODAL_KEY]);
+usePrefetchModals([EXTERNAL_SECRETS_PROVIDER_MODAL_KEY], {
+	enabled: () => externalSecretsStore.isEnterpriseExternalSecretsEnabled,
+});
 
 const sortedProviders = computed(() => {
 	return ([...externalSecretsStore.providers] as ExternalSecretsProvider[]).sort((a, b) => {

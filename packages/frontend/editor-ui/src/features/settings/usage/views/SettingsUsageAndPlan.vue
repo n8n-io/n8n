@@ -41,8 +41,6 @@ const toast = useToast();
 const documentTitle = useDocumentTitle();
 const pageRedirectionHelper = usePageRedirectionHelper();
 
-usePrefetchModals([COMMUNITY_PLUS_ENROLLMENT_MODAL]);
-
 const queryParamCallback = ref<string>(
 	`callback=${encodeURIComponent(`${window.location.origin}${window.location.pathname}`)}`,
 );
@@ -192,6 +190,11 @@ onMounted(async () => {
 		}
 		toast.showError(error, error.name, { message: error.message });
 	}
+});
+
+// After `onMounted` above, which sets `isLoading` before this reads it.
+usePrefetchModals([COMMUNITY_PLUS_ENROLLMENT_MODAL], {
+	enabled: () => !usageStore.isLoading && isCommunity.value && canUserRegisterCommunityPlus.value,
 });
 
 const sendUsageTelemetry = (action: UsageTelemetry['action']) => {

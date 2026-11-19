@@ -1,4 +1,4 @@
-import { defineComponent, h } from 'vue';
+import { defineComponent, h, nextTick, ref } from 'vue';
 import { cleanup, render } from '@testing-library/vue';
 import { flushPromises } from '@vue/test-utils';
 
@@ -148,6 +148,43 @@ describe('usePrefetchModals', () => {
 
 		expect(requestIdleCallback).not.toHaveBeenCalled();
 		for (const key of KEYS) expect(loader(key)).not.toHaveBeenCalled();
+	});
+
+	it('starts when it becomes enabled after mount', async () => {
+		const enabled = ref(false);
+		renderPage({ enabled: () => enabled.value });
+		await flushPromises();
+		expect(requestIdleCallback).not.toHaveBeenCalled();
+
+		enabled.value = true;
+		await nextTick();
+		expect(requestIdleCallback).toHaveBeenCalledTimes(1);
+
+		await runNextIdle();
+		expect(loader(WORKFLOW_SETTINGS_MODAL_KEY)).toHaveBeenCalledTimes(1);
+	});
+
+	it('starts only once when it is enabled again', async () => {
+		const enabled = ref(true);
+		renderPage({ enabled: () => enabled.value });
+
+		enabled.value = false;
+		await nextTick();
+		enabled.value = true;
+		await nextTick();
+
+		expect(requestIdleCallback).toHaveBeenCalledTimes(1);
+	});
+
+	it('schedules nothing when it becomes enabled after the page unmounts', async () => {
+		const enabled = ref(false);
+		const { unmount } = renderPage({ enabled: () => enabled.value });
+
+		unmount();
+		enabled.value = true;
+		await nextTick();
+
+		expect(requestIdleCallback).not.toHaveBeenCalled();
 	});
 
 	it('schedules nothing when the user turned on data saving', async () => {
