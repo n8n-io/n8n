@@ -136,6 +136,45 @@ describe('Microsoft SharePoint v2 — Item: Create', () => {
 		);
 	});
 
+	it('sends the collection type with a multi-choice value', async () => {
+		setParams({ ...baseParams, 'columns.value': { Tags: ['A', 'B'] } });
+		apiRequest.mockResolvedValue({ id: '1' });
+
+		await node.execute.call(ctx);
+
+		expect(apiRequest).toHaveBeenCalledWith(
+			'POST',
+			ITEMS_URL,
+			{ fields: { 'Tags@odata.type': 'Collection(Edm.String)', Tags: ['A', 'B'] } },
+			{},
+			undefined,
+			{},
+		);
+	});
+
+	it('drops a collection type key from the auto-mapped input and writes its own', async () => {
+		setParams({
+			...baseParams,
+			'columns.mappingMode': 'autoMapInputData',
+			'columns.schema': [...SCHEMA, { id: 'Tags', type: 'string' }],
+		});
+		ctx.getInputData.mockReturnValue([
+			{ json: { Tags: ['A', 'B'], 'Tags@odata.type': 'Collection(Edm.Int32)' } },
+		]);
+		apiRequest.mockResolvedValue({ id: '1' });
+
+		await node.execute.call(ctx);
+
+		expect(apiRequest).toHaveBeenCalledWith(
+			'POST',
+			ITEMS_URL,
+			{ fields: { 'Tags@odata.type': 'Collection(Edm.String)', Tags: ['A', 'B'] } },
+			{},
+			undefined,
+			{},
+		);
+	});
+
 	it('auto-maps only the input properties that match list columns', async () => {
 		setParams({ ...baseParams, 'columns.mappingMode': 'autoMapInputData' });
 		ctx.getInputData.mockReturnValue([{ json: { Title: 'Mapped', notAColumn: 'dropped' } }]);

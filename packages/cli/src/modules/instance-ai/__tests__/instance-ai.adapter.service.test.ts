@@ -30,16 +30,7 @@ vi.mock('@n8n/instance-ai', async () => {
 			const safeContent = content.replace(/<\/untrusted_data/gi, '&lt;/untrusted_data');
 			return `<untrusted_data source="${esc(source)}"${safeLabel}>\n${safeContent}\n</untrusted_data>`;
 		},
-		builderTemplatesOptionsFromEnv: () => ({}),
 		deriveCredentialHosts: vi.fn().mockReturnValue([]),
-		BuilderTemplatesService: class {
-			async getBundle() {
-				return { files: [], indexTxt: '', version: null };
-			}
-			getVersion() {
-				return null;
-			}
-		},
 	};
 });
 
@@ -1960,6 +1951,7 @@ import {
 	type RoleService,
 	AiPreferenceScopeFullError,
 	type AiPreferenceService,
+	WorkflowVersionedSettingsService,
 } from '@n8n/backend-services';
 import { type DataTableRepository, type DataTableService } from '@n8n/backend-module-data-table';
 
@@ -1996,6 +1988,8 @@ import { InstanceAiAdapterService } from '../instance-ai.adapter.service';
 import { InstanceAiBuilderDelegateAdapterService } from '../instance-ai-builder-delegate.adapter';
 import { InstanceAiSkillsAdapterService } from '../instance-ai-skills.adapter';
 import { SkillsGate } from '@/modules/skills';
+import { mockInstance } from '@n8n/backend-test-utils';
+import { AiPreferenceSettingsService } from '@/services/ai-preference-settings.service';
 import type { TemporaryWorkflowMarkers } from '../temporary-workflow-markers';
 import { AgentsBuilderService } from '@/modules/agents/builder/agents-builder.service';
 import type { AgentCredentialProvider } from '@/modules/agents/agent-credential-provider.contracts';
@@ -6953,6 +6947,54 @@ describe('createExecutionAdapter runStep()', () => {
 		]);
 	});
 
+	it('runs a past version on the engine that the version stores, and records that version', async () => {
+		const harness = createRunAdapterForTests({
+			...chainWorkflow,
+			versionId: 'v-draft',
+			settings: { engineType: 'v1', timezone: 'Europe/Berlin' },
+		});
+		harness.mockWorkflowHistoryService.getVersion.mockResolvedValue({
+			versionId: 'v-old',
+			nodes: chainWorkflow.nodes,
+			connections: chainWorkflow.connections,
+			settings: { engineType: 'v2' },
+		});
+		const versionedSettings = mock<WorkflowVersionedSettingsService>();
+		versionedSettings.forVersionRun.mockImplementation((settings, version) => ({
+			...settings,
+			...version.settings,
+		}));
+		vi.mocked(Container.get).mockImplementation(((token: unknown) =>
+			token === WorkflowVersionedSettingsService
+				? versionedSettings
+				: harness.mockExecutionPersistence) as typeof Container.get);
+		const runStep = harness.adapter.runStep as NonNullable<typeof harness.adapter.runStep>;
+
+		await runStep('wf-1', 'Send', { versionId: 'v-old' });
+
+		const runData = harness.mockWorkflowRunner.run.mock.calls[0][0];
+		expect(runData.workflowData.versionId).toBe('v-old');
+		expect(runData.workflowData.settings).toMatchObject({
+			engineType: 'v2',
+			timezone: 'Europe/Berlin',
+		});
+	});
+
+	it('runs the draft on the draft engine when no version is named', async () => {
+		const harness = createRunAdapterForTests({
+			...chainWorkflow,
+			versionId: 'v-draft',
+			settings: { engineType: 'v1' },
+		});
+		const runStep = harness.adapter.runStep as NonNullable<typeof harness.adapter.runStep>;
+
+		await runStep('wf-1', 'Send', undefined);
+
+		const runData = harness.mockWorkflowRunner.run.mock.calls[0][0];
+		expect(runData.workflowData.versionId).toBe('v-draft');
+		expect(runData.workflowData.settings.engineType).toBe('v1');
+	});
+
 	it('reads the draft without touching history when no version is named', async () => {
 		const harness = createRunAdapterForTests(chainWorkflow);
 		const runStep = harness.adapter.runStep as NonNullable<typeof harness.adapter.runStep>;
@@ -8805,10 +8847,23 @@ describe('createContext: aiPreferenceService', () => {
 		return { service, aiPreferenceService, logger, telemetry };
 	}
 
-	it('is always present', () => {
+	const preferenceSettings = mockInstance(AiPreferenceSettingsService, { isEnabled: true });
+
+	afterEach(() => {
+		Object.assign(preferenceSettings, { isEnabled: true });
+	});
+
+	it('is present while preferences are on', () => {
 		const { service } = buildService();
 		const context = service.createContext(user, { threadId: 't1' });
 		expect(context.aiPreferenceService).toBeDefined();
+	});
+
+	it('is absent while preferences are off', () => {
+		Object.assign(preferenceSettings, { isEnabled: false });
+		const { service } = buildService();
+		const context = service.createContext(user, { threadId: 't1' });
+		expect(context.aiPreferenceService).toBeUndefined();
 	});
 
 	it('writes with source aia and returns the saved row', async () => {

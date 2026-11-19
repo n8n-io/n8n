@@ -1,9 +1,116 @@
-import { resetConfig, ScopeLockdownRule, setConfig } from '@n8n/playwright-janitor';
-import { readFileSync } from 'node:fs';
+import {
+	createDefaultRunner,
+	NoPageInFlowRule,
+	resetConfig,
+	ScopeLockdownRule,
+	setConfig,
+} from '@n8n/playwright-janitor';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname, join } from 'node:path';
 import { Project } from 'ts-morph';
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 
 import config from './janitor.config.mjs';
+
+describe('Benchmark duplicate-logic configuration', () => {
+	let rootDir: string;
+
+	beforeEach(() => {
+		rootDir = mkdtempSync(join(tmpdir(), 'janitor-benchmarks-'));
+		setConfig({ ...config, rootDir });
+	});
+
+	afterEach(() => {
+		resetConfig();
+		rmSync(rootDir, { recursive: true, force: true });
+	});
+
+	function writeSpec(path: string, content: string) {
+		const file = join(rootDir, path);
+		mkdirSync(dirname(file), { recursive: true });
+		writeFileSync(file, content);
+	}
+
+	function findings(rule: string) {
+		const runner = createDefaultRunner();
+		runner.enableOnly([rule]);
+		return runner.run({ rootDir }).results.flatMap((result) => result.violations);
+	}
+
+	test.each(['benchmarks', 'benchmarks-local'])(
+		'allows comparable workload profiles in %s and still checks their owners',
+		(directory) => {
+			for (const workers of [1, 2]) {
+				writeSpec(
+					`tests/infrastructure/${directory}/throughput/workers-${workers}.spec.ts`,
+					`test('${workers} workers', async () => {
+						const workload = await prepareWorkload({ workers: ${workers} });
+						await workload.measure();
+					});`,
+				);
+			}
+
+			expect(findings('duplicate-logic')).toEqual([]);
+			expect(findings('valid-owner-annotation').map(({ message }) => message)).toEqual([
+				'Spec has no owner annotation',
+				'Spec has no owner annotation',
+			]);
+		},
+	);
+
+	test('still reports copied test bodies outside the benchmark directories', () => {
+		for (const name of ['first', 'second']) {
+			writeSpec(
+				`tests/e2e/workflows/${name}.spec.ts`,
+				`test('${name}', async ({ n8n }) => {
+					await n8n.start.fromBlankCanvas();
+					await n8n.canvas.clickZoomToFitButton();
+				});`,
+			);
+		}
+
+		const violations = findings('duplicate-logic');
+		expect(violations).toHaveLength(1);
+		expect(violations[0].message).toContain('Duplicate test logic: "second"');
+	});
+});
+
+describe('Composable browser orchestration configuration', () => {
+	beforeEach(() => setConfig(config));
+	afterEach(() => resetConfig());
+
+	const analyze = (body: string) => {
+		const project = new Project({ useInMemoryFileSystem: true });
+		const file = project.createSourceFile(
+			`${config.rootDir}/composables/ExampleComposer.ts`,
+			`export class ExampleComposer {\nasync setup() {\n${body}\n}\n}`,
+		);
+		return new NoPageInFlowRule().analyzeProject(project, [file]).map(({ line }) => line - 2);
+	};
+
+	test('allows browser orchestration', () => {
+		expect(
+			analyze(`await this.n8n.page.route('**/rest/example', async () => {});
+				await this.n8n.page.unroute('**/rest/example');
+				await this.n8n.page.waitForRequest('**/run');
+				await this.n8n.page.waitForResponse('**/run');
+				await this.n8n.page.waitForEvent('popup');
+				await this.n8n.page.context().newPage();
+				this.n8n.page.context().browser();`),
+		).toEqual([]);
+	});
+
+	test('reports DOM access behind an allowed operation', () => {
+		expect(
+			analyze(`this.n8n.page.context().pages()[0].getByTestId('button').click();
+				this.n8n.page.context().newPage().locator('button').click();
+				await this.n8n.page.route('**/rest/example', async () => {
+					await this.n8n.page.getByTestId('button').click();
+				});`),
+		).toEqual([1, 2, 4]);
+	});
+});
 
 describe('AIAssistantPage scope configuration', () => {
 	beforeEach(() => setConfig(config));

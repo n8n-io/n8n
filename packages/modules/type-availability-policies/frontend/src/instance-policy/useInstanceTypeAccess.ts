@@ -12,15 +12,21 @@ import type { RestrictedTypeKind } from '../type-availability-policies.constants
 export type InstanceTypeAccessRow = {
 	name: string;
 	access: PolicyAction;
+	/** The rule that decides the access, or `null` when the default action decides it. */
+	matchedRuleId: string | null;
 	/** False when a rule leaves the type open to project opt-in, which the admin page cannot set. */
 	editable: boolean;
 };
 
-/** Changes the rules so that one type gets the given access, and no other type changes. */
+/**
+ * Changes the rules so that one type gets the given access. `decidingRuleId` is the rule that decides
+ * the type now: `null` when the default action decides it, `undefined` when it is not known.
+ */
 export type SetTypeAccess<K extends RestrictedTypeKind> = (
 	policy: InstancePolicyContent<K>,
 	typeName: string,
 	access: PolicyAction,
+	decidingRuleId?: string | null,
 ) => InstancePolicyContent<K>;
 
 type PendingChange = { access: PolicyAction; savedVersion?: number };
@@ -46,6 +52,7 @@ export function useInstanceTypeAccess<K extends RestrictedTypeKind>(
 		(response.value?.types ?? []).map((type) => ({
 			name: type.name,
 			access: pending.get(type.name)?.access ?? type.access,
+			matchedRuleId: type.matchedRuleId,
 			editable: !(type.access === 'delegate' && type.matchedRuleId !== null),
 		})),
 	);
@@ -88,9 +95,14 @@ export function useInstanceTypeAccess<K extends RestrictedTypeKind>(
 	async function changeAccess(typeName: string, access: PolicyAction) {
 		const change: PendingChange = { access };
 		pending.set(typeName, change);
-		const result = await instancePolicy.save(kind, (policy) =>
-			setTypeAccess(policy, typeName, access),
-		);
+		const result = await instancePolicy.save(kind, (policy) => {
+			// The access list names the deciding rule only for the policy version that it read.
+			const decidingRuleId =
+				policy.version === response.value?.version
+					? response.value.types.find((type) => type.name === typeName)?.matchedRuleId
+					: undefined;
+			return setTypeAccess(policy, typeName, access, decidingRuleId);
+		});
 
 		// A later pick on the same row owns the entry now.
 		if (pending.get(typeName) !== change) return;

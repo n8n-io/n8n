@@ -257,7 +257,7 @@ export class Column {
 	private assertCanAutogenerate(method: string) {
 		assert(
 			this.type !== 'uuid',
-			`${method} on UUID columns emits DEFAULT uuid_generate_v4(), which fails on managed Postgres (e.g. Supabase). Use column.uuid.primary.notNull and generate UUIDs in application code instead.`,
+			`${method} on UUID columns emits DEFAULT uuid_generate_v4(), which fails on managed Postgres (e.g. Supabase). Use column.uuid.primary and generate UUIDs in application code instead.`,
 		);
 	}
 }

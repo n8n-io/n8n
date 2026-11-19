@@ -257,6 +257,7 @@ export const HANDLED_CORPUS: string[] = [
 	'={{ $json.item.names.map(n => n.toTitleCase()) }}',
 	'={{ $input.first().json.item.names.first() }}',
 	"={{ $('Source').item.json.item.my_object.toJsonString() }}",
+	"={{ $json.item.active\n  ? 'a\\\n\\\nb'\n  : 'c' }}",
 ];
 
 // Fits the subset, but a runtime value falls outside what the parse proved:

@@ -7,6 +7,7 @@ import { AllowAllAdmittance } from '../../admittance';
 import { SharedSecretIdentityVerifier } from '../../auth';
 import { createDataSource, createStores } from '../../database';
 import { generateId } from '../../database/generate-id';
+import { createInMemoryWorkQueues } from '../../queue';
 import { noopExecutionResponseSender } from '../../response-channel';
 import { createEngineRuntime } from '../../runtime';
 
@@ -54,6 +55,7 @@ describe('queued execution with no event (integration)', () => {
 			admittance: new AllowAllAdmittance(),
 			identityVerifier: new SharedSecretIdentityVerifier('a'.repeat(32)),
 			responseSender: noopExecutionResponseSender,
+			queues: createInMemoryWorkQueues(),
 			staleness,
 			reconciliationIntervalMs: 20,
 		});

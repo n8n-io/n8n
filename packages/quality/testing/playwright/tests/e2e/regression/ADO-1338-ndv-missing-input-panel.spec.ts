@@ -13,7 +13,7 @@ test.describe(
 		annotation: [{ type: 'owner', description: 'NODES' }],
 	},
 	() => {
-		test('should show the input and output panels when node is missing input and output data', async ({
+		test('should show the input and output panels when node is missing input and output data @engine:v2-pending', async ({
 			n8n,
 			setupRequirements,
 		}) => {

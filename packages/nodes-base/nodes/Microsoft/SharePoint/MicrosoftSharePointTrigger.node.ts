@@ -33,6 +33,7 @@ export class MicrosoftSharePointTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Microsoft SharePoint Trigger',
 		name: 'microsoftSharePointTrigger',
+		schemaPath: 'Microsoft/SharePoint',
 		icon: {
 			light: 'file:microsoftSharePoint.svg',
 			dark: 'file:microsoftSharePoint.svg',

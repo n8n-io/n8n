@@ -2,6 +2,9 @@ import { workflow } from './fixtures';
 import type { WorkflowNodeResponse } from '../clients/n8n-client';
 import { buildWorkflowContextBlock } from '../harness/workflow-context';
 
+const HEADER =
+	'**Workflow settings** (an absent or "DEFAULT" value means the instance default; an absent `executionOrder` means the legacy `v0` order):';
+
 const node = (id: string, name: string): WorkflowNodeResponse => ({
 	id,
 	name,
@@ -13,6 +16,34 @@ const groupsJson = (groups: Array<Record<string, unknown>>): string =>
 	['**Node groups:**', '```json', JSON.stringify(groups, null, 2), '```'].join('\n');
 
 describe('buildWorkflowContextBlock', () => {
+	it('renders the workflow settings, such as the timezone', () => {
+		const wf = workflow('wf-1', {
+			nodes: [node('id-a', 'Fetch Data')],
+			settings: { executionOrder: 'v1', timezone: 'America/New_York' },
+		});
+
+		expect(buildWorkflowContextBlock(wf)).toContain(
+			[
+				HEADER,
+				'```json',
+				JSON.stringify({ executionOrder: 'v1', timezone: 'America/New_York' }, null, 2),
+				'```',
+			].join('\n'),
+		);
+	});
+
+	it('states that no workflow settings exist when the API returns null settings', () => {
+		const wf = workflow('wf-1', { nodes: [node('id-a', 'Fetch Data')], settings: null });
+
+		expect(buildWorkflowContextBlock(wf)).toContain(`${HEADER}\n\n(none set)`);
+	});
+
+	it('states that no workflow settings exist when the workflow has none', () => {
+		const wf = workflow('wf-1', { nodes: [node('id-a', 'Fetch Data')] });
+
+		expect(buildWorkflowContextBlock(wf)).toContain(`${HEADER}\n\n(none set)`);
+	});
+
 	it('renders "(no workflow built)" without a workflow', () => {
 		expect(buildWorkflowContextBlock(undefined)).toBe(
 			'## Workflow structure\n\n(no workflow built)',
@@ -78,21 +109,6 @@ describe('buildWorkflowContextBlock', () => {
 			const block = buildWorkflowContextBlock(wf);
 			expect(block).toContain('**Node groups:**\n\n(none)');
 		}
-	});
-
-	it('states "(none set)" when the workflow has no settings', () => {
-		for (const wf of [workflow('wf-1'), workflow('wf-2', { settings: {} })]) {
-			expect(buildWorkflowContextBlock(wf)).toContain(
-				'**Workflow settings** (an absent or "DEFAULT" value means the instance default; an absent `executionOrder` means the legacy `v0` order):\n\n(none set)',
-			);
-		}
-	});
-
-	it('renders every workflow setting', () => {
-		const settings = { executionOrder: 'v1', timezone: 'Europe/Berlin', executionTimeout: 600 };
-		const block = buildWorkflowContextBlock(workflow('wf-1', { settings }));
-
-		expect(block).toContain(['```json', JSON.stringify(settings, null, 2), '```'].join('\n'));
 	});
 
 	it('renders every saved node field except the id and the canvas position', () => {

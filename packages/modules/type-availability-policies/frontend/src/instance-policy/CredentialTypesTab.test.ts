@@ -1,5 +1,8 @@
-import type { InstanceTypeAccessResponse } from '@n8n/api-types';
-import { createComponentRenderer } from '@n8n/frontend-test-utils';
+import type { CredentialTypeUsageResponse, InstanceTypeAccessResponse } from '@n8n/api-types';
+import {
+	createComponentRenderer,
+	waitAllPromises as flushPromises,
+} from '@n8n/frontend-test-utils';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useRBACStore } from '@n8n/stores/rbac.store';
@@ -20,6 +23,7 @@ const mocks = vi.hoisted(() => ({
 	saveInstancePolicy: vi.fn(),
 	fetchInstanceAccess: vi.fn(),
 	fetchCredentialTypeSummaries: vi.fn(),
+	fetchCredentialTypeUsage: vi.fn(),
 	showError: vi.fn(),
 	showMessage: vi.fn(),
 }));
@@ -62,6 +66,13 @@ const setup = async () => {
 const accessCell = (getByTestId: (id: string) => HTMLElement, name = 'bitlyApi') =>
 	getByTestId(`instance-policy-access-${name}`);
 
+// Projects, Uses, Workflows and Active workflows. The cells before them are Name and Access.
+const usageCells = (getByTestId: (id: string) => HTMLElement, name = 'bitlyApi') =>
+	within(accessCell(getByTestId, name).closest('tr') as HTMLElement)
+		.getAllByRole('cell')
+		.slice(2)
+		.map((cell) => cell.textContent?.trim());
+
 const restrictBitly = async (getByTestId: (id: string) => HTMLElement) => {
 	await userEvent.click(accessCell(getByTestId));
 	await userEvent.click(await findPopupItem(MENU_ITEM, 'Restricted'));
@@ -72,6 +83,9 @@ describe('CredentialTypesTab', () => {
 		vi.clearAllMocks();
 		mocks.fetchInstancePolicy.mockResolvedValue(policy(1));
 		mocks.fetchInstanceAccess.mockResolvedValue(access(1));
+		mocks.fetchCredentialTypeUsage.mockResolvedValue({
+			bitlyApi: { uses: 3, workflows: 2, activeWorkflows: 1, projects: 1 },
+		} satisfies CredentialTypeUsageResponse);
 		mocks.fetchCredentialTypeSummaries.mockResolvedValue(
 			new Map([
 				['bitlyApi', { displayName: 'Bitly API', iconUrl: 'icons/bitly.svg' }],
@@ -103,6 +117,54 @@ describe('CredentialTypesTab', () => {
 		expect(mocks.showError).not.toHaveBeenCalled();
 	});
 
+	it('shows the usage of each credential type', async () => {
+		const { findByText, getByTestId } = await setup();
+		await findByText('Bitly API');
+
+		await waitFor(() => expect(usageCells(getByTestId)).toEqual(['1', '3', '2', '1']));
+		expect(mocks.fetchCredentialTypeUsage).toHaveBeenCalledTimes(1);
+	});
+
+	it('shows 0 usage for a credential type that no workflow uses', async () => {
+		const { findByText, getByTestId } = await setup();
+		await findByText('Notion API');
+
+		await waitFor(() => expect(usageCells(getByTestId, 'notionApi')).toEqual(['0', '0', '0', '0']));
+	});
+
+	it('shows no usage value while the usage loads', async () => {
+		const usage = createDeferredPromise<CredentialTypeUsageResponse>();
+		mocks.fetchCredentialTypeUsage.mockReturnValue(usage.promise);
+		const { findByText, getByTestId } = await setup();
+		await findByText('Notion API');
+
+		expect(usageCells(getByTestId, 'notionApi')).toEqual(['—', '—', '—', '—']);
+
+		usage.resolve({});
+		await waitFor(() => expect(usageCells(getByTestId, 'notionApi')).toEqual(['0', '0', '0', '0']));
+	});
+
+	it('shows the rows with no usage value when the usage does not load', async () => {
+		mocks.fetchCredentialTypeUsage.mockRejectedValue(new Error('offline'));
+		const { findByText, getByTestId } = await setup();
+		await findByText('Bitly API');
+		await waitFor(() => expect(mocks.fetchCredentialTypeUsage).toHaveBeenCalled());
+		await flushPromises();
+
+		expect(accessCell(getByTestId, 'notionApi')).toHaveTextContent('Restricted');
+		expect(usageCells(getByTestId)).toEqual(['—', '—', '—', '—']);
+		expect(usageCells(getByTestId, 'notionApi')).toEqual(['—', '—', '—', '—']);
+		expect(mocks.showError).not.toHaveBeenCalled();
+	});
+
+	it('shows the usage when only the display names do not load', async () => {
+		mocks.fetchCredentialTypeSummaries.mockRejectedValue(new Error('offline'));
+		const { findByText, getByTestId } = await setup();
+		await findByText('bitlyApi');
+
+		await waitFor(() => expect(usageCells(getByTestId)).toEqual(['1', '3', '2', '1']));
+	});
+
 	it('saves a rule for only the changed credential type', async () => {
 		mocks.fetchInstancePolicy.mockResolvedValue(policy(1, EXISTING_RULES));
 		mocks.saveInstancePolicy.mockResolvedValue({ ...policy(2), warnings: [] });
@@ -122,8 +184,8 @@ describe('CredentialTypesTab', () => {
 				defaultAction: 'allow',
 				version: 1,
 				rules: [
-					{ id: expect.any(String), action: 'deny', selector: { kind: 'name', value: 'bitlyApi' } },
 					...EXISTING_RULES,
+					{ id: expect.any(String), action: 'deny', selector: { kind: 'name', value: 'bitlyApi' } },
 				],
 			}),
 		);

@@ -17,6 +17,7 @@ export class RabbitMQTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'RabbitMQ Trigger',
 		name: 'rabbitmqTrigger',
+		schemaPath: 'RabbitMQ',
 		icon: 'file:rabbitmq.svg',
 		group: ['trigger'],
 		version: 1,
