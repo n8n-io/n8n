@@ -18,9 +18,6 @@ import N8nIcon from '../N8nIcon/Icon.vue';
 import N8nCheckbox from '../../v2/components/Checkbox/Checkbox.vue';
 import N8nInput from '../N8nInput/Input.vue';
 import N8nInputLabel from '../N8nInputLabel/InputLabel.vue';
-import N8nListbox from '../N8nListbox/Listbox.vue';
-import N8nListboxItem from '../N8nListbox/ListboxItem.vue';
-import N8nSidebar from '../N8nSidebar';
 import N8nSwitch2 from '../N8nSwitch/Switch.vue';
 import N8nSelect2 from '../../v2/components/Select/Select.vue';
 import N8nText from '../N8nText/Text.vue';
@@ -673,80 +670,6 @@ export const Sidebar: Story = {
 					</N8nDialogClose>
 					<N8nButton label="Save" />
 				</N8nDialogFooter>
-			</N8nDialog>
-		</div>
-		`,
-	}),
-	args: {},
-} satisfies Story;
-
-const dialogLinks = [
-	{ id: 'overview', label: 'Overview', icon: 'house' },
-	{ id: 'workflows', label: 'Workflows', icon: 'workflow' },
-	{ id: 'executions', label: 'Executions', icon: 'clock' },
-	{ id: 'settings', label: 'Settings', icon: 'settings' },
-];
-
-export const WithN8nSidebar: Story = {
-	parameters: {
-		docs: {
-			description: {
-				story:
-					'N8nSidebar sits in the dialog body. The body does not scroll. The sidebar and the main area scroll on their own.',
-			},
-		},
-	},
-	render: () => ({
-		components: {
-			N8nDialog,
-			N8nDialogBody,
-			N8nDialogHeader,
-			N8nDialogTitle,
-			N8nButton,
-			N8nIcon,
-			N8nListbox,
-			N8nListboxItem,
-			N8nSidebar,
-			N8nText,
-		},
-		setup() {
-			const isOpen = ref(false);
-			const width = ref(240);
-			const activeId = ref(dialogLinks[0]?.id ?? '');
-			return { isOpen, width, activeId, dialogLinks };
-		},
-		template: `
-		<div>
-			<N8nButton variant="solid" label="Open Dialog" @click="isOpen = true" />
-
-			<N8nDialog v-model:open="isOpen" size="full" aria-label="Sections" style="height: 70vh;">
-				<N8nDialogHeader>
-					<N8nDialogTitle>Sections</N8nDialogTitle>
-				</N8nDialogHeader>
-
-				<N8nDialogBody style="padding: 0; overflow: hidden; border-block: var(--border);">
-					<div style="display: flex; flex: 1; min-height: 0; overflow: hidden;">
-						<N8nSidebar v-model:width="width" width-storage-id="n8n-dialog-sidebar-width" label="Sections" :min-width="180" :max-width="360">
-							<div style="padding-block: var(--spacing--xs); padding-inline: calc(var(--spacing--xs) + var(--spacing--xs));">
-								<N8nListbox v-model="activeId" label="Sections" style="width: 100%">
-									<N8nListboxItem v-for="item in dialogLinks" :key="item.id" :value="item.id">
-										<template #leading>
-											<N8nIcon :icon="item.icon" />
-										</template>
-										{{ item.label }}
-									</N8nListboxItem>
-								</N8nListbox>
-							</div>
-						</N8nSidebar>
-
-						<div style="flex: 1; min-width: 0; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: var(--spacing--sm); padding: var(--spacing--md);">
-							<N8nText bold size="large">{{ dialogLinks.find((item) => item.id === activeId)?.label }}</N8nText>
-							<N8nText v-for="line in 12" :key="line" size="small" color="text-base">
-								Line {{ line }} of the main area. This area scrolls on its own.
-							</N8nText>
-						</div>
-					</div>
-				</N8nDialogBody>
 			</N8nDialog>
 		</div>
 		`,
