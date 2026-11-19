@@ -24,6 +24,7 @@ export const versionDescription: INodeTypeDescription = {
 	group: ['output'],
 	version: [2, 2.1],
 	description: 'Sends an email using SMTP protocol',
+	annotations: { effect: 'write', destructive: false, idempotent: false },
 	defaults: {
 		name: 'Send Email',
 	},
@@ -64,13 +65,11 @@ export const versionDescription: INodeTypeDescription = {
 					name: 'Send',
 					value: 'send',
 					action: 'Send an Email',
-					annotations: { effect: 'write', destructive: false, idempotent: false },
 				},
 				{
 					name: 'Send and Wait for Response',
 					value: SEND_AND_WAIT_OPERATION,
 					action: 'Send message and wait for response',
-					annotations: { effect: 'write', destructive: false, idempotent: false },
 				},
 			],
 			displayOptions: {
