@@ -228,7 +228,7 @@ describe('SecuritySettings', () => {
 		expect(
 			getByText('Require two-factor authentication for users who sign in with email and password.'),
 		).toBeInTheDocument();
-		expect(getByText('Manage reviews before publishing workflows.')).toBeInTheDocument();
+		expect(queryByText('Manage reviews before publishing workflows.')).not.toBeInTheDocument();
 		expect(
 			getByText(
 				'Allow users to request approval before publishing. An open review blocks publishing.',
@@ -1164,6 +1164,11 @@ describe('SecuritySettings', () => {
 			await waitFor(() => {
 				expect(getByRole('dialog')).toBeInTheDocument();
 			});
+
+			expect(getByRole('dialog')).toHaveTextContent('Disable publish reviews');
+			expect(getByRole('dialog')).toHaveTextContent(
+				'Publish reviews will no longer be available on this instance. Existing project-level review settings will be removed.',
+			);
 
 			await userEvent.click(getByRole('button', { name: 'Confirm' }));
 
