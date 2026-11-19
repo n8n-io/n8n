@@ -6,19 +6,29 @@ name: 'Security: Base Image Refresh'
 on:
   schedule:
     - cron: '0 2 * * *'
+  # Runs a change to the workflow before it merges. A dispatch needs the file
+  # on master first.
+  pull_request:
+    paths:
+      - '.github/workflows/sec-base-image-refresh.yml'
+      - '.github/scripts/docker/base-image-candidates.mjs'
   workflow_dispatch:
 
 permissions:
   contents: read
 
+# A PR run has its own group, so it does not wait for the scheduled run.
 concurrency:
-  group: sec-base-image-refresh
-  cancel-in-progress: false
+  group: sec-base-image-refresh-${{ github.event_name == 'pull_request' && github.ref || 'default' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   detect:
     name: Find candidate digests
-    if: github.repository == 'n8n-io/n8n'
+    # A fork PR gets no secrets, so the registry login would fail.
+    if: >-
+      github.repository == 'n8n-io/n8n' &&
+      (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
