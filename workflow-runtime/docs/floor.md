@@ -658,3 +658,54 @@ node model.mjs                                   # the cost model
 - the aggregate result (`mix-sizes.json`).
 
 The per-bundle rows are not in the tree.
+
+## Gap to the unbatched floor, 19 November 2026
+
+Measured on the worktree machine (Apple M5 Pro, 18 cores, load 3.3) with
+`zig build -Drelease=true`. The machine was much quieter than the session
+that wrote the tables above (load 20–30), so the network terms measure at
+or below their floor. The ratios and the profile are the signal, as the
+method above says. Today is time, not instructions; the instruction counts
+are a table of their own further down.
+
+| Piece of one workflow run | Today (µs) | Command | Floor (µs, floor.md) | Today − floor |
+|---|---|---|---|---|
+| Steps of workflow code: Sheets append, 4 calls | 23.1 | `floor core module --wfm sheets-n4.wfm --resp sheets-resp.json` | 0.69 (hand-written Zig) | 22.4 |
+| Steps of workflow code: one Slack node, canned | 1.65 | `floor core module --wfm slack-n8.wfm` (minus http-n0) | 0.17 (callWork) | 1.48 |
+| Effect encode + outbound request build + response decode, plain call | 0.83 | `floor core module --wfm http-n8.wfm` (minus http-n0) | 0.17 | 0.66 |
+| Trigger decode + reply, no node | 0.42 | `floor core module --wfm glue-k1-n0.wfm` | 0.1 | 0.32 |
+| Log record, batched tier, 1,072 B, batch 64 | 0.34 | `floor log --tier batched --batch 64` | 0.16 (batch 512) | 0.18 |
+| Glue node, 1 item | 0.17 | `floor core module --wfm glue-k1-n40.wfm` (minus n0) | 0.06 | 0.11 |
+| Inbound parse + trigger + reply, one webhook (W2) | 4.82 | `wfrt-http.sh ./zig-out/bin/wfrt` | 10.7 | ≤ 0 |
+| Outbound call, kernel + core (W3 − W2) | 4.98 | `wfrt-http.sh ./zig-out/bin/wfrt` | 12.0 | ≤ 0 |
+| JSON decode / encode | 990 / 1250 MB/s | `jsonmix ../floor/data 5` | 1400 / 700 MB/s | encode above floor |
+
+The gap is the workflow code: the interpreted library nodes and the glue
+nodes. A Sheets append costs 23.1 µs today against 0.69 µs in hand-written
+Zig (33×); a Slack node costs 1.65 µs against 0.17 µs (10×). The effect
+round trip (encode of the request, build, decode of the result) is 0.83 µs
+against 0.17 µs. The kernel, the inbound parse and the reply are at their
+floor on this machine.
+
+The profile of 19 November 2026 (`bench/loadtest/README.md`, `perf record`
+of the runtime thread at 4,200 concurrent runs, one executor core) agrees,
+and it shows where the time goes under load: workflow code 50%
+(interpreter 36%, JSON decode of results 8%, library calls 6%), kernel 27%,
+outbound HTTP client 15%, outbox 7% (`logfmt.checksum` 4% inside it),
+inbound replies and flush 6%. The parts overlap where one calls the other.
+The single costs that stand out: the intern of each object key of a decoded
+result (`Module.internKey`, 5%), the checksum of each durability record
+(4%), and the outbox sync on the shard thread (2%).
+
+Instructions from the model (`wfrt perf-model`, one execution, steady
+state; instructions, not time):
+
+| Corpus case | Bytecode instructions | Reads | Writes |
+|---|---|---|---|
+| 14-json (decode of a result) | 104 | 867 | 346 |
+| 18-library-http (2 calls) | 823 | 3,481 | 1,157 |
+| 19-library-slack-perplexity (2 calls) | 708 | 3,224 | 1,063 |
+
+`Module.internKey` has no calls to `mem.zig`, so the model does not see its
+cost; the 5% of the profile is its share. The next section cuts the miss
+path of that function.
