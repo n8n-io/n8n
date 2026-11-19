@@ -298,6 +298,7 @@ export class AgentsService {
 			);
 			return await this.getCreationResult(existing, true);
 		}
+		this.agentServiceAccount.reportCreated(agent, options.actor);
 
 		// The mappings were written in the insert transaction; carry them on the
 		// entity so the create response reports the agent's tags.
@@ -515,6 +516,7 @@ export class AgentsService {
 			await this.definitionService.captureVersion(agent, user, ctx);
 			return savedRefs;
 		});
+		this.agentServiceAccount.reportCreated(agent, options.actor);
 		await Container.get(AgentSaveCompletionService).definitionSaved(
 			buildAgentMutationEvent(
 				agent,
