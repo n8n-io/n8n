@@ -6,13 +6,13 @@
  * Each upstream source is a pin in docker/docker-bake.hcl. The script resolves
  * the newest digest of the pinned tag, then scans the pinned and the newest
  * digest with Trivy on each platform. The newest digest is a candidate when it
- * removes at least one finding. The publisher check and the 24-hour gate come
- * after this step.
+ * removes at least one finding. A candidate is ready when its publisher is
+ * verified and it is at least 24 hours old (see applyGate).
  *
- * Usage: node base-image-candidates.mjs [--out <file>]
- * Needs docker buildx, trivy, and a login to each private registry (dhi.io).
- * Writes the result as JSON to --out and to $GITHUB_STEP_SUMMARY, and
- * candidates=<count> to $GITHUB_OUTPUT.
+ * Usage: node base-image-candidates.mjs [--out <file>] [--skip-gate]
+ * Needs docker buildx, trivy, cosign, and a login to each private registry
+ * (dhi.io). Writes the result as JSON to --out and to $GITHUB_STEP_SUMMARY,
+ * and ready=<count> to $GITHUB_OUTPUT.
  */
 
 import { execFileSync } from 'node:child_process';
@@ -21,6 +21,8 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
 import { pathToFileURL } from 'node:url';
+
+import { verifyPublisher } from './base-image-publisher.mjs';
 
 const BAKE_FILE = 'docker/docker-bake.hcl';
 
@@ -103,6 +105,26 @@ export function evaluateSource(pin, newestDigest, scans) {
 	return { ...result, status: removes ? 'candidate' : 'no-fix', platforms };
 }
 
+export const GATE_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Applies the publisher check, the 24-hour gate and the package-set rule to a
+ * candidate. A digest is ready when its publisher is verified and it is at
+ * least 24 hours old. A manual run skips the gate. A digest that adds a
+ * package is ready without auto-merge, so that a person reviews it.
+ */
+export function applyGate(candidate, publisher, { now, skipGate }) {
+	const checked = { ...candidate, publisher };
+	if (!publisher.verified) return { ...checked, status: 'unverified' };
+	if (!skipGate) {
+		if (!publisher.publishedAt) return { ...checked, status: 'no-publish-time' };
+		if (now - Date.parse(publisher.publishedAt) < GATE_MS)
+			return { ...checked, status: 'in-24h-gate' };
+	}
+	const addsPackage = candidate.platforms.some((platform) => platform.addedPackages.length > 0);
+	return { ...checked, status: 'ready', autoMerge: !addsPackage };
+}
+
 function resolveNewestDigest(pin) {
 	const out = execFileSync(
 		'docker',
@@ -163,25 +185,33 @@ export function renderSummary(results) {
 	const lines = [
 		'## Base image candidates',
 		'',
-		'| Source | Status | Platform | Removed | Added | New packages |',
-		'| --- | --- | --- | --- | --- | --- |',
+		'| Source | Status | Published | Auto-merge | Platform | Removed | Added | New packages |',
+		'| --- | --- | --- | --- | --- | --- | --- | --- |',
 	];
+	const errors = [];
 	for (const result of results) {
+		const published = result.publisher?.publishedAt ?? '-';
+		const autoMerge = result.autoMerge === undefined ? '-' : result.autoMerge ? 'yes' : 'no';
+		const head = `| \`${result.source}\` | ${result.status} | ${published} | ${autoMerge}`;
+		if (result.publisher?.error) errors.push(`- \`${result.source}\`: ${result.publisher.error}`);
 		if (result.platforms.length === 0) {
-			lines.push(`| \`${result.source}\` | ${result.status} | - | - | - | - |`);
+			lines.push(`${head} | - | - | - | - |`);
 			continue;
 		}
 		for (const platform of result.platforms) {
 			lines.push(
-				`| \`${result.source}\` | ${result.status} | ${platform.platform} | ${count(platform.removed)} | ${count(platform.added)} | ${platform.addedPackages.join(', ') || '-'} |`,
+				`${head} | ${platform.platform} | ${count(platform.removed)} | ${count(platform.added)} | ${platform.addedPackages.join(', ') || '-'} |`,
 			);
 		}
 	}
+	if (errors.length > 0) lines.push('', '### Publisher errors', '', ...errors);
 	return `${lines.join('\n')}\n`;
 }
 
-function main() {
-	const { values } = parseArgs({ options: { out: { type: 'string' } } });
+async function main() {
+	const { values } = parseArgs({
+		options: { out: { type: 'string' }, 'skip-gate': { type: 'boolean', default: false } },
+	});
 	const hcl = readFileSync(BAKE_FILE, 'utf8');
 	const workDir = mkdtempSync(path.join(tmpdir(), 'base-image-candidates-'));
 	const results = [];
@@ -199,7 +229,11 @@ function main() {
 							pinned: scan(pinnedRef, platform, workDir),
 							newest: scan(newestRef, platform, workDir),
 						}));
-			const result = evaluateSource(pin, newestDigest, scans);
+			let result = evaluateSource(pin, newestDigest, scans);
+			if (result.status === 'candidate') {
+				const publisher = await verifyPublisher(pin, newestDigest, PLATFORMS);
+				result = applyGate(result, publisher, { now: Date.now(), skipGate: values['skip-gate'] });
+			}
 			console.log(`${name}: ${result.status} (${result.newest})`);
 			results.push(result);
 		}
@@ -211,9 +245,9 @@ function main() {
 	if (process.env.GITHUB_STEP_SUMMARY)
 		appendFileSync(process.env.GITHUB_STEP_SUMMARY, renderSummary(results));
 	if (process.env.GITHUB_OUTPUT) {
-		const candidates = results.filter((result) => result.status === 'candidate').length;
-		appendFileSync(process.env.GITHUB_OUTPUT, `candidates=${candidates}\n`);
+		const ready = results.filter((result) => result.status === 'ready').length;
+		appendFileSync(process.env.GITHUB_OUTPUT, `ready=${ready}\n`);
 	}
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1]).href) main();
+if (import.meta.url === pathToFileURL(process.argv[1]).href) await main();
