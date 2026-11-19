@@ -40,6 +40,7 @@ import {
 	createAdmin,
 	createManyUsers,
 	createOwner,
+	createServiceAccountWithProject,
 	createUser,
 	createUserShell,
 } from '../shared/db/users';
@@ -893,12 +894,14 @@ describe('GET /credentials/:id', () => {
 					name: member2.createPersonalProjectName(),
 					icon: null,
 					type: member2PersonalProject.type,
+					accountKind: 'person',
 				},
 				{
 					id: member3PersonalProject.id,
 					name: member3.createPersonalProjectName(),
 					icon: null,
 					type: member3PersonalProject.type,
+					accountKind: 'person',
 				},
 			]),
 		});
@@ -1932,5 +1935,34 @@ describe('project role with credential visibility but not use', () => {
 
 		expect(response.statusCode).toBe(200);
 		expect(mockCredentialsTester.testCredentials).toHaveBeenCalled();
+	});
+});
+
+describe('credential shared with a service account', () => {
+	test('shows the service account share with its account kind and lets the owner revoke it', async () => {
+		const serviceAccount = await createServiceAccountWithProject();
+		const serviceAccountProject = await projectRepository.getPersonalProjectForUserOrFail(
+			serviceAccount.id,
+		);
+		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
+		await shareCredentialWithProjects(savedCredential, [serviceAccountProject]);
+
+		const response = await authOwnerAgent.get(`/credentials/${savedCredential.id}`).expect(200);
+
+		expect(response.body.data.homeProject).toMatchObject({
+			id: ownerPersonalProject.id,
+			accountKind: 'person',
+		});
+		expect(response.body.data.sharedWithProjects).toEqual([
+			expect.objectContaining({ id: serviceAccountProject.id, accountKind: 'service' }),
+		]);
+
+		await authOwnerAgent
+			.put(`/credentials/${savedCredential.id}/share`)
+			.send({ shareWithIds: [] })
+			.expect(200);
+
+		const sharings = await getCredentialSharings(savedCredential);
+		expect(sharings.map((sharing) => sharing.projectId)).toEqual([ownerPersonalProject.id]);
 	});
 });

@@ -17,12 +17,27 @@ import { render as renderToast, waitFor, within } from '@testing-library/vue';
 import { defineComponent } from 'vue';
 import { createMemoryHistory, createRouter } from 'vue-router';
 
-import { applied, destructiveChange, variable } from '../__tests__/bindings.fixtures';
-import { billingPreview, billingResources, COMMIT_SHA } from '../__tests__/preview.fixtures';
+import {
+	applied,
+	destructiveChange,
+	projectDeletion,
+	variable,
+} from '../__tests__/bindings.fixtures';
+import {
+	billingPreview,
+	billingResources,
+	COMMIT_SHA,
+	PREVIEW_REVISION as REVISION,
+	resource,
+} from '../__tests__/preview.fixtures';
 import { registerDiffSlotStubs } from '../__tests__/slots';
 import { invalidateInstancePromotionConnection } from '../composables/useInstancePromotionConnection';
 import * as api from '../promotions.api';
-import { PROMOTION_PREVIEW_VIEWS } from '../promotions.constants';
+import {
+	PROMOTION_INSTANCE_APPLY_VIEW,
+	PROMOTION_PREVIEW_VIEWS,
+	PROMOTIONS_SETTINGS_VIEW,
+} from '../promotions.constants';
 import type { ApplyCheckResult } from '../promotions.types';
 import * as settingsApi from '../promotionsSettings.api';
 import PromotionPreviewView from './PromotionPreviewView.vue';
@@ -75,6 +90,8 @@ const router = createRouter({
 			component: stub,
 		},
 		{ path: '/inbox', name: INBOX_VIEW, component: stub },
+		{ path: '/promotions/apply', name: PROMOTION_INSTANCE_APPLY_VIEW, component: stub },
+		{ path: '/settings/promotions', name: PROMOTIONS_SETTINGS_VIEW, component: stub },
 	],
 });
 const renderComponent = createComponentRenderer(PromotionPreviewView, {
@@ -135,13 +152,10 @@ const check = (fields: Partial<ApplyCheckResult> = {}): ApplyCheckResult => ({
 	...fields,
 });
 
-const REVISION = 'a'.repeat(64);
-
-/** The Apply preview carries its blockers and its revision. */
+/** The Apply preview carries its blockers. */
 const previewWithCheck = ({ environmentId, git, ...previewCheck } = check()) => ({
 	...billingPreview(),
 	check: previewCheck,
-	revision: REVISION,
 });
 
 // Apply names the source of the preview it shows.
@@ -371,6 +385,7 @@ describe('PromotionPreviewView', () => {
 		expect(api.promoteProjectSelection).toHaveBeenCalledWith(expect.anything(), 'p1', {
 			workflowIds: ['w1', 'w3'],
 			folderIds: [],
+			expectedPreviewRevision: REVISION,
 		});
 	});
 
@@ -630,6 +645,7 @@ describe('PromotionPreviewView', () => {
 		expect(api.promoteProjectSelection).toHaveBeenCalledWith(expect.anything(), 'p1', {
 			workflowIds: ['w1', 'w2', 'w3', 'w4'],
 			folderIds: [],
+			expectedPreviewRevision: REVISION,
 		});
 		expect(showMessage).toHaveBeenCalledWith({
 			title: 'Changes promoted',
@@ -666,6 +682,7 @@ describe('PromotionPreviewView', () => {
 		expect(api.promoteProjectSelection).toHaveBeenCalledWith(expect.anything(), 'p1', {
 			workflowIds: ['w1', 'w3', 'w4'],
 			folderIds: [],
+			expectedPreviewRevision: REVISION,
 		});
 	});
 
@@ -681,6 +698,7 @@ describe('PromotionPreviewView', () => {
 			workflowIds: ['w1', 'w2', 'w3', 'w4'],
 			folderIds: [],
 			commitMessage: 'Route leads by region',
+			expectedPreviewRevision: REVISION,
 		});
 	});
 
@@ -713,6 +731,7 @@ describe('PromotionPreviewView', () => {
 			workflowIds: ['w1'],
 			folderIds: [],
 			commitMessage: 'Route leads by region',
+			expectedPreviewRevision: REVISION,
 		});
 
 		await rerender({ projectId: 'p2', direction: 'promote' });
@@ -906,6 +925,41 @@ describe('PromotionPreviewView', () => {
 		expect(api.getPromotionPreview).toHaveBeenCalledTimes(2);
 	});
 
+	it('should say why when the project changed after the page loaded, and promote the new preview with the same message', async () => {
+		const newRevision = 'b'.repeat(64);
+		vi.mocked(api.getPromotionPreview)
+			.mockResolvedValueOnce(billingPreview())
+			.mockResolvedValue(billingPreview({ revision: newRevision }));
+		vi.mocked(api.promoteProjectSelection)
+			.mockResolvedValueOnce({ status: 'preview-changed', environmentId: 'environment-1' })
+			.mockResolvedValue({
+				status: 'promoted',
+				environmentId: 'environment-1',
+				counts: { workflows: 4, folders: 0, credentials: 0, dataTables: 0, variables: 0, tags: 0 },
+				git: { branchName: 'main', commitSha: COMMIT_SHA },
+			});
+
+		const { getByTestId, queryByTestId } = await render();
+		await promote(getByTestId, 'Route leads by region');
+
+		expect(getByTestId('promotion-preview-operation-notice')).toHaveTextContent(
+			"This project or its branch changed after the page loaded, so Promote didn't push anything.",
+		);
+		expect(api.getPromotionPreview).toHaveBeenCalledTimes(2);
+		expect(router.currentRoute.value.name).not.toBe(VIEWS.PROJECTS_WORKFLOWS);
+
+		await waitFor(() => expect(queryByTestId('promote-selection-dialog')).not.toBeInTheDocument());
+		await promote(getByTestId);
+
+		expect(api.promoteProjectSelection).toHaveBeenLastCalledWith(expect.anything(), 'p1', {
+			workflowIds: ['w1', 'w2', 'w3', 'w4'],
+			folderIds: [],
+			commitMessage: 'Route leads by region',
+			expectedPreviewRevision: newRevision,
+		});
+		expect(router.currentRoute.value.name).toBe(VIEWS.PROJECTS_WORKFLOWS);
+	});
+
 	it('should not apply any selection while a folder moved into the project from another one, and say why', async () => {
 		vi.mocked(api.getPromotionPreview).mockResolvedValue(
 			previewWithCheck({
@@ -1086,5 +1140,104 @@ describe('PromotionPreviewView', () => {
 		await userEvent.click(getByRole('tab', { name: /Changes/ }));
 		expect(treeRow(getAllByTestId, 'workflow:w3').getByRole('checkbox')).toBeChecked();
 		expect(getByTestId('promotion-preview-submit')).toBeEnabled();
+	});
+
+	describe('whole-instance Apply', () => {
+		// The branch no longer holds the "Sales" project, so Apply deletes it and its workflow.
+		// Apply applies the whole package, so the server marks nothing as selectable.
+		const instancePreview = (fields: Partial<ApplyCheckResult> = {}) => {
+			const preview = previewWithCheck(check(fields));
+			return {
+				...preview,
+				commitSha: COMMIT_SHA,
+				resources: [
+					...preview.resources,
+					resource({ key: 'project:team-b', name: 'Sales', change: 'deleted' }),
+					resource({
+						key: 'workflow:w20',
+						name: 'Lead routing',
+						parentKey: 'project:team-b',
+						change: 'deleted',
+					}),
+				].map((entry) => ({ ...entry, selectable: false })),
+			};
+		};
+
+		async function renderInstance() {
+			vi.mocked(settingsApi.fetchPromotionEnvironments).mockResolvedValue([environment('apply')]);
+			await router.push('/promotions/apply');
+			const result = renderComponent({
+				pinia: createTestingPinia(),
+				props: { direction: 'apply' },
+			});
+			await waitAllPromises();
+			return result;
+		}
+
+		it('should stop for a blocker on a workflow that the Apply does not change', async () => {
+			const missing = { ...variable, name: 'API_URL', consumers: consumers('w-unchanged') };
+			vi.mocked(api.getPromotionEnvironmentChanges).mockResolvedValue(
+				instancePreview({ missingBindings: [missing] }),
+			);
+
+			const { getByTestId } = await renderInstance();
+
+			expect(getByTestId('promotion-preview-submit')).toBeDisabled();
+			expect(getByTestId('promotion-preview-submit-blocked')).toHaveTextContent(
+				'Some changes have blockers',
+			);
+		});
+
+		it.each([false, true])(
+			'should keep the preview after a locked Apply (confirmation: %s)',
+			async (destructive) => {
+				vi.mocked(api.getPromotionEnvironmentChanges).mockResolvedValue(
+					instancePreview(destructive ? { conflicts: [projectDeletion] } : {}),
+				);
+				const apply = destructive ? settingsApi.continueApplyPromotion : settingsApi.applyPromotion;
+				vi.mocked(apply).mockRejectedValue(
+					new ResponseError('Environment is locked', { httpStatusCode: 423 }),
+				);
+				confirm.mockResolvedValue('confirm');
+				const { getByTestId } = await renderInstance();
+
+				await userEvent.click(getByTestId('promotion-preview-submit'));
+
+				expect(apply).toHaveBeenCalledTimes(1);
+				expect(getByTestId('promotion-preview-operation-error')).toHaveTextContent(
+					'Nothing was applied. Another operation is running on this environment. Try again when it finishes.',
+				);
+				expect(getByTestId('promotion-preview-submit')).toBeEnabled();
+				expect(api.getPromotionEnvironmentChanges).toHaveBeenCalledTimes(1);
+				expect(router.currentRoute.value.path).toBe('/promotions/apply');
+			},
+		);
+
+		it('should list a deleted project with its workflows, confirm the deletion and apply the reviewed state', async () => {
+			vi.mocked(api.getPromotionEnvironmentChanges).mockResolvedValue(
+				instancePreview({
+					conflicts: [{ ...projectDeletion, project: { id: 'team-b', name: 'Sales' } }],
+				}),
+			);
+			vi.mocked(settingsApi.continueApplyPromotion).mockResolvedValue(applied);
+			confirm.mockResolvedValue('confirm');
+
+			const { getAllByTestId, getByTestId } = await renderInstance();
+			expect(treeRow(getAllByTestId, 'workflow:w20').getByText('Lead routing')).toBeVisible();
+
+			await userEvent.click(getByTestId('promotion-preview-submit'));
+
+			expect(confirm).toHaveBeenCalledWith(
+				expect.stringContaining('"Sales"'),
+				'Apply and delete projects?',
+				expect.anything(),
+			);
+			expect(settingsApi.continueApplyPromotion).toHaveBeenCalledWith(
+				expect.anything(),
+				expectedSource.environmentId,
+				{ expectedSource, expectedPreviewRevision: REVISION, confirmDestructiveChanges: true },
+			);
+			expect(router.currentRoute.value.name).toBe(PROMOTIONS_SETTINGS_VIEW);
+		});
 	});
 });

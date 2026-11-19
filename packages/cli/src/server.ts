@@ -33,6 +33,7 @@ import { resolveContentSecurityPolicies } from '@/security/content-security-poli
 import type { FrontendService } from '@/services/frontend.service';
 import { Telemetry } from '@/telemetry';
 import * as requestPath from '@/utils/request-path';
+import { setImmutableAssetHeaders } from '@/utils/static-asset-cache';
 
 import '@/controllers/active-workflows.controller';
 import '@/controllers/annotation-tags.controller.ee';
@@ -41,6 +42,7 @@ import '@/controllers/binary-data.controller';
 import '@/controllers/change-email.controller';
 import '@/controllers/ai.controller';
 import '@/controllers/ai-preference.controller';
+import '@/controllers/ai-preference-settings.controller';
 import '@/controllers/dynamic-node-parameters.controller';
 import '@/controllers/invitation.controller';
 import '@/controllers/me.controller';
@@ -375,7 +377,8 @@ export class Server extends AbstractServer {
 		}
 
 		const maxAge = Time.days.toMilliseconds;
-		const cacheOptions: { maxAge?: number } = inE2ETests || inDevelopment ? {} : { maxAge };
+		const cacheOptions: { maxAge?: number; setHeaders?: typeof setImmutableAssetHeaders } =
+			inE2ETests || inDevelopment ? {} : { maxAge, setHeaders: setImmutableAssetHeaders };
 		const { staticCacheDir } = Container.get(InstanceSettings);
 
 		this.protectTypeFiles(staticCacheDir);

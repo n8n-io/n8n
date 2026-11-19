@@ -13,7 +13,7 @@ import { AgentSandboxRuntimeService } from './agent-sandbox-runtime.service';
  * The knowledge sandbox of an agent, as the knowledge module asks for it. Each call
  * hands the scope's project and agent ids to the sandbox runtime unchanged, so the
  * sandbox id derivation and lifecycle settings stay where they are. The agents module
- * registers it on `KnowledgeSandboxProviderRegistry` on init.
+ * registers it on `KnowledgeSandboxProviderProxy` on init.
  */
 @Service()
 export class AgentKnowledgeSandboxProvider implements KnowledgeSandboxProvider {

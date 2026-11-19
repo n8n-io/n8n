@@ -39,10 +39,10 @@ export class SkillAccessService {
 		return this.canAccessInstanceSkill(user, operation);
 	}
 
-	/** `canAccess` for a whole list: one query for the user's projects, not one per skill. */
+	/** Checks access or create permission for a list with one query for the user's projects. */
 	async accessCheck(
 		user: User,
-		operation: SkillOperation,
+		operation: SkillOperation | 'create',
 	): Promise<(skill: Pick<Skill, 'projectId'>) => boolean> {
 		const projectIds = await this.projectScopeService.getProjectIds(user, [
 			`projectSkill:${operation}`,
@@ -185,7 +185,7 @@ export class SkillAccessService {
 		);
 	}
 
-	private canAccessInstanceSkill(user: User, operation: SkillOperation): boolean {
+	private canAccessInstanceSkill(user: User, operation: SkillOperation | 'create'): boolean {
 		if (operation === 'read') return true;
 		return hasGlobalScope(user, `skill:${operation}`);
 	}

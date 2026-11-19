@@ -15,6 +15,7 @@ export default defineConfig({
 		'scripts/**',
 		'nodes/Databricks/eslint-user-agent-restriction.mjs',
 		'nodes/Kafka/eslint-import-restrictions.mjs',
+		'utils/eslint-resolvables-restriction.mjs',
 	],
 	rules: {
 		'@n8n/community-nodes/credential-documentation-url': ['error', { allowSlugs: true }],

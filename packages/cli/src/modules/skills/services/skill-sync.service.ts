@@ -1,6 +1,7 @@
 import type {
 	AcceptSkillSourceUpdatesDto,
 	ReviewSkillSourceUpdateQueryDto,
+	SkillNewUpdate,
 	SkillPendingUpdate,
 	SkillScanResult,
 	SkillSourceAcceptResponse,
@@ -12,7 +13,6 @@ import type {
 } from '@n8n/api-types';
 import { ProjectScopeService } from '@n8n/backend-services';
 import { Logger } from '@n8n/backend-common';
-import { createHash } from 'node:crypto';
 import { validate as isUuid } from 'uuid';
 import {
 	GLOBAL_OWNER_ROLE,
@@ -22,7 +22,7 @@ import {
 	type User,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { ForbiddenError, NotFoundError } from '@n8n/errors';
+import { ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { LRUCache } from 'lru-cache';
 
@@ -66,6 +66,8 @@ import {
 import { SkillNameTakenError } from '../errors/skill-name-taken.error';
 import { SkillAgentNameTakenError } from '../errors/skill-agent-name-taken.error';
 import { SkillService } from './skill.service';
+import { SkillSourceNewSkillsService } from './skill-source-new-skills.service';
+import { unreadableSkillHash } from '../utils/skill-unlinked';
 import { SkillUsageProxy } from './skill-usage-proxy.service';
 import { SkillAccessService } from './skill-access.service';
 import { SkillSecurityScanner } from './skill-security-scanner.service';
@@ -124,9 +126,10 @@ export class SkillSyncService {
 		private readonly skillUsage: SkillUsageProxy,
 		private readonly projectScopeService: ProjectScopeService,
 		private readonly txRunner: TransactionRunner,
+		private readonly newSkills: SkillSourceNewSkillsService,
 	) {}
 
-	/** Lists stored updates. It does not need access to the remote source. */
+	/** Lists stored updates and reads new skills live for the shared review. */
 	async listUpdates(user: User, sourceId: string): Promise<SkillSourceUpdates> {
 		const { source, client } = await this.requireReview(user, sourceId);
 		const links = (await this.sourceRepository.findLinksBySource(sourceId)).filter(
@@ -157,7 +160,23 @@ export class SkillSyncService {
 			});
 		}
 		const revision = updates[0]?.revision;
-		return { updates, commit: revision ? this.commitFallback(source, client, revision) : null };
+		let newSkills: SkillNewUpdate[] = [];
+		let newSkillsError: SkillSourceUpdates['newSkillsError'];
+		if (source.unlinkedSkills?.length) {
+			try {
+				newSkills = await this.newSkills.review(source, client, await this.authOf(source, client));
+			} catch (error) {
+				const reason = skillSourceReasonOf(error) ?? null;
+				this.logger.warn('Could not read new skills for source review', { sourceId, reason });
+				newSkillsError = { reason };
+			}
+		}
+		return {
+			updates,
+			newSkills,
+			...(newSkillsError ? { newSkillsError } : {}),
+			commit: revision ? this.commitFallback(source, client, revision) : null,
+		};
 	}
 
 	async reviewUpdate(
@@ -184,7 +203,11 @@ export class SkillSyncService {
 	): Promise<SkillUpdateCommit> {
 		const { source, client } = await this.requireReview(user, sourceId);
 		const links = await this.sourceRepository.findLinksBySource(sourceId);
-		if (!links.some((link) => link.pendingRevision === revision)) throw staleUpdate();
+		if (
+			!links.some((link) => link.pendingRevision === revision) &&
+			!(source.unlinkedSkills?.length && source.probeCursor === revision)
+		)
+			throw staleUpdate();
 		const fallback = this.commitFallback(source, client, revision);
 		const metadataKey = `metadata:${accessKey(source)}`;
 		if (!client.describeRevision) return fallback;
@@ -217,9 +240,23 @@ export class SkillSyncService {
 	async acceptUpdates(
 		user: User,
 		sourceId: string,
-		payload: AcceptSkillSourceUpdatesDto,
+		request: Omit<AcceptSkillSourceUpdatesDto, 'newSkills' | 'skippedNewSkills'> &
+			Partial<Pick<AcceptSkillSourceUpdatesDto, 'newSkills' | 'skippedNewSkills'>>,
 	): Promise<SkillSourceAcceptResponse> {
-		const { source } = await this.requireReview(user, sourceId);
+		const payload: AcceptSkillSourceUpdatesDto = {
+			...request,
+			newSkills: request.newSkills ?? [],
+			skippedNewSkills: request.skippedNewSkills ?? [],
+		};
+		const bulk =
+			payload.updates.length + payload.newSkills.length + payload.skippedNewSkills.length > 1;
+		const { source, client } = await this.requireReview(user, sourceId);
+		if (
+			payload.newSkills.length &&
+			!(await this.skillAccess.canOnSource(user, source, 'addSkills'))
+		) {
+			throw new ForbiddenError('You are not allowed to import skills into this source.');
+		}
 		const requestedIds = new Set(payload.updates.map(({ skillId }) => skillId));
 		const scans = new Map(
 			(await this.sourceRepository.findLinksBySource(sourceId))
@@ -227,15 +264,34 @@ export class SkillSyncService {
 				.map((link) => [link.skillId, pendingScan(link)]),
 		);
 		let result;
+		let newReads: Awaited<ReturnType<SkillSourceNewSkillsService['prepare']>> = [];
 		try {
+			newReads = await this.newSkills.prepare(
+				source,
+				client,
+				payload,
+				payload.newSkills.length || payload.skippedNewSkills.length
+					? await this.authOf(source, client)
+					: undefined,
+			);
 			result = await this.txRunner.run({}, async (ctx) => {
+				const currentSource = await this.sourceRepository.findForDelete(sourceId, ctx);
+				if (
+					!currentSource ||
+					currentSource.projectId !== source.projectId ||
+					currentSource.credentialId !== source.credentialId
+				)
+					throw staleUpdate();
+				if (
+					newReads.length &&
+					JSON.stringify(currentSource.unlinkedSkills) !== JSON.stringify(source.unlinkedSkills)
+				)
+					throw staleUpdate();
 				// Lock in one order for overlapping selections. Source checks use conditional link writes.
 				await this.skillRepository.lockForEdit(
 					payload.updates.map(({ skillId }) => skillId).sort(),
 					ctx,
 				);
-				const currentSource = await this.sourceRepository.findById(sourceId, ctx);
-				if (!currentSource || currentSource.projectId !== source.projectId) throw staleUpdate();
 				const selected = [];
 				for (const reviewed of payload.updates) {
 					const current = await this.reviewedUpdate(sourceId, reviewed.skillId, reviewed, ctx);
@@ -287,9 +343,11 @@ export class SkillSyncService {
 					}
 				}
 				const followers = [...new Set(saved.flatMap((item) => item.followingAgentIds))];
-				return { saved, followers };
+				const imported = await this.newSkills.apply(user, currentSource, newReads, ctx);
+				return { saved, followers, imported };
 			});
 		} catch (error) {
+			await this.newSkills.report(user, source, payload, newReads, [], error);
 			for (const scan of scans.values()) {
 				await this.skillsTelemetry.reviewedUpdate(
 					{
@@ -297,7 +355,7 @@ export class SkillSyncService {
 						kind: 'update',
 						action: 'accept',
 						verdict: scan.verdict,
-						bulk: payload.updates.length > 1,
+						bulk,
 						status: 'failure',
 						reason: skillSourceReasonOf(error) ?? 'unexpected',
 					},
@@ -306,6 +364,7 @@ export class SkillSyncService {
 			}
 			throw error;
 		}
+		await this.newSkills.report(user, source, payload, newReads, result.imported);
 		// Side effects happen after the entire selection commits.
 		try {
 			await this.skills.refreshFollowingAgents(result.followers);
@@ -331,7 +390,7 @@ export class SkillSyncService {
 					kind: 'update',
 					action: 'accept',
 					verdict: scan.verdict,
-					bulk: payload.updates.length > 1,
+					bulk,
 					status: 'success',
 				},
 				user.id,
@@ -348,6 +407,7 @@ export class SkillSyncService {
 		}
 		return {
 			updatedCount: result.saved.length,
+			importedCount: result.imported.length,
 			...impact,
 		};
 	}
@@ -430,14 +490,32 @@ export class SkillSyncService {
 	 * skill was created.
 	 */
 	async stopSyncing(user: User, skillId: string): Promise<void> {
-		const { link, source } = await this.requireSource(user, skillId, 'stopSyncing');
-		// A stop at the same time removed the link first. The skill is not synced either way.
-		const stopped = await this.txRunner.run({}, async (ctx) => {
+		const checked = await this.requireSource(user, skillId, 'stopSyncing');
+		const [canRead, canUpdate] = await Promise.all([
+			this.skillAccess.accessCheck(user, 'read'),
+			this.skillAccess.accessCheck(user, 'update'),
+		]);
+		const result = await this.txRunner.run({}, async (ctx) => {
+			await this.sourceRepository.invalidateSourceForSkill(skillId, ctx);
 			// Source deletion takes the same lock before it reads which skills are still synced.
 			await this.skillRepository.lockForEdit([skillId], ctx);
-			return await this.sourceRepository.deleteLink(skillId, ctx);
+			const link = await this.sourceRepository.findLinkBySkillId(skillId, ctx);
+			if (!link) return null;
+			const source = await this.sourceRepository.findById(link.sourceId, ctx);
+			if (!source || source.id !== checked.source.id) {
+				throw new ConflictError('The source scope changed. Reload the skill and try again.');
+			}
+			if (source.projectId !== checked.source.projectId) {
+				if (!canRead(source)) throw new NotFoundError('Skill not found');
+				if (!canUpdate(source))
+					throw new ForbiddenError('You are not allowed to stop syncing this skill.');
+			}
+			const current = { link, source };
+			if (!(await this.sourceRepository.deleteLink(skillId, ctx))) return null;
+			return current;
 		});
-		if (!stopped) return;
+		if (!result) return;
+		const { link, source } = result;
 		await this.skillsTelemetry.stoppedSync(
 			{ provider: source.type, had_pending_update: link.pendingContentHash !== null },
 			user.id,
@@ -470,6 +548,10 @@ export class SkillSyncService {
 				{
 					provider: source.type,
 					updates_found: props.updatesFound,
+					new_skills_found:
+						(await this.sourceRepository.findById(source.id))?.unlinkedSkills?.filter(
+							({ skipped }) => !skipped,
+						).length ?? 0,
 					throttled: props.throttled,
 					status: props.reason ? 'failure' : 'success',
 					...(props.reason ? { reason: props.reason } : {}),
@@ -492,13 +574,14 @@ export class SkillSyncService {
 			return {
 				label,
 				updatesFound,
+				newSkillsFound: current?.unlinkedSkills?.filter(({ skipped }) => !skipped).length ?? 0,
 				throttled: true,
 				lastCheckedAt: current?.lastCheckedAt?.toISOString() ?? null,
 			};
 		}
 
 		try {
-			await this.check(source, 'manual');
+			await this.check(source, 'manual', user.id);
 		} catch (error) {
 			await track({
 				updatesFound: await this.sourceRepository.countPendingUpdates(source.id),
@@ -515,6 +598,7 @@ export class SkillSyncService {
 		return {
 			label,
 			updatesFound,
+			newSkillsFound: checked?.unlinkedSkills?.filter(({ skipped }) => !skipped).length ?? 0,
 			throttled: false,
 			lastCheckedAt: checked?.lastCheckedAt?.toISOString() ?? null,
 		};
@@ -558,10 +642,16 @@ export class SkillSyncService {
 	// ---------------------------------------------------------------- check
 
 	/** One check of a source. A check of the same source that runs on this main is joined. */
-	private async check(source: SkillSourceConnection, trigger: CheckTrigger): Promise<void> {
+	private async check(
+		source: SkillSourceConnection,
+		trigger: CheckTrigger,
+		userId?: string,
+	): Promise<void> {
 		const pending = this.running.get(source.id);
 		if (pending) return await pending;
-		const run = this.runCheck(source, trigger).finally(() => this.running.delete(source.id));
+		const run = this.runCheck(source, trigger, userId).finally(() =>
+			this.running.delete(source.id),
+		);
 		this.running.set(source.id, run);
 		return await run;
 	}
@@ -571,7 +661,11 @@ export class SkillSyncService {
 	 * each synced skill fetched at the new revision and compared with the stored content. A
 	 * failure is stored on the source and thrown.
 	 */
-	private async runCheck(source: SkillSourceConnection, trigger: CheckTrigger): Promise<void> {
+	private async runCheck(
+		source: SkillSourceConnection,
+		trigger: CheckTrigger,
+		userId?: string,
+	): Promise<void> {
 		const client = this.clients.get(source.type);
 		if (!client) return;
 		const access = accessKey(source);
@@ -591,16 +685,17 @@ export class SkillSyncService {
 		try {
 			const auth = await this.authOf(source, client);
 			const cursor = client.probe ? await client.probe(source.locator, auth) : undefined;
-			if (cursor !== undefined && cursor === source.probeCursor) {
+			if (cursor !== undefined && cursor === source.probeCursor && source.unlinkedSkills !== null) {
 				await this.recordCheck(source, { checkedAt, errorReason: null });
 				if (this.backoff.get(access) === previousBackoff) this.backoff.delete(access);
 				return;
 			}
 			const links = await this.sourceRepository.findLinksBySource(source.id);
 			const { counts, conflict } = await this.compareAll(source, client, links, auth, cursor);
+			const discovered = await this.newSkills.check(source, client, auth, cursor, userId);
 			// A link that another check changed meanwhile was not written: no cursor, so the next
 			// check reads every skill again.
-			const next = conflict ? null : cursor;
+			const next = conflict || !discovered ? null : cursor;
 			await this.recordCheck(source, {
 				checkedAt,
 				errorReason: null,
@@ -645,6 +740,7 @@ export class SkillSyncService {
 		const written = await this.sourceRepository.recordCheck(source.id, {
 			...result,
 			credentialId: source.credentialId,
+			readScope: source,
 		});
 		if (written) await this.trackHealthChange(source, result.errorReason);
 	}
@@ -780,7 +876,7 @@ export class SkillSyncService {
 		fetched: Fetched,
 		previous: ReturnType<typeof rowContent>,
 	): Promise<SkillScanResult['verdict'] | 'conflict' | undefined> {
-		const { content, hash, rate } = this.candidateOf(fetched, previous);
+		const { content, hash, rate } = await this.candidateOf(fetched, previous);
 		const read = link.pendingContentHash;
 		if (hash === link.baseContentHash) {
 			if (read === null && link.baseRevision === fetched.revision) return undefined;
@@ -829,18 +925,18 @@ export class SkillSyncService {
 
 	/**
 	 * The content and hash that a check compares, and how the security check rates it. A
-	 * SKILL.md that n8n cannot parse has no content: its parse error stands for it, so the same
-	 * broken file is reported once, and the check blocks it, as at import.
+	 * SKILL.md that n8n cannot parse keeps only its hash, so the same broken file is reported
+	 * once, and the check blocks it, as at import.
 	 */
-	private candidateOf(
+	private async candidateOf(
 		fetched: Fetched,
 		previous: ReturnType<typeof rowContent>,
-	): { content: SkillContent | null; hash: string; rate: () => SkillScanResult } {
+	): Promise<{ content: SkillContent | null; hash: string; rate: () => SkillScanResult }> {
 		if ('unreadable' in fetched) {
 			const { unreadable } = fetched;
 			return {
 				content: null,
-				hash: createHash('sha256').update(`unreadable\n${unreadable.message}`).digest('hex'),
+				hash: await unreadableSkillHash(unreadable.message, unreadable.contentHash),
 				rate: () => this.scanner.scanUnreadable(unreadable),
 			};
 		}

@@ -3,69 +3,69 @@ import { Logger } from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { BadRequestError, OperationalError } from '@n8n/errors';
+import { sanitizeSandboxErrorDetail } from '@n8n/utils/redaction/sanitize-sandbox-error-detail';
 import { runSerially } from '@n8n/utils/run-serially';
 import escapeRegExp from 'lodash/escapeRegExp';
 import { safeRegex } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
-import { sanitizeSandboxErrorDetail } from '@/utils/sanitize-sandbox-error-detail';
-
 import { KnowledgeFileStore } from '../files/knowledge-file-store';
 import {
 	assertKnowledgePathSegment,
-	getKnowledgePaths,
-	type KnowledgePaths,
-	storageFileNameForOriginalFileName,
+	getKnowledgeMirrorPaths,
+	type KnowledgeMirrorPaths,
+	toKnowledgeContentFileName,
 } from '../files/storage-naming';
 import type { KnowledgeConsumerScope } from '../knowledge-consumer-scope';
+import type { KnowledgePreparationWait, KnowledgeRetrievalObserver } from '../knowledge-retriever';
 import type { KnowledgeSandboxHandle } from '../knowledge-sandbox-provider';
-import { KnowledgeSandboxProviderRegistry } from '../knowledge-sandbox-provider-registry';
+import { KnowledgeSandboxProviderProxy } from '../knowledge-sandbox-provider-proxy';
 import { KnowledgeFileRepository } from '../repositories/knowledge-file.repository';
 import {
 	buildMirrorFinalizeCommand,
-	buildReadKnowledgeCommand,
+	buildReadKnowledgeFileCommand,
 	buildScopedKnowledgeShellCommand,
-	buildSearchKnowledgeCommand,
+	buildSearchKnowledgeTextCommand,
 	getSearchContextWindow,
 	KNOWLEDGE_FILES_DIR_UNAVAILABLE_EXIT_CODE,
 	MIRROR_SYNC_TIMEOUT_SECONDS,
-	parseReadKnowledgeOutput,
+	parseReadKnowledgeFileOutput,
 	parseRipgrepCountOutput,
 	parseRipgrepFilesOutput,
-	parseRipgrepOutput,
+	parseRipgrepContentOutput,
 } from './commands';
 import {
-	assertValidKnowledgeFilePath,
-	DEFAULT_GLOB_FILES_LIMIT,
+	parseKnowledgeFilePath,
+	DEFAULT_FIND_FILES_LIMIT,
 	DEFAULT_SEARCH_TEXT_LIMIT,
-	parseGlobKnowledgeFilesRequest,
-	parseReadKnowledgeRequest,
-	parseSearchKnowledgeRequest,
-	type AgentKnowledgeFileReference,
-	type GlobKnowledgeFilesRequest,
-	type GlobKnowledgeFilesResult,
-	type ReadKnowledgeRequest,
-	type ReadKnowledgeResult,
-	type SearchKnowledgeRequest,
-	type SearchKnowledgeResult,
+	parseFindKnowledgeFilesRequest,
+	parseReadKnowledgeFileRequest,
+	parseSearchKnowledgeTextRequest,
+	type KnowledgeFileReference,
+	type FindKnowledgeFilesRequest,
+	type FindKnowledgeFilesResult,
+	type ReadKnowledgeFileRequest,
+	type ReadKnowledgeFileResult,
+	type SearchKnowledgeTextRequest,
+	type SearchKnowledgeTextResult,
 } from './retrieval-schemas';
 
 const GLOB_MATCH_TIMEOUT_MS = 250;
 
 interface KnowledgeMirrorRuntime extends KnowledgeSandboxHandle {
-	paths: KnowledgePaths;
+	paths: KnowledgeMirrorPaths;
 }
 
-interface AgentKnowledgeReferenceLookup {
-	files: AgentKnowledgeFileReference[];
-	byFile: Map<string, AgentKnowledgeFileReference>;
-	byId: Map<string, AgentKnowledgeFileReference>;
+interface KnowledgeFileLookup {
+	files: KnowledgeFileReference[];
+	byPath: Map<string, KnowledgeFileReference>;
+	byFileId: Map<string, KnowledgeFileReference>;
 }
 
-function emptySearchKnowledgeResult(
-	outputMode: NonNullable<SearchKnowledgeRequest['output_mode']>,
+function emptySearchKnowledgeTextResult(
+	outputMode: NonNullable<SearchKnowledgeTextRequest['output_mode']>,
 	limit: number,
-): SearchKnowledgeResult {
+): SearchKnowledgeTextResult {
 	if (outputMode === 'files_with_matches') {
 		return { outputMode, files: [], limit, hasMore: false, truncated: false };
 	}
@@ -129,36 +129,37 @@ export class KnowledgeMirrorService {
 	constructor(
 		private readonly agentsConfig: AgentsConfig,
 		logger: Logger,
-		private readonly sandboxProvider: KnowledgeSandboxProviderRegistry,
+		private readonly sandboxProviderProxy: KnowledgeSandboxProviderProxy,
 		private readonly fileRepository: KnowledgeFileRepository,
 		private readonly fileStore: KnowledgeFileStore,
 	) {
 		this.logger = logger.scoped('knowledge');
 	}
 
-	async searchKnowledge(
+	async searchText(
 		scope: KnowledgeConsumerScope,
-		request: SearchKnowledgeRequest,
-	): Promise<SearchKnowledgeResult> {
-		const validatedRequest = parseSearchKnowledgeRequest(request);
-		const references = await this.loadKnowledgeReferenceLookup(scope);
+		request: SearchKnowledgeTextRequest,
+		observer?: KnowledgeRetrievalObserver,
+	): Promise<SearchKnowledgeTextResult> {
+		const validatedRequest = parseSearchKnowledgeTextRequest(request);
+		const references = await this.loadKnowledgeFileLookup(scope);
 		const outputMode = validatedRequest.output_mode ?? 'content';
 		const limit = validatedRequest.head_limit ?? DEFAULT_SEARCH_TEXT_LIMIT;
 
 		if (references.files.length === 0) {
-			return emptySearchKnowledgeResult(outputMode, limit);
+			return emptySearchKnowledgeTextResult(outputMode, limit);
 		}
 
 		const scopedFiles = this.resolveSearchFiles(validatedRequest, references);
-		const command = buildSearchKnowledgeCommand(
+		const command = buildSearchKnowledgeTextCommand(
 			validatedRequest,
 			scopedFiles.map((file) => file.file),
 		);
-		const result = await this.executeKnowledgeOperation(scope, command, references.files);
+		const result = await this.executeKnowledgeOperation(scope, command, references.files, observer);
 
 		assertKnowledgeFilesDirectoryAvailable('search', result);
 		if (result.exitCode === 1) {
-			return emptySearchKnowledgeResult(outputMode, limit);
+			return emptySearchKnowledgeTextResult(outputMode, limit);
 		}
 		if (result.exitCode !== 0) {
 			throw new OperationalError(formatSandboxCommandFailure('search', result));
@@ -167,13 +168,13 @@ export class KnowledgeMirrorService {
 		return this.parseSearchResult(result.stdout, validatedRequest, references, outputMode, limit);
 	}
 
-	async globKnowledgeFiles(
+	async findFiles(
 		scope: KnowledgeConsumerScope,
-		request: GlobKnowledgeFilesRequest,
-	): Promise<GlobKnowledgeFilesResult> {
-		const validatedRequest = parseGlobKnowledgeFilesRequest(request);
-		const references = await this.loadKnowledgeReferenceLookup(scope);
-		const limit = validatedRequest.limit ?? DEFAULT_GLOB_FILES_LIMIT;
+		request: FindKnowledgeFilesRequest,
+	): Promise<FindKnowledgeFilesResult> {
+		const validatedRequest = parseFindKnowledgeFilesRequest(request);
+		const references = await this.loadKnowledgeFileLookup(scope);
+		const limit = validatedRequest.limit ?? DEFAULT_FIND_FILES_LIMIT;
 		const offset = validatedRequest.offset ?? 0;
 
 		if (references.files.length === 0) {
@@ -190,22 +191,23 @@ export class KnowledgeMirrorService {
 		};
 	}
 
-	async readKnowledge(
+	async readFile(
 		scope: KnowledgeConsumerScope,
-		request: ReadKnowledgeRequest,
-	): Promise<ReadKnowledgeResult> {
-		const validatedRequest = parseReadKnowledgeRequest(request);
-		const references = await this.loadKnowledgeReferenceLookup(scope);
+		request: ReadKnowledgeFileRequest,
+		observer?: KnowledgeRetrievalObserver,
+	): Promise<ReadKnowledgeFileResult> {
+		const validatedRequest = parseReadKnowledgeFileRequest(request);
+		const references = await this.loadKnowledgeFileLookup(scope);
 		const file = this.resolveRequiredFile(validatedRequest, references);
-		const command = buildReadKnowledgeCommand(file.file, validatedRequest);
-		const result = await this.executeKnowledgeOperation(scope, command, references.files);
+		const command = buildReadKnowledgeFileCommand(file.file, validatedRequest);
+		const result = await this.executeKnowledgeOperation(scope, command, references.files, observer);
 
 		assertKnowledgeFilesDirectoryAvailable('read', result);
 		if (result.exitCode !== 0) {
 			throw new OperationalError(formatSandboxCommandFailure('read', result));
 		}
 
-		const parsed = parseReadKnowledgeOutput(result.stdout, file, validatedRequest);
+		const parsed = parseReadKnowledgeFileOutput(result.stdout, file, validatedRequest);
 
 		return {
 			file: file.file,
@@ -225,14 +227,11 @@ export class KnowledgeMirrorService {
 	 * `assertWritable` rejects when the consumer no longer accepts knowledge
 	 * writes, for example while the agents module deletes the project.
 	 */
-	prewarmMirrorInBackground(
-		scope: KnowledgeConsumerScope,
-		assertWritable: () => Promise<void>,
-	): void {
+	syncMirrorInBackground(scope: KnowledgeConsumerScope, assertWritable: () => Promise<void>): void {
 		void (async () => {
 			await assertWritable();
 			try {
-				const references = await this.loadKnowledgeReferenceLookup(scope);
+				const references = await this.loadKnowledgeFileLookup(scope);
 				const runtime = await this.acquireKnowledgeRuntime(scope);
 				await this.ensureMirrorSynced(runtime, references.files);
 			} finally {
@@ -240,7 +239,7 @@ export class KnowledgeMirrorService {
 				try {
 					await assertWritable();
 				} catch {
-					await this.sandboxProvider.destroy(scope);
+					await this.sandboxProviderProxy.destroy(scope);
 				}
 			}
 		})().catch((error) => {
@@ -255,16 +254,40 @@ export class KnowledgeMirrorService {
 	private async executeKnowledgeOperation(
 		scope: KnowledgeConsumerScope,
 		command: string,
-		files: AgentKnowledgeFileReference[],
+		files: KnowledgeFileReference[],
+		observer?: KnowledgeRetrievalObserver,
 	): Promise<CommandResult> {
-		const runtime = await this.acquireKnowledgeRuntime(scope);
+		const runtime = await this.prepareKnowledgeRuntime(scope, files, observer);
 		const scopedCommand = buildScopedKnowledgeShellCommand(command, runtime.paths);
-		await this.ensureMirrorSynced(runtime, files);
-		return await this.sandboxProvider.executeCommand(
+		return await this.sandboxProviderProxy.executeCommand(
 			runtime.sandbox,
 			scopedCommand,
 			this.agentsConfig.sandboxTimeout,
 		);
+	}
+
+	/** Gets a running sandbox with a synced mirror, and reports how long each step waited. */
+	private async prepareKnowledgeRuntime(
+		scope: KnowledgeConsumerScope,
+		files: KnowledgeFileReference[],
+		observer?: KnowledgeRetrievalObserver,
+	): Promise<KnowledgeMirrorRuntime> {
+		const wait: KnowledgePreparationWait = { sandboxWaitMs: 0, mirrorWaitMs: 0 };
+		const sandboxStartedAt = Date.now();
+
+		try {
+			const runtime = await this.acquireKnowledgeRuntime(scope).finally(() => {
+				wait.sandboxWaitMs = Date.now() - sandboxStartedAt;
+			});
+
+			await this.ensureMirrorSynced(runtime, files, (mirrorWaitMs) => {
+				wait.mirrorWaitMs = mirrorWaitMs;
+			});
+
+			return runtime;
+		} finally {
+			observer?.onPreparationWait?.(wait);
+		}
 	}
 
 	/**
@@ -274,22 +297,38 @@ export class KnowledgeMirrorService {
 	 */
 	private async ensureMirrorSynced(
 		runtime: KnowledgeMirrorRuntime,
-		files: AgentKnowledgeFileReference[],
+		files: KnowledgeFileReference[],
+		onWait?: (waitMs: number) => void,
 	): Promise<void> {
-		await runSerially(
-			this.pendingMirrorSyncs,
-			runtime.cacheKey,
-			async () => await this.syncMirror(runtime, files),
-		);
+		const startedAt = Date.now();
+		// Another sync for this sandbox is pending, so this call waits for it.
+		const waitsForOtherSync = this.pendingMirrorSyncs.has(runtime.cacheKey);
+		const sync = { mirrorChangesDetected: false };
+
+		try {
+			await runSerially(
+				this.pendingMirrorSyncs,
+				runtime.cacheKey,
+				async () =>
+					await this.syncMirror(runtime, files, () => {
+						sync.mirrorChangesDetected = true;
+					}),
+			);
+		} finally {
+			// The manifest check alone is not a wait.
+			const waited = waitsForOtherSync || sync.mirrorChangesDetected;
+			onWait?.(waited ? Date.now() - startedAt : 0);
+		}
 	}
 
 	private async syncMirror(
 		runtime: KnowledgeMirrorRuntime,
-		files: AgentKnowledgeFileReference[],
+		files: KnowledgeFileReference[],
+		onChangesDetected?: () => void,
 	): Promise<void> {
-		const manifestResult = await this.sandboxProvider.executeCommand(
+		const manifestResult = await this.sandboxProviderProxy.executeCommand(
 			runtime.sandbox,
-			`cat ${runtime.paths.manifest} 2>/dev/null || true`,
+			`cat ${runtime.paths.manifestPath} 2>/dev/null || true`,
 			MIRROR_SYNC_TIMEOUT_SECONDS * 1000,
 		);
 		const present = parseMirrorManifest(manifestResult.stdout);
@@ -300,6 +339,8 @@ export class KnowledgeMirrorService {
 		const toDelete = [...present.keys()].filter((name) => !expectedSet.has(name));
 
 		if (toCopy.length === 0 && toDelete.length === 0) return;
+
+		onChangesDetected?.();
 
 		for (const name of [...expectedNames, ...toDelete]) {
 			assertKnowledgePathSegment(name, 'knowledge mirror file name');
@@ -324,7 +365,7 @@ export class KnowledgeMirrorService {
 	 */
 	private async uploadMirrorFiles(
 		runtime: KnowledgeMirrorRuntime,
-		files: AgentKnowledgeFileReference[],
+		files: KnowledgeFileReference[],
 		stagingId: string,
 	): Promise<Set<string>> {
 		const copiedNames = new Set<string>();
@@ -365,25 +406,23 @@ export class KnowledgeMirrorService {
 		return copiedNames;
 	}
 
-	private async loadKnowledgeReferenceLookup(
+	private async loadKnowledgeFileLookup(
 		scope: KnowledgeConsumerScope,
-	): Promise<AgentKnowledgeReferenceLookup> {
-		this.sandboxProvider.assertConfiguration(scope);
+	): Promise<KnowledgeFileLookup> {
+		this.sandboxProviderProxy.assertConfiguration(scope);
 
 		const files = await this.loadKnowledgeFileReferences(scope.agentId);
 		return {
 			files,
-			byFile: new Map(files.map((file) => [file.file, file])),
-			byId: new Map(files.map((file) => [file.fileId, file])),
+			byPath: new Map(files.map((file) => [file.file, file])),
+			byFileId: new Map(files.map((file) => [file.fileId, file])),
 		};
 	}
 
-	private async loadKnowledgeFileReferences(
-		agentId: string,
-	): Promise<AgentKnowledgeFileReference[]> {
+	private async loadKnowledgeFileReferences(agentId: string): Promise<KnowledgeFileReference[]> {
 		const files = await this.fileRepository.findByAgentId(agentId, {});
 		return files.map((file) => ({
-			file: storageFileNameForOriginalFileName(file.fileName),
+			file: toKnowledgeContentFileName(file.fileName),
 			fileId: file.id,
 			storedAt: file.storedAt,
 			storageKey: file.storageKey,
@@ -395,9 +434,9 @@ export class KnowledgeMirrorService {
 	}
 
 	private resolveRequiredFile(
-		request: ReadKnowledgeRequest,
-		references: AgentKnowledgeReferenceLookup,
-	): AgentKnowledgeFileReference {
+		request: ReadKnowledgeFileRequest,
+		references: KnowledgeFileLookup,
+	): KnowledgeFileReference {
 		const file = this.resolveOptionalFile(request, references);
 		if (!file) {
 			throw new BadRequestError('Knowledge file not found');
@@ -406,15 +445,15 @@ export class KnowledgeMirrorService {
 	}
 
 	private resolveOptionalFile(
-		request: Pick<ReadKnowledgeRequest, 'file' | 'fileId'>,
-		references: AgentKnowledgeReferenceLookup,
-	): AgentKnowledgeFileReference | undefined {
+		request: Pick<ReadKnowledgeFileRequest, 'file' | 'fileId'>,
+		references: KnowledgeFileLookup,
+	): KnowledgeFileReference | undefined {
 		if (!request.file && !request.fileId) return undefined;
 
 		if (request.file && request.fileId) {
-			const normalized = assertValidKnowledgeFilePath(request.file);
-			const fileByPath = references.byFile.get(normalized);
-			const fileById = references.byId.get(request.fileId);
+			const normalized = parseKnowledgeFilePath(request.file);
+			const fileByPath = references.byPath.get(normalized);
+			const fileById = references.byFileId.get(request.fileId);
 			if (!fileByPath || !fileById || fileByPath.fileId !== fileById.fileId) {
 				throw new BadRequestError('Knowledge file not found');
 			}
@@ -422,15 +461,15 @@ export class KnowledgeMirrorService {
 		}
 
 		if (request.file) {
-			const normalized = assertValidKnowledgeFilePath(request.file);
-			const file = references.byFile.get(normalized);
+			const normalized = parseKnowledgeFilePath(request.file);
+			const file = references.byPath.get(normalized);
 			if (!file) {
 				throw new BadRequestError('Knowledge file not found');
 			}
 			return file;
 		}
 
-		const file = references.byId.get(request.fileId ?? '');
+		const file = references.byFileId.get(request.fileId ?? '');
 		if (!file) {
 			throw new BadRequestError('Knowledge file not found');
 		}
@@ -440,15 +479,15 @@ export class KnowledgeMirrorService {
 	private async acquireKnowledgeRuntime(
 		scope: KnowledgeConsumerScope,
 	): Promise<KnowledgeMirrorRuntime> {
-		const runtime = await this.sandboxProvider.acquire(scope);
-		return { ...runtime, paths: getKnowledgePaths(runtime.provider) };
+		const runtime = await this.sandboxProviderProxy.acquire(scope);
+		return { ...runtime, paths: getKnowledgeMirrorPaths(runtime.provider) };
 	}
 
 	private resolveSearchFiles(
-		request: SearchKnowledgeRequest,
-		references: AgentKnowledgeReferenceLookup,
-	): AgentKnowledgeFileReference[] {
-		const scopedFilesByPath = new Map<string, AgentKnowledgeFileReference>();
+		request: SearchKnowledgeTextRequest,
+		references: KnowledgeFileLookup,
+	): KnowledgeFileReference[] {
+		const scopedFilesByPath = new Map<string, KnowledgeFileReference>();
 		for (const path of request.path ?? []) {
 			const file = this.resolveOptionalFile({ file: path }, references);
 			if (!file) {
@@ -461,13 +500,13 @@ export class KnowledgeMirrorService {
 
 	private parseSearchResult(
 		stdout: string,
-		validatedRequest: SearchKnowledgeRequest,
-		references: AgentKnowledgeReferenceLookup,
-		outputMode: NonNullable<SearchKnowledgeRequest['output_mode']>,
+		validatedRequest: SearchKnowledgeTextRequest,
+		references: KnowledgeFileLookup,
+		outputMode: NonNullable<SearchKnowledgeTextRequest['output_mode']>,
 		limit: number,
-	): SearchKnowledgeResult {
+	): SearchKnowledgeTextResult {
 		if (outputMode === 'files_with_matches') {
-			const parsed = parseRipgrepFilesOutput(stdout, references.byFile);
+			const parsed = parseRipgrepFilesOutput(stdout, references.byPath);
 			const files = parsed.files.slice(0, limit);
 			return {
 				outputMode,
@@ -479,7 +518,7 @@ export class KnowledgeMirrorService {
 		}
 
 		if (outputMode === 'count') {
-			const parsed = parseRipgrepCountOutput(stdout, references.byFile);
+			const parsed = parseRipgrepCountOutput(stdout, references.byPath);
 			const counts = parsed.counts.slice(0, limit);
 			return {
 				outputMode,
@@ -490,9 +529,9 @@ export class KnowledgeMirrorService {
 			};
 		}
 
-		const parsed = parseRipgrepOutput(
+		const parsed = parseRipgrepContentOutput(
 			stdout,
-			references.byFile,
+			references.byPath,
 			getSearchContextWindow(validatedRequest),
 		);
 		const matches = parsed.matches.slice(0, limit);
@@ -508,8 +547,8 @@ export class KnowledgeMirrorService {
 
 	private async finalizeMirror(
 		runtime: KnowledgeMirrorRuntime,
-		files: AgentKnowledgeFileReference[],
-		toCopy: AgentKnowledgeFileReference[],
+		files: KnowledgeFileReference[],
+		toCopy: KnowledgeFileReference[],
 		toDelete: string[],
 		present: Map<string, string>,
 		stagingId: string,
@@ -522,7 +561,7 @@ export class KnowledgeMirrorService {
 			.filter((file) => present.has(file.file) && !copiedNames.has(file.file))
 			.map((file) => file.file);
 
-		const syncResult = await this.sandboxProvider.executeCommand(
+		const syncResult = await this.sandboxProviderProxy.executeCommand(
 			runtime.sandbox,
 			buildMirrorFinalizeCommand(
 				[...copiedNames],
@@ -558,9 +597,9 @@ export class KnowledgeMirrorService {
 }
 
 function matchKnowledgeFilesByGlob(
-	files: AgentKnowledgeFileReference[],
-	request: GlobKnowledgeFilesRequest,
-): AgentKnowledgeFileReference[] {
+	files: KnowledgeFileReference[],
+	request: FindKnowledgeFilesRequest,
+): KnowledgeFileReference[] {
 	const caseSensitive = request.caseSensitive === true;
 	const source = globPatternToRegexSource(request.pattern);
 	const flags = caseSensitive ? undefined : 'i';
@@ -592,7 +631,7 @@ function matchKnowledgeFilesByGlob(
 }
 
 function getKnowledgeFileMatchBucket(
-	file: AgentKnowledgeFileReference,
+	file: KnowledgeFileReference,
 	patternTokens: string[],
 	caseSensitive: boolean,
 ): 0 | 1 | 2 | 3 {

@@ -1,4 +1,4 @@
-import { EventService } from '@n8n/backend-services';
+import { EventService, EventRelay } from '@n8n/backend-services';
 import { UserRepository } from '@n8n/db';
 import { Redactable } from '@n8n/decorators';
 import { Service } from '@n8n/di';
@@ -10,15 +10,23 @@ import {
 	redactExecutionError,
 } from 'n8n-workflow';
 
+import type { EventNamesAuditType } from '@/eventbus/event-message-classes';
 import { EventMessageGeneric } from '@/eventbus/event-message-classes/event-message-generic';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import type { RelayEventMap, UserLike } from '@/events/maps/relay.event-map';
-import { EventRelay } from '@/events/relays/event-relay';
 import type {
 	PolicyAttachment,
 	PolicyRule,
 } from '@/modules/type-availability-policies/policy-rule.types';
 import { assertNever } from '@/utils';
+
+const SCIM_SETTINGS_AUDIT_EVENTS = {
+	enabled: 'n8n.audit.scim.enabled',
+	disabled: 'n8n.audit.scim.disabled',
+	token_created: 'n8n.audit.scim.token.created',
+	token_rotated: 'n8n.audit.scim.token.rotated',
+	token_revoked: 'n8n.audit.scim.token.revoked',
+} as const satisfies Record<RelayEventMap['scim-settings-updated']['change'], EventNamesAuditType>;
 
 type WorkflowExecutedEvent = RelayEventMap['workflow-executed'];
 type WorkflowExecutedEventWithUser = WorkflowExecutedEvent & { user: UserLike };
@@ -204,6 +212,9 @@ export class LogStreamingEventRelay extends EventRelay {
 			'trusted-source-created': (event) => this.trustedSourceCreated(event),
 			'trusted-source-updated': (event) => this.trustedSourceUpdated(event),
 			'trusted-source-deleted': (event) => this.trustedSourceDeleted(event),
+			'scim-settings-updated': (event) => this.scimSettingsUpdated(event),
+			'scim-deprovisioning-policy-updated': (event) => this.scimDeprovisioningPolicyUpdated(event),
+			'scim-request-rejected': (event) => this.scimRequestRejected(event),
 			'promotion-provider-created': (event) => this.promotionProviderCreated(event),
 			'promotion-provider-updated': (event) => this.promotionProviderUpdated(event),
 			'promotion-provider-deleted': (event) => this.promotionProviderDeleted(event),
@@ -1846,6 +1857,54 @@ export class LogStreamingEventRelay extends EventRelay {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.trusted-source.deleted',
 			payload: { ...user, sourceId, issuer },
+		});
+	}
+
+	// #endregion
+
+	// #region SCIM
+
+	@Redactable()
+	private scimSettingsUpdated({
+		user,
+		isActive,
+		change,
+		source,
+	}: RelayEventMap['scim-settings-updated']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: SCIM_SETTINGS_AUDIT_EVENTS[change],
+			// n8n turns SCIM off by itself when single sign-on turns off, so then
+			// no user acts.
+			payload: user ? { ...user, isActive, source } : { userId: null, isActive, source },
+		});
+	}
+
+	@Redactable()
+	private scimDeprovisioningPolicyUpdated({
+		user,
+		isActive,
+		before,
+		after,
+	}: RelayEventMap['scim-deprovisioning-policy-updated']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.scim.deprovisioning.updated',
+			payload: { ...user, isActive, before, after },
+		});
+	}
+
+	/**
+	 * The identity provider is the caller, so no user acts. A 429 and a path
+	 * without a route skip the audit log. The IP rate limit already refused a
+	 * 429, and a path without a route has no rate limit and no token check.
+	 * Thus each of them would let any caller write to every destination.
+	 * Telemetry still reports them, at most once an hour.
+	 */
+	private scimRequestRejected(event: RelayEventMap['scim-request-rejected']) {
+		if (event.reason === 'rate_limited' || event.operation === 'other') return;
+
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.scim.request.rejected',
+			payload: { userId: null, ...event },
 		});
 	}
 

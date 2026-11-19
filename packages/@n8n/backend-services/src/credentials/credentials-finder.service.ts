@@ -7,7 +7,11 @@ import {
 	type User,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { hasGlobalScope, RESOURCES } from '@n8n/permissions';
+import {
+	hasGlobalScope,
+	IMPLICIT_TEAM_PROJECT_MEMBER_ROLE_SLUGS,
+	RESOURCES,
+} from '@n8n/permissions';
 import type { CredentialSharingRole, ProjectRole, Scope } from '@n8n/permissions';
 import { RoleService } from '../services/role.service';
 
@@ -287,7 +291,9 @@ export class CredentialsFinderService {
 	 * @param ignoreGlobalUseScope - answer for this user's own access only, as if
 	 * they held no instance-wide `credential:use`. Redaction asks this way: an
 	 * Owner must not see execution data through a grant nobody else has. Global
-	 * credentials still count, because every user may use them.
+	 * credentials still count, because every user may use them. Credentials
+	 * shared with a team project count for the owner and admins, because they
+	 * are implicit members of every team project.
 	 */
 	async findUnusableCredentialsForUser(
 		user: User | null,
@@ -368,6 +374,25 @@ export class CredentialsFinderService {
 			credentialIds,
 			access,
 		);
+
+		// The instance owner and admins are members of every team project through
+		// their instance role, with no project relation. Their own access therefore
+		// covers every credential shared with a team project, but not one that only
+		// a personal project holds.
+		if (
+			access &&
+			options.ignoreGlobalOverride &&
+			IMPLICIT_TEAM_PROJECT_MEMBER_ROLE_SLUGS.includes(user.role.slug)
+		) {
+			const remainingIds = credentialIds.filter((id) => !result.has(id));
+			if (remainingIds.length > 0) {
+				const teamIds = await this.credentialAccessRepository.findTeamProjectCredentialIds(
+					remainingIds,
+					access.credentialRoles,
+				);
+				for (const id of teamIds) result.add(id);
+			}
+		}
 
 		// Also include global credentials if scopes allow read-only access. Every user
 		// may use a global credential, so this applies even when the instance-wide
