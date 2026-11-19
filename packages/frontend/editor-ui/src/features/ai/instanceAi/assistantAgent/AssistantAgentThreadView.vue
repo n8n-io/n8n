@@ -96,6 +96,7 @@ import {
 import { assistantAutoApprovalExtension } from './assistantAutoApproval';
 import { assistantConfirmationExtension } from './assistantConfirmation';
 import { assistantHostEventExtensions } from './assistantHostEvents';
+import { assistantToolResultCodeExtension } from './assistantToolResultCode';
 import { assistantToolResultTableExtension } from './assistantToolResultTables';
 import { useAssistantAgentThreadsStore } from './assistantAgentThreads.store';
 import { stagedElementAppId, toElementComposerAttachment } from './assistantElementAttachments';
@@ -257,6 +258,7 @@ const interactionExtensions = [
 	assistantAutoApprovalExtension,
 	...assistantHostEventExtensions,
 	assistantToolResultTableExtension,
+	assistantToolResultCodeExtension,
 ];
 
 const panel = useTemplateRef<InstanceType<typeof AgentChatPanel>>('panel');
