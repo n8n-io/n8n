@@ -1968,6 +1968,9 @@ importers:
       '@n8n/backend-network':
         specifier: workspace:*
         version: link:../backend-network
+      '@n8n/blob-storage':
+        specifier: workspace:*
+        version: link:../blob-storage
       '@n8n/config':
         specifier: workspace:*
         version: link:../config
@@ -2001,6 +2004,9 @@ importers:
       '@types/express':
         specifier: 'catalog:'
         version: 5.0.1
+      bcryptjs:
+        specifier: 2.4.3
+        version: 2.4.3
       cache-manager:
         specifier: 'catalog:'
         version: 5.2.3
@@ -2041,6 +2047,9 @@ importers:
       '@n8n/vitest-config':
         specifier: workspace:*
         version: link:../vitest-config
+      '@types/bcryptjs':
+        specifier: ^2.4.2
+        version: 2.4.2
       '@types/jsonwebtoken':
         specifier: 'catalog:'
         version: 9.0.10

@@ -1,4 +1,5 @@
-import { isAzureEntraCredential, hasAzureApiKey, type ResolvedCredential } from '@n8n/agents';
+import { isAzureEntraCredential, hasAzureApiKey } from './provider-credentials';
+import type { ResolvedCredential } from '../../types/sdk/credential-provider';
 
 type CredMapper = (raw: ResolvedCredential) => Record<string, unknown>;
 

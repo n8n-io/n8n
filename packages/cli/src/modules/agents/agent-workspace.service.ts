@@ -10,8 +10,7 @@ import { Logger } from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
-
-import { sanitizeSandboxErrorDetail } from '@/utils/sanitize-sandbox-error-detail';
+import { sanitizeSandboxErrorDetail } from '@n8n/utils/redaction/sanitize-sandbox-error-detail';
 
 import type { AgentSandboxPrincipalHash } from './agent-sandbox-principal';
 import {
