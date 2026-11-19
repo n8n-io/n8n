@@ -1,0 +1,12 @@
+{
+	"description": "The Code node after the trigger runs in the fallback host and gives its item a paired item that is no input item. The converter does not know the paired items of such code, so it refuses the reader",
+	"expectRefusal": true,
+	"trigger": {
+		"body": {
+			"tag": "t"
+		}
+	},
+	"compare": [
+		"Read Each"
+	]
+}

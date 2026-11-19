@@ -82,6 +82,7 @@ export const CONVERT_COST: Record<string, [ops: number, allocations: number]> = 
 	"convert/80-engine-form-paired-read": [6887, 460],
 	"convert/81-engine-loop-paired-read": [5868, 402],
 	"convert/82-engine-form-paired-read-core-nodes": [5032, 350],
+	"convert/84-single-target-one-input-item": [1132, 111],
 	"convert/small": [126, 14],
 	"corpus/01-order-approval": [160, 17],
 	"corpus/02-loops": [265, 13],

@@ -618,10 +618,9 @@ export class ModuleGenerator {
 	 * - a node that gives one item for each item;
 	 * - a compiled node that keeps the paired item of each of its items (a hop: the run
 	 *   gives v1's error for an item that has none);
-	 * - for a `target` that gives one item: the node after `target`, whose only input is that
-	 *   item. v1 pairs each of its items with that item (the node itself, or
-	 *   `assignPairedItems` of the engine). `first` is true then, and each item pairs with
-	 *   the one item.
+	 * - for a `target` that gives one item: a node whose input is that one item by
+	 *   construction (`oneItemInto`). `first` is true then, and each item pairs with the one
+	 *   item.
 	 * `direct` is true when the input items of the last hop are the items of `target`. For each
 	 * other path the walk gives the first reason, built from node types and settings only.
 	 */
@@ -676,11 +675,11 @@ export class ModuleGenerator {
 				cur = e.from;
 				continue;
 			}
-			const above = b.graph.incoming(e.from);
-			if (single && above.length === 1 && above[0].input === 0 && above[0].from === target) {
-				const again = this.runsAgainFirst(b, target, [...path, e.from]);
+			const one = single ? this.oneItemInto(b, e.from, target) : null;
+			if (one !== null) {
+				const again = this.runsAgainFirst(b, target, [...path, ...one]);
 				if (again !== null) return { reason: again };
-				return { hops, direct: false, first: true, output: above[0].output, adjacent: false };
+				return { hops, direct: false, first: true, output: 0, adjacent: false };
 			}
 			const type = this.typeOf(b, e.from);
 			if (parent.executeOnce) return { reason: `executeOnce on ${type}` };
@@ -689,6 +688,38 @@ export class ModuleGenerator {
 			return { reason: `no pairs after ${type}${why === undefined ? '' : ` (${why})`}` };
 		}
 		return { reason: 'the walk does not end' };
+	}
+
+	/**
+	 * The nodes from `name` back to the node after `target`, when the input of node `name` is
+	 * the one item of `target` by construction: `target` gives one item, and each node
+	 * between gives at most one item for one item (a node that gives one item for each item,
+	 * an If, Filter or Switch node). v1 then pairs each item of node `name` with its one input
+	 * item: the v1 node gives the index of that item, or `assignPairedItems` of the engine
+	 * does (one input with one item). Null for each other node, and for:
+	 * - a node with several inputs (v1 has that rule for one input only);
+	 * - code of the user that has the text `pairedItem`: it can give any paired item.
+	 */
+	private oneItemInto(b: Body, name: string, target: string): string[] | null {
+		const node = b.graph.nodes.get(name);
+		if (!node || SEVERAL_INPUTS.has(node.type)) return null;
+		if (USER_CODE.test(node.type) && parameterText(node).includes('pairedItem')) return null;
+		const nodes = [name];
+		let cur = name;
+		for (let guard = 0; guard < b.graph.nodes.size; guard++) {
+			const all = b.graph.incoming(cur);
+			if (all.length !== 1 || all[0].input !== 0) return null;
+			const from = all[0].from;
+			if (from === target) return nodes;
+			const parent = b.graph.nodes.get(from);
+			if (!parent || !b.scope.has(from)) return null;
+			if (!(ONE_TO_ONE.has(parent.type) || parent.disabled || AT_MOST_ONE.has(parent.type))) {
+				return null;
+			}
+			nodes.push(from);
+			cur = from;
+		}
+		return null;
 	}
 
 	/**
@@ -2519,6 +2550,15 @@ export class ModuleGenerator {
 		};
 	}
 }
+
+/** Node types with several main inputs. */
+const SEVERAL_INPUTS = new Set([`${BASE}merge`, `${BASE}compareDatasets`]);
+
+/** Core nodes that give each input item to at most one place of each output. */
+const AT_MOST_ONE = new Set([`${BASE}if`, `${BASE}filter`, `${BASE}switch`]);
+
+/** Node types that run code of the user, which can give any paired item. */
+const USER_CODE = /\.(code|function|functionItem|aiTransform)$/;
 
 /** `requiredInputs` of the v1 node description: `all` when every input must have items. */
 function requiredInputs(node: N8nNode | undefined): 'all' | number | undefined {

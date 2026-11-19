@@ -1,0 +1,75 @@
+{
+	"name": "Single-item target, code gives a paired item",
+	"nodes": [
+		{
+			"id": "webhook",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [
+				0,
+				0
+			],
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "single-user-paired-item",
+				"options": {}
+			},
+			"webhookId": "0b7f1c2e-3d4a-4b5c-8d6e-000000000085"
+		},
+		{
+			"id": "odd",
+			"name": "Odd",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [
+				200,
+				0
+			],
+			"parameters": {
+				"jsCode": "class Box {}\nreturn [{ json: { got: 'x' }, pairedItem: { item: 3 } }];"
+			}
+		},
+		{
+			"id": "read-each",
+			"name": "Read Each",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [
+				1000,
+				0
+			],
+			"parameters": {
+				"mode": "runOnceForEachItem",
+				"jsCode": "return { json: { got: $json.got, tag: $('Webhook').item.json.body.tag } };"
+			}
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "Odd",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Odd": {
+			"main": [
+				[
+					{
+						"node": "Read Each",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	}
+}
