@@ -1,0 +1,49 @@
+packages/modules/promotions/frontend/src/components/dependencies/PromotionGapsDialog.vue
+  s_3dd47ea0104342::t_4fbff800840840 22,72,111,118,120,141,154,161-162
+packages/modules/promotions/frontend/src/promotionApplyOutcome.ts
+  s_3dd47ea0104342::t_2e82a29828c5bd 28
+packages/modules/promotions/frontend/src/__fixtures__/dependencyReport.fixtures.ts
+  s_3dd47ea0104342::t_2a910f52412fee 25-27,204,212,225,240,254,273,282,296,304,312,379,626
+packages/modules/promotions/frontend/src/components/dependencies/PromotionDependencySummary.vue
+  s_3dd47ea0104342::t_2e82a29828c5bd 11-12,58-63
+packages/modules/promotions/frontend/src/composables/usePromotionDependencies.ts
+  s_3dd47ea0104342::t_2e82a29828c5bd 93
+packages/modules/promotions/frontend/src/components/dependencies/PromotionDependencyReport.vue
+  s_3dd47ea0104342::t_2e82a29828c5bd 75,80,89,124
+packages/modules/promotions/frontend/src/components/PromotionEnvironmentCard.vue
+  s_3dd47ea0104342::t_013fda966f11ac 103
+packages/modules/promotions/frontend/src/components/dependencies/PromotionGapRow.vue
+  s_3dd47ea0104342::t_2e82a29828c5bd 34
+packages/modules/promotions/frontend/src/composables/usePromotionOutcome.ts
+  s_3dd47ea0104342::t_4fbff800840840 79,84,111,115
+  s_3dd47ea0104342::t_2e82a29828c5bd 32
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_3dd47ea0104342::t_2e82a29828c5bd 140-141,11299-11300,11313-11314,11318,11398,11405,11469
+  s_3dd47ea0104342::t_a990d953d0ab49 11333-11334,11341-11342,11344-11345,11349,11353,11355,11357,11359,11361
+packages/modules/promotions/frontend/src/promotionDependencies.ts
+  s_3dd47ea0104342::t_2e82a29828c5bd 147,202
+packages/modules/promotions/frontend/src/views/PromotionPreviewView.vue
+  s_3dd47ea0104342::t_4fbff800840840 34,737,747,762-763,1351-1353,1361
+  s_3dd47ea0104342::t_9b66b8a4fa213f 988,1393
+  s_3dd47ea0104342::t_2e82a29828c5bd 735
+packages/modules/promotions/frontend/src/promotionsSettings.utils.ts
+  s_3dd47ea0104342::t_013fda966f11ac 42,45
+packages/modules/promotions/frontend/src/components/dependencies/PromotionApplyConfirmations.vue
+  s_3dd47ea0104342::t_db431439405614 57-62
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b57106deaaf1456b73173f787bb294ad546bf908",
+  "prompts": {},
+  "sessions": {
+    "s_3dd47ea0104342": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c1a45d57-85a1-465a-839a-d3b98e3073fc",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}
