@@ -77,14 +77,15 @@ export const isRefreshCommit = (subject) =>
 export const commitOf = (ref) => /-([0-9a-f]{40})(?:-dev)?@/.exec(ref)?.[1] ?? null;
 
 /**
- * The pins to change. `resolve` returns the digest of a tag, or null when the
- * run did not publish it (its inputs did not change). `contains(older, newer)`
- * tells whether master reached `older` before `newer`, so a late run never
- * moves a pin back to an older image.
+ * The pins to change. `publishedHcl` is the bake file at `sha`: the tags use
+ * its versions, because master can change them after the run. `resolve`
+ * returns the digest of a tag, or null when the run did not publish it (its
+ * inputs did not change). `contains(older, newer)` tells whether master reached
+ * `older` before `newer`, so a late run never moves a pin back to an older image.
  */
-export async function planPins(hcl, workflow, sha, { resolve, contains }) {
+export async function planPins(hcl, workflow, sha, { publishedHcl = hcl, resolve, contains }) {
 	const changes = [];
-	for (const { name, tag } of CHAIN[workflow].pins(hcl, sha)) {
+	for (const { name, tag } of CHAIN[workflow].pins(publishedHcl, sha)) {
 		const digest = resolve(tag);
 		if (!digest) continue;
 		const pinned = readPin(hcl, name).ref;
@@ -118,31 +119,44 @@ function resolveDigest(tag) {
 		const out = execFileSync(
 			'docker',
 			['buildx', 'imagetools', 'inspect', tag, '--format', '{{json .Manifest}}'],
-			{ encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] },
+			{ encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] },
 		);
 		return JSON.parse(out).digest ?? null;
-	} catch {
-		return null;
+	} catch (error) {
+		// The run did not publish the tag. Any other error stops the job, so a person can run it again.
+		if (/: not found\b/.test(String(error.stderr ?? ''))) return null;
+		throw error;
 	}
 }
 
-/** Whether `newer` contains `older` on master, from the GitHub compare API. */
-async function contains(older, newer) {
+async function github(path, accept) {
 	const {
 		GITHUB_API_URL = 'https://api.github.com',
 		GITHUB_REPOSITORY,
 		GITHUB_TOKEN,
 	} = process.env;
-	const response = await fetch(
-		`${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/compare/${older}...${newer}`,
-		{
-			headers: { authorization: `Bearer ${GITHUB_TOKEN}`, accept: 'application/vnd.github+json' },
-			signal: AbortSignal.timeout(30_000),
-		},
-	);
-	if (!response.ok) throw new Error(`compare ${older}...${newer} returned ${response.status}`);
+	const response = await fetch(`${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/${path}`, {
+		headers: { authorization: `Bearer ${GITHUB_TOKEN}`, accept },
+		signal: AbortSignal.timeout(30_000),
+	});
+	if (!response.ok) throw new Error(`${path} returned ${response.status}`);
+	return response;
+}
+
+/** Whether `newer` contains `older` on master, from the GitHub compare API. */
+async function contains(older, newer) {
+	const response = await github(`compare/${older}...${newer}`, 'application/vnd.github+json');
 	const { status } = await response.json();
 	return status === 'ahead' || status === 'identical';
+}
+
+/** The bake file at a commit. */
+async function bakeFileAt(sha) {
+	const response = await github(
+		`contents/${BAKE_FILE}?ref=${sha}`,
+		'application/vnd.github.raw+json',
+	);
+	return await response.text();
 }
 
 async function main() {
@@ -164,6 +178,7 @@ async function main() {
 	if (values['any-commit'] || isRefreshCommit(values.subject)) {
 		const hcl = readFileSync(BAKE_FILE, 'utf8');
 		changes = await planPins(hcl, values.workflow, values.sha, {
+			publishedHcl: await bakeFileAt(values.sha),
 			resolve: resolveDigest,
 			contains,
 		});

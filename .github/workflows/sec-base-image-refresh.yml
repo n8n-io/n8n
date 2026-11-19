@@ -178,6 +178,7 @@ jobs:
       github.repository == 'n8n-io/n8n' && (
         (github.event_name == 'workflow_run' && github.event.workflow_run.event == 'push' &&
           github.event.workflow_run.conclusion == 'success') ||
+        (github.event_name == 'workflow_dispatch' && inputs.preview) ||
         (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository))
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -203,9 +204,9 @@ jobs:
             --sha "$RUN_SHA" --subject="${RUN_MESSAGE%%$'\n'*}" --run-url "$RUN_URL" --body chain-pr.md
           echo "branch=base-image-refresh/chain-$(basename "$RUN_PATH" .yml)" >> "$GITHUB_OUTPUT"
 
-      # A PR run shows the chain PR for the last publish of each workflow, and opens none.
+      # A preview shows the chain PR for the last publish of each workflow, and opens none.
       - name: Preview the chain PRs
-        if: github.event_name == 'pull_request'
+        if: github.event_name != 'workflow_run'
         env:
           GITHUB_TOKEN: ${{ github.token }}
           GH_TOKEN: ${{ github.token }}
