@@ -302,6 +302,44 @@ describe('WorkflowExecuteAdditionalData', () => {
 			).rejects.toThrow('Stop after persistence check');
 		});
 
+		it.each<{ parentRootMode: WorkflowExecuteMode | undefined; parentMode: WorkflowExecuteMode }>([
+			{ parentRootMode: undefined, parentMode: 'manual' },
+			{ parentRootMode: 'manual', parentMode: 'integrated' },
+		])(
+			'persists the root execution mode before the child starts (parent root mode $parentRootMode, parent mode $parentMode)',
+			async ({ parentRootMode, parentMode }) => {
+				const workflowData = mock<IWorkflowBase>({
+					nodes: [
+						{
+							id: 'trigger',
+							name: 'Start',
+							type: 'n8n-nodes-base.executeWorkflowTrigger',
+							typeVersion: 1.3,
+							position: [0, 0],
+							parameters: {},
+						},
+					],
+					connections: {},
+				});
+				activeExecutions.add.mockImplementationOnce(async (runData) => {
+					expect(runData.executionData?.rootExecutionMode).toBe('manual');
+					throw new Error('Stop after persistence check');
+				});
+				await expect(
+					executeWorkflow(
+						mock<IExecuteWorkflowInfo>(),
+						mock<IWorkflowExecuteAdditionalData>({ rootExecutionMode: parentRootMode }),
+						{
+							...mock<ExecuteWorkflowOptions>(),
+							loadedWorkflowData: workflowData,
+							loadedRunData: undefined,
+							executionMode: parentMode,
+						},
+					),
+				).rejects.toThrow('Stop after persistence check');
+			},
+		);
+
 		it('should execute workflow, return data and execution id', async () => {
 			const response = await executeWorkflow(
 				mock<IExecuteWorkflowInfo>(),

@@ -1282,6 +1282,17 @@ describe('run', () => {
 			expect(additionalData.evalLlmMockHandler).toBe(sentinel);
 		});
 
+		it('restores the root execution mode from the execution data', async () => {
+			const { data, additionalData } = arrangeRunDeps({
+				...createRunExecutionData({}),
+				rootExecutionMode: 'manual',
+			});
+
+			await runner.run(data);
+
+			expect(additionalData.rootExecutionMode).toBe('manual');
+		});
+
 		it('is a no-op when not provided', async () => {
 			const { data } = arrangeRunDeps();
 			// Not setting data.configureAdditionalData

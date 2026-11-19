@@ -551,6 +551,17 @@ describe('ExecutionService', () => {
 			);
 		});
 
+		it('should not carry the root execution mode of the original run into the retry', async () => {
+			const { service, workflowRunner } = buildRetryService();
+			const execution = buildCrashedExecution({ lastNodeExecuted: 'Some Node', runData: {} });
+			execution.data.rootExecutionMode = 'manual';
+			executionPersistence.findWithUnflattenedData.mockResolvedValue(execution);
+
+			await service.retry(retryArgs());
+
+			expect(workflowRunner.run.mock.calls[0][0].executionData?.rootExecutionMode).toBeUndefined();
+		});
+
 		it('should not throw when retrying a crashed execution whose runData is undefined', async () => {
 			const { service, workflowRunner } = buildRetryService();
 			executionPersistence.findWithUnflattenedData.mockResolvedValue(

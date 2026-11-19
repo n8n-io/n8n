@@ -357,7 +357,8 @@ export class ExecutionService {
 		// Start the workflow
 		const data: IWorkflowExecutionDataProcess = {
 			executionMode,
-			executionData: execution.data,
+			// A retry is a new root execution. It must not take the root mode of the original run.
+			executionData: { ...execution.data, rootExecutionMode: undefined },
 			retryOf: executionId,
 			workflowData: execution.workflowData,
 			userId: user.id,
