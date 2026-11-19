@@ -5,8 +5,8 @@ import { toUsageDeltas } from './execution-limit-usage.deltas';
 import { ExecutionLimitUsageRepository } from './execution-limit-usage.repository';
 
 /**
- * Counts started and blocked runs in `execution_limit_usage`. The step increments, so
- * each ledger row must reach it one time only.
+ * Counts started and blocked runs for each project and for the instance. The step
+ * increments, so each ledger row must reach it one time only.
  */
 @Service()
 export class ExecutionLimitUsageFoldStep implements ExecutionLedgerFoldStep {

@@ -1,8 +1,5 @@
 import { toUsageDeltas } from '../execution-limit-usage.deltas';
-import { EXECUTION_LIMIT_USAGE_INSTANCE_SCOPE_ID } from '../execution-limits.types';
 import { ledgerRow } from './ledger-rows';
-
-const INSTANCE = EXECUTION_LIMIT_USAGE_INSTANCE_SCOPE_ID;
 
 describe('toUsageDeltas', () => {
 	const originalTimeZone = process.env.TZ;
@@ -12,8 +9,10 @@ describe('toUsageDeltas', () => {
 		else process.env.TZ = originalTimeZone;
 	});
 
-	it('gives an empty list for no rows', () => {
-		expect(toUsageDeltas([])).toEqual([]);
+	const NONE = { projects: [], instance: [] };
+
+	it('gives empty lists for no rows', () => {
+		expect(toUsageDeltas([])).toEqual(NONE);
 	});
 
 	it('gives a project delta and an instance delta for a counted start', () => {
@@ -21,29 +20,20 @@ describe('toUsageDeltas', () => {
 			ledgerRow({ projectId: 'p1', occurredAt: new Date('2026-11-19T10:00:00Z') }),
 		]);
 
-		expect(deltas).toEqual([
-			{
-				projectId: INSTANCE,
-				day: '2026-11-19',
-				entityType: 'workflow',
-				startedCount: 1,
-				blockedCount: 0,
-			},
-			{
-				projectId: 'p1',
-				day: '2026-11-19',
-				entityType: 'workflow',
-				startedCount: 1,
-				blockedCount: 0,
-			},
-		]);
+		const counts = { day: '2026-11-19', entityType: 'workflow', startedCount: 1, blockedCount: 0 };
+		expect(deltas).toEqual({ projects: [{ projectId: 'p1', ...counts }], instance: [counts] });
 	});
 
 	it('merges rows with the same key into one delta', () => {
 		const deltas = toUsageDeltas([ledgerRow(), ledgerRow(), ledgerRow()]);
 
-		expect(deltas).toHaveLength(2);
-		expect(deltas.every((d) => d.startedCount === 3 && d.blockedCount === 0)).toBe(true);
+		expect(deltas.projects).toHaveLength(1);
+		expect(deltas.instance).toHaveLength(1);
+		expect(
+			[...deltas.projects, ...deltas.instance].every(
+				(d) => d.startedCount === 3 && d.blockedCount === 0,
+			),
+		).toBe(true);
 	});
 
 	it('sorts the deltas by key and keeps keys unique', () => {
@@ -54,17 +44,18 @@ describe('toUsageDeltas', () => {
 			ledgerRow({ projectId: 'a', occurredAt: new Date('2026-11-19T10:00:00Z') }),
 		]);
 
-		const keys = deltas.map((d) => `${d.projectId}|${d.day}|${d.entityType}`);
+		const keys = deltas.projects.map((d) => `${d.projectId}|${d.day}|${d.entityType}`);
 		expect(keys).toEqual([...keys].sort());
 		expect(new Set(keys).size).toBe(keys.length);
+		expect(deltas.instance.map((d) => d.day)).toEqual(['2026-11-19', '2026-11-20', '2026-11-21']);
 	});
 
 	it.each(['unknown-mode', 'constructor'])('counts nowhere for the mode %s', (mode) => {
-		expect(toUsageDeltas([ledgerRow({ mode })])).toEqual([]);
+		expect(toUsageDeltas([ledgerRow({ mode })])).toEqual(NONE);
 	});
 
 	it.each(['unknown-source', 'toString'])('counts nowhere for the source %s', (source) => {
-		expect(toUsageDeltas([ledgerRow({ source })])).toEqual([]);
+		expect(toUsageDeltas([ledgerRow({ source })])).toEqual(NONE);
 	});
 
 	it('counts a v2 row like a v1 row', () => {
@@ -76,13 +67,9 @@ describe('toUsageDeltas', () => {
 	it('gives an agent entity its own key', () => {
 		const deltas = toUsageDeltas([ledgerRow(), ledgerRow({ entityType: 'agent' })]);
 
-		expect(deltas.map((d) => d.entityType).sort()).toEqual([
-			'agent',
-			'agent',
-			'workflow',
-			'workflow',
-		]);
-		expect(deltas.every((d) => d.startedCount === 1)).toBe(true);
+		expect(deltas.projects.map((d) => d.entityType)).toEqual(['agent', 'workflow']);
+		expect(deltas.instance.map((d) => d.entityType)).toEqual(['agent', 'workflow']);
+		expect([...deltas.projects, ...deltas.instance].every((d) => d.startedCount === 1)).toBe(true);
 	});
 
 	it.each([
@@ -97,7 +84,8 @@ describe('toUsageDeltas', () => {
 
 			const deltas = toUsageDeltas([ledgerRow({ occurredAt: new Date(occurredAt) })]);
 
-			expect(deltas.map((d) => d.day)).toEqual([day, day]);
+			expect(deltas.projects.map((d) => d.day)).toEqual([day]);
+			expect(deltas.instance.map((d) => d.day)).toEqual([day]);
 		},
 	);
 
@@ -111,27 +99,13 @@ describe('toUsageDeltas', () => {
 			}),
 		]);
 
-		expect(deltas).toEqual([
-			{
-				projectId: INSTANCE,
-				day: '2026-11-20',
-				entityType: 'workflow',
-				startedCount: 0,
-				blockedCount: 1,
-			},
-			{
-				projectId: 'p1',
-				day: '2026-11-20',
-				entityType: 'workflow',
-				startedCount: 0,
-				blockedCount: 1,
-			},
-		]);
+		const counts = { day: '2026-11-20', entityType: 'workflow', startedCount: 0, blockedCount: 1 };
+		expect(deltas).toEqual({ projects: [{ projectId: 'p1', ...counts }], instance: [counts] });
 	});
 
 	it('gives no delta for a blocked end of a mode that is not counted', () => {
 		expect(
 			toUsageDeltas([ledgerRow({ mode: 'manual', event: 'ended', outcome: 'blocked' })]),
-		).toEqual([]);
+		).toEqual(NONE);
 	});
 });

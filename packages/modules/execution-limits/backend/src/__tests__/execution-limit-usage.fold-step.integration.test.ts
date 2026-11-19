@@ -9,19 +9,19 @@ import {
 import { Container } from '@n8n/di';
 import { DataSource, type Repository } from '@n8n/typeorm';
 
+import { ExecutionLimitInstanceUsage } from '../execution-limit-instance-usage.entity';
+import { toUsageDeltas } from '../execution-limit-usage.deltas';
 import { ExecutionLimitUsage } from '../execution-limit-usage.entity';
 import { ExecutionLimitUsageFoldStep } from '../execution-limit-usage.fold-step';
 import { ExecutionLimitUsageRepository } from '../execution-limit-usage.repository';
-import { EXECUTION_LIMIT_USAGE_INSTANCE_SCOPE_ID } from '../execution-limits.types';
 import { ledgerRow } from './ledger-rows';
-
-const INSTANCE = EXECUTION_LIMIT_USAGE_INSTANCE_SCOPE_ID;
 
 const COUNTED_MODES = ['cli', 'retry', 'trigger', 'webhook', 'evaluation', 'agent'];
 const UNCOUNTED_MODES = ['integrated', 'error', 'internal', 'manual', 'chat'];
 
 describe('ExecutionLimitUsageFoldStep', () => {
 	let usage: Repository<ExecutionLimitUsage>;
+	let instanceUsage: Repository<ExecutionLimitInstanceUsage>;
 	let step: ExecutionLimitUsageFoldStep;
 
 	const fold = async (...rows: ExecutionLedgerRow[]) =>
@@ -36,13 +36,14 @@ describe('ExecutionLimitUsageFoldStep', () => {
 		}));
 	};
 
-	const totalOf = async (projectId: string) => {
-		const found = await countsOf(projectId);
-		return {
-			started: found.reduce((sum, r) => sum + r.started, 0),
-			blocked: found.reduce((sum, r) => sum + r.blocked, 0),
-		};
-	};
+	const total = (found: Array<{ startedCount: number; blockedCount: number }>) => ({
+		started: found.reduce((sum, r) => sum + r.startedCount, 0),
+		blocked: found.reduce((sum, r) => sum + r.blockedCount, 0),
+	});
+
+	const totalOf = async (projectId: string) => total(await usage.findBy({ projectId }));
+
+	const instanceTotal = async () => total(await instanceUsage.find());
 
 	beforeAll(async () => {
 		await testModules.loadModules(['execution-limits'], {
@@ -50,11 +51,13 @@ describe('ExecutionLimitUsageFoldStep', () => {
 		});
 		await testDb.init();
 		usage = Container.get(DataSource).getRepository(ExecutionLimitUsage);
+		instanceUsage = Container.get(DataSource).getRepository(ExecutionLimitInstanceUsage);
 		step = Container.get(ExecutionLimitUsageFoldStep);
 	});
 
 	beforeEach(async () => {
 		await usage.clear();
+		await instanceUsage.clear();
 	});
 
 	afterAll(async () => {
@@ -70,7 +73,7 @@ describe('ExecutionLimitUsageFoldStep', () => {
 			await fold(ledgerRow({ mode }));
 
 			expect(await totalOf('project-1')).toEqual({ started: 1, blocked: 0 });
-			expect(await totalOf(INSTANCE)).toEqual({ started: 1, blocked: 0 });
+			expect(await instanceTotal()).toEqual({ started: 1, blocked: 0 });
 		});
 
 		it.each(UNCOUNTED_MODES)('writes no rows for a started run of mode %s', async (mode) => {
@@ -89,7 +92,8 @@ describe('ExecutionLimitUsageFoldStep', () => {
 			await fold(ledgerRow({ mode: 'webhook', source }));
 
 			expect(await totalOf('project-1')).toEqual({ started: expected, blocked: 0 });
-			expect(await usage.count()).toBe(expected === 0 ? 0 : 2);
+			expect(await usage.count()).toBe(expected);
+			expect(await instanceUsage.count()).toBe(expected);
 		});
 	});
 
@@ -107,7 +111,7 @@ describe('ExecutionLimitUsageFoldStep', () => {
 					started: 1,
 					blocked: outcome === 'blocked' ? 1 : 0,
 				});
-				expect(await totalOf(INSTANCE)).toEqual({
+				expect(await instanceTotal()).toEqual({
 					started: 1,
 					blocked: outcome === 'blocked' ? 1 : 0,
 				});
@@ -129,7 +133,7 @@ describe('ExecutionLimitUsageFoldStep', () => {
 			await fold(ledgerRow({ executionId, event: 'ended', outcome: 'blocked' }));
 
 			expect(await totalOf('project-1')).toEqual({ started: 1, blocked: 1 });
-			expect(await totalOf(INSTANCE)).toEqual({ started: 1, blocked: 1 });
+			expect(await instanceTotal()).toEqual({ started: 1, blocked: 1 });
 		});
 
 		it('writes no rows for a blocked run of mode manual', async () => {
@@ -158,7 +162,7 @@ describe('ExecutionLimitUsageFoldStep', () => {
 		expect(await totalOf('project-1')).toEqual({ started: 1, blocked: 0 });
 	});
 
-	it('makes the instance row the sum of two projects', async () => {
+	it('makes the instance total the sum of two projects', async () => {
 		await fold(
 			ledgerRow({ projectId: 'project-a' }),
 			ledgerRow({ projectId: 'project-a' }),
@@ -167,7 +171,7 @@ describe('ExecutionLimitUsageFoldStep', () => {
 
 		expect(await totalOf('project-a')).toEqual({ started: 2, blocked: 0 });
 		expect(await totalOf('project-b')).toEqual({ started: 1, blocked: 0 });
-		expect(await totalOf(INSTANCE)).toEqual({ started: 3, blocked: 0 });
+		expect(await instanceTotal()).toEqual({ started: 3, blocked: 0 });
 	});
 
 	it('adds to existing rows on a second fold and keeps updatedAt moving forward', async () => {
@@ -208,7 +212,7 @@ describe('ExecutionLimitUsageFoldStep', () => {
 
 		expect(await totalOf('project-a')).toEqual({ started: 1, blocked: 0 });
 		expect(await totalOf('project-b')).toEqual({ started: 0, blocked: 1 });
-		expect(await totalOf(INSTANCE)).toEqual({ started: 1, blocked: 1 });
+		expect(await instanceTotal()).toEqual({ started: 1, blocked: 1 });
 	});
 
 	it.todo('adds the blocked count to the start project when the ended row names it');
@@ -218,8 +222,9 @@ describe('ExecutionLimitUsageFoldStep', () => {
 
 		await fold(...rows);
 
-		expect(await usage.count()).toBe(2501);
-		expect(await totalOf(INSTANCE)).toEqual({ started: 2500, blocked: 0 });
+		expect(await usage.count()).toBe(2500);
+		expect(await instanceUsage.count()).toBe(1);
+		expect(await instanceTotal()).toEqual({ started: 2500, blocked: 0 });
 	}, 30_000);
 
 	it('keeps only the counts of the second fold when the first one rolls back to a savepoint', async () => {
@@ -236,26 +241,14 @@ describe('ExecutionLimitUsageFoldStep', () => {
 
 		expect(await totalOf('project-lost')).toEqual({ started: 0, blocked: 0 });
 		expect(await totalOf('project-kept')).toEqual({ started: 1, blocked: 0 });
-		expect(await totalOf(INSTANCE)).toEqual({ started: 1, blocked: 0 });
+		expect(await instanceTotal()).toEqual({ started: 1, blocked: 0 });
 	});
 
 	it('rejects addUsage without a transaction', async () => {
 		const repository = Container.get(ExecutionLimitUsageRepository);
 
-		await expect(
-			repository.addUsage(
-				[
-					{
-						projectId: 'project-1',
-						day: '2026-11-19',
-						entityType: 'workflow',
-						startedCount: 1,
-						blockedCount: 0,
-					},
-				],
-				{},
-			),
-		).rejects.toThrow();
+		await expect(repository.addUsage(toUsageDeltas([ledgerRow()]), {})).rejects.toThrow();
 		expect(await usage.count()).toBe(0);
+		expect(await instanceUsage.count()).toBe(0);
 	});
 });
