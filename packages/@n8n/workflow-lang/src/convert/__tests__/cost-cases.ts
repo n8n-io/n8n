@@ -119,10 +119,11 @@ export function measureCosts(): CostRecord {
 		effects: {},
 	});
 	for (const name of readdirSync(casesDir).sort()) {
+		const spec = read<BehaviourCase>(join(casesDir, name, 'case.json'));
+		if (spec.expectRefusal === true) continue;
 		const workflow = read<{ nodes: Array<{ type: string }> }>(
 			join(casesDir, name, 'workflow.json'),
 		);
-		const spec = read<BehaviourCase>(join(casesDir, name, 'case.json'));
 		costs[`convert/${name}`] = costOf(
 			name,
 			converted(name, workflow),

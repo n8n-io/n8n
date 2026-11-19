@@ -9,5 +9,6 @@
     "Read Each",
     "Read All",
     "Read Expr"
-  ]
+  ],
+  "expectRefusal": true
 }

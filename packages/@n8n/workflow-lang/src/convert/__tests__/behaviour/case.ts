@@ -32,6 +32,8 @@ export interface BehaviourCase {
 	services?: Record<string, unknown[]>;
 	/** Node names whose output the test compares. The default is every leaf of the converted run. */
 	compare?: string[];
+	/** True when the converter should refuse this case (no compiled form for the path). */
+	expectRefusal?: boolean;
 }
 
 /** The port in the URLs of the case workflows. The oracle replaces it with the port of its server. */

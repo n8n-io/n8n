@@ -96,6 +96,8 @@ export type NativeAttempt =
 			binaryNames?: string[] | 'all';
 			/** `Translation.handsOver`: the code can end with the mark of `RUNS_IN_HOST`. */
 			handsOver?: boolean;
+			/** `Translation.freshOutput`: every return gives a fresh value. */
+			freshOutput?: boolean;
 			/**
 			 * For code that makes requests: the declaration of its async function and the
 			 * expression of the result list. Undefined for other code.
@@ -256,6 +258,7 @@ export function attemptNative(
 		nodes: t.nodes,
 		zones: [...t.zones],
 		allNodes: t.allNodes,
+		freshOutput: t.freshOutput,
 		expression: (
 			input,
 			lists,
@@ -652,6 +655,37 @@ export function lowerCodeNative(c: NodeContext, hostForm?: () => HostForm | null
 			// The result list comes from a JSON parse (`codeItems`), and no other code assigns it.
 			c.plainLists?.add(out);
 			w.block(`const ${out}: Json[] = ${input}.length > 0 ? ${expr} : [];`);
+			// Track paired items when a later expression reads through this node and the code
+			// creates fresh items that the engine can pair by length.
+			if (
+				!handsOver &&
+				to.pairsWanted === true &&
+				to.setPairs !== undefined &&
+				attempt.freshOutput === true
+			) {
+				const userCode = to.parameters[field];
+				if (typeof userCode === 'string' && !/\bpairedItem\b/.test(userCode)) {
+					let incomingCount = 0;
+					for (const [, outputs] of Object.entries(to.workflow.connections)) {
+						for (const targets of outputs?.main ?? []) {
+							for (const target of targets ?? []) {
+								if (target.node === to.node.name) incomingCount++;
+							}
+						}
+					}
+					if (incomingCount === 1) {
+						const pairVar = `${out}PairData`;
+						w.line(`const ${pairVar}: Json = { items: ${out}, paired: [] };`);
+						// Each null pair delegates to the engine rule in pairedSourceIndexes
+						// (the assignPairedItems logic: same count→by position, 1 output→0,
+						// 1 input→0, otherwise no pair).
+						w.line(
+							`for (let __i = 0; __i < ${out}.length; __i++) ${pairVar}.paired.push(null);`,
+						);
+						to.setPairs(pairVar);
+					}
+				}
+			}
 			return;
 		}
 		// As v1's Code node in "all items" mode: one item with the error message.
