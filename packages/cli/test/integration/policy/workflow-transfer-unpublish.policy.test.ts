@@ -367,9 +367,7 @@ describe('PUT /workflows/:workflowId/transfer', () => {
 			.expect(200);
 
 		expect(deactivatedEvents).toEqual([]);
-		expect(response.body.data).toEqual({
-			unpublishReasons: [expect.objectContaining({ checkId: CHECK_ID })],
-		});
+		expect(response.body).toEqual({});
 	});
 
 	test('refuses a move on a node type that is only in the published version', async () => {

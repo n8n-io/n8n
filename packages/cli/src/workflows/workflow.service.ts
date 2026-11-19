@@ -1804,7 +1804,12 @@ export class WorkflowService {
 			if (refusals.has(workflow.id)) {
 				failures.set(workflow.id, refusals.get(workflow.id));
 			} else {
-				allowedIds.push(workflow.id);
+				const credentialRefusal = await this._triggerCredentialRefusal(workflow);
+				if (credentialRefusal) {
+					failures.set(workflow.id, credentialRefusal);
+				} else {
+					allowedIds.push(workflow.id);
+				}
 			}
 		}
 
@@ -1827,22 +1832,51 @@ export class WorkflowService {
 		const results = new Map<string, WorkflowTransferResult>();
 		for (const workflow of workflows) {
 			if (failures.has(workflow.id)) {
-				await this._unpublishAfterTransfer(user, workflow, publicApi);
-				results.set(workflow.id, toTransferResult(failures.get(workflow.id)));
+				const unpublished = await this._unpublishAfterTransfer(user, workflow, publicApi);
+				if (unpublished) {
+					results.set(workflow.id, toTransferResult(failures.get(workflow.id)));
+				}
 			}
 		}
 
 		return results;
 	}
 
+	/** Never throws: after any other error, the leader checks the credentials again. */
+	private async _triggerCredentialRefusal(
+		workflow: PublishedWorkflow,
+	): Promise<TriggerCredentialAccessError | null> {
+		let refusal: TriggerCredentialAccessError | null = null;
+		try {
+			await this.activeWorkflowManager.checkTriggerCredentialAccess(
+				workflow.id,
+				workflow.activeVersion,
+				undefined,
+			);
+		} catch (error) {
+			if (error instanceof TriggerCredentialAccessError) {
+				refusal = error;
+			} else {
+				this.logger.warn(`Failed to check the credentials of workflow "${workflow.id}"`, {
+					workflowId: workflow.id,
+					error,
+				});
+			}
+		}
+		return refusal;
+	}
+
+	/** Returns false if the workflow stays published. */
 	private async _unpublishAfterTransfer(
 		user: User,
 		workflow: PublishedWorkflow,
 		publicApi: PublicApiCaller,
-	): Promise<void> {
+	): Promise<boolean> {
 		const deactivatedVersionId = workflow.activeVersion.versionId;
+		let unpublished = false;
 		try {
 			await this._forceUnpublish(workflow, deactivatedVersionId, user);
+			unpublished = true;
 
 			this.eventService.emit('workflow-deactivated', {
 				user,
@@ -1864,6 +1898,7 @@ export class WorkflowService {
 				error,
 			});
 		}
+		return unpublished;
 	}
 
 	/** Unpublishes in a way the `workflow.deactivate` hook cannot block: a hook failure is a warning. */
