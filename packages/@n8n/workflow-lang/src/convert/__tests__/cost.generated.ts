@@ -70,6 +70,8 @@ export const CONVERT_COST: Record<string, [ops: number, allocations: number]> = 
 	"convert/67-http-file-format-paired-read": [4200, 278],
 	"convert/68-http-default-paired-error-output": [4048, 256],
 	"convert/69-http-default-in-if-branch-paired-read": [5941, 323],
+	"convert/70-http-default-host-reader-each": [2004, 141],
+	"convert/71-http-default-host-reader-all": [2004, 141],
 	"convert/small": [126, 14],
 	"corpus/01-order-approval": [160, 17],
 	"corpus/02-loops": [265, 13],
