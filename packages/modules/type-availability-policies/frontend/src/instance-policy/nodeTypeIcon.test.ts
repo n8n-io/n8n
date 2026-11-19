@@ -22,6 +22,15 @@ describe('nodeTypeIcon', () => {
 		expect(icon).toEqual({ type: 'file', src: `${BASE_URL}icons/dark.svg` });
 	});
 
+	it('keeps an absolute icon URL as it is', () => {
+		const url = 'https://cdn.example.com/icon.svg';
+
+		expect(nodeTypeIcon(summary({ iconUrl: url }), 'light', BASE_URL)).toEqual({
+			type: 'file',
+			src: url,
+		});
+	});
+
 	it('uses a named icon with its color', () => {
 		expect(
 			nodeTypeIcon(summary({ icon: 'fa:slack', iconColor: 'purple' }), 'light', BASE_URL),

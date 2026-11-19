@@ -162,10 +162,12 @@ describe('InstancePolicyView', () => {
 	it('does not load the credential types for a user with only the node scope', async () => {
 		const { queryByTestId } = setup(['nodeTypePolicy:manage'], { tab: 'credential' });
 
-		await waitFor(() => expect(fetchInstancePolicy).toHaveBeenCalled());
+		await waitFor(() =>
+			expect(fetchInstanceAccess).toHaveBeenCalledWith(expect.anything(), 'node'),
+		);
 		expect(queryByTestId('credential-types-tab')).not.toBeInTheDocument();
 		expect(queryByTestId('node-types-tab')).toBeInTheDocument();
-		expect(fetchInstanceAccess).not.toHaveBeenCalled();
+		expect(fetchInstanceAccess).not.toHaveBeenCalledWith(expect.anything(), 'credential');
 	});
 
 	it('falls back to the first tab the user can manage when the query names another', () => {

@@ -300,10 +300,11 @@ every type against that read. That read is two queries, the scope and then its a
 write between them can return newer rules under the older `version`. A write that sends this
 `version` back then fails with a conflict, so no change is lost.
 
-Each route lists the same type names as the builder read of its kind: `available-types` for
-node types, `available-credential-types` for credential types. The node route leaves out the
-generated tool variants: a rule on the base type decides each variant, so the admin UI has no row
-for it.
+The credential route lists the type names of `available-credential-types`. The node route lists
+the type names of `available-types`, but it leaves out a generated tool variant when the same rule,
+or the default action, decides the variant and its base type. Such a variant has the access of its
+base. When a different rule decides the variant, for example an earlier `name` rule for the
+variant (see the rule order above), the variant keeps its row so that the admin can see that rule.
 
 ## The write seal
 

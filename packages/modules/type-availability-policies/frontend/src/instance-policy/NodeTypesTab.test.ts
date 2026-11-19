@@ -109,7 +109,10 @@ describe('NodeTypesTab', () => {
 		expect(queryByText(HIDDEN)).not.toBeInTheDocument();
 	});
 
-	it('gives a row to a hidden node type that a rule matches, so the admin can undo the rule', async () => {
+	it('gives a row to a hidden node type that a name rule decides, so the admin can undo the rule', async () => {
+		mocks.fetchInstancePolicy.mockResolvedValue(
+			policy(1, [{ id: 'rule-1', action: 'deny', selector: { kind: 'name', value: HIDDEN } }]),
+		);
 		mocks.fetchInstanceAccess.mockResolvedValue(
 			access(1, [
 				{ name: SLACK, access: 'allow', matchedRuleId: null },
@@ -120,6 +123,52 @@ describe('NodeTypesTab', () => {
 
 		expect(await findByText('Internal thing')).toBeInTheDocument();
 		expect(accessCell(getByTestId, HIDDEN)).toHaveTextContent('Restricted');
+	});
+
+	it('keeps the row of a hidden node type while the access list reloads after a change', async () => {
+		const hiddenRule = (id: string, action: 'allow' | 'deny') => ({
+			id,
+			action,
+			selector: { kind: 'name' as const, value: HIDDEN },
+		});
+		mocks.fetchInstancePolicy.mockResolvedValue(policy(1, [hiddenRule('rule-1', 'deny')]));
+		mocks.saveInstancePolicy.mockResolvedValue({
+			...policy(2, [hiddenRule('rule-2', 'allow')]),
+			warnings: [],
+		});
+		const reload = createDeferredPromise<InstanceTypeAccessResponse>();
+		const { findByText, getByTestId, queryByText } = await setup(() =>
+			mocks.fetchInstanceAccess
+				.mockResolvedValueOnce(
+					access(1, [{ name: HIDDEN, access: 'deny', matchedRuleId: 'rule-1' }]),
+				)
+				.mockReturnValue(reload.promise),
+		);
+		await findByText('Internal thing');
+
+		await userEvent.click(accessCell(getByTestId, HIDDEN));
+		await userEvent.click(await findPopupItem(MENU_ITEM, 'Allowed'));
+
+		await waitFor(() => expect(mocks.fetchInstanceAccess).toHaveBeenCalledTimes(2));
+		expect(queryByText('Internal thing')).toBeInTheDocument();
+	});
+
+	it('gives no row to a hidden node type that a package rule decides', async () => {
+		mocks.fetchInstancePolicy.mockResolvedValue(
+			policy(1, [
+				{ id: 'deny-base', action: 'deny', selector: { kind: 'package', value: 'n8n-nodes-base' } },
+			]),
+		);
+		mocks.fetchInstanceAccess.mockResolvedValue(
+			access(1, [
+				{ name: SLACK, access: 'deny', matchedRuleId: 'deny-base' },
+				{ name: HIDDEN, access: 'deny', matchedRuleId: 'deny-base' },
+			]),
+		);
+		const { findByText, queryByText } = await setup();
+		await findByText('Slack');
+
+		expect(queryByText('Internal thing')).not.toBeInTheDocument();
 	});
 
 	it('shows the name of a node type that the editor did not load', async () => {
@@ -151,9 +200,13 @@ describe('NodeTypesTab', () => {
 		expect(mocks.showError).not.toHaveBeenCalled();
 	});
 
-	it('restricts a node type at once and leaves its trigger as it was', async () => {
+	it('restricts a node type at once', async () => {
 		mocks.saveInstancePolicy.mockResolvedValue({ ...policy(2), warnings: [] });
-		const { findByText, getByTestId } = await setup();
+		const { findByText, getByTestId } = await setup(() =>
+			mocks.fetchInstanceAccess
+				.mockResolvedValueOnce(access(1))
+				.mockResolvedValue(access(2, [{ name: SLACK, access: 'deny', matchedRuleId: 'new-rule' }])),
+		);
 		await findByText('Slack');
 
 		await restrict(getByTestId);
@@ -169,7 +222,45 @@ describe('NodeTypesTab', () => {
 		);
 		// The change applies at once: no dialog asks the admin to confirm it.
 		expect(document.querySelector('[role="dialog"],[role="alertdialog"]')).toBeNull();
-		expect(accessCell(getByTestId, SLACK_TRIGGER)).toHaveTextContent('Allowed');
+		// The row shows the access that the server reports after the save.
+		await waitFor(() => expect(mocks.fetchInstanceAccess).toHaveBeenCalledTimes(2));
+		expect(accessCell(getByTestId)).toHaveTextContent('Restricted');
+	});
+
+	it('keeps a rule on a Tool variant in front when it allows the node type', async () => {
+		const denySlackTool = {
+			id: 'deny-slack-tool',
+			action: 'deny' as const,
+			selector: { kind: 'name' as const, value: `${SLACK}Tool` },
+		};
+		const denyBasePackage = {
+			id: 'deny-base',
+			action: 'deny' as const,
+			selector: { kind: 'package' as const, value: 'n8n-nodes-base' },
+		};
+		mocks.fetchInstancePolicy.mockResolvedValue(policy(1, [denySlackTool, denyBasePackage]));
+		mocks.saveInstancePolicy.mockResolvedValue({ ...policy(2), warnings: [] });
+		const { findByText, getByTestId } = await setup(() =>
+			mocks.fetchInstanceAccess.mockResolvedValue(
+				access(1, [{ name: SLACK, access: 'deny', matchedRuleId: denyBasePackage.id }]),
+			),
+		);
+		await findByText('Slack');
+
+		await userEvent.click(accessCell(getByTestId));
+		await userEvent.click(await findPopupItem(MENU_ITEM, 'Allowed'));
+
+		await waitFor(() =>
+			expect(mocks.saveInstancePolicy).toHaveBeenCalledWith(expect.anything(), 'node', {
+				defaultAction: 'allow',
+				version: 1,
+				rules: [
+					denySlackTool,
+					{ id: expect.any(String), action: 'allow', selector: { kind: 'name', value: SLACK } },
+					denyBasePackage,
+				],
+			}),
+		);
 	});
 
 	it('loads the access list again when the policy changed after the page loaded', async () => {

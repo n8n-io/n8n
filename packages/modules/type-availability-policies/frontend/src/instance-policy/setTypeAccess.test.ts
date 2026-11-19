@@ -82,4 +82,66 @@ describe('setTypeAccess', () => {
 			trigger,
 		]);
 	});
+
+	describe('with the rule that decides the type now', () => {
+		const SLACK = 'n8n-nodes-base.slack';
+		const denySlackTool = {
+			id: 'deny-slack-tool',
+			action: 'deny' as const,
+			selector: { kind: 'name' as const, value: `${SLACK}Tool` },
+		};
+		const denyBasePackage = {
+			id: 'deny-base',
+			action: 'deny' as const,
+			selector: { kind: 'package' as const, value: 'n8n-nodes-base' },
+		};
+		const nodePolicy = (
+			rules: InstancePolicyContent<'node'>['rules'],
+		): InstancePolicyContent<'node'> => ({ rules, defaultAction: 'allow' });
+		const slackRule = (action: 'allow' | 'deny') => ({
+			id: expect.any(String),
+			action,
+			selector: { kind: 'name', value: SLACK },
+		});
+
+		it('puts the rule before the deciding rule, so an earlier Tool variant rule keeps deciding', () => {
+			const result = setTypeAccess(
+				nodePolicy([denySlackTool, denyBasePackage]),
+				SLACK,
+				'allow',
+				denyBasePackage.id,
+			);
+
+			expect(result.rules).toEqual([denySlackTool, slackRule('allow'), denyBasePackage]);
+		});
+
+		it('puts the rule where the earlier rule of the type was', () => {
+			const own = {
+				id: 'own',
+				action: 'allow' as const,
+				selector: { kind: 'name' as const, value: SLACK },
+			};
+
+			const result = setTypeAccess(
+				nodePolicy([denySlackTool, own, denyBasePackage]),
+				SLACK,
+				'deny',
+				own.id,
+			);
+
+			expect(result.rules).toEqual([denySlackTool, slackRule('deny'), denyBasePackage]);
+		});
+
+		it('puts the rule last when the default action decides the type', () => {
+			const result = setTypeAccess(nodePolicy([denySlackTool]), SLACK, 'deny', null);
+
+			expect(result.rules).toEqual([denySlackTool, slackRule('deny')]);
+		});
+
+		it('puts the rule first when the deciding rule is not in the list', () => {
+			const result = setTypeAccess(nodePolicy([denySlackTool]), SLACK, 'deny', 'gone');
+
+			expect(result.rules).toEqual([slackRule('deny'), denySlackTool]);
+		});
+	});
 });

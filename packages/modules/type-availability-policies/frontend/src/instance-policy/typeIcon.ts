@@ -9,6 +9,8 @@ type IconFields = {
 	iconColor?: string;
 };
 
+const ABSOLUTE_URL = /^(https?:)?\/\//;
+
 function themed(value: Themed<string> | undefined, theme: AppliedTheme): string | undefined {
 	return typeof value === 'object' ? value[theme] : value;
 }
@@ -24,7 +26,9 @@ export function typeIcon(
 	fallback: TypeIcon,
 ): TypeIcon | undefined {
 	const iconUrl = themed(type.iconUrl, theme);
-	if (iconUrl) return { type: 'file', src: baseUrl + iconUrl };
+	if (iconUrl) {
+		return { type: 'file', src: ABSOLUTE_URL.test(iconUrl) ? iconUrl : baseUrl + iconUrl };
+	}
 
 	const icon = themed(type.icon, theme);
 	const color = type.iconColor ? `var(--node--icon--color--${type.iconColor})` : undefined;

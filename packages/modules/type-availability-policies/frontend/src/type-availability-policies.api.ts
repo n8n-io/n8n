@@ -110,8 +110,13 @@ function readOncePerBaseUrl<T>(
 	};
 }
 
+/**
+ * Reads a static type file that the editor also loads. The server frees the type descriptions from
+ * memory after startup, so this file is the only place that still has them.
+ */
 async function readTypesFile(baseUrl: string, file: string): Promise<unknown[]> {
 	let types: unknown;
+	// Right after startup the server can still be writing the file, as the editor's own read allows.
 	await retry(
 		async () => {
 			types = await get(baseUrl, file);
