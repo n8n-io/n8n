@@ -82,6 +82,9 @@ function readArgs(protocol: 'http:' | 'https:', args: unknown[]) {
 	return { url, method: text(opts.method, 'GET').toUpperCase(), headers, onResponse };
 }
 
+// Shortest wait that an intercepted request gets, whatever timeout the node set.
+export const MIN_TIMEOUT_MS = 60_000;
+
 const PLAIN_BODY_DROPS: ReadonlySet<string> = new Set([
 	'content-encoding',
 	'content-length',
@@ -118,6 +121,8 @@ class InterceptedRequest extends Writable {
 	// removed header must be removed there too.
 	private readonly removed = new Set<string>();
 
+	private timeoutMs = 0;
+
 	constructor(
 		private readonly lib: Lib,
 		private readonly realArgs: unknown[],
@@ -143,9 +148,11 @@ class InterceptedRequest extends Writable {
 		this.removed.add(name.toLowerCase());
 	}
 
-	// Calls that a real request has and that need no work here.
-	setTimeout(_ms?: number, onTimeout?: () => void): this {
+	// The node can set a short timeout. A decision can take a model call, so the timeout never
+	// ends the wait before `MIN_TIMEOUT_MS`. 0 means no timeout.
+	setTimeout(ms?: number, onTimeout?: () => void): this {
 		if (onTimeout) this.once('timeout', onTimeout);
+		this.timeoutMs = ms ? Math.max(ms, MIN_TIMEOUT_MS) : 0;
 		return this;
 	}
 
@@ -177,7 +184,17 @@ class InterceptedRequest extends Writable {
 	}
 
 	private async answer(req: CapturedRequest): Promise<void> {
-		const decision = await unintercepted(async () => await this.decide(req));
+		const timer = this.timeoutMs
+			? setTimeout(() => this.emit('timeout'), this.timeoutMs)
+			: undefined;
+		let decision: Response | 'passthrough';
+		try {
+			decision = await unintercepted(async () => await this.decide(req));
+		} finally {
+			clearTimeout(timer);
+		}
+		// The caller gave up, for example after the timeout. Nobody waits for the answer.
+		if (this.destroyed) return;
 		if (decision === 'passthrough') {
 			this.sendToNetwork(req);
 			return;

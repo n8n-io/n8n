@@ -6,7 +6,12 @@ import axios from 'axios';
 
 import { withChatScope, withNodeGuard } from '../chat-scope';
 import type { HydrationModel } from '../hydration-llm';
-import { installNetInterceptor, sendToNetwork, type CapturedRequest } from '../net-interceptor';
+import {
+	installNetInterceptor,
+	MIN_TIMEOUT_MS,
+	sendToNetwork,
+	type CapturedRequest,
+} from '../net-interceptor';
 
 const model: HydrationModel = { resolve: async () => ({}) as never };
 
@@ -227,6 +232,42 @@ describe('installNetInterceptor', () => {
 		await inGuard(async () => await fetch(new Request(`${base}/q`), { method: 'DELETE' }));
 
 		expect(decide.mock.calls[0][0].method).toBe('DELETE');
+	});
+
+	it('ends the wait after the timeout of the node, but not before the minimum', async () => {
+		vi.useFakeTimers();
+		try {
+			let release: (res: Response) => void = () => {};
+			uninstall = installNetInterceptor(
+				async () => await new Promise<Response>((resolve) => (release = resolve)),
+			);
+			const events: string[] = [];
+
+			const req = await inGuard(async () => {
+				const r = http.request(`${base}/slow`, (res) => {
+					events.push('response');
+					res.resume();
+				});
+				r.on('error', () => events.push('error'));
+				r.setTimeout(1000, () => {
+					events.push('timeout');
+					r.destroy();
+				});
+				r.end();
+				return r;
+			});
+
+			await vi.advanceTimersByTimeAsync(1000);
+			expect(events).toEqual([]);
+			await vi.advanceTimersByTimeAsync(MIN_TIMEOUT_MS);
+			expect(events).toEqual(['timeout']);
+			release(new Response('late'));
+			await vi.advanceTimersByTimeAsync(10);
+			expect(events).toEqual(['timeout']);
+			expect(req.destroyed).toBe(true);
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	it('does not intercept the calls that decide makes itself', async () => {
