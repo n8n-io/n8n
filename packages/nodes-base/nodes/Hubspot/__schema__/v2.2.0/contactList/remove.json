@@ -1,15 +1,21 @@
 {
 	"properties": {
 		"discarded": {
-			"items": {},
+			"items": {
+				"type": "number"
+			},
 			"type": "array"
 		},
 		"invalidEmails": {
-			"items": {},
+			"items": {
+				"type": "string"
+			},
 			"type": "array"
 		},
 		"invalidVids": {
-			"items": {},
+			"items": {
+				"type": "number"
+			},
 			"type": "array"
 		},
 		"updated": {

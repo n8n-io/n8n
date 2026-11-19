@@ -5,7 +5,10 @@
 			"additionalProperties": true,
 			"properties": {
 				"aud": {
-					"type": "string"
+					"items": {
+						"type": "string"
+					},
+					"type": ["string", "array"]
 				},
 				"exp": {
 					"type": "number"

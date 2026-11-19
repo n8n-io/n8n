@@ -1,11 +1,20 @@
 {
 	"additionalProperties": true,
 	"properties": {
+		"companyId": {
+			"type": ["number", "string"]
+		},
+		"contactId": {
+			"type": ["number", "string"]
+		},
+		"conversationId": {
+			"type": ["number", "string"]
+		},
+		"dealId": {
+			"type": ["number", "string"]
+		},
 		"eventId": {
 			"type": "number"
-		},
-		"objectId": {
-			"type": ["number", "string"]
 		},
 		"occurredAt": {
 			"type": "number"
@@ -15,6 +24,9 @@
 		},
 		"subscriptionType": {
 			"type": "string"
+		},
+		"ticketId": {
+			"type": ["number", "string"]
 		}
 	},
 	"type": "object"
