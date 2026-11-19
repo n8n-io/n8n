@@ -677,7 +677,8 @@ export class ModuleGenerator {
 				? { code: itemIndex, values: [] }
 				: { code: knownHops.chain(itemIndex), values: knownHops.values };
 		}
-		const hops: Array<{ run: string; input: string; name: string }> = [];
+		type Hop = { run: string; input: string; name: string; runParam: string; lenParam: string };
+		const hops: Hop[] = [];
 		let chain: ((index: string) => string) | null = null;
 		if (this.known(b, target)) {
 			if (this.singleItem(b, target)) {
@@ -697,7 +698,7 @@ export class ModuleGenerator {
 							chain = (index) => {
 								let code = index;
 								steps.forEach((hop, k) => {
-									code = `pairedSourceIndex(${hop.run}, ${code}, ${hop.input}.length ${''}, ${str(hop.name)}, ${k === steps.length - 1})`;
+									code = `pairedSourceIndex(${hop.runParam}, ${code}, ${hop.lenParam}, ${str(hop.name)}, ${k === steps.length - 1})`;
 								});
 								return code;
 							};
@@ -707,18 +708,23 @@ export class ModuleGenerator {
 					const parent = b.graph.nodes.get(e.from);
 					if (!parent || parent.executeOnce) break;
 					if (!(ONE_TO_ONE.has(parent.type) || parent.disabled)) {
-						const pairs = b.pairs.get(`${e.from}|${e.output}`);
-						if (!pairs) break;
-						hops.push({ ...pairs, name: b.short(e.from) });
+						const p = b.pairs.get(`${e.from}|${e.output}`);
+						if (!p) break;
+						hops.push({
+							...p,
+							name: b.short(e.from),
+							runParam: this.names.unique('coP'),
+							lenParam: this.names.unique('coLen'),
+						});
 					}
 					cur = e.from;
 				}
 			}
 		}
 		const values = hops.flatMap((hop) => [
-			{ param: hop.run, value: hop.run },
-			{ param: `${hop.run}InputCount`, value: `${hop.input}.length` },
-		]).map((v) => ({ param: this.names.unique('coPairs'), value: v.value }));
+			{ param: hop.runParam, value: hop.run },
+			{ param: hop.lenParam, value: `${hop.input}.length` },
+		]);
 		const found = { chain, values };
 		this.pairedHops.set(key, found);
 		if (chain === null) return null;
@@ -1539,7 +1545,9 @@ export class ModuleGenerator {
 		const input = code ? '[]' : (inputs[0] ?? '[]');
 		for (const [k, list] of [...outs.entries()].sort((x, y) => x[0] - y[0])) {
 			if (k === last) continue;
-			this.w.line(`moveErrorItems(${list}, ${errors}, ${input});`);
+			const pairEntry = b.pairs.get(`${node.name}|${k}`);
+			const pairArg = pairEntry ? `, ${pairEntry.run}.paired` : '';
+			this.w.line(`moveErrorItems(${list}, ${errors}, ${input}${pairArg});`);
 		}
 	}
 
