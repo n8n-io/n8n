@@ -3,10 +3,10 @@ import type { AgentIntegrationConfig } from '@n8n/api-types';
 import type { Thread } from 'chat';
 import { mock } from 'vitest-mock-extended';
 
-import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { ConflictError } from '@n8n/errors';
 
 import type { AgentRepository } from '../../repositories/agent.repository';
-import type { AgentChatIntegrationContext } from '../agent-chat-integration';
+import type { AgentChatIntegrationContext, EpisodicScopeContext } from '../agent-chat-integration';
 import type { ChatInstance } from '../chat-integration.service';
 import { loadSlackAdapter } from '../esm-loader';
 import { SlackIntegration } from '../platforms/slack/slack-integration';
@@ -19,15 +19,18 @@ const mockedLoadSlackAdapter = vi.mocked(loadSlackAdapter);
 
 describe('SlackIntegration', () => {
 	let integration: SlackIntegration;
-	const createSlackAdapter = vi.fn();
+	const adapterConstructor = vi.fn();
 
 	beforeEach(() => {
 		integration = new SlackIntegration(mock<AgentRepository>());
-		createSlackAdapter.mockReset();
-		createSlackAdapter.mockReturnValue({ marker: 'adapter' });
+		adapterConstructor.mockReset();
 		mockedLoadSlackAdapter.mockReset();
 		mockedLoadSlackAdapter.mockResolvedValue({
-			createSlackAdapter,
+			SlackAdapter: class {
+				constructor(config: unknown) {
+					adapterConstructor(config);
+				}
+			},
 		} as unknown as Awaited<ReturnType<typeof loadSlackAdapter>>);
 	});
 
@@ -65,9 +68,10 @@ describe('SlackIntegration', () => {
 			connectionContext({ type: 'slack', credentialId: 'credential-1' }),
 		);
 
-		expect(createSlackAdapter).toHaveBeenCalledWith({
+		expect(adapterConstructor).toHaveBeenCalledWith({
 			botToken: 'xoxb-token',
 			signingSecret: 'signing-secret',
+			nativeStreaming: false,
 			agentView: false,
 		});
 	});
@@ -81,10 +85,109 @@ describe('SlackIntegration', () => {
 			}),
 		);
 
-		expect(createSlackAdapter).toHaveBeenCalledWith({
+		expect(adapterConstructor).toHaveBeenCalledWith({
 			botToken: 'xoxb-token',
 			signingSecret: 'signing-secret',
+			nativeStreaming: false,
 			agentView: true,
+		});
+	});
+
+	describe('episodic ownership', () => {
+		const origin = {
+			type: 'slack',
+			workspaceId: 'T1',
+			conversationKind: 'channel',
+			channelId: 'C1',
+		} as const;
+
+		function context(overrides: Partial<EpisodicScopeContext> = {}): EpisodicScopeContext {
+			return {
+				agentId: 'agent-1',
+				credentialId: 'cred-1',
+				integrationType: 'slack',
+				threadId: 'slack:C1:1.2',
+				author: { id: 'U1', name: 'Alice' },
+				origin,
+				...overrides,
+			};
+		}
+
+		it.each([
+			{ kind: 'channel', owner: 'C1' },
+			{ kind: 'group', owner: 'C1' },
+			{ kind: 'dm', owner: 'U1' },
+		] as const)('reads and writes only the $kind owner', ({ kind, owner }) => {
+			const scopeId = `slack:agent-1:T1:${kind}:${owner}`;
+			expect(
+				integration.resolveEpisodicScope(
+					context({ origin: { ...origin, conversationKind: kind } }),
+				),
+			).toEqual({ writeScopeId: scopeId, readScopeIds: [scopeId] });
+		});
+
+		it.each(['channel', 'group'] as const)(
+			'keeps %s ownership across users, threads, credentials and names',
+			(conversationKind) => {
+				const first = context({ origin: { ...origin, conversationKind } });
+				const next = context({
+					author: { id: 'U2', name: 'Bob' },
+					threadId: 'slack:C1:9.9',
+					credentialId: 'cred-2',
+					origin: { ...origin, conversationKind, channelName: 'renamed' },
+				});
+				expect(integration.resolveEpisodicScope(next)).toEqual(
+					integration.resolveEpisodicScope(first),
+				);
+			},
+		);
+
+		it('keeps personal ownership across DM threads, channels and reconnects', () => {
+			const first = context({ origin: { ...origin, conversationKind: 'dm', channelId: 'D1' } });
+			const next = context({
+				credentialId: 'replacement',
+				threadId: 'slack:D2:9.9',
+				author: { id: 'U1', name: 'Renamed user' },
+				origin: { ...origin, conversationKind: 'dm', channelId: 'D2' },
+			});
+			expect(integration.resolveEpisodicScope(next)).toEqual(
+				integration.resolveEpisodicScope(first),
+			);
+		});
+
+		it.each([
+			{ agentId: '' },
+			{ integrationType: 'discord' },
+			{ origin: undefined },
+			{ origin: { ...origin, workspaceId: '' } },
+			{ origin: { ...origin, channelId: '' } },
+			{
+				origin: { ...origin, conversationKind: 'dm' },
+				author: { id: '', name: 'Alice' },
+			},
+			{
+				origin: { ...origin, conversationKind: 'dm' },
+				author: { id: 'unknown', name: 'Alice' },
+			},
+		] satisfies Partial<EpisodicScopeContext>[])(
+			'disables memory for unresolved identity %j',
+			(overrides) => {
+				expect(integration.resolveEpisodicScope(context(overrides))).toBeNull();
+			},
+		);
+
+		it('encodes scope components without delimiter collisions', () => {
+			expect(
+				integration.resolveEpisodicScope(
+					context({
+						agentId: 'agent:1',
+						origin: { ...origin, workspaceId: 'T:1', channelId: 'C:1' },
+					}),
+				),
+			).toEqual({
+				writeScopeId: 'slack:agent%3A1:T%3A1:channel:C%3A1',
+				readScopeIds: ['slack:agent%3A1:T%3A1:channel:C%3A1'],
+			});
 		});
 	});
 
@@ -149,24 +252,121 @@ describe('SlackIntegration', () => {
 		expect(integration.prepareInboundText('@U_BOT hello', { agentUserId: 'U_BOT' })).toBe('hello');
 	});
 
-	it('sets a thinking status and buffers resume responses for Slack actions', async () => {
-		const thread = {
+	describe('messageThreadId', () => {
+		it('anchors a top-level post at the sent message ts', () => {
+			expect(integration.messageThreadId({ id: '123.456', threadId: 'slack:C123:' })).toBe(
+				'slack:C123:123.456',
+			);
+			expect(integration.messageThreadId({ id: '123.456', threadId: 'slack:D123:' })).toBe(
+				'slack:D123:123.456',
+			);
+			expect(integration.messageThreadId({ id: '123.456', threadId: 'slack:G123:' })).toBe(
+				'slack:G123:123.456',
+			);
+		});
+
+		it('returns undefined when the message is already in an anchored thread', () => {
+			expect(
+				integration.messageThreadId({ id: '123.457', threadId: 'slack:C123:123.456' }),
+			).toBeUndefined();
+			expect(
+				integration.messageThreadId({ id: '123.457', threadId: 'slack:D123:123.456' }),
+			).toBeUndefined();
+			expect(
+				integration.messageThreadId({ id: '123.457', threadId: 'slack:G123:123.456' }),
+			).toBeUndefined();
+		});
+
+		it('returns undefined for non-Slack thread ids', () => {
+			expect(
+				integration.messageThreadId({ id: 'msg-1', threadId: 'telegram:12345' }),
+			).toBeUndefined();
+			expect(
+				integration.messageThreadId({ id: 'msg-1', threadId: 'linear:issue-1' }),
+			).toBeUndefined();
+		});
+
+		it('does not re-anchor conversation-scoped DMs on inbound', () => {
+			expect(
+				integration.messageThreadId({ id: '123.456', threadId: 'slack:D123:' }, { inbound: true }),
+			).toBeUndefined();
+			expect(
+				integration.messageThreadId({ id: '123.456', threadId: 'slack:C123:' }, { inbound: true }),
+			).toBe('slack:C123:123.456');
+		});
+
+		it('does not re-anchor inbound group DMs, but re-anchors private channels', () => {
+			expect(
+				integration.messageThreadId(
+					{ id: '123.456', threadId: 'slack:G123:', raw: { channel_type: 'mpim' } },
+					{ inbound: true },
+				),
+			).toBeUndefined();
+			expect(
+				integration.messageThreadId(
+					{ id: '123.456', threadId: 'slack:G123:', raw: { channel_type: 'group' } },
+					{ inbound: true },
+				),
+			).toBe('slack:G123:123.456');
+			expect(
+				integration.messageThreadId({ id: '123.456', threadId: 'slack:G123:' }, { inbound: true }),
+			).toBe('slack:G123:123.456');
+		});
+	});
+
+	it('falls back to typing when the resumed Slack conversation has no thread timestamp', async () => {
+		const thread = mock<Thread<unknown, unknown>>({
+			id: 'slack:D123:',
+			adapter: mock<Thread['adapter']>({
+				decodeThreadId: vi.fn().mockReturnValue({ channel: 'D123', threadTs: '' }),
+			}),
 			startTyping: vi.fn().mockResolvedValue(undefined),
-		};
+		});
 
 		const context = await integration.createResumeExecutionContext({
 			chat: {
 				getAdapter: vi.fn().mockReturnValue(undefined),
 			} as unknown as ChatInstance,
-			thread: thread as never,
+			thread,
 			logger: { warn: vi.fn() } as never,
 			agentId: 'agent-1',
 		});
 
-		expect(context.forceBuffered).toBe(true);
+		expect(context.forceBuffered).toBe(false);
 		expect(context.statusHandle).toBeUndefined();
 		expect(thread.startTyping).toHaveBeenCalledWith('Thinking...');
 	});
+
+	it.each(['C123', 'D123', 'G123'])(
+		'derives a resumable status handle from the Slack thread ID (%s)',
+		async (channel) => {
+			const threadTs = '1779466577.518139';
+			const decodeThreadId = vi.fn().mockReturnValue({ channel, threadTs });
+			const thread = mock<Thread<unknown, unknown>>({
+				id: `slack:${channel}:${threadTs}`,
+				adapter: mock<Thread['adapter']>({ decodeThreadId }),
+			});
+			const setAssistantStatus = vi.fn().mockResolvedValue(undefined);
+
+			const context = await integration.createResumeExecutionContext({
+				chat: mock<ChatInstance>({ getAdapter: () => ({ setAssistantStatus }) }),
+				thread,
+				logger: { warn: vi.fn() } as never,
+				agentId: 'agent-1',
+			});
+
+			expect(decodeThreadId).toHaveBeenCalledWith(thread.id);
+			expect(context.forceBuffered).toBe(false);
+			expect(context.statusHandle?.keepDuringResponse).toBe(true);
+			expect(context.statusHandle?.resumeAfterResponse).toBeTypeOf('function');
+			await context.statusHandle?.resumeAfterResponse?.();
+			expect(setAssistantStatus).toHaveBeenLastCalledWith(channel, threadTs, 'Thinking...', [
+				'Thinking...',
+			]);
+			await context.statusHandle?.clearBeforeResponse();
+			expect(setAssistantStatus).toHaveBeenLastCalledWith(channel, threadTs, '');
+		},
+	);
 
 	describe('getReplyExpectation', () => {
 		const platformAgentContext = { agentUserId: 'U_BOT' };
@@ -243,20 +443,29 @@ describe('SlackIntegration', () => {
 	});
 
 	describe('handleUnauthenticatedWebhook', () => {
+		const unauthenticatedWebhookContext = (body: unknown) => ({
+			agentId: 'agent-1',
+			method: 'POST',
+			query: {},
+			headers: {},
+			body,
+		});
+
 		it('echoes the challenge for a url_verification event', () => {
-			const result = integration.handleUnauthenticatedWebhook({
-				type: 'url_verification',
-				challenge: 'abc123',
-			});
+			const result = integration.handleUnauthenticatedWebhook(
+				unauthenticatedWebhookContext({ type: 'url_verification', challenge: 'abc123' }),
+			);
 
 			expect(result).toEqual({ status: 200, body: { challenge: 'abc123' } });
 		});
 
 		it('returns undefined for non-verification events', () => {
-			const result = integration.handleUnauthenticatedWebhook({
-				type: 'event_callback',
-				event: { type: 'message', text: 'hi' },
-			});
+			const result = integration.handleUnauthenticatedWebhook(
+				unauthenticatedWebhookContext({
+					type: 'event_callback',
+					event: { type: 'message', text: 'hi' },
+				}),
+			);
 
 			expect(result).toBeUndefined();
 		});
@@ -265,7 +474,9 @@ describe('SlackIntegration', () => {
 			['missing challenge', { type: 'url_verification' }],
 			['non-string challenge', { type: 'url_verification', challenge: 42 }],
 		])('returns undefined for malformed url_verification body (%s)', (_label, body) => {
-			expect(integration.handleUnauthenticatedWebhook(body)).toBeUndefined();
+			expect(
+				integration.handleUnauthenticatedWebhook(unauthenticatedWebhookContext(body)),
+			).toBeUndefined();
 		});
 
 		it.each([
@@ -274,7 +485,9 @@ describe('SlackIntegration', () => {
 			['string', 'hello'],
 			['number', 42],
 		])('returns undefined for non-object body (%s)', (_label, body) => {
-			expect(integration.handleUnauthenticatedWebhook(body)).toBeUndefined();
+			expect(
+				integration.handleUnauthenticatedWebhook(unauthenticatedWebhookContext(body)),
+			).toBeUndefined();
 		});
 	});
 });

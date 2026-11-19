@@ -731,4 +731,57 @@ describe('FolderRepository', () => {
 			});
 		});
 	});
+
+	describe('findManyByExactName', () => {
+		let project: Project;
+		let owner: User;
+
+		beforeAll(async () => {
+			owner = await createOwner();
+			project = await getPersonalProject(owner);
+		});
+
+		it('matches a folder name exactly, case-insensitively, excluding a substring match', async () => {
+			const exact = await createFolder(project, { name: 'Reports' });
+			await createFolder(project, { name: 'Reports Archive' });
+
+			const folders = await folderRepository.findManyByExactName(project.id, 'reports', 200);
+
+			expect(folders).toHaveLength(1);
+			expect(folders[0].id).toBe(exact.id);
+		});
+
+		it('orders results deterministically instead of leaving row order to the query planner', async () => {
+			const qbSpy = vi.spyOn(folderRepository, 'createQueryBuilder');
+
+			await folderRepository.findManyByExactName(project.id, 'Reports', 200);
+
+			const sql = qbSpy.mock.results[0]?.value?.getSql() as string;
+			expect(sql).toMatch(/ORDER BY "folder_id"/);
+		});
+
+		it('returns matches in a deterministic order, not insertion order', async () => {
+			const ids: string[] = [];
+			for (let i = 0; i < 5; i++) {
+				const folder = await createFolder(project, { name: 'Reports' });
+				ids.push(folder.id);
+			}
+
+			const folders = await folderRepository.findManyByExactName(project.id, 'Reports', 200);
+
+			expect(folders.map((f) => f.id)).toEqual([...ids].sort());
+		});
+
+		it('scopes the match to the given project', async () => {
+			const anotherUser = await createMember();
+			const anotherProject = await getPersonalProject(anotherUser);
+			await createFolder(project, { name: 'Reports' });
+			const inOtherProject = await createFolder(anotherProject, { name: 'Reports' });
+
+			const folders = await folderRepository.findManyByExactName(anotherProject.id, 'Reports', 200);
+
+			expect(folders).toHaveLength(1);
+			expect(folders[0].id).toBe(inOtherProject.id);
+		});
+	});
 });

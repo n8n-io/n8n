@@ -1,9 +1,10 @@
+import { EventService, WorkflowVersionedSettingsService } from '@n8n/backend-services';
 import type { WorkflowHistory } from '@n8n/db';
 import { WorkflowRepository, WorkflowHistoryRepository } from '@n8n/db';
 import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import fs from 'fs';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import path from 'path';
 import { z } from 'zod';
 
@@ -12,7 +13,6 @@ import type { IWorkflowWithVersionMetadata } from '@/interfaces';
 import { BaseCommand } from '../base-command';
 
 import '../../zod-alias-support';
-import { EventService } from '@/events/event.service';
 
 const flagsSchema = z.object({
 	all: z.boolean().describe('Export all workflows').optional(),
@@ -119,9 +119,9 @@ export class ExportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 			}
 		}
 
-		const workflows = await Container.get(WorkflowRepository).find({
-			where: this.getWhereFilter(flags),
-			relations: ['tags', 'shared', 'shared.project'],
+		const workflows = await Container.get(WorkflowRepository).findForExport({
+			workflowId: flags.id,
+			projectId: flags.projectId,
 		});
 
 		if (workflows.length === 0) {
@@ -187,18 +187,6 @@ export class ExportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 		this.logger.error('Error exporting workflows. See log messages for details.');
 		this.logger.debug(error.message);
 	}
-
-	private getWhereFilter(flags: z.infer<typeof flagsSchema>) {
-		if (flags.id) {
-			return { id: flags.id };
-		}
-
-		if (flags.projectId) {
-			return { shared: { projectId: flags.projectId } };
-		}
-
-		return {};
-	}
 }
 
 /**
@@ -249,6 +237,8 @@ function mergeHistoriesIntoWorkflows(
 	historyMap: Map<string, WorkflowHistory>,
 	flags: z.infer<typeof flagsSchema>,
 ) {
+	const versionedSettingsService = Container.get(WorkflowVersionedSettingsService);
+
 	return workflows
 		.map((workflow) => {
 			const versionId = versionIdByWorkflow.get(workflow.id);
@@ -259,8 +249,15 @@ function mergeHistoriesIntoWorkflows(
 			if (!history && (flags.published || flags.version)) return null;
 
 			if (history) {
+				// A selected version runs on its own version-scoped settings, such as the engine.
+				const settings =
+					flags.published || flags.version
+						? versionedSettingsService.forVersionRun(workflow.settings, history)
+						: workflow.settings;
+
 				return {
 					...workflow,
+					settings,
 					nodes: history.nodes,
 					connections: history.connections,
 					nodeGroups: history.nodeGroups,

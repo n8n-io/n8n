@@ -38,10 +38,13 @@ import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useWorkflowNormalization } from '@/app/composables/useWorkflowNormalization';
 import { getExecutionErrorToastConfiguration } from '@/features/execution/executions/executions.utils';
 import {
+	DEFAULT_STICKY_HEIGHT,
+	DEFAULT_STICKY_WIDTH,
 	EnterpriseEditionFeature,
 	HTTP_REQUEST_NODE_TYPE,
 	HTTP_REQUEST_TOOL_NODE_TYPE,
 	MESSAGE_AN_AGENT_NODE_TYPE,
+	NO_OP_NODE_TYPE,
 	STICKY_NODE_TYPE,
 	UPDATE_WEBHOOK_ID_NODE_TYPES,
 	VIEWS,
@@ -67,6 +70,7 @@ import { useHistoryStore } from '@/app/stores/history.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { isNodeTypeRestricted } from '@n8n/frontend-module-type-availability-policies';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
@@ -91,23 +95,29 @@ import {
 	mapLegacyConnectionsToCanvasConnections,
 	mapLegacyConnectionToCanvasConnection,
 	parseCanvasConnectionHandleString,
+	getMainHandleOffset,
 } from '@/features/workflows/canvas/canvas.utils';
 import * as NodeViewUtils from '@/app/utils/nodeViewUtils';
 import {
 	GRID_SIZE,
-	AGENT_NODE_SIZE,
 	CONFIGURABLE_NODE_SIZE,
 	CONFIGURATION_NODE_SIZE,
 	DEFAULT_NODE_SIZE,
 	DEFAULT_VIEWPORT_BOUNDARIES,
-	generateOffsets,
 	getNodesGroupSize,
 	PUSH_NODES_OFFSET,
 	HORIZONTAL_NODE_STEP,
-	NODE_X_SPACING,
-	doRectsOverlap,
+	type NextNodeSlotFan,
+	getNodeSizeFromPorts,
+	isPositionBlocked,
+	snapToGrid,
 } from '@/app/utils/nodeViewUtils';
-import { isAgentNodeV2 } from '@/features/agents/utils/agentNode';
+import {
+	DEFAULT_AGENT_HEIGHT,
+	DEFAULT_AGENT_WIDTH,
+	getAgentNodeHandleOffset,
+	isAgentNodeV2,
+} from '@/features/agents/utils/agentNode';
 import type { Connection } from '@vue-flow/core';
 import type {
 	IConnection,
@@ -132,21 +142,26 @@ import type {
 } from 'n8n-workflow';
 import {
 	deepCopy,
+	getEmptyGroupAnchor,
 	NodeConnectionTypes,
 	NodeHelpers,
 	TelemetryHelpers,
 	isCommunityPackageName,
+	isEmptyGroupAnchor,
 	isHitlToolType,
 	isResourceLocatorValue,
 } from 'n8n-workflow';
-import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import { TELEMETRY_EVENT, type InferTelemetryProps, type TelemetryEventDef } from '@n8n/telemetry';
 import { computed, nextTick, ref, type DeepReadonly } from 'vue';
 import { useUniqueNodeName } from '@/app/composables/useUniqueNodeName';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { isPresent, tryToParseNumber } from '@/app/utils/typesUtils';
 import { ensureNodePosition, sanitizeConnections } from '@/app/utils/workflowUtils';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import type { CanvasLayoutEvent } from '@/features/workflows/canvas/composables/useCanvasLayout';
+import type {
+	CanvasLayoutEvent,
+	NodeLayoutResult,
+} from '@/features/workflows/canvas/composables/useCanvasLayout';
 import { chatEventBus } from '@n8n/chat/event-buses';
 import { useLogsStore } from '@/app/stores/logs.store';
 import { isChatNode } from '@/app/utils/aiUtils';
@@ -155,16 +170,21 @@ import uniq from 'lodash/uniq';
 import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimental/experimentalNdv.store';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 import { useCanvasNodeGroupOperationGuards } from '@/features/workflows/canvas/composables/useCanvasNodeGroupOperationGuards';
+import { countGroupExternalConnections } from '@/features/workflows/canvas/composables/nodeGroupTelemetry.utils';
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
 import type { TelemetryNdvSource, TelemetryNdvType } from '@/app/types/telemetry';
 import { useRoute, useRouter } from 'vue-router';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { isValidNodeConnectionType } from '@/app/utils/typeGuards';
 import { removePreviewToken } from '@/features/shared/nodeCreator/nodeCreator.utils';
+import { useRestrictedNodeWarning } from '@/features/shared/nodeCreator/composables/useRestrictedNodeWarning';
+import { useRestrictedImportToast } from '@/app/composables/useRestrictedImportToast';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
+import { useEmptyCanvasGroupsFlag } from '@/features/workflows/canvas/composables/useEmptyCanvasGroupsFlag';
 import { clearAllNodeResourceLocatorValues } from '@/features/workflows/templates/utils/templateTransforms';
 import { useClipboard } from '@vueuse/core';
 import { useAgentNodeCanvasGeometryStore } from '@/features/agents/agentNodeCanvasGeometry.store';
+import { removeEmptyCanvasGroupsFromWorkflowData } from '@/features/workflows/canvas/emptyGroup.utils';
 import {
 	createWorkflowDocumentId,
 	pinDataToExecutionData,
@@ -185,47 +205,34 @@ type AddNodesBaseOptions = {
 	trackHistory?: boolean;
 	keepPristine?: boolean;
 	telemetry?: boolean;
-	forcePosition?: boolean;
 	viewport?: ViewportBoundaries;
 };
 
 type AddNodesOptions = AddNodesBaseOptions & {
 	position?: XYPosition;
 	trackBulk?: boolean;
+	/** Maps each input index to the node that was actually added, if it succeeded. */
+	addedNodesByInputIndex?: Map<number, INodeUi>;
 };
 
 type AddNodeOptions = AddNodesBaseOptions & {
 	openNDV?: boolean;
 	isAutoAdd?: boolean;
 	actionName?: string;
+	/** Places a node without a position in the next-node slot of this node, moved by `offset` */
+	placeAfter?: { node: INodeUi; offset?: XYPosition };
 };
 
-/**
- * Rendered-width estimate for the multi-node sequential placement step, so a
- * bulk-added node doesn't overlap a wide neighbor. The agent card
- * (AGENT_NODE_SIZE) and default widths are exact; configurable nodes render at
- * a dynamic width (see calculateNodeSize) that no constant matches, so
- * CONFIGURABLE_NODE_SIZE is an overlap-safe estimate only — exact configurable
- * spacing needs the measured width and is tracked as a follow-up.
- */
-function getPlacementNodeWidth(node: INodeUi, nodeTypeDescription: INodeTypeDescription): number {
-	if (isAgentNodeV2(node)) {
-		return AGENT_NODE_SIZE[0];
-	}
-
-	// A dynamic-inputs expression (e.g. AI Agent) or any non-main input means the
-	// node renders at the wider configurable size.
-	const { inputs } = nodeTypeDescription;
-	const hasNonMainInput =
-		Array.isArray(inputs) &&
-		NodeHelpers.getConnectionTypes(inputs).some((input) => input !== NodeConnectionTypes.Main);
-
-	if (typeof inputs === 'string' || hasNonMainInput) {
-		return CONFIGURABLE_NODE_SIZE[0];
-	}
-
-	return DEFAULT_NODE_SIZE[0];
-}
+type NextNodeSlotAfterOptions = {
+	/** The node that the new node comes after */
+	source: INodeUi;
+	/** Read from the node types store when not given */
+	sourceTypeDescription?: INodeTypeDescription;
+	/** The node to place */
+	node: INodeUi;
+	nodeTypeDescription: INodeTypeDescription;
+	fan?: NextNodeSlotFan;
+};
 
 export function useCanvasOperations() {
 	const rootStore = useRootStore();
@@ -246,6 +253,7 @@ export function useCanvasOperations() {
 	const templatesStore = useTemplatesStore();
 	const focusPanelStore = useFocusPanelStore();
 	const setupPanelStore = useSetupPanelStore();
+	const emptyCanvasGroupsEnabled = useEmptyCanvasGroupsFlag();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
 	// `useCanvasOperations` runs in out-of-tree contexts (push/socket handlers,
 	// router guards) as well as inside the editor, so derive the NDV store from
@@ -257,6 +265,8 @@ export function useCanvasOperations() {
 	const workflowHelpers = useWorkflowHelpers();
 	const nodeHelpers = useNodeHelpers();
 	const aiSimulatedDataGuard = useAiSimulatedDataGuard();
+	const { warnIfRestricted } = useRestrictedNodeWarning();
+	const { warnIfImportHasRestrictedNodes } = useRestrictedImportToast();
 	const {
 		requireNodeTypeDescription,
 		resolveNodeParameters,
@@ -297,12 +307,38 @@ export function useCanvasOperations() {
 			: null,
 	);
 
+	// Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
+	function getGroupConnectionCount(group: IWorkflowGroup): number {
+		return countGroupExternalConnections(
+			group,
+			workflowDocumentStore.value.allNodes,
+			workflowDocumentStore.value.connectionsBySourceNode,
+		);
+	}
+
+	function groupEventIdentity(groupId: string) {
+		return {
+			workflow_id: workflowDocumentStore.value.workflowId,
+			group_id: groupId,
+			push_ref: rootStore.pushRef,
+		};
+	}
+
+	function trackEmptyGroupEvent<T extends TelemetryEventDef>(
+		event: T,
+		properties: InferTelemetryProps<T>,
+	) {
+		if (!emptyCanvasGroupsEnabled.value) return;
+
+		telemetry.track(event, properties);
+	}
+
 	/**
 	 * Node operations
 	 */
 
 	function tidyUp(
-		{ result, source, target }: CanvasLayoutEvent,
+		{ result, source, target, targetNodeCount }: CanvasLayoutEvent,
 		{
 			trackEvents = true,
 			trackHistory = true,
@@ -313,21 +349,18 @@ export function useCanvasOperations() {
 			trackBulk?: boolean;
 		} = {},
 	) {
-		updateNodesPosition(
-			result.nodes.map(({ id, x, y }) => ({ id, position: { x, y } })),
-			{ trackBulk, trackHistory },
-		);
+		updateNodesLayout(result.nodes, { trackBulk, trackHistory });
 
 		if (trackEvents) {
-			trackTidyUp({ result, source, target });
+			trackTidyUp({ result, source, target, targetNodeCount });
 		}
 	}
 
-	function trackTidyUp({ result, source, target }: CanvasLayoutEvent) {
+	function trackTidyUp({ result, source, target, targetNodeCount }: CanvasLayoutEvent) {
 		telemetry.track('User tidied up canvas', {
 			source,
 			target,
-			nodes_count: result.nodes.length,
+			nodes_count: targetNodeCount ?? result.nodes.length,
 		});
 	}
 
@@ -335,13 +368,84 @@ export function useCanvasOperations() {
 		events: CanvasNodeMoveEvent[],
 		{ trackHistory = false, trackBulk = true } = {},
 	) {
+		const changedEvents = events.filter(({ id, position }) => {
+			const node = workflowDocumentStore.value.getNodeById(id);
+			if (!node) return false;
+			return node.position[0] !== position.x || node.position[1] !== position.y;
+		});
+		if (changedEvents.length === 0) {
+			return;
+		}
+
 		if (trackHistory && trackBulk) {
 			historyStore.startRecordingUndo();
 		}
 
-		events.forEach(({ id, position }) => {
+		changedEvents.forEach(({ id, position }) => {
 			updateNodePosition(id, position, { trackHistory });
 		});
+
+		if (trackHistory && trackBulk) {
+			historyStore.stopRecordingUndo();
+		}
+	}
+
+	function getStickyParametersForLayout(node: INodeUi, layoutNode: NodeLayoutResult) {
+		if (node.type !== STICKY_NODE_TYPE) return undefined;
+		if (layoutNode.width === undefined || layoutNode.height === undefined) return undefined;
+		if (
+			node.parameters.width === layoutNode.width &&
+			node.parameters.height === layoutNode.height
+		) {
+			return undefined;
+		}
+
+		return {
+			...node.parameters,
+			width: layoutNode.width,
+			height: layoutNode.height,
+		};
+	}
+
+	function updateNodesLayout(
+		layoutNodes: NodeLayoutResult[],
+		{ trackHistory = false, trackBulk = true } = {},
+	) {
+		const updates = layoutNodes.flatMap((layoutNode) => {
+			const node = workflowDocumentStore.value.getNodeById(layoutNode.id);
+			if (!node) return [];
+
+			const positionChanged =
+				node.position[0] !== layoutNode.x || node.position[1] !== layoutNode.y;
+			const parameters = getStickyParametersForLayout(node, layoutNode);
+			if (!positionChanged && !parameters) return [];
+
+			return [
+				{
+					layoutNode,
+					node,
+					parameters,
+					positionChanged,
+				},
+			];
+		});
+		if (updates.length === 0) return;
+
+		if (trackHistory && trackBulk) {
+			historyStore.startRecordingUndo();
+		}
+
+		for (const { layoutNode, node, parameters, positionChanged } of updates) {
+			if (positionChanged) {
+				updateNodePosition(layoutNode.id, { x: layoutNode.x, y: layoutNode.y }, { trackHistory });
+			}
+			if (parameters) {
+				replaceNodeParameters(layoutNode.id, node.parameters, parameters, {
+					trackHistory,
+					trackBulk: false,
+				});
+			}
+		}
 
 		if (trackHistory && trackBulk) {
 			historyStore.stopRecordingUndo();
@@ -360,6 +464,9 @@ export function useCanvasOperations() {
 
 		const oldPosition: XYPosition = [...node.position];
 		const newPosition: XYPosition = [position.x, position.y];
+		if (oldPosition[0] === newPosition[0] && oldPosition[1] === newPosition[1]) {
+			return;
+		}
 
 		workflowDocumentStore.value.setNodePositionById(id, newPosition);
 
@@ -424,7 +531,8 @@ export function useCanvasOperations() {
 		newName: string,
 		{ trackHistory = false, trackBulk = true, showErrorToast = true } = {},
 	): Promise<string | false> {
-		if (currentName === newName) {
+		const node = workflowDocumentStore.value.getNodeByName(currentName);
+		if (currentName === newName || (node && nodeTypesStore.isNodeDeprecated(node))) {
 			return false;
 		}
 
@@ -552,14 +660,21 @@ export function useCanvasOperations() {
 								index: outgoingConnection.index,
 							}),
 						},
-						{ validateNodeGroups },
+						{
+							validateNodeGroups,
+							// Reconnecting around a deleted node is an internal operation.
+							trackEmptyGroupTelemetry: false,
+						},
 					);
 				}
 			}
 		}
 	}
 
-	function deleteNode(id: string, { trackHistory = false, trackBulk = true } = {}) {
+	function deleteNode(
+		id: string,
+		{ trackHistory = false, trackBulk = true, preserveEmptyGroupAnchor = true } = {},
+	) {
 		const node = workflowDocumentStore.value.getNodeById(id);
 		if (!node) {
 			return;
@@ -575,24 +690,80 @@ export function useCanvasOperations() {
 			uiStore.lastInteractedWithNodeId = undefined;
 		}
 
+		const group = workflowDocumentStore.value.getGroupForNode(id);
+		// Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
+		const emptyGroupAnchor = group ? getEmptyGroupAnchor(group, [node]) : undefined;
+		const wasEmptyGroup = emptyGroupAnchor?.id === node.id;
+		const shouldRestoreEmptyGroupAnchor =
+			emptyCanvasGroupsEnabled.value &&
+			preserveEmptyGroupAnchor &&
+			group?.nodeIds.length === 1 &&
+			node.type !== STICKY_NODE_TYPE &&
+			!emptyGroupAnchor;
+
+		if (shouldRestoreEmptyGroupAnchor) {
+			const anchorNodeType = requireNodeTypeDescription(NO_OP_NODE_TYPE);
+			const anchorHistoryIndex = trackHistory
+				? historyStore.currentBulkAction?.commands.length
+				: undefined;
+			const anchor = addNode(
+				{
+					type: NO_OP_NODE_TYPE,
+					typeVersion: resolveNodeVersion(anchorNodeType),
+					position: [...node.position],
+					parameters: { emptyGroupAnchor: true },
+					placeholder: true,
+				},
+				anchorNodeType,
+				{
+					isAutoAdd: true,
+					openNDV: false,
+					trackHistory,
+				},
+			);
+			const didReplace = replaceNode(id, anchor.id, { trackHistory, trackBulk: false });
+			if (didReplace) {
+				if (group) {
+					trackEmptyGroupEvent(TELEMETRY_EVENT.WORKFLOW.USER_DELETED_LAST_NODE_FROM_GROUP, {
+						...groupEventIdentity(group.id),
+					});
+				}
+				if (trackHistory && trackBulk) {
+					historyStore.stopRecordingUndo();
+				}
+				return;
+			}
+
+			// If the replacement is rejected by node-group connection policy, leave
+			// the original deletion path to remove the node and its group.
+			if (anchorHistoryIndex !== undefined) {
+				const anchorCommand = historyStore.currentBulkAction?.commands[anchorHistoryIndex];
+				if (anchorCommand instanceof AddNodeCommand && anchorCommand.node.id === anchor.id) {
+					historyStore.currentBulkAction?.commands.splice(anchorHistoryIndex, 1);
+				}
+			}
+			workflowDocumentStore.value.removeNodeById(anchor.id);
+		}
+
 		connectAdjacentNodes(id, { trackHistory, validateNodeGroups: false });
 		deleteConnectionsByNodeId(id, { trackHistory, trackBulk: false });
 
 		// Snapshot the group first so its membership change is reverted with the node.
-		const groupBeforeDelete = trackHistory
-			? workflowDocumentStore.value.getGroupForNode(id)
-			: undefined;
-		const groupSnapshot = groupBeforeDelete
-			? { ...groupBeforeDelete, nodeIds: [...groupBeforeDelete.nodeIds] }
-			: undefined;
+		const groupBeforeDelete = group;
+		const groupSnapshot =
+			trackHistory && groupBeforeDelete
+				? { ...groupBeforeDelete, nodeIds: [...groupBeforeDelete.nodeIds] }
+				: undefined;
 
 		useWorkflowExecutionStateStore(
 			workflowDocumentStore.value.documentId,
 		).clearActiveNodeExecutionData(node.name);
 		workflowDocumentStore.value.removeNodeById(id);
 
+		const groupAfterDelete = groupBeforeDelete
+			? workflowDocumentStore.value.getGroupById(groupBeforeDelete.id)
+			: undefined;
 		if (groupSnapshot) {
-			const groupAfterDelete = workflowDocumentStore.value.getGroupById(groupSnapshot.id);
 			if (!groupAfterDelete) {
 				historyStore.pushCommandToUndo(new RemoveNodeGroupCommand(groupSnapshot, Date.now()));
 			} else {
@@ -604,6 +775,12 @@ export function useCanvasOperations() {
 					),
 				);
 			}
+		}
+		if (groupBeforeDelete && !groupAfterDelete) {
+			trackEmptyGroupEvent(TELEMETRY_EVENT.WORKFLOW.USER_DELETED_GROUP, {
+				...groupEventIdentity(groupBeforeDelete.id),
+				was_empty: wasEmptyGroup,
+			});
 		}
 
 		if (trackHistory) {
@@ -623,12 +800,28 @@ export function useCanvasOperations() {
 		trackDeleteNode(id);
 	}
 
-	function deleteNodes(ids: string[], { trackHistory = true, trackBulk = true } = {}) {
+	function deleteNodes(
+		ids: string[],
+		{
+			trackHistory = true,
+			trackBulk = true,
+			deleteWholeGroupIds = [],
+		}: { trackHistory?: boolean; trackBulk?: boolean; deleteWholeGroupIds?: string[] } = {},
+	) {
+		const deleteWholeGroupIdSet = new Set(deleteWholeGroupIds);
+
 		if (trackHistory && trackBulk) {
 			historyStore.startRecordingUndo();
 		}
 
-		ids.forEach((id) => deleteNode(id, { trackHistory, trackBulk: false }));
+		ids.forEach((id) => {
+			const group = workflowDocumentStore.value.getGroupForNode(id);
+			deleteNode(id, {
+				trackHistory,
+				trackBulk: false,
+				preserveEmptyGroupAnchor: !group || !deleteWholeGroupIdSet.has(group.id),
+			});
+		});
 
 		if (trackHistory && trackBulk) {
 			historyStore.stopRecordingUndo();
@@ -764,6 +957,8 @@ export function useCanvasOperations() {
 				createConnection(newCanvasConnection, {
 					trackHistory,
 					validateNodeGroups: false,
+					// Replacing a connection is an internal operation.
+					trackEmptyGroupTelemetry: false,
 				});
 				didReplace = true;
 			}
@@ -782,7 +977,10 @@ export function useCanvasOperations() {
 	function replaceGroupedNodeConnections(
 		previousNode: INodeUi,
 		newNode: INodeUi,
-		{ trackHistory = false } = {},
+		{
+			trackHistory = false,
+			additionalGroupNodeIds = [],
+		}: { trackHistory?: boolean; additionalGroupNodeIds?: string[] } = {},
 	): boolean {
 		const group = workflowDocumentStore.value.getGroupForNode(previousNode.id);
 		if (!group) return false;
@@ -817,6 +1015,7 @@ export function useCanvasOperations() {
 			nodeIds,
 			connectionsToRemove,
 			connectionsToAdd,
+			additionalGroupNodeIds,
 			connectionsBySourceNode: workflowDocumentStore.value.connectionsBySourceNode,
 		});
 		if (!isReplacementAllowed) return false;
@@ -848,6 +1047,8 @@ export function useCanvasOperations() {
 			createConnection(connection, {
 				trackHistory,
 				validateNodeGroups: false,
+				// Replacing a grouped node's connections is an internal operation.
+				trackEmptyGroupTelemetry: false,
 			});
 			revalidateNodeInputConnections(connection.target);
 			revalidateNodeOutputConnections(connection.source);
@@ -906,11 +1107,14 @@ export function useCanvasOperations() {
 	}
 
 	function toggleNodesDisabled(ids: string[], { trackHistory = true, trackBulk = true } = {}) {
+		const nodes = workflowDocumentStore.value.getNodesByIds(ids);
+		if (nodes.some(nodeTypesStore.isNodeDeprecated)) return;
+		if (refuseRestrictedNodes(nodes)) return;
+
 		if (trackHistory && trackBulk) {
 			historyStore.startRecordingUndo();
 		}
 
-		const nodes = workflowDocumentStore.value.getNodesByIds(ids);
 		nodeHelpers.disableNodes(nodes, { trackHistory, trackBulk: false });
 
 		if (trackHistory && trackBulk) {
@@ -931,6 +1135,7 @@ export function useCanvasOperations() {
 		{ trackHistory = true, trackBulk = true } = {},
 	) {
 		const nodes = workflowDocumentStore.value.getNodesByIds(ids);
+		if (refuseRestrictedNodes(nodes)) return;
 
 		// Filter to only pinnable nodes
 		const pinnableNodesWithPinnedData = nodes
@@ -942,7 +1147,7 @@ export function useCanvasOperations() {
 		);
 
 		// Pinning copies the displayed output; when that output was simulated by
-		// the AI Assistant during verification it is fabricated sample data, so
+		// the n8n Assistant during verification it is fabricated sample data, so
 		// adopting it needs the same explicit opt-in as the NDV pin button.
 		if (nextStatePinned) {
 			const displayedExecutionId = useWorkflowExecutionStateStore(
@@ -982,7 +1187,6 @@ export function useCanvasOperations() {
 		nodes: AddedNodesAndConnections['nodes'],
 		{ viewport, ...options }: AddNodesOptions = {},
 	) {
-		let insertPosition = options.position;
 		let lastAddedNode: INodeUi | undefined;
 		const addedNodes: INodeUi[] = [];
 
@@ -1011,7 +1215,13 @@ export function useCanvasOperations() {
 				...node
 			} = nodeAddData;
 
-			const rawPosition = node.position ?? insertPosition;
+			// When we're adding multiple nodes, place each next one without a position in
+			// the next-node slot of the node before it
+			const placeAfter =
+				!node.position && lastAddedNode
+					? { node: lastAddedNode, offset: positionOffset }
+					: undefined;
+			const rawPosition = placeAfter ? undefined : (node.position ?? options.position);
 			const position: XYPosition | undefined =
 				rawPosition && positionOffset
 					? [rawPosition[0] + positionOffset[0], rawPosition[1] + positionOffset[1]]
@@ -1031,6 +1241,7 @@ export function useCanvasOperations() {
 						openNDV,
 						isAutoAdd,
 						actionName,
+						placeAfter,
 					},
 				);
 				lastAddedNode = newNode;
@@ -1038,21 +1249,11 @@ export function useCanvasOperations() {
 					newNode.placeholder = true;
 				}
 				addedNodes.push(newNode);
+				options.addedNodesByInputIndex?.set(index, newNode);
 			} catch (error) {
 				toast.showError(error, i18n.baseText('error'));
 				console.error(error);
-				continue;
 			}
-
-			// When we're adding multiple nodes, place the next one a constant
-			// NODE_X_SPACING gap past this node's right edge — using its actual width
-			// so the gap stays 128 even next to a wide agent/configurable node.
-			insertPosition = [
-				lastAddedNode.position[0] +
-					getPlacementNodeWidth(lastAddedNode, nodeTypeDescription) +
-					NODE_X_SPACING,
-				lastAddedNode.position[1],
-			];
 		}
 
 		if (lastAddedNode) {
@@ -1121,17 +1322,20 @@ export function useCanvasOperations() {
 	): INodeUi {
 		checkMaxNodesOfTypeReached(nodeTypeDescription);
 
-		const nodeData = resolveNodeData(node, nodeTypeDescription, {
+		const { nodeData, isAnchored } = resolveNodeData(node, nodeTypeDescription, {
 			viewport: options.viewport,
+			placeAfter: options.placeAfter,
 		});
 		if (!nodeData) {
 			throw new Error(i18n.baseText('nodeViewV2.showError.failedToCreateNode'));
 		}
-		if (isAgentNodeV2(nodeData) && !options.keepPristine) {
+		// An unanchored card keeps its top-left and grows down when it is measured,
+		// so that re-centering cannot move it back onto the node it was pushed away from
+		if (isAgentNodeV2(nodeData) && !options.keepPristine && isAnchored) {
 			agentNodeCanvasGeometryStore.setPendingCenterY(
 				workflowDocumentStore.value.workflowId,
 				nodeData.id,
-				nodeData.position[1] + AGENT_NODE_SIZE[1] / 2,
+				nodeData.position[1] + DEFAULT_AGENT_HEIGHT / 2,
 			);
 		}
 
@@ -1392,7 +1596,7 @@ export function useCanvasOperations() {
 	function resolveNodeData(
 		node: AddNodeDataWithTypeVersion,
 		nodeTypeDescription: INodeTypeDescription,
-		options: { viewport?: ViewportBoundaries; forcePosition?: boolean } = {},
+		options: Pick<AddNodeOptions, 'viewport' | 'placeAfter'> = {},
 	) {
 		const id = node.id ?? nodeHelpers.assignNodeId(node as INodeUi);
 		const name =
@@ -1402,12 +1606,6 @@ export function useCanvasOperations() {
 			(nodeTypeDescription.defaults.name as string);
 		const type = node.type ?? nodeTypeDescription.name;
 		const typeVersion = node.typeVersion;
-		const position =
-			options.forcePosition && node.position
-				? node.position
-				: resolveNodePosition(node as INodeUi, nodeTypeDescription, {
-						viewport: options.viewport,
-					});
 		const disabled = node.disabled ?? false;
 		const parameters = node.parameters ?? {};
 
@@ -1417,7 +1615,7 @@ export function useCanvasOperations() {
 			name,
 			type,
 			typeVersion,
-			position,
+			position: node.position ?? [0, 0],
 			disabled,
 			parameters,
 			placeholder: node.placeholder,
@@ -1430,7 +1628,25 @@ export function useCanvasOperations() {
 			resolveNodeWebhook(nodeData, nodeTypeDescription);
 		}
 
-		return nodeData;
+		// The size of the node can depend on its parameters, so resolve them first
+		let initialPosition = node.position;
+		if (!initialPosition && options.placeAfter) {
+			const { node: previousNode, offset = [0, 0] } = options.placeAfter;
+			const [x, y] = getNextNodeSlotAfter({
+				source: previousNode,
+				node: nodeData,
+				nodeTypeDescription,
+			});
+			initialPosition = [x + offset[0], y + offset[1]];
+		}
+		const { position, isAnchored } = resolveNodePlacement(
+			{ ...nodeData, position: initialPosition },
+			nodeTypeDescription,
+			{ viewport: options.viewport },
+		);
+		nodeData.position = position;
+
+		return { nodeData, isAnchored };
 	}
 
 	async function loadNodeTypesProperties(
@@ -1480,7 +1696,19 @@ export function useCanvasOperations() {
 		node: Omit<INodeUi, 'position'> & { position?: INodeUi['position'] },
 		nodeTypeDescription: INodeTypeDescription,
 		options: { viewport?: ViewportBoundaries } = {},
-	) {
+	): XYPosition {
+		return resolveNodePlacement(node, nodeTypeDescription, options).position;
+	}
+
+	/**
+	 * Resolves the position of a new node. The placement is anchored when a
+	 * position, a connection or a node sets it. Otherwise it falls back to the last click.
+	 */
+	function resolveNodePlacement(
+		node: Omit<INodeUi, 'position'> & { position?: INodeUi['position'] },
+		nodeTypeDescription: INodeTypeDescription,
+		options: { viewport?: ViewportBoundaries } = {},
+	): { position: XYPosition; isAnchored: boolean } {
 		// Available when
 		// - clicking the plus button of a node handle
 		// - dragging an edge / connection of a node handle
@@ -1498,14 +1726,26 @@ export function useCanvasOperations() {
 			connectionType === NodeConnectionTypes.Main ? DEFAULT_NODE_SIZE : CONFIGURATION_NODE_SIZE;
 		const pushOffsets: XYPosition = [nodeSize[0] / 2, nodeSize[1] / 2];
 
+		// Collision tests the rendered size of the new node and of each existing node
+		const getNewNodePosition = (initialPosition: XYPosition) =>
+			NodeViewUtils.getNewNodePosition(workflowDocumentStore.value.allNodes, initialPosition, {
+				offset: pushOffsets,
+				size: getNodePlacementSize({ ...node, position: initialPosition }, nodeTypeDescription),
+				viewport: options.viewport,
+				getNodeSize: getNodePlacementSize,
+			});
+
 		let position: XYPosition | undefined = node.position;
 		if (position) {
-			return NodeViewUtils.getNewNodePosition(workflowDocumentStore.value.allNodes, position, {
-				offset: pushOffsets,
-				size: nodeSize,
-				viewport: options.viewport,
-				normalize: false,
-			});
+			return {
+				position: NodeViewUtils.getNewNodePosition(workflowDocumentStore.value.allNodes, position, {
+					offset: pushOffsets,
+					size: nodeSize,
+					viewport: options.viewport,
+					normalize: false,
+				}),
+				isAnchored: true,
+			};
 		}
 
 		if (lastInteractedWithNode.value) {
@@ -1576,15 +1816,7 @@ export function useCanvasOperations() {
 							);
 						}
 
-						return NodeViewUtils.getNewNodePosition(
-							workflowDocumentStore.value.allNodes,
-							position,
-							{
-								offset: pushOffsets,
-								size: nodeSize,
-								viewport: options.viewport,
-							},
-						);
+						return { position: getNewNodePosition(position), isAnchored: true };
 					}
 				}
 
@@ -1619,7 +1851,6 @@ export function useCanvasOperations() {
 					(output) => output === NodeConnectionTypes.Main,
 				);
 
-				let yOffset = 0;
 				if (lastInteractedWithNodeConnection) {
 					// When clicking the plus button of a node edge / connection
 					// Compute the y offset for the new node based on the number of main outputs of the source node
@@ -1653,16 +1884,6 @@ export function useCanvasOperations() {
 						trackHistory: true,
 						nodeSize: newNodeSize,
 					});
-				}
-
-				if (lastInteractedWithNodeMainOutputs.length > 1) {
-					const yOffsetValues = generateOffsets(
-						lastInteractedWithNodeMainOutputs.length,
-						DEFAULT_NODE_SIZE[1],
-						GRID_SIZE,
-					);
-
-					yOffset = yOffsetValues[connectionIndex];
 				}
 
 				let outputs: Array<NodeConnectionType | INodeOutputConfiguration> = [];
@@ -1718,43 +1939,22 @@ export function useCanvasOperations() {
 					// When the node has only main outputs, mixed outputs, or no outputs at all
 					// We want to place the new node directly to the right of the last interacted with node.
 
-					let pushOffset = HORIZONTAL_NODE_STEP;
-					if (isAgentNodeV2(lastInteractedWithNodeObject)) {
-						// The agent card is wider than a default node, so offset by its width
-						// to keep the standard gap to its right edge
-						pushOffset += AGENT_NODE_SIZE[0] - DEFAULT_NODE_SIZE[0];
-					} else if (
-						lastInteractedWithNodeInputTypes.find((input) => input !== NodeConnectionTypes.Main)
-					) {
-						// If the node has scoped inputs, push it down a bit more
-						pushOffset += 140;
-					}
-					const measuredSourceHeight = isAgentNodeV2(lastInteractedWithNodeObject)
-						? agentNodeCanvasGeometryStore.getNodeHeight(
-								workflowDocumentStore.value.workflowId,
-								lastInteractedWithNodeObject.id,
-							)
-						: undefined;
-					const sourceNodeHeight =
-						measuredSourceHeight ??
-						(isAgentNodeV2(lastInteractedWithNodeObject)
-							? AGENT_NODE_SIZE[1]
-							: DEFAULT_NODE_SIZE[1]);
-					const targetNodeHeight = isAgentNodeV2(node) ? AGENT_NODE_SIZE[1] : nodeSize[1];
-					const centeredY =
-						lastInteractedWithNode.value.position[1] + (sourceNodeHeight - targetNodeHeight) / 2;
-
-					// If a node is active then add the new node directly after the current one
-					position = [lastInteractedWithNode.value.position[0] + pushOffset, centeredY + yOffset];
-
-					// When inserting via edge plus button, keep Y aligned to preserve vertical line
-					if (lastInteractedWithNodeConnection) {
-						position = [position[0], centeredY];
-					}
+					// If a node is active then add the new node directly after the current one.
+					// When inserting via edge plus button, keep Y aligned to preserve vertical line.
+					position = getNextNodeSlotAfter({
+						source: lastInteractedWithNodeObject,
+						sourceTypeDescription: lastInteractedWithNodeTypeDescription,
+						node: { ...node, position: lastInteractedWithNodeObject.position },
+						nodeTypeDescription,
+						fan: lastInteractedWithNodeConnection
+							? undefined
+							: { index: connectionIndex, count: lastInteractedWithNodeMainOutputs.length },
+					});
 				}
 			}
 		}
 
+		const isAnchored = position !== undefined;
 		if (!position) {
 			if (nodeTypesStore.isTriggerNode(node.type) && triggerNodes.value.length === 0) {
 				// When added node is a trigger, and it's the first one added to the canvas
@@ -1768,10 +1968,31 @@ export function useCanvasOperations() {
 			}
 		}
 
-		return NodeViewUtils.getNewNodePosition(workflowDocumentStore.value.allNodes, position, {
-			offset: pushOffsets,
-			size: nodeSize,
-			viewport: options.viewport,
+		return { position: getNewNodePosition(position), isAnchored };
+	}
+
+	/**
+	 * Gets the next-node slot after the source node, from the rendered size and
+	 * the main handle line of both nodes
+	 */
+	function getNextNodeSlotAfter({
+		source,
+		sourceTypeDescription,
+		node,
+		nodeTypeDescription,
+		fan,
+	}: NextNodeSlotAfterOptions): XYPosition {
+		const [sourceWidth, sourceHeight] = getNodePlacementSize(source, sourceTypeDescription);
+		const [, height] = getNodePlacementSize(node, nodeTypeDescription);
+
+		return NodeViewUtils.getNextNodeSlot({
+			source: {
+				position: source.position,
+				width: sourceWidth,
+				handleOffset: getMainHandleOffset(sourceHeight, isAgentNodeV2(source)),
+			},
+			target: { height, handleOffset: getMainHandleOffset(height, isAgentNodeV2(node)) },
+			fan,
 		});
 	}
 
@@ -1782,52 +2003,85 @@ export function useCanvasOperations() {
 	}
 
 	/**
+	 * Gets the size of a node as the canvas renders it, from its ports. Placement does
+	 * not read the Vue Flow size, because nodes that are not mounted yet have none.
+	 * An agent card uses its measured height when it has one, else DEFAULT_AGENT_HEIGHT.
+	 * A node that is not in the workflow yet evaluates its port expressions in a
+	 * workflow of its own, so `$parameter` cannot read another node with the same name.
+	 */
+	function getNodePlacementSize(
+		node: INodeUi,
+		nodeTypeDescription = nodeTypesStore.getNodeType(node.type, node.typeVersion),
+	): [number, number] {
+		if (node.type === STICKY_NODE_TYPE) {
+			const { width, height } = node.parameters;
+			return [
+				typeof width === 'number' && width > 0 ? width : DEFAULT_STICKY_WIDTH,
+				typeof height === 'number' && height > 0 ? height : DEFAULT_STICKY_HEIGHT,
+			];
+		}
+
+		if (isAgentNodeV2(node)) {
+			return [
+				DEFAULT_AGENT_WIDTH,
+				agentNodeCanvasGeometryStore.getNodeHeight(
+					workflowDocumentStore.value.workflowId,
+					node.id,
+				) ?? DEFAULT_AGENT_HEIGHT,
+			];
+		}
+
+		if (!nodeTypeDescription) {
+			return [...DEFAULT_NODE_SIZE];
+		}
+
+		const hasPortExpressions =
+			typeof nodeTypeDescription.inputs === 'string' ||
+			typeof nodeTypeDescription.outputs === 'string';
+		const isNewNode = !workflowDocumentStore.value.getNodeById(node.id);
+		const workflow =
+			hasPortExpressions && isNewNode
+				? workflowDocumentStore.value.createWorkflowObject([{ ...node }], {})
+				: { expression: workflowDocumentStore.value.getExpressionHandler() };
+
+		const { width, height } = getNodeSizeFromPorts(
+			NodeHelpers.getConnectionTypes(
+				NodeHelpers.getNodeInputs(workflow, node, nodeTypeDescription),
+			),
+			NodeHelpers.getConnectionTypes(
+				NodeHelpers.getNodeOutputs(workflow, node, nodeTypeDescription),
+			),
+		);
+		return [width, height];
+	}
+
+	/**
 	 * Gets the bounding rectangle of a node including its size
 	 */
 	function getNodeRect(node: INodeUi): { x: number; y: number; width: number; height: number } {
-		if (node.type === STICKY_NODE_TYPE) {
-			return {
-				x: node.position[0],
-				y: node.position[1],
-				width: (node.parameters.width as number) || DEFAULT_NODE_SIZE[0],
-				height: (node.parameters.height as number) || DEFAULT_NODE_SIZE[1],
-			};
-		}
-		return {
-			x: node.position[0],
-			y: node.position[1],
-			width: DEFAULT_NODE_SIZE[0],
-			height: DEFAULT_NODE_SIZE[1],
-		};
+		const [width, height] = getNodePlacementSize(node);
+		return { x: node.position[0], y: node.position[1], width, height };
 	}
 
 	/**
 	 * Check if there's enough space for a new node at the insertion position.
-	 * Uses a margin to account for nodes that are touching (edge-to-edge)
-	 * which should still be considered as blocking the insertion.
+	 * A node less than one grid cell away blocks the insertion, like in collision.
 	 */
 	function hasSpaceForInsertion(
 		insertPosition: XYPosition,
 		nodeSize: [number, number],
 		nodesToCheck: INodeUi[],
 	): boolean {
-		// Add a small margin to detect nodes that are touching (edge-to-edge)
-		const margin = GRID_SIZE;
 		const insertRect = {
 			x: insertPosition[0],
 			y: insertPosition[1],
-			width: nodeSize[0] + margin,
+			width: nodeSize[0],
 			height: nodeSize[1],
 		};
 
-		for (const node of nodesToCheck) {
-			if (node.type === STICKY_NODE_TYPE) continue;
-			const nodeRect = getNodeRect(node);
-			if (doRectsOverlap(insertRect, nodeRect)) {
-				return false;
-			}
-		}
-		return true;
+		return !nodesToCheck.some(
+			(node) => node.type !== STICKY_NODE_TYPE && isPositionBlocked(insertRect, getNodeRect(node)),
+		);
 	}
 
 	/**
@@ -1835,7 +2089,8 @@ export function useCanvasOperations() {
 	 *
 	 * Algorithm:
 	 * 1. Find regular nodes that overlap with or are to the right of insertion area
-	 * 2. Add downstream connected nodes
+	 * 2. Add downstream connected nodes and the sub-nodes of each node that moves,
+	 *    except sub-nodes that also feed a node that stays
 	 * 3. Classify sticky notes based on:
 	 *    - Whether they contain the source node (anchored = stretch only)
 	 *    - Whether they contain nodes that will move
@@ -1858,15 +2113,15 @@ export function useCanvasOperations() {
 		const insertY = insertPosition[1];
 		const yTolerance = DEFAULT_NODE_SIZE[1] * 2; // Nodes within ~2 node heights are considered "similar Y"
 
-		const getNodeCenter = (node: INodeUi) => ({
-			x: node.position[0] + DEFAULT_NODE_SIZE[0] / 2,
-			y: node.position[1] + DEFAULT_NODE_SIZE[1] / 2,
-		});
+		const getNodeCenter = (node: INodeUi) => {
+			const [width, height] = getNodePlacementSize(node);
+			return { x: node.position[0] + width / 2, y: node.position[1] + height / 2 };
+		};
 
 		const isSimilarY = (node: INodeUi) => Math.abs(node.position[1] - insertY) <= yTolerance;
 
 		const overlapsInsertX = (node: INodeUi) => {
-			const nodeRightEdge = node.position[0] + DEFAULT_NODE_SIZE[0];
+			const nodeRightEdge = node.position[0] + getNodePlacementSize(node)[0];
 			return nodeRightEdge > insertX || node.position[0] >= insertX;
 		};
 
@@ -1876,11 +2131,12 @@ export function useCanvasOperations() {
 			sticky: INodeUi,
 			stickyRect: ReturnType<typeof getNodeRect>,
 		) => {
+			const [width, height] = getNodePlacementSize(node);
 			return (
 				node.position[0] >= sticky.position[0] &&
-				node.position[0] + DEFAULT_NODE_SIZE[0] <= sticky.position[0] + stickyRect.width &&
+				node.position[0] + width <= sticky.position[0] + stickyRect.width &&
 				node.position[1] >= sticky.position[1] &&
-				node.position[1] + DEFAULT_NODE_SIZE[1] <= sticky.position[1] + stickyRect.height
+				node.position[1] + height <= sticky.position[1] + stickyRect.height
 			);
 		};
 
@@ -1952,6 +2208,21 @@ export function useCanvasOperations() {
 				.forEach((name) => candidateNames.add(name));
 		}
 
+		// Sub-nodes (model, memory, tools) move with the node they feed, wherever they are
+		for (const name of [...candidateNames]) {
+			for (const parent of workflowDocumentStore.value.getParentNodes(name, 'ALL_NON_MAIN')) {
+				candidateNames.add(parent);
+			}
+		}
+
+		// A sub-node that also feeds a node that stays, stays too
+		for (const name of [...candidateNames]) {
+			const fedNodes = workflowDocumentStore.value.getChildNodes(name, 'ALL_NON_MAIN');
+			if (fedNodes.some((fedNode) => !candidateNames.has(fedNode))) {
+				candidateNames.delete(name);
+			}
+		}
+
 		// Step 3: Get all candidate regular nodes (they overlap with or are downstream of insertion)
 		const regularNodesToMove = allNodes.filter((node) => {
 			if (node.type === STICKY_NODE_TYPE) return false;
@@ -1971,7 +2242,7 @@ export function useCanvasOperations() {
 		const affectedMinY = Math.min(insertY, ...regularNodesToMove.map((n) => n.position[1]));
 		const affectedMaxY = Math.max(
 			insertY + nodeSize[1],
-			...regularNodesToMove.map((n) => n.position[1] + DEFAULT_NODE_SIZE[1]),
+			...regularNodesToMove.map((n) => n.position[1] + getNodePlacementSize(n)[1]),
 		);
 
 		const sourceNode = workflowDocumentStore.value.getNodeByName(sourceNodeName);
@@ -2079,7 +2350,7 @@ export function useCanvasOperations() {
 		associatedNodes: INodeUi[],
 		{ trackHistory = false }: { trackHistory?: boolean },
 	) {
-		const padding = 20;
+		const padding = GRID_SIZE * 2;
 		const stickyRect = getNodeRect(sticky);
 		const currentLeft = sticky.position[0];
 		const currentRight = currentLeft + stickyRect.width;
@@ -2093,13 +2364,14 @@ export function useCanvasOperations() {
 			const updatedNode = workflowDocumentStore.value.getNodeById(node.id);
 			if (!updatedNode) continue;
 			const nodeLeft = updatedNode.position[0] - padding;
-			const nodeRight = updatedNode.position[0] + DEFAULT_NODE_SIZE[0] + padding;
+			const nodeRight = updatedNode.position[0] + getNodePlacementSize(updatedNode)[0] + padding;
 			targetLeft = Math.min(targetLeft, nodeLeft);
 			targetRight = Math.max(targetRight, nodeRight);
 		}
 
-		const newLeft = Math.min(currentLeft, targetLeft);
-		const newRight = Math.max(currentRight, targetRight);
+		// Snap only the edges that grow, so that the stretched sticky ends on the grid
+		const newLeft = Math.min(currentLeft, snapToGrid(targetLeft));
+		const newRight = Math.max(currentRight, snapToGrid(targetRight));
 		const newWidth = newRight - newLeft;
 
 		const newParameters: INodeParameters = { ...sticky.parameters, width: newWidth };
@@ -2131,11 +2403,11 @@ export function useCanvasOperations() {
 		if (!sourceNode) return;
 
 		// Calculate insertion position (to the right of source node)
-		// Use HORIZONTAL_NODE_STEP to match the actual position where nodes are placed,
-		// including the wider agent card offset applied in resolveNodePosition
+		// HORIZONTAL_NODE_STEP matches the next-node slot only after a default-width
+		// node, so widen it for the agent card
 		let insertOffset = HORIZONTAL_NODE_STEP;
 		if (isAgentNodeV2(sourceNode)) {
-			insertOffset += AGENT_NODE_SIZE[0] - DEFAULT_NODE_SIZE[0];
+			insertOffset += DEFAULT_AGENT_WIDTH - DEFAULT_NODE_SIZE[0];
 		}
 		const insertPosition: XYPosition = [
 			sourceNode.position[0] + insertOffset,
@@ -2230,7 +2502,13 @@ export function useCanvasOperations() {
 
 	function createConnection(
 		connection: Connection,
-		{ trackHistory = false, keepPristine = false, validateNodeGroups = true } = {},
+		{
+			trackHistory = false,
+			keepPristine = false,
+			validateNodeGroups = true,
+			// Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
+			trackEmptyGroupTelemetry = true,
+		} = {},
 	) {
 		const sourceNode = workflowDocumentStore.value.getNodeById(connection.source);
 		const targetNode = workflowDocumentStore.value.getNodeById(connection.target);
@@ -2247,6 +2525,8 @@ export function useCanvasOperations() {
 		if (!isConnectionAllowed(sourceNode, targetNode, mappedConnection[0], mappedConnection[1])) {
 			return;
 		}
+
+		if (workflowDocumentStore.value.hasConnection({ connection: mappedConnection })) return;
 
 		// Own a bulk so a group auto-extend bundles with the connection into one undo step.
 		const ownsBulk = trackHistory && validateNodeGroups && historyStore.currentBulkAction === null;
@@ -2268,6 +2548,27 @@ export function useCanvasOperations() {
 			return;
 		}
 
+		// Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
+		const emptyGroupsBeforeConnection = new Map<
+			string,
+			{ group: IWorkflowGroup; connectionCount: number }
+		>();
+		for (const node of trackEmptyGroupTelemetry && emptyCanvasGroupsEnabled.value
+			? [sourceNode, targetNode]
+			: []) {
+			const group = workflowDocumentStore.value.getGroupForNode(node.id);
+			if (
+				group &&
+				!emptyGroupsBeforeConnection.has(group.id) &&
+				getEmptyGroupAnchor(group, workflowDocumentStore.value.allNodes)
+			) {
+				emptyGroupsBeforeConnection.set(group.id, {
+					group,
+					connectionCount: getGroupConnectionCount(group),
+				});
+			}
+		}
+
 		if (trackHistory) {
 			historyStore.pushCommandToUndo(new AddConnectionCommand(mappedConnection, Date.now()));
 		}
@@ -2275,6 +2576,14 @@ export function useCanvasOperations() {
 		workflowDocumentStore.value.addConnection({
 			connection: mappedConnection,
 		});
+
+		// Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
+		for (const { group, connectionCount } of emptyGroupsBeforeConnection.values()) {
+			trackEmptyGroupEvent(TELEMETRY_EVENT.WORKFLOW.USER_CONNECTED_EMPTY_GROUP, {
+				...groupEventIdentity(group.id),
+				was_first_connection: connectionCount === 0,
+			});
+		}
 
 		if (ownsBulk) {
 			historyStore.stopRecordingUndo();
@@ -2431,6 +2740,8 @@ export function useCanvasOperations() {
 		// Undo restores an already-valid state, so don't re-gate it on group validation.
 		createConnection(mapLegacyConnectionToCanvasConnection(sourceNode, targetNode, connection), {
 			validateNodeGroups: false,
+			// Restoring an existing connection during undo is an internal operation.
+			trackEmptyGroupTelemetry: false,
 		});
 	}
 
@@ -2712,6 +3023,7 @@ export function useCanvasOperations() {
 
 		initializedDocumentStore.setNodes(nodes);
 		initializedDocumentStore.setConnections(connections);
+		initializedDocumentStore.setHydrated(true);
 
 		return { workflowDocumentStore: initializedDocumentStore };
 	}
@@ -2972,6 +3284,7 @@ export function useCanvasOperations() {
 			regenerateIds = true,
 			trackEvents = true,
 			setStateDirty = true,
+			warnRestrictedNodes = false,
 		}: {
 			importTags?: boolean;
 			trackBulk?: boolean;
@@ -2980,6 +3293,7 @@ export function useCanvasOperations() {
 			viewport?: ViewportBoundaries;
 			trackEvents?: boolean;
 			setStateDirty?: boolean;
+			warnRestrictedNodes?: boolean;
 		} = {},
 	): Promise<WorkflowDataUpdate> {
 		uiStore.resetLastInteractedWith();
@@ -2991,6 +3305,10 @@ export function useCanvasOperations() {
 				i18n.baseText('nodeView.showError.importWorkflowData.title'),
 			);
 			return {};
+		}
+
+		if (!emptyCanvasGroupsEnabled.value) {
+			removeEmptyCanvasGroupsFromWorkflowData(workflowData);
 		}
 
 		// Filter out nodes with missing type to prevent crashes
@@ -3126,18 +3444,24 @@ export function useCanvasOperations() {
 			// Fix the node position as it could be totally offscreen
 			// and the pasted nodes would so not be directly visible to
 			// the user
+			const groupSize =
+				workflowData.nodes && workflowData.nodes.length > 0
+					? getNodesGroupSize(workflowData.nodes, getNodePlacementSize)
+					: DEFAULT_NODE_SIZE;
+			const pastePosition: XYPosition =
+				source === 'paste' && viewport
+					? [
+							(viewport.xMin + viewport.xMax - groupSize[0]) / 2,
+							(viewport.yMin + viewport.yMax - groupSize[1]) / 2,
+						]
+					: lastClickPosition.value;
 			workflowHelpers.updateNodePositions(
 				workflowData,
-				NodeViewUtils.getNewNodePosition(
-					workflowDocumentStore.value.allNodes,
-					lastClickPosition.value,
-					{
-						...(workflowData.nodes && workflowData.nodes.length > 1
-							? { size: getNodesGroupSize(workflowData.nodes) }
-							: {}),
-						viewport,
-					},
-				),
+				NodeViewUtils.getNewNodePosition(workflowDocumentStore.value.allNodes, pastePosition, {
+					size: groupSize,
+					viewport,
+					getNodeSize: getNodePlacementSize,
+				}),
 			);
 
 			if (ownsImportBulk) {
@@ -3159,6 +3483,10 @@ export function useCanvasOperations() {
 
 			if (ownsImportBulk) {
 				historyStore.stopRecordingUndo();
+			}
+
+			if (warnRestrictedNodes) {
+				warnIfImportHasRestrictedNodes(importResult.nodes ?? []);
 			}
 
 			if (importTags && settingsStore.areTagsEnabled && Array.isArray(workflowData.tags)) {
@@ -3314,6 +3642,12 @@ export function useCanvasOperations() {
 
 		for (const node of nodes) {
 			const nodeSaveData = serializeNode(nodeTypesStore, node);
+			if (isEmptyGroupAnchor(node)) {
+				nodeSaveData.parameters = {
+					...nodeSaveData.parameters,
+					emptyGroupAnchor: true,
+				};
+			}
 			const pinDataForNode = pinDataToExecutionData(
 				workflowDocumentStore.value.pinnedDataByNodeName,
 			)[node.name];
@@ -3357,10 +3691,9 @@ export function useCanvasOperations() {
 	): INodeCredentials {
 		return Object.fromEntries(
 			Object.entries(credentials).filter(([, credential]) => {
-				return (
-					credential.id &&
-					(!usedCredentials[credential.id] || usedCredentials[credential.id]?.currentUserHasAccess)
-				);
+				if (!credential.id) return Boolean(credential.__aiGatewayManaged);
+				const used = usedCredentials[credential.id];
+				return !used || used.currentUserCanUse;
 			}),
 		);
 	}
@@ -3405,8 +3738,25 @@ export function useCanvasOperations() {
 		return filteredConnections;
 	}
 
+	/**
+	 * Refuses an operation on a restricted node, and says why.
+	 * The context menu disables its own items, but the keyboard shortcuts cannot,
+	 * so the refusal must explain itself.
+	 */
+	function refuseRestrictedNodes(nodes: INodeUi[]): boolean {
+		const restricted = nodes.find((node) => isNodeTypeRestricted(node.type));
+		if (!restricted) return false;
+
+		warnIfRestricted(restricted.type);
+		return true;
+	}
+
 	async function duplicateNodes(ids: string[], options: { viewport?: ViewportBoundaries } = {}) {
-		const workflowData = deepCopy(getNodesToSave(workflowDocumentStore.value.getNodesByIds(ids)));
+		const nodes = workflowDocumentStore.value.getNodesByIds(ids);
+		if (nodes.some(nodeTypesStore.isNodeDeprecated)) return [];
+		if (refuseRestrictedNodes(nodes)) return [];
+
+		const workflowData = deepCopy(getNodesToSave(nodes));
 		const result = await importWorkflowData(workflowData, 'duplicate', {
 			viewport: options.viewport,
 			importTags: false,
@@ -3416,8 +3766,11 @@ export function useCanvasOperations() {
 	}
 
 	async function copyNodes(ids: string[]) {
-		const workflowData = deepCopy(getNodesToSave(workflowDocumentStore.value.getNodesByIds(ids)));
-
+		const nodes = workflowDocumentStore.value.getNodesByIds(ids);
+		const workflowData = deepCopy(getNodesToSave(nodes));
+		if (!emptyCanvasGroupsEnabled.value) {
+			removeEmptyCanvasGroupsFromWorkflowData(workflowData, nodes);
+		}
 		workflowData.meta = {
 			...workflowData.meta,
 			...workflowDocumentStore.value.meta,
@@ -3432,9 +3785,11 @@ export function useCanvasOperations() {
 		});
 	}
 
-	async function cutNodes(ids: string[]) {
+	async function cutNodes(ids: string[], deleteWholeGroupIds: string[] = []) {
+		const nodes = workflowDocumentStore.value.getNodesByIds(ids);
+		if (nodes.some(nodeTypesStore.isNodeDeprecated)) return;
 		await copyNodes(ids);
-		deleteNodes(ids);
+		deleteNodes(ids, { deleteWholeGroupIds });
 	}
 
 	async function openExecution(executionId: string, nodeId?: string) {
@@ -3530,6 +3885,7 @@ export function useCanvasOperations() {
 			projectsStore.currentProjectId,
 		);
 		workflowDocumentStore.value.setName(workflowData.name);
+		workflowDocumentStore.value.setHydrated(true);
 	}
 
 	async function tryToOpenSubworkflowInNewTab(nodeId: string): Promise<boolean> {
@@ -3559,12 +3915,16 @@ export function useCanvasOperations() {
 	function replaceNode(
 		previousId: string,
 		newId: string,
-		{ trackHistory = true, trackBulk = true } = {},
+		{
+			trackHistory = true,
+			trackBulk = true,
+			additionalGroupNodeIds = [],
+		}: { trackHistory?: boolean; trackBulk?: boolean; additionalGroupNodeIds?: string[] } = {},
 	) {
 		const previousNode = workflowDocumentStore.value.getNodeById(previousId);
 		const newNode = workflowDocumentStore.value.getNodeById(newId);
 
-		if (!previousNode || !newNode) return;
+		if (!previousNode || !newNode) return false;
 
 		if (trackHistory && trackBulk) {
 			historyStore.startRecordingUndo();
@@ -3579,12 +3939,13 @@ export function useCanvasOperations() {
 		if (previousGroup) {
 			const didReplaceConnections = replaceGroupedNodeConnections(previousNode, newNode, {
 				trackHistory,
+				additionalGroupNodeIds,
 			});
 			if (!didReplaceConnections) {
 				if (trackHistory && trackBulk) {
 					historyStore.stopRecordingUndo();
 				}
-				return;
+				return false;
 			}
 			moveNewNodeToPreviousPosition();
 		} else {
@@ -3595,6 +3956,24 @@ export function useCanvasOperations() {
 			});
 		}
 
+		// A new agent card keeps its main handle on the line of the node it replaces
+		// once it is measured
+		const { workflowId } = workflowDocumentStore.value;
+		if (
+			isAgentNodeV2(newNode) &&
+			agentNodeCanvasGeometryStore.getNodeHeight(workflowId, newId) === undefined
+		) {
+			const previousHeight = getNodePlacementSize(previousNode)[1];
+			const previousHandleOffset = isAgentNodeV2(previousNode)
+				? getAgentNodeHandleOffset(previousHeight)
+				: previousHeight / 2;
+			agentNodeCanvasGeometryStore.setPendingCenterY(
+				workflowId,
+				newId,
+				previousNode.position[1] + previousHandleOffset,
+			);
+		}
+
 		deleteNode(previousId, { trackHistory, trackBulk: false });
 
 		uiStore.markStateDirty();
@@ -3602,6 +3981,8 @@ export function useCanvasOperations() {
 		if (trackHistory && trackBulk) {
 			historyStore.stopRecordingUndo();
 		}
+
+		return true;
 	}
 
 	async function addNodesAndConnections(
@@ -3617,61 +3998,150 @@ export function useCanvasOperations() {
 			trackBulk?: boolean;
 		},
 	) {
+		// New nodes only: imports go through `addNodes` and keep unknown types as placeholders.
+		const unavailable = nodes.filter((node) => nodeTypesStore.isNodeTypeUnavailable(node.type));
+		if (unavailable.length > 0) {
+			console.warn(
+				'Skipped adding node types this instance does not load:',
+				unavailable.map((node) => node.type),
+			);
+			uiStore.resetLastInteractedWith();
+			return { addedNodes: [] };
+		}
+
+		// An empty group contains only its internal anchor, which the selected node must replace.
+		const replacementTargetId = options.replaceNodeId;
+		const replacementTarget = replacementTargetId
+			? workflowDocumentStore.value.getNodeById(replacementTargetId)
+			: undefined;
+		const replacementGroup = replacementTargetId
+			? workflowDocumentStore.value.getGroupForNode(replacementTargetId)
+			: undefined;
+		const emptyGroupAnchorId =
+			replacementTarget && replacementGroup && isEmptyGroupAnchor(replacementTarget)
+				? replacementTarget.id
+				: undefined;
+		// Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
+		const connectionCountBeforeFill =
+			emptyGroupAnchorId && replacementGroup ? getGroupConnectionCount(replacementGroup) : 0;
 		if (trackHistory && trackBulk) {
 			historyStore.startRecordingUndo();
 		}
 
+		const addedNodesByInputIndex = new Map<number, INodeUi>();
 		const addedNodes = await addNodes(nodes, {
 			...options,
 			trackHistory,
 			trackBulk: false,
 			telemetry: true,
+			addedNodesByInputIndex,
 		});
 
-		const allNodes = workflowDocumentStore.value.allNodes;
-		const offsetIndex = allNodes.length - nodes.length;
-		const connections: CanvasConnectionCreateData[] = addedConnections.map(({ from, to }) => {
-			const fromNode = allNodes[offsetIndex + from.nodeIndex];
-			const toNode = allNodes[offsetIndex + to.nodeIndex];
+		const connections: CanvasConnectionCreateData[] = addedConnections.flatMap(({ from, to }) => {
+			const fromNode = addedNodesByInputIndex.get(from.nodeIndex);
+			const toNode = addedNodesByInputIndex.get(to.nodeIndex);
+			if (!fromNode || !toNode) return [];
+
 			const type = from.type ?? to.type ?? NodeConnectionTypes.Main;
 
-			return {
-				source: fromNode.id,
-				sourceHandle: createCanvasConnectionHandleString({
-					mode: CanvasConnectionMode.Output,
-					type: isValidNodeConnectionType(type) ? type : NodeConnectionTypes.Main,
-					index: from.outputIndex ?? 0,
-				}),
-				target: toNode.id,
-				targetHandle: createCanvasConnectionHandleString({
-					mode: CanvasConnectionMode.Input,
-					type: isValidNodeConnectionType(type) ? type : NodeConnectionTypes.Main,
-					index: to.inputIndex ?? 0,
-				}),
-				data: {
-					source: {
+			return [
+				{
+					source: fromNode.id,
+					sourceHandle: createCanvasConnectionHandleString({
+						mode: CanvasConnectionMode.Output,
+						type: isValidNodeConnectionType(type) ? type : NodeConnectionTypes.Main,
 						index: from.outputIndex ?? 0,
-						type,
-					},
-					target: {
+					}),
+					target: toNode.id,
+					targetHandle: createCanvasConnectionHandleString({
+						mode: CanvasConnectionMode.Input,
+						type: isValidNodeConnectionType(type) ? type : NodeConnectionTypes.Main,
 						index: to.inputIndex ?? 0,
-						type,
+					}),
+					data: {
+						source: {
+							index: from.outputIndex ?? 0,
+							type,
+						},
+						target: {
+							index: to.inputIndex ?? 0,
+							type,
+						},
 					},
 				},
-			};
+			];
 		});
 
 		await addConnections(connections, { trackHistory, trackBulk: false });
 
-		uiStore.resetLastInteractedWith();
-
+		let replacementGroupId: string | undefined;
 		if (addedNodes.length > 0 && options.replaceNodeId) {
-			const lastAddedNodeId = addedNodes[addedNodes.length - 1].id;
-			replaceNode(options.replaceNodeId, lastAddedNodeId, {
-				trackHistory,
-				trackBulk: false,
-			});
+			// Auto-added helpers can follow the node that the user selected, so they
+			// must not become the replacement target.
+			const replacementNodeIndex = nodes.findLastIndex((node) => !node.isAutoAdd);
+			const replacementNode =
+				replacementNodeIndex === -1
+					? addedNodes.at(-1)
+					: addedNodesByInputIndex.get(replacementNodeIndex);
+			if (replacementNode) {
+				const didReplace = replaceNode(options.replaceNodeId, replacementNode.id, {
+					trackHistory,
+					trackBulk: false,
+					// The batch connections are already part of the candidate graph. Let
+					// grouped replacement validate the whole batch as one unit before the
+					// remaining batch nodes are added to the group below.
+					additionalGroupNodeIds: addedNodes.map((node) => node.id),
+				});
+				if (didReplace) {
+					replacementGroupId = workflowDocumentStore.value.getGroupForNode(replacementNode.id)?.id;
+				}
+			}
 		}
+
+		if (replacementGroupId) {
+			const groupBeforeExtend = workflowDocumentStore.value.getGroupById(replacementGroupId);
+			if (groupBeforeExtend) {
+				// A creator result can include helpers for the selected node. Keep the
+				// connected batch together when it replaces a grouped node.
+				const beforeSnapshot = { ...groupBeforeExtend, nodeIds: [...groupBeforeExtend.nodeIds] };
+				workflowDocumentStore.value.addNodesToGroup(
+					replacementGroupId,
+					addedNodes.map((node) => node.id),
+				);
+				const groupAfterExtend = workflowDocumentStore.value.getGroupById(replacementGroupId);
+				if (
+					trackHistory &&
+					groupAfterExtend &&
+					groupAfterExtend.nodeIds.length !== beforeSnapshot.nodeIds.length
+				) {
+					historyStore.pushCommandToUndo(
+						new UpdateNodeGroupCommand(
+							beforeSnapshot,
+							{ ...groupAfterExtend, nodeIds: [...groupAfterExtend.nodeIds] },
+							Date.now(),
+						),
+					);
+				}
+			}
+		}
+
+		// Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
+		if (emptyGroupAnchorId && replacementGroupId) {
+			const groupAfterFill = workflowDocumentStore.value.getGroupById(replacementGroupId);
+			if (groupAfterFill) {
+				const nodeCountAfter = groupAfterFill.nodeIds.filter((nodeId) => {
+					const node = workflowDocumentStore.value.getNodeById(nodeId);
+					return node !== undefined && !isEmptyGroupAnchor(node);
+				}).length;
+				trackEmptyGroupEvent(TELEMETRY_EVENT.WORKFLOW.USER_FILLED_EMPTY_GROUP, {
+					...groupEventIdentity(groupAfterFill.id),
+					node_count_after: nodeCountAfter,
+					connection_count_before_fill: connectionCountBeforeFill,
+				});
+			}
+		}
+
+		uiStore.resetLastInteractedWith();
 
 		if (trackHistory && trackBulk) {
 			historyStore.stopRecordingUndo();
@@ -3814,6 +4284,7 @@ export function useCanvasOperations() {
 		addNodes,
 		addNode,
 		resolveNodePosition,
+		getNodePlacementSize,
 		revertAddNode,
 		updateNodesPosition,
 		updateNodePosition,

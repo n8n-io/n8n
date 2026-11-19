@@ -1,6 +1,11 @@
-import { jsonParse, type IExecuteFunctions, type INodeExecutionData } from 'n8n-workflow';
+import {
+	jsonParse,
+	type IExecuteFunctions,
+	type INodeExecutionData,
+	requestUrl,
+} from 'n8n-workflow';
 
-import { getActiveCredentialType, getHost } from '../helpers';
+import { databricksApiRequest, getActiveCredentialType, getHost } from '../helpers';
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	const credentialType = getActiveCredentialType(this, i);
@@ -25,12 +30,16 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		body.direct_access_index_spec = typeof raw === 'string' ? jsonParse(raw) : raw;
 	}
 
-	const response = await this.helpers.httpRequestWithAuthentication.call(this, credentialType, {
-		method: 'POST',
-		url: `${host}/api/2.0/vector-search/indexes`,
-		body,
-		json: true,
-	});
+	const response = await databricksApiRequest(
+		this,
+		credentialType,
+		requestUrl`${host}/api/2.0/vector-search/indexes`,
+		{
+			method: 'POST',
+			body,
+			json: true,
+		},
+	);
 
 	return [{ json: response, pairedItem: { item: i } }];
 }

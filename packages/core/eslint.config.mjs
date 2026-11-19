@@ -1,31 +1,49 @@
 import { defineConfig, globalIgnores } from 'eslint/config';
-import { nodeConfig } from '@n8n/eslint-config/node';
+import { backendConfig } from '@n8n/eslint-config/backend';
 
 export default defineConfig(
-	nodeConfig,
+	backendConfig,
 	globalIgnores(['bin/*.js', 'nodes-testing/*.ts', 'nodes-testing/*.cjs', 'coverage/*']),
 	{
 		rules: {
 			// TODO: Lower the complexity threshold
 			complexity: ['error', 27],
 			'n8n-local-rules/no-dynamic-regexp': 'error',
-			'unicorn/filename-case': ['error', { case: 'kebabCase' }],
-
-			// TODO: Remove these
-			'no-prototype-builtins': 'warn',
-			'no-empty': 'warn',
-			'no-ex-assign': 'warn',
-			'no-useless-escape': 'warn',
-			'@typescript-eslint/no-require-imports': 'warn',
-			'@typescript-eslint/require-await': 'warn',
-			'@typescript-eslint/no-base-to-string': 'warn',
-			'@typescript-eslint/prefer-optional-chain': 'warn',
-			'@typescript-eslint/prefer-nullish-coalescing': 'warn',
-			'@typescript-eslint/no-empty-object-type': 'warn',
-			'@typescript-eslint/naming-convention': 'warn',
-			'@typescript-eslint/no-array-delete': 'warn',
-			'@typescript-eslint/no-unsafe-member-access': 'warn',
 		},
+	},
+	{
+		files: [
+			'src/execution-engine/node-execution-context/execute-context.ts',
+			'src/execution-engine/node-execution-context/execute-single-context.ts',
+			'src/execution-engine/node-execution-context/supply-data-context.ts',
+			'src/execution-engine/node-execution-context/utils/get-input-connection-data.ts',
+			'src/nodes-loader/directory-loader.ts',
+		],
+		rules: { 'no-prototype-builtins': 'warn' },
+	},
+	{
+		files: ['src/execution-engine/node-execution-context/utils/get-input-connection-data.ts'],
+		rules: { 'no-ex-assign': 'warn' },
+	},
+	{
+		files: [
+			'src/execution-engine/node-execution-context/utils/request-helpers/pagination.ts',
+			'src/execution-engine/node-execution-context/utils/webhook-helper-functions.ts',
+			'src/execution-engine/routing-node.ts',
+		],
+		rules: { '@typescript-eslint/no-base-to-string': 'warn' },
+	},
+	{
+		files: ['src/nodes-loader/load-class-in-isolation.ts', 'test/helpers/index.ts'],
+		rules: { '@typescript-eslint/no-require-imports': 'warn' },
+	},
+	{
+		files: ['src/execution-engine/node-execution-context/__tests__/execute-single-context.test.ts'],
+		rules: { '@typescript-eslint/no-array-delete': 'warn' },
+	},
+	{
+		files: ['src/execution-engine/__tests__/routing-node.test.ts'],
+		rules: { '@typescript-eslint/prefer-optional-chain': 'warn' },
 	},
 	{
 		files: ['**/*.test.ts', '**/test/**/*.ts', '**/__test__/**/*.ts', '**/__tests__/**/*.ts'],

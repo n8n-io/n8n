@@ -8,6 +8,13 @@ export default {
 	title: 'Core/Pagination',
 	component: Pagination,
 	tags: ['autodocs'],
+	parameters: {
+		docs: {
+			description: {
+				component: 'A page navigation control for stepping through paginated results.',
+			},
+		},
+	},
 	argTypes: {
 		page: {
 			control: 'number',
@@ -30,6 +37,11 @@ export default {
 		pageSizes: {
 			control: 'object',
 			description: 'Options for the page size selector',
+		},
+		showAll: {
+			control: 'boolean',
+			description:
+				'Show an All option in the page size selector. Selecting it emits PAGINATION_ALL_ITEMS_PER_PAGE (-1) and shows every item on one page.',
 		},
 		showTotal: {
 			control: 'boolean',
@@ -108,6 +120,28 @@ export const WithPageSizes: Story = {
 		total: 500,
 		itemsPerPage: 20,
 		pageSizes: [10, 20, 50, 100],
+		showAll: false,
+		showTotal: false,
+		showSizes: true,
+	},
+};
+
+export const WithAll: Story = {
+	name: 'With Page Sizes (All)',
+	render: Template,
+	parameters: {
+		docs: {
+			description: {
+				story:
+					'Set showAll to add an All option. Selecting it emits PAGINATION_ALL_ITEMS_PER_PAGE (-1) and shows every item on one page.',
+			},
+		},
+	},
+	args: {
+		total: 100,
+		itemsPerPage: 10,
+		pageSizes: [10, 25, 50, 100],
+		showAll: true,
 		showTotal: false,
 		showSizes: true,
 	},

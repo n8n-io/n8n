@@ -101,7 +101,7 @@ describe('CanvasEdge', () => {
 		expect(() => getByTestId('delete-connection-button')).toThrow();
 	});
 
-	it('should hide toolbar after delay', async () => {
+	it('should clear the edge hover on leave and hide the toolbar after a short grace period', async () => {
 		vi.useFakeTimers();
 
 		const user = userEvent.setup({
@@ -118,9 +118,11 @@ describe('CanvasEdge', () => {
 		await rerender({ hovered: false });
 
 		await user.unhover(getByTestId('edge-label'));
+		expect(document.querySelector('.vue-flow__edge-path')).not.toHaveClass('hovered');
 		expect(getByTestId('canvas-edge-toolbar')).toBeInTheDocument();
+		expect(getByTestId('edge-label')).toHaveStyle({ zIndex: '1' });
 
-		await vi.advanceTimersByTimeAsync(600);
+		await vi.advanceTimersByTimeAsync(150);
 
 		expect(queryByTestId('canvas-edge-toolbar')).not.toBeInTheDocument();
 	});

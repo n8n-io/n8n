@@ -1,21 +1,17 @@
-import {
-	NodeOperationError,
-	type INodeProperties,
-	type IExecuteFunctions,
-	type IDataObject,
-} from 'n8n-workflow';
+import type { INodeProperties, IExecuteFunctions, IDataObject } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
-import { channelRLC, teamRLC } from '../../descriptions';
-import { prepareMessage } from '../../helpers/utils';
 import {
-	buildTeamsPath,
-	getTeamsCredentialType,
-	microsoftApiRequest,
-	SERVICE_PRINCIPAL_AUTH,
-	SP_HIDE,
-} from '../../transport';
+	channelMentionsField,
+	channelRLC,
+	includeLinkToWorkflowOption,
+	mentionPlacementOption,
+	teamRLC,
+} from '../../descriptions';
+import { prepareMessage, resolveMentions } from '../../helpers/utils';
+import { buildTeamsPath, microsoftApiRequest, SP_HIDE } from '../../transport';
+import { throwIfChannelMessageSendUnsupported } from './sharedGuard';
 
 const properties: INodeProperties[] = [
 	teamRLC,
@@ -49,6 +45,7 @@ const properties: INodeProperties[] = [
 			rows: 2,
 		},
 	},
+	channelMentionsField,
 	{
 		displayName: 'Options',
 		name: 'options',
@@ -56,14 +53,8 @@ const properties: INodeProperties[] = [
 		placeholder: 'Add option',
 		default: {},
 		options: [
-			{
-				displayName: 'Include Link to Workflow',
-				name: 'includeLinkToWorkflow',
-				type: 'boolean',
-				default: true,
-				description:
-					'Whether to append a link to this workflow at the end of the message. This is helpful if you have many workflows sending messages.',
-			},
+			includeLinkToWorkflowOption,
+			mentionPlacementOption,
 			{
 				displayName: 'Reply to ID',
 				name: 'makeReply',
@@ -71,7 +62,7 @@ const properties: INodeProperties[] = [
 				default: '',
 				placeholder: 'e.g. 1673348720590',
 				description:
-					'An optional ID of the message you want to reply to. The message ID is the number before "?tenantId" in the message URL.',
+					'An optional ID of the message you want to reply to. The message ID is the number before "?tenantId" in the message URL. The Reply operation does the same thing and is easier to find.',
 			},
 		],
 	},
@@ -98,19 +89,7 @@ export async function execute(
 	//https://docs.microsoft.com/en-us/graph/api/channel-post-messages?view=graph-rest-beta&tabs=http
 	//https://docs.microsoft.com/en-us/graph/api/channel-post-messagereply?view=graph-rest-beta&tabs=http
 
-	// App-only Graph exposes channel-message posting only via migration import, so
-	// it has no usable form here; fail before any request for hand-edited workflows.
-	if (getTeamsCredentialType.call(this) === SERVICE_PRINCIPAL_AUTH) {
-		throw new NodeOperationError(
-			this.getNode(),
-			'Sending channel messages is not available with the Service Principal credential',
-			{
-				itemIndex: i,
-				description:
-					'App-only Microsoft Graph supports only migration import for channel messages. Use an OAuth2 credential to post messages.',
-			},
-		);
-	}
+	throwIfChannelMessageSendUnsupported.call(this, i);
 
 	const teamId = this.getNodeParameter('teamId', i, '', { extractValue: true }) as string;
 	const channelId = this.getNodeParameter('channelId', i, '', { extractValue: true }) as string;
@@ -123,42 +102,37 @@ export async function execute(
 		includeLinkToWorkflow = nodeVersion >= 1.1;
 	}
 
+	// Built before the mentions are resolved, so a malformed team, channel or reply ID fails
+	// without spending a Graph call on the mention lookups first.
+	const endpoint = options.makeReply
+		? buildTeamsPath.call(this, [
+				'/beta/teams/',
+				{ id: teamId },
+				'/channels/',
+				{ id: channelId },
+				'/messages/',
+				{ id: options.makeReply as string },
+				'/replies',
+			])
+		: buildTeamsPath.call(this, [
+				'/beta/teams/',
+				{ id: teamId },
+				'/channels/',
+				{ id: channelId },
+				'/messages',
+			]);
+
+	const mentions = await resolveMentions.call(this, i, teamId);
+
 	const body: IDataObject = prepareMessage.call(
 		this,
 		message,
 		contentType,
 		includeLinkToWorkflow as boolean,
 		instanceId,
+		mentions,
+		options.mentionPlacement === 'end' ? 'end' : 'start',
 	);
 
-	if (options.makeReply) {
-		const replyToId = options.makeReply as string;
-		return await microsoftApiRequest.call(
-			this,
-			'POST',
-			buildTeamsPath.call(this, [
-				'/beta/teams/',
-				{ id: teamId },
-				'/channels/',
-				{ id: channelId },
-				'/messages/',
-				{ id: replyToId },
-				'/replies',
-			]),
-			body,
-		);
-	} else {
-		return await microsoftApiRequest.call(
-			this,
-			'POST',
-			buildTeamsPath.call(this, [
-				'/beta/teams/',
-				{ id: teamId },
-				'/channels/',
-				{ id: channelId },
-				'/messages',
-			]),
-			body,
-		);
-	}
+	return await microsoftApiRequest.call(this, 'POST', endpoint, body);
 }

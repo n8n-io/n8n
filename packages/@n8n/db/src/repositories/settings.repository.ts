@@ -22,6 +22,55 @@ export class SettingsRepository extends BaseRepository<Settings> {
 		return await this.managerFor(ctx).findOneBy(Settings, { key });
 	}
 
+	async getOrCreateWithReadLock(
+		key: string,
+		defaultValue: string,
+		loadOnStartup: boolean,
+		ctx: OperationContext,
+	): Promise<Settings> {
+		const manager = this.managerFor(ctx);
+		await manager
+			.createQueryBuilder()
+			.insert()
+			.into(Settings)
+			.values({ key, value: defaultValue, loadOnStartup })
+			.orIgnore()
+			.execute();
+		return await manager.findOneOrFail(Settings, {
+			where: { key },
+			lock:
+				manager.connection.options.type === 'postgres' ? { mode: 'pessimistic_read' } : undefined,
+		});
+	}
+
+	/**
+	 * Reads the row and holds a write lock on it until the transaction of
+	 * `ctx` ends, so that a read-merge-write of the value cannot lose a
+	 * parallel change. A missing row is created with `defaultValue` first,
+	 * because a lock needs a row. SQLite needs no row lock: each transaction
+	 * holds the one write connection, so transactions run one at a time.
+	 */
+	async getOrCreateWithWriteLock(
+		key: string,
+		defaultValue: string,
+		loadOnStartup: boolean,
+		ctx: OperationContext,
+	): Promise<Settings> {
+		const manager = this.managerFor(ctx);
+		await manager
+			.createQueryBuilder()
+			.insert()
+			.into(Settings)
+			.values({ key, value: defaultValue, loadOnStartup })
+			.orIgnore()
+			.execute();
+		return await manager.findOneOrFail(Settings, {
+			where: { key },
+			lock:
+				manager.connection.options.type === 'postgres' ? { mode: 'pessimistic_write' } : undefined,
+		});
+	}
+
 	async upsertByKey(
 		key: string,
 		value: string,
@@ -47,6 +96,23 @@ export class SettingsRepository extends BaseRepository<Settings> {
 			.execute();
 		const result = await this.manager.update(Settings, { key, value: '' }, { value });
 		return (result.affected ?? 0) > 0;
+	}
+
+	/**
+	 * Stores the value, not loaded on startup, only when the key does not exist yet.
+	 * Returns whether the stored value is this value, so exactly one of several
+	 * concurrent callers with different values wins.
+	 */
+	async insertIfAbsent(key: string, value: string): Promise<boolean> {
+		await this.manager
+			.createQueryBuilder()
+			.insert()
+			.into(Settings)
+			.values({ key, value, loadOnStartup: false })
+			.orIgnore()
+			.execute();
+		const stored = await this.findByKey(key);
+		return stored?.value === value;
 	}
 
 	async findByKeys(keys: string[]): Promise<Settings[]> {

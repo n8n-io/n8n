@@ -1,10 +1,10 @@
+import { TelemetryProxy } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { User } from '@n8n/db';
 import type { INode } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
-import { Telemetry } from '@/telemetry';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 
@@ -25,12 +25,12 @@ describe('get-workflow-versions-diff MCP tool', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
 	let workflowFinderService: WorkflowFinderService;
 	let workflowHistoryService: WorkflowHistoryService;
-	let telemetry: Telemetry;
+	let telemetry: TelemetryProxy;
 
 	beforeEach(() => {
 		workflowFinderService = mockInstance(WorkflowFinderService);
 		workflowHistoryService = mockInstance(WorkflowHistoryService);
-		telemetry = mockInstance(Telemetry, { track: vi.fn() });
+		telemetry = mockInstance(TelemetryProxy, { track: vi.fn() });
 	});
 
 	const buildTool = () =>
@@ -150,6 +150,46 @@ describe('get-workflow-versions-diff MCP tool', () => {
 				nodesRemoved: [],
 				nodesModified: [],
 			});
+		});
+
+		test('does not report a missing parameters key against empty parameters as a modification', async () => {
+			// Regression (ADO-5355): a node persisted without a `parameters` key is
+			// semantically identical to one persisted with `parameters: {}`.
+			const before = makeNode({ type: 'n8n-nodes-base.webhook' });
+			delete (before as Partial<INode>).parameters;
+			const after = makeNode({ type: 'n8n-nodes-base.webhook', parameters: {} });
+
+			mockVersions([before], [after]);
+
+			const tool = buildTool();
+			const result = await tool.handler(
+				{ workflowId: 'wf-1', fromVersionId: 'v1', toVersionId: 'v2' },
+				callContext,
+			);
+
+			expect(result.structuredContent).toMatchObject({
+				success: true,
+				nodesAdded: [],
+				nodesRemoved: [],
+				nodesModified: [],
+			});
+		});
+
+		test('added nodes persisted without a parameters key carry a normalized parameters object', async () => {
+			const added = makeNode({ type: 'n8n-nodes-base.webhook' });
+			delete (added as Partial<INode>).parameters;
+
+			mockVersions([], [added]);
+
+			const tool = buildTool();
+			const result = await tool.handler(
+				{ workflowId: 'wf-1', fromVersionId: 'v1', toVersionId: 'v2' },
+				callContext,
+			);
+
+			const content = result.structuredContent as { nodesAdded: Array<Record<string, unknown>> };
+			expect(content.nodesAdded).toHaveLength(1);
+			expect(content.nodesAdded[0].parameters).toEqual({});
 		});
 
 		test('lists a renamed node by its target-version name with the rename in the delta', async () => {

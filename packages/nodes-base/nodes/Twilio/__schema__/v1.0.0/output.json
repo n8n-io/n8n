@@ -1,0 +1,15 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"Body": {
+			"type": "string"
+		},
+		"From": {
+			"type": "string"
+		},
+		"To": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

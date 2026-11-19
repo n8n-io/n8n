@@ -5,17 +5,19 @@ import type {
 	JsonObject,
 	IHttpRequestMethods,
 	IRequestOptions,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestUrl } from 'n8n-workflow';
 
 export async function mindeeApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	path: string,
-	body: IDataObject = {},
+	path: RequestPath,
+	body: any = {},
 	qs: IDataObject = {},
-	option: IDataObject = {},
-): Promise<IDataObject> {
+	option: Pick<IRequestOptions, 'formData'> = {},
+): Promise<any> {
 	const resource = this.getNodeParameter('resource', 0);
 
 	let service;
@@ -27,12 +29,13 @@ export async function mindeeApiRequest(
 	}
 
 	const version = this.getNodeParameter('apiVersion', 0) as number;
+	// V1 of mindee is deprecated, we are keeping it for now but now V3 is active
 	const url =
 		version === 1
-			? `https://api.mindee.net/products${path}`
-			: `https://api.mindee.net/v1/products/mindee${path}`;
+			? requestUrl`https://api.mindee.net/products${path}`
+			: requestUrl`https://api.mindee.net/v1/products/mindee${path}`;
 
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {},
 		method,
 		body,
@@ -41,7 +44,7 @@ export async function mindeeApiRequest(
 		json: true,
 	};
 	try {
-		if (Object.keys(body).length === 0) {
+		if (Object.keys(body as IDataObject).length === 0) {
 			delete options.body;
 		}
 		if (Object.keys(qs).length === 0) {
@@ -51,11 +54,7 @@ export async function mindeeApiRequest(
 			Object.assign(options, option);
 		}
 
-		return (await this.helpers.requestWithAuthentication.call(
-			this,
-			service,
-			options,
-		)) as IDataObject;
+		return await this.helpers.requestWithAuthentication.call(this, service, options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
@@ -67,20 +66,20 @@ export function cleanDataPreviousApiVersions(predictions: IDataObject[]) {
 	for (const key of Object.keys(predictions[0])) {
 		const data = predictions[0][key] as IDataObject | IDataObject[];
 
-		if (key === 'taxes' && Array.isArray(data) && data.length) {
+		if (key === 'taxes' && data.length) {
 			newData[key] = {
-				amount: data[0].amount,
-				rate: data[0].rate,
+				amount: (data as IDataObject[])[0].amount,
+				rate: (data as IDataObject[])[0].rate,
 			};
 		} else if (key === 'locale') {
-			const locale = data as IDataObject;
-			newData.currency = locale.currency;
-			newData.locale = locale.value;
+			//@ts-ignore
+			newData.currency = data.currency;
+			//@ts-ignore
+			newData.locale = data.value;
 		} else {
-			const field = data as IDataObject;
 			newData[key] =
-				// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-				field.value || field.name || field.raw || field.degrees || field.amount || field.iban;
+				//@ts-ignore
+				data.value || data.name || data.raw || data.degrees || data.amount || data.iban;
 		}
 	}
 
@@ -88,7 +87,8 @@ export function cleanDataPreviousApiVersions(predictions: IDataObject[]) {
 }
 
 export function cleanData(document: IDataObject) {
-	const prediction = (document.inference as IDataObject).prediction as IDataObject;
+	// @ts-ignore
+	const prediction = document.inference.prediction as IDataObject;
 	const newData: IDataObject = {};
 	newData.id = document.id;
 	newData.name = document.name;
@@ -96,15 +96,16 @@ export function cleanData(document: IDataObject) {
 	for (const key of Object.keys(prediction)) {
 		const data = prediction[key] as IDataObject | IDataObject[];
 
-		if (key === 'taxes' && Array.isArray(data) && data.length) {
+		if (key === 'taxes' && data.length) {
 			newData[key] = {
-				amount: data[0].amount,
-				rate: data[0].rate,
+				amount: (data as IDataObject[])[0].amount,
+				rate: (data as IDataObject[])[0].rate,
 			};
 		} else if (key === 'locale') {
-			const locale = data as IDataObject;
-			newData.currency = locale.currency;
-			newData.locale = locale.value;
+			//@ts-ignore
+			newData.currency = data.currency;
+			//@ts-ignore
+			newData.locale = data.value;
 		} else if (key === 'line_items') {
 			const lineItems: IDataObject[] = [];
 			for (const lineItem of data as IDataObject[]) {
@@ -120,10 +121,9 @@ export function cleanData(document: IDataObject) {
 			}
 			newData[key] = lineItems;
 		} else {
-			const field = data as IDataObject;
 			newData[key] =
-				// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-				field.value || field.name || field.raw || field.degrees || field.amount || field.iban;
+				//@ts-ignore
+				data.value || data.name || data.raw || data.degrees || data.amount || data.iban;
 		}
 	}
 

@@ -102,6 +102,19 @@ async function simulateTabRemoved(tabId: number): Promise<void> {
 	await flush();
 }
 
+/** Stands in for the relay socket so no test opens a real connection. */
+class FailingWebSocket {
+	onopen: (() => void) | null = null;
+
+	onerror: ((event: unknown) => void) | null = null;
+
+	constructor(public url: string) {
+		setTimeout(() => this.onerror?.({}), 0);
+	}
+
+	close(): void {}
+}
+
 /** Flush pending microtasks/macrotasks so the listener's async IIFE settles. */
 const flush = async () => await new Promise((resolve) => setTimeout(resolve, 0));
 
@@ -115,6 +128,11 @@ beforeAll(async () => {
 
 beforeEach(() => {
 	vi.clearAllMocks();
+});
+
+// In an `afterEach` so a failed assertion can't leak the stub into later cases.
+afterEach(() => {
+	vi.unstubAllGlobals();
 });
 
 // ---------------------------------------------------------------------------
@@ -202,6 +220,7 @@ describe('external messages (direct connect flow)', () => {
 		nowMs += 60_000;
 		vi.spyOn(Date, 'now').mockImplementation(() => nowMs);
 		chromeMock.tabs.query.mockResolvedValue([]);
+		chromeMock.storage.local.get.mockResolvedValue({});
 		chromeMock.windows.create.mockResolvedValue({ tabs: [{ id: POPUP_TAB_ID }] });
 		chromeMock.windows.getLastFocused.mockResolvedValue({
 			left: 0,
@@ -241,7 +260,7 @@ describe('external messages (direct connect flow)', () => {
 			left: 690,
 			top: 190,
 		});
-		expect(response()).toEqual({ accepted: true });
+		expect(response()).toEqual({ accepted: true, confirmationRequired: true });
 	});
 
 	it('reuses an already-open connect page instead of opening a new popup', async () => {
@@ -261,7 +280,24 @@ describe('external messages (direct connect flow)', () => {
 			type: 'relayUrlReady',
 			relayUrl: RELAY_URL,
 		});
-		expect(response()).toEqual({ accepted: true });
+		expect(response()).toEqual({ accepted: true, confirmationRequired: true });
+	});
+
+	it('skips the confirmation popup for a previously approved host', async () => {
+		chromeMock.storage.local.get.mockResolvedValue({
+			approvedRelayHosts: ['acme.app.n8n.cloud'],
+		});
+		vi.stubGlobal('WebSocket', FailingWebSocket);
+
+		const response = await simulateExternalMessage(
+			{ type: 'connect', relayUrl: RELAY_URL },
+			ALLOWED_ORIGIN,
+		);
+
+		// No confirmation was shown, so the page must not tell the user to look for one.
+		expect(response()).toEqual({ accepted: true, confirmationRequired: false });
+		expect(chromeMock.windows.create).not.toHaveBeenCalled();
+		expect(chromeMock.tabs.update).not.toHaveBeenCalled();
 	});
 
 	it('rejects a relay URL that is not a recognized n8n instance', async () => {
@@ -297,7 +333,7 @@ describe('external messages (direct connect flow)', () => {
 			ALLOWED_ORIGIN,
 		);
 
-		expect(first()).toEqual({ accepted: true });
+		expect(first()).toEqual({ accepted: true, confirmationRequired: true });
 		expect(second()).toEqual({ accepted: false });
 		expect(chromeMock.windows.create).toHaveBeenCalledTimes(1);
 	});

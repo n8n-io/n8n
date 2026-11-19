@@ -1,0 +1,1354 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { computed, defineComponent, h, reactive, ref } from 'vue';
+import { createTestingPinia } from '@pinia/testing';
+import { setActivePinia } from 'pinia';
+import { fireEvent } from '@testing-library/vue';
+import { flushPromises, mount } from '@vue/test-utils';
+import type { InstanceAiHandoffContext, SystemAgentThreadSummary } from '@n8n/api-types';
+
+import { mockedStore } from '@/__tests__/utils';
+import { createComponentRenderer } from '@/__tests__/render';
+import { useInstanceAiStore } from '../../instanceAi.store';
+import { useInstanceAiSettingsStore } from '../../instanceAiSettings.store';
+import {
+	clearAssistantAgentLaunch,
+	forgetAssistantAgentThread,
+	getAssistantAgentLaunch,
+} from '../../assistantAgent/assistantAgentThreads';
+import { useAssistantAgentThreadsStore } from '../../assistantAgent/assistantAgentThreads.store';
+import {
+	defaultModuleSettings,
+	InstanceAiInputStub,
+	makeThread,
+} from '../../__tests__/createThreadComponentRenderer';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
+import { USER_TYPED_MESSAGE } from '../../prefills';
+import {
+	clearPendingComposerDraft,
+	consumePendingFirstMessage,
+	stashPendingFirstMessage,
+	clearPendingHandoffContext,
+	getPendingComposerDraft,
+	getPendingHandoffContext,
+	getPendingAgentAttachment,
+	type PendingComposerDraft,
+} from '../../composables/useInstanceAiHandoff';
+import InstanceAiChatPanel from '../InstanceAiChatPanel.vue';
+import type { InstanceAiEmbedSubject } from '../instanceAiEmbed.types';
+
+vi.mock('uuid', () => ({ v4: () => 'thread-2' }));
+
+const routerPush = vi.hoisted(() => vi.fn());
+vi.mock('vue-router', async (importOriginal) => ({
+	...(await importOriginal<typeof import('vue-router')>()),
+	useRouter: () => ({ push: routerPush }),
+}));
+
+const showError = vi.hoisted(() => vi.fn());
+const showMessage = vi.hoisted(() => vi.fn());
+vi.mock('@n8n/composables/useToast', () => ({
+	useToast: () => ({ showError, showMessage }),
+}));
+
+const buildingIds = ref(new Set<string>());
+vi.mock('../../composables/useBuildingArtifactIds', () => ({
+	useBuildingArtifactIds: () => computed(() => buildingIds.value),
+}));
+
+const { listSystemAgentThreadsMock, getSystemAgentThreadMock } = vi.hoisted(() => ({
+	listSystemAgentThreadsMock: vi.fn(),
+	getSystemAgentThreadMock: vi.fn(),
+}));
+vi.mock('@/features/agents/composables/useAgentApi', () => ({
+	listSystemAgentThreads: listSystemAgentThreadsMock,
+	getSystemAgentThread: getSystemAgentThreadMock,
+}));
+
+const useAgentMutationRefreshMock = vi.hoisted(() => vi.fn());
+vi.mock('../../composables/useAgentMutationRefresh', () => ({
+	useAgentMutationRefresh: useAgentMutationRefreshMock,
+}));
+
+// Minimal stand-ins: exercise the panel's own wiring, not the real children's
+// internals (each has its own suite). The panel's history now lives inside the
+// header's popover, so this stub applies `threadList.filter`/`disabled` the same
+// way the real `InstanceAiThreadList` would, against the mocked store's threads.
+const InstanceAiViewHeaderStub = defineComponent({
+	name: 'InstanceAiViewHeader',
+	props: ['threadId', 'threadList'],
+	emits: ['select', 'deleted'],
+	setup(props) {
+		const store = useInstanceAiStore();
+		const count = computed(() => {
+			const filter = props.threadList?.filter as ((t: unknown) => boolean) | undefined;
+			return filter ? store.threads.filter(filter).length : store.threads.length;
+		});
+		return { count };
+	},
+	template: `<div data-test-id="header-stub" :data-disabled="String(Boolean(threadList?.disabled))">
+		<span data-test-id="list-count">{{ count }}</span>
+		<slot name="actions" />
+		<button data-test-id="list-select" type="button" @click="$emit('select', 't-other')" />
+	</div>`,
+});
+
+// `handoff()` reaches the conversation through a template ref, not props/emits
+// — these two stand in for the real `defineExpose`d `isDirty`/`applyHandoff`.
+const focusMock = vi.hoisted(() => vi.fn());
+const isDirtyMock = vi.hoisted(() => vi.fn(() => false));
+const applyHandoffMock = vi.hoisted(() => vi.fn());
+const setPrefillMock = vi.hoisted(() => vi.fn());
+const submitSuggestionMock = vi.hoisted(() => vi.fn());
+
+const InstanceAiConversationStub = defineComponent({
+	name: 'InstanceAiConversation',
+	props: ['beforeSend', 'placeholder', 'placeholderPreview', 'autofocus'],
+	emits: ['thread-missing', 'agent-attachment-restored', 'message-sent', 'content-change'],
+	methods: {
+		focus: focusMock,
+		isDirty: isDirtyMock,
+		applyHandoff: applyHandoffMock,
+		setPrefill: setPrefillMock,
+		submitSuggestion: submitSuggestionMock,
+	},
+	template: `<div data-test-id="conversation-stub" :data-has-before-send="String(typeof beforeSend === 'function')">
+		<textarea data-test-id="conversation-input" class="ignore-key-press-canvas" />
+		<button data-test-id="conversation-thread-missing" type="button" @click="$emit('thread-missing')" />
+		<slot name="empty" /><slot name="composer-start" />
+	</div>`,
+});
+
+const agentApplyHandoffMock = vi.hoisted(() => vi.fn());
+
+const AssistantAgentPanelThreadStub = defineComponent({
+	name: 'AssistantAgentPanelThread',
+	props: ['threadId', 'subject', 'newSession', 'beforeSend', 'visible', 'placeholderPreview'],
+	emits: ['content-change', 'session-created'],
+	methods: {
+		focus: vi.fn(),
+		isDirty: () => false,
+		applyHandoff: agentApplyHandoffMock,
+		setPrefill: vi.fn(),
+		submitSuggestion: vi.fn(),
+	},
+	template: `<div data-test-id="agent-thread-stub" :data-thread-id="threadId" :data-new-session="String(newSession)" />`,
+});
+
+const panelStubs = {
+	InstanceAiViewHeader: InstanceAiViewHeaderStub,
+	InstanceAiConversation: InstanceAiConversationStub,
+	AssistantAgentPanelThread: AssistantAgentPanelThreadStub,
+};
+
+const renderPanel = createComponentRenderer(InstanceAiChatPanel, {
+	global: { stubs: panelStubs },
+});
+
+// `handoff()` is an imperative method on the panel's public instance
+// (`defineExpose`), which testing-library's `render()` doesn't expose —
+// `@vue/test-utils`'s `mount()` does, via `wrapper.vm`.
+function mountPanel(props: {
+	subject: InstanceAiEmbedSubject;
+	launch: typeof launch;
+	threadId?: string;
+	beforeSend?: () => Promise<void>;
+	beforeNewThread?: () => Promise<void>;
+	visible?: boolean;
+	closable?: boolean;
+}) {
+	return mount(InstanceAiChatPanel, { props, global: { stubs: panelStubs } });
+}
+
+const subject: InstanceAiEmbedSubject = { type: 'agent', id: 'agent-1', projectId: 'p1' };
+const launch = { source: 'agent_builder_page' as const, origin: 'internal' as const };
+
+describe('InstanceAiChatPanel', () => {
+	let store: ReturnType<typeof mockedStore<typeof useInstanceAiStore>>;
+
+	beforeEach(() => {
+		setActivePinia(createTestingPinia());
+		store = mockedStore(useInstanceAiStore);
+		store.threads = [];
+		store.loadThreads.mockResolvedValue(true);
+		store.syncThread.mockResolvedValue(undefined);
+		store.updateThreadMetadata.mockResolvedValue(undefined);
+		store.deleteThread.mockResolvedValue(true);
+		store.getOrCreateRuntime.mockReturnValue(makeThread());
+		store.getRuntime.mockReturnValue(makeThread());
+		// A thread id already given to the panel is trusted by default — tests that
+		// exercise the mismatch path override this to return other (or no) metadata.
+		store.getThreadMetadata.mockReturnValue({
+			instanceAiAgentBuilderTarget: { agentId: 'agent-1', projectId: 'p1' },
+		});
+		store.loadThread.mockResolvedValue(undefined);
+		buildingIds.value = new Set();
+		routerPush.mockClear();
+		useAgentMutationRefreshMock.mockClear();
+		showError.mockClear();
+		showMessage.mockClear();
+		focusMock.mockClear();
+		isDirtyMock.mockReset().mockReturnValue(false);
+		applyHandoffMock.mockClear();
+		setPrefillMock.mockClear();
+		submitSuggestionMock.mockClear();
+		clearPendingHandoffContext('thread-2');
+		clearPendingComposerDraft('thread-2');
+	});
+
+	it('keeps the conversation runtime and draft when the host hides it', async () => {
+		const wrapper = mountPanel({
+			subject,
+			launch,
+			threadId: 't-match',
+			visible: true,
+			closable: false,
+		});
+		await flushPromises();
+		const conversation = wrapper.getComponent(InstanceAiConversationStub);
+		expect(conversation.props('autofocus')).toBe(true);
+		await conversation.get('textarea').setValue('Keep this draft');
+		await wrapper.setProps({ visible: false });
+		expect(conversation.props('autofocus')).toBe(false);
+		await wrapper.setProps({ visible: true });
+		await flushPromises();
+		expect(wrapper.getComponent(InstanceAiConversationStub).vm).toBe(conversation.vm);
+		expect(conversation.get<HTMLTextAreaElement>('textarea').element.value).toBe('Keep this draft');
+		expect(store.disposeRuntime).not.toHaveBeenCalled();
+		expect(conversation.props('autofocus')).toBe(true);
+		conversation.vm.$emit('content-change', true);
+		expect(wrapper.emitted('content-change')).toEqual([[true]]);
+		expect(wrapper.find('[data-test-id="instance-ai-embed-close"]').exists()).toBe(false);
+		wrapper.unmount();
+	});
+
+	it('sends the host opening prompt through the real conversation after provisioning its local draft', async () => {
+		useSettingsStore().moduleSettings = { 'instance-ai': { ...defaultModuleSettings } };
+		mockedStore(usePushConnectionStore).addEventListener.mockReturnValue(() => {});
+		store.getThreadMetadata.mockReturnValue(undefined);
+		const thread = reactive({ ...makeThread(), id: 'thread-2' });
+		store.getRuntime.mockReturnValue(thread);
+		store.getOrCreateRuntime.mockReturnValue(thread);
+		const gate = Promise.withResolvers<void>();
+		const beforeSend = vi.fn(() => gate.promise);
+		const Host = defineComponent({
+			setup() {
+				const threadId = ref<string>();
+				return () =>
+					h(InstanceAiChatPanel, {
+						subject: { ...subject, pending: true },
+						launch,
+						threadId: threadId.value,
+						beforeSend,
+						'onUpdate:threadId': (id: string) => {
+							stashPendingFirstMessage(id, {
+								message: 'Build a support agent',
+								authorship: USER_TYPED_MESSAGE,
+							});
+							threadId.value = id;
+						},
+					});
+			},
+		});
+		const wrapper = mount(Host, {
+			global: {
+				stubs: {
+					...panelStubs,
+					InstanceAiConversation: false,
+					InstanceAiInput: InstanceAiInputStub,
+				},
+			},
+		});
+		await flushPromises();
+		expect(beforeSend).toHaveBeenCalledOnce();
+		expect(store.syncThread).not.toHaveBeenCalled();
+		expect(thread.sendMessage).not.toHaveBeenCalled();
+
+		gate.resolve();
+		await flushPromises();
+
+		expect(store.syncThread).toHaveBeenCalledOnce();
+		expect(thread.sendMessage).toHaveBeenCalledExactlyOnceWith(
+			'Build a support agent',
+			expect.objectContaining({
+				attachments: [
+					expect.objectContaining({ type: 'agent', id: 'agent-1', projectId: 'p1', pending: true }),
+				],
+			}),
+		);
+		expect(thread.loadHistoricalMessages).not.toHaveBeenCalled();
+		expect(consumePendingFirstMessage('thread-2')).toBeNull();
+		wrapper.unmount();
+	});
+
+	it('keeps a new chat local until the first send, after the host hooks finish', async () => {
+		const order: string[] = [];
+		const beforeNewThread = vi.fn().mockImplementation(async () => {
+			order.push('before');
+		});
+		store.syncThread.mockImplementation(async () => {
+			order.push('synced');
+		});
+
+		const beforeSend = vi.fn(async () => {
+			order.push('send');
+		});
+		const wrapper = mountPanel({ subject, launch, beforeNewThread, beforeSend });
+		await flushPromises();
+
+		expect(order).toEqual(['before']);
+		expect(store.syncThread).not.toHaveBeenCalled();
+		expect(store.updateThreadMetadata).not.toHaveBeenCalled();
+		expect(store.threads).toEqual([]);
+		expect(wrapper.emitted('update:threadId')?.[0]).toEqual(['thread-2']);
+		await wrapper.setProps({ threadId: 'thread-2' });
+		await flushPromises();
+		const conversation = wrapper.getComponent(InstanceAiConversationStub);
+		await conversation.props('beforeSend')();
+
+		expect(order).toEqual(['before', 'send', 'synced']);
+		expect(store.syncThread).toHaveBeenCalledWith('thread-2', 'p1', launch);
+		expect(store.updateThreadMetadata).toHaveBeenCalledWith('thread-2', {
+			instanceAiAgentBuilderTarget: { agentId: 'agent-1', projectId: 'p1' },
+		});
+		await conversation.props('beforeSend')();
+		expect(store.syncThread).toHaveBeenCalledOnce();
+		expect(wrapper.getComponent(InstanceAiConversationStub).vm).toBe(conversation.vm);
+		wrapper.unmount();
+	});
+
+	it('keeps the draft available for retry when first-send provisioning fails', async () => {
+		store.updateThreadMetadata.mockRejectedValue(new Error('nope'));
+
+		const wrapper = mountPanel({ subject, launch });
+		await flushPromises();
+		await wrapper.setProps({ threadId: 'thread-2' });
+		await flushPromises();
+		const conversation = wrapper.getComponent(InstanceAiConversationStub);
+		await expect(conversation.props('beforeSend')()).rejects.toThrow('nope');
+
+		expect(showError).toHaveBeenCalledWith(expect.any(Error), "Couldn't open n8n Assistant");
+		expect(wrapper.getComponent(InstanceAiConversationStub).vm).toBe(conversation.vm);
+		store.updateThreadMetadata.mockResolvedValue(undefined);
+		await conversation.props('beforeSend')();
+		expect(store.syncThread).toHaveBeenCalledTimes(2);
+		wrapper.unmount();
+	});
+
+	it.each([false, true])(
+		'binds the first message after a pending agent is saved: %s',
+		async (saved) => {
+			const pendingSubject: InstanceAiEmbedSubject = { ...subject, pending: true };
+			const wrapper = mountPanel({ subject: pendingSubject, launch });
+			await flushPromises();
+			expect(store.syncThread).not.toHaveBeenCalled();
+			await wrapper.setProps({ threadId: 'thread-2' });
+			await flushPromises();
+			if (saved) await wrapper.setProps({ subject });
+			await wrapper.getComponent(InstanceAiConversationStub).props('beforeSend')();
+			expect(store.updateThreadMetadata).toHaveBeenCalledWith(
+				'thread-2',
+				saved
+					? { instanceAiAgentBuilderTarget: { agentId: 'agent-1', projectId: 'p1' } }
+					: { instanceAiPendingAgentTarget: { agentId: 'agent-1', projectId: 'p1' } },
+			);
+			wrapper.unmount();
+		},
+	);
+
+	it('shares first-send provisioning and cleans up if the panel closes before it finishes', async () => {
+		const gate = Promise.withResolvers<void>();
+		store.syncThread.mockReturnValue(gate.promise);
+		const wrapper = mountPanel({ subject, launch });
+		await flushPromises();
+		await wrapper.setProps({ threadId: 'thread-2' });
+		await flushPromises();
+		const beforeSend = wrapper.getComponent(InstanceAiConversationStub).props('beforeSend');
+		const first = beforeSend();
+		const second = beforeSend();
+		const settled = Promise.allSettled([first, second]);
+		await flushPromises();
+		expect(store.syncThread).toHaveBeenCalledOnce();
+		wrapper.unmount();
+		gate.resolve();
+		expect(await settled).toEqual([
+			{ status: 'rejected', reason: expect.objectContaining({ name: 'AbortError' }) },
+			{ status: 'rejected', reason: expect.objectContaining({ name: 'AbortError' }) },
+		]);
+		expect(store.deleteThread).toHaveBeenCalledWith('thread-2', { silent: true });
+		expect(showError).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		{ ...subject, id: 'agent-2' },
+		{ ...subject, projectId: 'p2' },
+	])(
+		'rejects a pending send if the subject changes without a new thread id: %j',
+		async (nextSubject) => {
+			const gate = Promise.withResolvers<void>();
+			store.syncThread.mockReturnValue(gate.promise);
+			const wrapper = mountPanel({ subject, launch });
+			await flushPromises();
+			await wrapper.setProps({ threadId: 'thread-2' });
+			await flushPromises();
+			const beforeSend = wrapper.getComponent(InstanceAiConversationStub).props('beforeSend');
+			const send = beforeSend();
+			const rejected = expect(send).rejects.toMatchObject({ name: 'AbortError' });
+			await flushPromises();
+			await wrapper.setProps({ subject: nextSubject });
+			gate.resolve();
+			await rejected;
+			expect(store.deleteThread).toHaveBeenCalledWith('thread-2', { silent: true });
+			expect(getPendingAgentAttachment('thread-2')).toBeNull();
+			expect(showError).not.toHaveBeenCalled();
+			wrapper.unmount();
+		},
+	);
+
+	it('rejects a send if the subject changes while the host prepares it', async () => {
+		const gate = Promise.withResolvers<void>();
+		const beforeSend = vi.fn(() => gate.promise);
+		const wrapper = mountPanel({ subject, launch, beforeSend });
+		await flushPromises();
+		await wrapper.setProps({ threadId: 'thread-2' });
+		await flushPromises();
+		const send = wrapper.getComponent(InstanceAiConversationStub).props('beforeSend')();
+		const rejected = expect(send).rejects.toMatchObject({ name: 'AbortError' });
+		await wrapper.setProps({ subject: { ...subject, id: 'agent-2' } });
+		gate.resolve();
+		await rejected;
+		expect(store.syncThread).not.toHaveBeenCalled();
+		expect(showError).not.toHaveBeenCalled();
+		wrapper.unmount();
+	});
+
+	it('discards an unused chat without saving it when the panel closes', async () => {
+		const wrapper = mountPanel({ subject, launch });
+		await flushPromises();
+		await wrapper.setProps({ threadId: 'thread-2' });
+		await flushPromises();
+		wrapper.unmount();
+		expect(store.syncThread).not.toHaveBeenCalled();
+		expect(store.updateThreadMetadata).not.toHaveBeenCalled();
+		expect(getPendingAgentAttachment('thread-2')).toBeNull();
+	});
+
+	it('does not throw and leaves the panel without a thread when beforeNewThread rejects', async () => {
+		const beforeNewThread = vi.fn().mockRejectedValueOnce(new Error('flush failed'));
+
+		const { emitted } = renderPanel({ props: { subject, launch, beforeNewThread } });
+
+		await vi.waitFor(() => expect(beforeNewThread).toHaveBeenCalled());
+		await flushPromises();
+
+		expect(store.syncThread).not.toHaveBeenCalled();
+		expect(emitted('update:threadId')).toBeFalsy();
+		// The host's own flow already surfaced the error — the panel doesn't add its own.
+		expect(showError).not.toHaveBeenCalled();
+	});
+
+	it('shows the open-failed toast and does not mint when loadThreads fails while resuming', async () => {
+		store.loadThreads.mockResolvedValue(false);
+
+		const { emitted } = renderPanel({ props: { subject, launch } });
+
+		await vi.waitFor(() => expect(showError).toHaveBeenCalled());
+
+		expect(showError).toHaveBeenCalledWith(expect.any(Error), "Couldn't open n8n Assistant");
+		expect(store.syncThread).not.toHaveBeenCalled();
+		expect(emitted('update:threadId')).toBeFalsy();
+	});
+
+	it('mints immediately for a pending agent instead of waiting for loadThreads to resolve', async () => {
+		const pending = Promise.withResolvers<boolean>();
+		store.loadThreads.mockReturnValue(pending.promise);
+		const pendingSubject: InstanceAiEmbedSubject = {
+			type: 'agent',
+			id: 'agent-1',
+			projectId: 'p1',
+			pending: true,
+		};
+
+		const { emitted } = renderPanel({ props: { subject: pendingSubject, launch } });
+
+		// loadThreads is deliberately left unresolved: a mint that waited on it
+		// first would never emit here.
+		await vi.waitFor(() => expect(emitted('update:threadId')).toBeTruthy());
+		expect(emitted('update:threadId')?.[0]).toEqual(['thread-2']);
+		expect(store.syncThread).not.toHaveBeenCalled();
+		expect(store.updateThreadMetadata).not.toHaveBeenCalled();
+		expect(store.threads).toEqual([]);
+
+		pending.resolve(true);
+	});
+
+	it('renders the host empty slot inside the conversation', async () => {
+		const { getByTestId } = renderPanel({
+			props: { subject, launch, threadId: 't-match' },
+			slots: { empty: '<div data-test-id="host-empty" />' },
+		});
+		await vi.waitFor(() => expect(getByTestId('conversation-stub')).toBeInTheDocument());
+
+		expect(getByTestId('host-empty')).toBeInTheDocument();
+	});
+
+	it('forwards setPrefill to the mounted conversation', async () => {
+		const wrapper = mountPanel({ subject, launch, threadId: 't-match' });
+		await flushPromises();
+
+		wrapper.vm.setPrefill({
+			text: 'I started from the Research Assistant template.',
+			prefillType: 'template_adjustment',
+			prefillId: 'research-assistant',
+		});
+
+		expect(setPrefillMock).toHaveBeenCalledWith({
+			text: 'I started from the Research Assistant template.',
+			prefillType: 'template_adjustment',
+			prefillId: 'research-assistant',
+		});
+	});
+
+	it('forwards submitSuggestion to the mounted conversation', async () => {
+		const wrapper = mountPanel({ subject, launch, threadId: 't-match' });
+		await flushPromises();
+
+		wrapper.vm.submitSuggestion({
+			prompt: 'Build Morning news brief agent to send a daily summary.',
+			suggestionId: 'morning-news-brief',
+			suggestionKind: 'prompt',
+			position: 0,
+			prefillType: 'template_adjustment',
+		});
+
+		expect(submitSuggestionMock).toHaveBeenCalledWith({
+			prompt: 'Build Morning news brief agent to send a daily summary.',
+			suggestionId: 'morning-news-brief',
+			suggestionKind: 'prompt',
+			position: 0,
+			prefillType: 'template_adjustment',
+		});
+	});
+
+	it('resumes the most recent thread for the subject instead of minting one', async () => {
+		store.threads = [
+			{
+				id: 't-newest',
+				title: 'Newest',
+				createdAt: '',
+				updatedAt: '',
+				metadata: { instanceAiAgentBuilderTarget: { agentId: 'agent-1', projectId: 'p1' } },
+			},
+			{
+				id: 't-match',
+				title: 'Older',
+				createdAt: '',
+				updatedAt: '',
+				metadata: { instanceAiAgentBuilderTarget: { agentId: 'agent-1', projectId: 'p1' } },
+			},
+		] as typeof store.threads;
+
+		const { emitted } = renderPanel({ props: { subject, launch } });
+		await vi.waitFor(() => expect(store.loadThreads).toHaveBeenCalled());
+		await vi.waitFor(() => expect(emitted('update:threadId')).toBeTruthy());
+
+		expect(emitted('update:threadId')?.[0]).toEqual(['t-newest']);
+		expect(store.syncThread).not.toHaveBeenCalled();
+	});
+
+	it('skips a non-matching thread when resuming the most recent for the subject', async () => {
+		store.threads = [
+			{
+				id: 't-other-agent',
+				title: 'Someone else',
+				createdAt: '',
+				updatedAt: '',
+				metadata: { instanceAiAgentBuilderTarget: { agentId: 'agent-2', projectId: 'p1' } },
+			},
+			{
+				id: 't-match',
+				title: 'Existing',
+				createdAt: '',
+				updatedAt: '',
+				metadata: { instanceAiAgentBuilderTarget: { agentId: 'agent-1', projectId: 'p1' } },
+			},
+		] as typeof store.threads;
+
+		const { emitted } = renderPanel({ props: { subject, launch } });
+		await vi.waitFor(() => expect(emitted('update:threadId')).toBeTruthy());
+
+		expect(emitted('update:threadId')?.[0]).toEqual(['t-match']);
+	});
+
+	it('loads threads without blocking when a thread id is already given', async () => {
+		renderPanel({ props: { subject, launch, threadId: 't-match' } });
+		await vi.waitFor(() => expect(store.loadThreads).toHaveBeenCalled());
+	});
+
+	it('replaces an incoming threadId that targets a different agent and never mounts it', async () => {
+		store.getThreadMetadata.mockReturnValue({
+			instanceAiAgentBuilderTarget: { agentId: 'agent-99', projectId: 'p1' },
+		});
+		store.threads = [
+			{
+				id: 't-foreign',
+				title: 'Someone else',
+				createdAt: '',
+				updatedAt: '',
+				metadata: { instanceAiAgentBuilderTarget: { agentId: 'agent-99', projectId: 'p1' } },
+			},
+		] as typeof store.threads;
+
+		const { emitted, queryByTestId } = renderPanel({
+			props: { subject, launch, threadId: 't-foreign' },
+		});
+
+		await vi.waitFor(() => expect(emitted('update:threadId')).toBeTruthy());
+
+		expect(emitted('update:threadId')?.[0]).toEqual(['thread-2']);
+		// The panel wasn't told the replacement id (no real host rerender here), so
+		// the foreign thread must never have mounted a conversation in the meantime.
+		expect(queryByTestId('conversation-stub')).toBeNull();
+	});
+
+	it('resumes a thread it has to fetch first when validating an incoming threadId', async () => {
+		store.getThreadMetadata.mockReturnValue(undefined);
+		store.loadThread.mockImplementation(async () => {
+			store.getThreadMetadata.mockReturnValue({
+				instanceAiAgentBuilderTarget: { agentId: 'agent-1', projectId: 'p1' },
+			});
+		});
+
+		const { queryByTestId } = renderPanel({ props: { subject, launch, threadId: 't-remote' } });
+
+		await vi.waitFor(() => expect(store.loadThread).toHaveBeenCalledWith('t-remote'));
+		await vi.waitFor(() => expect(queryByTestId('conversation-stub')).not.toBeNull());
+		expect(store.syncThread).not.toHaveBeenCalled();
+	});
+
+	it('resumes or mints when the host clears the thread id while mounted', async () => {
+		const { rerender, emitted } = renderPanel({ props: { subject, launch, threadId: 't-match' } });
+		store.loadThreads.mockClear();
+
+		await rerender({ subject, launch, threadId: undefined });
+
+		await vi.waitFor(() => expect(store.loadThreads).toHaveBeenCalled());
+		await vi.waitFor(() => expect(emitted('update:threadId')?.at(-1)).toEqual(['thread-2']));
+	});
+
+	it('drops an orphaned mint that resolves after the panel unmounts', async () => {
+		const pending = Promise.withResolvers<void>();
+		const beforeNewThread = vi.fn(() => pending.promise);
+		const { getByTestId, emitted, unmount } = renderPanel({
+			props: { subject, launch, threadId: 't-match', beforeNewThread },
+		});
+		await fireEvent.click(getByTestId('instance-ai-embed-new-thread'));
+
+		unmount();
+		pending.resolve();
+		await flushPromises();
+
+		expect(emitted('update:threadId')).toBeFalsy();
+		expect(store.syncThread).not.toHaveBeenCalled();
+		expect(store.deleteThread).not.toHaveBeenCalled();
+	});
+
+	it('drops an orphaned mint that resolves after the subject changes', async () => {
+		const pending = Promise.withResolvers<void>();
+		const beforeNewThread = vi.fn(() => pending.promise);
+		const { getByTestId, rerender, emitted } = renderPanel({
+			props: { subject, launch, threadId: 't-match', beforeNewThread },
+		});
+		await fireEvent.click(getByTestId('instance-ai-embed-new-thread'));
+
+		const otherSubject: InstanceAiEmbedSubject = { type: 'agent', id: 'agent-2', projectId: 'p1' };
+		await rerender({ subject: otherSubject, launch, threadId: 't-match' });
+		pending.resolve();
+		await flushPromises();
+
+		expect(emitted('update:threadId')).toBeFalsy();
+		expect(store.syncThread).not.toHaveBeenCalled();
+		expect(store.deleteThread).not.toHaveBeenCalled();
+	});
+
+	it('drops an orphaned mint that resolves after the user picks a different thread', async () => {
+		const pending = Promise.withResolvers<void>();
+		const beforeNewThread = vi.fn(() => pending.promise);
+		const { getByTestId, rerender, emitted } = renderPanel({
+			props: { subject, launch, threadId: 't-match', beforeNewThread },
+		});
+		await fireEvent.click(getByTestId('instance-ai-embed-new-thread'));
+
+		// The user picked a different row while the mint was still in flight.
+		await rerender({ subject, launch, threadId: 't-picked' });
+		pending.resolve();
+		await flushPromises();
+
+		expect(emitted('update:threadId')).toBeFalsy();
+		expect(store.syncThread).not.toHaveBeenCalled();
+		expect(store.deleteThread).not.toHaveBeenCalled();
+	});
+
+	it('filters the thread list by the subject', async () => {
+		store.threads = [
+			{
+				id: 't-match',
+				title: 'Matches',
+				createdAt: '',
+				updatedAt: '',
+				metadata: { instanceAiAgentBuilderTarget: { agentId: 'agent-1', projectId: 'p1' } },
+			},
+			{
+				id: 't-other',
+				title: 'Other agent',
+				createdAt: '',
+				updatedAt: '',
+				metadata: { instanceAiAgentBuilderTarget: { agentId: 'agent-2', projectId: 'p1' } },
+			},
+		] as typeof store.threads;
+
+		const { getByTestId } = renderPanel({ props: { subject, launch, threadId: 't-match' } });
+
+		expect(getByTestId('list-count').textContent).toBe('1');
+	});
+
+	it('emits update:building for the subject', async () => {
+		const { emitted } = renderPanel({ props: { subject, launch, threadId: 't-match' } });
+		await vi.waitFor(() => expect(emitted('update:building')).toBeTruthy());
+		expect(emitted('update:building')?.[0]).toEqual([false]);
+
+		buildingIds.value = new Set(['agent-1']);
+		await vi.waitFor(() => expect(emitted('update:building')?.at(-1)).toEqual([true]));
+		expect(useAgentMutationRefreshMock).toHaveBeenCalled();
+	});
+
+	it('emits update:building false on unmount so a host closing the panel mid-build unlocks', async () => {
+		const { emitted, unmount } = renderPanel({ props: { subject, launch, threadId: 't-match' } });
+		await vi.waitFor(() => expect(emitted('update:building')).toBeTruthy());
+		buildingIds.value = new Set(['agent-1']);
+		await vi.waitFor(() => expect(emitted('update:building')?.at(-1)).toEqual([true]));
+
+		unmount();
+
+		expect(emitted('update:building')?.at(-1)).toEqual([false]);
+	});
+
+	it('marks the thread list disabled and ignores select/new from it while building', async () => {
+		const { getByTestId, emitted } = renderPanel({
+			props: { subject, launch, threadId: 't-match' },
+		});
+		buildingIds.value = new Set(['agent-1']);
+		await vi.waitFor(() => expect(emitted('update:building')?.at(-1)).toEqual([true]));
+
+		expect(getByTestId('header-stub').dataset.disabled).toBe('true');
+
+		await fireEvent.click(getByTestId('instance-ai-embed-new-thread'));
+		await fireEvent.click(getByTestId('list-select'));
+
+		expect(emitted('update:threadId')).toBeFalsy();
+	});
+
+	it('uses the message-circle-plus icon for the new chat button', function () {
+		const { getByRole } = renderPanel({ props: { subject, launch, threadId: 't-match' } });
+		const button = getByRole('button', { name: 'New chat' });
+
+		expect(button.querySelector('[data-icon="message-circle-plus"]')).toBeInTheDocument();
+	});
+
+	it('mints a new thread when the new chat button is clicked', async function () {
+		const { getByTestId, emitted } = renderPanel({
+			props: { subject, launch, threadId: 't-match' },
+		});
+		await fireEvent.click(getByTestId('instance-ai-embed-new-thread'));
+
+		await vi.waitFor(() => expect(emitted('update:threadId')?.at(-1)).toEqual(['thread-2']));
+	});
+
+	it('mints a new thread when the conversation reports thread-missing', async () => {
+		const { getByTestId, emitted } = renderPanel({
+			props: { subject, launch, threadId: 't-match' },
+		});
+
+		await vi.waitFor(() => getByTestId('conversation-thread-missing'));
+		await fireEvent.click(getByTestId('conversation-thread-missing'));
+
+		await vi.waitFor(() => expect(emitted('update:threadId')?.at(-1)).toEqual(['thread-2']));
+	});
+
+	it('passes beforeSend through to the conversation', async () => {
+		const beforeSend = vi.fn();
+		const { getByTestId } = renderPanel({
+			props: { subject, launch, threadId: 't-match', beforeSend },
+		});
+
+		await vi.waitFor(() =>
+			expect(getByTestId('conversation-stub').dataset.hasBeforeSend).toBe('true'),
+		);
+	});
+
+	it('hides the full Assistant link when the host disables it', () => {
+		const { queryByTestId } = renderPanel({
+			props: { subject, launch, threadId: 't-match', showOpenFullAssistant: false },
+		});
+		expect(queryByTestId('instance-ai-embed-open-full')).not.toBeInTheDocument();
+	});
+
+	it('reports Assistant activity before an artifact mutation starts', async () => {
+		const runtime = makeThread();
+		store.getOrCreateRuntime.mockReturnValue(runtime);
+		const { emitted } = renderPanel({ props: { subject, launch, threadId: 't-match' } });
+		await flushPromises();
+		runtime.isSendingMessage = true;
+		await flushPromises();
+		expect(emitted('update:working')).toContainEqual([true]);
+		expect(buildingIds.value.size).toBe(0);
+		runtime.isSendingMessage = false;
+		await flushPromises();
+		expect(emitted('update:working')?.at(-1)).toEqual([false]);
+	});
+
+	it('navigates to the full assistant thread view', async () => {
+		const { getByTestId } = renderPanel({ props: { subject, launch, threadId: 't-match' } });
+
+		await fireEvent.click(getByTestId('instance-ai-embed-open-full'));
+
+		await vi.waitFor(() =>
+			expect(routerPush).toHaveBeenCalledWith({
+				name: 'InstanceAiThread',
+				params: { threadId: 't-match' },
+			}),
+		);
+	});
+
+	it('saves a local draft before opening the full Assistant', async () => {
+		const wrapper = mountPanel({ subject, launch });
+		await flushPromises();
+		await wrapper.setProps({ threadId: 'thread-2' });
+		await flushPromises();
+		await wrapper.get('[data-test-id="instance-ai-embed-open-full"]').trigger('click');
+		await flushPromises();
+		expect(store.syncThread).toHaveBeenCalledWith('thread-2', 'p1', launch);
+		expect(routerPush).toHaveBeenCalledWith({
+			name: 'InstanceAiThread',
+			params: { threadId: 'thread-2' },
+		});
+		wrapper.unmount();
+	});
+
+	it.each(['failure', 'subject-change'])(
+		'does not open the full Assistant if draft provisioning ends with %s',
+		async (outcome) => {
+			const gate = Promise.withResolvers<void>();
+			store.syncThread.mockReturnValue(gate.promise);
+			const wrapper = mountPanel({ subject, launch });
+			await flushPromises();
+			await wrapper.setProps({ threadId: 'thread-2' });
+			await flushPromises();
+			await wrapper.get('[data-test-id="instance-ai-embed-open-full"]').trigger('click');
+			await flushPromises();
+			if (outcome === 'failure') gate.reject(new Error('Save failed'));
+			else {
+				await wrapper.setProps({ subject: { ...subject, id: 'agent-2' } });
+				gate.resolve();
+			}
+			await flushPromises();
+			expect(routerPush).not.toHaveBeenCalled();
+			if (outcome === 'failure') expect(showError).toHaveBeenCalledOnce();
+			else expect(showError).not.toHaveBeenCalled();
+			wrapper.unmount();
+		},
+	);
+
+	it('awaits beforeSend before opening the full assistant view', async () => {
+		const order: string[] = [];
+		const beforeSend = vi.fn().mockImplementation(async () => {
+			order.push('beforeSend');
+		});
+		routerPush.mockImplementation(() => {
+			order.push('push');
+		});
+		const { getByTestId } = renderPanel({
+			props: { subject, launch, threadId: 't-match', beforeSend },
+		});
+
+		await fireEvent.click(getByTestId('instance-ai-embed-open-full'));
+
+		await vi.waitFor(() => expect(order).toEqual(['beforeSend', 'push']));
+	});
+
+	it('opens the full assistant view even if beforeSend rejects', async () => {
+		const beforeSend = vi.fn().mockRejectedValueOnce(new Error('flush failed'));
+		const { getByTestId } = renderPanel({
+			props: { subject, launch, threadId: 't-match', beforeSend },
+		});
+
+		await fireEvent.click(getByTestId('instance-ai-embed-open-full'));
+
+		await vi.waitFor(() => expect(routerPush).toHaveBeenCalled());
+	});
+
+	it('does not navigate if the panel unmounts while beforeSend is pending', async () => {
+		const pending = Promise.withResolvers<void>();
+		const beforeSend = vi.fn().mockReturnValue(pending.promise);
+		const { getByTestId, unmount } = renderPanel({
+			props: { subject, launch, threadId: 't-match', beforeSend },
+		});
+
+		await fireEvent.click(getByTestId('instance-ai-embed-open-full'));
+		unmount();
+		pending.resolve();
+		await flushPromises();
+
+		expect(routerPush).not.toHaveBeenCalled();
+	});
+
+	it('does not navigate if the subject changes while beforeSend is pending', async () => {
+		const pending = Promise.withResolvers<void>();
+		const beforeSend = vi.fn().mockReturnValue(pending.promise);
+		const { getByTestId, rerender } = renderPanel({
+			props: { subject, launch, threadId: 't-match', beforeSend },
+		});
+
+		await fireEvent.click(getByTestId('instance-ai-embed-open-full'));
+		await rerender({ subject: { ...subject, id: 'agent-2' }, launch, threadId: 't-match' });
+		pending.resolve();
+		await flushPromises();
+
+		expect(routerPush).not.toHaveBeenCalled();
+	});
+
+	it('does not navigate if the active thread changes while beforeSend is pending', async () => {
+		const pending = Promise.withResolvers<void>();
+		const beforeSend = vi.fn().mockReturnValue(pending.promise);
+		const { getByTestId, rerender } = renderPanel({
+			props: { subject, launch, threadId: 't-match', beforeSend },
+		});
+
+		await fireEvent.click(getByTestId('instance-ai-embed-open-full'));
+		await rerender({ subject, launch, threadId: 't-other' });
+		await flushPromises();
+		pending.resolve();
+		await flushPromises();
+
+		expect(routerPush).not.toHaveBeenCalled();
+	});
+
+	it('emits close', async () => {
+		const { getByTestId, emitted } = renderPanel({
+			props: { subject, launch, threadId: 't-match' },
+		});
+
+		await fireEvent.click(getByTestId('instance-ai-embed-close'));
+
+		expect(emitted('close')).toEqual([[]]);
+	});
+
+	it.each(['instance-ai-embed-new-thread', 'conversation-input'])(
+		'closes on Escape from focused %s',
+		async function (testId) {
+			const { findByTestId, emitted } = renderPanel({
+				props: { subject, launch, threadId: 't-match' },
+			});
+			const element = await findByTestId(testId);
+			element.focus();
+			expect(document.activeElement).toBe(element);
+
+			const event = new KeyboardEvent('keydown', {
+				key: 'Escape',
+				code: 'Escape',
+				bubbles: true,
+				cancelable: true,
+			});
+			await fireEvent(element, event);
+
+			expect(emitted('close')).toEqual([[]]);
+			expect(event.defaultPrevented).toBe(true);
+		},
+	);
+
+	it('does not close on Escape from outside the panel', async function () {
+		const { container, emitted } = renderPanel({
+			props: { subject, launch, threadId: 't-match' },
+		});
+		const outside = document.createElement('button');
+		container.append(outside);
+		outside.focus();
+		expect(document.activeElement).toBe(outside);
+
+		await fireEvent.keyDown(outside, { key: 'Escape', code: 'Escape' });
+
+		expect(emitted('close')).toBeUndefined();
+	});
+
+	it('leaves Escape to a nested dialog', async function () {
+		const { findByTestId, getByTestId, emitted } = renderPanel({
+			props: { subject, launch, threadId: 't-match' },
+		});
+		const input = await findByTestId('conversation-input');
+		getByTestId('conversation-stub').setAttribute('role', 'dialog');
+		input.focus();
+
+		await fireEvent.keyDown(input, { key: 'Escape', code: 'Escape' });
+
+		expect(emitted('close')).toBeUndefined();
+	});
+
+	it.each([
+		{ isComposing: true },
+		{ shiftKey: true },
+		{ altKey: true },
+		{ ctrlKey: true },
+		{ metaKey: true },
+	])('does not close on Escape with %j', async function (options) {
+		const { findByTestId, emitted } = renderPanel({
+			props: { subject, launch, threadId: 't-match' },
+		});
+		const input = await findByTestId('conversation-input');
+		input.focus();
+
+		await fireEvent.keyDown(input, { key: 'Escape', code: 'Escape', ...options });
+
+		expect(emitted('close')).toBeUndefined();
+	});
+
+	it('does not close when a child handles Escape', async function () {
+		const { findByTestId, emitted } = renderPanel({
+			props: { subject, launch, threadId: 't-match' },
+		});
+		const input = await findByTestId('conversation-input');
+		input.focus();
+		input.addEventListener('keydown', (event) => event.preventDefault(), { once: true });
+
+		await fireEvent.keyDown(input, { key: 'Escape', code: 'Escape' });
+
+		expect(emitted('close')).toBeUndefined();
+	});
+
+	it('disposes the runtime on thread change and unmount', async () => {
+		const { rerender, unmount } = renderPanel({ props: { subject, launch, threadId: 't-match' } });
+
+		await rerender({ subject, launch, threadId: 't-next' });
+		expect(store.disposeRuntime).toHaveBeenCalledWith('t-match');
+
+		unmount();
+		expect(store.disposeRuntime).toHaveBeenCalledWith('t-next');
+	});
+
+	it('does not dispose the runtime handed off to the full assistant view', async () => {
+		const { getByTestId, rerender, unmount } = renderPanel({
+			props: { subject, launch, threadId: 't-match' },
+		});
+
+		await fireEvent.click(getByTestId('instance-ai-embed-open-full'));
+		await vi.waitFor(() => expect(routerPush).toHaveBeenCalled());
+		await rerender({ subject, launch, threadId: 't-next' });
+		unmount();
+
+		expect(store.disposeRuntime).not.toHaveBeenCalledWith('t-match');
+		expect(store.disposeRuntime).toHaveBeenCalledWith('t-next');
+	});
+
+	describe('handoff', () => {
+		const context: InstanceAiHandoffContext = {
+			source: 'agent-preview',
+			agentId: 'agent-1',
+			threadId: 'preview-1',
+		};
+		const draft: PendingComposerDraft = {
+			text: 'Change the system prompt',
+			prefillType: 'handoff_agent_change_request',
+		};
+
+		it('applies the handoff directly when the conversation is mounted and clean', async () => {
+			const wrapper = mountPanel({ subject, launch, threadId: 't-match' });
+			await flushPromises();
+
+			const result = wrapper.vm.handoff(context, draft);
+
+			expect(result).toBe(true);
+			expect(applyHandoffMock).toHaveBeenCalledWith(context, draft);
+		});
+
+		it('shows the finish-draft toast and skips applying when the conversation is dirty', async () => {
+			isDirtyMock.mockReturnValue(true);
+			const wrapper = mountPanel({ subject, launch, threadId: 't-match' });
+			await flushPromises();
+
+			const result = wrapper.vm.handoff(context);
+
+			expect(result).toBe(false);
+			expect(applyHandoffMock).not.toHaveBeenCalled();
+			expect(showMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'warning' }));
+		});
+
+		it('queues the handoff until the thread being minted gets an id, then stashes it there', async () => {
+			const pendingSubject: InstanceAiEmbedSubject = {
+				type: 'agent',
+				id: 'agent-1',
+				projectId: 'p1',
+				pending: true,
+			};
+			const syncing = Promise.withResolvers<void>();
+			store.syncThread.mockImplementation(async () => {
+				await syncing.promise;
+			});
+
+			// No thread-id prop yet: the panel is minting one for the pending agent.
+			const wrapper = mountPanel({ subject: pendingSubject, launch });
+			const result = wrapper.vm.handoff(context, draft);
+
+			expect(result).toBe(true);
+			expect(applyHandoffMock).not.toHaveBeenCalled();
+			expect(getPendingHandoffContext('thread-2')).toBeNull();
+
+			syncing.resolve();
+			await vi.waitFor(() => expect(wrapper.emitted('update:threadId')).toBeTruthy());
+
+			expect(getPendingHandoffContext('thread-2')).toEqual(context);
+			expect(getPendingComposerDraft('thread-2')).toEqual(draft);
+			expect(store.updateThreadMetadata).toHaveBeenCalledWith('thread-2', {
+				instanceAiAgentPreviewView: { agentId: 'agent-1', threadId: 'preview-1' },
+			});
+		});
+
+		it('shows an error toast when the queued handoff metadata write fails', async () => {
+			const pendingSubject: InstanceAiEmbedSubject = {
+				type: 'agent',
+				id: 'agent-1',
+				projectId: 'p1',
+				pending: true,
+			};
+			store.updateThreadMetadata.mockRejectedValueOnce(new Error('nope'));
+
+			const wrapper = mountPanel({ subject: pendingSubject, launch });
+			wrapper.vm.handoff(context, draft);
+
+			await vi.waitFor(() => expect(wrapper.emitted('update:threadId')).toBeTruthy());
+			await vi.waitFor(() => expect(showError).toHaveBeenCalled());
+
+			expect(showError).toHaveBeenCalledWith(expect.any(Error), 'Something went wrong');
+		});
+
+		it('does not show an error toast if the subject changed before the queued handoff write settles', async () => {
+			const pendingSubject: InstanceAiEmbedSubject = {
+				type: 'agent',
+				id: 'agent-1',
+				projectId: 'p1',
+				pending: true,
+			};
+			const writeGate = Promise.withResolvers<void>();
+			store.updateThreadMetadata.mockImplementation(async () => {
+				await writeGate.promise;
+				throw new Error('nope');
+			});
+
+			const wrapper = mountPanel({ subject: pendingSubject, launch });
+			wrapper.vm.handoff(context, draft);
+			await vi.waitFor(() => expect(wrapper.emitted('update:threadId')).toBeTruthy());
+
+			await wrapper.setProps({ subject: { ...pendingSubject, id: 'agent-2' } });
+			writeGate.resolve();
+			await flushPromises();
+
+			expect(showError).not.toHaveBeenCalled();
+		});
+
+		it('does not show an error toast if the panel unmounted before the queued handoff write settles', async () => {
+			const pendingSubject: InstanceAiEmbedSubject = {
+				type: 'agent',
+				id: 'agent-1',
+				projectId: 'p1',
+				pending: true,
+			};
+			const writeGate = Promise.withResolvers<void>();
+			store.updateThreadMetadata.mockImplementation(async () => {
+				await writeGate.promise;
+				throw new Error('nope');
+			});
+
+			const wrapper = mountPanel({ subject: pendingSubject, launch });
+			wrapper.vm.handoff(context, draft);
+			await vi.waitFor(() => expect(wrapper.emitted('update:threadId')).toBeTruthy());
+
+			wrapper.unmount();
+			writeGate.resolve();
+			await flushPromises();
+
+			expect(showError).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('on the Assistant agent', () => {
+		const agentTarget = { instanceAiAgentBuilderTarget: { agentId: 'agent-1', projectId: 'p1' } };
+
+		function agentThread(
+			id: string,
+			updatedAt: string,
+			agentId = 'agent-1',
+		): SystemAgentThreadSummary {
+			return {
+				id,
+				title: null,
+				updatedAt,
+				projectId: 'p1',
+				metadata: { instanceAiAgentBuilderTarget: { agentId, projectId: 'p1' } },
+			};
+		}
+
+		beforeEach(() => {
+			const settingsStore = mockedStore(useInstanceAiSettingsStore);
+			settingsStore.isAssistantAgentEnabled = true;
+			settingsStore.newThreadsUseAssistantAgent = true;
+			// The current runtime knows only its own threads.
+			store.getThreadMetadata.mockImplementation(
+				(threadId) => store.threads.find(({ id }) => id === threadId)?.metadata,
+			);
+			const threadsStore = mockedStore(useAssistantAgentThreadsStore);
+			threadsStore.addOpenedThread.mockImplementation((thread) => {
+				if (!threadsStore.openedThreads.some(({ id }) => id === thread.id)) {
+					threadsStore.openedThreads.push(thread);
+				}
+			});
+			threadsStore.loadThread.mockResolvedValue(undefined);
+			listSystemAgentThreadsMock.mockReset().mockResolvedValue({ data: [], nextCursor: null });
+			getSystemAgentThreadMock.mockReset();
+			agentApplyHandoffMock.mockClear();
+			for (const id of ['thread-2', 'aa-1', 'aa-9']) {
+				forgetAssistantAgentThread(id);
+				clearAssistantAgentLaunch(id);
+			}
+		});
+
+		it('starts a new thread on the Assistant agent', async () => {
+			const wrapper = mountPanel({ subject, launch });
+			await vi.waitFor(() => expect(wrapper.emitted('update:threadId')).toBeTruthy());
+			expect(wrapper.emitted('update:threadId')?.[0]).toEqual(['thread-2']);
+			expect(store.syncThread).not.toHaveBeenCalled();
+			expect(store.updateThreadMetadata).not.toHaveBeenCalled();
+
+			await wrapper.setProps({ threadId: 'thread-2' });
+			await flushPromises();
+
+			const thread = wrapper.get('[data-test-id="agent-thread-stub"]');
+			expect(thread.attributes('data-thread-id')).toBe('thread-2');
+			expect(thread.attributes('data-new-session')).toBe('true');
+			const conversation = wrapper.getComponent(AssistantAgentPanelThreadStub);
+			expect(conversation.props('visible')).toBe(true);
+			await wrapper.setProps({ visible: false });
+			expect(conversation.props('visible')).toBe(false);
+			conversation.vm.$emit('content-change', true);
+			expect(wrapper.emitted('content-change')).toEqual([[true]]);
+			expect(wrapper.find('[data-test-id="conversation-stub"]').exists()).toBe(false);
+		});
+
+		it('opens a new thread in the full view as new, with the agent as its subject', async () => {
+			const wrapper = mountPanel({ subject, launch });
+			await vi.waitFor(() => expect(wrapper.emitted('update:threadId')).toBeTruthy());
+			await wrapper.setProps({ threadId: 'thread-2' });
+			await flushPromises();
+
+			await wrapper.get('[data-test-id="instance-ai-embed-open-full"]').trigger('click');
+			await vi.waitFor(() => expect(routerPush).toHaveBeenCalled());
+
+			expect(getAssistantAgentLaunch('thread-2')).toEqual({ projectId: 'p1', subject });
+		});
+
+		it('opens a thread with messages in the full view without launch data', async () => {
+			const wrapper = mountPanel({ subject, launch });
+			await vi.waitFor(() => expect(wrapper.emitted('update:threadId')).toBeTruthy());
+			await wrapper.setProps({ threadId: 'thread-2' });
+			await flushPromises();
+			wrapper.getComponent(AssistantAgentPanelThreadStub).vm.$emit('session-created');
+
+			await wrapper.get('[data-test-id="instance-ai-embed-open-full"]').trigger('click');
+			await vi.waitFor(() => expect(routerPush).toHaveBeenCalled());
+
+			expect(getAssistantAgentLaunch('thread-2')).toBeUndefined();
+		});
+
+		it('starts a new thread on the current runtime for a user outside the rollout', async () => {
+			mockedStore(useInstanceAiSettingsStore).newThreadsUseAssistantAgent = false;
+
+			const wrapper = mountPanel({ subject, launch });
+			await vi.waitFor(() => expect(wrapper.emitted('update:threadId')).toBeTruthy());
+			await wrapper.setProps({ threadId: 'thread-2' });
+			await flushPromises();
+
+			expect(wrapper.find('[data-test-id="agent-thread-stub"]').exists()).toBe(false);
+			await wrapper.getComponent(InstanceAiConversationStub).props('beforeSend')();
+			expect(store.syncThread).toHaveBeenCalledWith('thread-2', 'p1', launch);
+			wrapper.unmount();
+		});
+
+		it('resumes the newest thread of the subject across both runtimes', async () => {
+			store.threads = [
+				{
+					id: 't-match',
+					title: 'Old',
+					createdAt: '',
+					updatedAt: '2026-01-01',
+					metadata: agentTarget,
+				},
+			] as typeof store.threads;
+			listSystemAgentThreadsMock.mockResolvedValue({
+				data: [agentThread('aa-other', '2026-01-04', 'agent-2'), agentThread('aa-1', '2026-01-03')],
+				nextCursor: null,
+			});
+
+			const { emitted } = renderPanel({ props: { subject, launch } });
+			await vi.waitFor(() => expect(emitted('update:threadId')).toBeTruthy());
+
+			expect(emitted('update:threadId')?.[0]).toEqual(['aa-1']);
+			expect(store.syncThread).not.toHaveBeenCalled();
+		});
+
+		it('keeps a thread of the current runtime on the current runtime', async () => {
+			store.threads = [
+				{ id: 't-match', title: 'Old', createdAt: '', updatedAt: '', metadata: agentTarget },
+			] as typeof store.threads;
+
+			const { queryByTestId } = renderPanel({ props: { subject, launch, threadId: 't-match' } });
+			await vi.waitFor(() => expect(queryByTestId('conversation-stub')).not.toBeNull());
+
+			expect(queryByTestId('agent-thread-stub')).toBeNull();
+			expect(getSystemAgentThreadMock).not.toHaveBeenCalled();
+		});
+
+		it('opens an Assistant agent thread that the host gives', async () => {
+			getSystemAgentThreadMock.mockResolvedValue(agentThread('aa-9', '2026-01-03'));
+
+			const { queryByTestId } = renderPanel({ props: { subject, launch, threadId: 'aa-9' } });
+			await vi.waitFor(() => expect(queryByTestId('agent-thread-stub')).not.toBeNull());
+
+			expect(queryByTestId('agent-thread-stub')?.getAttribute('data-new-session')).toBe('false');
+			expect(queryByTestId('conversation-stub')).toBeNull();
+		});
+
+		const context: InstanceAiHandoffContext = {
+			source: 'agent-preview',
+			agentId: 'agent-1',
+			threadId: 'preview-1',
+		};
+
+		it('stashes a queued hand-off on the new thread without a metadata write', async () => {
+			const wrapper = mountPanel({ subject, launch });
+			expect(wrapper.vm.handoff(context)).toBe(true);
+			await vi.waitFor(() => expect(wrapper.emitted('update:threadId')).toBeTruthy());
+
+			expect(getPendingHandoffContext('thread-2')).toEqual(context);
+			expect(store.updateThreadMetadata).not.toHaveBeenCalled();
+		});
+
+		it('sends a hand-off to the Assistant agent thread without a metadata write', async () => {
+			const wrapper = mountPanel({ subject, launch });
+			await vi.waitFor(() => expect(wrapper.emitted('update:threadId')).toBeTruthy());
+			await wrapper.setProps({ threadId: 'thread-2' });
+			await flushPromises();
+
+			expect(wrapper.vm.handoff(context)).toBe(true);
+
+			expect(agentApplyHandoffMock).toHaveBeenCalledWith(context, undefined);
+			expect(store.updateThreadMetadata).not.toHaveBeenCalled();
+		});
+	});
+});

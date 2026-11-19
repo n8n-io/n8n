@@ -3,8 +3,12 @@ import {
 	CredentialsGetManyRequestQuery,
 	CredentialsGetOneRequestQuery,
 	GenerateCredentialNameRequestQuery,
+	TestCredentialRequestDto,
+	TransferPreviewQueryDto,
+	type CredentialTransferPreview,
 } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
+import { EventService, CredentialsFinderService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import {
 	SharedCredentials,
@@ -24,30 +28,32 @@ import {
 	Body,
 	Param,
 	Query,
+	Middleware,
 } from '@n8n/decorators';
 import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import { In } from '@n8n/typeorm';
+import type { NextFunction, Response } from 'express';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { CredentialConnectionStatusProxy } from './credential-connection-status-proxy';
-import { CredentialsFinderService } from './credentials-finder.service';
+import { CredentialDescriptionsService } from './credential-descriptions.service';
 import { CredentialsService } from './credentials.service';
 import { EnterpriseCredentialsService } from './credentials.service.ee';
 import { getExternalSecretExpressionPaths } from './external-secrets.utils';
 
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { EventService } from '@/events/event.service';
+import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { listQueryMiddleware } from '@/middlewares';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { CredentialRequest } from '@/requests';
 import { NamingService } from '@/services/naming.service';
 import { UserManagementMailer } from '@/user-management/email';
 import * as utils from '@/utils';
+
+/** Ids per `credentials-list-data-read` event: keeps each audit message small enough for a syslog line. */
+const AUDITED_CREDENTIAL_IDS_CHUNK_SIZE = 100;
 
 @RestController('/credentials')
 export class CredentialsController {
@@ -65,8 +71,25 @@ export class CredentialsController {
 		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly connectionStatusProxy: CredentialConnectionStatusProxy,
 		private readonly credentialsOverwrites: CredentialsOverwrites,
+		private readonly credentialDescriptions: CredentialDescriptionsService,
 	) {}
 
+	@Middleware()
+	async stripDisabledDescription(
+		req: CredentialRequest.Update,
+		_res: Response,
+		next: NextFunction,
+	) {
+		try {
+			// Strip before DTO validation so disabled descriptions cannot reject a request.
+			if (req.body) await this.credentialDescriptions.stripIfDisabled(req.body);
+			next();
+		} catch (error) {
+			next(error);
+		}
+	}
+
+	// oxlint-disable-next-line typescript/no-deprecated
 	@Get('/', { middlewares: listQueryMiddleware })
 	async getMany(
 		req: CredentialRequest.GetMany,
@@ -89,15 +112,51 @@ export class CredentialsController {
 			// though. So to avoid leaking the information we just delete it.
 			delete c.shared;
 		});
+
+		// Audit what the response carries, not what the request asked for. One event per chunk
+		// of ids, not per credential: the editor asks for the data of every editable credential
+		// on each app load, so per-credential events would flood a SIEM, and one unbounded
+		// event would not fit a syslog line.
+		const idsWithData = credentials
+			.filter((c) => 'data' in c && c.data !== undefined)
+			.map((c) => c.id);
+		const chunkCount = Math.ceil(idsWithData.length / AUDITED_CREDENTIAL_IDS_CHUNK_SIZE);
+		for (let chunk = 0; chunk < chunkCount; chunk++) {
+			this.eventService.emit('credentials-list-data-read', {
+				user: req.user,
+				credentialIds: idsWithData.slice(
+					chunk * AUDITED_CREDENTIAL_IDS_CHUNK_SIZE,
+					(chunk + 1) * AUDITED_CREDENTIAL_IDS_CHUNK_SIZE,
+				),
+				credentialCount: idsWithData.length,
+				chunk: chunk + 1,
+				chunkCount,
+				publicApi: false,
+			});
+		}
+
 		return credentials;
 	}
 
 	@Get('/for-workflow')
 	async getProjectCredentials(req: CredentialRequest.ForWorkflow) {
-		const options = z
+		const { forAgent, forAssistant, ...scope } = z
 			.union([z.object({ workflowId: z.string() }), z.object({ projectId: z.string() })])
+			.and(
+				z.object({
+					forAgent: z.enum(['true', 'false']).optional(),
+					forAssistant: z.enum(['true', 'false']).optional(),
+				}),
+			)
 			.parse(req.query);
-		return await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(req.user, options);
+		const options = {
+			...scope,
+			excludePersonalRoute: forAgent === 'true',
+			excludeResolvable: forAgent === 'true',
+		};
+		return forAssistant === 'true'
+			? await this.credentialsService.getCredentialsAUserCanUseThemselves(req.user, options)
+			: await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(req.user, options);
 	}
 
 	@Get('/new')
@@ -139,14 +198,34 @@ export class CredentialsController {
 			req.params.credentialId,
 		);
 
+		await this.credentialDescriptions.stripIfDisabled(credential);
+
+		// Audit what the response carries, not what the request asked for, and only once the
+		// response is complete: a failure above must not log a read that never happened.
+		if ('data' in credential && credential.data !== undefined) {
+			this.eventService.emit('credentials-data-read', {
+				user: req.user,
+				credentialType: credential.type,
+				credentialId: credential.id,
+				publicApi: false,
+			});
+		}
+
 		return { ...credential, scopes };
 	}
 
 	// TODO: Write at least test cases for the failure paths.
 	@Post('/test')
-	async testCredentials(req: CredentialRequest.Test) {
+	async testCredentials(
+		req: AuthenticatedRequest,
+		_res: unknown,
+		@Body payload: TestCredentialRequestDto,
+	) {
 		try {
-			return await this.credentialsService.testWithCredentials(req.user, req.body.credentials);
+			return await this.credentialsService.testWithCredentials(req.user, {
+				...payload.credentials,
+				data: payload.credentials.data as ICredentialDataDecryptedObject,
+			});
 		} catch (error) {
 			if (error instanceof CredentialNotFoundError) {
 				throw new ForbiddenError();
@@ -207,6 +286,10 @@ export class CredentialsController {
 			user: req.user,
 			credentialType: newCredential.type,
 			credentialId: newCredential.id,
+			credentialName: newCredential.name,
+			...((await this.credentialDescriptions.isEnabled()) && {
+				credentialDescriptionLength: newCredential.description?.length ?? 0,
+			}),
 			publicApi: false,
 			projectId: project?.id,
 			projectType: project?.type,
@@ -216,6 +299,10 @@ export class CredentialsController {
 			jweEnabled: payload.data.jweEnabled === true,
 			supportsManagedAuth: this.credentialsOverwrites.supportsManagedAuth(newCredential.type),
 			usesManagedAuth: this.credentialsOverwrites.usesManagedAuth(newCredential.type, payload.data),
+			managedAppVersion: this.credentialsOverwrites.getManagedAppVersion(
+				newCredential.type,
+				payload.data,
+			),
 		});
 
 		if (newCredential.isResolvable) {
@@ -311,6 +398,10 @@ export class CredentialsController {
 			data: preparedCredentialData.data as unknown as ICredentialDataDecryptedObject,
 		});
 
+		if (preparedCredentialData.description !== undefined) {
+			newCredentialData.description = preparedCredentialData.description;
+		}
+
 		// Update isGlobal if provided in the payload and user has permission
 		const isGlobal = body.isGlobal;
 		if (isGlobal !== undefined && isGlobal !== credential.isGlobal) {
@@ -344,6 +435,7 @@ export class CredentialsController {
 		const responseData = await this.credentialsService.update(
 			credentialId,
 			newCredentialData,
+			{ kind: 'user', user: req.user },
 			body.data
 				? (preparedCredentialData.data as unknown as ICredentialDataDecryptedObject)
 				: undefined,
@@ -368,11 +460,20 @@ export class CredentialsController {
 			user: req.user,
 			credentialType: credential.type,
 			credentialId: credential.id,
+			// The updated entity, so a rename records the new name rather than the one it replaced.
+			credentialName: responseData.name,
+			...((await this.credentialDescriptions.isEnabled()) && {
+				credentialDescriptionLength: responseData.description?.length ?? 0,
+			}),
 			isDynamic: newCredentialData.isResolvable ?? false,
 			usesExternalSecrets: getExternalSecretExpressionPaths(preparedCredentialData.data).length > 0,
 			jweEnabled: updatedData.jweEnabled === true,
 			supportsManagedAuth: this.credentialsOverwrites.supportsManagedAuth(credential.type),
 			usesManagedAuth: this.credentialsOverwrites.usesManagedAuth(credential.type, updatedData),
+			managedAppVersion: this.credentialsOverwrites.getManagedAppVersion(
+				credential.type,
+				updatedData,
+			),
 		});
 
 		const wasResolvable = Boolean(credential.isResolvable);
@@ -429,7 +530,7 @@ export class CredentialsController {
 			throw new BadRequestError('Only OAuth credentials can be disconnected');
 		}
 
-		await this.credentialsService.clearOauthTokenData(credential);
+		await this.credentialsService.clearOauthTokenData(credential, { kind: 'user', user: req.user });
 
 		this.logger.debug('Credential OAuth token cleared', { credentialId });
 
@@ -478,10 +579,13 @@ export class CredentialsController {
 			throw new BadRequestError('Bad request');
 		}
 
+		// Read to compute the share diff; `credential:share` below is the real gate, so
+		// visibility is enough here.
 		const credential = await this.credentialsFinderService.findCredentialForUser(
 			credentialId,
 			req.user,
 			['credential:read'],
+			{ visibilityOnly: true },
 		);
 
 		if (!credential) {
@@ -561,6 +665,21 @@ export class CredentialsController {
 			newShareeIds: projectsRelations.map((pr) => pr.userId),
 			credentialsName: credential.name,
 		});
+	}
+
+	@Get('/:credentialId/transfer-preview')
+	@ProjectScope('credential:move')
+	async transferPreview(
+		req: AuthenticatedRequest,
+		_res: unknown,
+		@Param('credentialId') credentialId: string,
+		@Query query: TransferPreviewQueryDto,
+	): Promise<CredentialTransferPreview> {
+		return await this.enterpriseCredentialsService.previewTransfer(
+			req.user,
+			credentialId,
+			query.destinationProjectId,
+		);
 	}
 
 	@Put('/:credentialId/transfer')

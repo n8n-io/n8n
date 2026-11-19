@@ -1,10 +1,9 @@
 import { Binary, ObjectId } from 'mongodb';
 import type { INode, IExecuteFunctions } from 'n8n-workflow';
 
-import { parseAndResolveQueryParameters } from '@utils/query-parameters';
-
 import {
 	buildParameterizedConnString,
+	buildUpdateFilter,
 	prepareItems,
 	sanitizeMongoUriInMessage,
 	serializeMongoItems,
@@ -117,58 +116,6 @@ describe('MongoDB Node: Generic Functions', () => {
 		});
 	});
 
-	describe('parseAndResolveQueryParameters', () => {
-		it('replaces placeholders with scalars and scalar arrays', () => {
-			const query = JSON.stringify({
-				name: '$1',
-				age: { $gte: '$2' },
-				tags: { $in: '$3' },
-			});
-
-			const result = parseAndResolveQueryParameters(
-				query,
-				'["Alice", 30, ["active", "admin"]]',
-				mockNode,
-				0,
-			);
-
-			expect(result).toEqual({
-				name: 'Alice',
-				age: { $gte: 30 },
-				tags: { $in: ['active', 'admin'] },
-			});
-		});
-
-		it('only replaces complete values, not keys or parts of strings', () => {
-			const query = JSON.stringify({ $1: 'key', exact: '$1', partial: 'user-$1' });
-
-			const result = parseAndResolveQueryParameters(query, ['Alice'], mockNode, 0);
-
-			expect(result).toEqual({ $1: 'key', exact: 'Alice', partial: 'user-$1' });
-		});
-
-		it('does not replace placeholders when parameters are empty', () => {
-			const result = parseAndResolveQueryParameters('{ "name": "$1" }', [], mockNode, 0);
-
-			expect(result).toEqual({ name: '$1' });
-		});
-
-		it.each([{ parameters: [{ name: 'Alice' }] }, { parameters: [[['nested']]] }])(
-			'throws for unsupported parameter value $parameters',
-			({ parameters }) => {
-				expect(() =>
-					parseAndResolveQueryParameters('{ "name": "$1" }', parameters, mockNode, 0),
-				).toThrow(/must be a scalar or an array of scalars/);
-			},
-		);
-
-		it('throws when a parameter is not used', () => {
-			expect(() =>
-				parseAndResolveQueryParameters('{ "name": "$1" }', ['Alice', 30], mockNode, 0),
-			).toThrow('Query parameter 2 is not used');
-		});
-	});
-
 	describe('prepareItems', () => {
 		it('should select fields', () => {
 			const items = [{ json: { name: 'John', age: 30 } }, { json: { name: 'Jane', age: 25 } }];
@@ -274,15 +221,18 @@ describe('MongoDB Node: Generic Functions', () => {
 				expect(result).toEqual([{ id: '{"$regex":"^a"}', value: 'x' }]);
 			});
 
-			it('accepts number, boolean, and null updateKey values', () => {
-				const items = [
-					{ json: { id: 1, value: 'a' } },
-					{ json: { id: true, value: 'b' } },
-					{ json: { id: null, value: 'c' } },
-				];
+			it('accepts number and boolean updateKey values', () => {
+				const items = [{ json: { id: 1, value: 'a' } }, { json: { id: true, value: 'b' } }];
 				const args = { items, fields: ['value'], updateKey: 'id', node: mockNode };
 
 				expect(() => prepareItems(args)).not.toThrow();
+			});
+
+			it('throws when the updateKey value is null', () => {
+				const items = [{ json: { id: null, value: 'c' } }];
+				const args = { items, fields: ['value'], updateKey: 'id', node: mockNode };
+
+				expect(() => prepareItems(args)).toThrow(/must be a string, number, boolean, or date/);
 			});
 
 			it('accepts Date updateKey values', () => {
@@ -312,6 +262,89 @@ describe('MongoDB Node: Generic Functions', () => {
 				node: mockNode,
 			});
 			expect(result).toEqual([{ 'user.name': 'John' }, { 'user.name': 'Jane' }]);
+		});
+	});
+
+	describe('buildUpdateFilter', () => {
+		it('filters on the update key value', () => {
+			expect(buildUpdateFilter(mockNode, { id: 'a-1', value: 'x' }, 'id')).toEqual({ id: 'a-1' });
+		});
+
+		it.each([
+			['a number', 5],
+			['a boolean', false],
+			['a date', new Date('2024-01-01')],
+		])('accepts %s as the match value', (_label, value) => {
+			expect(buildUpdateFilter(mockNode, { id: value }, 'id')).toEqual({ id: value });
+		});
+
+		it.each([
+			['null', null],
+			['undefined', undefined],
+			['an object', { $ne: 'x' }],
+			['an array', ['a']],
+		])('throws when the match value is %s', (_label, value) => {
+			expect(() => buildUpdateFilter(mockNode, { id: value }, 'id')).toThrow(
+				/must be a string, number, boolean, or date/,
+			);
+		});
+
+		it('throws when the update key is empty', () => {
+			expect(() => buildUpdateFilter(mockNode, { id: 'a-1' }, '')).toThrow(
+				'The Update Key must not be empty',
+			);
+		});
+
+		it.each(['$expr', '$comment', '$where', '$or'])(
+			'throws when the update key is the operator %s',
+			(updateKey) => {
+				expect(() => buildUpdateFilter(mockNode, { [updateKey]: true }, updateKey)).toThrow(
+					'The Update Key must not start with "$"',
+				);
+			},
+		);
+
+		it('allows a $ that is not at the start of the update key', () => {
+			expect(buildUpdateFilter(mockNode, { price$: 5 }, 'price$')).toEqual({ price$: 5 });
+		});
+
+		it('reads the value from the nested item that useDotNotation builds', () => {
+			expect(buildUpdateFilter(mockNode, { user: { id: 'u-1' } }, 'user.id')).toEqual({
+				'user.id': 'u-1',
+			});
+		});
+
+		it('reads the value from a flat dotted key', () => {
+			expect(buildUpdateFilter(mockNode, { 'user.id': 'u-1' }, 'user.id')).toEqual({
+				'user.id': 'u-1',
+			});
+		});
+
+		it('throws when a dotted update key resolves to nothing', () => {
+			expect(() => buildUpdateFilter(mockNode, { value: 'x' }, 'user.id')).toThrow(
+				/must be a string, number, boolean, or date/,
+			);
+		});
+
+		it('converts an _id string to an ObjectId', () => {
+			const id = '662a2b1a2f8b9c0d1e2f3a4b';
+
+			expect(buildUpdateFilter(mockNode, { _id: id }, '_id')).toEqual({ _id: new ObjectId(id) });
+		});
+
+		it.each([
+			['a number', 123],
+			['an invalid string', 'not-an-object-id'],
+		])('throws when the _id value is %s', (_label, value) => {
+			expect(() => buildUpdateFilter(mockNode, { _id: value }, '_id')).toThrow(
+				'The value of "_id" must be a valid ObjectId string',
+			);
+		});
+
+		it('throws when the update key names a prototype property', () => {
+			expect(() => buildUpdateFilter(mockNode, { value: 'x' }, '__proto__')).toThrow(
+				/must be a string, number, boolean, or date/,
+			);
 		});
 	});
 

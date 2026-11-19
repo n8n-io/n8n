@@ -11,6 +11,7 @@ import {
 	type SecretsProviderOperationFailureParams,
 } from '../errors/secrets-provider-errors';
 import { UnknownAuthTypeError } from '../errors/unknown-auth-type.error';
+import { formatSecretPath } from '../secret-path';
 import { SecretsProvider, type SecretsProviderSettings } from '../types';
 
 export type Secret = {
@@ -142,7 +143,7 @@ export class AwsSecretsManager extends SecretsProvider {
 			// caps concurrent sockets, matching the AWS SDK's own defaults.
 			clientConfig.requestHandler = this.outboundHttp
 				.transport({
-					ssrf: 'disabled', // fixed AWS-resolved Secrets Manager host, not user-controlled
+					useDefaultSsrfPolicy: 'unsafe', // fixed AWS-resolved Secrets Manager host, not user-controlled
 				})
 				.getNodeAgent({ keepAlive: true, maxSockets: 50 });
 
@@ -223,7 +224,7 @@ export class AwsSecretsManager extends SecretsProvider {
 	}
 
 	getSecretNames() {
-		return Object.keys(this.cachedSecrets);
+		return Object.keys(this.cachedSecrets).map((name) => formatSecretPath([name]));
 	}
 
 	private assertAuthType(context: AwsSecretsManagerContext) {

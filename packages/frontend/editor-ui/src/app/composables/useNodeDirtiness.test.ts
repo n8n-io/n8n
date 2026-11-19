@@ -133,6 +133,50 @@ describe(useNodeDirtiness, () => {
 		});
 	});
 
+	describe('replacing a node with one that reuses its name', () => {
+		it('should not mark the replacement as dirty', async () => {
+			useNodeTypesStore().setNodeTypes(defaultNodeDescriptions);
+
+			setupTestWorkflow('a\u{1F6A8}\u2705 -> b\u2705');
+
+			// Delete and replace through the canvas the way the editor does, so the
+			// history records the replacement after the run. The new node reuses the
+			// freed name but never ran.
+			canvasOperations.deleteNodes([workflowDocumentStore.nodesByName.b.id], {
+				trackHistory: true,
+			});
+
+			await canvasOperations.addNodes([createTestNode({ name: 'b', type: SET_NODE_TYPE })], {
+				trackHistory: true,
+			});
+
+			canvasOperations.createConnection(
+				{
+					source: workflowDocumentStore.nodesByName.a.id,
+					target: workflowDocumentStore.nodesByName.b.id,
+				},
+				{ trackHistory: true },
+			);
+
+			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value.b).toBeUndefined();
+		});
+
+		it('should still mark the node that ran as dirty when its parameters change', () => {
+			useNodeTypesStore().setNodeTypes(defaultNodeDescriptions);
+
+			setupTestWorkflow('a\u{1F6A8}\u2705 -> b\u2705');
+
+			workflowDocumentStore.setNodeParameters({
+				name: 'b',
+				value: { param: 'changed' },
+			});
+
+			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({
+				b: CanvasNodeDirtiness.PARAMETERS_UPDATED,
+			});
+		});
+	});
+
 	describe('updating node parameters', () => {
 		it('should mark a node as dirty if its parameter has changed', () => {
 			setupTestWorkflow('a🚨✅, b✅, c✅');

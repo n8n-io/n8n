@@ -10,8 +10,7 @@ interface GroupMember {
 /**
  * Applies `coalesce_owner` across one planning pass: per owner, only the job
  * with the latest missed occurrence keeps its late run; the other jobs drop
- * theirs. Jobs on another policy, without an owner, or with nothing missed
- * are left untouched.
+ * theirs. Jobs on another policy or with nothing missed are left untouched.
  */
 export function applyCoalesceOwnerPolicy(planned: PlannedJob[]): PlannedJob[] {
 	const losers = new Set(
@@ -43,14 +42,10 @@ function groupByOwner(planned: PlannedJob[]): Map<string, GroupMember[]> {
 		);
 }
 
-/** Empty when the policy does not touch the job: no owner, another policy, or nothing missed. */
+/** Empty when the policy does not touch the job: another policy, or nothing missed. */
 function toOwnedMember(entry: PlannedJob): Array<{ key: string; member: GroupMember }> {
 	const { job, plan } = entry;
-	if (
-		job.ownerKey === null ||
-		plan.catchUpAt === null ||
-		job.misfirePolicy !== ScheduledJobMisfirePolicy.CoalesceOwner
-	) {
+	if (plan.catchUpAt === null || job.misfirePolicy !== ScheduledJobMisfirePolicy.CoalesceOwner) {
 		return [];
 	}
 	return [{ key: job.ownerKey, member: { entry, latestMissedAt: plan.catchUpAt.getTime() } }];

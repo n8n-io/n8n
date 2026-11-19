@@ -22,7 +22,7 @@ const onUpdate = () => {
 	<N8nCallout theme="secondary" :iconless="true" style="margin-bottom: var(--spacing--sm)">
 		{{ i18n.baseText('communityNodeUpdateInfo.available') }}
 		<template v-if="props.packageName" #trailingContent>
-			<N8nButton variant="subtle" @click="onUpdate">
+			<N8nButton variant="outline" @click="onUpdate">
 				{{ i18n.baseText('generic.update') }}
 			</N8nButton>
 		</template>

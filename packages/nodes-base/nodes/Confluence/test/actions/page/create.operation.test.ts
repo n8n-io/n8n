@@ -1,4 +1,4 @@
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, requestPath } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 
 import { execute } from '../../../actions/page/create.operation';
@@ -32,7 +32,7 @@ describe('page:create', () => {
 
 		expect(apiRequest).toHaveBeenCalledWith(
 			'POST',
-			'/wiki/api/v2/pages',
+			requestPath`/wiki/api/v2/pages`,
 			{
 				spaceId: '111',
 				status: 'current',
@@ -100,10 +100,25 @@ describe('page:create', () => {
 		expect(apiRequest).not.toHaveBeenCalled();
 	});
 
-	it('rejects an object title instead of creating a page named [object Object]', async () => {
+	// The title was given, it is only the wrong type: "Title is required" would
+	// send the user looking for a missing value
+	it('rejects an object title as the wrong type, not as a missing one', async () => {
 		const ctx = mockExecuteCtx({ ...baseParams, title: { some: 'object' } });
 
-		await expect(execute.call(ctx, 0)).rejects.toThrow('Title is required');
+		await expect(execute.call(ctx, 0)).rejects.toThrow('Title must be text');
+		expect(apiRequest).not.toHaveBeenCalled();
+	});
+
+	it('rejects an ADF body that is not a document before calling the API', async () => {
+		const ctx = mockExecuteCtx({
+			...baseParams,
+			bodyFormat: 'atlas_doc_format',
+			bodyAdf: '{ "foo": "bar" }',
+		});
+
+		await expect(execute.call(ctx, 0)).rejects.toThrow(
+			'ADF JSON body must be a document with a "content" array',
+		);
 		expect(apiRequest).not.toHaveBeenCalled();
 	});
 

@@ -3,7 +3,7 @@ import { N8nTooltip, N8nIcon } from '@n8n/design-system';
 
 import { useI18n, useChat, useOptions } from '@n8n/chat/composables';
 import { chatEventBus } from '@n8n/chat/event-buses';
-import type { ChatMessage } from '@n8n/chat/types';
+import type { ChatMessage, WebsocketSetupPayload } from '@n8n/chat/types';
 
 const props = defineProps<{
 	message: ChatMessage;
@@ -19,10 +19,18 @@ async function repostMessage() {
 		const messageText =
 			'text' in props.message && typeof props.message.text === 'string' ? props.message.text : '';
 		if (messageText.trim()) {
-			await chatStore.sendMessage(
+			const response = await chatStore.sendMessage(
 				messageText,
 				props.message.files ? Array.from(props.message.files) : [],
 			);
+
+			if (response?.executionStarted && response.executionId) {
+				const payload: WebsocketSetupPayload = {
+					executionId: response.executionId,
+					resumeToken: response.resumeToken,
+				};
+				chatEventBus.emit('setupWebsocket', payload);
+			}
 		}
 	}
 }

@@ -1,6 +1,5 @@
 import set from 'lodash/set';
 import {
-	BaseError,
 	NodeOperationError,
 	type IExecuteFunctions,
 	type INodeExecutionData,
@@ -9,6 +8,7 @@ import {
 	type INodeTypeDescription,
 	NodeConnectionTypes,
 } from 'n8n-workflow';
+import { BaseError } from '@n8n/errors';
 
 import { ENABLE_LESS_STRICT_TYPE_VALIDATION } from '../../../utils/constants';
 import { looseTypeValidationProperty } from '../../../utils/descriptions';
@@ -20,7 +20,7 @@ export class FilterV2 implements INodeType {
 	constructor(baseDescription: INodeTypeBaseDescription) {
 		this.description = {
 			...baseDescription,
-			version: [2, 2.1, 2.2, 2.3],
+			version: [2, 2.1, 2.2, 2.3, 2.4],
 			defaults: {
 				name: 'Filter',
 				color: '#229eff',
@@ -44,7 +44,8 @@ export class FilterV2 implements INodeType {
 						filter: {
 							caseSensitive: '={{!$parameter.options.ignoreCase}}',
 							typeValidation: getTypeValidationStrictness(2.1),
-							version: '={{ $nodeVersion >= 2.3 ? 3 : $nodeVersion >= 2.2 ? 2 : 1 }}',
+							version:
+								'={{ $nodeVersion >= 2.4 ? 4 : $nodeVersion >= 2.3 ? 3 : $nodeVersion >= 2.2 ? 2 : 1 }}',
 						},
 					},
 					builderHint: {

@@ -1,0 +1,70 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"dimensionHeaders": {
+			"items": {
+				"properties": {
+					"name": {
+						"type": "string"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"kind": {
+			"type": "string"
+		},
+		"metadata": {
+			"type": "object"
+		},
+		"metricHeaders": {
+			"items": {
+				"properties": {
+					"name": {
+						"type": "string"
+					},
+					"type": {
+						"type": "string"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"rowCount": {
+			"type": "number"
+		},
+		"rows": {
+			"items": {
+				"properties": {
+					"dimensionValues": {
+						"items": {
+							"properties": {
+								"value": {
+									"type": "string"
+								}
+							},
+							"type": "object"
+						},
+						"type": "array"
+					},
+					"metricValues": {
+						"items": {
+							"properties": {
+								"value": {
+									"type": "string"
+								}
+							},
+							"type": "object"
+						},
+						"type": "array"
+					}
+				},
+				"type": ["null", "object"]
+			},
+			"type": "array"
+		}
+	},
+	"type": "object"
+}

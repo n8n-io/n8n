@@ -36,9 +36,7 @@ vi.mock('@/app/composables/useWorkflowHelpers', async (importOriginal) => {
 	};
 });
 vi.mock('@/app/composables/useNodeHelpers', () => ({
-	useNodeHelpers: vi.fn(() => ({
-		updateNodesExecutionIssues: vi.fn(),
-	})),
+	useNodeHelpers: vi.fn(() => ({})),
 }));
 vi.mock('@n8n/i18n', async (importOriginal) => {
 	const actual: Record<string, unknown> = await importOriginal();

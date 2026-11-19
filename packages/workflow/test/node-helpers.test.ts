@@ -16,6 +16,8 @@ import {
 	isTriggerNode,
 	isExecutable,
 	displayParameter,
+	getActiveCredentialTypes,
+	getRequestedCredentialTypes,
 	makeDescription,
 	getUpdatedToolDescription,
 	getToolDescriptionForNode,
@@ -27,6 +29,7 @@ import {
 	isHitlToolType,
 	getNodeOutputs,
 	nodeIssuesToString,
+	mergeIssues,
 	findDisplayedProperty,
 	isTriggerNodeType,
 	getCredentialActivationParameters,
@@ -4475,7 +4478,7 @@ describe('NodeHelpers', () => {
 			expect(nodeIssuesToString({})).toEqual([]);
 		});
 
-		it('flattens every issue type in order (execution, parameters, credentials, input, typeUnknown)', () => {
+		it('flattens every issue type in order and leaves out execution', () => {
 			const issues: INodeIssues = {
 				execution: true,
 				parameters: {
@@ -4496,7 +4499,6 @@ describe('NodeHelpers', () => {
 			};
 
 			expect(nodeIssuesToString(issues, node)).toEqual([
-				'Execution Error.',
 				'Parameter "URL" is required.',
 				'Parameter "URL" must be a string.',
 				'Parameter "Method" is required.',
@@ -4508,6 +4510,16 @@ describe('NodeHelpers', () => {
 
 		it('falls back to a generic typeUnknown message when no node is passed', () => {
 			expect(nodeIssuesToString({ typeUnknown: true })).toEqual(['Node Type is not known.']);
+		});
+	});
+
+	describe('mergeIssues', () => {
+		it('does not copy an execution issue', () => {
+			const destination: INodeIssues = {};
+
+			mergeIssues(destination, { execution: true });
+
+			expect(destination.execution).toBeUndefined();
 		});
 	});
 
@@ -5507,6 +5519,352 @@ describe('NodeHelpers', () => {
 					true,
 				);
 			});
+		});
+	});
+
+	describe('getRequestedCredentialTypes', () => {
+		const makeNode = (node: Partial<INode> = {}): INode => ({
+			id: '12345',
+			name: 'Test Node',
+			typeVersion: 1,
+			type: 'n8n-nodes-base.httpRequest',
+			position: [1, 1],
+			parameters: {},
+			...node,
+		});
+
+		const description: INodeTypeDescription = {
+			name: 'n8n-nodes-base.httpRequest',
+			version: 1,
+			defaults: {},
+			inputs: [],
+			outputs: [],
+			properties: [],
+			displayName: '',
+			group: [],
+			description: '',
+		};
+
+		it('should return the credentials map keys, a named type, and the extended type in order', () => {
+			const node = makeNode({
+				credentials: { slackApi: { id: '1', name: 'Slack' } },
+				parameters: { authentication: 'predefinedCredentialType', nodeCredentialType: 'githubApi' },
+				extendsCredential: 'virusTotalApi',
+			});
+
+			expect(getRequestedCredentialTypes(node, () => description)).toEqual([
+				'slackApi',
+				'githubApi',
+				'virusTotalApi',
+			]);
+		});
+
+		it('should skip a named type it cannot resolve without a description', () => {
+			const node = makeNode({ parameters: { nodeCredentialType: 'githubApi' } });
+
+			expect(getRequestedCredentialTypes(node, () => null)).toEqual([]);
+		});
+
+		it('should not read the description when no parameter names a type', () => {
+			const getDescription = vi.fn(() => description);
+
+			expect(
+				getRequestedCredentialTypes(
+					makeNode({ extendsCredential: 'virusTotalApi' }),
+					getDescription,
+				),
+			).toEqual(['virusTotalApi']);
+			expect(getDescription).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('getActiveCredentialTypes', () => {
+		const makeNode = (parameters: INodeParameters): INode => ({
+			id: '12345',
+			name: 'Test Node',
+			typeVersion: 1,
+			type: 'n8n-nodes-base.testNode',
+			position: [1, 1],
+			parameters,
+		});
+
+		const makeNodeType = (
+			credentials: INodeTypeDescription['credentials'],
+		): INodeTypeDescription => ({
+			name: 'Test Node',
+			version: 1,
+			defaults: {},
+			inputs: [],
+			outputs: [],
+			properties: [],
+			displayName: '',
+			group: [],
+			description: '',
+			credentials,
+		});
+
+		it('should return null when the node type description is unavailable', () => {
+			expect(getActiveCredentialTypes(makeNode({}), null)).toBeNull();
+		});
+
+		it('should include declared credentials without display options', () => {
+			const nodeType = makeNodeType([{ name: 'testApi' }]);
+			expect(getActiveCredentialTypes(makeNode({}), nodeType)).toEqual(new Set(['testApi']));
+		});
+
+		it('should include only declared credentials whose display options match', () => {
+			const nodeType = makeNodeType([
+				{ name: 'oauthApi', displayOptions: { show: { authentication: ['oAuth2'] } } },
+				{ name: 'tokenApi', displayOptions: { show: { authentication: ['accessToken'] } } },
+			]);
+			expect(getActiveCredentialTypes(makeNode({ authentication: 'oAuth2' }), nodeType)).toEqual(
+				new Set(['oauthApi']),
+			);
+		});
+
+		it('should include the type referenced by the nodeCredentialType parameter', () => {
+			const nodeType = makeNodeType([]);
+			const node = makeNode({
+				authentication: 'predefinedCredentialType',
+				nodeCredentialType: 'slackApi',
+			});
+			expect(getActiveCredentialTypes(node, nodeType)).toEqual(new Set(['slackApi']));
+		});
+
+		it('should include the type referenced by the genericAuthType parameter', () => {
+			const nodeType = makeNodeType([]);
+			const node = makeNode({
+				authentication: 'genericCredentialType',
+				genericAuthType: 'httpBasicAuth',
+			});
+			expect(getActiveCredentialTypes(node, nodeType)).toEqual(new Set(['httpBasicAuth']));
+		});
+
+		it('should ignore a stale genericAuthType value left over after switching to predefinedCredentialType', () => {
+			const nodeType: INodeTypeDescription = {
+				...makeNodeType([]),
+				properties: [
+					{
+						displayName: 'Credential Type',
+						name: 'nodeCredentialType',
+						type: 'credentialsSelect',
+						default: '',
+						credentialTypes: ['extends:oAuth2Api'],
+						displayOptions: { show: { authentication: ['predefinedCredentialType'] } },
+					},
+					{
+						displayName: 'Generic Auth Type',
+						name: 'genericAuthType',
+						type: 'credentialsSelect',
+						default: '',
+						credentialTypes: ['has:genericAuth'],
+						displayOptions: { show: { authentication: ['genericCredentialType'] } },
+					},
+				],
+			};
+			// User switched authentication from generic to predefined; genericAuthType's
+			// previous value is still stored on the node even though it's now hidden.
+			const node = makeNode({
+				authentication: 'predefinedCredentialType',
+				nodeCredentialType: 'slackApi',
+				genericAuthType: 'httpBasicAuth',
+			});
+			expect(getActiveCredentialTypes(node, nodeType)).toEqual(new Set(['slackApi']));
+		});
+
+		it('should union declared and parameter-referenced credential types', () => {
+			const nodeType = makeNodeType([
+				{ name: 'httpSslAuth', displayOptions: { show: { provideSslCertificates: [true] } } },
+			]);
+			const node = makeNode({
+				provideSslCertificates: true,
+				authentication: 'genericCredentialType',
+				genericAuthType: 'httpHeaderAuth',
+			});
+			expect(getActiveCredentialTypes(node, nodeType)).toEqual(
+				new Set(['httpSslAuth', 'httpHeaderAuth']),
+			);
+		});
+
+		it('should ignore empty credential-type parameter values', () => {
+			const nodeType = makeNodeType([{ name: 'testApi' }]);
+			const node = makeNode({ nodeCredentialType: '', genericAuthType: '' });
+			expect(getActiveCredentialTypes(node, nodeType)).toEqual(new Set(['testApi']));
+		});
+
+		it.each(['nodeCredentialType', 'genericAuthType'])(
+			'should return null when %s is an expression',
+			(paramName) => {
+				const nodeType = makeNodeType([{ name: 'testApi' }]);
+				const node = makeNode({ [paramName]: '={{ $json.credType }}' });
+				expect(getActiveCredentialTypes(node, nodeType)).toBeNull();
+			},
+		);
+
+		it('should ignore an expression left in a hidden credential-type parameter', () => {
+			const nodeType: INodeTypeDescription = {
+				...makeNodeType([]),
+				properties: [
+					{
+						displayName: 'Credential Type',
+						name: 'nodeCredentialType',
+						type: 'credentialsSelect',
+						default: '',
+						credentialTypes: ['extends:oAuth2Api'],
+						displayOptions: { show: { authentication: ['predefinedCredentialType'] } },
+					},
+					{
+						displayName: 'Generic Auth Type',
+						name: 'genericAuthType',
+						type: 'credentialsSelect',
+						default: '',
+						credentialTypes: ['has:genericAuth'],
+						displayOptions: { show: { authentication: ['genericCredentialType'] } },
+					},
+				],
+			};
+			// The hidden genericAuthType holds an expression from a previous setup. It
+			// resolves to nothing while hidden, so it must not make the active set
+			// indeterminable and stop callers from cleaning up.
+			const node = makeNode({
+				authentication: 'predefinedCredentialType',
+				nodeCredentialType: 'slackApi',
+				genericAuthType: '={{ $json.authType }}',
+			});
+			expect(getActiveCredentialTypes(node, nodeType)).toEqual(new Set(['slackApi']));
+		});
+
+		it('should return null when an expression sits in a displayed credential-type parameter', () => {
+			const nodeType: INodeTypeDescription = {
+				...makeNodeType([]),
+				properties: [
+					{
+						displayName: 'Generic Auth Type',
+						name: 'genericAuthType',
+						type: 'credentialsSelect',
+						default: '',
+						credentialTypes: ['has:genericAuth'],
+						displayOptions: { show: { authentication: ['genericCredentialType'] } },
+					},
+				],
+			};
+			const node = makeNode({
+				authentication: 'genericCredentialType',
+				genericAuthType: '={{ $json.authType }}',
+			});
+			expect(getActiveCredentialTypes(node, nodeType)).toBeNull();
+		});
+
+		describe('with a default-valued authentication parameter', () => {
+			const nodeType: INodeTypeDescription = {
+				...makeNodeType([
+					{ name: 'passwordApi', displayOptions: { show: { authentication: ['password'] } } },
+					{ name: 'tokenApi', displayOptions: { show: { authentication: ['token'] } } },
+				]),
+				properties: [
+					{
+						displayName: 'Authentication',
+						name: 'authentication',
+						type: 'options',
+						options: [
+							{ name: 'Password', value: 'password' },
+							{ name: 'Token', value: 'token' },
+						],
+						default: 'password',
+					},
+				],
+			};
+
+			it('should resolve the default when the parameter is not stored', () => {
+				// Saved nodes omit parameters left at their default value
+				expect(getActiveCredentialTypes(makeNode({ resource: 'entry' }), nodeType)).toEqual(
+					new Set(['passwordApi']),
+				);
+			});
+
+			it('should use the stored value when it is not the default', () => {
+				expect(getActiveCredentialTypes(makeNode({ authentication: 'token' }), nodeType)).toEqual(
+					new Set(['tokenApi']),
+				);
+			});
+
+			it('should not change the node parameters', () => {
+				const node = makeNode({ resource: 'entry' });
+				getActiveCredentialTypes(node, nodeType);
+				expect(node.parameters).toEqual({ resource: 'entry' });
+			});
+		});
+
+		it('should resolve a default-valued parameter that shows a credential-type selector', () => {
+			const nodeType: INodeTypeDescription = {
+				...makeNodeType([]),
+				properties: [
+					{
+						displayName: 'Authentication',
+						name: 'authentication',
+						type: 'options',
+						options: [
+							{ name: 'None', value: 'none' },
+							{ name: 'Predefined', value: 'predefinedCredentialType' },
+						],
+						default: 'predefinedCredentialType',
+					},
+					{
+						displayName: 'Credential Type',
+						name: 'nodeCredentialType',
+						type: 'credentialsSelect',
+						default: '',
+						credentialTypes: ['extends:oAuth2Api'],
+						displayOptions: { show: { authentication: ['predefinedCredentialType'] } },
+					},
+				],
+			};
+			const node = makeNode({ nodeCredentialType: 'slackApi' });
+			expect(getActiveCredentialTypes(node, nodeType)).toEqual(new Set(['slackApi']));
+		});
+
+		it('should evaluate a noDataExpression discriminator by its resolved value', () => {
+			// A discriminator with noDataExpression stored as "=value" resolves to the
+			// literal at execution. The check must see the same literal, not treat the
+			// leading "=" as an expression and report every gated credential.
+			const nodeType: INodeTypeDescription = {
+				...makeNodeType([
+					{ name: 'aApi', displayOptions: { show: { authentication: ['aApi'] } } },
+					{ name: 'bApi', displayOptions: { show: { authentication: ['bApi'] } } },
+				]),
+				properties: [
+					{
+						displayName: 'Authentication',
+						name: 'authentication',
+						type: 'options',
+						noDataExpression: true,
+						options: [
+							{ name: 'A', value: 'aApi' },
+							{ name: 'B', value: 'bApi' },
+						],
+						default: 'aApi',
+					},
+				],
+			};
+			expect(getActiveCredentialTypes(makeNode({ authentication: '=bApi' }), nodeType)).toEqual(
+				new Set(['bApi']),
+			);
+		});
+
+		it('should return null when evaluating the node configuration throws', () => {
+			const nodeType = makeNodeType([{ name: 'testApi' }]);
+			const throwingParameters = new Proxy(
+				{},
+				{
+					get() {
+						throw new Error('malformed parameters');
+					},
+					ownKeys() {
+						throw new Error('malformed parameters');
+					},
+				},
+			) as INodeParameters;
+			expect(getActiveCredentialTypes(makeNode(throwingParameters), nodeType)).toBeNull();
 		});
 	});
 

@@ -1,35 +1,90 @@
 {
-	"type": "object",
-	"properties": {
-		"object": {
-			"type": "string"
-		},
-		"id": {
-			"type": "string"
-		},
-		"name": {
-			"type": ["string", "null"]
-		},
-		"avatar_url": {
-			"type": ["string", "null"]
-		},
-		"type": {
-			"type": "string"
-		},
-		"person": {
-			"type": "object",
-			"properties": {
-				"email": {
-					"type": "string"
-				},
-				"email_verified": {
-					"type": "boolean"
-				}
-			}
-		},
-		"bot": {
-			"type": "object"
-		}
-	},
-	"version": 1
+    "type": "object",
+    "properties": {
+        "avatar_url": {
+            "type": [
+                "string",
+                "null"
+            ]
+        },
+        "bot": {
+            "type": "object",
+            "properties": {
+                "owner": {
+                    "type": "object",
+                    "properties": {
+                        "type": {
+                            "type": "string"
+                        },
+                        "user": {
+                            "type": "object",
+                            "properties": {
+                                "id": {
+                                    "type": "string"
+                                },
+                                "name": {
+                                    "type": "string"
+                                },
+                                "object": {
+                                    "type": "string"
+                                },
+                                "person": {
+                                    "type": "object",
+                                    "properties": {
+                                        "email": {
+                                            "type": "string"
+                                        },
+                                        "email_verified": {
+                                            "type": "boolean"
+                                        }
+                                    }
+                                },
+                                "type": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                },
+                "workspace_id": {
+                    "type": "string"
+                },
+                "workspace_limits": {
+                    "type": "object",
+                    "properties": {
+                        "max_file_upload_size_in_bytes": {
+                            "type": "integer"
+                        }
+                    }
+                },
+                "workspace_name": {
+                    "type": "string"
+                }
+            }
+        },
+        "id": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "object": {
+            "type": "string"
+        },
+        "person": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "email_verified": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "type": {
+            "type": "string"
+        }
+    },
+    "version": 2
 }

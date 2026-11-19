@@ -98,12 +98,12 @@ const mcpServersOutputSchema = z.union([
 
 const DESCRIPTION = `The user's MCP servers: connections to third-party services that persist across conversations, exposing tools you can use here. Not \`credentials\`, which only stores what a node authenticates with when a workflow runs, and not for building — a workflow that talks to a service uses that service's node and credential. What separates them is who runs it: reading, fetching or summarizing a service's data yourself, in this conversation, is this tool; a workflow the user runs later is a node.
 \`connected\`: which servers are connected, and each one's tool count. Only the user connects or disconnects, so a server missing here is one they never connected or disconnected — ask here instead of answering from the conversation. A connected server with no tools has a broken or expired connection.
-\`details\`: one server's tool names; \`connected\` never returns them. \`search_tools\` finds a tool by keyword.
-\`search\`: find a server for a service nothing connected covers, before saying it is unavailable or serving that request another way.
+\`details\`: one server's tool names; \`connected\` never returns them. \`find_tools\` finds a tool by keyword.
+\`search\`: find a server for a service nothing connected covers, before saying it is unavailable or serving that request another way. This is a read-only registry lookup. Call it without asking the user for permission to search. It does not connect a server or access the user's service data.
 \`connect\`: offer servers for the user to connect, resuming once they connect or skip. Only they can complete it; also use it to switch a credential or reconnect a broken server. In the same turn, first write one sentence telling them what connecting unlocks.`;
 
 const NOTHING_CONNECTED_HINT =
-	'Nothing connected. Only the user can connect a server: `search` for it, then `connect` it.';
+	'Nothing connected. To use a service in this conversation, call `search` now without asking permission. This only searches the registry. Only the user can connect a server through `connect`.';
 
 const BROKEN_CONNECTION_HINT =
 	'No tools means a broken or expired connection — its tools do not exist here, so never guess their names. Tell the user, then `connect` its slug to reconnect it.';
@@ -172,7 +172,7 @@ async function handleSearch(
 ): Promise<z.infer<typeof searchOutputSchema>> {
 	const mcpService = requireMcpService(context);
 	const matches = await mcpService.search(queries);
-	// Field by field: `credentialType` is for the connect card, not the model.
+	// Field by field: credential options are for the connect card, not the model.
 	const results = matches.slice(0, MAX_RESULTS).map(({ slug, title, description, tools }) => ({
 		slug,
 		title,
@@ -209,7 +209,7 @@ async function resumeConnect(
 
 	return {
 		connectedSlugs,
-		message: `Connected: ${connectedSlugs.join(', ')}. Their tools are available now — find them with \`search_tools\` and carry on with the request.`,
+		message: `Connected: ${connectedSlugs.join(', ')}. Their tools load on the user's next message. Tell the user the connection worked and ask them to send their request again to continue.`,
 	};
 }
 
@@ -237,7 +237,7 @@ async function handleConnect(
 			servers: servers.map((server) => ({
 				serverSlug: server.slug,
 				title: server.title,
-				credentialType: server.credentialType,
+				usesCredentials: server.usesCredentials,
 				...(server.description ? { tagline: server.description } : {}),
 			})),
 		},

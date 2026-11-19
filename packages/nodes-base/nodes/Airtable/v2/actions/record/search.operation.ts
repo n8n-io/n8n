@@ -4,6 +4,7 @@ import type {
 	INodeProperties,
 	IExecuteFunctions,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { generatePairedItemData, updateDisplayOptions } from '../../../../../utils/utilities';
 import type { IRecord } from '../../helpers/interfaces';
@@ -153,7 +154,7 @@ export async function execute(
 	const returnData: INodeExecutionData[] = [];
 	const nodeVersion = this.getNode().typeVersion;
 
-	const endpoint = `${base}/${table}`;
+	const endpoint = requestPath`${base}/${table}`;
 
 	let itemsLength = items.length ? 1 : 0;
 	let fallbackPairedItems;

@@ -6,9 +6,10 @@
  * executions filter+dedupe, last-successful-execution via id reference,
  * dispose lifecycle.
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import type { AgentNodeProgress } from '@n8n/api-types';
 import { setActivePinia, createPinia, getActivePinia } from 'pinia';
-import { defineComponent, provide, shallowRef } from 'vue';
+import { defineComponent, isProxy, provide, shallowRef, watch } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -23,7 +24,12 @@ import {
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 import { useExecutionDataStore, createExecutionDataId } from '@/app/stores/executionData.store';
-import { createTestTaskData, createTestWorkflowExecutionResponse } from '@/__tests__/mocks';
+import {
+	createTestNode,
+	createTestTaskData,
+	createTestWorkflow,
+	createTestWorkflowExecutionResponse,
+} from '@/__tests__/mocks';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import {
 	createRunExecutionData,
@@ -51,6 +57,24 @@ function makeExecutionSummary(overrides: Partial<ExecutionSummary> = {}): Execut
 		startedAt: new Date(),
 		...overrides,
 	} as ExecutionSummary;
+}
+
+function makeAgentProgress(overrides: Partial<AgentNodeProgress['data']> = {}): AgentNodeProgress {
+	return {
+		type: 'agentNodeProgress',
+		data: {
+			executionId: 'exec-1',
+			nodeId: 'node-1',
+			nodeName: 'Message an Agent',
+			runIndex: 0,
+			itemIndex: 0,
+			sequenceNumber: 0,
+			toolCallId: 'tc-1',
+			capability: { kind: 'tool', name: 'lookup' },
+			status: 'running',
+			...overrides,
+		},
+	};
 }
 
 describe('workflowExecutionState.store', () => {
@@ -324,6 +348,19 @@ describe('workflowExecutionState.store', () => {
 					'success',
 				);
 				expect(placeholder.execution?.status).toBe('canceled');
+			});
+
+			it('keeps the pending scaffold in step with the filtered IN_PROGRESS run data', () => {
+				store.markExecutionAsStopped({
+					status: 'canceled',
+					startedAt: new Date('2023-01-01T10:00:00Z'),
+					stoppedAt: new Date('2023-01-01T10:05:00Z'),
+					mode: 'manual',
+				});
+
+				const runData = store.pendingExecution?.data?.resultData.runData;
+				expect(runData?.node1).toHaveLength(1);
+				expect(runData?.node1[0].executionStatus).toBe('success');
 			});
 
 			it('mirrors stopData onto the pendingExecution ref', () => {
@@ -621,6 +658,42 @@ describe('workflowExecutionState.store', () => {
 					createWorkflowDocumentId('wf-1'),
 				);
 				expect(executionStateStore.activeExecutionRunData).toBeNull();
+			});
+
+			it.each([
+				{ name: 'updateNodeExecutionStatus' as const },
+				{ name: 'updateNodeExecutionRunData' as const },
+			])('fires a sync watcher with the new run data after $name', ({ name }) => {
+				const executionStateStore = useWorkflowExecutionStateStore(
+					createWorkflowDocumentId('wf-1'),
+				);
+				const executionDataStore = useExecutionDataStore(createExecutionDataId('exec-1'));
+				executionDataStore.setExecution(
+					makeExecution({
+						id: 'exec-1',
+						data: createRunExecutionData({
+							resultData: {
+								runData: {
+									NodeA: [createTestTaskData({ executionIndex: 0, executionStatus: 'running' })],
+								},
+							},
+						}),
+					}),
+				);
+				executionStateStore.setActiveExecutionId('exec-1');
+				const spy = vi.fn();
+				watch(() => executionStateStore.activeExecutionRunData, spy, { flush: 'sync' });
+
+				executionDataStore[name]({
+					executionId: 'exec-1',
+					nodeName: 'NodeA',
+					data: createTestTaskData({ executionIndex: 0, executionStatus: 'error' }),
+					itemCountByConnectionType: {},
+				} as never);
+
+				expect(spy).toHaveBeenCalledTimes(1);
+				expect(spy.mock.calls[0][0]).toBe(executionDataStore.executionRunData);
+				expect(spy.mock.calls[0][0].NodeA[0].executionStatus).toBe('error');
 			});
 		});
 
@@ -1297,6 +1370,39 @@ describe('workflowExecutionState.store', () => {
 			expect(uiStore.lastSelectedNode).toBe('Untouched');
 		});
 
+		it('keeps a pending run renamed through promotion', () => {
+			const executionStateStore = useWorkflowExecutionStateStore(createWorkflowDocumentId('wf-1'));
+			executionStateStore.setWorkflowExecutionData(
+				makeExecution({
+					id: IN_PROGRESS_EXECUTION_ID,
+					executedNode: 'Webhook',
+					workflowData: createTestWorkflow({
+						nodes: [createTestNode({ id: 'webhook', name: 'Webhook' })],
+					}),
+					data: createRunExecutionData({
+						resultData: {
+							runData: { Webhook: [createTestTaskData({ executionStatus: 'waiting' })] },
+						},
+					}),
+				}),
+			);
+			expect(isProxy(executionStateStore.pendingExecution)).toBe(false);
+
+			executionStateStore.renameActiveExecutionNode({ old: 'Webhook', new: 'Hook' });
+
+			const pending = executionStateStore.activeExecution;
+			expect(pending?.workflowData.nodes.map((node) => node.name)).toEqual(['Hook']);
+			expect(pending?.executedNode).toBe('Hook');
+
+			executionStateStore.promotePendingExecution('exec-1');
+
+			const promoted = useExecutionDataStore(createExecutionDataId('exec-1')).execution;
+			expect(promoted?.workflowData.nodes.map((node) => node.name)).toEqual(['Hook']);
+			expect(promoted?.executedNode).toBe('Hook');
+			expect(Object.keys(promoted?.data?.resultData.runData ?? {})).toEqual(['Hook']);
+			expect(isProxy(promoted?.data)).toBe(false);
+		});
+
 		it('routes through the displayedExecutionId when active is cleared', () => {
 			const executionStateStore = useWorkflowExecutionStateStore(createWorkflowDocumentId('wf-1'));
 			const executionDataStore = useExecutionDataStore(createExecutionDataId('exec-1'));
@@ -1368,7 +1474,7 @@ describe('workflowExecutionState.store', () => {
 			executionStateStore.setSelectedTriggerNodeName('Trigger');
 			executionStateStore.setCurrentWorkflowExecutions([makeExecutionSummary({ id: '1' })]);
 			executionStateStore.setLastSuccessfulExecutionId('last-1');
-			executionStateStore.executingNode.addExecutingNode('Node', 0);
+			executionStateStore.executingNode.addExecutingNode('Node', '1', 0);
 
 			executionStateStore.resetExecutionState();
 
@@ -1435,7 +1541,7 @@ describe('workflowExecutionState.store', () => {
 				createWorkflowDocumentId('wf-1'),
 			);
 
-			workflowExecutionStateStore.executingNode.addExecutingNode('Node A', 0);
+			workflowExecutionStateStore.executingNode.addExecutingNode('Node A', '1', 0);
 
 			expect(workflowExecutionStateStore.executingNode.isNodeExecuting('Node A')).toBe(true);
 			expect(workflowExecutionStateStore.executingNode.lastAddedExecutingNode).toBe('Node A');
@@ -1445,7 +1551,7 @@ describe('workflowExecutionState.store', () => {
 			const a = useWorkflowExecutionStateStore(createWorkflowDocumentId('wf-a'));
 			const b = useWorkflowExecutionStateStore(createWorkflowDocumentId('wf-b'));
 
-			a.executingNode.addExecutingNode('Node A', 0);
+			a.executingNode.addExecutingNode('Node A', '1', 0);
 
 			expect(a.executingNode.isNodeExecuting('Node A')).toBe(true);
 			expect(b.executingNode.isNodeExecuting('Node A')).toBe(false);
@@ -1478,14 +1584,104 @@ describe('workflowExecutionState.store', () => {
 				parameters: {},
 			});
 
-			executionStateStore.executingNode.addExecutingNode('Node A', 0);
-			executionStateStore.executingNode.addExecutingNode('Node B', 1);
+			executionStateStore.executingNode.addExecutingNode('Node A', '1', 0);
+			executionStateStore.executingNode.addExecutingNode('Node B', '1', 1);
 
 			expect(executionStateStore.executingNode.isNodeExecuting('Node A')).toBe(false);
 			expect(executionStateStore.executingNode.isNodeExecuting('Node B')).toBe(true);
 			// The canvas projection sees exactly one running node.
 			expect(executionStateStore.executionRunningByNodeId.get('a-id')?.value).toBe(false);
 			expect(executionStateStore.executionRunningByNodeId.get('b-id')?.value).toBe(true);
+		});
+
+		describe('by execution ID', () => {
+			const V2_ID = '019a3b2c-4d5e-7f60-8a1b-2c3d4e5f6a7b';
+
+			function setUpTwoNodes(engineType: 'v1' | 'v2') {
+				const id = createWorkflowDocumentId(`wf-engine-${engineType}`);
+				const documentStore = useWorkflowDocumentStore(id);
+				const executionStateStore = useWorkflowExecutionStateStore(id);
+
+				documentStore.mergeSettings({ engineType });
+				for (const [nodeId, name] of [
+					['a-id', 'Node A'],
+					['b-id', 'Node B'],
+				]) {
+					documentStore.addNode({
+						id: nodeId,
+						name,
+						type: 'n8n-nodes-base.set',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					});
+				}
+
+				return executionStateStore;
+			}
+
+			it('shows every running node as executing for an engine v2 execution ID', () => {
+				const executionStateStore = setUpTwoNodes('v2');
+
+				executionStateStore.executingNode.addExecutingNode('Node A', V2_ID, 0, 0);
+				executionStateStore.executingNode.addExecutingNode('Node B', V2_ID, 1, 1);
+
+				expect(executionStateStore.executionRunningByNodeId.get('a-id')?.value).toBe(true);
+				expect(executionStateStore.executionRunningByNodeId.get('b-id')?.value).toBe(true);
+
+				executionStateStore.executingNode.removeExecutingNode('Node A', 0);
+
+				expect(executionStateStore.executionRunningByNodeId.get('a-id')?.value).toBe(false);
+				expect(executionStateStore.executionRunningByNodeId.get('b-id')?.value).toBe(true);
+			});
+
+			it('shows "waiting for next" only on the node that finished last for an engine v2 execution ID', () => {
+				const executionStateStore = setUpTwoNodes('v2');
+				useExecutionDataStore(createExecutionDataId(V2_ID)).setExecution(
+					makeExecution({ id: V2_ID, status: 'running', finished: false }),
+				);
+				executionStateStore.setActiveExecutionId(V2_ID);
+
+				executionStateStore.executingNode.addExecutingNode('Node B', V2_ID, 0, 0);
+				executionStateStore.executingNode.addExecutingNode('Node A', V2_ID, 1, 1);
+				executionStateStore.executingNode.removeExecutingNode('Node A', 1);
+				executionStateStore.executingNode.removeExecutingNode('Node B', 0);
+
+				expect(executionStateStore.executionRunningByNodeId.get('a-id')?.value).toBe(false);
+				expect(executionStateStore.executionRunningByNodeId.get('b-id')?.value).toBe(false);
+				expect(executionStateStore.executionWaitingForNextByNodeId.get('a-id')?.value).toBe(false);
+				expect(executionStateStore.executionWaitingForNextByNodeId.get('b-id')?.value).toBe(true);
+			});
+
+			it('shows only the latest node as executing for a numeric execution ID', () => {
+				const executionStateStore = setUpTwoNodes('v1');
+
+				executionStateStore.executingNode.addExecutingNode('Node A', '1', 0, 0);
+				executionStateStore.executingNode.addExecutingNode('Node B', '1', 1, 1);
+
+				expect(executionStateStore.executionRunningByNodeId.get('a-id')?.value).toBe(false);
+				expect(executionStateStore.executionRunningByNodeId.get('b-id')?.value).toBe(true);
+			});
+
+			it('shows every running node for an engine v2 execution ID when the setting is v1', () => {
+				const executionStateStore = setUpTwoNodes('v1');
+
+				executionStateStore.executingNode.addExecutingNode('Node A', V2_ID, 0, 0);
+				executionStateStore.executingNode.addExecutingNode('Node B', V2_ID, 1, 1);
+
+				expect(executionStateStore.executionRunningByNodeId.get('a-id')?.value).toBe(true);
+				expect(executionStateStore.executionRunningByNodeId.get('b-id')?.value).toBe(true);
+			});
+
+			it('shows only the latest node for a numeric execution ID when the setting is v2', () => {
+				const executionStateStore = setUpTwoNodes('v2');
+
+				executionStateStore.executingNode.addExecutingNode('Node A', '1', 0, 0);
+				executionStateStore.executingNode.addExecutingNode('Node B', '1', 1, 1);
+
+				expect(executionStateStore.executionRunningByNodeId.get('a-id')?.value).toBe(false);
+				expect(executionStateStore.executionRunningByNodeId.get('b-id')?.value).toBe(true);
+			});
 		});
 	});
 
@@ -1555,6 +1751,115 @@ describe('workflowExecutionState.store', () => {
 
 			// resetExecutionState must complete without error and produce no surprising side effects.
 			expect(() => executionStateStore.resetExecutionState()).not.toThrow();
+		});
+	});
+
+	describe('agent capability progress', () => {
+		let store: ReturnType<typeof useWorkflowExecutionStateStore>;
+
+		beforeEach(() => {
+			vi.useFakeTimers();
+			vi.setSystemTime(new Date('2026-01-01T00:00:00Z'));
+			store = useWorkflowExecutionStateStore(createWorkflowDocumentId('wf-agent-progress'));
+			store.setActiveExecutionId('exec-1');
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		it('ignores events for another execution and stale sequence numbers', () => {
+			store.handleAgentNodeProgress(makeAgentProgress({ executionId: 'exec-other' }));
+			expect(store.activeAgentCapabilityKeysByNodeId.size).toBe(0);
+
+			store.handleAgentNodeProgress(makeAgentProgress({ sequenceNumber: 1 }));
+			store.handleAgentNodeProgress(makeAgentProgress({ sequenceNumber: 2, status: 'succeeded' }));
+			store.handleAgentNodeProgress(makeAgentProgress({ sequenceNumber: 1, status: 'running' }));
+			vi.advanceTimersByTime(300);
+
+			expect(store.activeAgentCapabilityKeysByNodeId.size).toBe(0);
+		});
+
+		it('keeps fast calls visible for at least 300 ms', () => {
+			store.handleAgentNodeProgress(makeAgentProgress());
+			vi.advanceTimersByTime(100);
+			store.handleAgentNodeProgress(makeAgentProgress({ sequenceNumber: 1, status: 'succeeded' }));
+
+			vi.advanceTimersByTime(199);
+			expect(store.activeAgentCapabilityKeysByNodeId.get('node-1')).toEqual(
+				new Set(['tool:lookup']),
+			);
+
+			vi.advanceTimersByTime(1);
+			expect(store.activeAgentCapabilityKeysByNodeId.size).toBe(0);
+		});
+
+		it('keeps a tool active until every concurrent call finishes', () => {
+			store.handleAgentNodeProgress(makeAgentProgress({ toolCallId: 'tc-1' }));
+			store.handleAgentNodeProgress(makeAgentProgress({ toolCallId: 'tc-2', sequenceNumber: 1 }));
+			store.handleAgentNodeProgress(
+				makeAgentProgress({ toolCallId: 'tc-1', sequenceNumber: 2, status: 'succeeded' }),
+			);
+			vi.advanceTimersByTime(300);
+
+			expect(store.activeAgentCapabilityKeysByNodeId.get('node-1')).toEqual(
+				new Set(['tool:lookup']),
+			);
+
+			store.handleAgentNodeProgress(
+				makeAgentProgress({ toolCallId: 'tc-2', sequenceNumber: 3, status: 'failed' }),
+			);
+			expect(store.activeAgentCapabilityKeysByNodeId.size).toBe(0);
+		});
+
+		it('accepts reordered terminal events for different concurrent calls', () => {
+			store.handleAgentNodeProgress(makeAgentProgress({ toolCallId: 'tc-1' }));
+			store.handleAgentNodeProgress(makeAgentProgress({ toolCallId: 'tc-2', sequenceNumber: 1 }));
+			store.handleAgentNodeProgress(
+				makeAgentProgress({ toolCallId: 'tc-2', sequenceNumber: 3, status: 'succeeded' }),
+			);
+			store.handleAgentNodeProgress(
+				makeAgentProgress({ toolCallId: 'tc-1', sequenceNumber: 2, status: 'succeeded' }),
+			);
+
+			vi.advanceTimersByTime(300);
+
+			expect(store.activeAgentCapabilityKeysByNodeId.size).toBe(0);
+		});
+
+		it('prefers skill id and falls back to skill name', () => {
+			store.handleAgentNodeProgress(
+				makeAgentProgress({
+					toolCallId: 'tc-id',
+					capability: { kind: 'skill', id: 'skill-1', name: 'Research' },
+				}),
+			);
+			store.handleAgentNodeProgress(
+				makeAgentProgress({
+					toolCallId: 'tc-name',
+					sequenceNumber: 1,
+					capability: { kind: 'skill', name: 'Writing' },
+				}),
+			);
+
+			expect(store.activeAgentCapabilityKeysByNodeId.get('node-1')).toEqual(
+				new Set(['skill:id:skill-1', 'skill:name:Writing']),
+			);
+		});
+
+		it('clears progress immediately for node and execution lifecycle cleanup', () => {
+			store.handleAgentNodeProgress(makeAgentProgress());
+			store.clearAgentNodeProgress('Message an Agent');
+			expect(store.activeAgentCapabilityKeysByNodeId.size).toBe(0);
+
+			store.handleAgentNodeProgress(makeAgentProgress({ sequenceNumber: 1 }));
+			store.resetExecutionState();
+			expect(store.activeAgentCapabilityKeysByNodeId.size).toBe(0);
+
+			store.setActiveExecutionId('exec-1');
+			store.handleAgentNodeProgress(makeAgentProgress());
+			store.markExecutionAsStopped();
+			expect(store.activeAgentCapabilityKeysByNodeId.size).toBe(0);
 		});
 	});
 

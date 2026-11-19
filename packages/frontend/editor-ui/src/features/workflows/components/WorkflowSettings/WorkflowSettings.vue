@@ -11,7 +11,9 @@ import {
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	NODE_CREATOR_OPEN_SOURCES,
 	TIME_SAVED_NODE_TYPE,
+	EXECUTE_WORKFLOW_NODE_TYPE,
 } from '@/app/constants';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 
 import { EXECUTION_LOGIC_V2_EXPERIMENT } from '@/app/constants/experiments';
 import {
@@ -24,6 +26,7 @@ import {
 	N8nIconButton,
 	N8nOption,
 	N8nSelect,
+	N8nSwitch,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
@@ -36,6 +39,7 @@ import {
 	BINARY_MODE_COMBINED,
 	BINARY_MODE_SEPARATE,
 	channelsToPolicy,
+	pickVersionedSettings,
 	policyToChannels,
 } from 'n8n-workflow';
 import { SYSTEM_RESOLVER_ID } from '@n8n/api-types';
@@ -55,8 +59,8 @@ import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useDebounce } from '@n8n/composables/useDebounce';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
-import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
-import RedactionMembersModal from '@/app/components/RedactionMembersModal.vue';
+import { useMcp } from '@n8n/frontend-module-mcp';
+import RedactionMembersModal from '@/features/workflows/components/WorkflowSettings/RedactionMembersModal.vue';
 import { useGlobalLinkActions } from '@/app/composables/useGlobalLinkActions';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
@@ -67,7 +71,7 @@ import type { RedactionFloor } from '@n8n/api-types';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import WorkflowCustomTelemetryTags from '@/features/workflows/components/WorkflowSettings/WorkflowCustomTelemetryTags.vue';
 
-import { ElCol, ElRow, ElSwitch } from 'element-plus';
+import { ElCol, ElRow } from 'element-plus';
 
 const i18n = useI18n();
 const externalHooks = useExternalHooks();
@@ -93,6 +97,7 @@ const canUpdateCredentialResolver = hasPermission(['rbac'], {
 
 const rootStore = useRootStore();
 const settingsStore = useSettingsStore();
+const nodeTypesStore = useNodeTypesStore();
 const sourceControlStore = useSourceControlStore();
 const collaborationStore = useCollaborationStore();
 const workflowsStore = useWorkflowsStore();
@@ -198,6 +203,8 @@ const helpTexts = computed(() => ({
 	workflowCallerIds: i18n.baseText('workflowSettings.helpTexts.workflowCallerIds'),
 	redactProductionData: i18n.baseText('workflowSettings.helpTexts.redactProductionData'),
 	redactManualData: i18n.baseText('workflowSettings.helpTexts.redactManualData'),
+	redactCallerExecutions: i18n.baseText('workflowSettings.helpTexts.redactCallerExecutions'),
+	engineType: i18n.baseText('workflowSettings.helpTexts.engineType'),
 }));
 
 const defaultValues = ref({
@@ -208,6 +215,7 @@ const defaultValues = ref({
 	saveManualExecutions: false,
 	workflowCallerPolicy: 'workflowsFromSameOwner',
 	availableInMCP: false,
+	redactCallerExecutions: true,
 });
 
 const executionLogic = computed(() => {
@@ -250,6 +258,31 @@ const isDataRedactionLicensed = computed(
 
 const isRedactionSettingVisible = computed(() => settingsStore.isModuleActive('redaction'));
 
+const isEngineTypeSettingVisible = computed(() => settingsStore.isModuleActive('engine-v2'));
+
+const engineTypeOptions = computed(() => [
+	{ key: 'v1', value: i18n.baseText('workflowSettings.engineType.v1') },
+	{ key: 'v2', value: i18n.baseText('workflowSettings.engineType.v2') },
+]);
+
+// The backend runs a workflow without `engineType` on v1. Show that as v1, but write the
+// value only when the user selects an option.
+const engineType = computed({
+	get(): 'v1' | 'v2' {
+		return workflowSettings.value.engineType ?? 'v1';
+	},
+	set(value: 'v1' | 'v2') {
+		workflowSettings.value.engineType = value;
+	},
+});
+
+// Production keeps running the published engine until the user publishes again.
+const isEngineTypeChangePendingPublish = computed(() => {
+	const activeVersion = workflowDocumentStore.value.activeVersion;
+	if (!activeVersion) return false;
+	return pickVersionedSettings(activeVersion.settings).engineType !== engineType.value;
+});
+
 const isProductionRedactionLockedByFloor = computed(
 	() => instanceRedactionFloor.value === 'production' || instanceRedactionFloor.value === 'all',
 );
@@ -284,6 +317,14 @@ const manualRedactionLockReason = computed(() =>
 
 const isProductionRedactionLocked = computed(() => productionRedactionLockReason.value !== null);
 const isManualRedactionLocked = computed(() => manualRedactionLockReason.value !== null);
+
+// Turning the setting off lowers redaction, and turning it on raises it.
+const isCallerRedactionLocked = computed(() => {
+	if (!isDataRedactionLicensed.value) return false;
+	return workflowSettings.value.redactCallerExecutions !== false
+		? !projectPermissions.value.workflow.disableRedaction
+		: !projectPermissions.value.workflow.enableRedaction;
+});
 
 const redactionMembersModalOpen = ref(false);
 
@@ -339,6 +380,11 @@ const redactManualData = computed({
 		}
 	},
 });
+
+// Only a workflow that redacts a channel has redaction to pass to its callers.
+const isCallerRedactionSettingVisible = computed(
+	() => redactProductionData.value === 'redact' || redactManualData.value === 'redact',
+);
 
 // Workflow-level invariant: manual redaction requires production redaction
 // (mirrors the instance-level "production-only or production+manual" rule).
@@ -446,7 +492,7 @@ const loadWorkflowCallerPolicyOptions = async () => {
 		{
 			key: 'workflowsFromSameOwner',
 			value: i18n.baseText(
-				workflow.value.homeProject?.type === ProjectTypes.Personal
+				workflow.value?.homeProject?.type === ProjectTypes.Personal
 					? 'workflowSettings.callerPolicy.options.workflowsFromPersonalProject'
 					: 'workflowSettings.callerPolicy.options.workflowsFromTeamProject',
 				{
@@ -811,9 +857,14 @@ const toggleAvailableInMCP = () => {
 	workflowSettings.value.availableInMCP = !workflowSettings.value.availableInMCP;
 };
 
-const updateTimeSavedPerExecution = (value: string) => {
-	const numValue = parseInt(value, 10);
-	workflowSettings.value.timeSavedPerExecution = isNaN(numValue)
+const toggleRedactCallerExecutions = () => {
+	workflowSettings.value.redactCallerExecutions =
+		workflowSettings.value.redactCallerExecutions === false;
+};
+
+const updateTimeSavedPerExecution = (value: number | null | undefined) => {
+	const numValue = typeof value === 'number' && Number.isFinite(value) ? Math.trunc(value) : NaN;
+	workflowSettings.value.timeSavedPerExecution = Number.isNaN(numValue)
 		? undefined
 		: numValue < 0
 			? 0
@@ -838,8 +889,8 @@ onMounted(async () => {
 
 	if (!workflowsStore.isWorkflowSaved[workflowDocumentStore.value.workflowId]) {
 		toast.showMessage({
-			title: 'No workflow active',
-			message: 'No workflow active to display settings of.',
+			title: i18n.baseText('workflowSettings.showMessage.noWorkflowActive.title'),
+			message: i18n.baseText('workflowSettings.showMessage.noWorkflowActive.message'),
 			type: 'error',
 			duration: 0,
 		});
@@ -880,8 +931,8 @@ onMounted(async () => {
 
 		await Promise.all(promises);
 	} catch (error) {
-		toast.showError(error, 'Problem loading settings', {
-			message: 'The following error occurred loading the data:',
+		toast.showError(error, i18n.baseText('workflowSettings.showError.loadSettings.title'), {
+			message: i18n.baseText('workflowSettings.showError.loadSettings.message'),
 		});
 	}
 
@@ -913,7 +964,7 @@ onMounted(async () => {
 		workflowSettingsData.callerPolicy = defaultValues.value
 			.workflowCallerPolicy as WorkflowSettings.CallerPolicy;
 	}
-	if (settingsStore.isExecuteWorkflowNodeExcluded) {
+	if (nodeTypesStore.isNodeTypeUnavailable(EXECUTE_WORKFLOW_NODE_TYPE)) {
 		workflowSettingsData.callerPolicy = 'none';
 	}
 	if (workflowSettingsData.executionTimeout === undefined) {
@@ -931,6 +982,9 @@ onMounted(async () => {
 	if (workflowSettingsData.availableInMCP === undefined) {
 		workflowSettingsData.availableInMCP = defaultValues.value.availableInMCP;
 	}
+	if (workflowSettingsData.redactCallerExecutions === undefined) {
+		workflowSettingsData.redactCallerExecutions = defaultValues.value.redactCallerExecutions;
+	}
 
 	originalBinaryMode.value = workflowSettingsData.binaryMode;
 	workflowSettings.value = workflowSettingsData;
@@ -941,9 +995,10 @@ onMounted(async () => {
 	// Fetch the instance redaction floor AFTER workflowSettings has been assigned, so
 	// the floor-coercion watch sees the loaded settings (not the initial empty object).
 	// The FE gates this fetch on the `DataRedaction` license, while the endpoint itself is
-	// gated by `feat:personalSpacePolicy` + `securitySettings:manage`. A license mismatch
-	// (one licensed, the other not) is intentionally absorbed by the try/catch fail-open
-	// below: the floor stays `'off'` and no enforcement is applied client-side.
+	// gated by `feat:personalSpacePolicy` or `feat:workflowReviews`, plus
+	// `securitySettings:manage`. A license mismatch (one licensed, the other not) is
+	// intentionally absorbed by the try/catch fail-open below: the floor stays `'off'`
+	// and no enforcement is applied client-side.
 	if (isDataRedactionLicensed.value) {
 		try {
 			const response = await securitySettingsApi.getSecuritySettings(rootStore.restApiContext);
@@ -1014,6 +1069,46 @@ onBeforeUnmount(() => {
 				:class="$style['workflow-settings']"
 				data-test-id="workflow-settings-dialog"
 			>
+				<ElRow v-if="isEngineTypeSettingVisible" data-test-id="workflow-settings-engine-type">
+					<ElCol :span="10" :class="$style['setting-name']">
+						{{ i18n.baseText('workflowSettings.engineType') }}
+						<N8nTooltip placement="top">
+							<template #content>
+								<div v-text="helpTexts.engineType"></div>
+							</template>
+							<N8nIcon icon="circle-help" />
+						</N8nTooltip>
+						<N8nTooltip v-if="isEngineTypeChangePendingPublish" placement="top">
+							<template #content>
+								{{ i18n.baseText('workflowSettings.engineType.appliesOnPublish') }}
+							</template>
+							<N8nBadge
+								variant="warning"
+								leading-icon="clock"
+								:class="$style['engine-type-pending-badge']"
+								data-test-id="workflow-settings-engine-type-pending-publish"
+							>
+								{{ i18n.baseText('workflowSettings.engineType.appliesOnPublish.badge') }}
+							</N8nBadge>
+						</N8nTooltip>
+					</ElCol>
+					<ElCol :span="14" class="ignore-key-press-canvas">
+						<N8nSelect
+							v-model="engineType"
+							size="medium"
+							:disabled="isWorkflowSettingsReadOnly"
+							:limit-popper-width="true"
+							data-test-id="workflow-settings-engine-type-select"
+						>
+							<N8nOption
+								v-for="option in engineTypeOptions"
+								:key="option.key"
+								:label="option.value"
+								:value="option.key"
+							/>
+						</N8nSelect>
+					</ElCol>
+				</ElRow>
 				<ElRow>
 					<ElCol :span="10" :class="$style['setting-name']">
 						{{ i18n.baseText('workflowSettings.executionLogic') }}
@@ -1021,7 +1116,7 @@ onBeforeUnmount(() => {
 					<ElCol :span="14" class="ignore-key-press-canvas">
 						<N8nSelect
 							v-model="executionLogic"
-							placeholder="Select Execution Order"
+							:placeholder="i18n.baseText('workflowSettings.executionLogic.placeholder')"
 							size="medium"
 							filterable
 							:disabled="readOnlyEnv || !workflowPermissions.update"
@@ -1057,7 +1152,7 @@ onBeforeUnmount(() => {
 					<ElCol :span="14" class="ignore-key-press-canvas">
 						<N8nSelect
 							v-model="workflowSettings.errorWorkflow"
-							placeholder="Select Workflow"
+							:placeholder="i18n.baseText('workflowSettings.errorWorkflow.placeholder')"
 							filterable
 							remote
 							:remote-method="debouncedLoadWorkflows"
@@ -1144,8 +1239,8 @@ onBeforeUnmount(() => {
 						</div>
 					</ElCol>
 				</ElRow>
-				<div v-if="isSharingEnabled" data-test-id="workflow-caller-policy">
-					<ElRow>
+				<template v-if="isSharingEnabled">
+					<ElRow data-test-id="workflow-caller-policy">
 						<ElCol :span="10" :class="$style['setting-name']">
 							{{ i18n.baseText('workflowSettings.callerPolicy') }}
 							<N8nTooltip placement="top">
@@ -1162,7 +1257,7 @@ onBeforeUnmount(() => {
 								:disabled="
 									readOnlyEnv ||
 									!workflowPermissions.update ||
-									settingsStore.isExecuteWorkflowNodeExcluded
+									nodeTypesStore.isNodeTypeUnavailable(EXECUTE_WORKFLOW_NODE_TYPE)
 								"
 								:placeholder="i18n.baseText('workflowSettings.selectOption')"
 								filterable
@@ -1181,7 +1276,10 @@ onBeforeUnmount(() => {
 					</ElRow>
 					<ElRow v-if="workflowSettings.callerPolicy === 'workflowsFromAList'">
 						<ElCol :span="10" :class="$style['setting-name']">
-							{{ i18n.baseText('workflowSettings.callerIds') }}
+							<span :class="$style['caller-ids-connector']" aria-hidden="true">└─</span>
+							<span :class="$style['caller-ids-label']">{{
+								i18n.baseText('workflowSettings.callerIds')
+							}}</span>
 							<N8nTooltip placement="top">
 								<template #content>
 									<div v-text="helpTexts.workflowCallerIds"></div>
@@ -1189,7 +1287,7 @@ onBeforeUnmount(() => {
 								<N8nIcon icon="circle-help" />
 							</N8nTooltip>
 						</ElCol>
-						<ElCol :span="14">
+						<ElCol :span="14" class="ignore-key-press-canvas">
 							<N8nInput
 								v-model="workflowSettings.callerIds"
 								:disabled="readOnlyEnv || !workflowPermissions.update"
@@ -1200,7 +1298,7 @@ onBeforeUnmount(() => {
 							/>
 						</ElCol>
 					</ElRow>
-				</div>
+				</template>
 				<ElRow>
 					<ElCol :span="10" :class="$style['setting-name']">
 						{{ i18n.baseText('workflowSettings.timezone') }}
@@ -1214,7 +1312,7 @@ onBeforeUnmount(() => {
 					<ElCol :span="14" class="ignore-key-press-canvas">
 						<N8nSelect
 							v-model="workflowSettings.timezone"
-							placeholder="Select Timezone"
+							:placeholder="i18n.baseText('workflowSettings.timezone.placeholder')"
 							filterable
 							:disabled="readOnlyEnv || !workflowPermissions.update"
 							:limit-popper-width="true"
@@ -1555,6 +1653,68 @@ onBeforeUnmount(() => {
 							</N8nTooltip>
 						</ElCol>
 					</ElRow>
+					<ElRow
+						v-if="isCallerRedactionSettingVisible"
+						data-test-id="workflow-settings-redact-caller-executions-row"
+					>
+						<ElCol
+							:span="10"
+							:class="[
+								$style['setting-name'],
+								{
+									[$style['setting-name--disabled']]:
+										!isDataRedactionLicensed || isCallerRedactionLocked,
+								},
+							]"
+						>
+							{{ i18n.baseText('workflowSettings.redactCallerExecutions') }}
+							<N8nIcon
+								v-if="isCallerRedactionLocked"
+								icon="lock"
+								size="xsmall"
+								style="opacity: 1"
+							/>
+							<N8nTooltip placement="top">
+								<template #content>
+									<div>
+										{{ helpTexts.redactCallerExecutions }}
+										<N8nLink
+											:to="EXECUTION_DATA_REDACTION_DOCS_URL"
+											size="small"
+											new-window
+											data-test-id="redact-caller-executions-docs-link"
+										>
+											{{ i18n.baseText('generic.learnMore') }}
+										</N8nLink>
+									</div>
+								</template>
+								<N8nIcon icon="circle-help" />
+							</N8nTooltip>
+						</ElCol>
+						<ElCol :span="14">
+							<N8nTooltip :disabled="!isCallerRedactionLocked" :enterable="true" placement="top">
+								<template #content>
+									{{ i18n.baseText('workflowSettings.redactionPermissionNotice') }}
+									<span
+										:class="$style['permission-notice-link']"
+										@click="redactionMembersModalOpen = true"
+										>{{
+											i18n.baseText('workflowSettings.redactionPermissionNotice.viewUsers')
+										}}</span
+									>
+								</template>
+								<N8nSwitch
+									:class="$style['setting-switch']"
+									size="large"
+									:disabled="!isDataRedactionLicensed || readOnlyEnv || isCallerRedactionLocked"
+									:aria-label="i18n.baseText('workflowSettings.redactCallerExecutions')"
+									:model-value="workflowSettings.redactCallerExecutions !== false"
+									data-test-id="workflow-settings-redact-caller-executions"
+									@update:model-value="toggleRedactCallerExecutions"
+								/>
+							</N8nTooltip>
+						</ElCol>
+					</ElRow>
 				</template>
 				<ElRow>
 					<ElCol :span="10" :class="$style['setting-name']">
@@ -1568,13 +1728,15 @@ onBeforeUnmount(() => {
 					</ElCol>
 					<ElCol :span="14">
 						<div>
-							<ElSwitch
-								ref="inputField"
+							<N8nSwitch
+								:class="$style['setting-switch']"
+								size="large"
 								:disabled="readOnlyEnv || !workflowPermissions.update"
+								:aria-label="i18n.baseText('workflowSettings.timeoutWorkflow')"
 								:model-value="(workflowSettings.executionTimeout ?? -1) > -1"
 								data-test-id="workflow-settings-timeout-workflow"
 								@update:model-value="toggleTimeout"
-							></ElSwitch>
+							/>
 						</div>
 					</ElCol>
 				</ElRow>
@@ -1582,7 +1744,7 @@ onBeforeUnmount(() => {
 					v-if="(workflowSettings.executionTimeout ?? -1) > -1"
 					data-test-id="workflow-settings-timeout-form"
 				>
-					<ElRow>
+					<ElRow :class="$style['timeout-row']">
 						<ElCol :span="10" :class="$style['setting-name']">
 							{{ i18n.baseText('workflowSettings.timeoutAfter') }}
 							<N8nTooltip placement="top">
@@ -1644,13 +1806,15 @@ onBeforeUnmount(() => {
 								<template #content>
 									{{ mcpToggleTooltip }}
 								</template>
-								<ElSwitch
-									ref="inputField"
+								<N8nSwitch
+									id="availableInMCP"
+									:class="$style['setting-switch']"
+									size="large"
 									:disabled="mcpToggleDisabled"
 									:model-value="workflowSettings.availableInMCP ?? false"
 									data-test-id="workflow-settings-available-in-mcp"
 									@update:model-value="toggleAvailableInMCP"
-								></ElSwitch>
+								/>
 							</N8nTooltip>
 						</div>
 					</ElCol>
@@ -1696,6 +1860,7 @@ onBeforeUnmount(() => {
 								controls-position="right"
 								size="medium"
 								:controls="true"
+								:class="$style.timeSavedPerExecution"
 								:disabled="readOnlyEnv || !workflowPermissions.update"
 								data-test-id="workflow-settings-time-saved-per-execution"
 								:min="0"
@@ -1800,18 +1965,21 @@ onBeforeUnmount(() => {
 </template>
 
 <style module lang="scss">
+@use '@/app/css/variables' as *;
+
 .workflow-settings {
 	font-size: var(--font-size--sm);
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--3xs);
+	container-type: inline-size;
 
 	:global(.el-row) {
 		display: flex;
 		align-items: center;
 	}
 
-	:global(.el-switch) {
+	.setting-switch {
 		padding: var(--spacing--md) 0;
 	}
 }
@@ -1822,6 +1990,8 @@ onBeforeUnmount(() => {
 }
 
 .setting-name {
+	min-width: 0;
+
 	&,
 	& label {
 		display: flex;
@@ -1842,8 +2012,26 @@ onBeforeUnmount(() => {
 	}
 }
 
+.engine-type-pending-badge {
+	margin-left: var(--spacing--3xs);
+
+	// `.setting-name` hides label icons until hover. The badge icon stays visible.
+	svg {
+		opacity: 1;
+	}
+}
+
 .setting-name--disabled {
 	opacity: 0.5;
+}
+
+.caller-ids-connector {
+	color: var(--color--text--tint-1);
+	flex-shrink: 0;
+}
+
+.caller-ids-label {
+	min-width: 0;
 }
 
 .permission-notice-link {
@@ -1858,6 +2046,41 @@ onBeforeUnmount(() => {
 
 .timeout-input {
 	margin-left: var(--spacing--3xs);
+}
+
+@container (max-width: #{$breakpoint-2xs}) {
+	.workflow-settings {
+		> :global(.el-row),
+		> div > :global(.el-row) {
+			flex-wrap: wrap;
+			align-items: flex-start;
+			row-gap: var(--spacing--3xs);
+
+			> :global(.el-col) {
+				flex: 0 0 100%;
+				max-width: 100%;
+				margin-left: 0;
+			}
+		}
+
+		.timeout-row {
+			column-gap: var(--spacing--3xs);
+
+			> :global(.el-col):not(.setting-name) {
+				flex: 1 1 var(--spacing--4xl);
+				min-width: var(--spacing--4xl);
+				max-width: 100%;
+			}
+		}
+
+		.dynamic-credentials-hint > :global(.el-col:first-child) {
+			display: none;
+		}
+	}
+
+	.timeout-input {
+		margin-left: 0;
+	}
 }
 
 .time-saved {
@@ -1877,10 +2100,11 @@ onBeforeUnmount(() => {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
+}
 
-	:global(.el-input-number) {
-		width: var(--spacing--4xl);
-	}
+.timeSavedPerExecution {
+	width: var(--spacing--4xl);
+	flex-shrink: 0;
 }
 
 .time-saved-dropdown {
@@ -1921,7 +2145,7 @@ onBeforeUnmount(() => {
 }
 
 .no-nodes-title {
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	color: var(--color--text);
 }
 
@@ -1956,7 +2180,7 @@ onBeforeUnmount(() => {
 }
 
 .nodes-active-title {
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	color: var(--color--text);
 }
 
@@ -2022,7 +2246,7 @@ onBeforeUnmount(() => {
 	width: 100%;
 	gap: var(--spacing--3xs);
 	align-items: center;
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	padding: var(--spacing--xs) var(--spacing--md);
 	background-color: var(--color--background--light-2);
 	color: var(--color--text--shade-1);

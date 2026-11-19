@@ -10,6 +10,14 @@ export function handoffContextKey(context: InstanceAiHandoffContext): string {
 		return `${context.source}:${context.agentId}:${context.threadId}:${context.executionId ?? ''}`;
 	}
 
+	if (context.source === 'setup-panel-execute') {
+		return `${context.source}:${context.workflowId}`;
+	}
+
+	if (context.source === 'migration-report') {
+		return `${context.source}:${context.ruleId}:${context.workflowId}`;
+	}
+
 	return `${context.source}:${context.credential.credentialType}:${context.credential.id ?? context.credential.displayName}`;
 }
 

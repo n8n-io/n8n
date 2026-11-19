@@ -1,17 +1,27 @@
 import type { CreateRoleDto, UpdateRoleDto } from '@n8n/api-types';
 import { createTeamProject, linkUserToProject, testDb } from '@n8n/backend-test-utils';
 import {
+	GLOBAL_AGENT_ROLE,
 	PROJECT_ADMIN_ROLE,
 	PROJECT_EDITOR_ROLE,
 	PROJECT_OWNER_ROLE,
 	PROJECT_VIEWER_ROLE,
+	Person,
+	ProjectRepository,
 	RoleRepository,
+	UserRepository,
 } from '@n8n/db';
-import type { User } from '@n8n/db';
+import type { Project } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { DataSource } from '@n8n/typeorm';
 
-import { cleanupRolesAndScopes } from '../shared/db/roles';
-import { createMember, createOwner } from '../shared/db/users';
+import { cleanupRolesAndScopes, createCustomRoleWithScopeSlugs } from '../shared/db/roles';
+import {
+	createMember,
+	createOwner,
+	createServiceAccountWithProject,
+	createUser,
+} from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import { setupTestServer } from '../shared/utils';
 
@@ -19,8 +29,11 @@ describe('RoleController - Integration Tests', () => {
 	const testServer = setupTestServer({ endpointGroups: ['role'] });
 	let ownerAgent: SuperAgentTest;
 	let memberAgent: SuperAgentTest;
-	let owner: User;
-	let member: User;
+	let owner: Person;
+	let member: Person;
+	// Accounts a single test creates. The file shares one database, and an account
+	// that holds a custom role makes the role delete below fail on the FK.
+	const scratchUserIds: string[] = [];
 
 	beforeAll(async () => {
 		await testDb.init();
@@ -35,6 +48,9 @@ describe('RoleController - Integration Tests', () => {
 	});
 
 	afterEach(async () => {
+		if (scratchUserIds.length > 0) {
+			await Container.get(UserRepository).delete(scratchUserIds.splice(0));
+		}
 		await cleanupRolesAndScopes();
 		await Container.get(RoleRepository).delete({ systemRole: false });
 	});
@@ -190,6 +206,44 @@ describe('RoleController - Integration Tests', () => {
 		});
 	});
 
+	describe('GET /roles/:slug/members', () => {
+		it('should list a person and a service account with their kind', async () => {
+			const role = await createCustomRoleWithScopeSlugs([], {
+				roleType: 'global',
+				displayName: 'Global Members Test',
+			});
+			const person = await createUser({ role });
+			scratchUserIds.push(person.id);
+			const serviceAccount = await createServiceAccountWithProject(role);
+			scratchUserIds.push(serviceAccount.id);
+
+			const response = await ownerAgent.get(`/roles/${role.slug}/members`).expect(200);
+
+			expect(response.body.data.total).toBe(2);
+			expect(response.body.data.members).toHaveLength(2);
+			expect(response.body.data.members).toEqual(
+				expect.arrayContaining([
+					{
+						userId: person.id,
+						firstName: person.firstName,
+						lastName: person.lastName,
+						email: person.email,
+						role: role.slug,
+						kind: 'person',
+					},
+					{
+						userId: serviceAccount.id,
+						firstName: 'Deploy bot',
+						lastName: null,
+						email: '',
+						role: role.slug,
+						kind: 'service',
+					},
+				]),
+			);
+		});
+	});
+
 	describe('GET /roles/:slug/assignments', () => {
 		it('should return projects where the role is assigned', async () => {
 			const project = await createTeamProject('Test Project', owner);
@@ -242,12 +296,183 @@ describe('RoleController - Integration Tests', () => {
 			expect(response.body.data.members[0].role).toBe('project:editor');
 		});
 
+		it('should list a service account with its name and kind', async () => {
+			const project = await createTeamProject('Service Account Members Test', owner);
+			const serviceAccount = await createServiceAccountWithProject(GLOBAL_AGENT_ROLE);
+			scratchUserIds.push(serviceAccount.id);
+			await linkUserToProject(member, project, 'project:editor');
+			await linkUserToProject(serviceAccount, project, 'project:editor');
+
+			const response = await ownerAgent
+				.get(`/roles/${PROJECT_EDITOR_ROLE.slug}/assignments/${project.id}/members`)
+				.expect(200);
+
+			expect(response.body.data.members).toHaveLength(2);
+			expect(response.body.data.members).toEqual(
+				expect.arrayContaining([
+					{
+						userId: member.id,
+						firstName: member.firstName,
+						lastName: member.lastName,
+						email: member.email,
+						role: 'project:editor',
+						kind: 'person',
+					},
+					{
+						userId: serviceAccount.id,
+						firstName: 'Deploy bot',
+						lastName: null,
+						email: '',
+						role: 'project:editor',
+						kind: 'service',
+					},
+				]),
+			);
+		});
+
+		it('should list a person without an email or a name', async () => {
+			const project = await createTeamProject('Person Without Email Test', owner);
+			const person = await createUser();
+			scratchUserIds.push(person.id);
+			await Container.get(DataSource).manager.update(Person, person.id, {
+				email: null,
+				firstName: null,
+				lastName: null,
+			} as unknown as Partial<Person>);
+			await linkUserToProject(person, project, 'project:editor');
+
+			const response = await ownerAgent
+				.get(`/roles/${PROJECT_EDITOR_ROLE.slug}/assignments/${project.id}/members`)
+				.expect(200);
+
+			expect(response.body.data.members).toEqual([
+				{
+					userId: person.id,
+					firstName: null,
+					lastName: null,
+					email: '',
+					role: 'project:editor',
+					kind: 'person',
+				},
+			]);
+		});
+
 		it('should require role:manage scope (deny member)', async () => {
 			const project = await createTeamProject('Auth Test');
 
 			await memberAgent
 				.get(`/roles/${PROJECT_EDITOR_ROLE.slug}/assignments/${project.id}/members`)
 				.expect(403);
+		});
+	});
+
+	describe('project assignments visibility for a delegated role manager', () => {
+		let roleManager: Person;
+		let roleManagerAgent: SuperAgentTest;
+		let ownProject: Project;
+		let otherProject: Project;
+		// Projects a single test creates for itself. Tracked here so cleanup still runs when
+		// that test fails — a leaked relation to a custom role makes the outer hook's role
+		// delete fail on the FK, which would mask the real failure.
+		const scratchProjectIds: string[] = [];
+
+		const projectNamesOf = (body: { data: { projects: Array<{ projectName: string }> } }) =>
+			body.data.projects.map((project) => project.projectName);
+
+		beforeEach(async () => {
+			scratchProjectIds.length = 0;
+
+			// A non-admin caller whose custom global role only lets it manage project roles.
+			const role = await createCustomRoleWithScopeSlugs(['role:read', 'role:manageProject'], {
+				roleType: 'global',
+				displayName: 'Project Role Manager',
+			});
+			roleManager = await createUser({ role });
+			roleManagerAgent = testServer.authAgentFor(roleManager);
+
+			ownProject = await createTeamProject('Own Project', owner);
+			await linkUserToProject(roleManager, ownProject, 'project:admin');
+			await linkUserToProject(member, ownProject, 'project:editor');
+
+			otherProject = await createTeamProject('Other Project', owner);
+			await linkUserToProject(member, otherProject, 'project:editor');
+		});
+
+		afterEach(async () => {
+			// The user holds an FK to the custom role, so it has to go before the
+			// outer hook deletes non-system roles.
+			await Container.get(UserRepository).delete({ id: roleManager.id });
+			await Container.get(ProjectRepository).delete([
+				ownProject.id,
+				otherProject.id,
+				...scratchProjectIds,
+			]);
+		});
+
+		it('should only list the projects the caller can list, while keeping the total intact', async () => {
+			const asOwner = await ownerAgent
+				.get(`/roles/${PROJECT_EDITOR_ROLE.slug}/assignments`)
+				.expect(200);
+			const asRoleManager = await roleManagerAgent
+				.get(`/roles/${PROJECT_EDITOR_ROLE.slug}/assignments`)
+				.expect(200);
+
+			expect(projectNamesOf(asOwner.body)).toEqual(
+				expect.arrayContaining(['Own Project', 'Other Project']),
+			);
+			expect(projectNamesOf(asRoleManager.body)).toContain('Own Project');
+			expect(projectNamesOf(asRoleManager.body)).not.toContain('Other Project');
+
+			// the instance-wide count stays honest so the delete-impact signal is not understated
+			expect(asRoleManager.body.data.totalProjects).toBe(asOwner.body.data.totalProjects);
+			expect(asRoleManager.body.data.projects.length).toBeLessThan(
+				asRoleManager.body.data.totalProjects,
+			);
+		});
+
+		it('should return the members of a project the caller can list', async () => {
+			const response = await roleManagerAgent
+				.get(`/roles/${PROJECT_EDITOR_ROLE.slug}/assignments/${ownProject.id}/members`)
+				.expect(200);
+
+			expect(response.body.data.members).toHaveLength(1);
+			expect(response.body.data.members[0].email).toBe(member.email);
+		});
+
+		it('should not return the members of a project the caller cannot list', async () => {
+			await roleManagerAgent
+				.get(`/roles/${PROJECT_EDITOR_ROLE.slug}/assignments/${otherProject.id}/members`)
+				.expect(404);
+		});
+
+		it('should not return the members of a project that does not exist', async () => {
+			await roleManagerAgent
+				.get(`/roles/${PROJECT_EDITOR_ROLE.slug}/assignments/non-existing-project/members`)
+				.expect(404);
+		});
+
+		// `project:list` only lands on a custom project role as the auto-added companion to
+		// `project:read` (see projectAutoAddedListScopes), so a role built from workflow scopes
+		// alone carries neither. Such a member fails closed here, matching what
+		// `GET /rest/users?filter[projectId]` already does for the same caller.
+		it('should not return the members of a project the caller joined with a role lacking project scopes', async () => {
+			const minimalRole = await createCustomRoleWithScopeSlugs(['workflow:read', 'workflow:list'], {
+				roleType: 'project',
+				displayName: 'Workflow Reader Only',
+			});
+			const minimalProject = await createTeamProject('Minimal Role Project', owner);
+			scratchProjectIds.push(minimalProject.id);
+			await linkUserToProject(roleManager, minimalProject, minimalRole.slug);
+			await linkUserToProject(member, minimalProject, 'project:editor');
+
+			const assignments = await roleManagerAgent
+				.get(`/roles/${PROJECT_EDITOR_ROLE.slug}/assignments`)
+				.expect(200);
+			expect(projectNamesOf(assignments.body)).not.toContain('Minimal Role Project');
+
+			await roleManagerAgent
+				.get(`/roles/${PROJECT_EDITOR_ROLE.slug}/assignments/${minimalProject.id}/members`)
+				.expect(404);
 		});
 	});
 });

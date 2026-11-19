@@ -1,21 +1,17 @@
 import type { CredentialListItem } from '@n8n/agents';
-import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
+import { AI_GATEWAY_MANAGED_TAG, type AgentModelCredentialConfig } from '@n8n/api-types';
 import { isModelDiscoveryProvider } from '@n8n/ai-utilities/model-discovery';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
 import { CredentialsService } from '@/credentials/credentials.service';
+import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks/credentials-permission-checker';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 
 import { BuilderModelLiveLookupService } from './builder/builder-model-live-lookup.service';
 import { LLM_PROVIDER_DEFAULTS, LLM_PROVIDER_PRIORITY } from './llm-provider-defaults';
 import { createAgentCredentialProvider } from './utils/agent-credential-provider';
-import { stripSnapshotSuffix } from './utils/model-snapshot-alias';
-
-export interface ResolvedAgentDefaultModel {
-	model: string;
-	credential: string;
-}
+import { findVerifiedModelId } from './utils/provider-model-id';
 
 /**
  * Resolves a sensible default model+credential for a new agent, and answers
@@ -32,6 +28,7 @@ export class AgentDefaultModelResolverService {
 		private readonly credentialsService: CredentialsService,
 		private readonly modelLookupService: BuilderModelLiveLookupService,
 		private readonly aiGatewayService: AiGatewayService,
+		private readonly credentialsPermissionChecker: CredentialsPermissionChecker,
 	) {}
 
 	/**
@@ -42,14 +39,16 @@ export class AgentDefaultModelResolverService {
 	 * personal LLM credential. Returns `null` when the choice is ambiguous
 	 * or the default is not live — the caller keeps the agent as a draft.
 	 */
-	async resolve(user: User, projectId: string): Promise<ResolvedAgentDefaultModel | null> {
-		const credentials = await createAgentCredentialProvider(
-			this.credentialsService,
-			projectId,
+	async resolve(user: User, projectId: string): Promise<AgentModelCredentialConfig | null> {
+		const credentials = await this.credentialsPermissionChecker.filterUsableThroughOwnAccess(
 			user,
-		).list();
-		const supportedCredentials = credentials.filter((credential) =>
-			Object.hasOwn(LLM_PROVIDER_DEFAULTS, credential.type),
+			await createAgentCredentialProvider(this.credentialsService, projectId, user).list(),
+		);
+		// A provider without a default model (Microsoft Foundry) is never a new agent's default.
+		const supportedCredentials = credentials.filter(
+			(credential) =>
+				Object.hasOwn(LLM_PROVIDER_DEFAULTS, credential.type) &&
+				LLM_PROVIDER_DEFAULTS[credential.type].defaultModel !== undefined,
 		);
 
 		if (supportedCredentials.length === 0) {
@@ -84,25 +83,17 @@ export class AgentDefaultModelResolverService {
 		provider: string,
 		credentialId: string,
 		verifiedModelIds: readonly string[],
-	): ResolvedAgentDefaultModel | null {
-		const defaults = this.findProviderDefault(provider);
-		if (!defaults) return null;
+	): AgentModelCredentialConfig | null {
+		const defaultModel = this.findProviderDefault(provider)?.defaultModel;
+		if (!defaultModel) return null;
 
-		const lowerDefault = defaults.defaultModel.toLowerCase();
-		// Exact match first; otherwise a verified id whose snapshot-stripped alias
-		// is the default — the managed gateway may list only the dated snapshot
-		// (e.g. `claude-sonnet-4-6-20251001`), and only that exact id is callable
-		// there. Return the verified id (original casing) so callers can use it
-		// verbatim against the verified list.
-		const match =
-			verifiedModelIds.find((id) => id.toLowerCase() === lowerDefault) ??
-			verifiedModelIds.find((id) => stripSnapshotSuffix(id).toLowerCase() === lowerDefault);
+		const match = findVerifiedModelId(provider, defaultModel, verifiedModelIds);
 		return match ? { model: `${provider}/${match}`, credential: credentialId } : null;
 	}
 
 	private findProviderDefault(
 		provider: string,
-	): { provider: string; defaultModel: string; credentialType: string } | undefined {
+	): { provider: string; defaultModel?: string; credentialType: string } | undefined {
 		const entry = Object.entries(LLM_PROVIDER_DEFAULTS).find(
 			([, defaults]) => defaults.provider === provider,
 		);
@@ -118,7 +109,7 @@ export class AgentDefaultModelResolverService {
 	private async resolveManagedOpenAi(
 		user: User,
 		projectId: string,
-	): Promise<ResolvedAgentDefaultModel | null> {
+	): Promise<AgentModelCredentialConfig | null> {
 		const defaults = LLM_PROVIDER_DEFAULTS.openAiApi;
 		let credentialType: string | undefined;
 		try {
@@ -132,7 +123,7 @@ export class AgentDefaultModelResolverService {
 
 		return await this.resolveCredential(user, projectId, {
 			id: AI_GATEWAY_MANAGED_TAG,
-			name: 'n8n credits',
+			name: 'Gateway credits',
 			type: credentialType,
 		});
 	}
@@ -141,11 +132,11 @@ export class AgentDefaultModelResolverService {
 		user: User,
 		projectId: string,
 		credential: CredentialListItem | undefined,
-	): Promise<ResolvedAgentDefaultModel | null> {
+	): Promise<AgentModelCredentialConfig | null> {
 		if (!credential) return null;
 
 		const defaults = LLM_PROVIDER_DEFAULTS[credential.type];
-		if (!defaults) return null;
+		if (!defaults?.defaultModel) return null;
 
 		if (!isModelDiscoveryProvider(defaults.provider)) {
 			return { model: `${defaults.provider}/${defaults.defaultModel}`, credential: credential.id };

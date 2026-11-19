@@ -1,13 +1,10 @@
 import { BedrockRuntimeClient } from '@aws-sdk/client-bedrock-runtime';
 import { getNodeProxyAgent } from '@n8n/ai-utilities';
+import { createResultError } from '@n8n/utils/result';
 import { NodeHttpHandler } from '@smithy/node-http-handler';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
-import {
-	UserError,
-	type ILoadOptionsFunctions,
-	type INode,
-	type ISupplyDataFunctions,
-} from 'n8n-workflow';
+import type { ILoadOptionsFunctions, INode, ISupplyDataFunctions } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import type { Mocked } from 'vitest';
 
 import { resolveAwsCredentials } from '@utils/aws/resolveAwsCredentials';
@@ -119,6 +116,23 @@ describe('EmbeddingsAwsBedrock', () => {
 			'https://bedrock-runtime.eu-west-2.amazonaws.com',
 			keepAliveAgentOptions,
 		);
+	});
+
+	it('applies the execution egress filter to the override endpoint', async () => {
+		mockedResolveAwsCredentials.mockResolvedValue({
+			region: 'us-east-1',
+			credentials: { accessKeyId: 'a', secretAccessKey: 'b' },
+			bedrockRuntimeEndpoint: 'http://127.0.0.1:8080',
+		});
+		const ctx = mockContext('amazon.titan-embed-text-v1');
+		const filterError = new Error('target not allowed');
+		ctx.helpers.getSecureEgressFilter = vi.fn().mockReturnValue({
+			...ctx.helpers.getSecureEgressFilter(),
+			validateUrl: async () => createResultError(filterError),
+		});
+		const node = new EmbeddingsAwsBedrock();
+
+		await expect(node.supplyData.call(ctx, 0)).rejects.toBe(filterError);
 	});
 
 	it('uses the region-specific domain for the China partition endpoint', async () => {
@@ -376,12 +390,42 @@ describe('EmbeddingsAwsBedrock', () => {
 				logger: { warn: vi.fn() },
 			}) as unknown as ILoadOptionsFunctions;
 
+		const applicationProfilesResponse = {
+			inferenceProfileSummaries: [
+				{
+					inferenceProfileId: 'kqtghn90uu4g',
+					inferenceProfileName: 'Cost Centre Embeddings',
+					inferenceProfileArn:
+						'arn:aws:bedrock:eu-central-1:123456789012:application-inference-profile/kqtghn90uu4g',
+					models: [
+						{ modelArn: 'arn:aws:bedrock:eu-central-1::foundation-model/cohere.embed-v4:0' },
+					],
+				},
+				{
+					inferenceProfileId: 'zzchatprofile',
+					inferenceProfileName: 'Cost Centre Chat',
+					inferenceProfileArn:
+						'arn:aws:bedrock:eu-central-1:123456789012:application-inference-profile/zzchatprofile',
+					models: [
+						{
+							modelArn:
+								'arn:aws:bedrock:eu-central-1::foundation-model/anthropic.claude-sonnet-4-6-v1:0',
+						},
+					],
+				},
+			],
+		};
+
 		const httpMockFor = (
 			foundation: Promise<unknown> | unknown,
 			profiles: Promise<unknown> | unknown,
+			applicationProfiles: Promise<unknown> | unknown = { inferenceProfileSummaries: [] },
 		) =>
-			vi.fn().mockImplementation(async (_credentialsType: string, options: { url: string }) => {
-				return options.url.startsWith('/foundation-models') ? await foundation : await profiles;
+			vi.fn().mockImplementation(async (_credentialsType: string, options: { url: unknown }) => {
+				if (String(options.url).startsWith('/foundation-models')) return await foundation;
+				return String(options.url).includes('type=APPLICATION')
+					? await applicationProfiles
+					: await profiles;
 			});
 
 		it('lists on-demand embedding models and embedding inference profiles, sorted by name', async () => {
@@ -434,16 +478,32 @@ describe('EmbeddingsAwsBedrock', () => {
 			expect(httpMock).toHaveBeenCalledWith('awsAssumeRole', expect.any(Object));
 		});
 
-		it('returns only foundation models when the profiles request fails', async () => {
+		it('returns only foundation models when the profile requests fail', async () => {
+			const failure = new Error('AccessDenied: ListInferenceProfiles');
 			const httpMock = httpMockFor(
 				foundationResponse,
-				Promise.reject(new Error('AccessDenied: ListInferenceProfiles')),
+				Promise.reject(failure),
+				Promise.reject(failure),
 			);
 			const ctx = createLoadOptionsContext('iam', httpMock);
 
 			const options = await node.methods.loadOptions.listModels.call(ctx);
 
 			expect(options.map((o) => o.value)).toEqual(['amazon.titan-embed-text-v2:0']);
+		});
+
+		it('lists application profiles that wrap embedding models and drops chat ones', async () => {
+			const httpMock = httpMockFor(
+				foundationResponse,
+				profilesResponse,
+				applicationProfilesResponse,
+			);
+			const ctx = createLoadOptionsContext('iam', httpMock);
+
+			const options = await node.methods.loadOptions.listModels.call(ctx);
+
+			expect(options.map((o) => o.value)).toContain('kqtghn90uu4g');
+			expect(options.map((o) => o.value)).not.toContain('zzchatprofile');
 		});
 
 		it('returns all profiles unfiltered when the foundation-models request fails', async () => {
@@ -463,6 +523,7 @@ describe('EmbeddingsAwsBedrock', () => {
 
 		it('throws when both requests fail', async () => {
 			const httpMock = httpMockFor(
+				Promise.reject(new Error('AccessDenied')),
 				Promise.reject(new Error('AccessDenied')),
 				Promise.reject(new Error('AccessDenied')),
 			);

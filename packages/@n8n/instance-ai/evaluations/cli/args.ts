@@ -7,7 +7,8 @@
 
 import { z } from 'zod';
 
-import { DEFAULT_MCP_BUILD_TIMEOUT_MS } from './mcp-builder';
+import { DEFAULT_MCP_BUILD_TIMEOUT_MS, isolatedClaudeAuthError } from './mcp-builder';
+import { ASSISTANT_RUNTIMES, type AssistantRuntime } from '../clients/assistant-agents-api';
 import { BASELINE_EXPERIMENT_PREFIX } from '../comparison/fetch-baseline';
 
 /** Default LangSmith dataset — the shared Instance AI cohort. */
@@ -34,7 +35,9 @@ function resolveBuildModel(env: NodeJS.ProcessEnv = process.env): string {
 // ---------------------------------------------------------------------------
 
 export interface CliArgs {
-	/** TimeoutMs is defined per iteration, not as the total timeout for all iterations */
+	/** Budget of one unit of work: one user turn of the build conversation, or one
+	 *  scenario execution attempt. A conversation may spend `CONVERSATION_BUDGET_TURNS`
+	 *  of these in total (harness/timeouts.ts). Not a total for all iterations. */
 	timeoutMs: number;
 	/** One or more n8n base URLs. Multi-lane runs use a work-stealing allocator
 	 *  that dispatches each build to a lane that isn't already running its
@@ -120,6 +123,9 @@ export interface CliArgs {
 	 *  (`--build-via-mcp`). On expiry the process is killed so a hung build can't
 	 *  hold its lane. 0 disables. Distinct from `buildMcpTimeoutMs` (per MCP call). */
 	buildTimeoutMs: number;
+	/** Which Assistant runtime the builds drive: `instance-ai` (default) or `agents`, the
+	 *  Assistant agent on the Agents runtime. See clients/assistant-agents-api.ts. */
+	assistantRuntime: AssistantRuntime;
 }
 
 // ---------------------------------------------------------------------------
@@ -164,6 +170,7 @@ const cliArgsSchema = z.object({
 	buildMaxAttempts: z.number().int().positive().default(3),
 	buildMcpTimeoutMs: z.number().int().positive().default(120_000),
 	buildTimeoutMs: z.number().int().nonnegative().default(DEFAULT_MCP_BUILD_TIMEOUT_MS),
+	assistantRuntime: z.enum(ASSISTANT_RUNTIMES).default('instance-ai'),
 });
 
 // ---------------------------------------------------------------------------
@@ -195,11 +202,25 @@ export function parseCliArgs(argv: string[]): CliArgs {
 			'--build-via-mcp requires LangSmith experiment tracking — set LANGSMITH_API_KEY. The no-LangSmith direct loop does not support MCP builds.',
 		);
 	}
+	const authError = validated.buildViaMcp ? isolatedClaudeAuthError(validated.buildCwd) : undefined;
+	if (authError) throw new Error(authError);
 	// Build knobs without --build-via-mcp would parse fine and then be silently
 	// ignored — the run would look like it honored them. Fail loudly instead.
 	if (!validated.buildViaMcp && raw.buildOnlyFlags.length > 0) {
 		throw new Error(
 			`${[...new Set(raw.buildOnlyFlags)].join(', ')} only take${raw.buildOnlyFlags.length === 1 ? 's' : ''} effect with --build-via-mcp — pass it, or drop the flag(s).`,
+		);
+	}
+	// MCP builds never talk to the Assistant, so the runtime would be silently ignored.
+	if (validated.buildViaMcp && validated.assistantRuntime !== 'instance-ai') {
+		throw new Error(
+			'--assistant-runtime applies to Assistant builds. --build-via-mcp builds through the MCP server instead.',
+		);
+	}
+	// Prebuilt runs only fetch existing workflows, so the runtime would be silently ignored.
+	if (validated.prebuiltWorkflows && validated.assistantRuntime !== 'instance-ai') {
+		throw new Error(
+			'--assistant-runtime applies to Assistant builds. --prebuilt-workflows grades existing workflows instead.',
 		);
 	}
 	if (validated.deletePrebuiltWorkflows && !validated.prebuiltWorkflows) {
@@ -258,6 +279,7 @@ export function parseCliArgs(argv: string[]): CliArgs {
 		buildMaxAttempts: validated.buildMaxAttempts,
 		buildMcpTimeoutMs: validated.buildMcpTimeoutMs,
 		buildTimeoutMs: validated.buildTimeoutMs,
+		assistantRuntime: validated.assistantRuntime,
 	};
 }
 
@@ -318,6 +340,7 @@ interface RawArgs {
 	buildMaxAttempts: number;
 	buildMcpTimeoutMs: number;
 	buildTimeoutMs: number;
+	assistantRuntime: string;
 	/** Whether --dataset / --baseline-prefix were explicitly passed (langtracer mode
 	 *  derives suite-scoped defaults otherwise). */
 	datasetProvided: boolean;
@@ -348,6 +371,7 @@ function parseRawArgs(argv: string[]): RawArgs {
 		buildMaxAttempts: 3,
 		buildMcpTimeoutMs: 120_000,
 		buildTimeoutMs: DEFAULT_MCP_BUILD_TIMEOUT_MS,
+		assistantRuntime: 'instance-ai',
 		datasetProvided: false,
 		baselineProvided: false,
 		buildOnlyFlags: [],
@@ -497,6 +521,11 @@ function parseRawArgs(argv: string[]): RawArgs {
 			case '--build-timeout-ms':
 				result.buildTimeoutMs = parseIntArg(argv, i, '--build-timeout-ms');
 				result.buildOnlyFlags.push(arg);
+				i++;
+				break;
+
+			case '--assistant-runtime':
+				result.assistantRuntime = nextArg(argv, i, '--assistant-runtime');
 				i++;
 				break;
 

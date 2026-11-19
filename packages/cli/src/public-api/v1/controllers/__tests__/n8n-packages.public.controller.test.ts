@@ -1,0 +1,555 @@
+import {
+	ExportPackageRequestDto,
+	type ImportPackageRequestDto,
+	type ImportPackageSelectionRequestDto,
+} from '@n8n/api-types';
+import type { EventService } from '@n8n/backend-services';
+import type { AuthenticatedRequest, OperationContext, User } from '@n8n/db';
+import { BadRequestError, ForbiddenError, NotFoundError, UserError } from '@n8n/errors';
+import type { SecurityContext } from '@n8n/permissions';
+import type { Response } from 'express';
+import { Readable } from 'node:stream';
+import { mock } from 'vitest-mock-extended';
+
+import type { RelayEventMap } from '@/events/maps/relay.event-map';
+import {
+	PackageEntityAccessDeniedError,
+	PackageEntityNotFoundError,
+	PackageExportBlockedError,
+} from '@/modules/n8n-packages/entities/package-export.errors';
+import type { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
+import type { PublicApiRequest } from '@/public-api/public-api-client';
+
+import { N8nPackagesPublicController } from '../n8n-packages.public.controller';
+
+const EXPORT_COUNTS = {
+	agents: 0,
+	workflows: 2,
+	folders: 1,
+	credentials: 0,
+	dataTables: 0,
+	variables: 0,
+	tags: 0,
+};
+
+const DEFAULT_SERVICE_OPTIONS = {
+	user: { id: 'user-1' },
+	agentIds: [],
+	workflowIds: [],
+	folderIds: [],
+	projectIds: [],
+	includeVariableValues: true,
+	canExportVariableValues: false,
+	includeTags: true,
+	dependencyPolicy: 'fail',
+	versionPolicy: 'latest',
+	credentialExportPolicy: 'expression-values-only',
+	includeArchived: false,
+};
+
+describe('N8nPackagesPublicController', () => {
+	let controller: N8nPackagesPublicController;
+	const mockService = mock<N8nPackagesService>();
+	const mockEventService = mock<EventService>();
+
+	function makeRequest(apiKeyScopes?: string[]) {
+		return {
+			user: { id: 'user-1' },
+			tokenGrant: apiKeyScopes ? { apiKeyScopes } : undefined,
+		} as unknown as AuthenticatedRequest;
+	}
+
+	function mockExportStream() {
+		mockService.exportPackage.mockResolvedValue({
+			stream: Readable.from([Buffer.from('package-bytes')]),
+			counts: EXPORT_COUNTS,
+		});
+	}
+
+	async function runAndCatch(
+		body: Record<string, unknown>,
+		apiKeyScopes?: string[],
+		res: Response = mock<Response>(),
+	) {
+		try {
+			await controller.exportPackage(
+				makeRequest(apiKeyScopes),
+				res,
+				ExportPackageRequestDto.parse(body),
+			);
+			return undefined;
+		} catch (error) {
+			return error;
+		}
+	}
+
+	function emittedEvent(name: 'n8n-package-export-failed' | 'n8n-package-import-failed') {
+		const call = mockEventService.emit.mock.calls.find(([eventName]) => eventName === name);
+		return call?.[1] as RelayEventMap[typeof name] | undefined;
+	}
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		mockService.exportPackage.mockReset();
+		controller = new N8nPackagesPublicController(mockService, mockEventService);
+	});
+
+	describe('exportPackage', () => {
+		it('throws BadRequestError when both workflowIds and projectIds are provided', async () => {
+			const caught = await runAndCatch({ workflowIds: ['wf-1'], projectIds: ['project-1'] }, [
+				'workflow:export',
+				'project:export',
+			]);
+
+			expect(caught).toBeInstanceOf(BadRequestError);
+			expect(caught).toMatchObject({
+				message: 'Provide either agentIds/workflowIds/folderIds or projectIds, not both',
+			});
+			expect(mockService.exportPackage).not.toHaveBeenCalled();
+		});
+
+		it('throws BadRequestError when folderIds and projectIds are both provided', async () => {
+			const caught = await runAndCatch({ folderIds: ['fld-1'], projectIds: ['project-1'] }, [
+				'workflow:export',
+				'project:export',
+			]);
+
+			expect(caught).toBeInstanceOf(BadRequestError);
+			expect(caught).toMatchObject({
+				message: 'Provide either agentIds/workflowIds/folderIds or projectIds, not both',
+			});
+			expect(mockService.exportPackage).not.toHaveBeenCalled();
+		});
+
+		it('throws BadRequestError when neither workflowIds, folderIds nor projectIds are provided', async () => {
+			const caught = await runAndCatch({}, ['workflow:export']);
+
+			expect(caught).toBeInstanceOf(BadRequestError);
+			expect(caught).toMatchObject({
+				message: 'At least one agentId, workflowId, folderId, or projectId is required',
+			});
+			expect(mockService.exportPackage).not.toHaveBeenCalled();
+		});
+
+		it('throws ForbiddenError when the API key carries no scopes', async () => {
+			const caught = await runAndCatch({ workflowIds: ['wf-1'] });
+
+			expect(caught).toBeInstanceOf(ForbiddenError);
+			expect(mockService.exportPackage).not.toHaveBeenCalled();
+			expect(emittedEvent('n8n-package-export-failed')).toMatchObject({
+				reason: 'access-denied',
+				workflowIds: ['wf-1'],
+			});
+		});
+
+		it('throws ForbiddenError when exporting workflows without workflow:export scope', async () => {
+			const caught = await runAndCatch({ workflowIds: ['wf-1'] }, ['project:export']);
+
+			expect(caught).toBeInstanceOf(ForbiddenError);
+			expect(mockService.exportPackage).not.toHaveBeenCalled();
+		});
+
+		it('throws ForbiddenError when exporting projects without project:export scope', async () => {
+			const caught = await runAndCatch({ projectIds: ['project-1'] }, ['workflow:export']);
+
+			expect(caught).toBeInstanceOf(ForbiddenError);
+			expect(mockService.exportPackage).not.toHaveBeenCalled();
+		});
+
+		it('throws ForbiddenError when exporting folders without workflow:export scope', async () => {
+			const caught = await runAndCatch({ folderIds: ['fld-1'] }, ['project:export']);
+
+			expect(caught).toBeInstanceOf(ForbiddenError);
+			expect(mockService.exportPackage).not.toHaveBeenCalled();
+		});
+
+		it('does not reject upfront without variable:list scope; forwards canExportVariableValues=false for the service to enforce', async () => {
+			mockExportStream();
+
+			const caught = await runAndCatch({ workflowIds: ['wf-1'] }, ['workflow:export']);
+
+			expect(caught).toBeUndefined();
+			expect(mockService.exportPackage).toHaveBeenCalledWith({
+				...DEFAULT_SERVICE_OPTIONS,
+				workflowIds: ['wf-1'],
+			});
+		});
+
+		it('allows value-less export without variable:list scope', async () => {
+			mockExportStream();
+
+			const caught = await runAndCatch({ workflowIds: ['wf-1'], includeVariableValues: false }, [
+				'workflow:export',
+			]);
+
+			expect(caught).toBeUndefined();
+			expect(mockService.exportPackage).toHaveBeenCalledWith({
+				...DEFAULT_SERVICE_OPTIONS,
+				workflowIds: ['wf-1'],
+				includeVariableValues: false,
+			});
+		});
+
+		it('propagates the ForbiddenError thrown by the service scope gate and emits access-denied', async () => {
+			mockService.exportPackage.mockRejectedValue(
+				new ForbiddenError('missing the variable:list scope'),
+			);
+
+			const caught = await runAndCatch({ workflowIds: ['wf-1'] }, ['workflow:export']);
+
+			expect(caught).toBeInstanceOf(ForbiddenError);
+			expect(emittedEvent('n8n-package-export-failed')).toMatchObject({
+				reason: 'access-denied',
+				workflowIds: ['wf-1'],
+			});
+		});
+
+		it('emits n8n-package-export-failed with reason=entity-not-found when the service rejects with NotFoundError', async () => {
+			mockService.exportPackage.mockRejectedValue(new NotFoundError('not found'));
+
+			await runAndCatch({ workflowIds: ['wf-1'] }, ['workflow:export', 'variable:list']);
+
+			expect(emittedEvent('n8n-package-export-failed')).toEqual({
+				user: { id: 'user-1' },
+				reason: 'entity-not-found',
+				workflowIds: ['wf-1'],
+			});
+		});
+
+		it('emits n8n-package-export-failed with reason=blocked when the service rejects a blocked export', async () => {
+			mockService.exportPackage.mockRejectedValue(new PackageExportBlockedError('Export blocked'));
+
+			await runAndCatch({ workflowIds: ['wf-1'] }, ['workflow:export', 'variable:list']);
+
+			expect(emittedEvent('n8n-package-export-failed')).toEqual({
+				user: { id: 'user-1' },
+				reason: 'blocked',
+				workflowIds: ['wf-1'],
+			});
+		});
+
+		it.each([
+			[
+				'access-denied',
+				new PackageEntityAccessDeniedError('workflows denied', { description: 'x' }),
+			],
+			[
+				'entity-not-found',
+				new PackageEntityNotFoundError('workflows missing', { description: 'y' }),
+			],
+		])(
+			'rethrows %s as a generic UserError with the same message, hiding which case occurred',
+			async (reason, thrownError) => {
+				mockService.exportPackage.mockRejectedValue(thrownError);
+
+				const caught = await runAndCatch({ workflowIds: ['wf-1'] }, [
+					'workflow:export',
+					'variable:list',
+				]);
+
+				expect(caught).toBeInstanceOf(UserError);
+				expect(caught).not.toBeInstanceOf(PackageEntityAccessDeniedError);
+				expect(caught).not.toBeInstanceOf(PackageEntityNotFoundError);
+				expect(caught).toMatchObject({ message: thrownError.message });
+				expect(emittedEvent('n8n-package-export-failed')).toMatchObject({ reason });
+			},
+		);
+
+		it('returns the export stream and headers for a valid workflow request', async () => {
+			mockExportStream();
+
+			const result = await controller.exportPackage(
+				makeRequest(['workflow:export', 'variable:list']),
+				mock<Response>(),
+				ExportPackageRequestDto.parse({ workflowIds: ['wf-1', 'wf-2'] }),
+			);
+
+			expect(mockService.exportPackage).toHaveBeenCalledWith({
+				...DEFAULT_SERVICE_OPTIONS,
+				workflowIds: ['wf-1', 'wf-2'],
+				canExportVariableValues: true,
+			});
+			expect(result.body).toBeInstanceOf(Readable);
+			expect(result.headers).toEqual({
+				'Content-Disposition': 'attachment; filename="export.n8np"',
+				'X-N8n-Export-Counts': JSON.stringify(EXPORT_COUNTS),
+				'Access-Control-Expose-Headers': 'X-N8n-Export-Counts',
+			});
+			expect(mockEventService.emit).not.toHaveBeenCalled();
+		});
+
+		it('does not emit n8n-package-export-failed when the client disconnects after the stream is returned', async () => {
+			const prematureClose = Object.assign(new Error('Premature close'), {
+				code: 'ERR_STREAM_PREMATURE_CLOSE',
+			});
+			const stream = new Readable({ read() {} });
+			mockService.exportPackage.mockResolvedValue({ stream, counts: EXPORT_COUNTS });
+
+			await controller.exportPackage(
+				makeRequest(['workflow:export']),
+				mock<Response>(),
+				ExportPackageRequestDto.parse({ workflowIds: ['wf-1'] }),
+			);
+			// The response reads the stream after the controller returns, so the disconnect happens here.
+			stream.on('error', () => undefined);
+			stream.destroy(prematureClose);
+			await new Promise((resolve) => setImmediate(resolve));
+
+			expect(mockEventService.emit).not.toHaveBeenCalled();
+		});
+
+		it('forwards a non-default dependency policy', async () => {
+			mockExportStream();
+
+			const caught = await runAndCatch(
+				{ workflowIds: ['wf-1'], dependencyPolicy: 'reference-only' },
+				['workflow:export'],
+			);
+
+			expect(caught).toBeUndefined();
+			expect(mockService.exportPackage).toHaveBeenCalledWith({
+				...DEFAULT_SERVICE_OPTIONS,
+				workflowIds: ['wf-1'],
+				dependencyPolicy: 'reference-only',
+			});
+		});
+
+		it('forwards a non-default version policy', async () => {
+			mockExportStream();
+
+			const caught = await runAndCatch(
+				{ workflowIds: ['wf-1'], versionPolicy: 'published-strict' },
+				['workflow:export'],
+			);
+
+			expect(caught).toBeUndefined();
+			expect(mockService.exportPackage).toHaveBeenCalledWith(
+				expect.objectContaining({ versionPolicy: 'published-strict' }),
+			);
+		});
+
+		it('forwards agentIds and requires the agent:export scope for them', async () => {
+			mockExportStream();
+
+			const caught = await runAndCatch({ agentIds: ['agent-1'] }, [
+				'agent:export',
+				'variable:list',
+			]);
+
+			expect(caught).toBeUndefined();
+			expect(mockService.exportPackage).toHaveBeenCalledWith({
+				...DEFAULT_SERVICE_OPTIONS,
+				agentIds: ['agent-1'],
+				canExportVariableValues: true,
+			});
+		});
+
+		it('throws ForbiddenError when exporting agents without agent:export scope', async () => {
+			const caught = await runAndCatch({ agentIds: ['agent-1'] }, ['workflow:export']);
+
+			expect(caught).toBeInstanceOf(ForbiddenError);
+			expect(mockService.exportPackage).not.toHaveBeenCalled();
+		});
+
+		it('forwards a non-default credential export policy', async () => {
+			mockExportStream();
+
+			const caught = await runAndCatch(
+				{ workflowIds: ['wf-1'], credentialExportPolicy: 'no-values' },
+				['workflow:export'],
+			);
+
+			expect(caught).toBeUndefined();
+			expect(mockService.exportPackage).toHaveBeenCalledWith(
+				expect.objectContaining({ credentialExportPolicy: 'no-values' }),
+			);
+		});
+
+		it('forwards includeArchived', async () => {
+			mockExportStream();
+
+			const caught = await runAndCatch({ workflowIds: ['wf-1'], includeArchived: true }, [
+				'workflow:export',
+			]);
+
+			expect(caught).toBeUndefined();
+			expect(mockService.exportPackage).toHaveBeenCalledWith(
+				expect.objectContaining({ includeArchived: true }),
+			);
+		});
+
+		it('streams the export for a valid project request', async () => {
+			mockExportStream();
+
+			const caught = await runAndCatch({ projectIds: ['project-1'] }, [
+				'project:export',
+				'variable:list',
+			]);
+
+			expect(caught).toBeUndefined();
+			expect(mockService.exportPackage).toHaveBeenCalledWith({
+				...DEFAULT_SERVICE_OPTIONS,
+				projectIds: ['project-1'],
+				canExportVariableValues: true,
+			});
+		});
+
+		it('streams the export for a valid folder request', async () => {
+			mockExportStream();
+
+			const caught = await runAndCatch({ folderIds: ['fld-1'] }, [
+				'workflow:export',
+				'variable:list',
+			]);
+
+			expect(caught).toBeUndefined();
+			expect(mockService.exportPackage).toHaveBeenCalledWith({
+				...DEFAULT_SERVICE_OPTIONS,
+				folderIds: ['fld-1'],
+				canExportVariableValues: true,
+			});
+		});
+
+		it('forwards includeVariableValues=false to the service', async () => {
+			mockExportStream();
+
+			const caught = await runAndCatch({ workflowIds: ['wf-1'], includeVariableValues: false }, [
+				'workflow:export',
+			]);
+
+			expect(caught).toBeUndefined();
+			expect(mockService.exportPackage).toHaveBeenCalledWith({
+				...DEFAULT_SERVICE_OPTIONS,
+				workflowIds: ['wf-1'],
+				includeVariableValues: false,
+			});
+		});
+
+		it('forwards includeTags=false to the service', async () => {
+			mockExportStream();
+
+			const caught = await runAndCatch({ workflowIds: ['wf-1'], includeTags: false }, [
+				'workflow:export',
+			]);
+
+			expect(caught).toBeUndefined();
+			expect(mockService.exportPackage).toHaveBeenCalledWith({
+				...DEFAULT_SERVICE_OPTIONS,
+				workflowIds: ['wf-1'],
+				includeTags: false,
+			});
+		});
+	});
+
+	describe('operation context', () => {
+		const ctx: OperationContext = {
+			security: mock<SecurityContext>({ subIdentityId: 'login-1' }),
+		};
+		const importBody = {
+			package: { buffer: Buffer.from('package-bytes') },
+			bindings: {},
+		} as unknown as ImportPackageRequestDto;
+		const selectionBody = {
+			package: { buffer: Buffer.from('package-bytes') },
+			selectedProjectId: 'project-1',
+			selectedWorkflowIds: [],
+		} as unknown as ImportPackageSelectionRequestDto;
+
+		const requestWith = (requestCtx: OperationContext | undefined, apiKeyScopes: string[]) =>
+			Object.assign(mock<PublicApiRequest>(), {
+				user: mock<User>({ id: 'user-1' }),
+				tokenGrant: { apiKeyScopes },
+				ctx: requestCtx,
+				publicApiClient: 'other' as const,
+			});
+
+		it('passes the operation context of the request to the export', async () => {
+			mockExportStream();
+
+			await controller.exportPackage(
+				requestWith(ctx, ['workflow:export']),
+				mock<Response>(),
+				ExportPackageRequestDto.parse({ workflowIds: ['wf-1'] }),
+			);
+
+			expect(mockService.exportPackage.mock.calls[0][0].ctx).toBe(ctx);
+		});
+
+		it('passes the operation context of the request to the import', async () => {
+			await controller.importPackage(
+				requestWith(ctx, ['workflow:import']),
+				mock<Response>(),
+				importBody,
+			);
+
+			expect(mockService.importPackage.mock.calls[0][0].ctx).toBe(ctx);
+		});
+
+		it('passes the operation context of the request to the selection import', async () => {
+			await controller.importPackageSelection(
+				requestWith(ctx, ['workflow:import']),
+				mock<Response>(),
+				selectionBody,
+			);
+
+			expect(mockService.importPackageSelection.mock.calls[0][0].ctx).toBe(ctx);
+		});
+
+		it('adds the login to a failed export event', async () => {
+			mockService.exportPackage.mockRejectedValue(new NotFoundError('missing'));
+
+			await expect(
+				controller.exportPackage(
+					requestWith(ctx, ['workflow:export']),
+					mock<Response>(),
+					ExportPackageRequestDto.parse({ workflowIds: ['wf-1'] }),
+				),
+			).rejects.toThrow();
+
+			expect(emittedEvent('n8n-package-export-failed')?.loginId).toBe('login-1');
+		});
+
+		it('adds the login to a failed import event', async () => {
+			mockService.importPackage.mockRejectedValue(new BadRequestError('invalid'));
+
+			await expect(
+				controller.importPackage(
+					requestWith(ctx, ['workflow:import']),
+					mock<Response>(),
+					importBody,
+				),
+			).rejects.toThrow();
+
+			expect(emittedEvent('n8n-package-import-failed')?.loginId).toBe('login-1');
+		});
+
+		it('adds the login to a failed selection import event', async () => {
+			mockService.importPackageSelection.mockRejectedValue(new BadRequestError('invalid'));
+
+			await expect(
+				controller.importPackageSelection(
+					requestWith(ctx, ['workflow:import']),
+					mock<Response>(),
+					selectionBody,
+				),
+			).rejects.toThrow();
+
+			expect(emittedEvent('n8n-package-import-failed')?.loginId).toBe('login-1');
+		});
+
+		it('adds no login when the request has no operation context', async () => {
+			mockService.importPackage.mockRejectedValue(new BadRequestError('invalid'));
+
+			await expect(
+				controller.importPackage(
+					requestWith(undefined, ['workflow:import']),
+					mock<Response>(),
+					importBody,
+				),
+			).rejects.toThrow();
+
+			expect(mockService.importPackage.mock.calls[0][0].ctx).toBeUndefined();
+			expect(emittedEvent('n8n-package-import-failed')?.loginId).toBeUndefined();
+		});
+	});
+});

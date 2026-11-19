@@ -7,7 +7,13 @@ import ToolSettingsModal from './ToolSettingsModal.vue';
 import type { INode } from 'n8n-workflow';
 import { waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
-import { defineComponent, onMounted, ref } from 'vue';
+
+import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
+import { mockRestrictedNodeTypes } from '@n8n/frontend-module-type-availability-policies/__tests__/mocks';
+import { flushPromises } from '@vue/test-utils';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+
+import { createToolSettingsStub } from '../__tests__/toolSettingsStub';
 
 vi.mock('@n8n/i18n', () => {
 	const i18n = {
@@ -52,55 +58,20 @@ function createMockNode(overrides: Partial<INode> = {}): INode {
 	};
 }
 
-function createToolSettingsStub(emitValid: boolean) {
-	return defineComponent({
-		props: ['initialNode', 'existingToolNames'],
-		emits: ['update:valid', 'update:node-name'],
-		setup(props, { emit, expose }) {
-			expose({
-				node: ref(props.initialNode),
-				handleChangeName: vi.fn(),
-				nodeTypeDescription: ref(null),
-			});
-			onMounted(() => {
-				emit('update:valid', emitValid);
-				emit('update:node-name', props.initialNode?.name ?? '');
-			});
-			return {};
-		},
-		template: '<div data-test-id="tool-settings-content" />',
-	});
-}
-
-const ElDialogStub = {
-	template: `
-		<div role="dialog">
-			<slot name="header" />
-			<slot />
-			<slot name="footer" />
-		</div>
-	`,
-	props: [
-		'modelValue',
-		'beforeClose',
-		'class',
-		'center',
-		'width',
-		'showClose',
-		'closeOnClickModal',
-		'closeOnPressEscape',
-		'style',
-		'appendTo',
-		'lockScroll',
-		'appendToBody',
-		'dataTestId',
-		'modalClass',
-		'zIndex',
-	],
+const DialogStub = {
+	props: ['open'],
+	emits: ['update:open'],
+	template:
+		'<div v-if="open" role="dialog"><button type="button" data-test-id="dialog-request-close" @click="$emit(\'update:open\', false)" /><slot /></div>',
 };
 
+const dialogPartStub = { template: '<div><slot /></div>' };
+
 const sharedStubs = {
-	ElDialog: ElDialogStub,
+	Dialog: DialogStub,
+	DialogHeader: dialogPartStub,
+	DialogTitle: dialogPartStub,
+	DialogFooter: dialogPartStub,
 	NodeIcon: { template: '<div />' },
 };
 
@@ -204,5 +175,56 @@ describe('ToolSettingsModal', () => {
 
 		expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
 		expect(onConfirmMock).not.toHaveBeenCalled();
+	});
+
+	describe('restricted node types', () => {
+		const PERSONAL_PROJECT_ID = 'personal-project-1';
+
+		beforeEach(() => {
+			mockedStore(useProjectsStore).personalProject = { id: PERSONAL_PROJECT_ID } as never;
+		});
+
+		it('loads the policy for the personal project', async () => {
+			const fetchForProject = vi
+				.spyOn(useTypeAvailabilityPoliciesStore(), 'fetchForProject')
+				.mockResolvedValue(undefined);
+
+			renderModal();
+			await flushPromises();
+
+			expect(fetchForProject).toHaveBeenCalledWith(PERSONAL_PROJECT_ID);
+		});
+
+		it('shows the callout, locks the settings and disables Save', async () => {
+			mockRestrictedNodeTypes({ 'n8n-nodes-base.testTool': 'instance' });
+
+			const { container, getByTestId } = renderModal({ valid: true });
+
+			expect(getByTestId('restricted-chatTool-callout').textContent).toContain(
+				'typeAvailabilityPolicies.restrictedNode.chatTool.instance',
+			);
+			expect(getByTestId('tool-settings-content').dataset.readOnly).toBe('true');
+			expect(container.querySelector('[data-readonly]')).toBeTruthy();
+
+			const saveButton = getByTestId('chat-tool-settings-save');
+			await waitFor(() => {
+				expect(saveButton).toBeDisabled();
+			});
+			await userEvent.click(saveButton);
+			expect(onConfirmMock).not.toHaveBeenCalled();
+		});
+
+		it('keeps the settings editable when the tool is not restricted', async () => {
+			mockRestrictedNodeTypes();
+
+			const { container, getByTestId, queryByTestId } = renderModal({ valid: true });
+
+			expect(queryByTestId('restricted-chatTool-callout')).toBeNull();
+			expect(container.querySelector('[data-readonly]')).toBeNull();
+			expect(getByTestId('tool-settings-content').dataset.readOnly).toBe('false');
+			await waitFor(() => {
+				expect(getByTestId('chat-tool-settings-save')).not.toBeDisabled();
+			});
+		});
 	});
 });

@@ -4,6 +4,7 @@ import { N8nCallout, N8nIcon, N8nOption, N8nSelect, N8nText } from '@n8n/design-
 import { useI18n } from '@n8n/i18n';
 import type { AgentTelegramIntegrationSettings } from '@n8n/api-types';
 
+import AgentSessionIdleTimeoutField from './AgentSessionIdleTimeoutField.vue';
 import {
 	DEFAULT_TELEGRAM_PUBLIC_SETTINGS,
 	VALID_TELEGRAM_ENTRY_RE,
@@ -31,6 +32,9 @@ const accessMode = ref<AgentTelegramIntegrationSettings['accessMode']>(
 const entries = ref<string[]>(props.savedSettings?.allowedUsers.slice() ?? []);
 const inputText = ref('');
 const inputRef = ref<HTMLInputElement>();
+const sessionIdleTimeoutMinutes = ref<number | null>(
+	props.savedSettings?.sessionIdleTimeoutMinutes ?? null,
+);
 
 watch(
 	() => props.savedSettings,
@@ -39,6 +43,7 @@ watch(
 		accessMode.value = saved.accessMode;
 		entries.value = saved.allowedUsers.slice();
 		inputText.value = '';
+		sessionIdleTimeoutMinutes.value = saved.sessionIdleTimeoutMinutes ?? null;
 	},
 );
 
@@ -84,6 +89,7 @@ function onContainerClick() {
 const currentSettings = computed<AgentTelegramIntegrationSettings>(() => ({
 	accessMode: accessMode.value,
 	allowedUsers: [...new Set(entries.value.filter(Boolean))],
+	sessionIdleTimeoutMinutes: sessionIdleTimeoutMinutes.value,
 }));
 
 const invalidEntries = computed<string[]>(() =>
@@ -111,6 +117,9 @@ const isDirty = computed<boolean>(() => {
 	const saved = props.savedSettings ?? DEFAULT_TELEGRAM_PUBLIC_SETTINGS;
 	const current = currentSettings.value;
 	if (current.accessMode !== saved.accessMode) return true;
+	if ((current.sessionIdleTimeoutMinutes ?? null) !== (saved.sessionIdleTimeoutMinutes ?? null)) {
+		return true;
+	}
 	if (current.allowedUsers.length !== saved.allowedUsers.length) return true;
 	return current.allowedUsers.some((entry, i) => entry !== saved.allowedUsers[i]);
 });
@@ -140,6 +149,8 @@ defineExpose({ currentSettings, validationError, isDirty });
 				/>
 			</N8nSelect>
 		</div>
+
+		<AgentSessionIdleTimeoutField v-model="sessionIdleTimeoutMinutes" :disabled="disabled" />
 
 		<div v-if="accessMode === 'private'" :class="$style.field">
 			<N8nText size="small" bold>

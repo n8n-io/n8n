@@ -5,7 +5,7 @@ import N8nIconPicker from './IconPicker.vue';
 import type { IconOrEmoji } from './types';
 
 export default {
-	title: 'Core/Icon Picker',
+	title: 'Core/IconPicker',
 	component: N8nIconPicker,
 	argTypes: {
 		buttonTooltip: {
@@ -17,7 +17,7 @@ export default {
 		},
 		buttonVariant: {
 			control: 'select',
-			options: ['solid', 'subtle', 'ghost', 'outline', 'destructive', 'success'],
+			options: ['solid', 'brand', 'ghost', 'outline', 'destructive', 'success'],
 		},
 		isReadOnly: {
 			control: 'boolean',

@@ -4,31 +4,41 @@ import {
 	Project,
 	WorkflowEntity,
 	SharedWorkflow,
+	SharedWorkflowRepository,
 	WorkflowTagMapping,
 	CredentialsRepository,
 	TagRepository,
 	UserRepository,
 	WorkflowHistory,
+	WorkflowRepository,
 } from '@n8n/db';
+import type { PolicyCleared, PolicyViolation } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { DataSource, EntityManager, In, type EntityMetadata } from '@n8n/typeorm';
-import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import { readdir, readFile } from 'fs/promises';
 import { Cipher } from 'n8n-core';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import { type INode, type INodeCredentialsDetails, type IWorkflowBase } from 'n8n-workflow';
+import {
+	pickVersionedSettings,
+	type INode,
+	type INodeCredentialsDetails,
+	type IWorkflowBase,
+} from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import { z } from 'zod';
 
 import type { IWorkflowWithVersionMetadata } from '@/interfaces';
-import type { DataTableColumn } from '@/modules/data-table/data-table-column.entity';
-import { DataTableDDLService } from '@/modules/data-table/data-table-ddl.service';
 import {
+	type DataTableColumn,
+	DataTableDDLService,
 	normalizeUserRowValueForDatabase,
 	quoteIdentifier,
 	toTableName,
-} from '@/modules/data-table/utils/sql-utils';
+} from '@n8n/backend-module-data-table';
+
 import { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
+import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
+import { PolicyViolationError } from '@/policy/policy-violation.error';
 import { decompressFolder } from '@/utils/compression.util';
 import { validateDbTypeForImportEntities } from '@/utils/validate-database-type';
 import {
@@ -36,9 +46,39 @@ import {
 	validateWorkflowStructure,
 	sanitizeNodeGroupDescriptions,
 } from '@/workflow-helpers';
+import { DeprecatedNodesValidationService } from '@/workflows/deprecated-nodes-validation.service';
+import { sortSubWorkflowsFirst } from '@/workflows/sub-workflow-order';
 import { WorkflowService } from '@/workflows/workflow.service';
 
-const DATA_TABLE_ROWS_FILE_PREFIX = 'data_table_user_';
+import { DATA_TABLE_ROWS_FILE_PREFIX } from './data-table-export.constants';
+
+/**
+ * Archive file names of entity classes that were renamed while their table kept
+ * its name. The exporter names each file after the entity class, so an archive
+ * written before a rename still carries the old name, and an importer that only
+ * knows the new class would skip it silently. Keyed by the old lowercase name,
+ * the value is the current one. An entry applies only while no entity carries
+ * the old name itself.
+ */
+const LEGACY_ENTITY_FILE_NAMES: Readonly<Record<string, string>> = {
+	// `AgentFile` became `KnowledgeFile` when it moved into the knowledge module.
+	agentfile: 'knowledgefile',
+};
+
+/** The entity name an archive file was written for: `user.2.jsonl` is `user`. */
+function toArchiveBaseName(file: string): string {
+	return file.replace(/\.\d+\.jsonl$/, '.jsonl').replace('.jsonl', '');
+}
+
+/**
+ * One workflow the content-import policy blocked. It was skipped — the rest of the batch still
+ * imports, so a single bad workflow cannot cost an operator a whole restore.
+ */
+export interface WorkflowImportViolations {
+	workflowId: string | null;
+	name: string;
+	violations: PolicyViolation[];
+}
 
 @Service()
 export class ImportService {
@@ -73,6 +113,10 @@ export class ImportService {
 		private readonly dataTableDDLService: DataTableDDLService,
 		private readonly userRepository: UserRepository,
 		private readonly workflowService: WorkflowService,
+		private readonly policyEnforcementService: PolicyEnforcementService,
+		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
+		private readonly workflowRepository: WorkflowRepository,
+		private readonly deprecatedNodesValidationService: DeprecatedNodesValidationService,
 	) {}
 
 	async initRecords() {
@@ -87,7 +131,7 @@ export class ImportService {
 		projectId: string,
 		userId: string,
 		{ activeState = 'false' }: { activeState?: 'false' | 'fromJson' },
-	) {
+	): Promise<{ violations: WorkflowImportViolations[] }> {
 		await this.initRecords();
 
 		const user = await this.userRepository.findOneOrFail({
@@ -101,20 +145,39 @@ export class ImportService {
 		const workflowIds = workflows.map((w) => w.id).filter((id) => !!id);
 		const existingWorkflowIds = new Set<string>();
 		const activeVersionIdByWorkflow = new Map<string, string>();
+		const existingNodesByWorkflow = new Map<string, INode[]>();
+
+		let existingOwnerProjects = new Map<string, Project>();
 
 		if (workflowIds.length > 0) {
 			const existingWorkflows = await dbManager.find(WorkflowEntity, {
 				where: { id: In(workflowIds) },
-				select: ['id', 'activeVersionId'],
+				select: ['id', 'activeVersionId', 'nodes'],
 			});
 
-			for (const { id, activeVersionId } of existingWorkflows) {
+			for (const { id, activeVersionId, nodes } of existingWorkflows) {
 				existingWorkflowIds.add(id);
 				if (activeVersionId !== null) {
 					activeVersionIdByWorkflow.set(id, activeVersionId);
 				}
+				existingNodesByWorkflow.set(id, nodes ?? []);
+			}
+
+			// An existing workflow's policy scope is its own project, not `projectId` — that
+			// param is where a brand-new workflow lands, and re-importing never moves ownership.
+			// Skipped when nothing would read it — a feature that is merely absent must not cost
+			// an extra query.
+			if (this.policyEnforcementService.hasChecksFor('contentImport')) {
+				existingOwnerProjects =
+					await this.sharedWorkflowRepository.findOwnerProjectsByWorkflowIds(workflowIds);
 			}
 		}
+
+		const violations: WorkflowImportViolations[] = [];
+		const admitted: Array<{
+			workflow: IWorkflowWithVersionMetadata;
+			cleared: PolicyCleared<'contentImport'>;
+		}> = [];
 
 		for (const workflow of workflows) {
 			workflow.nodes.forEach((node) => {
@@ -128,12 +191,61 @@ export class ImportService {
 			if (hasInvalidCreds) await this.replaceInvalidCreds(workflow, projectId);
 			validateWorkflowStructure(workflow);
 
+			// Apply the same deprecated-node enforcement that the REST/public API
+			// endpoints use: treat unknown workflow IDs as creates, known IDs as
+			// updates (so a re-import of an existing workflow with the same
+			// deprecated nodes is allowed, but introducing new ones is not).
+			const existingNodes = workflow.id ? existingNodesByWorkflow.get(workflow.id) : undefined;
+			if (existingNodes) {
+				this.deprecatedNodesValidationService.validateOnUpdate(
+					workflow.nodes,
+					existingNodes,
+					workflow.id,
+				);
+			} else {
+				this.deprecatedNodesValidationService.validateOnCreate(workflow.nodes, workflow.id);
+			}
+
 			for (const warning of sanitizeNodeGroupDescriptions(workflow)) {
 				this.logger.warn(`Workflow "${workflow.name}": ${warning}`);
 			}
 
-			// Deactivate BEFORE the transaction to prevent orphaned trigger listeners.
-			// Only applies to workflows that are currently active in the database.
+			// Use the workflow's own project when it already has one — re-importing never moves it.
+			const policyProjectId = workflow.id
+				? (existingOwnerProjects.get(workflow.id)?.id ?? projectId)
+				: projectId;
+
+			let cleared: PolicyCleared<'contentImport'>;
+			try {
+				cleared = await this.policyEnforcementService.enforceContentImport(
+					{
+						workflow: { id: workflow.id ?? null, name: workflow.name, nodes: workflow.nodes },
+						projectId: policyProjectId,
+						transport: 'cli',
+					},
+					{ kind: 'system', reason: 'cli-import' },
+				);
+			} catch (error) {
+				// A blocked workflow is skipped, not fatal — the operator gets the rest of the batch.
+				// A check that broke is not scoped to one workflow, so it fails the whole import
+				// rather than silently skipping every workflow in turn.
+				if (!(error instanceof PolicyViolationError)) throw error;
+
+				violations.push({
+					workflowId: workflow.id ?? null,
+					name: workflow.name,
+					violations: error.violations,
+				});
+				continue;
+			}
+
+			admitted.push({ workflow, cleared });
+		}
+
+		// Nothing is deactivated until the whole batch is admitted: admission can abort the import,
+		// and a workflow stopped by then would stay stopped with nothing imported in its place.
+		// Still before the transaction, to prevent orphaned trigger listeners.
+		for (const { workflow } of admitted) {
 			if (workflow.id && activeVersionIdByWorkflow.has(workflow.id)) {
 				await this.workflowService.deactivateWorkflow(user, workflow.id, { source: 'import' });
 			}
@@ -141,9 +253,9 @@ export class ImportService {
 
 		const insertedWorkflows: IWorkflowWithVersionMetadata[] = [];
 		const workflowsToActivate: Array<{ workflowId: string; versionId: string }> = [];
-		await dbManager.transaction(async (tx) => {
+		await this.workflowRepository.runInTransaction({}, async (tx, ctx) => {
 			// Upsert all workflows
-			for (const workflow of workflows) {
+			for (const { workflow, cleared } of admitted) {
 				// Always generate a new versionId on import to ensure proper history ordering
 				workflow.versionId = uuid();
 
@@ -164,9 +276,12 @@ export class ImportService {
 				workflow.active = false;
 				workflow.activeVersionId = null;
 
-				const workflowToUpsert = workflow as QueryDeepPartialEntity<WorkflowEntity>;
-				const upsertResult = await tx.upsert(WorkflowEntity, workflowToUpsert, ['id']);
-				const workflowId = upsertResult.identifiers.at(0)?.id as string;
+				// Each workflow carries its own clearance: one token per subject, so a batch cannot
+				// have one cleared workflow vouch for another.
+				const workflowId = await this.workflowRepository.upsertImportedContent(workflow, {
+					...ctx,
+					policyCleared: cleared,
+				});
 				insertedWorkflows.push({ ...workflow, id: workflowId }); // Collect inserted workflow with correct ID, for indexing later.
 
 				if (shouldActivate) {
@@ -207,6 +322,7 @@ export class ImportService {
 					connections: workflow.connections,
 					nodeGroups: workflow.nodeGroups,
 					authors: 'import',
+					settings: pickVersionedSettings(workflow.settings),
 					name: versionMetadata?.name ?? null,
 					description: versionMetadata?.description ?? null,
 				});
@@ -226,88 +342,25 @@ export class ImportService {
 		for (const workflow of insertedWorkflows) {
 			await this.workflowIndexService.updateIndexForDraft(workflow);
 		}
+
+		return { violations };
 	}
 
-	/**
-	 * Sorts workflows to activate in dependency order so that subworkflows are activated
-	 * before the workflows that call them. Uses Kahn's topological sort algorithm.
-	 */
 	private sortWorkflowsForActivation(
 		allImportedWorkflows: IWorkflowWithVersionMetadata[],
 		toActivate: Array<{ workflowId: string; versionId: string }>,
 	): Array<{ workflowId: string; versionId: string }> {
-		if (toActivate.length <= 1) return toActivate;
-
 		const nodesByWorkflowId = new Map(allImportedWorkflows.map((w) => [w.id, w.nodes]));
-		const activateIds = new Set(toActivate.map((w) => w.workflowId));
-
-		// Fast path: skip the full graph build if no workflow in the batch references
-		// another batch workflow via an active executeWorkflow node.
-		const hasCrossReference = toActivate.some(({ workflowId }) =>
-			(nodesByWorkflowId.get(workflowId) ?? []).some(
-				(node) =>
-					!node.disabled &&
-					node.type === 'n8n-nodes-base.executeWorkflow' &&
-					activateIds.has(this.extractSubworkflowId(node) ?? ''),
-			),
-		);
-		if (!hasCrossReference) return toActivate;
-
-		const toActivateByWorkflowId = new Map(toActivate.map((w) => [w.workflowId, w]));
-		// callee id → set of caller ids that depend on it being activated first
-		const dependents = new Map<string, Set<string>>(
-			toActivate.map(({ workflowId }) => [workflowId, new Set()]),
-		);
-		// caller id → how many of its subworkflow dependencies in this batch are not yet activated
-		const unresolvedDepsCount = new Map<string, number>(
-			toActivate.map(({ workflowId }) => [workflowId, 0]),
-		);
-
-		for (const { workflowId } of toActivate) {
-			for (const node of nodesByWorkflowId.get(workflowId) ?? []) {
-				if (node.disabled || node.type !== 'n8n-nodes-base.executeWorkflow') continue;
-				const calleeId = this.extractSubworkflowId(node);
-				if (!calleeId || !activateIds.has(calleeId) || calleeId === workflowId) continue;
-				dependents.get(calleeId)!.add(workflowId);
-				unresolvedDepsCount.set(workflowId, unresolvedDepsCount.get(workflowId)! + 1);
-			}
-		}
-
-		const queue = toActivate.filter((w) => unresolvedDepsCount.get(w.workflowId) === 0);
-		const result: Array<{ workflowId: string; versionId: string }> = [];
-
-		while (queue.length > 0) {
-			const item = queue.shift()!;
-			result.push(item);
-			for (const callerId of dependents.get(item.workflowId)!) {
-				const remaining = unresolvedDepsCount.get(callerId)! - 1;
-				unresolvedDepsCount.set(callerId, remaining);
-				if (remaining === 0) queue.push(toActivateByWorkflowId.get(callerId)!);
-			}
-		}
-
-		if (result.length < toActivate.length) {
-			// Any workflow still with unresolvedDepsCount > 0 was never enqueued by the
-			// sort — it's part of a cycle (its dependency also waits on it). Append these
-			// so they still get activated rather than being silently dropped.
-			const cycleWorkflows = toActivate.filter(
-				(w) => Number(unresolvedDepsCount.get(w.workflowId)) > 0,
-			);
+		const { ordered, cyclic } = sortSubWorkflowsFirst(toActivate, ({ workflowId }) => ({
+			id: workflowId,
+			nodes: nodesByWorkflowId.get(workflowId) ?? [],
+		}));
+		if (cyclic.length > 0) {
 			this.logger.warn(
-				`Detected circular subworkflow references among workflows: [${cycleWorkflows.map((w) => w.workflowId).join(', ')}]. Activating them in original order.`,
+				`Detected circular subworkflow references among workflows: [${cyclic.map((w) => w.workflowId).join(', ')}]. Activating them in original order.`,
 			);
-			result.push(...cycleWorkflows);
 		}
-
-		return result;
-	}
-
-	private extractSubworkflowId(node: INode): string | undefined {
-		const source = node.parameters?.['source'];
-		if (source === 'parameter' || source === 'localFile' || source === 'url') return undefined;
-		const wfId = node.parameters?.['workflowId'];
-		const rawId = typeof wfId === 'string' ? wfId : (wfId as { value?: unknown } | null)?.value;
-		return typeof rawId === 'string' && !rawId.startsWith('=') ? rawId : undefined;
+		return ordered;
 	}
 
 	private async activateWorkflow(
@@ -417,11 +470,14 @@ export class ImportService {
 		const entityTableNamesMap: Record<string, string> = {};
 		const entityFiles: Record<string, string[]> = {};
 		const dataTableFiles: Record<string, string[]> = {};
+		const presentBaseNames = new Set(
+			files.filter((file) => file.endsWith('.jsonl')).map(toArchiveBaseName),
+		);
 
 		for (const file of files) {
 			if (!file.endsWith('.jsonl')) continue;
 
-			const baseName = file.replace(/\.\d+\.jsonl$/, '.jsonl').replace('.jsonl', '');
+			const baseName = toArchiveBaseName(file);
 
 			// Exclude migrations from regular entity import
 			if (baseName === 'migrations') {
@@ -436,7 +492,8 @@ export class ImportService {
 				continue;
 			}
 
-			const entityName = baseName;
+			const entityName = this.resolveArchiveEntityName(file, baseName, presentBaseNames);
+			if (entityName === null) continue;
 
 			// Build table names map (only need to do this once per entity)
 			if (!entityTableNamesMap[entityName]) {
@@ -464,6 +521,37 @@ export class ImportService {
 			entityFiles,
 			dataTableFiles,
 		};
+	}
+
+	/**
+	 * The entity an archive file belongs to. A file written under the old name of a
+	 * renamed entity maps to the current name, unless an entity carries the old name
+	 * again. It is skipped (null) when the directory also holds files under the
+	 * current name: one export never writes both, so the old files are leftovers of
+	 * an earlier run in the same directory.
+	 */
+	private resolveArchiveEntityName(
+		file: string,
+		baseName: string,
+		presentBaseNames: Set<string>,
+	): string | null {
+		const currentName = LEGACY_ENTITY_FILE_NAMES[baseName];
+		if (!currentName) return baseName;
+
+		const hasEntityWithOldName = this.dataSource.entityMetadatas.some(
+			(meta) => meta.name.toLowerCase() === baseName,
+		);
+		if (hasEntityWithOldName) return baseName;
+
+		if (presentBaseNames.has(currentName)) {
+			this.logger.warn(
+				`⚠️  Skipping ${file}: the directory also holds ${currentName} files, so it is a leftover of an earlier export`,
+			);
+			return null;
+		}
+
+		this.logger.info(`   ℹ️  Reading ${file} as ${currentName} (entity renamed since the export)`);
+		return currentName;
 	}
 
 	/**

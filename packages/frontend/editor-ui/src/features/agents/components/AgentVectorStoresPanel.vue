@@ -3,7 +3,6 @@ import type { AgentJsonVectorStoreConfig } from '@n8n/api-types';
 import {
 	N8nEmptyState,
 	N8nActionDropdown,
-	N8nIcon,
 	N8nIconButton,
 	N8nTableBase,
 	N8nTooltip,
@@ -76,15 +75,14 @@ function onAction(actionId: VectorStoreAction, vectorStore: AgentJsonVectorStore
 <template>
 	<div :class="$style.panel" data-testid="agent-vector-stores-panel">
 		<div :class="$style.toolbar">
-			<N8nText bold :class="$style.title" data-testid="agent-vector-stores-title">
-				{{ i18n.baseText('agents.builder.vectorStores.panel.title') }}
-				<N8nTooltip
-					:content="i18n.baseText('agents.builder.vectorStores.panel.titleTooltip')"
-					placement="top"
-				>
-					<div :class="$style.titleIcon"><N8nIcon icon="circle-help" size="small" /></div>
-				</N8nTooltip>
-			</N8nText>
+			<div :class="$style.headerText">
+				<N8nText bold data-testid="agent-vector-stores-title">
+					{{ i18n.baseText('agents.builder.vectorStores.panel.title') }}
+				</N8nText>
+				<N8nText color="text-light" step="sm">
+					{{ i18n.baseText('agents.builder.vectorStores.panel.titleTooltip') }}
+				</N8nText>
+			</div>
 			<N8nTooltip
 				v-if="props.vectorStores.length > 0"
 				:content="i18n.baseText('agents.builder.vectorStores.panel.connectButton')"
@@ -186,18 +184,15 @@ function onAction(actionId: VectorStoreAction, vectorStore: AgentJsonVectorStore
 	width: 100%;
 }
 
-.title {
-	display: inline-flex;
-	align-items: center;
+.headerText {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
 	min-width: 0;
-}
 
-.titleIcon {
-	width: var(--height--xs);
-	height: var(--height--xs);
-	display: grid;
-	place-items: center;
-	color: var(--text-color--subtler);
+	> span {
+		text-wrap: balance;
+	}
 }
 
 .tableContainer {

@@ -1,20 +1,26 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { N8nActionDropdown } from '@n8n/design-system';
+import { N8nActionDropdown, N8nTooltip } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import AgentChipButton from '@/features/agents/components/AgentChipButton.vue';
 import { type AgentCardChip, MAX_INLINE_AGENT_CHIPS } from './canvasNodeAgentChips.utils';
+import type { AgentCapabilityActivityKey } from '@/features/agents/utils/agentCapabilityActivity';
 
 const props = withDefaults(
 	defineProps<{
 		chips: AgentCardChip[];
 		maxInline?: number;
 		isReadOnly?: boolean;
+		activeCapabilityKeys?: ReadonlySet<AgentCapabilityActivityKey>;
 	}>(),
-	{ maxInline: MAX_INLINE_AGENT_CHIPS, isReadOnly: false },
+	{
+		maxInline: MAX_INLINE_AGENT_CHIPS,
+		isReadOnly: false,
+		activeCapabilityKeys: () => new Set<AgentCapabilityActivityKey>(),
+	},
 );
 
 const i18n = useI18n();
@@ -31,6 +37,9 @@ const inlineChips = computed(() =>
 	})),
 );
 const overflowChips = computed(() => props.chips.slice(props.maxInline));
+const isChipActive = (chip: AgentCardChip) =>
+	(chip.activityKeys ?? []).some((key) => props.activeCapabilityKeys.has(key));
+const isOverflowActive = computed(() => overflowChips.value.some(isChipActive));
 const overflowItems = computed<Array<ActionDropdownItem<string>>>(() =>
 	overflowChips.value.map((chip) => ({ id: chip.key, label: chip.label, icon: chip.icon })),
 );
@@ -38,57 +47,132 @@ const overflowItems = computed<Array<ActionDropdownItem<string>>>(() =>
 
 <template>
 	<div :class="$style.chips" data-test-id="canvas-node-agent-chips">
-		<AgentChipButton
+		<N8nTooltip
 			v-for="chip in inlineChips"
 			:key="chip.key"
-			:icon="chip.nodeTypeDescription ? undefined : chip.icon"
-			:clickable="false"
-			data-test-id="canvas-node-agent-chip"
+			as-child
+			:show-after="500"
+			placement="top"
 		>
-			<template v-if="chip.nodeTypeDescription" #icon>
-				<NodeIcon :node-type="chip.nodeTypeDescription" :size="16" :class="$style.nodeIcon" />
-			</template>
-			{{ chip.label }}
-		</AgentChipButton>
-		<AgentChipButton
-			v-if="overflowChips.length && isReadOnly"
-			:clickable="false"
-			data-test-id="canvas-node-agent-chips-overflow"
-		>
-			{{
-				i18n.baseText('agentNode.card.moreChips', {
-					interpolate: { count: overflowChips.length },
-				})
-			}}
-		</AgentChipButton>
-		<N8nActionDropdown
-			v-else-if="overflowChips.length"
-			:items="overflowItems"
-			placement="bottom-start"
-			:class="['nodrag', 'nowheel']"
-			data-test-id="canvas-node-agent-chips-overflow"
-		>
-			<template #activator>
-				<AgentChipButton>
-					{{
-						i18n.baseText('agentNode.card.moreChips', {
-							interpolate: { count: overflowChips.length },
-						})
-					}}
+			<span :class="[$style.chipWrapper, { [$style.running]: isChipActive(chip) }]">
+				<span v-if="isChipActive(chip)" :class="$style.statusRing" />
+				<AgentChipButton
+					:class="$style.chipButton"
+					:icon="chip.nodeTypeDescription ? undefined : chip.icon"
+					:clickable="false"
+					:aria-busy="isChipActive(chip)"
+					data-test-id="canvas-node-agent-chip"
+				>
+					<template v-if="chip.nodeTypeDescription" #icon>
+						<NodeIcon :node-type="chip.nodeTypeDescription" :size="16" :class="$style.nodeIcon" />
+					</template>
+					{{ chip.label }}
 				</AgentChipButton>
-			</template>
-		</N8nActionDropdown>
+			</span>
+			<template #content>{{ chip.label }}</template>
+		</N8nTooltip>
+		<span
+			v-if="overflowChips.length && isReadOnly"
+			:class="[$style.chipWrapper, { [$style.running]: isOverflowActive }]"
+		>
+			<span v-if="isOverflowActive" :class="$style.statusRing" />
+			<AgentChipButton
+				:clickable="false"
+				:aria-busy="isOverflowActive"
+				data-test-id="canvas-node-agent-chips-overflow"
+			>
+				{{
+					i18n.baseText('agentNode.card.moreChips', {
+						interpolate: { count: overflowChips.length },
+					})
+				}}
+			</AgentChipButton>
+		</span>
+		<span
+			v-else-if="overflowChips.length"
+			:class="[$style.chipWrapper, { [$style.running]: isOverflowActive }]"
+		>
+			<span v-if="isOverflowActive" :class="$style.statusRing" />
+			<N8nActionDropdown
+				:items="overflowItems"
+				placement="bottom-start"
+				:class="['nodrag', 'nowheel', $style.overflowDropdown]"
+				data-test-id="canvas-node-agent-chips-overflow"
+			>
+				<template #activator>
+					<AgentChipButton :aria-busy="isOverflowActive">
+						{{
+							i18n.baseText('agentNode.card.moreChips', {
+								interpolate: { count: overflowChips.length },
+							})
+						}}
+					</AgentChipButton>
+				</template>
+			</N8nActionDropdown>
+		</span>
 	</div>
 </template>
 
 <style lang="scss" module>
+@use '../_canvasNodeStyles.scss' as styles;
+
 .chips {
 	display: flex;
 	flex-wrap: wrap;
+	min-width: 0;
 	gap: var(--spacing--2xs);
 }
 
 .nodeIcon {
 	flex-shrink: 0;
 }
+
+.chipWrapper {
+	display: inline-flex;
+	position: relative;
+	isolation: isolate;
+	max-width: 100%;
+	min-width: 0;
+	border-radius: var(--radius--full);
+}
+
+.chipButton {
+	max-width: 100%;
+	min-width: 0;
+}
+
+// The ring sizes to the wrapper, so the dropdown container must hug the button.
+.chipWrapper > .overflowDropdown {
+	display: inline-flex;
+	max-width: 100%;
+	min-width: 0;
+}
+
+.running > * {
+	position: relative;
+	z-index: 1;
+}
+
+/* stylelint-disable */
+.running > .statusRing {
+	@include styles.status-animated-ring;
+	@include styles.status-running-animation;
+
+	// This matches the mixin's 3px inset and keeps the gradient outside the button face.
+	padding: 3px;
+	border-radius: inherit;
+	z-index: 0;
+	pointer-events: none;
+	-webkit-mask:
+		linear-gradient(#fff 0 0) content-box,
+		linear-gradient(#fff 0 0);
+	mask:
+		linear-gradient(#fff 0 0) content-box,
+		linear-gradient(#fff 0 0);
+	-webkit-mask-composite: xor;
+	mask-composite: exclude;
+}
+/* stylelint-enable */
+
+@include styles.status-animation-definitions;
 </style>

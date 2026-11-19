@@ -6,7 +6,10 @@ import type {
 	IPairedItemData,
 	IHttpRequestMethods,
 	IRequestOptions,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
+import { requestUrl } from 'n8n-workflow';
 
 /**
  * Make an authenticated API request to Bubble.
@@ -14,13 +17,13 @@ import type {
 export async function dropcontactApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject,
 	qs: IDataObject,
 ) {
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		method,
-		uri: `https://api.dropcontact.io${endpoint}`,
+		uri: requestUrl`https://api.dropcontact.io${endpoint}`,
 		qs,
 		body,
 		json: true,

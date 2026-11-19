@@ -1,3 +1,33 @@
+diff --git a/dist/chat_models/completions.cjs b/dist/chat_models/completions.cjs
+index 170a396ce0b6c16ff536c27f62dc011bfd8154a2..ef4056370af2d3385ef053489c61f2442897eba0 100644
+--- a/dist/chat_models/completions.cjs
++++ b/dist/chat_models/completions.cjs
+@@ -129,6 +129,10 @@ var ChatOpenAICompletions = class extends require_base.BaseChatOpenAI {
+ 				generation.message = new _langchain_core_messages.AIMessage(Object.fromEntries(Object.entries(generation.message).filter(([key]) => !key.startsWith("lc_"))));
+ 				generations.push(generation);
+ 			}
++			if (generations.length === 0) {
++				const body = typeof data === "string" ? data : JSON.stringify(data) ?? "";
++				throw new Error(`Received empty response from chat model call (no choices). Response body: ${body.slice(0, 500)}`);
++			}
+ 			return {
+ 				generations,
+ 				llmOutput: { tokenUsage: {
+diff --git a/dist/chat_models/completions.js b/dist/chat_models/completions.js
+index 57d3e6a4e2e0046f6d1bb10c320414224443b1b3..23d84e0159310a17347a4f088dde5a0f596f8c6f 100644
+--- a/dist/chat_models/completions.js
++++ b/dist/chat_models/completions.js
+@@ -129,6 +129,10 @@ var ChatOpenAICompletions = class extends BaseChatOpenAI {
+ 				generation.message = new AIMessage(Object.fromEntries(Object.entries(generation.message).filter(([key]) => !key.startsWith("lc_"))));
+ 				generations.push(generation);
+ 			}
++			if (generations.length === 0) {
++				const body = typeof data === "string" ? data : JSON.stringify(data) ?? "";
++				throw new Error(`Received empty response from chat model call (no choices). Response body: ${body.slice(0, 500)}`);
++			}
+ 			return {
+ 				generations,
+ 				llmOutput: { tokenUsage: {
 diff --git a/dist/converters/completions.cjs b/dist/converters/completions.cjs
 index 791756ca4ec9fed98ecb44b90e090ad8d00db40a..f1fd00d4c699a34b342443bed84f2b4aeb6de021 100644
 --- a/dist/converters/completions.cjs

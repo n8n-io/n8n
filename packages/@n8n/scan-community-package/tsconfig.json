@@ -1,0 +1,10 @@
+{
+	"extends": "@n8n/typescript-config/modern/tsconfig.json",
+	"compilerOptions": {
+		"rootDir": "src",
+		"outDir": "dist",
+		"erasableSyntaxOnly": true,
+		"types": ["node"]
+	},
+	"include": ["src/**/*.ts"]
+}

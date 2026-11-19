@@ -3,8 +3,10 @@ import type {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IExecuteFunctions,
+	INode,
 	INodeExecutionData,
 } from 'n8n-workflow';
+import { NodeHelpers } from 'n8n-workflow';
 import { mock, mockDeep } from 'vitest-mock-extended';
 
 import { gristApiRequest } from '../GenericFunctions';
@@ -65,7 +67,7 @@ describe('Execute Grist Node', () => {
 		expect(gristApiRequest).toHaveBeenCalledTimes(1);
 		expect(gristApiRequest).toHaveBeenCalledWith(
 			'PUT',
-			'/docs/test-doc-id/tables/test-table-id/records',
+			expect.objectContaining({ value: '/docs/test-doc-id/tables/test-table-id/records' }),
 			{
 				records: [
 					{
@@ -217,7 +219,7 @@ describe('Execute Grist Node', () => {
 		expect(gristApiRequest).toHaveBeenCalledTimes(1);
 		expect(gristApiRequest).toHaveBeenCalledWith(
 			'PUT',
-			'/docs/test-doc-id/tables/test-table-id/records',
+			expect.objectContaining({ value: '/docs/test-doc-id/tables/test-table-id/records' }),
 			{
 				records: [
 					{
@@ -269,7 +271,7 @@ describe('Grist credentialTest', () => {
 		const { result, request } = await run([{ id: 1, name: 'Personal' }]);
 
 		expect(result.status).toBe('OK');
-		expect(request.mock.calls[0][0].uri).toBe('https://api.getgrist.com/api/orgs');
+		expect(String(request.mock.calls[0][0].uri)).toBe('https://api.getgrist.com/api/orgs');
 		expect(request.mock.calls[0][0].headers.Authorization).toBe('Bearer k');
 	});
 
@@ -306,6 +308,34 @@ describe('Grist credentialTest', () => {
 			selfHostedUrl: 'http://localhost:8484',
 		});
 
-		expect(request.mock.calls[0][0].uri).toBe('http://localhost:8484/api/orgs');
+		expect(String(request.mock.calls[0][0].uri)).toBe('http://localhost:8484/api/orgs');
+	});
+});
+
+describe('Grist authentication parameter', () => {
+	// Workflows saved before the selector existed have no stored `authentication` value. Resolve a
+	// node without one the way execution does, rather than asserting the declared default: adding
+	// `displayOptions` to the parameter would drop it here while a default check still passed.
+	it('resolves to the API key for a workflow saved without one', () => {
+		const description = new Grist().description;
+		const node: INode = {
+			id: 'uuid-1234',
+			name: 'Grist',
+			type: 'n8n-nodes-base.grist',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: { operation: 'getAll', docId: 'doc1', tableId: 'Table1' },
+		};
+
+		const resolved = NodeHelpers.getNodeParameters(
+			description.properties,
+			node.parameters,
+			true,
+			false,
+			node,
+			description,
+		);
+
+		expect(resolved?.authentication).toBe('apiKey');
 	});
 });

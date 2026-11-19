@@ -210,8 +210,9 @@ export function useSlackChannelRuntime(context: AgentChannelRuntimeContext): Sla
 
 		try {
 			credentialsStore.setCredentials([]);
-			const credentials = await credentialsStore.fetchAllCredentialsForWorkflow({
+			const credentials = await credentialsStore.fetchUsableCredentials({
 				projectId: context.projectId.value,
+				forAgent: true,
 			});
 			const credential = credentials.find(
 				(item) => item.id === id && item.type === SLACK_MANAGER_CREDENTIAL_TYPE,
@@ -289,7 +290,9 @@ export function useSlackChannelRuntime(context: AgentChannelRuntimeContext): Sla
 		}
 	}
 
-	watch(context.selectedCredentialId, (credentialId) => void loadSettings(credentialId));
+	watch(context.selectedCredentialId, (credentialId) => {
+		void loadSettings(credentialId);
+	});
 	watch(context.credentialModalOpen, (isOpen, wasOpen) => {
 		if (wasOpen && !isOpen) void load();
 	});

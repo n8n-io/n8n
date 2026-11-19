@@ -1,11 +1,9 @@
 // ---------------------------------------------------------------------------
 // Stub LocalMcpServer for discovery evals.
 //
-// The orchestrator computes `browserAvailable` from the size of
-// `context.localMcpServer?.getToolsByCategory('browser')`. To exercise the
-// `browserAvailable: true` branch of the system prompt without spinning up the
-// real computer-use daemon, we plug in a stub server that advertises browser
-// tools by name. The stub never receives actual `callTool` invocations during
+// A case declares a connected browser through `instanceState.browserUse`, and
+// the runner plugs in this stub so the agent holds the browser tools without
+// spinning up the Chrome extension. The stub advertises tools by name and category. It never receives actual `callTool` invocations during
 // discovery scenarios — the orchestrator's first dispatch decision is what we
 // measure, not downstream tool execution.
 // ---------------------------------------------------------------------------
@@ -27,10 +25,6 @@ const STUB_BROWSER_TOOL_NAMES = [
 	'browser_create_credential',
 ];
 
-const STUB_FILESYSTEM_TOOL_NAMES = ['fs_read_file', 'fs_search_files', 'fs_list_dir'];
-
-const STUB_SHELL_TOOL_NAMES = ['shell_run'];
-
 function makeStubTool(name: string, category: string): McpTool {
 	return {
 		name,
@@ -40,22 +34,8 @@ function makeStubTool(name: string, category: string): McpTool {
 	};
 }
 
-export interface CreateStubLocalMcpServerOptions {
-	/** Capabilities to advertise. Each capability publishes a small set of stub tool names. */
-	capabilities: ReadonlyArray<'browser' | 'filesystem' | 'shell'>;
-}
-
-export function createStubLocalMcpServer(options: CreateStubLocalMcpServerOptions): LocalMcpServer {
-	const tools: McpTool[] = [];
-	if (options.capabilities.includes('browser')) {
-		for (const name of STUB_BROWSER_TOOL_NAMES) tools.push(makeStubTool(name, 'browser'));
-	}
-	if (options.capabilities.includes('filesystem')) {
-		for (const name of STUB_FILESYSTEM_TOOL_NAMES) tools.push(makeStubTool(name, 'filesystem'));
-	}
-	if (options.capabilities.includes('shell')) {
-		for (const name of STUB_SHELL_TOOL_NAMES) tools.push(makeStubTool(name, 'shell'));
-	}
+export function createStubLocalMcpServer(): LocalMcpServer {
+	const tools: McpTool[] = STUB_BROWSER_TOOL_NAMES.map((name) => makeStubTool(name, 'browser'));
 
 	return {
 		getAvailableTools: () => tools,

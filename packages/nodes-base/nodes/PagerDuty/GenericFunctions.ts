@@ -8,29 +8,30 @@ import type {
 	IWebhookFunctions,
 	IHttpRequestMethods,
 	IRequestOptions,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestUrl } from 'n8n-workflow';
 
 export async function pagerDutyApiRequest(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 
 	body: any = {},
 	query: IDataObject = {},
-	uri?: string,
 	headers: IDataObject = {},
 ): Promise<any> {
 	const authenticationMethod = this.getNodeParameter('authentication', 0);
 
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {
 			Accept: 'application/vnd.pagerduty+json;version=2',
 		},
 		method,
 		body,
 		qs: query,
-		uri: uri || `https://api.pagerduty.com${resource}`,
+		uri: requestUrl`https://api.pagerduty.com${resource}`,
 		json: true,
 		qsStringifyOptions: {
 			arrayFormat: 'brackets',
@@ -65,7 +66,7 @@ export async function pagerDutyApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 
 	body: any = {},
 	query: IDataObject = {},
@@ -73,12 +74,15 @@ export async function pagerDutyApiRequestAllItems(
 	const returnData: IDataObject[] = [];
 
 	let responseData;
-	query.limit = 100;
+	// PagerDuty's `offset` is the index of the first record to return, not a page
+	// number, so it has to advance by the page size to reach the next page.
+	const limit = 100;
+	query.limit = limit;
 	query.offset = 0;
 
 	do {
 		responseData = await pagerDutyApiRequest.call(this, method, endpoint, body, query);
-		query.offset++;
+		query.offset = (query.offset as number) + limit;
 		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 	} while (responseData.more);
 

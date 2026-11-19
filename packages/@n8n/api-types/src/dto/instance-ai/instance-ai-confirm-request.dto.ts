@@ -1,6 +1,8 @@
 import { z } from 'zod';
 
 import {
+	appBlueprintResumeSchema,
+	credentialDestinationDecisionSchema,
 	domainAccessActionSchema,
 	instanceAiApprovalResumeSchema,
 	instanceGatewayResourceDecisionSchema,
@@ -10,7 +12,6 @@ import {
 /**
  * Plain approval/denial. Also carries optional `userInput` for:
  *   - text-input confirmations (inputType='text')
- *   - plan-review feedback accompanying approve/request-changes
  *   - deferring/skipping credential or workflow setup wizards (`approved: false`)
  *
  * Payload fields (minus `kind`) are shared with tool `.resume()` schemas via
@@ -49,6 +50,11 @@ const credentialAutoSetupConfirmSchema = z.object({
 	attemptId: z.string().trim().min(1).max(64).optional(),
 });
 
+const credentialDestinationConfirmSchema = credentialDestinationDecisionSchema.extend({
+	kind: z.literal('credentialDestination'),
+	approved: z.boolean(),
+});
+
 /** Domain-access approval — `domainAccessAction` carries which scope the user picked. */
 const domainAccessApproveSchema = z.object({
 	kind: z.literal('domainAccessApprove'),
@@ -58,12 +64,6 @@ const domainAccessApproveSchema = z.object({
 /** Domain-access denial — no further input. */
 const domainAccessDenySchema = z.object({
 	kind: z.literal('domainAccessDeny'),
-});
-
-/** Plan-review denial — user rejected the proposed plan outright. Distinct from
- *  `approval` with `approved: false + userInput`, which asks the agent to revise. */
-const planDenySchema = z.object({
-	kind: z.literal('planDeny'),
 });
 
 /** Gateway resource-access decision (inputType='resource-decision'). Approval is implied. */
@@ -101,18 +101,23 @@ const mcpConnectConfirmSchema = mcpConnectResumeSchema.extend({
 	kind: z.literal('mcpConnect'),
 });
 
+const appBlueprintConfirmSchema = appBlueprintResumeSchema.extend({
+	kind: z.literal('appBlueprint'),
+});
+
 export const InstanceAiConfirmRequestDto = z.discriminatedUnion('kind', [
 	approvalConfirmSchema,
 	questionsConfirmSchema,
 	credentialSelectionConfirmSchema,
 	credentialAutoSetupConfirmSchema,
+	credentialDestinationConfirmSchema,
 	domainAccessApproveSchema,
 	domainAccessDenySchema,
-	planDenySchema,
 	resourceDecisionConfirmSchema,
 	setupWorkflowApplyConfirmSchema,
 	setupWorkflowTestTriggerConfirmSchema,
 	mcpConnectConfirmSchema,
+	appBlueprintConfirmSchema,
 ]);
 
 export type InstanceAiConfirmRequest = z.infer<typeof InstanceAiConfirmRequestDto>;

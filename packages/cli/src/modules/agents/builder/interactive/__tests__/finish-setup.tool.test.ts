@@ -1,6 +1,8 @@
-import type { CredentialListItem, CredentialProvider } from '@n8n/agents';
+import type { CredentialListItem } from '@n8n/agents';
+import type { BuilderCredentialService } from '../../builder-session';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 import type { z } from 'zod';
 
 import { buildFinishSetupTool } from '../finish-setup.tool';
@@ -19,27 +21,33 @@ function makeCtx(overrides?: { resumeData?: unknown; suspendPayload?: unknown })
 	};
 }
 
-function makeProvider(creds: CredentialListItem[]): CredentialProvider {
-	return {
-		list: vi.fn(async () => creds),
-		resolve: vi.fn(async () => ({})),
-	};
+function makeCredentialService(creds: CredentialListItem[]): BuilderCredentialService {
+	const credentialService = mock<BuilderCredentialService>();
+	credentialService.list.mockImplementation(async (options) =>
+		options?.type ? creds.filter((c) => c.type === options.type) : creds,
+	);
+	credentialService.get.mockImplementation(async (id: string) => {
+		const found = creds.find((c) => c.id === id);
+		if (!found) throw new Error(`Credential ${id} not found`);
+		return { id: found.id, name: found.name, type: found.type };
+	});
+	return credentialService;
 }
 
 const BASE_DEPS = {
 	agentId: 'agent-1',
 	projectId: 'project-1',
-	listChatIntegrationTypes: () => ['slack', 'telegram', 'linear'],
+	listChatIntegrationTypes: async () => ['slack', 'telegram', 'linear'],
 	track: vi.fn(),
 };
 
-describe('finish_setup tool', () => {
+describe('agent_builder_finish_setup tool', () => {
 	afterEach(() => {
 		(BASE_DEPS.track as Mock).mockClear();
 	});
 
 	it('auto-resolves single-credential and channel-matching slots, excluding them from the credential phase', async () => {
-		const credentialProvider = makeProvider([
+		const credentialService = makeCredentialService([
 			{ id: 'c1', name: 'My Airtable', type: 'airtableApi' },
 			{ id: 'c2', name: 'Personal Slack', type: 'slackApi' },
 			{ id: 'c3', name: 'Notion A', type: 'notionApi' },
@@ -47,7 +55,7 @@ describe('finish_setup tool', () => {
 		]);
 		const tool = buildFinishSetupTool({
 			...BASE_DEPS,
-			credentialProvider,
+			credentialService,
 			listIntegrationCredentialIds: async () => ['c2'],
 		});
 		const ctx = makeCtx();
@@ -82,13 +90,44 @@ describe('finish_setup tool', () => {
 		});
 	});
 
+	it('suspends a sole generic auth credential instead of auto-resolving it', async () => {
+		const credentialService = makeCredentialService([
+			{ id: 'c1', name: 'Bearer Auth account', type: 'httpBearerAuth' },
+		]);
+		const tool = buildFinishSetupTool({
+			...BASE_DEPS,
+			credentialService,
+		});
+		const ctx = makeCtx();
+
+		const payload = (await tool.handler!(
+			{
+				credentialRequests: [
+					{ credentialType: 'httpBearerAuth', purpose: 'Authenticate the MCP server' },
+				],
+			},
+			ctx as never,
+		)) as Record<string, unknown>;
+
+		expect(payload.credentialRequests).toEqual([
+			{
+				credentialType: 'httpBearerAuth',
+				reason: 'Authenticate the MCP server',
+				existingCredentials: [{ id: 'c1', name: 'Bearer Auth account' }],
+			},
+		]);
+		expect(
+			(payload.finishSetupChain as { collected: { credentials?: unknown } }).collected.credentials,
+		).toBeUndefined();
+	});
+
 	it('returns completed without suspending when every credential slot auto-resolves and there is nothing else pending', async () => {
-		const credentialProvider = makeProvider([
+		const credentialService = makeCredentialService([
 			{ id: 'c1', name: 'My Airtable', type: 'airtableApi' },
 		]);
 		const tool = buildFinishSetupTool({
 			...BASE_DEPS,
-			credentialProvider,
+			credentialService,
 		});
 		const ctx = makeCtx();
 
@@ -105,10 +144,10 @@ describe('finish_setup tool', () => {
 	});
 
 	it('drops credential slots already covered by an n8n Connect managed credential', async () => {
-		const credentialProvider = makeProvider([]);
+		const credentialService = makeCredentialService([]);
 		const tool = buildFinishSetupTool({
 			...BASE_DEPS,
-			credentialProvider,
+			credentialService,
 			// The agent's node tools already run pdfcoApi on n8n credits.
 			listAiGatewayManagedCredentialTypes: async () => ['pdfcoApi'],
 		});
@@ -125,10 +164,10 @@ describe('finish_setup tool', () => {
 	});
 
 	it('still shows a card for an uncovered slot when another slot is managed-covered', async () => {
-		const credentialProvider = makeProvider([]);
+		const credentialService = makeCredentialService([]);
 		const tool = buildFinishSetupTool({
 			...BASE_DEPS,
-			credentialProvider,
+			credentialService,
 			listAiGatewayManagedCredentialTypes: async () => ['pdfcoApi'],
 		});
 		const ctx = makeCtx();
@@ -150,10 +189,10 @@ describe('finish_setup tool', () => {
 	});
 
 	it('chains through questions and credentials to a merged result', async () => {
-		const credentialProvider = makeProvider([]);
+		const credentialService = makeCredentialService([]);
 		const tool = buildFinishSetupTool({
 			...BASE_DEPS,
-			credentialProvider,
+			credentialService,
 		});
 		const input = {
 			questions: [
@@ -223,10 +262,10 @@ describe('finish_setup tool', () => {
 	});
 
 	it('marks the credential slot skipped when the credential phase is skipped', async () => {
-		const credentialProvider = makeProvider([]);
+		const credentialService = makeCredentialService([]);
 		const tool = buildFinishSetupTool({
 			...BASE_DEPS,
-			credentialProvider,
+			credentialService,
 		});
 		const input = {
 			credentialRequests: [{ credentialType: 'airtableApi', purpose: 'Airtable log' }],
@@ -265,7 +304,7 @@ describe('finish_setup tool', () => {
 	it('throws for an unknown credential type', async () => {
 		const tool = buildFinishSetupTool({
 			...BASE_DEPS,
-			credentialProvider: makeProvider([]),
+			credentialService: makeCredentialService([]),
 			isCredentialTypeKnown: (credentialType) => credentialType === 'airtableApi',
 		});
 		const ctx = makeCtx();
@@ -282,7 +321,7 @@ describe('finish_setup tool', () => {
 	it('rejects an input with no pending setup items', () => {
 		const tool = buildFinishSetupTool({
 			...BASE_DEPS,
-			credentialProvider: makeProvider([]),
+			credentialService: makeCredentialService([]),
 		});
 
 		expect((tool.inputSchema as unknown as z.ZodTypeAny).safeParse({}).success).toBe(false);
@@ -291,7 +330,7 @@ describe('finish_setup tool', () => {
 	it('chains through questions, credentials, and multiple channels to a merged result', async () => {
 		const tool = buildFinishSetupTool({
 			...BASE_DEPS,
-			credentialProvider: makeProvider([]),
+			credentialService: makeCredentialService([]),
 		});
 		const input = {
 			questions: [
@@ -371,10 +410,258 @@ describe('finish_setup tool', () => {
 		});
 	});
 
+	describe('config writes on completion', () => {
+		it('writes resolved credentials and path-bound answers, and keeps configPath off the card', async () => {
+			const applySetupToConfig = vi.fn().mockResolvedValue({
+				credentialTypes: ['gmailOAuth2'],
+				paths: ['/tools/2/node/nodeParameters/sendTo'],
+				configHash: 'hash-2',
+			});
+			const tool = buildFinishSetupTool({
+				...BASE_DEPS,
+				credentialService: makeCredentialService([
+					{ id: 'g1', name: 'Gmail account', type: 'gmailOAuth2' },
+				]),
+				applySetupToConfig,
+			});
+			const input = {
+				questions: [
+					{
+						id: 'escalation_email',
+						question: 'Which address receives escalations?',
+						type: 'text' as const,
+						configPath: '/tools/2/node/nodeParameters/sendTo',
+					},
+					{ id: 'tone', question: 'Which tone?', type: 'single' as const, options: ['Formal'] },
+				],
+				credentialRequests: [{ credentialType: 'gmailOAuth2', purpose: 'Read order emails' }],
+			};
+
+			const questionsPayload = (await tool.handler!(input, makeCtx() as never)) as {
+				questions: Array<Record<string, unknown>>;
+			};
+			expect(questionsPayload.questions[0]).not.toHaveProperty('configPath');
+
+			const result = await tool.handler!(
+				input,
+				makeCtx({
+					resumeData: {
+						answers: [
+							{
+								questionId: 'escalation_email',
+								selectedOptions: [],
+								customText: ' support@acme.test ',
+							},
+							{ questionId: 'tone', selectedOptions: ['Formal'] },
+						],
+					},
+					suspendPayload: questionsPayload,
+				}) as never,
+			);
+
+			expect(applySetupToConfig).toHaveBeenCalledWith({
+				credentials: [{ credentialType: 'gmailOAuth2', id: 'g1', name: 'Gmail account' }],
+				values: [{ path: '/tools/2/node/nodeParameters/sendTo', value: 'support@acme.test' }],
+			});
+			expect(result).toMatchObject({
+				completed: true,
+				appliedToConfig: {
+					credentialTypes: ['gmailOAuth2'],
+					paths: ['/tools/2/node/nodeParameters/sendTo'],
+				},
+				configHash: 'hash-2',
+			});
+		});
+
+		it('maps a named credential slot to its type before it lists unapplied credentials', async () => {
+			const applySetupToConfig = vi.fn().mockResolvedValue({
+				credentialTypes: ['gmailOAuth2'],
+				paths: [],
+			});
+			const tool = buildFinishSetupTool({
+				...BASE_DEPS,
+				credentialService: makeCredentialService([
+					{ id: 'g1', name: 'Gmail account', type: 'gmailOAuth2' },
+				]),
+				applySetupToConfig,
+			});
+
+			const result = await tool.handler!(
+				{
+					credentialRequests: [
+						{
+							credentialType: 'gmailOAuth2',
+							credentialSlot: 'support-inbox',
+							purpose: 'Read support emails',
+						},
+					],
+				},
+				makeCtx() as never,
+			);
+
+			expect(applySetupToConfig).toHaveBeenCalledWith({
+				credentials: [{ credentialType: 'gmailOAuth2', id: 'g1', name: 'Gmail account' }],
+				values: [],
+			});
+			expect(result).toMatchObject({ completed: true });
+			expect(result).not.toHaveProperty('unappliedCredentials');
+			const view = tool.toModelOutput!(result) as { nextStep?: string };
+			expect(view.nextStep).not.toContain('agent_builder_verify_mcp_server');
+		});
+
+		it('lists a resolved credential that the config write did not apply', async () => {
+			const applySetupToConfig = vi.fn().mockResolvedValue({ credentialTypes: [], paths: [] });
+			const tool = buildFinishSetupTool({
+				...BASE_DEPS,
+				credentialService: makeCredentialService([
+					{ id: 'l1', name: 'Linear MCP', type: 'linearApi' },
+				]),
+				applySetupToConfig,
+			});
+
+			const result = await tool.handler!(
+				{
+					credentialRequests: [
+						{ credentialType: 'linearApi', credentialSlot: 'linear-mcp', purpose: 'Linear MCP' },
+					],
+				},
+				makeCtx() as never,
+			);
+
+			expect(result).toMatchObject({ unappliedCredentials: ['linear-mcp'] });
+		});
+
+		it('keeps the unapplied credentials when a config write saves only part', async () => {
+			const applySetupToConfig = vi.fn().mockResolvedValue({
+				credentialTypes: ['gmailOAuth2'],
+				paths: [],
+				errors: [{ path: '/tools/9', message: 'No such path' }],
+			});
+			const tool = buildFinishSetupTool({
+				...BASE_DEPS,
+				credentialService: makeCredentialService([
+					{ id: 'g1', name: 'Gmail account', type: 'gmailOAuth2' },
+					{ id: 'l1', name: 'Linear MCP', type: 'linearApi' },
+				]),
+				applySetupToConfig,
+			});
+
+			const result = await tool.handler!(
+				{
+					credentialRequests: [
+						{ credentialType: 'gmailOAuth2', purpose: 'Read emails' },
+						{ credentialType: 'linearApi', credentialSlot: 'linear-mcp', purpose: 'Linear MCP' },
+					],
+				},
+				makeCtx() as never,
+			);
+
+			expect(result).toMatchObject({
+				configApplyErrors: [{ path: '/tools/9', message: 'No such path' }],
+				unappliedCredentials: ['linear-mcp'],
+			});
+		});
+
+		it('writes both selected options and custom text for a multi-select answer', async () => {
+			const applySetupToConfig = vi.fn().mockResolvedValue({
+				credentialTypes: [],
+				paths: ['/channels'],
+			});
+			const tool = buildFinishSetupTool({
+				...BASE_DEPS,
+				credentialService: makeCredentialService([]),
+				applySetupToConfig,
+			});
+			const input = {
+				questions: [
+					{
+						id: 'channels',
+						question: 'Which channels?',
+						type: 'multi' as const,
+						options: ['#alerts', '#ops'],
+						configPath: '/channels',
+					},
+				],
+			};
+
+			const questionsPayload = await tool.handler!(input, makeCtx() as never);
+			await tool.handler!(
+				input,
+				makeCtx({
+					resumeData: {
+						answers: [
+							{
+								questionId: 'channels',
+								selectedOptions: ['#alerts', '#ops'],
+								customText: ' #support ',
+							},
+						],
+					},
+					suspendPayload: questionsPayload,
+				}) as never,
+			);
+
+			expect(applySetupToConfig).toHaveBeenCalledWith({
+				credentials: [],
+				values: [{ path: '/channels', value: '#alerts, #ops, #support' }],
+			});
+		});
+
+		it('does not write skipped answers or skipped credentials', async () => {
+			const applySetupToConfig = vi.fn();
+			const tool = buildFinishSetupTool({
+				...BASE_DEPS,
+				credentialService: makeCredentialService([]),
+				applySetupToConfig,
+			});
+			const input = {
+				questions: [{ id: 'to', question: 'Recipient?', type: 'text' as const, configPath: '/x' }],
+				credentialRequests: [{ credentialType: 'airtableApi', purpose: 'Airtable log' }],
+			};
+
+			const questionsPayload = await tool.handler!(input, makeCtx() as never);
+			const credentialsPayload = await tool.handler!(
+				input,
+				makeCtx({
+					resumeData: { answers: [{ questionId: 'to', selectedOptions: [], skipped: true }] },
+					suspendPayload: questionsPayload,
+				}) as never,
+			);
+			const result = await tool.handler!(
+				input,
+				makeCtx({ resumeData: { skipped: true }, suspendPayload: credentialsPayload }) as never,
+			);
+
+			expect(applySetupToConfig).not.toHaveBeenCalled();
+			expect(result).not.toHaveProperty('appliedToConfig');
+		});
+
+		it('reports a failed config write without failing the setup flow', async () => {
+			const tool = buildFinishSetupTool({
+				...BASE_DEPS,
+				credentialService: makeCredentialService([
+					{ id: 'c1', name: 'My Airtable', type: 'airtableApi' },
+				]),
+				applySetupToConfig: vi.fn().mockRejectedValue(new Error('locked')),
+			});
+
+			const result = await tool.handler!(
+				{ credentialRequests: [{ credentialType: 'airtableApi', purpose: 'Airtable log' }] },
+				makeCtx() as never,
+			);
+
+			expect(result).toEqual({
+				completed: true,
+				credentials: { airtableApi: { id: 'c1', name: 'My Airtable' } },
+				configApplyErrors: [{ path: '(root)', message: 'locked' }],
+			});
+		});
+	});
+
 	it('throws for an unsupported channel type', async () => {
 		const tool = buildFinishSetupTool({
 			...BASE_DEPS,
-			credentialProvider: makeProvider([]),
+			credentialService: makeCredentialService([]),
 		});
 		const ctx = makeCtx();
 
@@ -382,5 +669,74 @@ describe('finish_setup tool', () => {
 			tool.handler!({ channels: [{ integrationType: 'carrier-pigeon' }] }, ctx as never),
 		).rejects.toThrow('Unsupported chat channel "carrier-pigeon"');
 		expect(ctx.suspend).not.toHaveBeenCalled();
+	});
+});
+
+describe('agent_builder_finish_setup model output', () => {
+	function modelView(result: Record<string, unknown>) {
+		const tool = buildFinishSetupTool({
+			...BASE_DEPS,
+			credentialService: makeCredentialService([]),
+		});
+		return tool.toModelOutput!(result) as Record<string, unknown>;
+	}
+
+	it('adds no next step to a suspend payload', () => {
+		expect(modelView({ questions: [] })).not.toHaveProperty('nextStep');
+	});
+
+	it('adds no next step to an ordinary completed setup', () => {
+		expect(modelView({ completed: true, answers: [] })).not.toHaveProperty('nextStep');
+	});
+
+	it('points to agent_builder_resolve_llm when the flow returned answers', () => {
+		const view = modelView({
+			completed: true,
+			answers: [{ questionId: 'model', selectedOptions: ['gpt-5'] }],
+		});
+
+		expect(view.nextStep).toContain('agent_builder_resolve_llm');
+		expect(view.nextStep).not.toContain('agent_builder_verify_mcp_server');
+	});
+
+	it('points to agent_builder_verify_mcp_server for an unapplied credential', () => {
+		const view = modelView({ completed: true, unappliedCredentials: ['linear-mcp'] });
+
+		expect(view.nextStep).toContain('agent_builder_verify_mcp_server');
+		expect(view.nextStep).not.toContain('agent_builder_resolve_llm');
+	});
+
+	it('adds no MCP step when no credential is left unapplied', () => {
+		const view = modelView({
+			completed: true,
+			credentials: { gmailOAuth2: { id: 'c1', name: 'Gmail' } },
+			appliedToConfig: { credentialTypes: ['gmailOAuth2'], paths: [] },
+		});
+
+		expect(view.nextStep).not.toContain('agent_builder_verify_mcp_server');
+	});
+
+	it('tells the model not to patch what the flow already wrote', () => {
+		const view = modelView({
+			completed: true,
+			appliedToConfig: { credentialTypes: ['gmailOAuth2'], paths: [] },
+		});
+
+		expect(view.nextStep).toContain('appliedToConfig');
+	});
+
+	it('tells the model to fix config apply errors', () => {
+		const view = modelView({
+			completed: true,
+			configApplyErrors: [{ path: '/tools/0', message: 'bad' }],
+		});
+
+		expect(view.nextStep).toContain('configApplyErrors');
+	});
+
+	it('tells the model not to configure a handled channel again', () => {
+		const view = modelView({ completed: true, channels: { slack: 'skipped' } });
+
+		expect(view.nextStep).toContain('agent_builder_configure_channel');
 	});
 });

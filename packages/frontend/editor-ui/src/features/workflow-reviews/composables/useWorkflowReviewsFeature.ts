@@ -1,18 +1,18 @@
 import { computed } from 'vue';
 
 import { EnterpriseEditionFeature } from '@/app/constants';
+import {
+	ProjectTypes,
+	type ProjectSharingData,
+} from '@/features/collaboration/projects/projects.types';
 import { useSettingsStore } from '@n8n/stores/settings.store';
-import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 
 export const useWorkflowReviewsFeature = () => {
 	const settingsStore = useSettingsStore();
-	const { check: checkEnvFeatureFlag } = useEnvFeatureFlag();
 
 	const isWorkflowReviewsAvailable = computed(() => {
 		return (
-			(settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.WorkflowReviews] ??
-				false) &&
-			checkEnvFeatureFlag.value('WORKFLOW_REVIEWS')
+			settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.WorkflowReviews] ?? false
 		);
 	});
 
@@ -22,8 +22,20 @@ export const useWorkflowReviewsFeature = () => {
 		);
 	});
 
+	/** An unknown home project counts as a team project, so the rule fails closed. */
+	function isReviewRequiredFor(
+		homeProject: Pick<ProjectSharingData, 'type'> | null | undefined,
+	): boolean {
+		return (
+			isWorkflowReviewsEnabled.value &&
+			settingsStore.settings.workflowReviews?.alwaysRequired === true &&
+			homeProject?.type !== ProjectTypes.Personal
+		);
+	}
+
 	return {
 		isWorkflowReviewsAvailable,
 		isWorkflowReviewsEnabled,
+		isReviewRequiredFor,
 	};
 };

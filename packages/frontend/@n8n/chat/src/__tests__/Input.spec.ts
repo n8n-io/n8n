@@ -1,8 +1,12 @@
 import type { VueWrapper } from '@vue/test-utils';
 import { mount } from '@vue/test-utils';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { ref } from 'vue';
 
 import Input from '../components/Input.vue';
+import type { CredentialStatus } from '../types/credentialStatus';
+
+const mockCredentialStatus: { value: CredentialStatus | null } = { value: null };
 
 vi.mock('@vueuse/core', () => ({
 	useFileDialog: vi.fn(() => ({
@@ -29,8 +33,9 @@ vi.mock('@n8n/chat/composables', () => ({
 		t: (key: string) => key,
 	}),
 	useChat: () => ({
-		waitingForResponse: { value: false },
+		waitingForResponse: ref(false),
 		blockUserInput: { value: false },
+		credentialStatus: mockCredentialStatus,
 		currentSessionId: { value: 'session-123' },
 		messages: { value: [] },
 		sendMessage: vi.fn(),
@@ -79,6 +84,7 @@ describe('ChatInput', () => {
 			wrapper.unmount();
 		}
 		vi.clearAllMocks();
+		mockCredentialStatus.value = null;
 	});
 
 	it('renders the component with default props', () => {
@@ -125,6 +131,23 @@ describe('ChatInput', () => {
 
 		expect(global.WebSocket).toHaveBeenCalledWith(expect.stringContaining('sessionId=session-123'));
 		expect(global.WebSocket).toHaveBeenCalledWith(expect.stringContaining('executionId=exec-123'));
+	});
+
+	it('accepts a string payload for setupWebsocket', () => {
+		wrapper = mount(Input);
+
+		wrapper.vm.handleSetupWebsocket('exec-123');
+
+		expect(global.WebSocket).toHaveBeenCalledWith(expect.stringContaining('executionId=exec-123'));
+	});
+
+	it('accepts a payload object with a resume token for setupWebsocket', () => {
+		wrapper = mount(Input);
+
+		wrapper.vm.handleSetupWebsocket({ executionId: 'exec-9', resumeToken: 'token-1' });
+
+		expect(global.WebSocket).toHaveBeenCalledWith(expect.stringContaining('executionId=exec-9'));
+		expect(global.WebSocket).toHaveBeenCalledWith(expect.stringContaining('token=token-1'));
 	});
 
 	it('keeps waitingForResponse true after setting up the WebSocket connection', () => {
@@ -176,6 +199,35 @@ describe('ChatInput', () => {
 		await submitButton.trigger('click');
 
 		expect(wrapper.vm.isSubmitting).toBe(false);
+	});
+
+	describe('credential status gate', () => {
+		it('disables the textarea and send button while required accounts are missing', async () => {
+			mockCredentialStatus.value = { ready: false, missingCount: 1, testMode: false };
+			wrapper = mount(Input);
+			await wrapper.find('textarea').setValue('Hello');
+
+			expect(wrapper.find('textarea').attributes('disabled')).toBeDefined();
+			expect(wrapper.find('.chat-input-send-button').attributes('disabled')).toBeDefined();
+		});
+
+		it('does not disable the input once the host reports readiness', async () => {
+			mockCredentialStatus.value = { ready: true, missingCount: 0, testMode: false };
+			wrapper = mount(Input);
+			await wrapper.find('textarea').setValue('Hello');
+
+			expect(wrapper.find('textarea').attributes('disabled')).toBeUndefined();
+			expect(wrapper.find('.chat-input-send-button').attributes('disabled')).toBeUndefined();
+		});
+
+		it('does not disable the input in test mode even though missingCount is 0 and ready', async () => {
+			mockCredentialStatus.value = { ready: true, missingCount: 0, testMode: true };
+			wrapper = mount(Input);
+			await wrapper.find('textarea').setValue('Hello');
+
+			expect(wrapper.find('textarea').attributes('disabled')).toBeUndefined();
+			expect(wrapper.find('.chat-input-send-button').attributes('disabled')).toBeUndefined();
+		});
 	});
 
 	describe('WebSocket frame handling (backward compatible)', () => {

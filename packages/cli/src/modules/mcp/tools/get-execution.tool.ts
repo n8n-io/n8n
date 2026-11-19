@@ -1,7 +1,6 @@
-import { type ExecutionRepository, type User } from '@n8n/db';
-import { Container } from '@n8n/di';
-import type { IRunExecutionData, IRunData, ITaskDataConnections, IPinData } from 'n8n-workflow';
+import { type User } from '@n8n/db';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
+import type { IPinData, IRunData, IRunExecutionData, ITaskDataConnections } from 'n8n-workflow';
 import { jsonStringify, replaceCircularReferences } from 'n8n-workflow';
 import z from 'zod';
 
@@ -10,8 +9,8 @@ import { WorkflowAccessError } from '../mcp.errors';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
 import { getMcpWorkflow } from './workflow-validation.utils';
 
-import { ExecutionPersistence } from '@/executions/execution-persistence';
-import type { Telemetry } from '@/telemetry';
+import type { ExecutionRedactionServiceProxy, TelemetryProxy } from '@n8n/backend-services';
+import type { ExecutionService } from '@/executions/execution.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 const inputSchema = z.object({
@@ -64,9 +63,10 @@ const outputSchema = {
 
 export const createGetExecutionTool = (
 	user: User,
-	executionRepository: ExecutionRepository,
+	executionService: ExecutionService,
 	workflowFinderService: WorkflowFinderService,
-	telemetry: Telemetry,
+	telemetry: TelemetryProxy,
+	executionRedactionServiceProxy: ExecutionRedactionServiceProxy,
 ): ToolDefinition<typeof inputSchema.shape> => ({
 	name: 'get_workflow_execution',
 	config: {
@@ -96,28 +96,39 @@ export const createGetExecutionTool = (
 		};
 
 		try {
-			await getMcpWorkflow(workflowId, user, ['workflow:read'], workflowFinderService);
+			await getMcpWorkflow(
+				workflowId,
+				user,
+				['workflow:read', 'execution:read'],
+				workflowFinderService,
+			);
 
-			// Use lightweight metadata query when data isn't needed;
-			// split into branches so TypeScript can narrow each return type.
-			let execution;
-			let executionData: IRunExecutionData | null | undefined;
-			if (includeData) {
-				const fullExecution = await Container.get(ExecutionPersistence).findWithUnflattenedData(
-					executionId,
-					[workflowId],
-				);
-				execution = fullExecution;
-				executionData = fullExecution?.data ?? null;
-			} else {
-				execution = await executionRepository.findIfAccessible(executionId, [workflowId]);
-			}
+			// This tool defaults to metadata only, both stores to the opposite.
+			const withData = includeData === true;
+
+			// The id shape decides the store, so an engine v2 id resolves too.
+			const execution = await executionService.findOneAcrossEngines(executionId, [workflowId], {
+				includeData: withData,
+				includeAnnotation: false,
+			});
 
 			if (!execution) {
 				throw new WorkflowAccessError(
 					`Execution '${executionId}' not found for workflow '${workflowId}'`,
 					'execution_not_found',
 				);
+			}
+
+			// `undefined` omits `data` from the output; `null` reports it as empty.
+			let executionData: IRunExecutionData | null | undefined;
+			if (withData) {
+				if ('data' in execution) {
+					// Redacts in place, modifying execution internally
+					await executionRedactionServiceProxy.processExecution(execution, { user });
+					executionData = execution.data;
+				} else {
+					executionData = null;
+				}
 			}
 
 			const executionMeta = {

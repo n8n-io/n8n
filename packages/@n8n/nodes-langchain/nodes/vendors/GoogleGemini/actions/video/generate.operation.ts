@@ -1,9 +1,9 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
-import { NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
+import { NodeOperationError, requestPath, updateDisplayOptions } from 'n8n-workflow';
 
 import type { VeoResponse } from '../../helpers/interfaces';
-import { downloadFile, getFilenameFromMimeType } from '../../helpers/utils';
-import { apiRequest } from '../../transport';
+import { downloadFile, getCredentialHostname, getFilenameFromMimeType } from '../../helpers/utils';
+import { apiRequest, modelPath, resourcePath } from '../../transport';
 import { modelRLC } from '../descriptions';
 
 const properties: INodeProperties[] = [
@@ -167,13 +167,20 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			durationSeconds: options.durationSeconds,
 		},
 	};
-	let response = (await apiRequest.call(this, 'POST', `/v1beta/${model}:predictLongRunning`, {
-		body,
-	})) as VeoResponse;
+	let response = (await apiRequest.call(
+		this,
+		'POST',
+		requestPath`/v1beta${modelPath.call(this, model)}:predictLongRunning`,
+		{ body },
+	)) as VeoResponse;
 
 	while (!response.done) {
 		await new Promise((resolve) => setTimeout(resolve, 5000));
-		response = (await apiRequest.call(this, 'GET', `/v1beta/${response.name}`)) as VeoResponse;
+		response = (await apiRequest.call(
+			this,
+			'GET',
+			requestPath`/v1beta${resourcePath(response.name)}`,
+		)) as VeoResponse;
 	}
 
 	if (response.error) {
@@ -183,6 +190,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	}
 
 	if (returnAs === 'video') {
+		const allowedDomains = getCredentialHostname.call(this, credentials.host as string);
 		const promises = response.response.generateVideoResponse.generatedSamples.map(
 			async (sample) => {
 				const { fileContent, mimeType } = await downloadFile.call(
@@ -192,6 +200,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 					{
 						key: credentials.apiKey as string,
 					},
+					allowedDomains,
 				);
 				const fileName = getFilenameFromMimeType(mimeType, 'video', 'mp4');
 				const binaryData = await this.helpers.prepareBinaryData(fileContent, fileName, mimeType);

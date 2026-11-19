@@ -1,4 +1,7 @@
 import {
+	type ChangeEmailRequestDto,
+	type ChangeEmailResponse,
+	type ConfirmEmailChangeRequestDto,
 	type LoginRequestDto,
 	type PasswordUpdateRequestDto,
 	type SettingsUpdateRequestDto,
@@ -336,18 +339,35 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 			return;
 		}
 
-		return await updateUser({
-			email: currentUser.value.email as string,
-			...params,
-		});
+		return await updateUser(params);
+	};
+
+	const requestEmailChange = async (
+		params: ChangeEmailRequestDto,
+	): Promise<ChangeEmailResponse> => {
+		const result = await usersApi.requestEmailChange(rootStore.restApiContext, params);
+		// Without email delivery the backend applies the change at once, so sync the store.
+		if (result.status === 'changed') {
+			addUsers([result.user]);
+		}
+		return result;
+	};
+
+	const resolveEmailChangeToken = async (params: { token: string }) => {
+		return await usersApi.resolveEmailChangeToken(rootStore.restApiContext, params);
+	};
+
+	const confirmEmailChange = async (params: ConfirmEmailChangeRequestDto) => {
+		await usersApi.confirmEmailChange(rootStore.restApiContext, params);
 	};
 
 	const updateUserSettings = async (settings: UserSelfSettingsUpdateRequestDto) => {
+		const userId = currentUser.value?.id;
 		const updatedSettings = await usersApi.updateCurrentUserSettings(
 			rootStore.restApiContext,
 			settings,
 		);
-		if (currentUser.value) {
+		if (currentUser.value && currentUser.value.id === userId) {
 			currentUser.value.settings = updatedSettings;
 			addUsers([currentUser.value]);
 		}
@@ -372,7 +392,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		filter,
 	}: { take?: number; skip?: number; filter?: UsersListFilterDto['filter'] } = {}) => {
 		if (!canListUsers.value()) {
-			return;
+			return [];
 		}
 
 		const { items } = await usersApi.getUsers(rootStore.restApiContext, {
@@ -381,6 +401,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 			filter,
 		});
 		addUsers(items);
+		return items.map((item) => usersById.value[item.id]);
 	};
 
 	const inviteUsers = async (params: Array<{ email: string; role: AssignableGlobalRole }>) => {
@@ -529,6 +550,9 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		changePassword,
 		updateUser,
 		updateUserName,
+		requestEmailChange,
+		resolveEmailChangeToken,
+		confirmEmailChange,
 		updateUserSettings,
 		updateOtherUserSettings,
 		updateCurrentUserPassword,

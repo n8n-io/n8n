@@ -1,5 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
-import type { AgentDbMessage, MessageContent } from '@n8n/instance-ai';
+import type { AgentDbMessage, MessageContent } from '@n8n/agents';
 import { mock } from 'vitest-mock-extended';
 
 import {

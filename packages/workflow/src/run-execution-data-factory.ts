@@ -1,3 +1,4 @@
+import type { FailedBeforeStartMarker } from './execution-blocked-reason';
 import type { IExecutionContext } from './execution-context';
 import type {
 	IRunData,
@@ -9,6 +10,7 @@ import type {
 	IWaitingForExecutionSource,
 	StartNodeData,
 	ExecutionError,
+	RelatedAgentRun,
 	RelatedExecution,
 	INode,
 } from './interfaces';
@@ -34,6 +36,7 @@ export interface CreateFullRunExecutionDataOptions {
 		pinData?: IPinData;
 		lastNodeExecuted?: string;
 		metadata?: Record<string, string>;
+		failedBeforeStart?: FailedBeforeStartMarker;
 	};
 	executionData?: {
 		contextData?: IExecuteContextData;
@@ -44,6 +47,8 @@ export interface CreateFullRunExecutionDataOptions {
 		runtimeData?: IExecutionContext;
 	} | null;
 	parentExecution?: RelatedExecution;
+	subWorkflowOutput?: IRunExecutionData['subWorkflowOutput'];
+	parentAgentRun?: RelatedAgentRun;
 	resumeToken?: string;
 	waitTill?: Date;
 	manualData?: IRunExecutionData['manualData'];
@@ -61,6 +66,7 @@ function buildResultData(
 		pinData: resultData?.pinData,
 		lastNodeExecuted: resultData?.lastNodeExecuted,
 		metadata: resultData?.metadata,
+		...(resultData?.failedBeforeStart && { failedBeforeStart: resultData.failedBeforeStart }),
 	};
 }
 
@@ -92,6 +98,8 @@ export function createRunExecutionData(
 		resultData: buildResultData(options.resultData),
 		executionData: buildExecutionData(options.executionData),
 		parentExecution: options.parentExecution,
+		subWorkflowOutput: options.subWorkflowOutput,
+		parentAgentRun: options.parentAgentRun,
 		resumeToken: options.resumeToken ?? generateSecureToken(),
 		waitTill: options.waitTill,
 		manualData: options.manualData,

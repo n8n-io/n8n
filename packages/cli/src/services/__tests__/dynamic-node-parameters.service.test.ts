@@ -1,9 +1,9 @@
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
-import type { HttpRequestClient, SsrfBridge } from '@n8n/backend-network';
+import type { HttpRequestClient } from '@n8n/backend-network';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { CredentialsRepository, SharedWorkflowRepository } from '@n8n/db';
-import type { CredentialsEntity } from '@n8n/db';
+import type { CredentialsEntity, Project } from '@n8n/db';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { RoutingNode } from 'n8n-core';
@@ -29,9 +29,8 @@ vi.mock('n8n-core', async () => {
 import { DynamicNodeParametersService } from '../dynamic-node-parameters.service';
 import { WorkflowLoaderService } from '../workflow-loader.service';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { CredentialsFinderService } from '@n8n/backend-services';
+import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import { NodeTypes } from '@/node-types';
 import * as checkAccess from '@/permissions.ee/check-access';
 
@@ -177,6 +176,68 @@ describe('DynamicNodeParametersService', () => {
 			expect(releaseSpy).toHaveBeenCalledTimes(1);
 		});
 
+		it('should stringify a numeric pagination token returned by a listSearch method', async () => {
+			const listSearchMethod = vi
+				.fn()
+				.mockResolvedValue({ results: [{ name: 'r', value: 'v' }], paginationToken: 0 });
+			nodeTypes.getByNameAndVersion.mockReturnValue(
+				mock<INodeType>({
+					description: { properties: [] },
+					methods: { listSearch: { searchModels: listSearchMethod } },
+				}),
+			);
+
+			const result = await service.getResourceLocatorResults(
+				'searchModels',
+				'',
+				mock<IWorkflowExecuteAdditionalData>(),
+				{ name: 'TestNode', version: 1 },
+				mock<INodeParameters>(),
+			);
+
+			expect(result.paginationToken).toBe('0');
+		});
+
+		it('should leave an absent pagination token absent', async () => {
+			const listSearchMethod = vi.fn().mockResolvedValue({ results: [{ name: 'r', value: 'v' }] });
+			nodeTypes.getByNameAndVersion.mockReturnValue(
+				mock<INodeType>({
+					description: { properties: [] },
+					methods: { listSearch: { searchModels: listSearchMethod } },
+				}),
+			);
+
+			const result = await service.getResourceLocatorResults(
+				'searchModels',
+				'',
+				mock<IWorkflowExecuteAdditionalData>(),
+				{ name: 'TestNode', version: 1 },
+				mock<INodeParameters>(),
+			);
+
+			expect(result.paginationToken).toBeUndefined();
+		});
+
+		it('should not throw when a listSearch method returns nothing', async () => {
+			const listSearchMethod = vi.fn().mockResolvedValue(undefined);
+			nodeTypes.getByNameAndVersion.mockReturnValue(
+				mock<INodeType>({
+					description: { properties: [] },
+					methods: { listSearch: { searchModels: listSearchMethod } },
+				}),
+			);
+
+			const result = await service.getResourceLocatorResults(
+				'searchModels',
+				'',
+				mock<IWorkflowExecuteAdditionalData>(),
+				{ name: 'TestNode', version: 1 },
+				mock<INodeParameters>(),
+			);
+
+			expect(result).toBeUndefined();
+		});
+
 		it('should acquire and release isolate around getResourceMappingFields', async () => {
 			const resourceMappingMethod = vi.fn().mockResolvedValue({
 				fields: [{ id: '1', displayName: 'F', defaultMatch: false, required: true, display: true }],
@@ -229,8 +290,8 @@ describe('DynamicNodeParametersService', () => {
 	// protection is enabled, they honour the same restrictions as node execution.
 	// Many such methods use the legacy `this.helpers.request` helper (e.g. nodes
 	// that build the request and set auth by hand), which routes through
-	// `OutboundHttp.requests({ ssrf })` — asserting that argument proves the
-	// bridge is forwarded end to end.
+	// `OutboundHttp.requests()` — asserting the no-argument call proves they get
+	// the default safe client, so the instance's egress policy applies.
 	describe('egress policy for method-name requests', () => {
 		const requestLegacy = vi.fn();
 		const requests = vi.fn();
@@ -313,31 +374,16 @@ describe('DynamicNodeParametersService', () => {
 		];
 
 		it.each(scenarios)(
-			'forwards the SSRF bridge to requests made from the $name method',
+			'routes requests made from the $name method through the default safe client',
 			async ({ register, invoke }) => {
 				const method = requestingMethod();
 				register(method);
-				const ssrfBridge = mock<SsrfBridge>();
-				const additionalData = mock<IWorkflowExecuteAdditionalData>({ ssrfBridge });
+				const additionalData = mock<IWorkflowExecuteAdditionalData>();
 
 				await invoke(additionalData);
 
 				expect(method).toHaveBeenCalled();
-				expect(requests).toHaveBeenCalledWith({ ssrf: ssrfBridge });
-			},
-		);
-
-		it.each(scenarios)(
-			'disables SSRF for requests from the $name method when no bridge is attached',
-			async ({ register, invoke }) => {
-				const method = requestingMethod();
-				register(method);
-				const additionalData = mock<IWorkflowExecuteAdditionalData>({ ssrfBridge: undefined });
-
-				await invoke(additionalData);
-
-				expect(method).toHaveBeenCalled();
-				expect(requests).toHaveBeenCalledWith({ ssrf: 'disabled' });
+				expect(requests).toHaveBeenCalledWith();
 			},
 		);
 	});
@@ -564,7 +610,6 @@ describe('DynamicNodeParametersService', () => {
 
 		beforeEach(() => {
 			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
-			sharedWorkflowRepository.getWorkflowOwningProject.mockResolvedValue(undefined);
 			// No end-user credentials unless a test says otherwise.
 			credentialsRepository.getManyByIds.mockResolvedValue([]);
 		});
@@ -610,6 +655,75 @@ describe('DynamicNodeParametersService', () => {
 					credentials: { openAi: { id: 'cred-1', name: 'Foreign OpenAI' } },
 				}),
 			).rejects.toThrow(ForbiddenError);
+		});
+
+		it('should say nothing more than forbidden for a credential the user cannot read', async () => {
+			credentialsFinderService.findCredentialIdsWithScopeForUser.mockResolvedValue(new Set());
+
+			await expect(
+				service.refineResourceIds(user, {
+					credentials: { openAi: { id: 'cred-1', name: 'Foreign OpenAI' } },
+				}),
+			).rejects.toMatchObject({ message: 'Forbidden' });
+			// The second lookup asks for plain read rights, see-only roles included.
+			expect(credentialsFinderService.findCredentialIdsWithScopeForUser).toHaveBeenLastCalledWith(
+				['cred-1'],
+				user,
+				['credential:read'],
+			);
+			expect(credentialsRepository.getManyByIds).not.toHaveBeenCalled();
+		});
+
+		it('should say nothing more than forbidden when one of many credentials is unreadable', async () => {
+			// cred-1 is readable but not usable, cred-2 is not even readable.
+			credentialsFinderService.findCredentialIdsWithScopeForUser.mockImplementation(
+				async (ids, _user, _scopes, options) =>
+					options?.excludeSeeOnlyRoles ? new Set() : new Set(ids.filter((id) => id === 'cred-1')),
+			);
+
+			await expect(
+				service.refineResourceIds(user, {
+					credentials: {
+						openAi: { id: 'cred-1', name: 'Shared OpenAI' },
+						openAi2: { id: 'cred-2', name: 'Foreign OpenAI' },
+					},
+				}),
+			).rejects.toMatchObject({ message: 'Forbidden' });
+			expect(credentialsRepository.getManyByIds).not.toHaveBeenCalled();
+		});
+
+		it('should name the missing right for a credential the user can read but not use', async () => {
+			credentialsFinderService.findCredentialIdsWithScopeForUser.mockImplementation(
+				async (ids, _user, _scopes, options) =>
+					options?.excludeSeeOnlyRoles ? new Set() : new Set(ids),
+			);
+			credentialsRepository.getManyByIds.mockResolvedValue([
+				mock<CredentialsEntity>({ id: 'cred-1', isResolvable: false }),
+			]);
+
+			await expect(
+				service.refineResourceIds(user, {
+					credentials: { openAi: { id: 'cred-1', name: 'Shared OpenAI' } },
+				}),
+			).rejects.toThrow('You need permission to use this credential');
+		});
+
+		it('should name the connect right for an end-user credential the user can read but not use', async () => {
+			credentialsFinderService.findCredentialIdsWithScopeForUser.mockImplementation(
+				async (ids, _user, scopes, options) =>
+					options?.excludeSeeOnlyRoles || scopes[0] === 'credential:connect'
+						? new Set()
+						: new Set(ids),
+			);
+			credentialsRepository.getManyByIds.mockResolvedValue([
+				mock<CredentialsEntity>({ id: 'cred-1', isResolvable: true }),
+			]);
+
+			await expect(
+				service.refineResourceIds(user, {
+					credentials: { openAi: { id: 'cred-1', name: 'Shared OpenAI' } },
+				}),
+			).rejects.toThrow('permission to connect');
 		});
 
 		it('should not ask for connect scope when no credential is end-user', async () => {
@@ -711,6 +825,7 @@ describe('DynamicNodeParametersService', () => {
 				['cred-1'],
 				user,
 				['credential:read'],
+				{ excludeSeeOnlyRoles: true },
 			);
 		});
 
@@ -727,7 +842,41 @@ describe('DynamicNodeParametersService', () => {
 				expect.any(Array),
 				user,
 				['credential:read'],
+				{ excludeSeeOnlyRoles: true },
 			);
+		});
+
+		it("should use the workflow's owning project instead of the supplied project", async () => {
+			sharedWorkflowRepository.getWorkflowOwningProject.mockResolvedValue(
+				mock<Project>({ id: 'owning-project' }),
+			);
+			const payload = { projectId: 'former-project', workflowId: 'workflow-1' };
+
+			await service.refineResourceIds(user, payload);
+
+			expect(payload.projectId).toBe('owning-project');
+		});
+
+		it('should not use the owning project when the user cannot edit the workflow', async () => {
+			vi.spyOn(checkAccess, 'userHasScopes').mockImplementation(
+				async (_user, scopes) =>
+					!scopes.includes('workflow:update') && !scopes.includes('dataTable:listProject'),
+			);
+			const payload = { projectId: 'project-1', workflowId: 'workflow-1' };
+
+			await service.refineResourceIds(user, payload);
+
+			expect(sharedWorkflowRepository.getWorkflowOwningProject).not.toHaveBeenCalled();
+			expect(payload.projectId).toBeUndefined();
+		});
+
+		it('should keep the supplied project when the workflow is not saved yet', async () => {
+			sharedWorkflowRepository.getWorkflowOwningProject.mockResolvedValue(undefined);
+			const payload = { projectId: 'project-1', workflowId: 'unsaved-workflow' };
+
+			await service.refineResourceIds(user, payload);
+
+			expect(payload.projectId).toBe('project-1');
 		});
 
 		it('should run credential check regardless of whether workflowId is present', async () => {

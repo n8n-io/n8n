@@ -28,6 +28,21 @@ export interface OutputSchemaRef {
 	 * resource/operation, and only with `versionFallback`.
 	 */
 	variant?: string;
+	/**
+	 * Node parameters that pick a shape variant. A file `<operation>.<param>-<value>.json`
+	 * is used when the parameter (or, if absent, its default) equals `<value>`. A ref
+	 * without resource and operation uses `output.<param>-<value>.json`. A dotted
+	 * `<param>` is a path into a collection (`options.simplifyOutput`).
+	 * Only meaningful with `versionFallback`.
+	 */
+	parameters?: Record<string, unknown>;
+	/**
+	 * Defaults for parameters missing from `parameters`, read from the node description.
+	 * They hold top-level properties only, so a dotted parameter has no default: when
+	 * the collection does not set it, the plain file applies. The plain file must
+	 * therefore describe the shape for the option's default value.
+	 */
+	parameterDefaults?: Record<string, unknown>;
 }
 
 /**
@@ -47,6 +62,8 @@ export type OutputSchemaLookup = (node: {
 	operation?: string;
 	/** Node has an `ai_outputParser` attached — resolves the `with-parser` layout variant. */
 	hasOutputParser?: boolean;
+	/** The node's parameters — pick a shape variant such as `simple: false`. */
+	parameters?: Record<string, unknown>;
 }) => Record<string, unknown> | undefined;
 
 /** Pad "1" / "1.2" to the on-disk "1.0.0" / "1.2.0" directory format. */
@@ -95,6 +112,76 @@ function orderFallbackCandidates(dirNames: string[], target: number[]): string[]
 }
 
 /**
+ * Variant names are file-name fragments: word characters, dashes, and dots
+ * that separate the path of a parameter inside a collection (`options.simplifyOutput`).
+ */
+const VARIANT_NAME_PATTERN = /^[\w.-]+$/;
+
+/** `simple-false` → parameter `simple`, value `false`. */
+function parseParameterVariant(variant: string): { param: string; value: string } | undefined {
+	const separator = variant.indexOf('-');
+	if (separator <= 0) return undefined;
+	return { param: variant.slice(0, separator), value: variant.slice(separator + 1) };
+}
+
+/**
+ * The value at a dotted path such as `options.simplifyOutput`. Own-property
+ * checks keep names such as `constructor` from reading the prototype.
+ */
+function valueAtPath(source: Record<string, unknown> | undefined, path: string): unknown {
+	let current: unknown = source;
+	for (const key of path.split('.')) {
+		if (current === null || typeof current !== 'object' || !Object.hasOwn(current, key)) {
+			return undefined;
+		}
+		current = Reflect.get(current, key);
+	}
+	return current;
+}
+
+/** The value a node parameter has: its own value, even when null, else its default. */
+function effectiveParameterValue(ref: OutputSchemaRef, param: string): unknown {
+	const own = valueAtPath(ref.parameters, param);
+	return own !== undefined ? own : valueAtPath(ref.parameterDefaults, param);
+}
+
+function variantMatchesParameters(variant: string, ref: OutputSchemaRef): boolean {
+	const parsed = parseParameterVariant(variant);
+	if (!parsed) return false;
+	const effective = effectiveParameterValue(ref, parsed.param);
+	const isPrimitive = ['string', 'number', 'boolean'].includes(typeof effective);
+	return isPrimitive && String(effective) === parsed.value;
+}
+
+/** Variant names that have a `<operation>.<variant>.json` file in `dir`, sorted. */
+function listOperationVariants(dir: string, operation: string): string[] {
+	try {
+		return readdirSync(dir)
+			.filter((file) => file.startsWith(`${operation}.`) && file.endsWith('.json'))
+			.map((file) => file.slice(operation.length + 1, -'.json'.length))
+			.filter((variant) => VARIANT_NAME_PATTERN.test(variant))
+			.sort();
+	} catch {
+		return [];
+	}
+}
+
+/**
+ * The `<operation>.<param>-<value>.json` file for this ref in one version dir:
+ * the first file whose name matches the node parameters. A node without
+ * resource and operation uses `output.<param>-<value>.json` next to `output.json`.
+ */
+function findOperationVariantFile(ref: OutputSchemaRef, versionPath: string): string | undefined {
+	const { resource } = ref;
+	const operation = ref.operation ?? (resource ? undefined : 'output');
+	if (!operation) return undefined;
+	const dir = path.resolve(versionPath, resource ?? '');
+	const variants = listOperationVariants(dir, operation);
+	const match = variants.find((name) => variantMatchesParameters(name, ref));
+	return match ? path.join(dir, `${operation}.${match}.json`) : undefined;
+}
+
+/**
  * Resolve an output schema reference to a `.json` file path, or undefined
  * when the resolved path would escape the node's `__schema__` directory.
  *
@@ -136,6 +223,8 @@ export function resolveOutputSchemaPath(ref: OutputSchemaRef): string | undefine
 	const hasDiscriminators = Boolean(resource) || Boolean(operation);
 
 	for (const versionDir of [...new Set([exactVersionDir, ...available])]) {
+		const variantFile = findOperationVariantFile(ref, path.join(schemaBaseDir, versionDir));
+		if (variantFile && isContainedWithin(schemaBaseDir, variantFile)) return variantFile;
 		const filePath = buildPath(versionDir);
 		if (filePath && existsSync(filePath)) return filePath;
 		if (!hasDiscriminators) {

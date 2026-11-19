@@ -61,22 +61,41 @@ describe('applyAgentThinking', () => {
 		});
 	});
 
-	it.each(['openai/gpt-5.6-sol', 'openai/gpt-5.6-terra', 'openai/gpt-5.6-luna'] as const)(
-		'enables medium OpenAI reasoning effort for %s',
-		(modelId) => {
-			const agent = new Agent('test');
-			applyAgentThinking(agent, modelId);
-			expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('openai', {
-				reasoningEffort: 'medium',
-			});
-		},
-	);
-
-	it('enables high OpenAI reasoning effort for non-GPT-5.6 models', () => {
+	it.each([
+		'openai/gpt-5.6-sol',
+		'openai/gpt-5.6-terra',
+		'openai/gpt-5.6-luna',
+		'openai/gpt-5.10',
+		'openai/gpt-6-astra',
+		'openai/gpt-6.1-sol',
+		'openai/gpt-7',
+	] as const)('enables medium OpenAI reasoning effort for %s', (modelId) => {
 		const agent = new Agent('test');
-		applyAgentThinking(agent, 'openai/gpt-4.1');
+		applyAgentThinking(agent, modelId);
+		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('openai', {
+			reasoningEffort: 'medium',
+		});
+	});
+
+	it.each([
+		'openai/gpt-4.1',
+		'openai/gpt-4o',
+		'openai/gpt-5',
+		'openai/gpt-5.5',
+		'openai/o3',
+	] as const)('enables high OpenAI reasoning effort for %s', (modelId) => {
+		const agent = new Agent('test');
+		applyAgentThinking(agent, modelId);
 		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('openai', {
 			reasoningEffort: 'high',
+		});
+	});
+
+	it('uses an explicit effort for OpenAI models', () => {
+		const agent = new Agent('test');
+		applyAgentThinking(agent, 'openai/gpt-6-luna', 'low');
+		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('openai', {
+			reasoningEffort: 'low',
 		});
 	});
 
@@ -129,6 +148,43 @@ describe('applyAgentThinking', () => {
 			applyAgentThinking(agent, 'custom/Kimi-K3');
 			expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('custom', {
 				reasoningEffort: 'high',
+			});
+		} finally {
+			if (previous === undefined) delete process.env.N8N_INSTANCE_AI_REASONING_EFFORT;
+			else process.env.N8N_INSTANCE_AI_REASONING_EFFORT = previous;
+		}
+	});
+
+	it.each([
+		['low', 'low'],
+		['max', 'max'],
+		['minimal', 'medium'],
+		['bogus', 'medium'],
+	])('maps N8N_INSTANCE_AI_REASONING_EFFORT=%s to Anthropic effort %s', (value, expected) => {
+		const previous = process.env.N8N_INSTANCE_AI_REASONING_EFFORT;
+		process.env.N8N_INSTANCE_AI_REASONING_EFFORT = value;
+		try {
+			const agent = new Agent('test');
+			applyAgentThinking(agent, 'anthropic/claude-sonnet-5-5');
+			expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('anthropic', {
+				mode: 'adaptive',
+				effort: expected,
+			});
+		} finally {
+			if (previous === undefined) delete process.env.N8N_INSTANCE_AI_REASONING_EFFORT;
+			else process.env.N8N_INSTANCE_AI_REASONING_EFFORT = previous;
+		}
+	});
+
+	it('prefers an explicit Anthropic effort over N8N_INSTANCE_AI_REASONING_EFFORT', () => {
+		const previous = process.env.N8N_INSTANCE_AI_REASONING_EFFORT;
+		process.env.N8N_INSTANCE_AI_REASONING_EFFORT = 'low';
+		try {
+			const agent = new Agent('test');
+			applyAgentThinking(agent, 'anthropic/claude-sonnet-5-5', 'high');
+			expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('anthropic', {
+				mode: 'adaptive',
+				effort: 'high',
 			});
 		} finally {
 			if (previous === undefined) delete process.env.N8N_INSTANCE_AI_REASONING_EFFORT;

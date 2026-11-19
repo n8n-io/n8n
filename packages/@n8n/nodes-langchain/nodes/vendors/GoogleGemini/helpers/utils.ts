@@ -1,11 +1,11 @@
 import { extension } from 'mime-types';
-import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, RequestPath } from 'n8n-workflow';
+import { NodeOperationError, requestPath } from 'n8n-workflow';
 import { Readable } from 'node:stream';
 import type Stream from 'node:stream';
 
 import type { FileSearchOperation } from './interfaces';
-import { apiRequest } from '../transport';
+import { apiRequest, fileSearchStorePath, resourcePath } from '../transport';
 
 const OPERATION_CHECK_INTERVAL = 1000;
 
@@ -28,7 +28,7 @@ interface FileBufferData {
 }
 
 interface UploadStreamConfig {
-	endpoint: string;
+	endpoint: RequestPath;
 	mimeType: string;
 	body?: IDataObject;
 }
@@ -47,16 +47,41 @@ export function getFilenameFromMimeType(
 	return `${baseName}.${extension(mimeType) || fallbackExtension}`;
 }
 
+export function getCredentialHostname(this: IExecuteFunctions, host: string): string {
+	try {
+		return new URL(host).hostname;
+	} catch {
+		throw new NodeOperationError(
+			this.getNode(),
+			"The Google Gemini credential host isn't a valid URL",
+			{
+				description: "Enter a valid URL in the credential's Host field",
+			},
+		);
+	}
+}
+
+export function isGeminiFileUrl(url: string): boolean {
+	try {
+		const { protocol, hostname } = new URL(url);
+		return protocol === 'https:' && hostname === 'generativelanguage.googleapis.com';
+	} catch {
+		return false;
+	}
+}
+
 export async function downloadFile(
 	this: IExecuteFunctions,
 	url: string,
 	fallbackMimeType?: string,
 	qs?: IDataObject,
+	allowedDomains?: string,
 ) {
 	const downloadResponse = (await this.helpers.httpRequest({
 		method: 'GET',
 		url,
 		qs,
+		allowedDomains,
 		returnFullResponse: true,
 		encoding: 'arraybuffer',
 	})) as { body: ArrayBuffer; headers: IDataObject };
@@ -72,18 +97,21 @@ export async function downloadFile(
 
 export async function uploadFile(this: IExecuteFunctions, fileContent: Buffer, mimeType: string) {
 	const numBytes = fileContent.length.toString();
-	const uploadInitResponse = (await apiRequest.call(this, 'POST', '/upload/v1beta/files', {
-		headers: {
-			'X-Goog-Upload-Protocol': 'resumable',
-			'X-Goog-Upload-Command': 'start',
-			'X-Goog-Upload-Header-Content-Length': numBytes,
-			'X-Goog-Upload-Header-Content-Type': mimeType,
-			'Content-Type': 'application/json',
-		},
-		option: {
+	const uploadInitResponse = (await apiRequest.call(
+		this,
+		'POST',
+		requestPath`/upload/v1beta/files`,
+		{
+			headers: {
+				'X-Goog-Upload-Protocol': 'resumable',
+				'X-Goog-Upload-Command': 'start',
+				'X-Goog-Upload-Header-Content-Length': numBytes,
+				'X-Goog-Upload-Header-Content-Type': mimeType,
+				'Content-Type': 'application/json',
+			},
 			returnFullResponse: true,
 		},
-	})) as { headers: IDataObject };
+	)) as { headers: IDataObject };
 	const uploadUrl = uploadInitResponse.headers['x-goog-upload-url'] as string;
 
 	const uploadResponse = (await this.helpers.httpRequest({
@@ -102,7 +130,7 @@ export async function uploadFile(this: IExecuteFunctions, fileContent: Buffer, m
 		uploadResponse.file = (await apiRequest.call(
 			this,
 			'GET',
-			`/v1beta/${uploadResponse.file.name}`,
+			requestPath`/v1beta${resourcePath(uploadResponse.file.name)}`,
 		)) as File;
 	}
 
@@ -185,7 +213,7 @@ async function uploadStream(
 			'Content-Type': 'application/json',
 		},
 		body,
-		option: { returnFullResponse: true },
+		returnFullResponse: true,
 	})) as { headers: IDataObject };
 
 	const uploadUrl = uploadInitResponse.headers['x-goog-upload-url'] as string;
@@ -227,7 +255,7 @@ export async function transferFile(
 
 	const { stream, mimeType } = fileData;
 	const uploadResponse = (await uploadStream.call(this, stream, {
-		endpoint: '/upload/v1beta/files',
+		endpoint: requestPath`/upload/v1beta/files`,
 		mimeType,
 	})) as { body: { file: File } };
 
@@ -235,7 +263,11 @@ export async function transferFile(
 
 	while (file.state !== 'ACTIVE' && file.state !== 'FAILED') {
 		await new Promise((resolve) => setTimeout(resolve, OPERATION_CHECK_INTERVAL));
-		file = (await apiRequest.call(this, 'GET', `/v1beta/${file.name}`)) as File;
+		file = (await apiRequest.call(
+			this,
+			'GET',
+			requestPath`/v1beta${resourcePath(file.name)}`,
+		)) as File;
 	}
 
 	if (file.state === 'FAILED') {
@@ -248,7 +280,7 @@ export async function transferFile(
 }
 
 export async function createFileSearchStore(this: IExecuteFunctions, displayName: string) {
-	return (await apiRequest.call(this, 'POST', '/v1beta/fileSearchStores', {
+	return (await apiRequest.call(this, 'POST', requestPath`/v1beta/fileSearchStores`, {
 		body: { displayName },
 	})) as IDataObject;
 }
@@ -282,25 +314,17 @@ export async function uploadToFileSearchStore(
 	}
 
 	const uploadResponse = (await uploadStream.call(this, stream, {
-		endpoint: `/upload/v1beta/${fileSearchStoreName}:uploadToFileSearchStore`,
+		endpoint: requestPath`/upload/v1beta${fileSearchStorePath.call(this, fileSearchStoreName)}:uploadToFileSearchStore`,
 		mimeType,
 		body: { displayName, mimeType },
 	})) as { body: { name: string } };
 
-	const operationName = uploadResponse.body.name;
-	let operation = (await apiRequest.call(
-		this,
-		'GET',
-		`/v1beta/${operationName}`,
-	)) as FileSearchOperation;
+	const operationPath = requestPath`/v1beta${resourcePath(uploadResponse.body.name)}`;
+	let operation = (await apiRequest.call(this, 'GET', operationPath)) as FileSearchOperation;
 
 	while (!operation.done) {
 		await new Promise((resolve) => setTimeout(resolve, OPERATION_CHECK_INTERVAL));
-		operation = (await apiRequest.call(
-			this,
-			'GET',
-			`/v1beta/${operationName}`,
-		)) as FileSearchOperation;
+		operation = (await apiRequest.call(this, 'GET', operationPath)) as FileSearchOperation;
 	}
 
 	if (operation.error) {
@@ -325,7 +349,9 @@ export async function listFileSearchStores(
 		qs.pageToken = pageToken;
 	}
 
-	return (await apiRequest.call(this, 'GET', '/v1beta/fileSearchStores', { qs })) as IDataObject;
+	return (await apiRequest.call(this, 'GET', requestPath`/v1beta/fileSearchStores`, {
+		qs,
+	})) as IDataObject;
 }
 
 export async function deleteFileSearchStore(
@@ -338,5 +364,12 @@ export async function deleteFileSearchStore(
 		qs.force = force;
 	}
 
-	return (await apiRequest.call(this, 'DELETE', `/v1beta/${name}`, { qs })) as IDataObject;
+	return (await apiRequest.call(
+		this,
+		'DELETE',
+		requestPath`/v1beta${fileSearchStorePath.call(this, name)}`,
+		{
+			qs,
+		},
+	)) as IDataObject;
 }

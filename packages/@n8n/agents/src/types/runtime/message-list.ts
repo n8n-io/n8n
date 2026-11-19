@@ -5,4 +5,6 @@ export interface SerializedMessageList {
 	historyIds: string[];
 	inputIds: string[];
 	responseIds: string[];
+	/** Skills loaded in thread messages that the list does not hold. */
+	earlierLoadedSkillIds?: string[];
 }

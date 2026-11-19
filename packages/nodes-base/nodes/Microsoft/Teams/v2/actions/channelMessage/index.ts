@@ -1,10 +1,15 @@
 import type { INodeProperties } from 'n8n-workflow';
 
 import * as create from './create.operation';
+import * as get from './get.operation';
 import * as getAll from './getAll.operation';
+import * as getAllReplies from './getAllReplies.operation';
+import * as reply from './reply.operation';
+import * as softDeleteMessage from './softDeleteMessage.operation';
+import * as undoSoftDeleteMessage from './undoSoftDeleteMessage.operation';
 import { SERVICE_PRINCIPAL_AUTH } from '../../transport';
 
-export { create, getAll };
+export { create, get, getAll, getAllReplies, reply, softDeleteMessage, undoSoftDeleteMessage };
 
 export const description: INodeProperties[] = [
 	{
@@ -25,10 +30,40 @@ export const description: INodeProperties[] = [
 				action: 'Create message',
 			},
 			{
+				name: 'Delete',
+				value: 'softDeleteMessage',
+				description: 'Delete a message from a channel',
+				action: 'Delete message',
+			},
+			{
+				name: 'Get',
+				value: 'get',
+				description: 'Get a message from a channel',
+				action: 'Get message',
+			},
+			{
 				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get many messages from a channel',
 				action: 'Get many messages',
+			},
+			{
+				name: 'Get Many Replies',
+				value: 'getAllReplies',
+				description: 'Get many replies to a message in a channel',
+				action: 'Get many replies',
+			},
+			{
+				name: 'Reply',
+				value: 'reply',
+				description: 'Reply to a message in a channel',
+				action: 'Reply to message',
+			},
+			{
+				name: 'Undo Delete',
+				value: 'undoSoftDeleteMessage',
+				description: 'Restore a deleted message in a channel',
+				action: 'Undo delete message',
 			},
 		],
 		default: 'create',
@@ -42,7 +77,7 @@ export const description: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['channelMessage'],
-				operation: ['create'],
+				operation: ['create', 'reply'],
 				authentication: [SERVICE_PRINCIPAL_AUTH],
 			},
 		},
@@ -56,12 +91,31 @@ export const description: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['channelMessage'],
-				operation: ['getAll'],
+				operation: ['get', 'getAll', 'getAllReplies'],
+				authentication: [SERVICE_PRINCIPAL_AUTH],
+			},
+		},
+	},
+	{
+		displayName:
+			'Deleting and restoring channel messages is not available with the Service Principal credential. Microsoft Graph offers these actions only for a signed-in user; use an OAuth2 credential.',
+		name: 'channelMessageDeleteServicePrincipalNotice',
+		type: 'notice',
+		default: '',
+		displayOptions: {
+			show: {
+				resource: ['channelMessage'],
+				operation: ['softDeleteMessage', 'undoSoftDeleteMessage'],
 				authentication: [SERVICE_PRINCIPAL_AUTH],
 			},
 		},
 	},
 
 	...create.description,
+	...get.description,
 	...getAll.description,
+	...getAllReplies.description,
+	...reply.description,
+	...softDeleteMessage.description,
+	...undoSoftDeleteMessage.description,
 ];

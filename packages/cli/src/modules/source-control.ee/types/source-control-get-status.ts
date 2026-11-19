@@ -1,6 +1,8 @@
 import type { SourceControlledFile } from '@n8n/api-types';
 import { IsBoolean, IsOptional, IsString } from 'class-validator';
 
+import type { PublicApiCaller } from '@/public-api/public-api-client';
+
 import type { StatusExportableCredential } from './exportable-credential';
 import type { ExportableDataTable, StatusExportableDataTable } from './exportable-data-table';
 import type { ExportableFolder } from './exportable-folders';
@@ -60,6 +62,8 @@ export class SourceControlGetStatus {
 	@IsOptional()
 	verbose: boolean;
 
+	publicApi?: PublicApiCaller;
+
 	constructor(values: {
 		direction: 'push' | 'pull';
 		preferLocalVersion: string | boolean;
@@ -68,5 +72,7 @@ export class SourceControlGetStatus {
 		this.direction = values.direction || 'push';
 		this.preferLocalVersion = booleanFromString(values.preferLocalVersion) || true;
 		this.verbose = booleanFromString(values.verbose) || false;
+		// Never read from `values`, an untrusted query parameter must not be propagated through.
+		this.publicApi = false;
 	}
 }

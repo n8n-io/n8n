@@ -1,4 +1,5 @@
 import type { IExecuteFunctions, IBinaryData } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 import { mock, mockDeep } from 'vitest-mock-extended';
 
 vi.mock('../transport', () => ({
@@ -67,10 +68,10 @@ describe('MiniMax Operations', () => {
 		vi.clearAllMocks();
 	});
 
-	it('should use version 1.1 for newly added nodes', () => {
+	it('should use version 1.2 for newly added nodes', () => {
 		expect(versionDescription).toMatchObject({
-			version: [1, 1.1],
-			defaultVersion: 1.1,
+			version: [1, 1.1, 1.2],
+			defaultVersion: 1.2,
 		});
 	});
 
@@ -130,7 +131,7 @@ describe('MiniMax Operations', () => {
 			const legacyModelProperty = textMessageDescription.find(
 				({ name, default: defaultValue }) => name === 'modelId' && defaultValue === 'MiniMax-M2.7',
 			);
-			const currentModelProperty = textMessageDescription.find(
+			const staticModelProperty = textMessageDescription.find(
 				({ name, default: defaultValue }) => name === 'modelId' && defaultValue === 'MiniMax-M3',
 			);
 
@@ -144,11 +145,31 @@ describe('MiniMax Operations', () => {
 				name: 'MiniMax-M3',
 				value: 'MiniMax-M3',
 			});
-			expect(currentModelProperty).toMatchObject({
+			expect(staticModelProperty).toMatchObject({
 				default: 'MiniMax-M3',
 				options: expect.arrayContaining([{ name: 'MiniMax-M3', value: 'MiniMax-M3' }]),
 				displayOptions: {
-					show: expect.objectContaining({ '@version': [{ _cnd: { gte: 1.1 } }] }),
+					show: expect.objectContaining({ '@version': [1.1] }),
+				},
+			});
+		});
+
+		it('should use a searchable resourceLocator for version 1.2 and later', () => {
+			const currentModelProperty = textMessageDescription.find(
+				({ name, type }) => name === 'modelId' && type === 'resourceLocator',
+			);
+
+			expect(currentModelProperty).toMatchObject({
+				type: 'resourceLocator',
+				default: { mode: 'list', value: 'MiniMax-M3' },
+				modes: expect.arrayContaining([
+					expect.objectContaining({
+						name: 'list',
+						typeOptions: { searchListMethod: 'modelSearch', searchable: true },
+					}),
+				]),
+				displayOptions: {
+					show: expect.objectContaining({ '@version': [{ _cnd: { gte: 1.2 } }] }),
 				},
 			});
 		});
@@ -175,7 +196,7 @@ describe('MiniMax Operations', () => {
 
 			const result = await textMessageExecute.call(mockExecuteFunctions, 0);
 
-			expect(mockApiRequest).toHaveBeenCalledWith('POST', '/v1/chat/completions', {
+			expect(mockApiRequest).toHaveBeenCalledWith('POST', requestPath`/v1/chat/completions`, {
 				body: expect.objectContaining({
 					model: 'MiniMax-M3',
 					messages: [{ role: 'user', content: 'Hello' }],
@@ -237,7 +258,7 @@ describe('MiniMax Operations', () => {
 
 			await textMessageExecute.call(mockExecuteFunctions, 0);
 
-			expect(mockApiRequest).toHaveBeenCalledWith('POST', '/v1/chat/completions', {
+			expect(mockApiRequest).toHaveBeenCalledWith('POST', requestPath`/v1/chat/completions`, {
 				body: expect.objectContaining({
 					messages: expect.arrayContaining([
 						{ role: 'system', content: 'You are a helpful assistant' },
@@ -272,7 +293,7 @@ describe('MiniMax Operations', () => {
 
 			const result = await imageGenerateExecute.call(mockExecuteFunctions, 0);
 
-			expect(mockApiRequest).toHaveBeenCalledWith('POST', '/v1/image_generation', {
+			expect(mockApiRequest).toHaveBeenCalledWith('POST', requestPath`/v1/image_generation`, {
 				body: expect.objectContaining({
 					model: 'image-01',
 					prompt: 'A sunset over mountains',
@@ -674,7 +695,7 @@ describe('MiniMax Operations', () => {
 
 			const result = await audioTTSExecute.call(mockExecuteFunctions, 0);
 
-			expect(mockApiRequest).toHaveBeenCalledWith('POST', '/v1/t2a_v2', {
+			expect(mockApiRequest).toHaveBeenCalledWith('POST', requestPath`/v1/t2a_v2`, {
 				body: expect.objectContaining({
 					model: 'speech-2.8-hd',
 					text: 'Hello world',

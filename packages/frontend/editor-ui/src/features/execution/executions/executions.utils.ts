@@ -1,21 +1,22 @@
 import {
+	EVALUATION_TRIGGER_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
 	createRunExecutionData,
 	isTrimmedNodeExecutionData,
 } from 'n8n-workflow';
+import { UUID_V7_PATTERN } from '@n8n/constants';
 import { CANCELLABLE_EXECUTION_STATUSES } from './executions.constants';
 import type {
 	ITaskData,
 	ExecutionStatus,
 	ExecutionSummary,
 	IDataObject,
-	INode,
-	IPinData,
 	IRunData,
 	ExecutionError,
 	INodeTypeBaseDescription,
 	INodeExecutionData,
 	IWorkflowDataProxyAdditionalKeys,
+	WorkflowEngineType,
 } from 'n8n-workflow';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
 import type { WorkflowObjectAccessors } from '@/app/types/workflow';
@@ -59,11 +60,11 @@ export function getDefaultExecutionFilters(): ExecutionFilterType {
 		status: 'all',
 		startDate: '',
 		endDate: '',
-		tags: [],
 		annotationTags: [],
 		metadata: [],
 		vote: 'all',
 		workflowVersionId: 'all',
+		engine: 'all',
 	};
 }
 
@@ -73,10 +74,6 @@ export const executionFilterToQueryFilter = (
 	const queryFilter: IDataObject = {};
 	if (filter.workflowId !== 'all') {
 		queryFilter.workflowId = filter.workflowId;
-	}
-
-	if (!isEmpty(filter.tags)) {
-		queryFilter.tags = filter.tags;
 	}
 
 	if (!isEmpty(filter.annotationTags)) {
@@ -89,6 +86,10 @@ export const executionFilterToQueryFilter = (
 
 	if (filter.workflowVersionId !== 'all') {
 		queryFilter.workflowVersionId = filter.workflowVersionId;
+	}
+
+	if (filter.engine && filter.engine !== 'all') {
+		queryFilter.engine = filter.engine;
 	}
 
 	if (!isEmpty(filter.metadata)) {
@@ -144,54 +145,19 @@ export const openFormPopupWindow = (url: string) => {
 
 export const clearPopupWindowState = () => (formPopupWindow = false);
 
-export async function displayForm({
-	nodes,
-	runData,
-	pinData,
-	destinationNode,
-	triggerNode,
-	directParentNodes,
+/** Opens the test form popup for each Form Trigger the backend registered in this manual run. */
+export function displayForm({
+	formTestUrls,
 	source,
-	getTestUrl,
 }: {
-	nodes: INode[];
-	runData: IRunData | undefined;
-	pinData: IPinData;
-	destinationNode: string | undefined;
-	triggerNode: string | undefined;
-	directParentNodes: string[];
+	formTestUrls: string[];
 	source: string | undefined;
-	getTestUrl: (node: INode) => string;
 }) {
-	for (const node of nodes) {
-		if (triggerNode !== undefined && triggerNode !== node.name) continue;
+	if (source === 'RunData.ManualChatMessage') return;
 
-		const hasNodeRunAndIsNotFormTrigger =
-			runData?.hasOwnProperty(node.name) && node.type !== FORM_TRIGGER_NODE_TYPE;
-
-		if (hasNodeRunAndIsNotFormTrigger || pinData[node.name]) continue;
-
-		if (![FORM_TRIGGER_NODE_TYPE].includes(node.type)) continue;
-
-		if (destinationNode && destinationNode !== node.name && !directParentNodes.includes(node.name))
-			continue;
-
-		if (node.name === destinationNode || !node.disabled) {
-			let testUrl = '';
-			if (node.type === FORM_TRIGGER_NODE_TYPE) testUrl = getTestUrl(node);
-
-			try {
-				const res = await fetch(testUrl, { method: 'GET' });
-				if (!res.ok) continue;
-			} catch (error) {
-				continue;
-			}
-
-			if (testUrl && source !== 'RunData.ManualChatMessage') {
-				clearPopupWindowState();
-				openFormPopupWindow(testUrl);
-			}
-		}
+	for (const formTestUrl of formTestUrls) {
+		clearPopupWindowState();
+		openFormPopupWindow(formTestUrl);
 	}
 }
 
@@ -272,6 +238,21 @@ export function hasTrimmedTaskData(taskData: ITaskData[]) {
  */
 export function hasTrimmedRunData(runData: IRunData) {
 	return Object.keys(runData).some((nodeName) => hasTrimmedTaskData(runData[nodeName]));
+}
+
+/**
+ * Check whether an execution ID belongs to engine v2.
+ *
+ * The ID shape names the engine, as in the backend: engine v2 uses a UUID v7,
+ * and v1 uses a number. No push message or REST response names the engine.
+ */
+export function isEngineV2ExecutionId(executionId: string): boolean {
+	return UUID_V7_PATTERN.test(executionId);
+}
+
+/** The engine that ran an execution, read from its ID. */
+export function getExecutionEngine(executionId: string): WorkflowEngineType {
+	return isEngineV2ExecutionId(executionId) ? 'v2' : 'v1';
 }
 
 export function executionRetryMessage(executionStatus: ExecutionStatus):
@@ -445,6 +426,11 @@ export function findTriggerNodeToAutoSelect(
 		[MANUAL_TRIGGER_NODE_TYPE]: 6,
 		[WORKFLOW_TRIGGER_NODE_TYPE]: 5,
 		[ERROR_TRIGGER_NODE_TYPE]: 4,
+		// Ranked below the core-node fallback: selecting this trigger runs the whole
+		// evaluation dataset, so it should never win over a trigger the user can run
+		// interactively. Its codex category is "Utility", so without this entry it
+		// would fall through to the 8 reserved for third-party app triggers.
+		[EVALUATION_TRIGGER_NODE_TYPE]: -1,
 	};
 
 	function isCoreNode(node: INodeUi): boolean {

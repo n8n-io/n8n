@@ -21,10 +21,32 @@ export type McpRegistryServerData = {
 	tools: Array<{
 		name: string;
 		title?: string;
-		annotations?: { readOnlyHint?: boolean };
+		annotations?: {
+			readOnlyHint?: boolean;
+			destructiveHint?: boolean;
+			idempotentHint?: boolean;
+			openWorldHint?: boolean;
+		};
 	}>;
 	websiteUrl?: string;
 	tags?: string[];
+	requiredCapabilities?: string[];
+	extendsCredential?: {
+		extends: string;
+		authUrl?: string | null;
+		accessTokenUrl?: string | null;
+		scope?: string | null;
+		authQueryParameters?: string | null;
+		grantType?: 'authorizationCode' | 'clientCredentials' | 'pkce' | null;
+		authentication?: 'body' | 'header' | null;
+		useDynamicClientRegistration?: boolean | null;
+		serverUrl?: string | null;
+	};
+	usesCredentials?: Array<{
+		credentialType: string;
+		name: string;
+		value: string;
+	}>;
 };
 
 @Entity('mcp_registry_server')

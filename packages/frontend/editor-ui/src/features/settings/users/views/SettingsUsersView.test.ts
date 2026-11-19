@@ -1,7 +1,8 @@
-import { defineComponent } from 'vue';
+import { defineComponent, ref } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { screen, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
+import { flushPromises } from '@vue/test-utils';
 import { vi } from 'vitest';
 import { type FrontendSettings, type Role, ROLE, type UsersList } from '@n8n/api-types';
 import type { IUser } from '@n8n/rest-api-client/api/users';
@@ -11,11 +12,15 @@ import SettingsUsersView from './SettingsUsersView.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { useEmitters } from '@/__tests__/utils';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
+import { isModalPrefetchEnabled } from '@/__tests__/prefetchModals';
+
+vi.mock('@/app/composables/usePrefetchModals');
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRolesStore } from '@n8n/stores/roles.store';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
+import { useUserRoleProvisioningStore } from '@/features/settings/sso/provisioning/composables/userRoleProvisioning.store';
 import * as permissions from '@/app/utils/rbac/permissions';
 import type { PermissionTypeOptions } from '@/app/types/rbac';
 
@@ -473,6 +478,29 @@ describe('SettingsUsersView', () => {
 	});
 
 	describe('component lifecycle', () => {
+		// IAM-1513: Unlicensed instances do not register the provisioning endpoint.
+		it('should not fetch provisioning config when provisioning is not licensed', async () => {
+			settingsStore.settings.enterprise = {} as FrontendSettings['enterprise'];
+			settingsStore.settings.enterprise[EnterpriseEditionFeature.Provisioning] = false;
+			const provisioningStore = mockedStore(useUserRoleProvisioningStore);
+
+			renderComponent();
+			await flushPromises();
+
+			expect(screen.getByTestId('settings-users-table')).toBeInTheDocument();
+			expect(provisioningStore.getProvisioningConfig).not.toHaveBeenCalled();
+		});
+
+		it('should fetch provisioning config when provisioning is licensed', async () => {
+			settingsStore.settings.enterprise[EnterpriseEditionFeature.Provisioning] = true;
+			const provisioningStore = mockedStore(useUserRoleProvisioningStore);
+
+			renderComponent();
+			await flushPromises();
+
+			expect(provisioningStore.getProvisioningConfig).toHaveBeenCalledTimes(1);
+		});
+
 		it('should not load users data when showing UM setup warning', async () => {
 			usersStore.currentUser = { isDefaultUser: true } as IUser;
 			renderComponent();
@@ -1238,6 +1266,58 @@ describe('SettingsUsersView', () => {
 					},
 				});
 			});
+		});
+	});
+
+	describe('modal prefetch', () => {
+		it('prefetches the delete modal only with the user:delete scope', () => {
+			const spy = vi.spyOn(permissions, 'hasPermission').mockReturnValue(false);
+			renderComponent();
+			expect(isModalPrefetchEnabled(DELETE_USER_MODAL_KEY)).toBe(false);
+
+			spy.mockImplementation((_features, options) => options?.rbac?.scope === 'user:delete');
+			expect(isModalPrefetchEnabled(DELETE_USER_MODAL_KEY)).toBe(true);
+			spy.mockRestore();
+		});
+
+		it('prefetches the invite modal only when the user can invite', () => {
+			renderComponent();
+			expect(isModalPrefetchEnabled(INVITE_USER_MODAL_KEY)).toBe(true);
+
+			usersStore.usersLimitNotReached = false;
+			expect(isModalPrefetchEnabled(INVITE_USER_MODAL_KEY)).toBe(false);
+
+			usersStore.usersLimitNotReached = true;
+			ssoStore.isSamlLoginEnabled = true;
+			expect(isModalPrefetchEnabled(INVITE_USER_MODAL_KEY)).toBe(false);
+		});
+
+		it('waits for the provisioning config before it prefetches the invite modal', () => {
+			settingsStore.settings.enterprise[EnterpriseEditionFeature.Provisioning] = true;
+			// The store exposes the config as a readonly ref, so a getter stands in for the fetch.
+			const config = ref<{ scopesProvisionInstanceRole: boolean } | undefined>();
+			Object.defineProperty(mockedStore(useUserRoleProvisioningStore), 'provisioningConfig', {
+				configurable: true,
+				get: () => config.value,
+			});
+			renderComponent();
+			expect(isModalPrefetchEnabled(INVITE_USER_MODAL_KEY)).toBe(false);
+
+			config.value = { scopesProvisionInstanceRole: false };
+			expect(isModalPrefetchEnabled(INVITE_USER_MODAL_KEY)).toBe(true);
+
+			config.value = { scopesProvisionInstanceRole: true };
+			expect(isModalPrefetchEnabled(INVITE_USER_MODAL_KEY)).toBe(false);
+		});
+
+		it('does not prefetch the invite modal while user management is not set up', () => {
+			const spy = vi
+				.spyOn(permissions, 'hasPermission')
+				.mockImplementation((features) => features.includes('defaultUser'));
+			renderComponent();
+
+			expect(isModalPrefetchEnabled(INVITE_USER_MODAL_KEY)).toBe(false);
+			spy.mockRestore();
 		});
 	});
 });

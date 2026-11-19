@@ -51,7 +51,7 @@ export function formatRelativeTimestamp(
 	return past.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
-function isSameLocalDay(a: Date, b: Date): boolean {
+export function isSameLocalDay(a: Date, b: Date): boolean {
 	return (
 		a.getFullYear() === b.getFullYear() &&
 		a.getMonth() === b.getMonth() &&
@@ -63,6 +63,52 @@ function isYesterdayLocal(past: Date, now: Date): boolean {
 	const yesterday = new Date(now);
 	yesterday.setDate(now.getDate() - 1);
 	return isSameLocalDay(past, yesterday);
+}
+
+interface ChatDividerI18n {
+	today: (time: string) => string;
+	yesterday: (time: string) => string;
+	date: (date: string, time: string) => string;
+}
+
+/**
+ * Label for a ChatGPT-style timestamp divider above a chat message:
+ *
+ *   - same local day      → "Today at {time}"
+ *   - previous local day  → "Yesterday at {time}"
+ *   - older                → "{weekday}, {month} {day} at {time}"
+ *
+ * Time and date formatting are left to the viewer's locale (12h/24h, date order).
+ */
+export function formatChatDividerTimestamp(
+	date: Date | string | number,
+	i18n: ChatDividerI18n,
+	now: Date = new Date(),
+): string {
+	const past = new Date(date);
+	const time = past.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+
+	if (isSameLocalDay(past, now)) return i18n.today(time);
+	if (isYesterdayLocal(past, now)) return i18n.yesterday(time);
+
+	const dateLabel = past.toLocaleDateString(undefined, {
+		weekday: 'short',
+		month: 'short',
+		day: 'numeric',
+	});
+	return i18n.date(dateLabel, time);
+}
+
+export function useChatDividerTimestamp() {
+	const i18n = useI18n();
+	const strings: ChatDividerI18n = {
+		today: (time) => i18n.baseText('agents.chat.timestamp.today', { interpolate: { time } }),
+		yesterday: (time) =>
+			i18n.baseText('agents.chat.timestamp.yesterday', { interpolate: { time } }),
+		date: (date, time) =>
+			i18n.baseText('agents.chat.timestamp.date', { interpolate: { date, time } }),
+	};
+	return (date: Date | string | number) => formatChatDividerTimestamp(date, strings);
 }
 
 export function useRelativeTimestamp() {

@@ -7,17 +7,18 @@ import { Container, Service } from '@n8n/di';
 import { createWriteStream } from 'fs';
 import { mkdir } from 'fs/promises';
 import uniq from 'lodash/uniq';
-import { BinaryDataConfig, InstanceSettings } from 'n8n-core';
+import { BinaryDataConfig, InstanceSettings, type Types } from 'n8n-core';
 import type { ICredentialType, INodeTypeBaseDescription, INodeTypeDescription } from 'n8n-workflow';
 import path from 'path';
 
+import { UrlService } from '@n8n/backend-services';
+
+import { AiPreferenceSettingsService } from './ai-preference-settings.service';
 import { AiUsageService } from './ai-usage.service';
-import { UrlService } from './url.service';
 import { WorkflowReviewPolicyService } from './workflow-review-policy.service';
 
 import config from '@/config';
 import { inE2ETests, N8N_VERSION } from '@/constants';
-import { isWorkflowReviewsFeatureAvailable } from '@/constants/workflow-reviews';
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { resolveEvaluationConcurrencyLimit } from '@/evaluation.ee/evaluation-concurrency.helper';
@@ -25,7 +26,7 @@ import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { MfaService } from '@/mfa/mfa.service';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
-import type { CommunityPackagesService } from '@/modules/community-packages/community-packages.service';
+import { InboxService } from '@/modules/inbox/inbox.service';
 import { isApiKeyAuthEnabled } from '@/public-api';
 import { PushConfig } from '@/push/push.config';
 import { OwnershipService } from '@/services/ownership.service';
@@ -51,6 +52,9 @@ export type PublicFrontendSettings = {
 
 	/** Used to bypass authentication on the workflows/demo page */
 	previewMode: FrontendSettings['previewMode'];
+
+	/** Lets the editor load its expression engine before the user signs in */
+	expressionEngine: FrontendSettings['expressionEngine'];
 
 	authCookie: {
 		/** Blocks insecure access incompatible with the authentication cookie. */
@@ -105,6 +109,9 @@ export type PublicFrontendSettings = {
 	/** Used to fetch community nodes on preview instance */
 	communityNodesEnabled: FrontendSettings['communityNodesEnabled'];
 
+	/** Lets the editor know the active backend modules before its first request */
+	activeModules: FrontendSettings['activeModules'];
+
 	mfa?: {
 		enabled: boolean;
 		enforced: boolean;
@@ -115,11 +122,11 @@ export type PublicFrontendSettings = {
 export class FrontendService {
 	private settings: FrontendSettings;
 
-	private communityPackagesService?: CommunityPackagesService;
-
 	private publishedWorkflowCountCache?: { value: number; expiresAt: number };
 
 	private publishedWorkflowCountRequest?: Promise<number>;
+
+	private writeQueue: Promise<void> = Promise.resolve();
 
 	constructor(
 		private readonly globalConfig: GlobalConfig,
@@ -141,18 +148,12 @@ export class FrontendService {
 		private readonly aiUsageService: AiUsageService,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly workflowReviewPolicyService: WorkflowReviewPolicyService,
+		private readonly inboxService: InboxService,
+		private readonly aiPreferenceSettingsService: AiPreferenceSettingsService,
 	) {
 		loadNodesAndCredentials.addPostProcessor(async () => await this.generateTypes());
 		credentialsOverwrites.registerReloadHandler(async () => await this.generateTypes());
 		void this.generateTypes();
-		// @TODO: Move to community-packages module
-		if (Container.get(CommunityPackagesConfig).enabled) {
-			void import('@/modules/community-packages/community-packages.service.js').then(
-				({ CommunityPackagesService }) => {
-					this.communityPackagesService = Container.get(CommunityPackagesService);
-				},
-			);
-		}
 	}
 
 	private collectEnvFeatureFlags(): N8nEnvFeatFlags {
@@ -213,6 +214,7 @@ export class FrontendService {
 			endpointWebhookTest: this.globalConfig.endpoints.webhookTest,
 			endpointWebhookWaiting: this.globalConfig.endpoints.webhookWaiting,
 			endpointHealth: resolveFrontendHealthEndpointPath(this.globalConfig),
+			healthCheckTimeoutMs: this.globalConfig.endpoints.frontendHealthCheckTimeoutMs,
 			saveDataErrorExecution: this.globalConfig.executions.saveDataOnError,
 			saveDataSuccessExecution: this.globalConfig.executions.saveDataOnSuccess,
 			saveManualExecutions: this.globalConfig.executions.saveDataManualExecutions,
@@ -258,12 +260,12 @@ export class FrontendService {
 				},
 			},
 			instanceId: this.instanceSettings.instanceId,
+			installId: this.instanceSettings.installId,
 			telemetry: telemetrySettings,
 			posthog: {
 				enabled: this.globalConfig.diagnostics.enabled,
 				apiHost: this.globalConfig.diagnostics.posthogConfig.apiHost,
 				apiKey: this.globalConfig.diagnostics.posthogConfig.apiKey,
-				autocapture: false,
 				disableSessionRecording: this.globalConfig.deployment.type !== 'cloud',
 				proxy: `${instanceBaseUrl}/${restEndpoint}/ph`,
 				debug: this.globalConfig.logging.level === 'debug',
@@ -272,6 +274,7 @@ export class FrontendService {
 				this.globalConfig.personalization.enabled && this.globalConfig.diagnostics.enabled,
 			defaultLocale: this.globalConfig.defaultLocale,
 			userManagement: {
+				// oxlint-disable-next-line typescript/no-deprecated
 				quota: this.license.getUsersLimit(),
 				showSetupOnFirstLoad: await this.getShowSetupOnFirstLoad(),
 				smtpSetup: this.mailer.isEmailSetUp,
@@ -310,12 +313,16 @@ export class FrontendService {
 			},
 			workflowTagsDisabled: this.globalConfig.tags.disabled,
 			workflowsAutosaveDisabled: this.globalConfig.workflows.autosaveDisabled,
+			workflowsGroupsWithTriggersEnabled: this.globalConfig.workflows.groupsWithTriggersEnabled,
+			workflowsGroupsWithManyBoundariesEnabled:
+				this.globalConfig.workflows.groupsWithManyBoundariesEnabled,
 			useWorkflowPublicationService: this.globalConfig.workflows.useWorkflowPublicationService,
 			logLevel: this.globalConfig.logging.level,
 			hiringBannerEnabled: this.globalConfig.hiringBanner.enabled,
 			aiAssistant: {
 				enabled: false,
 				setup: false,
+				cloudUbbEnabled: false,
 			},
 			templates: {
 				enabled: this.globalConfig.templates.enabled,
@@ -385,6 +392,7 @@ export class FrontendService {
 			banners: {
 				dismissed: [],
 			},
+			// oxlint-disable-next-line typescript/no-deprecated -- The AI Transform node still uses this setting.
 			askAi: {
 				enabled: false,
 			},
@@ -399,6 +407,10 @@ export class FrontendService {
 			},
 			ai: {
 				allowSendingParameterValues: true,
+			},
+			aiPreferences: {
+				enabled: false,
+				managedByEnv: false,
 			},
 			workflowHistory: {
 				pruneTime: getWorkflowHistoryPruneTime(),
@@ -435,26 +447,40 @@ export class FrontendService {
 			folders: {
 				enabled: false,
 			},
+			workerPools: {
+				enabled: false,
+			},
 			evaluation: {
 				quota: this.licenseState.getMaxWorkflowsWithEvaluations(),
 				collectionsEnabled: this.globalConfig.evaluation.collectionsEnabled,
 				configEvalsEnabled: this.globalConfig.evaluation.configEvalsEnabled,
 				agentEvalsEnabled: this.globalConfig.evaluation.agentEvalsEnabled,
+				forceAgentWorthTesting: this.globalConfig.evaluation.forceAgentWorthTesting,
 			},
 			activeModules: this.moduleRegistry.getActiveModules(),
-			canvasOnly: this.globalConfig.canvasOnly,
+			canvasOnly: this.globalConfig.canvasOnly.enabled,
 			collaboration: {
 				crdt: this.globalConfig.collaboration.crdt,
 			},
 			envFeatureFlags: this.collectEnvFeatureFlags(),
+			expressionEngine: this.globalConfig.expressionEngine.frontendEngine,
 		};
 	}
 
 	async generateTypes() {
 		this.overwriteCredentialsProperties();
 
-		const { credentials, nodes } = await this.loadNodesAndCredentials.collectTypes();
+		const types = await this.loadNodesAndCredentials.collectTypes();
+		await this.enqueueWrite(types);
+	}
 
+	private async enqueueWrite(types: Types) {
+		const write = this.writeQueue.then(async () => await this.writeTypesFiles(types));
+		this.writeQueue = write.catch(() => {});
+		await write;
+	}
+
+	private async writeTypesFiles({ credentials, nodes }: Types) {
 		const { staticCacheDir } = this.instanceSettings;
 		// pre-render all the node and credential types as static json files
 		await mkdir(path.join(staticCacheDir, 'types'), { recursive: true });
@@ -484,6 +510,7 @@ export class FrontendService {
 
 		// refresh user management status
 		Object.assign(this.settings.userManagement, {
+			// oxlint-disable-next-line typescript/no-deprecated
 			quota: this.license.getUsersLimit(),
 			authenticationMethod: getCurrentAuthenticationMethod(),
 			showSetupOnFirstLoad: await this.getShowSetupOnFirstLoad(),
@@ -504,16 +531,27 @@ export class FrontendService {
 			this.settings.easyAIWorkflowOnboarded = false;
 		}
 		try {
-			this.settings.ai.allowSendingParameterValues = await this.aiUsageService.getAiUsageSettings();
+			this.settings.ai.allowSendingParameterValues =
+				await this.aiUsageService.isParameterValueSharingAllowed();
 		} catch {
-			this.settings.ai.allowSendingParameterValues = true;
+			this.settings.ai.allowSendingParameterValues =
+				this.globalConfig.ai.allowSendingParameterValues;
 		}
+
+		this.settings.aiPreferences = {
+			enabled: this.aiPreferenceSettingsService.isSwitchOn,
+			managedByEnv: this.aiPreferenceSettingsService.isManagedByEnv,
+		};
 
 		const isS3Selected = this.binaryDataConfig.mode === 's3';
 		const isS3Available = this.binaryDataConfig.availableModes.includes('s3');
+		// oxlint-disable-next-line typescript/no-deprecated
 		const isS3Licensed = this.license.isBinaryDataS3Licensed();
+		// oxlint-disable-next-line typescript/no-deprecated
 		const isAiAssistantEnabled = this.license.isAiAssistantEnabled();
+		// oxlint-disable-next-line typescript/no-deprecated
 		const isAskAiEnabled = this.license.isAskAiEnabled();
+		// oxlint-disable-next-line typescript/no-deprecated
 		const isAiCreditsEnabled = this.license.isAiCreditsEnabled();
 		const isAiBuilderEnabled = this.license.isLicensed(LICENSE_FEATURES.AI_BUILDER);
 
@@ -530,21 +568,32 @@ export class FrontendService {
 
 		// refresh enterprise status
 		Object.assign(this.settings.enterprise, {
+			// oxlint-disable-next-line typescript/no-deprecated
 			sharing: this.license.isSharingEnabled(),
+			// oxlint-disable-next-line typescript/no-deprecated
 			logStreaming: this.license.isLogStreamingEnabled(),
+			// oxlint-disable-next-line typescript/no-deprecated
 			ldap: this.license.isLdapEnabled(),
+			// oxlint-disable-next-line typescript/no-deprecated
 			saml: this.license.isSamlEnabled(),
 			oidc: this.licenseState.isOidcLicensed(),
 			mfaEnforcement: this.licenseState.isMFAEnforcementLicensed(),
 			provisioning: false, // temporarily disabled until this feature is ready for release
+			// oxlint-disable-next-line typescript/no-deprecated
 			advancedExecutionFilters: this.license.isAdvancedExecutionFiltersEnabled(),
+			// oxlint-disable-next-line typescript/no-deprecated
 			variables: this.license.isVariablesEnabled(),
+			// oxlint-disable-next-line typescript/no-deprecated
 			sourceControl: this.license.isSourceControlLicensed(),
+			// oxlint-disable-next-line typescript/no-deprecated
 			externalSecrets: this.license.isExternalSecretsEnabled(),
 			showNonProdBanner: this.license.isLicensed(LICENSE_FEATURES.SHOW_NON_PROD_BANNER),
+			// oxlint-disable-next-line typescript/no-deprecated
 			debugInEditor: this.license.isDebugInEditorLicensed(),
 			binaryDataS3: isS3Available && isS3Selected && isS3Licensed,
+			// oxlint-disable-next-line typescript/no-deprecated
 			workerView: this.license.isWorkerViewLicensed(),
+			// oxlint-disable-next-line typescript/no-deprecated
 			advancedPermissions: this.license.isAdvancedPermissionsLicensed(),
 
 			workflowDiffs: this.licenseState.isWorkflowDiffsLicensed(),
@@ -556,6 +605,10 @@ export class FrontendService {
 			workflowReviews: this.licenseState.isWorkflowReviewsLicensed(),
 		});
 
+		this.settings.workerPools.enabled =
+			this.globalConfig.queue.workerPool.enabled && this.licenseState.isWorkerPoolsLicensed();
+
+		// oxlint-disable-next-line typescript/no-deprecated
 		if (this.license.isLdapEnabled()) {
 			Object.assign(this.settings.sso.ldap, {
 				loginLabel: this.globalConfig.sso.ldap.loginLabel,
@@ -563,6 +616,7 @@ export class FrontendService {
 			});
 		}
 
+		// oxlint-disable-next-line typescript/no-deprecated
 		if (this.license.isSamlEnabled()) {
 			Object.assign(this.settings.sso.saml, {
 				loginLabel: getSamlLoginLabel(),
@@ -576,26 +630,28 @@ export class FrontendService {
 			});
 		}
 
+		// oxlint-disable-next-line typescript/no-deprecated
 		if (this.license.isVariablesEnabled()) {
+			// oxlint-disable-next-line typescript/no-deprecated
 			this.settings.variables.limit = this.license.getVariablesLimit();
-		}
-
-		if (this.communityPackagesService) {
-			this.settings.missingPackages = this.communityPackagesService.hasMissingPackages;
 		}
 
 		if (isAiAssistantEnabled) {
 			this.settings.aiAssistant.enabled = isAiAssistantEnabled;
 			this.settings.aiAssistant.setup =
 				!!this.globalConfig.aiAssistant.baseUrl || !!process.env.N8N_AI_ANTHROPIC_KEY;
+			this.settings.aiAssistant.cloudUbbEnabled =
+				this.licenseState.isAiAssistantCloudUbbEntitlementLicensed();
 		}
 
 		if (isAskAiEnabled) {
+			// oxlint-disable-next-line typescript/no-deprecated
 			this.settings.askAi.enabled = isAskAiEnabled;
 		}
 
 		if (isAiCreditsEnabled) {
 			this.settings.aiCredits.enabled = isAiCreditsEnabled;
+			// oxlint-disable-next-line typescript/no-deprecated
 			this.settings.aiCredits.credits = this.license.getAiCredits();
 			this.settings.aiCredits.setup = !!this.globalConfig.aiAssistant.baseUrl;
 		}
@@ -623,18 +679,23 @@ export class FrontendService {
 		// TODO: read from settings
 		this.settings.mfa.enforced = await this.mfaService.isMFAEnforced();
 
-		if (isWorkflowReviewsFeatureAvailable(this.licenseState.isWorkflowReviewsLicensed())) {
+		if (this.licenseState.isWorkflowReviewsLicensed()) {
 			this.settings.workflowReviews = await this.workflowReviewPolicyService.get();
 		} else {
 			delete this.settings.workflowReviews;
 		}
+		this.settings.inbox = this.moduleRegistry.isActive('inbox')
+			? await this.inboxService.getSettings()
+			: { enabled: false, availableTypes: [], failedTypes: [] };
 
 		this.settings.executionMode = this.globalConfig.executions.mode;
 
 		this.settings.binaryDataMode = this.binaryDataConfig.mode;
 
+		// oxlint-disable-next-line typescript/no-deprecated
 		this.settings.enterprise.projects.team.limit = this.license.getTeamProjectLimit();
 
+		// oxlint-disable-next-line typescript/no-deprecated
 		this.settings.folders.enabled = this.license.isFoldersEnabled();
 
 		// Refresh evaluation settings
@@ -689,6 +750,8 @@ export class FrontendService {
 			enterprise: { saml, ldap, oidc },
 			mfa,
 			communityNodesEnabled,
+			activeModules,
+			expressionEngine,
 		} = await this.getSettings();
 		const publicSettings: PublicFrontendSettings = {
 			settingsMode: 'public',
@@ -713,6 +776,8 @@ export class FrontendService {
 			previewMode,
 			enterprise: { saml, ldap, oidc },
 			communityNodesEnabled,
+			activeModules,
+			expressionEngine,
 		};
 		if (includeMfaSettings) {
 			publicSettings.mfa = mfa;
@@ -785,6 +850,10 @@ export class FrontendService {
 			if (credential.name in credentialsOverwrites) {
 				overwrittenProperties.push(...Object.keys(credentialsOverwrites[credential.name]));
 			}
+
+			overwrittenProperties.push(
+				...this.credentialsOverwrites.getNewerAppProperties(credential.name),
+			);
 
 			if (overwrittenProperties.length) {
 				credential.__overwrittenProperties = uniq(overwrittenProperties);

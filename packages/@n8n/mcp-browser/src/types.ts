@@ -64,6 +64,11 @@ export interface DisconnectDetails {
 	blockingExtensionIds: string[];
 }
 
+export interface PageChangeDetails {
+	type: 'opened' | 'closed';
+	pageId: string;
+}
+
 export interface Adapter {
 	onDisconnect?: (reason: ConnectionLostReason, details?: DisconnectDetails) => void;
 	/**
@@ -72,6 +77,11 @@ export interface Adapter {
 	 * disconnect details, so there a block is reported without naming the extension.
 	 */
 	onBlocked?: (details: DisconnectDetails) => void;
+	/**
+	 * A page opened or closed, for example a popup. It also fires when no tool call
+	 * runs, such as when a user clicks in a live view. Playwright adapter only.
+	 */
+	onPageChange?: (change: PageChangeDetails) => void;
 	launch(config: ConnectConfig): Promise<void>;
 	close(): Promise<void>;
 	// Tabs
@@ -140,6 +150,11 @@ export interface Adapter {
 	clearStorage(pageId: string, kind: 'local' | 'session'): Promise<void>;
 	// Sync helpers used by tool helpers
 	getPageUrl(pageId: string): string | undefined;
+	/**
+	 * The CDP target id of a tracked page, which a remote browser service uses to name
+	 * its tabs. `undefined` when the page is gone. Playwright adapter only.
+	 */
+	getTargetId?(pageId: string): Promise<string | undefined>;
 	// Credential capture
 	getElementValue(pageId: string, target: ElementTarget): Promise<string>;
 }
@@ -244,6 +259,8 @@ export interface ClickOptions {
 }
 
 export interface TypeOptions {
+	/** 'paste' inserts the value in one operation, replacing existing content. */
+	mode?: 'type' | 'paste';
 	clear?: boolean;
 	submit?: boolean;
 	delay?: number;
@@ -305,8 +322,16 @@ export interface ToolDefinition<TSchema extends z.ZodType = z.ZodType> {
 	): AffectedResource[] | Promise<AffectedResource[]>;
 }
 
+/**
+ * What the `resource` string identifies. Callers gate on this rather than on the
+ * string itself: `resource` is a hostname for `host`, and a hostname can legitimately
+ * be the literal `credentials`.
+ */
+export type AffectedResourceKind = 'host' | 'credential-write';
+
 export interface AffectedResource {
 	toolGroup: 'browser';
+	kind: AffectedResourceKind;
 	resource: string;
 	description: string;
 }

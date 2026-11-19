@@ -2,6 +2,31 @@ import { z } from 'zod';
 
 import { Config, Env } from '../decorators';
 
+type JsonValue = string | number | boolean | null | { [key: string]: JsonValue } | JsonValue[];
+
+const jsonValueSchema: z.ZodType<JsonValue> = z.lazy(() =>
+	z.union([
+		z.string(),
+		z.number(),
+		z.boolean(),
+		z.null(),
+		z.record(z.string(), jsonValueSchema),
+		z.array(jsonValueSchema),
+	]),
+);
+
+const flagValueSchema = z.union([z.string(), z.boolean()]);
+
+const flagOverrideSchema = z.union([
+	flagValueSchema,
+	z
+		.object({
+			value: flagValueSchema,
+			payload: jsonValueSchema.optional(),
+		})
+		.strict(),
+]);
+
 const flagOverridesSchema = z
 	.string()
 	.transform((value, ctx): unknown => {
@@ -12,23 +37,23 @@ const flagOverridesSchema = z
 			return z.NEVER;
 		}
 	})
-	.pipe(z.record(z.string(), z.union([z.string(), z.boolean()])));
+	.pipe(z.record(z.string(), flagOverrideSchema));
 
 type FlagOverridesSchema = z.infer<typeof flagOverridesSchema>;
 
 @Config
 export class FeatureFlagConfig {
 	/**
-	 * JSON object mapping feature flag names to override values, applied on top
-	 * of the values resolved from the feature-flag provider. Boolean flags take
-	 * `true`/`false`; multivariate flags take their variant string. Because an
-	 * override sets the value outright, `false` also works as a kill switch for
-	 * a flag the provider enabled.
+	 * JSON object that maps feature flag names to override values. Use a string
+	 * or boolean to override only the flag value. Use `{ value, payload }` to
+	 * override the value and payload together.
 	 *
-	 * Invalid JSON, or a value that is neither a string nor a boolean, is
-	 * rejected with a warning and leaves all flags untouched.
+	 * An override without a payload removes the provider payload. A null payload
+	 * also removes the provider payload.
 	 *
-	 * @example '{"042_some_experiment":"variant","043_other_feature":false}'
+	 * Invalid JSON or invalid override data leaves all flags untouched.
+	 *
+	 * @example '{"042_some_experiment":{"value":"variant","payload":{"url":"https://example.com"}},"043_other_feature":false}'
 	 */
 	@Env('N8N_FEATURE_FLAG_OVERRIDES', flagOverridesSchema)
 	override: FlagOverridesSchema = {};

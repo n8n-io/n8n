@@ -1,14 +1,12 @@
 import FormData from 'form-data';
 import {
-	type IDataObject,
 	type IExecuteFunctions,
 	type INodeExecutionData,
 	type INodeType,
 	type INodeTypeBaseDescription,
 	type INodeTypeDescription,
-	NodeApiError,
 	NodeConnectionTypes,
-	NodeOperationError,
+	requestUrl,
 } from 'n8n-workflow';
 
 import {
@@ -17,10 +15,9 @@ import {
 	mindeeApiRequest,
 	pollMindee,
 	readUIParams,
+	ROOT_URL,
 } from './GenericFunctions';
 import { getModels } from './SearchFunctions';
-
-const ROOT_URL = 'https://api-v2.mindee.net/v2';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Mindee',
@@ -334,54 +331,39 @@ export class MindeeV2 implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		for (let i = 0; i < items.length; i++) {
-			let result: IDataObject[] | undefined;
 			try {
 				const operation = this.getNodeParameter('operation', i);
-				const slug = operation;
-
-				if (['extraction', 'classification', 'crop', 'ocr', 'split'].includes(slug)) {
-					const params = readUIParams(this, i);
-					const form = new FormData();
-					await buildRequestBody(this, i, params, form);
-					const headers = form.getHeaders();
-					const enqueue = await mindeeApiRequest.call(
-						this,
-						'POST',
-						`${ROOT_URL}/products/${slug}/enqueue`,
-						form,
-						{},
-						headers,
-					);
-					const pollingUrl = extractPollingUrl(this, enqueue);
-					result = await pollMindee(this, pollingUrl, params.pollingTimeoutCount);
-				}
+				const params = readUIParams(this, i);
+				const form = new FormData();
+				await buildRequestBody(this, i, params, form);
+				const enqueue = await mindeeApiRequest.call(
+					this,
+					'POST',
+					requestUrl`${ROOT_URL}/products/${operation}/enqueue`,
+					form,
+					{},
+					form.getHeaders(),
+				);
+				const pollingUrl = extractPollingUrl(this, enqueue);
+				const result = await pollMindee(this, pollingUrl, params.pollingTimeoutCount);
+				returnData.push(
+					...this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(result), {
+						itemData: { item: i },
+					}),
+				);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					const errorMessage =
-						error instanceof NodeApiError || error instanceof NodeOperationError
-							? error.message
-							: String(error);
-					returnData.push({ error: errorMessage });
+					returnData.push({
+						json: { error: error instanceof Error ? error.message : String(error) },
+						pairedItem: { item: i },
+					});
 					continue;
 				}
 				throw error;
 			}
-
-			if (!result) {
-				const error = new NodeOperationError(this.getNode(), 'Unknown operation', {
-					description: 'No operation matched the provided operation',
-				});
-				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
-					continue;
-				}
-				throw error;
-			}
-
-			returnData.push.apply(returnData, Array.isArray(result) ? result : [result]);
 		}
-		return [this.helpers.returnJsonArray(returnData)];
+		return [returnData];
 	}
 }

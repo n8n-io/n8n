@@ -8,9 +8,17 @@ import type {
 } from 'n8n-workflow';
 import { sleep } from '@n8n/utils/sleep';
 import { getHighlightedResponseKey } from 'n8n-workflow';
-import { getFailureType } from '@utils/output_parsers/langchainParserError';
+import {
+	getFailureType,
+	wrapLangChainParserError,
+} from '@utils/output_parsers/langchainParserError';
 
-import { buildExecutionContext, executeBatch, resolveSubAgentRequest } from './helpers';
+import {
+	buildExecutionContext,
+	executeBatch,
+	mergeRequestMetadata,
+	resolveSubAgentRequest,
+} from './helpers';
 import { isExecuteFunctions } from '../../utils';
 
 /** Keys written in `finally` for Tools Agent V3 execution tracing (`setMetadata`). */
@@ -111,6 +119,8 @@ export async function toolsAgentExecute(
 					request = batchRequest;
 				} else {
 					request.actions.push.apply(request.actions, batchRequest.actions);
+					// Preserve each batch's previousRequests so buildSteps can rebuild conversation history per item
+					request.metadata = mergeRequestMetadata(request.metadata, batchRequest.metadata);
 				}
 			}
 
@@ -149,7 +159,11 @@ export async function toolsAgentExecute(
 		return [returnData];
 	} catch (error) {
 		failureType = getFailureType(error);
-		throw error;
+		// Failures raised outside `executeBatch` (context building, parameter
+		// assertions) are still raw here, so enrich them the same way.
+		throw wrapLangChainParserError(error, this.getNode(), undefined, {
+			enrichNonParserErrors: true,
+		});
 	} finally {
 		if (isExecuteFunctions(this)) {
 			const tracing: ToolsAgentV3TracingMetadata = {

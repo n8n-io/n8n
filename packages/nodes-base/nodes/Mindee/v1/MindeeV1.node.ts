@@ -6,7 +6,7 @@ import type {
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { oldVersionNotice } from '@utils/descriptions';
 
@@ -218,7 +218,7 @@ export class MindeeV1 implements INodeType {
 							responseData = await mindeeApiRequest.call(
 								this,
 								'POST',
-								'/expense_receipts/v2/predict',
+								requestPath`/expense_receipts/v2/predict`,
 								{},
 								{},
 								{
@@ -233,7 +233,7 @@ export class MindeeV1 implements INodeType {
 								},
 							);
 						} else if (version === 3) {
-							endpoint = '/expense_receipts/v3/predict';
+							endpoint = requestPath`/expense_receipts/v3/predict`;
 							responseData = await mindeeApiRequest.call(
 								this,
 								'POST',
@@ -252,7 +252,7 @@ export class MindeeV1 implements INodeType {
 								},
 							);
 						} else if (version === 4) {
-							endpoint = '/expense_receipts/v4/predict';
+							endpoint = requestPath`/expense_receipts/v4/predict`;
 							responseData = await mindeeApiRequest.call(
 								this,
 								'POST',
@@ -294,7 +294,7 @@ export class MindeeV1 implements INodeType {
 						const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
 						if (version === 1) {
-							endpoint = '/invoices/v1/predict';
+							endpoint = requestPath`/invoices/v1/predict`;
 							responseData = await mindeeApiRequest.call(
 								this,
 								'POST',
@@ -313,7 +313,7 @@ export class MindeeV1 implements INodeType {
 								},
 							);
 						} else if (version === 3) {
-							endpoint = '/invoices/v3/predict';
+							endpoint = requestPath`/invoices/v3/predict`;
 							responseData = await mindeeApiRequest.call(
 								this,
 								'POST',
@@ -332,7 +332,7 @@ export class MindeeV1 implements INodeType {
 								},
 							);
 						} else if (version === 4) {
-							endpoint = '/invoices/v4/predict';
+							endpoint = requestPath`/invoices/v4/predict`;
 							responseData = await mindeeApiRequest.call(
 								this,
 								'POST',

@@ -1,6 +1,9 @@
 {
     "type": "object",
     "properties": {
+        "analysisKey": {
+            "type": "string"
+        },
         "ETag": {
             "type": "string"
         },
@@ -17,5 +20,5 @@
             "type": "string"
         }
     },
-    "version": 3
+    "version": 4
 }

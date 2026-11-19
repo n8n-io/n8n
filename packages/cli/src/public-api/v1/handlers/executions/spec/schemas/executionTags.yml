@@ -1,3 +1,0 @@
-type: array
-items:
-  $ref: '../../../tags/spec/schemas/tag.yml'

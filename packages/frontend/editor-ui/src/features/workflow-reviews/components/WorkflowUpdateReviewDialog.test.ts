@@ -1,7 +1,7 @@
 import { ResponseError, type WorkflowVersionData } from '@n8n/rest-api-client';
 import { createPinia, setActivePinia } from 'pinia';
 import userEvent from '@testing-library/user-event';
-import { waitFor } from '@testing-library/vue';
+import { fireEvent, waitFor } from '@testing-library/vue';
 import { createMemoryHistory, createRouter } from 'vue-router';
 
 import { createComponentRenderer } from '@/__tests__/render';
@@ -38,6 +38,7 @@ const openReview = {
 	state: 'open' as const,
 	decision: 'pending' as const,
 	workflowVersionId: 'version-1',
+	workflowVersionName: null,
 	description: 'Original review description' as string | null,
 	createdAt: '2024-01-01T00:00:00.000Z',
 	updatedAt: '2024-01-01T00:00:00.000Z',
@@ -49,7 +50,7 @@ const router = createRouter({
 	history: createMemoryHistory(),
 	routes: [
 		{
-			path: '/workflow-review-requests/:reviewRequestId?',
+			path: '/inbox/reviews/:reviewId',
 			name: WORKFLOW_REVIEW_REQUESTS_VIEW,
 			component: { template: '<div />' },
 		},
@@ -130,7 +131,7 @@ describe('WorkflowUpdateReviewDialog', () => {
 
 		expect(getByRole('link', { name: 'open review' })).toHaveAttribute(
 			'href',
-			'/workflow-review-requests/review-1',
+			'/inbox/reviews/review-1',
 		);
 	});
 
@@ -144,6 +145,33 @@ describe('WorkflowUpdateReviewDialog', () => {
 		expect(mockShowError).not.toHaveBeenCalled();
 		expect(emitted('update:open')).toBeUndefined();
 		await waitFor(() => expect(getByTestId('workflow-update-review-next-button')).toBeEnabled());
+	});
+
+	it('advances the version step from the body form', async () => {
+		const { getByTestId } = await renderDialog();
+
+		const button = getByTestId('workflow-update-review-next-button');
+		await waitFor(() => expect(button).toBeEnabled());
+		const form = button instanceof HTMLButtonElement ? button.form : null;
+		expect(form).toHaveAttribute('id', 'workflow-update-review-form');
+		await fireEvent.submit(form!);
+
+		await waitFor(() =>
+			expect(getByTestId('workflow-update-review-description-input')).toBeInTheDocument(),
+		);
+		expect(updateWorkflowReviewRequestVersion).not.toHaveBeenCalled();
+	});
+
+	it('submits the review step from the body form', async () => {
+		const { getByTestId, goToStep2 } = await renderDialog();
+		await goToStep2();
+
+		const button = getByTestId('workflow-update-review-submit-button');
+		const form = button instanceof HTMLButtonElement ? button.form : null;
+		expect(form).toHaveAttribute('id', 'workflow-update-review-form');
+		await fireEvent.submit(form!);
+
+		await waitFor(() => expect(updateWorkflowReviewRequestVersion).toHaveBeenCalled());
 	});
 
 	it('reports a review that no longer exists at submit time', async () => {

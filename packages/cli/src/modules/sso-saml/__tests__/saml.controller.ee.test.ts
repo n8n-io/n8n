@@ -1,18 +1,20 @@
+import type { SamlPreferences, SamlToggleDto } from '@n8n/api-types';
+import type { EventService, UrlService } from '@n8n/backend-services';
 import type { InstanceSettingsLoaderConfig } from '@n8n/config';
-import { GLOBAL_OWNER_ROLE, type AuthenticatedRequest, type User } from '@n8n/db';
+import { GLOBAL_OWNER_ROLE, type AuthenticatedRequest, type Person } from '@n8n/db';
 import { ControllerRegistryMetadata, type Controller } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import { ForbiddenError } from '@n8n/errors';
 import { type Response } from 'express';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { AuthService } from '@/auth/auth.service';
-import type { EventService } from '@/events/event.service';
 import { SsoAccessDeniedError } from '@/modules/provisioning.ee/errors/sso-access-denied.error';
 import type { AuthlessRequest } from '@/requests';
-import type { UrlService } from '@/services/url.service';
 import { isSamlLicensedAndEnabled } from '@/sso.ee/sso-helpers';
 
+import { SamlEmailNotVerifiedError } from '../errors/saml-email-not-verified.error';
 import { extractTestIdFromRelayState, isConnectionTestRequest } from '../saml-helpers';
 import { SamlController } from '../saml.controller.ee';
 import type { SamlService } from '../saml.service.ee';
@@ -42,7 +44,7 @@ const controller = new SamlController(
 	instanceSettingsLoaderConfig,
 );
 
-const user = mock<User>({
+const person = mock<Person>({
 	id: '123',
 	password: 'password',
 	authIdentities: [],
@@ -81,7 +83,7 @@ describe('Test views', () => {
 		});
 
 		samlService.handleSamlLogin.mockResolvedValueOnce({
-			authenticatedUser: user,
+			authenticatedUser: person,
 			attributes,
 			rawAttributes,
 			onboardingRequired: false,
@@ -145,7 +147,7 @@ describe('Test views', () => {
 		(extractTestIdFromRelayState as Mock).mockReturnValue(testId);
 		samlService.consumePendingTestConfig.mockResolvedValueOnce(metadata);
 		samlService.handleSamlLogin.mockResolvedValueOnce({
-			authenticatedUser: user,
+			authenticatedUser: person,
 			attributes,
 			rawAttributes,
 			onboardingRequired: false,
@@ -169,7 +171,7 @@ describe('Test views', () => {
 		});
 
 		samlService.handleSamlLogin.mockResolvedValueOnce({
-			authenticatedUser: user,
+			authenticatedUser: person,
 			attributes,
 			rawAttributes,
 			onboardingRequired: false,
@@ -252,7 +254,7 @@ describe('SAML Login Flow', () => {
 		const res = mock<Response>();
 
 		samlService.handleSamlLogin.mockResolvedValueOnce({
-			authenticatedUser: user,
+			authenticatedUser: person,
 			attributes,
 			rawAttributes,
 			onboardingRequired: false,
@@ -261,9 +263,9 @@ describe('SAML Login Flow', () => {
 		await controller.acsPost(req, res, { RelayState: '/' });
 
 		// Verify that issueCookie was called with MFA flag set to true
-		expect(authService.issueCookie).toHaveBeenCalledWith(res, user, true, 'test-browser-id');
+		expect(authService.issueCookie).toHaveBeenCalledWith(res, person, true, 'test-browser-id');
 		expect(eventService.emit).toHaveBeenCalledWith('user-logged-in', {
-			user,
+			user: person,
 			authenticationMethod: 'saml',
 		});
 		expect(res.redirect).toHaveBeenCalledWith('http://localhost:5678/');
@@ -274,7 +276,7 @@ describe('SAML Login Flow', () => {
 		const res = mock<Response>();
 
 		samlService.handleSamlLogin.mockResolvedValueOnce({
-			authenticatedUser: user,
+			authenticatedUser: person,
 			attributes,
 			rawAttributes,
 			onboardingRequired: true,
@@ -283,7 +285,7 @@ describe('SAML Login Flow', () => {
 		await controller.acsPost(req, res, { RelayState: '/' });
 
 		// Verify that issueCookie was called with MFA flag set to true
-		expect(authService.issueCookie).toHaveBeenCalledWith(res, user, true, 'test-browser-id');
+		expect(authService.issueCookie).toHaveBeenCalledWith(res, person, true, 'test-browser-id');
 		expect(res.redirect).toHaveBeenCalledWith('http://localhost:5678/saml/onboarding');
 	});
 
@@ -293,7 +295,7 @@ describe('SAML Login Flow', () => {
 		const customRelayState = '/custom/redirect';
 
 		samlService.handleSamlLogin.mockResolvedValueOnce({
-			authenticatedUser: user,
+			authenticatedUser: person,
 			attributes,
 			rawAttributes,
 			onboardingRequired: false,
@@ -301,7 +303,7 @@ describe('SAML Login Flow', () => {
 
 		await controller.acsPost(req, res, { RelayState: customRelayState });
 
-		expect(authService.issueCookie).toHaveBeenCalledWith(res, user, true, 'test-browser-id');
+		expect(authService.issueCookie).toHaveBeenCalledWith(res, person, true, 'test-browser-id');
 		expect(res.redirect).toHaveBeenCalledWith('http://localhost:5678/custom/redirect');
 	});
 
@@ -320,6 +322,31 @@ describe('SAML Login Flow', () => {
 		expect(eventService.emit).toHaveBeenCalledWith('user-login-failed', {
 			userEmail: 'unknown',
 			authenticationMethod: 'saml',
+			reason: 'Access denied by SSO role mapping configuration',
+		});
+	});
+
+	test('Should name the account and the reason when the login is denied for an unverified email', async () => {
+		const req = mock<AuthlessRequest>({ browserId: 'test-browser-id' });
+		const res = mock<Response>({
+			headersSent: false,
+			status: vi.fn().mockReturnThis(),
+			json: vi.fn().mockReturnThis(),
+		});
+
+		samlService.handleSamlLogin.mockRejectedValueOnce(
+			new SamlEmailNotVerifiedError('test@example.com'),
+		);
+
+		await controller.acsPost(req, res, { RelayState: '/' });
+
+		expect(authService.issueCookie).not.toHaveBeenCalled();
+		expect(res.redirect).not.toHaveBeenCalled();
+		expect(res.status).toHaveBeenCalledWith(401);
+		expect(eventService.emit).toHaveBeenCalledWith('user-login-failed', {
+			userEmail: 'test@example.com',
+			authenticationMethod: 'saml',
+			reason: 'Email address is not verified by the identity provider',
 		});
 	});
 
@@ -329,7 +356,7 @@ describe('SAML Login Flow', () => {
 			const res = mock<Response>();
 
 			samlService.handleSamlLogin.mockResolvedValueOnce({
-				authenticatedUser: user,
+				authenticatedUser: person,
 				attributes,
 				rawAttributes,
 				onboardingRequired: false,
@@ -387,7 +414,7 @@ describe('SAML Login Flow', () => {
 			const res = mock<Response>();
 
 			samlService.handleSamlLogin.mockResolvedValueOnce({
-				authenticatedUser: user,
+				authenticatedUser: person,
 				attributes,
 				rawAttributes,
 				onboardingRequired: false,
@@ -436,6 +463,123 @@ describe('SAML env-managed write protection', () => {
 				scope: 'saml:manage',
 				globalOnly: true,
 			});
+		});
+	});
+});
+
+describe('SSO settings events', () => {
+	const previous = {
+		loginEnabled: false,
+		loginLabel: 'SSO',
+		metadata: '<old/>',
+		mapping: { email: 'mail', firstName: 'fn', lastName: 'ln', userPrincipalName: 'upn' },
+	} as SamlPreferences;
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		instanceSettingsLoaderConfig.ssoManagedByEnv = false;
+		Object.defineProperty(samlService, 'samlPreferences', {
+			get: () => previous,
+			configurable: true,
+		});
+	});
+
+	describe('configPost', () => {
+		test('emits sso-settings-updated with the names of the changed fields', async () => {
+			const saved = { ...previous, metadata: '<new/>', loginEnabled: true } as SamlPreferences;
+			samlService.setSamlPreferences.mockResolvedValueOnce(saved);
+			const req = mock<AuthenticatedRequest>({ user: person });
+
+			const result = await controller.configPost(req, mock<Response>(), saved);
+
+			expect(samlService.setSamlPreferences).toHaveBeenCalledWith(saved);
+			expect(eventService.emit).toHaveBeenCalledWith('sso-settings-updated', {
+				user: person,
+				protocol: 'saml',
+				loginEnabled: true,
+				fieldsChanged: ['loginEnabled', 'metadata'],
+				publicApi: false,
+			});
+			expect(result).toEqual({ ...saved, signingPrivateKey: undefined });
+		});
+
+		test('names the signing key without its value when a new key is stored', async () => {
+			const saved = { ...previous, signingPrivateKey: 'encrypted:abc' } as SamlPreferences;
+			samlService.setSamlPreferences.mockResolvedValueOnce(saved);
+
+			await controller.configPost(
+				mock<AuthenticatedRequest>({ user: person }),
+				mock<Response>(),
+				saved,
+			);
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'sso-settings-updated',
+				expect.objectContaining({ fieldsChanged: ['signingPrivateKey'] }),
+			);
+			const [, payload] = eventService.emit.mock.calls[0];
+			expect(JSON.stringify(payload)).not.toContain('encrypted:abc');
+		});
+
+		test('does not emit when nothing was saved', async () => {
+			samlService.setSamlPreferences.mockResolvedValueOnce(undefined);
+
+			await controller.configPost(
+				mock<AuthenticatedRequest>({ user: person }),
+				mock<Response>(),
+				previous,
+			);
+
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+
+		test('does not emit when the settings are managed by the environment', async () => {
+			instanceSettingsLoaderConfig.ssoManagedByEnv = true;
+
+			await expect(
+				controller.configPost(
+					mock<AuthenticatedRequest>({ user: person }),
+					mock<Response>(),
+					previous,
+				),
+			).rejects.toThrow(ForbiddenError);
+
+			expect(samlService.setSamlPreferences).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('toggleEnabledPost', () => {
+		test('reports loginEnabled as changed when the toggle flips it', async () => {
+			const req = mock<AuthenticatedRequest>({ user: person });
+			const res = mock<Response>();
+
+			await controller.toggleEnabledPost(req, res, { loginEnabled: true } as SamlToggleDto);
+
+			expect(samlService.setSamlPreferences).toHaveBeenCalledWith({ loginEnabled: true });
+			expect(eventService.emit).toHaveBeenCalledWith('sso-settings-updated', {
+				user: person,
+				protocol: 'saml',
+				loginEnabled: true,
+				fieldsChanged: ['loginEnabled'],
+				publicApi: false,
+			});
+			expect(res.sendStatus).toHaveBeenCalledWith(200);
+		});
+
+		test('reports no changed field when the toggle repeats the stored state', async () => {
+			await controller.toggleEnabledPost(
+				mock<AuthenticatedRequest>({ user: person }),
+				mock<Response>(),
+				{
+					loginEnabled: false,
+				} as SamlToggleDto,
+			);
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'sso-settings-updated',
+				expect.objectContaining({ loginEnabled: false, fieldsChanged: [] }),
+			);
 		});
 	});
 });

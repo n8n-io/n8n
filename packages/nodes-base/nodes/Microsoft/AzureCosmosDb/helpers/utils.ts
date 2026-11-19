@@ -6,7 +6,8 @@ import type {
 	INodeExecutionData,
 	NodeApiError,
 } from 'n8n-workflow';
-import { jsonParse, NodeOperationError, OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
+import { jsonParse, NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { HeaderConstants } from './constants';
 import { ErrorMap } from './errorHandler';
@@ -23,7 +24,7 @@ export async function getPartitionKey(this: IExecuteSingleFunctions): Promise<st
 		const responseData = (await azureCosmosDbApiRequest.call(
 			this,
 			'GET',
-			`/colls/${container}`,
+			requestPath`/colls/${container}`,
 		)) as IContainer;
 		partitionKeyField = responseData.partitionKey?.paths[0]?.replace('/', '');
 	} catch (error) {

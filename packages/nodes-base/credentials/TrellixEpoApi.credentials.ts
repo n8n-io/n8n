@@ -11,7 +11,8 @@ export class TrellixEpoApi implements ICredentialType {
 
 	httpRequestNode = {
 		name: 'Trellix (McAfee) ePolicy Orchestrator',
-		docsUrl: 'https://docs.trellix.com/en/bundle/epolicy-orchestrator-web-api-reference-guide',
+		docsUrl:
+			'https://docs.trellix.com/bundle/trellix-epolicy-orchestrator-on-prem-web-api-scripting-reference-guide',
 		apiBaseUrl: '',
 	};
 

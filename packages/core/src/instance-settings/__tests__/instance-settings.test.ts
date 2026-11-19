@@ -208,6 +208,17 @@ describe('InstanceSettings', () => {
 			expect(instanceType).toEqual('main');
 			expect(hostId.length).toBeGreaterThan(0); // hostname or nanoID
 		});
+
+		it('should detect the engine command as its own instance type', () => {
+			process.argv[2] = 'engine';
+			mockFs.existsSync.mockReturnValue(true);
+			mockFs.readFileSync.mockReturnValue(JSON.stringify({ encryptionKey: 'test_key' }));
+
+			const settings = createInstanceSettings();
+
+			expect(settings.instanceType).toBe('engine');
+			expect(settings.hostId.startsWith('engine-')).toBe(true);
+		});
 	});
 
 	describe('nodeDefinitionsDir', () => {
@@ -224,8 +235,10 @@ describe('InstanceSettings', () => {
 
 	describe('initialize', () => {
 		const mockRepo = {
-			findActiveByType: vi.fn(),
-			insertOrIgnore: vi.fn(),
+			findActiveIdentifier: vi.fn(),
+			seedActiveIdentifier: vi.fn<(type: string, value: string) => Promise<void>>(),
+			findActiveSigningSecret: vi.fn(),
+			seedSigningSecret: vi.fn(),
 		};
 
 		let settings: InstanceSettings;
@@ -238,8 +251,10 @@ describe('InstanceSettings', () => {
 			settings = createInstanceSettings({ encryptionKey: 'test_key' });
 
 			// Default: no DB rows, inserts succeed
-			mockRepo.findActiveByType.mockResolvedValue(null);
-			mockRepo.insertOrIgnore.mockResolvedValue(undefined);
+			mockRepo.findActiveIdentifier.mockResolvedValue(null);
+			mockRepo.seedActiveIdentifier.mockResolvedValue(undefined);
+			mockRepo.findActiveSigningSecret.mockResolvedValue(null);
+			mockRepo.seedSigningSecret.mockResolvedValue(undefined);
 		});
 
 		describe('instance.id', () => {
@@ -249,37 +264,90 @@ describe('InstanceSettings', () => {
 				await settings.initialize(mockRepo);
 
 				expect(settings.instanceId).toEqual('env-pinned-id');
-				expect(mockRepo.findActiveByType).not.toHaveBeenCalledWith('instance.id');
-				expect(mockRepo.insertOrIgnore).not.toHaveBeenCalledWith(
-					expect.objectContaining({ type: 'instance.id' }),
+				expect(mockRepo.findActiveIdentifier).not.toHaveBeenCalledWith('instance.id');
+				expect(mockRepo.seedActiveIdentifier).not.toHaveBeenCalledWith(
+					'instance.id',
+					expect.anything(),
 				);
 			});
 
 			it('should use the value from the active DB row when one exists', async () => {
-				mockRepo.findActiveByType.mockImplementation(async (type: string) =>
+				mockRepo.findActiveIdentifier.mockImplementation(async (type: string) =>
 					type === 'instance.id' ? { value: 'db-stored-id' } : null,
 				);
 
 				await settings.initialize(mockRepo);
 
 				expect(settings.instanceId).toEqual('db-stored-id');
-				expect(mockRepo.insertOrIgnore).not.toHaveBeenCalledWith(
-					expect.objectContaining({ type: 'instance.id' }),
+				expect(mockRepo.seedActiveIdentifier).not.toHaveBeenCalledWith(
+					'instance.id',
+					expect.anything(),
 				);
 			});
 
-			it('should persist the derived instanceId when no active DB row exists', async () => {
+			it('should persist the derived instanceId when no active DB row exists and it must be kept', async () => {
 				const derivedId = settings.instanceId;
 
-				await settings.initialize(mockRepo);
+				await settings.initialize(mockRepo, { keepDerivedInstanceId: true });
 
-				expect(mockRepo.insertOrIgnore).toHaveBeenCalledWith({
-					type: 'instance.id',
-					value: derivedId,
-					status: 'active',
-					algorithm: null,
-				});
+				expect(mockRepo.seedActiveIdentifier).toHaveBeenCalledWith('instance.id', derivedId);
 				expect(settings.instanceId).toEqual(derivedId);
+			});
+
+			it('should persist a random instanceId when no active DB row exists and the derived one need not be kept', async () => {
+				const derivedId = settings.instanceId;
+				mockRepo.findActiveIdentifier.mockImplementation(async (type: string) => {
+					if (type !== 'instance.id') return null;
+					const seeded = mockRepo.seedActiveIdentifier.mock.calls.find(([t]) => t === type);
+					return seeded ? { value: seeded[1] as string } : null;
+				});
+
+				await settings.initialize(mockRepo, { keepDerivedInstanceId: false });
+
+				const [, seededId] = mockRepo.seedActiveIdentifier.mock.calls[0];
+				expect(seededId).toMatch(/^[0-9a-f]{64}$/);
+				expect(seededId).not.toEqual(derivedId);
+				expect(settings.instanceId).toEqual(seededId);
+				expect(settings.derivedInstanceId).toEqual(derivedId);
+			});
+
+			it('should give two fresh installs with the same encryption key different instanceIds', async () => {
+				const other = createInstanceSettings({ encryptionKey: 'test_key' });
+
+				await settings.initialize(mockRepo, { keepDerivedInstanceId: false });
+				await other.initialize(mockRepo, { keepDerivedInstanceId: false });
+
+				const seeded = mockRepo.seedActiveIdentifier.mock.calls
+					.filter(([type]) => type === 'instance.id')
+					.map(([, value]) => value);
+				expect(seeded).toHaveLength(2);
+				expect(seeded[0]).not.toEqual(seeded[1]);
+			});
+
+			it('should keep a stored instanceId even when the derived one need not be kept', async () => {
+				mockRepo.findActiveIdentifier.mockImplementation(async (type: string) =>
+					type === 'instance.id' ? { value: 'db-stored-id' } : null,
+				);
+
+				await settings.initialize(mockRepo, { keepDerivedInstanceId: false });
+
+				expect(settings.instanceId).toEqual('db-stored-id');
+				expect(mockRepo.seedActiveIdentifier).not.toHaveBeenCalledWith(
+					'instance.id',
+					expect.anything(),
+				);
+			});
+
+			it('should prefer N8N_INSTANCE_ID over a random instanceId', async () => {
+				process.env.N8N_INSTANCE_ID = 'env-pinned-id';
+
+				await settings.initialize(mockRepo, { keepDerivedInstanceId: false });
+
+				expect(settings.instanceId).toEqual('env-pinned-id');
+				expect(mockRepo.seedActiveIdentifier).not.toHaveBeenCalledWith(
+					'instance.id',
+					expect.anything(),
+				);
 			});
 
 			it('should keep derivedInstanceId unchanged when an override is applied', async () => {
@@ -294,17 +362,119 @@ describe('InstanceSettings', () => {
 			});
 
 			it('should use the winner row when a concurrent insert is ignored', async () => {
-				mockRepo.insertOrIgnore.mockImplementation(async (entity: { type: string }) => {
-					// Simulate conflict only for instance.id
-					if (entity.type === 'instance.id') return undefined;
+				mockRepo.seedActiveIdentifier.mockImplementation(async (type: string) => {
+					if (type === 'instance.id') return undefined;
 				});
-				mockRepo.findActiveByType.mockImplementation(async (type: string) =>
+				mockRepo.findActiveIdentifier.mockImplementation(async (type: string) =>
 					type === 'instance.id' ? { value: 'winner-id' } : null,
 				);
 
 				await settings.initialize(mockRepo);
 
 				expect(settings.instanceId).toEqual('winner-id');
+			});
+
+			it('should use the winner row over its own random instanceId when a concurrent insert is ignored', async () => {
+				mockRepo.findActiveIdentifier
+					.mockResolvedValueOnce(null)
+					.mockResolvedValueOnce({ value: 'winner-id' });
+
+				await settings.initialize(mockRepo, { keepDerivedInstanceId: false });
+
+				const [, seededId] = mockRepo.seedActiveIdentifier.mock.calls[0];
+				expect(seededId).not.toEqual('winner-id');
+				expect(settings.instanceId).toEqual('winner-id');
+			});
+		});
+
+		describe('install.id', () => {
+			const seededInstallIds = () =>
+				mockRepo.seedActiveIdentifier.mock.calls
+					.filter(([type]) => type === 'install.id')
+					.map(([, value]) => value);
+
+			beforeEach(() => {
+				// Reads return what was seeded, like the real table.
+				mockRepo.findActiveIdentifier.mockImplementation(async (type: string) => {
+					const seeded = mockRepo.seedActiveIdentifier.mock.calls
+						.filter(([t]) => t === type)
+						.at(-1);
+					return seeded ? { value: seeded[1] } : null;
+				});
+			});
+
+			it('should persist a random install ID when no active DB row exists', async () => {
+				await settings.initialize(mockRepo);
+
+				const [installId] = seededInstallIds();
+				expect(installId).toMatch(/^[0-9a-f]{64}$/);
+				expect(installId).not.toEqual(settings.instanceId);
+				expect(installId).not.toEqual(settings.derivedInstanceId);
+				expect(settings.installId).toEqual(installId);
+			});
+
+			it('should use the value from the active DB row when one exists', async () => {
+				mockRepo.findActiveIdentifier.mockImplementation(async (type: string) =>
+					type === 'install.id' ? { value: 'db-stored-install-id' } : null,
+				);
+
+				await settings.initialize(mockRepo);
+
+				expect(settings.installId).toEqual('db-stored-install-id');
+				expect(seededInstallIds()).toHaveLength(0);
+			});
+
+			it('should keep the stored instance ID when an existing install gets its install ID', async () => {
+				mockRepo.findActiveIdentifier.mockImplementation(async (type: string) => {
+					if (type === 'instance.id') return { value: 'db-stored-instance-id' };
+					const [seeded] = seededInstallIds();
+					return seeded ? { value: seeded } : null;
+				});
+
+				await settings.initialize(mockRepo);
+
+				expect(settings.instanceId).toEqual('db-stored-instance-id');
+				expect(seededInstallIds()).toHaveLength(1);
+				expect(settings.installId).toEqual(seededInstallIds()[0]);
+			});
+
+			it('should give two installs with the same encryption key different install IDs', async () => {
+				const other = createInstanceSettings({ encryptionKey: 'test_key' });
+
+				await settings.initialize(mockRepo);
+				mockRepo.seedActiveIdentifier.mockClear();
+				await other.initialize(mockRepo);
+
+				expect(settings.instanceId).toEqual(other.instanceId);
+				expect(other.installId).toMatch(/^[0-9a-f]{64}$/);
+				expect(other.installId).not.toEqual(settings.installId);
+			});
+
+			it('should not take the install ID from N8N_INSTANCE_ID', async () => {
+				process.env.N8N_INSTANCE_ID = 'env-pinned-id';
+
+				await settings.initialize(mockRepo);
+
+				expect(settings.instanceId).toEqual('env-pinned-id');
+				expect(settings.installId).toMatch(/^[0-9a-f]{64}$/);
+			});
+
+			it('should use the winner row when a concurrent insert is ignored', async () => {
+				mockRepo.findActiveIdentifier.mockImplementation(async (type: string) => {
+					if (type !== 'install.id') return null;
+					return seededInstallIds().length > 0 ? { value: 'winner-install-id' } : null;
+				});
+
+				await settings.initialize(mockRepo);
+
+				expect(settings.installId).toEqual('winner-install-id');
+			});
+
+			it('should leave the install ID unset when no row exists and seeding is not allowed', async () => {
+				await settings.initialize(mockRepo, { canSeed: false });
+
+				expect(settings.installId).toBeUndefined();
+				expect(seededInstallIds()).toHaveLength(0);
 			});
 		});
 
@@ -315,23 +485,23 @@ describe('InstanceSettings', () => {
 				await settings.initialize(mockRepo);
 
 				expect(settings.hmacSignatureSecret).toEqual('env-pinned-hmac');
-				expect(mockRepo.findActiveByType).not.toHaveBeenCalledWith('signing.hmac');
-				expect(mockRepo.insertOrIgnore).not.toHaveBeenCalledWith(
-					expect.objectContaining({ type: 'signing.hmac' }),
-				);
+				expect(mockRepo.findActiveSigningSecret).not.toHaveBeenCalled();
+				expect(mockRepo.seedSigningSecret).not.toHaveBeenCalled();
 			});
 
 			it('should use the value from the active DB row when one exists', async () => {
-				mockRepo.findActiveByType.mockImplementation(async (type: string) =>
-					type === 'signing.hmac' ? { value: 'db-stored-hmac' } : null,
+				mockRepo.findActiveSigningSecret.mockImplementation(async (type: string) =>
+					type === 'signing.hmac' ? 'db-stored-hmac' : null,
 				);
 
 				await settings.initialize(mockRepo);
 
 				expect(settings.hmacSignatureSecret).toEqual('db-stored-hmac');
-				expect(mockRepo.insertOrIgnore).not.toHaveBeenCalledWith(
-					expect.objectContaining({ type: 'signing.hmac' }),
-				);
+				// A seeding process may also upgrade a row still in the pre-wrap form.
+				expect(mockRepo.findActiveSigningSecret).toHaveBeenCalledWith('signing.hmac', {
+					rewrapLegacy: true,
+				});
+				expect(mockRepo.seedSigningSecret).not.toHaveBeenCalled();
 			});
 
 			it('should persist the derived HMAC secret when no active DB row exists', async () => {
@@ -339,22 +509,14 @@ describe('InstanceSettings', () => {
 
 				await settings.initialize(mockRepo);
 
-				expect(mockRepo.insertOrIgnore).toHaveBeenCalledWith({
-					type: 'signing.hmac',
-					value: derivedHmac,
-					status: 'active',
-					algorithm: null,
-				});
+				expect(mockRepo.seedSigningSecret).toHaveBeenCalledWith('signing.hmac', derivedHmac);
 				expect(settings.hmacSignatureSecret).toEqual(derivedHmac);
 			});
 
 			it('should use the winner row when a concurrent insert is ignored', async () => {
-				mockRepo.insertOrIgnore.mockImplementation(async (entity: { type: string }) => {
-					if (entity.type === 'signing.hmac') return undefined;
-				});
-				mockRepo.findActiveByType.mockImplementation(async (type: string) =>
-					type === 'signing.hmac' ? { value: 'winner-hmac' } : null,
-				);
+				mockRepo.findActiveSigningSecret
+					.mockResolvedValueOnce(null)
+					.mockResolvedValueOnce('winner-hmac');
 
 				await settings.initialize(mockRepo);
 
@@ -367,24 +529,47 @@ describe('InstanceSettings', () => {
 				const derivedId = settings.instanceId;
 				const derivedHmac = settings.hmacSignatureSecret;
 
-				await settings.initialize(mockRepo, { canSeed: false });
+				await settings.initialize(mockRepo, { canSeed: false, keepDerivedInstanceId: false });
 
-				expect(mockRepo.insertOrIgnore).not.toHaveBeenCalled();
+				expect(mockRepo.seedActiveIdentifier).not.toHaveBeenCalled();
+				expect(mockRepo.seedSigningSecret).not.toHaveBeenCalled();
 				expect(settings.instanceId).toEqual(derivedId);
 				expect(settings.hmacSignatureSecret).toEqual(derivedHmac);
 			});
 
+			it('should read secrets without upgrading rows still in the pre-wrap form', async () => {
+				mockRepo.findActiveSigningSecret.mockResolvedValue('db-stored-hmac');
+
+				await settings.initialize(mockRepo, { canSeed: false });
+
+				expect(settings.hmacSignatureSecret).toEqual('db-stored-hmac');
+				expect(mockRepo.findActiveSigningSecret).toHaveBeenCalledWith('signing.hmac', {
+					rewrapLegacy: false,
+				});
+			});
+
+			it('should expose the seeding permission as canSeedDeploymentState', async () => {
+				expect(settings.canSeedDeploymentState).toBe(true);
+
+				await settings.initialize(mockRepo, { canSeed: false });
+				expect(settings.canSeedDeploymentState).toBe(false);
+
+				await settings.initialize(mockRepo, { canSeed: true });
+				expect(settings.canSeedDeploymentState).toBe(true);
+			});
+
 			it('should still adopt env vars and existing DB rows', async () => {
 				process.env.N8N_INSTANCE_ID = 'env-pinned-id';
-				mockRepo.findActiveByType.mockImplementation(async (type: string) =>
-					type === 'signing.hmac' ? { value: 'db-stored-hmac' } : null,
+				mockRepo.findActiveSigningSecret.mockImplementation(async (type: string) =>
+					type === 'signing.hmac' ? 'db-stored-hmac' : null,
 				);
 
 				await settings.initialize(mockRepo, { canSeed: false });
 
 				expect(settings.instanceId).toEqual('env-pinned-id');
 				expect(settings.hmacSignatureSecret).toEqual('db-stored-hmac');
-				expect(mockRepo.insertOrIgnore).not.toHaveBeenCalled();
+				expect(mockRepo.seedActiveIdentifier).not.toHaveBeenCalled();
+				expect(mockRepo.seedSigningSecret).not.toHaveBeenCalled();
 			});
 		});
 	});

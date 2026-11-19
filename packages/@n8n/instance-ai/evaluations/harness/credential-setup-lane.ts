@@ -57,6 +57,8 @@ export interface CredentialSetupLane {
 	/** Base URL for the provider-API stand-in, when this fixture ships one.
 	 *  Undefined => the credential-value check reports itself unverifiable. */
 	verifyBaseUrl?: string;
+	/** Manifest `urlField`. Absent in local mode, where nothing is substituted. */
+	credentialUrlField?: string;
 	close(): Promise<void>;
 }
 
@@ -162,6 +164,7 @@ export async function startCredentialSetupLane(
 		browser,
 		credentialType: fixture.manifest.credentialType,
 		verifyBaseUrl: fixtureServer.verifyBaseUrl,
+		credentialUrlField: fixture.manifest.urlField,
 		close: async () => {
 			// Browser first: it is the thing holding pages open against the fixture.
 			await browser.close().catch(() => {});

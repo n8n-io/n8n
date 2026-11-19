@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import type { ChatHubExecutionEnd, ChatHubStreamError } from '@n8n/api-types';
 import { mockInstance, testDb, testModules, createActiveWorkflow } from '@n8n/backend-test-utils';
+import { PushProxy } from '@n8n/backend-services';
 import type { User, CredentialsEntity } from '@n8n/db';
 import { ExecutionRepository, SettingsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -25,7 +26,6 @@ import { retryUntil } from '@test-integration/retry-until';
 import { ActiveExecutions } from '../../../active-executions';
 import { ChatExecutionManager } from '../../../chat/chat-execution-manager';
 import { ExecutionPersistence } from '../../../executions/execution-persistence';
-import { Push } from '../../../push';
 import { WorkflowExecutionService } from '../../../workflows/workflow-execution.service';
 import { ChatHubAgentRepository } from '../chat-hub-agent.repository';
 import { ChatHubExecutionWatcherService } from '../chat-hub-execution-watcher.service';
@@ -35,7 +35,7 @@ import { ChatHubSessionRepository } from '../chat-session.repository';
 
 mockInstance(BinaryDataService);
 mockInstance(WorkflowExecutionService);
-const mockPush = mockInstance(Push);
+const mockPush = mockInstance(PushProxy);
 mockPush.sendToUsers.mockReturnValue(undefined);
 const mockCipher = mockInstance(Cipher);
 mockCipher.encryptV2.mockResolvedValue('encrypted-metadata');
@@ -1483,6 +1483,8 @@ describe('chatHub', () => {
 								runData,
 								newStaticData: {},
 								executionId,
+								executedInThisProcess: true,
+								endedByThisSave: true,
 							});
 						});
 
@@ -1601,6 +1603,8 @@ describe('chatHub', () => {
 								runData,
 								newStaticData: {},
 								executionId,
+								executedInThisProcess: true,
+								endedByThisSave: true,
 							});
 						});
 
@@ -1733,6 +1737,8 @@ describe('chatHub', () => {
 								runData,
 								newStaticData: {},
 								executionId,
+								executedInThisProcess: true,
+								endedByThisSave: true,
 							});
 						});
 
@@ -1874,6 +1880,8 @@ describe('chatHub', () => {
 								runData,
 								newStaticData: {},
 								executionId,
+								executedInThisProcess: true,
+								endedByThisSave: false,
 							});
 						});
 
@@ -1930,6 +1938,8 @@ describe('chatHub', () => {
 								runData,
 								newStaticData: {},
 								executionId: capturedExecutionId,
+								executedInThisProcess: true,
+								endedByThisSave: true,
 							});
 						});
 					});
@@ -2064,6 +2074,8 @@ describe('chatHub', () => {
 								runData,
 								newStaticData: {},
 								executionId,
+								executedInThisProcess: true,
+								endedByThisSave: false,
 							});
 						});
 
@@ -2205,6 +2217,8 @@ describe('chatHub', () => {
 								runData,
 								newStaticData: {},
 								executionId,
+								executedInThisProcess: true,
+								endedByThisSave: false,
 							});
 						});
 
@@ -2243,6 +2257,11 @@ describe('chatHub', () => {
 
 					// Mock ChatExecutionManager.runWorkflow for the resume
 					const executionManager = Container.get(ChatExecutionManager);
+					// The chat-resume allowlist resolves node types via the registry, which
+					// this suite doesn't load; it's covered against the real registry in
+					// chat-resume-node-types.integration.test.ts. Here the parked node is a
+					// legitimate chat node, so treat it as resumable.
+					vi.spyOn(executionManager, 'canResumeOverChat').mockReturnValue(true);
 					const runWorkflowSpy = vi
 						.spyOn(executionManager, 'runWorkflow')
 						.mockImplementationOnce(async () => {
@@ -2293,6 +2312,8 @@ describe('chatHub', () => {
 									runData,
 									newStaticData: {},
 									executionId: capturedExecutionId,
+									executedInThisProcess: true,
+									endedByThisSave: true,
 								});
 							});
 						});
@@ -2354,6 +2375,154 @@ describe('chatHub', () => {
 					// Last AI message should be the response after resume
 					expect(aiMessages[aiMessages.length - 1]?.status).toBe('success');
 					expect(aiMessages[aiMessages.length - 1]?.content).toBe('Nice to meet you, Alice!');
+				});
+
+				it('refuses a follow-up when the suspended node is not chat-resumable', async () => {
+					// A workflow parked on a non-chat gate (e.g. a Send-and-Wait approval)
+					// must not be advanced by the next chat message. The allowlist decision
+					// itself is covered against the real registry elsewhere; here we force a
+					// refusal to assert the chat-hub wiring: the send fails and the parked
+					// execution is never resumed.
+					const workflow = await createActiveWorkflow(
+						{
+							name: 'Non-Resumable Gate Workflow',
+							nodes: [
+								{
+									id: 'chat-trigger-1',
+									name: 'Chat Trigger',
+									type: CHAT_TRIGGER_NODE_TYPE,
+									typeVersion: 1.4,
+									position: [0, 0],
+									parameters: {
+										availableInChat: true,
+										options: { responseMode: 'responseNodes' },
+									},
+								},
+								{
+									id: 'respond-1',
+									name: 'Respond to Chat',
+									type: CHAT_NODE_TYPE,
+									typeVersion: 1,
+									position: [200, 0],
+									parameters: { message: 'What is your name?', waitUserReply: true },
+								},
+							],
+							connections: {
+								'Chat Trigger': {
+									main: [[{ node: 'Respond to Chat', type: 'main', index: 0 }]],
+								},
+							},
+						},
+						member,
+					);
+
+					// First message: workflow goes into waiting state
+					spyExecute.mockImplementationOnce(async (_user, workflowData, executionData) => {
+						const executionId = await executionPersistence.create({
+							finished: false,
+							mode: 'webhook',
+							status: 'running',
+							workflowId: workflowData.id,
+							data: executionData,
+							workflowData,
+						});
+
+						const runData: IRun = {
+							finished: false,
+							status: 'waiting',
+							mode: 'webhook',
+							startedAt: new Date(),
+							stoppedAt: new Date(),
+							storedAt: 'db',
+							data: createRunExecutionData({
+								resultData: {
+									runData: {
+										'Respond to Chat': [
+											{
+												startTime: Date.now(),
+												executionTime: 100,
+												executionIndex: 0,
+												executionStatus: 'success',
+												source: [],
+												data: { main: [[{ json: {}, sendMessage: 'What is your name?' }]] },
+											},
+										],
+									},
+									lastNodeExecuted: 'Respond to Chat',
+								},
+							}),
+						};
+
+						setTimeout(async () => {
+							await executionRepository.updateExistingExecution(executionId, {
+								status: 'waiting',
+								data: runData.data,
+							});
+							await watcherService.handleWorkflowExecuteAfter({
+								type: 'workflowExecuteAfter',
+								mode: runData.mode,
+								workflow: workflowData,
+								runData,
+								newStaticData: {},
+								executionId,
+								executedInThisProcess: true,
+								endedByThisSave: false,
+							});
+						});
+
+						return { executionId };
+					});
+
+					await chatHubService.sendHumanMessage(
+						member,
+						{
+							userId: member.id,
+							sessionId,
+							messageId,
+							message: 'Hello',
+							model: { provider: 'n8n', workflowId: workflow.id },
+							credentials: {},
+							previousMessageId: null,
+							attachments: [],
+						},
+						{ authToken: 'authtoken', method: 'POST', endpoint: '/api/chat/message' },
+					);
+
+					const initialMessages = await retryUntil(async () => {
+						const messages = await messagesRepository.getManyBySessionId(sessionId);
+						expect(messages.length).toBeGreaterThanOrEqual(2);
+						expect(messages[1]?.status).toBe('waiting');
+						return messages;
+					});
+					const waitingMessageId = initialMessages[1].id;
+
+					// Force the allowlist to refuse, and assert the resume sink is not called.
+					const executionManager = Container.get(ChatExecutionManager);
+					vi.spyOn(executionManager, 'canResumeOverChat').mockReturnValue(false);
+					const runWorkflowSpy = vi.spyOn(executionManager, 'runWorkflow');
+
+					await expect(
+						chatHubService.sendHumanMessage(
+							member,
+							{
+								userId: member.id,
+								sessionId,
+								messageId: crypto.randomUUID(),
+								message: 'anything',
+								model: { provider: 'n8n', workflowId: workflow.id },
+								credentials: {},
+								previousMessageId: waitingMessageId,
+								attachments: [],
+							},
+							{ authToken: 'authtoken', method: 'POST', endpoint: '/api/chat/message' },
+						),
+					).rejects.toThrow('cannot be provided from chat');
+
+					expect(runWorkflowSpy).not.toHaveBeenCalled();
+
+					// The parked AI message stays waiting; the gate is untouched.
+					const afterMessages = await messagesRepository.getManyBySessionId(sessionId);
+					expect(afterMessages.find((m) => m.id === waitingMessageId)?.status).toBe('waiting');
 				});
 			});
 
@@ -2507,6 +2676,8 @@ describe('chatHub', () => {
 								runData,
 								newStaticData: {},
 								executionId,
+								executedInThisProcess: true,
+								endedByThisSave: false,
 							});
 						});
 
@@ -2642,6 +2813,8 @@ describe('chatHub', () => {
 								runData,
 								newStaticData: {},
 								executionId,
+								executedInThisProcess: true,
+								endedByThisSave: true,
 							});
 						});
 
@@ -2758,6 +2931,8 @@ describe('chatHub', () => {
 								runData,
 								newStaticData: {},
 								executionId,
+								executedInThisProcess: true,
+								endedByThisSave: true,
 							});
 						});
 
@@ -2874,6 +3049,8 @@ describe('chatHub', () => {
 								runData,
 								newStaticData: {},
 								executionId,
+								executedInThisProcess: true,
+								endedByThisSave: true,
 							});
 						});
 

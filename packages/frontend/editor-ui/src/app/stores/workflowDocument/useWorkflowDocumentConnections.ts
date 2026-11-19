@@ -24,6 +24,8 @@ export interface WorkflowDocumentConnectionsDeps {
 	syncWorkflowObject: (connections: IConnections) => void;
 }
 
+type ConnectionData = { connection: IConnection[] };
+
 // --- Composable ---
 
 // TODO: This composable currently delegates to workflowsStore for reads and writes.
@@ -46,8 +48,31 @@ export function useWorkflowDocumentConnections(deps: WorkflowDocumentConnections
 		deps.syncWorkflowObject(connections.value);
 	}
 
-	function applyAddConnection(data: { connection: IConnection[] }) {
-		if (data.connection.length !== 2) return;
+	/** Returns whether the exact source-port to destination-port connection already exists. */
+	function hasConnection(data: ConnectionData): boolean {
+		if (data.connection.length !== 2) return false;
+
+		const [sourceData, destinationData] = data.connection;
+		const checkProperties = ['index', 'node', 'type'] as Array<keyof IConnection>;
+		const connectionsToCheck =
+			connections.value[sourceData.node]?.[sourceData.type]?.[sourceData.index];
+
+		if (!connectionsToCheck) return false;
+
+		connectionLoop: for (const existingConnection of connectionsToCheck) {
+			for (const prop of checkProperties) {
+				if (existingConnection[prop] !== destinationData[prop]) {
+					continue connectionLoop;
+				}
+			}
+			return true;
+		}
+
+		return false;
+	}
+
+	function applyAddConnection(data: ConnectionData) {
+		if (data.connection.length !== 2 || hasConnection(data)) return;
 
 		const sourceData: IConnection = data.connection[0];
 		const destinationData: IConnection = data.connection[1];
@@ -74,29 +99,11 @@ export function useWorkflowDocumentConnections(deps: WorkflowDocumentConnections
 			}
 		}
 
-		const checkProperties = ['index', 'node', 'type'] as Array<keyof IConnection>;
-		let connectionExists = false;
 		const nodeConnections = wfConnections[sourceData.node][sourceData.type];
-		const connectionsToCheck = nodeConnections[sourceData.index];
-
-		if (connectionsToCheck) {
-			connectionLoop: for (const existingConnection of connectionsToCheck) {
-				for (const prop of checkProperties) {
-					if (existingConnection[prop] !== destinationData[prop]) {
-						continue connectionLoop;
-					}
-				}
-				connectionExists = true;
-				break;
-			}
-		}
-
-		if (!connectionExists) {
-			nodeConnections[sourceData.index] = nodeConnections[sourceData.index] ?? [];
-			const connections = nodeConnections[sourceData.index];
-			if (connections) {
-				connections.push(destinationData);
-			}
+		nodeConnections[sourceData.index] = nodeConnections[sourceData.index] ?? [];
+		const connectionsAtIndex = nodeConnections[sourceData.index];
+		if (connectionsAtIndex) {
+			connectionsAtIndex.push(destinationData);
 		}
 
 		deps.syncWorkflowObject(connections.value);
@@ -216,7 +223,7 @@ export function useWorkflowDocumentConnections(deps: WorkflowDocumentConnections
 		applySetConnections(value);
 	}
 
-	function addConnection(data: { connection: IConnection[] }): void {
+	function addConnection(data: ConnectionData): void {
 		applyAddConnection(data);
 	}
 
@@ -245,6 +252,7 @@ export function useWorkflowDocumentConnections(deps: WorkflowDocumentConnections
 		// Read
 		connectionsBySourceNode,
 		connectionsByDestinationNode,
+		hasConnection,
 		outgoingConnectionsByNodeName,
 		incomingConnectionsByNodeName,
 		// Write

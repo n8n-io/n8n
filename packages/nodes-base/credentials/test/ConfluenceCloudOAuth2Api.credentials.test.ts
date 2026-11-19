@@ -98,11 +98,6 @@ describe('ConfluenceCloudOAuth2Api Credential', () => {
 	it('should resolve the extends chain', () => {
 		const byName = (name: string) => resolvedProperties.find((p) => p.name === name);
 
-		const domain = byName('domain');
-		expect(domain?.type).toBe('string');
-		expect(domain?.required).toBe(true);
-		expect(domain?.displayName).toBe('Site URL');
-
 		expect(byName('grantType')?.default).toBe('authorizationCode');
 		expect(byName('authUrl')?.default).toBe('https://auth.atlassian.com/authorize');
 		expect(byName('accessTokenUrl')?.default).toBe('https://auth.atlassian.com/oauth/token');
@@ -120,10 +115,10 @@ describe('ConfluenceCloudOAuth2Api Credential', () => {
 		);
 	});
 
-	it('should inherit the Site URL field from atlassianOAuth2Api', () => {
-		// Defined on the base; the credential must not shadow it
-		expect(confluenceOAuth2Api.properties.find((p) => p.name === 'domain')).toBeUndefined();
-		expect(confluenceOAuth2Api.properties.find((p) => p.name === 'siteUrl')).toBeUndefined();
+	it('should carry no site field anywhere in the resolved chain', () => {
+		// The node's top-level Site selector replaced the credential's Site URL
+		expect(resolvedProperties.find((p) => p.name === 'domain')).toBeUndefined();
+		expect(resolvedProperties.find((p) => p.name === 'siteUrl')).toBeUndefined();
 	});
 
 	describe('OAuth2 flow with default scopes', () => {

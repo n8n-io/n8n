@@ -1,3 +1,4 @@
+import type { TelemetryProxy } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { diff } from 'json-diff';
@@ -6,14 +7,13 @@ import type { IConnections, INode, INodeConnectionsDiff } from 'n8n-workflow';
 import { compareConnections, compareWorkflowsNodes, NodeDiffStatus } from 'n8n-workflow';
 import z from 'zod';
 
-import type { Telemetry } from '@/telemetry';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import { WorkflowAccessError } from '../mcp.errors';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
-import { nodeSchema, sanitizeNodeCredentials } from './schemas';
+import { ensureNodeParameters, nodeSchema, sanitizeNodeCredentials } from './schemas';
 import { getMcpWorkflowVersion } from './workflow-history.utils';
 import { getMcpWorkflow } from './workflow-validation.utils';
 
@@ -194,7 +194,7 @@ export const createGetWorkflowVersionsDiffTool = (
 	user: User,
 	workflowFinderService: WorkflowFinderService,
 	workflowHistoryService: WorkflowHistoryService,
-	telemetry: Telemetry,
+	telemetry: TelemetryProxy,
 ): ToolDefinition<typeof inputSchema> => ({
 	name: 'get_workflow_versions_diff',
 	config: {
@@ -284,8 +284,10 @@ export async function getWorkflowVersionsDiff(
 		getMcpWorkflowVersion(workflowHistoryService, user, workflowId, toVersionId),
 	]);
 
-	const fromNodes = fromVersion.nodes ?? [];
-	const toNodes = toVersion.nodes ?? [];
+	// Normalized so a node persisted without a `parameters` key compares equal
+	// to the same node persisted with `parameters: {}`.
+	const fromNodes = ensureNodeParameters(fromVersion.nodes ?? []);
+	const toNodes = ensureNodeParameters(toVersion.nodes ?? []);
 	const nodeDiff = compareWorkflowsNodes(fromNodes, toNodes);
 	// The diff stores the pre-change node for modified entries; report the
 	// post-change node so a renamed node is listed by a name that still exists.

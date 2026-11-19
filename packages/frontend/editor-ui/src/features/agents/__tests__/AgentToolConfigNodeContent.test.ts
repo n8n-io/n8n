@@ -14,13 +14,14 @@ const renderComponent = createComponentRenderer(AgentToolConfigNodeContent, {
 		stubs: {
 			NodeToolSettingsContent: {
 				template:
-					'<div data-test-id="node-tool-settings" :data-refresh-empty-schema="refreshEmptySchemaEnabled" :data-schema-auto-refresh="schemaAutoRefreshEnabled" :data-sync-node-to-ndv="syncNodeToNdv">{{ JSON.stringify(hiddenOperations) }}</div>',
+					'<div data-test-id="node-tool-settings" :data-refresh-empty-schema="refreshEmptySchemaEnabled" :data-schema-auto-refresh="schemaAutoRefreshEnabled" :data-sync-node-to-ndv="syncNodeToNdv" :data-read-only="readOnly">{{ JSON.stringify(hiddenOperations) }}</div>',
 				props: [
 					'initialNode',
 					'existingToolNames',
 					'projectId',
 					'hiddenOperations',
 					'syncNodeToNdv',
+					'readOnly',
 				],
 				setup() {
 					return {
@@ -43,12 +44,13 @@ const node: INode = {
 };
 
 describe('AgentToolConfigNodeContent', () => {
-	it('hides waiting operations unsupported by inline agent tool execution', () => {
+	it('hides waiting operations and Custom API Call from inline agent tool execution', () => {
 		const { container } = renderComponent({ props: { initialNode: node } });
 
 		const hiddenOperations = container.textContent ?? '';
 		expect(hiddenOperations).toContain('sendAndWait');
 		expect(hiddenOperations).toContain('dispatchAndWait');
+		expect(hiddenOperations).toContain('__CUSTOM_API_CALL__');
 	});
 
 	it('configures resource mapper schema refreshes', () => {
@@ -70,5 +72,13 @@ describe('AgentToolConfigNodeContent', () => {
 		});
 
 		expect(getByTestId('node-tool-settings')).toHaveAttribute('data-sync-node-to-ndv', 'true');
+	});
+
+	it('forwards the read-only state', () => {
+		const { getByTestId } = renderComponent({
+			props: { initialNode: node, contentTestId: 'node-tool-settings', readOnly: true },
+		});
+
+		expect(getByTestId('node-tool-settings')).toHaveAttribute('data-read-only', 'true');
 	});
 });

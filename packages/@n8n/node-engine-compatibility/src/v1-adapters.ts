@@ -3,12 +3,30 @@
  * back into engine v1 artifacts (`INode`, `Workflow`, run data, node execute context).
  */
 
-import type { GraphNode, StepSlots, WorkflowGraph } from '@n8n/engine';
-import { ExecuteContext, UnrecognizedNodeTypeError } from 'n8n-core';
+import { isBatchStepConfig } from '@n8n/engine';
 import type {
+	GraphNode,
+	StepExecutionContext,
+	StepSlots,
+	StepOutputSources,
+	SubExecutionResumeCause,
+	WorkflowGraph,
+} from '@n8n/engine';
+import {
+	buildResumeUrlSuffix,
+	ExecuteContext,
+	prepareUrlForSigning,
+	UnrecognizedNodeTypeError,
+	WAITING_TOKEN_QUERY_PARAM,
+} from 'n8n-core';
+import type {
+	CallbackManager,
+	ExecuteWorkflowData,
 	IConnections,
 	IExecuteData,
+	IExecuteWorkflowInfo,
 	INode,
+	INodeExecutionData,
 	INodeType,
 	INodeTypes,
 	IRunData,
@@ -16,37 +34,58 @@ import type {
 	ITaskDataConnections,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { createRunExecutionData, Workflow } from 'n8n-workflow';
+import { createRunExecutionData, Workflow, WorkflowExecuteModeList } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
-import { MAIN_CONNECTION_TYPE, MANUAL_TRIGGER_TYPE } from './constants';
-import { isV1NodeStepConfig } from './guards';
+import { supplySubExecutionResult } from './sub-execution-result';
+import type { SubWorkflowCalls } from './sub-workflow-calls';
+import {
+	MAIN_CONNECTION_TYPE,
+	MANUAL_TRIGGER_TYPE,
+	SPLIT_IN_BATCHES_TYPE,
+	SPLIT_IN_BATCHES_TYPE_VERSION,
+} from './constants';
+import { MissingResumeSecretError } from './errors';
+import { isTriggerStepConfig, isV1NodeStepConfig } from './guards';
 import { fromStepInputs } from './io';
-import type { CreateExecuteContextParams, V1Execution, V1NodeStepConfig } from './types';
+import type {
+	AdditionalDataContext,
+	CreateExecuteContextParams,
+	StepResumeMinters,
+	V1Execution,
+	V1NodeStepConfig,
+} from './types';
+import {
+	emptyRun,
+	nodeNamesById,
+	toSourceLineage,
+	toSourcesAt,
+	linkOutputSources,
+	type SourceLineage,
+} from './v1-run-data';
 
 export function toV1Execution(
 	graph: WorkflowGraph,
-	outputsByNodeId: Record<string, StepSlots>,
+	outputsByNode: Record<string, Record<number, StepSlots>>,
+	activeNodeId: string,
+	activeIteration: number,
+	outputSourcesByNode: Record<string, Record<number, StepOutputSources>> = {},
 ): V1Execution {
 	return {
 		nodes: toV1Nodes(graph),
 		connections: toV1Connections(graph),
-		runData: toV1RunData(graph, outputsByNodeId),
+		runData: toV1RunData(graph, outputsByNode, activeNodeId, activeIteration, outputSourcesByNode),
 	};
 }
 
 function toV1Nodes(graph: WorkflowGraph): INode[] {
 	return graph.nodes.flatMap((graphNode): INode[] => {
 		if (graphNode.type === 'trigger') {
-			return [
-				{
-					id: graphNode.id,
-					name: graphNode.name,
-					type: MANUAL_TRIGGER_TYPE,
-					typeVersion: 1,
-					position: [0, 0],
-					parameters: {},
-				},
-			];
+			return [toV1TriggerNode(graphNode)];
+		}
+
+		if (graphNode.type === 'batch') {
+			return [toV1BatchNode(graphNode)];
 		}
 
 		if (!isV1NodeStepConfig(graphNode.config)) return [];
@@ -56,7 +95,7 @@ function toV1Nodes(graph: WorkflowGraph): INode[] {
 }
 
 function toV1Connections(graph: WorkflowGraph): IConnections {
-	const namesById = new Map(graph.nodes.map((node) => [node.id, node.name]));
+	const namesById = nodeNamesById(graph);
 
 	const connections: IConnections = {};
 	for (const edge of graph.edges) {
@@ -79,45 +118,76 @@ function toV1Connections(graph: WorkflowGraph): IConnections {
 	return connections;
 }
 
-function toV1RunData(graph: WorkflowGraph, outputsByNodeId: Record<string, StepSlots>): IRunData {
-	const namesById = new Map(graph.nodes.map((node) => [node.id, node.name]));
-	const sourcesByNodeId = toV1Sources(graph);
+function toV1RunData(
+	graph: WorkflowGraph,
+	outputsByNode: Record<string, Record<number, StepSlots>>,
+	activeNodeId: string,
+	activeIteration: number,
+	outputSourcesByNode: Record<string, Record<number, StepOutputSources>>,
+): IRunData {
+	const lineage = toExecuteLineage(graph, outputsByNode);
+	const activeLoop = lineage.loops.find((loop) => loop.memberIds.has(activeNodeId));
 
 	const runData: IRunData = {};
-	for (const [completedNodeId, outputs] of Object.entries(outputsByNodeId)) {
-		const nodeName = namesById.get(completedNodeId);
+	for (const [completedNodeId, outputsByIteration] of Object.entries(outputsByNode)) {
+		const nodeName = lineage.namesById.get(completedNodeId);
 		if (nodeName === undefined) continue;
 
-		runData[nodeName] = [
-			{
+		const iterations = Object.keys(outputsByIteration).map(Number);
+		if (iterations.length === 0) continue;
+
+		const lastShown = activeLoop?.memberIds.has(completedNodeId)
+			? activeIteration
+			: Math.max(...iterations);
+
+		// A pass the node was skipped on gets an empty run rather than a gap.
+		runData[nodeName] = Array.from({ length: lastShown + 1 }, (_, iteration) => {
+			const source = toSourcesAt(lineage, completedNodeId, iteration);
+			const outputs = outputsByIteration[iteration];
+			if (outputs === undefined) return emptyRun(iteration, source);
+
+			const main = linkOutputSources(
+				fromStepInputs(outputs),
+				outputSourcesByNode[completedNodeId]?.[iteration] ?? null,
+				lineage.namesById,
+			);
+			return {
 				startTime: 0,
 				executionTime: 0,
-				executionIndex: 0,
-				source: sourcesByNodeId.get(completedNodeId) ?? [],
-				data: { [MAIN_CONNECTION_TYPE]: fromStepInputs(outputs) },
-			},
-		];
+				executionIndex: iteration,
+				source,
+				data: { [MAIN_CONNECTION_TYPE]: main },
+			};
+		});
 	}
 
 	return runData;
 }
 
-export function toV1Sources(graph: WorkflowGraph): Map<string, Array<ISourceData | null>> {
-	const namesById = new Map(graph.nodes.map((node) => [node.id, node.name]));
+/** `toSourcesAt` for the execute path, which knows only completed steps. */
+export function toV1Sources(
+	graph: WorkflowGraph,
+	outputsByNode: Record<string, Record<number, StepSlots>>,
+	nodeId: string,
+	iteration: number,
+): Array<ISourceData | null> {
+	return toSourcesAt(toExecuteLineage(graph, outputsByNode), nodeId, iteration);
+}
 
-	const sourcesByNodeId = new Map<string, Array<ISourceData | null>>();
-	for (const edge of graph.edges) {
-		if (edge.isBackEdge === true) continue;
-		const fromName = namesById.get(edge.from);
-		if (fromName === undefined) continue;
-
-		const source = sourcesByNodeId.get(edge.to) ?? [];
-		const inputIndex = edge.inputIndex ?? 0;
-		while (source.length <= inputIndex) source.push(null);
-		source[inputIndex] ??= { previousNode: fromName, previousNodeOutput: edge.outputIndex };
-		sourcesByNodeId.set(edge.to, source);
+/**
+ * Each node's last pass, which the source of a node after a loop names. The execute
+ * path has only completed steps, so the last pass is the highest pass among them.
+ */
+function toExecuteLineage(
+	graph: WorkflowGraph,
+	outputsByNode: Record<string, Record<number, StepSlots>>,
+): SourceLineage {
+	const lastIterationByNodeId = new Map<string, number>();
+	for (const [nodeId, outputsByIteration] of Object.entries(outputsByNode)) {
+		const iterations = Object.keys(outputsByIteration).map(Number);
+		if (iterations.length > 0) lastIterationByNodeId.set(nodeId, Math.max(...iterations));
 	}
-	return sourcesByNodeId;
+	return toSourceLineage(graph, lastIterationByNodeId);
 }
 
 export function toV1Workflow(
@@ -137,8 +207,65 @@ export function toV1Workflow(
 	});
 }
 
-export function toV1Node(graphNode: GraphNode, config: V1NodeStepConfig): INode {
+/** An older graph carries no config, and graphs are immutable, so a stub stands in. */
+function toV1TriggerNode(graphNode: GraphNode): INode {
+	const config = isTriggerStepConfig(graphNode.config) ? graphNode.config : undefined;
+
 	return {
+		id: graphNode.id,
+		name: graphNode.name,
+		type: config?.nodeType ?? MANUAL_TRIGGER_TYPE,
+		typeVersion: config?.typeVersion ?? 1,
+		position: [0, 0],
+		parameters: config?.parameters ?? {},
+	};
+}
+
+function toV1BatchNode(graphNode: GraphNode): INode {
+	const batchSize = isBatchStepConfig(graphNode.config) ? graphNode.config.batchSize : undefined;
+
+	return {
+		id: graphNode.id,
+		name: graphNode.name,
+		type: SPLIT_IN_BATCHES_TYPE,
+		typeVersion: SPLIT_IN_BATCHES_TYPE_VERSION,
+		position: [0, 0],
+		parameters: batchSize === undefined ? {} : { batchSize },
+	};
+}
+
+/**
+ * The v1 mode the host stored at start. This layer only runs v1 nodes, so a
+ * missing or unknown mode is a caller bug and the step fails.
+ */
+export function toV1ExecuteMode(context: StepExecutionContext): WorkflowExecuteMode {
+	const { hostMode } = context.callerContext;
+	if (hostMode === undefined) {
+		throw new UnexpectedError('The caller context has no v1 execution mode');
+	}
+	if (!isWorkflowExecuteMode(hostMode)) {
+		throw new UnexpectedError('The caller context has an unknown v1 execution mode', {
+			extra: { hostMode },
+		});
+	}
+	return hostMode;
+}
+
+const isWorkflowExecuteMode = (mode: string): mode is WorkflowExecuteMode =>
+	(WorkflowExecuteModeList as readonly string[]).includes(mode);
+
+export function toAdditionalDataContext(context: StepExecutionContext): AdditionalDataContext {
+	return {
+		executionId: context.executionId,
+		workflowId: context.workflowId,
+		mode: toV1ExecuteMode(context),
+		userId: context.callerContext.userId,
+		projectId: context.callerContext.projectId,
+	};
+}
+
+export function toV1Node(graphNode: GraphNode, config: V1NodeStepConfig): INode {
+	const node: INode = {
 		id: graphNode.id,
 		name: graphNode.name,
 		type: config.nodeType,
@@ -147,6 +274,8 @@ export function toV1Node(graphNode: GraphNode, config: V1NodeStepConfig): INode 
 		parameters: config.parameters,
 		continueOnFail: config.continueOnFail,
 	};
+	if (config.credentials !== undefined) node.credentials = config.credentials;
+	return node;
 }
 
 /**
@@ -172,6 +301,86 @@ function tolerantNodeTypes(nodeTypes: INodeTypes): INodeTypes {
 	};
 }
 
+/**
+ * The v1 context of a step. `putExecutionToWait` records the wait the node asks
+ * for, and the executor turns the record into a wait declaration.
+ *
+ * Do not call super. Core sleeps in the process for a short deadline-only wait
+ * and calls the host status hook. The engine owns the wait, and the host does
+ * not know this run.
+ */
+export class DurableWaitExecuteContext extends ExecuteContext {
+	/** Only an explicit `false` makes a wait deadline-only. This matches core. */
+	acceptsResumeRequest = true;
+
+	/**
+	 * Becomes `step` when the node builds a resume URL or an approval reference
+	 * for its step. Only a step-bound wait accepts that reply.
+	 */
+	resumeBinding: 'execution' | 'step' = 'execution';
+
+	/** Set right after construction: the sub-workflow calls of this run. */
+	subWorkflowCalls!: SubWorkflowCalls;
+	/** Set when this run follows the end of the step's sub-execution. */
+	subExecutionResume?: SubExecutionResumeCause;
+
+	constructor(
+		private readonly step: { id: string } & StepResumeMinters,
+		...args: ConstructorParameters<typeof ExecuteContext>
+	) {
+		super(...args);
+	}
+
+	/**
+	 * Records the sub-execution declaration on the first pass, or supplies the
+	 * sub-execution's result on the resume path.
+	 */
+	async executeWorkflow(
+		workflowInfo: IExecuteWorkflowInfo,
+		inputData?: INodeExecutionData[],
+		_parentCallbackManager?: CallbackManager,
+		options?: { doNotWaitToFinish?: boolean; returnLastRunOnly?: boolean },
+	): Promise<ExecuteWorkflowData> {
+		if (this.subExecutionResume) return supplySubExecutionResult(this.subExecutionResume, options);
+		return await this.subWorkflowCalls.declareSubExecution(workflowInfo, inputData ?? [], options);
+	}
+
+	async putExecutionToWait(
+		waitTill: Date,
+		options?: { acceptsResumeRequest?: boolean },
+	): Promise<void> {
+		this.acceptsResumeRequest = options?.acceptsResumeRequest ?? true;
+		this.runExecutionData.waitTill = waitTill;
+		return await Promise.resolve();
+	}
+
+	/** The path names the step, not the execution. */
+	getSignedResumeUrl(parameters: Record<string, string> = {}): string {
+		const mint = this.step.stepBoundResumeToken;
+		if (!mint) throw new MissingResumeSecretError(this.node.name);
+
+		const url = new URL(
+			`${this.additionalData.webhookWaitingBaseUrl}${buildResumeUrlSuffix(this.step.id, this.node.id)}`,
+		);
+		for (const [key, value] of Object.entries(parameters)) {
+			url.searchParams.set(key, value);
+		}
+		const token = mint({ stepId: this.step.id, binding: prepareUrlForSigning(url) });
+		url.searchParams.set(WAITING_TOKEN_QUERY_PARAM, token);
+
+		this.resumeBinding = 'step';
+		return url.toString();
+	}
+
+	getApprovalCallbackReference(decision: 'approve' | 'decline'): string {
+		const mint = this.step.approvalCallback;
+		if (!mint) throw new MissingResumeSecretError(this.node.name);
+
+		this.resumeBinding = 'step';
+		return mint({ stepId: this.step.id, decision: decision === 'approve' ? 'a' : 'd' });
+	}
+}
+
 export function toV1ExecuteContext({
 	node,
 	workflow,
@@ -180,7 +389,12 @@ export function toV1ExecuteContext({
 	additionalData,
 	stepContext,
 	itemsByConnection,
-}: CreateExecuteContextParams): ExecuteContext {
+	resumeToken,
+	subWorkflowCalls,
+	subExecutionResume,
+	resumeMinters,
+}: CreateExecuteContextParams): DurableWaitExecuteContext {
+	itemsByConnection = withPairedItemLineage(itemsByConnection);
 	const firstInput = itemsByConnection[0] ?? [];
 	const connectionInputData = firstInput.length > 0 ? firstInput : [{ json: {} }];
 	const inputData: ITaskDataConnections = {
@@ -188,6 +402,7 @@ export function toV1ExecuteContext({
 	};
 
 	const runExecutionData = createRunExecutionData({
+		resumeToken,
 		startData: {},
 		resultData: { runData: execution.runData },
 		executionData: {
@@ -204,18 +419,41 @@ export function toV1ExecuteContext({
 		data: inputData,
 		source: source.length > 0 ? { main: source } : null,
 	};
-	const mode: WorkflowExecuteMode = stepContext.mode === 'production' ? 'trigger' : 'manual';
+	const mode = toV1ExecuteMode(stepContext);
 
-	return new ExecuteContext(
+	const context = new DurableWaitExecuteContext(
+		{ id: stepContext.stepId, ...resumeMinters },
 		workflow,
 		node,
 		additionalData,
 		mode,
 		runExecutionData,
-		0,
+		stepContext.iteration,
 		connectionInputData,
 		inputData,
 		executeData,
 		[],
+	);
+	context.subWorkflowCalls = subWorkflowCalls;
+	context.subExecutionResume = subExecutionResume;
+	return context;
+}
+
+/**
+ * Points every input item's `pairedItem` at its own position, as v1 does before it
+ * runs a node (`WorkflowExecute.addPairedItemLineage`). An item keeps the link its
+ * producer gave it, which points into the producer's input. A node that passes items
+ * through, like If, keeps a link that is already set, so without this the link
+ * would skip a node and name the wrong item.
+ *
+ * v1 also keeps a tool call's `sourceOverwrite`. Engine v2 runs no tool calls: the
+ * converter rejects every connection that is not `main`.
+ */
+function withPairedItemLineage(itemsByConnection: INodeExecutionData[][]): INodeExecutionData[][] {
+	return itemsByConnection.map((items, inputIndex) =>
+		items.map((item, itemIndex) => ({
+			...item,
+			pairedItem: inputIndex === 0 ? { item: itemIndex } : { item: itemIndex, input: inputIndex },
+		})),
 	);
 }

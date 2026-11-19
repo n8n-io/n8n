@@ -4,6 +4,7 @@ import {
 	type INodeProperties,
 	type IExecuteFunctions,
 	updateDisplayOptions,
+	requestPath,
 } from 'n8n-workflow';
 
 import {
@@ -81,14 +82,14 @@ export async function execute(
 		this,
 		{},
 		'GET',
-		'/api-gateway/api/v2/dtables/{{dtable_uuid}}/metadata/',
+		(dtableUuid) => requestPath`/api-gateway/api/v2/dtables/${dtableUuid}/metadata/`,
 	);
 
 	const requestRows = await seaTableApiRequest.call(
 		this,
 		{},
 		'GET',
-		'/api-gateway/api/v2/dtables/{{dtable_uuid}}/rows/',
+		(dtableUuid) => requestPath`/api-gateway/api/v2/dtables/${dtableUuid}/rows/`,
 		{},
 		{
 			table_name: tableName,

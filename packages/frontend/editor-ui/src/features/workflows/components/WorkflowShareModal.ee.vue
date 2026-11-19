@@ -76,6 +76,7 @@ const workflowSharedWithProjects = computed(
 		workflowDocumentStore.value?.sharedWithProjects ?? workflowListEntry.value?.sharedWithProjects,
 );
 const loading = ref(true);
+let initializationPromise: Promise<void> | undefined;
 const isDirty = ref(false);
 const modalBus = createEventBus();
 const sharedWithProjects = ref([
@@ -123,9 +124,12 @@ const workflowOwnerName = computed(() =>
 	workflowsEEStore.getWorkflowOwnerName(`${workflowId.value}`),
 );
 
-const searchFn = useRemoteProjectSearch();
+// Ask the endpoint for personal projects only. It returns one page with team
+// projects sorted first, so filtering on the client alone can leave the picker
+// with no user to select.
+const searchFn = useRemoteProjectSearch({ type: ProjectTypes.Personal });
 const filterFn = (project: ProjectListItem) =>
-	project.type === 'personal' && project.id !== workflowHomeProject.value?.id;
+	project.type === ProjectTypes.Personal && project.id !== workflowHomeProject.value?.id;
 
 const numberOfMembersInHomeTeamProject = computed(() => teamProject.value?.relations.length ?? 0);
 
@@ -206,10 +210,10 @@ const onSave = async () => {
 			title: i18n.baseText('workflows.shareModal.onSave.success.title'),
 		});
 		isDirty.value = false;
+		modalBus.emit('close');
 	} catch (error) {
 		toast.showError(error, i18n.baseText('workflows.shareModal.onSave.error.title'));
 	} finally {
-		modalBus.emit('close');
 		loading.value = false;
 	}
 };
@@ -227,7 +231,9 @@ const onCloseModal = async () => {
 		);
 
 		if (shouldSave === MODAL_CONFIRM) {
-			return await onSave();
+			await initializationPromise;
+			await onSave();
+			return false;
 		}
 	}
 
@@ -254,7 +260,8 @@ const initialize = async () => {
 };
 
 onMounted(async () => {
-	await initialize();
+	initializationPromise = initialize();
+	await initializationPromise;
 });
 
 watch(
@@ -373,7 +380,7 @@ watch(
 				<N8nText v-show="isDirty" color="text-light" size="small" class="mr-xs">
 					{{ i18n.baseText('workflows.shareModal.changesHint') }}
 				</N8nText>
-				<N8nButton variant="subtle" v-if="isHomeTeamProject" @click="modalBus.emit('close')">
+				<N8nButton variant="outline" v-if="isHomeTeamProject" @click="modalBus.emit('close')">
 					{{ i18n.baseText('generic.close') }}
 				</N8nButton>
 				<N8nButton

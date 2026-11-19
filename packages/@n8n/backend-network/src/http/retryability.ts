@@ -1,3 +1,5 @@
+import { errorChain, isObjectLike, type UnknownRecord } from '@n8n/utils/errors/error-chain';
+
 import { isDnsFailure, isTransportFailure } from './client-request-error';
 
 /**
@@ -84,46 +86,8 @@ function isRetryableStatus(status: number): boolean {
 	return status === 408 || status === 429 || status >= 500;
 }
 
-type UnknownRecord = Readonly<Record<string, unknown>>;
-
-const isRecord = (value: unknown): value is UnknownRecord =>
-	typeof value === 'object' && value !== null;
-
-const MAX_CHAIN_DEPTH = 5;
-
-/** The keys errors wrap each other under. */
-const WRAPPING_KEYS = ['cause', 'errorResponse', 'reason'] as const;
-
-/** The error and the errors it wraps, shallowest first, each visited once. */
-function errorChain(error: unknown): UnknownRecord[] {
-	if (!isRecord(error)) {
-		return [];
-	}
-
-	const seen = new Set<UnknownRecord>([error]);
-	const chain: UnknownRecord[] = [error];
-	let generation: UnknownRecord[] = [error];
-
-	for (let depth = 0; depth < MAX_CHAIN_DEPTH && generation.length > 0; depth++) {
-		const next: UnknownRecord[] = [];
-		for (const level of generation) {
-			for (const key of WRAPPING_KEYS) {
-				const wrapped = level[key];
-				if (isRecord(wrapped) && !seen.has(wrapped)) {
-					seen.add(wrapped);
-					next.push(wrapped);
-				}
-			}
-		}
-		chain.push(...next);
-		generation = next;
-	}
-
-	return chain;
-}
-
 const responseOf = (level: UnknownRecord): UnknownRecord | undefined =>
-	isRecord(level.response) ? level.response : undefined;
+	isObjectLike(level.response) ? level.response : undefined;
 
 /**
  * The HTTP status of the failing response, if any. An `httpCode` anywhere in
@@ -176,7 +140,7 @@ function findRetryAfterMs(chain: UnknownRecord[], now: Date): number | undefined
 
 /** The `Retry-After` value from a `get()` style or plain headers object. */
 function readRetryAfterHeader(headers: unknown): string | undefined {
-	if (!isRecord(headers)) {
+	if (!isObjectLike(headers)) {
 		return undefined;
 	}
 

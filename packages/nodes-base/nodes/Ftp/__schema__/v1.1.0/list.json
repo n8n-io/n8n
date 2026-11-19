@@ -1,0 +1,47 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"accessTime": {
+			"type": "string"
+		},
+		"group": {
+			"type": ["number", "string"]
+		},
+		"longname": {
+			"type": "string"
+		},
+		"modifyTime": {
+			"type": "string"
+		},
+		"name": {
+			"type": "string"
+		},
+		"owner": {
+			"type": ["number", "string"]
+		},
+		"path": {
+			"type": "string"
+		},
+		"rights": {
+			"properties": {
+				"group": {
+					"type": "string"
+				},
+				"other": {
+					"type": "string"
+				},
+				"user": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"size": {
+			"type": "number"
+		},
+		"type": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

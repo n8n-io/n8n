@@ -1,4 +1,12 @@
-import type { IDataObject, ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow';
+import type {
+	IDataObject,
+	ILoadOptionsFunctions,
+	INodeListSearchResult,
+	RequestPath,
+} from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
+
+import { escapeODataValue } from '@utils/query-escaping';
 
 import { encodeOutlookId } from '../helpers/utils';
 import { getSubfolders, microsoftApiRequest } from '../transport';
@@ -8,7 +16,7 @@ import { getSubfolders, microsoftApiRequest } from '../transport';
 
 async function search(
 	this: ILoadOptionsFunctions,
-	resource: string,
+	resource: RequestPath,
 	nameProperty: string,
 	filter?: string,
 	paginationToken?: string,
@@ -19,7 +27,7 @@ async function search(
 		response = await microsoftApiRequest.call(
 			this,
 			'GET',
-			'',
+			requestPath``,
 			0,
 			undefined,
 			undefined,
@@ -32,7 +40,7 @@ async function search(
 		};
 
 		if (filter) {
-			const filterValue = encodeURI(filter);
+			const filterValue = escapeODataValue(encodeURI(filter));
 			qs.$filter = `contains(${nameProperty}, '${filterValue}')`;
 		}
 
@@ -55,7 +63,7 @@ export async function searchContacts(
 	filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
-	return await search.call(this, '/contacts', 'displayName', filter, paginationToken);
+	return await search.call(this, requestPath`/contacts`, 'displayName', filter, paginationToken);
 }
 
 export async function searchCalendars(
@@ -63,7 +71,7 @@ export async function searchCalendars(
 	filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
-	return await search.call(this, '/calendars', 'name', filter, paginationToken);
+	return await search.call(this, requestPath`/calendars`, 'name', filter, paginationToken);
 }
 
 export async function searchDrafts(
@@ -77,7 +85,7 @@ export async function searchDrafts(
 		response = await microsoftApiRequest.call(
 			this,
 			'GET',
-			'',
+			requestPath``,
 			0,
 			undefined,
 			undefined,
@@ -91,11 +99,18 @@ export async function searchDrafts(
 		};
 
 		if (filter) {
-			const filterValue = encodeURI(filter);
+			const filterValue = escapeODataValue(encodeURI(filter));
 			qs.$filter += ` AND contains(${'subject'}, '${filterValue}')`;
 		}
 
-		response = await microsoftApiRequest.call(this, 'GET', '/messages', 0, undefined, qs);
+		response = await microsoftApiRequest.call(
+			this,
+			'GET',
+			requestPath`/messages`,
+			0,
+			undefined,
+			qs,
+		);
 	}
 
 	return {
@@ -121,7 +136,7 @@ export async function searchMessages(
 		response = await microsoftApiRequest.call(
 			this,
 			'GET',
-			'',
+			requestPath``,
 			0,
 			undefined,
 			undefined,
@@ -134,11 +149,18 @@ export async function searchMessages(
 		};
 
 		if (filter) {
-			const filterValue = encodeURI(filter);
+			const filterValue = escapeODataValue(encodeURI(filter));
 			qs.$filter = `contains(${'subject'}, '${filterValue}')`;
 		}
 
-		response = await microsoftApiRequest.call(this, 'GET', '/messages', 0, undefined, qs);
+		response = await microsoftApiRequest.call(
+			this,
+			'GET',
+			requestPath`/messages`,
+			0,
+			undefined,
+			qs,
+		);
 	}
 
 	return {
@@ -168,7 +190,7 @@ export async function searchEvents(
 		response = await microsoftApiRequest.call(
 			this,
 			'GET',
-			'',
+			requestPath``,
 			0,
 			undefined,
 			undefined,
@@ -181,14 +203,14 @@ export async function searchEvents(
 		};
 
 		if (filter) {
-			const filterValue = encodeURI(filter);
+			const filterValue = escapeODataValue(encodeURI(filter));
 			qs.$filter = `contains(${'subject'}, '${filterValue}')`;
 		}
 
 		response = await microsoftApiRequest.call(
 			this,
 			'GET',
-			`/calendars/${calendarId}/events`,
+			requestPath`/calendars/${calendarId}/events`,
 			0,
 			undefined,
 			qs,
@@ -218,7 +240,7 @@ export async function searchFolders(
 		response = await microsoftApiRequest.call(
 			this,
 			'GET',
-			'',
+			requestPath``,
 			0,
 			undefined,
 			undefined,
@@ -229,7 +251,14 @@ export async function searchFolders(
 			$top: 100,
 		};
 
-		response = await microsoftApiRequest.call(this, 'GET', '/mailFolders', 0, undefined, qs);
+		response = await microsoftApiRequest.call(
+			this,
+			'GET',
+			requestPath`/mailFolders`,
+			0,
+			undefined,
+			qs,
+		);
 	}
 
 	let folders = await getSubfolders.call(this, response.value as IDataObject[], 0, true);
@@ -267,7 +296,7 @@ export async function searchAttachments(
 		response = await microsoftApiRequest.call(
 			this,
 			'GET',
-			'',
+			requestPath``,
 			0,
 			undefined,
 			undefined,
@@ -282,7 +311,7 @@ export async function searchAttachments(
 		response = await microsoftApiRequest.call(
 			this,
 			'GET',
-			`/messages/${messageId}/attachments`,
+			requestPath`/messages/${messageId}/attachments`,
 			0,
 			undefined,
 			qs,

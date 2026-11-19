@@ -6,6 +6,10 @@ import { createPinia, setActivePinia } from 'pinia';
 import { mock } from 'vitest-mock-extended';
 
 import { useCloudPlanStore } from '../cloudPlan.store';
+import {
+	clearDefaultUpgradeRedirectGuard,
+	setDefaultUpgradeRedirectGuard,
+} from '../registries/upgradeRedirectGuard';
 import { useSettingsStore } from '../settings.store';
 import { useUsersStore } from '../users.store';
 import { useVersionsStore } from '../versions.store';
@@ -28,6 +32,17 @@ vi.mock('@n8n/composables/useTelemetry', () => {
 	};
 });
 
+let mockAssistantTopUpEligible = false;
+vi.mock('./useAssistantTopUpEligibility', () => ({
+	useAssistantTopUpEligibility: () => ({
+		isEligible: {
+			get value() {
+				return mockAssistantTopUpEligible;
+			},
+		},
+	}),
+}));
+
 /** Only `deployment.type` steers this composable; the rest of the settings object is stubbed. */
 const settingsFor = (type: string) =>
 	mock<FrontendSettings>({
@@ -37,6 +52,7 @@ const settingsFor = (type: string) =>
 describe('useBasePageRedirectionHelper', () => {
 	afterEach(() => {
 		vi.clearAllMocks();
+		mockAssistantTopUpEligible = false;
 	});
 
 	beforeEach(() => {
@@ -206,6 +222,58 @@ describe('useBasePageRedirectionHelper', () => {
 		},
 	);
 
+	// Cloud UBB top-up eligible accounts land on the assistant usage page instead
+	// of the plan-change page — but only when the source is an assistant CTA.
+	describe('goToUpgrade with assistant top-up eligibility', () => {
+		beforeEach(() => {
+			usersStore.addUsers([{ id: '1', isPending: false, role: ROLE.Owner }]);
+			usersStore.currentUserId = '1';
+			settingsStore.setSettings(settingsFor('cloud'));
+		});
+
+		test.each(['ai-builder-sidebar', 'instance-ai'] as const)(
+			'routes "%s" to the assistant usage page when top-up is eligible',
+			async (source) => {
+				mockAssistantTopUpEligible = true;
+
+				await pageRedirectionHelper.goToUpgrade(source, 'upgrade-builder', 'redirect');
+
+				expect(location.href).toBe(
+					`https://app.n8n.cloud/login?code=123&returnPath=${encodeURIComponent(
+						'/manage/assistant',
+					)}&utm_campaign=upgrade-builder&source=${source}`,
+				);
+			},
+		);
+
+		test.each(['ai-builder-sidebar', 'instance-ai'] as const)(
+			'routes "%s" to the plan-change page when top-up is not eligible',
+			async (source) => {
+				mockAssistantTopUpEligible = false;
+
+				await pageRedirectionHelper.goToUpgrade(source, 'upgrade-builder', 'redirect');
+
+				expect(location.href).toBe(
+					`https://app.n8n.cloud/login?code=123&returnPath=${encodeURIComponent(
+						'/account/change-plan',
+					)}&utm_campaign=upgrade-builder&source=${source}`,
+				);
+			},
+		);
+
+		test('leaves non-assistant sources on the plan-change page even when top-up is eligible', async () => {
+			mockAssistantTopUpEligible = true;
+
+			await pageRedirectionHelper.goToUpgrade('advanced-permissions', 'upgrade-api', 'redirect');
+
+			expect(location.href).toBe(
+				`https://app.n8n.cloud/login?code=123&returnPath=${encodeURIComponent(
+					'/account/change-plan',
+				)}&utm_campaign=upgrade-api&source=advanced-permissions`,
+			);
+		});
+	});
+
 	describe('goToUpgrade with an injected guard', () => {
 		beforeEach(() => {
 			usersStore.addUsers([{ id: '1', isPending: false, role: ROLE.Owner }]);
@@ -244,6 +312,78 @@ describe('useBasePageRedirectionHelper', () => {
 					'/account/change-plan',
 				)}&utm_campaign=upgrade-api&source=advanced-permissions`,
 			);
+		});
+	});
+
+	// A module package cannot pass the shell's guard, so it omits the argument and
+	// gets whatever the shell registered. Nothing registered means fail-open.
+	describe('goToUpgrade with no guard argument', () => {
+		beforeEach(() => {
+			usersStore.addUsers([{ id: '1', isPending: false, role: ROLE.Owner }]);
+			usersStore.currentUserId = '1';
+
+			settingsStore.setSettings(settingsFor('cloud'));
+			clearDefaultUpgradeRedirectGuard();
+		});
+
+		afterEach(() => {
+			clearDefaultUpgradeRedirectGuard();
+		});
+
+		test('consults the registered default guard and aborts when it resolves false', async () => {
+			const telemetry = useTelemetry();
+			const initialHref = location.href;
+			const guard = vi.fn<UpgradeRedirectGuard>().mockResolvedValue(false);
+			setDefaultUpgradeRedirectGuard(guard);
+
+			await useBasePageRedirectionHelper().goToUpgrade(
+				'advanced-permissions',
+				'upgrade-api',
+				'redirect',
+			);
+
+			expect(guard).toHaveBeenCalledTimes(1);
+			expect(location.href).toBe(initialHref);
+			expect(telemetry.track).not.toHaveBeenCalled();
+		});
+
+		test('consults the registered default guard and proceeds when it resolves true', async () => {
+			const guard = vi.fn<UpgradeRedirectGuard>().mockResolvedValue(true);
+			setDefaultUpgradeRedirectGuard(guard);
+
+			await useBasePageRedirectionHelper().goToUpgrade(
+				'advanced-permissions',
+				'upgrade-api',
+				'redirect',
+			);
+
+			expect(guard).toHaveBeenCalledTimes(1);
+			expect(location.href).toContain('utm_campaign=upgrade-api');
+		});
+
+		test('proceeds when no guard is registered at all', async () => {
+			await useBasePageRedirectionHelper().goToUpgrade(
+				'advanced-permissions',
+				'upgrade-api',
+				'redirect',
+			);
+
+			expect(location.href).toContain('utm_campaign=upgrade-api');
+		});
+
+		test('prefers an explicitly passed guard over the registered default', async () => {
+			const registered = vi.fn<UpgradeRedirectGuard>().mockResolvedValue(true);
+			const passed = vi.fn<UpgradeRedirectGuard>().mockResolvedValue(false);
+			setDefaultUpgradeRedirectGuard(registered);
+
+			await useBasePageRedirectionHelper({ guard: passed }).goToUpgrade(
+				'advanced-permissions',
+				'upgrade-api',
+				'redirect',
+			);
+
+			expect(passed).toHaveBeenCalledTimes(1);
+			expect(registered).not.toHaveBeenCalled();
 		});
 	});
 

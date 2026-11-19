@@ -30,6 +30,12 @@ import {
 } from '@/app/stores/executionData.store';
 import { disposeNDVStore, useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { getExecutionErrorToastConfiguration } from '@/features/execution/executions/executions.utils';
+import {
+	WORKFLOW_ERROR_NUDGE_TOAST_CUSTOM_CLASS,
+	dismissWorkflowErrorNudge,
+	releaseWorkflowErrorNudge,
+	useWorkflowErrorNudge,
+} from '@/features/ai/instanceAi/workflowErrorNudge/composables/useWorkflowErrorNudge';
 import { useLogsStore } from '@/app/stores/logs.store';
 
 export interface UseExecutionPreviewDocumentOptions {
@@ -51,6 +57,7 @@ export interface UseExecutionPreviewDocumentOptions {
 export function useExecutionPreviewDocument(options: UseExecutionPreviewDocumentOptions) {
 	const i18n = useI18n();
 	const toast = useToast();
+	const { triggerOnWorkflowError } = useWorkflowErrorNudge();
 	const telemetry = useTelemetry();
 	const externalHooks = useExternalHooks();
 	const workflowsStore = useWorkflowsStore();
@@ -160,12 +167,30 @@ export function useExecutionPreviewDocument(options: UseExecutionPreviewDocument
 		return snapshot && isTerminalExecutionStatus(snapshot.status) ? snapshot : null;
 	}
 
+	function showExecutionErrorToast(
+		executionId: string,
+		workflowId: string,
+		title: string,
+		message: Parameters<typeof toast.showMessage>[0]['message'],
+	) {
+		toast.showMessage({
+			title,
+			message,
+			type: 'error',
+			duration: 0,
+			customClass: WORKFLOW_ERROR_NUDGE_TOAST_CUSTOM_CLASS,
+			onClose: () => releaseWorkflowErrorNudge(executionId),
+		});
+		triggerOnWorkflowError(executionId, workflowId, { reopen: true });
+	}
+
 	async function load(): Promise<void> {
 		const executionId = toValue(options.executionId);
 		const requestId = ++latestLoadRequestId;
 
 		isLoading.value = true;
 		loadError.value = null;
+		dismissWorkflowErrorNudge();
 
 		try {
 			const data =
@@ -191,19 +216,19 @@ export function useExecutionPreviewDocument(options: UseExecutionPreviewDocument
 					error: resultData.error,
 					lastNodeExecuted: resultData.lastNodeExecuted,
 				});
-				toast.showMessage({ title, message, type: 'error', duration: 0 });
+				showExecutionErrorToast(executionId, data.workflowData.id, title, message);
 			} else if (!data.finished && resultData?.error) {
 				// Skip when a node already captured the error — it shows on the node.
 				const nodeErrorFound = Object.values(resultData.runData ?? {}).some((tasks) =>
 					tasks.some((task) => task.error),
 				);
 				if (!nodeErrorFound) {
-					toast.showMessage({
-						title: i18n.baseText('nodeView.showError.workflowError'),
-						message: resultData.error.message,
-						type: 'error',
-						duration: 0,
-					});
+					showExecutionErrorToast(
+						executionId,
+						data.workflowData.id,
+						i18n.baseText('nodeView.showError.workflowError'),
+						resultData.error.message,
+					);
 				}
 			}
 

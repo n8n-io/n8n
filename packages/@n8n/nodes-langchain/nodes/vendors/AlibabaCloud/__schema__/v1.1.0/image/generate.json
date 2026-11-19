@@ -1,0 +1,36 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"imageUrl": {
+			"type": "string"
+		},
+		"model": {
+			"type": "string"
+		},
+		"usage": {
+			"additionalProperties": true,
+			"properties": {
+				"input_image_count": {
+					"type": "number"
+				},
+				"input_image_type": {
+					"type": "string"
+				},
+				"output_height": {
+					"type": "number"
+				},
+				"output_image_count": {
+					"type": "number"
+				},
+				"output_image_type": {
+					"type": "string"
+				},
+				"output_width": {
+					"type": "number"
+				}
+			},
+			"type": "object"
+		}
+	},
+	"type": "object"
+}

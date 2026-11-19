@@ -1,5 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
-import type { AgentDbMessage } from '@n8n/instance-ai';
+import type { AgentDbMessage } from '@n8n/agents';
 
 /**
  * Stands in for a removed attachment so the turn keeps a coherent shape: the

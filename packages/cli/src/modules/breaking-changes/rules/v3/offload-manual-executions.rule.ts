@@ -1,6 +1,7 @@
 import { ExecutionsConfig } from '@n8n/config';
 import { BreakingChangeRule } from '@n8n/decorators';
 
+import { NOT_AFFECTED_INSTANCE } from '../../detection-report';
 import type {
 	BreakingChangeRuleMetadata,
 	IBreakingChangeInstanceRule,
@@ -19,9 +20,9 @@ export class OffloadManualExecutionsRule implements IBreakingChangeInstanceRule 
 			version: 'v3',
 			title: 'Manual executions always run on workers in queue mode',
 			description:
-				'In queue mode, manual executions are always routed to workers. The OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS environment variable is removed and running manual executions on the main instance is no longer possible.',
+				'In queue mode, manual executions are always routed to workers. The OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS environment variable is removed and running manual executions on the main instance is no longer possible. Make sure your workers have enough memory to run manual executions.',
 			category: BreakingChangeCategory.instance,
-			severity: 'medium',
+			impact: 'behaviorChanges',
 		};
 	}
 
@@ -30,7 +31,7 @@ export class OffloadManualExecutionsRule implements IBreakingChangeInstanceRule 
 			this.executionsConfig.mode === 'queue' &&
 			process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS !== 'true';
 
-		if (!isAffected) return { isAffected: false, instanceIssues: [], recommendations: [] };
+		if (!isAffected) return NOT_AFFECTED_INSTANCE;
 
 		return {
 			isAffected: true,

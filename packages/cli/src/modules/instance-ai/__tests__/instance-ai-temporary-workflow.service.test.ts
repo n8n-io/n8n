@@ -14,8 +14,6 @@ import type { InstanceAiThreadRepository } from '../repositories/instance-ai-thr
 // The adapter service (a value dependency of the service under test) pulls in
 // the heavy AI runtime at module-load time; stub it out.
 vi.mock('@n8n/instance-ai', () => ({
-	BuilderTemplatesService: class {},
-	builderTemplatesOptionsFromEnv: vi.fn(),
 	wrapUntrustedData: vi.fn((value: unknown) => value),
 }));
 
@@ -41,6 +39,19 @@ function createService() {
 	const context = mock<InstanceAiContext>();
 	context.workflowService.archiveIfAiTemporary = archiveIfAiTemporary;
 	adapterService.createContext.mockReturnValue(context);
+	adapterService.resolveExperimentGates.mockResolvedValue({
+		credentialDescriptionsEnabled: false,
+		configEvalsEnabled: false,
+		conversationHistoryEnabled: false,
+		conciseStyleEnabled: false,
+		setupPanelEnabled: false,
+		nodeUsageEnabled: false,
+		nodeContextEnabled: false,
+		folderExplorationEnabled: false,
+		approvalModesEnabled: false,
+		instanceContextEnabled: false,
+		assistantSkillsEnabled: false,
+	});
 
 	const service = new InstanceAiTemporaryWorkflowService(
 		logger,
@@ -93,7 +104,10 @@ describe('InstanceAiTemporaryWorkflowService', () => {
 			).resolves.toEqual(['wf-marked', 'wf-created']);
 
 			expect(aiBuilderTemporaryWorkflowRepository.findByThread).toHaveBeenCalledWith('thread-a');
-			expect(adapterService.createContext).toHaveBeenCalledWith(fakeUser, { threadId: 'thread-a' });
+			expect(adapterService.createContext).toHaveBeenCalledWith(fakeUser, {
+				threadId: 'thread-a',
+				configEvalsEnabled: false,
+			});
 			expect(archiveIfAiTemporary).toHaveBeenNthCalledWith(1, 'wf-marked');
 			expect(archiveIfAiTemporary).toHaveBeenNthCalledWith(2, 'wf-created');
 		});
@@ -173,7 +187,10 @@ describe('InstanceAiTemporaryWorkflowService', () => {
 			await service.reapForThreadCleanup('thread-a');
 
 			expect(userRepository.findOneBy).toHaveBeenCalledWith({ id: 'user-1' });
-			expect(adapterService.createContext).toHaveBeenCalledWith(fakeUser, { threadId: 'thread-a' });
+			expect(adapterService.createContext).toHaveBeenCalledWith(fakeUser, {
+				threadId: 'thread-a',
+				configEvalsEnabled: false,
+			});
 			expect(archiveIfAiTemporary).toHaveBeenCalledWith('wf-a');
 			expect(archiveIfAiTemporary).toHaveBeenCalledWith('wf-b');
 		});

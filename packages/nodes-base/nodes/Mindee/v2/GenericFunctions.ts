@@ -7,9 +7,12 @@ import type {
 	JsonObject,
 	IHttpRequestMethods,
 	IHttpRequestOptions,
+	RequestUrl,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, requestUrl } from 'n8n-workflow';
 
+export const ROOT_URL = 'https://api-v2.mindee.net/v2';
 const INITIAL_DELAY_MS = 1500;
 const POLL_DELAY_MS = 1000;
 
@@ -43,20 +46,18 @@ function isDataObject(value: unknown): value is IDataObject {
  * @param body - The request body data.
  * @param qs - The query string param.
  * @param headers - Additional request headers (default: empty object)
- * @param option - Additional request options (default: empty object)
  * @returns The API response data
  * @throws NodeApiError when the API request fails
  */
 export async function mindeeApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	url: string,
+	url: RequestUrl,
 	body: IDataObject | FormData = {},
 	qs: IDataObject = {},
 	headers: IDataObject = {},
-	option: Partial<IHttpRequestOptions> = {},
 ): Promise<IDataObject> {
-	const options: IHttpRequestOptions = {
+	const options: WithRequestTarget<IHttpRequestOptions> = {
 		headers: {
 			...headers,
 			// eslint-disable-next-line @typescript-eslint/naming-convention
@@ -67,7 +68,6 @@ export async function mindeeApiRequest(
 		body,
 		qs,
 	};
-	Object.assign(options, option);
 
 	let response: unknown;
 	try {
@@ -93,66 +93,59 @@ export async function mindeeApiRequest(
  * @param serverResponse The server response.
  * @throws NodeApiError when the job id is not found in the response.
  */
-export function extractPollingUrl(funcRef: IExecuteFunctions, serverResponse: IDataObject): string {
+export function extractPollingUrl(
+	funcRef: IExecuteFunctions,
+	serverResponse: IDataObject,
+): RequestUrl {
 	const pollingUrl = (serverResponse?.job as { polling_url?: string })?.polling_url;
-	if (!pollingUrl || pollingUrl.length === 0) {
+	if (!pollingUrl || !pollingUrl.startsWith(`${ROOT_URL}/`)) {
 		throw new NodeApiError(funcRef.getNode(), serverResponse as JsonObject, {
 			message: 'Mindee POST response does not contain a valid polling URL.',
 		});
 	}
-	return pollingUrl;
+	return requestUrl`${pollingUrl}`;
 }
 
 /**
- * Polls the Mindee API for the result of a job.
- * Automatically follows the redirect on the last poll attempt.
+ * Polls the Mindee API until the job returns its inference result.
+ * Once the job is done, the API redirects the poll request to the result.
+ * The HTTP client follows that redirect.
  * @param funcRef The execution function reference.
  * @param pollUrl URL for the polling.
- * @param pollingTimeoutCounter Maximum number of attempts to poll the API.
+ * @param maxPolls Maximum number of polls after the first one.
  */
 export async function pollMindee(
 	funcRef: IExecuteFunctions,
-	pollUrl: string,
-	pollingTimeoutCounter: number,
+	pollUrl: RequestUrl,
+	maxPolls: number,
 ): Promise<IDataObject[]> {
-	const result: IDataObject[] = [];
 	await sleep(INITIAL_DELAY_MS);
 	let serverResponse = await mindeeApiRequest.call(funcRef, 'GET', pollUrl);
-	if ('inference' in serverResponse) {
-		return [serverResponse];
-	}
-	if (!('job' in serverResponse)) {
-		throw new NodeApiError(funcRef.getNode(), serverResponse as JsonObject);
-	}
-	let jobStatus: string = (serverResponse.job as IDataObject).status as string;
 
-	for (let i = 0; i < pollingTimeoutCounter; i++) {
-		if (
-			serverResponse.status ||
-			serverResponse.detail ||
-			(serverResponse?.job as IDataObject).error ||
-			jobStatus === 'Failed'
-		) {
+	for (let polls = 0; ; polls++) {
+		if ('inference' in serverResponse) return [serverResponse];
+
+		const job = serverResponse.job;
+		if (serverResponse.status || serverResponse.detail || (isDataObject(job) && job.error)) {
 			throw new NodeApiError(funcRef.getNode(), serverResponse as JsonObject);
 		}
-
-		serverResponse = await mindeeApiRequest.call(funcRef, 'GET', pollUrl);
-		if ('inference' in (serverResponse as JsonObject)) break;
-
-		if (!('job' in serverResponse))
+		if (!isDataObject(job)) {
 			throw new NodeApiError(funcRef.getNode(), serverResponse as JsonObject, {
 				message: 'The Mindee API replied with an unexpected reply.',
 			});
-		jobStatus = (serverResponse.job as IDataObject).status as string;
-		await sleep(POLL_DELAY_MS);
-	}
+		}
+		if (job.status === 'Failed') {
+			throw new NodeApiError(funcRef.getNode(), serverResponse as JsonObject);
+		}
+		if (polls >= maxPolls) {
+			throw new NodeApiError(funcRef.getNode(), serverResponse as JsonObject, {
+				message: `Server polling timed out after ${maxPolls} seconds. Status: ${String(job.status)}.`,
+			});
+		}
 
-	if (!('inference' in (serverResponse as JsonObject)))
-		throw new NodeApiError(funcRef.getNode(), serverResponse as JsonObject, {
-			message: `Server polling timed out after ${pollingTimeoutCounter} seconds. Status: ${jobStatus}.`,
-		});
-	result.push(serverResponse);
-	return result;
+		await sleep(POLL_DELAY_MS);
+		serverResponse = await mindeeApiRequest.call(funcRef, 'GET', pollUrl);
+	}
 }
 
 /**

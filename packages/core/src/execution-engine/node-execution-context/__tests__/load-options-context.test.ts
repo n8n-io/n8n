@@ -95,8 +95,9 @@ describe('LoadOptionsContext', () => {
 				expect.anything(),
 				testCredentialType,
 				'internal',
-				undefined,
+				expect.objectContaining({ node }),
 				false,
+				undefined,
 				undefined,
 			);
 		});

@@ -1,16 +1,31 @@
+import { requestPath } from 'n8n-workflow';
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
+import type { Mock } from 'vitest';
 import { mockDeep } from 'vitest-mock-extended';
 
+import { clearAtlassianAccessibleResourcesCache } from '@utils/atlassian';
+
 import { clearSpaceKeyCache } from '../../actions/common';
-import { getPages, searchSpaces, searchSpacesWithAll } from '../../methods/listSearch';
-import { confluenceApiRequest } from '../../transport';
+import {
+	getLabels,
+	getPages,
+	getSites,
+	searchSpaces,
+	searchSpacesWithAll,
+} from '../../methods/listSearch';
+import { confluenceApiRequest, getConfluenceCloudId } from '../../transport';
 
 vi.mock('../../transport', () => ({
 	CONFLUENCE_CREDENTIAL_NAME: 'confluenceCloudOAuth2Api',
 	confluenceApiRequest: vi.fn(),
+	getConfluenceCloudId: vi.fn(),
+	// Distinct sentinel so the tests can tell the resolver's value apart from the
+	// legacy constant — a call site regressing to the constant must fail, not pass.
+	getConfluenceCredentialName: vi.fn(() => 'resolvedConfluenceCredential'),
 }));
 
 const apiRequest = vi.mocked(confluenceApiRequest);
+const cloudId = vi.mocked(getConfluenceCloudId);
 
 describe('Confluence listSearch.getPages', () => {
 	let ctx: ILoadOptionsFunctions;
@@ -18,6 +33,7 @@ describe('Confluence listSearch.getPages', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		clearSpaceKeyCache();
+		cloudId.mockResolvedValue('cloud-1');
 		ctx = mockDeep<ILoadOptionsFunctions>();
 		vi.mocked(ctx.getNode).mockReturnValue({
 			id: 'test-node',
@@ -26,7 +42,7 @@ describe('Confluence listSearch.getPages', () => {
 			typeVersion: 1,
 			position: [0, 0],
 			parameters: {},
-			credentials: { confluenceCloudOAuth2Api: { id: 'cred-1', name: 'account' } },
+			credentials: { resolvedConfluenceCredential: { id: 'cred-1', name: 'account' } },
 		});
 	});
 
@@ -47,7 +63,7 @@ describe('Confluence listSearch.getPages', () => {
 
 		expect(apiRequest).toHaveBeenCalledWith(
 			'GET',
-			'/wiki/rest/api/search',
+			requestPath`/wiki/rest/api/search`,
 			{},
 			{ cql: 'type=page ORDER BY lastmodified DESC', limit: 50, start: 0 },
 		);
@@ -68,12 +84,12 @@ describe('Confluence listSearch.getPages', () => {
 	it('scopes the search to the selected space and drops the space label', async () => {
 		vi.mocked(ctx.getCurrentNodeParameter).mockReturnValue('999');
 		apiRequest.mockImplementation(async (_method, endpoint, _body, qs) => {
-			if (endpoint === '/wiki/api/v2/spaces/999') return { id: 999, key: 'DOCS' };
-			if (endpoint === '/wiki/rest/api/search') {
+			if (String(endpoint) === '/wiki/api/v2/spaces/999') return { id: 999, key: 'DOCS' };
+			if (String(endpoint) === '/wiki/rest/api/search') {
 				const cql = (qs as { cql: string }).cql;
 				if (cql === 'type=page AND space = "DOCS" AND title = "plan"') return { results: [] };
 				expect(cql).toBe(
-					'type=page AND space = "DOCS" AND title ~ "plan*" ORDER BY lastmodified DESC',
+					'type=page AND space = "DOCS" AND (title ~ "plan*" OR title ~ "plan") ORDER BY lastmodified DESC',
 				);
 				return {
 					results: [
@@ -94,15 +110,15 @@ describe('Confluence listSearch.getPages', () => {
 
 		await getPages.call(ctx, 'plan');
 		const spaceLookups = apiRequest.mock.calls.filter(
-			([, endpoint]) => endpoint === '/wiki/api/v2/spaces/999',
+			([, endpoint]) => String(endpoint) === '/wiki/api/v2/spaces/999',
 		);
 		expect(spaceLookups).toHaveLength(1);
 	});
 
 	it('does not reuse cached space keys across credentials', async () => {
 		apiRequest.mockImplementation(async (_method, endpoint) => {
-			if (endpoint === '/wiki/api/v2/spaces/999') return { id: 999, key: 'DOCS' };
-			if (endpoint === '/wiki/rest/api/search') return { results: [] };
+			if (String(endpoint) === '/wiki/api/v2/spaces/999') return { id: 999, key: 'DOCS' };
+			if (String(endpoint) === '/wiki/rest/api/search') return { results: [] };
 			throw new Error(`unexpected endpoint ${endpoint}`);
 		});
 		const createCtx = (credentialId: string) => {
@@ -115,7 +131,7 @@ describe('Confluence listSearch.getPages', () => {
 				typeVersion: 1,
 				position: [0, 0],
 				parameters: {},
-				credentials: { confluenceCloudOAuth2Api: { id: credentialId, name: 'account' } },
+				credentials: { resolvedConfluenceCredential: { id: credentialId, name: 'account' } },
 			});
 			return scopedCtx;
 		};
@@ -125,9 +141,35 @@ describe('Confluence listSearch.getPages', () => {
 		await getPages.call(createCtx('cred-2'));
 
 		const spaceLookups = apiRequest.mock.calls.filter(
-			([, endpoint]) => endpoint === '/wiki/api/v2/spaces/999',
+			([, endpoint]) => String(endpoint) === '/wiki/api/v2/spaces/999',
 		);
 		expect(spaceLookups).toHaveLength(2);
+	});
+
+	it('does not reuse cached space keys across sites of one credential', async () => {
+		let currentSite = 'cloud-1';
+		const keyPerSite: Record<string, string> = { 'cloud-1': 'DOCS', 'cloud-2': 'ENG' };
+		const cqls: string[] = [];
+		cloudId.mockImplementation(async () => currentSite);
+		apiRequest.mockImplementation(async (_method, endpoint, _body, qs) => {
+			if (String(endpoint) === '/wiki/api/v2/spaces/999')
+				return { id: 999, key: keyPerSite[currentSite] };
+			if (String(endpoint) === '/wiki/rest/api/search') {
+				cqls.push((qs as { cql: string }).cql);
+				return { results: [] };
+			}
+			throw new Error(`unexpected endpoint ${endpoint}`);
+		});
+		vi.mocked(ctx.getCurrentNodeParameter).mockReturnValue('999');
+
+		await getPages.call(ctx);
+		currentSite = 'cloud-2';
+		await getPages.call(ctx);
+
+		expect(cqls).toEqual([
+			'type=page AND space = "DOCS" ORDER BY lastmodified DESC',
+			'type=page AND space = "ENG" ORDER BY lastmodified DESC',
+		]);
 	});
 
 	it('advances the offset even when a page comes back empty with a next link', async () => {
@@ -141,37 +183,128 @@ describe('Confluence listSearch.getPages', () => {
 		expect(result.paginationToken).toBe('51');
 	});
 
-	it('escapes quotes and backslashes in the CQL title filter', async () => {
+	it.each(['He said "hi" back', 'He said hi \\ back'])(
+		'skips the exact-title query for %j and searches the bare terms',
+		async (filter) => {
+			apiRequest.mockResolvedValue({ results: [] });
+
+			await getPages.call(ctx, filter);
+
+			expect(apiRequest).toHaveBeenCalledTimes(1);
+			expect(apiRequest).toHaveBeenCalledWith(
+				'GET',
+				requestPath`/wiki/rest/api/search`,
+				{},
+				expect.objectContaining({
+					cql: 'type=page AND (title ~ "He said hi back*" OR title ~ "He said hi back") ORDER BY lastmodified DESC',
+				}),
+			);
+		},
+	);
+
+	it.each([
+		['plan', 'plan'],
+		['BB2-12', 'BB2 12'],
+		['BB2-', 'BB2'],
+		['2026-09 notes', '2026 09 notes'],
+		['  Release   pla ', 'Release pla'],
+		['Dev/Prod_v1.2', 'Dev Prod_v1.2'],
+		['SO_R8', 'SO_R8'],
+		['Iroha 1.0.', 'Iroha 1.0'],
+		['September 26,2022', 'September 26,2022'],
+		['a, b', 'a b'],
+		['a\u2013b', 'a b'],
+		['*plan*', 'plan'],
+		['Win*95', 'Win 95'],
+		['title:(foo', 'title foo'],
+		['Caf\u00e9', 'Caf\u00e9'],
+		['Buy OR Build', 'Buy Build'],
+		['NOT Draft', 'Draft'],
+		["Developer's Landing", "Developer's Landing"],
+		['Developer\u2019s Landing', 'Developer\u2019s Landing'],
+		["'plan'", 'plan'],
+		['\u2019plan\u2019', 'plan'],
+		['Buy or Build', 'Buy or Build'],
+	])('searches %j as title terms with and without a trailing wildcard', async (filter, terms) => {
 		apiRequest.mockResolvedValue({ results: [] });
 
-		await getPages.call(ctx, 'He said "hi" \\ back');
+		await getPages.call(ctx, filter);
 
 		expect(apiRequest).toHaveBeenCalledWith(
 			'GET',
-			'/wiki/rest/api/search',
+			requestPath`/wiki/rest/api/search`,
 			{},
 			expect.objectContaining({
-				cql: 'type=page AND title = "He said \\"hi\\" \\\\ back"',
+				cql: `type=page AND (title ~ "${terms}*" OR title ~ "${terms}") ORDER BY lastmodified DESC`,
 			}),
 		);
+	});
+
+	it.each([
+		[' BB2-12 ', 'BB2-12'],
+		["Developer's Landing", "Developer's Landing"],
+	])('keeps the exact-title query on the trimmed text of %j', async (filter, title) => {
+		apiRequest.mockResolvedValue({ results: [] });
+
+		await getPages.call(ctx, filter);
+
+		expect(apiRequest).toHaveBeenCalledTimes(2);
 		expect(apiRequest).toHaveBeenCalledWith(
 			'GET',
-			'/wiki/rest/api/search',
+			requestPath`/wiki/rest/api/search`,
 			{},
-			expect.objectContaining({
-				cql: 'type=page AND title ~ "He said \\"hi\\" \\\\ back*" ORDER BY lastmodified DESC',
-			}),
+			expect.objectContaining({ cql: `type=page AND title = "${title}"` }),
+		);
+	});
+
+	it.each(['---', 'AND'])(
+		'lists recent pages when the filter %j has no searchable term',
+		async (filter) => {
+			apiRequest.mockResolvedValue({ results: [] });
+
+			await getPages.call(ctx, filter);
+
+			expect(apiRequest).toHaveBeenCalledTimes(2);
+			expect(apiRequest).toHaveBeenCalledWith(
+				'GET',
+				requestPath`/wiki/rest/api/search`,
+				{},
+				expect.objectContaining({ cql: `type=page AND title = "${filter}"` }),
+			);
+			expect(apiRequest).toHaveBeenCalledWith(
+				'GET',
+				requestPath`/wiki/rest/api/search`,
+				{},
+				expect.objectContaining({ cql: 'type=page ORDER BY lastmodified DESC' }),
+			);
+		},
+	);
+
+	it('treats a whitespace-only filter like no filter', async () => {
+		apiRequest.mockResolvedValue({ results: [] });
+
+		await getPages.call(ctx, '   ');
+
+		expect(apiRequest).toHaveBeenCalledTimes(1);
+		expect(apiRequest).toHaveBeenCalledWith(
+			'GET',
+			requestPath`/wiki/rest/api/search`,
+			{},
+			expect.objectContaining({ cql: 'type=page ORDER BY lastmodified DESC' }),
 		);
 	});
 
 	it('puts the exact-title match ahead of prefix matches on the first page', async () => {
 		apiRequest.mockImplementation(async (_method, endpoint, _body, qs) => {
-			if (endpoint !== '/wiki/rest/api/search') throw new Error(`unexpected endpoint ${endpoint}`);
+			if (String(endpoint) !== '/wiki/rest/api/search')
+				throw new Error(`unexpected endpoint ${endpoint}`);
 			const cql = (qs as { cql: string }).cql;
 			if (cql === 'type=page AND title = "Notes"') {
 				return { results: [{ content: { id: 1, title: 'Notes' } }] };
 			}
-			expect(cql).toBe('type=page AND title ~ "Notes*" ORDER BY lastmodified DESC');
+			expect(cql).toBe(
+				'type=page AND (title ~ "Notes*" OR title ~ "Notes") ORDER BY lastmodified DESC',
+			);
 			return {
 				results: [
 					{ content: { id: 2, title: 'Notes 2026' } },
@@ -193,9 +326,12 @@ describe('Confluence listSearch.getPages', () => {
 		expect(apiRequest).toHaveBeenCalledTimes(1);
 		expect(apiRequest).toHaveBeenCalledWith(
 			'GET',
-			'/wiki/rest/api/search',
+			requestPath`/wiki/rest/api/search`,
 			{},
-			expect.objectContaining({ start: 50 }),
+			expect.objectContaining({
+				cql: 'type=page AND (title ~ "Notes*" OR title ~ "Notes") ORDER BY lastmodified DESC',
+				start: 50,
+			}),
 		);
 	});
 
@@ -209,7 +345,7 @@ describe('Confluence listSearch.getPages', () => {
 
 		expect(apiRequest).toHaveBeenCalledWith(
 			'GET',
-			'/wiki/rest/api/search',
+			requestPath`/wiki/rest/api/search`,
 			{},
 			expect.objectContaining({ start: 50 }),
 		);
@@ -238,7 +374,7 @@ describe('Confluence listSearch.searchSpaces', () => {
 
 		expect(apiRequest).toHaveBeenCalledWith(
 			'GET',
-			'/wiki/api/v2/spaces',
+			requestPath`/wiki/api/v2/spaces`,
 			{},
 			{ limit: 50, sort: 'name', status: 'current' },
 		);
@@ -293,7 +429,7 @@ describe('Confluence listSearch.searchSpaces', () => {
 		expect(apiRequest).toHaveBeenNthCalledWith(
 			2,
 			'GET',
-			'/wiki/api/v2/spaces',
+			requestPath`/wiki/api/v2/spaces`,
 			{},
 			expect.objectContaining({ cursor: 'c2' }),
 		);
@@ -313,10 +449,209 @@ describe('Confluence listSearch.searchSpaces', () => {
 
 		expect(apiRequest).toHaveBeenCalledWith(
 			'GET',
-			'/wiki/api/v2/spaces',
+			requestPath`/wiki/api/v2/spaces`,
 			{},
 			expect.objectContaining({ cursor: 'abc==' }),
 		);
 		expect(result.paginationToken).toBe('xyz==');
+	});
+});
+
+describe('Confluence listSearch.getLabels', () => {
+	let ctx: ILoadOptionsFunctions;
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		ctx = mockDeep<ILoadOptionsFunctions>();
+	});
+
+	it('lists labels sorted by name, marking non-global prefixes', async () => {
+		apiRequest.mockResolvedValueOnce({
+			results: [
+				{ id: 1, name: 'runbook', prefix: 'global' },
+				{ name: 'entry without id is skipped' },
+				{ id: 2, name: 'favourite', prefix: 'my' },
+			],
+		});
+
+		const result = await getLabels.call(ctx);
+
+		expect(apiRequest).toHaveBeenCalledWith(
+			'GET',
+			requestPath`/wiki/api/v2/labels`,
+			{},
+			{ limit: 50, sort: 'name' },
+		);
+		expect(result.results.map(({ name, value }) => [name, value])).toEqual([
+			['runbook', '1'],
+			['favourite (my)', '2'],
+		]);
+		expect(result.paginationToken).toBeUndefined();
+	});
+
+	it('filters the typed text client-side, case-insensitively', async () => {
+		apiRequest.mockResolvedValueOnce({
+			results: [
+				{ id: 1, name: 'runbook', prefix: 'global' },
+				{ id: 2, name: 'qa-docs', prefix: 'global' },
+			],
+		});
+
+		const result = await getLabels.call(ctx, 'RUN');
+
+		expect(result.results.map(({ name, value }) => [name, value])).toEqual([['runbook', '1']]);
+	});
+
+	it('scans past a partial match while an exact match may lie ahead in the name sort', async () => {
+		apiRequest
+			.mockResolvedValueOnce({
+				results: [{ id: 1, name: 'aqua-qa', prefix: 'global' }],
+				_links: { next: '/wiki/api/v2/labels?cursor=c2' },
+			})
+			.mockResolvedValueOnce({
+				results: [{ id: 2, name: 'qa', prefix: 'global' }],
+				_links: { next: '/wiki/api/v2/labels?cursor=c3' },
+			});
+
+		const result = await getLabels.call(ctx, 'qa');
+
+		expect(apiRequest).toHaveBeenCalledTimes(2);
+		expect(result.results.map(({ name, value }) => [name, value])).toEqual([
+			['aqua-qa', '1'],
+			['qa', '2'],
+		]);
+	});
+
+	it('stops scanning once the name sort has passed the typed text', async () => {
+		apiRequest.mockResolvedValueOnce({
+			results: [{ id: 1, name: 'runbook', prefix: 'global' }],
+			_links: { next: '/wiki/api/v2/labels?cursor=c2' },
+		});
+
+		const result = await getLabels.call(ctx, 'run');
+
+		expect(apiRequest).toHaveBeenCalledTimes(1);
+		expect(result.results.map(({ name, value }) => [name, value])).toEqual([['runbook', '1']]);
+		expect(result.paginationToken).toBe('c2');
+	});
+
+	it('keeps fetching pages while a typed filter has no match yet', async () => {
+		apiRequest
+			.mockResolvedValueOnce({
+				results: [{ id: 1, name: 'runbook', prefix: 'global' }],
+				_links: { next: '/wiki/api/v2/labels?cursor=c2' },
+			})
+			.mockResolvedValueOnce({
+				results: [{ id: 3, name: 'qa-seed', prefix: 'global' }],
+			});
+
+		const result = await getLabels.call(ctx, 'qa-seed');
+
+		expect(apiRequest).toHaveBeenCalledTimes(2);
+		expect(apiRequest).toHaveBeenNthCalledWith(
+			2,
+			'GET',
+			requestPath`/wiki/api/v2/labels`,
+			{},
+			expect.objectContaining({ cursor: 'c2' }),
+		);
+		expect(result).toEqual({
+			results: [{ name: 'qa-seed', value: '3' }],
+			paginationToken: undefined,
+		});
+	});
+
+	it('resumes from the pagination cursor and returns the next one', async () => {
+		apiRequest.mockResolvedValueOnce({
+			results: [{ id: 3, name: 'qa-seed', prefix: 'global' }],
+			_links: { next: '/wiki/api/v2/labels?cursor=xyz%3D%3D' },
+		});
+
+		const result = await getLabels.call(ctx, undefined, 'abc==');
+
+		expect(apiRequest).toHaveBeenCalledWith(
+			'GET',
+			requestPath`/wiki/api/v2/labels`,
+			{},
+			expect.objectContaining({ cursor: 'abc==' }),
+		);
+		expect(result.paginationToken).toBe('xyz==');
+	});
+});
+
+describe('Confluence listSearch.getSites', () => {
+	let ctx: ILoadOptionsFunctions;
+	let httpRequestWithAuthentication: Mock;
+
+	const accessibleResources = [
+		{ id: 'cloud-2', url: 'https://zeta.atlassian.net', name: 'Zeta' },
+		{ id: 'cloud-1', url: 'https://alpha.atlassian.net', name: 'Alpha' },
+		{ id: 'cloud-3', url: 'https://nameless.atlassian.net' },
+		{ id: '', url: 'https://broken.atlassian.net', name: 'No ID' },
+	];
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		clearAtlassianAccessibleResourcesCache();
+		ctx = mockDeep<ILoadOptionsFunctions>();
+		httpRequestWithAuthentication = vi.fn().mockResolvedValue(accessibleResources);
+		ctx.helpers.httpRequestWithAuthentication = httpRequestWithAuthentication;
+		vi.mocked(ctx.getNode).mockReturnValue({
+			id: 'test-node',
+			name: 'Test Confluence Node',
+			type: 'n8n-nodes-base.confluence',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+			credentials: { resolvedConfluenceCredential: { id: 'cred-1', name: 'account' } },
+		});
+	});
+
+	it('lists accessible sites sorted by name, cloudId as the value', async () => {
+		const result = await getSites.call(ctx);
+
+		// The resolver's value (not the legacy constant) must reach the request
+		expect(httpRequestWithAuthentication).toHaveBeenCalledWith(
+			'resolvedConfluenceCredential',
+			expect.objectContaining({
+				url: 'https://api.atlassian.com/oauth/token/accessible-resources',
+			}),
+		);
+		expect(result).toEqual({
+			results: [
+				{ name: 'Alpha', value: 'cloud-1', url: 'https://alpha.atlassian.net' },
+				// A site without a name falls back to its URL; entries without an ID are dropped
+				{
+					name: 'https://nameless.atlassian.net',
+					value: 'cloud-3',
+					url: 'https://nameless.atlassian.net',
+				},
+				{ name: 'Zeta', value: 'cloud-2', url: 'https://zeta.atlassian.net' },
+			],
+		});
+	});
+
+	it('filters by name or URL, case-insensitively', async () => {
+		const byName = await getSites.call(ctx, 'alp');
+		expect(byName.results.map((r) => r.value)).toEqual(['cloud-1']);
+
+		const byUrl = await getSites.call(ctx, 'ZETA.atlassian');
+		expect(byUrl.results.map((r) => r.value)).toEqual(['cloud-2']);
+	});
+
+	it('refreshes on an unfiltered load so newly granted sites appear', async () => {
+		await getSites.call(ctx);
+		await getSites.call(ctx);
+
+		expect(httpRequestWithAuthentication).toHaveBeenCalledTimes(2);
+	});
+
+	it('serves filtered loads from the cache, so typing costs no requests', async () => {
+		await getSites.call(ctx);
+		await getSites.call(ctx, 'a');
+		await getSites.call(ctx, 'al');
+		await getSites.call(ctx, 'alp');
+
+		expect(httpRequestWithAuthentication).toHaveBeenCalledTimes(1);
 	});
 });

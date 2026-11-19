@@ -146,7 +146,7 @@ export class PluginRegistry {
 		// If handler returns { name, id }, we can use nameMapping
 		// Otherwise it returns just the name string
 		if (typeof info === 'object' && info !== null && 'name' in info && 'id' in info) {
-			const { name, id } = info as { name: string; id: string };
+			const { name, id } = info;
 			// Check if this node was renamed
 			const mappedName = nameMapping?.get(id);
 			return mappedName ?? name;

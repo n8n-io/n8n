@@ -33,7 +33,11 @@ export class InstanceSettingsLoaderConfig {
 	@Env('N8N_SSO_MANAGED_BY_ENV')
 	ssoManagedByEnv: boolean = false;
 
-	/** User role provisioning mode: disabled, instance_role, or instance_and_project_roles. */
+	/**
+	 * Which roles direct-claim provisioning sets: disabled, instance_role, or
+	 * instance_and_project_roles. Ignored when N8N_SSO_SCOPES_USE_EXPRESSION_MAPPING selects
+	 * the expression-mapping strategy instead.
+	 */
 	@Env('N8N_SSO_USER_ROLE_PROVISIONING')
 	ssoUserRoleProvisioning: string = 'disabled';
 
@@ -126,6 +130,39 @@ export class InstanceSettingsLoaderConfig {
 
 	@Env('N8N_MCP_ACCESS_ENABLED')
 	mcpAccessEnabled: boolean = false;
+
+	// --- Skill Sync ---
+
+	/**
+	 * Whether environment variables control Skill Sync. When true, n8n applies
+	 * `N8N_SKILL_SYNC_ENABLED` on every startup and admins can't change the
+	 * setting in the UI. When false, n8n ignores `N8N_SKILL_SYNC_ENABLED`.
+	 */
+	@Env('N8N_SKILL_SYNC_MANAGED_BY_ENV')
+	skillSyncManagedByEnv: boolean = false;
+
+	/**
+	 * Whether users can sync skills from GitHub repositories. n8n reads this
+	 * only when `N8N_SKILL_SYNC_MANAGED_BY_ENV` is true. Turning it off keeps
+	 * the skills that are already synced.
+	 */
+	@Env('N8N_SKILL_SYNC_ENABLED')
+	skillSyncEnabled: boolean = false;
+
+	/**
+	 * Whether `N8N_PREFERENCES_ENABLED` controls the Preferences setting. When true, n8n applies
+	 * that value on every startup and admins can't change the setting in the UI.
+	 */
+	@Env('N8N_PREFERENCES_MANAGED_BY_ENV')
+	preferencesManagedByEnv: boolean = false;
+
+	/**
+	 * Whether users can save preferences that n8n Assistant and MCP clients apply. n8n reads
+	 * this value only when `N8N_PREFERENCES_MANAGED_BY_ENV` is true. Turning it off keeps the
+	 * saved preferences.
+	 */
+	@Env('N8N_PREFERENCES_ENABLED')
+	preferencesEnabled: boolean = false;
 
 	// --- Community packages ---
 

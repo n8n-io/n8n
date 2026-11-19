@@ -1,8 +1,8 @@
+import type { TelemetryProxy } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import z from 'zod';
 
-import type { DataTableUserOperations } from '@/modules/data-table/data-table-proxy.service';
-import type { Telemetry } from '@/telemetry';
+import type { DataTableUserOperations } from '@n8n/backend-module-data-table';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
@@ -12,6 +12,7 @@ import {
 	dataTableColumnTypeSchema,
 	dataTableProjectIdSchema,
 } from '../schemas';
+import { trackAndReturnToolError } from '../tool-error.utils';
 
 const inputSchema = {
 	dataTableId: z.string().describe('The ID of the data table to add a column to'),
@@ -29,7 +30,7 @@ const outputSchema = {
 export const createAddDataTableColumnTool = (
 	user: User,
 	dataTableOps: DataTableUserOperations,
-	telemetry: Telemetry,
+	telemetry: TelemetryProxy,
 ): ToolDefinition<typeof inputSchema> => ({
 	name: 'add_data_table_column',
 	config: {
@@ -78,16 +79,10 @@ export const createAddDataTableColumnTool = (
 				structuredContent: output,
 			};
 		} catch (error) {
-			const errorMessage = error instanceof Error ? error.message : String(error);
-			telemetryPayload.results = { success: false, error: errorMessage };
-			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
-
-			const output = { success: false, message: errorMessage };
-			return {
-				content: [{ type: 'text', text: JSON.stringify(output) }],
-				structuredContent: output,
-				isError: true,
-			};
+			return trackAndReturnToolError(telemetry, telemetryPayload, error, (message) => ({
+				success: false,
+				message,
+			}));
 		}
 	},
 });

@@ -5,7 +5,7 @@ import {
 	PatchRoleMappingRuleDto,
 } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
-import { AuthenticatedRequest } from '@n8n/db';
+import { AuthenticatedRequest, isPerson } from '@n8n/db';
 import {
 	Body,
 	Delete,
@@ -19,8 +19,6 @@ import {
 } from '@n8n/decorators';
 import type { Response } from 'express';
 
-import { EventService } from '@/events/event.service';
-
 import type {
 	RoleMappingRuleListResponse,
 	RoleMappingRuleResponse,
@@ -32,7 +30,6 @@ export class RoleMappingRuleController {
 	constructor(
 		private readonly roleMappingRuleService: RoleMappingRuleService,
 		private readonly licenseState: LicenseState,
-		private readonly eventService: EventService,
 	) {}
 
 	@Get('/')
@@ -79,7 +76,7 @@ export class RoleMappingRuleController {
 			id,
 			targetIndex: body.targetIndex,
 			userId: req.user.id,
-			userEmail: req.user.email,
+			userEmail: isPerson(req.user) ? req.user.email : undefined,
 		});
 	}
 
@@ -96,16 +93,12 @@ export class RoleMappingRuleController {
 			return res.status(403).json({ message: 'Provisioning is not licensed' });
 		}
 
-		const result = await this.roleMappingRuleService.patch(id, body);
-
-		this.eventService.emit('role-mapping-rule-updated', {
-			user: { id: req.user.id, email: req.user.email },
-			ruleId: result.id,
-			ruleType: result.type,
-			patchedFields: Object.keys(body),
+		return await this.roleMappingRuleService.patch({
+			id,
+			dto: body,
+			userId: req.user.id,
+			userEmail: isPerson(req.user) ? req.user.email : undefined,
 		});
-
-		return result;
 	}
 
 	@Delete('/:id')
@@ -119,12 +112,10 @@ export class RoleMappingRuleController {
 			return res.status(403).json({ message: 'Provisioning is not licensed' });
 		}
 
-		const { ruleType } = await this.roleMappingRuleService.delete(id);
-
-		this.eventService.emit('role-mapping-rule-deleted', {
-			user: { id: req.user.id, email: req.user.email },
-			ruleId: id,
-			ruleType,
+		await this.roleMappingRuleService.delete({
+			id,
+			userId: req.user.id,
+			userEmail: isPerson(req.user) ? req.user.email : undefined,
 		});
 
 		return { success: true };

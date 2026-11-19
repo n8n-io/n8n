@@ -6,6 +6,7 @@ import {
 	type InstanceAiLivenessPolicy,
 	type InstanceAiLivenessTimeoutReason,
 } from '@n8n/instance-ai';
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 
 import type { InstanceAiRunTimeoutDetails } from '../run-timeout-details';
 
@@ -13,10 +14,6 @@ export const INSTANCE_AI_RUN_TIMEOUT_REASON = 'timeout';
 
 const RUN_TIMEOUT_MESSAGE =
 	'The run stopped making progress, so I cancelled it. You can retry or adjust the request.';
-
-function getErrorMessage(error: unknown): string {
-	return error instanceof Error ? error.message : String(error);
-}
 
 export type InstanceAiLivenessTimedOutActiveRun = {
 	runId: string;
@@ -87,6 +84,8 @@ export type InstanceAiLivenessServiceOptions<
 	backgroundTaskIdleTimeoutMs: number;
 	runState: InstanceAiLivenessRunState<TSuspendedRun>;
 	backgroundTasks: InstanceAiLivenessBackgroundTasks;
+	/** A task that waits for the user outside a confirmation, for example a cloud browser they control. */
+	isTaskWaitingForUser?: (taskId: string) => boolean;
 	eventBus: InstanceAiLivenessEventBus;
 	finalizeCancelledSuspendedRun: (suspended: TSuspendedRun, reason: string) => void;
 	onPendingConfirmationRejected?: (requestId: string) => void;
@@ -207,7 +206,8 @@ export class InstanceAiLivenessService<
 				now,
 				{
 					shouldSkipTask: (task) =>
-						this.options.runState.hasPendingConfirmationForThread(task.threadId),
+						this.options.runState.hasPendingConfirmationForThread(task.threadId) ||
+						(this.options.isTaskWaitingForUser?.(task.taskId) ?? false),
 				},
 			);
 			for (const task of timedOutTasks) {

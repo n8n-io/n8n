@@ -1,6 +1,12 @@
+import { requestUrl } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
-import { extractResourceLocatorValue, getActiveCredentialType, getHost } from '../helpers';
+import {
+	databricksApiRequest,
+	extractResourceLocatorValue,
+	getActiveCredentialType,
+	getHost,
+} from '../helpers';
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	const credentialType = getActiveCredentialType(this, i);
@@ -12,12 +18,16 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	if (catalogName) qs.catalog_name = catalogName;
 	if (schemaName) qs.schema_name = schemaName;
 
-	const response = await this.helpers.httpRequestWithAuthentication.call(this, credentialType, {
-		method: 'GET',
-		url: `${host}/api/2.1/unity-catalog/tables`,
-		qs,
-		json: true,
-	});
+	const response = await databricksApiRequest(
+		this,
+		credentialType,
+		requestUrl`${host}/api/2.1/unity-catalog/tables`,
+		{
+			method: 'GET',
+			qs,
+			json: true,
+		},
+	);
 
 	return [{ json: response, pairedItem: { item: i } }];
 }

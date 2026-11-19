@@ -1,12 +1,6 @@
 {
     "type": "object",
     "properties": {
-        "@odata.context": {
-            "type": "string"
-        },
-        "@odata.etag": {
-            "type": "string"
-        },
         "bccRecipients": {
             "type": "array",
             "items": {
@@ -44,6 +38,25 @@
             "type": "array",
             "items": {
                 "type": "string"
+            }
+        },
+        "ccRecipients": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "emailAddress": {
+                        "type": "object",
+                        "properties": {
+                            "address": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
             }
         },
         "changeKey": {
@@ -124,6 +137,9 @@
         "sentDateTime": {
             "type": "string"
         },
+        "subject": {
+            "type": "string"
+        },
         "toRecipients": {
             "type": "array",
             "items": {
@@ -147,5 +163,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 3
 }

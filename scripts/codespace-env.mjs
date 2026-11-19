@@ -32,6 +32,32 @@ export function codespaceEnv(name, sharedDir = SHARED) {
 	return line?.slice(name.length + 1).trim() || undefined;
 }
 
+/**
+ * Returns a Codespaces user or repository secret, or undefined.
+ *
+ * Secrets live in a different file from `codespaceEnv`'s, base64-encoded, and
+ * Codespaces exports them to VS Code sessions only. A tmux or ssh shell gets
+ * nothing. `.devcontainer/codespaces/codespaces-env.sh` decodes them for
+ * interactive bash; this is the same rule for a Node caller, so keep the two in
+ * step: skip a key with a character outside [A-Za-z0-9_], skip a value that does
+ * not decode, and let the last line win.
+ */
+export function codespaceSecret(name, sharedDir = SHARED) {
+	if (process.env[name]) return process.env[name];
+	if (/[^A-Za-z0-9_]/.test(name)) return undefined;
+
+	const line = readShared(sharedDir, '.env-secrets')
+		.split('\n')
+		.findLast((l) => l.startsWith(`${name}=`));
+	if (!line) return undefined;
+
+	try {
+		return Buffer.from(line.slice(name.length + 1).trim(), 'base64').toString('utf8') || undefined;
+	} catch {
+		return undefined;
+	}
+}
+
 export const codespaceName = (sharedDir) => codespaceEnv('CODESPACE_NAME', sharedDir);
 
 export const forwardingDomain = (sharedDir) =>

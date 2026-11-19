@@ -1,4 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
+import type { SsrfProtectionConfig } from '@n8n/config';
 import dns from 'node:dns';
 import type { LookupFunction } from 'node:net';
 import type { Dispatcher } from 'undici';
@@ -69,6 +70,35 @@ describe('createSsrfInterceptor', () => {
 		expect(bridge.validateUrl).toHaveBeenCalledWith(validatedUrl('https://api.example.com/data'));
 		expect(innerDispatch).toHaveBeenCalledTimes(1);
 		expect(handler.onResponseError).not.toHaveBeenCalled();
+	});
+
+	it('keeps the origin authority when the request target starts with a double slash', async () => {
+		const bridge = makeSsrfBridge();
+		const { innerDispatch, dispatch } = makeInterceptedDispatch(bridge);
+		const handler = makeHandler();
+
+		dispatch(
+			makeOpts('//openai/deployments/gpt-4o/chat/completions', 'https://res.openai.azure.com'),
+			handler,
+		);
+		await flush();
+
+		expect(bridge.validateUrl).toHaveBeenCalledWith(
+			validatedUrl('https://res.openai.azure.com//openai/deployments/gpt-4o/chat/completions'),
+		);
+		expect(innerDispatch).toHaveBeenCalledTimes(1);
+	});
+
+	it('uses an absolute-URI request target as-is', async () => {
+		const bridge = makeSsrfBridge();
+		const { innerDispatch, dispatch } = makeInterceptedDispatch(bridge);
+		const handler = makeHandler();
+
+		dispatch(makeOpts('https://api.example.com/data', 'http://proxy.example.com'), handler);
+		await flush();
+
+		expect(bridge.validateUrl).toHaveBeenCalledWith(validatedUrl('https://api.example.com/data'));
+		expect(innerDispatch).toHaveBeenCalledTimes(1);
 	});
 
 	it('fails the dispatch and does not dispatch when SSRF rejects the target', async () => {
@@ -150,8 +180,22 @@ function makeBridge(blockedPath: string): { bridge: SsrfBridge; error: Error } {
 	return { bridge, error };
 }
 
-function makeTransport(options?: Parameters<OutboundHttp['transport']>[0]) {
-	return new OutboundHttp(mock<SsrfProtectionService>(), mock<Logger>()).transport(options);
+// `ssrf` installs the scripted bridge as the instance's protection service, so
+// the transport picks it up through the default safe mode. `enabled` sets the
+// instance flag (default true).
+function makeTransport(
+	options?: NonNullable<Parameters<OutboundHttp['transport']>[0]> & {
+		ssrf?: SsrfBridge;
+		enabled?: boolean;
+	},
+) {
+	const { ssrf, enabled = true, ...transportOptions } = options ?? {};
+	const service = ssrf ? mock<SsrfProtectionService>(ssrf) : mock<SsrfProtectionService>();
+	return new OutboundHttp(
+		service,
+		mock<SsrfProtectionConfig>({ enabled }),
+		mock<Logger>(),
+	).transport(transportOptions);
 }
 
 // Walk the `cause` chain to the deepest error message. undici wraps a
@@ -221,7 +265,10 @@ describe('SSRF end-to-end', () => {
 
 		it('follows the redirect without validation when SSRF is disabled', async () => {
 			const { bridge } = makeBridge('/internal');
-			const fetchFn = makeTransport({ ssrf: 'disabled', proxy: false }).asCustomFetch();
+			const fetchFn = makeTransport({
+				useDefaultSsrfPolicy: 'unsafe',
+				proxy: false,
+			}).asCustomFetch();
 
 			const res = await fetchFn(`${server.url}/start`);
 
@@ -229,6 +276,34 @@ describe('SSRF end-to-end', () => {
 			await expect(res.text()).resolves.toBe('reached:/internal');
 			expect(bridge.validateUrl).not.toHaveBeenCalled();
 			expect(server.captured).toEqual(['/start', '/internal']);
+		});
+	});
+
+	describe('instance flag (SsrfProtectionConfig.enabled)', () => {
+		it('does not validate a safe transport when the instance disables protection', async () => {
+			const { bridge } = makeBridge('/internal');
+			const fetchFn = makeTransport({ ssrf: bridge, enabled: false, proxy: false }).asCustomFetch();
+
+			const res = await fetchFn(`${server.url}/start`);
+
+			expect(res.status).toBe(200);
+			await expect(res.text()).resolves.toBe('reached:/internal');
+			expect(bridge.validateUrl).not.toHaveBeenCalled();
+		});
+
+		it('validates an enforced transport even when the instance disables protection', async () => {
+			const { bridge } = makeBridge('/internal');
+			const fetchFn = makeTransport({
+				ssrf: bridge,
+				enabled: false,
+				useDefaultSsrfPolicy: 'enforced',
+				proxy: false,
+			}).asCustomFetch();
+
+			await expect(fetchFn(`${server.url}/start`)).rejects.toThrow();
+
+			expect(bridge.validateUrl).toHaveBeenCalledWith(validatedUrl(`${server.url}/internal`));
+			expect(server.captured).not.toContain('/internal');
 		});
 	});
 
@@ -251,7 +326,7 @@ describe('SSRF end-to-end', () => {
 
 		it('does not validate when SSRF is disabled (bare dispatcher)', async () => {
 			const { bridge } = makeBridge('/internal');
-			const client = makeTransport({ ssrf: 'disabled', proxy: false });
+			const client = makeTransport({ useDefaultSsrfPolicy: 'unsafe', proxy: false });
 			const dispatcher = client.getDispatcher();
 
 			const { fetch: undiciFetch } = await import('undici');
@@ -405,7 +480,10 @@ describe('proxy host validation', () => {
 		const bridge = denyingBridge(new Error('The proxy host is not permitted by policy'));
 
 		expect(() =>
-			makeTransport({ ssrf: 'disabled', proxy: 'http://127.0.0.1:3128' }).getDispatcher(),
+			makeTransport({
+				useDefaultSsrfPolicy: 'unsafe',
+				proxy: 'http://127.0.0.1:3128',
+			}).getDispatcher(),
 		).not.toThrow();
 		expect(bridge.validateConnectionHost).not.toHaveBeenCalled();
 	});

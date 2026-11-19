@@ -1,0 +1,642 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Microsoft Teams v2 rlc.description > emits the pinned INodeProperties 1`] = `
+{
+  "bucketRLC": {
+    "default": {
+      "mode": "list",
+      "value": "",
+    },
+    "description": "The bucket for the task to belong to",
+    "displayName": "Bucket",
+    "modes": [
+      {
+        "displayName": "From List",
+        "name": "list",
+        "placeholder": "Select a Bucket...",
+        "type": "list",
+        "typeOptions": {
+          "searchListMethod": "getBuckets",
+          "searchable": true,
+        },
+      },
+      {
+        "displayName": "By ID",
+        "name": "id",
+        "placeholder": "rl1HYb0cUEiHPc7zgB_KWWUAA7Of",
+        "type": "string",
+      },
+    ],
+    "name": "bucketId",
+    "required": true,
+    "type": "resourceLocator",
+    "typeOptions": {
+      "loadOptionsDependsOn": [
+        "planId.value",
+      ],
+    },
+  },
+  "channelRLC": {
+    "default": {
+      "mode": "list",
+      "value": "",
+    },
+    "description": "Select the channel from the list, by URL, or by ID (the ID is the "threadId" in the URL)",
+    "displayName": "Channel",
+    "modes": [
+      {
+        "displayName": "From List",
+        "name": "list",
+        "placeholder": "Select a Channel...",
+        "type": "list",
+        "typeOptions": {
+          "searchListMethod": "getChannels",
+          "searchable": true,
+        },
+      },
+      {
+        "displayName": "By ID",
+        "name": "id",
+        "placeholder": "19:-xlxyqXNSCxpI1SDzgQ_L9ZvzSR26pgphq1BJ9y7QJE1@thread.tacv2",
+        "type": "string",
+      },
+    ],
+    "name": "channelId",
+    "required": true,
+    "type": "resourceLocator",
+    "typeOptions": {
+      "loadOptionsDependsOn": [
+        "teamId.value",
+      ],
+    },
+  },
+  "chatMemberRLC": {
+    "default": {
+      "mode": "list",
+      "value": "",
+    },
+    "description": "Select the member from the list, or give the membership ID returned by Chat Member → Get Many (the ID field, not the "userId" field)",
+    "displayName": "Member",
+    "modes": [
+      {
+        "displayName": "From List",
+        "name": "list",
+        "placeholder": "Select a Member...",
+        "type": "list",
+        "typeOptions": {
+          "searchListMethod": "getChatMembers",
+          "searchable": true,
+        },
+      },
+      {
+        "displayName": "By ID",
+        "name": "id",
+        "placeholder": "e.g. MCMjMCMjMjM3ODZjYTYtN2ZmMi00NjcyLTg3ZDAtNWM2NDll...",
+        "type": "string",
+      },
+    ],
+    "name": "membershipId",
+    "required": true,
+    "type": "resourceLocator",
+    "typeOptions": {
+      "loadOptionsDependsOn": [
+        "chatId.value",
+      ],
+    },
+  },
+  "chatRLC": {
+    "default": {
+      "mode": "list",
+      "value": "",
+    },
+    "description": "Select the chat from the list, by URL, or by ID (find the chat ID after "conversations/" in the URL)",
+    "displayName": "Chat",
+    "modes": [
+      {
+        "displayName": "From List",
+        "name": "list",
+        "placeholder": "Select a Chat...",
+        "type": "list",
+        "typeOptions": {
+          "searchListMethod": "getChats",
+          "searchable": true,
+        },
+      },
+      {
+        "displayName": "By ID",
+        "name": "id",
+        "placeholder": "19:7e2f1174-e8ee-4859-b8b1-a8d1cc63d276_0c5cfdbb-596f-4d39-b557-5d9516c94107@unq.gbl.spaces",
+        "type": "string",
+        "url": "=https://teams.microsoft.com/l/chat/{{encodeURIComponent($value)}}/0",
+      },
+    ],
+    "name": "chatId",
+    "required": true,
+    "type": "resourceLocator",
+  },
+  "groupRLC": {
+    "default": {
+      "mode": "list",
+      "value": "",
+    },
+    "description": "Select the team from the list or by ID (the ID is the "groupId" parameter in the URL you get from "Get a link to the team")",
+    "displayName": "Team",
+    "modes": [
+      {
+        "displayName": "From List",
+        "name": "list",
+        "placeholder": "Select a Team...",
+        "type": "list",
+        "typeOptions": {
+          "searchListMethod": "getGroups",
+          "searchable": true,
+        },
+      },
+      {
+        "displayName": "By ID",
+        "extractValue": {
+          "regex": "^([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})",
+          "type": "regex",
+        },
+        "name": "id",
+        "placeholder": "12f0ca7d-b77f-4c4e-93d2-5cbdb4f464c6",
+        "type": "string",
+        "validation": [
+          {
+            "properties": {
+              "errorMessage": "Not a valid Microsoft Teams Team ID",
+              "regex": "^([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})[ 	]*",
+            },
+            "type": "regex",
+          },
+        ],
+      },
+    ],
+    "name": "groupId",
+    "required": true,
+    "type": "resourceLocator",
+    "typeOptions": {
+      "loadOptionsDependsOn": [
+        "groupSource",
+      ],
+    },
+  },
+  "meetingRLC": {
+    "default": {
+      "mode": "id",
+      "value": "",
+    },
+    "description": "The online meeting, by its ID or by its join URL",
+    "displayName": "Meeting",
+    "modes": [
+      {
+        "displayName": "By ID",
+        "hint": "The ID returned when the meeting was created, not the numeric meeting ID from the invite",
+        "name": "id",
+        "placeholder": "e.g. MSpkYzE3Njc0Yy04MWQ5LTRhZGItYmZi...",
+        "type": "string",
+        "validation": [
+          {
+            "properties": {
+              "errorMessage": "Not a valid meeting ID. To use a join URL, switch to 'By URL'",
+              "regex": "[^\\/\\\\?#%]*",
+            },
+            "type": "regex",
+          },
+        ],
+      },
+      {
+        "displayName": "By URL",
+        "name": "url",
+        "placeholder": "e.g. https://teams.microsoft.com/l/meetup-join/19%3ameeting...",
+        "type": "string",
+        "validation": [
+          {
+            "properties": {
+              "errorMessage": "Use the meeting link that contains '/l/meetup-join/', such as the joinWebUrl returned when the meeting was created",
+              "regex": "(\\s*https:\\/\\/.+\\/l\\/meetup-join\\/.+\\s*)?",
+            },
+            "type": "regex",
+          },
+        ],
+      },
+    ],
+    "name": "meetingId",
+    "required": true,
+    "type": "resourceLocator",
+  },
+  "memberRLC": {
+    "default": {
+      "mode": "list",
+      "value": "",
+    },
+    "displayName": "Member",
+    "modes": [
+      {
+        "displayName": "From List",
+        "name": "list",
+        "placeholder": "Select a Member...",
+        "type": "list",
+        "typeOptions": {
+          "searchListMethod": "getMembers",
+          "searchable": true,
+        },
+      },
+      {
+        "displayName": "By ID",
+        "extractValue": {
+          "regex": "^([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})",
+          "type": "regex",
+        },
+        "name": "id",
+        "placeholder": "7e2f1174-e8ee-4859-b8b1-a8d1cc63d276",
+        "type": "string",
+        "validation": [
+          {
+            "properties": {
+              "errorMessage": "Not a valid Microsoft Teams member ID",
+              "regex": "^([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})[ 	]*",
+            },
+            "type": "regex",
+          },
+        ],
+      },
+    ],
+    "name": "memberId",
+    "type": "resourceLocator",
+    "typeOptions": {
+      "loadOptionsDependsOn": [
+        "groupId.value",
+      ],
+    },
+  },
+  "planRLC": {
+    "default": {
+      "mode": "list",
+      "value": "",
+    },
+    "description": "The plan for the task to belong to",
+    "displayName": "Plan",
+    "modes": [
+      {
+        "displayName": "From List",
+        "name": "list",
+        "placeholder": "Select a Plan...",
+        "type": "list",
+        "typeOptions": {
+          "searchListMethod": "getPlans",
+          "searchable": true,
+        },
+      },
+      {
+        "displayName": "By ID",
+        "name": "id",
+        "placeholder": "rl1HYb0cUEiHPc7zgB_KWWUAA7Of",
+        "type": "string",
+      },
+    ],
+    "name": "planId",
+    "required": true,
+    "type": "resourceLocator",
+    "typeOptions": {
+      "loadOptionsDependsOn": [
+        "groupId.value",
+      ],
+    },
+  },
+  "teamRLC": {
+    "default": {
+      "mode": "list",
+      "value": "",
+    },
+    "description": "Select the team from the list, by URL, or by ID (the ID is the "groupId" parameter in the URL you get from "Get a link to the team")",
+    "displayName": "Team",
+    "modes": [
+      {
+        "displayName": "From List",
+        "name": "list",
+        "placeholder": "Select a Team...",
+        "type": "list",
+        "typeOptions": {
+          "searchListMethod": "getTeams",
+          "searchable": true,
+        },
+      },
+      {
+        "displayName": "From URL",
+        "extractValue": {
+          "regex": "groupId=([a-f0-9-]+)\\&",
+          "type": "regex",
+        },
+        "name": "url",
+        "placeholder": "e.g. https://teams.microsoft.com/l/team/19%3AP8l9gXd6oqlgq…",
+        "type": "string",
+        "validation": [
+          {
+            "properties": {
+              "errorMessage": "Not a valid Microsoft Teams URL",
+              "regex": "https:\\/\\/teams.microsoft.com\\/.*groupId=[a-f0-9-]+\\&.*",
+            },
+            "type": "regex",
+          },
+        ],
+      },
+      {
+        "displayName": "By ID",
+        "extractValue": {
+          "regex": "^([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})",
+          "type": "regex",
+        },
+        "name": "id",
+        "placeholder": "e.g. 61165b04-e4cc-4026-b43f-926b4e2a7182",
+        "type": "string",
+        "validation": [
+          {
+            "properties": {
+              "errorMessage": "Not a valid Microsoft Teams Team ID",
+              "regex": "^([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})[ 	]*",
+            },
+            "type": "regex",
+          },
+        ],
+      },
+    ],
+    "name": "teamId",
+    "required": true,
+    "type": "resourceLocator",
+  },
+  "teamworkTagRLC": {
+    "default": {
+      "mode": "list",
+      "value": "",
+    },
+    "description": "Select a tag from the team, or enter its ID",
+    "displayName": "Team Tag",
+    "modes": [
+      {
+        "displayName": "From List",
+        "name": "list",
+        "placeholder": "Select a Team Tag...",
+        "type": "list",
+        "typeOptions": {
+          "searchListMethod": "getTags",
+          "searchable": true,
+        },
+      },
+      {
+        "displayName": "By ID",
+        "hint": "The base64 tag ID from the Microsoft Graph tags endpoint",
+        "name": "id",
+        "type": "string",
+        "validation": [
+          {
+            "properties": {
+              "errorMessage": "Not a valid Microsoft Teams tag ID",
+              "regex": "^[A-Za-z0-9=]+[ 	]*$",
+            },
+            "type": "regex",
+          },
+        ],
+      },
+    ],
+    "name": "tagId",
+    "required": true,
+    "type": "resourceLocator",
+    "typeOptions": {
+      "loadOptionsDependsOn": [
+        "teamId.value",
+      ],
+    },
+  },
+  "userRLC": {
+    "default": {
+      "mode": "list",
+      "value": "",
+    },
+    "description": "Select the user from the list or by ID. Guest users must be given by their object ID, not by their user principal name.",
+    "displayName": "User",
+    "modes": [
+      {
+        "displayName": "From List",
+        "name": "list",
+        "placeholder": "Select a User...",
+        "type": "list",
+        "typeOptions": {
+          "searchListMethod": "getUsers",
+          "searchable": true,
+        },
+      },
+      {
+        "displayName": "By ID",
+        "name": "id",
+        "placeholder": "e.g. jacob@contoso.com",
+        "type": "string",
+        "validation": [
+          {
+            "properties": {
+              "errorMessage": "Not a valid user ID or user principal name. Give a guest user by their object ID, because a guest principal name contains "#EXT#".",
+              "regex": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|[^\\s@#]+@[^\\s@#]+)[ 	]*$",
+            },
+            "type": "regex",
+          },
+        ],
+      },
+    ],
+    "name": "userId",
+    "required": true,
+    "type": "resourceLocator",
+  },
+}
+`;
+
+exports[`Microsoft Teams v2 rlc.description > emits the pinned Service Principal By-ID copies 1`] = `
+{
+  "assignedTo": {
+    "default": {
+      "mode": "id",
+      "value": "",
+    },
+    "description": "Who the task should be assigned to",
+    "displayName": "Assigned To",
+    "displayOptions": {
+      "show": {
+        "/authentication": [
+          "microsoftEntraServicePrincipalApi",
+        ],
+      },
+    },
+    "modes": [
+      {
+        "displayName": "By ID",
+        "extractValue": {
+          "regex": "^([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})",
+          "type": "regex",
+        },
+        "name": "id",
+        "placeholder": "7e2f1174-e8ee-4859-b8b1-a8d1cc63d276",
+        "type": "string",
+        "validation": [
+          {
+            "properties": {
+              "errorMessage": "Not a valid Microsoft Teams member ID",
+              "regex": "^([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})[ 	]*",
+            },
+            "type": "regex",
+          },
+        ],
+      },
+    ],
+    "name": "assignedTo",
+    "type": "resourceLocator",
+    "typeOptions": undefined,
+  },
+  "assignedToOptional": {
+    "default": {
+      "mode": "id",
+      "value": "",
+    },
+    "description": "Who the task should be assigned to",
+    "displayName": "Assigned To",
+    "displayOptions": {
+      "show": {
+        "/authentication": [
+          "microsoftEntraServicePrincipalApi",
+        ],
+      },
+    },
+    "modes": [
+      {
+        "displayName": "By ID",
+        "extractValue": {
+          "regex": "^([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})",
+          "type": "regex",
+        },
+        "name": "id",
+        "placeholder": "7e2f1174-e8ee-4859-b8b1-a8d1cc63d276",
+        "type": "string",
+        "validation": [
+          {
+            "properties": {
+              "errorMessage": "Not a valid Microsoft Teams member ID",
+              "regex": "^([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})[ 	]*",
+            },
+            "type": "regex",
+          },
+        ],
+      },
+    ],
+    "name": "assignedTo",
+    "required": false,
+    "type": "resourceLocator",
+    "typeOptions": undefined,
+  },
+  "bucket": {
+    "default": {
+      "mode": "id",
+      "value": "",
+    },
+    "description": "The bucket for the task to belong to",
+    "displayName": "Bucket",
+    "displayOptions": {
+      "show": {
+        "/authentication": [
+          "microsoftEntraServicePrincipalApi",
+        ],
+      },
+    },
+    "modes": [
+      {
+        "displayName": "By ID",
+        "name": "id",
+        "placeholder": "rl1HYb0cUEiHPc7zgB_KWWUAA7Of",
+        "type": "string",
+      },
+    ],
+    "name": "bucketId",
+    "required": true,
+    "type": "resourceLocator",
+    "typeOptions": undefined,
+  },
+  "bucketOptional": {
+    "default": {
+      "mode": "id",
+      "value": "",
+    },
+    "description": "The bucket for the task to belong to",
+    "displayName": "Bucket",
+    "displayOptions": {
+      "show": {
+        "/authentication": [
+          "microsoftEntraServicePrincipalApi",
+        ],
+      },
+    },
+    "modes": [
+      {
+        "displayName": "By ID",
+        "name": "id",
+        "placeholder": "rl1HYb0cUEiHPc7zgB_KWWUAA7Of",
+        "type": "string",
+      },
+    ],
+    "name": "bucketId",
+    "required": false,
+    "type": "resourceLocator",
+    "typeOptions": undefined,
+  },
+  "plan": {
+    "default": {
+      "mode": "id",
+      "value": "",
+    },
+    "description": "The plan for the task to belong to",
+    "displayName": "Plan",
+    "displayOptions": {
+      "show": {
+        "/authentication": [
+          "microsoftEntraServicePrincipalApi",
+        ],
+      },
+    },
+    "modes": [
+      {
+        "displayName": "By ID",
+        "name": "id",
+        "placeholder": "rl1HYb0cUEiHPc7zgB_KWWUAA7Of",
+        "type": "string",
+      },
+    ],
+    "name": "planId",
+    "required": true,
+    "type": "resourceLocator",
+    "typeOptions": undefined,
+  },
+  "planOptional": {
+    "default": {
+      "mode": "id",
+      "value": "",
+    },
+    "description": "The plan for the task to belong to",
+    "displayName": "Plan",
+    "displayOptions": {
+      "show": {
+        "/authentication": [
+          "microsoftEntraServicePrincipalApi",
+        ],
+      },
+    },
+    "modes": [
+      {
+        "displayName": "By ID",
+        "name": "id",
+        "placeholder": "rl1HYb0cUEiHPc7zgB_KWWUAA7Of",
+        "type": "string",
+      },
+    ],
+    "name": "planId",
+    "required": false,
+    "type": "resourceLocator",
+    "typeOptions": undefined,
+  },
+}
+`;

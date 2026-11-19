@@ -16,7 +16,7 @@ describe('useWorkflowSetupBootstrap', () => {
 		credentialsStore = mockedStore(useCredentialsStore);
 		nodeTypesStore = mockedStore(useNodeTypesStore);
 
-		credentialsStore.fetchAllCredentialsForWorkflow = vi.fn().mockResolvedValue([]);
+		credentialsStore.fetchUsableCredentials = vi.fn().mockResolvedValue([]);
 		credentialsStore.fetchCredentialTypes = vi.fn().mockResolvedValue(undefined);
 		nodeTypesStore.loadNodeTypesIfNotLoaded = vi.fn().mockResolvedValue(undefined);
 	});
@@ -25,7 +25,7 @@ describe('useWorkflowSetupBootstrap', () => {
 		const { bootstrap } = useWorkflowSetupBootstrap(ref(undefined));
 
 		await expect(bootstrap()).rejects.toThrow('useWorkflowSetupBootstrap: workflowId is required');
-		expect(credentialsStore.fetchAllCredentialsForWorkflow).not.toHaveBeenCalled();
+		expect(credentialsStore.fetchUsableCredentials).not.toHaveBeenCalled();
 	});
 
 	it('fetches workflow-scoped credentials and flips isReady after success', async () => {
@@ -35,8 +35,9 @@ describe('useWorkflowSetupBootstrap', () => {
 
 		await bootstrap();
 
-		expect(credentialsStore.fetchAllCredentialsForWorkflow).toHaveBeenCalledWith({
+		expect(credentialsStore.fetchUsableCredentials).toHaveBeenCalledWith({
 			workflowId: 'workflow-1',
+			forAssistant: true,
 		});
 		expect(credentialsStore.fetchCredentialTypes).toHaveBeenCalled();
 		expect(nodeTypesStore.loadNodeTypesIfNotLoaded).toHaveBeenCalled();
@@ -44,9 +45,7 @@ describe('useWorkflowSetupBootstrap', () => {
 	});
 
 	it('flips isReady to true even when one of the parallel calls fails', async () => {
-		credentialsStore.fetchAllCredentialsForWorkflow = vi
-			.fn()
-			.mockRejectedValue(new Error('network'));
+		credentialsStore.fetchUsableCredentials = vi.fn().mockRejectedValue(new Error('network'));
 		const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
 		const { isReady, bootstrap } = useWorkflowSetupBootstrap(ref('workflow-1'));
@@ -66,8 +65,9 @@ describe('useWorkflowSetupBootstrap', () => {
 		workflowId.value = 'workflow-2';
 		await bootstrap();
 
-		expect(credentialsStore.fetchAllCredentialsForWorkflow).toHaveBeenCalledWith({
+		expect(credentialsStore.fetchUsableCredentials).toHaveBeenCalledWith({
 			workflowId: 'workflow-2',
+			forAssistant: true,
 		});
 	});
 });

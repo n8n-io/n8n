@@ -1,6 +1,12 @@
+import { requestUrl } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
-import { extractResourceLocatorValue, getActiveCredentialType, getHost } from '../helpers';
+import {
+	databricksApiRequest,
+	extractResourceLocatorValue,
+	getActiveCredentialType,
+	getHost,
+} from '../helpers';
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	const credentialType = getActiveCredentialType(this, i);
@@ -10,11 +16,15 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const volumeName = this.getNodeParameter('volumeName', i) as string;
 	const fullName = `${catalogName}.${schemaName}.${volumeName}`;
 
-	await this.helpers.httpRequestWithAuthentication.call(this, credentialType, {
-		method: 'DELETE',
-		url: `${host}/api/2.1/unity-catalog/volumes/${fullName}`,
-		json: true,
-	});
+	await databricksApiRequest(
+		this,
+		credentialType,
+		requestUrl`${host}/api/2.1/unity-catalog/volumes/${fullName}`,
+		{
+			method: 'DELETE',
+			json: true,
+		},
+	);
 
 	return [
 		{

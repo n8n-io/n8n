@@ -261,6 +261,9 @@ describe('GraphQL Node', () => {
 			mockExecuteFunctions.helpers.requestOAuth2.mockResolvedValue({
 				body: { data: { ok: true } },
 			});
+			mockExecuteFunctions.helpers.requestWithAuthentication.mockResolvedValue({
+				data: { ok: true },
+			});
 			return mockExecuteFunctions;
 		};
 
@@ -461,6 +464,227 @@ describe('GraphQL Node', () => {
 			const requestOptions = mockExecuteFunctions.helpers.request.mock
 				.calls[0][0] as IRequestOptions;
 			expect(requestOptions.allowedDomains).toBeUndefined();
+		});
+
+		it('calls requestWithAuthentication for a predefined credential type', async () => {
+			const mockExecuteFunctions = createMockExecuteFunctions(
+				{
+					authentication: 'predefinedCredentialType',
+					nodeCredentialType: 'githubApi',
+					requestMethod: 'POST',
+					endpoint: 'https://api.github.com/graphql',
+					requestFormat: 'json',
+					responseFormat: 'json',
+					query: '{ok}',
+				},
+				{
+					githubApi: { accessToken: 'token123' },
+				},
+			);
+
+			const node = new GraphQL();
+			await node.execute.call(mockExecuteFunctions);
+
+			expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith('githubApi');
+			expect(mockExecuteFunctions.helpers.requestWithAuthentication).toHaveBeenCalledTimes(1);
+			expect(mockExecuteFunctions.helpers.requestWithAuthentication.mock.calls[0][0]).toBe(
+				'githubApi',
+			);
+			expect(mockExecuteFunctions.helpers.requestWithAuthentication.mock.calls[0][1]).toMatchObject(
+				{
+					uri: 'https://api.github.com/graphql',
+				},
+			);
+			expect(mockExecuteFunctions.helpers.request).not.toHaveBeenCalled();
+		});
+
+		it('passes credential allowedDomains for a predefined credential type', async () => {
+			const mockExecuteFunctions = createMockExecuteFunctions(
+				{
+					authentication: 'predefinedCredentialType',
+					nodeCredentialType: 'githubApi',
+					requestMethod: 'POST',
+					endpoint: 'https://api.github.com/graphql',
+					requestFormat: 'json',
+					responseFormat: 'json',
+					query: '{ok}',
+				},
+				{
+					githubApi: {
+						accessToken: 'token123',
+						allowedHttpRequestDomains: 'domains',
+						allowedDomains: 'api.github.com',
+					},
+				},
+			);
+
+			const node = new GraphQL();
+			await node.execute.call(mockExecuteFunctions);
+
+			const requestOptions = mockExecuteFunctions.helpers.requestWithAuthentication.mock
+				.calls[0][1] as IRequestOptions;
+			expect(requestOptions).toMatchObject({ allowedDomains: 'api.github.com' });
+		});
+
+		it('applies OAuth2 additional parameters for a known predefined credential type', async () => {
+			const mockExecuteFunctions = createMockExecuteFunctions(
+				{
+					authentication: 'predefinedCredentialType',
+					nodeCredentialType: 'slackOAuth2Api',
+					requestMethod: 'POST',
+					endpoint: 'https://slack.com/api/graphql',
+					requestFormat: 'json',
+					responseFormat: 'json',
+					query: '{ok}',
+				},
+				{
+					slackOAuth2Api: { accessToken: 'token123' },
+				},
+			);
+
+			const node = new GraphQL();
+			await node.execute.call(mockExecuteFunctions);
+
+			expect(mockExecuteFunctions.helpers.requestWithAuthentication.mock.calls[0][2]).toEqual({
+				oauth2: { tokenType: 'Bearer', property: 'authed_user.access_token' },
+			});
+		});
+
+		it('does not set OAuth2 additional options for a predefined credential type outside the OAuth2 quirks table', async () => {
+			const mockExecuteFunctions = createMockExecuteFunctions(
+				{
+					authentication: 'predefinedCredentialType',
+					nodeCredentialType: 'githubApi',
+					requestMethod: 'POST',
+					endpoint: 'https://api.github.com/graphql',
+					requestFormat: 'json',
+					responseFormat: 'json',
+					query: '{ok}',
+				},
+				{
+					githubApi: { accessToken: 'token123' },
+				},
+			);
+
+			const node = new GraphQL();
+			await node.execute.call(mockExecuteFunctions);
+
+			expect(
+				mockExecuteFunctions.helpers.requestWithAuthentication.mock.calls[0][2],
+			).toBeUndefined();
+		});
+
+		it("throws when a predefined credential's domain restriction is 'none'", async () => {
+			const mockExecuteFunctions = createMockExecuteFunctions(
+				{
+					authentication: 'predefinedCredentialType',
+					nodeCredentialType: 'githubApi',
+					requestMethod: 'POST',
+					endpoint: 'https://api.github.com/graphql',
+					requestFormat: 'json',
+					responseFormat: 'json',
+					query: '{ok}',
+				},
+				{
+					githubApi: {
+						accessToken: 'token123',
+						allowedHttpRequestDomains: 'none',
+					},
+				},
+			);
+
+			const node = new GraphQL();
+			await expect(node.execute.call(mockExecuteFunctions)).rejects.toThrow(
+				'configured to prevent use within an HTTP Request or GraphQL node',
+			);
+			expect(mockExecuteFunctions.helpers.requestWithAuthentication).not.toHaveBeenCalled();
+		});
+
+		it("throws when a predefined credential's domain restriction is 'domains' but none are configured", async () => {
+			const mockExecuteFunctions = createMockExecuteFunctions(
+				{
+					authentication: 'predefinedCredentialType',
+					nodeCredentialType: 'githubApi',
+					requestMethod: 'POST',
+					endpoint: 'https://api.github.com/graphql',
+					requestFormat: 'json',
+					responseFormat: 'json',
+					query: '{ok}',
+				},
+				{
+					githubApi: {
+						accessToken: 'token123',
+						allowedHttpRequestDomains: 'domains',
+						allowedDomains: '',
+					},
+				},
+			);
+
+			const node = new GraphQL();
+			await expect(node.execute.call(mockExecuteFunctions)).rejects.toThrow(
+				'No allowed domains specified',
+			);
+			expect(mockExecuteFunctions.helpers.requestWithAuthentication).not.toHaveBeenCalled();
+		});
+
+		it('still attempts requestWithAuthentication when the initial credential fetch fails', async () => {
+			const mockExecuteFunctions = createMockExecuteFunctions(
+				{
+					authentication: 'predefinedCredentialType',
+					nodeCredentialType: 'githubApi',
+					requestMethod: 'POST',
+					endpoint: 'https://api.github.com/graphql',
+					requestFormat: 'json',
+					responseFormat: 'json',
+					query: '{ok}',
+				},
+				{},
+			);
+			mockExecuteFunctions.helpers.requestWithAuthentication.mockRejectedValue(
+				new Error('No credentials found of type githubApi'),
+			);
+
+			const node = new GraphQL();
+			await expect(node.execute.call(mockExecuteFunctions)).rejects.toThrow();
+
+			expect(mockExecuteFunctions.helpers.requestWithAuthentication).toHaveBeenCalledTimes(1);
+			expect(mockExecuteFunctions.helpers.requestWithAuthentication.mock.calls[0][0]).toBe(
+				'githubApi',
+			);
+			expect(mockExecuteFunctions.helpers.request).not.toHaveBeenCalled();
+		});
+
+		it('wraps requestWithAuthentication errors without leaking request options', async () => {
+			const mockExecuteFunctions = createMockExecuteFunctions(
+				{
+					authentication: 'predefinedCredentialType',
+					nodeCredentialType: 'githubApi',
+					requestMethod: 'POST',
+					endpoint: 'https://api.github.com/graphql',
+					requestFormat: 'json',
+					responseFormat: 'json',
+					query: '{ok}',
+				},
+				{
+					githubApi: { accessToken: 'token123' },
+				},
+			);
+			const requestError = Object.assign(new Error('ECONNREFUSED'), {
+				code: 'ECONNREFUSED',
+				isAxiosError: true,
+				options: {
+					headers: { Authorization: 'credential-value' },
+				},
+			});
+			mockExecuteFunctions.helpers.requestWithAuthentication.mockRejectedValue(requestError);
+
+			const node = new GraphQL();
+			const error: unknown = await node.execute.call(mockExecuteFunctions).catch((error) => error);
+
+			expect(error).toBeInstanceOf(NodeApiError);
+			expect(error).toHaveProperty('context.itemIndex', 0);
+			expect({ ...(error as NodeApiError) }).not.toHaveProperty('options');
+			expect(JSON.stringify({ ...(error as NodeApiError) })).not.toContain('credential-value');
 		});
 	});
 });

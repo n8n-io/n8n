@@ -16,10 +16,12 @@ defineProps<DialogOverlayProps>();
 </script>
 
 <template>
-	<DialogOverlay :class="[$style.overlay, stacked && $style.stacked]" />
+	<DialogOverlay data-dialog-overlay :class="[$style.overlay, stacked && $style.stacked]" />
 </template>
 
 <style module lang="scss">
+@use '../../css/mixins/motion';
+
 @keyframes overlayFadeIn {
 	from {
 		opacity: 0;
@@ -52,9 +54,13 @@ defineProps<DialogOverlayProps>();
 
 .overlay[data-state='open'] {
 	animation: overlayFadeIn var(--animation--duration--snappy) ease;
+
+	@include motion.reduced-motion;
 }
 
 .overlay[data-state='closed'] {
 	animation: overlayFadeOut var(--animation--duration--snappy) ease;
+
+	@include motion.reduced-motion;
 }
 </style>

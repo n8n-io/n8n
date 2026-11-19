@@ -7,10 +7,14 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { ignoreHttpStatusErrorsConfig } from './common';
-import { handleErrorPostReceive, microsoftApiRequest } from '../GenericFunctions';
+import {
+	handleErrorPostReceive,
+	microsoftApiRequest,
+	validateGroupPreSend,
+} from '../GenericFunctions';
 
 export const groupOperations: INodeProperties[] = [
 	{
@@ -48,7 +52,7 @@ export const groupOperations: INodeProperties[] = [
 					request: {
 						ignoreHttpStatusErrors: ignoreHttpStatusErrorsConfig,
 						method: 'DELETE',
-						url: '=/groups/{{ $parameter["group"] }}',
+						url: '=/groups/{{ encodeURIComponent($parameter["group"]) }}',
 					},
 					output: {
 						postReceive: [
@@ -72,7 +76,7 @@ export const groupOperations: INodeProperties[] = [
 					request: {
 						ignoreHttpStatusErrors: ignoreHttpStatusErrorsConfig,
 						method: 'GET',
-						url: '=/groups/{{ $parameter["group"] }}',
+						url: '=/groups/{{ encodeURIComponent($parameter["group"]) }}',
 					},
 					output: {
 						postReceive: [handleErrorPostReceive],
@@ -112,7 +116,7 @@ export const groupOperations: INodeProperties[] = [
 					request: {
 						ignoreHttpStatusErrors: ignoreHttpStatusErrorsConfig,
 						method: 'PATCH',
-						url: '=/groups/{{ $parameter["group"] }}',
+						url: '=/groups/{{ encodeURIComponent($parameter["group"]) }}',
 					},
 					output: {
 						postReceive: [
@@ -541,11 +545,16 @@ const createFields: INodeProperties[] = [
 								}
 
 								try {
-									await microsoftApiRequest.call(this, 'PATCH', `/groups/${groupId}`, body);
+									await microsoftApiRequest.call(
+										this,
+										'PATCH',
+										requestPath`/groups/${groupId}`,
+										body,
+									);
 									merge(item.json, body);
 								} catch (error) {
 									try {
-										await microsoftApiRequest.call(this, 'DELETE', `/groups/${groupId}`);
+										await microsoftApiRequest.call(this, 'DELETE', requestPath`/groups/${groupId}`);
 									} catch {}
 									throw error;
 								}
@@ -592,6 +601,11 @@ const deleteFields: INodeProperties[] = [
 			},
 		],
 		required: true,
+		routing: {
+			send: {
+				preSend: [validateGroupPreSend],
+			},
+		},
 		type: 'resourceLocator',
 	},
 ];
@@ -628,6 +642,11 @@ const getFields: INodeProperties[] = [
 			},
 		],
 		required: true,
+		routing: {
+			send: {
+				preSend: [validateGroupPreSend],
+			},
+		},
 		type: 'resourceLocator',
 	},
 	{
@@ -901,6 +920,11 @@ const updateFields: INodeProperties[] = [
 			},
 		],
 		required: true,
+		routing: {
+			send: {
+				preSend: [validateGroupPreSend],
+			},
+		},
 		type: 'resourceLocator',
 	},
 	{
@@ -1159,7 +1183,12 @@ const updateFields: INodeProperties[] = [
 								const body: IDataObject = {
 									...separateFields,
 								};
-								await microsoftApiRequest.call(this, 'PATCH', `/groups/${groupId}`, body);
+								await microsoftApiRequest.call(
+									this,
+									'PATCH',
+									requestPath`/groups/${groupId}`,
+									body,
+								);
 							}
 						}
 						return items;

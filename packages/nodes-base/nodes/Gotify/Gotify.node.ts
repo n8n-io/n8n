@@ -5,7 +5,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import { gotifyApiRequest, gotifyApiRequestAllItems } from './GenericFunctions';
 
@@ -147,6 +147,27 @@ export class Gotify implements INodeType {
 							},
 						],
 					},
+					{
+						displayName: 'Click URL',
+						name: 'clickUrl',
+						type: 'string',
+						default: '',
+						description: 'Opens this URL when the notification is clicked',
+					},
+					{
+						displayName: 'Big Image URL',
+						name: 'bigImageUrl',
+						type: 'string',
+						default: '',
+						description: 'Shows a big image in the notification',
+					},
+					{
+						displayName: 'Intent URL',
+						name: 'intentUrl',
+						type: 'string',
+						default: '',
+						description: 'Opens an intent URL after the notification is delivered (Android only)',
+					},
 				],
 			},
 			{
@@ -216,22 +237,52 @@ export class Gotify implements INodeType {
 							message,
 						};
 
+						// Build extras object conditionally
+						const extras: IDataObject = {};
+
 						if (options.contentType) {
-							body.extras = {
-								'client::display': {
-									contentType: options.contentType,
+							extras['client::display'] = {
+								contentType: options.contentType,
+							};
+						}
+
+						const clientNotification: IDataObject = {};
+						if (options.clickUrl) {
+							clientNotification.click = {
+								url: options.clickUrl,
+							};
+						}
+						if (options.bigImageUrl) {
+							clientNotification.bigImageUrl = options.bigImageUrl;
+						}
+						if (Object.keys(clientNotification).length > 0) {
+							extras['client::notification'] = clientNotification;
+						}
+
+						if (options.intentUrl) {
+							extras['android::action'] = {
+								onReceive: {
+									intentUrl: options.intentUrl,
 								},
 							};
 						}
 
+						if (Object.keys(extras).length > 0) {
+							body.extras = extras;
+						}
+
 						Object.assign(body, additionalFields);
 
-						responseData = await gotifyApiRequest.call(this, 'POST', '/message', body);
+						responseData = await gotifyApiRequest.call(this, 'POST', requestPath`/message`, body);
 					}
 					if (operation === 'delete') {
 						const messageId = this.getNodeParameter('messageId', i) as string;
 
-						responseData = await gotifyApiRequest.call(this, 'DELETE', `/message/${messageId}`);
+						responseData = await gotifyApiRequest.call(
+							this,
+							'DELETE',
+							requestPath`/message/${messageId}`,
+						);
 						responseData = { success: true };
 					}
 
@@ -243,13 +294,19 @@ export class Gotify implements INodeType {
 								this,
 								'messages',
 								'GET',
-								'/message',
+								requestPath`/message`,
 								{},
 								qs,
 							);
 						} else {
 							qs.limit = this.getNodeParameter('limit', i);
-							responseData = await gotifyApiRequest.call(this, 'GET', '/message', {}, qs);
+							responseData = await gotifyApiRequest.call(
+								this,
+								'GET',
+								requestPath`/message`,
+								{},
+								qs,
+							);
 							responseData = responseData.messages;
 						}
 					}

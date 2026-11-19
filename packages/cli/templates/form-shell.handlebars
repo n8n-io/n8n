@@ -60,11 +60,19 @@
 			box-shadow: var(--box-shadow-card);
 			padding: 14px 18px;
 		}
-		.summary-icon { display: flex; flex-shrink: 0; color: var(--color-muted); }
+		.summary-info { position: relative; display: flex; flex-shrink: 0; }
+		.summary-icon { display: flex; background: none; border: 0; padding: 0; cursor: pointer; color: var(--color-muted); }
 		.summary-icon svg { display: block; }
 		.summary-icon .icon-ok, .req-summary.all-connected .summary-icon .icon-pending { display: none; }
 		.req-summary.all-connected .summary-icon { color: var(--color-ok); }
 		.req-summary.all-connected .summary-icon .icon-ok { display: block; }
+		/* Hover/focus for pointer + keyboard; `.open` is the tap toggle (iOS Safari
+		   doesn't focus buttons on tap, so :focus-within alone won't show it there). */
+		.summary-tooltip { display: none; position: absolute; top: 100%; left: -12px; padding-top: 8px; width: min(300px, calc(100vw - 32px)); z-index: 20; }
+		.summary-info:hover .summary-tooltip, .summary-info:focus-within .summary-tooltip, .summary-info.open .summary-tooltip { display: block; }
+		.summary-tooltip-body { display: block; background: var(--color-card-bg); border: 1px solid var(--color-card-border); border-radius: var(--border-radius-card); box-shadow: var(--box-shadow-dialog); padding: 10px 12px; font-size: 12px; line-height: 1.5; color: var(--color-label); }
+		.summary-tooltip-body a { color: var(--color-primary); font-weight: 600; text-decoration: none; white-space: nowrap; }
+		.summary-tooltip-body a:hover { text-decoration: underline; }
 		.summary-text { flex: 1; min-width: 0; font-size: 13px; color: var(--color-header); }
 
 		/* --- Credential row (shared by the single-account panel + dialog) --- */
@@ -170,9 +178,14 @@
 	<div class='shell' data-submitter-email='{{submitterEmail}}'>
 		{{#if useDialog}}
 			<div class='req-summary{{#if allConnected}} all-connected{{/if}}' id='req-summary'>
-				<span class='summary-icon'>
-					<svg class='icon-pending' width='17' height='17' viewBox='0 0 16 16' fill='none' stroke='currentColor' stroke-width='1.3' aria-hidden='true'><circle cx='8' cy='8' r='6.7' /><path d='M8 7.3v3.5' stroke-linecap='round' /><circle cx='8' cy='5.1' r='.8' fill='currentColor' stroke='none' /></svg>
-					<svg class='icon-ok' width='17' height='17' viewBox='0 0 16 16' fill='none' stroke='currentColor' stroke-width='1.3' aria-hidden='true'><circle cx='8' cy='8' r='6.7' /><path d='m5.2 8.2 1.9 1.9 3.7-4' stroke-linecap='round' stroke-linejoin='round' /></svg>
+				<span class='summary-info' id='summary-info'>
+					<button type='button' class='summary-icon' aria-describedby='summary-tooltip' aria-label='About the accounts this form uses'>
+						<svg class='icon-pending' width='17' height='17' viewBox='0 0 16 16' fill='none' stroke='currentColor' stroke-width='1.3' aria-hidden='true'><circle cx='8' cy='8' r='6.7' /><path d='M8 7.3v3.5' stroke-linecap='round' /><circle cx='8' cy='5.1' r='.8' fill='currentColor' stroke='none' /></svg>
+						<svg class='icon-ok' width='17' height='17' viewBox='0 0 16 16' fill='none' stroke='currentColor' stroke-width='1.3' aria-hidden='true'><circle cx='8' cy='8' r='6.7' /><path d='m5.2 8.2 1.9 1.9 3.7-4' stroke-linecap='round' stroke-linejoin='round' /></svg>
+					</button>
+					<span class='summary-tooltip' role='tooltip' id='summary-tooltip'>
+						<span class='summary-tooltip-body'>Submitting this form runs actions on your behalf, using accounts you connect. You can disconnect them at any time. <a href='https://docs.n8n.io/administer/manage-credentials/end-user-credentials' target='_blank' rel='noopener noreferrer'>Learn more</a></span>
+					</span>
 				</span>
 				<span class='summary-text' id='summary-text'>{{summaryText}}</span>
 				<button class='btn btn-primary' id='open-dialog'><span class='dot'></span><span class='label'>{{#if allConnected}}Manage{{else}}Connect{{/if}}</span></button>
@@ -318,6 +331,51 @@
 
 			var pendingId = null;
 
+			// The frame is sandboxed to an opaque origin, so its own navigations are
+			// treated as cross-site and lose the form's auth cookie. It asks the shell to
+			// move it instead, and the shell — on the real origin — sets `src`, which is a
+			// same-origin navigation that keeps the cookie. Narrowed to this form's own
+			// follow-up pages: the frame is author-scriptable, so this must not become a
+			// way to point it at arbitrary n8n pages. Returns null when the target isn't
+			// one of them.
+			//
+			// The flag tells the page it is rendering inside this shell, which is what
+			// makes it hand its own next navigation back here instead of doing it itself.
+			var FORM_WAITING_PATH = '{{formWaitingPath}}';
+			function resolveFrameNavigation(target) {
+				if (typeof target !== 'string' || !target || !FORM_WAITING_PATH) return null;
+				try {
+					var here = new URL(window.location.href);
+					var resolved = new URL(target, here);
+					if (resolved.origin !== here.origin) return null;
+					if (
+						resolved.pathname !== FORM_WAITING_PATH &&
+						resolved.pathname.indexOf(FORM_WAITING_PATH + '/') !== 0
+					) {
+						return null;
+					}
+					resolved.searchParams.set('n8nShellHosted', '1');
+					return resolved.toString();
+				} catch (e) {
+					return null;
+				}
+			}
+
+			// The author's own redirect target, once the form is done. Any http(s) URL is
+			// allowed — this is where the author said to send the submitter, and a form
+			// outside the shell goes there too — but the scheme has to be one of those two.
+			// Returns null otherwise.
+			function resolveExternalRedirect(target) {
+				if (typeof target !== 'string' || !target) return null;
+				try {
+					var resolved = new URL(target, window.location.href);
+					if (resolved.protocol !== 'http:' && resolved.protocol !== 'https:') return null;
+					return resolved.toString();
+				} catch (e) {
+					return null;
+				}
+			}
+
 			// Connected only on the oauth-callback success signal — never on popup close,
 			// which also happens on provider-side failures.
 			function onSuccessSignal() { if (pendingId) markConnected(pendingId); }
@@ -328,10 +386,25 @@
 				});
 			} catch (e) {}
 			window.addEventListener('message', function (event) {
-				// The sandboxed form iframe can't spoof a connect: its only accepted message is
-				// the POST gate's rejection, which carries ids and moves rows one way only, so
-				// the worst author script can do is degrade its own form's UX.
+				// The sandboxed form iframe can't spoof a connect: it is only ever answered
+				// with a page move inside this form, the author's own end-of-form redirect,
+				// or the POST gate's rejection, which carries ids and moves rows one way only
+				// — so the worst author script can do is degrade its own form's UX.
+				// `event.origin` is the string 'null' for an opaque-origin frame and cannot be
+				// checked; `event.source` identifies it.
 				if (frame && event.source === frame.contentWindow) {
+					if (event.data && event.data.type === 'n8n-form-navigate') {
+						var next = resolveFrameNavigation(event.data.url);
+						if (next) frame.src = next;
+						return;
+					}
+					if (event.data && event.data.type === 'n8n-form-redirect') {
+						// The form is finished, so the author's redirect takes the whole tab —
+						// the same place a form rendered without this shell would end up.
+						var away = resolveExternalRedirect(event.data.url);
+						if (away) window.location.replace(away);
+						return;
+					}
 					handleGateRejection(event.data);
 					return;
 				}
@@ -454,6 +527,18 @@
 				// Click elsewhere closes any open menu.
 				document.querySelectorAll('.cred-menu.open').forEach(function (m) { m.classList.remove('open'); });
 			});
+
+			// Tap fallback for the info tooltip: hover/focus don't fire on touch
+			// (iOS Safari doesn't focus buttons on tap), so the button toggles it.
+			var summaryInfo = document.getElementById('summary-info');
+			if (summaryInfo) {
+				summaryInfo.querySelector('.summary-icon').addEventListener('click', function () {
+					summaryInfo.classList.toggle('open');
+				});
+				document.addEventListener('click', function (e) {
+					if (!summaryInfo.contains(e.target)) summaryInfo.classList.remove('open');
+				});
+			}
 
 			// Dialog (two or more accounts)
 			var overlay = document.getElementById('overlay');

@@ -8,6 +8,7 @@ import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { WebhookRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { DataSource } from '@n8n/typeorm';
 import type { INode } from 'n8n-workflow';
 import { FORM_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
@@ -16,13 +17,15 @@ import { createOwner, createMember } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 
 import { OAuthTokenService } from '@/modules/oauth-server/oauth-token.service';
-import { CacheService } from '@/services/cache/cache.service';
-import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
-import { UrlService } from '@/services/url.service';
+import { CacheService, UrlService } from '@n8n/backend-services';
+import { ProtectedResourceRegistry } from '@n8n/backend-services/auth';
 
-import { OAuthClientRepository } from '../database/repositories/oauth-client.repository';
+import { OAuthClient } from '../database/entities/oauth-client.entity';
 
-const testServer = setupTestServer({ modules: ['oauth-server', 'mcp'], endpointGroups: ['mcp'] });
+const testServer = setupTestServer({
+	modules: ['oauth-server', 'mcp', 'inbound-auth-core'],
+	endpointGroups: ['mcp'],
+});
 
 let owner: User;
 let member: User;
@@ -39,11 +42,13 @@ const formTriggerNode = ({
 	authentication = 'n8nUserAuth',
 	disabled = false,
 	requireExecuteAccess,
+	trustedSource,
 }: {
 	name?: string;
 	authentication?: string;
 	disabled?: boolean;
 	requireExecuteAccess?: boolean;
+	trustedSource?: string;
 } = {}): INode => ({
 	id: randomUUID(),
 	name,
@@ -55,6 +60,7 @@ const formTriggerNode = ({
 		path: 'unused',
 		authentication,
 		...(requireExecuteAccess === undefined ? {} : { requireExecuteAccess }),
+		...(trustedSource === undefined ? {} : { trustedSource }),
 	},
 });
 
@@ -82,14 +88,9 @@ const resolveResource = async (webhookPath: string) =>
 	);
 
 beforeAll(async () => {
-	process.env.N8N_ENV_FEAT_FORM_TRIGGER_OAUTH2 = 'true'; // gates the form-trigger resolver
 	owner = await createOwner();
 	member = await createMember();
 	formEndpoint = Container.get(GlobalConfig).endpoints.form;
-});
-
-afterAll(() => {
-	delete process.env.N8N_ENV_FEAT_FORM_TRIGGER_OAUTH2;
 });
 
 afterEach(async () => {
@@ -148,19 +149,6 @@ describe('protected resource metadata for form triggers', () => {
 		const response = await testServer.restlessAgent.get(prmPathFor(randomUUID()));
 
 		expect(response.statusCode).toBe(404);
-	});
-
-	test('should not resolve when the feature flag is disabled', async () => {
-		const webhookPath = randomUUID();
-		await createPublishedFormWorkflow(webhookPath, formTriggerNode());
-
-		delete process.env.N8N_ENV_FEAT_FORM_TRIGGER_OAUTH2;
-		try {
-			const response = await testServer.restlessAgent.get(prmPathFor(webhookPath));
-			expect(response.statusCode).toBe(404);
-		} finally {
-			process.env.N8N_ENV_FEAT_FORM_TRIGGER_OAUTH2 = 'true';
-		}
 	});
 
 	test('should not resolve a non-form path even if the webhook exists', async () => {
@@ -265,6 +253,29 @@ describe('protected resource metadata for form triggers', () => {
 	});
 });
 
+describe('accepted trusted sources', () => {
+	test("accepts only the instance's own OAuth2 server when the node has no trustedSource", async () => {
+		const webhookPath = randomUUID();
+		await createPublishedFormWorkflow(webhookPath, formTriggerNode());
+
+		const resource = await resolveResource(webhookPath);
+
+		expect(resource?.getAcceptedSourceIds?.()).toEqual(['n8n-internal']);
+	});
+
+	test('accepts only the trusted source the node selected', async () => {
+		const webhookPath = randomUUID();
+		await createPublishedFormWorkflow(
+			webhookPath,
+			formTriggerNode({ trustedSource: 'customer-idp' }),
+		);
+
+		const resource = await resolveResource(webhookPath);
+
+		expect(resource?.getAcceptedSourceIds?.()).toEqual(['customer-idp']);
+	});
+});
+
 describe('authorize gate (workflow:execute)', () => {
 	test('authorizes the owner but denies a user without execute access', async () => {
 		const webhookPath = randomUUID();
@@ -325,7 +336,8 @@ describe('runtime gate: verifyOAuthAccessToken enforces workflow:execute', () =>
 		const tokenService = Container.get(OAuthTokenService);
 		// A registered client is needed only to satisfy the token rows' FK.
 		const clientId = `client-${randomUUID()}`;
-		await Container.get(OAuthClientRepository).save({
+		const clients = Container.get(DataSource).getRepository(OAuthClient);
+		await clients.save({
 			id: clientId,
 			name: 'Form resolver tests',
 			redirectUris: ['https://example.com/callback'],
@@ -333,7 +345,14 @@ describe('runtime gate: verifyOAuthAccessToken enforces workflow:execute', () =>
 			tokenEndpointAuthMethod: 'none',
 		});
 		const pair = tokenService.generateTokenPair(userId, clientId, resourceUrl, []);
-		await tokenService.saveTokenPair(pair.accessToken, pair.refreshToken, clientId, userId, []);
+		await tokenService.saveTokenPair(
+			pair.accessToken,
+			pair.refreshToken,
+			clientId,
+			userId,
+			[],
+			pair.audience,
+		);
 		return pair.accessToken;
 	};
 

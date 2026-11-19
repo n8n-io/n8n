@@ -218,15 +218,14 @@ describe('sanitizeAgentJsonConfig', () => {
 						nodeTypeName: '@n8n/mcp-registry.github',
 						legacyMetadataField: true,
 					},
-					toolFilter: {
-						mode: 'allow',
-						tools: ['create_issue'],
-						legacyToolFilterField: true,
-					},
-					approval: {
-						mode: 'selected',
-						tools: ['create_issue'],
-						legacyApprovalField: true,
+					toolPermissions: {
+						categories: {
+							read: 'always_allow',
+							write: 'require_approval',
+							legacyCategory: 'blocked',
+						},
+						tools: { create_issue: 'require_approval' },
+						legacyPermissionsField: true,
 					},
 					connectionTimeoutMs: 10_000,
 					legacyServerField: true,
@@ -247,13 +246,12 @@ describe('sanitizeAgentJsonConfig', () => {
 					metadata: {
 						nodeTypeName: '@n8n/mcp-registry.github',
 					},
-					toolFilter: {
-						mode: 'allow',
-						tools: ['create_issue'],
-					},
-					approval: {
-						mode: 'selected',
-						tools: ['create_issue'],
+					toolPermissions: {
+						categories: {
+							read: 'always_allow',
+							write: 'require_approval',
+						},
+						tools: { create_issue: 'require_approval' },
 					},
 					connectionTimeoutMs: 10_000,
 				},
@@ -637,6 +635,60 @@ describe('sanitizeAgentJsonConfig', () => {
 				agents: [{ agentId: 'agent-2', useWhen: 'Use for support escalation.' }],
 				modelsByDifficulty: {
 					high: { model: 'anthropic/claude-sonnet-4-5', credential: 'cred-anthropic' },
+				},
+			},
+		});
+		expect(AgentJsonConfigSchema.safeParse(sanitized).success).toBe(true);
+	});
+
+	it('keeps valid tool guardrails and strips unknown fields inside them', () => {
+		const sanitized = sanitizeAgentJsonConfig({
+			...baseConfig,
+			config: {
+				guardrails: {
+					tools: [
+						{
+							kind: 'pii',
+							id: 'pii_guard',
+							stage: 'after',
+							tools: [{ type: 'workflow', workflowId: 'wf-1', legacyRefField: true }],
+							type: 'selected',
+							entities: ['EMAIL_ADDRESS'],
+							legacyGuardrailField: true,
+						},
+						{
+							kind: 'jailbreak',
+							id: 'jailbreak_guard',
+							stage: 'before',
+							tools: [{ type: 'workflow', workflowId: 'wf-1' }],
+							threshold: 0.8,
+						},
+					],
+				},
+			},
+		});
+
+		expect(sanitized).toEqual({
+			...baseConfig,
+			config: {
+				guardrails: {
+					tools: [
+						{
+							kind: 'pii',
+							id: 'pii_guard',
+							stage: 'after',
+							tools: [{ type: 'workflow', workflowId: 'wf-1' }],
+							type: 'selected',
+							entities: ['EMAIL_ADDRESS'],
+						},
+						{
+							kind: 'jailbreak',
+							id: 'jailbreak_guard',
+							stage: 'before',
+							tools: [{ type: 'workflow', workflowId: 'wf-1' }],
+							threshold: 0.8,
+						},
+					],
 				},
 			},
 		});

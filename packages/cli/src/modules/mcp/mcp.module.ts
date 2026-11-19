@@ -6,8 +6,9 @@ import { Container } from '@n8n/di';
 /**
  * Handles instance-level MCP access.
  * Runs MCP server and exposes endpoints for MCP clients to connect to.
- * Requires MCP access to be enabled in settings and a valid API key or an
- * OAuth token issued by the shared `oauth-server` module.
+ * Requires MCP access to be enabled in settings and a valid API key, a
+ * token-exchange JWT, or an OAuth2 access token from any trusted source that
+ * accepts the `instance-mcp` surface.
  */
 @BackendModule({ name: 'mcp', instanceTypes: ['main'] })
 export class McpModule implements ModuleInterface {
@@ -18,7 +19,7 @@ export class McpModule implements ModuleInterface {
 		// Register the instance MCP server as a protected resource of the shared
 		// OAuth server, so its tokens are minted and verified with the right
 		// audiences and its discovery metadata is served.
-		const { ProtectedResourceRegistry } = await import('@/services/protected-resource.registry.js');
+		const { ProtectedResourceRegistry } = await import('@n8n/backend-services/auth');
 		const { McpProtectedResource } = await import('./mcp-protected-resource.js');
 		Container.get(ProtectedResourceRegistry).register(Container.get(McpProtectedResource));
 	}

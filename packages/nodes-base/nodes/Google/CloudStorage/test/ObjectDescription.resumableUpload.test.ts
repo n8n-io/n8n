@@ -5,6 +5,7 @@ import type {
 	IHttpRequestOptions,
 	INodePropertyOptions,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 import { Readable } from 'stream';
 
 import { getGoogleAccessToken } from '../../GenericFunctions';
@@ -105,6 +106,22 @@ describe('Google Cloud Storage - Create object resumable upload (preSend)', () =
 						'X-Upload-Content-Length': fileSize,
 					}),
 				}),
+			);
+		});
+
+		it('encodes the bucket name in the session request URL', async () => {
+			setupParams('my-object', 'my-bucket/other');
+			assertBinaryData.mockReturnValue({ id: 'binary-id', mimeType: 'image/png' });
+			getBinaryMetadata.mockResolvedValue({ mimeType: 'image/png', fileSize: 100 });
+			getBinaryStream.mockResolvedValue(Readable.from([Buffer.alloc(100, 'a')]));
+			setupSessionResponse();
+			httpRequest.mockResolvedValue({ statusCode: 200 });
+
+			await bodySend.call(ctx, { ...baseOptions });
+
+			expect(httpRequestWithAuthentication).toHaveBeenCalledWith(
+				'googleCloudStorageOAuth2Api',
+				expect.objectContaining({ url: requestPath`/b/my-bucket%2Fother/o/` }),
 			);
 		});
 
@@ -270,7 +287,7 @@ describe('Google Cloud Storage - Create object resumable upload (preSend)', () =
 				1,
 				expect.objectContaining({
 					method: 'POST',
-					url: '/b/my-bucket/o/',
+					url: requestPath`/b/my-bucket/o/`,
 					baseURL: 'https://storage.googleapis.com/upload/storage/v1',
 					qs: expect.objectContaining({ uploadType: 'resumable' }),
 					json: true,
@@ -326,6 +343,59 @@ describe('Google Cloud Storage - Create object resumable upload (preSend)', () =
 			expect(result.method).toBe('GET');
 			expect(result.url).toBe('/b/my-bucket/o/my-object');
 		});
+
+		it('keeps the bearer token on the follow-up metadata request', async () => {
+			const fileSize = 100;
+			setupParamsServiceAccount();
+			assertBinaryData.mockReturnValue({ id: 'binary-id', mimeType: 'image/png' });
+			getBinaryMetadata.mockResolvedValue({ mimeType: 'image/png', fileSize });
+			getBinaryStream.mockResolvedValue(Readable.from([Buffer.alloc(fileSize, 'a')]));
+			httpRequest
+				.mockResolvedValueOnce({
+					headers: { location: 'https://storage.googleapis.com/upload/session-sa' },
+					body: {},
+				})
+				.mockResolvedValue({ statusCode: 200 });
+
+			const result = await bodySend.call(ctx, {
+				...baseOptions,
+				headers: { Authorization: 'Bearer sa-token' },
+			});
+
+			expect(result.headers).toEqual({ Authorization: 'Bearer sa-token' });
+		});
+
+		it('merges encryption headers into the follow-up metadata request', async () => {
+			const fileSize = 100;
+			ctx.getNodeParameter
+				.mockReturnValueOnce('my-object') //     objectName  → metadata
+				.mockReturnValueOnce({}) //              createData
+				.mockReturnValueOnce(true) //            createFromBinary
+				.mockReturnValueOnce('data') //          createBinaryPropertyName
+				.mockReturnValueOnce('my-bucket') //     bucketName  → resumable path
+				.mockReturnValueOnce('my-object') //     objectName  → resumable path
+				.mockReturnValueOnce('serviceAccount') // authentication
+				.mockReturnValueOnce({ 'x-goog-encryption-algorithm': 'AES256' }); // encryptionHeaders
+			assertBinaryData.mockReturnValue({ id: 'binary-id', mimeType: 'image/png' });
+			getBinaryMetadata.mockResolvedValue({ mimeType: 'image/png', fileSize });
+			getBinaryStream.mockResolvedValue(Readable.from([Buffer.alloc(fileSize, 'a')]));
+			httpRequest
+				.mockResolvedValueOnce({
+					headers: { location: 'https://storage.googleapis.com/upload/session-sa' },
+					body: {},
+				})
+				.mockResolvedValue({ statusCode: 200 });
+
+			const result = await bodySend.call(ctx, {
+				...baseOptions,
+				headers: { Authorization: 'Bearer sa-token' },
+			});
+
+			expect(result.headers).toEqual({
+				Authorization: 'Bearer sa-token',
+				'x-goog-encryption-algorithm': 'AES256',
+			});
+		});
 	});
 
 	describe('final GET request', () => {
@@ -345,8 +415,14 @@ describe('Google Cloud Storage - Create object resumable upload (preSend)', () =
 			expect(result.url).toBe('/b/my-bucket/o/my-object');
 		});
 
-		it('URL-encodes object names that contain special characters', async () => {
-			const objectName = 'folder/image file.png';
+		it.each([
+			['folder/image file.png', '/b/my-bucket/o/folder%2Fimage%20file.png'],
+			[
+				'logs/2024-01-01T10:00:00+00:00.json',
+				'/b/my-bucket/o/logs%2F2024-01-01T10:00:00%2B00:00.json',
+			],
+			['a%20b.png', '/b/my-bucket/o/a%2520b.png'],
+		])('URL-encodes the object name %s', async (objectName, expectedUrl) => {
 			const fileSize = 100;
 			setupParams(objectName, 'my-bucket');
 			assertBinaryData.mockReturnValue({ id: 'binary-id', mimeType: 'image/png' });
@@ -357,7 +433,7 @@ describe('Google Cloud Storage - Create object resumable upload (preSend)', () =
 
 			const result = await bodySend.call(ctx, { ...baseOptions });
 
-			expect(result.url).toBe(`/b/my-bucket/o/${encodeURIComponent(objectName)}`);
+			expect(result.url).toBe(expectedUrl);
 		});
 	});
 });

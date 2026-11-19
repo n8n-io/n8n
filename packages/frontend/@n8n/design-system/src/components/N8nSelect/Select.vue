@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { ElSelect } from 'element-plus';
 import type { ComponentPublicInstance, PropType, Ref } from 'vue';
-import { computed, ref, useAttrs } from 'vue';
+import { computed, inject, onMounted, onUpdated, ref, useAttrs } from 'vue';
 
 import type { InnerSelectRef, N8nSelectExposed } from './Select.types';
 import type { SelectSize } from '../../types';
 import { isEventBindingElementAttribute } from '../../utils';
+import { insideDialogBodyKey } from '../N8nDialog/dialogContext';
 
 /**
  * `ElSelect.props` is typed as `any`, and spreading `any` collapses this whole
@@ -84,6 +85,26 @@ const setInnerSelect = (el: Element | ComponentPublicInstance | null) => {
 	innerSelect.value = (el as InnerSelectRef | null) ?? null;
 };
 
+const syncControlAriaAttributes = () => {
+	const selectWrapper = innerSelect.value?.$refs.selectWrapper;
+	if (!(selectWrapper instanceof HTMLElement)) return;
+
+	const input = selectWrapper.querySelector('input[role="combobox"]');
+	if (!input) return;
+
+	for (const attribute of ['aria-invalid', 'aria-describedby', 'aria-busy']) {
+		const value = attrs[attribute];
+		if (typeof value === 'string' || typeof value === 'boolean' || typeof value === 'number') {
+			input.setAttribute(attribute, String(value));
+		} else {
+			input.removeAttribute(attribute);
+		}
+	}
+};
+
+onMounted(syncControlAriaAttributes);
+onUpdated(syncControlAriaAttributes);
+
 const listeners = computed(() => {
 	return Object.entries(attrs).reduce<Record<string, unknown>>((acc, [key, value]) => {
 		if (isEventBindingElementAttribute(value, key)) {
@@ -109,6 +130,14 @@ const computedSize = computed(() => {
 const classes = computed(() => {
 	return props.size === 'xlarge' ? 'xlarge' : '';
 });
+
+const isInsideDialogBody = inject(insideDialogBodyKey, false);
+
+const popperOptions = computed(() =>
+	isInsideDialogBody && !props.teleported
+		? { strategy: 'fixed' as const, ...props.popperOptions }
+		: props.popperOptions,
+);
 
 const focus = () => {
 	innerSelect.value?.focus();
@@ -171,6 +200,7 @@ defineExpose<N8nSelectExposed>({
 			:model-value="props.modelValue ?? undefined"
 			:size="computedSize"
 			:popper-class="props.popperClass"
+			:popper-options="popperOptions"
 			:class="$style[classes]"
 		>
 			<template v-if="$slots.prefix" #prefix>

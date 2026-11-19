@@ -120,6 +120,34 @@ describe('AMQP Node', () => {
 		});
 	});
 
+	it('should pass the reconnect option through to the connection', async () => {
+		executeFunctions.getNodeParameter.calledWith('options', 0).mockReturnValue({
+			reconnect: false,
+		});
+
+		await new Amqp().execute.call(executeFunctions);
+
+		expect(mockContainer.connect).toHaveBeenLastCalledWith(
+			expect.objectContaining({ reconnect: false, reconnect_limit: 50 }),
+		);
+	});
+
+	it('should fail fast when the connection drops and reconnect is disabled', async () => {
+		executeFunctions.getNodeParameter.calledWith('options', 0).mockReturnValue({
+			reconnect: false,
+		});
+		// no 'sendable': the connection drops before anything can be sent
+		mockContainer.once.mockImplementation(() => {});
+		mockContainer.on.mockImplementation((event: string, callback: any) => {
+			if (event === 'connection_open') setImmediate(() => callback({}));
+			if (event === 'disconnected') {
+				setImmediate(() => callback({ error: new Error('Connection lost') }));
+			}
+		});
+
+		await expect(new Amqp().execute.call(executeFunctions)).rejects.toThrow('Connection lost');
+	});
+
 	it('should send data as object when configured', async () => {
 		executeFunctions.getNodeParameter.calledWith('options', 0).mockReturnValue({
 			dataAsObject: true,

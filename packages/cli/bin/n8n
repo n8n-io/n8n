@@ -6,6 +6,10 @@ const path = require('path');
 // did get started from another folder that the root one.
 process.env.NODE_CONFIG_DIR = process.env.NODE_CONFIG_DIR || path.join(__dirname, 'config');
 
+// Must stay shorter than the original command line.
+// See https://nodejs.org/api/process.html#processtitle
+process.title = process.argv[2] ? `n8n ${process.argv[2]}` : 'n8n';
+
 // Check if version should be displayed
 const versionFlags = ['-v', '-V', '--version'];
 if (versionFlags.includes(process.argv.slice(-1)[0])) {
@@ -58,7 +62,13 @@ if (process.env.NODEJS_PREFER_IPV4 === 'true') {
 require('net').setDefaultAutoSelectFamily?.(false);
 
 (async () => {
+	await require('../dist/error-reporting/error-reporting-boot').initErrorReporting();
+	require('../dist/observability/observability-boot').startObservability();
+
 	const { Container } = await import('@n8n/di');
 	const { CommandRegistry } = await import('../dist/command-registry.js');
 	await Container.get(CommandRegistry).execute();
-})();
+})().catch((error) => {
+	console.error(error);
+	process.exit(1);
+});

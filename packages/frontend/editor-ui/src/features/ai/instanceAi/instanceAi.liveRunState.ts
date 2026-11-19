@@ -89,6 +89,7 @@ export function syncLiveRunFromStatus(
 export function shouldRearmRunAfterConfirm(payload: InstanceAiConfirmRequest): boolean {
 	switch (payload.kind) {
 		case 'approval':
+		case 'credentialDestination':
 			return payload.approved === true;
 		case 'credentialSelection':
 		case 'domainAccessApprove':
@@ -97,6 +98,7 @@ export function shouldRearmRunAfterConfirm(payload: InstanceAiConfirmRequest): b
 		case 'setupWorkflowApply':
 		case 'setupWorkflowTestTrigger':
 		case 'mcpConnect':
+		case 'appBlueprint':
 			return true;
 		default:
 			return false;

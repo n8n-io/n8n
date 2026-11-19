@@ -1,4 +1,5 @@
 import type { INode, IPinData } from 'n8n-workflow';
+import { createSampleFile } from '@n8n/instance-ai';
 import { FORM_TRIGGER_NODE_TYPE, WEBHOOK_NODE_TYPE } from 'n8n-workflow';
 
 import {
@@ -27,6 +28,20 @@ describe('Instance AI run pin-data planning', () => {
 		).toEqual({
 			'HTTP Request': [{ json: { ok: true } }, { json: { id: 'second' } }],
 		});
+	});
+
+	it('resolves sample-file markers into base64 JSON values and binary properties', () => {
+		const runtime = sdkPinDataToRuntime({
+			'Generate Image': [{ result: { image: { $sampleFile: 'image/jpeg' } } }],
+			'Download File': [{ id: 'file-1', $binary: { data: 'application/pdf' } }],
+		});
+
+		expect(runtime['Generate Image']).toEqual([
+			{ json: { result: { image: createSampleFile('image/jpeg')?.data } } },
+		]);
+		expect(runtime['Download File']).toEqual([
+			{ json: { id: 'file-1' }, binary: { data: createSampleFile('application/pdf') } },
+		]);
 	});
 
 	it('merges workflow pins, verification pins, and trigger input into one run plan', () => {
@@ -152,5 +167,71 @@ describe('verification pin-data pruning', () => {
 				reachedNodeNames: ['Reached Simulated Node'],
 			}),
 		).toBeUndefined();
+	});
+});
+
+describe('sdkPinDataToRuntime — node names that collide with object properties', () => {
+	// The runtime map decides which nodes are pinned, so every node name has to
+	// keep an entry of its own.
+	test.each(['__proto__', 'constructor', 'prototype', 'toString'])(
+		'keeps the entry for a node named %s',
+		(nodeName) => {
+			const runtime = sdkPinDataToRuntime({ [nodeName]: [{ ok: true }] });
+
+			expect(Object.keys(runtime)).toContain(nodeName);
+			expect(Object.entries(runtime)).toContainEqual([nodeName, [{ json: { ok: true } }]]);
+		},
+	);
+});
+
+describe('getPrunedVerificationPinData — node names that collide with object properties', () => {
+	// Unreached verification pin data is dropped from the stored execution, and
+	// that has to happen for every node name.
+	test.each(['__proto__', 'constructor', 'toString', 'Normal Node'])(
+		'prunes an unreached node named %s',
+		(nodeName) => {
+			const verificationPinData = sdkPinDataToRuntime({ [nodeName]: [{ ok: true }] });
+
+			const next = getPrunedVerificationPinData({
+				persistedPinData: verificationPinData,
+				verificationPinData,
+				nonVerificationPinData: {},
+				reachedNodeNames: [],
+			});
+
+			expect(next).toBeDefined();
+			expect(Object.keys(next ?? {})).not.toContain(nodeName);
+		},
+	);
+
+	// Nothing was persisted for this node, so there is nothing to prune and the
+	// caller must not be handed a rewritten map.
+	test.each(['__proto__', 'constructor', 'toString'])(
+		'reports no change for a node named %s that was never persisted',
+		(nodeName) => {
+			const next = getPrunedVerificationPinData({
+				persistedPinData: {},
+				verificationPinData: sdkPinDataToRuntime({ [nodeName]: [{ ok: true }] }),
+				nonVerificationPinData: {},
+				reachedNodeNames: [],
+			});
+
+			expect(next).toBeUndefined();
+		},
+	);
+
+	test('keeps workflow pin data that the node had of its own', () => {
+		const nodeName = '__proto__';
+		const preserved = [{ json: { fromWorkflow: true } }];
+		const verificationPinData = sdkPinDataToRuntime({ [nodeName]: [{ ok: true }] });
+
+		const next = getPrunedVerificationPinData({
+			persistedPinData: verificationPinData,
+			verificationPinData,
+			nonVerificationPinData: Object.fromEntries([[nodeName, preserved]]),
+			reachedNodeNames: [],
+		});
+
+		expect(Object.entries(next ?? {})).toContainEqual([nodeName, preserved]);
 	});
 });

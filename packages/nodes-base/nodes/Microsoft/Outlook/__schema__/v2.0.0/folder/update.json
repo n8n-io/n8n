@@ -1,0 +1,33 @@
+{
+	"properties": {
+		"@odata.context": {
+			"type": "string"
+		},
+		"childFolderCount": {
+			"type": "number"
+		},
+		"displayName": {
+			"type": "string"
+		},
+		"id": {
+			"type": "string"
+		},
+		"isHidden": {
+			"type": "boolean"
+		},
+		"parentFolderId": {
+			"type": "string"
+		},
+		"sizeInBytes": {
+			"type": "number"
+		},
+		"totalItemCount": {
+			"type": "number"
+		},
+		"unreadItemCount": {
+			"type": "number"
+		},
+		"wellKnownName": {}
+	},
+	"type": "object"
+}

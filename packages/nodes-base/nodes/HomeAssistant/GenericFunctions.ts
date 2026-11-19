@@ -6,32 +6,34 @@ import type {
 	JsonObject,
 	IHttpRequestMethods,
 	IRequestOptions,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestPath, requestUrl } from 'n8n-workflow';
 
 export async function homeAssistantApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 	body: IDataObject = {},
 	qs: IDataObject = {},
-	uri?: string,
-	option: IDataObject = {},
+	option: Pick<IRequestOptions, 'encoding' | 'resolveWithFullResponse'> & {
+		uri?: never;
+		url?: never;
+		baseURL?: never;
+	} = {},
 ) {
 	const credentials = await this.getCredentials('homeAssistantApi');
+	const baseUrl = `${credentials.ssl === true ? 'https' : 'http'}://${credentials.host}:${credentials.port}`;
 
-	let options: IRequestOptions = {
+	let options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {
 			Authorization: `Bearer ${credentials.accessToken}`,
 		},
 		method,
 		qs,
 		body,
-		uri:
-			uri ??
-			`${credentials.ssl === true ? 'https' : 'http'}://${credentials.host}:${
-				credentials.port
-			}/api${resource}`,
+		uri: requestUrl`${baseUrl}/api${resource}`,
 		json: true,
 	};
 
@@ -53,7 +55,7 @@ export async function getHomeAssistantEntities(
 	domain = '',
 ) {
 	const returnData: INodePropertyOptions[] = [];
-	const entities = await homeAssistantApiRequest.call(this, 'GET', '/states');
+	const entities = await homeAssistantApiRequest.call(this, 'GET', requestPath`/states`);
 	for (const entity of entities) {
 		const entityId = entity.entity_id as string;
 		if (domain === '' || (domain && entityId.startsWith(domain))) {
@@ -72,7 +74,7 @@ export async function getHomeAssistantServices(
 	domain = '',
 ) {
 	const returnData: INodePropertyOptions[] = [];
-	const services = await homeAssistantApiRequest.call(this, 'GET', '/services');
+	const services = await homeAssistantApiRequest.call(this, 'GET', requestPath`/services`);
 	if (domain === '') {
 		// If no domain specified return domains
 		const domains = services.map(({ domain: service }: IDataObject) => service as string).sort();

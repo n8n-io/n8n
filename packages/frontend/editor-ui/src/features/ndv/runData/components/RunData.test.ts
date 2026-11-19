@@ -1,6 +1,7 @@
 import { reactive, computed } from 'vue';
 import {
 	createTestNode,
+	createTestWorkflow,
 	createTestWorkflowObject,
 	createTestWorkflowExecutionResponse,
 	defaultNodeDescriptions,
@@ -10,7 +11,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { type MockedStore, mockedStore, SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import RunData from './RunData.vue';
 import { STORES } from '@n8n/stores';
-import { MODAL_CONFIRM, SET_NODE_TYPE } from '@/app/constants';
+import { MODAL_CONFIRM, SET_NODE_TYPE, TRIMMED_RUN_DATA_FILL_DELAY } from '@/app/constants';
 import { useAiSimulatedExecutionsStore } from '@/app/stores/aiSimulatedExecutions.store';
 import type { INodeUi, IRunDataDisplayMode } from '@/Interface';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
@@ -18,12 +19,16 @@ import type { NodePanelType } from '@/features/ndv/shared/ndv.types';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
-import { waitFor } from '@testing-library/vue';
+import { waitFor, within } from '@testing-library/vue';
+import { flushPromises } from '@vue/test-utils';
 import {
 	createRunExecutionData,
+	jsonParse,
 	TRIMMED_TASK_DATA_CONNECTIONS_KEY,
 	type ExecutionStatus,
 	type INodeExecutionData,
+	type IConnectedNode,
+	type IRunData,
 	type IRunExecutionData,
 	type ITaskData,
 	type ITaskMetadata,
@@ -94,6 +99,13 @@ describe('RunData', () => {
 		resolveRelatedExecutionUrl.mockReturnValue('execution.url/123');
 	});
 
+	afterEach(async () => {
+		// The table view loads through defineAsyncComponent. Wait for that import
+		// so its image is not fetched after the test environment is torn down.
+		await flushPromises();
+		await vi.dynamicImportSettled();
+	});
+
 	it("should render pin button in output panel disabled when there's binary data", () => {
 		const { getByTestId } = render({
 			defaultRunItems: [
@@ -137,34 +149,38 @@ describe('RunData', () => {
 	});
 
 	it('should render data correctly even when "item.json" has another "json" key', async () => {
-		const { getByText, getAllByTestId, getByTestId } = render({
-			defaultRunItems: [
-				{
+		const runItems = [
+			{
+				json: {
+					id: 1,
+					name: 'Test 1',
 					json: {
-						id: 1,
-						name: 'Test 1',
-						json: {
-							data: 'Json data 1',
-						},
+						data: 'Json data 1',
 					},
 				},
-				{
+			},
+			{
+				json: {
+					id: 2,
+					name: 'Test 2',
 					json: {
-						id: 2,
-						name: 'Test 2',
-						json: {
-							data: 'Json data 2',
-						},
+						data: 'Json data 2',
 					},
 				},
-			],
+			},
+		];
+		const { getAllByTestId, getByTestId } = render({
+			defaultRunItems: runItems,
 			displayMode: 'schema',
 		});
 
 		await userEvent.click(getByTestId('ndv-pin-data'));
-		await waitFor(() => getAllByTestId('run-data-schema-item'), { timeout: 1000 });
-		expect(getByText('Test 1')).toBeInTheDocument();
-		expect(getByText('Json data 1')).toBeInTheDocument();
+		await waitFor(() => {
+			expect(workflowDocumentStore.pinnedDataByNodeName['Test Node']).toEqual(runItems);
+			expect(
+				getAllByTestId('run-data-schema-item').map((item) => jsonParse(item.textContent ?? '')),
+			).toEqual(runItems.map((item) => item.json));
+		});
 	});
 
 	describe('AI-simulated output', () => {
@@ -415,6 +431,16 @@ describe('RunData', () => {
 				},
 			})),
 			displayMode: 'binary',
+		});
+		expect(queryByTestId('ndv-data-pagination')).not.toBeInTheDocument();
+	});
+
+	it('should not render pagination on html tab', async () => {
+		const { queryByTestId } = render({
+			defaultRunItems: Array.from({ length: 26 }).map((_, i) => ({
+				json: { html: `<h1>Test ${i}</h1>` },
+			})),
+			displayMode: 'html',
 		});
 		expect(queryByTestId('ndv-data-pagination')).not.toBeInTheDocument();
 	});
@@ -1216,6 +1242,136 @@ describe('RunData', () => {
 		});
 	});
 
+	describe('run data ownership', () => {
+		const erroringRun: ITaskData = {
+			startTime: Date.now(),
+			executionIndex: 0,
+			executionTime: 1,
+			data: { main: [[{ json: { test: 'data' } }]] },
+			source: [null],
+			error: {
+				level: 'error',
+				message: 'Test error message',
+				node: {
+					name: 'Test Node',
+					type: SET_NODE_TYPE,
+					typeVersion: 3,
+					position: [0, 0],
+					id: 'executed-node',
+					parameters: {},
+				},
+				timestamp: Date.now(),
+				functionality: 'regular',
+				description: null,
+				context: {},
+				cause: undefined,
+				messages: [],
+				name: 'NodeOperationError',
+			} as unknown as ITaskData['error'],
+		};
+
+		it('shows the error for the node that recorded it', async () => {
+			const { getByTestId } = render({
+				displayMode: 'table',
+				paneType: 'output',
+				nodeId: 'executed-node',
+				executionNodes: [createTestNode({ id: 'executed-node', name: 'Test Node' }) as INodeUi],
+				runs: [erroringRun],
+			});
+
+			await waitFor(() => {
+				expect(getByTestId('node-error-view')).toBeInTheDocument();
+			});
+		});
+
+		it('does not show the error on a different node that reuses the name', async () => {
+			const { queryByTestId } = render({
+				displayMode: 'table',
+				paneType: 'output',
+				// Same name as the executed node, but a node the execution never ran.
+				nodeId: 'added-after-the-run',
+				executionNodes: [createTestNode({ id: 'executed-node', name: 'Test Node' }) as INodeUi],
+				runs: [erroringRun],
+			});
+
+			await waitFor(() => {
+				expect(queryByTestId('node-error-view')).not.toBeInTheDocument();
+			});
+		});
+
+		it('falls back to the name when the execution recorded no nodes', async () => {
+			const { getByTestId } = render({
+				displayMode: 'table',
+				paneType: 'output',
+				nodeId: 'any-id',
+				// No `executionNodes`: nothing to resolve an id against.
+				runs: [erroringRun],
+			});
+
+			await waitFor(() => {
+				expect(getByTestId('node-error-view')).toBeInTheDocument();
+			});
+		});
+
+		it('falls back to the name for a supplied historical execution', async () => {
+			const { getByTestId } = render({
+				displayMode: 'table',
+				paneType: 'output',
+				nodeId: 'added-after-the-run',
+				executionNodes: [createTestNode({ id: 'executed-node', name: 'Test Node' }) as INodeUi],
+				workflowExecutionProp: createRunExecutionData({
+					resultData: { runData: { 'Test Node': [erroringRun] } },
+				}),
+			});
+
+			await waitFor(() => {
+				expect(getByTestId('node-error-view')).toBeInTheDocument();
+			});
+		});
+
+		const binaryItems: INodeExecutionData[] = [
+			{
+				json: {},
+				binary: {
+					data: {
+						fileName: 'test.pdf',
+						fileType: 'pdf',
+						mimeType: 'application/pdf',
+						data: '',
+					},
+				},
+			},
+		];
+
+		it('shows the binary data for the node that recorded it', async () => {
+			const { getByTestId } = render({
+				displayMode: 'binary',
+				paneType: 'output',
+				nodeId: 'executed-node',
+				executionNodes: [createTestNode({ id: 'executed-node', name: 'Test Node' }) as INodeUi],
+				defaultRunItems: binaryItems,
+			});
+
+			await waitFor(() => {
+				expect(getByTestId('ndv-binary-data_0')).toBeInTheDocument();
+			});
+		});
+
+		it('does not show the binary data on a different node that reuses the name', async () => {
+			const { queryByTestId } = render({
+				displayMode: 'binary',
+				paneType: 'output',
+				nodeId: 'added-after-the-run',
+				executionNodes: [createTestNode({ id: 'executed-node', name: 'Test Node' }) as INodeUi],
+				defaultRunItems: binaryItems,
+			});
+
+			await waitFor(() => {
+				expect(queryByTestId('ndv-binary-data_0')).not.toBeInTheDocument();
+			});
+		});
+	});
+
 	describe('schema view with mixed execution states', () => {
 		beforeEach(() => {
 			vi.clearAllMocks();
@@ -1426,20 +1582,17 @@ describe('RunData', () => {
 	});
 
 	describe('trimmed execution data placeholder', () => {
+		const trimmedItems = [
+			{
+				json: { [TRIMMED_TASK_DATA_CONNECTIONS_KEY]: true },
+				pairedItem: { item: 0 },
+			},
+		];
 		const trimmedRun = {
 			startTime: Date.now(),
 			executionIndex: 0,
 			executionTime: 1,
-			data: {
-				main: [
-					[
-						{
-							json: { [TRIMMED_TASK_DATA_CONNECTIONS_KEY]: true },
-							pairedItem: { item: 0 },
-						},
-					],
-				],
-			},
+			data: { main: [trimmedItems] },
 			source: [null],
 		} as unknown as ITaskData;
 
@@ -1471,7 +1624,7 @@ describe('RunData', () => {
 			expect(getByTestId('ndv-trimmed-corrupted-unpin')).toBeInTheDocument();
 		});
 
-		it('shows the recovery state without an unpin button when the trimmed marker is on a different node', () => {
+		it('shows the recovery state without an unpin button for trimmed data that is not pinned', () => {
 			const { getByTestId, queryByTestId } = render({
 				displayMode: 'json',
 				runs: [trimmedRun],
@@ -1481,6 +1634,192 @@ describe('RunData', () => {
 			expect(queryByTestId('ndv-trimmed-loading')).not.toBeInTheDocument();
 			expect(getByTestId('ndv-trimmed-corrupted')).toBeInTheDocument();
 			expect(queryByTestId('ndv-trimmed-corrupted-unpin')).not.toBeInTheDocument();
+		});
+
+		it('shows the data of the shown run while another node is trimmed', () => {
+			const { getByTestId, queryByTestId } = render({
+				displayMode: 'json',
+				defaultRunItems: [{ json: { value: 'live' } }],
+				otherNodeRuns: [trimmedRun],
+				executionStatus: 'running',
+			});
+
+			expect(queryByTestId('ndv-trimmed-loading')).not.toBeInTheDocument();
+			expect(queryByTestId('ndv-trimmed-corrupted')).not.toBeInTheDocument();
+			expect(getByTestId('ndv-items-count')).toHaveTextContent('1 item');
+		});
+
+		it('shows the loading state in the schema view while a displayed parent node is trimmed', () => {
+			const { getByTestId } = render({
+				displayMode: 'schema',
+				paneType: 'input',
+				defaultRunItems: [{ json: { value: 'live' } }],
+				otherNodeRuns: [trimmedRun],
+				executionStatus: 'running',
+				inputNodes: [
+					{ name: 'Test Node', indicies: [], depth: 1 },
+					{ name: 'Other Node', indicies: [], depth: 2 },
+				],
+			});
+
+			expect(getByTestId('ndv-trimmed-loading')).toBeInTheDocument();
+		});
+
+		it('shows the schema in the input panel when an older run of a parent is trimmed and its latest run has data', async () => {
+			const { queryByTestId, findByTestId } = render({
+				displayMode: 'schema',
+				paneType: 'input',
+				defaultRunItems: [{ json: { value: 'live' } }],
+				otherNodeRuns: [trimmedRun, { ...trimmedRun, data: { main: [[{ json: { value: 1 } }]] } }],
+				executionStatus: 'running',
+				inputNodes: [
+					{ name: 'Test Node', indicies: [], depth: 1 },
+					{ name: 'Other Node', indicies: [], depth: 2 },
+				],
+			});
+
+			expect(queryByTestId('ndv-trimmed-loading')).not.toBeInTheDocument();
+			expect(await findByTestId('run-data-schema-node')).toBeInTheDocument();
+		});
+
+		it('shows the loading state in the input panel when the latest run of a parent is trimmed', () => {
+			const { getByTestId } = render({
+				displayMode: 'schema',
+				paneType: 'input',
+				defaultRunItems: [{ json: { value: 'live' } }],
+				otherNodeRuns: [{ ...trimmedRun, data: { main: [[{ json: { value: 1 } }]] } }, trimmedRun],
+				executionStatus: 'running',
+				inputNodes: [
+					{ name: 'Test Node', indicies: [], depth: 1 },
+					{ name: 'Other Node', indicies: [], depth: 2 },
+				],
+			});
+
+			expect(getByTestId('ndv-trimmed-loading')).toBeInTheDocument();
+		});
+
+		it('judges a parent with two outputs on the run its connected output shows', () => {
+			// The latest run is trimmed on output 0 and has no items on output 1, so
+			// the schema shows the older run for output 1.
+			const latestRun = {
+				...trimmedRun,
+				data: { main: [trimmedItems, []] },
+			};
+			const olderRun = {
+				...trimmedRun,
+				data: { main: [[{ json: { value: 0 } }], [{ json: { value: 1 } }]] },
+			};
+			const renderWithIndexes = (indicies: number[]) =>
+				render({
+					displayMode: 'schema',
+					paneType: 'input',
+					defaultRunItems: [{ json: { value: 'live' } }],
+					otherNodeRuns: [olderRun, latestRun],
+					executionStatus: 'running',
+					inputNodes: [
+						{ name: 'Test Node', indicies: [], depth: 1 },
+						{ name: 'Other Node', indicies, depth: 2 },
+					],
+				});
+
+			const connectedToOutput1 = renderWithIndexes([1]);
+			expect(connectedToOutput1.queryByTestId('ndv-trimmed-loading')).not.toBeInTheDocument();
+			connectedToOutput1.unmount();
+
+			const connectedToOutput0 = renderWithIndexes([0]);
+			expect(connectedToOutput0.getByTestId('ndv-trimmed-loading')).toBeInTheDocument();
+		});
+
+		describe('fill from the execution', () => {
+			const V2_ID = '019a3b2c-4d5e-7f60-8a1b-2c3d4e5f6a7b';
+			const fetchedItems = [{ json: { value: 'fetched' } }, { json: { value: 'fetched 2' } }];
+			const fetchedRun = {
+				startTime: Date.now(),
+				executionIndex: 0,
+				executionTime: 1,
+				data: { main: [fetchedItems] },
+				source: [null],
+			} as unknown as ITaskData;
+			const otherNode = createTestNode({
+				id: '2',
+				name: 'Other Node',
+				type: SET_NODE_TYPE,
+				position: [0, 0],
+				parameters: {},
+			});
+
+			beforeEach(() => {
+				vi.useFakeTimers();
+			});
+
+			afterEach(() => {
+				vi.useRealTimers();
+			});
+
+			it('fetches once after the delay and shows the items when mounted on a trimmed engine v2 run', async () => {
+				const { getAllByTestId, queryByTestId, getByTestId } = render({
+					displayMode: 'schema',
+					runs: [trimmedRun],
+					executionStatus: 'running',
+					activeExecutionId: V2_ID,
+					fetchedRunData: { 'Test Node': [fetchedRun] },
+				});
+
+				expect(getByTestId('ndv-trimmed-loading')).toBeInTheDocument();
+				await vi.advanceTimersByTimeAsync(TRIMMED_RUN_DATA_FILL_DELAY / 2);
+				expect(workflowsStore.fetchExecutionDataById).not.toHaveBeenCalled();
+
+				await vi.advanceTimersByTimeAsync(TRIMMED_RUN_DATA_FILL_DELAY / 2);
+				await flushPromises();
+				expect(workflowsStore.fetchExecutionDataById).toHaveBeenCalledTimes(1);
+				expect(workflowsStore.fetchExecutionDataById).toHaveBeenCalledWith(V2_ID);
+
+				expect(queryByTestId('ndv-trimmed-loading')).not.toBeInTheDocument();
+				expect(getByTestId('ndv-items-count')).toHaveTextContent('2 items');
+				expect(
+					getAllByTestId('run-data-schema-item').map((item) => jsonParse(item.textContent ?? '')),
+				).toEqual(fetchedItems.map((item) => item.json));
+			});
+
+			it('restarts the delay and fetches once after a switch from one trimmed node to another', async () => {
+				const rendered = render({
+					displayMode: 'schema',
+					runs: [trimmedRun],
+					executionStatus: 'running',
+					activeExecutionId: V2_ID,
+					otherNodeRuns: [trimmedRun],
+					fetchedRunData: { 'Test Node': [fetchedRun], 'Other Node': [fetchedRun] },
+				});
+
+				await vi.advanceTimersByTimeAsync(TRIMMED_RUN_DATA_FILL_DELAY / 2);
+				await rendered.rerender({ node: otherNode });
+				expect(rendered.getByTestId('ndv-trimmed-loading')).toBeInTheDocument();
+
+				// The delay of the first node would end here.
+				await vi.advanceTimersByTimeAsync(TRIMMED_RUN_DATA_FILL_DELAY / 2);
+				expect(workflowsStore.fetchExecutionDataById).not.toHaveBeenCalled();
+
+				await vi.advanceTimersByTimeAsync(TRIMMED_RUN_DATA_FILL_DELAY / 2);
+				await flushPromises();
+				expect(workflowsStore.fetchExecutionDataById).toHaveBeenCalledTimes(1);
+				expect(rendered.queryByTestId('ndv-trimmed-loading')).not.toBeInTheDocument();
+			});
+
+			it('does not fetch for a numeric execution ID', async () => {
+				const { getByTestId } = render({
+					displayMode: 'json',
+					runs: [trimmedRun],
+					executionStatus: 'running',
+					activeExecutionId: '123',
+					fetchedRunData: { 'Test Node': [fetchedRun] },
+				});
+
+				await vi.advanceTimersByTimeAsync(TRIMMED_RUN_DATA_FILL_DELAY * 2);
+				await flushPromises();
+
+				expect(workflowsStore.fetchExecutionDataById).not.toHaveBeenCalled();
+				expect(getByTestId('ndv-trimmed-loading')).toBeInTheDocument();
+			});
 		});
 	});
 
@@ -1565,6 +1904,23 @@ describe('RunData', () => {
 			expect(outputPane.queryByText('Input pane hint')).not.toBeInTheDocument();
 		});
 
+		it('should render every hint inside the hints container, which caps their height', () => {
+			const { getByTestId, getAllByTestId } = render({
+				displayMode: 'table',
+				nodeTypeHints: [
+					{ message: 'First hint', location: 'outputPane' },
+					{ message: 'Second hint', location: 'outputPane' },
+				],
+				paneType: 'output',
+			});
+
+			const hintsContainer = getByTestId('run-data-hints');
+
+			expect(within(hintsContainer).getAllByTestId('node-hint')).toHaveLength(2);
+			expect(getAllByTestId('node-hint')).toHaveLength(2);
+			expect(hintsContainer).toHaveClass('hints');
+		});
+
 		it('should hide an afterExecution hint before the node has run', () => {
 			const { queryByText } = render({
 				displayMode: 'table',
@@ -1605,6 +1961,12 @@ describe('RunData', () => {
 		nodeTypeHints,
 		withRunData = true,
 		workflowExecutionProp,
+		nodeId,
+		executionNodes,
+		activeExecutionId,
+		otherNodeRuns,
+		fetchedRunData,
+		inputNodes,
 	}: {
 		defaultRunItems?: INodeExecutionData[];
 		workflowId?: string;
@@ -1621,6 +1983,18 @@ describe('RunData', () => {
 		withRunData?: boolean;
 		/** Supplied historical execution data, as standalone hosts pass it. */
 		workflowExecutionProp?: IRunExecutionData;
+		/** Id of the node under test, to make it differ from the executed one. */
+		nodeId?: string;
+		/** Nodes the execution recorded running. Omit for an execution with no snapshot. */
+		executionNodes?: INodeUi[];
+		/** Makes the execution the active one, with this id. Omit for a displayed execution. */
+		activeExecutionId?: string;
+		/** Runs of a second node, `Other Node`, in the same execution. */
+		otherNodeRuns?: ITaskData[];
+		/** Run data that `fetchExecutionDataById` resolves with. */
+		fetchedRunData?: IRunData;
+		/** The parent nodes that the input panel's schema view shows. */
+		inputNodes?: IConnectedNode[];
 		lastSuccessfulExecution?: {
 			id: string;
 			finished: boolean;
@@ -1666,6 +2040,11 @@ describe('RunData', () => {
 		workflowsStore = mockedStore(useWorkflowsStore);
 		schemaPreviewStore = mockedStore(useSchemaPreviewStore);
 		workflowsStore.setWorkflowId(testWorkflowId);
+		workflowsStore.fetchExecutionDataById = vi
+			.fn()
+			.mockResolvedValue(
+				fetchedRunData ? { data: { resultData: { runData: fetchedRunData } } } : null,
+			);
 		ndvStore = mockedStore(useNDVStore, createWorkflowDocumentId(testWorkflowId));
 
 		nodeTypesStore.setNodeTypes(
@@ -1684,20 +2063,31 @@ describe('RunData', () => {
 		ndvStore.setOutputPanelEditModeEnabled = vi.fn();
 		ndvStore.setOutputPanelEditModeValue = vi.fn();
 
-		useWorkflowExecutionStateStore(
+		const executionStateStore = useWorkflowExecutionStateStore(
 			createWorkflowDocumentId(workflowsStore.workflowId),
-		).setWorkflowExecutionData(
+		);
+		executionStateStore.setWorkflowExecutionData(
 			createTestWorkflowExecutionResponse({
+				...(activeExecutionId ? { id: activeExecutionId } : {}),
 				mode: 'trigger',
 				status: executionStatus ?? 'success',
+				...(executionNodes ? { workflowData: createTestWorkflow({ nodes: executionNodes }) } : {}),
 				data: createRunExecutionData({
 					resultData: {
-						runData: withRunData ? { 'Test Node': runs ?? [defaultRun] } : {},
+						runData: withRunData
+							? {
+									'Test Node': runs ?? [defaultRun],
+									...(otherNodeRuns ? { 'Other Node': otherNodeRuns } : {}),
+								}
+							: {},
 					},
 					...(redactionInfo ? { redactionInfo } : {}),
 				}),
 			}),
 		);
+		if (activeExecutionId) {
+			executionStateStore.setActiveExecutionId(activeExecutionId);
+		}
 
 		if (lastSuccessfulExecution) {
 			useWorkflowExecutionStateStore(
@@ -1713,9 +2103,6 @@ describe('RunData', () => {
 
 		return createComponentRenderer(RunData, {
 			props: {
-				node: createTestNode({
-					name: 'Test Node',
-				}),
 				workflowObject: createTestWorkflowObject({
 					id: workflowId,
 					nodes: workflowNodes,
@@ -1733,15 +2120,17 @@ describe('RunData', () => {
 							'<button data-test-id="ndv-pin-data" @click="$emit(\'togglePinData\')"></button>',
 					},
 					NodeErrorView: { template: '<div data-test-id="node-error-view"></div>' },
-					VirtualSchema: {
+					// Stub the async wrapper before Vue loads the schema module.
+					LazyRunDataSchema: {
 						template: `
 							<div data-test-id="run-data-schema-node" :preview-execution="previewExecution">
-								<div v-for="(item, index) in mockItems" :key="index" data-test-id="run-data-schema-item">
+								<div v-for="(item, index) in data" :key="index" data-test-id="run-data-schema-item">
 									{{ item }}
 								</div>
 							</div>
 						`,
 						props: [
+							'data',
 							'previewExecution',
 							'nodes',
 							'mappingEnabled',
@@ -1753,24 +2142,19 @@ describe('RunData', () => {
 							'compact',
 							'truncateLimit',
 						],
-						data() {
-							return {
-								mockItems: ['Test 1', 'Json data 1'],
-							};
-						},
 					},
 				},
 			},
 		})({
 			props: {
 				node: createTestNode({
-					id: '1',
+					id: nodeId ?? '1',
 					name: 'Test Node',
 					type: SET_NODE_TYPE,
 					position: [0, 0],
 					parameters: {},
 				}),
-				nodes: [{ name: 'Test Node', indicies: [], depth: 1 }],
+				nodes: inputNodes ?? [{ name: 'Test Node', indicies: [], depth: 1 }],
 				runIndex: 0,
 				paneType,
 				isExecuting: false,

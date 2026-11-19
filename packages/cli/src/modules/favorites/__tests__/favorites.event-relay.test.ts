@@ -1,6 +1,6 @@
+import { EventService } from '@n8n/backend-services';
 import { mock } from 'vitest-mock-extended';
 
-import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 
 import { FavoritesEventRelay } from '../favorites.event-relay';
@@ -18,6 +18,8 @@ describe('FavoritesEventRelay', () => {
 			const event: RelayEventMap['workflow-deleted'] = {
 				user: mock(),
 				workflowId: 'wf1',
+				workflowName: 'Favourited Workflow',
+				projectId: 'project1',
 				publicApi: false,
 			};
 

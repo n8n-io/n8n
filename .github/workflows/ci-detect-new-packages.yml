@@ -1,47 +1,57 @@
-name: 'CI: Detect New Packages on Master'
+name: 'CI: Check Unpublished Packages'
 
 on:
-  pull_request:
-    types:
-      - closed
-    branches:
-      - master
+  schedule:
+    - cron: '0 8 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   detect-new-packages:
-    name: Check for new unpublished packages
+    name: Check unpublished packages
     runs-on: ubuntu-latest
-    if: github.event.pull_request.merged == true
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Setup Node.js
         uses: ./.github/actions/setup-nodejs
         with:
           build-command: ''
-          install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
+          install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --lockfile-dir ${{ github.workspace }}/.github/scripts --ignore-workspace
           cache-dependency-path: .github/scripts/pnpm-lock.yaml
 
-      - name: Check for new unpublished packages
+      - name: Check unpublished packages
         id: detect
-        continue-on-error: true
-        run: node .github/scripts/detect-new-packages.mjs
+        run: node .github/scripts/detect-new-packages.mjs --report-only --strict
 
-      - name: Notify Slack about new packages
-        if: steps.detect.outcome == 'failure' && steps.detect.outputs.packages != ''
+      - name: Notify Developer Platform
+        if: steps.detect.outputs.packages != ''
         env:
-          SLACK_TOKEN: ${{ secrets.RELEASE_HELPER_SLACK_TOKEN }}
-          MESSAGE: |-
-            :warning: *New unpublished packages detected* after merging <${{ github.event.pull_request.html_url }}|PR #${{ github.event.pull_request.number }}: ${{ github.event.pull_request.title }}>
+          PACKAGES: ${{ steps.detect.outputs.packages }}
+          SLACK_TOKEN: ${{ secrets.QBOT_SLACK_TOKEN }}
+        run: |
+          PACKAGE_LIST=''
+          IFS=',' read -ra package_names <<< "$PACKAGES"
+          for package_name in "${package_names[@]}"; do
+            PACKAGE_LIST+="- \`$package_name\`"$'\n'
+          done
+          MESSAGE=$(cat <<EOF
+          *Unpublished npm packages need manual setup*
 
-            The following packages do not exist on npm yet: `${{ steps.detect.outputs.packages }}`
+          The weekly check found these public packages on \`master\`:
 
-            *If a package is not intended for npm*, set `"private": true` in its `package.json` to exclude it from future checks.
+          $PACKAGE_LIST
 
-            *Otherwise, to unblock the next release:*
-            1. Run the <${{ github.server_url }}/${{ github.repository }}/actions/workflows/release-publish-new-package.yml|Release: Publish New Package> workflow for each package
-            2. Configure Trusted Publishing on npmjs.com (owner: `n8n-io`, repo: `n8n`, workflow: `release-publish.yml`)
+          Publish each package manually. Then configure \`release-publish.yml\` as its trusted publisher before the next release.
 
-            cc <!subteam^S08FYH9C9ME|@release-captain>
-        run: node .github/scripts/slack/notify.mjs --channel C036AELNMV0 --text "$MESSAGE"
+          <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View the check>
+          EOF
+          )
+          node .github/scripts/slack/notify.mjs \
+            --channel '#team-developer-platform' \
+            --text "$MESSAGE"

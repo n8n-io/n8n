@@ -10,6 +10,7 @@ import {
 	parseNodeId,
 	toSnakeCase,
 	isValidPathComponent,
+	isValidVersionSegment,
 	versionDirToNumber,
 } from '@n8n/ai-utilities/node-catalog';
 import { safeJoinPath } from '@n8n/backend-common';
@@ -235,6 +236,10 @@ function resolveFilePath(
 		targetVersion = `v${targetVersion.replace('.', '')}`;
 	} else {
 		targetVersion = `v${targetVersion.slice(1).replace('.', '')}`;
+	}
+
+	if (!isValidVersionSegment(targetVersion)) {
+		return { error: `Version '${version}' not found for node '${nodeId}'` };
 	}
 
 	// Check split vs flat structure

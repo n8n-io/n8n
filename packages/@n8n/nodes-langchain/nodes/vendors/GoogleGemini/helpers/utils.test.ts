@@ -1,5 +1,5 @@
 import type { IBinaryData, IExecuteFunctions } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestPath } from 'n8n-workflow';
 import type { MockInstance } from 'vitest';
 import { mockDeep } from 'vitest-mock-extended';
 
@@ -7,7 +7,9 @@ import {
 	createFileSearchStore,
 	deleteFileSearchStore,
 	downloadFile,
+	getCredentialHostname,
 	getFilenameFromMimeType,
+	isGeminiFileUrl,
 	listFileSearchStores,
 	transferFile,
 	uploadFile,
@@ -45,6 +47,44 @@ describe('GoogleGemini -> utils', () => {
 		});
 	});
 
+	describe('getCredentialHostname', () => {
+		it('should return the hostname from the credential URL', () => {
+			const hostname = getCredentialHostname.call(
+				mockExecuteFunctions,
+				'https://generativelanguage.googleapis.com/v1beta',
+			);
+
+			expect(hostname).toBe('generativelanguage.googleapis.com');
+		});
+
+		it('should wrap an invalid credential URL in a NodeOperationError', () => {
+			expect(() => getCredentialHostname.call(mockExecuteFunctions, 'not a URL')).toThrowError(
+				NodeOperationError,
+			);
+			expect(() => getCredentialHostname.call(mockExecuteFunctions, 'not a URL')).toThrowError(
+				"The Google Gemini credential host isn't a valid URL",
+			);
+		});
+	});
+
+	describe('isGeminiFileUrl', () => {
+		it('should accept a file URL on the Gemini API host', () => {
+			expect(
+				isGeminiFileUrl('https://generativelanguage.googleapis.com/v1beta/files/abc-123'),
+			).toBe(true);
+		});
+
+		it.each([
+			'https://generativelanguage.googleapis.com.example.org/v1beta/files/abc-123',
+			'https://generativelanguage.googleapis.com@example.org/v1beta/files/abc-123',
+			'http://generativelanguage.googleapis.com/v1beta/files/abc-123',
+			'https://example.org/generativelanguage.googleapis.com',
+			'not a URL',
+		])('should not accept %s', (url) => {
+			expect(isGeminiFileUrl(url)).toBe(false);
+		});
+	});
+
 	describe('downloadFile', () => {
 		it('should download file', async () => {
 			mockExecuteFunctions.helpers.httpRequest.mockResolvedValue({
@@ -63,6 +103,55 @@ describe('GoogleGemini -> utils', () => {
 			expect(mockExecuteFunctions.helpers.httpRequest).toHaveBeenCalledWith({
 				method: 'GET',
 				url: 'https://example.com/file.pdf',
+				returnFullResponse: true,
+				encoding: 'arraybuffer',
+			});
+		});
+
+		it('should restrict a matching URL to the configured domain', async () => {
+			mockExecuteFunctions.helpers.httpRequest.mockResolvedValue({
+				body: new ArrayBuffer(10),
+				headers: {},
+			});
+			const url = 'https://generativelanguage.googleapis.com/v1beta/files/video:download';
+
+			await downloadFile.call(
+				mockExecuteFunctions,
+				url,
+				'video/mp4',
+				{ key: 'test-api-key' },
+				'generativelanguage.googleapis.com',
+			);
+
+			expect(mockExecuteFunctions.helpers.httpRequest).toHaveBeenCalledWith({
+				method: 'GET',
+				url,
+				qs: { key: 'test-api-key' },
+				allowedDomains: 'generativelanguage.googleapis.com',
+				returnFullResponse: true,
+				encoding: 'arraybuffer',
+			});
+		});
+
+		it('should propagate a domain policy error for a mismatching URL', async () => {
+			mockExecuteFunctions.helpers.httpRequest.mockRejectedValue(new Error('Domain not allowed'));
+			const url = 'https://example.com/video.mp4';
+
+			await expect(
+				downloadFile.call(
+					mockExecuteFunctions,
+					url,
+					'video/mp4',
+					{ key: 'test-api-key' },
+					'generativelanguage.googleapis.com',
+				),
+			).rejects.toThrow('Domain not allowed');
+
+			expect(mockExecuteFunctions.helpers.httpRequest).toHaveBeenCalledWith({
+				method: 'GET',
+				url,
+				qs: { key: 'test-api-key' },
+				allowedDomains: 'generativelanguage.googleapis.com',
 				returnFullResponse: true,
 				encoding: 'arraybuffer',
 			});
@@ -128,7 +217,7 @@ describe('GoogleGemini -> utils', () => {
 				fileUri: 'https://google.com/files/test123',
 				mimeType: 'application/pdf',
 			});
-			expect(apiRequestMock).toHaveBeenCalledWith('POST', '/upload/v1beta/files', {
+			expect(apiRequestMock).toHaveBeenCalledWith('POST', requestPath`/upload/v1beta/files`, {
 				headers: {
 					'X-Goog-Upload-Protocol': 'resumable',
 					'X-Goog-Upload-Command': 'start',
@@ -136,9 +225,7 @@ describe('GoogleGemini -> utils', () => {
 					'X-Goog-Upload-Header-Content-Type': 'application/pdf',
 					'Content-Type': 'application/json',
 				},
-				option: {
-					returnFullResponse: true,
-				},
+				returnFullResponse: true,
 			});
 			expect(mockExecuteFunctions.helpers.httpRequest).toHaveBeenCalledWith({
 				method: 'POST',
@@ -206,7 +293,7 @@ describe('GoogleGemini -> utils', () => {
 				fileUri: 'https://google.com/files/test123',
 				mimeType: 'application/pdf',
 			});
-			expect(apiRequestMock).toHaveBeenCalledWith('GET', '/v1beta/files/test123');
+			expect(apiRequestMock).toHaveBeenCalledWith('GET', requestPath`/v1beta/files/test123`);
 		});
 
 		it('should poll until file is active', async () => {
@@ -254,7 +341,7 @@ describe('GoogleGemini -> utils', () => {
 				mimeType: 'application/pdf',
 			});
 
-			expect(apiRequestMock).toHaveBeenCalledWith('GET', '/v1beta/files/abc123');
+			expect(apiRequestMock).toHaveBeenCalledWith('GET', requestPath`/v1beta/files/abc123`);
 		});
 
 		it('should throw error when upload fails', async () => {
@@ -336,14 +423,14 @@ describe('GoogleGemini -> utils', () => {
 				encoding: 'stream',
 			});
 
-			expect(apiRequestMock).toHaveBeenCalledWith('POST', '/upload/v1beta/files', {
+			expect(apiRequestMock).toHaveBeenCalledWith('POST', requestPath`/upload/v1beta/files`, {
 				headers: {
 					'X-Goog-Upload-Protocol': 'resumable',
 					'X-Goog-Upload-Command': 'start',
 					'X-Goog-Upload-Header-Content-Type': 'application/pdf',
 					'Content-Type': 'application/json',
 				},
-				option: { returnFullResponse: true },
+				returnFullResponse: true,
 			});
 
 			expect(mockExecuteFunctions.helpers.httpRequest).toHaveBeenCalledWith({
@@ -569,7 +656,7 @@ describe('GoogleGemini -> utils', () => {
 			const result = await createFileSearchStore.call(mockExecuteFunctions, displayName);
 
 			expect(result).toEqual(mockResponse);
-			expect(apiRequestMock).toHaveBeenCalledWith('POST', '/v1beta/fileSearchStores', {
+			expect(apiRequestMock).toHaveBeenCalledWith('POST', requestPath`/v1beta/fileSearchStores`, {
 				body: { displayName },
 			});
 		});
@@ -642,7 +729,7 @@ describe('GoogleGemini -> utils', () => {
 
 			expect(apiRequestMock).toHaveBeenCalledWith(
 				'POST',
-				`/upload/v1beta/${fileSearchStoreName}:uploadToFileSearchStore`,
+				requestPath`/upload/v1beta/fileSearchStores/abc123:uploadToFileSearchStore`,
 				{
 					headers: {
 						'X-Goog-Upload-Protocol': 'resumable',
@@ -651,11 +738,11 @@ describe('GoogleGemini -> utils', () => {
 						'Content-Type': 'application/json',
 					},
 					body: { displayName, mimeType: 'application/pdf' },
-					option: { returnFullResponse: true },
+					returnFullResponse: true,
 				},
 			);
 
-			expect(apiRequestMock).toHaveBeenCalledWith('GET', '/v1beta/operations/op123');
+			expect(apiRequestMock).toHaveBeenCalledWith('GET', requestPath`/v1beta/operations/op123`);
 		});
 
 		it('should upload file from binary data (buffer) to file search store', async () => {
@@ -965,7 +1052,7 @@ describe('GoogleGemini -> utils', () => {
 			const result = await listFileSearchStores.call(mockExecuteFunctions);
 
 			expect(result).toEqual(mockResponse);
-			expect(apiRequestMock).toHaveBeenCalledWith('GET', '/v1beta/fileSearchStores', {
+			expect(apiRequestMock).toHaveBeenCalledWith('GET', requestPath`/v1beta/fileSearchStores`, {
 				qs: {},
 			});
 		});
@@ -985,7 +1072,7 @@ describe('GoogleGemini -> utils', () => {
 			const result = await listFileSearchStores.call(mockExecuteFunctions, 20);
 
 			expect(result).toEqual(mockResponse);
-			expect(apiRequestMock).toHaveBeenCalledWith('GET', '/v1beta/fileSearchStores', {
+			expect(apiRequestMock).toHaveBeenCalledWith('GET', requestPath`/v1beta/fileSearchStores`, {
 				qs: { pageSize: 20 },
 			});
 		});
@@ -1006,7 +1093,7 @@ describe('GoogleGemini -> utils', () => {
 			const result = await listFileSearchStores.call(mockExecuteFunctions, undefined, 'token123');
 
 			expect(result).toEqual(mockResponse);
-			expect(apiRequestMock).toHaveBeenCalledWith('GET', '/v1beta/fileSearchStores', {
+			expect(apiRequestMock).toHaveBeenCalledWith('GET', requestPath`/v1beta/fileSearchStores`, {
 				qs: { pageToken: 'token123' },
 			});
 		});
@@ -1026,13 +1113,20 @@ describe('GoogleGemini -> utils', () => {
 			const result = await listFileSearchStores.call(mockExecuteFunctions, 10, 'token123');
 
 			expect(result).toEqual(mockResponse);
-			expect(apiRequestMock).toHaveBeenCalledWith('GET', '/v1beta/fileSearchStores', {
+			expect(apiRequestMock).toHaveBeenCalledWith('GET', requestPath`/v1beta/fileSearchStores`, {
 				qs: { pageSize: 10, pageToken: 'token123' },
 			});
 		});
 	});
 
 	describe('deleteFileSearchStore', () => {
+		it('should reject a name that is not a File Search store', async () => {
+			await expect(deleteFileSearchStore.call(mockExecuteFunctions, 'files/abc')).rejects.toThrow(
+				NodeOperationError,
+			);
+			expect(apiRequestMock).not.toHaveBeenCalled();
+		});
+
 		it('should delete file search store without force', async () => {
 			const name = 'fileSearchStores/abc123';
 			const mockResponse = {};
@@ -1042,9 +1136,13 @@ describe('GoogleGemini -> utils', () => {
 			const result = await deleteFileSearchStore.call(mockExecuteFunctions, name);
 
 			expect(result).toEqual(mockResponse);
-			expect(apiRequestMock).toHaveBeenCalledWith('DELETE', `/v1beta/${name}`, {
-				qs: {},
-			});
+			expect(apiRequestMock).toHaveBeenCalledWith(
+				'DELETE',
+				requestPath`/v1beta/fileSearchStores/abc123`,
+				{
+					qs: {},
+				},
+			);
 		});
 
 		it('should delete file search store with force', async () => {
@@ -1056,9 +1154,13 @@ describe('GoogleGemini -> utils', () => {
 			const result = await deleteFileSearchStore.call(mockExecuteFunctions, name, true);
 
 			expect(result).toEqual(mockResponse);
-			expect(apiRequestMock).toHaveBeenCalledWith('DELETE', `/v1beta/${name}`, {
-				qs: { force: true },
-			});
+			expect(apiRequestMock).toHaveBeenCalledWith(
+				'DELETE',
+				requestPath`/v1beta/fileSearchStores/abc123`,
+				{
+					qs: { force: true },
+				},
+			);
 		});
 
 		it('should delete file search store with force false', async () => {
@@ -1070,9 +1172,13 @@ describe('GoogleGemini -> utils', () => {
 			const result = await deleteFileSearchStore.call(mockExecuteFunctions, name, false);
 
 			expect(result).toEqual(mockResponse);
-			expect(apiRequestMock).toHaveBeenCalledWith('DELETE', `/v1beta/${name}`, {
-				qs: { force: false },
-			});
+			expect(apiRequestMock).toHaveBeenCalledWith(
+				'DELETE',
+				requestPath`/v1beta/fileSearchStores/abc123`,
+				{
+					qs: { force: false },
+				},
+			);
 		});
 	});
 });

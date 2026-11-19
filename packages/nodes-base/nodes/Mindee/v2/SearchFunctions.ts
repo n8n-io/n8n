@@ -1,8 +1,9 @@
 import type { INodeListSearchResult, ILoadOptionsFunctions } from 'n8n-workflow';
+import { requestUrl } from 'n8n-workflow';
 
-import { mindeeApiRequest } from './GenericFunctions';
+import { mindeeApiRequest, ROOT_URL } from './GenericFunctions';
 
-const MODELS_URL = 'https://api-v2.mindee.net/v2/search/models';
+const MODELS_URL = requestUrl`${ROOT_URL}/search/models`;
 const PER_PAGE = 50;
 
 /**
@@ -31,5 +32,9 @@ export async function getModels(
 	);
 	const models = (res?.models ?? []) as Array<{ id: string; name: string }>;
 	const outputModels = models.map((m) => ({ name: m.name ?? m.id, value: m.id }));
-	return { results: outputModels };
+	const totalPages = (res?.pagination as { total_pages?: number } | undefined)?.total_pages ?? 0;
+	return {
+		results: outputModels,
+		paginationToken: page < totalPages ? String(page + 1) : undefined,
+	};
 }

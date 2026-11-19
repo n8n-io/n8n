@@ -1,7 +1,7 @@
 import { DecideWorkflowReviewRequestDto } from '../decide-workflow-review-request.dto';
 
 describe('DecideWorkflowReviewRequestDto', () => {
-	describe('Valid requests', () => {
+	describe('accepted', () => {
 		test.each([
 			{ name: 'approved decision', request: { decision: 'approved' } },
 			{ name: 'changes_requested decision', request: { decision: 'changes_requested' } },
@@ -13,7 +13,7 @@ describe('DecideWorkflowReviewRequestDto', () => {
 				name: 'changes_requested decision with a note',
 				request: { decision: 'changes_requested', note: 'Please rename the node' },
 			},
-		])('should validate $name', ({ request }) => {
+		])('accepts $name', ({ request }) => {
 			const result = DecideWorkflowReviewRequestDto.safeParse(request);
 			expect(result.success).toBe(true);
 			expect(result.data).toMatchObject(request);
@@ -21,7 +21,7 @@ describe('DecideWorkflowReviewRequestDto', () => {
 
 		// Its own test because the table above asserts `toMatchObject(request)`, which a row
 		// whose point is that the output differs from the input cannot satisfy.
-		test('should trim the note', () => {
+		test('trims the note', () => {
 			const result = DecideWorkflowReviewRequestDto.safeParse({
 				decision: 'approved',
 				note: '  first line\nsecond line  ',
@@ -31,7 +31,7 @@ describe('DecideWorkflowReviewRequestDto', () => {
 		});
 	});
 
-	describe('Invalid requests', () => {
+	describe('rejected', () => {
 		test.each([
 			{
 				name: 'missing decision',
@@ -68,7 +68,7 @@ describe('DecideWorkflowReviewRequestDto', () => {
 				request: { decision: 'changes_requested', note: 'oops \x00 here' },
 				expectedErrorPath: ['note'],
 			},
-		])('should fail validation for $name', ({ request, expectedErrorPath }) => {
+		])('rejects $name', ({ request, expectedErrorPath }) => {
 			const result = DecideWorkflowReviewRequestDto.safeParse(request);
 			expect(result.success).toBe(false);
 			expect(result.error?.issues[0].path).toEqual(expectedErrorPath);

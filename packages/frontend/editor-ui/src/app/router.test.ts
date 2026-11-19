@@ -4,7 +4,10 @@ import { createComponentRenderer } from '@/__tests__/render';
 import router, { routes } from '@/app/router';
 import { VIEWS } from '@/app/constants';
 import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
+import { PROMOTIONS_SETTINGS_VIEW } from '@n8n/frontend-module-promotions';
+import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { RESOURCE_CENTER_EXPERIMENT } from '@/app/constants/experiments';
+
 import { setupServer } from '@/__tests__/server';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { usePostHog } from '@/app/stores/posthog.store';
@@ -134,16 +137,20 @@ describe('router', () => {
 			VIEWS.EXTERNAL_SECRETS_SETTINGS,
 			['externalSecretsProvider:list', 'externalSecretsProvider:update'],
 		],
+		['/settings/authentication', VIEWS.WORKFLOWS, []],
+		['/settings/authentication', VIEWS.AUTHENTICATION_SETTINGS, ['saml:manage']],
+		['/settings/authentication', VIEWS.AUTHENTICATION_SETTINGS, ['ldap:manage']],
+		['/settings/authentication/sso', VIEWS.SSO_SETTINGS, ['saml:manage']],
+		// Old flat paths redirect to the nested method pages.
 		['/settings/sso', VIEWS.WORKFLOWS, []],
 		['/settings/sso', VIEWS.SSO_SETTINGS, ['saml:manage']],
-		['/settings/log-streaming', VIEWS.WORKFLOWS, []],
-		['/settings/log-streaming', VIEWS.LOG_STREAMING_SETTINGS, ['logStreaming:manage']],
 		['/settings/community-nodes', VIEWS.WORKFLOWS, []],
 		[
 			'/settings/community-nodes',
 			VIEWS.COMMUNITY_NODES,
 			['communityPackage:list', 'communityPackage:update'],
 		],
+		['/settings/authentication/ldap', VIEWS.LDAP_SETTINGS, ['ldap:manage']],
 		['/settings/ldap', VIEWS.WORKFLOWS, []],
 		['/settings/ldap', VIEWS.LDAP_SETTINGS, ['ldap:manage']],
 		['/settings/security', VIEWS.WORKFLOWS, []],
@@ -208,12 +215,20 @@ describe('router', () => {
 		expect(router.currentRoute.value.name).toBe(name);
 	});
 
-	test('should block n8n Connect settings for Cloud UBB', async () => {
+	test('should block Gateway credits settings for Cloud UBB', async () => {
 		settingsStore.settings.aiGateway = { enabled: true, budget: 0, cloudUbbEnabled: true };
+
+		await router.push('/settings/gateway-credits');
+
+		expect(router.currentRoute.value.name).toBe(VIEWS.WORKFLOWS);
+	});
+
+	test('should redirect the old n8n-connect settings path to Gateway credits settings', async () => {
+		settingsStore.settings.aiGateway = { enabled: true, budget: 0, cloudUbbEnabled: false };
 
 		await router.push('/settings/n8n-connect');
 
-		expect(router.currentRoute.value.name).toBe(VIEWS.WORKFLOWS);
+		expect(router.currentRoute.value.name).toBe(VIEWS.AI_GATEWAY_SETTINGS);
 	});
 
 	describe('resource center route guard', () => {
@@ -230,7 +245,9 @@ describe('router', () => {
 
 		test('allows enrolled users to reach the resource center view', async () => {
 			const posthog = usePostHog();
-			posthog.overrides[RESOURCE_CENTER_EXPERIMENT.name] = RESOURCE_CENTER_EXPERIMENT.variant;
+			posthog.overrides[RESOURCE_CENTER_EXPERIMENT.name] = {
+				value: RESOURCE_CENTER_EXPERIMENT.variant,
+			};
 
 			await router.push('/resource-center');
 			expect(router.currentRoute.value.name).toBe(VIEWS.RESOURCE_CENTER);
@@ -238,7 +255,9 @@ describe('router', () => {
 
 		test('redirects control users away from the resource center view', async () => {
 			const posthog = usePostHog();
-			posthog.overrides[RESOURCE_CENTER_EXPERIMENT.name] = RESOURCE_CENTER_EXPERIMENT.control;
+			posthog.overrides[RESOURCE_CENTER_EXPERIMENT.name] = {
+				value: RESOURCE_CENTER_EXPERIMENT.control,
+			};
 
 			await router.push('/resource-center');
 			expect(router.currentRoute.value.name).toBe(VIEWS.WORKFLOWS);
@@ -251,13 +270,12 @@ describe('router', () => {
 
 		test('waits for delayed flag hydration before allowing enrolled users through', async () => {
 			const posthog = usePostHog();
-			const hasPendingFeatureFlagsSpy = vi
-				.spyOn(posthog, 'hasPendingFeatureFlags')
-				.mockReturnValue(true);
 			const waitForFeatureFlagsSpy = vi
 				.spyOn(posthog, 'waitForFeatureFlags')
 				.mockImplementation(async () => {
-					posthog.overrides[RESOURCE_CENTER_EXPERIMENT.name] = RESOURCE_CENTER_EXPERIMENT.variant;
+					posthog.overrides[RESOURCE_CENTER_EXPERIMENT.name] = {
+						value: RESOURCE_CENTER_EXPERIMENT.variant,
+					};
 					return null;
 				});
 
@@ -268,7 +286,6 @@ describe('router', () => {
 				expect(router.currentRoute.value.name).toBe(VIEWS.RESOURCE_CENTER);
 			} finally {
 				waitForFeatureFlagsSpy.mockRestore();
-				hasPendingFeatureFlagsSpy.mockRestore();
 			}
 		});
 	});
@@ -279,8 +296,8 @@ describe('router', () => {
 		// Drive the `/` route's beforeEnter directly with a captured `next` instead.
 		const instanceAiModuleSettings = {
 			enabled: true,
+			mcpConnectionsAvailable: true,
 			setupCompleted: true,
-			localGatewayDisabled: false,
 			browserUseEnabled: true,
 			proxyEnabled: false,
 			cloudManaged: false,
@@ -288,6 +305,8 @@ describe('router', () => {
 			workflowBuilderAvailable: true,
 			sandboxUnavailableReason: null,
 			runDebugEnabled: false,
+			workflowSuggestionsEnabled: false,
+			assistantAgentEnabled: false,
 		};
 
 		const runRootRedirect = () => {
@@ -380,6 +399,31 @@ describe('router', () => {
 		);
 		expect(editRoleRoute?.props).toBe(true);
 		expect(editRoleRoute?.path).toBe('edit/:roleSlug');
+	});
+
+	describe('environments settings while the instance uses v2', () => {
+		beforeEach(() => {
+			router.addRoute(VIEWS.SETTINGS, {
+				path: 'promotions',
+				name: PROMOTIONS_SETTINGS_VIEW,
+				component: App,
+			});
+			useRBACStore().setGlobalScopes(['sourceControl:manage']);
+			settingsStore.settings.activeModules = ['promotions'];
+			useSourceControlStore().preferences.environmentsVersion = 'v2';
+		});
+
+		afterEach(() => {
+			router.removeRoute(PROMOTIONS_SETTINGS_VIEW);
+			settingsStore.settings.activeModules = [];
+			useSourceControlStore().preferences.environmentsVersion = undefined;
+		});
+
+		it('redirects /settings/environments to the v2 settings', async () => {
+			await router.push('/settings/environments');
+
+			expect(router.currentRoute.value.name).toBe(PROMOTIONS_SETTINGS_VIEW);
+		});
 	});
 
 	// Kept last and self-contained: it logs the shared `currentUser` out for real

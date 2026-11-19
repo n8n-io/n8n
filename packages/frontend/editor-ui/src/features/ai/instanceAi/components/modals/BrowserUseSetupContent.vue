@@ -1,10 +1,9 @@
 <script lang="ts" setup>
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useEventListener } from '@vueuse/core';
-import { N8nButton, N8nCallout, N8nHeading, N8nText } from '@n8n/design-system';
-import { useToast } from '@n8n/composables/useToast';
+import { N8nButton, N8nCallout, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { isBrowserUseSupportedForBrowser } from '@/experiments/instanceAiBrowserUse';
+import { isBrowserUseSupportedForBrowser } from '../../utils/browserUseSupport';
 import { useDocumentVisibility } from '@/app/composables/useDocumentVisibility';
 import { useInstanceAiSettingsStore } from '../../instanceAiSettings.store';
 import { useInstanceAiBrowserUseTelemetry } from '../../instanceAiBrowserUse.telemetry';
@@ -30,7 +29,6 @@ const props = withDefaults(
 const emit = defineEmits<{ close: [] }>();
 
 const i18n = useI18n();
-const toast = useToast();
 const store = useInstanceAiSettingsStore();
 const telemetry = useInstanceAiBrowserUseTelemetry();
 const { onDocumentVisible } = useDocumentVisibility();
@@ -56,46 +54,23 @@ async function refreshExtensionState(): Promise<void> {
 }
 
 onMounted(async () => {
-	telemetry.trackModalOpened(isBrowserSupported);
 	if (!isBrowserSupported) return;
 	await Promise.all([refreshExtensionState(), store.fetchBrowserStatus()]);
 	statusChecked.value = true;
 });
 
-// When the connection is driven from this view, reporting success as a toast keeps
-// the screen free instead of parking the user on a status-only modal. Flushed
-// synchronously because other views watch the same state to close this one, and a
-// deferred callback would be dropped along with the unmounting component.
-watch(
-	isConnected,
-	(connected) => {
-		if (!connected || !props.autoConnect) return;
-		toast.showMessage({
-			type: 'success',
-			title: i18n.baseText('instanceAi.browserUse.connected'),
-			message: i18n.baseText('instanceAi.browserUse.connected.toastMessage'),
-		});
-		emit('close');
-	},
-	{ flush: 'sync' },
-);
-
 // Re-probe when the user returns from installing the extension. Coming back by tab switch
 // only fires `visibilitychange` — the window's focus can land in DevTools or another pane —
 // while coming back from a separate window only fires `focus`, so we listen for both.
-const reprobeExtension = () => void refreshExtensionState();
+const reprobeExtension = () => {
+	void refreshExtensionState();
+};
 onDocumentVisible(reprobeExtension);
 useEventListener(window, 'focus', reprobeExtension);
 </script>
 
 <template>
 	<div :class="[$style.body, props.embedded && $style.bodyEmbedded]">
-		<div v-if="!props.embedded" :class="$style.header">
-			<N8nHeading tag="h2" size="large" :class="$style.title">
-				{{ i18n.baseText('instanceAi.browserUse.modal.title') }}
-			</N8nHeading>
-		</div>
-
 		<template v-if="!isBrowserSupported">
 			<N8nCallout theme="warning" data-test-id="browser-use-unsupported-browser">
 				{{ i18n.baseText('instanceAi.browserUse.unsupportedBrowser') }}
@@ -168,23 +143,10 @@ useEventListener(window, 'focus', reprobeExtension);
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--sm);
-	padding: var(--spacing--md);
 }
 
 .bodyEmbedded {
 	padding: 0;
-}
-
-.header {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: var(--spacing--xs);
-}
-
-.title {
-	margin: 0;
-	font-size: var(--font-size--xl);
 }
 
 .description {

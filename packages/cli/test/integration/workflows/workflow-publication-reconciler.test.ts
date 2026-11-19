@@ -1,3 +1,4 @@
+import { EventService } from '@n8n/backend-services';
 import {
 	createWorkflowHistory,
 	createWorkflowWithHistory,
@@ -8,6 +9,7 @@ import {
 import { WorkflowsConfig } from '@n8n/config';
 import {
 	WorkflowPublicationOutboxRepository,
+	WorkflowPublicationRetryStateRepository,
 	WorkflowPublicationTriggerStatusRepository,
 	WorkflowPublishedVersionRepository,
 	WorkflowRepository,
@@ -25,6 +27,7 @@ import { ExternalHooks } from '@/external-hooks';
 import { Push } from '@/push';
 import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowPublicationOutboxConsumer } from '@/workflows/publication/workflow-publication-outbox-consumer';
+import { WorkflowPublicationApplier } from '@/workflows/publication/workflow-publication-applier';
 import { WorkflowPublicationReconciler } from '@/workflows/publication/workflow-publication-reconciler.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
@@ -48,6 +51,7 @@ const abortSignal = new AbortController().signal;
 let consumer: WorkflowPublicationOutboxConsumer;
 let activeWorkflowTriggers: ActiveWorkflowTriggers;
 let outboxRepository: WorkflowPublicationOutboxRepository;
+let retryStateRepository: WorkflowPublicationRetryStateRepository;
 let publishedVersionRepository: WorkflowPublishedVersionRepository;
 let triggerStatusRepository: WorkflowPublicationTriggerStatusRepository;
 let originalUseWorkflowPublicationService: boolean;
@@ -88,6 +92,7 @@ beforeAll(async () => {
 	consumer = Container.get(WorkflowPublicationOutboxConsumer);
 	activeWorkflowTriggers = Container.get(ActiveWorkflowTriggers);
 	outboxRepository = Container.get(WorkflowPublicationOutboxRepository);
+	retryStateRepository = Container.get(WorkflowPublicationRetryStateRepository);
 	publishedVersionRepository = Container.get(WorkflowPublishedVersionRepository);
 	triggerStatusRepository = Container.get(WorkflowPublicationTriggerStatusRepository);
 });
@@ -99,6 +104,7 @@ afterEach(async () => {
 	// onDelete RESTRICT, and deleting WorkflowEntity cascades into WorkflowHistory.
 	await testDb.truncate([
 		'WorkflowPublishedVersion',
+		'WorkflowPublicationRetryState',
 		'WorkflowPublicationOutbox',
 		'WorkflowPublicationTriggerStatus',
 		'WorkflowPublishHistory',
@@ -330,6 +336,83 @@ describe('WorkflowPublicationReconciler (integration)', () => {
 		expect(await outboxRepository.claimNextPendingRecord()).toBeNull();
 	});
 
+	// A publication failing before the mapping advances (e.g. a policy block) leaves
+	// the skew permanently, so re-enqueueing would loop on every pass.
+	test('leaves a workflow skewed by a terminally failed publication alone', async () => {
+		const owner = await createOwner();
+
+		const trigger = scheduleNode('skew-failed');
+		const workflow = await createWorkflowWithHistory({ active: true, nodes: [trigger] }, owner);
+		await setActiveVersion(workflow.id, workflow.versionId);
+
+		await outboxRepository.enqueue(workflow.id, workflow.versionId, 'publish');
+		await consumer.processRecord((await outboxRepository.claimNextPendingRecord())!, abortSignal);
+
+		// A newer version is made active, but its publication fails before the
+		// mapping advances — so activeVersionId and publishedVersionId diverge.
+		const newVersionId = 'version-2-failed-publish';
+		await createWorkflowHistory(workflow, owner, undefined, {
+			versionId: newVersionId,
+			nodes: [trigger],
+		});
+		await setActiveVersion(workflow.id, newVersionId);
+		await outboxRepository.enqueue(workflow.id, newVersionId, 'publish');
+		const failing = (await outboxRepository.claimNextPendingRecord())!;
+		await outboxRepository.markFailed(failing.id, 'Blocked by policy');
+		await retryStateRepository.suppressRetry(workflow.id, newVersionId);
+
+		expect(await publishedVersionRepository.getPublishedVersionId(workflow.id)).toBe(
+			workflow.versionId,
+		);
+
+		await reconciler.reconcile('reconcile');
+
+		// No third record: the skew is real but permanent, so the reconciler must
+		// not keep retrying it.
+		expect(await outboxRepository.countBy({ workflowId: workflow.id })).toBe(2);
+		expect(await outboxRepository.claimNextPendingRecord()).toBeNull();
+	});
+
+	// Retry suppression is scoped to the active version so it never reaches an
+	// unpublish, where the mapping is all that is left to heal.
+	test('removes a mapping left behind by a failed unpublish, despite retry suppression', async () => {
+		const owner = await createOwner();
+
+		const trigger = scheduleNode('unpublish-failed');
+		const workflow = await createWorkflowWithHistory({ active: true, nodes: [trigger] }, owner);
+		await setActiveVersion(workflow.id, workflow.versionId);
+
+		await outboxRepository.enqueue(workflow.id, workflow.versionId, 'publish');
+		await consumer.processRecord((await outboxRepository.claimNextPendingRecord())!, abortSignal);
+
+		// An unpublish another main tore down and reported (triggers gone, status
+		// rows cleared) whose mapping removal never landed, so its record is
+		// terminal `failed`. With no in-memory trigger and no status rows, the
+		// registry detections are blind — only the version comparison can see it.
+		await Container.get(WorkflowRepository).update(workflow.id, { activeVersionId: null });
+		await activeWorkflowTriggers.remove(workflow.id);
+		await triggerStatusRepository.delete({ workflowId: workflow.id });
+		await outboxRepository.enqueue(workflow.id, workflow.versionId, 'publish');
+		const failing = (await outboxRepository.claimNextPendingRecord())!;
+		await outboxRepository.markFailed(failing.id, 'Removing the published version failed');
+		await retryStateRepository.suppressRetry(workflow.id, workflow.versionId);
+
+		expect(await outboxRepository.findVersionSkewedWorkflowIds()).toContain(workflow.id);
+
+		const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+		await reconciler.reconcile('reconcile');
+
+		// Attribution: the skew detector drove the repair, not another pass.
+		expect(emitSpy).toHaveBeenCalledWith(
+			'workflow-publication-reconciliation',
+			expect.objectContaining({ versionSkewCount: 1, deficientCount: 0, surplusCount: 0 }),
+		);
+		expect(await publishedVersionRepository.getPublishedVersionId(workflow.id)).toBeNull();
+		expect(await outboxRepository.claimNextPendingRecord()).toBeNull();
+
+		emitSpy.mockRestore();
+	});
+
 	test('removes a published-version mapping left behind by a missed unpublish', async () => {
 		const owner = await createOwner();
 
@@ -450,7 +533,7 @@ describe('WorkflowPublicationReconciler (integration)', () => {
 		expect(await outboxRepository.claimNextPendingRecord()).toBeNull();
 	});
 
-	test('leaves a workflow whose most recent publication failed before reporting statuses alone', async () => {
+	test('leaves a workflow with retry suppression before reporting statuses alone', async () => {
 		const owner = await createOwner();
 
 		const trigger = scheduleNode('failed-terminal');
@@ -465,6 +548,7 @@ describe('WorkflowPublicationReconciler (integration)', () => {
 		await outboxRepository.enqueue(workflow.id, workflow.versionId, 'publish');
 		const record = await outboxRepository.claimNextPendingRecord();
 		await outboxRepository.markFailed(record!.id, 'unexpected error before reporting');
+		await retryStateRepository.suppressRetry(workflow.id, workflow.versionId);
 
 		await reconciler.reconcile('reconcile');
 
@@ -472,7 +556,37 @@ describe('WorkflowPublicationReconciler (integration)', () => {
 		expect(await triggerStatusRepository.findByWorkflowId(workflow.id)).toHaveLength(0);
 	});
 
-	test('leaves a drifted workflow whose most recent publication failed before reporting alone', async () => {
+	test('retries a failed publication once when no retry state was backfilled', async () => {
+		const owner = await createOwner();
+
+		const trigger = scheduleNode('failed-without-retry-state');
+		const workflow = await createWorkflowWithHistory({ active: true, nodes: [trigger] }, owner);
+		await setActiveVersion(workflow.id, workflow.versionId);
+		await publishedVersionRepository.setPublishedVersion(workflow.id, workflow.versionId);
+		await outboxRepository.enqueue(workflow.id, workflow.versionId, 'publish');
+		const record = await outboxRepository.claimNextPendingRecord();
+		await outboxRepository.markFailed(record!.id, 'failure from before retry state existed');
+
+		expect(await outboxRepository.findUnreportedPublishedWorkflowIds()).toContain(workflow.id);
+
+		const applySpy = vi
+			.spyOn(Container.get(WorkflowPublicationApplier), 'apply')
+			.mockResolvedValueOnce({ type: 'version-missing' });
+		await reconciler.reconcile('reconcile');
+		applySpy.mockRestore();
+
+		expect(await retryStateRepository.findOneBy({ workflowId: workflow.id })).toMatchObject({
+			targetVersionId: workflow.versionId,
+		});
+		expect(await triggerStatusRepository.findByWorkflowId(workflow.id)).toEqual([]);
+		await reconciler.reconcile('reconcile');
+
+		expect(await outboxRepository.countBy({ workflowId: workflow.id })).toBe(2);
+		expect(await outboxRepository.countBy({ workflowId: workflow.id, status: 'failed' })).toBe(2);
+		expect(await outboxRepository.claimNextPendingRecord()).toBeNull();
+	});
+
+	test('leaves a drifted workflow with retry suppression before reporting alone', async () => {
 		const owner = await createOwner();
 
 		const trigger = scheduleNode('drift-failed-terminal');
@@ -497,6 +611,7 @@ describe('WorkflowPublicationReconciler (integration)', () => {
 		await outboxRepository.enqueue(workflow.id, newVersionId, 'publish');
 		const record = await outboxRepository.claimNextPendingRecord();
 		await outboxRepository.markFailed(record!.id, 'unexpected error before reporting');
+		await retryStateRepository.suppressRetry(workflow.id, newVersionId);
 
 		await reconciler.reconcile('reconcile');
 

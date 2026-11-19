@@ -1,18 +1,19 @@
 import {
-	createWorkflowWithTriggerAndHistory,
 	createWorkflowWithHistory,
 	createActiveWorkflow,
-	createManyActiveWorkflows,
 	createWorkflow,
 	testDb,
 	getWorkflowById,
 	setActiveVersion,
 } from '@n8n/backend-test-utils';
-import { WorkflowRepository, WorkflowDependencyRepository, WorkflowDependencies } from '@n8n/db';
+import {
+	WorkflowRepository,
+	WorkflowDependencyRepository,
+	WorkflowDependencies,
+	WORKFLOW_DEPENDENCY_INDEX_VERSION,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
-
-import { createWorkflowHistoryItem } from '@test-integration/db/workflow-history';
 
 import { createTestRun } from '../../shared/db/evaluation';
 
@@ -61,147 +62,6 @@ describe('WorkflowRepository', () => {
 
 	afterAll(async () => {
 		await testDb.terminate();
-	});
-
-	describe('publishVersion', () => {
-		it('should publish a specific workflow version', async () => {
-			//
-			// ARRANGE
-			//
-			const workflowRepository = Container.get(WorkflowRepository);
-			const workflow = await createWorkflowWithTriggerAndHistory();
-			const targetVersionId = 'custom-version-123';
-			await createWorkflowHistoryItem(workflow.id, { versionId: targetVersionId });
-
-			//
-			// ACT
-			//
-			await workflowRepository.publishVersion(workflow.id, targetVersionId);
-
-			//
-			// ASSERT
-			//
-			const updatedWorkflow = await getWorkflowById(workflow.id);
-
-			expect(updatedWorkflow?.activeVersionId).toBe(targetVersionId);
-			expect(updatedWorkflow?.active).toBe(true);
-		});
-
-		it('should update activeVersionId when publishing an already published workflow', async () => {
-			//
-			// ARRANGE
-			//
-			const workflowRepository = Container.get(WorkflowRepository);
-			const workflow = await createActiveWorkflow();
-			const newVersionId = 'new-version-id';
-			await createWorkflowHistoryItem(workflow.id, { versionId: newVersionId });
-
-			//
-			// ACT
-			//
-			await workflowRepository.publishVersion(workflow.id, newVersionId);
-
-			//
-			// ASSERT
-			//
-			const updatedWorkflow = await getWorkflowById(workflow.id);
-
-			expect(updatedWorkflow?.activeVersionId).toBe(newVersionId);
-			expect(updatedWorkflow?.active).toBe(true);
-			expect(updatedWorkflow?.versionId).toBe(workflow.versionId);
-		});
-
-		it('should throw error when version does not exist for workflow', async () => {
-			//
-			// ARRANGE
-			//
-			const workflowRepository = Container.get(WorkflowRepository);
-			const workflow = await createWorkflowWithTriggerAndHistory();
-			const nonExistentVersionId = 'non-existent-version';
-
-			//
-			// ACT & ASSERT
-			//
-			await expect(
-				workflowRepository.publishVersion(workflow.id, nonExistentVersionId),
-			).rejects.toThrow(
-				`Version "${nonExistentVersionId}" not found for workflow "${workflow.id}".`,
-			);
-		});
-
-		it('should publish current version when versionId is not provided', async () => {
-			//
-			// ARRANGE
-			//
-			const workflowRepository = Container.get(WorkflowRepository);
-			const workflow = await createWorkflowWithTriggerAndHistory();
-
-			//
-			// ACT
-			//
-			await workflowRepository.publishVersion(workflow.id);
-
-			//
-			// ASSERT
-			//
-			const updatedWorkflow = await getWorkflowById(workflow.id);
-
-			expect(updatedWorkflow?.activeVersionId).toBe(workflow.versionId);
-			expect(updatedWorkflow?.active).toBe(true);
-		});
-
-		it('should throw when workflow does not exist', async () => {
-			const workflowRepository = Container.get(WorkflowRepository);
-
-			await expect(workflowRepository.publishVersion('non-existent-id')).rejects.toThrow(
-				'Workflow "non-existent-id" not found.',
-			);
-		});
-
-		it('should throw when workflow is archived', async () => {
-			const workflowRepository = Container.get(WorkflowRepository);
-			const workflow = await createWorkflowWithTriggerAndHistory({ isArchived: true });
-
-			await expect(workflowRepository.publishVersion(workflow.id)).rejects.toThrow(
-				'Cannot publish archived Workflow',
-			);
-
-			const updatedWorkflow = await getWorkflowById(workflow.id);
-			expect(updatedWorkflow?.activeVersionId).toBeNull();
-			expect(updatedWorkflow?.active).toBe(false);
-		});
-	});
-
-	describe('unpublishAll', () => {
-		it('should unpublish all workflows and clear activeVersionId', async () => {
-			//
-			// ARRANGE
-			//
-			const workflowRepository = Container.get(WorkflowRepository);
-			const workflows = await createManyActiveWorkflows(2);
-
-			// Verify activeVersionId is initially set
-			expect(workflows[0].activeVersionId).not.toBeNull();
-			expect(workflows[1].activeVersionId).not.toBeNull();
-
-			//
-			// ACT
-			//
-			await workflowRepository.unpublishAll();
-			//
-			// ASSERT
-			//
-			// Verify activeVersionId is cleared
-			const workflow1 = await workflowRepository.findOne({
-				where: { id: workflows[0].id },
-			});
-			const workflow2 = await workflowRepository.findOne({
-				where: { id: workflows[1].id },
-			});
-
-			expect(workflow1?.activeVersionId).toBeNull();
-			expect(workflow2?.activeVersionId).toBeNull();
-		});
 	});
 
 	describe('getActiveIds', () => {
@@ -484,6 +344,51 @@ describe('WorkflowRepository', () => {
 			expect(workflowIds).not.toContain(workflow3.id);
 		});
 
+		it('should return workflows whose rows an older indexer version wrote', async () => {
+			//
+			// ARRANGE
+			//
+			const workflowRepository = Container.get(WorkflowRepository);
+			const workflowDependencyRepository = Container.get(WorkflowDependencyRepository);
+
+			// Indexed at the current version counter, but by an older indexer version.
+			const outdatedWorkflow = await createWorkflow({ versionCounter: 3, nodes: [] });
+			await workflowDependencyRepository.insert({
+				workflowId: outdatedWorkflow.id,
+				workflowVersionId: 3,
+				publishedVersionId: null,
+				dependencyType: 'nodeType',
+				dependencyKey: 'n8n-nodes-base.httpRequest',
+				dependencyInfo: null,
+				indexVersionId: WORKFLOW_DEPENDENCY_INDEX_VERSION - 1,
+			});
+
+			// Indexed by the current indexer version.
+			const currentWorkflow = await createWorkflow({ versionCounter: 3, nodes: [] });
+			const dependencies = new WorkflowDependencies(currentWorkflow.id, 3);
+			dependencies.add({
+				dependencyType: 'nodeType',
+				dependencyKey: 'n8n-nodes-base.httpRequest',
+				dependencyInfo: null,
+			});
+			await workflowDependencyRepository.updateDependenciesForWorkflow(
+				currentWorkflow.id,
+				dependencies,
+			);
+
+			//
+			// ACT
+			//
+			const workflowsNeedingIndexing = await workflowRepository.findWorkflowsNeedingIndexing();
+
+			//
+			// ASSERT
+			//
+			const workflowIds = workflowsNeedingIndexing.map((w) => w.id);
+			expect(workflowIds).toContain(outdatedWorkflow.id);
+			expect(workflowIds).not.toContain(currentWorkflow.id);
+		});
+
 		it('should respect the batch size limit', async () => {
 			//
 			// ARRANGE
@@ -506,6 +411,62 @@ describe('WorkflowRepository', () => {
 			// ASSERT
 			//
 			expect(workflowsNeedingIndexing).toHaveLength(batchSize);
+		});
+	});
+
+	describe('findWorkflowsNeedingPublishedVersionIndexing', () => {
+		it('should return active workflows with missing or outdated published rows', async () => {
+			//
+			// ARRANGE
+			//
+			const workflowRepository = Container.get(WorkflowRepository);
+			const workflowDependencyRepository = Container.get(WorkflowDependencyRepository);
+
+			// Active, but no published dependency rows exist.
+			const unindexedWorkflow = await createActiveWorkflow();
+
+			// Published rows exist, but an older indexer version wrote them.
+			const outdatedWorkflow = await createActiveWorkflow();
+			await workflowDependencyRepository.insert({
+				workflowId: outdatedWorkflow.id,
+				workflowVersionId: 1,
+				publishedVersionId: outdatedWorkflow.activeVersionId,
+				dependencyType: 'nodeType',
+				dependencyKey: 'n8n-nodes-base.httpRequest',
+				dependencyInfo: null,
+				indexVersionId: WORKFLOW_DEPENDENCY_INDEX_VERSION - 1,
+			});
+
+			// Published rows exist at the current indexer version.
+			const currentWorkflow = await createActiveWorkflow();
+			const dependencies = new WorkflowDependencies(
+				currentWorkflow.id,
+				1,
+				currentWorkflow.activeVersionId,
+			);
+			dependencies.add({
+				dependencyType: 'nodeType',
+				dependencyKey: 'n8n-nodes-base.httpRequest',
+				dependencyInfo: null,
+			});
+			await workflowDependencyRepository.updateDependenciesForWorkflow(
+				currentWorkflow.id,
+				dependencies,
+			);
+
+			//
+			// ACT
+			//
+			const workflowsNeedingIndexing =
+				await workflowRepository.findWorkflowsNeedingPublishedVersionIndexing();
+
+			//
+			// ASSERT
+			//
+			const workflowIds = workflowsNeedingIndexing.map((w) => w.id);
+			expect(workflowIds).toContain(unindexedWorkflow.id);
+			expect(workflowIds).toContain(outdatedWorkflow.id);
+			expect(workflowIds).not.toContain(currentWorkflow.id);
 		});
 	});
 
@@ -1025,8 +986,8 @@ describe('WorkflowRepository', () => {
 			// ARRANGE
 			const { createMember } = await import('../../shared/db/users.js');
 			const { createTeamProject, linkUserToProject } = await import('@n8n/backend-test-utils');
-			const { WorkflowSharingService } = await import('@/workflows/workflow-sharing.service.js');
-			const { RoleService } = await import('@/services/role.service.js');
+			const { WorkflowSharingService } = await import('@n8n/backend-services');
+			const { RoleService } = await import('@n8n/backend-services');
 
 			const member = await createMember();
 			const teamProject = await createTeamProject('test-project');
@@ -1070,7 +1031,7 @@ describe('WorkflowRepository', () => {
 			// ARRANGE
 			const { createOwner } = await import('../../shared/db/users.js');
 			const { getPersonalProject } = await import('@n8n/backend-test-utils');
-			const { WorkflowSharingService } = await import('@/workflows/workflow-sharing.service.js');
+			const { WorkflowSharingService } = await import('@n8n/backend-services');
 
 			const owner = await createOwner();
 			const personalProject = await getPersonalProject(owner);
@@ -1111,7 +1072,7 @@ describe('WorkflowRepository', () => {
 			// ARRANGE
 			const { createOwner } = await import('../../shared/db/users.js');
 			const { getPersonalProject } = await import('@n8n/backend-test-utils');
-			const { WorkflowSharingService } = await import('@/workflows/workflow-sharing.service.js');
+			const { WorkflowSharingService } = await import('@n8n/backend-services');
 
 			const owner = await createOwner();
 			const personalProject = await getPersonalProject(owner);
@@ -1163,8 +1124,8 @@ describe('WorkflowRepository', () => {
 			// ARRANGE
 			const { createMember } = await import('../../shared/db/users.js');
 			const { createTeamProject, linkUserToProject } = await import('@n8n/backend-test-utils');
-			const { WorkflowSharingService } = await import('@/workflows/workflow-sharing.service.js');
-			const { RoleService } = await import('@/services/role.service.js');
+			const { WorkflowSharingService } = await import('@n8n/backend-services');
+			const { RoleService } = await import('@n8n/backend-services');
 
 			const member = await createMember();
 
@@ -1245,8 +1206,8 @@ describe('WorkflowRepository', () => {
 			// ARRANGE
 			const { createMember } = await import('../../shared/db/users.js');
 			const { createTeamProject, linkUserToProject } = await import('@n8n/backend-test-utils');
-			const { WorkflowSharingService } = await import('@/workflows/workflow-sharing.service.js');
-			const { RoleService } = await import('@/services/role.service.js');
+			const { WorkflowSharingService } = await import('@n8n/backend-services');
+			const { RoleService } = await import('@n8n/backend-services');
 
 			// Create two separate users
 			const userA = await createMember();
