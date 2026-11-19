@@ -1,0 +1,18 @@
+packages/nodes-base/nodes/Set/test/annotations.test.ts
+  h_52a137d26d774c 1-50
+packages/nodes-base/nodes/Set/v1/SetV1.node.ts
+  h_52a137d26d774c 10,18
+packages/nodes-base/nodes/Set/v2/SetV2.node.ts
+  h_52a137d26d774c 9,24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "35920f0dd3d93183bb4c398bef4cefdede3159ea",
+  "prompts": {},
+  "humans": {
+    "h_52a137d26d774c": {
+      "author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}
