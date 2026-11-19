@@ -85,17 +85,22 @@ describe('initBinaryDataService', () => {
 		mockInstance(AzureBlobConfig, { containerName: 'n8n-data' });
 		const deployment = Container.get(GlobalConfig).deployment;
 		const originalDeploymentType = deployment.type;
+		const executions = Container.get(GlobalConfig).executions;
+		const originalExecutionsMode = executions.mode;
 
 		let exit: ReturnType<typeof vi.spyOn>;
+		let initBlobManagers: ReturnType<typeof vi.spyOn>;
 
 		beforeEach(() => {
 			exit = vi.spyOn(process, 'exit').mockImplementation(() => {
 				throw new Error('process.exit');
 			});
-			vi.spyOn(
-				TestCommand.prototype as unknown as { initBinaryDataBlobManagers: () => Promise<void> },
-				'initBinaryDataBlobManagers',
-			).mockResolvedValue(undefined);
+			initBlobManagers = vi
+				.spyOn(
+					TestCommand.prototype as unknown as { initBinaryDataBlobManagers: () => Promise<void> },
+					'initBinaryDataBlobManagers',
+				)
+				.mockResolvedValue(undefined);
 			licenseState.isBinaryDataAzureLicensed.mockReturnValue(false);
 			licenseState.isExecutionDataAzureLicensed.mockReturnValue(false);
 		});
@@ -103,26 +108,36 @@ describe('initBinaryDataService', () => {
 		afterEach(() => {
 			vi.restoreAllMocks();
 			deployment.type = originalDeploymentType;
+			executions.mode = originalExecutionsMode;
 			binaryDataConfig.mode = 's3';
 			storageConfig.mode = 'database';
 		});
 
 		it.each([
-			['binary data', () => (binaryDataConfig.mode = 'azure')],
-			['execution data', () => (storageConfig.mode = 'azure')],
-		])('should warn and start on n8n Cloud when %s uses Azure', async (_, useAzure) => {
-			binaryDataConfig.mode = 'filesystem';
-			useAzure();
-			deployment.type = 'cloud';
+			['binary data', 'regular', 'filesystem', 'database'],
+			['binary data', 'queue', 'database', 'database'],
+			['execution data', 'regular', 'filesystem', 'database'],
+		] as const)(
+			'should start on n8n Cloud and write new %s to the fallback mode (%s mode)',
+			async (kind, executionsMode, expectedBinaryMode, expectedExecutionDataMode) => {
+				binaryDataConfig.mode = kind === 'binary data' ? 'azure' : 'filesystem';
+				storageConfig.mode = kind === 'execution data' ? 'azure' : 'database';
+				deployment.type = 'cloud';
+				executions.mode = executionsMode;
 
-			await new TestCommand().initBinaryDataService();
+				await new TestCommand().initBinaryDataService();
 
-			expect(exit).not.toHaveBeenCalled();
-			expect(logger.warn).toHaveBeenCalledWith(
-				expect.stringContaining('Continuing because this is an n8n Cloud deployment.'),
-			);
-			expect(binaryDataService.init).toHaveBeenCalled();
-		});
+				expect(exit).not.toHaveBeenCalled();
+				expect(logger.warn).toHaveBeenCalledWith(
+					expect.stringContaining('because this is an n8n Cloud deployment'),
+				);
+				expect(binaryDataConfig.mode).toBe(expectedBinaryMode);
+				expect(storageConfig.mode).toBe(expectedExecutionDataMode);
+				// Azure is still registered for reads when configured, but no longer required
+				expect(initBlobManagers).toHaveBeenCalledWith({ s3: false, azure: false });
+				expect(binaryDataService.init).toHaveBeenCalled();
+			},
+		);
 
 		it.each([
 			['binary data', () => (binaryDataConfig.mode = 'azure')],
