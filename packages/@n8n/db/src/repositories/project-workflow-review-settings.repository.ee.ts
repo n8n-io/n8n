@@ -54,18 +54,13 @@ export class ProjectWorkflowReviewSettingsRepository {
 				.values({ projectId })
 				.orIgnore()
 				.execute();
-			const row = await manager.findOneOrFail(ProjectWorkflowReviewSettings, {
-				where: { projectId },
-				lock: isPostgres ? { mode: 'pessimistic_write' } : undefined,
-			});
-			if (row.requiredByProject === required) return false;
-
-			await manager.update(
+			// Only one of several concurrent saves matches the old value, so only one reports a change.
+			const result = await manager.update(
 				ProjectWorkflowReviewSettings,
-				{ projectId },
+				{ projectId, requiredByProject: !required },
 				{ requiredByProject: required },
 			);
-			return true;
+			return (result.affected ?? 0) > 0;
 		});
 	}
 }

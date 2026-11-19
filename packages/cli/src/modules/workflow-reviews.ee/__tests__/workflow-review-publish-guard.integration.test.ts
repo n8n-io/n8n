@@ -708,6 +708,12 @@ describe('changing the project review settings', () => {
 					.send({ requiredByProject })
 					.expect(200);
 			}
+			const save = async () =>
+				await ownerAgent
+					.patch(projectSettingsUrl(teamProject.id))
+					.send({ requiredByProject: false })
+					.expect(200);
+			await Promise.all([save(), save()]);
 		} finally {
 			eventService.off('project-workflow-review-settings-updated', listener);
 		}
@@ -717,6 +723,11 @@ describe('changing the project review settings', () => {
 				user: expect.objectContaining({ id: owner.id }),
 				projectId: teamProject.id,
 				requiredByProject: true,
+			},
+			{
+				user: expect.objectContaining({ id: owner.id }),
+				projectId: teamProject.id,
+				requiredByProject: false,
 			},
 		]);
 	});
