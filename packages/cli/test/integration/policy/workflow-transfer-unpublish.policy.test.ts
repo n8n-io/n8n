@@ -441,6 +441,43 @@ describe('a move that fails before the ownership change', () => {
 			records: await outboxRecordsOf(workflow.id),
 		}).toEqual(NOT_MOVED_AND_RESTORED);
 	});
+
+	test('waits for every trigger removal before it restores the triggers', async () => {
+		const folder = await createFolder(sourceProject, { name: 'Folder' });
+		const failing = await createActiveWorkflow({ parentFolder: folder }, sourceProject);
+		const slow = await createActiveWorkflow({ parentFolder: folder }, sourceProject);
+		refusePublish(targetProject.id, failing.id);
+		refusePublish(targetProject.id, slow.id);
+
+		const manager = Container.get(ActiveWorkflowManager);
+		const removeTriggers = manager.remove.bind(manager);
+		let startRestore = () => {};
+		const restoreStarted = new Promise<void>((resolve) => {
+			startRestore = resolve;
+		});
+		let slowRemoved = false;
+		vi.spyOn(manager, 'remove').mockImplementation(async (workflowId) => {
+			if (workflowId === failing.id) throw new Error('cache is down');
+			await Promise.race([restoreStarted, new Promise((resolve) => setTimeout(resolve, 500))]);
+			await removeTriggers(workflowId);
+			slowRemoved = true;
+		});
+		const outbox = Container.get(WorkflowPublicationOutboxRepository);
+		const enqueue = outbox.enqueueByWorkflowIds.bind(outbox);
+		let slowRemovedBeforeRestore = false;
+		vi.spyOn(outbox, 'enqueueByWorkflowIds').mockImplementation(async (...args) => {
+			slowRemovedBeforeRestore = slowRemoved;
+			startRestore();
+			return await enqueue(...args);
+		});
+
+		await authMemberAgent
+			.put(`/projects/${sourceProject.id}/folders/${folder.id}/transfer`)
+			.send({ destinationProjectId: targetProject.id, destinationParentFolderId: '0' })
+			.expect(500);
+
+		expect(slowRemovedBeforeRestore).toBe(true);
+	});
 });
 
 describe('PUT /projects/:projectId/folders/:folderId/transfer', () => {

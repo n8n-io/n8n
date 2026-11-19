@@ -1703,11 +1703,13 @@ export class WorkflowService {
 		let results = new Map<string, WorkflowTransferResult>();
 		let transferred = false;
 		try {
-			await Promise.all(
+			const removals = await Promise.allSettled(
 				[...refusals.keys()].map(
 					async (workflowId) => await this.activeWorkflowManager.remove(workflowId),
 				),
 			);
+			const failedRemoval = removals.find((removal) => removal.status === 'rejected');
+			if (failedRemoval) throw ensureError(failedRemoval.reason);
 			await transfer();
 			transferred = true;
 		} finally {
