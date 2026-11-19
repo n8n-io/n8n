@@ -38,9 +38,7 @@ const renderWithEvents = (events: PublishTimelineEvent[], options: RenderOptions
 	const { adoptionDate = null, engineV2ModuleActive = false } = options;
 	const pinia = createTestingPinia({ stubActions: false });
 	const workflowHistoryStore = mockedStore(useWorkflowHistoryStore);
-	mockedStore(useSettingsStore).isModuleActive.mockImplementation(
-		(name: string) => engineV2ModuleActive && name === 'engine-v2',
-	);
+	mockedStore(useSettingsStore).settings.activeModules = engineV2ModuleActive ? ['engine-v2'] : [];
 
 	workflowHistoryStore.getPublishTimeline.mockResolvedValue(events);
 	workflowHistoryStore.getVersionFirstAdoptionDate.mockResolvedValue(adoptionDate);

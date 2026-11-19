@@ -60,6 +60,7 @@ import { ExecutionService } from '@/executions/execution.service';
 import { DataTableProxyService } from '@n8n/backend-module-data-table';
 import { NodeCatalogService } from '@/node-catalog';
 import { AiGatewayService } from '@/services/ai-gateway.service';
+import { AiPreferenceSettingsService } from '@/services/ai-preference-settings.service';
 import { FolderService } from '@/services/folder.service';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
 import { ProjectService } from '@/services/project.service.ee';
@@ -110,6 +111,8 @@ const mcpFeatureFlags = (overrides: Partial<McpFeatureFlags> = {}): McpFeatureFl
 	instanceContextEnabled: false,
 	...overrides,
 });
+
+mockInstance(AiPreferenceSettingsService, { isEnabled: true });
 
 describe('McpService', () => {
 	let mcpService: McpService;

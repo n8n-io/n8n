@@ -36,6 +36,7 @@ export class InstanceAiCheckpointPruningTask implements SystemTask {
 				5 * Time.minutes.toSeconds + SELF_HEALING_CLEANUP_BUDGET_MS / 1000,
 			),
 		},
+		// oxlint-disable-next-line typescript/no-deprecated -- Keep timer scheduling while the durable scheduler is disabled.
 		leaderTimer: {
 			runOnTakeover: true,
 			retryDelaySeconds: 30,

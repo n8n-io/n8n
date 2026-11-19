@@ -11,7 +11,7 @@ import type { IRunExecutionData, IWorkflowBase } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { mock } from 'vitest-mock-extended';
 
-import { ExecutionEntity, Project, type WorkflowEntity } from '../../entities';
+import { ExecutionData, ExecutionEntity, Project, type WorkflowEntity } from '../../entities';
 import type { IExecutionResponse } from '../../entities/types-db';
 import { TransactionRunner } from '../../services/transaction';
 import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
@@ -674,6 +674,41 @@ describe('ExecutionRepository', () => {
 	});
 
 	describe('updateExistingExecution', () => {
+		test.each([0, 1])(
+			'guards the wait timestamp before writing row and data (matched rows: %s)',
+			async (affected) => {
+				const expectedWait = new Date('3000-01-01T00:00:00.000Z');
+				const nextWait = new Date('2026-11-17T12:00:00.000Z');
+				entityManager.transaction.mockImplementation(
+					async (fn: unknown) =>
+						await (fn as (em: typeof entityManager) => Promise<boolean>)(entityManager),
+				);
+				entityManager.update.mockResolvedValue({ affected, raw: [], generatedMaps: [] });
+
+				const updated = await executionRepository.updateExistingExecution(
+					'1',
+					{ waitTill: nextWait, data: mock<IRunExecutionData>() },
+					{ requireStatus: 'waiting', requireWaitTill: expectedWait },
+				);
+
+				expect(entityManager.update).toHaveBeenNthCalledWith(
+					1,
+					ExecutionEntity,
+					{ id: '1', status: 'waiting', waitTill: expectedWait },
+					{ waitTill: nextWait },
+				);
+				expect(updated).toBe(affected === 1);
+				expect(entityManager.update).toHaveBeenCalledTimes(affected === 1 ? 2 : 1);
+				if (affected === 1) {
+					expect(entityManager.update).toHaveBeenLastCalledWith(
+						ExecutionData,
+						{ executionId: '1' },
+						expect.objectContaining({ data: expect.any(String) }),
+					);
+				}
+			},
+		);
+
 		test.each(['sqlite', 'postgresdb'] as const)(
 			'should update execution and data in transaction on %s',
 			async (dbType) => {

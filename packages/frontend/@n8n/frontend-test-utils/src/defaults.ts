@@ -5,6 +5,10 @@ export const defaultSettings: FrontendSettings = {
 		allowSendingParameterValues: true,
 		allowModelTraining: true,
 	},
+	aiPreferences: {
+		enabled: true,
+		managedByEnv: false,
+	},
 	inE2ETests: false,
 	databaseType: 'sqlite',
 	isDocker: false,

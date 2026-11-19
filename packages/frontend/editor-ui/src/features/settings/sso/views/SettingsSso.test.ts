@@ -897,29 +897,36 @@ describe('SettingsSso View', () => {
 	describe('SCIM provisioning', () => {
 		const setUpScim = ({
 			moduleActive = true,
-			optIn = 'true',
 			canManage = true,
-		}: { moduleActive?: boolean; optIn?: string; canManage?: boolean } = {}) => {
+		}: { moduleActive?: boolean; canManage?: boolean } = {}) => {
 			const settingsStore = mockedStore(useSettingsStore);
 			settingsStore.isModuleActive.mockImplementation(
 				(name: string) => name === 'scim' && moduleActive,
 			);
-			settingsStore.settings = {
-				...settingsStore.settings,
-				envFeatureFlags: { N8N_ENV_FEAT_SCIM: optIn },
-			};
 			const rbacStore = mockedStore(useRBACStore);
 			rbacStore.hasScope.mockImplementation(
 				(scope: Scope | Scope[]) => scope === 'scim:manage' && canManage,
 			);
 		};
 
-		it('shows the SCIM section with the license, the opt-in and the scope', async () => {
+		it('shows the SCIM section with the license and the scope', async () => {
 			setUpScim();
 
 			const { findByTestId } = renderView();
 
 			expect(await findByTestId('sso-scim-section')).toBeInTheDocument();
+		});
+
+		it.each([
+			['without the license', { moduleActive: false }],
+			['without the scope', { canManage: false }],
+		])('hides the SCIM section %s', async (_, options) => {
+			setUpScim(options);
+
+			const { findByTestId, queryByTestId } = renderView();
+
+			await findByTestId('sso-settings-view');
+			expect(queryByTestId('sso-scim-section')).not.toBeInTheDocument();
 		});
 
 		it.each([
