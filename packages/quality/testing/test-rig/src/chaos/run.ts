@@ -17,6 +17,7 @@ import type { Container, Signal } from '../process';
 import { docker, freeze, logs, signal, startAgain, until, waitForExit } from '../process';
 import type { StackOptions } from '../stack';
 import { CONTROL_POSTGRES, ENGINE_POSTGRES, RigStack } from '../stack';
+import { scaledEngineTimers } from '../timeouts';
 import { ENGINE_V2_SETTINGS } from '../workflows';
 import type { WorkloadRequest } from '../workload';
 import { Workload } from '../workload';
@@ -43,6 +44,9 @@ export const CHAOS_HOOKS: HookSpec[] = [
 ];
 
 export type EngineMode = NonNullable<StackOptions['engine']>;
+
+/** Divides the engine reconciliation, staleness and wait sweep timers, so a crashed step is repaired within the settle time. */
+const ENGINE_TIMER_SCALE = 30;
 
 const scopedTo = (file: string, target: string) => ({ file, target, method: 'handle' });
 
@@ -156,9 +160,12 @@ export function chaosProfile({
 		};
 	}
 	const hooks = engineChaosHooks(engine);
+	const timers = scaledEngineTimers(ENGINE_TIMER_SCALE, [
+		engine === 'container' ? 'engine' : 'main',
+	]);
 	const targets = engine === 'container' ? ['main', 'engine'] : ['main'];
 	return {
-		stack: { workers: 0, engine, hooks },
+		stack: { workers: 0, engine, hooks: [...hooks, ...timers] },
 		menu: {
 			targets,
 			restartTargets: targets,

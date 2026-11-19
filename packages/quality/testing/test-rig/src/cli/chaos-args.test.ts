@@ -15,9 +15,9 @@ describe('parseChaosArgs', () => {
 		expect(parseChaosArgs(['--seed', '0']).seed).toBe(0);
 	});
 
-	it('selects the engine profile with no workers and a longer settle time', () => {
+	it('selects the engine profile with no workers and a shorter settle time', () => {
 		const inProcess = parseChaosArgs(['--engine', 'in-process']);
-		expect(inProcess).toMatchObject({ engine: 'in-process', workers: 0, settleMs: 180_000 });
+		expect(inProcess).toMatchObject({ engine: 'in-process', workers: 0, settleMs: 60_000 });
 		expect(parseChaosArgs(['--engine', 'remote']).engine).toBe('container');
 		expect(parseChaosArgs([])).toMatchObject({ engine: undefined, workers: 2, settleMs: 120_000 });
 	});
