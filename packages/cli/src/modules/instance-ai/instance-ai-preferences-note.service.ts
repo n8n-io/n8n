@@ -14,9 +14,10 @@ const PREFERENCES_NOTE_COOLDOWN_MS = Time.days.toMilliseconds;
 const buildNoteBlock = (settingsUrl: string) =>
 	[
 		'<preferences-note>',
-		'No saved preferences apply to this work yet. Preferences tell n8n how the user likes to build, for example which nodes to use or how to name things.',
+		'No saved preferences apply to this work yet.',
 		'Do not stop or change the current task for this note.',
-		`After you finish the task, tell the user in one short sentence that they can ask you to remember a preference, or add one at ${settingsUrl}.`,
+		'After you finish the task, end your reply with this text, in the language of your reply:',
+		`You can ask me to remember how you like things done. I'll save it as a preference and follow it in our future conversations. You can also add preferences yourself in [Settings](${settingsUrl}).`,
 		'Do not mention this again in this conversation.',
 		'</preferences-note>',
 	].join('\n');
