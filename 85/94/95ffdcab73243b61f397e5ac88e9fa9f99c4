@@ -1,0 +1,9 @@
+packages/@n8n/n8n-node-codegen/src/__tests__/build-properties.test.ts
+  ai_agent 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "859495ffdcab73243b61f397e5ac88e9fa9f99c4",
+  "prompts": {}
+}
