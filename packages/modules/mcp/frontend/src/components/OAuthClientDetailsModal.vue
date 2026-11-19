@@ -121,6 +121,12 @@ async function onSave() {
 	}
 }
 
+function onNameEnter(event: KeyboardEvent) {
+	// This Enter commits an IME composition. It does not submit the form.
+	if (event.isComposing || event.keyCode === 229) return;
+	void onSave();
+}
+
 const brand = computed(() => (props.client ? getClientBrand(props.client.name) : null));
 
 const ownerLabel = computed(() => {
@@ -189,8 +195,9 @@ function onRevoke() {
 								v-model="nameDraft"
 								size="small"
 								:placeholder="client.name"
+								:disabled="saving"
 								data-test-id="mcp-client-details-name-input"
-								@keydown.enter="onSave"
+								@keydown.enter="onNameEnter"
 							/>
 							<N8nText
 								v-if="nameTooLong"
@@ -234,6 +241,7 @@ function onRevoke() {
 							size="small"
 							:autosize="{ minRows: 2, maxRows: 6 }"
 							:maxlength="OAUTH_CLIENT_DESCRIPTION_MAX_LENGTH"
+							:disabled="saving"
 							:placeholder="
 								i18n.baseText('settings.mcp.oAuthClients.details.description.placeholder')
 							"

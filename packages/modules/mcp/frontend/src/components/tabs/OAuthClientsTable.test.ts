@@ -1,4 +1,4 @@
-import { waitFor, within } from '@testing-library/vue';
+import { fireEvent, waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@n8n/frontend-test-utils';
@@ -504,6 +504,66 @@ describe('OAuthClientsTable', () => {
 
 			expect(within(getModal()).getByTestId('mcp-client-details-name-input')).toHaveValue('Cursor');
 			expect(getModal()).not.toHaveTextContent('Claude 2');
+		});
+
+		it('should lock the name and description inputs while a save is in flight', async () => {
+			mockHasScope.mockReturnValue(true);
+			const client = createOAuthClient({ name: 'Claude', description: null });
+			let resolveSave!: (value: typeof client) => void;
+			mockMcpStore.updateOAuthClientDetails.mockReturnValue(
+				new Promise((resolve) => {
+					resolveSave = resolve;
+				}),
+			);
+
+			const { getByTestId } = createComponent({
+				props: { clients: [client], loading: false },
+			});
+
+			await userEvent.click(getByTestId('mcp-client-name'));
+			const modal = within(getModal());
+			const nameInput = modal.getByTestId('mcp-client-details-name-input');
+			const descriptionInput = modal.getByTestId('mcp-client-details-description-input');
+			await userEvent.type(nameInput, ' 2');
+			await userEvent.click(modal.getByTestId('mcp-client-details-save'));
+
+			await waitFor(() => {
+				expect(nameInput).toBeDisabled();
+			});
+			expect(descriptionInput).toBeDisabled();
+
+			resolveSave({ ...client, displayName: 'Claude 2' });
+			await waitFor(() => {
+				expect(nameInput).toBeEnabled();
+			});
+			expect(descriptionInput).toBeEnabled();
+			expect(nameInput).toHaveValue('Claude 2');
+		});
+
+		it('should not save on the Enter that commits an IME composition', async () => {
+			mockHasScope.mockReturnValue(true);
+			const client = createOAuthClient({ name: 'Claude' });
+			mockMcpStore.updateOAuthClientDetails.mockResolvedValue({ ...client, displayName: '名前' });
+
+			const { getByTestId } = createComponent({
+				props: { clients: [client], loading: false },
+			});
+
+			await userEvent.click(getByTestId('mcp-client-name'));
+			const nameInput = within(getModal()).getByTestId('mcp-client-details-name-input');
+			await userEvent.clear(nameInput);
+			await userEvent.type(nameInput, '名前');
+
+			await fireEvent.keyDown(nameInput, { key: 'Enter', isComposing: true });
+			await fireEvent.keyDown(nameInput, { key: 'Enter', keyCode: 229 });
+			expect(mockMcpStore.updateOAuthClientDetails).not.toHaveBeenCalled();
+
+			await fireEvent.keyDown(nameInput, { key: 'Enter' });
+			expect(mockMcpStore.updateOAuthClientDetails).toHaveBeenCalledWith(
+				client,
+				{ displayName: '名前' },
+				{ refreshList: true },
+			);
 		});
 
 		it('should reset to the registered name when the name is cleared', async () => {
