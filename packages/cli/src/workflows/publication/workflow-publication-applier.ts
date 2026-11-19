@@ -272,16 +272,17 @@ export class WorkflowPublicationApplier {
 			abort.signal.throwIfAborted();
 			if (toAdd.size > 0) {
 				const activationMode = this.resolveActivationMode(record, oldVersion);
+				const retriedNodeIds = await this.triggerStatusRepository.findRetriedTriggerNodeIds(
+					record.workflowId,
+					newVersion.versionId,
+				);
 				const outcome = await this.workflowTriggerActivator.activate(
 					workflow,
 					newVersion,
 					toAdd,
 					activationMode,
 					abort,
-					await this.triggerStatusRepository.findRetriedTriggerNodeIds(
-						record.workflowId,
-						newVersion.versionId,
-					),
+					retriedNodeIds,
 				);
 				return withTeardownFailures(
 					this.classifyActivationOutcome(

@@ -64,7 +64,11 @@ export interface TriggerOperationAbort {
 	onDetached: (work: Promise<unknown>) => void;
 }
 
-function activationAttempts(nodeId: INode['id'], retriedNodeIds: ReadonlySet<INode['id']>): number {
+/** A trigger on the retry schedule gets one try, because the schedule already spaces its attempts. */
+function maxActivationAttempts(
+	nodeId: INode['id'],
+	retriedNodeIds: ReadonlySet<INode['id']>,
+): number {
 	return retriedNodeIds.has(nodeId) ? 1 : TRIGGER_ACTIVATION_MAX_ATTEMPTS;
 }
 
@@ -292,7 +296,7 @@ export class WorkflowTriggerActivator {
 	 * in the returned outcome's `failures` and the remaining nodes are still
 	 * attempted, so a single broken trigger does not prevent the others from
 	 * running. The caller decides whether the result is a full or partial success.
-	 * A node in `retriedNodeIds` gets one try, because its retry schedule spaces the attempts.
+	 * A node in `retriedNodeIds` gets a single in-process try.
 	 */
 	async activate(
 		dbWorkflow: WorkflowEntity,
@@ -635,7 +639,7 @@ export class WorkflowTriggerActivator {
 					webhooks,
 					activationMode,
 					abort,
-					activationAttempts(nodeId, retriedNodeIds),
+					maxActivationAttempts(nodeId, retriedNodeIds),
 				),
 		);
 
@@ -902,7 +906,7 @@ export class WorkflowTriggerActivator {
 						retryTriggerActivation(
 							async () =>
 								await this.nonWebhookTriggerRegistrar.register(workflow, registration, nodeId),
-							activationAttempts(nodeId, retriedNodeIds),
+							maxActivationAttempts(nodeId, retriedNodeIds),
 							abort.signal,
 						),
 						abort,
