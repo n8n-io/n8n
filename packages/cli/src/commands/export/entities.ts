@@ -3,7 +3,8 @@ import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { z } from 'zod';
 
-import { BINARY_ENCODINGS, ExportService } from '@/services/export.service';
+import { BINARY_ENCODINGS } from '@/services/entity-archive-binary';
+import { ExportService } from '@/services/export.service';
 
 import { BaseCommand } from '../base-command';
 

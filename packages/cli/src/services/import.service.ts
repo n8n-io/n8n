@@ -1,7 +1,6 @@
 import { Logger, safeJoinPath } from '@n8n/backend-common';
 import type { TagEntity, ICredentialsDb, User } from '@n8n/db';
 import {
-	binaryColumnType,
 	Project,
 	WorkflowEntity,
 	SharedWorkflow,
@@ -20,7 +19,6 @@ import { createReadStream } from 'fs';
 import { readdir, readFile } from 'fs/promises';
 import { Cipher } from 'n8n-core';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import { isRecord } from '@n8n/utils/is-record';
 import { createInterface } from 'readline';
 import {
 	pickVersionedSettings,
@@ -55,6 +53,7 @@ import { sortSubWorkflowsFirst } from '@/workflows/sub-workflow-order';
 import { WorkflowService } from '@/workflows/workflow.service';
 
 import { DATA_TABLE_ROWS_FILE_PREFIX } from './data-table-export.constants';
+import { restoreBinaryColumns } from './entity-archive-binary';
 
 /**
  * Archive file names of entity classes that were renamed while their table kept
@@ -72,26 +71,6 @@ const LEGACY_ENTITY_FILE_NAMES: Readonly<Record<string, string>> = {
 /** The entity name an archive file was written for: `user.2.jsonl` is `user`. */
 function toArchiveBaseName(file: string): string {
 	return file.replace(/\.\d+\.jsonl$/, '.jsonl').replace('.jsonl', '');
-}
-
-/** The bytes of an archived binary value, written as base64 or as a serialised Buffer. */
-function binaryValue(value: unknown): unknown {
-	return typeof value === 'string'
-		? Buffer.from(value, 'base64')
-		: isRecord(value) && value.type === 'Buffer' && Array.isArray(value.data)
-			? Buffer.from(value.data)
-			: value;
-}
-
-function restoreBinaryColumns(
-	entity: Record<string, unknown>,
-	metadata: EntityMetadata,
-): Record<string, unknown> {
-	const restored = { ...entity };
-	for (const column of metadata.columns.filter(({ type }) => type === binaryColumnType)) {
-		restored[column.databaseName] = binaryValue(restored[column.databaseName]);
-	}
-	return restored;
 }
 
 /**

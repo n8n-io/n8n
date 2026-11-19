@@ -7,9 +7,7 @@ import { ExportService } from '@/services/export.service';
 import { ExportEntitiesCommand } from '../entities';
 
 vi.mock('fs-extra');
-vi.mock('@/services/export.service', async (importOriginal) => ({
-	...(await importOriginal<typeof import('@/services/export.service')>()),
-}));
+vi.mock('@/services/export.service');
 
 describe('ExportEntitiesCommand', () => {
 	const mockExportService = mockInstance(ExportService);

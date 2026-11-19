@@ -12,36 +12,18 @@ import { compressFolder } from '@/utils/compression.util';
 import { validateDbTypeForExportEntities } from '@/utils/validate-database-type';
 
 import { DATA_TABLE_ROWS_FILE_PREFIX } from './data-table-export.constants';
-
-export const BINARY_ENCODINGS = ['buffer', 'base64'] as const;
-export type BinaryEncoding = (typeof BINARY_ENCODINGS)[number];
+import {
+	type BinaryEncoding,
+	encodeBinaryValues,
+	MAX_BINARY_VALUE_BYTES,
+} from './entity-archive-binary';
+import { EntityArchiveWriter } from './entity-archive-writer';
 
 type EntityMetadata = DataSource['entityMetadatas'][number];
 
 const MiB = 1024 * 1024;
-const MAX_LINE_CHARS = 32 * MiB;
-const MAX_FILE_CHARS = 64 * MiB;
-const MAX_ROWS_PER_FILE = 500;
 const MAX_PAGE_SIZE = 500;
 const MAX_PAGE_BINARY_BYTES = 64 * MiB;
-const MAX_BINARY_VALUE_BYTES: Record<BinaryEncoding, number> = {
-	buffer: 64 * MiB,
-	base64: 200 * MiB,
-};
-
-function encodeBinaryValues(
-	row: Record<string, unknown>,
-	encoding: BinaryEncoding,
-): Record<string, unknown> {
-	return encoding === 'base64'
-		? Object.fromEntries(
-				Object.entries(row).map(([key, value]) => [
-					key,
-					Buffer.isBuffer(value) ? value.toString('base64') : value,
-				]),
-			)
-		: row;
-}
 
 /** Rows per query, so one page holds at most 64 MiB of binary values. */
 function binaryPageSize(largestValueBytes: number): number {
@@ -49,73 +31,6 @@ function binaryPageSize(largestValueBytes: number): number {
 		MAX_PAGE_SIZE,
 		Math.max(1, Math.floor(MAX_PAGE_BINARY_BYTES / largestValueBytes)),
 	);
-}
-
-/**
- * Writes rows as encrypted JSONL lines: a line holds at least one row and at most 32 MiB of JSON,
- * a file holds at least one line and at most 64 MiB or 500 rows.
- */
-class EncryptedJsonlWriter {
-	private pendingRows: string[] = [];
-
-	private pendingChars = 0;
-
-	private fileIndex = 1;
-
-	private fileChars = 0;
-
-	private fileRows = 0;
-
-	constructor(
-		private readonly outputDir: string,
-		private readonly baseName: string,
-		private readonly encrypt: (text: string) => Promise<string>,
-		private readonly logger: Logger,
-		private readonly rowLabel: string,
-	) {}
-
-	async append(row: string): Promise<void> {
-		if (this.pendingRows.length > 0 && this.pendingChars + row.length > MAX_LINE_CHARS) {
-			await this.writeLine();
-		}
-		this.pendingRows.push(row);
-		this.pendingChars += row.length + 1;
-	}
-
-	async endPage(): Promise<void> {
-		if (this.pendingRows.length > 0) await this.writeLine();
-	}
-
-	/** Number of files written. */
-	endTable(): number {
-		if (this.fileRows > 0) this.logFileCompleted();
-		return this.fileIndex;
-	}
-
-	private async writeLine(): Promise<void> {
-		const line = (await this.encrypt(this.pendingRows.join('\n'))) + '\n';
-		const fileIsFull =
-			this.fileRows > 0 &&
-			(this.fileRows + this.pendingRows.length > MAX_ROWS_PER_FILE ||
-				this.fileChars + line.length > MAX_FILE_CHARS);
-		if (fileIsFull) {
-			this.logFileCompleted();
-			this.fileIndex++;
-			this.fileChars = 0;
-			this.fileRows = 0;
-		}
-		const fileName =
-			this.fileIndex === 1 ? `${this.baseName}.jsonl` : `${this.baseName}.${this.fileIndex}.jsonl`;
-		await appendFile(safeJoinPath(this.outputDir, fileName), line, 'utf8');
-		this.fileChars += line.length;
-		this.fileRows += this.pendingRows.length;
-		this.pendingRows = [];
-		this.pendingChars = 0;
-	}
-
-	private logFileCompleted(): void {
-		this.logger.info(`   ✅ Completed file ${this.fileIndex}: ${this.fileRows} ${this.rowLabel}`);
-	}
 }
 
 @Service()
@@ -240,7 +155,7 @@ export class ExportService {
 		const idCol = quoteIdentifier('id', dbType);
 		const escapedUserTable = quoteIdentifier(userTableName, dbType);
 		const pageSize = 500;
-		const writer = new EncryptedJsonlWriter(
+		const writer = new EntityArchiveWriter(
 			outputDir,
 			fileBaseName,
 			async (text) => await this.cipher.encryptV2(text, customEncryptionKey),
@@ -469,7 +384,7 @@ export class ExportService {
 			this.logger.info(`   💭 Columns: ${columnNames.join(', ')}`);
 
 			const pageSize = binaryPageSizes.get(tableName) ?? MAX_PAGE_SIZE;
-			const writer = new EncryptedJsonlWriter(
+			const writer = new EntityArchiveWriter(
 				outputDir,
 				entityName,
 				async (text) => await this.cipher.encryptV2(text, customEncryptionKey),
