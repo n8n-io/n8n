@@ -12,7 +12,17 @@ const COMMENT_BEFORE =
 const COMMENT_AFTER =
 	'When the engine treats the step as stuck. Written at each transition into queued or running. Also written at each transition into completed, failed or skipped, and cleared after the orchestration worker handled the step:settled message of the step. NULL in every other case.';
 
-/** Both statements run in the transaction of the migration, so no query sees the table without the index. */
+/**
+ * Removes the index, then creates it again. Both statements run in the
+ * transaction of the migration, so no query sees the table without the index.
+ *
+ * The removal locks the table until the transaction ends, so reads and writes
+ * wait while the index builds. Do not change the order to keep the reads open.
+ * `claimStep` and `createSteps` read the table and then write it in one
+ * transaction. With the build first, such a transaction waits for the lock of
+ * the build, the removal waits for that transaction, and PostgreSQL stops one
+ * of the two with a deadlock error.
+ */
 async function replaceIndex(queryRunner: QueryRunner, where: string): Promise<void> {
 	await queryRunner.dropIndex(TABLE, INDEX);
 	await queryRunner.createIndex(
