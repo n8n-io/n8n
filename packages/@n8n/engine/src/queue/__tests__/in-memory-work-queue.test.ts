@@ -36,6 +36,25 @@ describe('InMemoryWorkQueue', () => {
 		expect(maxInFlight).toBe(1);
 	});
 
+	it('records the latency and pickup gap of messages that waited for a slot', async () => {
+		const queue = new InMemoryWorkQueue<ContractMessage>(silentLogger);
+		let done = 0;
+		queue.start(async () => {
+			await new Promise((resolve) => setTimeout(resolve, 1));
+			done += 1;
+		});
+
+		for (let n = 1; n <= 3; n++) await queue.publish({ n });
+		await expect.poll(() => done).toBe(3);
+
+		const summary = queue.timings.takeSummary();
+		expect(summary.n).toBe(3);
+		expect(summary.latency_ms.n).toBe(3);
+		// The first message found a slot that had never run a handler.
+		expect(summary.pickup_gap_ms.n).toBe(2);
+		expect(summary.fetch_ms).toBeUndefined();
+	});
+
 	it('starts messages in the order they were published', async () => {
 		const queue = new InMemoryWorkQueue<ContractMessage>(silentLogger, { concurrency: 3 });
 		const started: number[] = [];

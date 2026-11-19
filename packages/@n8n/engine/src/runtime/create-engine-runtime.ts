@@ -30,6 +30,7 @@ import {
 import type { LifecycleEventPublisher } from '../lifecycle-events';
 import { createConsoleLogger, type EngineLogger } from '../logging';
 import type { EngineWorkQueues, OrchestrationMessage, StepMessage, WorkQueue } from '../queue';
+import { QueueTimingsReporter, queueTimingsOf } from '../queue/queue-timings';
 import {
 	DEFAULT_RECONCILIATION_BATCH_SIZE,
 	DEFAULT_RECONCILIATION_INTERVAL_MS,
@@ -154,6 +155,11 @@ export function createEngineRuntime({
 	const stepQueue = instrumentation
 		? instrumentation.wrapQueue('step', rawStepQueue)
 		: rawStepQueue;
+	// Benchmark only: logs the hand-off timings of both queues every 30 s.
+	const queueTimingsReporter = new QueueTimingsReporter(logger, {
+		orchestration: queueTimingsOf(rawOrchestrationQueue),
+		step: queueTimingsOf(rawStepQueue),
+	});
 	const rawStores = createStores(dataSource, staleness);
 	const stores = instrumentation ? instrumentation.wrapStores(rawStores) : rawStores;
 	const { executionStore, stepStore, executionViewStore } = stores;
@@ -267,6 +273,7 @@ export function createEngineRuntime({
 			stepWorker.start();
 			waitSweeper.start();
 			reconciliationSweeper.start();
+			queueTimingsReporter.start();
 		},
 
 		stop: async () => {
@@ -281,6 +288,7 @@ export function createEngineRuntime({
 			await Promise.all([orchestrationWorker.stop(), stepWorker.stop()]);
 			// After the workers are quiet, so the last events still reach the host.
 			await lifecycleEventPublisher.stop();
+			queueTimingsReporter.stop();
 		},
 	};
 }
