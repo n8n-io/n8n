@@ -140,6 +140,7 @@ describe('SettingsMCPView', () => {
 
 		settingsStore.settings = {
 			enterprise: {},
+			aiPreferences: { enabled: true, managedByEnv: false },
 		} as FrontendSettings;
 
 		settingsStore.moduleSettings = {
@@ -889,6 +890,20 @@ describe('SettingsMCPView', () => {
 				expect.anything(),
 				'Could not update setting',
 			);
+		});
+
+		it('shows Preferences as off and disabled while the global preferences switch is off', async () => {
+			settingsStore.settings = {
+				enterprise: {},
+				aiPreferences: { enabled: false, managedByEnv: false },
+			} as FrontendSettings;
+
+			const { getByTestId } = createComponent({ pinia });
+			await waitAllPromises();
+
+			expect(getByTestId('mcp-preferences-toggle')).toHaveAttribute('aria-checked', 'false');
+			expect(getByTestId('mcp-preferences-toggle')).toBeDisabled();
+			expect(getByTestId('mcp-skills-toggle')).not.toBeDisabled();
 		});
 
 		it('disables the switches when MCP settings are managed by env', async () => {

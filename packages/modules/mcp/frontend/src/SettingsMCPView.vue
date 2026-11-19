@@ -78,6 +78,9 @@ const showCallbackUrlsDialog = ref(false);
 const savingCallbackUrls = ref(false);
 
 const previewFeatureSaving = ref(false);
+const globalPreferencesEnabled = computed(
+	() => settingsStore.settings.aiPreferences?.enabled === true,
+);
 
 const onTogglePreviewFeature = async (
 	setEnabled: (enabled: boolean) => Promise<boolean>,
@@ -454,8 +457,8 @@ onBeforeUnmount(() => {
 					<N8nSettingsEnableRow
 						:title="i18n.baseText('settings.mcp.preferences.title')"
 						:description="i18n.baseText('settings.mcp.preferences.description')"
-						:enabled="mcpStore.preferencesEnabled"
-						:disabled="!canToggleMCP || previewFeatureSaving"
+						:enabled="mcpStore.preferencesEnabled && globalPreferencesEnabled"
+						:disabled="!canToggleMCP || previewFeatureSaving || !globalPreferencesEnabled"
 						:show-enterprise-readiness-badge="settingsStore.isEnterprisePlan"
 						switch-test-id="mcp-preferences-toggle"
 						@update:enabled="onTogglePreviewFeature(mcpStore.setPreferencesEnabled, $event)"
