@@ -194,7 +194,9 @@ onMounted(async () => {
 
 // After `onMounted` above, which sets `isLoading` before this reads it.
 usePrefetchModals([COMMUNITY_PLUS_ENROLLMENT_MODAL], {
-	enabled: () => !usageStore.isLoading && isCommunity.value && canUserRegisterCommunityPlus.value,
+	// The permission is `undefined` when the user lacks it.
+	enabled: () =>
+		!usageStore.isLoading && isCommunity.value && canUserRegisterCommunityPlus.value === true,
 });
 
 const sendUsageTelemetry = (action: UsageTelemetry['action']) => {

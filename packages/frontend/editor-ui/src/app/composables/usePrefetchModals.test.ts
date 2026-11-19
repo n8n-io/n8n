@@ -176,6 +176,20 @@ describe('usePrefetchModals', () => {
 		expect(requestIdleCallback).toHaveBeenCalledTimes(1);
 	});
 
+	it('starts only once when it is enabled again after a late start', async () => {
+		const enabled = ref(false);
+		renderPage({ enabled: () => enabled.value });
+		enabled.value = true;
+		await nextTick();
+
+		enabled.value = false;
+		await nextTick();
+		enabled.value = true;
+		await nextTick();
+
+		expect(requestIdleCallback).toHaveBeenCalledTimes(1);
+	});
+
 	it('schedules nothing when it becomes enabled after the page unmounts', async () => {
 		const enabled = ref(false);
 		const { unmount } = renderPage({ enabled: () => enabled.value });
