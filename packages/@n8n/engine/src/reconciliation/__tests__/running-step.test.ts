@@ -17,6 +17,7 @@ const step: StepRecord = {
 	iteration: 0,
 	status: 'running',
 	outputs: null,
+	outputSources: null,
 	waitDeclaration: null,
 	resumeCause: null,
 };

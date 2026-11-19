@@ -7,39 +7,8 @@
 		"Cc": {
 			"type": "string"
 		},
-		"date": {
-			"type": "string"
-		},
-		"from": {
-			"type": "object",
-			"properties": {
-				"html": {
-					"type": "string"
-				},
-				"text": {
-					"type": "string"
-				},
-				"value": {
-					"type": "array",
-					"items": {
-						"type": "object",
-						"properties": {
-							"address": {
-								"type": "string"
-							},
-							"name": {
-								"type": "string"
-							}
-						}
-					}
-				}
-			}
-		},
 		"From": {
 			"type": "string"
-		},
-		"headers": {
-			"type": "object"
 		},
 		"historyId": {
 			"type": "string"
@@ -49,12 +18,6 @@
 		},
 		"internalDate": {
 			"type": "string"
-		},
-		"labelIds": {
-			"type": "array",
-			"items": {
-				"type": "string"
-			}
 		},
 		"labels": {
 			"type": "array",
@@ -70,9 +33,6 @@
 				}
 			}
 		},
-		"messageId": {
-			"type": "string"
-		},
 		"payload": {
 			"type": "object",
 			"properties": {
@@ -87,45 +47,11 @@
 		"snippet": {
 			"type": "string"
 		},
-		"subject": {
-			"type": "string"
-		},
 		"Subject": {
-			"type": "string"
-		},
-		"text": {
-			"type": "string"
-		},
-		"textAsHtml": {
 			"type": "string"
 		},
 		"threadId": {
 			"type": "string"
-		},
-		"to": {
-			"type": "object",
-			"properties": {
-				"html": {
-					"type": "string"
-				},
-				"text": {
-					"type": "string"
-				},
-				"value": {
-					"type": "array",
-					"items": {
-						"type": "object",
-						"properties": {
-							"address": {
-								"type": "string"
-							},
-							"name": {
-								"type": "string"
-							}
-						}
-					}
-				}
-			}
 		},
 		"To": {
 			"type": "string"
