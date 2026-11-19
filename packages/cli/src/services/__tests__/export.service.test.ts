@@ -6,6 +6,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { compressFolder } from '@/utils/compression.util';
 
+import { ExportFileWriter } from '../export-file-writer';
 import { ExportService } from '../export.service';
 
 // Mock fs/promises with proper implementations
@@ -96,7 +97,12 @@ describe('ExportService', () => {
 		// Mock the compression utility
 		vi.mocked(compressFolder).mockResolvedValue(undefined);
 
-		exportService = new ExportService(mockLogger, mockDataSource, mockCipher);
+		exportService = new ExportService(
+			mockLogger,
+			mockDataSource,
+			mockCipher,
+			new ExportFileWriter(mockLogger, mockCipher),
+		);
 	});
 
 	afterEach(() => {
@@ -306,57 +312,6 @@ describe('ExportService', () => {
 			vi.mocked(mkdir).mockRejectedValue(new Error('Permission denied'));
 
 			await expect(exportService.exportEntities(outputDir)).rejects.toThrow('Permission denied');
-		});
-	});
-
-	describe('clearExistingEntityFiles', () => {
-		it('should clear existing entity files successfully', async () => {
-			const outputDir = '/test/output';
-			const existingFiles = ['user.jsonl', 'user.2.jsonl', 'workflow.jsonl', 'other.txt'];
-
-			vi.mocked(readdir).mockResolvedValue(existingFiles as any);
-
-			// @ts-expect-error Accessing private method for testing
-			await exportService.clearExistingEntityFiles(outputDir, 'user');
-
-			expect(rm).toHaveBeenCalledWith('/test/output/user.jsonl');
-			expect(rm).toHaveBeenCalledWith('/test/output/user.2.jsonl');
-			expect(rm).not.toHaveBeenCalledWith('/test/output/workflow.jsonl');
-			expect(rm).not.toHaveBeenCalledWith('/test/output/other.txt');
-		});
-
-		it('should handle no existing files gracefully', async () => {
-			const outputDir = '/test/output';
-
-			vi.mocked(readdir).mockResolvedValue(['other.txt'] as any);
-
-			// @ts-expect-error Accessing private method for testing
-			await exportService.clearExistingEntityFiles(outputDir, 'user');
-
-			expect(rm).not.toHaveBeenCalled();
-		});
-
-		it('should handle empty directory gracefully', async () => {
-			const outputDir = '/test/output';
-
-			vi.mocked(readdir).mockResolvedValue([]);
-
-			// @ts-expect-error Accessing private method for testing
-			await exportService.clearExistingEntityFiles(outputDir, 'user');
-
-			expect(rm).not.toHaveBeenCalled();
-		});
-
-		it('should handle file deletion errors gracefully', async () => {
-			const outputDir = '/test/output';
-
-			vi.mocked(readdir).mockResolvedValue(['user.jsonl'] as any);
-			vi.mocked(rm).mockRejectedValue(new Error('File in use'));
-
-			// @ts-expect-error Accessing private method for testing
-			await expect(exportService.clearExistingEntityFiles(outputDir, 'user')).rejects.toThrow(
-				'File in use',
-			);
 		});
 	});
 

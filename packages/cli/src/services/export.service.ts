@@ -10,6 +10,7 @@ import { compressFolder } from '@/utils/compression.util';
 import { validateDbTypeForExportEntities } from '@/utils/validate-database-type';
 
 import { DATA_TABLE_ROWS_FILE_PREFIX } from './data-table-export.constants';
+import { ExportFileWriter } from './export-file-writer';
 
 @Service()
 export class ExportService {
@@ -17,24 +18,8 @@ export class ExportService {
 		private readonly logger: Logger,
 		private readonly dataSource: DataSource,
 		private readonly cipher: Cipher,
+		private readonly exportFileWriter: ExportFileWriter,
 	) {}
-
-	private async clearExistingEntityFiles(outputDir: string, entityName: string): Promise<void> {
-		const existingFiles = await readdir(outputDir);
-		const entityFiles = existingFiles.filter(
-			(file) => file.startsWith(`${entityName}.`) && file.endsWith('.jsonl'),
-		);
-
-		if (entityFiles.length > 0) {
-			this.logger.info(
-				`   🗑️  Found ${entityFiles.length} existing file(s) for ${entityName}, deleting...`,
-			);
-			for (const file of entityFiles) {
-				await rm(safeJoinPath(outputDir, file));
-				this.logger.info(`      Deleted: ${file}`);
-			}
-		}
-	}
 
 	private async exportMigrationsTable(
 		outputDir: string,
@@ -59,7 +44,7 @@ export class ExportService {
 			this.logger.info(`\n📊 Processing system table: ${migrationsTableName}`);
 
 			// Clear existing files for migrations
-			await this.clearExistingEntityFiles(outputDir, 'migrations');
+			await this.exportFileWriter.deleteFiles(outputDir, 'migrations');
 
 			// Export all migrations data to a single file (no pagination needed for small table)
 			const formattedTableName = this.dataSource.driver.escape(migrationsTableName);
@@ -128,16 +113,13 @@ export class ExportService {
 
 		this.logger.info(`\n📊 Processing data table: ${userTableName}`);
 
-		await this.clearExistingEntityFiles(outputDir, fileBaseName);
+		const file = await this.exportFileWriter.open(outputDir, fileBaseName, customEncryptionKey);
 
 		const idCol = quoteIdentifier('id', dbType);
 		const escapedUserTable = quoteIdentifier(userTableName, dbType);
 		const pageSize = 500;
-		const entitiesPerFile = 500;
 
 		let lastId = 0;
-		let fileIndex = 1;
-		let currentFileEntityCount = 0;
 		let totalEntityCount = 0;
 		let hasNextPage = true;
 
@@ -157,25 +139,7 @@ export class ExportService {
 
 			if (pageRows.length === 0) break;
 
-			const targetFileIndex = Math.floor(totalEntityCount / entitiesPerFile) + 1;
-			const fileName =
-				targetFileIndex === 1
-					? `${fileBaseName}.jsonl`
-					: `${fileBaseName}.${targetFileIndex}.jsonl`;
-			const filePath = safeJoinPath(outputDir, fileName);
-
-			if (targetFileIndex > fileIndex) {
-				this.logger.info(`   ✅ Completed file ${fileIndex}: ${currentFileEntityCount} rows`);
-				fileIndex = targetFileIndex;
-				currentFileEntityCount = 0;
-			}
-
-			const rowsJsonl = pageRows.map((row) => JSON.stringify(row)).join('\n');
-			await appendFile(
-				filePath,
-				(await this.cipher.encryptV2(rowsJsonl, customEncryptionKey)) + '\n',
-				'utf8',
-			);
+			await file.append(pageRows);
 
 			const lastRowId = Number((pageRows[pageRows.length - 1] as { id: unknown }).id);
 			if (!Number.isFinite(lastRowId)) {
@@ -186,7 +150,6 @@ export class ExportService {
 			lastId = lastRowId;
 
 			totalEntityCount += pageRows.length;
-			currentFileEntityCount += pageRows.length;
 
 			this.logger.info(
 				`      Fetched ${pageRows.length} rows (last id: ${lastId}, total: ${totalEntityCount})`,
@@ -195,12 +158,9 @@ export class ExportService {
 			hasNextPage = pageRows.length >= pageSize;
 		} while (hasNextPage);
 
-		if (currentFileEntityCount > 0) {
-			this.logger.info(`   ✅ Completed file ${fileIndex}: ${currentFileEntityCount} rows`);
-		}
-
+		const { files } = file.close();
 		this.logger.info(
-			`   ✅ Completed export for ${userTableName}: ${totalEntityCount} rows in ${fileIndex} file(s)`,
+			`   ✅ Completed export for ${userTableName}: ${totalEntityCount} rows in ${files} file(s)`,
 		);
 
 		return totalEntityCount;
@@ -271,7 +231,6 @@ export class ExportService {
 		let totalTablesProcessed = 0;
 		let totalEntitiesExported = 0;
 		const pageSize = 500;
-		const entitiesPerFile = 500;
 
 		await this.exportMigrationsTable(outputDir, customEncryptionKey);
 
@@ -310,8 +269,7 @@ export class ExportService {
 
 			this.logger.info(`\n📊 Processing table: ${tableName} (${entityName})`);
 
-			// Clear existing files for this entity
-			await this.clearExistingEntityFiles(outputDir, entityName);
+			const file = await this.exportFileWriter.open(outputDir, entityName, customEncryptionKey);
 
 			// Get column information for this table
 			const columnNames = metadata.columns.map((col) => col.databaseName);
@@ -321,8 +279,6 @@ export class ExportService {
 			let offset = 0;
 			let totalEntityCount = 0;
 			let hasNextPage = true;
-			let fileIndex = 1;
-			let currentFileEntityCount = 0;
 
 			do {
 				/*
@@ -341,31 +297,9 @@ export class ExportService {
 					break;
 				}
 
-				// Determine which file to write to based on current entity count
-				const targetFileIndex = Math.floor(totalEntityCount / entitiesPerFile) + 1;
-				const fileName =
-					targetFileIndex === 1 ? `${entityName}.jsonl` : `${entityName}.${targetFileIndex}.jsonl`;
-				const filePath = safeJoinPath(outputDir, fileName);
-
-				// If we've moved to a new file, log the completion of the previous file
-				if (targetFileIndex > fileIndex) {
-					this.logger.info(`   ✅ Completed file ${fileIndex}: ${currentFileEntityCount} entities`);
-					fileIndex = targetFileIndex;
-					currentFileEntityCount = 0;
-				}
-
-				// Append all entities in this page as JSONL (one JSON object per line)
-				const entitiesJsonl: string = pageEntities
-					.map((entity: unknown) => JSON.stringify(entity))
-					.join('\n');
-				await appendFile(
-					filePath,
-					(await this.cipher.encryptV2(entitiesJsonl, customEncryptionKey)) + '\n',
-					'utf8',
-				);
+				await file.append(pageEntities);
 
 				totalEntityCount += pageEntities.length;
-				currentFileEntityCount += pageEntities.length;
 				offset += pageEntities.length;
 
 				this.logger.info(
@@ -381,13 +315,9 @@ export class ExportService {
 				}
 			} while (hasNextPage);
 
-			// Log completion of the final file
-			if (currentFileEntityCount > 0) {
-				this.logger.info(`   ✅ Completed file ${fileIndex}: ${currentFileEntityCount} entities`);
-			}
-
+			const { files } = file.close();
 			this.logger.info(
-				`   ✅ Completed export for ${tableName}: ${totalEntityCount} entities in ${fileIndex} file(s)`,
+				`   ✅ Completed export for ${tableName}: ${totalEntityCount} entities in ${files} file(s)`,
 			);
 			totalTablesProcessed++;
 			totalEntitiesExported += totalEntityCount;
