@@ -1,0 +1,15 @@
+{
+	"description": "A Code node in both modes and a Set node read Source through an HTTP Request with the default response format (autodetect, no credential, 3 items, all JSON)",
+	"trigger": { "body": { "items": 3 } },
+	"http": {
+		"Http": {
+			"path": "thing",
+			"responses": [
+				{ "status": 200, "body": { "got": "r0" } },
+				{ "status": 200, "body": { "got": "r1" } },
+				{ "status": 200, "body": { "got": "r2" } }
+			]
+		}
+	},
+	"compare": ["Read Each", "Read All", "Read Expr"]
+}

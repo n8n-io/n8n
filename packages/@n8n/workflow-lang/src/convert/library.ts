@@ -2328,12 +2328,20 @@ function lowerHttpLibrary(c: NodeContext): void {
 			);
 		}
 		entries.push(answers.compiled);
+		const pairsOut = startPairs(c);
 		emitWithHostForm(
 			c,
 			false,
-			(to, hostLimit) => emitStep(to, { ...call, hostLimit, pairsByCall: true }),
+			(to, hostLimit) =>
+				emitStep(to, {
+					...call,
+					hostLimit,
+					pairsByCall: pairsOut !== null,
+					pairsVar: pairsOut ?? undefined,
+				}),
 			hostForm,
 			replay,
+			pairsOut ?? undefined,
 		);
 		return;
 	}
@@ -2345,12 +2353,20 @@ function lowerHttpLibrary(c: NodeContext): void {
 		);
 		if (hostForm !== null) {
 			entries.push(answers.compiled);
+			const pairsOut = startPairs(c);
 			emitWithHostForm(
 				c,
 				false,
-				(to, hostLimit) => emitStep(to, { ...call, hostLimit, pairsByCall: true }),
+				(to, hostLimit) =>
+					emitStep(to, {
+						...call,
+						hostLimit,
+						pairsByCall: pairsOut !== null,
+						pairsVar: pairsOut ?? undefined,
+					}),
 				hostForm,
 				replay,
+				pairsOut ?? undefined,
 			);
 			return;
 		}
@@ -2358,6 +2374,20 @@ function lowerHttpLibrary(c: NodeContext): void {
 	// v1 sends one request for each item, and pairs each output item with its input item
 	// (`pairedItem: { item: i }`), also when one response gives several items.
 	emitStep(c, { ...call, pairsByCall: true });
+}
+
+/**
+ * Starts paired item tracking for the HTTP Request node when a later expression reads
+ * through this node. Returns the name of the pairs variable, or null when not needed.
+ */
+function startPairs(c: NodeContext): string | null {
+	console.error(`startPairs: pairsWanted=${c.pairsWanted} setPairs=${c.setPairs !== undefined}`);
+	if (c.pairsWanted !== true || c.setPairs === undefined) return null;
+	const out = c.output(0);
+	const pairVar = `${out}PairData`;
+	console.error(`startPairs: registering ${pairVar}`);
+	c.setPairs(pairVar);
+	return pairVar;
 }
 
 function flatCode(code: Code): string {

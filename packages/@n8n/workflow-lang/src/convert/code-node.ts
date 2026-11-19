@@ -492,7 +492,10 @@ export function lowerCode(c: NodeContext): void {
 	}
 	const paired = pairedReads(user);
 	for (const name of paired === 'all' ? refs : paired) {
-		if (name === c.node.name || !c.pairsByPosition(name)) {
+		if (
+			name === c.node.name ||
+			(!c.pairsByPosition(name) && c.pairedIndex(name, '0') === null)
+		) {
 			throw new NodeFailure(
 				'code-node-reference',
 				`The code reads the item of node "${name}" that pairs with an input item, and the pairing is not known: v1 follows the paired items of each node on the way.`,
