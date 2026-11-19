@@ -332,6 +332,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 			includeScopes?: boolean;
 			onlySharedWithMe?: boolean;
 			includeGlobal?: boolean;
+			includeRestrictions?: boolean;
 			externalSecretsStore?: string;
 		} = {},
 	): Promise<ICredentialsResponse[]> => {
@@ -340,6 +341,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 			includeScopes = true,
 			onlySharedWithMe = false,
 			includeGlobal = true,
+			includeRestrictions = false,
 			externalSecretsStore,
 		} = options;
 
@@ -352,6 +354,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 			includeScopes,
 			onlySharedWithMe,
 			includeGlobal,
+			includeRestrictions,
 			externalSecretsStore,
 		});
 		setCredentials(credentials);

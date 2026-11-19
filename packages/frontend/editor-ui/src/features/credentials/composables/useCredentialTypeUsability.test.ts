@@ -170,16 +170,39 @@ describe('useCredentialTypeUsability', () => {
 		expect(useCredentialTypeUsability().getCredentialTypeUsability('acmeOAuth2Api')).toBeNull();
 	});
 
-	it('judges another project when given its lookup', () => {
-		restrictedCredentials.add('mailjetEmailApi');
-		const { getCredentialTypeUsability } = useCredentialTypeUsability();
+	it('keeps the restriction of a blocked type that the server sends', () => {
+		const restriction = {
+			reason: 'typeRestricted' as const,
+			restriction: { name: 'mailjetEmailApi', available: false, scope: 'project' as const },
+		};
 
-		const usability = getCredentialTypeUsability('mailjetEmailApi', {
-			credentialTypeRestriction: () => null,
-			nodeTypeRestriction: () => null,
+		expect(useCredentialTypeUsability().fromCredentialRestriction(restriction)).toEqual(
+			restriction,
+		);
+	});
+
+	it('names the restricted nodes that the server sends, once each', () => {
+		const restriction = {
+			name: 'n8n-nodes-base.mailjet',
+			available: false,
+			scope: 'instance' as const,
+		};
+
+		expect(
+			useCredentialTypeUsability().fromCredentialRestriction({
+				reason: 'nodesRestricted',
+				restriction,
+				nodeTypes: [
+					'n8n-nodes-base.mailjet',
+					'n8n-nodes-base.mailjetTrigger',
+					'n8n-nodes-base.unknown',
+				],
+			}),
+		).toEqual({
+			reason: 'nodesRestricted',
+			restriction,
+			nodeTypeNames: ['Mailjet', 'Mailjet Trigger', 'n8n-nodes-base.unknown'],
 		});
-
-		expect(usability).toBeNull();
 	});
 
 	it('describes a blocked type with its scope and no custom popover copy', () => {

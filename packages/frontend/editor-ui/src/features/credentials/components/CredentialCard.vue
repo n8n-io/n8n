@@ -77,12 +77,12 @@ const resourceTypeLabel = computed(() => locale.baseText('generic.credential').t
 const credentialType = computed(() =>
 	credentialsStore.getCredentialTypeByName(props.data.type ?? ''),
 );
+const credentialTypeDisplayName = computed(
+	() => credentialType.value?.displayName ?? props.data.type,
+);
 const restriction = computed(() =>
 	props.data.restriction
-		? describeCredentialTypeUsability(
-				props.data.restriction,
-				credentialType.value?.displayName ?? props.data.type,
-			)
+		? describeCredentialTypeUsability(props.data.restriction, credentialTypeDisplayName.value)
 		: null,
 );
 const credentialPermissions = computed(() => getResourcePermissions(props.data.scopes).credential);
@@ -272,11 +272,11 @@ function moveResource() {
 							:kind="restriction.kind"
 							side="right"
 							marker-size="xsmall"
-							:node-type-name="credentialType?.displayName ?? data.type"
+							:node-type-name="credentialTypeDisplayName"
 							:restriction="restriction.restriction"
 							:scope-label="restriction.popoverScopeLabel"
 							:description="restriction.description"
-							:project-type="data.restrictionProjectType"
+							:project-type="data.homeProject?.type"
 							:anchor="restrictedBadgeRef"
 						/>
 						{{ locale.baseText('credentials.item.restricted') }}

@@ -68,10 +68,7 @@ import type {
 import type { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import type { BulkCommand, Undoable } from '@/app/models/history';
 
-import type {
-	ProjectSharingData,
-	ProjectType,
-} from '@/features/collaboration/projects/projects.types';
+import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import type {
 	BaseFolderItem,
 	FolderListItem,
@@ -371,8 +368,6 @@ export type CredentialsResource = BaseResource & {
 	needsSetup: boolean;
 	/** Why workflows cannot use this credential, when a policy restricts its type or its nodes. */
 	restriction?: CredentialTypeUsability;
-	/** The project whose policy restricts it, when it is not the open one. */
-	restrictionProjectType?: ProjectType;
 	isGlobal?: boolean;
 	isResolvable?: boolean;
 	connectedByMe?: boolean;

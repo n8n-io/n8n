@@ -193,8 +193,21 @@ describe('credentials.store', () => {
 				includeScopes: true,
 				onlySharedWithMe: false,
 				includeGlobal: true,
+				includeRestrictions: false,
 				externalSecretsStore: undefined,
 			});
+		});
+
+		it('asks the API for restrictions when requested', async () => {
+			const store = useCredentialsStore();
+			vi.spyOn(credentialsApi, 'getAllCredentials').mockResolvedValue([]);
+
+			await store.fetchAllCredentials({ includeRestrictions: true });
+
+			expect(credentialsApi.getAllCredentials).toHaveBeenCalledWith(
+				mockRootStore.restApiContext,
+				expect.objectContaining({ includeRestrictions: true }),
+			);
 		});
 
 		it('should pass includeGlobal as true when not provided', async () => {
@@ -218,6 +231,7 @@ describe('credentials.store', () => {
 				includeScopes: true,
 				onlySharedWithMe: false,
 				includeGlobal: true,
+				includeRestrictions: false,
 				externalSecretsStore: undefined,
 			});
 		});

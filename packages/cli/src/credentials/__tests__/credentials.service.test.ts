@@ -2,6 +2,7 @@ import { CredentialDescriptionsService } from '@/credentials/credential-descript
 import { CREDENTIAL_DESCRIPTION_MAX_LENGTH } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import {
+	type CredentialRestrictionsProviderProxy,
 	type EventService,
 	type RoleService,
 	type CredentialsFinderService,
@@ -139,6 +140,7 @@ describe('CredentialsService', () => {
 	const transactionRunner = mock<TransactionRunner>();
 	const policyEnforcementService = mock<PolicyEnforcementService>();
 	const cleared = mock<PolicyCleared<'credentialSave'>>();
+	const credentialRestrictions = mock<CredentialRestrictionsProviderProxy>();
 
 	const service = new CredentialsService(
 		credentialsRepository,
@@ -167,6 +169,7 @@ describe('CredentialsService', () => {
 		policyEnforcementService,
 		credentialDescriptions,
 		mock(), // credentialsPermissionChecker
+		credentialRestrictions,
 	);
 
 	beforeEach(() => {
@@ -2980,6 +2983,70 @@ describe('CredentialsService', () => {
 				skip: 10,
 			});
 			expect(result).toEqual({ credentials, count: 1 });
+		});
+
+		describe('includeRestrictions', () => {
+			const credential = (id: string, homeProjectId: string | null) =>
+				({
+					id,
+					type: 'slackApi',
+					shared: [],
+					homeProject: homeProjectId ? { id: homeProjectId } : null,
+				}) as unknown as CredentialsEntity;
+			const restriction = {
+				reason: 'typeRestricted' as const,
+				restriction: { name: 'slackApi', available: false, scope: 'instance' as const },
+			};
+
+			beforeEach(() => {
+				ownershipService.addOwnedByAndSharedWith.mockImplementation((c: any) => c);
+			});
+
+			it('adds the restriction of each credential, judged by its home project', async () => {
+				credentialsRepository.findManyAndCount.mockResolvedValue([
+					[credential('cred-1', 'team-1'), credential('cred-2', null)],
+					2,
+				]);
+				credentialRestrictions.findRestrictions.mockResolvedValue([restriction, null]);
+
+				const { credentials } = await service.getManyAndCount(ownerUser, {
+					includeRestrictions: true,
+				});
+
+				expect(credentialRestrictions.findRestrictions).toHaveBeenCalledWith([
+					{ type: 'slackApi', homeProjectId: 'team-1' },
+					{ type: 'slackApi', homeProjectId: null },
+				]);
+				expect(credentials[0]).toHaveProperty('restriction', restriction);
+				expect(credentials[1]).not.toHaveProperty('restriction');
+			});
+
+			it('does not judge credentials unless asked to', async () => {
+				credentialsRepository.findManyAndCount.mockResolvedValue([
+					[credential('cred-1', 'team-1')],
+					1,
+				]);
+
+				await service.getManyAndCount(ownerUser, {});
+
+				expect(credentialRestrictions.findRestrictions).not.toHaveBeenCalled();
+			});
+
+			it('returns the list without restrictions when they cannot be resolved', async () => {
+				credentialsRepository.findManyAndCount.mockResolvedValue([
+					[credential('cred-1', 'team-1')],
+					1,
+				]);
+				credentialRestrictions.findRestrictions.mockRejectedValue(new Error('boom'));
+
+				const { credentials } = await service.getManyAndCount(ownerUser, {
+					includeRestrictions: true,
+				});
+
+				expect(credentials).toHaveLength(1);
+				expect(credentials[0]).not.toHaveProperty('restriction');
+				expect(logger.warn).toHaveBeenCalled();
+			});
 		});
 	});
 

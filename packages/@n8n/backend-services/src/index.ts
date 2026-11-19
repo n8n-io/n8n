@@ -145,6 +145,11 @@ export {
 	NodeTypesProxy,
 } from './services/node-types-proxy.service';
 export {
+	CredentialRestrictionsProviderProxy,
+	type CredentialRestrictionsProvider,
+	type CredentialToJudge,
+} from './credentials/credential-restrictions-provider-proxy.service';
+export {
 	RestrictedNodeTypesProviderProxy,
 	type RestrictedNodeTypesProvider,
 } from './workflows/restricted-node-types-provider-proxy.service';

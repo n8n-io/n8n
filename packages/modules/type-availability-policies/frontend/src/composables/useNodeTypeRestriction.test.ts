@@ -10,10 +10,8 @@ import {
 	describeNodeTypeRestriction,
 	getCredentialTypeRestriction,
 	getNodeTypeRestriction,
-	getProjectRestrictionLookup,
 	getRestrictionContact,
 	isNodeTypeRestricted,
-	onlyInstanceWideRestrictions,
 	resolveRestrictionContact,
 	useCredentialTypeRestriction,
 	useNodeTypeRestriction,
@@ -368,67 +366,5 @@ describe('useCredentialTypeRestriction', () => {
 		expect(describeTypeRestriction('chatTool', 'Gmail Tool', null)).toBe(
 			"Gmail Tool is restricted. Your chats can't use it.",
 		);
-	});
-});
-
-describe('restriction lookups', () => {
-	beforeEach(() => {
-		setActivePinia(createPinia());
-	});
-
-	describe('getProjectRestrictionLookup', () => {
-		it('is null until the project verdicts load', () => {
-			expect(getProjectRestrictionLookup('project-a')).toBeNull();
-		});
-
-		it('reads the verdicts of that project, credential-only nodes included', () => {
-			const store = useTypeAvailabilityPoliciesStore();
-			vi.spyOn(store, 'getProjectVerdicts').mockImplementation((projectId) =>
-				projectId === 'project-a'
-					? {
-							nodeTypes: new Map([
-								[
-									'n8n-nodes-base.slack',
-									{ name: 'n8n-nodes-base.slack', available: false, scope: 'project' as const },
-								],
-							]),
-							credentialTypes: new Map([
-								[
-									'virusTotalApi',
-									{ name: 'virusTotalApi', available: false, scope: 'instance' as const },
-								],
-							]),
-						}
-					: null,
-			);
-
-			const lookup = getProjectRestrictionLookup('project-a');
-
-			expect(lookup?.nodeTypeRestriction('n8n-nodes-base.slack')?.scope).toBe('project');
-			expect(lookup?.nodeTypeRestriction(HTTP_REQUEST)).toBeNull();
-			expect(lookup?.credentialTypeRestriction('virusTotalApi')?.scope).toBe('instance');
-			expect(lookup?.nodeTypeRestriction(VIRUS_TOTAL_NODE)?.scope).toBe('instance');
-			expect(lookup?.nodeTypeRestriction(SYSDIG_NODE)).toBeNull();
-		});
-	});
-
-	describe('onlyInstanceWideRestrictions', () => {
-		it('keeps instance rules and drops project and opt-in rules', () => {
-			const lookup = onlyInstanceWideRestrictions({
-				credentialTypeRestriction: (name) =>
-					({
-						blockedEverywhere: { name, available: false, scope: 'instance' as const },
-						optIn: { name, available: false, scope: 'instance' as const, optInAvailable: true },
-						blockedInProject: { name, available: false, scope: 'project' as const },
-					})[name] ?? null,
-				nodeTypeRestriction: (name) =>
-					name === 'n8n-nodes-base.slack' ? { name, available: false, scope: 'project' } : null,
-			});
-
-			expect(lookup.credentialTypeRestriction('blockedEverywhere')).not.toBeNull();
-			expect(lookup.credentialTypeRestriction('optIn')).toBeNull();
-			expect(lookup.credentialTypeRestriction('blockedInProject')).toBeNull();
-			expect(lookup.nodeTypeRestriction('n8n-nodes-base.slack')).toBeNull();
-		});
 	});
 });

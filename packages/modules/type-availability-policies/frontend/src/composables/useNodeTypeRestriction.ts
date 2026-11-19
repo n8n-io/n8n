@@ -26,16 +26,18 @@ import { useTypeAvailabilityPoliciesStore } from '../type-availability-policies.
 /** The verdict that restricts a node type: from the node kind, or the credential kind for a credential-only node. */
 export type TypeRestriction = NodeTypeAvailability | CredentialTypeAvailability;
 
-/** Answers which node and credential types a policy restricts, in one project. */
-export type TypeRestrictionLookup = {
-	credentialTypeRestriction: (credentialType: string) => CredentialTypeAvailability | null;
-	nodeTypeRestriction: (nodeType: string) => TypeRestriction | null;
-};
+function nodeRestriction(nodeType: string): NodeTypeAvailability | null {
+	const availability = useTypeAvailabilityPoliciesStore().getNodeTypeAvailability(nodeType);
+	return availability && !availability.available ? availability : null;
+}
 
-type AvailabilityReader<T> = (name: string) => T | undefined;
-
-const unavailable = <T extends { available: boolean }>(availability: T | undefined): T | null =>
-	availability && !availability.available ? availability : null;
+export function getCredentialTypeRestriction(
+	credentialType: string,
+): CredentialTypeAvailability | null {
+	const availability =
+		useTypeAvailabilityPoliciesStore().getCredentialTypeAvailability(credentialType);
+	return availability && !availability.available ? availability : null;
+}
 
 /**
  * A credential-only node (`n8n-creds-base.<type>`) is HTTP Request with one credential type
@@ -44,87 +46,15 @@ const unavailable = <T extends { available: boolean }>(availability: T | undefin
  * reason and already covers every credential-only node. This mirrors the backend, where the
  * node check judges the stored `httpRequest` node and the credential check judges its type.
  */
-function nodeTypeRestrictionFrom(
-	nodeTypeAvailability: AvailabilityReader<NodeTypeAvailability>,
-	credentialTypeAvailability: AvailabilityReader<CredentialTypeAvailability>,
-	nodeType: string,
-): TypeRestriction | null {
+export function getNodeTypeRestriction(nodeType: string): TypeRestriction | null {
 	if (isCredentialOnlyNodeType(nodeType)) {
 		return (
-			unavailable(nodeTypeAvailability(HTTP_REQUEST_NODE_TYPE)) ??
-			unavailable(credentialTypeAvailability(getCredentialOnlyNodeCredentialType(nodeType)))
+			nodeRestriction(HTTP_REQUEST_NODE_TYPE) ??
+			getCredentialTypeRestriction(getCredentialOnlyNodeCredentialType(nodeType))
 		);
 	}
 
-	return unavailable(nodeTypeAvailability(nodeType));
-}
-
-function restrictionLookup(
-	nodeTypeAvailability: AvailabilityReader<NodeTypeAvailability>,
-	credentialTypeAvailability: AvailabilityReader<CredentialTypeAvailability>,
-): TypeRestrictionLookup {
-	return {
-		credentialTypeRestriction: (credentialType) =>
-			unavailable(credentialTypeAvailability(credentialType)),
-		nodeTypeRestriction: (nodeType) =>
-			nodeTypeRestrictionFrom(nodeTypeAvailability, credentialTypeAvailability, nodeType),
-	};
-}
-
-/** The restrictions of the open project. */
-export function getCurrentProjectRestrictionLookup(): TypeRestrictionLookup {
-	const store = useTypeAvailabilityPoliciesStore();
-	return restrictionLookup(
-		(name) => store.getNodeTypeAvailability(name),
-		(name) => store.getCredentialTypeAvailability(name),
-	);
-}
-
-/**
- * The restrictions of a project that is not the open one, loaded by `fetchForProjects`. `null`
- * until they load, or when the user may not read that project's policy.
- */
-export function getProjectRestrictionLookup(projectId: string): TypeRestrictionLookup | null {
-	const verdicts = useTypeAvailabilityPoliciesStore().getProjectVerdicts(projectId);
-	if (!verdicts) return null;
-
-	return restrictionLookup(
-		(name) => verdicts.nodeTypes.get(name),
-		(name) => verdicts.credentialTypes.get(name),
-	);
-}
-
-/**
- * Keeps only the restrictions that no project can lift: an instance rule without opt-in. They
- * are the same in every project, so a lookup of any project answers them for all.
- */
-export function onlyInstanceWideRestrictions(lookup: TypeRestrictionLookup): TypeRestrictionLookup {
-	const instanceWide = <T extends TypeRestriction>(restriction: T | null): T | null =>
-		restriction?.scope === 'instance' && !restriction.optInAvailable ? restriction : null;
-
-	return {
-		credentialTypeRestriction: (name) => instanceWide(lookup.credentialTypeRestriction(name)),
-		nodeTypeRestriction: (name) => instanceWide(lookup.nodeTypeRestriction(name)),
-	};
-}
-
-// Called in loops over node types (node creator, canvas), so these read the store directly.
-export function getCredentialTypeRestriction(
-	credentialType: string,
-): CredentialTypeAvailability | null {
-	return unavailable(
-		useTypeAvailabilityPoliciesStore().getCredentialTypeAvailability(credentialType),
-	);
-}
-
-export function getNodeTypeRestriction(nodeType: string): TypeRestriction | null {
-	const store = useTypeAvailabilityPoliciesStore();
-	// Setup-store actions do not use `this`, so they can be passed as they are.
-	return nodeTypeRestrictionFrom(
-		store.getNodeTypeAvailability,
-		store.getCredentialTypeAvailability,
-		nodeType,
-	);
+	return nodeRestriction(nodeType);
 }
 
 /** The policy kind behind a node type's verdict, matching the order in `getNodeTypeRestriction`. */

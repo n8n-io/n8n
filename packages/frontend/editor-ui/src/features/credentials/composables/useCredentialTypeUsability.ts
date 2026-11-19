@@ -1,9 +1,10 @@
+import type { CredentialRestriction } from '@n8n/api-types';
 import {
-	getCurrentProjectRestrictionLookup,
+	getCredentialTypeRestriction,
+	getNodeTypeRestriction,
 	SCOPE_LABEL_KEY,
 	type RestrictedTypeKind,
 	type TypeRestriction,
-	type TypeRestrictionLookup,
 } from '@n8n/frontend-module-type-availability-policies';
 import { useI18n } from '@n8n/i18n';
 import { HTTP_REQUEST_NODE_TYPE, type ICredentialType } from 'n8n-workflow';
@@ -19,8 +20,6 @@ const HTTP_REQUEST_CREDENTIAL_TYPES = [
 	'extends:oAuth1Api',
 	'has:authenticate',
 ];
-
-export type { CredentialTypeUsability };
 
 export type CredentialTypeUsabilityReason = CredentialTypeUsability['reason'];
 
@@ -61,9 +60,9 @@ export function isUsableByHttpRequest(
 }
 
 /**
- * Why no workflow in a project can use a credential type: a policy blocks the type, or blocks
- * every node that could use it, HTTP Request included. Reads the open project unless the caller
- * passes the lookup of another one.
+ * Why no workflow in the loaded project can use a credential type: a policy blocks the type,
+ * or blocks every node that could use it, HTTP Request included. The credentials list gets the
+ * same answer from the server for each credential's home project, see `fromCredentialRestriction`.
  */
 export function useCredentialTypeUsability() {
 	const credentialsStore = useCredentialsStore();
@@ -72,14 +71,13 @@ export function useCredentialTypeUsability() {
 
 	function getNodesRestriction(
 		credentialType: ICredentialType,
-		lookup: TypeRestrictionLookup,
 	): Extract<CredentialTypeUsability, { reason: 'nodesRestricted' }> | null {
 		const nodeTypes = credentialType.supportedNodes ?? [];
 		if (nodeTypes.length === 0) return null;
 
 		const restrictions: TypeRestriction[] = [];
 		for (const nodeType of nodeTypes) {
-			const restriction = lookup.nodeTypeRestriction(nodeType);
+			const restriction = getNodeTypeRestriction(nodeType);
 			if (!restriction) return null;
 			restrictions.push(restriction);
 		}
@@ -89,16 +87,12 @@ export function useCredentialTypeUsability() {
 			credentialsStore.getCredentialTypeByName(name) ?? undefined;
 		if (
 			isUsableByHttpRequest(credentialType, getCredentialType) &&
-			!lookup.nodeTypeRestriction(HTTP_REQUEST_NODE_TYPE)
+			!getNodeTypeRestriction(HTTP_REQUEST_NODE_TYPE)
 		) {
 			return null;
 		}
 
-		const nodeTypeNames = [
-			...new Set(
-				nodeTypes.map((nodeType) => nodeTypesStore.getNodeType(nodeType)?.displayName ?? nodeType),
-			),
-		];
+		const nodeTypeNames = toNodeTypeNames(nodeTypes);
 		// Allowing one node is enough, so point at the admin with the narrowest reach.
 		const restriction =
 			restrictions.find((verdict) => verdict.scope === 'project' || verdict.optInAvailable) ??
@@ -107,15 +101,31 @@ export function useCredentialTypeUsability() {
 		return { reason: 'nodesRestricted', restriction, nodeTypeNames };
 	}
 
-	function getCredentialTypeUsability(
-		credentialTypeName: string,
-		lookup: TypeRestrictionLookup = getCurrentProjectRestrictionLookup(),
-	): CredentialTypeUsability | null {
-		const restriction = lookup.credentialTypeRestriction(credentialTypeName);
+	function toNodeTypeNames(nodeTypes: string[]): string[] {
+		return [
+			...new Set(
+				nodeTypes.map((nodeType) => nodeTypesStore.getNodeType(nodeType)?.displayName ?? nodeType),
+			),
+		];
+	}
+
+	function getCredentialTypeUsability(credentialTypeName: string): CredentialTypeUsability | null {
+		const restriction = getCredentialTypeRestriction(credentialTypeName);
 		if (restriction) return { reason: 'typeRestricted', restriction };
 
 		const credentialType = credentialsStore.getCredentialTypeByName(credentialTypeName);
-		return credentialType ? getNodesRestriction(credentialType, lookup) : null;
+		return credentialType ? getNodesRestriction(credentialType) : null;
+	}
+
+	/** The server's answer for a listed credential, with the node display names the copy needs. */
+	function fromCredentialRestriction(restriction: CredentialRestriction): CredentialTypeUsability {
+		if (restriction.reason === 'typeRestricted') return restriction;
+
+		return {
+			reason: 'nodesRestricted',
+			restriction: restriction.restriction,
+			nodeTypeNames: toNodeTypeNames(restriction.nodeTypes),
+		};
 	}
 
 	function describeCredentialTypeUsability(
@@ -152,5 +162,5 @@ export function useCredentialTypeUsability() {
 		};
 	}
 
-	return { getCredentialTypeUsability, describeCredentialTypeUsability };
+	return { getCredentialTypeUsability, fromCredentialRestriction, describeCredentialTypeUsability };
 }

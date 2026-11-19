@@ -1,6 +1,11 @@
 import type { CreateCredentialDto, CredentialConnectionStatus } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { EventService, RoleService, CredentialsFinderService } from '@n8n/backend-services';
+import {
+	CredentialRestrictionsProviderProxy,
+	CredentialsFinderService,
+	EventService,
+	RoleService,
+} from '@n8n/backend-services';
 import { Time } from '@n8n/constants';
 import {
 	Project,
@@ -36,6 +41,7 @@ import {
 	type FindOptionsRelations,
 	type FindOptionsWhere,
 } from '@n8n/typeorm';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import cloneDeep from 'lodash/cloneDeep';
 import isEqual from 'lodash/isEqual';
 import { CredentialDataError, Credentials, ErrorReporter } from 'n8n-core';
@@ -164,6 +170,7 @@ type GetManyOptions = {
 	includeData?: boolean;
 	onlySharedWithMe?: boolean;
 	includeGlobal?: boolean;
+	includeRestrictions?: boolean;
 	filters?: {
 		externalSecretsStore?: string;
 	};
@@ -283,6 +290,7 @@ export class CredentialsService {
 		private readonly policyEnforcementService: PolicyEnforcementService,
 		private readonly credentialDescriptions: CredentialDescriptionsService,
 		private readonly credentialsPermissionChecker: CredentialsPermissionChecker,
+		private readonly credentialRestrictions: CredentialRestrictionsProviderProxy,
 	) {}
 
 	async countConnectedUsers(credentialId: string): Promise<number> {
@@ -345,6 +353,7 @@ export class CredentialsService {
 			includeData = false,
 			onlySharedWithMe = false,
 			includeGlobal = false,
+			includeRestrictions = false,
 			filters = {},
 		}: GetManyOptions = {},
 	): Promise<
@@ -393,8 +402,30 @@ export class CredentialsService {
 			listQueryOptions,
 			onlySharedWithMe,
 		);
+		if (includeRestrictions) await this.addRestrictions(enriched);
 
 		return { credentials: enriched, count };
+	}
+
+	private async addRestrictions(
+		credentials: Array<{ type: string; homeProject?: { id: string } | null }>,
+	): Promise<void> {
+		try {
+			const restrictions = await this.credentialRestrictions.findRestrictions(
+				credentials.map(({ type, homeProject }) => ({
+					type,
+					homeProjectId: homeProject?.id ?? null,
+				})),
+			);
+			credentials.forEach((credential, index) => {
+				const restriction = restrictions[index];
+				if (restriction) Object.assign(credential, { restriction });
+			});
+		} catch (error) {
+			this.logger.warn('Failed to resolve credential restrictions for the credentials list', {
+				error: ensureError(error),
+			});
+		}
 	}
 
 	private async getManyForAdminUser(

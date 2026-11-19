@@ -1,5 +1,6 @@
 import type {
 	CreateCredentialDto,
+	CredentialRestriction,
 	CredentialTypeAvailability,
 	Iso8601DateTimeString,
 } from '@n8n/api-types';
@@ -48,6 +49,8 @@ export interface ICredentialsResponse
 	connectedAccountIdentifier?: string;
 	/** Total number of users connected to this credential. Set on resolvable credentials only. */
 	connectedUserCount?: number;
+	/** Why workflows in its home project cannot use it. Set when the list asks for restrictions. */
+	restriction?: CredentialRestriction;
 }
 
 export interface IUsedCredential {
