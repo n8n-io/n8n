@@ -276,6 +276,7 @@ export class AgentTurnExecutionService {
 			const started = await withChatScope(
 				config.context.threadId,
 				async () => await config.agentInstance.stream(turn.input, turn.options),
+				config.context.agentId,
 			);
 			state.runId = started.runId;
 			return started.stream;
@@ -294,6 +295,7 @@ export class AgentTurnExecutionService {
 						await options.onResumeClaimed?.();
 					},
 				}),
+			config.context.agentId,
 		);
 		state.runId = resumed.runId;
 		return resumed.stream;

@@ -1,8 +1,9 @@
+import { AsyncLocalStorage } from 'node:async_hooks';
 import http from 'node:http';
 import https from 'node:https';
 import { PassThrough, Writable } from 'node:stream';
 
-import { currentChatId } from './chat-scope';
+import { currentNodeGuard } from './chat-scope';
 
 export interface CapturedRequest {
 	method: string;
@@ -26,6 +27,13 @@ interface Originals {
 }
 
 let installed: { decide: RequestDecider; originals: Originals } | undefined;
+
+// The work of a decision (gym calls, real reads, model calls) runs inside this flag, so the
+// interceptor does not catch it again.
+const bypass = new AsyncLocalStorage<true>();
+const intercepting = (): boolean =>
+	currentNodeGuard() !== undefined && bypass.getStore() === undefined;
+const unintercepted = async <T>(fn: () => Promise<T>): Promise<T> => await bypass.run(true, fn);
 
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null;
 
@@ -66,10 +74,18 @@ function readArgs(protocol: 'http:' | 'https:', args: unknown[]) {
 	};
 }
 
+const PLAIN_BODY_DROPS: ReadonlySet<string> = new Set([
+	'content-encoding',
+	'content-length',
+	'transfer-encoding',
+]);
+
 async function toIncomingMessage(res: Response): Promise<http.IncomingMessage> {
 	const headers: Record<string, string> = {};
 	const rawHeaders: string[] = [];
 	res.headers.forEach((value, key) => {
+		// The body is plain, so a header that describes an encoded or sized body would be wrong.
+		if (PLAIN_BODY_DROPS.has(key)) return;
 		headers[key] = value;
 		rawHeaders.push(key, value);
 	});
@@ -147,7 +163,7 @@ class InterceptedRequest extends Writable {
 	}
 
 	private async answer(req: CapturedRequest): Promise<void> {
-		const decision = await this.decide(req);
+		const decision = await unintercepted(async () => await this.decide(req));
 		if (decision === 'passthrough') {
 			this.sendToNetwork(req);
 			return;
@@ -170,7 +186,7 @@ class InterceptedRequest extends Writable {
 function patchedRequest(lib: Lib, original: RequestFn, decide: () => RequestDecider) {
 	const protocol = lib === https ? 'https:' : 'http:';
 	return (...args: unknown[]): http.ClientRequest => {
-		if (!currentChatId()) return original(...(args as Parameters<RequestFn>));
+		if (!intercepting()) return original(...(args as Parameters<RequestFn>));
 		const { url, method, headers, onResponse } = readArgs(protocol, args);
 		const realArgs = args.filter((a) => typeof a !== 'function');
 		const proxy = new InterceptedRequest(lib, realArgs, { url, method, headers }, async (req) => {
@@ -183,26 +199,29 @@ function patchedRequest(lib: Lib, original: RequestFn, decide: () => RequestDeci
 
 function patchedFetch(original: typeof globalThis.fetch, decide: () => RequestDecider) {
 	return async (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
-		if (!currentChatId()) return await original(input, init);
+		if (!intercepting()) return await original(input, init);
 		const probe = input instanceof Request ? input.clone() : new Request(input, init);
 		const headers: Record<string, string> = {};
 		probe.headers.forEach((value, key) => {
 			headers[key] = value;
 		});
 		const buffer = probe.body ? Buffer.from(await probe.arrayBuffer()) : undefined;
-		const decision = await decide()({
-			method: probe.method.toUpperCase(),
-			url: new URL(probe.url),
-			headers,
-			body: buffer && buffer.length > 0 ? buffer : undefined,
-		});
+		const decision = await unintercepted(
+			async () =>
+				await decide()({
+					method: probe.method.toUpperCase(),
+					url: new URL(probe.url),
+					headers,
+					body: buffer && buffer.length > 0 ? buffer : undefined,
+				}),
+		);
 		return decision === 'passthrough' ? await original(input, init) : decision;
 	};
 }
 
 /**
- * Wraps `http`, `https` and global `fetch`. A call made inside a chat scope goes to `decide`.
- * A call outside a chat scope is not touched. Returns a function that restores the originals.
+ * Wraps `http`, `https` and global `fetch`. A call made inside a guarded node tool goes to `decide`.
+ * Any other call is not touched. Returns a function that restores the originals.
  */
 export function installNetInterceptor(decide: RequestDecider): () => void {
 	if (installed) {
@@ -245,4 +264,32 @@ export function installNetInterceptor(decide: RequestDecider): () => void {
 		globalThis.fetch = originals.fetch;
 		installed = undefined;
 	};
+}
+
+// Headers that the HTTP client of the copy sets itself.
+const SET_BY_CLIENT: ReadonlySet<string> = new Set([
+	'host',
+	'content-length',
+	'connection',
+	'keep-alive',
+	'transfer-encoding',
+	'accept-encoding',
+]);
+
+/** Sends a captured request to the real network. Use it inside a decision to make the real read. */
+export async function sendToNetwork(req: CapturedRequest): Promise<Response> {
+	const headers = Object.fromEntries(
+		Object.entries(req.headers).filter(([name]) => !SET_BY_CLIENT.has(name.toLowerCase())),
+	);
+	return await unintercepted(
+		async () =>
+			await fetch(req.url, {
+				method: req.method,
+				headers,
+				body:
+					req.body && req.method !== 'GET' && req.method !== 'HEAD'
+						? new Uint8Array(req.body)
+						: undefined,
+			}),
+	);
 }

@@ -4,8 +4,15 @@ import type { AddressInfo } from 'node:net';
 
 import axios from 'axios';
 
-import { withChatScope } from '../chat-scope';
-import { installNetInterceptor, type CapturedRequest } from '../net-interceptor';
+import { withChatScope, withNodeGuard } from '../chat-scope';
+import type { HydrationModel } from '../hydration-llm';
+import { installNetInterceptor, sendToNetwork, type CapturedRequest } from '../net-interceptor';
+
+const model: HydrationModel = { resolve: async () => ({}) as never };
+
+// A guarded node tool of a test chat.
+const inGuard = async <T>(fn: () => Promise<T>): Promise<T> =>
+	await withChatScope('chat-1', async () => await withNodeGuard(model, fn), 'agent-1');
 
 describe('installNetInterceptor', () => {
 	let server: http.Server;
@@ -57,7 +64,7 @@ describe('installNetInterceptor', () => {
 			req.end(body);
 		});
 
-	it('passes a request through when no chat scope is set', async () => {
+	it('passes a request through when it is not in a guarded node tool', async () => {
 		const decide = vi.fn();
 		uninstall = installNetInterceptor(decide);
 
@@ -66,11 +73,21 @@ describe('installNetInterceptor', () => {
 		expect(hits).toBe(1);
 	});
 
-	it('passes a request through inside a chat scope when decide says passthrough', async () => {
+	it('passes a request through in a chat scope that is not a guarded node tool', async () => {
+		const decide = vi.fn();
+		uninstall = installNetInterceptor(decide);
+
+		const text = await withChatScope('chat-1', async () => await get(base), 'agent-1');
+
+		expect(text).toBe('real');
+		expect(decide).not.toHaveBeenCalled();
+	});
+
+	it('passes a request through inside a guarded node tool when decide says passthrough', async () => {
 		const decide = vi.fn(async () => 'passthrough' as const);
 		uninstall = installNetInterceptor(decide);
 
-		const text = await withChatScope('chat-1', async () => await get(base));
+		const text = await inGuard(async () => await get(base));
 
 		expect(text).toBe('real');
 		expect(decide).toHaveBeenCalledTimes(1);
@@ -84,10 +101,7 @@ describe('installNetInterceptor', () => {
 			return new Response('fake', { status: 201 });
 		});
 
-		const res = await withChatScope(
-			'chat-1',
-			async () => await send(http, `${base}/a/b?x=1`, 'payload'),
-		);
+		const res = await inGuard(async () => await send(http, `${base}/a/b?x=1`, 'payload'));
 
 		expect(res).toEqual({ status: 201, text: 'fake' });
 		expect(seen).toHaveLength(1);
@@ -103,8 +117,7 @@ describe('installNetInterceptor', () => {
 		const decide = vi.fn(async (_req: CapturedRequest) => new Response('fake-https'));
 		uninstall = installNetInterceptor(decide);
 
-		const res = await withChatScope(
-			'chat-1',
+		const res = await inGuard(
 			async () => await send(https, 'https://www.googleapis.com/gmail/v1/users/me/messages', ''),
 		);
 
@@ -119,10 +132,7 @@ describe('installNetInterceptor', () => {
 		);
 		uninstall = installNetInterceptor(decide);
 
-		const res = await withChatScope(
-			'chat-1',
-			async () => await fetch(`${base}/f`, { method: 'PUT', body: 'b' }),
-		);
+		const res = await inGuard(async () => await fetch(`${base}/f`, { method: 'PUT', body: 'b' }));
 
 		expect(res.status).toBe(202);
 		expect(await res.text()).toBe('fake-fetch');
@@ -138,8 +148,7 @@ describe('installNetInterceptor', () => {
 			return Response.json({ messages: [] }, { status: 200 });
 		});
 
-		const res = await withChatScope(
-			'chat-1',
+		const res = await inGuard(
 			async () =>
 				await axios.post(
 					'https://www.googleapis.com/gmail/v1/users/me/messages/send?a=1',
@@ -157,6 +166,81 @@ describe('installNetInterceptor', () => {
 		expect(JSON.parse(seen[0].body?.toString() ?? '{}')).toEqual({ raw: 'abc' });
 	});
 
+	it('does not intercept the calls that decide makes itself', async () => {
+		let decisions = 0;
+		uninstall = installNetInterceptor(async () => {
+			decisions++;
+			// The helper work of a decision (gym, real read, model) must reach the network.
+			const inner = await get(base);
+			const viaFetch = await (await fetch(base)).text();
+			return new Response(`${inner}+${viaFetch}`);
+		});
+
+		const res = await inGuard(async () => await send(http, `${base}/x`, ''));
+
+		expect(res.text).toBe('real+real');
+		expect(decisions).toBe(1);
+		expect(hits).toBe(2);
+	});
+
+	it('sendToNetwork sends a captured request to the real network without Host and length headers', async () => {
+		let seen: http.IncomingHttpHeaders = {};
+		let seenBody = '';
+		server.removeAllListeners('request');
+		server.on('request', (req, res) => {
+			seen = req.headers;
+			const chunks: Buffer[] = [];
+			req.on('data', (c: Buffer) => chunks.push(c));
+			req.on('end', () => {
+				seenBody = Buffer.concat(chunks).toString();
+				res.setHeader('content-type', 'application/json');
+				res.end('{"ok":true}');
+			});
+		});
+		uninstall = installNetInterceptor(vi.fn());
+
+		const res = await inGuard(
+			async () =>
+				await sendToNetwork({
+					method: 'POST',
+					url: new URL(`${base}/p`),
+					headers: {
+						host: 'www.googleapis.com',
+						'content-length': '999',
+						authorization: 'Bearer t',
+					},
+					body: Buffer.from('abc'),
+				}),
+		);
+
+		expect(res.status).toBe(200);
+		expect(await res.json()).toEqual({ ok: true });
+		expect(seenBody).toBe('abc');
+		expect(seen.authorization).toBe('Bearer t');
+		expect(seen.host).not.toBe('www.googleapis.com');
+		expect(seen['content-length']).toBe('3');
+	});
+
+	it('strips content-encoding and content-length from an answer, because the body is plain', async () => {
+		uninstall = installNetInterceptor(
+			async () =>
+				new Response('plain', {
+					headers: { 'content-encoding': 'gzip', 'content-length': '999', 'x-keep': '1' },
+				}),
+		);
+
+		const headers = await inGuard(
+			async () =>
+				await new Promise<http.IncomingHttpHeaders>((resolve, reject) => {
+					http.get(`${base}/h`, (res) => resolve(res.headers)).on('error', reject);
+				}),
+		);
+
+		expect(headers['content-encoding']).toBeUndefined();
+		expect(headers['content-length']).toBeUndefined();
+		expect(headers['x-keep']).toBe('1');
+	});
+
 	it('uninstall restores the original clients', async () => {
 		const originalRequest = http.request;
 		const originalFetch = globalThis.fetch;
@@ -168,7 +252,7 @@ describe('installNetInterceptor', () => {
 
 		expect(http.request).toBe(originalRequest);
 		expect(globalThis.fetch).toBe(originalFetch);
-		await withChatScope('chat-1', async () => await get(base));
+		await inGuard(async () => await get(base));
 		expect(decide).not.toHaveBeenCalled();
 	});
 
