@@ -1,3 +1,4 @@
+import type { FolderService } from '@/services/folder.service';
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import type { AgentIntegrationConfig, AgentJsonConfig } from '@n8n/api-types';
 import { createTeamProject, mockLogger, testDb, testModules } from '@n8n/backend-test-utils';
@@ -15,11 +16,14 @@ import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 import type { CredentialsFinderService } from '@n8n/backend-services';
 
+import { createAgent as createTestAgent } from '@test-integration/db/agents';
+
 import { registerSkillUsage } from '@/modules/agents/register-skill-usage';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { TagService } from '@/services/tag.service';
 import { AgentConfigPreparationService } from '@/modules/agents/agent-config-preparation.service';
 import { AgentConfigService } from '@/modules/agents/agent-config.service';
+import { AgentServiceAccountService } from '@/modules/agents/agent-service-account.service';
 import { AgentsService } from '@/modules/agents/agents.service';
 import { AgentDefinitionService } from '@/modules/agents/agent-definition.service';
 import type { AgentPolicyService } from '@/modules/agents/agent-policy.service';
@@ -61,7 +65,7 @@ describe('AgentRepository', () => {
 	let projectId: string;
 
 	async function createAgent(overrides: AgentFixtureOverrides = {}): Promise<Agent> {
-		const agent = agentRepo.create({
+		return await createTestAgent({
 			id: uuid(),
 			name: 'Test Agent',
 			projectId,
@@ -71,8 +75,7 @@ describe('AgentRepository', () => {
 			versionId: 'version-1',
 			activeVersionId: null,
 			...overrides,
-		} as Partial<Agent>);
-		return await agentRepo.save(agent);
+		} as Partial<Agent> & { projectId: string });
 	}
 
 	async function createHistory(agentId: string, versionId: string) {
@@ -223,7 +226,9 @@ describe('AgentRepository', () => {
 				definitionService,
 				mock<GlobalConfig>({ tags: { disabled: false } }),
 				mock<TagService>(),
+				mock<FolderService>(),
 				mock(),
+				Container.get(AgentServiceAccountService),
 			);
 			const person = Object.assign(new Person(), { firstName: 'Test', lastName: 'User' });
 			const id = uuid();

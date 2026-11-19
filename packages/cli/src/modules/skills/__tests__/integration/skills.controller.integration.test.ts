@@ -20,6 +20,7 @@ import { SkillService } from '../../services/skill.service';
 import { createSkill } from '../../testing';
 import { linkSkill } from '../test-utils/skill-source-fixtures';
 
+import { createAgent } from '@test-integration/db/agents';
 import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
 import { createMember, createOwner, createUser } from '@test-integration/db/users';
 import type { SuperAgentTest } from '@test-integration/types';
@@ -176,18 +177,15 @@ describe('SkillsController', () => {
 	});
 
 	async function newAgent(name: string, projectId: string) {
-		const agents = Container.get(AgentRepository);
-		return await agents.save(
-			agents.create({
-				id: randomUUID(),
-				name,
-				projectId,
-				integrations: [],
-				tools: {},
-				skills: {},
-				versionId: randomUUID(),
-			}),
-		);
+		return await createAgent({
+			id: randomUUID(),
+			name,
+			projectId,
+			integrations: [],
+			tools: {},
+			skills: {},
+			versionId: randomUUID(),
+		});
 	}
 
 	async function attachToNewAgent(
@@ -198,16 +196,14 @@ describe('SkillsController', () => {
 	) {
 		const agents = Container.get(AgentRepository);
 		const versionId = randomUUID();
-		const agent = await agents.save(
-			agents.create({
-				id: randomUUID(),
-				name,
-				projectId,
-				integrations: [],
-				tools: {},
-				versionId,
-			}),
-		);
+		const agent = await createAgent({
+			id: randomUUID(),
+			name,
+			projectId,
+			integrations: [],
+			tools: {},
+			versionId,
+		});
 		if (options.published) {
 			// Published and in sync: the draft is the published version.
 			const histories = Container.get(DataSource).getRepository(AgentHistory);

@@ -12,7 +12,6 @@ import type {
 	ObservationLogObserveFn,
 	ObservationLogReflectFn,
 } from './observation-log';
-import type { RuntimeSkillStateStore } from '../../skills/types';
 import type { JSONObject } from '../utils/json';
 
 /**
@@ -38,8 +37,6 @@ export interface Thread {
 }
 
 export interface BuiltMemory {
-	/** Retains active skills across separate runs, including compacted conversations. */
-	skillState?: RuntimeSkillStateStore;
 	// --- Thread management ---
 	getThread(threadId: string): Promise<Thread | null>;
 	saveThread(thread: Omit<Thread, 'createdAt' | 'updatedAt'>): Promise<Thread>;
@@ -501,10 +498,17 @@ export interface ObservationWindowShares {
 	midRunAt?: number;
 	/** Visible window size at which the loop waits for observation. Default 0.9. */
 	waitAt?: number;
-	/** Observation log size that triggers the Reflector. Default 0.6. */
+	/** Observation log size that triggers the Reflector. Default 0.15. */
 	reflectAt?: number;
+	/**
+	 * Log size the Reflector rewrites to. Default 0.09. It is below `reflectAt`,
+	 * so the log grows for several observations before the next rewrite.
+	 */
+	reflectTo?: number;
 	/** Largest unobserved batch that one Observer call reads. Default 0.6. */
 	batchAt?: number;
+	/** Largest working set (plan and commands) the Observer can write. Default 0.01. */
+	workingSetAt?: number;
 }
 
 interface MemoryConfigBase {

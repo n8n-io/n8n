@@ -73,7 +73,10 @@ describe('project package export', () => {
 		const workflowFolder = await createFolder(project, { name: 'Workflows' });
 		await createFolder(project, { name: 'Agents', resourceType: 'agent' });
 
-		const { manifest } = await exportProject(owner, project.id);
+		const { manifest } = await readExport(
+			(await service.exportPackage({ user: owner, projectIds: [project.id], includeAgents: false }))
+				.stream,
+		);
 
 		expect(manifest.folders?.map(({ id }) => id)).toEqual([workflowFolder.id]);
 	});

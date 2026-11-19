@@ -10,6 +10,7 @@ import type {
 import { type SupportedProtocolType } from '../../sso.store';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { RoleMappingRulesSaveResult } from './useRoleMappingRules';
 
 type TelemetryAssignmentMethod = 'disabled' | 'instance_role' | 'instance_and_project_roles';
@@ -119,7 +120,7 @@ export function useUserRoleProvisioningForm(protocol: SupportedProtocolType) {
 
 		if (!provisioningResult.configChanged && !rulesChanged) return;
 
-		telemetry.track('User updated provisioning settings', {
+		telemetry.track(TELEMETRY_EVENT.PROVISIONING.USER_UPDATED_PROVISIONING_SETTINGS, {
 			instance_id: useRootStore().instanceId,
 			authentication_method: protocol,
 			assignment_method: getTelemetryAssignmentMethod(roleAssignment.value),

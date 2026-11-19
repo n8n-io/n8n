@@ -62,6 +62,9 @@ export type PubSubCommandMap = {
 		errorNodeType?: string;
 	};
 	'reload-agents-settings': never;
+	'reload-mcp-settings': never;
+	'reload-skill-sync-settings': never;
+	'reload-ai-preference-settings': never;
 
 	// #region Community packages
 
@@ -475,6 +478,12 @@ export type PubSubCommandMap = {
 	 * The writing process reloads its own snapshot, so this is not a self-send command.
 	 */
 	'reload-type-availability-policies': never;
+
+	/**
+	 * Reload the execution limits held in memory. Published after a limit write commits.
+	 * The writing process reloads its own copy, so this is not a self-send command.
+	 */
+	'reload-execution-limits': never;
 
 	// #endregion
 };

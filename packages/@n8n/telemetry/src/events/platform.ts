@@ -3,6 +3,44 @@ import { z } from 'zod/v4';
 import { defineTelemetryEvents } from '../define';
 
 export const PLATFORM_TELEMETRY = defineTelemetryEvents({
+	USER_CREATED_FOLDER: {
+		name: 'User created folder',
+		description: 'A user created a folder in the editor.',
+		properties: z.object({
+			folder_id: z.string(),
+			resource_type: z.enum(['workflow', 'agent']),
+		}),
+	},
+	USER_RENAMED_FOLDER: {
+		name: 'User renamed folder',
+		description: 'A user renamed a folder in the editor.',
+		properties: z.object({
+			folder_id: z.string(),
+			resource_type: z.enum(['workflow', 'agent']),
+		}),
+	},
+	USER_DELETED_FOLDER: {
+		name: 'User deleted folder',
+		description: 'A user deleted a folder in the editor.',
+		properties: z.object({
+			folder_id: z.string(),
+			resource_type: z.enum(['workflow', 'agent']),
+			deleted_sub_folders: z.number(),
+			deleted_sub_workflows: z.number().optional(),
+			deleted_sub_agents: z.number().optional(),
+		}),
+	},
+	USER_MOVED_CONTENT: {
+		name: 'User moved content',
+		description: 'A user moved a workflow or Agent to a folder in the editor.',
+		properties: z.object({
+			resource_type: z.enum(['workflow', 'agent']),
+			workflow_id: z.string().optional(),
+			agent_id: z.string().optional(),
+			source_folder_id: z.string().nullable().optional(),
+			destination_folder_id: z.string(),
+		}),
+	},
 	USER_IS_PART_OF_EXPERIMENT: {
 		name: 'User is part of experiment',
 		description:

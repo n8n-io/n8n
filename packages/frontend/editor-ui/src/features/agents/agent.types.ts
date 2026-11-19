@@ -46,6 +46,7 @@ export function toAgentListItem(agent: Agent | AgentListItem): AgentListItem {
 		id: agent.id,
 		name: agent.name,
 		projectId: agent.projectId,
+		parentFolderId: agent.parentFolderId,
 		project: agent.project,
 		availableInMCP: agent.availableInMCP,
 		isArchived: agent.isArchived,

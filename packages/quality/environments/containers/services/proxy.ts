@@ -355,6 +355,10 @@ export class ProxyServer {
 		});
 	}
 
+	async getMockedEndpoint(path: string): Promise<Response> {
+		return await fetch(`${this.url}${path}`);
+	}
+
 	async wasRequestMade(request: RequestDefinition, numberOfRequests = 1): Promise<boolean> {
 		return await this.verifyRequest(request, numberOfRequests);
 	}

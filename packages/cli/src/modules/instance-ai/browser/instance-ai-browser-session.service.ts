@@ -18,9 +18,7 @@ import { nanoid } from 'nanoid';
 import { timingSafeEqual } from 'node:crypto';
 
 import { CredentialsService } from '@/credentials/credentials.service';
-import { Push } from '@/push';
-import { UrlService } from '@n8n/backend-services';
-import { Telemetry } from '@/telemetry';
+import { PushProxy, UrlService, TelemetryProxy } from '@n8n/backend-services';
 
 import { BrowserLocalMcpServer } from './browser-local-mcp-server';
 import {
@@ -66,11 +64,11 @@ export class InstanceAiBrowserSessionService {
 	constructor(
 		logger: Logger,
 		private readonly urlService: UrlService,
-		private readonly push: Push,
+		private readonly push: PushProxy,
 		private readonly userRepository: UserRepository,
 		private readonly credentialsService: CredentialsService,
 		private readonly globalConfig: GlobalConfig,
-		private readonly telemetry: Telemetry,
+		private readonly telemetry: TelemetryProxy,
 	) {
 		this.logger = logger.scoped('instance-ai');
 	}

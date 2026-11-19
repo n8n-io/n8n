@@ -5,7 +5,7 @@ import { Service } from '@n8n/di';
 import {
 	KnowledgeFileService,
 	type KnowledgeWriteRunner,
-	type UploadedKnowledgeFile,
+	type KnowledgeFileUploadResult,
 } from '@/modules/knowledge/files/knowledge-file.service';
 import { cleanupUploadedTempFiles } from '@/modules/knowledge/files/knowledge-upload.middleware';
 import { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
@@ -38,7 +38,7 @@ export class AgentKnowledgeService {
 		agentId: string,
 		projectId: string,
 		files: Express.Multer.File[],
-	): Promise<UploadedKnowledgeFile[]> {
+	): Promise<KnowledgeFileUploadResult[]> {
 		let scope: KnowledgeConsumerScope;
 		try {
 			scope = await this.scopeFor(agentId, projectId, { forWrite: true });
