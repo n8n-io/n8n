@@ -10,7 +10,7 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
-const MIGRATION_NAME = 'BackfillAgentIdentities1795006215000';
+const MIGRATION_NAME = 'BackfillAgentIdentities1795076463179';
 
 type AgentRow = { id: string; identityId: string | null };
 

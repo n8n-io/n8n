@@ -19,7 +19,7 @@ const previousColumnComment =
  *
  * The FK changes to RESTRICT. To delete an identity, delete its agent first.
  */
-export class BackfillAgentIdentities1795006215000 implements ReversibleMigration {
+export class BackfillAgentIdentities1795076463179 implements ReversibleMigration {
 	async up(context: MigrationContext) {
 		const {
 			schemaBuilder: { addNotNull, addForeignKey, dropForeignKey },
