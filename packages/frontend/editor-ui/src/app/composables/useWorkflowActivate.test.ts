@@ -2,7 +2,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import type { PushMessage } from '@n8n/api-types';
 import { useWorkflowActivate } from './useWorkflowActivate';
-import { WORKFLOW_ACTIVE_MODAL_KEY, WORKFLOW_PUBLISH_MODAL_KEY } from '@/app/constants';
+import {
+	WORKFLOW_ACTIVE_MODAL_KEY,
+	WORKFLOW_HISTORY_PUBLISH_MODAL_KEY,
+	WORKFLOW_PUBLISH_MODAL_KEY,
+} from '@/app/constants';
 
 // --- hoisted mocks ---
 // vi.hoisted callbacks run before any imports, so only plain JS is usable there.
@@ -285,6 +289,7 @@ describe('useWorkflowActivate', () => {
 				alwaysRequired: true,
 			});
 			expect(mockCloseModal).toHaveBeenCalledWith(WORKFLOW_PUBLISH_MODAL_KEY);
+			expect(mockCloseModal).toHaveBeenCalledWith(WORKFLOW_HISTORY_PUBLISH_MODAL_KEY);
 			expect(mockShowError).toHaveBeenCalled();
 			expect(mockSetWorkflowInactive).not.toHaveBeenCalled();
 		});

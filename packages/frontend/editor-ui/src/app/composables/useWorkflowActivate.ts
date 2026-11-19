@@ -4,6 +4,7 @@ import {
 	LOCAL_STORAGE_ACTIVATION_FLAG,
 	WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY,
 	WORKFLOW_ACTIVE_MODAL_KEY,
+	WORKFLOW_HISTORY_PUBLISH_MODAL_KEY,
 	WORKFLOW_PUBLISH_MODAL_KEY,
 } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -286,7 +287,9 @@ export function useWorkflowActivate() {
 				// An admin may have turned on reviews and required approval after this page loaded.
 				if (error.meta?.reason === 'review_required') {
 					useSettingsStore().setWorkflowReviewsPolicy({ enabled: true, alwaysRequired: true });
+					// Retrying this version cannot succeed, so close whichever publish modal sent it.
 					uiStore.closeModal(WORKFLOW_PUBLISH_MODAL_KEY);
+					uiStore.closeModal(WORKFLOW_HISTORY_PUBLISH_MODAL_KEY);
 				}
 
 				if (violations) {
