@@ -3,7 +3,7 @@ import type { N8NStack } from 'n8n-containers/stack';
 import { createN8NStack } from 'n8n-containers/stack';
 
 import { HOOK_DIR, parseHookLine, preloadNodeOptions } from './hooks/control';
-import type { HookSpec } from './hooks/spec';
+import type { RigHookSpec } from './hooks/spec';
 import { parseHookSpecs } from './hooks/spec';
 import { N8nClient } from './n8n-client';
 import type { Container } from './process';
@@ -18,7 +18,7 @@ export interface StackOptions {
 	runners: 'internal' | 'external';
 	/** Divides lock, renew, stall and grace timeouts. */
 	scale: number;
-	hooks?: HookSpec[];
+	hooks?: RigHookSpec[];
 	env?: Record<string, string>;
 	/** n8n image for this stack. The runners image stays the one TEST_IMAGE_N8N selects, so use it with internal runners. */
 	image?: string;
@@ -60,7 +60,7 @@ export class RigStack {
 
 	private constructor(
 		readonly stack: N8NStack,
-		readonly hooks: HookSpec[],
+		readonly hooks: RigHookSpec[],
 	) {
 		this.api = new N8nClient(stack.baseUrl);
 		this.db = new PostgresProbe(async (command) => await this.execIn(CONTROL_POSTGRES, command));
@@ -200,7 +200,7 @@ export class RigStack {
 							`hook ${hook.point} ${failed.event} in ${container.getName()}: ${JSON.stringify(failed.detail)}`,
 						);
 					}
-					if (!events.some((line) => line?.event === 'installed'))
+					if (!hook.optional && !events.some((line) => line?.event === 'installed'))
 						missing.push(`${hook.point}@${container.getName()}`);
 				}
 			}

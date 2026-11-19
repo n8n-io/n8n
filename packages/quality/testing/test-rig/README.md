@@ -139,14 +139,14 @@ Single-main stacks start with an empty licence, so a licence in your shell canno
 
 ### Hook specs
 
-A hook wraps one method in a compiled n8n file. By default it pauses the call until the test releases it. It can also only log the call, make it fail, or skip it. The test arms a hook with `hook(containers, point).arm()`, waits for it with `waitHit`, and lets the call continue with `release`. `RigStack.start` fails at once if a hook did not install, so a wrong file or method name fails before the test starts.
+A hook wraps one method in a compiled n8n file. By default it pauses the call until the test releases it. It can also only log the call, make it fail, or skip it. A `set` hook wraps no method: it writes fixed values into the module when the file loads, before n8n reads them. The test arms a hook with `hook(containers, point).arm()`, waits for it with `waitHit`, and lets the call continue with `release`. `RigStack.start` fails at once if a hook did not install, so a wrong file or method name fails before the test starts.
 
 | Field | Meaning |
 |---|---|
 | `point` | Name of the hook, used to arm it and to match its hits |
 | `file` | Path suffix of the compiled file; `FILES` lists the known ones |
-| `target`, `method` | Where the method lives inside the module exports, such as `JobProcessor.prototype`, `prototype` for a class export, or `''` for the exports object, and the method name |
-| `kind` | `pause` (default: wait for release, then call through), `observe` (log a hit only), `fault` (fail the call), or `drop` (return `returns` without calling) |
+| `target`, `method` | Where the method lives inside the module exports, such as `JobProcessor.prototype`, `prototype` for a class export, or `''` for the exports object, and the method name. A `set` hook has a `target` and no `method` |
+| `kind` | `pause` (default: wait for release, then call through), `observe` (log a hit only), `fault` (fail the call), `drop` (return `returns` without calling), or `set` (write `values`) |
 | `arm` | `file` (default: the test arms it) or `always` (default for `observe`) |
 | `once` | Fire once each time the hook is armed; default for every kind except `drop`. An `observe` hook ignores it and logs every matching call |
 | `scope` | Another method (`file`, `target`, `method`); fire only inside a call of it, at most once per call. An `observe` hook logs every matching call inside it |
@@ -155,7 +155,9 @@ A hook wraps one method in a compiled n8n file. By default it pauses the call un
 | `phase` | `before` the call or `after` it resolves, when `where` and `detail` can also read `result`; default `before`, except `fault`, which calls through and then rejects |
 | `returns` | Value that a `drop` resolves with |
 | `preserve` | For a `fault` after the call: methods to copy from the original return value onto the rejected promise |
+| `values` | For a `set` hook: JSON values to write onto the `target` object, such as `{ runningStepMs: 20000 }`. Each key must already be a writable data property of the target, so write a constant on the module that defines it, not on an `index.js` that re-exports it through a getter. Otherwise the hook logs `missing` and writes nothing. The only other fields a `set` hook takes are `point`, `file`, `roles`, `lazy` and `optional` |
 | `roles`, `lazy` | Containers that must show the hook installed before the test starts (`main`, `worker` or `engine`; default `worker`); `lazy` skips that check for a file that loads only on first use |
+| `optional` | For a file that older images do not have: the install check passes when the file never loads, and still fails when it loads without the method or keys |
 
 Paths in `where` and `detail` start at `args`, `this`, `scope.args` or `result`. A paused call continues by itself after two minutes if the test never releases it.
 

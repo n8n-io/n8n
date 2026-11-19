@@ -18,7 +18,8 @@
 	 *   point: string, kind?: string, arm?: string, once?: boolean, scope?: MethodRef,
 	 *   where?: Array<{ path: string, equals?: unknown, truthy?: boolean }>,
 	 *   detail?: Record<string, string>, phase?: string, returns?: unknown,
-	 *   preserve?: string[], roles?: string[], lazy?: boolean, installed?: boolean
+	 *   preserve?: string[], roles?: string[], lazy?: boolean, optional?: boolean,
+	 *   values?: Record<string, unknown>, installed?: boolean
 	 * }} Hook
 	 * @typedef {{ args: unknown[], this: unknown, scope?: any, result?: unknown }} Context
 	 */
@@ -209,6 +210,17 @@
 		return true;
 	}
 
+	/** Writes the values onto `owner` and returns the keys that are not writable data properties of it. @param {any} owner @param {Record<string, unknown>} values */
+	function assign(owner, values) {
+		if (owner === null || owner === undefined) return Object.keys(values);
+		const unwritable = Object.keys(values).filter((key) => {
+			const property = Object.getOwnPropertyDescriptor(owner, key);
+			return !property || !('value' in property) || !property.writable;
+		});
+		if (unwritable.length === 0) Object.assign(owner, values);
+		return unwritable;
+	}
+
 	/** @param {{ storage: InstanceType<typeof AsyncLocalStorage> }} scope */
 	function scopeWrapper(scope) {
 		return (/** @type {Function} */ original) =>
@@ -245,6 +257,16 @@
 		for (const hook of hooks) {
 			if (hook.installed || !matchesFile(filename, hook.file)) continue;
 			const owner = hook.target ? get(module.exports, hook.target) : module.exports;
+			if (hook.kind === 'set') {
+				const unwritable = assign(owner, hook.values || {});
+				hook.installed = unwritable.length === 0;
+				log(hook.installed ? 'installed' : 'missing', hook.point, {
+					file: hook.file,
+					target: hook.target,
+					...(hook.installed ? { values: hook.values } : { keys: unwritable }),
+				});
+				continue;
+			}
 			hook.installed = patch(owner, hook.method, (original) => wrap(hook, original));
 			log(hook.installed ? 'installed' : 'missing', hook.point, {
 				file: hook.file,
