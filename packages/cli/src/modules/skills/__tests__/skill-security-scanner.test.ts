@@ -270,10 +270,19 @@ describe('SkillSecurityScanner', () => {
 
 		it('passes an update with a new link on a domain that the previous version had', () => {
 			const update = skill({
+				instructions: 'Read https://docs.example.com/style/v2 for the rules.',
+			});
+
+			expect(scanner.scan(fetched(update), previous)).toEqual({ verdict: 'pass', findings: [] });
+		});
+
+		it('does not apply the import link rules to an update', () => {
+			const update = skill({
 				instructions: 'Read http://docs.example.com/style/v2 for the rules.',
 			});
 
 			expect(scanner.scan(fetched(update), previous)).toEqual({ verdict: 'pass', findings: [] });
+			expect(scanner.scan(fetched(update)).verdict).toBe('needs_review');
 		});
 
 		it('flags an update that links to an IPv6 address', () => {
