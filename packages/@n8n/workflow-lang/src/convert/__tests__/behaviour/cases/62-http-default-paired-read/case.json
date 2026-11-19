@@ -1,5 +1,6 @@
 {
 	"description": "A Code node in both modes and a Set node read Source through an HTTP Request with the default response format (autodetect, no credential, 3 items, all JSON)",
+	"expectRefusal": true,
 	"trigger": { "body": { "items": 3 } },
 	"http": {
 		"Http": {
