@@ -365,12 +365,14 @@ const PUBLISH_CONFIRMATION_SCHEMA = z.object({
 type PublishConfirmation = z.infer<typeof PUBLISH_CONFIRMATION_SCHEMA>;
 
 /**
- * What a publish card described, kept with the suspended call: the version, the live
- * version and the draft revision.
+ * What a publish card described, kept with the suspended call: the version, whether it
+ * was the draft or a history version, the live version and the draft revision.
  */
 const publishContinuationSchema = z
 	.object({
 		confirmedVersionId: z.string().nullable(),
+		/** False when the card described the draft, even if the call named its version. */
+		selectedVersion: z.boolean(),
 		liveVersionId: z.string().nullable(),
 		revision: z.number().int(),
 	})
@@ -1125,32 +1127,31 @@ export class AgentsBuilderToolsService {
 					if (!before) return { ok: false, errors: [{ message: 'Agent not found.' }] };
 					// The card described one version and what was live. If either changed while it was
 					// open, or the card did not record them, the user has not seen what would happen:
-					// ask again. Like the first call, this stays outside the try below.
+					// ask again. For a draft card, the draft must still be the version it showed. Like
+					// the first call, this stays outside the try below.
 					const confirmed = publishContinuationSchema.safeParse(ctx.continuation);
+					const draftCard = confirmed.success && !confirmed.data.selectedVersion;
 					if (
 						!confirmed.success ||
-						(versionId ?? before.versionId ?? null) !== confirmed.data.confirmedVersionId ||
+						((draftCard ? before.versionId : versionId) ?? null) !==
+							confirmed.data.confirmedVersionId ||
 						(before.activeVersionId ?? null) !== confirmed.data.liveVersionId
 					) {
 						return await this.askToPublish(ctx, agentId, projectId, versionId);
 					}
 					try {
-						const beforeActiveVersionId = before?.activeVersionId;
-						const beforeVersionId = before?.versionId;
-						// The revision read with the check: a write after it fails the publish instead
-						// of putting an unseen draft live.
+						const beforeActiveVersionId = before.activeVersionId;
+						const beforeVersionId = before.versionId;
+						// A draft goes live at the revision the card showed, so any draft write since then
+						// fails the publish. A history version cannot change.
 						const { agent } = await this.agentPublishService.publishAgent(
 							agentId,
 							projectId,
 							user,
 							{ by: 'builder', trigger: 'explicit' },
-							versionId,
+							draftCard ? undefined : versionId,
 							undefined,
-							// The draft revision the card showed: any draft write since then fails the
-							// publish. A history version, even one that was the draft then, cannot change.
-							versionId === undefined || versionId === before.versionId
-								? confirmed.data.revision
-								: undefined,
+							draftCard ? confirmed.data.revision : undefined,
 						);
 						return {
 							ok: true,
@@ -1287,6 +1288,7 @@ export class AgentsBuilderToolsService {
 			},
 			continuation: {
 				confirmedVersionId: targetVersionId ?? null,
+				selectedVersion,
 				liveVersionId: agent.activeVersionId ?? null,
 				revision: agent.revision,
 			},
