@@ -1,0 +1,46 @@
+packages/cli/src/modules/agents/integrations/platforms/webhook/webhook-channel.controller.ts
+  ai_agent 78-83,88-93,114-119,157-160,181-186,192-197,213-214
+  s_aa6794ac019785::t_55a59cbaf9b374 1,6,9-12,16-23,30-34,69-71,75,95-111,129,132,141,150-156,161-180,187-191,198-212,215-235,272-283
+  s_aa6794ac019785::t_ccfdd9470f973c 296
+packages/frontend/@n8n/agent-chat/src/api.ts
+  ai_agent 77-79,81-91
+  s_aa6794ac019785::t_3069c2d4a580fe 11-15,29-32,35-39,48,52,72-76,80,92-103
+packages/frontend/@n8n/agent-chat/src/AgentChat.vue
+  s_aa6794ac019785::t_ccfdd9470f973c 351-352
+  s_aa6794ac019785::t_b31b262b40b8eb 384
+  s_aa6794ac019785::t_3069c2d4a580fe 4,40-59,61-70,74-105,124,139,208-213,240,244-245,455-471
+  s_aa6794ac019785::t_27803a02a5a3c8 7-13,169,172-176,337-350,353-356
+  ai_agent 128-129,179-185,197-200,227-230,235-239,241-243,254-256,258-260
+packages/cli/src/modules/agents/integrations/platforms/webhook/webhook-channel.service.ts
+  ai_agent 167-168,173-175
+  s_aa6794ac019785::t_f3f8b48ecce62b 4,13,55-60,99,155-157,162,166,169-171,183-184,187-191,201-205,244-263
+  s_aa6794ac019785::t_e5ef4a2f8a2f11 264
+packages/cli/src/modules/agents/agent-integrations.controller.ts
+  s_aa6794ac019785::t_7a35caa3230467 12,22,42,45-65
+packages/frontend/editor-ui/src/features/agents/channels/n8nChat/AgentChannelN8nChatShare.vue
+  s_aa6794ac019785::t_511f8c4fed57e8 2-3,6-28,31,33,39,42-47,49-60,67-73
+  s_aa6794ac019785::t_6762396ad4d6f2 4,41,48
+  ai_agent 61-65
+packages/frontend/editor-ui/src/features/agents/channels/n8nChat/AgentChannelN8nChatView.vue
+  ai_agent 52-56
+  s_aa6794ac019785::t_a7ba594f1b009d 10
+packages/frontend/@n8n/agent-chat/src/main.ts
+  ai_agent 26-27
+  s_aa6794ac019785::t_27803a02a5a3c8 13-16,41,54-55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2569f2c58f45cd71fd9282c2633f8fa288d83b9f",
+  "prompts": {},
+  "sessions": {
+    "s_aa6794ac019785": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "780586c6-4bfd-4b06-b892-fff832b8300b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}
