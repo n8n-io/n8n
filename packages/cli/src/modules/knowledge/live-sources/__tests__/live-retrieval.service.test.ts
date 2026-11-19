@@ -154,6 +154,46 @@ describe('LiveRetrievalService', () => {
 			).rejects.toThrow(LiveSourceScopeError);
 		});
 
+		it('lets the run read the children that reading a picked container returned', async () => {
+			const { service, provider } = makeService();
+			provider.read.mockImplementation(async (_ctx, entry) => ({
+				id: entry.id,
+				title: entry.title,
+				url: entry.url,
+				text: `Text of ${entry.title}`,
+				children: entry.id === PICKED_CONTAINER.id ? [CHILD_OF_CONTAINER] : [],
+			}));
+			const childRef = formatLiveRef('notes', CHILD_OF_CONTAINER.id);
+
+			await service.read(
+				SCOPE,
+				[SOURCE],
+				{ runId: 'run-1' },
+				{ ref: formatLiveRef('notes', PICKED_CONTAINER.id) },
+			);
+			const read = await service.read(SCOPE, [SOURCE], { runId: 'run-1' }, { ref: childRef });
+
+			expect(read.title).toBe(CHILD_OF_CONTAINER.title);
+			expect(provider.list).not.toHaveBeenCalled();
+		});
+
+		it('accepts every form of an item id that the provider normalizes', async () => {
+			const { service, provider } = makeService();
+			provider.normalizeItemId = (id: string) => id.replace(/-/g, '').toLowerCase();
+			const dashed: LiveEntry = { ...PICKED_PAGE, id: '41d813fa-c0d3-81b0-bba5-cddf72eb03dc' };
+			const source: LiveSourceConfig = { ...SOURCE, items: [dashed] };
+
+			const read = await service.read(
+				SCOPE,
+				[source],
+				{ runId: 'run-1' },
+				{ ref: formatLiveRef('notes', '41D813FAC0D381B0BBA5CDDF72EB03DC') },
+			);
+
+			expect(read.ref).toBe(formatLiveRef('notes', '41d813fac0d381b0bba5cddf72eb03dc'));
+			expect(provider.read).toHaveBeenCalledWith(expect.anything(), dashed);
+		});
+
 		it('forgets the discovered children when the run ends', async () => {
 			const { service } = makeService();
 			const childRef = formatLiveRef('notes', CHILD_OF_CONTAINER.id);

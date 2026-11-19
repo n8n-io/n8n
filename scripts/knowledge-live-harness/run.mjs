@@ -10,6 +10,8 @@
 //   run [agents] [repeat]    the question set of fixtures/questions.json, `repeat` times
 //                            (default 3) per agent (default kb-native,kb-mcp-c0), with
 //                            scoring and a results table; rebuilds the indexes first
+//   report [files...]        the tables of one or more results files (default: the latest
+//                            run), also of a partial run
 //
 // Secrets come from env vars. Never pass one as a command argument.
 
@@ -327,15 +329,20 @@ function collectSeedIds(value, into = new Set()) {
 	return into;
 }
 
+// The live tools enforce the scope on the instance, and the seed does not list
+// every row and reply inside a picked container, so only the other tools are checked.
+const SCOPED_TOOLS = new Set(['list_knowledge', 'search_knowledge', 'read_knowledge']);
+
 /**
- * Tool calls that name an id outside the seed. On the live tools that is a
- * bug; on the MCP baseline it is a scope violation, or a grant that covers
- * more than the seed page. Only ids are reported, never content.
+ * Tool calls of the MCP baseline that name an id outside the seed: a scope
+ * violation, or a grant that covers more than the seed page. Only ids are
+ * reported, never content.
  */
 function findOutOfSeedCalls(toolCalls, seedIds) {
 	const flagged = [];
 	for (const call of toolCalls) {
 		if (call.input === undefined || call.toolName?.startsWith('anthropic.')) continue;
+		if (SCOPED_TOOLS.has(call.toolName)) continue;
 		const ids = [...collectSeedIds(call.input)];
 		const outside = ids.filter((id) => !seedIds.has(id));
 		if (outside.length > 0) flagged.push({ toolName: call.toolName, ids: outside });
@@ -651,8 +658,39 @@ async function run(client, scaffold, items, { agentKeys, repeat }) {
 	console.log(`\nSaved ${path.relative(process.cwd(), base)}.json and .md`);
 }
 
+/** Renders the tables of one or more results files. Several files are merged, so partial runs add up. */
+async function report(files) {
+	let paths = files;
+	if (paths.length === 0) {
+		const { readdir } = await import('node:fs/promises');
+		const latest = (await readdir(RESULTS))
+			.filter((name) => name.startsWith('run-') && name.endsWith('.json'))
+			.sort()
+			.pop();
+		if (!latest) fail(`No run results in ${RESULTS}`);
+		paths = [path.join(RESULTS, latest)];
+	}
+	const runs = [];
+	const agentKeys = [];
+	for (const file of paths) {
+		const data = await readJson(file);
+		runs.push(...data.runs);
+		for (const agentKey of data.agentKeys)
+			if (!agentKeys.includes(agentKey)) agentKeys.push(agentKey);
+		console.log(
+			`${file}: ${data.runs.length} runs${data.partial ? ' (partial)' : ''}, model ${data.model}`,
+		);
+	}
+	const present = agentKeys.filter((agentKey) => runs.some((run) => run.agentKey === agentKey));
+	console.log(`\n${summarize(runs)}\n\n${compare(runs, present)}`);
+}
+
 async function main() {
 	const command = process.argv[2] ?? 'smoke';
+	if (command === 'report') {
+		await report(process.argv.slice(3));
+		return;
+	}
 	const scaffold = await readJson(path.join(FIXTURES, 'agent.json'));
 	const items = await readJson(path.join(FIXTURES, 'items.json'), null);
 	if (!items) fail('fixtures/items.json is missing: run pnpm knowledge:seed-sources first');
@@ -669,7 +707,9 @@ async function main() {
 			});
 			break;
 		default:
-			fail(`Unknown command "${command}". Commands: smoke [agent], run [agents] [repeat]`);
+			fail(
+				`Unknown command "${command}". Commands: smoke [agent], run [agents] [repeat], report [files...]`,
+			);
 	}
 }
 

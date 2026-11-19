@@ -53,10 +53,11 @@ export class IndexRetrievalStrategy implements LiveRetrievalStrategy {
 
 		const terms = tokenizeQuery(query);
 		// The requested scope can be narrower than the index: keep the cards in it or below it.
-		const scopeIds = new Set(context.scope.map((entry) => entry.id));
+		const canon = (id: string) => context.provider.normalizeItemId?.(id) ?? id;
+		const scopeIds = new Set(context.scope.map((entry) => canon(entry.id)));
 		const inScope = (entry: LiveEntry) =>
-			scopeIds.has(entry.id) ||
-			this.indexService.ancestorIds(key, entry).some((id) => scopeIds.has(id));
+			scopeIds.has(canon(entry.id)) ||
+			this.indexService.ancestorIds(key, entry).some((id) => scopeIds.has(canon(id)));
 		const matches = this.indexService
 			.search(key, terms, limit * 2)
 			.filter(({ entry }) => inScope(entry))
@@ -69,7 +70,7 @@ export class IndexRetrievalStrategy implements LiveRetrievalStrategy {
 
 		// The picked single items are searched in full, as the native strategy does.
 		const itemMatches = await this.nativeStrategy.searchPickedItems(context, terms);
-		const indexed = new Set(ranked.map((match) => match.entry.id));
-		return [...ranked, ...itemMatches.filter((match) => !indexed.has(match.entry.id))];
+		const indexed = new Set(ranked.map((match) => canon(match.entry.id)));
+		return [...ranked, ...itemMatches.filter((match) => !indexed.has(canon(match.entry.id)))];
 	}
 }

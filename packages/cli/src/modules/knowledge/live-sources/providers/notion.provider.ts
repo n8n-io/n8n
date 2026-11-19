@@ -31,7 +31,8 @@ export const NOTION_CONTAINER_TYPES = {
 const DEFAULT_LIST_LIMIT = 50;
 /** The index build lists up to its own cap; the tools are capped by their schema. */
 const MAX_LIST_LIMIT = 500;
-const SEARCH_PAGE_SIZE = 50;
+/** Notion ranks the matches; the window must hold the matching pages of a large scope. */
+const SEARCH_PAGE_SIZE = 100;
 /** Terms of a query that the data source title filter takes. More terms give broad matches. */
 const MAX_TITLE_FILTER_TERMS = 5;
 const UNTITLED = 'Untitled';
@@ -84,6 +85,9 @@ function notionUrl(id: string): string {
 function normalizeId(id: string): string {
 	return id.replace(/-/g, '').toLowerCase();
 }
+
+/** Child page links in the markdown of a page: `<page url="https://…/<id>">`. */
+const PAGE_LINK_REGEX = /<page url="/;
 
 function plainText(value: unknown): string {
 	if (!Array.isArray(value)) return '';
@@ -148,6 +152,10 @@ export class NotionLiveSourceProvider implements KnowledgeLiveSourceProvider {
 	readonly defaultRetrieval = 'native';
 
 	constructor(private readonly adapter: NodeOperationAdapter) {}
+
+	normalizeItemId(id: string): string {
+		return normalizeId(id);
+	}
 
 	async resolveLink(ctx: LiveRunContext, url: string): Promise<LiveEntry | null> {
 		const id = NOTION_URL_REGEX.exec(url.trim())?.[1];
@@ -262,6 +270,11 @@ export class NotionLiveSourceProvider implements KnowledgeLiveSourceProvider {
 		});
 		const markdown = isRecord(result) && typeof result.markdown === 'string' ? result.markdown : '';
 		const truncated = isRecord(result) && result.truncated === true;
+		// The markdown links the child pages. They are direct children of the item, so they join the scope.
+		const children =
+			entry.kind === 'container' || entry.hasChildren || PAGE_LINK_REGEX.test(markdown)
+				? await this.listChildPages(ctx, entry.id, MAX_LIST_LIMIT)
+				: [];
 
 		// The markdown call returns no title, url or edit time. Picked items carry
 		// title and url from the config; one more call fills the edit time.
@@ -274,7 +287,7 @@ export class NotionLiveSourceProvider implements KnowledgeLiveSourceProvider {
 			url = url ?? page.url ?? notionUrl(entry.id);
 			updatedAt = updatedAt ?? page.last_edited_time;
 		}
-		return { id: entry.id, title, url, text: markdown, updatedAt, truncated };
+		return { id: entry.id, title, url, text: markdown, updatedAt, truncated, children };
 	}
 
 	private async listChildPages(
@@ -328,9 +341,8 @@ export class NotionLiveSourceProvider implements KnowledgeLiveSourceProvider {
 			text: query,
 			returnAll: false,
 			limit: SEARCH_PAGE_SIZE,
-			options: {
-				sort: { sortValue: { direction: 'descending', timestamp: 'last_edited_time' } },
-			},
+			// Relevance order: sorted by edit time, a large data source fills the window.
+			options: {},
 			simple: false,
 		});
 		return results.filter(isNotionPage);

@@ -36,6 +36,7 @@ const MODEL_OUTPUT_READ_RANGE_MIN_CHARS = 800;
 const SELECTED_KNOWLEDGE_RULES = [
 	'The agent has selected knowledge: items of external services that the user picked, read live.',
 	'Call list_knowledge without arguments to see the sources and the picked items, search_knowledge to find items, and read_knowledge before you quote or cite an item.',
+	'A picked container (a page with child pages, a database, a channel) holds items: list it with list_knowledge or read it, and read the items it returns. The text of those items is only found by reading them, not by searching their titles.',
 	'Cite the url of every item you use. Never present text that you did not read with read_knowledge.',
 	'When nothing in the selected knowledge answers the question, say that it is not in the selected knowledge. Do not guess and do not use other sources for it.',
 	'list_knowledge without arguments shows everything that is selected. When the item the user names is not in that list, stop searching and say that it is not in the selected knowledge.',

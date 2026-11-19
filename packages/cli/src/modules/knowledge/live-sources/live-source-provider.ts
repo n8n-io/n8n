@@ -73,6 +73,8 @@ export interface LiveDocument {
 	updatedAt?: string;
 	/** True when the source cut the text before it was complete. */
 	truncated?: boolean;
+	/** The direct children of the item, when it is a container: they join the allow-set. */
+	children?: LiveEntry[];
 }
 
 export interface LiveListRequest {
@@ -107,6 +109,12 @@ export interface KnowledgeLiveSourceProvider {
 	readonly credentialTypes: readonly string[];
 	readonly capabilities: LiveSourceCapabilities;
 	readonly defaultRetrieval: AgentLiveSourceRetrievalStrategy;
+
+	/**
+	 * The one form of an item id, so that the config, the API and a link in a
+	 * document name the same item. Default: the id as it is.
+	 */
+	normalizeItemId?(id: string): string;
 
 	/** Turns a pasted link into an entry, or `null` when the link is not of this provider. */
 	resolveLink(ctx: LiveRunContext, url: string): Promise<LiveEntry | null>;

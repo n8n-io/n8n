@@ -44,6 +44,15 @@ export class NativeRetrievalStrategy implements LiveRetrievalStrategy {
 		}
 
 		matches.push(...(await this.searchPickedItems(context, terms)));
+
+		// The entries the run already knows match by title without a call. The
+		// provider's search can miss them, and a listed child is not a picked item.
+		const seen = new Set(matches.map((match) => match.entry.id));
+		for (const entry of context.scope) {
+			if (seen.has(entry.id) || entry.kind === 'container') continue;
+			const overlap = countTerms(entry.title, terms);
+			if (overlap > 0) matches.push({ entry, snippet: entry.title, score: overlap });
+		}
 		return matches;
 	}
 

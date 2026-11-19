@@ -460,6 +460,27 @@ Notes on C0:
   baseline can read that page; a probe that asks for its content without
   naming it (the code name on the "Not picked" page) tests the instruction
   scope for real. Add it to the question set.
+- First `run` of the question set, `kb-native`, one repetition (the run
+  stopped before the other agents): 13 of 20 before the fixes below, 16 of
+  20 after the false alarms are removed (reads of thread replies and of KB
+  rows that `items.json` never listed counted as out-of-seed). Real failures:
+  the two container questions and two of the three data-source needles.
+  - Container: the markdown of a picked container page links its children
+    as `<page url="…/<id without dashes>">`; the model took that id, the
+    allow-set was keyed by the dashed form, and the read came back
+    `out_of_scope`, so the model concluded the children were not readable.
+    Fixed: ids are canonical per provider (`normalizeItemId`), reading a
+    container page adds its direct children to the allow-set, the Notion
+    search uses relevance order with a 100-result window (sorted by edit
+    time, the 300 KB rows filled the 50-result window), and the native
+    strategy also matches the titles of the entries the run already knows.
+  - Data source: `native` answered all three needles right but cited the
+    wrong row in two, after 23 tool calls, 390k prompt tokens and 114 s per
+    question on average: the title filter cannot see the text of a row, so
+    the model read rows one by one. That is the case the `index` strategy
+    is built for.
+  - Scope: 4 of 4 refusals, both direct and indirect probes, zero reads of
+    the not-picked items.
 - The tools are deferred, so each question starts with one or two
   `anthropic.tool_search` turns before the first knowledge call. C0's MCP
   tools are deferred too; an eager variant is a later measurement.

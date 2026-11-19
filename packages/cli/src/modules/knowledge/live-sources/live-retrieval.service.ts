@@ -67,10 +67,14 @@ export interface LiveCallContext {
 	signal?: AbortSignal;
 }
 
+type CanonicalId = (id: string) => string;
+
 interface SourceRunState {
-	/** Every entry the run may read, by item id: the picked items plus what list and search returned. */
+	/** The one form of an item id of this source's provider. */
+	canon: CanonicalId;
+	/** Every entry the run may read, by canonical item id: the picked items plus what list, search and read returned. */
 	allow: Map<string, LiveEntry>;
-	/** Documents read in this run, by item id. */
+	/** Documents read in this run, by canonical item id. */
 	docs: Map<string, LiveDocument>;
 	credential?: LiveCredentialRef;
 }
@@ -139,6 +143,7 @@ export class LiveRetrievalService {
 			kind: 'map',
 			sources: sources.map((source): LiveSourceOutput => {
 				const strategy = this.resolveStrategy(source);
+				const canon = this.canonOf(source);
 				return {
 					ref: formatLiveRef(source.id),
 					sourceId: source.id,
@@ -148,7 +153,7 @@ export class LiveRetrievalService {
 					retrieval: strategy.id,
 					items: source.items
 						.filter((item) => matchesFilter(item.title))
-						.map((item) => toEntryOutput(source.id, item)),
+						.map((item) => toEntryOutput(source.id, item, canon)),
 					index:
 						strategy.id === 'index'
 							? this.indexService.status(liveIndexKey(scope.agentId, source.id))
@@ -172,7 +177,11 @@ export class LiveRetrievalService {
 		source: LiveSourceConfig,
 	): Promise<LiveIndexStatus> {
 		const provider = this.registry.get(source.provider);
-		const state: SourceRunState = { allow: new Map(), docs: new Map() };
+		const state: SourceRunState = {
+			canon: this.canonOf(source),
+			allow: new Map(),
+			docs: new Map(),
+		};
 		const ctx = await this.runContext(scope, { runId: 'index-build' }, state, source, provider);
 		return await this.indexService.rebuild({
 			key: liveIndexKey(scope.agentId, source.id),
@@ -196,7 +205,7 @@ export class LiveRetrievalService {
 
 		const run = this.runState(call.runId);
 		const state = this.sourceState(run, source);
-		const container = state.allow.get(ref.itemId);
+		const container = state.allow.get(state.canon(ref.itemId));
 		if (!container) throw new LiveSourceScopeError();
 		if (container.kind !== 'container' && !container.hasChildren) {
 			throw new LiveSourceInputError(
@@ -214,11 +223,13 @@ export class LiveRetrievalService {
 		const entries: LiveEntryOutput[] = [];
 		for (const entry of result.entries) {
 			const allowed = this.allow(state, { ...entry, parentId: entry.parentId ?? container.id });
-			if (matchesFilter(allowed.title)) entries.push(toEntryOutput(source.id, allowed));
+			if (matchesFilter(allowed.title)) {
+				entries.push(toEntryOutput(source.id, allowed, state.canon));
+			}
 		}
 		return {
 			kind: 'list',
-			container: { ...toEntryOutput(source.id, container), sourceId: source.id },
+			container: { ...toEntryOutput(source.id, container, state.canon), sourceId: source.id },
 			entries,
 			cursor: result.cursor,
 		};
@@ -282,7 +293,7 @@ export class LiveRetrievalService {
 		const hits: LiveHit[] = [];
 		const seen = new Map<string, number>();
 		for (const match of interleaveTies(ranked)) {
-			const ref = formatLiveRef(match.source.id, match.entry.id);
+			const ref = formatLiveRef(match.source.id, this.canonOf(match.source)(match.entry.id));
 			const hit: LiveHit = {
 				ref,
 				sourceId: match.source.id,
@@ -316,7 +327,7 @@ export class LiveRetrievalService {
 		const source = findSource(sources, ref.sourceId);
 		const run = this.runState(call.runId);
 		const state = this.sourceState(run, source);
-		const entry = state.allow.get(ref.itemId);
+		const entry = state.allow.get(state.canon(ref.itemId));
 		if (!entry) throw new LiveSourceScopeError();
 
 		const provider = this.registry.get(source.provider);
@@ -327,7 +338,7 @@ export class LiveRetrievalService {
 		const title = document.title || entry.title;
 		const url = document.url ?? entry.url;
 		const result: ReadKnowledgeResult = {
-			ref: formatLiveRef(source.id, entry.id),
+			ref: formatLiveRef(source.id, state.canon(entry.id)),
 			sourceId: source.id,
 			title,
 			url,
@@ -379,12 +390,22 @@ export class LiveRetrievalService {
 		return state;
 	}
 
+	private canonOf(source: LiveSourceConfig): CanonicalId {
+		try {
+			const provider = this.registry.get(source.provider);
+			return (id) => provider.normalizeItemId?.(id) ?? id;
+		} catch {
+			return (id) => id;
+		}
+	}
+
 	/** The state of one source in a run. The allow-set starts from the picked items. */
 	private sourceState(run: RunState, source: LiveSourceConfig): SourceRunState {
 		let state = run.sources.get(source.id);
 		if (!state) {
-			state = { allow: new Map(), docs: new Map() };
-			for (const item of source.items) state.allow.set(item.id, item);
+			const canon = this.canonOf(source);
+			state = { canon, allow: new Map(), docs: new Map() };
+			for (const item of source.items) state.allow.set(canon(item.id), item);
 			run.sources.set(source.id, state);
 		}
 		return state;
@@ -392,9 +413,10 @@ export class LiveRetrievalService {
 
 	/** Adds an entry that a picked container returned to the allow-set. Known entries keep their data. */
 	private allow(state: SourceRunState, entry: LiveEntry): LiveEntry {
-		const known = state.allow.get(entry.id);
+		const key = state.canon(entry.id);
+		const known = state.allow.get(key);
 		const merged: LiveEntry = known ? { ...known, ...entry, title: known.title } : entry;
-		state.allow.set(entry.id, merged);
+		state.allow.set(key, merged);
 		return merged;
 	}
 
@@ -428,11 +450,16 @@ export class LiveRetrievalService {
 		provider: KnowledgeLiveSourceProvider,
 		entry: LiveEntry,
 	): Promise<LiveDocument> {
-		const cached = state.docs.get(entry.id);
+		const key = state.canon(entry.id);
+		const cached = state.docs.get(key);
 		if (cached) return cached;
 		const document = await provider.read(ctx, entry);
+		// The direct children of a container are in scope, as a list of it would show.
+		for (const child of document.children ?? []) {
+			this.allow(state, { ...child, parentId: child.parentId ?? entry.id });
+		}
 		const redacted: LiveDocument = { ...document, text: redactText(document.text).text };
-		state.docs.set(entry.id, redacted);
+		state.docs.set(key, redacted);
 		return redacted;
 	}
 
@@ -464,28 +491,30 @@ export class LiveRetrievalService {
 					continue;
 				}
 				const state = this.sourceState(run, source);
-				const root = state.allow.get(ref.itemId);
+				const root = state.allow.get(state.canon(ref.itemId));
 				if (!root) throw new LiveSourceScopeError();
 				const target = targets.get(source.id) ?? { source, state, selected: new Set<string>() };
 				if (target.selected) {
-					for (const id of subtreeIds(state.allow, root.id)) target.selected.add(id);
+					for (const id of subtreeIds(state.allow, state.canon(root.id), state.canon)) {
+						target.selected.add(id);
+					}
 				}
 				targets.set(source.id, target);
 			}
 		}
 
-		const pickedIds = (source: LiveSourceConfig) =>
-			new Set(source.items.filter((item) => item.kind === 'item').map((item) => item.id));
 		return [...targets.values()].map(({ source, state, selected }) => {
 			const entries = [...state.allow.values()].filter(
-				(entry) => selected === null || selected.has(entry.id),
+				(entry) => selected === null || selected.has(state.canon(entry.id)),
 			);
-			const picked = pickedIds(source);
+			const picked = new Set(
+				source.items.filter((item) => item.kind === 'item').map((item) => state.canon(item.id)),
+			);
 			return {
 				source,
 				state,
 				entries,
-				pickedItems: entries.filter((entry) => picked.has(entry.id)),
+				pickedItems: entries.filter((entry) => picked.has(state.canon(entry.id))),
 			};
 		});
 	}
@@ -534,9 +563,9 @@ function findSource(sources: readonly LiveSourceConfig[], sourceId: string): Liv
 	return source;
 }
 
-function toEntryOutput(sourceId: string, entry: LiveEntry): LiveEntryOutput {
+function toEntryOutput(sourceId: string, entry: LiveEntry, canon: CanonicalId): LiveEntryOutput {
 	return {
-		ref: formatLiveRef(sourceId, entry.id),
+		ref: formatLiveRef(sourceId, canon(entry.id)),
 		title: entry.title,
 		kind: entry.kind,
 		containerType: entry.containerType,
@@ -552,15 +581,16 @@ function titleFilter(filter: string | undefined): (title: string) => boolean {
 	return (title) => title.toLowerCase().includes(needle);
 }
 
-/** The ids of an entry and every entry below it in the allow-set. */
-function subtreeIds(allow: Map<string, LiveEntry>, rootId: string): string[] {
+/** The canonical ids of an entry and every entry below it in the allow-set. */
+function subtreeIds(allow: Map<string, LiveEntry>, rootId: string, canon: CanonicalId): string[] {
 	const ids = [rootId];
 	const children = new Map<string, string[]>();
 	for (const entry of allow.values()) {
 		if (entry.parentId === undefined) continue;
-		const list = children.get(entry.parentId) ?? [];
-		list.push(entry.id);
-		children.set(entry.parentId, list);
+		const parentKey = canon(entry.parentId);
+		const list = children.get(parentKey) ?? [];
+		list.push(canon(entry.id));
+		children.set(parentKey, list);
 	}
 	const seen = new Set(ids);
 	for (let index = 0; index < ids.length; index++) {
