@@ -1064,7 +1064,6 @@ onMounted(async () => {
 }
 
 .workflowReviews {
-	max-width: var(--project-field--width);
 	padding-bottom: var(--spacing--xl);
 
 	h3 {
