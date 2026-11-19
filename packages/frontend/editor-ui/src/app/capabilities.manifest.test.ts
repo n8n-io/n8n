@@ -368,13 +368,20 @@ describe('registerShellCapabilities', () => {
 			expect(types.credentialTypeDisplayName('notionApi')).toBe('Notion API');
 		});
 
-		it('finishes loading only after both stores load', async () => {
+		it.each([
+			{ first: 'nodeTypes', last: 'credentialTypes' },
+			{ first: 'credentialTypes', last: 'nodeTypes' },
+		] as const)('waits for $last after $first loads', async ({ first, last }) => {
 			registerShellCapabilities();
-			const nodeTypes = createDeferredPromise();
-			const credentialTypes = createDeferredPromise();
-			mockedStore(useNodeTypesStore).loadNodeTypesIfNotLoaded.mockReturnValue(nodeTypes.promise);
+			const loads = {
+				nodeTypes: createDeferredPromise(),
+				credentialTypes: createDeferredPromise(),
+			};
+			mockedStore(useNodeTypesStore).loadNodeTypesIfNotLoaded.mockReturnValue(
+				loads.nodeTypes.promise,
+			);
 			mockedStore(useCredentialsStore).fetchCredentialTypes.mockReturnValue(
-				credentialTypes.promise,
+				loads.credentialTypes.promise,
 			);
 			let loaded = false;
 
@@ -382,12 +389,12 @@ describe('registerShellCapabilities', () => {
 				.use(capabilities.typeDescriptions)
 				.load()
 				.then(() => (loaded = true));
-			nodeTypes.resolve();
+			loads[first].resolve();
 			await flushPromises();
 
 			expect(loaded).toBe(false);
 
-			credentialTypes.resolve();
+			loads[last].resolve();
 			await load;
 
 			expect(loaded).toBe(true);
