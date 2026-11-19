@@ -5,7 +5,12 @@ import { CacheService, EventService, UrlService } from '@n8n/backend-services';
 import { createWorkflowWithHistory, setActiveVersion, testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { Person } from '@n8n/db';
-import { WebhookRepository, WorkflowHistoryRepository, WorkflowRepository } from '@n8n/db';
+import {
+	UserRepository,
+	WebhookRepository,
+	WorkflowHistoryRepository,
+	WorkflowRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import {
 	JwkSchema,
@@ -995,6 +1000,16 @@ describe('issue', () => {
 		const result = await flow.issue(resourceUrl, member.id);
 
 		expect(result).toEqual({ valid: false, reason: 'insufficient_scope' });
+	});
+
+	test('refuses a disabled user without throwing', async () => {
+		const resourceUrl = await createProtectedFormWorkflow();
+		const disabled = await createMember();
+		await Container.get(UserRepository).update(disabled.id, { disabled: true });
+
+		const result = await flow.issue(resourceUrl, disabled.id);
+
+		expect(result).toEqual({ valid: false, reason: 'invalid_grant' });
 	});
 
 	test('rejects a resource URL that is not a first-party protected resource', async () => {
