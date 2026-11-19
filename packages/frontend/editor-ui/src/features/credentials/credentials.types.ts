@@ -49,7 +49,7 @@ export interface ICredentialsResponse
 	connectedAccountIdentifier?: string;
 	/** Total number of users connected to this credential. Set on resolvable credentials only. */
 	connectedUserCount?: number;
-	/** Why workflows in its home project cannot use it. Set when the list asks for restrictions. */
+	/** Why workflows cannot use it, in the listed project or else its home project. Set when the list asks for restrictions. */
 	restriction?: CredentialRestriction;
 }
 

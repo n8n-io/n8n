@@ -118,6 +118,17 @@ const needsSetup = (credential: ICredentialsResponse): boolean => {
 const typeAvailabilityPoliciesStore = useTypeAvailabilityPoliciesStore();
 const { fromCredentialRestriction } = useCredentialTypeUsability();
 
+// The server judges a project list by that project, and other lists by each home project.
+const listedProject = computed(() => {
+	const { projectId } = route?.params ?? {};
+	if (typeof projectId !== 'string') return undefined;
+	const { currentProject } = projectsStore;
+	return {
+		id: projectId,
+		type: currentProject?.id === projectId ? currentProject.type : undefined,
+	};
+});
+
 const allCredentials = computed<Resource[]>(() =>
 	credentialsStore.allCredentials.map((credential) => ({
 		resourceType: 'credential',
@@ -136,13 +147,18 @@ const allCredentials = computed<Resource[]>(() =>
 		isResolvable: credential.isResolvable,
 		connectedByMe: credential.connectedByMe,
 		type: credential.type,
-		// The server judges each credential by the policy of its home project.
-		restriction:
-			typeAvailabilityPoliciesStore.isEnabled && credential.restriction
-				? fromCredentialRestriction(credential.restriction)
-				: undefined,
+		...restrictionOf(credential),
 	})),
 );
+
+function restrictionOf(credential: ICredentialsResponse) {
+	const restriction = credentialsStore.restrictionsById[credential.id];
+	if (!typeAvailabilityPoliciesStore.isEnabled || !restriction) return {};
+	return {
+		restriction: fromCredentialRestriction(restriction),
+		restrictionProject: listedProject.value ?? credential.homeProject ?? undefined,
+	};
+}
 
 const allCredentialTypes = computed<ICredentialType[]>(() => credentialsStore.allCredentialTypes);
 

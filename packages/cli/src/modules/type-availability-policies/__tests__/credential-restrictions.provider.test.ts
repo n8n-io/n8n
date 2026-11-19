@@ -88,7 +88,7 @@ describe('CredentialTypePolicyRestrictionsProvider', () => {
 		licenseState.isLicensed.mockReturnValue(false);
 
 		await expect(
-			provider.findRestrictions([{ type: 'slackApi', homeProjectId: 'p1' }]),
+			provider.findRestrictions([{ type: 'slackApi', projectId: 'p1' }]),
 		).resolves.toEqual([null]);
 		expect(service.evaluateComposedTypesForAllProjects).not.toHaveBeenCalled();
 	});
@@ -99,9 +99,9 @@ describe('CredentialTypePolicyRestrictionsProvider', () => {
 		});
 
 		const restrictions = await provider.findRestrictions([
-			{ type: 'slackApi', homeProjectId: 'team-1' },
-			{ type: 'slackApi', homeProjectId: 'team-2' },
-			{ type: 'slackApi', homeProjectId: 'team-1' },
+			{ type: 'slackApi', projectId: 'team-1' },
+			{ type: 'slackApi', projectId: 'team-2' },
+			{ type: 'slackApi', projectId: 'team-1' },
 		]);
 
 		expect(restrictions).toEqual([
@@ -130,7 +130,7 @@ describe('CredentialTypePolicyRestrictionsProvider', () => {
 		evaluate({ credentialTypes: { slackApi: {} } });
 
 		await expect(
-			provider.findRestrictions([{ type: 'slackApi', homeProjectId: null }]),
+			provider.findRestrictions([{ type: 'slackApi', projectId: null }]),
 		).resolves.toEqual([expect.objectContaining({ reason: 'typeRestricted' })]);
 	});
 
@@ -144,7 +144,7 @@ describe('CredentialTypePolicyRestrictionsProvider', () => {
 		});
 
 		await expect(
-			provider.findRestrictions([{ type: 'slackApi', homeProjectId: 'p1' }]),
+			provider.findRestrictions([{ type: 'slackApi', projectId: 'p1' }]),
 		).resolves.toEqual([
 			{
 				reason: 'nodesRestricted',
@@ -164,7 +164,7 @@ describe('CredentialTypePolicyRestrictionsProvider', () => {
 		evaluate({ nodeTypes: { [SLACK]: {}, [HTTP_REQUEST]: {} } });
 
 		await expect(
-			provider.findRestrictions([{ type: 'slackApi', homeProjectId: 'p1' }]),
+			provider.findRestrictions([{ type: 'slackApi', projectId: 'p1' }]),
 		).resolves.toEqual([null]);
 	});
 
@@ -176,9 +176,7 @@ describe('CredentialTypePolicyRestrictionsProvider', () => {
 		async (_, type, nodes) => {
 			evaluate({ nodeTypes: Object.fromEntries(nodes.map((node) => [node, {}])) });
 
-			await expect(provider.findRestrictions([{ type, homeProjectId: 'p1' }])).resolves.toEqual([
-				null,
-			]);
+			await expect(provider.findRestrictions([{ type, projectId: 'p1' }])).resolves.toEqual([null]);
 		},
 	);
 
@@ -186,21 +184,30 @@ describe('CredentialTypePolicyRestrictionsProvider', () => {
 		evaluate({ nodeTypes: { 'n8n-nodes-base.signed': {} } });
 
 		await expect(
-			provider.findRestrictions([{ type: 'signedApi', homeProjectId: 'p1' }]),
+			provider.findRestrictions([{ type: 'signedApi', projectId: 'p1' }]),
 		).resolves.toEqual([expect.objectContaining({ reason: 'nodesRestricted' })]);
 	});
 
-	it('does not judge a type that lists no nodes, or an unknown type', async () => {
+	it('does not judge the nodes of a type that lists no nodes, or of an unknown type', async () => {
 		evaluate({ nodeTypes: { [HTTP_REQUEST]: {} } });
 
 		await expect(
 			provider.findRestrictions([
-				{ type: 'noNodesApi', homeProjectId: 'p1' },
-				{ type: 'uninstalledApi', homeProjectId: 'p1' },
+				{ type: 'noNodesApi', projectId: 'p1' },
+				{ type: 'uninstalledApi', projectId: 'p1' },
 			]),
 		).resolves.toEqual([null, null]);
 		expect(service.evaluateComposedTypesForAllProjects).toHaveBeenCalledWith('credential-types', [
 			'noNodesApi',
+			'uninstalledApi',
 		]);
+	});
+
+	it('restricts a denied type whose package is not loaded', async () => {
+		evaluate({ credentialTypes: { uninstalledApi: {} } });
+
+		await expect(
+			provider.findRestrictions([{ type: 'uninstalledApi', projectId: 'p1' }]),
+		).resolves.toEqual([expect.objectContaining({ reason: 'typeRestricted' })]);
 	});
 });

@@ -195,6 +195,7 @@ describe('useCredentialTypeUsability', () => {
 				nodeTypes: [
 					'n8n-nodes-base.mailjet',
 					'n8n-nodes-base.mailjetTrigger',
+					'n8n-nodes-base.mailjet',
 					'n8n-nodes-base.unknown',
 				],
 			}),

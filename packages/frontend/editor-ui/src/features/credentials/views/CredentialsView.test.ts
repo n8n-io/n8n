@@ -609,6 +609,9 @@ describe('CredentialsView', () => {
 			policies.isEnabled = enabled;
 			const credentialsStore = mockedStore(useCredentialsStore);
 			credentialsStore.allCredentials = credentials;
+			credentialsStore.restrictionsById = Object.fromEntries(
+				credentials.flatMap(({ id, restriction }) => (restriction ? [[id, restriction]] : [])),
+			);
 			return credentialsStore;
 		};
 

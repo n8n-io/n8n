@@ -397,19 +397,28 @@ export class CredentialsService {
 			listQueryOptions,
 			onlySharedWithMe,
 		);
-		if (includeRestrictions) await this.addRestrictions(enriched);
+		// A custom select can leave out the home project, so the verdicts would be wrong.
+		if (includeRestrictions && isDefaultSelect) {
+			const { projectId } = listQueryOptions.filter ?? {};
+			await this.addRestrictions(enriched, typeof projectId === 'string' ? projectId : undefined);
+		}
 
 		return { credentials: enriched, count };
 	}
 
+	/**
+	 * Workflows of the listed project use its credentials, shared ones too, so a project list is
+	 * judged by that project. Other lists judge each credential by its home project.
+	 */
 	private async addRestrictions(
 		credentials: Array<{ type: string; homeProject?: { id: string } | null }>,
+		listedProjectId?: string,
 	): Promise<void> {
 		try {
 			const restrictions = await this.credentialRestrictions.findRestrictions(
 				credentials.map(({ type, homeProject }) => ({
 					type,
-					homeProjectId: homeProject?.id ?? null,
+					projectId: listedProjectId ?? homeProject?.id ?? null,
 				})),
 			);
 			credentials.forEach((credential, index) => {

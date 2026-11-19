@@ -121,7 +121,7 @@ describe('TypeAvailabilityPoliciesModule', () => {
 
 		await expect(
 			Container.get(CredentialRestrictionsProviderProxy).findRestrictions([
-				{ type: 'slackApi', homeProjectId: 'project-1' },
+				{ type: 'slackApi', projectId: 'project-1' },
 			]),
 		).resolves.toEqual(restrictions);
 	}, 30_000);

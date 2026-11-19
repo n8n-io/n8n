@@ -1,6 +1,6 @@
 import { usePostHog } from '@/app/stores/posthog.store';
 import { setActivePinia } from 'pinia';
-import { within } from '@testing-library/vue';
+import { waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -15,6 +15,8 @@ import type { FrontendSettings } from '@n8n/api-types';
 import type { ICredentialsResponse } from '../credentials.types';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { defineComponent } from 'vue';
+import type { Project } from '@n8n/rest-api-client';
+import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
 
 const mockAuthorize = vi.fn();
 const mockIsOAuthCredentialType = vi.fn();
@@ -43,6 +45,9 @@ vi.mock('@n8n/composables/useToast', () => ({
 }));
 
 const renderComponent = createComponentRenderer(CredentialCard);
+
+const findContactModal = async (getByTestId: (id: string) => HTMLElement) =>
+	await waitFor(() => getByTestId('contact-admin-modal'));
 
 const createCredential = (overrides = {}): CredentialsResource =>
 	({
@@ -641,6 +646,48 @@ describe('CredentialCard', () => {
 				await userEvent.click(getByTestId('contact-admin'));
 
 				expect(getByTestId('contact-admin-modal')).toHaveTextContent(`${kind}: ${subject}`);
+			},
+		);
+
+		it.each([
+			['another project', 'team-2', 'Team 2'],
+			['the open policy project', 'team-1', 'default'],
+		])(
+			'lists the admins of the project that set a project restriction, for %s',
+			async (_, projectId, listed) => {
+				mockedStore(useTypeAvailabilityPoliciesStore).policyProject = {
+					id: 'team-1',
+				} as Project;
+				mockedStore(useProjectsStore).fetchProject.mockResolvedValue({
+					id: 'team-2',
+					name: 'Team 2',
+				} as Project);
+				const { getByTestId } = renderComponent({
+					props: {
+						data: createCredential({
+							restriction: typeRestricted,
+							restrictionProject: { id: projectId, type: 'team' },
+						}),
+					},
+					global: {
+						stubs: {
+							RestrictedNodePopover: defineComponent({
+								emits: ['contactAdmin'],
+								template:
+									'<button data-test-id="contact-admin" @click="$emit(\'contactAdmin\', \'project\')" />',
+							}),
+							ContactAdminModal: defineComponent({
+								props: ['open', 'project'],
+								template:
+									'<div v-if="open" data-test-id="contact-admin-modal">{{ project === undefined ? "default" : project.name }}</div>',
+							}),
+						},
+					},
+				});
+
+				await userEvent.click(getByTestId('contact-admin'));
+
+				expect(await findContactModal(getByTestId)).toHaveTextContent(listed);
 			},
 		);
 

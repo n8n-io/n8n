@@ -55,10 +55,12 @@ export class CredentialTypePolicyRestrictionsProvider implements CredentialRestr
 		const none = credentials.map(() => null);
 		if (!this.licenseState.isLicensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)) return none;
 
+		// A type whose package is not loaded has no known nodes, but its own policy still applies.
 		const supportedNodesByType = new Map(
-			[...new Set(credentials.map(({ type }) => type))]
-				.filter((type) => this.credentialTypes.recognizes(type))
-				.map((type) => [type, this.credentialTypes.getSupportedNodes(type)]),
+			[...new Set(credentials.map(({ type }) => type))].map((type) => [
+				type,
+				this.credentialTypes.recognizes(type) ? this.credentialTypes.getSupportedNodes(type) : [],
+			]),
 		);
 		if (supportedNodesByType.size === 0) return none;
 
@@ -76,15 +78,12 @@ export class CredentialTypePolicyRestrictionsProvider implements CredentialRestr
 		const nodeVerdictsOf = verdictsReader(nodeEvaluation);
 		const usableByHttpRequest = new Map<string, boolean>();
 
-		return credentials.map(({ type, homeProjectId }) => {
-			const supportedNodes = supportedNodesByType.get(type);
-			if (!supportedNodes) return null;
-
+		return credentials.map(({ type, projectId }) => {
 			return this.judge(
 				type,
-				supportedNodes,
-				credentialVerdictsOf(homeProjectId),
-				nodeVerdictsOf(homeProjectId),
+				supportedNodesByType.get(type) ?? [],
+				credentialVerdictsOf(projectId),
+				nodeVerdictsOf(projectId),
 				usableByHttpRequest,
 			);
 		});

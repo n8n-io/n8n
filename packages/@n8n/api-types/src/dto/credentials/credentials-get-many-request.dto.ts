@@ -37,7 +37,8 @@ export class CredentialsGetManyRequestQuery extends Z.class({
 
 	/**
 	 * Adds the `restriction` field to each credential that a type availability policy makes
-	 * unusable in its home project.
+	 * unusable. A list filtered by `projectId` is judged by that project, other lists by each
+	 * credential's home project. A custom `select` ignores this option.
 	 */
 	includeRestrictions: booleanFromString.optional(),
 }) {}

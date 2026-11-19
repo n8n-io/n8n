@@ -25,8 +25,10 @@ import { useCredentialTypeUsability } from '../composables/useCredentialTypeUsab
 import {
 	ContactAdminModal,
 	RestrictedNodePopover,
+	useTypeAvailabilityPoliciesStore,
 	type ContactAudience,
 } from '@n8n/frontend-module-type-availability-policies';
+import type { Project } from '@n8n/rest-api-client';
 import { useContactAdminDialog } from '../composables/useContactAdminDialog';
 
 import {
@@ -69,6 +71,7 @@ const toast = useToast();
 const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
 const projectsStore = useProjectsStore();
+const policiesStore = useTypeAvailabilityPoliciesStore();
 const { isEnabled: isPrivateCredentialsEnabled } = usePrivateCredentials();
 const { hasDependencies } = useDependencies();
 const { authorize, isOAuthCredentialType } = useCredentialOAuth();
@@ -96,9 +99,17 @@ const restriction = computed(() =>
 		? describeCredentialTypeUsability(props.data.restriction, credentialTypeDisplayName.value)
 		: null,
 );
+/** Whose admins the dialog lists. `undefined` keeps the dialog's default: the open policy project. */
+const contactProject = ref<Project | null | undefined>(undefined);
+
 // For restricted nodes the admin must allow the nodes, so the request names them, not the type.
-function onContactAdmin(audience: ContactAudience) {
+async function onContactAdmin(audience: ContactAudience) {
 	if (!restriction.value) return;
+	const { id } = props.data.restrictionProject ?? {};
+	contactProject.value =
+		audience === 'project' && id && id !== policiesStore.policyProject?.id
+			? await projectsStore.fetchProject(id).catch(() => null)
+			: undefined;
 	requestContactAdmin(restriction.value.contactSubject, audience, restriction.value.kind);
 }
 
@@ -293,7 +304,7 @@ function moveResource() {
 							:restriction="restriction.restriction"
 							:scope-label="restriction.popoverScopeLabel"
 							:description="restriction.description"
-							:project-type="data.homeProject?.type"
+							:project-type="data.restrictionProject?.type"
 							:anchor="restrictedBadgeRef"
 							@contact-admin="onContactAdmin"
 						/>
@@ -304,6 +315,7 @@ function moveResource() {
 						:kind="contactAdmin.kind"
 						:type-name="contactAdmin.subject"
 						:audience="contactAdmin.audience"
+						:project="contactProject"
 					/>
 				</span>
 			</N8nText>

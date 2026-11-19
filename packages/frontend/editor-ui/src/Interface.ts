@@ -368,6 +368,8 @@ export type CredentialsResource = BaseResource & {
 	needsSetup: boolean;
 	/** Why workflows cannot use this credential, when a policy restricts its type or its nodes. */
 	restriction?: CredentialTypeUsability;
+	/** The project whose policy set the restriction: the listed project, or else the home project. */
+	restrictionProject?: { id: string; type?: ProjectSharingData['type'] };
 	isGlobal?: boolean;
 	isResolvable?: boolean;
 	connectedByMe?: boolean;

@@ -3023,11 +3023,43 @@ describe('CredentialsService', () => {
 				});
 
 				expect(credentialRestrictions.findRestrictions).toHaveBeenCalledWith([
-					{ type: 'slackApi', homeProjectId: 'team-1' },
-					{ type: 'slackApi', homeProjectId: null },
+					{ type: 'slackApi', projectId: 'team-1' },
+					{ type: 'slackApi', projectId: null },
 				]);
 				expect(credentials[0]).toHaveProperty('restriction', restriction);
 				expect(credentials[1]).not.toHaveProperty('restriction');
+			});
+
+			it('judges every credential of a project list by that project', async () => {
+				credentialsRepository.findManyAndCount.mockResolvedValue([
+					[credential('cred-1', 'team-1'), credential('cred-2', 'team-2')],
+					2,
+				]);
+				credentialRestrictions.findRestrictions.mockResolvedValue([null, null]);
+
+				await service.getManyAndCount(ownerUser, {
+					listQueryOptions: { filter: { projectId: 'team-1' } },
+					includeRestrictions: true,
+				});
+
+				expect(credentialRestrictions.findRestrictions).toHaveBeenCalledWith([
+					{ type: 'slackApi', projectId: 'team-1' },
+					{ type: 'slackApi', projectId: 'team-1' },
+				]);
+			});
+
+			it('does not judge credentials when a custom select can leave out the home project', async () => {
+				credentialsRepository.findManyAndCount.mockResolvedValue([
+					[credential('cred-1', 'team-1')],
+					1,
+				]);
+
+				await service.getManyAndCount(ownerUser, {
+					listQueryOptions: { select: { id: true, type: true } },
+					includeRestrictions: true,
+				});
+
+				expect(credentialRestrictions.findRestrictions).not.toHaveBeenCalled();
 			});
 
 			it('does not judge credentials unless asked to', async () => {
