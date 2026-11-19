@@ -22,6 +22,19 @@ const ROUTE_LABELS: Record<ToolCallRoute, string> = {
 	blocked: 'Blocked',
 };
 
+const SIMULATOR_GAP_LABEL = 'Not supported yet';
+
+/** The label a call shows: a simulator gap gets its own, so it does not read as blocked. */
+function labelFor(route: ToolCallRoute, reason: ToolCallReason) {
+	return route === 'blocked' && reason === 'unsupported_by_simulator'
+		? SIMULATOR_GAP_LABEL
+		: ROUTE_LABELS[route];
+}
+
+function variantFor(route: ToolCallRoute, reason: ToolCallReason) {
+	return route === 'blocked' && reason === 'unsupported_by_simulator' ? 'simulator_gap' : route;
+}
+
 const REASON_TEXT: Record<ToolCallReason, string> = {
 	served_from_world: 'The simulation answered from its test data and earlier calls in this test.',
 	invented_by_llm: "The simulation made up this reply. It isn't based on any real data.",
@@ -75,21 +88,41 @@ async function expand(container: Element) {
 }
 
 describe('AgentToolCallRouteIcon', () => {
-	it.each(Object.entries(ROUTE_LABELS) as Array<[ToolCallRoute, string]>)(
-		'names the %s icon for screen readers',
-		(route, label) => {
-			const { getByRole } = renderIcon({ props: { route } });
+	it.each(ROUTE_REASON_PAIRS)(
+		'names the icon of a %s call (%s) for screen readers',
+		(route, reason) => {
+			const { getByRole } = renderIcon({ props: { simulation: { route, reason } } });
 
-			const icon = getByRole('img', { name: label });
+			const icon = getByRole('img', { name: labelFor(route, reason) });
 			expect(icon).toHaveAttribute('data-route', route);
+			expect(icon).toHaveAttribute('data-variant', variantFor(route, reason));
 			// Icon only: no visible text.
 			expect(icon).toHaveTextContent('');
 		},
 	);
 
+	it('shows a simulator gap with its own icon and label, not as blocked', () => {
+		const gap = renderIcon({
+			props: { simulation: { route: 'blocked', reason: 'unsupported_by_simulator' } },
+		});
+		expect(gap.queryByRole('img', { name: 'Blocked' })).not.toBeInTheDocument();
+		const blocked = renderIcon({
+			props: { simulation: { route: 'blocked', reason: 'not_simulatable' } },
+		});
+
+		const gapIcon = gap.getByRole('img', { name: SIMULATOR_GAP_LABEL });
+		const blockedIcon = blocked.getByRole('img', { name: 'Blocked' });
+		expect(gapIcon).toHaveAttribute('data-variant', 'simulator_gap');
+		expect(blockedIcon).toHaveAttribute('data-variant', 'blocked');
+		expect(gapIcon.className).not.toBe(blockedIcon.className);
+		expect(gapIcon.innerHTML).not.toBe(blockedIcon.innerHTML);
+	});
+
 	it('shows the route label in a tooltip on hover', async () => {
 		const user = userEvent.setup();
-		const { getByTestId } = renderIcon({ props: { route: 'simulated_made_up' } });
+		const { getByTestId } = renderIcon({
+			props: { simulation: { route: 'simulated_made_up', reason: 'invented_by_llm' } },
+		});
 
 		await user.hover(getByTestId('agent-tool-call-route-icon'));
 
@@ -103,7 +136,9 @@ describe('AgentToolCallRouteIcon', () => {
 	it.each(['future_route', 'constructor', 'toString'])(
 		'renders nothing for a route this client does not know (%s)',
 		(route) => {
-			const { queryByTestId } = renderIcon({ props: { route: route as ToolCallRoute } });
+			const { queryByTestId } = renderIcon({
+				props: { simulation: unknownSimulation(route, 'served_from_world') },
+			});
 
 			expect(queryByTestId('agent-tool-call-route-icon')).not.toBeInTheDocument();
 		},
@@ -126,12 +161,11 @@ describe('AgentToolCallRouteRow', () => {
 			const { getByTestId, getByRole } = renderRow({ props: callWith({ route, reason }) });
 
 			const toggle = getByTestId('agent-tool-call-route-toggle');
-			expect(within(toggle).getByRole('img', { name: ROUTE_LABELS[route] })).toBeInTheDocument();
-			expect(toggle).not.toHaveTextContent(ROUTE_LABELS[route]);
-			// The route is part of the row's name, so it is read with the tool name.
-			expect(
-				getByRole('button', { name: `Send Slack message ${ROUTE_LABELS[route]}` }),
-			).toBeInTheDocument();
+			const label = labelFor(route, reason);
+			expect(within(toggle).getByRole('img', { name: label })).toBeInTheDocument();
+			expect(toggle).not.toHaveTextContent(label);
+			// The label is part of the row's name, so it is read with the tool name.
+			expect(getByRole('button', { name: `Send Slack message ${label}` })).toBeInTheDocument();
 		},
 	);
 
@@ -141,7 +175,7 @@ describe('AgentToolCallRouteRow', () => {
 		const details = await expand(container);
 
 		expect(within(details).getByTestId('agent-tool-call-route-details-label')).toHaveTextContent(
-			ROUTE_LABELS[route],
+			labelFor(route, reason),
 		);
 		expect(within(details).getByTestId('agent-tool-call-route-reason')).toHaveTextContent(
 			REASON_TEXT[reason],
@@ -189,13 +223,21 @@ describe('AgentToolCallRouteRow', () => {
 		expect(details).toHaveTextContent("It isn't based on any real data.");
 	});
 
-	it('says a simulator gap is not an agent error', async () => {
-		const { container } = renderRow({
+	it('says a simulator gap is not an agent error, collapsed and expanded', async () => {
+		const { container, getByRole, queryByRole } = renderRow({
 			props: callWith({ route: 'blocked', reason: 'unsupported_by_simulator' }),
 		});
 
+		expect(
+			getByRole('button', { name: `Send Slack message ${SIMULATOR_GAP_LABEL}` }),
+		).toBeInTheDocument();
+		expect(queryByRole('img', { name: 'Blocked' })).not.toBeInTheDocument();
+
 		const details = await expand(container);
 
+		expect(within(details).getByTestId('agent-tool-call-route-details-label')).toHaveTextContent(
+			SIMULATOR_GAP_LABEL,
+		);
 		expect(details).toHaveTextContent(
 			'This is a gap in the simulator, not an error in your agent.',
 		);
@@ -344,8 +386,11 @@ describe('AgentToolCallRouteRow', () => {
 	it.each(['reason_from_a_newer_server', 'constructor', 'toString', 'served_from_world'])(
 		'falls back to the generic next step for a blocked call with reason %s',
 		async (reason) => {
-			const { container } = renderRow({ props: callWith(unknownSimulation('blocked', reason)) });
+			const { container, getByRole } = renderRow({
+				props: callWith(unknownSimulation('blocked', reason)),
+			});
 
+			expect(getByRole('img', { name: 'Blocked' })).toBeInTheDocument();
 			const details = await expand(container);
 
 			expect(within(details).getByTestId('agent-tool-call-route-next-step')).toHaveTextContent(
@@ -405,6 +450,7 @@ describe('AgentToolCallRouteList', () => {
 	}
 
 	it('shows each call of a turn in order with its own icon', () => {
+		// A simulator gap (call-4) does not share the blocked icon.
 		const { getAllByTestId } = renderList({ props: { calls } });
 
 		const items = getAllByTestId('agent-tool-call-route-item');
@@ -419,10 +465,10 @@ describe('AgentToolCallRouteList', () => {
 		expect(
 			items.map(
 				(item) =>
-					within(item).queryByTestId('agent-tool-call-route-icon')?.getAttribute('data-route') ??
+					within(item).queryByTestId('agent-tool-call-route-icon')?.getAttribute('data-variant') ??
 					null,
 			),
-		).toEqual(['simulated', 'simulated', 'simulated_made_up', 'blocked', 'blocked', null]);
+		).toEqual(['simulated', 'simulated', 'simulated_made_up', 'simulator_gap', 'blocked', null]);
 	});
 
 	it('starts with every call collapsed and no explanation shown', () => {

@@ -3,18 +3,17 @@ import {
 	N8nAiActivityStepButton,
 	N8nAiActivityStepChevron,
 	N8nAnimatedCollapsibleContent,
-	N8nCollapsibleRoot,
-	N8nCollapsibleTrigger,
 	N8nText,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
 import { computed, ref, useId } from 'vue';
 
 import type { AgentToolCallRouteItem } from '../toolCallSimulation.types';
 import {
 	getToolCallBlockedNextStepKey,
+	getToolCallDisplay,
 	getToolCallReasonKey,
-	getToolCallRouteDisplay,
 } from '../utils/toolCallSimulation';
 import AgentToolCallRouteIcon from './AgentToolCallRouteIcon.vue';
 
@@ -35,7 +34,7 @@ const detailsId = useId();
 
 const simulation = computed(() => props.call.simulation);
 const display = computed(() =>
-	simulation.value ? getToolCallRouteDisplay(simulation.value.route) : undefined,
+	simulation.value ? getToolCallDisplay(simulation.value) : undefined,
 );
 const canExpand = computed(() => display.value !== undefined);
 
@@ -60,15 +59,12 @@ const nextStep = computed(() =>
 		:class="$style.row"
 		:data-tool-call-id="call.toolCallId"
 		:data-route="canExpand ? simulation?.route : undefined"
+		:data-variant="display?.variant"
 		data-test-id="agent-tool-call-route-row"
 	>
 		<!-- Keep the closed details in the DOM, hidden, so aria-controls always resolves. -->
-		<N8nCollapsibleRoot
-			v-if="canExpand && simulation"
-			v-model:open="isOpen"
-			:unmount-on-hide="false"
-		>
-			<N8nCollapsibleTrigger as-child>
+		<CollapsibleRoot v-if="canExpand && simulation" v-model:open="isOpen" :unmount-on-hide="false">
+			<CollapsibleTrigger as-child>
 				<N8nAiActivityStepButton
 					:class="$style.header"
 					size="small"
@@ -87,10 +83,10 @@ const nextStep = computed(() =>
 						<N8nAiActivityStepChevron :open="isOpen" />
 					</span>
 					<template #suffix>
-						<AgentToolCallRouteIcon :route="simulation.route" />
+						<AgentToolCallRouteIcon :simulation="simulation" />
 					</template>
 				</N8nAiActivityStepButton>
-			</N8nCollapsibleTrigger>
+			</CollapsibleTrigger>
 			<N8nAnimatedCollapsibleContent>
 				<div
 					:id="detailsId"
@@ -129,7 +125,7 @@ const nextStep = computed(() =>
 					</N8nText>
 				</div>
 			</N8nAnimatedCollapsibleContent>
-		</N8nCollapsibleRoot>
+		</CollapsibleRoot>
 		<div v-else :class="[$style.header, $style.static]">
 			<span
 				:class="$style.name"

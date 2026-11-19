@@ -1,11 +1,5 @@
 import * as locale from './locale';
 
-/** Compose custom headers with N8nAnimatedCollapsibleContent. */
-export {
-	CollapsibleRoot as N8nCollapsibleRoot,
-	CollapsibleTrigger as N8nCollapsibleTrigger,
-} from 'reka-ui';
-
 export * from './components';
 export * from './constants';
 export * from './plugin';

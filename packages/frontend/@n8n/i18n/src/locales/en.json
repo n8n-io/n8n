@@ -9383,6 +9383,7 @@
 	"agents.testRun.toolCall.route.simulated": "Simulated",
 	"agents.testRun.toolCall.route.simulatedMadeUp": "Simulated (made up)",
 	"agents.testRun.toolCall.route.blocked": "Blocked",
+	"agents.testRun.toolCall.route.simulatorGap": "Not supported yet",
 	"agents.testRun.toolCall.reason.servedFromWorld": "The simulation answered from its test data and earlier calls in this test.",
 	"agents.testRun.toolCall.reason.inventedByLlm": "The simulation made up this reply. It isn't based on any real data.",
 	"agents.testRun.toolCall.reason.unsupportedBySimulator": "The simulator can't handle this call yet. This is a gap in the simulator, not an error in your agent.",

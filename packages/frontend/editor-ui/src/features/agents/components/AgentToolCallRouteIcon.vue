@@ -3,20 +3,21 @@ import { N8nIcon, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 
-import type { ToolCallRoute } from '../toolCallSimulation.types';
-import { getToolCallRouteDisplay } from '../utils/toolCallSimulation';
+import type { ToolCallSimulation } from '../toolCallSimulation.types';
+import { getToolCallDisplay } from '../utils/toolCallSimulation';
 
 /**
- * A small icon for how one tool call ran in a test run. The route label is its
- * accessible name and its tooltip. Renders nothing for a route this client does not know.
+ * A small icon for how one tool call ran in a test run. The label is its accessible name
+ * and its tooltip. A simulator gap gets its own icon and label, so it does not read as an
+ * agent failure. Renders nothing for a route this client does not know.
  */
 const props = defineProps<{
-	route: ToolCallRoute;
+	simulation: Pick<ToolCallSimulation, 'route' | 'reason'>;
 }>();
 
 const i18n = useI18n();
 
-const display = computed(() => getToolCallRouteDisplay(props.route));
+const display = computed(() => getToolCallDisplay(props.simulation));
 const label = computed(() => (display.value ? i18n.baseText(display.value.labelKey) : ''));
 </script>
 
@@ -25,8 +26,9 @@ const label = computed(() => (display.value ? i18n.baseText(display.value.labelK
 		<span
 			role="img"
 			:aria-label="label"
-			:class="[$style.icon, $style[route]]"
-			:data-route="route"
+			:class="[$style.icon, $style[display.variant]]"
+			:data-route="simulation.route"
+			:data-variant="display.variant"
 			data-test-id="agent-tool-call-route-icon"
 		>
 			<N8nIcon :icon="display.icon" size="small" aria-hidden="true" />
@@ -60,5 +62,11 @@ const label = computed(() => (display.value ? i18n.baseText(display.value.labelK
 	color: var(--icon-color--danger);
 	/* Slightly stronger than the other routes: a full tint, not a faded one. */
 	background-color: var(--background--danger);
+}
+
+/* A gap in the simulator, not an agent failure: neutral, not red. */
+.simulator_gap {
+	color: var(--text-color--subtle);
+	background-color: var(--background--subtle);
 }
 </style>
