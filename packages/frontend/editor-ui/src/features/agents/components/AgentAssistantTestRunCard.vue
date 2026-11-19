@@ -23,14 +23,19 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const expanded = ref(false);
 const detailsId = useId();
+const nameId = useId();
 /** Trimmed once, so the action's visibility and the emitted ID always agree. */
 const openableTestChatId = computed(() => props.testChatId?.trim() ?? '');
 </script>
 
 <template>
-	<section :class="$style.card" data-test-id="agent-assistant-test-run-card">
+	<section
+		:class="$style.card"
+		:aria-labelledby="nameId"
+		data-test-id="agent-assistant-test-run-card"
+	>
 		<div :class="$style.header">
-			<N8nText tag="strong" size="small" bold :class="$style.name">
+			<N8nText :id="nameId" tag="strong" size="small" bold :class="$style.name">
 				{{ agentName }}
 			</N8nText>
 			<N8nBadge theme="tertiary">

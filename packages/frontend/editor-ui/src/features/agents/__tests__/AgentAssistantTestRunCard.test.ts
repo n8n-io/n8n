@@ -36,6 +36,7 @@ function setup(calls: Call[] = [email], testChatId?: string) {
 describe('AgentAssistantTestRunCard', () => {
 	it('starts collapsed with an explicit test badge and an accessible toggle', () => {
 		const { getByText, getByRole, container } = setup();
+		expect(getByRole('region', { name: 'Support agent' })).toBeVisible();
 		expect(getByText('Support agent')).toBeVisible();
 		expect(getByText('Test run', { exact: true })).toBeVisible();
 		const toggle = getByRole('button', { name: 'Test run details' });
