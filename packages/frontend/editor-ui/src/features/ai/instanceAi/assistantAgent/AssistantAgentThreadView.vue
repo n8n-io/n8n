@@ -24,7 +24,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { useElementSize } from '@vueuse/core';
 import { computed, onBeforeUnmount, provide, ref, useTemplateRef, watch } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 
 import AgentChatPanel from '@/features/agents/components/AgentChatPanel.vue';
 import { useN8nAssistantIdentity } from '@/features/agents/n8nChatPage/composables/useN8nAssistantIdentity';
@@ -65,11 +65,15 @@ import {
 	getPendingWorkflowAttachment,
 	type PendingFirstMessage,
 } from '../composables/useInstanceAiHandoff';
-import { INSTANCE_AI_VIEW } from '../constants';
+import { INSTANCE_AI_APP_ID_QUERY, INSTANCE_AI_VIEW } from '../constants';
 import { buildFixWithAiPrompt } from '../fixWithAi';
 import { formatAgentPreviewContextLabel } from '../instanceAi.handoffContext';
 import { useInstanceAiStore } from '../instanceAi.store';
-import { firstMessageTitle, threadTargetsAgent } from '../instanceAi.threadRuntime';
+import {
+	firstMessageTitle,
+	getAppTargetsFromThreadMetadata,
+	threadTargetsAgent,
+} from '../instanceAi.threadRuntime';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { buildThreadArtifactsContext } from '../threadArtifacts';
 import { isArtifactTab, useCanvasPreview } from '../useCanvasPreview';
@@ -126,6 +130,7 @@ provide(ASSISTANT_AGENT_PROJECT_ID, props.projectId);
 const telemetry = useTelemetry();
 const i18n = useI18n();
 const router = useRouter();
+const route = useRoute();
 const rootStore = useRootStore();
 const settingsStore = useInstanceAiSettingsStore();
 const identity = useN8nAssistantIdentity();
@@ -208,6 +213,8 @@ function clientContext(): Record<string, unknown> {
 		browserUseAvailable: settingsStore.isBrowserUseAvailable,
 		...(pendingReferences.length > 0 ? { attachments: pendingReferences } : {}),
 		...(pendingHandoffContext ? { context: pendingHandoffContext } : {}),
+		// The server binds the subject on the first turn. Until then, every send carries it.
+		...(launch?.subject && isNewSession.value ? { subject: launch.subject } : {}),
 		...threadArtifactsContext(),
 	};
 }
@@ -327,6 +334,25 @@ provideArtifactAgentTargets(agentTargets.agentTargets);
 // Set from the preview tabs below, which need the thread first.
 const activeArtifactId = ref<string>();
 
+// The apps of the thread metadata, and the saved app of a new thread before the server has it.
+const appTargets = computed(() => {
+	const targets = getAppTargetsFromThreadMetadata(
+		threadsStore.threadsById.get(props.threadId)?.metadata,
+	);
+	const subject = launch?.subject;
+	if (subject?.type !== 'app' || subject.pending) return targets;
+	if (targets.some(({ appId }) => appId === subject.id)) return targets;
+	const { id: appId, projectId, name } = subject;
+	return [...targets, { appId, projectId, ...(name ? { name } : {}) }];
+});
+// An app page opens its chat with `?appId=`. Only an app of this thread opens.
+const requestedAppId = computed(() => {
+	const appId = route.query[INSTANCE_AI_APP_ID_QUERY];
+	return typeof appId === 'string' && appTargets.value.some((target) => target.appId === appId)
+		? appId
+		: undefined;
+});
+
 const thread = useAssistantArtifactThread({
 	threadId: props.threadId,
 	projectId: props.projectId,
@@ -345,6 +371,7 @@ const thread = useAssistantArtifactThread({
 	},
 	pendingWorkflowAttachment: handoff.workflow,
 	agentTargets: () => agentTargets.state.value,
+	appTargets: () => appTargets.value,
 	activeArtifactId: () => activeArtifactId.value,
 });
 provideArtifactThread(thread);
@@ -352,6 +379,7 @@ provideArtifactThread(thread);
 const preview = useCanvasPreview({
 	thread,
 	threadId: () => props.threadId,
+	initialAppId: () => requestedAppId.value ?? appTargets.value[0]?.appId,
 	tabsStorage: {
 		// A new thread has no stored tabs, and the server does not know it before its first message.
 		load: async () =>
@@ -369,6 +397,13 @@ provide('openAppPreview', preview.openAppPreview);
 provide('openSkillPreview', preview.openSkillPreview);
 provide('openAgentPreview', preview.openAgentPreview);
 provide('openAgentChatPreview', openAgentChatPreview);
+watch(
+	[requestedAppId, () => preview.tabsLoaded.value],
+	([appId, tabsLoaded]) => {
+		if (appId && tabsLoaded) preview.openAppPreview(appId);
+	},
+	{ immediate: true },
+);
 
 const openSkillTabs = computed(() => preview.openTabs.value.filter((tab) => tab.type === 'skill'));
 

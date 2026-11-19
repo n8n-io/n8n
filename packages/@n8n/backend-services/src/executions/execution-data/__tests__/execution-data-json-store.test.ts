@@ -34,7 +34,7 @@ it('should write the version-1 bundle at the stable execution-data key', async (
 		{ mimeType: 'application/json' },
 	);
 	const [_, body] = fsByteStore.write.mock.calls[0];
-	expect(JSON.parse(body.toString('utf-8'))).toEqual({ ...payload, version: 1 });
+	expect(JSON.parse((body as Buffer).toString('utf-8'))).toEqual({ ...payload, version: 1 });
 });
 
 it('should wrap a write failure in `ExecutionDataWriteError`', async () => {

@@ -26,6 +26,7 @@ import { SkillSourceLink } from '../../database/entities/skill-source-link.entit
 import { SkillSyncService } from '../../services/skill-sync.service';
 import { FakeGitHub } from '../test-utils/fake-github';
 
+import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
 import { createMember, createOwner } from '@test-integration/db/users';
 import type { SuperAgentTest } from '@test-integration/types';
 import { setupTestServer } from '@test-integration/utils';
@@ -57,6 +58,7 @@ describe('Sources in the skills table', () => {
 	let owner: SuperAgentTest;
 	let editor: SuperAgentTest;
 	let viewer: SuperAgentTest;
+	let updater: SuperAgentTest;
 	let outsider: SuperAgentTest;
 	let team: Project;
 
@@ -65,15 +67,22 @@ describe('Sources in the skills table', () => {
 	beforeAll(async () => {
 		memberUser = await createMember();
 		const viewerUser = await createMember();
+		const updaterUser = await createMember();
 		owner = server.authAgentFor(await createOwner());
 		editor = server.authAgentFor(memberUser);
 		viewer = server.authAgentFor(viewerUser);
+		updater = server.authAgentFor(updaterUser);
 		outsider = server.authAgentFor(await createMember());
 		team = await createTeamProject('Marketing');
 		team.icon = { type: 'emoji', value: '🚀' };
 		await db().save(team);
 		await linkUserToProject(memberUser, team, 'project:editor');
 		await linkUserToProject(viewerUser, team, 'project:viewer');
+		const updaterRole = await createCustomRoleWithScopeSlugs(
+			['projectSkill:list', 'projectSkill:read', 'projectSkill:update'],
+			{ roleType: 'project' },
+		);
+		await linkUserToProject(updaterUser, team, updaterRole.slug);
 	});
 
 	beforeEach(async () => {
@@ -141,17 +150,41 @@ describe('Sources in the skills table', () => {
 					updatesBlocked: 0,
 					health: 'connected',
 					canReview: true,
+					canImport: true,
 				}),
 			]);
 			expect((await viewer.get('/skill-sources').expect(200)).body.data).toEqual([
 				expect.objectContaining({
 					id: zeta,
 					canReview: false,
+					canImport: false,
 					updatesAvailable: 0,
 					updatesBlocked: 0,
 				}),
 			]);
 			expect((await outsider.get('/skill-sources').expect(200)).body.data).toEqual([]);
+			expect((await updater.get('/skill-sources').expect(200)).body.data).toEqual([
+				expect.objectContaining({ id: zeta, canReview: true, canImport: false }),
+			]);
+		});
+
+		it('reports import permission for Global sources', async () => {
+			const { sourceId } = (
+				await owner
+					.post('/skill-sources')
+					.send({
+						url: 'https://github.com/acme/zeta',
+						scope: 'instance',
+						skillKeys: [JSON.stringify({ path: 'skills/z1' })],
+					})
+					.expect(200)
+			).body.data as SkillSourceConnectResponse;
+			expect((await owner.get('/skill-sources').expect(200)).body.data).toEqual([
+				expect.objectContaining({ id: sourceId, canReview: true, canImport: true }),
+			]);
+			expect((await outsider.get('/skill-sources').expect(200)).body.data).toEqual([
+				expect.objectContaining({ id: sourceId, canReview: false, canImport: false }),
+			]);
 		});
 
 		it.each([

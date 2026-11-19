@@ -1968,6 +1968,9 @@ importers:
       '@n8n/backend-network':
         specifier: workspace:*
         version: link:../backend-network
+      '@n8n/blob-storage':
+        specifier: workspace:*
+        version: link:../blob-storage
       '@n8n/config':
         specifier: workspace:*
         version: link:../config
@@ -2001,6 +2004,9 @@ importers:
       '@types/express':
         specifier: 'catalog:'
         version: 5.0.1
+      bcryptjs:
+        specifier: 2.4.3
+        version: 2.4.3
       cache-manager:
         specifier: 'catalog:'
         version: 5.2.3
@@ -2041,6 +2047,9 @@ importers:
       '@n8n/vitest-config':
         specifier: workspace:*
         version: link:../vitest-config
+      '@types/bcryptjs':
+        specifier: ^2.4.2
+        version: 2.4.2
       '@types/jsonwebtoken':
         specifier: 'catalog:'
         version: 9.0.10
@@ -2916,6 +2925,9 @@ importers:
       '@testcontainers/postgresql':
         specifier: 'catalog:'
         version: 11.13.0(supports-color@8.1.1)
+      '@testcontainers/redis':
+        specifier: 'catalog:'
+        version: 11.13.0(supports-color@8.1.1)
       '@types/express':
         specifier: 'catalog:'
         version: 5.0.1
@@ -2928,6 +2940,9 @@ importers:
       '@types/supertest':
         specifier: ^6.0.3
         version: 6.0.3
+      ioredis:
+        specifier: 5.3.2
+        version: 5.3.2(supports-color@8.1.1)
       n8n-containers:
         specifier: workspace:*
         version: link:../../quality/environments/containers
@@ -7877,13 +7892,19 @@ importers:
       '@n8n/decorators':
         specifier: workspace:*
         version: link:../../../@n8n/decorators
+      '@n8n/di':
+        specifier: workspace:*
+        version: link:../../../@n8n/di
+      '@n8n/errors':
+        specifier: workspace:*
+        version: link:../../../@n8n/errors
       '@n8n/typeorm':
         specifier: workspace:*
         version: link:../../../@n8n/typeorm
     devDependencies:
-      '@n8n/di':
+      '@n8n/backend-test-utils':
         specifier: workspace:*
-        version: link:../../../@n8n/di
+        version: link:../../../@n8n/backend-test-utils
       '@n8n/oxlint-config':
         specifier: workspace:*
         version: link:../../../@n8n/oxlint-config

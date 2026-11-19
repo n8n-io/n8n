@@ -5,6 +5,7 @@ import { AllowAllAdmittance } from './admittance';
 import { SharedSecretIdentityVerifier } from './auth';
 import { createDataSource } from './database';
 import { createConsoleLogger } from './logging';
+import { createInMemoryWorkQueues } from './queue';
 import { noopExecutionResponseSender } from './response-channel';
 import { createEngineRuntime } from './runtime';
 import { assertSecureTransport, createEngineHttpServer, openEngineTls } from './tls';
@@ -43,10 +44,13 @@ async function main(): Promise<void> {
 		// Nothing in this process waits for a response: the caller reads the run
 		// over the API instead.
 		responseSender: noopExecutionResponseSender,
-		concurrency: {
-			step: config.stepConcurrency,
-			orchestration: config.orchestrationConcurrency,
-		},
+		queues: createInMemoryWorkQueues({
+			concurrency: {
+				step: config.stepConcurrency,
+				orchestration: config.orchestrationConcurrency,
+			},
+			logger,
+		}),
 	});
 	runtime.start();
 

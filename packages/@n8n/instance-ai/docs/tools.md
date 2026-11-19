@@ -1520,6 +1520,14 @@ The `type` field selects one lookup. Supported values are `agents`, `config-sche
 return one body at a time. Session lookup supports status, origin, date, and
 cursor filters.
 
+By default, a `session` lookup returns a compact transcript. Long values are
+cut and the oldest turns of a long session are left out. Set
+`maxToolValueLength` to get every turn with complete text, in pages. Each tool
+input and output is cut at that length, and `0` leaves them out. While
+`nextCursor` is not `null`, pass it back as `cursor` with the same `threadId`,
+`executionId`, and `maxToolValueLength`. A cursor that does not match the
+transcript returns an error.
+
 The Agent id is optional when the conversation has a bound Agent target. Use
 `type: "agents"` to resolve the id in other conversations. The tool labels the
 returned config as the current draft. It wraps all returned context as untrusted
