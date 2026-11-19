@@ -29,7 +29,8 @@ export const NOTION_CONTAINER_TYPES = {
 } as const;
 
 const DEFAULT_LIST_LIMIT = 50;
-const MAX_LIST_LIMIT = 100;
+/** The index build lists up to its own cap; the tools are capped by their schema. */
+const MAX_LIST_LIMIT = 500;
 const SEARCH_PAGE_SIZE = 50;
 /** Terms of a query that the data source title filter takes. More terms give broad matches. */
 const MAX_TITLE_FILTER_TERMS = 5;
