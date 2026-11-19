@@ -64,7 +64,7 @@ async function runShell() {
 		});
 
 	const popup = { closed: false, location: '', close: vi.fn() };
-	window.open = vi.fn(() => popup);
+	window.open = vi.fn(() => popup) as unknown as typeof window.open;
 
 	// The script names these as globals; passing them as parameters keeps the real
 	// Node globals out of its reach.
