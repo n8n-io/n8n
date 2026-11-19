@@ -110,9 +110,10 @@ export function findHiddenUnicode(input: SkillScanInput): SkillScanFinding[] {
 /**
  * A link up to the first character that cannot be part of it. An IPv6 host sits in brackets,
  * which the rest of a link cannot hold, so it has its own group after the optional user info.
+ * An underscore can come before a link, as in Markdown emphasis.
  */
 const URL_PATTERN =
-	/\b(?:https?|wss?|ftp):\/\/(?:[^\s<>"'`()[\]{}/?#@]*@)?(?:\[[\d:a-f.]+\])?[^\s<>"'`()[\]{}]*/gi;
+	/(?<![a-z0-9])(?:https?|wss?|ftp):\/\/(?:[^\s<>"'`()[\]{}/?#@]*@)?(?:\[[\d:a-f.]+\])?[^\s<>"'`()[\]{}]*/gi;
 
 /**
  * An update needs review if it links to a new domain. At import, list each domain and flag

@@ -367,6 +367,23 @@ describe('SkillSecurityScanner', () => {
 			},
 		);
 
+		it('reads a link in Markdown emphasis with underscores', () => {
+			const content = skill({ instructions: 'Read _https://bit.ly/abc_ first.' });
+
+			expect(scanner.scan(fetched(content))).toEqual({
+				verdict: 'needs_review',
+				findings: [expect.objectContaining({ rule: 'risky_url', domain: 'bit.ly' })],
+			});
+		});
+
+		it('does not read a link with no scheme', () => {
+			const content = skill({
+				instructions: 'Open bit.ly/abc, then run curl 192.0.2.10:8080/collect.',
+			});
+
+			expect(scanner.scan(fetched(content))).toEqual({ verdict: 'pass', findings: [] });
+		});
+
 		it('does not flag a scheme with no address', () => {
 			const content = skill({ instructions: 'A link must start with https:// or https://<host>.' });
 
