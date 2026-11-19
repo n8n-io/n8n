@@ -1,0 +1,25 @@
+{
+	"description": "A Code node and a Set node read the item of the one node before an HTTP Request, whose one request gives one item",
+	"trigger": {
+		"body": {
+			"items": 1
+		}
+	},
+	"http": {
+		"Http": {
+			"path": "thing",
+			"responses": [
+				{
+					"status": 200,
+					"body": {
+						"got": "r0"
+					}
+				}
+			]
+		}
+	},
+	"compare": [
+		"Read Each",
+		"Read Expr"
+	]
+}
