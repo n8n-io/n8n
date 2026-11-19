@@ -148,14 +148,29 @@ describe('run', () => {
 		assert.equal(removeLabel.mock.calls.length, 0);
 	});
 
-	it('is a no-op when the done-marker label is already present', async () => {
-		labels = [AUTO_ASSIGN_LABEL, AUTO_ASSIGN_REQUIRED_LABEL, ASSIGNED_LABEL];
+	it('clears a trigger added during assignment without requesting reviews again', async () => {
+		labels = [AUTO_ASSIGN_REQUIRED_LABEL];
+		requestTeamReviewersImpl = async (...args) => {
+			await requestTeamReviewers(...args);
+			labels.push(AUTO_ASSIGN_LABEL);
+		};
+		addLabelImpl = async (pr, label) => {
+			await addLabel(pr, label);
+			labels.push(label);
+		};
+		removeLabelImpl = async (pr, label) => {
+			await removeLabel(pr, label);
+			labels = labels.filter((current) => current !== label);
+		};
 
 		await run(42);
+		assert.deepEqual(labels, [AUTO_ASSIGN_LABEL, ASSIGNED_LABEL]);
+		await run(42);
 
-		assert.equal(requestTeamReviewers.mock.calls.length, 0);
-		assert.equal(addLabel.mock.calls.length, 0);
-		assert.equal(removeLabel.mock.calls.length, 0);
+		assert.equal(requestTeamReviewers.mock.calls.length, 1);
+		assert.deepEqual(requestTeamReviewers.mock.calls[0].arguments, [42, ['catalysts']]);
+		assert.equal(addLabel.mock.calls.length, 1);
+		assert.deepEqual(labels, [ASSIGNED_LABEL]);
 	});
 
 	it('does not request reviewers or relabel when no team owns a changed file', async () => {

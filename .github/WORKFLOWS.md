@@ -943,8 +943,10 @@ owning teams. Apply `Auto-assign required reviewers` to request only teams whose
 present, the workflow requests all owning teams.
 
 After it requests reviews, the workflow replaces the trigger labels with
-`Reviewers auto-assigned` to prevent repeat requests. If no teams match, it
-leaves the trigger label in place so a later update can try again.
+`Reviewers auto-assigned` to prevent repeat requests. While that marker is
+present, the workflow removes any trigger labels without requesting reviews
+again. If no teams match, it leaves the trigger label in place so a later
+update can try again.
 
 ### Required reviews
 

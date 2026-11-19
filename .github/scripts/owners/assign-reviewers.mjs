@@ -42,17 +42,18 @@ export function resolveOwnerTeamSlugs(changedFiles, requiredOnly = false) {
 export async function run(pullRequestNumber) {
 	// Read live labels because a queued event can predate a successful assignment.
 	const labels = readPrLabels(await getPullRequestById(pullRequestNumber));
+	const triggerLabels = [AUTO_ASSIGN_LABEL, AUTO_ASSIGN_REQUIRED_LABEL].filter((label) =>
+		labels.includes(label),
+	);
 
 	if (labels.includes(ASSIGNED_LABEL)) {
 		console.log(
 			`PR #${pullRequestNumber} already carries the "${ASSIGNED_LABEL}" label; reviewers were already assigned.`,
 		);
+		for (const label of triggerLabels) await removeLabel(pullRequestNumber, label);
 		return;
 	}
 
-	const triggerLabels = [AUTO_ASSIGN_LABEL, AUTO_ASSIGN_REQUIRED_LABEL].filter((label) =>
-		labels.includes(label),
-	);
 	if (triggerLabels.length === 0) {
 		console.log(`PR #${pullRequestNumber} has no auto-assignment label; skipping.`);
 		return;
