@@ -17,6 +17,7 @@ import type {
 	IBinaryKeyData,
 	IPairedItemData,
 	ExecutionTracingContext,
+	WorkflowEngineType,
 } from 'n8n-workflow';
 import { z } from 'zod';
 
@@ -233,6 +234,7 @@ export namespace ExecutionSummaries {
 		workflowVersionId: string;
 		isArchived: boolean;
 		workflowBooleanSettings: Array<{ key: string; value: boolean }>;
+		engine: WorkflowEngineType;
 	}>;
 
 	export type StopExecutionFilterQuery = { workflowId: string } & Pick<
@@ -423,6 +425,7 @@ export interface IGetExecutionsQueryFilter {
 	metadata?: Array<{ key: string; value: string; exactMatch?: boolean }>;
 	startedAfter?: string;
 	startedBefore?: string;
+	engine?: WorkflowEngineType;
 }
 
 export type ResourceType = 'folder' | 'workflow';

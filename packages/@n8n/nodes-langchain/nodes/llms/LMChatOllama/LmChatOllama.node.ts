@@ -1,5 +1,4 @@
 import type { ChatOllamaInput } from '@langchain/ollama';
-import { ChatOllama } from '@langchain/ollama';
 import {
 	makeN8nLlmFailedAttemptHandler,
 	N8nLlmTracing,
@@ -18,6 +17,7 @@ import {
 import { wrapChatModelMessageInput } from '@utils/chatModelMessageWrapper';
 
 import { ollamaModel, ollamaOptions, ollamaDescription } from '../LMOllama/description';
+import { N8nChatOllama } from './N8nChatOllama';
 
 export class LmChatOllama implements INodeType {
 	description: INodeTypeDescription = {
@@ -81,7 +81,7 @@ export class LmChatOllama implements INodeType {
 		const fetchWithTimeout = async (input: RequestInfo | URL, init?: RequestInit) =>
 			await proxyFetch({ input, init, egressFilter });
 
-		const model = new ChatOllama({
+		const model = new N8nChatOllama({
 			...options,
 			baseUrl,
 			model: modelName,

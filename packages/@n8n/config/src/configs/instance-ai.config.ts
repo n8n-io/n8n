@@ -106,7 +106,7 @@ export class InstanceAiConfig {
 
 	/**
 	 * Token threshold for the Reflector to condense observations.
-	 * When unset, the threshold is a share of the model's window or of the max window, whichever is smaller.
+	 * When unset, the threshold is 15% of the model's window or of the max window, whichever is smaller.
 	 * When set, this fixed value replaces that share.
 	 */
 	@Env('N8N_INSTANCE_AI_REFLECTOR_OBSERVATION_TOKENS')
@@ -160,6 +160,13 @@ export class InstanceAiConfig {
 
 	@Env('N8N_INSTANCE_AI_BROWSER_USE_ENABLED')
 	browserUseEnabled: boolean = true;
+
+	/**
+	 * Whether n8n Assistant can run browser tasks in a cloud browser. Admins can disable this in
+	 * the n8n Assistant settings.
+	 */
+	@Env('N8N_INSTANCE_AI_CLOUD_BROWSER_ENABLED')
+	cloudBrowserEnabled: boolean = true;
 
 	/** Enable sandbox for code execution. When true, the agent can run shell commands and code. */
 	@Env('N8N_INSTANCE_AI_SANDBOX_ENABLED')

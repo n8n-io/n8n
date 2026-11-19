@@ -1,3 +1,4 @@
+import { UserDeactivationHooks } from '@n8n/backend-services';
 import type { LdapConfig, ConnectionSecurity } from '@n8n/constants';
 import type { AuthProviderSyncHistory } from '@n8n/db';
 import {
@@ -14,8 +15,6 @@ import { Container } from '@n8n/di';
 import { validate } from 'jsonschema';
 import type { Entry as LdapUser } from 'ldapts';
 import { randomString } from 'n8n-workflow';
-
-import { UserDeactivationHooks } from '@/services/user-deactivation-hooks.service';
 
 import { BINARY_AD_ATTRIBUTES, LDAP_CONFIG_SCHEMA } from './constants';
 

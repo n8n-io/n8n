@@ -1,6 +1,7 @@
 import type { Mock } from 'vitest';
 import type { Agent as RuntimeAgent } from '@n8n/agents';
 import type { AgentToolGuardrailConfig } from '@n8n/api-types';
+import type { LanguageModel } from 'ai';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
@@ -129,6 +130,21 @@ describe('AgentRuntimeCacheService', () => {
 		// The cache service rebuilds the runtime object explicitly, so every
 		// reconstruction field must be carried over by hand.
 		expect(runtime.toolGuardrails).toBe(toolGuardrails);
+	});
+
+	it('carries the guardrail model from the reconstruction onto the cached runtime', async () => {
+		const { service, agentRepository, reconstructionService } = makeService();
+		const agent = makeAgent();
+		const guardrailModel = {} as LanguageModel;
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		reconstructionService.reconstructFromAgentEntity.mockResolvedValue({
+			...makeRuntime(),
+			guardrailModel,
+		});
+
+		const runtime = await service.getRuntime({ agentId, projectId });
+
+		expect(runtime.guardrailModel).toBe(guardrailModel);
 	});
 
 	it('keeps task runtimes separate and disables their background tools', async () => {

@@ -361,68 +361,6 @@ describe('buildSystemMessages — volatile tool-instruction fragments', () => {
 	});
 });
 
-describe('buildSystemMessages — recovered skill instructions', () => {
-	const cacheOptions = { anthropic: { cacheControl: { type: 'ephemeral' as const } } };
-	const skills = { content: '<active_skills>\nBuild one workflow.\n</active_skills>' };
-
-	it('places skills in their own cached message between the base and volatile messages', () => {
-		const system = buildSystemMessages(
-			'Base instructions',
-			'<observations>\n* Some memory.\n</observations>',
-			cacheOptions,
-			undefined,
-			undefined,
-			true,
-			{ ...skills, providerOptions: cacheOptions },
-		);
-
-		expect(system).toEqual([
-			{ role: 'system', content: 'Base instructions', providerOptions: cacheOptions },
-			{ role: 'system', content: `\n\n${skills.content}`, providerOptions: cacheOptions },
-			{ role: 'system', content: '\n\n<observations>\n* Some memory.\n</observations>' },
-		]);
-	});
-
-	it('leaves the skills message uncached when it has no cache options', () => {
-		const system = buildSystemMessages(
-			'Base instructions',
-			undefined,
-			cacheOptions,
-			undefined,
-			undefined,
-			true,
-			skills,
-		);
-
-		expect(system).toEqual([
-			{ role: 'system', content: 'Base instructions', providerOptions: cacheOptions },
-			{ role: 'system', content: `\n\n${skills.content}` },
-		]);
-	});
-
-	it('merges skills after the base instructions when split messages are unsupported', () => {
-		const system = buildSystemMessages(
-			'Base instructions',
-			'<observations>\n* Some memory.\n</observations>',
-			cacheOptions,
-			undefined,
-			undefined,
-			false,
-			{ ...skills, providerOptions: cacheOptions },
-		);
-
-		expect(system).toEqual({
-			role: 'system',
-			content: [
-				'Base instructions',
-				skills.content,
-				'<observations>\n* Some memory.\n</observations>',
-			].join('\n\n'),
-			providerOptions: cacheOptions,
-		});
-	});
-});
-
 // ---------------------------------------------------------------------------
 // Input / response messages use existing createdAt as a hint
 // ---------------------------------------------------------------------------
@@ -684,6 +622,35 @@ describe('AgentMessageList — observation masking', () => {
 		expect(list.turnDelta().map((m) => m.id)).toEqual(['m2', 'm3']);
 		expect(list.responseDelta().map((m) => m.id)).toEqual(['m3']);
 		expect(list.serialize().messages.map((m) => m.id)).toEqual(['m1', 'm2', 'm3']);
+	});
+
+	it('reports loaded skills from masked messages and from earlier history it does not hold', () => {
+		const list = new AgentMessageList();
+		list.addHistory([
+			{
+				id: 'm1',
+				createdAt: at(1),
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolCallId: 'load-1',
+						toolName: 'load_skill',
+						input: { skillId: 'workflow-builder' },
+						state: 'resolved',
+						output: { type: 'content', value: [{ type: 'text', text: 'Skill body' }] },
+					},
+				],
+			},
+			dbMsgWithId('m2', 'later', at(2)),
+		]);
+		list.addEarlierLoadedSkills(['post-build-flow']);
+		list.maskObservedMessages({ lastObservedAt: at(1), lastObservedMessageId: 'm1' });
+
+		expect(list.loadedSkillIds()).toEqual(new Set(['post-build-flow', 'workflow-builder']));
+		expect(AgentMessageList.deserialize(list.serialize()).loadedSkillIds()).toEqual(
+			new Set(['post-build-flow', 'workflow-builder']),
+		);
 	});
 
 	it('splits messages sharing the cursor createdAt by id, matching store keyset semantics', () => {

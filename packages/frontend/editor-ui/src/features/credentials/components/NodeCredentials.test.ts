@@ -258,6 +258,41 @@ describe('NodeCredentials', () => {
 		stopCredentialsMirror?.();
 	});
 
+	it.each([true, false])(
+		'passes the fixed-only restriction to credential creation and editing (forAgent=%s)',
+		async (forAgent) => {
+			const { rerender } = renderComponent({
+				props: { node: openAiNodeNoCreds, forAgent, skipAutoSelect: true },
+			});
+
+			await userEvent.click(
+				within(screen.getByTestId('node-credentials-empty-state')).getByRole('button'),
+			);
+
+			expect(uiStore.openNewCredential).toHaveBeenCalledWith(
+				'openAiApi',
+				expect.any(Boolean),
+				expect.any(Boolean),
+				undefined,
+				undefined,
+				openAiNodeNoCreds.name,
+				openAiNodeNoCreds,
+				expect.objectContaining(forAgent ? { fixedCredentialsOnly: true } : {}),
+			);
+
+			credentialsStore.state.credentials = { c8vqdPpPClh4TgIO: createCredential() };
+			await rerender({ node: httpNode });
+			await userEvent.click(
+				screen.getByTestId('credential-edit-button').querySelector('.clickable')!,
+			);
+
+			expect(uiStore.openExistingCredential).toHaveBeenCalledWith(
+				'c8vqdPpPClh4TgIO',
+				expect.objectContaining(forAgent ? { fixedCredentialsOnly: true } : {}),
+			);
+		},
+	);
+
 	it('should display available credentials in the dropdown', async () => {
 		ndvStore.activeNode = httpNode;
 		credentialsStore.state.credentials = {

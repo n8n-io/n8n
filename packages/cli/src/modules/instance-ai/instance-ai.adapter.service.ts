@@ -38,6 +38,7 @@ import {
 	NodeTypesProxy,
 	PostHogClient,
 	TelemetryProxy,
+	WorkflowVersionedSettingsService,
 } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { Time, TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
@@ -116,8 +117,6 @@ import type {
 	FolderResolutionFailure,
 } from '@n8n/instance-ai';
 import {
-	BuilderTemplatesService,
-	builderTemplatesOptionsFromEnv,
 	wrapUntrustedData,
 	deriveCredentialHosts,
 	AppNamespaceTakenError,
@@ -231,6 +230,7 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { checkAiGatewayEligibility } from '@/services/ai-gateway-eligibility';
 import { AiGatewayService } from '@/services/ai-gateway.service';
+import { AiPreferenceSettingsService } from '@/services/ai-preference-settings.service';
 import { writeAssistantPreference } from '@/services/ai-preference-write';
 import { FolderService } from '@/services/folder.service';
 import {
@@ -240,7 +240,7 @@ import {
 import { ProjectService } from '@/services/project.service.ee';
 
 import { TagService } from '@/services/tag.service';
-import { createAiProxyFetch, createWebSearchFetch } from '@/utils/ai-proxy-fetch';
+import { createWebSearchFetch } from '@/utils/ai-proxy-fetch';
 import { resolveBuiltinNodeDefinitionDirs } from '@/utils/node-definition-dirs';
 import { WorkflowRunner } from '@/workflow-runner';
 import {
@@ -286,12 +286,10 @@ import { InstanceContextService } from './instance-context.service';
 import type { InstanceContextScope } from './instance-context.service';
 import { InstanceAiMcpRegistryService } from './mcp';
 import { listNodeDiscriminators } from './node-definition-resolver';
-import { fetchAndExtract, maybeSummarize, LRUCache } from './web-research';
+import { fetchAndExtract, fetchCachedPage, LRUCache } from './web-research';
 import { toWorkflowJSON } from './workflow-json';
 import { WorkflowTemplatesService } from './workflow-templates.service';
 import { toUserLike } from '@/utils/to-user-like';
-
-type BuilderTemplatesServiceInstance = InstanceType<typeof BuilderTemplatesService>;
 
 /**
  * Fill in defaults for properties whose visibility depends on sibling values
@@ -462,8 +460,6 @@ export class InstanceAiAdapterService {
 	} | null = null;
 
 	private readonly NODES_CACHE_TTL_MS = 5 * 60 * 1000;
-
-	private templatesService: BuilderTemplatesServiceInstance | undefined;
 
 	private async getNodesFromCache(): Promise<INodeTypeDescription[]> {
 		if (this.nodesCache && Date.now() < this.nodesCache.expiresAt) {
@@ -709,14 +705,13 @@ export class InstanceAiAdapterService {
 				? { activityService: this.createActivityAdapter(user, projectId) }
 				: {}),
 			// Absent only in test contexts constructed without DI.
-			...(this.aiPreferenceService
+			...(this.aiPreferenceService && Container.get(AiPreferenceSettingsService).isEnabled
 				? { aiPreferenceService: this.createPreferenceAdapter(user) }
 				: {}),
 			skillService: this.getSkillService(user, assistantSkillsEnabled === true),
 			appService: this.createAppAdapter(user, projectId, threadId),
 			webResearchService: this.createWebResearchAdapter(user, searchProxyConfig),
 			workspaceService: this.createWorkspaceAdapter(user, projectId),
-			templatesService: this.getTemplatesService(),
 			workflowTemplateService: this.createWorkflowTemplateAdapter(),
 			licenseHints: this.buildLicenseHints(),
 			logger: this.logger,
@@ -1040,18 +1035,6 @@ export class InstanceAiAdapterService {
 		const hiddenProperties = config.hiddenNodeProperties?.[nodeName];
 		if (hiddenProperties && hiddenProperties.length > 0) meta.hiddenProperties = hiddenProperties;
 		return meta;
-	}
-
-	getTemplatesService(): BuilderTemplatesServiceInstance {
-		if (!this.templatesService) {
-			this.templatesService = new BuilderTemplatesService({
-				...builderTemplatesOptionsFromEnv({ logger: this.logger }),
-				cacheDir: path.join(this.instanceSettings.n8nFolder, 'n8n-sdk-templates'),
-				logger: this.logger,
-				fetch: createAiProxyFetch(this.outboundHttp),
-			});
-		}
-		return this.templatesService;
 	}
 
 	private createWorkflowTemplateAdapter(): InstanceAiWorkflowTemplateService {
@@ -1890,6 +1873,7 @@ export class InstanceAiAdapterService {
 					nodes: [] as INode[],
 					connections: {},
 					settings,
+					// oxlint-disable-next-line typescript/no-deprecated -- Initialize the legacy active column for the unpublished workflow.
 					active: false,
 					versionId: randomUUID(),
 				} as Partial<WorkflowEntity>);
@@ -2607,11 +2591,18 @@ export class InstanceAiAdapterService {
 				// while the execution still belongs to the workflow.
 				let nodes: INode[] = workflow.nodes ?? [];
 				let connections: IConnections = workflow.connections ?? {};
+				let settings = workflow.settings;
+				let ranVersionId = workflow.versionId;
 				const versionId = options?.versionId;
 				if (versionId !== undefined && versionId !== workflow.versionId) {
 					const version = await workflowHistoryService.getVersion(user, workflowId, versionId);
 					nodes = version.nodes ?? [];
 					connections = version.connections ?? {};
+					settings = Container.get(WorkflowVersionedSettingsService).forVersionRun(
+						workflow.settings,
+						version,
+					);
+					ranVersionId = version.versionId;
 				}
 
 				const target = nodes.find((node) => node.name === nodeName);
@@ -2769,8 +2760,9 @@ export class InstanceAiAdapterService {
 						...workflow,
 						nodes,
 						connections,
+						versionId: ranVersionId,
 						settings: {
-							...workflow.settings,
+							...settings,
 							saveManualExecutions: true,
 							saveDataSuccessExecution: 'all',
 							saveDataErrorExecution: 'all',
@@ -3728,11 +3720,13 @@ export class InstanceAiAdapterService {
 				accessFilter: async (id) => await userHasScopes(user, scopes, false, { dataTableId: id }),
 			});
 			if (result.kind === 'miss') {
-				throw new Error(`Data table "${dataTableId}" not found`);
+				throw new UserError(
+					`Data table "${dataTableId}" not found. Check the name or ID, or run list_data_tables to find the table.`,
+				);
 			}
 			if (result.kind === 'ambiguous') {
 				const projectIds = result.candidates.map((c) => c.projectId).join(', ');
-				throw new Error(
+				throw new UserError(
 					`Data table name "${dataTableId}" is ambiguous across accessible projects ` +
 						`(${projectIds}); pass the UUID or include a \`projectId\` to disambiguate.`,
 				);
@@ -3741,8 +3735,9 @@ export class InstanceAiAdapterService {
 			// disambiguator points at a different project. Never silently drop
 			// the projectId — return mismatch so the caller fixes the call.
 			if (projectIdFilter && result.table.projectId !== projectIdFilter) {
-				throw new Error(
-					`Data table "${dataTableId}" does not belong to project "${projectIdFilter}".`,
+				throw new UserError(
+					`Data table "${dataTableId}" does not belong to project "${projectIdFilter}". ` +
+						'Pass the table ID without a `projectId`, or pass the project that owns the table.',
 				);
 			}
 			return result.table;
@@ -4011,55 +4006,28 @@ export class InstanceAiAdapterService {
 			async fetchUrl(
 				url: string,
 				options?: {
-					maxContentLength?: number;
 					maxResponseBytes?: number;
 					timeoutMs?: number;
 					abortSignal?: AbortSignal;
-					authorizeUrl?: (targetUrl: string) => Promise<void>;
+					authorizeUrl?: (url: string) => Promise<void>;
 				},
 			) {
-				const cacheKey = `${userId}:${url}`;
-
-				// Check cache first
-				const cached = fetchCache.get(cacheKey);
-				if (cached) {
-					// If cached result redirected to a different host, authorize it
-					if (options?.authorizeUrl && cached.finalUrl) {
-						const origHost = new URL(url).hostname;
-						const finalHost = new URL(cached.finalUrl).hostname;
-						if (origHost !== finalHost) {
-							// Throws when the caller's domain tracker hasn't approved the
-							// redirect target — let it propagate so the tool suspends for
-							// HITL approval instead of leaking cached cross-host content.
-							await options.authorizeUrl(cached.finalUrl);
-						}
-					}
-					return cached;
-				}
-
 				const authorizeUrl = options?.authorizeUrl;
-				const transport = authorizeUrl
-					? outboundHttp.transport({
-							useDefaultSsrfPolicy: 'enforced',
-							authorize: async (target: URL) => await authorizeUrl(target.href),
-						})
-					: sharedTransport;
-
-				const page = await fetchAndExtract(url, {
-					maxContentLength: options?.maxContentLength,
-					maxResponseBytes: options?.maxResponseBytes,
-					timeoutMs: options?.timeoutMs,
-					abortSignal: options?.abortSignal,
-					transport,
-				});
-
-				// Attempt summarization (truncation fallback — no model injection yet)
-				const result = await maybeSummarize(page);
-
-				// Cache the result
-				fetchCache.set(cacheKey, result);
-
-				return result;
+				const load = async () => {
+					const transport = authorizeUrl
+						? outboundHttp.transport({
+								useDefaultSsrfPolicy: 'enforced',
+								authorize: async (target: URL) => await authorizeUrl(target.href),
+							})
+						: sharedTransport;
+					return await fetchAndExtract(url, {
+						maxResponseBytes: options?.maxResponseBytes,
+						timeoutMs: options?.timeoutMs,
+						abortSignal: options?.abortSignal,
+						transport,
+					});
+				};
+				return await fetchCachedPage({ cache: fetchCache, userId, url, load, authorizeUrl });
 			},
 		};
 	}

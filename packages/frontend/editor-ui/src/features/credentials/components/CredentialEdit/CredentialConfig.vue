@@ -81,6 +81,7 @@ type Props = {
 	isManaged?: boolean;
 	isPrivateCredentialsEnabled?: boolean;
 	isResolvable?: boolean;
+	fixedCredentialsOnly?: boolean;
 	connectedByMe?: boolean;
 	/** Provider account of the caller's own connection, for end-user credentials. */
 	connectedAccountIdentifier?: string;
@@ -641,6 +642,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 					 stable position when the credential connects or the type changes. -->
 				<CredentialTypeSelector
 					v-if="
+						!fixedCredentialsOnly &&
 						isPrivateCredentialsEnabled &&
 						// Only OAuth credentials can be dynamic for now, as they are the only ones with the managed authorize endpoint
 						isOAuthType &&

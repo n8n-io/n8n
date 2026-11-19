@@ -70,7 +70,7 @@ async function loadHistory(memory: ThreadMemoryMock): Promise<AgentDbMessage[]> 
 
 describe('AssistantTurnInputBuilder — resolveThreadArtifactsTurn', () => {
 	type Context = {
-		artifacts: Array<{ type: 'workflow'; id: string; name?: string }>;
+		artifacts: Array<{ type: 'workflow'; id: string; name?: string; executionId?: string }>;
 		activeId?: string;
 	};
 	type Internals = {
@@ -142,6 +142,21 @@ describe('AssistantTurnInputBuilder — resolveThreadArtifactsTurn', () => {
 		expect(await resolve(service, { artifacts: [digest, report], activeId: 'wf-2' })).toContain(
 			'(id: `wf-2`) [current]',
 		);
+	});
+
+	it('sends the tabs when the preview of a tab shows a new run', async () => {
+		const service = createService();
+		const firstRun = { artifacts: [{ ...digest, executionId: 'exec-1' }], activeId: 'wf-1' };
+		const earlier = buildThreadArtifactsBlock(firstRun);
+		service.agentMemory.getMessages.mockResolvedValue([storedUserTurn(earlier)]);
+
+		expect(await resolve(service, firstRun)).toBe('');
+		expect(
+			await resolve(service, {
+				artifacts: [{ ...digest, executionId: 'exec-2' }],
+				activeId: 'wf-1',
+			}),
+		).toContain('currently viewing its execution `exec-2`');
 	});
 
 	it('says no tabs are open once, then not again while nothing changes', async () => {
@@ -266,6 +281,7 @@ describe('AssistantTurnInputBuilder — resolveAiPreferencesTurn', () => {
 			loadHistory: () => Promise<unknown[]>,
 		) => Promise<{ block: string | undefined; payload: AiPreferencesAppliedPayload }>;
 		aiPreferenceService: { getApplicable: Mock };
+		aiPreferenceSettingsService: { isEnabled: boolean };
 		agentMemory: ThreadMemoryMock;
 		logger: { warn: Mock };
 	};
@@ -273,6 +289,7 @@ describe('AssistantTurnInputBuilder — resolveAiPreferencesTurn', () => {
 	function createService(): Internals {
 		const service = Object.create(AssistantTurnInputBuilder.prototype) as unknown as Internals;
 		service.aiPreferenceService = { getApplicable: vi.fn() };
+		service.aiPreferenceSettingsService = { isEnabled: true };
 		service.agentMemory = createThreadMemory();
 		service.logger = { warn: vi.fn() };
 		return service;
@@ -350,6 +367,31 @@ describe('AssistantTurnInputBuilder — resolveAiPreferencesTurn', () => {
 			renderedLength: AI_PREFERENCES_CLEARED_BLOCK.length,
 			injectedThisTurn: true,
 		});
+	});
+
+	it('reads no preferences while they are off and sends nothing to a new thread', async () => {
+		const service = createService();
+		service.aiPreferenceSettingsService.isEnabled = false;
+		service.agentMemory.getMessages.mockResolvedValue([storedUserTurn(undefined)]);
+
+		const turn = await resolvePreferences(service, boundProject);
+
+		expect(service.aiPreferenceService.getApplicable).not.toHaveBeenCalled();
+		expect(turn.block).toBeUndefined();
+		expect(turn.payload).toEqual({ preferences: [], renderedLength: 0, injectedThisTurn: false });
+	});
+
+	it('clears the preferences a thread carried once they are turned off', async () => {
+		const service = createService();
+		service.aiPreferenceSettingsService.isEnabled = false;
+		service.agentMemory.getMessages.mockResolvedValue([
+			storedUserTurn(renderAiPreferencesBlock(applicable)),
+		]);
+
+		const turn = await resolvePreferences(service, boundProject);
+
+		expect(service.aiPreferenceService.getApplicable).not.toHaveBeenCalled();
+		expect(turn.block).toBe(AI_PREFERENCES_CLEARED_BLOCK);
 	});
 
 	it.each([

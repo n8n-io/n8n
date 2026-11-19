@@ -4,7 +4,7 @@ import { computed, ref, shallowRef, watch, type Ref } from 'vue';
 
 import { useLatestFetch } from '@n8n/composables/useLatestFetch';
 
-import { getPromotionPreview } from '../promotions.api';
+import { getPromotionEnvironmentChanges, getPromotionPreview } from '../promotions.api';
 import type { ApplyCheckResult } from '../promotions.types';
 import { buildSelectionGraph } from '../promotionPreview.selection';
 import { repositoryDisplayName } from '../promotionsSettings.utils';
@@ -23,10 +23,14 @@ type PromotionPreviewState =
 	| 'ready';
 
 /**
- * Loads the preview of one project and direction for the preview page. On Apply, the preview
- * also holds the blockers, so both describe the same source.
+ * Loads the preview of one project and direction for the preview page. Without a project, it
+ * loads the Apply of the whole instance. On Apply, the preview also holds the blockers, so both
+ * describe the same source.
  */
-export function usePromotionPreview(projectId: Ref<string>, direction: Ref<PromotionDirection>) {
+export function usePromotionPreview(
+	projectId: Ref<string | undefined>,
+	direction: Ref<PromotionDirection>,
+) {
 	const rootStore = useRootStore();
 	const { next } = useLatestFetch();
 	const {
@@ -78,11 +82,14 @@ export function usePromotionPreview(projectId: Ref<string>, direction: Ref<Promo
 				return;
 			}
 
-			const result = await getPromotionPreview(
-				rootStore.publicApiContext,
-				requested.projectId,
-				requested.direction,
-			);
+			const result: PromotionPreview =
+				requested.projectId === undefined
+					? await getPromotionEnvironmentChanges(rootStore.publicApiContext, environment.value.id)
+					: await getPromotionPreview(
+							rootStore.publicApiContext,
+							requested.projectId,
+							requested.direction,
+						);
 			if (!isLatest()) return;
 			preview.value = result;
 			lastRefreshedAt.value = new Date();

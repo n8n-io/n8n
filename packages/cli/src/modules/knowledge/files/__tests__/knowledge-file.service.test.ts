@@ -11,7 +11,7 @@ import type { GlobalConfig } from '@n8n/config';
 import type { OperationContext, Transaction } from '@n8n/db';
 import type { InstanceSettings } from 'n8n-core';
 
-import type { KnowledgeFile } from '../../entities/knowledge-file.entity';
+import type { AgentFile } from '../../entities';
 import { KnowledgeConfig } from '../../knowledge.config';
 import type { KnowledgeConsumerScope } from '../../knowledge-consumer-scope';
 import type { KnowledgeSandboxProviderProxy } from '../../knowledge-sandbox-provider-proxy';
@@ -73,7 +73,7 @@ function makeMulterFile(overrides: Partial<Express.Multer.File> = {}): Express.M
 	};
 }
 
-function makeKnowledgeFile(overrides: Partial<KnowledgeFile> = {}): KnowledgeFile {
+function makeAgentFile(overrides: Partial<AgentFile> = {}): AgentFile {
 	const createdAt = overrides.createdAt ?? new Date('2026-06-01T10:00:00.000Z');
 	return {
 		id: 'file-1',
@@ -87,13 +87,13 @@ function makeKnowledgeFile(overrides: Partial<KnowledgeFile> = {}): KnowledgeFil
 		updatedAt: createdAt,
 		agent: undefined as never,
 		...overrides,
-	} as unknown as KnowledgeFile;
+	} as unknown as AgentFile;
 }
 
 class InMemoryKnowledgeFileRepository {
-	private readonly files = new Map<string, KnowledgeFile>();
+	private readonly files = new Map<string, AgentFile>();
 
-	private create(input: Partial<KnowledgeFile>): KnowledgeFile {
+	private create(input: Partial<AgentFile>): AgentFile {
 		const createdAt = new Date();
 		return {
 			id: input.id ?? 'generated-id',
@@ -106,21 +106,21 @@ class InMemoryKnowledgeFileRepository {
 			createdAt,
 			updatedAt: createdAt,
 			agent: undefined as never,
-		} as unknown as KnowledgeFile;
+		} as unknown as AgentFile;
 	}
 
-	async save(file: KnowledgeFile): Promise<KnowledgeFile> {
+	async save(file: AgentFile): Promise<AgentFile> {
 		this.files.set(file.id, { ...file });
 		return file;
 	}
 
 	async saveUploadedFile(
 		input: Parameters<KnowledgeFileRepository['saveUploadedFile']>[0],
-	): Promise<KnowledgeFile> {
+	): Promise<AgentFile> {
 		return await this.save(this.create(input));
 	}
 
-	async findByAgentId(agentIdToFind: string): Promise<KnowledgeFile[]> {
+	async findByAgentId(agentIdToFind: string): Promise<AgentFile[]> {
 		return [...this.files.values()]
 			.filter((file) => file.agentId === agentIdToFind)
 			.sort((left, right) => left.createdAt.getTime() - right.createdAt.getTime());
@@ -130,7 +130,7 @@ class InMemoryKnowledgeFileRepository {
 		return [...this.files.values()].some((file) => file.agentId === agentIdToFind);
 	}
 
-	async findByIdAndAgentId(fileId: string, agentIdToFind: string): Promise<KnowledgeFile | null> {
+	async findByIdAndAgentId(fileId: string, agentIdToFind: string): Promise<AgentFile | null> {
 		const file = this.files.get(fileId);
 		if (!file || file.agentId !== agentIdToFind) {
 			return null;
@@ -154,7 +154,7 @@ class InMemoryKnowledgeFileRepository {
 		}
 	}
 
-	all(): KnowledgeFile[] {
+	all(): AgentFile[] {
 		return [...this.files.values()];
 	}
 }
@@ -434,7 +434,7 @@ describe('KnowledgeFileService', () => {
 
 	it('allows uploads that bring the knowledge base exactly to the size limit', async () => {
 		await fileRepository.save(
-			makeKnowledgeFile({
+			makeAgentFile({
 				id: 'existing-file',
 				fileName: 'existing.txt',
 				fileSizeBytes: MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES - 1,
@@ -473,7 +473,7 @@ describe('KnowledgeFileService', () => {
 
 	it('rejects uploads that would exceed the knowledge base size limit', async () => {
 		await fileRepository.save(
-			makeKnowledgeFile({
+			makeAgentFile({
 				id: 'existing-file',
 				fileName: 'existing.txt',
 				fileSizeBytes: MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES,
@@ -498,7 +498,7 @@ describe('KnowledgeFileService', () => {
 
 	it('rejects uploads when existing knowledge files already exceed the size limit', async () => {
 		await fileRepository.save(
-			makeKnowledgeFile({
+			makeAgentFile({
 				id: 'existing-file',
 				fileName: 'existing.txt',
 				fileSizeBytes: MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES + 1,
@@ -523,7 +523,7 @@ describe('KnowledgeFileService', () => {
 
 	it('states the default total size limit in gigabytes', async () => {
 		await fileRepository.save(
-			makeKnowledgeFile({ fileSizeBytes: MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES }),
+			makeAgentFile({ fileSizeBytes: MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES }),
 		);
 
 		await expect(
@@ -534,7 +534,7 @@ describe('KnowledgeFileService', () => {
 	describe('configured limits', () => {
 		it('rejects a total above a lower configured limit that the default would accept, stated in megabytes', async () => {
 			service = makeService(true, { maxTotalSizeMb: 500 });
-			await fileRepository.save(makeKnowledgeFile({ fileSizeBytes: 500 * 1024 * 1024 }));
+			await fileRepository.save(makeAgentFile({ fileSizeBytes: 500 * 1024 * 1024 }));
 
 			await expect(
 				service.uploadFiles(scope, [makeMulterFile({ size: 1 })], writeFence),
@@ -546,7 +546,7 @@ describe('KnowledgeFileService', () => {
 
 		it('states a configured limit above one gigabyte in gigabytes', async () => {
 			service = makeService(true, { maxTotalSizeMb: 2000 });
-			await fileRepository.save(makeKnowledgeFile({ fileSizeBytes: 2000 * 1024 * 1024 }));
+			await fileRepository.save(makeAgentFile({ fileSizeBytes: 2000 * 1024 * 1024 }));
 
 			await expect(
 				service.uploadFiles(scope, [makeMulterFile({ size: 1 })], writeFence),
@@ -558,7 +558,7 @@ describe('KnowledgeFileService', () => {
 		it('accepts a total above the default limit when the configured limit is higher', async () => {
 			service = makeService(true, { maxTotalSizeMb: 2000 });
 			await fileRepository.save(
-				makeKnowledgeFile({ fileSizeBytes: MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES }),
+				makeAgentFile({ fileSizeBytes: MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES }),
 			);
 			const tempDirectory = await mkdtemp(path.join(tmpdir(), 'agent-knowledge-upload-'));
 			try {
@@ -658,7 +658,7 @@ describe('KnowledgeFileService', () => {
 
 		it('gives a full knowledge base the total_limit reason', async () => {
 			await fileRepository.save(
-				makeKnowledgeFile({ fileSizeBytes: MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES }),
+				makeAgentFile({ fileSizeBytes: MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES }),
 			);
 
 			await expect(
@@ -667,7 +667,7 @@ describe('KnowledgeFileService', () => {
 		});
 
 		it('gives an existing file name the duplicate_name reason', async () => {
-			await fileRepository.save(makeKnowledgeFile({ fileName: 'notes.txt' }));
+			await fileRepository.save(makeAgentFile({ fileName: 'notes.txt' }));
 
 			await expect(
 				service.uploadFiles(scope, [makeMulterFile({ originalname: 'notes.txt' })], writeFence),
@@ -774,8 +774,8 @@ describe('KnowledgeFileService', () => {
 	});
 
 	it('syncs the mirror when files remain after a deletion', async () => {
-		await fileRepository.save(makeKnowledgeFile({ id: 'file-1' }));
-		await fileRepository.save(makeKnowledgeFile({ id: 'file-2', fileName: 'second.txt' }));
+		await fileRepository.save(makeAgentFile({ id: 'file-1' }));
+		await fileRepository.save(makeAgentFile({ id: 'file-2', fileName: 'second.txt' }));
 
 		await expect(service.deleteFile(scope, 'file-1', writeFence)).resolves.toBe(true);
 
@@ -787,7 +787,7 @@ describe('KnowledgeFileService', () => {
 	});
 
 	it('destroys the sandbox after the final file is deleted', async () => {
-		await fileRepository.save(makeKnowledgeFile({ id: 'file-1' }));
+		await fileRepository.save(makeAgentFile({ id: 'file-1' }));
 
 		await expect(service.deleteFile(scope, 'file-1', writeFence)).resolves.toBe(true);
 
@@ -796,8 +796,8 @@ describe('KnowledgeFileService', () => {
 	});
 
 	it('deletes the file and its blob', async () => {
-		await fileRepository.save(makeKnowledgeFile({ id: 'file-1', storedAt: 'fs' }));
-		await fileRepository.save(makeKnowledgeFile({ id: 'file-2', fileName: 'second.txt' }));
+		await fileRepository.save(makeAgentFile({ id: 'file-1', storedAt: 'fs' }));
+		await fileRepository.save(makeAgentFile({ id: 'file-2', fileName: 'second.txt' }));
 
 		await expect(service.deleteFile(scope, 'file-1', writeFence)).resolves.toBe(true);
 
@@ -808,7 +808,7 @@ describe('KnowledgeFileService', () => {
 	});
 
 	it('logs blob deletion failures without restoring the DB row', async () => {
-		await fileRepository.save(makeKnowledgeFile({ id: 'file-1', storedAt: 'fs' }));
+		await fileRepository.save(makeAgentFile({ id: 'file-1', storedAt: 'fs' }));
 		fileStore.delete.mockRejectedValueOnce(new Error('delete failed'));
 
 		await expect(service.deleteFile(scope, 'file-1', writeFence)).resolves.toBe(true);
@@ -822,9 +822,9 @@ describe('KnowledgeFileService', () => {
 	});
 
 	it('deletes all files of the scope and their blobs', async () => {
-		await fileRepository.save(makeKnowledgeFile({ id: 'file-1', storedAt: 'fs' }));
+		await fileRepository.save(makeAgentFile({ id: 'file-1', storedAt: 'fs' }));
 		await fileRepository.save(
-			makeKnowledgeFile({
+			makeAgentFile({
 				id: 'file-2',
 				storedAt: 's3',
 				fileName: 'guide.md',
@@ -832,7 +832,7 @@ describe('KnowledgeFileService', () => {
 			}),
 		);
 		await fileRepository.save(
-			makeKnowledgeFile({ id: 'other-agent-file', agentId: 'agent-2', fileName: 'other.txt' }),
+			makeAgentFile({ id: 'other-agent-file', agentId: 'agent-2', fileName: 'other.txt' }),
 		);
 
 		await expect(service.deleteAll(scope)).resolves.toBeUndefined();
@@ -845,7 +845,7 @@ describe('KnowledgeFileService', () => {
 	});
 
 	it('logs blob deletion failures when deleting all files', async () => {
-		await fileRepository.save(makeKnowledgeFile({ id: 'file-1', storedAt: 'fs' }));
+		await fileRepository.save(makeAgentFile({ id: 'file-1', storedAt: 'fs' }));
 		fileStore.delete.mockRejectedValueOnce(new Error('delete failed'));
 
 		await expect(service.deleteAll(scope)).resolves.toBeUndefined();
@@ -859,8 +859,8 @@ describe('KnowledgeFileService', () => {
 
 	it('lists the files of the scope as DTOs', async () => {
 		const createdAt = new Date('2026-06-01T10:00:00.000Z');
-		await fileRepository.save(makeKnowledgeFile({ id: 'file-1', createdAt }));
-		await fileRepository.save(makeKnowledgeFile({ id: 'other', agentId: 'agent-2' }));
+		await fileRepository.save(makeAgentFile({ id: 'file-1', createdAt }));
+		await fileRepository.save(makeAgentFile({ id: 'other', agentId: 'agent-2' }));
 
 		await expect(service.listFiles(scope)).resolves.toEqual([
 			{

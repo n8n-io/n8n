@@ -18,8 +18,7 @@ import { AuthService } from '@/auth/auth.service';
 import config from '@/config';
 import { ExternalHooks } from '@/external-hooks';
 import { License } from '@/license';
-import { JwtService } from '@n8n/backend-services';
-import { PasswordUtility } from '@/services/password.utility';
+import { JwtService, PasswordUtility } from '@n8n/backend-services';
 import { setCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
 import { UserManagementMailer } from '@/user-management/email';
 

@@ -36,16 +36,23 @@ const executeWorkflow = (parameters: INode['parameters'], typeVersion = 1.2) =>
 const splitInBatches = (parameters: INode['parameters'], typeVersion = 3) =>
 	node({ type: 'n8n-nodes-base.splitInBatches', typeVersion, parameters });
 
-/** Trigger -> node over `main`. */
+const loopBody = node({ id: 'body-id', name: 'Body' });
+
+/** Trigger -> node over `main`. A Split In Batches node also gets a body that returns to it. */
 function check(target: INode, extraConnections: IConnections = {}) {
-	return checkEngineV2Eligibility({
-		nodes: [trigger, target],
-		connections: {
-			[trigger.name]: { main: [[{ node: target.name, type: 'main', index: 0 }]] },
-			...extraConnections,
-		},
-		settings: {},
-	});
+	const nodes = [trigger, target];
+	const connections: IConnections = {
+		[trigger.name]: { main: [[{ node: target.name, type: 'main', index: 0 }]] },
+	};
+	if (target.type === 'n8n-nodes-base.splitInBatches') {
+		nodes.push(loopBody);
+		connections[target.name] = { main: [[], [{ node: loopBody.name, type: 'main', index: 0 }]] };
+		connections[loopBody.name] = { main: [[{ node: target.name, type: 'main', index: 0 }]] };
+	}
+	for (const [name, byType] of Object.entries(extraConnections)) {
+		connections[name] = { ...connections[name], ...byType };
+	}
+	return checkEngineV2Eligibility({ nodes, connections, settings: {} });
 }
 
 const toolConnection: IConnections = {
@@ -64,6 +71,24 @@ describe('converter rules', () => {
 			shape: 'a node with onError continueErrorOutput',
 			target: node({ onError: 'continueErrorOutput' }),
 			code: 'CONTINUE_ERROR_OUTPUT',
+			kind: 'temporary',
+		},
+		{
+			shape: 'a node with Retry On Fail',
+			target: node({ retryOnFail: true }),
+			code: 'RETRY_ON_FAIL',
+			kind: 'temporary',
+		},
+		{
+			shape: 'a node with Always Output Data',
+			target: node({ alwaysOutputData: true }),
+			code: 'ALWAYS_OUTPUT_DATA',
+			kind: 'temporary',
+		},
+		{
+			shape: 'a node with Execute Once',
+			target: node({ executeOnce: true }),
+			code: 'EXECUTE_ONCE',
 			kind: 'temporary',
 		},
 		{
@@ -176,6 +201,14 @@ describe('converter rules', () => {
 		{
 			shape: 'a node with onError continueRegularOutput',
 			target: node({ onError: 'continueRegularOutput' }),
+		},
+		{
+			shape: 'a node with the execution settings explicitly off',
+			target: node({ retryOnFail: false, alwaysOutputData: false, executeOnce: false }),
+		},
+		{
+			shape: 'a disabled node with Retry On Fail',
+			target: node({ retryOnFail: true, disabled: true }),
 		},
 		{ shape: 'a Merge node in append mode', target: merge(3, 'append') },
 		// Merge v1 predates chooseBranch, so the converter allows an expression mode there.

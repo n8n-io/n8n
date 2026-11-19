@@ -352,7 +352,7 @@ describe('EvalExecutionService', () => {
 
 		// NodeTypesProxy.getByNameAndVersion returns a minimal node type with no webhook
 		nodeTypes.getByNameAndVersion.mockReturnValue({
-			description: { properties: [] } as unknown as INodeTypeDescription,
+			description: { properties: [], group: [] } as unknown as INodeTypeDescription,
 		} as never);
 	});
 
@@ -407,6 +407,37 @@ describe('EvalExecutionService', () => {
 					workflow: expect.objectContaining({ id: 'wf-1' }),
 					nodeNames: ['Webhook'],
 				}),
+			);
+		});
+
+		it('lists only trigger nodes as start points, not action nodes with a webhook method', async () => {
+			const schedule = {
+				id: 'n1',
+				name: 'Schedule Trigger',
+				type: 'n8n-nodes-base.scheduleTrigger',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			} as INode;
+			const slack = { ...schedule, id: 'n2', name: 'Slack', type: 'n8n-nodes-base.slack' } as INode;
+			nodeTypes.getByNameAndVersion.mockImplementation(
+				(type) =>
+					(type === 'n8n-nodes-base.slack'
+						? { description: { properties: [], group: ['output'] }, webhook: vi.fn() }
+						: {
+								description: { properties: [], group: ['trigger', 'schedule'] },
+								trigger: vi.fn(),
+							}) as never,
+			);
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(
+				makeWorkflowEntity({ nodes: [schedule, slack] }) as never,
+			);
+			identifyNodesForHintsMock.mockReturnValue([slack]);
+
+			await service.executeWithLlmMock('wf-1', makeUser());
+
+			expect(generateMockHintsMock).toHaveBeenCalledWith(
+				expect.objectContaining({ triggerNodeNames: ['Schedule Trigger'] }),
 			);
 		});
 
@@ -489,7 +520,7 @@ describe('EvalExecutionService', () => {
 		describe('trigger content', () => {
 			function triggerCapableStart() {
 				nodeTypes.getByNameAndVersion.mockReturnValue({
-					description: { properties: [] } as unknown as INodeTypeDescription,
+					description: { properties: [], group: ['trigger'] } as unknown as INodeTypeDescription,
 					webhook: vi.fn(),
 				} as never);
 			}
@@ -535,7 +566,7 @@ describe('EvalExecutionService', () => {
 
 			it('pins one empty item for a Manual Trigger without trigger content', async () => {
 				nodeTypes.getByNameAndVersion.mockReturnValue({
-					description: { properties: [] } as unknown as INodeTypeDescription,
+					description: { properties: [], group: ['trigger'] } as unknown as INodeTypeDescription,
 					trigger: vi.fn(),
 				} as never);
 				const manualTrigger = {
@@ -584,10 +615,13 @@ describe('EvalExecutionService', () => {
 			function mockIdLocatorNodeType() {
 				nodeTypes.getByNameAndVersion.mockImplementation((nodeType) => {
 					if (nodeType !== 'n8n-nodes-base.httpRequest') {
-						return { description: { properties: [] } as unknown as INodeTypeDescription } as never;
+						return {
+							description: { properties: [], group: [] } as unknown as INodeTypeDescription,
+						} as never;
 					}
 					return {
 						description: {
+							group: [],
 							properties: [
 								{
 									displayName: 'Project',
@@ -1364,6 +1398,7 @@ describe('EvalExecutionService', () => {
 			it('upgrades a pre-marked "real" entry to "mocked" when a wire-server turn fires', async () => {
 				nodeTypes.getByNameAndVersion.mockReturnValue({
 					description: {
+						group: [],
 						properties: [
 							{
 								name: 'requiredField',
@@ -1438,6 +1473,7 @@ describe('EvalExecutionService', () => {
 				);
 				const sheetsType = {
 					description: {
+						group: [],
 						properties: [
 							{ displayName: 'Resource', name: 'resource', type: 'string', default: 'sheet' },
 							{ displayName: 'Operation', name: 'operation', type: 'string', default: 'update' },
@@ -1461,7 +1497,9 @@ describe('EvalExecutionService', () => {
 					(type) =>
 						(type === 'n8n-nodes-base.googleSheets'
 							? sheetsType
-							: { description: { properties: [] } as unknown as INodeTypeDescription }) as never,
+							: {
+									description: { properties: [], group: [] } as unknown as INodeTypeDescription,
+								}) as never,
 				);
 				workflowFinderService.findWorkflowForUser.mockResolvedValue(
 					makeWorkflowEntity({
@@ -1519,12 +1557,13 @@ describe('EvalExecutionService', () => {
 			nodeTypes.getByNameAndVersion.mockImplementation((nodeType) => {
 				if (nodeType !== 'n8n-nodes-base.httpRequest') {
 					return {
-						description: { properties: [] } as unknown as INodeTypeDescription,
+						description: { properties: [], group: [] } as unknown as INodeTypeDescription,
 					} as never;
 				}
 
 				return {
 					description: {
+						group: [],
 						properties: [
 							{
 								name: 'requiredField',
@@ -1619,6 +1658,7 @@ describe('EvalExecutionService', () => {
 				(nodeType) =>
 					({
 						description: {
+							group: [],
 							properties:
 								nodeType === 'n8n-nodes-base.emailSend'
 									? ['fromEmail', 'toEmail'].map((name) => ({
@@ -2183,7 +2223,7 @@ describe('EvalExecutionService', () => {
 			mockGetStartNode.mockReturnValue(undefined);
 			// Also ensure findWebhookNode returns nothing — nodeTypes must not match webhook
 			nodeTypes.getByNameAndVersion.mockReturnValue({
-				description: { properties: [] } as unknown as INodeTypeDescription,
+				description: { properties: [], group: [] } as unknown as INodeTypeDescription,
 			} as never);
 
 			const result = await service.executeWithLlmMock('wf-1', makeUser());
@@ -2736,7 +2776,7 @@ describe('EvalExecutionService', () => {
 				return null;
 			});
 			nodeTypes.getByNameAndVersion.mockReturnValue({
-				description: { properties: [] } as unknown as INodeTypeDescription,
+				description: { properties: [], group: ['trigger'] } as unknown as INodeTypeDescription,
 				poll,
 			} as never);
 
@@ -2761,7 +2801,7 @@ describe('EvalExecutionService', () => {
 				return [[{ json: { id: 'msg-1', threadId: 'thr-1' } }]];
 			});
 			nodeTypes.getByNameAndVersion.mockReturnValue({
-				description: { properties: [] } as unknown as INodeTypeDescription,
+				description: { properties: [], group: ['trigger'] } as unknown as INodeTypeDescription,
 				poll,
 			} as never);
 
