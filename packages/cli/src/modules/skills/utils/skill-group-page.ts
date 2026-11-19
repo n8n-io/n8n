@@ -1,47 +1,44 @@
 export type SkillSourceGroup = { sourceId: string | null; count: number };
 
-/** Keep source groups whole. Local skills fill the remaining space and can span pages. */
+/** Slice skills in source order. Headers and fold state do not change page boundaries. */
 export function skillGroupPage(
 	groups: SkillSourceGroup[],
-	collapsed: Set<string>,
 	requestedPage: number,
 	pageSize = Number.POSITIVE_INFINITY,
 	focusSourceId?: string,
 ) {
-	const pages: Array<Array<{ sourceId: string; count: number }>> = [[]];
-	let rowsOnLastPage = 0;
 	let count = 0;
-	let localCount = 0;
-	let focusedPage: number | undefined;
+	let focusedOffset: number | undefined;
 	for (const group of groups) {
-		if (group.sourceId === null) {
-			localCount = group.count;
-			continue;
-		}
-		const size = collapsed.has(group.sourceId) ? 1 : Math.max(1, group.count);
-		if (rowsOnLastPage > 0 && rowsOnLastPage + size > pageSize) {
-			pages.push([]);
-			rowsOnLastPage = 0;
-		}
-		pages[pages.length - 1].push({ sourceId: group.sourceId, count: group.count });
-		if (group.sourceId === focusSourceId) focusedPage = pages.length - 1;
-		rowsOnLastPage += size;
-		count += size;
+		if (group.sourceId === focusSourceId) focusedOffset = count;
+		count += group.count;
 	}
-	const firstLocalCount = Math.min(localCount, Math.max(0, pageSize - rowsOnLastPage));
-	const pageCount = pages.length + Math.ceil((localCount - firstLocalCount) / pageSize);
-	const page = Math.min(focusedPage ?? requestedPage, pageCount - 1);
-	const lastSourcePage = pages.length - 1;
-	const localSkip = page <= lastSourcePage ? 0 : firstLocalCount + (page - pages.length) * pageSize;
+	const pageCount = Math.max(1, Math.ceil(count / pageSize));
+	const page = Math.min(
+		focusedOffset === undefined ? requestedPage : Math.floor(focusedOffset / pageSize),
+		pageCount - 1,
+	);
+	// An unlimited first page must not multiply zero by infinity.
+	const start = page === 0 ? 0 : page * pageSize;
+	const end = start + pageSize;
+	const sourceGroups: Array<{ sourceId: string; count: number; skip: number; take: number }> = [];
+	let offset = 0;
+	let localSkip = 0;
 	let localTake = 0;
-	if (page === lastSourcePage) localTake = firstLocalCount;
-	else if (page > lastSourcePage) localTake = Math.min(pageSize, localCount - localSkip);
-	return {
-		groups: pages[page] ?? [],
-		count: count + localCount,
-		page,
-		pageCount,
-		localSkip,
-		localTake,
-	};
+	for (const group of groups) {
+		const skip = Math.max(0, start - offset);
+		const take = Math.max(0, Math.min(offset + group.count, end) - Math.max(offset, start));
+		if (group.sourceId === null) {
+			localSkip = Math.min(skip, group.count);
+			localTake = take;
+		} else {
+			// Empty sources stay beside the next skill, or on the last page if none follows.
+			const emptyPage = Math.min(Math.floor(offset / pageSize), pageCount - 1);
+			if (take > 0 || (group.count === 0 && page === emptyPage)) {
+				sourceGroups.push({ sourceId: group.sourceId, count: group.count, skip, take });
+			}
+		}
+		offset += group.count;
+	}
+	return { groups: sourceGroups, count, page, pageCount, localSkip, localTake };
 }

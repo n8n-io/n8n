@@ -124,6 +124,7 @@ export {
 	InstanceRegistryProxyService,
 	type InstanceRegistryProvider,
 } from './services/instance-registry-proxy.service';
+export { PushProxy, type PushSender } from './services/push-proxy.service';
 export { TelemetryProxy, type TelemetryTracker } from './services/telemetry-proxy.service';
 export { ExecutingUserIdentifierProxy } from './credentials/executing-user-identifier-proxy';
 export type { IExecutingUserIdentifier } from './credentials/executing-user-identifier.interface';
