@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import type { InboxWorkflowReviewItem } from '@n8n/api-types';
+import type { InboxWorkflowReviewItem, WorkflowReviewRequestSummary } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import { N8nEmptyState, N8nHeading, N8nLoading } from '@n8n/design-system';
-import { useI18n } from '@n8n/i18n';
+import { type BaseTextKey, useI18n } from '@n8n/i18n';
 import { storeToRefs } from 'pinia';
 import { computed, onBeforeUnmount, onMounted, watch } from 'vue';
 
@@ -87,7 +87,12 @@ function asSentence(message: string) {
 	return /[.!?]$/.test(trimmed) ? trimmed : `${trimmed}.`;
 }
 
-async function onDecide(input: WorkflowReviewDecisionInput) {
+// Shared by decide and close, so both reconcile the Inbox row, feed and detail the same way.
+async function runReviewAction<T extends WorkflowReviewRequestSummary>(
+	submit: (id: string) => Promise<T>,
+	errorTitle: BaseTextKey,
+	onSuccess?: (result: T, ownsSelectionNow: boolean, isActiveNow: boolean) => void,
+) {
 	const id = props.reviewId;
 	const revision = selectionRevision;
 
@@ -102,12 +107,11 @@ async function onDecide(input: WorkflowReviewDecisionInput) {
 	deciding.value = true;
 
 	try {
-		const { autoPublish, state, decision, updatedAt } = await reviewStore.decideOnReview(id, input);
+		const result = await submit(id);
+		const { state, decision, updatedAt } = result;
 		onItemChange({ type: 'workflow_review', id, state, decision, updatedAt });
 
-		if (ownsSelection(id, revision)) {
-			activityStore.clearDecisionNote(input.note ?? '');
-		}
+		onSuccess?.(result, ownsSelection(id, revision), isActive());
 
 		if (isSelected(id)) {
 			void activityStore.fetchFeed(id);
@@ -116,27 +120,6 @@ async function onDecide(input: WorkflowReviewDecisionInput) {
 				void loadDetail(id, reviewStore.selectionRevision);
 			}
 		}
-
-		if (!isActive()) {
-			return;
-		}
-
-		if (autoPublish?.status === 'published') {
-			showMessage({
-				type: 'success',
-				title: i18n.baseText('workflowReviews.decision.approved.published.title'),
-				message: i18n.baseText('workflowReviews.decision.approved.published.message'),
-			});
-		} else if (autoPublish?.status === 'failed') {
-			showMessage({
-				type: 'warning',
-				duration: 0,
-				title: i18n.baseText('workflowReviews.decision.approved.publishFailed.title'),
-				message: i18n.baseText('workflowReviews.decision.approved.publishFailed.message', {
-					interpolate: { message: asSentence(autoPublish.message) },
-				}),
-			});
-		}
 	} catch (error) {
 		onItemChange({ type: 'workflow_review', id });
 
@@ -144,11 +127,11 @@ async function onDecide(input: WorkflowReviewDecisionInput) {
 			return;
 		}
 
-		showError(error, i18n.baseText('workflowReviews.decision.error.title'));
+		showError(error, i18n.baseText(errorTitle));
 
 		const selectedId = activityStore.currentReviewId;
 		if (selectedId && isSelected(selectedId)) {
-			// Another reviewer can decide first. Keep the note while loading the current result.
+			// Another reviewer can act first. Keep the note while loading the current result.
 			await Promise.all([
 				loadDetail(selectedId, reviewStore.selectionRevision),
 				selectedId === id ? activityStore.fetchFeed(id) : undefined,
@@ -157,6 +140,46 @@ async function onDecide(input: WorkflowReviewDecisionInput) {
 	} finally {
 		deciding.value = false;
 	}
+}
+
+async function onDecide(input: WorkflowReviewDecisionInput) {
+	await runReviewAction(
+		async (id) => await reviewStore.decideOnReview(id, input),
+		'workflowReviews.decision.error.title',
+		({ autoPublish }, ownsSelectionNow, isActiveNow) => {
+			if (ownsSelectionNow) {
+				activityStore.clearDecisionNote(input.note ?? '');
+			}
+
+			if (!isActiveNow) {
+				return;
+			}
+
+			if (autoPublish?.status === 'published') {
+				showMessage({
+					type: 'success',
+					title: i18n.baseText('workflowReviews.decision.approved.published.title'),
+					message: i18n.baseText('workflowReviews.decision.approved.published.message'),
+				});
+			} else if (autoPublish?.status === 'failed') {
+				showMessage({
+					type: 'warning',
+					duration: 0,
+					title: i18n.baseText('workflowReviews.decision.approved.publishFailed.title'),
+					message: i18n.baseText('workflowReviews.decision.approved.publishFailed.message', {
+						interpolate: { message: asSentence(autoPublish.message) },
+					}),
+				});
+			}
+		},
+	);
+}
+
+async function onClose() {
+	await runReviewAction(
+		async (id) => await reviewStore.closeReview(id),
+		'workflowReviews.close.error.title',
+	);
 }
 
 onMounted(() => {
@@ -205,6 +228,7 @@ onBeforeUnmount(() => {
 				:deciding="deciding"
 				@update:tab="emit('update:tab', $event)"
 				@decide="onDecide"
+				@close="onClose"
 			/>
 			<slot v-else />
 		</div>

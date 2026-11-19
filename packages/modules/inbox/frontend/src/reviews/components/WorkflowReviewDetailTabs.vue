@@ -23,6 +23,7 @@ const props = defineProps<{
 const emit = defineEmits<{
 	'update:tab': [tab: WorkflowReviewDetailTab];
 	decide: [input: WorkflowReviewDecisionInput];
+	close: [];
 }>();
 
 const i18n = useI18n();
@@ -55,6 +56,7 @@ watch(
 
 const viewerCanDecide = computed(() => detail.value?.viewerCanDecide ?? false);
 const viewerCanComment = computed(() => detail.value?.viewerCanComment ?? false);
+const viewerCanClose = computed(() => detail.value?.viewerCanClose ?? false);
 
 // See the key's doc: read-time names for feed entries, never snapshotted into payloads.
 provide(
@@ -137,8 +139,10 @@ const tabOptions = computed(() => [
 					:deciding="deciding"
 					:viewer-can-decide="viewerCanDecide"
 					:viewer-can-comment="viewerCanComment"
+					:viewer-can-close="viewerCanClose"
 					:ineligibility-hint="ineligibilityHint"
 					@decide="emit('decide', $event)"
+					@close="emit('close')"
 					@comment-posted="emit('update:tab', 'activity')"
 				/>
 			</div>

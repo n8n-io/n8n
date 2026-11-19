@@ -48,6 +48,7 @@ const renderComponent = createComponentRenderer(WorkflowReviewDecisionPopover, {
 		deciding: false,
 		viewerCanDecide: true,
 		viewerCanComment: true,
+		viewerCanClose: true,
 		ineligibilityHint: '',
 	},
 });
@@ -258,6 +259,7 @@ describe('WorkflowReviewDecisionPopover', () => {
 		const { getByTestId } = renderComponent({
 			props: {
 				viewerCanDecide: false,
+				viewerCanClose: false,
 				ineligibilityHint: 'You contributed a version to this review.',
 			},
 		});
@@ -268,6 +270,47 @@ describe('WorkflowReviewDecisionPopover', () => {
 			'data-content',
 			'You contributed a version to this review.',
 		);
+	});
+
+	it.each<[string, { viewerCanDecide: boolean; viewerCanClose: boolean }, boolean, boolean]>([
+		['a reviewer', { viewerCanDecide: true, viewerCanClose: true }, true, true],
+		['a requester', { viewerCanDecide: false, viewerCanClose: true }, false, true],
+		['anyone else', { viewerCanDecide: false, viewerCanClose: false }, false, false],
+	])(
+		'offers %s only the review actions they may take',
+		(_label, props, offersDecision, offersClose) => {
+			const hint = 'You contributed a version to this review.';
+			const { getByTestId, queryByTestId, queryByText } = renderComponent({
+				props: { ...props, ineligibilityHint: props.viewerCanDecide ? '' : hint },
+			});
+
+			expect(getByTestId('workflow-review-decision-trigger').hasAttribute('disabled')).toBe(
+				!offersDecision && !offersClose,
+			);
+			expect(queryByTestId('workflow-review-decision-approve-button') !== null).toBe(
+				offersDecision,
+			);
+			expect(queryByTestId('workflow-review-decision-note') !== null).toBe(offersDecision);
+			expect(queryByTestId('workflow-review-decision-close-button') !== null).toBe(offersClose);
+			// A viewer who may only close still learns why they cannot decide.
+			expect(queryByText(hint) !== null).toBe(!offersDecision && offersClose);
+		},
+	);
+
+	it('closes the review and explains what closing does', async () => {
+		const { getByTestId, emitted } = renderComponent();
+
+		await userEvent.click(getByTestId('open-popover'));
+		const close = getByTestId('workflow-review-decision-close-button');
+		expect(tooltipOf(close)).toHaveAttribute(
+			'data-content',
+			'Discards the changes and closes the review.',
+		);
+		await userEvent.click(close);
+
+		expect(emitted('close')).toHaveLength(1);
+		expect(emitted('decide')).toBeUndefined();
+		expect(getByTestId('popover-root')).toHaveAttribute('data-open', 'false');
 	});
 
 	// A wrapper around the trigger takes the popover's own trigger props with it: the click,

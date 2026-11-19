@@ -62,14 +62,22 @@ vi.mock('./WorkflowReviewDetailMetadata.vue', () => ({
 vi.mock('./WorkflowReviewDecisionPopover.vue', () => ({
 	default: {
 		name: 'WorkflowReviewDecisionPopover',
-		props: ['deciding', 'viewerCanDecide', 'viewerCanComment', 'ineligibilityHint'],
+		props: [
+			'deciding',
+			'viewerCanDecide',
+			'viewerCanComment',
+			'viewerCanClose',
+			'ineligibilityHint',
+		],
 		template: `
 			<div
 				data-test-id="workflow-review-decision-popover"
 				:data-can-decide="viewerCanDecide"
+				:data-can-close="viewerCanClose"
 				:data-ineligibility-hint="ineligibilityHint"
 			>
 				<button data-test-id="emit-comment-posted" @click="$emit('comment-posted')" />
+				<button data-test-id="emit-close" @click="$emit('close')" />
 			</div>`,
 	},
 }));
@@ -118,6 +126,7 @@ function makeDetail(
 		viewerCanDecide: true,
 		viewerDecisionIneligibilityReason: null,
 		viewerCanComment: true,
+		viewerCanClose: true,
 		...overrides,
 	};
 }
@@ -475,6 +484,28 @@ describe('WorkflowReviewDetailTabs', () => {
 				'data-ineligibility-hint',
 				'You contributed a version to this review.',
 			);
+		});
+
+		it('lets a requester who cannot decide close the review', () => {
+			const { getByTestId, emitted } = renderComponent({
+				props: {
+					review: makeDetail({
+						viewerCanDecide: false,
+						viewerDecisionIneligibilityReason: 'author',
+						viewerCanClose: true,
+					}),
+					tab: 'activity',
+					deciding: false,
+				},
+			});
+
+			expect(getByTestId('workflow-review-decision-popover')).toHaveAttribute(
+				'data-can-close',
+				'true',
+			);
+			getByTestId('emit-close').click();
+
+			expect(emitted('close')).toHaveLength(1);
 		});
 
 		it('falls back to the generic permission hint for any other reason', () => {

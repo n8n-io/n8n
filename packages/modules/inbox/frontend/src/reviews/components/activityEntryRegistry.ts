@@ -16,6 +16,7 @@ const registry: ActivityEntryRegistry = {
 	'review.approved': { 1: WorkflowReviewActivityEventEntry },
 	'review.version_updated': { 1: WorkflowReviewActivityEventEntry },
 	'review.closed': { 1: WorkflowReviewActivityEventEntry },
+	'review.closed_by_user': { 1: WorkflowReviewActivityEventEntry },
 	'workflow.archived': { 1: WorkflowReviewActivityEventEntry },
 	'workflow.deleted': { 1: WorkflowReviewActivityEventEntry },
 	'workflow.moved': { 1: WorkflowReviewActivityEventEntry },
