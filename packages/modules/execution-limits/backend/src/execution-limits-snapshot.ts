@@ -1,6 +1,7 @@
 import type { ExecutionLimitSettings } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Publisher } from '@n8n/backend-services';
+import { Time } from '@n8n/constants';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { latestWins } from '@n8n/utils/promise/latest-wins';
@@ -9,13 +10,16 @@ import { ExecutionLimitSettingsStore } from './execution-limit-settings.store';
 import type { ApplicableLimits } from './execution-limits.types';
 import { ProjectExecutionLimitRepository } from './project-execution-limit.repository';
 
+export const REFRESH_INTERVAL_MS = 60 * Time.seconds.toMilliseconds;
+
 /**
  * Every execution limit, held in memory so a read at an execution start does no I/O.
  * The database stays the source of truth.
  *
- * Kept fresh by events only: the writing process reloads after its commit, and the others
- * reload on a pubsub command or when their pubsub connection comes back. A command that is
- * lost while the connection stays up leaves a process on the old limits until the next change.
+ * Kept fresh by events: the writing process reloads after its commit, and the others reload
+ * on a pubsub command or when their pubsub connection comes back. A read also starts a reload
+ * when the last one is older than `REFRESH_INTERVAL_MS`, which recovers from a failed reload
+ * or a lost command.
  */
 @Service()
 export class ExecutionLimitsSnapshot {
@@ -23,6 +27,8 @@ export class ExecutionLimitsSnapshot {
 		settings: ExecutionLimitSettings;
 		projectMaxExecutions: ReadonlyMap<string, number>;
 	} | null = null;
+
+	private refreshDueAt = 0;
 
 	constructor(
 		private readonly settingsStore: ExecutionLimitSettingsStore,
@@ -33,8 +39,10 @@ export class ExecutionLimitsSnapshot {
 		this.logger = this.logger.scoped('policy');
 	}
 
-	/** `null` until the first load succeeds. */
+	/** `null` until the first load succeeds. Never waits for the reload that it starts. */
 	read(projectId: string): ApplicableLimits | null {
+		if (Date.now() >= this.refreshDueAt) void this.reload();
+
 		if (!this.loaded) return null;
 
 		return {
@@ -48,6 +56,8 @@ export class ExecutionLimitsSnapshot {
 	@OnPubSubEvent('reload-execution-limits')
 	@OnPubSubEvent('pubsub-reconnected')
 	async reload(): Promise<void> {
+		this.refreshDueAt = Date.now() + REFRESH_INTERVAL_MS;
+
 		try {
 			await this.loadLatest();
 		} catch (error) {

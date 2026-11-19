@@ -6,7 +6,7 @@ import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
 import type { ExecutionLimitSettingsStore } from '../execution-limit-settings.store';
-import { ExecutionLimitsSnapshot } from '../execution-limits-snapshot';
+import { ExecutionLimitsSnapshot, REFRESH_INTERVAL_MS } from '../execution-limits-snapshot';
 import type { ProjectExecutionLimitRepository } from '../project-execution-limit.repository';
 
 const SETTINGS: ExecutionLimitSettings = {
@@ -24,6 +24,7 @@ describe('ExecutionLimitsSnapshot', () => {
 	let snapshot: ExecutionLimitsSnapshot;
 
 	beforeEach(() => {
+		vi.useFakeTimers({ toFake: ['Date'] });
 		vi.resetAllMocks();
 		settingsStore.read.mockResolvedValue(SETTINGS);
 		projectLimitRepository.findAll.mockResolvedValue([{ projectId: 'limited', maxExecutions: 50 }]);
@@ -36,6 +37,10 @@ describe('ExecutionLimitsSnapshot', () => {
 		);
 	});
 
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
 	it('reads the limits of a project after a load', async () => {
 		await snapshot.reload();
 
@@ -43,14 +48,31 @@ describe('ExecutionLimitsSnapshot', () => {
 		expect(snapshot.read('other')).toEqual({ ...LIMITED, projectMaxExecutions: null });
 	});
 
-	it('has nothing to read until a load succeeds', async () => {
+	it('has nothing to read until a load succeeds, and a read after the refresh interval loads again', async () => {
 		settingsStore.read.mockRejectedValueOnce(new Error('database is down'));
 
 		await snapshot.reload();
 		expect(snapshot.read('limited')).toBeNull();
 
+		vi.advanceTimersByTime(REFRESH_INTERVAL_MS);
+		expect(snapshot.read('limited')).toBeNull();
+		await vi.waitFor(() => expect(snapshot.read('limited')).toEqual(LIMITED));
+	});
+
+	it('reloads on a read only when the last reload is older than the refresh interval', async () => {
 		await snapshot.reload();
+		projectLimitRepository.findAll.mockResolvedValue([]);
+
+		vi.advanceTimersByTime(REFRESH_INTERVAL_MS - 1);
 		expect(snapshot.read('limited')).toEqual(LIMITED);
+		expect(projectLimitRepository.findAll).toHaveBeenCalledOnce();
+
+		vi.advanceTimersByTime(1);
+		expect(snapshot.read('limited')).toEqual(LIMITED);
+		await vi.waitFor(() =>
+			expect(snapshot.read('limited')).toEqual({ ...LIMITED, projectMaxExecutions: null }),
+		);
+		expect(projectLimitRepository.findAll).toHaveBeenCalledTimes(2);
 	});
 
 	it('keeps the loaded limits when a reload fails', async () => {
