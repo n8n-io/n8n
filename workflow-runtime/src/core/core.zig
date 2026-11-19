@@ -1116,10 +1116,22 @@ fn compactModules(s: *State) void {
     s.natives_used = nat;
 }
 
+/// The tier of a module. `full` of the workflow language is the `sync` tier:
+/// the reply waits for the synced log record. A module without a known value
+/// (`steps`, or none) has the `batched` tier.
 fn durabilityOf(meta: []const u8) Durability {
     if (std.mem.indexOf(u8, meta, "\"durability\":\"sync\"") != null) return .sync;
+    if (std.mem.indexOf(u8, meta, "\"durability\":\"full\"") != null) return .sync;
     if (std.mem.indexOf(u8, meta, "\"durability\":\"none\"") != null) return .none;
     return .batched;
+}
+
+test "durabilityOf: full and sync are the sync tier" {
+    try std.testing.expectEqual(Durability.sync, durabilityOf("{\"durability\":\"full\"}"));
+    try std.testing.expectEqual(Durability.sync, durabilityOf("{\"durability\":\"sync\"}"));
+    try std.testing.expectEqual(Durability.none, durabilityOf("{\"durability\":\"none\"}"));
+    try std.testing.expectEqual(Durability.batched, durabilityOf("{\"durability\":\"steps\"}"));
+    try std.testing.expectEqual(Durability.batched, durabilityOf("{}"));
 }
 
 fn addRoute(s: *State, payload: []const u8) void {
