@@ -2,6 +2,7 @@ import { HttpRunRegistry } from '../http-runs';
 import { GMAIL_PROFILE } from '../http-profiles';
 import type { GymAdmin } from '../gym-admin';
 import type { HydrationModel } from '../hydration-llm';
+import { sendToNetwork } from '../net-interceptor';
 import { loadVendorKnowledge } from '../vendor-knowledge';
 
 vi.mock('../net-interceptor', () => ({
@@ -10,7 +11,7 @@ vi.mock('../net-interceptor', () => ({
 
 const model: HydrationModel = { resolve: async () => ({}) as never };
 
-function setup(tenantExists = true) {
+function setup(tenantExists = true, gymUrl = 'http://127.0.0.1:8083') {
 	const admin = {
 		createTenant: vi.fn(async (_t: string) => {}),
 		seed: vi.fn(async (..._a: unknown[]) => ({})),
@@ -22,7 +23,7 @@ function setup(tenantExists = true) {
 		profile: GMAIL_PROFILE,
 		vendor: loadVendorKnowledge('gmail'),
 		admin: admin as unknown as GymAdmin,
-		gymUrl: 'http://127.0.0.1:8083',
+		gymUrl,
 	});
 	return { registry, admin };
 }
@@ -99,5 +100,41 @@ describe('HttpRunRegistry', () => {
 		expect(await registry.delete('agent-a')).toBe(true);
 		expect(admin.deleteTenant).toHaveBeenCalledWith('guard-agent-a');
 		expect(await registry.delete('agent-a')).toBe(false);
+	});
+
+	it('reads the real service with the credential of the request, and falls back to the gym', async () => {
+		const send = vi.mocked(sendToNetwork);
+		send.mockClear();
+		// Port 1 has no gym, so the answer does not depend on a gym that runs on this machine.
+		const { registry } = setup(true, 'http://127.0.0.1:1');
+		const run = await registry.getOrCreate('agent-r', model);
+
+		const res = await run.router.handle({
+			method: 'GET',
+			url: new URL('https://www.googleapis.com/gmail/v1/users/me/messages?maxResults=3'),
+			headers: { authorization: 'Bearer real-token' },
+		});
+
+		const sent = send.mock.calls[0][0];
+		expect(sent.url.protocol).toBe('https:');
+		expect(sent.headers.authorization).toBe('Bearer real-token');
+		expect(sent.headers.accept).toBe('application/json');
+		// The gym of the test does not run, so the router answers with an error.
+		expect(res.status).toBe(502);
+	});
+
+	it('deletes the tenant of a chat that nobody used for a long time when a new chat starts', async () => {
+		vi.useFakeTimers();
+		try {
+			const { registry, admin } = setup();
+			await registry.getOrCreate('agent-old', model);
+
+			vi.setSystemTime(Date.now() + 7 * 60 * 60 * 1000);
+			await registry.getOrCreate('agent-new', model);
+
+			expect(admin.deleteTenant).toHaveBeenCalledWith('guard-agent-old');
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 });

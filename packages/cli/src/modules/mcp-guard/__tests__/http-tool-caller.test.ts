@@ -286,3 +286,68 @@ describe('createGymSender', () => {
 		await expect(send(req('GET', 'https://www.googleapis.com/x'))).rejects.toThrow();
 	});
 });
+
+describe('http tool caller edge cases', () => {
+	it('names a root read, a HEAD read of one object, and keeps repeated query keys', () => {
+		const root = toToolCall(req('GET', 'https://x.test/'), true);
+		const one = toToolCall(req('HEAD', 'https://x.test/files/1a1f32cf20c4c2fb'), true);
+		const many = toToolCall(req('GET', 'https://x.test/files?label=a&label=b&label=c'), true);
+
+		expect(root.name).toBe('read_list_root');
+		expect(one.name).toBe('read_get_files');
+		expect(many.args.query).toEqual({ label: ['a', 'b', 'c'] });
+	});
+
+	it('sends a text body as it is, a JSON body with a content type, and no body on a GET', () => {
+		const text = fromToolArgs('https://x.test', { method: 'POST', path: '/a', body: 'raw' }, {});
+		const json = fromToolArgs('https://x.test', { method: 'POST', path: '/a', body: { a: 1 } }, {});
+		const get = fromToolArgs('https://x.test', { method: 'GET', path: '/a', body: { a: 1 } }, {});
+
+		expect(text.body?.toString()).toBe('raw');
+		expect(json.headers['content-type']).toBe('application/json');
+		expect(get.body).toBeUndefined();
+	});
+
+	it('keeps the body when it is no JSON, and marks an error status', async () => {
+		const send = vi.fn(
+			async (_r: CapturedRequest) =>
+				new Response('plain text', { status: 404, headers: { 'content-type': 'text/plain' } }),
+		);
+		const caller = createHttpToolCaller({
+			origin: () => 'https://x.test',
+			send,
+			headers: () => ({}),
+			enrich: () => {
+				throw new Error('must not be used for text');
+			},
+		});
+
+		const result = await caller.callTool('read_x', { method: 'GET', path: '/a' });
+
+		expect(result.isError).toBe(true);
+		expect(result.content).toEqual([{ type: 'text', text: 'plain text' }]);
+		expect(result._meta).toEqual({ status: 404, contentType: 'text/plain' });
+		expect(await caller.listTools()).toEqual([]);
+	});
+
+	it('answers a no-content status of the gym without a body', async () => {
+		const server = http.createServer((_req, res) => {
+			res.statusCode = 204;
+			res.end();
+		});
+		await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+		const gymUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+		try {
+			const send = createGymSender({ gymUrl, bearer: () => 't' });
+
+			const res = await send(
+				req('DELETE', 'https://www.googleapis.com/gmail/v1/users/me/drafts/x'),
+			);
+
+			expect(res.status).toBe(204);
+			expect(await res.text()).toBe('');
+		} finally {
+			await new Promise((resolve) => server.close(resolve));
+		}
+	});
+});

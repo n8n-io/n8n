@@ -216,3 +216,104 @@ describe('withMailbox', () => {
 		expect(GMAIL_PROFILE.finalize).toBe(withMailbox);
 	});
 });
+
+describe('Gmail profile edge cases', () => {
+	it('skips header entries that are no text pair and header names that the model does not use', () => {
+		const out = enrichGmail({
+			id: 'm1',
+			payload: {
+				headers: [
+					null,
+					{ name: 5, value: 'x' },
+					{ name: 'X-Other', value: 'ignored' },
+					{ name: 'From', value: 'a@x.test' },
+				],
+				body: { data: Buffer.from('hi').toString('base64url') },
+			},
+		}) as { hdr: Record<string, string>; decodedBody: string };
+
+		expect(out.hdr).toEqual({ from: 'a@x.test' });
+		expect(out.decodedBody).toBe('');
+	});
+
+	it('leaves the date out when internalDate is no number, and reads a message without labels as read', () => {
+		const out = enrichGmail({ id: 'm1', internalDate: 'soon', payload: { headers: [] } }) as Record<
+			string,
+			unknown
+		>;
+
+		expect(out.isoDate).toBeUndefined();
+		expect(out.isRead).toBe(true);
+	});
+
+	it('enriches a list of messages and leaves other values as they are', () => {
+		const list = enrichGmail([{ id: 'a', payload: { headers: [] } }, 'text', 3]) as unknown[];
+
+		expect(list[1]).toBe('text');
+		expect(list[2]).toBe(3);
+		expect((list[0] as Record<string, unknown>).hdr).toEqual({});
+		expect(enrichGmail({ id: 'no payload' })).toEqual({ id: 'no payload' });
+		expect(enrichGmail('text')).toBe('text');
+	});
+
+	it('asks for no reads when a list result has no usable ids or is missing', () => {
+		const lookups = GMAIL_PROFILE.lookups!;
+
+		expect(lookups('read_list_messages', {}, undefined)).toEqual([]);
+		expect(lookups('read_list_threads', {}, { threads: [null, { id: 5 }] })).toEqual([]);
+		expect(lookups('read_list_labels', {}, { labels: [] })).toEqual([]);
+	});
+
+	it('reads the thread that a write names, and ignores a path with a short name', () => {
+		const lookups = GMAIL_PROFILE.lookups!;
+
+		expect(
+			lookups('write_post_threads_modify', {
+				path: '/gmail/v1/users/me/threads/1a1f32cf20c4c2fb/modify',
+			}),
+		).toEqual([
+			{
+				tool: 'read_get_threads',
+				args: {
+					method: 'GET',
+					path: '/gmail/v1/users/me/threads/1a1f32cf20c4c2fb',
+					query: { format: 'full' },
+				},
+			},
+		]);
+		expect(
+			lookups('write_post_messages_send', { path: '/gmail/v1/users/me/messages/send' }),
+		).toEqual([]);
+	});
+
+	it('hydrates a label list that has a user label, and skips one that is no list', () => {
+		const args = { method: 'GET', path: '/gmail/v1/users/me/labels' };
+
+		expect(GMAIL_PROFILE.hydrateRead!(args, { labels: [{ type: 'user' }] })).toBe(true);
+		expect(GMAIL_PROFILE.hydrateRead!(args, 'not an object')).toBe(false);
+		expect(
+			GMAIL_PROFILE.hydrateRead!({ method: 'GET', path: '/gmail/v1/users/me/messages' }, {}),
+		).toBe(true);
+	});
+
+	it('does not hydrate a write without an object in its path', () => {
+		expect(
+			GMAIL_PROFILE.hydrateWrite!(
+				{ method: 'POST', path: '/gmail/v1/users/me/messages/send' },
+				new Set(),
+			),
+		).toBe(false);
+	});
+
+	it('keeps an overlay that has no messages or labels, and items that are no records', () => {
+		const only = { native: { gmail: { labels: [{ name: 'a' }, 'x'] } } };
+		const placed = withMailbox(only) as { native: { gmail: Record<string, unknown[]> } };
+
+		expect(placed.native.gmail.messages).toBeUndefined();
+		expect(placed.native.gmail.labels[1]).toBe('x');
+		expect(withMailbox({ native: { gmail: { messages: 'not a list' } } })).toEqual({
+			native: { gmail: { messages: 'not a list' } },
+		});
+		expect(withMailbox({ native: 5 })).toEqual({ native: 5 });
+	});
+});

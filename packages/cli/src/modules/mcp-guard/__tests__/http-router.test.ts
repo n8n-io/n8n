@@ -262,4 +262,28 @@ describe('HttpGuardRouter', () => {
 		expect(context.authorization).toBe('Bearer real-token');
 		expect(context.origin).toBe('https://gmail.googleapis.com');
 	});
+
+	it('answers an error result without a status as 500 with a JSON content type', async () => {
+		const bare: CallToolResult = { isError: true, content: [{ type: 'text', text: '{"e":1}' }] };
+		const { router, gym } = setup();
+		gym.callTool.mockResolvedValueOnce(bare);
+
+		const res = await router.handle(request('GET', `${LIST}/${ID}`));
+
+		expect(res.status).toBe(500);
+		expect(res.headers.get('content-type')).toBe('application/json');
+	});
+
+	it('keeps the earlier credential when a request has none, and reads a body that is no JSON', async () => {
+		const { router, upstream, context } = setup();
+		upstream.callTool.mockResolvedValueOnce({
+			content: [{ type: 'text', text: 'not json' }],
+			_meta: { status: 200 },
+		});
+		await router.handle(request('GET', LIST));
+
+		await router.handle({ ...request('GET', LIST), headers: {} });
+
+		expect(context.authorization).toBe('Bearer real-token');
+	});
 });
