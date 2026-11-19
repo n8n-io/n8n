@@ -1,4 +1,5 @@
 export { V1WorkflowConverter } from './v1-workflow-converter';
+export { createIdempotencyResolver } from './node-idempotency';
 export { V1StepExecutor } from './v1-step-executor';
 export { createEngineStepDataLoader } from './engine-step-data-loader';
 export { fromStepInputs, toStepOutputs } from './io';

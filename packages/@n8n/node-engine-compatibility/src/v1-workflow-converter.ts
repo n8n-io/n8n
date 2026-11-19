@@ -73,6 +73,12 @@ export interface ConvertOptions {
 	 * in for the trigger payload.
 	 */
 	allowNonTriggerRoot?: boolean;
+	/**
+	 * Tells if a second run of the node has the same effect as one run. The
+	 * converter has no node types, so the caller supplies the answer. The
+	 * converter writes it on the graph node. Absent, no node is idempotent.
+	 */
+	isIdempotent?: (node: INode) => boolean;
 }
 
 export class V1WorkflowConverter {
@@ -94,7 +100,9 @@ export class V1WorkflowConverter {
 			.filter((node) => node.disabled === true)
 			.map((node) => node.id);
 
-		const nodes = liveNodes.map((node) => this.toGraphNode(node, trigger?.id));
+		const nodes = liveNodes.map((node) =>
+			this.toGraphNode(node, trigger?.id, options.isIdempotent),
+		);
 
 		let edges = this.toEdges(rooted);
 		edges = this.spliceOutDisabledNodes(edges, disabledNodeIds);
@@ -133,7 +141,11 @@ export class V1WorkflowConverter {
 		return triggers[0];
 	}
 
-	private toGraphNode(node: INode, firedTriggerId?: string): GraphNode {
+	private toGraphNode(
+		node: INode,
+		firedTriggerId?: string,
+		isIdempotent?: (node: INode) => boolean,
+	): GraphNode {
 		if (node.id === firedTriggerId) {
 			const config: TriggerStepConfig = {
 				nodeType: node.type,
@@ -167,7 +179,10 @@ export class V1WorkflowConverter {
 		// Set only when present, so a node without credentials serializes without the key.
 		if (node.credentials !== undefined) config.credentials = node.credentials;
 
-		return { id: node.id, name: node.name, type: 'v1-node', config };
+		const graphNode: GraphNode = { id: node.id, name: node.name, type: 'v1-node', config };
+		// Set only when true, so every other node serializes without the key.
+		if (isIdempotent?.(node) === true) graphNode.idempotent = true;
+		return graphNode;
 	}
 
 	/**

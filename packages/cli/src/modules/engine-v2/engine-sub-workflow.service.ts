@@ -88,6 +88,7 @@ export class EngineSubWorkflowService {
 				workflowData: subWorkflowData,
 				triggerName: trigger.name,
 				triggerOutputs,
+				nodeTypes: this.nodeTypes,
 			})),
 			returnLastRunOnly: triggerReturnsLastRunOnly(subWorkflowData.nodes),
 		};
