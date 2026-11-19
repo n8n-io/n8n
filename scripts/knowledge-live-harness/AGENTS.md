@@ -92,7 +92,9 @@ a Notion citation must hold the page id, a Slack citation the channel and the
 thread ts). A scope probe expects the refusal line and forbids the texts of
 the not-picked item (`forbidContains`). A run passes when the answer and the
 citation are right, or the refusal is right, and no tool call named a
-not-picked or out-of-seed id (a scope violation).
+not-picked id (a scope violation). An `OUT OF SEED` read is a warning, not a
+violation: in a seed-only workspace it is a row or a reply inside a picked
+container that `items.json` does not list.
 
 `run` writes `results/run-<time>.json` after every answer (`partial: true`
 until the run ends, so a crash keeps what was measured) and `.md` with two

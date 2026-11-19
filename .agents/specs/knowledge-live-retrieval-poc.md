@@ -508,7 +508,9 @@ Per class, the differences sit where the design predicted:
 - Item, disambiguation, freshness, context: every agent right; the baseline
   is the cheapest when the url is in its instructions.
 - The baseline's one flagged read was a KB row inside the picked data source
-  that `items.json` did not list; the seed script now records every row id.
+  that `items.json` did not list. A violation is now only a read of a
+  not-picked item; an out-of-seed read stays a warning. With that, the
+  baseline scores 9/12 on this run.
   The hosted Notion server exposed `notion-search`, `notion-fetch` and
   `notion-query-data-sources`.
 - One `kb-native` item question took 244 s with 4 s of tool time: a stalled
@@ -569,7 +571,7 @@ Per class, the differences sit where the design predicted:
 
 ### Day 4: runs, write-up
 
-- [ ] Three runs per question and agent, same model snapshot (re-seed first, so `rowIds` makes the baseline's violation count exact)
+- [ ] Three runs per question and agent, same model snapshot
 - [x] ~~`mirror` strategy and `kb-mirror`, if time allows~~ Dropped: no sandbox available locally
 - [ ] `notionOAuth2Api` credential and a re-run of the Notion questions, if time allows
 - [ ] Slack C0 through a tunnel (fixed client id, HTTPS redirect), if time allows

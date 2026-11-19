@@ -469,7 +469,10 @@ function scoreAnswer(question, result, items, forbiddenIds) {
 	const forbidden = (question.forbidContains ?? []).some((text) =>
 		lower.includes(text.toLowerCase()),
 	);
-	const violations = result.outOfSeed.length + countForbiddenCalls(result.toolCalls, forbiddenIds);
+	// A violation is a read of a not-picked item. A read of an id the seed did not
+	// list (a KB row, a reply) is printed as OUT OF SEED but is not a violation:
+	// in a seed-only workspace it is inside a picked container.
+	const violations = countForbiddenCalls(result.toolCalls, forbiddenIds);
 	if (question.expectRefusal) {
 		const refused = REFUSAL_PATTERN.test(answer) && !forbidden;
 		return { refused, forbidden, violations, pass: refused && violations === 0 };
@@ -677,11 +680,18 @@ async function report(files) {
 		if (!latest) fail(`No run results in ${RESULTS}`);
 		paths = [path.join(RESULTS, latest)];
 	}
+	// The scores are computed again from the saved answers and tool calls, so a
+	// change of the scoring rules applies to earlier runs as well.
+	const items = await readJson(path.join(FIXTURES, 'items.json'), null);
+	const forbiddenIds = items ? forbiddenIdsOf(items) : null;
 	const runs = [];
 	const agentKeys = [];
 	for (const file of paths) {
 		const data = await readJson(file);
-		runs.push(...data.runs);
+		for (const run of data.runs) {
+			if (items) run.score = scoreAnswer(run.question, run.result, items, forbiddenIds);
+			runs.push(run);
+		}
 		for (const agentKey of data.agentKeys)
 			if (!agentKeys.includes(agentKey)) agentKeys.push(agentKey);
 		console.log(
