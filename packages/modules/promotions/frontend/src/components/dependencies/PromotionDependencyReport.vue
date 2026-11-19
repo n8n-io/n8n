@@ -72,14 +72,12 @@ const gapCount = computed(() => props.report.gaps.length);
 
 type Status = {
 	theme: 'danger' | 'success' | 'info' | 'warning';
-	key: 'hardBlocks' | 'none' | 'incomplete' | 'strict';
+	key: 'hardBlocks' | 'none' | 'gaps';
 };
 const status = computed((): Status => {
 	if (props.report.hardBlocks.length > 0) return { theme: 'danger', key: 'hardBlocks' };
 	if (gapCount.value === 0) return { theme: props.pending ? 'warning' : 'success', key: 'none' };
-	return props.report.allowIncomplete
-		? { theme: 'info', key: 'incomplete' }
-		: { theme: 'warning', key: 'strict' };
+	return { theme: 'info', key: 'gaps' };
 });
 const statusText = computed(() => {
 	// Without a gap, a pending confirmation is the only thing that the user must read.
@@ -88,7 +86,7 @@ const statusText = computed(() => {
 		`promotions.dependencies.status.${status.value.key}.${props.direction}`,
 		{ adjustToNumber: gapCount.value, interpolate: { count: String(gapCount.value) } },
 	);
-	return props.pending && status.value.key === 'incomplete' ? `${text} ${props.pending}` : text;
+	return props.pending && status.value.key === 'gaps' ? `${text} ${props.pending}` : text;
 });
 
 // The state of each request to an owner, by target. It lasts while the page is open. After a
@@ -123,7 +121,7 @@ function ownerRequestOf(row: GapTargetRow): OwnerRequestState | undefined {
 
 /** The project that gets the placeholder of a credential gap: the project of its consumer. */
 function placeholderProject(row: GapTargetRow): string | undefined {
-	if (!row.placeholder || !props.report.allowIncomplete || props.direction !== 'apply') {
+	if (!row.placeholder || props.direction !== 'apply') {
 		return undefined;
 	}
 	return props.projectNames.get(row.gaps[0].consumer.projectId) ?? '';

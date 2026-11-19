@@ -31,7 +31,7 @@ const props = defineProps<{
 	/** False when the page has no way to send a request to the owner. */
 	canAskOwner?: boolean;
 	ownerRequest?: OwnerRequestState;
-	/** Where an incomplete Apply creates the placeholder of this credential. */
+	/** Where the Apply creates the placeholder of this credential. */
 	placeholderProject?: string;
 }>();
 

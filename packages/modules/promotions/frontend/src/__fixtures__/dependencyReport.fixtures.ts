@@ -22,8 +22,9 @@ import type { PromotionOwnerRequester } from '../promotionDependencies';
  * production path imports this file: `promotionFixtures.ts` loads it only in a development
  * build, for `?fixture=<name>` on a preview page.
  *
- * Names: `strict` (the default), `incomplete`, `blocked` (hard blocks), `changed` (the first
- * submit answers that the gaps changed) and `clean` (no gap, only what an Apply confirms).
+ * Names: `gaps` (the default, also for a name that is not listed), `blocked` (hard blocks),
+ * `changed` (the first submit answers that the gaps changed) and `clean` (no gap, only what
+ * an Apply confirms).
  *
  * Cast: Sales owns the workflows "Sync orders" and "Daily report". Platform owns the
  * credential "CRM key". Ops owns the sub-workflow "Notify on-call". The user can only read
@@ -200,7 +201,7 @@ function sharedGaps(direction: PromotionDirection): PromotionGap[] {
 			usage: 'credential',
 			group: 'read-only-project',
 			state: missing,
-			exits: ['ask-owner', 'continue-incomplete'],
+			exits: ['ask-owner'],
 		},
 		{
 			id: 'gap:wf-sync:workflow:Qx81LmZ0pRt2',
@@ -208,7 +209,7 @@ function sharedGaps(direction: PromotionDirection): PromotionGap[] {
 			target: { kind: 'workflow', id: 'Qx81LmZ0pRt2' },
 			usage: 'sub-workflow',
 			group: 'no-access',
-			exits: ['ask-owner', 'continue-incomplete'],
+			exits: ['ask-owner'],
 		},
 		{
 			id: 'gap:wf-sync:credential:cred-warehouse',
@@ -221,7 +222,7 @@ function sharedGaps(direction: PromotionDirection): PromotionGap[] {
 			},
 			usage: 'credential',
 			group: 'no-access',
-			exits: ['ask-owner', 'continue-incomplete'],
+			exits: ['ask-owner'],
 			ownerRequestSent: true,
 			...(direction === 'apply' ? { placeholder: true } : {}),
 		},
@@ -236,7 +237,7 @@ function sharedGaps(direction: PromotionDirection): PromotionGap[] {
 			},
 			usage: 'credential',
 			group: 'personal',
-			exits: ['move-to-team-project', 'continue-incomplete'],
+			exits: ['move-to-team-project'],
 			...(direction === 'apply' ? { placeholder: true } : {}),
 		},
 		{
@@ -250,7 +251,7 @@ function sharedGaps(direction: PromotionDirection): PromotionGap[] {
 			},
 			usage: 'error-workflow',
 			group: 'outside-environment',
-			exits: ['add-project', 'continue-incomplete'],
+			exits: ['add-project'],
 		},
 	];
 }
@@ -269,7 +270,7 @@ const applyGaps: PromotionGap[] = [
 		usage: 'credential',
 		group: 'not-on-branch',
 		state: 'not-on-branch',
-		exits: ['continue-incomplete'],
+		exits: [],
 		placeholder: true,
 	},
 	{
@@ -278,7 +279,7 @@ const applyGaps: PromotionGap[] = [
 		target: { kind: 'workflow', id: 'wf-escalate', name: 'Escalate incident', project: ops },
 		usage: 'error-workflow',
 		group: 'archived-on-destination',
-		exits: ['restore', 'continue-incomplete'],
+		exits: ['restore'],
 	},
 	{
 		id: 'gap:wf-daily:credential:cred-dwh',
@@ -292,7 +293,7 @@ const applyGaps: PromotionGap[] = [
 		},
 		usage: 'credential',
 		group: 'access-not-grantable',
-		exits: ['continue-incomplete'],
+		exits: [],
 	},
 	{
 		id: 'gap:wf-sync:workflow:wf-legacy',
@@ -300,7 +301,7 @@ const applyGaps: PromotionGap[] = [
 		target: { kind: 'workflow', id: 'wf-legacy', name: 'Legacy alerts', project: ops },
 		usage: 'sub-workflow',
 		group: 'deleted-by-apply',
-		exits: ['remove-deletion', 'continue-incomplete'],
+		exits: ['remove-deletion'],
 	},
 	{
 		id: 'gap:wf-daily:workflow:wf-normalize',
@@ -308,7 +309,7 @@ const applyGaps: PromotionGap[] = [
 		target: { kind: 'workflow', id: 'wf-normalize', name: 'Normalize', project: ops },
 		usage: 'sub-workflow',
 		group: 'caller-policy',
-		exits: ['change-policy', 'continue-incomplete'],
+		exits: ['change-policy'],
 	},
 ];
 
@@ -370,14 +371,12 @@ function hardBlocks(direction: PromotionDirection): PromotionHardBlock[] {
 }
 
 function report(name: string, direction: PromotionDirection): PromotionDependencyReport {
-	const allowIncomplete = name !== 'strict' && name !== '1';
 	const clean = name === 'clean';
 	const gaps = clean ? [] : [...sharedGaps(direction), ...(direction === 'apply' ? applyGaps : [])];
 	const blocks = name === 'blocked' ? hardBlocks(direction) : [];
 	const forApply = direction === 'apply';
 	return {
-		allowIncomplete,
-		blocked: blocks.length > 0 || (!allowIncomplete && gaps.length > 0),
+		blocked: blocks.length > 0,
 		gaps,
 		warnings: clean
 			? []
@@ -592,7 +591,6 @@ export function createPromotionFixture(
 		providerType: 'gitlab',
 		branchName: 'main',
 		createBranchOnPromotion: direction === 'promote',
-		allowIncomplete: dependencyReport.allowIncomplete,
 	};
 	const changes: PromotionEnvironmentChanges = swap({
 		direction,
@@ -625,7 +623,7 @@ export function createPromotionFixture(
 			usage: 'sub-workflow',
 			group: 'other-project',
 			state: direction === 'promote' ? 'not-on-branch' : 'missing-on-destination',
-			exits: ['ask-owner', 'continue-incomplete'],
+			exits: ['ask-owner'],
 		};
 		const gaps = [...dependencyReport.gaps.filter(({ id }) => confirmedGapIds.includes(id)), added];
 		return { ...dependencyReport, gaps };

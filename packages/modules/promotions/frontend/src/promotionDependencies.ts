@@ -144,7 +144,7 @@ export function scopeDependencyReport(
 		}),
 		deletionCallers: report.deletionCallers.filter(({ target }) => inOperation(target.id)),
 		resourceWarnings: report.resourceWarnings?.filter(({ consumer }) => inOperation(consumer.id)),
-		blocked: hardBlocks.length > 0 || (!report.allowIncomplete && gaps.length > 0),
+		blocked: hardBlocks.length > 0 || report.credentialHomeChoices.length > 0,
 	};
 }
 
@@ -199,7 +199,7 @@ export function isEmptyReport(report: PromotionDependencyReport) {
 	);
 }
 
-/** The credentials that an incomplete Apply creates as placeholders, one for each id. */
+/** The credentials that the Apply creates as placeholders, one for each id. */
 export function placeholderGaps(gaps: readonly PromotionGap[]): PromotionGap[] {
 	const seen = new Set<string>();
 	return gaps.filter((gap) => {

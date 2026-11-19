@@ -53,16 +53,13 @@ const hiddenKeptProjects = computed(() => props.report.hiddenKeptProjectCount ??
 const workflowLinks = (workflows: ReadonlyArray<{ id: string; name: string }>) =>
 	workflows.map(({ id, name }) => ({ key: `workflow:${id}`, name }));
 
-// A placeholder exists only after an incomplete Apply, so a strict environment shows none.
 const placeholders = computed(() =>
-	props.report.allowIncomplete
-		? placeholderGaps(props.report.gaps).map((gap) => ({
-				id: gap.target.id,
-				target: gap.target,
-				project: props.projectNames.get(gap.consumer.projectId),
-				consumer: gap.consumer.name,
-			}))
-		: [],
+	placeholderGaps(props.report.gaps).map((gap) => ({
+		id: gap.target.id,
+		target: gap.target,
+		project: props.projectNames.get(gap.consumer.projectId),
+		consumer: gap.consumer.name,
+	})),
 );
 </script>
 

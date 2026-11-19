@@ -25,7 +25,7 @@ export type ApplyOutcome = {
 	keptProjects: PromotionKeptProject[];
 	/** The workflows and folders that the Apply moved between two team projects. */
 	moves: PromotionAppliedMove[];
-	/** The references that stay unresolved after an incomplete Apply. */
+	/** The references that stay unresolved after an Apply with gaps. */
 	unresolvedCount: number;
 	/** What did not stop the Apply, such as a reference that is broken on the source. */
 	warnings: PromotionDependencyWarning[];

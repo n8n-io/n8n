@@ -19,7 +19,7 @@ import PromotionDependencySection from './PromotionDependencySection.vue';
 import PromotionGapRow from './PromotionGapRow.vue';
 
 /**
- * The confirmation of an incomplete Promote or Apply. It lists every gap that the user
+ * The confirmation of a Promote or an Apply with gaps. It lists every gap that the user
  * accepts, and what the operation does about them.
  */
 const props = defineProps<{
@@ -69,7 +69,7 @@ const effects = computed((): string[] => {
 					? 'promotions.dependencies.confirm.effect.review'
 					: 'promotions.dependencies.confirm.effect.commit',
 			),
-			i18n.baseText('promotions.dependencies.confirm.effect.strictApply'),
+			i18n.baseText('promotions.dependencies.confirm.effect.apply'),
 		];
 	}
 	const placeholders = placeholderGaps(props.report.gaps);
@@ -108,16 +108,16 @@ function submit() {
 		:open="open"
 		size="large"
 		:aria-description="intro"
-		data-test-id="promotion-incomplete-dialog"
+		data-test-id="promotion-gaps-dialog"
 		@update:open="emit('update:open', $event)"
 	>
 		<N8nDialogHeader>
 			<N8nDialogTitle>{{ title }}</N8nDialogTitle>
 		</N8nDialogHeader>
 		<N8nDialogBody>
-			<form id="promotion-incomplete-form" :class="$style.body" @submit.prevent="submit">
+			<form id="promotion-gaps-form" :class="$style.body" @submit.prevent="submit">
 				<N8nText tag="p" color="text-base" :class="$style.paragraph">{{ intro }}</N8nText>
-				<div :class="$style.gaps" data-test-id="promotion-incomplete-gaps">
+				<div :class="$style.gaps" data-test-id="promotion-gaps-gaps">
 					<PromotionDependencySection
 						v-for="group in groups"
 						:key="group.id"
@@ -138,7 +138,7 @@ function submit() {
 					<N8nText tag="p" bold color="text-dark" :class="$style.paragraph">
 						{{ i18n.baseText('promotions.dependencies.confirm.effects') }}
 					</N8nText>
-					<ul :class="$style.effectList" data-test-id="promotion-incomplete-effects">
+					<ul :class="$style.effectList" data-test-id="promotion-gaps-effects">
 						<li v-for="effect in effects" :key="effect">
 							<N8nText color="text-base">{{ effect }}</N8nText>
 						</li>
@@ -151,15 +151,15 @@ function submit() {
 			<N8nButton
 				type="button"
 				variant="outline"
-				data-test-id="promotion-incomplete-cancel"
+				data-test-id="promotion-gaps-cancel"
 				@click="emit('update:open', false)"
 			>
 				{{ i18n.baseText('generic.cancel') }}
 			</N8nButton>
 			<N8nButton
 				type="submit"
-				form="promotion-incomplete-form"
-				data-test-id="promotion-incomplete-confirm"
+				form="promotion-gaps-form"
+				data-test-id="promotion-gaps-confirm"
 			>
 				{{ confirmLabel }}
 			</N8nButton>

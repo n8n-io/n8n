@@ -1,14 +1,12 @@
 <script setup lang="ts">
 import {
 	N8nActionToggle,
-	N8nBadge,
 	N8nButton,
 	N8nIcon,
 	N8nIconButton,
 	N8nSettingsRow,
 	N8nStatusDot,
 	N8nText,
-	N8nTooltip,
 	type StatusDotVariant,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -102,25 +100,7 @@ function onAction(action: 'edit' | 'remove') {
 		</N8nSettingsRow>
 		<N8nSettingsRow :show-divider="false">
 			<template #info>
-				<div :class="$style.name">
-					<N8nText bold color="text-dark">{{ environment.name }}</N8nText>
-					<N8nTooltip
-						v-if="environment.settings.allowIncomplete"
-						:content="
-							i18n.baseText(
-								`settings.promotions.environment.allowIncomplete.badge.tooltip.${environment.direction}`,
-							)
-						"
-					>
-						<N8nBadge
-							variant="warning"
-							size="xsmall"
-							data-test-id="promotion-environment-allow-incomplete-badge"
-						>
-							{{ i18n.baseText('settings.promotions.environment.allowIncomplete.badge') }}
-						</N8nBadge>
-					</N8nTooltip>
-				</div>
+				<N8nText bold color="text-dark">{{ environment.name }}</N8nText>
 				<N8nText :class="$style.remote" size="small" color="text-light">
 					{{
 						i18n.baseText('settings.promotions.environment.remoteSummary', {
@@ -201,13 +181,6 @@ function onAction(action: 'edit' | 'remove') {
 </template>
 
 <style lang="scss" module>
-.name {
-	display: flex;
-	align-items: center;
-	flex-wrap: wrap;
-	gap: var(--spacing--2xs);
-}
-
 .remote {
 	overflow-wrap: anywhere;
 }

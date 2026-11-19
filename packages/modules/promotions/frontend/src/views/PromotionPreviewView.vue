@@ -6,7 +6,6 @@ import type {
 } from '@n8n/api-types';
 import { useDocumentTitle } from '@n8n/composables/useDocumentTitle';
 import {
-	N8nBadge,
 	N8nButton,
 	N8nCallout,
 	N8nEmptyState,
@@ -17,7 +16,6 @@ import {
 	N8nResizeWrapper,
 	N8nTabs,
 	N8nText,
-	N8nTooltip,
 	useResizablePanel,
 } from '@n8n/design-system';
 import { VIEWS } from '@n8n/frontend-constants/views';
@@ -33,7 +31,7 @@ import { useRoute, useRouter } from 'vue-router';
 import PromotionApplyResultDialog from '../components/dependencies/PromotionApplyResultDialog.vue';
 import PromotionDependencyReport from '../components/dependencies/PromotionDependencyReport.vue';
 import PromotionDependencySummary from '../components/dependencies/PromotionDependencySummary.vue';
-import PromotionIncompleteDialog from '../components/dependencies/PromotionIncompleteDialog.vue';
+import PromotionGapsDialog from '../components/dependencies/PromotionGapsDialog.vue';
 import PromotionPlannedMoves from '../components/dependencies/PromotionPlannedMoves.vue';
 import PromotionBlockers from '../components/preview/PromotionBlockers.vue';
 import PromotionChangeCards from '../components/preview/PromotionChangeCards.vue';
@@ -324,13 +322,6 @@ const keptKeys = computed(
 				? (dependencies.report.value?.keptWorkflows ?? []).map(({ id }) => `workflow:${id}`)
 				: [],
 		),
-);
-/**
- * Strict or not. The report of the last check wins over the settings that the page loaded, so
- * the badge is right after an admin changed the environment.
- */
-const allowsIncomplete = computed(
-	() => dependencies.report.value?.allowIncomplete ?? environment.value?.allowIncomplete ?? false,
 );
 /** The confirmation that an Apply without gaps still waits for. */
 const pendingText = computed(() => {
@@ -741,9 +732,9 @@ const submitLabel = computed(() =>
 );
 
 // Promote asks for the optional commit message first. Apply confirms inside the operation.
-// An incomplete operation asks in the dialog of the gaps instead.
+// An operation with gaps asks in the dialog of the gaps instead.
 const promoteDialogOpen = ref(false);
-const incompleteDialogOpen = ref(false);
+const gapsDialogOpen = ref(false);
 // Lives here, not in the dialog, so the typed message survives a failed promote.
 const promoteCommitMessage = ref('');
 // The router reuses this view across projects, so a draft must not carry over.
@@ -753,7 +744,7 @@ watch(projectId, () => {
 
 async function onSubmit() {
 	if (dependencies.needsGapConfirmation.value) {
-		incompleteDialogOpen.value = true;
+		gapsDialogOpen.value = true;
 		return;
 	}
 	if (props.direction === 'promote') {
@@ -768,8 +759,8 @@ async function onPromoteConfirm(commitMessage: string | undefined) {
 	await operation.submit({ ...request.value, commitMessage });
 }
 
-async function onIncompleteConfirm(commitMessage: string | undefined) {
-	incompleteDialogOpen.value = false;
+async function onGapsConfirm(commitMessage: string | undefined) {
+	gapsDialogOpen.value = false;
 	await operation.submit({
 		...request.value,
 		...(props.direction === 'promote' ? { commitMessage } : {}),
@@ -791,7 +782,6 @@ const showDependenciesTab = computed(
 const reportOrEmpty = computed(
 	(): DependencyReport =>
 		dependencies.report.value ?? {
-			allowIncomplete: environment.value?.allowIncomplete ?? false,
 			blocked: false,
 			gaps: [],
 			warnings: [],
@@ -995,33 +985,7 @@ watch(
 			<N8nLink :to="backRoute" theme="text" size="small" data-test-id="promotion-preview-back">
 				<span :class="$style.back"><N8nIcon icon="arrow-left" size="small" />{{ backLabel }}</span>
 			</N8nLink>
-			<div :class="$style.titleRow">
-				<N8nHeading tag="h1" size="xlarge">{{ title }}</N8nHeading>
-				<!-- Strict or incomplete decides what a gap does, so the page always says which. -->
-				<N8nTooltip
-					v-if="environment && state === 'ready'"
-					:content="
-						i18n.baseText(
-							allowsIncomplete
-								? `promotions.preview.mode.incomplete.tooltip.${direction}`
-								: `promotions.preview.mode.strict.tooltip.${direction}`,
-						)
-					"
-				>
-					<N8nBadge
-						:variant="allowsIncomplete ? 'warning' : 'subtle'"
-						data-test-id="promotion-preview-mode"
-					>
-						{{
-							i18n.baseText(
-								allowsIncomplete
-									? 'promotions.preview.mode.incomplete'
-									: 'promotions.preview.mode.strict',
-							)
-						}}
-					</N8nBadge>
-				</N8nTooltip>
-			</div>
+			<N8nHeading tag="h1" size="xlarge" :class="$style.title">{{ title }}</N8nHeading>
 			<N8nText
 				v-if="selectionSummary && state === 'ready'"
 				size="small"
@@ -1384,9 +1348,9 @@ watch(
 			:provider-type="promoteEnvironment.providerType"
 			@confirm="onPromoteConfirm"
 		/>
-		<PromotionIncompleteDialog
-			v-if="incompleteDialogOpen && dependencies.report.value"
-			v-model:open="incompleteDialogOpen"
+		<PromotionGapsDialog
+			v-if="gapsDialogOpen && dependencies.report.value"
+			v-model:open="gapsDialogOpen"
 			v-model:commit-message="promoteCommitMessage"
 			:direction="direction"
 			:report="dependencies.report.value"
@@ -1394,7 +1358,7 @@ watch(
 			:opens-review="
 				promoteEnvironment?.providerType === 'gitlab' && promoteEnvironment.createBranchOnPromotion
 			"
-			@confirm="onIncompleteConfirm"
+			@confirm="onGapsConfirm"
 		/>
 		<PromotionApplyResultDialog
 			v-if="operation.applied.value"
@@ -1426,11 +1390,7 @@ watch(
 	background-color: var(--background--surface);
 }
 
-.titleRow {
-	display: flex;
-	flex-wrap: wrap;
-	align-items: center;
-	gap: var(--spacing--xs);
+.title {
 	margin-bottom: var(--spacing--2xs);
 }
 

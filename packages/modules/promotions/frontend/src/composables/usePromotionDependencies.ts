@@ -16,7 +16,6 @@ import type { ResourceKey, SelectionGraph } from '../promotionPreview.selection'
 /** Why the dependencies stop the operation. The first reason that applies is shown. */
 export type DependencyStop =
 	| 'hardBlocks'
-	| 'strictGaps'
 	| 'unknownGaps'
 	| 'grants'
 	| 'deletionCallers'
@@ -82,7 +81,6 @@ export function usePromotionDependencies({
 	const stop = computed((): DependencyStop | undefined => {
 		if (!report.value) return undefined;
 		if (report.value.hardBlocks.length > 0) return 'hardBlocks';
-		if (gapCount.value > 0 && !report.value.allowIncomplete) return 'strictGaps';
 		// A gap of a group that this client does not know cannot be confirmed here.
 		if (report.value.gaps.some((gap) => gapGroupOf(gap) === 'unknown')) return 'unknownGaps';
 		return pending.value[0];
@@ -92,11 +90,7 @@ export function usePromotionDependencies({
 	 * confirmation of the report can still be pending.
 	 */
 	const needsGapConfirmation = computed(
-		() =>
-			gapCount.value > 0 &&
-			stop.value !== 'hardBlocks' &&
-			stop.value !== 'strictGaps' &&
-			stop.value !== 'unknownGaps',
+		() => gapCount.value > 0 && stop.value !== 'hardBlocks' && stop.value !== 'unknownGaps',
 	);
 	const payload = computed(() =>
 		toConfirmationPayload(report.value, confirmations.value, direction.value),

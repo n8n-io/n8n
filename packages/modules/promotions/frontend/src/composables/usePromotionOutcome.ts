@@ -29,7 +29,7 @@ export function usePromotionOutcome() {
 	function showPromoted(projectIds: string[], result: PromotePackageResultDto, gapCount = 0) {
 		for (const projectId of projectIds) promotionEventBus.emit('promoted', { projectId });
 		toast.showMessage({
-			// An incomplete Promote says so: "Promoted with 2 gaps".
+			// A Promote with gaps says so: "Promoted with 2 gaps".
 			title:
 				gapCount > 0
 					? i18n.baseText('promotions.operation.toast.success.titleWithGaps', {
@@ -76,12 +76,12 @@ export function usePromotionOutcome() {
 			withFolderNotes(i18n, workflowsChanged ? workflowSummary : '', result.counts),
 			projects.updated > 0 ? i18n.baseText('promotions.applied.projectUpdated') : '',
 		].filter(Boolean);
-		const incomplete = (result.dependencyReport?.gaps.length ?? 0) > 0;
+		const withGaps = (result.dependencyReport?.gaps.length ?? 0) > 0;
 		// A workflow can be imported and still fail to publish, so success alone would mislead.
 		return {
 			title: i18n.baseText('promotions.operation.incoming.applied.title'),
 			message: notes.length > 0 ? notes.join(' ') : workflowSummary,
-			type: notPublished || incomplete ? 'warning' : 'success',
+			type: notPublished || withGaps ? 'warning' : 'success',
 		};
 	}
 
@@ -108,11 +108,11 @@ export function usePromotionOutcome() {
 			),
 			result.counts,
 		);
-		const incomplete = (result.dependencyReport?.gaps.length ?? 0) > 0;
+		const withGaps = (result.dependencyReport?.gaps.length ?? 0) > 0;
 		return {
 			title: i18n.baseText('settings.promotions.apply.toast.success.title'),
 			message: summary,
-			type: notPublished || incomplete ? 'warning' : 'success',
+			type: notPublished || withGaps ? 'warning' : 'success',
 		};
 	}
 

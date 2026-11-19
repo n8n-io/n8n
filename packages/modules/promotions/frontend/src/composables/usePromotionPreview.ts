@@ -36,7 +36,6 @@ export type PromotionPreviewEnvironment = {
 	/** The base branch of a Promote, or the branch of an Apply. */
 	branchName: string;
 	createBranchOnPromotion: boolean;
-	allowIncomplete: boolean;
 };
 
 type PromotionPreviewState =
@@ -146,7 +145,6 @@ export function usePromotionPreview(
 				branchName: found.branchName,
 				createBranchOnPromotion:
 					'createBranchOnPromotion' in found && found.createBranchOnPromotion,
-				allowIncomplete: found.allowIncomplete,
 			};
 		}
 		const found = instanceEnvironment.value;
@@ -160,7 +158,6 @@ export function usePromotionPreview(
 				found.direction === 'apply' ? found.settings.branchName : found.settings.baseBranchName,
 			createBranchOnPromotion:
 				found.direction === 'promote' && found.settings.createBranchOnPromotion,
-			allowIncomplete: found.settings.allowIncomplete,
 		};
 	});
 	/** Only the instance page knows the remote. The project lookup does not send it. */

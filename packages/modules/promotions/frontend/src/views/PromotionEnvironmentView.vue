@@ -85,13 +85,11 @@ const form = reactive<{
 	repositoryPath?: string;
 	branch: string;
 	createBranchOnPromotion: boolean;
-	allowIncomplete: boolean;
 }>({
 	name: '',
 	remoteUrl: '',
 	branch: 'main',
 	createBranchOnPromotion: false,
-	allowIncomplete: false,
 });
 
 const direction = computed(() => loaded.value?.direction ?? props.direction);
@@ -112,11 +110,6 @@ const createBranchLabelKey = computed(() =>
 	hasHostApi.value
 		? 'settings.promotions.environment.form.createBranch.gitlab'
 		: 'settings.promotions.environment.form.createBranch.git',
-);
-const allowIncompleteLabelKey = computed(() =>
-	direction.value === 'apply'
-		? 'settings.promotions.environment.form.allowIncomplete.apply'
-		: 'settings.promotions.environment.form.allowIncomplete.promote',
 );
 const needsRepositorySelection = computed(
 	() => hasHostApi.value && !!form.remoteUrl && !form.repositoryPath,
@@ -143,7 +136,6 @@ onMounted(async () => {
 				branch: promotionEnvironmentBranch(environment),
 				createBranchOnPromotion:
 					environment.direction === 'promote' && environment.settings.createBranchOnPromotion,
-				allowIncomplete: environment.settings.allowIncomplete,
 			});
 		} else {
 			const environments = await fetchPromotionEnvironments(context, { scope: 'instance' });
@@ -253,7 +245,6 @@ async function save() {
 		selectedDirection,
 		form.branch.trim(),
 		form.createBranchOnPromotion,
-		form.allowIncomplete,
 	);
 	let saved: PromotionEnvironment;
 	let connected = true;
@@ -505,19 +496,6 @@ onBeforeRouteLeave(() => {
 									{{ i18n.baseText(createBranchLabelKey) }}
 									<N8nText :class="$style.hint" size="small" color="text-light">
 										{{ i18n.baseText(`${createBranchLabelKey}.description`) }}
-									</N8nText>
-								</template>
-							</N8nCheckbox>
-
-							<N8nCheckbox
-								v-model="form.allowIncomplete"
-								:disabled="isSaving"
-								data-test-id="promotion-environment-allow-incomplete"
-							>
-								<template #label>
-									{{ i18n.baseText(allowIncompleteLabelKey) }}
-									<N8nText :class="$style.hint" size="small" color="text-light">
-										{{ i18n.baseText(`${allowIncompleteLabelKey}.description`) }}
 									</N8nText>
 								</template>
 							</N8nCheckbox>

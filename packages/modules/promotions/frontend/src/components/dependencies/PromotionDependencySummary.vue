@@ -8,8 +8,8 @@ import type { DependencyStop } from '../../composables/usePromotionDependencies'
 import type { DependencyWarningCounts } from '../../promotionDependencies';
 
 /**
- * The dependencies in one line, above the changes. It also says why the submit button is
- * disabled, because a disabled button cannot explain itself to keyboard users.
+ * The dependencies in one line, above the changes. When the submit button is disabled, it
+ * also says why, because a disabled button cannot explain itself to keyboard users.
  */
 const props = defineProps<{
 	direction: PromotionDirection;
@@ -55,7 +55,12 @@ const sentences = computed(() => {
 	if (props.stop && props.stop !== 'hardBlocks') {
 		parts.push(i18n.baseText(`promotions.dependencies.stop.${props.stop}`));
 	} else if (!props.stop && props.gapCount > 0) {
-		parts.push(i18n.baseText(`promotions.dependencies.summary.incomplete.${props.direction}`));
+		parts.push(
+			i18n.baseText(
+				`promotions.dependencies.summary.continue.${props.direction}`,
+				count(props.gapCount),
+			),
+		);
 	}
 	// A warning never stops the operation, so its sentence comes last and says that.
 	const { broken = 0, other = 0, deletions = 0, resources = 0 } = props.warnings ?? {};
