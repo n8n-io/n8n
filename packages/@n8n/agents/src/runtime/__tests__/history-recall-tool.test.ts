@@ -1,3 +1,4 @@
+import { historyToolCallRef } from '../memory/compacted-tool-calls';
 import { createReadHistoryTool, excerpt, indexOfIgnoreCase } from '../memory/history-recall-tool';
 import { messageToText } from '../memory/message-text';
 import type { BuiltMemory } from '../../types';
@@ -126,6 +127,91 @@ describe('read_history tool', () => {
 		const { run, getMessages } = buildTool([message('m1', 'hello', 1)]);
 		await run({ query: 'hello' });
 		expect(getMessages).toHaveBeenCalledWith('t-1', { resourceId: 'r-1' });
+	});
+
+	it('looks up just the matching settled call in the resource-scoped thread', async () => {
+		const { run, getMessages } = buildTool([
+			{
+				id: 'assistant-1',
+				createdAt: new Date('2026-01-01T00:00:00Z'),
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolCallId: 'check-1',
+						toolName: 'check',
+						input: { secret: 'argument' },
+						state: 'rejected',
+						error: 'Server rejected the request.',
+					},
+					{
+						type: 'tool-call',
+						toolCallId: 'check-10',
+						toolName: 'check',
+						input: {},
+						state: 'resolved',
+						output: 'Another result.',
+					},
+					{
+						type: 'tool-call',
+						toolCallId: 'pending-1',
+						toolName: 'check',
+						input: {},
+						state: 'pending',
+					},
+				],
+			},
+		]);
+		await expect(run({ toolCallId: 'check-1' })).resolves.toMatchObject({
+			messages: [{ id: 'assistant-1', text: 'Server rejected the request.' }],
+		});
+		expect(getMessages).toHaveBeenCalledWith('t-1', { resourceId: 'r-1' });
+		await expect(run({ toolCallId: 'check' })).resolves.toEqual({ messages: [] });
+		await expect(run({ toolCallId: 'pending-1' })).resolves.toEqual({ messages: [] });
+	});
+
+	it('pages through the selected result when stored call IDs repeat', async () => {
+		const id = 'call_123__thought__AY89a1+JiipVUqj7/74Q==';
+		const output = 'x'.repeat(5_000) + 'No device details found.';
+		const { run } = buildTool([
+			{
+				id: 'assistant-1',
+				createdAt: new Date('2026-01-01T00:00:00Z'),
+				role: 'assistant',
+				content: [
+					{ type: 'reasoning', text: 'Example reasoning' },
+					{
+						type: 'tool-call',
+						toolCallId: id,
+						toolName: 'inspect',
+						input: {},
+						state: 'resolved',
+						output: 'Another result.',
+					},
+					{
+						type: 'tool-call',
+						toolCallId: id,
+						toolName: 'inspect',
+						input: {},
+						state: 'resolved',
+						output,
+					},
+				],
+			},
+		]);
+		type Page = { messages: Array<{ text: string; offset: number; truncated: boolean }> };
+		const toolCallRef = historyToolCallRef('assistant-1', 1);
+		await expect(run({ toolCallRef: historyToolCallRef('assistant-1', 0) })).resolves.toMatchObject(
+			{
+				messages: [{ text: '"Another result."' }],
+			},
+		);
+		const first = (await run({ toolCallRef })) as Page;
+		expect(first.messages[0]).toMatchObject({ offset: 0, truncated: true });
+		expect(first.messages[0].text).toHaveLength(4_000);
+		const next = (await run({ toolCallRef, offset: 4_000 })) as Page;
+		expect(next.messages[0]).toMatchObject({ offset: 4_000, truncated: false });
+		expect(first.messages[0].text + next.messages[0].text).toBe(JSON.stringify(output));
 	});
 });
 

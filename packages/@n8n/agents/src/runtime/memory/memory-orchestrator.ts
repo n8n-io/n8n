@@ -4,6 +4,7 @@ import {
 	runEpisodicMemoryCandidateProcessor,
 } from './episodic-memory-capture';
 import { createFilteredLogger } from '../logger';
+import { collectCompactedToolCalls, renderCompactedToolCalls } from './compacted-tool-calls';
 import { compareKeyset, saveMessagesToThread } from './memory-store';
 import {
 	readObservationState,
@@ -109,6 +110,7 @@ interface RunHistory {
 	notes: ListNotes;
 	/** Skills loaded in thread messages before the resume point. */
 	earlierLoadedSkillIds?: Set<string>;
+	compactedToolCalls?: string[];
 }
 
 /** Observer state of one run. Queued jobs keep their run's state when a new run starts. */
@@ -315,6 +317,7 @@ export class MemoryOrchestrator {
 				messages: memMessages,
 				notes,
 				earlierLoadedSkillIds,
+				compactedToolCalls,
 			} = await this.loadHistoryForRun({ ...options, persistence: options.persistence }, telemetry);
 
 			if (memMessages.length > 0) {
@@ -327,6 +330,7 @@ export class MemoryOrchestrator {
 				}
 			}
 			if (earlierLoadedSkillIds) list.addEarlierLoadedSkills(earlierLoadedSkillIds);
+			list.earlierCompactedToolCalls = compactedToolCalls ?? [];
 			await this.setListObservationLogMemory(list, options.persistence, { notes });
 			return;
 		}
@@ -376,16 +380,23 @@ export class MemoryOrchestrator {
 			logger.debug('Ignoring stale observation resume point', { threadId });
 			resume.forget();
 		}
-		const withEarlierSkills = (view: { messages: AgentDbMessage[]; notes: string | undefined }) => {
+		const withCompactedHistory = (view: {
+			messages: AgentDbMessage[];
+			notes: string | undefined;
+		}): RunHistory => {
 			const kept = new Set(view.messages);
+			const compacted = all.filter((m) => !kept.has(m));
 			return {
 				...view,
-				earlierLoadedSkillIds: detectLoadedSkills(all.filter((m) => !kept.has(m))),
+				earlierLoadedSkillIds: detectLoadedSkills(compacted),
+				compactedToolCalls: observationalMemory.historyRecall
+					? collectCompactedToolCalls(compacted)
+					: undefined,
 			};
 		};
 		const view = resumeView(all, state);
 		const budget = cursor ? await this.resolveBudget() : undefined;
-		if (!cursor || !budget) return withEarlierSkills(view);
+		if (!cursor || !budget) return withCompactedHistory(view);
 
 		const viewTokens = await this.sumTokens(view.messages);
 		const modelId = this.modelId();
@@ -404,7 +415,7 @@ export class MemoryOrchestrator {
 		});
 		if (!reason) {
 			if (state?.lastRequestTokens) this.requestSize.seed(state.lastRequestTokens, viewTokens);
-			return withEarlierSkills(view);
+			return withCompactedHistory(view);
 		}
 
 		let resumeAt: ObservationPoint = cursor;
@@ -413,10 +424,10 @@ export class MemoryOrchestrator {
 		const notes = await this.renderLiveNotes(persistence);
 		// Without notes, a resume would drop earlier messages with nothing in their
 		// place. Only an over-limit thread must shrink at that cost.
-		if (!notes && reason !== 'over-limit') return withEarlierSkills(view);
+		if (!notes && reason !== 'over-limit') return withCompactedHistory(view);
 		await resume.moveTo(resumeAt, notes, modelId);
 		logger.debug('Observation resume point moved at turn start', { threadId, reason });
-		return withEarlierSkills(resumeView(all, resume.current));
+		return withCompactedHistory(resumeView(all, resume.current));
 	}
 
 	/** Run the Observer over the whole backlog and return the new cursor. */
@@ -567,7 +578,17 @@ export class MemoryOrchestrator {
 	): void {
 		list.observationLogPlacement =
 			observationalMemory?.logPlacement ?? DEFAULT_MEMORY_POLICY.logPlacement;
-		list.observationLogMemory = notes;
+		let calls: string | undefined;
+		if (observationalMemory?.historyRecall) {
+			const all = list.messages();
+			const visible = list.llmVisibleMessages();
+			const kept = new Set(visible);
+			const masked = all === visible ? [] : all.filter((message) => !kept.has(message));
+			calls = renderCompactedToolCalls(
+				collectCompactedToolCalls(masked, list.earlierCompactedToolCalls),
+			);
+		}
+		list.observationLogMemory = calls ? [notes, calls].filter(Boolean).join('\n\n') : notes;
 	}
 
 	/**
@@ -1065,6 +1086,7 @@ export class MemoryOrchestrator {
 		// would duplicate it. An oversized window is swapped at the next step
 		// by the hard-limit check.
 		if (state?.resumeFrom) list.maskObservedMessages(state.resumeFrom);
+		else list.earlierCompactedToolCalls = [];
 		this.setListNotes(list, observationalMemory, resumeView([], state).notes);
 	}
 
