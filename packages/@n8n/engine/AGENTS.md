@@ -98,7 +98,7 @@ never reaches it.
 A new migration gets a timestamp later than the last one and its entry in
 `src/database/migrations/index.ts`. Add its file name to the
 `unicorn/filename-case` exemptions in `oxlint.config.mts` and
-`eslint.config.mjs`, and mirror the change in the entity decorators.
+`eslint.config.mjs`. Mirror a new column or index in the entity decorators.
 
 ## Crash recovery: reconciliation, not transactions
 
