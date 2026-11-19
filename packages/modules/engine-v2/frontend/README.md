@@ -29,7 +29,7 @@ The module tells the editor if the open workflow can run on engine v2. Every ans
   code needs no icon.
 - `src/engineV2ReasonText.ts` gives the text of each reason:
   - A code in `REASON_TEXT_KEYS` shows its own string from `en.json`. A `temporary` reason adds
-    "Run this workflow on engine v1 for now." A code with two meanings uses `CODE.kind` keys.
+    "Run this workflow on Engine v1 for now." A code with two meanings uses `CODE.kind` keys.
   - Any other code shows the English `message` of the package. That covers a new code, and a code
     whose `message` holds details that a fixed string can't, such as a second node or a count.
   - To give a new code its own string, add one entry to `REASON_TEXT_KEYS` and one key to

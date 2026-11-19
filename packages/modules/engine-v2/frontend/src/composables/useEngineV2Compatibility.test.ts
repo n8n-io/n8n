@@ -165,7 +165,7 @@ describe('useEngineV2Compatibility', () => {
 describe('describeEngineV2Block', () => {
 	it('returns the publish tooltip text', () => {
 		expect(describeEngineV2Block()).toBe(
-			"This workflow can't run on engine v2 yet. Select the engine v2 issues button on the canvas to see why.",
+			"This workflow can't run on Engine v2 yet. Select the Engine v2 issues button on the canvas to see why.",
 		);
 	});
 });

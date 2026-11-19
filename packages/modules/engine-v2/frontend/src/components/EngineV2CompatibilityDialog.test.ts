@@ -7,7 +7,7 @@ import EngineV2CompatibilityDialog from './EngineV2CompatibilityDialog.vue';
 type Code = EngineCompatibilityReason['code'];
 type Kind = EngineCompatibilityReason['kind'];
 
-const V1_ADVICE = 'Run this workflow on engine v1 for now.';
+const V1_ADVICE = 'Run this workflow on Engine v1 for now.';
 
 // The dialog renders into `document.body`, where the queries of `render` look, after the mount.
 async function renderDialog(reasons: EngineCompatibilityReason[]) {
@@ -203,6 +203,39 @@ describe('EngineV2CompatibilityDialog', () => {
 		expect(getByTestId('engine-v2-compatibility-dialog')).toHaveTextContent(
 			i18n.baseText('engineV2Compatibility.dialog.title'),
 		);
+	});
+
+	it('explains the list, and how to publish, when a reason blocks', async () => {
+		const { getByTestId } = await renderDialog([
+			reason('REDACTION_POLICY', 'temporary', { severity: 'warning' }),
+			reason('ERROR_WORKFLOW', 'temporary'),
+		]);
+
+		expect(getByTestId('engine-v2-compatibility-intro')).toHaveTextContent(
+			i18n.baseText('engineV2Compatibility.dialog.intro'),
+		);
+	});
+
+	it('explains the list of warnings when no reason blocks', async () => {
+		const { getByTestId } = await renderDialog([
+			reason('REDACTION_POLICY', 'temporary', { severity: 'warning' }),
+		]);
+
+		expect(getByTestId('engine-v2-compatibility-intro')).toHaveTextContent(
+			i18n.baseText('engineV2Compatibility.dialog.introWarnings'),
+		);
+	});
+
+	it('shows the introduction before the list', async () => {
+		const { getByTestId, getAllByTestId } = await renderDialog([
+			reason('ERROR_WORKFLOW', 'temporary'),
+		]);
+
+		const [firstReason] = getAllByTestId('engine-v2-compatibility-reason');
+		expect(
+			getByTestId('engine-v2-compatibility-intro').compareDocumentPosition(firstReason) &
+				Node.DOCUMENT_POSITION_FOLLOWING,
+		).toBeTruthy();
 	});
 
 	it('uses the warning title when no reason blocks', async () => {

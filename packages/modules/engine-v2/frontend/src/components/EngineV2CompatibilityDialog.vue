@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { N8nDialog, N8nDialogBody, N8nIcon } from '@n8n/design-system';
+import { N8nDialog, N8nDialogBody, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 
@@ -15,11 +15,21 @@ const open = defineModel<boolean>('open', { required: true });
 
 const i18n = useI18n();
 
+const isBlocked = computed(() => worstSeverity(reasons) === 'blocking');
+
 const title = computed(() =>
 	i18n.baseText(
-		worstSeverity(reasons) === 'blocking'
+		isBlocked.value
 			? 'engineV2Compatibility.dialog.title'
 			: 'engineV2Compatibility.dialog.titleWarnings',
+	),
+);
+
+const intro = computed(() =>
+	i18n.baseText(
+		isBlocked.value
+			? 'engineV2Compatibility.dialog.intro'
+			: 'engineV2Compatibility.dialog.introWarnings',
 	),
 );
 
@@ -45,6 +55,14 @@ const items = computed(() =>
 		data-test-id="engine-v2-compatibility-dialog"
 	>
 		<N8nDialogBody>
+			<N8nText
+				tag="p"
+				size="small"
+				:class="$style.intro"
+				data-test-id="engine-v2-compatibility-intro"
+			>
+				{{ intro }}
+			</N8nText>
 			<ul :class="$style.reasons">
 				<li
 					v-for="item in items"
@@ -63,6 +81,11 @@ const items = computed(() =>
 </template>
 
 <style lang="scss" module>
+.intro {
+	display: block;
+	margin: 0 0 var(--spacing--md);
+}
+
 .reasons {
 	display: flex;
 	flex-direction: column;

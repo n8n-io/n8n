@@ -35,8 +35,8 @@ describe('EngineV2CompatibilityButton', () => {
 	});
 
 	it.each([
-		[1, '1 engine v2 issue'],
-		[3, '3 engine v2 issues'],
+		[1, '1 Engine v2 issue'],
+		[3, '3 Engine v2 issues'],
 	])('counts %i reasons', (count, label) => {
 		render(EngineV2CompatibilityButton, {
 			props: { reasons: Array.from({ length: count }, () => reason('blocking')) },
