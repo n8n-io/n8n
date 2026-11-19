@@ -30,7 +30,12 @@ import { sessionCookieFor, TEST_FLOW_ID } from './oauth-flow-test-utils';
  * Three actors exercise the access-control system: no access (denied), execute
  * via a project/resource role, and execute via a global role.
  */
-const testServer = setupTestServer({ endpointGroups: ['mcp'], modules: ['oauth-server', 'mcp'] });
+// The OAuth server registers the workflow trigger resolver. The instance MCP
+// module loads tools and controllers that these tests do not use.
+const testServer = setupTestServer({
+	endpointGroups: ['oauth-server'],
+	modules: ['oauth-server'],
+});
 
 let owner: User;
 let memberNoAccess: User;
@@ -197,7 +202,8 @@ describe('consent gate: workflow name and authorization code require execute acc
 		const response = await testServer
 			.authAgentFor(memberNoAccess)
 			.get(`/consent/details?flow=${TEST_FLOW_ID}`)
-			.set('Cookie', sessionCookieFor(TEST_FLOW_ID, sessionToken));
+			.set('Cookie', sessionCookieFor(TEST_FLOW_ID, sessionToken))
+			.expect(403);
 
 		expect(JSON.stringify(response.body)).not.toContain(workflowName);
 	});
