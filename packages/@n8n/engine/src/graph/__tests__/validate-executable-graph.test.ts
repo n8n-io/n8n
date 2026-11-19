@@ -123,6 +123,18 @@ describe('validateExecutableGraph', () => {
 		expect(() => validateExecutableGraph(graph)).not.toThrow();
 	});
 
+	it('rejects two edges with the same ends and slots', () => {
+		const graph: WorkflowGraph = {
+			nodes: validGraph.nodes,
+			edges: [...validGraph.edges, ...validGraph.edges],
+		};
+
+		expect(() => validateExecutableGraph(graph)).toThrow(GraphValidationError);
+		expect(() => validateExecutableGraph(graph)).toThrow(
+			'Edge "T" -> "A" from output slot 0 into input slot 0 appears more than once',
+		);
+	});
+
 	it('rejects two edges into the same input slot of one node as unimplemented', () => {
 		const graph: WorkflowGraph = {
 			nodes: [...validGraph.nodes, { id: 'b', name: 'B', type: 'v1-node' }],
