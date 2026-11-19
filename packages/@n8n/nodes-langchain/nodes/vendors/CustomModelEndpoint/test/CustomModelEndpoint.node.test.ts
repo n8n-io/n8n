@@ -354,9 +354,17 @@ describe('CustomModelEndpoint', () => {
 	});
 
 	it('refuses to stream, naming the option to remove', async () => {
-		await expect(run({ extraBody: '{"stream":true}' })).rejects.toThrow(
-			'This node cannot stream the answer',
+		const failure = await run({ extraBody: '{"stream":true}' }).catch(
+			(error: NodeOperationError) => error,
 		);
+
+		// The catch unwraps an SDK error to its cause, so a hint the node wrote has to survive it
+		expect(failure).toMatchObject({
+			message: 'This node cannot stream the answer',
+			description:
+				'Remove "stream" from Extra Body. The node reads the whole answer before it passes the item on.',
+			context: { itemIndex: 0 },
+		});
 		expect(create).not.toHaveBeenCalled();
 	});
 

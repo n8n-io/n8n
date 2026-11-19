@@ -283,7 +283,14 @@ export class CustomModelEndpoint implements INodeType {
 				// The SDK wraps anything the transport throws in `APIConnectionError`, whose
 				// message is always "Connection error." and whose real reason is on `cause`.
 				// Without unwrapping, a blocked domain, a refused login and a DNS failure read alike.
-				const reason = isRecord(error) && error.cause instanceof Error ? error.cause : error;
+				// An error this node threw already names the failure and carries its own hint, and
+				// its `cause` is the plain inner error, so unwrapping it would drop the hint.
+				const reason =
+					error instanceof NodeOperationError
+						? error
+						: isRecord(error) && error.cause instanceof Error
+							? error.cause
+							: error;
 
 				if (!this.continueOnFail()) {
 					throw new NodeOperationError(this.getNode(), reason as Error, {
