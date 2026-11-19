@@ -2,7 +2,7 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
 const tableName = 'project_workflow_review_settings';
 
-export class CreateProjectWorkflowReviewSettingsTable1794935569530 implements ReversibleMigration {
+export class CreateProjectWorkflowReviewSettingsTable1795098232033 implements ReversibleMigration {
 	async up({ schemaBuilder: { createTable, column }, tablePrefix }: MigrationContext) {
 		await createTable(tableName)
 			.withColumns(
