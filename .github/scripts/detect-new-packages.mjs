@@ -5,15 +5,13 @@
  * Publishing because Trusted Publishing requires the package to already exist
  * on npm with the publisher configured first.
  *
- * New packages need an initial token-based publish before the workflow can
- * configure Trusted Publishing.
+ * A human must publish new packages and configure Trusted Publishing before
+ * the release workflow can publish later versions.
  *
  * Exit codes:
  *   0 – All public packages exist on npm, or --report-only was used
  *   1 – One or more public packages have never been published
  */
-
-import { relative } from 'node:path';
 
 import { writeGithubOutput } from './github-helpers.mjs';
 import { getMonorepoProjects } from './pnpm-utils.mjs';
@@ -26,7 +24,7 @@ const packages = await getMonorepoProjects();
 const newPackages = [];
 let registryCheckFailed = false;
 
-for (const { name, path, private: isPrivate } of packages) {
+for (const { name, private: isPrivate } of packages) {
 	if (isPrivate) continue;
 
 	// Scoped packages must be encoded: @n8n/foo → @n8n%2Ffoo
@@ -37,7 +35,7 @@ for (const { name, path, private: isPrivate } of packages) {
 		console.log(`Checking if ${name} exists...`);
 		const response = await fetch(url, { method: 'HEAD' });
 		if (response.status === 404) {
-			newPackages.push({ name, path: relative(process.cwd(), path) });
+			newPackages.push(name);
 		} else if (!response.ok && response.status !== 405) {
 			// 405 = Method Not Allowed for HEAD (some registries), not an error
 			registryCheckFailed = true;
@@ -52,8 +50,7 @@ for (const { name, path, private: isPrivate } of packages) {
 }
 
 const output = {
-	packages: newPackages.map(({ name }) => name).join(','),
-	'packages-json': JSON.stringify(newPackages),
+	packages: newPackages.join(','),
 };
 console.log(` -- Writing to github output: ${JSON.stringify(output)}`);
 writeGithubOutput(output);
@@ -78,15 +75,15 @@ OIDC Trusted Publishing until they have had an initial token-based publish:
 
 `);
 
-for (const { name } of newPackages) {
+for (const name of newPackages) {
 	console.log(
 		`::error::Package "${name}" has never been published to npm. An initial token-based publish is required before it can use OIDC Trusted Publishing.`,
 	);
 }
 
 console.log(`
-Run the Release: Setup Trusted Publishing workflow to publish an initial
-throwaway version and configure release-publish.yml as the trusted publisher.
+Publish each package manually. Then configure release-publish.yml as its
+trusted publisher before the next release.
 
 `);
 

@@ -36,7 +36,11 @@ import {
 	DEFAULT_RECONCILIATION_INTERVAL_MS,
 	QueuedExecutionDetector,
 	QueuedExecutionRepair,
+	QueuedStepDetector,
+	QueuedStepRepair,
 	ReconciliationSweeper,
+	RunningStepDetector,
+	RunningStepRepair,
 } from '../reconciliation';
 import type { ExecutionResponseSender } from '../response-channel';
 import { createEngineServer } from '../server';
@@ -142,6 +146,14 @@ export function createEngineRuntime({
 		lifecycleEventPublisher,
 	);
 
+	// One cancel path for the API and for an execution that ends with sub-executions.
+	const cancelExecution = new CancelExecutionService(
+		executionStore,
+		stepStore,
+		lifecycleEventPublisherFactory,
+		responseSender,
+		stepQueue,
+	);
 	const orchestrationWorker = new OrchestrationWorker(
 		orchestrationQueue,
 		new ExecutionStartHandler(
@@ -157,6 +169,7 @@ export function createEngineRuntime({
 			orchestrationQueue,
 			lifecycleEventPublisherFactory,
 			responseSender,
+			cancelExecution,
 		),
 	);
 	const waitSweeper = new WaitSweeper(stepStore, stepQueue, logger, waitSweepIntervalMs);
@@ -167,9 +180,26 @@ export function createEngineRuntime({
 				reconciliationIntervalMs,
 				DEFAULT_RECONCILIATION_BATCH_SIZE,
 			),
+			new QueuedStepDetector(
+				stepStore,
+				reconciliationIntervalMs,
+				DEFAULT_RECONCILIATION_BATCH_SIZE,
+			),
+			new RunningStepDetector(
+				stepStore,
+				reconciliationIntervalMs,
+				DEFAULT_RECONCILIATION_BATCH_SIZE,
+			),
 		],
 		{
 			'execution-queued-no-message': new QueuedExecutionRepair(executionStore, orchestrationQueue),
+			'step-queued-no-message': new QueuedStepRepair(stepStore, stepQueue),
+			'step-running-no-worker': new RunningStepRepair(
+				executionStore,
+				stepStore,
+				orchestrationQueue,
+				lifecycleEventPublisherFactory,
+			),
 		},
 		logger,
 	);
@@ -198,13 +228,7 @@ export function createEngineRuntime({
 
 	const { app } = createEngineServer({
 		startExecution,
-		cancelExecution: new CancelExecutionService(
-			executionStore,
-			stepStore,
-			lifecycleEventPublisherFactory,
-			responseSender,
-			stepQueue,
-		),
+		cancelExecution,
 		executionQuery: new ExecutionQueryService(executionViewStore),
 		resumeRequests:
 			resumeSecret === undefined

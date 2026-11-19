@@ -11,7 +11,8 @@ import BuilderSetupCard from './BuilderSetupCard.vue';
 vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
 	useI18n: () => ({
-		baseText: (key: string) => key,
+		baseText: (key: string, options?: { interpolate?: Record<string, unknown> }) =>
+			options?.interpolate ? `${key}: ${JSON.stringify(options.interpolate)}` : key,
 	}),
 }));
 
@@ -232,7 +233,9 @@ describe('BuilderSetupCard', () => {
 	describe('step indicator', () => {
 		it('shows step indicator in footer', () => {
 			const { getByText } = render({}, { totalCards: 4, stepIndex: 1 });
-			expect(getByText('2 of 4')).toBeInTheDocument();
+			expect(
+				getByText('aiAssistant.builder.setupWizard.stepCounter: {"current":2,"total":4}'),
+			).toBeInTheDocument();
 		});
 	});
 

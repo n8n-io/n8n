@@ -22,7 +22,7 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { raceAbort } from '@n8n/utils/race-abort';
 
-import { Telemetry } from '@/telemetry';
+import { TelemetryProxy } from '@n8n/backend-services';
 
 import { InstanceAiCreditService } from '../instance-ai-credit.service';
 import { cleanStoredUserMessage } from '../internal-messages';
@@ -71,7 +71,7 @@ export class InstanceAiApprovalReviewerFactory {
 	constructor(
 		logger: Logger,
 		private readonly creditService: InstanceAiCreditService,
-		private readonly telemetry: Telemetry,
+		private readonly telemetry: TelemetryProxy,
 	) {
 		this.logger = logger.scoped('instance-ai');
 	}

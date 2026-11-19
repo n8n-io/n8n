@@ -113,6 +113,7 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'aiPreference:update',
 	'aiPreference:delete',
 	'aiPreference:list',
+	'aiPreference:manage',
 	'projectAiPreference:create',
 	'projectAiPreference:read',
 	'projectAiPreference:update',

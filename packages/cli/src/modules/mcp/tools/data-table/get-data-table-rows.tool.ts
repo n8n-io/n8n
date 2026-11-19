@@ -3,11 +3,11 @@ import {
 	dataTableFilterTypeSchema,
 	FilterConditionSchema,
 } from '@n8n/api-types';
+import type { TelemetryProxy } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import z from 'zod';
 
 import type { DataTableUserOperations } from '@n8n/backend-module-data-table';
-import type { Telemetry } from '@/telemetry';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
@@ -95,7 +95,7 @@ const serializeRow = (row: Record<string, unknown>) =>
 export const createGetDataTableRowsTool = (
 	user: User,
 	dataTableOps: DataTableUserOperations,
-	telemetry: Telemetry,
+	telemetry: TelemetryProxy,
 ): ToolDefinition<typeof getRowsInputSchema> => ({
 	name: 'get_data_table_rows',
 	config: {

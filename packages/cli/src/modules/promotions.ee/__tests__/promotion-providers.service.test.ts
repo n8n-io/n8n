@@ -19,6 +19,7 @@ import { PromotionEnvironmentLockService } from '../promotion-environment-lock.s
 import { PromotionProvidersService } from '../promotion-providers.service';
 import type { PromotionWorkingDirectoryService } from '../promotion-working-directory.service';
 import type { PromotionsGitService } from '../promotions-git.service';
+import { holdEnvironmentLock } from './utils/environment-lock';
 
 describe('PromotionProvidersService', () => {
 	const ctx: OperationContext = { security: mock<SecurityContext>({ subIdentityId: 'login-1' }) };
@@ -395,20 +396,8 @@ describe('PromotionProvidersService', () => {
 				),
 			);
 
-			const holdLock = async (environmentId: string) => {
-				let release!: () => void;
-				let acquired!: () => void;
-				const held = new Promise<void>((resolve) => (acquired = resolve));
-				const done = environmentLock.run(environmentId, async () => {
-					acquired();
-					await new Promise<void>((resolve) => (release = resolve));
-				});
-				await held;
-				return async () => {
-					release();
-					await done;
-				};
-			};
+			const holdLock = async (environmentId: string) =>
+				await holdEnvironmentLock(environmentLock, environmentId);
 
 			const isLockFree = async (environmentId: string) =>
 				await environmentLock.run(environmentId, async () => true).catch(() => false);

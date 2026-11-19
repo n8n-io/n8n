@@ -63,7 +63,7 @@ export const LLM_PROVIDER_DEFAULTS: Record<string, LlmProviderDefault> = {
 	},
 	deepSeekApi: {
 		provider: 'deepseek',
-		defaultModel: 'deepseek-chat',
+		defaultModel: 'deepseek-flash',
 	},
 	cohereApi: {
 		provider: 'cohere',

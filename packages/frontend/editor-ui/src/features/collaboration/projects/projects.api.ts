@@ -34,6 +34,8 @@ export const searchShareableProjects = async (
 		skip?: number;
 		type?: 'personal' | 'team';
 		activated?: boolean;
+		/** Only for pickers where a share to a service account has an effect. */
+		includeServiceAccounts?: boolean;
 	},
 ): Promise<{ count: number; data: ProjectListItem[] }> => {
 	return await getFullApiResponse<ProjectListItem[]>(
