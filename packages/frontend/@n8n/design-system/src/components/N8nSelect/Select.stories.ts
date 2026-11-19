@@ -1,5 +1,6 @@
-import type { StoryFn } from '@storybook/vue3-vite';
+import type { StoryContext, StoryFn } from '@storybook/vue3-vite';
 import { action } from 'storybook/actions';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 
 import N8nSelect from './Select.vue';
 import N8nIcon from '../N8nIcon';
@@ -8,6 +9,7 @@ import N8nOption from '../N8nOption';
 export default {
 	title: 'Core/Select',
 	component: N8nSelect,
+	tags: ['visual'],
 	argTypes: {
 		disabled: {
 			control: {
@@ -68,6 +70,63 @@ const Template: StoryFn = (args, { argTypes }) => ({
 });
 
 export const Default = Template.bind({});
+Default.parameters = {
+	visual: {
+		states: [{ name: 'focus', action: 'focus', selector: 'input' }],
+	},
+};
+
+export const Disabled = Template.bind({});
+Disabled.args = {
+	disabled: true,
+};
+
+const MultipleTemplate: StoryFn = (args, { argTypes }) => ({
+	setup: () => ({ args }),
+	props: Object.keys(argTypes),
+	components: {
+		N8nSelect,
+		N8nOption,
+	},
+	template:
+		'<n8n-select v-bind="args" v-model="val" @update:modelValue="onUpdateModelValue" @change="onChange"><n8n-option value="1">op1</n8n-option><n8n-option value="2">op2</n8n-option><n8n-option value="3">op3</n8n-option></n8n-select>',
+	data() {
+		return {
+			val: ['1', '2', '3'],
+		};
+	},
+	methods,
+});
+
+export const Multiple = MultipleTemplate.bind({});
+Multiple.args = {
+	multiple: true,
+};
+
+/*
+ * Open states for the visual tests. The dropdown teleports to `body`, so the
+ * screenshot is of the full viewport.
+ */
+const openSelect =
+	(visibleText: string) =>
+	async ({ canvasElement }: StoryContext) => {
+		await userEvent.click(within(canvasElement).getByRole('combobox'));
+		await waitFor(
+			async () => await expect(within(document.body).getByText(visibleText)).toBeVisible(),
+		);
+	};
+
+export const DefaultOpen = Template.bind({});
+DefaultOpen.parameters = { visual: { target: 'viewport' } };
+DefaultOpen.play = openSelect('op2');
+
+export const LoadingOpen = Template.bind({});
+LoadingOpen.args = {
+	loading: true,
+	loadingText: 'Loading options',
+};
+LoadingOpen.parameters = { visual: { target: 'viewport' } };
+LoadingOpen.play = openSelect('Loading options');
 
 export const Filterable = Template.bind({});
 Filterable.args = {

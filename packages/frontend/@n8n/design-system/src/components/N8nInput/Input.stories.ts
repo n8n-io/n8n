@@ -10,6 +10,7 @@ import Input from './Input.vue';
 const meta = {
 	title: 'Core/Input',
 	component: Input,
+	tags: ['visual'],
 	argTypes: {
 		type: {
 			control: 'select',
@@ -92,6 +93,14 @@ export const Default = {
 		disabled: false,
 		readonly: false,
 		clearable: false,
+	},
+	parameters: {
+		visual: {
+			states: [
+				{ name: 'hover', action: 'hover', selector: 'input' },
+				{ name: 'focus', action: 'focus', selector: 'input' },
+			],
+		},
 	},
 } satisfies Story;
 
