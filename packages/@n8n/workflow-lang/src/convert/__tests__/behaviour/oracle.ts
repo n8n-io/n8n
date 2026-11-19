@@ -124,6 +124,7 @@ async function runCase(dir: string, port: number, captured: Captured): Promise<u
 		start: triggerNode.name,
 		item,
 		mode,
+		...(spec.runDetails ? { withRunDetails: true } : {}),
 		...(spec.services ? { deduplication } : {}),
 		...(spec.credentials
 			? { additionalData: { credentialsHelper: credentialsHelper(spec.credentials) } }
@@ -134,6 +135,8 @@ async function runCase(dir: string, port: number, captured: Captured): Promise<u
 		...(spec.services ? { services } : {}),
 		...(result.customData ? { customData: result.customData } : {}),
 		...(result.nodeMetadata ? { nodeMetadata: result.nodeMetadata } : {}),
+		...(result.pairedItems ? { pairedItems: result.pairedItems } : {}),
+		...(result.runSizes ? { runSizes: result.runSizes } : {}),
 		generatedBy: 'oracle.ts: n8n-core WorkflowExecute with n8n-nodes-base, executionOrder v1',
 		error: result.error,
 		order: result.order,

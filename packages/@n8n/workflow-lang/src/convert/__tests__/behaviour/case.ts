@@ -49,6 +49,12 @@ export interface BehaviourCase {
 	/** True when the converter should refuse this case (no compiled form for the path). */
 	expectRefusal?: boolean;
 	/**
+	 * True for a case that reports the `pairedItem` of each output item and the size of each
+	 * run: `expected.json` then has `pairedItems` and `runSizes`, which the test does not
+	 * compare (it compares the `json` of the items).
+	 */
+	runDetails?: boolean;
+	/**
 	 * True for a case whose compared nodes run more than once in the engine form: the
 	 * converted run then gives the items of all their runs, as the recording has them.
 	 */

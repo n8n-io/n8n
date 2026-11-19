@@ -1,0 +1,11 @@
+{
+	"description": "A Loop Over Items node with batch size 1 on 4 items of A. Inside the loop an Edit Fields node tags each item, then a Code node in each-item mode, an Edit Fields node with an expression and a Code node in all-items mode read $('A').item, and the last reader goes back to the loop. All three readers see the items of the batch.",
+	"trigger": {
+		"body": {
+			"ids": ["a0", "a1", "a2", "a3"]
+		}
+	},
+	"compare": ["Read Each", "Read All", "Read Expr"],
+	"expectRefusal": true,
+	"runDetails": true
+}

@@ -1,0 +1,11 @@
+{
+	"description": "A Loop Over Items node with batch size 1 on the 4 items of A, with an Edit Fields node and a Filter node inside the loop. The Filter drops the item a1, so the readers after it have no item in that run and do not go back to the loop.",
+	"trigger": {
+		"body": {
+			"ids": ["a0", "a1", "a2", "a3"]
+		}
+	},
+	"compare": ["Read Each", "Read All", "Read Expr"],
+	"expectRefusal": true,
+	"runDetails": true
+}

@@ -1,0 +1,11 @@
+{
+	"description": "A Loop Over Items node with batch size 10 on 4 items of A: one batch holds every item. The readers inside the loop read $('A').item for the items of that batch.",
+	"trigger": {
+		"body": {
+			"ids": ["a0", "a1", "a2", "a3"]
+		}
+	},
+	"compare": ["Read Each", "Read All", "Read Expr"],
+	"expectRefusal": true,
+	"runDetails": true
+}

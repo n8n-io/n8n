@@ -216,6 +216,12 @@ export interface OracleOptions {
 	withBinary?: boolean;
 	/** With `withBinary`: also report an empty `binary` object of an item, as `$binary: {}`. */
 	emptyBinary?: boolean;
+	/**
+	 * Report what v1 saved on each item (`pairedItems`) and the item count of each run
+	 * (`runSizes`). The behaviour cases compare only the `json` of the items, so a case that
+	 * records the pairing of the items asks for these fields.
+	 */
+	withRunDetails?: boolean;
 	/** The execution id of the main run (`$execution.id`, resume URLs). Default: a counter. */
 	executionId?: string;
 	/**
@@ -291,6 +297,14 @@ export interface OracleResult {
 	customData?: Record<string, string>;
 	/** The metadata of the runs of each node that has some (the Time Saved node). */
 	nodeMetadata?: Record<string, unknown[]>;
+	/**
+	 * With `withRunDetails`: the `pairedItem` that v1 saved on each output item, one list for
+	 * each output, the items of all runs joined, as `nodes` has them. `null` for an item
+	 * without a paired item.
+	 */
+	pairedItems?: Record<string, unknown[][]>;
+	/** With `withRunDetails`: the number of items of each output of each run of each node. */
+	runSizes?: Record<string, Array<Array<number | null>>>;
 }
 
 interface RunData {
@@ -301,7 +315,13 @@ interface RunData {
 			runData: Record<
 				string,
 				Array<{
-					data?: { main: Array<Array<{ json: unknown; binary?: object | null }> | null> };
+					data?: {
+						main: Array<Array<{
+							json: unknown;
+							binary?: object | null;
+							pairedItem?: unknown;
+						}> | null>;
+					};
 					metadata?: unknown;
 				}>
 			>;
@@ -471,6 +491,24 @@ export async function runOracle(
 		}
 		nodes[name] = Array.from({ length: outputs.length }, (_, k) => outputs[k] ?? []);
 	}
+	const pairedItems: Record<string, unknown[][]> = {};
+	const runSizes: Record<string, Array<Array<number | null>>> = {};
+	if (options.withRunDetails) {
+		for (const [name, runs] of Object.entries(run.data.resultData.runData)) {
+			const pairs: unknown[][] = [];
+			const sizes: Array<Array<number | null>> = [];
+			for (const r of runs) {
+				const sizesOfRun: Array<number | null> = [];
+				(r.data?.main ?? []).forEach((list, k) => {
+					sizesOfRun[k] = list === null ? null : list.length;
+					pairs[k] = [...(pairs[k] ?? []), ...(list ?? []).map((i) => i.pairedItem ?? null)];
+				});
+				sizes.push(sizesOfRun);
+			}
+			pairedItems[name] = Array.from({ length: pairs.length }, (_, k) => pairs[k] ?? []);
+			runSizes[name] = sizes;
+		}
+	}
 	const nodeMetadata: Record<string, unknown[]> = {};
 	for (const [name, runs] of Object.entries(run.data.resultData.runData)) {
 		const found = runs.map((r) => r.metadata).filter((m) => m !== undefined);
@@ -486,6 +524,7 @@ export async function runOracle(
 		responses,
 		...(run.data.resultData.metadata ? { customData: run.data.resultData.metadata } : {}),
 		...(Object.keys(nodeMetadata).length > 0 ? { nodeMetadata } : {}),
+		...(options.withRunDetails ? { pairedItems, runSizes } : {}),
 		waiting:
 			run.status === 'waiting' || (run.data.waitTill !== undefined && run.data.waitTill !== null),
 	};
