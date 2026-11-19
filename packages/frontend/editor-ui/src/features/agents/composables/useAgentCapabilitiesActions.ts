@@ -1,4 +1,5 @@
 import { computed, type ComputedRef, type Ref } from 'vue';
+import isEqual from 'lodash/isEqual';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@n8n/composables/useToast';
@@ -247,7 +248,17 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 					const renames = payload.tools.flatMap((next, index) => {
 						const before = previousTools[index];
 						if (before?.type !== 'node' || next.type !== 'node') return [];
-						return before.name === next.name ? [] : [{ from: before.name, to: next.name }];
+						if (before.name === next.name) return [];
+						// A slot that now holds a different tool (a removal shifted
+						// the list) is not a rename: only a node pair that is
+						// otherwise unchanged may carry its guardrail refs over.
+						if (
+							before.node.nodeType !== next.node.nodeType ||
+							!isEqual(before.node.nodeParameters, next.node.nodeParameters)
+						) {
+							return [];
+						}
+						return [{ from: before.name, to: next.name }];
 					});
 					migrateGuardrailsForToolRenames(renames);
 				},

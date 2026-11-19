@@ -393,6 +393,55 @@ describe('useAgentCapabilitiesActions — tools modal host seam', () => {
 			},
 		});
 	});
+
+	it('does not retarget guardrails when the tools-modal confirm removes a leading node tool', () => {
+		const { uiStore, actions, scheduleConfigUpdate, localConfig } = setup();
+		const httpRequestTool = {
+			type: 'node',
+			name: 'HTTP Request',
+			node: {
+				nodeType: 'n8n-nodes-base.httpRequest',
+				nodeTypeVersion: 4.2,
+				nodeParameters: { url: 'https://api.example.com' },
+			},
+		} as Extract<AgentJsonToolRef, { type: 'node' }>;
+		const slackTool = {
+			type: 'node',
+			name: 'Slack',
+			node: {
+				nodeType: 'n8n-nodes-base.slack',
+				nodeTypeVersion: 2.1,
+				nodeParameters: { channel: '#alerts' },
+			},
+		} as Extract<AgentJsonToolRef, { type: 'node' }>;
+		localConfig.value = makeConfig({
+			tools: [httpRequestTool, slackTool],
+			config: {
+				guardrails: {
+					tools: [
+						{
+							kind: 'keywords',
+							id: 'g1',
+							stage: 'before',
+							keywords: ['secret'],
+							tools: [{ type: 'node', name: 'HTTP Request' }],
+						},
+					],
+				},
+			},
+		});
+
+		actions.onOpenAddToolModal();
+		const modalData = uiStore.modalsById[AGENT_TOOLS_MODAL_KEY].data as unknown as ToolsModalData;
+		// Removing the first tool shifts Slack into its slot; that is not a rename.
+		modalData.onConfirm({ tools: [slackTool] });
+
+		expect(scheduleConfigUpdate).toHaveBeenCalledTimes(1);
+		expect(scheduleConfigUpdate).toHaveBeenCalledWith({ tools: [slackTool] });
+		expect(scheduleConfigUpdate.mock.calls.some(([update]) => 'config' in (update as object))).toBe(
+			false,
+		);
+	});
 });
 
 type SkillModalData = {

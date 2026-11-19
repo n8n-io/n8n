@@ -43,6 +43,13 @@ function onSave(guardrail: AgentToolGuardrailConfig) {
 		: [...current, guardrail];
 	props.data.onUpdateGuardrails(next);
 }
+
+// The modal closes itself through its update:open path; this only commits the config.
+function onRemove() {
+	props.data.onUpdateGuardrails(
+		props.data.getGuardrails().filter((guardrail) => guardrail.id !== props.data.guardrail?.id),
+	);
+}
 </script>
 
 <template>
@@ -55,5 +62,6 @@ function onSave(guardrail: AgentToolGuardrailConfig) {
 		data-testid="agent-guardrail-modal-host"
 		@update:open="!$event && close()"
 		@save="onSave"
+		@remove="onRemove"
 	/>
 </template>

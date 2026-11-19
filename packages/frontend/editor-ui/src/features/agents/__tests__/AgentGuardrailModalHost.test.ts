@@ -31,7 +31,7 @@ const OTHER_GUARDRAIL: AgentToolGuardrailConfig = {
 function mountHost(
 	overrides: Partial<{
 		guardrail: AgentToolGuardrailConfig | null;
-		kind: string;
+		kind: AgentToolGuardrailKind;
 	}> = {},
 ) {
 	const guardrails: AgentToolGuardrailConfig[] = [SAVED_GUARDRAIL, OTHER_GUARDRAIL];
@@ -95,6 +95,20 @@ describe('AgentGuardrailModalHost', () => {
 		const next = onUpdateGuardrails.mock.calls[0]?.[0] as AgentToolGuardrailConfig[];
 		expect(next).toHaveLength(3);
 		expect(next.at(-1)).toEqual(created);
+	});
+
+	it('removes the edited guardrail on remove, without closing itself', () => {
+		const { wrapper, onUpdateGuardrails, onExit } = mountHost({
+			guardrail: SAVED_GUARDRAIL,
+		});
+
+		wrapper.getComponent({ name: 'AgentGuardrailModal' }).vm.$emit('remove');
+
+		expect(onUpdateGuardrails).toHaveBeenCalledTimes(1);
+		const next = onUpdateGuardrails.mock.calls[0]?.[0] as AgentToolGuardrailConfig[];
+		expect(next).toEqual([OTHER_GUARDRAIL]);
+		// The modal's own update:open-false path closes the host; remove must not.
+		expect(onExit).not.toHaveBeenCalled();
 	});
 
 	it('closes and exits through the onExit callback on any close', () => {

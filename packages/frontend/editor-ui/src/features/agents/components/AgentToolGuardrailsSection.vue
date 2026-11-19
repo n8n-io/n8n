@@ -78,23 +78,6 @@ const addItems = computed(() =>
 const addLabel = computed(() => i18n.baseText('agents.builder.guardrails.add'));
 const hasChips = computed(() => toolGuardrails.value.length + wildcardGuardrails.value.length > 0);
 
-function kindLabel(guardrail: AgentToolGuardrailConfig): string {
-	return i18n.baseText(guardrailKindLabelKey(guardrail.kind));
-}
-
-/** Translated as one string, so a locale can reorder the chip metadata. */
-function metaKind(guardrail: AgentToolGuardrailConfig): string {
-	return i18n.baseText('agents.builder.guardrails.chip.metaKind', {
-		interpolate: { kind: kindLabel(guardrail) },
-	});
-}
-
-function metaWithTools(guardrail: AgentToolGuardrailConfig, tools: string): string {
-	return i18n.baseText('agents.builder.guardrails.chip.metaTools', {
-		interpolate: { kind: kindLabel(guardrail), tools },
-	});
-}
-
 function issueReasons(guardrail: AgentToolGuardrailConfig): string[] {
 	return guardrailIssueMessages.value.get(guardrail.id) ?? [];
 }
@@ -127,7 +110,6 @@ function onOpenGuardrail(guardrail: AgentToolGuardrailConfig) {
 					>
 						<span :class="$style.chipLabel">
 							<span :class="$style.chipName">{{ guardrail.name ?? guardrail.id }}</span>
-							<span :class="$style.chipMeta">{{ metaKind(guardrail) }}</span>
 						</span>
 					</AgentChipButton>
 				</div>
@@ -141,9 +123,7 @@ function onOpenGuardrail(guardrail: AgentToolGuardrailConfig) {
 						<span :class="$style.chipLabel">
 							<span :class="$style.chipName">{{ guardrail.name ?? guardrail.id }}</span>
 							<span :class="$style.chipMeta">
-								{{
-									metaWithTools(guardrail, i18n.baseText('agents.builder.guardrails.chip.allTools'))
-								}}
+								· {{ i18n.baseText('agents.builder.guardrails.chip.allTools') }}
 							</span>
 						</span>
 					</AgentChipButton>
