@@ -52,11 +52,13 @@ describe('AgentAssistantTestRunCard', () => {
 		['blocked', [blocked]],
 		['mixed', [email, blocked]],
 	] satisfies Array<[string, Call[]]>)('expands and collapses %s calls', async (_name, calls) => {
-		const { getByRole, getAllByTestId } = setup(calls);
+		const { getByRole, getAllByRole, getAllByTestId } = setup(calls);
 		const toggle = getByRole('button', { name: 'Test run details' });
 		await userEvent.click(toggle);
 		expect(toggle).toHaveAttribute('aria-expanded', 'true');
 		expect(getAllByTestId('agent-tool-call-route-row')).toHaveLength(calls.length);
+		expect(getAllByRole('list')).toHaveLength(1);
+		expect(getAllByRole('listitem')).toHaveLength(calls.length);
 		for (const name of getAllByTestId('agent-tool-call-route-tool-name'))
 			expect(name).toBeVisible();
 		await userEvent.click(toggle);
@@ -87,6 +89,12 @@ describe('AgentAssistantTestRunCard', () => {
 	it('opens only the supplied chat when the user selects the action', async () => {
 		const { getByRole, emitted } = setup([email], 'chat-1');
 		expect(emitted('openTestChat')).toBeUndefined();
+		await userEvent.click(getByRole('button', { name: 'Open test chat' }));
+		expect(emitted('openTestChat')).toEqual([['chat-1']]);
+	});
+
+	it('emits the same trimmed chat id that decides whether the action shows', async () => {
+		const { getByRole, emitted } = setup([email], '  chat-1 ');
 		await userEvent.click(getByRole('button', { name: 'Open test chat' }));
 		expect(emitted('openTestChat')).toEqual([['chat-1']]);
 	});

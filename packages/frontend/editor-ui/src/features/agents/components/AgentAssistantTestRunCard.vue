@@ -1,15 +1,15 @@
 <script setup lang="ts">
 import { N8nBadge, N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { ref, useId } from 'vue';
+import { computed, ref, useId } from 'vue';
 
 import type { AgentToolCallRouteItem } from '../toolCallSimulation.types';
-import AgentToolCallRouteList from './AgentToolCallRouteList.vue';
+import AgentToolCallRouteRow from './AgentToolCallRouteRow.vue';
 import WouldHaveHappenedPreview from './testRun/WouldHaveHappenedPreview.vue';
 import type { WouldHaveHappenedPreviewInput } from './testRun/wouldHaveHappened.types';
 
 /** Presentational only. The caller must confirm that this is a simulated test run. */
-defineProps<{
+const props = defineProps<{
 	agentName: string;
 	calls: Array<AgentToolCallRouteItem & { preview?: WouldHaveHappenedPreviewInput }>;
 	/** Omit until the caller has a saved test chat to open. */
@@ -23,6 +23,8 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const expanded = ref(false);
 const detailsId = useId();
+/** Trimmed once, so the action's visibility and the emitted ID always agree. */
+const openableTestChatId = computed(() => props.testChatId?.trim() ?? '');
 </script>
 
 <template>
@@ -47,10 +49,10 @@ const detailsId = useId();
 				{{ i18n.baseText('agents.assistantTestRun.details') }}
 			</N8nButton>
 			<N8nButton
-				v-if="testChatId?.trim()"
+				v-if="openableTestChatId"
 				variant="ghost"
 				size="small"
-				@click="emit('openTestChat', testChatId)"
+				@click="emit('openTestChat', openableTestChatId)"
 			>
 				{{ i18n.baseText('agents.assistantTestRun.openChat') }}
 			</N8nButton>
@@ -59,9 +61,14 @@ const detailsId = useId();
 			<N8nText v-if="calls.length === 0" size="small" color="text-light">
 				{{ i18n.baseText('agents.assistantTestRun.noCalls') }}
 			</N8nText>
-			<template v-else>
-				<div v-for="call in calls" :key="call.toolCallId" :class="$style.call">
-					<AgentToolCallRouteList :calls="[call]" />
+			<ul v-else :class="$style.calls" data-test-id="agent-assistant-test-run-calls">
+				<li
+					v-for="call in calls"
+					:key="call.toolCallId"
+					:class="$style.call"
+					:data-tool-call-id="call.toolCallId"
+				>
+					<AgentToolCallRouteRow :call="call" />
 					<WouldHaveHappenedPreview
 						v-if="
 							call.preview &&
@@ -70,8 +77,8 @@ const detailsId = useId();
 						"
 						:preview="call.preview"
 					/>
-				</div>
-			</template>
+				</li>
+			</ul>
 		</div>
 	</section>
 </template>
@@ -110,6 +117,16 @@ const detailsId = useId();
 	flex-direction: column;
 	gap: var(--spacing--xs);
 	margin-top: var(--spacing--xs);
+}
+
+.calls {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--xs);
+	margin: 0;
+	padding: 0;
+	list-style: none;
+	min-width: 0;
 }
 
 .call {
