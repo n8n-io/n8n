@@ -6,7 +6,7 @@ import { mock } from 'vitest-mock-extended';
 import { classifyGatewayError } from '../utils/gateway-error-classifier';
 
 import { AgentBudgetAlertService } from '../agent-budget-alert.service';
-import { withBudgetGuardrail } from '../budget-guardrail';
+import { budgetChargeOptions, withBudgetGuardrail } from '../budget-guardrail';
 
 /** Ledger for these tests. `add` ignores a repeated `callId`. */
 function spendLedger(): SpendLedger {
@@ -57,6 +57,25 @@ describe('withBudgetGuardrail', () => {
 
 	afterEach(() => {
 		Container.reset();
+	});
+
+	it('charges a child run to the root session', () => {
+		const charge = budgetChargeOptions({
+			ledger,
+			useRootSessionCap: true,
+			sessionId: 'root-session',
+			agentId: 'child-1',
+			rootSessionCapUsd: 5,
+			budget: { enabled: true, monthlyBudgetUsd: 20, alertThresholdPercent: 80 },
+		});
+
+		expect(charge).toMatchObject({
+			sessionId: 'root-session',
+			agentId: 'child-1',
+			sessionCostCapUsd: 5,
+			monthlyBudgetUsd: 20,
+			alertThresholdPercent: 80,
+		});
 	});
 
 	it('attaches nothing for an own-key run when budget is missing or turned off', () => {

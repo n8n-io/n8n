@@ -1,5 +1,6 @@
 import {
 	createBudgetGuardrail,
+	type BudgetGuardrailOptions,
 	type ExecutionOptions,
 	type GuardrailsOptions,
 	type ModelGuardrail,
@@ -280,6 +281,22 @@ export function attachGuardrails<T extends RunOptions & ExecutionOptions>(
 }
 
 /**
+ * The ledger target for this run, or undefined when no cap is on. Tool
+ * guardrail model calls write to the same target as the budget hook.
+ */
+export function budgetChargeOptions(input: BudgetAttachInput): BudgetGuardrailOptions | undefined {
+	const limits = resolveBudgetLimits(input);
+	if (!limits) return undefined;
+	const ledger = input.ledger ?? Container.get(AgentSpendLedger);
+	const onNotice = monthlyAlertNotice(input, limits.alertThresholdPercent);
+	return {
+		ledger,
+		...limits,
+		...(onNotice ? { onNotice } : {}),
+	};
+}
+
+/**
  * Appends the budget hook when a bucket is on. For a Gateway credits model it
  * also attaches the 402 classifier: a depleted wallet ends the run with
  * `budget.credits` from the gateway's own rejection, so no wallet read runs
@@ -290,21 +307,11 @@ export function withBudgetGuardrail<T extends RunOptions & ExecutionOptions>(
 	options: T,
 	input: BudgetAttachInput,
 ): T {
-	const limits = resolveBudgetLimits(input);
+	const charge = budgetChargeOptions(input);
 	const sink = toGuardrailNoticeSink(input);
 
 	const hooks: ModelGuardrail[] = [];
-	if (limits) {
-		const ledger = input.ledger ?? Container.get(AgentSpendLedger);
-		const onNotice = monthlyAlertNotice(input, limits.alertThresholdPercent);
-		hooks.push(
-			createBudgetGuardrail({
-				ledger,
-				...limits,
-				...(onNotice ? { onNotice } : {}),
-			}),
-		);
-	}
+	if (charge) hooks.push(createBudgetGuardrail(charge));
 	const withHooks =
 		hooks.length === 0
 			? sink

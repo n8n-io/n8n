@@ -11,6 +11,7 @@ import {
 	type CreateDelegateSubAgentToolOptions,
 	BuiltTool,
 	createModel,
+	getCatalogModelId,
 	CredentialProvider,
 	ModelConfig,
 	type Workspace,
@@ -154,6 +155,8 @@ export interface ReconstructedAgentRuntime {
 	 * same way the run's model is. Absent when no model kind is configured.
 	 */
 	guardrailModel?: LanguageModel;
+	/** Catalog id of `guardrailModel`, used to price its token spend. */
+	guardrailModelId?: string;
 }
 
 export interface SubAgentDelegationConfig {
@@ -803,6 +806,9 @@ export class AgentRuntimeReconstructionService {
 				? { toolGuardrails: options.config.config.guardrails.tools }
 				: {}),
 			...(runtime.guardrailModel !== undefined ? { guardrailModel: runtime.guardrailModel } : {}),
+			...(runtime.guardrailModelId !== undefined
+				? { guardrailModelId: runtime.guardrailModelId }
+				: {}),
 		};
 	}
 
@@ -862,7 +868,7 @@ export class AgentRuntimeReconstructionService {
 		const webSearchFetch = createWebSearchFetch(this.outboundHttp);
 		const buildMcpClient = this.makeMcpClientFactory(options, aiMcpFetch, mcpServerAttributions);
 		const modelFetch = instrumentation?.modelFetch ?? aiProxyFetch;
-		const guardrailModel = await this.resolveGuardrailModel(config, credentialProvider, modelFetch);
+		const guardrail = await this.resolveGuardrailModel(config, credentialProvider, modelFetch);
 		const reconstructed = await buildFromJson(config, toolDescriptors, {
 			toolExecutor,
 			credentialProvider,
@@ -889,7 +895,9 @@ export class AgentRuntimeReconstructionService {
 			agent: reconstructed,
 			resolvedTools,
 			mcpServerAttributions,
-			...(guardrailModel !== undefined ? { guardrailModel } : {}),
+			...(guardrail !== undefined
+				? { guardrailModel: guardrail.model, guardrailModelId: guardrail.modelId }
+				: {}),
 		};
 	}
 
@@ -897,7 +905,7 @@ export class AgentRuntimeReconstructionService {
 		config: AgentJsonConfig,
 		credentialProvider: AgentCredentialProvider,
 		modelFetch: ReturnType<typeof createAiProxyFetch>,
-	): Promise<LanguageModel | undefined> {
+	): Promise<{ model: LanguageModel; modelId: string } | undefined> {
 		const guardrails = config.config?.guardrails?.tools;
 		if (!guardrails?.some(isModelBasedKind) || config.model.trim() === '') return undefined;
 
@@ -909,10 +917,13 @@ export class AgentRuntimeReconstructionService {
 						credentialProvider,
 					)
 				: config.model;
-			return createModel(
-				modelConfig,
-				credentialProvider.createAiGatewayTokenRefreshFetch?.(modelFetch) ?? modelFetch,
-			);
+			return {
+				model: createModel(
+					modelConfig,
+					credentialProvider.createAiGatewayTokenRefreshFetch?.(modelFetch) ?? modelFetch,
+				),
+				modelId: getCatalogModelId(modelConfig),
+			};
 		} catch (error) {
 			this.logger.warn('Failed to resolve the guardrail model; model-based guardrails skip', {
 				model: config.model,

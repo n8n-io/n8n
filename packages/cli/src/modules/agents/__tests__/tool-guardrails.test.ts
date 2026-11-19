@@ -1,6 +1,6 @@
-import type { ExecutionOptions, RunOptions } from '@n8n/agents';
+import type { BudgetGuardrailOptions, ExecutionOptions, RunOptions } from '@n8n/agents';
 import { createKeywordsCheckFn } from '@n8n/ai-utilities/guardrails';
-import { createModel } from '@n8n/agents';
+import { chargeModelSpend, createModel } from '@n8n/agents';
 import type { AgentToolGuardrailConfig } from '@n8n/api-types';
 import type { LanguageModel } from 'ai';
 import { MockLanguageModelV3 } from 'ai/test';
@@ -9,6 +9,14 @@ import { vi } from 'vitest';
 
 import { withToolGuardrails } from '../tool-guardrails';
 import type { ToolRegistry } from '../tool-registry';
+
+vi.mock('@n8n/agents', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@n8n/agents')>();
+	return {
+		...actual,
+		chargeModelSpend: vi.fn().mockResolvedValue(undefined),
+	};
+});
 
 vi.mock('@n8n/ai-utilities/guardrails', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('@n8n/ai-utilities/guardrails')>();
@@ -37,14 +45,27 @@ const ctx = (toolName: string, input: unknown) => ({
 	runId: 'run-1',
 });
 
-function hooksFor(toolGuardrails: AgentToolGuardrailConfig[], guardrailModel?: LanguageModel) {
+function hooksFor(
+	toolGuardrails: AgentToolGuardrailConfig[],
+	guardrailModel?: LanguageModel,
+	spend?: { guardrailModelId: string; budget: BudgetGuardrailOptions },
+) {
 	const attached = withToolGuardrails(base, {
 		toolGuardrails,
 		toolRegistry: registry,
 		guardrailModel,
+		guardrailModelId: spend?.guardrailModelId,
+		budget: spend?.budget,
 	});
 	return attached.guardrails?.hooks ?? [];
 }
+
+const budget = {
+	ledger: { add: vi.fn(), read: vi.fn() },
+	sessionId: 'session-1',
+	agentId: 'agent-1',
+	sessionCostCapUsd: 2,
+} as BudgetGuardrailOptions;
 
 describe('withToolGuardrails', () => {
 	it('passes the options through unchanged when no guardrails are configured', () => {
@@ -483,5 +504,72 @@ describe('withToolGuardrails model kinds', () => {
 		} finally {
 			server.close();
 		}
+	});
+
+	it('charges a model check under the tool call id', async () => {
+		vi.mocked(chargeModelSpend).mockClear();
+		const hooks = hooksFor(
+			[jailbreakGuardrail],
+			mockModel('{"confidenceScore":0.2,"flagged":false}'),
+			{ guardrailModelId: 'openai/gpt-4o-mini', budget },
+		);
+
+		const stop = await hooks[0].beforeTool?.(ctx('read_file', { message: 'Read the file.' }));
+
+		expect(stop).toBeUndefined();
+		expect(chargeModelSpend).toHaveBeenCalledWith(
+			expect.objectContaining({
+				callId: 'tc-1:guardrail:jailbreak:g1:before',
+				modelId: 'openai/gpt-4o-mini',
+				budget,
+			}),
+		);
+	});
+
+	it('charges a model check that returns tokens and then fails to parse', async () => {
+		vi.mocked(chargeModelSpend).mockClear();
+		const hooks = hooksFor([jailbreakGuardrail], mockModel('not json at all'), {
+			guardrailModelId: 'openai/gpt-4o-mini',
+			budget,
+		});
+
+		const stop = await hooks[0].beforeTool?.(ctx('read_file', { message: 'anything' }));
+
+		expect(stop).toEqual({ action: 'stop', code: 'guardrail.jailbreak.g1' });
+		expect(chargeModelSpend).toHaveBeenCalledWith(
+			expect.objectContaining({ callId: 'tc-1:guardrail:jailbreak:g1:before' }),
+		);
+	});
+
+	it('does not charge when the model call throws', async () => {
+		vi.mocked(chargeModelSpend).mockClear();
+		const throwing = new MockLanguageModelV3({
+			provider: 'mock',
+			modelId: 'guardrail-test',
+			doGenerate: async () => {
+				throw new Error('model down');
+			},
+		});
+		const hooks = hooksFor([jailbreakGuardrail], throwing, {
+			guardrailModelId: 'openai/gpt-4o-mini',
+			budget,
+		});
+
+		const stop = await hooks[0].beforeTool?.(ctx('read_file', { message: 'anything' }));
+
+		expect(stop).toEqual({ action: 'stop', code: 'guardrail.jailbreak.g1' });
+		expect(chargeModelSpend).not.toHaveBeenCalled();
+	});
+
+	it('does not charge when no budget is set', async () => {
+		vi.mocked(chargeModelSpend).mockClear();
+		const hooks = hooksFor(
+			[jailbreakGuardrail],
+			mockModel('{"confidenceScore":0.2,"flagged":false}'),
+		);
+
+		await hooks[0].beforeTool?.(ctx('read_file', { message: 'Read the file.' }));
+
+		expect(chargeModelSpend).not.toHaveBeenCalled();
 	});
 });
