@@ -264,6 +264,7 @@ export class WorkflowReviewAuthorizationService {
 	 * {@link findReadableRequestOrFail}, whose read probe is the one `decide()` runs.
 	 *
 	 * `canDecide` is advisory: `decide()` re-checks the same rule under its lock.
+	 * `canClose` is not advisory: it is the rule `close()` enforces.
 	 * It answers who, not when — the lifecycle guard is deliberately not mirrored
 	 * here, so callers gate on `state`/`decision` themselves.
 	 */
@@ -276,8 +277,8 @@ export class WorkflowReviewAuthorizationService {
 	): Promise<WorkflowReviewViewerEligibility> {
 		const { request, workflowRows, readableWorkflowRows } = access;
 
-		// A decision or comment covers the whole review, so both need read access to
-		// every covered workflow.
+		// A decision, comment, or close covers the whole review, so each needs read access
+		// to every covered workflow.
 		const canReadEveryWorkflow =
 			workflowRows.length > 0 && readableWorkflowRows.length === workflowRows.length;
 

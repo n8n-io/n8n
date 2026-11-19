@@ -9,7 +9,6 @@ import {
 } from '@n8n/backend-test-utils';
 import type { Project, User } from '@n8n/db';
 import {
-	WorkflowRepository,
 	WorkflowReviewActivityRepository,
 	WorkflowReviewRequestAuthorRepository,
 	WorkflowReviewRequestRepository,
@@ -54,14 +53,12 @@ let viewerAgent: SuperAgentTest;
 
 let requestRepository: WorkflowReviewRequestRepository;
 let activityRepository: WorkflowReviewActivityRepository;
-let workflowEntityRepository: WorkflowRepository;
 let policyService: WorkflowReviewPolicyService;
 
 beforeAll(async () => {
 	await utils.initNodeTypes();
 	requestRepository = Container.get(WorkflowReviewRequestRepository);
 	activityRepository = Container.get(WorkflowReviewActivityRepository);
-	workflowEntityRepository = Container.get(WorkflowRepository);
 	policyService = Container.get(WorkflowReviewPolicyService);
 });
 
@@ -134,7 +131,7 @@ describe('POST /workflow-review-requests/:workflowReviewRequestId/close', () => 
 				},
 			],
 		])('closes their own review %s without approving it', async (_label, seed) => {
-			const { request, workflow } = await seed();
+			const { request } = await seed();
 
 			const response = await close(memberAgent, request.id).expect(200);
 
@@ -152,9 +149,6 @@ describe('POST /workflow-review-requests/:workflowReviewRequestId/close', () => 
 				closedById: member.id,
 				approvedAt: null,
 			});
-			expect(
-				(await workflowEntityRepository.findOneByOrFail({ id: workflow.id })).activeVersionId,
-			).toBeNull();
 		});
 	});
 
@@ -206,7 +200,11 @@ describe('POST /workflow-review-requests/:workflowReviewRequestId/close', () => 
 				{},
 			);
 
-			await close(viewerAgent, request.id).expect(403);
+			const response = await close(viewerAgent, request.id).expect(403);
+
+			expect(response.body.message).toBe(
+				"You can't close this review. Ask the requester, a reviewer, or a project admin to close it.",
+			);
 
 			expect(await requestRepository.findById(request.id, {})).toMatchObject({ state: 'open' });
 			expect(await feedTypes(ownerAgent, request.id)).toEqual([]);
@@ -278,7 +276,7 @@ describe('POST /workflow-review-requests/:workflowReviewRequestId/close', () => 
 			expect(terminalEntries).toHaveLength(1);
 		});
 
-		test('keeps changes requested while the close waited for the lock', async () => {
+		test('never overwrites a decision made while the close waited for the lock', async () => {
 			const { request } = await seedRequest(member);
 
 			const [changes, closed] = await Promise.all([

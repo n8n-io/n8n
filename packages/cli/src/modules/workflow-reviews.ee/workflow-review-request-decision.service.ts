@@ -289,7 +289,9 @@ export class WorkflowReviewRequestDecisionService {
 		);
 		const { canClose } = await this.authorizationService.resolveViewerEligibility(user, access);
 		if (!canClose) {
-			throw new ForbiddenError('You cannot close this review request');
+			throw new ForbiddenError(
+				"You can't close this review. Ask the requester, a reviewer, or a project admin to close it.",
+			);
 		}
 		assertWorkflowReviewRequestUpdatable(access.request);
 

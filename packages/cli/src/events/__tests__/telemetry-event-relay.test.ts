@@ -6527,7 +6527,7 @@ describe('TelemetryEventRelay', () => {
 			).toBeNull();
 		});
 
-		it('should track a review a user closed, apart from approvals and system closes', () => {
+		it('should track a review a user closed with the closer and the reviewed version', () => {
 			eventService.emit('workflow-review-closed-by-user', {
 				user: { id: 'user123' },
 				workflowReviewRequestId: 'review-1',
