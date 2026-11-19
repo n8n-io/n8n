@@ -1,6 +1,13 @@
 import { isEscapedTransferValue, TRANSFER_VALUE_KEY } from './transfer';
-import { decodeHostValue } from './transfer-codec';
-import { arrayFrom, defineProperty, isInteger } from './intrinsics';
+import { decodeHostValue, isHostData } from './transfer-codec';
+import {
+	arrayFrom,
+	defineProperty,
+	hasOwn,
+	isArray as isArrayValue,
+	isInteger,
+	objectCreate,
+} from './intrinsics';
 import { isArrayIndexKey, isKeyOf } from './utils';
 
 // ============================================================================
@@ -15,6 +22,14 @@ import { isArrayIndexKey, isKeyOf } from './utils';
 // ---------------------------------------------------------------------------
 const proxyPaths = new WeakMap<object, string[]>();
 
+// ---------------------------------------------------------------------------
+// Batched reads.
+//
+// A proxy reads one value for each host call until the expression shows that it
+// reads many. A read of a value after a read of the key list is a read of every
+// field. From then on, one host call gives a batch of values.
+// ---------------------------------------------------------------------------
+
 /** Asks for each value that is small. */
 export const SMALL_VALUES = 0;
 
@@ -23,6 +38,79 @@ export const WHOLE_VALUES = 1;
 
 /** What a batched read asks for. A list of names asks for only these fields of each array item. */
 export type BatchRequest = typeof SMALL_VALUES | typeof WHOLE_VALUES | string[];
+
+/** How an expression read the data of a lazy proxy so far. */
+interface ReadTrace {
+	/** The expression read every field. */
+	bulk: boolean;
+}
+
+/** What the fields of an object are asked for, from how the expression read its parent. */
+function requestUnder(parentTrace: ReadTrace | undefined): BatchRequest {
+	return parentTrace?.bulk === true ? WHOLE_VALUES : SMALL_VALUES;
+}
+
+/**
+ * What a lazy proxy knows about the reads of its values. A proxy makes it on
+ * its first use, so a proxy that reads one field makes none.
+ */
+interface ChildReads {
+	/** True between a read of the key list and the read of a value. */
+	keysWereListed: boolean;
+	/** The request of the last read of every field. The same request gives no new field. */
+	fieldsRequest?: BatchRequest;
+}
+
+function newChildReads(): ChildReads {
+	return { keysWereListed: false };
+}
+
+/** A key list up to this length is searched. A longer one gets a lookup. */
+const MAX_SEARCHED_KEYS = 64;
+
+const keyLookups = new WeakMap<string[], Record<string, true>>();
+
+function keyLookupOf(keys: string[]): Record<string, true> {
+	let lookup = keyLookups.get(keys);
+	if (lookup === undefined) {
+		lookup = objectCreate(null) as Record<string, true>;
+		for (let i = 0; i < keys.length; i++) {
+			lookup[keys[i]] = true;
+		}
+		keyLookups.set(keys, lookup);
+	}
+	return lookup;
+}
+
+/** Say whether the host key list holds the key. A wide object does not search its list on each read. */
+function isHostKey(keys: string[], prop: string): boolean {
+	return keys.length <= MAX_SEARCHED_KEYS ? keys.includes(prop) : keyLookupOf(keys)[prop] === true;
+}
+
+/**
+ * The host batched read for a path. Undefined for a bridge without
+ * one, and for a path outside item data, where the host gives no values.
+ */
+function batchReadOf(basePath: string[], callbacks?: { readBatch?: any }): any {
+	return basePath[0] === '$json' ? callbacks?.readBatch : undefined;
+}
+
+/** The values that a host batched read gave. Undefined when the host gave one lazy value. */
+function batchOf<T>(result: unknown, isExpected: (values: unknown) => values is T): T | undefined {
+	return isHostData(result) && isExpected(result[TRANSFER_VALUE_KEY])
+		? result[TRANSFER_VALUE_KEY]
+		: undefined;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !isArrayValue(value);
+}
+
+/** The fields that a host read gave. Undefined when the host gave no field. */
+function fieldsOf(result: unknown): Record<string, unknown> | undefined {
+	throwIfErrorSentinel(result);
+	return batchOf(result, isRecord);
+}
 
 /**
  * Serialized error sentinel returned by host-side bridge callbacks.
@@ -134,6 +222,7 @@ export type ProxyMeta = { kind: 'object'; keys?: string[] } | { kind: 'array'; l
  * @param basePath - Current path in object tree (e.g., ['$json', 'user'])
  * @param meta - Optional shape descriptor (object/array + known keys/length)
  * @param callbacks - ivm.Callback functions for cross-isolate communication
+ * @param parentTrace - How the expression read the proxy that holds this one
  * @returns Proxy object with lazy loading behavior
  */
 export function createDeepLazyProxy(
@@ -142,7 +231,9 @@ export function createDeepLazyProxy(
 	callbacks?: {
 		getValueAtPath: any;
 		getArrayElement: any;
+		readBatch?: any;
 	},
+	parentTrace?: ReadTrace,
 ): Record<string | symbol, unknown> {
 	if (!callbacks) {
 		throw new Error('createDeepLazyProxy requires callbacks parameter');
@@ -170,6 +261,14 @@ export function createDeepLazyProxy(
 		return [];
 	}
 
+	const trace: ReadTrace = { bulk: false };
+	let childReads: ChildReads | undefined;
+
+	// Fields that a host read gave and that the expression did not read yet. A
+	// field goes to the cache when the expression reads it. The cache then keeps
+	// the order of the reads, as it does without batched reads.
+	let givenFields: Record<string, unknown> | undefined;
+
 	function isInArrayBounds(prop: string): number | undefined {
 		const idx = Number(prop);
 		if (!isInteger(idx) || idx < 0 || idx >= arrayLength) return undefined;
@@ -184,11 +283,11 @@ export function createDeepLazyProxy(
 		// that actually use it, so non-metadata objects don't pay for the spread.
 		if (isArrayMetadata(value)) {
 			const path = [...basePath, propOrIdx];
-			return createDeepLazyProxy(path, { kind: 'array', length: value.__length }, callbacks);
+			return createDeepLazyProxy(path, { kind: 'array', length: value.__length }, callbacks, trace);
 		}
 		if (isObjectMetadata(value)) {
 			const path = [...basePath, propOrIdx];
-			return createDeepLazyProxy(path, { kind: 'object', keys: value.__keys }, callbacks);
+			return createDeepLazyProxy(path, { kind: 'object', keys: value.__keys }, callbacks, trace);
 		}
 		// Decoded data can hold the same keys as metadata or callback errors.
 		return decodeHostValue(value);
@@ -223,6 +322,15 @@ export function createDeepLazyProxy(
 		return t[prop];
 	}
 
+	/** Read every field in one host call, one time for each request. */
+	function readEveryField(reads: ChildReads, request: BatchRequest): void {
+		if (request !== reads.fieldsRequest) {
+			reads.fieldsRequest = request;
+			givenFields =
+				fieldsOf(batchReadOf(basePath, callbacks)(basePath, 0, 0, request)) ?? givenFields;
+		}
+	}
+
 	function fetchAndCacheObjectValue(prop: string): unknown {
 		const t = target as Record<string, unknown>;
 		const value = getValueAtPath([...basePath, prop]);
@@ -238,6 +346,29 @@ export function createDeepLazyProxy(
 		return t[prop];
 	}
 
+	function cacheGivenField(fields: Record<string, unknown>, prop: string): unknown {
+		const t = target as Record<string, unknown>;
+		// An assignment to a key that the prototype also has can run code of the prototype.
+		if (prop in t) {
+			defineProperty(t, prop, {
+				value: fields[prop],
+				writable: true,
+				enumerable: true,
+				configurable: true,
+			});
+		} else {
+			t[prop] = fields[prop];
+		}
+		return fields[prop];
+	}
+
+	/** Cache a field that the expression reads, from the fields that the host gave or from the host. */
+	function cacheObjectValue(prop: string): unknown {
+		return givenFields !== undefined && hasOwn(givenFields, prop)
+			? cacheGivenField(givenFields, prop)
+			: fetchAndCacheObjectValue(prop);
+	}
+
 	function materialize(): void {
 		if (materialized) return;
 		// Keep cached entries: a cached child proxy can already carry its own
@@ -250,8 +381,12 @@ export function createDeepLazyProxy(
 			}
 			(target as unknown[]).length = arrayLength;
 		} else {
+			const reads = (childReads ??= newChildReads());
+			if (batchReadOf(basePath, callbacks) !== undefined && reads.fieldsRequest === undefined) {
+				readEveryField(reads, SMALL_VALUES);
+			}
 			for (const key of resolveObjectKeys()) {
-				if (!Object.prototype.hasOwnProperty.call(target, key)) fetchAndCacheObjectValue(key);
+				if (!Object.prototype.hasOwnProperty.call(target, key)) cacheObjectValue(key);
 			}
 		}
 		materialized = true;
@@ -267,6 +402,9 @@ export function createDeepLazyProxy(
 				// Required by proxy invariant: target [] has non-configurable 'length'
 				keys.push('length');
 				return keys;
+			}
+			if (batchReadOf(basePath, callbacks) !== undefined) {
+				(childReads ??= newChildReads()).keysWereListed = true;
 			}
 			return resolveObjectKeys();
 		},
@@ -304,7 +442,7 @@ export function createDeepLazyProxy(
 				}
 				return undefined;
 			}
-			if (resolveObjectKeys().includes(prop)) {
+			if (isHostKey(resolveObjectKeys(), prop)) {
 				return { configurable: true, enumerable: true, writable: false };
 			}
 			return undefined;
@@ -340,7 +478,7 @@ export function createDeepLazyProxy(
 
 			if (
 				isKeyOf(targetObj, prop) ||
-				(prop in targetObj && (isArray || !resolveObjectKeys().includes(prop)))
+				(prop in targetObj && (isArray || !isHostKey(resolveObjectKeys(), prop)))
 			) {
 				return targetObj[prop];
 			}
@@ -355,9 +493,15 @@ export function createDeepLazyProxy(
 				}
 			}
 
+			if (childReads?.keysWereListed === true) {
+				childReads.keysWereListed = false;
+				trace.bulk = true;
+				readEveryField(childReads, requestUnder(parentTrace));
+			}
+
 			// A host array can carry named keys, for example a key that a Set node
 			// writes on an item whose json is an array.
-			return fetchAndCacheObjectValue(prop);
+			return cacheObjectValue(prop);
 		},
 
 		// Expression code runs in sloppy mode (the eval wrapper adds no
