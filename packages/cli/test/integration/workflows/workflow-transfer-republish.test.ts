@@ -3,6 +3,7 @@ import {
 	createTeamProject,
 	getWorkflowSharing,
 	mockInstance,
+	randomCredentialPayload,
 	testDb,
 } from '@n8n/backend-test-utils';
 import { Logger } from '@n8n/backend-common';
@@ -10,11 +11,14 @@ import { EventService } from '@n8n/backend-services';
 import type { Project, User } from '@n8n/db';
 import {
 	SharedWorkflowRepository,
+	WorkflowHistoryRepository,
 	WorkflowPublicationOutboxRepository,
+	WorkflowPublishHistoryRepository,
 	WorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { ActiveWorkflowTriggers, InstanceSettings } from 'n8n-core';
+import type { INode, INodeType, INodeTypeDescription } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
@@ -22,6 +26,7 @@ import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { Telemetry } from '@/telemetry';
 import { WorkflowPublicationNotifier } from '@/workflows/publication/workflow-publication-notifier';
 
+import { saveCredential } from '../shared/db/credentials';
 import { createFolder } from '../shared/db/folders';
 import { createMember, createOwner, createOwnerWithApiKey } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
@@ -29,6 +34,21 @@ import * as utils from '../shared/utils/';
 
 /** The cron node of the `createActiveWorkflow` fixture. */
 const CRON_NODE_ID = 'uuid-2';
+
+class CredentialedNode implements INodeType {
+	description: INodeTypeDescription = {
+		displayName: 'Credentialed Node',
+		name: 'credentialedNode',
+		group: ['transform'],
+		version: 1,
+		description: 'Uses a credential',
+		defaults: { name: 'Credentialed Node' },
+		inputs: ['main'],
+		outputs: ['main'],
+		credentials: [{ name: 'githubApi', required: true }],
+		properties: [],
+	};
+}
 
 mockInstance(Telemetry);
 
@@ -70,7 +90,11 @@ beforeAll(async () => {
 	member = await createMember();
 	authMemberAgent = testServer.authAgentFor(member);
 
-	await utils.initNodeTypes();
+	await utils.initNodeTypes({
+		...utils.buildDefaultNodes(),
+		'n8n-nodes-base.credentialedNode': { type: new CredentialedNode(), sourcePath: '' },
+	});
+	await utils.initCredentialsTypes();
 
 	Container.get(EventService).on('workflow-deactivated', (event) => {
 		deactivatedEvents.push(event);
@@ -89,6 +113,8 @@ beforeEach(async () => {
 		'WorkflowHistory',
 		'WorkflowPublishHistory',
 		'Folder',
+		'SharedCredentials',
+		'CredentialsEntity',
 	]);
 
 	sourceProject = await createTeamProject('Source project', member);
@@ -147,6 +173,58 @@ describe('PUT /workflows/:workflowId/transfer', () => {
 		expect(deactivatedEvents).toEqual([
 			expect.objectContaining({ workflowId: workflow.id, source: 'ui', publicApi: false }),
 		]);
+	});
+
+	test('does not report a workflow as unpublished when its unpublish after a failed transfer enqueue also fails', async () => {
+		const workflow = await createActiveWorkflow({}, sourceProject);
+		failTransferEnqueue();
+		vi.spyOn(Container.get(WorkflowPublishHistoryRepository), 'addRecord').mockRejectedValue(
+			new Error('history is down'),
+		);
+
+		const response = await authMemberAgent
+			.put(`/workflows/${workflow.id}/transfer`)
+			.send({ destinationProjectId: targetProject.id })
+			.expect(200);
+
+		expect(response.body).toEqual({});
+	});
+
+	test('unpublishes the workflow and reports the error when the destination cannot use its credential', async () => {
+		const credential = await saveCredential(randomCredentialPayload(), {
+			project: sourceProject,
+			role: 'credential:owner',
+		});
+		const credentialedNode: INode = {
+			id: 'credentialed-node',
+			name: 'Credentialed Node',
+			type: 'n8n-nodes-base.credentialedNode',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+			credentials: { githubApi: { id: credential.id, name: credential.name } },
+		};
+		const workflow = await createActiveWorkflow({}, sourceProject);
+		await Container.get(WorkflowHistoryRepository).update(
+			{ versionId: workflow.versionId },
+			{ nodes: [...workflow.nodes, credentialedNode] },
+		);
+
+		const response = await authMemberAgent
+			.put(`/workflows/${workflow.id}/transfer`)
+			.send({ destinationProjectId: targetProject.id })
+			.expect(200);
+
+		const UNPUBLISHED_AND_REPORTED = {
+			error: expect.objectContaining({ name: 'TriggerCredentialAccessError' }),
+			activeVersionId: null,
+			records: [{ status: 'pending', reason: 'publish', publishedVersionId: workflow.versionId }],
+		};
+		expect({
+			error: response.body.data?.error,
+			activeVersionId: await activeVersionIdOf(workflow.id),
+			records: await outboxRecordsOf(workflow.id),
+		}).toEqual(UNPUBLISHED_AND_REPORTED);
 	});
 
 	test('emits workflow-deactivated with source api and the public API client when the transfer enqueue of a public API move fails', async () => {
@@ -230,7 +308,8 @@ describe('PUT /projects/:projectId/folders/:folderId/transfer', () => {
 			sourceProject,
 		);
 		failTransferEnqueue();
-		const logError = vi.spyOn(Container.get(Logger), 'error');
+		const logError = vi.mocked(Container.get(Logger).error);
+		logError.mockClear();
 
 		const response = await authMemberAgent
 			.put(`/projects/${sourceProject.id}/folders/${folder.id}/transfer`)

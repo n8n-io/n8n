@@ -814,7 +814,7 @@ export class ActiveWorkflowManager {
 	 * the workflow does not become its publisher. All nodes, not only triggers:
 	 * a trigger can load its sub-nodes, with their credentials, in the webhook phase.
 	 */
-	private async checkTriggerCredentialAccess(
+	async checkTriggerCredentialAccess(
 		workflowId: WorkflowId,
 		activeVersion: WorkflowHistory,
 		publisherId: string | undefined,

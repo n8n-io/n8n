@@ -1725,8 +1725,17 @@ export class WorkflowService {
 		workflows: PublishedWorkflow[],
 		publicApi: PublicApiCaller,
 	): Promise<Map<string, WorkflowTransferResult>> {
-		const results = new Map<string, WorkflowTransferResult>();
-		const workflowIds = workflows.map((workflow) => workflow.id);
+		const failures = new Map<string, Error>();
+		const workflowIds: string[] = [];
+		for (const workflow of workflows) {
+			const refusal = await this._triggerCredentialRefusal(workflow);
+			if (refusal) {
+				failures.set(workflow.id, refusal);
+			} else {
+				workflowIds.push(workflow.id);
+			}
+		}
+
 		if (workflowIds.length > 0) {
 			try {
 				await this.outboxRepository.enqueueByWorkflowIds(
@@ -1736,10 +1745,17 @@ export class WorkflowService {
 				this.workflowPublicationNotifier.requestDrain();
 			} catch (error) {
 				this.logger.error('Failed to republish the transferred workflows', { workflowIds, error });
-				const { name, message } = ensureError(error);
-				for (const workflow of workflows) {
-					await this._unpublishAfterTransfer(user, workflow, publicApi);
-					results.set(workflow.id, { error: { name, message } });
+				for (const workflowId of workflowIds) failures.set(workflowId, ensureError(error));
+			}
+		}
+
+		const results = new Map<string, WorkflowTransferResult>();
+		for (const workflow of workflows) {
+			const failure = failures.get(workflow.id);
+			if (failure) {
+				const unpublished = await this._unpublishAfterTransfer(user, workflow, publicApi);
+				if (unpublished) {
+					results.set(workflow.id, { error: { name: failure.name, message: failure.message } });
 				}
 			}
 		}
@@ -1747,14 +1763,41 @@ export class WorkflowService {
 		return results;
 	}
 
+	/** Never throws: after any other error, the leader checks the credentials again. */
+	private async _triggerCredentialRefusal(
+		workflow: PublishedWorkflow,
+	): Promise<TriggerCredentialAccessError | null> {
+		let refusal: TriggerCredentialAccessError | null = null;
+		try {
+			await this.activeWorkflowManager.checkTriggerCredentialAccess(
+				workflow.id,
+				workflow.activeVersion,
+				undefined,
+			);
+		} catch (error) {
+			if (error instanceof TriggerCredentialAccessError) {
+				refusal = error;
+			} else {
+				this.logger.warn(`Failed to check the credentials of workflow "${workflow.id}"`, {
+					workflowId: workflow.id,
+					error,
+				});
+			}
+		}
+		return refusal;
+	}
+
+	/** Returns false if the workflow stays published. */
 	private async _unpublishAfterTransfer(
 		user: User,
 		workflow: PublishedWorkflow,
 		publicApi: PublicApiCaller,
-	): Promise<void> {
+	): Promise<boolean> {
 		const deactivatedVersionId = workflow.activeVersion.versionId;
+		let unpublished = false;
 		try {
 			await this._forceUnpublish(workflow, deactivatedVersionId, user);
+			unpublished = true;
 
 			this.eventService.emit('workflow-deactivated', {
 				user,
@@ -1776,6 +1819,7 @@ export class WorkflowService {
 				error,
 			});
 		}
+		return unpublished;
 	}
 
 	/** Unpublishes in a way the `workflow.deactivate` hook cannot block: a hook failure is a warning. */
