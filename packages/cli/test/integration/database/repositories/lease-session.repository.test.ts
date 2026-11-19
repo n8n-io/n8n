@@ -85,7 +85,7 @@ describe('LeaseSessionRepository', () => {
 		await repository.insertSession(session, {});
 		await Container.get(DataSource)
 			.getRepository(LeaseSession)
-			.update({ id: session.id }, { expiresAt: new Date(Date.now() - 60_000) });
+			.update({ id: session.id }, { expiresAt: new Date(Date.now() + 60_000) });
 		const before = await findRow(session.id);
 
 		const renewed = await repository.renewLive(session.id, 20, {});
