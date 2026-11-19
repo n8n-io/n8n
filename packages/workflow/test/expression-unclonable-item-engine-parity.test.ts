@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
 
+import { runInNewContext } from 'node:vm';
+
 import * as Helpers from './helpers';
 import { createRunExecutionData } from '../src';
 import { Expression } from '../src/expression';
@@ -80,6 +82,11 @@ describe('Expression - unclonable values in item data (engine parity)', () => {
 			['a Promise', Promise.resolve(1)],
 			['a WeakMap', new WeakMap()],
 			['a function in an array', { list: [() => 1] }],
+			['a FinalizationRegistry', new FinalizationRegistry(() => {})],
+			['a Promise from another realm', runInNewContext('Promise.resolve(1)')],
+			['a WeakMap from another realm', runInNewContext('new WeakMap()')],
+			['a Proxy', new Proxy({ a: 1 }, {})],
+			['a Proxy of a Date', new Proxy(new Date(0), {})],
 		])('next to %s', (_name, unclonable) => {
 			it.each([
 				[
@@ -90,6 +97,8 @@ describe('Expression - unclonable values in item data (engine parity)', () => {
 				["={{ $('Source').first().json.id }}", 7],
 				["={{ $('Source').last().json.id }}", 7],
 				["={{ $('Source').all()[0].json.id }}", 7],
+				["={{ $('Source').itemMatching(0).json.id }}", 7],
+				["={{ $items('Source')[0].json.id }}", 7],
 				['={{ $input.first().json.id }}', 7],
 				['={{ $input.all()[0].json.id }}', 7],
 				['={{ $json.id }}', 7],

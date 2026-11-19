@@ -72,25 +72,37 @@ function isWalked(value: object): boolean {
 	return Array.isArray(value) || isPlainObject(value) || value instanceof Error;
 }
 
-/** Say whether structured clone refuses to copy an object of this type. */
+const UNCLONABLE_TYPE_TAGS: ReadonlySet<string> = new Set([
+	'[object Promise]',
+	'[object WeakMap]',
+	'[object WeakSet]',
+	'[object WeakRef]',
+	'[object FinalizationRegistry]',
+]);
+
+/** Say whether structured clone refuses to copy an object of this type. The object can come from any realm. */
 function isUnclonableObject(value: object): boolean {
-	return (
-		value instanceof Promise ||
-		value instanceof WeakMap ||
-		value instanceof WeakSet ||
-		value instanceof WeakRef
-	);
+	return UNCLONABLE_TYPE_TAGS.has(Object.prototype.toString.call(value));
 }
 
+/** Say whether a value is a Proxy. Always false on a platform that cannot tell. */
+const isProxy: (value: unknown) => boolean =
+	globalThis.process?.getBuiltinModule?.('node:util').types.isProxy ?? (() => false);
+
 /**
- * Say whether a value holds an Error or a value that structured clone cannot
- * copy, in the arrays and plain objects it is made of. It runs on each host
- * call result, so it reads the keys in place.
+ * Say whether a value holds an Error, a Proxy or a value that structured clone
+ * cannot copy, in the arrays and plain objects it is made of. It runs on each
+ * host call result, so it reads the keys in place.
  */
 function needsEncoding(value: unknown, seen: Set<object>): boolean {
 	if (isObject(value) && !seen.has(value)) {
 		seen.add(value);
-		return value instanceof Error || isUnclonableObject(value) || childNeedsEncoding(value, seen);
+		return (
+			isProxy(value) ||
+			value instanceof Error ||
+			isUnclonableObject(value) ||
+			childNeedsEncoding(value, seen)
+		);
 	}
 	return typeof value === 'function' || typeof value === 'symbol';
 }
@@ -178,7 +190,8 @@ class GuestEncoder {
 	 *
 	 * Outside an Error, a class instance is marked opaque. Structured clone
 	 * flattens its prototype away, so a framing key on it would read as ours.
-	 * A Promise or a weak collection gives an empty object.
+	 * A Proxy goes across as a plain object of its own fields. A Promise or a
+	 * weak collection gives an empty object.
 	 */
 	private encodeUnwalked(value: object): unknown {
 		const cloneable = isStructuredCloneBuiltin(value) && !(value instanceof Promise);
@@ -186,6 +199,9 @@ class GuestEncoder {
 			return value instanceof Promise
 				? undefined
 				: encodeOnce(value, this.walk, (instance) => this.encode(smallInstanceFieldsOf(instance)));
+		}
+		if (isProxy(value)) {
+			return encodeOnce(value, this.walk, (target) => this.encodeRecord(target));
 		}
 		if (isUnclonableObject(value)) {
 			return {};
@@ -205,8 +221,9 @@ function holdsTypeKey(value: unknown): boolean {
  *
  * A value that holds an Error goes across inside a wrapper, with each Error
  * turned into a marker. So does a value that holds a function, a symbol, a
- * Promise or a weak collection. A function or a symbol gives undefined, and
- * the others give an empty object. Every other value goes across as it is. A top-level
+ * Promise, a weak collection or a Proxy. A function or a symbol gives undefined,
+ * a Promise or a weak collection gives an empty object, and a Proxy gives a
+ * copy of its fields. Every other value goes across as it is. A top-level
  * object that holds the type key is wrapped too, so the guest cannot read it
  * as a wrapper.
  */
