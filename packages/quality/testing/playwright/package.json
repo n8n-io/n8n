@@ -23,6 +23,8 @@
     "bench:canvas:tier": "playwright test --project=performance tests/performance/canvas --grep",
     "bench:canvas:sentinels": "node scripts/canvas-perf-sentinels.mjs test-results.json",
     "bench:canvas:report": "playwright show-report",
+    "bench:pages": "playwright test --project=performance tests/performance/pages",
+    "bench:pages:compare": "node scripts/page-load-compare.mjs",
     "test:infrastructure": "playwright test --project='*:infrastructure'",
     "test:encryption:upgrade": "playwright test --project='encryption:infrastructure' tests/infrastructure/encryption/upgrade-cycle.spec.ts",
     "test:encryption:rotation": "playwright test --project='encryption:infrastructure' tests/infrastructure/encryption/rotation-cycle.spec.ts",

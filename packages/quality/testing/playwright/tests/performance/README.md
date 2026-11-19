@@ -344,6 +344,52 @@ Practical safeguards baked into the suite:
   reported heap value, with the GC log silenced (`{ logGC: false }`) so the
   output stays clean.
 
+## Page-load benchmark (`tests/performance/pages/`)
+
+Measures the time until the most visited editor pages are usable: one
+warm-up visit, then `PERF_ITERATIONS` (default 10) navigations per page with
+warm caches, on the page's own clock (an in-page ready condition polled every
+frame). Each run records Navigation / Paint / Resource Timing, long tasks and
+the `responseEnd` of the boot requests as phases.
+
+```bash
+# On the container stand (build the image first with `pnpm build:docker`)
+pnpm --filter=n8n-playwright bench:pages
+
+# Against a running instance started in E2E mode
+N8N_BASE_URL=http://localhost:5678 RESET_E2E_DB=true PERF_OUTPUT_DIR=/tmp/perf \
+  pnpm --filter=n8n-playwright bench:pages
+```
+
+Knobs: `PERF_ITERATIONS`, `PERF_PAGES=id,id`, `PERF_TRACE=warmup|first|all|none`
+(Chrome DevTools trace per run, default the warm-up), `PERF_TRACE_SCREENSHOTS`,
+`PERF_COLD_CACHE=true` (clear the HTTP cache before each warm-up),
+`PERF_READY_TIMEOUT_MS`, `PERF_OUTPUT_DIR` (one folder per run is copied there).
+
+Outputs, next to each other in the test output dir and in the report
+attachments: `page-load.json` (meta, every sample, statistics), `page-load.csv`
+(one row per sample), `page-load.html` (boxes per page, runs in order, phase
+bars, statistics table, trace links; drop another `page-load.json` on it to
+compare two runs) and `trace-<page>-<run>.json` (open in Chrome DevTools →
+Performance → Load profile, or in ui.perfetto.dev). A failed load is recorded
+with a `diagnostics:<page>:<run>` attachment (backend health, page alerts,
+console errors, container log tail); the run continues and the test fails at
+the end.
+
+### Compare runs and see the trend
+
+```bash
+# Two or more page-load.json files or folders that contain them (CI artifacts, PERF_OUTPUT_DIR)
+pnpm --filter=n8n-playwright bench:pages:compare ./runs/ --out trend.html
+pnpm --filter=n8n-playwright bench:pages:compare baseline.json current.json --fail-on-regression
+```
+
+Runs are ordered by start time. The last run is compared with the one before
+it: a page regresses when its median grew by more than `--median-pct` (10)
+and the p95 by more than `--p95-pct` (20), each also beyond the 95 % noise
+band of the two samples. `--out` writes a trend page with the comparison
+table, a median / p95 line per page over runs, and a median table.
+
 ## API Reference
 
 ### `measurePerformance(page, actionName, actionFn)`
