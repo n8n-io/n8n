@@ -121,6 +121,8 @@ describe('routeApproval', () => {
 			approvalDetails: payload.approvalDetails,
 		});
 		expect(routeApproval(approval!)).toBe('always-ask');
+		// A legacy name of the publish tool never reaches the judge either.
+		expect(routeApproval({ toolName: 'publish_agent', args: {} })).toBe('always-ask');
 	});
 
 	it('always asks before a skill is deleted, and lets the judge decide other skill changes', () => {

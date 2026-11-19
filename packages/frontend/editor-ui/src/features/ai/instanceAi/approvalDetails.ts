@@ -279,13 +279,18 @@ function formatPublishAgent(details: PublishAgentDetails, t: Translate): string 
 				});
 		}
 	});
-	if (details.moreSendTargets)
-		targets.push(
+	if (details.moreSendTargets) {
+		// The overflow counts channels, tasks and servers, so it goes before the tool count.
+		const toolsLast = details.sendTargets.at(-1)?.kind === 'tools';
+		targets.splice(
+			toolsLast ? targets.length - 1 : targets.length,
+			0,
 			t('instanceAi.approval.publishAgent.target.more', {
 				adjustToNumber: details.moreSendTargets,
 				interpolate: { count: details.moreSendTargets },
 			}),
 		);
+	}
 	lines.push(
 		[
 			t('agents.testRun.mode.confirm.listLabel'),

@@ -1231,9 +1231,12 @@ export class AgentsBuilderToolsService {
 			changed: `Republish ${name} and go live.`,
 			published: `Go live with ${name}.`,
 		}[liveAvailability];
+		// The overflow counts channels, tasks and servers, so it goes before the tool count.
+		const named = targets.sendTargets.filter((target) => target.kind !== 'tools');
+		const tools = targets.sendTargets.filter((target) => target.kind === 'tools');
 		const sends =
 			targets.sendTargets.length > 0
-				? `These might get sent for real: ${targets.sendTargets
+				? `These might get sent for real: ${[...named, ...tools]
 						.map((target) => {
 							switch (target.kind) {
 								case 'channel':
@@ -1246,9 +1249,12 @@ export class AgentsBuilderToolsService {
 									return `uses its ${target.count} ${target.count === 1 ? 'tool' : 'tools'}`;
 							}
 						})
-						.join(', ')}${
-						targets.moreSendTargets > 0 ? `, and ${targets.moreSendTargets} more` : ''
-					}.`
+						.toSpliced(
+							named.length,
+							0,
+							...(targets.moreSendTargets > 0 ? [`${targets.moreSendTargets} more`] : []),
+						)
+						.join(', ')}.`
 				: 'Anything the agent sends will be real.';
 
 		return {

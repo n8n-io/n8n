@@ -79,7 +79,7 @@ describe('approval details', () => {
 				}),
 			);
 			expect(output).toContain('This version is already live.');
-			expect(output).toContain('• Uses its 1 tool\n• And 2 more');
+			expect(output).toContain('• And 2 more\n• Uses its 1 tool');
 		});
 
 		it.each([
