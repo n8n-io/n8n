@@ -1,0 +1,23 @@
+demos/canvas-delight/README.md
+  s_c33bde4687101e::t_67374255874c27 32-37
+packages/frontend/editor-ui/src/app/init/consoleGreeting.ts
+  s_c33bde4687101e::t_3bfa044680867a 1-23
+packages/frontend/editor-ui/src/main.ts
+  s_c33bde4687101e::t_5ff8b1fdd3d337 94-98
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "eb88a102b4dc24474b0bd62e04995fc3293db504",
+  "prompts": {},
+  "sessions": {
+    "s_c33bde4687101e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1edf6-ffe6-77f0-898f-eea7d7b98df2",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

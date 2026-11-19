@@ -1,0 +1,23 @@
+packages/frontend/@n8n/design-system/src/components/N8nIcon/icons.ts
+  s_adee977eab8a65::t_d658620ea0b5b2 382,952
+packages/frontend/editor-ui/src/features/agents/__tests__/SessionTimelinePill.test.ts
+  s_adee977eab8a65::t_d658620ea0b5b2 32-33,50-54
+packages/frontend/editor-ui/src/features/agents/components/SessionTimelinePill.vue
+  s_adee977eab8a65::t_d658620ea0b5b2 35,54,57-58,60-62
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cd02f52b60f14ecf56d18c35ec0a7bdc2b363f0c",
+  "prompts": {},
+  "sessions": {
+    "s_adee977eab8a65": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1d5e8-1bc3-73e2-8649-1f304c4b7793",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

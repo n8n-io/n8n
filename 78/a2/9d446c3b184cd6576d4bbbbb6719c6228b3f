@@ -1,0 +1,189 @@
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-bridge-behavior.ts
+  s_b83c2cc9d859ec::t_916f68abf6b1ae 80-91
+packages/cli/src/modules/agents/integrations/channel-webhook-handler.ts
+  s_b83c2cc9d859ec::t_041eae602a58f8 1-20,48-50,61-63,90-91,101,142
+  s_b83c2cc9d859ec::t_8386ae26b35f9f 21-47,51-60,64-89,92-100,102-141
+packages/@n8n/api-types/src/agents/dto.ts
+  s_b83c2cc9d859ec::t_ba6879330c5fb6 1013-1017
+packages/cli/src/modules/agents/system-agents/system-agent-channels.controller.ts
+  s_b83c2cc9d859ec::t_80cc74007d0a5c 1-91
+packages/cli/src/modules/agents/system-agents/__tests__/system-agent-channel.service.test.ts
+  s_b83c2cc9d859ec::t_8755b653bc22ec 1-209
+packages/cli/src/modules/agents/integrations/chunk-channel.ts
+  s_b83c2cc9d859ec::t_abc933230617aa 1-48
+packages/cli/src/modules/agents/integrations/__tests__/component-mapper.test.ts
+  s_b83c2cc9d859ec::t_3cfcc2f313726b 21,35,57,73,95-152
+  s_b83c2cc9d859ec::t_95d7e8ea79cfa7 153
+packages/cli/src/modules/agents/agent-message-queue-consumer.service.ts
+  s_b83c2cc9d859ec::t_239f46d2620749 289
+  s_b83c2cc9d859ec::t_6e4e42020609e4 3,26,111-120,210,243-288,290-293
+  s_b83c2cc9d859ec::t_23db2b8a438422 294
+packages/cli/src/modules/agents/repositories/agent.repository.ts
+  s_b83c2cc9d859ec::t_239f46d2620749 1019
+  s_b83c2cc9d859ec::t_1d54d74aeba141 994-1018,1020-1046
+packages/cli/src/modules/agents/agent-message-queue.service.ts
+  s_b83c2cc9d859ec::t_2a83c9c8b38f82 232-233
+packages/cli/src/modules/agents/integrations/component-mapper.ts
+  s_b83c2cc9d859ec::t_f8b3f12eb27492 221-231
+packages/cli/src/modules/agents/agent-integrations.controller.ts
+  s_b83c2cc9d859ec::t_041eae602a58f8 19,195-203
+packages/cli/src/modules/instance-ai/assistant-agent/__tests__/assistant-agent.provider.test.ts
+  s_b83c2cc9d859ec::t_7331e33ef4234d 16
+  s_b83c2cc9d859ec::t_300b51f13a8b90 119
+  s_b83c2cc9d859ec::t_f692b00b1567b9 204-249
+packages/cli/src/modules/agents/integrations/agent-chat-stream-consumer.ts
+  s_b83c2cc9d859ec::t_c2fe9341d72019 32,348-353,665-670
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-operations.ts
+  s_b83c2cc9d859ec::t_91d45fc69d727b 54,335-336,341,349
+  s_b83c2cc9d859ec::t_0b54143fbab393 53,332-334,337-340,342-343,347-348,350-352
+  s_b83c2cc9d859ec::t_65c03bc4cb46d9 344-346
+  s_b83c2cc9d859ec::t_67329c75d9b45a 353-354
+packages/cli/src/modules/agents/integrations/agent-chat-hitl-resume-handler.ts
+  s_b83c2cc9d859ec::t_e7ef866253ed55 3,49-50,175-179
+  s_b83c2cc9d859ec::t_239f46d2620749 126-133,188,195
+  s_b83c2cc9d859ec::t_1f517590449d78 34,37-46,60-68,115-125,134-136,180-187,189-194,196-205
+  s_b83c2cc9d859ec::t_a6cefb0a9ada6e 421
+  s_b83c2cc9d859ec::t_8b2d68997f480b 137,206
+packages/cli/src/modules/agents/system-agents/system-agent-execution.service.ts
+  s_b83c2cc9d859ec::t_239f46d2620749 40
+  s_b83c2cc9d859ec::t_64667f0099a3e6 41,72-73,86-87,90-92,641,700,802,876,1109,1120-1121
+  s_b83c2cc9d859ec::t_9e0af4e31081f8 1187-1192
+packages/cli/src/modules/instance-ai/assistant-agent/assistant-channel-card.ts
+  s_b83c2cc9d859ec::t_2d641df8d491ec 1-87
+packages/cli/src/modules/agents/integrations/workflow-link.ts
+  s_b83c2cc9d859ec::t_0c786e68cdbbbe 1-10,14-15
+  s_b83c2cc9d859ec::t_239f46d2620749 11-13
+packages/cli/src/modules/agents/agents.module.ts
+  s_b83c2cc9d859ec::t_988f58ed787b52 47
+packages/@n8n/api-types/src/agents/types.ts
+  s_b83c2cc9d859ec::t_a659d77ccd63ce 209-220
+packages/cli/src/modules/agents/system-agents/__tests__/system-agent-channels.controller.test.ts
+  s_b83c2cc9d859ec::t_7afb56106c59f8 58,64,66
+  s_b83c2cc9d859ec::t_c7bc6a50ce0f3a 1-57,59-63,65,67-79
+packages/cli/src/modules/agents/system-agents/__tests__/system-agent-execution.service.test.ts
+  s_b83c2cc9d859ec::t_6f8602ca93d4b3 278-323,625-661,1309-1340
+  s_b83c2cc9d859ec::t_18fa6cc0052093 1341
+packages/cli/test/integration/agents/system-agent-channel-delivery.test.ts
+  s_b83c2cc9d859ec::t_e140b0ae286f44 113-115
+  s_b83c2cc9d859ec::t_5dd1f36ecd6dac 1-112,116-213
+packages/cli/src/modules/agents/system-agents/system-agent-channel.service.ts
+  s_b83c2cc9d859ec::t_7779656793f6d3 1-16,18-135
+  s_b83c2cc9d859ec::t_f2c63d04bf831f 17
+packages/cli/src/modules/agents/integrations/__tests__/chat-integration.service.test.ts
+  s_b83c2cc9d859ec::t_239f46d2620749 2478
+  s_b83c2cc9d859ec::t_d5107c01208bd2 2311-2477,2479-2482
+packages/cli/src/modules/agents/integrations/__tests__/chunk-channel.test.ts
+  s_b83c2cc9d859ec::t_85a93e8900708b 1-58
+packages/cli/src/modules/agents/integrations/agent-channel-reconciler.service.ts
+  s_b83c2cc9d859ec::t_2cc062743bc835 13,23,201-202,205,350-353,355-363,377,402
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-integration.ts
+  s_b83c2cc9d859ec::t_0b54143fbab393 47-51,246-247,250
+  s_b83c2cc9d859ec::t_91d45fc69d727b 248-249
+  s_b83c2cc9d859ec::t_916f68abf6b1ae 41,238-245
+  s_b83c2cc9d859ec::t_fe1dd55242b032 251
+packages/cli/src/modules/agents/repositories/agent-message-queue.repository.ts
+  s_b83c2cc9d859ec::t_d12b4b649d2c1b 278-299
+packages/cli/src/credentials/credentials.service.ts
+  s_b83c2cc9d859ec::t_9bdde659d2da3f 1534-1535,1539,1542
+  s_b83c2cc9d859ec::t_da82ee646019cf 1532-1533,1536-1538,1540-1541,1543-1544
+packages/cli/src/modules/agents/__tests__/agent-message-queue.service.test.ts
+  s_b83c2cc9d859ec::t_c34b37f6a97e4d 539-607
+packages/cli/src/modules/instance-ai/assistant-agent/__tests__/assistant-channel-card.test.ts
+  s_b83c2cc9d859ec::t_3cfcc2f313726b 73-76
+  s_b83c2cc9d859ec::t_85a93e8900708b 1-72,77-100
+packages/cli/src/modules/agents/integrations/__tests__/teams-integration.test.ts
+  s_b83c2cc9d859ec::t_6de7b9091cc273 67
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-methods.service.ts
+  s_b83c2cc9d859ec::t_a6cefb0a9ada6e 136-137,175,179
+  s_b83c2cc9d859ec::t_4048e93398a9f2 119-133,141
+  s_b83c2cc9d859ec::t_118ff104c11c4f 118
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.system-agent.test.ts
+  s_b83c2cc9d859ec::t_4dba0e0afcc8c9 63
+  s_b83c2cc9d859ec::t_91d45fc69d727b 98-103
+  s_b83c2cc9d859ec::t_afae12143ae061 16,165-168
+  s_b83c2cc9d859ec::t_ba68922bf651ad 1-15,17-62,64-97,104-164,169-455,459-724
+  s_b83c2cc9d859ec::t_3cfcc2f313726b 456-458
+packages/cli/src/modules/agents/integrations/__tests__/channel-identity.service.test.ts
+  s_b83c2cc9d859ec::t_3cfcc2f313726b 39-43,122-124
+  s_b83c2cc9d859ec::t_85a93e8900708b 1-38,44-121,125-183
+packages/cli/src/modules/agents/AGENTS.md
+  s_b83c2cc9d859ec::t_920c38fe8de175 42-50
+packages/cli/test/integration/database/repositories/agent-instance-scope.repository.test.ts
+  s_b83c2cc9d859ec::t_71c6dd9df1439d 174-218
+packages/cli/src/modules/agents/integrations/__tests__/agent-channel-reconciler.service.test.ts
+  s_b83c2cc9d859ec::t_5251385a0d472d 655,740
+  s_b83c2cc9d859ec::t_bb6666312f7dc2 109
+  s_b83c2cc9d859ec::t_c4b199de0a8ee5 188-228
+packages/cli/src/modules/agents/integrations/credential-claim.ts
+  s_b83c2cc9d859ec::t_779eb767635af7 21-36,41
+packages/cli/src/modules/agents/integrations/__tests__/slack-integration.test.ts
+  s_b83c2cc9d859ec::t_6de7b9091cc273 224,240-282,311-312,319-321,323-331,336-338,340-341,354
+  s_b83c2cc9d859ec::t_784773e1f71581 283-310
+  s_b83c2cc9d859ec::t_91d45fc69d727b 313-318,322,332-335,339,342-353,355-358
+  s_b83c2cc9d859ec::t_16f59f99c984b4 359
+packages/cli/src/modules/agents/integrations/platforms/__tests__/telegram/integration.test.ts
+  s_b83c2cc9d859ec::t_6de7b9091cc273 68
+packages/cli/src/modules/agents/integrations/__tests__/discord-integration.test.ts
+  s_b83c2cc9d859ec::t_6de7b9091cc273 100
+packages/cli/src/modules/agents/integrations/chat-integration.service.ts
+  s_b83c2cc9d859ec::t_a6cefb0a9ada6e 44
+  s_b83c2cc9d859ec::t_9bdde659d2da3f 22,279,1219,1223,1227,1237,1240-1246,1278
+  s_b83c2cc9d859ec::t_0db71be6edfe2a 101-107,111-114,254,272,307,353,395,666,904,952-954,1212-1218,1220-1222,1224-1226,1228-1236,1238-1239,1273,1484-1486
+  s_b83c2cc9d859ec::t_f3937825e4ad59 667-714
+  s_b83c2cc9d859ec::t_f2c63d04bf831f 1247,1249-1250,1253-1257
+  s_b83c2cc9d859ec::t_239f46d2620749 108-110
+  s_b83c2cc9d859ec::t_257f1ef22904a1 1248
+packages/cli/src/modules/agents/system-agents/system-agent.types.ts
+  s_b83c2cc9d859ec::t_c38c780d3b7e05 308-321,357-360
+  s_b83c2cc9d859ec::t_32143a4c1a4573 361-362
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-stream-consumer.test.ts
+  s_b83c2cc9d859ec::t_c4f133ade4fe7b 493-512,520
+packages/@n8n/api-types/src/agents/agent-integration.schema.ts
+  s_b83c2cc9d859ec::t_930fa690a535df 89-90,97-107
+packages/cli/src/modules/instance-ai/assistant-agent/assistant-agent.provider.ts
+  s_b83c2cc9d859ec::t_988f58ed787b52 189,191-195
+  s_b83c2cc9d859ec::t_300b51f13a8b90 43,76,172,183-188
+  s_b83c2cc9d859ec::t_389a8aa831e2aa 190
+packages/cli/src/modules/agents/types/agent-queued-message.ts
+  s_b83c2cc9d859ec::t_2a83c9c8b38f82 22-38,56-57,110
+  s_b83c2cc9d859ec::t_3adc3504362bbc 21
+packages/cli/src/modules/agents/integrations/channel-identity.service.ts
+  s_b83c2cc9d859ec::t_f9be03364506f0 1-117
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-hitl-resume-handler.test.ts
+  s_b83c2cc9d859ec::t_49b946c21fedfd 430-541
+packages/cli/src/modules/agents/integrations/agent-chat-integration.ts
+  s_b83c2cc9d859ec::t_916f68abf6b1ae 714-723
+  s_b83c2cc9d859ec::t_c68dd2dc552a8a 62-63,713,724-725,728-731,733
+  s_b83c2cc9d859ec::t_91d45fc69d727b 726-727,732
+  s_b83c2cc9d859ec::t_e62b954a6c81dd 734
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_b83c2cc9d859ec::t_0c786e68cdbbbe 110-117,127-131,134-138,964-968,1001-1128,1134-1137,1139-1160,1162-1204,1291-1348,1891
+  s_b83c2cc9d859ec::t_239f46d2620749 25,1161
+  s_b83c2cc9d859ec::t_91d45fc69d727b 1129-1133
+  s_b83c2cc9d859ec::t_e729b54f3a006b 118-126,132,151,329,371,420,443,1380,1532,1633,1771
+  s_b83c2cc9d859ec::t_a6cefb0a9ada6e 1138
+  s_b83c2cc9d859ec::t_f28a22eab1779d 22,24,26-29,32,34-35,40,87-89,133,139-150,263-264
+  s_b83c2cc9d859ec::t_a497e144b780a4 72-76,387,1205-1290,1845,1854-1857,1868,1885-1890
+  s_b83c2cc9d859ec::t_7371e32f3521e1 1349,1892
+packages/cli/src/modules/agents/integrations/__tests__/workflow-link.test.ts
+  s_b83c2cc9d859ec::t_3cfcc2f313726b 21-23
+  s_b83c2cc9d859ec::t_85a93e8900708b 1-20,24-35
+packages/cli/src/modules/agents/__tests__/agent-message-queue-consumer.service.test.ts
+  s_b83c2cc9d859ec::t_12475fbdec8a8c 773-901
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "78a29d446c3b184cd6576d4bbbbb6719c6228b3f",
+  "prompts": {},
+  "sessions": {
+    "s_b83c2cc9d859ec": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6b90adbb-dcfe-439f-a7eb-7c74a20d13cc",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,22 @@
+packages/testing/playwright/global-setup.ts
+  s_9e6f23f833576d::t_8732822e27a51e 1,28-36
+packages/testing/playwright/tests/ui/building-blocks/02-canvas-actions.spec.ts
+  s_9e6f23f833576d::t_14244e215fb039 44
+  s_9e6f23f833576d::t_8732822e27a51e 45-46,48-49,52-53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b4c0aeed39dad7bdd357c95d7a9e8e5ba4a45ac4",
+  "prompts": {},
+  "sessions": {
+    "s_9e6f23f833576d": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e12b3fa77ffeWYfE5LA1peyjQx",
+        "model": "openai/gpt-6.2-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

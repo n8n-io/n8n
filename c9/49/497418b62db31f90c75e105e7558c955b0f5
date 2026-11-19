@@ -1,0 +1,23 @@
+packages/cli/src/modules/promotions.ee/working-copy-updater.ts
+  s_3dd47ea0104342::t_870e8af535f0e4 697-700
+packages/cli/src/modules/n8n-packages/entities/credential/credential-importer.ts
+  s_3dd47ea0104342::t_941737bc70974f 217-220,225-232
+packages/cli/src/modules/promotions.ee/dependency-check/apply-report.ts
+  s_3dd47ea0104342::t_c300f02d5b760f 557
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c949497418b62db31f90c75e105e7558c955b0f5",
+  "prompts": {},
+  "sessions": {
+    "s_3dd47ea0104342": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c1a45d57-85a1-465a-839a-d3b98e3073fc",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

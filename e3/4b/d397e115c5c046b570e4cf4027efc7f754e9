@@ -1,0 +1,52 @@
+packages/modules/engine-v2/frontend/README.md
+  s_5e5f3ce1c6da16::t_c39d7e3e8541e7 25-30
+packages/modules/engine-v2/frontend/src/engineV2ReasonText.ts
+  s_5e5f3ce1c6da16::t_0512f38ebec299 7-8
+packages/frontend/editor-ui/src/app/views/NodeView.test.ts
+  s_5e5f3ce1c6da16::t_cff57aef1c753d 206-208,1070-1077,1086,1107,1110-1112,1116-1118,1123-1133,1144,1148,1154,1158,1167,1173,1190,1200
+packages/frontend/editor-ui/src/features/shared/nodeCreator/views/NodeCreation.vue
+  s_5e5f3ce1c6da16::t_41e8f802fed6d1 183-207,209-211,217-220,223-241,243-295,307,311-317
+packages/frontend/editor-ui/src/app/views/NodeView.vue
+  s_5e5f3ce1c6da16::t_c0f2de389d0876 104,2279-2285,2313-2320,2427,2429-2436
+packages/modules/engine-v2/frontend/src/components/EngineV2CompatibilityButton.test.ts
+  s_5e5f3ce1c6da16::t_e94191edda7bef 2,54,60
+  s_5e5f3ce1c6da16::t_2fbd677a95570e 1,3-53,55-59,61-67
+packages/modules/engine-v2/frontend/src/components/EngineV2CompatibilityDialog.test.ts
+  s_5e5f3ce1c6da16::t_bfd901083eda94 152
+  s_5e5f3ce1c6da16::t_af3d663f9d26c1 1-11,17-129,132-141,144-151,153-158,161-168,171-178,180,182-185,188-196,199-207,210-217,220-229,232-243,245-247,249-255
+  s_5e5f3ce1c6da16::t_b12d4f53570c50 12-16,130-131,142-143,159-160,169-170,179,181,186-187,197-198,208-209,218-219,230-231,244,248
+packages/modules/engine-v2/frontend/src/components/severityIcon.ts
+  s_5e5f3ce1c6da16::t_89b43dc8fcce86 1-20
+packages/modules/engine-v2/frontend/src/composables/useEngineV2Compatibility.test.ts
+  s_5e5f3ce1c6da16::t_bfd901083eda94 168
+packages/modules/engine-v2/frontend/src/components/EngineV2CompatibilityButton.vue
+  s_5e5f3ce1c6da16::t_62908e6880a3ea 1-29,46-53
+  s_5e5f3ce1c6da16::t_6b27a885082c1c 30-35,37-45
+  s_5e5f3ce1c6da16::t_c0f2de389d0876 36
+packages/modules/engine-v2/frontend/src/index.ts
+  s_5e5f3ce1c6da16::t_23f8768a82a460 11
+packages/frontend/editor-ui/src/features/shared/nodeCreator/views/NodeCreation.test.ts
+  s_5e5f3ce1c6da16::t_21dc1bdd6899d1 155-189
+packages/modules/engine-v2/frontend/src/components/EngineV2CompatibilityDialog.vue
+  s_5e5f3ce1c6da16::t_73905adbd70509 1-87
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_5e5f3ce1c6da16::t_23f8768a82a460 1830-1832,1865
+pnpm-lock.yaml
+  s_5e5f3ce1c6da16::t_f43cec42cef17f 7873,7876
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e34bd397e115c5c046b570e4cf4027efc7f754e9",
+  "prompts": {},
+  "sessions": {
+    "s_5e5f3ce1c6da16": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "512d7f4b-1d3a-4776-9de2-8862e7f307bc",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}
