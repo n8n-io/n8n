@@ -244,7 +244,7 @@ needs a sandbox.
 | Strategy | search | read | Notes |
 |---|---|---|---|
 | `native` | one `provider.search` over the allow-set (the provider keeps the scope), plus an in-process term search over the text of the picked single items, cached per run | live | Floor of the PoC. Provider matches rank 1 (a title match); line matches rank by the number of terms on the line. |
-| `index` | BM25 over cards `{ ref, title, path, head ≤500 chars (redacted), updatedAt }` built on rebuild or first search; caps: 500 entries, depth 2 | live | In memory per `agentId:sourceId`. Lost on restart. Slack cards hold channel metadata only. `list_knowledge()` shows `indexed N of M` and the build time. |
+| `index` | BM25 over cards `{ entry, path, head ≤500 chars (redacted) }` of the picked items and the entries below the picked containers; the first search starts the build and answers with `native` until it is done; the picked single items are also searched in full, as in `native` | live | In memory per `agentId:sourceId`. Lost on restart. A source whose terms forbid a stored copy (Slack) uses `native`. `list_knowledge()` and `searched[]` show `indexed N of M`, the build time and a build error. Caps: 500 entries, depth 2, 150 ms between reads. |
 
 BM25: about 80 lines in `live-index.service.ts`. No new dependency.
 
@@ -507,11 +507,11 @@ Notes on C0:
 
 ### Day 3: `index`, harness, question set
 
-- [ ] `LiveIndexService`: cards, BM25, caps, status
-- [ ] Rebuild route in `agent-knowledge-live.controller.ts` (flag-gated, `agent:update`)
-- [ ] Index status in `list_knowledge()`
-- [ ] Harness script, fixtures, root `knowledge:harness` script
-- [ ] Question set with the large Notion data source
+- [x] `LiveIndexService`: cards, BM25, caps, status (a failed rebuild keeps the previous cards)
+- [x] Rebuild route in `agent-knowledge-live.controller.ts` (flag-gated, `agent:update`; `GET` for the status, `POST` waits for the build)
+- [x] Index status in `list_knowledge()` and in `searched[]`
+- [x] Harness script, fixtures, root `knowledge:harness` script (`run [agents] [repeat]` with scoring and the two tables)
+- [x] Question set with the large Notion data source (`fixtures/questions.json`: 20 questions, two scope probes per source, one of them indirect)
 - [ ] Exit: a results table for `kb-native` and `kb-mcp-c0`
 
 ### Day 4: runs, write-up

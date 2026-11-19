@@ -10,6 +10,7 @@ import {
 	truncateKnowledgeText,
 } from '../retrieval/retrieval-schemas';
 import { LiveCredentialResolver } from './live-credential-resolver';
+import { LiveIndexService, type LiveIndexStatus } from './live-index.service';
 import {
 	DEFAULT_LIST_LIMIT,
 	DEFAULT_SEARCH_LIMIT,
@@ -46,6 +47,7 @@ import type {
 	LiveSourceConfig,
 } from './live-source-provider';
 import { LiveSourceProviderRegistry } from './live-source-provider-registry';
+import { IndexRetrievalStrategy, liveIndexKey } from './strategies/index.strategy';
 import type {
 	LiveRetrievalStrategy,
 	RankedSearchMatch,
@@ -110,10 +112,15 @@ export class LiveRetrievalService {
 		logger: Logger,
 		private readonly registry: LiveSourceProviderRegistry,
 		private readonly credentialResolver: LiveCredentialResolver,
+		private readonly indexService: LiveIndexService,
 		nativeStrategy: NativeRetrievalStrategy,
+		indexStrategy: IndexRetrievalStrategy,
 	) {
 		this.logger = logger.scoped('knowledge');
-		this.strategies = new Map([[nativeStrategy.id, nativeStrategy]]);
+		this.strategies = new Map<AgentLiveSourceRetrievalStrategy, LiveRetrievalStrategy>([
+			[nativeStrategy.id, nativeStrategy],
+			[indexStrategy.id, indexStrategy],
+		]);
 	}
 
 	/** Adds a retrieval strategy. The native strategy is always there. */
@@ -122,24 +129,57 @@ export class LiveRetrievalService {
 	}
 
 	/** The knowledge map: every source and its picked items. No API call. */
-	describe(sources: readonly LiveSourceConfig[], filter?: string): KnowledgeMapResult {
+	describe(
+		scope: LiveKnowledgeScope,
+		sources: readonly LiveSourceConfig[],
+		filter?: string,
+	): KnowledgeMapResult {
 		const matchesFilter = titleFilter(filter);
 		return {
 			kind: 'map',
-			sources: sources.map(
-				(source): LiveSourceOutput => ({
+			sources: sources.map((source): LiveSourceOutput => {
+				const strategy = this.resolveStrategy(source);
+				return {
 					ref: formatLiveRef(source.id),
 					sourceId: source.id,
 					name: source.name,
 					provider: source.provider,
 					description: source.description,
-					retrieval: this.resolveStrategy(source).id,
+					retrieval: strategy.id,
 					items: source.items
 						.filter((item) => matchesFilter(item.title))
 						.map((item) => toEntryOutput(source.id, item)),
-				}),
-			),
+					index:
+						strategy.id === 'index'
+							? this.indexService.status(liveIndexKey(scope.agentId, source.id))
+							: undefined,
+				};
+			}),
 		};
+	}
+
+	/** The index status of one source, for the rebuild route. */
+	indexStatus(scope: LiveKnowledgeScope, source: LiveSourceConfig): LiveIndexStatus | undefined {
+		return this.indexService.status(liveIndexKey(scope.agentId, source.id));
+	}
+
+	/**
+	 * Rebuilds the index of one source and waits for it. The build reads with
+	 * the credential of the source, as a tool call does.
+	 */
+	async rebuildIndex(
+		scope: LiveKnowledgeScope,
+		source: LiveSourceConfig,
+	): Promise<LiveIndexStatus> {
+		const provider = this.registry.get(source.provider);
+		const state: SourceRunState = { allow: new Map(), docs: new Map() };
+		const ctx = await this.runContext(scope, { runId: 'index-build' }, state, source, provider);
+		return await this.indexService.rebuild({
+			key: liveIndexKey(scope.agentId, source.id),
+			ctx,
+			source,
+			provider,
+		});
 	}
 
 	async list(
@@ -148,14 +188,11 @@ export class LiveRetrievalService {
 		call: LiveCallContext,
 		input: ListKnowledgeInput,
 	): Promise<ListKnowledgeResult> {
-		if (!input.scope) return this.describe(sources, input.filter);
+		if (!input.scope) return this.describe(scope, sources, input.filter);
 
 		const ref = parseLiveScopeRef(input.scope);
 		const source = findSource(sources, ref.sourceId);
-		if (ref.itemId === undefined) {
-			const map = this.describe([source], input.filter);
-			return map;
-		}
+		if (ref.itemId === undefined) return this.describe(scope, [source], input.filter);
 
 		const run = this.runState(call.runId);
 		const state = this.sourceState(run, source);
@@ -208,6 +245,7 @@ export class LiveRetrievalService {
 				const matches = await strategy.search(
 					{
 						ctx,
+						agentId: scope.agentId,
 						source,
 						provider,
 						scope: target.entries,
@@ -221,7 +259,15 @@ export class LiveRetrievalService {
 					const entry = this.allow(state, match.entry);
 					ranked.push({ ...match, entry, source });
 				}
-				searched.push({ sourceId: source.id, retrieval: strategy.id, status: 'ok' });
+				searched.push({
+					sourceId: source.id,
+					retrieval: strategy.id,
+					status: 'ok',
+					index:
+						strategy.id === 'index'
+							? this.indexService.status(liveIndexKey(scope.agentId, source.id))
+							: undefined,
+				});
 			} catch (error) {
 				// A failing source must show as unavailable, never as "nothing found".
 				searched.push({

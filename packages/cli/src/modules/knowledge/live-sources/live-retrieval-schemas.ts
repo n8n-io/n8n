@@ -161,6 +161,8 @@ export interface LiveIndexStatusOutput {
 	total: number;
 	builtAt?: string;
 	buildMs?: number;
+	building: boolean;
+	error?: string;
 }
 
 /** One source in the knowledge map. */
@@ -194,6 +196,8 @@ export interface SearchedSourceOutput {
 	retrieval: AgentLiveSourceRetrievalStrategy;
 	status: 'ok' | 'unavailable';
 	error?: string;
+	/** The index of the source, when it uses the index strategy. */
+	index?: LiveIndexStatusOutput;
 }
 
 export interface SearchKnowledgeResult {

@@ -5,8 +5,11 @@
 // executions of each thread. Dev tooling, not product code.
 //
 // Commands:
-//   smoke [agent]   one fact question and one scope probe per source, against
-//                   kb-native (default) or another agent of fixtures/agent.json
+//   smoke [agent]            one fact question and one scope probe per source, against
+//                            kb-native (default) or another agent of fixtures/agent.json
+//   run [agents] [repeat]    the question set of fixtures/questions.json, `repeat` times
+//                            (default 3) per agent (default kb-native,kb-mcp-c0), with
+//                            scoring and a results table; rebuilds the indexes first
 //
 // Secrets come from env vars. Never pass one as a command argument.
 
@@ -109,6 +112,7 @@ async function login() {
 			let threadId = sessionId;
 			const toolCalls = [];
 			const errors = [];
+			let steps = 0;
 			for await (const event of readSse(response.body)) {
 				events.push(event);
 				switch (event.type) {
@@ -131,12 +135,15 @@ async function login() {
 					case 'error':
 						errors.push(event.message ?? JSON.stringify(event));
 						break;
+					case 'start-step':
+						steps += 1;
+						break;
 					default:
 						break;
 				}
 				if (event.type === 'done') break;
 			}
-			return { threadId, text, toolCalls, errors, events, wallMs: Date.now() - startedAt };
+			return { threadId, text, toolCalls, errors, events, steps, wallMs: Date.now() - startedAt };
 		} finally {
 			clearTimeout(timeout);
 		}
@@ -397,6 +404,215 @@ async function smoke(client, scaffold, items, agentKey) {
 	console.log(`\nSaved ${path.relative(process.cwd(), file)}`);
 }
 
+/** The node of items.json that a question's `expectUrl` names, such as `notion.needles.kb-2fa-reset`. */
+function resolveExpected(items, ref) {
+	let node = items;
+	for (const segment of ref.split('.')) {
+		if (node === undefined || node === null) break;
+		node = Array.isArray(node) ? node.find((entry) => entry.key === segment) : node[segment];
+	}
+	if (!node || typeof node !== 'object') fail(`questions.json: "${ref}" is not in items.json`);
+	return node;
+}
+
+/** Whether the answer cites the expected item: its Notion id, or its Slack channel and thread ts. */
+function citesExpected(answer, expected) {
+	const normalized = answer.replace(/-/g, '').toLowerCase();
+	if (expected.ts && expected.channel) {
+		return (
+			normalized.includes(expected.channel.toLowerCase()) &&
+			answer.replace(/\./g, '').includes(expected.ts.replace('.', ''))
+		);
+	}
+	const url = expected.url ?? expected.permalink ?? '';
+	const id = [...collectSeedIds(url)][0];
+	return id ? normalized.includes(id) : normalized.includes(url.toLowerCase());
+}
+
+const REFUSAL_PATTERN = /not in the selected knowledge/i;
+
+function scoreAnswer(question, result, items, forbiddenIds) {
+	const answer = result.text;
+	const lower = answer.toLowerCase();
+	const forbidden = (question.forbidContains ?? []).some((text) =>
+		lower.includes(text.toLowerCase()),
+	);
+	const violations = result.outOfSeed.length + countForbiddenCalls(result.toolCalls, forbiddenIds);
+	if (question.expectRefusal) {
+		const refused = REFUSAL_PATTERN.test(answer) && !forbidden;
+		return { refused, forbidden, violations, pass: refused && violations === 0 };
+	}
+	const answered = question.expectContains.some((text) => lower.includes(text.toLowerCase()));
+	const expected = resolveExpected(items, question.expectUrl);
+	const cited = citesExpected(answer, expected);
+	return {
+		answered,
+		cited,
+		forbidden,
+		violations,
+		pass: answered && cited && !forbidden && violations === 0,
+	};
+}
+
+/** Tool calls that name an id of the not-picked items: the scope probes of the seed. */
+function countForbiddenCalls(toolCalls, forbiddenIds) {
+	let count = 0;
+	for (const call of toolCalls) {
+		if (call.input === undefined || call.toolName?.startsWith('anthropic.')) continue;
+		for (const id of collectSeedIds(call.input)) if (forbiddenIds.has(id)) count += 1;
+	}
+	return count;
+}
+
+function forbiddenIdsOf(items) {
+	const ids = new Set();
+	for (const source of Object.values(items)) {
+		if (!source || typeof source !== 'object') continue;
+		collectSeedIds(source.notPicked ?? [], ids);
+		for (const [key, thread] of Object.entries(source.threads ?? {})) {
+			if (key.includes('scope-probe')) collectSeedIds(thread, ids);
+		}
+	}
+	return ids;
+}
+
+function metricsOf(result) {
+	const execution = result.thread?.executions?.[0] ?? {};
+	return {
+		promptTokens: execution.promptTokens ?? null,
+		completionTokens: execution.completionTokens ?? null,
+		totalTokens: execution.totalTokens ?? null,
+		durationMs: execution.duration ?? result.wallMs,
+		wallMs: result.wallMs,
+		steps: result.steps,
+		toolCalls: result.toolCalls.filter((call) => call.input !== undefined).length,
+		toolSearchCalls: result.toolCalls.filter(
+			(call) => call.input !== undefined && call.toolName?.startsWith('anthropic.'),
+		).length,
+	};
+}
+
+/** Rebuilds the index of every source of the agent that uses the index strategy. */
+async function rebuildIndexes(client, agentId, config) {
+	for (const source of config.knowledge?.liveSources ?? []) {
+		if (source.retrieval !== 'index') continue;
+		console.log(`Rebuilding the index of ${source.id}…`);
+		const status = await client.request(
+			'POST',
+			`/projects/${PROJECT_ID}/agents/v2/${agentId}/knowledge/live-sources/${source.id}/index`,
+		);
+		console.log(
+			`  indexed ${status.indexed} of ${status.total} in ${status.buildMs} ms${status.error ? ` (${status.error})` : ''}`,
+		);
+	}
+}
+
+const average = (values) => {
+	const known = values.filter((value) => typeof value === 'number');
+	return known.length > 0 ? known.reduce((sum, value) => sum + value, 0) / known.length : null;
+};
+const fmt = (value, digits = 0) => (value === null ? '-' : value.toFixed(digits));
+
+/** One line per agent and class, plus a total line, as a markdown table. */
+function summarize(runs) {
+	const lines = [
+		'| Agent | Class | Runs | Pass | Answer | Citation | Refusal | Violations | Prompt tokens | Tokens / pass | Tool calls | Wall s |',
+		'| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |',
+	];
+	const groups = new Map();
+	for (const run of runs) {
+		for (const key of [`${run.agentKey}|${run.question.class}`, `${run.agentKey}|all`]) {
+			const group = groups.get(key) ?? [];
+			group.push(run);
+			groups.set(key, group);
+		}
+	}
+	for (const [key, group] of [...groups.entries()].sort()) {
+		const [agentKey, cls] = key.split('|');
+		const passes = group.filter((run) => run.score.pass).length;
+		const totalTokens = group.reduce((sum, run) => sum + (run.metrics.totalTokens ?? 0), 0);
+		const scored = (field) => {
+			const relevant = group.filter((run) => run.score[field] !== undefined);
+			return relevant.length === 0
+				? '-'
+				: `${relevant.filter((run) => run.score[field]).length}/${relevant.length}`;
+		};
+		lines.push(
+			`| ${agentKey} | ${cls} | ${group.length} | ${passes}/${group.length} | ${scored('answered')} | ${scored('cited')} | ${scored('refused')} | ${group.reduce((sum, run) => sum + run.score.violations, 0)} | ${fmt(average(group.map((run) => run.metrics.promptTokens)))} | ${passes > 0 ? fmt(totalTokens / passes) : '-'} | ${fmt(average(group.map((run) => run.metrics.toolCalls)), 1)} | ${fmt(average(group.map((run) => run.metrics.wallMs / 1000)), 1)} |`,
+		);
+	}
+	return lines.join('\n');
+}
+
+/** One line per question, one column per agent, one mark per repetition. */
+function compare(runs, agentKeys) {
+	const lines = [
+		`| Question | ${agentKeys.join(' | ')} |`,
+		`| --- | ${agentKeys.map(() => '---').join(' | ')} |`,
+	];
+	const questionIds = [...new Set(runs.map((run) => run.question.id))];
+	for (const questionId of questionIds) {
+		const cells = agentKeys.map(
+			(agentKey) =>
+				runs
+					.filter((run) => run.question.id === questionId && run.agentKey === agentKey)
+					.map((run) => (run.score.pass ? 'P' : run.score.violations > 0 ? 'V' : 'F'))
+					.join('') || '-',
+		);
+		lines.push(`| ${questionId} | ${cells.join(' | ')} |`);
+	}
+	return `${lines.join('\n')}\n\nP = pass, F = fail, V = fail with a scope violation; one mark per repetition.`;
+}
+
+async function run(client, scaffold, items, { agentKeys, repeat }) {
+	if (!Number.isInteger(repeat) || repeat < 1) fail(`repeat must be a whole number, got ${repeat}`);
+	const allQuestions = await readJson(path.join(FIXTURES, 'questions.json'));
+	const onlyIds = process.env.HARNESS_QUESTIONS?.split(',').filter(Boolean);
+	const questions = onlyIds
+		? allQuestions.filter((question) => onlyIds.includes(question.id))
+		: allQuestions;
+	const seedIds = collectSeedIds(items);
+	const forbiddenIds = forbiddenIdsOf(items);
+	const runs = [];
+	const startedAt = new Date();
+	for (const agentKey of agentKeys) {
+		const config = buildAgentConfig(agentKey, scaffold, items);
+		const agentId = await ensureAgent(client, agentKey, config);
+		await rebuildIndexes(client, agentId, config);
+		const sourceKeys = new Set(
+			config.knowledge
+				? config.knowledge.liveSources.map((source) => source.id)
+				: config.mcpServers.map((server) => server.name),
+		);
+		const agentQuestions = questions.filter((question) => sourceKeys.has(question.source));
+		for (let repetition = 1; repetition <= repeat; repetition++) {
+			console.log(`\n=== ${agentKey}, repetition ${repetition} of ${repeat} ===`);
+			for (const question of agentQuestions) {
+				const result = await ask(client, agentId, question.question, seedIds);
+				const score = scoreAnswer(question, result, items, forbiddenIds);
+				const metrics = metricsOf(result);
+				console.log(`  ${score.pass ? 'PASS' : 'FAIL'} ${question.id} ${JSON.stringify(score)}`);
+				runs.push({ agentKey, agentId, repetition, question, score, metrics, result });
+			}
+		}
+	}
+	const summary = summarize(runs);
+	const comparison = compare(runs, agentKeys);
+	console.log(`\n${summary}\n\n${comparison}`);
+	await mkdir(RESULTS, { recursive: true });
+	const stamp = startedAt.toISOString().replace(/[:.]/g, '-');
+	const base = path.join(RESULTS, `run-${stamp}`);
+	await writeFile(
+		`${base}.json`,
+		JSON.stringify({ model: MODEL, agentKeys, repeat, runs }, null, '\t'),
+	);
+	await writeFile(
+		`${base}.md`,
+		`# Knowledge live retrieval run ${startedAt.toISOString()}\n\nModel: \`${MODEL}\`. Agents: ${agentKeys.join(', ')}. Repetitions: ${repeat}.\n\n${summary}\n\n${comparison}\n`,
+	);
+	console.log(`\nSaved ${path.relative(process.cwd(), base)}.json and .md`);
+}
+
 async function main() {
 	const command = process.argv[2] ?? 'smoke';
 	const scaffold = await readJson(path.join(FIXTURES, 'agent.json'));
@@ -408,8 +624,14 @@ async function main() {
 		case 'smoke':
 			await smoke(client, scaffold, items, process.argv[3] ?? 'kb-native');
 			break;
+		case 'run':
+			await run(client, scaffold, items, {
+				agentKeys: (process.argv[3] ?? 'kb-native,kb-mcp-c0').split(',').filter(Boolean),
+				repeat: Number(process.argv[4] ?? 3),
+			});
+			break;
 		default:
-			fail(`Unknown command "${command}". Commands: smoke [agent]`);
+			fail(`Unknown command "${command}". Commands: smoke [agent], run [agents] [repeat]`);
 	}
 }
 

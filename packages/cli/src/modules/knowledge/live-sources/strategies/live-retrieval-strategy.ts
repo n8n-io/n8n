@@ -15,6 +15,8 @@ export type RankedSearchMatch = LiveSearchMatch & { score: number };
 /** What a strategy gets for one search of one source. */
 export interface LiveSearchContext {
 	ctx: LiveRunContext;
+	/** The agent the tools run for; the index is kept per agent and source. */
+	agentId: string;
 	source: LiveSourceConfig;
 	provider: KnowledgeLiveSourceProvider;
 	/** Every entry the run may reach in this source, after the requested scope was applied. */

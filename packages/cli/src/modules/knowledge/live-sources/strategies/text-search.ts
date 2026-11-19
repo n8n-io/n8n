@@ -71,6 +71,16 @@ const STOP_WORDS = new Set([
 	'your',
 ]);
 
+/** Splits a text into lowercase tokens for the index. Stop words stay: the ranking weighs them down. */
+export function tokenizeText(text: string): string[] {
+	const tokens: string[] = [];
+	for (const raw of text.toLowerCase().split(/[^\p{L}\p{N}_-]+/u)) {
+		const token = raw.replace(/^[-_]+|[-_]+$/g, '');
+		if (token.length >= MIN_TERM_CHARS) tokens.push(token);
+	}
+	return tokens;
+}
+
 /** Splits a query into lowercase search terms without stop words and duplicates. */
 export function tokenizeQuery(query: string): string[] {
 	const terms = new Set<string>();

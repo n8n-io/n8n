@@ -2,6 +2,7 @@ import type { Logger } from '@n8n/backend-common';
 import { mock } from 'vitest-mock-extended';
 
 import type { LiveCredentialResolver } from '../live-credential-resolver';
+import { LiveIndexService } from '../live-index.service';
 import { LiveRetrievalService, type LiveKnowledgeScope } from '../live-retrieval.service';
 import { formatLiveRef } from '../live-retrieval-schemas';
 import { LiveSourceRefError, LiveSourceScopeError } from '../live-source.errors';
@@ -11,6 +12,7 @@ import type {
 	LiveSourceConfig,
 } from '../live-source-provider';
 import type { LiveSourceProviderRegistry } from '../live-source-provider-registry';
+import { IndexRetrievalStrategy } from '../strategies/index.strategy';
 import { NativeRetrievalStrategy } from '../strategies/native.strategy';
 
 const PICKED_PAGE: LiveEntry = {
@@ -79,11 +81,15 @@ function makeService() {
 	const logger = mock<Logger>();
 	logger.scoped.mockReturnValue(logger);
 
+	const nativeStrategy = new NativeRetrievalStrategy();
+	const indexService = new LiveIndexService(logger);
 	const service = new LiveRetrievalService(
 		logger,
 		registry,
 		credentialResolver,
-		new NativeRetrievalStrategy(),
+		indexService,
+		nativeStrategy,
+		new IndexRetrievalStrategy(indexService, nativeStrategy),
 	);
 	return { service, provider, credentialResolver };
 }

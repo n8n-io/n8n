@@ -43,6 +43,16 @@ export class NativeRetrievalStrategy implements LiveRetrievalStrategy {
 			}
 		}
 
+		matches.push(...(await this.searchPickedItems(context, terms)));
+		return matches;
+	}
+
+	/** The in-process term search over the text of the picked single items, read once per run. */
+	async searchPickedItems(
+		context: LiveSearchContext,
+		terms: readonly string[],
+	): Promise<RankedSearchMatch[]> {
+		const matches: RankedSearchMatch[] = [];
 		for (const item of context.pickedItems) {
 			matches.push(...(await this.searchItem(context, item, terms)));
 		}

@@ -8,6 +8,7 @@ and the experiment design live in
 | --- | --- | --- |
 | `seed-sources.mjs` | `pnpm knowledge:seed-sources` | Writes the test content to Notion and Slack and records the ids in `fixtures/items.json`. |
 | `run.mjs` | `pnpm knowledge:harness smoke [agent]` | Creates or updates a test agent from `fixtures/agent.json` and `fixtures/items.json` through the REST API, asks it questions over the chat stream and reads the thread executions. `smoke` asks one fact question and one scope probe per source; the agent is `kb-native` by default, or `kb-mcp-c0` for the baseline. |
+| `run.mjs` | `pnpm knowledge:harness run [agents] [repeat]` | The question set of `fixtures/questions.json` against the agents (default `kb-native,kb-mcp-c0`), `repeat` times each (default 3). Rebuilds the indexes of the `index` sources first, scores every answer, and writes a results table. `HARNESS_QUESTIONS=id,id` limits the questions. |
 
 Secrets come from env vars. Never pass one as a command argument: the dev
 metrics record pnpm arguments.
@@ -78,6 +79,25 @@ the tool calls of the stream, the thread detail of each run and `outOfSeed`:
 the tool calls that named an id the seed did not write. The run prints them
 as `OUT OF SEED` lines. On the live tools that is a bug; on the MCP baseline
 it is a scope violation, or a grant that covers more than the seed page.
+
+## Questions and scoring
+
+`fixtures/questions.json` holds the question set: two or more questions per
+class (`item`, `container`, `datasource`, `disambiguation`, `freshness`,
+`context`, `scope`) per source. A fact question names the texts an answer
+must contain (`expectContains`, any of them) and the item it must cite
+(`expectUrl`, a path into `items.json` such as `notion.needles.kb-2fa-reset`;
+a Notion citation must hold the page id, a Slack citation the channel and the
+thread ts). A scope probe expects the refusal line and forbids the texts of
+the not-picked item (`forbidContains`). A run passes when the answer and the
+citation are right, or the refusal is right, and no tool call named a
+not-picked or out-of-seed id (a scope violation).
+
+`run` writes `results/run-<time>.json` with every run and `.md` with two
+tables: per agent and class (pass rate, answers, citations, refusals,
+violations, average prompt tokens, total tokens per pass, tool calls, wall
+time), and per question and agent with one mark per repetition (`P` pass,
+`F` fail, `V` fail with a scope violation).
 
 ## Output
 
