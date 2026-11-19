@@ -1,17 +1,17 @@
 //! Tests for `json.zig`: the fast SIMD codec against the scalar reference,
 //! Date JSON semantics, and fuzz harnesses.
 const std = @import("std");
-const value = @import("value.zig");
-const ops = @import("ops.zig");
-const fast = @import("simd_json.zig");
-const json = @import("json.zig");
-const heap = @import("heap.zig");
-const module = @import("module.zig");
-const ref = @import("json_ref.zig");
-const numfmt = @import("numfmt.zig");
-const lib = @import("lib.zig");
-const Arena = @import("arena.zig").Arena;
-const Asm = @import("asm.zig").Asm;
+const value = @import("mem/value.zig");
+const ops = @import("runtime/ops.zig");
+const fast = @import("runtime/simd_json.zig");
+const json = @import("runtime/json.zig");
+const heap = @import("mem/heap.zig");
+const module = @import("vm/module.zig");
+const ref = @import("runtime/json_ref.zig");
+const numfmt = @import("text/numfmt.zig");
+const lib = @import("stdlib/lib.zig");
+const Arena = @import("mem/arena.zig").Arena;
+const Asm = @import("vm/asm.zig").Asm;
 const Smith = std.testing.Smith;
 const Vm = ops.Vm;
 

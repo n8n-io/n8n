@@ -1,10 +1,10 @@
 //! Schedule triggers in the core: registration from META, due slots, the
 //! once-per-slot rule and catch-up after downtime.
 const std = @import("std");
-const core = @import("core.zig");
-const Asm = @import("asm.zig").Asm;
-const Arena = @import("arena.zig").Arena;
-const tz = @import("tz.zig");
+const core = @import("sched/core.zig");
+const Asm = @import("vm/asm.zig").Asm;
+const Arena = @import("mem/arena.zig").Arena;
+const tz = @import("text/tz.zig");
 
 const testing = std.testing;
 
@@ -148,11 +148,11 @@ fn fortyZones(a: std.mem.Allocator, max_zones: u32) !core.State {
 }
 
 fn offsetOf(a: std.mem.Allocator, st: *core.State, zone: []const u8) ![]const u8 {
-    const ops = @import("ops.zig");
-    const lib = @import("lib.zig");
-    const value = @import("value.zig");
+    const ops = @import("runtime/ops.zig");
+    const lib = @import("stdlib/lib.zig");
+    const value = @import("mem/value.zig");
     var region_buf: [64 << 10]u8 align(8) = undefined;
-    var region = @import("heap.zig").Region.init(&region_buf);
+    var region = @import("mem/heap.zig").Region.init(&region_buf);
     var scratch = Arena.init(try a.alloc(u8, 1 << 16));
     var vm: ops.Vm = .{ .r = &region, .m = undefined, .scratch = &scratch, .env = .{
         .zones = st.zones[0..st.nzones],

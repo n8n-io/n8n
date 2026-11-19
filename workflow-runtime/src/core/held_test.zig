@@ -2,11 +2,11 @@
 //! (`State.held`, `serveHeld`): a full pool delays a start or a result, it
 //! does not fail it. `held.zig` has the tests of the queue itself.
 const std = @import("std");
-const core = @import("core.zig");
-const heap = @import("heap.zig");
-const Asm = @import("asm.zig").Asm;
-const Arena = @import("arena.zig").Arena;
-const EffectKind = @import("module.zig").EffectKind;
+const core = @import("sched/core.zig");
+const heap = @import("mem/heap.zig");
+const Asm = @import("vm/asm.zig").Asm;
+const Arena = @import("mem/arena.zig").Arena;
+const EffectKind = @import("vm/module.zig").EffectKind;
 
 const testing = std.testing;
 

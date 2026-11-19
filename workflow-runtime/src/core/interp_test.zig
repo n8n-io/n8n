@@ -1,12 +1,12 @@
 const std = @import("std");
-const value = @import("value.zig");
-const heap = @import("heap.zig");
-const ops = @import("ops.zig");
-const json = @import("json.zig");
-const interp = @import("interp.zig");
-const module = @import("module.zig");
-const Asm = @import("asm.zig").Asm;
-const Arena = @import("arena.zig").Arena;
+const value = @import("mem/value.zig");
+const heap = @import("mem/heap.zig");
+const ops = @import("runtime/ops.zig");
+const json = @import("runtime/json.zig");
+const interp = @import("vm/interp.zig");
+const module = @import("vm/module.zig");
+const Asm = @import("vm/asm.zig").Asm;
+const Arena = @import("mem/arena.zig").Arena;
 
 const Harness = struct {
     region_buf: [64 * 1024]u8 align(8) = undefined,

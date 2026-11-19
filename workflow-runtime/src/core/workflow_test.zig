@@ -2,10 +2,10 @@
 //! n8n path rules, module references and reuse, manual runs and the
 //! trace action.
 const std = @import("std");
-const core = @import("core.zig");
-const heap = @import("heap.zig");
-const Asm = @import("asm.zig").Asm;
-const Arena = @import("arena.zig").Arena;
+const core = @import("sched/core.zig");
+const heap = @import("mem/heap.zig");
+const Asm = @import("vm/asm.zig").Asm;
+const Arena = @import("mem/arena.zig").Arena;
 
 const testing = std.testing;
 
@@ -21,7 +21,7 @@ fn module(gpa: std.mem.Allocator, meta: []const u8, tag: f64, wait: bool) ![]u8 
     try a.emitBc(.loadundef, 2, 0);
     if (wait) {
         try a.emitBc(.loadi, 3, ask);
-        try a.emit(.@"suspend", @backingInt(@import("module.zig").EffectKind.approval), 2, 3, 0);
+        try a.emit(.@"suspend", @backingInt(@import("vm/module.zig").EffectKind.approval), 2, 3, 0);
     }
     try a.emit(.newobj, 0, 4, 0, 0);
     try a.emitBc(.loadk, 5, try a.number(tag));
@@ -183,7 +183,7 @@ fn parkedModule(gpa: std.mem.Allocator) ![]u8 {
     const ask = try a.step("Ask", .approval);
     a.beginFunc();
     try a.emitBc(.loadi, 1, ask);
-    try a.emit(.@"suspend", @backingInt(@import("module.zig").EffectKind.approval), 2, 1, 0);
+    try a.emit(.@"suspend", @backingInt(@import("vm/module.zig").EffectKind.approval), 2, 1, 0);
     try a.emitBc(.now, 3, 0);
     try a.emit(.newobj, 0, 4, 0, 0);
     try a.emit(.setprop, 0, 4, try a.str("t"), 3);
@@ -202,7 +202,7 @@ fn waitModule(gpa: std.mem.Allocator, key: []const u8, value: f64) ![]u8 {
     try a.emitBc(.loadk, 2, try a.number(value));
     try a.emit(.setprop, 0, 1, try a.str(key), 2);
     try a.emitBc(.loadi, 3, wait);
-    try a.emit(.@"suspend", @backingInt(@import("module.zig").EffectKind.wait), 4, 3, 1);
+    try a.emit(.@"suspend", @backingInt(@import("vm/module.zig").EffectKind.wait), 4, 3, 1);
     try a.emit(.newobj, 0, 5, 0, 0);
     try a.emit(.ret, 0, 5, 0, 0);
     try a.endFunc("run", 1, 6, 0);
@@ -290,7 +290,7 @@ test "CLOCK-OFFSET: a log replay of the start gives the same clock" {
     const live = find(try h.tick(&.{.{ .kind = .manual, .exec_id = id, .conn = 3, .payload = payload }}), .finished).?;
     // The offset is data in the event: the log record of that batch replays
     // on a second shard at the same `now_ms` with the same clock.
-    const logfmt = @import("logfmt.zig");
+    const logfmt = @import("sched/logfmt.zig");
     var buf: [4096]u8 = undefined;
     const events = [_]core.Event{.{ .kind = .manual, .exec_id = id, .conn = 3, .payload = payload }};
     const rec = logfmt.encode(&buf, 1, h.st.now_ms, &events);
@@ -361,7 +361,7 @@ test "regression: an execution finished later in the batch does not run (fuzz)" 
     const st = try asm_.step("Call", .node);
     asm_.beginFunc();
     try asm_.emitBc(.loadi, 1, st);
-    try asm_.emit(.@"suspend", @backingInt(@import("module.zig").EffectKind.node), 2, 1, 0);
+    try asm_.emit(.@"suspend", @backingInt(@import("vm/module.zig").EffectKind.node), 2, 1, 0);
     try asm_.emit(.ret, 0, 2, 0, 0);
     try asm_.endFunc("run", 1, 3, 0);
     const bytes = try asm_.finish();
@@ -435,7 +435,7 @@ test "regression: a full module table says why and frees when parked executions 
 /// `run(t) { await wait({ duration: <ms> }); r = await Call({}); return { v: r.v } }`.
 /// A retry wait of n8n (`<node> (retry)`) compiles to the same wait step.
 fn waitThenCall(gpa: std.mem.Allocator, ms: f64) ![]u8 {
-    const EK = @import("module.zig").EffectKind;
+    const EK = @import("vm/module.zig").EffectKind;
     var a: Asm = .{ .gpa = gpa, .meta = "{\"triggers\":[{\"kind\":\"webhook\",\"path\":\"w\"}]}" };
     defer a.deinit();
     const sleep = try a.step("Call (retry)", .wait);
@@ -543,12 +543,12 @@ test "regression: after a recovery, runs from before it do not answer a connecti
 
 // ---- workload classes (docs/workload-classes.md) --------------------------------------
 
-const workload = @import("workload.zig");
+const workload = @import("sched/workload.zig");
 
 /// `run(t) { r = await node(); return {} }` behind `POST /webhook/<path>`:
 /// the execution holds its slot until the result of the node comes.
 fn holdModule(gpa: std.mem.Allocator, comptime path: []const u8) ![]u8 {
-    const EK = @import("module.zig").EffectKind;
+    const EK = @import("vm/module.zig").EffectKind;
     var a: Asm = .{ .gpa = gpa, .meta = "{\"triggers\":[{\"kind\":\"webhook\",\"path\":\"" ++ path ++ "\",\"method\":\"POST\"}]}" };
     defer a.deinit();
     const call = try a.step("Call", .node);

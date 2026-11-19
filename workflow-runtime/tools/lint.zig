@@ -31,7 +31,7 @@ pub const max_line_bytes = 400;
 
 /// The core's subsystems in dependency order. A subsystem may import only the
 /// ones listed before it. Add a new subsystem's directory name here.
-pub const core_order = [_][]const u8{ "mem", "conn", "log", "ingest" };
+pub const core_order = [_][]const u8{ "mem", "text", "runtime", "stdlib", "vm", "sched" };
 
 pub const Finding = struct {
     line: u32,
@@ -100,7 +100,7 @@ const Where = struct {
             .kernels = std.mem.endsWith(u8, path, "/kernels.zig"),
             .is_main = std.mem.eql(u8, path, "src/main.zig"),
             .shell = std.mem.startsWith(u8, path, "src/shell/"),
-            .arena = std.mem.eql(u8, path, "src/core/arena.zig"),
+            .arena = std.mem.eql(u8, path, "src/core/mem/arena.zig"),
             .test_file = test_file,
         };
     }
@@ -598,8 +598,8 @@ test "the ratchet fails when a rule has more findings or fewer than its line" {
     counts[ruleIndex("nesting") orelse return error.RuleMissing] = 2;
     try std.testing.expectEqual(@as(u32, 1), compareRatchet(counts, allowed, false));
     try std.testing.expectEqual(@as(u32, 2), parseRatchet("no-such-rule 1\nnesting\n", allowed, false));
-    try std.testing.expect(generated("src/core/aot_gen.zig") and generated("src/core/collate_tables.zig"));
-    try std.testing.expect(!generated("src/core/aot.zig"));
+    try std.testing.expect(generated("src/core/vm/aot_gen.zig") and generated("src/core/text/collate_tables.zig"));
+    try std.testing.expect(!generated("src/core/vm/aot.zig"));
 }
 
 fn listRules() void {
@@ -697,12 +697,12 @@ test "each banned construct is found, and only where it is banned" {
 }
 
 test "subsystems import one way only, and only through root.zig" {
-    try std.testing.expect(check("src/core/conn/root.zig", "const x = @import(\"../ingest/root.zig\");").has("subsystem-order"));
-    try std.testing.expect(!check("src/core/ingest/root.zig", "const x = @import(\"../conn/root.zig\");").has("subsystem-order"));
-    try std.testing.expect(check("src/core/ingest/root.zig", "const x = @import(\"../conn/state.zig\");").has("subsystem-internal"));
-    try std.testing.expect(!check("src/core/ingest/root.zig", "const x = @import(\"../mem/pool.zig\");").has("subsystem-internal"));
-    try std.testing.expect(check("src/core/new/root.zig", "const x = @import(\"../conn/root.zig\");").has("subsystem-order"));
-    try std.testing.expect(!check("src/core/ingest/root.zig", "const x = @import(\"../state.zig\");").has("subsystem-order"));
+    try std.testing.expect(check("src/core/text/root.zig", "const x = @import(\"../sched/root.zig\");").has("subsystem-order"));
+    try std.testing.expect(!check("src/core/sched/root.zig", "const x = @import(\"../text/root.zig\");").has("subsystem-order"));
+    try std.testing.expect(check("src/core/sched/root.zig", "const x = @import(\"../text/cron.zig\");").has("subsystem-internal"));
+    try std.testing.expect(!check("src/core/sched/root.zig", "const x = @import(\"../mem/arena.zig\");").has("subsystem-internal"));
+    try std.testing.expect(check("src/core/new/root.zig", "const x = @import(\"../text/root.zig\");").has("subsystem-order"));
+    try std.testing.expect(!check("src/core/sched/root.zig", "const x = @import(\"../state.zig\");").has("subsystem-order"));
 }
 
 test "patterns inside strings and comments are ignored" {

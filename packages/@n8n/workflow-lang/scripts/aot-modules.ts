@@ -4,7 +4,7 @@
  * modules to Zig (workflow-runtime/src/core/aot.zig):
  *
  *   node scripts/aot-modules.ts <dir> [node-type-pattern]
- *   wfrt aot-gen src/core/aot_gen.zig <dir>/*.wfm
+ *   wfrt aot-gen src/core/vm/aot_gen.zig <dir>/*.wfm
  */
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';

@@ -1,41 +1,51 @@
 //! The deterministic core. It never touches I/O, clocks, threads or
 //! unseeded randomness. CI rejects I/O and thread imports in this folder.
-pub const value = @import("value.zig");
-pub const heap = @import("heap.zig");
-pub const arena = @import("arena.zig");
-pub const mem = @import("mem.zig");
-pub const perf = @import("perf.zig");
-pub const numfmt = @import("numfmt.zig");
-pub const module = @import("module.zig");
-pub const ops = @import("ops.zig");
-pub const json = @import("json.zig");
+//!
+//! Ordered into six subsystems: `mem -> text -> runtime -> stdlib -> vm -> sched`.
+//! Each subsystem imports only subsystems before it, enforced by `tools/lint.zig`.
+const mem_sub = @import("mem/root.zig");
+const text_sub = @import("text/root.zig");
+const runtime_sub = @import("runtime/root.zig");
+const stdlib_sub = @import("stdlib/root.zig");
+const vm_sub = @import("vm/root.zig");
+const sched_sub = @import("sched/root.zig");
+
+pub const value = mem_sub.value;
+pub const heap = mem_sub.heap;
+pub const arena = mem_sub.arena;
+pub const mem = mem_sub.mem;
+pub const perf = mem_sub.perf;
+pub const numfmt = text_sub.numfmt;
+pub const module = vm_sub.module;
+pub const ops = runtime_sub.ops;
+pub const json = runtime_sub.json;
 /// The scalar codec that `json` replaced: the reference of tests and benchmarks.
-pub const json_ref = @import("json_ref.zig");
-pub const columns = @import("columns.zig");
-pub const batch = @import("batch.zig");
-pub const lib = @import("lib.zig");
-pub const interp = @import("interp.zig");
-pub const aot = @import("aot.zig");
-pub const exec_index = @import("exec_index.zig");
-pub const held = @import("held.zig");
-pub const asm_ = @import("asm.zig");
-pub const core = @import("core.zig");
-pub const exactnum = @import("exactnum.zig");
-pub const logfmt = @import("logfmt.zig");
-pub const cron = @import("cron.zig");
-pub const workload = @import("workload.zig");
-pub const tz = @import("tz.zig");
-pub const multipart = @import("multipart.zig");
-pub const regex = @import("regex.zig");
-pub const json_error = @import("json_error.zig");
-pub const normalize = @import("normalize.zig");
-pub const collate = @import("collate.zig");
-pub const binary_names = @import("binary_names.zig");
-pub const mime_tables = @import("mime_tables.zig");
-pub const cred_flags = @import("cred_flags.zig");
+pub const json_ref = runtime_sub.json_ref;
+pub const columns = runtime_sub.columns;
+pub const batch = runtime_sub.batch;
+pub const lib = stdlib_sub.lib;
+pub const interp = vm_sub.interp;
+pub const aot = vm_sub.aot;
+pub const exec_index = sched_sub.exec_index;
+pub const held = sched_sub.held;
+pub const asm_ = vm_sub.asm_;
+pub const core = sched_sub.core;
+pub const exactnum = text_sub.exactnum;
+pub const logfmt = sched_sub.logfmt;
+pub const cron = text_sub.cron;
+pub const workload = sched_sub.workload;
+pub const tz = text_sub.tz;
+pub const multipart = runtime_sub.multipart;
+pub const regex = text_sub.regex;
+pub const json_error = text_sub.json_error;
+pub const normalize = text_sub.normalize;
+pub const collate = text_sub.collate;
+pub const binary_names = text_sub.binary_names;
+pub const mime_tables = text_sub.mime_tables;
+pub const cred_flags = text_sub.cred_flags;
 // Wire codecs now live in src/wire/. Shell consumers import them directly
 // as @import("wire").<name>; core consumers use the forwarding wrapper in
-// src/core/numfmt.zig or import @import("wire") directly when needed.
+// src/core/text/numfmt.zig or import @import("wire") directly when needed.
 
 test {
     @import("std").testing.refAllDecls(@This());
@@ -47,9 +57,9 @@ test {
     _ = @import("workflow_test.zig");
     _ = @import("workload_test.zig");
     _ = @import("held_test.zig");
-    _ = @import("multipart.zig");
+    _ = runtime_sub.multipart;
     _ = @import("fuzz_test.zig");
-    _ = @import("textcodec.zig");
-    _ = @import("static_data.zig");
-    _ = @import("cred_flags.zig");
+    _ = text_sub.textcodec;
+    _ = sched_sub.static_data;
+    _ = text_sub.cred_flags;
 }

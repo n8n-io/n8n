@@ -2,17 +2,17 @@
 //! target runs its seed inputs once, as a unit test. Each target checks its
 //! own invariants, not only that nothing crashes.
 const std = @import("std");
-const value = @import("value.zig");
-const heap = @import("heap.zig");
-const ops = @import("ops.zig");
-const json = @import("json.zig");
-const module = @import("module.zig");
-const multipart = @import("multipart.zig");
-const tz = @import("tz.zig");
-const cron = @import("cron.zig");
-const core = @import("core.zig");
-const Asm = @import("asm.zig").Asm;
-const Arena = @import("arena.zig").Arena;
+const value = @import("mem/value.zig");
+const heap = @import("mem/heap.zig");
+const ops = @import("runtime/ops.zig");
+const json = @import("runtime/json.zig");
+const module = @import("vm/module.zig");
+const multipart = @import("runtime/multipart.zig");
+const tz = @import("text/tz.zig");
+const cron = @import("text/cron.zig");
+const core = @import("sched/core.zig");
+const Asm = @import("vm/asm.zig").Asm;
+const Arena = @import("mem/arena.zig").Arena;
 const Smith = std.testing.Smith;
 
 // Fuzz targets run one input at a time; static buffers keep the stack small.
@@ -266,7 +266,7 @@ test "fuzz manual payload" {
 // ---- credential flags ---------------------------------------------------------------
 
 fn fuzzCredFlags(_: void, smith: *Smith) !void {
-    const cred_flags = @import("cred_flags.zig");
+    const cred_flags = @import("text/cred_flags.zig");
     const doc = input_buf[0..smith.slice(&input_buf)];
     const found = cred_flags.scan(doc, "slot", "f00000001");
     if (found == .invalid) {
@@ -344,7 +344,7 @@ test "fuzz cron parser and slots" {
 
 // ---- regular expressions -----------------------------------------------------------
 
-const regex = @import("regex.zig");
+const regex = @import("text/regex.zig");
 
 /// Any pattern either fails to compile or matches within the input: each
 /// group is unset or a range inside it, and a match ends at or after its start.
@@ -403,7 +403,7 @@ test "fuzz regex compile and exec" {
 
 // ---- JSON.parse error messages ------------------------------------------------------
 
-const json_error = @import("json_error.zig");
+const json_error = @import("text/json_error.zig");
 
 fn fuzzJsonError(_: void, smith: *Smith) !void {
     var tbuf: [256]u8 = undefined;
@@ -432,7 +432,7 @@ test "fuzz json error messages" {
 
 // ---- String.prototype.normalize ----------------------------------------------------
 
-const unorm = @import("normalize.zig");
+const unorm = @import("text/normalize.zig");
 
 var norm_buf: [1 << 16]u8 = undefined;
 
@@ -461,7 +461,7 @@ test "fuzz normalize" {
 
 // ---- String.prototype.localeCompare ------------------------------------------------
 
-const collate = @import("collate.zig");
+const collate = @import("text/collate.zig");
 
 var collate_buf: [1 << 18]u8 = undefined;
 
@@ -489,7 +489,7 @@ test "fuzz collation" {
 
 // ---- dates and POSIX time zone rules ----------------------------------------------
 
-const date = @import("date.zig");
+const date = @import("stdlib/date.zig");
 
 fn fuzzDate(_: void, smith: *Smith) !void {
     var text_buf: [80]u8 = undefined;
@@ -535,9 +535,9 @@ test "fuzz posix time zone rules" {
 
 // ---- XML and text codecs ---------------------------------------------------------
 
-const xml = @import("xml.zig");
-const xmlrss = @import("xmlrss.zig");
-const textcodec = @import("textcodec.zig");
+const xml = @import("runtime/xml.zig");
+const xmlrss = @import("runtime/xmlrss.zig");
+const textcodec = @import("text/textcodec.zig");
 
 /// XML.parse: a value or a message, never a crash; a result encodes as JSON
 /// (no cycles, no bad strings); the helpers of rss-parser take any text, and

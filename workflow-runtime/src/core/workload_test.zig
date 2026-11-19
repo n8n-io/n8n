@@ -1,6 +1,6 @@
 //! Tests of the workload class table (`workload.zig`).
 const std = @import("std");
-const workload = @import("workload.zig");
+const workload = @import("sched/workload.zig");
 const Classes = workload.Classes;
 const Gate = workload.Gate;
 const single = workload.single;

@@ -304,27 +304,27 @@ pub const all = [_]Rule{
     .{
         .name = "subsystem-order",
         .prevents = "Import cycles between subsystems.",
-        .bad = one("src/core/conn/root.zig", "const ingest = @import(\"../ingest/root.zig\");\n"),
-        .good = one("src/core/ingest/root.zig", "const conn = @import(\"../conn/root.zig\");\n"),
+        .bad = one("src/core/text/root.zig", "const sched = @import(\"../sched/root.zig\");\n"),
+        .good = one("src/core/sched/root.zig", "const text = @import(\"../text/root.zig\");\n"),
     },
     .{
         .name = "subsystem-internal",
         .prevents = "One subsystem reaching into another's files.",
-        .bad = one("src/core/ingest/root.zig", "const conn_state = @import(\"../conn/state.zig\");\n"),
-        .good = one("src/core/ingest/root.zig", "const conn = @import(\"../conn/root.zig\");\n"),
+        .bad = one("src/core/sched/root.zig", "const cron = @import(\"../text/cron.zig\");\n"),
+        .good = one("src/core/sched/root.zig", "const text = @import(\"../text/root.zig\");\n"),
     },
     .{
         .name = "table-owner",
         .prevents = "A table written from several places, so nobody can say what changed a value.",
         .bad = &.{
-            .{ .path = "src/core/state.zig", .text = "const conn = @import(\"conn/root.zig\");\npub const State = struct { conns: conn.Table };\n" },
-            .{ .path = "src/core/conn/root.zig", .text = "pub const Table = struct { op: []u32 };\n" },
-            .{ .path = "src/core/ingest/root.zig", .text = "fn f(state: anytype, row: u32) void {\n    state.conns.op[row] = 7;\n}\n" },
+            .{ .path = "src/core/state.zig", .text = "const text = @import(\"text/root.zig\");\npub const State = struct { conns: text.Table };\n" },
+            .{ .path = "src/core/text/root.zig", .text = "pub const Table = struct { op: []u32 };\n" },
+            .{ .path = "src/core/sched/root.zig", .text = "fn f(state: anytype, row: u32) void {\n    state.conns.op[row] = 7;\n}\n" },
         },
         .good = &.{
-            .{ .path = "src/core/state.zig", .text = "const conn = @import(\"conn/root.zig\");\npub const State = struct { conns: conn.Table };\n" },
-            .{ .path = "src/core/conn/root.zig", .text = "pub const Table = struct { op: []u32 };\npub fn setOp(state: anytype, row: u32) void {\n    state.conns.op[row] = 7;\n}\n" },
-            .{ .path = "src/core/ingest/root.zig", .text = "const conn = @import(\"../conn/root.zig\");\nfn f(state: anytype, row: u32) void {\n    conn.setOp(state, row);\n}\n" },
+            .{ .path = "src/core/state.zig", .text = "const text = @import(\"text/root.zig\");\npub const State = struct { conns: text.Table };\n" },
+            .{ .path = "src/core/text/root.zig", .text = "pub const Table = struct { op: []u32 };\npub fn setOp(state: anytype, row: u32) void {\n    state.conns.op[row] = 7;\n}\n" },
+            .{ .path = "src/core/sched/root.zig", .text = "const text = @import(\"../text/root.zig\");\nfn f(state: anytype, row: u32) void {\n    text.setOp(state, row);\n}\n" },
         },
     },
     // ---- Things that are declared and never used ----
