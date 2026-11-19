@@ -320,6 +320,8 @@ export async function sendToNetwork(req: CapturedRequest): Promise<Response> {
 			await fetch(req.url, {
 				method: req.method,
 				headers,
+				// A redirect can leave the vendor host with the credential. Return it to the caller as it is.
+				redirect: 'manual',
 				body:
 					req.body && req.method !== 'GET' && req.method !== 'HEAD'
 						? new Uint8Array(req.body)

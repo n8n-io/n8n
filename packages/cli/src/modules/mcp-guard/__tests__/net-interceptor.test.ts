@@ -325,6 +325,29 @@ describe('installNetInterceptor', () => {
 		expect(seen['content-length']).toBe('3');
 	});
 
+	it('sendToNetwork returns a redirect as it is and does not follow it', async () => {
+		server.removeAllListeners('request');
+		server.on('request', (req, res) => {
+			if (req.url === '/target') {
+				hits++;
+				res.end('target');
+				return;
+			}
+			res.statusCode = 302;
+			res.setHeader('location', `${base}/target`);
+			res.end();
+		});
+		uninstall = installNetInterceptor(vi.fn());
+
+		const res = await inGuard(
+			async () =>
+				await sendToNetwork({ method: 'GET', url: new URL(`${base}/start`), headers: {} }),
+		);
+
+		expect(res.status).toBe(302);
+		expect(hits).toBe(0);
+	});
+
 	it('strips content-encoding and content-length from an answer, because the body is plain', async () => {
 		uninstall = installNetInterceptor(
 			async () =>
