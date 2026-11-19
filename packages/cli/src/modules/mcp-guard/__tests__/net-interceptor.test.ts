@@ -2,6 +2,8 @@ import http from 'node:http';
 import https from 'node:https';
 import type { AddressInfo } from 'node:net';
 
+import axios from 'axios';
+
 import { withChatScope } from '../chat-scope';
 import { installNetInterceptor, type CapturedRequest } from '../net-interceptor';
 
@@ -127,6 +129,32 @@ describe('installNetInterceptor', () => {
 		expect(decide.mock.calls[0][0].method).toBe('PUT');
 		expect(decide.mock.calls[0][0].body?.toString()).toBe('b');
 		expect(hits).toBe(0);
+	});
+
+	it('catches an axios request, as the request helpers of the nodes send it', async () => {
+		const seen: CapturedRequest[] = [];
+		uninstall = installNetInterceptor(async (req) => {
+			seen.push(req);
+			return Response.json({ messages: [] }, { status: 200 });
+		});
+
+		const res = await withChatScope(
+			'chat-1',
+			async () =>
+				await axios.post(
+					'https://www.googleapis.com/gmail/v1/users/me/messages/send?a=1',
+					{ raw: 'abc' },
+					{ headers: { Authorization: 'Bearer real' } },
+				),
+		);
+
+		expect(res.data).toEqual({ messages: [] });
+		expect(seen).toHaveLength(1);
+		expect(seen[0].method).toBe('POST');
+		expect(seen[0].url.host).toBe('www.googleapis.com');
+		expect(seen[0].url.pathname).toBe('/gmail/v1/users/me/messages/send');
+		expect(seen[0].headers.authorization).toBe('Bearer real');
+		expect(JSON.parse(seen[0].body?.toString() ?? '{}')).toEqual({ raw: 'abc' });
 	});
 
 	it('uninstall restores the original clients', async () => {
