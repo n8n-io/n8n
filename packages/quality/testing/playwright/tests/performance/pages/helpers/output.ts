@@ -285,13 +285,16 @@ export async function writeResults(
 	const exportDir = process.env.PERF_OUTPUT_DIR;
 	if (exportDir) {
 		await mkdir(exportDir, { recursive: true });
-		const stamp = meta.startedAt.replace(/[:.]/g, '-');
-		await copyFile(json, join(exportDir, `page-load-${stamp}.json`));
-		await copyFile(csv, join(exportDir, `page-load-${stamp}.csv`));
-		await copyFile(html, join(exportDir, `page-load-${stamp}.html`));
+		// One folder per run with the original file names, so the report's
+		// relative trace links keep working after the copy.
+		const runDir = join(exportDir, `page-load-${meta.startedAt.replace(/[:.]/g, '-')}`);
+		await mkdir(runDir, { recursive: true });
+		await copyFile(json, join(runDir, 'page-load.json'));
+		await copyFile(csv, join(runDir, 'page-load.csv'));
+		await copyFile(html, join(runDir, 'page-load.html'));
 		for (const sample of results.flatMap((result) => result.samples)) {
 			if (sample.tracePath) {
-				await copyFile(sample.tracePath, join(exportDir, `${stamp}-${basename(sample.tracePath)}`));
+				await copyFile(sample.tracePath, join(runDir, basename(sample.tracePath)));
 			}
 		}
 	}

@@ -91,6 +91,7 @@ export function buildHtmlReport(data: ReportData): string {
   <div class="chart" id="phases"></div>
 
   <h2>All statistics (ms)</h2>
+  <p class="note">The Traces column links the Chrome trace files that sit next to this report (one per traced run). Open a file in Chrome DevTools → Performance → "Load profile", or drop it on <a href="https://ui.perfetto.dev">ui.perfetto.dev</a>; the Timings track carries the <code>n8n-test:usable</code> mark.</p>
   <div style="overflow:auto"><table id="table"></table></div>
 </main>
 <script>
@@ -203,7 +204,11 @@ function renderPhases(pageId) {
 
 function renderTable() {
   const cols = ['median', 'avg', 'p75', 'p80', 'p90', 'p95', 'p99', 'stddev', 'min', 'max'];
-  const head = '<tr><th>Page</th><th>Run</th>' + cols.map((c) => '<th>' + c + '</th>').join('') + '<th>CV</th><th>Failed</th><th>Warm-up</th><th>Warm-up − avg</th><th>Runs</th></tr>';
+  const head = '<tr><th>Page</th><th>Run</th>' + cols.map((c) => '<th>' + c + '</th>').join('') + '<th>CV</th><th>Failed</th><th>Warm-up</th><th>Warm-up − avg</th><th>Runs</th><th>Traces</th></tr>';
+  const traceLinks = (p) => p.samples.filter((x) => x.tracePath).map((x) => {
+    const file = String(x.tracePath).split(/[\\\\/]/).pop();
+    return '<a href="' + file + '" download title="Chrome trace: open in Chrome DevTools → Performance → Load profile, or in ui.perfetto.dev">' + (x.warmup ? 'warm-up' : 'run ' + x.iteration) + '</a>';
+  }).join(', ');
   const rows = RUNS.flatMap((run, index) => run.pages.map((p) => {
     const s = p.stats.usableMs;
     return '<tr><td>' + p.label + '</td><td>' + (index === 0 ? 'this' : 'run ' + (index + 1)) + '</td>'
@@ -212,7 +217,8 @@ function renderTable() {
       + '<td' + (p.failed ? ' class="failed"' : '') + '>' + p.failed + '</td>'
       + '<td>' + fmt(p.warmup.usableMs) + '</td>'
       + '<td>' + (p.warmup.deltaMs === null ? '' : (p.warmup.deltaMs >= 0 ? '+' : '') + fmt(p.warmup.deltaMs) + ' (' + Math.round(p.warmup.deltaPct) + ' %)') + '</td>'
-      + '<td class="runs">' + p.samples.filter((x) => !x.warmup).map((x) => x.usableMs === null ? 'x' : Math.round(x.usableMs)).join(' ') + '</td></tr>';
+      + '<td class="runs">' + p.samples.filter((x) => !x.warmup).map((x) => x.usableMs === null ? 'x' : Math.round(x.usableMs)).join(' ') + '</td>'
+      + '<td>' + (index === 0 ? traceLinks(p) : '') + '</td></tr>';
   }));
   document.getElementById('table').innerHTML = head + rows.join('');
 }
