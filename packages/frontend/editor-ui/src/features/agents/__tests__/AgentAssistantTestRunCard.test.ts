@@ -1,4 +1,5 @@
 import { createTestingPinia } from '@pinia/testing';
+import { within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { defineComponent } from 'vue';
@@ -67,13 +68,30 @@ describe('AgentAssistantTestRunCard', () => {
 	});
 
 	it('keeps previews beside their simulated calls and renders content as plain text', async () => {
-		const { getByRole, getByText, container } = setup([email, blocked]);
+		const { getByRole, container } = setup([email, blocked]);
 		await userEvent.click(getByRole('button', { name: 'Test run details' }));
-		expect(getByText('Refund update')).toBeVisible();
-		expect(getByText('Not sent in this test run')).toBeVisible();
-		expect(getByText('<script>example</script>')).toBeVisible();
+		const emailRow = within(container.querySelector<HTMLElement>('[data-tool-call-id="email"]')!);
+		const blockedRow = within(
+			container.querySelector<HTMLElement>('[data-tool-call-id="blocked"]')!,
+		);
+		expect(emailRow.getByText('Refund update')).toBeVisible();
+		expect(emailRow.getByText('Not sent in this test run')).toBeVisible();
+		expect(emailRow.getByText('<script>example</script>')).toBeVisible();
+		expect(blockedRow.queryByText('Refund update')).not.toBeInTheDocument();
+		expect(blockedRow.queryByText('Not sent in this test run')).not.toBeInTheDocument();
 		expect(container.querySelector('script')).toBeNull();
 	});
+
+	it.each(['simulated', 'simulated_made_up'] as const)(
+		'shows the preview for a %s call',
+		async (route) => {
+			const reason = route === 'simulated' ? 'served_from_world' : 'invented_by_llm';
+			const { getByRole, getByText } = setup([{ ...email, simulation: { route, reason } }]);
+			await userEvent.click(getByRole('button', { name: 'Test run details' }));
+			expect(getByText('Refund update')).toBeVisible();
+			expect(getByText('Not sent in this test run')).toBeVisible();
+		},
+	);
 
 	it('does not show action previews for blocked or unclassified calls', async () => {
 		const { getByRole, queryByText } = setup([
