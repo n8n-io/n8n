@@ -2,10 +2,12 @@
 import { computed, ref } from 'vue';
 import {
 	N8nAlertDialog,
+	N8nPreviewBadge,
 	N8nSelect2,
-	N8nSettingsEnableRow,
 	N8nSettingsRow,
 	N8nSettingsRowGroup,
+	N8nSwitch,
+	N8nText,
 } from '@n8n/design-system';
 import type { SelectOptionBase, SelectValue } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -102,11 +104,6 @@ async function persistAlwaysRequired(selected: SelectValue | undefined): Promise
 			alwaysRequired.value = response.workflowReviews.alwaysRequired === true;
 			settingsStore.setWorkflowReviewsPolicy(response.workflowReviews);
 		}
-		showToast({
-			type: 'success',
-			title: i18n.baseText('settings.security.workflowReviews.requireApproval.success'),
-			message: '',
-		});
 	} catch (error) {
 		alwaysRequired.value = previousValue;
 		showError(error, i18n.baseText('settings.security.workflowReviews.error'));
@@ -124,15 +121,27 @@ function confirmDisable() {
 <template>
 	<div>
 		<N8nSettingsRowGroup>
-			<N8nSettingsEnableRow
-				:title="i18n.baseText('settings.security.workflowReviews.enable.title')"
-				:description="i18n.baseText('settings.security.workflowReviews.enable.description')"
-				:enabled="enabled"
-				:disabled="managedByEnv || isSaving"
-				show-preview-badge
-				switch-test-id="security-workflow-reviews-toggle"
-				@update:enabled="onToggle"
-			/>
+			<N8nSettingsRow>
+				<template #info>
+					<N8nText :bold="true">
+						{{ i18n.baseText('settings.security.workflowReviews.enable.title') }}
+						<N8nPreviewBadge class="ml-4xs" data-test-id="settings-enable-row-preview-badge" />
+					</N8nText>
+					<N8nText size="small" color="text-light">
+						{{ i18n.baseText('settings.security.workflowReviews.enable.description') }}
+					</N8nText>
+				</template>
+				<template #action>
+					<N8nSwitch
+						:model-value="enabled"
+						size="large"
+						:disabled="managedByEnv || isSaving"
+						:aria-label="i18n.baseText('settings.security.workflowReviews.enable.title')"
+						data-test-id="security-workflow-reviews-toggle"
+						@update:model-value="onToggle"
+					/>
+				</template>
+			</N8nSettingsRow>
 			<N8nSettingsRow
 				v-if="enabled"
 				:title="i18n.baseText('settings.security.workflowReviews.requireApproval.title')"
