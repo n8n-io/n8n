@@ -9,6 +9,7 @@ export interface LeaseProvider<TTransaction> {
 	 * Route the leases of `kind` that this process gets to `hold`. The provider
 	 * builds each {@link Lease}, aborts its signal with a `LeaseEndedError`, and
 	 * counts a failed start when `hold` throws or returns before `ready()`.
+	 * After a rejection, the caller can call `registerHolder` again for the same `kind`.
 	 */
 	registerHolder(
 		kind: string,

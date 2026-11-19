@@ -1094,6 +1094,15 @@ export type RelayEventMap = ModuleEventMap & {
 		userId: string;
 	};
 
+	'sso-settings-updated': {
+		user: UserLike;
+		protocol: 'saml' | 'oidc';
+		loginEnabled: boolean;
+		/** Settings keys whose stored value changed. Names only, never values. */
+		fieldsChanged: string[];
+		publicApi: boolean;
+	};
+
 	/**
 	 * SCIM provisioning turned on or off, or its token changed. Emitted only
 	 * when the saved state changes.

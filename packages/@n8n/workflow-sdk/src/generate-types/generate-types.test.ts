@@ -5887,14 +5887,45 @@ describe('generate-types', () => {
 			);
 		});
 
-		it('does not add an index signature for additionalProperties: true', () => {
+		it('adds an unknown index signature for additionalProperties: true', () => {
 			const result = generateTypes.jsonSchemaToTypeScript({
 				type: 'object',
 				properties: { id: { type: 'string' } },
 				additionalProperties: true,
 			});
 
-			expect(result).not.toContain('[key: string]');
+			expect(result).toContain('id?: string;');
+			expect(result).toContain('[key: string]: unknown;');
+		});
+
+		it('adds an unknown index signature to nested open objects', () => {
+			const result = generateTypes.jsonSchemaToTypeScript({
+				type: 'object',
+				properties: {
+					fields: {
+						type: 'object',
+						properties: { Name: { type: 'string' } },
+						additionalProperties: true,
+					},
+				},
+			});
+
+			expect(result).toMatch(/fields\?: \{\s*Name\?: string;\s*\[key: string\]: unknown;\s*\}/);
+		});
+
+		it('does not add an index signature for additionalProperties: false or absent', () => {
+			const closed = generateTypes.jsonSchemaToTypeScript({
+				type: 'object',
+				properties: { id: { type: 'string' } },
+				additionalProperties: false,
+			});
+			const absent = generateTypes.jsonSchemaToTypeScript({
+				type: 'object',
+				properties: { id: { type: 'string' } },
+			});
+
+			expect(closed).not.toContain('[key: string]');
+			expect(absent).not.toContain('[key: string]');
 		});
 
 		it('still emits a Record when an object has only additionalProperties', () => {
@@ -6292,6 +6323,40 @@ describe('generate-types', () => {
 				// Should contain the schema properties
 				expect(content).toContain('body');
 				expect(content).toContain('webhookUrl');
+			} finally {
+				cleanupTestDir(nodeName);
+			}
+		});
+
+		it('keeps user-defined keys open when the output schema allows additional properties', () => {
+			const nodeName = '__TestOpenOutputTrigger__';
+			const mockSchema = {
+				type: 'object',
+				properties: { submittedAt: { type: 'string' } },
+				additionalProperties: true,
+			};
+			const mockTriggerNode: NodeTypeDescription = {
+				name: `n8n-nodes-base.${nodeName}`,
+				displayName: 'Test Open Output Trigger',
+				description: 'Test trigger with open output',
+				group: ['trigger'],
+				version: 1,
+				inputs: [],
+				outputs: ['main'],
+				schemaPath: nodeName,
+				properties: [],
+			};
+
+			try {
+				createTestSchemaDir(nodeName, 'v1.0.0', {
+					'output.json': JSON.stringify(mockSchema),
+				});
+
+				const content = generateTypes.generateSingleVersionTypeFile(mockTriggerNode, 1);
+
+				expect(content).toMatch(
+					/export type \w+Output = \{\s*submittedAt\?: string;\s*\[key: string\]: unknown;\s*\}/,
+				);
 			} finally {
 				cleanupTestDir(nodeName);
 			}

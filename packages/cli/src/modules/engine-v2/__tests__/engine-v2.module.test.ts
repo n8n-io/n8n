@@ -3,6 +3,7 @@ import type { OutboundHttp } from '@n8n/backend-network';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { EngineConfig, ExecutionsConfig, GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
+import { createInMemoryWorkQueues, type EngineWorkQueues } from '@n8n/engine';
 import { mock } from 'vitest-mock-extended';
 
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
@@ -19,6 +20,11 @@ import { ExecutionChannelReceiver } from '../execution-channel/execution-channel
 import { ExecutionChannelSender } from '../execution-channel/execution-channel-sender';
 import { LifecycleEventChannelSender } from '../execution-channel/lifecycle-event-sender';
 import type { RedisChannelSubscriber } from '../execution-channel/redis-execution-channel-subscriber';
+
+vi.mock('@n8n/engine', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@n8n/engine')>();
+	return { ...actual, createInMemoryWorkQueues: vi.fn() };
+});
 
 /** The real boot check, over files this test does not need to write. */
 const useTls = (enabled: boolean) => {
@@ -41,6 +47,7 @@ describe('EngineV2Module', () => {
 	let lifecycleSubscriptions: EngineV2LifecycleSubscriptions;
 	let redisClientService: RedisClientService;
 	let subscriber: ReturnType<typeof mock<RedisChannelSubscriber>>;
+	let inMemoryQueues: EngineWorkQueues;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -59,6 +66,8 @@ describe('EngineV2Module', () => {
 		webhookResponseRegistry = mockInstance(EngineV2WebhookResponseRegistry);
 		lifecycleSubscriptions = mockInstance(EngineV2LifecycleSubscriptions);
 		subscriber = mock<RedisChannelSubscriber>();
+		inMemoryQueues = mock<EngineWorkQueues>();
+		vi.mocked(createInMemoryWorkQueues).mockReturnValue(inMemoryQueues);
 		mockInstance(GlobalConfig, { redis: mock<GlobalConfig['redis']>({ prefix: 'n8n' }) });
 		redisClientService = mockInstance(RedisClientService, {
 			toValidPrefix: (prefix: string) => prefix,
@@ -81,6 +90,21 @@ describe('EngineV2Module', () => {
 			await module.init();
 
 			expect(runtime.init).toHaveBeenCalled();
+		});
+
+		it('runs the in-process engine on in-memory work queues at the concurrency of the engine config', async () => {
+			engineConfig.orchestrationConcurrency = 2;
+			engineConfig.stepConcurrency = 3;
+
+			await module.init();
+
+			expect(createInMemoryWorkQueues).toHaveBeenCalledExactlyOnceWith({
+				concurrency: { orchestration: 2, step: 3 },
+				logger: expect.anything(),
+			});
+			expect(runtime.init).toHaveBeenCalledWith(
+				expect.objectContaining({ queues: inMemoryQueues }),
+			);
 		});
 
 		it('registers the client as the data plane provider', async () => {
@@ -128,13 +152,14 @@ describe('EngineV2Module', () => {
 			expect(runtime.init).toHaveBeenCalledWith({
 				responseSender: expect.any(ExecutionChannelSender),
 				lifecycleEventSender: expect.any(LifecycleEventChannelSender),
+				queues: expect.anything(),
 			});
 		});
 
 		it('delivers a lifecycle event from the engine to its subscriber', async () => {
 			await module.init();
 			const [receiver] = vi.mocked(lifecycleSubscriptions.useReceiver).mock.calls[0];
-			const lifecycleEventSender = vi.mocked(runtime.init).mock.calls[0][0]?.lifecycleEventSender;
+			const lifecycleEventSender = vi.mocked(runtime.init).mock.calls[0][0].lifecycleEventSender;
 			const handler = vi.fn();
 			const event = {
 				type: 'execution:completed' as const,
