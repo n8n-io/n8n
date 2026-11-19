@@ -19,6 +19,18 @@ it('omits changes caused only by frontmatter key order', () => {
 	expect(Object.keys(content.frontmatter ?? {})).toEqual(['license', 'allowed-tools']);
 });
 
+it.each([
+	{ before: { a: 1, b: 2 }, after: { b: 2, a: 1 }, changes: 0 },
+	{ before: [{ a: 1, b: 2 }], after: [{ b: 2, a: 1 }], changes: 0 },
+	{ before: { a: 1, b: 2 }, after: { b: 2, a: 3 }, changes: 1 },
+	{ before: [{ a: 1 }, { b: 2 }], after: [{ b: 2 }, { a: 1 }], changes: 1 },
+])('ignores nested key order but keeps changes: %#', ({ before, after, changes }) => {
+	const incoming = { ...content, frontmatter: { metadata: after } };
+	const files = updateFiles({ ...content, frontmatter: { metadata: before } }, incoming);
+	expect(updateCounts(files)).toEqual({ added: changes, removed: changes });
+	expect(files[0].after).toBe(showHidden(skillMdText(incoming).text));
+});
+
 it('keeps changed values and stored finding positions in the incoming text', () => {
 	const after = {
 		...content,

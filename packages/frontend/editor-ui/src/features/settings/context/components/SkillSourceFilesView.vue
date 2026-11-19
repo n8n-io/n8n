@@ -155,13 +155,15 @@ const files = computed(() =>
 			(finding) => finding.file === file.path && finding.location,
 		);
 
-		const lines: Line[] = file.after.split('\n').map((text, index) => ({
-			number: index + 1,
-			segments: segmentsOf(
-				text,
-				marks.filter((finding) => finding.location?.line === index + 1),
-			),
-		}));
+		const lines: Line[] = props.diffFiles
+			? []
+			: file.after.split('\n').map((text, index) => ({
+					number: index + 1,
+					segments: segmentsOf(
+						text,
+						marks.filter((finding) => finding.location?.line === index + 1),
+					),
+				}));
 		return {
 			...file,
 			marks,

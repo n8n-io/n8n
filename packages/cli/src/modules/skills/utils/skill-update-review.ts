@@ -1,6 +1,7 @@
 import { SKILL_SCAN_RULES, type SkillUpdateFile, type SkillScanResult } from '@n8n/api-types';
 import { UnexpectedError } from '@n8n/errors';
 import { diffText } from '@n8n/utils/diff-text';
+import isEqual from 'lodash/isEqual';
 import { z } from 'zod';
 
 import type { SkillSourceLink } from '../database/entities/skill-source-link.entity';
@@ -53,13 +54,17 @@ function filesOf(content: SkillContent): Map<string, string> {
 }
 
 export function updateFiles(before: SkillContent, after: SkillContent): SkillUpdateFile[] {
-	// Match the old key order to the update. Keep the scanned text and its finding offsets intact.
+	// Match the incoming key order for unchanged values, including nested maps.
+	// Keep the scanned text and its finding offsets intact.
 	const from = filesOf({
 		...before,
 		frontmatter: Object.fromEntries(
-			Object.entries({ ...after.frontmatter, ...before.frontmatter }).filter(([key]) =>
-				Object.hasOwn(before.frontmatter ?? {}, key),
-			),
+			Object.entries({ ...after.frontmatter, ...before.frontmatter })
+				.filter(([key]) => Object.hasOwn(before.frontmatter ?? {}, key))
+				.map(([key, value]) => [
+					key,
+					isEqual(value, after.frontmatter?.[key]) ? after.frontmatter?.[key] : value,
+				]),
 		),
 	});
 	const to = filesOf(after);
