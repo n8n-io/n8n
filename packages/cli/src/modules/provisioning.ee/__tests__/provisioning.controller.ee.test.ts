@@ -1,5 +1,5 @@
 import { type ProvisioningConfigDto } from '@n8n/api-types';
-import type { LicenseState } from '@n8n/backend-common';
+import type { LicenseState, Logger } from '@n8n/backend-common';
 import type { EventService } from '@n8n/backend-services';
 import type { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { type AuthenticatedRequest, type User } from '@n8n/db';
@@ -23,6 +23,7 @@ const instanceSettingsLoaderConfig = mock<InstanceSettingsLoaderConfig>({
 });
 const roleMappingRuleService = mock<RoleMappingRuleService>();
 const eventService = mock<EventService>();
+const logger = mock<Logger>();
 
 const controller = new ProvisioningController(
 	provisioningService,
@@ -30,6 +31,7 @@ const controller = new ProvisioningController(
 	instanceSettingsLoaderConfig,
 	roleMappingRuleService,
 	eventService,
+	logger,
 );
 
 const baseConfig: ProvisioningConfigDto = {
@@ -104,6 +106,7 @@ describe('ProvisioningController', () => {
 				envManagedConfig,
 				roleMappingRuleService,
 				eventService,
+				logger,
 			);
 
 			licenseState.isProvisioningLicensed.mockReturnValue(true);
@@ -144,15 +147,37 @@ describe('ProvisioningController', () => {
 			});
 		});
 
-		it('should count the rules after the save', async () => {
+		it('should count the rules only once the save has completed', async () => {
+			licenseState.isProvisioningLicensed.mockReturnValue(true);
+			let completeSave!: (config: ProvisioningConfigDto) => void;
+			provisioningService.patchConfig.mockReturnValue(
+				new Promise<ProvisioningConfigDto>((resolve) => {
+					completeSave = resolve;
+				}),
+			);
+
+			const request = controller.patchConfig(req, res);
+			await Promise.resolve();
+			expect(provisioningService.patchConfig).toHaveBeenCalled();
+			expect(roleMappingRuleService.countByType).not.toHaveBeenCalled();
+
+			completeSave(baseConfig);
+			await expect(request).resolves.toEqual(baseConfig);
+
+			expect(roleMappingRuleService.countByType).toHaveBeenCalledOnce();
+			expect(eventService.emit).toHaveBeenCalledOnce();
+		});
+
+		it('should return the saved config when the rule count fails', async () => {
 			licenseState.isProvisioningLicensed.mockReturnValue(true);
 			provisioningService.patchConfig.mockResolvedValue(baseConfig);
+			const countError = new Error('db is gone');
+			roleMappingRuleService.countByType.mockRejectedValue(countError);
 
-			await controller.patchConfig(req, res);
+			await expect(controller.patchConfig(req, res)).resolves.toEqual(baseConfig);
 
-			expect(roleMappingRuleService.countByType.mock.invocationCallOrder[0]).toBeGreaterThan(
-				provisioningService.patchConfig.mock.invocationCallOrder[0],
-			);
+			expect(eventService.emit).not.toHaveBeenCalled();
+			expect(logger.error).toHaveBeenCalledWith(expect.any(String), { error: countError });
 		});
 
 		it.each<[Partial<ProvisioningConfigDto>, number, string, string]>([

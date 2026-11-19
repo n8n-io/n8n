@@ -1,8 +1,8 @@
-import type { ProvisioningModeFlags } from '@n8n/api-types';
-import { LicenseState } from '@n8n/backend-common';
+import type { ProvisioningConfigDto, ProvisioningModeFlags } from '@n8n/api-types';
+import { LicenseState, Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import { InstanceSettingsLoaderConfig } from '@n8n/config';
-import { AuthenticatedRequest } from '@n8n/db';
+import { AuthenticatedRequest, type User } from '@n8n/db';
 import { Get, GlobalScope, Patch, RestController } from '@n8n/decorators';
 import { Response } from 'express';
 
@@ -44,6 +44,7 @@ export class ProvisioningController {
 		private readonly instanceSettingsLoaderConfig: InstanceSettingsLoaderConfig,
 		private readonly roleMappingRuleService: RoleMappingRuleService,
 		private readonly eventService: EventService,
+		private readonly logger: Logger,
 	) {}
 
 	@Get('/config')
@@ -70,22 +71,33 @@ export class ProvisioningController {
 		}
 
 		const config = await this.provisioningService.patchConfig(req.body);
-
-		// Reported after the save, so a rejected request leaves no record of a
-		// save that never happened. The save deletes stale project rules, so
-		// the counts come after it too.
-		const ruleCounts = await this.roleMappingRuleService.countByType();
-		this.eventService.emit('provisioning-settings-updated', {
-			user: req.user,
-			authenticationMethod: getCurrentAuthenticationMethod(),
-			assignmentMethod: getAssignmentMethod(config, ruleCounts.project),
-			roleMappingMethod: config.scopesUseExpressionMapping
-				? 'n8n_rule_mapping'
-				: 'idp_rule_mapping',
-			instanceRuleCount: ruleCounts.instance,
-			projectRuleCount: ruleCounts.project,
-		});
-
+		await this.reportSettingsSaved(req.user, config);
 		return config;
+	}
+
+	/**
+	 * Reported after the save, so a rejected request leaves no record of a
+	 * save that never happened. The save deletes stale project rules, so the
+	 * counts come after it too. The save is committed at this point, so a
+	 * failed count read is logged and must not fail the request.
+	 */
+	private async reportSettingsSaved(user: User, config: ProvisioningConfigDto) {
+		try {
+			const ruleCounts = await this.roleMappingRuleService.countByType();
+			this.eventService.emit('provisioning-settings-updated', {
+				user,
+				authenticationMethod: getCurrentAuthenticationMethod(),
+				assignmentMethod: getAssignmentMethod(config, ruleCounts.project),
+				roleMappingMethod: config.scopesUseExpressionMapping
+					? 'n8n_rule_mapping'
+					: 'idp_rule_mapping',
+				instanceRuleCount: ruleCounts.instance,
+				projectRuleCount: ruleCounts.project,
+			});
+		} catch (error) {
+			this.logger.error('Provisioning settings were saved but the save was not reported', {
+				error,
+			});
+		}
 	}
 }
