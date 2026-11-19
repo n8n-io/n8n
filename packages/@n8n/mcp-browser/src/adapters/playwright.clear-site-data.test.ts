@@ -251,14 +251,36 @@ describe('PlaywrightAdapter.clearSiteDataExcept', () => {
 			);
 		});
 
-		it('clears nothing and throws once it recorded 1000 origins', async () => {
+		// `setupVisits` already records two origins: first.org and example.com.
+		it('clears all 1000 origins when the session visited exactly 1000', async () => {
+			const { adapter, session, tab } = setupVisits();
+			for (let index = 0; index < 998; index++) tab.navigate(`https://site-${index}.org/`);
+
+			await adapter.clearSiteDataExcept('example.com');
+
+			// example.com is kept.
+			expect(clearedOrigins(session)).toHaveLength(999);
+		});
+
+		it('clears nothing and throws when the session visited more than 1000 origins', async () => {
 			const { adapter, context, tab } = setupVisits();
-			for (let index = 0; index < 1100; index++) tab.navigate(`https://site-${index}.org/`);
+			for (let index = 0; index < 999; index++) tab.navigate(`https://site-${index}.org/`);
 
 			await expect(adapter.clearSiteDataExcept('example.com')).rejects.toThrow(
-				'Cannot clear the site data after more than 1000 sites',
+				'Cannot clear the site data of untracked origins',
 			);
-			expect(context.clearCookies).not.toHaveBeenCalled();
+			expect(context.newCDPSession).not.toHaveBeenCalled();
+		});
+
+		it('does not count an origin it already tracks towards the limit', async () => {
+			const { adapter, session, tab } = setupVisits();
+			for (let index = 0; index < 998; index++) tab.navigate(`https://site-${index}.org/`);
+			tab.navigate('https://site-0.org/again');
+			tab.navigate('https://first.org/again');
+
+			await adapter.clearSiteDataExcept('example.com');
+
+			expect(clearedOrigins(session)).toHaveLength(999);
 		});
 	});
 

@@ -128,8 +128,8 @@ export interface PlaywrightAdapterOptions {
 	trackVisitedOrigins?: boolean;
 }
 
-/** Bounds the visited origins a long session records. */
-const MAX_VISITED_ORIGINS = 1000;
+/** Bounds the visited origins a long session tracks. */
+const MAX_TRACKED_ORIGINS = 1000;
 
 export class PlaywrightAdapter {
 	readonly name = 'playwright';
@@ -147,6 +147,8 @@ export class PlaywrightAdapter {
 	private readonly trackVisitedOrigins: boolean;
 	/** The http and https origins the browser loaded. Stays empty without `trackVisitedOrigins`. */
 	private readonly visitedOrigins = new Set<string>();
+	/** Set when the browser visited an origin that was not tracked because of `MAX_TRACKED_ORIGINS`. */
+	private hasVisitedUntrackedOrigins = false;
 	/** Puts the embedder's relay handlers back; set while ours are installed. */
 	private restoreRelayHandlers?: () => void;
 	/** Pending activation: set by ensurePage(), consumed by context.on('page'). */
@@ -926,11 +928,15 @@ export class PlaywrightAdapter {
 	}
 
 	private recordVisitedOrigin(url: string): void {
-		const origins = this.visitedOrigins;
-		if (origins.size >= MAX_VISITED_ORIGINS) return;
 		try {
 			const { protocol, origin } = new URL(url);
-			if (protocol === 'http:' || protocol === 'https:') origins.add(origin);
+			if (protocol !== 'http:' && protocol !== 'https:') return;
+			if (this.visitedOrigins.has(origin)) return;
+			if (this.visitedOrigins.size >= MAX_TRACKED_ORIGINS) {
+				this.hasVisitedUntrackedOrigins = true;
+				return;
+			}
+			this.visitedOrigins.add(origin);
 		} catch {
 			// A frame without a URL has no site data.
 		}
@@ -943,8 +949,8 @@ export class PlaywrightAdapter {
 	 */
 	async clearSiteDataExcept(domain: string): Promise<void> {
 		const context = this.requireContext();
-		if (this.visitedOrigins.size >= MAX_VISITED_ORIGINS) {
-			throw new Error(`Cannot clear the site data after more than ${MAX_VISITED_ORIGINS} sites`);
+		if (this.hasVisitedUntrackedOrigins) {
+			throw new Error('Cannot clear the site data of untracked origins');
 		}
 		const isOtherSite = (host: string) => {
 			const bare = host.replace(/^\./, '');
