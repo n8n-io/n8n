@@ -156,36 +156,6 @@ const instanceContextTurnSchema = z.object({
 		.nonnegative()
 		.optional()
 		.describe('Failed main Hub skill attempts.'),
-	hub_skill_carried_count: z
-		.number()
-		.int()
-		.nonnegative()
-		.optional()
-		.describe(
-			'Previously active, unchanged Hub skills included in model context during this run. Excludes skills first loaded in this run.',
-		),
-	hub_skill_refresh_count: z
-		.number()
-		.int()
-		.nonnegative()
-		.optional()
-		.describe('Distinct Hub skill versions delivered after a change to an active skill.'),
-	hub_skill_revocation_count: z
-		.number()
-		.int()
-		.nonnegative()
-		.optional()
-		.describe(
-			'Previously active Hub skills that the runtime removed as non-retryable unavailability.',
-		),
-	hub_skill_unavailable_count: z
-		.number()
-		.int()
-		.nonnegative()
-		.optional()
-		.describe(
-			'Previously active Hub skill versions omitted because current content was temporarily unavailable.',
-		),
 	hub_skill_reference_attempt_count: z
 		.number()
 		.int()
@@ -215,18 +185,6 @@ const instanceContextTurnSchema = z.object({
 		.optional()
 		.describe(
 			'Distinct canonical Hub IDs successfully loaded in this run. Unknown IDs are omitted. Built-ins are excluded.',
-		),
-	hub_skill_carried_ids: z
-		.array(z.string())
-		.optional()
-		.describe(
-			'Distinct canonical Hub IDs carried unchanged into model context in this run. Unknown IDs are omitted. Built-ins are excluded.',
-		),
-	hub_skill_refreshed_ids: z
-		.array(z.string())
-		.optional()
-		.describe(
-			'Distinct canonical Hub IDs delivered with updated instructions in this run. Unknown IDs are omitted. Built-ins are excluded.',
 		),
 	hub_skill_failures: z
 		.array(
@@ -476,10 +434,11 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 	USER_STOPPED_RUN: {
 		name: 'User stopped AI Assistant run',
 		description:
-			'The user stopped the n8n Assistant while it was working, for example with the stop button. Fires once per stop request.',
+			'The user stopped the n8n Assistant while it was working, for example with the stop button. On the instance-ai runtime, fires once per stop request, also when no run is active. On the agents runtime, fires only when a turn was running or waiting for the user.',
 		properties: z.object({
 			user_id: z.string(),
 			thread_id: z.string(),
+			runtime: assistantRuntime,
 		}),
 	},
 	DEFAULT_EDITOR_PREFERENCE_CHANGED: {

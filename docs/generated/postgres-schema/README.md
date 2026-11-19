@@ -44,7 +44,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.agents_memory_entry_locks](public.agents_memory_entry_locks.md) | 6 |  | BASE TABLE |
 | [public.agents_memory_entry_sources](public.agents_memory_entry_sources.md) | 10 |  | BASE TABLE |
 | [public.agents_messages](public.agents_messages.md) | 12 |  | BASE TABLE |
-| [public.agents_observation_cursors](public.agents_observation_cursors.md) | 11 |  | BASE TABLE |
+| [public.agents_observation_cursors](public.agents_observation_cursors.md) | 12 |  | BASE TABLE |
 | [public.agents_observation_locks](public.agents_observation_locks.md) | 7 |  | BASE TABLE |
 | [public.agents_observations](public.agents_observations.md) | 11 |  | BASE TABLE |
 | [public.agents_resources](public.agents_resources.md) | 4 |  | BASE TABLE |
@@ -94,7 +94,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.instance_ai_events](public.instance_ai_events.md) | 7 |  | BASE TABLE |
 | [public.instance_ai_mcp_registry_connections](public.instance_ai_mcp_registry_connections.md) | 7 |  | BASE TABLE |
 | [public.instance_ai_messages](public.instance_ai_messages.md) | 8 |  | BASE TABLE |
-| [public.instance_ai_observation_cursors](public.instance_ai_observation_cursors.md) | 10 |  | BASE TABLE |
+| [public.instance_ai_observation_cursors](public.instance_ai_observation_cursors.md) | 11 |  | BASE TABLE |
 | [public.instance_ai_observation_locks](public.instance_ai_observation_locks.md) | 6 |  | BASE TABLE |
 | [public.instance_ai_observational_memory](public.instance_ai_observational_memory.md) | 32 |  | BASE TABLE |
 | [public.instance_ai_observations](public.instance_ai_observations.md) | 10 |  | BASE TABLE |
@@ -151,7 +151,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.shared_workflow](public.shared_workflow.md) | 5 |  | BASE TABLE |
 | [public.skill](public.skill.md) | 8 |  | BASE TABLE |
 | [public.skill_file](public.skill_file.md) | 5 |  | BASE TABLE |
-| [public.skill_source](public.skill_source.md) | 14 |  | BASE TABLE |
+| [public.skill_source](public.skill_source.md) | 15 |  | BASE TABLE |
 | [public.skill_source_link](public.skill_source_link.md) | 14 |  | BASE TABLE |
 | [public.skill_version](public.skill_version.md) | 12 |  | BASE TABLE |
 | [public.tag_entity](public.tag_entity.md) | 4 |  | BASE TABLE |
@@ -937,6 +937,7 @@ erDiagram
   varchar_36_ resumeFromMessageId
   text resumeNotes
   timestamp_3__with_time_zone updatedAt
+  text workingSet
 }
 "public.agents_observation_locks" {
   varchar_36_ agentId FK
@@ -1411,6 +1412,7 @@ erDiagram
   varchar_36_ resumeFromMessageId
   text resumeNotes
   timestamp_3__with_time_zone updatedAt
+  text workingSet
 }
 "public.instance_ai_observation_locks" {
   timestamp_3__with_time_zone createdAt
@@ -1962,6 +1964,7 @@ erDiagram
   varchar_36_ projectId FK
   varchar_32_ status
   varchar_16_ type
+  json unlinkedSkills
   timestamp_3__with_time_zone updatedAt
 }
 "public.skill_source_link" {

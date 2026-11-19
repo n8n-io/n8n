@@ -1996,6 +1996,8 @@ import { InstanceAiAdapterService } from '../instance-ai.adapter.service';
 import { InstanceAiBuilderDelegateAdapterService } from '../instance-ai-builder-delegate.adapter';
 import { InstanceAiSkillsAdapterService } from '../instance-ai-skills.adapter';
 import { SkillsGate } from '@/modules/skills';
+import { mockInstance } from '@n8n/backend-test-utils';
+import { AiPreferenceSettingsService } from '@/services/ai-preference-settings.service';
 import type { TemporaryWorkflowMarkers } from '../temporary-workflow-markers';
 import { AgentsBuilderService } from '@/modules/agents/builder/agents-builder.service';
 import type { AgentCredentialProvider } from '@/modules/agents/agent-credential-provider.contracts';
@@ -8805,10 +8807,23 @@ describe('createContext: aiPreferenceService', () => {
 		return { service, aiPreferenceService, logger, telemetry };
 	}
 
-	it('is always present', () => {
+	const preferenceSettings = mockInstance(AiPreferenceSettingsService, { isEnabled: true });
+
+	afterEach(() => {
+		Object.assign(preferenceSettings, { isEnabled: true });
+	});
+
+	it('is present while preferences are on', () => {
 		const { service } = buildService();
 		const context = service.createContext(user, { threadId: 't1' });
 		expect(context.aiPreferenceService).toBeDefined();
+	});
+
+	it('is absent while preferences are off', () => {
+		Object.assign(preferenceSettings, { isEnabled: false });
+		const { service } = buildService();
+		const context = service.createContext(user, { threadId: 't1' });
+		expect(context.aiPreferenceService).toBeUndefined();
 	});
 
 	it('writes with source aia and returns the saved row', async () => {

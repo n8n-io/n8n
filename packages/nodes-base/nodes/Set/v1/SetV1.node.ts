@@ -7,7 +7,7 @@ import type {
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, deepCopy } from 'n8n-workflow';
+import { NodeConnectionTypes, READ_ONLY_ANNOTATIONS, deepCopy } from 'n8n-workflow';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Set',
@@ -15,6 +15,7 @@ const versionDescription: INodeTypeDescription = {
 	icon: 'fa:pen',
 	group: ['input'],
 	version: [1, 2],
+	annotations: READ_ONLY_ANNOTATIONS,
 	description: 'Sets values on items and optionally remove other values',
 	defaults: {
 		name: 'Set',

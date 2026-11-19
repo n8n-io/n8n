@@ -215,87 +215,90 @@ function handleConnect() {
 		:data-test-id="`tools-connection-row`"
 		:data-row-kind="item.kind"
 	>
-		<component
-			:is="isRowNavigable ? 'button' : 'div'"
-			ref="mainActionRef"
-			:type="isRowNavigable ? 'button' : undefined"
-			:class="[$style.mainAction, { [$style.mainActionStatic]: !isRowNavigable }]"
-			:disabled="isRowNavigable ? isDisabled || item.status === 'connecting' : undefined"
-			:aria-disabled="isActivationBlocked || undefined"
-			data-test-id="tools-connection-row-main"
-			@click="isRowNavigable && handleRowClick()"
-		>
-			<template v-if="item.kind === 'workflow'">
-				<span :class="$style.workflowIcon" aria-hidden="true">
-					<N8nIcon icon="workflow" :size="20" />
-				</span>
-				<N8nText :class="$style.workflowTitle" tag="span" bold>{{ item.title }}</N8nText>
-				<N8nText
-					v-if="item.warning"
-					:class="$style.workflowWarning"
-					tag="span"
-					size="small"
-					color="warning"
-					data-test-id="tools-connection-row-warning"
-				>
-					{{ item.warning }}
-				</N8nText>
-			</template>
-
-			<template v-else>
-				<ToolIcon
-					v-if="item.kind !== 'skill'"
-					:source="resolvedIcon"
-					:fallback-icon="placeholderIcon"
-				/>
-				<span :class="$style.text">
-					<span :class="$style.titleRow">
-						<N8nText :class="$style.title" tag="span" bold>{{ item.title }}</N8nText>
-						<N8nTooltip
-							v-if="item.verified"
-							:content="i18n.baseText('communityNodeInfo.approved')"
-							placement="top"
-						>
-							<N8nIcon
-								icon="shield-half"
-								:size="14"
-								:class="$style.verifiedIcon"
-								:aria-label="i18n.baseText('communityNodeInfo.approved')"
-								data-test-id="tools-connection-row-verified-badge"
-							/>
-						</N8nTooltip>
-						<N8nBadge
-							v-if="item.freeCredits"
-							size="xxsmall"
-							:variant="creditsPill.type === 'info' ? 'info' : 'success'"
-							data-test-id="tools-connection-row-free-credits"
-						>
-							{{ creditsPill.text }}
-						</N8nBadge>
+		<div :class="$style.main">
+			<component
+				:is="isRowNavigable ? 'button' : 'div'"
+				ref="mainActionRef"
+				:type="isRowNavigable ? 'button' : undefined"
+				:class="[$style.mainAction, { [$style.mainActionStatic]: !isRowNavigable }]"
+				:disabled="isRowNavigable ? isDisabled || item.status === 'connecting' : undefined"
+				:aria-disabled="isActivationBlocked || undefined"
+				data-test-id="tools-connection-row-main"
+				@click="isRowNavigable && handleRowClick()"
+			>
+				<template v-if="item.kind === 'workflow'">
+					<span :class="$style.workflowIcon" aria-hidden="true">
+						<N8nIcon icon="workflow" :size="20" />
 					</span>
-					<N8nTooltip
-						v-if="item.description"
-						:disabled="!isDescriptionTruncated"
-						as-child
-						placement="top-start"
-						:content-class="$style.descriptionTooltip"
+					<N8nText :class="$style.workflowTitle" tag="span" bold>{{ item.title }}</N8nText>
+					<N8nText
+						v-if="item.warning"
+						:class="$style.workflowWarning"
+						tag="span"
+						size="small"
+						color="warning"
+						data-test-id="tools-connection-row-warning"
 					>
-						<template #content>{{ item.description }}</template>
-						<N8nText
-							ref="descriptionRef"
-							:class="[$style.description, clampsDescription && $style.descriptionClamped]"
-							tag="span"
-							size="small"
-							color="text-light"
-							:data-cut="isDescriptionTruncated || undefined"
-							data-test-id="tools-connection-row-description"
+						{{ item.warning }}
+					</N8nText>
+				</template>
+
+				<template v-else>
+					<ToolIcon
+						v-if="item.kind !== 'skill'"
+						:source="resolvedIcon"
+						:fallback-icon="placeholderIcon"
+					/>
+					<span :class="$style.text">
+						<span :class="$style.titleRow">
+							<N8nText :class="$style.title" tag="span" bold>{{ item.title }}</N8nText>
+							<N8nTooltip
+								v-if="item.verified"
+								:content="i18n.baseText('communityNodeInfo.approved')"
+								placement="top"
+							>
+								<N8nIcon
+									icon="shield-half"
+									:size="14"
+									:class="$style.verifiedIcon"
+									:aria-label="i18n.baseText('communityNodeInfo.approved')"
+									data-test-id="tools-connection-row-verified-badge"
+								/>
+							</N8nTooltip>
+							<N8nBadge
+								v-if="item.freeCredits"
+								size="xxsmall"
+								:variant="creditsPill.type === 'info' ? 'info' : 'success'"
+								data-test-id="tools-connection-row-free-credits"
+							>
+								{{ creditsPill.text }}
+							</N8nBadge>
+						</span>
+						<N8nTooltip
+							v-if="item.description"
+							:disabled="!isDescriptionTruncated"
+							as-child
+							placement="top-start"
+							:content-class="$style.descriptionTooltip"
 						>
-							{{ item.description }}
-						</N8nText>
-					</N8nTooltip>
-				</span>
-			</template>
-		</component>
+							<template #content>{{ item.description }}</template>
+							<N8nText
+								ref="descriptionRef"
+								:class="[$style.description, clampsDescription && $style.descriptionClamped]"
+								tag="span"
+								size="small"
+								color="text-light"
+								:data-cut="isDescriptionTruncated || undefined"
+								data-test-id="tools-connection-row-description"
+							>
+								{{ item.description }}
+							</N8nText>
+						</N8nTooltip>
+					</span>
+				</template>
+			</component>
+			<slot name="footer" />
+		</div>
 
 		<div :class="$style.action">
 			<RestrictedNodePopover
@@ -471,6 +474,15 @@ function handleConnect() {
 	&:hover {
 		background: transparent;
 	}
+}
+
+// Stacks the row button and the optional footer, which cannot sit inside the button.
+.main {
+	display: flex;
+	flex-direction: column;
+	flex: 1 1 0;
+	min-width: 0;
+	align-self: stretch;
 }
 
 .mainAction {
