@@ -823,8 +823,10 @@ export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): 
 				const isWorkflow = event.kind === 'workflow';
 				const isNode = event.kind === 'node';
 				const kind = toolCallKind(event);
-				if (event.toolCallId) initialToolCalls.set(event.toolCallId, event);
 				const call = resolveToolCatalogCall(event.name, event.input);
+				if (event.toolCallId) {
+					initialToolCalls.set(event.toolCallId, { ...event, name: call.tool, input: call.input });
+				}
 				const item: TimelineItem = {
 					kind,
 					executionId: exec.id,
@@ -852,8 +854,15 @@ export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): 
 				if (event.toolCallId) initialToolItems.set(event.toolCallId, item);
 			} else if (event.type === 'suspension') {
 				const toolCall = initialToolCalls.get(event.toolCallId);
-				const requestType = inferHitlRequestType(event, toolCall, legacyApprovalToolCallIds);
-				const request = hitlRequestPayload(event, toolCall, requestType);
+				// A suspended tool catalog call is recorded as `call_tool`. Show the tool it runs.
+				const suspendedCall = resolveToolCatalogCall(event.toolName, event.input);
+				const suspension = {
+					...event,
+					toolName: suspendedCall.tool,
+					...(event.input !== undefined && { input: suspendedCall.input }),
+				};
+				const requestType = inferHitlRequestType(suspension, toolCall, legacyApprovalToolCallIds);
+				const request = hitlRequestPayload(suspension, toolCall, requestType);
 				const toolDisplayName = approvalDisplayName(request);
 				if (event.toolCallId) {
 					const toolItem = initialToolItems.get(event.toolCallId);
@@ -867,7 +876,7 @@ export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): 
 					}
 					hitlContexts.set(event.toolCallId, {
 						requestType,
-						toolName: event.toolName || toolCall?.name || '',
+						toolName: suspension.toolName || toolCall?.name || '',
 						toolCallId: event.toolCallId,
 						toolCall,
 						toolItem: initialToolItems.get(event.toolCallId),
@@ -878,7 +887,7 @@ export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): 
 				items.push({
 					kind: 'suspension',
 					executionId: exec.id,
-					toolName: event.toolName,
+					toolName: suspension.toolName,
 					toolCallId: event.toolCallId,
 					timestamp: event.timestamp ?? 0,
 					hitlRequestType: requestType,

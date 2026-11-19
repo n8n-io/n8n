@@ -458,6 +458,27 @@ describe('flattenExecutionsToTimelineItems', () => {
 		});
 	});
 
+	it('maps a suspended tool catalog call_tool call as the tool it runs', () => {
+		const catalogCall = {
+			name: 'call_tool',
+			input: { tool: 'delete_workflow', arguments: { id: 'wf-1' } },
+		};
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline([
+				toolCallEvent(catalogCall),
+				suspensionEvent({ toolName: 'call_tool', input: catalogCall.input }),
+				hitlResponseEvent({ response: { approved: true } }),
+			]),
+		]);
+
+		expect(items.map(({ kind, toolName }) => ({ kind, toolName }))).toEqual([
+			{ kind: 'tool', toolName: 'delete_workflow' },
+			{ kind: 'suspension', toolName: 'delete_workflow' },
+			{ kind: 'hitl-response', toolName: 'delete_workflow' },
+		]);
+		expect(items[1].hitlRequest).toEqual({ id: 'wf-1' });
+	});
+
 	it.each([
 		['recall_memory', true, 200, { kind: 'memory', memoryAction: 'recall' }],
 		['flag_memory', true, 200, { kind: 'memory', memoryAction: 'flag' }],
