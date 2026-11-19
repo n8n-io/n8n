@@ -22,12 +22,12 @@ describe('DataGridLoadingIndicator', () => {
 		expect(await findByTestId('data-grid-loading')).toHaveTextContent('Loading...');
 	});
 
-	it('should not show the indicator when it unmounts before the delay ends', async () => {
-		const { queryByTestId, unmount } = renderComponent({});
+	it('should clear its delay timer when it unmounts before the delay ends', () => {
+		const { unmount } = renderComponent({});
+		expect(vi.getTimerCount()).toBe(1);
 
 		unmount();
-		await vi.advanceTimersByTimeAsync(1000);
 
-		expect(queryByTestId('data-grid-loading')).not.toBeInTheDocument();
+		expect(vi.getTimerCount()).toBe(0);
 	});
 });

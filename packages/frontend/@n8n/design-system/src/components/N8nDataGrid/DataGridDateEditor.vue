@@ -13,11 +13,19 @@ const BORDER_WIDTH = 4;
 
 const picker = useTemplateRef('picker');
 
+let isCancelled = false;
+
 const stopEditing = () => props.params.stopEditing();
+
+const cancelEditing = () => {
+	isCancelled = true;
+	stopEditing();
+};
 
 defineExpose({
 	getValue: () => picker.value?.getDate() ?? null,
 	isPopup: () => true,
+	isCancelAfterEnd: () => isCancelled,
 });
 </script>
 
@@ -30,7 +38,7 @@ defineExpose({
 		:width="props.params.column.getActualWidth() - BORDER_WIDTH"
 		data-test-id="data-grid-date-editor"
 		@commit="stopEditing"
-		@cancel="stopEditing"
+		@cancel="cancelEditing"
 		@change="stopEditing"
 	/>
 </template>

@@ -734,6 +734,20 @@ describe('N8nDataGrid', () => {
 			expect(emitted('update:sort')).toBeUndefined();
 		});
 
+		it('should sort when the label of a renameable column is clicked outside column edit mode', async () => {
+			const onSort = vi.fn();
+			const { container } = render({ columns: renameableColumns, 'onUpdate:sort': onSort });
+			await getApi(container);
+
+			await fireEvent.click(
+				within(getHeader(container, 'Name') as HTMLElement).getByTestId(
+					'data-grid-column-header-text',
+				),
+			);
+
+			await waitFor(() => expect(onSort).toHaveBeenCalledWith({ field: 'name', direction: 'asc' }));
+		});
+
 		it('should not report an empty or unchanged label', async () => {
 			const { container, emitted, findByTestId } = render({
 				columns: renameableColumns,

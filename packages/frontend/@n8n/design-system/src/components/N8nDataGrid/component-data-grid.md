@@ -64,7 +64,7 @@ type DataGridColumn<TRow> = {
 	minWidth?: number;
 	maxWidth?: number;
 	flex?: number;
-	sortable?: boolean; // default: true
+	sortable?: boolean; // default: true, false for 'json'
 	filterable?: boolean; // default: true, false for 'json'
 	editable?: boolean | ((row: TRow) => boolean); // default: true, false for 'json'
 	resizable?: boolean; // default: true
@@ -104,12 +104,18 @@ type DataGridFilterOperator =
 
 type DataGridFilterValue = string | number | boolean | Date | null;
 
-type DataGridFilter = {
-	field: string;
-	operator: DataGridFilterOperator;
-	value?: DataGridFilterValue;
-	valueTo?: DataGridFilterValue; // only for 'between'
-};
+type DataGridFilter =
+	| {
+			field: string;
+			operator: Exclude<DataGridFilterOperator, 'between'>;
+			value?: DataGridFilterValue;
+	  }
+	| {
+			field: string;
+			operator: 'between';
+			value: DataGridFilterValue;
+			valueTo: DataGridFilterValue; // the upper value of the range
+	  };
 
 type DataGridCellEdit = {
 	rowKey: string;
@@ -276,7 +282,8 @@ function onCellEdit({ rowKey, field, newValue }: DataGridCellEdit) {
 		:loading="loading"
 		:editable="!readOnly"
 		:columns-editable="!readOnly && !schemaReadOnly"
-		:selectable="!readOnly"
+		selectable
+		:selection-disabled="readOnly"
 		sort-mode="server"
 		:sort="sort"
 		@update:sort="onSort"

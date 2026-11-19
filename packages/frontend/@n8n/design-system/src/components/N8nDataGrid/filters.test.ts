@@ -73,6 +73,8 @@ describe('client filter predicates', () => {
 		['isEmpty', [], '', true],
 		['isEmpty', [], 'a', false],
 		['notEmpty', [], 'a', true],
+		['notEmpty', [], '', false],
+		['notEmpty', [], null, false],
 		['null', [], null, true],
 		['null', [], 'a', false],
 		['notNull', [], 'a', true],
@@ -128,6 +130,15 @@ describe('filter model conversion', () => {
 			{ field: 'birthday', operator: 'lessThan', value: new Date(2026, 0, 2, 3, 4, 5) },
 			{ field: 'active', operator: 'true' },
 		]);
+	});
+
+	it('should ignore a between filter without an upper value', () => {
+		expect(
+			toDataGridFilters(
+				{ 'age-id': { filterType: 'number', type: 'between', filter: 1, filterTo: null } },
+				columns,
+			),
+		).toEqual([]);
 	});
 
 	it('should ignore operators that the column type does not have', () => {

@@ -79,6 +79,10 @@ describe('toText', () => {
 		expect(toText(new Date('2026-11-18T10:00:00Z'))).toBe('2026-11-18T10:00:00.000Z');
 		expect(toText({ a: 1 })).toBe('{"a":1}');
 	});
+
+	it('should convert an invalid date to empty text', () => {
+		expect(toText(new Date('x'))).toBe('');
+	});
 });
 
 describe('parsePastedValue', () => {
@@ -98,6 +102,14 @@ describe('parsePastedValue', () => {
 		expect(parsePastedValue('yes', 'boolean')).toBeUndefined();
 		expect(parsePastedValue('not a date', 'date')).toBeUndefined();
 		expect(parsePastedValue('{}', 'json')).toBeUndefined();
+	});
+
+	it('should accept every date format that the browser can parse when pasting into a date column', () => {
+		expect(parsePastedValue('11/19/2026', 'date')).toEqual(new Date(2026, 10, 19));
+		expect(parsePastedValue('Nov 19, 2026', 'date')).toEqual(new Date(2026, 10, 19));
+		expect(parsePastedValue('2026-01-02T03:04:05Z', 'date')).toEqual(
+			new Date('2026-01-02T03:04:05Z'),
+		);
 	});
 });
 

@@ -67,10 +67,9 @@ const onRename = (label: string) => {
 };
 
 const onLabelClick = (event: Event) => {
+	if (!isColumnsEditable.value) return;
 	event.stopPropagation();
-	if (isColumnsEditable.value) {
-		renameInput.value?.forceFocus();
-	}
+	renameInput.value?.forceFocus();
 };
 
 const NEXT_SORT: Record<'asc' | 'desc' | 'none', SortDirection> = {

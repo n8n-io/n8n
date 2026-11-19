@@ -119,7 +119,7 @@ const createPredicate = (operator: DataGridFilterOperator, type: DataGridColumnT
 		case 'isEmpty':
 			return (_, cellValue) => cellValue === '';
 		case 'notEmpty':
-			return (_, cellValue) => cellValue !== '';
+			return (_, cellValue) => !isMissing(cellValue) && cellValue !== '';
 		case 'null':
 			return (_, cellValue) => isMissing(cellValue);
 		case 'notNull':
@@ -178,19 +178,23 @@ export const toDataGridFilters = <TRow extends DataGridRow>(
 	model: FilterModel,
 	columns: Array<DataGridColumn<TRow>>,
 ): DataGridFilter[] =>
-	columns.flatMap((column) => {
+	columns.flatMap((column): DataGridFilter[] => {
 		const condition: AgConditionModel | undefined = model[column.id];
 		if (!condition || !isFilterOperator(column.type, condition.type)) return [];
 
 		const operator = condition.type;
-		const filter: DataGridFilter = { field: column.field, operator };
-		if (numberOfInputs(operator) > 0) {
-			filter.value = toFilterValue(condition, column.type, 'from');
+		const value = toFilterValue(condition, column.type, 'from');
+		if (operator === 'between') {
+			const valueTo = toFilterValue(condition, column.type, 'to');
+			return value === undefined || valueTo === undefined
+				? []
+				: [{ field: column.field, operator, value, valueTo }];
 		}
-		if (numberOfInputs(operator) > 1) {
-			filter.valueTo = toFilterValue(condition, column.type, 'to');
-		}
-		return [filter];
+		return [
+			numberOfInputs(operator) > 0
+				? { field: column.field, operator, value }
+				: { field: column.field, operator },
+		];
 	});
 
 const toAgDate = (value: DataGridFilterValue | undefined) => {

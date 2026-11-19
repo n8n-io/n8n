@@ -33,7 +33,7 @@ export type DataGridColumn<TRow extends DataGridRow = DataGridRow> = {
 	maxWidth?: number;
 	/** Fills the remaining width, in proportion to other columns with `flex`. */
 	flex?: number;
-	/** Lets users sort by this column. Default: `true` */
+	/** Lets users sort by this column. Default: `true`, `false` for `json` */
 	sortable?: boolean;
 	/** Lets users filter this column. Default: `true`, `false` for `json` */
 	filterable?: boolean;
@@ -81,13 +81,20 @@ export type DataGridFilterOperator =
 export type DataGridFilterValue = string | number | boolean | Date | null;
 
 /** A filter condition on one column. Conditions on different columns combine with AND. */
-export type DataGridFilter = {
-	field: string;
-	operator: DataGridFilterOperator;
-	value?: DataGridFilterValue;
-	/** The upper value of `between`. */
-	valueTo?: DataGridFilterValue;
-};
+export type DataGridFilter =
+	| {
+			field: string;
+			operator: Exclude<DataGridFilterOperator, 'between'>;
+			value?: DataGridFilterValue;
+			valueTo?: never;
+	  }
+	| {
+			field: string;
+			operator: 'between';
+			value: DataGridFilterValue;
+			/** The upper value of the range. */
+			valueTo: DataGridFilterValue;
+	  };
 
 /** A change of one cell value. The grid emits it on edit, paste, undo and redo. */
 export type DataGridCellEdit = {

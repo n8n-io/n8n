@@ -144,7 +144,11 @@ describe('DataGridDateEditor', () => {
 		return {
 			wrapper,
 			stopEditing,
-			editor: wrapper.vm as unknown as { getValue: () => Date | null; isPopup: () => boolean },
+			editor: wrapper.vm as unknown as {
+				getValue: () => Date | null;
+				isPopup: () => boolean;
+				isCancelAfterEnd: () => boolean;
+			},
 		};
 	};
 
@@ -164,6 +168,16 @@ describe('DataGridDateEditor', () => {
 		picker.vm.$emit('change');
 
 		expect(stopEditing).toHaveBeenCalledTimes(3);
+	});
+
+	it('should discard the value only when the picker cancels', async () => {
+		const committed = await mountEditor(START);
+		committed.wrapper.findComponent(DataGridDatePicker).vm.$emit('commit');
+		expect(committed.editor.isCancelAfterEnd()).toBe(false);
+
+		const cancelled = await mountEditor(START);
+		cancelled.wrapper.findComponent(DataGridDatePicker).vm.$emit('cancel');
+		expect(cancelled.editor.isCancelAfterEnd()).toBe(true);
 	});
 
 	it('should fit the input into the cell', async () => {

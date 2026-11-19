@@ -51,7 +51,7 @@ const formatNumber = (value: number) => {
 
 export const toText = (value: unknown): string => {
 	if (value === null || value === undefined) return '';
-	if (value instanceof Date) return value.toISOString();
+	if (value instanceof Date) return Number.isNaN(value.getTime()) ? '' : value.toISOString();
 	if (
 		typeof value === 'string' ||
 		typeof value === 'number' ||
