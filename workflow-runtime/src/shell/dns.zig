@@ -38,7 +38,7 @@ const AddrInfoNode = extern struct {
     ai_socktype: c_int,
     ai_protocol: c_int,
     ai_addrlen: c_uint,
-    ai_addr: ?*const std.c.sockaddr,
+    ai_addr: ?*const sys.Sockaddr,
     ai_next: ?*AddrInfoNode,
 };
 
@@ -195,7 +195,7 @@ pub const Resolver = struct {
         q.ok = false;
         q.err_len = 0;
         r.running += 1;
-        const hints: Hints = .{ .ai_family = std.c.AF.UNSPEC, .ai_socktype = SOCK_STREAM };
+        const hints: Hints = .{ .ai_family = sys.af_unspec, .ai_socktype = SOCK_STREAM };
         // The callback can run before this returns (hosts file, cache).
         ares_getaddrinfo(r.channel.?, q.host[0..host.len :0], null, &hints, onAddrInfo, q);
         return .{ .pending = @intCast(qi) };
@@ -225,11 +225,11 @@ pub const Resolver = struct {
             if (guard >= 64 or addrs.n == max_addrs) break;
             node = nd.ai_next;
             const sa = nd.ai_addr orelse continue;
-            if (nd.ai_family == std.c.AF.INET) {
-                const in4: *const std.c.sockaddr.in = @ptrCast(@alignCast(sa));
+            if (nd.ai_family == sys.af_inet) {
+                const in4: *const sys.SockaddrIn = @ptrCast(@alignCast(sa));
                 addrs.list[addrs.n] = sys.Addr.ip4(@bitCast(in4.addr), 0);
-            } else if (nd.ai_family == std.c.AF.INET6) {
-                const in6: *const std.c.sockaddr.in6 = @ptrCast(@alignCast(sa));
+            } else if (nd.ai_family == sys.af_inet6) {
+                const in6: *const sys.SockaddrIn6 = @ptrCast(@alignCast(sa));
                 addrs.list[addrs.n] = .{ .v6 = true, .ip = in6.addr };
             } else continue;
             addrs.n += 1;

@@ -2060,7 +2060,7 @@ pub const Client = struct {
             // Only the socket address moves; TLS keeps the vendor host name.
             if (c.cfg.gym) |g| a = g.redirect(a);
             const fd = sys.connectAddr(a) catch {
-                last_err = std.c._errno().*;
+                last_err = sys.lastErrno();
                 continue;
             };
             cn.fd = fd;
