@@ -2,14 +2,20 @@ import type { SamlPreferences, SamlPreferencesAttributeMapping } from '@n8n/api-
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import { GlobalConfig } from '@n8n/config';
-import type { Settings, User } from '@n8n/db';
-import { AuthIdentityRepository, isValidEmail, SettingsRepository, UserRepository } from '@n8n/db';
+import type { Person, Settings } from '@n8n/db';
+import {
+	AuthIdentityRepository,
+	isPerson,
+	isValidEmail,
+	PersonRepository,
+	SettingsRepository,
+} from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { createPublicKey, randomBytes, X509Certificate } from 'crypto';
 import type express from 'express';
 import { Cipher, InstanceSettings } from 'n8n-core';
-import { CREDENTIAL_BLANKING_VALUE, jsonParse, UnexpectedError } from 'n8n-workflow';
+import { CREDENTIAL_BLANKING_VALUE, jsonParse } from 'n8n-workflow';
 import { type IdentityProviderInstance, type ServiceProviderInstance } from 'samlify';
 import type {
 	BindingContext,
@@ -17,10 +23,10 @@ import type {
 	PostBindingContext,
 } from 'samlify/types/src/entity';
 
-import { AuthError, BadRequestError } from '@n8n/errors';
+import { AuthError, BadRequestError, ForbiddenError, UnexpectedError } from '@n8n/errors';
 import { buildSamlClaimsContext } from '@/modules/provisioning.ee/claims-context.builder';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
-import { CacheService, UrlService } from '@n8n/backend-services';
+import { CacheService, EventService, UrlService } from '@n8n/backend-services';
 import {
 	getSamlLoginLabel,
 	isSamlLicensedAndEnabled,
@@ -95,7 +101,7 @@ export class SamlService {
 		private readonly logger: Logger,
 		private readonly urlService: UrlService,
 		private readonly validator: SamlValidator,
-		private readonly userRepository: UserRepository,
+		private readonly personRepository: PersonRepository,
 		private readonly settingsRepository: SettingsRepository,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly provisioningService: ProvisioningService,
@@ -103,6 +109,7 @@ export class SamlService {
 		private readonly cacheService: CacheService,
 		private readonly outboundHttp: OutboundHttp,
 		private readonly authIdentityRepository: AuthIdentityRepository,
+		private readonly eventService: EventService,
 	) {}
 
 	/**
@@ -366,7 +373,7 @@ export class SamlService {
 		binding: SamlLoginBinding,
 		metadataOverride?: string,
 	): Promise<{
-		authenticatedUser: User | undefined;
+		authenticatedUser: Person | undefined;
 		attributes: SamlUserAttributes;
 		rawAttributes: Record<string, unknown>;
 		onboardingRequired: boolean;
@@ -396,6 +403,25 @@ export class SamlService {
 				'saml',
 			);
 			if (identity?.user) {
+				if (!isPerson(identity.user)) {
+					throw new ForbiddenError('A service account cannot log in with SAML');
+				}
+				if (identity.user.email?.toLowerCase() !== lowerCasedEmail) {
+					// The identity is authoritative. A different asserted email usually means the
+					// identity provider sends one principal name for more than one person.
+					this.logger.warn(
+						'SAML login: asserted email differs from the user linked to this identity',
+						{
+							userId: identity.user.id,
+							providerId: attributes.userPrincipalName,
+						},
+					);
+					this.eventService.emit('user-login-email-conflict', {
+						user: identity.user,
+						authenticationMethod: 'saml',
+						assertedEmail: lowerCasedEmail,
+					});
+				}
 				await this.applySsoProvisioning(identity.user, attributes, rawAttributes);
 				return {
 					authenticatedUser: identity.user,
@@ -405,26 +431,23 @@ export class SamlService {
 				};
 			}
 
-			const user = await this.userRepository.findOne({
-				where: { email: lowerCasedEmail },
-				relations: ['authIdentities', 'role'],
-			});
-			if (user) {
+			const person = await this.personRepository.findByEmailWithAuthIdentities(lowerCasedEmail);
+			if (person) {
 				// No identity matches this principal, so the link to the existing user
 				// rests on the email alone. The identity provider must vouch for it.
 				this.assertEmailVerified(attributes.emailVerified, lowerCasedEmail);
 				this.logger.info(
 					'SAML login: linking the asserted principal to an existing user by email',
 					{
-						userId: user.id,
+						userId: person.id,
 						providerId: attributes.userPrincipalName,
 					},
 				);
-				const updatedUser = await updateUserFromSamlAttributes(user, attributes);
-				const onboardingRequired = !updatedUser.firstName || !updatedUser.lastName;
-				await this.applySsoProvisioning(updatedUser, attributes, rawAttributes);
+				const updatedPerson = await updateUserFromSamlAttributes(person, attributes);
+				const onboardingRequired = !updatedPerson.firstName || !updatedPerson.lastName;
+				await this.applySsoProvisioning(updatedPerson, attributes, rawAttributes);
 				return {
-					authenticatedUser: updatedUser,
+					authenticatedUser: updatedPerson,
 					attributes,
 					rawAttributes,
 					onboardingRequired,
@@ -469,20 +492,23 @@ export class SamlService {
 	}
 
 	private async applySsoProvisioning(
-		user: User,
+		person: Person,
 		attributes: SamlPreferencesAttributeMapping,
 		rawAttributes: Record<string, unknown>,
 	): Promise<void> {
 		if (await this.provisioningService.isExpressionMappingEnabled()) {
 			const context = buildSamlClaimsContext(rawAttributes);
-			await this.provisioningService.provisionExpressionMappedRolesForUser(user, context);
+			await this.provisioningService.provisionExpressionMappedRolesForUser(person, context);
 			return;
 		}
 		// Called even when the attribute is missing so the configured default condition applies
-		await this.provisioningService.provisionInstanceRoleForUser(user, attributes?.n8nInstanceRole);
+		await this.provisioningService.provisionInstanceRoleForUser(
+			person,
+			attributes?.n8nInstanceRole,
+		);
 		if (attributes?.n8nProjectRoles) {
 			await this.provisioningService.provisionProjectRolesForUser(
-				user.id,
+				person.id,
 				attributes.n8nProjectRoles,
 			);
 		}
@@ -490,7 +516,7 @@ export class SamlService {
 
 	private async broadcastReloadSAMLConfigurationCommand(): Promise<void> {
 		if (this.instanceSettings.isMultiMain) {
-			const { Publisher } = await import('@/scaling/pubsub/publisher.service.js');
+			const { Publisher } = await import('@n8n/backend-services');
 			await Container.get(Publisher).publishCommand({ command: 'reload-saml-config' });
 		}
 	}
@@ -506,9 +532,12 @@ export class SamlService {
 		this.isReloading = true;
 		try {
 			this.logger.debug('SAML configuration changed, starting to load it from the database');
-			await this.loadFromDbAndApplySamlPreferences(true, false);
-
+			// Read the method that the other main saved before the preferences
+			// apply. Otherwise this main still has `saml` when SAML login turned
+			// off, and it emits `sso-login-disabled` a second time.
 			await reloadAuthenticationMethod();
+
+			await this.loadFromDbAndApplySamlPreferences(true, false);
 
 			const samlLoginEnabled = isSamlLoginEnabled();
 

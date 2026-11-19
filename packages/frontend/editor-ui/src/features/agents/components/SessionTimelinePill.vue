@@ -1,13 +1,13 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
-import { N8nIcon, type IconName } from '@n8n/design-system';
+import { N8nBadge, N8nIcon, type IconName } from '@n8n/design-system';
 import type { EventKind } from '../session-timeline.types';
-import { pillColors } from '../session-timeline.styles';
 
 const props = withDefaults(
 	defineProps<{
 		kind: EventKind | 'idle' | 'subagent';
-		label?: string;
+		toolName?: string;
+		label: string;
 		showLabel?: boolean;
 	}>(),
 	{
@@ -18,6 +18,8 @@ const props = withDefaults(
 
 const icon = computed((): IconName => {
 	switch (props.kind) {
+		case 'background-task':
+			return 'list-checks';
 		case 'background-task-signal':
 			return 'list-checks';
 		case 'user':
@@ -27,8 +29,10 @@ const icon = computed((): IconName => {
 			return 'bot';
 		case 'skill':
 			return 'book-open';
+		case 'memory':
+			return 'brain';
 		case 'tool':
-			return 'wrench';
+			return props.toolName === 'do_not_respond' ? 'message-circle-off' : 'wrench';
 		case 'workflow':
 			return 'workflow';
 		case 'node':
@@ -44,35 +48,26 @@ const icon = computed((): IconName => {
 			return 'info';
 	}
 });
-
-const iconStyle = computed(() => pillColors(props.kind));
 </script>
 
 <template>
-	<span :class="[$style.pill, showLabel && $style.withLabel]" :style="iconStyle">
-		<N8nIcon :icon="icon" size="medium" />
-		<span v-if="showLabel && label" :class="$style.label">{{ label }}</span>
-	</span>
+	<N8nBadge v-if="showLabel && label" :leading-icon="icon" variant="filled" size="xxsmall">
+		{{ label }}
+	</N8nBadge>
+	<N8nIcon
+		v-else
+		:aria-label="label"
+		:aria-hidden="icon !== 'message-circle-off'"
+		:icon="icon"
+		size="medium"
+	/>
 </template>
 
 <style module lang="scss">
-.pill {
+.withLabel {
 	display: inline-flex;
 	align-items: center;
-	justify-content: center;
-	width: var(--height--2xs);
-	height: var(--height--2xs);
-	border-radius: var(--radius);
-	flex-shrink: 0;
-}
-
-.withLabel {
-	width: auto;
 	gap: var(--spacing--4xs);
-	padding: 0 var(--spacing--2xs);
-}
-
-.label {
 	font-size: var(--font-size--3xs);
 	font-weight: var(--font-weight--medium);
 	line-height: 1;

@@ -6,26 +6,29 @@ import type {
 	ILoadOptionsFunctions,
 	IRequestOptions,
 	JsonObject,
+	RequestPath,
+	RequestUrl,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, requestUrl } from 'n8n-workflow';
 import { StringDecoder } from 'node:string_decoder';
 import type { Readable } from 'stream';
 
 export async function phantombusterApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	path: string,
+	path: RequestPath,
 
 	body: any = {},
 	qs: IDataObject = {},
 	_option = {},
 ): Promise<any> {
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {},
 		method,
 		body,
 		qs,
-		uri: `https://api.phantombuster.com/api/v2${path}`,
+		uri: requestUrl`https://api.phantombuster.com/api/v2${path}`,
 		json: true,
 	};
 	try {
@@ -59,7 +62,7 @@ export async function phantombusterStreamingRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	options: {
 		method: IHttpRequestMethods;
-		path: string;
+		path: RequestPath;
 		body?: IDataObject;
 		qs?: IDataObject;
 	},
@@ -67,13 +70,17 @@ export async function phantombusterStreamingRequest(
 ): Promise<IDataObject | null> {
 	let stream: AsyncIterable<string>;
 	try {
-		stream = await streamingRequest.call(this, 'phantombusterApi', {
-			method: options.method,
-			url: `https://api.phantombuster.com/api/v2${options.path}`,
-			body: options.body,
-			qs: options.qs,
-			timeout: 30_000, // socket inactivity — server heartbeats every 10s keep this reset
-		});
+		stream = await streamingRequest.call(
+			this,
+			'phantombusterApi',
+			requestUrl`https://api.phantombuster.com/api/v2${options.path}`,
+			{
+				method: options.method,
+				body: options.body,
+				qs: options.qs,
+				timeout: 30_000, // socket inactivity — server heartbeats every 10s keep this reset
+			},
+		);
 	} catch (error) {
 		// Transport-level failure (auth, routing, 5xx) before any data arrived —
 		// terminal, surface immediately rather than asking the caller to retry.
@@ -148,9 +155,9 @@ export async function phantombusterStreamingRequest(
 async function streamingRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	credentialsType: string,
+	url: RequestUrl,
 	options: {
 		method: IHttpRequestMethods;
-		url: string;
 		body?: IHttpRequestOptions['body'];
 		qs?: IDataObject;
 		timeout?: number;
@@ -162,7 +169,11 @@ async function streamingRequest(
 	const abortSignal =
 		'getExecutionCancelSignal' in this ? this.getExecutionCancelSignal() : undefined;
 	const stream = (await this.helpers.httpRequestWithAuthentication.call(this, credentialsType, {
-		...options,
+		method: options.method,
+		url,
+		body: options.body,
+		qs: options.qs,
+		timeout: options.timeout,
 		abortSignal,
 		encoding: 'stream',
 	})) as Readable;

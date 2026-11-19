@@ -2,11 +2,10 @@ import type { TeamsAzureSubscription, TeamsProvisionedBotSummary } from '@n8n/ap
 import type { CredentialsEntity, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
-import { OperationalError, UserError } from 'n8n-workflow';
 import { withTeamsFailure } from './teams-setup-telemetry.service';
 
 import { CredentialsFinderService } from '@n8n/backend-services';
-import { BadRequestError } from '@n8n/errors';
+import { BadRequestError, OperationalError, UserError } from '@n8n/errors';
 
 import { armNextLinkPath, type ArmResponse, TeamsArmService } from './teams-arm.service';
 import { graphErrorCode } from './teams-graph.service';

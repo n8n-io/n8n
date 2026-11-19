@@ -43,8 +43,8 @@ describe('useAssistantAtMentions', () => {
 		await mentions.handleTextChange('Compare ＠');
 		expect(mentions.menuOpen.value).toBe(true);
 
-		await mentions.replaceActiveRange('Orders');
-		expect(text.value).toBe('Compare "Orders"');
+		await mentions.clearActiveRange();
+		expect(text.value).toBe('Compare ');
 	});
 
 	it('reports typed and button opens once per open state', async () => {
@@ -153,12 +153,12 @@ describe('useAssistantAtMentions', () => {
 		input.value = '@foo @';
 		input.setSelectionRange(6, 6);
 		await mentions.handleTextChange('@foo @');
-		await mentions.replaceActiveRange('Orders');
+		await mentions.clearActiveRange();
 
-		expect(text.value).toBe('@foo "Orders"');
+		expect(text.value).toBe('@foo ');
 	});
 
-	it('replaces only the active typed range and preserves trailing text', async () => {
+	it('removes only the active typed query and preserves trailing text', async () => {
 		const { text, input, mentions } = setup('Compare @ with the current workflow');
 		input.value = 'Compare @ with the current workflow';
 		input.setSelectionRange(9, 9);
@@ -168,19 +168,116 @@ describe('useAssistantAtMentions', () => {
 		input.value = value;
 		input.setSelectionRange(12, 12);
 		await mentions.handleTextChange(value);
-		await mentions.replaceActiveRange('Orders');
+		await mentions.clearActiveRange();
 
-		expect(text.value).toBe('Compare "Orders" with the current workflow');
-		expect(input.selectionStart).toBe(16);
+		expect(text.value).toBe('Compare with the current workflow');
+		expect(input.selectionStart).toBe(8);
 	});
 
-	it('uses the saved selection for button insertion', async () => {
+	it('collapses a doubled space when a typed pick removes the trigger', async () => {
+		const value = 'Something @ here';
+		const { text, input, mentions } = setup(value);
+		input.value = value;
+		input.setSelectionRange(11, 11);
+		await mentions.handleTextChange(value);
+
+		await mentions.clearActiveRange();
+
+		expect(text.value).toBe('Something here');
+		expect(input.selectionStart).toBe(10);
+	});
+
+	it('collapses a doubled space when a typed trigger is dismissed', async () => {
+		const value = 'Something @ here';
+		const { text, input, mentions } = setup(value);
+		input.focus();
+		input.value = value;
+		input.setSelectionRange(11, 11);
+		await mentions.handleTextChange(value);
+
+		mentions.handleMenuOpenChange(false);
+		await nextTick();
+
+		expect(text.value).toBe('Something here');
+		expect(input.selectionStart).toBe(10);
+	});
+
+	it('removes the space after a trigger at the start of the draft', async () => {
+		const value = '@ here';
+		const { text, input, mentions } = setup(value);
+		input.value = value;
+		input.setSelectionRange(1, 1);
+		await mentions.handleTextChange(value);
+
+		await mentions.clearActiveRange();
+
+		expect(text.value).toBe('here');
+		expect(input.selectionStart).toBe(0);
+	});
+
+	it('removes the space after a dismissed trigger at the start of the draft', async () => {
+		const value = '@ here';
+		const { text, input, mentions } = setup(value);
+		input.focus();
+		input.value = value;
+		input.setSelectionRange(1, 1);
+		await mentions.handleTextChange(value);
+
+		mentions.handleMenuOpenChange(false);
+		await nextTick();
+
+		expect(text.value).toBe('here');
+		expect(input.selectionStart).toBe(0);
+	});
+
+	it('removes the space after a trigger that follows a newline', async () => {
+		const value = 'Line one\n@ here';
+		const { text, input, mentions } = setup(value);
+		input.value = value;
+		input.setSelectionRange(10, 10);
+		await mentions.handleTextChange(value);
+
+		await mentions.clearActiveRange();
+
+		expect(text.value).toBe('Line one\nhere');
+		expect(input.selectionStart).toBe(9);
+	});
+
+	it('removes the space after a trigger that follows a tab', async () => {
+		const value = 'Say\t@ here';
+		const { text, input, mentions } = setup(value);
+		input.value = value;
+		input.setSelectionRange(5, 5);
+		await mentions.handleTextChange(value);
+
+		await mentions.clearActiveRange();
+
+		expect(text.value).toBe('Say\there');
+		expect(input.selectionStart).toBe(4);
+	});
+
+	it('keeps a newline that follows a trigger', async () => {
+		const value = 'Hello\n@\nthere';
+		const { text, input, mentions } = setup(value);
+		input.value = value;
+		input.setSelectionRange(7, 7);
+		await mentions.handleTextChange(value);
+
+		await mentions.clearActiveRange();
+
+		expect(text.value).toBe('Hello\n\nthere');
+		expect(input.selectionStart).toBe(6);
+	});
+
+	it('leaves the draft unchanged when the picker was opened from the button', async () => {
 		const { text, input, mentions } = setup('Replace this');
 		input.setSelectionRange(0, 7);
 		mentions.openFromButton();
-		await mentions.replaceActiveRange('Orders');
+		await mentions.clearActiveRange();
 
-		expect(text.value).toBe('"Orders" this');
+		expect(text.value).toBe('Replace this');
+		expect(input.selectionStart).toBe(0);
+		expect(input.selectionEnd).toBe(7);
 	});
 
 	it('removes a typed @ when the menu is dismissed without a query', async () => {
@@ -282,7 +379,7 @@ describe('useAssistantAtMentions', () => {
 		await nextTick();
 
 		mentions.openFromButton();
-		await mentions.replaceActiveRange('Orders');
+		await mentions.clearActiveRange();
 		expect(onClosed).toHaveBeenLastCalledWith(
 			expect.objectContaining({ source: 'button', reason: 'selected' }),
 		);
@@ -302,7 +399,7 @@ describe('useAssistantAtMentions', () => {
 		input.setSelectionRange(1, 1);
 		await mentions.handleTextChange('@');
 
-		await mentions.replaceActiveRange('Orders');
+		await mentions.clearActiveRange();
 		// The menu reports its own close after the selection landed.
 		mentions.handleMenuOpenChange(false);
 		mentions.close();

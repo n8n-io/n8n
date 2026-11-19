@@ -2,7 +2,10 @@ operationId: getTestRun
 tags:
   - Evaluation
 summary: Retrieve a test run
-description: Retrieve a single evaluation test run of a workflow, including its aggregated metrics and final result.
+description: |-
+  Retrieve a single evaluation test run of a workflow, including its aggregated metrics and final result.
+
+  Requires the `testRun:read` API key scope.
 x-required-scope: testRun:read
 parameters:
   - schema:
@@ -91,3 +94,5 @@ responses:
     $ref: ../../../../shared/spec/responses/forbidden.yml
   '404':
     $ref: ../../../../shared/spec/responses/notFound.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml

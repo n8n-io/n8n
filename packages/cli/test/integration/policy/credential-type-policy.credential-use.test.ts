@@ -15,7 +15,7 @@ import { createOwnerWithApiKey } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 import { denyRule, putCredentialTypePolicy } from './shared/credential-type-policy';
-import { clearPolicyCache } from './shared/policy-cache';
+import { reloadPolicySnapshot } from './shared/policy-snapshot';
 
 const GITHUB_API = 'githubApi';
 
@@ -81,7 +81,7 @@ afterEach(async () => {
 		'SharedCredentials',
 		'CredentialsEntity',
 	]);
-	await clearPolicyCache();
+	await reloadPolicySnapshot();
 });
 
 describe('a credential of a type an instance policy blocks', () => {

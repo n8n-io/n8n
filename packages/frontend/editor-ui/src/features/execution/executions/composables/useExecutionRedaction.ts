@@ -37,13 +37,7 @@ export function useExecutionRedaction() {
 
 	const canReveal = computed(() => redactionInfo.value?.canReveal === true);
 
-	const isDynamicCredentials = computed(
-		() => redactionInfo.value?.reason === 'dynamic_credentials',
-	);
-
-	const isSubWorkflowRedaction = computed(
-		() => redactionInfo.value?.reason === 'sub_workflow_redaction_policy',
-	);
+	const reason = computed(() => redactionInfo.value?.reason);
 
 	/** The name a node of the execution stored for the credential. */
 	function credentialName(credentialId: string): string {
@@ -186,8 +180,7 @@ export function useExecutionRedaction() {
 	return {
 		isRedacted,
 		canReveal,
-		isDynamicCredentials,
-		isSubWorkflowRedaction,
+		reason,
 		revealData,
 		credentialToShare,
 		openCredentialSharing,

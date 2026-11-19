@@ -4,7 +4,6 @@ import type { AgentMessageList } from '../../runtime/model/message-list';
 import type { TokenCounter } from '../../runtime/model/model-token-counter';
 import type { AgentEventBus } from '../../runtime/state/event-bus';
 import type { RuntimeTelemetry } from '../../runtime/telemetry/runtime-telemetry';
-import type { RuntimeSkillLoader } from '../../skills/types';
 import type { WorkspaceFilesystem } from '../../workspace/types';
 import type {
 	AgentExecutionCounter,
@@ -40,6 +39,8 @@ export type ToolCallOutcome =
 			modelOutput: unknown;
 			customMessage?: AgentMessage;
 			mcpServerName?: string;
+			/** Host-only trace data from the tool's `toTraceOutput`. */
+			traceOutput?: unknown;
 	  }
 	| {
 			outcome: 'suspended';
@@ -67,6 +68,8 @@ export interface ToolCallSuccess extends ToolCallIdentity {
 	customMessage?: AgentMessage;
 	/** Set when the tool belongs to an MCP server, so hosts can attribute the result to it. */
 	mcpServerName?: string;
+	/** Host-only trace data from the tool's `toTraceOutput`. */
+	traceOutput?: unknown;
 }
 
 /** Info about a tool call that suspended (before persistence — no runId yet). */
@@ -140,7 +143,6 @@ export interface ProcessToolCallParams extends ToolCallIdentity {
 }
 
 export interface ToolCallExecutorDeps {
-	loadSkill?: RuntimeSkillLoader;
 	telemetry: RuntimeTelemetry;
 	eventBus: AgentEventBus;
 	/** Effective tool-call concurrency (default 1 = sequential). */

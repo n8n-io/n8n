@@ -1,7 +1,6 @@
+import type { TelemetryProxy } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import z from 'zod';
-
-import type { Telemetry } from '@/telemetry';
 
 import { CODE_BUILDER_VALIDATE_NODE_TOOL } from './constants';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
@@ -79,7 +78,7 @@ const outputSchema = {
  */
 export const createValidateNodeTool = (
 	user: User,
-	telemetry: Telemetry,
+	telemetry: TelemetryProxy,
 ): ToolDefinition<typeof inputSchema> => ({
 	name: CODE_BUILDER_VALIDATE_NODE_TOOL.toolName,
 	config: {

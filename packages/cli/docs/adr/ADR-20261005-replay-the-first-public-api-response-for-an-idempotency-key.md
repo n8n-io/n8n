@@ -25,10 +25,10 @@ the credential already exists.
 
 ## Decision
 
-We keep the first finished response and return it when the same user sends the
-same key and the same fingerprint again. The stored response includes 4xx and
-5xx. The handler runs only for the first request. The client sends a new key
-after a real failure.
+We keep the first successful response and return it when the same user sends
+the same key and the same fingerprint again. We do not store an error. When
+the handler returns an error, we release the key. The same key runs the
+handler again.
 
 1. Compare the fingerprint first. It is a hash of the method, the path, the
    query string, and the body. The path is the request path. It includes the
@@ -39,11 +39,11 @@ after a real failure.
    `POST /api/v1/workflows?source=api` with body `{"name":"Hello"}`, the hash
    covers `POST`, `/api/v1/workflows`, `source=api`, and `{"name":"Hello"}`.
    The same key with a different fingerprint returns 422. This applies while
-   the first request is `processing` and after it completes. The handler does
+   the first request is `processing` and after a success. The handler does
    not run. The client sends a new key.
-2. The same key and the same fingerprint replay the stored response. A retry
-   while that request is still `processing` returns 409 Conflict. A completed
-   row returns the stored response, including a stored 400.
+2. The same key and the same fingerprint replay the stored success. A retry
+   while that request is still `processing` returns 409 Conflict. An error
+   deletes the processing row. The next request with that key can claim it.
 3. The key is an opaque string. We compare it exactly after trim. The length
    is 1 to 128 characters, and the characters are visible ASCII. A longer value
    or a disallowed character returns 400. An empty value, or a value that is
@@ -61,9 +61,11 @@ after a real failure.
    a store read. The header stays opt-in.
 4. **Mount the store on `/rest` in this version.** `/rest` has different auth,
    a higher write volume, and existing version checks.
-5. **Release the key when the handler returns an error.** A later retry would
-   run the handler again. A 500 can follow a committed write, so that retry
-   can create a second resource. The stored error blocks that second write.
+5. **Store the error and replay it.** A retry would return the stored 4xx or
+   5xx until the row expires. The client would send a new key to run the
+   handler again. A stored 500 would block a second write when the handler
+   committed and then failed. We reject this. A failed POST stays retryable
+   with the same key.
 
 ## Consequences
 
@@ -75,9 +77,10 @@ after a real failure.
    does today.
 4. The stored row is defined in
    ADR-20261005-store-public-api-idempotency-keys-in-the-instance-database.
-5. After an error, the same fingerprint returns the stored response until the
-   row expires. A bug fix does not change the stored response. A new key runs
-   the handler again.
+5. A retry after an error runs the handler again. When the handler committed a
+   write and then returned 500, that retry can create a second resource. After
+   a success, the same fingerprint returns the stored response until the row
+   expires. A bug fix does not change that stored response.
 
 ## Links
 

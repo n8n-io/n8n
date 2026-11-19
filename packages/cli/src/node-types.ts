@@ -7,7 +7,8 @@ import { readdir, readFile } from 'fs/promises';
 import { RoutingNode, UnrecognizedNodeTypeError } from 'n8n-core';
 import type { ExecuteContext } from 'n8n-core';
 import type { INodeType, INodeTypeDescription, INodeTypes, IVersionedNodeType } from 'n8n-workflow';
-import { deepCopy, isHitlToolType, NodeHelpers, UnexpectedError, UserError } from 'n8n-workflow';
+import { deepCopy, isHitlToolType, NodeHelpers } from 'n8n-workflow';
+import { UnexpectedError, UserError } from '@n8n/errors';
 import { join, dirname } from 'path';
 
 import { LoadNodesAndCredentials } from './load-nodes-and-credentials';

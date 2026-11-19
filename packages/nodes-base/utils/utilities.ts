@@ -13,7 +13,8 @@ import type {
 	INodeProperties,
 	IPairedItemData,
 } from 'n8n-workflow';
-import { jsonParse, MYSQL_NODE_TYPE, POSTGRES_NODE_TYPE, randomInt, UserError } from 'n8n-workflow';
+import { jsonParse, MYSQL_NODE_TYPE, POSTGRES_NODE_TYPE, randomInt } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 /**
  * Creates an array of elements split into groups the length of `size`.
@@ -299,6 +300,36 @@ export function getResolvables(expression: string) {
 	}
 
 	return resolvables;
+}
+
+/**
+ * Evaluates each `{{ }}` in `text`, in order.
+ */
+export function evaluateResolvables<T>(text: string, evaluate: (resolvable: string) => T): T[] {
+	return getResolvables(text).map((resolvable) => evaluate(resolvable));
+}
+
+/**
+ * Replaces each `{{ }}` in `text` with the value that `evaluate` returns for it.
+ *
+ * Each value goes in as literal text and is never scanned again, so `$` sequences
+ * and text that looks like an expression stay as they are.
+ *
+ * `legacy` keeps the `String.replace` behavior that older node versions depend on.
+ */
+export function resolveExpressions(
+	text: string,
+	evaluate: (resolvable: string) => unknown,
+	{ legacy = false }: { legacy?: boolean } = {},
+): string {
+	if (legacy) {
+		return getResolvables(text).reduce(
+			(result, resolvable) => result.replace(resolvable, String(evaluate(resolvable))),
+			text,
+		);
+	}
+
+	return text.replace(/{{[\s\S]*?}}/g, (resolvable) => String(evaluate(resolvable)));
 }
 
 /**

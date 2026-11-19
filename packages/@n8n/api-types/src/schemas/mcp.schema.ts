@@ -28,6 +28,7 @@ export const MCP_INSTANCE_SCOPES = [
 	...MCP_AGENT_SCOPES,
 	...MCP_SKILL_SCOPES,
 	'credential:read',
+	'credential:update',
 	'dataTable:read',
 	'dataTable:write',
 	'project:read',
@@ -36,6 +37,8 @@ export const MCP_INSTANCE_SCOPES = [
 	'communityPackage:install',
 	'aiPreference:read',
 	'aiPreference:write',
+	'breakingChanges:list',
+	'breakingChanges:migrate',
 ] as const;
 
 export type McpScope = (typeof MCP_INSTANCE_SCOPES)[number];

@@ -5,26 +5,28 @@ import type {
 	IHttpRequestMethods,
 	IHttpRequestOptions,
 	JsonObject,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestUrl } from 'n8n-workflow';
 
 export async function pushoverApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	path: string,
+	path: RequestPath,
 
 	body: any = {},
 	qs: IDataObject = {},
 	_option = {},
 ): Promise<any> {
-	const options: IHttpRequestOptions = {
+	const options: WithRequestTarget<IHttpRequestOptions> = {
 		headers: {
 			'Content-Type': 'multipart/form-data',
 		},
 		method,
 		body,
 		qs,
-		url: `https://api.pushover.net/1${path}`,
+		url: requestUrl`https://api.pushover.net/1${path}`,
 		json: true,
 	};
 

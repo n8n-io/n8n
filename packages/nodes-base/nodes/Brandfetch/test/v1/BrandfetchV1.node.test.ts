@@ -1,4 +1,5 @@
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 import type { Mock, Mocked } from 'vitest';
 
 import { BrandfetchV1 } from '../../v1/BrandfetchV1.node';
@@ -49,6 +50,18 @@ describe('BrandfetchV1.execute', () => {
 		executeFunctions.getNodeParameter.mockImplementation((name) => params[name as string] as never);
 	}
 
+	it('should encode the domain in the resource path', async () => {
+		mockParams({ operation: 'color', domain: 'n8n.io/path?x=1' });
+		(GenericFunctions.brandfetchApiRequest as Mock).mockResolvedValue({ colors: [] });
+
+		await node.execute.call(executeFunctions);
+
+		expect(GenericFunctions.brandfetchApiRequest).toHaveBeenCalledWith(
+			'GET',
+			expect.objectContaining({ value: '/brands/n8n.io%2Fpath%3Fx=1' }),
+		);
+	});
+
 	it('should return logos as JSON when operation is logo and download is false', async () => {
 		mockParams({ operation: 'logo', domain: 'n8n.io', download: false });
 		(GenericFunctions.brandfetchApiRequest as Mock).mockResolvedValue({
@@ -57,7 +70,10 @@ describe('BrandfetchV1.execute', () => {
 
 		const result = await node.execute.call(executeFunctions);
 
-		expect(GenericFunctions.brandfetchApiRequest).toHaveBeenCalledWith('GET', '/brands/n8n.io');
+		expect(GenericFunctions.brandfetchApiRequest).toHaveBeenCalledWith(
+			'GET',
+			requestPath`/brands/n8n.io`,
+		);
 		expect(GenericFunctions.fetchAndPrepareBinaryData).not.toHaveBeenCalled();
 		expect(result[0]).toEqual([{ type: 'logo', formats: [] }]);
 	});

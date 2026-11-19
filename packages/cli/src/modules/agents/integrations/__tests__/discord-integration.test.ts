@@ -1,4 +1,6 @@
+import type { StreamChunk } from '@n8n/agents';
 import type { Logger } from '@n8n/backend-common';
+import type { Adapter } from 'chat';
 import type { HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
@@ -12,7 +14,8 @@ import type {
 	PlatformContextQueryParams,
 } from '../agent-chat-integration';
 import type { ChatInstance } from '../chat-integration.service';
-import { DiscordIntegration } from '../platforms/discord-integration';
+import { AgentChatStreamConsumer } from '../agent-chat-stream-consumer';
+import { DiscordIntegration } from '../platforms/discord/discord-integration';
 import { installFetchStub } from './helpers/replay-test-helpers';
 
 // The chat SDK + adapters are ESM-only. Production loads them via esm-loader's
@@ -414,6 +417,57 @@ describe('DiscordIntegration', () => {
 				ok: false,
 				error: { code: 'CONNECTION_NOT_AVAILABLE' },
 			});
+		});
+	});
+
+	describe('long replies', () => {
+		let stub: ReturnType<typeof installFetchStub>;
+
+		afterEach(() => {
+			stub?.restore();
+		});
+
+		it('posts a reply over the Discord limit as messages that fit', async () => {
+			let nextMessageId = 1;
+			stub = installFetchStub({
+				match: /discord\.com\/api/,
+				onRequest: ({ url, body }) => ({
+					apiCall: { method: new URL(url).pathname, body },
+					responseBody: { id: String(nextMessageId++), channel_id: '700000000000000001' },
+				}),
+			});
+			const adapter = await integration.createAdapter(connectionContext());
+			const { ThreadImpl } = await import('chat');
+			const { createMemoryState } = await import('@chat-adapter/state-memory');
+			const thread = new ThreadImpl({
+				id: `discord:${GUILD_ID}:700000000000000001`,
+				channelId: `discord:${GUILD_ID}:700000000000000001`,
+				adapter: adapter as Adapter,
+				stateAdapter: createMemoryState(),
+			});
+			const consumer = new AgentChatStreamConsumer({
+				disableStreaming: integration.disableStreaming,
+				maxMessageLength: integration.maxMessageLength,
+				logger,
+				postErrorToThread: vi.fn().mockResolvedValue(undefined),
+				handleSuspension: vi.fn().mockResolvedValue('skipped'),
+				handleMessage: vi.fn().mockResolvedValue(false),
+			});
+			const lines = Array.from({ length: 200 }, (_, i) => `Line ${i} of a long research report.\n`);
+			async function* stream(): AsyncGenerator<StreamChunk> {
+				for (const delta of lines) yield { type: 'text-delta', id: 'report', delta };
+				yield { type: 'finish', finishReason: 'stop' };
+			}
+
+			await consumer.consume(stream(), thread);
+
+			const posts = stub.apiCalls
+				.filter((call) => call.method.endsWith('/channels/700000000000000001/messages'))
+				.map((call) => call.body.content as string);
+			expect(posts.length).toBeGreaterThan(1);
+			for (const post of posts) expect(post.length).toBeLessThanOrEqual(2_000);
+			// The adapter drops each message's trailing newline.
+			expect(posts.join('\n')).toBe(lines.join('').trimEnd());
 		});
 	});
 });

@@ -1,93 +1,79 @@
+// Experiment cleanup (142_aia_inspiration_from_taxonomy_v3)
 import type { PersonalizedPromptDisplaySuggestion } from '@/experiments/instanceAiPersonalizedPromptSuggestions/types';
 
-export type TaxonomyRole = 'sales-and-marketing' | 'it';
+export type TaxonomyRole = 'sales-and-marketing';
+
+export type TaxonomySuggestionSection = 'role' | 'everyone';
 
 export type TaxonomyPromptSuggestion = PersonalizedPromptDisplaySuggestion & {
 	taxonomyRole: TaxonomyRole;
+	section: TaxonomySuggestionSection;
 	order: number;
 };
 
-export const INSTANCE_AI_TAXONOMY_PROMPT_SUGGESTIONS_VERSION = 'v5-taxonomy';
+export const INSTANCE_AI_TAXONOMY_PROMPT_SUGGESTIONS_VERSION = 'v7-taxonomy';
 
 export const TAXONOMY_SEE_MORE_ENABLED = false;
 
 export const INSTANCE_AI_TAXONOMY_PROMPT_SUGGESTIONS = [
 	{
-		id: 'v5-taxonomy-it-1-detect-and-escalate-1password-vault-exports',
-		taxonomyRole: 'it',
+		id: 'v6-taxonomy-sales-and-marketing-3-qualify-leads-and-book-calls',
+		taxonomyRole: 'sales-and-marketing',
+		section: 'role',
 		order: 1,
-		shortTitle: 'Detect and escalate 1Password vault exports',
-		description:
-			'Monitor 1Password audit events for vault exports and escalates each detection to TheHive as an alert, with a notification to your Slack security channel.',
+		shortTitle: 'AI chatbot that answers messages, qualifies leads and books calls',
+		description: 'Answers messages, asks qualifying questions, and saves the lead.',
 		builderPrompt:
-			'Fetch recent 1Password audit events and keep only vault exports. For each export, collect the user, vault name, timestamp, and IP if available. Create a high-severity TheHive alert titled "1Password vault export detected", with the details in the description. Post a summary on Slack with a link to the TheHive alert',
+			'Build an AI chatbot that answers people who message me on WhatsApp or my website chat and turns them into qualified leads. It should answer basic questions about my business using information I provide, ask a few qualifying questions (what they need, budget and timeline), collect their name and email or phone, and offer a link to book a call. Save each lead to a Google Sheet or my CRM and notify me on Slack, Telegram or by email. Before building, ask me which channel to use, what my business offers and which questions qualify a lead.',
 	},
 	{
-		id: 'v5-taxonomy-it-2-escalate-entra-id-high-risk-users',
-		taxonomyRole: 'it',
+		id: 'v6-taxonomy-bis-sales-and-marketing-3-research-ideal-customers',
+		taxonomyRole: 'sales-and-marketing',
+		section: 'role',
 		order: 2,
-		shortTitle: 'Escalate Entra ID high-risk users',
-		description:
-			'Check Microsoft Entra ID for high-risk user detections, aggregate the risk details per user, open an alert in TheHive, and notify to security channel on Slack.',
+		shortTitle: 'Find and research leads that fit my ideal customer',
+		description: 'Finds matching businesses and writes why they might need your product.',
 		builderPrompt:
-			'Every 15 minutes, query Microsoft Graph for Entra ID risk detections and keep only high-risk users. Group detections per user and aggregate risk level, risk state, detection types, sign-in location/IP, and timestamps. Create a high-severity TheHive alert titled "Entra ID high-risk user detected: <user>", with the details in the description. Post a message on Slack with a link to the TheHive alert.',
+			'Build a workflow that finds new leads and researches them for me. Search a source I choose (for example Google Maps for local businesses, Apollo, or a list of company websites) for businesses that match my target customer. For each one, collect the name, website, location and contact details, then use AI to read their website and write a short summary of what they do and why they might need my product. Save everything to a Google Sheet, skipping leads I already have. Before building, ask me who my target customer is and which source to use.',
 	},
 	{
-		id: 'v5-taxonomy-it-3-turn-emails-into-notion-tasks',
-		taxonomyRole: 'it',
+		id: 'v6-taxonomy-bis-sales-and-marketing-2-form-leads-to-sheet',
+		taxonomyRole: 'sales-and-marketing',
+		section: 'role',
 		order: 3,
-		shortTitle: 'Turn emails into Notion tasks',
-		description: 'Extract action items from labeled emails automatically.',
+		shortTitle: 'Save form leads to a Google Sheet, email them and alert me',
+		description: 'Stores a new form lead, confirms by email, and alerts you.',
 		builderPrompt:
-			'On a schedule, check Gmail for messages with a specific label. Extract the task and its key details from each, then create a matching task card in a Notion database.',
+			"Build a workflow that handles new leads from my website form. Trigger it with a webhook or my form tool's trigger. Clean up the fields (name, email, phone, company, message) and add the lead as a new row in a Google Sheet, skipping duplicates. Send the lead a short, friendly confirmation email from Gmail, and send me an instant alert on Slack, Telegram or by email with the lead's details. Before building, ask me which form tool I use and where to send alerts.",
 	},
 	{
-		id: 'v5-taxonomy-it-4-alert-on-unexplained-payment-failures',
-		taxonomyRole: 'it',
+		id: 'v6-taxonomy-sales-and-marketing-2-keep-crm-updated',
+		taxonomyRole: 'sales-and-marketing',
+		section: 'role',
 		order: 4,
-		shortTitle: 'Alert on unexplained payment failures',
-		description:
-			'Watch recurring payment transactions for failures with unknown causes and send an alert with the transaction for investigation.',
+		shortTitle: 'Keep my CRM updated without manual entry',
+		description: 'Creates or updates the matching CRM record when something changes elsewhere.',
 		builderPrompt:
-			'Every hour, fetch recent failed recurring payments from my payment system. Keep only failures whose reason is unknown, missing, or uncategorized, and exclude causes such as insufficient funds or expired cards. For each one, collect the transaction ID, customer, amount, currency, timestamp, and raw error data. Alert my team in Slack.',
+			"Build a workflow that keeps my CRM up to date automatically. When something changes in my other tools, such as a new contact in a spreadsheet, a new email from a client, a booked meeting or a paid invoice, find the matching contact or deal in my CRM, create it if it doesn't exist, and update the right fields without creating duplicates. Add a short note to the record describing what happened. Notify me on Slack or by email if a record can't be matched. Before building, ask me which CRM I use and which tools it should sync with.",
 	},
 	{
-		id: 'v5-taxonomy-sales-and-marketing-1-link-attio-contacts-to-their-deals',
+		id: 'v6-taxonomy-bis-sales-and-marketing-6-messages-into-tasks',
 		taxonomyRole: 'sales-and-marketing',
-		order: 1,
-		shortTitle: 'Link Attio contacts to their deals',
-		description: 'Keep CRM records connected without manual data entry.',
+		section: 'everyone',
+		order: 5,
+		shortTitle: 'Turn requests in emails and messages into tasks',
+		description: 'Creates a task from a request and sends a daily due summary.',
 		builderPrompt:
-			"On a schedule, go through my Attio contacts. Look up each contact's company and deals, then associate the contact with the right deals so my CRM records stay connected.",
+			'Build a workflow that creates tasks for me automatically. When I get an email, Slack message or form submission that contains a request or action item, use AI to decide whether it needs a task. If it does, create the task in my task or project tool with a clear title, a short description, a due date if one is mentioned, and a link back to the original message. Send me a daily summary of tasks that are due or overdue. Before building, ask me which apps to watch and which task tool I use (for example Asana, Trello, ClickUp, Notion or Todoist).',
 	},
 	{
-		id: 'v5-taxonomy-sales-and-marketing-2-route-nps-feedback-to-follow-up',
+		id: 'v6-taxonomy-bis-sales-and-marketing-5-meeting-summaries',
 		taxonomyRole: 'sales-and-marketing',
-		order: 2,
-		shortTitle: 'Route NPS feedback to the right follow-up',
-		description:
-			'Sorts incoming NPS responses: promoters get tagged in Mailchimp for follow-up campaigns, detractors trigger an Outlook alert.',
+		section: 'everyone',
+		order: 6,
+		shortTitle: 'Meeting summaries and action items, sent to me',
+		description: 'Summarizes a finished meeting and lists the action items.',
 		builderPrompt:
-			'When a new NPS response arrives, evaluate the score. For 9-10 (promoter), find the customer in Mailchimp by email, add them to my main audience, and add a "happy customer" tag for referral and review campaigns. For 6 or below (detractor), email customer success through Outlook with the name, email, score, and any feedback. Do nothing for 7-8.',
-	},
-	{
-		id: 'v5-taxonomy-sales-and-marketing-3-enrich-new-hubspot-companies',
-		taxonomyRole: 'sales-and-marketing',
-		order: 3,
-		shortTitle: 'Enrich new HubSpot companies',
-		description:
-			'Automatically researches every new company added to HubSpot using AI web search and fills in its profile with business model, category, and location data.',
-		builderPrompt:
-			"Build an automation that enriches newly created HubSpot company records with AI research. Run whenever a new company is created in HubSpot. For each new company, take its name and website domain and use an AI model with web search capability to research the business. Structured data should be returned: the company's business model (e.g. B2B SaaS, e-commerce, agency, marketplace), its industry category, a one sentence description of what it does, its headquarters location, and approximate company size if discoverable. Update the corresponding HubSpot company record's properties with this data. If the research fails or returns low-confidence results, tag the company for manual review.",
-	},
-	{
-		id: 'v5-taxonomy-sales-and-marketing-4-ai-coaching-feedback-on-sales-calls',
-		taxonomyRole: 'sales-and-marketing',
-		order: 4,
-		shortTitle: 'AI coaching feedback on sales calls',
-		description:
-			'Generate structured coaching feedback and performance scores from sales calls, then posts the results to Slack.',
-		builderPrompt:
-			"When a new call transcript is available, send it to an AI sales coach. Score the call 1-10 and per criterion: discovery questions, objection handling, talk-to-listen ratio, next-step commitment, and rapport. Return three strengths, three improvement areas with quotes from the call, and a suggested follow-up. Post a readable summary to Slack with the rep's name, call date, prospect/company, overall score, and coaching feedback.",
+			'Build a workflow that summarizes my meetings automatically. When a meeting ends and its recording or transcript is available (for example from Google Meet, Zoom, Fireflies or Fathom), use AI to write a short summary with the key decisions, action items with owners, and any follow-up dates. Send the summary to me by email or Slack and save it to a Google Doc or Notion page. Before building, ask me which meeting tool I use and where summaries should go.',
 	},
 ] as const satisfies readonly TaxonomyPromptSuggestion[];

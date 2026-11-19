@@ -1,3 +1,4 @@
+import type { SerializedCredentialData } from '@n8n/api-types';
 import type { CredentialsEntity } from '@n8n/db';
 import isEqual from 'lodash/isEqual';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
@@ -14,7 +15,6 @@ import type {
 } from './credential.types';
 import { CredentialConflictPolicy } from '../../n8n-packages.types';
 import { mergeRequirementConsumers } from '../../spec/requirement-consumers';
-import type { SerializedCredentialData } from '../../spec/serialized/credential.schema';
 
 export function resolveCredentialConflictPolicy(
 	policy: CredentialConflictPolicy | undefined,
@@ -49,15 +49,22 @@ export function isUpdateCandidate(
 		return false;
 	}
 
-	// A credential has no owner column: its owner is the project on the `credential:owner` sharing.
-	const ownerProjectId = credential.shared?.find(
-		(sharing) => sharing.role === 'credential:owner',
-	)?.projectId;
+	const ownerProjectId = credentialOwnerProjectId(credential);
 	return ownerProjectId !== undefined && scope.projectIds.has(ownerProjectId);
 }
 
-/** Package credentials never carry arrays that can apply, see `credential-export-policy.ts`. */
-function mergeIntoStored(
+/** A credential has no owner column: its owner is the project on the `credential:owner` sharing. */
+export function credentialOwnerProjectId(
+	credential: Pick<CredentialsEntity, 'shared'>,
+): string | undefined {
+	return credential.shared?.find((sharing) => sharing.role === 'credential:owner')?.projectId;
+}
+
+/**
+ * The stored data with the package values merged in. Package credentials never carry arrays
+ * that can apply, see `credential-export-policy.ts`.
+ */
+export function mergeIntoStored(
 	stored: ICredentialDataDecryptedObject,
 	incoming: SerializedCredentialData,
 ): ICredentialDataDecryptedObject {
@@ -65,14 +72,19 @@ function mergeIntoStored(
 }
 
 /**
- * Whether `overwrite` would change the destination credential: a different name, or stored
- * data that changes when the package values merge into it. Arrays never count.
+ * Whether `overwrite` would change the destination credential: a different name, a different
+ * description, or stored data that changes when the package values merge into it. Arrays never
+ * count. The description counts only when the package decides it: the importer drops it from
+ * the package credential when the instance has credential descriptions off.
  */
 export function credentialDiffers(
-	stored: { name: string; data: ICredentialDataDecryptedObject },
-	incoming: { name: string; data?: SerializedCredentialData },
+	stored: { name: string; data: ICredentialDataDecryptedObject; description?: string | null },
+	incoming: { name: string; data?: SerializedCredentialData; description?: string | null },
 ): boolean {
 	if (stored.name !== incoming.name) return true;
+	if (incoming.description !== undefined && (stored.description ?? null) !== incoming.description) {
+		return true;
+	}
 	if (incoming.data === undefined) return false;
 
 	return !isEqual(mergeIntoStored(stored.data, incoming.data), stored.data);
@@ -80,7 +92,11 @@ export function credentialDiffers(
 
 /** What a package credential would write, so that two payloads compare by effect. */
 function writtenPayload(candidate: CredentialUpdateCandidate) {
-	return { name: candidate.name, data: mergeIntoStored({}, candidate.data ?? {}) };
+	return {
+		name: candidate.name,
+		description: candidate.description,
+		data: mergeIntoStored({}, candidate.data ?? {}),
+	};
 }
 
 function uniqueSorted(values: string[]): string[] {
@@ -175,6 +191,20 @@ export function credentialConflicts(
 		plans.flatMap(({ candidates }) => candidates),
 		plans.flatMap(({ updates }) => updates),
 	);
+}
+
+/**
+ * The destination credentials that the import writes, each with the package credentials that
+ * resolve to it. Only `overwrite` writes. Divergence blocks the import, so all entries of one
+ * destination write the same payload.
+ */
+export function plannedCredentialUpdates(
+	policy: CredentialConflictPolicy,
+	plans: Array<Pick<CredentialImportPlan, 'updates'>>,
+): Map<string, CredentialUpdateCandidate[]> {
+	if (policy !== CredentialConflictPolicy.Overwrite) return new Map();
+
+	return groupByTarget(plans.flatMap(({ updates }) => updates));
 }
 
 /**

@@ -22,7 +22,7 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-	submit: [resumeData: unknown];
+	submit: [resumeData: unknown, onAccepted?: () => void];
 }>();
 
 /**
@@ -87,8 +87,8 @@ const interactiveRenderers = computed<AgentsChatInteractionRenderer[]>(() => [
 	}),
 ]);
 
-function onSubmit(resumeData: unknown) {
-	emit('submit', resumeData);
+function onSubmit(resumeData: unknown, onAccepted?: () => void) {
+	emit('submit', resumeData, onAccepted);
 }
 </script>
 

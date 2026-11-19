@@ -1,19 +1,30 @@
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { AgentsConfig } from '@n8n/config';
+import { AgentsConfig, GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import { AiService } from '@/services/ai.service';
-import { ExecutionDataJsonStore } from '@/executions/execution-data/execution-data-json-store';
-import { FavoriteResourceResolverRegistry } from '@n8n/backend-services';
+import { FolderContentService } from '@/services/folder-content.service';
+import {
+	AgentProjectLookupProxy,
+	FavoriteResourceResolverRegistry,
+	ExecutionDataJsonStore,
+} from '@n8n/backend-services';
 import { SandboxSettingsService } from '@/services/sandbox-settings.service';
+import { ServiceAccountProjects } from '@/services/service-account-projects';
 import { AgentUsageProviderProxy } from '@/modules/workflow-index/agent-usage-provider-proxy.service';
+import { KnowledgeSandboxProviderProxy } from '@/modules/knowledge/knowledge-sandbox-provider-proxy';
+import { SkillUsageProxy } from '@/modules/skills';
+import { ServiceAccountUsageProxy } from '@/services/service-account-usage-proxy.service';
 
+import { AgentFolderService } from '../agent-folder.service';
 import { AgentChannelMediaRetentionTask } from '../agent-channel-media-retention.task';
+import { AgentKnowledgeSnapshotTask } from '../agent-knowledge-snapshot.task';
 import { AgentCheckpointPruningTask } from '../agent-checkpoint-pruning.task';
 import { AgentInterruptedExecutionSweepTask } from '../agent-interrupted-execution-sweep.task';
+import { AgentServiceAccountService } from '../agent-service-account.service';
 import { AgentsSettingsService } from '../agents-settings.service';
 import { AgentsModule } from '../agents.module';
 import { AgentDependencyIndexListener } from '../agent-dependency-index.listener';
@@ -21,24 +32,26 @@ import { AgentExecutionService } from '../agent-execution.service';
 import { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import { AgentTaskService } from '../agent-task.service';
 import { AgentsService } from '../agents.service';
-import { AgentKnowledgeFileStore } from '../agent-knowledge-file-store';
 import { AgentChannelReconciler } from '../integrations/agent-channel-reconciler.service';
 import { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
-import { DiscordIntegration } from '../integrations/platforms/discord-integration';
-import { LinearIntegration } from '../integrations/platforms/linear-integration';
-import { N8nChatIntegration } from '../integrations/platforms/n8n-chat-integration';
+import { DiscordIntegration } from '../integrations/platforms/discord/discord-integration';
+import { LinearIntegration } from '../integrations/platforms/linear/linear-integration';
+import { N8nChatIntegration } from '../integrations/platforms/n8n-chat/n8n-chat-integration';
 import { SlackIntegration } from '../integrations/platforms/slack/slack-integration';
-import { TelegramIntegration } from '../integrations/platforms/telegram-integration';
+import { TelegramIntegration } from '../integrations/platforms/telegram/telegram-integration';
 import { WhatsAppIntegration } from '../integrations/platforms/whatsapp/whatsapp-integration';
 import { AgentExecutionLogStore } from '../execution-log/agent-execution-log-store';
 import { AgentBudgetSpendRepository } from '../repositories/agent-budget-spend.repository';
 import { AgentHistoryRepository } from '../repositories/agent-history.repository';
 import { AgentCredentialDependencyRepository } from '../repositories/agent-credential-dependency.repository';
 import { AgentWorkflowDependencyRepository } from '../repositories/agent-workflow-dependency.repository';
-import { SkillsHubRollout } from '../skills/skills-hub-rollout';
-import { SkillsHubStartupCopy } from '../skills/skills-hub-startup-copy';
+import { AgentSkillUsage } from '../agent-skill-usage';
+import { AgentServiceAccountUsage } from '../agent-service-account-usage';
+import { AgentKnowledgeSandboxProvider } from '../knowledge-sandbox-provider.adapter';
 import { AgentRepository } from '../repositories/agent.repository';
 import { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
+import { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
+import { makeKnowledgeAvailabilityService } from '@/modules/knowledge/__tests__/test-utils/knowledge-availability.service';
 
 /**
  * Stubs every dependency `AgentsModule.init()` resolves via `Container.get`,
@@ -49,12 +62,13 @@ import { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
  * executes.
  */
 function setUpContainerForInit() {
+	Container.set(FolderContentService, mock<FolderContentService>());
+	Container.set(AgentFolderService, mock<AgentFolderService>());
 	Container.set(SandboxSettingsService, mock<SandboxSettingsService>());
 	Container.set(AgentsService, mock<AgentsService>());
 	Container.set(AgentDependencyIndexListener, mock<AgentDependencyIndexListener>());
 	Container.set(AgentExecutionService, mock<AgentExecutionService>());
 	Container.set(AgentExecutionLogStore, mock<AgentExecutionLogStore>());
-	Container.set(AgentKnowledgeFileStore, mock<AgentKnowledgeFileStore>());
 	Container.set(ExecutionDataJsonStore, mock<ExecutionDataJsonStore>());
 	Container.set(AgentRuntimeCacheService, mock<AgentRuntimeCacheService>());
 	Container.set(AgentHistoryRepository, mock<AgentHistoryRepository>());
@@ -62,12 +76,24 @@ function setUpContainerForInit() {
 	Container.set(AgentSecureRuntime, mock<AgentSecureRuntime>());
 
 	Container.set(AgentRepository, mock<AgentRepository>());
-	Container.set(SkillsHubRollout, mock<SkillsHubRollout>());
-	Container.set(SkillsHubStartupCopy, mock<SkillsHubStartupCopy>());
+	Container.set(SkillUsageProxy, mock<SkillUsageProxy>());
+	Container.set(AgentSkillUsage, mock<AgentSkillUsage>());
+	const serviceAccountUsageProxy = mock<ServiceAccountUsageProxy>();
+	const serviceAccountUsage = mock<AgentServiceAccountUsage>();
+	Container.set(ServiceAccountUsageProxy, serviceAccountUsageProxy);
+	Container.set(AgentServiceAccountUsage, serviceAccountUsage);
+	const knowledgeSandboxProviderProxy = mock<KnowledgeSandboxProviderProxy>();
+	const knowledgeSandboxProvider = mock<AgentKnowledgeSandboxProvider>();
+	Container.set(KnowledgeSandboxProviderProxy, knowledgeSandboxProviderProxy);
+	Container.set(AgentKnowledgeSandboxProvider, knowledgeSandboxProvider);
 	Container.set(FavoriteResourceResolverRegistry, mock<FavoriteResourceResolverRegistry>());
 	Container.set(AgentCredentialDependencyRepository, mock<AgentCredentialDependencyRepository>());
 	Container.set(AgentWorkflowDependencyRepository, mock<AgentWorkflowDependencyRepository>());
 	Container.set(AgentUsageProviderProxy, mock<AgentUsageProviderProxy>());
+	const serviceAccountProjects = mock<ServiceAccountProjects>();
+	const agentServiceAccountService = mock<AgentServiceAccountService>();
+	Container.set(ServiceAccountProjects, serviceAccountProjects);
+	Container.set(AgentServiceAccountService, agentServiceAccountService);
 
 	// The real registry — this is what the test asserts against.
 	const registry = new ChatIntegrationRegistry();
@@ -95,6 +121,8 @@ function setUpContainerForInit() {
 	);
 
 	return {
+		serviceAccountProjects,
+		agentServiceAccountService,
 		registry,
 		slackIntegration,
 		telegramIntegration,
@@ -102,6 +130,10 @@ function setUpContainerForInit() {
 		discordIntegration,
 		whatsAppIntegration,
 		n8nChatIntegration,
+		knowledgeSandboxProviderProxy,
+		knowledgeSandboxProvider,
+		serviceAccountUsageProxy,
+		serviceAccountUsage,
 	};
 }
 
@@ -118,7 +150,20 @@ describe('AgentsModule', () => {
 	});
 
 	describe('systemTasks()', () => {
-		it('registers the pruning, sweep and media retention tasks', async () => {
+		it('registers the pruning, sweep, media retention and knowledge snapshot tasks', async () => {
+			Container.set(GlobalConfig, mock<GlobalConfig>({ diagnostics: { enabled: true } }));
+
+			await expect(module.systemTasks()).resolves.toEqual([
+				AgentCheckpointPruningTask,
+				AgentInterruptedExecutionSweepTask,
+				AgentChannelMediaRetentionTask,
+				AgentKnowledgeSnapshotTask,
+			]);
+		});
+
+		it('leaves out the knowledge snapshot task when telemetry is off', async () => {
+			Container.set(GlobalConfig, mock<GlobalConfig>({ diagnostics: { enabled: false } }));
+
 			await expect(module.systemTasks()).resolves.toEqual([
 				AgentCheckpointPruningTask,
 				AgentInterruptedExecutionSweepTask,
@@ -129,21 +174,37 @@ describe('AgentsModule', () => {
 
 	describe('settings()', () => {
 		it.each([
-			{ sandboxEnabled: true, proxyEnabled: false },
-			{ sandboxEnabled: false, proxyEnabled: true },
+			{
+				isSandboxEnabled: true,
+				isKnowledgeActive: true,
+				proxyEnabled: false,
+				knowledgeBaseEnabled: true,
+			},
+			{
+				isSandboxEnabled: false,
+				isKnowledgeActive: true,
+				proxyEnabled: true,
+				knowledgeBaseEnabled: false,
+			},
+			{
+				isSandboxEnabled: true,
+				isKnowledgeActive: false,
+				proxyEnabled: true,
+				knowledgeBaseEnabled: false,
+			},
 		])(
-			'keeps knowledge base ($sandboxEnabled) and proxy ($proxyEnabled) availability independent',
-			async ({ sandboxEnabled, proxyEnabled }) => {
+			'reports knowledgeBaseEnabled=$knowledgeBaseEnabled for sandbox=$isSandboxEnabled and knowledge module=$isKnowledgeActive, independent of proxy=$proxyEnabled',
+			async ({ isSandboxEnabled, isKnowledgeActive, proxyEnabled, knowledgeBaseEnabled }) => {
 				Container.set(AgentsConfig, mock<AgentsConfig>({ modules: [] }));
 				Container.set(
-					SandboxSettingsService,
-					mock<SandboxSettingsService>({ isAgentSandboxEnabled: () => sandboxEnabled }),
+					KnowledgeAvailabilityService,
+					makeKnowledgeAvailabilityService({ isSandboxEnabled, isKnowledgeActive }),
 				);
 				Container.set(AiService, mock<AiService>({ isProxyEnabled: () => proxyEnabled }));
 
 				const settings = await module.settings();
 
-				expect(settings.knowledgeBaseEnabled).toBe(sandboxEnabled);
+				expect(settings.knowledgeBaseEnabled).toBe(knowledgeBaseEnabled);
 				expect(settings.proxyEnabled).toBe(proxyEnabled);
 			},
 		);
@@ -171,6 +232,43 @@ describe('AgentsModule', () => {
 			expect(registry.get('linear')).toBe(linearIntegration);
 			expect(registry.get('discord')).toBe(discordIntegration);
 			expect(registry.get(N8N_CHAT_INTEGRATION_TYPE)).toBe(n8nChatIntegration);
+		});
+
+		it('registers the agent repository as the agent project lookup for collaboration', async () => {
+			setUpContainerForInit();
+			const agentRepository = Container.get(AgentRepository);
+			vi.mocked(agentRepository.getProjectIdById).mockResolvedValue('project-1');
+
+			await module.init();
+
+			await expect(
+				Container.get(AgentProjectLookupProxy).getProjectIdById('agent-1'),
+			).resolves.toBe('project-1');
+			expect(agentRepository.getProjectIdById).toHaveBeenCalledWith('agent-1');
+		});
+
+		it('registers the agent service accounts with the share pickers', async () => {
+			const { serviceAccountProjects, agentServiceAccountService } = setUpContainerForInit();
+
+			await module.init();
+
+			expect(serviceAccountProjects.register).toHaveBeenCalledWith(agentServiceAccountService);
+		});
+
+		it('registers the knowledge sandbox provider with the knowledge module', async () => {
+			const { knowledgeSandboxProviderProxy, knowledgeSandboxProvider } = setUpContainerForInit();
+
+			await module.init();
+
+			expect(knowledgeSandboxProviderProxy.register).toHaveBeenCalledWith(knowledgeSandboxProvider);
+		});
+
+		it('tells core which agent acts as a service account', async () => {
+			const { serviceAccountUsageProxy, serviceAccountUsage } = setUpContainerForInit();
+
+			await module.init();
+
+			expect(serviceAccountUsageProxy.register).toHaveBeenCalledWith(serviceAccountUsage);
 		});
 	});
 });

@@ -1,6 +1,7 @@
 import {
 	NodeApiError,
 	NodeOperationError,
+	requestUrl,
 	type ILoadOptionsFunctions,
 	type INodeListSearchResult,
 } from 'n8n-workflow';
@@ -60,7 +61,7 @@ export function makeModelSearch(capability: ModelCapability) {
 		const listModelServices = async (parent?: string): Promise<ModelService[]> =>
 			await listDatabricksPages<ModelServicesResponse, ModelService>(
 				this,
-				`${host}/api/2.1/unity-catalog/model-services`,
+				requestUrl`${host}/api/2.1/unity-catalog/model-services`,
 				// FULL view is needed for supported_api_types
 				{ view: 'FULL', parent },
 				(page) => page.model_services,

@@ -382,6 +382,56 @@ describe('DbConnection', () => {
 		});
 	});
 
+	describe('getManagedPostgresMarkers', () => {
+		beforeEach(() => {
+			// @ts-expect-error readonly property
+			dataSource.isInitialized = true;
+		});
+
+		it('should return the markers the server reports', async () => {
+			const markers = { aurora: false, rds: true, azure: false, cloudSql: false };
+			dataSource.query.mockResolvedValue([markers]);
+
+			await expect(dbConnection.getManagedPostgresMarkers()).resolves.toEqual(markers);
+		});
+
+		it('should return null when the query fails', async () => {
+			dataSource.query.mockRejectedValue(new Error('permission denied for view pg_settings'));
+
+			await expect(dbConnection.getManagedPostgresMarkers()).resolves.toBeNull();
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Could not determine the managed database service: permission denied for view pg_settings',
+			);
+		});
+
+		it('should not query when the data source is not initialized', async () => {
+			// @ts-expect-error readonly property
+			dataSource.isInitialized = false;
+
+			await expect(dbConnection.getManagedPostgresMarkers()).resolves.toBeNull();
+			expect(dataSource.query).not.toHaveBeenCalled();
+		});
+
+		it('should not query on sqlite', async () => {
+			connectionOptions.getOptions.mockReturnValue({
+				type: 'sqlite',
+				database: ':memory:',
+				migrations,
+			} as DataSourceOptions);
+			// options are @Memoized and read in the constructor — re-instantiate
+			const sqliteConnection = new DbConnection(
+				errorReporter,
+				connectionOptions,
+				databaseConfig,
+				logger,
+				dbConnectionMetrics,
+			);
+
+			await expect(sqliteConnection.getManagedPostgresMarkers()).resolves.toBeNull();
+			expect(dataSource.query).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('close', () => {
 		it('should stop the monitor', async () => {
 			dataSource.initialize.mockResolvedValue(dataSource);

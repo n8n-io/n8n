@@ -1,5 +1,6 @@
 import { mockDeep } from 'vitest-mock-extended';
-import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import type { IBinaryData, IExecuteFunctions, INode } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import * as GenericFunctions from '../GenericFunctions';
 import { S3 } from '../S3.node';
@@ -53,7 +54,14 @@ describe('S3 Node - Bucket Delete', () => {
 		const result = await node.execute.call(executeFunctionsMock);
 
 		expect(s3ApiRequestSOAPSpy).toHaveBeenCalledTimes(1);
-		expect(s3ApiRequestSOAPSpy).toHaveBeenCalledWith('test-bucket', 'DELETE', '', '', {}, {});
+		expect(s3ApiRequestSOAPSpy).toHaveBeenCalledWith(
+			'test-bucket',
+			'DELETE',
+			requestPath``,
+			'',
+			{},
+			{},
+		);
 
 		expect(result).toEqual([[{ json: { success: true } }]]);
 	});
@@ -196,5 +204,84 @@ describe('S3 Node - File Copy', () => {
 		await node.execute.call(executeFunctionsMock);
 
 		expect(copySourceHeader()).toBe('/test-bucket/r%C3%A9sum%C3%A9.pdf?versionId=3HL4kqt');
+	});
+});
+
+describe('S3 Node - File Upload', () => {
+	const executeFunctionsMock = mockDeep<IExecuteFunctions>();
+	let s3ApiRequestSOAPSpy: MockInstance;
+	let node: S3;
+
+	beforeEach(() => {
+		vi.resetAllMocks();
+		s3ApiRequestSOAPSpy = vi.spyOn(GenericFunctions, 's3ApiRequestSOAP');
+		node = new S3();
+
+		executeFunctionsMock.getCredentials.mockResolvedValue({
+			endpoint: 'https://s3.amazonaws.com',
+			accessKeyId: 'test-key',
+			secretAccessKey: 'test-secret',
+			region: 'us-east-1',
+		});
+
+		executeFunctionsMock.getNode.mockReturnValue({ typeVersion: 1 } as INode);
+		executeFunctionsMock.continueOnFail.mockReturnValue(false);
+
+		executeFunctionsMock.helpers.returnJsonArray.mockImplementation((data) =>
+			Array.isArray(data) ? data.map((item) => ({ json: item })) : [{ json: data }],
+		);
+		executeFunctionsMock.helpers.constructExecutionMetaData.mockImplementation(
+			(data) => data as any,
+		);
+	});
+
+	it('should read the binary property name from the current item', async () => {
+		executeFunctionsMock.getInputData.mockReturnValue([
+			{ json: { field: 'data' }, binary: { data: {} as IBinaryData } },
+			{ json: { field: 'attachment' }, binary: { attachment: {} as IBinaryData } },
+		]);
+
+		executeFunctionsMock.getNodeParameter.mockImplementation((paramName, itemIndex) => {
+			switch (paramName) {
+				case 'resource':
+					return 'file';
+				case 'operation':
+					return 'upload';
+				case 'bucketName':
+					return 'test-bucket';
+				case 'fileName':
+					return '';
+				case 'binaryData':
+					return true;
+				case 'binaryPropertyName':
+					return itemIndex === 0 ? 'data' : 'attachment';
+				case 'additionalFields':
+					return {};
+				case 'tagsUi':
+					return {};
+				default:
+					return undefined;
+			}
+		});
+
+		executeFunctionsMock.helpers.assertBinaryData.mockImplementation(
+			(_itemIndex: number, parameterData: string | IBinaryData) => ({
+				data: '',
+				fileName: parameterData === 'data' ? 'first.txt' : 'second.txt',
+				mimeType: 'text/plain',
+			}),
+		);
+		executeFunctionsMock.helpers.getBinaryDataBuffer.mockResolvedValue(Buffer.from('content'));
+
+		s3ApiRequestSOAPSpy.mockResolvedValue({ LocationConstraint: { _: '' } });
+
+		const result = await node.execute.call(executeFunctionsMock);
+
+		expect(executeFunctionsMock.helpers.assertBinaryData).toHaveBeenCalledWith(0, 'data');
+		expect(executeFunctionsMock.helpers.assertBinaryData).toHaveBeenCalledWith(1, 'attachment');
+		expect(executeFunctionsMock.helpers.getBinaryDataBuffer).toHaveBeenCalledWith(0, 'data');
+		expect(executeFunctionsMock.helpers.getBinaryDataBuffer).toHaveBeenCalledWith(1, 'attachment');
+		expect(s3ApiRequestSOAPSpy).toHaveBeenCalledTimes(4);
+		expect(result).toEqual([[{ json: { success: true } }, { json: { success: true } }]]);
 	});
 });

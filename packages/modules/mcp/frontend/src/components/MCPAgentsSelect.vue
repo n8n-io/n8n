@@ -63,7 +63,7 @@ async function searchAgents(query?: string) {
 	hasFetched.value = false;
 	try {
 		const response = await mcpStore.getMcpEligibleAgents({
-			take: 10,
+			limit: 10,
 			query: query ?? undefined,
 		});
 		agentOptions.value = response?.data ?? [];

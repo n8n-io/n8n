@@ -17,6 +17,18 @@ export const INSTANCE_TELEMETRY = defineTelemetryEvents({
 					'Postgres server version, or SQLite library version. Null when it could not be determined, which for `postgresdb` means the query failed rather than that the instance runs SQLite.',
 				),
 			n8n_version_notifications_enabled: z.boolean(),
+			db_vendor: z
+				.enum(['aurora', 'rds', 'azure', 'cloud-sql', 'other'])
+				.optional()
+				.describe(
+					'Managed Postgres service n8n runs on. `other` covers self-managed and unrecognized providers. Absent on SQLite',
+				),
+			redis_vendor: z
+				.enum(['elasticache', 'azure-cache', 'other'])
+				.optional()
+				.describe(
+					'Managed Redis service n8n uses. `other` covers self-managed and unrecognized providers. Absent outside queue mode',
+				),
 			n8n_disable_production_main_process: z.boolean(),
 			system_info: z.object({
 				os: z.object({
@@ -94,6 +106,14 @@ export const INSTANCE_TELEMETRY = defineTelemetryEvents({
 			smtp_set_up: z.boolean(),
 			ldap_allowed: z.boolean(),
 			saml_enabled: z.boolean(),
+			public_api_disabled: z
+				.boolean()
+				.describe('The operator switched the Public API off with N8N_PUBLIC_API_DISABLED'),
+			public_api_swagger_ui_disabled: z
+				.boolean()
+				.describe(
+					'The operator switched the Swagger UI of the Public API off with N8N_PUBLIC_API_SWAGGERUI_DISABLED',
+				),
 			license_plan_name: z.string(),
 			license_tenant_id: z.number(),
 			binary_data_s3: z
@@ -137,6 +157,12 @@ export const INSTANCE_TELEMETRY = defineTelemetryEvents({
 				// JSON Schema. It reaches the warehouse as an ISO timestamp via JSON.stringify.
 				.unknown()
 				.describe('Date of the oldest workflow, absent when the instance has none'),
+			license_consumer_id: z
+				.string()
+				.optional()
+				.describe(
+					'License server consumer ID of the stored license, absent without a license or with an ephemeral one. Changes when the instance activates again',
+				),
 			otel: z.object({
 				enabled: z.boolean(),
 				include_node_spans: z.boolean(),

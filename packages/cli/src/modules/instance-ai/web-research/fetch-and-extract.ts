@@ -45,7 +45,11 @@ function loadTurndownGfm(): typeof JoplinTurndownGfm.gfm {
 const DEFAULT_TIMEOUT_MS = 30_000;
 const MAX_TIMEOUT_MS = 120_000;
 const MAX_RESPONSE_BYTES = 5 * 1024 * 1024; // 5 MB
-const DEFAULT_MAX_CONTENT_LENGTH = 30_000;
+/**
+ * Keep the whole page by default. The research tool slices it per call and the
+ * fetch cache keeps it for later offsets, so this limit only bounds memory.
+ */
+const DEFAULT_MAX_CONTENT_LENGTH = 500_000;
 
 export interface FetchAndExtractOptions {
 	maxContentLength?: number;
@@ -75,7 +79,7 @@ function unwrapFetchError(error: unknown): unknown {
 
 /**
  * Fetch a URL, extract its main content, and convert to markdown.
- * Routes by content-type: HTML → Readability + Turndown, PDF → pdf-parse, text → passthrough.
+ * Routes by content-type: HTML → Readability + Turndown, PDF → pdf-parse, text, JSON, XML, CSV and YAML → passthrough.
  */
 export async function fetchAndExtract(
 	url: string,
@@ -131,12 +135,24 @@ export async function fetchAndExtract(
 		return await extractPdf(url, finalUrl, rawBody, maxContentLength);
 	}
 
-	if (contentType.includes('text/plain') || contentType.includes('text/markdown')) {
+	if (isRawTextContentType(contentType)) {
 		return extractPlainText(url, finalUrl, rawBody, maxContentLength);
 	}
 
 	// Default: treat as HTML
 	return extractHtml(url, finalUrl, rawBody, maxContentLength);
+}
+
+/**
+ * Text formats that HTML extraction would destroy. JSON makes Readability throw,
+ * and XML or CSV parse to an empty document, so return these bodies as they are.
+ */
+const RAW_TEXT_MIME_PATTERN =
+	/^(?:text\/(?:plain|markdown|csv|xml|yaml)|application\/(?:[\w.-]+\+)?(?:json|xml|yaml|x-yaml|x-ndjson|csv))$/;
+
+function isRawTextContentType(contentType: string): boolean {
+	const mimeType = contentType.split(';')[0].trim().toLowerCase();
+	return mimeType !== 'application/xhtml+xml' && RAW_TEXT_MIME_PATTERN.test(mimeType);
 }
 
 async function readLimitedBody(response: Response, maxBytes: number): Promise<Buffer> {

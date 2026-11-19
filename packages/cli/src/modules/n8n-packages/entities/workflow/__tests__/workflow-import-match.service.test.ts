@@ -102,10 +102,12 @@ describe('WorkflowImportMatchService', () => {
 	it('reports a conflict when two active workflows share a source id', async () => {
 		const first = workflow({ id: 'local-1', sourceWorkflowId: 'wf-dup', name: 'First' });
 		const second = workflow({ id: 'local-2', sourceWorkflowId: 'wf-dup', name: 'Second' });
-		const { service } = makeService([first, second]);
+		const authored = workflow({ id: 'wf-dup' });
+		const { service } = makeService([authored, second, first]);
 
 		const result = await service.findBySourceWorkflowIds('project-1', ['wf-dup']);
 
+		expect(result.matches.get('wf-dup')).toBe(first);
 		expect(result.lineageConflicts).toEqual([
 			{
 				sourceWorkflowId: 'wf-dup',

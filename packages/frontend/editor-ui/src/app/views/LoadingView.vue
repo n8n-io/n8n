@@ -5,7 +5,7 @@ import { N8nSpinner } from '@n8n/design-system';
 <template>
 	<div :class="$style.wrapper" data-test-id="node-view-loader">
 		<div :class="$style.spinner">
-			<N8nSpinner type="grid" size="xxlarge" />
+			<N8nSpinner type="brand" size="xxlarge" />
 		</div>
 	</div>
 </template>

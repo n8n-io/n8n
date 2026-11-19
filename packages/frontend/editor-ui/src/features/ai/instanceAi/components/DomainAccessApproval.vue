@@ -1,13 +1,12 @@
 <script lang="ts" setup>
 import { N8nApprovalCard, type ApprovalOption } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import type { InstanceAiConfirmRequest } from '@n8n/api-types';
 import { computed, ref } from 'vue';
-import { useThread } from '../instanceAi.store';
 
 type DomainAction = 'allow_once' | 'allow_domain' | 'allow_all';
 
 interface DomainProps {
-	requestId: string;
 	severity?: string;
 	url: string;
 	host: string;
@@ -15,7 +14,6 @@ interface DomainProps {
 }
 
 interface WebSearchProps {
-	requestId: string;
 	severity?: string;
 	query: string;
 	url?: never;
@@ -24,8 +22,12 @@ interface WebSearchProps {
 
 const props = defineProps<DomainProps | WebSearchProps>();
 
+const emit = defineEmits<{
+	/** The user's decision, as the Assistant confirm body. The parent sends it. */
+	decide: [body: InstanceAiConfirmRequest];
+}>();
+
 const i18n = useI18n();
-const thread = useThread();
 const resolved = ref(false);
 
 const isWebSearch = computed(() => props.query !== undefined);
@@ -81,13 +83,11 @@ const options = computed<ApprovalOption[]>(() => {
 
 function handleAction(approved: boolean, domainAccessAction?: DomainAction) {
 	resolved.value = true;
-	thread.resolveConfirmation(props.requestId, approved ? 'approved' : 'denied');
-	void thread.confirmAction(
-		props.requestId,
+	const body: InstanceAiConfirmRequest =
 		approved && domainAccessAction
 			? { kind: 'domainAccessApprove', domainAccessAction }
-			: { kind: 'domainAccessDeny' },
-	);
+			: { kind: 'domainAccessDeny' };
+	emit('decide', body);
 }
 
 function onSelect(key: string) {

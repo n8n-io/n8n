@@ -54,7 +54,8 @@ export type ValidationErrorCode =
 	| 'INVALID_DATE_METHOD'
 	| 'UNKNOWN_CONFIG_KEY'
 	| 'UNKNOWN_NODE_VERSION'
-	| 'DEPRECATED_NODE_TYPE';
+	| 'DEPRECATED_NODE_TYPE'
+	| 'MOCK_OUTPUT_JSON_ENVELOPE';
 
 /**
  * Validation error class

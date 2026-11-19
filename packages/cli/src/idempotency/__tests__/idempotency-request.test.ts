@@ -38,7 +38,7 @@ describe('honorsIdempotencyKey', () => {
 	it.each([
 		'/api/v1/workflows/abc/activate',
 		'/api/v1/workflows/abc/deactivate',
-		'/api/v1/promotions/connections/c1/promote/disconnect',
+		'/api/v1/promotions/environments/e1/disconnect',
 		'/api/v1/workflows/abc/publish',
 		'/api/v1/workflows/abc/unpublish',
 		'/api/v1/workflows/abc/archive',
@@ -113,6 +113,24 @@ describe('requestFingerprint', () => {
 				path: '/api/v1/workflows',
 				query: '',
 				body: JSON.stringify({ name: 'Hello' }),
+			}),
+		);
+	});
+
+	it('hashes a raw body in the declared charset', () => {
+		const req = {
+			method: 'POST',
+			originalUrl: '/api/v1/workflows',
+			rawBody: Buffer.from('{"name":"Grüße"}', 'utf16le').swap16(),
+			encoding: 'utf-16be' as BufferEncoding,
+		};
+
+		expect(requestFingerprint(req)).toBe(
+			fingerprintParts({
+				method: 'POST',
+				path: '/api/v1/workflows',
+				query: '',
+				body: '{"name":"Grüße"}',
 			}),
 		);
 	});

@@ -1,6 +1,7 @@
 import type { IDataObject, IExecuteFunctions, IRequestOptions } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
-import { pagerDutyApiRequestAllItems } from '../GenericFunctions';
+import { pagerDutyApiRequest, pagerDutyApiRequestAllItems } from '../GenericFunctions';
 
 describe('PagerDuty -> pagerDutyApiRequestAllItems', () => {
 	let mockExecuteFunctions: IExecuteFunctions;
@@ -55,7 +56,7 @@ describe('PagerDuty -> pagerDutyApiRequestAllItems', () => {
 			mockExecuteFunctions,
 			'incidents',
 			'GET',
-			'/incidents',
+			requestPath`/incidents`,
 			{},
 			{},
 		);
@@ -72,7 +73,7 @@ describe('PagerDuty -> pagerDutyApiRequestAllItems', () => {
 			mockExecuteFunctions,
 			'incidents',
 			'GET',
-			'/incidents',
+			requestPath`/incidents`,
 			{},
 			{},
 		);
@@ -88,11 +89,30 @@ describe('PagerDuty -> pagerDutyApiRequestAllItems', () => {
 			mockExecuteFunctions,
 			'incidents',
 			'GET',
-			'/incidents',
+			requestPath`/incidents`,
 			{},
 			{},
 		);
 
 		expect(mockRequest).toHaveBeenCalledTimes(3);
+	});
+
+	it('should encode path values in the request URL', async () => {
+		mockRequest.mockResolvedValue({ incident: {} });
+
+		const incidentId = 'PT4KHLK/notes?x=1';
+		await pagerDutyApiRequest.call(
+			mockExecuteFunctions,
+			'GET',
+			requestPath`/incidents/${incidentId}`,
+		);
+
+		expect(mockRequest).toHaveBeenCalledWith(
+			expect.objectContaining({
+				uri: expect.objectContaining({
+					value: 'https://api.pagerduty.com/incidents/PT4KHLK%2Fnotes%3Fx=1',
+				}),
+			}),
+		);
 	});
 });

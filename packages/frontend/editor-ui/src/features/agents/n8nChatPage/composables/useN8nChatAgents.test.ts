@@ -39,13 +39,13 @@ describe('useN8nChatAgents', () => {
 
 		expect(listN8nChatAgentsMock).toHaveBeenCalledWith(expect.anything(), {
 			query: '',
-			skip: 0,
-			take: 50,
+			offset: 0,
+			limit: 50,
 			sortBy: 'usage:desc',
 		});
 	});
 
-	it('refetches with an updated skip when the page changes', async () => {
+	it('refetches with an updated offset when the page changes', async () => {
 		listN8nChatAgentsMock.mockResolvedValue({ count: 0, data: [] });
 		const query = ref('');
 		const page = ref(1);
@@ -59,13 +59,13 @@ describe('useN8nChatAgents', () => {
 
 		expect(listN8nChatAgentsMock).toHaveBeenLastCalledWith(expect.anything(), {
 			query: '',
-			skip: 50,
-			take: 50,
+			offset: 50,
+			limit: 50,
 			sortBy: 'usage:desc',
 		});
 	});
 
-	it('refetches with the new take and skip when the page size changes', async () => {
+	it('refetches with the new limit and offset when the page size changes', async () => {
 		listN8nChatAgentsMock.mockResolvedValue({ count: 0, data: [] });
 		const query = ref('');
 		const page = ref(2);
@@ -79,8 +79,8 @@ describe('useN8nChatAgents', () => {
 
 		expect(listN8nChatAgentsMock).toHaveBeenLastCalledWith(expect.anything(), {
 			query: '',
-			skip: 25,
-			take: 25,
+			offset: 25,
+			limit: 25,
 			sortBy: 'usage:desc',
 		});
 	});
@@ -99,8 +99,8 @@ describe('useN8nChatAgents', () => {
 
 		expect(listN8nChatAgentsMock).toHaveBeenLastCalledWith(expect.anything(), {
 			query: '  support  ',
-			skip: 0,
-			take: 50,
+			offset: 0,
+			limit: 50,
 			sortBy: 'usage:desc',
 		});
 	});
@@ -116,8 +116,8 @@ describe('useN8nChatAgents', () => {
 
 		expect(listN8nChatAgentsMock).toHaveBeenCalledWith(expect.anything(), {
 			query: 'a'.repeat(AGENT_N8N_CHAT_SEARCH_MAX_LENGTH),
-			skip: 0,
-			take: 50,
+			offset: 0,
+			limit: 50,
 			sortBy: 'usage:desc',
 		});
 	});
@@ -145,6 +145,7 @@ describe('useN8nChatAgents', () => {
 					name: 'Two',
 					project: { id: 'p', name: 'P' },
 					attachments: NO_ATTACHMENTS,
+					availableInChat: true,
 				},
 			],
 		});
@@ -157,6 +158,7 @@ describe('useN8nChatAgents', () => {
 					name: 'One',
 					project: { id: 'p', name: 'P' },
 					attachments: NO_ATTACHMENTS,
+					availableInChat: true,
 				},
 			],
 		});
@@ -168,6 +170,7 @@ describe('useN8nChatAgents', () => {
 				name: 'Two',
 				project: { id: 'p', name: 'P' },
 				attachments: NO_ATTACHMENTS,
+				availableInChat: true,
 			},
 		]);
 		expect(count.value).toBe(1);
@@ -191,7 +194,13 @@ describe('useN8nChatAgents', () => {
 		second.resolve({
 			count: 1,
 			data: [
-				{ id: 'a2', name: 'Two', project: { id: 'p', name: 'P' }, attachments: NO_ATTACHMENTS },
+				{
+					id: 'a2',
+					name: 'Two',
+					project: { id: 'p', name: 'P' },
+					attachments: NO_ATTACHMENTS,
+					availableInChat: true,
+				},
 			],
 		});
 		await flushPromises();
@@ -201,7 +210,13 @@ describe('useN8nChatAgents', () => {
 		expect(showErrorMock).not.toHaveBeenCalled();
 		expect(loadFailed.value).toBe(false);
 		expect(agents.value).toEqual([
-			{ id: 'a2', name: 'Two', project: { id: 'p', name: 'P' }, attachments: NO_ATTACHMENTS },
+			{
+				id: 'a2',
+				name: 'Two',
+				project: { id: 'p', name: 'P' },
+				attachments: NO_ATTACHMENTS,
+				availableInChat: true,
+			},
 		]);
 	});
 

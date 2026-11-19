@@ -66,9 +66,10 @@ describe('McpServerApiKeyService.verifyApiKey (integration)', () => {
 
 		const result = await service.verifyApiKey(apiKey);
 
-		expect(result.user?.id).toBe(owner.id);
-		expect(result.actor).toBeUndefined();
-		expect(result.context).toBeUndefined();
+		expect(result?.user?.id).toBe(owner.id);
+		expect(result?.actor).toBeUndefined();
+		expect(result?.context).toBeUndefined();
+		expect(result?.authMethod).toBe('api-key');
 	});
 
 	it('accepts a scoped JWT and returns the subject when no actor is present', async () => {
@@ -76,9 +77,10 @@ describe('McpServerApiKeyService.verifyApiKey (integration)', () => {
 
 		const result = await service.verifyApiKey(makeScopedJwt(jwtService, subject.id));
 
-		expect(result.user?.id).toBe(subject.id);
-		expect(result.actor).toBeUndefined();
-		expect(result.context).toBeUndefined();
+		expect(result?.user?.id).toBe(subject.id);
+		expect(result?.actor).toBeUndefined();
+		expect(result?.context).toBeUndefined();
+		expect(result?.authMethod).toBe('scoped-jwt');
 	});
 
 	it('accepts a scoped JWT with delegation and returns the actor as user', async () => {
@@ -89,8 +91,18 @@ describe('McpServerApiKeyService.verifyApiKey (integration)', () => {
 			makeScopedJwt(jwtService, subject.id, { actSub: actor.id }),
 		);
 
-		expect(result.user?.id).toBe(actor.id);
-		expect(result.actor?.id).toBe(actor.id);
+		expect(result?.user?.id).toBe(actor.id);
+		expect(result?.actor?.id).toBe(actor.id);
+	});
+
+	it('abstains on a valid browser session JWT, so the caller can send it down another path', async () => {
+		// SessionCookieAuthStrategy is registered into the same registry above, so this proves
+		// its buildTokenGrant genuinely abstains: the mcp-server-api audience is never satisfied.
+		const owner = await createOwner();
+
+		const result = await service.verifyApiKey(Container.get(AuthService).issueJWT(owner, false));
+
+		expect(result).toBeNull();
 	});
 
 	describe('rejects tokens that fail validation', () => {
@@ -143,21 +155,11 @@ describe('McpServerApiKeyService.verifyApiKey (integration)', () => {
 				name: 'scoped JWT whose subject is not in the database',
 				token: () => makeScopedJwt(jwtService, '00000000-0000-0000-0000-000000000000'),
 			},
-			{
-				// SessionCookieAuthStrategy is registered into the same registry above,
-				// so this proves its buildTokenGrant genuinely abstains rather than the
-				// audience check merely never encountering the strategy.
-				name: 'a valid browser session cookie (must not satisfy the mcp-server-api audience)',
-				token: async () => {
-					const owner = await createOwner();
-					return Container.get(AuthService).issueJWT(owner, false);
-				},
-			},
 		])('rejects $name', async ({ token }) => {
 			const result = await service.verifyApiKey(await token());
 
-			expect(result.user).toBeNull();
-			expect(result.context?.reason).toBe('invalid_token');
+			expect(result?.user).toBeNull();
+			expect(result?.context?.reason).toBe('invalid_token');
 		});
 	});
 
@@ -183,7 +185,7 @@ describe('McpServerApiKeyService.verifyApiKey (integration)', () => {
 
 		const result = await service.verifyApiKey(jwt);
 
-		expect(result.user).toBeNull();
-		expect(result.context?.reason).toBe('invalid_token');
+		expect(result?.user).toBeNull();
+		expect(result?.context?.reason).toBe('invalid_token');
 	});
 });

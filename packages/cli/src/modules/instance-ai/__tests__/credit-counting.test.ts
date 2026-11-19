@@ -38,12 +38,12 @@ function claimedRunIds(service: InstanceAiCreditService) {
 }
 
 function createMockThreadRepo(
-	thread?: { id: string; metadata: Record<string, unknown> | null } | null,
+	thread?: { id: string; resourceId?: string; metadata: Record<string, unknown> | null } | null,
 ) {
 	let current: Thread | null = thread
 		? {
 				id: thread.id,
-				resourceId: 'user-1',
+				resourceId: thread.resourceId ?? 'user-1',
 				metadata: thread.metadata ?? undefined,
 				createdAt: new Date(),
 				updatedAt: new Date(),
@@ -120,6 +120,7 @@ async function callClaim(
 		dedupeId?: string;
 		usage?: BuilderUsageItem[];
 		status?: 'completed' | 'cancelled' | 'errored';
+		source?: 'chat' | 'self_healing';
 	} = {},
 ) {
 	return await service.claimRunUsage(
@@ -128,6 +129,7 @@ async function callClaim(
 		args.dedupeId ?? 'run-1',
 		args.usage ?? usage,
 		args.status ?? 'completed',
+		args.source,
 	);
 }
 
@@ -136,6 +138,31 @@ async function callClaim(
 // ---------------------------------------------------------------------------
 
 describe('claimRunUsage', () => {
+	it('returns the measured delta without sending internal thread fields to the browser', async () => {
+		const threadRepo = createMockThreadRepo({
+			id: 'internal-thread',
+			resourceId: 'ia-self-healing:user-1',
+			metadata: { creditsUsed: 2 },
+		});
+		const push = { sendToUsers: vi.fn() };
+		const service = createService({
+			threadRepo,
+			aiService: createMockAiService(),
+			push,
+			telemetry: { track: vi.fn() },
+		});
+
+		expect(await callClaim(service, { threadId: 'internal-thread' })).toBe(0.5);
+		expect(threadRepo.getCurrent()?.metadata?.creditsUsed).toBe(2.5);
+		expect(push.sendToUsers).toHaveBeenCalledWith(
+			{
+				type: 'updateInstanceAiCredits',
+				data: { creditsClaimed: 5.5, creditsQuota: 100 },
+			},
+			['user-1'],
+		);
+	});
+
 	it('claims token usage and accumulates the delta into thread metadata', async () => {
 		const threadRepo = createMockThreadRepo({ id: 't1', metadata: { creditsUsed: 2 } });
 		const ai = createMockAiService({
@@ -169,14 +196,14 @@ describe('claimRunUsage', () => {
 		expect(delta).toBe(0.5);
 	});
 
-	it('fires the "Builder credits claimed" event with success true on the happy path', async () => {
+	it('labels successful self-healing credit claims', async () => {
 		const threadRepo = createMockThreadRepo({ id: 't1', metadata: {} });
 		const ai = createMockAiService();
 		const push = { sendToUsers: vi.fn() };
 		const telemetry = { track: vi.fn() };
 
 		const service = createService({ threadRepo, aiService: ai, push, telemetry });
-		await callClaim(service, { status: 'completed' });
+		await callClaim(service, { status: 'completed', source: 'self_healing' });
 
 		expect(telemetry.track).toHaveBeenCalledWith(
 			'Builder credits claimed',
@@ -186,9 +213,50 @@ describe('claimRunUsage', () => {
 				thread_id: 't1',
 				agent_run_id: 'run-1',
 				status: 'completed',
+				source: 'self_healing',
 				success: true,
 				credits_used: 0.5,
 			}),
+		);
+	});
+
+	it('claims self-healing usage with the self-healing billing user ID', async () => {
+		const ai = createMockAiService();
+		const service = createService({
+			threadRepo: createMockThreadRepo({ id: 't1', metadata: {} }),
+			aiService: ai,
+			push: { sendToUsers: vi.fn() },
+			telemetry: { track: vi.fn() },
+		});
+
+		await callClaim(service, { source: 'self_healing' });
+
+		expect(ai.__getInstanceAiApiProxyToken).toHaveBeenCalledWith(
+			{ id: 'self_healing' },
+			expect.anything(),
+		);
+		expect(ai.__markInstanceAiTokenUsage).toHaveBeenCalledWith(
+			{ id: 'self_healing' },
+			expect.anything(),
+			expect.anything(),
+		);
+	});
+
+	it('claims chat usage with the ID of the user', async () => {
+		const ai = createMockAiService();
+		const service = createService({
+			threadRepo: createMockThreadRepo({ id: 't1', metadata: {} }),
+			aiService: ai,
+			push: { sendToUsers: vi.fn() },
+			telemetry: { track: vi.fn() },
+		});
+
+		await callClaim(service);
+
+		expect(ai.__markInstanceAiTokenUsage).toHaveBeenCalledWith(
+			{ id: 'user-1' },
+			expect.anything(),
+			expect.anything(),
 		);
 	});
 
@@ -268,7 +336,7 @@ describe('claimRunUsage', () => {
 		expect(delta).toBe(0.5);
 		expect(telemetry.track).toHaveBeenCalledWith(
 			'Builder credits claimed',
-			expect.objectContaining({ success: true }),
+			expect.objectContaining({ success: true, source: 'chat' }),
 		);
 	});
 
@@ -285,7 +353,7 @@ describe('claimRunUsage', () => {
 		expect(delta).toBeUndefined();
 		expect(telemetry.track).toHaveBeenCalledWith(
 			'Builder credits claimed',
-			expect.objectContaining({ success: false }),
+			expect.objectContaining({ success: false, source: 'chat' }),
 		);
 		expect(push.sendToUsers).not.toHaveBeenCalled();
 	});
@@ -323,18 +391,18 @@ describe('claimRunUsage', () => {
 		);
 	});
 
-	it('fires the "Builder credits claimed" event with success false when the claim throws', async () => {
+	it('labels failed self-healing credit claims', async () => {
 		const threadRepo = createMockThreadRepo({ id: 't1', metadata: {} });
 		const ai = createMockAiService({ claimError: new Error('network') });
 		const push = { sendToUsers: vi.fn() };
 		const telemetry = { track: vi.fn() };
 
 		const service = createService({ threadRepo, aiService: ai, push, telemetry });
-		await callClaim(service);
+		await callClaim(service, { source: 'self_healing' });
 
 		expect(telemetry.track).toHaveBeenCalledWith(
 			'Builder credits claimed',
-			expect.objectContaining({ success: false }),
+			expect.objectContaining({ success: false, source: 'self_healing' }),
 		);
 		expect(push.sendToUsers).not.toHaveBeenCalled();
 	});
@@ -535,6 +603,153 @@ describe('claimRunUsage', () => {
 			await expect(callClaim(service)).rejects.toThrow();
 			// The bad quota is surfaced before any best-effort display work runs.
 			expect(push.sendToUsers).not.toHaveBeenCalled();
+		});
+	});
+});
+
+describe('claimRunUsage on a thread without a current Assistant thread row', () => {
+	function setup(agentTotal: number | undefined) {
+		const threadRepo = createMockThreadRepo(null);
+		const push = { sendToUsers: vi.fn() };
+		const service = createService({
+			threadRepo,
+			aiService: createMockAiService(),
+			push,
+			telemetry: { track: vi.fn() },
+		});
+		const logger = (service as unknown as { logger: { warn: Mock } }).logger;
+		const agentThreadCredits = {
+			addCredits: vi.fn(async () => agentTotal),
+		};
+		return { service, push, logger, agentThreadCredits };
+	}
+
+	it('adds the claim to the Assistant agent thread and pushes its total', async () => {
+		const { service, push, agentThreadCredits } = setup(3.5);
+		service.useAgentThreadCredits(agentThreadCredits);
+
+		expect(await callClaim(service, { threadId: 'agent-thread' })).toBe(0.5);
+		expect(agentThreadCredits.addCredits).toHaveBeenCalledWith(fakeUser, 'agent-thread', 0.5);
+		expect(push.sendToUsers).toHaveBeenCalledWith(
+			{
+				type: 'updateInstanceAiCredits',
+				data: {
+					creditsQuota: 100,
+					creditsClaimed: 5.5,
+					creditsPerThread: { threadId: 'agent-thread', totalCreditsUsed: 3.5 },
+				},
+			},
+			['user-1'],
+		);
+	});
+
+	it('logs when no thread takes the total', async () => {
+		const { service, push, logger, agentThreadCredits } = setup(undefined);
+		service.useAgentThreadCredits(agentThreadCredits);
+
+		expect(await callClaim(service, { threadId: 'missing' })).toBe(0.5);
+		expect(logger.warn).toHaveBeenCalledWith('No thread took the Instance AI credit total', {
+			threadId: 'missing',
+		});
+		expect(push.sendToUsers).toHaveBeenCalledWith(
+			{ type: 'updateInstanceAiCredits', data: { creditsQuota: 100, creditsClaimed: 5.5 } },
+			['user-1'],
+		);
+	});
+});
+
+describe('side-call usage', () => {
+	function setup(aiService = createMockAiService()) {
+		const service = createService({
+			threadRepo: createMockThreadRepo({ id: 't1', metadata: {} }),
+			aiService,
+			push: { sendToUsers: vi.fn() },
+			telemetry: { track: vi.fn() },
+		});
+		return { service, ai: aiService };
+	}
+
+	const call = {
+		model: 'anthropic/claude-haiku-5-5',
+		usage: { promptTokens: 2000, completionTokens: 500, totalTokens: 2500 },
+	};
+	const report = {
+		...call,
+		helper: 'verification-simulation-fixtures',
+		reportId: 'report-1',
+	};
+	const tokenItem = expect.objectContaining({
+		type: 'llmTokens',
+		model: 'anthropic/claude-haiku-5-5',
+	});
+
+	describe('claimSideCallUsage', () => {
+		it('claims the converted call under the given dedupe key and returns the credits', async () => {
+			const { service, ai } = setup();
+
+			await expect(
+				service.claimSideCallUsage(fakeUser, 't1', 'run-1:title:report-1', call),
+			).resolves.toBe(0.5);
+
+			expect(ai.__markInstanceAiTokenUsage).toHaveBeenCalledWith(
+				{ id: 'user-1' },
+				{ Authorization: 'Bearer ia-tok' },
+				{ dedupeId: 'run-1:title:report-1', usage: [tokenItem], threadId: 't1' },
+			);
+		});
+
+		it('skips the claim when the call used no tokens', async () => {
+			const { service, ai } = setup();
+
+			await service.claimSideCallUsage(fakeUser, 't1', 'run-1:title:report-1', {
+				model: call.model,
+				usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
+			});
+
+			expect(ai.__markInstanceAiTokenUsage).not.toHaveBeenCalled();
+		});
+
+		it('never throws when the claim fails', async () => {
+			const { service } = setup(
+				createMockAiService({
+					claimResult: { delta: 0.5, creditsClaimed: 5.5, creditsQuota: -1 },
+				}),
+			);
+
+			await expect(
+				service.claimSideCallUsage(fakeUser, 't1', 'run-1:title:report-1', call),
+			).resolves.toBeUndefined();
+		});
+	});
+
+	describe('helper calls', () => {
+		it('claims each helper call under its own dedupe key', async () => {
+			const { service, ai } = setup();
+
+			await service.helperUsageClaimer(fakeUser, 't1', 'run-1')(report);
+
+			expect(ai.__markInstanceAiTokenUsage).toHaveBeenCalledWith(
+				{ id: 'user-1' },
+				expect.anything(),
+				{
+					dedupeId: 'run-1:helper:verification-simulation-fixtures:report-1',
+					usage: [tokenItem],
+					threadId: 't1',
+				},
+			);
+		});
+
+		it('bills self-healing helper calls apart from the user and returns the credits', async () => {
+			const { service, ai } = setup();
+
+			await expect(
+				service.claimHelperUsage(fakeUser, 't1', 'run-1', report, 'self_healing'),
+			).resolves.toBe(0.5);
+			expect(ai.__markInstanceAiTokenUsage).toHaveBeenCalledWith(
+				{ id: 'self_healing' },
+				expect.anything(),
+				expect.anything(),
+			);
 		});
 	});
 });

@@ -15,8 +15,6 @@ import type {
 import { Container, Service } from '@n8n/di';
 import type { Request, RequestHandler, Response, Router } from 'express';
 import { Router as createRouter } from 'express';
-import { z } from 'zod';
-import type { ZodTypeAny } from 'zod';
 
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import {
@@ -24,6 +22,7 @@ import {
 	takeIdempotencyClaimId,
 } from '@/idempotency/idempotency.middleware';
 import { IdempotencyKeyService } from '@/public-api/idempotency-key.service';
+import { N8N_CLIENT_HEADER } from '@n8n/api-types';
 import { BadRequestError, UnsupportedMediaTypeError } from '@n8n/errors';
 import { License } from '@/license';
 import { assertContentType } from '@/public-api/media-types/content-type';
@@ -43,42 +42,16 @@ import {
 } from '@/public-api/public-api-route-resolver';
 import { formatValidationError } from '@/public-api/public-api-validation-error';
 import { PublicApiRateLimitService } from '@/public-api/public-api-rate-limit.service';
+import { type PublicApiRequest, resolvePublicApiClient } from '@/public-api/public-api-client';
+import {
+	matchesPathTemplate,
+	parsePathParam,
+	toEndpointPath,
+	toPublicApiResult,
+	toRouteName,
+} from '@/public-api/public-api-controller.utils';
 import { sendPublicApiErrorResponse } from '@/public-api/v1/public-api-error-response';
 import { LastActiveAtService } from '@/services/last-active-at.service';
-
-function parsePathParam(key: string, schema: ZodTypeAny, params: Request['params']): unknown {
-	const output = z.object({ [key]: schema }).safeParse(params);
-
-	if (!output.success) {
-		throw new BadRequestError(formatValidationError('params', output.error));
-	}
-
-	return output.data[key];
-}
-
-/**
- * Whether an Express route template (`/widgets/:widgetId`) matches a request path. A `:param`
- * segment matches any single segment. Any other segment must be equal.
- */
-function matchesPathTemplate(template: string, path: string): boolean {
-	const templateSegments = template.split('/');
-	const pathSegments = (path.length > 1 && path.endsWith('/') ? path.slice(0, -1) : path).split(
-		'/',
-	);
-	return (
-		templateSegments.length === pathSegments.length &&
-		templateSegments.every(
-			(segment, i) =>
-				segment.startsWith(':') || segment.toLowerCase() === pathSegments[i].toLowerCase(),
-		)
-	);
-}
-
-// Match the legacy version-less route. req.path drops the prefix, req.baseUrl adds /api/v1
-function routePath(prefix: string, req: Request): string {
-	const path = (prefix === '/' ? '' : prefix) + req.path;
-	return path.length > 1 && path.endsWith('/') ? path.slice(0, -1) : path;
-}
 
 @Service()
 export class PublicApiControllerRegistry {
@@ -164,6 +137,7 @@ export class PublicApiControllerRegistry {
 		);
 
 		for (const [handlerName, route] of metadata.routes) {
+			const routeName = toRouteName(route.method, prefix, route.path);
 			const resolvedArgs = resolveRouteArgs(controllerClass, handlerName, route.args);
 
 			const successStatus = resolveSuccessStatus(
@@ -238,9 +212,13 @@ export class PublicApiControllerRegistry {
 				middlewares.push(this.createDeprecationMiddleware(route.deprecated));
 			}
 
-			middlewares.push(this.createAuthMiddleware(apiVersion, prefix));
+			middlewares.push(this.createAuthMiddleware(apiVersion, routeName));
 			middlewares.push(
-				...this.rateLimitService.createRouteLimiters(route.method, route.rateLimitAccess),
+				...this.rateLimitService.createRouteLimiters(
+					route.method,
+					toEndpointPath(apiVersion, prefix, route.path),
+					route.rateLimitAccess,
+				),
 			);
 
 			// Path param validation must run before the scope checks, so that a malformed param always
@@ -325,26 +303,37 @@ export class PublicApiControllerRegistry {
 		}
 	}
 
-	private createAuthMiddleware(apiVersion: string, prefix: string): RequestHandler {
+	private createAuthMiddleware(apiVersion: string, routeName: string): RequestHandler {
 		return async (req, res, next) => {
-			const authenticated = await this.authStrategyRegistry.authenticate(
-				req as AuthenticatedRequest,
-			);
+			const result = await this.authStrategyRegistry.authenticate(req as AuthenticatedRequest);
 
-			if (!authenticated) {
+			if (!result.authenticated) {
+				// RFC 7235 §4.1: one header, the challenges comma-separated.
+				if (result.challenges.length > 0) {
+					res.setHeader('WWW-Authenticate', result.challenges.join(', '));
+				}
 				res.status(401).json({ message: 'Unauthorized' });
 				return;
 			}
 
+			const publicApiClient = resolvePublicApiClient(req.headers[N8N_CLIENT_HEADER]);
+			// Handlers read it from the request, so each route does not resolve the header again.
+			(req as PublicApiRequest).publicApiClient = publicApiClient;
+
 			const userId = (req as AuthenticatedRequest).user?.id;
 			if (userId) {
 				this.lastActiveAtService.updateLastActiveIfStale(userId).catch(() => undefined);
-				this.eventService.emit('public-api-invoked', {
-					userId,
-					path: routePath(prefix, req),
-					method: req.method,
-					apiVersion,
-					userAgent: req.headers['user-agent'],
+
+				// Invocation event must be emitted after the response is sent, so that the event's result matches the actual response.
+				res.once('finish', () => {
+					this.eventService.emit('public-api-invoked', {
+						userId,
+						route: routeName,
+						apiVersion,
+						userAgent: req.headers['user-agent'],
+						client: publicApiClient,
+						result: toPublicApiResult(res.statusCode),
+					});
 				});
 			}
 
