@@ -153,7 +153,7 @@ function toLedgerRow(raw: RawLedgerRow): ExecutionLedgerRow {
 		entityType,
 		entityName: String(raw.entityName),
 		entityId: String(raw.entityId),
-		projectId: String(raw.projectId),
+		projectId: typeof raw.projectId === 'string' ? raw.projectId : null,
 		mode: String(raw.mode),
 		source: String(raw.source),
 		event,

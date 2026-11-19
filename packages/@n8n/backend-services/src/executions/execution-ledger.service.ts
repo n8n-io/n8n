@@ -83,14 +83,14 @@ export class ExecutionLedger {
 
 		if (created.isCopy) return;
 
-		const recorded = await this.recordStarted(started, ctx);
+		await this.recordStarted(started, ctx);
 		const { mode } = started;
 		const ended = toLedgerOutcome({
 			mode,
 			status: created.status,
 			startedAt: created.startedAt ?? null,
 		});
-		if (!recorded || ended.outcome === 'none') return;
+		if (ended.outcome === 'none') return;
 
 		if (ended.outcome !== 'blocked') {
 			// No caller creates a row that finished with work done, so its runtime is unknown.
@@ -108,17 +108,13 @@ export class ExecutionLedger {
 		);
 	}
 
-	/**
-	 * Inserts in the transaction of the execution row, so a failed insert rolls the run back.
-	 * Returns whether the row was written, so callers write no `ended` row for an unrecorded run.
-	 */
-	async recordStarted(facts: ExecutionLedgerStartedFacts, ctx: OperationContext): Promise<boolean> {
+	/** Inserts in the transaction of the execution row, so a failed insert rolls the run back. */
+	async recordStarted(facts: ExecutionLedgerStartedFacts, ctx: OperationContext): Promise<void> {
 		assertTransaction(ctx);
-		if (!this.writer) return false;
+		if (!this.writer) return;
 
-		const recorded = await this.writer.writeStarted(facts, ctx);
-		if (!recorded) this.reportNoOwnerProject(facts);
-		return recorded;
+		const { hasOwnerProject } = await this.writer.writeStarted(facts, ctx);
+		if (!hasOwnerProject) this.reportNoOwnerProject(facts);
 	}
 
 	async recordEndedInTransaction(
@@ -128,7 +124,8 @@ export class ExecutionLedger {
 		assertTransaction(ctx);
 		if (!this.writer) return;
 
-		if (!(await this.writer.writeEnded(facts, ctx))) this.reportNoOwnerProject(facts);
+		const { hasOwnerProject } = await this.writer.writeEnded(facts, ctx);
+		if (!hasOwnerProject) this.reportNoOwnerProject(facts);
 	}
 
 	/**
@@ -139,7 +136,8 @@ export class ExecutionLedger {
 		if (!this.writer) return;
 
 		try {
-			if (!(await this.writer.writeEnded(facts, {}))) this.reportNoOwnerProject(facts);
+			const { hasOwnerProject } = await this.writer.writeEnded(facts, {});
+			if (!hasOwnerProject) this.reportNoOwnerProject(facts);
 		} catch (e) {
 			const error = ensureError(e);
 			const { executionId, workflowId } = facts;
@@ -171,14 +169,15 @@ export class ExecutionLedger {
 		await this.queuedWrites;
 	}
 
+	/** The row is written, but no project count includes it. */
 	private reportNoOwnerProject({ executionId, workflowId }: ExecutionLedgerStartedFacts) {
 		this.logger.error(
-			`Execution ${executionId} of workflow ${workflowId} is not in the execution ledger: the workflow has no owner project`,
+			`Execution ${executionId} of workflow ${workflowId} is in the execution ledger with no project: the workflow has no owner project`,
 			{ executionId, workflowId },
 		);
 		// No IDs in the reported message, so Sentry groups every case in one issue.
 		const error = new UnexpectedError(
-			'The run is not in the execution ledger: the workflow has no owner project',
+			'The run is in the execution ledger with no project: the workflow has no owner project',
 			{ extra: { executionId, workflowId } },
 		);
 		this.errorReporter.error(error, { shouldBeLogged: false });
