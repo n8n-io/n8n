@@ -1125,17 +1125,19 @@ export class AgentsBuilderToolsService {
 						};
 					}
 					if (!before) return { ok: false, errors: [{ message: 'Agent not found.' }] };
-					// The card described one version and what was live. If either changed while it was
-					// open, or the card did not record them, the user has not seen what would happen:
-					// ask again. For a draft card, the draft must still be the version it showed. Like
-					// the first call, this stays outside the try below.
+					// The card described one version, what was live and the agent as it was. If any of
+					// them changed while it was open, or the card did not record them, the user has
+					// not seen what would happen: ask again. Every draft write advances the revision,
+					// including channel and task changes, which a history card lists too. Like the
+					// first call, this stays outside the try below.
 					const confirmed = publishContinuationSchema.safeParse(ctx.continuation);
 					const draftCard = confirmed.success && !confirmed.data.selectedVersion;
 					if (
 						!confirmed.success ||
 						((draftCard ? before.versionId : versionId) ?? null) !==
 							confirmed.data.confirmedVersionId ||
-						(before.activeVersionId ?? null) !== confirmed.data.liveVersionId
+						(before.activeVersionId ?? null) !== confirmed.data.liveVersionId ||
+						before.revision !== confirmed.data.revision
 					) {
 						return await this.askToPublish(ctx, agentId, projectId, versionId);
 					}

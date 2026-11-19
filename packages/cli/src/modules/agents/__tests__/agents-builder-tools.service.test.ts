@@ -3529,7 +3529,7 @@ describe('AgentsBuilderToolsService', () => {
 				id: agentId,
 				versionId: 'v-draft',
 				activeVersionId: null,
-				revision: 7,
+				revision: 5,
 			} as unknown as ProjectAgent);
 			agentPublishService.publishAgent.mockResolvedValue({
 				agent: { activeVersionId: 'v-draft', versionId: 'v-draft' } as ProjectAgent,
@@ -3689,6 +3689,44 @@ describe('AgentsBuilderToolsService', () => {
 			expect(suspend).toHaveBeenCalledTimes(1);
 		});
 
+		it('asks again when a channel was connected while a history card was open', async () => {
+			const { service, agentsService, agentPublishService } = makeService();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			agentsService.findById.mockResolvedValue({
+				id: agentId,
+				name: 'Support agent',
+				versionId: 'v-draft-2',
+				activeVersionId: 'v-live',
+				revision: 8,
+				integrations: [{ type: 'slack', credentialId: 'cred-1' }],
+				schema: baseConfig,
+			} as unknown as ProjectAgent);
+			agentPublishService.getVersion.mockResolvedValue({
+				definition: { schema: baseConfig, tasks: new Map() },
+			} as never);
+			const suspend = vi.fn(async (payload: unknown) => payload as never);
+
+			const result = await getPublishTool(service).handler!(
+				{ versionId: 'v-history' },
+				{
+					...ctx,
+					suspend,
+					resumeData: { approved: true },
+					continuation: {
+						confirmedVersionId: 'v-history',
+						selectedVersion: true,
+						liveVersionId: 'v-live',
+						revision: 7,
+					},
+				},
+			);
+
+			expect(agentPublishService.publishAgent).not.toHaveBeenCalled();
+			expect(result).toMatchObject({
+				approvalDetails: { sendTargets: [{ kind: 'channel', name: 'Slack' }] },
+			});
+		});
+
 		it('does not tie a history version publish to the draft revision', async () => {
 			const { service, agentsService, agentPublishService } = makeService();
 			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
@@ -3711,7 +3749,7 @@ describe('AgentsBuilderToolsService', () => {
 						confirmedVersionId: 'v-history',
 						selectedVersion: true,
 						liveVersionId: 'v-draft',
-						revision: 0,
+						revision: 7,
 					},
 				},
 			);
@@ -3920,6 +3958,7 @@ describe('AgentsBuilderToolsService', () => {
 			const publishedAgent = {
 				activeVersionId: 'v-active',
 				versionId: 'v-active',
+				revision: 0,
 			} as ProjectAgent;
 			agentsService.findById.mockResolvedValue(publishedAgent);
 			agentPublishService.publishAgent.mockResolvedValue({ agent: publishedAgent });
