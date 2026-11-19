@@ -17,7 +17,8 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useRBACStore } from '@n8n/stores/rbac.store';
 import userEvent from '@testing-library/user-event';
-import { fireEvent, screen, waitFor, within } from '@testing-library/vue';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/vue';
+import type { VNode } from 'vue';
 import { mock } from 'vitest-mock-extended';
 import { nextTick, ref } from 'vue';
 
@@ -1811,12 +1812,14 @@ describe('SettingsSkillsView', () => {
 				projectIcon: null,
 				skillCount: 1,
 				updatesAvailable: 0,
+				newSkillsAvailable: 0,
 				updatesBlocked: 0,
 				health: 'connected' as const,
 				lastCheckedAt: null,
 				missingSkills: [],
 				canReplaceCredential: true,
 				canReview: true,
+				canImport: true,
 				canMove: true,
 				canDelete: true,
 			};
@@ -1960,13 +1963,99 @@ describe('SettingsSkillsView', () => {
 				skillsStore.fetchSkills.mockClear();
 				skillsStore.fetchSources.mockClear();
 				skillsStore.fetchCreators.mockClear();
-				await userEvent.click(within(dialog).getByRole('button', { name: 'Delete source' }));
+				await userEvent.click(within(dialog).getByRole('button', { name: 'Delete skills' }));
 				await waitFor(() => expect(skillsStore.deleteSource).toHaveBeenCalledWith('src-1'));
 				await waitFor(() => expect(skillsStore.fetchSkills).toHaveBeenCalled());
 				expect(skillsStore.fetchSources).toHaveBeenCalled();
 				expect(skillsStore.fetchCreators).toHaveBeenCalled();
 				await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
 			});
+
+			it.each([false, true])(
+				'offers optional source removal for the last skill with checked=%s',
+				async (checked) => {
+					const view = await renderWithSource();
+					confirmMock.mockImplementationOnce(async (content: VNode) => {
+						const confirmation = render({ render: () => content });
+						const checkbox = confirmation.getByRole('checkbox', {
+							name: 'Also remove acme/skills. This is its last synced skill.',
+						});
+						expect(checkbox).not.toBeChecked();
+						if (checked) await userEvent.click(checkbox);
+						return 'confirm';
+					});
+
+					await userEvent.click(view.getByTestId('skill-actions').querySelector('button')!);
+					await userEvent.click(await screen.findByTestId('action-delete'));
+					await waitFor(() => {
+						if (checked)
+							expect(skillsStore.deleteSource).toHaveBeenCalledWith('src-1', { onlySkillId: 's1' });
+						else expect(skillsStore.deleteSkill).toHaveBeenCalledWith('s1');
+					});
+					if (checked) expect(skillsStore.deleteSkill).not.toHaveBeenCalled();
+					else expect(skillsStore.deleteSource).not.toHaveBeenCalled();
+				},
+			);
+
+			it('counts the blocking agents when agent use blocks the last-skill source removal', async () => {
+				const view = await renderWithSource();
+				confirmMock.mockImplementationOnce(async (content: VNode) => {
+					const confirmation = render({ render: () => content });
+					await userEvent.click(confirmation.getByRole('checkbox'));
+					return 'confirm';
+				});
+				skillsStore.deleteSource.mockRejectedValue(
+					new ResponseError('Remove the skills from these agents first.', {
+						httpStatusCode: 409,
+						meta: {
+							reason: 'skills_in_use',
+							agents: [
+								{ agentId: 'a1', agentName: 'Research', projectId: 'p1', projectName: 'Marketing' },
+							],
+							hiddenAgents: 1,
+						},
+					}),
+				);
+
+				await userEvent.click(view.getByTestId('skill-actions').querySelector('button')!);
+				await userEvent.click(await screen.findByTestId('action-delete'));
+
+				await waitFor(() =>
+					expect(showMessageMock).toHaveBeenCalledWith({
+						title: 'Could not delete the skill',
+						message: 'Used by 2 agents. Remove the skill from each agent first.',
+						type: 'error',
+						duration: 0,
+					}),
+				);
+				expect(showErrorMock).not.toHaveBeenCalled();
+			});
+
+			it('omits source removal for a skill that is not from the single-skill source', async () => {
+				const view = await renderWithSource();
+				skillsStore.skills = [skill()];
+				await userEvent.click(view.getByTestId('skill-actions').querySelector('button')!);
+				await userEvent.click(await screen.findByTestId('action-delete'));
+				await waitFor(() => expect(skillsStore.deleteSkill).toHaveBeenCalledWith('s1'));
+				expect(confirmMock.mock.calls[0][0]).toBe(
+					"This will permanently delete the skill and all its versions. This can't be undone.",
+				);
+				expect(skillsStore.deleteSource).not.toHaveBeenCalled();
+			});
+
+			it.each([{ skillCount: 2 }, { canDelete: false }])(
+				'omits source removal when the source is not eligible: %j',
+				async (overrides) => {
+					const view = await renderWithSource();
+					skillsStore.sources = [{ ...source, ...overrides }];
+					await userEvent.click(view.getByTestId('skill-actions').querySelector('button')!);
+					await userEvent.click(await screen.findByTestId('action-delete'));
+					await waitFor(() => expect(confirmMock).toHaveBeenCalled());
+					expect(confirmMock.mock.calls[0][0]).toBe(
+						"This will permanently delete the skill and all its versions. This can't be undone.",
+					);
+				},
+			);
 
 			it('opens and focuses the page of a duplicate source', async () => {
 				enableSkillSync();
@@ -2129,28 +2218,39 @@ describe('SettingsSkillsView', () => {
 			it.each([
 				{
 					updatesFound: 0,
+					newSkillsFound: 0,
 					throttled: false,
 					title: 'Checked acme/skills',
 					message: 'No new changes.',
 				},
 				{
 					updatesFound: 2,
+					newSkillsFound: 0,
 					throttled: false,
 					title: 'Checked acme/skills',
 					message: '2 skills have updates.',
 				},
 				{
 					updatesFound: 1,
+					newSkillsFound: 0,
 					throttled: true,
 					title: 'acme/skills was checked less than a minute ago',
 					message: '1 skill has an update.',
 				},
+				{
+					updatesFound: 0,
+					newSkillsFound: 2,
+					throttled: false,
+					title: 'Checked acme/skills',
+					message: '2 new skills are available to review',
+				},
 			])(
 				'checks a source for updates ($updatesFound, throttled $throttled) and refreshes the source row',
-				async ({ updatesFound, throttled, title, message }) => {
+				async ({ updatesFound, newSkillsFound, throttled, title, message }) => {
 					skillsStore.checkSource.mockResolvedValue({
 						label: 'acme/skills',
 						updatesFound,
+						newSkillsFound,
 						throttled,
 						lastCheckedAt: '2026-10-29T12:00:00.000Z',
 					});
@@ -2178,7 +2278,13 @@ describe('SettingsSkillsView', () => {
 				await clickCheck(view);
 
 				await waitFor(() => expect(view.getByTestId('skill-group-checking')).toBeInTheDocument());
-				finish({ label: 'acme/skills', updatesFound: 0, throttled: false, lastCheckedAt: null });
+				finish({
+					label: 'acme/skills',
+					updatesFound: 0,
+					newSkillsFound: 0,
+					throttled: false,
+					lastCheckedAt: null,
+				});
 				await waitFor(() => expect(view.queryByTestId('skill-group-checking')).toBeNull());
 			});
 
@@ -2289,13 +2395,13 @@ describe('SettingsSkillsView', () => {
 				await waitFor(() => expect(skillsStore.fetchSkills).toHaveBeenCalled());
 
 				expect(confirmMock).toHaveBeenCalledWith(
-					expect.stringContaining('You cannot undo this.'),
+					expect.objectContaining({ type: 'div' }),
 					'Stop syncing research-search?',
 					expect.anything(),
 				);
 				expect(skillsStore.stopSyncingSkill).toHaveBeenCalledWith('s1');
 				expect(showMessageMock).toHaveBeenCalledWith({
-					title: 'research-search stopped syncing. You can edit it now.',
+					title: 'research-search stopped syncing',
 					type: 'success',
 				});
 			});
@@ -2314,20 +2420,30 @@ describe('SettingsSkillsView', () => {
 				expect(lastModalData().onStopSyncing).toBeUndefined();
 			});
 
-			it('asks first and says the action cannot be undone', async () => {
+			it('uses short paragraphs that explain local editing and stopped updates', async () => {
 				await openSynced();
 				confirmMock.mockResolvedValue('cancel');
 
 				await lastModalData().onStopSyncing?.('s1');
 
 				expect(confirmMock).toHaveBeenCalledWith(
-					'The skill stays in Global with all 3 versions. Agents keep using it. You can edit it in n8n after this, and move it to another scope on its own. It no longer gets updates from GitHub. You cannot undo this.',
+					expect.objectContaining({ type: 'div' }),
 					'Stop syncing research-search?',
 					expect.objectContaining({
 						confirmButtonText: 'Stop syncing',
 						cancelButtonText: 'Cancel',
 					}),
 				);
+				const confirmation = render({ render: () => confirmMock.mock.calls[0][0] });
+				expect(confirmation.container.querySelectorAll('p')).toHaveLength(3);
+				expect(confirmation.container).toHaveTextContent(
+					'The skill stays in Global with its version history.',
+				);
+				expect(confirmation.container).toHaveTextContent(
+					'Agents can still use the skill. Users with edit access can edit it in n8n.',
+				);
+				expect(confirmation.container).toHaveTextContent('GitHub updates stop.');
+				expect(confirmation.container).not.toHaveTextContent('cannot undo');
 				expect(skillsStore.stopSyncingSkill).not.toHaveBeenCalled();
 				expect(uiStore.closeModal).not.toHaveBeenCalled();
 				expect(skillsStore.fetchSkills).not.toHaveBeenCalled();
@@ -2342,7 +2458,7 @@ describe('SettingsSkillsView', () => {
 				expect(skillsStore.stopSyncingSkill).toHaveBeenCalledWith('s1');
 				expect(uiStore.closeModal).toHaveBeenCalled();
 				expect(showMessageMock).toHaveBeenCalledWith({
-					title: 'research-search stopped syncing. You can edit it now.',
+					title: 'research-search stopped syncing',
 					type: 'success',
 				});
 				expect(skillsStore.fetchSkills).toHaveBeenCalled();

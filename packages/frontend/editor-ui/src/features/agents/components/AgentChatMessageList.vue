@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, inject, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue';
+import { computed, inject, ref } from 'vue';
 import {
 	N8nButton,
 	N8nCallout,
@@ -13,7 +13,7 @@ import {
 import { APPROVAL_TOOL_NAME, N8N_CHAT_ACTION_TOOL_NAME } from '@n8n/api-types';
 import { isAwaitingCard } from '@/features/ai/shared/agentsChat/n8nChatInteraction';
 import { useI18n } from '@n8n/i18n';
-import { useInfiniteScroll, useResizeObserver, useSessionStorage } from '@vueuse/core';
+import { useSessionStorage } from '@vueuse/core';
 import { TIME } from '@/app/constants/durations';
 import type { RouteLocationRaw } from 'vue-router';
 import {
@@ -88,8 +88,10 @@ const props = defineProps<{
 	summaryMissing?: boolean;
 	/** The thread has turns older than `messages`. */
 	hasOlderMessages?: boolean;
-	/** Adds the next older page to `messages`. Rejects when the page fails to load. */
-	loadOlderMessages?: () => Promise<void>;
+	/** An older page is loading. */
+	loadingOlderMessages?: boolean;
+	/** The last older page failed to load. */
+	loadOlderMessagesFailed?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -102,6 +104,8 @@ const emit = defineEmits<{
 	];
 	sendToAssistant: [event?: AgentSendToAssistantEvent];
 	'increase-budget': [payload: { field: 'monthlyBudgetUsd' | 'sessionCostCapUsd'; amount: number }];
+	/** The user asks to load the older page again after a failure. */
+	'retry-load-older': [];
 }>();
 
 defineSlots<{
@@ -213,9 +217,6 @@ function getMessageRenderItems(message: ChatMessage): MessageRenderItem[] {
 }
 
 const interactionExtensions = inject(AGENTS_CHAT_INTERACTION_EXTENSIONS, undefined);
-
-const scrollRef = useTemplateRef<HTMLDivElement>('scrollRef');
-const statusRef = useTemplateRef<HTMLDivElement>('statusRef');
 
 /** True when the bubble of `message` shows something besides host events. */
 function hasBubbleContent(message: ChatMessage): boolean {
@@ -627,215 +628,17 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 			? null
 			: openMemoryFooterGroupId.value;
 }
-
-// How close to the bottom the user has to be for incoming chunks to keep
-// following them. Small enough that a deliberate scroll-up breaks the lock,
-// large enough that sub-pixel DOM growth during markdown rendering doesn't
-// falsely count as "scrolled up".
-const SCROLL_STICK_THRESHOLD_PX = 80;
-
-/**
- * True when the user is (or was last) near the bottom of the chat and wants
- * incoming stream chunks to keep scrolling into view. Flipped to false when
- * the user scrolls up away from the bottom, and back to true when they
- * scroll back down or send a new message.
- */
-const isStickToBottom = ref(true);
-
-function isNearBottom(): boolean {
-	const el = scrollRef.value;
-	if (!el) return true;
-	return el.scrollHeight - el.scrollTop - el.clientHeight <= SCROLL_STICK_THRESHOLD_PX;
-}
-
-function onScroll(): void {
-	isStickToBottom.value = isNearBottom();
-	onScrollForOlderMessages();
-}
-
-function scrollToBottom(): void {
-	void nextTick(() => {
-		// Double rAF — async children (markdown, highlighters) can grow content
-		// after the first frame, so we measure on the second one.
-		requestAnimationFrame(() => {
-			requestAnimationFrame(() => {
-				if (scrollRef.value) {
-					scrollRef.value.scrollTop = scrollRef.value.scrollHeight;
-					isStickToBottom.value = true;
-				}
-			});
-		});
-	});
-}
-
-function autoScrollIfSticky(): void {
-	if (isStickToBottom.value) scrollToBottom();
-}
-
-// Snap to the bottom on initial render with a preloaded history. Two hooks on
-// purpose: the watcher with `immediate: true` fires after setup / initial
-// render, and `onMounted` covers cases where the post-flush scroll measured an
-// incomplete height because async content (markdown, highlighters) was still
-// expanding.
-onMounted(() => {
-	if (props.messages.length > 0) scrollToBottom();
-});
-
-// New message appended. If it's the user's own message we always follow to
-// the bottom (they just sent — they want to see the response). For
-// assistant messages and state transitions, follow only if the user is
-// sticking to the bottom. Older messages added above the last one keep the
-// view where it is.
-watch(
-	[() => props.messages.length, () => props.messages.at(-1)?.id],
-	([newLen, lastId], [oldLen, oldLastId]) => {
-		if ((oldLen ?? 0) < newLen) {
-			if (oldLen && lastId === oldLastId) return;
-			const last = props.messages[newLen - 1];
-			if (last?.role === CHAT_MESSAGE_ROLE.USER) {
-				scrollToBottom();
-				return;
-			}
-		}
-		autoScrollIfSticky();
-	},
-	{ flush: 'post' },
-);
-
-/** Distance from the top, in px, at which older messages start to load. */
-const OLDER_MESSAGES_DISTANCE_PX = 200;
-
-// Stops a failed load from retrying in a loop. The retry button, or a scroll
-// away from the top, allows a new try.
-const loadOlderFailed = ref(false);
-// On mount the view is at the top before it scrolls to the bottom. Thus older
-// messages load only after the first scroll event.
-const viewScrolled = ref(false);
-
-function onScrollForOlderMessages(): void {
-	viewScrolled.value = true;
-	if ((scrollRef.value?.scrollTop ?? 0) > OLDER_MESSAGES_DISTANCE_PX) loadOlderFailed.value = false;
-}
-
-/** Frames to wait for content above the anchor (markdown, highlighters) to stop growing. */
-const MAX_ANCHOR_SETTLE_FRAMES = 30;
-
-/**
- * The first element in view, which stays in place when older messages load
- * above it. The loading status is not an anchor: it sticks to the top of the
- * view and goes away after the load.
- */
-function findScrollAnchor(container: HTMLElement): HTMLElement | undefined {
-	const viewTop = container.getBoundingClientRect().top;
-	const candidates = [...container.children].filter(
-		(child): child is HTMLElement =>
-			child instanceof HTMLElement && child.dataset.olderMessagesStatus === undefined,
-	);
-	return (
-		candidates.find((child) => child.getBoundingClientRect().bottom > viewTop) ?? candidates[0]
-	);
-}
-
-const nextFrame = async () => await new Promise((resolve) => requestAnimationFrame(resolve));
-
-/**
- * Run `change`, and keep `anchor` in the same place in the view while the
- * content above it changes and finishes its render (markdown, highlighters).
- */
-async function keepInPlace(
-	container: HTMLElement,
-	anchor: HTMLElement | undefined,
-	change: () => Promise<void>,
-): Promise<void> {
-	// Measure only how far the anchor moves in the content: the user can scroll,
-	// and a live reply can grow below the view, while the change runs.
-	const contentTop = (el: HTMLElement) => el.getBoundingClientRect().top + container.scrollTop;
-	let anchorTop = anchor ? contentTop(anchor) : 0;
-	// This code moves the view itself. Browser scroll anchoring would move it a
-	// second time, and the view would jump down by the height of the change.
-	container.style.overflowAnchor = 'none';
-	try {
-		await change();
-		await nextTick();
-		let stableFrames = 0;
-		for (let frame = 0; frame < MAX_ANCHOR_SETTLE_FRAMES && stableFrames < 2; frame++) {
-			if (!anchor || !container.contains(anchor)) return;
-			const moved = contentTop(anchor) - anchorTop;
-			if (moved === 0) {
-				stableFrames++;
-			} else {
-				stableFrames = 0;
-				container.scrollTop += moved;
-				anchorTop += moved;
-			}
-			await nextFrame();
-		}
-	} finally {
-		container.style.overflowAnchor = '';
-	}
-}
-
-const { isLoading: isLoadingOlderMessages } = useInfiniteScroll(
-	scrollRef,
-	async () => {
-		const container = scrollRef.value;
-		const load = props.loadOlderMessages;
-		if (!container || !load) return;
-		try {
-			await keepInPlace(container, findScrollAnchor(container), load);
-		} catch {
-			loadOlderFailed.value = true;
-		}
-	},
-	{
-		direction: 'top',
-		distance: OLDER_MESSAGES_DISTANCE_PX,
-		// A thread too short to scroll loads older messages until it fills the view.
-		canLoadMore: (el) =>
-			!!props.hasOlderMessages &&
-			!!props.loadOlderMessages &&
-			!loadOlderFailed.value &&
-			(viewScrolled.value || (el !== null && el.scrollHeight <= el.clientHeight)),
-	},
-);
-
-watch(() => props.messagingState, autoScrollIfSticky, { flush: 'post' });
-
-watch(() => props.preparingSummary, autoScrollIfSticky, { flush: 'post' });
-
-useResizeObserver(statusRef, autoScrollIfSticky);
-
-// Content within the last message grew (streaming text, tool calls, thinking,
-// host events). Only follow the stream down if the user is still near the
-// bottom — otherwise we yank them away from whatever they scrolled up to read.
-watch(
-	[
-		() => {
-			const last = props.messages[props.messages.length - 1];
-			if (!last) return '';
-			const thinking = getMessageThinkingSegments(last)
-				.map((segment) => segment.content)
-				.join('');
-			return `${last.content}|${last.toolCalls?.length ?? 0}|${getMessageInteractives(last).length}|${thinking}`;
-		},
-		// A new host event, or a keyed update of one, sets a new `hostEvents`
-		// array, so the reference changes even when the text does not.
-		() => props.messages.at(-1)?.hostEvents,
-	],
-	autoScrollIfSticky,
-	{ flush: 'post' },
-);
 </script>
 
 <template>
-	<div ref="scrollRef" :class="$style.messages" @scroll.passive="onScroll">
+	<div :class="$style.messages">
 		<!-- Takes no space, so the messages do not move when it shows or hides. -->
 		<div
-			v-if="isLoadingOlderMessages || loadOlderFailed"
+			v-if="loadingOlderMessages || loadOlderMessagesFailed"
 			:class="$style.olderMessagesStatus"
 			data-older-messages-status
 		>
-			<N8nSpinner v-if="isLoadingOlderMessages" data-testid="agent-chat-older-messages-loading" />
+			<N8nSpinner v-if="loadingOlderMessages" data-testid="agent-chat-older-messages-loading" />
 			<!-- A thread too short to scroll cannot leave the top, so it needs a button to try again. -->
 			<div
 				v-else
@@ -846,7 +649,7 @@ watch(
 				<N8nText size="small" color="text-light">
 					{{ i18n.baseText('agents.chat.loadOlder.error') }}
 				</N8nText>
-				<N8nButton variant="ghost" size="xsmall" @click="loadOlderFailed = false">
+				<N8nButton variant="ghost" size="xsmall" @click="emit('retry-load-older')">
 					{{ i18n.baseText('generic.retry') }}
 				</N8nButton>
 			</div>
@@ -1270,7 +1073,7 @@ watch(
 				<AgentTypingIndicator :class="$style.typingIndicator" />
 			</div>
 		</div>
-		<div v-if="$slots.status" ref="statusRef" :class="$style.message">
+		<div v-if="$slots.status" :class="$style.message">
 			<slot name="status" />
 		</div>
 	</div>
@@ -1278,10 +1081,7 @@ watch(
 
 <style lang="scss" module>
 .messages {
-	flex: 1;
 	width: 100%;
-	min-height: 0;
-	overflow-y: auto;
 	padding: var(--spacing--lg) var(--spacing--md) var(--spacing--sm);
 	padding-bottom: var(--spacing--xl);
 	display: flex;
@@ -1289,15 +1089,6 @@ watch(
 	gap: var(--spacing--sm);
 	max-width: var(--agent-chat-max-width, 800px);
 	margin: 0 auto;
-
-	// AGENT: use mixin instead
-	mask-image: linear-gradient(to bottom, black 0%, black 95%, transparent 100%);
-
-	// AGENT: Use mixin insteasd
-	scrollbar-width: none;
-	&::-webkit-scrollbar {
-		display: none;
-	}
 }
 
 // Sticks to the top of the view. The zero height and the negative margin

@@ -1,5 +1,6 @@
 import type {
 	AssistantAgentTargetsState,
+	InstanceAiAppTarget,
 	InstanceAiHandoffContext,
 	InstanceAiWorkflowAttachment,
 } from '@n8n/api-types';
@@ -38,6 +39,8 @@ interface UseAssistantArtifactThreadOptions {
 	pendingWorkflowAttachment?: InstanceAiWorkflowAttachment;
 	/** The agents that the thread metadata binds. */
 	agentTargets?: () => DeepReadonly<AssistantAgentTargetsState> | null;
+	/** The apps that the thread metadata binds. */
+	appTargets?: () => readonly InstanceAiAppTarget[];
 	/** The artifact of the active preview tab. */
 	activeArtifactId?: () => string | undefined;
 }
@@ -68,6 +71,7 @@ export function useAssistantArtifactThread(options: UseAssistantArtifactThreadOp
 			return pending ? { ...pending, name: i18n.baseText('agents.new.defaultName') } : undefined;
 		},
 		agentBuilderTargets: () => [...(options.agentTargets?.()?.targets ?? [])],
+		appTargets: options.appTargets,
 	});
 
 	const thread: ArtifactThread = reactive({
