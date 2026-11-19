@@ -7,6 +7,7 @@ and the experiment design live in
 | Script | Command | What it does |
 | --- | --- | --- |
 | `seed-sources.mjs` | `pnpm knowledge:seed-sources` | Writes the test content to Notion and Slack and records the ids in `fixtures/items.json`. |
+| `run.mjs` | `pnpm knowledge:harness [smoke]` | Creates or updates the test agents from `fixtures/agent.json` and `fixtures/items.json` through the REST API, asks them questions over the chat stream and reads the thread executions. `smoke` asks `kb-native` one fact question and one scope probe. |
 
 Secrets come from env vars. Never pass one as a command argument: the dev
 metrics record pnpm arguments.
@@ -43,6 +44,33 @@ Point the script at a test workspace only.
 
 Rate limits: about three Notion requests per second and one Slack post per
 second. A full Notion run takes a few minutes.
+
+## Running the agents
+
+```sh
+N8N_EMAIL=… N8N_PASSWORD=… N8N_PROJECT_ID=… N8N_MODEL_CREDENTIAL_ID=… N8N_NOTION_CREDENTIAL_ID=… pnpm knowledge:harness smoke
+```
+
+The instance needs `N8N_KNOWLEDGE_LIVE_SOURCES_ENABLED=true`, otherwise the
+agents get no live knowledge tools and answer from nothing.
+
+| Env var | Meaning |
+| --- | --- |
+| `N8N_BASE_URL` | The instance. Default `http://localhost:5678`. |
+| `N8N_EMAIL`, `N8N_PASSWORD` | The owner or a member of the project. The script logs in through `POST /rest/login`. |
+| `N8N_PROJECT_ID` | The project that holds the credentials and gets the test agents. |
+| `N8N_MODEL_CREDENTIAL_ID` | The Anthropic credential of the test agents. |
+| `N8N_MODEL` | The model of every test agent. Default `anthropic/claude-sonnet-4-5`. Keep one snapshot for a whole comparison. |
+| `N8N_NOTION_CREDENTIAL_ID` | The `notionApi` credential. Without it the Notion source is left out. |
+| `N8N_SLACK_CREDENTIAL_ID` | The `slackApi` credential. Without it the Slack source is left out. |
+| `CHAT_TIMEOUT_MS` | Wait per question. Default 180000. |
+
+`fixtures/agent.json` holds the shared instructions, the source descriptions
+and the per-agent deltas (`retrieval` per source). The script fills the
+credentials and the picked items from `items.json`. The agents it created are
+remembered in `fixtures/agents.json` (not committed) and updated on every run.
+`results/` holds one JSON file per harness run: the questions, the answers,
+the tool calls of the stream and the thread detail of each run.
 
 ## Output
 
