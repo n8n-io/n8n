@@ -136,9 +136,6 @@ function confirmDisable() {
 			<N8nSettingsRow
 				v-if="enabled"
 				:title="i18n.baseText('settings.security.workflowReviews.requireApproval.title')"
-				:description="
-					i18n.baseText('settings.security.workflowReviews.requireApproval.description')
-				"
 				data-test-id="security-workflow-reviews-require-approval-row"
 			>
 				<template #action>

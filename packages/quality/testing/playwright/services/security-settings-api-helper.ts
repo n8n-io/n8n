@@ -56,7 +56,7 @@ export class SecuritySettingsApiHelper {
 		}
 	}
 
-	/** Sets "Require approval" to "Always required" or back to "When configured". */
+	/** Sets "Require approval" to "Always required" or back to "Set per project or workflow". */
 	async setWorkflowReviewsAlwaysRequired(alwaysRequired: boolean): Promise<void> {
 		const response = await this.api.request.post('/rest/settings/security', {
 			data: { workflowReviews: { alwaysRequired } },

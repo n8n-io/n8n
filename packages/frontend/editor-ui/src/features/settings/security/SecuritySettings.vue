@@ -432,6 +432,7 @@ const sharingCountText = computed(() => {
 		<N8nSettingsSection
 			v-if="state?.workflowReviews"
 			:title="i18n.baseText('settings.security.workflowReviews.title')"
+			:description="i18n.baseText('settings.security.workflowReviews.description')"
 			data-test-id="security-workflow-reviews-section"
 		>
 			<WorkflowReviewsSection

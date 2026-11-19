@@ -212,16 +212,12 @@ describe('SecuritySettings', () => {
 		expect(
 			getByText('Require two-factor authentication for users who sign in with email and password.'),
 		).toBeInTheDocument();
+		expect(getByText('Manage reviews before publishing workflows.')).toBeInTheDocument();
 		expect(
 			getByText(
-				'Allow users to submit workflow versions for approval before publishing. An open review blocks publishing.',
+				'Allow users to request approval before publishing. An open review blocks publishing.',
 			),
 		).toBeInTheDocument();
-		expect(
-			queryByText(
-				'Require workflow versions to be submitted for review and approved before they can be published to production.',
-			),
-		).not.toBeInTheDocument();
 		expect(
 			queryByText(
 				'Select whether to redact production executions, or manual and production executions.',
@@ -1071,7 +1067,7 @@ describe('SecuritySettings', () => {
 
 			const { findByTestId, findByRole } = renderView();
 			const select = await findByTestId('security-workflow-reviews-require-approval-select');
-			expect(select).toHaveTextContent('When configured');
+			expect(select).toHaveTextContent('Set per project or workflow');
 
 			await userEvent.click(select);
 			await userEvent.click(await findByRole('option', { name: 'Always required' }));
