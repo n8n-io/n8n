@@ -185,7 +185,7 @@ describe('PUT /workflows/:workflowId/transfer', () => {
 		}).toEqual(AFTER_FAILED_MOVE);
 	});
 
-	test('reports the error of the move when reading the new owners also fails', async () => {
+	test('reports the error of the move and enqueues the transfer record when reading the new owners also fails', async () => {
 		const owner = await createOwner();
 		const workflow = await createActiveWorkflow({}, sourceProject);
 		vi.spyOn(
@@ -198,6 +198,8 @@ describe('PUT /workflows/:workflowId/transfer', () => {
 			.put(`/workflows/${workflow.id}/transfer`)
 			.send({ destinationProjectId: targetProject.id, shareCredentials: [uuid()] })
 			.expect(404);
+
+		expect(await outboxRecordsOf(workflow.id)).toEqual([pendingTransfer(workflow.versionId)]);
 	});
 });
 
