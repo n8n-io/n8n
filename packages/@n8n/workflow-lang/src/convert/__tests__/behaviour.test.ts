@@ -256,11 +256,23 @@ describe('converted workflows behave as in n8n', () => {
 			const expected = read<Expected>(join(dir, 'expected.json'));
 			const converted = convertWorkflow(workflow);
 			const errors = converted.diagnostics.filter((d) => d.severity === 'error');
+			// Cases where the converter refuses (no compiled form for the path).
+			if (spec.expectRefusal === true) {
+				expect(errors.length).toBeGreaterThan(0);
+				return;
+			}
 			expect(errors).toEqual([]);
+			// Cases where v1 errors: the compiled workflow must give the same error.
+			if (expected.error !== null) {
+				const schedule = workflow.nodes.some((n) => n.type === 'n8n-nodes-base.scheduleTrigger');
+				const out = await run(converted.source, spec, schedule);
+				expect(out.status, JSON.stringify(out.result)).toBe('error');
+				expect((out.result as { message?: string })?.message).toContain(expected.error as string);
+				return;
+			}
 			const schedule = workflow.nodes.some((n) => n.type === 'n8n-nodes-base.scheduleTrigger');
 			const out = await run(converted.source, spec, schedule);
 			expect(out.status, JSON.stringify(out.result)).toBe('ok');
-			expect(expected.error).toBeNull();
 
 			// Each node that the converted run returns (the leaves) has the items that n8n gave.
 			const result = out.result as Record<string, unknown[]>;

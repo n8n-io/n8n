@@ -1,0 +1,13 @@
+{
+	"description": "A Set node and Code nodes read the item of Source through a Code node in each-item mode (3 items in, 3 out)",
+	"trigger": {
+		"body": {
+			"label": "code-each-paired"
+		}
+	},
+	"compare": [
+		"Read Each",
+		"Read All",
+		"Read Expr"
+	]
+}

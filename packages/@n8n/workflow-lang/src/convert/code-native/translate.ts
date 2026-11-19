@@ -226,6 +226,12 @@ export interface Translation {
 	 * error with the mark to its caller.
 	 */
 	handsOver: boolean;
+	/**
+	 * True when every top-level return statement of the code gives a fresh value: a new
+	 * object or array that the code creates, not an input item. Then the engine rule
+	 * of `assignPairedItems` can pair the output items from the input and output lengths.
+	 */
+	freshOutput: boolean;
 }
 
 export type TranslateResult =
@@ -7396,6 +7402,34 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 			message: `The code has a Date value and the helper \`${unproven[0]}\`, which is not proven to read a Date value as JavaScript does.`,
 		});
 	}
+	// True when every top-level return gives a new literal value (array or object literal,
+	// not a method call). Only then the items are provably fresh (no pairedItem from input).
+	let freshOutput = false;
+	if (root.body && (input.mode === 'all' || input.mode === 'each')) {
+		let anyReturn = false;
+		let allFresh = true;
+		const scan = (n: ts.Node): void => {
+			if (!allFresh) return;
+			if (ts.isReturnStatement(n)) {
+				anyReturn = true;
+				const x = n.expression;
+				if (x === undefined) { allFresh = false; return; }
+				const s = stripParens(x);
+				if (
+					!ts.isArrayLiteralExpression(s) &&
+					!ts.isObjectLiteralExpression(s) &&
+					!ts.isNewExpression(s)
+				) {
+					allFresh = false;
+				}
+				return;
+			}
+			if (n !== root && isFunctionNode(n)) return;
+			ts.forEachChild(n, scan);
+		};
+		ts.forEachChild(root.body, scan);
+		freshOutput = anyReturn && allFresh;
+	}
 	const translation = {
 		body,
 		nodes,
@@ -7417,6 +7451,7 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 		usesMatchProps,
 		pairedValues,
 		typedDates,
+		freshOutput,
 	};
 	if (blockers.length > 0) return { ok: false, blockers, partial: translation };
 	return { ok: true, translation };

@@ -1,0 +1,14 @@
+{
+  "description": "Read Source through a Code node that returns $input.all() after a Filter dropped one item",
+  "trigger": {
+    "body": {
+      "label": "code-return-input-all"
+    }
+  },
+  "compare": [
+    "Read Each",
+    "Read All",
+    "Read Expr"
+  ],
+  "expectRefusal": true
+}

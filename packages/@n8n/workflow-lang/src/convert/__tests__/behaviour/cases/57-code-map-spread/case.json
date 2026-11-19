@@ -1,0 +1,14 @@
+{
+  "description": "Read Source through a Code node that uses items.map(i => ({ json: { ...i.json } })) (all-items mode, keeps pairedItem)",
+  "trigger": {
+    "body": {
+      "label": "code-map-spread"
+    }
+  },
+  "compare": [
+    "Read Each",
+    "Read All",
+    "Read Expr"
+  ],
+  "expectRefusal": true
+}

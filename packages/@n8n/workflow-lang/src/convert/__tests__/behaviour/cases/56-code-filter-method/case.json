@@ -1,0 +1,14 @@
+{
+  "description": "Read Source through a Code node that uses items.filter() (all-items mode, keeps pairedItem on items)",
+  "trigger": {
+    "body": {
+      "label": "code-filter-method"
+    }
+  },
+  "compare": [
+    "Read Each",
+    "Read All",
+    "Read Expr"
+  ],
+  "expectRefusal": true
+}

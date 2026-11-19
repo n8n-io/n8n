@@ -1,0 +1,122 @@
+{
+	"generatedBy": "oracle.ts: n8n-core WorkflowExecute with n8n-nodes-base, executionOrder v1",
+	"error": null,
+	"order": [
+		"Webhook",
+		"Source",
+		"Tag",
+		"Middle",
+		"Read Each",
+		"Read All",
+		"Read Expr"
+	],
+	"nodes": {
+		"Webhook": [
+			[
+				{
+					"headers": {},
+					"params": {},
+					"query": {},
+					"body": {
+						"label": "code-map-spread"
+					}
+				}
+			]
+		],
+		"Source": [
+			[
+				{
+					"n": 10
+				},
+				{
+					"n": 20
+				},
+				{
+					"n": 30
+				}
+			]
+		],
+		"Tag": [
+			[
+				{
+					"n": 10,
+					"tag": "x"
+				},
+				{
+					"n": 20,
+					"tag": "x"
+				},
+				{
+					"n": 30,
+					"tag": "x"
+				}
+			]
+		],
+		"Middle": [
+			[
+				{
+					"n": 10,
+					"tag": "x",
+					"doubled": 20
+				},
+				{
+					"n": 20,
+					"tag": "x",
+					"doubled": 40
+				},
+				{
+					"n": 30,
+					"tag": "x",
+					"doubled": 60
+				}
+			]
+		],
+		"Read Each": [
+			[
+				{
+					"sourceN": 10,
+					"n": 10
+				},
+				{
+					"sourceN": 20,
+					"n": 20
+				},
+				{
+					"sourceN": 30,
+					"n": 30
+				}
+			]
+		],
+		"Read All": [
+			[
+				{
+					"sourceN": 10,
+					"n": 10
+				},
+				{
+					"sourceN": 10,
+					"n": 20
+				},
+				{
+					"sourceN": 10,
+					"n": 30
+				}
+			]
+		],
+		"Read Expr": [
+			[
+				{
+					"sourceN": 10
+				},
+				{
+					"sourceN": 20
+				},
+				{
+					"sourceN": 30
+				}
+			]
+		]
+	},
+	"requests": [],
+	"responses": []
+}

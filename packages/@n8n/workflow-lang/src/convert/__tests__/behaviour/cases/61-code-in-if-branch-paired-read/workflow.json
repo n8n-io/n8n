@@ -1,0 +1,110 @@
+{
+	"name": "Code in If branch paired read",
+	"nodes": [
+		{
+			"id": "webhook",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [0, 0],
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "code-if-branch-paired",
+				"options": {}
+			},
+			"webhookId": "f1a2b3c4-d5e6-7890-abcd-ef1234567890"
+		},
+		{
+			"id": "source",
+			"name": "Source",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [200, 0],
+			"parameters": {
+				"jsCode": "return [{ json: { n: 10 } }, { json: { n: 20 } }, { json: { n: 30 } }];"
+			}
+		},
+		{
+			"id": "middle",
+			"name": "Middle",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [400, 0],
+			"parameters": {
+				"jsCode": "return [{ json: { a: 1, pass: true } }, { json: { a: 2, pass: false } }, { json: { a: 3, pass: true } }];"
+			}
+		},
+		{
+			"id": "split",
+			"name": "Split",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 2,
+			"position": [600, 0],
+			"parameters": {
+				"conditions": {
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "strict",
+						"version": 2
+					},
+					"conditions": [
+						{
+							"id": "c1",
+							"leftValue": "={{ $json.pass }}",
+							"operator": {
+								"type": "boolean",
+								"operation": "equals"
+							},
+							"rightValue": true
+						}
+					],
+					"combinator": "and"
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "read-true",
+			"name": "Read True",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [800, -50],
+			"parameters": {
+				"mode": "runOnceForEachItem",
+				"jsCode": "return { json: { sourceN: $('Source').item.json.n, a: item.json.a } };"
+			}
+		},
+		{
+			"id": "read-false",
+			"name": "Read False",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [800, 100],
+			"parameters": {
+				"mode": "runOnceForEachItem",
+				"jsCode": "return { json: { sourceN: $('Source').item.json.n, a: item.json.a } };"
+			}
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [[{ "node": "Source", "type": "main", "index": 0 }]]
+		},
+		"Source": {
+			"main": [[{ "node": "Middle", "type": "main", "index": 0 }]]
+		},
+		"Middle": {
+			"main": [[{ "node": "Split", "type": "main", "index": 0 }]]
+		},
+		"Split": {
+			"main": [
+				[{ "node": "Read True", "type": "main", "index": 0 }],
+				[{ "node": "Read False", "type": "main", "index": 0 }]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	}
+}
