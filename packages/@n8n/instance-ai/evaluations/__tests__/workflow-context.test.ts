@@ -29,6 +29,12 @@ describe('buildWorkflowContextBlock', () => {
 		);
 	});
 
+	it('states that no workflow settings exist when the API returns null settings', () => {
+		const wf = workflow('wf-1', { nodes: [node('id-a', 'Fetch Data')], settings: null });
+
+		expect(buildWorkflowContextBlock(wf)).toContain('**Workflow settings:**\n\n(none)');
+	});
+
 	it('states that no workflow settings exist when the workflow has none', () => {
 		const wf = workflow('wf-1', { nodes: [node('id-a', 'Fetch Data')] });
 
