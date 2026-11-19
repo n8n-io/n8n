@@ -3554,9 +3554,10 @@ describe('AgentsBuilderToolsService', () => {
 			expect(result).toMatchObject({ approvalDetails: { action: 'publish-agent' } });
 		});
 
-		it('publishes nothing when the user cancels', async () => {
-			const { service, agentPublishService } = makeService();
+		it('publishes nothing when the user cancels, even if the editor got locked meanwhile', async () => {
+			const { service, agentPublishService, agentWriteLockService } = makeService();
 			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			agentWriteLockService.ensureAgentEditable.mockRejectedValue(new LockedError('locked'));
 
 			const result = await getPublishTool(service).handler!(
 				{},

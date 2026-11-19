@@ -1080,6 +1080,14 @@ export class AgentsBuilderToolsService {
 					{ versionId }: { versionId?: string },
 					ctx: InterruptibleToolContext<PublishConfirmation, ApprovalResumePayload>,
 				) => {
+					// A cancel never publishes, so report it before any check that could fail.
+					if (ctx.resumeData?.approved === false) {
+						return {
+							ok: false,
+							denied: true,
+							reason: 'The user cancelled. Nothing was published.',
+						};
+					}
 					if (!(await userHasScopes(user, ['agent:publish'], false, { projectId }))) {
 						return {
 							ok: false,
@@ -1093,13 +1101,6 @@ export class AgentsBuilderToolsService {
 					// Going live is always the user's decision: ask every time, with no session grant.
 					if (ctx.resumeData === undefined) {
 						return await this.askToPublish(ctx, agentId, projectId, versionId);
-					}
-					if (!ctx.resumeData.approved) {
-						return {
-							ok: false,
-							denied: true,
-							reason: 'The user cancelled. Nothing was published.',
-						};
 					}
 					let before: Awaited<ReturnType<AgentsService['findById']>>;
 					try {
