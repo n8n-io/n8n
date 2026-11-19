@@ -384,6 +384,38 @@ describe('SkillSecurityScanner', () => {
 			expect(scanner.scan(fetched(content))).toEqual({ verdict: 'pass', findings: [] });
 		});
 
+		it.each([
+			['the risky link first', 'Read http://example.com/b and https://example.com/a.'],
+			['the ordinary link first', 'Read https://example.com/a and http://example.com/b.'],
+		])('flags a domain with a risky and an ordinary link in one file, %s', (_, instructions) => {
+			const start = instructions.indexOf('http://example.com/b');
+
+			expect(scanner.scan(fetched(skill({ instructions })))).toEqual({
+				verdict: 'needs_review',
+				findings: [
+					expect.objectContaining({
+						rule: 'risky_url',
+						severity: 'needs_review',
+						domain: 'example.com',
+						location: { line: expect.any(Number), start, end: start + 20 },
+					}),
+				],
+			});
+		});
+
+		it.each([
+			['https://bit.ly/a then http://bit.ly/b', 'uses a URL shortener'],
+			['http://bit.ly/b then https://bit.ly/a', 'does not use HTTPS'],
+		])('gives the reason of the first risky link of a domain: %s', (instructions, reason) => {
+			expect(scanner.scan(fetched(skill({ instructions }))).findings).toEqual([
+				expect.objectContaining({
+					rule: 'risky_url',
+					domain: 'bit.ly',
+					detail: expect.stringContaining(reason),
+				}),
+			]);
+		});
+
 		it('does not flag a scheme with no address', () => {
 			const content = skill({ instructions: 'A link must start with https:// or https://<host>.' });
 
