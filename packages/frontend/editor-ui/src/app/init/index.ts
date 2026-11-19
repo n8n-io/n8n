@@ -197,7 +197,13 @@ export async function initializeAuthenticatedFeatures(
 		usersStore.setUserQuota(settingsStore.userManagement.quota);
 	}
 
-	if (sourceControlStore.isEnterpriseSourceControlEnabled) {
+	// Started here and awaited with the batch below, so no other startup request waits for it.
+	// A failure shows a toast and does not reject the batch.
+	const loadSourceControlPreferences = async () => {
+		if (!sourceControlStore.isEnterpriseSourceControlEnabled) {
+			return;
+		}
+
 		try {
 			await sourceControlStore.getPreferences();
 		} catch (e) {
@@ -209,7 +215,9 @@ export async function initializeAuthenticatedFeatures(
 			});
 			console.error('Failed to initialize source control store', e);
 		}
-	}
+	};
+
+	const sourceControlPreferencesLoad = loadSourceControlPreferences();
 
 	if (rootStore.defaultLocale !== 'en') {
 		await nodeTypesStore.getNodeTranslationHeaders();
@@ -290,6 +298,7 @@ export async function initializeAuthenticatedFeatures(
 	};
 
 	await Promise.all([
+		sourceControlPreferencesLoad,
 		projectsStore.getMyProjects(),
 		projectsStore.getPersonalProject(),
 		projectsStore.getProjectsCount(),

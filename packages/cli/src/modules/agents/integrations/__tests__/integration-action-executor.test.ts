@@ -290,6 +290,41 @@ describe('ChatIntegrationActionExecutor', () => {
 		});
 	});
 
+	it('opens WhatsApp DMs with the normalised phone number', async () => {
+		const sentMessage = { id: 'wamid.1', threadId: 'whatsapp:pn-1:447397567320' };
+		const thread = {
+			id: 'whatsapp:pn-1:447397567320',
+			post: vi.fn().mockResolvedValue(sentMessage),
+			subscribe: vi.fn().mockResolvedValue(undefined),
+		};
+		const adapter = { openDM: vi.fn().mockResolvedValue(thread.id) };
+		const chat = mock<ChatInstance>();
+		chat.getAdapter.mockReturnValue(adapter as never);
+		chat.thread.mockReturnValue(thread as never);
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
+		const registry = buildRegistry();
+		registry.register(createWhatsAppIntegration());
+		const executor = new ChatIntegrationActionExecutor(
+			chatIntegrationService,
+			registry,
+			new ChannelRateLimitGuard(),
+			mock<AgentOutboundFiles>(),
+		);
+		const whatsapp: AgentIntegrationConfig = { type: 'whatsapp', credentialId: 'cred-wa' };
+		const descriptor = getIntegrationToolConnectionDescriptors([whatsapp], 'agent-1')[0];
+
+		await executor.execute({
+			descriptor,
+			action: 'send_dm',
+			input: { userId: '+447397567320', message: { text: 'Hello' } },
+			awaitResponse: false,
+			resourceId: taskRunMemoryResourceId('task-1'),
+		});
+
+		expect(adapter.openDM).toHaveBeenCalledWith('447397567320');
+	});
+
 	it('subscribes Slack DM threads after sending messages', async () => {
 		const sentMessage = {
 			id: '123.456',

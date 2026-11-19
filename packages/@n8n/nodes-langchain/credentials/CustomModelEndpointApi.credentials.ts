@@ -1,3 +1,4 @@
+import { UserError } from '@n8n/errors';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialType,
@@ -8,6 +9,7 @@ import type {
 
 import { readCustomModelEndpointCredential } from '../utils/custom-model-endpoint/credential-data';
 import { buildRequestHeaders, toHeaderRecord } from '../utils/custom-model-endpoint/headers';
+import {} from '../utils/custom-model-endpoint/oauth2';
 
 export class CustomModelEndpointApi implements ICredentialType {
 	name = 'customModelEndpointApi';
@@ -51,6 +53,11 @@ export class CustomModelEndpointApi implements ICredentialType {
 					name: 'Basic Auth',
 					value: 'basic',
 					description: 'Send a user name and a password',
+				},
+				{
+					name: 'OAuth2 Client Credentials',
+					value: 'oauth2',
+					description: 'Sign in to a login server and send the token it returns',
 				},
 				{
 					name: 'None',
@@ -106,6 +113,63 @@ export class CustomModelEndpointApi implements ICredentialType {
 			displayOptions: { show: { authentication: ['basic'] } },
 		},
 		{
+			displayName: 'Token URL',
+			name: 'tokenUrl',
+			type: 'string',
+			required: true,
+			default: '',
+			placeholder: 'https://login.example.com/oauth2/token',
+			description:
+				'Where n8n asks for an access token. Add this host to Allowed Domains as well, because it is not the base URL.',
+			displayOptions: { show: { authentication: ['oauth2'] } },
+		},
+		{
+			displayName: 'Client ID',
+			name: 'clientId',
+			type: 'string',
+			required: true,
+			default: '',
+			displayOptions: { show: { authentication: ['oauth2'] } },
+		},
+		{
+			displayName: 'Client Secret',
+			name: 'clientSecret',
+			type: 'string',
+			typeOptions: { password: true },
+			required: true,
+			default: '',
+			displayOptions: { show: { authentication: ['oauth2'] } },
+		},
+		{
+			displayName: 'Scope',
+			name: 'scope',
+			type: 'string',
+			default: '',
+			placeholder: 'e.g. models.read',
+			description: 'Space-separated scopes to ask for. Leave empty to ask for none.',
+			displayOptions: { show: { authentication: ['oauth2'] } },
+		},
+		{
+			displayName: 'Send Client Credentials In',
+			name: 'sendCredentialsIn',
+			type: 'options',
+			options: [
+				{
+					name: 'Authorization Header',
+					value: 'header',
+					description: 'Send the client ID and secret as Basic auth',
+				},
+				{
+					name: 'Request Body',
+					value: 'body',
+					description: 'Send the client ID and secret as body fields',
+				},
+			],
+			default: 'header',
+			hint: 'The header encodes the pair per RFC 6749, which escapes characters such as ~. If the login server rejects a secret you know is correct, send it in the request body.',
+			displayOptions: { show: { authentication: ['oauth2'] } },
+		},
+		{
 			displayName: 'Gateway Headers',
 			name: 'gatewayHeaders',
 			type: 'fixedCollection',
@@ -137,10 +201,22 @@ export class CustomModelEndpointApi implements ICredentialType {
 		credentials: ICredentialDataDecryptedObject,
 		requestOptions: IHttpRequestOptions,
 	): Promise<IHttpRequestOptions> {
+		const endpoint = readCustomModelEndpointCredential(credentials);
+
+		// Minting a token here would mean storing it on the credential, which this
+		// credential deliberately does not do. The nodes hold theirs in memory instead.
+		if (endpoint.login.type === 'oauth2') {
+			throw new UserError('OAuth2 works only in the Custom Model Endpoint nodes', {
+				description:
+					'This credential signs in for the Custom Model Endpoint and Custom Endpoint Chat Model nodes. To reach the gateway from another node, use an API key or a header.',
+			});
+		}
+
 		requestOptions.headers = buildRequestHeaders({
-			endpoint: readCustomModelEndpointCredential(credentials),
+			endpoint,
 			requestHeaders: toHeaderRecord(requestOptions.headers),
 		});
+
 		return requestOptions;
 	}
 }

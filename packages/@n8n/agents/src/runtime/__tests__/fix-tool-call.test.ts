@@ -296,4 +296,50 @@ describe('fixToolCall — successful repair', () => {
 		);
 		expect(result).toMatchObject({ dynamic: true });
 	});
+
+	describe('a tool whose former names are for resume only', () => {
+		const resumeOnly = makeTool({
+			name: 'change_items',
+			inputSchema: z.object({}),
+			legacyNames: ['create_item'],
+			legacyActions: { items: ['create'] },
+			legacyResumeOnly: { convert: (_formerName, input) => input },
+		});
+		const calls = [
+			{ name: 'a former name', toolName: 'create_item', input: '{"id":"1"}' },
+			{ name: 'a former split tool action', toolName: 'items', input: '{"action":"create"}' },
+		];
+
+		it.each(calls)('does not repair a model call by $name', async ({ toolName, input }) => {
+			const result = await fixToolCall(
+				{ toolCall: makeToolCall({ toolName, input }), error: makeNoSuchToolError() },
+				buildToolMap([resumeOnly]),
+			);
+			expect(result).toBeNull();
+		});
+
+		it.each(calls)(
+			'does not route a model call by $name to the tool catalog',
+			async ({ toolName, input }) => {
+				const catalog = new ToolCatalog([resumeOnly]);
+				const result = await fixToolCall(
+					{ toolCall: makeToolCall({ toolName, input }), error: makeNoSuchToolError() },
+					buildToolMap(catalog.getControllerTools()),
+				);
+				expect(result).toBeNull();
+			},
+		);
+
+		it('still repairs a model call by the former name of another tool', async () => {
+			const other = makeTool({ name: 'list_items', legacyNames: ['get_items'] });
+			const result = await fixToolCall(
+				{
+					toolCall: makeToolCall({ toolName: 'get_items', input: '{}' }),
+					error: makeNoSuchToolError(),
+				},
+				buildToolMap([resumeOnly, other]),
+			);
+			expect(result?.toolName).toBe('list_items');
+		});
+	});
 });

@@ -23,13 +23,7 @@ import {
 	TelemetryProxy,
 } from '@n8n/backend-services';
 import { ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
-import {
-	ExecutionRepository,
-	type OperationContext,
-	ProjectRepository,
-	SharedWorkflowRepository,
-	User,
-} from '@n8n/db';
+import { type OperationContext, ProjectRepository, SharedWorkflowRepository, User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import {
 	mcpAppToolMeta,
@@ -52,6 +46,7 @@ import { ExecutionListService } from '@/executions/execution-list.service';
 
 import { ExecutionService } from '@/executions/execution.service';
 import { DataTableProxyService } from '@n8n/backend-module-data-table';
+import { AiPreferenceSettingsService } from '@/services/ai-preference-settings.service';
 import { NodeCatalogService } from '@/node-catalog';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import { FolderService } from '@/services/folder.service';
@@ -64,6 +59,7 @@ import { ErrorWorkflowValidationService } from '@/workflows/error-workflow-valid
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
+import { WorkflowPublicationStatusService } from '@/workflows/publication/workflow-publication-status.service';
 
 import { WorkflowService } from '@/workflows/workflow.service';
 
@@ -80,7 +76,7 @@ import {
 	MCP_SKILLS_EXTENSION_FLAG,
 	USER_CALLED_MCP_TOOL_EVENT,
 } from './mcp.constants';
-import { getAllowedToolNames } from './mcp-scopes';
+import { FOLDER_FEATURE_TOOLS, getAllowedToolNames } from './mcp-scopes';
 import {
 	areAgentToolsAvailable,
 	areMcpSkillsAvailable,
@@ -278,7 +274,6 @@ export class McpService {
 		private readonly projectRepository: ProjectRepository,
 		private readonly folderFinderService: FolderFinderService,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
-		private readonly executionRepository: ExecutionRepository,
 		private readonly executionService: ExecutionService,
 		private readonly executionListService: ExecutionListService,
 		private readonly dataTableProxyService: DataTableProxyService,
@@ -301,6 +296,7 @@ export class McpService {
 		private readonly executionRedactionServiceProxy: ExecutionRedactionServiceProxy,
 		private readonly instanceWriteAccess: InstanceWriteAccessService,
 		private readonly preferencesNoteService: McpPreferencesNoteService,
+		private readonly workflowPublicationStatusService: WorkflowPublicationStatusService,
 	) {}
 
 	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
@@ -548,9 +544,11 @@ export class McpService {
 		// Same rationale again: a grant that cannot reach the instance-context tools is not told
 		// to start by calling them, and does not get the resource that carries the same data.
 		const contextToolsAllowed = allowedToolNames?.has(GET_INSTANCE_CONTEXT_TOOL_NAME) ?? true;
-		// Gates the sentence only; registration below goes through `registerIfAllowed` like every
-		// other tool. No RBAC check: a user's own preferences need no scope.
-		const preferencesEnabled = isMcpPreferencesSwitchOn(this.moduleRegistry);
+		// Gates the sentence and the preference tools below, which also go through
+		// `registerIfAllowed`. No RBAC check: a user's own preferences need no scope.
+		const preferencesEnabled =
+			Container.get(AiPreferenceSettingsService).isEnabled &&
+			isMcpPreferencesSwitchOn(this.moduleRegistry);
 		const skillsEnabled = areMcpSkillsAvailable(this.moduleRegistry);
 		const userPreferencesInstructionsEnabled =
 			preferencesEnabled && (allowedToolNames?.has(MCP_GET_USER_PREFERENCES_TOOL_NAME) ?? true);
@@ -588,6 +586,11 @@ export class McpService {
 
 		const registerIfAllowed: RegisterToolFn = (tool) => {
 			if (allowedToolNames && !allowedToolNames.has(tool.name)) return;
+
+			if (FOLDER_FEATURE_TOOLS.has(tool.name) && !this.licenseState.isFoldersLicensed()) {
+				return;
+			}
+
 			registerTool(tool);
 		};
 
@@ -613,16 +616,13 @@ export class McpService {
 
 		const getExecutionTool = createGetExecutionTool(
 			user,
-			this.executionRepository,
+			this.executionService,
 			this.workflowFinderService,
 			this.telemetry,
 			this.executionRedactionServiceProxy,
 		);
 		registerIfAllowed(getExecutionTool);
 
-		// TODO(CAT-4510): the search lists engine v2 executions, but
-		// `get_workflow_execution` above still reads only the control plane, so an
-		// agent cannot fetch a v2 result it just found.
 		const searchExecutionsTool = createSearchExecutionsTool(
 			user,
 			this.executionListService,
@@ -631,6 +631,9 @@ export class McpService {
 		);
 		registerIfAllowed(searchExecutionsTool);
 
+		const publicationStatusService = this.workflowsConfig.useWorkflowPublicationService
+			? this.workflowPublicationStatusService
+			: undefined;
 		const workflowDetailsTool = createWorkflowDetailsTool(
 			user,
 			this.urlService.getWebhookBaseUrl(),
@@ -646,6 +649,7 @@ export class McpService {
 			this.roleService,
 			this.projectService,
 			this.urlService.getTestWebhookBaseUrl(),
+			publicationStatusService,
 		);
 		registerIfAllowed(workflowDetailsTool);
 
@@ -679,6 +683,7 @@ export class McpService {
 			this.workflowService,
 			this.telemetry,
 			this.collaborationService,
+			publicationStatusService,
 			ctx,
 		);
 		registerIfAllowed(publishWorkflowTool);
