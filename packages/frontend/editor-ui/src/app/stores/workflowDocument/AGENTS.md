@@ -46,7 +46,7 @@ const onMyChange = createEventHook<MyChangeEvent>();
 
 - Fire `void onMyChange.trigger(...)` inside every apply method
 - Expose only the `.on` subscriber: `onMyChange: onMyChange.on`
-- Use `CHANGE_ACTION.ADD | UPDATE | DELETE` for the `action` field
+- Use `CHANGE_ACTION.ADD | UPDATE | DELETE | SET` for the `action` field
 
 ## Reactivity invariant: events carry reactive references
 
