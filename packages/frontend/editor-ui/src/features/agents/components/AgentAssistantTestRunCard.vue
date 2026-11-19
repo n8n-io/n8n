@@ -23,6 +23,23 @@ const i18n = useI18n();
 const expanded = ref(false);
 const detailsId = useId();
 const nameId = useId();
+const badgeId = useId();
+
+/**
+ * A preview may only show for a simulated call, and only beside the call it was built
+ * from. Anything else could claim an action was simulated, or pin it to the wrong call.
+ */
+function showsPreview(call: AgentAssistantTestRunCall): call is AgentAssistantTestRunCall & {
+	preview: NonNullable<AgentAssistantTestRunCall['preview']>;
+} {
+	const route = call.simulation?.route;
+	return (
+		call.preview !== undefined &&
+		(route === 'simulated' || route === 'simulated_made_up') &&
+		call.preview.toolName === call.toolName
+	);
+}
+
 /** Trimmed once, so the action's visibility and the emitted ID always agree. */
 const openableTestChatId = computed(() => props.testChatId?.trim() ?? '');
 </script>
@@ -30,14 +47,14 @@ const openableTestChatId = computed(() => props.testChatId?.trim() ?? '');
 <template>
 	<section
 		:class="$style.card"
-		:aria-labelledby="nameId"
+		:aria-labelledby="`${nameId} ${badgeId}`"
 		data-test-id="agent-assistant-test-run-card"
 	>
 		<div :class="$style.header">
 			<N8nText :id="nameId" tag="strong" size="small" bold :class="$style.name">
 				{{ agentName }}
 			</N8nText>
-			<N8nBadge theme="tertiary">
+			<N8nBadge :id="badgeId" theme="tertiary">
 				{{ i18n.baseText('agents.assistantTestRun.badge') }}
 			</N8nBadge>
 		</div>
@@ -73,14 +90,7 @@ const openableTestChatId = computed(() => props.testChatId?.trim() ?? '');
 					:data-tool-call-id="call.toolCallId"
 				>
 					<AgentToolCallRouteRow :call="call" />
-					<WouldHaveHappenedPreview
-						v-if="
-							call.preview &&
-							(call.simulation?.route === 'simulated' ||
-								call.simulation?.route === 'simulated_made_up')
-						"
-						:preview="call.preview"
-					/>
+					<WouldHaveHappenedPreview v-if="showsPreview(call)" :preview="call.preview" />
 				</li>
 			</ul>
 		</div>
