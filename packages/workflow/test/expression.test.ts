@@ -299,6 +299,16 @@ describe('Expression', () => {
 			const evaluateAsString = (value: string) =>
 				expression.getParameterValue(value, null, 0, 0, 'node', [], 'manual', {}, undefined, true);
 
+			it('should preserve colons inside string values', () => {
+				expect(
+					evaluateAsString(
+						String.raw`={{ { text: ":no_entry: foo", details: ["quote\":value", "other"] } }}`,
+					),
+				).toBe(
+					String.raw`[Object: {"text": ":no_entry: foo", "details": ["quote\":value", "other"]}]`,
+				);
+			});
+
 			it('should throw for an invalid DateTime', () => {
 				expect(() => evaluateAsString('={{ DateTime.invalid("test") }}')).toThrow(
 					'invalid DateTime',
