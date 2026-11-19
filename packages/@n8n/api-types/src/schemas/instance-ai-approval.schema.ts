@@ -41,6 +41,27 @@ const filterPreviewSchema = z.object({
 
 const columnTypeSchema = z.enum(['string', 'number', 'boolean', 'date']);
 
+/**
+ * Something a published agent might really send or do once it is live. Names come from
+ * the agent's config. Tools are counted, not listed, because a tool's name alone does not
+ * say what it sends.
+ */
+export const agentPublishSendTargetSchema = z.discriminatedUnion('kind', [
+	/** A chat channel the agent replies in, such as Slack. */
+	z.object({ kind: z.literal('channel'), name: z.string() }),
+	/** A scheduled task that starts running. */
+	z.object({ kind: z.literal('task'), name: z.string() }),
+	/** An MCP server whose tools the agent can call. */
+	z.object({ kind: z.literal('mcp-server'), name: z.string() }),
+	/** The agent's own tools. */
+	z.object({ kind: z.literal('tools'), count: z.number().int().positive() }),
+]);
+
+export type AgentPublishSendTarget = z.infer<typeof agentPublishSendTargetSchema>;
+
+/** The most send targets an approval lists. The rest show as a count. */
+export const AGENT_PUBLISH_SEND_TARGETS_LIMIT = 20;
+
 const deleteTableDetails = z.object({ action: z.literal('delete-table') });
 const addColumnDetails = z.object({
 	action: z.literal('add-column'),
@@ -124,6 +145,20 @@ export const instanceAiApprovalDetailsSchema = z.discriminatedUnion('action', [
 		action: z.literal('run-workflow'),
 		summary: z.string().optional(),
 		trigger: z.string().optional(),
+	}),
+	z.object({
+		action: z.literal('publish-agent'),
+		/**
+		 * What going live changes: `unpublished` publishes for the first time, `changed`
+		 * replaces the live version, `published` keeps the version that is already live.
+		 */
+		liveAvailability: z.enum(['unpublished', 'changed', 'published']),
+		/** True when a history version goes live instead of the draft. */
+		selectedVersion: z.boolean(),
+		/** Empty when not known, for example for a history version. */
+		sendTargets: z.array(agentPublishSendTargetSchema).max(AGENT_PUBLISH_SEND_TARGETS_LIMIT),
+		/** Send targets left out of `sendTargets` by the limit. */
+		moreSendTargets: z.number().int().nonnegative().optional(),
 	}),
 	z.object({
 		action: z.literal('publish-workflow'),

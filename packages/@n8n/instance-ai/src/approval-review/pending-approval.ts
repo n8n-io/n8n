@@ -1,6 +1,7 @@
 import { APPROVAL_SUSPEND_SCHEMA } from '@n8n/agents';
 import type { BuiltTool } from '@n8n/agents';
 import {
+	AGENT_BUILDER_TOOL_NAMES,
 	instanceAiApprovalDetailsSchema,
 	instanceAiConfirmationSeveritySchema,
 	isDataTableWriteToolAction,
@@ -67,6 +68,8 @@ const ALWAYS_ASK_TOOLS: ReadonlySet<string> = new Set([
 	DOMAIN_TOOL_IDS.ARCHIVE_WORKFLOW,
 	DOMAIN_TOOL_IDS.UNPUBLISH_WORKFLOW,
 	DOMAIN_TOOL_IDS.RESTORE_WORKFLOW_VERSION,
+	// Going live is the user's decision: the agent then replies and acts for real (TRUST-1197).
+	AGENT_BUILDER_TOOL_NAMES.PUBLISH_AGENT,
 ]);
 
 const LOW_RISK_TOOLS: ReadonlySet<string> = new Set([

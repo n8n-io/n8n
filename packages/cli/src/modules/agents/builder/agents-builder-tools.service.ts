@@ -32,9 +32,11 @@ import {
 	isDraftAgentConfig,
 	isDraftIntegration,
 	integrationNeedsCredential,
+	instanceAiApprovalDetailsSchema,
 	sanitizeAgentJsonConfig,
 	tryParseConfigJson,
 	type AgentJsonConfig,
+	type InstanceAiApprovalDetails,
 	type ConfigValidationError,
 	getLegacyBuilderToolNames,
 } from '@n8n/api-types';
@@ -67,6 +69,7 @@ import { AgentPublishService } from '../agent-publish.service';
 import { AgentSkillsService } from '../agent-skills.service';
 import { AgentTaskService } from '../agent-task.service';
 import { AgentWriteLockService } from '../agent-write-lock.service';
+import { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
 import {
 	AgentTestRunService,
 	collectStandardApprovals,
@@ -99,6 +102,7 @@ import {
 } from '../json-config/reconcile-node-tool-gateway-credentials';
 import { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { getAgentConfigHash, isSameAgentConfig } from '../utils/agent-config-hash';
+import { describePublishSendTargets } from '../utils/agent-publish-send-targets';
 import { SkillNameTakenError, skillNameTakenToolMessage } from '@/modules/skills';
 
 const STALE_CONFIG_ERROR: ConfigValidationError = {
@@ -346,6 +350,20 @@ const updateTaskInputSchema = z
 
 type UpdateTaskInput = z.infer<typeof updateTaskInputSchema>;
 
+/**
+ * What the publish tool sends to `suspend()`: an Assistant approval card. The Assistant
+ * reads `message`, `severity`, `resourceName` and `approvalDetails` from the payload.
+ */
+const PUBLISH_CONFIRMATION_SCHEMA = z.object({
+	message: z.string(),
+	severity: z.literal('warning'),
+	resourceName: z.string().optional(),
+	approvalDetails: instanceAiApprovalDetailsSchema,
+});
+
+type PublishConfirmation = z.infer<typeof PUBLISH_CONFIRMATION_SCHEMA>;
+type AgentPublishTargets = ReturnType<typeof describePublishSendTargets>['sendTargets'];
+
 /** A agent_builder_call_agent continuation that carries a sessionNote across an approval. */
 const notedContinuationSchema = z.object({ run: z.unknown(), sessionNote: z.string() }).strict();
 
@@ -533,6 +551,7 @@ export class AgentsBuilderToolsService {
 		private readonly agentSkillRefs: AgentSkillRefsService,
 		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly credentialsPermissionChecker: CredentialsPermissionChecker,
+		private readonly chatIntegrationRegistry: ChatIntegrationRegistry,
 	) {}
 
 	/**
@@ -1042,51 +1061,148 @@ export class AgentsBuilderToolsService {
 				'Publish the target agent so it goes live: integrations sync and scheduled tasks ' +
 					'start. Pass `versionId` to activate a history version instead of the draft. Call it ' +
 					'only when the user asks to publish, activate, or make the agent live or usable. Never ' +
-					'tell them to click Publish in the editor.',
+					'tell them to click Publish in the editor. The user always confirms in chat first, ' +
+					'with a card that lists what the live agent might really send. If they cancel, ' +
+					'nothing is published: do not publish again unless they ask.',
 			)
 			.input(
 				z.object({
 					versionId: z.string().min(1).optional().describe('Omit to publish the draft'),
 				}),
 			)
-			.handler(async ({ versionId }: { versionId?: string }) => {
-				if (!(await userHasScopes(user, ['agent:publish'], false, { projectId }))) {
-					return {
-						ok: false,
-						errors: [{ message: 'You do not have permission to publish agents in this project.' }],
-					};
-				}
-				const editorLock = await this.getEditorLockFailure(agentId);
-				if (editorLock) return editorLock;
-				try {
-					const before = await this.agentsService.findById(agentId, projectId);
-					const beforeActiveVersionId = before?.activeVersionId;
-					const beforeVersionId = before?.versionId;
-					const { agent } = await this.agentPublishService.publishAgent(
-						agentId,
-						projectId,
-						user,
-						{ by: 'builder', trigger: 'explicit' },
-						versionId,
-					);
-					return {
-						ok: true,
-						agentId,
-						activeVersionId: agent.activeVersionId,
-						versionId: agent.versionId,
-						...(beforeActiveVersionId === agent.activeVersionId &&
-						beforeVersionId === agent.versionId
-							? { changed: false }
-							: {}),
-					};
-				} catch (e) {
-					return {
-						ok: false,
-						errors: [{ message: e instanceof Error ? e.message : String(e) }],
-					};
-				}
-			})
+			.suspend(PUBLISH_CONFIRMATION_SCHEMA)
+			.resume(APPROVAL_RESUME_SCHEMA)
+			.handler(
+				async (
+					{ versionId }: { versionId?: string },
+					ctx: InterruptibleToolContext<PublishConfirmation, ApprovalResumePayload>,
+				) => {
+					if (!(await userHasScopes(user, ['agent:publish'], false, { projectId }))) {
+						return {
+							ok: false,
+							errors: [
+								{ message: 'You do not have permission to publish agents in this project.' },
+							],
+						};
+					}
+					const editorLock = await this.getEditorLockFailure(agentId);
+					if (editorLock) return editorLock;
+					// Going live is always the user's decision: ask every time, with no session grant.
+					// `suspend()` stays outside the try, so its control flow is never caught as an error.
+					if (ctx.resumeData === undefined) {
+						let confirmation: PublishConfirmation;
+						try {
+							confirmation = await this.buildPublishConfirmation(agentId, projectId, versionId);
+						} catch (e) {
+							return {
+								ok: false,
+								errors: [{ message: e instanceof Error ? e.message : String(e) }],
+							};
+						}
+						return await ctx.suspend(confirmation);
+					}
+					if (!ctx.resumeData.approved) {
+						return {
+							ok: false,
+							denied: true,
+							reason: 'The user cancelled. Nothing was published.',
+						};
+					}
+					try {
+						const before = await this.agentsService.findById(agentId, projectId);
+						const beforeActiveVersionId = before?.activeVersionId;
+						const beforeVersionId = before?.versionId;
+						const { agent } = await this.agentPublishService.publishAgent(
+							agentId,
+							projectId,
+							user,
+							{ by: 'builder', trigger: 'explicit' },
+							versionId,
+						);
+						return {
+							ok: true,
+							agentId,
+							activeVersionId: agent.activeVersionId,
+							versionId: agent.versionId,
+							...(beforeActiveVersionId === agent.activeVersionId &&
+							beforeVersionId === agent.versionId
+								? { changed: false }
+								: {}),
+						};
+					} catch (e) {
+						return {
+							ok: false,
+							errors: [{ message: e instanceof Error ? e.message : String(e) }],
+						};
+					}
+				},
+			)
 			.build();
+	}
+
+	/**
+	 * The go live confirmation, in the shape of an Assistant approval card: what goes live
+	 * and what the live agent might really send. A history version lists no targets, because
+	 * its config is not loaded here. The card then says that anything it sends is real.
+	 */
+	private async buildPublishConfirmation(
+		agentId: string,
+		projectId: string,
+		versionId: string | undefined,
+	): Promise<PublishConfirmation> {
+		const agent = await this.agentsService.findById(agentId, projectId);
+		const selectedVersion = versionId !== undefined && versionId !== agent?.versionId;
+		const targetVersionId = selectedVersion ? versionId : agent?.versionId;
+		const liveAvailability = !agent?.activeVersionId
+			? 'unpublished'
+			: targetVersionId === agent.activeVersionId
+				? 'published'
+				: 'changed';
+
+		let targets = { sendTargets: [] as AgentPublishTargets, moreSendTargets: 0 };
+		if (agent && !selectedVersion) {
+			const tasks = agent.schema?.tasks?.some((task) => task.enabled)
+				? await this.agentTaskService.list(agentId)
+				: [];
+			targets = describePublishSendTargets({
+				config: agent.schema,
+				integrations: agent.integrations ?? [],
+				taskNames: new Map(tasks.map((task) => [task.id, task.name])),
+				channelLabel: (type) => this.chatIntegrationRegistry.get(type)?.displayLabel ?? type,
+			});
+		}
+
+		const approvalDetails = {
+			action: 'publish-agent',
+			liveAvailability,
+			selectedVersion,
+			sendTargets: targets.sendTargets,
+			...(targets.moreSendTargets > 0 ? { moreSendTargets: targets.moreSendTargets } : {}),
+		} satisfies InstanceAiApprovalDetails;
+		const name = agent?.name ?? 'the agent';
+		const headline = {
+			unpublished: `Publish ${name} and go live.`,
+			changed: `Republish ${name} and go live.`,
+			published: `Go live with ${name}.`,
+		}[liveAvailability];
+		const sends =
+			targets.sendTargets.length > 0
+				? `These might get sent for real: ${targets.sendTargets
+						.map((target) =>
+							target.kind === 'tools'
+								? `${target.count} ${target.count === 1 ? 'tool' : 'tools'}`
+								: `${target.name} (${target.kind})`,
+						)
+						.join(', ')}.`
+				: 'Anything the agent sends will be real.';
+
+		return {
+			// Clients that cannot read the details show this text instead.
+			message: `${headline} ${sends}`,
+			severity: 'warning',
+			...(agent?.name ? { resourceName: agent.name } : {}),
+			approvalDetails,
+		};
 	}
 
 	private buildPatchConfigTool(

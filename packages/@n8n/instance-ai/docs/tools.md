@@ -1448,7 +1448,10 @@ and tools drive the build, including its interactive tools (`ask_questions`,
 `ask_credential`, `configure_channel`, and
 `call_agent` target-tool approvals) and
 lifecycle tools (`publish_agent`, `unpublish_agent`) on the bound target agent —
-the sub-agent session no longer excludes them. Forward publish/unpublish/
+the sub-agent session no longer excludes them. `publish_agent` always suspends
+first with a go live approval card (`approvalDetails.action: 'publish-agent'`)
+that lists what the live agent might really send. It has no session grant, and
+Auto mode always shows the card, so publishing stays the user's decision. Forward publish/unpublish/
 activate/make-live intents to `agent_builder_build_agent`; never tell the user to open the
 agent editor and click Publish. The builder also inherits the orchestrator's
 validated, approval-wrapped MCP connector tools so it can use the same external

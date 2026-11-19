@@ -54,6 +54,10 @@ import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { getAgentConfigHash } from '../utils/agent-config-hash';
 import { SkillNameTakenError } from '@/modules/skills';
 import * as checkAccess from '@/permissions.ee/check-access';
+import type {
+	AgentChatIntegration,
+	ChatIntegrationRegistry,
+} from '../integrations/agent-chat-integration';
 import type { BuilderCredentialService } from '../builder/builder-session';
 import { createAgentSkillRefsService } from './test-utils/stored-agent-config';
 
@@ -122,6 +126,10 @@ function makeService() {
 		async (id) => ({ id, isGlobal: false, isResolvable: false }) as never,
 	);
 	const credentialsPermissionChecker = mock<CredentialsPermissionChecker>();
+	const chatIntegrationRegistry = mock<ChatIntegrationRegistry>();
+	chatIntegrationRegistry.get.mockImplementation(
+		(type) => ({ displayLabel: type === 'slack' ? 'Slack' : type }) as AgentChatIntegration,
+	);
 
 	const service = new AgentsBuilderToolsService(
 		agentsService as unknown as AgentsService,
@@ -147,6 +155,7 @@ function makeService() {
 		createAgentSkillRefsService(),
 		credentialsFinderService,
 		credentialsPermissionChecker,
+		chatIntegrationRegistry,
 	);
 
 	return {
@@ -3350,11 +3359,111 @@ describe('AgentsBuilderToolsService', () => {
 				.json.find((tool) => tool.name === BUILDER_TOOLS.PUBLISH_AGENT)!;
 		}
 
+		const approvedCtx = { ...ctx, resumeData: { approved: true } };
+
 		function getUnpublishTool(service: AgentsBuilderToolsService) {
 			return service
 				.getTools(agentId, projectId, credentialProvider, credentialService, user)
 				.json.find((tool) => tool.name === BUILDER_TOOLS.UNPUBLISH_AGENT)!;
 		}
+
+		it('asks the user to go live first, with what might get sent, and publishes nothing yet', async () => {
+			const { service, agentsService, agentPublishService, agentTaskService } = makeService();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			agentsService.findById.mockResolvedValue({
+				id: agentId,
+				name: 'Support agent',
+				versionId: 'v-draft',
+				activeVersionId: 'v-live',
+				integrations: [
+					{ type: 'slack', credentialId: 'cred-1' },
+					{ type: 'telegram', credentialId: '' },
+					{ type: 'n8n_chat', credentialId: '' },
+				],
+				schema: {
+					...baseConfig,
+					tools: [{ type: 'node', name: 'gmail' }],
+					tasks: [
+						{ type: 'task', id: 'digest', enabled: true },
+						{ type: 'task', id: 'paused', enabled: false },
+					],
+				},
+			} as unknown as ProjectAgent);
+			agentTaskService.list.mockResolvedValue([
+				{ id: 'digest', name: 'Daily digest' },
+				{ id: 'paused', name: 'Paused task' },
+			] as never);
+			const suspend = vi.fn(async (payload: unknown) => payload as never);
+
+			const result = await getPublishTool(service).handler!({}, { ...ctx, suspend });
+
+			expect(suspend).toHaveBeenCalledTimes(1);
+			expect(result).toEqual({
+				message:
+					'Republish Support agent and go live. These might get sent for real: Slack (channel), Daily digest (task), 1 tool.',
+				severity: 'warning',
+				resourceName: 'Support agent',
+				approvalDetails: {
+					action: 'publish-agent',
+					liveAvailability: 'changed',
+					selectedVersion: false,
+					sendTargets: [
+						{ kind: 'channel', name: 'Slack' },
+						{ kind: 'task', name: 'Daily digest' },
+						{ kind: 'tools', count: 1 },
+					],
+				},
+			});
+			expect(agentPublishService.publishAgent).not.toHaveBeenCalled();
+		});
+
+		it('publishes nothing when the user cancels', async () => {
+			const { service, agentPublishService } = makeService();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+
+			const result = await getPublishTool(service).handler!(
+				{},
+				{ ...ctx, resumeData: { approved: false } },
+			);
+
+			expect(result).toEqual({
+				ok: false,
+				denied: true,
+				reason: 'The user cancelled. Nothing was published.',
+			});
+			expect(agentPublishService.publishAgent).not.toHaveBeenCalled();
+		});
+
+		it.each([
+			['a history version, without listing targets', 'v-history', 'changed', true],
+			['the version that is already live', undefined, 'published', false],
+		] as const)(
+			'asks before going live with %s',
+			async (_name, versionId, liveAvailability, selectedVersion) => {
+				const { service, agentsService } = makeService();
+				vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+				agentsService.findById.mockResolvedValue({
+					id: agentId,
+					name: 'Support agent',
+					versionId: 'v-live',
+					activeVersionId: 'v-live',
+					integrations: [{ type: 'slack', credentialId: 'cred-1' }],
+					schema: baseConfig,
+				} as unknown as ProjectAgent);
+				const suspend = vi.fn(async (payload: unknown) => payload as never);
+
+				const result = await getPublishTool(service).handler!({ versionId }, { ...ctx, suspend });
+
+				expect(result).toMatchObject({
+					approvalDetails: {
+						action: 'publish-agent',
+						liveAvailability,
+						selectedVersion,
+						sendTargets: selectedVersion ? [] : [{ kind: 'channel', name: 'Slack' }],
+					},
+				});
+			},
+		);
 
 		it('publishes the bound agent draft when the user has agent:publish', async () => {
 			const { service, agentPublishService } = makeService();
@@ -3366,7 +3475,7 @@ describe('AgentsBuilderToolsService', () => {
 				} as ProjectAgent,
 			});
 
-			const result = await getPublishTool(service).handler!({}, ctx);
+			const result = await getPublishTool(service).handler!({}, approvedCtx);
 
 			expect(checkAccess.userHasScopes).toHaveBeenCalledWith(user, ['agent:publish'], false, {
 				projectId,
@@ -3397,7 +3506,10 @@ describe('AgentsBuilderToolsService', () => {
 				} as ProjectAgent,
 			});
 
-			const result = await getPublishTool(service).handler!({ versionId: 'v-history' }, ctx);
+			const result = await getPublishTool(service).handler!(
+				{ versionId: 'v-history' },
+				approvedCtx,
+			);
 
 			expect(agentPublishService.publishAgent).toHaveBeenCalledWith(
 				agentId,
@@ -3425,7 +3537,7 @@ describe('AgentsBuilderToolsService', () => {
 			agentsService.findById.mockResolvedValue(publishedAgent);
 			agentPublishService.publishAgent.mockResolvedValue({ agent: publishedAgent });
 
-			const result = await getPublishTool(service).handler!({}, ctx);
+			const result = await getPublishTool(service).handler!({}, approvedCtx);
 
 			expect(result).toEqual({
 				ok: true,
@@ -3470,7 +3582,7 @@ describe('AgentsBuilderToolsService', () => {
 				new Error('Cannot publish agent with missing custom tools: my_tool'),
 			);
 
-			const result = await getPublishTool(service).handler!({}, ctx);
+			const result = await getPublishTool(service).handler!({}, approvedCtx);
 
 			expect(result).toEqual({
 				ok: false,
