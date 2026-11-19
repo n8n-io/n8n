@@ -114,19 +114,15 @@ export function movingTagOf(tag) {
 	return match ? `${match[1]}${match[2] ?? ''}` : null;
 }
 
-export const STALE_MS = 7 * 24 * 60 * 60 * 1000;
-
 /**
  * Classifies a source whose newest digest leaves fixable findings. When the
  * moving tag points to a newer patch that removes a finding, a person must
- * update the version. Otherwise the upstream has no fix yet, and the source is
- * stale when its newest digest is at least 7 days old.
+ * update the version. Otherwise the upstream has no fix yet.
  */
-export function classifyNoFix(result, moving, { publishedAt, now }) {
+export function classifyNoFix(result, moving) {
 	if (moving?.platforms.some((platform) => platform.removed.length > 0))
 		return { ...result, status: 'version-update', versionUpdate: moving };
-	const stale = publishedAt ? now - Date.parse(publishedAt) >= STALE_MS : null;
-	return { ...result, status: 'no-upstream-fix', newestPublishedAt: publishedAt, stale };
+	return { ...result, status: 'no-upstream-fix' };
 }
 
 export const GATE_MS = 24 * 60 * 60 * 1000;
@@ -214,10 +210,6 @@ export function renderSummary(results) {
 				`- \`${result.source}\`: version update needed. \`${result.versionUpdate.ref}\` removes ${count(removed)}.`,
 			);
 		}
-		if (result.stale)
-			notes.push(
-				`- \`${result.source}\`: fixable findings and no new digest since ${result.newestPublishedAt}.`,
-			);
 		const published = result.publisher?.publishedAt ?? '-';
 		const autoMerge = result.autoMerge === undefined ? '-' : result.autoMerge ? 'yes' : 'no';
 		const head = `| \`${result.source}\` | ${result.status} | ${published} | ${autoMerge}`;
@@ -277,8 +269,7 @@ async function main() {
 								})),
 							}
 						: null;
-				const { publishedAt } = await verifyPublisher(pin, newestDigest, PLATFORMS);
-				result = classifyNoFix(result, moving, { publishedAt, now: Date.now() });
+				result = classifyNoFix(result, moving);
 			}
 			console.log(`${name}: ${result.status} (${result.newest})`);
 			results.push(result);
