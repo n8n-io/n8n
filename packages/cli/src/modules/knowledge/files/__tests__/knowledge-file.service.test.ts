@@ -11,7 +11,7 @@ import type { GlobalConfig } from '@n8n/config';
 import type { OperationContext, Transaction } from '@n8n/db';
 import type { InstanceSettings } from 'n8n-core';
 
-import type { AgentFile } from '../../entities/agent-file.entity';
+import type { AgentFile } from '../../entities';
 import { KnowledgeConfig } from '../../knowledge.config';
 import type { KnowledgeConsumerScope } from '../../knowledge-consumer-scope';
 import type { KnowledgeSandboxProviderProxy } from '../../knowledge-sandbox-provider-proxy';

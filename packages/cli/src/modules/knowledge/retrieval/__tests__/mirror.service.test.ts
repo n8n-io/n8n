@@ -8,7 +8,7 @@ import type { Logger } from '@n8n/backend-common';
 import type { AgentsConfig } from '@n8n/config';
 import { mock } from 'vitest-mock-extended';
 
-import type { AgentFile } from '../../entities/agent-file.entity';
+import type { AgentFile } from '../../entities';
 import type { KnowledgeFileStore } from '../../files/knowledge-file-store';
 import { getKnowledgeMirrorPaths } from '../../files/storage-naming';
 import type { KnowledgeConsumerScope } from '../../knowledge-consumer-scope';

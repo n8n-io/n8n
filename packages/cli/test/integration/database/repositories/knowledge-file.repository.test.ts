@@ -8,7 +8,7 @@ import { v4 as uuid } from 'uuid';
 import { createAgent as createTestAgent } from '@test-integration/db/agents';
 
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
-import { AgentFile } from '@/modules/knowledge/entities/agent-file.entity';
+import { AgentFile } from '@/modules/knowledge/entities';
 import { KnowledgeFileRepository } from '@/modules/knowledge/repositories/knowledge-file.repository';
 
 describe('KnowledgeFileRepository', () => {

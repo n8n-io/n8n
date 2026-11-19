@@ -12,7 +12,7 @@ import { unlink } from 'node:fs/promises';
 import path from 'node:path';
 import type { Readable } from 'node:stream';
 
-import type { AgentFile } from '../entities/agent-file.entity';
+import type { AgentFile } from '../entities';
 import { KnowledgeConfig } from '../knowledge.config';
 import type { KnowledgeConsumerScope } from '../knowledge-consumer-scope';
 import { KnowledgeSandboxProviderProxy } from '../knowledge-sandbox-provider-proxy';
