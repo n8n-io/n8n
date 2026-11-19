@@ -1194,7 +1194,7 @@ export class AgentsBuilderToolsService {
 		versionId: string | undefined,
 		changedSinceAsked = false,
 	) {
-		let card: { confirmation: PublishConfirmation; continuation: PublishContinuation } | undefined;
+		let card: { confirmation?: PublishConfirmation; continuation: PublishContinuation } | undefined;
 		try {
 			card = await this.buildPublishConfirmation(agentId, projectId, versionId, changedSinceAsked);
 		} catch (e) {
@@ -1202,10 +1202,7 @@ export class AgentsBuilderToolsService {
 		}
 		if (!card) return { ok: false, errors: [{ message: 'Agent not found.' }] };
 		// The version is already live, so publishing changes nothing and needs no card.
-		if (
-			card.confirmation.approvalDetails.action === 'publish-agent' &&
-			card.confirmation.approvalDetails.liveAvailability === 'published'
-		) {
+		if (card.confirmation === undefined) {
 			return {
 				ok: true,
 				agentId,
@@ -1226,16 +1223,22 @@ export class AgentsBuilderToolsService {
 		projectId: string,
 		versionId: string | undefined,
 		changedSinceAsked: boolean,
-	): Promise<{ confirmation: PublishConfirmation; continuation: PublishContinuation } | undefined> {
+	): Promise<
+		{ confirmation?: PublishConfirmation; continuation: PublishContinuation } | undefined
+	> {
 		const agent = await this.agentsService.findById(agentId, projectId);
 		if (!agent) return undefined;
 		const selectedVersion = versionId !== undefined && versionId !== agent.versionId;
 		const targetVersionId = selectedVersion ? versionId : agent.versionId;
-		const liveAvailability = !agent.activeVersionId
-			? 'unpublished'
-			: targetVersionId === agent.activeVersionId
-				? 'published'
-				: 'changed';
+		const continuation: PublishContinuation = {
+			confirmedVersionId: targetVersionId ?? null,
+			selectedVersion,
+			liveVersionId: agent.activeVersionId ?? null,
+			revision: agent.revision,
+		};
+		// Without a confirmation the caller reports that nothing changes.
+		if (agent.activeVersionId && targetVersionId === agent.activeVersionId) return { continuation };
+		const liveAvailability = agent.activeVersionId ? 'changed' : 'unpublished';
 
 		// A history version brings its own config and tasks, and an unknown one fails here,
 		// before any card. Channels with credentials are not versioned: they stay on the agent.
@@ -1272,11 +1275,10 @@ export class AgentsBuilderToolsService {
 			...(changedSinceAsked ? { changedSinceAsked: true } : {}),
 		} satisfies InstanceAiApprovalDetails;
 		const name = agent.name || 'the agent';
-		const headline = {
-			unpublished: `Publish ${name} and go live.`,
-			changed: `Republish ${name} and go live.`,
-			published: `Go live with ${name}.`,
-		}[liveAvailability];
+		const headline =
+			liveAvailability === 'unpublished'
+				? `Publish ${name} and go live.`
+				: `Republish ${name} and go live.`;
 		// The overflow counts channels, tasks and servers, so it goes before the tool count.
 		const named = targets.sendTargets.filter((target) => target.kind !== 'tools');
 		const tools = targets.sendTargets.filter((target) => target.kind === 'tools');
@@ -1311,12 +1313,7 @@ export class AgentsBuilderToolsService {
 				...(agent.name ? { resourceName: agent.name } : {}),
 				approvalDetails,
 			},
-			continuation: {
-				confirmedVersionId: targetVersionId ?? null,
-				selectedVersion,
-				liveVersionId: agent.activeVersionId ?? null,
-				revision: agent.revision,
-			},
+			continuation,
 		};
 	}
 

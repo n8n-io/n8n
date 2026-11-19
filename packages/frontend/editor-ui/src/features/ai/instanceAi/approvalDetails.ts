@@ -252,8 +252,6 @@ function formatPublishAgent(details: PublishAgentDetails, t: Translate): string 
 	];
 	if (details.liveAvailability === 'changed')
 		lines.push(t('instanceAi.approval.publishAgent.replacesLive'));
-	if (details.liveAvailability === 'published')
-		lines.push(t('instanceAi.approval.publishAgent.alreadyLive'));
 
 	if (details.sendTargets.length === 0) {
 		lines.push(t('agents.testRun.mode.confirm.noList'));

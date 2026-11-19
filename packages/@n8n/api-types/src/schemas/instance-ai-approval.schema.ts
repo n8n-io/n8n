@@ -150,9 +150,9 @@ export const instanceAiApprovalDetailsSchema = z.discriminatedUnion('action', [
 		action: z.literal('publish-agent'),
 		/**
 		 * What going live changes: `unpublished` publishes for the first time, `changed`
-		 * replaces the live version, `published` keeps the version that is already live.
+		 * replaces the live version. A version that is already live needs no card.
 		 */
-		liveAvailability: z.enum(['unpublished', 'changed', 'published']),
+		liveAvailability: z.enum(['unpublished', 'changed']),
 		/** True when a history version goes live instead of the draft. */
 		selectedVersion: z.boolean(),
 		/** Empty when the agent can send nothing. The card then says that anything it sends is real. */

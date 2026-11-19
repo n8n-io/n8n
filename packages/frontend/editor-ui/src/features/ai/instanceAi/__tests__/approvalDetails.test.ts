@@ -79,19 +79,16 @@ describe('approval details', () => {
 		it('counts the targets left out by the limit', () => {
 			const output = formatApprovalDetails(
 				details({
-					liveAvailability: 'published',
 					sendTargets: [{ kind: 'tools', count: 1 }],
 					moreSendTargets: 2,
 				}),
 			);
-			expect(output).toContain('This version is already live.');
 			expect(output).toContain('• And 2 more\n• Uses its 1 tool');
 		});
 
 		it.each([
 			['unpublished', 'Publish Support agent and go live?'],
 			['changed', 'Republish Support agent and go live?'],
-			['published', 'Go live with Support agent?'],
 		] as const)('titles a %s agent as the panel does', (liveAvailability, title) => {
 			expect(
 				formatApprovalTitle({
