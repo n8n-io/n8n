@@ -26,6 +26,9 @@
 		"GET /ai-preferences": {
 			"status": "gap"
 		},
+		"GET /ai-preferences/{aiPreferenceId}": {
+			"status": "gap"
+		},
 		"PUT /ai-preferences/{aiPreferenceId}": {
 			"status": "gap"
 		},

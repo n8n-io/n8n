@@ -24,6 +24,8 @@ paths:
     post:
       $ref: ./handlers/ai-preferences/spec/paths/createAiPreference.generated.yml
   /ai-preferences/{aiPreferenceId}:
+    get:
+      $ref: ./handlers/ai-preferences/spec/paths/getAiPreference.generated.yml
     put:
       $ref: ./handlers/ai-preferences/spec/paths/updateAiPreference.generated.yml
     delete:

@@ -98,6 +98,25 @@ export class AiPreferencesPublicController {
 		};
 	}
 
+	@Get('/:aiPreferenceId')
+	@ApiKeyScope('aiPreference:read')
+	@ApiSummary('Retrieve an AI preference')
+	@ApiDescription(
+		'Retrieve one AI preference by ID. The content, scope, userId and projectId fields form the body that the update endpoint takes.',
+	)
+	@ApiTags(tags)
+	@ApiResponse(200, AiPreferencePublicDto)
+	@ApiErrorResponse(404)
+	async getAiPreference(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('aiPreferenceId', aiPreferenceIdParamSchema) aiPreferenceId: string,
+	): Promise<AiPreferencePublicDto> {
+		return toAiPreferencePublicDto(
+			await this.aiPreferenceService.getById(req.user, aiPreferenceId),
+		);
+	}
+
 	@Post('/')
 	@ApiKeyScope('aiPreference:create')
 	@ApiSummary('Create an AI preference')

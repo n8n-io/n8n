@@ -86,6 +86,7 @@ describe('Public API /ai-preferences', () => {
 			const agent = testServer.publicApiAgentFor(owner);
 			const callEveryRoute = async () => [
 				await agent.get('/ai-preferences'),
+				await agent.get(`/ai-preferences/${row.id}`),
 				await agent.post('/ai-preferences').send({ content: 'new', scope: 'user' }),
 				await agent
 					.put(`/ai-preferences/${row.id}`)
@@ -97,7 +98,7 @@ describe('Public API /ai-preferences', () => {
 			const whileOff = await callEveryRoute();
 			const invalidBodyWhileOff = await agent.post('/ai-preferences').send({ scope: 'team' });
 
-			expect(whileOff.map((response) => response.statusCode)).toEqual([404, 404, 404, 404]);
+			expect(whileOff.map((response) => response.statusCode)).toEqual([404, 404, 404, 404, 404]);
 			expect(invalidBodyWhileOff.statusCode).toBe(404);
 			expect(whileOff[0].body).toEqual({ message: 'Not Found' });
 			expect(await repository().findOneByOrFail({ id: row.id })).toMatchObject({ content: 'mine' });
@@ -105,7 +106,7 @@ describe('Public API /ai-preferences', () => {
 			await settings().setEnabled(true);
 			const whileOn = await callEveryRoute();
 
-			expect(whileOn.map((response) => response.statusCode)).toEqual([200, 201, 200, 204]);
+			expect(whileOn.map((response) => response.statusCode)).toEqual([200, 200, 201, 200, 204]);
 		});
 	});
 
@@ -329,6 +330,73 @@ describe('Public API /ai-preferences', () => {
 		});
 	});
 
+	describe('GET /ai-preferences/:aiPreferenceId', () => {
+		test('returns one preference with only its public fields', async () => {
+			const row = await seed({ content: 'mine', userId: member.id });
+
+			const response = await testServer.publicApiAgentFor(member).get(`/ai-preferences/${row.id}`);
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body).toEqual({
+				id: row.id,
+				content: 'mine',
+				scope: 'user',
+				userId: member.id,
+				projectId: null,
+				source: 'ui',
+				createdAt: row.createdAt.toISOString(),
+				updatedAt: row.updatedAt.toISOString(),
+			});
+		});
+
+		test('returns a project preference to a member who can read the project', async () => {
+			const row = await seed({ content: 'viewer project', projectId: viewerProject.id });
+
+			const response = await testServer.publicApiAgentFor(member).get(`/ai-preferences/${row.id}`);
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body).toMatchObject({ scope: 'project', projectId: viewerProject.id });
+		});
+
+		test("lets an owner and an admin read another user's preference", async () => {
+			const row = await seed({ content: 'member row', userId: member.id });
+
+			for (const caller of [owner, admin]) {
+				const response = await testServer
+					.publicApiAgentFor(caller)
+					.get(`/ai-preferences/${row.id}`);
+
+				expect(response.statusCode).toBe(200);
+			}
+		});
+
+		test('answers 404 for a row the caller cannot see, and for a missing row', async () => {
+			const hidden = await seed({ content: 'hidden', userId: outsider.id });
+			const foreign = await seed({ content: 'foreign', projectId: foreignProject.id });
+
+			for (const id of [hidden.id, foreign.id, randomId()]) {
+				const response = await testServer.publicApiAgentFor(member).get(`/ai-preferences/${id}`);
+
+				expect(response.statusCode).toBe(404);
+			}
+		});
+
+		test('refuses an id that is not a UUID', async () => {
+			const response = await testServer.publicApiAgentFor(member).get('/ai-preferences/not-a-uuid');
+
+			expect(response.statusCode).toBe(400);
+		});
+
+		test('refuses an API key without the aiPreference:read scope', async () => {
+			const caller = await createMemberWithApiKey({ scopes: ['aiPreference:list'] });
+			const row = await seed({ content: 'mine', userId: caller.id });
+
+			const response = await testServer.publicApiAgentFor(caller).get(`/ai-preferences/${row.id}`);
+
+			expect(response.statusCode).toBe(403);
+		});
+	});
+
 	describe('POST /ai-preferences', () => {
 		test('saves a personal preference for a member', async () => {
 			const response = await testServer
@@ -527,10 +595,10 @@ describe('Public API /ai-preferences', () => {
 			expect((await repository().findOneByOrFail({ id: row.id })).content).toBe('stay');
 		});
 
-		test('accepts the body that a list row carries, without the server fields', async () => {
+		test('accepts the fields that a GET returns, without the server fields', async () => {
 			const row = await seed({ content: 'round trip', userId: member.id });
-			const listed = await testServer.publicApiAgentFor(member).get('/ai-preferences');
-			const { content, scope, userId, projectId } = listed.body.data[0];
+			const fetched = await testServer.publicApiAgentFor(member).get(`/ai-preferences/${row.id}`);
+			const { content, scope, userId, projectId } = fetched.body;
 
 			const response = await testServer
 				.publicApiAgentFor(member)
