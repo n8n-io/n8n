@@ -17,7 +17,8 @@ describe('describePublishSendTargets', () => {
 				tasks: [
 					{ type: 'task', id: 'digest', enabled: true },
 					{ type: 'task', id: 'paused', enabled: false },
-					{ type: 'task', id: 'unnamed', enabled: true },
+					// No definition, so nothing runs.
+					{ type: 'task', id: 'orphan', enabled: true },
 				],
 				mcpServers: [
 					{
@@ -42,7 +43,6 @@ describe('describePublishSendTargets', () => {
 			sendTargets: [
 				{ kind: 'channel', name: 'Slack' },
 				{ kind: 'task', name: 'Daily digest' },
-				{ kind: 'task', name: 'unnamed' },
 				{ kind: 'mcp-server', name: 'Linear' },
 				{ kind: 'tools', count: 2 },
 			],
@@ -71,7 +71,7 @@ describe('describePublishSendTargets', () => {
 		const result = describePublishSendTargets({
 			config: { tools: [{}] as StoredAgentConfig['tools'], tasks },
 			integrations: [],
-			taskNames: new Map(),
+			taskNames: new Map(tasks.map((task) => [task.id, `Task ${task.id}`])),
 			channelLabel,
 		});
 

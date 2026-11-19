@@ -22,7 +22,7 @@ export interface PublishSendTargets {
  * - its own tools, as a count.
  *
  * Unfinished entries are left out, as `countAgentCapabilities` does: a channel without a
- * credential and an MCP server without a URL do nothing live. The tool count is always
+ * credential, an MCP server without a URL and a task without a definition do nothing live. The tool count is always
  * kept, and the other targets are cut at the limit.
  */
 export function describePublishSendTargets(args: {
@@ -42,9 +42,11 @@ export function describePublishSendTargets(args: {
 					integration.type !== N8N_CHAT_INTEGRATION_TYPE && !isDraftIntegration(integration),
 			)
 			.map((integration) => ({ kind: 'channel' as const, name: channelLabel(integration.type) })),
-		...(config?.tasks ?? [])
-			.filter((task) => task.enabled)
-			.map((task) => ({ kind: 'task' as const, name: taskNames.get(task.id) ?? task.id })),
+		...(config?.tasks ?? []).flatMap((task) => {
+			// A task without a definition has nothing to run.
+			const name = task.enabled ? taskNames.get(task.id) : undefined;
+			return name === undefined ? [] : [{ kind: 'task' as const, name }];
+		}),
 		...(config?.mcpServers ?? [])
 			.filter((server) => server.url.trim() !== '')
 			.map((server) => ({ kind: 'mcp-server' as const, name: server.name })),
