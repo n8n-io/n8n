@@ -75,9 +75,10 @@ export class HttpRunRegistry {
 				...(context.authorization && { authorization: context.authorization }),
 			}),
 			enrich: profile.enrich,
-			// The model writes the args of a real read. Code checks the request they make: it must be
-			// read-shaped, on the host of the node, and inside the vendor.
+			// The model writes the args of a real read. Code checks the request they make: it must use
+			// HTTPS, be read-shaped, be on the host of the node, and be inside the vendor.
 			allow: (req) =>
+				req.url.protocol === 'https:' &&
 				isReadShaped(req, vendor.readPaths) &&
 				matchesVendor(vendor, req.url.hostname, req.url.pathname),
 		});
