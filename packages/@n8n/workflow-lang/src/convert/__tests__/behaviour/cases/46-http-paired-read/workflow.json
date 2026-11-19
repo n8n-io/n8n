@@ -1,0 +1,146 @@
+{
+	"name": "HTTP paired read",
+	"nodes": [
+		{
+			"id": "webhook",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [
+				0,
+				0
+			],
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "http-paired",
+				"options": {}
+			},
+			"webhookId": "9d1a6f42-2c3b-4e5d-8a7f-1b2c3d4e5f64"
+		},
+		{
+			"id": "source",
+			"name": "Source",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [
+				200,
+				0
+			],
+			"parameters": {
+				"jsCode": "return [{ json: { id: 'a0' } }, { json: { id: 'a1' } }, { json: { id: 'a2' } }, { json: { id: 'a3' } }, { json: { id: 'a4' } }];"
+			}
+		},
+		{
+			"id": "http",
+			"name": "Http",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.2,
+			"position": [
+				400,
+				0
+			],
+			"parameters": {
+				"method": "GET",
+				"url": "http://127.0.0.1:47123/thing/{{ $json.id }}",
+				"authentication": "none",
+				"options": {
+					"response": {
+						"response": {
+							"responseFormat": "json"
+						}
+					}
+				}
+			}
+		},
+		{
+			"id": "read-all",
+			"name": "Read All",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [
+				600,
+				-100
+			],
+			"parameters": {
+				"jsCode": "return items.map((item) => ({ json: { got: item.json.got, src: $('Source').item.json.id } }));"
+			}
+		},
+		{
+			"id": "read-each",
+			"name": "Read Each",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [
+				600,
+				0
+			],
+			"parameters": {
+				"jsCode": "return { json: { got: $json.got, src: $('Source').item.json.id } };",
+				"mode": "runOnceForEachItem"
+			}
+		},
+		{
+			"id": "read-expr",
+			"name": "Read Expr",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [
+				600,
+				100
+			],
+			"parameters": {
+				"mode": "raw",
+				"jsonOutput": "={ \"got\": \"{{ $json.got }}\", \"src\": \"{{ $('Source').item.json.id }}\" }",
+				"options": {}
+			}
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "Source",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Source": {
+			"main": [
+				[
+					{
+						"node": "Http",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Http": {
+			"main": [
+				[
+					{
+						"node": "Read All",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Read Each",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Read Expr",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	}
+}
