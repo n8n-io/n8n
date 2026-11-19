@@ -145,7 +145,7 @@ describe('SkillSourceController', () => {
 				expect.objectContaining({
 					location: 'skills/broken',
 					name: null,
-					error: expect.objectContaining({ reason: 'parse_error' }),
+					error: { reason: 'parse_error', message: expect.any(String) },
 				}),
 				expect.objectContaining({ location: 'skills/docx', name: 'docx', error: null }),
 				expect.objectContaining({

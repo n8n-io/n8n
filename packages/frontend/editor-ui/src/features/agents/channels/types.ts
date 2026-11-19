@@ -112,6 +112,11 @@ export interface AgentChannelWarningPresentation {
 	message: string | VNode;
 }
 
+export interface AgentChannelDisconnectWarningContext extends AgentChannelPresentationContext {
+	/** The user removes the channel to set it up again. */
+	restart: boolean;
+}
+
 export interface AgentChannelDisconnectContext {
 	isPublished: boolean;
 }
@@ -147,6 +152,6 @@ export interface AgentChannelPlatform {
 	) => boolean;
 	presentDisconnectWarning?: (
 		warning: AgentIntegrationDisconnectWarning,
-		context: AgentChannelPresentationContext,
+		context: AgentChannelDisconnectWarningContext,
 	) => AgentChannelWarningPresentation | null;
 }

@@ -720,11 +720,11 @@ catalogs:
       specifier: 6.10.0
       version: 6.10.0
     oxlint:
-      specifier: 1.78.0
-      version: 1.78.0
+      specifier: 1.93.0
+      version: 1.93.0
     oxlint-tsgolint:
-      specifier: ^0.21.1
-      version: 0.21.1
+      specifier: ^7.0.2007
+      version: 7.0.2007
     p-limit:
       specifier: ^3.1.0
       version: 3.1.0
@@ -1379,10 +1379,10 @@ importers:
         version: 14.0.14
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       pg:
         specifier: 8.21.0
         version: 8.21.0(pg-native@3.8.0)
@@ -1422,10 +1422,10 @@ importers:
         version: link:../vitest-config
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
@@ -1525,10 +1525,10 @@ importers:
         version: 14.0.14
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       tsx:
         specifier: 'catalog:'
         version: 4.19.3
@@ -1658,10 +1658,10 @@ importers:
         version: 8.0.0(supports-color@8.1.1)(typescript@7.0.2)
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       tsx:
         specifier: 'catalog:'
         version: 4.19.3
@@ -1725,10 +1725,10 @@ importers:
         version: 1.34.1(patch_hash=bc707e2c34a2464da2c9c93ead33e80fd9883a00434ef64907ddc45208a08b33)
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
@@ -1755,10 +1755,10 @@ importers:
         version: link:../vitest-config
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
@@ -1834,10 +1834,10 @@ importers:
         version: 5.0.1(@vitest/browser@5.0.1)(vitest@5.0.1)
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
@@ -1943,10 +1943,10 @@ importers:
         version: 14.0.14
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
@@ -1968,6 +1968,9 @@ importers:
       '@n8n/backend-network':
         specifier: workspace:*
         version: link:../backend-network
+      '@n8n/blob-storage':
+        specifier: workspace:*
+        version: link:../blob-storage
       '@n8n/config':
         specifier: workspace:*
         version: link:../config
@@ -2001,6 +2004,9 @@ importers:
       '@types/express':
         specifier: 'catalog:'
         version: 5.0.1
+      bcryptjs:
+        specifier: 2.4.3
+        version: 2.4.3
       cache-manager:
         specifier: 'catalog:'
         version: 5.2.3
@@ -2041,6 +2047,9 @@ importers:
       '@n8n/vitest-config':
         specifier: workspace:*
         version: link:../vitest-config
+      '@types/bcryptjs':
+        specifier: ^2.4.2
+        version: 2.4.2
       '@types/jsonwebtoken':
         specifier: 'catalog:'
         version: 9.0.10
@@ -2058,10 +2067,10 @@ importers:
         version: 8.8.1(@types/ioredis-mock@8.2.2(supports-color@8.1.1))(ioredis@5.3.2(supports-color@8.1.1))
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
@@ -2125,10 +2134,10 @@ importers:
         version: link:../typescript-config
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
@@ -2189,10 +2198,10 @@ importers:
         version: 5.0.1(@vitest/browser@5.0.1)(vitest@5.0.1)
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
@@ -2226,10 +2235,10 @@ importers:
         version: 5.0.1(@vitest/browser@5.0.1)(vitest@5.0.1)
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
@@ -2260,10 +2269,10 @@ importers:
         version: 20.19.41
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       tsdown:
         specifier: catalog:typescript
         version: 0.22.8(oxc-resolver@11.21.2)(tsx@4.19.3)(typescript@7.0.2)(unrun@0.2.10(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3))(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@7.0.2))
@@ -2306,10 +2315,10 @@ importers:
         version: 14.0.14
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
@@ -2322,6 +2331,9 @@ importers:
 
   packages/@n8n/code-runtime-js:
     dependencies:
+      '@n8n/code-task-contract':
+        specifier: workspace:*
+        version: link:../code-task-contract
       n8n-workflow:
         specifier: workspace:*
         version: link:../../workflow
@@ -2343,10 +2355,10 @@ importers:
         version: 0.28.1
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
@@ -2383,10 +2395,10 @@ importers:
         version: link:../../workflow
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
@@ -2426,10 +2438,10 @@ importers:
         version: link:../vitest-config
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
@@ -2539,10 +2551,10 @@ importers:
         version: link:../vitest-config
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
@@ -2579,10 +2591,10 @@ importers:
         version: 5.0.1(@vitest/browser@5.0.1)(vitest@5.0.1)
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
@@ -2603,10 +2615,10 @@ importers:
         version: link:../typescript-config
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
@@ -2631,10 +2643,10 @@ importers:
         version: link:../vitest-config
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
@@ -2753,10 +2765,10 @@ importers:
         version: link:../../quality/environments/containers
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       testcontainers:
         specifier: 'catalog:'
         version: 11.13.0(supports-color@8.1.1)
@@ -2814,10 +2826,10 @@ importers:
         version: 4.17.17
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
@@ -2848,10 +2860,10 @@ importers:
         version: 5.0.1(@vitest/browser@5.0.1)(vitest@5.0.1)
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
@@ -2913,6 +2925,9 @@ importers:
       '@testcontainers/postgresql':
         specifier: 'catalog:'
         version: 11.13.0(supports-color@8.1.1)
+      '@testcontainers/redis':
+        specifier: 'catalog:'
+        version: 11.13.0(supports-color@8.1.1)
       '@types/express':
         specifier: 'catalog:'
         version: 5.0.1
@@ -2925,15 +2940,18 @@ importers:
       '@types/supertest':
         specifier: ^6.0.3
         version: 6.0.3
+      ioredis:
+        specifier: 5.3.2
+        version: 5.3.2(supports-color@8.1.1)
       n8n-containers:
         specifier: workspace:*
         version: link:../../quality/environments/containers
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       supertest:
         specifier: ^7.1.1
         version: 7.1.1(supports-color@8.1.1)
@@ -2967,10 +2985,10 @@ importers:
         version: 5.0.1(@vitest/browser@5.0.1)(vitest@5.0.1)
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
@@ -3238,10 +3256,10 @@ importers:
         version: 0.7.0(@typescript/typescript6@6.0.2)(vue@3.5.26(@typescript/typescript6@6.0.2))
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       prettier:
         specifier: 'catalog:'
         version: 3.6.2
@@ -3296,10 +3314,10 @@ importers:
         version: 5.3.0
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
@@ -3336,10 +3354,10 @@ importers:
         version: 5.0.1(@vitest/browser@5.0.1)(vitest@5.0.1)
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
@@ -3463,10 +3481,10 @@ importers:
         version: 3.3.3
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       p-limit:
         specifier: catalog:p-limit-v7
         version: 7.3.1
@@ -3511,10 +3529,10 @@ importers:
         version: 5.0.1(@vitest/browser@5.0.1)(vitest@5.0.1)
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
@@ -3541,10 +3559,10 @@ importers:
         version: 5.0.1(@vitest/browser@5.0.1)(vitest@5.0.1)
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
@@ -3693,10 +3711,10 @@ importers:
         version: 5.0.1(@vitest/browser@5.0.1)(vitest@5.0.1)
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       tsx:
         specifier: 'catalog:'
         version: 4.19.3
@@ -3742,10 +3760,10 @@ importers:
         version: 2.4.6
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       typescript:
         specifier: catalog:typescript-tooling
         version: '@typescript/typescript6@6.0.2'
@@ -3846,10 +3864,10 @@ importers:
         version: typescript@7.0.2
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       typescript:
         specifier: catalog:typescript-tooling
         version: '@typescript/typescript6@6.0.2'
@@ -3910,10 +3928,10 @@ importers:
         version: link:../../nodes-base
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       supertest:
         specifier: ^7.1.1
         version: 7.1.1(supports-color@8.1.1)
@@ -4286,7 +4304,7 @@ importers:
         version: 4.1.4(@typescript-eslint/eslint-plugin@8.70.0(@typescript-eslint/parser@8.70.0(@typescript/typescript6@6.0.2)(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1))(@typescript/typescript6@6.0.2)(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1))(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
     devDependencies:
       '@n8n/typescript-config':
         specifier: workspace:*
@@ -4318,10 +4336,10 @@ importers:
         version: 5.0.1(@vitest/browser@5.0.1)(vitest@5.0.1)
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
@@ -4428,10 +4446,10 @@ importers:
         version: 3.23.2
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
@@ -4499,10 +4517,10 @@ importers:
         version: 5.0.1(@vitest/browser@5.0.1)(vitest@5.0.1)
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
@@ -4581,10 +4599,10 @@ importers:
         version: 5.0.1(@vitest/browser@5.0.1)(vitest@5.0.1)
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
@@ -4627,10 +4645,10 @@ importers:
         version: 5.0.1(@vitest/browser@5.0.1)(vitest@5.0.1)
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
@@ -4667,10 +4685,10 @@ importers:
         version: 5.0.1(@vitest/browser@5.0.1)(vitest@5.0.1)
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
@@ -4836,10 +4854,10 @@ importers:
         version: 3.23.2
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       tsdown:
         specifier: catalog:typescript
         version: 0.22.8(oxc-resolver@11.21.2)(tsx@4.19.3)(typescript@7.0.2)(unrun@0.2.10(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3))(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@7.0.2))
@@ -4895,10 +4913,10 @@ importers:
         version: link:../vitest-config
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
@@ -4962,10 +4980,10 @@ importers:
         version: 0.6.1
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
@@ -5647,10 +5665,10 @@ importers:
         version: 12.1.3
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       supertest:
         specifier: ^7.1.1
         version: 7.1.1(supports-color@8.1.1)
@@ -5840,10 +5858,10 @@ importers:
         version: 14.0.14
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       reflect-metadata:
         specifier: 'catalog:'
         version: 0.2.2
@@ -5943,10 +5961,10 @@ importers:
         version: 2.4.6
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       typescript:
         specifier: 'catalog:'
         version: 6.0.2
@@ -6034,10 +6052,10 @@ importers:
         version: 2.4.3(patch_hash=95b9793afc4529bc887bf7dac437131975e133feb7152dce68aa4b3c9b648aff)(vue@3.5.26(typescript@6.0.2))
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       pinia:
         specifier: catalog:frontend
         version: 2.2.4(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
@@ -6242,10 +6260,10 @@ importers:
         version: 10.5.10(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1)(typescript@6.0.2)
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       pinia:
         specifier: catalog:frontend
         version: 2.2.4(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
@@ -6324,10 +6342,10 @@ importers:
         version: typescript@7.0.2
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       rimraf:
         specifier: 'catalog:'
         version: 6.0.1
@@ -6360,10 +6378,10 @@ importers:
         version: link:../../../@n8n/vitest-config
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       tsdown:
         specifier: 'catalog:'
         version: 0.16.5(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3)(oxc-resolver@11.21.2)(typescript@6.0.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2))
@@ -6418,10 +6436,10 @@ importers:
         version: link:../../../@n8n/vitest-config
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       typescript:
         specifier: 'catalog:'
         version: 6.0.2
@@ -6494,10 +6512,10 @@ importers:
         version: 6.0.8(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       typescript:
         specifier: 'catalog:'
         version: 6.0.2
@@ -6540,10 +6558,10 @@ importers:
         version: 8.1.0(@vue/compiler-sfc@3.5.26)(vue@3.5.26(typescript@6.0.2))
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       tsdown:
         specifier: 'catalog:'
         version: 0.16.5(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3)(oxc-resolver@11.21.2)(typescript@6.0.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2))
@@ -6604,10 +6622,10 @@ importers:
         version: 8.1.0(@vue/compiler-sfc@3.5.26)(vue@3.5.26(typescript@6.0.2))
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       tsdown:
         specifier: 'catalog:'
         version: 0.16.5(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3)(oxc-resolver@11.21.2)(typescript@6.0.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2))
@@ -6668,10 +6686,10 @@ importers:
         version: 6.9.1
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       tsdown:
         specifier: 'catalog:'
         version: 0.16.5(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3)(oxc-resolver@11.21.2)(typescript@6.0.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2))
@@ -6747,10 +6765,10 @@ importers:
         version: 8.1.0(@vue/compiler-sfc@3.5.26)(vue@3.5.26(typescript@6.0.2))
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       tsdown:
         specifier: 'catalog:'
         version: 0.16.5(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3)(oxc-resolver@11.21.2)(typescript@6.0.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2))
@@ -6853,10 +6871,10 @@ importers:
         version: 10.5.10(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1)(typescript@6.0.2)
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       playwright:
         specifier: catalog:e2e
         version: 1.62.1
@@ -7268,10 +7286,10 @@ importers:
         version: 3.3.18
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       pinia:
         specifier: catalog:frontend
         version: 2.2.4(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
@@ -7503,10 +7521,10 @@ importers:
         version: 23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10)
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
@@ -7606,10 +7624,10 @@ importers:
         version: 2.4.6
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       stylelint:
         specifier: 'catalog:'
         version: 16.23.0(supports-color@8.1.1)(typescript@6.0.2)
@@ -7670,10 +7688,10 @@ importers:
         version: link:../../../@n8n/vitest-config
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
@@ -7770,10 +7788,10 @@ importers:
         version: link:../../../quality/environments/containers
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
@@ -7843,10 +7861,10 @@ importers:
         version: link:../../../quality/environments/containers
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
@@ -7862,6 +7880,9 @@ importers:
 
   packages/modules/execution-limits/backend:
     dependencies:
+      '@n8n/api-types':
+        specifier: workspace:*
+        version: link:../../../@n8n/api-types
       '@n8n/constants':
         specifier: workspace:*
         version: link:../../../@n8n/constants
@@ -7871,13 +7892,19 @@ importers:
       '@n8n/decorators':
         specifier: workspace:*
         version: link:../../../@n8n/decorators
+      '@n8n/di':
+        specifier: workspace:*
+        version: link:../../../@n8n/di
+      '@n8n/errors':
+        specifier: workspace:*
+        version: link:../../../@n8n/errors
       '@n8n/typeorm':
         specifier: workspace:*
         version: link:../../../@n8n/typeorm
     devDependencies:
-      '@n8n/di':
+      '@n8n/backend-test-utils':
         specifier: workspace:*
-        version: link:../../../@n8n/di
+        version: link:../../../@n8n/backend-test-utils
       '@n8n/oxlint-config':
         specifier: workspace:*
         version: link:../../../@n8n/oxlint-config
@@ -7889,10 +7916,10 @@ importers:
         version: link:../../../@n8n/vitest-config
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
@@ -8004,10 +8031,10 @@ importers:
         version: 6.0.8(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       stylelint:
         specifier: 'catalog:'
         version: 16.23.0(supports-color@8.1.1)(typescript@6.0.2)
@@ -8101,10 +8128,10 @@ importers:
         version: link:../../../quality/environments/containers
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
@@ -8234,10 +8261,10 @@ importers:
         version: 6.0.8(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       stylelint:
         specifier: 'catalog:'
         version: 16.23.0(supports-color@8.1.1)(typescript@6.0.2)
@@ -8313,10 +8340,10 @@ importers:
         version: 6.0.8(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       typescript:
         specifier: 'catalog:'
         version: 6.0.2
@@ -8440,10 +8467,10 @@ importers:
         version: 23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10)
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       stylelint:
         specifier: 'catalog:'
         version: 16.23.0(supports-color@8.1.1)(typescript@6.0.2)
@@ -8549,10 +8576,10 @@ importers:
         version: 6.0.8(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       stylelint:
         specifier: 'catalog:'
         version: 16.23.0(supports-color@8.1.1)(typescript@6.0.2)
@@ -8688,10 +8715,10 @@ importers:
         version: 2.4.6
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       stylelint:
         specifier: 'catalog:'
         version: 16.23.0(supports-color@8.1.1)(typescript@6.0.2)
@@ -8767,10 +8794,10 @@ importers:
         version: 14.0.14
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
@@ -8861,10 +8888,10 @@ importers:
         version: 23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10)
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       stylelint:
         specifier: 'catalog:'
         version: 16.23.0(supports-color@8.1.1)(typescript@6.0.2)
@@ -8976,10 +9003,10 @@ importers:
         version: 6.0.8(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       typescript:
         specifier: 'catalog:'
         version: 6.0.2
@@ -9043,10 +9070,10 @@ importers:
         version: link:../../../quality/environments/containers
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
@@ -9510,10 +9537,10 @@ importers:
         version: 14.0.14
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       reflect-metadata:
         specifier: 'catalog:'
         version: 0.2.2
@@ -9543,10 +9570,10 @@ importers:
         version: link:../testing/playwright
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
@@ -9601,10 +9628,10 @@ importers:
         version: 0.52.0
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
@@ -9653,10 +9680,10 @@ importers:
         version: link:../../../@n8n/oxlint-config
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       tsx:
         specifier: 'catalog:'
         version: 4.19.3
@@ -9714,10 +9741,10 @@ importers:
         version: 3.23.2
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       vitest:
         specifier: 'catalog:'
         version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
@@ -9742,10 +9769,10 @@ importers:
         version: 5.0.1(@vitest/browser@5.0.1)(vitest@5.0.1)
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
@@ -9788,10 +9815,10 @@ importers:
         version: 5.0.1(@vitest/browser@5.0.1)(vitest@5.0.1)
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
@@ -9923,10 +9950,10 @@ importers:
         version: 12.0.1
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       ts-morph:
         specifier: 'catalog:'
         version: 27.0.2
@@ -9963,10 +9990,10 @@ importers:
         version: 3.23.2
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
@@ -10111,10 +10138,10 @@ importers:
         version: 14.0.14
       oxlint:
         specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
         specifier: 'catalog:'
-        version: 0.21.1
+        version: 7.0.2007
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
@@ -14681,154 +14708,154 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@oxlint-tsgolint/darwin-arm64@0.21.1':
-    resolution: {integrity: sha512-7TLjyWe4wG9saJc992VWmaHq2hwKfOEEVTjheReXJXaDhavMZI4X9a6nKhbEng4IVkYtzjD2jw16vw2WFXLYLw==}
+  '@oxlint-tsgolint/darwin-arm64@7.0.2007':
+    resolution: {integrity: sha512-bjNxPFyu1wNK74epHzXrtVLrj7oEuB8jQvJZDSia2d5EZ/0YgnyhI37E9U530IUZlNCqlTWjko1iT3CKAYF9+A==}
     cpu: [arm64]
     os: [darwin]
 
-  '@oxlint-tsgolint/darwin-x64@0.21.1':
-    resolution: {integrity: sha512-7wf9Wf75nTzA7zpL9myhFe2RKvfuqGUOADNvUooCjEWvh7hmPz3lSEqTMh5Z/VQhzsG04mM9ACyghxhRzq7zFw==}
+  '@oxlint-tsgolint/darwin-x64@7.0.2007':
+    resolution: {integrity: sha512-dCd7mzk2FeTaU46LLeXy5mQyEFICaPqlew/LpehNzEuL86D0jTYlwZHbibRqdRrvkSNgq1szz/7014FIHgyV1g==}
     cpu: [x64]
     os: [darwin]
 
-  '@oxlint-tsgolint/linux-arm64@0.21.1':
-    resolution: {integrity: sha512-IPuQN/Vd0Rjklg/cCGBbQyUuRBp2f6LQXpZYwk5ivOR6V/+CgiYsv8pn/PVY7gjeyoNvPQrXB7xMjHUO2YZbdw==}
+  '@oxlint-tsgolint/linux-arm64@7.0.2007':
+    resolution: {integrity: sha512-qb0XUQXuTmQ8H++zsx/tQitG0/fU3BE16KGp1qXExeDgRzEc7WIlCuN1i+rmA40lty9gQs+x3a73BFODVhTZqA==}
     cpu: [arm64]
     os: [linux]
 
-  '@oxlint-tsgolint/linux-x64@0.21.1':
-    resolution: {integrity: sha512-d1niGuTbh2qiv7dR7tqkbOcM5cIR63of0lMBFdEQavL1KrJV8zuRdwdi68K7MNGdgoR+J5A9ajpGGvsHwp1bPg==}
+  '@oxlint-tsgolint/linux-x64@7.0.2007':
+    resolution: {integrity: sha512-75vx0067HSgxq/HEZzlHwqhcujn3bshg43fVLTx604jZdZZMQfPVCcxTh2RTEShP7ACT1PRty6vboZlWh5RtEA==}
     cpu: [x64]
     os: [linux]
 
-  '@oxlint-tsgolint/win32-arm64@0.21.1':
-    resolution: {integrity: sha512-ICu9y2JLnFPvFqstnWPPNqBM8LK8BWw2OTeaR0UgEMm4hOSbrZAKv1/hwZYyiLqnCNjBL87AGSQIgTHCYlsipw==}
+  '@oxlint-tsgolint/win32-arm64@7.0.2007':
+    resolution: {integrity: sha512-6zl7I+BvScfOPtnPtSEP5JA+z8NkDPGd47YnQChL5lLF/Dzs7Rasr1G+q0zGlQcP8OEgW43hW4QlUTXxPfD13Q==}
     cpu: [arm64]
     os: [win32]
 
-  '@oxlint-tsgolint/win32-x64@0.21.1':
-    resolution: {integrity: sha512-cTEFCFjCj6iXfrSHcvajSPNqhEA4TxSzU3gFxbdGSAUTNXGToU99IbdhWAPSbhcucoym0XE4Zl7E41NiSkNTug==}
+  '@oxlint-tsgolint/win32-x64@7.0.2007':
+    resolution: {integrity: sha512-VptFHYhBm0SIWCUkx89hmTrKVOQsDg0iB1YE3EBlvRRtCHGUd3pU1kMxPBg1wOd83ZMmIn7zB6maBROtpmrP5g==}
     cpu: [x64]
     os: [win32]
 
-  '@oxlint/binding-android-arm-eabi@1.78.0':
-    resolution: {integrity: sha512-Bu819lmAfZMUHErrpe0cEWj3iaefuUODHSU8+UbXy67V/r7/7f4K3FL0NmbD85E+wiFLDYuhP8Zlv0XnVeXshw==}
+  '@oxlint/binding-android-arm-eabi@1.93.0':
+    resolution: {integrity: sha512-KKw70pbD5Pvq3G2lJ+WQ71XPMjCmg37rkSe2+mDqCRP3PoTSdDMuEi4UOnE8JBtyNM7bek61EC2s0Jt7S7u+Sg==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [arm]
     os: [android]
 
-  '@oxlint/binding-android-arm64@1.78.0':
-    resolution: {integrity: sha512-CDfxZgB61B7buRdY2FJoAYYPPXCZ1EoC1LKscnC5dg3kjobdxiconvAvvN1BmHyW4PyFT3jRLDag/BY/roSNBQ==}
+  '@oxlint/binding-android-arm64@1.93.0':
+    resolution: {integrity: sha512-fvr1fTUZGelwRxKDt64pf28aL1WaWgviwz3X+E/FcRYvrlEahH0NECRz/c1SY+K+KWmZk5uAf6h1kQnyBkp/2A==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [arm64]
     os: [android]
 
-  '@oxlint/binding-darwin-arm64@1.78.0':
-    resolution: {integrity: sha512-2Y2U9Ahrz+OO0Ej88f9SJYq51/jUBp1Mc7iZu0ukrbeeZ3gpRGfzIFnoqfHDY96xr0GEfNrPUBFEy0nN5aD7HA==}
+  '@oxlint/binding-darwin-arm64@1.93.0':
+    resolution: {integrity: sha512-VdvSN9JRf4Es6ZzoAdvEeh8tgKdw8L4H82WmA8MMPVfPdZGCwE/nI27Z1HrRHYQhPxOh4kmnxQEioSUFrOvDaw==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [arm64]
     os: [darwin]
 
-  '@oxlint/binding-darwin-x64@1.78.0':
-    resolution: {integrity: sha512-rpych6eJq6m9jDRypTEaPD1xysaEW5h9+xuxhGK/QhOg+/xaqPZrCrTNoIl/f3nEjuJeCEmstNDlrE9rJi/3/g==}
+  '@oxlint/binding-darwin-x64@1.93.0':
+    resolution: {integrity: sha512-QR1V890Ml0YGRG0F/iV0K9igG+pOhe+VWd+aZnxY849rRHZf3F2gEoQks5+GVHf105X9Mh/6HdShTP5juekG2g==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [x64]
     os: [darwin]
 
-  '@oxlint/binding-freebsd-x64@1.78.0':
-    resolution: {integrity: sha512-IcMGrQT3QizkOESUJd5et+rOhVqSkNDfNik1cvrKDqIbzqx9KMtRswpFgkCuNTSwylCFLKhGUu8KmqY1ZnC0Dg==}
+  '@oxlint/binding-freebsd-x64@1.93.0':
+    resolution: {integrity: sha512-jDfIbi30zZaKi+rTvig3sge+Xhi8pFFSgHxb0jzovc4qh8ETm/irKV9c7N/JsuwnYc5sbvf4IC8w1vQQ0IL+BA==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [x64]
     os: [freebsd]
 
-  '@oxlint/binding-linux-arm-gnueabihf@1.78.0':
-    resolution: {integrity: sha512-/uLdoJ0IXE6vo/0f0LKjinQAp+re+VMaCWaNT8ENIv2EOCkSsc8SGaflXAuW0Jua2dq5+GLVWm1NQK7P3UFSNQ==}
+  '@oxlint/binding-linux-arm-gnueabihf@1.93.0':
+    resolution: {integrity: sha512-qtxZ714ND/koFgVH00QgxlzZiIbRPmguaPhnHRU5DFFtrtEdOrSnZD4U/H2AzXrXkZ59eQbMBnJwbum5XohrIQ==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [arm]
     os: [linux]
 
-  '@oxlint/binding-linux-arm-musleabihf@1.78.0':
-    resolution: {integrity: sha512-7xi4Wb/O8NRJhLoUXmDJMUVpNYvB5kefdhFU1Jb8rtae4QoXlTiLwI14X4YvAXVZLNZChP8m5qO9SQAlWQTbkQ==}
+  '@oxlint/binding-linux-arm-musleabihf@1.93.0':
+    resolution: {integrity: sha512-5pJ9NjMvH7WMUqXB6bTTOSemBm39w2cod27Hu3+Yom/GhbTeNXlYcpDx1o4CgBP6fhp0YHG66TNdVaUm6sHjsA==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [arm]
     os: [linux]
 
-  '@oxlint/binding-linux-arm64-gnu@1.78.0':
-    resolution: {integrity: sha512-4hFW0+fVXa3OIh1Y4A5SPkmvI4wuuBSrCVKzOyE7PTjhc7yEqZ1pmvEEeS5Lj/MaqvegFxXyF33N+6jkehxdyg==}
+  '@oxlint/binding-linux-arm64-gnu@1.93.0':
+    resolution: {integrity: sha512-pRf+7jtbt2fHE23SX7qBxRgnBZicUgsoCK1PVIjnOk+t3a6UBkpt/GrKI99WlxsKUxftz/5nv/kfKvScmYywkw==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [arm64]
     os: [linux]
     libc: [glibc]
 
-  '@oxlint/binding-linux-arm64-musl@1.78.0':
-    resolution: {integrity: sha512-oC0mvsgBJjlMijSDEhx9KuvR9zYeHXceA9MjbuXB1F8NSR78Yj2unOBrstEvTVaq+pko+kuue6DajC00eqvTdg==}
+  '@oxlint/binding-linux-arm64-musl@1.93.0':
+    resolution: {integrity: sha512-zM8Fd/K8sqGvsBcJBZ3oVZ3ctGWbszA08IaGt5gFFF5RcunppAI/ZnAXbouABvnWeJ//S44KKlfPZnDDbeiphg==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [arm64]
     os: [linux]
     libc: [musl]
 
-  '@oxlint/binding-linux-ppc64-gnu@1.78.0':
-    resolution: {integrity: sha512-XAllT5SUZS+ohjuZ3/5S0cwe0r7eboiuigeStCZ5DXRYx/2KVM2UvQXvAfyzXEimtQjAB7cDQ2YxDe2Zl2WNQQ==}
+  '@oxlint/binding-linux-ppc64-gnu@1.93.0':
+    resolution: {integrity: sha512-7qKCnvhZKDXJG2pdbLazd2hw4FxjJHbZOFrrbzyy5PdHfPLH9vnNUa1le01A8uItZuYKPBPncH+HCoEiFT4SgA==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [ppc64]
     os: [linux]
     libc: [glibc]
 
-  '@oxlint/binding-linux-riscv64-gnu@1.78.0':
-    resolution: {integrity: sha512-trucMER/0QtecoXvc1y/UVqE3kwJipDwrx4oHfj+nNm3dq2zjP44WT0CfHNDPM3G1DXIkx/gY6lAD21NSCZVhA==}
+  '@oxlint/binding-linux-riscv64-gnu@1.93.0':
+    resolution: {integrity: sha512-2pgulxC6G8V5wE750NJE/fRkf9aO6i6yoj10wyaR2EdiNtan4OemsOtsQ0ZTXGdY8Q3IoTmlND3GYvjJsvikYg==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [riscv64]
     os: [linux]
     libc: [glibc]
 
-  '@oxlint/binding-linux-riscv64-musl@1.78.0':
-    resolution: {integrity: sha512-cm3O4F/HQbdzOUX5mKHqG5KDL6E5w0pnlZ+fbBy2rmLryPOowkuLagFHTopQsEIpjcaZoPOrL+BmmAytAG9HFg==}
+  '@oxlint/binding-linux-riscv64-musl@1.93.0':
+    resolution: {integrity: sha512-yWsn6Gg2PnGG5jlyDz5+pHGiMTMiy4adaa4WRMzDgzB8efaShk1JMmTHIBSVLQMh0tYXRs4CN5uJCO79r4Mi4g==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [riscv64]
     os: [linux]
     libc: [musl]
 
-  '@oxlint/binding-linux-s390x-gnu@1.78.0':
-    resolution: {integrity: sha512-33wRf6HqGNsybJ3qX4cGaQN2ODPxNmc1rMa0mrTmx3eFq1VzOnvQooi9bIGVYakW8a/wmqVx1mgsUm8R2xfTiw==}
+  '@oxlint/binding-linux-s390x-gnu@1.93.0':
+    resolution: {integrity: sha512-WCn5plwp/ezS2RDPQKp0/EXEVRr9/dDexUdRKmsMFqzNM5xBSZ1wbsi3PuMk1VfkMRnI5BuazCsziCWMXRDOlw==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [s390x]
     os: [linux]
     libc: [glibc]
 
-  '@oxlint/binding-linux-x64-gnu@1.78.0':
-    resolution: {integrity: sha512-rRdISSYegj6VganMZ9tjRjijowfHJ09IZU01i0toBAqr6n5LEtwHq2IeS4FjW2RoskOHlb6efB26H5izYb3GEQ==}
+  '@oxlint/binding-linux-x64-gnu@1.93.0':
+    resolution: {integrity: sha512-F2CGjb9LAkzH+IYTZSzd1klQ1vk5z6Utjax64WeLByCkYXbVDbsun+Oy2hLfW2MDSKCvW+jwy/9ld0EPgdeu+A==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [x64]
     os: [linux]
     libc: [glibc]
 
-  '@oxlint/binding-linux-x64-musl@1.78.0':
-    resolution: {integrity: sha512-GmsP4rW0xTL6u5CVdcDsaN5Fbc7hBc382Wmar1kttbnwSEviM+rSINKOMQ+UQ6iH+AGwC+8gaAiwu134Tgh6Lg==}
+  '@oxlint/binding-linux-x64-musl@1.93.0':
+    resolution: {integrity: sha512-plf5DE2objcG8Tf7mXRuRa8tT8rzDkpjqXQtKoGsKHWkpgsialbON1+cCtoSEUTVbQUjXvuAm8vV9+3rR0yCBw==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [x64]
     os: [linux]
     libc: [musl]
 
-  '@oxlint/binding-openharmony-arm64@1.78.0':
-    resolution: {integrity: sha512-sy9yeYuADc8a+n4TLBayzMCZiHPW78DcIFVpOXTmdKHWQeM9xe5uzkqIIZmi326D5hY9XVwacipEB1p7tQjPAg==}
+  '@oxlint/binding-openharmony-arm64@1.93.0':
+    resolution: {integrity: sha512-Kp2yJrKvoTe9FfKdO/xwLNUbs2bYTMKx0+aoQD1s0h/Tx0kSgtHSdGmrk8tTKdluosjFbo88qYRIaNIX43AfFw==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [arm64]
     os: [openharmony]
 
-  '@oxlint/binding-win32-arm64-msvc@1.78.0':
-    resolution: {integrity: sha512-rjc2hF1KfMi8fZj1X/m3AmnHbdsF3rL0v6KQg0Uc880Yb2khjz+3U14sfdZ7jWTpRnN1m1NQa/TT7uU9lJWPrA==}
+  '@oxlint/binding-win32-arm64-msvc@1.93.0':
+    resolution: {integrity: sha512-vigjcHCFsR6KjnWTEVfaCxcMYapEuaK9FZa1MpewwQ1S+Xud3v0okfkj1RySsD6RF1NRHIjSlQSalTnKIaj3nA==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [arm64]
     os: [win32]
 
-  '@oxlint/binding-win32-ia32-msvc@1.78.0':
-    resolution: {integrity: sha512-zcuXFVrEFHIafRfkCQT8w/Xe41o07ozl/vwHq7p94vB29xVzsB0sZGYORU1jhcYKv3Lr0J3HbJ2T4fHH5rWmvA==}
+  '@oxlint/binding-win32-ia32-msvc@1.93.0':
+    resolution: {integrity: sha512-0Ot3BEe/AAr2/uQhe55r8CmPlperYk2mQmxdutOru7oU0kir6IiEVHb1TG3GORRlfra97lPHVDLhgmihiKzLrg==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [ia32]
     os: [win32]
 
-  '@oxlint/binding-win32-x64-msvc@1.78.0':
-    resolution: {integrity: sha512-Sb5ocmLSuYeOuXd+CFOToGKp/gjXUEWDnvIGwhnh8aq8wY4TMmEnKnvbogSW7RdMZv77JSARduS7/gv+khYEjA==}
+  '@oxlint/binding-win32-x64-msvc@1.93.0':
+    resolution: {integrity: sha512-ZzzIIVs/Qkm8trUWYKF0OYub5ALlv50/3gsEZbKAvWgz+yNJX6uRmQ8ySPXU2Q0/Y9m4JCOjhpmC8XUYbPHX5Q==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [x64]
     os: [win32]
@@ -23727,16 +23754,16 @@ packages:
     resolution: {integrity: sha512-a6mYoz3PPIlwbU4xtHAmWJHD0SvXh9ayAHI1D0+LJEKvln+koaD2M9AAAm5bAN5kkT2AWxN37IVhL1EAzXUyfw==}
     engines: {node: ^20.19.0 || >=22.12.0}
 
-  oxlint-tsgolint@0.21.1:
-    resolution: {integrity: sha512-O2hxiT14C2HJkwzBU6CQBFPoagSd/IcV+Tt3e3UUaXFwbW4BO5DSDPSSboc3UM5MIDY+MLyepvtQwBQafNxWdw==}
+  oxlint-tsgolint@7.0.2007:
+    resolution: {integrity: sha512-i8X2qf6VVqFzoNVP34joMKuZpO6T2uXMOgKJaSPFc6p+E3FTnbIGPRbI8K4ZApmtDTMu2CIeGfpzeK1zzGwfnA==}
     hasBin: true
 
-  oxlint@1.78.0:
-    resolution: {integrity: sha512-QgQePuxIqKOzo1KSjG2EnITEeWvWnKAm77eq8nrMtf6AGoA+zyGc4PFYtDNJSD25g/ibOwfQ851hZ4/SPkMVoA==}
+  oxlint@1.93.0:
+    resolution: {integrity: sha512-19JMsQFX+YvEbcUTFQxjTwhvs0Ibg0D6CFneSLgpwnACWcY/6LjhpGpkPodh0T5aIT1pjMTLlYaeBFzaVgugTA==}
     engines: {node: ^20.19.0 || >=22.12.0}
     hasBin: true
     peerDependencies:
-      oxlint-tsgolint: '>=7.0.2001'
+      oxlint-tsgolint: '>=7.0.2005'
       vite-plus: '*'
     peerDependenciesMeta:
       oxlint-tsgolint:
@@ -33285,79 +33312,79 @@ snapshots:
   '@oxc-transform/binding-win32-x64-msvc@0.144.0':
     optional: true
 
-  '@oxlint-tsgolint/darwin-arm64@0.21.1':
+  '@oxlint-tsgolint/darwin-arm64@7.0.2007':
     optional: true
 
-  '@oxlint-tsgolint/darwin-x64@0.21.1':
+  '@oxlint-tsgolint/darwin-x64@7.0.2007':
     optional: true
 
-  '@oxlint-tsgolint/linux-arm64@0.21.1':
+  '@oxlint-tsgolint/linux-arm64@7.0.2007':
     optional: true
 
-  '@oxlint-tsgolint/linux-x64@0.21.1':
+  '@oxlint-tsgolint/linux-x64@7.0.2007':
     optional: true
 
-  '@oxlint-tsgolint/win32-arm64@0.21.1':
+  '@oxlint-tsgolint/win32-arm64@7.0.2007':
     optional: true
 
-  '@oxlint-tsgolint/win32-x64@0.21.1':
+  '@oxlint-tsgolint/win32-x64@7.0.2007':
     optional: true
 
-  '@oxlint/binding-android-arm-eabi@1.78.0':
+  '@oxlint/binding-android-arm-eabi@1.93.0':
     optional: true
 
-  '@oxlint/binding-android-arm64@1.78.0':
+  '@oxlint/binding-android-arm64@1.93.0':
     optional: true
 
-  '@oxlint/binding-darwin-arm64@1.78.0':
+  '@oxlint/binding-darwin-arm64@1.93.0':
     optional: true
 
-  '@oxlint/binding-darwin-x64@1.78.0':
+  '@oxlint/binding-darwin-x64@1.93.0':
     optional: true
 
-  '@oxlint/binding-freebsd-x64@1.78.0':
+  '@oxlint/binding-freebsd-x64@1.93.0':
     optional: true
 
-  '@oxlint/binding-linux-arm-gnueabihf@1.78.0':
+  '@oxlint/binding-linux-arm-gnueabihf@1.93.0':
     optional: true
 
-  '@oxlint/binding-linux-arm-musleabihf@1.78.0':
+  '@oxlint/binding-linux-arm-musleabihf@1.93.0':
     optional: true
 
-  '@oxlint/binding-linux-arm64-gnu@1.78.0':
+  '@oxlint/binding-linux-arm64-gnu@1.93.0':
     optional: true
 
-  '@oxlint/binding-linux-arm64-musl@1.78.0':
+  '@oxlint/binding-linux-arm64-musl@1.93.0':
     optional: true
 
-  '@oxlint/binding-linux-ppc64-gnu@1.78.0':
+  '@oxlint/binding-linux-ppc64-gnu@1.93.0':
     optional: true
 
-  '@oxlint/binding-linux-riscv64-gnu@1.78.0':
+  '@oxlint/binding-linux-riscv64-gnu@1.93.0':
     optional: true
 
-  '@oxlint/binding-linux-riscv64-musl@1.78.0':
+  '@oxlint/binding-linux-riscv64-musl@1.93.0':
     optional: true
 
-  '@oxlint/binding-linux-s390x-gnu@1.78.0':
+  '@oxlint/binding-linux-s390x-gnu@1.93.0':
     optional: true
 
-  '@oxlint/binding-linux-x64-gnu@1.78.0':
+  '@oxlint/binding-linux-x64-gnu@1.93.0':
     optional: true
 
-  '@oxlint/binding-linux-x64-musl@1.78.0':
+  '@oxlint/binding-linux-x64-musl@1.93.0':
     optional: true
 
-  '@oxlint/binding-openharmony-arm64@1.78.0':
+  '@oxlint/binding-openharmony-arm64@1.93.0':
     optional: true
 
-  '@oxlint/binding-win32-arm64-msvc@1.78.0':
+  '@oxlint/binding-win32-arm64-msvc@1.93.0':
     optional: true
 
-  '@oxlint/binding-win32-ia32-msvc@1.78.0':
+  '@oxlint/binding-win32-ia32-msvc@1.93.0':
     optional: true
 
-  '@oxlint/binding-win32-x64-msvc@1.78.0':
+  '@oxlint/binding-win32-x64-msvc@1.93.0':
     optional: true
 
   '@pagefind/darwin-arm64@1.6.0':
@@ -44041,37 +44068,37 @@ snapshots:
       '@oxc-transform/binding-win32-ia32-msvc': 0.144.0
       '@oxc-transform/binding-win32-x64-msvc': 0.144.0
 
-  oxlint-tsgolint@0.21.1:
+  oxlint-tsgolint@7.0.2007:
     optionalDependencies:
-      '@oxlint-tsgolint/darwin-arm64': 0.21.1
-      '@oxlint-tsgolint/darwin-x64': 0.21.1
-      '@oxlint-tsgolint/linux-arm64': 0.21.1
-      '@oxlint-tsgolint/linux-x64': 0.21.1
-      '@oxlint-tsgolint/win32-arm64': 0.21.1
-      '@oxlint-tsgolint/win32-x64': 0.21.1
+      '@oxlint-tsgolint/darwin-arm64': 7.0.2007
+      '@oxlint-tsgolint/darwin-x64': 7.0.2007
+      '@oxlint-tsgolint/linux-arm64': 7.0.2007
+      '@oxlint-tsgolint/linux-x64': 7.0.2007
+      '@oxlint-tsgolint/win32-arm64': 7.0.2007
+      '@oxlint-tsgolint/win32-x64': 7.0.2007
 
-  oxlint@1.78.0(oxlint-tsgolint@0.21.1):
+  oxlint@1.93.0(oxlint-tsgolint@7.0.2007):
     optionalDependencies:
-      '@oxlint/binding-android-arm-eabi': 1.78.0
-      '@oxlint/binding-android-arm64': 1.78.0
-      '@oxlint/binding-darwin-arm64': 1.78.0
-      '@oxlint/binding-darwin-x64': 1.78.0
-      '@oxlint/binding-freebsd-x64': 1.78.0
-      '@oxlint/binding-linux-arm-gnueabihf': 1.78.0
-      '@oxlint/binding-linux-arm-musleabihf': 1.78.0
-      '@oxlint/binding-linux-arm64-gnu': 1.78.0
-      '@oxlint/binding-linux-arm64-musl': 1.78.0
-      '@oxlint/binding-linux-ppc64-gnu': 1.78.0
-      '@oxlint/binding-linux-riscv64-gnu': 1.78.0
-      '@oxlint/binding-linux-riscv64-musl': 1.78.0
-      '@oxlint/binding-linux-s390x-gnu': 1.78.0
-      '@oxlint/binding-linux-x64-gnu': 1.78.0
-      '@oxlint/binding-linux-x64-musl': 1.78.0
-      '@oxlint/binding-openharmony-arm64': 1.78.0
-      '@oxlint/binding-win32-arm64-msvc': 1.78.0
-      '@oxlint/binding-win32-ia32-msvc': 1.78.0
-      '@oxlint/binding-win32-x64-msvc': 1.78.0
-      oxlint-tsgolint: 0.21.1
+      '@oxlint/binding-android-arm-eabi': 1.93.0
+      '@oxlint/binding-android-arm64': 1.93.0
+      '@oxlint/binding-darwin-arm64': 1.93.0
+      '@oxlint/binding-darwin-x64': 1.93.0
+      '@oxlint/binding-freebsd-x64': 1.93.0
+      '@oxlint/binding-linux-arm-gnueabihf': 1.93.0
+      '@oxlint/binding-linux-arm-musleabihf': 1.93.0
+      '@oxlint/binding-linux-arm64-gnu': 1.93.0
+      '@oxlint/binding-linux-arm64-musl': 1.93.0
+      '@oxlint/binding-linux-ppc64-gnu': 1.93.0
+      '@oxlint/binding-linux-riscv64-gnu': 1.93.0
+      '@oxlint/binding-linux-riscv64-musl': 1.93.0
+      '@oxlint/binding-linux-s390x-gnu': 1.93.0
+      '@oxlint/binding-linux-x64-gnu': 1.93.0
+      '@oxlint/binding-linux-x64-musl': 1.93.0
+      '@oxlint/binding-openharmony-arm64': 1.93.0
+      '@oxlint/binding-win32-arm64-msvc': 1.93.0
+      '@oxlint/binding-win32-ia32-msvc': 1.93.0
+      '@oxlint/binding-win32-x64-msvc': 1.93.0
+      oxlint-tsgolint: 7.0.2007
 
   p-cancelable@2.1.1: {}
 

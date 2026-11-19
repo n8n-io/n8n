@@ -1,10 +1,14 @@
-import { INSTANCE_AI_CLOUD_BROWSER_FLAG } from '@n8n/api-types';
+import {
+	INSTANCE_AI_CLOUD_BROWSER_FLAG,
+	type InstanceAiCloudBrowserLiveViewResponse,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { PostHogClient } from '@n8n/backend-services';
 import { UserRepository } from '@n8n/db';
 import { OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { UnexpectedError, UserError } from '@n8n/errors';
+import { InstanceSettings } from 'n8n-core';
 import { tmpdir } from 'node:os';
 
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -18,6 +22,16 @@ import {
 import { CloudBrowserLocalMcpServer } from './cloud-browser-local-mcp-server';
 import type { CloudBrowserSessionProvider } from './cloud-browser-session-provider';
 
+const TASK_NOT_RUNNING_MESSAGE = 'This browser task is not running.';
+
+/** The country sites see a browser in for each Browserbase region, without a proxy. */
+const BROWSERBASE_REGION_COUNTRIES = new Map([
+	['us-west-2', 'US'],
+	['us-east-1', 'US'],
+	['eu-central-1', 'DE'],
+	['ap-southeast-1', 'SG'],
+]);
+
 const MAX_PAGE_EVENT_ENTRIES = 1000;
 
 /** Creates the cloud browser for a background task. Each task gets its own server. */
@@ -27,7 +41,7 @@ export class InstanceAiCloudBrowserService {
 
 	private readonly serversByTaskId = new Map<
 		string,
-		{ userId: string; server: CloudBrowserLocalMcpServer }
+		{ userId: string; threadId: string; server: CloudBrowserLocalMcpServer }
 	>();
 
 	constructor(
@@ -36,6 +50,7 @@ export class InstanceAiCloudBrowserService {
 		private readonly userRepository: UserRepository,
 		private readonly credentialsService: CredentialsService,
 		private readonly postHogClient: PostHogClient,
+		private readonly instanceSettings: InstanceSettings,
 	) {
 		this.logger = logger.scoped('instance-ai');
 	}
@@ -43,10 +58,12 @@ export class InstanceAiCloudBrowserService {
 	/**
 	 * Whether the cloud browser is available to this instance. The admin setting decides whether
 	 * it is used. Checks the following:
+	 * - the instance runs a single main
 	 * - AI gateway browser use is enabled
 	 * - the PostHog rollout flag is on for the instance
 	 */
 	async isAvailable(): Promise<boolean> {
+		if (this.instanceSettings.isMultiMain) return false;
 		if (!this.aiGatewayBrowserUseService.isGatewayBrowserUseEnabled()) return false;
 
 		const featureFlag = await this.postHogClient.getFeatureFlagForInstance(
@@ -111,12 +128,48 @@ export class InstanceAiCloudBrowserService {
 			domainGate,
 			logger: this.logger,
 		});
-		this.serversByTaskId.set(taskId, { userId, server });
+		this.serversByTaskId.set(taskId, { userId, threadId, server });
 		return server;
 	}
 
 	findServer(taskId: string): CloudBrowserLocalMcpServer | undefined {
 		return this.serversByTaskId.get(taskId)?.server;
+	}
+
+	/**
+	 * The live view of the task's browser, for its owner only. A task that another user or thread
+	 * owns reads as not found, so the response does not tell whether it exists.
+	 */
+	async getLiveView(
+		userId: string,
+		threadId: string,
+		taskId: string,
+	): Promise<InstanceAiCloudBrowserLiveViewResponse> {
+		const entry = this.serversByTaskId.get(taskId);
+		if (entry?.userId !== userId || entry.threadId !== threadId) return { status: 'not-found' };
+		return await entry.server.getLiveView();
+	}
+
+	/**
+	 * Gives the user control of the task's browser, for its owner only. Returns why they cannot
+	 * take over.
+	 */
+	giveControlToUser(userId: string, threadId: string, taskId: string): string | undefined {
+		const entry = this.serversByTaskId.get(taskId);
+		if (entry?.userId !== userId || entry.threadId !== threadId) return TASK_NOT_RUNNING_MESSAGE;
+		return entry.server.giveControlToUser();
+	}
+
+	/** Gives control of the task's browser back to its agent, for its owner only. */
+	returnControlToAgent(
+		userId: string,
+		threadId: string,
+		taskId: string,
+		note?: string,
+	): string | undefined {
+		const entry = this.serversByTaskId.get(taskId);
+		if (entry?.userId !== userId || entry.threadId !== threadId) return TASK_NOT_RUNNING_MESSAGE;
+		return entry.server.returnControlToAgent(note);
 	}
 
 	/** Ends the task's browser and forgets its server. Called when the task ends. */
@@ -144,17 +197,40 @@ export class InstanceAiCloudBrowserService {
 
 	private buildGatewaySessionProvider(): CloudBrowserSessionProvider {
 		return {
-			createSession: async ({ userId, threadId, taskId }) =>
-				await this.aiGatewayBrowserUseService.createSession({
+			createSession: async ({ userId, threadId, taskId }, options) => {
+				const { id, connectUrl, region } = await this.aiGatewayBrowserUseService.createSession({
 					userId,
 					attribution: { instanceAiThreadId: threadId, instanceAiTaskId: taskId },
-				}),
+					proxyCountry: options?.proxyCountry,
+				});
+				const regionCountry = region ? BROWSERBASE_REGION_COUNTRIES.get(region) : undefined;
+				return { id, connectUrl, ...(regionCountry ? { regionCountry } : {}) };
+			},
 			releaseSession: async ({ userId, threadId, taskId }, sessionId) =>
 				await this.aiGatewayBrowserUseService.releaseSession({
 					userId,
 					attribution: { instanceAiThreadId: threadId, instanceAiTaskId: taskId },
 					sessionId,
 				}),
+			getSessionLiveViewUrl: async ({ userId, threadId, taskId }, sessionId, targetId) => {
+				const { debuggerFullscreenUrl, pages } = await this.aiGatewayBrowserUseService.getLiveView({
+					userId,
+					attribution: { instanceAiThreadId: threadId, instanceAiTaskId: taskId },
+					sessionId,
+				});
+				if (!targetId) return debuggerFullscreenUrl;
+				const page = pages.find(({ id }) => id === targetId);
+				if (!page) {
+					this.logger.warn(
+						'Cloud browser window not found in its live view, showing the first tab',
+						{
+							taskId,
+							tabCount: pages.length,
+						},
+					);
+				}
+				return page?.debuggerFullscreenUrl ?? debuggerFullscreenUrl;
+			},
 		};
 	}
 }

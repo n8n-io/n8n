@@ -60,6 +60,7 @@ import { ExecutionService } from '@/executions/execution.service';
 import { DataTableProxyService } from '@n8n/backend-module-data-table';
 import { NodeCatalogService } from '@/node-catalog';
 import { AiGatewayService } from '@/services/ai-gateway.service';
+import { AiPreferenceSettingsService } from '@/services/ai-preference-settings.service';
 import { FolderService } from '@/services/folder.service';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
 import { ProjectService } from '@/services/project.service.ee';
@@ -72,6 +73,7 @@ import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-hi
 import { ErrorWorkflowValidationService } from '@/workflows/error-workflow-validation.service';
 
 import { WorkflowService } from '@/workflows/workflow.service';
+import { WorkflowPublicationStatusService } from '@/workflows/publication/workflow-publication-status.service';
 
 import { registerWorkflowPreviewApp, WORKFLOW_PREVIEW_APP_URI } from '@n8n/mcp-apps/server';
 
@@ -90,6 +92,7 @@ import type {
 	ToolHandlerResult,
 } from '../mcp.types';
 import { McpPreferencesNoteService } from '../mcp-preferences-note.service';
+import { createWorkflow } from './mock.utils';
 
 // Keep the real mcpAppToolMeta and constants; only the preview-app
 // registration is spied on so its wiring options can be asserted.
@@ -108,6 +111,8 @@ const mcpFeatureFlags = (overrides: Partial<McpFeatureFlags> = {}): McpFeatureFl
 	instanceContextEnabled: false,
 	...overrides,
 });
+
+mockInstance(AiPreferenceSettingsService, { isEnabled: true });
 
 describe('McpService', () => {
 	let mcpService: McpService;
@@ -180,6 +185,7 @@ describe('McpService', () => {
 			mockInstance(ExecutionRedactionServiceProxy),
 			instanceWriteAccess,
 			mockInstance(McpPreferencesNoteService),
+			mockInstance(WorkflowPublicationStatusService),
 		);
 	});
 
@@ -239,6 +245,7 @@ describe('McpService', () => {
 				mockInstance(ExecutionRedactionServiceProxy),
 				mockInstance(InstanceWriteAccessService),
 				mockInstance(McpPreferencesNoteService),
+				mockInstance(WorkflowPublicationStatusService),
 			);
 
 			expect(queueMcpService.isQueueMode).toBe(true);
@@ -452,6 +459,7 @@ describe('McpService', () => {
 				mockInstance(ExecutionRedactionServiceProxy),
 				mockInstance(InstanceWriteAccessService),
 				mockInstance(McpPreferencesNoteService),
+				mockInstance(WorkflowPublicationStatusService),
 			);
 
 		const user = Object.assign(new User(), { id: 'user-1', role: GLOBAL_MEMBER_ROLE });
@@ -682,6 +690,111 @@ describe('McpService', () => {
 					{ legacy: 'stateless' },
 				);
 			};
+
+			it.each([
+				{ enabled: true, versionId: undefined },
+				{ enabled: true, versionId: 'v-1' },
+				{ enabled: false, versionId: undefined },
+				{ enabled: false, versionId: 'v-1' },
+			])(
+				'reports activation outcomes with publication service enabled=$enabled and versionId=$versionId',
+				async ({ enabled, versionId }) => {
+					Container.get(WorkflowsConfig).useWorkflowPublicationService = enabled;
+					const requestedVersionId = versionId ?? 'v-2';
+					const workflow = createWorkflow({
+						versionId: 'v-2',
+						activeVersionId: requestedVersionId,
+						nodes: [],
+					});
+					vi.mocked(Container.get(WorkflowFinderService).findWorkflowForUser).mockResolvedValue(
+						workflow,
+					);
+					vi.mocked(Container.get(WorkflowService).activateWorkflow).mockResolvedValue(workflow);
+					vi.mocked(Container.get(CollaborationService).broadcastWorkflowUpdate).mockResolvedValue(
+						undefined,
+					);
+					vi.mocked(Container.get(ProjectService).getProjectRelationsForUser).mockResolvedValue([]);
+					vi.mocked(Container.get(RoleService).addScopes).mockImplementation((wf) =>
+						Object.assign(wf, { scopes: [] }),
+					);
+					const status: Awaited<ReturnType<WorkflowPublicationStatusService['getLatestStatus']>> = {
+						status: 'failed',
+						versionId: requestedVersionId,
+						liveVersionId: null,
+						pendingVersionId: null,
+						triggers: [{ nodeId: 'invalid', status: 'failed', errorMessage: 'Invalid interval' }],
+						errorMessage: 'Invalid interval',
+					};
+					const publication = Container.get(WorkflowPublicationStatusService);
+					vi.mocked(publication.waitForPublication).mockResolvedValue(status);
+					vi.mocked(publication.getLatestStatus).mockResolvedValue(status);
+					const handler = await buildHandler();
+					const callTool = async (name: string) => {
+						const response = await handler.fetch(
+							new Request('http://n8n.local/mcp-server/http', {
+								method: 'POST',
+								headers: {
+									'content-type': 'application/json',
+									accept: 'application/json, text/event-stream',
+									'mcp-method': 'tools/call',
+									'mcp-name': name,
+									'mcp-protocol-version': '2026-07-28',
+								},
+								body: JSON.stringify({
+									jsonrpc: '2.0',
+									id: 1,
+									method: 'tools/call',
+									params: {
+										name,
+										arguments: {
+											workflowId: workflow.id,
+											...(name === 'publish_workflow' ? { versionId } : {}),
+										},
+										_meta: {
+											'io.modelcontextprotocol/protocolVersion': '2026-07-28',
+											'io.modelcontextprotocol/clientCapabilities': {},
+											'io.modelcontextprotocol/clientInfo': { name: 'vitest', version: '1.0.0' },
+										},
+									},
+								}),
+							}),
+						);
+						const text = await response.text();
+						const body = JSON.parse(text) as {
+							result?: { structuredContent?: unknown };
+							error?: unknown;
+						};
+						return { status: response.status, body };
+					};
+
+					const publicationResponse = await callTool('publish_workflow');
+					expect(publicationResponse.status).toBe(200);
+					expect(publicationResponse.body.error).toBeUndefined();
+					expect(publicationResponse.body.result?.structuredContent).toMatchObject({
+						success: !enabled,
+						activeVersionId: requestedVersionId,
+						...(enabled ? { error: 'Invalid interval', publicationStatus: status } : {}),
+					});
+					const detailsResponse = await callTool('get_workflow_details');
+					expect(detailsResponse.status).toBe(200);
+					expect(detailsResponse.body.error).toBeUndefined();
+					expect(detailsResponse.body.result?.structuredContent).toMatchObject({
+						workflow: {
+							active: !enabled,
+							activeVersionId: requestedVersionId,
+							...(enabled ? { publicationStatus: status } : {}),
+						},
+					});
+					expect(publication.waitForPublication).toHaveBeenCalledTimes(enabled ? 1 : 0);
+					if (enabled) {
+						expect(publication.waitForPublication).toHaveBeenCalledWith(
+							workflow.id,
+							requestedVersionId,
+						);
+					}
+					expect(publication.getLatestStatus).toHaveBeenCalledTimes(enabled ? 1 : 0);
+				},
+			);
 
 			it('serves tools/list to a 2026-07-28 client with bridged JSON schemas', async () => {
 				const handler = await buildHandler();
@@ -1568,6 +1681,7 @@ describe('McpService', () => {
 				mockInstance(ExecutionRedactionServiceProxy),
 				mockInstance(InstanceWriteAccessService),
 				mockInstance(McpPreferencesNoteService),
+				mockInstance(WorkflowPublicationStatusService),
 			);
 
 			const server = await service.getServer(user, mcpFeatureFlags());
@@ -1629,6 +1743,7 @@ describe('McpService', () => {
 				mockInstance(ExecutionRedactionServiceProxy),
 				mockInstance(InstanceWriteAccessService),
 				mockInstance(McpPreferencesNoteService),
+				mockInstance(WorkflowPublicationStatusService),
 			);
 
 			const server = await service.getServer(user, mcpFeatureFlags());
@@ -1715,6 +1830,7 @@ describe('McpService', () => {
 					mockInstance(ExecutionRedactionServiceProxy),
 					mockInstance(InstanceWriteAccessService),
 					mockInstance(McpPreferencesNoteService),
+					mockInstance(WorkflowPublicationStatusService),
 				);
 			};
 

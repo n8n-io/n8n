@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports */
 import type { BuiltTool } from '@n8n/agents';
 import {
-	DATA_TABLE_TOOL_ACTIONS,
+	DATA_TABLE_READ_TOOL_ACTIONS,
 	DATA_TABLE_TOOL_NAME_BY_ACTION,
 	EXECUTION_TOOL_ACTIONS,
 	EXECUTION_TOOL_NAME_BY_ACTION,
@@ -35,6 +35,10 @@ const loadAppsTool = lazyMod(
 );
 const loadDataTablesTool = lazyMod(
 	() => require('./data-tables.tool') as typeof import('./data-tables.tool'),
+);
+const loadChangeDataTablesTool = lazyMod(
+	() =>
+		require('./data-tables/change-data-tables.tool') as typeof import('./data-tables/change-data-tables.tool'),
 );
 const loadEvalConfigTool = lazyMod(
 	() => require('./evals/eval-config.tool') as typeof import('./evals/eval-config.tool'),
@@ -147,10 +151,14 @@ function getOrchestratorDomainToolFactories(
 			DOMAIN_TOOL_IDS.DELETE_CREDENTIAL,
 			() => loadCredentialsTool().createDeleteCredentialTool(context),
 		],
-		...DATA_TABLE_TOOL_ACTIONS.map((action): [string, DomainToolFactory] => [
+		...DATA_TABLE_READ_TOOL_ACTIONS.map((action): [string, DomainToolFactory] => [
 			DATA_TABLE_TOOL_NAME_BY_ACTION[action],
 			() => loadDataTablesTool().createDataTableTool(context, action),
 		]),
+		[
+			DOMAIN_TOOL_IDS.CHANGE_DATA_TABLES,
+			() => loadChangeDataTablesTool().createChangeDataTablesTool(context),
+		],
 		...getSupportedWorkspaceActions(context).map((action): [string, DomainToolFactory] => [
 			INSTANCE_TOOL_NAME_BY_ACTION[action],
 			() => loadWorkspaceTool().createWorkspaceActionTool(context, action),

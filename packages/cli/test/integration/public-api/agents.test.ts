@@ -743,3 +743,257 @@ describe('GET /agents', () => {
 		expect(response.body.data.map((row: { id: string }) => row.id)).toEqual(['agent-personal']);
 	});
 });
+
+describe('PUT /agents/:agentId', () => {
+	let agentRepository: AgentRepository;
+
+	beforeAll(async () => {
+		agentRepository = Container.get(AgentRepository);
+		Container.get(InstanceSettings).markAsLeader();
+	});
+
+	beforeEach(async () => {
+		await agentRepository.delete({});
+		await cleanupRolesAndScopes();
+	});
+
+	afterEach(async () => {
+		await agentRepository.delete({});
+		await testDb.truncate(['ProjectRelation', 'Project']);
+	});
+
+	test('should fail due to missing API Key', async () => {
+		const response = await testServer.publicApiAgentWithoutApiKey().put('/agents/abc123');
+
+		expect(response.statusCode).toBe(401);
+	});
+
+	test('should fail due to invalid API Key', async () => {
+		const response = await testServer.publicApiAgentWithApiKey('abcXYZ').put('/agents/abc123');
+
+		expect(response.statusCode).toBe(401);
+	});
+
+	test('should fail due to non-existing agent', async () => {
+		const owner = await createOwnerWithApiKey();
+
+		const response = await testServer
+			.publicApiAgentFor(owner)
+			.put('/agents/missing-agent')
+			.send({ config: { name: 'A', model: '', instructions: '' }, baseConfigHash: null });
+
+		expect(response.statusCode).toBe(404);
+	});
+
+	test('should replace the config and return the updated public shape', async () => {
+		const member: User = await createMemberWithApiKey();
+
+		const created = await testServer
+			.publicApiAgentFor(member)
+			.post('/agents')
+			.send({
+				name: 'Updatable Agent',
+				config: { name: 'Updatable Agent', model: 'openai/gpt-5', instructions: 'Help users' },
+			});
+		expect(created.statusCode, JSON.stringify(created.body)).toBe(201);
+
+		const read = await testServer.publicApiAgentFor(member).get(`/agents/${created.body.id}`);
+		expect(read.statusCode, JSON.stringify(read.body)).toBe(200);
+
+		const nextConfig = {
+			name: 'Renamed Agent',
+			model: 'openai/gpt-5',
+			instructions: 'New instructions',
+		};
+
+		const response = await testServer
+			.publicApiAgentFor(member)
+			.put(`/agents/${created.body.id}`)
+			.send({ config: nextConfig, baseConfigHash: read.body.configHash });
+
+		expect(response.statusCode, JSON.stringify(response.body)).toBe(200);
+		expect(response.body).toMatchObject({
+			id: created.body.id,
+			name: 'Renamed Agent',
+			config: expect.objectContaining(nextConfig),
+		});
+		for (const field of builderOnlyFields) {
+			expect(response.body).not.toHaveProperty(field);
+		}
+
+		const reread = await testServer.publicApiAgentFor(member).get(`/agents/${created.body.id}`);
+		expect(reread.body.config).toEqual(response.body.config);
+	});
+
+	test('should accept a body taken verbatim from GET', async () => {
+		const member: User = await createMemberWithApiKey();
+
+		const created = await testServer
+			.publicApiAgentFor(member)
+			.post('/agents')
+			.send({
+				name: 'Round Trip',
+				config: { name: 'Round Trip', model: 'openai/gpt-5', instructions: 'Help users' },
+			});
+		expect(created.statusCode, JSON.stringify(created.body)).toBe(201);
+
+		const read = await testServer.publicApiAgentFor(member).get(`/agents/${created.body.id}`);
+
+		const response = await testServer
+			.publicApiAgentFor(member)
+			.put(`/agents/${created.body.id}`)
+			.send(read.body);
+
+		expect(response.statusCode, JSON.stringify(response.body)).toBe(200);
+		expect(response.body.config).toEqual(read.body.config);
+		expect(response.body.configHash).toBe(read.body.configHash);
+	});
+
+	test('should accept the retrieved body of an agent without a configuration', async () => {
+		const member: User = await createMemberWithApiKey();
+		const personalProject: Project = await Container.get(
+			ProjectRepository,
+		).getPersonalProjectForUserOrFail(member.id);
+		await agentRepository.save({
+			id: 'agent-empty',
+			name: 'Empty Agent',
+			projectId: personalProject.id,
+			schema: null,
+			integrations: [],
+			tools: {},
+			skills: {},
+			versionId: 'draft-version',
+		});
+
+		const read = await testServer.publicApiAgentFor(member).get('/agents/agent-empty');
+		expect(read.statusCode, JSON.stringify(read.body)).toBe(200);
+		expect(read.body.config).toBeNull();
+
+		const response = await testServer
+			.publicApiAgentFor(member)
+			.put('/agents/agent-empty')
+			.send(read.body);
+
+		expect(response.statusCode, JSON.stringify(response.body)).toBe(200);
+		expect(response.body.config).toBeNull();
+		expect(response.body.configHash).toBeNull();
+	});
+
+	test('should return 400 for a null config when the agent has a configuration', async () => {
+		const member: User = await createMemberWithApiKey();
+
+		const created = await testServer
+			.publicApiAgentFor(member)
+			.post('/agents')
+			.send({
+				name: 'Configured',
+				config: { name: 'Configured', model: '', instructions: '' },
+			});
+
+		const response = await testServer
+			.publicApiAgentFor(member)
+			.put(`/agents/${created.body.id}`)
+			.send({ config: null, baseConfigHash: created.body.configHash });
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	test('should return 409 when the config hash is stale', async () => {
+		const member: User = await createMemberWithApiKey();
+
+		const created = await testServer
+			.publicApiAgentFor(member)
+			.post('/agents')
+			.send({
+				name: 'Conflicted',
+				config: { name: 'Conflicted', model: '', instructions: '' },
+			});
+		expect(created.statusCode, JSON.stringify(created.body)).toBe(201);
+
+		const response = await testServer
+			.publicApiAgentFor(member)
+			.put(`/agents/${created.body.id}`)
+			.send({
+				config: { name: 'Conflicted', model: '', instructions: 'Changed' },
+				baseConfigHash: 'stale-hash',
+			});
+
+		expect(response.statusCode, JSON.stringify(response.body)).toBe(409);
+	});
+
+	test('should return 400 for an invalid config', async () => {
+		const member: User = await createMemberWithApiKey();
+
+		const created = await testServer
+			.publicApiAgentFor(member)
+			.post('/agents')
+			.send({ name: 'Bad Update' });
+
+		const response = await testServer
+			.publicApiAgentFor(member)
+			.put(`/agents/${created.body.id}`)
+			.send({
+				// Missing the required config fields `name`, `model`, and `instructions`.
+				config: { instructions: 'No name or model' },
+				baseConfigHash: created.body.configHash,
+			});
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	test('should return 403 when the API key lacks the agent:update scope', async () => {
+		const member = await createMemberWithApiKey({ scopes: ['agent:read'] });
+		const personalProject: Project = await Container.get(
+			ProjectRepository,
+		).getPersonalProjectForUserOrFail(member.id);
+		await agentRepository.save({
+			id: 'agent-kept',
+			name: 'My Agent',
+			projectId: personalProject.id,
+			schema: null,
+			integrations: [],
+			tools: {},
+			skills: {},
+			versionId: 'draft-version',
+		});
+
+		const response = await testServer
+			.publicApiAgentFor(member)
+			.put('/agents/agent-kept')
+			.send({ config: { name: 'A', model: '', instructions: '' }, baseConfigHash: null });
+
+		expect(response.statusCode).toBe(403);
+	});
+
+	test('should return 403 when the user lacks the agent:update project permission', async () => {
+		const owner = await createOwnerWithApiKey();
+		const member = await createMemberWithApiKey();
+		// Project role without agent:update: the API key scope alone must not be enough.
+		const customRole = await createCustomRoleWithScopeSlugs(['agent:read'], {
+			roleType: 'project',
+			displayName: 'Agent Reader',
+			description: 'Can read agents but not update them',
+		});
+
+		const teamProject = await createTeamProject('Test Project', owner);
+		await linkUserToProject(member, teamProject, customRole.slug);
+		const agent = await agentRepository.save({
+			id: 'agent-kept',
+			name: 'My Agent',
+			projectId: teamProject.id,
+			schema: null,
+			integrations: [],
+			tools: {},
+			skills: {},
+			versionId: 'draft-version',
+		});
+
+		const response = await testServer
+			.publicApiAgentFor(member)
+			.put('/agents/agent-kept')
+			.send({ config: { name: 'A', model: '', instructions: '' }, baseConfigHash: null });
+
+		expect(response.statusCode).toBe(403);
+		expect(await agentRepository.existsBy({ id: agent.id })).toBe(true);
+	});
+});

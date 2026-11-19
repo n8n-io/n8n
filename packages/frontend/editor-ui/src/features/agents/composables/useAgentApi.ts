@@ -1043,18 +1043,24 @@ export const steerAgentQueuedMessage = async (
 	);
 };
 
+/**
+ * The messages of a chat thread. Without `page`, the response holds the whole
+ * thread. With `page`, it holds the newest `limit` turns before `cursor`.
+ */
 export const getChatMessages = async (
 	context: IRestApiContext,
 	projectId: string,
 	agentId: string,
 	threadId: string,
 	channel: AgentChatChannel = 'chat',
+	page?: { limit: number; cursor?: string },
 ): Promise<AgentChatMessagesResponse> => {
-	return await makeRestApiRequest<AgentChatMessagesResponse>(
-		context,
-		'GET',
-		`${agentChatPath(projectId, agentId, channel)}/${encodeURIComponent(threadId)}/messages`,
-	);
+	const path = `${agentChatPath(projectId, agentId, channel)}/${encodeURIComponent(threadId)}/messages`;
+	if (!page) return await makeRestApiRequest<AgentChatMessagesResponse>(context, 'GET', path);
+	return await makeRestApiRequest<AgentChatMessagesResponse>(context, 'GET', path, {
+		limit: String(page.limit),
+		...(page.cursor !== undefined ? { cursor: page.cursor } : {}),
+	});
 };
 
 /** One of the user's own threads with a system agent. Rejects with a 404 for any other thread. */

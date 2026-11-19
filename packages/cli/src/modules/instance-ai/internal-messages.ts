@@ -149,6 +149,7 @@ const TRAILING_CONTEXT_BLOCKS = [
 	'past-conversations',
 	'ai-preferences',
 	'onboarding-answer',
+	'run-stopped',
 ].map(trailingBlockRegex);
 
 /** Strip each trailing block once, in whatever order they were composed. */
@@ -384,6 +385,21 @@ export function buildOnboardingAnswerMessage(answers: OnboardingAnswer[]): strin
 }
 
 /**
+ * Tells the agent that the user stopped its last reply. Without it, a later run (for example one
+ * that reports a finished background task) sees the request as unanswered and resumes it. It rides
+ * a hidden user turn, like the onboarding answers.
+ */
+export function buildRunStoppedMessage(): string {
+	return [
+		AUTO_FOLLOW_UP_MESSAGE,
+		'',
+		'<run-stopped>',
+		'The user stopped your previous reply. Do not continue the work of that reply unless the user asks again.',
+		'</run-stopped>',
+	].join('\n');
+}
+
+/**
  * The selected options, then the free text as `typed "…"`; `(not answered)` when the card had
  * neither. Both come from the client, so they are escaped like every other value the host puts in
  * a prompt block; the free text is the user's whole first message, so it keeps its length.
@@ -609,7 +625,13 @@ export function buildThreadArtifactsBlock(
 			: '';
 	}
 
+	// The execution that each workflow tab shows. A handed-off execution replaces it.
 	const executionByWorkflowId = new Map<string, string>();
+	for (const artifact of previewArtifacts) {
+		if (artifact.type === 'workflow' && artifact.executionId) {
+			executionByWorkflowId.set(artifact.id, artifact.executionId);
+		}
+	}
 	for (const attachment of resourceAttachments) {
 		if (attachment.type === 'workflow' && attachment.executionId) {
 			executionByWorkflowId.set(attachment.id, attachment.executionId);

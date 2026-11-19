@@ -36,4 +36,9 @@ export const HTTP_LOW_SPEED_TIME_SECONDS = 30;
 // with --progress so a healthy transfer keeps feeding this timer.
 export const GIT_COMMAND_STALL_TIMEOUT_MS = 60_000;
 
+// A Git lock file older than this belongs to a Git process that stopped. Git holds a lock
+// only for short steps without output, and the stall timeout stops a silent command.
+// The margin covers clock differences between mains that share one volume.
+export const STALE_GIT_LOCK_AGE_MS = 10 * 60_000;
+
 export const GIT_READ_CONCURRENCY = 4;
