@@ -38,6 +38,7 @@ import type {
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
+import { ActivationErrorsService } from '@/activation-errors.service';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { ExternalHooks, toWorkflowLifecycleHookActor } from '@/external-hooks';
@@ -399,6 +400,30 @@ describe('a move that fails before the ownership change', () => {
 			},
 			'transferWorkflowOwnership',
 		).mockRejectedValue(new Error('ownership is down'));
+
+		await authMemberAgent
+			.put(`/workflows/${workflow.id}/transfer`)
+			.send({ destinationProjectId: targetProject.id })
+			.expect(500);
+
+		const NOT_MOVED_AND_RESTORED = {
+			sharing: [expect.objectContaining({ projectId: sourceProject.id, role: 'workflow:owner' })],
+			activeVersionId: workflow.versionId,
+			records: [{ status: 'pending', reason: 'reconcile', publishedVersionId: workflow.versionId }],
+		};
+		expect({
+			sharing: await getWorkflowSharing(workflow),
+			activeVersionId: await activeVersionIdOf(workflow.id),
+			records: await outboxRecordsOf(workflow.id),
+		}).toEqual(NOT_MOVED_AND_RESTORED);
+	});
+
+	test('enqueues a reconcile record for a refused workflow whose trigger removal fails', async () => {
+		const workflow = await createActiveWorkflow({}, sourceProject);
+		refusePublish(targetProject.id, workflow.id);
+		vi.spyOn(Container.get(ActivationErrorsService), 'deregister').mockRejectedValue(
+			new Error('cache is down'),
+		);
 
 		await authMemberAgent
 			.put(`/workflows/${workflow.id}/transfer`)

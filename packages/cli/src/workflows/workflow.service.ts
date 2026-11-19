@@ -1700,15 +1700,14 @@ export class WorkflowService {
 			}
 		}
 
-		await Promise.all(
-			[...refusals.keys()].map(
-				async (workflowId) => await this.activeWorkflowManager.remove(workflowId),
-			),
-		);
-
 		let results = new Map<string, WorkflowTransferResult>();
 		let transferred = false;
 		try {
+			await Promise.all(
+				[...refusals.keys()].map(
+					async (workflowId) => await this.activeWorkflowManager.remove(workflowId),
+				),
+			);
 			await transfer();
 			transferred = true;
 		} finally {
