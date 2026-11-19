@@ -842,7 +842,8 @@ export class Github implements INodeType {
 						name: 'returnRunDetails',
 						type: 'boolean',
 						default: false,
-						description: 'Whether to return the workflow run ID, API URL, and GitHub URL',
+						description:
+							'Whether to return the workflow run ID, API URL, and GitHub URL. Leave this option off on GitHub Enterprise Server. Version 3.21 and later return run details without it.',
 					},
 				],
 			},
