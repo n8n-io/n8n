@@ -50,7 +50,7 @@ erDiagram
   varchar_36_ agentId FK
   timestamp_3__with_time_zone createdAt
   uuid createdById FK
-  text description
+  varchar_512_ description
   varchar_16_ id
   boolean isGlobal
   varchar_16_ kind

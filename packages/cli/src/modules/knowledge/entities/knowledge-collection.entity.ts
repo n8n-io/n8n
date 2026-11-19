@@ -20,7 +20,7 @@ export class KnowledgeCollection extends WithTimestampsAndStringId {
 	name: string;
 
 	/** Tells the agent when to use the collection. */
-	@Column({ type: 'text', nullable: true })
+	@Column({ type: 'varchar', length: 512, nullable: true })
 	description: string | null;
 
 	/** Tool-safe identifier, unique on the instance. Set at creation and never changed. */

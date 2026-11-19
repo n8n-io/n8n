@@ -7,7 +7,7 @@
 | agentId | varchar(36) |  | true |  | [public.agents](public.agents.md) | Agent that owns a private collection. NULL for a shared collection |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | createdById | uuid |  | true |  | [public.user](public.user.md) | Author. NULL after the author is deleted |
-| description | text |  | true |  |  | Tells the agent when to use the collection |
+| description | varchar(512) |  | true |  |  | Tells the agent when to use the collection |
 | id | varchar(16) |  | false | [public.agent_knowledge_dependency](public.agent_knowledge_dependency.md) [public.knowledge_file](public.knowledge_file.md) [public.knowledge_vector_store](public.knowledge_vector_store.md) [public.shared_knowledge_collection](public.shared_knowledge_collection.md) |  | Application-generated n8n nano ID |
 | isGlobal | boolean | false | false |  |  | Every agent on the instance can use a global collection |
 | kind | varchar(16) |  | false |  |  | 'shared' (belongs to a project) or 'agent' (the private collection of one agent) |
@@ -59,7 +59,7 @@ erDiagram
   varchar_36_ agentId FK
   timestamp_3__with_time_zone createdAt
   uuid createdById FK
-  text description
+  varchar_512_ description
   varchar_16_ id
   boolean isGlobal
   varchar_16_ kind

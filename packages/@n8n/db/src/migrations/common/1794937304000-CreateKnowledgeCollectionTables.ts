@@ -52,7 +52,7 @@ export class CreateKnowledgeCollectionTables1794937304000 implements ReversibleM
 				column('name')
 					.varchar(128)
 					.notNull.comment('Name of the collection, unique in the project of a shared collection'),
-				column('description').text.comment('Tells the agent when to use the collection'),
+				column('description').varchar(512).comment('Tells the agent when to use the collection'),
 				column('slug')
 					.varchar(24)
 					.notNull.comment(

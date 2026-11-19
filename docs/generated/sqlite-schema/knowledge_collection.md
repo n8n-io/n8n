@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "knowledge_collection" ("id" varchar(16) PRIMARY KEY NOT NULL, "name" varchar(128) NOT NULL, "description" text, "slug" varchar(24) NOT NULL, "kind" varchar(16) NOT NULL, "ownerProjectId" varchar(36), "agentId" varchar(36), "isGlobal" boolean NOT NULL DEFAULT (false), "createdById" varchar, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_knowledge_collection_owner" CHECK ((("agentId" IS NULL) <> ("ownerProjectId" IS NULL)) AND (("kind" = 'agent') = ("agentId" IS NOT NULL)) AND ("agentId" IS NULL OR "isGlobal" = 0)), CONSTRAINT "FK_9a2316d690a0d7beac2fce60fc6" FOREIGN KEY ("ownerProjectId") REFERENCES "project" ("id") ON DELETE CASCADE, CONSTRAINT "FK_2db6cab650ebf156debd84c3772" FOREIGN KEY ("agentId") REFERENCES "agents" ("id") ON DELETE CASCADE, CONSTRAINT "FK_3dbb6554cfa9ce504a94274c64f" FOREIGN KEY ("createdById") REFERENCES "user" ("id") ON DELETE SET NULL)
+CREATE TABLE "knowledge_collection" ("id" varchar(16) PRIMARY KEY NOT NULL, "name" varchar(128) NOT NULL, "description" varchar(512), "slug" varchar(24) NOT NULL, "kind" varchar(16) NOT NULL, "ownerProjectId" varchar(36), "agentId" varchar(36), "isGlobal" boolean NOT NULL DEFAULT (false), "createdById" varchar, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_knowledge_collection_owner" CHECK ((("agentId" IS NULL) <> ("ownerProjectId" IS NULL)) AND (("kind" = 'agent') = ("agentId" IS NOT NULL)) AND ("agentId" IS NULL OR "isGlobal" = 0)), CONSTRAINT "FK_9a2316d690a0d7beac2fce60fc6" FOREIGN KEY ("ownerProjectId") REFERENCES "project" ("id") ON DELETE CASCADE, CONSTRAINT "FK_2db6cab650ebf156debd84c3772" FOREIGN KEY ("agentId") REFERENCES "agents" ("id") ON DELETE CASCADE, CONSTRAINT "FK_3dbb6554cfa9ce504a94274c64f" FOREIGN KEY ("createdById") REFERENCES "user" ("id") ON DELETE SET NULL)
 ```
 
 </details>
@@ -18,7 +18,7 @@ CREATE TABLE "knowledge_collection" ("id" varchar(16) PRIMARY KEY NOT NULL, "nam
 | agentId | varchar(36) |  | true |  | [agents](agents.md) |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | createdById | varchar |  | true |  | [user](user.md) |  |
-| description | TEXT |  | true |  |  |  |
+| description | varchar(512) |  | true |  |  |  |
 | id | varchar(16) |  | false | [agent_knowledge_dependency](agent_knowledge_dependency.md) [knowledge_file](knowledge_file.md) [knowledge_vector_store](knowledge_vector_store.md) [shared_knowledge_collection](shared_knowledge_collection.md) |  |  |
 | isGlobal | boolean | false | false |  |  |  |
 | kind | varchar(16) |  | false |  |  |  |
@@ -64,7 +64,7 @@ erDiagram
   varchar_36_ agentId FK
   datetime_3_ createdAt
   varchar createdById FK
-  TEXT description
+  varchar_512_ description
   varchar_16_ id PK
   boolean isGlobal
   varchar_16_ kind

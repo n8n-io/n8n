@@ -58,7 +58,7 @@ erDiagram
   varchar_36_ agentId FK
   datetime_3_ createdAt
   varchar createdById FK
-  TEXT description
+  varchar_512_ description
   varchar_16_ id PK
   boolean isGlobal
   varchar_16_ kind
