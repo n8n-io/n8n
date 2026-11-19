@@ -205,7 +205,14 @@ export function renderSummary(results) {
 	const notes = [];
 	for (const result of results) {
 		if (result.versionUpdate) {
-			const removed = result.versionUpdate.platforms.flatMap((platform) => platform.removed);
+			// The same finding on each platform counts once.
+			const removed = [
+				...new Map(
+					result.versionUpdate.platforms
+						.flatMap((platform) => platform.removed)
+						.map((finding) => [keyOf(finding), finding]),
+				).values(),
+			];
 			notes.push(
 				`- \`${result.source}\`: version update needed. \`${result.versionUpdate.ref}\` removes ${count(removed)}.`,
 			);
@@ -255,7 +262,13 @@ async function main() {
 			} else if (result.status === 'no-fix') {
 				// A pinned tag can freeze on its patch. The moving tag of the line shows a newer patch.
 				const movingTag = movingTagOf(pin.tag);
-				const movingDigest = movingTag ? resolveDigest(pin.repository, movingTag) : null;
+				let movingDigest = null;
+				try {
+					if (movingTag) movingDigest = resolveDigest(pin.repository, movingTag);
+				} catch {
+					// Not every line publishes a moving tag. The source stays no-upstream-fix.
+					console.log(`${name}: no moving tag ${pin.repository}:${movingTag}`);
+				}
 				const moving =
 					movingDigest && movingDigest !== newestDigest
 						? {

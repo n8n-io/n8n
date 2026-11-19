@@ -291,7 +291,10 @@ describe('renderSummary', () => {
 			{ source: 'DHI_REF', status: 'no-fix', platforms: [] },
 			{
 				ref: 'dhi.io/node:26.13-alpine3.24-dev@sha256:d',
-				platforms: [{ platform: 'linux/amd64', removed: [fixed], added: [], addedPackages: [] }],
+				platforms: [
+					{ platform: 'linux/amd64', removed: [fixed], added: [], addedPackages: [] },
+					{ platform: 'linux/arm64', removed: [fixed], added: [], addedPackages: [] },
+				],
 			},
 		);
 		const summary = renderSummary([versionUpdate]);
