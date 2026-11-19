@@ -30,7 +30,18 @@ function choicesOf({ type, enum: values, anyOf = [] }: Schema): unknown[] | unde
 	return choices.length > 0 ? [...new Set(choices)] : undefined;
 }
 
-function fieldOf({ schema }: ApiParameter): Field {
+function numberField({ default: value, minimum, maximum }: Schema): Field {
+	return {
+		type: 'number',
+		default: typeof value === 'number' ? value : (minimum ?? 0),
+		typeOptions:
+			minimum === undefined && maximum === undefined
+				? undefined
+				: { minValue: minimum, maxValue: maximum },
+	};
+}
+
+function fieldOf({ schema, location }: ApiParameter): Field {
 	if (isBooleanString(schema)) {
 		return { type: 'boolean', default: schema.default === 'true', value: '={{ String($value) }}' };
 	}
@@ -40,22 +51,17 @@ function fieldOf({ schema }: ApiParameter): Field {
 		const value = typeof schema.default === 'string' ? schema.default : '';
 		return { type: 'options', default: value, options };
 	}
-	if (schema.type === 'string') {
-		return { type: 'string', default: typeof schema.default === 'string' ? schema.default : '' };
+	switch (schema.type) {
+		case 'string':
+			return { type: 'string', default: typeof schema.default === 'string' ? schema.default : '' };
+		case 'integer':
+		case 'number':
+			return location === 'path' ? { type: 'string', default: '' } : numberField(schema);
+		case 'boolean':
+			return { type: 'boolean', default: schema.default === true };
+		default:
+			return { type: 'json', default: schema.type === 'array' ? '[]' : '{}', value: PARSED_JSON };
 	}
-	if (schema.type === 'integer' || schema.type === 'number') {
-		const { minimum, maximum } = schema;
-		return {
-			type: 'number',
-			default: typeof schema.default === 'number' ? schema.default : (minimum ?? 0),
-			typeOptions:
-				minimum === undefined && maximum === undefined
-					? undefined
-					: { minValue: minimum, maxValue: maximum },
-		};
-	}
-	if (schema.type === 'boolean') return { type: 'boolean', default: schema.default === true };
-	return { type: 'json', default: schema.type === 'array' ? '[]' : '{}', value: PARSED_JSON };
 }
 
 function routingOf(

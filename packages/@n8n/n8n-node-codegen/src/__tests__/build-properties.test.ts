@@ -92,6 +92,25 @@ describe('buildProperties', () => {
 		]);
 	});
 
+	it('should make a number path parameter a string field with an empty default', () => {
+		const properties = build(
+			row('getExecution', {
+				apiPath: '/executions/{executionId}',
+				parameters: [
+					parameter('executionId', {
+						location: 'path',
+						required: true,
+						schema: { type: 'integer', minimum: 1 },
+					}),
+				],
+			}),
+		);
+
+		const field = named(properties, 'executionId');
+		expect(field).toMatchObject({ type: 'string', default: '' });
+		expect(field?.typeOptions).toBeUndefined();
+	});
+
 	it('should show a required parameter as a required field and an optional one in Options', () => {
 		const properties = build(
 			row('createTag', {

@@ -49,7 +49,7 @@ The generator makes these parts of the node:
 | `summary` | Operation name. A deprecated operation gets ` (deprecated)` |
 | Required parameter | Required field, with the parameter name |
 | Optional parameter | Field in the `Options` collection. The node sends it only when the user adds it |
-| Path parameter | Part of the URL, through `toPathSegment` |
+| Path parameter | Part of the URL, through `toPathSegment`. A number path parameter, for example `executionId`, becomes a string field with an empty default |
 | `cursor` query parameter | `Return All` field. When it is off, `limit` sets the number of items |
 | Successful response without a body | The node returns `{ "success": true }` |
 

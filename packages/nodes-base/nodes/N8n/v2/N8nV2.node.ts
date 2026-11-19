@@ -5,6 +5,7 @@ import {
 	type INodeTypeDescription,
 } from 'n8n-workflow';
 
+import { N8N_CLIENT_HEADER, N8N_CLIENT_N8N_NODE } from '../shared/constants';
 import { properties } from './generated/properties.generated';
 
 export class N8nV2 implements INodeType {
@@ -31,6 +32,7 @@ export class N8nV2 implements INodeType {
 				headers: {
 					Accept: 'application/json',
 					'Content-Type': 'application/json',
+					[N8N_CLIENT_HEADER]: N8N_CLIENT_N8N_NODE,
 				},
 			},
 			properties,
