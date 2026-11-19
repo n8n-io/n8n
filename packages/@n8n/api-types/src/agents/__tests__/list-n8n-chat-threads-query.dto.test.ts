@@ -12,6 +12,18 @@ describe('ListN8nChatThreadsQueryDto', () => {
 		expect(result.success).toBe(false);
 	});
 
+	it('accepts a timestamp and id cursor', () => {
+		const cursor = '2025-01-02T00:00:00.123Z|thread-1';
+		expect(ListN8nChatThreadsQueryDto.safeParse({ cursor }).data).toEqual({ cursor });
+	});
+
+	it.each(['2025-01-02T00:00:00.000Z|', 'not-a-date|thread-1', '2025-01-02T00:00:00.000Z|a|b'])(
+		'rejects a malformed composite cursor (%s)',
+		(cursor) => {
+			expect(ListN8nChatThreadsQueryDto.safeParse({ cursor }).success).toBe(false);
+		},
+	);
+
 	it('accepts an absent cursor', () => {
 		const result = ListN8nChatThreadsQueryDto.safeParse({});
 		expect(result.success).toBe(true);
