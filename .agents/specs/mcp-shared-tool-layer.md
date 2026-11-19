@@ -458,6 +458,115 @@ The bridge takes only the tools in `INSTANCE_MCP_TOOLS_IN_USE`
 (`tools/tool-ids.ts`). The server lists many more; a write without an
 approval path must not reach the model before its milestone.
 
+## Road to production
+
+What the PoC leaves out, grouped by the five production requirements. Effort
+is for one engineer, in weeks; the phases at the end give the order.
+
+### One tool layer, no native/MCP override
+
+The PoC keeps two implementations of several capabilities and switches
+between them with `NATIVE_TOOL_REPLACEMENTS` and an allow-list. Production
+has one implementation per capability, on the server, so there is nothing
+to override and the map goes away.
+
+| native tool | today | move |
+|---|---|---|
+| `workflow_builder_build_workflow` | server saves, but its result lacks `postBuildFlow`, the credentials offered and auto-bound, and setup diffs | port the three into the save results (`nextSteps`, `credentials: { offered, bound }`); this is also the fix for the eval's one regression |
+| `workflow_builder_verify_built_workflow` | native only; verdicts are thread state | verification as a server tool (host execution with pins and mocks; no sandbox); verdict bookkeeping stays client-side |
+| `setup_workflow` | native; half UI card, half computation | the server computes the setup requests; the card stays client UI |
+| executions, credentials, data tables, `execute_node` | native, with partial server overlaps | port the missing operations; one tool per capability |
+| `ask_user`, `load_skill`, `find_tools`, approval and artifact cards | orchestration and UI | stay client-side by design |
+
+Caller context moves from bridge injection to the first-party auth context:
+`McpAuthContext` already carries `firstParty`; add `{ projectId, threadId }`
+so server tools resolve the conversation's scope themselves. A generic client
+passes the same values as explicit parameters, and the bridge rewrites no
+schema. Effort: 4-6 weeks in slices; each ported tool deletes its native twin.
+
+### Skills as guidance
+
+Skills stay on and name the server tools. The post-build flow is driven by
+one party only: `nextSteps` in the save result, or the skill, not both. The
+server's `instructions` stay short and tool-centric; conversational policy
+(clarify before building, do not re-ask deferred values, inspect before
+editing) is the client's, as the eval showed. `_meta['n8n/group']` keeps the
+skills' tool-group references working. Effort: 1 week including the eval
+re-run.
+
+### With or without a sandbox
+
+The server already has both legs: workspace tools plus `build_workflow`
+(sandbox) and `create_workflow_from_code`, `validate_workflow`,
+`update_workflow` operations (host AST compiler). Missing:
+
+- The tool list adapts to the caller's capabilities like the instructions
+  already do: a no-sandbox instance never advertises `open_workspace`.
+- Verification needs no sandbox; it is missing only because it is not on the
+  server (previous section).
+- The knowledge base lives in the sandbox image. A server resource
+  (`n8n://knowledge-base/...`) serves both legs and external clients.
+
+Effort: 1-2 weeks.
+
+### A centralized MCP client
+
+Two clients exist and disagree on the protocol generation:
+`packages/cli/src/modules/instance-ai/mcp-bridge/` (the PoC, client SDK 2.x,
+protocol `2026-07-28`, elicitation and `input_required`) and
+`packages/@n8n/agents/src/sdk/mcp-client.ts` with `runtime/mcp/` (standalone
+Agents, SDK 1.x, streamable HTTP, SSE and stdio, its own content mapping and
+per-tool approval wrapping).
+
+The home is `@n8n/agents`: it owns the `Tool` abstraction, the content
+mapping and the approval wrapper, and depends on no cli code. The package
+holds the 2.x client wrapper (pinned protocol, capabilities, the
+`callTool`/`input_required` workaround), transports as injected functions
+(in-process `fetch` handler, HTTP with auth, stdio), the tool bridge from
+`create-tools-from-instance-mcp-server.ts` without the Assistant-specific
+policy (admin rules, session grants and the artifact tab become host hooks),
+and elicitation routed to a host callback: the Assistant's suspend and
+approval card, or the Agents' HITL suspend and per-tool approval setting.
+
+Risks: migrating the Agents' external-server connections from SDK 1.x to the
+2.x client needs version negotiation against 2025-era servers verified (the
+client must be the lenient side); runs outside the main process (workers,
+task runners, sandboxed agents) need M5, an HTTP loopback with a short-lived
+run-scoped token. Until Agents are on 2.x, a 1.x client gets no confirmation
+on writes (no elicitation capability means the server proceeds), so their
+instance-server access is read-scoped or confirmation-less by explicit
+choice. Effort: 3-4 weeks, plus 1 week for the loopback.
+
+### Telemetry attribution for internal clients
+
+`mcp-tool-called` already carries `clientName` (`n8n-assistant` for the PoC)
+and the caller auth kind, and `McpAuthContext` carries `firstParty`. Add a
+`callerKind: 'assistant' | 'agent' | 'external'` dimension to
+`User called mcp tool` and the connected event, carried through the relay,
+plus the thread or run id for correlation with Instance AI events. Without
+it, MCP adoption dashboards count Assistant traffic and Assistant tool
+events double-count with server events. Effort: 2-3 days plus the
+`@n8n/telemetry` registry update.
+
+### Phases
+
+1. **Parity (3-4 weeks):** verification on the server, `nextSteps` and
+   credentials in save results, skills back on, first-party caller context,
+   the telemetry dimension. Re-run full/N=3 against a master N=3 control;
+   parity is the go/no-go.
+2. **Single tool layer (4-6 weeks):** port the remaining native domain tools,
+   delete the duplicates and the override map, capability-dependent tool
+   lists, the knowledge base as a resource.
+3. **Shared client (3-4 weeks):** the `@n8n/agents`-hosted client on 2.x,
+   Agents first-party on the instance server, HTTP loopback for
+   out-of-process runs.
+
+Cross-cutting: context cost (server tool descriptions are long; `find_tools`
+results were 5 MB of the eval transcripts, so first-party callers need a
+terse description mode), the maturity of the 2.x client SDK (the `callTool`
+output-schema quirk will have siblings), and a decision on legacy clients
+and write confirmations.
+
 ## Open questions
 
 - Which `McpCallerAuth` to report for the Assistant. The type allows only
