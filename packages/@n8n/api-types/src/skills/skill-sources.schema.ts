@@ -160,6 +160,18 @@ export const SKILL_SCAN_RULES = [
 
 export type SkillScanRule = (typeof SKILL_SCAN_RULES)[number];
 
+/** Why a `risky_url` finding needs review. `unreadable`: n8n cannot read the address of the link. */
+export const SKILL_LINK_REVIEW_REASONS = [
+	'ip_address',
+	'not_https',
+	'paste_site',
+	'webhook_catcher',
+	'url_shortener',
+	'unreadable',
+] as const;
+
+export type SkillLinkReviewReason = (typeof SKILL_LINK_REVIEW_REASONS)[number];
+
 /** `info` only tells the user something. It does not change the verdict. */
 export type SkillScanSeverity = 'blocked' | 'needs_review' | 'info';
 
@@ -186,6 +198,8 @@ export type SkillScanFinding = {
 	detail: string;
 	/** The linked domain of a `new_url` or `risky_url` finding. */
 	domain?: string;
+	/** Set for a `risky_url` finding. */
+	linkReason?: SkillLinkReviewReason;
 	/** Set for a rule that finds text. A frontmatter finding marks its top-level key. */
 	location?: SkillScanLocation;
 };

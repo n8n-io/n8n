@@ -361,6 +361,7 @@ describe('SkillSecurityScanner', () => {
 					rule: 'risky_url',
 					severity: 'needs_review',
 					file: 'SKILL.md',
+					linkReason: 'unreadable',
 					detail: expect.stringContaining(link),
 				});
 				expect(result.findings[0].domain).toBeUndefined();
@@ -404,17 +405,20 @@ describe('SkillSecurityScanner', () => {
 		});
 
 		it.each([
-			['https://bit.ly/a then http://bit.ly/b', 'uses a URL shortener'],
-			['http://bit.ly/b then https://bit.ly/a', 'does not use HTTPS'],
-		])('gives the reason of the first risky link of a domain: %s', (instructions, reason) => {
-			expect(scanner.scan(fetched(skill({ instructions }))).findings).toEqual([
-				expect.objectContaining({
-					rule: 'risky_url',
-					domain: 'bit.ly',
-					detail: expect.stringContaining(reason),
-				}),
-			]);
-		});
+			['https://bit.ly/a then http://bit.ly/b', 'url_shortener'],
+			['http://bit.ly/b then https://bit.ly/a', 'not_https'],
+		] as const)(
+			'gives the reason of the first risky link of a domain: %s',
+			(instructions, linkReason) => {
+				expect(scanner.scan(fetched(skill({ instructions }))).findings).toEqual([
+					expect.objectContaining({
+						rule: 'risky_url',
+						domain: 'bit.ly',
+						linkReason,
+					}),
+				]);
+			},
+		);
 
 		it('does not flag a scheme with no address', () => {
 			const content = skill({ instructions: 'A link must start with https:// or https://<host>.' });
@@ -440,23 +444,28 @@ describe('SkillSecurityScanner', () => {
 		});
 
 		it.each([
-			['https://192.0.2.10/collect', '192.0.2.10', 'uses an IP address'],
-			['https://[2001:db8::1]/collect', '[2001:db8::1]', 'uses an IP address'],
-			['http://example.com/help', 'example.com', 'does not use HTTPS'],
-			['wss://stream.example.com', 'stream.example.com', 'does not use HTTPS'],
-			['https://Pastebin.com/notes', 'pastebin.com', 'uses a paste site'],
-			['https://test.Webhook.site./collect', 'test.webhook.site', 'uses a webhook catcher'],
-			['https://bit.ly/read-more', 'bit.ly', 'uses a URL shortener'],
+			['https://192.0.2.10/collect', '192.0.2.10', 'ip_address', 'uses an IP address'],
+			['https://[2001:db8::1]/collect', '[2001:db8::1]', 'ip_address', 'uses an IP address'],
+			['http://example.com/help', 'example.com', 'not_https', 'does not use HTTPS'],
+			['wss://stream.example.com', 'stream.example.com', 'not_https', 'does not use HTTPS'],
+			['https://Pastebin.com/notes', 'pastebin.com', 'paste_site', 'uses a paste site'],
+			[
+				'https://test.Webhook.site./collect',
+				'test.webhook.site',
+				'webhook_catcher',
+				'uses a webhook catcher',
+			],
+			['https://bit.ly/read-more', 'bit.ly', 'url_shortener', 'uses a URL shortener'],
 			// Forms that hide the real host.
-			['https://other.example@bit.ly/x', 'bit.ly', 'uses a URL shortener'],
-			['https://2130706433/x', '127.0.0.1', 'uses an IP address'],
-			['https://127.1/x', '127.0.0.1', 'uses an IP address'],
-			['https://[::ffff:192.0.2.1]/x', '[::ffff:c000:201]', 'uses an IP address'],
-			['ftp://files.example.com/a', 'files.example.com', 'does not use HTTPS'],
+			['https://other.example@bit.ly/x', 'bit.ly', 'url_shortener', 'uses a URL shortener'],
+			['https://2130706433/x', '127.0.0.1', 'ip_address', 'uses an IP address'],
+			['https://127.1/x', '127.0.0.1', 'ip_address', 'uses an IP address'],
+			['https://[::ffff:192.0.2.1]/x', '[::ffff:c000:201]', 'ip_address', 'uses an IP address'],
+			['ftp://files.example.com/a', 'files.example.com', 'not_https', 'does not use HTTPS'],
 			// A loopback host is the n8n host for an agent, so it gets no exemption.
-			['http://localhost:3000', 'localhost', 'does not use HTTPS'],
-			['http://127.0.0.1:3000/health', '127.0.0.1', 'uses an IP address'],
-		])('flags %s for review', (url, domain, reason) => {
+			['http://localhost:3000', 'localhost', 'not_https', 'does not use HTTPS'],
+			['http://127.0.0.1:3000/health', '127.0.0.1', 'ip_address', 'uses an IP address'],
+		] as const)('flags %s for review', (url, domain, linkReason, reason) => {
 			const content = skill({ instructions: `See [the link](${url}).` });
 
 			expect(scanner.scan(fetched(content))).toEqual({
@@ -467,6 +476,7 @@ describe('SkillSecurityScanner', () => {
 						severity: 'needs_review',
 						file: 'SKILL.md',
 						domain,
+						linkReason,
 						detail: expect.stringContaining(reason),
 					}),
 				],

@@ -2,6 +2,7 @@ import {
 	SKILL_SOURCE_MAX_SKILLS,
 	type SkillListItem,
 	type SkillScanFinding,
+	type SkillLinkReviewReason,
 	type SkillScanRule,
 	type SkillScope,
 	type SkillSourceReason,
@@ -135,6 +136,16 @@ const SKILL_SCAN_RULE_KEYS = {
 	lossy_conversion: 'settings.context.skills.connect.check.rule.lossyConversion',
 } satisfies Record<SkillScanRule, BaseTextKey>;
 
+/** The text for each reason that a link needs review. Each takes `{domain}`, except `unreadable`. */
+const SKILL_LINK_REASON_KEYS = {
+	ip_address: 'settings.context.skills.connect.check.linkReason.ipAddress',
+	not_https: 'settings.context.skills.connect.check.linkReason.notHttps',
+	paste_site: 'settings.context.skills.connect.check.linkReason.pasteSite',
+	webhook_catcher: 'settings.context.skills.connect.check.linkReason.webhookCatcher',
+	url_shortener: 'settings.context.skills.connect.check.linkReason.urlShortener',
+	unreadable: 'settings.context.skills.connect.check.linkReason.unreadable',
+} satisfies Record<SkillLinkReviewReason, BaseTextKey>;
+
 /** A link to a branch, a folder on a branch, or a file on a branch. */
 const GITHUB_BRANCH_LINK =
 	/^https?:\/\/(www\.)?github\.com\/[\w.-]+\/[\w.-]+\/(tree|blob)\/[^/?#]+/i;
@@ -188,13 +199,12 @@ export function useSkillSourceReasons() {
 	function findingsText(findings: SkillScanFinding[]): string {
 		const texts = findings
 			.filter((finding) => finding.severity !== 'info')
-			.map(({ rule, file, domain }) => {
-				const finding =
-					rule === 'risky_url' && domain
-						? i18n.baseText('settings.context.skills.connect.check.riskyUrlDomain', {
-								interpolate: { domain },
-							})
-						: ruleText(rule);
+			.map(({ rule, file, domain, linkReason }) => {
+				const finding = linkReason
+					? i18n.baseText(SKILL_LINK_REASON_KEYS[linkReason], {
+							interpolate: { domain: domain ?? '' },
+						})
+					: ruleText(rule);
 				return file
 					? i18n.baseText('settings.context.skills.connect.check.findingInFile', {
 							interpolate: { finding, file },

@@ -615,6 +615,7 @@ describe('SkillSourceConnectDialog', () => {
 							file: 'SKILL.md',
 							detail: 'The link uses a webhook catcher.',
 							domain: 'webhook.site',
+							linkReason: 'webhook_catcher',
 						},
 					],
 				},
@@ -626,7 +627,7 @@ describe('SkillSourceConnectDialog', () => {
 
 			view.getByRole('button', { name: '1 warning' }).focus();
 			const tooltip = await view.findByTestId('tooltip-content');
-			expect(tooltip).toHaveTextContent('Link to review (webhook.site) in SKILL.md');
+			expect(tooltip).toHaveTextContent('Link to a webhook catcher (webhook.site) in SKILL.md');
 			expect(tooltip).toHaveTextContent('Links to docs.example.com, webhook.site');
 			await userEvent.click(tab(view, 'Passed'));
 			expect(view.getByTestId('skill-source-skill-findings')).toHaveTextContent(

@@ -1,4 +1,9 @@
-import { agentSkillSchema, type SkillScanFinding, type SkillScanLocation } from '@n8n/api-types';
+import {
+	agentSkillSchema,
+	type SkillLinkReviewReason,
+	type SkillScanFinding,
+	type SkillScanLocation,
+} from '@n8n/api-types';
 import { kebabCase } from 'change-case';
 import { isDeepStrictEqual } from 'node:util';
 import type { ZodIssue } from 'zod';
@@ -115,6 +120,16 @@ export function findHiddenUnicode(input: SkillScanInput): SkillScanFinding[] {
 const URL_PATTERN =
 	/(?<![a-z0-9])(?:https?|wss?|ftp):\/\/(?:[^\s<>"'`()[\]{}/?#@]*@)?(?:\[[\d:a-f.]+\])?[^\s<>"'`()[\]{}]*/gi;
 
+/** The English text of each reason, for the `detail` of a finding. */
+const LINK_REASON_DETAIL: Record<SkillLinkReviewReason, string> = {
+	ip_address: 'it uses an IP address',
+	not_https: 'it does not use HTTPS',
+	paste_site: 'it uses a paste site',
+	webhook_catcher: 'it uses a webhook catcher',
+	url_shortener: 'it uses a URL shortener',
+	unreadable: 'n8n cannot read its address',
+};
+
 /**
  * An update needs review if it links to a new domain. At import, list each domain and flag
  * destinations that need review even without a previous version.
@@ -128,13 +143,12 @@ export function findNewUrls({ content, previous }: SkillScanInput): SkillScanFin
 			severity: previous || reviewReason ? 'needs_review' : 'info',
 			file,
 			...(domain ? { domain } : {}),
+			...(reviewReason ? { linkReason: reviewReason } : {}),
 			detail: previous
 				? `The update links to ${key}, a domain that the current version does not use.`
-				: !domain
-					? `The link ${key} needs review because n8n cannot read its address.`
-					: reviewReason
-						? `The link to ${domain} needs review because ${reviewReason}.`
-						: `The skill links to ${domain}.`,
+				: reviewReason
+					? `The link ${domain ? `to ${domain}` : key} needs review because ${LINK_REASON_DETAIL[reviewReason]}.`
+					: `The skill links to ${domain}.`,
 			location,
 		}));
 }
@@ -144,7 +158,7 @@ type DomainOccurrence = {
 	file: string;
 	location: SkillScanLocation;
 	domain?: string;
-	reviewReason?: string;
+	reviewReason?: SkillLinkReviewReason;
 };
 
 /** Sentence and Markdown punctuation that can follow a link. */
@@ -173,7 +187,7 @@ function domainsByFile(
 				const domain = url?.hostname.toLowerCase().replace(/\.+$/, '');
 				if (!url || !domain) {
 					if (checkImportRisk && !domains.has(link)) {
-						domains.set(link, { file, location, reviewReason: 'n8n cannot read its address' });
+						domains.set(link, { file, location, reviewReason: 'unreadable' });
 					}
 					continue;
 				}

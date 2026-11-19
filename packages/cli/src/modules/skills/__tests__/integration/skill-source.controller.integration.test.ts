@@ -476,7 +476,14 @@ describe('SkillSourceController', () => {
 				const [collectKey] = keysOf(discovery, ['collect']);
 				expect(discovery.skills.find(({ key }) => key === collectKey)?.check).toMatchObject({
 					verdict: 'needs_review',
-					findings: [{ rule: 'risky_url', severity: 'needs_review', domain: 'webhook.site' }],
+					findings: [
+						{
+							rule: 'risky_url',
+							severity: 'needs_review',
+							domain: 'webhook.site',
+							linkReason: 'webhook_catcher',
+						},
+					],
 				});
 				expect(discovery.skills.find(({ name }) => name === 'docs')?.check).toMatchObject({
 					verdict: 'pass',
