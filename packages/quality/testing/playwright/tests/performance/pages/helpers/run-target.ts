@@ -1,6 +1,7 @@
 import type { Page, TestInfo } from '@playwright/test';
 import type { N8NStack } from 'n8n-containers';
 import { existsSync } from 'node:fs';
+import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import { collectConsoleErrors, collectDiagnostics, waitForBackend } from './diagnostics';
@@ -74,8 +75,18 @@ async function runIteration(
 			stack: options.stack,
 			consoleErrors: console.stop(),
 		});
+		// A file, not an attachment body: a body only lives inside test-results.json,
+		// a file sits next to the data in the artifact.
+		const diagnosticsPath = join(
+			options.outputDir,
+			`diagnostics-${target.id}-${loadOptions.iteration}.json`,
+		);
+		await writeFile(
+			diagnosticsPath,
+			JSON.stringify({ error: String(error), ...diagnostics }, null, 2),
+		);
 		await testInfo.attach(`diagnostics:${target.id}:${loadOptions.iteration}`, {
-			body: JSON.stringify({ error: String(error), ...diagnostics }, null, 2),
+			path: diagnosticsPath,
 			contentType: 'application/json',
 		});
 		const backendLost = diagnostics.backend.readiness !== '200';

@@ -190,7 +190,10 @@ export async function loadPage(
 	target: PageTarget,
 	options: LoadOptions,
 ): Promise<PageLoadSample> {
-	await page.goto(target.path);
+	// `commit` only: the ready condition below decides when the page is usable, and
+	// the load event comes from Navigation Timing. Waiting for `load` here made a
+	// slow first visit trip Playwright's 10 s navigation timeout.
+	await page.goto(target.path, { waitUntil: 'commit', timeout: options.readyTimeoutMs });
 	const readyHandle = await page.waitForFunction(readyPredicate, target.ready, {
 		polling: 'raf',
 		timeout: options.readyTimeoutMs,

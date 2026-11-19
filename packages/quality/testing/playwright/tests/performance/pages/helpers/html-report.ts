@@ -101,6 +101,8 @@ const css = (name) => getComputedStyle(document.documentElement).getPropertyValu
 const fmt = (v) => v === null || v === undefined ? '' : Math.round(v).toLocaleString('en-US');
 const runLabel = (run, index) => (index === 0 ? 'This run' : 'Run ' + (index + 1)) + ' · ' + String(run.meta.startedAt).slice(0, 16).replace('T', ' ') + ' · ' + run.meta.cpuCores + ' cores';
 const measured = (page) => page.samples.filter((s) => !s.warmup && s.usableMs !== null);
+const warmupOf = (page) => page.warmup ?? { usableMs: (page.samples.find((s) => s.warmup) ?? {}).usableMs ?? null, deltaMs: null, deltaPct: null };
+const failedOf = (page) => page.failed ?? page.samples.filter((s) => s.error).length;
 const seriesColor = (index) => css(index === 0 ? '--series-1' : '--series-2');
 
 function layout(extra) {
@@ -138,7 +140,7 @@ function renderBoxes() {
     });
     traces.push({
       type: 'scatter', mode: 'markers', name: 'Warm-up · ' + runLabel(run, index), legendgroup: 'run' + index,
-      x: run.pages.map((p) => p.label), y: run.pages.map((p) => p.warmup.usableMs),
+      x: run.pages.map((p) => p.label), y: run.pages.map((p) => warmupOf(p).usableMs),
       marker: { color, symbol: 'diamond-open', size: 11, line: { width: 2 } },
       hovertemplate: '%{x}<br>warm-up %{y:.0f} ms<extra></extra>',
     });
@@ -214,9 +216,9 @@ function renderTable() {
     return '<tr><td>' + p.label + '</td><td>' + (index === 0 ? 'this' : 'run ' + (index + 1)) + '</td>'
       + cols.map((c) => '<td>' + fmt(s[c]) + '</td>').join('')
       + '<td>' + Math.round(s.cv * 100) + ' %</td>'
-      + '<td' + (p.failed ? ' class="failed"' : '') + '>' + p.failed + '</td>'
-      + '<td>' + fmt(p.warmup.usableMs) + '</td>'
-      + '<td>' + (p.warmup.deltaMs === null ? '' : (p.warmup.deltaMs >= 0 ? '+' : '') + fmt(p.warmup.deltaMs) + ' (' + Math.round(p.warmup.deltaPct) + ' %)') + '</td>'
+      + '<td' + (failedOf(p) ? ' class="failed"' : '') + '>' + failedOf(p) + '</td>'
+      + '<td>' + fmt(warmupOf(p).usableMs) + '</td>'
+      + '<td>' + (warmupOf(p).deltaMs === null ? '' : (warmupOf(p).deltaMs >= 0 ? '+' : '') + fmt(warmupOf(p).deltaMs) + ' (' + Math.round(warmupOf(p).deltaPct) + ' %)') + '</td>'
       + '<td class="runs">' + p.samples.filter((x) => !x.warmup).map((x) => x.usableMs === null ? 'x' : Math.round(x.usableMs)).join(' ') + '</td>'
       + '<td>' + (index === 0 ? traceLinks(p) : '') + '</td></tr>';
   }));
