@@ -206,6 +206,21 @@ describe('form-shell.handlebars', () => {
 			expect(shell.error()).toBeNull();
 		});
 
+		it('shows an error when the browser blocks the popup', async () => {
+			const shell = await disconnected();
+			shell.window.open = vi.fn(() => null);
+
+			shell.click('.connect');
+			shell.requests[0].settle({
+				status: 200,
+				body: { data: 'https://accounts.example.com/auth' },
+			});
+			await shell.flush();
+
+			expect(shell.error()?.textContent).toBe("Couldn't connect. Try again.");
+			expect(shell.row().querySelector<HTMLButtonElement>('.connect')!.disabled).toBe(false);
+		});
+
 		it.each([
 			['a server error', { status: 500 }, "Couldn't connect. Try again."],
 			['a network error', new Error('offline'), "Couldn't connect. Try again."],

@@ -675,10 +675,10 @@ describe('chat-shell.handlebars', () => {
 		});
 	});
 
-	describe('Disconnect', () => {
+	describe('the account row', () => {
 		const revokeUrl = 'http://localhost:5678/rest/credentials/cred-1/revoke?resolverId=system-n8n';
 
-		type FetchResult = { status: number } | Error;
+		type FetchResult = { status: number; body?: unknown } | Error;
 
 		/**
 		 * Runs the bar script against a real DOM with one connected account. Each fetch
@@ -714,10 +714,16 @@ describe('chat-shell.handlebars', () => {
 						method: init.method,
 						settle: (result) => {
 							if (result instanceof Error) reject(result);
-							else resolve(new Response(result.status === 204 ? null : '{}', result));
+							else {
+								const body = result.status === 204 ? null : JSON.stringify(result.body ?? {});
+								resolve(new Response(body, { status: result.status }));
+							}
 						},
 					});
 				});
+
+			const popup = { closed: false, location: '', close: vi.fn() };
+			window.open = vi.fn(() => popup) as unknown as typeof window.open;
 
 			// eslint-disable-next-line @typescript-eslint/no-implied-eval
 			new Function(
@@ -744,62 +750,125 @@ describe('chat-shell.handlebars', () => {
 			);
 
 			const row = () => document.querySelector('.cred-row')!;
+			const click = (selector: string) =>
+				row()
+					.querySelector(selector)!
+					.dispatchEvent(new window.Event('click', { bubbles: true }));
 			return {
 				requests,
+				popup,
 				row,
-				clickDisconnect: () =>
-					row()
-						.querySelector('.btn-disconnect')!
-						.dispatchEvent(new window.Event('click', { bubbles: true })),
+				click,
+				clickDisconnect: () => click('.btn-disconnect'),
 				flush: async () => await new Promise((resolve) => setImmediate(resolve)),
 				status: () => row().querySelector('.cred-sub')!.textContent,
 				error: () => row().querySelector('.cred-error'),
 			};
 		}
 
-		it('shows a pending state and sends one request when clicked twice', async () => {
-			const bar = await runConnectedBar();
+		describe('Disconnect', () => {
+			it('shows a pending state and sends one request when clicked twice', async () => {
+				const bar = await runConnectedBar();
 
-			bar.clickDisconnect();
-			bar.clickDisconnect();
+				bar.clickDisconnect();
+				bar.clickDisconnect();
 
-			expect(bar.requests).toHaveLength(1);
-			expect(bar.requests[0]).toMatchObject({
-				url: `${revokeUrl}&authSource=cookie`,
-				method: 'DELETE',
+				expect(bar.requests).toHaveLength(1);
+				expect(bar.requests[0]).toMatchObject({
+					url: `${revokeUrl}&authSource=cookie`,
+					method: 'DELETE',
+				});
+				expect(bar.status()).toBe('Disconnecting…');
+				expect(bar.row().getAttribute('data-pending')).toBe('true');
 			});
-			expect(bar.status()).toBe('Disconnecting…');
-			expect(bar.row().getAttribute('data-pending')).toBe('true');
+
+			it.each([204, 404])('marks the account as not connected on a %s', async (status) => {
+				const bar = await runConnectedBar();
+
+				bar.clickDisconnect();
+				bar.requests[0].settle({ status });
+				await bar.flush();
+
+				expect(bar.row().getAttribute('data-connected')).toBeNull();
+				expect(bar.status()).toBe('Not connected');
+				expect(bar.error()).toBeNull();
+			});
+
+			it.each([
+				['a server error', { status: 500 }, "Couldn't disconnect. Try again."],
+				['a network error', new Error('offline'), "Couldn't disconnect. Try again."],
+				['a 401', { status: 401 }, 'Your session expired. Reload the page to try again.'],
+			])(
+				'keeps the account connected and shows an error on %s',
+				async (_label, result, message) => {
+					const bar = await runConnectedBar();
+
+					bar.clickDisconnect();
+					bar.requests[0].settle(result);
+					await bar.flush();
+
+					expect(bar.row().getAttribute('data-connected')).toBe('true');
+					expect(bar.row().getAttribute('data-pending')).toBeNull();
+					expect(bar.status()).toBe('Connected as visitor@example.com');
+					expect(bar.error()?.textContent).toBe(message);
+					expect(bar.error()?.getAttribute('role')).toBe('alert');
+				},
+			);
 		});
 
-		it.each([204, 404])('marks the account as not connected on a %s', async (status) => {
-			const bar = await runConnectedBar();
+		describe('Connect after a disconnect', () => {
+			async function disconnected() {
+				const bar = await runConnectedBar();
+				bar.clickDisconnect();
+				bar.requests[0].settle({ status: 204 });
+				await bar.flush();
+				bar.requests.length = 0;
+				return bar;
+			}
 
-			bar.clickDisconnect();
-			bar.requests[0].settle({ status });
-			await bar.flush();
+			it('sends one request when clicked twice', async () => {
+				const bar = await disconnected();
 
-			expect(bar.row().getAttribute('data-connected')).toBeNull();
-			expect(bar.status()).toBe('Not connected');
-			expect(bar.error()).toBeNull();
-		});
+				bar.click('.connect');
+				bar.click('.connect');
 
-		it.each([
-			['a server error', { status: 500 }, "Couldn't disconnect. Try again."],
-			['a network error', new Error('offline'), "Couldn't disconnect. Try again."],
-			['a 401', { status: 401 }, 'Your session expired. Reload the page to try again.'],
-		])('keeps the account connected and shows an error on %s', async (_label, result, message) => {
-			const bar = await runConnectedBar();
+				expect(bar.requests).toHaveLength(1);
+				expect(bar.requests[0]).toMatchObject({
+					url: 'http://localhost:5678/rest/credentials/cred-1/authorize?resolverId=system-n8n&authSource=cookie',
+					method: 'POST',
+				});
+				expect(bar.row().getAttribute('data-pending')).toBe('true');
+			});
 
-			bar.clickDisconnect();
-			bar.requests[0].settle(result);
-			await bar.flush();
+			it('sends the popup to the new authorize link', async () => {
+				const bar = await disconnected();
 
-			expect(bar.row().getAttribute('data-connected')).toBe('true');
-			expect(bar.row().getAttribute('data-pending')).toBeNull();
-			expect(bar.status()).toBe('Connected as visitor@example.com');
-			expect(bar.error()?.textContent).toBe(message);
-			expect(bar.error()?.getAttribute('role')).toBe('alert');
+				bar.click('.connect');
+				bar.requests[0].settle({ status: 200, body: { data: 'https://slack.example.com/auth' } });
+				await bar.flush();
+
+				expect(bar.popup.location).toBe('https://slack.example.com/auth');
+				expect(bar.row().getAttribute('data-pending')).toBeNull();
+				expect(bar.status()).toBe('Not connected');
+			});
+
+			it.each([
+				['a server error', { status: 500 }, 'Connection failed · try again'],
+				['a network error', new Error('offline'), 'Connection failed · try again'],
+				['a response without a link', { status: 200, body: {} }, 'Connection failed · try again'],
+				['a 401', { status: 401 }, 'Your session expired. Reload the page to try again.'],
+			])('closes the popup and shows an error on %s', async (_label, result, message) => {
+				const bar = await disconnected();
+
+				bar.click('.connect');
+				bar.requests[0].settle(result);
+				await bar.flush();
+
+				expect(bar.popup.close).toHaveBeenCalled();
+				expect(bar.row().getAttribute('data-connected')).toBeNull();
+				expect(bar.row().getAttribute('data-pending')).toBeNull();
+				expect(bar.status()).toBe(message);
+			});
 		});
 	});
 });
