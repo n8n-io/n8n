@@ -4,7 +4,7 @@ import { flushPromises } from '@vue/test-utils';
 import userEvent from '@testing-library/user-event';
 import { ResponseError } from '@n8n/rest-api-client';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
-import type { SkillPendingUpdate, SkillSourceListItem } from '@n8n/api-types';
+import type { SkillNewUpdate, SkillPendingUpdate, SkillSourceListItem } from '@n8n/api-types';
 import { createComponentRenderer } from '@/__tests__/render';
 import { useSkillsStore } from '../skills.store';
 import SkillSourceUpdatesDialog from './SkillSourceUpdatesDialog.vue';
@@ -35,6 +35,7 @@ const source: SkillSourceListItem = {
 	projectType: null,
 	projectIcon: null,
 	canReview: true,
+	canImport: true,
 	canMove: true,
 	canDelete: true,
 	canReplaceCredential: false,
@@ -45,6 +46,7 @@ const source: SkillSourceListItem = {
 	skillCount: 2,
 	updatesAvailable: 2,
 	updatesBlocked: 0,
+	newSkillsAvailable: 0,
 };
 const update = (
 	skillId: string,
@@ -108,6 +110,244 @@ beforeEach(() => {
 	});
 });
 const render = () => renderDialog({ props: { source }, pinia });
+
+const newSkill = (overrides: Partial<SkillNewUpdate> = {}): SkillNewUpdate => ({
+	key: JSON.stringify({ path: 'skills/pdf' }),
+	name: 'pdf',
+	description: 'Read PDF files',
+	location: 'skills/pdf',
+	webUrl: 'https://github.com/acme/skills/tree/abc/skills/pdf',
+	check: { verdict: 'pass', findings: [] },
+	contentHash: 'b'.repeat(64),
+	revision: 'abc',
+	skipped: false,
+	skippedFiles: [],
+	previewFiles: [{ path: 'SKILL.md', text: 'Read PDF files.' }],
+	previewTruncated: false,
+	nameTaken: false,
+	error: null,
+	...overrides,
+});
+
+it('shows new skills unchecked and imports only the selected new skill', async () => {
+	const skill = newSkill();
+	const unchecked = newSkill({ key: JSON.stringify({ path: 'skills/xlsx' }), name: 'xlsx' });
+	vi.mocked(store.fetchSourceUpdates).mockResolvedValue({
+		updates: [],
+		newSkills: [skill, unchecked],
+		commit: null,
+	});
+	vi.mocked(store.acceptSourceUpdates).mockResolvedValue({
+		updatedCount: 0,
+		importedCount: 1,
+		agents: [],
+		hiddenAgentCount: 0,
+	});
+	const view = render();
+	const checkbox = await view.findByRole('checkbox', { name: 'pdf' });
+	expect(checkbox).not.toBeChecked();
+	expect(view.getByRole('checkbox', { name: 'xlsx' })).not.toBeChecked();
+	for (const badge of view.getAllByTestId('skill-update-new'))
+		expect(badge).toHaveTextContent('New');
+	expect(view.getByTestId('skill-updates-accept')).toBeDisabled();
+	expect(store.fetchSourceUpdate).not.toHaveBeenCalled();
+	await userEvent.click(checkbox);
+	await userEvent.click(view.getByTestId('skill-updates-accept'));
+	expect(store.acceptSourceUpdates).toHaveBeenCalledWith(source.id, {
+		updates: [],
+		newSkills: [{ key: skill.key, contentHash: skill.contentHash }],
+		skippedNewSkills: [],
+		reviewedWarnings: false,
+	});
+	expect(showMessage).toHaveBeenCalledWith({
+		type: 'success',
+		dangerouslyUseHTMLString: false,
+		title: 'Imported 1 skill',
+		message: '',
+	});
+});
+
+it.each(['all', 'group'])(
+	'excludes new skills from %s selection without import permission',
+	async (selection) => {
+		const existing = update('docx');
+		const other = { ...update('xlsx'), location: 'other/xlsx' };
+		vi.mocked(store.fetchSourceUpdates).mockResolvedValue({
+			updates: [existing, other],
+			newSkills: [newSkill()],
+			commit: null,
+		});
+		const view = renderDialog({ props: { source: { ...source, canImport: false } }, pinia });
+		expect(await view.findByRole('checkbox', { name: 'docx' })).toBeChecked();
+		expect(view.getByRole('tab', { name: 'Passed (2)' })).toBeVisible();
+		expect(view.queryByRole('checkbox', { name: 'pdf' })).toBeNull();
+		await userEvent.click(view.getByRole('tab', { name: 'Blocked (1)' }));
+		expect(view.getByRole('checkbox', { name: 'pdf' })).toBeDisabled();
+		expect(view.getByTestId('skill-source-skill-reason')).toHaveTextContent(
+			"You don't have permission to import skills into this scope",
+		);
+		await userEvent.click(view.getByRole('tab', { name: 'Passed (2)' }));
+		const toggle =
+			selection === 'all'
+				? view.getByTestId('skill-source-select-all')
+				: view.getByRole('checkbox', { name: 'skills' });
+		await userEvent.click(toggle);
+		await userEvent.click(toggle);
+		await userEvent.click(view.getByRole('tab', { name: 'Blocked (1)' }));
+		expect(view.getByRole('checkbox', { name: 'pdf' })).not.toBeChecked();
+		await userEvent.click(view.getByTestId('skill-updates-accept'));
+		expect(store.acceptSourceUpdates).toHaveBeenCalledWith(source.id, {
+			updates: [existing, other].map(({ skillId, contentHash, baseVersionId }) => ({
+				skillId,
+				contentHash,
+				baseVersionId,
+			})),
+			newSkills: [],
+			skippedNewSkills: [],
+			reviewedWarnings: false,
+		});
+	},
+);
+
+it('keeps new skills reviewable without import permission', async () => {
+	vi.mocked(store.fetchSourceUpdates).mockResolvedValue({
+		updates: [],
+		newSkills: [newSkill()],
+		commit: null,
+	});
+	const view = renderDialog({ props: { source: { ...source, canImport: false } }, pinia });
+	expect(await view.findByRole('checkbox', { name: 'pdf' })).toBeDisabled();
+	expect(view.getByTestId('skill-source-select-all')).toBeDisabled();
+	expect(view.getByTestId('skill-updates-accept')).toBeDisabled();
+	expect(
+		view.getAllByText("You don't have permission to import skills into this scope"),
+	).toHaveLength(2);
+	expect(view.getByTestId('skill-source-skill-reason')).toHaveTextContent(
+		"You don't have permission to import skills into this scope",
+	);
+	expect(view.getByTestId('skill-source-file')).toHaveTextContent('SKILL.md');
+	expect(view.getByTestId('skill-new-hide')).toBeEnabled();
+});
+
+it.each([true, false])('hides a new skill from the count with canImport=%s', async (canImport) => {
+	const skill = newSkill();
+	vi.mocked(store.fetchSourceUpdates)
+		.mockResolvedValueOnce({ updates: [], newSkills: [skill], commit: null })
+		.mockResolvedValue({ updates: [], newSkills: [{ ...skill, skipped: true }], commit: null });
+	const view = renderDialog({ props: { source: { ...source, canImport } }, pinia });
+	await view.findByRole('checkbox', { name: 'pdf' });
+	await userEvent.click(view.getByTestId('skill-new-hide'));
+	await waitFor(() => expect(view.getByTestId('skill-new-hide')).toBeDisabled());
+	expect(store.acceptSourceUpdates).toHaveBeenCalledWith(source.id, {
+		updates: [],
+		newSkills: [],
+		skippedNewSkills: [{ key: skill.key, contentHash: skill.contentHash }],
+		reviewedWarnings: false,
+	});
+	if (canImport) expect(view.getByRole('checkbox', { name: 'pdf' })).toBeEnabled();
+	else expect(view.getByRole('checkbox', { name: 'pdf' })).toBeDisabled();
+	expect(view.getByRole('checkbox', { name: 'pdf' })).not.toBeChecked();
+	expect(view.emitted().close).toBeUndefined();
+});
+
+it('reports agent impact when new skills and updates are accepted together', async () => {
+	vi.mocked(store.fetchSourceUpdates).mockResolvedValue({
+		updates: [update('docx')],
+		newSkills: [newSkill()],
+		commit: null,
+	});
+	vi.mocked(store.acceptSourceUpdates).mockResolvedValue({
+		updatedCount: 1,
+		importedCount: 1,
+		agents: [{ id: 'agent-1', name: 'Support' }],
+		hiddenAgentCount: 0,
+	});
+	const view = render();
+	await userEvent.click(await view.findByRole('checkbox', { name: 'pdf' }));
+	await userEvent.click(view.getByTestId('skill-updates-accept'));
+	expect(showMessage).toHaveBeenCalledWith({
+		type: 'success',
+		dangerouslyUseHTMLString: false,
+		title: 'Imported 1 skill; Updated 1 skill',
+		message:
+			'Agent drafts that follow these skills will use the updates: Support. Published agents keep their pinned versions until you publish again.',
+	});
+});
+
+it('says why new skills did not load and keeps stored updates reviewable', async () => {
+	vi.mocked(store.fetchSourceUpdates).mockResolvedValue({
+		updates: [update('docx')],
+		newSkills: [],
+		newSkillsError: { reason: 'unreachable' },
+		commit: null,
+	});
+	const view = render();
+	expect(await view.findByRole('checkbox', { name: 'docx' })).toBeChecked();
+	expect(view.getByTestId('skill-updates-new-error')).toHaveTextContent(
+		'n8n could not load the new skills of this source. You can still review the stored updates. n8n cannot reach GitHub. Try again later.',
+	);
+	expect(view.getByTestId('skill-updates-accept')).toBeEnabled();
+});
+
+it('shows no load warning when new skills load', async () => {
+	vi.mocked(store.fetchSourceUpdates).mockResolvedValue({
+		updates: [],
+		newSkills: [newSkill()],
+		commit: null,
+	});
+	const view = render();
+	await view.findByRole('checkbox', { name: 'pdf' });
+	expect(view.queryByTestId('skill-updates-new-error')).toBeNull();
+});
+
+it('finds a new skill by its description', async () => {
+	vi.mocked(store.fetchSourceUpdates).mockResolvedValue({
+		updates: [update('docx')],
+		newSkills: [newSkill()],
+		commit: null,
+	});
+	const view = render();
+	await view.findByRole('checkbox', { name: 'pdf' });
+	await userEvent.click(view.getByTestId('skill-source-search-toggle'));
+	await userEvent.type(view.getByRole('textbox', { name: 'Search skills' }), 'PDF files');
+	await waitFor(() => expect(view.queryByRole('checkbox', { name: 'docx' })).toBeNull());
+	expect(view.getByRole('checkbox', { name: 'pdf' })).toBeVisible();
+});
+
+it('never enables a blocked new skill', async () => {
+	vi.mocked(store.fetchSourceUpdates).mockResolvedValue({
+		updates: [],
+		newSkills: [newSkill({ check: { verdict: 'blocked', findings: [] } })],
+		commit: null,
+	});
+	const view = render();
+	expect(await view.findByRole('checkbox', { name: 'pdf' })).toBeDisabled();
+	expect(view.getByTestId('skill-updates-accept')).toBeDisabled();
+});
+
+it('reloads new skills when their content changes before the hide action', async () => {
+	const skill = newSkill();
+	const changed = { ...skill, contentHash: 'c'.repeat(64) };
+	vi.mocked(store.fetchSourceUpdates)
+		.mockResolvedValueOnce({ updates: [], newSkills: [skill], commit: null })
+		.mockResolvedValue({ updates: [], newSkills: [changed], commit: null });
+	vi.mocked(store.acceptSourceUpdates).mockRejectedValueOnce(
+		new ResponseError('Changed', { httpStatusCode: 409, meta: { reason: 'stale' } }),
+	);
+	const view = render();
+	await view.findByRole('checkbox', { name: 'pdf' });
+	await userEvent.click(view.getByTestId('skill-new-hide'));
+	await waitFor(() => expect(store.fetchSourceUpdates).toHaveBeenCalledTimes(2));
+	await waitFor(() => expect(view.getByTestId('skill-new-hide')).toBeEnabled());
+	expect(view.getByRole('checkbox', { name: 'pdf' })).not.toBeChecked();
+	await userEvent.click(view.getByTestId('skill-new-hide'));
+	expect(store.acceptSourceUpdates).toHaveBeenLastCalledWith(
+		source.id,
+		expect.objectContaining({
+			skippedNewSkills: [{ key: changed.key, contentHash: changed.contentHash }],
+		}),
+	);
+});
 
 it('requires acknowledgment of selected warnings and marks their changed lines', async () => {
 	const warningUpdate = update('docx', 'needs_review');
@@ -182,6 +422,8 @@ it('accepts only checked updates and disables acceptance when none are selected'
 	await userEvent.click(accept);
 	expect(store.acceptSourceUpdates).toHaveBeenCalledWith('source-1', {
 		updates: [{ skillId: 'first', contentHash: 'a'.repeat(64), baseVersionId: 'v1' }],
+		newSkills: [],
+		skippedNewSkills: [],
 		reviewedWarnings: false,
 	});
 	await waitFor(() => expect(view.emitted().close).toHaveLength(1));
@@ -270,6 +512,8 @@ it('preserves the selection after a stale accept and clears the warning acknowle
 	await userEvent.click(view.getByTestId('skill-updates-accept'));
 	expect(store.acceptSourceUpdates).toHaveBeenLastCalledWith('source-1', {
 		updates: [{ skillId: 'docx', contentHash: latest.contentHash, baseVersionId: 'v1' }],
+		newSkills: [],
+		skippedNewSkills: [],
 		reviewedWarnings: true,
 	});
 });

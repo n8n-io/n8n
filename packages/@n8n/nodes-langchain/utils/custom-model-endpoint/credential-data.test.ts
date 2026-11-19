@@ -1,4 +1,4 @@
-import { readCustomModelEndpointCredential } from './credential-data';
+import { readCustomModelEndpointCredential, readOpenAiCredential } from './credential-data';
 
 describe('readCustomModelEndpointCredential', () => {
 	describe('Base URL', () => {
@@ -123,5 +123,31 @@ describe('readCustomModelEndpointCredential', () => {
 			expect(readCustomModelEndpointCredential({}).gatewayHeaders).toEqual({});
 			expect(readCustomModelEndpointCredential({ gatewayHeaders: {} }).gatewayHeaders).toEqual({});
 		});
+	});
+});
+
+describe('readOpenAiCredential', () => {
+	it('reads the key as a Bearer login and the custom header as a gateway header', () => {
+		const endpoint = readOpenAiCredential({
+			apiKey: ' sk-test ',
+			url: 'https://gateway.example.com/v1/',
+			organizationId: ' org-1 ',
+			header: true,
+			headerName: ' x-tenant ',
+			headerValue: 'acme',
+		});
+
+		expect(endpoint).toEqual({
+			baseUrl: 'https://gateway.example.com/v1',
+			login: { type: 'bearer', token: 'sk-test' },
+			gatewayHeaders: { 'OpenAI-Organization': 'org-1', 'x-tenant': 'acme' },
+		});
+	});
+
+	it.each([
+		['the field was never saved', {}],
+		['the field was cleared', { url: '   ' }],
+	])('falls back to the OpenAI base URL when %s', (_name, data) => {
+		expect(readOpenAiCredential(data).baseUrl).toBe('https://api.openai.com/v1');
 	});
 });

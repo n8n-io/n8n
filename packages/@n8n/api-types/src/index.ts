@@ -12,6 +12,7 @@ export type * from './community-node-types';
 export type * from './quick-connect';
 export * from './agents/index';
 export * from './skills/index';
+export * from './knowledge/index';
 export * from './builder-tool-names';
 export * from './schemas/app.schema';
 export * from './schemas/app-binding.schema';
@@ -422,6 +423,7 @@ export {
 	buildUpdateWorkflowSessionGrantKey,
 	buildCredentialDestinationGrantKey,
 	buildDataTablesSessionGrantKey,
+	buildOwnedDataTableGrantKey,
 	buildWorkflowActionSessionGrantKey,
 	buildWorkspaceSessionGrantKey,
 	buildCleanupTestExecutionsSessionGrantKey,
@@ -552,10 +554,14 @@ export {
 	InstanceAiEvalSeedDataTableRowsRequest,
 	InstanceAiEventsQuery,
 	InstanceAiCorrectTaskRequest,
+	InstanceAiCloudBrowserReturnControlRequest,
 	InstanceAiEnsureThreadRequest,
 	InstanceAiPersistPendingAgentRequest,
 	instanceAiAgentAttachmentSchema,
 	instanceAiAppTargetSchema,
+	instanceAiAgentSubjectSchema,
+	instanceAiAppSubjectSchema,
+	instanceAiThreadSubjectSchema,
 	INSTANCE_AI_APP_TARGETS_METADATA_KEY,
 	INSTANCE_AI_PENDING_APP_TARGET_METADATA_KEY,
 	instanceAiAttachmentSchema,
@@ -679,6 +685,9 @@ export type {
 	InstanceAiEvent,
 	InstanceAiAgentAttachment,
 	InstanceAiAppTarget,
+	InstanceAiAgentSubject,
+	InstanceAiAppSubject,
+	InstanceAiThreadSubject,
 	InstanceAiAttachment,
 	InstanceAiSendMessageResponse,
 	InstanceAiToolCallState,
@@ -749,6 +758,7 @@ export type {
 	InstanceGatewayResourceDecision,
 	InstanceAiBrowserCreateLinkResponse,
 	InstanceAiBrowserStatusResponse,
+	InstanceAiCloudBrowserLiveViewResponse,
 	ToolCategory,
 	InstanceAiWorkflowSetupNode,
 	InstanceAiEvalNodeExecutionMode,
@@ -1037,7 +1047,10 @@ export {
 	instanceAiApprovalModeSchema,
 	instanceAiAutoApprovalDeciderSchema,
 	autoApprovalPayloadSchema,
+	DATA_TABLE_CHANGE_SEVERITY,
+	isSessionGrantableDataTableAction,
 	type InstanceAiApprovalDetails,
+	type InstanceAiDataTableChangeDetails,
 	type InstanceAiApprovalMode,
 	type InstanceAiApprovalPreferences,
 	type InstanceAiAutoApprovalDecider,

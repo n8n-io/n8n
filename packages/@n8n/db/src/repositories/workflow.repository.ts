@@ -2132,11 +2132,13 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 				.update(WorkflowEntity)
 				.set({
 					activeVersionId: () => 'versionId',
+					// oxlint-disable-next-line typescript/no-deprecated -- Keep the legacy active column in sync with publication state.
 					active: true,
 				})
 				.where('id = :workflowId', { workflowId })
 				.execute();
 		} else {
+			// oxlint-disable-next-line typescript/no-deprecated -- Keep the legacy active column in sync with publication state.
 			return await this.update({ id: workflowId }, { active: false, activeVersionId: null });
 		}
 	}

@@ -216,6 +216,7 @@ export class CommunityPackagesLifecycleService {
 				success: false,
 				packageVersion,
 				failureReason: errorMessage,
+				source: presentation,
 				loginId: loginIdOf(ctx),
 			});
 
@@ -251,6 +252,7 @@ export class CommunityPackagesLifecycleService {
 			packageNodeNames: installedPackage.installedNodes.map((node) => node.name),
 			packageAuthor: installedPackage.authorName,
 			packageAuthorEmail: installedPackage.authorEmail,
+			source: presentation,
 			loginId: loginIdOf(ctx),
 		});
 

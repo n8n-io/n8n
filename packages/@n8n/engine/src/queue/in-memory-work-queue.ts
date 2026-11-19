@@ -1,5 +1,5 @@
-import { UnexpectedError } from '../common';
 import { createConsoleLogger, type EngineLogger } from '../logging';
+import { checkWorkQueueConcurrency } from './work-queue-concurrency';
 import type { WorkQueue } from './work-queue.types';
 
 /** Makes a synchronous throw a rejection, so `run()` cannot recurse on one stack. */
@@ -22,12 +22,7 @@ export class InMemoryWorkQueue<TMessage> implements WorkQueue<TMessage> {
 		private readonly logger: EngineLogger = createConsoleLogger(),
 		{ concurrency = 1 }: { concurrency?: number } = {},
 	) {
-		if (!Number.isInteger(concurrency) || concurrency < 1) {
-			throw new UnexpectedError(
-				`work queue concurrency is ${concurrency}; it must be a positive integer`,
-			);
-		}
-		this.concurrency = concurrency;
+		this.concurrency = checkWorkQueueConcurrency(concurrency);
 	}
 
 	private pending: TMessage[] = [];

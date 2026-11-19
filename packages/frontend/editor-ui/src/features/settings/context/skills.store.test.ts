@@ -115,8 +115,17 @@ describe('useSkillsStore', () => {
 
 		await store.deleteSource('source-1');
 
-		expect(deleteSource).toHaveBeenCalledWith(useRootStore().restApiContext, 'source-1');
+		expect(deleteSource).toHaveBeenCalledWith(useRootStore().restApiContext, 'source-1', undefined);
 	});
+
+	it.each([{ keepSkills: true }, { onlySkillId: 'skill-1' }])(
+		'forwards source removal choices: %j',
+		async (query) => {
+			const store = useSkillsStore();
+			await store.deleteSource('source-1', query);
+			expect(deleteSource).toHaveBeenCalledWith(useRootStore().restApiContext, 'source-1', query);
+		},
+	);
 
 	it('keeps the previous sources when a read fails', async () => {
 		const store = useSkillsStore();
