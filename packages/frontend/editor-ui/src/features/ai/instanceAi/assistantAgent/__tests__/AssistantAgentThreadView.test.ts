@@ -1228,6 +1228,25 @@ describe('AssistantAgentThreadView', () => {
 			});
 		});
 
+		it('names the run that the user started in the preview of a tab', async () => {
+			fetchTabs.mockResolvedValue({ state: storedState });
+			renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
+			await flushPromises();
+			isLoadingHistory.value = false;
+			await flushPromises();
+
+			// The preview remembers the run on the thread when the run starts.
+			previewThread.current?.rememberManualExecution('wf-9', 'exec-1', undefined);
+
+			const clientContext = panelProps.current['client-context'] as () => Record<string, unknown>;
+			expect(clientContext().threadArtifacts).toEqual({
+				artifacts: [
+					{ type: 'workflow', id: 'wf-9', name: 'Opened by hand', executionId: 'exec-1' },
+				],
+				activeId: 'wf-9',
+			});
+		});
+
 		it('sends no tabs until the stored tabs load', async () => {
 			fetchTabs.mockReturnValue(new Promise(() => {}));
 			renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
