@@ -23,6 +23,7 @@ import { ref } from 'vue';
 import { useLatestFetch } from '@n8n/composables/useLatestFetch';
 
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 
 import * as api from './skills.api';
 import type { SkillListQuery } from './skills.api';
@@ -30,6 +31,7 @@ import type { SkillListQuery } from './skills.api';
 /** The skills list in Settings > Context > Skills. */
 export const useSkillsStore = defineStore('contextSkills', () => {
 	const rootStore = useRootStore();
+	const settingsStore = useSettingsStore();
 
 	const skills = ref<SkillListItem[]>([]);
 	const count = ref(0);
@@ -207,7 +209,15 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 		return await api.acceptSkillSourceUpdates(rootStore.restApiContext, sourceId, payload);
 	}
 
+	async function setSkillSyncEnabled(enabled: boolean) {
+		const saved = await api.updateSkillSyncSettings(rootStore.restApiContext, { enabled });
+		if (settingsStore.moduleSettings.skills) {
+			settingsStore.moduleSettings.skills.skillSyncEnabled = saved.enabled;
+		}
+	}
+
 	return {
+		setSkillSyncEnabled,
 		previewSourceMove,
 		moveSource,
 		skills,
