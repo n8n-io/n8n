@@ -85,7 +85,7 @@ export function useInstancePolicy() {
 			// The access snapshot names the deciding rule only for the policy version that it read.
 			const access = store.typeAccess[kind];
 			const decidingRuleId =
-				access?.version === policy.version ? access.decidingRuleIds.get(typeName) : undefined;
+				access?.version === policy.version ? access.types.get(typeName)?.matchedRuleId : undefined;
 			return setTypeAccess(policy, typeName, action, decidingRuleId);
 		});
 	}

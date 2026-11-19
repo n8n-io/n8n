@@ -1,6 +1,7 @@
 import { isHitlToolType, type INodeTypeDescription } from 'n8n-workflow';
 
 import { GENERIC_CREDENTIAL_TYPES, RELATION_EXCLUDED_NODE_TYPES } from './relatedTypes.constants';
+import { latestVersion } from '../type-availability-policies.api';
 
 const TOOL_SUFFIX = 'Tool';
 const HITL_TOOL_SUFFIX = 'HitlTool';
@@ -41,12 +42,6 @@ function addTo(map: Map<string, Set<string>>, key: string, value: string) {
 	map.set(key, values);
 }
 
-function latestVersion(description: INodeTypeDescription): number {
-	return Array.isArray(description.version)
-		? Math.max(...description.version)
-		: description.version;
-}
-
 /**
  * Links each credential type to the node types that list it in `credentials[]`, over every version.
  * It does not use `supportedNodes`, because the build computes that per package and misses the
@@ -62,7 +57,7 @@ export function buildCredentialTypeIndex(
 
 	for (const description of descriptions) {
 		const latest = latestNodeTypes.get(description.name);
-		if (!latest || latestVersion(description) > latestVersion(latest)) {
+		if (!latest || latestVersion(description.version) > latestVersion(latest.version)) {
 			latestNodeTypes.set(description.name, description);
 		}
 		if (description.usableAsTool) toolCapableNodeTypes.add(description.name);

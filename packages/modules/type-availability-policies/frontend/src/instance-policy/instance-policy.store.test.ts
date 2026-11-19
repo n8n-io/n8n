@@ -47,6 +47,15 @@ const accessResponse = (version: number, slack: 'allow' | 'deny' = 'allow') => (
 	types: [{ name: 'n8n-nodes-base.slack', access: slack, matchedRuleId: null }],
 });
 
+/** The access after the Acme node type was installed, at the same policy version. */
+const accessWithInstalledAcme = () => ({
+	...accessResponse(3),
+	types: [
+		...accessResponse(3).types,
+		{ name: 'n8n-nodes-acme.acme', access: 'deny' as const, matchedRuleId: null },
+	],
+});
+
 const conflict = () => new ResponseError('Policy scope has changed', { httpStatusCode: 409 });
 
 const addDenySlack = (policy: InstancePolicy<'node'>): InstancePolicyContent<'node'> => ({
@@ -72,7 +81,7 @@ describe('useInstancePolicyStore', () => {
 
 			expect(mocks.fetchInstanceAccess).toHaveBeenCalledWith(expect.anything(), 'node');
 			expect(store.typeAccess.node?.version).toBe(3);
-			expect(store.typeAccess.node?.byName.get('n8n-nodes-base.slack')).toBe('allow');
+			expect(store.typeAccess.node?.types.get('n8n-nodes-base.slack')?.access).toBe('allow');
 			expect(store.typeAccess.credential).toBeNull();
 		});
 
@@ -92,43 +101,19 @@ describe('useInstancePolicyStore', () => {
 			await store.load(['node', 'credential']);
 
 			expect(store.typeAccess.credential?.version).toBe(7);
-			expect(store.typeAccess.credential?.byName.get('slackApi')).toBe('deny');
-			expect(store.typeAccess.node?.byName.has('slackApi')).toBe(false);
+			expect(store.typeAccess.credential?.types.get('slackApi')?.access).toBe('deny');
+			expect(store.typeAccess.node?.types.has('slackApi')).toBe(false);
 		});
 
 		it('reads the access again on each load, so it lists the types installed since', async () => {
 			const store = useInstancePolicyStore();
 			await store.load(['node']);
-			const installed = {
-				name: 'n8n-nodes-acme.acme',
-				access: 'deny' as const,
-				matchedRuleId: null,
-			};
-			mocks.fetchInstanceAccess.mockResolvedValue({
-				...accessResponse(3),
-				types: [...accessResponse(3).types, installed],
-			});
+			mocks.fetchInstanceAccess.mockResolvedValue(accessWithInstalledAcme());
 
 			await store.load(['node']);
 
 			expect(mocks.fetchInstanceAccess).toHaveBeenCalledTimes(2);
-			expect(store.typeAccess.node?.byName.get('n8n-nodes-acme.acme')).toBe('deny');
-		});
-
-		it('marks the types that a rule leaves open to project opt-in as locked', async () => {
-			mocks.fetchInstanceAccess.mockResolvedValue({
-				...accessResponse(3),
-				types: [
-					{ name: 'n8n-nodes-base.slack', access: 'delegate', matchedRuleId: 'rule-1' },
-					{ name: 'n8n-nodes-base.gmail', access: 'delegate', matchedRuleId: null },
-					{ name: 'n8n-nodes-base.notion', access: 'deny', matchedRuleId: 'rule-2' },
-				],
-			});
-			const store = useInstancePolicyStore();
-
-			await store.load(['node']);
-
-			expect(store.typeAccess.node?.locked).toEqual(new Set(['n8n-nodes-base.slack']));
+			expect(store.typeAccess.node?.types.get('n8n-nodes-acme.acme')?.access).toBe('deny');
 		});
 
 		it('reads the access again before a save resolves', async () => {
@@ -140,7 +125,7 @@ describe('useInstancePolicyStore', () => {
 			await store.save('node', addDenySlack);
 
 			expect(store.typeAccess.node?.version).toBe(4);
-			expect(store.typeAccess.node?.byName.get('n8n-nodes-base.slack')).toBe('deny');
+			expect(store.typeAccess.node?.types.get('n8n-nodes-base.slack')?.access).toBe('deny');
 		});
 
 		it('keeps a newer access when an older answer arrives late', async () => {
@@ -157,7 +142,7 @@ describe('useInstancePolicyStore', () => {
 			await olderLoad;
 
 			expect(store.typeAccess.node?.version).toBe(4);
-			expect(store.typeAccess.node?.byName.get('n8n-nodes-base.slack')).toBe('deny');
+			expect(store.typeAccess.node?.types.get('n8n-nodes-base.slack')?.access).toBe('deny');
 		});
 
 		it('keeps the newer access when an older answer of the same policy version arrives late', async () => {
@@ -166,21 +151,13 @@ describe('useInstancePolicyStore', () => {
 			const store = useInstancePolicyStore();
 			const olderLoad = store.load(['node']);
 			await vi.waitFor(() => expect(mocks.fetchInstanceAccess).toHaveBeenCalledTimes(1));
-			const installed = {
-				name: 'n8n-nodes-acme.acme',
-				access: 'deny' as const,
-				matchedRuleId: null,
-			};
-			mocks.fetchInstanceAccess.mockResolvedValue({
-				...accessResponse(3),
-				types: [...accessResponse(3).types, installed],
-			});
+			mocks.fetchInstanceAccess.mockResolvedValue(accessWithInstalledAcme());
 
 			await store.load(['node']);
 			olderAccess.resolve(accessResponse(3));
 			await olderLoad;
 
-			expect(store.typeAccess.node?.byName.get('n8n-nodes-acme.acme')).toBe('deny');
+			expect(store.typeAccess.node?.types.get('n8n-nodes-acme.acme')?.access).toBe('deny');
 		});
 
 		it('reports no read error for a load when a save read the current access after it', async () => {
@@ -222,7 +199,7 @@ describe('useInstancePolicyStore', () => {
 			await store.save('node', addDenySlack);
 
 			expect(store.typeAccess.node?.version).toBe(4);
-			expect(store.typeAccess.node?.byName.get('n8n-nodes-base.slack')).toBe('deny');
+			expect(store.typeAccess.node?.types.get('n8n-nodes-base.slack')?.access).toBe('deny');
 		});
 
 		it('reports the read error, and shows no access, when the policy changed and its access cannot be read', async () => {
@@ -257,7 +234,7 @@ describe('useInstancePolicyStore', () => {
 
 			expect(store.policies.node?.version).toBe(5);
 			expect(store.typeAccess.node?.version).toBe(5);
-			expect(store.typeAccess.node?.byName.get('n8n-nodes-base.slack')).toBe('deny');
+			expect(store.typeAccess.node?.types.get('n8n-nodes-base.slack')?.access).toBe('deny');
 		});
 
 		it('reports no read error for a save when a later save already read the current access', async () => {

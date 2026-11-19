@@ -1,10 +1,9 @@
-import type { InstanceTypeAccessResponse, PolicyAction } from '@n8n/api-types';
+import type { InstanceTypeAccessResponse } from '@n8n/api-types';
 import { ResponseError } from '@n8n/rest-api-client';
+import { useLatestFetch } from '@n8n/composables/useLatestFetch';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { defineStore } from 'pinia';
 import { shallowReactive } from 'vue';
-
-import { isTypeAccessEditable } from './typeAccessRule';
 
 import {
 	fetchInstancePolicy,
@@ -45,26 +44,15 @@ type LoadKindResult = { error: unknown; accessError: unknown };
 
 type PolicyByKind = { [K in RestrictedTypeKind]: InstancePolicy<K> | null };
 
+type TypeAccessEntry = InstanceTypeAccessResponse['types'][number];
+
 /** The access of each type, read from the server for one policy version. */
-type TypeAccessSnapshot = {
-	version: number;
-	byName: ReadonlyMap<string, PolicyAction>;
-	/** The rule that decides each type, or `null` when the default action decides it. */
-	decidingRuleIds: ReadonlyMap<string, string | null>;
-	/** The types whose access the admin page cannot change. See `isTypeAccessEditable`. */
-	locked: ReadonlySet<string>;
-};
+type TypeAccessSnapshot = { version: number; types: ReadonlyMap<string, TypeAccessEntry> };
 
 function toTypeAccess(response: InstanceTypeAccessResponse): TypeAccessSnapshot {
 	return {
 		version: response.version,
-		byName: new Map(response.types.map(({ name, access }) => [name, access])),
-		decidingRuleIds: new Map(
-			response.types.map(({ name, matchedRuleId }) => [name, matchedRuleId]),
-		),
-		locked: new Set(
-			response.types.filter((type) => !isTypeAccessEditable(type)).map(({ name }) => name),
-		),
+		types: new Map(response.types.map((type) => [type.name, type])),
 	};
 }
 
@@ -97,7 +85,7 @@ export const useInstancePolicyStore = defineStore(INSTANCE_POLICY_STORE_ID, () =
 	const loadRequests: Record<RestrictedTypeKind, number> = { node: 0, credential: 0 };
 	// The installed types can change while the policy version stays, so only the order of the reads
 	// tells which answer is current.
-	const accessReads: Record<RestrictedTypeKind, number> = { node: 0, credential: 0 };
+	const accessReads = { node: useLatestFetch(), credential: useLatestFetch() };
 
 	const typeAccess = shallowReactive<Record<RestrictedTypeKind, TypeAccessSnapshot | null>>({
 		node: null,
@@ -109,13 +97,13 @@ export const useInstancePolicyStore = defineStore(INSTANCE_POLICY_STORE_ID, () =
 	 * error, so a late answer to an older read changes nothing. Returns the read error, or `null`.
 	 */
 	async function loadTypeAccess(kind: RestrictedTypeKind): Promise<unknown> {
-		const read = ++accessReads[kind];
+		const isLatest = accessReads[kind].next();
 		try {
 			const access = toTypeAccess(await fetchInstanceAccess(rootStore.restApiContext, kind));
-			if (read === accessReads[kind]) typeAccess[kind] = access;
+			if (isLatest()) typeAccess[kind] = access;
 			return null;
 		} catch (error) {
-			if (read !== accessReads[kind]) return null;
+			if (!isLatest()) return null;
 			// Access of an older version would show a saved change as lost, so rows show none until
 			// a later policy version loads it again.
 			const policyVersion = policies[kind]?.version;
@@ -157,7 +145,6 @@ export const useInstancePolicyStore = defineStore(INSTANCE_POLICY_STORE_ID, () =
 		try {
 			const policy = await fetchInstancePolicy(rootStore.restApiContext, kind);
 			accept(kind, policy);
-			// The server lists the installed types, which can change while the policy version stays.
 			const accessError = await loadTypeAccess(kind);
 			if (request !== loadRequests[kind]) return { error: null, accessError: null };
 
