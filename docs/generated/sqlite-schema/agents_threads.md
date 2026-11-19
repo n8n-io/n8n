@@ -105,6 +105,7 @@ erDiagram
   varchar_36_ lastObservedMessageId
   varchar_255_ observationScopeId PK
   datetime_3_ updatedAt
+  TEXT workingSet
 }
 "agents_observation_locks" {
   varchar_36_ agentId PK

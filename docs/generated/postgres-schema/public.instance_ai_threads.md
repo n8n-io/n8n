@@ -103,6 +103,7 @@ erDiagram
   varchar_36_ lastObservedMessageId
   uuid observationScopeId FK
   timestamp_3__with_time_zone updatedAt
+  text workingSet
 }
 "public.instance_ai_observation_locks" {
   timestamp_3__with_time_zone createdAt
