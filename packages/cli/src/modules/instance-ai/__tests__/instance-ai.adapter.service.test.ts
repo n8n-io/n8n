@@ -6038,6 +6038,45 @@ describe('createExecutionAdapter run()', () => {
 		expect(result.binaryOutputNodeNames).toEqual(['Convert to File']);
 	});
 
+	describe('output files', () => {
+		const runFileOutput = async (allowSendingParameterValues: boolean) => {
+			const fileTask = makeTaskData([{}]);
+			fileTask.data!.main[0]![0].binary = { data: { data: 'aGk=', mimeType: 'text/plain' } };
+			const { adapter } = createRunAdapterForTests(
+				{ id: 'wf-1', nodes: [] },
+				{
+					execution: makeExecution({
+						status: 'success',
+						runData: { 'Convert to File': [fileTask] },
+					}),
+					allowSendingParameterValues,
+				},
+			);
+			const storeOutputFile = vi.fn(async () => ({
+				fileId: 'file-1',
+				fileName: 'out.txt',
+				mimeType: 'text/plain',
+				sizeBytes: 2,
+			}));
+			const result = await adapter.run('wf-1', undefined, { storeOutputFile });
+			return { result, storeOutputFile };
+		};
+
+		it('stores the files of the last node', async () => {
+			const { result, storeOutputFile } = await runFileOutput(true);
+
+			expect(storeOutputFile).toHaveBeenCalledTimes(1);
+			expect(result.files).toEqual([expect.objectContaining({ fileId: 'file-1' })]);
+		});
+
+		it('stores no files when parameter values must not reach the model', async () => {
+			const { result, storeOutputFile } = await runFileOutput(false);
+
+			expect(storeOutputFile).not.toHaveBeenCalled();
+			expect(result).not.toHaveProperty('files');
+		});
+	});
+
 	it('forces save settings so the agent can read the result back', async () => {
 		const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
 			id: 'wf-1',
