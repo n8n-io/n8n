@@ -1667,9 +1667,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			const reviewItem = await findByRole('menuitemcheckbox', { name: /Review required/ });
 			expect(reviewItem).toHaveAttribute('aria-checked', 'true');
 			expect(reviewItem).toHaveAttribute('aria-disabled', 'true');
-			expect(
-				getByText('This project requires an approved review before a new version is published.'),
-			).toBeInTheDocument();
+			expect(getByText('Required by this project (project opt-in).')).toBeInTheDocument();
 		});
 
 		it('refetches the requirement on Publish and opens the submit dialog when the project now requires approval', async () => {

@@ -1374,9 +1374,7 @@ describe('ProjectSettings', () => {
 			expect(requireApproval).toHaveAttribute('aria-checked', 'true');
 			expect(requireApproval).toBeDisabled();
 			expect(
-				getByText(
-					'The instance requires approval for every team project. An instance admin can change this.',
-				),
+				getByText('Required by the instance. An instance admin can change this.'),
 			).toBeInTheDocument();
 		});
 	});

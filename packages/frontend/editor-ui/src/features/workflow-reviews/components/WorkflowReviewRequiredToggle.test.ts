@@ -106,8 +106,8 @@ describe('WorkflowReviewRequiredToggle', () => {
 	});
 
 	it.each([
-		['instance', 'This instance requires an approved review before a new version is published.'],
-		['project', 'This project requires an approved review before a new version is published.'],
+		['instance', 'Required by the instance.'],
+		['project', 'Required by this project (project opt-in).'],
 	])(
 		'shows review as required and locked with the reason when the %s requires approval',
 		async (lockedBy, reason) => {
