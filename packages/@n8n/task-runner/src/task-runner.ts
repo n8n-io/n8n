@@ -62,7 +62,7 @@ export interface TaskRunnerOpts extends BaseRunnerConfig {
 export abstract class TaskRunner extends EventEmitter {
 	id: string;
 
-	ws: WebSocket;
+	ws!: WebSocket;
 
 	canSendOffers = false;
 
@@ -109,6 +109,11 @@ export abstract class TaskRunner extends EventEmitter {
 	/** How long (in seconds) to keep serving tasks on shutdown while waiting for the broker to drain. */
 	private readonly gracefulShutdownTimeout: number;
 
+	private readonly brokerOpts: Pick<
+		TaskRunnerOpts,
+		'taskBrokerUri' | 'grantToken' | 'maxPayloadSize'
+	>;
+
 	constructor(opts: TaskRunnerOpts) {
 		super();
 
@@ -120,14 +125,19 @@ export abstract class TaskRunner extends EventEmitter {
 		this.idleTimeout = opts.idleTimeout;
 		this.gracefulShutdownTimeout = opts.gracefulShutdownTimeout;
 
-		const { host: taskBrokerHost } = new URL(opts.taskBrokerUri);
+		this.brokerOpts = opts;
+		this.resetIdleTimer();
+	}
+
+	connect() {
+		const { host: taskBrokerHost } = new URL(this.brokerOpts.taskBrokerUri);
 
 		const wsUrl = `ws://${taskBrokerHost}/runners/_ws?id=${this.id}`;
 		this.ws = new WebSocket(wsUrl, {
 			headers: {
-				authorization: `Bearer ${opts.grantToken}`,
+				authorization: `Bearer ${this.brokerOpts.grantToken}`,
 			},
-			maxPayload: opts.maxPayloadSize,
+			maxPayload: this.brokerOpts.maxPayloadSize,
 		});
 
 		this.ws.addEventListener('error', (event) => {
@@ -151,7 +161,6 @@ export abstract class TaskRunner extends EventEmitter {
 		});
 		this.ws.addEventListener('message', this.receiveMessage);
 		this.ws.addEventListener('close', this.onConnectionClose);
-		this.resetIdleTimer();
 	}
 
 	private resetIdleTimer() {

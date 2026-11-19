@@ -43,8 +43,8 @@ describe('JsTaskRunner', () => {
 	const createRunnerWithOpts = (
 		jsRunnerOpts: Partial<JsRunnerConfig> = {},
 		baseRunnerOpts: Partial<BaseRunnerConfig> = {},
-	) =>
-		new JsTaskRunner({
+	) => {
+		const jsRunner = new JsTaskRunner({
 			baseRunnerConfig: {
 				...defaultConfig.baseRunnerConfig,
 				grantToken: 'grantToken',
@@ -66,6 +66,9 @@ describe('JsTaskRunner', () => {
 				tracesSampleRate: 0,
 			},
 		});
+		jsRunner.connect();
+		return jsRunner;
+	};
 
 	const defaultTaskRunner = createRunnerWithOpts();
 
