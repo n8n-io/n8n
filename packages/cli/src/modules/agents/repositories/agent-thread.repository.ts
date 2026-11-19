@@ -33,6 +33,15 @@ export class AgentThreadRepository extends BaseRepository<AgentThreadEntity> {
 		return await this.find({ select: { id: true, metadata: true }, where: { id: In(ids) } });
 	}
 
+	/** The raw metadata of one thread, read in the transaction of `ctx` when it has one. */
+	async findMetadataById(id: string, ctx: OperationContext): Promise<string | null> {
+		const row = await this.managerFor(ctx).findOne(AgentThreadEntity, {
+			select: { id: true, metadata: true },
+			where: { id },
+		});
+		return row?.metadata ?? null;
+	}
+
 	/**
 	 * Read, update and write the title and metadata of one thread in one
 	 * transaction. On Postgres the row stays locked until the write, so

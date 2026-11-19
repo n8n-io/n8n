@@ -52,7 +52,7 @@ vi.mock('@n8n/agents', async (importOriginal) => ({
 	createContextCueProvider: vi.fn(() => vi.fn()),
 	parseAblatedContextCues: vi.fn(() => []),
 	whenSkillLoads: vi.fn(() => vi.fn()),
-	whileSkillActive: vi.fn(() => vi.fn()),
+	whileSkillLoaded: vi.fn(() => vi.fn()),
 	Memory: vi.fn().mockImplementation(function Memory() {
 		return mockMemoryBuilder;
 	}),
@@ -650,6 +650,31 @@ describe('createInstanceAgent', () => {
 			expect.objectContaining({ projectId: 'project-1' }),
 		);
 	});
+
+	it.each([
+		{ startCloudBrowserTask: vi.fn(), cloudBrowserEnabled: true },
+		{ startCloudBrowserTask: undefined, cloudBrowserEnabled: false },
+	])(
+		'renders the Cloud Browser section only when the host sets startCloudBrowserTask (enabled: $cloudBrowserEnabled)',
+		async ({ startCloudBrowserTask, cloudBrowserEnabled }) => {
+			await createInstanceAgent({
+				modelId: 'test-model',
+				context: {
+					runLabel: 'cloud-browser-prompt',
+					browserUseState: undefined,
+					licenseHints: undefined,
+					localMcpServer: undefined,
+				},
+				orchestrationContext: { runId: 'cloud-browser-prompt', startCloudBrowserTask },
+				memoryConfig: {},
+				mcpManager: createMcpManagerStub(new Map()),
+			} as never);
+
+			expect(getSystemPrompt).toHaveBeenCalledWith(
+				expect.objectContaining({ cloudBrowserEnabled }),
+			);
+		},
+	);
 
 	describe('connected MCP services', () => {
 		const lastDomainToolContext = () => {

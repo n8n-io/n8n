@@ -12,9 +12,7 @@ const renderBadge = (
 	{ engineV2ModuleActive = true } = {},
 ) => {
 	const pinia = createTestingPinia();
-	mockedStore(useSettingsStore).isModuleActive.mockImplementation(
-		(name: string) => engineV2ModuleActive && name === 'engine-v2',
-	);
+	mockedStore(useSettingsStore).isEngineV2Enabled = engineV2ModuleActive;
 	return renderComponent({ pinia, props: { settings } });
 };
 

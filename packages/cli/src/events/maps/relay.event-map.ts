@@ -751,6 +751,8 @@ export type RelayEventMap = ModuleEventMap & {
 		packageAuthor?: string;
 		packageAuthorEmail?: string;
 		failureReason?: string;
+		/** Where the install came from: the editor UI, the public API, or MCP. */
+		source?: 'ui' | 'publicApi' | 'mcp';
 		/** Login of the service account that acted. Absent for people and outside a request. */
 		loginId?: string;
 	};
@@ -1090,6 +1092,15 @@ export type RelayEventMap = ModuleEventMap & {
 	'sso-user-instance-role-updated': {
 		role: string;
 		userId: string;
+	};
+
+	'sso-settings-updated': {
+		user: UserLike;
+		protocol: 'saml' | 'oidc';
+		loginEnabled: boolean;
+		/** Settings keys whose stored value changed. Names only, never values. */
+		fieldsChanged: string[];
+		publicApi: boolean;
 	};
 
 	/**
@@ -1478,6 +1489,7 @@ export type RelayEventMap = ModuleEventMap & {
 					| 'workflow_publishing'
 					| 'workflow_sharing'
 					| 'workflow_reviews'
+					| 'workflow_reviews_approval_required'
 					| 'public_api_rate_limit';
 				value: boolean;
 		  }
@@ -1674,10 +1686,10 @@ export type RelayEventMap = ModuleEventMap & {
 		environmentId: string;
 		scope: 'instance' | 'project';
 		projectId?: string;
-		outcome: 'success' | 'success_with_warnings' | 'failed';
+		outcome: 'success' | 'success_with_warnings' | 'failed' | 'preview_changed';
 		failureKind?: PromotionFailureKind;
 		durationMs: number;
-		/** Set when the outcome is not 'failed'. */
+		/** Set when the outcome is 'success' or 'success_with_warnings'. */
 		counts?: {
 			workflows: number;
 			folders: number;
@@ -1690,7 +1702,7 @@ export type RelayEventMap = ModuleEventMap & {
 		selectedWorkflowCount?: number;
 		/** Project scope only. */
 		selectedFolderCount?: number;
-		/** Set when the outcome is not 'failed'. */
+		/** Set when the outcome is 'success' or 'success_with_warnings'. */
 		openedReview?: boolean;
 	};
 

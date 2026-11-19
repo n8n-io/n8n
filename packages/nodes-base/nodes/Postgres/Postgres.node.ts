@@ -16,6 +16,8 @@ export class Postgres extends VersionedNodeType {
 			parameterPane: 'wide',
 		};
 
+		// The keys are numbers, so a `2.10` key is the number 2.1 and would silently replace 2.1.
+		// The version after 2.9 must not be 2.10.
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {
 			1: new PostgresV1(baseDescription),
 			2: new PostgresV2(baseDescription),

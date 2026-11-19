@@ -8,7 +8,7 @@ import type {
 	IDataObject,
 	INodeProperties,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, READ_ONLY_ANNOTATIONS } from 'n8n-workflow';
 
 import { resolveExpressions, sanitizeDataPathKey } from '@utils/utilities';
 
@@ -149,16 +149,19 @@ export class Html implements INodeType {
 					{
 						name: 'Generate HTML Template',
 						value: 'generateHtmlTemplate',
+						annotations: READ_ONLY_ANNOTATIONS,
 						action: 'Generate HTML template',
 					},
 					{
 						name: 'Extract HTML Content',
 						value: 'extractHtmlContent',
+						annotations: READ_ONLY_ANNOTATIONS,
 						action: 'Extract HTML Content',
 					},
 					{
 						name: 'Convert to HTML Table',
 						value: 'convertToHtmlTable',
+						annotations: READ_ONLY_ANNOTATIONS,
 						action: 'Convert to HTML Table',
 					},
 				],
