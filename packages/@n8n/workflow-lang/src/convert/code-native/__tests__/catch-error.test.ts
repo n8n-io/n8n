@@ -162,3 +162,14 @@ describe('catch reads the error: forms that must stay in the host', () => {
 		if (!t.ok) expect(t.blockers.map((b) => b.feature)).toContain('catch reads the error');
 	});
 });
+describe('catch reads the error: a receiver with the name of an Object member', () => {
+	it.each(['constructor', 'toString', 'hasOwnProperty', 'valueOf', '__proto__'])(
+		'translates or refuses a call on a variable with the name %s, and does not throw',
+		(name) => {
+			const code = `const ${name === '__proto__' ? 'proto' : name}Value = { run: () => 1 };\nconst ${name} = ${name === '__proto__' ? 'proto' : name}Value;\ntry { ${name}.run(); } catch (e) { return [{ json: { m: e.message } }]; }\nreturn [{ json: {} }];`;
+			expect(() =>
+				translateCode({ code, mode: 'all', kind: 'code', hasNode: () => false }),
+			).not.toThrow();
+		},
+	);
+});
