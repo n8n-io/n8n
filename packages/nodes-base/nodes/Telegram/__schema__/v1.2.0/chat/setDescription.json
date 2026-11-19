@@ -1,11 +1,12 @@
 {
-	"properties": {
-		"ok": {
-			"type": "boolean"
-		},
-		"result": {
-			"type": "boolean"
-		}
-	},
-	"type": "object"
+    "type": "object",
+    "properties": {
+        "ok": {
+            "type": "boolean"
+        },
+        "result": {
+            "type": "boolean"
+        }
+    },
+    "version": 1
 }

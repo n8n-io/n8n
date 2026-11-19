@@ -1794,6 +1794,30 @@ describe('createThreadRuntime - SSE and hydration', () => {
 		});
 	});
 
+	test('sendMessage names the run that the user started in the preview of a tab', async () => {
+		mockPostMessage.mockResolvedValue({ runId: 'run-1' });
+		const runtime = activeRuntime(registry);
+		runtime.setOpenTabs([{ type: 'workflow', id: 'wf-2', name: 'Open' }]);
+		runtime.setActiveArtifactId('wf-2');
+		runtime.rememberManualExecution('wf-2', 'exec-1', undefined);
+
+		await runtime.sendMessage('Why is the output wrong?', { authorship: USER_TYPED_MESSAGE });
+
+		expect(mockPostMessage.mock.calls[0]?.[8]).toEqual({
+			artifacts: [{ type: 'workflow', id: 'wf-2', name: 'Open', executionId: 'exec-1' }],
+			activeId: 'wf-2',
+		});
+
+		// A second run replaces the first one.
+		runtime.rememberManualExecution('wf-2', 'exec-2', undefined);
+		await runtime.sendMessage('And now?', { authorship: USER_TYPED_MESSAGE });
+
+		expect(mockPostMessage.mock.calls[1]?.[8]).toEqual({
+			artifacts: [{ type: 'workflow', id: 'wf-2', name: 'Open', executionId: 'exec-2' }],
+			activeId: 'wf-2',
+		});
+	});
+
 	test('sendMessage forwards the thread artifact index to postMessage', async () => {
 		mockPostMessage.mockResolvedValue({ runId: 'run-1' });
 		const runtime = activeRuntime(registry);

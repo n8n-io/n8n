@@ -1,8 +1,9 @@
 {
-	"properties": {
-		"success": {
-			"type": "boolean"
-		}
-	},
-	"type": "object"
+    "type": "object",
+    "properties": {
+        "success": {
+            "type": "boolean"
+        }
+    },
+    "version": 1
 }

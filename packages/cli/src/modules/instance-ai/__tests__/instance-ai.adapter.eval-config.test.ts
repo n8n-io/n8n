@@ -2,9 +2,7 @@
 // @n8n/instance-ai runtime; these tests exercise only the local eval-config mappers.
 vi.mock('@n8n/instance-ai', () => ({
 	wrapUntrustedData: (content: string) => content,
-	builderTemplatesOptionsFromEnv: () => ({}),
 	deriveCredentialHosts: () => [],
-	BuilderTemplatesService: class {},
 }));
 
 vi.mock('@n8n/ai-utilities', () => ({
