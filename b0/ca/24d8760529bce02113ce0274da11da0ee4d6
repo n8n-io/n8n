@@ -1,0 +1,36 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentTriggersSection.test.ts
+  s_6ac6b284e64de3::t_88a348b1137286 69-72,178-179,182-188,194-198,516-544,549,560,572,679
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_6ac6b284e64de3::t_f05fe448f7aa34 10594
+packages/frontend/editor-ui/src/features/agents/components/AgentTriggersSection.vue
+  s_6ac6b284e64de3::t_f76af748eaeb17 12-19,358-379,397,437-438,455-477,517-526
+  s_6ac6b284e64de3::t_978d9b3224c2cb 527
+packages/frontend/editor-ui/src/features/agents/components/AgentChipRow.vue
+  s_6ac6b284e64de3::t_f9fa0b7f11ee44 12-13,19,43-44
+packages/frontend/editor-ui/src/features/agents/components/AgentSchedulesRow.vue
+  s_6ac6b284e64de3::t_1400890eb86b1f 30-31,34,187-193,208-212,242,262
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b0ca24d8760529bce02113ce0274da11da0ee4d6",
+  "prompts": {},
+  "sessions": {
+    "s_36456758792231": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1e4b9-762f-75f5-9e85-dc5ac718b949",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_6ac6b284e64de3": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1e4d6-90a5-75f5-9e85-dc5d76975cb3",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

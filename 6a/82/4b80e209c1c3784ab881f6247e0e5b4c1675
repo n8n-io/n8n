@@ -1,0 +1,19 @@
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/build-workflow.tool.test.ts
+  s_9a68a3421d1c44::t_7413b90d4f68b7 3607
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6a824b80e209c1c3784ab881f6247e0e5b4c1675",
+  "prompts": {},
+  "sessions": {
+    "s_9a68a3421d1c44": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9d96fec8-e953-49f4-ade0-3c1b03c4b690",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

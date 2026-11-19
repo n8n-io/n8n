@@ -1,0 +1,67 @@
+packages/@n8n/api-types/src/dto/promotions/promotion-environment.dto.ts
+  s_3dd47ea0104342::t_42729884f997ed 59
+  s_3dd47ea0104342::t_b68be7bace55d1 49-58,60-61,63-67,84,97-98,125,162,175
+packages/modules/promotions/frontend/src/views/PromotionEnvironmentView.vue
+  s_3dd47ea0104342::t_5f8e35774f36cb 88,94,116-120,146,256,511-520
+  s_3dd47ea0104342::t_1dc7d51aea2ca4 521-523
+packages/@n8n/api-types/src/dto/promotions/promotion-dependency.dto.ts
+  s_3dd47ea0104342::t_2dce02b209badf 350-351
+  s_3dd47ea0104342::t_e230c8d382405f 1-4,6-250,254-285,289-291,296-345,348-349,352-368
+  s_3dd47ea0104342::t_42729884f997ed 251-253,286-288,292-295
+  s_3dd47ea0104342::t_fc991dc9c0942f 5,346-347
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_3dd47ea0104342::t_264b4cf5a14697 1828-1832,1855-1858
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_3dd47ea0104342::t_3e5c6d1c229a78 119-121
+  s_3dd47ea0104342::t_5f8e35774f36cb 4925-4931
+packages/@n8n/api-types/src/dto/promotions/promotion-operations.dto.ts
+  s_3dd47ea0104342::t_81253521060add 16-21,28,72-73,83-91,169,194,216,227,242-244,249-259,273-293,300-326
+  s_3dd47ea0104342::t_42729884f997ed 294-299
+packages/modules/promotions/frontend/src/promotionsSettings.utils.ts
+  s_3dd47ea0104342::t_5f8e35774f36cb 40,43,46-51
+packages/modules/inbox/frontend/src/components/InboxListItem.vue
+  s_3dd47ea0104342::t_3e5c6d1c229a78 34-37,61-62,109-118,143-148
+  s_3dd47ea0104342::t_e6b6f30bd13179 149
+packages/cli/src/modules/inbox/inbox.service.ts
+  s_3dd47ea0104342::t_b68be7bace55d1 27
+packages/modules/promotions/frontend/src/components/PromotionEnvironmentCard.vue
+  s_3dd47ea0104342::t_dbd33be533da97 4,11,111-129,221-227
+packages/modules/inbox/frontend/src/inbox.routes.ts
+  s_3dd47ea0104342::t_3e5c6d1c229a78 61-62
+packages/modules/promotions/frontend/src/composables/usePromotionOperation.ts
+  s_3dd47ea0104342::t_3e5c6d1c229a78 159-160,169-171,177
+packages/@n8n/api-types/src/inbox.ts
+  s_3dd47ea0104342::t_b68be7bace55d1 16,63-78,85-96
+  s_3dd47ea0104342::t_42729884f997ed 79-84
+packages/@n8n/api-types/src/dto/index.ts
+  s_3dd47ea0104342::t_81253521060add 810,835,837,839,842,848,859
+packages/@n8n/cli/docs/commands/promotions.md
+  s_3dd47ea0104342::t_a7593830013755 236
+packages/@n8n/api-types/src/dto/promotions/promotion-preview.dto.ts
+  s_3dd47ea0104342::t_81253521060add 12,71-76,137-138,171-213
+  s_3dd47ea0104342::t_00efdd447f8706 214-215
+packages/modules/inbox/frontend/src/inbox.store.ts
+  s_3dd47ea0104342::t_3e5c6d1c229a78 24,40,186
+packages/@n8n/cli/src/commands/promotion-environment/update.ts
+  s_3dd47ea0104342::t_6be50ab52f4369 7,12
+packages/@n8n/api-types/src/dto/promotions/promotable-resource.dto.ts
+  s_3dd47ea0104342::t_81253521060add 12,26
+packages/@n8n/cli/src/commands/promotion-environment/create.ts
+  s_3dd47ea0104342::t_6be50ab52f4369 7,12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "16de5cb5dcb6cf0316622028137b3e19f906b2d0",
+  "prompts": {},
+  "sessions": {
+    "s_3dd47ea0104342": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c1a45d57-85a1-465a-839a-d3b98e3073fc",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

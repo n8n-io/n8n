@@ -1,0 +1,83 @@
+packages/@n8n/api-types/src/agents/dto.ts
+  s_bc3833e53f708f::t_db3fed529f88e4 15,101
+  s_bc3833e53f708f::t_a9747a5e52b00f 936,942
+packages/frontend/editor-ui/src/features/agents/channels/mcpServer/AgentChannelMcpServerSetup.vue
+  s_bc3833e53f708f::t_bbb2dc15352cad 1,41-43,71-73,91
+  s_bc3833e53f708f::t_eb138a26afd0c5 3-40,44-53,58-70,74-76,78-83,86-90
+  s_bc3833e53f708f::t_f7aaf1ea3c0bf3 2,54-57,77,84-85
+packages/frontend/editor-ui/src/features/agents/channels/mcpServer/AgentChannelMcpServerClientConfig.vue
+  s_bc3833e53f708f::t_bbb2dc15352cad 1,36-38,49-51,62
+  s_bc3833e53f708f::t_54c56a015fd1d0 3-14,21,24-28,30-35,39,41-44,46-48,52-57,61
+  s_bc3833e53f708f::t_fba1dd3b85776a 23
+  s_bc3833e53f708f::t_d5bb31a0c00b36 2,15-20,22,29,40,45,58-59
+  s_bc3833e53f708f::t_96660a890ef738 60
+packages/frontend/editor-ui/src/features/agents/channels/mcpServer/mcpClientConfig.ts
+  s_bc3833e53f708f::t_974bd4ec048cbc 1-54
+packages/cli/src/modules/agents/integrations/platforms/mcp-server/mcp-server-resource.resolver.ts
+  s_bc3833e53f708f::t_000a473aa75946 1-55,57-82,85-107
+  s_bc3833e53f708f::t_131949e207ea4d 56,83-84
+packages/frontend/editor-ui/src/features/agents/channels/mcpServer/mcpClientConfig.test.ts
+  s_bc3833e53f708f::t_ff4a65430b94ec 1-29
+  s_bc3833e53f708f::t_ef9031fd6a5c84 30-32
+packages/frontend/editor-ui/src/features/agents/components/AgentTestMoreMenu.vue
+  s_bc3833e53f708f::t_bbfb9d4de7ffd0 141
+  s_bc3833e53f708f::t_354591629fafa4 158-159
+packages/cli/src/modules/agents/integrations/platforms/mcp-server/mcp-server-integration.ts
+  s_bc3833e53f708f::t_78587f58218d50 1-57
+  s_bc3833e53f708f::t_4c9d801ac04f28 58-59
+packages/frontend/editor-ui/src/features/agents/views/AgentSessionsListView.vue
+  s_bc3833e53f708f::t_6fb007b0a7cb43 177-178
+packages/cli/src/modules/agents/integrations/platforms/mcp-server/mcp-server-channel.service.ts
+  s_bc3833e53f708f::t_a30a86f950e3bf 1-8,11-113,122-182,184-199,201-412,419-451
+  s_bc3833e53f708f::t_3f8ef09512cefd 9-10,183,200,413-418
+  s_bc3833e53f708f::t_f1c9e6f38bb5d3 114-121
+packages/cli/src/modules/agents/integrations/platforms/mcp-server/__tests__/mcp-server-resource.resolver.test.ts
+  s_bc3833e53f708f::t_109dd0a08922b1 1-119
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelModal.vue
+  s_bc3833e53f708f::t_436bb2508be699 35,737
+packages/cli/src/modules/agents/agents.module.ts
+  s_bc3833e53f708f::t_e26a730e9e75a4 49-57,153-155,165
+packages/frontend/editor-ui/src/features/agents/views/AgentSessionTimelineView.vue
+  s_bc3833e53f708f::t_fa1f1163036401 147-148,170-171
+  s_bc3833e53f708f::t_82a9e2c365948a 172
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_bc3833e53f708f::t_340081c0c9c325 1919
+  s_bc3833e53f708f::t_668b77049a6dee 10965
+  s_bc3833e53f708f::t_a0043c4340637f 10964,10966-10970
+packages/@n8n/api-types/src/agents/agent-config-lifecycle.ts
+  s_bc3833e53f708f::t_4f309f54b19fbe 2,17-18,31,33-37,48
+  s_bc3833e53f708f::t_3926356cfe95bf 84-85
+packages/@n8n/backend-services/src/services/url.service.ts
+  s_bc3833e53f708f::t_7a2eca0903d0bd 32-36
+packages/frontend/editor-ui/src/features/agents/channels/registry.ts
+  s_bc3833e53f708f::t_2656f266cee63a 1-5,13,244-250
+  s_bc3833e53f708f::t_b20dba2ae0a210 251
+packages/cli/src/modules/agents/agent-integration-management.service.ts
+  s_bc3833e53f708f::t_8141ce2488a656 488
+packages/@n8n/api-types/src/agents/agent-integration.schema.ts
+  s_bc3833e53f708f::t_71773a29bb1c1c 240
+  s_bc3833e53f708f::t_958a95548ce7f7 236-239,241,318-325,333,340
+  s_bc3833e53f708f::t_0d2256f9145e15 341
+packages/frontend/editor-ui/src/features/agents/components/AgentTriggersSection.vue
+  s_bc3833e53f708f::t_7a84afa9cb4486 47-48,432
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  s_bc3833e53f708f::t_1982a9d2bef9ca 269
+packages/cli/src/modules/agents/integrations/platforms/mcp-server/mcp-server-channel.controller.ts
+  s_bc3833e53f708f::t_d2566214de977a 1-74
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a423de8ceec2e68f0fc5e60357a6450ec6ac1769",
+  "prompts": {},
+  "sessions": {
+    "s_bc3833e53f708f": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1edca-53c7-7233-95f5-ef6688319122",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}
