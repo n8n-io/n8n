@@ -344,11 +344,14 @@ export class OAuth2FlowService implements N8nOAuth2Flow {
 		const client = await this.oauthServerService.clientsStore.getClient(resourceUrl);
 		if (!client) return { valid: false, reason: 'invalid_client' };
 
-		const { accessToken, expiresIn } = await this.oauthServerService.issueAccessToken(
-			client,
-			userId,
-			resourceUrl,
-		);
+		let issued: { accessToken: string; expiresIn: number };
+		try {
+			issued = await this.oauthServerService.issueAccessToken(client, userId, resourceUrl);
+		} catch (error) {
+			if (error instanceof InvalidGrantError) return { valid: false, reason: 'invalid_grant' };
+			throw error;
+		}
+		const { accessToken, expiresIn } = issued;
 		const admitted = await this.admission.admitBearer(
 			resource,
 			{ method: 'GET', url: resourceUrl, ip: '' },
