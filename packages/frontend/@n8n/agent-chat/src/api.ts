@@ -29,11 +29,25 @@ export type ChatEvent =
 	| { type: 'started'; executionId: string }
 	| { type: 'done'; executionId?: string };
 
-/** The owner's look for the chat (theme editor). Empty fields use the widget's defaults. */
+/** Colours for one scheme. Unset ones use the scheme's n8n defaults. */
+export interface ColorSet {
+	primaryColor?: string;
+	backgroundColor?: string;
+	textColor?: string;
+	agentBubbleColor?: string;
+}
+
+/**
+ * The owner's look for the chat (theme editor). Empty fields use n8n's defaults.
+ * `light` / `dark` hold the colours per scheme. The top-level colours come from the
+ * snippet's data-* attributes and win in both schemes.
+ */
 export interface ChatAppearance {
 	title?: string;
 	welcomeMessage?: string;
 	placeholder?: string;
+	light?: ColorSet;
+	dark?: ColorSet;
 	primaryColor?: string;
 	backgroundColor?: string;
 	textColor?: string;
@@ -51,6 +65,8 @@ export interface PreviewState {
 	appearance: ChatAppearance;
 	agentName: string;
 	variant: 'webhook' | 'n8n-chat';
+	/** Show this scheme whatever the setting is, so the editor can check both sets. */
+	scheme?: 'light' | 'dark';
 }
 
 export interface ChatConfig {

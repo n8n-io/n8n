@@ -98,9 +98,9 @@ const text = (max: number) => z.string().trim().max(max).optional();
  * dropped, a radius may come as a string, a colour may lack its `#`, a logo URL may
  * lack its scheme. Real mistakes still fail, with the field in the error.
  */
-function normalizeAppearance(value: unknown): unknown {
-	if (value === null || value === undefined) return {};
-	if (typeof value !== 'object' || Array.isArray(value)) return value;
+const COLOR_KEYS = ['primaryColor', 'backgroundColor', 'textColor', 'agentBubbleColor'] as const;
+
+function normalizeFields(value: object): Record<string, unknown> {
 	const out: Record<string, unknown> = {};
 	for (const [key, raw] of Object.entries(value)) {
 		let field: unknown = typeof raw === 'string' ? raw.trim() : raw;
@@ -115,18 +115,50 @@ function normalizeAppearance(value: unknown): unknown {
 		if (key === 'logoUrl' && typeof field === 'string' && !/^[a-z][a-z0-9+.-]*:/i.test(field)) {
 			field = `https://${field}`;
 		}
+		if ((key === 'light' || key === 'dark') && typeof field === 'object' && field !== null) {
+			field = normalizeFields(field);
+		}
 		out[key] = field;
 	}
 	return out;
 }
-const AppearanceShape = z.object({
-	title: text(80),
-	welcomeMessage: text(500),
-	placeholder: text(80),
+
+/**
+ * Normalises what forms and older saves send: empty values mean "default" and are
+ * dropped, a radius may come as a string, a colour may lack its `#`, a logo URL may
+ * lack its scheme. Colours saved before per-scheme sets (one set at the top level)
+ * move into the light set, and into the dark set too when the scheme was dark.
+ * Real mistakes still fail, with the field in the error.
+ */
+function normalizeAppearance(value: unknown): unknown {
+	if (value === null || value === undefined) return {};
+	if (typeof value !== 'object' || Array.isArray(value)) return value;
+	const out = normalizeFields(value);
+	const legacy = Object.fromEntries(COLOR_KEYS.filter((k) => k in out).map((k) => [k, out[k]]));
+	if (Object.keys(legacy).length) {
+		for (const key of COLOR_KEYS) delete out[key];
+		const target = out.colorScheme === 'dark' ? 'dark' : 'light';
+		const existing = out[target];
+		out[target] = {
+			...legacy,
+			...(typeof existing === 'object' && existing !== null ? existing : {}),
+		};
+	}
+	return out;
+}
+const ColorSetShape = z.object({
 	primaryColor: color,
 	backgroundColor: color,
 	textColor: color,
 	agentBubbleColor: color,
+});
+const AppearanceShape = z.object({
+	title: text(80),
+	welcomeMessage: text(500),
+	placeholder: text(80),
+	/** Colours per scheme. Unset ones use that scheme's n8n defaults. */
+	light: ColorSetShape.optional(),
+	dark: ColorSetShape.optional(),
 	font: z.enum(['system', 'serif', 'mono', 'rounded']).optional(),
 	radius: z.number().int().min(0).max(24).optional(),
 	logoUrl: z
@@ -165,6 +197,8 @@ export const ChatSurfaceSettingsSchema = z.object({
 	features: z.preprocess((value) => value ?? {}, z.object({ uploads: method })),
 	/** The look of the hosted page and the embed. Empty fields use the widget's defaults. */
 	appearance: ChatAppearanceSchema,
+	/** A named instance theme. When set, it decides the look instead of `appearance`. */
+	themeId: z.string().max(64).nullish(),
 });
 
 /** "appearance.logoUrl: Use an http(s) URL; …": which field failed, for the owner UI. */
@@ -413,6 +447,9 @@ export class WebhookChannelService {
 		// The access toggles and the theme editor save separately: a save without `appearance` keeps it.
 		if (typeof input === 'object' && input !== null && !('appearance' in input)) {
 			next.appearance = current.appearance;
+		}
+		if (typeof input === 'object' && input !== null && !('themeId' in input)) {
+			next.themeId = current.themeId;
 		}
 		const revokedBefore = { ...current.revokedBefore };
 		for (const name of CHAT_SURFACE_METHODS) {

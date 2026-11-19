@@ -10,6 +10,7 @@ import { AuthService } from '@/auth/auth.service';
 import { AUTH_COOKIE_NAME } from '@/constants';
 
 import { ChatPageInviteService } from './chat-page-invites.service';
+import { ChatThemeService } from './chat-themes.service';
 import { ExternalChatService } from './external-chat.service';
 import { WebhookChannelError } from './responses-api';
 import {
@@ -51,6 +52,7 @@ export class WebhookChannelController {
 		private readonly urlService: UrlService,
 		private readonly invites: ChatPageInviteService,
 		private readonly externalChat: ExternalChatService,
+		private readonly chatThemes: ChatThemeService,
 	) {}
 
 	// Public routes: do not add a scope decorator. The caller is not an n8n user,
@@ -126,7 +128,8 @@ export class WebhookChannelController {
 			name: page.agent.name,
 			methods: page.surface.methods,
 			// The owner's look for this chat. The widget applies it; data-* attributes on the snippet win.
-			appearance: page.surface.appearance,
+			appearance:
+				(await this.chatThemes.find(page.surface.themeId))?.appearance ?? page.surface.appearance,
 			user: user ? { name: user.name, kind: user.kind } : null,
 			// Option B: a durable queue, so history after a reload, queueing and Stop.
 			variant: external ? 'n8n-chat' : 'webhook',

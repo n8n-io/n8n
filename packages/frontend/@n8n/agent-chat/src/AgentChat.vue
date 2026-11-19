@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref } from 'vue';
 
-import { themeCss } from './theme';
+import { isN8nBranded, themeCss } from './theme';
 
 import {
 	endSession,
@@ -61,7 +61,7 @@ const look = computed<ChatAppearance>(() => ({
 		Object.entries(props.overrides ?? {}).filter(([, v]) => v !== undefined && v !== ''),
 	),
 }));
-const css = computed(() => themeCss(look.value, props.theme, props.mode));
+const css = computed(() => themeCss(look.value, props.mode, props.preview?.scheme));
 const title = computed(() => look.value.title || config.value?.name || 'Agent');
 const welcome = computed(() => look.value.welcomeMessage || config.value?.welcomeMessage);
 const launcherIcon = computed(() => {
@@ -434,7 +434,7 @@ function onKeydown(event: KeyboardEvent) {
 					referrerpolicy="no-referrer"
 				/>
 				<svg
-					v-else-if="theme === 'n8n'"
+					v-else-if="isN8nBranded(look)"
 					class="agent-chat__logo"
 					viewBox="0 0 240 96"
 					aria-label="n8n"

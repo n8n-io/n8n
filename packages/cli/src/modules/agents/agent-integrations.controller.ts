@@ -66,10 +66,8 @@ export class AgentIntegrationsController {
 		const name = chatSurfaceName(surface);
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
-		const { enabled, methods, features, appearance } = await this.webhookChannel.chatSurface(
-			agentId,
-			name,
-		);
+		const { enabled, methods, features, appearance, themeId } =
+			await this.webhookChannel.chatSurface(agentId, name);
 		const url = `${this.urlService.getAgentWebhookUrl(agentId)}/${name}`;
 		return {
 			url,
@@ -77,6 +75,7 @@ export class AgentIntegrationsController {
 			enabled,
 			methods,
 			appearance,
+			themeId: themeId ?? null,
 			...(name === 'n8n-chat' ? { features } : {}),
 		};
 	}

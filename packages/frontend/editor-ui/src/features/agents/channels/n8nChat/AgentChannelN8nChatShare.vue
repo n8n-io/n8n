@@ -24,7 +24,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, onMounted, ref } from 'vue';
 
 import AgentChatAppearanceEditor from './AgentChatAppearanceEditor.vue';
-import type { ChatAppearance } from './chatAppearance';
+import type { AppearanceChoice, ChatAppearance } from './chatAppearance';
 
 const props = defineProps<{
 	projectId: string;
@@ -47,6 +47,7 @@ interface Surface {
 	methods: Record<Method, boolean>;
 	features?: Record<Feature, boolean>;
 	appearance?: ChatAppearance;
+	themeId?: string | null;
 }
 const METHODS: Array<{ key: Method; label: string; hint: string }> = [
 	{
@@ -103,6 +104,7 @@ onMounted(async () => {
 		methods: page.methods,
 		features: page.features,
 		appearance: page.appearance ?? {},
+		themeId: page.themeId ?? null,
 	};
 	await loadInvites();
 });
@@ -209,11 +211,11 @@ async function copyAdvanced() {
 
 const editorOpen = ref(false);
 const appearanceError = ref('');
-async function saveAppearance(appearance: ChatAppearance) {
+async function saveAppearance(choice: AppearanceChoice) {
 	appearanceError.value = '';
 	const before = settings.value;
 	try {
-		await save({ appearance });
+		await save({ appearance: choice.appearance, themeId: choice.themeId });
 		editorOpen.value = false;
 	} catch (error) {
 		// Keep the dialog open with the draft, and say which field the server refused.
@@ -225,7 +227,9 @@ function openEditor() {
 	appearanceError.value = '';
 	editorOpen.value = true;
 }
-const customized = computed(() => Object.keys(settings.value.appearance ?? {}).length > 0);
+const customized = computed(
+	() => !!settings.value.themeId || Object.keys(settings.value.appearance ?? {}).length > 0,
+);
 </script>
 
 <template>
@@ -413,9 +417,11 @@ const customized = computed(() => Object.keys(settings.value.appearance ?? {}).l
 					<N8nSettingsRow
 						title="Look of the chat page and embed"
 						:description="
-							customized
-								? 'Customized. The hosted page and the embed load it automatically.'
-								: 'Default look. Set colors, text, font, logo and the bubble.'
+							settings.themeId
+								? 'Uses a named theme. The hosted page and the embed load it automatically.'
+								: customized
+									? 'Customized. The hosted page and the embed load it automatically.'
+									: 'n8n look (default). Pick a theme or set colors, text, font, logo and the bubble.'
 						"
 					>
 						<template #action>
@@ -433,6 +439,7 @@ const customized = computed(() => Object.keys(settings.value.appearance ?? {}).l
 					v-if="editorOpen"
 					v-model:open="editorOpen"
 					:appearance="settings.appearance ?? {}"
+					:theme-id="settings.themeId ?? null"
 					:agent-name="agentName"
 					:script-url="scriptUrl"
 					:variant="isOptionB ? 'n8n-chat' : 'webhook'"
