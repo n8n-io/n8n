@@ -412,63 +412,56 @@ async function insertRows(
 	}
 }
 
-function prepareUpdate(this: IExecuteFunctions, items: INodeExecutionData[]) {
-	const table = this.getNodeParameter('table', 0) as string;
-	const updateKey = this.getNodeParameter('updateKey', 0) as string;
-	const columnString = this.getNodeParameter('columns', 0) as string;
-	const columns = columnString.split(',').map((column) => column.trim());
-
-	if (!columns.includes(updateKey)) {
-		columns.unshift(updateKey);
-	}
-
-	const quotedTable = escapeSnowflakeObjectIdentifier(table);
-	const quotedColumns = columns.map(escapeSnowflakeIdentifier);
-	const quotedUpdateKey = escapeSnowflakeIdentifier(updateKey);
-	const query = `UPDATE ${quotedTable} SET ${quotedColumns.map((col) => `${col} = ?`).join(',')} WHERE ${quotedUpdateKey} = ?;`;
-	const data = this.helpers.copyInputItems(items, columns);
-	const binds = data.map((element) => {
-		const values = Object.values(element);
-		const rowBinds: unknown[] = [];
-		columns.forEach((_col, idx) => {
-			rowBinds.push(values[idx]);
-		});
-		rowBinds.push(element[updateKey]);
-		return rowBinds;
-	});
-
-	return { query, data, binds };
-}
-
 async function updateRows(
 	this: IExecuteFunctions,
 	connection: snowflake.Connection,
 	items: INodeExecutionData[],
 ): Promise<INodeExecutionData[]> {
-	let statement: ReturnType<typeof prepareUpdate>;
 	try {
-		statement = prepareUpdate.call(this, items);
+		const table = this.getNodeParameter('table', 0) as string;
+		const updateKey = this.getNodeParameter('updateKey', 0) as string;
+		const columnString = this.getNodeParameter('columns', 0) as string;
+		const columns = columnString.split(',').map((column) => column.trim());
+
+		if (!columns.includes(updateKey)) {
+			columns.unshift(updateKey);
+		}
+
+		const quotedTable = escapeSnowflakeObjectIdentifier(table);
+		const quotedColumns = columns.map(escapeSnowflakeIdentifier);
+		const quotedUpdateKey = escapeSnowflakeIdentifier(updateKey);
+		const query = `UPDATE ${quotedTable} SET ${quotedColumns.map((col) => `${col} = ?`).join(',')} WHERE ${quotedUpdateKey} = ?;`;
+		const data = this.helpers.copyInputItems(items, columns);
+		const binds = data.map((element) => {
+			const values = Object.values(element);
+			const rowBinds: unknown[] = [];
+			columns.forEach((_col, idx) => {
+				rowBinds.push(values[idx]);
+			});
+			rowBinds.push(element[updateKey]);
+			return rowBinds;
+		});
+
+		let returnData: INodeExecutionData[] = [];
+
+		// Each row has its own statement, so a failure applies only to that item.
+		for (let i = 0; i < binds.length; i++) {
+			try {
+				await execute(connection, query, binds[i] as snowflake.Binds, this.getNode(), i);
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(data[i]),
+					{ itemData: { item: i } },
+				);
+				returnData = returnData.concat(executionData);
+			} catch (error) {
+				if (!this.continueOnFail()) throw error;
+				returnData.push(toErrorItem(error, i));
+			}
+		}
+
+		return returnData;
 	} catch (error) {
+		// A row failure reaches this point only when the node must stop, so this rethrows it.
 		return failAllItems.call(this, error, items);
 	}
-
-	const { query, data, binds } = statement;
-	let returnData: INodeExecutionData[] = [];
-
-	// Each row has its own statement, so a failure applies only to that item.
-	for (let i = 0; i < binds.length; i++) {
-		try {
-			await execute(connection, query, binds[i] as snowflake.Binds, this.getNode(), i);
-			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray(data[i]),
-				{ itemData: { item: i } },
-			);
-			returnData = returnData.concat(executionData);
-		} catch (error) {
-			if (!this.continueOnFail()) throw error;
-			returnData.push(toErrorItem(error, i));
-		}
-	}
-
-	return returnData;
 }
