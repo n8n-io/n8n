@@ -1,0 +1,19 @@
+{
+	"description": "Both outputs of an If node connect to the same No Operation node, so that node has two connections into input 0. v1 runs it twice: first with a2 and a3, then with a0 and a1. Three readers after it read the split node A in both Code modes and in an expression. $('A').item gives the item with the same id in every run.",
+	"trigger": {
+		"body": {
+			"ids": [
+				"a0",
+				"a1",
+				"a2",
+				"a3"
+			]
+		}
+	},
+	"compare": [
+		"Read Each",
+		"Read All",
+		"Read Expr"
+	],
+	"expectRefusal": true
+}

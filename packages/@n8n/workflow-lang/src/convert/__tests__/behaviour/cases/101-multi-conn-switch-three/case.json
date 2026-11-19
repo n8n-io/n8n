@@ -1,0 +1,19 @@
+{
+	"description": "A Switch node sends a0 to output 1, a1 to output 2 and a2 and a3 to the extra output, and all three outputs go to one No Operation node. v1 runs that node three times: first with a2 and a3, then with a1, then with a0. Three readers after it read the split node A in both Code modes and in an expression. $('A').item gives the item with the same id every time.",
+	"trigger": {
+		"body": {
+			"ids": [
+				"a0",
+				"a1",
+				"a2",
+				"a3"
+			]
+		}
+	},
+	"compare": [
+		"Read Each",
+		"Read All",
+		"Read Expr"
+	],
+	"expectRefusal": true
+}

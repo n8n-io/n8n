@@ -1,0 +1,197 @@
+{
+	"generatedBy": "oracle.ts: n8n-core WorkflowExecute with n8n-nodes-base, executionOrder v1",
+	"error": null,
+	"order": [
+		"Webhook",
+		"A",
+		"X",
+		"R",
+		"Read Each",
+		"Read All",
+		"Read Expr",
+		"Y",
+		"R",
+		"Read Each",
+		"Read All",
+		"Read Expr"
+	],
+	"nodes": {
+		"Webhook": [
+			[
+				{
+					"headers": {},
+					"params": {},
+					"query": {},
+					"body": {
+						"ids": [
+							"a0",
+							"a1",
+							"a2",
+							"a3"
+						]
+					}
+				}
+			]
+		],
+		"A": [
+			[
+				{
+					"id": "a0"
+				},
+				{
+					"id": "a1"
+				},
+				{
+					"id": "a2"
+				},
+				{
+					"id": "a3"
+				}
+			]
+		],
+		"X": [
+			[
+				{
+					"id": "a0",
+					"side": "left"
+				},
+				{
+					"id": "a1",
+					"side": "left"
+				},
+				{
+					"id": "a2",
+					"side": "left"
+				},
+				{
+					"id": "a3",
+					"side": "left"
+				}
+			]
+		],
+		"R": [
+			[
+				{
+					"id": "a0",
+					"side": "left"
+				},
+				{
+					"id": "a1",
+					"side": "left"
+				},
+				{
+					"id": "a2",
+					"side": "left"
+				},
+				{
+					"id": "a3",
+					"side": "left"
+				},
+				{
+					"id": "a0",
+					"side": "right"
+				},
+				{
+					"id": "a1",
+					"side": "right"
+				},
+				{
+					"id": "a2",
+					"side": "right"
+				},
+				{
+					"id": "a3",
+					"side": "right"
+				}
+			]
+		],
+		"Read Each": [
+			[
+				{
+					"from": "a0"
+				},
+				{
+					"from": "a1"
+				},
+				{
+					"from": "a2"
+				},
+				{
+					"from": "a3"
+				},
+				{
+					"from": "a0"
+				},
+				{
+					"from": "a1"
+				},
+				{
+					"from": "a2"
+				},
+				{
+					"from": "a3"
+				}
+			]
+		],
+		"Read All": [
+			[
+				{
+					"from": "a0"
+				},
+				{
+					"from": "a0"
+				}
+			]
+		],
+		"Read Expr": [
+			[
+				{
+					"from": "a0"
+				},
+				{
+					"from": "a1"
+				},
+				{
+					"from": "a2"
+				},
+				{
+					"from": "a3"
+				},
+				{
+					"from": "a0"
+				},
+				{
+					"from": "a1"
+				},
+				{
+					"from": "a2"
+				},
+				{
+					"from": "a3"
+				}
+			]
+		],
+		"Y": [
+			[
+				{
+					"id": "a0",
+					"side": "right"
+				},
+				{
+					"id": "a1",
+					"side": "right"
+				},
+				{
+					"id": "a2",
+					"side": "right"
+				},
+				{
+					"id": "a3",
+					"side": "right"
+				}
+			]
+		]
+	},
+	"requests": [],
+	"responses": []
+}

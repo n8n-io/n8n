@@ -1,0 +1,19 @@
+{
+	"description": "Both outputs of an If node connect to the same Code node (each item mode), which reads the split node A. v1 runs that node twice: first with a2 and a3, then with a0 and a1. The two readers after it read A in both the other Code mode and an expression. $('A').item gives the item with the same id in every run.",
+	"trigger": {
+		"body": {
+			"ids": [
+				"a0",
+				"a1",
+				"a2",
+				"a3"
+			]
+		}
+	},
+	"compare": [
+		"Read Each",
+		"Read All",
+		"Read Expr"
+	],
+	"expectRefusal": true
+}

@@ -1,0 +1,19 @@
+{
+	"description": "The split node A gives its items to two Edit Fields nodes, and both go to one No Operation node, so each item reaches it twice. v1 runs the No Operation node twice with all four items: first the left items, then the right items. The each item reader sees each id twice, a0 to a3 and then a0 to a3 again. $('A').item gives the item with the same id in every run.",
+	"trigger": {
+		"body": {
+			"ids": [
+				"a0",
+				"a1",
+				"a2",
+				"a3"
+			]
+		}
+	},
+	"compare": [
+		"Read Each",
+		"Read All",
+		"Read Expr"
+	],
+	"expectRefusal": true
+}
