@@ -144,8 +144,9 @@ export class ProjectRepository extends BaseRepository<Project> {
 	}
 
 	/**
-	 * Returns every project. With `serviceAccountIds`, it keeps only the personal
-	 * projects of these service accounts. An empty list hides all of them.
+	 * Returns every project. With `serviceAccountIds`, it hides the personal
+	 * projects of service accounts that are not in the list. An empty list hides
+	 * all of them. Team projects and the personal projects of people always stay.
 	 */
 	async findAllProjects(options: { serviceAccountIds?: string[] } = {}): Promise<Project[]> {
 		const query = this.createQueryBuilder('project').leftJoin('project.creator', 'creator');
