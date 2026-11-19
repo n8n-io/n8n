@@ -32,6 +32,7 @@ function setup(visibility: App['visibility'] = 'project') {
 	const hosts = mock<AppHostService>({
 		baseUrl: new URL('https://apps.example.com'),
 		namespace: () => 'sales',
+		previewNamespace: () => 'sales',
 		callbackUrl: (_app, kind) => (kind === 'preview' ? previewCallbackUrl : callbackUrl),
 	});
 	const resources = mock<AppProtectedResource>();
@@ -119,29 +120,60 @@ describe('AppAuthService', () => {
 		);
 	});
 
-	it('admits a preview token against the preview resource', async () => {
-		const { service, app, req, resources, admission } = setup();
+	describe('on a preview host', () => {
+		it('admits the session token against the preview resource', async () => {
+			const { service, app, req, resources, admission } = setup();
+			req.cookies = sessionCookie;
 
-		await expect(service.admitToken(req, app, 'preview-token', 'preview')).resolves.toMatchObject({
-			ok: true,
-			token: 'preview-token',
+			await expect(service.admit(req, 'preview')).resolves.toMatchObject({
+				ok: true,
+				token: 'app-token',
+			});
+
+			expect(resources.forApp).toHaveBeenCalledWith(app, { kind: 'preview', revalidate: false });
+			expect(admission.admitBearer).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ url: previewCallbackUrl }),
+				'app-token',
+			);
 		});
 
-		expect(resources.forApp).toHaveBeenCalledWith(app, { kind: 'preview', revalidate: false });
-		expect(admission.admitBearer).toHaveBeenCalledWith(
-			expect.anything(),
-			expect.objectContaining({ url: previewCallbackUrl }),
-			'preview-token',
-		);
-	});
+		it('admits an app that was never published', async () => {
+			const { service, app, req } = setup();
+			req.cookies = sessionCookie;
+			app.publishedVersionId = null;
 
-	it('does not share cached admissions between published and preview hosts', async () => {
-		const { service, app, req, admission } = setup();
+			expect((await service.admit(req, 'preview')).ok).toBe(true);
+		});
 
-		await service.admitToken(req, app, 'app-token');
-		await service.admitToken(req, app, 'app-token', 'preview');
+		it('throws when the app no longer exists', async () => {
+			const { service, req, apps } = setup();
+			req.cookies = sessionCookie;
+			apps.findByNamespace.mockResolvedValue(null);
 
-		expect(admission.admitBearer).toHaveBeenCalledTimes(2);
+			await expect(service.admit(req, 'preview')).rejects.toThrow('App not found');
+		});
+
+		it('reads a cached admission without looking up the app', async () => {
+			const { service, req, apps, admission } = setup();
+			req.cookies = sessionCookie;
+
+			await service.admit(req, 'preview');
+			await service.admit(req, 'preview');
+
+			expect(apps.findByNamespace).toHaveBeenCalledOnce();
+			expect(admission.admitBearer).toHaveBeenCalledOnce();
+		});
+
+		it('does not share cached admissions with the published host', async () => {
+			const { service, req, admission } = setup();
+			req.cookies = sessionCookie;
+
+			await service.admit(req);
+			await service.admit(req, 'preview');
+
+			expect(admission.admitBearer).toHaveBeenCalledTimes(2);
+		});
 	});
 
 	it('seals a preview visitor with the preview grant', async () => {

@@ -41,12 +41,7 @@ function setup(baseUrl = 'https://apps.example.com') {
 		}),
 	);
 	const auth = mock<AppAuthService>();
-	auth.admitToken.mockImplementation(async (_req, app, token) => ({
-		ok: true,
-		app,
-		security,
-		token,
-	}));
+	auth.admit.mockResolvedValue({ ok: true, app, security, token: 'preview-token' });
 	const flow = mock<OAuth2FlowProxy>();
 	flow.issue.mockResolvedValue({
 		valid: true,
@@ -244,8 +239,8 @@ describe('AppPreviewService', () => {
 	});
 
 	describe('authenticate', () => {
-		async function authenticate(ctx: ReturnType<typeof setup>, token = 'preview-token') {
-			const req = previewRequest({}, token ? { [sessionCookie]: token } : {});
+		async function authenticate(ctx: ReturnType<typeof setup>) {
+			const req = previewRequest();
 			const next = vi.fn();
 			await ctx.service.authenticate(req, ctx.res, next);
 			return { req, next };
@@ -269,39 +264,25 @@ describe('AppPreviewService', () => {
 				preview: true,
 				previewUserId: 'user-1',
 			});
-			expect(ctx.auth.admitToken).toHaveBeenCalledExactlyOnceWith(
-				req,
-				ctx.app,
-				'preview-token',
-				'preview',
-			);
+			expect(ctx.auth.admit).toHaveBeenCalledExactlyOnceWith(req, 'preview');
 		});
 
-		it.each<[string, (ctx: ReturnType<typeof setup>) => string]>([
-			['no cookie', () => ''],
-			['a token without a kept version', () => 'other-token'],
+		it.each<[string, (ctx: ReturnType<typeof setup>) => void]>([
+			['a token without a kept version', (ctx) => ctx.store.clear()],
 			[
-				'an unknown app',
-				(ctx) => {
-					ctx.apps.findByNamespace.mockResolvedValue(null);
-					return 'preview-token';
-				},
-			],
-			[
-				'a token that is not admitted',
-				(ctx) => {
-					ctx.auth.admitToken.mockResolvedValue({
+				'a session that is not admitted',
+				(ctx) =>
+					ctx.auth.admit.mockResolvedValue({
 						ok: false,
 						app: ctx.app,
-						reason: 'insufficient_scope',
-					});
-					return 'preview-token';
-				},
+						reason: 'unauthenticated',
+					}),
 			],
 		])('rejects %s', async (_case, arrange) => {
 			const ctx = setupSession();
+			arrange(ctx);
 
-			const { req, next } = await authenticate(ctx, arrange(ctx));
+			const { req, next } = await authenticate(ctx);
 
 			expect(next).not.toHaveBeenCalled();
 			expect(req.appContext).toBeUndefined();

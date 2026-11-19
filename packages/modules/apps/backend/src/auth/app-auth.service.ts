@@ -52,47 +52,32 @@ export class AppAuthService {
 		private readonly executionContext: ExecutionContextService,
 	) {}
 
-	async requireApp(req: Request, appId?: string): Promise<App> {
-		const namespace = this.hosts.namespace(req);
+	async requireApp(req: Request, appId?: string, kind: AppHostKind = 'published'): Promise<App> {
+		const namespace = this.namespace(req, kind);
 		const app = namespace ? await this.apps.findByNamespace(namespace) : null;
-		if (!app?.publishedVersionId || (appId !== undefined && app.id !== appId)) {
+		if (
+			!app ||
+			(kind === 'published' && !app.publishedVersionId) ||
+			(appId !== undefined && app.id !== appId)
+		) {
 			throw new NotFoundError('App not found.');
 		}
 		return app;
 	}
 
-	/** Resolves the published app of the request host and checks the visitor's session. */
-	async admit(req: Request): Promise<AppAdmission> {
+	/** Resolves the app of the request host and checks the visitor's session. */
+	async admit(req: Request, kind: AppHostKind = 'published'): Promise<AppAdmission> {
 		const token = readCookie(req, appCookieName(this.hosts.baseUrl, 'session')) ?? '';
-		const cacheKey = this.cacheKey('published', this.hosts.namespace(req), token);
+		const cacheKey = this.cacheKey(kind, this.namespace(req, kind), token);
 		const cached = token ? this.admitted.get(cacheKey) : undefined;
 		if (cached) return { ok: true, ...cached, token };
 
-		const app = await this.requireApp(req);
+		const app = await this.requireApp(req, undefined, kind);
 		if (!token) return { ok: false, app, reason: 'unauthenticated' };
-		return await this.admitToken(req, app, token);
-	}
 
-	/** Checks a session token against the app resource of the given host kind. */
-	async admitToken(
-		req: Request,
-		app: App,
-		token: string,
-		kind: AppHostKind = 'published',
-	): Promise<AppAdmission> {
-		const cacheKey = this.cacheKey(kind, app.namespace, token);
-		// REVIEW: duplicate cache read
-		const cached = this.admitted.get(cacheKey);
-		if (cached) return { ok: true, ...cached, token };
-
-		const request = {
-			method: req.method,
-			url: this.hosts.callbackUrl(app, kind),
-			ip: req.ip ?? '',
-		};
 		const result = await this.admission.admitBearer(
 			this.resources.forApp(app, { kind, revalidate: false }),
-			request,
+			{ method: req.method, url: this.hosts.callbackUrl(app, kind), ip: req.ip ?? '' },
 			token,
 		);
 		if (result.ok) {
@@ -247,6 +232,10 @@ export class AppAuthService {
 		return typeof exp === 'number'
 			? Math.max(1, Math.min(ADMISSION_CACHE_TTL_MS, exp * 1000 - Date.now()))
 			: ADMISSION_CACHE_TTL_MS;
+	}
+
+	private namespace(req: Request, kind: AppHostKind): string | undefined {
+		return kind === 'preview' ? this.hosts.previewNamespace(req) : this.hosts.namespace(req);
 	}
 
 	private cacheKey(kind: AppHostKind, namespace: string | undefined, token: string): string {
