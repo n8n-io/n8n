@@ -328,6 +328,65 @@ describe('V1StepExecutor', () => {
 		expect(JSON.stringify(chunks)).not.toContain('boom from node');
 	});
 
+	describe('Always Output Data', () => {
+		const graphReturningNothing = (alwaysOutputData?: boolean) =>
+			converter.convert(
+				v1Workflow(
+					[
+						{ id: 't', name: 'Manual', type: 'n8n-nodes-base.manualTrigger' },
+						{ id: 'n', name: 'Subject', type: 'test.returnsNothing', alwaysOutputData },
+					],
+					manualTriggerTo('Subject'),
+				),
+			);
+
+		it('emits one empty item linked to every input item when the node returns nothing', async () => {
+			const graph = graphReturningNothing(true);
+			const result = await testStepExecutor(graph).execute(
+				stepRequest(graph, 'n', items({ a: 1 }, { a: 2 })),
+			);
+			expect(result.outputs).toEqual([
+				[
+					{
+						json: {},
+						pairedItem: [
+							{ item: 0, input: 0 },
+							{ item: 1, input: 0 },
+						],
+					},
+				],
+			]);
+		});
+
+		it('emits one empty item with no links when the node had no input', async () => {
+			const graph = graphReturningNothing(true);
+			const result = await testStepExecutor(graph).execute(stepRequest(graph, 'n', items()));
+			expect(result.outputs).toEqual([[{ json: {}, pairedItem: [] }]]);
+		});
+
+		it('leaves the output of a node that returned items alone', async () => {
+			const graph = converter.convert(
+				v1Workflow(
+					[
+						{ id: 't', name: 'Manual', type: 'n8n-nodes-base.manualTrigger' },
+						{ id: 'n', name: 'Subject', type: 'test.echoParam', alwaysOutputData: true },
+					],
+					manualTriggerTo('Subject'),
+				),
+			);
+			const result = await testStepExecutor(graph).execute(stepRequest(graph, 'n', items({})));
+			expect(result.outputs).toEqual([[{ json: { message: '' } }]]);
+		});
+
+		it('leaves the empty output alone when the setting is off', async () => {
+			const graph = graphReturningNothing();
+			const result = await testStepExecutor(graph).execute(
+				stepRequest(graph, 'n', items({ a: 1 })),
+			);
+			expect(result.outputs).toEqual([null]);
+		});
+	});
+
 	it('propagates cleanup errors when the node succeeded', async () => {
 		const graph = graphWith('test.succeedsWithFailingCleanup');
 		const execution = testStepExecutor(graph).execute(stepRequest(graph, 'n', items({ a: 1 })));

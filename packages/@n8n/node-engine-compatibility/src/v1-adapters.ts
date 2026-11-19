@@ -251,6 +251,7 @@ export function toV1Node(graphNode: GraphNode, config: V1NodeStepConfig): INode 
 		parameters: config.parameters,
 		continueOnFail: config.continueOnFail,
 	};
+	if (config.alwaysOutputData) node.alwaysOutputData = true;
 	if (config.credentials !== undefined) node.credentials = config.credentials;
 	return node;
 }
