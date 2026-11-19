@@ -32,7 +32,7 @@ function formatErrorWithCause(error: unknown): string {
  * ]);
  *
  * const agent = new Agent('assistant')
- *   .model('anthropic/claude-sonnet-4-5')
+ *   .model('anthropic/claude-sonnet-5-5')
  *   .instructions('You are a helpful assistant.')
  *   .mcp(client);
  *

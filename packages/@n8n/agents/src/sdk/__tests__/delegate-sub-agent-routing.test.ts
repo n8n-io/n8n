@@ -284,7 +284,7 @@ describe('delegate sub-agent routing', () => {
 			.tool(
 				createDelegateSubAgentTool({
 					inlineSubAgentModelsByDifficulty: {
-						high: 'anthropic/claude-sonnet-4-5',
+						high: 'anthropic/claude-sonnet-5-5',
 					},
 				}),
 			)
@@ -302,7 +302,7 @@ describe('delegate sub-agent routing', () => {
 		);
 
 		expect(runtimeConfigs).toHaveLength(1);
-		expect(runtimeConfigs[0]?.model).toBe('anthropic/claude-sonnet-4-5');
+		expect(runtimeConfigs[0]?.model).toBe('anthropic/claude-sonnet-5-5');
 	});
 
 	it('falls back to the parent model when difficulty is omitted or unmapped', async () => {
@@ -312,7 +312,7 @@ describe('delegate sub-agent routing', () => {
 			.tool(
 				createDelegateSubAgentTool({
 					inlineSubAgentModelsByDifficulty: {
-						high: 'anthropic/claude-sonnet-4-5',
+						high: 'anthropic/claude-sonnet-5-5',
 					},
 				}),
 			)

@@ -21,7 +21,7 @@ describe('agent telemetry', () => {
 	it('derives safe configuration dimensions from an agent entity', () => {
 		const schema: AgentJsonConfig = {
 			name: 'Test Agent',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			instructions: 'Be helpful',
 			integrations: [{ type: 'slack', credentialId: 'slack-cred' }],
 			tools: [
@@ -58,7 +58,7 @@ describe('agent telemetry', () => {
 				makeAgent(schema, { integrations: [{ type: 'linear', credentialId: 'linear-cred' }] }),
 			),
 		).toEqual({
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			channels: ['linear', 'slack'],
 			tool_types: ['custom', 'mcp', 'provider', 'subagent', 'web_search', 'workflow'],
 			tool_count: 6,

@@ -299,7 +299,7 @@ interface TestAgentConfig {
 }
 
 const defaultLlmConfig = {
-	model: 'anthropic/claude-sonnet-4-5',
+	model: 'anthropic/claude-sonnet-5-5',
 	credential: 'cred-anthropic',
 } as const;
 
@@ -4488,7 +4488,7 @@ describe('AgentBuilderView — three-column shell', () => {
 				name: 'Support Agent',
 				instructions: 'Answer support mail',
 			});
-			editor.vm.$emit('update:config', { model: 'anthropic/claude-sonnet-4-5' });
+			editor.vm.$emit('update:config', { model: 'anthropic/claude-sonnet-5-5' });
 			await vi.waitFor(() => expect(updateConfigMock).toHaveBeenCalled());
 
 			expect(createAgentMock).toHaveBeenCalledTimes(1);

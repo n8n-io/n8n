@@ -74,13 +74,13 @@ const MODELS_DEV_FIXTURE = {
 				cost: { input: 0.8, output: 4 },
 				limit: { context: 200000, output: 8192 },
 			},
-			'claude-sonnet-4-5': {
-				id: 'claude-sonnet-4-5',
-				name: 'Claude Sonnet 4.5',
+			'claude-sonnet-5-5': {
+				id: 'claude-sonnet-5-5',
+				name: 'Claude Sonnet 5.5',
 				reasoning: true,
 				tool_call: true,
-				cost: { input: 3, output: 15 },
-				limit: { context: 200000, output: 64000 },
+				cost: { input: 2, output: 10 },
+				limit: { context: 1000000, output: 128000 },
 			},
 			'claude-sonnet-4-6': {
 				id: 'claude-sonnet-4-6',

@@ -428,7 +428,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 				runtimeProfile: 'top-level',
 				config: {
 					name: 'Test Agent',
-					model: 'anthropic/claude-sonnet-4-5',
+					model: 'anthropic/claude-sonnet-5-5',
 					instructions: 'Be helpful',
 				},
 				parentAgentIdForDelegation: agentId,

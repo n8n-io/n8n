@@ -152,7 +152,7 @@ function makeService() {
 
 const baseConfig: AgentJsonConfig = {
 	name: 'Agent One',
-	model: 'anthropic/claude-sonnet-4-5',
+	model: 'anthropic/claude-sonnet-5-5',
 	credential: 'Anthropic Key',
 	instructions: 'Help the user.',
 	tools: [],
@@ -1289,13 +1289,13 @@ describe('AgentsBuilderToolsService', () => {
 				const currentConfig = { ...baseAgent };
 				const updatedConfig: AgentJsonConfig = {
 					...currentConfig,
-					model: 'anthropic/claude-sonnet-4-5',
+					model: 'anthropic/claude-sonnet-5-5',
 					credential: 'Anthropic Key',
 					config: { webSearch: { enabled: false }, promptCaching: { enabled: false } },
 				};
 				const normalizedConfig = {
 					...currentConfig,
-					model: 'anthropic/claude-sonnet-4-5',
+					model: 'anthropic/claude-sonnet-5-5',
 					credential: 'Anthropic Key',
 					config: { webSearch: { enabled: false }, promptCaching: { enabled: true } },
 				};

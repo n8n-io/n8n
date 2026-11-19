@@ -58,7 +58,7 @@ type TestAgentConfig = {
 async function mountHeader(
 	config: TestAgentConfig = {
 		name: 'Support agent',
-		model: 'anthropic/claude-sonnet-4-5',
+		model: 'anthropic/claude-sonnet-5-5',
 		instructions: 'Help the user.',
 	},
 ) {
@@ -95,7 +95,7 @@ describe('AgentIdentityHeader', () => {
 	it('renders the saved personalisation icon and gradient as a 64px superellipse squircle', async () => {
 		const wrapper = await mountHeader({
 			name: 'Support agent',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			instructions: 'Help the user.',
 			personalisation: {
 				icon: 'search',
@@ -118,7 +118,7 @@ describe('AgentIdentityHeader', () => {
 	it('emits the picked icon while preserving the saved gradient', async () => {
 		const wrapper = await mountHeader({
 			name: 'Support agent',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			instructions: 'Help the user.',
 			personalisation: {
 				icon: 'search',

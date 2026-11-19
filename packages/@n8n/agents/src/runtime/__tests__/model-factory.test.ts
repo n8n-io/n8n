@@ -485,13 +485,13 @@ describe('createModel', () => {
 	});
 
 	it('should not pass fetch when no proxy env vars are set', () => {
-		const model = createModel('anthropic/claude-sonnet-4-5') as unknown as Record<string, unknown>;
+		const model = createModel('anthropic/claude-sonnet-5-5') as unknown as Record<string, unknown>;
 		expect(model.fetch).toBeUndefined();
 	});
 
 	it('should pass proxy-aware fetch when HTTPS_PROXY is set', () => {
 		process.env.HTTPS_PROXY = 'http://proxy:8080';
-		const model = createModel('anthropic/claude-sonnet-4-5') as unknown as Record<string, unknown>;
+		const model = createModel('anthropic/claude-sonnet-5-5') as unknown as Record<string, unknown>;
 		expect(model.fetch).toBeInstanceOf(Function);
 		expect(mockProxyAgent).toHaveBeenCalledWith('http://proxy:8080');
 	});
@@ -505,7 +505,7 @@ describe('createModel', () => {
 
 	it('should forward custom headers to the provider factory', () => {
 		const model = createModel({
-			id: 'anthropic/claude-sonnet-4-5',
+			id: 'anthropic/claude-sonnet-5-5',
 			apiKey: 'sk-test',
 			headers: { 'x-proxy-auth': 'Bearer abc', 'anthropic-beta': 'tools-2024' },
 		}) as unknown as Record<string, unknown>;
@@ -518,7 +518,7 @@ describe('createModel', () => {
 	it('should prefer HTTPS_PROXY over HTTP_PROXY', () => {
 		process.env.HTTPS_PROXY = 'http://https-proxy:8080';
 		process.env.HTTP_PROXY = 'http://http-proxy:9090';
-		createModel('anthropic/claude-sonnet-4-5');
+		createModel('anthropic/claude-sonnet-5-5');
 		expect(mockProxyAgent).toHaveBeenCalledWith('http://https-proxy:8080');
 	});
 
@@ -648,7 +648,7 @@ describe('createModel', () => {
 		});
 
 		it('leaves baseURL undefined when none is provided', () => {
-			const model = createModel('anthropic/claude-sonnet-4-5') as unknown as Record<
+			const model = createModel('anthropic/claude-sonnet-5-5') as unknown as Record<
 				string,
 				unknown
 			>;

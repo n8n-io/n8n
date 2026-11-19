@@ -42,7 +42,7 @@ const userId = 'user-1';
 
 const schema: AgentJsonConfig = {
 	name: 'Support Agent',
-	model: 'anthropic/claude-sonnet-4-5',
+	model: 'anthropic/claude-sonnet-5-5',
 	instructions: 'Help users',
 };
 
@@ -277,7 +277,7 @@ describe('AgentWorkflowExecutionService', () => {
 				telemetry: expect.objectContaining({
 					runType: 'production',
 					configuration: expect.objectContaining({
-						model: 'anthropic/claude-sonnet-4-5',
+						model: 'anthropic/claude-sonnet-5-5',
 					}),
 				}),
 			}),
@@ -791,7 +791,7 @@ describe('AgentWorkflowExecutionService', () => {
 		const inlinePayload = {
 			config: {
 				name: 'Inline Agent',
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 				credential: 'cred-1',
 				instructions: 'Help users',
 			},
@@ -895,7 +895,7 @@ describe('AgentWorkflowExecutionService', () => {
 					agent_type: 'inline',
 					run_type: 'production',
 					turn_status: 'succeeded',
-					configuration: expect.objectContaining({ model: 'anthropic/claude-sonnet-4-5' }),
+					configuration: expect.objectContaining({ model: 'anthropic/claude-sonnet-5-5' }),
 				}),
 			);
 			// Inline workflow-invoked runs get the same 'workflow' tracing as
@@ -928,7 +928,7 @@ describe('AgentWorkflowExecutionService', () => {
 			const payloadWithForgedMarker = {
 				config: {
 					name: 'Inline Agent',
-					model: 'anthropic/claude-sonnet-4-5',
+					model: 'anthropic/claude-sonnet-5-5',
 					credential: 'cred-1',
 					instructions: 'Help users',
 					tools: [

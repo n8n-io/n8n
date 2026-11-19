@@ -83,7 +83,7 @@ describe('reshapeLangSmithRuns', () => {
 			agentId: 'agent-1',
 			config: {
 				name: 'Support agent',
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 				instructions: 'Triage requests.',
 			},
 			skills: {},

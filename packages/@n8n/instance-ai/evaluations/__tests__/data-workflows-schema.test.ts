@@ -511,7 +511,7 @@ describe('EvalTestCaseSchema', () => {
 						id: 'agent12345678',
 						config: {
 							name: 'Notion research',
-							model: 'anthropic/claude-sonnet-4-5',
+							model: 'anthropic/claude-sonnet-5-5',
 							instructions: 'Research company notes.',
 						},
 					},
@@ -585,7 +585,7 @@ describe('EvalTestCaseSchema', () => {
 							id: 'agent12345678',
 							config: {
 								name: 'Notion research',
-								model: 'anthropic/claude-sonnet-4-5',
+								model: 'anthropic/claude-sonnet-5-5',
 								instructions: 'Research company notes.',
 							},
 						},

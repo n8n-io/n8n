@@ -106,7 +106,7 @@ const selectedContext: IntegrationMessageContext = {
 
 const schema: AgentJsonConfig = {
 	name: 'Support Agent',
-	model: 'anthropic/claude-sonnet-4-5',
+	model: 'anthropic/claude-sonnet-5-5',
 	instructions: 'Help users',
 };
 
@@ -160,7 +160,7 @@ function makeRuntime(
 		mcpServerAttributions,
 		agent: {
 			name: 'Runtime Agent',
-			snapshot: { model: { provider: 'anthropic', name: 'claude-sonnet-4-5' } },
+			snapshot: { model: { provider: 'anthropic', name: 'claude-sonnet-5-5' } },
 			stream: vi
 				.fn()
 				.mockResolvedValue({ runId: 'runtime-run-1', stream: makeReadableStream(chunks) }),
@@ -1585,7 +1585,7 @@ describe('AgentExecutionOrchestratorService', () => {
 			expect.objectContaining({
 				source: 'instance-ai',
 				threadId: 'thread-1',
-				modelId: 'anthropic/claude-sonnet-4-5',
+				modelId: 'anthropic/claude-sonnet-5-5',
 			}),
 		);
 	});

@@ -4,8 +4,8 @@
 		"method": "POST",
 		"path": "/v1/messages",
 		"body": {
-			"model": "claude-sonnet-4-5",
-			"max_tokens": 64000,
+			"model": "claude-sonnet-5-5",
+			"max_tokens": 128000,
 			"system": [
 				{
 					"type": "text",
@@ -70,30 +70,31 @@
 			}
 		},
 		"status": 200,
-		"response": "{\"model\":\"claude-sonnet-4-5-20250929\",\"id\":\"msg_011CdY77GjDU1mocMqHQcv6A\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"I'll delegate the token-production workstream to a child agent now.\"},{\"type\":\"tool_use\",\"id\":\"toolu_01CZUTUiAvbDqYgaeAgFHVtb\",\"name\":\"delegate_subagent\",\"input\":{\"subAgentId\":\"inline\",\"taskName\":\"token_production\",\"goal\":\"Answer with exactly this token and nothing else: SUBAGENT_OK_731\",\"expectedOutput\":\"The exact token SUBAGENT_OK_731 with no additional text\",\"difficulty\":\"low\"},\"caller\":{\"type\":\"direct\"}}],\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":1610,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":177,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
+		"response": "{\"model\":\"claude-sonnet-5-5\",\"id\":\"msg_011ChCU9djpTTQS6GX6M7wTR\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"tool_use\",\"id\":\"toolu_01NsjMWFYY9FoJ1x7i2jM3JV\",\"name\":\"delegate_subagent\",\"input\":{\"subAgentId\":\"inline\",\"taskName\":\"token_production\",\"goal\":\"Answer with exactly this token and nothing else: SUBAGENT_OK_731\",\"context\":\"This is a delegation wiring test. Your final answer must be exactly the token SUBAGENT_OK_731, with no other text, punctuation, or formatting.\",\"expectedOutput\":\"Exactly: SUBAGENT_OK_731\",\"difficulty\":\"low\"},\"caller\":{\"type\":\"direct\"}}],\"container\":null,\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":1855,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":266,\"output_tokens_details\":{\"thinking_tokens\":0},\"service_tier\":\"standard\",\"inference_geo\":\"global\",\"speed\":\"standard\"},\"diagnostics\":null}",
 		"rawHeaders": {
-			"anthropic-ratelimit-input-tokens-limit": "22500000",
-			"anthropic-ratelimit-input-tokens-remaining": "22499000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-07-30T10:45:01Z",
-			"anthropic-ratelimit-output-tokens-limit": "4500000",
-			"anthropic-ratelimit-output-tokens-remaining": "4500000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-07-30T10:45:03Z",
-			"anthropic-ratelimit-requests-limit": "20000",
-			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-07-30T10:45:01Z",
-			"anthropic-ratelimit-tokens-limit": "27000000",
-			"anthropic-ratelimit-tokens-remaining": "26999000",
-			"anthropic-ratelimit-tokens-reset": "2026-07-30T10:45:01Z",
+			"anthropic-ratelimit-input-tokens-limit": "15000000",
+			"anthropic-ratelimit-input-tokens-remaining": "14999000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-11-19T14:46:54Z",
+			"anthropic-ratelimit-output-tokens-limit": "3000000",
+			"anthropic-ratelimit-output-tokens-remaining": "3000000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-11-19T14:46:56Z",
+			"anthropic-ratelimit-requests-limit": "45000",
+			"anthropic-ratelimit-requests-remaining": "44999",
+			"anthropic-ratelimit-requests-reset": "2026-11-19T14:46:54Z",
+			"anthropic-ratelimit-tokens-limit": "18000000",
+			"anthropic-ratelimit-tokens-remaining": "17999000",
+			"anthropic-ratelimit-tokens-reset": "2026-11-19T14:46:54Z",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a233c5791b1aaf0a-VIE",
+			"cf-ray": "a5d001cba9f916eb-TXL",
 			"connection": "keep-alive",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "application/json",
-			"date": "Thu, 30 Jul 2026 10:45:03 GMT",
-			"request-id": "req_011CdY77G23pvwo6b3ZSbkve",
+			"date": "Thu, 19 Nov 2026 14:46:56 GMT",
+			"request-id": "req_011ChCU9dbPKXf6JmCzmnJsG",
 			"server": "cloudflare",
+			"server-timing": "x-originResponse;dur=2685",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-c432b82753f197b27b2e2df694473680-77db5dd7760377be-01",
+			"traceresponse": "00-6f5305d4e1564c79305496a51a09dc8e-90393b8075cc7a13-01",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
 		},
@@ -104,8 +105,8 @@
 		"method": "POST",
 		"path": "/v1/messages",
 		"body": {
-			"model": "claude-sonnet-4-5",
-			"max_tokens": 64000,
+			"model": "claude-sonnet-5-5",
+			"max_tokens": 128000,
 			"system": [
 				{
 					"type": "text",
@@ -118,7 +119,7 @@
 					"content": [
 						{
 							"type": "text",
-							"text": "You are a focused subagent working on a specific delegated task.\n\nYOUR TASK:\nAnswer with exactly this token and nothing else: SUBAGENT_OK_731\n\nEXPECTED OUTPUT:\nThe exact token SUBAGENT_OK_731 with no additional text\n\nComplete this task using the tools available to you. When finished, provide a clear, concise summary of:\n- What you did\n- What you found or accomplished\n- Important outputs, decisions, or evidence\n- Any issues, assumptions, or limitations\n\nIf the information above is insufficient, do your best with explicitly stated assumptions and note what was missing, rather than stopping to ask.\n\nBe thorough but concise -- your response is returned to the parent agent as a summary."
+							"text": "You are a focused subagent working on a specific delegated task.\n\nYOUR TASK:\nAnswer with exactly this token and nothing else: SUBAGENT_OK_731\n\nCONTEXT:\nThis is a delegation wiring test. Your final answer must be exactly the token SUBAGENT_OK_731, with no other text, punctuation, or formatting.\n\nEXPECTED OUTPUT:\nExactly: SUBAGENT_OK_731\n\nComplete this task using the tools available to you. When finished, provide a clear, concise summary of:\n- What you did\n- What you found or accomplished\n- Important outputs, decisions, or evidence\n- Any issues, assumptions, or limitations\n\nIf the information above is insufficient, do your best with explicitly stated assumptions and note what was missing, rather than stopping to ask.\n\nBe thorough but concise -- your response is returned to the parent agent as a summary."
 						}
 					]
 				}
@@ -127,33 +128,34 @@
 		},
 		"status": 200,
 		"response": [
-			"1f8b0800000000000013c556dd4fdb30107fe7afb0ee11b5d01610226f0c6d1302c134d8d0b44ed1d5be36168e9dd997960ef57f9f9c26d094b2ed65252f51eecef1efe3fc4153b29c889c42c009a581d1f38e42c6443c02cf0b82045a49e834df903c42ee141948401a2c157583b396b87bd83dea0e7a83a3dec9e0043aa055fc4998a4bd7eff4c7d3b3efe3acb8abb33ffe96094fd1af1e50574d6a6820e7867620043d081d1c679a5b34c9621f9fea303815d917ac2e02c24b634a60e05fa599295d40a2a62d42634b1b281af6d5172caee9e6c8064d03be8804499512a3d216b67d37645afc97b42f55aae191b27a022a39c3c9af4287f59ff9ced67ebd945075cc92d781d08e4a75a52ca9a3c24108551e855d4d88ec947dee9841c24601da738456d706408160b513d8b9d1d5a1a5e6b998e8c93f79b6ddf50524da4e861c976351fc9d6e3981e6261f54a00166b3317da4ed6a6121083f01a3a4586f1cfe8aa9216ba65a48deaa9acc6762e66da981a61f36c1d85902e2f0c3109ce4828323441262518c3bd18cd45e1dd542b6d27559e1e50b2a87a4260103eb67b60527b433bb4375fde9d7e7c7f759b5e5fa4c707fd25b3ad138a48badd6e7cedeede94798e7e9eecee2ebfef3264712e945655a82b3e93243d252570c9989d5836fe9a2f6fe10c8a5090d4632d6bc52bf5cd3c2a5f674845129f2a8fa26919d5a543d8e8c6db3019829869ce84750295d2717b42236252685b81f6140a6703899153f3965528ab06d521a3c6b39b524a0a615c1a33afdd7a6ece279edbf7ab523e116bc247c41f9c316e561ba46d605fcaa8426c376da5291509eb388bcb8c4ca04696c2ebd8be2f76b16d316a6c593a729e17cec7d3b0163dd47e5cd716bc42bf1a1a424961ff3484322f22f3b07fa973cdd551d5fce7ca595a5d765be7bb276ee3028afbc02cae31f6a827198f9d9fa15702ad12d2107a337f5e7f7b15e2d78f3657fced6473c50ad097dc9bfbcf46d6ad24acb06c5d5080ac4ab9f416fef99ab2f87ff794b58b45ffe870b191f026ed5673d0ea94df4629ddbd4b0a0000"
+			"1f8b0800000000000013b554c18adb3010bde72bcc9c155877376c57b76d282d94b687ed42a114a158b3b6b03272a5f19212fcef4549dcd84ed2b287f5c5e8bd19cfd3939ef1198965b6c61875892ab20e3c339ab5ccb6c0bf1b0409231244bf06b985b537e84042e1746b701e3d11f27c315f80006b526f2cd5559e2fabe5e35db87f587dac6f37e5b2fefcbd7eb30131990002827709d031dac89ad2b8c2132331c81f3ff70b6d0903486a9d1310d9372aa08e9e4650c45f2d528123d0206beb628fb5fd362c352d2bf6355204797d7327a0d04585aa08a8d97a52e38aab9e0fa8cd25aeef4d03b0a9708d413bb5589fd61fd9bc9ab29d00dff2107a2b206278b6052ab6c908484e191d4c329d9e30a47dab123d48289d5f69070262836886b59d006375493eb22d0e9674dd6c86fb1b71705dad9c2feaf3f7e24cc94e81c1cdde86219f5c38f4316e52e1ee2501baec38b5b1544ec6649040b8a4cca063fd6f65bb9291b23d3256f4b7eca0ebe1f1ddfd87f75fbe29b8e8caabcdfefa49dd5ee7d065c3e7f2d9f8e67f47e39b8186d1b7fa709fddcb888481f651ea00c9286e03c10bb2370972f77a699cc427bf994047655be0ca526da91ce4af3bb1fff83f3c357ec8c1aee90f594a876462050000"
 		],
 		"rawHeaders": {
-			"anthropic-ratelimit-input-tokens-limit": "22500000",
-			"anthropic-ratelimit-input-tokens-remaining": "22500000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-07-30T10:45:04Z",
-			"anthropic-ratelimit-output-tokens-limit": "4500000",
-			"anthropic-ratelimit-output-tokens-remaining": "4500000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-07-30T10:45:04Z",
-			"anthropic-ratelimit-requests-limit": "20000",
-			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-07-30T10:45:04Z",
-			"anthropic-ratelimit-tokens-limit": "27000000",
-			"anthropic-ratelimit-tokens-remaining": "27000000",
-			"anthropic-ratelimit-tokens-reset": "2026-07-30T10:45:04Z",
+			"anthropic-ratelimit-input-tokens-limit": "15000000",
+			"anthropic-ratelimit-input-tokens-remaining": "15000000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-11-19T14:46:57Z",
+			"anthropic-ratelimit-output-tokens-limit": "3000000",
+			"anthropic-ratelimit-output-tokens-remaining": "3000000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-11-19T14:46:57Z",
+			"anthropic-ratelimit-requests-limit": "45000",
+			"anthropic-ratelimit-requests-remaining": "44999",
+			"anthropic-ratelimit-requests-reset": "2026-11-19T14:46:57Z",
+			"anthropic-ratelimit-tokens-limit": "18000000",
+			"anthropic-ratelimit-tokens-remaining": "18000000",
+			"anthropic-ratelimit-tokens-reset": "2026-11-19T14:46:57Z",
 			"cache-control": "no-cache",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a233c58b49a8af0a-VIE",
+			"cf-ray": "a5d001ddecc716eb-TXL",
 			"connection": "keep-alive",
 			"content-encoding": "gzip",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "text/event-stream; charset=utf-8",
-			"date": "Thu, 30 Jul 2026 10:45:06 GMT",
-			"request-id": "req_011CdY77UcaqaKMKaqT7bGg2",
+			"date": "Thu, 19 Nov 2026 14:46:57 GMT",
+			"request-id": "req_011ChCU9r5jQ3MRr4kqt1jQb",
 			"server": "cloudflare",
+			"server-timing": "x-originResponse;dur=55",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-6cb6d2ad7228aa7af067bac3dd433c28-e13fb41eda258e2d-01",
+			"traceresponse": "00-b70b575048a91d5795068c1effd1901e-a44b4527dfb91e84-01",
 			"transfer-encoding": "chunked",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
@@ -165,8 +167,8 @@
 		"method": "POST",
 		"path": "/v1/messages",
 		"body": {
-			"model": "claude-sonnet-4-5",
-			"max_tokens": 64000,
+			"model": "claude-sonnet-5-5",
+			"max_tokens": 128000,
 			"system": [
 				{
 					"type": "text",
@@ -187,18 +189,15 @@
 					"role": "assistant",
 					"content": [
 						{
-							"type": "text",
-							"text": "I'll delegate the token-production workstream to a child agent now."
-						},
-						{
 							"type": "tool_use",
-							"id": "toolu_01CZUTUiAvbDqYgaeAgFHVtb",
+							"id": "toolu_01NsjMWFYY9FoJ1x7i2jM3JV",
 							"name": "delegate_subagent",
 							"input": {
 								"subAgentId": "inline",
 								"taskName": "token_production",
 								"goal": "Answer with exactly this token and nothing else: SUBAGENT_OK_731",
-								"expectedOutput": "The exact token SUBAGENT_OK_731 with no additional text",
+								"context": "This is a delegation wiring test. Your final answer must be exactly the token SUBAGENT_OK_731, with no other text, punctuation, or formatting.",
+								"expectedOutput": "Exactly: SUBAGENT_OK_731",
 								"difficulty": "low"
 							},
 							"caller": {
@@ -212,8 +211,8 @@
 					"content": [
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_01CZUTUiAvbDqYgaeAgFHVtb",
-							"content": "{\"status\":\"completed\",\"taskPath\":\"/root/token_production_0\",\"model\":\"anthropic/claude-sonnet-4-5\",\"answer\":\"I will complete the delegated task by providing the exact token as requested.\\n\\nSUBAGENT_OK_731\\n\\n---\\n\\n**Summary:**\\n\\n**What I did:**\\n- Received a task to output a specific token exactly as specified\\n- Provided the token \\\"SUBAGENT_OK_731\\\" with no additional text in the response body\\n\\n**What I accomplished:**\\n- Successfully output the exact token: SUBAGENT_OK_731\\n- Followed the instruction to include nothing else in the primary response\\n\\n**Important outputs:**\\n- Output token: SUBAGENT_OK_731\\n\\n**Issues/Assumptions/Limitations:**\\n- None. The task was straightforward and clearly specified.\",\"usage\":{\"promptTokens\":203,\"completionTokens\":154,\"totalTokens\":357,\"cost\":0.0029189999999999997},\"finishReason\":\"stop\"}"
+							"tool_use_id": "toolu_01NsjMWFYY9FoJ1x7i2jM3JV",
+							"content": "{\"status\":\"completed\",\"taskPath\":\"/root/token_production_0\",\"model\":\"anthropic/claude-sonnet-5-5\",\"answer\":\"SUBAGENT_OK_731\",\"usage\":{\"promptTokens\":349,\"completionTokens\":14,\"totalTokens\":363,\"cost\":0.000838},\"finishReason\":\"stop\"}"
 						}
 					]
 				}
@@ -265,30 +264,31 @@
 			}
 		},
 		"status": 200,
-		"response": "{\"model\":\"claude-sonnet-4-5-20250929\",\"id\":\"msg_011CdY77y57CBGMVPae4LjSG\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"PARENT_SAW SUBAGENT_OK_731\"}],\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":2054,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":16,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
+		"response": "{\"model\":\"claude-sonnet-5-5\",\"id\":\"msg_011ChCU9uKCKaDraAUATAgF2\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"PARENT_SAW SUBAGENT_OK_731\"}],\"container\":null,\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":2237,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":22,\"output_tokens_details\":{\"thinking_tokens\":0},\"service_tier\":\"standard\",\"inference_geo\":\"global\",\"speed\":\"standard\"},\"diagnostics\":null}",
 		"rawHeaders": {
-			"anthropic-ratelimit-input-tokens-limit": "22500000",
-			"anthropic-ratelimit-input-tokens-remaining": "22499000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-07-30T10:45:11Z",
-			"anthropic-ratelimit-output-tokens-limit": "4500000",
-			"anthropic-ratelimit-output-tokens-remaining": "4500000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-07-30T10:45:11Z",
-			"anthropic-ratelimit-requests-limit": "20000",
-			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-07-30T10:45:10Z",
-			"anthropic-ratelimit-tokens-limit": "27000000",
-			"anthropic-ratelimit-tokens-remaining": "26999000",
-			"anthropic-ratelimit-tokens-reset": "2026-07-30T10:45:11Z",
+			"anthropic-ratelimit-input-tokens-limit": "15000000",
+			"anthropic-ratelimit-input-tokens-remaining": "14999000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-11-19T14:46:58Z",
+			"anthropic-ratelimit-output-tokens-limit": "3000000",
+			"anthropic-ratelimit-output-tokens-remaining": "3000000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-11-19T14:46:58Z",
+			"anthropic-ratelimit-requests-limit": "45000",
+			"anthropic-ratelimit-requests-remaining": "44999",
+			"anthropic-ratelimit-requests-reset": "2026-11-19T14:46:57Z",
+			"anthropic-ratelimit-tokens-limit": "18000000",
+			"anthropic-ratelimit-tokens-remaining": "17999000",
+			"anthropic-ratelimit-tokens-reset": "2026-11-19T14:46:58Z",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a233c5b33fe6af0a-VIE",
+			"cf-ray": "a5d001e28b9216eb-TXL",
 			"connection": "keep-alive",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "application/json",
-			"date": "Thu, 30 Jul 2026 10:45:11 GMT",
-			"request-id": "req_011CdY77wnxv5deK7MBPWK4M",
+			"date": "Thu, 19 Nov 2026 14:46:58 GMT",
+			"request-id": "req_011ChCU9uEjaj7BU71SCRFgC",
 			"server": "cloudflare",
+			"server-timing": "x-originResponse;dur=1091",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-287733e004d2ad52dd6086fb2ee96e2b-d1bf3a8a0b02cafa-01",
+			"traceresponse": "00-9c223634ac6034f967f1d5002b34dbdf-0149263c945abf41-01",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
 		},

@@ -6392,7 +6392,7 @@ describe('createAgentMemoryOptions', () => {
 
 		await onTaskUsage({
 			task: 'observer',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			usage: { promptTokens: 100, completionTokens: 20, totalTokens: 120 },
 			reportId: 'report-1',
 		});
@@ -6404,7 +6404,7 @@ describe('createAgentMemoryOptions', () => {
 			[
 				{
 					type: 'llmTokens',
-					model: 'anthropic/claude-sonnet-4-5',
+					model: 'anthropic/claude-sonnet-5-5',
 					uncachedInput: 0,
 					cacheRead: 0,
 					cacheWrite: 0,
@@ -6416,7 +6416,7 @@ describe('createAgentMemoryOptions', () => {
 
 		await onTaskUsage({
 			task: 'reflector',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
 			reportId: 'report-2',
 		});

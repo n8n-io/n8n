@@ -7087,7 +7087,7 @@ describe('reasoning', () => {
 
 		const runtime = new AgentRuntime({
 			name: 'test',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			instructions: 'You are a test assistant.',
 			reasoning: 'high',
 		});
@@ -7362,7 +7362,7 @@ describe('promptCaching', () => {
 
 		const runtime = new AgentRuntime({
 			name: 'test',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			instructions: 'You are a test assistant.',
 			promptCaching: { enabled: true },
 		});
@@ -7430,7 +7430,7 @@ describe('promptCaching', () => {
 
 		const runtime = new AgentRuntime({
 			name: 'test',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			instructions: 'You are a test assistant.',
 			tools: [toolA, toolB],
 			promptCaching: { enabled: true },
@@ -7459,7 +7459,7 @@ describe('promptCaching', () => {
 
 		const runtime = new AgentRuntime({
 			name: 'test',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			instructions: 'You are a test assistant.',
 			tools: [coreTool],
 			deferredTools: [deferredTool],
@@ -7484,7 +7484,7 @@ describe('promptCaching', () => {
 
 		const runtime = new AgentRuntime({
 			name: 'test',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			instructions: 'You are a test assistant.',
 			memory,
 			episodicMemory: { embedder: fakeEmbedder },

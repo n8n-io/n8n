@@ -4,8 +4,8 @@
 		"method": "POST",
 		"path": "/v1/messages",
 		"body": {
-			"model": "claude-sonnet-4-5",
-			"max_tokens": 64000,
+			"model": "claude-sonnet-5-5",
+			"max_tokens": 128000,
 			"system": [
 				{
 					"type": "text",
@@ -72,33 +72,34 @@
 		},
 		"status": 200,
 		"response": [
-			"1f8b0800000000000013cd58df4fdb30107ee7afb0ee652fe9d400059ab7323186106c688c69ac93e5c6b7d4e0da597ce1c750fef7c9495b9a52184c43495faade9d7bdf7d77beb30eafd050c426e89c48903b1219ad494122627740b7294204352504b3df10ddc1c44ad41041ac452eb1e3ac31489dcd4eafb3de5def75fbeb7d084049ff272ee1dd307c27bf6def6ced9eede617bf0fcf55fa49f68f14044bae2080cc6a2f10ce2947c278bfb135848620fafe23004736e5190a670d4426d77a2a72f82b4713634d289184d26e26cb67f0954973e2642fd13888c2de763f8058c463e47186829435bc6ed29de93314f231ddecacf780e918279809cd7b9387f6f7da70bcac2d02b0392d8a760270985da9183929cc2002cf8c1499f4249b9f98f9c0798216223096b8b8124a8b9146280a36fd146b6b58e57c4a271f691b5faecefc0a93d295c49b2ade45bd0f777a8ef0c61b965f1140b1e43955265972c5c00be13174123589a7d19526357495a48e6a6e36c576f0466b2651632208198d91956c77d2ccca3cf65964d736bb84397f4f71f86a281d6528268c2c132c1e2b2d9948d01033f6faed0376979366d3bfa5d5a60b88187b4ea82f2f97f08972b156f3dce1ac57f8df39ef8647fbbdc1e65773961f6d0c4ede9ff477cf3f8cb6f621002326fedc2c6fdce5a39290d25b9a13447785bf8d5afb6b32f7235586315597e1ffe5307c98c3ea2a5f386be6c6a9c848095d0aefef44f340ee86e0f2d12059acf08621a181a2690c74208710b121a8d7bafaff04cb686570f8b0a3360226604320b1c04fc378dce5b198a04f5b3d674de31a423953b89f29ed61ab9a6e4368d1c5f70595d876254fe8aa0f0c8c8316cc8d6bccd8b5a2f19ca486f130bc117ea4368d43df324f4ac32894f3cfc736d4091a264c6b1e1992194be3968dd284a17618b1cf5f762b600d031aecd7f86918cddef1698b2603ff78c8b737c26a5a353ea55a55c743c09ba591d934a4146342d9a66afe586e525a513efe31713a4636cf5ad30f9c98ca9d475b5e14a6ecc883fdbde353dea20ee41b50bb5ea6be1d16cf61e8a52ba070658cb32df0cae86a4a5888a6b6a65d5cf43c73595bbce2b67669bd1af6b68ad521af22705107fecc1f39f1dccb4a170000"
+			"1f8b0800000000000013cd5a5f6fdc360c7fcfa710f8ec14b9746957bfa569506c191a144dba76f360e82c9ead9e4ef2242a77d783bffb20df3fdb49d7be1496df4c4ad68f14455234f10135a56c81cef1127347dcd289e0c453b6015ad70829f49890ecdf21ddc0c208549042a1b81778ea8cd648a717a71790801461ae2bf3b3c9e4aababa7ff5b5b83affb47c7f57d7f3bfee9efffe2724831520016b542070e7a423aec37285d1849a20fdfb9fed0b971a2da4da2b95802353e716b933ba4772f8af475d608f2890b8546e4ff37b31a4ae3de564e6a81da4935f272f12287851615e58e4248dcefb43cef67c8b5c7c8bb79f1b56c0bac2055aaef28bc5e3f147eea41a729b048ca72ee9fc97041cda0759604e32a80282ae04b722a85dcfd006c9f3120da4502a33e50a127035a2e88e6d12109297da3892c54e294d7372825b9bd8e93d9f2a53cc9fb68c2786b40804aeb67ae8f2831a76f3c818957b877b2b09ef3e3f9b7cbe796fe583bc7eb8baf8e8cffd1f6ff48bbbe21324a0f922cc13a8b0e484b9f3535ea2deae567b8274d304b52b15d4715847488b0541d3b0f639ca564b5d0e84611088f02df9052ae2ff2f7f3ba427ff9672c4b3ddda2fcee8c3e09a5b925cb54448019a3ed051406c32707e7a59c24e6fa303424dbf890cd223a0f131b10ca45652f7308d0f0bb3ad0d8d0c2361191077f381764646f58e2f300b473d2a5419b49e3d8f0b556d8df0c1794684491abd33ef28e004232f0d5743173036ae60e2195c6ad7053632a6255ab694149307af18ae786416aed68c2ae96252136bbd138b2233e15a306de2b222a94b862a2a2b7298b20ff7afe30a28976fafdfdde5b751d8d14dfef2f9a4174ac646146249f82a346323c1156d03480c79e467e32d333aa28d526bf6c54c5b77387636e41819660fba19db6e6ab5664b190b1caa1855384cf5c746d5661c8ce2c961dbd8fee11e1e95484641f37a1b24223aeeb76da86091e8873bb6367e7fe4c74e0c675273c56239f05cbb25da249aa255b8ee544c4783c7304315da785c0f235c51c2e230e6daeb823c1f3ffd0a7f0c126662ab2958363376c1a3c8de89a42e9fc516dadf9870358dc61d7a878ceb750c493c0bff77dcb3783c4fe7e617c1b50f5735c6b04d05a1b8f51451f255fbc355746424d7216f57ebb82a2a6d91e7f26d441bd656786ef2082ec787fa4e04075cc8d92c2ecb918557b4ee17c0c6c614ceb932cb0c9a1faba5868e8eef352498ba036af0b57d5bcb93e2f598d011a7d76fd26d64f8e1ae93410b4bf313fb50868d232f87b423b60d5025f55ceab2d37af238481e7b811e2bbfcb83e3ccff000d0ba06963240000"
 		],
 		"rawHeaders": {
-			"anthropic-ratelimit-input-tokens-limit": "22500000",
-			"anthropic-ratelimit-input-tokens-remaining": "22499000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-07-30T10:45:12Z",
-			"anthropic-ratelimit-output-tokens-limit": "4500000",
-			"anthropic-ratelimit-output-tokens-remaining": "4500000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-07-30T10:45:12Z",
-			"anthropic-ratelimit-requests-limit": "20000",
-			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-07-30T10:45:12Z",
-			"anthropic-ratelimit-tokens-limit": "27000000",
-			"anthropic-ratelimit-tokens-remaining": "26999000",
-			"anthropic-ratelimit-tokens-reset": "2026-07-30T10:45:12Z",
+			"anthropic-ratelimit-input-tokens-limit": "15000000",
+			"anthropic-ratelimit-input-tokens-remaining": "14999000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-11-19T14:46:59Z",
+			"anthropic-ratelimit-output-tokens-limit": "3000000",
+			"anthropic-ratelimit-output-tokens-remaining": "3000000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-11-19T14:46:59Z",
+			"anthropic-ratelimit-requests-limit": "45000",
+			"anthropic-ratelimit-requests-remaining": "44999",
+			"anthropic-ratelimit-requests-reset": "2026-11-19T14:46:59Z",
+			"anthropic-ratelimit-tokens-limit": "18000000",
+			"anthropic-ratelimit-tokens-remaining": "17999000",
+			"anthropic-ratelimit-tokens-reset": "2026-11-19T14:46:59Z",
 			"cache-control": "no-cache",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a233c5bd3cf3af0a-VIE",
+			"cf-ray": "a5d001ea3f5d16eb-TXL",
 			"connection": "keep-alive",
 			"content-encoding": "gzip",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "text/event-stream; charset=utf-8",
-			"date": "Thu, 30 Jul 2026 10:45:13 GMT",
-			"request-id": "req_011CdY785JetXbgfBdKXmCrT",
+			"date": "Thu, 19 Nov 2026 14:46:59 GMT",
+			"request-id": "req_011ChCU9zXEJHaqngWkNnQQL",
 			"server": "cloudflare",
+			"server-timing": "x-originResponse;dur=77",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-05b1b866ae30456b98f16a457ac084d6-9ecac75622f59220-01",
+			"traceresponse": "00-e3fdc0813360485ea60a3617b19cc260-1fcb96ec4616d1ef-01",
 			"transfer-encoding": "chunked",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
@@ -110,8 +111,8 @@
 		"method": "POST",
 		"path": "/v1/messages",
 		"body": {
-			"model": "claude-sonnet-4-5",
-			"max_tokens": 64000,
+			"model": "claude-sonnet-5-5",
+			"max_tokens": 128000,
 			"system": [
 				{
 					"type": "text",
@@ -124,7 +125,7 @@
 					"content": [
 						{
 							"type": "text",
-							"text": "You are a focused subagent working on a specific delegated task.\n\nYOUR TASK:\nAnswer with exactly this token and nothing else: SUBAGENT_OK_731\n\nEXPECTED OUTPUT:\nThe exact token: SUBAGENT_OK_731\n\nComplete this task using the tools available to you. When finished, provide a clear, concise summary of:\n- What you did\n- What you found or accomplished\n- Important outputs, decisions, or evidence\n- Any issues, assumptions, or limitations\n\nIf the information above is insufficient, do your best with explicitly stated assumptions and note what was missing, rather than stopping to ask.\n\nBe thorough but concise -- your response is returned to the parent agent as a summary."
+							"text": "You are a focused subagent working on a specific delegated task.\n\nYOUR TASK:\nAnswer with exactly this token and nothing else: SUBAGENT_OK_731\n\nCONTEXT:\nYour only job is to reply with the exact token SUBAGENT_OK_731 as your final answer, with no other text, punctuation, or formatting. Do not use any tools.\n\nEXPECTED OUTPUT:\nExactly: SUBAGENT_OK_731\n\nComplete this task using the tools available to you. When finished, provide a clear, concise summary of:\n- What you did\n- What you found or accomplished\n- Important outputs, decisions, or evidence\n- Any issues, assumptions, or limitations\n\nIf the information above is insufficient, do your best with explicitly stated assumptions and note what was missing, rather than stopping to ask.\n\nBe thorough but concise -- your response is returned to the parent agent as a summary."
 						}
 					]
 				}
@@ -133,33 +134,34 @@
 		},
 		"status": 200,
 		"response": [
-			"1f8b0800000000000013bd55c16edb300cbdf72b041e03a748b2065d7cdb8aad480b7487751b866530188bb5852a922bd2498b22ff3e5849363b4bb75eda5c0cf33d99ef910a494b7292aa05316341190b0639d22898aa4790878a20850e08c9ee1dd24758784d1652c82dd69afaec9d23e99ff4c7fdd160341e4c461348c0e8e6235c6483e1f04c7f3f7d7b517d2caa8b7a757e75f675ccc525247ba92081e06d134066c382aec99b7b27e404d21f3f1360f1551608d93b485d6ded36c4745793cba913d424682cef62f54ebe71552d99f85b720ce970324920c7bca42c0f8462bccbba8cc10e0f84fa296c77b6494055490b0a68b3f1e26ffe1f7458eea3eb047c2dedd02801a6b03439656228400a4d613406ddd4d8dd50687c67057948c179c97089c6e2dc12acd7aafd5b1f1dd1a6efdb926673ebf3dbc3dd3f4089f934dd6f4cb7f1c6f3f69cd07d438c8f14a0aba0ada132aed84baaa009c2533a3559c17feb8c948ece4da4abef376dab72aa4a5c5257ebab8b50b95f549684b4929294264b05c637e4dbe3999bb95eef5b89a2a64a1b9df67a3337552b64651c4ba8f348f50a1daf28a8959152d13de6621fe2f7e2755233f8fce5fdbbf30f57d7d9a7cbecf4cd70060a9d56ce4b695ca1c8327573611e75192e49c3fad5ab127dee6b8efaa68bca876644a8cd1f8623f5ba2415e8ae362196a3f15c22ab39915355f04ba3492b9cfb76bb5fbfd5c85124b190de967bca5c13270a99eb45d50c124e940fca9a859138583606afbca363d5d86cee45bc002c014d51ca8d0f2b0c3a3634b784c13ec0f326c0cb39e58a727363481f47294f8f205ffd6f02f9aa95fe90a7ddc23ae8a603424b7d67a300399d491d1c3c7bafac5f6eb1ec6d82c9c9fab0e143d56b63b039f50bc57ae4adf5070000"
+			"1f8b0800000000000013b554416edb3010bcfb15c29e6920826bd4e52d0d821c0aa42ddaf452140423ae25c2d4522557690a437f2f685bb1a4d80d72882e026776b5c32147f880c432ab31465da28aac03cf8c662db32df0df0641c28804d1af416ea1f6061d48289c6e0dcea327429e2fe74b10604dea8da5bac8f3abeaeaeef203f29f1ffe6bbd5e5fafbeacf016c464020808de2540c768236b4ae30a4f8cc4207ffeda2fb4250c20a9754e4064dfa8803a7a1a41117fb748058e4083acad8b3dd6f6dbb0d4b4acd86f9022c8c57221a0d04585aa08a8d97a52e38a8b9e0fa8cd39aeef4d03b0a9b0c6a09d5ad6cfeb8f6c5e4dd94e806f7908ad04440c0fb640c5361901c929a38349a6d31a43dab72ad18384d2f97bed40406c10cdb0b61360ac2ec947b6c5c1922edb3fdd6c86fb8b71305fdd3b5f6c4e5f8f13253b21061ff76e0cf964c6a18ff13115ee5e12a01b0f6e2c959349192410ce8933e858ff5fdcae64246e8f8c453d951da47dbbfb7879737dfb5d41ef4ff6824f6f26e5f327f57e91271de78fc8372f9d906f0683879fea937e52ff888481de510401c9286e03c12b82384975f776d19c64297f37818ecab6c095a58da57210c6eedcf91fff91cfed1f72d0f7fd037122803279050000"
 		],
 		"rawHeaders": {
-			"anthropic-ratelimit-input-tokens-limit": "22500000",
-			"anthropic-ratelimit-input-tokens-remaining": "22500000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-07-30T10:45:15Z",
-			"anthropic-ratelimit-output-tokens-limit": "4500000",
-			"anthropic-ratelimit-output-tokens-remaining": "4500000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-07-30T10:45:15Z",
-			"anthropic-ratelimit-requests-limit": "20000",
-			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-07-30T10:45:15Z",
-			"anthropic-ratelimit-tokens-limit": "27000000",
-			"anthropic-ratelimit-tokens-remaining": "27000000",
-			"anthropic-ratelimit-tokens-reset": "2026-07-30T10:45:15Z",
+			"anthropic-ratelimit-input-tokens-limit": "15000000",
+			"anthropic-ratelimit-input-tokens-remaining": "15000000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-11-19T14:47:01Z",
+			"anthropic-ratelimit-output-tokens-limit": "3000000",
+			"anthropic-ratelimit-output-tokens-remaining": "3000000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-11-19T14:47:01Z",
+			"anthropic-ratelimit-requests-limit": "45000",
+			"anthropic-ratelimit-requests-remaining": "44999",
+			"anthropic-ratelimit-requests-reset": "2026-11-19T14:47:01Z",
+			"anthropic-ratelimit-tokens-limit": "18000000",
+			"anthropic-ratelimit-tokens-remaining": "18000000",
+			"anthropic-ratelimit-tokens-reset": "2026-11-19T14:47:01Z",
 			"cache-control": "no-cache",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a233c5d16eb8af0a-VIE",
+			"cf-ray": "a5d001f77e4716eb-TXL",
 			"connection": "keep-alive",
 			"content-encoding": "gzip",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "text/event-stream; charset=utf-8",
-			"date": "Thu, 30 Jul 2026 10:45:16 GMT",
-			"request-id": "req_011CdY78JTg2zufpwvK2Uvbp",
+			"date": "Thu, 19 Nov 2026 14:47:01 GMT",
+			"request-id": "req_011ChCUA9aCQJidBb1ApbdF5",
 			"server": "cloudflare",
+			"server-timing": "x-originResponse;dur=43",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-20c5cb3b9b6d07470c38f23d730e5d0a-7ecbe286d9ef4513-01",
+			"traceresponse": "00-9f6d81c5d3865a3d96f1c38678741855-4269e010b2630685-01",
 			"transfer-encoding": "chunked",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
@@ -171,8 +173,8 @@
 		"method": "POST",
 		"path": "/v1/messages",
 		"body": {
-			"model": "claude-sonnet-4-5",
-			"max_tokens": 64000,
+			"model": "claude-sonnet-5-5",
+			"max_tokens": 128000,
 			"system": [
 				{
 					"type": "text",
@@ -193,18 +195,16 @@
 					"role": "assistant",
 					"content": [
 						{
-							"type": "text",
-							"text": "I'll delegate the token-production workstream to a child agent now."
-						},
-						{
 							"type": "tool_use",
-							"id": "toolu_01MG5A4WnVuM3AQFQ9BZHb6G",
+							"id": "toolu_01YKQriviEvC5Vu2uLDn6TcX",
 							"name": "delegate_subagent",
 							"input": {
 								"subAgentId": "inline",
 								"taskName": "token_production",
 								"goal": "Answer with exactly this token and nothing else: SUBAGENT_OK_731",
-								"expectedOutput": "The exact token: SUBAGENT_OK_731"
+								"context": "Your only job is to reply with the exact token SUBAGENT_OK_731 as your final answer, with no other text, punctuation, or formatting. Do not use any tools.",
+								"expectedOutput": "Exactly: SUBAGENT_OK_731",
+								"difficulty": "low"
 							},
 							"caller": {
 								"type": "direct"
@@ -217,8 +217,8 @@
 					"content": [
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_01MG5A4WnVuM3AQFQ9BZHb6G",
-							"content": "{\"status\":\"completed\",\"taskPath\":\"/root/token_production_0\",\"model\":\"anthropic/claude-sonnet-4-5\",\"answer\":\"I have completed the delegated task.\\n\\n**What I did:**\\nI was instructed to answer with exactly the token \\\"SUBAGENT_OK_731\\\" and nothing else.\\n\\n**What I accomplished:**\\nSUBAGENT_OK_731\\n\\n**Important outputs:**\\nThe required token has been provided above as requested.\\n\\n**Issues, assumptions, or limitations:**\\nNone. The task was straightforward and clearly specified.\",\"usage\":{\"promptTokens\":199,\"completionTokens\":94,\"totalTokens\":293,\"cost\":0.002007},\"finishReason\":\"stop\"}"
+							"tool_use_id": "toolu_01YKQriviEvC5Vu2uLDn6TcX",
+							"content": "{\"status\":\"completed\",\"taskPath\":\"/root/token_production_0\",\"model\":\"anthropic/claude-sonnet-5-5\",\"answer\":\"SUBAGENT_OK_731\",\"usage\":{\"promptTokens\":353,\"completionTokens\":14,\"totalTokens\":367,\"cost\":0.000846},\"finishReason\":\"stop\"}"
 						}
 					]
 				}
@@ -272,33 +272,34 @@
 		},
 		"status": 200,
 		"response": [
-			"1f8b0800000000000013bd53c16ed34010bde72bac393b526c884af616aa08a48a8292002a08ada6de69b274bd6b76c7a1a8f2bf579bc4ad1d12ca057cb1fcdedb7d6f663cb421cb222929045c910c8c9e070a1945720ffcab2210d023216dbf41dc43e91419105018ac150d83b39678f872381ee6a37c3c9ae4134841ab784958c951969dababb3575f6aff292f7e96e7eafbc5d5cddb39a40756908277260218820e8c36fa16ce325906f1f55b0a815d253d61701684ad8dd943817ed4640bea818a18b5092d56b7f1b5ad6a96ec6ec90610d9241fa75060b126597842d6cecabe64d4f29e509de2dab3d181aa3595e4d1c871f9bbfe89cdd6876c9382abb90be52904f21b5d90644d1e04c4ce28f42a36d9de908f85cb153910601d4bdca036786d089a26797c9ac1807653df37545e1b57dc1e9ffd11c9d64cd1ddaee22e1f0bde9f63ba8bc2ed4b0074ec3bfe95b6ab03c3042208a7322a328c7fceb895f432ee907eb647d93ee187e97c76b93c91f33f65908be57c367d2717d3cfc9e2e3ebe99bd9e552bebf90672f32684e4fcd55cf0dcd559d2c49ef79bab6ddf2a3e5f548e894d35b4320ab24d7dec25f2f63f30fb7f1607db249f34ce9c77ad9e5e26ff90095166c1231050000"
+			"1f8b0800000000000013bd54c16adb4010bdfb2bcc9c65b09d9a50dd541372286d439c904229cb6677222d5ecfaabb239362f4ef652dab9154a5a1875a17a1f766786f9e86c13d12a7d31d8620731481a5e789962cd3e901f8678990428f84a4fd86f4003ba7d1420acaca4ae32c3822e4d96ab682048c8ebd2117f3c5625dacefb3f55ebd2f2fbede3cecd7eadd353d4132508004bcb311902198c092a29c72c4480ce9b7efcd8734841e52aaac4d20b02b8547191cf5a0803f2a24853d50234b63438b55ed1886ca8a05bb2d528074b99c2f13505215289447c9c691e897cc5bdea3d4af716d6f54c0b2c01d7a69c56af767fd0bbb28866c9d80abb8e7ef3281807e6f140a36310a885969e9758c9d9ed0c7c9458e0e52c8ad7b9416120825a2eed6d60968237372818d3a85524fe3534f26d82cc6297cf1689dda8eafc748c9d186c6e7268c2e1fb338f5313ec7c2e32b05689407f2a5a17ca0378508c26b16355a967fb7782ce9596c90beb5df65278337d9edd5e73bb1b9bbbdcaa2d9b31bf82436d9c37473ffa11bd5f96d64d731862f1f45c7c6d94d5c5e2ce0ad5575e55b9beaca8ef07092f6ea8dced023a1e3b9778e00490bae3cc13f1ca5c185abffe3991ab92b3de8c5da01b830b43594770e53770dc7921bfb055d0e62cf2f73eecb2381060000"
 		],
 		"rawHeaders": {
-			"anthropic-ratelimit-input-tokens-limit": "22500000",
-			"anthropic-ratelimit-input-tokens-remaining": "22499000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-07-30T10:45:18Z",
-			"anthropic-ratelimit-output-tokens-limit": "4500000",
-			"anthropic-ratelimit-output-tokens-remaining": "4500000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-07-30T10:45:18Z",
-			"anthropic-ratelimit-requests-limit": "20000",
-			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-07-30T10:45:18Z",
-			"anthropic-ratelimit-tokens-limit": "27000000",
-			"anthropic-ratelimit-tokens-remaining": "26999000",
-			"anthropic-ratelimit-tokens-reset": "2026-07-30T10:45:18Z",
+			"anthropic-ratelimit-input-tokens-limit": "15000000",
+			"anthropic-ratelimit-input-tokens-remaining": "14999000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-11-19T14:47:01Z",
+			"anthropic-ratelimit-output-tokens-limit": "3000000",
+			"anthropic-ratelimit-output-tokens-remaining": "3000000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-11-19T14:47:01Z",
+			"anthropic-ratelimit-requests-limit": "45000",
+			"anthropic-ratelimit-requests-remaining": "44999",
+			"anthropic-ratelimit-requests-reset": "2026-11-19T14:47:01Z",
+			"anthropic-ratelimit-tokens-limit": "18000000",
+			"anthropic-ratelimit-tokens-remaining": "17999000",
+			"anthropic-ratelimit-tokens-reset": "2026-11-19T14:47:01Z",
 			"cache-control": "no-cache",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a233c5e73a73af0a-VIE",
+			"cf-ray": "a5d001fc4e6416eb-TXL",
 			"connection": "keep-alive",
 			"content-encoding": "gzip",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "text/event-stream; charset=utf-8",
-			"date": "Thu, 30 Jul 2026 10:45:19 GMT",
-			"request-id": "req_011CdY78ZM7unYh8K5fxmvc1",
+			"date": "Thu, 19 Nov 2026 14:47:02 GMT",
+			"request-id": "req_011ChCUACs8EobSjX7pVF2rh",
 			"server": "cloudflare",
+			"server-timing": "x-originResponse;dur=59",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-590c063aee0ac5a9b22cb12a484c5572-37ff21bc76d37853-01",
+			"traceresponse": "00-b5050645532eb2b866621e6faa0fe246-137d8cf9108487e2-01",
 			"transfer-encoding": "chunked",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"

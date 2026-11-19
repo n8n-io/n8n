@@ -36,7 +36,7 @@ function makeAgent(overrides: Partial<Agent> = {}): Agent {
 		activeVersionId: 'version-1',
 		schema: {
 			name: 'Support Agent',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			instructions: 'Help users',
 			tools: [],
 			skills: [],
@@ -132,7 +132,7 @@ describe('AgentCustomToolsService', () => {
 			},
 			schema: {
 				name: 'Support Agent',
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 				instructions: 'Help users',
 				tools: [
 					{ type: 'custom', id: 'tool_keep' },
@@ -184,7 +184,7 @@ describe('AgentCustomToolsService', () => {
 			service.snapshotConfiguredTools(
 				{
 					name: 'Support Agent',
-					model: 'anthropic/claude-sonnet-4-5',
+					model: 'anthropic/claude-sonnet-5-5',
 					instructions: 'Help users',
 					tools: [
 						{ type: 'custom', id: 'tool_keep' },
@@ -213,7 +213,7 @@ describe('AgentCustomToolsService', () => {
 			service.snapshotConfiguredTools(
 				{
 					name: 'Support Agent',
-					model: 'anthropic/claude-sonnet-4-5',
+					model: 'anthropic/claude-sonnet-5-5',
 					instructions: 'Help users',
 					tools: [{ type: 'custom', id: 'tool_missing' }],
 				},

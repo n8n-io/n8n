@@ -26,7 +26,7 @@ describe('delegate_subagent integration', () => {
 		});
 
 		const parent = new Agent('sub-agent-parent-integration')
-			.model('anthropic/claude-sonnet-4-5')
+			.model('anthropic/claude-sonnet-5-5')
 			.instructions(
 				[
 					'You are a parent test agent.',
@@ -79,7 +79,7 @@ describe('delegate_subagent integration', () => {
 		const events: AgentEventData[] = [];
 
 		const parent = new Agent('sub-agent-parent-stream-integration')
-			.model('anthropic/claude-sonnet-4-5')
+			.model('anthropic/claude-sonnet-5-5')
 			.instructions(
 				[
 					'You are a parent streaming test agent.',

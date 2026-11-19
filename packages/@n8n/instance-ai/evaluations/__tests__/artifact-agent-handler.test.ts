@@ -12,7 +12,7 @@ import type { ArtifactRef } from '../types';
 
 const validConfig = {
 	name: 'My Agent',
-	model: 'anthropic/claude-sonnet-4-5',
+	model: 'anthropic/claude-sonnet-5-5',
 	instructions: 'Triage requests.',
 };
 

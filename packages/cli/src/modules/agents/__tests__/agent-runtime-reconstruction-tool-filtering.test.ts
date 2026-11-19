@@ -117,7 +117,7 @@ vi.mock('../json-config/from-json-config', async () => {
 function makeAgentEntity(tools: AgentJsonToolConfig[]): Agent {
 	const schema: AgentJsonConfig = {
 		name: 'Test Agent',
-		model: 'anthropic/claude-sonnet-4-5',
+		model: 'anthropic/claude-sonnet-5-5',
 		instructions: 'Be helpful',
 		tools,
 	};
@@ -497,7 +497,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromResolvedSource — pe
 	function makeResolvedSourceConfig(tools: AgentJsonToolConfig[]): AgentJsonConfig {
 		return {
 			name: 'Child Agent',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			instructions: 'Be helpful',
 			tools,
 		};

@@ -61,7 +61,7 @@ describe('buildFromJson()', () => {
 
 	const makeConfig = (overrides: Partial<AgentJsonConfig> = {}): AgentJsonConfig => ({
 		name: 'test-agent',
-		model: 'anthropic/claude-sonnet-4-5',
+		model: 'anthropic/claude-sonnet-5-5',
 		credential: 'my-anthropic-key',
 		instructions: 'You are a test agent.',
 		...overrides,
@@ -196,7 +196,7 @@ describe('buildFromJson()', () => {
 
 		expect(snap.name).toBe('test-agent');
 		expect(snap.model.provider).toBe('anthropic');
-		expect(snap.model.name).toBe('claude-sonnet-4-5');
+		expect(snap.model.name).toBe('claude-sonnet-5-5');
 		expect(snap.instructions).toBe('You are a test agent.');
 	});
 
@@ -242,7 +242,7 @@ describe('buildFromJson()', () => {
 
 	it('handles single-part model string (no slash)', async () => {
 		const agent = await buildFromJson(
-			makeConfig({ model: 'claude-sonnet-4-5' }),
+			makeConfig({ model: 'claude-sonnet-5-5' }),
 			{},
 			{
 				toolExecutor: makeMockToolExecutor(),
@@ -253,7 +253,7 @@ describe('buildFromJson()', () => {
 
 		const snap: AgentSnapshot = agent.snapshot;
 		expect(snap.model.provider).toBeNull();
-		expect(snap.model.name).toBe('claude-sonnet-4-5');
+		expect(snap.model.name).toBe('claude-sonnet-5-5');
 	});
 
 	it('executes a custom tool handler and message transform', async () => {
@@ -780,7 +780,7 @@ describe('buildFromJson()', () => {
 	});
 
 	it.each([
-		['anthropic/claude-sonnet-4-5', 'anthropic.web_search_20250305'],
+		['anthropic/claude-sonnet-5-5', 'anthropic.web_search_20250305'],
 		['openai/gpt-4o', 'openai.web_search'],
 	])('enables native web search when explicitly enabled for %s', async (model, expectedTool) => {
 		const agent = await buildFromJson(
@@ -1223,7 +1223,7 @@ describe('buildFromJson()', () => {
 				observationalMemory: {
 					observerModel: { model: 'openai/gpt-4o-mini', credential: 'observer-key' },
 					reflectorModel: {
-						model: 'anthropic/claude-sonnet-4-5',
+						model: 'anthropic/claude-sonnet-5-5',
 						credential: 'reflector-key',
 					},
 				},
@@ -1246,7 +1246,7 @@ describe('buildFromJson()', () => {
 			baseURL: 'https://observer-key.example/v1',
 		});
 		expect(reflectSpy).toHaveBeenCalledWith({
-			id: 'anthropic/claude-sonnet-4-5',
+			id: 'anthropic/claude-sonnet-5-5',
 			apiKey: 'reflector-key-api-key',
 			baseURL: 'https://reflector-key.example/v1',
 		});
@@ -1377,7 +1377,7 @@ describe('buildFromJson()', () => {
 					enabled: true,
 					credential: 'embedding-key',
 					reflectorModel: {
-						model: 'anthropic/claude-sonnet-4-5',
+						model: 'anthropic/claude-sonnet-5-5',
 						credential: 'episodic-reflector-key',
 					},
 				},
@@ -1395,7 +1395,7 @@ describe('buildFromJson()', () => {
 		);
 
 		expect(reflectSpy).toHaveBeenCalledWith({
-			id: 'anthropic/claude-sonnet-4-5',
+			id: 'anthropic/claude-sonnet-5-5',
 			apiKey: 'episodic-reflector-key-api-key',
 			baseURL: 'https://episodic-reflector-key.example/v1',
 		});
@@ -1702,7 +1702,7 @@ describe('AgentJsonConfigSchema', () => {
 	it('parses a minimal valid config', () => {
 		const config = {
 			name: 'test',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			credential: 'my-key',
 			instructions: 'Be helpful.',
 		};
@@ -1771,7 +1771,7 @@ describe('AgentJsonConfigSchema', () => {
 	it('rejects model with trailing slash', () => {
 		const config = {
 			name: 'test',
-			model: 'anthropic/claude-sonnet-4-5/',
+			model: 'anthropic/claude-sonnet-5-5/',
 			credential: 'my-key',
 			instructions: 'Be helpful.',
 		};
@@ -1781,7 +1781,7 @@ describe('AgentJsonConfigSchema', () => {
 	it('rejects model with leading slash in model segment', () => {
 		const config = {
 			name: 'test',
-			model: 'anthropic//claude-sonnet-4-5',
+			model: 'anthropic//claude-sonnet-5-5',
 			credential: 'my-key',
 			instructions: 'Be helpful.',
 		};
@@ -1791,7 +1791,7 @@ describe('AgentJsonConfigSchema', () => {
 	it('rejects empty name', () => {
 		const config = {
 			name: '',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			credential: 'my-key',
 			instructions: '',
 		};
@@ -1801,7 +1801,7 @@ describe('AgentJsonConfigSchema', () => {
 	it('rejects name longer than 128 chars', () => {
 		const config = {
 			name: 'a'.repeat(129),
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			credential: 'my-key',
 			instructions: '',
 		};
@@ -1811,7 +1811,7 @@ describe('AgentJsonConfigSchema', () => {
 	it('parses custom tool ref with valid id', () => {
 		const config = {
 			name: 'test',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			credential: 'my-key',
 			instructions: '',
 			tools: [{ type: 'custom', id: 'my_tool_1' }],
@@ -1823,7 +1823,7 @@ describe('AgentJsonConfigSchema', () => {
 	it('rejects inputSchema on node tool configs', () => {
 		const config = {
 			name: 'test',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			credential: 'my-key',
 			instructions: '',
 			tools: [
@@ -1853,7 +1853,7 @@ describe('AgentJsonConfigSchema', () => {
 	it('rejects id on node tool configs', () => {
 		const config = {
 			name: 'test',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			credential: 'my-key',
 			instructions: '',
 			tools: [
@@ -1879,7 +1879,7 @@ describe('AgentJsonConfigSchema', () => {
 	it('rejects id on workflow tool configs', () => {
 		const config = {
 			name: 'test',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			instructions: 'You are helpful',
 			tools: [{ type: 'workflow', id: 'tool-ref-1', workflow: 'Send Welcome Email' }],
 		};
@@ -1890,7 +1890,7 @@ describe('AgentJsonConfigSchema', () => {
 	it('rejects custom tool ref with invalid id characters', () => {
 		const config = {
 			name: 'test',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			credential: 'my-key',
 			instructions: '',
 			tools: [{ type: 'custom', id: 'tool id' }],
@@ -1901,7 +1901,7 @@ describe('AgentJsonConfigSchema', () => {
 	it('parses an integrations array containing chat triggers', () => {
 		const config = {
 			name: 'test',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			credential: 'my-key',
 			instructions: '',
 			integrations: [
@@ -1921,7 +1921,7 @@ describe('AgentJsonConfigSchema', () => {
 	it('validates Telegram private integration settings', () => {
 		const config = {
 			name: 'test',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			credential: 'my-key',
 			instructions: '',
 			integrations: [
@@ -1950,7 +1950,7 @@ describe('AgentJsonConfigSchema', () => {
 	it('rejects Telegram private integration settings without valid user IDs', () => {
 		const config = {
 			name: 'test',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			credential: 'my-key',
 			instructions: '',
 			integrations: [
@@ -1968,7 +1968,7 @@ describe('AgentJsonConfigSchema', () => {
 	it('rejects Telegram integration settings with entries containing invalid characters', () => {
 		const config = {
 			name: 'test',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			credential: 'my-key',
 			instructions: '',
 			integrations: [
@@ -1986,7 +1986,7 @@ describe('AgentJsonConfigSchema', () => {
 	it('parses an integrations array containing chat triggers', () => {
 		const config = {
 			name: 'test',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			credential: 'my-key',
 			instructions: '',
 			integrations: [
@@ -2006,7 +2006,7 @@ describe('AgentJsonConfigSchema', () => {
 	describe('mcpServers', () => {
 		const base = {
 			name: 'test',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			credential: 'my-key',
 			instructions: 'Be helpful.',
 		};

@@ -217,7 +217,7 @@ describe('AgentRepository', () => {
 		it('writes the integration columns and leaves everything else alone', async () => {
 			const agent = await createAgent({
 				name: 'Original name',
-				schema: { name: 'Original name', model: 'anthropic/claude-sonnet-4-5', instructions: 'Hi' },
+				schema: { name: 'Original name', model: 'anthropic/claude-sonnet-5-5', instructions: 'Hi' },
 				versionId: 'version-1',
 			});
 

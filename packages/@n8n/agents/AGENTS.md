@@ -85,7 +85,7 @@ User code never touches raw API keys.
 
 ```typescript
 const agent = new Agent('assistant')
-  .model('anthropic/claude-sonnet-4-5')
+  .model('anthropic/claude-sonnet-5-5')
   .credential('anthropic')
   .instructions('You are helpful.');
 ```

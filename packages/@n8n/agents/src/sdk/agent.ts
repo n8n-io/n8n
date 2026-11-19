@@ -262,10 +262,10 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	 * @example
 	 * ```typescript
 	 * // Typed form — enables provider-specific config on .thinking() etc.
-	 * agent.model('anthropic', 'claude-sonnet-4-5')
+	 * agent.model('anthropic', 'claude-sonnet-5-5')
 	 *
 	 * // Untyped form — backwards compatible
-	 * agent.model('anthropic/claude-sonnet-4-5')
+	 * agent.model('anthropic/claude-sonnet-5-5')
 	 * ```
 	 */
 	model(providerOrIdOrConfig: string | ModelConfig, modelName?: string): this {
@@ -441,7 +441,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	 * @example
 	 * ```typescript
 	 * const agent = new Agent('assistant')
-	 *   .model('anthropic/claude-sonnet-4-5')
+	 *   .model('anthropic/claude-sonnet-5-5')
 	 *   .instructions('...')
 	 *   .tool(dangerousTool) // has .suspend() / .resume()
 	 *   .checkpoint('memory');
@@ -466,7 +466,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	 * @example
 	 * ```typescript
 	 * const agent = new Agent('extractor')
-	 *   .model('anthropic/claude-sonnet-4-5')
+	 *   .model('anthropic/claude-sonnet-5-5')
 	 *   .instructions('Extract structured data.')
 	 *   .structuredOutput(z.object({
 	 *     code: z.string(),
@@ -488,10 +488,10 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	 *
 	 * @example
 	 * ```typescript
-	 * // Anthropic — budgetTokens
+	 * // Anthropic — adaptive thinking
 	 * new Agent('thinker')
-	 *   .model('anthropic', 'claude-sonnet-4-5')
-	 *   .thinking('anthropic', { budgetTokens: 5000 })
+	 *   .model('anthropic', 'claude-sonnet-5-5')
+	 *   .thinking('anthropic', { mode: 'adaptive', effort: 'high' })
 	 *
 	 * // OpenAI — reasoningEffort
 	 * new Agent('thinker')
@@ -510,7 +510,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	 * @example
 	 * ```typescript
 	 * new Agent('thinker')
-	 *   .model('anthropic', 'claude-sonnet-4-5')
+	 *   .model('anthropic', 'claude-sonnet-5-5')
 	 *   .reasoning('high')
 	 * ```
 	 */
@@ -529,7 +529,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	 * @example
 	 * ```typescript
 	 * new Agent('assistant')
-	 *   .model('anthropic/claude-sonnet-4-5')
+	 *   .model('anthropic/claude-sonnet-5-5')
 	 *   .promptCaching()
 	 *   .instructions(LONG_SYSTEM_PROMPT);
 	 * ```
@@ -643,7 +643,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	 * @example
 	 * ```typescript
 	 * const agent = new Agent('assistant')
-	 *   .model('anthropic/claude-sonnet-4-5')
+	 *   .model('anthropic/claude-sonnet-5-5')
 	 *   .instructions('You are a helpful assistant.')
 	 *   .configuration({ maxIterations: 5 });
 	 *

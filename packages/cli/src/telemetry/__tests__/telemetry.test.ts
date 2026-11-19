@@ -600,7 +600,7 @@ describe('Telemetry', () => {
 
 	describe('trackAgentTurnFinished', () => {
 		const configuration = {
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			channels: ['slack'],
 			tool_types: ['custom'],
 			tool_count: 1,

@@ -909,7 +909,7 @@ describe('domain-access grant keys', () => {
 describe('instanceAiEvalSeedAgentSchema resource references', () => {
 	const config = {
 		name: 'Support Triage',
-		model: 'anthropic/claude-sonnet-4-5',
+		model: 'anthropic/claude-sonnet-5-5',
 		instructions: 'Triage inbound tickets.',
 	};
 	const agent = (over: Record<string, unknown> = {}) => ({

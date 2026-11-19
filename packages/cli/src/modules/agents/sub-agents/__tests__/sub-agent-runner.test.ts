@@ -48,7 +48,7 @@ const parentAgentId = 'parent-agent-1';
 
 const runnableConfig: RunnableAgentJsonConfig = {
 	name: 'Helper Agent',
-	model: 'anthropic/claude-sonnet-4-5',
+	model: 'anthropic/claude-sonnet-5-5',
 	credential: 'credential-1',
 	instructions: 'Help with delegated work.',
 };
@@ -115,7 +115,7 @@ const defaultStreamChunks: StreamChunk[] = [
 	{
 		type: 'finish',
 		finishReason: 'stop',
-		model: 'anthropic/claude-sonnet-4-5',
+		model: 'anthropic/claude-sonnet-5-5',
 		usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15, cost: 0.01 },
 	},
 ];
@@ -281,7 +281,7 @@ describe('SubAgentRunner', () => {
 				telemetry: {
 					runType: 'production',
 					configuration: expect.objectContaining({
-						model: 'anthropic/claude-sonnet-4-5',
+						model: 'anthropic/claude-sonnet-5-5',
 					}),
 				},
 			}),
@@ -706,7 +706,7 @@ describe('SubAgentRunner', () => {
 			subAgents: {
 				modelsByDifficulty: {
 					high: {
-						model: 'anthropic/claude-sonnet-4-5',
+						model: 'anthropic/claude-sonnet-5-5',
 						credential: 'high-credential',
 					},
 				},
@@ -732,7 +732,7 @@ describe('SubAgentRunner', () => {
 			expect.objectContaining({
 				config: {
 					...parentConfig,
-					model: 'anthropic/claude-sonnet-4-5',
+					model: 'anthropic/claude-sonnet-5-5',
 					credential: 'high-credential',
 					providerTools: {
 						'anthropic.web_search_20250305': { maxUses: 3 },

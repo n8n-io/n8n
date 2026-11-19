@@ -144,7 +144,7 @@ function makeAgentEntity(
 ): Agent {
 	const schema: AgentJsonConfig = {
 		name: 'Test',
-		model: 'anthropic/claude-sonnet-4-5',
+		model: 'anthropic/claude-sonnet-5-5',
 		instructions: 'Be helpful',
 		...(schemaConfig !== undefined ? { config: schemaConfig } : {}),
 		...(overrides ?? {}),
@@ -346,7 +346,7 @@ describe('AgentRuntimeReconstructionService — workspace attachment', () => {
 		await service.reconstructFromResolvedSource({
 			config: {
 				name: 'Inline',
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 				instructions: 'Help',
 			},
 			memoryOwnerAgentId: 'agent-1',
@@ -620,7 +620,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 		const service = makeReconstructionService({ agentRepository });
 		const config: AgentJsonConfig = {
 			name: 'Test',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			instructions: 'Be helpful',
 			subAgents: { agents: [{ agentId: 'agent-billing' }] },
 		};
@@ -640,7 +640,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 		const service = makeReconstructionService({ agentRepository });
 		const config: AgentJsonConfig = {
 			name: 'Test',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			instructions: 'Be helpful',
 			subAgents: { agents: [{ agentId: 'agent-billing' }] },
 		};
@@ -670,7 +670,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 			subAgents: {
 				modelsByDifficulty: {
 					low: { model: 'openai/gpt-4o-mini', credential: 'low-cred' },
-					high: { model: 'anthropic/claude-sonnet-4-5', credential: 'high-cred' },
+					high: { model: 'anthropic/claude-sonnet-5-5', credential: 'high-cred' },
 				},
 			},
 		});
@@ -684,7 +684,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 				baseURL: 'https://low.example/v1',
 			},
 			high: {
-				id: 'anthropic/claude-sonnet-4-5',
+				id: 'anthropic/claude-sonnet-5-5',
 				apiKey: 'high-key',
 			},
 		});
@@ -705,7 +705,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 				model: 'openai/gpt-4o',
 				subAgents: {
 					modelsByDifficulty: {
-						high: { model: 'anthropic/claude-sonnet-4-5', credential: 'high-cred' },
+						high: { model: 'anthropic/claude-sonnet-5-5', credential: 'high-cred' },
 					},
 				},
 			},
@@ -834,7 +834,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromResolvedSource — su
 
 		const config: AgentJsonConfig = {
 			name: 'Child',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			instructions: 'Help',
 		};
 

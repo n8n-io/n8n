@@ -512,7 +512,7 @@ live turn:
       "id": "AgEnT12345678901",
       "config": {
         "name": "Support Triage",
-        "model": "anthropic/claude-sonnet-4-5",
+        "model": "anthropic/claude-sonnet-5-5",
         "instructions": "Triage inbound support tickets.",
         "skills": [{ "type": "skill", "id": "skill_1" }]
       },

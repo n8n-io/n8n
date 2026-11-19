@@ -2452,7 +2452,7 @@ describe('InstanceAiThreadView', () => {
 			testAgentOfferState.capabilitySummary = {
 				id: 'agent-1',
 				name: 'Trip Planner',
-				model: { provider: 'anthropic', model: 'claude-sonnet-4-5' },
+				model: { provider: 'anthropic', model: 'claude-sonnet-5-5' },
 				channels: [],
 				tools: [{ type: 'custom', name: 'search' }],
 				mcpServers: [],

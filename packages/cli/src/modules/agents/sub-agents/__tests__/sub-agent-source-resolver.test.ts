@@ -15,7 +15,7 @@ const versionId = 'version-1';
 
 const runnableConfig: AgentJsonConfig = {
 	name: 'Helper Agent',
-	model: 'anthropic/claude-sonnet-4-5',
+	model: 'anthropic/claude-sonnet-5-5',
 	credential: 'credential-1',
 	instructions: 'Be useful.',
 	config: {

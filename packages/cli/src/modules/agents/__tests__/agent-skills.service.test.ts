@@ -66,7 +66,7 @@ describe('AgentSkillsService', () => {
 		const agent = makeAgent({
 			schema: {
 				name: 'Test Agent',
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 				instructions: 'Be helpful',
 				skills: [],
 			},
@@ -92,7 +92,7 @@ describe('AgentSkillsService', () => {
 		const agent = makeAgent({
 			schema: {
 				name: 'Test Agent',
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 				instructions: 'Be helpful',
 			},
 		});
@@ -140,7 +140,7 @@ describe('AgentSkillsService', () => {
 			const agent = makeAgent({
 				schema: {
 					name: 'Test Agent',
-					model: 'anthropic/claude-sonnet-4-5',
+					model: 'anthropic/claude-sonnet-5-5',
 					instructions: 'Be helpful',
 					skills: [],
 				},
@@ -230,7 +230,7 @@ describe('AgentSkillsService', () => {
 		const agent = makeAgent({
 			schema: {
 				name: 'Test Agent',
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 				instructions: 'Be helpful',
 				skills: [],
 			},
@@ -376,7 +376,7 @@ describe('AgentSkillsService', () => {
 				skills: { summarize_notes: skill },
 				schema: {
 					name: 'Test Agent',
-					model: 'anthropic/claude-sonnet-4-5',
+					model: 'anthropic/claude-sonnet-5-5',
 					instructions: 'Be helpful',
 				},
 			}),
@@ -413,7 +413,7 @@ describe('AgentSkillsService', () => {
 			skills: { summarize_notes: skill },
 			schema: {
 				name: 'Test Agent',
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 				instructions: 'Be helpful',
 				tools: [{ type: 'custom', id: 'custom_tool' }],
 				skills: [{ type: 'skill', id: 'summarize_notes' }],
@@ -433,7 +433,7 @@ describe('AgentSkillsService', () => {
 		const agent = makeAgent({
 			schema: {
 				name: 'Test Agent',
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 				instructions: 'Be helpful',
 				skills: [{ type: 'skill', id: 'summarize_notes' }],
 			},

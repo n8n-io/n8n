@@ -2,7 +2,7 @@ import { AgentJsonConfigSchema, type AgentJsonConfig } from '@n8n/api-types';
 
 const baseConfig: AgentJsonConfig = {
 	name: 'Test Agent',
-	model: 'anthropic/claude-sonnet-4-5',
+	model: 'anthropic/claude-sonnet-5-5',
 	instructions: 'Be helpful',
 };
 
@@ -135,7 +135,7 @@ describe('AgentJsonConfigSchema — memory.observationalMemory', () => {
 				observationalMemory: {
 					observerModel: { model: 'openai/gpt-4o-mini', credential: 'openai-key' },
 					reflectorModel: {
-						model: 'anthropic/claude-sonnet-4-5',
+						model: 'anthropic/claude-sonnet-5-5',
 						credential: 'anthropic-key',
 					},
 				},
@@ -145,7 +145,7 @@ describe('AgentJsonConfigSchema — memory.observationalMemory', () => {
 		expect(parsed.memory?.observationalMemory).toMatchObject({
 			observerModel: { model: 'openai/gpt-4o-mini', credential: 'openai-key' },
 			reflectorModel: {
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 				credential: 'anthropic-key',
 			},
 		});
@@ -254,7 +254,7 @@ describe('AgentJsonConfigSchema — memory.episodicMemory', () => {
 					enabled: true,
 					credential: 'credential-id',
 					reflectorModel: {
-						model: 'anthropic/claude-sonnet-4-5',
+						model: 'anthropic/claude-sonnet-5-5',
 						credential: 'anthropic-key',
 					},
 				},
@@ -263,7 +263,7 @@ describe('AgentJsonConfigSchema — memory.episodicMemory', () => {
 
 		expect(parsed.memory?.episodicMemory).toMatchObject({
 			reflectorModel: {
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 				credential: 'anthropic-key',
 			},
 		});

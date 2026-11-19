@@ -29,7 +29,7 @@ function makeTool(providerOptions?: Record<string, unknown>): ToolSet[string] {
 describe('buildInstructionPromptCacheOptions — Anthropic', () => {
 	it('defaults to a 1h cache breakpoint when enabled with no ttl override', () => {
 		expect(
-			buildInstructionPromptCacheOptions({ enabled: true }, 'anthropic/claude-sonnet-4-5'),
+			buildInstructionPromptCacheOptions({ enabled: true }, 'anthropic/claude-sonnet-5-5'),
 		).toEqual({
 			anthropic: { cacheControl: { type: 'ephemeral', ttl: '1h' } },
 		});
@@ -39,7 +39,7 @@ describe('buildInstructionPromptCacheOptions — Anthropic', () => {
 		expect(
 			buildInstructionPromptCacheOptions(
 				{ anthropic: { ttl: '5m' } },
-				'anthropic/claude-sonnet-4-5',
+				'anthropic/claude-sonnet-5-5',
 			),
 		).toEqual({
 			anthropic: { cacheControl: { type: 'ephemeral', ttl: '5m' } },
@@ -52,19 +52,19 @@ describe('buildInstructionPromptCacheOptions — Anthropic', () => {
 
 	it('returns undefined when config is disabled', () => {
 		expect(
-			buildInstructionPromptCacheOptions({ enabled: false }, 'anthropic/claude-sonnet-4-5'),
+			buildInstructionPromptCacheOptions({ enabled: false }, 'anthropic/claude-sonnet-5-5'),
 		).toBeUndefined();
 	});
 
 	it('returns undefined when anthropic scope is disabled', () => {
 		expect(
-			buildInstructionPromptCacheOptions({ anthropic: false }, 'anthropic/claude-sonnet-4-5'),
+			buildInstructionPromptCacheOptions({ anthropic: false }, 'anthropic/claude-sonnet-5-5'),
 		).toBeUndefined();
 	});
 
 	it('returns undefined when config is not set', () => {
 		expect(
-			buildInstructionPromptCacheOptions(undefined, 'anthropic/claude-sonnet-4-5'),
+			buildInstructionPromptCacheOptions(undefined, 'anthropic/claude-sonnet-5-5'),
 		).toBeUndefined();
 	});
 });
@@ -94,7 +94,7 @@ describe('buildCallPromptCacheOptions — OpenAI', () => {
 
 	it('returns undefined for a non-OpenAI model', () => {
 		expect(
-			buildCallPromptCacheOptions({ enabled: true }, 'anthropic/claude-sonnet-4-5', context),
+			buildCallPromptCacheOptions({ enabled: true }, 'anthropic/claude-sonnet-5-5', context),
 		).toBeUndefined();
 	});
 
@@ -153,24 +153,24 @@ describe('createOpenAIPromptCacheKey (via buildCallPromptCacheOptions)', () => {
 
 describe('getEffectiveAnthropicCacheTtl', () => {
 	it('returns the configured TTL (default 1h) for an Anthropic model with caching enabled', () => {
-		expect(getEffectiveAnthropicCacheTtl({ enabled: true }, 'anthropic/claude-sonnet-4-5')).toBe(
+		expect(getEffectiveAnthropicCacheTtl({ enabled: true }, 'anthropic/claude-sonnet-5-5')).toBe(
 			'1h',
 		);
 	});
 
 	it('returns an explicit 5m override for an Anthropic model', () => {
 		expect(
-			getEffectiveAnthropicCacheTtl({ anthropic: { ttl: '5m' } }, 'anthropic/claude-sonnet-4-5'),
+			getEffectiveAnthropicCacheTtl({ anthropic: { ttl: '5m' } }, 'anthropic/claude-sonnet-5-5'),
 		).toBe('5m');
 	});
 
 	it('returns undefined for an Anthropic model with no promptCaching config', () => {
-		expect(getEffectiveAnthropicCacheTtl(undefined, 'anthropic/claude-sonnet-4-5')).toBeUndefined();
+		expect(getEffectiveAnthropicCacheTtl(undefined, 'anthropic/claude-sonnet-5-5')).toBeUndefined();
 	});
 
 	it('returns undefined when the anthropic scope is disabled', () => {
 		expect(
-			getEffectiveAnthropicCacheTtl({ anthropic: false }, 'anthropic/claude-sonnet-4-5'),
+			getEffectiveAnthropicCacheTtl({ anthropic: false }, 'anthropic/claude-sonnet-5-5'),
 		).toBeUndefined();
 	});
 
@@ -217,7 +217,7 @@ describe('applyRuntimeCacheBreakpoints', () => {
 			messages,
 			aiTools: {},
 			promptCaching: { enabled: true },
-			modelId: 'anthropic/claude-sonnet-4-5',
+			modelId: 'anthropic/claude-sonnet-5-5',
 			staticToolCacheName: undefined,
 		});
 
@@ -235,7 +235,7 @@ describe('applyRuntimeCacheBreakpoints', () => {
 			messages: [],
 			aiTools,
 			promptCaching: { enabled: true },
-			modelId: 'anthropic/claude-sonnet-4-5',
+			modelId: 'anthropic/claude-sonnet-5-5',
 			staticToolCacheName: 'tool_b',
 		});
 
@@ -270,7 +270,7 @@ describe('applyRuntimeCacheBreakpoints', () => {
 			messages,
 			aiTools: {},
 			promptCaching: { anthropic: false },
-			modelId: 'anthropic/claude-sonnet-4-5',
+			modelId: 'anthropic/claude-sonnet-5-5',
 			staticToolCacheName: undefined,
 		});
 
@@ -290,7 +290,7 @@ describe('applyRuntimeCacheBreakpoints', () => {
 			messages,
 			aiTools,
 			promptCaching: { enabled: true },
-			modelId: 'anthropic/claude-sonnet-4-5',
+			modelId: 'anthropic/claude-sonnet-5-5',
 			staticToolCacheName: 'tool_b',
 		});
 
@@ -309,7 +309,7 @@ describe('applyRuntimeCacheBreakpoints', () => {
 			messages,
 			aiTools,
 			promptCaching: { enabled: true },
-			modelId: 'anthropic/claude-sonnet-4-5',
+			modelId: 'anthropic/claude-sonnet-5-5',
 			staticToolCacheName: 'tool_b',
 		});
 
@@ -335,7 +335,7 @@ describe('applyRuntimeCacheBreakpoints', () => {
 			messages,
 			aiTools,
 			promptCaching: { enabled: true },
-			modelId: 'anthropic/claude-sonnet-4-5',
+			modelId: 'anthropic/claude-sonnet-5-5',
 			staticToolCacheName: 'tool_b',
 		});
 
@@ -360,7 +360,7 @@ describe('applyRuntimeCacheBreakpoints', () => {
 			messages,
 			aiTools,
 			promptCaching: { enabled: true },
-			modelId: 'anthropic/claude-sonnet-4-5',
+			modelId: 'anthropic/claude-sonnet-5-5',
 			staticToolCacheName: 'tool_b',
 		});
 
@@ -390,7 +390,7 @@ describe('applyRuntimeCacheBreakpoints', () => {
 			messages,
 			aiTools,
 			promptCaching: { enabled: true },
-			modelId: 'anthropic/claude-sonnet-4-5',
+			modelId: 'anthropic/claude-sonnet-5-5',
 			staticToolCacheName: 'tool_b',
 		});
 

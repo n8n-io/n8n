@@ -2,26 +2,26 @@ import { getProviderPrefix, splitModelId } from '../model-id';
 
 describe('getProviderPrefix', () => {
 	it('returns the prefix before the first slash', () => {
-		expect(getProviderPrefix('anthropic/claude-sonnet-4-5')).toBe('anthropic');
+		expect(getProviderPrefix('anthropic/claude-sonnet-5-5')).toBe('anthropic');
 	});
 
 	it('returns an empty string when there is no prefix', () => {
-		expect(getProviderPrefix('claude-sonnet-4-5')).toBe('');
+		expect(getProviderPrefix('claude-sonnet-5-5')).toBe('');
 	});
 });
 
 describe('splitModelId', () => {
 	it('splits a prefixed id into provider and model', () => {
-		expect(splitModelId('anthropic/claude-sonnet-4-5')).toEqual({
+		expect(splitModelId('anthropic/claude-sonnet-5-5')).toEqual({
 			provider: 'anthropic',
-			model: 'claude-sonnet-4-5',
+			model: 'claude-sonnet-5-5',
 		});
 	});
 
 	it('treats an unprefixed id as the model with an empty provider', () => {
-		expect(splitModelId('claude-sonnet-4-5')).toEqual({
+		expect(splitModelId('claude-sonnet-5-5')).toEqual({
 			provider: '',
-			model: 'claude-sonnet-4-5',
+			model: 'claude-sonnet-5-5',
 		});
 	});
 

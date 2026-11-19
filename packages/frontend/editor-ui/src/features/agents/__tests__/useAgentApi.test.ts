@@ -155,7 +155,7 @@ describe('useAgentApi', () => {
 			} as unknown as AgentResource;
 			const sourceConfig = {
 				name: 'Support Agent',
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 				instructions: 'Triage tickets.',
 			} as unknown as AgentJsonConfig;
 			const cloned = { id: 'agent-2', name: 'Support Agent (copy)' } as unknown as AgentResource;
@@ -213,7 +213,7 @@ describe('useAgentApi', () => {
 			} as unknown as AgentResource;
 			const sourceConfig = {
 				name: 'Support Agent',
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 				instructions: 'Triage tickets.',
 				integrations: [
 					{ type: 'telegram', credentialId: 'cred-telegram-1' },
