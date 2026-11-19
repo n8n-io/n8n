@@ -53,11 +53,11 @@ const Smith = std.testing.Smith;
 /// Two VMs on one empty module: one decodes with the reference codec, one
 /// with the fast codec. Static buffers keep the test stack small.
 const Pair = struct {
-    var region_a: [1 << 20]u8 align(8) = undefined;
-    var region_b: [1 << 20]u8 align(8) = undefined;
-    var scratch_a: [2 << 20]u8 = undefined;
-    var scratch_b: [2 << 20]u8 = undefined;
-    var natives: [8]u16 = undefined;
+    var region_a: [1 << 20]u8 align(8) = @splat(0);
+    var region_b: [1 << 20]u8 align(8) = @splat(0);
+    var scratch_a: [2 << 20]u8 = @splat(0);
+    var scratch_b: [2 << 20]u8 = @splat(0);
+    var natives: [8]u16 = @splat(0);
 
     m: module.Module,
     bytes: []u8,
@@ -132,7 +132,7 @@ fn checkSame(p: *Pair, src: []const u8) !void {
         std.debug.print("fast rejects ({s}), ref accepts: {x}\n", .{ @errorName(eb), src });
         return error.FastRejects;
     };
-    var outs: [4][]const u8 = undefined;
+    var outs: [4][]const u8 = @splat(&.{});
     var ba = p.sa.builder();
     if (!try ref.encode(&p.va, &ba, a_v, "")) try ba.append("undefined");
     outs[0] = ba.finish();
@@ -154,10 +154,10 @@ fn checkSame(p: *Pair, src: []const u8) !void {
     }
     // Indented output takes the same path through the frames.
     var be = p.sa.builder();
-    _ = try ref.encode(&p.va, &be, a_v, "  ");
+    _ = try ref.encode(&p.va, &be, a_v, "  "); // the returned bool is not needed; only the bytes matter.
     const ind_a = be.finish();
     var bf = p.sb.builder();
-    _ = try fast.encode(&p.vb, &bf, b_v, "  ");
+    _ = try fast.encode(&p.vb, &bf, b_v, "  "); // the returned bool is not needed; only the bytes matter.
     if (!std.mem.eql(u8, ind_a, bf.finish())) return error.IndentedEncodingsDiffer;
     // Fast decode uses no more region than the reference.
     if (p.rb.used > p.ra.used) {
@@ -377,7 +377,7 @@ test "json: writeString takes any bytes" {
 
 fn fuzzAgainstRef(_: void, smith: *Smith) !void {
     const gpa = std.testing.allocator;
-    var input_buf: [16 << 10]u8 = undefined;
+    var input_buf: [16 << 10]u8 = @splat(0);
     const input = input_buf[0..smith.slice(&input_buf)];
     var p: Pair = undefined;
     try p.init(gpa);
@@ -392,7 +392,7 @@ fn generate(smith: *Smith, out: *Out) !void {
     const pieces = [_][]const u8{ "\\n", "\\\"", "\\\\", "\\u00e9", "\\ud83d\\ude00", "\\ud800", "\xc3\xa9", "\xf0\x9f\x98\x80", "\xed\xa0\x80", "\xff", "a", "key", " ", "\\/", "\x7f" };
     const numbers = [_][]const u8{ "0", "-0", "1", "-12", "519.82", "0.1", "1e21", "1E-7", "123456789012345678901", "9007199254740993", "2.5e+3", "0.000123", "1e400", "-1e-400", "4.35", "100.10" };
     var depth: u32 = 0;
-    var open: [32]u8 = undefined;
+    var open: [32]u8 = @splat(0);
     var first = true;
     var steps: u32 = 0;
     while (steps < 400) : (steps += 1) {
@@ -437,8 +437,8 @@ fn generate(smith: *Smith, out: *Out) !void {
             },
             3, 4 => try out.writeAll(numbers[smith.index(numbers.len)]),
             5 => try out.writeAll(([_][]const u8{ "true", "false", "null" })[smith.index(3)]),
-            else => {
-                var nb: [numfmt.max_len]u8 = undefined;
+            else => { // the remaining case writes a number.
+                var nb: [numfmt.max_len]u8 = @splat(0);
                 const bits = smith.value(u64);
                 const f: f64 = @bitCast(bits);
                 try out.writeAll(if (std.math.isFinite(f)) numfmt.format(&nb, f) else "1");
@@ -453,7 +453,7 @@ fn generate(smith: *Smith, out: *Out) !void {
 
 fn fuzzGenerated(_: void, smith: *Smith) !void {
     const gpa = std.testing.allocator;
-    var buf: [64 << 10]u8 = undefined;
+    var buf: [64 << 10]u8 = @splat(0);
     var w = Out.init(&buf);
     generate(smith, &w) catch {}; // A full buffer cuts the document: still a test input.
     var p: Pair = undefined;
@@ -473,8 +473,8 @@ fn fuzzNumbers(_: void, smith: *Smith) !void {
             break :blk if (smith.value(bool)) -x else x;
         };
         if (!std.math.isFinite(f)) continue;
-        var a: [numfmt.max_len]u8 = undefined;
-        var b: [numfmt.max_len]u8 = undefined;
+        var a: [numfmt.max_len]u8 = @splat(0);
+        var b: [numfmt.max_len]u8 = @splat(0);
         const want = numfmt.format(&a, f);
         const got = fast.formatNumber(&b, f);
         if (!std.mem.eql(u8, want, got)) {
@@ -492,22 +492,22 @@ fn fuzzNumbers(_: void, smith: *Smith) !void {
 
 fn fuzzWriteString(_: void, smith: *Smith) !void {
     // Valid WTF-8 (strings in a region): code points, lone surrogates included.
-    var s: [512]u8 = undefined;
+    var s: [512]u8 = @splat(0);
     var n: usize = 0;
     while (n + 4 <= s.len and !smith.eosWeightedSimple(30, 1)) {
         const cp: u21 = switch (smith.index(4)) {
             0 => smith.valueRangeAtMost(u21, 0, 0x7F),
             1 => smith.valueRangeAtMost(u21, 0, 0x20),
             2 => smith.valueRangeAtMost(u21, 0xD800, 0xDFFF),
-            else => smith.valueRangeAtMost(u21, 0x80, 0x10FFFF),
+            else => smith.valueRangeAtMost(u21, 0x80, 0x10FFFF), // else is the general code-point range.
         };
         if (cp >= 0xD800 and cp < 0xE000) {
             s[n..][0..3].* = .{ 0xED, @intCast(0x80 | ((cp >> 6) & 0x3F)), @intCast(0x80 | (cp & 0x3F)) };
             n += 3;
         } else n += std.unicode.utf8Encode(cp, s[n..][0..4]) catch unreachable; // cp is a scalar value.
     }
-    var ma: [4096]u8 = undefined;
-    var mb: [4096]u8 = undefined;
+    var ma: [4096]u8 = @splat(0);
+    var mb: [4096]u8 = @splat(0);
     var aa = Arena.init(&ma);
     var ab = Arena.init(&mb);
     var ba = aa.builder();
@@ -522,7 +522,7 @@ fn fuzzWriteString(_: void, smith: *Smith) !void {
 
 fn seed(comptime s: []const u8) *const [4 + s.len]u8 {
     return comptime blk: {
-        var out: [4 + s.len]u8 = undefined;
+        var out: [4 + s.len]u8 = @splat(0);
         std.mem.writeInt(u32, out[0..4], s.len, .little);
         @memcpy(out[4..], s);
         const final = out;

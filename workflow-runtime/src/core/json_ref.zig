@@ -58,7 +58,7 @@ fn encodeWith(vm: *Vm, b: *Builder, v: Value, indent: []const u8, stack: *[ops.m
                 if (value.isHeap(child) and f.v == child) return vm.throwMsg(.type_error, "Converting circular structure to JSON", .{});
             }
             if (sp == ops.max_depth) return vm.limit(.depth);
-            _ = try writeScalarOrOpen(vm, b, child, stack, &sp);
+            _ = try writeScalarOrOpen(vm, b, child, stack, &sp); // the bool return is not needed here.
             continue;
         }
         if (top.wrote) try newline(b, indent, sp - 1);
@@ -72,7 +72,7 @@ fn encodable(v: Value, vm: *Vm) bool {
     return switch (value.kindOf(v)) {
         .undefined => false,
         .ref => vm.r.hdr(value.payload(v)).kind != .closure,
-        else => true,
+        else => true, // the other scalar kinds are not on the heap.
     };
 }
 
@@ -136,7 +136,7 @@ fn writeScalarOrOpen(vm: *Vm, b: *Builder, v: Value, stack: []Frame, sp: *usize)
             if (std.math.isNan(f) or std.math.isInf(f)) {
                 try b.append("null");
             } else {
-                var nb: [numfmt.max_len]u8 = undefined;
+                var nb: [numfmt.max_len]u8 = @splat(0);
                 try b.append(numfmt.format(&nb, f));
             }
         },
@@ -199,7 +199,7 @@ pub fn writeString(b: *Builder, s: []const u8) Err!void {
         if (c == 0xED and i + 2 < s.len and s[i + 1] >= 0xA0) {
             try b.append(s[start..i]);
             const u: u21 = (@as(u21, 0xD) << 12) | (@as(u21, s[i + 1] & 0x3F) << 6) | (s[i + 2] & 0x3F);
-            var hb: [6]u8 = undefined;
+            var hb: [6]u8 = @splat(0);
             _ = std.fmt.bufPrint(&hb, "\\u{x:0>4}", .{u}) catch unreachable; // 6 bytes fit "\uXXXX".
             try b.append(&hb);
             start = i + 3;
@@ -214,14 +214,14 @@ pub fn writeString(b: *Builder, s: []const u8) Err!void {
             '\t' => "\\t",
             0x08 => "\\b",
             0x0C => "\\f",
-            else => null,
+            else => null, // the other control bytes have no short escape.
         };
         if (esc == null and c >= 0x20) continue;
         try b.append(s[start..i]);
         if (esc) |e| {
             try b.append(e);
         } else {
-            var hb: [6]u8 = undefined;
+            var hb: [6]u8 = @splat(0);
             _ = std.fmt.bufPrint(&hb, "\\u{x:0>4}", .{c}) catch unreachable; // 6 bytes fit "\u00XX".
             try b.append(&hb);
         }
@@ -241,7 +241,7 @@ const DFrame = struct { v: Value, key: Value = value.undef };
 /// inside the VM when `throw_on_error` is set, else returns error.Syntax.
 pub fn decode(vm: *Vm, src: []const u8) DecodeError!Value {
     @setRuntimeSafety(false);
-    var keys: KeyCache = undefined;
+    var keys: KeyCache = .{ .vals = @splat(value.undef) };
     @memset(&keys.vals, value.undef);
     // Safe builds fill `undefined` memory with 0xAA; for this stack (kilobytes,
     // on every call) the fill cost more than the work. The callee keeps safety.
@@ -284,7 +284,7 @@ fn decodeWith(vm: *Vm, src: []const u8, stack: *[ops.max_depth]DFrame, keys: *Ke
             continue;
         }
         const c = p.peek();
-        var v: Value = undefined;
+        var v: Value = 0;
         switch (c) {
             '{', '[' => {
                 p.i += 1;
@@ -298,7 +298,7 @@ fn decodeWith(vm: *Vm, src: []const u8, stack: *[ops.max_depth]DFrame, keys: *Ke
             't' => v = try p.lit("true", value.true_),
             'f' => v = try p.lit("false", value.false_),
             'n' => v = try p.lit("null", value.null_),
-            else => v = value.num(try p.number()),
+            else => v = value.num(try p.number()), // else is a number.
         }
         if (try finishValue(vm, &p, stack[0..], &sp, v, &result)) return result;
     }
@@ -398,7 +398,7 @@ const Parser = struct {
             if (!(p.peek() >= '0' and p.peek() <= '9')) return error.Syntax;
             while (p.peek() >= '0' and p.peek() <= '9') p.i += 1;
         }
-        return std.fmt.parseFloat(f64, p.s[start..p.i]) catch error.Syntax;
+        return std.fmt.parseFloat(f64, p.s[start..p.i]) catch error.Syntax; // a malformed number is a syntax error.
     }
 
     fn string(p: *Parser, vm: *Vm) DecodeError!Value {
@@ -472,7 +472,7 @@ const Parser = struct {
             'n' => '\n',
             'r' => '\r',
             't' => '\t',
-            else => null,
+            else => null, // any other escape is not valid JSON.
         };
         if (simple) |ch| return b.byte(ch);
         if (e != 'u') return error.Syntax;
@@ -487,7 +487,7 @@ const Parser = struct {
             }
         }
         if (cp >= 0xD800 and cp < 0xE000) cp = 0xFFFD; // A lone surrogate has no UTF-8 form.
-        var ub: [4]u8 = undefined;
+        var ub: [4]u8 = @splat(0);
         const n = std.unicode.utf8Encode(cp, &ub) catch return error.Syntax;
         try b.append(ub[0..n]);
     }
@@ -505,6 +505,6 @@ const Parser = struct {
 fn utf8Valid(s: []const u8) usize {
     const n = std.unicode.utf8ByteSequenceLength(s[0]) catch return 0;
     if (n > s.len) return 0;
-    _ = std.unicode.utf8Decode(s[0..n]) catch return 0;
+    _ = std.unicode.utf8Decode(s[0..n]) catch return 0; // the decoded code point is not needed; only the length matters.
     return n;
 }

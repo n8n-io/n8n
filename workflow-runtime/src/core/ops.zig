@@ -5,7 +5,7 @@ const std = @import("std");
 const value = @import("value.zig");
 const heap = @import("heap.zig");
 const numfmt = @import("numfmt.zig");
-const date = @import("date.zig");
+const date_fmt = @import("date_fmt.zig");
 const mem = @import("mem.zig");
 const perf = @import("perf.zig");
 const Arena = @import("arena.zig").Arena;
@@ -75,7 +75,7 @@ pub const Vm = struct {
     // ---- strings -------------------------------------------------------
 
     /// The byte length of a string value, without its bytes.
-    pub fn strLen(vm: *const Vm, v: Value) usize {
+    fn strLen(vm: *const Vm, v: Value) usize {
         const p = value.payload(v);
         if (p >= value.const_handle_base) {
             if (mem.enabled) mem.rd(vm.r.probe, .const_strings, .interp_const, vm.m.str_offsets.ptr + (p - value.const_handle_base), 8);
@@ -125,8 +125,8 @@ pub const Vm = struct {
     }
 
     pub fn throwMsg(vm: *Vm, kind: ErrKind, comptime fmt: []const u8, args: anytype) Err {
-        var buf: [256]u8 = undefined;
-        const msg_bytes = std.fmt.bufPrint(&buf, fmt, args) catch buf[0..];
+        var buf: [256]u8 = @splat(0);
+        const msg_bytes = std.fmt.bufPrint(&buf, fmt, args) catch buf[0..]; // the callers' messages stay under 256 bytes.
         const msg = try vm.newStr(msg_bytes);
         vm.thrown = try vm.makeError(kind, msg);
         return error.Throw;
@@ -148,7 +148,7 @@ pub const Vm = struct {
             .undefined, .null => false,
             .boolean => value.payload(v) != 0,
             .string => vm.str(v).len != 0,
-            else => true,
+            else => true, // every other kind is truthy.
         };
     }
 
@@ -195,7 +195,7 @@ pub const Vm = struct {
     /// recursion: nested arrays use an explicit stack.
     pub fn appendString(vm: *Vm, b: *Builder, v: Value) Err!void {
         if (value.kindOf(v) != .array) return vm.appendScalarString(b, v);
-        var stack: [max_depth]struct { off: u32, i: u32 } = undefined;
+        var stack: [max_depth]struct { off: u32, i: u32 } = @splat(.{ .off = 0, .i = 0 });
         var sp: usize = 1;
         stack[0] = .{ .off = value.payload(v), .i = 0 };
         while (sp > 0) {
@@ -221,7 +221,7 @@ pub const Vm = struct {
     fn appendScalarString(vm: *Vm, b: *Builder, v: Value) Err!void {
         switch (value.kindOf(v)) {
             .number => {
-                var nb: [numfmt.max_len]u8 = undefined;
+                var nb: [numfmt.max_len]u8 = @splat(0);
                 try b.append(numfmt.format(&nb, value.asNum(v)));
             },
             .undefined => try b.append("undefined"),
@@ -232,7 +232,7 @@ pub const Vm = struct {
             .ref => if (vm.dateTime(v)) |t| {
                 // JavaScript writes a Date as its `toString` text.
                 if (std.math.isNan(t)) return b.append("Invalid Date");
-                try date.appendFormat(b, t, .string);
+                try date_fmt.appendFormat(b, t, .string);
             } else try b.append("function () { [native code] }"),
             .array => unreachable, // appendString handles arrays.
         }
@@ -255,7 +255,7 @@ pub const Vm = struct {
         return switch (ka) {
             .number => value.asNum(a) == value.asNum(b),
             .string => a == b or (vm.strLen(a) == vm.strLen(b) and vm.bytesEql(a, b)),
-            else => a == b,
+            else => a == b, // the other kinds compare by their bit pattern.
         };
     }
 
@@ -301,7 +301,7 @@ pub const Vm = struct {
             .array, .object => vm.toStr(v),
             // JavaScript compares a Date by its time value.
             .ref => if (vm.dateTime(v)) |t| value.num(t) else vm.toStr(v),
-            else => v,
+            else => v, // the other kinds convert to themselves.
         };
     }
 
@@ -492,7 +492,7 @@ pub const Vm = struct {
                 return vm.charAt(obj, idx);
             },
             .undefined, .null => return vm.throwMsg(.type_error, "Cannot read properties of {s} (reading '{s}')", .{ if (value.kindOf(obj) == .null) "null" else "undefined", key }),
-            else => return value.undef,
+            else => return value.undef, // a missing property reads as undefined.
         }
     }
 
@@ -534,7 +534,7 @@ pub const Vm = struct {
             const lo = @min(a, bytes.len);
             return vm.newStr(bytes[lo..@min(b, bytes.len)]);
         }
-        var buf: [8]u8 = undefined;
+        var buf: [8]u8 = @splat(0);
         var pre: []const u8 = &.{};
         var post: []const u8 = &.{};
         var start_unit = a;
@@ -566,7 +566,7 @@ pub const Vm = struct {
                     break :blk if (f >= 0 and f == @trunc(f) and f < 4294967295) @as(u32, @intFromFloat(f)) else null;
                 },
                 .string => arrayIndex(vm.str(key)),
-                else => null,
+                else => null, // a non-string key is not an array index.
             };
             if (idx) |i| return vm.arrSet(value.payload(obj), i, v);
             if (value.kindOf(key) == .string and std.mem.eql(u8, vm.str(key), "length")) {
@@ -586,7 +586,7 @@ pub const Vm = struct {
         try vm.objSet(value.payload(obj), ks, v);
     }
 
-    pub fn arrSet(vm: *Vm, off: u32, idx: u32, v: Value) Err!void {
+    fn arrSet(vm: *Vm, off: u32, idx: u32, v: Value) Err!void {
         const len = vm.r.at(heap.Arr, off).len;
         if (idx >= len) {
             if (idx - len > 1_000_000) return vm.limit(.memory);
@@ -616,7 +616,7 @@ pub const Vm = struct {
         return switch (value.kindOf(obj)) {
             .object => vm.objFind(value.payload(obj), ks) != null,
             .array => std.mem.eql(u8, ks, "length") or (if (arrayIndex(ks)) |i| i < vm.r.at(heap.Arr, value.payload(obj)).len else false),
-            else => vm.throwMsg(.type_error, "Cannot use 'in' operator to search for '{s}'", .{ks}),
+            else => vm.throwMsg(.type_error, "Cannot use 'in' operator to search for '{s}'", .{ks}), // `in` on a non-array throws.
         };
     }
 };
@@ -636,14 +636,14 @@ pub fn arrayIndex(key: []const u8) ?u32 {
 
 /// Byte range of UTF-16 code units [from, to) in UTF-8 `bytes`. Indices are
 /// clamped. A surrogate pair counts as two units and is kept whole.
-pub fn utf16Range(bytes: []const u8, from: u32, to: u32) [2]usize {
+fn utf16Range(bytes: []const u8, from: u32, to: u32) [2]usize {
     var unit: u32 = 0;
     var i: usize = 0;
     var start: ?usize = null;
     while (i < bytes.len) {
         if (start == null and unit >= from) start = i;
         if (unit >= to) break;
-        const n = std.unicode.utf8ByteSequenceLength(bytes[i]) catch 1;
+        const n = std.unicode.utf8ByteSequenceLength(bytes[i]) catch 1; // an invalid lead byte advances by one byte.
         unit += if (n == 4) 2 else 1;
         i += n;
     }
@@ -658,7 +658,7 @@ fn pairAt(bytes: []const u8, idx: u32) ?PairHit {
     var unit: u32 = 0;
     var i: usize = 0;
     while (i < bytes.len and unit <= idx) {
-        const n = std.unicode.utf8ByteSequenceLength(bytes[i]) catch 1;
+        const n = std.unicode.utf8ByteSequenceLength(bytes[i]) catch 1; // an invalid lead byte advances by one byte.
         if (n == 4 and unit + 1 == idx and i + 4 <= bytes.len) {
             const cp = std.unicode.utf8Decode(bytes[i..][0..4]) catch return null;
             return .{ .second = true, .high = @intCast(0xD800 + ((cp - 0x10000) >> 10)), .low = @intCast(0xDC00 + ((cp - 0x10000) & 0x3FF)) };
@@ -670,7 +670,7 @@ fn pairAt(bytes: []const u8, idx: u32) ?PairHit {
 }
 
 /// WTF-8 form of a lone surrogate.
-pub fn encodeSurrogate(out: []u8, u: u21) []const u8 {
+fn encodeSurrogate(out: []u8, u: u21) []const u8 {
     out[0] = 0xED;
     out[1] = @intCast(0x80 | ((u >> 6) & 0x3F));
     out[2] = @intCast(0x80 | (u & 0x3F));
@@ -682,7 +682,7 @@ pub fn byteToUtf16(bytes: []const u8, byte_off: usize) u32 {
     var unit: u32 = 0;
     var i: usize = 0;
     while (i < byte_off and i < bytes.len) {
-        const n = std.unicode.utf8ByteSequenceLength(bytes[i]) catch 1;
+        const n = std.unicode.utf8ByteSequenceLength(bytes[i]) catch 1; // an invalid lead byte advances by one byte.
         unit += if (n == 4) 2 else 1;
         i += n;
     }
@@ -706,8 +706,8 @@ pub fn compareUtf16(a: []const u8, b: []const u8) std.math.Order {
 /// Decode one code point and return its first UTF-16 unit. A supplementary
 /// code point returns its high surrogate; its low surrogate is compared too.
 fn firstUnit(s: []const u8, i: *usize) u32 {
-    const n = std.unicode.utf8ByteSequenceLength(s[i.*]) catch 1;
-    const cp: u32 = if (n == 1 or i.* + n > s.len) s[i.*] else std.unicode.utf8Decode(s[i.*..][0..n]) catch s[i.*];
+    const n = std.unicode.utf8ByteSequenceLength(s[i.*]) catch 1; // an invalid lead byte advances by one byte.
+    const cp: u32 = if (n == 1 or i.* + n > s.len) s[i.*] else std.unicode.utf8Decode(s[i.*..][0..n]) catch s[i.*]; // bad UTF-8 passes the byte through.
     i.* += n;
     // Key = first unit in the high half, second unit (if any) in the low half.
     if (cp < 0x10000) return cp << 16;

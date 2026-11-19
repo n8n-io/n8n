@@ -197,9 +197,9 @@ pub const given_id_flag: u64 = 1 << 62;
 /// The secret comes from the shell's CSPRNG through a logged event, so a
 /// replay gives the same signature; the signature itself is never logged.
 pub fn resumeSignature(secret: *const [32]u8, exec_id: u64, out: *[32]u8) []const u8 {
-    var msg: [8]u8 = undefined;
+    var msg: [8]u8 = @splat(0);
     std.mem.writeInt(u64, &msg, exec_id, .little);
-    var mac: [32]u8 = undefined;
+    var mac: [32]u8 = @splat(0);
     std.crypto.auth.hmac.sha2.HmacSha256.create(&mac, &msg, secret);
     out.* = std.fmt.bytesToHex(mac[0..16], .lower);
     return out;
@@ -216,8 +216,8 @@ pub fn signatureEql(a: []const u8, b: []const u8) bool {
 /// The text form of an execution id (spec 9.1): the number n8n gave, or
 /// `wfrt-<n>` for an id the core made.
 pub fn formatExecId(id: u64, buf: *[32]u8) []const u8 {
-    if (id & given_id_flag != 0) return std.fmt.bufPrint(buf, "{d}", .{id & ~given_id_flag}) catch unreachable;
-    return std.fmt.bufPrint(buf, "wfrt-{d}", .{id}) catch unreachable;
+    if (id & given_id_flag != 0) return std.fmt.bufPrint(buf, "{d}", .{id & ~given_id_flag}) catch unreachable; // 32 bytes hold any u64.
+    return std.fmt.bufPrint(buf, "wfrt-{d}", .{id}) catch unreachable; // 32 bytes hold any u64.
 }
 
 /// ctx.trace calls produce trace actions.
@@ -484,7 +484,7 @@ pub const Region = struct {
         return off;
     }
 
-    pub fn bytesAt(r: *const Region, off: u32) []u8 {
+    fn bytesAt(r: *const Region, off: u32) []u8 {
         const h = r.hdr(off);
         return r.buf[off + @sizeOf(Hdr) ..][0 .. h.size - @sizeOf(Hdr)];
     }
@@ -703,7 +703,7 @@ pub fn utf16Len(bytes: []const u8) u32 {
 pub fn compact(src: *Region, dst: *Region) Error!void {
     std.debug.assert(dst.used == 0);
     std.debug.assert(src.hdr(0).kind == .exec);
-    _ = try forward(src, dst, 0);
+    _ = try forward(src, dst, 0); // the root object's new offset is not needed; the scan walks dst.
     var scan: u32 = 0;
     while (scan < dst.used) {
         const h = dst.hdr(scan);

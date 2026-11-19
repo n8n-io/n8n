@@ -41,7 +41,7 @@ pub const Error = error{
     TooWide,
 };
 
-pub const max_cols = 256;
+const max_cols = 256;
 
 pub const Kind = enum(u8) {
     /// A string whose JSON text is `src[ref..][0..len]`, with no escapes and
@@ -94,12 +94,12 @@ pub const Batch = struct {
     slot_last_col: []u16,
     order: []u16,
 
-    pub fn cellCount(b: *const Batch) u32 {
+    fn cellCount(b: *const Batch) u32 {
         return b.ncells;
     }
 
     /// The string bytes of a string cell (raw or decoded).
-    pub fn cellBytes(b: *const Batch, i: u32) []const u8 {
+    fn cellBytes(b: *const Batch, i: u32) []const u8 {
         return switch (b.kind[i]) {
             .raw => b.src[b.ref[i]..][0..b.len[i]],
             .text => b.text[b.ref[i]..][0..b.len[i]],
@@ -116,7 +116,7 @@ pub const Batch = struct {
 
 /// Read a Sheets `values` answer (`{"range":..,"values":[[..],..]}`) into a
 /// batch. Every allocation comes from `arena` and lasts until its reset.
-pub fn fromSheetValues(arena: *Arena, src: []const u8, opts: Options) Error!Batch {
+fn fromSheetValues(arena: *Arena, src: []const u8, opts: Options) Error!Batch {
     // Each cell needs a byte and a comma; one more of each for safety.
     const cap: u32 = @intCast(src.len / 2 + 2);
     const rows_cap: u32 = @intCast(src.len / 2 + 2);
@@ -188,7 +188,7 @@ fn skipValue(sc: *fast.Scanner, src: []const u8, p_in: u32) Error!void {
                 assert(src[close] == '"');
             },
             ',', ':' => if (depth == 0) return error.Syntax,
-            else => {},
+            else => {}, // every other byte advances the position.
         }
         if (depth == 0) return;
         p = sc.next() orelse return error.Syntax;
@@ -256,9 +256,9 @@ fn readCell(b: *Batch, sc: *fast.Scanner, p: u32, tb: *Builder) Error!void {
             // Valid UTF-8 without escapes stays raw too.
             if (rawUtf8(src, @intCast(j), close)) return addCell(b, .raw, start, close - start);
             const at: u32 = @intCast(tb.len);
-            _ = fast.unescape(Builder, tb, src, start, close) catch |e| switch (e) {
+            _ = fast.unescape(Builder, tb, src, start, close) catch |e| switch (e) { // the unescaped bytes are already appended; the returned slice is not needed.
                 error.ArenaFull => return error.ArenaFull,
-                else => return error.Syntax,
+                else => return error.Syntax, // any other failure is a syntax error.
             };
             return addCell(b, .text, at, @intCast(tb.len - at));
         },
@@ -268,7 +268,7 @@ fn readCell(b: *Batch, sc: *fast.Scanner, p: u32, tb: *Builder) Error!void {
             const w: usize = switch (src[p]) {
                 't' => 0,
                 'f' => 1,
-                else => 2,
+                else => 2, // else is `n`.
             };
             const word = words[w];
             if (src.len - p < word.len or !std.mem.eql(u8, src[p..][0..word.len], word)) return error.Syntax;
@@ -276,7 +276,7 @@ fn readCell(b: *Batch, sc: *fast.Scanner, p: u32, tb: *Builder) Error!void {
             return addCell(b, kinds[w], 0, 0);
         },
         '{', '[' => return error.Shape,
-        else => return addNumber(b, try fast.parseNumber(src, p)),
+        else => return addNumber(b, try fast.parseNumber(src, p)), // else is a number.
     }
 }
 
@@ -330,7 +330,7 @@ fn resolve(b: *Batch, tb: *Builder) Error!void {
                     named = true;
                 },
                 .number => if (b.nums[b.ref[i]] != 0 and !std.math.isNan(b.nums[b.ref[i]])) {
-                    var nb: [32]u8 = undefined;
+                    var nb: [32]u8 = @splat(0);
                     try tb.append(fast.formatNumber(&nb, b.nums[b.ref[i]]));
                     named = true;
                 },
@@ -342,7 +342,7 @@ fn resolve(b: *Batch, tb: *Builder) Error!void {
             }
         }
         if (!named) {
-            var nb: [24]u8 = undefined;
+            var nb: [24]u8 = @splat(0);
             try tb.append(std.fmt.bufPrint(&nb, "col_{d}", .{c}) catch unreachable); // 24 bytes hold any u32.
         }
         const key = tb.bytes()[at..];
@@ -410,7 +410,7 @@ fn valueCol(b: *const Batch, s: u16, row_len: u32) ?u32 {
 }
 
 /// The items as a JSON array, as JSON.stringify writes them.
-pub fn writeItems(b: *const Batch, out: *Builder) Error!void {
+fn writeItems(b: *const Batch, out: *Builder) Error!void {
     try out.byte('[');
     var wrote = false;
     var r = b.opts.first_data_row;
@@ -446,7 +446,7 @@ fn writeCell(b: *const Batch, i: u32, out: *Builder) Error!void {
         .number => {
             const f = b.nums[b.ref[i]];
             if (!std.math.isFinite(f)) return out.append("null");
-            var nb: [32]u8 = undefined;
+            var nb: [32]u8 = @splat(0);
             try out.append(fast.formatNumber(&nb, f));
         },
         .true_ => try out.append("true"),
@@ -457,9 +457,9 @@ fn writeCell(b: *const Batch, i: u32, out: *Builder) Error!void {
 
 /// The items as region values: an array of objects. Each key is one
 /// string for the whole batch, and each object is allocated at its size.
-pub fn materialize(vm: *Vm, b: *const Batch) ops.Err!Value {
+fn materialize(vm: *Vm, b: *const Batch) ops.Err!Value {
     const r = vm.r;
-    var keys: [max_cols]Value = undefined;
+    var keys: [max_cols]Value = @splat(0);
     for (0..b.nslots) |s| {
         const k = b.slot_key[s];
         keys[s] = try vm.newStr(b.text[k[0]..][0..k[1]]);
@@ -515,7 +515,7 @@ const T = struct {
     var region_mem: [1 << 20]u8 align(8) = undefined;
     var scratch_mem: [2 << 20]u8 = undefined;
     var batch_mem: [1 << 20]u8 = undefined;
-    var natives: [8]u16 = undefined;
+    var natives: [8]u16 = @splat(0);
 
     m: module.Module,
     bytes: []u8,
@@ -570,19 +570,19 @@ fn treeItems(vm: *Vm, src: []const u8, opts: Options, out: *Builder) !void {
     if (key_row < n and opts.first_data_row >= key_row) {
         var longest: usize = 0;
         for (data[0..n]) |row| longest = @max(longest, row.len);
-        var keys: [max_cols]Value = undefined;
+        var keys: [max_cols]Value = @splat(0);
         for (0..longest) |c| {
             const h: Value = if (opts.row_number and c == 0) try vm.newStr("row_number") else if (c < data[key_row].len) data[key_row][c] else value.undef;
             keys[c] = if (vm.truthy(h)) switch (value.kindOf(h)) {
                 .string => h,
                 .number => blk: {
-                    var nb: [32]u8 = undefined;
+                    var nb: [32]u8 = @splat(0);
                     break :blk try vm.newStr(fast.formatNumber(&nb, value.asNum(h)));
                 },
                 .boolean => try vm.newStr("true"),
                 else => return error.Shape, // The batch takes scalar cells only.
             } else blk: {
-                var nb: [24]u8 = undefined;
+                var nb: [24]u8 = @splat(0);
                 break :blk try vm.newStr(try std.fmt.bufPrint(&nb, "col_{d}", .{c}));
             };
         }
@@ -596,7 +596,7 @@ fn treeItems(vm: *Vm, src: []const u8, opts: Options, out: *Builder) !void {
             if (vm.r.objEntries(value.payload(o)).len > 0) try vm.r.arrPush(value.payload(items), o);
         }
     }
-    _ = try json.encode(vm, out, items, "");
+    _ = try json.encode(vm, out, items, ""); // the bool return is not needed.
 }
 
 fn checkSheet(t: *T, src: []const u8, opts: Options) !void {
@@ -615,7 +615,7 @@ fn checkSheet(t: *T, src: []const u8, opts: Options) !void {
     const want = want_b.finish();
     const b = fromSheetValues(&t.batch, src, opts) catch |e| switch (e) {
         error.Shape, error.TooWide => return,
-        else => {
+        else => { // any other error is unexpected; print and continue.
             std.debug.print("batch failed ({s}) on {s}\n", .{ @errorName(e), src });
             return e;
         },
@@ -626,10 +626,10 @@ fn checkSheet(t: *T, src: []const u8, opts: Options) !void {
         std.debug.print("items differ for {s}:\ntree  {s}\nbatch {s}\n", .{ src, want, got.bytes() });
         return error.ItemsDiffer;
     }
-    _ = got.finish();
+    _ = got.finish(); // the returned bytes are not needed.
     const v = try materialize(&t.vm, &b);
     var mat = t.scratch.builder();
-    _ = try json.encode(&t.vm, &mat, v, "");
+    _ = try json.encode(&t.vm, &mat, v, ""); // the bool return is not needed.
     if (!std.mem.eql(u8, want, mat.bytes())) {
         std.debug.print("materialized items differ for {s}:\ntree {s}\nmat  {s}\n", .{ src, want, mat.bytes() });
         return error.MaterializeDiffers;

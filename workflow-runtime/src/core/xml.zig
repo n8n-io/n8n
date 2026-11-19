@@ -95,7 +95,7 @@ fn nameStart(u: u21) bool {
         ':', '_', 'A'...'Z', 'a'...'z' => true,
         0xC0...0xD6, 0xD8...0xF6, 0xF8...0x2FF, 0x370...0x37D, 0x37F...0x1FFF, 0x200C...0x200D => true,
         0x2070...0x218F, 0x2C00...0x2FEF, 0x3001...0xD7FF, 0xF900...0xFDCF, 0xFDF0...0xFFFD => true,
-        else => false,
+        else => false, // any other code point does not start a name.
     };
 }
 
@@ -103,7 +103,7 @@ fn nameStart(u: u21) bool {
 fn nameBody(u: u21) bool {
     return nameStart(u) or switch (u) {
         0xB7, 0x300...0x36F, 0x203F...0x2040, '.', '0'...'9', '-' => true,
-        else => false,
+        else => false, // any other code point is not a name character.
     };
 }
 
@@ -111,7 +111,7 @@ fn nameBody(u: u21) bool {
 fn jsSpace(cp: u21) bool {
     return switch (cp) {
         '\t', '\n', 0x0B, 0x0C, '\r', ' ', 0xA0, 0x1680, 0x2000...0x200A, 0x2028, 0x2029, 0x202F, 0x205F, 0x3000, 0xFEFF => true,
-        else => false,
+        else => false, // any other code point is not XML whitespace.
     };
 }
 
@@ -131,8 +131,8 @@ fn onlySpace(bytes: []const u8) bool {
 fn sanitized(vm: *Vm, name: []const u8) Err!Value {
     for ([_][]const u8{ "__proto__", "constructor", "prototype" }) |bad| {
         if (std.mem.eql(u8, name, bad)) {
-            var buf: [32]u8 = undefined;
-            return vm.newStr(std.fmt.bufPrint(&buf, "sanitized_{s}", .{name}) catch unreachable);
+            var buf: [32]u8 = @splat(0);
+            return vm.newStr(std.fmt.bufPrint(&buf, "sanitized_{s}", .{name}) catch unreachable); // the name is at most 11 bytes, so 32 always fit.
         }
     }
     return vm.newStr(name);
@@ -307,14 +307,14 @@ pub fn parse(vm: *Vm, input_in: []const u8, fail: *Failure) Error!Value {
 
     // Each pass reads one code point, so the input length bounds the loop.
     while (i < input.len) {
-        const n = std.unicode.utf8ByteSequenceLength(input[i]) catch 1;
+        const n = std.unicode.utf8ByteSequenceLength(input[i]) catch 1; // an invalid lead byte is a single byte.
         const at = i;
         const cp: u21 = blk: {
             if (n == 1 or i + n > input.len) break :blk input[i];
             if (n == 3 and input[i] == 0xED and input[i + 1] >= 0xA0) {
                 break :blk (@as(u21, input[i] & 0x0F) << 12) | (@as(u21, input[i + 1] & 0x3F) << 6) | (input[i + 2] & 0x3F);
             }
-            break :blk std.unicode.utf8Decode(input[i..][0..n]) catch 0xFFFD;
+            break :blk std.unicode.utf8Decode(input[i..][0..n]) catch 0xFFFD; // bad UTF-8 reads as U+FFFD.
         };
         i += if (i + n > input.len) 1 else n;
         // An astral character is two units: the high half is the one the
@@ -688,7 +688,7 @@ fn closeTag(vm: *Vm, stack: *[max_depth]Frame, depth: *usize, name: []const u8, 
 
 /// `Unmatched closing tag: <name>`, in the buffer of the failure.
 fn unmatched(fail: *Failure, name: []const u8) Error {
-    fail.message = std.fmt.bufPrint(&fail.msg_buf, "Unmatched closing tag: {s}", .{name[0..@min(name.len, 120)]}) catch "Unmatched closing tag";
+    fail.message = std.fmt.bufPrint(&fail.msg_buf, "Unmatched closing tag: {s}", .{name[0..@min(name.len, 120)]}) catch "Unmatched closing tag"; // a name over 120 bytes truncates.
     fail.char[0] = '>';
     fail.char_len = 1;
     return error.XmlSyntax;
@@ -696,6 +696,6 @@ fn unmatched(fail: *Failure, name: []const u8) Error {
 
 /// The error message as sax builds it.
 pub fn message(f: *const Failure, buf: []u8) []const u8 {
-    if (f.code_point) |cp| return std.fmt.bufPrint(buf, "Invalid code point {d}", .{cp}) catch f.message;
-    return std.fmt.bufPrint(buf, "{s}\nLine: {d}\nColumn: {d}\nChar: {s}", .{ f.message, f.line, f.column, f.char[0..f.char_len] }) catch f.message;
+    if (f.code_point) |cp| return std.fmt.bufPrint(buf, "Invalid code point {d}", .{cp}) catch f.message; // a short message that does not fit is fine.
+    return std.fmt.bufPrint(buf, "{s}\nLine: {d}\nColumn: {d}\nChar: {s}", .{ f.message, f.line, f.column, f.char[0..f.char_len] }) catch f.message; // as above.
 }

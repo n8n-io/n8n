@@ -29,13 +29,12 @@ pub const EventHeader = extern struct {
 /// Version 2 ("LOG2"): the record checksum is XXH3-64 folded to 32 bits, not
 /// CRC-32, which cost several percent of the CPU of a shard. A version 1 log
 /// stops at its first record.
-pub const batch_magic: u32 = 0x32474F4C;
+const batch_magic: u32 = 0x32474F4C;
 
 /// The checksum of a record body: torn and corrupt records stop the reader.
-pub fn checksum(body: []const u8) u32 {
-    const h = std.hash.XxHash3.hash(0, body);
-    return @truncate(h ^ (h >> 32));
-}
+/// Kept as a re-export so `core.zig` keeps compiling until it imports
+/// `checksum.zig` directly.
+pub const checksum = @import("checksum.zig").checksum;
 
 comptime {
     std.debug.assert(@sizeOf(BatchHeader) == 32);
