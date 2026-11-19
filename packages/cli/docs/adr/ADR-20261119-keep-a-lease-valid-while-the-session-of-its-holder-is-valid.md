@@ -19,9 +19,6 @@ truth for which main holds a lease, and its clock decides when a lease expires.
 A lease is valid while the session of its holder is valid. A main keeps one session for each lease
 kind that it registers. Only session rows are renewed. A lease row does not have its own expiry.
 
-A main drops its session before the session can expire in the database. When the main cannot
-confirm a renewal in time, it stops using the session and deletes its row.
-
 The main reason is performance. A session is a batched renewal: one write renews every lease that
 the main holds for the kind.
 
