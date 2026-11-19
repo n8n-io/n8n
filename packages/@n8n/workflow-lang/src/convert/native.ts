@@ -84,6 +84,18 @@ function startPairs(c: NodeContext, out: string, output = 0): string | null {
 	return pairVar;
 }
 
+/**
+ * Starts paired item tracking for the output of a Merge node when a later expression reads
+ * through it. `paired` has the index of each output item in its input, `inputs` the input.
+ */
+function startMergePairs(c: NodeContext, out: string): string | null {
+	if (c.pairsWanted !== true || c.setPairs === undefined) return null;
+	const pairVar = `${out}PairData`;
+	c.w.line(`const ${pairVar}: Json = { items: ${out}, paired: [], inputs: [] };`);
+	c.setPairs(pairVar, 0, false, `${pairVar}.inputs`);
+	return pairVar;
+}
+
 const mapParams = (index: boolean) =>
 	index ? `(${ITEM}: Json, ${INDEX}: number)` : `(${ITEM}: Json)`;
 
@@ -189,7 +201,8 @@ export function lowerFilter(c: NodeContext): void {
 		c.w.line(`if (${code}) { ${kept}.push(${ITEM}); ${pairVar}.paired.push(${INDEX}); }`);
 		c.w.line(`else { ${discarded}.push(${ITEM}); ${droppedPairs}.paired.push(${INDEX}); }`);
 	} else {
-		if (pairVar) c.w.line(`if (${code}) { ${kept}.push(${ITEM}); ${pairVar}.paired.push(${INDEX}); }`);
+		if (pairVar)
+			c.w.line(`if (${code}) { ${kept}.push(${ITEM}); ${pairVar}.paired.push(${INDEX}); }`);
 		else c.w.line(`if (${code}) ${kept}.push(${ITEM});`);
 		c.w.line(`else ${discarded}.push(${ITEM});`);
 	}
@@ -718,6 +731,16 @@ export function lowerMerge(c: NodeContext): void {
 			: undefined;
 	if (mode === 'append') {
 		c.w.line(`const ${out}: Json[] = [${inputs.map((x) => `...${x}`).join(', ')}];`);
+		const pairs = startMergePairs(c, out);
+		if (pairs !== null) {
+			const at = c.local('index');
+			inputs.forEach((list, k) => {
+				c.w.open(`for (let ${at} = 0; ${at} < ${list}.length; ${at}++) {`);
+				c.w.line(`${pairs}.paired.push(${at});`);
+				c.w.line(`${pairs}.inputs.push(${k});`);
+				c.w.close('}');
+			});
+		}
 		return;
 	}
 	if (mode === 'chooseBranch') {
@@ -735,16 +758,31 @@ export function lowerMerge(c: NodeContext): void {
 		const output = p.output ?? 'specifiedInput';
 		const chosen =
 			output === 'empty' ? '[{}]' : (inputs[Number(p.useDataOfInput ?? 1) - 1] ?? inputs[0]);
+		// The pairs of the chosen input: its index is the input of each output item. The
+		// output "empty" gives an item that is not an item of an input, so it keeps none.
+		const choosePairs = (list: string, input: number) => {
+			if (output === 'empty') return;
+			const pairs = startMergePairs(c, out);
+			if (pairs === null) return;
+			const at = c.local('index');
+			c.w.open(`for (let ${at} = 0; ${at} < ${list}.length; ${at}++) {`);
+			c.w.line(`${pairs}.paired.push(${at});`);
+			c.w.line(`${pairs}.inputs.push(${input});`);
+			c.w.close('}');
+		};
 		if (c.version < 3 && output !== 'empty') {
 			const v2 = p.output === 'input2' ? inputs[1] : inputs[0];
 			c.notRunWhen?.(`!(${all})`);
 			c.w.line(`const ${out}: Json[] = ${all} ? ${v2} : [];`);
+			choosePairs(v2, p.output === 'input2' ? 1 : 0);
 			return;
 		}
 		// v1 runs this mode only when every input has items (`requiredInputs`); else the
 		// node does not run.
 		c.notRunWhen?.(`!(${all})`);
 		c.w.line(`const ${out}: Json[] = ${all} ? ${chosen} : [];`);
+		const wanted = Number(p.useDataOfInput ?? 1) - 1;
+		choosePairs(chosen, wanted >= 0 && wanted < inputs.length ? wanted : 0);
 		return;
 	}
 	const combineBy =

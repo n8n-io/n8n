@@ -72,7 +72,11 @@ export interface NodeContext {
 	 * when the code of the node gives each output item the index of an input item of the
 	 * run, by construction: then a read of the paired item cannot fail.
 	 */
-	setPairs?(run: string, output?: number, total?: boolean): void;
+	/**
+	 * Records the pair data of an output. `inputs` gives the code of the list with the input
+	 * index of each item, for a node with several inputs (the Merge node).
+	 */
+	setPairs?(run: string, output?: number, total?: boolean, inputs?: string): void;
 	/** True when the source traces every node (`trace: 'all'`), sub-nodes of AI clusters too. */
 	traceAll?: boolean;
 	/** Code of a condition under which the node gives no output at all (v1 run data has none). */

@@ -253,6 +253,7 @@ interface PairPath {
 	output: number;
 	adjacent: boolean;
 	fork?: undefined;
+	merge?: undefined;
 }
 
 /**
@@ -266,7 +267,24 @@ interface PairFork {
 	alternatives: Array<PairPath & { from: string; via: number }>;
 }
 
-type PairWalk = { reason: string } | PairPath | { fork: PairFork; hops: PairHop[] };
+/**
+ * A Merge node on the way whose inputs are the fork: v1 pairs each output item with an item
+ * of one input (`{ item: i }` for input 0, `{ item: i, input: k }` for input k), so the pair
+ * data of the run gives the input of each item. Each input with one connection has a walk
+ * from that connection to the target, as an alternative of the fork.
+ */
+interface PairMerge {
+	node: string;
+	/** The pair data of the run: `paired` gives the index in the input, `inputs` the input. */
+	run: string;
+	alternatives: Array<PairPath & { from: string; via: number; input: number }>;
+}
+
+type PairWalk =
+	| { reason: string }
+	| PairPath
+	| { fork: PairFork; hops: PairHop[]; merge?: undefined }
+	| { merge: PairMerge; hops: PairHop[]; fork?: undefined };
 
 const START = 'Start';
 
@@ -291,7 +309,10 @@ class Body {
 	 * The compiled nodes that give the paired item of each output item: the code of the
 	 * result of the node (`{ items, paired }`) and of its input list.
 	 */
-	readonly pairs = new Map<string, { run: string; input: string; total?: boolean }>();
+	readonly pairs = new Map<
+		string,
+		{ run: string; input: string; total?: boolean; inputs?: string }
+	>();
 
 	/** Why a node keeps no paired items, by node name: fixed words, for `pairingReason`. */
 	readonly noPairs = new Map<string, string>();
@@ -716,7 +737,7 @@ export class ModuleGenerator {
 					for (const e of inc) {
 						const cont = this.walkOn(b, cur, e, target, [...path], [...hops], single, false);
 						if ('reason' in cont) return cont;
-						if (cont.fork !== undefined) {
+						if (cont.fork !== undefined || cont.merge !== undefined) {
 							return { reason: 'several nodes with several connections on the way' };
 						}
 						alternatives.push({
@@ -762,6 +783,16 @@ export class ModuleGenerator {
 				if (again !== null) return { reason: again };
 				return { hops, direct: false, first: true, output: 0, adjacent: false };
 			}
+			const mergeWalk = this.mergeWalkOf(
+				b,
+				parent,
+				target,
+				[...path, edge.from],
+				hops,
+				single,
+				allowFork,
+			);
+			if (mergeWalk !== null) return mergeWalk;
 			const pairs = b.pairs.get(`${edge.from}|${edge.output}`);
 			if (!parent.executeOnce && (ONE_TO_ONE.has(parent.type) || parent.disabled)) {
 				cur = edge.from;
@@ -782,6 +813,60 @@ export class ModuleGenerator {
 		}
 		return { reason: 'the walk does not end' };
 	}
+	/**
+	 * The walk through a Merge node, as a fork by input: each of its output items is an item
+	 * of one input, and that input's one connection continues the walk. Null for another node.
+	 * A mode that keeps no pairs, an input with several connections and a second fork on the
+	 * way give the reason of a refusal.
+	 */
+	private mergeWalkOf(
+		b: Body,
+		node: N8nNode,
+		target: string,
+		path: string[],
+		hops: PairHop[],
+		single: boolean,
+		allowFork: boolean,
+	): { reason: string } | { hops: PairHop[]; merge: PairMerge } | null {
+		if (node.type !== `${BASE}merge`) return null;
+		const at = this.typeOf(b, node.name);
+		const p = node.parameters ?? {};
+		const mode = typeof p.mode === 'string' && p.mode !== '' ? p.mode : 'append';
+		if (mode !== 'append' && mode !== 'chooseBranch') {
+			return { reason: `no pairs after ${at} (mode ${mode})` };
+		}
+		if (node.executeOnce) return { reason: `executeOnce on ${at}` };
+		const pairs = b.pairs.get(`${node.name}|0`);
+		if (!pairs) return { reason: `no pairs after ${at}` };
+		if (!allowFork) return { reason: 'several nodes with several connections on the way' };
+		const count = (node.typeVersion ?? 1) >= 3 ? Number(p.numberInputs ?? 2) || 2 : 2;
+		const incoming = b.graph.incoming(node.name);
+		const alternatives: Array<PairPath & { from: string; via: number; input: number }> = [];
+		for (let k = 0; k < count; k++) {
+			const into = incoming.filter((e) => e.input === k);
+			if (into.length === 0) continue;
+			if (into.length > 1) return { reason: `${into.length} connections into input ${k} of ${at}` };
+			const edge = into[0];
+			if (!b.scope.has(edge.from) || !this.known(b, edge.from)) {
+				return { reason: `node before ${at} has not run` };
+			}
+			const cont = this.walkOn(b, node.name, edge, target, [...path], [...hops], single, false);
+			if ('reason' in cont) return cont;
+			if (cont.fork !== undefined || cont.merge !== undefined) {
+				return { reason: 'several nodes with several connections on the way' };
+			}
+			alternatives.push({
+				from: edge.from,
+				via: edge.output,
+				input: k,
+				...cont,
+				hops: cont.hops.slice(hops.length),
+			});
+		}
+		if (alternatives.length === 0) return { reason: `no connection into ${at}` };
+		return { hops, merge: { node: node.name, run: pairs.run, alternatives } };
+	}
+
 	/**
 	 * The `let` variable with the source of the latest run of a node with several connections.
 	 * Only a walk that needs the fork makes it: a workflow without such a read keeps its code.
@@ -885,7 +970,7 @@ export class ModuleGenerator {
 				? { code: `${list}[0]`, usesIndex: false, approximate: true }
 				: { code: `${list}[${INDEX}]`, usesIndex: true, approximate: true };
 		}
-		if (walk.fork === undefined) {
+		if (walk.fork === undefined && walk.merge === undefined) {
 			// A hop that gives each item the index of an input item cannot fail: without another
 			// hop, each item pairs with the one item of the node.
 			if (single && walk.hops.every((hop) => hop.total === true)) {
@@ -899,9 +984,13 @@ export class ModuleGenerator {
 		const index = this.pairChain(b, target, walk, INDEX, {
 			run: (hop) => hop.run,
 			input: (hop) => `${hop.input}.length`,
+			merge: (merge) => ({ paired: `${merge.run}.paired`, inputs: `${merge.run}.inputs` }),
 		});
 		if (single) return { code: `${list}[${index}]`, usesIndex: true };
-		const from = walk.fork === undefined ? this.outputVar(b, target, walk.output) : list;
+		const from =
+			walk.fork === undefined && walk.merge === undefined
+				? this.outputVar(b, target, walk.output)
+				: list;
 		return { code: `${from}[${index}]`, usesIndex: true };
 	}
 
@@ -914,9 +1003,17 @@ export class ModuleGenerator {
 	private pairChain(
 		b: Body,
 		target: string,
-		walk: PairPath | { fork: PairFork; hops: PairHop[] },
+		walk:
+			| PairPath
+			| { fork: PairFork; hops: PairHop[]; merge?: undefined }
+			| { merge: PairMerge; hops: PairHop[]; fork?: undefined },
 		index: string,
-		code: { run: (hop: PairHop) => string; input: (hop: PairHop) => string },
+		code: {
+			run: (hop: PairHop) => string;
+			input: (hop: PairHop) => string;
+			/** The `paired` and `inputs` lists of a Merge node, in the scope of the code. */
+			merge?: (merge: PairMerge) => { paired: string; inputs: string };
+		},
 	): string {
 		const single = this.singleItem(b, target);
 		const steps = (hops: PairHop[], from: string, direct: boolean): string => {
@@ -930,9 +1027,28 @@ export class ModuleGenerator {
 			});
 			return out;
 		};
-		if (walk.fork === undefined) {
+		if (walk.fork === undefined && walk.merge === undefined) {
 			if (single && walk.hops.every((hop) => hop.total === true)) return '0';
 			const out = steps(walk.hops, index, walk.direct);
+			return single ? `0 * ${out}` : out;
+		}
+		if (walk.merge !== undefined) {
+			// The input of the item picks the connection: each alternative walks from the index
+			// of the item in its input (`paired`) to the target. The last input is the else
+			// branch, so the choice is a number everywhere.
+			const { paired, inputs } = code.merge?.(walk.merge) ?? {
+				paired: `${walk.merge.run}.paired`,
+				inputs: `${walk.merge.run}.inputs`,
+			};
+			const at = walk.hops.length === 0 ? index : steps(walk.hops, index, false);
+			const list = walk.merge.alternatives;
+			const last = list.length - 1;
+			let out = steps(list[last].hops, `${paired}[${at}]`, list[last].direct);
+			for (let k = last - 1; k >= 0; k--) {
+				const alt = list[k];
+				const match = `${inputs}[${at}] === ${String(alt.input)}`;
+				out = `(${match} ? ${steps(alt.hops, `${paired}[${at}]`, alt.direct)} : ${out})`;
+			}
 			return single ? `0 * ${out}` : out;
 		}
 		const at = walk.hops.length === 0 ? index : steps(walk.hops, index, false);
@@ -1005,11 +1121,27 @@ export class ModuleGenerator {
 		const hops: Hop[] = [];
 		let chain: ((index: string) => string) | null = null;
 		const walk = this.pairingWalk(b, current, target);
+		let mergeValues: Array<{ param: string; value: string }> = [];
+		let mergeAccess: (() => { paired: string; inputs: string }) | undefined;
 		if (!('reason' in walk)) {
 			const all =
-				walk.fork === undefined
-					? walk.hops
-					: [...walk.hops, ...walk.fork.alternatives.flatMap((alt) => alt.hops)];
+				walk.fork !== undefined
+					? [...walk.hops, ...walk.fork.alternatives.flatMap((alt) => alt.hops)]
+					: walk.merge !== undefined
+						? [...walk.hops, ...walk.merge.alternatives.flatMap((alt) => alt.hops)]
+						: walk.hops;
+			if (walk.merge !== undefined) {
+				// The pair data of the Merge node goes to the code as a value, as the hops do.
+				const pairs = walk.merge.run;
+				const pairedParam = this.names.unique('coMergePaired');
+				const inputsParam = this.names.unique('coMergeInputs');
+				const access = { paired: pairedParam, inputs: inputsParam };
+				mergeValues = [
+					{ param: pairedParam, value: `${pairs}.paired` },
+					{ param: inputsParam, value: `${pairs}.inputs` },
+				];
+				mergeAccess = () => access;
+			}
 			// A fork gives the code of a hop for the same hop object, in each alternative.
 			const params = new Map<PairHop, { runParam: string; lenParam: string }>();
 			for (const hop of all) {
@@ -1024,12 +1156,16 @@ export class ModuleGenerator {
 				this.pairChain(b, target, walk, index, {
 					run: (hop) => params.get(hop)?.runParam ?? 'noItems',
 					input: (hop) => params.get(hop)?.lenParam ?? 'noItems',
+					...(mergeAccess ? { merge: mergeAccess } : {}),
 				});
 		}
-		const values = hops.flatMap((hop) => [
-			{ param: hop.runParam, value: hop.run },
-			{ param: hop.lenParam, value: `${hop.input}.length` },
-		]);
+		const values = [
+			...hops.flatMap((hop) => [
+				{ param: hop.runParam, value: hop.run },
+				{ param: hop.lenParam, value: `${hop.input}.length` },
+			]),
+			...mergeValues,
+		];
 		const found = { chain, values };
 		this.pairedHops.set(key, found);
 		if (chain === null) return null;
@@ -1324,8 +1460,13 @@ export class ModuleGenerator {
 				this.compiledSteps.add(node.name);
 			},
 			pairsWanted: this.lineageOf(b).has(node.name),
-			setPairs: (run, output = 0, total = false) => {
-				b.pairs.set(`${node.name}|${output}`, { run, input, total });
+			setPairs: (run, output = 0, total = false, withInputs) => {
+				b.pairs.set(`${node.name}|${output}`, {
+					run,
+					input,
+					total,
+					...(withInputs === undefined ? {} : { inputs: withInputs }),
+				});
 			},
 			noOutputWhen: (condition) => {
 				// "Always output data" gives one empty item instead (ensureAlwaysOutputData of v1).
@@ -2198,10 +2339,16 @@ export class ModuleGenerator {
 			for (const [k, latest] of latestPairs.get(name) ?? []) {
 				const local = b.pairs.get(`${name}|${k}`);
 				if (!local) continue;
+				const withInputs = local.inputs === undefined ? '' : `, inputs: ${local.inputs}`;
 				w.line(
-					`${latest} = { items: ${local.run}.items, paired: ${local.run}.paired, length: ${local.input}.length };`,
+					`${latest} = { items: ${local.run}.items, paired: ${local.run}.paired${withInputs}, length: ${local.input}.length };`,
 				);
-				b.pairs.set(`${name}|${k}`, { run: latest, input: latest, total: local.total });
+				b.pairs.set(`${name}|${k}`, {
+					run: latest,
+					input: latest,
+					total: local.total,
+					...(local.inputs === undefined ? {} : { inputs: local.inputs }),
+				});
 			}
 			for (const key of [...b.pairs.keys()]) {
 				// Paired items of an output without a connection have no reader.
