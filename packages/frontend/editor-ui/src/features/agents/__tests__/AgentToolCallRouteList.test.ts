@@ -133,7 +133,7 @@ describe('AgentToolCallRouteIcon', () => {
 		);
 	});
 
-	it.each(['future_route', 'constructor', 'toString'])(
+	it.each(['future_route', 'constructor', 'toString', 'simulator_gap'])(
 		'renders nothing for a route this client does not know (%s)',
 		(route) => {
 			const { queryByTestId } = renderIcon({
@@ -354,7 +354,7 @@ describe('AgentToolCallRouteRow', () => {
 		expect(getByTestId('agent-tool-call-route-icon')).toBeInTheDocument();
 	});
 
-	it.each(['future_route', 'constructor', 'toString'])(
+	it.each(['future_route', 'constructor', 'toString', 'simulator_gap'])(
 		'is not expandable and shows no icon for a route this client does not know (%s)',
 		(route) => {
 			const { getByTestId, queryByTestId } = renderRow({
