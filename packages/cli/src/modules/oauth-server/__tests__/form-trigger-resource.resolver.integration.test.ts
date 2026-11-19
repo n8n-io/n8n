@@ -22,9 +22,10 @@ import { ProtectedResourceRegistry } from '@n8n/backend-services/auth';
 
 import { OAuthClient } from '../database/entities/oauth-client.entity';
 
+// The integration runner uses a migrated SQLite template in CI.
 const testServer = setupTestServer({
-	modules: ['oauth-server', 'mcp', 'inbound-auth-core'],
-	endpointGroups: ['mcp'],
+	modules: ['inbound-auth-core', 'oauth-server'],
+	endpointGroups: ['oauth-server'],
 });
 
 let owner: User;
