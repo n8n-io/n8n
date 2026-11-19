@@ -556,12 +556,19 @@ export type NextNodeSlotFan = {
 	count: number;
 };
 
+/** The node after the new node, when the new node is inserted on a connection */
+export type NextNodeSlotDownstream = {
+	/** Left edge */
+	x: number;
+	/** Y of its main input handle line */
+	handleLine: number;
+};
+
 export type NextNodeSlotOptions = {
 	source: NextNodeSlotSource;
 	target: NextNodeSlotTarget;
 	fan?: NextNodeSlotFan;
-	/** Y of the line for the main input handle. When set, `fan` has no effect. */
-	handleLine?: number;
+	downstream?: NextNodeSlotDownstream;
 };
 
 /**
@@ -570,19 +577,23 @@ export type NextNodeSlotOptions = {
  * on the line of the source's main output handle, the same as after tidy-up.
  * For a source with more than one main output, `fan` moves the node to the row of
  * output `index`. The rows are one new node height plus NODE_Y_SPACING apart.
- * `handleLine` puts the main input handle on a different line, for example the
- * line of the node after the new node.
+ * When `downstream` is at or right of the slot, the main input handle goes on the
+ * line of `downstream` in place of the fan row, so the connection stays straight.
  */
 export function getNextNodeSlot({
 	source,
 	target,
 	fan = { index: 0, count: 1 },
-	handleLine,
+	downstream,
 }: NextNodeSlotOptions): XYPosition {
+	const x = source.position[0] + source.width + NODE_X_SPACING;
 	const fanOffset = generateOffsets(fan.count, target.height, NODE_Y_SPACING)[fan.index] ?? 0;
-	const line = handleLine ?? source.position[1] + source.handleOffset + fanOffset;
+	const line =
+		downstream && downstream.x >= x
+			? downstream.handleLine
+			: source.position[1] + source.handleOffset + fanOffset;
 
-	return [source.position[0] + source.width + NODE_X_SPACING, line - target.handleOffset];
+	return [x, line - target.handleOffset];
 }
 
 /**

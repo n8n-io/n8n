@@ -12,7 +12,13 @@ import type {
 	Workflow,
 	IWorkflowGroup,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeHelpers, TelemetryHelpers, deepCopy } from 'n8n-workflow';
+import {
+	NodeConnectionTypes,
+	NodeHelpers,
+	TelemetryHelpers,
+	deepCopy,
+	mapConnectionsByDestination,
+} from 'n8n-workflow';
 import { UserError } from '@n8n/errors';
 import type { CanvasConnection, CanvasNode } from '@/features/workflows/canvas/canvas.types';
 import { CanvasConnectionMode } from '@/features/workflows/canvas/canvas.types';
@@ -1019,7 +1025,7 @@ describe('useCanvasOperations', () => {
 				]);
 			});
 
-			it('should keep a node inserted on an edge of a Switch node on its handle line', () => {
+			it('should put a node inserted on an edge of a Switch node on the row of its output', () => {
 				const switchType = mockNodeTypeDescription({
 					name: SWITCH_NODE_TYPE,
 					outputs: Array.from({ length: 3 }, () => NodeConnectionTypes.Main),
@@ -1031,8 +1037,8 @@ describe('useCanvasOperations', () => {
 					targetHandle: 'inputs/main/0',
 				};
 
-				// No fan offset: the Switch handle line is at 64 and the Set handle is at 48
-				expect(resolvePositionAfter(switchType, setNodeType)).toEqual([224, 16]);
+				// The target is not in the workflow, so the node takes the fan row of output 2
+				expect(resolvePositionAfter(switchType, setNodeType)).toEqual([224, 208]);
 			});
 
 			it('should keep the nodes after an IF node 96 above and below its handle line', () => {
@@ -9966,8 +9972,10 @@ describe('useCanvasOperations', () => {
 		});
 
 		/**
-		 * Inserts a node on the connection from `source` to `target`, and returns
-		 * the position of the new node. The new node is a Set node by default.
+		 * Inserts a node on the connection from output `sourceIndex` of `source` to
+		 * `target`, and returns the position of the new node. The new node is a Set
+		 * node by default. `connections` are the connections of the workflow. By
+		 * default, the workflow has only the connection that the node is inserted on.
 		 */
 		function insertOnConnection(
 			source: INodeUi,
@@ -9975,14 +9983,34 @@ describe('useCanvasOperations', () => {
 			nodes: INodeUi[],
 			{
 				nodeType = setNodeType,
-				sourceHandle = `outputs/${NodeConnectionTypes.Main}/0`,
-			}: { nodeType?: INodeTypeDescription; sourceHandle?: string } = {},
+				sourceIndex = 0,
+				connections = createConnectionsBySource(
+					workflowConnection(source, target, { sourceIndex }),
+				),
+			}: {
+				nodeType?: INodeTypeDescription;
+				sourceIndex?: number;
+				connections?: IConnections;
+			} = {},
 		) {
 			const uiStore = mockedStore(useUIStore);
 			const nodeTypesStore = mockedStore(useNodeTypesStore);
-			const nodeTypes = [nodeType, configurableNodeType, setNodeType, ifNodeType];
+			const nodeTypes = [
+				nodeType,
+				configurableNodeType,
+				setNodeType,
+				ifNodeType,
+				agentCardNodeType,
+			];
+			const connectionsByDestination = mapConnectionsByDestination(connections);
 
 			workflowDocumentStoreInstance.allNodes = nodes;
+			vi.mocked(workflowDocumentStoreInstance.getExpressionHandler).mockReturnValue(
+				createWorkflowObjectKeepingParameters(nodes).expression,
+			);
+			vi.mocked(workflowDocumentStoreInstance.incomingConnectionsByNodeName).mockImplementation(
+				(name) => connectionsByDestination[name] ?? {},
+			);
 			vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockImplementation(
 				(workflowNodes) => createWorkflowObjectKeepingParameters(workflowNodes),
 			);
@@ -10008,12 +10036,7 @@ describe('useCanvasOperations', () => {
 				(type: string) => nodeTypes.find((nodeType) => nodeType.name === type) ?? null,
 			);
 			uiStore.lastInteractedWithNodeId = source.id;
-			uiStore.lastInteractedWithNodeConnection = {
-				source: source.id,
-				target: target.id,
-				sourceHandle,
-				targetHandle: `inputs/${NodeConnectionTypes.Main}/0`,
-			};
+			uiStore.lastInteractedWithNodeConnection = canvasConnection(source, target, { sourceIndex });
 
 			const { resolveNodePosition } = useCanvasOperations();
 			return resolveNodePosition(
@@ -10087,7 +10110,11 @@ describe('useCanvasOperations', () => {
 			});
 
 			const position = insertOnConnection(ifNode, falseBranch, [ifNode, trueBranch, falseBranch], {
-				sourceHandle: `outputs/${NodeConnectionTypes.Main}/1`,
+				sourceIndex: 1,
+				connections: createConnectionsBySource(
+					workflowConnection(ifNode, trueBranch),
+					workflowConnection(ifNode, falseBranch, { sourceIndex: 1 }),
+				),
 			});
 
 			expect(position).toEqual([224, 96]);
@@ -10145,6 +10172,105 @@ describe('useCanvasOperations', () => {
 
 			expect(position).toEqual([448, 192]);
 			expect(loop.position).toEqual([0, 0]);
+		});
+
+		it('should keep the nodes inserted on two branches into one node on the rows of the branches', () => {
+			const ifNode = createTestNode({ id: 'if', name: 'If', type: IF_NODE_TYPE, position: [0, 0] });
+			const t0 = createTestNode({
+				id: 't0',
+				name: 'T0',
+				type: SET_NODE_TYPE,
+				position: [224, -96],
+			});
+			const t1 = createTestNode({ id: 't1', name: 'T1', type: SET_NODE_TYPE, position: [224, 96] });
+			const merge = createTestNode({ id: 'm', name: 'M', type: SET_NODE_TYPE, position: [448, 0] });
+			const nodes = [ifNode, t0, t1, merge];
+			const ifToBranches = [
+				workflowConnection(ifNode, t0),
+				workflowConnection(ifNode, t1, { sourceIndex: 1 }),
+			];
+
+			const n1Position = insertOnConnection(t1, merge, nodes, {
+				connections: createConnectionsBySource(
+					...ifToBranches,
+					workflowConnection(t0, merge),
+					workflowConnection(t1, merge, { targetIndex: 1 }),
+				),
+			});
+
+			expect(n1Position).toEqual([448, 96]);
+			expect(merge.position).toEqual([672, 0]);
+
+			// The insert replaces T1 → M with T1 → N1 → M
+			const n1 = createTestNode({
+				id: 'n1',
+				name: 'N1',
+				type: SET_NODE_TYPE,
+				position: [...n1Position],
+			});
+			nodes.push(n1);
+			const n2Position = insertOnConnection(t0, merge, nodes, {
+				connections: createConnectionsBySource(
+					...ifToBranches,
+					workflowConnection(t0, merge),
+					workflowConnection(t1, n1),
+					workflowConnection(n1, merge, { targetIndex: 1 }),
+				),
+			});
+
+			expect(n2Position).toEqual([448, -96]);
+			expect(n1.position).toEqual([448, 96]);
+			expect(merge.position).toEqual([672, 0]);
+		});
+
+		it('should put a node inserted on an edge into a node with two inputs on the row of the output', () => {
+			const ifNode = createTestNode({ id: 'if', name: 'If', type: IF_NODE_TYPE, position: [0, 0] });
+			const merge = createTestNode({ id: 'm', name: 'M', type: SET_NODE_TYPE, position: [448, 0] });
+
+			const position = insertOnConnection(ifNode, merge, [ifNode, merge], {
+				sourceIndex: 1,
+				connections: createConnectionsBySource(
+					workflowConnection(ifNode, merge),
+					workflowConnection(ifNode, merge, { sourceIndex: 1, targetIndex: 1 }),
+				),
+			});
+
+			// The fan row of output 1 of 2: 48 + 96 - 48
+			expect(position).toEqual([224, 96]);
+			expect(merge.position).toEqual([448, 0]);
+		});
+
+		it('should keep the line of the source when the target is left of the new node', () => {
+			const source = createTestNode({ id: 's', name: 'S', type: SET_NODE_TYPE, position: [0, 0] });
+			const target = createTestNode({
+				id: 't',
+				name: 'T',
+				type: SET_NODE_TYPE,
+				position: [112, 200],
+			});
+
+			const position = insertOnConnection(source, target, [source, target]);
+
+			// T is left of the slot x (224)
+			expect(position).toEqual([224, 0]);
+			expect(target.position).toEqual([112, 200]);
+		});
+
+		it('should put a node inserted before an agent card on the handle line of the card', () => {
+			const source = createTestNode({ id: 's', name: 'S', type: SET_NODE_TYPE, position: [0, 0] });
+			const agent = createTestNode({
+				id: 'agent',
+				name: 'Agent',
+				type: MESSAGE_AN_AGENT_NODE_TYPE,
+				typeVersion: 3.1,
+				position: [448, 176],
+			});
+
+			const position = insertOnConnection(source, agent, [source, agent]);
+
+			// The card is 128 high, so its handle line is at 176 + 64 = 240
+			expect(position).toEqual([224, 192]);
+			expect(agent.position).toEqual([448, 176]);
 		});
 
 		it('should move a wide target that a default-size check misses', () => {
