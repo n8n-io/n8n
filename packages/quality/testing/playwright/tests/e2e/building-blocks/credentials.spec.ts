@@ -98,7 +98,15 @@ test.describe(
 
 		test('create a new credential from the NDV', async ({ n8n }) => {
 			const uniqueCredentialName = `credential-${nanoid()}`;
-			await n8n.start.fromNewProjectBlankCanvas();
+			const projectId = await n8n.start.fromNewProjectBlankCanvas();
+			// An existing credential makes the NDV show the picker, so the new
+			// credential is created from the dropdown and not from the empty state.
+			await n8n.credentialsComposer.createFromApi({
+				name: `credential-${nanoid()}`,
+				type: 'notionApi',
+				data: { apiKey: '1234567890' },
+				projectId,
+			});
 			await n8n.canvas.addNode('Manual Trigger');
 			await n8n.canvas.addNode('Notion', { action: 'Append a block' });
 

@@ -8,6 +8,7 @@ import { computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import CredentialTypesTab from './CredentialTypesTab.vue';
+import NodeTypesTab from './NodeTypesTab.vue';
 import { useInstancePolicy } from './useInstancePolicy';
 import { usePolicyAdminAccess } from '../composables/usePolicyAdminAccess';
 import {
@@ -93,7 +94,11 @@ onMounted(() => {
 				<ReuseTabs />
 			</template>
 		</CredentialTypesTab>
-		<ReuseTabs v-else-if="activeTab" />
+		<NodeTypesTab v-else-if="activeTab === 'node'">
+			<template #toolbar-start>
+				<ReuseTabs />
+			</template>
+		</NodeTypesTab>
 	</N8nSettingsLayout>
 </template>
 

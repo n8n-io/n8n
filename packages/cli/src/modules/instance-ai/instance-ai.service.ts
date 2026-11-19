@@ -551,6 +551,8 @@ export class InstanceAiService {
 			backgroundTaskIdleTimeoutMs: livenessPolicyConfig.backgroundTaskIdleTimeoutMs,
 			runState: this.runState,
 			backgroundTasks: this.backgroundTasks,
+			isTaskWaitingForUser: (taskId) =>
+				this.cloudBrowserService.findServer(taskId)?.isUserInControl() ?? false,
 			eventBus: this.eventBus,
 			logger: this.logger,
 			finalizeCancelledSuspendedRun: (suspended, reason) => {
@@ -579,7 +581,6 @@ export class InstanceAiService {
 			backgroundTasks: this.backgroundTasks,
 			settingsService: this.settingsService,
 			aiService: this.aiService,
-			getTemplatesService: () => this.adapterService.getTemplatesService(),
 			resolveTracingConfig: async (threadId, userId) => {
 				const ownerId = userId ?? (await this.memoryService.getThreadActorId(threadId));
 				if (!ownerId) return { userId: 'system' };
@@ -2730,11 +2731,7 @@ export class InstanceAiService {
 				nodeUsageEnabled,
 			} = environment;
 			skillTelemetry.bind(orchestrationContext.skills);
-			const contextEventBus = this.createRunEventBus(
-				observedContextWork,
-				orchestrationContext,
-				skillTelemetry,
-			);
+			const contextEventBus = this.createRunEventBus(observedContextWork, skillTelemetry);
 			modelId = resolvedModelId;
 			promptVersion = orchestrationContext.promptConfiguration?.version;
 			setTracePromptVersion(tracing, promptVersion);
@@ -3911,11 +3908,7 @@ export class InstanceAiService {
 		let contextSegmentReported = false;
 		let blockedForQuota = false;
 		const observedContextWork = new WorkSummaryAccumulator();
-		const contextEventBus = this.createRunEventBus(
-			observedContextWork,
-			opts.orchestrationContext,
-			skillTelemetry,
-		);
+		const contextEventBus = this.createRunEventBus(observedContextWork, skillTelemetry);
 		/**
 		 * Set once the model run has yielded output. The catch below also wraps
 		 * post-result finalization, so without this a finalization failure after a
@@ -5035,14 +5028,13 @@ export class InstanceAiService {
 
 	private createRunEventBus(
 		workSummary: WorkSummaryAccumulator,
-		context?: OrchestrationContext,
 		skills?: InstanceAiSkillTelemetry,
 	): InstanceAiEventBus {
 		return {
 			publish: (threadId, event) => {
 				workSummary.observe(event);
 				skills?.observe(event);
-				this.eventBus.publish(threadId, context?.mapSkillEventForDisplay?.(event) ?? event);
+				this.eventBus.publish(threadId, event);
 			},
 			subscribe: (threadId, handler) => this.eventBus.subscribe(threadId, handler),
 		};

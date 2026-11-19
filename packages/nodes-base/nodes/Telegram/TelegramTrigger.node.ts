@@ -53,6 +53,7 @@ export class TelegramTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Telegram Trigger',
 		name: 'telegramTrigger',
+		schemaPath: 'Telegram',
 		icon: 'file:telegram.svg',
 		group: ['trigger'],
 		version: [1, 1.1, 1.2, 1.3, 1.4, 1.5],

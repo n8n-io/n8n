@@ -1,9 +1,13 @@
+import { KNOWLEDGE_COLLECTIONS_FLAG } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
+import { PostHogClient } from '@n8n/backend-services';
 import { Service } from '@n8n/di';
 
 import { NotFoundError } from '@n8n/errors';
 
 import { SandboxSettingsService } from '@/services/sandbox-settings.service';
+
+import { KnowledgeConfig } from './knowledge.config';
 
 /**
  * Answers whether knowledge is available on this instance. Consumers ask here
@@ -15,6 +19,8 @@ export class KnowledgeAvailabilityService {
 	constructor(
 		private readonly moduleRegistry: ModuleRegistry,
 		private readonly sandboxSettingsService: SandboxSettingsService,
+		private readonly postHogClient: PostHogClient,
+		private readonly knowledgeConfig: KnowledgeConfig,
 	) {}
 
 	/**
@@ -31,6 +37,22 @@ export class KnowledgeAvailabilityService {
 	/** Uploaded-file knowledge needs the module and a sandbox for retrieval. */
 	isFileKnowledgeEnabled(): boolean {
 		return this.isModuleActive() && this.sandboxSettingsService.isAgentSandboxEnabled();
+	}
+
+	/**
+	 * Whether collections are on: the module is active, and the operator override
+	 * or the instance flag is on. The flag is read for the instance because
+	 * retrieval runs without a user.
+	 */
+	async isCollectionsEnabled(): Promise<boolean> {
+		if (!this.isModuleActive()) {
+			return false;
+		}
+
+		return (
+			this.knowledgeConfig.collectionsEnabled ||
+			(await this.postHogClient.getFeatureFlagForInstance(KNOWLEDGE_COLLECTIONS_FLAG)) === true
+		);
 	}
 
 	/** For calls that need the module's entities but not the sandbox, such as file cleanup. */

@@ -13,7 +13,6 @@ import {
 	type RuntimeSkillRegistry,
 	type RuntimeSkillRegistryEntry,
 	type RuntimeSkillSource,
-	type RuntimeSkillLoader,
 	type RuntimeSkillContent,
 	type RuntimeSkillLoadError,
 } from './types';
@@ -113,10 +112,7 @@ export function createSkillLoadTool(source: RuntimeSkillSource): BuiltTool {
 			)
 			.input(skillLoadInputSchema)
 			.output(skillLoadResultSchema)
-			.handler(
-				async ({ skillId, name }, context) =>
-					await loadSkill(source, { skillId, name }, context.loadSkill),
-			)
+			.handler(async ({ skillId, name }) => await loadSkill(source, { skillId, name }))
 			.build();
 	}
 
@@ -128,8 +124,8 @@ export function createSkillLoadTool(source: RuntimeSkillSource): BuiltTool {
 		.input(skillLoadInputWithFilesSchema)
 		.output(skillLoadResultSchema)
 		.handler(
-			async ({ skillId, name, filePath }, context) =>
-				await loadSkill(source, { skillId, name, filePath, loadFile }, context.loadSkill),
+			async ({ skillId, name, filePath }) =>
+				await loadSkill(source, { skillId, name, filePath, loadFile }),
 		)
 		.build();
 }
@@ -142,12 +138,11 @@ async function loadSkill(
 		filePath?: string;
 		loadFile?: NonNullable<RuntimeSkillSource['loadFile']>;
 	},
-	activate?: RuntimeSkillLoader,
 ): Promise<SkillLoadOutput | SkillLoadContentOutput> {
 	const { skillId, name, loadFile } = input;
 	await source.prepare?.();
 	const requestedEntry = findRuntimeSkillEntry(source.registry, { skillId, name });
-	// A path to a reference file activates the reference instead of returning raw text.
+	// A path to a reference file loads the reference skill instead of returning raw text.
 	const referenceEntry =
 		requestedEntry && input.filePath !== undefined
 			? findReferenceByPath(source.registry, requestedEntry.id, input.filePath)
@@ -231,7 +226,7 @@ async function loadSkill(
 		};
 	}
 
-	const skill = await (activate ?? source.loadSkill)(skillEntry.id);
+	const skill = await source.loadSkill(skillEntry.id);
 	if (!skill) {
 		const loadError = source.getLoadError?.(skillEntry.id);
 		return {
@@ -245,34 +240,13 @@ async function loadSkill(
 		};
 	}
 
-	if (activate) {
-		const { references, linkedFiles } = skillReferences(skillEntry, source.registry);
-		return {
-			success: true,
-			skillId: skillEntry.id,
-			name: skillEntry.name,
-			hash: skillEntry.hash,
-			content: source.shouldAppendSkillUpdates?.(skillEntry.id)
-				? formatActiveSkill(skill, skillEntry, source.registry)
-				: 'The skill instructions are active. Follow them for this task.',
-			...(references.length > 0
-				? {
-						references: references.map((entry) => ({
-							skillId: entry.id,
-							description: entry.description,
-						})),
-					}
-				: {}),
-			linkedFiles,
-		};
-	}
 	return {
 		type: 'content',
-		value: [{ type: 'text', text: formatActiveSkill(skill, skillEntry, source.registry) }],
+		value: [{ type: 'text', text: formatLoadedSkill(skill, skillEntry, source.registry) }],
 	};
 }
 
-export function formatActiveSkill(
+export function formatLoadedSkill(
 	skill: RuntimeSkillContent,
 	skillEntry: RuntimeSkillRegistryEntry,
 	registry?: RuntimeSkillRegistry,
@@ -283,7 +257,7 @@ export function formatActiveSkill(
 		(file) => file.path,
 	);
 	const header = [
-		activationEnvelope(skillEntry),
+		skillEnvelope(skillEntry),
 		...(references.length > 0
 			? [
 					[
@@ -357,9 +331,10 @@ export function findRuntimeSkillEntry(
 	return undefined;
 }
 
-function activationEnvelope(skill: RuntimeSkillRegistryEntry): string {
+function skillEnvelope(skill: RuntimeSkillRegistryEntry): string {
 	return [
 		`[Skill: ${envelopeValue(skill.name)}]`,
+		`[Skill id: ${envelopeValue(skill.id)}]`,
 		...(skill.parents?.length
 			? [`[Reference of: ${skill.parents.map(envelopeValue).join(', ')}]`]
 			: []),

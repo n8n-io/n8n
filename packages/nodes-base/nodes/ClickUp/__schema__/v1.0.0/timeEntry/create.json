@@ -1,0 +1,96 @@
+{
+	"properties": {
+		"at": {
+			"type": "number"
+		},
+		"billable": {
+			"type": "boolean"
+		},
+		"description": {
+			"type": "string"
+		},
+		"duration": {
+			"type": "number"
+		},
+		"end": {
+			"type": "string"
+		},
+		"id": {
+			"type": "string"
+		},
+		"is_locked": {
+			"type": "boolean"
+		},
+		"start": {
+			"type": "number"
+		},
+		"tags": {
+			"items": {},
+			"type": "array"
+		},
+		"task": {
+			"properties": {
+				"id": {
+					"type": "string"
+				},
+				"name": {
+					"type": "string"
+				},
+				"status": {
+					"properties": {
+						"color": {
+							"type": "string"
+						},
+						"id": {
+							"type": "string"
+						},
+						"orderindex": {
+							"type": "number"
+						},
+						"status": {
+							"type": "string"
+						},
+						"type": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				}
+			},
+			"type": "object"
+		},
+		"task_location": {
+			"type": "object"
+		},
+		"user": {
+			"properties": {
+				"color": {
+					"type": "string"
+				},
+				"email": {
+					"type": "string"
+				},
+				"id": {
+					"type": "number"
+				},
+				"initials": {
+					"type": "string"
+				},
+				"profilePicture": {
+					"type": ["null", "string"]
+				},
+				"timezone": {
+					"type": "string"
+				},
+				"username": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"wid": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

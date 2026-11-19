@@ -2,6 +2,7 @@ import type {
 	AgentApproval,
 	AgentIntegrationConfig,
 	N8N_CHAT_INTEGRATION_TYPE,
+	RichCardComponentType,
 } from '@n8n/api-types';
 import type { z } from 'zod';
 
@@ -32,6 +33,9 @@ export type IntegrationMessageTarget =
  * `AgentChatIntegration.getReplyExpectation`).
  */
 export type ReplyExpectation = 'required' | 'optional';
+
+export const CONVERSATION_TOOL_NAMES = ['do_not_respond'] as const;
+export type ConversationToolName = (typeof CONVERSATION_TOOL_NAMES)[number];
 
 export interface TelegramMessageAttachmentContext {
 	type: 'image' | 'file' | 'video' | 'audio';
@@ -155,6 +159,9 @@ export interface IntegrationToolConnectionDescriptor {
 	actionToolDefinitions: IntegrationActionDefinition[];
 	contextToolGuidance?: string[];
 	actionToolGuidance?: string[];
+	supportedComponents?: readonly RichCardComponentType[];
+	/** Eager tools supported by this channel in the current conversation. */
+	conversationTools?: readonly ConversationToolName[];
 	/** Actions this channel gates behind human approval. Absent = none. */
 	approval?: AgentApproval;
 }
@@ -180,7 +187,6 @@ export interface IntegrationMessageContextStore {
 	/** Removes the task messages a turn carried, once it has accepted them. */
 	consumeOutboundMessages(derivedThreadId: string, carried: string[]): Promise<void>;
 	unbindSession(derivedThreadId: string): Promise<void>;
-	clearSessionBindings(originThreadId: string): Promise<void>;
 	/** Remembers which session sent a message, so a later delivery failure reaches that session. */
 	recordSentMessage(
 		derivedThreadId: string,
