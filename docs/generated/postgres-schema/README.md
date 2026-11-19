@@ -81,6 +81,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.execution_data](public.execution_data.md) | 4 |  | BASE TABLE |
 | [public.execution_entity](public.execution_entity.md) | 20 |  | BASE TABLE |
 | [public.execution_ledger](public.execution_ledger.md) | 16 |  | BASE TABLE |
+| [public.execution_limit_usage](public.execution_limit_usage.md) | 6 |  | BASE TABLE |
 | [public.execution_metadata](public.execution_metadata.md) | 4 |  | BASE TABLE |
 | [public.folder](public.folder.md) | 7 |  | BASE TABLE |
 | [public.folder_tag](public.folder_tag.md) | 2 |  | BASE TABLE |
@@ -1295,6 +1296,14 @@ erDiagram
   bigint runtimeMs
   varchar_32_ source
   integer timeSavedMin
+}
+"public.execution_limit_usage" {
+  integer blockedCount
+  date day
+  varchar_16_ entityType
+  varchar_36_ projectId
+  integer startedCount
+  timestamp_3__with_time_zone updatedAt
 }
 "public.execution_metadata" {
   integer executionId FK

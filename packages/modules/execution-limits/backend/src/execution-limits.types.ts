@@ -16,3 +16,6 @@ export type ApplicableLimits = {
 	instanceMaxExecutions: number | null;
 	projectMaxExecutions: number | null;
 };
+
+/** The `projectId` value of the usage rows that hold the instance total. */
+export const EXECUTION_LIMIT_USAGE_INSTANCE_SCOPE_ID = 'instance';

@@ -15,8 +15,9 @@ export class ExecutionLimitsModule implements ModuleInterface {
 	}
 
 	async entities() {
+		const { ExecutionLimitUsage } = await import('./execution-limit-usage.entity.js');
 		const { ProjectExecutionLimit } = await import('./project-execution-limit.entity.js');
 
-		return [ProjectExecutionLimit];
+		return [ProjectExecutionLimit, ExecutionLimitUsage];
 	}
 }
