@@ -446,3 +446,123 @@ fn compare(ref: Outcome, got: Outcome, n: u32, window_end: i64) ?[]const u8 {
     }
     return null;
 }
+
+test "sim_stream fault schedule: poller wakeups and reset recovery" {
+    const st = @import("sim_stream.zig");
+    const t = std.testing;
+    const Msg = "stream-fault-echo";
+
+    const Echo = struct {
+        const Self = @This();
+        pipe: st.SeededPipe,
+        poller: st.SimPoller = .{},
+        msg: []const u8,
+        wpos: usize = 0,
+        sread: usize = 0,
+        swrite: usize = 0,
+        rlen: usize = 0,
+        rbuf: [Msg.len]u8 = @splat(0),
+        waiting: bool = false,
+        reset_at: u32,
+        reset_done: bool = false,
+        resets: u32 = 0,
+
+        fn drive(e: *Self) bool {
+            var step: u32 = 0;
+            while (step < 400_000) : (step += 1) {
+                if (step == e.reset_at and !e.reset_done) {
+                    e.reset_done = true;
+                    e.pipe.injectReset();
+                }
+                if (e.waiting) {
+                    if (e.poller.poll()) |_| e.waiting = false;
+                }
+                if (!e.waiting) {
+                    e.clientWrite();
+                    if (!e.waiting) e.clientRead();
+                }
+                e.server();
+                if (e.done()) return true;
+            }
+            return false;
+        }
+
+        fn done(e: *const Self) bool {
+            return e.wpos == e.msg.len and e.sread == e.msg.len and e.swrite == e.msg.len and e.rlen == e.msg.len;
+        }
+
+        fn clientWrite(e: *Self) void {
+            if (e.wpos == e.msg.len) return;
+            switch (e.pipe.write(.ab, e.msg[e.wpos..])) {
+                .n => |n| e.wpos += n,
+                .again => e.wake(false),
+                .closed => e.crashRecover(),
+                .want_write => unreachable, // no TLS in the sim
+            }
+        }
+
+        fn clientRead(e: *Self) void {
+            if (e.rlen == e.msg.len) return;
+            switch (e.pipe.read(.ba, e.rbuf[e.rlen..])) {
+                .n => |n| e.rlen += n,
+                .again => e.wake(true),
+                .closed => e.crashRecover(),
+                .want_write => unreachable, // no TLS in the sim
+            }
+        }
+
+        fn server(e: *Self) void {
+            if (e.sread < e.msg.len) {
+                var b: [1]u8 = @splat(0);
+                switch (e.pipe.read(.ab, &b)) {
+                    .n => |n| e.sread += n,
+                    .again => {},
+                    .closed => return e.crashRecover(),
+                    .want_write => unreachable, // no TLS in the sim
+                }
+            }
+            if (e.swrite < e.msg.len and e.sread > e.swrite) {
+                const b = e.msg[e.swrite];
+                switch (e.pipe.write(.ba, &[_]u8{b})) {
+                    .n => |n| e.swrite += n,
+                    .again => {},
+                    .closed => return e.crashRecover(),
+                    .want_write => unreachable, // no TLS in the sim
+                }
+            }
+        }
+
+        fn wake(e: *Self, readable: bool) void {
+            e.waiting = true;
+            _ = e.poller.push(.{ .token = 0, .readable = readable, .writable = !readable, .eof = false });
+        }
+
+        fn crashRecover(e: *Self) void {
+            e.pipe.reset();
+            e.poller.reset();
+            e.waiting = false;
+            e.wpos = 0;
+            e.sread = 0;
+            e.swrite = 0;
+            e.rlen = 0;
+            @memset(&e.rbuf, 0);
+            e.resets += 1;
+        }
+    };
+
+    var total_resets: u32 = 0;
+    var seed: u64 = 0;
+    while (seed < 100) : (seed += 1) {
+        var e = Echo{
+            .pipe = st.SeededPipe.init(seed),
+            .msg = Msg,
+            .reset_at = 3 + @as(u32, @intCast(seed % 20)),
+        };
+        e.pipe.profile = .{ .frag = 4, .eagain_per_mille = 300 };
+        try t.expect(e.drive());
+        try t.expectEqualStrings(Msg, &e.rbuf);
+        try t.expect(e.poller.poll() == null);
+        total_resets += e.resets;
+    }
+    try t.expect(total_resets > 0);
+}

@@ -2,8 +2,14 @@
 //! buffers, partial read/write limits per step that simulate TCP
 //! fragmentation and EAGAIN, scripted close/reset, and a readiness token
 //! queue that matches sys.Ready. No kernel sockets.
+//!
+//! `SeededPipe` wraps `SimPair` with a seeded PRNG and a simulated clock so
+//! a protocol state machine can be driven with reproducible faults: a
+//! fragmented read or write, an EAGAIN stall, a half-close, or an abrupt
+//! reset, all from one seed.
 const std = @import("std");
 const sys = @import("sys.zig");
+const sql_net = @import("sql_net.zig");
 
 const ring_cap = 4096;
 
@@ -30,7 +36,7 @@ pub const SimHalf = struct {
 
     /// Write bytes into the ring. Returns the count written, which may be 0
     /// when full or when write_limit caps this step.
-    fn write(h: *SimHalf, src: []const u8) usize {
+    pub fn write(h: *SimHalf, src: []const u8) usize {
         if (h.eof) return 0;
         var want = @min(src.len, h.space());
         if (h.write_limit) |lim| want = @min(want, lim);
@@ -45,10 +51,10 @@ pub const SimHalf = struct {
 
     /// Read bytes from the ring. Returns the count read, which may be 0
     /// when empty (again) or when read_limit caps this step.
-    fn read(h: *SimHalf, dst: []u8) usize {
+    pub fn read(h: *SimHalf, dst: []u8) usize {
         var want = @min(dst.len, h.avail());
         if (h.read_limit) |lim| want = @min(want, lim);
-        if (want == 0) return if (h.avail() > 0) 0 else if (h.eof) 0 else 0;
+        if (want == 0) return 0;
         var n: usize = 0;
         while (n < want) : (n += 1) {
             dst[n] = h.buf[h.tail];
@@ -58,12 +64,12 @@ pub const SimHalf = struct {
     }
 
     /// Signal that the peer closed this direction.
-    fn closeWrite(h: *SimHalf) void {
+    pub fn closeWrite(h: *SimHalf) void {
         h.eof = true;
     }
 
     /// Reset all state.
-    fn reset(h: *SimHalf) void {
+    pub fn reset(h: *SimHalf) void {
         h.head = 0;
         h.tail = 0;
         h.eof = false;
@@ -77,40 +83,46 @@ pub const SimPair = struct {
     ab: SimHalf = .{},
     ba: SimHalf = .{},
 
-    fn writeAB(p: *SimPair, src: []const u8) usize {
+    pub fn writeAB(p: *SimPair, src: []const u8) usize {
         return p.ab.write(src);
     }
 
-    fn writeBA(p: *SimPair, src: []const u8) usize {
+    pub fn writeBA(p: *SimPair, src: []const u8) usize {
         return p.ba.write(src);
     }
 
-    fn readAB(p: *SimPair, dst: []u8) usize {
+    pub fn readAB(p: *SimPair, dst: []u8) usize {
         return p.ab.read(dst);
     }
 
-    fn readBA(p: *SimPair, dst: []u8) usize {
+    pub fn readBA(p: *SimPair, dst: []u8) usize {
         return p.ba.read(dst);
     }
 
     /// Close the a→b direction: b sees EOF on its next read.
-    fn closeAB(p: *SimPair) void {
+    pub fn closeAB(p: *SimPair) void {
         p.ab.closeWrite();
     }
 
     /// Close the b→a direction: a sees EOF.
-    fn closeBA(p: *SimPair) void {
+    pub fn closeBA(p: *SimPair) void {
         p.ba.closeWrite();
     }
 
     /// True when a→b has reached EOF and the buffer is empty.
-    fn eofAB(p: *const SimPair) bool {
+    pub fn eofAB(p: *const SimPair) bool {
         return p.ab.eof and p.ab.avail() == 0;
     }
 
     /// True when b→a has reached EOF and the buffer is empty.
-    fn eofBA(p: *const SimPair) bool {
+    pub fn eofBA(p: *const SimPair) bool {
         return p.ba.eof and p.ba.avail() == 0;
+    }
+
+    /// Reset both directions.
+    pub fn reset(p: *SimPair) void {
+        p.ab.reset();
+        p.ba.reset();
     }
 };
 
@@ -130,7 +142,7 @@ pub const SimPoller = struct {
     len: usize = 0,
 
     /// Push one readiness token. False when the queue is full.
-    fn push(p: *SimPoller, tok: Token) bool {
+    pub fn push(p: *SimPoller, tok: Token) bool {
         if (p.len == p.queue.len) return false;
         p.queue[p.len] = tok;
         p.len += 1;
@@ -138,7 +150,7 @@ pub const SimPoller = struct {
     }
 
     /// Pop the next token, or null when the queue is empty.
-    fn poll(p: *SimPoller) ?Token {
+    pub fn poll(p: *SimPoller) ?Token {
         if (p.len == 0) return null;
         const tok = p.queue[0];
         std.mem.copyForwards(Token, p.queue[0 .. p.queue.len - 1], p.queue[1..p.len]);
@@ -147,7 +159,7 @@ pub const SimPoller = struct {
     }
 
     /// Gather up to `out.len` tokens, return the count.
-    fn wait(p: *SimPoller, out: []sys.Ready) usize {
+    pub fn wait(p: *SimPoller, out: []sys.Ready) usize {
         const n = @min(out.len, p.len);
         for (out[0..n], 0..) |*r, i| {
             const tok = p.queue[i];
@@ -158,6 +170,126 @@ pub const SimPoller = struct {
             p.len -= n;
         }
         return n;
+    }
+
+    /// Drop every queued token.
+    pub fn reset(p: *SimPoller) void {
+        p.len = 0;
+    }
+};
+
+/// Which direction of a `SimPair` a step touches: `ab` is a→b, `ba` is b→a.
+pub const Dir = enum { ab, ba };
+
+/// Map a raw half read to the `sql_net.IoStep` shape: a byte count, an
+/// EAGAIN stall, or a close. `want_write` never happens without TLS.
+pub fn simRead(half: *SimHalf, dst: []u8) sql_net.IoStep {
+    const n = half.read(dst);
+    if (n > 0) return .{ .n = n };
+    if (half.eof) return .closed;
+    return .again;
+}
+
+/// Map a raw half write to the `sql_net.IoStep` shape.
+pub fn simWrite(half: *SimHalf, src: []const u8) sql_net.IoStep {
+    const n = half.write(src);
+    if (n > 0) return .{ .n = n };
+    if (half.eof) return .closed;
+    return .again;
+}
+
+/// The fault knobs of a `SeededPipe`. A value of 0 turns a knob off.
+pub const FaultProfile = struct {
+    /// Max bytes one read or write may move in a step; 0 means unlimited.
+    frag: usize = 0,
+    /// Per-mille chance a step is an EAGAIN stall.
+    eagain_per_mille: u32 = 0,
+    /// Per-mille chance a step is an abrupt reset.
+    reset_per_mille: u32 = 0,
+};
+
+/// A `SimPair` driven by a seeded PRNG and a simulated clock. Reads and
+/// writes draw from the profile: a fragmented chunk, an EAGAIN stall, or a
+/// reset, all reproducible from the seed. A reset sets `rst`; every later
+/// step is `.closed` until `reset` clears it.
+pub const SeededPipe = struct {
+    pair: SimPair = .{},
+    rng: std.Random.DefaultPrng,
+    now_ms: u64 = 0,
+    profile: FaultProfile = .{},
+    rst: bool = false,
+
+    pub fn init(seed: u64) SeededPipe {
+        return .{ .rng = std.Random.DefaultPrng.init(seed) };
+    }
+
+    fn half(p: *SeededPipe, dir: Dir) *SimHalf {
+        return switch (dir) {
+            .ab => &p.pair.ab,
+            .ba => &p.pair.ba,
+        };
+    }
+
+    /// Advance the simulated clock.
+    pub fn tick(p: *SeededPipe, ms: u64) void {
+        p.now_ms += ms;
+    }
+
+    /// Close one direction: the peer sees EOF after the buffered bytes.
+    pub fn close(p: *SeededPipe, dir: Dir) void {
+        p.half(dir).closeWrite();
+    }
+
+    /// Force an abrupt reset now: every step is `.closed` until `reset`.
+    pub fn injectReset(p: *SeededPipe) void {
+        p.rst = true;
+    }
+
+    /// Clear a reset and both directions: a fresh connection.
+    pub fn reset(p: *SeededPipe) void {
+        p.pair.reset();
+        p.rst = false;
+    }
+
+    /// One read step with the profile's faults.
+    pub fn read(p: *SeededPipe, dir: Dir, dst: []u8) sql_net.IoStep {
+        if (p.rst) return .closed;
+        if (p.roll(p.profile.reset_per_mille)) {
+            p.rst = true;
+            return .closed;
+        }
+        if (p.roll(p.profile.eagain_per_mille)) return .again;
+        return simRead(p.fragmented(dir), dst);
+    }
+
+    /// One write step with the profile's faults.
+    pub fn write(p: *SeededPipe, dir: Dir, src: []const u8) sql_net.IoStep {
+        if (p.rst) return .closed;
+        if (p.roll(p.profile.reset_per_mille)) {
+            p.rst = true;
+            return .closed;
+        }
+        if (p.roll(p.profile.eagain_per_mille)) return .again;
+        return simWrite(p.fragmented(dir), src);
+    }
+
+    fn roll(p: *SeededPipe, per_mille: u32) bool {
+        if (per_mille == 0) return false;
+        return p.rng.random().uintLessThan(u32, 1000) < per_mille;
+    }
+
+    /// Set the step limit for this direction from `profile.frag`.
+    fn fragmented(p: *SeededPipe, dir: Dir) *SimHalf {
+        const h = p.half(dir);
+        if (p.profile.frag == 0) {
+            h.read_limit = null;
+            h.write_limit = null;
+            return h;
+        }
+        const lim = p.rng.random().uintLessThan(usize, p.profile.frag) + 1;
+        h.read_limit = lim;
+        h.write_limit = lim;
+        return h;
     }
 };
 
@@ -299,4 +431,92 @@ test "SimHalf: wrap-around" {
     // Read the rest.
     const n = h.read(buf[0..]);
     try t.expect(n > 0);
+}
+
+test "simRead and simWrite map to IoStep" {
+    var h: SimHalf = .{};
+    try t.expectEqual(sql_net.IoStep{ .n = 5 }, simWrite(&h, "hello"));
+    var buf: [8]u8 = @splat(0);
+    try t.expectEqual(sql_net.IoStep{ .n = 5 }, simRead(&h, &buf));
+    try t.expectEqual(sql_net.IoStep.again, simRead(&h, &buf));
+    h.closeWrite();
+    try t.expectEqual(sql_net.IoStep.closed, simRead(&h, &buf));
+    try t.expectEqual(sql_net.IoStep.closed, simWrite(&h, "x"));
+}
+
+test "SeededPipe: fragmented writes and reads deliver exact bytes" {
+    const msg = "the quick brown fox jumps";
+    var a = SeededPipe.init(99);
+    a.profile = .{ .frag = 4, .eagain_per_mille = 300 };
+    // Write the whole message through the faulted pipe, bounded steps.
+    var wa: usize = 0;
+    var steps: u32 = 0;
+    while (wa < msg.len and steps < 10_000) : (steps += 1) {
+        const s = a.write(.ab, msg[wa..]);
+        switch (s) {
+            .n => |n| wa += n,
+            .again => {},
+            .closed, .want_write => unreachable, // no reset or TLS in this profile
+        }
+    }
+    try t.expectEqual(@as(usize, msg.len), wa);
+    // Read it back, fragmented, and compare byte for byte.
+    var got: [msg.len]u8 = @splat(0);
+    var ra: usize = 0;
+    steps = 0;
+    while (ra < msg.len and steps < 10_000) : (steps += 1) {
+        const s = a.read(.ab, got[ra..]);
+        switch (s) {
+            .n => |n| ra += n,
+            .again => {},
+            .closed, .want_write => unreachable, // no reset or TLS in this profile
+        }
+    }
+    try t.expectEqualStrings(msg, &got);
+}
+
+test "SeededPipe: same seed replays the same step sequence" {
+    const profile = FaultProfile{ .frag = 6, .eagain_per_mille = 250, .reset_per_mille = 40 };
+    var a = SeededPipe.init(1234);
+    a.profile = profile;
+    var b = SeededPipe.init(1234);
+    b.profile = profile;
+    var i: u32 = 0;
+    while (i < 200) : (i += 1) {
+        const src = [_]u8{ 1, 2, 3, 4, 5, 6, 7, 8 };
+        const sa = a.write(.ba, &src);
+        const sb = b.write(.ba, &src);
+        try t.expectEqual(sa, sb);
+        if (a.rst) {
+            a.reset();
+            b.reset();
+        }
+    }
+}
+
+test "SeededPipe: abrupt reset closes until reset" {
+    var p = SeededPipe.init(5);
+    _ = p.write(.ab, "hi");
+    p.injectReset();
+    var buf: [4]u8 = @splat(0);
+    try t.expectEqual(sql_net.IoStep.closed, p.read(.ab, &buf));
+    try t.expectEqual(sql_net.IoStep.closed, p.write(.ab, "x"));
+    p.reset();
+    try t.expectEqual(sql_net.IoStep{ .n = 3 }, p.write(.ab, "abc"));
+    try t.expectEqual(sql_net.IoStep{ .n = 3 }, p.read(.ab, &buf));
+    try t.expectEqualStrings("abc", buf[0..3]);
+}
+
+test "SeededPipe: half-close then EOF after drain" {
+    var p = SeededPipe.init(5);
+    _ = p.write(.ab, "done");
+    p.close(.ab);
+    var buf: [8]u8 = @splat(0);
+    try t.expectEqual(sql_net.IoStep{ .n = 4 }, p.read(.ab, &buf));
+    try t.expectEqual(sql_net.IoStep.closed, p.read(.ab, &buf));
+}
+
+// The protocol test file is wired in here so `zig build test-debug` runs it.
+test {
+    _ = @import("sim_proto_test.zig");
 }
