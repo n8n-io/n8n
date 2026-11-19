@@ -6,16 +6,10 @@ import {
 	AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH,
 	AGENT_SKILL_REFERENCE_MAX_COUNT,
 } from '@n8n/api-types';
+import AgentSkillViewer from '@/features/agents/components/AgentSkillViewer.vue';
+import { renderSkillMermaid } from '@/features/agents/components/skillMermaidRenderer';
 
-import AgentSkillViewer from '../components/AgentSkillViewer.vue';
-
-const mermaid = vi.hoisted(() => ({
-	initialize: vi.fn(),
-	parse: vi.fn(),
-	render: vi.fn(),
-}));
-
-vi.mock('mermaid', () => ({ default: mermaid }));
+vi.mock('@/features/agents/components/skillMermaidRenderer', { spy: true });
 vi.mock('@/app/stores/ui.store', () => ({ useUIStore: () => ({ appliedTheme: 'light' }) }));
 
 enableAutoUnmount(afterEach);
@@ -182,10 +176,11 @@ describe('AgentSkillViewer', () => {
 	});
 
 	it('shows Mermaid diagrams in the skill file and references', async () => {
-		mermaid.parse.mockResolvedValue({ diagramType: 'flowchart-v2' });
-		mermaid.render.mockResolvedValue({
-			svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 50"><title>Skill steps</title></svg>',
-		});
+		vi.mocked(renderSkillMermaid)
+			.mockResolvedValueOnce(
+				'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 50"><title>Skill steps</title></svg>',
+			)
+			.mockResolvedValueOnce('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 50"/>');
 		const wrapper = mountViewer({
 			readOnly: true,
 			skill: {
@@ -202,23 +197,26 @@ describe('AgentSkillViewer', () => {
 		const instructions = wrapper.get('[data-testid="agent-skill-instructions-text"]');
 		expect(instructions.get('h1').text()).toBe('Steps');
 		expect(instructions.get('img').attributes('alt')).toBe('Skill steps');
-		expect(instructions.find('pre').exists()).toBe(false);
+		expect(instructions.get('details').attributes('open')).toBeUndefined();
 
 		await wrapper.setProps({ selectedPath: 'references/steps.md' });
 		await flushPromises();
 
 		const reference = wrapper.get('[data-testid="agent-skill-reference-text"]');
 		expect(reference.get('img').attributes('src')).toMatch(/^data:image\/svg\+xml,/);
-		expect(mermaid.render).toHaveBeenLastCalledWith(
-			expect.any(String),
+		expect(reference.get('img').attributes('alt')).toBe('agents.builder.skills.mermaid.diagram');
+		expect(reference.get('summary').text()).toBe('agents.builder.skills.mermaid.source');
+		expect(reference.get('details pre code').element.textContent).toBe('flowchart TD\n  C --> D\n');
+		expect(renderSkillMermaid).toHaveBeenLastCalledWith(
 			'flowchart TD\n  C --> D\n',
-			expect.any(HTMLElement),
+			'default',
+			expect.any(Number),
+			expect.any(AbortSignal),
 		);
 	});
 
 	it('keeps invalid Mermaid and ordinary code blocks visible as code', async () => {
-		mermaid.parse.mockResolvedValue(false);
-		mermaid.render.mockClear();
+		vi.mocked(renderSkillMermaid).mockClear().mockResolvedValueOnce(undefined);
 		const wrapper = mountViewer({
 			readOnly: true,
 			skill: {
@@ -235,12 +233,14 @@ describe('AgentSkillViewer', () => {
 			'  Check the labels\n',
 		]);
 		expect(instructions.find('img').exists()).toBe(false);
-		expect(mermaid.render).not.toHaveBeenCalled();
+		expect(instructions.find('details').exists()).toBe(false);
+		expect(renderSkillMermaid).toHaveBeenCalledTimes(1);
 	});
 
-	it('keeps the source visible when Mermaid cannot render a parsed block', async () => {
-		mermaid.parse.mockResolvedValue({ diagramType: 'flowchart-v2' });
-		mermaid.render.mockRejectedValue(new Error('Cannot render the diagram'));
+	it('keeps the source visible when the diagram image cannot load', async () => {
+		vi.mocked(renderSkillMermaid).mockResolvedValueOnce(
+			'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 50"/>',
+		);
 		const code = 'flowchart LR\n  A --> B\n';
 		const wrapper = mountViewer({
 			readOnly: true,
@@ -253,8 +253,11 @@ describe('AgentSkillViewer', () => {
 		await flushPromises();
 
 		const instructions = wrapper.get('[data-testid="agent-skill-instructions-text"]');
+		await instructions.get('img').trigger('error');
+
 		expect(instructions.get('pre code').element.textContent).toBe(code);
 		expect(instructions.find('img').exists()).toBe(false);
+		expect(instructions.find('details').exists()).toBe(false);
 	});
 
 	it('keeps Mermaid fences in the editor for both files', async () => {

@@ -10240,6 +10240,7 @@
 	"agents.builder.skills.instructions.placeholder": "Describe what the agent should do, step by step…",
 	"agents.builder.skills.instructions.characterCount": "{count} / {max} characters",
 	"agents.builder.skills.mermaid.diagram": "Mermaid diagram",
+	"agents.builder.skills.mermaid.source": "Diagram source",
 	"agents.builder.skills.filesNav.label": "Skill files",
 	"agents.builder.skills.import.title": "Upload a skill",
 	"agents.builder.skills.import.description": "Drop a skill folder or a single SKILL.md file here, or browse. A folder must contain SKILL.md. The references/ folder is optional.",
