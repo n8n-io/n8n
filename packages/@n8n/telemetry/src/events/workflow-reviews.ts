@@ -53,7 +53,7 @@ export const WORKFLOW_REVIEWS_TELEMETRY = defineTelemetryEvents({
 	WORKFLOW_REVIEW_CLOSED: {
 		name: 'Workflow review closed',
 		description:
-			'An open review was closed without a decision because no reviewable workflow was left on it. No user performs it.',
+			'An open review was closed without a decision because no reviewable workflow was left on it. No user performs it. A user close fires "User closed workflow review" instead.',
 		properties: z.object({
 			workflow_review_request_id: z.string(),
 			cause_trigger: z
@@ -66,6 +66,20 @@ export const WORKFLOW_REVIEWS_TELEMETRY = defineTelemetryEvents({
 				.describe(
 					'Who caused the trigger, not who closed the review. "system" means no actor was recorded, not that automation acted',
 				),
+		}),
+	},
+	USER_CLOSED_WORKFLOW_REVIEW: {
+		name: 'User closed workflow review',
+		description:
+			'A user closed an open review without approving it. The review keeps its last decision. Fires instead of "Workflow review closed", never together with it.',
+		properties: z.object({
+			user_id: z.string(),
+			workflow_review_request_id: z.string(),
+			workflow_id: z.string(),
+			workflow_version_id: z
+				.string()
+				.nullable()
+				.describe('Null when the pinned version was pruned before the close'),
 		}),
 	},
 	USER_COMMENTED_ON_WORKFLOW_REVIEW: {

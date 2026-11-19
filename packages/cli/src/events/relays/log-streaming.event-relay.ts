@@ -197,6 +197,7 @@ export class LogStreamingEventRelay extends EventRelay {
 			'workflow-review-version-updated': (event) => this.workflowReviewVersionUpdated(event),
 			'workflow-review-decided': (event) => this.workflowReviewDecided(event),
 			'workflow-review-closed': (event) => this.workflowReviewClosed(event),
+			'workflow-review-closed-by-user': (event) => this.workflowReviewClosedByUser(event),
 			'token-exchange-succeeded': (event) => this.tokenExchangeSucceeded(event),
 			'token-exchange-failed': (event) => this.tokenExchangeFailed(event),
 			'token-exchange-identity-linked': (event) => this.tokenExchangeIdentityLinked(event),
@@ -1701,6 +1702,19 @@ export class LogStreamingEventRelay extends EventRelay {
 				causeActorKind: cause.actorKind,
 				causeUserId: cause.userId,
 			},
+		});
+	}
+
+	@Redactable()
+	private workflowReviewClosedByUser({
+		user,
+		workflowReviewRequestId,
+		workflowId,
+		workflowVersionId,
+	}: RelayEventMap['workflow-review-closed-by-user']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.workflow-review.closed-by-user',
+			payload: { ...user, workflowId, versionId: workflowVersionId, workflowReviewRequestId },
 		});
 	}
 
