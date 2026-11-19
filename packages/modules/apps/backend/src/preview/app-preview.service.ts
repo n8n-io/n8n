@@ -10,7 +10,7 @@ import { z } from 'zod';
 
 import type { App } from '../app.entity';
 import { AppRepository } from '../app.repository';
-import { appCookieName, embeddedAppCookieOptions, readCookie } from '../auth/app-cookies';
+import { appCookieName, embeddedAppCookieOptions } from '../auth/app-cookies';
 import { AppAuthService, type AppRequest } from '../auth/app-auth.service';
 import { AppHostService } from '../serving/app-host.service';
 import { AppVersionRepository } from '../versions/app-version.repository';
@@ -116,16 +116,11 @@ export class AppPreviewService {
 
 	/** Returns `null` when the preview session is missing or ended. */
 	async admit(req: Request): Promise<AppPreviewAdmission | null> {
-		const token = readCookie(req, this.cookieName());
-		const namespace = this.hosts.previewNamespace(req);
-		if (!token || !namespace) return null;
-		const app = await this.apps.findByNamespace(namespace);
-		if (!app) return null;
-		const admitted = await this.auth.admitToken(req, app, token, 'preview');
+		const admitted = await this.auth.admit(req, 'preview');
 		if (!admitted.ok) return null;
-		const versionId = await this.cache.get<string>(this.key(SESSION_PREFIX, token));
+		const versionId = await this.cache.get<string>(this.key(SESSION_PREFIX, admitted.token));
 		if (typeof versionId !== 'string') return null;
-		return { app, versionId, security: admitted.security, token };
+		return { app: admitted.app, versionId, security: admitted.security, token: admitted.token };
 	}
 
 	private invalidLink() {

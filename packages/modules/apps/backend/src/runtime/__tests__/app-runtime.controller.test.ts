@@ -390,6 +390,17 @@ describe('AppRuntimeController', () => {
 			expect(preview.admit).not.toHaveBeenCalled();
 		});
 
+		it('answers 404 when the preview host has no app', async () => {
+			const { controller, preview } = setup({ host: 'preview' });
+			preview.admit.mockRejectedValue(new NotFoundError('App not found.'));
+			const res = response();
+
+			await controller.prepare(request({ headers: sameOrigin, runtime: false }), res, vi.fn());
+
+			expect(res.status).toHaveBeenCalledWith(404);
+			expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ code: 'app_not_found' }));
+		});
+
 		it('answers 401 when the preview session ended', async () => {
 			const { controller, preview } = setup({ host: 'preview' });
 			preview.admit.mockResolvedValue(null);

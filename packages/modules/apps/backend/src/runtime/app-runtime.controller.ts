@@ -148,9 +148,7 @@ export class AppRuntimeController {
 			this.assertSameOriginRequest(req, host);
 			await run(parseCookies, req, res);
 			const isPreview = host?.kind === 'preview';
-			const { app, versionId, user, sessionToken } = isPreview
-				? await this.admitPreview(req)
-				: await this.admitPublished(req);
+			const { app, versionId, user, sessionToken } = await this.admit(req, isPreview);
 			const version = await this.servedVersion(app, versionId);
 			await this.parseBody(req, res);
 			req.appRuntime = {
@@ -342,17 +340,20 @@ export class AppRuntimeController {
 		return published ? { kind: 'published', namespace: published } : undefined;
 	}
 
-	/** Only here does a `NotFoundError` mean that the host has no published app. */
-	private async admitPublished(req: Request): Promise<AppRuntimeAdmission> {
-		let admission: Awaited<ReturnType<AppAuthService['admit']>>;
+	/** Only here does a `NotFoundError` mean that the host has no app to serve. */
+	private async admit(req: Request, isPreview: boolean): Promise<AppRuntimeAdmission> {
 		try {
-			admission = await this.auth.admit(req);
+			return isPreview ? await this.admitPreview(req) : await this.admitPublished(req);
 		} catch (error) {
 			if (error instanceof NotFoundError) {
 				throw new AppRuntimeError(404, 'app_not_found', 'App not found.');
 			}
 			throw error;
 		}
+	}
+
+	private async admitPublished(req: Request): Promise<AppRuntimeAdmission> {
+		const admission = await this.auth.admit(req);
 		if (!admission.ok) {
 			throw admission.reason === 'insufficient_scope'
 				? new AppRuntimeError(403, 'forbidden', "You don't have access to this app.")
