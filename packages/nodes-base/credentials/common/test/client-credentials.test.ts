@@ -99,6 +99,36 @@ describe('client credentials grant', () => {
 			);
 		});
 
+		it('keeps the secret out of a refusal that echoes it back', async () => {
+			requestMock.mockRejectedValue(
+				httpError({ error_description: 'client_secret secret is not valid' }),
+			);
+
+			const error = await requestClientCredentialsToken(config).catch((e: Error) => e);
+
+			expect(error.message).not.toContain('secret');
+			expect(error.message).toContain('***');
+		});
+
+		it.each([
+			['a token of only spaces', { access_token: '   ' }],
+			['no token at all', {}],
+		])('refuses %s', async (_case, response) => {
+			requestMock.mockResolvedValue(response);
+
+			await expect(requestClientCredentialsToken(config)).rejects.toThrow(
+				'returned no access token',
+			);
+		});
+
+		it('form-encodes the Basic pair, so a secret with reserved characters survives', async () => {
+			await requestClientCredentialsToken({ ...config, clientSecret: 'a+b c%d' });
+
+			expect((requestMock.mock.calls[0][0] as { auth: { password: string } }).auth.password).toBe(
+				'a%2Bb%20c%25d',
+			);
+		});
+
 		it('rethrows an error that is not an HTTP refusal', async () => {
 			requestMock.mockRejectedValue(new Error('getaddrinfo ENOTFOUND'));
 
@@ -127,7 +157,6 @@ describe('client credentials grant', () => {
 		});
 
 		it.each([
-			['the response has no token', {}],
 			['the token is empty', { access_token: '' }],
 			['the response is not an object', 'denied'],
 		])('fails when %s', async (_case, response) => {

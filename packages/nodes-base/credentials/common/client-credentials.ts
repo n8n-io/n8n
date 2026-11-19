@@ -1,5 +1,6 @@
 import { isHttpRequestError } from '@n8n/backend-network';
 import { OperationalError, UserError } from '@n8n/errors';
+import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 
 import { getTokenRequestClient, hasAccessToken, TOKEN_REQUEST_TIMEOUT } from './token-request';
 
@@ -19,15 +20,20 @@ const RENEW_MARGIN_MS = 30_000;
 const asFilledString = (value: unknown) =>
 	typeof value === 'string' && value.trim() !== '' ? value.trim() : undefined;
 
-function refusalFrom(error: unknown) {
+/** An endpoint can echo what it was sent, so never hand its words back with the secret still in them. */
+function refusalFrom(error: unknown, clientSecret: string) {
 	if (!isHttpRequestError(error)) return undefined;
 
 	const data = error.response?.data;
-	if (typeof data === 'string' && data.trim() !== '') return data.trim().slice(0, 300);
-	if (typeof data !== 'object' || data === null) return undefined;
+	const said =
+		typeof data === 'string'
+			? asFilledString(data)?.slice(0, 300)
+			: typeof data === 'object' && data !== null
+				? (asFilledString((data as Record<string, unknown>).error_description) ??
+					asFilledString((data as Record<string, unknown>).error))
+				: undefined;
 
-	const { error_description: description, error: code } = data as Record<string, unknown>;
-	return asFilledString(description) ?? asFilledString(code);
+	return said === undefined ? undefined : scrubSecretsInText(said.split(clientSecret).join('***'));
 }
 
 /**
@@ -57,7 +63,16 @@ export async function requestClientCredentialsToken(config: ClientCredentialsCon
 		response = await getTokenRequestClient('user-controlled').request({
 			url: tokenUrl,
 			method: 'POST',
-			...(inBody ? {} : { auth: { username: clientId, password: clientSecret } }),
+			// RFC 6749 2.3.1: both halves are form-urlencoded before they are base64-encoded,
+			// so a secret holding `+`, `%` or a space still reaches a compliant server intact.
+			...(inBody
+				? {}
+				: {
+						auth: {
+							username: encodeURIComponent(clientId),
+							password: encodeURIComponent(clientSecret),
+						},
+					}),
 			body: body.toString(),
 			headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
 			json: true,
@@ -66,19 +81,20 @@ export async function requestClientCredentialsToken(config: ClientCredentialsCon
 			allowedDomains: config.allowedDomains,
 		});
 	} catch (error) {
-		const refusal = refusalFrom(error);
+		const refusal = refusalFrom(error, clientSecret);
 		if (refusal) throw new UserError(`The token endpoint refused the grant: ${refusal}`);
 		throw error;
 	}
 
-	if (!hasAccessToken(response)) {
+	const accessToken = hasAccessToken(response) ? asFilledString(response.access_token) : undefined;
+	if (!accessToken) {
 		throw new OperationalError('The token endpoint returned no access token');
 	}
 
 	const expiresIn = Number((response as { expires_in?: unknown }).expires_in);
 	const lifetimeMs =
 		(Number.isFinite(expiresIn) && expiresIn > 0 ? expiresIn : ASSUMED_LIFETIME_SECONDS) * 1000;
-	return { accessToken: response.access_token, lifetimeMs };
+	return { accessToken, lifetimeMs };
 }
 
 /**
