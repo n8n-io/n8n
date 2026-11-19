@@ -10,6 +10,10 @@ export class AppsConfig {
 	@Env('N8N_APPS_BASE_URL')
 	baseUrl: string = '';
 
+	/** Name of a request header that carries the original app host, for example `x-n8n-apps-host`. Set it when a proxy forwards app requests to the main n8n host. When unset, n8n uses the request host. */
+	@Env('N8N_APPS_HOST_HEADER')
+	hostHeader: string = '';
+
 	/** Maximum app file requests per IP address per minute across all app hosts in each main process. This limit includes pages and assets in production. Set to 0 to disable it. */
 	@Env('N8N_APPS_SERVE_RATE_LIMIT', rateLimit)
 	rateLimitServe: number = 1200;
