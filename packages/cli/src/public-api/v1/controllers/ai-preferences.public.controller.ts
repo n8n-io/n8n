@@ -71,8 +71,8 @@ export class AiPreferencesPublicController {
 	@ApiSummary('List AI preferences')
 	@ApiDescription(
 		'List the AI preferences you can read: the instance preferences, your own preferences, ' +
-			'and the preferences of the projects where your role can read them. ' +
-			'Owners and admins also see the preferences of other users. ' +
+			'and the preferences of the projects where you hold the projectAiPreference:list permission. ' +
+			'With the aiPreference:list permission, the list also has the preferences of other users. ' +
 			'Filter with scope and projectId. The response is one cursor page: read the next page with the cursor query parameter.',
 	)
 	@ApiTags(tags)
@@ -122,9 +122,9 @@ export class AiPreferencesPublicController {
 	@ApiSummary('Create an AI preference')
 	@ApiDescription(
 		'Create an AI preference for yourself (scope user), for a project (scope project, with projectId), ' +
-			'or for the whole instance (scope instance). Only owners and admins can create a preference ' +
-			'for the instance or for another user. A preference for a project needs a project role ' +
-			'that can edit preferences in that project. Each scope holds at most 50 preferences, ' +
+			'or for the whole instance (scope instance). A preference for the instance or for another user ' +
+			'needs the aiPreference:create permission. A preference for a project needs the ' +
+			'projectAiPreference:create permission in that project. Each scope holds at most 50 preferences, ' +
 			'and two preferences in one scope cannot have the same text.',
 	)
 	@ApiTags(tags)
