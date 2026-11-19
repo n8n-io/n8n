@@ -297,17 +297,23 @@ export function emitStep(c: NodeContext, call: StepCall): void {
 
 	w.line(`const ${out}: Json[] = [];`);
 	// The index of the input item of each item of output 0 (`paired`), as a compiled node gives it.
-	// The index of the input item of each item of output 0, as a compiled node gives it.
 	// v1 pairs each output item with its input item after a continue too, and the output of
 	// a node with "retry on fail" is that of its last run.
 	const pairs =
 		call.pairsByCall === true && c.pairsWanted === true && c.setPairs !== undefined
 			? `${out}Pairs`
 			: null;
+	// True when every item of output 0 gets an index: the loop below pushes the index with each
+	// item, and the other pushes of the output go through the same push: the error item of a
+	// continue setting (`failedItem`), the item that the host form gives (`emitItemWithHost`),
+	// all input items after a failure of the whole node, and the items of the last try. The
+	// module of a compiled node gives its items itself (`reportError`) and no index, so that
+	// form alone is not complete.
+	const complete = call.reportError !== true;
 	if (pairs) {
 		w.line(`const ${pairs}: Json = { items: ${out}, paired: [] };`);
 		// Each push of an item below has the push of the index of its input item.
-		c.setPairs?.(pairs, 0, true);
+		c.setPairs?.(pairs, 0, complete);
 	}
 	const push = (value: string) =>
 		pairs ? `{ ${out}.push(${value}); ${pairs}.paired.push(${INDEX}); }` : `${out}.push(${value});`;
