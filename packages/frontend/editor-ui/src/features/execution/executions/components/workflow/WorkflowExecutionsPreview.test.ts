@@ -7,6 +7,7 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import WorkflowExecutionsPreview from './WorkflowExecutionsPreview.vue';
 import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
 import { WorkflowIdKey } from '@/app/constants/injectionKeys';
+import { LOCAL_STORAGE_EXECUTIONS_EXPAND_GROUPS } from '@/app/constants/localStorage';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useWorkflowHistoryStore } from '@/features/workflows/workflowHistory/workflowHistory.store';
 import type { IWorkflowDb } from '@/Interface';
@@ -103,7 +104,11 @@ const renderComponent = createComponentRenderer(WorkflowExecutionsPreview, {
 			RouterLink,
 			// The preview canvas loads and evicts per-execution data stores on mount,
 			// which would clobber the state these tests seed.
-			ExecutionPreviewHost: true,
+			ExecutionPreviewHost: {
+				props: ['expandGroupsByDefault'],
+				template:
+					'<div data-test-id="execution-preview-host" :data-expand-groups="expandGroupsByDefault" />',
+			},
 			// Reka UI tooltips don't open in jsdom, so expose the props the component
 			// passes and assert the wiring instead of driving the popup.
 			N8nTooltip: {
@@ -175,6 +180,36 @@ describe('WorkflowExecutionsPreview.vue', () => {
 		});
 
 		expect(getByTestId('stop-execution')).toBeDisabled();
+	});
+
+	it('remembers the group expansion preference across execution previews', async () => {
+		localStorage.removeItem(LOCAL_STORAGE_EXECUTIONS_EXPAND_GROUPS);
+		try {
+			const first = renderComponent({
+				props: { execution: { ...executionData, status: 'success' } },
+			});
+			await userEvent.click(first.getByRole('button', { name: 'View options' }));
+			const expandGroups = await first.findByRole('switch', { name: 'Expand groups by default' });
+			expect(expandGroups).not.toBeChecked();
+			await userEvent.click(expandGroups);
+			expect(first.getByTestId('execution-preview-host')).toHaveAttribute(
+				'data-expand-groups',
+				'true',
+			);
+			first.unmount();
+
+			const second = renderComponent({
+				props: { execution: { ...executionData, id: 'another-execution', status: 'success' } },
+			});
+			await userEvent.click(second.getByRole('button', { name: 'View options' }));
+			expect(await second.findByRole('switch', { name: 'Expand groups by default' })).toBeChecked();
+			expect(second.getByTestId('execution-preview-host')).toHaveAttribute(
+				'data-expand-groups',
+				'true',
+			);
+		} finally {
+			localStorage.removeItem(LOCAL_STORAGE_EXECUTIONS_EXPAND_GROUPS);
+		}
 	});
 
 	it('shows the add-to-dataset button for a successful non-evaluation execution', () => {
