@@ -571,8 +571,17 @@ it.each([
 		agents,
 		hiddenAgentCount,
 	});
+	vi.mocked(store.fetchSourceUpdate).mockResolvedValue({
+		files: [{ path: 'SKILL.md', before: 'Old', after: 'New' }],
+		agents,
+		hiddenAgentCount,
+	});
 	const view = render();
-	await view.findByTestId('skill-source-file');
+	const file = await view.findByTestId('skill-source-file');
+	const impact = view.getByTestId('skill-update-impact');
+	expect(impact).toHaveTextContent(message);
+	expect(file.compareDocumentPosition(impact) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+	expect(view.queryByText('docx · v2 after update')).not.toBeInTheDocument();
 	await userEvent.click(view.getByTestId('skill-updates-accept'));
 	expect(showMessage).toHaveBeenCalledWith({
 		type: 'success',

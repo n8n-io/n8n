@@ -53,7 +53,15 @@ function filesOf(content: SkillContent): Map<string, string> {
 }
 
 export function updateFiles(before: SkillContent, after: SkillContent): SkillUpdateFile[] {
-	const from = filesOf(before);
+	// Match the old key order to the update. Keep the scanned text and its finding offsets intact.
+	const from = filesOf({
+		...before,
+		frontmatter: Object.fromEntries(
+			Object.entries({ ...after.frontmatter, ...before.frontmatter }).filter(([key]) =>
+				Object.hasOwn(before.frontmatter ?? {}, key),
+			),
+		),
+	});
 	const to = filesOf(after);
 	return [...new Set([...from.keys(), ...to.keys()])].map((path) => ({
 		path,

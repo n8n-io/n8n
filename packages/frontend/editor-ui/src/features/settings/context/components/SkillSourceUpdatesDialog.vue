@@ -428,42 +428,6 @@ void load();
 					}}</N8nText>
 				</template>
 				<template #preview="{ skill }">
-					<div :class="$style.detailHeader">
-						<N8nText size="small" bold>{{
-							i18n.baseText('settings.context.skills.updates.nextVersion', {
-								interpolate: {
-									name: skill.name ?? '',
-									version: byId.get(skill.key)?.nextVersion ?? '',
-								},
-							})
-						}}</N8nText>
-						<N8nText v-if="detail && !focused?.newSkill" size="small" color="text-light"
-							>{{ impact }}
-							{{ i18n.baseText('settings.context.skills.updates.publishedUnchanged') }}</N8nText
-						>
-						<template v-if="focused?.newSkill">
-							<N8nText v-if="!source.canImport" size="small" color="text-light">{{
-								i18n.baseText('settings.context.skills.updates.importNotAllowed')
-							}}</N8nText>
-							<N8nText size="small" color="text-light">{{
-								i18n.baseText('settings.context.skills.updates.newHint')
-							}}</N8nText>
-							<N8nButton
-								variant="ghost"
-								:disabled="saving || focused.newSkill.skipped"
-								:label="
-									i18n.baseText(
-										focused.newSkill.skipped
-											? 'settings.context.skills.updates.hiddenNew'
-											: 'settings.context.skills.updates.hideNew',
-									)
-								"
-								data-test-id="skill-new-hide"
-								data-attr="skill-new-hide"
-								@click="hideNewSkill"
-							/>
-						</template>
-					</div>
 					<N8nText v-if="detailLoading" :class="$style.detailNotice">{{
 						i18n.baseText('generic.loading')
 					}}</N8nText>
@@ -471,14 +435,47 @@ void load();
 						>{{ detailError }}
 						<N8nButton variant="ghost" :label="i18n.baseText('generic.retry')" @click="loadPreview"
 					/></N8nCallout>
-					<N8nCallout
-						v-else-if="skill.check?.verdict === 'blocked'"
-						theme="danger"
-						:class="$style.detailNotice"
-						data-test-id="skill-update-blocked"
-						>{{ i18n.baseText('settings.context.skills.updates.blocked') }}</N8nCallout
-					>
-					<SkillSourceFilesView v-else-if="detail" :skill="skill" :diff-files="detail.files" />
+					<SkillSourceFilesView v-else :skill="skill" :diff-files="detail?.files ?? []">
+						<template #footer>
+							<N8nText
+								v-if="detail && !focused?.newSkill"
+								size="small"
+								color="text-light"
+								data-test-id="skill-update-impact"
+							>
+								{{ impact }}
+								{{ i18n.baseText('settings.context.skills.updates.publishedUnchanged') }}
+							</N8nText>
+							<N8nCallout
+								v-if="skill.check?.verdict === 'blocked' && !skill.check.findings.length"
+								theme="danger"
+								data-test-id="skill-update-blocked"
+								>{{ i18n.baseText('settings.context.skills.updates.blocked') }}</N8nCallout
+							>
+							<div v-if="focused?.newSkill" :class="$style.detailActions">
+								<N8nText v-if="!source.canImport" size="small" color="text-light">{{
+									i18n.baseText('settings.context.skills.updates.importNotAllowed')
+								}}</N8nText>
+								<N8nText size="small" color="text-light">{{
+									i18n.baseText('settings.context.skills.updates.newHint')
+								}}</N8nText>
+								<N8nButton
+									variant="ghost"
+									:disabled="saving || focused.newSkill.skipped"
+									:label="
+										i18n.baseText(
+											focused.newSkill.skipped
+												? 'settings.context.skills.updates.hiddenNew'
+												: 'settings.context.skills.updates.hideNew',
+										)
+									"
+									data-test-id="skill-new-hide"
+									data-attr="skill-new-hide"
+									@click="hideNewSkill"
+								/>
+							</div>
+						</template>
+					</SkillSourceFilesView>
 				</template>
 			</SkillSourceReview>
 			<N8nText v-else-if="!error">{{
@@ -533,7 +530,7 @@ void load();
 
 <style lang="scss" module>
 .body,
-.detailHeader {
+.detailActions {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--2xs);
@@ -575,9 +572,11 @@ void load();
 	overflow-wrap: anywhere;
 }
 
-.detailHeader {
+.detailActions {
 	gap: var(--spacing--4xs);
-	padding: var(--spacing--sm) var(--spacing--sm) 0;
+	align-items: flex-start;
+	padding-top: var(--spacing--xs);
+	border-top: var(--border);
 }
 .detailNotice {
 	margin: var(--spacing--sm);

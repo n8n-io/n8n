@@ -19,6 +19,8 @@ import {
 	N8nDialog,
 	N8nDialogBody,
 	N8nDialogFooter,
+	N8nDialogHeader,
+	N8nDialogTitle,
 	N8nIcon,
 	N8nInputLabel,
 	N8nSelect2,
@@ -708,7 +710,6 @@ function onInteractOutside(event: Event) {
 <template>
 	<N8nDialog
 		:open="open"
-		:header="i18n.baseText('settings.context.skills.connect.title')"
 		:size="step === 'review' ? 'full' : 'xlarge'"
 		:container-class="step === 'review' ? $style.wide : undefined"
 		:trap-focus="!credentialModalOpen"
@@ -717,6 +718,21 @@ function onInteractOutside(event: Event) {
 		@update:open="onOpenChange"
 		@interact-outside="onInteractOutside"
 	>
+		<N8nDialogHeader :class="$style.header">
+			<N8nDialogTitle>{{ i18n.baseText('settings.context.skills.connect.title') }}</N8nDialogTitle>
+			<template v-if="step === 'review'">
+				<N8nText
+					size="small"
+					color="text-light"
+					:class="$style.source"
+					data-test-id="skill-source-summary"
+				>
+					<N8nIcon icon="git-branch" size="small" />
+					{{ sourceLine }}
+				</N8nText>
+				<SkillScopeBadge :skill="scopeSkill" :label="selectedScope?.label" />
+			</template>
+		</N8nDialogHeader>
 		<N8nDialogBody v-if="step === 'repository'" :class="$style.body">
 			<N8nCallout
 				v-if="createdCredential && createdCredential.id === credentialId"
@@ -840,18 +856,14 @@ function onInteractOutside(event: Event) {
 		</N8nDialogBody>
 
 		<N8nDialogBody v-else-if="discovery" :class="$style.body">
-			<div :class="$style.source">
-				<N8nText bold data-test-id="skill-source-summary">{{ sourceLine }}</N8nText>
-				<SkillScopeBadge :skill="scopeSkill" :label="selectedScope?.label" />
-				<N8nText
-					v-if="alsoConnected"
-					size="small"
-					color="text-light"
-					data-test-id="skill-source-also-connected"
-				>
-					{{ alsoConnected }}
-				</N8nText>
-			</div>
+			<N8nText
+				v-if="alsoConnected"
+				size="small"
+				color="text-light"
+				data-test-id="skill-source-also-connected"
+			>
+				{{ alsoConnected }}
+			</N8nText>
 			<SkillSourceReview
 				v-model:selected="selected"
 				:discovery="discovery"
@@ -868,14 +880,15 @@ function onInteractOutside(event: Event) {
 				data-test-id="skill-source-back"
 				@click="onBack"
 			/>
+			<span :class="$style.spacer" />
 			<N8nCheckbox
 				v-if="step === 'review' && needsReview"
 				v-model="reviewed"
 				:label="i18n.baseText('settings.context.skills.connect.check.reviewed')"
 				data-test-id="skill-source-reviewed-warnings"
 			/>
-			<span :class="$style.spacer" />
 			<N8nButton
+				v-if="step === 'repository'"
 				variant="outline"
 				:label="i18n.baseText('generic.cancel')"
 				:disabled="connecting"
@@ -922,11 +935,16 @@ function onInteractOutside(event: Event) {
 	gap: var(--spacing--5xs);
 }
 
+.header {
+	align-items: center;
+}
+
 .source {
 	display: flex;
-	flex-direction: column;
-	align-items: flex-start;
-	gap: var(--spacing--5xs);
+	align-items: center;
+	gap: var(--spacing--2xs);
+	min-width: 0;
+	overflow-wrap: anywhere;
 }
 
 .footer {
