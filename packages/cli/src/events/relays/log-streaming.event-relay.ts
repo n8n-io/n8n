@@ -193,6 +193,7 @@ export class LogStreamingEventRelay extends EventRelay {
 			'instance-policies-updated': (event) => this.instancePoliciesUpdated(event),
 			'redaction-enforcement-updated': (event) => this.redactionEnforcementUpdated(event),
 			'public-api-rate-limit-updated': (event) => this.publicApiRateLimitUpdated(event),
+			'promotion-settings-updated': (event) => this.promotionSettingsUpdated(event),
 			'workflow-review-requested': (event) => this.workflowReviewRequested(event),
 			'workflow-review-version-updated': (event) => this.workflowReviewVersionUpdated(event),
 			'workflow-review-decided': (event) => this.workflowReviewDecided(event),
@@ -1557,6 +1558,12 @@ export class LogStreamingEventRelay extends EventRelay {
 				// Telemetry-only signal. The audit trail for redaction enforcement
 				// is emitted separately via 'redaction-enforcement-updated'.
 				break;
+			case 'promotions_who_can_promote':
+			case 'promotions_who_can_approve':
+			case 'promotions_who_can_apply':
+				// Telemetry-only signal. The audit trail is emitted separately via
+				// 'promotion-settings-updated'.
+				break;
 			case 'workflow_reviews':
 				void this.eventBus.sendAuditEvent({
 					eventName: value
@@ -1600,6 +1607,19 @@ export class LogStreamingEventRelay extends EventRelay {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.public-api-rate-limit.updated',
 			payload: { ...user, before, after },
+		});
+	}
+
+	@Redactable()
+	private promotionSettingsUpdated({
+		user,
+		before,
+		after,
+		loginId,
+	}: RelayEventMap['promotion-settings-updated']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.promotion-settings.updated',
+			payload: { ...user, before, after, ...(loginId !== undefined && { loginId }) },
 		});
 	}
 

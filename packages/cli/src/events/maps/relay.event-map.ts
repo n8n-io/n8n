@@ -11,6 +11,7 @@ import type {
 	PromotionProviderAuthType,
 	PromotionProviderType,
 	PromotionReviewType,
+	PromotionSettings,
 	PublicApiRateLimitSettings,
 	RedactionFloor,
 	ScimDeprovisioningPolicy,
@@ -1485,6 +1486,13 @@ export type RelayEventMap = ModuleEventMap & {
 				settingName: 'data_redaction_enforcement_floor';
 				value: RedactionFloor;
 		  }
+		| {
+				settingName:
+					| 'promotions_who_can_promote'
+					| 'promotions_who_can_approve'
+					| 'promotions_who_can_apply';
+				value: PromotionSettings[keyof PromotionSettings];
+		  }
 	);
 
 	'redaction-enforcement-updated': {
@@ -1500,6 +1508,15 @@ export type RelayEventMap = ModuleEventMap & {
 		user: UserLike;
 		before: Partial<Omit<PublicApiRateLimitSettings, 'enabled'>>;
 		after: Partial<Omit<PublicApiRateLimitSettings, 'enabled'>>;
+	};
+
+	/** `before` and `after` hold only the promotion settings that changed. */
+	'promotion-settings-updated': {
+		user: UserLike;
+		before: Partial<PromotionSettings>;
+		after: Partial<PromotionSettings>;
+		/** Login of the service account that acted. Absent for people and outside a request. */
+		loginId?: string;
 	};
 
 	// #endregion
