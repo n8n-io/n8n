@@ -13,7 +13,6 @@ import {
 	N8nInputLabel,
 	N8nSelect2,
 	N8nText,
-	type IconName,
 } from '@n8n/design-system';
 
 import {
@@ -70,15 +69,6 @@ const categoryKeys = {
 	writing: 'settings.context.skills.catalog.categories.writing',
 	design: 'settings.context.skills.catalog.categories.design',
 } satisfies Record<SkillCatalogCategory, BaseTextKey>;
-
-const categoryIcons = {
-	build: 'workflow',
-	improve: 'wrench',
-	agents: 'bot',
-	data: 'database',
-	writing: 'pen',
-	design: 'palette',
-} satisfies Record<SkillCatalogCategory, IconName>;
 
 const reviewedDate = computed(() =>
 	new Intl.DateTimeFormat(i18n.locale, {
@@ -190,16 +180,11 @@ function installs(entry: SkillCatalogEntry) {
 				<li v-for="entry in group.skills" :key="entry.id">
 					<N8nCard :class="$style.card" :data-test-id="`skill-catalog-${entry.id}`">
 						<div :class="$style.cardContent">
-							<div :class="$style.cardHeader">
-								<span :class="[$style.icon, $style[entry.category]]" aria-hidden="true">
-									<N8nIcon :icon="categoryIcons[entry.category]" size="xlarge" />
-								</span>
-								<div :class="$style.identity">
-									<N8nHeading tag="h3" size="medium" bold>{{
-										i18n.baseText(entry.nameKey)
-									}}</N8nHeading>
-									<N8nText size="small" color="text-light">{{ entry.publisher }}</N8nText>
-								</div>
+							<div :class="$style.identity">
+								<N8nHeading tag="h3" size="medium" bold>{{
+									i18n.baseText(entry.nameKey)
+								}}</N8nHeading>
+								<N8nText size="small" color="text-light">{{ entry.publisher }}</N8nText>
 							</div>
 							<N8nText tag="p" color="text-base" :class="$style.description">{{
 								i18n.baseText(entry.descriptionKey)
@@ -303,45 +288,12 @@ function installs(entry: SkillCatalogEntry) {
 	gap: var(--spacing--sm);
 	min-width: 0;
 }
-.cardHeader {
-	display: flex;
-	align-items: flex-start;
-	gap: var(--spacing--xs);
-}
 .identity {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--4xs);
 	min-width: 0;
 	overflow-wrap: anywhere;
-}
-.icon {
-	display: grid;
-	place-items: center;
-	flex-shrink: 0;
-	width: var(--height--xl);
-	height: var(--height--xl);
-	border-radius: var(--radius--xs);
-	background-color: color-mix(in srgb, currentColor 10%, var(--background--surface));
-
-	&.build {
-		color: var(--color--blue-600);
-	}
-	&.improve {
-		color: var(--color--orange-600);
-	}
-	&.agents {
-		color: var(--color--purple-500);
-	}
-	&.data {
-		color: var(--color--green-600);
-	}
-	&.writing {
-		color: var(--color--blue-500);
-	}
-	&.design {
-		color: var(--color--pink-600);
-	}
 }
 .description {
 	flex: 1;
