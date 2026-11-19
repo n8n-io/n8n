@@ -52,8 +52,8 @@ it('saves the chosen option and keeps it selected', async () => {
 
 	const select = await choose('Project admins');
 
+	// Only the changed setting, so a newer value of another setting stays.
 	expect(api.updatePromotionSettings).toHaveBeenCalledWith(expect.anything(), {
-		...stored,
 		whoCanPromote: 'projectAdmins',
 	});
 	await waitFor(() => expect(select).toHaveTextContent(/^Project admins$/));
