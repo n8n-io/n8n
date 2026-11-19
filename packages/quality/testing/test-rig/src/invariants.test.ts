@@ -17,6 +17,7 @@ import {
 const request = (requestId: string, status = 200, executionId?: string) => ({
 	requestId,
 	status,
+	accepted: status === 200,
 	sentAt: 0,
 	ms: 1,
 	executionId,
@@ -69,6 +70,14 @@ describe('workload invariants', () => {
 		expect(noAcceptedRequestLost(masked)).toEqual([
 			{ invariant: 'no accepted request lost', detail: { missing: ['b'] } },
 		]);
+	});
+
+	it('ignore a request that n8n answered while starting up', () => {
+		const startingUp = {
+			...healthy,
+			requests: [...healthy.requests, { ...request('d'), accepted: false }],
+		};
+		expect(checkWorkload(startingUp)).toEqual([]);
 	});
 
 	it('flag a missing effect when the execution of the request succeeded', () => {
@@ -165,6 +174,14 @@ describe('engine workload invariants', () => {
 			executions: [...engineHealthy.executions, execution('e3', 'c')],
 		};
 		expect(everyAcceptedRequestHasOneExecution(record)).toEqual([]);
+	});
+
+	it('ignore a request that n8n answered while starting up', () => {
+		const record = {
+			...engineHealthy,
+			requests: [...engineHealthy.requests, { ...request('d'), accepted: false }],
+		};
+		expect(checkEngineWorkload(record)).toEqual([]);
 	});
 
 	it('flag executions that are not final', () => {
