@@ -107,6 +107,54 @@ describe('processRunExecutionData', () => {
 		expect(result.data.resultData.failedBeforeStart).toBeUndefined();
 	});
 
+	test('executes waiting nodes that are ancestors of each other through a loop', async () => {
+		// ARRANGE
+		// Two nodes that wait for input and can reach each other through a loop
+		// (e.g. two Merge nodes inside a loop). Without special handling each one
+		// is deferred because the other is its ancestor and the execution ends
+		// without running either of them.
+		// The second node outputs no items, which ends the loop.
+		const loopEndNode: INodeType = {
+			...passThroughNode,
+			execute: async () => await Promise.resolve([[]]),
+		};
+		const loopNodeTypes = NodeTypes({
+			...nodeTypeArguments,
+			loopEnd: { type: loopEndNode, sourcePath: '' },
+		});
+		const loopNode1 = createNodeData({ name: 'loopNode1', type: types.passThrough });
+		const loopNode2 = createNodeData({ name: 'loopNode2', type: 'loopEnd' });
+		const workflow = new DirectedGraph()
+			.addNodes(loopNode1, loopNode2)
+			.addConnections({ from: loopNode1, to: loopNode2 }, { from: loopNode2, to: loopNode1 })
+			.toWorkflow({
+				name: '',
+				active: false,
+				nodeTypes: loopNodeTypes,
+				settings: { executionOrder: 'v1' },
+			});
+
+		const waiting = (item: number) => ({ 0: { main: [[{ json: { item } }], null] } });
+		const source = { 0: { main: [{ previousNode: 'start' }, null] } };
+		const executionData = createRunExecutionData({
+			executionData: {
+				nodeExecutionStack: [],
+				waitingExecution: { loopNode1: waiting(1), loopNode2: waiting(2) },
+				waitingExecutionSource: { loopNode1: source, loopNode2: source },
+			},
+		});
+
+		const workflowExecute = new WorkflowExecute(additionalData, executionMode, executionData);
+
+		// ACT
+		const result = await workflowExecute.processRunExecutionData(workflow);
+
+		// ASSERT
+		expect(result.data.resultData.runData).toHaveProperty('loopNode1');
+		expect(result.data.resultData.runData).toHaveProperty('loopNode2');
+		expect(result.data.executionData?.waitingExecution).toEqual({});
+	});
+
 	test('clears the failed-before-start flag carried over from the retried execution', async () => {
 		const node = createNodeData({ name: 'node', type: types.passThrough });
 		const workflow = new DirectedGraph()

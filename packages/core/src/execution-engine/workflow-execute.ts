@@ -1901,6 +1901,23 @@ export class WorkflowExecute {
 	 * of its inputs received data.
 	 */
 	private addWaitingNodeToEmptyStack(workflow: Workflow): void {
+		this.addWaitingNodeToEmptyStackPass(workflow, false);
+
+		const { executionData } = this.runExecutionData;
+		if (
+			executionData!.nodeExecutionStack.length === 0 &&
+			Object.keys(executionData!.waitingExecution).length
+		) {
+			// Every waiting node was deferred because another waiting node is its
+			// ancestor. This is a deadlock when the ancestors are only reachable
+			// through a loop (back connection), e.g. two Merge nodes inside a loop
+			// that are ancestors of each other. Retry while ignoring such cyclic
+			// ancestors so the execution does not silently stop.
+			this.addWaitingNodeToEmptyStackPass(workflow, true);
+		}
+	}
+
+	private addWaitingNodeToEmptyStackPass(workflow: Workflow, ignoreCyclicParents: boolean): void {
 		let waitingNodes: string[] = Object.keys(this.runExecutionData.executionData!.waitingExecution);
 
 		if (
@@ -1956,7 +1973,12 @@ export class WorkflowExecute {
 
 				// Check if input nodes (of same run) got already executed
 
-				const parentIsWaiting = parentNodes.some((value) => waitingNodes.includes(value));
+				const cyclicNodes = ignoreCyclicParents
+					? new Set(workflow.getChildNodes(nodeName))
+					: undefined;
+				const parentIsWaiting = parentNodes.some(
+					(value) => waitingNodes.includes(value) && !cyclicNodes?.has(value),
+				);
 				if (parentIsWaiting) {
 					// Execute node later as one of its dependencies is still outstanding
 					continue;
