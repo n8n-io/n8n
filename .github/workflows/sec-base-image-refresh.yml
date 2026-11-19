@@ -1,0 +1,56 @@
+name: 'Security: Base Image Refresh'
+
+# Finds the base image digests that remove fixable OS findings from the release
+# images. See .github/scripts/docker/base-image-candidates.mjs.
+
+on:
+  schedule:
+    - cron: '0 7 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sec-base-image-refresh
+  cancel-in-progress: false
+
+jobs:
+  detect:
+    name: Find candidate digests
+    if: github.repository == 'n8n-io/n8n'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Trivy reads the registry logins from the Docker config. The Docker Hub
+      # login also raises the pull rate limit.
+      - name: Login to Docker registries
+        uses: ./.github/actions/docker-registry-login
+        with:
+          login-ghcr: 'false'
+          login-dockerhub: 'true'
+          login-dhi: 'true'
+          dockerhub-username: ${{ secrets.DOCKER_USERNAME }}
+          dockerhub-password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Install Trivy
+        uses: aquasecurity/setup-trivy@81e514348e19b6112ce2a7e3ecbafe19c1e1f567 # v0.3.1
+        with:
+          version: v0.76.2
+          cache: true
+
+      - name: Find candidate digests
+        run: node .github/scripts/docker/base-image-candidates.mjs --out base-image-candidates.json
+
+      - name: Upload candidates
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: base-image-candidates
+          path: base-image-candidates.json
+          if-no-files-found: ignore
+          retention-days: 14

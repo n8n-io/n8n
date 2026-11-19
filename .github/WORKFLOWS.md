@@ -654,6 +654,7 @@ Push to master
 | Daily 04:30               | `test-image-efficiency.yml`       | Image size and layer waste with Dive |
 | Daily 05:00               | `test-benchmark-destroy-nightly.yml`| Cleanup benchmark env  |
 | Daily 06:00               | `util-sync-master-to-3x.yml`      | Replay 3.x onto master (v3) |
+| Daily 07:00               | `sec-base-image-refresh.yml`      | Find base image digests that remove fixable OS findings |
 | Daily 08:00               | `build-v3-nightly.yml`            | Nightly v3 Docker images |
 | Monday 00:00              | `util-update-node-popularity.yml` | Node usage stats         |
 | Monday 02:00              | `test-e2e-coverage-weekly.yml`    | Weekly E2E coverage      |
@@ -838,6 +839,7 @@ Scripts in `.github/scripts/`:
 | `docker/should-smoke-build.mjs`| Narrow the `pnpm-workspace.yaml` smoke trigger to native dependency pins | `docker-build-smoke.yml`|
 | `docker/base-debian-smoke-check.mjs`| Verify the Debian base image contract (tools, no package manager, fonts, global npm modules) on amd64 and arm64 | `build-base-image.yml`|
 | `docker/bake-inputs-changed.mjs`| Decide whether an image must build: compare its resolved bake inputs and Dockerfile between two commits | `build-base-image.yml`, `build-node-pc-image.yml`|
+| `docker/base-image-candidates.mjs`| Find the newest digest of each upstream base image pin and keep it when a Trivy scan shows that it removes fixable OS findings | `sec-base-image-refresh.yml`|
 | `attest-image-sbom.mjs` | Generate, validate, and optionally attest image SBOMs | `docker-build-push.yml`, `test-sbom-nightly.yml` |
 
 ### Validation Scripts
