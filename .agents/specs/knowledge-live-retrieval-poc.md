@@ -248,7 +248,7 @@ optional again.
 | read | `page:getMarkdown` | `channel:replies` for the thread; url from `message:getPermalink` |
 | defaultRetrieval | `index` for containers, `native` for items | `native` |
 | persistableContent | `true` | `false` (terms forbid stored messages) |
-| credential in the PoC | `notionApi` internal integration token first; `notionOAuth2Api` before the final runs if time allows | `slackOAuth2Api` user token from a new app in a test workspace; the n8n default user scopes include `search:read.*` |
+| credential in the PoC | `notionApi` internal integration token first; `notionOAuth2Api` before the final runs if time allows | `slackApi` with the user OAuth token (`xoxp-…`) of a new app in a test workspace, installed from the app's OAuth page. Slack requires an HTTPS redirect URL, so the `slackOAuth2Api` flow needs a tunnel on a local instance; optional later |
 
 ## Harness
 
