@@ -162,7 +162,7 @@ export type {
 	StepRecord,
 	ResumeCause,
 	StepSlots,
-	StepOutputSource,
+	ItemSource,
 	StepOutputSources,
 	StepStatus,
 	StepStore,
