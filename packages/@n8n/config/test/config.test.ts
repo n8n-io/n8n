@@ -762,6 +762,8 @@ describe('GlobalConfig', () => {
 			mfaEnforcedEnabled: false,
 			personalSpacePublishingEnabled: true,
 			personalSpaceSharingEnabled: true,
+			workflowReviewsEnabled: false,
+			workflowReviewsAlwaysRequired: false,
 			samlMetadata: '',
 			samlMetadataUrl: '',
 			samlLoginEnabled: false,

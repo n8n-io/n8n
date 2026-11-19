@@ -87,6 +87,22 @@ export class InstanceSettingsLoaderConfig {
 	@Env('N8N_PERSONAL_SPACE_SHARING_ENABLED')
 	personalSpaceSharingEnabled: boolean = true;
 
+	/**
+	 * Whether workflow reviews are on. n8n reads this only when
+	 * `N8N_SECURITY_POLICY_MANAGED_BY_ENV` is true.
+	 */
+	@Env('N8N_WORKFLOW_REVIEWS_ENABLED')
+	workflowReviewsEnabled: boolean = false;
+
+	/**
+	 * Whether every new version of a team project workflow needs an approved
+	 * review before you can publish it. n8n reads this only when
+	 * `N8N_SECURITY_POLICY_MANAGED_BY_ENV` is true. It has an effect only when
+	 * `N8N_WORKFLOW_REVIEWS_ENABLED` is true.
+	 */
+	@Env('N8N_WORKFLOW_REVIEWS_ALWAYS_REQUIRED')
+	workflowReviewsAlwaysRequired: boolean = false;
+
 	// --- SAML ---
 
 	/** XML metadata string from the identity provider. */
