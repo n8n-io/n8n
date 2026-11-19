@@ -83,7 +83,7 @@ describe('InstanceAiBrowserPreview', () => {
 		vi.mocked(postCloudBrowserTakeOver).mockReset().mockResolvedValue(undefined);
 		vi.mocked(postCloudBrowserReturnControl)
 			.mockReset()
-			.mockResolvedValue({ ok: true, loginSaved: false });
+			.mockResolvedValue({ ok: true, loginWillBeSaved: false });
 		showError.mockReset();
 		showMessage.mockReset();
 	});
@@ -530,6 +530,11 @@ describe('InstanceAiBrowserPreview', () => {
 				},
 				loginRequest,
 			],
+			[
+				'the login will already be saved',
+				{ ...live, loginProfile: { domain: 'shop.example.com', willBeSavedOnSessionEnd: true } },
+				loginRequest,
+			],
 		])('does not ask to save the login when %s', async (_, view, action) => {
 			const { queryByTestId } = await takeOverAndFinish(view, action);
 
@@ -543,7 +548,10 @@ describe('InstanceAiBrowserPreview', () => {
 		});
 
 		it('saves the login and says so when the user chooses to save', async () => {
-			vi.mocked(postCloudBrowserReturnControl).mockResolvedValue({ ok: true, loginSaved: true });
+			vi.mocked(postCloudBrowserReturnControl).mockResolvedValue({
+				ok: true,
+				loginWillBeSaved: true,
+			});
 			const { getByTestId, queryByTestId, refreshLiveView } = await takeOverAndFinish(
 				liveWithLogin,
 				loginRequest,
@@ -560,8 +568,8 @@ describe('InstanceAiBrowserPreview', () => {
 			);
 			expect(showMessage).toHaveBeenCalledExactlyOnceWith({
 				type: 'success',
-				title: 'Login saved',
-				message: 'You can manage this login at any time in your settings.',
+				title: 'Your login will be saved',
+				message: 'It is saved when the task finishes using the browser.',
 			});
 			expect(refreshLiveView).toHaveBeenCalledTimes(2);
 			expect(
@@ -571,7 +579,10 @@ describe('InstanceAiBrowserPreview', () => {
 		});
 
 		it('warns with the site when the server did not save the login', async () => {
-			vi.mocked(postCloudBrowserReturnControl).mockResolvedValue({ ok: true, loginSaved: false });
+			vi.mocked(postCloudBrowserReturnControl).mockResolvedValue({
+				ok: true,
+				loginWillBeSaved: false,
+			});
 			const { getByTestId } = await takeOverAndFinish(liveWithLogin, loginRequest);
 
 			await fireEvent.click(getByTestId('instance-ai-browser-preview-save-login-submit'));
@@ -580,8 +591,7 @@ describe('InstanceAiBrowserPreview', () => {
 			expect(showMessage).toHaveBeenCalledExactlyOnceWith({
 				type: 'warning',
 				title: 'Your login was not saved',
-				message:
-					'The browser is no longer on shop.example.com, so n8n Assistant cannot tell where you signed in.',
+				message: 'n8n Assistant could not confirm that you signed in to shop.example.com.',
 			});
 		});
 

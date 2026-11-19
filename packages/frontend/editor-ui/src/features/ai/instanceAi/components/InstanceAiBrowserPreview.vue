@@ -52,15 +52,15 @@ const loginProfile = computed(() =>
 	liveView.value?.status === 'live' ? liveView.value.loginProfile : undefined,
 );
 
-/**
- * The site to offer saving the login for: the agent asked the user to sign in, and the session's
- * login profile is not saved yet. The server checks where the user signed in before it saves.
- */
-const loginDomainToSave = computed(() =>
-	props.userAction?.isLoginRequest && loginProfile.value && !loginProfile.value.savedAt
-		? loginProfile.value.domain
-		: undefined,
-);
+/** The domain to save a login for. Decides whether the save dialog is shown. */
+const loginDomainToSave = computed(() => {
+	const profile = loginProfile.value;
+	// The agent did not ask the user to sign in, or the session has no login profile.
+	if (!props.userAction?.isLoginRequest || !profile) return undefined;
+	// The login is saved, or the user already chose to save it.
+	if (profile.savedAt || profile.willBeSavedOnSessionEnd) return undefined;
+	return profile.domain;
+});
 
 const isDisconnected = computed(
 	() => liveView.value?.status === 'disconnected' || liveView.value?.status === 'not-found',
@@ -169,7 +169,7 @@ async function returnControl(userNote?: string, shouldSaveLogin = false) {
 	isBusy.value = true;
 	const domain = loginDomainToSave.value;
 	try {
-		const { loginSaved } = await postCloudBrowserReturnControl(
+		const { loginWillBeSaved } = await postCloudBrowserReturnControl(
 			rootStore.restApiContext,
 			thread.id,
 			props.taskId,
@@ -177,7 +177,7 @@ async function returnControl(userNote?: string, shouldSaveLogin = false) {
 		);
 		hasControl.value = false;
 		refreshLiveView?.(props.taskId);
-		if (shouldSaveLogin) showSaveLoginResult(loginSaved, domain);
+		if (shouldSaveLogin) showSaveLoginResult(loginWillBeSaved, domain);
 	} catch (error) {
 		toast.showError(error, i18n.baseText('instanceAi.cloudBrowser.returnControlFailed'));
 	} finally {
@@ -185,8 +185,8 @@ async function returnControl(userNote?: string, shouldSaveLogin = false) {
 	}
 }
 
-function showSaveLoginResult(loginSaved: boolean, domain: string | undefined) {
-	if (loginSaved) {
+function showSaveLoginResult(loginWillBeSaved: boolean, domain: string | undefined) {
+	if (loginWillBeSaved) {
 		toast.showMessage({
 			type: 'success',
 			title: i18n.baseText('instanceAi.cloudBrowser.loginSavedTitle'),

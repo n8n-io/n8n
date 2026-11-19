@@ -121,7 +121,15 @@ export interface PlaywrightAdapterOptions {
 	 * keeping them in memory, since `browser_console` only needs the text.
 	 */
 	releaseConsoleHandles?: boolean;
+	/**
+	 * Records the origin of every page and frame the browser loads, so that `clearSiteDataExcept`
+	 * also clears sites that keep data without cookies and have no page open. Off by default.
+	 */
+	trackVisitedOrigins?: boolean;
 }
+
+/** Bounds the visited origins a long session records. */
+const MAX_VISITED_ORIGINS = 1000;
 
 export class PlaywrightAdapter {
 	readonly name = 'playwright';
@@ -136,6 +144,9 @@ export class PlaywrightAdapter {
 	private readonly cdpConnectHeaders?: Record<string, string>;
 	private readonly maxPageEventEntries?: number;
 	private readonly releaseConsoleHandles: boolean;
+	private readonly trackVisitedOrigins: boolean;
+	/** The http and https origins the browser loaded. Stays empty without `trackVisitedOrigins`. */
+	private readonly visitedOrigins = new Set<string>();
 	/** Puts the embedder's relay handlers back; set while ours are installed. */
 	private restoreRelayHandlers?: () => void;
 	/** Pending activation: set by ensurePage(), consumed by context.on('page'). */
@@ -155,6 +166,7 @@ export class PlaywrightAdapter {
 		this.cdpConnectHeaders = options?.cdpConnectHeaders;
 		this.maxPageEventEntries = options?.maxPageEventEntries;
 		this.releaseConsoleHandles = options?.releaseConsoleHandles ?? false;
+		this.trackVisitedOrigins = options?.trackVisitedOrigins ?? false;
 	}
 
 	/** Remote mode without a relay connects straight to `cdpEndpoint`, for example a cloud browser. */
@@ -270,6 +282,7 @@ export class PlaywrightAdapter {
 		const contexts = this.browser.contexts();
 		log.debug('browser contexts:', contexts.length);
 		this.context = contexts[0] ?? (await this.browser.newContext({ colorScheme: null }));
+		if (this.trackVisitedOrigins) this.trackVisitedOriginsIn(this.context);
 
 		// Two-tier model: pages are created lazily via ensurePage().
 		// When ensurePage() triggers activateTab(), it sets pendingActivation
@@ -902,9 +915,31 @@ export class PlaywrightAdapter {
 		}, kind);
 	}
 
+	/** Records the origin of each page and frame that loads in `context`, now and later. */
+	private trackVisitedOriginsIn(context: BrowserContext): void {
+		const watch = (page: Page) => {
+			this.recordVisitedOrigin(page.url());
+			page.on('framenavigated', (frame) => this.recordVisitedOrigin(frame.url()));
+		};
+		context.pages().forEach(watch);
+		context.on('page', watch);
+	}
+
+	private recordVisitedOrigin(url: string): void {
+		const origins = this.visitedOrigins;
+		if (origins.size >= MAX_VISITED_ORIGINS) return;
+		try {
+			const { protocol, origin } = new URL(url);
+			if (protocol === 'http:' || protocol === 'https:') origins.add(origin);
+		} catch {
+			// A frame without a URL has no site data.
+		}
+	}
+
 	/**
 	 * Clears the site data in the browser for every site except `domain` and its subdomains: the
-	 * cookies, and the storage of the sites that set cookies or have a page open.
+	 * cookies, and the storage of the sites that set cookies, have a page open, or were visited
+	 * (with `trackVisitedOrigins`).
 	 */
 	async clearSiteDataExcept(domain: string): Promise<void> {
 		const context = this.requireContext();
@@ -921,8 +956,11 @@ export class PlaywrightAdapter {
 		}
 
 		// CDP cannot list the origins that hold storage, so this clears the ones we know of: the
-		// sites that set cookies and the pages that are open.
+		// sites that set cookies, the pages that are open, and the visited origins.
 		const otherOrigins = new Set<string>();
+		for (const origin of this.visitedOrigins) {
+			if (isOtherSite(new URL(origin).hostname)) otherOrigins.add(origin);
+		}
 		for (const host of otherCookieHosts) {
 			const bare = host.replace(/^\./, '');
 			otherOrigins.add(`https://${bare}`);
@@ -940,12 +978,22 @@ export class PlaywrightAdapter {
 		if (!page || otherOrigins.size === 0) return;
 
 		const session = await context.newCDPSession(page);
+		let results: Array<PromiseSettledResult<unknown>>;
 		try {
-			for (const origin of otherOrigins) {
-				await session.send('Storage.clearDataForOrigin', { origin, storageTypes: 'all' });
-			}
+			results = await Promise.allSettled(
+				[...otherOrigins].map(
+					async (origin) =>
+						await session.send('Storage.clearDataForOrigin', { origin, storageTypes: 'all' }),
+				),
+			);
 		} finally {
 			await session.detach().catch(() => {});
+		}
+		const failedCount = results.filter(({ status }) => status === 'rejected').length;
+		if (failedCount > 0) {
+			throw new Error(
+				`Failed to clear the site data of ${failedCount} / ${otherOrigins.size} sites`,
+			);
 		}
 	}
 

@@ -50,12 +50,17 @@ describe('AiGatewayBrowserUseService', () => {
 			aiGatewayService.sendProviderRequest.mockResolvedValue({
 				id: 'sess-1',
 				connectUrl: 'wss://connect.example.com',
+				region: 'eu-central-1',
 				status: 'RUNNING',
 			});
 
 			const session = await service.createSession({ userId: 'user-1', attribution });
 
-			expect(session).toEqual({ id: 'sess-1', connectUrl: 'wss://connect.example.com' });
+			expect(session).toEqual({
+				id: 'sess-1',
+				connectUrl: 'wss://connect.example.com',
+				region: 'eu-central-1',
+			});
 			expect(aiGatewayService.sendProviderRequest).toHaveBeenCalledWith({
 				...sessionRequest,
 				path: '/v1/sessions',
@@ -67,6 +72,7 @@ describe('AiGatewayBrowserUseService', () => {
 			aiGatewayService.sendProviderRequest.mockResolvedValue({
 				id: 'sess-1',
 				connectUrl: 'wss://connect.example.com',
+				region: 'eu-central-1',
 			});
 
 			await service.createSession({ userId: 'user-1', attribution, proxyCountry: 'DE' });
@@ -84,6 +90,7 @@ describe('AiGatewayBrowserUseService', () => {
 			aiGatewayService.sendProviderRequest.mockResolvedValue({
 				id: 'sess-1',
 				connectUrl: 'wss://connect.example.com',
+				region: 'eu-central-1',
 			});
 
 			await service.createSession({ userId: 'user-1', attribution, proxyCountry: undefined });
@@ -92,7 +99,7 @@ describe('AiGatewayBrowserUseService', () => {
 			expect(body).not.toHaveProperty('proxies');
 		});
 
-		it("returns the session's region when the gateway sends it", async () => {
+		it("returns the session's region", async () => {
 			aiGatewayService.sendProviderRequest.mockResolvedValue({
 				id: 'sess-1',
 				connectUrl: 'wss://connect.example.com',
@@ -112,6 +119,7 @@ describe('AiGatewayBrowserUseService', () => {
 			aiGatewayService.sendProviderRequest.mockResolvedValue({
 				id: 'sess-1',
 				connectUrl: 'wss://connect.example.com',
+				region: 'eu-central-1',
 			});
 
 			await service.createSession({
@@ -136,12 +144,24 @@ describe('AiGatewayBrowserUseService', () => {
 			aiGatewayService.sendProviderRequest.mockResolvedValue({
 				id: 'sess-1',
 				connectUrl: 'wss://connect.example.com',
+				region: 'eu-central-1',
 			});
 
 			await service.createSession({ userId: 'user-1', attribution, proxyCity: 'BERLIN' });
 
 			const [{ body }] = aiGatewayService.sendProviderRequest.mock.calls[0];
 			expect(body).not.toHaveProperty('proxies');
+		});
+
+		it('throws when the response has no region', async () => {
+			aiGatewayService.sendProviderRequest.mockResolvedValue({
+				id: 'sess-1',
+				connectUrl: 'wss://connect.example.com',
+			});
+
+			await expect(service.createSession({ userId: 'user-1', attribution })).rejects.toThrow(
+				'invalid browser session',
+			);
 		});
 
 		it('throws when the response has no connect URL', async () => {

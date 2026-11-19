@@ -118,6 +118,7 @@ export class InstanceAiCloudBrowserService {
 						cdpEndpoint: connectUrl,
 						maxPageEventEntries: MAX_PAGE_EVENT_ENTRIES,
 						releaseConsoleHandles: true,
+						trackVisitedOrigins: true,
 					},
 				),
 			toolContext: {
@@ -220,13 +221,8 @@ export class InstanceAiCloudBrowserService {
 					region: options?.regionId,
 					contextId: options?.loginProfileId,
 				});
-				const regionCountry = region ? BROWSERBASE_REGION_COUNTRIES.get(region) : undefined;
-				return {
-					id,
-					connectUrl,
-					...(regionCountry ? { regionCountry } : {}),
-					...(region ? { regionId: region } : {}),
-				};
+				const regionCountry = BROWSERBASE_REGION_COUNTRIES.get(region);
+				return { id, connectUrl, regionId: region, ...(regionCountry ? { regionCountry } : {}) };
 			},
 			releaseSession: async ({ userId, threadId, taskId }, sessionId) =>
 				await this.aiGatewayBrowserUseService.releaseSession({
@@ -261,9 +257,6 @@ export class InstanceAiCloudBrowserService {
 				return id;
 			},
 			saveLoginProfile: async ({ userId, threadId, taskId }, { id, domain, location }) => {
-				if (!location.regionId) {
-					throw new UnexpectedError('A login profile cannot be saved without its region');
-				}
 				const context = await this.aiGatewayBrowserUseService.saveContext({
 					userId,
 					attribution: { instanceAiThreadId: threadId, instanceAiTaskId: taskId },

@@ -157,7 +157,7 @@ const CALL_SKIPPED_RESULT: McpToolCallResult = {
  */
 export type CloudBrowserReturnControlResult =
 	| { returned: false; error: string }
-	| { returned: true; loginSaved: boolean };
+	| { returned: true; loginWillBeSaved: boolean };
 
 /**
  * The result of a tool call that waited while the user had control. The call is skipped, because
@@ -197,7 +197,7 @@ export interface CloudBrowserLocalMcpServerOptions {
 /** Where the browser runs. Sites see it in the proxy country when there is one, otherwise in the region. */
 interface SessionLocation {
 	/** The provider's id of the region, for example "eu-central-1". A login is saved with it. */
-	regionId?: string;
+	regionId: string;
 	/** The country of the region, for example "DE". */
 	regionCountry?: string;
 	proxyCountry?: string;
@@ -209,6 +209,8 @@ interface ActiveSession {
 	location: SessionLocation;
 	/** Absent when the session has no login profile. */
 	loginProfile?: CloudBrowserLoginProfile;
+	/** The user asked to save the login. It is saved when the session ends. */
+	saveLoginProfileOnSessionEnd?: boolean;
 	connection: BrowserToolkit['connection'];
 	toolsByName: Map<string, ToolDefinition>;
 	/**
@@ -223,6 +225,12 @@ interface ActiveSession {
 	runningBrowserTools: number;
 	/** The agent asked the user to sign in during the session. Logged when the session ends. */
 	hadLoginRequest?: boolean;
+}
+
+/** A login profile to save after its session ends, and where it was made. */
+interface LoginProfileToSave {
+	loginProfile: CloudBrowserLoginProfile;
+	location: CloudBrowserSessionLocation;
 }
 
 /** What `releaseSession` needs from a session, also before it is fully open. */
@@ -256,8 +264,8 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 		result: IDeferredPromise<CloudBrowserUserControlResult>;
 		/** The user clicked "Take over". When the agent asks, they have control before that. */
 		hasTakenOver: boolean;
-		/** Set when the agent asked the user to sign in: the site of the page it asked on. */
-		loginRequest?: { domain: string };
+		/** The agent asked the user to sign in. */
+		isLoginRequest?: boolean;
 	};
 
 	/**
@@ -380,6 +388,7 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 					...(session.loginProfile.savedAt && {
 						savedAt: session.loginProfile.savedAt.toISOString(),
 					}),
+					...(session.saveLoginProfileOnSessionEnd && { willBeSavedOnSessionEnd: true }),
 				},
 			}),
 		};
@@ -414,26 +423,20 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 	}
 
 	/**
-	 * Gives control back to the agent, with what the user changed. With `shouldSaveLogin`, first
-	 * saves the login the user made, when we can tell where they signed in. When the save itself
-	 * fails, the user keeps control, so they can try again or continue without saving.
+	 * Gives control back to the agent, with what the user changed. With `shouldSaveLogin`, the
+	 * login the user made is saved when the session ends, if we can tell where they signed in.
 	 */
 	async returnControlToAgent(
 		note?: string,
 		shouldSaveLogin?: boolean,
 	): Promise<CloudBrowserReturnControlResult> {
 		if (!this.userControl) return { returned: false, error: USER_NOT_IN_CONTROL_MESSAGE };
-		let loginSaved = false;
-		if (shouldSaveLogin) {
-			const saved = await this.saveLogin();
-			if ('error' in saved) return { returned: false, error: saved.error };
-			loginSaved = saved.saved;
-		}
+		const loginWillBeSaved = shouldSaveLogin ? await this.markLoginToBeSaved() : false;
 		if (!this.userControl) return { returned: false, error: USER_NOT_IN_CONTROL_MESSAGE };
 		if (note) this.userControlNotes.push(note);
 		this.endUserControl({ returned: true });
 		this.onControlReturned?.();
-		return { returned: true, loginSaved };
+		return { returned: true, loginWillBeSaved };
 	}
 
 	drainUserControlNotes(): string[] {
@@ -441,9 +444,8 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 	}
 
 	/**
-	 * For the agent's request: gives the user control and waits until they return it. For a login
-	 * request, notes the site of the current page, so the user can save the login if they are
-	 * still on that site when they return control.
+	 * For the agent's request: gives the user control and waits until they return it. After a login
+	 * request, the user can save the login when they return control.
 	 */
 	async requestUserAction({
 		isLoginRequest,
@@ -453,56 +455,35 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 		const userControl = this.userControl;
 		if (isLoginRequest && userControl && this.activeSession) {
 			this.activeSession.hadLoginRequest = true;
-			const domain = await registrableDomainOf(currentHostOf(this.activeSession));
-			if (domain) userControl.loginRequest = { domain };
+			userControl.isLoginRequest = true;
 		}
 		return (await userControl?.result.promise) ?? { returned: true };
 	}
 
-	/**
-	 * The login the user can save: the agent asked them to sign in, they are on the same site as
-	 * when it asked, the session's login profile is for that site, and it is not saved yet. When
-	 * any of these does not hold, we cannot tell where the user signed in, so there is nothing
-	 * to save.
-	 */
-	private async findLoginToSave(
-		session: ActiveSession,
-	): Promise<{ loginProfile: CloudBrowserLoginProfile; regionId: string } | undefined> {
-		const domain = this.userControl?.loginRequest?.domain;
-		const { loginProfile, location } = session;
-		if (!domain || !loginProfile || loginProfile.savedAt) return undefined;
-		if (loginProfile.domain !== domain || !location.regionId) return undefined;
+	/** Whether the user can save the login they just made in the session. */
+	private async canSaveLogin(session: ActiveSession): Promise<boolean> {
+		const { loginProfile } = session;
+		// There is no login profile, or it is saved, or already marked to be saved.
+		if (!loginProfile || loginProfile.savedAt || session.saveLoginProfileOnSessionEnd) {
+			return false;
+		}
+		// The agent did not ask the user to sign in.
+		if (!this.userControl?.isLoginRequest) return false;
+		// The user must be on the site of the login profile. Otherwise we cannot tell where they
+		// signed in. SSO sign-ins redirect back to this site, so this check still holds.
 		const currentDomain = await registrableDomainOf(currentHostOf(session));
-		if (currentDomain !== domain) return undefined;
-		return { loginProfile, regionId: location.regionId };
+		return currentDomain === loginProfile.domain;
 	}
 
 	/**
-	 * Saves the login the user made in the active session. Not saved when we cannot tell where the
-	 * user signed in. Returns the error when the save itself fails.
+	 * Marks the login of the active session to be saved when the session ends. Returns false when
+	 * the user cannot save it.
 	 */
-	private async saveLogin(): Promise<{ saved: boolean } | { error: string }> {
+	private async markLoginToBeSaved(): Promise<boolean> {
 		const session = this.activeSession;
-		const loginToSave = session && (await this.findLoginToSave(session));
-		if (!session || !loginToSave) return { saved: false };
-
-		const { scope, sessionProvider, logger } = this.options;
-		const { loginProfile, regionId } = loginToSave;
-		const { proxyCountry, proxyCity } = session.location;
-		try {
-			session.loginProfile = await sessionProvider.saveLoginProfile(scope, {
-				id: loginProfile.id,
-				domain: loginProfile.domain,
-				location: { regionId, proxyCountry, proxyCity },
-			});
-		} catch (error) {
-			logger.warn('Failed to save a cloud browser login', {
-				taskId: scope.taskId,
-				error: ensureError(error).message,
-			});
-			return { error: `Could not save the login: ${ensureError(error).message}` };
-		}
-		return { saved: true };
+		if (!session || !(await this.canSaveLogin(session))) return false;
+		session.saveLoginProfileOnSessionEnd = true;
+		return true;
 	}
 
 	private endUserControl(result: CloudBrowserUserControlResult): void {
@@ -731,7 +712,7 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 	 */
 	private async openSession(
 		host: string,
-		location: CloudBrowserSessionLocation,
+		location: Partial<CloudBrowserSessionLocation>,
 	): Promise<ActiveSession> {
 		const { scope, sessionProvider, createToolkit, logger } = this.options;
 		const loginProfile = await this.createLoginProfile(host);
@@ -761,7 +742,7 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 		const session: ActiveSession = {
 			id,
 			location: {
-				regionId: regionId ?? location.regionId,
+				regionId,
 				regionCountry,
 				proxyCountry: location.proxyCountry,
 				proxyCity: location.proxyCity,
@@ -828,7 +809,8 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 
 	/**
 	 * Disconnects the tools and releases the active session, if one is open. A saved login profile
-	 * keeps the browser state of its session, so the other sites are cleared from it first.
+	 * keeps the browser state of its session, so before a login is saved, the other sites are
+	 * cleared from it. When they cannot be cleared, the login is not saved.
 	 */
 	private async endActiveSession(): Promise<void> {
 		this.clearIdleTimer();
@@ -836,43 +818,56 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 		if (!session) return;
 		this.activeSession = undefined;
 
-		if (session.loginProfile?.savedAt) await this.clearOtherSites(session, session.loginProfile);
+		const loginProfileToSave = await this.findLoginProfileToSave(session);
 		await session.connection.disconnect();
-		await this.releaseSession(session);
+		await this.releaseSession(session, loginProfileToSave);
 	}
 
-	/** Deletes the data of every site except the login profile's. A failure is only logged. */
+	/**
+	 * The login profile to save when the session ends: the user chose to save it, and the other
+	 * sites were cleared from it. `undefined` when it is not saved.
+	 */
+	private async findLoginProfileToSave(
+		session: ActiveSession,
+	): Promise<LoginProfileToSave | undefined> {
+		const { loginProfile, location } = session;
+		if (!loginProfile || !session.saveLoginProfileOnSessionEnd) return undefined;
+		if (!(await this.clearOtherSites(session, loginProfile))) return undefined;
+		const { regionId, proxyCountry, proxyCity } = location;
+		return { loginProfile, location: { regionId, proxyCountry, proxyCity } };
+	}
+
+	/** Deletes the data of every site except the login profile's. Returns whether it did. */
 	private async clearOtherSites(
 		session: ActiveSession,
 		loginProfile: CloudBrowserLoginProfile,
-	): Promise<void> {
+	): Promise<boolean> {
 		const { scope, logger } = this.options;
+		const adapter = adapterOf(session);
+		if (!adapter?.clearSiteDataExcept) return false;
 		try {
-			await adapterOf(session)?.clearSiteDataExcept?.(loginProfile.domain);
+			await adapter.clearSiteDataExcept(loginProfile.domain);
+			return true;
 		} catch (error) {
-			logger.warn('Failed to clear other sites from a saved cloud browser login', {
+			logger.warn('Failed to clear other sites from a cloud browser login', {
 				taskId: scope.taskId,
 				error: ensureError(error).message,
 			});
+			return false;
 		}
 	}
 
 	/**
-	 * Releases a session, then deletes its login profile unless the user saved it: an unsaved
-	 * login profile can no longer be saved, and the user may have declined to keep the sign-in.
-	 * A failure is only logged, since nothing more can be done about it here.
+	 * Releases a session. Then saves `loginProfileToSave`, or deletes the login profile unless it
+	 * was saved before: an unsaved login profile can no longer be saved. A failure is only logged,
+	 * since nothing more can be done about it here.
 	 */
-	private async releaseSession(session: SessionToRelease): Promise<void> {
+	private async releaseSession(
+		session: SessionToRelease,
+		loginProfileToSave?: LoginProfileToSave,
+	): Promise<void> {
 		const { id: sessionId, loginProfile } = session;
 		const { scope, sessionProvider, logger } = this.options;
-		// Shows how many sessions need a sign-in, to decide whether a login profile for every
-		// session is worth its cost.
-		logger.info('Cloud browser session ended', {
-			taskId: scope.taskId,
-			sessionId,
-			hadLoginRequest: session.hadLoginRequest ?? false,
-			loginSaved: !!loginProfile?.savedAt,
-		});
 		try {
 			await sessionProvider.releaseSession(scope, sessionId);
 		} catch (error) {
@@ -882,7 +877,38 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 				error: ensureError(error).message,
 			});
 		}
-		await this.deleteUnsavedLoginProfile(loginProfile);
+
+		const isLoginSaved = loginProfileToSave
+			? await this.saveLoginProfile(loginProfileToSave)
+			: false;
+		if (!isLoginSaved) await this.deleteUnsavedLoginProfile(loginProfile);
+		// Shows how many sessions need a sign-in, to decide whether a login profile for every
+		// session is worth its cost.
+		logger.info('Cloud browser session ended', {
+			taskId: scope.taskId,
+			sessionId,
+			hadLoginRequest: session.hadLoginRequest ?? false,
+			loginSaved: isLoginSaved,
+		});
+	}
+
+	/** Saves a login profile after its session ended. Returns whether it did. */
+	private async saveLoginProfile({ loginProfile, location }: LoginProfileToSave): Promise<boolean> {
+		const { scope, sessionProvider, logger } = this.options;
+		try {
+			await sessionProvider.saveLoginProfile(scope, {
+				id: loginProfile.id,
+				domain: loginProfile.domain,
+				location,
+			});
+			return true;
+		} catch (error) {
+			logger.warn('Failed to save a cloud browser login', {
+				taskId: scope.taskId,
+				error: ensureError(error).message,
+			});
+			return false;
+		}
 	}
 
 	/**

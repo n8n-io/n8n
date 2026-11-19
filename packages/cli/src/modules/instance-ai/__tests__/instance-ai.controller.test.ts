@@ -1252,7 +1252,7 @@ describe('InstanceAiController', () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('owned');
 			cloudBrowserService.returnControlToAgent.mockResolvedValue({
 				returned: true,
-				loginSaved: false,
+				loginWillBeSaved: false,
 			});
 
 			const result = await controller.returnCloudBrowserControl(
@@ -1263,7 +1263,7 @@ describe('InstanceAiController', () => {
 				payload('Signed in'),
 			);
 
-			expect(result).toEqual({ ok: true, loginSaved: false });
+			expect(result).toEqual({ ok: true, loginWillBeSaved: false });
 			expect(cloudBrowserService.returnControlToAgent).toHaveBeenCalledWith(
 				USER_ID,
 				THREAD_ID,
@@ -1279,7 +1279,7 @@ describe('InstanceAiController', () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('owned');
 			cloudBrowserService.returnControlToAgent.mockResolvedValue({
 				returned: true,
-				loginSaved: false,
+				loginWillBeSaved: false,
 			});
 
 			await controller.returnCloudBrowserControl(req, res, THREAD_ID, 'task-1', payload(note));
@@ -1296,7 +1296,7 @@ describe('InstanceAiController', () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('owned');
 			cloudBrowserService.returnControlToAgent.mockResolvedValue({
 				returned: true,
-				loginSaved: true,
+				loginWillBeSaved: true,
 			});
 
 			const result = await controller.returnCloudBrowserControl(
@@ -1310,7 +1310,7 @@ describe('InstanceAiController', () => {
 				}),
 			);
 
-			expect(result).toEqual({ ok: true, loginSaved: true });
+			expect(result).toEqual({ ok: true, loginWillBeSaved: true });
 			expect(cloudBrowserService.returnControlToAgent).toHaveBeenCalledWith(
 				USER_ID,
 				THREAD_ID,

@@ -141,6 +141,7 @@ You can get the user to sign in. When a site needs a login, call ${REQUEST_USER_
 ## Working in the browser
 - Start with browser_start_session. Open the start URL from the task, or the site the goal names.
 - A site that needs its own sign-in needs its own session. Call browser_start_session again. It closes the current browser, so pages and sign-ins from before are gone.
+- The user can keep a login only for the site the session was opened on. When the task moves to another site that needs a sign-in, call browser_start_session with that site's URL first, then ask the user to sign in there.
 - browser_start_session returns \`browserLocation.regionCountry\`, the country the browser runs in, and \`browserLocation.proxyCountry\` when the session uses a proxy. Sites see the browser in the proxy country when there is one, otherwise in the region country. Prices, currency, language and search results can follow that country. When the goal needs another country, start a new session with proxyCountry. When you report prices or other local results, say which country they are for.
 - Use browser_snapshot to find elements to click or type into. Use browser_content to read a page.
 - When a site opens a new window, such as a sign-in popup, your browser tools move to it. Do not open its URL in another window. When it closes, the tools return to the previous window.

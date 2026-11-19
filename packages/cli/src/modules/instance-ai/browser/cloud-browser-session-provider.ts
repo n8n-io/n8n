@@ -3,11 +3,8 @@ export interface CloudBrowserSession {
 	id: string;
 	/** Carries a signing key, so it must never be logged. */
 	connectUrl: string;
-	/**
-	 * The provider's id of the region the browser runs in, for example "eu-central-1". Absent when
-	 * unknown.
-	 */
-	regionId?: string;
+	/** The provider's id of the region the browser runs in, for example "eu-central-1". */
+	regionId: string;
 	/**
 	 * The country of the region the browser runs in, as a two-letter code such as "DE". Sites see
 	 * the browser there unless it uses a proxy. Absent when unknown.
@@ -24,16 +21,18 @@ export interface CloudBrowserSessionScope {
 	taskId: string;
 }
 
+/** Where a session runs. A login is saved with it, and a session that uses the login must run there too. */
 export interface CloudBrowserSessionLocation {
-	/** The provider's id of the region to run in, for example "eu-central-1". */
-	regionId?: string;
+	/** The provider's id of the region, for example "eu-central-1". */
+	regionId: string;
 	/** Browse through a residential proxy in this country, for example "DE". */
 	proxyCountry?: string;
 	/** A city in `proxyCountry`. */
 	proxyCity?: string;
 }
 
-export interface CloudBrowserSessionOptions extends CloudBrowserSessionLocation {
+/** A new session runs where it is asked to. Without a region, the provider picks one. */
+export interface CloudBrowserSessionOptions extends Partial<CloudBrowserSessionLocation> {
 	/** A login profile from `createLoginProfile`. The session keeps its sign-ins in it. */
 	loginProfileId?: string;
 }

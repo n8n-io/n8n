@@ -264,11 +264,11 @@ describe('InstanceAiCloudBrowserService', () => {
 			const server = await service.createServer('user-1', 'thread-1', 'task-1', domainGate);
 			const returnControlToAgent = vi
 				.spyOn(server, 'returnControlToAgent')
-				.mockResolvedValue({ returned: true, loginSaved: false });
+				.mockResolvedValue({ returned: true, loginWillBeSaved: false });
 
 			expect(
 				await service.returnControlToAgent('user-1', 'thread-1', 'task-1', { note: 'Signed in' }),
-			).toEqual({ returned: true, loginSaved: false });
+			).toEqual({ returned: true, loginWillBeSaved: false });
 			expect(returnControlToAgent).toHaveBeenCalledWith('Signed in', undefined);
 		});
 
@@ -362,14 +362,20 @@ describe('InstanceAiCloudBrowserService', () => {
 	});
 
 	it('creates and releases sessions through the gateway for the task', async () => {
-		const session = { id: 'sess-1', connectUrl: 'wss://connect' };
-		aiGatewayBrowserUseService.createSession.mockResolvedValue(session);
+		aiGatewayBrowserUseService.createSession.mockResolvedValue({
+			id: 'sess-1',
+			connectUrl: 'wss://connect',
+			region: 'us-west-2',
+		});
 		const server = await service.createServer('user-1', 'thread-1', 'task-1', domainGate);
 		const { sessionProvider, scope } = server['options'];
 
-		await expect(sessionProvider.createSession(scope, { proxyCountry: 'DE' })).resolves.toEqual(
-			session,
-		);
+		await expect(sessionProvider.createSession(scope, { proxyCountry: 'DE' })).resolves.toEqual({
+			id: 'sess-1',
+			connectUrl: 'wss://connect',
+			regionId: 'us-west-2',
+			regionCountry: 'US',
+		});
 		await sessionProvider.releaseSession(scope, 'sess-1');
 
 		const attribution = { instanceAiThreadId: 'thread-1', instanceAiTaskId: 'task-1' };
@@ -402,7 +408,7 @@ describe('InstanceAiCloudBrowserService', () => {
 		});
 	});
 
-	it.each([undefined, 'mars-north-1', 'constructor'])(
+	it.each(['mars-north-1', 'constructor'])(
 		'gives a session no country for the region %s',
 		async (region) => {
 			aiGatewayBrowserUseService.createSession.mockResolvedValue({
@@ -416,7 +422,7 @@ describe('InstanceAiCloudBrowserService', () => {
 			await expect(sessionProvider.createSession(scope)).resolves.toStrictEqual({
 				id: 'sess-1',
 				connectUrl: 'wss://connect',
-				...(region ? { regionId: region } : {}),
+				regionId: region,
 			});
 		},
 	);
@@ -515,6 +521,7 @@ describe('InstanceAiCloudBrowserService', () => {
 			aiGatewayBrowserUseService.createSession.mockResolvedValue({
 				id: 'sess-1',
 				connectUrl: 'wss://connect',
+				region: 'eu-central-1',
 			});
 			const { sessionProvider, scope } = await getSessionProvider();
 
@@ -580,19 +587,6 @@ describe('InstanceAiCloudBrowserService', () => {
 			});
 
 			expect(loginProfile.savedLocation).toStrictEqual({ regionId: 'eu-central-1' });
-		});
-
-		it('refuses to save a login profile without a region', async () => {
-			const { sessionProvider, scope } = await getSessionProvider();
-
-			await expect(
-				sessionProvider.saveLoginProfile(scope, {
-					id: 'ctx-1',
-					domain: 'example.com',
-					location: { proxyCountry: 'DE' },
-				}),
-			).rejects.toThrow('A login profile cannot be saved without its region');
-			expect(aiGatewayBrowserUseService.saveContext).not.toHaveBeenCalled();
 		});
 
 		it('deletes a login profile as a context', async () => {

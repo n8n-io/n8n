@@ -696,7 +696,7 @@ export class InstanceAiController {
 		if (!result.returned) throw new ConflictError(result.error);
 		return {
 			ok: true,
-			loginSaved: result.loginSaved,
+			loginWillBeSaved: result.loginWillBeSaved,
 		} satisfies InstanceAiCloudBrowserReturnControlResponse;
 	}
 

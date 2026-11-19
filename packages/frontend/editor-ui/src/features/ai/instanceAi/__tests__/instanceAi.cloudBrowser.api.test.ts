@@ -34,16 +34,16 @@ describe('cloud browser API', () => {
 		const path = '/instance-ai/chat/thread-1/tasks/task-1/cloud-browser-return-control';
 
 		it('sends an empty body without a note or a save', async () => {
-			makeRestApiRequestSpy.mockResolvedValue({ ok: true, loginSaved: false });
+			makeRestApiRequestSpy.mockResolvedValue({ ok: true, loginWillBeSaved: false });
 
 			const result = await postCloudBrowserReturnControl(context, 'thread-1', 'task-1');
 
 			expect(makeRestApiRequestSpy).toHaveBeenCalledWith(context, 'POST', path, {});
-			expect(result).toEqual({ ok: true, loginSaved: false });
+			expect(result).toEqual({ ok: true, loginWillBeSaved: false });
 		});
 
 		it('leaves out an empty note and a save of false', async () => {
-			makeRestApiRequestSpy.mockResolvedValue({ ok: true, loginSaved: false });
+			makeRestApiRequestSpy.mockResolvedValue({ ok: true, loginWillBeSaved: false });
 
 			await postCloudBrowserReturnControl(context, 'thread-1', 'task-1', {
 				note: '',
@@ -54,7 +54,7 @@ describe('cloud browser API', () => {
 		});
 
 		it('sends the note and the save choice', async () => {
-			makeRestApiRequestSpy.mockResolvedValue({ ok: true, loginSaved: true });
+			makeRestApiRequestSpy.mockResolvedValue({ ok: true, loginWillBeSaved: true });
 
 			const result = await postCloudBrowserReturnControl(context, 'thread-1', 'task-1', {
 				note: 'I signed in',
@@ -65,7 +65,7 @@ describe('cloud browser API', () => {
 				note: 'I signed in',
 				shouldSaveLogin: true,
 			});
-			expect(result).toEqual({ ok: true, loginSaved: true });
+			expect(result).toEqual({ ok: true, loginWillBeSaved: true });
 		});
 	});
 });

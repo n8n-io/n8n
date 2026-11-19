@@ -24,7 +24,7 @@ const REQUEST_TIMEOUT_MS = 30 * Time.seconds.toMilliseconds;
 const createdSessionSchema = z.object({
 	id: z.string().min(1),
 	connectUrl: z.string().min(1),
-	region: z.string().optional(),
+	region: z.string().min(1),
 });
 
 /**
