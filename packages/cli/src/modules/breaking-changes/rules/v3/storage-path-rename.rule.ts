@@ -21,7 +21,7 @@ export class StoragePathRenameRule implements IBreakingChangeInstanceRule {
 			version: 'v3',
 			title: 'Filesystem storage directory is renamed',
 			description:
-				'The filesystem storage directory `~/.n8n/binaryData` is renamed to `~/.n8n/storage` on the first start of the new version.',
+				'The filesystem storage directory `~/.n8n/binaryData` is renamed to `~/.n8n/storage` on the first start of the new version. If you mount a volume at `~/.n8n/binaryData`, mount it at `~/.n8n/storage` and remove the empty `binaryData` directory, or set N8N_STORAGE_PATH to the old path.',
 			category: BreakingChangeCategory.infrastructure,
 			impact: 'behaviorChanges',
 		};
@@ -72,7 +72,7 @@ export class StoragePathRenameRule implements IBreakingChangeInstanceRule {
 			recommendations: [
 				{
 					action: 'Update volume mounts',
-					description: `If you mount a volume at "${oldPath}", mount it at "${newPath}" instead, or set N8N_STORAGE_PATH to the old path to keep it.`,
+					description: `If you mount a volume at "${oldPath}", mount it at "${newPath}" instead and remove the empty "${oldPath}" directory, because n8n does not start when both directories exist. Or set N8N_STORAGE_PATH to the old path to keep it.`,
 				},
 			],
 		};

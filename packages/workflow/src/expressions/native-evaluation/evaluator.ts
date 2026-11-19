@@ -340,15 +340,28 @@ function elementContentWork(receiver: unknown[], method: string): number {
 	return 0;
 }
 
+/** Data that every engine copies with the same behavior: plain objects, arrays and dates. */
+function isPlainData(value: object): boolean {
+	const prototype: unknown = Object.getPrototypeOf(value);
+	return (
+		prototype === Object.prototype ||
+		prototype === null ||
+		prototype === Array.prototype ||
+		prototype === Date.prototype
+	);
+}
+
 /**
  * Content size of a JSON value: string lengths plus one per element and
  * key, stopping early past the budget. Deeper than the grammar's own depth
- * cap hands off: the engine owns data that deep.
+ * cap hands off: the engine owns data that deep. So does a class instance,
+ * because the engines copy it without its prototype.
  */
 function contentWeight(value: unknown, budget: number, depth = 0): number {
 	if (depth > MAX_DEPTH) throw new EngineFallbackError('too_deep');
 	if (typeof value === 'string') return value.length;
 	if (!isObj(value)) return 1;
+	if (!isPlainData(value)) throw new EngineFallbackError('unsupported_type');
 
 	let weight = 1;
 	if (isArray(value)) {

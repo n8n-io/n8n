@@ -23,7 +23,7 @@ export class OAuthServerModule implements ModuleInterface {
 		const { OAuthGrantRepository } = await import(
 			'./database/repositories/oauth-grant.repository.js'
 		);
-		const { UserDeactivationHooks } = await import('@/services/user-deactivation-hooks.service.js');
+		const { UserDeactivationHooks } = await import('@n8n/backend-services');
 		const grants = Container.get(OAuthGrantRepository);
 		Container.get(UserDeactivationHooks).register('oauth-server', async (userId, ctx) => {
 			await grants.deleteUserGrants(userId, ctx);

@@ -59,6 +59,7 @@ export class Chat implements INodeType {
 		usableAsTool: true,
 		displayName: 'Chat',
 		name: 'chat',
+		schemaPath: 'trigger/ChatTrigger',
 		icon: 'node:chat-trigger',
 		iconColor: 'black',
 		group: ['input'],

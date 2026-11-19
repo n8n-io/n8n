@@ -8,6 +8,8 @@ type RunFacts = {
 	mode: WorkflowExecuteMode;
 	/** Unset for a regular run. The writer stores `none`. */
 	source?: WorkflowExecutionSource;
+	/** The owner project, when the caller already has it. The writer looks it up when unset. */
+	projectId?: string;
 	occurredAt: Date;
 };
 
@@ -37,7 +39,15 @@ export type ExecutionLedgerEndedFacts = RunFacts & (BlockedRun | FinishedRun);
  * A write resolves to `false` when the workflow has no owner project. It does not throw
  * for that case, because a failed insert would abort a Postgres transaction.
  */
+export type ExecutionLedgerBacklogStats = {
+	/** Upper bound from the id range: each rolled-back append leaves a gap that counts. */
+	rows: number;
+	oldestOccurredAt: Date | null;
+};
+
 export interface ExecutionLedgerWriter {
 	writeStarted(facts: ExecutionLedgerStartedFacts, ctx: OperationContext): Promise<boolean>;
 	writeEnded(facts: ExecutionLedgerEndedFacts, ctx: OperationContext): Promise<boolean>;
+	/** For monitoring. The writer owns the table, so it also reads its backlog. */
+	getBacklogStats(): Promise<ExecutionLedgerBacklogStats>;
 }

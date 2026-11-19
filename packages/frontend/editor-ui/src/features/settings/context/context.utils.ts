@@ -8,6 +8,7 @@ import type { TableOptions } from '@n8n/design-system';
 import { getResourcePermissions } from '@n8n/permissions';
 import { ResponseError } from '@n8n/rest-api-client';
 
+import { hasPermission } from '@/app/utils/rbac/permissions';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { splitName } from '@/features/collaboration/projects/projects.utils';
 import { useSettingsStore } from '@n8n/stores/settings.store';
@@ -130,6 +131,19 @@ export function isContextSkillsEnabled(): boolean {
 			moduleSettings['instance-ai']?.enabled === true ||
 			moduleSettings.mcp?.mcpAccessEnabled === true)
 	);
+}
+
+export function isContextPreferencesEnabled(): boolean {
+	const { settings, moduleSettings } = useSettingsStore();
+	return (
+		settings.aiPreferences?.enabled === true &&
+		(moduleSettings['instance-ai']?.enabled === true ||
+			moduleSettings.mcp?.mcpAccessEnabled === true)
+	);
+}
+
+export function canManageContextPreferences(): boolean {
+	return hasPermission(['rbac'], { rbac: { scope: 'aiPreference:manage' } });
 }
 
 /** The service builds the cap message from the scope and the number, so match the fixed part. */

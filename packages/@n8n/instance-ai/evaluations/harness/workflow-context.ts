@@ -32,7 +32,14 @@ function renderNodeGroupLines(wf: WorkflowResponse): string[] {
 	];
 }
 
-/** Render the per-build workflow structure: nodes, connections, all configs, node groups. */
+/** Workflow-level settings (timezone, error workflow, ...) live outside the nodes. */
+function renderSettingsLines(wf: WorkflowResponse): string[] {
+	const settings = wf.settings ?? {};
+	if (Object.keys(settings).length === 0) return ['**Workflow settings:**', '', '(none)'];
+	return ['**Workflow settings:**', '```json', JSON.stringify(settings, null, 2), '```'];
+}
+
+/** Render the per-build workflow structure: nodes, connections, all configs, settings, node groups. */
 export function buildWorkflowContextBlock(wf: WorkflowResponse | undefined): string {
 	if (!wf) return '## Workflow structure\n\n(no workflow built)';
 	const lines: string[] = ['## Workflow structure', ''];
@@ -68,6 +75,7 @@ export function buildWorkflowContextBlock(wf: WorkflowResponse | undefined): str
 	);
 	lines.push('**Connections:**');
 	lines.push('```json', JSON.stringify(wf.connections, null, 2), '```', '');
+	lines.push(...renderSettingsLines(wf), '');
 	lines.push(...renderNodeGroupLines(wf));
 	return lines.join('\n');
 }

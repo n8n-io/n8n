@@ -197,13 +197,14 @@ describe('ProjectService', () => {
 			roleService.isRoleLicensed.mockReturnValueOnce(true);
 
 			// ACT & ASSERT
-			await expect(
-				projectService.addUsersToProject({
-					user,
-					projectId,
-					relations: [{ userId: '1234', role: 'project:admin' }],
-				}),
-			).rejects.toThrowError("Can't add users to personal projects.");
+			const result = projectService.addUsersToProject({
+				user,
+				projectId,
+				relations: [{ userId: '1234', role: 'project:admin' }],
+			});
+			await expect(result).rejects.toThrow(ForbiddenError);
+			await expect(result).rejects.toThrow("Personal projects can't have members.");
+			expect(projectRelationRepository.save).not.toHaveBeenCalled();
 		});
 
 		it('throws if trying to add a personalOwner to a team project', async () => {
@@ -393,7 +394,7 @@ describe('ProjectService', () => {
 			await projectService.syncProjectRelations(projectId, mockRelations);
 
 			expect(projectRepository.findOne).toHaveBeenCalledWith({
-				where: { id: projectId, type: 'team' },
+				where: { id: projectId },
 				relations: { projectRelations: { role: true } },
 			});
 
@@ -672,6 +673,21 @@ describe('ProjectService', () => {
 			);
 			expect(manager.delete).not.toHaveBeenCalled();
 		});
+
+		it('throws a forbidden error for a personal project', async () => {
+			projectRepository.findOne.mockResolvedValueOnce(
+				mock<Project>({
+					id: 'proj-1',
+					type: 'personal',
+					projectRelations: [{ userId: 'member', role: PROJECT_VIEWER_ROLE }],
+				}),
+			);
+
+			const result = projectService.deleteUserFromProject(user, 'proj-1', 'member');
+			await expect(result).rejects.toThrow(ForbiddenError);
+			await expect(result).rejects.toThrow("Personal projects can't have members.");
+			expect(manager.delete).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('updateProject', () => {
@@ -744,10 +760,24 @@ describe('ProjectService', () => {
 
 		it('should throw NotFoundError when project is not found', async () => {
 			projectRepository.update.mockResolvedValueOnce({ affected: 0 } as never);
+			projectRepository.findOneBy.mockResolvedValueOnce(null);
 
 			await expect(
 				projectService.updateProject(user, 'missing-proj', { name: 'Ghost' }),
 			).rejects.toThrow('Could not find project with ID: missing-proj');
+		});
+
+		it('throws a forbidden error for a personal project', async () => {
+			projectRepository.update.mockResolvedValueOnce({ affected: 0 } as never);
+			projectRepository.findOneBy.mockResolvedValueOnce(
+				mock<Project>({ id: 'personal-proj', type: 'personal' }),
+			);
+
+			const result = projectService.updateProject(user, 'personal-proj', { name: 'Renamed' });
+			await expect(result).rejects.toThrow(ForbiddenError);
+			await expect(result).rejects.toThrow("Personal projects can't be updated.");
+			expect(projectRepository.findOneBy).toHaveBeenCalledWith({ id: 'personal-proj' });
+			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 
 		it('emits team-project-updated with the otel tag count when tags are provided', async () => {
@@ -855,7 +885,7 @@ describe('ProjectService', () => {
 			await projectService.changeUserRoleInProject(user, projectId, 'user2', 'project:admin');
 
 			expect(projectRepository.findOne).toHaveBeenCalledWith({
-				where: { id: projectId, type: 'team' },
+				where: { id: projectId },
 				relations: { projectRelations: { role: true } },
 			});
 
@@ -892,7 +922,7 @@ describe('ProjectService', () => {
 			).rejects.toThrow(`Could not find project with ID: ${projectId}`);
 
 			expect(projectRepository.findOne).toHaveBeenCalledWith({
-				where: { id: projectId, type: 'team' },
+				where: { id: projectId },
 				relations: { projectRelations: { role: true } },
 			});
 		});
@@ -903,7 +933,7 @@ describe('ProjectService', () => {
 			).rejects.toThrow('Personal owner cannot be added to a team project.');
 		});
 
-		it('should throw if the project is not a team project', async () => {
+		it('should throw if the project does not exist', async () => {
 			projectRepository.findOne.mockResolvedValueOnce(null);
 			roleService.isRoleLicensed.mockReturnValue(true);
 
@@ -912,9 +942,26 @@ describe('ProjectService', () => {
 			).rejects.toThrow(`Could not find project with ID: ${projectId}`);
 
 			expect(projectRepository.findOne).toHaveBeenCalledWith({
-				where: { id: projectId, type: 'team' },
+				where: { id: projectId },
 				relations: { projectRelations: { role: true } },
 			});
+		});
+
+		it('throws a forbidden error for a personal project', async () => {
+			projectRepository.findOne.mockResolvedValueOnce(
+				mock<Project>({ id: projectId, type: 'personal', projectRelations: mockRelations }),
+			);
+			roleService.isRoleLicensed.mockReturnValue(true);
+
+			const result = projectService.changeUserRoleInProject(
+				user,
+				projectId,
+				'user2',
+				'project:admin',
+			);
+			await expect(result).rejects.toThrow(ForbiddenError);
+			await expect(result).rejects.toThrow("Personal projects can't have members.");
+			expect(manager.update).not.toHaveBeenCalled();
 		});
 	});
 
@@ -1104,6 +1151,7 @@ describe('ProjectService', () => {
 				user,
 				undefined,
 				{},
+				expect.any(Function),
 			);
 			expect(agentChatAttachmentService.deleteByProject).toHaveBeenCalledWith(project.id);
 			expect(agentChatAttachmentService.deleteByProject.mock.invocationCallOrder[0]).toBeLessThan(

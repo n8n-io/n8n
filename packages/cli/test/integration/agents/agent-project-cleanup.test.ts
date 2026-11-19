@@ -3,6 +3,8 @@ import { ProjectRepository, SettingsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { v4 as uuid } from 'uuid';
 
+import { createAgent, createAgentIdentity } from '@test-integration/db/agents';
+
 import { AgentKnowledgeService } from '@/modules/agents/agent-knowledge.service';
 import { chatThreadId } from '@/modules/agents/agent-test-chat.service';
 import { N8nMemory } from '@/modules/agents/integrations/n8n-memory';
@@ -67,6 +69,7 @@ describe('Agent conversations on project deletion', () => {
 				name: 'Instance agent',
 				scope: 'instance',
 				projectId: null,
+				identityId: await createAgentIdentity(),
 				integrations: [],
 			}),
 		);
@@ -126,20 +129,25 @@ describe('Agent conversations on project deletion', () => {
 		const agents = Container.get(AgentRepository);
 		const threads = Container.get(AgentExecutionThreadRepository);
 		const memory = Container.get(N8nMemory);
-		const agent = await agents.save(
-			agents.create({ name: 'Project agent', projectId: project.id, integrations: [] }),
-		);
+		const agent = await createAgent({
+			name: 'Project agent',
+			projectId: project.id,
+			integrations: [],
+		});
 		const instanceAgent = await agents.save(
 			agents.create({
 				name: 'Instance agent',
 				scope: 'instance',
 				projectId: null,
+				identityId: await createAgentIdentity(),
 				integrations: [],
 			}),
 		);
-		const otherAgent = await agents.save(
-			agents.create({ name: 'Other project agent', projectId: otherProject.id, integrations: [] }),
-		);
+		const otherAgent = await createAgent({
+			name: 'Other project agent',
+			projectId: otherProject.id,
+			integrations: [],
+		});
 		const builderId = chatThreadId(agent.id, owner.id);
 		const keptBuilderId = chatThreadId(otherAgent.id, owner.id);
 		const projectSessionId = uuid();

@@ -58,7 +58,7 @@ export async function execute(this: IExecuteFunctions, index: number, _: INodeEx
 		extractValue: true,
 	}) as string;
 
-	const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0);
+	const binaryPropertyName = this.getNodeParameter('binaryPropertyName', index);
 	const options = this.getNodeParameter('options', index);
 
 	const binaryData = this.helpers.assertBinaryData(index, binaryPropertyName);

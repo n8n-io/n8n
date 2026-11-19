@@ -536,5 +536,190 @@ describe('KnowledgeMirrorService', () => {
 			expect(fileStore.readAsBuffer).toHaveBeenCalledTimes(2);
 			expect(filesystem.writeFile).toHaveBeenCalledTimes(1);
 		});
+
+		describe('waiting times to prepare the sandbox and the mirror', () => {
+			const SANDBOX_START_MS = 3000;
+			const MANIFEST_READ_MS = 100;
+			const MIRROR_COPY_MS = 750;
+			const fullManifest = 'file-1\tdoc1.txt\n';
+
+			let now: number;
+			let manifestState: string;
+
+			function makeWaitService(files = [makeMirrorFile('file-1', 'doc1.txt')]) {
+				const agentFileRepository = mock<KnowledgeFileRepository>();
+				agentFileRepository.findByAgentId.mockResolvedValue(files);
+				return makeMirrorService({ fileRepository: agentFileRepository });
+			}
+
+			beforeEach(() => {
+				now = 0;
+				manifestState = '';
+				vi.spyOn(Date, 'now').mockImplementation(() => now);
+				const runtime = makeSandboxHandle(sandbox, filesystem);
+				sandboxProviderProxy.acquire.mockImplementation(async () => {
+					now += SANDBOX_START_MS;
+					return runtime;
+				});
+				sandbox.executeCommand.mockImplementation(async (command) => {
+					if (isManifestReadCommand(command)) {
+						now += MANIFEST_READ_MS;
+						return makeCommandResult(manifestState);
+					}
+
+					if (isMirrorSyncCommand(command)) {
+						now += MIRROR_COPY_MS;
+						manifestState = fullManifest;
+					}
+
+					return makeCommandResult();
+				});
+			});
+
+			afterEach(() => {
+				vi.restoreAllMocks();
+			});
+
+			it('reports the sandbox wait and the full mirror wait when files are copied', async () => {
+				const onPreparationWait = vi.fn();
+				const service = makeWaitService();
+
+				await service.searchText(scope, { pattern: 'foo' }, { onPreparationWait });
+
+				expect(onPreparationWait).toHaveBeenCalledExactlyOnceWith({
+					sandboxWaitMs: SANDBOX_START_MS,
+					mirrorWaitMs: MANIFEST_READ_MS + MIRROR_COPY_MS,
+				});
+			});
+
+			it('reports a mirror wait of 0 when the mirror is already up to date', async () => {
+				manifestState = fullManifest;
+				const onPreparationWait = vi.fn();
+				const service = makeWaitService();
+
+				await service.readFile(scope, { file: 'doc1.txt' }, { onPreparationWait });
+
+				expect(onPreparationWait).toHaveBeenCalledExactlyOnceWith({
+					sandboxWaitMs: SANDBOX_START_MS,
+					mirrorWaitMs: 0,
+				});
+			});
+
+			it('counts a sync that only deletes files as a mirror wait', async () => {
+				manifestState = `${fullManifest}file-2\told.txt\n`;
+				const onPreparationWait = vi.fn();
+				const service = makeWaitService();
+
+				await service.searchText(scope, { pattern: 'foo' }, { onPreparationWait });
+
+				expect(onPreparationWait).toHaveBeenCalledExactlyOnceWith({
+					sandboxWaitMs: SANDBOX_START_MS,
+					mirrorWaitMs: MANIFEST_READ_MS + MIRROR_COPY_MS,
+				});
+			});
+
+			it('reports only the rest of a background copy that is in progress', async () => {
+				sandboxProviderProxy.acquire.mockResolvedValue(makeSandboxHandle(sandbox, filesystem));
+				let releaseManifestRead!: () => void;
+				const blockedManifestRead = new Promise<void>((resolve) => {
+					releaseManifestRead = resolve;
+				});
+				let blockNextManifestRead = true;
+				sandbox.executeCommand.mockImplementation(async (command) => {
+					if (isManifestReadCommand(command)) {
+						now += MANIFEST_READ_MS;
+						if (blockNextManifestRead) {
+							blockNextManifestRead = false;
+							await blockedManifestRead;
+						}
+
+						return makeCommandResult(manifestState);
+					}
+
+					if (isMirrorSyncCommand(command)) {
+						now += MIRROR_COPY_MS;
+						manifestState = fullManifest;
+					}
+
+					return makeCommandResult();
+				});
+				const onPreparationWait = vi.fn();
+				const service = makeWaitService();
+
+				service.syncMirrorInBackground(scope, async () => {});
+				await vi.waitFor(() => expect(sandbox.executeCommand).toHaveBeenCalledOnce());
+				// The background copy has run for a while before the search starts.
+				now += 400;
+				const search = service.searchText(scope, { pattern: 'foo' }, { onPreparationWait });
+				await vi.waitFor(() => expect(sandboxProviderProxy.acquire).toHaveBeenCalledTimes(2));
+				await new Promise((resolve) => setTimeout(resolve, 0));
+				now += 200;
+				releaseManifestRead();
+				await search;
+
+				// The search waits 200 ms, then the background copy, then its own manifest check.
+				expect(onPreparationWait).toHaveBeenCalledExactlyOnceWith({
+					sandboxWaitMs: 0,
+					mirrorWaitMs: 200 + MIRROR_COPY_MS + MANIFEST_READ_MS,
+				});
+			});
+
+			it('reports the sandbox wait when the sandbox does not start', async () => {
+				const startError = new Error('sandbox unavailable');
+				sandboxProviderProxy.acquire.mockImplementation(async () => {
+					now += SANDBOX_START_MS;
+					throw startError;
+				});
+				const onPreparationWait = vi.fn();
+				const service = makeWaitService();
+
+				await expect(
+					service.searchText(scope, { pattern: 'foo' }, { onPreparationWait }),
+				).rejects.toBe(startError);
+
+				expect(onPreparationWait).toHaveBeenCalledExactlyOnceWith({
+					sandboxWaitMs: SANDBOX_START_MS,
+					mirrorWaitMs: 0,
+				});
+			});
+
+			it('reports the mirror wait when the copy fails', async () => {
+				sandbox.executeCommand.mockImplementation(async (command) => {
+					if (isManifestReadCommand(command)) {
+						now += MANIFEST_READ_MS;
+						return makeCommandResult();
+					}
+
+					if (isMirrorSyncCommand(command)) {
+						now += MIRROR_COPY_MS;
+						return makeCommandResult('', 'disk full', 1);
+					}
+
+					return makeCommandResult();
+				});
+				const onPreparationWait = vi.fn();
+				const service = makeWaitService();
+
+				await expect(
+					service.searchText(scope, { pattern: 'foo' }, { onPreparationWait }),
+				).rejects.toThrow(/Agent knowledge mirror sync failed/);
+
+				expect(onPreparationWait).toHaveBeenCalledExactlyOnceWith({
+					sandboxWaitMs: SANDBOX_START_MS,
+					mirrorWaitMs: MANIFEST_READ_MS + MIRROR_COPY_MS,
+				});
+			});
+
+			it('does not report a wait when the call ends before the sandbox step', async () => {
+				const onPreparationWait = vi.fn();
+
+				await makeWaitService([]).searchText(scope, { pattern: 'foo' }, { onPreparationWait });
+				await expect(
+					makeWaitService().readFile(scope, { file: 'missing.txt' }, { onPreparationWait }),
+				).rejects.toThrow();
+
+				expect(onPreparationWait).not.toHaveBeenCalled();
+			});
+		});
 	});
 });

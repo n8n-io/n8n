@@ -649,6 +649,7 @@ Push to master
 | Daily 01:30, 02:30, 03:30 | `test-benchmark-nightly.yml`      | Performance benchmarks   |
 | Daily 02:00               | `test-get-n8n.yml`                | get.n8n.io installer health |
 | Daily 02:00               | `test-e2e-pc-nightly.yml`         | E2E on the `-pc` image   |
+| Daily 03:00               | `test-e2e-helm.yml`               | n8n build on the public Helm chart |
 | Daily 04:00               | `test-sbom-nightly.yml`           | Release and image SBOM license validation |
 | Daily 04:30               | `test-image-efficiency.yml`       | Image size and layer waste with Dive |
 | Daily 05:00               | `test-benchmark-destroy-nightly.yml`| Cleanup benchmark env  |
@@ -933,6 +934,19 @@ The file drives four workflows:
 | `ci-owners-review-recommendations.yml` | Advisory PR comment: reviewer teams, line stats, required reviews    |
 | `ci-owners-assign-reviewers.yml`  | Opt-in reviewer auto-assignment (label-triggered)                        |
 | `ci-owners-required-reviews.yml`  | Enforces `required` entries via the "Required Reviews" commit status     |
+
+### Auto-assign reviewers
+
+On an eligible PR into `master`, apply `Auto-assign reviewers` to request all
+owning teams. Apply `Auto-assign required reviewers` to request only teams whose
+`required` OWNERS entries match changed non-test files. If both labels are
+present, the workflow requests all owning teams.
+
+After it requests reviews, the workflow replaces the trigger labels with
+`Reviewers auto-assigned` to prevent repeat requests. While that marker is
+present, the workflow removes any trigger labels without requesting reviews
+again. If no teams match, it leaves the trigger label in place so a later
+update can try again.
 
 ### Required reviews
 

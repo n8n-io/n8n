@@ -59,6 +59,8 @@ const INSTANCE_ACCESS_ROLE_ERROR =
 	"This user has access through their instance role. Project roles can't change their access in this project.";
 const INSTANCE_ACCESS_REMOVE_ERROR =
 	"This user has access through their instance role and can't be removed from the project.";
+const PERSONAL_PROJECT_MEMBERS_ERROR = "Personal projects can't have members.";
+const PERSONAL_PROJECT_UPDATE_ERROR = "Personal projects can't be updated.";
 
 export class TeamProjectOverQuotaError extends UserError {
 	constructor(limit: number) {
@@ -389,10 +391,18 @@ export class ProjectService {
 		});
 	}
 
+	/**
+	 * Every agent has a service account. With the flag off, its personal project
+	 * stays out of project lists, pickers and the Assistant.
+	 */
+	private serviceAccountListOptions(): { serviceAccountIds?: string[] } {
+		return this.agentsConfig.serviceAccountsEnabled ? {} : { serviceAccountIds: [] };
+	}
+
 	async getAccessibleProjects(user: User): Promise<Project[]> {
 		// This user is probably an admin, show them everything
 		if (hasGlobalScope(user, 'project:read')) {
-			return await this.projectRepository.find();
+			return await this.projectRepository.findAllProjects(this.serviceAccountListOptions());
 		}
 		return await this.projectRepository.getAccessibleProjects(user.id);
 	}
@@ -401,9 +411,10 @@ export class ProjectService {
 		user: User,
 		options: ProjectListOptions,
 	): Promise<{ projects: ProjectWithAccountKind[]; count: number }> {
+		const listOptions = { ...options, ...this.serviceAccountListOptions() };
 		const [projects, count] = hasGlobalScope(user, 'project:read')
-			? await this.projectRepository.findAllProjectsAndCount(options)
-			: await this.projectRepository.getAccessibleProjectsAndCount(user.id, options);
+			? await this.projectRepository.findAllProjectsAndCount(listOptions)
+			: await this.projectRepository.getAccessibleProjectsAndCount(user.id, listOptions);
 		await this.ownershipService.addAccountKinds<ProjectWithAccountKind>(projects);
 		return { projects, count };
 	}
@@ -576,6 +587,10 @@ export class ProjectService {
 			{ name, icon, description, customTelemetryTags: tags },
 		);
 		if (!result.affected) {
+			const project = await this.projectRepository.findOneBy({ id: projectId });
+			if (project?.type === 'personal') {
+				throw new ForbiddenError(PERSONAL_PROJECT_UPDATE_ERROR);
+			}
 			throw new ProjectNotFoundError(projectId);
 		}
 
@@ -712,10 +727,6 @@ export class ProjectService {
 			'project',
 		);
 
-		if (project.type === 'personal') {
-			throw new ForbiddenError("Can't add users to personal projects.");
-		}
-
 		if (relations.some((r) => r.role === PROJECT_OWNER_ROLE_SLUG)) {
 			throw new ForbiddenError("Can't add a personalOwner to a team project.");
 		}
@@ -806,10 +817,13 @@ export class ProjectService {
 
 	private async getTeamProjectWithRelations(projectId: string) {
 		const project = await this.projectRepository.findOne({
-			where: { id: projectId, type: 'team' },
+			where: { id: projectId },
 			relations: { projectRelations: { role: true } },
 		});
 		ProjectNotFoundError.isDefinedAndNotNull(project, projectId);
+		if (project.type === 'personal') {
+			throw new ForbiddenError(PERSONAL_PROJECT_MEMBERS_ERROR);
+		}
 		return project;
 	}
 

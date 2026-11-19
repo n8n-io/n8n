@@ -1,0 +1,122 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"attendees": {
+			"items": {
+				"properties": {
+					"email": {
+						"type": "string"
+					},
+					"organizer": {
+						"type": "boolean"
+					},
+					"responseStatus": {
+						"type": "string"
+					},
+					"self": {
+						"type": "boolean"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"created": {
+			"type": "string"
+		},
+		"creator": {
+			"additionalProperties": true,
+			"properties": {
+				"email": {
+					"type": "string"
+				},
+				"self": {
+					"type": "boolean"
+				}
+			},
+			"type": "object"
+		},
+		"description": {
+			"type": "string"
+		},
+		"end": {
+			"additionalProperties": true,
+			"properties": {
+				"dateTime": {
+					"type": "string"
+				},
+				"timeZone": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"etag": {
+			"type": "string"
+		},
+		"eventType": {
+			"type": "string"
+		},
+		"htmlLink": {
+			"type": "string"
+		},
+		"iCalUID": {
+			"type": "string"
+		},
+		"id": {
+			"type": "string"
+		},
+		"kind": {
+			"type": "string"
+		},
+		"location": {
+			"type": "string"
+		},
+		"organizer": {
+			"additionalProperties": true,
+			"properties": {
+				"email": {
+					"type": "string"
+				},
+				"self": {
+					"type": "boolean"
+				}
+			},
+			"type": "object"
+		},
+		"reminders": {
+			"additionalProperties": true,
+			"properties": {
+				"useDefault": {
+					"type": "boolean"
+				}
+			},
+			"type": "object"
+		},
+		"sequence": {
+			"type": "number"
+		},
+		"start": {
+			"additionalProperties": true,
+			"properties": {
+				"dateTime": {
+					"type": "string"
+				},
+				"timeZone": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"status": {
+			"type": "string"
+		},
+		"summary": {
+			"type": "string"
+		},
+		"updated": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

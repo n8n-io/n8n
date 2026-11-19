@@ -18,7 +18,11 @@ import { createHmac } from 'node:crypto';
 
 import { AgentCredentialLookupService } from '../../agent-credential-lookup.service';
 import { numberProperty, stringProperty } from '../../integration-helpers';
-import { resolveWhatsAppMetaState } from './whatsapp-meta-status';
+import {
+	isNumberNotFoundError,
+	isPermissionError,
+	resolveWhatsAppMetaState,
+} from './whatsapp-meta-status';
 
 const WHATSAPP_CREDENTIAL_TYPE = 'whatsAppBotApi';
 
@@ -275,6 +279,11 @@ export class WhatsAppCredentialCheckService {
 					fields: 'business_verification_status',
 				}).catch(() => undefined),
 			]);
+			// A deleted number gives an error, not a 200 with a status. So does a number
+			// this token cannot see. Meta does not say which error, so both kinds count.
+			if (isNumberNotFoundError(phone.body) || isPermissionError(phone.body)) {
+				return { state: 'numberNotFound' };
+			}
 			if (phone.statusCode !== 200) return { state: 'unknown' };
 
 			return {
@@ -429,13 +438,11 @@ export class WhatsAppCredentialCheckService {
 				statusCode: response.statusCode,
 				...this.errorDetail(response),
 			});
-			const error = isRecord(response.body) ? response.body.error : undefined;
-			const code = numberProperty(error, 'code');
-			// 10 and 200-299 are Meta's permission errors. 190 is a bad token.
-			if (code !== undefined && (code === 10 || (code >= 200 && code <= 299))) return 'denied';
+			// 190, a bad token, is not a permission error.
+			if (isPermissionError(response.body)) return 'denied';
 			// Meta cannot load the object for this token. An Employee system user
 			// and a wrong ID both get this, so the caller decides which it is.
-			if (code === 100 && numberProperty(error, 'error_subcode') === 33) return 'notLoadable';
+			if (isNumberNotFoundError(response.body)) return 'notLoadable';
 			return 'allowed';
 		} catch {
 			return 'allowed';

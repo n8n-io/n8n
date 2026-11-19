@@ -165,11 +165,13 @@ export abstract class SkillSourceClient {
 	 * One page of the skills in the source. Call again with `next` until it is undefined.
 	 * `truncated` is true when the source has more skills than the client lists. `revision`,
 	 * when the client has one, is the revision of the whole source that the page lists.
+	 * When supported, the `revision` argument pins discovery to the probe result.
 	 */
 	abstract discover(
 		locator: SkillSourceLocator,
 		auth?: SkillSourceAuth,
 		cursor?: string,
+		revision?: string,
 	): Promise<{
 		items: RemoteSkillRef[];
 		next?: string;

@@ -654,7 +654,7 @@ export class MicrosoftOutlookV1 implements INodeType {
 				for (let i = 0; i < length; i++) {
 					try {
 						const messageId = this.getNodeParameter('messageId', i) as string;
-						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0);
+						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (items[i].binary === undefined) {

@@ -2,6 +2,20 @@ import { MAX_FILE_MESSAGES_PER_SEND, type FileUploadLimits } from './agent-chat-
 import { MAX_BATCH_OPERATIONS } from './integration-tool-schema';
 import type { IntegrationToolConnectionDescriptor } from './integration-tool-types';
 
+/** Keep channel capabilities visible when the action schema is deferred. */
+export function buildChannelToolInstruction(
+	descriptor: IntegrationToolConnectionDescriptor,
+): string {
+	return [
+		`You can use the ${descriptor.integration.type} channel through ${descriptor.contextToolName} and ${descriptor.actionToolName}. Search your tools for these names to read the available channel operations before you decide that an operation is unavailable.`,
+		...(descriptor.supportedComponents?.length
+			? [
+					`This channel supports rich messages with these card components: ${descriptor.supportedComponents.join(', ')}. Use message.card in the channel actions for rich content. Read ${descriptor.actionToolName} for the card format, supported destinations, and how interactive responses are handled.`,
+				]
+			: []),
+	].join('\n');
+}
+
 export function buildContextToolDescription(
 	descriptor: IntegrationToolConnectionDescriptor,
 ): string {
@@ -19,6 +33,7 @@ export function buildContextToolDescription(
 export function buildActionToolDescription(
 	descriptor: IntegrationToolConnectionDescriptor,
 ): string {
+	const supportsCards = (descriptor.supportedComponents?.length ?? 0) > 0;
 	return [
 		`Take actions in the ${descriptor.integration.type} integration connection.`,
 		`Available actions: ${descriptor.actions.join(', ')}.`,
@@ -28,20 +43,31 @@ export function buildActionToolDescription(
 		`Batch form: pass actions as an array of up to ${MAX_BATCH_OPERATIONS} { action, input } objects. Batch actions run sequentially and cannot include cards that wait for a user response.`,
 		'respond uses the latest message context for this integration connection.',
 		'Never state that an action has been performed before its tool call returns. Before calling an action, describe what you intend to do, not a completed outcome. Only report an action as done after the tool returns ok. If a tool fails, report the failure honestly.',
-		'If this turn was triggered by an inbound chat message, your final reply text is posted to that conversation automatically — do not duplicate it with a text-only respond. Call respond only with message.card, or after switching to a different target.',
+		supportsCards
+			? 'If this turn was triggered by an inbound chat message, your final reply text is posted to that conversation automatically — do not duplicate it with a text-only respond. Call respond only with message.card, or after switching to a different target.'
+			: 'If this turn was triggered by an inbound chat message, your final reply text is posted to that conversation automatically. Do not duplicate it with respond. Use respond only after switching to a different target.',
 		...(descriptor.actions.includes('do_not_respond')
 			? [
 					'Always reply to direct messages and direct mentions. For messages in subscribed group channels or threads where you have nothing useful to add, or when explicitly asked not to reply, call do_not_respond as your final action and end the turn without writing any text.',
 				]
 			: []),
-		'Use message.card for cards, images, key-value summaries, and feedback requests. Include components such as section, fields, image, divider, button, select, or radio_select.',
-		'For fields components, use { type: "fields", fields: [{ label: "Account", value: "Acme" }] }. The key items is also accepted as a fields alias.',
-		'For button components, use { type: "button", label: "Approve", value: "approve" }. If label is omitted, text is used as the button label.',
-		'For radio-style choices, use { type: "radio_select", label: "Next step", options: [{ label: "Approve", value: "approve" }] }.',
-		'Use only the generic shape: message.text plus optional message.card. Do not provide platform-native component payloads, formatted text objects, or attachments; rendering is handled internally.',
-		...buildGenericCardGuidance(),
-		'Interactive message.card components (button, select, or radio_select) send the message first, then suspend this action until the user responds.',
-		'Display-only message.card components without buttons/selects render the card and let the agent continue immediately.',
+		...(supportsCards
+			? [
+					'Use message.card for cards, images, key-value summaries, and feedback requests. Include components such as section, fields, image, divider, button, select, or radio_select.',
+					'For fields components, use { type: "fields", fields: [{ label: "Account", value: "Acme" }] }. The key items is also accepted as a fields alias.',
+					'For button components, use { type: "button", label: "Approve", value: "approve" }. If label is omitted, text is used as the button label.',
+					'For radio-style choices, use { type: "radio_select", label: "Next step", options: [{ label: "Approve", value: "approve" }] }.',
+					'Use only the generic shape: message.text plus optional message.card. Do not provide platform-native component payloads, formatted text objects, or attachments; rendering is handled internally.',
+					...(descriptor.actions.includes('send_channel_message')
+						? [
+								'To send a card to another channel, use send_channel_message with input.channelId and input.message.card. The card is not limited to the current conversation.',
+							]
+						: []),
+					...buildGenericCardGuidance(),
+					'Interactive message.card components (button, select, or radio_select) send the message first, then suspend this action until the user responds.',
+					'Display-only message.card components without buttons/selects render the card and let the agent continue immediately.',
+				]
+			: ['This channel supports text messages. Do not send rich cards.']),
 	].join('\n\n');
 }
 
