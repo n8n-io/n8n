@@ -3364,13 +3364,14 @@ describe('AgentsBuilderToolsService', () => {
 			id: agentId,
 			versionId: null,
 			activeVersionId: null,
+			revision: 0,
 		} as unknown as ProjectAgent;
 
 		/** An approved card for `unpublishedAgent`'s draft. */
 		const approvedCtx = {
 			...ctx,
 			resumeData: { approved: true },
-			continuation: { confirmedVersionId: null, liveVersionId: null },
+			continuation: { confirmedVersionId: null, liveVersionId: null, revision: 0 },
 		};
 
 		function getUnpublishTool(service: AgentsBuilderToolsService) {
@@ -3387,6 +3388,7 @@ describe('AgentsBuilderToolsService', () => {
 				name: 'Support agent',
 				versionId: 'v-draft',
 				activeVersionId: 'v-live',
+				revision: 3,
 				integrations: [
 					{ type: 'slack', credentialId: 'cred-1' },
 					{ type: 'telegram', credentialId: '' },
@@ -3411,7 +3413,7 @@ describe('AgentsBuilderToolsService', () => {
 
 			expect(suspend).toHaveBeenCalledTimes(1);
 			expect(suspend).toHaveBeenCalledWith(expect.anything(), {
-				continuation: { confirmedVersionId: 'v-draft', liveVersionId: 'v-live' },
+				continuation: { confirmedVersionId: 'v-draft', liveVersionId: 'v-live', revision: 3 },
 			});
 			expect(result).toEqual({
 				message:
@@ -3440,6 +3442,7 @@ describe('AgentsBuilderToolsService', () => {
 				name: 'Support agent',
 				versionId: 'v-draft-2',
 				activeVersionId: null,
+				revision: 4,
 				integrations: [],
 				schema: baseConfig,
 			} as unknown as ProjectAgent);
@@ -3451,13 +3454,13 @@ describe('AgentsBuilderToolsService', () => {
 					...ctx,
 					suspend,
 					resumeData: { approved: true },
-					continuation: { confirmedVersionId: 'v-draft-1', liveVersionId: null },
+					continuation: { confirmedVersionId: 'v-draft-1', liveVersionId: null, revision: 0 },
 				},
 			);
 
 			expect(agentPublishService.publishAgent).not.toHaveBeenCalled();
 			expect(suspend).toHaveBeenCalledWith(expect.anything(), {
-				continuation: { confirmedVersionId: 'v-draft-2', liveVersionId: null },
+				continuation: { confirmedVersionId: 'v-draft-2', liveVersionId: null, revision: 4 },
 			});
 			expect(result).toMatchObject({
 				approvalDetails: { action: 'publish-agent', liveAvailability: 'unpublished' },
@@ -3487,14 +3490,14 @@ describe('AgentsBuilderToolsService', () => {
 						...ctx,
 						suspend,
 						resumeData: { approved: true },
-						continuation: { confirmedVersionId: 'v-draft-1', liveVersionId: null },
+						continuation: { confirmedVersionId: 'v-draft-1', liveVersionId: null, revision: 0 },
 					},
 				),
 			).rejects.toBe(suspended);
 			expect(agentPublishService.publishAgent).not.toHaveBeenCalled();
 		});
 
-		it('publishes the version the user confirmed, at the revision it checked', async () => {
+		it('publishes at the draft revision the card showed', async () => {
 			const { service, agentsService, agentPublishService } = makeService();
 			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
 			agentsService.findById.mockResolvedValue({
@@ -3512,7 +3515,7 @@ describe('AgentsBuilderToolsService', () => {
 				{
 					...ctx,
 					resumeData: { approved: true },
-					continuation: { confirmedVersionId: 'v-draft', liveVersionId: null },
+					continuation: { confirmedVersionId: 'v-draft', liveVersionId: null, revision: 5 },
 				},
 			);
 
@@ -3523,7 +3526,7 @@ describe('AgentsBuilderToolsService', () => {
 				{ by: 'builder', trigger: 'explicit' },
 				undefined,
 				undefined,
-				7,
+				5,
 			);
 			expect(result).toMatchObject({ ok: true, activeVersionId: 'v-draft' });
 		});
@@ -3559,6 +3562,7 @@ describe('AgentsBuilderToolsService', () => {
 				name: 'Support agent',
 				versionId: 'v-draft',
 				activeVersionId: null,
+				revision: 4,
 				integrations: [],
 				schema: baseConfig,
 			} as unknown as ProjectAgent);
@@ -3571,7 +3575,7 @@ describe('AgentsBuilderToolsService', () => {
 
 			expect(agentPublishService.publishAgent).not.toHaveBeenCalled();
 			expect(suspend).toHaveBeenCalledWith(expect.anything(), {
-				continuation: { confirmedVersionId: 'v-draft', liveVersionId: null },
+				continuation: { confirmedVersionId: 'v-draft', liveVersionId: null, revision: 4 },
 			});
 			expect(result).toMatchObject({ approvalDetails: { action: 'publish-agent' } });
 		});
@@ -3594,7 +3598,7 @@ describe('AgentsBuilderToolsService', () => {
 				{
 					...ctx,
 					resumeData: { approved: true },
-					continuation: { confirmedVersionId: 'v-draft', liveVersionId: null },
+					continuation: { confirmedVersionId: 'v-draft', liveVersionId: null, revision: 7 },
 				},
 			);
 
@@ -3627,7 +3631,7 @@ describe('AgentsBuilderToolsService', () => {
 				{
 					...ctx,
 					resumeData: { approved: true },
-					continuation: { confirmedVersionId: 'v-history', liveVersionId: 'v-draft' },
+					continuation: { confirmedVersionId: 'v-history', liveVersionId: 'v-draft', revision: 0 },
 				},
 			);
 
@@ -3661,7 +3665,7 @@ describe('AgentsBuilderToolsService', () => {
 					...ctx,
 					suspend,
 					resumeData: { approved: true },
-					continuation: { confirmedVersionId: 'v-draft', liveVersionId: null },
+					continuation: { confirmedVersionId: 'v-draft', liveVersionId: null, revision: 0 },
 				},
 			);
 
@@ -3690,21 +3694,28 @@ describe('AgentsBuilderToolsService', () => {
 		});
 
 		it.each([
-			['a history version, without listing targets', 'v-history', 'changed', true],
+			['a history version, with its own config', 'v-history', 'changed', true],
 			['the version that is already live', undefined, 'published', false],
 		] as const)(
 			'asks before going live with %s',
 			async (_name, versionId, liveAvailability, selectedVersion) => {
-				const { service, agentsService } = makeService();
+				const { service, agentsService, agentPublishService } = makeService();
 				vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
 				agentsService.findById.mockResolvedValue({
 					id: agentId,
 					name: 'Support agent',
 					versionId: 'v-live',
 					activeVersionId: 'v-live',
+					revision: 2,
 					integrations: [{ type: 'slack', credentialId: 'cred-1' }],
 					schema: baseConfig,
 				} as unknown as ProjectAgent);
+				agentPublishService.getVersion.mockResolvedValue({
+					definition: {
+						schema: { ...baseConfig, tasks: [{ type: 'task', id: 'digest', enabled: true }] },
+						tasks: new Map([['digest', { name: 'Daily digest' }]]),
+					},
+				} as never);
 				const suspend = vi.fn(async (payload: unknown) => payload as never);
 
 				const result = await getPublishTool(service).handler!({ versionId }, { ...ctx, suspend });
@@ -3714,11 +3725,32 @@ describe('AgentsBuilderToolsService', () => {
 						action: 'publish-agent',
 						liveAvailability,
 						selectedVersion,
-						sendTargets: selectedVersion ? [] : [{ kind: 'channel', name: 'Slack' }],
+						sendTargets: selectedVersion
+							? [
+									{ kind: 'channel', name: 'Slack' },
+									{ kind: 'task', name: 'Daily digest' },
+								]
+							: [{ kind: 'channel', name: 'Slack' }],
 					},
 				});
 			},
 		);
+
+		it('reports an unknown history version before asking', async () => {
+			const { service, agentsService, agentPublishService } = makeService();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			agentsService.findById.mockResolvedValue(unpublishedAgent);
+			agentPublishService.getVersion.mockRejectedValue(new Error('Version "v-x" not found'));
+			const suspend = vi.fn(async (payload: unknown) => payload as never);
+
+			const result = await getPublishTool(service).handler!(
+				{ versionId: 'v-x' },
+				{ ...ctx, suspend },
+			);
+
+			expect(suspend).not.toHaveBeenCalled();
+			expect(result).toEqual({ ok: false, errors: [{ message: 'Version "v-x" not found' }] });
+		});
 
 		it('publishes the bound agent draft when the user has agent:publish', async () => {
 			const { service, agentsService, agentPublishService } = makeService();
@@ -3743,7 +3775,7 @@ describe('AgentsBuilderToolsService', () => {
 				{ by: 'builder', trigger: 'explicit' },
 				undefined,
 				undefined,
-				undefined,
+				0,
 			);
 			expect(result).toEqual({
 				ok: true,
@@ -3767,7 +3799,10 @@ describe('AgentsBuilderToolsService', () => {
 
 			const result = await getPublishTool(service).handler!(
 				{ versionId: 'v-history' },
-				{ ...approvedCtx, continuation: { confirmedVersionId: 'v-history', liveVersionId: null } },
+				{
+					...approvedCtx,
+					continuation: { confirmedVersionId: 'v-history', liveVersionId: null, revision: 0 },
+				},
 			);
 
 			expect(agentPublishService.publishAgent).toHaveBeenCalledWith(
@@ -3802,7 +3837,7 @@ describe('AgentsBuilderToolsService', () => {
 				{},
 				{
 					...approvedCtx,
-					continuation: { confirmedVersionId: 'v-active', liveVersionId: 'v-active' },
+					continuation: { confirmedVersionId: 'v-active', liveVersionId: 'v-active', revision: 0 },
 				},
 			);
 

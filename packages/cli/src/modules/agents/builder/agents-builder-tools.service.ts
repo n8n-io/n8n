@@ -37,6 +37,7 @@ import {
 	tryParseConfigJson,
 	type AgentJsonConfig,
 	type InstanceAiApprovalDetails,
+	type StoredAgentConfig,
 	type ConfigValidationError,
 	getLegacyBuilderToolNames,
 } from '@n8n/api-types';
@@ -363,13 +364,19 @@ const PUBLISH_CONFIRMATION_SCHEMA = z.object({
 
 type PublishConfirmation = z.infer<typeof PUBLISH_CONFIRMATION_SCHEMA>;
 
-/** What a publish card described, kept with the suspended call: the version and the live version. */
+/**
+ * What a publish card described, kept with the suspended call: the version, the live
+ * version and the draft revision.
+ */
 const publishContinuationSchema = z
-	.object({ confirmedVersionId: z.string().nullable(), liveVersionId: z.string().nullable() })
+	.object({
+		confirmedVersionId: z.string().nullable(),
+		liveVersionId: z.string().nullable(),
+		revision: z.number().int(),
+	})
 	.strict();
 
 type PublishContinuation = z.infer<typeof publishContinuationSchema>;
-type AgentPublishTargets = ReturnType<typeof describePublishSendTargets>['sendTargets'];
 
 /** A agent_builder_call_agent continuation that carries a sessionNote across an approval. */
 const notedContinuationSchema = z.object({ run: z.unknown(), sessionNote: z.string() }).strict();
@@ -1139,10 +1146,10 @@ export class AgentsBuilderToolsService {
 							{ by: 'builder', trigger: 'explicit' },
 							versionId,
 							undefined,
-							// Only the current draft can change before it goes live. A history version, even
-							// one that was the draft when the card showed, cannot.
-							versionId === undefined || versionId === before?.versionId
-								? before?.revision
+							// The draft revision the card showed: any draft write since then fails the
+							// publish. A history version, even one that was the draft then, cannot change.
+							versionId === undefined || versionId === before.versionId
+								? confirmed.data.revision
 								: undefined,
 						);
 						return {
@@ -1188,8 +1195,7 @@ export class AgentsBuilderToolsService {
 
 	/**
 	 * The go live confirmation, in the shape of an Assistant approval card: what goes live
-	 * and what the live agent might really send. A history version lists no targets, because
-	 * its config is not loaded here. The card then says that anything it sends is real.
+	 * and what the live agent might really send.
 	 */
 	private async buildPublishConfirmation(
 		agentId: string,
@@ -1206,18 +1212,31 @@ export class AgentsBuilderToolsService {
 				? 'published'
 				: 'changed';
 
-		let targets = { sendTargets: [] as AgentPublishTargets, moreSendTargets: 0 };
-		if (!selectedVersion) {
+		// A history version brings its own config and tasks, and an unknown one fails here,
+		// before any card. Channels with credentials are not versioned: they stay on the agent.
+		let config: Pick<StoredAgentConfig, 'tools' | 'mcpServers' | 'tasks'> | null;
+		let taskNames: Map<string, string>;
+		if (selectedVersion) {
+			const { definition } = await this.agentPublishService.getVersion(
+				agentId,
+				projectId,
+				versionId,
+			);
+			config = definition.schema;
+			taskNames = new Map([...definition.tasks].map(([id, task]) => [id, task.name]));
+		} else {
+			config = agent.schema;
 			const tasks = agent.schema?.tasks?.some((task) => task.enabled)
 				? await this.agentTaskService.list(agentId)
 				: [];
-			targets = describePublishSendTargets({
-				config: agent.schema,
-				integrations: agent.integrations ?? [],
-				taskNames: new Map(tasks.map((task) => [task.id, task.name])),
-				channelLabel: (type) => this.chatIntegrationRegistry.get(type)?.displayLabel ?? type,
-			});
+			taskNames = new Map(tasks.map((task) => [task.id, task.name]));
 		}
+		const targets = describePublishSendTargets({
+			config,
+			integrations: agent.integrations ?? [],
+			taskNames,
+			channelLabel: (type) => this.chatIntegrationRegistry.get(type)?.displayLabel ?? type,
+		});
 
 		const approvalDetails = {
 			action: 'publish-agent',
@@ -1269,6 +1288,7 @@ export class AgentsBuilderToolsService {
 			continuation: {
 				confirmedVersionId: targetVersionId ?? null,
 				liveVersionId: agent.activeVersionId ?? null,
+				revision: agent.revision,
 			},
 		};
 	}
