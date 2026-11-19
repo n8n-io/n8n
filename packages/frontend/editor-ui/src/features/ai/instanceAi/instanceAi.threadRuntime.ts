@@ -70,7 +70,11 @@ import { createArtifactPreviewMemory } from './artifactPreviewMemory';
 import { toArtifactTurns } from './agentTreeArtifactTurns';
 import { getLatestBuildResult } from './canvasPreview.utils';
 import { useResourceRegistry } from './useResourceRegistry';
-import { buildThreadArtifactsContext, type OpenThreadTab } from './threadArtifacts';
+import {
+	buildThreadArtifactsContext,
+	createDisplayedExecutionReader,
+	type OpenThreadTab,
+} from './threadArtifacts';
 import { useResponseFeedback } from './useResponseFeedback';
 import {
 	INSTANCE_AI_AGENT_BUILDER_TARGET_METADATA_KEY,
@@ -1647,6 +1651,7 @@ export function createThreadRuntime(
 							producedArtifacts.values(),
 							activeArtifactId.value,
 							openTabs.value,
+							createDisplayedExecutionReader(artifactTurns.value, getRememberedManualExecution),
 						),
 			);
 

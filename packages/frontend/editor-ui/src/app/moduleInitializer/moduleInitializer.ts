@@ -14,11 +14,13 @@ import { modules } from '@/app/modules.manifest';
 import { useUIStore } from '@/app/stores/ui.store';
 import { showsPlaceholderPage } from '@/app/moduleInitializer/placeholderPage';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+import { TypeAvailabilityPoliciesModule } from '@n8n/frontend-module-type-availability-policies';
 import { AGENTS_SETTINGS_VIEW } from '@/features/agents/constants';
 import {
 	INSTANCE_AI_NEW_VIEW,
 	INSTANCE_AI_SETTINGS_VIEW,
 } from '@/features/ai/instanceAi/constants';
+import { useTypePoliciesSettingsFlag } from '@/features/settings/security/composables/useTypePoliciesSettingsFlag';
 
 /**
  * Initialize modules resources (used in ResourcesListLayout), done in init.ts
@@ -83,6 +85,9 @@ const checkModuleAvailability = (options: any) => {
 	}
 	if (options.to.meta.moduleName === 'agents' && options.to.name !== AGENTS_SETTINGS_VIEW) {
 		return settingsStore.isAgentsEnabled;
+	}
+	if (options.to.meta.moduleName === TypeAvailabilityPoliciesModule.id) {
+		return useTypePoliciesSettingsFlag().isEnabled.value;
 	}
 
 	// When the admin toggle is off, instance-ai routes are disabled except the

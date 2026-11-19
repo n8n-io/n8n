@@ -13,6 +13,34 @@ const groupsJson = (groups: Array<Record<string, unknown>>): string =>
 	['**Node groups:**', '```json', JSON.stringify(groups, null, 2), '```'].join('\n');
 
 describe('buildWorkflowContextBlock', () => {
+	it('renders the workflow settings, such as the timezone', () => {
+		const wf = workflow('wf-1', {
+			nodes: [node('id-a', 'Fetch Data')],
+			settings: { executionOrder: 'v1', timezone: 'America/New_York' },
+		});
+
+		expect(buildWorkflowContextBlock(wf)).toContain(
+			[
+				'**Workflow settings:**',
+				'```json',
+				JSON.stringify({ executionOrder: 'v1', timezone: 'America/New_York' }, null, 2),
+				'```',
+			].join('\n'),
+		);
+	});
+
+	it('states that no workflow settings exist when the API returns null settings', () => {
+		const wf = workflow('wf-1', { nodes: [node('id-a', 'Fetch Data')], settings: null });
+
+		expect(buildWorkflowContextBlock(wf)).toContain('**Workflow settings:**\n\n(none)');
+	});
+
+	it('states that no workflow settings exist when the workflow has none', () => {
+		const wf = workflow('wf-1', { nodes: [node('id-a', 'Fetch Data')] });
+
+		expect(buildWorkflowContextBlock(wf)).toContain('**Workflow settings:**\n\n(none)');
+	});
+
 	it('renders "(no workflow built)" without a workflow', () => {
 		expect(buildWorkflowContextBlock(undefined)).toBe(
 			'## Workflow structure\n\n(no workflow built)',
