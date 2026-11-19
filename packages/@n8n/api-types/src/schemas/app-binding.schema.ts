@@ -48,6 +48,24 @@ export const appAgentBindingSchema = z.object({
 	permissions: uniquePermissions(appAgentPermissionSchema),
 });
 
+/**
+ * One configured node that the app runs without a workflow. The parameters are fixed.
+ * A `$fromAI('name', …)` placeholder in a parameter is an input that the app sets.
+ */
+export const appNodeOperationBindingSchema = z.object({
+	key: appBindingKeySchema,
+	kind: z.literal('nodeOperation'),
+	node: z.object({
+		nodeType: z.string().min(1),
+		nodeTypeVersion: z.number().positive(),
+		nodeParameters: z.record(z.unknown()),
+		/** Keyed by credential type. The binding holds only the reference, never the secret. */
+		credentials: z.record(z.object({ id: resourceIdSchema, name: z.string().min(1) })).optional(),
+	}),
+});
+
+export type AppNodeOperationBinding = z.infer<typeof appNodeOperationBindingSchema>;
+
 export const appBindingSchema = z.discriminatedUnion('kind', [
 	appWorkflowBindingSchema,
 	appDataTableBindingSchema,
