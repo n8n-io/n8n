@@ -1,0 +1,22 @@
+packages/quality/testing/playwright/tests/e2e/workflows/editor/canvas/actions.spec.ts
+  s_63d0a39dae7833::t_f7dcab823510ed 312,319
+  s_63d0a39dae7833::t_160137b1be6ada 318,333
+packages/quality/testing/playwright/pages/CanvasPage.ts
+  s_63d0a39dae7833::t_f7dcab823510ed 1129-1136,1138
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "26e4e577f1d5b51d0945a8aeb961f5f9634d9465",
+  "prompts": {},
+  "sessions": {
+    "s_63d0a39dae7833": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f445cc4d-5715-4901-9f58-095a5adcc9b7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}
