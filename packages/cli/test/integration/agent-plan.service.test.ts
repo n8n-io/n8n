@@ -6,10 +6,11 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
+import { createAgent } from '@test-integration/db/agents';
+
 import { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
 import { AgentPlanService } from '@/modules/agents/agent-plan.service';
 import { AgentExecutionThread } from '@/modules/agents/entities/agent-execution-thread.entity';
-import { Agent } from '@/modules/agents/entities/agent.entity';
 import { createAgentPlanTools } from '@/modules/agents/plans/agent-plan-tools';
 import {
 	type AgentPlanDocument,
@@ -56,7 +57,7 @@ describe('AgentPlanService', () => {
 		service = Container.get(AgentPlanService);
 		({ id: projectId } = await createTeamProject());
 		agentId = randomUUID();
-		await dataSource.getRepository(Agent).save({
+		await createAgent({
 			id: agentId,
 			name: 'Plan model agent',
 			projectId,

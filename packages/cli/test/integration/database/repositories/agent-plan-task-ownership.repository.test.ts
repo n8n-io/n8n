@@ -4,7 +4,8 @@ import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 import { v7 as uuidv7 } from 'uuid';
 
-import { Agent } from '@/modules/agents/entities/agent.entity';
+import { createAgent } from '@test-integration/db/agents';
+
 import { AgentBackgroundJob } from '@/modules/agents/entities/agent-background-job.entity';
 import { AgentExecutionThread } from '@/modules/agents/entities/agent-execution-thread.entity';
 import { AgentPlan } from '@/modules/agents/entities/agent-plan.entity';
@@ -51,7 +52,7 @@ describe('Plan task ownership and continuation', () => {
 
 		({ id: projectId } = await createTeamProject());
 		agentId = randomUUID();
-		await db.getRepository(Agent).save({
+		await createAgent({
 			id: agentId,
 			projectId,
 			name: 'Plan tests',
