@@ -1794,6 +1794,30 @@ describe('createThreadRuntime - SSE and hydration', () => {
 		});
 	});
 
+	test('sendMessage names the run that the user started in the preview of a tab', async () => {
+		mockPostMessage.mockResolvedValue({ runId: 'run-1' });
+		const runtime = activeRuntime(registry);
+		runtime.setOpenTabs([{ type: 'workflow', id: 'wf-2', name: 'Open' }]);
+		runtime.setActiveArtifactId('wf-2');
+		runtime.rememberManualExecution('wf-2', 'exec-1', undefined);
+
+		await runtime.sendMessage('Why is the output wrong?', { authorship: USER_TYPED_MESSAGE });
+
+		expect(mockPostMessage.mock.calls[0]?.[8]).toEqual({
+			artifacts: [{ type: 'workflow', id: 'wf-2', name: 'Open', executionId: 'exec-1' }],
+			activeId: 'wf-2',
+		});
+
+		// A second run replaces the first one.
+		runtime.rememberManualExecution('wf-2', 'exec-2', undefined);
+		await runtime.sendMessage('And now?', { authorship: USER_TYPED_MESSAGE });
+
+		expect(mockPostMessage.mock.calls[1]?.[8]).toEqual({
+			artifacts: [{ type: 'workflow', id: 'wf-2', name: 'Open', executionId: 'exec-2' }],
+			activeId: 'wf-2',
+		});
+	});
+
 	test('sendMessage forwards the thread artifact index to postMessage', async () => {
 		mockPostMessage.mockResolvedValue({ runId: 'run-1' });
 		const runtime = activeRuntime(registry);
@@ -3084,6 +3108,64 @@ describe('createThreadRuntime - session always-allow', () => {
 		).toBe(true);
 	});
 
+	describe('batch data table changes', () => {
+		const insertAndRename = {
+			changes: [
+				{ action: 'insert-rows', table: 'Leads' },
+				{ action: 'rename-column', table: 'Leads' },
+			],
+		};
+
+		it('auto-approves a batch when every action has a session grant', async () => {
+			const runtime = registry.getOrCreateRuntime(activeThreadId);
+			runtime.addAlwaysAllowKey('change_data_tables', insertAndRename);
+
+			pushPendingApproval(runtime, {
+				messageId: 'msg-batch-1',
+				requestId: 'req-batch-1',
+				toolName: 'change_data_tables',
+				args: { changes: [{ action: 'rename-column', table: 'Orders' }] },
+			});
+			await vi.waitFor(() => {
+				expect(runtime.resolvedConfirmationIds.get('req-batch-1')).toBe('approved');
+			});
+		});
+
+		it('keeps the card when one action of the batch has no session grant', async () => {
+			const runtime = registry.getOrCreateRuntime(activeThreadId);
+			runtime.addAlwaysAllowKey('change_data_tables', insertAndRename);
+
+			pushPendingApproval(runtime, {
+				messageId: 'msg-batch-2',
+				requestId: 'req-batch-2',
+				toolName: 'change_data_tables',
+				args: {
+					changes: [
+						{ action: 'insert-rows', table: 'Leads' },
+						{ action: 'add-column', table: 'Leads' },
+					],
+				},
+			});
+			await new Promise((resolve) => setTimeout(resolve, 10));
+			expect(runtime.resolvedConfirmationIds.has('req-batch-2')).toBe(false);
+		});
+
+		it('keeps the card for a batch that gives no grant key', async () => {
+			const runtime = registry.getOrCreateRuntime(activeThreadId);
+			runtime.addAlwaysAllowKey('change_data_tables', insertAndRename);
+
+			pushPendingApproval(runtime, {
+				messageId: 'msg-batch-3',
+				requestId: 'req-batch-3',
+				toolName: 'change_data_tables',
+				args: { changes: [] },
+			});
+			await new Promise((resolve) => setTimeout(resolve, 10));
+			expect(runtime.resolvedConfirmationIds.has('req-batch-3')).toBe(false);
+			expect(runtime.canAlwaysAllow('change_data_tables', { changes: [] })).toBe(false);
+		});
+	});
+
 	it('scopes executions run grants per workflow', async () => {
 		const runtime = registry.getOrCreateRuntime(activeThreadId);
 		runtime.addAlwaysAllowKey('workflow_builder_executions', { action: 'run', workflowId: 'wf-1' });
@@ -4000,5 +4082,72 @@ describe('threadTargetsAgent', () => {
 		expect(threadTargetsAgent({ instanceAiAgentBuilderTarget: { agentId: 'agent-1' } })).toBe(
 			false,
 		);
+	});
+});
+
+describe('createThreadRuntime - background agent confirmations', () => {
+	beforeEach(() => {
+		setupRuntimePinia();
+		activeThreadId = 'thread-background-agent';
+	});
+
+	it('attaches a confirmation to the background agent that raised it, even with hidden steps', () => {
+		const runtime = activeRuntime(createRuntimeRegistry());
+		runtime.messages = [
+			{
+				id: 'msg-1',
+				role: 'assistant',
+				runId: 'run-1',
+				content: '',
+				reasoning: '',
+				isStreaming: false,
+				createdAt: '2026-01-01T00:00:00.000Z',
+				agentTree: {
+					agentId: 'agent-root',
+					role: 'orchestrator',
+					status: 'completed',
+					textContent: '',
+					reasoning: '',
+					toolCalls: [],
+					timeline: [],
+					children: [
+						{
+							agentId: 'agent-cloud-browser',
+							role: 'cloud-browser',
+							kind: 'cloud-browser',
+							status: 'active',
+							textContent: '',
+							reasoning: '',
+							children: [],
+							timeline: [],
+							toolCalls: [
+								{
+									toolCallId: 'tc-navigate',
+									toolName: 'browser_navigate',
+									args: { url: 'https://example.com' },
+									isLoading: true,
+									confirmation: {
+										requestId: 'req-navigate',
+										severity: 'warning',
+										message: 'browser_navigate: Browser: example.com',
+										inputType: 'resource-decision',
+										resourceDecision: {
+											toolGroup: 'browser',
+											kind: 'host',
+											resource: 'example.com',
+											description: 'Browser: example.com',
+											options: ['denyOnce', 'allowOnce', 'allowForSession'],
+										},
+									},
+								},
+							],
+						},
+					],
+				},
+			},
+		] as unknown as typeof runtime.messages;
+
+		expect(runtime.pendingConfirmations).toHaveLength(1);
+		expect(runtime.pendingConfirmations[0].agentNode.kind).toBe('cloud-browser');
 	});
 });

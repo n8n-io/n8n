@@ -41,7 +41,6 @@ import { z } from 'zod';
 
 import {
 	resolveEpisodicMemoryEmbeddingProviderOptions,
-	type ManagedEmbeddingProviderOptions,
 	type ManagedEmbeddingProviderOptionsResolver,
 } from '@/modules/knowledge/vector-stores/embedding-credential';
 import { resolveCredentialAwareModelConfig } from './model-config';
@@ -53,8 +52,6 @@ import {
 import { buildVectorStore } from '@/modules/knowledge/vector-stores/factory';
 import { createVectorStoreErrorSanitizer } from '@/modules/knowledge/vector-stores/error-sanitizer';
 import type { FinishKnowledgeToolCall } from '../agent-knowledge-usage-tracker';
-
-export type { ManagedEmbeddingProviderOptions, ManagedEmbeddingProviderOptionsResolver };
 
 const WEB_SEARCH_TOOL_NAME = 'web_search';
 const WEB_SEARCH_INPUT_SCHEMA = z.object({

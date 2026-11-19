@@ -444,7 +444,9 @@ describe('executeWorkflow → instrumented runs stay on main', () => {
 		setQueue('regular');
 		const run = vi.fn().mockResolvedValue('exec-1');
 
-		await expect(runInstrumented(v2Workflow, run)).rejects.toThrow(InstrumentedRunUnsupportedError);
+		await expect(runInstrumented(v2Workflow, run)).rejects.toThrow(
+			'Test runs and evaluations do not support Engine v2 workflows yet.',
+		);
 		expect(run).not.toHaveBeenCalled();
 	});
 
@@ -501,6 +503,68 @@ describe('executeWorkflow → instrumented runs stay on main', () => {
 
 		await expect(runInstrumented(workflow, run)).rejects.toThrow('This workflow paused to wait');
 		expect(stop).toHaveBeenCalledExactlyOnceWith('exec-1', ['wf-1']);
+	});
+
+	describe('backstop when the runner skips the instrumentation', () => {
+		const configuringRun = vi.fn(async (runData: IWorkflowExecutionDataProcess) => {
+			await runData.configureAdditionalData?.(mock());
+			return 'exec-1';
+		});
+
+		async function runWith(run: ReturnType<typeof vi.fn>, stillActive: boolean) {
+			return await executeWorkflow(
+				workflow,
+				triggerNode,
+				{},
+				buildContext(run, {
+					instrumentToolAdditionalData: vi.fn(),
+					activeExecutions: mock<ActiveExecutions>({
+						has: () => stillActive,
+						getPostExecutePromise: async () =>
+							await Promise.resolve({
+								status: 'success',
+								data: { resultData: { runData: {} } },
+							} as unknown as IRun),
+					}),
+				}),
+				false,
+				'Lookup_workflow',
+			);
+		}
+
+		it('stops a run that went on without the instrumentation and fails loudly', async () => {
+			setQueue('regular');
+			const stop = vi.fn().mockResolvedValue(undefined);
+			Container.set(ExecutionService, mock<ExecutionService>({ stop }));
+			const run = vi.fn().mockResolvedValue('exec-1');
+
+			const failure = runWith(run, true);
+
+			await expect(failure).rejects.toThrow('started outside the test run, without its mocks');
+			await expect(failure).rejects.not.toBeInstanceOf(InstrumentedRunUnsupportedError);
+			expect(stop).toHaveBeenCalledWith('exec-1', ['wf-1']);
+		});
+
+		it('lets a run through when the runner applied the instrumentation', async () => {
+			setQueue('regular');
+			const stop = vi.fn();
+			Container.set(ExecutionService, mock<ExecutionService>({ stop }));
+
+			await expect(runWith(configuringRun, true)).resolves.toMatchObject({
+				executionId: 'exec-1',
+			});
+			expect(stop).not.toHaveBeenCalled();
+		});
+
+		it('reports the result of a run that failed before it started', async () => {
+			setQueue('regular');
+			const stop = vi.fn();
+			Container.set(ExecutionService, mock<ExecutionService>({ stop }));
+			const run = vi.fn().mockResolvedValue('exec-1');
+
+			await expect(runWith(run, false)).resolves.toMatchObject({ executionId: 'exec-1' });
+			expect(stop).not.toHaveBeenCalled();
+		});
 	});
 
 	it('fails loudly, not as a safe refusal, when the paused run cannot be stopped', async () => {

@@ -233,6 +233,7 @@ erDiagram
   TEXT integrations
   boolean isArchived
   varchar_128_ name
+  varchar_36_ parentFolderId FK
   varchar_255_ projectId FK
   INTEGER publicationRevision
   INTEGER revision
@@ -531,6 +532,7 @@ erDiagram
   varchar_36_ projectId FK
   varchar_32_ status
   varchar_16_ type
+  TEXT unlinkedSkills
   datetime_3_ updatedAt
 }
 "skill_version" {

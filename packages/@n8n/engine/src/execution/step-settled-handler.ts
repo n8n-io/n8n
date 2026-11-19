@@ -9,6 +9,7 @@ import {
 import type { LifecycleEventPublisherFactory } from '../lifecycle-events';
 import type { ExecutionResponseSender } from '../response-channel';
 import type { OrchestrationMessage, StepMessage, StepSettledEvent, WorkQueue } from '../queue';
+import type { CancelExecutionService } from './cancel-execution.service';
 import { countExpectedSettledSteps } from './completion';
 import type { ExecutionRecord, ExecutionStore } from './execution-store';
 import {
@@ -50,6 +51,7 @@ export class StepSettledHandler {
 		private readonly orchestrationQueue: WorkQueue<OrchestrationMessage>,
 		private readonly lifecycleEventPublisherFactory: LifecycleEventPublisherFactory,
 		private readonly responseSender: ExecutionResponseSender,
+		private readonly cancelExecution: CancelExecutionService,
 	) {}
 
 	async handle(event: StepSettledEvent): Promise<void> {
@@ -114,6 +116,7 @@ export class StepSettledHandler {
 					error: await this.failureOf(execution, step),
 				});
 			}
+			await this.cancelExecution.cancelSubExecutions(execution.id);
 		}
 	}
 
@@ -260,6 +263,7 @@ export class StepSettledHandler {
 							},
 				);
 			}
+			if (failed) await this.cancelExecution.cancelSubExecutions(execution.id);
 		}
 	}
 

@@ -28,6 +28,15 @@ and infrastructure services that need the persistence layer or that only
 ## What lives here
 
 - `EventService`: the shared, typed event bus.
+- `EventRelay`: the base class for a service that listens to `EventService`
+  events. Its listener map uses the open `EventMap`.
+- `loginIdOf`: the login of a service account in an `OperationContext`, for
+  audit events.
+- `UserDeactivationHooks`: modules register cleanup steps that run in the
+  transaction that deactivates a user.
+- `PasswordUtility`: password hashes and checks with bcrypt.
+- `ExecutionDataJsonStore`: execution data bundles in blob storage, with the
+  bundle types and the read and write errors. `DbStore` stays in `cli`.
 - `UrlService`: instance and webhook URLs.
 - `CacheService`: application cache access.
 - `RedisClientService`: shared Redis connections and support code.

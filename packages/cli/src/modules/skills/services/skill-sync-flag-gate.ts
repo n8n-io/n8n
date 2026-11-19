@@ -4,22 +4,24 @@ import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { NotFoundError } from '@n8n/errors';
 
+import { SkillSyncSettingsService } from './skill-sync-settings.service';
 import { SkillsGate } from './skills-gate';
 
 /**
- * Whether a user can use Skill Sync: skills are on, and the per-user PostHog flag
- * `SKILL_SYNC_FLAG` is on. `PostHogClient` caches per user and applies the local overrides,
- * so this gate needs no cache of its own.
+ * Whether a user can use Skill Sync: skills are on, the admin switch is on, and the per-user
+ * PostHog flag `SKILL_SYNC_FLAG` is on. `PostHogClient` caches per user and applies the local
+ * overrides, so this gate needs no cache of its own.
  */
 @Service()
 export class SkillSyncFlagGate {
 	constructor(
 		private readonly skillsGate: SkillsGate,
 		private readonly postHog: PostHogClient,
+		private readonly skillSyncSettings: SkillSyncSettingsService,
 	) {}
 
 	async isEnabled(user: User): Promise<boolean> {
-		if (!this.skillsGate.isEnabled) return false;
+		if (!this.skillsGate.isEnabled || !this.skillSyncSettings.isEnabled()) return false;
 		const flags = await this.postHog.getFeatureFlags(user);
 		return flags?.[SKILL_SYNC_FLAG] === true;
 	}

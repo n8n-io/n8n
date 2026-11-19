@@ -13,6 +13,7 @@ const webdavMethodAnnotations: Record<string, NodeOperationAnnotations> = {
 	MOVE: { effect: 'write', destructive: true, idempotent: false },
 	PROPFIND: READ_ONLY_ANNOTATIONS,
 	REPORT: READ_ONLY_ANNOTATIONS,
+	SEARCH: READ_ONLY_ANNOTATIONS,
 };
 
 const webdavMethodOptions: INodePropertyOptions[] = Object.entries(webdavMethodAnnotations).flatMap(
@@ -1282,7 +1283,7 @@ For what a template cannot express, use the matching type for new and existing c
 				type: 'boolean',
 				default: false,
 				description:
-					'Whether to add the WebDAV request methods PROPFIND, MKCOL, MOVE, COPY and REPORT to the Method list',
+					'Whether to add the WebDAV request methods PROPFIND, MKCOL, MOVE, COPY, REPORT and SEARCH to the Method list',
 			},
 		],
 	},

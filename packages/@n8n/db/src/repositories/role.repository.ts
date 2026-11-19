@@ -7,6 +7,28 @@ import { Project, ProjectRelation, Role, User, type UserKind } from '../entities
 import { type OperationContext, TransactionRunner } from '../services/transaction';
 import { accountSummary } from '../utils/account-display-name';
 
+/** An account that holds a role, as a role member list shows it. */
+export type RoleMemberEntry = {
+	userId: string;
+	firstName: string | null;
+	lastName: string | null;
+	email: string;
+	role: string;
+	kind: UserKind;
+};
+
+function toRoleMember(user: User, roleSlug: string): RoleMemberEntry {
+	const { id, email, firstName, lastName } = accountSummary(user);
+	return {
+		userId: id,
+		firstName,
+		lastName,
+		email: email ?? '',
+		role: roleSlug,
+		kind: user.kind,
+	};
+}
+
 @Service()
 export class RoleRepository extends BaseRepository<Role> {
 	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
@@ -129,39 +151,14 @@ export class RoleRepository extends BaseRepository<Role> {
 			.filter((r) => r !== null);
 	}
 
-	async findUsersWithGlobalRole(roleSlug: string): Promise<
-		Array<{
-			userId: string;
-			firstName: string | null;
-			lastName: string | null;
-			email: string;
-			role: string;
-		}>
-	> {
-		return await this.manager
-			.createQueryBuilder(User, 'user')
-			.select('user.id', 'userId')
-			.addSelect('user.firstName', 'firstName')
-			.addSelect('user.lastName', 'lastName')
-			.addSelect('user.email', 'email')
-			.addSelect('user.roleSlug', 'role')
-			.where('user.roleSlug = :slug', { slug: roleSlug })
-			.getRawMany();
+	async findUsersWithGlobalRole(roleSlug: string): Promise<RoleMemberEntry[]> {
+		// Load entities, not raw columns: a service account keeps its name in its details.
+		const users = await this.manager.find(User, { where: { role: { slug: roleSlug } } });
+
+		return users.map((user) => toRoleMember(user, roleSlug));
 	}
 
-	async findAllProjectMembers(
-		projectId: string,
-		roleSlug: string,
-	): Promise<
-		Array<{
-			userId: string;
-			firstName: string | null;
-			lastName: string | null;
-			email: string;
-			role: string;
-			kind: UserKind;
-		}>
-	> {
+	async findAllProjectMembers(projectId: string, roleSlug: string): Promise<RoleMemberEntry[]> {
 		// Load entities, not raw columns: a service account keeps its name in its details.
 		// Do not load `role`: its scopes load eagerly, and the slug is already known.
 		const relations = await this.manager.find(ProjectRelation, {
@@ -169,17 +166,7 @@ export class RoleRepository extends BaseRepository<Role> {
 			relations: { user: true },
 		});
 
-		return relations.map(({ user }) => {
-			const { id, email, firstName, lastName } = accountSummary(user);
-			return {
-				userId: id,
-				firstName,
-				lastName,
-				email: email ?? '',
-				role: roleSlug,
-				kind: user.kind,
-			};
-		});
+		return relations.map(({ user }) => toRoleMember(user, roleSlug));
 	}
 
 	async findBySlug(slug: string) {

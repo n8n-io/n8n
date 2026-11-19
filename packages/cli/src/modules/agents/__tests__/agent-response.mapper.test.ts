@@ -3,6 +3,7 @@ import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
+import type { FolderService } from '@/services/folder.service';
 
 import type { AgentPublishService } from '../agent-publish.service';
 import { AgentResponseMapper, mapAgentListItem } from '../agent-response.mapper';
@@ -30,6 +31,7 @@ function agentFixture(
 		id: 'agent-1',
 		name: 'Support',
 		projectId: 'project-1',
+		parentFolderId: 'folder-1',
 		project: { id: 'project-1', name: 'Team', type: 'team' },
 		availableInMCP: true,
 		versionId: 'v2',
@@ -68,7 +70,7 @@ describe('AgentResponseMapper', () => {
 			publish,
 			skillRefs,
 		);
-		return { mapper: new AgentResponseMapper(runnable), skillRefs };
+		return { mapper: new AgentResponseMapper(runnable, mock<FolderService>()), skillRefs };
 	}
 
 	it('returns the composed config and leaves storage columns off the response', async () => {
@@ -91,6 +93,7 @@ describe('AgentResponseMapper', () => {
 			versionId: 'v1',
 			integrations: publishedIntegrations,
 		});
+		expect(dto.parentFolderId).toBe('folder-1');
 		expect(dto.project).toEqual({ id: 'project-1', name: 'Team', type: 'team' });
 		expect(dto.tools).toEqual(agent.tools);
 		expect(dto.isRunnable).toBe(true);
@@ -136,11 +139,16 @@ describe('AgentResponseMapper', () => {
 			name: 'Support',
 			personalisation: { icon: 'bot' },
 		};
-		const item = mapAgentListItem(agentFixture(schema as never));
+		const item = mapAgentListItem({
+			...agentFixture(schema as never),
+			folderPath: ['Support', 'Triage'],
+		});
 
 		expect(item).toMatchObject({
 			id: 'agent-1',
 			name: 'Support',
+			parentFolderId: 'folder-1',
+			folderPath: ['Support', 'Triage'],
 			hasConfig: true,
 			personalisation: { icon: 'bot' },
 			createdAt: createdAt.toISOString(),

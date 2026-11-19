@@ -4,6 +4,7 @@ import {
 	type ExecutionRedaction,
 	type ExecutionRedactionOptions,
 	type RedactableExecution,
+	loginIdOf,
 } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -19,7 +20,6 @@ import {
 
 import { ForbiddenError, ScopeForbiddenError } from '@n8n/errors';
 
-import { loginIdOf } from '@/events/login-id';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks/credentials-permission-checker';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -314,7 +314,9 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 	 * `execution:reveal` scope nor an instance-wide `credential:use` scope (e.g.
 	 * Owner/Admin) grants a bypass: `ignoreGlobalUseScope` asks for the viewer's
 	 * actual personal access to each credential, the same question a colleague
-	 * with no elevated scopes would be asked.
+	 * with no elevated scopes would be asked. The owner and admins are implicit
+	 * members of every team project, so credentials shared with a team project
+	 * count for them, and credentials that only a personal project holds do not.
 	 */
 	private async resolveCredentialInaccessibleExecutions(
 		executions: RedactableExecution[],

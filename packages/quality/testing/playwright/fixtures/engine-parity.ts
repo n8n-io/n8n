@@ -148,7 +148,7 @@ export async function watchCanvasRuns(
 				if (response.ok()) {
 					// A proxy error page is ok to the browser but not JSON; the route must still answer.
 					const body = (await response.json().catch(() => null)) as { data?: unknown } | null;
-					const run = (body?.data ?? body) as { executionId?: string } | null;
+					const run: { executionId?: string } | null = body?.data ?? body;
 					const executionId = run?.executionId;
 					if (executionId !== undefined && !isEngineV2ExecutionId(executionId)) {
 						legacyRuns.push(executionId);
