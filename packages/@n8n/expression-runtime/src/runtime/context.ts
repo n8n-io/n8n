@@ -113,6 +113,8 @@ type BridgeCallback = (...args: unknown[]) => unknown;
  *
  *   - `getValueAtPath`, `getArrayElement`: data-access primitives used by the
  *     lazy-proxy system. Hot path; one ivm.Callback each for minimum overhead.
+ *   - `readBatch`: reads a batch of item data values in one call. Without it,
+ *     the runtime reads each value with the two primitives above.
  *   - `callHost`: typed-RPC dispatcher. The in-isolate runtime constructs
  *     an envelope (e.g. `{ type: 'getNodeFirst', nodeName, ... }`) and the
  *     host-side dispatcher validates it with zod before routing to a handler.
@@ -121,13 +123,14 @@ type BridgeCallback = (...args: unknown[]) => unknown;
  *     dispatcher switch. The name reflects what this is: a synchronous
  *     host RPC, not a postMessage-style async send.
  *
- * The bridge wires all three callbacks unconditionally before invoking
+ * The bridge wires the three required callbacks unconditionally before invoking
  * `buildContext`, so the runtime treats them as present — no defensive
  * null/undefined checks at each call site.
  */
 export interface BridgeCallbacks {
 	getValueAtPath: BridgeCallback;
 	getArrayElement: BridgeCallback;
+	readBatch?: BridgeCallback;
 	callHost: BridgeCallback;
 }
 
