@@ -405,6 +405,16 @@ function fromEntries(entries: Json): Json {
 	return out;
 }`,
 	},
+	dateMemberCheck: {
+		uses: [],
+		source: `/** The object of a member write, delete or test: a Date value has no members. */
+function dateMemberCheck(v: Json): Json {
+	if (Date.is(v)) {
+		throw new Error('The code writes, deletes or tests a member of a Date value ${RUNS_IN_HOST}');
+	}
+	return v;
+}`,
+	},
 	arrayFrom: {
 		uses: ['iterOf', 'toIntegerOrInfinity'],
 		source: `/** \`Array.from(value, mapper?)\`. */
