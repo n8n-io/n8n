@@ -59,8 +59,17 @@ export class BackfillAgentIdentities1795076463179 implements ReversibleMigration
 	 * One account for each agent, in batches. Each batch selects agents that still
 	 * have no identity, with LIMIT and no OFFSET: the loop removes rows from its
 	 * own filter, so OFFSET pages would skip rows.
+	 *
+	 * Each batch writes with one statement per table, not one per agent, so the
+	 * time depends little on the latency to the database.
 	 */
-	private async backfillIdentities({ escape, runQuery, logger, migrationName }: MigrationContext) {
+	private async backfillIdentities({
+		escape,
+		runQuery,
+		logger,
+		migrationName,
+		isPostgres,
+	}: MigrationContext) {
 		const t = {
 			agents: escape.tableName('agents'),
 			user: escape.tableName('user'),
@@ -89,39 +98,42 @@ export class BackfillAgentIdentities1795076463179 implements ReversibleMigration
 			if (agents.length === 0) break;
 			total += agents.length;
 
-			for (const agent of agents) {
-				const userId = randomUUID();
-				const projectId = generateNanoId();
+			// Row `i` uses the parameters :a<i> (agent), :u<i> (account), :p<i> (project), :n<i> (name).
+			const params: Record<string, string> = {};
+			agents.forEach((agent, i) => {
+				params[`a${i}`] = agent.id;
+				params[`u${i}`] = randomUUID();
+				params[`p${i}`] = generateNanoId();
 				// A service account needs a name. An imported agent can have a blank one.
-				const name = agent.name.trim() === '' ? 'Agent' : agent.name;
+				params[`n${i}`] = agent.name.trim() === '' ? 'Agent' : agent.name;
+			});
+			const rows = (row: (i: number) => string) => agents.map((_, i) => `(${row(i)})`).join(', ');
+			// An INSERT takes its types from the target columns. A CASE does not, and
+			// `identityId` is a uuid on Postgres.
+			const asUuid = (param: string) => (isPostgres ? `CAST(:${param} AS uuid)` : `:${param}`);
 
-				await runQuery(
-					`INSERT INTO ${t.user} (${c.id}, ${c.kind}, ${c.roleSlug}) VALUES (:userId, 'service', 'global:agent')`,
-					{ userId },
-				);
-				await runQuery(
-					`INSERT INTO ${t.details} (${c.userId}, ${c.name}) VALUES (:userId, :name)`,
-					{
-						userId,
-						name,
-					},
-				);
-				await runQuery(
-					`INSERT INTO ${t.project} (${c.id}, ${c.name}, ${c.type}, ${c.creatorId}) VALUES (:projectId, :name, 'personal', :userId)`,
-					{ projectId, name, userId },
-				);
-				await runQuery(
-					`INSERT INTO ${t.projectRelation} (${c.projectId}, ${c.userId}, ${c.role}) VALUES (:projectId, :userId, 'project:personalOwner')`,
-					{ projectId, userId },
-				);
-				await runQuery(
-					`UPDATE ${t.agents} SET ${c.identityId} = :userId WHERE ${c.id} = :agentId`,
-					{
-						userId,
-						agentId: agent.id,
-					},
-				);
-			}
+			await runQuery(
+				`INSERT INTO ${t.user} (${c.id}, ${c.kind}, ${c.roleSlug}) VALUES ${rows((i) => `:u${i}, 'service', 'global:agent'`)}`,
+				params,
+			);
+			await runQuery(
+				`INSERT INTO ${t.details} (${c.userId}, ${c.name}) VALUES ${rows((i) => `:u${i}, :n${i}`)}`,
+				params,
+			);
+			await runQuery(
+				`INSERT INTO ${t.project} (${c.id}, ${c.name}, ${c.type}, ${c.creatorId}) VALUES ${rows((i) => `:p${i}, :n${i}, 'personal', :u${i}`)}`,
+				params,
+			);
+			await runQuery(
+				`INSERT INTO ${t.projectRelation} (${c.projectId}, ${c.userId}, ${c.role}) VALUES ${rows((i) => `:p${i}, :u${i}, 'project:personalOwner'`)}`,
+				params,
+			);
+			const cases = agents.map((_, i) => `WHEN :a${i} THEN ${asUuid(`u${i}`)}`).join(' ');
+			const ids = agents.map((_, i) => `:a${i}`).join(', ');
+			await runQuery(
+				`UPDATE ${t.agents} SET ${c.identityId} = CASE ${c.id} ${cases} END WHERE ${c.id} IN (${ids})`,
+				params,
+			);
 		}
 
 		if (total > 0) {
