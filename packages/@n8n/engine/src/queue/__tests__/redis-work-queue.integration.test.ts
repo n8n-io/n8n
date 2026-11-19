@@ -145,7 +145,28 @@ describe('RedisWorkQueue (integration)', () => {
 		await stopping;
 
 		expect(handler).not.toHaveBeenCalled();
-		expect(giveBack).toHaveBeenCalledWith(key, '{"n":1}');
-		expect(await engine.publisher.lrange(key, 0, -1)).toEqual(['{"n":1}']);
+		expect(giveBack).toHaveBeenCalledTimes(1);
+		const [givenBackKey, givenBack] = giveBack.mock.calls[0] as [string, string];
+		expect(givenBackKey).toBe(key);
+		expect(JSON.parse(givenBack)).toEqual({ n: 1, enqueuedAt: expect.any(Number) });
+		expect(await engine.publisher.lrange(key, 0, -1)).toEqual([givenBack]);
+	});
+
+	it('carries the publish time through Redis and hides it from the handler', async () => {
+		const key = newKey();
+		const engine = startProcess(key);
+		await engine.queue.publish({ n: 1 });
+		const [stored] = await engine.publisher.lrange(key, 0, -1);
+		expect(JSON.parse(stored)).toEqual({ n: 1, enqueuedAt: expect.any(Number) });
+
+		const received: unknown[] = [];
+		engine.queue.start(async (message) => {
+			received.push(message);
+		});
+
+		await vi.waitFor(() => expect(received).toEqual([{ n: 1 }]));
+		const summary = engine.queue.timings.takeSummary();
+		expect(summary.latency_ms.n).toBe(1);
+		expect(summary.fetch_ms?.n).toBe(1);
 	});
 });

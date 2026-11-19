@@ -1,5 +1,8 @@
+import { isRecord } from '@n8n/utils/is-record';
+
 import { UnexpectedError } from '../common';
 import { createConsoleLogger, type EngineLogger } from '../logging';
+import { epochNowMs, QueueTimings } from './queue-timings';
 import { checkWorkQueueConcurrency } from './work-queue-concurrency';
 import type { WorkQueue } from './work-queue.types';
 
@@ -85,6 +88,8 @@ export class RedisWorkQueue<TMessage> implements WorkQueue<TMessage> {
 
 	private readonly inFlight = new Set<Promise<void>>();
 
+	readonly timings = new QueueTimings(true);
+
 	constructor(options: RedisWorkQueueOptions<TMessage>) {
 		const { blockTimeoutSeconds = 1 } = options;
 		// Zero makes BRPOP wait forever, so `stop()` could not end the fetch loop.
@@ -107,7 +112,9 @@ export class RedisWorkQueue<TMessage> implements WorkQueue<TMessage> {
 	}
 
 	async publish(message: TMessage): Promise<void> {
-		await this.publisher.lpush(this.key, JSON.stringify(message));
+		// The consumer reads `enqueuedAt` for the queue timings and removes it before `parse`.
+		const value = isRecord(message) ? { ...message, enqueuedAt: epochNowMs() } : message;
+		await this.publisher.lpush(this.key, JSON.stringify(value));
 	}
 
 	start(handler: (message: TMessage) => Promise<void>): void {
@@ -155,14 +162,16 @@ export class RedisWorkQueue<TMessage> implements WorkQueue<TMessage> {
 			}
 
 			const decoded = this.decode(value);
-			if (decoded) this.dispatch(handler, decoded.message);
+			if (decoded) this.dispatch(handler, decoded.message, decoded.enqueuedAt);
 		}
 	}
 
 	/** Returns the next value in the list, or `undefined` if none came. */
 	private async fetch(signal: AbortSignal): Promise<string | undefined> {
 		try {
+			const fetchStart = performance.now();
 			const popped = await this.consumer.brpop(this.key, this.blockTimeoutSeconds);
+			if (popped) this.timings.fetched(performance.now() - fetchStart);
 			return popped?.[1];
 		} catch (error) {
 			this.logError('fetch failed', error);
@@ -180,24 +189,42 @@ export class RedisWorkQueue<TMessage> implements WorkQueue<TMessage> {
 		}
 	}
 
-	private decode(value: string): { message: TMessage } | undefined {
+	private decode(value: string): { message: TMessage; enqueuedAt?: number } | undefined {
 		try {
-			return { message: this.parse(JSON.parse(value)) };
+			const decoded: unknown = JSON.parse(value);
+			if (isRecord(decoded) && 'enqueuedAt' in decoded) {
+				const { enqueuedAt, ...message } = decoded;
+				return {
+					message: this.parse(message),
+					enqueuedAt: typeof enqueuedAt === 'number' ? enqueuedAt : undefined,
+				};
+			}
+			return { message: this.parse(decoded) };
 		} catch (error) {
 			this.logError('dropped a malformed message', error, { value });
 			return undefined;
 		}
 	}
 
-	private dispatch(handler: (message: TMessage) => Promise<void>, message: TMessage): void {
+	private dispatch(
+		handler: (message: TMessage) => Promise<void>,
+		message: TMessage,
+		enqueuedAt: number | undefined,
+	): void {
 		// `then` makes a synchronous throw a rejection, so the catch below gets it.
 		const running: Promise<void> = Promise.resolve()
-			.then(async () => await handler(message))
+			.then(async () => {
+				this.timings.handlerStarted(enqueuedAt);
+				await handler(message);
+			})
 			.catch((error: unknown) => {
 				// Contained per message: a failed one must not stop the fetch loop.
 				this.logError('handler failed', error);
 			})
-			.finally(() => this.inFlight.delete(running));
+			.finally(() => {
+				this.timings.handlerEnded();
+				this.inFlight.delete(running);
+			});
 		this.inFlight.add(running);
 	}
 

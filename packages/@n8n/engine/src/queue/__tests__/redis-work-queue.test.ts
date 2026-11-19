@@ -46,6 +46,46 @@ describe('RedisWorkQueue', () => {
 		for (const queue of queues.splice(0)) await queue.stop();
 	});
 
+	it('carries the publish time through the list and hides it from the handler', async () => {
+		const redis = new FakeRedisList();
+		const queue = createQueue(redis);
+		const before = Date.now();
+		await queue.publish({ n: 1 });
+
+		const stored: unknown = JSON.parse(redis.items[0]);
+		expect(stored).toEqual({ n: 1, enqueuedAt: expect.any(Number) });
+		const enqueuedAt = (stored as { enqueuedAt: number }).enqueuedAt;
+		expect(enqueuedAt).toBeGreaterThanOrEqual(before - 1);
+		expect(enqueuedAt).toBeLessThanOrEqual(Date.now() + 1);
+
+		const received: unknown[] = [];
+		queue.start(async (message) => {
+			received.push(message);
+		});
+		await vi.waitFor(() => expect(received).toEqual([{ n: 1 }]));
+
+		const summary = queue.timings.takeSummary();
+		expect(summary.n).toBe(1);
+		expect(summary.latency_ms).toEqual(expect.objectContaining({ n: 1 }));
+		expect(summary.latency_ms.p50).toBeGreaterThanOrEqual(0);
+		expect(summary.fetch_ms).toEqual(expect.objectContaining({ n: 1 }));
+	});
+
+	it('delivers a message without a publish time and records no latency for it', async () => {
+		const redis = new FakeRedisList();
+		await redis.lpush(KEY, '{"n":1}');
+		const queue = createQueue(redis);
+		const received: unknown[] = [];
+		queue.start(async (message) => {
+			received.push(message);
+		});
+
+		await vi.waitFor(() => expect(received).toEqual([{ n: 1 }]));
+		const summary = queue.timings.takeSummary();
+		expect(summary.n).toBe(1);
+		expect(summary.latency_ms).toEqual({ n: 0 });
+	});
+
 	it('logs a failed push-back and still resolves stop', async () => {
 		const logger = { ...silentLogger, error: vi.fn() };
 		const redis = new FakeRedisList();

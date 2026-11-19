@@ -53,9 +53,13 @@ describe('createRedisWorkQueues', () => {
 		await queues.orchestration.publish({ type: 'execution:enqueued', executionId: 'exec-1' });
 		await queues.step.publish({ type: 'step:ready', executionId: 'exec-1', stepId: 'step-1' });
 
-		expect(publisher.lpush.mock.calls).toEqual([
-			[orchestrationKey, enqueued],
-			[stepKey, ready],
+		const withEnqueuedAt = (json: string) => ({
+			...JSON.parse(json),
+			enqueuedAt: expect.any(Number),
+		});
+		expect(publisher.lpush.mock.calls.map(([key, value]) => [key, JSON.parse(value)])).toEqual([
+			[orchestrationKey, withEnqueuedAt(enqueued)],
+			[stepKey, withEnqueuedAt(ready)],
 		]);
 	});
 
