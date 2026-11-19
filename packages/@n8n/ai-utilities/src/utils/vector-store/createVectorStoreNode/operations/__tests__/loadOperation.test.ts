@@ -251,6 +251,58 @@ describe('handleLoadOperation', () => {
 			expect(result[0].json?.score).toEqual(0.98);
 		});
 
+		it('should keep extra top-level fields that the reranker adds to documents', async () => {
+			mockReranker.compressDocuments.mockResolvedValue([
+				{
+					pageContent: 'test content 2',
+					metadata: { test: 'metadata 2' },
+					_originalIndex: 1,
+					_rerankScore: 0.73,
+				} as Document,
+			]);
+
+			const result = await handleLoadOperation(mockContext, mockArgs, mockEmbeddings, 0);
+
+			expect(result[0].json?.document).toEqual({
+				pageContent: 'test content 2',
+				metadata: { test: 'metadata 2' },
+				_originalIndex: 1,
+				_rerankScore: 0.73,
+			});
+		});
+
+		it('should not output extra top-level fields when includeDocumentMetadata is false', async () => {
+			nodeParameters.includeDocumentMetadata = false;
+			mockReranker.compressDocuments.mockResolvedValue([
+				{
+					pageContent: 'test content 2',
+					metadata: { test: 'metadata 2' },
+					_rerankScore: 0.73,
+				} as Document,
+			]);
+
+			const result = await handleLoadOperation(mockContext, mockArgs, mockEmbeddings, 0);
+
+			expect(result[0].json?.document).toEqual({ pageContent: 'test content 2' });
+		});
+
+		it('should not output the document id', async () => {
+			mockReranker.compressDocuments.mockResolvedValue([
+				{
+					id: 'doc-1',
+					pageContent: 'test content 2',
+					metadata: { test: 'metadata 2' },
+				} as Document,
+			]);
+
+			const result = await handleLoadOperation(mockContext, mockArgs, mockEmbeddings, 0);
+
+			expect(result[0].json?.document).toEqual({
+				pageContent: 'test content 2',
+				metadata: { test: 'metadata 2' },
+			});
+		});
+
 		it('should not call reranker when useReranker is false', async () => {
 			nodeParameters.useReranker = false;
 
