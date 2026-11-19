@@ -128,6 +128,7 @@ catalog:
   '@opentelemetry/sdk-trace-base': 2.10.0
   '@pinecone-database/pinecone': ^5.0.2
   '@qdrant/js-client-rest': ^1.19.0
+  '@redocly/cli': ^2.76.0
   '@rudderstack/rudder-sdk-node': 3.1.1
   # Must satisfy openai's ">=5.4.0 <6" optional peer: an unmet range gives openai a second peer
   # context, which splits @langchain/core into two physical copies.
@@ -171,6 +172,7 @@ catalog:
   '@types/ms': 2.1.0
   '@types/node': 24.10.1
   '@types/oracledb': 6.10.3
+  '@types/pluralize': ^0.0.33
   '@types/proxy-from-env': ^1.0.4
   '@types/qs': 6.9.15
   '@types/sanitize-html': ^2.11.0
@@ -266,6 +268,7 @@ catalog:
   pg: 8.21.0
   picocolors: 1.0.1
   playwright-core: 1.62.1
+  pluralize: ^8.0.0
   posthog-node: 5.49.1
   prettier: 3.6.2
   proxy-from-env: ^1.1.0
