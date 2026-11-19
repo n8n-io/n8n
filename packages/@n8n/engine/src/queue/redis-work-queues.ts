@@ -21,6 +21,7 @@ export interface RedisWorkQueuesOptions {
 	keyPrefix: string;
 	/** The maximum number of handlers that each queue runs at once. */
 	concurrency: { orchestration: number; step: number };
+	/** Defaults to the console. */
 	logger?: EngineLogger;
 }
 
