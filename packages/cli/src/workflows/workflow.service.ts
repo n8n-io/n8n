@@ -1700,8 +1700,6 @@ export class WorkflowService {
 			}
 		}
 
-		let results = new Map<string, WorkflowTransferResult>();
-		let transferred = false;
 		try {
 			const removals = await Promise.allSettled(
 				[...refusals.keys()].map(
@@ -1711,18 +1709,16 @@ export class WorkflowService {
 			const failedRemoval = removals.find((removal) => removal.status === 'rejected');
 			if (failedRemoval) throw ensureError(failedRemoval.reason);
 			await transfer();
-			transferred = true;
-		} finally {
-			const movedIds = transferred
-				? workflowIds
-				: await this._ownedByProject(workflowIds, destinationProjectId);
+		} catch (error) {
+			const movedIds = await this._ownedByProject(workflowIds, destinationProjectId);
 			await this._restoreTriggersOfUntransferred(
 				[...refusals.keys()].filter((workflowId) => !movedIds.includes(workflowId)),
 			);
-			results = await this._finishTransfer(user, movedIds, refusals, publicApi);
+			await this._finishTransfer(user, movedIds, refusals, publicApi);
+			throw error;
 		}
 
-		return results;
+		return await this._finishTransfer(user, workflowIds, refusals, publicApi);
 	}
 
 	private async _enforcePublishInProject(
