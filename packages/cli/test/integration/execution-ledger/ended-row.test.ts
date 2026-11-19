@@ -27,17 +27,19 @@ import { createSimpleWorkflowFixture } from '../shared/workflow-fixtures';
 /** The ledger inserts run in the background, so the rows are collected until they stop changing. */
 async function collectEndedRows(expectedCount: number): Promise<ExecutionLedgerRow[]> {
 	const rows: ExecutionLedgerRow[] = [];
+	const claimEnded = async () =>
+		rows.push(...(await claimAllLedgerRows()).filter((row) => row.event === 'ended'));
 	await retryUntil(
 		async () => {
-			rows.push(...(await claimAllLedgerRows()));
+			await claimEnded();
 			expect(rows.length).toBeGreaterThanOrEqual(expectedCount);
 		},
 		{ intervalMs: 50, timeoutMs: 10_000 },
 	);
 	// A second row for the same run would arrive late, so look once more.
 	await new Promise((resolve) => setTimeout(resolve, 300));
-	rows.push(...(await claimAllLedgerRows()));
-	return rows.filter((row) => row.event === 'ended');
+	await claimEnded();
+	return rows;
 }
 
 describe('execution ledger ended rows', () => {
