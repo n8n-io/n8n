@@ -15,6 +15,8 @@ export interface PageResult {
 	stats: Record<'usableMs' | 'ttfbMs' | 'fcpMs' | 'dclMs' | 'lcpMs' | 'longTaskMs', Stats>;
 	/** The warm-up (first visit) against the average of the measured runs. */
 	warmup: { usableMs: number | null; deltaMs: number | null; deltaPct: number | null };
+	/** Loads that did not reach the ready state (warm-up included). */
+	failed: number;
 }
 
 export interface RunMeta {
@@ -52,7 +54,7 @@ export function buildRunMeta(run: {
 const STAT_KEYS = ['usableMs', 'ttfbMs', 'fcpMs', 'dclMs', 'lcpMs', 'longTaskMs'] as const;
 
 export function summarize(target: PageTarget, samples: PageLoadSample[]): PageResult {
-	const measured = samples.filter((sample) => !sample.warmup);
+	const measured = samples.filter((sample) => !sample.warmup && sample.usableMs !== null);
 	const stats = Object.fromEntries(
 		STAT_KEYS.map((key) => [
 			key,
@@ -64,7 +66,26 @@ export function summarize(target: PageTarget, samples: PageLoadSample[]): PageRe
 	const deltaMs = warmupMs === null || measured.length === 0 ? null : warmupMs - stats.usableMs.avg;
 	const deltaPct =
 		deltaMs === null || stats.usableMs.avg === 0 ? null : (deltaMs / stats.usableMs.avg) * 100;
-	return { target, samples, stats, warmup: { usableMs: warmupMs, deltaMs, deltaPct } };
+	return {
+		target,
+		samples,
+		stats,
+		warmup: { usableMs: warmupMs, deltaMs, deltaPct },
+		failed: samples.filter((sample) => sample.error !== null).length,
+	};
+}
+
+/** One line per failed load, for the final assertion and the CI summary. */
+export function listFailures(results: PageResult[]): string[] {
+	return results.flatMap(({ target, samples }) =>
+		samples
+			.filter((sample) => sample.error !== null)
+			.map((sample) => `${target.id}#${sample.iteration}: ${sample.error}`),
+	);
+}
+
+function runValue(sample: PageLoadSample): string {
+	return sample.usableMs === null ? 'x' : String(Math.round(sample.usableMs));
 }
 
 function signedMs(value: number | null): string {
@@ -97,6 +118,7 @@ const CSV_COLUMNS = [
 	'bodyBytes',
 	...PHASE_KEYS.map((key) => `phase_${key}`),
 	'tracePath',
+	'error',
 ];
 
 function csvCell(value: string | number | boolean | null | undefined): string {
@@ -128,6 +150,7 @@ export function toCsv(results: PageResult[]): string {
 				sample.bodyBytes,
 				...PHASE_KEYS.map((key) => sample.phases[key]),
 				sample.tracePath ? basename(sample.tracePath) : null,
+				sample.error,
 			]
 				.map(csvCell)
 				.join(','),
@@ -199,21 +222,22 @@ export function buildReport(meta: RunMeta, results: PageResult[]): string {
 				),
 			},
 			{
-				heading: 'Runs (ms, in order; the warm-up is in brackets)',
+				heading: 'Runs (ms, in order; the warm-up is in brackets; x = failed load)',
 				rows: formatTable(
-					['Page', 'Warm-up', 'Measured runs'],
-					results.map(({ target, samples }) => [
+					['Page', 'Failed', 'Warm-up', 'Measured runs'],
+					results.map(({ target, samples, failed }) => [
 						target.label,
+						String(failed),
 						`[${samples
 							.filter((sample) => sample.warmup)
-							.map((sample) => Math.round(sample.usableMs))
+							.map(runValue)
 							.join(' ')}]`,
 						samples
 							.filter((sample) => !sample.warmup)
-							.map((sample) => Math.round(sample.usableMs))
+							.map(runValue)
 							.join(' '),
 					]),
-					['left', 'right', 'left'],
+					['left', 'right', 'right', 'left'],
 				),
 			},
 		],
@@ -243,7 +267,13 @@ export async function writeResults(
 		JSON.stringify(
 			{
 				meta,
-				pages: results.map(({ target, samples, stats }) => ({ ...target, stats, samples })),
+				pages: results.map(({ target, samples, stats, warmup, failed }) => ({
+					...target,
+					stats,
+					warmup,
+					failed,
+					samples,
+				})),
 			},
 			null,
 			2,

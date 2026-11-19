@@ -24,8 +24,10 @@ export interface PageLoadSample {
 	iteration: number;
 	warmup: boolean;
 	traced: boolean;
-	/** Navigation start → page usable, from the page's own clock. */
-	usableMs: number;
+	/** Navigation start → page usable, from the page's own clock. Null when the load failed. */
+	usableMs: number | null;
+	/** Why the load failed; null for a measured sample. */
+	error: string | null;
 	ttfbMs: number | null;
 	fcpMs: number | null;
 	dclMs: number | null;
@@ -211,7 +213,38 @@ export async function loadPage(
 		warmup: options.warmup,
 		traced: options.tracePath !== null,
 		usableMs,
+		error: null,
 		...metrics,
 		tracePath: options.tracePath,
+	};
+}
+
+/** A sample for a load that did not reach the ready state; the stats skip it. */
+export function failedSample(
+	target: PageTarget,
+	options: LoadOptions,
+	error: unknown,
+	tracePath: string | null,
+): PageLoadSample {
+	return {
+		page: target.id,
+		iteration: options.iteration,
+		warmup: options.warmup,
+		traced: tracePath !== null,
+		usableMs: null,
+		error: error instanceof Error ? error.message.split('\n')[0] : String(error),
+		ttfbMs: null,
+		fcpMs: null,
+		dclMs: null,
+		loadMs: null,
+		lcpMs: null,
+		longTasks: 0,
+		longTaskMs: 0,
+		requests: 0,
+		cachedRequests: 0,
+		transferBytes: 0,
+		bodyBytes: 0,
+		phases: Object.fromEntries(PHASE_KEYS.map((key) => [key, null])),
+		tracePath,
 	};
 }

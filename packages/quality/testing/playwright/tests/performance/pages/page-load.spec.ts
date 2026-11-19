@@ -2,6 +2,7 @@ import { installPerfObservers } from './helpers/measure';
 import {
 	buildReport,
 	buildRunMeta,
+	listFailures,
 	summarize,
 	writeResults,
 	type PageResult,
@@ -22,13 +23,17 @@ import { attachMetric } from '../../../utils/metrics';
  * and the responseEnd of the boot requests. Results land in
  * `page-load.json` + `page-load.csv` (attached, and copied to PERF_OUTPUT_DIR
  * when set). PERF_TRACE=warmup|first|all|none picks which runs also write a
- * Chrome DevTools trace. PERF_PAGES=id,id limits the pages.
- * PERF_COLD_CACHE=true clears the HTTP cache before each page's warm-up.
+ * Chrome DevTools trace; PERF_TRACE_SCREENSHOTS=true adds screenshots to it.
+ * PERF_PAGES=id,id limits the pages. PERF_COLD_CACHE=true clears the HTTP
+ * cache before each page's warm-up. PERF_READY_TIMEOUT_MS bounds one load.
+ * A load that fails is recorded with diagnostics and the run continues; the
+ * test fails at the end, after the data files are written.
  */
 const ITERATIONS = Number(process.env.PERF_ITERATIONS ?? 10);
 const TRACE_MODE = parseTraceMode(process.env.PERF_TRACE);
 const COLD_CACHE = process.env.PERF_COLD_CACHE === 'true';
-const READY_TIMEOUT_MS = 60_000;
+const TRACE_SCREENSHOTS = process.env.PERF_TRACE_SCREENSHOTS === 'true';
+const READY_TIMEOUT_MS = Number(process.env.PERF_READY_TIMEOUT_MS ?? 60_000);
 
 test.use({
 	// Cloud starter resources, same as the canvas benchmark. No `services`, so the
@@ -47,7 +52,7 @@ test.describe(
 	() => {
 		test.setTimeout(60 * 60_000);
 
-		test('measures the most visited pages', async ({ n8n, api, baseURL }, testInfo) => {
+		test('measures the most visited pages', async ({ n8n, api, baseURL, sut }, testInfo) => {
 			const startedAt = new Date().toISOString();
 			const seed = await seedInstance(api, { workflows: 30, credentials: 15, executions: 15 });
 			const targets = selectTargets(buildTargets(seed), process.env.PERF_PAGES);
@@ -66,9 +71,12 @@ test.describe(
 						{
 							iterations: ITERATIONS,
 							traceMode: TRACE_MODE,
+							traceScreenshots: TRACE_SCREENSHOTS,
 							coldCache: COLD_CACHE,
 							readyTimeoutMs: READY_TIMEOUT_MS,
 							outputDir: testInfo.outputDir,
+							baseURL,
+							stack: sut.stack,
 						},
 						testInfo,
 					);
@@ -112,11 +120,9 @@ test.describe(
 			console.log(buildReport(meta, results));
 			console.log(`[PERF] data: ${files.json}\n[PERF] csv:  ${files.csv}`);
 
+			// The data files are written before this, so a failed load still leaves the run's data.
 			expect(results.length).toBe(targets.length);
-			for (const result of results) {
-				expect(result.stats.usableMs.count, result.target.id).toBe(ITERATIONS);
-				expect(result.stats.usableMs.median, result.target.id).toBeGreaterThan(0);
-			}
+			expect(listFailures(results), 'page loads that did not reach the ready state').toEqual([]);
 		});
 	},
 );

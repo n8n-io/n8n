@@ -39,12 +39,15 @@ export async function withChromeTrace<T>(
 	page: Page,
 	path: string,
 	run: () => Promise<T>,
+	options: { screenshots: boolean } = { screenshots: false },
 ): Promise<{ result: T; tracePath: string | null }> {
 	const browser = page.context().browser();
 	if (!browser) {
 		return { result: await run(), tracePath: null };
 	}
-	await browser.startTracing(page, { path, screenshots: true });
+	// Screenshots fill Chrome's trace buffer fast on a slow runner; the buffer
+	// stops recording when full, so they are opt-in.
+	await browser.startTracing(page, { path, screenshots: options.screenshots });
 	try {
 		const result = await run();
 		return { result, tracePath: path };
