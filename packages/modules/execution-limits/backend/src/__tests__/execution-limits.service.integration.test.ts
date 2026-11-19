@@ -100,6 +100,25 @@ describe('ExecutionLimitsService', () => {
 		});
 	});
 
+	describe('getApplicableLimits', () => {
+		it('returns the saved limits of a project from memory after each write', async () => {
+			const project = await createTeamProject();
+
+			await service.updateSettings({ periodUnit: 'day', instanceMaxExecutions: 1000 });
+			expect(service.getApplicableLimits(project.id)).toEqual({
+				periodUnit: 'day',
+				instanceMaxExecutions: 1000,
+				projectMaxExecutions: null,
+			});
+
+			await service.setProjectLimits([{ projectId: project.id, maxExecutions: 50 }]);
+			expect(service.getApplicableLimits(project.id)?.projectMaxExecutions).toBe(50);
+
+			await service.removeProjectLimits([project.id]);
+			expect(service.getApplicableLimits(project.id)?.projectMaxExecutions).toBeNull();
+		});
+	});
+
 	describe('project limits', () => {
 		it('sets the limit of many projects and reads them back', async () => {
 			const [first, second] = [await createTeamProject(), await createTeamProject()];

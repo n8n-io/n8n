@@ -59,6 +59,7 @@ import {
 	AgentExecutionLogStore,
 	type AgentExecutionLogRef,
 } from './execution-log/agent-execution-log-store';
+import { IntegrationMessageContextService } from './integrations/integration-message-context.service';
 import { N8nMemory } from './integrations/n8n-memory';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import {
@@ -222,6 +223,7 @@ export class AgentExecutionService {
 		private readonly messageRepository: AgentMessageRepository,
 		private readonly systemAgents: SystemAgentRegistry,
 		private readonly projectDeletion: AgentProjectDeletionRepository,
+		private readonly integrationMessageContext: IntegrationMessageContextService,
 		private readonly metrics: AgentExecutionMetrics,
 	) {}
 
@@ -775,21 +777,43 @@ export class AgentExecutionService {
 			if (!deletion) return null;
 			if (deletion.status === 'busy') return deletion;
 
+			// The memory delete removes the row that lists the bound threads, so read it first.
+			const boundThreadIds = await this.integrationMessageContext.findBoundThreadIds(threadId, ctx);
 			await this.n8nMemory.getImplementation(agentId).deleteThread(threadId, ctx);
-			return deletion;
+			return { ...deletion, boundThreadIds };
 		});
 		if (!result) return false;
 		if (result.status === 'busy') {
 			throw new ConflictError('The session has active work and cannot be deleted');
 		}
-		const { refs } = result;
+		const { refs, boundThreadIds } = result;
 
-		// The thread is already deleted, so a failed blob delete only leaves orphaned bytes.
+		// The thread is already deleted, so a failed cleanup here only leaves stale data.
 		await Promise.all([
 			this.agentChatAttachmentService.deleteStoredData(refs.attachmentBinaryDataIds, { threadId }),
 			this.deleteThreadExecutionLogs(agentId, threadId, refs.executionLogs),
+			this.clearSessionBindings(threadId, boundThreadIds),
 		]);
 		return true;
+	}
+
+	/**
+	 * Unbinds the recipient threads that a task session messaged, so replies
+	 * stop pointing at the deleted session. Runs after the commit: on SQLite a
+	 * write from inside the delete transaction would wait for that transaction.
+	 * If it fails, `IntegrationMessageContextService.resolveSession` ignores the
+	 * stale binding and the next reply or task send clears it.
+	 */
+	private async clearSessionBindings(threadId: string, boundThreadIds: string[]): Promise<void> {
+		if (boundThreadIds.length === 0) return;
+		try {
+			await this.integrationMessageContext.clearSessionBindings(threadId, boundThreadIds);
+		} catch (error) {
+			this.logger.warn('Failed to clear the session bindings of a deleted thread', {
+				threadId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
 	}
 
 	private async deleteThreadExecutionLogs(

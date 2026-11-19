@@ -73,21 +73,7 @@
 					"payload": {
 						"type": "object",
 						"properties": {
-							"body": {
-								"type": "object",
-								"properties": {
-									"size": {
-										"type": "integer"
-									}
-								}
-							},
-							"filename": {
-								"type": "string"
-							},
 							"mimeType": {
-								"type": "string"
-							},
-							"partId": {
 								"type": "string"
 							}
 						}

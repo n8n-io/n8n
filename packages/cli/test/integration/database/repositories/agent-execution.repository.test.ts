@@ -59,7 +59,8 @@ import {
 	encodeAgentSandboxHostMetadata,
 	hashAgentSandboxPrincipal,
 } from '@/modules/agents/agent-sandbox-principal';
-import type { IntegrationMessageContextService } from '@/modules/agents/integrations/integration-message-context.service';
+import { IntegrationMessageContextService } from '@/modules/agents/integrations/integration-message-context.service';
+import { AgentResourceRepository } from '@/modules/agents/repositories/agent-resource.repository';
 import type { AgentChatAttachmentService } from '@/modules/agents/agent-chat-attachment.service';
 import type { AgentChatExecutionService } from '@/modules/agents/agent-chat-execution.service';
 import { buildInboundUserMessage } from '@/modules/agents/utils/inbound-attachments';
@@ -234,6 +235,11 @@ describe('AgentExecutionRepository', () => {
 			messageRepository,
 			systemAgents,
 			Container.get(AgentProjectDeletionRepository),
+			new IntegrationMessageContextService(
+				new AgentThreadRepository(connection ?? repository.manager.connection, txRunner),
+				new AgentResourceRepository(connection ?? repository.manager.connection),
+				mockLogger(),
+			),
 			mock<AgentExecutionMetrics>(),
 		);
 		const queueUpdates = mock<AgentExecutionUpdateBroadcaster>();
