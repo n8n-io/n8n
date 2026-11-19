@@ -18,6 +18,10 @@ interface HelperSource {
 	source: string;
 }
 
+/** The error of v1 for a read of a paired item that the node of the item does not give. */
+const PAIRED_UNAVAILABLE = (node: string) =>
+	`"Paired item data for item from node '" + ${node} + "' is unavailable. Ensure '" + ${node} + "' is providing the required output."`;
+
 /**
  * The end of the error of a compiled node that reached the largest size of a stored file of
  * the runtime (`(limit: binary-max-file)`) after it sent only GET requests.
@@ -1528,6 +1532,29 @@ function v1Done(engine: Json, job: Json, out: Json[][] | null): void {
 	}
 }`,
 	},
+	v1Runs: {
+		uses: [],
+		source: `/** Keeps the output of one node run, for the items of all runs of a node (\`runData\`). */
+function v1Runs(engine: Json, job: Json, out: Json[][] | null): void {
+	if (out === null) return;
+	if (engine.runData === undefined) engine.runData = {};
+	(engine.runData[job.node] ??= []).push(out);
+}`,
+	},
+	v1RunItems: {
+		uses: [],
+		source: `/** The items of all runs of a node, one list for each output, as the run data of v1 has them. */
+function v1RunItems(engine: Json, node: string): Json[][] {
+	const out: Json[][] = [];
+	for (const run of engine.runData?.[node] ?? []) {
+		run.forEach((list: Json[], k: number) => {
+			if (out[k] === undefined) out[k] = [];
+			for (const item of list ?? []) out[k].push(item);
+		});
+	}
+	return out;
+}`,
+	},
 	v1Result: {
 		uses: [],
 		source: `/** The outputs of the last node that ran: its last run, or all its runs joined by output. */
@@ -1804,7 +1831,7 @@ function pairedSourceIndex(run: Json, k: number, inputCount: number, node: strin
 		index = found;
 	}
 	if (typeof index !== 'number' || index < 0 || index >= inputCount || Math.floor(index) !== index) {
-		throw new Error("Paired item data for item from node '" + node + "' is unavailable. Ensure '" + node + "' is providing the required output.");
+		throw new Error(${PAIRED_UNAVAILABLE('node')});
 	}
 	return index;
 }`,

@@ -241,7 +241,9 @@ export function attemptNative(
 			ok: false,
 			blockers: [
 				{
-					feature: process.env.WF_DATE_HELPER_NAMES ? `line of an error: ${second.blockers.map((b) => b.feature).join(', ')}` : 'line of an error',
+					feature: process.env.WF_DATE_HELPER_NAMES
+						? `line of an error: ${second.blockers.map((b) => b.feature).join(', ')}`
+						: 'line of an error',
 					message: `The traced form of the code has no native form: ${second.blockers.map((b) => b.feature).join(', ')}.`,
 				},
 			],
@@ -677,22 +679,25 @@ export function lowerCodeNative(c: NodeContext, hostForm?: () => HostForm | null
 				const userCode = to.parameters[field];
 				if (typeof userCode === 'string' && !/\bpairedItem\b/.test(userCode)) {
 					let incomingCount = 0;
+					let severalInputs = false;
 					for (const [, outputs] of Object.entries(to.workflow.connections)) {
 						for (const targets of outputs?.main ?? []) {
 							for (const target of targets ?? []) {
-								if (target.node === to.node.name) incomingCount++;
+								if (target.node !== to.node.name) continue;
+								incomingCount++;
+								if ((target.index ?? 0) !== 0) severalInputs = true;
 							}
 						}
 					}
-					if (incomingCount === 1) {
+					// In the engine form a node with several connections into input 0 runs once for
+					// each of them: each run pairs its items by length, as one connection does.
+					if (incomingCount === 1 || (to.engine === true && !severalInputs)) {
 						const pairVar = `${out}PairData`;
 						w.line(`const ${pairVar}: Json = { items: ${out}, paired: [] };`);
 						// Each null pair delegates to the engine rule in pairedSourceIndexes
 						// (the assignPairedItems logic: same count→by position, 1 output→0,
 						// 1 input→0, otherwise no pair).
-						w.line(
-							`for (let __i = 0; __i < ${out}.length; __i++) ${pairVar}.paired.push(null);`,
-						);
+						w.line(`for (let __i = 0; __i < ${out}.length; __i++) ${pairVar}.paired.push(null);`);
 						to.setPairs(pairVar);
 					}
 				}

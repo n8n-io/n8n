@@ -24,6 +24,7 @@ import type { NodeContext, SubWorkflowCall } from './context.ts';
 import { NodeFailure, pairingNote } from './context.ts';
 import type { ExpressionScope, PairedItem, TranslateOptions } from './expression.ts';
 import { INDEX, ITEM, translateValue } from './expression.ts';
+import type { Edge } from './graph.ts';
 import { Graph } from './graph.ts';
 import { HELPER_NAMES, helperSources } from './helpers.ts';
 import { LUXON_ENTRY_HELPERS } from './code-native/luxon-expression.ts';
@@ -77,6 +78,12 @@ export interface ConvertOptions {
 	trace?: 'none' | 'core' | 'all';
 	/** `always` writes every workflow in the engine shape (for tests). */
 	engine?: 'auto' | 'always';
+	/**
+	 * The engine form returns the items of all runs of each node, joined by output, as the run
+	 * data of v1 has them. A node that runs several times gives its output then, which the
+	 * reference runner compares (a run of the v1 run stack keeps the latest run only).
+	 */
+	runData?: boolean;
 	/**
 	 * The item of a Schedule Trigger: `native` is `{ scheduledAt }`; `v1` is the
 	 * item of the v1 node (`timestamp`, `Readable date`, …), which a fallback
@@ -229,6 +236,38 @@ export function diagnosticKey(node: string, path: string): string {
 	return `${node}\u0000${path}`;
 }
 
+/** One node of the way of a paired read: its run data, and the count of its input items. */
+interface PairHop {
+	run: string;
+	input: string;
+	name: string;
+	total?: boolean;
+}
+
+/** The end of a walk from a reader back to the node whose item it reads. */
+interface PairPath {
+	hops: PairHop[];
+	direct: boolean;
+	first: boolean;
+	/** The output of the node that the path leaves. */
+	output: number;
+	adjacent: boolean;
+	fork?: undefined;
+}
+
+/**
+ * A node of the engine form with several connections into input 0. v1 runs it once for each
+ * connection, so the source of its latest run tells which connection gave the items.
+ */
+interface PairFork {
+	node: string;
+	/** The `let` variable with the source of the latest run of `node`. */
+	source: string;
+	alternatives: Array<PairPath & { from: string; via: number }>;
+}
+
+type PairWalk = { reason: string } | PairPath | { fork: PairFork; hops: PairHop[] };
+
 const START = 'Start';
 
 const NODE_REFERENCE =
@@ -262,6 +301,12 @@ class Body {
 
 	/** The nodes between an expression with `$('Node')` and that node (see `lineageOf`). */
 	lineage: Set<string> | undefined;
+
+	/** The `let` variable with the source of the latest run of each fork, by node name. */
+	readonly forkSources = new Map<string, string>();
+
+	/** The variable of the v1 run stack, which keeps the runs of each node (`runData`). */
+	engineVar: string | null = null;
 
 	/** The chain of paired indexes from a node to another (see `pairedIndexCode`). */
 	readonly pairedHops = new Map<
@@ -616,80 +661,138 @@ export class ModuleGenerator {
 	 * Each read of a paired item uses it, so the reads and the reason of a refusal agree.
 	 * The steps that the walk follows:
 	 * - a node that gives one item for each item;
-	 * - a compiled node that keeps the paired item of each of its items (a hop: the run
-	 *   gives v1's error for an item that has none);
+	 * - a node that keeps the paired item of each of its items (a hop: the run gives v1's
+	 *   error for an item that has none);
 	 * - for a `target` that gives one item: a node whose input is that one item by
 	 *   construction (`oneItemInto`). `first` is true then, and each item pairs with the one
 	 *   item.
-	 * `direct` is true when the input items of the last hop are the items of `target`. For each
-	 * other path the walk gives the first reason, built from node types and settings only.
+	 * `direct` is true when the input items of the last hop are the items of `target`. In the
+	 * engine form a node can take its items from more than one connection: the walk then has
+	 * one fork, with one walk for each connection, and the source of the latest run of that
+	 * node picks one. A second such node on the way has no form. For each other path the walk
+	 * gives the first reason, built from node types and settings only.
 	 */
-	private pairingWalk(
-		b: Body,
-		current: string,
-		target: string,
-	):
-		| {
-				hops: Array<{ run: string; input: string; name: string; total?: boolean }>;
-				direct: boolean;
-				first: boolean;
-				/** The output of `target` that the path leaves, and true for no node between. */
-				output: number;
-				adjacent: boolean;
-		  }
-		| { reason: string } {
+	private pairingWalk(b: Body, current: string, target: string): PairWalk {
 		if (!this.known(b, target)) return { reason: 'target has not run' };
 		const single = this.singleItem(b, target);
-		const hops: Array<{ run: string; input: string; name: string; total?: boolean }> = [];
-		// The nodes of the path, from the reader back to the node after `target`.
-		const path: string[] = [];
-		let cur = current;
+		return this.walkOn(b, current, null, target, [], [], single, true);
+	}
+
+	/**
+	 * The walk from `cur` back to `target`, one node for each step. `edge` is the connection to
+	 * follow from `cur`, or null when the walk chooses it. `allowFork` is false after the one
+	 * node with several connections: only that node picks a connection, as v1 does.
+	 * `path` has the nodes from the reader to `cur`, and `hops` the paired items of the way.
+	 */
+	private walkOn(
+		b: Body,
+		cur: string,
+		edge: Edge | null,
+		target: string,
+		path: string[],
+		hops: PairHop[],
+		single: boolean,
+		allowFork: boolean,
+	): PairWalk {
 		for (let guard = 0; guard < b.graph.nodes.size; guard++) {
-			const all = b.graph.incoming(cur);
-			const inc = all.filter((e) => e.input === 0 && b.scope.has(e.from) && this.known(b, e.from));
-			path.push(cur);
-			// In the engine form a node with several connections runs once for each of them, or
-			// waits: its latest run is not always the run that gave the items of the reader.
-			if (inc.length !== 1 || (b.engine && all.length !== 1)) {
-				const at = this.typeOf(b, cur);
-				if (all.length === 0) return { reason: `no connection into ${at}` };
-				if (all.length > 1) return { reason: `${all.length} connections into ${at}` };
-				if (all[0].input !== 0) return { reason: `connection into input ${all[0].input} of ${at}` };
-				return { reason: `node before ${at} has not run` };
+			if (edge === null) {
+				const all = b.graph.incoming(cur);
+				const inc = all.filter(
+					(e) => e.input === 0 && b.scope.has(e.from) && this.known(b, e.from),
+				);
+				path.push(cur);
+				// v1 runs a node with several connections into input 0 once for each of them, and
+				// gives that run the items of that connection.
+				if (
+					b.engine &&
+					inc.length > 1 &&
+					inc.length === all.length &&
+					!this.noOutput.has(cur) &&
+					b.graph.nodes.get(cur)?.type !== `${BASE}splitInBatches`
+				) {
+					if (!allowFork) return { reason: 'several nodes with several connections on the way' };
+					const source = this.forkSourceOf(b, cur);
+					const alternatives: Array<PairPath & { from: string; via: number }> = [];
+					for (const e of inc) {
+						const cont = this.walkOn(b, cur, e, target, [...path], [...hops], single, false);
+						if ('reason' in cont) return cont;
+						if (cont.fork !== undefined) {
+							return { reason: 'several nodes with several connections on the way' };
+						}
+						alternatives.push({
+							from: e.from,
+							via: e.output,
+							...cont,
+							hops: cont.hops.slice(hops.length),
+						});
+					}
+					return { hops, fork: { node: cur, source, alternatives } };
+				}
+				// In the engine form a node with several connections runs once for each of them, or
+				// waits: its latest run is not always the run that gave the items of the reader.
+				if (inc.length !== 1 || (b.engine && all.length !== 1)) {
+					const at = this.typeOf(b, cur);
+					if (all.length === 0) return { reason: `no connection into ${at}` };
+					if (all.length > 1) return { reason: `${all.length} connections into ${at}` };
+					if (all[0].input !== 0) {
+						return { reason: `connection into input ${all[0].input} of ${at}` };
+					}
+					return { reason: `node before ${at} has not run` };
+				}
+				edge = inc[0];
 			}
-			const e = inc[0];
-			if (e.from === target) {
+			if (edge.from === target) {
 				const again = this.runsAgainFirst(b, target, path);
 				if (again !== null) return { reason: again };
-				return { hops, direct: true, first: false, output: e.output, adjacent: cur === current };
+				return {
+					hops,
+					direct: true,
+					first: false,
+					output: edge.output,
+					adjacent: path.length === 1,
+				};
 			}
-			const parent = b.graph.nodes.get(e.from);
+			const parent = b.graph.nodes.get(edge.from);
 			if (!parent) return { reason: 'a node on the way is not there' };
 			// A node whose input is the one item of `target`: each of its items pairs with that
 			// item, also when the node keeps paired items that can have none (new items of code).
-			const one = single ? this.oneItemInto(b, e.from, target) : null;
+			const one = single ? this.oneItemInto(b, edge.from, target) : null;
 			if (one !== null) {
 				const again = this.runsAgainFirst(b, target, [...path, ...one]);
 				if (again !== null) return { reason: again };
 				return { hops, direct: false, first: true, output: 0, adjacent: false };
 			}
-			const pairs = b.pairs.get(`${e.from}|${e.output}`);
+			const pairs = b.pairs.get(`${edge.from}|${edge.output}`);
 			if (!parent.executeOnce && (ONE_TO_ONE.has(parent.type) || parent.disabled)) {
-				cur = e.from;
+				cur = edge.from;
+				edge = null;
 				continue;
 			}
 			if (!parent.executeOnce && pairs) {
-				hops.push({ ...pairs, name: b.short(e.from) });
-				cur = e.from;
+				hops.push({ ...pairs, name: b.short(edge.from) });
+				cur = edge.from;
+				edge = null;
 				continue;
 			}
-			const type = this.typeOf(b, e.from);
+			const type = this.typeOf(b, edge.from);
 			if (parent.executeOnce) return { reason: `executeOnce on ${type}` };
 			const why =
-				b.noPairs.get(e.from) ?? (this.fallback.includes(e.from) ? 'in the host' : undefined);
+				b.noPairs.get(edge.from) ?? (this.fallback.includes(edge.from) ? 'in the host' : undefined);
 			return { reason: `no pairs after ${type}${why === undefined ? '' : ` (${why})`}` };
 		}
 		return { reason: 'the walk does not end' };
+	}
+	/**
+	 * The `let` variable with the source of the latest run of a node with several connections.
+	 * Only a walk that needs the fork makes it: a workflow without such a read keeps its code.
+	 */
+	private forkSourceOf(b: Body, node: string): string {
+		const found = b.forkSources.get(node);
+		if (found !== undefined) return found;
+		const v = b.engineVars.get(node)?.get(0) ?? camelIdentifier(b.short(node), 'node');
+		const source = this.names.unique(`${v}LatestSource`);
+		b.forkSources.set(node, source);
+		return source;
 	}
 
 	/**
@@ -782,26 +885,69 @@ export class ModuleGenerator {
 				? { code: `${list}[0]`, usesIndex: false, approximate: true }
 				: { code: `${list}[${INDEX}]`, usesIndex: true, approximate: true };
 		}
-		const { hops } = walk;
-		// A hop that gives each item the index of an input item cannot fail: without another
-		// hop, each item pairs with the one item of the node.
-		if (single && hops.every((hop) => hop.total === true)) {
-			return { code: `${list}[0]`, usesIndex: false };
+		if (walk.fork === undefined) {
+			// A hop that gives each item the index of an input item cannot fail: without another
+			// hop, each item pairs with the one item of the node.
+			if (single && walk.hops.every((hop) => hop.total === true)) {
+				return { code: `${list}[0]`, usesIndex: false };
+			}
+			if (walk.adjacent) return { code: ITEM, usesIndex: false };
 		}
-		if (walk.adjacent) return { code: ITEM, usesIndex: false };
 		// Each hop gives v1's error for an item without a paired item. The items of the last
 		// compiled node before `target` are the items of `target`: two different paired items
 		// there are two items of `target`, as in v1.
-		let index = INDEX;
-		hops.forEach((hop, k) => {
-			this.helpers.add(hop.total === true ? 'pairedKnownIndex' : 'pairedSourceIndex');
-			index =
-				hop.total === true
-					? `pairedKnownIndex(${hop.run}, ${index})`
-					: `pairedSourceIndex(${hop.run}, ${index}, ${hop.input}.length, ${str(hop.name)}, ${walk.direct && k === hops.length - 1})`;
+		const index = this.pairChain(b, target, walk, INDEX, {
+			run: (hop) => hop.run,
+			input: (hop) => `${hop.input}.length`,
 		});
-		if (single) return { code: `${list}[0 * ${index}]`, usesIndex: true };
-		return { code: `${this.outputVar(b, target, walk.output)}[${index}]`, usesIndex: true };
+		if (single) return { code: `${list}[${index}]`, usesIndex: true };
+		const from = walk.fork === undefined ? this.outputVar(b, target, walk.output) : list;
+		return { code: `${from}[${index}]`, usesIndex: true };
+	}
+
+	/**
+	 * The code of the index into the items of `target` for the item index `index` of the reader.
+	 * With a fork, the source of the latest run of that node picks the connection, in one
+	 * expression of nested conditions. `code` gives the code of the run of a hop and of the
+	 * count of its input items. A source that matches no connection has no pair: v1's error.
+	 */
+	private pairChain(
+		b: Body,
+		target: string,
+		walk: PairPath | { fork: PairFork; hops: PairHop[] },
+		index: string,
+		code: { run: (hop: PairHop) => string; input: (hop: PairHop) => string },
+	): string {
+		const single = this.singleItem(b, target);
+		const steps = (hops: PairHop[], from: string, direct: boolean): string => {
+			let out = from;
+			hops.forEach((hop, k) => {
+				this.helpers.add(hop.total === true ? 'pairedKnownIndex' : 'pairedSourceIndex');
+				out =
+					hop.total === true
+						? `pairedKnownIndex(${code.run(hop)}, ${out})`
+						: `pairedSourceIndex(${code.run(hop)}, ${out}, ${code.input(hop)}, ${str(hop.name)}, ${direct && k === hops.length - 1})`;
+			});
+			return out;
+		};
+		if (walk.fork === undefined) {
+			if (single && walk.hops.every((hop) => hop.total === true)) return '0';
+			const out = steps(walk.hops, index, walk.direct);
+			return single ? `0 * ${out}` : out;
+		}
+		const at = walk.hops.length === 0 ? index : steps(walk.hops, index, false);
+		const { source, alternatives } = walk.fork;
+		// Every connection into the node is one alternative, so the source of the latest run
+		// always matches one: the last one is the else branch. The choice is then a number
+		// everywhere, and an expression of a parameter that reads it keeps its native form.
+		const last = alternatives.length - 1;
+		let out = steps(alternatives[last].hops, at, alternatives[last].direct);
+		for (let k = last - 1; k >= 0; k--) {
+			const alt = alternatives[k];
+			const match = `${source}?.previousNode === ${str(alt.from)} && ${source}?.previousNodeOutput === ${String(alt.via)}`;
+			out = `(${match} ? ${steps(alt.hops, at, alt.direct)} : ${out})`;
+		}
+		return single ? `0 * ${out}` : out;
 	}
 
 	/**
@@ -860,35 +1006,25 @@ export class ModuleGenerator {
 		let chain: ((index: string) => string) | null = null;
 		const walk = this.pairingWalk(b, current, target);
 		if (!('reason' in walk)) {
-			for (const hop of walk.hops) {
-				hops.push({
-					...hop,
+			const all =
+				walk.fork === undefined
+					? walk.hops
+					: [...walk.hops, ...walk.fork.alternatives.flatMap((alt) => alt.hops)];
+			// A fork gives the code of a hop for the same hop object, in each alternative.
+			const params = new Map<PairHop, { runParam: string; lenParam: string }>();
+			for (const hop of all) {
+				const found = {
 					runParam: this.names.unique('coP'),
 					lenParam: this.names.unique('coLen'),
-				});
+				};
+				params.set(hop, found);
+				hops.push({ ...hop, ...found });
 			}
-			const steps = [...hops];
-			const single = this.singleItem(b, target);
-			// Each hop gives v1's error for an item without a paired item. A node with one item
-			// gives that item.
-			const known = steps.every((hop) => hop.total === true);
-			chain = (index) => {
-				// Hops that cannot fail lead to the one item of a node with one item.
-				if (single && known) return '0';
-				let code = index;
-				steps.forEach((hop, k) => {
-					code =
-						hop.total === true
-							? `pairedKnownIndex(${hop.runParam}, ${code})`
-							: `pairedSourceIndex(${hop.runParam}, ${code}, ${hop.lenParam}, ${str(hop.name)}, ${walk.direct && k === steps.length - 1})`;
+			chain = (index) =>
+				this.pairChain(b, target, walk, index, {
+					run: (hop) => params.get(hop)?.runParam ?? 'noItems',
+					input: (hop) => params.get(hop)?.lenParam ?? 'noItems',
 				});
-				return single ? `0 * ${code}` : code;
-			};
-			if (!(single && known)) {
-				for (const hop of steps) {
-					this.helpers.add(hop.total === true ? 'pairedKnownIndex' : 'pairedSourceIndex');
-				}
-			}
 		}
 		const values = hops.flatMap((hop) => [
 			{ param: hop.runParam, value: hop.run },
@@ -923,18 +1059,40 @@ export class ModuleGenerator {
 					targets.add(`${b.prefix}${m[2] ?? m[4] ?? m[5]}`);
 			}
 			for (const target of targets) {
-				const path: string[] = [];
-				let cur = node.name;
-				for (let guard = 0; guard < b.graph.nodes.size; guard++) {
-					const inc = b.graph.incoming(cur).filter((e) => e.input === 0);
-					if (inc.length !== 1) break;
-					const from = inc[0].from;
-					if (from === target) {
-						for (const name of path) wanted.add(name);
-						break;
+				const queue: Array<{ cur: string; path: string[] }> = [{ cur: node.name, path: [] }];
+				const seen = new Set<string>();
+				for (let k = 0; k < queue.length; k++) {
+					const start = queue[k];
+					if (seen.has(start.cur)) continue;
+					seen.add(start.cur);
+					let cur = start.cur;
+					const path = [...start.path];
+					for (let guard = 0; guard < b.graph.nodes.size; guard++) {
+						const all = b.graph.incoming(cur);
+						const inc = all.filter((e) => e.input === 0);
+						if (inc.length !== 1) {
+							// v1 runs a node with several connections into input 0 once for each of them,
+							// and the nodes behind each connection keep their paired items. The walk of a
+							// read tries each connection, so it adds the nodes that reach the target.
+							if (b.engine && inc.length > 1 && inc.length === all.length) {
+								const below = b.graph.reachable(cur);
+								for (const e of inc) {
+									// A connection from below the fork is a loop back: v1's latest run of the
+									// fork is then not the run that gave the items, so the read is refused.
+									if (below.has(e.from)) continue;
+									queue.push({ cur: e.from, path: [...path, e.from] });
+								}
+							}
+							break;
+						}
+						const from = inc[0].from;
+						if (from === target) {
+							for (const name of path) wanted.add(name);
+							break;
+						}
+						path.push(from);
+						cur = from;
 					}
-					path.push(from);
-					cur = from;
 				}
 			}
 		}
@@ -1976,6 +2134,7 @@ export class ModuleGenerator {
 		// The `let` lists of the latest run of each node.
 		w.comment('The items of the latest run of each node.');
 		const latestPairs = new Map<string, Map<number, string>>();
+		const lineage = this.lineageOf(b);
 		for (const name of b.order) {
 			const base = camelIdentifier(b.short(name), name === trigger.name ? 'trigger' : 'node');
 			const vars = new Map<number, string>();
@@ -1987,7 +2146,7 @@ export class ModuleGenerator {
 			for (const v of vars.values()) w.line(`let ${v}: Json[] = [];`);
 			// The paired items of the latest run, for a node on the way of a paired read.
 			const kind = b.graph.nodes.get(name)?.type ?? '';
-			if (name !== trigger.name && !ONE_TO_ONE.has(kind) && this.lineageOf(b).has(name)) {
+			if (name !== trigger.name && !ONE_TO_ONE.has(kind) && lineage.has(name)) {
 				const latest = new Map<number, string>();
 				for (const [k, v] of vars) {
 					const pairs = this.names.unique(`${v}LatestPairs`);
@@ -2058,6 +2217,16 @@ export class ModuleGenerator {
 			w.line(`return ${none === undefined ? '' : `${none} ? [] : `}[${lists.join(', ')}];`);
 			w.close('};');
 		}
+		// The source of the latest run of a node with several connections, which a read through
+		// the fork of that node needs. The walks of the reads above made the variables.
+		if (b.forkSources.size > 0) {
+			w.line();
+			w.comment('The connection of the latest run of a node with several connections.');
+			for (const [name, source] of b.forkSources) {
+				if (this.noOutput.has(name)) continue;
+				w.line(`let ${source}: Json = null;`);
+			}
+		}
 		// The run stack.
 		w.line();
 		w.comment('The v1 run stack: depth first, top-left child first, as n8n runs the nodes.');
@@ -2066,6 +2235,7 @@ export class ModuleGenerator {
 			`const ${graph}: Json = ${print(this.engineGraph(b), w.indent, w.indent.length * 4 + 20)};`,
 		);
 		const engine = this.names.unique('engine');
+		b.engineVar = engine;
 		if (this.pollGuard) {
 			w.line(`const polledItems: Json[] = ${triggerItems};`);
 			w.line('if (!ctx.polled(polledItems)) return;');
@@ -2095,9 +2265,14 @@ export class ModuleGenerator {
 				const items = errorList ? '[job.inputs[0] ?? [], []]' : 'job.inputs[0] ?? []';
 				if (traced) w.line(`ctx.trace(${str(name)}, ${items});`);
 			} else {
+				// The source of the run, for a read through a node with several connections: a
+				// reader after the node needs it, and the node itself may read through it.
+				const forkSource = b.forkSources.get(name);
+				if (forkSource !== undefined) w.line(`${forkSource} = job.source?.[0] ?? null;`);
 				w.line(`out = await ${fns.get(name)}(job.inputs, job.runIndex, job.source?.[0] ?? null);`);
 				w.open('if (out !== null) {');
 				for (const [k, v] of vars) w.line(`${v} = out[${k}] ?? [];`);
+
 				if (traced) {
 					const single = (outputCounts.get(name) ?? 1) === 1;
 					const items = single ? 'out[0] ?? []' : 'out';
@@ -2114,6 +2289,10 @@ export class ModuleGenerator {
 		w.line('break;');
 		w.depth--;
 		w.close();
+		if (this.options.runData === true) {
+			this.helpers.add('v1Runs');
+			w.line(`v1Runs(${engine}, job, out);`);
+		}
 		w.line(`v1Done(${engine}, job, out);`);
 		w.close();
 		if (b.isCallee) {
@@ -2353,9 +2532,17 @@ export class ModuleGenerator {
 		const leaves = main.order.filter(
 			(n) => !main.graph.outgoing(n).some((e) => main.scope.has(e.to)),
 		);
+		const runs = main.engine && this.options.runData === true ? main.engineVar : null;
+		if (runs !== null) this.helpers.add('v1RunItems');
+		// With the run data, each node of the workflow gives the items of its runs, not only the
+		// leaves: a node before another one also has runs to compare.
+		const listed = runs === null ? leaves : main.order;
 		const result: Code = {
 			kind: 'object',
-			entries: leaves.map((n) => [n, raw(this.outputVar(main, n, 0))]),
+			entries: listed.map((n) => [
+				n,
+				raw(runs === null ? this.outputVar(main, n, 0) : `v1RunItems(${runs}, ${str(n)})[0] ?? []`),
+			]),
 		};
 		w.line();
 		w.block(`return ${print(result, w.indent, w.indent.length * 4 + 7)};`);

@@ -1,0 +1,19 @@
+{
+	"description": "A Merge node (append mode) joins the two outputs of an If node: the True output on input 1 and the False output on input 2. v1 runs the Merge node once with a0, a1, a2 and a3. Three readers after it read the split node A in both Code modes and in an expression. $('A').item gives the item with the same id every time.",
+	"trigger": {
+		"body": {
+			"ids": [
+				"a0",
+				"a1",
+				"a2",
+				"a3"
+			]
+		}
+	},
+	"compare": [
+		"Read Each",
+		"Read All",
+		"Read Expr"
+	],
+	"expectRefusal": true
+}

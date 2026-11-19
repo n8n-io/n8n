@@ -1,0 +1,238 @@
+{
+	"name": "Multi connection paired read - multi-conn-branch-node",
+	"nodes": [
+		{
+			"id": "webhook",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [
+				0,
+				0
+			],
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "multi-conn-branch",
+				"options": {}
+			},
+			"webhookId": "6a1b2c3d-4e5f-4a6b-9c0d-000000000097"
+		},
+		{
+			"id": "a",
+			"name": "A",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [
+				200,
+				0
+			],
+			"parameters": {
+				"jsCode": "return $input.first().json.body.ids.map((id) => ({ json: { id } }));"
+			}
+		},
+		{
+			"id": "branch",
+			"name": "If",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 2.2,
+			"position": [
+				400,
+				0
+			],
+			"parameters": {
+				"conditions": {
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "strict",
+						"version": 2
+					},
+					"conditions": [
+						{
+							"id": "c1",
+							"leftValue": "={{ $json.id }}",
+							"operator": {
+								"type": "string",
+								"operation": "equals"
+							},
+							"rightValue": "a0"
+						},
+						{
+							"id": "c2",
+							"leftValue": "={{ $json.id }}",
+							"operator": {
+								"type": "string",
+								"operation": "equals"
+							},
+							"rightValue": "a1"
+						}
+					],
+					"combinator": "or"
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "tag",
+			"name": "Tag",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [
+				600,
+				-100
+			],
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "tag-f",
+							"name": "tag",
+							"value": "t",
+							"type": "string"
+						}
+					]
+				},
+				"includeOtherFields": true,
+				"options": {}
+			}
+		},
+		{
+			"id": "r",
+			"name": "R",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [
+				600,
+				0
+			],
+			"parameters": {}
+		},
+		{
+			"id": "read-each",
+			"name": "Read Each",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [
+				800,
+				-100
+			],
+			"parameters": {
+				"mode": "runOnceForEachItem",
+				"jsCode": "return { json: { from: $('A').item.json.id } };"
+			}
+		},
+		{
+			"id": "read-all",
+			"name": "Read All",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [
+				800,
+				0
+			],
+			"parameters": {
+				"jsCode": "return [{ json: { from: $('A').item.json.id } }];"
+			}
+		},
+		{
+			"id": "read-expr",
+			"name": "Read Expr",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [
+				800,
+				100
+			],
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "rx-f",
+							"name": "from",
+							"value": "={{ $('A').item.json.id }}",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			}
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "A",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"A": {
+			"main": [
+				[
+					{
+						"node": "If",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"If": {
+			"main": [
+				[
+					{
+						"node": "Tag",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "R",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Tag": {
+			"main": [
+				[
+					{
+						"node": "R",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"R": {
+			"main": [
+				[
+					{
+						"node": "Read Each",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Read All",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Read Expr",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	}
+}
