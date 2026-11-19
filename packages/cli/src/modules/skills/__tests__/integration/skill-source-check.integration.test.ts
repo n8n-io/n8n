@@ -1032,7 +1032,7 @@ describe('Skill source checks', () => {
 
 			await sync().checkAll();
 
-			expect(github.requests).toEqual({ refs: 1, archives: 0 });
+			expect(github.requests).toEqual({ refs: 1, archives: 0, trees: 0, files: 0 });
 			expect(await linkOf(docx)).toMatchObject({
 				state: 'up_to_date',
 				baseRevision: before.baseRevision,
@@ -1655,7 +1655,7 @@ describe('Skill source checks', () => {
 
 			await sync().checkAll();
 
-			expect(github.requests).toEqual({ refs: 1, archives: 0 });
+			expect(github.requests).toEqual({ refs: 1, archives: 0, trees: 0, files: 0 });
 			expect((await sourceOf(sourceId)).probeCursor).toBe(current.probeCursor);
 		});
 
