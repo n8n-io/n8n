@@ -241,6 +241,16 @@ parallelism). See the `--build-via-mcp` section in
 | PR merged to `release/*`           | `release-publish.yml`          |
 | PR closed with `codespace-preview` | `util-codespace-preview.yml`   |
 
+### On Merge Queue Removal
+
+| Event                              | Workflow                               | Effect |
+|------------------------------------|----------------------------------------|--------|
+| PR dequeued (not merged or manual) | `util-notify-merge-queue-removal.yml`  | Writes one PR comment with the reason. Later removals update the same comment. |
+
+This workflow uses `pull_request_target`. Thus, it runs without approval on
+fork and bot PRs, and it has a write token on them. No step checks out or runs
+PR code. An edit to the comment does not send a new notification.
+
 ### Label Triggers
 
 | Label                 | Workflow                     | Effect                                             |

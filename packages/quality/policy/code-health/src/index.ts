@@ -70,7 +70,14 @@ const defaultRuleSettings: RuleSettingsMap = {
 		enabled: true,
 		severity: 'error',
 		// ci-owners-required-reviews.yml checks out master only, never PR code.
-		options: { allowedWorkflows: ['ci-cla-check.yml', 'ci-owners-required-reviews.yml'] },
+		// util-notify-merge-queue-removal.yml has no checkout; it only comments.
+		options: {
+			allowedWorkflows: [
+				'ci-cla-check.yml',
+				'ci-owners-required-reviews.yml',
+				'util-notify-merge-queue-removal.yml',
+			],
+		},
 	},
 	'migration-timestamp': {
 		enabled: true,
