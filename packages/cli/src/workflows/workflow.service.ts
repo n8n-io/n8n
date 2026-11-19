@@ -1826,7 +1826,8 @@ export class WorkflowService {
 		for (const workflow of workflows) {
 			if (failures.has(workflow.id)) {
 				const unpublished = await this._unpublishAfterTransfer(user, workflow, publicApi);
-				if (unpublished) {
+				// A refused workflow lost its triggers before the transfer, so it is reported even if it stays published.
+				if (unpublished || refusals.has(workflow.id)) {
 					results.set(workflow.id, toTransferResult(failures.get(workflow.id)));
 				}
 			}
