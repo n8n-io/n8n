@@ -26,8 +26,9 @@ const nameId = useId();
 const badgeId = useId();
 
 /**
- * A preview may only show for a simulated call, and only beside the call it was built
- * from. Anything else could claim an action was simulated, or pin it to the wrong call.
+ * A preview may only show for a simulated call. Each preview travels on its own call
+ * object, and the caller pairs them by tool call ID (TRUST-1196). The tool name check is
+ * a backstop that hides a preview attached to a different tool.
  */
 function showsPreview(call: AgentAssistantTestRunCall): call is AgentAssistantTestRunCall & {
 	preview: NonNullable<AgentAssistantTestRunCall['preview']>;
