@@ -70,14 +70,19 @@ export function useAgentMcpDiscovery(projectId: MaybeRefOrGetter<string>) {
 	): ToolConnectionCredentialAdapter {
 		return {
 			getCredentialsByType: (authType) => {
-				const scope = { projectId: toValue(projectId) };
-				if (!credentialsStore.hasUsableCredentialsForScope(scope)) return [];
+				const credentials = credentialsStore.getUsableCredentialsForScope({
+					projectId: toValue(projectId),
+				});
+				if (!credentials) return [];
 
-				return credentialsStore.getUsableCredentialByType(authType).map((credential) => ({
-					id: credential.id,
-					name: credential.name,
-					type: credential.type,
-				}));
+				return credentials
+					.filter((credential) => credential.type === authType)
+					.toSorted((a, b) => a.name.localeCompare(b.name))
+					.map((credential) => ({
+						id: credential.id,
+						name: credential.name,
+						type: credential.type,
+					}));
 			},
 			openExistingCredential: (credentialId) => uiStore.openExistingCredential(credentialId),
 			openNewCredential: (authType, item, credentialTypes) => {

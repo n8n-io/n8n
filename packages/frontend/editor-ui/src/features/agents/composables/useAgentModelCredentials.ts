@@ -58,26 +58,25 @@ export function useAgentModelCredentials(userId: string, projectId: MaybeRefOrGe
 		},
 	);
 
-	const isCredentialsReady = computed(() =>
-		credentialsStore.hasUsableCredentialsForScope({
+	// Read the agent scope by key: another surface can fetch a different scope while the
+	// picker is open, and that must not empty the picker.
+	const agentScopeCredentials = computed(() =>
+		credentialsStore.getUsableCredentialsForScope({
 			projectId: toValue(projectId),
 			forAgent: true,
 		}),
 	);
+	const isCredentialsReady = computed(() => agentScopeCredentials.value !== undefined);
 
 	function getCredentialsForProvider(provider: AgentModelProvider) {
-		if (!isCredentialsReady.value) return [];
+		const credentials = agentScopeCredentials.value;
+		if (!credentials) return [];
 
-		const credentialsById = new Map<
-			string,
-			ReturnType<typeof credentialsStore.getUsableCredentialByType>[number]
-		>();
-
-		for (const credentialType of getProviderCredentialTypes(provider)) {
-			for (const credential of credentialsStore.getUsableCredentialByType(credentialType)) {
-				if (!credentialsById.has(credential.id)) {
-					credentialsById.set(credential.id, credential);
-				}
+		const credentialTypes = new Set(getProviderCredentialTypes(provider));
+		const credentialsById = new Map<string, (typeof credentials)[number]>();
+		for (const credential of credentials) {
+			if (credentialTypes.has(credential.type) && !credentialsById.has(credential.id)) {
+				credentialsById.set(credential.id, credential);
 			}
 		}
 
@@ -128,6 +127,19 @@ export function useAgentModelCredentials(userId: string, projectId: MaybeRefOrGe
 			]);
 		},
 		{ immediate: true },
+	);
+
+	// The store keeps a bounded number of scopes. Fetch again if it drops ours while
+	// the picker is open. Only the ready-to-not-ready change triggers it, so a failed
+	// fetch does not repeat. A project change is left to the watcher above.
+	watch(
+		() => [isCredentialsReady.value, toValue(projectId)] as const,
+		([ready, id], [wasReady, previousId]) => {
+			if (ready || !wasReady || !id || id !== previousId) return;
+			void credentialsStore
+				.fetchUsableCredentials({ projectId: id, forAgent: true })
+				.catch(() => {});
+		},
 	);
 
 	return { credentialsByProvider, getCredentialsForProvider, selectCredential };

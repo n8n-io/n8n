@@ -184,6 +184,7 @@ vi.mock('@/features/credentials/credentials.store', () => ({
 				.flat()
 				.find((credential) => credential.id === id),
 		getUsableCredentialByType: (type: string) => credentialsByType.value[type] ?? [],
+		getUsableCredentialsForScope: () => Object.values(credentialsByType.value).flat(),
 		getCredentialTypeByName: (type: string) => ({ displayName: type }),
 		fetchUsableCredentials,
 		refreshUsableCredentials: vi.fn().mockResolvedValue(undefined),
