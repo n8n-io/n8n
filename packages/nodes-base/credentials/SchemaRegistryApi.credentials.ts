@@ -2,9 +2,12 @@ import type {
 	ICredentialDataDecryptedObject,
 	ICredentialTestRequest,
 	ICredentialType,
+	IHttpRequestHelper,
 	IHttpRequestOptions,
 	INodeProperties,
 } from 'n8n-workflow';
+
+import { requestClientCredentialsToken } from '../utils/oauth2ClientCredentials';
 
 export class SchemaRegistryApi implements ICredentialType {
 	name = 'schemaRegistryApi';
@@ -14,6 +17,15 @@ export class SchemaRegistryApi implements ICredentialType {
 	documentationUrl = 'schemaregistry';
 
 	properties: INodeProperties[] = [
+		{
+			displayName: 'Access Token',
+			name: 'accessToken',
+			type: 'hidden',
+			typeOptions: {
+				expirable: true,
+			},
+			default: '',
+		},
 		{
 			displayName: 'URL',
 			name: 'url',
@@ -33,6 +45,12 @@ export class SchemaRegistryApi implements ICredentialType {
 					value: 'basicAuth',
 					description:
 						'Username and password, e.g. a Confluent Cloud Schema Registry API key and secret',
+				},
+				{
+					name: 'OAuth2 Client Credentials',
+					value: 'oAuth2ClientCredentials',
+					description:
+						'Bearer token minted from a token endpoint, e.g. Confluent Platform 7.7 and later behind an identity provider',
 				},
 				{
 					name: 'None',
@@ -70,7 +88,70 @@ export class SchemaRegistryApi implements ICredentialType {
 				},
 			},
 		},
+		{
+			displayName: 'Token URL',
+			name: 'tokenUrl',
+			type: 'string',
+			default: '',
+			required: true,
+			placeholder: 'https://idp.example.com/oauth2/v1/token',
+			description: 'Token endpoint that issues the bearer token for the registry',
+			displayOptions: {
+				show: {
+					authentication: ['oAuth2ClientCredentials'],
+				},
+			},
+		},
+		{
+			displayName: 'Client ID',
+			name: 'clientId',
+			type: 'string',
+			default: '',
+			required: true,
+			displayOptions: {
+				show: {
+					authentication: ['oAuth2ClientCredentials'],
+				},
+			},
+		},
+		{
+			displayName: 'Client Secret',
+			name: 'clientSecret',
+			type: 'string',
+			typeOptions: {
+				password: true,
+			},
+			default: '',
+			required: true,
+			displayOptions: {
+				show: {
+					authentication: ['oAuth2ClientCredentials'],
+				},
+			},
+		},
+		{
+			displayName: 'Scope',
+			name: 'scope',
+			type: 'string',
+			default: '',
+			description: 'Space-separated scopes to request. Leave empty to request none.',
+			displayOptions: {
+				show: {
+					authentication: ['oAuth2ClientCredentials'],
+				},
+			},
+		},
 	];
+
+	async preAuthentication(this: IHttpRequestHelper, credentials: ICredentialDataDecryptedObject) {
+		if (credentials.authentication !== 'oAuth2ClientCredentials') return {};
+
+		const { accessToken } = await requestClientCredentialsToken(
+			async (options) => await this.helpers.httpRequest(options),
+			credentials,
+		);
+		return { accessToken };
+	}
 
 	/**
 	 * Backs the credential test request and generic HTTP reuse (e.g. the HTTP
@@ -81,6 +162,13 @@ export class SchemaRegistryApi implements ICredentialType {
 		credentials: ICredentialDataDecryptedObject,
 		requestOptions: IHttpRequestOptions,
 	): Promise<IHttpRequestOptions> {
+		if (credentials.authentication === 'oAuth2ClientCredentials') {
+			requestOptions.headers = {
+				...requestOptions.headers,
+				Authorization: `Bearer ${credentials.accessToken as string}`,
+			};
+		}
+
 		if (credentials.authentication === 'basicAuth') {
 			const { username, password } = credentials;
 			// Only send credentials when both fields are filled in; credentials
