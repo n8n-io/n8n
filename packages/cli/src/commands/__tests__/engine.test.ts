@@ -372,7 +372,7 @@ describe('Engine', () => {
 				expect(workQueueConsumer.disconnect.mock.invocationCallOrder[1]).toBeLessThan(
 					publisher.disconnect.mock.invocationCallOrder[0],
 				);
-				expect(exit).toHaveBeenCalledWith();
+				expect(exit).toHaveBeenCalledExactlyOnceWith();
 				expect(vi.mocked(runtime.shutdown).mock.invocationCallOrder[0]).toBeLessThan(
 					exit.mock.invocationCallOrder[0],
 				);
