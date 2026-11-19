@@ -18,6 +18,7 @@ import type { MfaService } from '@/mfa/mfa.service';
 import type { InboxService } from '@/modules/inbox/inbox.service';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
 import type { PushConfig } from '@/push/push.config';
+import type { AiPreferenceSettingsService } from '@/services/ai-preference-settings.service';
 import type { AiUsageService } from '@/services/ai-usage.service';
 import { FrontendService, type PublicFrontendSettings } from '@/services/frontend.service';
 import type { UrlService } from '@n8n/backend-services';
@@ -99,6 +100,7 @@ describe('FrontendService', () => {
 	const instanceSettings = mock<InstanceSettings>({
 		isDocker: false,
 		instanceId: 'test-instance',
+		installId: 'test-install',
 		isMultiMain: false,
 		hostId: 'test-host',
 		staticCacheDir: '/tmp/test-cache',
@@ -207,6 +209,10 @@ describe('FrontendService', () => {
 
 	const workflowReviewPolicyService = mock<WorkflowReviewPolicyService>();
 	const inboxService = mock<InboxService>();
+	const aiPreferenceSettingsService = mock<AiPreferenceSettingsService>({
+		isSwitchOn: true,
+		isManagedByEnv: false,
+	});
 
 	const createMockService = () => {
 		Container.set(
@@ -247,6 +253,7 @@ describe('FrontendService', () => {
 					workflowRepository,
 					workflowReviewPolicyService,
 					inboxService,
+					aiPreferenceSettingsService,
 				),
 				license,
 			};
@@ -762,6 +769,15 @@ describe('FrontendService', () => {
 			expect(settings).toEqual(expectedPublicSettings);
 		});
 
+		it('should include the install ID in the settings for signed-in users', async () => {
+			const { service } = createMockService();
+
+			const settings = await service.getSettings();
+
+			expect(settings.instanceId).toBe('test-instance');
+			expect(settings.installId).toBe('test-install');
+		});
+
 		it('should include the active modules and no settings that need a user', async () => {
 			moduleRegistry.getActiveModules.mockReturnValue(['data-table', 'insights']);
 
@@ -770,6 +786,7 @@ describe('FrontendService', () => {
 
 			expect(publicSettings.activeModules).toEqual(['data-table', 'insights']);
 			expect(publicSettings).not.toHaveProperty('instanceId');
+			expect(publicSettings).not.toHaveProperty('installId');
 			expect(publicSettings).not.toHaveProperty('urlBaseWebhook');
 			expect(publicSettings).not.toHaveProperty('telemetry');
 			expect(publicSettings).not.toHaveProperty('mfa');
@@ -989,6 +1006,21 @@ describe('FrontendService', () => {
 			const settings = await service.getSettings();
 
 			expect(settings.ai.allowSendingParameterValues).toBe(false);
+		});
+	});
+
+	describe('aiPreferences setting', () => {
+		afterEach(() => {
+			Object.assign(aiPreferenceSettingsService, { isSwitchOn: true, isManagedByEnv: false });
+		});
+
+		it('reports the switch and whether the env manages it', async () => {
+			const { service } = createMockService();
+			Object.assign(aiPreferenceSettingsService, { isSwitchOn: false, isManagedByEnv: true });
+
+			const settings = await service.getSettings();
+
+			expect(settings.aiPreferences).toEqual({ enabled: false, managedByEnv: true });
 		});
 	});
 

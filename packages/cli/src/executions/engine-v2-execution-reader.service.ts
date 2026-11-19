@@ -168,6 +168,7 @@ export class EngineV2ExecutionReader {
 			workflowId: item.workflowId,
 			status: toV1Status(item.status),
 			mode: toV1Mode(item),
+			// oxlint-disable-next-line typescript/no-deprecated -- Preserve the v1 execution response format.
 			finished: item.status === 'completed',
 			createdAt: new Date(item.createdAt),
 			startedAt: new Date(item.createdAt),
@@ -264,6 +265,7 @@ export class EngineV2ExecutionReader {
 			workflowId: snapshot.workflowId,
 			mode: toV1Mode(snapshot),
 			status: toV1Status(snapshot.status),
+			// oxlint-disable-next-line typescript/no-deprecated -- Preserve the v1 execution response format.
 			finished: snapshot.status === 'completed',
 			createdAt: startedAt,
 			startedAt,

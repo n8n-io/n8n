@@ -42,6 +42,11 @@ describe('packageManifestSchema', () => {
 		expect(manifestEntrySchema.safeParse(entry).success).toBe(valid);
 	});
 
+	it.each(['__proto__', 'constructor', 'prototype'])('rejects the reserved entry id "%s"', (id) => {
+		const entry = { ...validManifest.workflows[0], id };
+		expect(manifestEntrySchema.safeParse(entry).success).toBe(false);
+	});
+
 	it('keeps the archive flag of a workflow entry and reads an entry without it as active', () => {
 		const archived = { ...validManifest.workflows[0], isArchived: true };
 		const older = { id: 'wf-def', name: 'Older package', target: 'workflows/older-def' };

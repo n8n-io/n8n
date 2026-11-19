@@ -21,6 +21,8 @@ import { useSkillSourceReasons } from '../skills.utils';
 const props = defineProps<{
 	discovery: Pick<SkillSourceDiscovery, 'skills' | 'truncated' | 'tooDeep'>;
 	disabled?: boolean;
+	/** Disable selection for these skills. Their previews stay available. */
+	disabledSkillKeys?: string[];
 	/** The scope that the user picked, for the reason of a taken name. */
 	scopeLabel: string;
 }>();
@@ -43,7 +45,7 @@ const TAB_LABELS = {
 
 /** A skill that the user cannot tick is in Blocked, whatever the reason. */
 function tabOf(skill: DiscoveredSkill): ReviewTab {
-	if (!isSelectableSkill(skill)) return 'blocked';
+	if (!canSelectSkill(skill)) return 'blocked';
 	return skill.check?.verdict === 'needs_review' ? 'warning' : 'passed';
 }
 
@@ -116,9 +118,13 @@ const previewSkill = computed(
 	() => props.discovery.skills.find((skill) => skill.key === previewKey.value) ?? null,
 );
 
+function canSelectSkill(skill: DiscoveredSkill): boolean {
+	return isSelectableSkill(skill) && !props.disabledSkillKeys?.includes(skill.key);
+}
+
 /** The state of a checkbox that ticks every selectable skill of a list. */
 function stateOf(skills: DiscoveredSkill[]) {
-	const keys = skills.filter(isSelectableSkill).map((skill) => skill.key);
+	const keys = skills.filter(canSelectSkill).map((skill) => skill.key);
 	const picked = keys.filter((key) => selected.value.includes(key)).length;
 	return {
 		keys,
@@ -165,6 +171,9 @@ function blockedReason(skill: DiscoveredSkill): string {
 	}
 	const findings = skill.check ? findingsText(skill.check.findings) : '';
 	if (findings) return findings;
+	if (props.disabledSkillKeys?.includes(skill.key)) {
+		return i18n.baseText('settings.context.skills.updates.importNotAllowed');
+	}
 	return skill.error ? reasonText(skill.error.reason) : '';
 }
 
@@ -271,8 +280,8 @@ function warningLabel(key: string): string {
 								data-test-id="skill-source-skill"
 							>
 								<N8nCheckbox
-									:model-value="isSelectableSkill(item) && selected.includes(item.key)"
-									:disabled="disabled || !isSelectableSkill(item)"
+									:model-value="canSelectSkill(item) && selected.includes(item.key)"
+									:disabled="disabled || !canSelectSkill(item)"
 									:aria-label="titleOf(item)"
 									data-test-id="skill-source-skill-checkbox"
 									@update:model-value="toggle(item.key, $event)"

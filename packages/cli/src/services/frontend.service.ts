@@ -13,6 +13,7 @@ import path from 'path';
 
 import { UrlService } from '@n8n/backend-services';
 
+import { AiPreferenceSettingsService } from './ai-preference-settings.service';
 import { AiUsageService } from './ai-usage.service';
 import { WorkflowReviewPolicyService } from './workflow-review-policy.service';
 
@@ -148,6 +149,7 @@ export class FrontendService {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly workflowReviewPolicyService: WorkflowReviewPolicyService,
 		private readonly inboxService: InboxService,
+		private readonly aiPreferenceSettingsService: AiPreferenceSettingsService,
 	) {
 		loadNodesAndCredentials.addPostProcessor(async () => await this.generateTypes());
 		credentialsOverwrites.registerReloadHandler(async () => await this.generateTypes());
@@ -258,6 +260,7 @@ export class FrontendService {
 				},
 			},
 			instanceId: this.instanceSettings.instanceId,
+			installId: this.instanceSettings.installId,
 			telemetry: telemetrySettings,
 			posthog: {
 				enabled: this.globalConfig.diagnostics.enabled,
@@ -388,6 +391,13 @@ export class FrontendService {
 			banners: {
 				dismissed: [],
 			},
+<<<<<<< HEAD
+=======
+			// oxlint-disable-next-line typescript/no-deprecated -- The AI Transform node still uses this setting.
+			askAi: {
+				enabled: false,
+			},
+>>>>>>> 71370107b42e989a9759a5acdc6af604eb3120ac
 			aiBuilder: {
 				enabled: false,
 				setup: false,
@@ -399,6 +409,10 @@ export class FrontendService {
 			},
 			ai: {
 				allowSendingParameterValues: true,
+			},
+			aiPreferences: {
+				enabled: false,
+				managedByEnv: false,
 			},
 			workflowHistory: {
 				pruneTime: getWorkflowHistoryPruneTime(),
@@ -525,6 +539,11 @@ export class FrontendService {
 			this.settings.ai.allowSendingParameterValues =
 				this.globalConfig.ai.allowSendingParameterValues;
 		}
+
+		this.settings.aiPreferences = {
+			enabled: this.aiPreferenceSettingsService.isSwitchOn,
+			managedByEnv: this.aiPreferenceSettingsService.isManagedByEnv,
+		};
 
 		const isS3Selected = this.binaryDataConfig.mode === 's3';
 		const isS3Available = this.binaryDataConfig.availableModes.includes('s3');

@@ -27,6 +27,7 @@ import { ExecutionListService } from '@/executions/execution-list.service';
 import { DataTableProxyService } from '@n8n/backend-module-data-table';
 import { NodeCatalogService } from '@/node-catalog';
 import { AiGatewayService } from '@/services/ai-gateway.service';
+import { AiPreferenceSettingsService } from '@/services/ai-preference-settings.service';
 import { FolderService } from '@/services/folder.service';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
 import { ProjectService } from '@/services/project.service.ee';
@@ -94,6 +95,9 @@ const OAUTH_WITH_INSTALL: McpAuthContext = {
  * harness. Without this file that exemption would mean nothing checks the tool
  * ever registers, so renaming it would silently remove it for every client.
  */
+
+mockInstance(AiPreferenceSettingsService, { isEnabled: true });
+
 describe('install_community_node registration', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
 

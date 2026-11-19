@@ -1551,7 +1551,10 @@ export class WorkflowExecute {
 			// shares this node object (legacy `executionOrder: 'v0'` with multiple wires
 			// into the node): keeping the node enabled lets those later entries execute
 			// normally instead of passing their input through in disabled mode.
-			if (!executionStackEntry.metadata?.resumeError) {
+			if (
+				!executionStackEntry.metadata?.resumeError &&
+				executionStackEntry.metadata?.resumeMode !== 'reexecute'
+			) {
 				executionStackEntry.node.disabled = true;
 			}
 

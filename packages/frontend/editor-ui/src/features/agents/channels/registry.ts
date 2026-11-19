@@ -145,8 +145,9 @@ const platforms = {
 		disconnectConfirmationComponent: AgentChannelWhatsAppRemoveConfirmation,
 		shouldConfirmDisconnect: () => true,
 		// Meta keeps sending the number's messages here after the channel is gone.
-		presentDisconnectWarning: (warning, { text }) => {
-			if (!isWhatsAppNumberStillConnectedWarning(warning)) {
+		// Not on a restart: the number is gone and the new setup sets the callback URL.
+		presentDisconnectWarning: (warning, { text, restart }) => {
+			if (restart || !isWhatsAppNumberStillConnectedWarning(warning)) {
 				return null;
 			}
 			const number = warning.details?.displayPhoneNumber;

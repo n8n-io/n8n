@@ -751,6 +751,8 @@ export type RelayEventMap = ModuleEventMap & {
 		packageAuthor?: string;
 		packageAuthorEmail?: string;
 		failureReason?: string;
+		/** Where the install came from: the editor UI, the public API, or MCP. */
+		source?: 'ui' | 'publicApi' | 'mcp';
 		/** Login of the service account that acted. Absent for people and outside a request. */
 		loginId?: string;
 	};

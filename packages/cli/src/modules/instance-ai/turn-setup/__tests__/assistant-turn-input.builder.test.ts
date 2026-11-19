@@ -266,6 +266,7 @@ describe('AssistantTurnInputBuilder — resolveAiPreferencesTurn', () => {
 			loadHistory: () => Promise<unknown[]>,
 		) => Promise<{ block: string | undefined; payload: AiPreferencesAppliedPayload }>;
 		aiPreferenceService: { getApplicable: Mock };
+		aiPreferenceSettingsService: { isEnabled: boolean };
 		agentMemory: ThreadMemoryMock;
 		logger: { warn: Mock };
 	};
@@ -273,6 +274,7 @@ describe('AssistantTurnInputBuilder — resolveAiPreferencesTurn', () => {
 	function createService(): Internals {
 		const service = Object.create(AssistantTurnInputBuilder.prototype) as unknown as Internals;
 		service.aiPreferenceService = { getApplicable: vi.fn() };
+		service.aiPreferenceSettingsService = { isEnabled: true };
 		service.agentMemory = createThreadMemory();
 		service.logger = { warn: vi.fn() };
 		return service;
@@ -350,6 +352,31 @@ describe('AssistantTurnInputBuilder — resolveAiPreferencesTurn', () => {
 			renderedLength: AI_PREFERENCES_CLEARED_BLOCK.length,
 			injectedThisTurn: true,
 		});
+	});
+
+	it('reads no preferences while they are off and sends nothing to a new thread', async () => {
+		const service = createService();
+		service.aiPreferenceSettingsService.isEnabled = false;
+		service.agentMemory.getMessages.mockResolvedValue([storedUserTurn(undefined)]);
+
+		const turn = await resolvePreferences(service, boundProject);
+
+		expect(service.aiPreferenceService.getApplicable).not.toHaveBeenCalled();
+		expect(turn.block).toBeUndefined();
+		expect(turn.payload).toEqual({ preferences: [], renderedLength: 0, injectedThisTurn: false });
+	});
+
+	it('clears the preferences a thread carried once they are turned off', async () => {
+		const service = createService();
+		service.aiPreferenceSettingsService.isEnabled = false;
+		service.agentMemory.getMessages.mockResolvedValue([
+			storedUserTurn(renderAiPreferencesBlock(applicable)),
+		]);
+
+		const turn = await resolvePreferences(service, boundProject);
+
+		expect(service.aiPreferenceService.getApplicable).not.toHaveBeenCalled();
+		expect(turn.block).toBe(AI_PREFERENCES_CLEARED_BLOCK);
 	});
 
 	it.each([

@@ -238,7 +238,7 @@ describe('agent-run-reducer', () => {
 				name: 'Writing',
 				version: 'v2',
 				change: 'updated',
-				content: 'Use the revised writing instructions.',
+				content: 'Skill "Writing" changed after you loaded it.',
 			},
 		};
 		reduceEvent(state, event);
@@ -1174,6 +1174,37 @@ describe('agent-run-reducer', () => {
 				expect(state.agentsById['sub-1'].status).toBe('completed');
 			},
 		);
+
+		it('cloud-browser-window-changed counts the window changes of the agent', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeAgentSpawned('run-1', 'sub-1', 'root'));
+			const windowChanged: InstanceAiEvent = {
+				type: 'cloud-browser-window-changed',
+				runId: 'run-1',
+				agentId: 'sub-1',
+				payload: {},
+			};
+
+			reduceEvent(state, windowChanged);
+			expect(state.agentsById['sub-1'].cloudBrowserWindowChanges).toBe(1);
+
+			reduceEvent(state, windowChanged);
+			expect(state.agentsById['sub-1'].cloudBrowserWindowChanges).toBe(2);
+			expect(toAgentTree(state).children[0].cloudBrowserWindowChanges).toBe(2);
+		});
+
+		it('cloud-browser-window-changed for an unknown agent changes nothing', () => {
+			const state = stateWithRun('run-1', 'root');
+
+			reduceEvent(state, {
+				type: 'cloud-browser-window-changed',
+				runId: 'run-1',
+				agentId: 'missing',
+				payload: {},
+			});
+
+			expect(findAgent(state, 'missing')).toBeUndefined();
+		});
 
 		it('agent-completed with error sets error status', () => {
 			const state = stateWithRun('run-1', 'root');
