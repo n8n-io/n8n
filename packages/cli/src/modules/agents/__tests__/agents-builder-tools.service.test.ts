@@ -3542,6 +3542,35 @@ describe('AgentsBuilderToolsService', () => {
 			expect(agentPublishService.publishAgent).not.toHaveBeenCalled();
 		});
 
+		it('guards a publish that names the current draft by the draft revision', async () => {
+			const { service, agentsService, agentPublishService } = makeService();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			agentsService.findById.mockResolvedValue({
+				id: agentId,
+				versionId: 'v-draft',
+				activeVersionId: null,
+				revision: 7,
+			} as unknown as ProjectAgent);
+			agentPublishService.publishAgent.mockResolvedValue({
+				agent: { activeVersionId: 'v-draft', versionId: 'v-draft' } as ProjectAgent,
+			});
+
+			await getPublishTool(service).handler!(
+				{ versionId: 'v-draft' },
+				{ ...ctx, resumeData: { approved: true }, continuation: { confirmedVersionId: 'v-draft' } },
+			);
+
+			expect(agentPublishService.publishAgent).toHaveBeenCalledWith(
+				agentId,
+				projectId,
+				user,
+				{ by: 'builder', trigger: 'explicit' },
+				'v-draft',
+				undefined,
+				7,
+			);
+		});
+
 		it('does not tie a history version publish to the draft revision', async () => {
 			const { service, agentsService, agentPublishService } = makeService();
 			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);

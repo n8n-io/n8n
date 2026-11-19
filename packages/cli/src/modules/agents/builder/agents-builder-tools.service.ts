@@ -1132,8 +1132,11 @@ export class AgentsBuilderToolsService {
 							{ by: 'builder', trigger: 'explicit' },
 							versionId,
 							undefined,
-							// A history version cannot change, so only a draft publish needs the guard.
-							versionId === undefined ? before?.revision : undefined,
+							// Only the current draft can change before it goes live. A history version, even
+							// one that was the draft when the card showed, cannot.
+							versionId === undefined || versionId === before?.versionId
+								? before?.revision
+								: undefined,
 						);
 						return {
 							ok: true,
