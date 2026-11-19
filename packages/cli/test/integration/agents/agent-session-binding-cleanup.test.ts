@@ -82,6 +82,37 @@ describe('Session bindings of a deleted task session', () => {
 		expect(metadata.outboundMessages).toBeUndefined();
 	});
 
+	it('recovers on the next reply and the next task send when the cleanup fails', async () => {
+		const { taskThreadId, recipientThreadId } = await createBoundTaskSession();
+		const messageContext = Container.get(IntegrationMessageContextService);
+		const cleanup = vi
+			.spyOn(messageContext, 'clearSessionBindings')
+			.mockRejectedValueOnce(new Error('database unavailable'));
+
+		await expect(
+			Container.get(AgentExecutionService).deleteThread(projectId, agentId, taskThreadId, userId),
+		).resolves.toBe(true);
+		expect(cleanup).toHaveBeenCalled();
+		cleanup.mockRestore();
+
+		// The binding to the deleted session is still stored, but it is ignored.
+		await expect(messageContext.resolveSession(recipientThreadId)).resolves.toBeNull();
+		expect(await messageContext.resolveSessionReplyScope(recipientThreadId)).toBeNull();
+		const recipientThread = await Container.get(AgentThreadRepository).findOneBy({
+			id: recipientThreadId,
+		});
+		const metadata = jsonParse<Record<string, unknown>>(recipientThread!.metadata!);
+		expect(metadata.continueAs).toBeUndefined();
+		expect(metadata.outboundMessages).toBeUndefined();
+
+		// A later task that messages the same recipient takes the binding.
+		const { origin: nextOrigin } = await createBoundTaskSession();
+		await messageContext.bindSession(recipientThreadId, nextOrigin, { recipientId: '15551234567' });
+		expect(await messageContext.resolveSessionReplyScope(recipientThreadId)).toMatchObject({
+			binding: nextOrigin,
+		});
+	});
+
 	it('keeps the bindings when the task session has a running execution', async () => {
 		const { taskThreadId, recipientThreadId, origin } = await createBoundTaskSession();
 		await Container.get(AgentExecutionRepository).save({

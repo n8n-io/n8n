@@ -100,7 +100,7 @@ export class IntegrationMessageContextService implements IntegrationMessageConte
 		if (derivedThreadId === origin.threadId) return;
 		// The first task to message a thread keeps the binding. Every task still
 		// records what it sent, so the reply turn sees all of it.
-		const existing = await this.resolveSession(derivedThreadId);
+		const existing = await this.resolveLiveBinding(derivedThreadId);
 		await this.recordRecipient(
 			origin.threadId,
 			options.recipientId ?? derivedThreadId,
@@ -113,10 +113,14 @@ export class IntegrationMessageContextService implements IntegrationMessageConte
 	}
 
 	async resolveSessionReplyScope(derivedThreadId: string): Promise<SessionReplyScope | null> {
-		const binding = await this.resolveSession(derivedThreadId);
+		const binding = await this.readBinding(derivedThreadId);
 		if (!binding) return null;
-		const derived = await this.threadRepository.findOneBy({ id: derivedThreadId });
 		const origin = await this.threadRepository.findOneBy({ id: binding.threadId });
+		if (!origin) {
+			await this.clearBinding(derivedThreadId, binding.threadId);
+			return null;
+		}
+		const derived = await this.threadRepository.findOneBy({ id: derivedThreadId });
 		const originMetadata = this.parseMetadata(origin?.metadata);
 		const bound = this.readBoundThreads(originMetadata[BOUND_THREADS_METADATA_KEY]);
 		const recipient = bound[derivedThreadId] ?? derivedThreadId;
@@ -138,7 +142,26 @@ export class IntegrationMessageContextService implements IntegrationMessageConte
 		};
 	}
 
+	/**
+	 * The session that the thread is bound to. A binding to a deleted session
+	 * counts as no binding, so a missed cleanup does not route replies there.
+	 */
 	async resolveSession(derivedThreadId: string): Promise<SessionBinding | null> {
+		const binding = await this.readBinding(derivedThreadId);
+		if (!binding) return null;
+		return (await this.threadRepository.existsBy({ id: binding.threadId })) ? binding : null;
+	}
+
+	/** Like {@link resolveSession}, and also clears a binding to a deleted session. */
+	private async resolveLiveBinding(derivedThreadId: string): Promise<SessionBinding | null> {
+		const binding = await this.readBinding(derivedThreadId);
+		if (!binding) return null;
+		if (await this.threadRepository.existsBy({ id: binding.threadId })) return binding;
+		await this.clearBinding(derivedThreadId, binding.threadId);
+		return null;
+	}
+
+	private async readBinding(derivedThreadId: string): Promise<SessionBinding | null> {
 		const thread = await this.threadRepository.findOneBy({ id: derivedThreadId });
 		const value = this.parseMetadata(thread?.metadata)[CONTINUE_AS_METADATA_KEY];
 		return isSessionBinding(value) ? value : null;
@@ -234,7 +257,10 @@ export class IntegrationMessageContextService implements IntegrationMessageConte
 		for (const id of boundThreadIds) await this.clearBinding(id, originThreadId);
 	}
 
-	/** Drops the binding and the task messages that waited for a reply. */
+	/**
+	 * Drops the binding and the task messages that waited for a reply. A thread
+	 * that is now bound to a different session keeps that binding.
+	 */
 	private async clearBinding(derivedThreadId: string, originThreadId: string): Promise<void> {
 		// `patchThread` skips a thread that no longer exists, so no empty row is created.
 		await this.threadRepository.patchThread(

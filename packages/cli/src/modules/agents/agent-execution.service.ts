@@ -773,7 +773,8 @@ export class AgentExecutionService {
 	 * Unbinds the recipient threads that a task session messaged, so replies
 	 * stop pointing at the deleted session. Runs after the commit: on SQLite a
 	 * write from inside the delete transaction would wait for that transaction.
-	 * Until it runs, a reply can still reach the deleted session and fail once.
+	 * If it fails, `IntegrationMessageContextService.resolveSession` ignores the
+	 * stale binding and the next reply or task send clears it.
 	 */
 	private async clearSessionBindings(threadId: string, boundThreadIds: string[]): Promise<void> {
 		if (boundThreadIds.length === 0) return;

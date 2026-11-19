@@ -29,6 +29,7 @@ describe('IntegrationMessageContextService', () => {
 		threadRepository.findOneBy.mockImplementation(async ({ id }: { id: string }) =>
 			threads.has(id) ? (threads.get(id) as never) : (null as never),
 		);
+		threadRepository.existsBy.mockImplementation(async ({ id }: { id: string }) => threads.has(id));
 		threadRepository.findMetadataById.mockImplementation(
 			async (id: string) => threads.get(id)?.metadata ?? null,
 		);
@@ -89,6 +90,7 @@ describe('IntegrationMessageContextService', () => {
 	it('updates execution metadata when the platform metadata write fails', async () => {
 		const { service, threadRepository } = setup({
 			task: { continueAs: { threadId: 'origin', resourceId: 'owner' } },
+			origin: {},
 		});
 		threadRepository.save.mockRejectedValueOnce(new Error('database unavailable'));
 		await service.installIncoming(
@@ -119,6 +121,7 @@ describe('IntegrationMessageContextService', () => {
 
 	it('first write wins — a second bind does not overwrite the existing binding', async () => {
 		const { service } = setup({
+			task: {},
 			'agent-1:slack:D123:1001': {
 				continueAs: { threadId: 'task', resourceId: 'task:task-1' },
 			},
@@ -188,6 +191,7 @@ describe('IntegrationMessageContextService', () => {
 
 	it('unbindSession removes the continueAs key but keeps other metadata', async () => {
 		const { service, threadRepository } = setup({
+			task: {},
 			'agent-1:slack:D123:1001': {
 				continueAs: { threadId: 'task', resourceId: 'task:task-1' },
 				currentMessageContext: context,
@@ -207,6 +211,7 @@ describe('IntegrationMessageContextService', () => {
 
 	it('does not bind the derived id to a later origin when the thread is already bound', async () => {
 		const { service, threads } = setup({
+			task: {},
 			'agent-1:slack:D123:1001': {
 				continueAs: { threadId: 'task', resourceId: 'task:task-1' },
 			},
@@ -507,5 +512,56 @@ describe('IntegrationMessageContextService', () => {
 
 		expect(threadRepository.save).not.toHaveBeenCalled();
 		expect(threads.has('agent-1:whatsapp:1')).toBe(false);
+	});
+
+	describe('when the bound session was deleted', () => {
+		const deletedOrigin = { threadId: 'deleted-task', resourceId: 'task:task-1' };
+
+		it('resolveSession treats the binding as no binding and leaves it stored', async () => {
+			const { service, threadRepository } = setup({
+				'agent-1:whatsapp:1': { continueAs: deletedOrigin },
+			});
+
+			await expect(service.resolveSession('agent-1:whatsapp:1')).resolves.toBeNull();
+			expect(threadRepository.save).not.toHaveBeenCalled();
+		});
+
+		it('resolveSessionReplyScope returns no scope and clears the binding', async () => {
+			const { service, threads } = setup({
+				'agent-1:whatsapp:1': {
+					continueAs: deletedOrigin,
+					outboundMessages: ['Hi'],
+					currentMessageContext: context,
+				},
+			});
+
+			await expect(service.resolveSessionReplyScope('agent-1:whatsapp:1')).resolves.toBeNull();
+
+			const derived = jsonParse<Record<string, unknown>>(
+				threads.get('agent-1:whatsapp:1')!.metadata!,
+			);
+			expect(derived).toEqual({ currentMessageContext: context });
+		});
+
+		it('bindSession replaces the binding with the new session', async () => {
+			const { service, threads } = setup({
+				'agent-1:whatsapp:1': { continueAs: deletedOrigin, outboundMessages: ['Old'] },
+				'task-2': {},
+			});
+			const newOrigin = { threadId: 'task-2', resourceId: 'task:task-2' };
+
+			await service.bindSession('agent-1:whatsapp:1', newOrigin, {
+				recipientId: 'user:alice',
+				outboundText: 'New',
+			});
+
+			await expect(service.resolveSessionReplyScope('agent-1:whatsapp:1')).resolves.toEqual({
+				binding: newOrigin,
+				sharedWithOtherRecipients: false,
+				outboundMessages: ['New'],
+			});
+			const task = jsonParse<Record<string, unknown>>(threads.get('task-2')!.metadata!);
+			expect(task.boundThreads).toEqual({ 'agent-1:whatsapp:1': 'user:alice' });
+		});
 	});
 });
