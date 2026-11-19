@@ -329,7 +329,7 @@ export class SkillSourceRepository {
 		});
 	}
 
-	/** Deletes the source. Its links go by cascade. Callers delete its skills first. */
+	/** Deletes the source and its links. Callers can delete its skills first or keep them. */
 	async deleteSource(sourceId: string, ctx: OperationContext): Promise<void> {
 		await this.sources.managerFor(ctx).delete(SkillSourceConnection, { id: sourceId });
 	}
@@ -379,6 +379,10 @@ export class SkillSourceRepository {
 	async deleteLink(skillId: string, ctx: OperationContext = {}): Promise<boolean> {
 		const result = await this.links.managerFor(ctx).delete(SkillSourceLink, { skillId });
 		return (result.affected ?? 0) > 0;
+	}
+
+	async hasAnySource(): Promise<boolean> {
+		return await this.sources.managerFor({}).exists(SkillSourceConnection);
 	}
 
 	/**

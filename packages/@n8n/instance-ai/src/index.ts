@@ -58,7 +58,6 @@ import type * as EvalUsageMod from './utils/eval-usage';
 import type * as StreamHelpersMod from './utils/stream-helpers';
 import type * as WorkflowLoopMod from './workflow-loop';
 import type * as WorkflowLoopRuntimeMod from './workflow-loop/runtime';
-import type * as BuilderTemplatesServiceMod from './workspace/builder-templates-service';
 import type * as CreateWorkspaceMod from './workspace/create-workspace';
 import type * as LazyRuntimeWorkspaceMod from './workspace/lazy-runtime-workspace';
 import type * as SandboxSetupMod from './workspace/sandbox-setup';
@@ -222,9 +221,6 @@ const loadPromptProfiles = lazyModule(
 const loadEvalAgents = lazyModule(() => require('./utils/eval-agents') as typeof EvalAgentsMod);
 const loadEvalUsage = lazyModule(() => require('./utils/eval-usage') as typeof EvalUsageMod);
 const loadAgentTree = lazyModule(() => require('./utils/agent-tree') as typeof AgentTreeMod);
-const loadBuilderTemplatesService = lazyModule(
-	() => require('./workspace/builder-templates-service') as typeof BuilderTemplatesServiceMod,
-);
 const loadCreateWorkspace = lazyModule(
 	() => require('./workspace/create-workspace') as typeof CreateWorkspaceMod,
 );
@@ -304,7 +300,6 @@ export {
 	saveAgentBuilderTarget,
 	threadAuthorizesAgentAdoption,
 	threadTargetsAgent,
-	withAttachedAgentTarget,
 	withBoundAgentTarget,
 } from './tools/orchestration/agent-target-binding';
 export type {
@@ -316,6 +311,7 @@ export type {
 	CloudBrowserTaskStartResult,
 } from './tools/orchestration/start-cloud-browser-task.tool';
 export { parseAppTargets, parsePendingAppTarget } from './tools/apps/app-target-binding';
+export { withThreadSubject } from './tools/thread-subject-binding';
 export {
 	resolveAgentPreviewSession,
 	saveAgentPreviewSession,
@@ -569,15 +565,6 @@ export const setupSandboxWorkspace: typeof SandboxSetupMod.setupSandboxWorkspace
 );
 export const isSandboxWorkspaceInitialized: typeof SandboxSetupMod.isSandboxWorkspaceInitialized =
 	lazyFunction(() => loadSandboxSetup().isSandboxWorkspaceInitialized);
-export type BuilderTemplatesService = BuilderTemplatesServiceMod.BuilderTemplatesService;
-export const BuilderTemplatesService: typeof BuilderTemplatesServiceMod.BuilderTemplatesService =
-	lazyClass(() => loadBuilderTemplatesService().BuilderTemplatesService);
-export const builderTemplatesOptionsFromEnv: typeof BuilderTemplatesServiceMod.builderTemplatesOptionsFromEnv =
-	lazyFunction(() => loadBuilderTemplatesService().builderTemplatesOptionsFromEnv);
-export type {
-	BuilderTemplatesBundle,
-	BuilderTemplatesServiceOptions,
-} from './workspace/builder-templates-service';
 export const createSandbox: typeof CreateWorkspaceMod.createSandbox = lazyFunction(
 	() => loadCreateWorkspace().createSandbox,
 );

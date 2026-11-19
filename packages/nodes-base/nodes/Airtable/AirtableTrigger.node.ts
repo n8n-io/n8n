@@ -15,6 +15,7 @@ export class AirtableTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Airtable Trigger',
 		name: 'airtableTrigger',
+		schemaPath: 'Airtable',
 		icon: 'file:airtable.svg',
 		group: ['trigger'],
 		version: 1,

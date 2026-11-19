@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { Z } from '../zod-class';
+import { booleanFromString } from '../schemas/boolean-from-string';
 import type { ProjectIcon } from '../schemas/project.schema';
 
 /**
@@ -76,6 +77,14 @@ export class MoveSkillSourceDto extends Z.class({
 	/** The scope shown when the dialog opened. Reject a stale request. */
 	fromProjectId: z.string().min(1).max(36).nullable(),
 	credentialId: z.string().min(1).max(36).optional(),
+}) {}
+
+/** Removes a source. Skills are deleted unless the user chooses to keep them. */
+export class DeleteSkillSourceQueryDto extends Z.class({
+	/** Keep the skills as local, editable skills. */
+	keepSkills: booleanFromString.optional(),
+	/** Delete only if this skill is still the source's only linked skill. */
+	onlySkillId: z.string().min(1).max(36).optional(),
 }) {}
 
 const skillSourceDuplicateSchema = z.discriminatedUnion('kind', [
@@ -483,3 +492,7 @@ export const skillSourceDeleteBlockSchema = z.object({
 });
 
 export type SkillSourceDeleteBlock = z.infer<typeof skillSourceDeleteBlockSchema>;
+
+export class SkillSyncSettingsDto extends Z.class({
+	enabled: z.boolean(),
+}) {}

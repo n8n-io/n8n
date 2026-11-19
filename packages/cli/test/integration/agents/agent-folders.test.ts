@@ -16,6 +16,7 @@ import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-hist
 import { AgentThreadRepository } from '@/modules/agents/repositories/agent-thread.repository';
 import { storedAgentConfig } from '@/modules/agents/__tests__/test-utils/stored-agent-config';
 import { FolderService } from '@/services/folder.service';
+import { createAgent } from '@test-integration/db/agents';
 import { createFolder } from '@test-integration/db/folders';
 import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
 import { createOwner, createMember } from '@test-integration/db/users';
@@ -53,7 +54,7 @@ afterEach(() => vi.restoreAllMocks());
 
 it('keeps project deletion compatible with Agent folder membership', async () => {
 	const folder = await createFolder(project, { resourceType: 'agent' });
-	await agents.save({
+	await createAgent({
 		id: 'support',
 		name: 'Support',
 		projectId: project.id,
@@ -140,14 +141,14 @@ it('moves direct Agents and child folders together and keeps nested membership',
 	const source = await createFolder(project, { resourceType: 'agent' });
 	const child = await createFolder(project, { resourceType: 'agent', parentFolder: source });
 	const target = await createFolder(project, { resourceType: 'agent' });
-	const direct = await agents.save({
+	const direct = await createAgent({
 		id: 'direct',
 		name: 'Direct',
 		projectId: project.id,
 		parentFolderId: source.id,
 		versionId: 'saved-version',
 	});
-	const nested = await agents.save({
+	const nested = await createAgent({
 		id: 'nested',
 		name: 'Nested',
 		projectId: project.id,
@@ -181,7 +182,7 @@ it('moves direct Agents and child folders together and keeps nested membership',
 
 it('rolls back content moves if the folder write fails', async () => {
 	const folder = await createFolder(project, { resourceType: 'agent' });
-	const agent = await agents.save({
+	const agent = await createAgent({
 		id: 'support',
 		name: 'Support',
 		projectId: project.id,
@@ -200,7 +201,7 @@ it('rolls back content moves if the folder write fails', async () => {
 
 it('retains folders and membership when Agent archival fails', async () => {
 	const folder = await createFolder(project, { resourceType: 'agent' });
-	await agents.save({
+	await createAgent({
 		id: 'support',
 		name: 'Support',
 		projectId: project.id,
@@ -231,7 +232,7 @@ it('archives a folder tree at root and preserves Agent definitions, versions, se
 		instructions: 'Answer support requests',
 	});
 	const integrations = [{ type: 'slack' as const, credentialId: 'channel-credential' }];
-	const direct = await agents.save({
+	const direct = await createAgent({
 		id: 'support',
 		name: 'Support',
 		projectId: project.id,
@@ -251,14 +252,14 @@ it('archives a folder tree at root and preserves Agent definitions, versions, se
 		{},
 	);
 	await agents.setActiveVersionFenced(direct.id, direct.publicationRevision, 'saved-version');
-	const archived = await agents.save({
+	const archived = await createAgent({
 		id: 'already-archived',
 		name: 'Archived',
 		projectId: project.id,
 		parentFolderId: child.id,
 		isArchived: true,
 	});
-	const untouched = await agents.save({
+	const untouched = await createAgent({
 		id: 'untouched',
 		name: 'Untouched',
 		projectId: project.id,
@@ -366,7 +367,7 @@ it.each([false, true])(
 	'requires Agent delete permission for folder archival: %s',
 	async (allowed) => {
 		const folder = await createFolder(project, { resourceType: 'agent' });
-		await agents.save({
+		await createAgent({
 			id: 'support',
 			name: 'Support',
 			projectId: project.id,
@@ -394,7 +395,7 @@ it.each([false, true])(
 
 it('rolls back root placement when folder removal fails and permits a retry after archival', async () => {
 	const folder = await createFolder(project, { resourceType: 'agent' });
-	await agents.save({
+	await createAgent({
 		id: 'support',
 		name: 'Support',
 		projectId: project.id,
@@ -425,7 +426,7 @@ it('rolls back root placement when folder removal fails and permits a retry afte
 
 it('retains a folder when an active Agent arrives after archival', async () => {
 	const folder = await createFolder(project, { resourceType: 'agent' });
-	await agents.save({
+	await createAgent({
 		id: 'support',
 		name: 'Support',
 		projectId: project.id,
@@ -435,7 +436,7 @@ it('retains a folder when an active Agent arrives after archival', async () => {
 	const archiveContents = handler.archiveContents.bind(handler);
 	vi.spyOn(handler, 'archiveContents').mockImplementationOnce(async (...args) => {
 		await archiveContents(...args);
-		await agents.save({
+		await createAgent({
 			id: 'new-agent',
 			name: 'New Agent',
 			projectId: project.id,
@@ -470,7 +471,7 @@ it('filters direct and descendant contents and validates placement before a move
 	const workflow = await createFolder(project);
 	const otherProject = await createTeamProject();
 	const otherFolder = await createFolder(otherProject, { resourceType: 'agent' });
-	const agent = await agents.save({
+	const agent = await createAgent({
 		id: 'support',
 		name: 'Support',
 		projectId: project.id,
@@ -525,12 +526,14 @@ it('loads search paths for all result folders together', async () => {
 	});
 	const other = await createFolder(project, { name: 'Sales', resourceType: 'agent' });
 
-	await agents.save([
+	for (const agent of [
 		{ id: 'root', name: 'Support root', projectId: project.id },
 		{ id: 'triage', name: 'Support triage', projectId: project.id, parentFolderId: nested.id },
 		{ id: 'backup', name: 'Support backup', projectId: project.id, parentFolderId: nested.id },
 		{ id: 'sales', name: 'Support sales', projectId: project.id, parentFolderId: other.id },
-	]);
+	]) {
+		await createAgent(agent);
+	}
 	const loadPaths = vi.spyOn(folders, 'getFolderPathsToRoot');
 	const result = await Container.get(AgentsService).findByProjectIdPaginated(project.id, {
 		offset: 0,

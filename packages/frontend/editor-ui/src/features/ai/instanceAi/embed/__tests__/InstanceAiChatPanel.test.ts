@@ -10,7 +10,11 @@ import { mockedStore } from '@/__tests__/utils';
 import { createComponentRenderer } from '@/__tests__/render';
 import { useInstanceAiStore } from '../../instanceAi.store';
 import { useInstanceAiSettingsStore } from '../../instanceAiSettings.store';
-import { forgetAssistantAgentThread } from '../../assistantAgent/assistantAgentThreads';
+import {
+	clearAssistantAgentLaunch,
+	forgetAssistantAgentThread,
+	getAssistantAgentLaunch,
+} from '../../assistantAgent/assistantAgentThreads';
 import { useAssistantAgentThreadsStore } from '../../assistantAgent/assistantAgentThreads.store';
 import {
 	defaultModuleSettings,
@@ -120,7 +124,7 @@ const agentApplyHandoffMock = vi.hoisted(() => vi.fn());
 const AssistantAgentPanelThreadStub = defineComponent({
 	name: 'AssistantAgentPanelThread',
 	props: ['threadId', 'subject', 'newSession', 'beforeSend', 'visible', 'placeholderPreview'],
-	emits: ['content-change'],
+	emits: ['content-change', 'session-created'],
 	methods: {
 		focus: vi.fn(),
 		isDirty: () => false,
@@ -1209,7 +1213,10 @@ describe('InstanceAiChatPanel', () => {
 			listSystemAgentThreadsMock.mockReset().mockResolvedValue({ data: [], nextCursor: null });
 			getSystemAgentThreadMock.mockReset();
 			agentApplyHandoffMock.mockClear();
-			for (const id of ['thread-2', 'aa-1', 'aa-9']) forgetAssistantAgentThread(id);
+			for (const id of ['thread-2', 'aa-1', 'aa-9']) {
+				forgetAssistantAgentThread(id);
+				clearAssistantAgentLaunch(id);
+			}
 		});
 
 		it('starts a new thread on the Assistant agent', async () => {
@@ -1232,6 +1239,31 @@ describe('InstanceAiChatPanel', () => {
 			conversation.vm.$emit('content-change', true);
 			expect(wrapper.emitted('content-change')).toEqual([[true]]);
 			expect(wrapper.find('[data-test-id="conversation-stub"]').exists()).toBe(false);
+		});
+
+		it('opens a new thread in the full view as new, with the agent as its subject', async () => {
+			const wrapper = mountPanel({ subject, launch });
+			await vi.waitFor(() => expect(wrapper.emitted('update:threadId')).toBeTruthy());
+			await wrapper.setProps({ threadId: 'thread-2' });
+			await flushPromises();
+
+			await wrapper.get('[data-test-id="instance-ai-embed-open-full"]').trigger('click');
+			await vi.waitFor(() => expect(routerPush).toHaveBeenCalled());
+
+			expect(getAssistantAgentLaunch('thread-2')).toEqual({ projectId: 'p1', subject });
+		});
+
+		it('opens a thread with messages in the full view without launch data', async () => {
+			const wrapper = mountPanel({ subject, launch });
+			await vi.waitFor(() => expect(wrapper.emitted('update:threadId')).toBeTruthy());
+			await wrapper.setProps({ threadId: 'thread-2' });
+			await flushPromises();
+			wrapper.getComponent(AssistantAgentPanelThreadStub).vm.$emit('session-created');
+
+			await wrapper.get('[data-test-id="instance-ai-embed-open-full"]').trigger('click');
+			await vi.waitFor(() => expect(routerPush).toHaveBeenCalled());
+
+			expect(getAssistantAgentLaunch('thread-2')).toBeUndefined();
 		});
 
 		it('starts a new thread on the current runtime for a user outside the rollout', async () => {

@@ -35,7 +35,7 @@ export class Reset extends BaseCommand {
 		await Container.get(SharedWorkflowRepository).makeOwnerOfAllWorkflows(personalProject);
 		await Container.get(SharedCredentialsRepository).makeOwnerOfAllCredentials(personalProject);
 
-		await Container.get(UserRepository).deleteAllExcept(owner);
+		await Container.get(UserRepository).deleteAllPeopleExcept(owner);
 		await Container.get(UserRepository).save(Object.assign(owner, defaultUserProps));
 
 		const danglingCredentials =

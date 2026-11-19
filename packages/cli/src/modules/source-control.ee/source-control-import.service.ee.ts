@@ -949,6 +949,7 @@ export class SourceControlImportService {
 			await this.preparePublishStateForImport(
 				existingWorkflow,
 				importedWorkflow,
+				versionId,
 				autoPublish,
 				userId,
 			);
@@ -1115,9 +1116,7 @@ export class SourceControlImportService {
 
 		try {
 			this.logger.debug(`Publishing imported workflow id ${workflowId}`);
-			await this.workflowService.activateWorkflow(user, workflowId, {
-				versionId,
-			});
+			await this.workflowService.activateWorkflowFromSourceControlPull(user, workflowId, versionId);
 			return { success: true };
 		} catch (e) {
 			const error = ensureError(e);
@@ -2448,6 +2447,7 @@ export class SourceControlImportService {
 	 *
 	 * @param existingWorkflow - The existing workflow entity, if it exists
 	 * @param importedWorkflow - The workflow being imported (mutated by this method)
+	 * @param versionId - The version the import publishes
 	 * @param autoPublish - The auto-publish mode
 	 * @param userId - The ID of the user performing the import
 	 * @returns Object indicating whether to publish after import and any activation error
@@ -2455,6 +2455,7 @@ export class SourceControlImportService {
 	private async preparePublishStateForImport(
 		existingWorkflow: WorkflowEntity | undefined,
 		importedWorkflow: IWorkflowToImport,
+		versionId: string,
 		autoPublish: AutoPublishMode,
 		userId: string,
 	): Promise<{
@@ -2482,7 +2483,10 @@ export class SourceControlImportService {
 		let publishingErrorDetails: WorkflowPublishBlockedDetails | undefined;
 		if (mustUnpublishLocal && shouldAutoPublishRemote && existingWorkflow) {
 			try {
-				await this.workflowPublishGuard.assertCanPublish(existingWorkflow.id);
+				await this.workflowPublishGuard.assertCanPublish(existingWorkflow.id, {
+					versionId,
+					fromSourceControlPull: true,
+				});
 			} catch (error) {
 				if (!(error instanceof WorkflowPublishBlockedError)) throw error;
 

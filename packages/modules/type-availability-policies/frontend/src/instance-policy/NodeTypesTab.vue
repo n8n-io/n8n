@@ -63,6 +63,8 @@ const rows = computed<InstancePolicyTableRow[]>(() => {
 					displayName: type.name,
 					icon: FALLBACK_NODE_TYPE_ICON,
 				}),
+				// No route counts the node type usage yet, so the usage cells show no value.
+				usage: null,
 			}))
 	);
 });

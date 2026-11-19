@@ -1,6 +1,7 @@
 import { reactive } from 'vue';
 import { screen, waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
+import { ElNotification } from 'element-plus';
 import { createTestingPinia } from '@pinia/testing';
 import { ROLE } from '@n8n/api-types';
 import type { IUser } from '@n8n/rest-api-client/api/users';
@@ -214,6 +215,35 @@ describe('MainSidebarAccountMenu', () => {
 		await waitFor(() => expect(trigger).toHaveAttribute('aria-expanded', 'false'));
 		expect(trigger).toHaveFocus();
 	});
+
+	it.each([false, true])(
+		'dismisses an announcement on the first click while Help is open (collapsed: %s)',
+		async (isCollapsed) => {
+			const { getByTestId } = renderComponent({ props: { isCollapsed } });
+			const notification = ElNotification({
+				title: 'Introducing n8n Agents',
+				message: 'Build agents in n8n',
+				duration: 0,
+				position: 'bottom-left',
+			});
+
+			try {
+				const announcement = await screen.findByRole('alert');
+				const closeButton = announcement.querySelector('.el-notification__closeBtn');
+				if (!(closeButton instanceof HTMLElement)) throw new Error('No announcement close button');
+				const menu = await openMenu(getByTestId('main-sidebar-account-trigger'));
+				await userEvent.hover(within(menu).getByTestId('main-sidebar-account-help'));
+				await screen.findByTestId('main-sidebar-help-about');
+
+				await userEvent.click(closeButton);
+
+				await waitFor(() => expect(announcement).not.toBeVisible());
+				expect(uiStore.openModal).not.toHaveBeenCalled();
+			} finally {
+				notification.close();
+			}
+		},
+	);
 
 	it('reports each open once, and not the close', async () => {
 		const { getByTestId } = renderComponent({ props: { isCollapsed: true } });

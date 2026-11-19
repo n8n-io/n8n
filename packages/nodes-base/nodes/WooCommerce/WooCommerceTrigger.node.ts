@@ -16,6 +16,7 @@ export class WooCommerceTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'WooCommerce Trigger',
 		name: 'wooCommerceTrigger',
+		schemaPath: 'WooCommerce',
 		icon: 'file:wooCommerce.svg',
 		group: ['trigger'],
 		version: 1,

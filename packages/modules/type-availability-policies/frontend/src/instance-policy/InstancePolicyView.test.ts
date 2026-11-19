@@ -28,6 +28,7 @@ vi.mock('../type-availability-policies.api', () => ({
 	fetchNodeTypeSummaries: vi.fn(
 		async () => new Map([['n8n-nodes-base.notion', { displayName: 'Notion', hidden: false }]]),
 	),
+	fetchCredentialTypeUsage: vi.fn(async () => ({})),
 }));
 
 vi.mock('vue-router', () => ({
