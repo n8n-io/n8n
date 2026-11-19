@@ -211,6 +211,123 @@ describe('SettingsSkillsView', () => {
 		});
 	});
 
+	describe('pagination preferences', () => {
+		const key = 'n8n-skills-pagination:alice';
+
+		beforeEach(() => {
+			mockedStore(useUsersStore).currentUserId = 'alice';
+			skillsStore.skills = [skill()];
+			skillsStore.count = 200;
+		});
+
+		it('restores page and page size with a fresh store after changing the controls', async () => {
+			const view = renderView();
+			await userEvent.click(await view.findByTestId('pagination-sizes'));
+			await userEvent.click(await screen.findByRole('option', { name: /25/ }));
+			await userEvent.click(view.getByTestId('pagination-next'));
+			await userEvent.click(view.getByTestId('pagination-next'));
+			await waitFor(() =>
+				expect(JSON.parse(localStorage.getItem(key)!)).toEqual({ page: 2, itemsPerPage: 25 }),
+			);
+			view.unmount();
+
+			createTestingPinia();
+			setPermissions();
+			mockedStore(useUsersStore).currentUserId = 'alice';
+			skillsStore = mockedStore(useSkillsStore);
+			skillsStore.count = 200;
+			skillsStore.skills = [skill()];
+			renderView();
+			await waitFor(() =>
+				expect(skillsStore.fetchSkills).toHaveBeenCalledWith({
+					skip: 50,
+					take: 25,
+					sortBy: 'updatedAt:desc',
+				}),
+			);
+		});
+
+		it.each([false, true])('clamps and saves an invalid page with grouping=%s', async (grouped) => {
+			localStorage.setItem(key, JSON.stringify({ page: 99, itemsPerPage: 10 }));
+			mockedStore(usePostHog).isFeatureEnabled.mockImplementation(
+				(flag) => grouped && String(flag) === SKILL_SYNC_FLAG,
+			);
+			skillsStore.fetchSources.mockResolvedValue([]);
+			skillsStore.fetchSkills.mockImplementation(async () => {
+				skillsStore.count = 23;
+				if (grouped) {
+					skillsStore.page = 2;
+					skillsStore.pageCount = 3;
+				}
+				return {
+					data: skillsStore.skills,
+					count: 23,
+					...(grouped ? { page: 2, pageCount: 3 } : {}),
+				};
+			});
+			renderView();
+			await waitFor(() =>
+				expect(JSON.parse(localStorage.getItem(key)!)).toEqual({ page: 2, itemsPerPage: 10 }),
+			);
+			if (!grouped) {
+				expect(skillsStore.fetchSkills).toHaveBeenLastCalledWith(
+					expect.objectContaining({ skip: 20, take: 10 }),
+				);
+			}
+		});
+
+		it('keeps pagination preferences separate for each user', async () => {
+			localStorage.setItem(key, JSON.stringify({ page: 2, itemsPerPage: 25 }));
+			mockedStore(useUsersStore).currentUserId = 'bob';
+			const view = renderView();
+			await waitFor(() =>
+				expect(skillsStore.fetchSkills).toHaveBeenCalledWith(
+					expect.objectContaining({ skip: 0, take: 10 }),
+				),
+			);
+			await userEvent.click(view.getByTestId('pagination-next'));
+			await waitFor(() =>
+				expect(JSON.parse(localStorage.getItem('n8n-skills-pagination:bob')!)).toEqual({
+					page: 1,
+					itemsPerPage: 10,
+				}),
+			);
+			expect(JSON.parse(localStorage.getItem(key)!)).toEqual({ page: 2, itemsPerPage: 25 });
+		});
+
+		it.each([
+			{ page: -1, itemsPerPage: 0 },
+			{ page: '2', itemsPerPage: 123 },
+		])('uses defaults for invalid saved values %j', async (saved) => {
+			localStorage.setItem(key, JSON.stringify(saved));
+			renderView();
+			await waitFor(() =>
+				expect(skillsStore.fetchSkills).toHaveBeenCalledWith(
+					expect.objectContaining({ skip: 0, take: 10 }),
+				),
+			);
+		});
+
+		it('resets a restored page when the filter changes and keeps the page size', async () => {
+			localStorage.setItem(key, JSON.stringify({ page: 2, itemsPerPage: 25 }));
+			const view = renderView();
+			await waitFor(() =>
+				expect(skillsStore.fetchSkills).toHaveBeenCalledWith(
+					expect.objectContaining({ skip: 50, take: 25 }),
+				),
+			);
+			await pickFilter(view, 'skills-filter-scope', 'Projects');
+			await waitFor(() =>
+				expect(skillsStore.fetchSkills).toHaveBeenLastCalledWith(
+					expect.objectContaining({ skip: 0, take: 25, scope: 'project' }),
+				),
+			);
+			await waitFor(() =>
+				expect(JSON.parse(localStorage.getItem(key)!)).toEqual({ page: 0, itemsPerPage: 25 }),
+			);
+		});
+	});
+
 	it('shows the empty state when there are no skills', async () => {
 		const { findByTestId } = renderView();
 
@@ -2163,6 +2280,34 @@ describe('SettingsSkillsView', () => {
 					JSON.parse(localStorage.getItem('n8n-skills-collapsed-sources:anonymous') ?? '[]'),
 				).toEqual(['src-1']);
 				localStorage.removeItem('n8n-skills-collapsed-sources:anonymous');
+			});
+
+			it('keeps the current page when folding and unfolding a source on a later page', async () => {
+				mockedStore(useUsersStore).currentUserId = 'alice';
+				localStorage.setItem(
+					'n8n-skills-pagination:alice',
+					JSON.stringify({ page: 2, itemsPerPage: 10 }),
+				);
+				skillsStore.fetchSkills.mockImplementation(async () => {
+					skillsStore.page = 2;
+					skillsStore.pageCount = 3;
+					skillsStore.count = 23;
+					return { data: skillsStore.skills, count: 23, page: 2, pageCount: 3 };
+				});
+				const view = await renderWithSource();
+				for (const expanded of ['false', 'true']) {
+					skillsStore.fetchSkills.mockClear();
+					await userEvent.click(view.getByTestId('skill-group-toggle'));
+					await waitFor(() =>
+						expect(skillsStore.fetchSkills).toHaveBeenCalledWith(
+							expect.objectContaining({ page: 2 }),
+						),
+					);
+					expect(skillsStore.fetchSkills).not.toHaveBeenCalledWith(
+						expect.objectContaining({ focusSourceId: expect.anything() }),
+					);
+					expect(view.getByTestId('skill-group-toggle')).toHaveAttribute('aria-expanded', expanded);
+				}
 			});
 
 			it('forgets the folds of sources that are gone', async () => {

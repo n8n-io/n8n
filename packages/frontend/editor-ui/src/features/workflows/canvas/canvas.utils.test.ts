@@ -8,6 +8,7 @@ import {
 	mapCanvasConnectionToLegacyConnection,
 	mapLegacyConnectionsToCanvasConnections,
 	mapLegacyEndpointsToCanvasConnectionPort,
+	nodeNeedsCredentialSetup,
 	parseCanvasConnectionHandleString,
 	resolveCanonicalConnection,
 	shouldIgnoreCanvasShortcut,
@@ -1243,5 +1244,49 @@ describe('computeNodeDisplaySize', () => {
 		expect(
 			displaySize([AiLanguageModel, AiMemory, AiTool, AiOutputParser], [AiTool], configurable),
 		).toEqual({ width: 224, height: 96 });
+	});
+});
+
+describe('nodeNeedsCredentialSetup', () => {
+	const credentialIssue = { notionApi: ['Credentials for Notion are not set.'] };
+
+	function nodeWith(overrides: Partial<INodeUi>): INodeUi {
+		return { ...createTestNode({ id: 'a', name: 'Alpha' }), ...overrides } as INodeUi;
+	}
+
+	it('is true when the only issue is a credential without an id', () => {
+		expect(nodeNeedsCredentialSetup(nodeWith({ issues: { credentials: credentialIssue } }))).toBe(
+			true,
+		);
+	});
+
+	it.each([
+		['the node is missing', undefined],
+		['the node has no credential issues', nodeWith({ issues: {} })],
+		[
+			'the node also has parameter issues',
+			nodeWith({
+				issues: {
+					credentials: credentialIssue,
+					parameters: { pageId: ['Parameter "Page" is required.'] },
+				},
+			}),
+		],
+		[
+			'the credential is already selected',
+			nodeWith({
+				issues: { credentials: credentialIssue },
+				credentials: { notionApi: { id: '1', name: 'Notion account' } },
+			}),
+		],
+		[
+			'the credential is managed by Gateway credits',
+			nodeWith({
+				issues: { credentials: credentialIssue },
+				credentials: { notionApi: { id: null, name: '', __aiGatewayManaged: true } },
+			}),
+		],
+	])('is false when %s', (_, node) => {
+		expect(nodeNeedsCredentialSetup(node)).toBe(false);
 	});
 });

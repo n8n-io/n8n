@@ -1,10 +1,14 @@
+import type {
+	ExecutionRef,
+	ExecutionDataPayload,
+	BundleWorkflowSnapshot,
+} from '@n8n/backend-services';
 import { ExecutionData, ExecutionDataRepository } from '@n8n/db';
 import type { EntityManager } from '@n8n/db';
 import { Service } from '@n8n/di';
 import chunk from 'lodash/chunk';
 
 import { MissingExecutionDataError } from './missing-execution-data.error';
-import type { ExecutionRef, ExecutionDataPayload, BundleWorkflowSnapshot } from './types';
 
 // Max number of ids per IN-clause. Conservative, as some databases cap near 1000.
 const MAX_READ_BATCH_SIZE = 900;

@@ -1,4 +1,4 @@
-import { redactText } from '@n8n/utils/redaction/redact-text';
+import { redactText } from './redact-text';
 
 const MAX_SANDBOX_ERROR_DETAIL_CHARS = 2_000;
 

@@ -940,6 +940,47 @@ describe('buildThreadArtifactsBlock', () => {
 		expect(block).toContain('currently viewing its execution `exec-9`');
 	});
 
+	it('names the execution that a workflow tab shows', () => {
+		const block = buildThreadArtifactsBlock({
+			artifacts: [
+				{ type: 'workflow', id: 'wf-1', name: 'Digest', executionId: 'exec-7' },
+				{ type: 'workflow', id: 'wf-2', name: 'Report' },
+			],
+			activeId: 'wf-1',
+		});
+
+		expect(block).toContain(
+			'  - Workflow "Digest" (id: `wf-1`) [current], currently viewing its execution `exec-7`',
+		);
+		expect(block).toContain('  - Workflow "Report" (id: `wf-2`)\n');
+	});
+
+	it('names the execution of the tab next to the nodes that the user selected in it', () => {
+		const block = buildThreadArtifactsBlock(
+			{
+				artifacts: [{ type: 'workflow', id: 'wf-1', name: 'Digest', executionId: 'exec-7' }],
+				activeId: 'wf-1',
+			},
+			[{ type: 'nodes', workflowId: 'wf-1', sets: [{ nodes: [{ id: 'n1', name: 'Linear' }] }] }],
+		);
+
+		expect(block).toContain('currently viewing its execution `exec-7`');
+		expect(block).toContain('  - Selected nodes in workflow `wf-1`:\n    - Node "Linear".');
+	});
+
+	it('prefers the handed-off execution to the execution of the tab', () => {
+		const block = buildThreadArtifactsBlock(
+			{
+				artifacts: [{ type: 'workflow', id: 'wf-1', name: 'Digest', executionId: 'exec-7' }],
+				activeId: 'wf-1',
+			},
+			[{ type: 'workflow', id: 'wf-1', name: 'Digest', executionId: 'exec-9' }],
+		);
+
+		expect(block).toContain('currently viewing its execution `exec-9`');
+		expect(block).not.toContain('exec-7`');
+	});
+
 	it('ignores an activeId that is not in the list', () => {
 		const block = buildThreadArtifactsBlock({
 			artifacts: [{ type: 'agent', id: 'agent-1', name: 'Triage', projectId: 'proj-1' }],
