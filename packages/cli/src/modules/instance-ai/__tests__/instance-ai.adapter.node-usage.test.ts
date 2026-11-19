@@ -8,16 +8,7 @@ vi.mock('@n8n/instance-ai', async () => {
 		WorkflowNotFoundError,
 		WorkflowEditorLockedError,
 		wrapUntrustedData: (content: string) => content,
-		builderTemplatesOptionsFromEnv: () => ({}),
 		deriveCredentialHosts: vi.fn().mockReturnValue([]),
-		BuilderTemplatesService: class {
-			async getBundle() {
-				return { files: [], indexTxt: '', version: null };
-			}
-			getVersion() {
-				return null;
-			}
-		},
 	};
 });
 

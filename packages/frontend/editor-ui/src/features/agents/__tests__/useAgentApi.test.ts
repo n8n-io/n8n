@@ -220,6 +220,25 @@ describe('useAgentApi', () => {
 			]);
 		});
 
+		it('reads a page of chat messages, with the cursor only when set', async () => {
+			vi.mocked(makeRestApiRequest).mockResolvedValue({ messages: [], openSuspensions: [] });
+
+			await getChatMessages(restApiContext, 'project-1', 'agent-1', 'thread-1');
+			await getChatMessages(restApiContext, 'project-1', 'agent-1', 'thread-1', 'chat', {
+				limit: 20,
+			});
+			await getChatMessages(restApiContext, 'project-1', 'agent-1', 'thread-1', 'chat', {
+				limit: 20,
+				cursor: 'cursor-1',
+			});
+
+			expect(vi.mocked(makeRestApiRequest).mock.calls.map((call) => call.slice(3))).toEqual([
+				[],
+				[{ limit: '20' }],
+				[{ limit: '20', cursor: 'cursor-1' }],
+			]);
+		});
+
 		it('lists a page of system-agent threads, with the cursor and search only when set', async () => {
 			vi.mocked(makeRestApiRequest).mockResolvedValue({ data: [], nextCursor: null });
 

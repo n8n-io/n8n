@@ -21,6 +21,7 @@ export class GoogleDriveTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Google Drive Trigger',
 		name: 'googleDriveTrigger',
+		schemaPath: 'Google/Drive',
 		icon: 'file:googleDrive.svg',
 		group: ['trigger'],
 		version: 1,

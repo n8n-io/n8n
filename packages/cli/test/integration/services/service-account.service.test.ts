@@ -106,13 +106,16 @@ describe('ServiceAccountService', () => {
 	});
 
 	describe('remove', () => {
+		// These accounts belong to no agent, so there is no agent row to delete first.
+		const noAgent = { cleanUp: async () => {}, deleteInTransaction: async () => {} };
+
 		it('removes the account, its details, its personal project and the shares into it', async () => {
 			const person = await createMember();
 			const workflow = await createWorkflow({}, person);
 			const { serviceAccount, project } = await service.create('Support agent');
 			await shareWorkflowWithProjects(workflow, [{ project }]);
 
-			await service.remove(serviceAccount.id, person);
+			await service.remove(serviceAccount.id, person, undefined, {}, noAgent);
 
 			expect(await rowsOf(serviceAccount.id, project.id)).toEqual({
 				user: null,
@@ -130,7 +133,7 @@ describe('ServiceAccountService', () => {
 			const { serviceAccount, project } = await service.create('Support agent');
 			await manager.save(AuthIdentity.create(serviceAccount, 'agent-subject', 'oidc'));
 
-			await service.remove(serviceAccount.id, person);
+			await service.remove(serviceAccount.id, person, undefined, {}, noAgent);
 
 			expect(await rowsOf(serviceAccount.id, project.id)).toMatchObject({
 				user: null,
@@ -145,7 +148,7 @@ describe('ServiceAccountService', () => {
 			const workflow = await createWorkflow({}, project);
 			const target = await getPersonalProject(person);
 
-			await service.remove(serviceAccount.id, person, target.id);
+			await service.remove(serviceAccount.id, person, target.id, {}, noAgent);
 
 			expect(await rowsOf(serviceAccount.id, project.id)).toMatchObject({
 				user: null,
@@ -163,7 +166,7 @@ describe('ServiceAccountService', () => {
 			const { serviceAccount, project } = await service.create('Support agent');
 			const workflow = await createWorkflow({}, project);
 
-			await service.remove(serviceAccount.id, person);
+			await service.remove(serviceAccount.id, person, undefined, {}, noAgent);
 
 			expect(await rowsOf(serviceAccount.id, project.id)).toMatchObject({
 				user: null,
@@ -176,7 +179,7 @@ describe('ServiceAccountService', () => {
 			const person = await createMember();
 			const actor = await createMember();
 
-			await service.remove(person.id, actor);
+			await service.remove(person.id, actor, undefined, {}, noAgent);
 
 			expect(await manager.existsBy(User, { id: person.id })).toBe(true);
 			expect(await manager.existsBy(Project, { type: 'personal', creatorId: person.id })).toBe(

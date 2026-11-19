@@ -28,6 +28,10 @@ vi.mock('../data-tables.tool', () => ({
 	})),
 }));
 
+vi.mock('../data-tables/change-data-tables.tool', () => ({
+	createChangeDataTablesTool: vi.fn(() => ({ id: 'change_data_tables' })),
+}));
+
 vi.mock('../agent-context.tool', () => ({
 	createAgentContextTool: vi.fn(() => ({ id: 'agent-context' })),
 }));
@@ -155,8 +159,9 @@ describe('domain tool construction', () => {
 			test_credential: { id: 'test_credential' },
 			delete_credential: { id: 'delete_credential' },
 			list_data_tables: { id: 'data-table:list' },
+			get_data_table_schema: { id: 'data-table:schema' },
 			query_data_table: { id: 'data-table:query' },
-			delete_data_table_rows: { id: 'data-table:delete-rows' },
+			change_data_tables: { id: 'change_data_tables' },
 			list_projects: { id: 'workspace:list-projects' },
 			list_tags: { id: 'workspace:list-tags' },
 			tag_workflow: { id: 'workspace:tag-workflow' },
@@ -206,8 +211,20 @@ describe('domain tool construction', () => {
 		expect(createExecuteNodeTool).toHaveBeenCalledWith(context);
 		expect(createSearchModelsTool).toHaveBeenCalledOnce();
 		expect(createDataTableTool).toHaveBeenCalledWith(context, 'list');
-		expect(createDataTableTool).toHaveBeenCalledWith(context, 'delete-rows');
+		expect(createDataTableTool).toHaveBeenCalledTimes(3);
 		expect(orchestratorTools.has('data_tables')).toBe(false);
+		for (const name of [
+			'create_data_table',
+			'delete_data_table',
+			'add_data_table_column',
+			'delete_data_table_column',
+			'rename_data_table_column',
+			'insert_data_table_rows',
+			'update_data_table_rows',
+			'delete_data_table_rows',
+		]) {
+			expect(orchestratorTools.has(name)).toBe(false);
+		}
 		expect(orchestratorTools.has('workflow_builder_executions')).toBe(false);
 	});
 
@@ -237,7 +254,8 @@ describe('domain tool construction', () => {
 		expect(getToolGroup('list_workflows')).toBe('workflows');
 		expect(getToolGroup('workflow_builder_build_workflow')).toBe('workflows');
 		expect(getToolGroup('run_workflow')).toBe('executions');
-		expect(getToolGroup('insert_data_table_rows')).toBe('data_tables');
+		expect(getToolGroup('query_data_table')).toBe('data_tables');
+		expect(getToolGroup('change_data_tables')).toBe('data_tables');
 		expect(getToolGroup('setup_credentials')).toBe('credentials');
 		expect(getToolGroup('agent_builder_write_config')).toBe('agents');
 		expect(getToolGroup('list_folders')).toBe('instance');

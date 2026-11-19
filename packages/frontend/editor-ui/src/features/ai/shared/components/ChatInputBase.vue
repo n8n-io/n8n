@@ -144,6 +144,11 @@ function getInputElement(): HTMLTextAreaElement | undefined {
 	return inputRef.value?.getInputElement();
 }
 
+/** Returns the element around the send and stop button while the component is mounted. */
+function getSendStopButtonElement(): HTMLElement | undefined {
+	return inputRef.value?.getSendStopButtonElement();
+}
+
 /**
  * Keep the files the backend will accept and warn about the rest.
  *
@@ -240,6 +245,7 @@ function handleSubmit() {
 defineExpose({
 	focus: focusInput,
 	getInputElement,
+	getSendStopButtonElement,
 	openFilePicker: handleAttach,
 });
 </script>

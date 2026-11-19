@@ -1470,6 +1470,48 @@ describe('useResourceRegistry', () => {
 		);
 	});
 
+	describe('batch data table changes', () => {
+		const table = (id: string, name: string) => ({ id, name, projectId: 'proj-1' });
+
+		test('registers each changed table as a built artifact and skips deleted tables', async () => {
+			const { messages, producedArtifacts, linkableResourceNameIndex, producedArtifactOrigins } =
+				setup();
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolName: 'change_data_tables',
+								args: { changes: [] },
+								result: {
+									success: false,
+									applied: [
+										{ index: 0, action: 'create', table: table('dt-a', 'Leads'), result: {} },
+										{ index: 1, action: 'insert-rows', table: table('dt-b', 'Orders'), result: {} },
+										{ index: 2, action: 'add-column', table: table('dt-c', 'Old'), result: {} },
+										{ index: 3, action: 'delete', table: table('dt-c', 'Old'), result: {} },
+									],
+									failed: { index: 4, action: 'update-rows', error: 'Bad filter' },
+									skipped: [5],
+								},
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect([...producedArtifacts.keys()]).toEqual(['dt-a', 'dt-b']);
+			expect(producedArtifacts.get('dt-b')).toEqual({
+				type: 'data-table',
+				...table('dt-b', 'Orders'),
+			});
+			expect(linkableResourceNameIndex.get('leads')?.id).toBe('dt-a');
+			expect(producedArtifactOrigins.get('dt-a')).toBe('built');
+		});
+	});
+
 	describe('in-place reactivity contract', () => {
 		function setupWithArtifact() {
 			const result = setup();

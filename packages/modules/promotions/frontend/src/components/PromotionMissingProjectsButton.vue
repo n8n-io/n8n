@@ -14,7 +14,6 @@ import PromotionMissingProjectsDialog from './PromotionMissingProjectsDialog.vue
 const props = defineProps<{
 	environmentId: string;
 	environmentName: string;
-	connected: boolean;
 	busy?: boolean;
 }>();
 
@@ -49,7 +48,6 @@ async function load() {
 	const isLatestLoad = nextLoad();
 	projects.value = undefined;
 	loadError.value = undefined;
-	if (!props.connected) return;
 	try {
 		const { data } = await fetchMissingPromotionProjects(
 			rootStore.publicApiContext,
@@ -61,7 +59,7 @@ async function load() {
 	}
 }
 
-watch(() => [props.environmentId, props.connected], load, { immediate: true });
+watch(() => props.environmentId, load, { immediate: true });
 
 // After a failed check the button stays enabled, so a click checks again.
 async function onClick() {

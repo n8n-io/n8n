@@ -43,6 +43,10 @@ describe('AgentProjectCleanupService', () => {
 		vi.resetAllMocks();
 		agents.findByProjectId.mockResolvedValue([]);
 		executions.hasRunningForProject.mockResolvedValue(false);
+		// The real service runs the cleanup inside this call, after the work of the account moved.
+		agentServiceAccount.deleteForAgent.mockImplementation(
+			async (_agent, _actor, _transferId, _ctx, cleanUp) => await cleanUp(),
+		);
 	});
 	afterEach(() => vi.useRealTimers());
 
@@ -74,6 +78,7 @@ describe('AgentProjectCleanupService', () => {
 		await vi.advanceTimersByTimeAsync(60_000);
 		await result;
 		expect(agents.findByProjectId).not.toHaveBeenCalled();
+		expect(executionService.deleteExecutionLogsForAgent).not.toHaveBeenCalled();
 		expect(executionService.deleteMemoryThreadsForProject).not.toHaveBeenCalled();
 	});
 
@@ -86,7 +91,7 @@ describe('AgentProjectCleanupService', () => {
 
 	it('removes the service account of each agent with the transfer target', async () => {
 		const first = mock<ProjectAgent>({ id: 'agent-1', identityId: 'sa-1' });
-		const second = mock<ProjectAgent>({ id: 'agent-2', identityId: null });
+		const second = mock<ProjectAgent>({ id: 'agent-2', identityId: 'sa-2' });
 		agents.findByProjectId.mockResolvedValue([first, second]);
 
 		const ctx = { security: mock<SecurityContext>({ subIdentityId: 'login-1' }) };
@@ -94,8 +99,16 @@ describe('AgentProjectCleanupService', () => {
 		await service.cleanupProject('project-1', { actor, transferId: 'target-1', ctx });
 
 		expect(agentServiceAccount.deleteForAgent).toHaveBeenCalledTimes(2);
-		expect(agentServiceAccount.deleteForAgent).toHaveBeenCalledWith(first, actor, 'target-1', ctx);
-		expect(agentServiceAccount.deleteForAgent).toHaveBeenCalledWith(second, actor, 'target-1', ctx);
+		for (const agent of [first, second]) {
+			expect(agentServiceAccount.deleteForAgent).toHaveBeenCalledWith(
+				agent,
+				actor,
+				'target-1',
+				ctx,
+				expect.any(Function),
+			);
+			expect(executionService.deleteExecutionLogsForAgent).toHaveBeenCalledWith(agent.id);
+		}
 	});
 
 	it('stops the project deletion when a service account cannot be removed', async () => {
@@ -107,6 +120,7 @@ describe('AgentProjectCleanupService', () => {
 		await expect(service.cleanupProject('project-1', { actor })).rejects.toThrow(
 			'transfer blocked',
 		);
+		expect(executionService.deleteExecutionLogsForAgent).not.toHaveBeenCalled();
 		expect(executionService.deleteMemoryThreadsForProject).not.toHaveBeenCalled();
 	});
 });

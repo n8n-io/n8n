@@ -22,7 +22,7 @@ export class ExecutionLedgerRowWriter implements ExecutionLedgerWriter {
 	) {}
 
 	async writeStarted(facts: ExecutionLedgerStartedFacts, ctx: OperationContext): Promise<boolean> {
-		const projectId = await this.findProjectId(facts.workflowId, ctx);
+		const projectId = facts.projectId ?? (await this.findProjectId(facts.workflowId, ctx));
 		if (!projectId) return false;
 
 		await this.repository.append(toStartedRow(facts, projectId, uuidv7()), ctx);
@@ -30,7 +30,7 @@ export class ExecutionLedgerRowWriter implements ExecutionLedgerWriter {
 	}
 
 	async writeEnded(facts: ExecutionLedgerEndedFacts, ctx: OperationContext): Promise<boolean> {
-		const projectId = await this.findProjectId(facts.workflowId, ctx);
+		const projectId = facts.projectId ?? (await this.findProjectId(facts.workflowId, ctx));
 		if (!projectId) return false;
 
 		await this.repository.append(toEndedRow(facts, projectId, uuidv7()), ctx);

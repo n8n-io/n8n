@@ -1,0 +1,14 @@
+{
+	"properties": {
+		"about": {
+			"type": ["null", "string"]
+		},
+		"karma": {
+			"type": "number"
+		},
+		"username": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

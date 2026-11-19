@@ -1,3 +1,4 @@
+import { createExecutionRef, type ExecutionDataPayload } from '@n8n/backend-services';
 import { createWorkflow, testDb } from '@n8n/backend-test-utils';
 import {
 	ExecutionData,
@@ -11,8 +12,6 @@ import { DataSource, type Repository } from '@n8n/typeorm';
 
 import { DbStore } from '../db-store';
 import { MissingExecutionDataError } from '../missing-execution-data.error';
-import { createExecutionRef } from '../types';
-import type { ExecutionDataPayload } from '../types';
 import { payload, workflowId } from './mocks';
 
 let dbStore: DbStore;
