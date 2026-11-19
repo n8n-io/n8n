@@ -1139,13 +1139,13 @@ export class AgentsBuilderToolsService {
 						(before.activeVersionId ?? null) !== confirmed.data.liveVersionId ||
 						before.revision !== confirmed.data.revision
 					) {
-						return await this.askToPublish(ctx, agentId, projectId, versionId);
+						return await this.askToPublish(ctx, agentId, projectId, versionId, confirmed.success);
 					}
 					try {
 						const beforeActiveVersionId = before.activeVersionId;
 						const beforeVersionId = before.versionId;
-						// A draft goes live at the revision the card showed, so any draft write since then
-						// fails the publish. A history version cannot change.
+						// The agent goes live at the revision the card showed, so any write since the check
+						// above fails the publish instead of putting something unseen live.
 						const { agent } = await this.agentPublishService.publishAgent(
 							agentId,
 							projectId,
@@ -1153,7 +1153,7 @@ export class AgentsBuilderToolsService {
 							{ by: 'builder', trigger: 'explicit' },
 							draftCard ? undefined : versionId,
 							undefined,
-							draftCard ? confirmed.data.revision : undefined,
+							confirmed.data.revision,
 						);
 						return {
 							ok: true,
@@ -1185,10 +1185,11 @@ export class AgentsBuilderToolsService {
 		agentId: string,
 		projectId: string,
 		versionId: string | undefined,
+		changedSinceAsked = false,
 	) {
 		let card: { confirmation: PublishConfirmation; continuation: PublishContinuation } | undefined;
 		try {
-			card = await this.buildPublishConfirmation(agentId, projectId, versionId);
+			card = await this.buildPublishConfirmation(agentId, projectId, versionId, changedSinceAsked);
 		} catch (e) {
 			return { ok: false, errors: [{ message: e instanceof Error ? e.message : String(e) }] };
 		}
@@ -1204,6 +1205,7 @@ export class AgentsBuilderToolsService {
 		agentId: string,
 		projectId: string,
 		versionId: string | undefined,
+		changedSinceAsked: boolean,
 	): Promise<{ confirmation: PublishConfirmation; continuation: PublishContinuation } | undefined> {
 		const agent = await this.agentsService.findById(agentId, projectId);
 		if (!agent) return undefined;
@@ -1247,6 +1249,7 @@ export class AgentsBuilderToolsService {
 			selectedVersion,
 			sendTargets: targets.sendTargets,
 			...(targets.moreSendTargets > 0 ? { moreSendTargets: targets.moreSendTargets } : {}),
+			...(changedSinceAsked ? { changedSinceAsked: true } : {}),
 		} satisfies InstanceAiApprovalDetails;
 		const name = agent.name || 'the agent';
 		const headline = {
@@ -1283,7 +1286,7 @@ export class AgentsBuilderToolsService {
 		return {
 			confirmation: {
 				// Clients that cannot read the details show this text instead.
-				message: `${headline} ${sends}`,
+				message: `${changedSinceAsked ? 'The agent changed since you were asked. ' : ''}${headline} ${sends}`,
 				severity: 'warning',
 				...(agent.name ? { resourceName: agent.name } : {}),
 				approvalDetails,

@@ -70,6 +70,12 @@ describe('approval details', () => {
 			);
 		});
 
+		it('says why a card replaces an earlier one', () => {
+			expect(formatApprovalDetails(details({ changedSinceAsked: true }))).toMatch(
+				/^The agent changed since you were asked\. Check what goes live again\.\n\n/,
+			);
+		});
+
 		it('counts the targets left out by the limit', () => {
 			const output = formatApprovalDetails(
 				details({

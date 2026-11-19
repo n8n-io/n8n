@@ -3483,7 +3483,11 @@ describe('AgentsBuilderToolsService', () => {
 				},
 			});
 			expect(result).toMatchObject({
-				approvalDetails: { action: 'publish-agent', liveAvailability: 'unpublished' },
+				approvalDetails: {
+					action: 'publish-agent',
+					liveAvailability: 'unpublished',
+					changedSinceAsked: true,
+				},
 			});
 		});
 
@@ -3613,6 +3617,7 @@ describe('AgentsBuilderToolsService', () => {
 				},
 			});
 			expect(result).toMatchObject({ approvalDetails: { action: 'publish-agent' } });
+			expect(result).not.toHaveProperty('approvalDetails.changedSinceAsked');
 		});
 
 		it('guards a publish that names the current draft by the draft revision', async () => {
@@ -3727,7 +3732,7 @@ describe('AgentsBuilderToolsService', () => {
 			});
 		});
 
-		it('does not tie a history version publish to the draft revision', async () => {
+		it('publishes a history version at the revision the card showed', async () => {
 			const { service, agentsService, agentPublishService } = makeService();
 			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
 			agentsService.findById.mockResolvedValue({
@@ -3761,7 +3766,7 @@ describe('AgentsBuilderToolsService', () => {
 				{ by: 'builder', trigger: 'explicit' },
 				'v-history',
 				undefined,
-				undefined,
+				7,
 			);
 		});
 
@@ -3941,7 +3946,7 @@ describe('AgentsBuilderToolsService', () => {
 				{ by: 'builder', trigger: 'explicit' },
 				'v-history',
 				undefined,
-				undefined,
+				0,
 			);
 			expect(result).toEqual({
 				ok: true,

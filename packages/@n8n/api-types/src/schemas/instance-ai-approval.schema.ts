@@ -159,6 +159,8 @@ export const instanceAiApprovalDetailsSchema = z.discriminatedUnion('action', [
 		sendTargets: z.array(agentPublishSendTargetSchema).max(AGENT_PUBLISH_SEND_TARGETS_LIMIT),
 		/** Send targets left out of `sendTargets` by the limit. */
 		moreSendTargets: z.number().int().nonnegative().optional(),
+		/** True when the agent changed after an earlier card, so this card replaces it. */
+		changedSinceAsked: z.boolean().optional(),
 	}),
 	z.object({
 		action: z.literal('publish-workflow'),

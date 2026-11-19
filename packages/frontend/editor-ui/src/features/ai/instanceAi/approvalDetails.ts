@@ -243,6 +243,7 @@ type PublishAgentDetails = Extract<InstanceAiApprovalDetails, { action: 'publish
 /** The go live confirmation: what goes live, then what might get sent for real, as the panel lists it. */
 function formatPublishAgent(details: PublishAgentDetails, t: Translate): string {
 	const lines = [
+		...(details.changedSinceAsked ? [t('instanceAi.approval.publishAgent.changedSinceAsked')] : []),
 		t(
 			details.selectedVersion
 				? 'instanceAi.approval.publishAgent.version'
