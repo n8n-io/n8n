@@ -4,6 +4,8 @@ import { FILES } from './spec';
 type HookedMethod = Pick<HookSpec, 'file' | 'target' | 'method'> & {
 	/** First release that has the method; scenarios on older images do not hook it. */
 	since?: string;
+	/** Loads only on a stack that runs engine v2. */
+	engine?: boolean;
 };
 
 /** Methods the scenarios hook, so a contract test can check they exist in each image. */
@@ -34,6 +36,48 @@ export const HOOKED_METHODS: HookedMethod[] = [
 		method: 'processRunExecutionData',
 	},
 	{ file: FILES.workflowExecute, target: 'WorkflowExecute.prototype', method: 'runNode' },
+	{
+		file: FILES.engineExecutionStart,
+		target: 'ExecutionStartHandler.prototype',
+		method: 'handle',
+		engine: true,
+	},
+	{
+		file: FILES.engineStepReady,
+		target: 'StepReadyHandler.prototype',
+		method: 'handle',
+		engine: true,
+	},
+	{
+		file: FILES.engineStepSettled,
+		target: 'StepSettledHandler.prototype',
+		method: 'handle',
+		engine: true,
+	},
+	{
+		file: FILES.engineExecutionStore,
+		target: 'TypeOrmExecutionStore.prototype',
+		method: 'loadExecution',
+		engine: true,
+	},
+	{
+		file: FILES.engineStepStore,
+		target: 'TypeOrmStepStore.prototype',
+		method: 'claimStep',
+		engine: true,
+	},
+	{
+		file: FILES.engineStepStore,
+		target: 'TypeOrmStepStore.prototype',
+		method: 'completeStep',
+		engine: true,
+	},
+	{
+		file: FILES.engineStepStore,
+		target: 'TypeOrmStepStore.prototype',
+		method: 'loadStep',
+		engine: true,
+	},
 ];
 
 const release = (version: string) => version.split('.').map(Number);
@@ -46,10 +90,10 @@ export function olderThan(tag: string, version: string): boolean {
 	return index !== -1 && a[index] < b[index];
 }
 
-/** An observe hook for every method hooked on this image tag, named after its position in the list. */
+/** An observe hook for every method hooked on this image tag without engine v2, named after its position in the list. */
 export const observeHookedMethods = (tag: string): HookSpec[] =>
-	HOOKED_METHODS.flatMap(({ since, ...ref }, index) =>
-		since && olderThan(tag, since)
+	HOOKED_METHODS.flatMap(({ since, engine, ...ref }, index) =>
+		engine || (since && olderThan(tag, since))
 			? []
 			: [{ ...ref, point: `method-${index}`, kind: 'observe' as const, lazy: true }],
 	);
