@@ -9,7 +9,7 @@ const sourceLabels: Record<string, string> = {
 	api: 'api (public API)',
 };
 
-export class AllowApiSourceOnAiPreference1794926117436 implements ReversibleMigration {
+export class AllowApiSourceOnAiPreference1795072647380 implements ReversibleMigration {
 	async up(context: MigrationContext) {
 		await this.setSources(context, ['ui', 'aia', 'mcp', 'api']);
 	}

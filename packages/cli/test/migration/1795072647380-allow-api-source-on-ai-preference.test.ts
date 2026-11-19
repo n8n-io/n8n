@@ -10,7 +10,7 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
-const migrationName = 'AllowApiSourceOnAiPreference1794926117436';
+const migrationName = 'AllowApiSourceOnAiPreference1795072647380';
 
 describe('AllowApiSourceOnAiPreference migration', () => {
 	let dataSource: DataSource;
