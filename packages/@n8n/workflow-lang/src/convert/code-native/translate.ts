@@ -3389,7 +3389,10 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 				return;
 			}
 			if (ts.isVariableDeclaration(p)) {
-				if (!isDateStart(e)) refuse('A variable gets a value that can be a Date.');
+				// A `var` name is hoisted without the type Date: it holds a Date value.
+				const blockScoped =
+					ts.isVariableDeclarationList(p.parent) && (p.parent.flags & ts.NodeFlags.BlockScoped) !== 0;
+				if (!blockScoped || !isDateStart(e)) refuse('A variable gets a value that can be a Date.');
 				return;
 			}
 			if (ts.isPropertyAssignment(p)) {
