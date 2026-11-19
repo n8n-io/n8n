@@ -1,6 +1,6 @@
 import type { PromotionSettings, UpdatePromotionSettingsDto } from '@n8n/api-types';
 import { EventService, RoleService } from '@n8n/backend-services';
-import { type OperationContext, SettingsRepository } from '@n8n/db';
+import { type OperationContext, SettingsRepository, TransactionRunner } from '@n8n/db';
 import { Service } from '@n8n/di';
 import {
 	getPromotionScopesOfProjectRoles,
@@ -26,6 +26,7 @@ const POLICY_SETTING_NAMES = {
 export class PromotionSettingsService {
 	constructor(
 		private readonly settingsRepository: SettingsRepository,
+		private readonly txRunner: TransactionRunner,
 		private readonly roleService: RoleService,
 		private readonly eventService: EventService,
 	) {}
@@ -44,14 +45,16 @@ export class PromotionSettingsService {
 	): Promise<PromotionSettings> {
 		const before = await this.get();
 
-		for (const setting of PROMOTION_PROJECT_ACCESS_SETTINGS) {
-			await this.settingsRepository.upsertByKey(
-				PROMOTION_PROJECT_ACCESS_SETTING_KEYS[setting],
-				settings[setting],
-				false,
-				ctx,
-			);
-		}
+		await this.txRunner.run(ctx, async (trxCtx) => {
+			for (const setting of PROMOTION_PROJECT_ACCESS_SETTINGS) {
+				await this.settingsRepository.upsertByKey(
+					PROMOTION_PROJECT_ACCESS_SETTING_KEYS[setting],
+					settings[setting],
+					false,
+					trxCtx,
+				);
+			}
+		});
 
 		const after = await this.get();
 		// Report the change once it is saved. If the role update below fails, a retry finds

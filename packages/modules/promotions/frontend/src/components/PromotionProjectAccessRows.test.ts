@@ -33,7 +33,8 @@ const renderRows = createComponentRenderer(PromotionProjectAccessRows, {
 
 async function choose(option: string) {
 	const select = screen.getByRole('combobox', { name: 'Who can promote' });
-	await waitFor(() => expect(select).toBeEnabled());
+	// N8nSelect2 marks a disabled trigger with `data-disabled`, not the `disabled` attribute.
+	await waitFor(() => expect(select).not.toHaveAttribute('data-disabled'));
 	await userEvent.click(select);
 	await userEvent.click(await screen.findByRole('option', { name: option }));
 	return select;
@@ -57,6 +58,22 @@ it('saves the chosen option and keeps it selected', async () => {
 	});
 	await waitFor(() => expect(select).toHaveTextContent(/^Project admins$/));
 	expect(showMessage).toHaveBeenCalled();
+});
+
+it('keeps the selects disabled when the settings cannot load', async () => {
+	api.getPromotionSettings.mockRejectedValue(new Error('Request failed'));
+	renderRows();
+
+	await waitFor(() =>
+		expect(showError).toHaveBeenCalledWith(
+			expect.any(Error),
+			"Couldn't load the promotion settings",
+			expect.anything(),
+		),
+	);
+	expect(screen.getByRole('combobox', { name: 'Who can promote' })).toHaveAttribute(
+		'data-disabled',
+	);
 });
 
 it('puts the previous option back when saving fails', async () => {
