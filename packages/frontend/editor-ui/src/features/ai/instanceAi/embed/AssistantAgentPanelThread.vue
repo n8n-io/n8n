@@ -31,6 +31,11 @@ import {
 import { useAssistantAgentThreadsStore } from '../assistantAgent/assistantAgentThreads.store';
 import { assistantConfirmationExtension } from '../assistantAgent/assistantConfirmation';
 import {
+	ASSISTANT_PREFERENCE_CARDS,
+	assistantPreferenceCardExtension,
+	useAssistantPreferenceCards,
+} from '../assistantAgent/assistantPreferenceCards';
+import {
 	useAssistantAgentMessageTelemetry,
 	type AssistantAgentSendingMessage,
 } from '../assistantAgent/useAssistantAgentMessageTelemetry';
@@ -239,7 +244,16 @@ watch(
 	{ immediate: true },
 );
 
-const interactionExtensions = [assistantConfirmationExtension];
+const interactionExtensions = [assistantConfirmationExtension, assistantPreferenceCardExtension];
+
+provide(
+	ASSISTANT_PREFERENCE_CARDS,
+	useAssistantPreferenceCards({
+		threadId: props.threadId,
+		projectId: props.subject.projectId,
+		messages: () => panel.value?.messages ?? [],
+	}),
+);
 
 defineExpose({
 	focus: () => panel.value?.focusInput(),

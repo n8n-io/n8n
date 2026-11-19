@@ -96,6 +96,11 @@ import {
 import { assistantAutoApprovalExtension } from './assistantAutoApproval';
 import { assistantConfirmationExtension } from './assistantConfirmation';
 import { assistantHostEventExtensions } from './assistantHostEvents';
+import {
+	ASSISTANT_PREFERENCE_CARDS,
+	assistantPreferenceCardExtension,
+	useAssistantPreferenceCards,
+} from './assistantPreferenceCards';
 import { useAssistantAgentThreadsStore } from './assistantAgentThreads.store';
 import { stagedElementAppId, toElementComposerAttachment } from './assistantElementAttachments';
 import {
@@ -254,10 +259,20 @@ function onMessageAccepted({ clientContext }: { clientContext?: Record<string, u
 const interactionExtensions = [
 	assistantConfirmationExtension,
 	assistantAutoApprovalExtension,
+	assistantPreferenceCardExtension,
 	...assistantHostEventExtensions,
 ];
 
 const panel = useTemplateRef<InstanceType<typeof AgentChatPanel>>('panel');
+
+provide(
+	ASSISTANT_PREFERENCE_CARDS,
+	useAssistantPreferenceCards({
+		threadId: props.threadId,
+		projectId: props.projectId,
+		messages: () => panel.value?.messages ?? [],
+	}),
+);
 
 const trace = useAssistantAgentTrace({
 	threadId: props.threadId,
