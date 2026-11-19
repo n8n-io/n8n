@@ -48,7 +48,8 @@ returned twice.
 field, ordering the sort rules, building the predicate, and all four rejections
 with their messages. The node runs the catalogue query its own engine needs and
 passes the answer in. Use the shared helpers, do not write a second copy of a
-rejection message.
+rejection message. Postgres predates the shared module and still keeps its own
+copies of several; the parity pass moves it over.
 
 - **Start After**, parameter name `startAfter`, a `fixedCollection` holding Column
   and Value. Shown when Return All is off and the node is at or above the version
