@@ -31,6 +31,8 @@ describe('isReadShaped', () => {
 		'subscription { a }',
 		'query A { a } mutation B { b }',
 		'{ a } mutation { b }',
+		'query A { a },mutation B { b }',
+		'query A { a }\nmutation B { b }',
 	])('treats a GraphQL document with a mutation as a write: %s', (query) => {
 		expect(isReadShaped(req('POST', '/graphql', { query }))).toBe(false);
 	});
@@ -40,6 +42,7 @@ describe('isReadShaped', () => {
 		expect(isReadShaped(req('POST', '/graphql', { other: 1 }))).toBe(false);
 		expect(isReadShaped(req('POST', '/graphql'))).toBe(false);
 		expect(isReadShaped(req('POST', '/graphql', { query: 5 }))).toBe(false);
+		expect(isReadShaped(req('POST', '/search', { query: 'search term' }))).toBe(false);
 	});
 
 	it('treats a POST as a read only when a read path matches', () => {

@@ -8,7 +8,7 @@ import { HTTP_PROFILES, type HttpVendorProfile } from './http-profiles';
 import { sendToNetwork, type CapturedRequest } from './net-interceptor';
 import {
 	canonicalHost,
-	isPassthroughHost,
+	isTokenExchange,
 	loadVendorKnowledge,
 	vendorForRequest,
 } from './vendor-knowledge';
@@ -41,8 +41,8 @@ export class HttpGuardService {
 		const chatId = currentChatId();
 		if (!guard || !chatId) return refusal(403, 'mcp-guard: no guarded node tool');
 		const host = canonicalHost(req.url.hostname);
-		// Sign-in and token refresh do not touch data. They go to the real network.
-		if (isPassthroughHost(host)) return await sendToNetwork(req);
+		// A token exchange or refresh does not touch data. It goes to the real network.
+		if (isTokenExchange(req)) return await sendToNetwork(req);
 		const vendor = vendorForRequest(host, req.url.pathname);
 		const registry = vendor && this.registries.get(vendor.name);
 		if (!registry) return refusal(403, 'mcp-guard: this host is not available in a preview chat');
@@ -52,9 +52,12 @@ export class HttpGuardService {
 			// One run, so one gym tenant, for each chat of the agent.
 			run = await registry.getOrCreate(`${currentAgentId() ?? 'agent'}-${chatId}`, guard.model);
 		} catch (e) {
-			this.logger.error(
-				`mcp-guard http run setup failed: ${e instanceof Error ? e.message : 'unknown'}`,
-			);
+			// The message can hold the address of the gym. Keep an address out of the log.
+			const reason =
+				e instanceof Error
+					? e.message.replace(/\b[a-z][a-z0-9+.-]*:\/\/\S+/gi, '<url>')
+					: 'unknown';
+			this.logger.error(`mcp-guard http run setup failed: ${reason}`);
 			return refusal(502, 'mcp-guard: the gym is not available');
 		}
 		return await run.router.handle(req);

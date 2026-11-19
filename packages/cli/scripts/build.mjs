@@ -154,7 +154,11 @@ function copyMcpGuardVendorFiles() {
 	const sourceDir = path.resolve(ROOT_DIR, 'src', 'modules', 'mcp-guard', 'vendors');
 	const destinationDir = path.resolve(ROOT_DIR, 'dist', 'modules', 'mcp-guard', 'vendors');
 	shell.mkdir('-p', destinationDir);
-	shell.cp(path.join(sourceDir, '*.md'), destinationDir);
+	const copied = shell.cp(path.join(sourceDir, '*.md'), destinationDir);
+	// Without a vendor file the guard fails at run time, so fail the build.
+	if (copied.code !== 0 || glob.sync('*.md', { cwd: destinationDir }).length === 0) {
+		throw new Error(`Could not copy the mcp-guard vendor files from ${sourceDir}`);
+	}
 }
 
 function copyAgentIntegrationAssets() {

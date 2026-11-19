@@ -21,8 +21,8 @@ vi.mock('../net-interceptor', () => ({
 
 const model: HydrationModel = { resolve: async () => ({}) as never };
 
-const request = (host: string, path: string): CapturedRequest => ({
-	method: 'GET',
+const request = (host: string, path: string, method = 'GET'): CapturedRequest => ({
+	method,
 	url: new URL(`https://${host}${path}`),
 	headers: {},
 });
@@ -51,9 +51,18 @@ describe('HttpGuardService', () => {
 		expect(handle).toHaveBeenCalledTimes(1);
 	});
 
+	it('refuses a request on the sign-in host that is no token exchange', async () => {
+		const res = await inGuard(
+			async () => await service.handle(request('oauth2.googleapis.com', '/revoke', 'POST')),
+		);
+
+		expect(res.status).toBe(403);
+		expect(sendToNetwork).not.toHaveBeenCalled();
+	});
+
 	it('sends a sign-in request to the real network without a run', async () => {
 		const res = await inGuard(
-			async () => await service.handle(request('oauth2.googleapis.com', '/token')),
+			async () => await service.handle(request('oauth2.googleapis.com', '/token', 'POST')),
 		);
 
 		expect(await res.text()).toBe('real-passthrough');

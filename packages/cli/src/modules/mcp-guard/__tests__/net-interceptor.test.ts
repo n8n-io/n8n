@@ -166,6 +166,69 @@ describe('installNetInterceptor', () => {
 		expect(JSON.parse(seen[0].body?.toString() ?? '{}')).toEqual({ raw: 'abc' });
 	});
 
+	it('captures basic auth from the auth option and from the url', async () => {
+		const seen: CapturedRequest[] = [];
+		uninstall = installNetInterceptor(async (req) => {
+			seen.push(req);
+			return new Response('ok');
+		});
+
+		await inGuard(
+			async () =>
+				await new Promise<void>((resolve, reject) => {
+					http
+						.get(`${base}/a`, { auth: 'user:pass' }, (res) => {
+							res.resume();
+							res.on('end', resolve);
+						})
+						.on('error', reject);
+				}),
+		);
+
+		expect(seen[0].headers.authorization).toBe(
+			`Basic ${Buffer.from('user:pass').toString('base64')}`,
+		);
+	});
+
+	it('does not send a header that the caller removed when the request passes through', async () => {
+		let seen: http.IncomingHttpHeaders = {};
+		server.removeAllListeners('request');
+		server.on('request', (req, res) => {
+			seen = req.headers;
+			res.end('real');
+		});
+		uninstall = installNetInterceptor(async () => 'passthrough');
+
+		await inGuard(
+			async () =>
+				await new Promise<void>((resolve, reject) => {
+					const req = http.request(
+						`${base}/r`,
+						{ headers: { 'x-drop': '1', 'x-keep': '2' } },
+						(res) => {
+							res.resume();
+							res.on('end', resolve);
+						},
+					);
+					req.on('error', reject);
+					req.removeHeader('x-drop');
+					req.end();
+				}),
+		);
+
+		expect(seen['x-drop']).toBeUndefined();
+		expect(seen['x-keep']).toBe('2');
+	});
+
+	it('uses the init of fetch when the input is a Request', async () => {
+		const decide = vi.fn(async (_req: CapturedRequest) => new Response('fake'));
+		uninstall = installNetInterceptor(decide);
+
+		await inGuard(async () => await fetch(new Request(`${base}/q`), { method: 'DELETE' }));
+
+		expect(decide.mock.calls[0][0].method).toBe('DELETE');
+	});
+
 	it('does not intercept the calls that decide makes itself', async () => {
 		let decisions = 0;
 		uninstall = installNetInterceptor(async () => {
