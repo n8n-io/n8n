@@ -14,6 +14,8 @@ export class KnowledgeModule implements ModuleInterface {
 	 * rejects an upload with these limits before the request, so a configured
 	 * limit shows up as the friendly client message and not as a server error.
 	 * `collectionsEnabled` is the operator override of the collections flag.
+	 * `liveSourcesEnabled` tells the editor and the dev harness whether live
+	 * knowledge sources are on.
 	 */
 	async settings() {
 		const { KnowledgeConfig } = await import('./knowledge.config.js');
@@ -26,6 +28,7 @@ export class KnowledgeModule implements ModuleInterface {
 				maxTotalSizeBytes: config.maxTotalSizeBytes,
 			},
 			collectionsEnabled: config.collectionsEnabled,
+			liveSourcesEnabled: config.liveSourcesEnabled,
 		} satisfies FrontendModuleSettings['knowledge'];
 	}
 

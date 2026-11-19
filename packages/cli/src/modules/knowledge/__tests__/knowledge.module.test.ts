@@ -30,6 +30,7 @@ describe('KnowledgeModule', () => {
 					maxFilesPerUpload: 3,
 					maxTotalSizeBytes: 500 * 1024 * 1024,
 					collectionsEnabled: true,
+					liveSourcesEnabled: true,
 				}),
 			);
 
@@ -40,6 +41,7 @@ describe('KnowledgeModule', () => {
 					maxTotalSizeBytes: 500 * 1024 * 1024,
 				},
 				collectionsEnabled: true,
+				liveSourcesEnabled: true,
 			});
 		});
 	});

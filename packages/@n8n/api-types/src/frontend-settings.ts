@@ -499,6 +499,11 @@ export type FrontendModuleSettings = {
 		 * PostHog flag `KNOWLEDGE_COLLECTIONS_FLAG`.
 		 */
 		collectionsEnabled?: boolean;
+		/**
+		 * Whether agents can read knowledge from live sources at run time
+		 * (`N8N_KNOWLEDGE_LIVE_SOURCES_ENABLED`). Experimental.
+		 */
+		liveSourcesEnabled?: boolean;
 	};
 };
 

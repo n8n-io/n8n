@@ -220,12 +220,35 @@ async function ensureAgent(client, agentKey, config) {
 		await writeFile(AGENTS_FILE, JSON.stringify(known, null, '\t'));
 		console.log(`Created agent ${agentKey} (${agentId})`);
 	}
-	await client.request('PUT', `/projects/${PROJECT_ID}/agents/v2/${agentId}`, {
+	const updated = await client.request('PUT', `/projects/${PROJECT_ID}/agents/v2/${agentId}`, {
 		config,
 		baseConfigHash: configHash,
 	});
 	console.log(`Updated agent ${agentKey} (${agentId})`);
+	const savedSources = updated.config?.knowledge?.liveSources ?? [];
+	if (savedSources.length !== config.knowledge.liveSources.length) {
+		fail(
+			`The instance saved ${savedSources.length} of ${config.knowledge.liveSources.length} live sources. ` +
+				'It runs an @n8n/api-types build without knowledge.liveSources: rebuild and restart it.',
+		);
+	}
 	return agentId;
+}
+
+/** Stops early when the instance cannot attach the live knowledge tools. */
+async function preflight(client) {
+	const settings = await client.request('GET', '/module-settings');
+	const knowledge = settings.knowledge;
+	if (!knowledge) {
+		fail('The knowledge module is off on this instance (no knowledge module settings).');
+	}
+	if (knowledge.liveSourcesEnabled !== true) {
+		fail(
+			'Live knowledge sources are off on this instance. Start it with ' +
+				'N8N_KNOWLEDGE_LIVE_SOURCES_ENABLED=true (a build that reports the flag in /rest/module-settings).',
+		);
+	}
+	console.log('Preflight: live knowledge sources are on');
 }
 
 function summarizeToolCalls(toolCalls) {
@@ -282,6 +305,7 @@ async function main() {
 	const items = await readJson(path.join(FIXTURES, 'items.json'), null);
 	if (!items) fail('fixtures/items.json is missing: run pnpm knowledge:seed-sources first');
 	const client = await login();
+	await preflight(client);
 	switch (command) {
 		case 'smoke':
 			await smoke(client, scaffold, items);
