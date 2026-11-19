@@ -378,9 +378,32 @@ Setup decisions of 2026-11-19:
   work, for C0?
 - Which model snapshot and which route (deferred or eager tools; the new tools
   are not in `harnessEagerToolNames`).
-- Completion signal for the harness: stream end or polling the thread.
+- ~~Completion signal for the harness: stream end or polling the thread.~~ Settled: the chat stream sends `{ type: 'done' }`; the harness reads the thread after it. The `tool-result` events of the stream carry the model-facing output (`{ type: 'content', value: [{ type: 'text', text: '<untrusted_data …>JSON</untrusted_data>' }] }`), so the scoring parses the JSON inside the wrapper; the thread `timeline[]` holds the same with `success`, `startTime` and `endTime`.
 - Storage policy per source before the `index` tier persists anything. The
   PoC keeps everything in memory.
+
+## First measurements
+
+Day-1 exit, `kb-native`, one Notion source (three pages, one page container,
+one data source of 303 rows), `anthropic/claude-sonnet-4-5` direct, tools
+deferred:
+
+| Question | Result | Tool calls | Prompt tokens | Completion | Wall |
+|---|---|---|---|---|---|
+| Days in the 2026 refund policy | 30 days, url cited | `tool_search` ×2, `search_knowledge`, `read_knowledge` | 36,676 (0 cached) | 491 | 14.3 s |
+| What the page "Not picked" says | "Not in the selected knowledge." | `tool_search`, `search_knowledge`, `list_knowledge` ×2 | 39,206 (0 cached) | 320 | 13.5 s |
+
+Notes:
+
+- The tools are deferred, so each question starts with one or two
+  `anthropic.tool_search` turns before the first knowledge call. C0's MCP
+  tools are deferred too; an eager variant is a later measurement.
+- The prompt tokens are mostly the harness system prompt. No prompt cache hit
+  was recorded on the direct route.
+- The scope probe held at two layers: `page:search` saw the unpicked page and
+  the provider dropped it, and the model never got a ref to read.
+- The Notion title filter is a substring match: before the stop-word fix,
+  `not` matched every "Note NNNN" row of the Support KB (10 noise hits).
 
 ## Implementation TODO
 
@@ -394,7 +417,7 @@ Setup decisions of 2026-11-19:
 - [x] `seed-sources.mjs` seeds the Notion and Slack content and writes `fixtures/items.json` (both sources seeded on 2026-11-19)
 - [x] Spike 1: Notion `page:getMarkdown` output shape: `{ object: 'page_markdown', id, markdown, truncated, unknown_block_ids }`, read from the node code instead of a run
 - [ ] Spike 2: Slack `message:search` with `in:` and a channel id
-- [ ] Spike 3: `executeInline` runs both operations without a workflow id (the day-1 exit covers Notion)
+- [x] Spike 3: `executeInline` runs the Notion operations without a workflow id (the day-1 exit); Slack follows with its provider
 - [ ] C0: hosted Notion and Slack MCP servers connect; tool lists recorded
 - [ ] Spike outputs saved under `scripts/knowledge-live-harness/fixtures/spikes/`
 
@@ -407,7 +430,7 @@ Setup decisions of 2026-11-19:
 - [x] Notion provider: `resolveLink`, `list`, `search`, `read`
 - [x] The three tools and the `buildLiveKnowledgeTools` hook
 - [x] `BUILT_IN_TOOLS.md` entry
-- [ ] Exit: an agent with one Notion source answers an item question with a url and refuses an unpicked page
+- [x] Exit: an agent with one Notion source answers an item question with a url and refuses an unpicked page (2026-11-19, `kb-native`, `anthropic/claude-sonnet-4-5`; see "First measurements")
 
 ### Day 2: Slack, per-run state, C0 agent, the test
 
