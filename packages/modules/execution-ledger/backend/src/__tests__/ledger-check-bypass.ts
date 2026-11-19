@@ -34,8 +34,11 @@ export class LedgerCheckBypass {
 		await Container.get(TransactionRunner).run({}, async (ctx) => {
 			const manager = this.repository['table'].managerFor(ctx);
 			await manager.query('PRAGMA ignore_check_constraints = ON');
-			await this.repository.append(row, ctx);
-			await manager.query('PRAGMA ignore_check_constraints = OFF');
+			try {
+				await this.repository.append(row, ctx);
+			} finally {
+				await manager.query('PRAGMA ignore_check_constraints = OFF');
+			}
 		});
 	}
 

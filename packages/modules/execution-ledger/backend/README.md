@@ -20,15 +20,21 @@ registered, the fold does not claim rows.
   ledger. The next run tries again.
 - Failure 3: the fold copies the batch to `execution_ledger_parked` with the name of the step,
   and commits the other steps. The parked step does not run its after-commit work.
-- If two steps fail on the same batch, the batch is parked once for each step.
+- The park commits only if the rest of the batch commits. If a later step then fails for the
+  first or second time, the batch rolls back and the park with it. The step parks the batch
+  again on the next run.
+- If two steps fail on the same batch, the batch is parked once for each step. This takes 5
+  runs, not 3.
 - A row with a value that this version does not know (for example, a new `outcome` from a newer
   main during a rolling upgrade) is parked with the step name `_unreadable`. The other rows of
   the batch are folded.
 - The park is in the fold transaction. If the transaction is lost, nothing is parked and the
   rows stay in the ledger.
 
-The failure count is in the shared cache, one entry for each step, so each main sees it. If the
-cache is not available, the fold retries the batch and does not park it.
+The failure count is in the n8n cache, one entry for each step. In queue mode the cache is
+Redis, so each main sees the count. With the memory cache (`N8N_CACHE_BACKEND=memory`), each
+main has its own count, and a restart resets it: the fold then needs more runs before it parks.
+If the cache is not available, the fold retries the batch and does not park it.
 
 Parked rows stay in the table until a replay gives them to the step again. Do not delete them
 by hand: no step has counted them.
@@ -68,9 +74,10 @@ is cached for 60 seconds and shared by all mains, so it can lag behind new rows.
 
 Any main can run the fold, so a main that stopped folding keeps its old fold metrics. Aggregate across mains: `max()` for the timestamp, `sum()` for counters.
 
-When the fold parks a batch, it logs one error in the `execution-ledger` scope with `step`,
-`attempt`, `firstLedgerId` and `rows`, and reports the step error to Sentry. Errors that go to
-Sentry have a `foldStep` tag.
+When the fold parks a batch for a failing step, it logs one error in the `execution-ledger`
+scope with `step`, `attempt`, `firstLedgerId` and `rows`, and reports the step error to Sentry.
+Errors that go to Sentry have a `foldStep` tag. When the fold parks rows that it cannot read,
+it logs one error with `rows` only.
 
 Suggested alert rules:
 
