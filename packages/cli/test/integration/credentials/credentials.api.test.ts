@@ -2079,6 +2079,74 @@ describe('GET /credentials/:id', () => {
 		expect(secondResponse.body.data.data).toBeDefined();
 	});
 
+	describe('without the sharing license', () => {
+		// Team projects and shares stay in the database after the license ends. The
+		// access middleware, the list and the pre-execution check keep honoring them,
+		// so the detail endpoint must honor them too.
+		beforeEach(() => {
+			testServer.license.disable('feat:sharing');
+		});
+
+		test('should return a team project credential with data to a project editor', async () => {
+			const project = await createTeamProject('Team', owner);
+			await linkUserToProject(member, project, 'project:editor');
+			const savedCredential = await saveCredential(randomCredentialPayload(), {
+				project,
+				role: 'credential:owner',
+			});
+
+			const response = await authMemberAgent
+				.get(`/credentials/${savedCredential.id}`)
+				.query({ includeData: true })
+				.expect(200);
+
+			validateMainCredentialData(response.body.data);
+			expect(response.body.data.data).toBeDefined();
+		});
+
+		test('should return a team project credential without data to a project viewer', async () => {
+			const project = await createTeamProject('Team', owner);
+			await linkUserToProject(member, project, 'project:viewer');
+			const savedCredential = await saveCredential(randomCredentialPayload(), {
+				project,
+				role: 'credential:owner',
+			});
+
+			const response = await authMemberAgent
+				.get(`/credentials/${savedCredential.id}`)
+				.query({ includeData: true })
+				.expect(200);
+
+			validateMainCredentialData(response.body.data);
+			expect(response.body.data.data).toBeUndefined();
+		});
+
+		test('should return a credential shared with the user without data', async () => {
+			const savedCredential = await saveCredential(randomCredentialPayload(), {
+				user: owner,
+				role: 'credential:owner',
+			});
+			await shareCredentialWithUsers(savedCredential, [member]);
+
+			const response = await authMemberAgent
+				.get(`/credentials/${savedCredential.id}`)
+				.query({ includeData: true })
+				.expect(200);
+
+			validateMainCredentialData(response.body.data);
+			expect(response.body.data.data).toBeUndefined();
+		});
+
+		test('should not return a credential the user has no access to', async () => {
+			const savedCredential = await saveCredential(randomCredentialPayload(), {
+				user: owner,
+				role: 'credential:owner',
+			});
+
+			await authMemberAgent.get(`/credentials/${savedCredential.id}`).expect(403);
+		});
+	});
+
 	test('should redact the data when `includeData:true` is passed', async () => {
 		const credentialService = Container.get(CredentialsService);
 		const redactSpy = vi.spyOn(credentialService, 'redact');

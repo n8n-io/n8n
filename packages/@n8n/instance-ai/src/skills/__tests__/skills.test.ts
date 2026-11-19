@@ -3,15 +3,10 @@ import { SPLIT_BUILDER_TOOLS } from '@n8n/api-types';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { resolvePromptProfile } from '../../prompts/prompt-profiles';
 import { ALWAYS_LOADED_TOOL_NAMES } from '../../tools/tool-ids';
 import { POST_BUILD_FLOW_CUES } from '../context-cues/post-build-flow.cues';
 import { WORKFLOW_BUILDER_CUES } from '../context-cues/workflow-builder.cues';
-import {
-	INSTANCE_AI_SKILLS_DIR,
-	loadInstanceAiPromptSkills,
-	loadInstanceAiSkills,
-} from '../skills';
+import { INSTANCE_AI_SKILLS_DIR, loadInstanceAiSkills } from '../skills';
 
 const ORIGINAL_ENABLED_MODULES = process.env.N8N_ENABLED_MODULES;
 const AGENT_BUILDING_SKILL_IDS = ['agent-builder', 'intent-recognition'];
@@ -141,17 +136,6 @@ describe('Instance AI skills', () => {
 		expect(postBuildFlow).toMatch(/load the\s+`credential-recipe-research` reference/);
 	});
 
-	// Routing needs intent-recognition once per request; carrying its body for the
-	// rest of the thread costs every later call ~7K tokens.
-	it('expires intent-recognition when the next user turn starts', async () => {
-		for (const version of ['default@1', 'progressive@1']) {
-			const { profile } = resolvePromptProfile({ version });
-			const { source } = await loadInstanceAiPromptSkills(profile);
-			const entry = source.registry.skills.find((skill) => skill.id === 'intent-recognition');
-			expect(entry?.policy?.lifetime).toBe('turn');
-		}
-	});
-
 	it('lists only top-level skills in the catalog', () => {
 		const source = loadInstanceAiSkills();
 		const topLevel = source.registry.skills.filter((skill) => !skill.parents).map(({ id }) => id);
@@ -164,7 +148,6 @@ describe('Instance AI skills', () => {
 			'instance-awareness',
 			'intent-recognition',
 			'n8n-docs-assistant',
-			'progressive-building',
 			'suggest-automations',
 			'v3-migration',
 			'workflow-builder',
@@ -318,21 +301,6 @@ describe('Instance AI skills', () => {
 			await loadTool.handler?.({ skillId: 'config-eval-playbook' }, {}),
 		);
 		expect(playbook).toContain('Config Eval Playbook');
-	});
-
-	it('keeps the progressive-building fragment out of both profile catalogs', async () => {
-		const source = loadInstanceAiSkills();
-		const progressive = source.registry.skills.find(
-			(skill) => skill.name === 'progressive-building',
-		);
-		expect(progressive?.id).toBe('progressive-building');
-		for (const mode of ['default', 'progressive'] as const) {
-			const { source: selected } = await loadInstanceAiPromptSkills(
-				resolvePromptProfile({ mode }).profile,
-			);
-			expect(selected.registry.skills.map(({ id }) => id)).not.toContain('progressive-building');
-			await expect(selected.loadSkill('progressive-building')).resolves.toBeNull();
-		}
 	});
 
 	it('loads the bundled Agents module skills', async () => {

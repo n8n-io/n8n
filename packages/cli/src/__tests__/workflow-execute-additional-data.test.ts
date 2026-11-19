@@ -147,7 +147,9 @@ describe('WorkflowExecuteAdditionalData', () => {
 	Container.set(CredentialsHelper, credentialsHelper);
 	Container.set(ExternalSecretsProxy, externalSecretsProxy);
 	const executionRepository = mockInstance(ExecutionRepository);
-	mockInstance(ExecutionPersistence);
+	const executionPersistenceMock = mockInstance(ExecutionPersistence);
+	executionPersistenceMock.deleteInFlightExecution.mockResolvedValue({ ended: false });
+	executionPersistenceMock.saveExecutionOutcome.mockResolvedValue({ updated: true, ended: false });
 	mockInstance(ExecutionDataRepository);
 	mockInstance(Telemetry);
 	const workflowRepository = mockInstance(WorkflowRepository);
@@ -742,6 +744,60 @@ describe('WorkflowExecuteAdditionalData', () => {
 				expect(fullRunData.data.resultData.error.message).toContain('does not have access');
 				expect(mode).toBe('integrated');
 				expect(executionId).toBe(EXECUTION_ID);
+			});
+
+			it('marks the run as blocked by credential access when the credential check fails', async () => {
+				failCredentialCheck();
+
+				await expect(runSubWorkflow(false)).rejects.toThrow('does not have access');
+
+				const [, fullRunData] = executeErrorWorkflow.mock.calls[0];
+				expect(fullRunData.data.resultData.failedBeforeStart).toBe('credentialAccess');
+			});
+
+			it('marks the run as blocked by policy when the sub-workflow refuses its caller', async () => {
+				failPolicyCheck();
+
+				await expect(runSubWorkflow(false)).rejects.toThrow('cannot be called by this workflow');
+
+				expect(executionPersistence.updateExistingExecution).toHaveBeenCalledWith(
+					EXECUTION_ID,
+					expect.objectContaining({
+						data: expect.objectContaining({
+							resultData: expect.objectContaining({ failedBeforeStart: 'policy' }),
+						}),
+					}),
+				);
+			});
+
+			const expectFinalizedAsStartFailed = async () =>
+				await vi.waitFor(() =>
+					expect(activeExecutions.finalizeExecution).toHaveBeenCalledWith(
+						EXECUTION_ID,
+						expect.objectContaining({
+							data: expect.objectContaining({
+								resultData: expect.objectContaining({ failedBeforeStart: 'startFailed' }),
+							}),
+						}),
+					),
+				);
+
+			it('marks the run as start failed when it cannot be set to running', async () => {
+				executionRepository.setRunning.mockRejectedValueOnce(new Error('database unavailable'));
+
+				await expect(runSubWorkflow(true)).resolves.toBeDefined();
+
+				await expectFinalizedAsStartFailed();
+			});
+
+			it('marks the run as start failed when the engine throws before it starts', async () => {
+				processRunExecutionData.mockImplementationOnce(() => {
+					throw new Error('setup failed');
+				});
+
+				await expect(runSubWorkflow(true)).resolves.toBeDefined();
+
+				await expectFinalizedAsStartFailed();
 			});
 
 			it('starts the sub-workflow error workflow when the caller does not wait', async () => {

@@ -124,14 +124,16 @@ export type ListAgentsSortBy =
 	| 'updatedAt:desc';
 
 export type ListAgentsOptions = {
-	skip?: number;
-	take?: number;
+	offset?: number;
+	limit?: number;
 	sortBy?: ListAgentsSortBy;
 	filter?: {
 		query?: string;
 		ids?: string[];
 		availableInMCP?: boolean;
 		includeArchived?: boolean;
+		parentFolderId?: string | null;
+		includeDescendants?: boolean;
 	};
 };
 
@@ -174,8 +176,8 @@ export type N8nChatAgentsSortBy = 'usage:desc';
 
 export type ListN8nChatAgentsOptions = {
 	query?: string;
-	skip?: number;
-	take?: number;
+	offset?: number;
+	limit?: number;
 	sortBy?: N8nChatAgentsSortBy;
 };
 
@@ -188,12 +190,12 @@ export const listN8nChatAgents = async (
 	context: IRestApiContext,
 	options: ListN8nChatAgentsOptions,
 ): Promise<AgentChatListResponse> => {
-	const { query, skip, take, sortBy } = options;
+	const { query, offset, limit, sortBy } = options;
 	const trimmedQuery = query?.trim();
 	return await getFullApiResponse<AgentChatListItem[]>(context, 'GET', '/agents/v2', {
 		filter: { availableInChat: true, ...(trimmedQuery ? { query: trimmedQuery } : {}) },
-		skip,
-		take,
+		offset,
+		limit,
 		sortBy,
 	});
 };
@@ -280,8 +282,8 @@ export const listAgents = async (
 
 	do {
 		const { count, data } = await listAgentsPage(context, projectId, {
-			skip: agents.length,
-			take: AGENTS_LIST_PAGE_SIZE,
+			offset: agents.length,
+			limit: AGENTS_LIST_PAGE_SIZE,
 		});
 		agents.push(...data);
 		total = count;
@@ -313,6 +315,7 @@ export const createAgent = async (
 	 *  `skills` to seed a full agent in a duplicate operation). */
 	options: {
 		id?: string;
+		parentFolderId?: string | null;
 		config?: AgentJsonConfig;
 		schema?: AgentJsonConfig;
 		tools?: Record<string, CustomToolEntry>;
@@ -325,6 +328,7 @@ export const createAgent = async (
 		`/projects/${projectId}/agents/v2`,
 		{
 			name,
+			...(options.parentFolderId !== undefined ? { parentFolderId: options.parentFolderId } : {}),
 			...(options.config ? { config: options.config } : {}),
 			...(options.id ? { id: options.id } : {}),
 			...(options.schema ? { schema: options.schema } : {}),
@@ -355,9 +359,21 @@ export const duplicateAgent = async (
 		integration.type === 'n8n_chat' ? integration : { ...integration, credentialId: '' },
 	);
 	return await createAgent(context, projectId, name, {
+		parentFolderId: agent.parentFolderId,
 		schema: { ...rest, name, integrations: draftIntegrations },
 		tools: agent.tools,
 		skills: agent.skills,
+	});
+};
+
+export const moveAgent = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	parentFolderId: string | null,
+): Promise<void> => {
+	await makeRestApiRequest(context, 'PATCH', `/projects/${projectId}/agents/v2/${agentId}/move`, {
+		parentFolderId,
 	});
 };
 
@@ -1027,18 +1043,24 @@ export const steerAgentQueuedMessage = async (
 	);
 };
 
+/**
+ * The messages of a chat thread. Without `page`, the response holds the whole
+ * thread. With `page`, it holds the newest `limit` turns before `cursor`.
+ */
 export const getChatMessages = async (
 	context: IRestApiContext,
 	projectId: string,
 	agentId: string,
 	threadId: string,
 	channel: AgentChatChannel = 'chat',
+	page?: { limit: number; cursor?: string },
 ): Promise<AgentChatMessagesResponse> => {
-	return await makeRestApiRequest<AgentChatMessagesResponse>(
-		context,
-		'GET',
-		`${agentChatPath(projectId, agentId, channel)}/${encodeURIComponent(threadId)}/messages`,
-	);
+	const path = `${agentChatPath(projectId, agentId, channel)}/${encodeURIComponent(threadId)}/messages`;
+	if (!page) return await makeRestApiRequest<AgentChatMessagesResponse>(context, 'GET', path);
+	return await makeRestApiRequest<AgentChatMessagesResponse>(context, 'GET', path, {
+		limit: String(page.limit),
+		...(page.cursor !== undefined ? { cursor: page.cursor } : {}),
+	});
 };
 
 /** One of the user's own threads with a system agent. Rejects with a 404 for any other thread. */

@@ -5,14 +5,18 @@ import {
 	workflowVersionDescriptionSchema,
 	workflowVersionNameSchema,
 } from '@n8n/api-types';
-import type { User } from '@n8n/db';
+import type { TelemetryProxy } from '@n8n/backend-services';
+import type { OperationContext, User } from '@n8n/db';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { jsonStringify } from 'n8n-workflow';
 import z from 'zod';
 
 import type { CollaborationService } from '@/collaboration/collaboration.service';
 import { WorkflowPublishBlockedError } from '@/errors/response-errors/workflow-publish-blocked.error';
-import type { Telemetry } from '@/telemetry';
+import type {
+	WorkflowPublicationStatusService,
+	WorkflowPublicationStatusWithDetails,
+} from '@/workflows/publication/workflow-publication-status.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
 
@@ -24,6 +28,7 @@ import type {
 	WorkflowNotFoundReason,
 } from '../mcp.types';
 import { getMcpWorkflow } from './workflow-validation.utils';
+import { workflowPublicationStatusOutputSchema } from './schemas';
 
 const inputSchema = z.object({
 	workflowId: z.string().describe('The ID of the workflow to publish'),
@@ -45,6 +50,7 @@ type PublishWorkflowOutput = {
 	success: boolean;
 	workflowId: string;
 	activeVersionId: string | null;
+	publicationStatus?: WorkflowPublicationStatusWithDetails;
 	error?: string;
 } & Partial<WorkflowPublishBlockedDetails>;
 
@@ -52,6 +58,7 @@ const outputSchema = {
 	success: z.boolean(),
 	workflowId: z.string(),
 	activeVersionId: z.string().nullable(),
+	publicationStatus: workflowPublicationStatusOutputSchema.optional(),
 	error: z.string().optional(),
 	reason: workflowPublishBlockedDetailsShape.reason.optional(),
 	workflowReviewRequestId: workflowPublishBlockedDetailsShape.workflowReviewRequestId.optional(),
@@ -70,13 +77,15 @@ export const createPublishWorkflowTool = (
 	user: User,
 	workflowFinderService: WorkflowFinderService,
 	workflowService: WorkflowService,
-	telemetry: Telemetry,
+	telemetry: TelemetryProxy,
 	collaborationService: CollaborationService,
+	publicationStatusService?: WorkflowPublicationStatusService,
+	ctx: OperationContext = {},
 ): ToolDefinition<typeof inputSchema.shape> => ({
 	name: 'publish_workflow',
 	config: {
 		description:
-			'Publish (activate) a workflow to make it available for production execution. This creates an active version from the current draft.',
+			'Publish (activate) a workflow to make it available for production execution. This creates an active version from the current draft. If publicationStatus.status is in_progress, poll get_workflow_details and check workflow.publicationStatus before reporting that the workflow is live.',
 		inputSchema: inputSchema.shape,
 		outputSchema,
 		annotations: {
@@ -95,32 +104,61 @@ export const createPublishWorkflowTool = (
 		};
 
 		try {
-			await getMcpWorkflow(workflowId, user, ['workflow:publish'], workflowFinderService);
+			const workflow = await getMcpWorkflow(
+				workflowId,
+				user,
+				['workflow:publish'],
+				workflowFinderService,
+			);
+			const requestedVersionId = versionId ?? workflow.versionId;
 
 			await collaborationService.ensureWorkflowEditable(workflowId);
 
-			const activatedWorkflow = await workflowService.activateWorkflow(user, workflowId, {
-				versionId,
-				name,
-				description,
-				source: 'n8n-mcp',
-				publishHistory: 'none',
-			});
+			const activatedWorkflow = await workflowService.activateWorkflow(
+				user,
+				workflowId,
+				{
+					versionId: requestedVersionId,
+					name,
+					description,
+					source: 'n8n-mcp',
+					publishHistory: 'none',
+				},
+				ctx,
+			);
 
 			void collaborationService.broadcastWorkflowUpdate(workflowId, user.id).catch(() => {});
 
+			const publicationStatus = await publicationStatusService?.waitForPublication(
+				workflowId,
+				requestedVersionId,
+			);
+			const replaced =
+				publicationStatus !== undefined &&
+				(publicationStatus.versionId !== requestedVersionId ||
+					publicationStatus.status === 'not_published');
+			const publicationError = replaced
+				? 'Another publication replaced this request. Check the current workflow publication status.'
+				: publicationStatus?.errorMessage;
 			const output: PublishWorkflowOutput = {
-				success: true,
+				success:
+					publicationStatus === undefined ||
+					(!replaced &&
+						publicationStatus.status === 'published' &&
+						publicationStatus.liveVersionId === requestedVersionId),
 				workflowId: activatedWorkflow.id,
 				activeVersionId: activatedWorkflow.activeVersionId,
+				...(publicationStatus ? { publicationStatus } : {}),
+				...(publicationError ? { error: publicationError } : {}),
 			};
 
 			telemetryPayload.results = {
-				success: true,
+				success: output.success,
 				data: {
 					workflow_id: workflowId,
-					active_version_id: activatedWorkflow.activeVersionId,
+					active_version_id: output.activeVersionId,
 				},
+				...(output.error ? { error: output.error } : {}),
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 

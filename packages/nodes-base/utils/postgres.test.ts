@@ -229,8 +229,8 @@ describe('getLegacyDateTypeParsers', () => {
 });
 
 describe('nodes that share the parsers but have no version to opt in with', () => {
-	// CrateDB, QuestDB and TimescaleDB declare only [1, 1.1], so they cannot opt in to the zoneless
-	// timestamp output that Postgres 2.9 added. They must keep the older reading until they can.
+	// No version of CrateDB, QuestDB or TimescaleDB opts in to the zoneless timestamp output that
+	// Postgres 2.9 added. They must keep the older reading until one does, see ENT-882.
 	it.each(['CrateDb', 'QuestDb', 'TimescaleDb'])(
 		'should pass legacyUtcTimestamps from the %s node',
 		(node) => {

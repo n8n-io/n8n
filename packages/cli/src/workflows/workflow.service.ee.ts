@@ -9,6 +9,7 @@ import type {
 import { Logger } from '@n8n/backend-common';
 import type {
 	CredentialUsedByWorkflow,
+	ListQueryDb,
 	User,
 	WorkflowEntity,
 	WorkflowWithSharingsAndCredentials,
@@ -190,7 +191,21 @@ export class EnterpriseWorkflowService {
 		workflow: WorkflowWithSharingsAndCredentials,
 	): WorkflowWithSharingsMetaDataAndCredentials {
 		const workflowWithMetaData = this.ownershipService.addOwnedByAndSharedWith(workflow);
+		return this.withoutShared(workflow, workflowWithMetaData);
+	}
 
+	/** Like `addOwnerAndSharings`, plus the account kind of each project, for the share modal. */
+	async addOwnerSharingsAndAccountKinds(
+		workflow: WorkflowWithSharingsAndCredentials,
+	): Promise<WorkflowWithSharingsMetaDataAndCredentials> {
+		const workflowWithMetaData = await this.ownershipService.addSharingWithAccountKinds(workflow);
+		return this.withoutShared(workflow, workflowWithMetaData);
+	}
+
+	private withoutShared(
+		workflow: WorkflowWithSharingsAndCredentials,
+		workflowWithMetaData: ListQueryDb.Workflow.WithOwnedByAndSharedWith,
+	): WorkflowWithSharingsMetaDataAndCredentials {
 		const { shared: _shared, ...enrichedWorkflow } = { ...workflow, ...workflowWithMetaData };
 
 		return {
@@ -860,6 +875,7 @@ export class EnterpriseWorkflowService {
 				parentFolder = await this.folderRepository.findOneOrFailFolderInProject(
 					destinationParentFolderId,
 					destinationProjectId,
+					'workflow',
 				);
 			} catch {
 				throw new TransferWorkflowError(
@@ -938,7 +954,11 @@ export class EnterpriseWorkflowService {
 		destinationProjectId: string,
 	): Promise<FolderTransferPreview> {
 		try {
-			await this.folderRepository.findOneOrFailFolderInProject(sourceFolderId, sourceProjectId);
+			await this.folderRepository.findOneOrFailFolderInProject(
+				sourceFolderId,
+				sourceProjectId,
+				'workflow',
+			);
 		} catch {
 			throw new FolderNotFoundError(sourceFolderId);
 		}
@@ -1052,7 +1072,7 @@ export class EnterpriseWorkflowService {
 
 	async getFolderUsedCredentials(user: User, folderId: string, projectId: string) {
 		try {
-			await this.folderRepository.findOneOrFailFolderInProject(folderId, projectId);
+			await this.folderRepository.findOneOrFailFolderInProject(folderId, projectId, 'workflow');
 		} catch {
 			throw new FolderNotFoundError(folderId);
 		}
@@ -1107,14 +1127,23 @@ export class EnterpriseWorkflowService {
 
 		// 4. checks
 
-		if (destinationParentFolderId !== PROJECT_ROOT) {
-			await this.folderRepository.findOneOrFailFolderInProject(
-				destinationParentFolderId,
-				destinationProjectId,
-			);
-		}
+		try {
+			if (destinationParentFolderId !== PROJECT_ROOT) {
+				await this.folderRepository.findOneOrFailFolderInProject(
+					destinationParentFolderId,
+					destinationProjectId,
+					'workflow',
+				);
+			}
 
-		await this.folderRepository.findOneOrFailFolderInProject(sourceFolderId, sourceProjectId);
+			await this.folderRepository.findOneOrFailFolderInProject(
+				sourceFolderId,
+				sourceProjectId,
+				'workflow',
+			);
+		} catch {
+			throw new NotFoundError('Folder not found in the requested project');
+		}
 
 		await this.assertCanMoveAll(user, workflows);
 		assertNoneOwnedBy(workflows, destinationProject);

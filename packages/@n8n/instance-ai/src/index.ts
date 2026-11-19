@@ -2,6 +2,7 @@
 import './source-map-filter';
 
 import type * as AiaModelDefaultsMod from './agent/aia-model-defaults';
+import type * as ApprovalJudgeMod from './approval-review/approval-judge';
 import type * as ApplyAgentThinkingMod from './agent/apply-agent-thinking';
 import type * as InstanceAgentMod from './agent/instance-agent';
 import type * as SelfHealingAgentMod from './agent/self-healing-agent';
@@ -21,6 +22,7 @@ import type * as ResumableStreamExecutorMod from './runtime/resumable-stream-exe
 import type * as RunStateRegistryMod from './runtime/run-state-registry';
 import type * as StreamRunnerMod from './runtime/stream-runner';
 import type * as TerminalResponseGuardMod from './runtime/terminal-response-guard';
+import type * as CloudBrowserAgentMod from './agent/cloud-browser-agent';
 import type * as SkillsMod from './skills/skills';
 import type * as StorageMod from './storage';
 import type * as InstanceContextReachMod from './stream/instance-context-reach';
@@ -241,6 +243,9 @@ const loadRunStateRegistry = lazyModule(
 const loadBackgroundTaskManager = lazyModule(
 	() => require('./runtime/background-task-manager') as typeof BackgroundTaskManagerMod,
 );
+const loadCloudBrowserAgent = lazyModule(
+	() => require('./agent/cloud-browser-agent') as typeof CloudBrowserAgentMod,
+);
 const loadTerminalResponseGuard = lazyModule(
 	() => require('./runtime/terminal-response-guard') as typeof TerminalResponseGuardMod,
 );
@@ -262,6 +267,9 @@ const loadStructuredFileParser = lazyModule(
 );
 const loadValidateAttachments = lazyModule(
 	() => require('./parsers/validate-attachments') as typeof ValidateAttachmentsMod,
+);
+const loadApprovalJudge = lazyModule(
+	() => require('./approval-review/approval-judge') as typeof ApprovalJudgeMod,
 );
 
 export { MAX_STEPS } from './constants/max-steps';
@@ -295,6 +303,7 @@ export {
 	rereadAgentBuilderTarget,
 	saveAgentBuilderTarget,
 	threadAuthorizesAgentAdoption,
+	threadTargetsAgent,
 	withAttachedAgentTarget,
 	withBoundAgentTarget,
 } from './tools/orchestration/agent-target-binding';
@@ -302,7 +311,12 @@ export type {
 	AgentBuilderTarget,
 	AgentTargetsMetadata,
 } from './tools/orchestration/agent-target-binding';
+export type {
+	CloudBrowserTaskInput,
+	CloudBrowserTaskStartResult,
+} from './tools/orchestration/start-cloud-browser-task.tool';
 export { parseAppTargets, parsePendingAppTarget } from './tools/apps/app-target-binding';
+export { withThreadSubject } from './tools/thread-subject-binding';
 export {
 	resolveAgentPreviewSession,
 	saveAgentPreviewSession,
@@ -312,6 +326,17 @@ export const wrapUntrustedData: typeof SanitizeWebContentMod.wrapUntrustedData =
 	() => loadSanitizeWebContent().wrapUntrustedData,
 );
 export type { Logger } from './logger';
+export const judgeApproval: typeof ApprovalJudgeMod.judgeApproval = lazyFunction(
+	() => loadApprovalJudge().judgeApproval,
+);
+export const conversationForApprovalJudge: typeof ApprovalJudgeMod.conversationForApprovalJudge =
+	lazyFunction(() => loadApprovalJudge().conversationForApprovalJudge);
+export type { ApprovalJudgeMessage, ApprovalJudgeResult } from './approval-review/approval-judge';
+export type {
+	ApprovalReviewOutcome,
+	InstanceAiApprovalReviewer,
+} from './approval-review/approval-review';
+export type { PendingApproval } from './approval-review/pending-approval';
 export { createThreadApprovalContext } from './approval-review/thread-approval-context';
 export const createDomainAccessTracker: typeof DomainAccessMod.createDomainAccessTracker =
 	lazyFunction(() => loadDomainAccess().createDomainAccessTracker);
@@ -449,6 +474,11 @@ export const ThreadTaskStorage: typeof StorageMod.ThreadTaskStorage = lazyClass(
 	() => loadStorage().ThreadTaskStorage,
 );
 export const getThread: typeof StorageMod.getThread = lazyFunction(() => loadStorage().getThread);
+export type CloudBrowserTaskStorage = StorageMod.CloudBrowserTaskStorage;
+export const CloudBrowserTaskStorage: typeof StorageMod.CloudBrowserTaskStorage = lazyClass(
+	() => loadStorage().CloudBrowserTaskStorage,
+);
+export type { CloudBrowserTaskRecord } from './storage/cloud-browser-task-storage';
 export type TerminalOutcomeStorage = StorageMod.TerminalOutcomeStorage;
 export const TerminalOutcomeStorage: typeof StorageMod.TerminalOutcomeStorage = lazyClass(
 	() => loadStorage().TerminalOutcomeStorage,
@@ -610,6 +640,18 @@ export type {
 	TerminalResponseStatus,
 	TerminalVisibilitySource,
 } from './runtime/terminal-response-guard';
+export const runCloudBrowserAgent: typeof CloudBrowserAgentMod.runCloudBrowserAgent = lazyFunction(
+	() => loadCloudBrowserAgent().runCloudBrowserAgent,
+);
+export type {
+	CloudBrowserAgentBrief,
+	CloudBrowserCredentialToCreate,
+	CloudBrowserAgentOutcome,
+	CloudBrowserAgentResult,
+	CloudBrowserUserActionHost,
+	CloudBrowserUserControlResult,
+	RunCloudBrowserAgentOptions,
+} from './agent/cloud-browser-agent';
 export const executeResumableStream: typeof ResumableStreamExecutorMod.executeResumableStream =
 	lazyFunction(() => loadResumableStreamExecutor().executeResumableStream);
 export type {
@@ -760,6 +802,8 @@ export type {
 	ModelConfig,
 	EndpointModelConfig,
 	VertexAnthropicModelConfig,
+	HelperModelUsageReport,
+	HelperUsageHook,
 	InstanceAiMemoryConfig,
 	CreateInstanceAgentOptions,
 	TaskStorage,

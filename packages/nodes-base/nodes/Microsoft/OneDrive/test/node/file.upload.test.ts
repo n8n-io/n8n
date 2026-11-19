@@ -1,6 +1,6 @@
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
-import type { IExecuteFunctions, IBinaryData } from 'n8n-workflow';
+import type { IExecuteFunctions, IBinaryData, INodeExecutionData } from 'n8n-workflow';
 import { requestPath } from 'n8n-workflow';
 
 import * as genericFunctions from '../../GenericFunctions';
@@ -416,6 +416,29 @@ describe('Test MicrosoftOneDrive, file > upload', () => {
 			{},
 			undefined,
 		);
+	});
+
+	it('should read the binary field name from the current item', async () => {
+		const items: INodeExecutionData[] = [
+			{ json: { data: 'a' }, binary: { data: {} as IBinaryData } },
+			{ json: { data: 'b' }, binary: { attachment: {} as IBinaryData } },
+		];
+		mockExecuteFunctions.getInputData.mockReturnValue(items);
+		mockExecuteFunctions.getNodeParameter.mockImplementation((key: string, itemIndex?: number) => {
+			if (key === 'resource') return 'file';
+			if (key === 'operation') return 'upload';
+			if (key === 'parentId') return 'parentFolderId';
+			if (key === 'fileName') return 'report.txt';
+			if (key === 'binaryData') return true;
+			if (key === 'binaryPropertyName') return itemIndex === 0 ? 'data' : 'attachment';
+		});
+
+		await microsoftOneDrive.execute.call(mockExecuteFunctions);
+
+		expect(mockExecuteFunctions.helpers.assertBinaryData).toHaveBeenCalledWith(0, 'data');
+		expect(mockExecuteFunctions.helpers.assertBinaryData).toHaveBeenCalledWith(1, 'attachment');
+		expect(getBinaryDataBuffer).toHaveBeenCalledWith(0, 'data');
+		expect(getBinaryDataBuffer).toHaveBeenCalledWith(1, 'attachment');
 	});
 
 	it('should upload valid items and route only the invalid one to output under Continue On Fail', async () => {

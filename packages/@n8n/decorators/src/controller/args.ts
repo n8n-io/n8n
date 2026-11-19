@@ -43,7 +43,7 @@ export function Body(
 	}
 
 	// Factory form e.g. `@Body() body: MyDto` or `@Body({ required: true })`
-	const options = targetOrOptions as BodyOptions | undefined;
+	const options: BodyOptions | undefined = targetOrOptions;
 	const arg: Arg = { type: 'body' };
 
 	if (options?.required !== undefined) {

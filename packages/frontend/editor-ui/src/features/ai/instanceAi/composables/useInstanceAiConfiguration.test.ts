@@ -27,6 +27,7 @@ function createSettings(
 			search: { provider: false, apiKey: false, url: false },
 		},
 		browserUseEnabled: true,
+		cloudBrowserEnabled: false,
 		...overrides,
 	};
 }

@@ -10,16 +10,6 @@
 	}
 }
 
-.buttons {
-	display: flex;
-	justify-content: flex-start;
-	padding: var(--spacing--2xl) 0 var(--spacing--2xs);
-
-	button {
-		margin: 0 var(--spacing--sm) 0 0;
-	}
-}
-
 .group {
 	padding: var(--spacing--sm) 0;
 	border-bottom: var(--border-width) var(--border-style) var(--color--foreground--tint-1);

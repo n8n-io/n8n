@@ -49,8 +49,10 @@ export function getAdditionalKeys(
 		$vars: additionalData.variables,
 		$secrets: options.isCredential ? getSecretsProxy(additionalData) : undefined,
 
-		// deprecated
+		// Keep these aliases for backward compatibility with existing workflows.
+		// oxlint-disable-next-line typescript/no-deprecated
 		$executionId: executionId,
+		// oxlint-disable-next-line typescript/no-deprecated
 		$resumeWebhookUrl: resumeUrl,
 	};
 }

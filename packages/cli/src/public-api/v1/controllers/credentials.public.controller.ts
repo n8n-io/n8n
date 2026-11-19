@@ -14,7 +14,7 @@ import {
 	TransferCredentialPublicDto,
 } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
-import { EventService, CredentialsFinderService } from '@n8n/backend-services';
+import { EventService, CredentialsFinderService, loginIdOf } from '@n8n/backend-services';
 import type { AuthenticatedRequest, CredentialsEntity, ICredentialsDb, User } from '@n8n/db';
 import {
 	ApiDescription,
@@ -259,6 +259,7 @@ export class CredentialsPublicController {
 				credential.type,
 				body.data,
 			),
+			loginId: loginIdOf(req.ctx),
 		});
 
 		return toCredentialPublicDto(credential, includeDescription);
@@ -370,6 +371,7 @@ export class CredentialsPublicController {
 				updatedCredential.type,
 				credentialData,
 			),
+			loginId: loginIdOf(req.ctx),
 		});
 
 		return toCredentialPublicDto(updatedCredential, includeDescription);
@@ -480,7 +482,7 @@ export class CredentialsPublicController {
 			throw new NotFoundError('Not Found');
 		}
 
-		await this.credentialsService.delete(req.user, credentialId);
+		await this.credentialsService.delete(req.user, credentialId, {}, req.ctx);
 
 		return toDeleteCredentialPublicDto(credential, await this.credentialDescriptions.isEnabled());
 	}
