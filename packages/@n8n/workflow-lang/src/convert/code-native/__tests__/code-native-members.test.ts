@@ -2,11 +2,9 @@
  * The member shapes of a native Code node that also makes a Date value.
  *
  * A native Code node holds a Date value without the members of a JavaScript Date, so a write,
- * delete or test of a member of a value that can be a Date value needs a proof. The static
- * proof is widened: a literal, a spread copy, `Object.assign({}, …)`, `Object.fromEntries`,
- * `JSON.parse`, a list method that makes a new list, a `reduce` accumulator that starts with a
- * literal, and a `let`/`var` whose every assignment is one of these are no Date value. The
- * shapes that the proof cannot cover stay refused until the next step adds the run-time check.
+ * delete or test of a member of a value that can be a Date value needs a proof or a check.
+ * The static proof covers the plain shapes; each other shape gets a run-time check that hands
+ * the node over to the fallback host for a Date value.
  *
  * The cases are made up.
  */
@@ -91,8 +89,8 @@ const MEASURED: Record<string, string> = {
 	'Object.assign({}, x)': 'ok',
 	'JSON.parse(s)': 'ok',
 	'const a = []; a[0] = 1': 'ok',
-	'list.map(fn); a[0].k = 1': 'Date: a member of a value that can be a Date value',
-	'function parameter': 'Date: a member of a value that can be a Date value',
+	'list.map(fn); a[0].k = 1': 'ok',
+	'function parameter': 'ok',
 	'reduce accumulator': 'ok',
 	'item.json.k': 'ok',
 	'items[i].json.k': 'ok',
@@ -104,7 +102,7 @@ const MEASURED: Record<string, string> = {
 	'o.list.push(1); o.k = 1': 'ok',
 };
 
-describe('member shapes of a Date value: the widened static proof', () => {
+describe('member shapes of a Date value: the proof and the run-time check', () => {
 	it.each(SHAPES)('$name', (shape) => {
 		expect(statusOf(shape)).toBe(MEASURED[shape.name]);
 	});

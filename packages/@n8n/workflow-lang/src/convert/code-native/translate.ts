@@ -592,6 +592,7 @@ const DATE_VALUE_HELPERS: ReadonlySet<string> = new Set([
 	'mathImul',
 	'assignInto',
 	'fromEntries',
+	'dateMemberCheck',
 	'arrayFrom',
 	'arrayOfLength',
 	'arrayFill',
@@ -636,6 +637,7 @@ const DATE_VALUE_HELPERS: ReadonlySet<string> = new Set([
 	'optCall',
 	'intlOf',
 	'intlFormat',
+	'fileLimitInHost',
 ]);
 
 /** Options of \`toLocaleString\` that only the format of a date reads. */
@@ -3574,13 +3576,14 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 			);
 		};
 		/**
-		 * Refuses code that writes, deletes or tests a member of a value that can be a Date value.
+		 * Guards code that writes, deletes or tests a member of a value that can be a Date value.
 		 * A Date of JavaScript takes members, and a Date value has none. The object is no Date
 		 * value for certain when every value that it can hold is plain: a literal, the \`json\` of
 		 * an item, a copy from \`Object.assign({}, …)\`, \`Object.fromEntries\`, \`JSON.parse\` or
 		 * a list method that makes a new list, the accumulator of a \`reduce\` that starts with a
 		 * literal, a constant whose value is one of these, or a \`let\`/\`var\` whose every
-		 * assignment is one of these.
+		 * assignment is one of these. Each other object gets a run-time check that hands the node
+		 * over to the fallback host for a Date value; a Date that the code knows keeps the refusal.
 		 */
 		const guardMembers = (): void => {
 			const plain = (e: ts.Expression | undefined): boolean => {
@@ -3765,10 +3768,28 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 			};
 			const check = (object: ts.Expression): void => {
 				if (noValue(object, new Set())) return;
-				block(
-					'Date: a member of a value that can be a Date value',
-					'The code writes, deletes or tests a member of a value that can be a Date value. A Date value has no members.',
-				);
+				if (!canHandOver) {
+					block(
+						'Date: a member of a value that can be a Date value',
+						'The code writes, deletes or tests a member of a value that can be a Date value. A Date value has no members.',
+					);
+					return;
+				}
+				const x = stripParens(object);
+				const symbol = ts.isIdentifier(x) ? checker.getSymbolAtLocation(x) : undefined;
+				if (isNewDate(x) || (symbol !== undefined && valued.has(symbol))) {
+					// The value is a Date for certain: the run-time check cannot rewrite it.
+					block(
+						'Date: a member of a value that can be a Date value',
+						'The code writes, deletes or tests a member of a value that can be a Date value. A Date value has no members.',
+					);
+					return;
+				}
+				// One check for the object of the write, the delete or the test: the fallback host
+				// runs the node for a Date value, and the native form gives the result otherwise.
+				replaceNode(object, `dateMemberCheck(${object.getText(sf)})`);
+				helpers.add('dateMemberCheck');
+				handOver('member of a value that can be a Date value');
 			};
 			const find = (n: ts.Node): void => {
 				if (isWrite(n)) {

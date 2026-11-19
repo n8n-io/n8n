@@ -215,10 +215,8 @@ describe('Date values in Code nodes', () => {
 		],
 		['a delete', 'const a = [new Date(i.json.t)]; delete a[0].note;'],
 		['a test with in', "const a = [new Date(i.json.t)]; if ('note' in a[0]) return { json: {} };"],
-	])('refuses %s of a member of a value that can be a Date value', (_name, statements) => {
-		expect(feature(body(statements), true)).toBe(
-			'Date: a member of a value that can be a Date value',
-		);
+	])('checks %s of a member of a value that can be a Date value at run time', (_name, statements) => {
+		expect(feature(body(statements), true)).toContain('dateMemberCheck');
 	});
 
 	it('keeps a write to a member of an object of the code and of the json of an item', () => {
