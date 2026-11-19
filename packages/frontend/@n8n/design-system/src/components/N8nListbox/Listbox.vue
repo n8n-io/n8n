@@ -61,7 +61,14 @@ function onKeydown(event: KeyboardEvent) {
 
 	const option = optionIn(listbox, target);
 
-	if (!option || option === target || option.hasAttribute('data-disabled')) return;
+	// A section control sits between items. Tab follows the visual order and
+	// lands on the nearest item when no other control sits in between.
+	if (!option) {
+		moveHighlightPastControl(listbox, target, event);
+		return;
+	}
+
+	if (option === target || option.hasAttribute('data-disabled')) return;
 
 	if (event.shiftKey) {
 		const previous = adjacentTabStop(target, true);
@@ -82,6 +89,50 @@ function optionIn(listbox: HTMLElement, node: HTMLElement | null) {
 	if (!node) return null;
 	const option = node.closest('[role="option"]');
 	return option instanceof HTMLElement && listbox.contains(option) ? option : null;
+}
+
+function moveHighlightPastControl(listbox: HTMLElement, target: HTMLElement, event: KeyboardEvent) {
+	if (!listbox.contains(target)) return;
+
+	const backwards = event.shiftKey;
+	const neighbor = nearestOption(listbox, target, backwards);
+	if (!neighbor) return;
+
+	const tabStop = adjacentTabStop(target, backwards);
+	if (tabStop === neighbor) return;
+	if (tabStop && !isBetween(target, neighbor, tabStop)) return;
+
+	moveHighlight(neighbor, event);
+}
+
+function nearestOption(listbox: HTMLElement, from: HTMLElement, backwards: boolean) {
+	const options = [...listbox.querySelectorAll<HTMLElement>('[role="option"]')].filter(
+		isAvailableOption,
+	);
+	const ordered = backwards ? options.reverse() : options;
+	return (
+		ordered.find(
+			(option) =>
+				(backwards ? option.compareDocumentPosition(from) : from.compareDocumentPosition(option)) &
+				Node.DOCUMENT_POSITION_FOLLOWING,
+		) ?? null
+	);
+}
+
+function isAvailableOption(option: HTMLElement) {
+	return !option.hasAttribute('data-disabled') && option.closest('[hidden]') === null;
+}
+
+function isBetween(from: HTMLElement, middle: HTMLElement, end: HTMLElement) {
+	const middleFollowsFrom =
+		(from.compareDocumentPosition(middle) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+	const endFollowsMiddle =
+		(middle.compareDocumentPosition(end) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+	const fromFollowsMiddle =
+		(middle.compareDocumentPosition(from) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+	const middleFollowsEnd =
+		(end.compareDocumentPosition(middle) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+	return (middleFollowsFrom && endFollowsMiddle) || (fromFollowsMiddle && middleFollowsEnd);
 }
 
 function moveHighlight(option: HTMLElement, event: KeyboardEvent) {
@@ -105,7 +156,11 @@ function adjacentTabStop(from: HTMLElement, backwards: boolean) {
 }
 
 function isTabStop(element: HTMLElement) {
-	return element.tabIndex >= 0 && !element.hasAttribute('disabled');
+	return (
+		element.tabIndex >= 0 &&
+		!element.hasAttribute('disabled') &&
+		element.closest('[hidden]') === null
+	);
 }
 </script>
 

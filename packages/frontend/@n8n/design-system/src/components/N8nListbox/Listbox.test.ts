@@ -181,6 +181,30 @@ const TabHarness = defineComponent({
 	`,
 });
 
+const SectionHarness = defineComponent({
+	components: { N8nListbox, N8nListboxItem },
+	setup() {
+		const value = ref('readme');
+		return { value };
+	},
+	template: `
+		<div>
+			<button type="button">Before</button>
+			<N8nListbox v-model="value" label="Plugin files">
+				<N8nListboxItem value="readme">README</N8nListboxItem>
+				<button type="button">Collapse skills</button>
+				<button type="button">Add skill</button>
+				<N8nListboxItem value="search">search</N8nListboxItem>
+				<N8nListboxItem value="recruiting">recruiting</N8nListboxItem>
+				<button type="button">Add workflow</button>
+				<N8nListboxItem value="draft" disabled>draft</N8nListboxItem>
+				<N8nListboxItem value="hybrid">hybrid</N8nListboxItem>
+			</N8nListbox>
+			<button type="button">After</button>
+		</div>
+	`,
+});
+
 const LayoutHarness = defineComponent({
 	components: { N8nListbox, N8nListboxItem, N8nIcon },
 	template: `
@@ -470,6 +494,53 @@ describe('N8nListbox', () => {
 
 		await userEvent.tab({ shift: true });
 		expect(getByRole('button', { name: 'Before' })).toHaveFocus();
+	});
+
+	it('moves Tab from a control between items to the nearest item', async () => {
+		const { getByRole } = render(SectionHarness);
+		await nextTick();
+		const readme = getByRole('option', { name: 'README' });
+		const search = getByRole('option', { name: 'search' });
+		const recruiting = getByRole('option', { name: 'recruiting' });
+		const hybrid = getByRole('option', { name: 'hybrid' });
+		const collapse = getByRole('button', { name: 'Collapse skills' });
+		const addSkill = getByRole('button', { name: 'Add skill' });
+		const addWorkflow = getByRole('button', { name: 'Add workflow' });
+
+		collapse.focus();
+		await userEvent.tab();
+		expect(addSkill).toHaveFocus();
+
+		await userEvent.tab();
+		expect(search).toHaveFocus();
+		expect(search).toHaveAttribute('data-highlighted');
+
+		await userEvent.tab();
+		expect(addWorkflow).toHaveFocus();
+		expect(recruiting).not.toHaveAttribute('data-highlighted');
+
+		await userEvent.tab();
+		expect(hybrid).toHaveFocus();
+		expect(hybrid).toHaveAttribute('data-highlighted');
+		expect(getByRole('option', { name: 'draft' })).not.toHaveAttribute('data-highlighted');
+
+		await userEvent.tab();
+		expect(getByRole('button', { name: 'After' })).toHaveFocus();
+
+		addWorkflow.focus();
+		await userEvent.tab({ shift: true });
+		expect(recruiting).toHaveFocus();
+		expect(recruiting).toHaveAttribute('data-highlighted');
+
+		await userEvent.tab({ shift: true });
+		expect(addSkill).toHaveFocus();
+
+		await userEvent.tab({ shift: true });
+		expect(collapse).toHaveFocus();
+
+		await userEvent.tab({ shift: true });
+		expect(readme).toHaveFocus();
+		expect(readme).toHaveAttribute('data-highlighted');
 	});
 
 	it('moves the highlight with Left and Right when orientation is horizontal', async () => {

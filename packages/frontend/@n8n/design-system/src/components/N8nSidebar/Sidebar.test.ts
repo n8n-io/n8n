@@ -9,7 +9,13 @@ function renderSidebar(props: Record<string, unknown> = {}, slot = 'Notes') {
 	});
 }
 
+const storageKey = 'n8n-sidebar-width-test';
+
 describe('N8nSidebar', () => {
+	beforeEach(() => {
+		window.localStorage.removeItem(storageKey);
+	});
+
 	it('renders custom content in a named sidebar', () => {
 		const { getByTestId, getByRole } = renderSidebar();
 
@@ -48,5 +54,58 @@ describe('N8nSidebar', () => {
 		expect(nextWidth).toBeGreaterThanOrEqual(160);
 		expect(nextWidth).toBeLessThanOrEqual(480);
 		expect(nextWidth).not.toBe(240);
+		expect(window.localStorage.getItem(storageKey)).toBeNull();
+	});
+
+	it('restores a saved width and writes the next width', async () => {
+		window.localStorage.setItem(storageKey, '360');
+		const { container, emitted } = renderSidebar({
+			width: 240,
+			minWidth: 160,
+			maxWidth: 480,
+			widthStorageId: storageKey,
+		});
+
+		expect(emitted('update:width')?.[0]).toEqual([360]);
+		const sidebar = container.querySelector('[data-test-id="sidebar"]');
+		expect(sidebar?.parentElement?.parentElement).toHaveStyle({ width: '360px' });
+
+		const handle = container.querySelector('[data-test-id="resize-handle"]');
+		await fireEvent.mouseDown(handle as Element, { clientX: 100, clientY: 20 });
+		await fireEvent.mouseMove(window, { clientX: 180, clientY: 20 });
+		await fireEvent.mouseUp(window, { clientX: 180, clientY: 20 });
+
+		const nextWidth = emitted('update:width')?.at(-1)?.[0];
+		expect(nextWidth).not.toBe(360);
+		expect(window.localStorage.getItem(storageKey)).toBe(String(nextWidth));
+	});
+
+	it('ignores a saved width outside the allowed range', () => {
+		window.localStorage.setItem(storageKey, '900');
+		const { emitted } = renderSidebar({
+			width: 240,
+			minWidth: 160,
+			maxWidth: 480,
+			widthStorageId: storageKey,
+		});
+
+		expect(emitted('update:width')).toBeUndefined();
+		expect(window.localStorage.getItem(storageKey)).toBe('900');
+	});
+
+	it('restores the starting width on double-click and saves that width', async () => {
+		window.localStorage.setItem(storageKey, '360');
+		const { container, emitted } = renderSidebar({
+			width: 240,
+			minWidth: 160,
+			maxWidth: 480,
+			widthStorageId: storageKey,
+		});
+		const handle = container.querySelector('[data-test-id="resize-handle"]');
+
+		await fireEvent.dblClick(handle as Element, { clientX: 100, clientY: 20 });
+
+		expect(emitted('update:width')?.at(-1)).toEqual([240]);
+		expect(window.localStorage.getItem(storageKey)).toBe('240');
 	});
 });
