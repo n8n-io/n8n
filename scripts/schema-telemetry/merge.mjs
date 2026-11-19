@@ -52,11 +52,15 @@ function mergeProperties(objects, minShare) {
 	return properties;
 }
 
-/** Properties of the object members, open when samples add their own keys. */
+/** Properties of the object members, open when samples have keys that the merge drops. */
 function mergeObjectShape(objects, minShare) {
 	const properties = mergeProperties(objects, minShare);
 	if (Object.keys(properties).length === 0) return {};
-	const open = stableKeyShare(objects) < MIN_STABLE_KEY_SHARE;
+	// A key that some samples have but the merge dropped still exists in real output.
+	const droppedKeys = objects.some((o) =>
+		Object.keys(o.properties ?? {}).some((k) => !(k in properties)),
+	);
+	const open = droppedKeys || stableKeyShare(objects) < MIN_STABLE_KEY_SHARE;
 	return open ? { properties, additionalProperties: true } : { properties };
 }
 

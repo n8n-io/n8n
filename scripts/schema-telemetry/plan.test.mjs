@@ -293,3 +293,41 @@ describe('planSchemaFile skipped operations', () => {
 		assert.match(plan.skip, /user-configured/);
 	});
 });
+
+describe('planSchemaFile review fixes', () => {
+	it('skips the Date & Time node, whose output is its input plus a configured field', () => {
+		const withDateTime = new Map([
+			...index,
+			['n8n-nodes-base.dateTime', { dir: 'nodes/DateTime', noOperationSiblings: [] }],
+		]);
+		const plan = planSchemaFile(
+			group({ node_type: 'n8n-nodes-base.dateTime', node_version: '2', operation: 'roundDate' }),
+			withDateTime,
+			opts,
+		);
+
+		assert.match(plan.skip, /passes its input/);
+	});
+
+	it('skips an operation without a resource on a node that has resources', () => {
+		const withResources = new Map([
+			...index,
+			[
+				'n8n-nodes-base.dataTable',
+				{ dir: 'nodes/DataTable', noOperationSiblings: [], hasResource: true },
+			],
+		]);
+		const plan = planSchemaFile(
+			group({
+				node_type: 'n8n-nodes-base.dataTable',
+				node_version: '1.1',
+				resource: null,
+				operation: 'update',
+			}),
+			withResources,
+			opts,
+		);
+
+		assert.match(plan.skip, /resource not set/);
+	});
+});

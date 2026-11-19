@@ -116,14 +116,21 @@ function mergeFile({ samples, workflows, accounts }, { minShare, minWorkflows, m
  *
  * @param {object[]} rows rows of `query.sql`, `samples` as JSON strings
  * @param {Map<string, { dir: string, noOperationSiblings: string[] }>} index
- * @param {{ exists: (file: string) => boolean, defaultOf: (group: object) => 'true' | 'false' | undefined,
+ * @param {{ exists: (file: string) => boolean, coveredBySameMajor?: (file: string) => boolean, defaultOf: (group: object) => 'true' | 'false' | undefined,
  *   minShare?: number, minWorkflows?: number, minSamples?: number }} options
  *   below `minWorkflows` workflows, a group needs `minSamples` samples that agree
  */
 export function buildFiles(
 	rows,
 	index,
-	{ exists, defaultOf, minShare, minWorkflows = 20, minSamples = 5 },
+	{
+		exists,
+		coveredBySameMajor = () => false,
+		defaultOf,
+		minShare,
+		minWorkflows = 20,
+		minSamples = 5,
+	},
 ) {
 	const { keep, older } = splitByNewestVersion(rows, { minWorkflows, minSamples });
 	const { byFile, skipped, schemaPaths } = groupRowsByFile(keep, index, defaultOf);
@@ -136,6 +143,11 @@ export function buildFiles(
 	for (const [file, entry] of byFile) {
 		if (exists(file)) {
 			existing.push(file);
+			continue;
+		}
+		// The resolver falls back within a major, so a new file would shadow that schema.
+		if (coveredBySameMajor(file)) {
+			skipped.push({ group: { file }, reason: 'covered by another version of the same major' });
 			continue;
 		}
 		const merged = mergeFile(entry, { minShare, minWorkflows, minSamples });

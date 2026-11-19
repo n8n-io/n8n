@@ -8,6 +8,8 @@
 
 /** Nodes whose output items are their input items (or user-named metrics), so no schema can describe them. */
 const PASS_THROUGH_NODES = new Set([
+	// Date & Time returns its input plus a field whose name the user sets.
+	'n8n-nodes-base.dateTime',
 	'n8n-nodes-base.editImage',
 	'n8n-nodes-base.evaluation',
 	'n8n-nodes-base.itemLists',
@@ -67,7 +69,7 @@ function planWithoutOperation(group, entry, base, defaultOf) {
 /**
  * @param {{ node_type: string, node_version: string, resource?: string|null, operation?: string|null,
  *   simplify_param?: string|null, simplify?: string|null }} group
- * @param {Map<string, { dir: string, noOperationSiblings: string[] }>} index node type → source folder
+ * @param {Map<string, { dir: string, noOperationSiblings: string[], hasResource?: boolean }>} index node type → source folder
  * @param {{ defaultOf: (group: object) => 'true' | 'false' | undefined }} options default of the group's flag
  * @returns {{ file?: string, skip?: string, schemaPath?: string }}
  */
@@ -82,6 +84,9 @@ export function planSchemaFile(group, index, { defaultOf }) {
 		return { skip: 'the node passes its input items through' };
 	if (![null, undefined, 'true', 'false'].includes(group.simplify)) {
 		return { skip: 'simplify flag holds an expression' };
+	}
+	if (group.operation && !group.resource && entry.hasResource) {
+		return { skip: 'resource not set: the resolver would not read a root-level operation file' };
 	}
 	if (!group.operation && !/trigger$/i.test(group.node_type)) {
 		return { skip: 'not a trigger: output depends on mode or input' };

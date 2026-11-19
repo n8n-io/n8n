@@ -12,14 +12,20 @@ describe('mergeSamples', () => {
 		assert.deepEqual(merged, obj({ id: { type: 'string' } }));
 	});
 
-	it('drops a key that fewer than half of the samples have', () => {
+	it('drops a key that fewer than half of the samples have and leaves the object open', () => {
 		const merged = mergeSamples([
 			obj({ id: { type: 'string' }, myFormField: { type: 'string' } }),
 			obj({ id: { type: 'string' } }),
 			obj({ id: { type: 'string' } }),
 		]);
 
-		assert.deepEqual(merged, obj({ id: { type: 'string' } }));
+		assert.deepEqual(merged, { ...obj({ id: { type: 'string' } }), additionalProperties: true });
+	});
+
+	it('keeps an object closed when no sample has a key that the merge drops', () => {
+		const merged = mergeSamples([obj({ id: { type: 'string' } }), obj({ id: { type: 'string' } })]);
+
+		assert.equal('additionalProperties' in merged, false);
 	});
 
 	it('applies the share threshold inside nested objects', () => {
@@ -29,7 +35,10 @@ describe('mergeSamples', () => {
 			obj({ message: obj({ text: { type: 'string' } }) }),
 		]);
 
-		assert.deepEqual(merged, obj({ message: obj({ text: { type: 'string' } }) }));
+		assert.deepEqual(
+			merged,
+			obj({ message: { ...obj({ text: { type: 'string' } }), additionalProperties: true } }),
+		);
 	});
 
 	it('unions the types that samples report for one key', () => {
@@ -132,14 +141,14 @@ describe('mergeSamples', () => {
 		assert.equal('required' in mergeSamples([sample, sample]), false);
 	});
 
-	it('drops keys that are record ids', () => {
+	it('drops keys that are record ids and leaves the object open for them', () => {
 		const key = '00000000-0000-4000-8000-000000000000';
 		const merged = mergeSamples([
 			obj({ id: { type: 'string' }, [key]: { type: 'string' } }),
 			obj({ id: { type: 'string' }, [key]: { type: 'string' } }),
 		]);
 
-		assert.deepEqual(merged, obj({ id: { type: 'string' } }));
+		assert.deepEqual(merged, { ...obj({ id: { type: 'string' } }), additionalProperties: true });
 	});
 
 	it('honours a custom share threshold', () => {

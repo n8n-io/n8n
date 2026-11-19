@@ -129,6 +129,32 @@ function declaredSchemaPaths(index) {
 	return paths;
 }
 
+/**
+ * Whether another version folder of the same major already holds this file.
+ * The resolver falls back within a major, so a new file there would shadow it.
+ */
+function coveredBySameMajor(file) {
+	const match = file.match(/^(.*\/__schema__)\/v(\d+)\.\d+\.\d+\/(.+)$/);
+	if (!match) return false;
+	const [, schemaDir, major, rest] = match;
+	const absolute = join(repoRoot, schemaDir);
+	if (!existsSync(absolute)) return false;
+	return readdirSync(absolute)
+		.filter((dir) => dir.startsWith(`v${major}.`) && `${schemaDir}/${dir}/${rest}` !== file)
+		.some((dir) => existsSync(join(absolute, dir, rest)));
+}
+
+/** Marks each indexed node whose source folder declares a `resource` parameter. */
+function withResourceFlags(index, sourceIndex) {
+	const flagged = new Map();
+	for (const [type, entry] of index) {
+		const sourceDir = sourceIndex.get(type)?.dir ?? entry.dir;
+		const hasResource = readSources(sourceDir).some((s) => s.text.includes("name: 'resource',"));
+		flagged.set(type, { ...entry, hasResource });
+	}
+	return flagged;
+}
+
 /** A node folder's TypeScript sources, without tests. */
 function readSources(dir) {
 	return readdirSync(join(repoRoot, dir), { recursive: true })
@@ -183,12 +209,13 @@ function main() {
 		noOperationTypes: noOperationTypesOf(rows),
 	};
 	const sourceIndex = buildNodeIndex(packages, telemetry);
-	const index = buildNodeIndex(packages, {
-		...telemetry,
-		schemaPaths: declaredSchemaPaths(sourceIndex),
-	});
+	const index = withResourceFlags(
+		buildNodeIndex(packages, { ...telemetry, schemaPaths: declaredSchemaPaths(sourceIndex) }),
+		sourceIndex,
+	);
 	const result = buildFiles(rows, index, {
 		exists: (file) => existsSync(join(repoRoot, file)),
+		coveredBySameMajor,
 		defaultOf: createDefaultLookup(index),
 		minShare: Number(args['min-share']),
 		minWorkflows: Number(args['agree-below']),

@@ -338,3 +338,16 @@ describe('buildFiles accounts and versions', () => {
 		);
 	});
 });
+
+describe('buildFiles other versions', () => {
+	it('reports a file as covered when another version of the same major has it', () => {
+		const result = buildFiles([row({})], index, {
+			exists: noFiles,
+			coveredBySameMajor: (file) => file.endsWith('message/get.json'),
+			defaultOf,
+		});
+
+		assert.deepEqual(result.files, []);
+		assert.match(result.skipped[0].reason, /same major/);
+	});
+});
