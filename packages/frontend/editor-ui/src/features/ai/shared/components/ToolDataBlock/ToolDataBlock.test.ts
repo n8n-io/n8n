@@ -63,4 +63,40 @@ describe('ToolDataBlock', () => {
 		expect(fileName).toBe('tool-data.json');
 		expect(await readBlob(blob as Blob)).toBe(JSON.stringify(value, null, 2));
 	});
+
+	it('shows the text, images and files of a content result', async () => {
+		const { getByTestId, queryByTestId, container } = renderComponent({
+			props: {
+				value: {
+					type: 'content',
+					value: [
+						{
+							type: 'text',
+							text: '<untrusted_data source="mcp:Test">\nHere you go:\n</untrusted_data>',
+						},
+						{ type: 'file', data: { type: 'data', data: 'iVBOR' }, mediaType: 'image/png' },
+						{ type: 'file', data: { type: 'data', data: 'aGVsbG8=' }, mediaType: 'text/csv' },
+					],
+				},
+			},
+		});
+
+		expect(container.querySelector('code')?.textContent).toBe('Here you go:');
+		expect(getByTestId('ai-tool-data-image')).toHaveAttribute('src', 'data:image/png;base64,iVBOR');
+		expect(queryByTestId('ai-tool-data-download')).not.toBeInTheDocument();
+
+		await userEvent.click(getByTestId('ai-tool-data-file').querySelector('button')!);
+
+		const [file, fileName] = vi.mocked(saveAs).mock.calls.at(-1)!;
+		expect(fileName).toBe('tool-file.csv');
+		expect(await readBlob(file as Blob)).toBe('hello');
+	});
+
+	it('shows a content result with an unknown part as JSON', () => {
+		const value = { type: 'content', value: [{ type: 'audio', data: 'AAAA' }] };
+		const { container, queryByTestId } = renderComponent({ props: { value } });
+
+		expect(queryByTestId('ai-tool-data-content')).not.toBeInTheDocument();
+		expect(container.querySelector('code')?.textContent).toBe(JSON.stringify(value, null, 2));
+	});
 });

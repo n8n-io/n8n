@@ -3,15 +3,21 @@ import { computed } from 'vue';
 import { saveAs } from 'file-saver';
 import { N8nButton, N8nCodeBlock, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { base64ToFile } from '@/app/utils/fileUtils';
+import { extractToolContent, toolContentFileName } from './toolContent.utils';
 import { formatToolData, MAX_TOOL_DATA_DISPLAY_LENGTH } from './toolData.utils';
 
-/** Shows a tool input or output as a highlighted, copyable code block. */
+/**
+ * Shows a tool input or output as a highlighted, copyable code block. A result
+ * made of content parts, such as an MCP result, shows its text, images and files.
+ */
 const props = defineProps<{
 	value: unknown;
 }>();
 
 const i18n = useI18n();
 
+const contentItems = computed(() => extractToolContent(props.value));
 const formatted = computed(() => formatToolData(props.value));
 const isTruncated = computed(() => formatted.value.text.length > MAX_TOOL_DATA_DISPLAY_LENGTH);
 const displayText = computed(() =>
@@ -27,10 +33,36 @@ function downloadFull() {
 	const blob = new Blob([text], { type: kind === 'json' ? 'application/json' : 'text/plain' });
 	saveAs(blob, kind === 'json' ? 'tool-data.json' : 'tool-data.txt');
 }
+
+function downloadFile(data: string, mimeType: string) {
+	const fileName = toolContentFileName(mimeType);
+	saveAs(base64ToFile(data, fileName, mimeType), fileName);
+}
 </script>
 
 <template>
-	<div :class="$style.toolData" data-test-id="ai-tool-data-block">
+	<div v-if="contentItems" :class="$style.toolData" data-test-id="ai-tool-data-content">
+		<template v-for="(item, index) in contentItems" :key="index">
+			<ToolDataBlock v-if="item.type === 'text'" :value="item.text" />
+			<img
+				v-else-if="item.type === 'image'"
+				:src="`data:${item.mimeType};base64,${item.data}`"
+				:alt="i18n.baseText('binaryDataDisplay.imagePreview')"
+				:class="$style.image"
+				data-test-id="ai-tool-data-image"
+			/>
+			<div v-else :class="$style.file" data-test-id="ai-tool-data-file">
+				<N8nText size="small" color="text-light">{{ item.mimeType }}</N8nText>
+				<N8nButton
+					variant="outline"
+					size="mini"
+					:label="i18n.baseText('runData.downloadBinaryData')"
+					@click="downloadFile(item.data, item.mimeType)"
+				/>
+			</div>
+		</template>
+	</div>
+	<div v-else :class="$style.toolData" data-test-id="ai-tool-data-block">
 		<N8nCodeBlock :code="displayText" :language="language" :class="$style.code" />
 		<div v-if="isTruncated" :class="$style.truncatedNotice">
 			<N8nText size="small" color="text-light">
@@ -60,6 +92,16 @@ function downloadFull() {
 	background-color: var(--background--surface);
 }
 
+.image {
+	align-self: flex-start;
+	max-width: 100%;
+	max-height: 320px;
+	object-fit: contain;
+	border: var(--border);
+	border-radius: var(--radius);
+}
+
+.file,
 .truncatedNotice {
 	display: flex;
 	align-items: center;
