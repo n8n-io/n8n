@@ -1,0 +1,67 @@
+CHANGELOG.md
+  s_64a708d7612e79::t_402c8708cd3a69 1-6
+docker/images/n8n/Dockerfile
+  s_64a708d7612e79::t_3a0e330039ad73 1,6-7
+package.json
+  s_64a708d7612e79::t_07b375f5390bec 3
+packages/@n8n/ai-workflow-builder.ee/package.json
+  s_64a708d7612e79::t_8fab1ff4e7007d 3
+packages/@n8n/api-types/package.json
+  s_64a708d7612e79::t_ea3fe20de61b86 3
+packages/@n8n/backend-common/package.json
+  s_64a708d7612e79::t_f806d85d6a9c8a 3
+packages/@n8n/backend-test-utils/package.json
+  s_64a708d7612e79::t_e089905f07d00b 3
+packages/@n8n/db/package.json
+  s_64a708d7612e79::t_cfcabbc9f3ad6c 3
+packages/@n8n/decorators/package.json
+  s_64a708d7612e79::t_d9934624c74e99 3
+packages/@n8n/expression-runtime/package.json
+  s_64a708d7612e79::t_3367dd0332da65 3
+packages/@n8n/nodes-langchain/package.json
+  s_64a708d7612e79::t_4a2a204021d2f7 3
+packages/@n8n/task-runner/package.json
+  s_64a708d7612e79::t_bb2cdbcb069298 3
+packages/cli/package.json
+  s_64a708d7612e79::t_98aa2452e5ac81 3
+packages/core/package.json
+  s_64a708d7612e79::t_09cb338d98f24e 3
+packages/frontend/@n8n/chat/package.json
+  s_64a708d7612e79::t_84fdc0d929f29d 3
+packages/frontend/@n8n/design-system/package.json
+  s_64a708d7612e79::t_7bb2d21a5e0a1b 4
+packages/frontend/@n8n/i18n/package.json
+  s_64a708d7612e79::t_b9bad8632d4b2a 4
+packages/frontend/@n8n/rest-api-client/package.json
+  s_64a708d7612e79::t_161133aaf8bda7 4
+packages/frontend/@n8n/stores/package.json
+  s_64a708d7612e79::t_7d9083368671e2 4
+packages/frontend/editor-ui/package.json
+  s_64a708d7612e79::t_d5365088dff280 3
+packages/node-dev/package.json
+  s_64a708d7612e79::t_047223207410ce 3
+packages/nodes-base/package.json
+  s_64a708d7612e79::t_5f5d03561c0cc6 3
+packages/testing/playwright/global-setup.ts
+  s_64a708d7612e79::t_a79b99a6560951 1,28-39,42,45
+packages/testing/playwright/tests/ui/building-blocks/02-canvas-actions.spec.ts
+  s_64a708d7612e79::t_7cd3d619085036 44-46,48-49,52-53
+packages/workflow/package.json
+  s_64a708d7612e79::t_05bb5e41dc1d6d 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "17c94eef699dc3c697a14085260ebcb202a0be76",
+  "prompts": {},
+  "sessions": {
+    "s_64a708d7612e79": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dc5663db-1b2f-40bc-9b50-9c8c8d4f59be",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}
