@@ -3675,7 +3675,7 @@ describe('AgentsBuilderToolsService', () => {
 			} as never);
 			const suspend = vi.fn(async (payload: unknown) => payload as never);
 
-			await getPublishTool(service).handler!(
+			const result = await getPublishTool(service).handler!(
 				{ versionId: 'v-draft' },
 				{
 					...ctx,
@@ -3692,6 +3692,17 @@ describe('AgentsBuilderToolsService', () => {
 
 			expect(agentPublishService.publishAgent).not.toHaveBeenCalled();
 			expect(suspend).toHaveBeenCalledTimes(1);
+			// Still a draft card, about the current draft, not the old draft as a history version.
+			expect(agentPublishService.getVersion).not.toHaveBeenCalled();
+			expect(result).toMatchObject({
+				approvalDetails: { selectedVersion: false, changedSinceAsked: true },
+			});
+			expect(suspend).toHaveBeenCalledWith(expect.anything(), {
+				continuation: expect.objectContaining({
+					confirmedVersionId: 'v-draft-2',
+					selectedVersion: false,
+				}),
+			});
 		});
 
 		it('asks again when a channel was connected while a history card was open', async () => {

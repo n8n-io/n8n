@@ -1139,7 +1139,14 @@ export class AgentsBuilderToolsService {
 						(before.activeVersionId ?? null) !== confirmed.data.liveVersionId ||
 						before.revision !== confirmed.data.revision
 					) {
-						return await this.askToPublish(ctx, agentId, projectId, versionId, confirmed.success);
+						// A draft card asks about the draft again, even if the call named an older draft.
+						return await this.askToPublish(
+							ctx,
+							agentId,
+							projectId,
+							draftCard ? undefined : versionId,
+							confirmed.success,
+						);
 					}
 					try {
 						const beforeActiveVersionId = before.activeVersionId;
