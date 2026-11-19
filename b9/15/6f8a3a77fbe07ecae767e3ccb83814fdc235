@@ -1,0 +1,96 @@
+packages/@n8n/engine/docs/adr/ADR-20261118-a-parallel-loop-starts-passes-by-admission-and-joins-on-its-back-edge.md
+  h_8fb27e0cdf6d1e 1-84
+packages/@n8n/engine/src/database/__tests__/workflow-step-execution.integration.test.ts
+  h_8fb27e0cdf6d1e 1253-1299
+packages/@n8n/engine/src/database/entities/workflow-step-execution.entity.ts
+  h_8fb27e0cdf6d1e 88-94
+packages/@n8n/engine/src/database/migrations/1784890100000-CreateWorkflowStepExecution.ts
+  h_8fb27e0cdf6d1e 65-71
+packages/@n8n/engine/src/database/typeorm-step-store.ts
+  h_8fb27e0cdf6d1e 19,23,61-66,215-223,416,487-524
+packages/@n8n/engine/src/execution/__tests__/batch-step.test.ts
+  h_8fb27e0cdf6d1e 44-46,61-63,70-72,78,84,90-96,105-150
+packages/@n8n/engine/src/execution/__tests__/execution-start-handler.test.ts
+  h_8fb27e0cdf6d1e 75
+packages/@n8n/engine/src/execution/__tests__/iteration-mapping.test.ts
+  h_8fb27e0cdf6d1e 149-178
+packages/@n8n/engine/src/execution/__tests__/loop-admission.test.ts
+  h_8fb27e0cdf6d1e 1-130
+packages/@n8n/engine/src/execution/__tests__/settlement.test.ts
+  h_8fb27e0cdf6d1e 543-585
+packages/@n8n/engine/src/execution/__tests__/step-execution.integration.test.ts
+  h_8fb27e0cdf6d1e 510-610
+packages/@n8n/engine/src/execution/__tests__/step-ready-handler.test.ts
+  h_8fb27e0cdf6d1e 147,1796-1829
+packages/@n8n/engine/src/execution/__tests__/step-settled-handler.test.ts
+  h_8fb27e0cdf6d1e 137,614-731
+packages/@n8n/engine/src/execution/__tests__/wait-sweeper.test.ts
+  h_8fb27e0cdf6d1e 40
+packages/@n8n/engine/src/execution/batch-step.ts
+  h_8fb27e0cdf6d1e 19-24,29-31,37,41-43,45,52,54
+packages/@n8n/engine/src/execution/index.ts
+  h_8fb27e0cdf6d1e 48,50
+packages/@n8n/engine/src/execution/iteration-mapping.ts
+  h_8fb27e0cdf6d1e 1,19-21,23,40-43,57-60,63-66,92-93
+packages/@n8n/engine/src/execution/loop-admission.ts
+  h_8fb27e0cdf6d1e 1-83
+packages/@n8n/engine/src/execution/settlement.ts
+  h_8fb27e0cdf6d1e 50-52,89-90,212-214
+packages/@n8n/engine/src/execution/step-ready-handler.ts
+  h_8fb27e0cdf6d1e 17,38,120,126,130-132,141,162-164,344
+packages/@n8n/engine/src/execution/step-settled-handler.ts
+  h_8fb27e0cdf6d1e 8,24,153-155,182-202
+packages/@n8n/engine/src/execution/step-store.ts
+  h_8fb27e0cdf6d1e 10,29-37,149,297-307
+packages/@n8n/engine/src/graph/__tests__/loops.test.ts
+  h_8fb27e0cdf6d1e 25-31,73-82,611-622
+packages/@n8n/engine/src/graph/index.ts
+  h_8fb27e0cdf6d1e 4
+packages/@n8n/engine/src/graph/loops.ts
+  h_8fb27e0cdf6d1e 3-9,24-25,37-38,40,195-199
+packages/@n8n/engine/src/graph/workflow-graph.ts
+  h_8fb27e0cdf6d1e 25-29,32-41,43-51
+packages/@n8n/engine/src/index.ts
+  h_8fb27e0cdf6d1e 93,152-153
+packages/@n8n/node-engine-compatibility/src/__tests__/engine-refusals.ts
+  h_8fb27e0cdf6d1e 72,74,101-118
+packages/@n8n/node-engine-compatibility/src/__tests__/m1-acceptance.integration.test.ts
+  h_8fb27e0cdf6d1e 455-522
+packages/@n8n/node-engine-compatibility/src/__tests__/v1-adapters.test.ts
+  h_8fb27e0cdf6d1e 2,6-12,214-272
+packages/@n8n/node-engine-compatibility/src/__tests__/v1-workflow-converter.test.ts
+  h_8fb27e0cdf6d1e 757-793
+packages/@n8n/node-engine-compatibility/src/constants.ts
+  h_8fb27e0cdf6d1e 10-12,15-17
+packages/@n8n/node-engine-compatibility/src/errors.ts
+  h_8fb27e0cdf6d1e 2,153-170
+packages/@n8n/node-engine-compatibility/src/v1-adapters.ts
+  h_8fb27e0cdf6d1e 8,14,35,50,122-125,144-152,156-159,176-231
+packages/@n8n/node-engine-compatibility/src/v1-step-executor.ts
+  h_8fb27e0cdf6d1e 47,134
+packages/@n8n/node-engine-compatibility/src/v1-workflow-converter.ts
+  h_8fb27e0cdf6d1e 8,12,438,440,468,472-474,480-501
+packages/@n8n/workflow-engine-check/src/__tests__/converter-rules.test.ts
+  h_8fb27e0cdf6d1e 124-141,258-268
+packages/@n8n/workflow-engine-check/src/converter-rules.ts
+  h_8fb27e0cdf6d1e 14,16,75,129-130,134-176
+packages/@n8n/workflow-engine-check/src/types.ts
+  h_8fb27e0cdf6d1e 29-30
+packages/nodes-base/nodes/SplitInBatches/SplitInBatches.node.ts
+  h_8fb27e0cdf6d1e 7,18,25
+packages/nodes-base/nodes/SplitInBatches/test/SplitInBatchesV4.node.test.ts
+  h_8fb27e0cdf6d1e 1-53
+packages/nodes-base/nodes/SplitInBatches/v4/SplitInBatchesV4.node.ts
+  h_8fb27e0cdf6d1e 1-70
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b9156f8a3a77fbe07ecae767e3ccb83814fdc235",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

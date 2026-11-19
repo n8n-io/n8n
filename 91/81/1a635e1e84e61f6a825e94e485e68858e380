@@ -1,0 +1,21 @@
+packages/@n8n/instance-ai/skills/workflow-builder/references/one-off-operations.md
+  s_adc20b1080ee25::t_86f73f097538f7 72-74
+packages/@n8n/instance-ai/docs/tools.md
+  s_adc20b1080ee25::t_7d7320ef9ae9a7 1083
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "91811a635e1e84e61f6a825e94e485e68858e380",
+  "prompts": {},
+  "sessions": {
+    "s_adc20b1080ee25": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3c34fa31-e0c2-4ecd-a5a1-0d7ffd46750c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}
