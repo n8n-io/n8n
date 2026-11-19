@@ -19,6 +19,7 @@ const props = withDefaults(defineProps<TabsProps<Value>>(), {
 	size: 'medium',
 	justified: false,
 	orientation: 'horizontal',
+	variant: 'underline',
 });
 
 const emit = defineEmits<{
@@ -105,10 +106,14 @@ onUnmounted(() => {
  * arrive or change label after mount grow scrollWidth without touching it, so
  * the arrows would otherwise stay hidden until the next mount.
  */
-watch(() => [props.options, props.justified, props.size, props.orientation], updateScrollState, {
-	deep: true,
-	flush: 'post',
-});
+watch(
+	() => [props.options, props.justified, props.size, props.orientation, props.variant],
+	updateScrollState,
+	{
+		deep: true,
+		flush: 'post',
+	},
+);
 
 function handleTooltipClick(tab: Value, event: MouseEvent) {
 	emit('tooltipClick', tab, event);
@@ -163,6 +168,7 @@ function scroll(direction: 'left' | 'right') {
 				[$style.large]: size === 'large',
 				[$style.justified]: justified,
 				[$style.vertical]: orientation === 'vertical',
+				[$style.filled]: variant === 'filled',
 			}"
 		>
 			<button
@@ -432,6 +438,53 @@ function scroll(direction: 'left' | 'right') {
 			transform var(--n8n-tabs--indicator--duration) var(--n8n-tabs--indicator--easing),
 			height var(--n8n-tabs--indicator--duration) var(--n8n-tabs--indicator--easing);
 		@include motion.reduced-motion;
+	}
+}
+
+/**
+ * The filled variant stretches the shared indicator over the active tab,
+ * so the background moves between tabs like the underline does.
+ */
+.filled {
+	.tabs {
+		gap: var(--spacing--5xs);
+	}
+
+	.tab {
+		/**
+		 * Keep the tab above the indicator, which now covers the full tab.
+		 * Do not position `.tabItem`: Reka measures `offsetLeft` from the tab list.
+		 */
+		z-index: 1;
+		--n8n-tabs--tab--color--hover: var(--text-color);
+		--n8n-tabs--tab--color--active: var(--text-color);
+
+		&.destructive {
+			--n8n-tabs--tab--color--hover: var(--color--danger);
+			--n8n-tabs--tab--color--active: var(--color--danger);
+		}
+
+		&[data-disabled],
+		&:disabled {
+			--n8n-tabs--tab--color--hover: var(--text-color--disabled);
+		}
+	}
+
+	.indicator,
+	.indicator.destructive {
+		top: 0;
+		bottom: 0;
+		height: auto;
+		border-radius: var(--radius);
+		background-color: var(--background--hover);
+	}
+
+	&.vertical .indicator {
+		left: 0;
+		right: 0;
+		bottom: auto;
+		width: auto;
+		height: var(--reka-tabs-indicator-size);
 	}
 }
 

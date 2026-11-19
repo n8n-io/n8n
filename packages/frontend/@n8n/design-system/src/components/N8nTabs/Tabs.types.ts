@@ -23,4 +23,6 @@ export interface TabsProps<Value extends string | number = string | number> {
 	justified?: boolean;
 	/** Determines the layout and the arrow keys for keyboard navigation. */
 	orientation?: 'horizontal' | 'vertical';
+	/** Visual style. `underline` marks the active tab with a bar, `filled` with a background. */
+	variant?: 'underline' | 'filled';
 }

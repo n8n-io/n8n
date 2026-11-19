@@ -1,5 +1,6 @@
 import type { StoryFn } from '@storybook/vue3-vite';
 import { action } from 'storybook/actions';
+import { ref } from 'vue';
 
 import N8nTabs from './Tabs.vue';
 import type { TabOptions } from '../../types/tabs';
@@ -7,7 +8,23 @@ import type { TabOptions } from '../../types/tabs';
 export default {
 	title: 'Core/Tabs',
 	component: N8nTabs,
-	argTypes: {},
+	argTypes: {
+		variant: {
+			control: 'select',
+			options: ['underline', 'filled'],
+		},
+		size: {
+			control: 'select',
+			options: ['small', 'medium', 'large'],
+		},
+		orientation: {
+			control: 'select',
+			options: ['horizontal', 'vertical'],
+		},
+		justified: {
+			control: 'boolean',
+		},
+	},
 	parameters: {
 		docs: {
 			description: {
@@ -18,26 +35,6 @@ export default {
 	},
 };
 
-const methods = {
-	onUpdateModelValue: action('update:modelValue'),
-};
-
-const Template: StoryFn = (args, { argTypes }) => ({
-	setup: () => ({ args }),
-	props: Object.keys(argTypes),
-	components: {
-		N8nTabs,
-	},
-	template: `<n8n-tabs v-model="val" v-bind="args" @update:modelValue="onUpdateModelValue">
-		</n8n-tabs>`,
-	methods,
-	data() {
-		return {
-			val: '',
-		};
-	},
-});
-
 type DefaultTab = 'overview' | 'usage' | 'accessibility';
 
 const defaultTabs: Array<TabOptions<DefaultTab>> = [
@@ -46,17 +43,25 @@ const defaultTabs: Array<TabOptions<DefaultTab>> = [
 	{ label: 'Accessibility', value: 'accessibility' },
 ];
 
-export const Default: StoryFn = () => ({
+export const Default: StoryFn = (args) => ({
 	components: { N8nTabs },
 	setup() {
-		return { options: defaultTabs };
+		const val = ref<DefaultTab>('overview');
+		return { args, val, options: defaultTabs };
 	},
-	data() {
-		return { val: 'overview' };
+	methods: {
+		onUpdateModelValue: action('update:modelValue'),
 	},
-	methods,
 	template: `
-		<n8n-tabs v-model="val" :options="options" @update:model-value="onUpdateModelValue">
+		<n8n-tabs
+			v-model="val"
+			:options="options"
+			:variant="args.variant"
+			:size="args.size"
+			:orientation="args.orientation"
+			:justified="args.justified"
+			@update:model-value="onUpdateModelValue"
+		>
 			<template #content="{ value }">
 				<p v-if="value === 'overview'" style="padding: var(--spacing--sm);">
 					Tabs let users switch between related views without leaving the page.
@@ -74,128 +79,9 @@ export const Default: StoryFn = () => ({
 		</n8n-tabs>
 	`,
 });
-
-const options: Array<TabOptions<string>> = [
-	{
-		label: 'First',
-		value: 'first',
-	},
-	{
-		label: 'Second',
-		value: 'second',
-	},
-	{
-		label: 'Danger',
-		value: 'danger',
-		isDestructive: true,
-		icon: 'triangle-alert',
-	},
-	{
-		label: 'Right Icon',
-		value: 'rightIcon',
-		icon: 'circle',
-		iconPosition: 'right',
-	},
-	{
-		label: '',
-		value: 'iconOnly',
-		tooltip: 'Icon only tab',
-		icon: 'circle',
-	},
-	{
-		label: 'Notification',
-		value: 'notification',
-		notification: true,
-	},
-	{
-		label: 'Count',
-		value: 'count',
-		tag: '2',
-	},
-	{
-		label: 'Settings',
-		value: 'settings',
-		icon: 'cog',
-		align: 'right',
-	},
-];
-
-export const Variants = Template.bind({});
-Variants.args = {
-	modelValue: 'first',
-	options,
+Default.args = {
+	variant: 'underline',
+	size: 'medium',
+	orientation: 'horizontal',
+	justified: false,
 };
-
-export const Overflow: StoryFn = () => ({
-	components: { N8nTabs },
-	data() {
-		return { val: 'first', options };
-	},
-	template: `
-		<div style="width: 40%; min-width: var(--spacing--xl); display: flex; flex-direction: column; gap: var(--spacing--xl);">
-			<n8n-tabs v-model="val" :options="options" />
-			<n8n-tabs v-model="val" size="small" :options="options" />
-			<n8n-tabs v-model="val" :options="options" />
-			<n8n-tabs v-model="val" size="small" :options="options" />
-		</div>
-	`,
-});
-
-export const OversizedTab: StoryFn = () => ({
-	components: { N8nTabs },
-	data() {
-		return {
-			val: 'wide',
-			options: [
-				{
-					value: 'wide',
-					label:
-						'A very long tab label that is wider than its container and needs several scroll steps to read',
-					tag: '2',
-				},
-			],
-		};
-	},
-	template: `
-		<div style="width: 40%;">
-			<n8n-tabs v-model="val" :options="options" />
-		</div>
-	`,
-});
-
-export const Justified: StoryFn = () => ({
-	components: { N8nTabs },
-	data() {
-		return {
-			val: 'first',
-			options: [
-				{ value: 'first', label: 'A long first tab label', notification: true },
-				{ value: 'second', label: 'Second tab' },
-				{ value: 'third', label: 'A long third tab label' },
-			],
-		};
-	},
-	template: `
-		<div style="width: 40%;">
-			<n8n-tabs v-model="val" justified :options="options" />
-		</div>
-	`,
-});
-
-export const Sizes: StoryFn = () => ({
-	components: { N8nTabs },
-	data() {
-		return {
-			val: 'first',
-			options,
-		};
-	},
-	template: `
-		<div style="display: flex; flex-direction: column; gap: 24px;">
-			<n8n-tabs v-model="val" size="medium" :options="options" />
-			<n8n-tabs v-model="val" size="small" :options="options" />
-			<n8n-tabs v-model="val" size="medium" :options="options" />
-			<n8n-tabs v-model="val" size="small" :options="options" />
-		</div>
-	`,
-});
