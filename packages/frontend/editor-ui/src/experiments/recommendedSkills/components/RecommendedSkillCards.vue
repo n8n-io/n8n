@@ -8,6 +8,7 @@ import {
 	type RecommendedSkill,
 	type RecommendedSkillSelection,
 } from '../recommendedSkills';
+import RecommendedSkillSource from './RecommendedSkillSource.vue';
 import { useRecommendedSkillLoader } from '../useRecommendedSkillLoader';
 import {
 	type RecommendedSkillsEntryPoint,
@@ -59,6 +60,7 @@ onMounted(() => {
 				<N8nText tag="p" size="small" color="text-base" :class="$style.cardText">
 					{{ i18n.baseText(recommended.cardTextKey) }}
 				</N8nText>
+				<RecommendedSkillSource :skill="recommended" :class="$style.source" />
 				<template #footer>
 					<N8nButton
 						variant="outline"
@@ -119,6 +121,10 @@ onMounted(() => {
 
 .cardText {
 	flex: 1;
-	padding: var(--spacing--2xs) 0 var(--spacing--sm);
+	padding: var(--spacing--2xs) 0 var(--spacing--3xs);
+}
+
+.source {
+	padding-bottom: var(--spacing--sm);
 }
 </style>

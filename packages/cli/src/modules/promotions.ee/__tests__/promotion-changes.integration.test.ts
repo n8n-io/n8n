@@ -700,9 +700,14 @@ it('answers for a destination that has only an apply environment', async () => {
 	await agent.get(endpoint).expect(404);
 }, 30_000);
 
-it.each([{ tags: 'enabled' }, { tags: 'disabled' }])(
-	'lists nothing after apply, although the destination mints its own version, with workflow tags $tags',
-	async ({ tags }) => {
+it.each([
+	{ scope: 'project', tags: 'enabled' },
+	{ scope: 'project', tags: 'disabled' },
+	{ scope: 'instance', tags: 'enabled' },
+	{ scope: 'instance', tags: 'disabled' },
+])(
+	'lists nothing after apply in the $scope preview with workflow tags $tags',
+	async ({ scope, tags }) => {
 		const owner = await createOwner();
 		const project = await createTeamProject('Destination', owner);
 		const workflow = await createWorkflow({ name: 'Orders', nodes: [], connections: {} }, project);
@@ -733,7 +738,10 @@ it.each([{ tags: 'enabled' }, { tags: 'disabled' }])(
 		// The destination still runs the previous content under a version of its own.
 		await workflows.update(workflow.id, { versionId: 'destination-version', nodes: [] });
 		const agent = server.publicApiAgentWithCookie(owner);
-		const endpoint = `/promotions/projects/${project.id}/changes/apply`;
+		const endpoint =
+			scope === 'instance'
+				? `/promotions/environments/${environments.apply.id}/changes`
+				: `/promotions/projects/${project.id}/changes/apply`;
 		const changed = async () => changedResources((await agent.get(endpoint).expect(200)).body);
 		const summary = (await agent.get(endpoint).expect(200)).body;
 		expect(changedResources(summary)).toEqual([
@@ -1220,6 +1228,10 @@ describe('resources in the preview', () => {
 			// With workflow tags disabled, Apply changes no tag and no tag mapping.
 			Container.get(GlobalConfig).tags.disabled = true;
 			expect(changedResources((await agent.get(endpoint).expect(200)).body)).toEqual([]);
+			const instancePreview = await agent
+				.get(`/promotions/environments/${environments.apply.id}/changes`)
+				.expect(200);
+			expect(changedResources(instancePreview.body)).toEqual([]);
 		},
 		30_000,
 	);
@@ -1335,5 +1347,54 @@ describe('resources in the preview', () => {
 				after: expect.objectContaining({ name: 'Invoice' }),
 			}),
 		]);
+	}, 30_000);
+
+	it('fetches the commit of a change list that another main served', async () => {
+		const owner = await createOwner();
+		const project = await createTeamProject('Finance', owner);
+		const workflow = await createWorkflow({ name: 'Invoice', nodes: [], connections: {} }, project);
+		const environments = await createInstanceEnvironments(['apply']);
+		// Another clone pushes, so this main's checkout is older than the branch.
+		await exportPreviewBaseline(environments.apply, owner);
+		await Container.get(WorkflowRepository).update(workflow.id, { name: 'Invoice local' });
+		const key = `workflow:${workflow.id}`;
+		const commitSha = await remoteHead();
+
+		const { body } = await server
+			.publicApiAgentWithCookie(owner)
+			.post(`/promotions/projects/${project.id}/changes/apply/details`)
+			.send({ commitSha, keys: [key] })
+			.expect(200);
+
+		expect(body.details).toEqual([
+			expect.objectContaining({
+				key,
+				before: expect.objectContaining({ name: 'Invoice local' }),
+				after: expect.objectContaining({ name: 'Invoice' }),
+			}),
+		]);
+	}, 30_000);
+
+	it('fails with 400 when the branch does not hold the commit of the change list', async () => {
+		const owner = await createOwner();
+		const project = await createTeamProject('Finance', owner);
+		const workflow = await createWorkflow({ name: 'Invoice', nodes: [], connections: {} }, project);
+		const environments = await createInstanceEnvironments(['apply']);
+		await exportPreviewBaseline(environments.apply, owner);
+		// A commit that the remote never received, as after a force-push.
+		const { dir, git } = await (sourceFixture ??= createSourceFixture());
+		await writeFile(path.join(dir, 'README.md'), '# Workflows\n');
+		await git.add('README.md').commit('Not pushed');
+		const commitSha = (await git.revparse(['HEAD'])).trim();
+
+		const { body } = await server
+			.publicApiAgentWithCookie(owner)
+			.post(`/promotions/projects/${project.id}/changes/apply/details`)
+			.send({ commitSha, keys: [`workflow:${workflow.id}`] })
+			.expect(400);
+
+		expect(body.message).toBe(
+			'The branch no longer has the commit of the preview. Load the preview again.',
+		);
 	}, 30_000);
 });

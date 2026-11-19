@@ -1,5 +1,6 @@
 import type {
 	MoveSkillSourceDto,
+	DeleteSkillSourceQueryDto,
 	SkillSourceMovePreview,
 	AcceptSkillSourceUpdatesDto,
 	ReviewSkillSourceUpdateQueryDto,
@@ -182,9 +183,18 @@ export async function listSkillSources(context: IRestApiContext): Promise<SkillS
 	return await makeRestApiRequest<SkillSourceListItem[]>(context, 'GET', SOURCES_ENDPOINT);
 }
 
-/** Deletes a source and its synced skills. */
-export async function deleteSkillSource(context: IRestApiContext, sourceId: string): Promise<void> {
-	await makeRestApiRequest(context, 'DELETE', `${SOURCES_ENDPOINT}/${sourceId}`);
+/** Removes a source and optionally keeps its skills. */
+export async function deleteSkillSource(
+	context: IRestApiContext,
+	sourceId: string,
+	query?: DeleteSkillSourceQueryDto,
+): Promise<void> {
+	await makeRestApiRequest(
+		context,
+		'DELETE',
+		`${SOURCES_ENDPOINT}/${sourceId}`,
+		query && { ...query },
+	);
 }
 
 function sourceCredentialEndpoint(source: Pick<SkillSourceListItem, 'id' | 'projectId'>) {
