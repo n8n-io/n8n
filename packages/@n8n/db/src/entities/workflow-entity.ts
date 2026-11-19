@@ -135,4 +135,8 @@ export class WorkflowEntity extends WithTimestampsAndStringId implements IWorkfl
 	@Index()
 	@Column({ type: 'varchar', nullable: true })
 	sourceWorkflowId: string | null;
+
+	@Index()
+	@Column({ type: 'uuid', nullable: true })
+	ownerUserId: string | null;
 }

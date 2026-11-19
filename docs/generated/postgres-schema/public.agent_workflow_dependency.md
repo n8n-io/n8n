@@ -48,6 +48,7 @@ erDiagram
   json integrations
   boolean isArchived
   varchar_128_ name
+  uuid ownerUserId FK
   varchar_36_ parentFolderId FK
   varchar_255_ projectId FK
   integer publicationRevision
@@ -72,6 +73,7 @@ erDiagram
   varchar_128_ name
   json nodeGroups
   json nodes
+  uuid ownerUserId FK
   varchar_36_ parentFolderId FK
   json pinData
   json settings

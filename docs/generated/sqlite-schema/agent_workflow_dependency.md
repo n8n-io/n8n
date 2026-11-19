@@ -58,6 +58,7 @@ erDiagram
   TEXT integrations
   boolean isArchived
   varchar_128_ name
+  varchar ownerUserId FK
   varchar_36_ parentFolderId FK
   varchar_255_ projectId FK
   INTEGER publicationRevision
@@ -82,6 +83,7 @@ erDiagram
   varchar_128_ name
   TEXT nodeGroups
   TEXT nodes
+  varchar ownerUserId FK
   varchar_36_ parentFolderId FK
   TEXT pinData
   TEXT settings

@@ -155,6 +155,27 @@ describe('ImportService', () => {
 		]);
 	});
 
+	test('should not take the owner user from the import file', async () => {
+		const workflowToImport = Object.assign(newWorkflow(), { ownerUserId: uuid() });
+
+		await importService.importWorkflows([workflowToImport], ownerPersonalProject.id, owner.id, {});
+
+		const dbWorkflow = await workflowRepository.findOneByOrFail({ id: workflowToImport.id });
+		expect(dbWorkflow.ownerUserId).toBeNull();
+	});
+
+	test('should keep the stored owner user on re-import', async () => {
+		const workflow = await createWorkflow(undefined, owner);
+		await workflowRepository.update(workflow.id, { ownerUserId: owner.id });
+
+		Object.assign(workflow, { ownerUserId: uuid() });
+
+		await importService.importWorkflows([workflow], ownerPersonalProject.id, owner.id, {});
+
+		const dbWorkflow = await workflowRepository.findOneByOrFail({ id: workflow.id });
+		expect(dbWorkflow.ownerUserId).toBe(owner.id);
+	});
+
 	test('should deactivate imported workflow if active', async () => {
 		const workflowToImport = await createActiveWorkflow();
 

@@ -76,6 +76,7 @@ erDiagram
   varchar_128_ name
   TEXT nodeGroups
   TEXT nodes
+  varchar ownerUserId FK
   varchar_36_ parentFolderId FK
   TEXT pinData
   TEXT settings

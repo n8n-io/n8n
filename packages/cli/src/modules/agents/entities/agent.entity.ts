@@ -130,6 +130,10 @@ export class Agent extends WithTimestampsAndStringId {
 	@JoinColumn({ name: 'identityId', foreignKeyConstraintName: 'FK_agents_identity' })
 	identity?: Relation<User> | null;
 
+	@Index()
+	@Column({ type: 'uuid', nullable: true })
+	ownerUserId: string | null;
+
 	/** Draft revision. Fenced saves advance it to reject stale draft writes. */
 	@Column({ type: 'int', default: 0 })
 	revision: number;

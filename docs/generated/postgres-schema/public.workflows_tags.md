@@ -54,6 +54,7 @@ erDiagram
   varchar_128_ name
   json nodeGroups
   json nodes
+  uuid ownerUserId FK
   varchar_36_ parentFolderId FK
   json pinData
   json settings

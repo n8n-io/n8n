@@ -470,6 +470,9 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			workflowSubject({ id: content.id ?? null, nodes: content.nodes }),
 		);
 
+		// The content can name a user of another instance. `undefined` keeps the stored owner.
+		content.ownerUserId = undefined;
+
 		const result = await runWorkflowContentWrite(
 			async () => await this.managerFor(ctx).upsert(WorkflowEntity, content, ['id']),
 		);

@@ -12,6 +12,7 @@
 | integrations | json | '[]'::json | false |  |  |  |
 | isArchived | boolean | false | false |  |  | Whether the agent is archived: hidden, unpublished and read-only |
 | name | varchar(128) |  | false |  |  |  |
+| ownerUserId | uuid |  | true |  | [public.user](public.user.md) | Person accountable for the resource. A member of its home project, or null |
 | parentFolderId | varchar(36) |  | true |  | [public.folder](public.folder.md) | Agent folder ID, or null at the project root |
 | projectId | varchar(255) |  | true |  | [public.project](public.project.md) |  |
 | publicationRevision | integer | 0 | false |  |  |  |
@@ -34,6 +35,7 @@
 | FK_940597dfe9753375309ce6aeea0 | FOREIGN KEY | FOREIGN KEY ("activeVersionId") REFERENCES agent_history("versionId") ON DELETE SET NULL |
 | FK_a30d560207c4071d98aa03c179c | FOREIGN KEY | FOREIGN KEY ("projectId") REFERENCES project(id) ON DELETE CASCADE |
 | FK_agents_identity | FOREIGN KEY | FOREIGN KEY ("identityId") REFERENCES "user"(id) ON DELETE SET NULL |
+| FK_agents_owner_user | FOREIGN KEY | FOREIGN KEY ("ownerUserId") REFERENCES "user"(id) ON DELETE SET NULL |
 | FK_agents_parent_folder | FOREIGN KEY | FOREIGN KEY ("parentFolderId") REFERENCES folder(id) ON DELETE RESTRICT |
 | PK_9c653f28ae19c5884d5baf6a1d9 | PRIMARY KEY | PRIMARY KEY (id) |
 | agents_availableInMCP_not_null | n | NOT NULL "availableInMCP" |
@@ -55,6 +57,7 @@
 | ---- | ---------- |
 | IDX_a30d560207c4071d98aa03c179 | CREATE INDEX "IDX_a30d560207c4071d98aa03c179" ON public.agents USING btree ("projectId") |
 | IDX_agents_identityId | CREATE UNIQUE INDEX "IDX_agents_identityId" ON public.agents USING btree ("identityId") WHERE ("identityId" IS NOT NULL) |
+| IDX_agents_ownerUserId | CREATE INDEX "IDX_agents_ownerUserId" ON public.agents USING btree ("ownerUserId") |
 | IDX_agents_projectId | CREATE INDEX "IDX_agents_projectId" ON public.agents USING btree ("projectId") |
 | IDX_agents_project_folder | CREATE INDEX "IDX_agents_project_folder" ON public.agents USING btree ("projectId", "parentFolderId") |
 | PK_9c653f28ae19c5884d5baf6a1d9 | CREATE UNIQUE INDEX "PK_9c653f28ae19c5884d5baf6a1d9" ON public.agents USING btree (id) |
@@ -89,6 +92,7 @@ erDiagram
 "public.agents_observations" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agents_tags" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agents" }o--o| "public.user" : "FOREIGN KEY (#quot;identityId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
+"public.agents" }o--o| "public.user" : "FOREIGN KEY (#quot;ownerUserId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.agents" }o--o| "public.folder" : "FOREIGN KEY (#quot;parentFolderId#quot;) REFERENCES folder(id) ON DELETE RESTRICT"
 "public.agents" }o--o| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 
@@ -101,6 +105,7 @@ erDiagram
   json integrations
   boolean isArchived
   varchar_128_ name
+  uuid ownerUserId FK
   varchar_36_ parentFolderId FK
   varchar_255_ projectId FK
   integer publicationRevision
