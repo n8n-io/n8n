@@ -1,0 +1,64 @@
+packages/@n8n/engine/src/database/__tests__/workflow-step-execution.integration.test.ts
+  h_8fb27e0cdf6d1e 841-897
+packages/@n8n/engine/src/database/typeorm-step-store.ts
+  h_8fb27e0cdf6d1e 348-365
+packages/@n8n/engine/src/execution/__tests__/completion-race.integration.test.ts
+  h_8fb27e0cdf6d1e 4,79
+packages/@n8n/engine/src/execution/__tests__/execution-start-handler.test.ts
+  h_8fb27e0cdf6d1e 72
+packages/@n8n/engine/src/execution/__tests__/execution-start.integration.test.ts
+  h_8fb27e0cdf6d1e 86
+packages/@n8n/engine/src/execution/__tests__/settlement.test.ts
+  h_8fb27e0cdf6d1e 6,338-384
+packages/@n8n/engine/src/execution/__tests__/step-execution.integration.test.ts
+  h_8fb27e0cdf6d1e 696-762
+packages/@n8n/engine/src/execution/__tests__/step-ready-handler.test.ts
+  h_8fb27e0cdf6d1e 141
+packages/@n8n/engine/src/execution/__tests__/step-settled-handler.test.ts
+  h_8fb27e0cdf6d1e 125,175,186,193,385-522
+packages/@n8n/engine/src/execution/__tests__/wait-sweeper.test.ts
+  h_8fb27e0cdf6d1e 36
+packages/@n8n/engine/src/execution/settlement.ts
+  h_8fb27e0cdf6d1e 1-8,63-68,113,126-130,200-216,307,313-314,331,337-340
+packages/@n8n/engine/src/execution/step-settled-handler.ts
+  h_8fb27e0cdf6d1e 5,9,15-19,31,40-44,65-66,88-90,200,204-266
+packages/@n8n/engine/src/execution/step-store.ts
+  h_8fb27e0cdf6d1e 253-263
+packages/@n8n/engine/src/graph/__tests__/race-cancel-region.test.ts
+  h_8fb27e0cdf6d1e 1-120
+packages/@n8n/engine/src/graph/index.ts
+  h_8fb27e0cdf6d1e 1,6,23-24
+packages/@n8n/engine/src/graph/race-cancel-region.ts
+  h_8fb27e0cdf6d1e 1-67
+packages/@n8n/engine/src/graph/workflow-graph.ts
+  h_8fb27e0cdf6d1e 33-47
+packages/@n8n/engine/src/index.ts
+  h_8fb27e0cdf6d1e 90,93
+packages/@n8n/engine/src/lifecycle-events/lifecycle-event.schema.ts
+  h_8fb27e0cdf6d1e 80-84
+packages/@n8n/engine/src/runtime/create-engine-runtime.ts
+  h_8fb27e0cdf6d1e 149-155,171,230
+packages/@n8n/node-engine-compatibility/src/__tests__/v1-workflow-converter.test.ts
+  h_8fb27e0cdf6d1e 393-398,406-428
+packages/@n8n/node-engine-compatibility/src/v1-adapters.ts
+  h_8fb27e0cdf6d1e 6,221-222,229
+packages/@n8n/node-engine-compatibility/src/v1-workflow-converter.ts
+  h_8fb27e0cdf6d1e 2-8,158,488-499
+packages/cli/src/modules/engine-v2/__tests__/engine-lifecycle-event-push-relay.test.ts
+  h_8fb27e0cdf6d1e 356-383
+packages/cli/src/modules/engine-v2/engine-lifecycle-event-push-relay.ts
+  h_8fb27e0cdf6d1e 22-23,78-79,267
+packages/nodes-base/nodes/Race/Race.node.ts
+  h_8fb27e0cdf6d1e 33-41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "83a515b57f10fde2cb9d5e3c49cdc3dcaac67dce",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}
