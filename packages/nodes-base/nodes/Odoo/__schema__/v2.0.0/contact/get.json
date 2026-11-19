@@ -1,4 +1,5 @@
 {
+	"additionalProperties": true,
 	"properties": {
 		"account_move_count": {
 			"type": "number"

@@ -2,6 +2,7 @@
 	"properties": {
 		"output": {
 			"items": {
+				"additionalProperties": true,
 				"properties": {
 					"content": {
 						"items": {

@@ -1,4 +1,5 @@
 {
+	"additionalProperties": true,
 	"properties": {
 		"imageUrl": {
 			"type": "string"
@@ -7,6 +8,7 @@
 			"type": "string"
 		},
 		"usage": {
+			"additionalProperties": true,
 			"properties": {
 				"input_image_count": {
 					"type": "number"

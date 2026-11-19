@@ -1,10 +1,12 @@
 {
+	"additionalProperties": true,
 	"properties": {
 		"event": {
 			"type": "string"
 		},
 		"history_items": {
 			"items": {
+				"additionalProperties": true,
 				"properties": {
 					"after": {
 						"items": {
@@ -44,6 +46,7 @@
 						"type": ["array", "null", "object", "string"]
 					},
 					"before": {
+						"additionalProperties": true,
 						"properties": {
 							"color": {
 								"type": "string"
@@ -61,6 +64,7 @@
 						"type": ["null", "object"]
 					},
 					"data": {
+						"additionalProperties": true,
 						"properties": {
 							"status_type": {
 								"type": "string"

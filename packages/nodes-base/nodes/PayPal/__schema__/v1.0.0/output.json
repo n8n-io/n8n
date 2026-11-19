@@ -1,4 +1,5 @@
 {
+	"additionalProperties": true,
 	"properties": {
 		"event_type": {
 			"type": "string"
@@ -7,6 +8,7 @@
 			"additionalProperties": true,
 			"properties": {
 				"amount": {
+					"additionalProperties": true,
 					"properties": {
 						"currency": {
 							"type": "string"

@@ -10,6 +10,7 @@
 			"type": "string"
 		},
 		"payload": {
+			"additionalProperties": true,
 			"properties": {
 				"cancel_url": {
 					"type": "string"
@@ -113,6 +114,7 @@
 							"type": "object"
 						},
 						"location": {
+							"additionalProperties": true,
 							"properties": {
 								"join_url": {
 									"type": "string"

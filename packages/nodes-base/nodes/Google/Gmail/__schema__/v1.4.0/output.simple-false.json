@@ -1,4 +1,5 @@
 {
+	"additionalProperties": true,
 	"properties": {
 		"date": {
 			"type": "string"
@@ -29,6 +30,7 @@
 			"type": ["object", "string"]
 		},
 		"headers": {
+			"additionalProperties": true,
 			"properties": {
 				"arc-authentication-results": {
 					"type": "string"

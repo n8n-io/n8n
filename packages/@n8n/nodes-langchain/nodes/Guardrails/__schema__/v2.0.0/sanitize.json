@@ -4,6 +4,7 @@
 			"items": {
 				"properties": {
 					"info": {
+						"additionalProperties": true,
 						"properties": {
 							"analyzerResults": {
 								"items": {

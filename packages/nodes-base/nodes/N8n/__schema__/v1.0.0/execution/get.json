@@ -10,6 +10,7 @@
 			"type": "object"
 		},
 		"data": {
+			"additionalProperties": true,
 			"properties": {
 				"executionData": {
 					"properties": {
@@ -29,6 +30,7 @@
 													"items": {
 														"properties": {
 															"json": {
+																"additionalProperties": true,
 																"properties": {
 																	"description": {
 																		"type": "string"
@@ -113,6 +115,7 @@
 												"type": "string"
 											},
 											"parameters": {
+												"additionalProperties": true,
 												"properties": {
 													"jsCode": {
 														"type": "string"
@@ -186,11 +189,13 @@
 							"type": "array"
 						},
 						"runtimeData": {
+							"additionalProperties": true,
 							"properties": {
 								"establishedAt": {
 									"type": "number"
 								},
 								"redaction": {
+									"additionalProperties": true,
 									"properties": {
 										"manual": {
 											"type": "boolean"
@@ -234,6 +239,7 @@
 					"type": "object"
 				},
 				"resultData": {
+					"additionalProperties": true,
 					"properties": {
 						"lastNodeExecuted": {
 							"type": "string"
@@ -287,6 +293,7 @@
 			"type": "string"
 		},
 		"tracingContext": {
+			"additionalProperties": true,
 			"properties": {
 				"traceparent": {
 					"type": "string"
@@ -299,6 +306,7 @@
 		},
 		"waitTill": {},
 		"workflowData": {
+			"additionalProperties": true,
 			"properties": {
 				"connections": {
 					"type": "object"
@@ -334,6 +342,7 @@
 				},
 				"nodes": {
 					"items": {
+						"additionalProperties": true,
 						"properties": {
 							"alwaysOutputData": {
 								"type": "boolean"
@@ -378,6 +387,7 @@
 											},
 											"schema": {
 												"items": {
+													"additionalProperties": true,
 													"properties": {
 														"canBeUsedToMatch": {
 															"type": "boolean"
@@ -429,6 +439,7 @@
 															"type": "string"
 														},
 														"operator": {
+															"additionalProperties": true,
 															"properties": {
 																"operation": {
 																	"type": "string"
@@ -652,6 +663,7 @@
 					"type": "array"
 				},
 				"settings": {
+					"additionalProperties": true,
 					"properties": {
 						"availableInMCP": {
 							"type": "boolean"

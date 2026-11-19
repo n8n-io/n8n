@@ -4,6 +4,7 @@
 			"properties": {
 				"agenticIdentity": {},
 				"appCreator": {
+					"additionalProperties": true,
 					"properties": {
 						"authType": {
 							"type": "string"
@@ -15,6 +16,7 @@
 					"type": ["null", "object"]
 				},
 				"data": {
+					"additionalProperties": true,
 					"properties": {
 						"board": {
 							"properties": {
@@ -31,6 +33,7 @@
 							"type": "object"
 						},
 						"card": {
+							"additionalProperties": true,
 							"properties": {
 								"id": {
 									"type": "string"
@@ -48,6 +51,7 @@
 							"type": "object"
 						},
 						"list": {
+							"additionalProperties": true,
 							"properties": {
 								"id": {
 									"type": "string"
@@ -67,8 +71,10 @@
 				"display": {
 					"properties": {
 						"entities": {
+							"additionalProperties": true,
 							"properties": {
 								"card": {
+									"additionalProperties": true,
 									"properties": {
 										"id": {
 											"type": "string"
@@ -197,6 +203,7 @@
 			"type": "object"
 		},
 		"model": {
+			"additionalProperties": true,
 			"properties": {
 				"closed": {
 					"type": "boolean"

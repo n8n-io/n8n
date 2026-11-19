@@ -1,4 +1,5 @@
 {
+	"additionalProperties": true,
 	"properties": {
 		"accept_all": {
 			"type": ["boolean", "null"]

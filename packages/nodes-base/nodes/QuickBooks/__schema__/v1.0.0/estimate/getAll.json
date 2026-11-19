@@ -1,9 +1,11 @@
 {
+	"additionalProperties": true,
 	"properties": {
 		"ApplyTaxAfterDiscount": {
 			"type": "boolean"
 		},
 		"BillAddr": {
+			"additionalProperties": true,
 			"properties": {
 				"City": {
 					"type": "string"
@@ -101,6 +103,7 @@
 		},
 		"Line": {
 			"items": {
+				"additionalProperties": true,
 				"properties": {
 					"Amount": {
 						"type": "number"
@@ -122,6 +125,7 @@
 						"type": "number"
 					},
 					"SalesItemLineDetail": {
+						"additionalProperties": true,
 						"properties": {
 							"ItemAccountRef": {
 								"properties": {
@@ -199,6 +203,7 @@
 			"type": "string"
 		},
 		"ShipAddr": {
+			"additionalProperties": true,
 			"properties": {
 				"City": {
 					"type": "string"
@@ -237,6 +242,7 @@
 			"type": "string"
 		},
 		"TxnTaxDetail": {
+			"additionalProperties": true,
 			"properties": {
 				"TaxLine": {
 					"items": {

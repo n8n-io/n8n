@@ -1,4 +1,5 @@
 {
+	"additionalProperties": true,
 	"properties": {
 		"changelog": {
 			"properties": {
@@ -7,6 +8,7 @@
 				},
 				"items": {
 					"items": {
+						"additionalProperties": true,
 						"properties": {
 							"field": {
 								"type": "string"
@@ -281,6 +283,7 @@
 							"type": "array"
 						},
 						"issuetype": {
+							"additionalProperties": true,
 							"properties": {
 								"avatarId": {
 									"type": "number"
@@ -319,6 +322,7 @@
 							"type": ["null", "string"]
 						},
 						"priority": {
+							"additionalProperties": true,
 							"properties": {
 								"iconUrl": {
 									"type": "string"
@@ -347,6 +351,7 @@
 							"type": "object"
 						},
 						"project": {
+							"additionalProperties": true,
 							"properties": {
 								"avatarUrls": {
 									"properties": {

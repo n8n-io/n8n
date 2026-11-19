@@ -1,4 +1,5 @@
 {
+	"additionalProperties": true,
 	"properties": {
 		"access_programs": {},
 		"background": {
@@ -44,6 +45,7 @@
 		},
 		"output": {
 			"items": {
+				"additionalProperties": true,
 				"properties": {
 					"content": {
 						"items": {
@@ -154,6 +156,7 @@
 		"text": {
 			"properties": {
 				"format": {
+					"additionalProperties": true,
 					"properties": {
 						"type": {
 							"type": "string"

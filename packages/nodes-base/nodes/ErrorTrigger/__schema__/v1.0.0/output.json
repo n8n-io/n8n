@@ -1,8 +1,10 @@
 {
 	"properties": {
 		"execution": {
+			"additionalProperties": true,
 			"properties": {
 				"error": {
+					"additionalProperties": true,
 					"properties": {
 						"message": {
 							"type": "string"

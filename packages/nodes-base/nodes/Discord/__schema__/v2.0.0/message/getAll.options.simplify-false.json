@@ -1,7 +1,9 @@
 {
+	"additionalProperties": true,
 	"properties": {
 		"attachments": {
 			"items": {
+				"additionalProperties": true,
 				"properties": {
 					"content_scan_version": {
 						"type": "number"
@@ -195,6 +197,7 @@
 		},
 		"embeds": {
 			"items": {
+				"additionalProperties": true,
 				"properties": {
 					"color": {
 						"type": "number"

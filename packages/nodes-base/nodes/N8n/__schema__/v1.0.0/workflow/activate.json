@@ -48,6 +48,7 @@
 				},
 				"nodes": {
 					"items": {
+						"additionalProperties": true,
 						"properties": {
 							"credentials": {
 								"type": "object"
@@ -256,6 +257,7 @@
 		},
 		"nodes": {
 			"items": {
+				"additionalProperties": true,
 				"properties": {
 					"credentials": {
 						"type": "object"
@@ -370,6 +372,7 @@
 			"type": ["null", "object"]
 		},
 		"settings": {
+			"additionalProperties": true,
 			"properties": {
 				"availableInMCP": {
 					"type": "boolean"

@@ -1,4 +1,5 @@
 {
+	"additionalProperties": true,
 	"properties": {
 		"board_folder_id": {
 			"type": ["null", "string"]

@@ -1,7 +1,9 @@
 {
+	"additionalProperties": true,
 	"properties": {
 		"contacts": {
 			"items": {
+				"additionalProperties": true,
 				"properties": {
 					"profile": {
 						"properties": {
@@ -21,6 +23,7 @@
 		},
 		"messages": {
 			"items": {
+				"additionalProperties": true,
 				"properties": {
 					"from": {
 						"type": "string"

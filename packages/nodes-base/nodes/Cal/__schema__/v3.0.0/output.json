@@ -1,4 +1,5 @@
 {
+	"additionalProperties": true,
 	"properties": {
 		"additionalNotes": {
 			"type": "string"
@@ -92,6 +93,7 @@
 		},
 		"destinationCalendar": {
 			"items": {
+				"additionalProperties": true,
 				"properties": {
 					"credentialId": {
 						"type": "number"
@@ -233,8 +235,10 @@
 			"type": "boolean"
 		},
 		"responses": {
+			"additionalProperties": true,
 			"properties": {
 				"email": {
+					"additionalProperties": true,
 					"properties": {
 						"label": {
 							"type": "string"
@@ -246,6 +250,7 @@
 					"type": "object"
 				},
 				"guests": {
+					"additionalProperties": true,
 					"properties": {
 						"label": {
 							"type": "string"
@@ -260,6 +265,7 @@
 					"type": "object"
 				},
 				"location": {
+					"additionalProperties": true,
 					"properties": {
 						"label": {
 							"type": "string"
@@ -279,6 +285,7 @@
 					"type": "object"
 				},
 				"name": {
+					"additionalProperties": true,
 					"properties": {
 						"label": {
 							"type": "string"
@@ -290,6 +297,7 @@
 					"type": "object"
 				},
 				"notes": {
+					"additionalProperties": true,
 					"properties": {
 						"label": {
 							"type": "string"

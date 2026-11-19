@@ -1,4 +1,5 @@
 {
+	"additionalProperties": true,
 	"properties": {
 		"format_version": {
 			"type": "number"
@@ -25,11 +26,13 @@
 					},
 					"columns": {
 						"items": {
+							"additionalProperties": true,
 							"properties": {
 								"colorbys": {
 									"type": "object"
 								},
 								"data": {
+									"additionalProperties": true,
 									"properties": {
 										"array_data": {
 											"properties": {
@@ -250,6 +253,7 @@
 					},
 					"views": {
 						"items": {
+							"additionalProperties": true,
 							"properties": {
 								"_id": {
 									"type": "string"
@@ -268,6 +272,7 @@
 								},
 								"filters": {
 									"items": {
+										"additionalProperties": true,
 										"properties": {
 											"column_key": {
 												"type": "string"

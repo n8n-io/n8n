@@ -1,4 +1,5 @@
 {
+	"additionalProperties": true,
 	"properties": {
 		"created_by": {
 			"properties": {
@@ -48,6 +49,7 @@
 				"icon": {},
 				"rich_text": {
 					"items": {
+						"additionalProperties": true,
 						"properties": {
 							"annotations": {
 								"properties": {
@@ -99,6 +101,7 @@
 			"type": "object"
 		},
 		"parent": {
+			"additionalProperties": true,
 			"properties": {
 				"page_id": {
 					"type": "string"

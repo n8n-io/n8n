@@ -1,9 +1,11 @@
 {
+	"additionalProperties": true,
 	"properties": {
 		"@odata.type": {
 			"type": "string"
 		},
 		"createdBy": {
+			"additionalProperties": true,
 			"properties": {
 				"user": {
 					"properties": {
@@ -68,6 +70,7 @@
 			"type": "boolean"
 		},
 		"lastModifiedBy": {
+			"additionalProperties": true,
 			"properties": {
 				"user": {
 					"properties": {

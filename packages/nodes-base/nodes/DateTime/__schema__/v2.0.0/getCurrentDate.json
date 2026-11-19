@@ -1,8 +1,0 @@
-{
-	"properties": {
-		"currentDate": {
-			"type": "string"
-		}
-	},
-	"type": "object"
-}

@@ -1,8 +1,0 @@
-{
-	"properties": {
-		"member": {
-			"type": "string"
-		}
-	},
-	"type": "object"
-}

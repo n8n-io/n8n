@@ -1,4 +1,5 @@
 {
+	"additionalProperties": true,
 	"properties": {
 		"ad": {
 			"type": "object"
@@ -10,6 +11,7 @@
 			"type": ["number", "string"]
 		},
 		"event": {
+			"additionalProperties": true,
 			"properties": {
 				"created_time": {
 					"type": "number"

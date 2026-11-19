@@ -1,6 +1,8 @@
 {
+	"additionalProperties": true,
 	"properties": {
 		"data": {
+			"additionalProperties": true,
 			"properties": {
 				"add_time": {
 					"type": "string"
@@ -93,6 +95,7 @@
 			"type": "object"
 		},
 		"meta": {
+			"additionalProperties": true,
 			"properties": {
 				"action": {
 					"type": "string"

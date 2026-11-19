@@ -1,4 +1,5 @@
 {
+	"additionalProperties": true,
 	"properties": {
 		"layouts": {
 			"items": {
@@ -22,6 +23,7 @@
 					},
 					"pageElements": {
 						"items": {
+							"additionalProperties": true,
 							"properties": {
 								"image": {
 									"properties": {
@@ -29,6 +31,7 @@
 											"type": "string"
 										},
 										"imageProperties": {
+											"additionalProperties": true,
 											"properties": {
 												"outline": {
 													"properties": {
@@ -43,6 +46,7 @@
 																			"type": "number"
 																		},
 																		"color": {
+																			"additionalProperties": true,
 																			"properties": {
 																				"rgbColor": {
 																					"type": "object"
@@ -188,6 +192,7 @@
 																			"type": "number"
 																		},
 																		"color": {
+																			"additionalProperties": true,
 																			"properties": {
 																				"rgbColor": {
 																					"type": "object"
@@ -227,6 +232,7 @@
 															"type": "number"
 														},
 														"blurRadius": {
+															"additionalProperties": true,
 															"properties": {
 																"unit": {
 																	"type": "string"
@@ -249,6 +255,7 @@
 															"type": "boolean"
 														},
 														"transform": {
+															"additionalProperties": true,
 															"properties": {
 																"scaleX": {
 																	"type": "number"
@@ -339,6 +346,7 @@
 																		"type": "string"
 																	},
 																	"style": {
+																		"additionalProperties": true,
 																		"properties": {
 																			"foregroundColor": {
 																				"properties": {
@@ -399,6 +407,7 @@
 																		"type": "object"
 																	},
 																	"style": {
+																		"additionalProperties": true,
 																		"properties": {
 																			"alignment": {
 																				"type": "string"
@@ -407,6 +416,7 @@
 																				"type": "string"
 																			},
 																			"indentFirstLine": {
+																				"additionalProperties": true,
 																				"properties": {
 																					"unit": {
 																						"type": "string"
@@ -415,6 +425,7 @@
 																				"type": "object"
 																			},
 																			"indentStart": {
+																				"additionalProperties": true,
 																				"properties": {
 																					"unit": {
 																						"type": "string"
@@ -437,6 +448,7 @@
 																				"type": "object"
 																			},
 																			"spaceBelow": {
+																				"additionalProperties": true,
 																				"properties": {
 																					"unit": {
 																						"type": "string"
@@ -462,6 +474,7 @@
 																		"type": "string"
 																	},
 																	"style": {
+																		"additionalProperties": true,
 																		"properties": {
 																			"bold": {
 																				"type": "boolean"
@@ -566,6 +579,7 @@
 									"type": "object"
 								},
 								"transform": {
+									"additionalProperties": true,
 									"properties": {
 										"scaleX": {
 											"type": "number"
@@ -593,6 +607,7 @@
 					"pageProperties": {
 						"properties": {
 							"pageBackgroundFill": {
+								"additionalProperties": true,
 								"properties": {
 									"propertyState": {
 										"type": "string"
@@ -660,6 +675,7 @@
 					},
 					"pageElements": {
 						"items": {
+							"additionalProperties": true,
 							"properties": {
 								"objectId": {
 									"type": "string"
@@ -667,6 +683,7 @@
 								"shape": {
 									"properties": {
 										"placeholder": {
+											"additionalProperties": true,
 											"properties": {
 												"type": {
 													"type": "string"
@@ -878,6 +895,7 @@
 																			"foregroundColor": {
 																				"properties": {
 																					"opaqueColor": {
+																						"additionalProperties": true,
 																						"properties": {
 																							"themeColor": {
 																								"type": "string"
@@ -978,6 +996,7 @@
 																				"type": "number"
 																			},
 																			"spaceAbove": {
+																				"additionalProperties": true,
 																				"properties": {
 																					"unit": {
 																						"type": "string"
@@ -1014,6 +1033,7 @@
 																		"type": "string"
 																	},
 																	"style": {
+																		"additionalProperties": true,
 																		"properties": {
 																			"backgroundColor": {
 																				"type": "object"
@@ -1041,6 +1061,7 @@
 																			"foregroundColor": {
 																				"properties": {
 																					"opaqueColor": {
+																						"additionalProperties": true,
 																						"properties": {
 																							"themeColor": {
 																								"type": "string"
@@ -1176,6 +1197,7 @@
 								"type": "object"
 							},
 							"pageBackgroundFill": {
+								"additionalProperties": true,
 								"properties": {
 									"solidFill": {
 										"properties": {
@@ -1183,6 +1205,7 @@
 												"type": "number"
 											},
 											"color": {
+												"additionalProperties": true,
 												"properties": {
 													"themeColor": {
 														"type": "string"
@@ -1401,6 +1424,7 @@
 											},
 											"textElements": {
 												"items": {
+													"additionalProperties": true,
 													"properties": {
 														"endIndex": {
 															"type": "number"
@@ -1520,6 +1544,7 @@
 																		"foregroundColor": {
 																			"properties": {
 																				"opaqueColor": {
+																					"additionalProperties": true,
 																					"properties": {
 																						"rgbColor": {
 																							"type": "object"
@@ -1665,6 +1690,7 @@
 											"type": "number"
 										},
 										"color": {
+											"additionalProperties": true,
 											"properties": {
 												"rgbColor": {
 													"properties": {
@@ -1739,16 +1765,19 @@
 					},
 					"pageElements": {
 						"items": {
+							"additionalProperties": true,
 							"properties": {
 								"description": {
 									"type": "string"
 								},
 								"image": {
+									"additionalProperties": true,
 									"properties": {
 										"contentUrl": {
 											"type": "string"
 										},
 										"imageProperties": {
+											"additionalProperties": true,
 											"properties": {
 												"cropProperties": {
 													"properties": {
@@ -1833,6 +1862,7 @@
 															"type": "number"
 														},
 														"blurRadius": {
+															"additionalProperties": true,
 															"properties": {
 																"unit": {
 																	"type": "string"
@@ -1855,6 +1885,7 @@
 															"type": "boolean"
 														},
 														"transform": {
+															"additionalProperties": true,
 															"properties": {
 																"scaleX": {
 																	"type": "number"
@@ -1884,6 +1915,7 @@
 									"type": "string"
 								},
 								"shape": {
+									"additionalProperties": true,
 									"properties": {
 										"shapeProperties": {
 											"properties": {
@@ -1956,6 +1988,7 @@
 															"type": "number"
 														},
 														"blurRadius": {
+															"additionalProperties": true,
 															"properties": {
 																"unit": {
 																	"type": "string"
@@ -1964,6 +1997,7 @@
 															"type": "object"
 														},
 														"color": {
+															"additionalProperties": true,
 															"properties": {
 																"rgbColor": {
 																	"type": "object"
@@ -1978,6 +2012,7 @@
 															"type": "boolean"
 														},
 														"transform": {
+															"additionalProperties": true,
 															"properties": {
 																"scaleX": {
 																	"type": "number"
@@ -2048,6 +2083,7 @@
 												},
 												"textElements": {
 													"items": {
+														"additionalProperties": true,
 														"properties": {
 															"endIndex": {
 																"type": "number"
@@ -2055,8 +2091,10 @@
 															"paragraphMarker": {
 																"properties": {
 																	"bullet": {
+																		"additionalProperties": true,
 																		"properties": {
 																			"bulletStyle": {
+																				"additionalProperties": true,
 																				"properties": {
 																					"bold": {
 																						"type": "boolean"
@@ -2137,6 +2175,7 @@
 																				"type": "string"
 																			},
 																			"indentEnd": {
+																				"additionalProperties": true,
 																				"properties": {
 																					"unit": {
 																						"type": "string"
@@ -2170,6 +2209,7 @@
 																				"type": "number"
 																			},
 																			"spaceAbove": {
+																				"additionalProperties": true,
 																				"properties": {
 																					"unit": {
 																						"type": "string"
@@ -2178,6 +2218,7 @@
 																				"type": "object"
 																			},
 																			"spaceBelow": {
+																				"additionalProperties": true,
 																				"properties": {
 																					"unit": {
 																						"type": "string"
@@ -2203,6 +2244,7 @@
 																		"type": "string"
 																	},
 																	"style": {
+																		"additionalProperties": true,
 																		"properties": {
 																			"backgroundColor": {
 																				"type": "object"
@@ -2322,6 +2364,7 @@
 									"type": "object"
 								},
 								"transform": {
+									"additionalProperties": true,
 									"properties": {
 										"scaleX": {
 											"type": "number"
@@ -2349,6 +2392,7 @@
 					"pageProperties": {
 						"properties": {
 							"pageBackgroundFill": {
+								"additionalProperties": true,
 								"properties": {
 									"propertyState": {
 										"type": "string"
@@ -2390,6 +2434,7 @@
 						"type": "object"
 					},
 					"slideProperties": {
+						"additionalProperties": true,
 						"properties": {
 							"layoutObjectId": {
 								"type": "string"
@@ -2433,8 +2478,10 @@
 															"type": "object"
 														},
 														"shapeProperties": {
+															"additionalProperties": true,
 															"properties": {
 																"autofit": {
+																	"additionalProperties": true,
 																	"properties": {
 																		"fontScale": {
 																			"type": "number"
@@ -2443,6 +2490,7 @@
 																	"type": "object"
 																},
 																"outline": {
+																	"additionalProperties": true,
 																	"properties": {
 																		"propertyState": {
 																			"type": "string"
@@ -2451,6 +2499,7 @@
 																	"type": "object"
 																},
 																"shadow": {
+																	"additionalProperties": true,
 																	"properties": {
 																		"propertyState": {
 																			"type": "string"
@@ -2459,6 +2508,7 @@
 																	"type": "object"
 																},
 																"shapeBackgroundFill": {
+																	"additionalProperties": true,
 																	"properties": {
 																		"propertyState": {
 																			"type": "string"
@@ -2473,16 +2523,20 @@
 															"type": "string"
 														},
 														"text": {
+															"additionalProperties": true,
 															"properties": {
 																"textElements": {
 																	"items": {
+																		"additionalProperties": true,
 																		"properties": {
 																			"endIndex": {
 																				"type": "number"
 																			},
 																			"paragraphMarker": {
+																				"additionalProperties": true,
 																				"properties": {
 																					"style": {
+																						"additionalProperties": true,
 																						"properties": {
 																							"alignment": {
 																								"type": "string"
@@ -2491,6 +2545,7 @@
 																								"type": "string"
 																							},
 																							"indentFirstLine": {
+																								"additionalProperties": true,
 																								"properties": {
 																									"unit": {
 																										"type": "string"
@@ -2499,6 +2554,7 @@
 																								"type": "object"
 																							},
 																							"indentStart": {
+																								"additionalProperties": true,
 																								"properties": {
 																									"unit": {
 																										"type": "string"
@@ -2510,6 +2566,7 @@
 																								"type": "number"
 																							},
 																							"spaceAbove": {
+																								"additionalProperties": true,
 																								"properties": {
 																									"unit": {
 																										"type": "string"
@@ -2518,6 +2575,7 @@
 																								"type": "object"
 																							},
 																							"spaceBelow": {
+																								"additionalProperties": true,
 																								"properties": {
 																									"unit": {
 																										"type": "string"
@@ -2543,10 +2601,12 @@
 																						"type": "string"
 																					},
 																					"style": {
+																						"additionalProperties": true,
 																						"properties": {
 																							"foregroundColor": {
 																								"properties": {
 																									"opaqueColor": {
+																										"additionalProperties": true,
 																										"properties": {
 																											"themeColor": {
 																												"type": "string"

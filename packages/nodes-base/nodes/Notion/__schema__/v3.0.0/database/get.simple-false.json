@@ -82,6 +82,7 @@
 			"type": "array"
 		},
 		"icon": {
+			"additionalProperties": true,
 			"properties": {
 				"emoji": {
 					"type": "string"
@@ -111,6 +112,7 @@
 			"type": "string"
 		},
 		"parent": {
+			"additionalProperties": true,
 			"properties": {
 				"type": {
 					"type": "string"

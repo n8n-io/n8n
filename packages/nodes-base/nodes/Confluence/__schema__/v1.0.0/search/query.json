@@ -1,12 +1,15 @@
 {
+	"additionalProperties": true,
 	"properties": {
 		"breadcrumbs": {
 			"items": {},
 			"type": "array"
 		},
 		"content": {
+			"additionalProperties": true,
 			"properties": {
 				"_expandable": {
+					"additionalProperties": true,
 					"properties": {
 						"ancestors": {
 							"type": "string"

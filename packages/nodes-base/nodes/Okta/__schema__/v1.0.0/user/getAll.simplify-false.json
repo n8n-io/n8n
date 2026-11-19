@@ -1,4 +1,5 @@
 {
+	"additionalProperties": true,
 	"properties": {
 		"_links": {
 			"properties": {
@@ -20,6 +21,7 @@
 			"type": "string"
 		},
 		"credentials": {
+			"additionalProperties": true,
 			"properties": {
 				"password": {
 					"type": "object"

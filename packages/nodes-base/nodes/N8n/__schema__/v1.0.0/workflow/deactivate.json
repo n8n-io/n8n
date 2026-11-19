@@ -62,6 +62,7 @@
 		},
 		"nodes": {
 			"items": {
+				"additionalProperties": true,
 				"properties": {
 					"credentials": {
 						"additionalProperties": true,
@@ -118,6 +119,7 @@
 								"type": "string"
 							},
 							"columns": {
+								"additionalProperties": true,
 								"properties": {
 									"attemptToConvertTypes": {
 										"type": "boolean"
@@ -136,6 +138,7 @@
 									},
 									"schema": {
 										"items": {
+											"additionalProperties": true,
 											"properties": {
 												"canBeUsedToMatch": {
 													"type": "boolean"
@@ -190,6 +193,7 @@
 													"type": "string"
 												},
 												"operator": {
+													"additionalProperties": true,
 													"properties": {
 														"operation": {
 															"type": "string"
@@ -250,6 +254,7 @@
 								"properties": {
 									"interval": {
 										"items": {
+											"additionalProperties": true,
 											"properties": {
 												"field": {
 													"type": "string"
@@ -266,6 +271,7 @@
 								"type": "string"
 							},
 							"workflowId": {
+								"additionalProperties": true,
 								"properties": {
 									"__rl": {
 										"type": "boolean"
@@ -309,6 +315,7 @@
 			"type": ["null", "object"]
 		},
 		"settings": {
+			"additionalProperties": true,
 			"properties": {
 				"availableInMCP": {
 					"type": "boolean"
@@ -344,6 +351,7 @@
 								"type": ["null", "string"]
 							},
 							"icon": {
+								"additionalProperties": true,
 								"properties": {
 									"type": {
 										"type": "string"

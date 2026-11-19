@@ -2,6 +2,7 @@
 	"additionalProperties": true,
 	"properties": {
 		"propertyName": {
+			"additionalProperties": true,
 			"properties": {
 				"body": {
 					"properties": {

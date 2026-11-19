@@ -1,4 +1,5 @@
 {
+	"additionalProperties": true,
 	"properties": {
 		"Credentials Risk Report": {
 			"properties": {
@@ -49,6 +50,7 @@
 				},
 				"sections": {
 					"items": {
+						"additionalProperties": true,
 						"properties": {
 							"description": {
 								"type": "string"

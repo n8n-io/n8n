@@ -1,9 +1,11 @@
 {
+	"additionalProperties": true,
 	"properties": {
 		"@odata.type": {
 			"type": "string"
 		},
 		"createdBy": {
+			"additionalProperties": true,
 			"properties": {
 				"user": {
 					"properties": {
@@ -37,6 +39,7 @@
 					"type": "string"
 				},
 				"hashes": {
+					"additionalProperties": true,
 					"properties": {
 						"quickXorHash": {
 							"type": "string"
@@ -68,6 +71,7 @@
 			"type": "boolean"
 		},
 		"lastModifiedBy": {
+			"additionalProperties": true,
 			"properties": {
 				"user": {
 					"properties": {

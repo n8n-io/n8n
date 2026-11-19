@@ -18,6 +18,7 @@
 			"type": "object"
 		},
 		"createdBy": {
+			"additionalProperties": true,
 			"properties": {
 				"user": {
 					"properties": {
@@ -151,6 +152,7 @@
 			"type": "string"
 		},
 		"parentReference": {
+			"additionalProperties": true,
 			"properties": {
 				"id": {
 					"type": "string"

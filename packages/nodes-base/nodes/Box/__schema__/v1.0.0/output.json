@@ -1,6 +1,7 @@
 {
 	"properties": {
 		"additional_info": {
+			"additionalProperties": true,
 			"items": {},
 			"properties": {
 				"metadata": {
@@ -33,6 +34,7 @@
 			"type": "string"
 		},
 		"source": {
+			"additionalProperties": true,
 			"properties": {
 				"content_created_at": {
 					"type": "string"

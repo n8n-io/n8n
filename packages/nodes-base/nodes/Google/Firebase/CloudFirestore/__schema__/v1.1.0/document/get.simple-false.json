@@ -1,4 +1,5 @@
 {
+	"additionalProperties": true,
 	"properties": {
 		"found": {
 			"properties": {

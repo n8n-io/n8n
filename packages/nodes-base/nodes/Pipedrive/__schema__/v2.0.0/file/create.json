@@ -1,4 +1,5 @@
 {
+	"additionalProperties": true,
 	"properties": {
 		"active_flag": {
 			"type": "boolean"

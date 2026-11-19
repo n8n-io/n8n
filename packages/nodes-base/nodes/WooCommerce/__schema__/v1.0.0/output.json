@@ -1,4 +1,5 @@
 {
+	"additionalProperties": true,
 	"properties": {
 		"_links": {
 			"properties": {
@@ -64,6 +65,7 @@
 			"type": "object"
 		},
 		"billing": {
+			"additionalProperties": true,
 			"properties": {
 				"address_1": {
 					"type": "string"
@@ -463,6 +465,7 @@
 			"type": "array"
 		},
 		"shipping": {
+			"additionalProperties": true,
 			"properties": {
 				"address_1": {
 					"type": "string"
@@ -513,6 +516,7 @@
 									"type": "string"
 								},
 								"display_value": {
+									"additionalProperties": true,
 									"properties": {
 										"cart_calculation": {
 											"type": "string"
@@ -581,6 +585,7 @@
 									"type": "string"
 								},
 								"value": {
+									"additionalProperties": true,
 									"properties": {
 										"cart_calculation": {
 											"type": "string"

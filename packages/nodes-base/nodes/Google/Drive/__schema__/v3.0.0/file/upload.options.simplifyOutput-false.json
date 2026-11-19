@@ -1,6 +1,8 @@
 {
+	"additionalProperties": true,
 	"properties": {
 		"capabilities": {
+			"additionalProperties": true,
 			"properties": {
 				"canAcceptOwnership": {
 					"type": "boolean"
@@ -296,6 +298,7 @@
 		},
 		"permissions": {
 			"items": {
+				"additionalProperties": true,
 				"properties": {
 					"deleted": {
 						"type": "boolean"

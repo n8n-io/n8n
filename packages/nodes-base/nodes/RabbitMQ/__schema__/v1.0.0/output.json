@@ -1,9 +1,11 @@
 {
+	"additionalProperties": true,
 	"properties": {
 		"content": {
 			"type": ["object", "string"]
 		},
 		"fields": {
+			"additionalProperties": true,
 			"properties": {
 				"deliveryTag": {
 					"type": "number"

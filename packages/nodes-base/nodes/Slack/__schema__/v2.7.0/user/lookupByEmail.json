@@ -1,4 +1,5 @@
 {
+	"additionalProperties": true,
 	"properties": {
 		"color": {
 			"type": "string"
@@ -37,6 +38,7 @@
 			"type": "string"
 		},
 		"profile": {
+			"additionalProperties": true,
 			"properties": {
 				"avatar_hash": {
 					"type": "string"

@@ -31,6 +31,7 @@
 			"type": "string"
 		},
 		"icon": {
+			"additionalProperties": true,
 			"properties": {
 				"emoji": {
 					"type": "string"
@@ -71,6 +72,7 @@
 			"type": "string"
 		},
 		"parent": {
+			"additionalProperties": true,
 			"properties": {
 				"data_source_id": {
 					"type": "string"

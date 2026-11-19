@@ -1,9 +1,11 @@
 {
+	"additionalProperties": true,
 	"properties": {
 		"created": {
 			"type": "number"
 		},
 		"data": {
+			"additionalProperties": true,
 			"properties": {
 				"object": {
 					"additionalProperties": true,

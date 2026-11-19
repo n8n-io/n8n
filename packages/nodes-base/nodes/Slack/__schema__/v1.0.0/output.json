@@ -1,4 +1,5 @@
 {
+	"additionalProperties": true,
 	"properties": {
 		"blocks": {
 			"items": {
@@ -11,6 +12,7 @@
 							"properties": {
 								"elements": {
 									"items": {
+										"additionalProperties": true,
 										"properties": {
 											"text": {
 												"type": "string"

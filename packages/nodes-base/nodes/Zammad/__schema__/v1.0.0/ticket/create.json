@@ -1,4 +1,5 @@
 {
+	"additionalProperties": true,
 	"properties": {
 		"ai_agent_running": {
 			"type": "boolean"
@@ -18,6 +19,7 @@
 		},
 		"articles": {
 			"items": {
+				"additionalProperties": true,
 				"properties": {
 					"ai_stored_result_ids": {
 						"items": {},

@@ -2,6 +2,7 @@
 	"additionalProperties": true,
 	"properties": {
 		"headers": {
+			"additionalProperties": true,
 			"properties": {
 				"accept": {
 					"type": "string"

@@ -1,6 +1,8 @@
 {
+	"additionalProperties": true,
 	"properties": {
 		"payload": {
+			"additionalProperties": true,
 			"properties": {
 				"data": {
 					"type": "object"

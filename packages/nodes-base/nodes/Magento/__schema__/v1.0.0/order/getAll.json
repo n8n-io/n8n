@@ -1,4 +1,5 @@
 {
+	"additionalProperties": true,
 	"properties": {
 		"applied_rule_ids": {
 			"type": "string"
@@ -73,6 +74,7 @@
 			"type": "number"
 		},
 		"billing_address": {
+			"additionalProperties": true,
 			"properties": {
 				"address_type": {
 					"type": "string"
@@ -284,6 +286,7 @@
 						"properties": {
 							"items": {
 								"items": {
+									"additionalProperties": true,
 									"properties": {
 										"amount_refunded": {
 											"type": "number"
@@ -490,6 +493,7 @@
 							"shipping": {
 								"properties": {
 									"address": {
+										"additionalProperties": true,
 										"properties": {
 											"address_type": {
 												"type": "string"
@@ -546,6 +550,7 @@
 										"type": "string"
 									},
 									"total": {
+										"additionalProperties": true,
 										"properties": {
 											"base_shipping_amount": {
 												"type": "number"
@@ -652,6 +657,7 @@
 		},
 		"items": {
 			"items": {
+				"additionalProperties": true,
 				"properties": {
 					"amount_refunded": {
 						"type": "number"
@@ -859,6 +865,7 @@
 			"type": "string"
 		},
 		"payment": {
+			"additionalProperties": true,
 			"properties": {
 				"account_status": {},
 				"additional_information": {

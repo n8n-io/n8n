@@ -1,9 +1,11 @@
 {
+	"additionalProperties": true,
 	"properties": {
 		"action": {
 			"type": "string"
 		},
 		"actor": {
+			"additionalProperties": true,
 			"properties": {
 				"email": {
 					"type": "string"
@@ -27,6 +29,7 @@
 			"type": "string"
 		},
 		"data": {
+			"additionalProperties": true,
 			"properties": {
 				"addedToTeamAt": {
 					"type": "string"
@@ -60,6 +63,7 @@
 				},
 				"labels": {
 					"items": {
+						"additionalProperties": true,
 						"properties": {
 							"color": {
 								"type": "string"

@@ -1,6 +1,8 @@
 {
+	"additionalProperties": true,
 	"properties": {
 		"content": {
+			"additionalProperties": true,
 			"properties": {
 				"parts": {
 					"items": {

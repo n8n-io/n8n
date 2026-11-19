@@ -2,6 +2,7 @@
 	"properties": {
 		"content": {
 			"items": {
+				"additionalProperties": true,
 				"properties": {
 					"text": {
 						"type": "string"

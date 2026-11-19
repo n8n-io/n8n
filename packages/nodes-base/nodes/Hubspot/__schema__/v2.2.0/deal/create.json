@@ -1,4 +1,5 @@
 {
+	"additionalProperties": true,
 	"properties": {
 		"associations": {
 			"properties": {
@@ -35,6 +36,7 @@
 			"type": "number"
 		},
 		"properties": {
+			"additionalProperties": true,
 			"properties": {
 				"createdate": {
 					"properties": {

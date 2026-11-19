@@ -1,8 +1,0 @@
-{
-	"properties": {
-		"id": {
-			"type": "string"
-		}
-	},
-	"type": "object"
-}

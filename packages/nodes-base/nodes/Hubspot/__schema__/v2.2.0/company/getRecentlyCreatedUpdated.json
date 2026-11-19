@@ -47,6 +47,7 @@
 			"type": "number"
 		},
 		"properties": {
+			"additionalProperties": true,
 			"properties": {
 				"city": {
 					"properties": {
@@ -67,6 +68,7 @@
 						},
 						"versions": {
 							"items": {
+								"additionalProperties": true,
 								"properties": {
 									"name": {
 										"type": "string"
@@ -126,6 +128,7 @@
 						},
 						"versions": {
 							"items": {
+								"additionalProperties": true,
 								"properties": {
 									"name": {
 										"type": "string"
@@ -246,6 +249,7 @@
 						},
 						"versions": {
 							"items": {
+								"additionalProperties": true,
 								"properties": {
 									"name": {
 										"type": "string"
@@ -305,6 +309,7 @@
 						},
 						"versions": {
 							"items": {
+								"additionalProperties": true,
 								"properties": {
 									"name": {
 										"type": "string"
@@ -364,6 +369,7 @@
 						},
 						"versions": {
 							"items": {
+								"additionalProperties": true,
 								"properties": {
 									"name": {
 										"type": "string"
@@ -417,6 +423,7 @@
 						},
 						"versions": {
 							"items": {
+								"additionalProperties": true,
 								"properties": {
 									"name": {
 										"type": "string"
@@ -474,6 +481,7 @@
 						},
 						"versions": {
 							"items": {
+								"additionalProperties": true,
 								"properties": {
 									"name": {
 										"type": "string"
@@ -579,6 +587,7 @@
 						},
 						"versions": {
 							"items": {
+								"additionalProperties": true,
 								"properties": {
 									"name": {
 										"type": "string"
@@ -630,6 +639,7 @@
 						},
 						"versions": {
 							"items": {
+								"additionalProperties": true,
 								"properties": {
 									"name": {
 										"type": "string"
@@ -681,6 +691,7 @@
 						},
 						"versions": {
 							"items": {
+								"additionalProperties": true,
 								"properties": {
 									"name": {
 										"type": "string"
@@ -732,6 +743,7 @@
 						},
 						"versions": {
 							"items": {
+								"additionalProperties": true,
 								"properties": {
 									"name": {
 										"type": "string"
@@ -783,6 +795,7 @@
 						},
 						"versions": {
 							"items": {
+								"additionalProperties": true,
 								"properties": {
 									"name": {
 										"type": "string"
@@ -834,6 +847,7 @@
 						},
 						"versions": {
 							"items": {
+								"additionalProperties": true,
 								"properties": {
 									"name": {
 										"type": "string"
@@ -885,6 +899,7 @@
 						},
 						"versions": {
 							"items": {
+								"additionalProperties": true,
 								"properties": {
 									"name": {
 										"type": "string"
@@ -936,6 +951,7 @@
 						},
 						"versions": {
 							"items": {
+								"additionalProperties": true,
 								"properties": {
 									"name": {
 										"type": "string"
@@ -989,6 +1005,7 @@
 						},
 						"versions": {
 							"items": {
+								"additionalProperties": true,
 								"properties": {
 									"name": {
 										"type": "string"
@@ -1109,6 +1126,7 @@
 						},
 						"versions": {
 							"items": {
+								"additionalProperties": true,
 								"properties": {
 									"name": {
 										"type": "string"
@@ -1162,6 +1180,7 @@
 						},
 						"versions": {
 							"items": {
+								"additionalProperties": true,
 								"properties": {
 									"name": {
 										"type": "string"
@@ -1266,6 +1285,7 @@
 						},
 						"versions": {
 							"items": {
+								"additionalProperties": true,
 								"properties": {
 									"name": {
 										"type": "string"
@@ -1322,6 +1342,7 @@
 						},
 						"versions": {
 							"items": {
+								"additionalProperties": true,
 								"properties": {
 									"name": {
 										"type": "string"
@@ -1381,6 +1402,7 @@
 						},
 						"versions": {
 							"items": {
+								"additionalProperties": true,
 								"properties": {
 									"name": {
 										"type": "string"
@@ -1440,6 +1462,7 @@
 						},
 						"versions": {
 							"items": {
+								"additionalProperties": true,
 								"properties": {
 									"name": {
 										"type": "string"
@@ -1499,6 +1522,7 @@
 						},
 						"versions": {
 							"items": {
+								"additionalProperties": true,
 								"properties": {
 									"name": {
 										"type": "string"
@@ -1558,6 +1582,7 @@
 						},
 						"versions": {
 							"items": {
+								"additionalProperties": true,
 								"properties": {
 									"name": {
 										"type": "string"
@@ -1676,6 +1701,7 @@
 						},
 						"versions": {
 							"items": {
+								"additionalProperties": true,
 								"properties": {
 									"name": {
 										"type": "string"
@@ -1733,6 +1759,7 @@
 						},
 						"versions": {
 							"items": {
+								"additionalProperties": true,
 								"properties": {
 									"name": {
 										"type": "string"
@@ -1789,6 +1816,7 @@
 						},
 						"versions": {
 							"items": {
+								"additionalProperties": true,
 								"properties": {
 									"name": {
 										"type": "string"
@@ -1848,6 +1876,7 @@
 						},
 						"versions": {
 							"items": {
+								"additionalProperties": true,
 								"properties": {
 									"name": {
 										"type": "string"
@@ -1907,6 +1936,7 @@
 						},
 						"versions": {
 							"items": {
+								"additionalProperties": true,
 								"properties": {
 									"name": {
 										"type": "string"
@@ -1966,6 +1996,7 @@
 						},
 						"versions": {
 							"items": {
+								"additionalProperties": true,
 								"properties": {
 									"name": {
 										"type": "string"
@@ -2027,6 +2058,7 @@
 						},
 						"versions": {
 							"items": {
+								"additionalProperties": true,
 								"properties": {
 									"name": {
 										"type": "string"
@@ -2083,6 +2115,7 @@
 						},
 						"versions": {
 							"items": {
+								"additionalProperties": true,
 								"properties": {
 									"name": {
 										"type": "string"
@@ -2142,6 +2175,7 @@
 						},
 						"versions": {
 							"items": {
+								"additionalProperties": true,
 								"properties": {
 									"name": {
 										"type": "string"
@@ -2199,6 +2233,7 @@
 						},
 						"versions": {
 							"items": {
+								"additionalProperties": true,
 								"properties": {
 									"name": {
 										"type": "string"
@@ -2252,6 +2287,7 @@
 						},
 						"versions": {
 							"items": {
+								"additionalProperties": true,
 								"properties": {
 									"name": {
 										"type": "string"
@@ -2311,6 +2347,7 @@
 						},
 						"versions": {
 							"items": {
+								"additionalProperties": true,
 								"properties": {
 									"name": {
 										"type": "string"
@@ -2418,6 +2455,7 @@
 						},
 						"versions": {
 							"items": {
+								"additionalProperties": true,
 								"properties": {
 									"name": {
 										"type": "string"
@@ -2474,6 +2512,7 @@
 						},
 						"versions": {
 							"items": {
+								"additionalProperties": true,
 								"properties": {
 									"name": {
 										"type": "string"
@@ -2533,6 +2572,7 @@
 						},
 						"versions": {
 							"items": {
+								"additionalProperties": true,
 								"properties": {
 									"name": {
 										"type": "string"
@@ -2592,6 +2632,7 @@
 						},
 						"versions": {
 							"items": {
+								"additionalProperties": true,
 								"properties": {
 									"name": {
 										"type": "string"
@@ -2651,6 +2692,7 @@
 						},
 						"versions": {
 							"items": {
+								"additionalProperties": true,
 								"properties": {
 									"name": {
 										"type": "string"
@@ -2712,6 +2754,7 @@
 						},
 						"versions": {
 							"items": {
+								"additionalProperties": true,
 								"properties": {
 									"name": {
 										"type": "string"
@@ -2771,6 +2814,7 @@
 						},
 						"versions": {
 							"items": {
+								"additionalProperties": true,
 								"properties": {
 									"name": {
 										"type": "string"
@@ -2881,6 +2925,7 @@
 						},
 						"versions": {
 							"items": {
+								"additionalProperties": true,
 								"properties": {
 									"name": {
 										"type": "string"
@@ -2937,6 +2982,7 @@
 						},
 						"versions": {
 							"items": {
+								"additionalProperties": true,
 								"properties": {
 									"name": {
 										"type": "string"
@@ -2996,6 +3042,7 @@
 						},
 						"versions": {
 							"items": {
+								"additionalProperties": true,
 								"properties": {
 									"name": {
 										"type": "string"
@@ -3055,6 +3102,7 @@
 						},
 						"versions": {
 							"items": {
+								"additionalProperties": true,
 								"properties": {
 									"name": {
 										"type": "string"

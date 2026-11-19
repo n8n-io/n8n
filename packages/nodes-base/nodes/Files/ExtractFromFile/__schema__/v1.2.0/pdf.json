@@ -1,6 +1,8 @@
 {
+	"additionalProperties": true,
 	"properties": {
 		"info": {
+			"additionalProperties": true,
 			"properties": {
 				"Author": {
 					"type": "string"

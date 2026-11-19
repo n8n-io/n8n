@@ -1,6 +1,8 @@
 {
+	"additionalProperties": true,
 	"properties": {
 		"_links": {
+			"additionalProperties": true,
 			"properties": {
 				"base": {
 					"type": "string"
@@ -68,6 +70,7 @@
 			"type": "string"
 		},
 		"version": {
+			"additionalProperties": true,
 			"properties": {
 				"authorId": {
 					"type": "string"

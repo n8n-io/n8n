@@ -34,6 +34,7 @@
 			"type": "string"
 		},
 		"database_parent": {
+			"additionalProperties": true,
 			"properties": {
 				"page_id": {
 					"type": "string"
@@ -104,6 +105,7 @@
 			"type": "array"
 		},
 		"icon": {
+			"additionalProperties": true,
 			"properties": {
 				"icon": {
 					"properties": {

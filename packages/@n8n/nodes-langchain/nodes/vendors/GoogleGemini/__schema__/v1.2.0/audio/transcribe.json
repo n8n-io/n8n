@@ -1,9 +1,11 @@
 {
+	"additionalProperties": true,
 	"properties": {
 		"content": {
 			"properties": {
 				"parts": {
 					"items": {
+						"additionalProperties": true,
 						"properties": {
 							"text": {
 								"type": "string"

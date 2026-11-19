@@ -1,14 +1,18 @@
 {
+	"additionalProperties": true,
 	"properties": {
 		"data": {
+			"additionalProperties": true,
 			"properties": {
 				"events": {
 					"items": {
+						"additionalProperties": true,
 						"properties": {
 							"description": {
 								"type": "string"
 							},
 							"end": {
+								"additionalProperties": true,
 								"properties": {
 									"date": {
 										"type": ["null", "string"]
@@ -34,6 +38,7 @@
 								"type": "object"
 							},
 							"start": {
+								"additionalProperties": true,
 								"properties": {
 									"date": {
 										"type": ["null", "string"]

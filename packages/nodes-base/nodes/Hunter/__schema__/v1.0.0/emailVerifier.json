@@ -1,4 +1,5 @@
 {
+	"additionalProperties": true,
 	"properties": {
 		"_deprecation_notice": {
 			"type": "string"

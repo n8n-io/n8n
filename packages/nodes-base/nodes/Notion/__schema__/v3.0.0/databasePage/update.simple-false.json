@@ -16,6 +16,7 @@
 			"type": "string"
 		},
 		"icon": {
+			"additionalProperties": true,
 			"properties": {
 				"type": {
 					"type": "string"
@@ -53,6 +54,7 @@
 			"type": "string"
 		},
 		"parent": {
+			"additionalProperties": true,
 			"properties": {
 				"data_source_id": {
 					"type": "string"

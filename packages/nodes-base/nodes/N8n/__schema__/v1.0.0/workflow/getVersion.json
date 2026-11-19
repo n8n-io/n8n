@@ -1,4 +1,5 @@
 {
+	"additionalProperties": true,
 	"properties": {
 		"authors": {
 			"type": "string"
@@ -21,6 +22,7 @@
 		},
 		"nodes": {
 			"items": {
+				"additionalProperties": true,
 				"properties": {
 					"alwaysOutputData": {
 						"type": "boolean"
@@ -58,6 +60,7 @@
 													"type": "string"
 												},
 												"operator": {
+													"additionalProperties": true,
 													"properties": {
 														"operation": {
 															"type": "string"

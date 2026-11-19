@@ -1,4 +1,5 @@
 {
+	"additionalProperties": true,
 	"properties": {
 		"active": {
 			"type": "boolean"
@@ -48,6 +49,7 @@
 				},
 				"nodes": {
 					"items": {
+						"additionalProperties": true,
 						"properties": {
 							"alwaysOutputData": {
 								"type": "boolean"
@@ -102,6 +104,7 @@
 										"type": "string"
 									},
 									"columns": {
+										"additionalProperties": true,
 										"properties": {
 											"mappingMode": {
 												"type": "string"
@@ -114,6 +117,7 @@
 											},
 											"schema": {
 												"items": {
+													"additionalProperties": true,
 													"properties": {
 														"canBeUsedToMatch": {
 															"type": "boolean"
@@ -171,6 +175,7 @@
 															"type": "string"
 														},
 														"operator": {
+															"additionalProperties": true,
 															"properties": {
 																"operation": {
 																	"type": "string"
@@ -216,6 +221,7 @@
 										"type": "string"
 									},
 									"dataTableId": {
+										"additionalProperties": true,
 										"properties": {
 											"__rl": {
 												"type": "boolean"
@@ -294,6 +300,7 @@
 											"response": {
 												"properties": {
 													"response": {
+														"additionalProperties": true,
 														"properties": {
 															"fullResponse": {
 																"type": "boolean"
@@ -341,6 +348,7 @@
 										"type": "string"
 									},
 									"workflowId": {
+										"additionalProperties": true,
 										"properties": {
 											"__rl": {
 												"type": "boolean"
@@ -355,6 +363,7 @@
 										"type": "object"
 									},
 									"workflowInputs": {
+										"additionalProperties": true,
 										"properties": {
 											"attemptToConvertTypes": {
 												"type": "boolean"
@@ -373,6 +382,7 @@
 											},
 											"schema": {
 												"items": {
+													"additionalProperties": true,
 													"properties": {
 														"canBeUsedToMatch": {
 															"type": "boolean"
@@ -492,6 +502,7 @@
 			"type": "boolean"
 		},
 		"meta": {
+			"additionalProperties": true,
 			"properties": {
 				"aiBuilderAssisted": {
 					"type": "boolean"
@@ -530,6 +541,7 @@
 		},
 		"nodes": {
 			"items": {
+				"additionalProperties": true,
 				"properties": {
 					"alwaysOutputData": {
 						"type": "boolean"
@@ -584,6 +596,7 @@
 								"type": "string"
 							},
 							"columns": {
+								"additionalProperties": true,
 								"properties": {
 									"mappingMode": {
 										"type": "string"
@@ -596,6 +609,7 @@
 									},
 									"schema": {
 										"items": {
+											"additionalProperties": true,
 											"properties": {
 												"canBeUsedToMatch": {
 													"type": "boolean"
@@ -644,6 +658,7 @@
 													"type": "string"
 												},
 												"operator": {
+													"additionalProperties": true,
 													"properties": {
 														"operation": {
 															"type": "string"
@@ -686,6 +701,7 @@
 								"type": "object"
 							},
 							"dataTableId": {
+								"additionalProperties": true,
 								"properties": {
 									"__rl": {
 										"type": "boolean"
@@ -700,6 +716,7 @@
 								"type": "object"
 							},
 							"filters": {
+								"additionalProperties": true,
 								"properties": {
 									"conditions": {
 										"items": {
@@ -745,6 +762,7 @@
 									"response": {
 										"properties": {
 											"response": {
+												"additionalProperties": true,
 												"properties": {
 													"fullResponse": {
 														"type": "boolean"
@@ -786,6 +804,7 @@
 								"type": "string"
 							},
 							"workflowId": {
+								"additionalProperties": true,
 								"properties": {
 									"__rl": {
 										"type": "boolean"
@@ -832,6 +851,7 @@
 			"type": ["null", "object"]
 		},
 		"settings": {
+			"additionalProperties": true,
 			"properties": {
 				"availableInMCP": {
 					"type": "boolean"

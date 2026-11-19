@@ -28,6 +28,7 @@
 		},
 		"nodes": {
 			"items": {
+				"additionalProperties": true,
 				"properties": {
 					"credentials": {
 						"type": "object"
@@ -51,6 +52,7 @@
 								"type": "string"
 							},
 							"conditions": {
+								"additionalProperties": true,
 								"properties": {
 									"combinator": {
 										"type": "string"

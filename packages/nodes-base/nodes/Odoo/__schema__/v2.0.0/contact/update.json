@@ -1,4 +1,5 @@
 {
+	"additionalProperties": true,
 	"properties": {
 		"id": {
 			"type": "number"

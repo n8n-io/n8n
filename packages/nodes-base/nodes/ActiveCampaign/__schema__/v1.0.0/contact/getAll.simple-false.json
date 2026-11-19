@@ -2,6 +2,7 @@
 	"properties": {
 		"contacts": {
 			"items": {
+				"additionalProperties": true,
 				"properties": {
 					"accountContacts": {
 						"items": {
@@ -205,6 +206,7 @@
 		"meta": {
 			"properties": {
 				"page_input": {
+					"additionalProperties": true,
 					"properties": {
 						"cacheid": {
 							"type": "string"

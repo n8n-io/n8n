@@ -1,4 +1,5 @@
 {
+	"additionalProperties": true,
 	"properties": {
 		"created_at": {
 			"type": "string"

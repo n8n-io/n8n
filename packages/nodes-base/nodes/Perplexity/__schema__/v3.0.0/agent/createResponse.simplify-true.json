@@ -1,4 +1,5 @@
 {
+	"additionalProperties": true,
 	"properties": {
 		"id": {
 			"type": "string"
@@ -10,8 +11,10 @@
 			"type": "string"
 		},
 		"usage": {
+			"additionalProperties": true,
 			"properties": {
 				"cost": {
+					"additionalProperties": true,
 					"properties": {
 						"currency": {
 							"type": "string"
@@ -32,6 +35,7 @@
 					"type": "number"
 				},
 				"input_tokens_details": {
+					"additionalProperties": true,
 					"properties": {
 						"cached_tokens": {
 							"type": "number"

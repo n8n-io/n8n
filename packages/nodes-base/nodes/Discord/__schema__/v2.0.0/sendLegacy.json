@@ -1,8 +1,0 @@
-{
-	"properties": {
-		"response": {
-			"type": "string"
-		}
-	},
-	"type": "object"
-}

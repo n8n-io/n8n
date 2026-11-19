@@ -7,6 +7,7 @@
 						"properties": {
 							"parts": {
 								"items": {
+									"additionalProperties": true,
 									"properties": {
 										"text": {
 											"type": "string"
@@ -43,6 +44,7 @@
 			"type": "string"
 		},
 		"usageMetadata": {
+			"additionalProperties": true,
 			"properties": {
 				"candidatesTokenCount": {
 					"type": "number"

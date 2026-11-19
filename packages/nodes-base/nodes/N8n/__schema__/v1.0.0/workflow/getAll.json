@@ -29,6 +29,7 @@
 				},
 				"nodes": {
 					"items": {
+						"additionalProperties": true,
 						"properties": {
 							"alwaysOutputData": {
 								"type": "boolean"
@@ -127,6 +128,7 @@
 															"type": "string"
 														},
 														"operator": {
+															"additionalProperties": true,
 															"properties": {
 																"operation": {
 																	"type": "string"
@@ -190,6 +192,7 @@
 										"properties": {
 											"interval": {
 												"items": {
+													"additionalProperties": true,
 													"properties": {
 														"triggerAtHour": {
 															"type": "number"
@@ -300,6 +303,7 @@
 		},
 		"nodes": {
 			"items": {
+				"additionalProperties": true,
 				"properties": {
 					"alwaysOutputData": {
 						"type": "boolean"
@@ -426,6 +430,7 @@
 													"type": "string"
 												},
 												"operator": {
+													"additionalProperties": true,
 													"properties": {
 														"operation": {
 															"type": "string"
@@ -518,6 +523,7 @@
 								"properties": {
 									"interval": {
 										"items": {
+											"additionalProperties": true,
 											"properties": {
 												"expression": {
 													"type": "string"
@@ -578,6 +584,7 @@
 			"type": ["null", "object"]
 		},
 		"settings": {
+			"additionalProperties": true,
 			"properties": {
 				"availableInMCP": {
 					"type": "boolean"

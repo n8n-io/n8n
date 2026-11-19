@@ -16,6 +16,7 @@
 			"type": "string"
 		},
 		"icon": {
+			"additionalProperties": true,
 			"properties": {
 				"emoji": {
 					"type": "string"

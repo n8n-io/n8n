@@ -1,6 +1,8 @@
 {
+	"additionalProperties": true,
 	"properties": {
 		"body": {
+			"additionalProperties": true,
 			"properties": {
 				"changes": {
 					"additionalProperties": true,
@@ -61,6 +63,7 @@
 					"type": "array"
 				},
 				"object_attributes": {
+					"additionalProperties": true,
 					"properties": {
 						"action": {
 							"type": "string"
@@ -275,6 +278,7 @@
 					"type": "object"
 				},
 				"repository": {
+					"additionalProperties": true,
 					"properties": {
 						"description": {
 							"type": ["null", "string"]

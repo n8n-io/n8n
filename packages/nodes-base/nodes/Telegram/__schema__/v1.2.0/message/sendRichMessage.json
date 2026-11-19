@@ -4,8 +4,10 @@
 			"type": "boolean"
 		},
 		"result": {
+			"additionalProperties": true,
 			"properties": {
 				"chat": {
+					"additionalProperties": true,
 					"properties": {
 						"first_name": {
 							"type": "string"
@@ -49,9 +51,11 @@
 					"properties": {
 						"blocks": {
 							"items": {
+								"additionalProperties": true,
 								"properties": {
 									"text": {
 										"items": {
+											"additionalProperties": true,
 											"properties": {
 												"text": {
 													"type": "string"

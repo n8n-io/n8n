@@ -1,4 +1,5 @@
 {
+	"additionalProperties": true,
 	"properties": {
 		"_links": {
 			"properties": {
@@ -64,6 +65,7 @@
 			"type": "object"
 		},
 		"billing": {
+			"additionalProperties": true,
 			"properties": {
 				"address_1": {
 					"type": "string"
@@ -270,6 +272,7 @@
 		},
 		"line_items": {
 			"items": {
+				"additionalProperties": true,
 				"properties": {
 					"global_unique_id": {
 						"type": ["null", "string"]
@@ -295,6 +298,7 @@
 									"type": ["null", "string"]
 								},
 								"display_value": {
+									"additionalProperties": true,
 									"items": {
 										"type": "string"
 									},
@@ -315,6 +319,7 @@
 									"type": "string"
 								},
 								"value": {
+									"additionalProperties": true,
 									"items": {
 										"type": "string"
 									},

@@ -13,6 +13,7 @@
 		},
 		"column_values": {
 			"items": {
+				"additionalProperties": true,
 				"properties": {
 					"id": {
 						"type": "string"

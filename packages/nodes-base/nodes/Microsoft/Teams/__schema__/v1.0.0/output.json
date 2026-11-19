@@ -1,4 +1,5 @@
 {
+	"additionalProperties": true,
 	"properties": {
 		"@odata.id": {
 			"type": "string"

@@ -1,4 +1,5 @@
 {
+	"additionalProperties": true,
 	"properties": {
 		"admin_graphql_api_id": {
 			"type": "string"
@@ -234,6 +235,7 @@
 			"type": "object"
 		},
 		"customer": {
+			"additionalProperties": true,
 			"properties": {
 				"admin_graphql_api_id": {
 					"type": "string"
@@ -452,6 +454,7 @@
 					},
 					"line_items": {
 						"items": {
+							"additionalProperties": true,
 							"properties": {
 								"admin_graphql_api_id": {
 									"type": "string"
@@ -738,6 +741,7 @@
 		"landing_site_ref": {},
 		"line_items": {
 			"items": {
+				"additionalProperties": true,
 				"properties": {
 					"admin_graphql_api_id": {
 						"type": "string"

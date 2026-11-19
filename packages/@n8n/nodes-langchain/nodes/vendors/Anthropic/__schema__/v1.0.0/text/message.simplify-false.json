@@ -1,8 +1,10 @@
 {
+	"additionalProperties": true,
 	"properties": {
 		"container": {},
 		"content": {
 			"items": {
+				"additionalProperties": true,
 				"properties": {
 					"text": {
 						"type": "string"
@@ -34,6 +36,7 @@
 			"type": "string"
 		},
 		"usage": {
+			"additionalProperties": true,
 			"properties": {
 				"cache_creation": {
 					"properties": {

@@ -1,4 +1,5 @@
 {
+	"additionalProperties": true,
 	"properties": {
 		"active_lock_reason": {},
 		"assignee": {

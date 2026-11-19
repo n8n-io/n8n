@@ -1,4 +1,5 @@
 {
+	"additionalProperties": true,
 	"properties": {
 		"created_at": {
 			"type": "string"
@@ -7,6 +8,7 @@
 			"type": "string"
 		},
 		"customer": {
+			"additionalProperties": true,
 			"properties": {
 				"email": {
 					"type": "string"
@@ -31,6 +33,7 @@
 		},
 		"line_items": {
 			"items": {
+				"additionalProperties": true,
 				"properties": {
 					"gift_card": {
 						"type": "boolean"

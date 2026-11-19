@@ -1,8 +1,10 @@
 {
 	"properties": {
 		"message": {
+			"additionalProperties": true,
 			"properties": {
 				"chat": {
+					"additionalProperties": true,
 					"properties": {
 						"first_name": {
 							"type": "string"
@@ -23,6 +25,7 @@
 					"type": "number"
 				},
 				"from": {
+					"additionalProperties": true,
 					"properties": {
 						"first_name": {
 							"type": "string"

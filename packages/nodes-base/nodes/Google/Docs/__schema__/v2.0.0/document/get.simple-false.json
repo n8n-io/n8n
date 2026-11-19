@@ -1,17 +1,21 @@
 {
+	"additionalProperties": true,
 	"properties": {
 		"body": {
 			"properties": {
 				"content": {
 					"items": {
+						"additionalProperties": true,
 						"properties": {
 							"endIndex": {
 								"type": "number"
 							},
 							"paragraph": {
+								"additionalProperties": true,
 								"properties": {
 									"elements": {
 										"items": {
+											"additionalProperties": true,
 											"properties": {
 												"endIndex": {
 													"type": "number"
@@ -25,6 +29,7 @@
 															"type": "string"
 														},
 														"textStyle": {
+															"additionalProperties": true,
 															"properties": {
 																"bold": {
 																	"type": "boolean"
@@ -76,6 +81,7 @@
 										"type": "array"
 									},
 									"paragraphStyle": {
+										"additionalProperties": true,
 										"properties": {
 											"direction": {
 												"type": "string"
@@ -151,6 +157,7 @@
 			"type": "string"
 		},
 		"documentStyle": {
+			"additionalProperties": true,
 			"properties": {
 				"background": {
 					"properties": {
@@ -322,6 +329,7 @@
 												"type": "string"
 											},
 											"padding": {
+												"additionalProperties": true,
 												"properties": {
 													"unit": {
 														"type": "string"
@@ -330,6 +338,7 @@
 												"type": "object"
 											},
 											"width": {
+												"additionalProperties": true,
 												"properties": {
 													"unit": {
 														"type": "string"

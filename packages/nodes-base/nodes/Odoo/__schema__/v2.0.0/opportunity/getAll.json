@@ -1,4 +1,5 @@
 {
+	"additionalProperties": true,
 	"properties": {
 		"active": {
 			"type": "boolean"
@@ -189,6 +190,7 @@
 		},
 		"lead_properties": {
 			"items": {
+				"additionalProperties": true,
 				"properties": {
 					"name": {
 						"type": "string"

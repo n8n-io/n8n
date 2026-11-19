@@ -373,6 +373,7 @@
 			"type": "string"
 		},
 		"Issue Type": {
+			"additionalProperties": true,
 			"properties": {
 				"avatarId": {
 					"type": "number"
@@ -415,6 +416,7 @@
 		},
 		"Linked Issues": {
 			"items": {
+				"additionalProperties": true,
 				"properties": {
 					"id": {
 						"type": "string"
@@ -603,6 +605,7 @@
 			"type": "object"
 		},
 		"Project": {
+			"additionalProperties": true,
 			"properties": {
 				"avatarUrls": {
 					"properties": {

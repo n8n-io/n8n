@@ -1,4 +1,5 @@
 {
+	"additionalProperties": true,
 	"properties": {
 		"choices": {
 			"items": {
@@ -75,6 +76,7 @@
 					"type": "number"
 				},
 				"prompt_tokens_details": {
+					"additionalProperties": true,
 					"properties": {
 						"audio_tokens": {
 							"type": "number"

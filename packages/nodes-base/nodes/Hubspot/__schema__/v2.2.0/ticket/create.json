@@ -1,4 +1,5 @@
 {
+	"additionalProperties": true,
 	"properties": {
 		"isDeleted": {
 			"type": "boolean"
@@ -13,6 +14,7 @@
 			"type": "number"
 		},
 		"properties": {
+			"additionalProperties": true,
 			"properties": {
 				"content": {
 					"properties": {

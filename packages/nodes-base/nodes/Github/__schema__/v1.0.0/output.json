@@ -1,4 +1,5 @@
 {
+	"additionalProperties": true,
 	"properties": {
 		"body": {
 			"additionalProperties": true,
@@ -7,6 +8,7 @@
 					"type": "string"
 				},
 				"repository": {
+					"additionalProperties": true,
 					"properties": {
 						"allow_forking": {
 							"type": "boolean"
@@ -195,6 +197,7 @@
 							"type": "number"
 						},
 						"owner": {
+							"additionalProperties": true,
 							"properties": {
 								"avatar_url": {
 									"type": "string"

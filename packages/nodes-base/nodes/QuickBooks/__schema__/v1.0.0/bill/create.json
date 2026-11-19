@@ -1,4 +1,5 @@
 {
+	"additionalProperties": true,
 	"properties": {
 		"APAccountRef": {
 			"properties": {
@@ -36,6 +37,7 @@
 		},
 		"Line": {
 			"items": {
+				"additionalProperties": true,
 				"properties": {
 					"AccountBasedExpenseLineDetail": {
 						"properties": {

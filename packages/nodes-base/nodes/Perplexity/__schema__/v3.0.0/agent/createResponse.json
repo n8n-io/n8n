@@ -42,6 +42,7 @@
 		},
 		"output": {
 			"items": {
+				"additionalProperties": true,
 				"properties": {
 					"content": {
 						"items": {
@@ -126,6 +127,7 @@
 		},
 		"tools": {
 			"items": {
+				"additionalProperties": true,
 				"properties": {
 					"type": {
 						"type": "string"
@@ -145,8 +147,10 @@
 			"type": "string"
 		},
 		"usage": {
+			"additionalProperties": true,
 			"properties": {
 				"cost": {
+					"additionalProperties": true,
 					"properties": {
 						"currency": {
 							"type": "string"
@@ -167,6 +171,7 @@
 					"type": "number"
 				},
 				"input_tokens_details": {
+					"additionalProperties": true,
 					"properties": {
 						"cached_tokens": {
 							"type": "number"

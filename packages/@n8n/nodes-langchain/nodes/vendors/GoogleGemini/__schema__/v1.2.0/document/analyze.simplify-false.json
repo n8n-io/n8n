@@ -43,6 +43,7 @@
 			"type": "string"
 		},
 		"usageMetadata": {
+			"additionalProperties": true,
 			"properties": {
 				"candidatesTokenCount": {
 					"type": "number"
