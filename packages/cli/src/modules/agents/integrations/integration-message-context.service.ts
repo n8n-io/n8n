@@ -216,7 +216,8 @@ export class IntegrationMessageContextService implements IntegrationMessageConte
 	}
 
 	async unbindSession(derivedThreadId: string): Promise<void> {
-		const binding = await this.resolveSession(derivedThreadId);
+		// Read the stored binding, so a binding to a deleted session is cleared too.
+		const binding = await this.readBinding(derivedThreadId);
 		// A rebind may have changed the binding since it was read. Clear only the
 		// state that was read, and touch the origin map only when it was cleared.
 		let cleared = false;

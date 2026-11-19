@@ -404,17 +404,18 @@ describe('IntegrationMessageContextService', () => {
 	});
 
 	it('unbindSession keeps a binding that was replaced after it was read', async () => {
-		const { service, threads } = setup({
+		const { service, threadRepository, threads } = setup({
 			task: { boundThreads: { 'agent-1:slack:D1:1': 'user:alice' } },
 			'agent-1:slack:D1:1': { continueAs: { threadId: 'task', resourceId: 'task:task-1' } },
 		});
 		const newOrigin = { threadId: 'task-2', resourceId: 'task:task-2' };
-		const resolveSession = service.resolveSession.bind(service);
-		vi.spyOn(service, 'resolveSession').mockImplementation(async (id) => {
-			const binding = await resolveSession(id);
+		const findOneBy = threadRepository.findOneBy.getMockImplementation()!;
+		threadRepository.findOneBy.mockImplementationOnce(async (where) => {
+			const { id } = where as { id: string };
+			const row = await findOneBy(where);
 			// A rebind lands between the read and the clear.
 			threads.set(id, { id, metadata: JSON.stringify({ continueAs: newOrigin }) });
-			return binding;
+			return row;
 		});
 
 		await service.unbindSession('agent-1:slack:D1:1');
@@ -428,14 +429,15 @@ describe('IntegrationMessageContextService', () => {
 	});
 
 	it('unbindSession keeps a binding that appeared after it found none', async () => {
-		const { service, threads } = setup({ 'agent-1:slack:D1:1': { other: true } });
+		const { service, threadRepository, threads } = setup({ 'agent-1:slack:D1:1': { other: true } });
 		const newOrigin = { threadId: 'task-2', resourceId: 'task:task-2' };
-		const resolveSession = service.resolveSession.bind(service);
-		vi.spyOn(service, 'resolveSession').mockImplementation(async (id) => {
-			const binding = await resolveSession(id);
+		const findOneBy = threadRepository.findOneBy.getMockImplementation()!;
+		threadRepository.findOneBy.mockImplementationOnce(async (where) => {
+			const { id } = where as { id: string };
+			const row = await findOneBy(where);
 			// A bind lands between the read and the clear.
 			threads.set(id, { id, metadata: JSON.stringify({ continueAs: newOrigin }) });
-			return binding;
+			return row;
 		});
 
 		await service.unbindSession('agent-1:slack:D1:1');
@@ -536,6 +538,23 @@ describe('IntegrationMessageContextService', () => {
 			});
 
 			await expect(service.resolveSessionReplyScope('agent-1:whatsapp:1')).resolves.toBeNull();
+
+			const derived = jsonParse<Record<string, unknown>>(
+				threads.get('agent-1:whatsapp:1')!.metadata!,
+			);
+			expect(derived).toEqual({ currentMessageContext: context });
+		});
+
+		it('unbindSession clears the binding and the waiting task messages', async () => {
+			const { service, threads } = setup({
+				'agent-1:whatsapp:1': {
+					continueAs: deletedOrigin,
+					outboundMessages: ['Hi'],
+					currentMessageContext: context,
+				},
+			});
+
+			await service.unbindSession('agent-1:whatsapp:1');
 
 			const derived = jsonParse<Record<string, unknown>>(
 				threads.get('agent-1:whatsapp:1')!.metadata!,
