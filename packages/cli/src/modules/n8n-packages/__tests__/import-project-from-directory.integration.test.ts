@@ -34,10 +34,11 @@ let owner: User;
 let sourceDir: string;
 
 const importPolicy: Omit<ImportRequest, 'user'> = {
+	publicApi: false,
 	projectConflictPolicy: 'overwrite',
-	workflowConflictPolicy: 'new-version',
-	workflowIdPolicy: 'source',
-	workflowPublishingPolicy: 'match-source',
+	conflictPolicy: 'new-version',
+	idPolicy: 'source',
+	publishingPolicy: 'match-source',
 	missingNodeTypeMode: 'fail',
 	credentialMatchingMode: 'id-only',
 	credentialMissingMode: 'create-stub',

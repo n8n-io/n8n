@@ -1,3 +1,4 @@
+// Experiment cleanup (142_aia_inspiration_from_taxonomy_v3)
 import { computed } from 'vue';
 
 import { INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT } from '@/app/constants/experiments';
@@ -12,9 +13,11 @@ export function useInstanceAiInspirationFromTaxonomyExperiment() {
 	const isTreatmentVariant = computed(
 		() => currentVariant.value === INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT.variant,
 	);
+	const isRowsVariant = computed(() => isTreatmentVariant.value);
 
 	return {
 		currentVariant,
 		isTreatmentVariant,
+		isRowsVariant,
 	};
 }

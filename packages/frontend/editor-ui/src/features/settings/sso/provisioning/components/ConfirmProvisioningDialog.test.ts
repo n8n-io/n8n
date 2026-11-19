@@ -37,11 +37,6 @@ describe('ConfirmProvisioningDialog', () => {
 		csvExport.hasDownloadedProjectRoleCsv.value = false;
 	});
 
-	afterEach(() => {
-		// ElDialog teleports content to body — clean up between tests.
-		document.body.innerHTML = '';
-	});
-
 	describe('project rules deletion warning', () => {
 		it('does not render the deletion warning when willDeleteProjectRules is absent (defaults to false)', async () => {
 			renderDialog({ props: baseProps });

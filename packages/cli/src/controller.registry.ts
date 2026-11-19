@@ -12,11 +12,11 @@ import type {
 	KeyedRateLimiterConfig,
 } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
-import { NotFoundError, UnauthenticatedError } from '@n8n/errors';
+import { NotFoundError, UnauthenticatedError, UnexpectedError } from '@n8n/errors';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { Router } from 'express';
-import type { Application, Request, Response, RequestHandler } from 'express';
-import { UnexpectedError } from 'n8n-workflow';
+import type { Request, Response, RequestHandler } from 'express';
+import escapeRegExp from 'lodash/escapeRegExp';
 import assert from 'node:assert';
 
 import { AuthService } from '@/auth/auth.service';
@@ -42,15 +42,16 @@ export class ControllerRegistry {
 		private readonly rateLimitService: RateLimitService,
 	) {}
 
-	activate(app: Application) {
+	activate(app: Pick<Router, 'use'>, options: { surface?: 'main' | 'apps' } = {}) {
 		for (const controllerClass of this.metadata.controllerClasses) {
 			const metadata = this.metadata.getControllerMetadata(controllerClass);
 			if (metadata.isPublicApi) continue;
+			if ((metadata.surface ?? 'main') !== (options.surface ?? 'main')) continue;
 			this.activateController(app, controllerClass);
 		}
 	}
 
-	private activateController(app: Application, controllerClass: Controller) {
+	private activateController(app: Pick<Router, 'use'>, controllerClass: Controller) {
 		const metadata = this.metadata.getControllerMetadata(controllerClass);
 
 		const router = Router({ mergeParams: true });
@@ -76,6 +77,13 @@ export class ControllerRegistry {
 				}
 				const middlewares = this.buildMiddlewares(routerConfig, controllerMiddlewares);
 				router.use(routerConfig.path, ...middlewares, routerConfig.router);
+
+				// A static router serves every path under its mount, so the bot
+				// filter must let bots through on all of them.
+				if (routerConfig.allowBots) {
+					const base = (prefix + routerConfig.path).replace(/\/+/g, '/').replace(/\/$/, '');
+					AbstractServer.botAllowedPaths.push(`${escapeRegExp(base)}(/.*)?`);
+				}
 			}
 		}
 

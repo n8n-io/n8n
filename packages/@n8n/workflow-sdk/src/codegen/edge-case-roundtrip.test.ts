@@ -391,6 +391,72 @@ describe('Edge Case Roundtrip Tests', () => {
 		});
 	});
 
+	describe('Edge Case 6b: Switch error output', () => {
+		function roundtripSwitchWithErrorOutput(ruleOutputs: string[][]) {
+			const caseNames = [...new Set(ruleOutputs.flat())];
+			const originalJson: WorkflowJSON = {
+				id: 'switch-error-test',
+				name: 'Switch Error Test',
+				nodes: [
+					{
+						id: 'trigger-1',
+						name: 'Start',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+					{
+						id: 'switch-1',
+						name: 'Router',
+						type: 'n8n-nodes-base.switch',
+						typeVersion: 3.2,
+						position: [200, 0],
+						parameters: { mode: 'rules', rules: { values: [{}, {}] } },
+						onError: 'continueErrorOutput',
+					},
+					...[...caseNames, 'Handle Error'].map((name, i) => ({
+						id: `target-${i}`,
+						name,
+						type: 'n8n-nodes-base.set',
+						typeVersion: 3.4,
+						position: [400, i * 100] as [number, number],
+						parameters: {},
+					})),
+				],
+				connections: {
+					Start: { main: [[{ node: 'Router', type: 'main', index: 0 }]] },
+					Router: {
+						main: [
+							...ruleOutputs.map((names) =>
+								names.map((node) => ({ node, type: 'main', index: 0 })),
+							),
+							[{ node: 'Handle Error', type: 'main', index: 0 }],
+						],
+					},
+				},
+			};
+
+			return parseWorkflowCode(generateWorkflowCode(originalJson)).connections.Router?.main;
+		}
+
+		it('keeps the error output after the rules when every rule is connected', () => {
+			const switchConns = roundtripSwitchWithErrorOutput([['Case 0'], ['Case 1']]);
+
+			expect(switchConns?.[0]?.[0]?.node).toBe('Case 0');
+			expect(switchConns?.[1]?.[0]?.node).toBe('Case 1');
+			expect(switchConns?.[2]?.[0]?.node).toBe('Handle Error');
+		});
+
+		it('keeps the error output after the rules when a rule has no connection', () => {
+			const switchConns = roundtripSwitchWithErrorOutput([['Case 0'], []]);
+
+			expect(switchConns?.[0]?.[0]?.node).toBe('Case 0');
+			expect(switchConns?.[1] ?? []).toHaveLength(0);
+			expect(switchConns?.[2]?.[0]?.node).toBe('Handle Error');
+		});
+	});
+
 	describe('Edge Case 7: Single-Branch IF', () => {
 		it('should roundtrip IF with only true branch', () => {
 			const originalJson: WorkflowJSON = {

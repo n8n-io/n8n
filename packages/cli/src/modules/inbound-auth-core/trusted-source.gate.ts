@@ -37,7 +37,7 @@ export class TrustedSourceDbGate extends TrustedSourceGate {
 		}
 
 		if (binding) {
-			const row = await this.identityRepository.findBinding(binding.sourceId, binding.subject);
+			const row = await this.identityRepository.findBinding(binding.sourceId, binding.subject, {});
 			if (row?.status !== 'active' || row.userId !== userId) {
 				this.logger.debug('Sealed identity denied: the binding is not active for this user', {
 					userId,

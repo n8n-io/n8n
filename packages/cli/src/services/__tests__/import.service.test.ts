@@ -12,7 +12,7 @@ import { readdir, readFile } from 'fs/promises';
 import { mock } from 'vitest-mock-extended';
 import type { Cipher } from 'n8n-core';
 
-import type { DataTableDDLService } from '@/modules/data-table/data-table-ddl.service';
+import type { DataTableDDLService } from '@n8n/backend-module-data-table';
 import type { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
 import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
@@ -851,6 +851,33 @@ describe('ImportService', () => {
 
 			await expect(importService.validateMigrations('/test/input')).resolves.not.toThrow();
 		});
+
+		it('should reject a 2.49.0 archive before any insert', async () => {
+			// 2.48 and 2.49 wrote the `agent_files` rows to a file named after the entity class of that
+			// time. The class `KnowledgeFile` now maps `knowledge_file`, so only this check keeps them out.
+			// The last migration of 2.49.0 against the migration of the collection tables.
+			const migrationsContent =
+				'{"id":"1","timestamp":"1794826383663","name":"AddAgentFolderPlacement1794826383663"}';
+			const dbMigrations = [
+				{
+					id: '2',
+					timestamp: '1795076463180',
+					name: 'CreateKnowledgeCollectionTables1795076463180',
+				},
+			];
+
+			const { existsSync } = await import('fs');
+			vi.mocked(existsSync).mockReturnValueOnce(true);
+			vi.mocked(readFile).mockResolvedValue(migrationsContent);
+			vi.mocked(mockDataSource.query).mockResolvedValue(dbMigrations);
+
+			await expect(importService.importEntities('/test/input', false)).rejects.toThrow(
+				'Migration timestamp mismatch',
+			);
+
+			expect(mockDataSource.transaction).not.toHaveBeenCalled();
+			expect(mockEntityManager.query).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('normalizeEntityJsonColumns', () => {
@@ -1267,37 +1294,6 @@ describe('ImportService', () => {
 		});
 	});
 
-	describe('extractSubworkflowId', () => {
-		it('should extract workflow ID from legacy string format', () => {
-			const node = {
-				parameters: { workflowId: 'abc123' },
-			};
-
-			// @ts-expect-error accessing private method for testing
-			expect(importService.extractSubworkflowId(node)).toBe('abc123');
-		});
-
-		it('should extract workflow ID from resource-locator object format', () => {
-			const node = {
-				parameters: {
-					workflowId: { __rl: true, value: 'LCEM9GnTcIVSy1D8', mode: 'list' },
-				},
-			};
-
-			// @ts-expect-error accessing private method for testing
-			expect(importService.extractSubworkflowId(node)).toBe('LCEM9GnTcIVSy1D8');
-		});
-
-		it('should return undefined when workflowId is missing', () => {
-			const node = {
-				parameters: {},
-			};
-
-			// @ts-expect-error accessing private method for testing
-			expect(importService.extractSubworkflowId(node)).toBeUndefined();
-		});
-	});
-
 	describe('sortWorkflowsForActivation', () => {
 		function makeNode(id: string, type: string, parameters: Record<string, unknown> = {}) {
 			return { id, type, parameters, disabled: false } as any;
@@ -1338,6 +1334,21 @@ describe('ImportService', () => {
 			const result = importService.sortWorkflowsForActivation(workflows, toActivate);
 
 			expect(result.map((w) => w.workflowId)).toEqual(['B', 'A']);
+		});
+
+		it('should activate callee (B) before a caller (A) that calls it twice, and A before its caller (C)', () => {
+			const workflows = [
+				makeWorkflow('C', [makeExecuteWorkflowNode('n1', 'A')]),
+				makeWorkflow('A', [makeExecuteWorkflowNode('n2', 'B'), makeExecuteWorkflowNode('n3', 'B')]),
+				makeWorkflow('B'),
+			];
+			const toActivate = makeToActivate(['C', 'A', 'B']);
+
+			// @ts-expect-error accessing private method for testing
+			const result = importService.sortWorkflowsForActivation(workflows, toActivate);
+
+			expect(result.map((w) => w.workflowId)).toEqual(['B', 'A', 'C']);
+			expect(mockLogger.warn).not.toHaveBeenCalled();
 		});
 
 		it('should activate C → B → A for a three-level chain', () => {
@@ -1394,8 +1405,7 @@ describe('ImportService', () => {
 			// @ts-expect-error accessing private method for testing
 			const result = importService.sortWorkflowsForActivation(workflows, toActivate);
 
-			// A has no active dependencies on B, so order can be anything — just verify both present
-			expect(result).toHaveLength(2);
+			expect(result).toBe(toActivate);
 		});
 
 		it('should handle resource-locator workflowId format in nodes', () => {
@@ -1409,6 +1419,49 @@ describe('ImportService', () => {
 			const result = importService.sortWorkflowsForActivation(workflows, toActivate);
 
 			expect(result.map((w) => w.workflowId)).toEqual(['B', 'A']);
+		});
+
+		it('should handle a workflowId object without __rl', () => {
+			const node = makeNode('n1', 'n8n-nodes-base.executeWorkflow', {
+				workflowId: { value: 'B', mode: 'list' },
+			});
+			const workflows = [makeWorkflow('A', [node]), makeWorkflow('B')];
+			const toActivate = makeToActivate(['A', 'B']);
+
+			// @ts-expect-error accessing private method for testing
+			const result = importService.sortWorkflowsForActivation(workflows, toActivate);
+
+			expect(result.map((w) => w.workflowId)).toEqual(['B', 'A']);
+		});
+
+		it('should ignore nodes without parameters and workflow tool nodes', () => {
+			const workflows = [
+				makeWorkflow('A', [
+					{ id: 'n1', type: 'n8n-nodes-base.executeWorkflow' },
+					makeNode('n2', '@n8n/n8n-nodes-langchain.toolWorkflow', { workflowId: 'B' }),
+				]),
+				makeWorkflow('B'),
+			];
+			const toActivate = makeToActivate(['A', 'B']);
+
+			// @ts-expect-error accessing private method for testing
+			const result = importService.sortWorkflowsForActivation(workflows, toActivate);
+
+			expect(result).toBe(toActivate);
+		});
+
+		it('should ignore self-references and an empty workflow ID', () => {
+			const workflows = [
+				makeWorkflow('A', [makeExecuteWorkflowNode('n1', 'A'), makeExecuteWorkflowNode('n2', '')]),
+				makeWorkflow('', [makeNode('n3', 'n8n-nodes-base.set')]),
+			];
+			const toActivate = makeToActivate(['A', '']);
+
+			// @ts-expect-error accessing private method for testing
+			const result = importService.sortWorkflowsForActivation(workflows, toActivate);
+
+			expect(result).toBe(toActivate);
+			expect(mockLogger.warn).not.toHaveBeenCalled();
 		});
 
 		it('should return original order (fast path) when no workflow references another batch workflow', () => {

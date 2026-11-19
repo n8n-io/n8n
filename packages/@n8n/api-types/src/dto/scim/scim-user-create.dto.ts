@@ -1,6 +1,12 @@
 import { z } from 'zod';
 import { Z } from '../../zod-class';
 
+/**
+ * Body of POST and PUT /scim/v2/Users.
+ *
+ * `roles` is not declared, so the parser drops it. SSO role mapping owns the
+ * instance role, and an IdP that sends roles must not get an error.
+ */
 export class ScimUserCreateDto extends Z.class({
 	schemas: z.array(z.string()).default(['urn:ietf:params:scim:schemas:core:2.0:User']),
 	externalId: z.string().optional(),
@@ -26,15 +32,7 @@ export class ScimUserCreateDto extends Z.class({
 			}),
 		)
 		.optional(),
-	roles: z
-		.array(
-			z.object({
-				value: z.string(),
-				display: z.string().optional(),
-				type: z.string().optional(),
-				primary: z.boolean().optional(),
-			}),
-		)
-		.optional(),
-	active: z.boolean().default(true),
+	// No default: a PUT that omits `active` must keep the current state.
+	// The service treats an omitted value as true only on create.
+	active: z.boolean().optional(),
 }) {}

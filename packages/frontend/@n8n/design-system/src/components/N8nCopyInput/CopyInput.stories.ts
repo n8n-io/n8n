@@ -232,6 +232,44 @@ WithLabelAndHint.args = {
 	size: 'medium',
 };
 
+export const KeyboardFocus: StoryFn = (args) => ({
+	setup: () => ({ args, sizes: ['mini', 'small', 'medium', 'large', 'xlarge'] }),
+	components: { N8nCopyInput, N8nButton, N8nIcon, N8nTooltip },
+	template: `
+		<div style="display: flex; flex-direction: column; gap: var(--spacing--md); padding: var(--spacing--sm);">
+			<n8n-copy-input
+				v-for="size in sizes"
+				:key="size"
+				v-bind="args"
+				:size="size"
+				:label="'API key (' + size + ')'"
+			>
+				<template #actions>
+					<n8n-tooltip content="Show token" as-child>
+						<n8n-button variant="ghost" icon-only :size="size" aria-label="Show token">
+							<template #icon><n8n-icon icon="eye" /></template>
+						</n8n-button>
+					</n8n-tooltip>
+				</template>
+			</n8n-copy-input>
+		</div>
+	`,
+});
+KeyboardFocus.args = {
+	value: INITIAL_TOKEN,
+};
+KeyboardFocus.parameters = {
+	docs: {
+		description: {
+			story:
+				'Use Tab and Shift+Tab to move between the field, the extra action, and the copy button. ' +
+				'Check the focus outline at each size. The last control must follow the input corners; ' +
+				'the middle control must keep square corners. Set allowCopy to false to check the extra ' +
+				'action as the last control. The extra action only demonstrates focus and has no click handler.',
+		},
+	},
+};
+
 export const Sizes: StoryFn = () => ({
 	components: { N8nCopyInput },
 	template: `

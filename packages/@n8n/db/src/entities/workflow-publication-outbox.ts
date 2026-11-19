@@ -35,6 +35,8 @@ export const WorkflowPublicationReason = {
 	LeadershipTakeover: 'leadership-takeover',
 	/** A periodic reconciliation pass healing detected drift. */
 	Reconcile: 'reconcile',
+	/** A move to another project, which re-registers every trigger in the new project's context. */
+	Transfer: 'transfer',
 } as const;
 
 export type WorkflowPublicationReason =

@@ -1,10 +1,15 @@
+import { AgentCheckpoint } from '../entities/agent-checkpoint.entity';
+import { AgentExecution } from '../entities/agent-execution.entity';
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests intentionally reference unbound methods */
 import { mock } from 'vitest-mock-extended';
 
 import type { TransactionRunner } from '@n8n/db';
+import { IsNull } from '@n8n/typeorm';
 import { mockEntityManager } from '@test/mocking';
 
 import { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
+import type { AgentProjectDeletionRepository } from '../repositories/agent-project-deletion.repository';
+import type { AgentUserDeletionRepository } from '../repositories/agent-user-deletion.repository';
 import { AgentExecutionThreadRepository } from '../repositories/agent-execution-thread.repository';
 
 const access = { accessScope: 'project' as const, ownerId: null };
@@ -14,14 +19,74 @@ const mockDataSource = { manager: entityManager };
 
 describe('AgentExecutionThreadRepository', () => {
 	let repository: AgentExecutionThreadRepository;
+	const transactions = mock<TransactionRunner>();
+	const projectDeletion = mock<AgentProjectDeletionRepository>();
+	const userDeletion = mock<AgentUserDeletionRepository>();
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		transactions.run.mockImplementation(async (ctx, fn) => await fn(ctx));
 		Object.assign(entityManager.connection, { options: { type: 'sqlite-pooled' } });
+		projectDeletion.withWritableProject.mockImplementation(
+			async (_id, write, ctx = {}) => await write(ctx),
+		);
 		repository = new AgentExecutionThreadRepository(
 			mockDataSource as never,
-			mock<TransactionRunner>(),
+			transactions,
+			projectDeletion,
+			userDeletion,
 		);
+	});
+
+	describe('deleteCheckpointsForThreads', () => {
+		it('locks the session before checking ownership and deleting checkpoints', async () => {
+			const lock = vi.spyOn(repository, 'lockById').mockResolvedValue(mock<AgentExecutionThread>());
+			entityManager.existsBy.mockResolvedValue(false);
+			await repository.deleteCheckpointsForThreads(['thread-1']);
+			expect(entityManager.existsBy).toHaveBeenCalledWith(AgentExecution, {
+				threadId: 'thread-1',
+				status: 'running',
+			});
+			expect(entityManager.delete).toHaveBeenCalledWith(AgentCheckpoint, { threadId: 'thread-1' });
+			expect(lock.mock.invocationCallOrder[0]).toBeLessThan(
+				entityManager.delete.mock.invocationCallOrder[0],
+			);
+		});
+
+		it('preserves checkpoints while an execution can still save them', async () => {
+			vi.spyOn(repository, 'lockById').mockResolvedValue(mock<AgentExecutionThread>());
+			entityManager.existsBy.mockResolvedValue(true);
+			await expect(repository.deleteCheckpointsForThreads(['thread-1'])).rejects.toThrow(
+				'Stop the Agent session',
+			);
+			expect(entityManager.delete).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('setGeneratedTitle', () => {
+		it('writes the title and emoji only to a thread without a title', async () => {
+			entityManager.update.mockResolvedValue({ affected: 1, raw: [], generatedMaps: [] });
+
+			await repository.setGeneratedTitle('thread-1', 'Weekly digest', '📰');
+
+			expect(entityManager.update).toHaveBeenCalledWith(
+				AgentExecutionThread,
+				{ id: 'thread-1', title: IsNull() },
+				{ title: 'Weekly digest', emoji: '📰' },
+			);
+		});
+
+		it('leaves the emoji alone when there is none', async () => {
+			entityManager.update.mockResolvedValue({ affected: 0, raw: [], generatedMaps: [] });
+
+			await repository.setGeneratedTitle('thread-1', 'Weekly digest', null);
+
+			expect(entityManager.update).toHaveBeenCalledWith(
+				AgentExecutionThread,
+				{ id: 'thread-1', title: IsNull() },
+				{ title: 'Weekly digest' },
+			);
+		});
 	});
 
 	describe('findOrCreate', () => {

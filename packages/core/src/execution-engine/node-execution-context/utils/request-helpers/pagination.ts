@@ -4,11 +4,15 @@
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
 
 import { binaryToString, tryParseUrl } from '@n8n/backend-network';
-import { sleep } from '@n8n/utils/sleep';
 import crypto from 'crypto';
 import merge from 'lodash/merge';
 import pick from 'lodash/pick';
-import { NodeOperationError, jsonParse } from 'n8n-workflow';
+import {
+	NodeOperationError,
+	jsonParse,
+	sleepUnlessExecutionCancelled,
+	throwIfExecutionCancelled,
+} from 'n8n-workflow';
 import type {
 	IAdditionalCredentialOptions,
 	IDataObject,
@@ -112,6 +116,8 @@ export async function requestWithAuthenticationPaginated(
 		previousHash: '',
 	};
 	do {
+		throwIfExecutionCancelled(this);
+
 		paginateRequestData = resolveValue(
 			paginationOptions.request as unknown as NodeParameterValueType,
 			itemIndex,
@@ -186,7 +192,8 @@ export async function requestWithAuthenticationPaginated(
 				} else {
 					// If there is no etag, we calculate a hash from the data in the body
 					if (typeof contentBody !== 'string') {
-						contentBody = JSON.stringify(contentBody);
+						// An empty response has an undefined body, which JSON.stringify returns as undefined
+						contentBody = JSON.stringify(contentBody) ?? '';
 					}
 					hash = crypto.createHash('md5').update(contentBody).digest('base64');
 				}
@@ -252,7 +259,7 @@ export async function requestWithAuthenticationPaginated(
 					false,
 				) as number;
 
-				await sleep(requestInterval);
+				await sleepUnlessExecutionCancelled(this, requestInterval);
 			}
 			if (tempResponseData.statusCode < 200 || tempResponseData.statusCode >= 300) {
 				// We have it configured to let all requests pass no matter the response code

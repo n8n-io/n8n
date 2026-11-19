@@ -10,7 +10,8 @@ import type {
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { BaseError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { BaseError } from '@n8n/errors';
 
 import { capitalize } from '@utils/utilities';
 

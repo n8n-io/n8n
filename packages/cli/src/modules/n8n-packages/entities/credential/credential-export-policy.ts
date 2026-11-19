@@ -1,18 +1,16 @@
+import type { SerializedCredentialData, SerializedCredentialDataValue } from '@n8n/api-types';
+import { containsExpression } from '@n8n/utils/string/contains-expression';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 
-import { containsExpression, isObject } from '@/utils';
+import { isObject } from '@/utils';
 
 import type { CredentialExportPolicy } from '../../n8n-packages.types';
-import type {
-	SerializedCredentialData,
-	SerializedCredentialDataValue,
-} from '../../spec/serialized/credential.schema';
 
 // oauthTokenData never travels, at any depth — tokens are secrets and the target must reconnect.
-const NEVER_EXPORTED_KEYS = new Set(['oauthTokenData']);
+export const NEVER_EXPORTED_KEYS = new Set(['oauthTokenData']);
 
 // Whether every leaf inside the value is an expression, so filtering strips nothing.
-function isExpressionOnly(value: unknown): boolean {
+export function isExpressionOnly(value: unknown): boolean {
 	if (typeof value === 'string') return containsExpression(value);
 	if (Array.isArray(value)) return value.length > 0 && value.every(isExpressionOnly);
 	if (isObject(value)) {
@@ -22,6 +20,19 @@ function isExpressionOnly(value: unknown): boolean {
 		return values.length > 0 && values.every(isExpressionOnly);
 	}
 	return false;
+}
+
+/** Removes the never-exported keys at any depth, so a package that carries one cannot restore it. */
+export function omitNeverExportedKeys<T>(value: T): T {
+	if (Array.isArray(value)) return value.map(omitNeverExportedKeys) as T;
+	if (isObject(value)) {
+		return Object.fromEntries(
+			Object.entries(value)
+				.filter(([key]) => !NEVER_EXPORTED_KEYS.has(key))
+				.map(([key, entry]) => [key, omitNeverExportedKeys(entry)]),
+		) as T;
+	}
+	return value;
 }
 
 function filterValue(value: unknown): SerializedCredentialDataValue | undefined {

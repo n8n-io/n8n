@@ -63,6 +63,8 @@ export class CreateCredentialPublicDto extends Z.class({
 	data: z.record(z.string(), z.unknown()).openapi({
 		writeOnly: true,
 		example: { accessToken: 'ada612vad6fa5df4adf5a5dsf4389adsf76da7s' },
+		description:
+			'The credential data. Fields also accept n8n expressions, which are strings that start with "=".',
 	}),
 	isResolvable: z
 		.boolean()
@@ -106,7 +108,9 @@ export class UpdateCredentialPublicDto extends Z.class({
 		.openapi({
 			writeOnly: true,
 			example: { accessToken: 'new_token_value' },
-			description: 'The credential data. Required when changing credential type.',
+			description:
+				'The credential data. Required when changing credential type. ' +
+				'Fields also accept n8n expressions, which are strings that start with "=".',
 		}),
 	isGlobal: z.boolean().optional().openapi({
 		example: false,

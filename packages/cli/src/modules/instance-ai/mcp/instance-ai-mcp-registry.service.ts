@@ -21,6 +21,7 @@ import { CredentialTypes } from '@/credential-types';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
 import { createMcpAuthFetch } from '@/modules/mcp-registry/mcp-auth-fetch';
+import { findUsableMcpCredential } from '@/modules/mcp-registry/mcp-credential-access';
 import {
 	isSupportedMcpRegistryCredentialType,
 	prepareMcpRegistryConnection,
@@ -101,7 +102,7 @@ export class InstanceAiMcpRegistryService {
 	}
 
 	async listConnectionsForUser(user: User): Promise<InstanceAiMcpRegistryConnection[]> {
-		return await this.connectionRepository.findBy({ userId: user.id });
+		return await this.connectionRepository.findByUserId(user.id, {});
 	}
 
 	async createConnection(
@@ -130,37 +131,38 @@ export class InstanceAiMcpRegistryService {
 		// credentials the user must disconnect first (the FE orchestrates this
 		// as a two-step swap). The DB unique index is currently looser; this
 		// request-layer check is the canonical enforcement.
-		const existing = await this.connectionRepository.findOneBy({
-			userId: user.id,
-			serverSlug: input.serverSlug,
-		});
+		const existing = await this.connectionRepository.findByUserIdAndServerSlug(
+			user.id,
+			input.serverSlug,
+			{},
+		);
 		if (existing) {
 			throw new ConflictError(
 				'This MCP server is already connected. Disconnect first to use a different credential.',
 			);
 		}
 
-		const credential = await this.credentialsFinderService.findCredentialForUser(
+		const credential = await findUsableMcpCredential(
+			this.credentialsFinderService,
 			input.credentialId,
 			user,
-			['credential:read'],
 		);
 		if (!credential) {
 			throw new NotFoundError('Credential not found or not accessible');
 		}
 		this.assertCredentialAllowed(server, credential.type);
 
-		const entity = this.connectionRepository.create({
+		const values = {
 			id: randomUUID(),
 			userId: user.id,
 			serverSlug: input.serverSlug,
 			credentialId: input.credentialId,
 			toolPermissions:
 				input.toolPermissions ?? this.instanceAiSettingsService.getMcpToolPermissions(),
-		});
+		};
 
 		try {
-			const connection = await this.connectionRepository.save(entity);
+			const connection = await this.connectionRepository.createConnection(values, {});
 			this.eventService.emit('instance-ai-mcp-registry-connection-created', {
 				userId: user.id,
 				serverSlug: input.serverSlug,
@@ -177,12 +179,12 @@ export class InstanceAiMcpRegistryService {
 	}
 
 	async deleteConnection(user: User, id: string): Promise<void> {
-		const connection = await this.connectionRepository.findOneBy({ id, userId: user.id });
+		const connection = await this.connectionRepository.findByIdAndUserId(id, user.id, {});
 		if (!connection) {
 			throw new NotFoundError('MCP registry connection not found');
 		}
 
-		await this.connectionRepository.delete({ id });
+		await this.connectionRepository.deleteById(id, {});
 		this.eventService.emit('instance-ai-mcp-registry-connection-deleted', {
 			userId: user.id,
 			serverSlug: connection.serverSlug,
@@ -194,7 +196,7 @@ export class InstanceAiMcpRegistryService {
 		id: string,
 		payload: InstanceAiMcpUpdateConnectionRequestDto,
 	): Promise<InstanceAiMcpRegistryConnection> {
-		const connection = await this.connectionRepository.findOneBy({ id, userId: user.id });
+		const connection = await this.connectionRepository.findByIdAndUserId(id, user.id, {});
 		if (!connection) {
 			throw new NotFoundError('MCP registry connection not found');
 		}
@@ -208,11 +210,11 @@ export class InstanceAiMcpRegistryService {
 		}
 
 		if (payload.toolPermissions) connection.toolPermissions = payload.toolPermissions;
-		return await this.connectionRepository.save(connection);
+		return await this.connectionRepository.saveConnectionChanges(connection, {});
 	}
 
 	async listConnectionTools(user: User, id: string): Promise<InstanceAiMcpConnectionToolsResponse> {
-		const connection = await this.connectionRepository.findOneBy({ id, userId: user.id });
+		const connection = await this.connectionRepository.findByIdAndUserId(id, user.id, {});
 		if (!connection) {
 			throw new NotFoundError('MCP registry connection not found');
 		}
@@ -221,7 +223,7 @@ export class InstanceAiMcpRegistryService {
 	}
 
 	async listAllConnectionTools(user: User): Promise<InstanceAiMcpConnectionToolsResponse[]> {
-		const connections = await this.connectionRepository.findBy({ userId: user.id });
+		const connections = await this.connectionRepository.findByUserId(user.id, {});
 		return await Promise.all(
 			connections.map(async (connection) => {
 				try {
@@ -309,7 +311,7 @@ export class InstanceAiMcpRegistryService {
 	}
 
 	async getRegistryMcpServers(user: User): Promise<McpServerConfig[]> {
-		const connections = await this.connectionRepository.findBy({ userId: user.id });
+		const connections = await this.connectionRepository.findByUserId(user.id, {});
 		if (connections.length === 0) {
 			return [];
 		}
@@ -487,10 +489,10 @@ export class InstanceAiMcpRegistryService {
 		credentialId: string,
 		user: User,
 	): Promise<{ credential: CredentialsEntity; data: ICredentialDataDecryptedObject } | null> {
-		const credential = await this.credentialsFinderService.findCredentialForUser(
+		const credential = await findUsableMcpCredential(
+			this.credentialsFinderService,
 			credentialId,
 			user,
-			['credential:read'],
 		);
 		if (!credential) {
 			return null;
@@ -510,10 +512,10 @@ export class InstanceAiMcpRegistryService {
 		newCredentialId: string,
 		server: McpRegistryServer,
 	) {
-		const newCredential = await this.credentialsFinderService.findCredentialForUser(
+		const newCredential = await findUsableMcpCredential(
+			this.credentialsFinderService,
 			newCredentialId,
 			user,
-			['credential:read'],
 		);
 		if (!newCredential) {
 			throw new NotFoundError('Credential not found or not accessible');

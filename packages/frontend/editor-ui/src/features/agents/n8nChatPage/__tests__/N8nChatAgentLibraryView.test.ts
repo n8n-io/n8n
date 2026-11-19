@@ -63,12 +63,14 @@ const agentA: AgentChatListItem = {
 	name: 'One',
 	project: { id: 'p', name: 'P' },
 	attachments: NO_ATTACHMENTS,
+	availableInChat: true,
 };
 const agentB: AgentChatListItem = {
 	id: 'a2',
 	name: 'Two',
 	project: { id: 'p', name: 'P' },
 	attachments: NO_ATTACHMENTS,
+	availableInChat: true,
 };
 
 function setup(result: {

@@ -6,6 +6,7 @@ import { getResourcePermissions } from '../get-resource-permissions.ee';
 describe('permissions', () => {
 	it('getResourcePermissions for empty scopes', () => {
 		expect(getResourcePermissions()).toEqual({
+			app: {},
 			agent: {},
 			aiAssistant: {},
 			aiPreference: {},
@@ -23,6 +24,8 @@ describe('permissions', () => {
 			externalSecret: {},
 			eventBusDestination: {},
 			execution: {},
+			executionLimit: {},
+			projectExecutionLimit: {},
 			testRun: {},
 			ldap: {},
 			license: {},
@@ -36,7 +39,7 @@ describe('permissions', () => {
 			securityAudit: {},
 			securitySettings: {},
 			sourceControl: {},
-			gitConnection: {},
+			promotions: {},
 			tag: {},
 			user: {},
 			variable: {},
@@ -59,12 +62,15 @@ describe('permissions', () => {
 			instanceAi: {},
 			roleMappingRule: {},
 			otel: {},
+			workflowSettings: {},
 			scim: {},
 			trustedSource: {},
 		});
 	});
 	it('getResourcePermissions', () => {
 		const scopes: Scope[] = [
+			'app:read',
+			'app:list',
 			'credential:create',
 			'credential:delete',
 			'credential:list',
@@ -100,6 +106,7 @@ describe('permissions', () => {
 		];
 
 		const permissionRecord: PermissionsRecord = {
+			app: { read: true, list: true },
 			agent: {},
 			aiAssistant: {},
 			aiPreference: {},
@@ -144,7 +151,7 @@ describe('permissions', () => {
 			securityAudit: {},
 			securitySettings: {},
 			sourceControl: {},
-			gitConnection: {},
+			promotions: {},
 			tag: {
 				create: true,
 				list: true,
@@ -181,6 +188,8 @@ describe('permissions', () => {
 			},
 			dataTable: {},
 			execution: {},
+			executionLimit: {},
+			projectExecutionLimit: {},
 			testRun: {},
 			workflowTags: {},
 			role: {},
@@ -197,6 +206,7 @@ describe('permissions', () => {
 			instanceAi: {},
 			roleMappingRule: {},
 			otel: {},
+			workflowSettings: {},
 			scim: {},
 			trustedSource: {},
 		};

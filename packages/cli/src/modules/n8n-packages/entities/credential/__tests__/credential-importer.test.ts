@@ -1,20 +1,37 @@
-import type { CredentialsFinderService } from '@n8n/backend-services';
-import type { CredentialsEntity, Project, SharedCredentials, User } from '@n8n/db';
+import type { SerializedCredential } from '@n8n/api-types';
+import type { CredentialsFinderService, EventService } from '@n8n/backend-services';
+import { GLOBAL_OWNER_ROLE } from '@n8n/db';
+import type {
+	CredentialsEntity,
+	ICredentialsDb,
+	OperationContext,
+	Project,
+	SharedCredentials,
+	User,
+} from '@n8n/db';
+import type { SecurityContext } from '@n8n/permissions';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
-import { ForbiddenError } from '@n8n/errors';
+import { ForbiddenError, NotFoundError, UnprocessableRequestError } from '@n8n/errors';
+import { CredentialDataError, Credentials } from 'n8n-core';
 import type { CredentialTypes } from '@/credential-types';
+import type { CredentialDescriptionsService } from '@/credentials/credential-descriptions.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
+import type { CredentialsOverwrites } from '@/credentials-overwrites';
 
 import type { ImportContext } from '../../../n8n-packages.types';
 import { CredentialImporter } from '../credential-importer';
 import { CredentialMatcherFactory } from '../credential-matcher-factory';
-import type { SerializedCredential } from '../../../spec/serialized/credential.schema';
-import type { CredentialBindingRequest, CredentialResolutionFailure } from '../credential.types';
+import type {
+	CredentialBindingRequest,
+	CredentialImportPlan,
+	CredentialResolutionFailure,
+	CredentialUpdateCandidate,
+} from '../credential.types';
 import { IdBasedCredentialMatcher } from '../id-based-credential-matcher';
-import type { NameAndTypeCredentialMatcher } from '../name-and-type-credential-matcher';
-import type { TypeOnlyCredentialMatcher } from '../type-only-credential-matcher';
+import { NameAndTypeCredentialMatcher } from '../name-and-type-credential-matcher';
+import { TypeOnlyCredentialMatcher } from '../type-only-credential-matcher';
 
 type UsableCredential = Awaited<
 	ReturnType<CredentialsService['getCredentialsAUserCanUseInAWorkflow']>
@@ -24,16 +41,30 @@ type CredentialRequirement = NonNullable<CredentialBindingRequest['requirements'
 const usable = (id: string, type = 'githubApi'): UsableCredential =>
 	({ id, type }) as UsableCredential;
 
+const unreadable = () =>
+	new CredentialDataError(
+		new Credentials({ id: 'cred-1', name: 'GitHub' }, 'githubApi'),
+		'Credentials could not be decrypted.',
+	);
+
 describe('CredentialImporter', () => {
 	const credentialsService = mock<CredentialsService>();
 	const credentialsFinder = mock<CredentialsFinderService>();
+	const eventService = mock<EventService>();
+	const credentialDescriptions = mock<CredentialDescriptionsService>();
+	const credentialsOverwrites = mock<CredentialsOverwrites>();
 	const credentialTypes = mock<CredentialTypes>();
 	const targetProject = mock<Project>({ id: 'project-target' });
-	const user = mock<User>({ id: 'user-1' });
+	const user = mock<User>({ id: 'user-1', role: GLOBAL_OWNER_ROLE });
 
 	let importer: CredentialImporter;
 
-	const context: ImportContext = { user, projectId: targetProject.id, folderId: null };
+	const context: ImportContext = {
+		user,
+		projectId: targetProject.id,
+		folderId: null,
+		publicApi: false,
+	};
 
 	const bindingRequest = (
 		requirements: CredentialBindingRequest['requirements'],
@@ -53,6 +84,15 @@ describe('CredentialImporter', () => {
 		conflictPolicy: options.conflictPolicy ?? 'keep-existing',
 		packageCredentials: options.packageCredentials,
 		updateScope: options.updateScope ?? { projectIds: new Set([targetProject.id]) },
+	});
+
+	const emptyPlan = (): CredentialImportPlan => ({
+		successes: new Map(),
+		stubIds: new Map(),
+		failures: [],
+		candidates: [],
+		updates: [],
+		forbidden: [],
 	});
 
 	const packageCredential = (
@@ -79,6 +119,7 @@ describe('CredentialImporter', () => {
 		vi.clearAllMocks();
 		credentialTypes.recognizes.mockReturnValue(true);
 		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([]);
+		credentialsService.findUsageScopes.mockResolvedValue(new Map());
 		Container.set(
 			IdBasedCredentialMatcher,
 			new IdBasedCredentialMatcher(credentialTypes, credentialsService),
@@ -86,11 +127,14 @@ describe('CredentialImporter', () => {
 		importer = new CredentialImporter(
 			new CredentialMatcherFactory(
 				Container.get(IdBasedCredentialMatcher),
-				mock<NameAndTypeCredentialMatcher>(),
-				mock<TypeOnlyCredentialMatcher>(),
+				new NameAndTypeCredentialMatcher(credentialTypes, credentialsService),
+				new TypeOnlyCredentialMatcher(credentialTypes, credentialsService),
 			),
 			credentialsService,
 			credentialsFinder,
+			eventService,
+			credentialDescriptions,
+			credentialsOverwrites,
 		);
 	});
 
@@ -134,6 +178,7 @@ describe('CredentialImporter', () => {
 		expect(credentialResolution.failures).toEqual([
 			{
 				kind: 'not_found',
+				reason: 'not-on-instance',
 				sourceId: 'cred-missing',
 				name: 'Missing',
 				type: 'githubApi',
@@ -142,6 +187,7 @@ describe('CredentialImporter', () => {
 		expect(importer.blockingFailures(request, credentialResolution)).toEqual([
 			{
 				kind: 'not_found',
+				reason: 'not-on-instance',
 				sourceId: 'cred-missing',
 				name: 'Missing',
 				type: 'githubApi',
@@ -213,6 +259,7 @@ describe('CredentialImporter', () => {
 		expect(credentialResolution.failures).toEqual([
 			{
 				kind: 'not_found',
+				reason: 'not-on-instance',
 				sourceId: 'source-cred',
 				name: 'Source GitHub',
 				type: 'githubApi',
@@ -222,6 +269,17 @@ describe('CredentialImporter', () => {
 	});
 
 	describe('create-stub', () => {
+		it('blocks an unresolved untyped Agent credential instead of planning a stub', async () => {
+			const request = bindingRequest(
+				[{ id: 'unknown', usedBy: [{ kind: 'agent', id: 'agent' }] }],
+				{ missingMode: 'create-stub' },
+			);
+			const plan = await importer.plan(context, request);
+			expect(plan.stubIds.size).toBe(0);
+			expect(importer.blockingFailures(request, plan)).toEqual([
+				expect.objectContaining({ sourceId: 'unknown', kind: 'not_found' }),
+			]);
+		});
 		it('apply creates one stub per missing source id and dedupes shared references', async () => {
 			credentialsService.createStubCredential.mockResolvedValue({ id: 'stub-1' } as never);
 
@@ -234,10 +292,7 @@ describe('CredentialImporter', () => {
 				],
 			});
 			const request = bindingRequest([missingCredential], { missingMode: 'create-stub' });
-			const resolution = {
-				successes: new Map<string, string>(),
-				failures: [notFoundFailure(missingCredential)],
-			};
+			const resolution = await importer.plan(context, request);
 
 			const result = await importer.apply(context, request, resolution);
 
@@ -268,7 +323,8 @@ describe('CredentialImporter', () => {
 			});
 
 			const result = await importer.apply(context, request, {
-				successes: new Map(),
+				...emptyPlan(),
+				stubIds: new Map(),
 				failures: [notFoundFailure(sourceCredential, { targetId: 'target-missing' })],
 			});
 
@@ -289,7 +345,8 @@ describe('CredentialImporter', () => {
 				context,
 				bindingRequest([], { missingMode: 'create-stub' }),
 				{
-					successes: new Map(),
+					...emptyPlan(),
+					stubIds: new Map([['orphan-not-in-requirements', 'orphan-not-in-requirements']]),
 					failures: [
 						notFoundFailure(
 							packageCredential({
@@ -313,7 +370,7 @@ describe('CredentialImporter', () => {
 			expect(result.stubbed).toEqual(['orphan-not-in-requirements']);
 		});
 
-		it('apply mints a fresh id (no reused source id) under name-and-type matching', async () => {
+		it('apply uses the fresh ID reserved during name-and-type planning', async () => {
 			credentialsService.createStubCredential.mockResolvedValue({ id: 'stub-1' } as never);
 
 			const missingCredential = packageCredential({ id: 'missing-cred', name: 'Missing GitHub' });
@@ -322,14 +379,15 @@ describe('CredentialImporter', () => {
 				matchingMode: 'name-and-type',
 			});
 
-			await importer.apply(context, request, {
-				successes: new Map(),
-				failures: [notFoundFailure(missingCredential)],
-			});
+			const plan = await importer.plan(context, request);
+			const targetId = plan.stubIds.get('missing-cred');
+			expect(targetId).toBeDefined();
+			expect(targetId).not.toBe('missing-cred');
+			await importer.apply(context, request, plan);
 
 			expect(credentialsService.createStubCredential).toHaveBeenCalledWith(
 				{
-					id: undefined,
+					id: targetId,
 					name: 'Missing GitHub',
 					type: 'githubApi',
 					projectId: 'project-target',
@@ -344,7 +402,8 @@ describe('CredentialImporter', () => {
 			credentialsService.createStubCredential.mockResolvedValue({ id: 'cred-source' } as never);
 			const firstRequest = bindingRequest([missingCredential], { missingMode: 'create-stub' });
 			const firstResult = await importer.apply(context, firstRequest, {
-				successes: new Map(),
+				...emptyPlan(),
+				stubIds: new Map([[missingCredential.id, missingCredential.id]]),
 				failures: [notFoundFailure(missingCredential)],
 			});
 
@@ -389,7 +448,8 @@ describe('CredentialImporter', () => {
 					context,
 					bindingRequest([missingCredential], { missingMode: 'create-stub' }),
 					{
-						successes: new Map(),
+						...emptyPlan(),
+						stubIds: new Map([[missingCredential.id, missingCredential.id]]),
 						failures: [notFoundFailure(missingCredential)],
 					},
 				),
@@ -451,12 +511,12 @@ describe('CredentialImporter', () => {
 			expect(result.forbidden).toEqual([]);
 			expect(credentialsFinder.findById).not.toHaveBeenCalled();
 			expect(credentialsFinder.findCredentialIdsWithScopeForUser).not.toHaveBeenCalled();
-			expect(credentialsService.decrypt).not.toHaveBeenCalled();
+			expect(credentialsService.decryptOrFail).not.toHaveBeenCalled();
 		});
 
 		it('plans an update when the package value differs from the stored value', async () => {
 			credentialsFinder.findById.mockResolvedValue(destination());
-			credentialsService.decrypt.mockResolvedValue({ accessToken: 'stored-secret' });
+			credentialsService.decryptOrFail.mockResolvedValue({ accessToken: 'stored-secret' });
 
 			const result = await importer.plan(
 				context,
@@ -470,6 +530,8 @@ describe('CredentialImporter', () => {
 				sourceId: 'cred-1',
 				targetId: 'cred-1',
 				targetName: 'Source GitHub',
+				targetType: 'githubApi',
+				ownerProjectId: targetProject.id,
 				name: 'Source GitHub',
 				data: { accessToken: EXPRESSION },
 				usedBy: [
@@ -482,12 +544,53 @@ describe('CredentialImporter', () => {
 			expect(credentialsFinder.findById).toHaveBeenCalledWith('cred-1', {
 				includeSharedProject: true,
 			});
-			expect(credentialsService.decrypt).toHaveBeenCalledWith(expect.anything(), true);
+			expect(credentialsService.decryptOrFail).toHaveBeenCalledWith(expect.anything());
 		});
+
+		it('blocks when the stored data of a candidate is unreadable', async () => {
+			credentialsFinder.findById.mockResolvedValue(destination());
+			credentialsService.decryptOrFail.mockRejectedValue(unreadable());
+
+			await expect(
+				importer.plan(
+					context,
+					bindingRequest([requirement], {
+						conflictPolicy: 'overwrite',
+						packageCredentials: new Map([['cred-1', packageFile()]]),
+					}),
+				),
+			).rejects.toThrow(UnprocessableRequestError);
+		});
+
+		it.each([{ enabled: true }, { enabled: false }])(
+			'treats a description-only difference as an update only when descriptions are on ($enabled)',
+			async ({ enabled }) => {
+				credentialDescriptions.isEnabled.mockResolvedValue(enabled);
+				credentialsFinder.findById.mockResolvedValue(destination({ description: 'Old' }));
+				credentialsService.decryptOrFail.mockResolvedValue({ accessToken: EXPRESSION });
+
+				const result = await importer.plan(
+					context,
+					bindingRequest([requirement], {
+						conflictPolicy: 'overwrite',
+						packageCredentials: new Map([
+							['cred-1', packageFile({ description: 'From the package' })],
+						]),
+					}),
+				);
+
+				expect(result.candidates).toHaveLength(1);
+				expect(result.candidates[0].description).toBe(enabled ? 'From the package' : undefined);
+				expect(result.updates).toHaveLength(enabled ? 1 : 0);
+			},
+		);
 
 		it('keeps an equal candidate out of the updates', async () => {
 			credentialsFinder.findById.mockResolvedValue(destination());
-			credentialsService.decrypt.mockResolvedValue({ accessToken: EXPRESSION, other: 'secret' });
+			credentialsService.decryptOrFail.mockResolvedValue({
+				accessToken: EXPRESSION,
+				other: 'secret',
+			});
 
 			const result = await importer.plan(
 				context,
@@ -525,7 +628,7 @@ describe('CredentialImporter', () => {
 
 			expect(result.candidates).toEqual([]);
 			expect(result.updates).toEqual([]);
-			expect(credentialsService.decrypt).not.toHaveBeenCalled();
+			expect(credentialsService.decryptOrFail).not.toHaveBeenCalled();
 		});
 
 		it('reports a match in scope that the user cannot update as forbidden, and decrypts nothing', async () => {
@@ -559,7 +662,7 @@ describe('CredentialImporter', () => {
 				user,
 				['credential:update'],
 			);
-			expect(credentialsService.decrypt).not.toHaveBeenCalled();
+			expect(credentialsService.decryptOrFail).not.toHaveBeenCalled();
 		});
 
 		it('only binds a match out of scope, and checks no permission for it', async () => {
@@ -582,7 +685,7 @@ describe('CredentialImporter', () => {
 			expect(result.candidates).toEqual([]);
 			expect(result.forbidden).toEqual([]);
 			expect(credentialsFinder.findCredentialIdsWithScopeForUser).not.toHaveBeenCalled();
-			expect(credentialsService.decrypt).not.toHaveBeenCalled();
+			expect(credentialsService.decryptOrFail).not.toHaveBeenCalled();
 		});
 
 		it('only binds a match the finder does not return (an instance credential)', async () => {
@@ -604,7 +707,7 @@ describe('CredentialImporter', () => {
 				usable('cred-target'),
 			]);
 			credentialsFinder.findById.mockResolvedValue(destination({ id: 'cred-target' }));
-			credentialsService.decrypt.mockResolvedValue({ accessToken: 'stored-secret' });
+			credentialsService.decryptOrFail.mockResolvedValue({ accessToken: 'stored-secret' });
 			const other = packageCredential({ id: 'cred-2' });
 
 			const result = await importer.plan(
@@ -627,6 +730,317 @@ describe('CredentialImporter', () => {
 		});
 	});
 
+	describe('credential updates', () => {
+		const EXPRESSION = '={{ $vars.githubToken }}';
+
+		const update = (
+			overrides: Partial<CredentialUpdateCandidate> = {},
+		): CredentialUpdateCandidate => ({
+			sourceId: 'cred-1',
+			targetId: 'cred-1',
+			targetName: 'GitHub',
+			targetType: 'githubApi',
+			ownerProjectId: targetProject.id,
+			name: 'Renamed',
+			data: { accessToken: EXPRESSION },
+			usedBy: [{ kind: 'workflow', id: 'wf-1' }],
+			...overrides,
+		});
+
+		const plan = (updates: CredentialUpdateCandidate[]): CredentialImportPlan => ({
+			successes: new Map(updates.map(({ sourceId, targetId }) => [sourceId, targetId])),
+			stubIds: new Map(),
+			failures: [],
+			candidates: updates,
+			updates,
+			forbidden: [],
+		});
+
+		const stored = (overrides: Partial<CredentialsEntity> = {}) =>
+			mock<CredentialsEntity>({ id: 'cred-1', name: 'GitHub', type: 'githubApi', ...overrides });
+
+		const storedData = {
+			accessToken: 'stored-secret',
+			server: 'https://api.github.com',
+			oauthTokenData: { access_token: 'token' },
+		};
+
+		beforeEach(() => {
+			credentialsFinder.findById.mockResolvedValue(stored());
+			credentialsService.decryptOrFail.mockResolvedValue(storedData);
+			// Plain objects: a mock would report every property as present.
+			credentialsService.prepareUpdateData.mockImplementation(
+				async (_user, data) => await Promise.resolve({ ...data } as unknown as CredentialsEntity),
+			);
+			credentialsService.createEncryptedData.mockImplementation(
+				async (credential) =>
+					await Promise.resolve({ ...credential, data: 'encrypted' } as ICredentialsDb),
+			);
+			credentialsService.update.mockResolvedValue(stored());
+		});
+
+		describe('assertCanUpdate', () => {
+			it('prepares each update without writing it', async () => {
+				await importer.assertCanUpdate(
+					context,
+					bindingRequest([], { conflictPolicy: 'overwrite' }),
+					plan([update()]),
+				);
+
+				expect(credentialsFinder.findById).toHaveBeenCalledWith('cred-1', {
+					includeSharedProject: true,
+				});
+				expect(credentialsService.decryptOrFail).toHaveBeenCalledWith(expect.anything());
+				expect(credentialsService.prepareUpdateData).toHaveBeenCalledWith(
+					user,
+					{
+						name: 'Renamed',
+						type: 'githubApi',
+						data: { accessToken: EXPRESSION, server: 'https://api.github.com' },
+					},
+					expect.objectContaining({ id: 'cred-1' }),
+				);
+				expect(credentialsService.createEncryptedData).not.toHaveBeenCalled();
+				expect(credentialsService.update).not.toHaveBeenCalled();
+			});
+
+			it.each(['keep-existing', 'fail'] as const)('prepares nothing under %s', async (policy) => {
+				await importer.assertCanUpdate(
+					context,
+					bindingRequest([], { conflictPolicy: policy }),
+					plan([update()]),
+				);
+
+				expect(credentialsFinder.findById).not.toHaveBeenCalled();
+				expect(credentialsService.prepareUpdateData).not.toHaveBeenCalled();
+			});
+
+			it('propagates an error of prepareUpdateData', async () => {
+				const error = new ForbiddenError('No access to the external secrets provider');
+				credentialsService.prepareUpdateData.mockRejectedValue(error);
+
+				await expect(
+					importer.assertCanUpdate(
+						context,
+						bindingRequest([], { conflictPolicy: 'overwrite' }),
+						plan([update()]),
+					),
+				).rejects.toBe(error);
+			});
+
+			it('fails before it prepares an update when the stored data is unreadable', async () => {
+				credentialsService.decryptOrFail.mockRejectedValue(unreadable());
+
+				await expect(
+					importer.assertCanUpdate(
+						context,
+						bindingRequest([], { conflictPolicy: 'overwrite' }),
+						plan([update()]),
+					),
+				).rejects.toThrow(UnprocessableRequestError);
+				expect(credentialsService.prepareUpdateData).not.toHaveBeenCalled();
+			});
+
+			it('prepares a destination once when two package credentials resolve to it', async () => {
+				await importer.assertCanUpdate(
+					context,
+					bindingRequest([], { conflictPolicy: 'overwrite' }),
+					plan([update(), update({ sourceId: 'cred-2' })]),
+				);
+
+				expect(credentialsService.prepareUpdateData).toHaveBeenCalledTimes(1);
+			});
+
+			it('fails when the destination no longer exists', async () => {
+				credentialsFinder.findById.mockResolvedValue(null);
+
+				await expect(
+					importer.assertCanUpdate(
+						context,
+						bindingRequest([], { conflictPolicy: 'overwrite' }),
+						plan([update()]),
+					),
+				).rejects.toThrow(NotFoundError);
+			});
+		});
+
+		describe('applyUpdates', () => {
+			it('writes the package name and the merged data, and keeps the other columns', async () => {
+				const updated = await importer.applyUpdates(
+					context,
+					bindingRequest([], { conflictPolicy: 'overwrite' }),
+					plan([update()]),
+				);
+
+				expect(updated).toEqual(['cred-1']);
+				const written = { accessToken: EXPRESSION, server: 'https://api.github.com' };
+				expect(credentialsService.createEncryptedData).toHaveBeenCalledWith({
+					id: 'cred-1',
+					name: 'Renamed',
+					type: 'githubApi',
+					data: written,
+				});
+				expect(credentialsService.update).toHaveBeenCalledWith(
+					'cred-1',
+					expect.objectContaining({ id: 'cred-1', name: 'Renamed', type: 'githubApi' }),
+					{ kind: 'user', user },
+					written,
+					{ user },
+				);
+				const [, encrypted] = credentialsService.update.mock.calls[0];
+				expect(encrypted).not.toHaveProperty('isGlobal');
+				expect(encrypted).not.toHaveProperty('isResolvable');
+				expect(encrypted).not.toHaveProperty('description');
+			});
+
+			it('emits credentials-updated for the written credential', async () => {
+				credentialsService.update.mockResolvedValue(
+					stored({ name: 'Renamed', isResolvable: false, description: 'Team token' }),
+				);
+				credentialDescriptions.isEnabled.mockResolvedValue(true);
+				credentialsOverwrites.supportsManagedAuth.mockReturnValue(false);
+				credentialsOverwrites.usesManagedAuth.mockReturnValue(false);
+				credentialsOverwrites.getManagedAppVersion.mockReturnValue(2);
+
+				await importer.applyUpdates(
+					context,
+					bindingRequest([], { conflictPolicy: 'overwrite' }),
+					plan([update()]),
+				);
+
+				expect(eventService.emit).toHaveBeenCalledTimes(1);
+				expect(eventService.emit).toHaveBeenCalledWith('credentials-updated', {
+					user,
+					credentialType: 'githubApi',
+					credentialId: 'cred-1',
+					credentialName: 'Renamed',
+					credentialDescriptionLength: 10,
+					isDynamic: false,
+					usesExternalSecrets: false,
+					jweEnabled: false,
+					supportsManagedAuth: false,
+					usesManagedAuth: false,
+					managedAppVersion: 2,
+				});
+				expect(credentialsOverwrites.usesManagedAuth).toHaveBeenCalledWith('githubApi', {
+					accessToken: EXPRESSION,
+					server: 'https://api.github.com',
+				});
+			});
+
+			it('adds the login of the operation context to the update event', async () => {
+				const ctx: OperationContext = {
+					security: mock<SecurityContext>({ subIdentityId: 'login-1' }),
+				};
+
+				await importer.applyUpdates(
+					{ ...context, ctx },
+					bindingRequest([], { conflictPolicy: 'overwrite' }),
+					plan([update()]),
+				);
+
+				expect(eventService.emit).toHaveBeenCalledWith(
+					'credentials-updated',
+					expect.objectContaining({ credentialId: 'cred-1', loginId: 'login-1' }),
+				);
+			});
+
+			it('reports external secrets in the written data', async () => {
+				credentialsService.decryptOrFail.mockResolvedValue({ accessToken: 'stored-secret' });
+
+				await importer.applyUpdates(
+					context,
+					bindingRequest([], { conflictPolicy: 'overwrite' }),
+					plan([update({ data: { accessToken: '={{ $secrets.vault.githubToken }}' } })]),
+				);
+
+				expect(eventService.emit).toHaveBeenCalledWith(
+					'credentials-updated',
+					expect.objectContaining({ usesExternalSecrets: true }),
+				);
+			});
+
+			it('leaves the stored token to prepareUpdateData', async () => {
+				await importer.applyUpdates(
+					context,
+					bindingRequest([], { conflictPolicy: 'overwrite' }),
+					plan([update()]),
+				);
+
+				const [, input, , options] = credentialsService.prepareUpdateData.mock.calls[0];
+				expect(input.data).not.toHaveProperty('oauthTokenData');
+				expect(options).toBeUndefined();
+			});
+
+			it('skips a destination that no longer differs', async () => {
+				credentialsFinder.findById.mockResolvedValue(stored({ name: 'Renamed' }));
+				credentialsService.decryptOrFail.mockResolvedValue({ accessToken: EXPRESSION });
+
+				const updated = await importer.applyUpdates(
+					context,
+					bindingRequest([], { conflictPolicy: 'overwrite' }),
+					plan([update()]),
+				);
+
+				expect(updated).toEqual([]);
+				expect(credentialsService.prepareUpdateData).not.toHaveBeenCalled();
+				expect(credentialsService.update).not.toHaveBeenCalled();
+				expect(eventService.emit).not.toHaveBeenCalled();
+			});
+
+			it('writes one destination once across two scopes', async () => {
+				const request = bindingRequest([], { conflictPolicy: 'overwrite' });
+				const first = await importer.applyUpdates(context, request, plan([update()]));
+				// The second scope reads what the first one wrote.
+				credentialsFinder.findById.mockResolvedValue(stored({ name: 'Renamed' }));
+				credentialsService.decryptOrFail.mockResolvedValue({
+					...storedData,
+					accessToken: EXPRESSION,
+				});
+				const second = await importer.applyUpdates(context, request, plan([update()]));
+
+				expect(first).toEqual(['cred-1']);
+				expect(second).toEqual([]);
+				expect(credentialsService.update).toHaveBeenCalledTimes(1);
+			});
+
+			it('writes once and lists every package credential that resolves to the destination', async () => {
+				const updated = await importer.applyUpdates(
+					context,
+					bindingRequest([], { conflictPolicy: 'overwrite' }),
+					plan([update(), update({ sourceId: 'cred-2' })]),
+				);
+
+				expect(updated).toEqual(['cred-1', 'cred-2']);
+				expect(credentialsService.update).toHaveBeenCalledTimes(1);
+				expect(eventService.emit).toHaveBeenCalledTimes(1);
+			});
+
+			it.each(['keep-existing', 'fail'] as const)('writes nothing under %s', async (policy) => {
+				const updated = await importer.applyUpdates(
+					context,
+					bindingRequest([], { conflictPolicy: policy }),
+					plan([update()]),
+				);
+
+				expect(updated).toEqual([]);
+				expect(credentialsService.update).not.toHaveBeenCalled();
+			});
+
+			it('fails when the update finds no credential', async () => {
+				credentialsService.update.mockResolvedValue(null);
+
+				await expect(
+					importer.applyUpdates(
+						context,
+						bindingRequest([], { conflictPolicy: 'overwrite' }),
+						plan([update()]),
+					),
+				).rejects.toThrow(NotFoundError);
+			});
+		});
+	});
+
 	describe('create-with-values', () => {
 		it('apply seeds a created credential from the requirement package data', async () => {
 			credentialsService.createStubCredential.mockResolvedValue({ id: 'created-1' } as never);
@@ -641,7 +1055,8 @@ describe('CredentialImporter', () => {
 				context,
 				bindingRequest([missingCredential], { missingMode: 'create-with-values' }),
 				{
-					successes: new Map(),
+					...emptyPlan(),
+					stubIds: new Map([[missingCredential.id, missingCredential.id]]),
 					failures: [notFoundFailure(missingCredential)],
 				},
 			);
@@ -675,7 +1090,11 @@ describe('CredentialImporter', () => {
 				context,
 				bindingRequest([withoutData, withEmptyData], { missingMode: 'create-with-values' }),
 				{
-					successes: new Map(),
+					...emptyPlan(),
+					stubIds: new Map([
+						[withoutData.id, withoutData.id],
+						[withEmptyData.id, withEmptyData.id],
+					]),
 					failures: [notFoundFailure(withoutData), notFoundFailure(withEmptyData)],
 				},
 			);
@@ -705,7 +1124,8 @@ describe('CredentialImporter', () => {
 				context,
 				bindingRequest([missingCredential], { missingMode: 'create-stub' }),
 				{
-					successes: new Map(),
+					...emptyPlan(),
+					stubIds: new Map([[missingCredential.id, missingCredential.id]]),
 					failures: [notFoundFailure(missingCredential)],
 				},
 			);

@@ -2,10 +2,12 @@ import type { StoredWorkflowGraph } from '../graph';
 import type {
 	ExecutionMode,
 	ExecutionStatus,
+	ParentLink,
 	StepError,
 	StepSlots,
 	StepStatus,
 	WorkflowDocument,
+	StepOutputSources,
 } from './execution.types';
 
 /**
@@ -20,17 +22,27 @@ export interface ExecutionListItemView {
 	mode: ExecutionMode;
 	/** The host's finer execution mode. */
 	hostMode: string;
+	/** The parent link, or `null` for a top-level execution. */
+	parent: ParentLink | null;
 	createdAt: Date;
 	updatedAt: Date;
 	finishedAt: Date | null;
 }
 
-export interface ExecutionListQuery {
+/** The filter half of a list query: which executions, with no say in how many or from where. */
+export interface ExecutionListFilter {
 	workflowIds: readonly string[] | 'all';
 	status?: ExecutionStatus[];
 	hostMode?: string;
+	/** Only the sub-executions of this execution. */
+	parentExecutionId?: string;
+	/** `true` for sub-executions only, `false` for top-level executions only. */
+	hasParent?: boolean;
 	createdAfter?: string;
 	createdBefore?: string;
+}
+
+export interface ExecutionListQuery extends ExecutionListFilter {
 	before?: { createdAt: string; id: string };
 	/** Required at this layer; the API's default lives on the request schema. */
 	limit: number;
@@ -55,6 +67,8 @@ export interface ExecutionView {
 	graph: StoredWorkflowGraph;
 	/** The workflow captured at start, alongside the graph and just as immutable. */
 	workflow: WorkflowDocument;
+	/** The parent link, or `null` for a top-level execution. */
+	parent: ParentLink | null;
 	createdAt: Date;
 	updatedAt: Date;
 	finishedAt: Date | null;
@@ -76,6 +90,8 @@ export interface StepView {
 	status: StepStatus;
 	/** Outputs of a completed step, indexed by output slot; `null` until it completes. */
 	outputs: StepSlots | null;
+	/** Where the outputs' items came from. Only a loop node that ran states it. Otherwise `null`. */
+	outputSources: StepOutputSources | null;
 	/** The error that failed the step; `null` unless it failed. */
 	error: StepError | null;
 	createdAt: string;
@@ -110,4 +126,13 @@ export interface ExecutionViewStore {
 	 * `ExecutionNotFoundError` if absent.
 	 */
 	loadExecutionWithStepsView(id: string): Promise<ExecutionWithStepsView>;
+
+	/**
+	 * Read view of the newest execution matching `filter`, with its steps, or
+	 * `undefined` when none matches. Newest by `(created_at, id)`, the same
+	 * order the list walks.
+	 */
+	loadLatestExecutionWithStepsView(
+		filter: ExecutionListFilter,
+	): Promise<ExecutionWithStepsView | undefined>;
 }

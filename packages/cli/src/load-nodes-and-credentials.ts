@@ -40,17 +40,13 @@ import type {
 	NodeLoader,
 } from 'n8n-workflow';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import {
-	injectDomainRestrictionFields,
-	NodeHelpers,
-	UnexpectedError,
-	UserError,
-} from 'n8n-workflow';
+import { injectDomainRestrictionFields, NodeHelpers } from 'n8n-workflow';
+import { UnexpectedError, UserError } from '@n8n/errors';
 import path from 'path';
 import picocolors from 'picocolors';
 
 import { CUSTOM_API_CALL_KEY, CUSTOM_API_CALL_NAME, CLI_DIR, inE2ETests } from '@/constants';
-import { getParameterDefaults } from '@/output-schema-parameter-defaults';
+import { defaultDiscriminators, getParameterDefaults } from '@/output-schema-parameter-defaults';
 import { createAiTools, createHitlTools } from '@/tool-generation';
 
 @Service()
@@ -296,13 +292,13 @@ export class LoadNodesAndCredentials {
 		resource?: string;
 		operation?: string;
 	}): string | undefined {
-		const nodePath = this.known.nodes[node]?.sourcePath;
-		if (!nodePath) {
+		const nodeDir = this.outputSchemaNodeDir(node, Number(version));
+		if (!nodeDir) {
 			return undefined;
 		}
 
 		return resolveOutputSchemaPath({
-			nodeDir: path.dirname(nodePath),
+			nodeDir,
 			version,
 			resource,
 			operation,
@@ -317,25 +313,40 @@ export class LoadNodesAndCredentials {
 	 */
 	createOutputSchemaLookup(): OutputSchemaLookup {
 		return ({ type, typeVersion, resource, operation, hasOutputParser, parameters }) => {
-			const nodePath = this.known.nodes[type]?.sourcePath;
-			if (!nodePath) return undefined;
+			const nodeDir = this.outputSchemaNodeDir(type, typeVersion);
+			if (!nodeDir) return undefined;
 
-			const nodeType = this.tryGetVersionedNodeType(type, typeVersion);
+			const properties = this.tryGetVersionedNodeType(type, typeVersion)?.description.properties;
+			const discriminators = defaultDiscriminators(properties, { resource, operation });
 
 			return loadOutputSchema({
-				nodeDir: path.dirname(nodePath),
+				nodeDir,
 				version: typeVersion,
-				resource,
-				operation,
+				...discriminators,
 				versionFallback: true,
 				variant: hasOutputParser ? OUTPUT_PARSER_SCHEMA_VARIANT : undefined,
 				parameters,
-				parameterDefaults: getParameterDefaults(nodeType?.description.properties, {
-					resource,
-					operation,
-				}),
+				parameterDefaults: getParameterDefaults(properties, discriminators),
 			});
 		};
+	}
+
+	/**
+	 * The folder that holds a node's `__schema__`: its source folder, or the
+	 * `schemaPath` it declares (relative to the package's `dist/nodes`), so two
+	 * nodes that share a source folder can keep separate schemas.
+	 */
+	private outputSchemaNodeDir(type: string, version: number): string | undefined {
+		const nodePath = this.known.nodes[type]?.sourcePath;
+		if (!nodePath) return undefined;
+
+		const sourceDir = path.dirname(nodePath);
+		const schemaPath = this.tryGetVersionedNodeType(type, version)?.description.schemaPath;
+		const nodesRoot = nodePath.match(/^(.*[\\/]dist[\\/]nodes)[\\/]/)?.[1];
+		if (!schemaPath || !nodesRoot) return sourceDir;
+
+		const schemaDir = path.join(nodesRoot, schemaPath);
+		return isContainedWithin(nodesRoot, schemaDir) ? schemaDir : sourceDir;
 	}
 
 	/** Schema previews are best-effort, so a node that cannot load just has no variants. */
@@ -633,12 +644,6 @@ export class LoadNodesAndCredentials {
 
 			types.credentials = types.credentials.concat(processedCredentials);
 
-			// Add domain restriction fields to loaded credentials
-			for (const credentialTypeName in loaderKnown.credentials) {
-				const credentialType = loader.getCredential(credentialTypeName);
-				credentialType.type.properties = injectDomainRestrictionFields(credentialType.type);
-			}
-
 			for (const type in loaderKnown.nodes) {
 				const { className, sourcePath } = loaderKnown.nodes[type];
 				known.nodes[`${packageName}.${type}`] = {
@@ -701,15 +706,22 @@ export class LoadNodesAndCredentials {
 		}
 	}
 
+	/** Splits a full node type at its first dot, so the node name keeps any further segments. */
+	private splitNodeType(fullNodeType: string): [packageName: string, nodeType: string] {
+		const separatorIndex = fullNodeType.indexOf('.');
+		if (separatorIndex === -1) return [fullNodeType, ''];
+		return [fullNodeType.slice(0, separatorIndex), fullNodeType.slice(separatorIndex + 1)];
+	}
+
 	recognizesNode(fullNodeType: string): boolean {
-		const [packageName, nodeType] = fullNodeType.split('.');
+		const [packageName, nodeType] = this.splitNodeType(fullNodeType);
 		const { loaders } = this;
 		const loader = loaders[packageName];
 		return !!loader && nodeType in loader.known.nodes;
 	}
 
 	getNode(fullNodeType: string): LoadedClass<INodeType | IVersionedNodeType> {
-		const [packageName, nodeType] = fullNodeType.split('.');
+		const [packageName, nodeType] = this.splitNodeType(fullNodeType);
 		const { loaders } = this;
 		const loader = loaders[packageName];
 		if (!loader) {
@@ -741,6 +753,7 @@ export class LoadNodesAndCredentials {
 		for (const loader of Object.values(this.loaders)) {
 			if (credentialType in loader.known.credentials) {
 				const loaded = loader.getCredential(credentialType);
+				loaded.type.properties = injectDomainRestrictionFields(loaded.type);
 				loadedCredentials[credentialType] = loaded;
 			}
 		}

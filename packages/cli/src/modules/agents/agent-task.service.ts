@@ -3,7 +3,13 @@ import { isValidTimeZone } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { TransactionRunner, type User } from '@n8n/db';
-import { OnLeaderStepdown, OnLeaderTakeover, OnPubSubEvent, OnShutdown } from '@n8n/decorators';
+import {
+	OnLeaderStepdown,
+	OnLeaderTakeover,
+	OnPubSubEvent,
+	OnShutdown,
+	type PubSubCommandMap,
+} from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { IsNull, Not } from '@n8n/typeorm';
 import { randomUUID } from 'crypto';
@@ -11,13 +17,12 @@ import { DateTime } from 'luxon';
 import { InstanceSettings, ScheduledTaskManager, type ScheduledTaskGroup } from 'n8n-core';
 
 import { BadRequestError, NotFoundError } from '@n8n/errors';
-import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
 
 import {
 	type AgentMutationTelemetryContext,
 	buildAgentMutationEvent,
-	captureAgentMutation,
 } from './agent-modification-telemetry.service';
+import { AgentDefinitionService } from './agent-definition.service';
 import { AgentExecutionOrchestratorService } from './agent-execution-orchestrator.service';
 import { AgentChangePublisher } from './agent-change-publisher.service';
 import { AgentSaveCompletionService } from './agent-save-completion.service';
@@ -83,6 +88,7 @@ export class AgentTaskService {
 		private readonly settingsService: AgentsSettingsService,
 		private readonly transactionRunner: TransactionRunner,
 		private readonly agentSkillRefs: AgentSkillRefsService,
+		private readonly definitionService: AgentDefinitionService,
 	) {}
 
 	// ── CRUD ──────────────────────────────────────────────────────────────
@@ -90,6 +96,10 @@ export class AgentTaskService {
 	async list(agentId: string): Promise<AgentTaskDto[]> {
 		const tasks = await this.taskRepository.findByAgentId(agentId);
 		return tasks.map((task) => this.toDto(task));
+	}
+
+	async findImportIdOwners(taskIds: string[]): Promise<Array<Pick<AgentTask, 'id' | 'agentId'>>> {
+		return await this.taskRepository.findImportIdOwners(taskIds);
 	}
 
 	/**
@@ -145,16 +155,11 @@ export class AgentTaskService {
 			throw new BadRequestError('At least one task is required');
 		}
 
-		for (const dto of dtos) {
-			this.assertValidCron(dto.cronExpression);
-			this.assertValidTimezone(dto.timezone);
-		}
-
+		this.validateTasks(dtos);
 		const agent = await getAgentOrThrow(this.agentRepository, agentId, projectId);
-		if (!agent.schema) throw new BadRequestError('Agent has no config yet');
+		this.assertAgentHasConfig(agent.schema !== null);
 
 		const skillRefs = await this.agentSkillRefs.refsForDraft(agent, {});
-		const previous = captureAgentMutation(agent, skillRefs);
 
 		const tasks = dtos.map((dto) => {
 			const taskId = generateAgentResourceId(
@@ -177,9 +182,10 @@ export class AgentTaskService {
 		await this.transactionRunner.run({}, async (ctx) => {
 			await saveAgentDraftFenced(this.agentRepository, agent, ctx);
 			await this.taskRepository.saveDefinitions(tasks, ctx);
+			await this.definitionService.captureVersion(agent, context.user, ctx, context.modifiedBy);
 		});
 		this.saveCompletion.taskSaved(
-			buildAgentMutationEvent(agent, skillRefs, projectId, context, previous, { tasks: true }),
+			buildAgentMutationEvent(agent, skillRefs, projectId, context, ['tasks']),
 			context.pushRef,
 		);
 
@@ -225,16 +231,16 @@ export class AgentTaskService {
 		if (!changed) return { task: this.toDto(task), changed: false };
 
 		const skillRefs = await this.agentSkillRefs.refsForDraft(agent, {});
-		const previous = captureAgentMutation(agent, skillRefs);
 
 		const saved = await this.transactionRunner.run({}, async (ctx) => {
 			markAgentDraftDirty(agent);
 			await saveAgentDraftFenced(this.agentRepository, agent, ctx);
 			const [savedTask] = await this.taskRepository.saveDefinitions([task], ctx);
+			await this.definitionService.captureVersion(agent, context.user, ctx, context.modifiedBy);
 			return savedTask;
 		});
 		this.saveCompletion.taskSaved(
-			buildAgentMutationEvent(agent, skillRefs, projectId, context, previous, { tasks: true }),
+			buildAgentMutationEvent(agent, skillRefs, projectId, context, ['tasks']),
 			context.pushRef,
 		);
 
@@ -252,19 +258,19 @@ export class AgentTaskService {
 		const agent = await getAgentOrThrow(this.agentRepository, agentId, projectId);
 
 		const skillRefs = await this.agentSkillRefs.refsForDraft(agent, {});
-		const previous = captureAgentMutation(agent, skillRefs);
 
 		if (agent.schema?.tasks) {
 			agent.schema.tasks = agent.schema.tasks.filter((ref) => ref.id !== taskId);
-			markAgentDraftDirty(agent);
 		}
+		markAgentDraftDirty(agent);
 
 		await this.transactionRunner.run({}, async (ctx) => {
 			await saveAgentDraftFenced(this.agentRepository, agent, ctx);
 			await this.taskRepository.deleteForAgent(agentId, [taskId], ctx);
+			await this.definitionService.captureVersion(agent, context.user, ctx, context.modifiedBy);
 		});
 		this.saveCompletion.taskSaved(
-			buildAgentMutationEvent(agent, skillRefs, projectId, context, previous, { tasks: true }),
+			buildAgentMutationEvent(agent, skillRefs, projectId, context, ['tasks']),
 			context.pushRef,
 		);
 
@@ -626,6 +632,10 @@ export class AgentTaskService {
 		if (!agent || !isProjectAgent(agent)) {
 			throw new NotFoundError(`Agent "${agentId}" not found`);
 		}
+		// The run starts in the background. Reject an archived agent before the request returns.
+		if (agent.isArchived) {
+			throw new BadRequestError('Agent is archived. Restore the agent before running it.');
+		}
 
 		void this.executeNow(task, agent.projectId, user);
 	}
@@ -663,6 +673,19 @@ export class AgentTaskService {
 		return task;
 	}
 
+	validateTasks(tasks: Array<{ cronExpression: string; timezone?: string | null }>): void {
+		for (const task of tasks) this.validateTask(task);
+	}
+
+	assertAgentHasConfig(hasConfig: boolean): void {
+		if (!hasConfig) throw new BadRequestError('Agent has no config yet');
+	}
+
+	private validateTask(task: { cronExpression?: string; timezone?: string | null }): void {
+		if (task.cronExpression !== undefined) this.assertValidCron(task.cronExpression);
+		this.assertValidTimezone(task.timezone);
+	}
+
 	private assertValidCron(cronExpression: string): void {
 		if (!isValidCronExpression(cronExpression)) {
 			throw new BadRequestError('Invalid cron expression');
@@ -695,9 +718,9 @@ export class AgentTaskService {
 	}
 
 	private applyTaskUpdates(task: AgentTask, dto: UpdateAgentTaskDto): boolean {
+		this.validateTask(dto);
 		let changed = false;
 		if (dto.cronExpression !== undefined) {
-			this.assertValidCron(dto.cronExpression);
 			if (dto.cronExpression !== task.cronExpression) {
 				task.cronExpression = dto.cronExpression;
 				changed = true;
@@ -706,7 +729,6 @@ export class AgentTaskService {
 		// `null` resets to the instance timezone; omitting the field keeps the
 		// current one, so an older client can still update name/objective/cron.
 		if (dto.timezone !== undefined) {
-			this.assertValidTimezone(dto.timezone);
 			const timezone = dto.timezone ?? null;
 			if (timezone !== task.timezone) {
 				task.timezone = timezone;

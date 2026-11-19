@@ -38,7 +38,7 @@ import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowPublicationNotifier } from '@/workflows/publication/workflow-publication-notifier';
 import { WorkflowPushNotifier } from '@/workflows/workflow-push-notifier.service';
 import type { EventService } from '@n8n/backend-services';
-import { WorkflowSharingService } from '@n8n/backend-services';
+import { ExecutionLedger, WorkflowSharingService } from '@n8n/backend-services';
 import { createExecution } from '@test-integration/db/executions';
 
 import { IN_PROGRESS_EXECUTION_DATA, OOM_WORKFLOW } from './constants';
@@ -81,7 +81,13 @@ describe('ExecutionRecoveryService', () => {
 			ownershipService,
 			projectRelationRepository,
 			workflowPushNotifier,
-			new ExecutionCrashService(executionRepository, mock(), eventService, instanceSettings),
+			new ExecutionCrashService(
+				executionRepository,
+				mock(),
+				eventService,
+				instanceSettings,
+				Container.get(ExecutionLedger),
+			),
 		);
 	});
 
@@ -692,6 +698,8 @@ describe('ExecutionRecoveryService', () => {
 
 				const workflow = await createCrashedActiveWorkflow();
 				mockOwnershipForDeactivation();
+				const { WorkflowService } = await import('@/workflows/workflow.service.js');
+				const deactivateSpy = vi.spyOn(WorkflowService.prototype, 'deactivateWorkflowAsSystem');
 
 				/**
 				 * Act
@@ -704,6 +712,70 @@ describe('ExecutionRecoveryService', () => {
 				const updatedWorkflow = await getWorkflowById(workflow.id);
 				if (!updatedWorkflow) expect.fail('Expected `updatedWorkflow` to be defined');
 				expect(updatedWorkflow.activeVersionId).toBeNull();
+				expect(deactivateSpy).toHaveBeenCalledWith(workflow.id, 'crash-recovery');
+			});
+
+			test('should deactivate workflow if the last crashed executions were not saved', async () => {
+				/**
+				 * Arrange
+				 */
+				globalConfig.executions.recovery.workflowDeactivationEnabled = true;
+
+				const workflow = await createActiveWorkflow({ ...OOM_WORKFLOW });
+				for (let i = 0; i < 3; i++) {
+					const execution = await createExecution({ status: 'crashed', mode: 'trigger' }, workflow);
+					await executionPersistence.deleteInFlightExecution(
+						{ workflowId: workflow.id, executionId: execution.id, storedAt: execution.storedAt },
+						{ status: 'crashed', finished: false, stoppedAt: new Date() },
+					);
+				}
+				mockOwnershipForDeactivation();
+
+				/**
+				 * Act
+				 */
+				await executionRecoveryService.autoDeactivateWorkflowsIfNeeded(new Set([workflow.id]));
+
+				/**
+				 * Assert
+				 */
+				const updatedWorkflow = await getWorkflowById(workflow.id);
+				expect(updatedWorkflow?.activeVersionId).toBeNull();
+			});
+
+			test('should not deactivate workflow if an unsaved successful execution follows the crashes', async () => {
+				/**
+				 * Arrange
+				 */
+				globalConfig.executions.recovery.workflowDeactivationEnabled = true;
+
+				const workflow = await createActiveWorkflow({ ...OOM_WORKFLOW });
+				const now = Date.now();
+				for (let i = 3; i > 0; i--) {
+					await createExecution(
+						{ status: 'crashed', mode: 'trigger', startedAt: new Date(now - i * 1000) },
+						workflow,
+					);
+				}
+				const success = await createExecution(
+					{ status: 'success', mode: 'trigger', startedAt: new Date(now) },
+					workflow,
+				);
+				await executionPersistence.deleteInFlightExecution(
+					{ workflowId: workflow.id, executionId: success.id, storedAt: success.storedAt },
+					{ status: 'success', finished: true, stoppedAt: new Date() },
+				);
+
+				/**
+				 * Act
+				 */
+				await executionRecoveryService.autoDeactivateWorkflowsIfNeeded(new Set([workflow.id]));
+
+				/**
+				 * Assert
+				 */
+				const updatedWorkflow = await getWorkflowById(workflow.id);
+				expect(updatedWorkflow?.activeVersionId).not.toBeNull();
 			});
 
 			test('pushes `workflowAutoDeactivated` only to users with workflow access, once a client connects', async () => {

@@ -7,20 +7,22 @@ import type {
 	JsonObject,
 	IRequestOptions,
 	IHttpRequestMethods,
+	RequestPath,
+	RequestUrl,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestUrl } from 'n8n-workflow';
 
 export async function travisciApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 	body: IDataObject | string = {},
 	qs: IDataObject = {},
-	uri?: string,
-	option: IDataObject = {},
+	uri?: RequestUrl,
 ) {
 	const credentials = await this.getCredentials('travisCiApi');
-	let options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {
 			'Travis-API-Version': '3',
 			Accept: 'application/json',
@@ -30,10 +32,9 @@ export async function travisciApiRequest(
 		method,
 		qs,
 		body,
-		uri: uri || `https://api.travis-ci.com${resource}`,
+		uri: uri ?? requestUrl`https://api.travis-ci.com${resource}`,
 		json: true,
 	};
-	options = Object.assign({}, options, option);
 	if (Object.keys(options.body as IDataObject).length === 0) {
 		delete options.body;
 	}
@@ -52,7 +53,7 @@ export async function travisciApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 
 	body: IDataObject = {},
 	query: IDataObject = {},

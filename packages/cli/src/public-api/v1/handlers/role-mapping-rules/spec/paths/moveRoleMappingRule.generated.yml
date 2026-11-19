@@ -2,7 +2,10 @@ operationId: moveRoleMappingRule
 tags:
   - RoleMappingRule
 summary: Move a role-mapping rule
-description: Changes a rule's position in the evaluation order for its type. `targetIndex` is the desired 0-based position within the rule's own `type` sequence; a value beyond the last position moves the rule to the end.
+description: |-
+  Changes a rule's position in the evaluation order for its type. `targetIndex` is the desired 0-based position within the rule's own `type` sequence; a value beyond the last position moves the rule to the end.
+
+  Requires the `roleMappingRule:update` API key scope.
 x-required-scope: roleMappingRule:update
 parameters:
   - $ref: ../../../../shared/spec/parameters/idempotencyKey.yml
@@ -45,3 +48,5 @@ responses:
     $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
   '422':
     $ref: ../../../../shared/spec/responses/unprocessableEntity.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml

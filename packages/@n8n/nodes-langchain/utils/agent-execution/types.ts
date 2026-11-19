@@ -41,6 +41,12 @@ export type ToolCallData = {
 		errored?: boolean;
 	};
 	observation: string;
+	/**
+	 * Index of the item this step belongs to. Lets buildSteps() keep concurrent
+	 * batch items' histories separate when previousRequests from multiple items
+	 * end up merged into the same metadata (see executeBatch's batch merge).
+	 */
+	itemIndex?: number;
 };
 
 /**
@@ -70,6 +76,14 @@ export type ThinkingContentBlock = {
 export type RedactedThinkingContentBlock = {
 	type: 'redacted_thinking';
 	data: string;
+};
+
+/**
+ * Text content block
+ */
+export type TextContentBlock = {
+	type: 'text';
+	text: string;
 };
 
 /**
@@ -173,6 +187,8 @@ export type RequestResponseMetadata = {
 	hitl?: HitlMetadata;
 	/** LangChain tool name (preserves the LLM's chosen tool for reverse-lookup). */
 	toolName?: string;
+	/** Text the model wrote in the same turn before its tool calls */
+	modelText?: string;
 };
 
 /**
@@ -182,12 +198,16 @@ export type RequestResponseMetadata = {
 export interface ToolMetadata extends Record<string, unknown> {
 	/** The n8n node name that provides this tool */
 	sourceNodeName?: string;
+	/** The stable canvas node ID of the node that provides this tool. Survives a rename. */
+	sourceNodeId?: string;
 	/** For HITL tools, the gated tool node that will be executed after approval */
 	gatedToolNodeName?: string;
 	/** The original schema of the tool */
 	originalSchema?: ZodType;
 	/** Whether this tool came from a toolkit (vs. a standalone tool node) */
 	isFromToolkit?: boolean;
+	/** Whether this toolkit tool comes from an MCP server. */
+	isMcpTool?: boolean;
 	/** Text the agent appends to its final reply when this tool was called during the run */
 	attribution?: string;
 }
@@ -207,6 +227,12 @@ export function isThinkingBlock(block: unknown): block is ThinkingContentBlock {
 		typeof block.signature === 'string'
 	);
 }
+
+/**
+ * Internal key used to stash user arguments that collide with engine metadata.
+ * MCP schemas must not declare this key.
+ */
+export const INTERNAL_TOOL_ARG_STASH_KEY = '_n8nOriginalToolArg';
 
 /**
  * Type guard to check if a block is a redacted thinking content block

@@ -1,0 +1,173 @@
+{
+	"name": "Google Drive v3 file request URLs",
+	"nodes": [
+		{
+			"parameters": {
+				"notice": ""
+			},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "7c1e2d3f-0000-4000-8000-000000000000",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"authentication": "oAuth2",
+				"resource": "file",
+				"operation": "createFromText",
+				"content": "Meeting notes",
+				"name": "Notes",
+				"driveId": {
+					"__rl": true,
+					"value": "My Drive",
+					"mode": "list"
+				},
+				"folderId": {
+					"__rl": true,
+					"value": "root",
+					"mode": "list"
+				},
+				"options": {
+					"convertToGoogleDocument": true
+				}
+			},
+			"type": "n8n-nodes-base.googleDrive",
+			"typeVersion": 3,
+			"position": [220, 1120],
+			"id": "7c1e2d3f-0000-4000-8000-000000000007",
+			"name": "Create Google Doc",
+			"credentials": {
+				"googleDriveOAuth2Api": {
+					"id": "gdrive-cred-1",
+					"name": "Google Drive account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "oAuth2",
+				"resource": "file",
+				"operation": "deleteFile",
+				"fileId": {
+					"__rl": true,
+					"value": "1Qw2Er3Ty4Ui5Op6As7Df8Gh9Jk0LzXc",
+					"mode": "id"
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.googleDrive",
+			"typeVersion": 3,
+			"position": [440, 1600],
+			"id": "7c1e2d3f-0000-4000-8000-000000000010",
+			"name": "Trash File",
+			"credentials": {
+				"googleDriveOAuth2Api": {
+					"id": "gdrive-cred-1",
+					"name": "Google Drive account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "toJson",
+				"mode": "once",
+				"binaryPropertyName": "data",
+				"options": {
+					"fileName": "report.json"
+				}
+			},
+			"type": "n8n-nodes-base.convertToFile",
+			"typeVersion": 1.1,
+			"position": [440, 3200],
+			"id": "7c1e2d3f-0000-4000-8000-000000000020",
+			"name": "Convert to File"
+		},
+		{
+			"parameters": {
+				"authentication": "oAuth2",
+				"resource": "file",
+				"operation": "update",
+				"fileId": {
+					"__rl": true,
+					"value": "1Lm4Np7Qr0St3Uv6Wx9Yz2Ab5Cd8Ef1Gh",
+					"mode": "id"
+				},
+				"changeFileContent": true,
+				"inputDataFieldName": "data",
+				"newUpdatedFileName": "",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.googleDrive",
+			"typeVersion": 3,
+			"position": [440, 3520],
+			"id": "7c1e2d3f-0000-4000-8000-000000000022",
+			"name": "Update File Content",
+			"credentials": {
+				"googleDriveOAuth2Api": {
+					"id": "gdrive-cred-1",
+					"name": "Google Drive account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Create Google Doc",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Trash File",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Convert to File",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Convert to File": {
+			"main": [
+				[
+					{
+						"node": "Update File Content",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"Create Google Doc": [
+			{
+				"json": {
+					"id": "1Gd0Oc3Do6Cu8Me1Nt4Id7Ab0Cd3Ef6Gh"
+				}
+			}
+		],
+		"Trash File": [
+			{
+				"json": {
+					"id": "1Qw2Er3Ty4Ui5Op6As7Df8Gh9Jk0LzXc",
+					"success": true
+				}
+			}
+		],
+		"Update File Content": [
+			{
+				"json": {
+					"id": "1Lm4Np7Qr0St3Uv6Wx9Yz2Ab5Cd8Ef1Gh",
+					"name": "report.json"
+				}
+			}
+		]
+	}
+}

@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/consistent-type-imports */
 /* eslint-disable @typescript-eslint/no-require-imports */
 import type { GoogleVertexProviderSettings } from '@ai-sdk/google-vertex';
-import { splitModelId } from '@n8n/ai-utilities/agent-config';
 import { formatPemBlock } from '@n8n/utils/format-pem-block';
 import { isRecord } from '@n8n/utils/is-record';
 import type { LanguageModel } from 'ai';
@@ -50,15 +49,6 @@ export function getGoogleVertexQuirksProvider(model: string, sdk?: string): stri
 	}
 }
 
-/** Identify Claude models that use the shared Vertex provider ID. */
-export function isGoogleVertexAnthropicModel(modelId: string): boolean {
-	const { provider, model } = splitModelId(modelId);
-	return (
-		provider === 'google-vertex' &&
-		resolveGoogleVertexSdk(model) === '@ai-sdk/google-vertex/anthropic'
-	);
-}
-
 /** Select the Vertex API for the model. */
 export function createGoogleVertexModel(
 	creds: ProviderCredentials<'google-vertex'>,
@@ -69,6 +59,7 @@ export function createGoogleVertexModel(
 		project: creds.project,
 		location: creds.location,
 		googleAuthOptions: {
+			// oxlint-disable-next-line typescript/no-deprecated -- Pass explicit service-account fields, not an arbitrary credential configuration.
 			credentials: {
 				client_email: creds.clientEmail,
 				private_key: formatPemBlock(creds.privateKey),

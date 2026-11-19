@@ -6,7 +6,7 @@ import type {
 	INodeProperties,
 	IPollFunctions,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, requestPath, requestUrl } from 'n8n-workflow';
 
 import {
 	arrayOfArraysToJson,
@@ -461,14 +461,14 @@ export class GoogleSheetsTrigger implements INodeType {
 					const { revisions, nextPageToken } = await apiRequest.call(
 						this,
 						'GET',
-						'',
+						requestPath``,
 						undefined,
 						{
 							fields: 'revisions(id, exportLinks), nextPageToken',
 							pageToken,
 							pageSize: 1000,
 						},
-						`https://www.googleapis.com/drive/v3/files/${documentId}/revisions`,
+						requestUrl`https://www.googleapis.com/drive/v3/files/${documentId}/revisions`,
 						{},
 						{},
 						'sheetV2Trigger',
@@ -478,6 +478,21 @@ export class GoogleSheetsTrigger implements INodeType {
 						pageToken = nextPageToken as string;
 					} else {
 						pageToken = undefined;
+
+						if (!Array.isArray(revisions)) {
+							throw new NodeOperationError(
+								this.getNode(),
+								'Could not retrieve document revisions',
+								{
+									description:
+										'Use OAuth2 authentication, or enable "Impersonate a User" in your service account credential. For impersonation, configure domain-wide delegation in Google Workspace.',
+								},
+							);
+						}
+
+						if (revisions.length === 0) {
+							return null;
+						}
 
 						const lastRevision = +revisions[revisions.length - 1].id;
 						if (lastRevision <= previousRevision) {
@@ -544,7 +559,7 @@ export class GoogleSheetsTrigger implements INodeType {
 					(await apiRequest.call(
 						this,
 						'GET',
-						`/v4/spreadsheets/${documentId}/values/${encodeURIComponent(sheetName)}!${keyRange}`,
+						requestPath`/v4/spreadsheets/${documentId}/values/${sheetName}!${keyRange}`,
 					)) as IDataObject
 				).values as string[][]) || [[]];
 
@@ -645,7 +660,11 @@ export class GoogleSheetsTrigger implements INodeType {
 					}
 				}
 
-				const previousRevisionBinaryData = await getRevisionFile.call(this, previousRevisionLink);
+				const previousRevisionBinaryData = await getRevisionFile.call(
+					this,
+					previousRevisionLink,
+					documentId,
+				);
 
 				const previousRevisionSheetData =
 					sheetBinaryToArrayOfArrays(

@@ -1,0 +1,95 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"agreedToTerms": {
+			"type": "boolean"
+		},
+		"archived": {
+			"type": "boolean"
+		},
+		"changePasswordAtNextLogin": {
+			"type": "boolean"
+		},
+		"creationTime": {
+			"type": "string"
+		},
+		"customerId": {
+			"type": "string"
+		},
+		"emails": {
+			"items": {
+				"additionalProperties": true,
+				"properties": {
+					"address": {
+						"type": "string"
+					},
+					"primary": {
+						"type": "boolean"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"etag": {
+			"type": "string"
+		},
+		"id": {
+			"type": "string"
+		},
+		"includeInGlobalAddressList": {
+			"type": "boolean"
+		},
+		"ipWhitelisted": {
+			"type": "boolean"
+		},
+		"isAdmin": {
+			"type": "boolean"
+		},
+		"isDelegatedAdmin": {
+			"type": "boolean"
+		},
+		"isMailboxSetup": {
+			"type": "boolean"
+		},
+		"kind": {
+			"type": "string"
+		},
+		"lastLoginTime": {
+			"type": "string"
+		},
+		"name": {
+			"properties": {
+				"familyName": {
+					"type": "string"
+				},
+				"fullName": {
+					"type": "string"
+				},
+				"givenName": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"orgUnitPath": {
+			"type": "string"
+		},
+		"primaryEmail": {
+			"type": "string"
+		},
+		"recoveryEmail": {
+			"type": "string"
+		},
+		"suspended": {
+			"type": "boolean"
+		},
+		"thumbnailPhotoEtag": {
+			"type": "string"
+		},
+		"thumbnailPhotoUrl": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

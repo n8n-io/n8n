@@ -4,6 +4,7 @@ import {
 	type ExecutionRedaction,
 	type ExecutionRedactionOptions,
 	type RedactableExecution,
+	loginIdOf,
 } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -17,7 +18,6 @@ import {
 	WorkflowSettings,
 } from 'n8n-workflow';
 
-import { isCredSharingEnabled } from '@/constants/credential-sharing';
 import { ForbiddenError, ScopeForbiddenError } from '@n8n/errors';
 
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks/credentials-permission-checker';
@@ -137,6 +137,7 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 						workflowId: execution.workflowId,
 						ipAddress: options.ipAddress ?? '',
 						userAgent: options.userAgent ?? '',
+						loginId: loginIdOf(options.ctx),
 						redactionPolicy: this.resolvePolicy(execution),
 						rejectionReason: 'Not the executing user of a private-credential execution',
 					});
@@ -149,6 +150,7 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 						workflowId: execution.workflowId,
 						ipAddress: options.ipAddress ?? '',
 						userAgent: options.userAgent ?? '',
+						loginId: loginIdOf(options.ctx),
 						redactionPolicy: this.resolvePolicy(execution),
 						rejectionReason: 'User cannot use a credential referenced by this execution',
 					});
@@ -172,6 +174,7 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 						workflowId: execution.workflowId,
 						ipAddress: options.ipAddress ?? '',
 						userAgent: options.userAgent ?? '',
+						loginId: loginIdOf(options.ctx),
 						redactionPolicy: this.resolvePolicy(execution),
 						rejectionReason: 'User lacks execution:reveal scope for this workflow',
 					});
@@ -254,6 +257,7 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 					workflowId: execution.workflowId,
 					ipAddress: options.ipAddress ?? '',
 					userAgent: options.userAgent ?? '',
+					loginId: loginIdOf(options.ctx),
 					redactionPolicy: this.resolvePolicy(execution),
 				});
 			}
@@ -303,8 +307,6 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 	/**
 	 * Batched check for whether the viewer can use every credential each
 	 * execution's workflow references, independent of dynamic credentials.
-	 * Gated behind {@link isCredSharingEnabled}: while the flag is off this makes
-	 * no DB call and returns an empty set, so redaction behaves exactly as before.
 	 *
 	 * Returns the subset of `executions` that reference at least one credential
 	 * the viewer cannot use. Such executions must always be redacted with
@@ -312,14 +314,14 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 	 * `execution:reveal` scope nor an instance-wide `credential:use` scope (e.g.
 	 * Owner/Admin) grants a bypass: `ignoreGlobalUseScope` asks for the viewer's
 	 * actual personal access to each credential, the same question a colleague
-	 * with no elevated scopes would be asked.
+	 * with no elevated scopes would be asked. The owner and admins are implicit
+	 * members of every team project, so credentials shared with a team project
+	 * count for them, and credentials that only a personal project holds do not.
 	 */
 	private async resolveCredentialInaccessibleExecutions(
 		executions: RedactableExecution[],
 		user: User,
 	): Promise<Map<RedactableExecution, string[]>> {
-		if (!isCredSharingEnabled()) return new Map();
-
 		const credentialIdsByExecution = new Map<RedactableExecution, string[]>();
 		const allCredentialIds = new Set<string>();
 		for (const execution of executions) {

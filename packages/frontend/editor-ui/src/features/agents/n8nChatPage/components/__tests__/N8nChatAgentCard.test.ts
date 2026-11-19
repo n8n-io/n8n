@@ -32,6 +32,7 @@ const agent: AgentChatListItem = {
 	description: 'Answers billing questions for the whole team, in great detail.',
 	project: { id: 'project-1', name: 'Marketing' },
 	attachments: { image: false, pdf: false, audio: false },
+	availableInChat: true,
 };
 
 function renderCard(props: Partial<InstanceType<typeof N8nChatAgentCard>['$props']> = {}) {
@@ -96,5 +97,16 @@ describe('N8nChatAgentCard', () => {
 			agentId: 'agent-1',
 			source: 'library',
 		});
+	});
+
+	it('renders an agent not in n8n Chat without a link, offering to make it available', async () => {
+		const unavailable = { ...agent, availableInChat: false };
+		const wrapper = renderCard({ agent: unavailable });
+
+		expect(wrapper.find('a').exists()).toBe(false);
+		await wrapper.get('[data-test-id="n8n-chat-agent-card-make-available"]').trigger('click');
+
+		expect(wrapper.emitted('make-available')).toEqual([[unavailable]]);
+		expect(trackSelectedN8nChatAgentMock).not.toHaveBeenCalled();
 	});
 });

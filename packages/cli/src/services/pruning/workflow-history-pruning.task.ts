@@ -15,14 +15,13 @@ export class WorkflowHistoryPruningTask implements SystemTask {
 	readonly target = clusterTarget({
 		scheduler: {
 			retryOnFailure: true,
-			// One DELETE that ignores the signal. A timeout that stops the run before the
-			// DELETE ends lets the next run start a second one, so it waits for the
-			// statement timeout first.
+			// The signal stops the run only between batches, so the timeout waits for a statement to end.
 			timeoutSeconds: timeoutAfterLimit(
 				statementTimeoutSeconds(this.databaseConfig),
 				5 * Time.minutes.toSeconds,
 			),
 		},
+		// oxlint-disable-next-line typescript/no-deprecated -- Keep timer scheduling while the durable scheduler is disabled.
 		leaderTimer: {
 			// Only the leader prunes, so a new leader runs once at takeover instead of waiting an hour.
 			runOnTakeover: true,
@@ -34,7 +33,7 @@ export class WorkflowHistoryPruningTask implements SystemTask {
 		private readonly workflowHistoryManager: WorkflowHistoryManager,
 	) {}
 
-	async run(): Promise<void> {
-		await this.workflowHistoryManager.prune();
+	async run(signal: AbortSignal): Promise<void> {
+		await this.workflowHistoryManager.prune(signal);
 	}
 }
