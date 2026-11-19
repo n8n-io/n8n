@@ -592,6 +592,14 @@ export abstract class BaseCommand<F = never> {
 		await this.moduleRegistry.initModules(this.instanceSettings.instanceType, POLICY_MODULES);
 	}
 
+	/**
+	 * Registers the workflow review rules, so a one-off command that publishes is refused what the
+	 * server refuses. Call after `initLicense()`: the module is license-gated.
+	 */
+	async initWorkflowReviewRules() {
+		await this.moduleRegistry.initModules(this.instanceSettings.instanceType, ['workflow-reviews']);
+	}
+
 	/** One-off commands that run workflows init only the modules they need. */
 	async initExecutionLedger() {
 		await this.moduleRegistry.initModules(this.instanceSettings.instanceType, ['execution-ledger']);
