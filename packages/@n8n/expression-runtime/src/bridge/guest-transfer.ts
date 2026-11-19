@@ -72,28 +72,39 @@ function isWalked(value: object): boolean {
 	return Array.isArray(value) || isPlainObject(value) || value instanceof Error;
 }
 
-/**
- * Say whether a value holds an Error in the arrays and plain objects it is
- * made of. It runs on each host call result, so it reads the keys in place.
- */
-function holdsError(value: unknown, seen: Set<object>): boolean {
-	if (isObject(value) && !seen.has(value)) {
-		seen.add(value);
-		return value instanceof Error || childHoldsError(value, seen);
-	}
-	return false;
+/** Say whether structured clone refuses to copy an object of this type. */
+function isUnclonableObject(value: object): boolean {
+	return (
+		value instanceof Promise ||
+		value instanceof WeakMap ||
+		value instanceof WeakSet ||
+		value instanceof WeakRef
+	);
 }
 
-function childHoldsError(value: object, seen: Set<object>): boolean {
+/**
+ * Say whether a value holds an Error or a value that structured clone cannot
+ * copy, in the arrays and plain objects it is made of. It runs on each host
+ * call result, so it reads the keys in place.
+ */
+function needsEncoding(value: unknown, seen: Set<object>): boolean {
+	if (isObject(value) && !seen.has(value)) {
+		seen.add(value);
+		return value instanceof Error || isUnclonableObject(value) || childNeedsEncoding(value, seen);
+	}
+	return typeof value === 'function' || typeof value === 'symbol';
+}
+
+function childNeedsEncoding(value: object, seen: Set<object>): boolean {
 	if (Array.isArray(value)) {
 		for (let index = 0; index < value.length; index++) {
-			if (holdsError(value[index], seen)) {
+			if (needsEncoding(value[index], seen)) {
 				return true;
 			}
 		}
 	} else if (isPlainObject(value)) {
 		for (const key in value) {
-			if (holdsError(value[key], seen)) {
+			if (needsEncoding(value[key], seen)) {
 				return true;
 			}
 		}
@@ -167,6 +178,7 @@ class GuestEncoder {
 	 *
 	 * Outside an Error, a class instance is marked opaque. Structured clone
 	 * flattens its prototype away, so a framing key on it would read as ours.
+	 * A Promise or a weak collection gives an empty object.
 	 */
 	private encodeUnwalked(value: object): unknown {
 		const cloneable = isStructuredCloneBuiltin(value) && !(value instanceof Promise);
@@ -174,6 +186,9 @@ class GuestEncoder {
 			return value instanceof Promise
 				? undefined
 				: encodeOnce(value, this.walk, (instance) => this.encode(smallInstanceFieldsOf(instance)));
+		}
+		if (isUnclonableObject(value)) {
+			return {};
 		}
 		return isStructuredCloneBuiltin(value)
 			? value
@@ -189,12 +204,14 @@ function holdsTypeKey(value: unknown): boolean {
  * Prepare a value a host callback returns to the guest.
  *
  * A value that holds an Error goes across inside a wrapper, with each Error
- * turned into a marker. Every other value goes across as it is. A top-level
+ * turned into a marker. So does a value that holds a function, a symbol, a
+ * Promise or a weak collection. A function or a symbol gives undefined, and
+ * the others give an empty object. Every other value goes across as it is. A top-level
  * object that holds the type key is wrapped too, so the guest cannot read it
  * as a wrapper.
  */
 export function prepareForGuest(value: unknown): unknown {
-	if (holdsTypeKey(value) || holdsError(value, new Set<object>())) {
+	if (holdsTypeKey(value) || needsEncoding(value, new Set<object>())) {
 		return {
 			[TRANSFER_TYPE_KEY]: HOST_VALUE_TYPE,
 			[TRANSFER_VALUE_KEY]: new GuestEncoder().encode(value),
