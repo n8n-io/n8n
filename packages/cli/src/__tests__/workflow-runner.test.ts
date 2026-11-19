@@ -562,7 +562,7 @@ describe('processError', () => {
 			hooks,
 		);
 
-		expect(announce).toHaveBeenCalledExactlyOnceWith(execution.id);
+		expect(announce).toHaveBeenCalledExactlyOnceWith(execution.id, hooks.workflowData.name);
 		expect(watcher.workflowExecuteAfter).toHaveBeenCalledTimes(1);
 		expect(watcher.workflowExecuteAfter).toHaveBeenCalledWith(
 			expect.objectContaining({
