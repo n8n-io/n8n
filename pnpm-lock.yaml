@@ -7993,6 +7993,9 @@ importers:
       '@n8n/vitest-config':
         specifier: workspace:*
         version: link:../../../@n8n/vitest-config
+      n8n-containers:
+        specifier: workspace:*
+        version: link:../../../quality/environments/containers
       oxlint:
         specifier: 'catalog:'
         version: 1.93.0(oxlint-tsgolint@7.0.2007)
