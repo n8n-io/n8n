@@ -1680,15 +1680,16 @@ export class WorkflowService {
 		transfer: () => Promise<void>,
 		{ publicApi }: { publicApi: PublicApiCaller },
 	): Promise<Map<string, WorkflowTransferResult>> {
+		const publishedBeforeTransfer = await this._findPublished(workflowIds);
 		try {
 			await transfer();
 		} catch (error) {
 			const movedIds = await this._ownedByProject(workflowIds, destinationProjectId);
-			await this._finishTransfer(user, movedIds, publicApi);
+			await this._finishTransfer(user, movedIds, publishedBeforeTransfer, publicApi);
 			throw error;
 		}
 
-		return await this._finishTransfer(user, workflowIds, publicApi);
+		return await this._finishTransfer(user, workflowIds, publishedBeforeTransfer, publicApi);
 	}
 
 	/** Never throws, and counts every workflow as moved if the owners cannot be read. */
@@ -1711,13 +1712,14 @@ export class WorkflowService {
 	private async _finishTransfer(
 		user: User,
 		workflowIds: string[],
+		publishedBeforeTransfer: PublishedWorkflow[],
 		publicApi: PublicApiCaller,
 	): Promise<Map<string, WorkflowTransferResult>> {
-		const workflows = await this._publishedWorkflows(workflowIds);
+		const workflows = await this._publishedAfterTransfer(workflowIds, publishedBeforeTransfer);
 		const failures = new Map<string, Error>();
 		for (const workflow of workflows) {
-			const refusal = await this._triggerCredentialRefusal(workflow);
-			if (refusal) failures.set(workflow.id, refusal);
+			const checkFailure = await this._triggerCredentialCheckFailure(workflow);
+			if (checkFailure) failures.set(workflow.id, checkFailure);
 		}
 
 		const republishIds = workflowIds.filter((workflowId) => !failures.has(workflowId));
@@ -1751,25 +1753,30 @@ export class WorkflowService {
 		return results;
 	}
 
-	/** Never throws: if the read fails, only the leader checks the credentials. */
-	private async _publishedWorkflows(workflowIds: string[]): Promise<PublishedWorkflow[]> {
-		let published: PublishedWorkflow[] = [];
+	private async _findPublished(workflowIds: string[]): Promise<PublishedWorkflow[]> {
+		const workflows = await this.workflowRepository.findWithActiveVersionByIds(workflowIds);
+		return workflows.filter(
+			(workflow): workflow is PublishedWorkflow => workflow.activeVersion !== null,
+		);
+	}
+
+	/** Never throws: if the read fails, returns the workflows that were published before the transfer. */
+	private async _publishedAfterTransfer(
+		workflowIds: string[],
+		publishedBeforeTransfer: PublishedWorkflow[],
+	): Promise<PublishedWorkflow[]> {
+		let published = publishedBeforeTransfer.filter((workflow) => workflowIds.includes(workflow.id));
 		try {
-			const workflows = await this.workflowRepository.findWithActiveVersionByIds(workflowIds);
-			published = workflows.filter(
-				(workflow): workflow is PublishedWorkflow => workflow.activeVersion !== null,
-			);
+			published = await this._findPublished(workflowIds);
 		} catch (error) {
 			this.logger.error('Failed to read the transferred workflows', { workflowIds, error });
 		}
 		return published;
 	}
 
-	/** Never throws: after any other error, the leader checks the credentials again. */
-	private async _triggerCredentialRefusal(
-		workflow: PublishedWorkflow,
-	): Promise<TriggerCredentialAccessError | null> {
-		let refusal: TriggerCredentialAccessError | null = null;
+	/** Never throws: any failed check, not only a refusal, makes the transfer unpublish the workflow. */
+	private async _triggerCredentialCheckFailure(workflow: PublishedWorkflow): Promise<Error | null> {
+		let checkFailure: Error | null = null;
 		try {
 			await this.activeWorkflowManager.checkTriggerCredentialAccess(
 				workflow.id,
@@ -1777,16 +1784,15 @@ export class WorkflowService {
 				undefined,
 			);
 		} catch (error) {
-			if (error instanceof TriggerCredentialAccessError) {
-				refusal = error;
-			} else {
-				this.logger.warn(`Failed to check the credentials of workflow "${workflow.id}"`, {
+			checkFailure = ensureError(error);
+			if (!(error instanceof TriggerCredentialAccessError)) {
+				this.logger.error(`Failed to check the credentials of workflow "${workflow.id}"`, {
 					workflowId: workflow.id,
 					error,
 				});
 			}
 		}
-		return refusal;
+		return checkFailure;
 	}
 
 	/** Returns false if the workflow stays published. */
