@@ -39,6 +39,9 @@ describe('toolCallSimulationSchema', () => {
 		{ name: 'free text', evidence: ['POST https://api.example.com/issues'] },
 		{ name: 'an object', evidence: [{ kind: 'world_read', url: 'https://api.example.com' }] },
 		{ name: 'a single value that is not a list', evidence: 'world_read' },
+		{ name: 'a value twice', evidence: ['real_read', 'real_read'] },
+		{ name: 'values out of the enum order', evidence: ['world_write', 'real_read'] },
+		{ name: 'no values', evidence: [] },
 	])('rejects evidence that holds $name', ({ evidence }) => {
 		const simulation = { route: 'simulated', reason: 'served_from_world', evidence };
 

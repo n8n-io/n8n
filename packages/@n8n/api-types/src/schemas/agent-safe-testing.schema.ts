@@ -70,7 +70,20 @@ export const toolCallSimulationSchema = z
 		/** Short detail that is safe to show to the user. */
 		detail: z.string().optional(),
 		/** Each value at most once, in the order of the enum. Absent when the backend reports none. */
-		evidence: z.array(toolCallEvidenceSchema).optional(),
+		evidence: z
+			.array(toolCallEvidenceSchema)
+			.min(1)
+			.refine(
+				(items) =>
+					items.every(
+						(item, index) =>
+							index === 0 ||
+							toolCallEvidenceSchema.options.indexOf(items[index - 1]) <
+								toolCallEvidenceSchema.options.indexOf(item),
+					),
+				{ message: 'Evidence holds each value at most once, in the order of the enum' },
+			)
+			.optional(),
 	})
 	.refine(({ route, reason }) => REASONS_BY_ROUTE[route].includes(reason), {
 		message: 'The reason does not fit the route',
