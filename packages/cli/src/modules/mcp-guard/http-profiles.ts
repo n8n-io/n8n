@@ -184,8 +184,6 @@ export const GMAIL_PROFILE: HttpVendorProfile = {
 // pattern of the other vendors. See "AI Gym gaps" in the pull request.
 export const FIRECRAWL_PROFILE: HttpVendorProfile = {
 	name: 'firecrawl',
-	defaultAdminUrl: 'http://127.0.0.1:9100',
-	defaultGymUrl: 'http://127.0.0.1:8090',
 	credentialKind: 'api_key',
 	credentialField: 'api_key',
 	placeholderSeed: {
