@@ -332,8 +332,13 @@ describe('WorkflowPublicationOutboxConsumer (integration)', () => {
 			workflow.id,
 		);
 		expect(published?.publishedVersionId).toBe(workflow.versionId);
+		// The refused version replaces no triggers, so the rows keep the live state of the old version.
 		expect(await triggerStatusRepository.findByWorkflowId(workflow.id)).toEqual([
-			expect.objectContaining({ nodeId: fitting.id, status: 'failed' }),
+			expect.objectContaining({
+				nodeId: running.id,
+				status: 'activated',
+				versionId: workflow.versionId,
+			}),
 		]);
 	});
 

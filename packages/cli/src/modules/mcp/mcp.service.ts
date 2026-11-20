@@ -58,6 +58,7 @@ import { ErrorWorkflowValidationService } from '@/workflows/error-workflow-valid
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
+import { WorkflowPublicationStatusService } from '@/workflows/publication/workflow-publication-status.service';
 
 import { WorkflowService } from '@/workflows/workflow.service';
 
@@ -282,6 +283,7 @@ export class McpService {
 		private readonly mcpConfig: McpConfig,
 		private readonly executionRedactionServiceProxy: ExecutionRedactionServiceProxy,
 		private readonly instanceWriteAccess: InstanceWriteAccessService,
+		private readonly workflowPublicationStatusService: WorkflowPublicationStatusService,
 	) {}
 
 	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
@@ -591,6 +593,9 @@ export class McpService {
 		);
 		registerIfAllowed(searchExecutionsTool);
 
+		const publicationStatusService = this.workflowsConfig.useWorkflowPublicationService
+			? this.workflowPublicationStatusService
+			: undefined;
 		const workflowDetailsTool = createWorkflowDetailsTool(
 			user,
 			this.urlService.getWebhookBaseUrl(),
@@ -606,6 +611,7 @@ export class McpService {
 			this.roleService,
 			this.projectService,
 			this.urlService.getTestWebhookBaseUrl(),
+			publicationStatusService,
 		);
 		registerIfAllowed(workflowDetailsTool);
 
@@ -639,6 +645,7 @@ export class McpService {
 			this.workflowService,
 			this.telemetry,
 			this.collaborationService,
+			publicationStatusService,
 		);
 		registerIfAllowed(publishWorkflowTool);
 
