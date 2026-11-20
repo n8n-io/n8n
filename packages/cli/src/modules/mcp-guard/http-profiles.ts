@@ -180,4 +180,18 @@ export const GMAIL_PROFILE: HttpVendorProfile = {
 	},
 };
 
-export const HTTP_PROFILES: readonly HttpVendorProfile[] = [GMAIL_PROFILE];
+// The AI Gym has no Firecrawl fake yet. The credential and the seed below follow the generic API key
+// pattern of the other vendors. See "AI Gym gaps" in the pull request.
+export const FIRECRAWL_PROFILE: HttpVendorProfile = {
+	name: 'firecrawl',
+	defaultAdminUrl: 'http://127.0.0.1:9100',
+	defaultGymUrl: 'http://127.0.0.1:8090',
+	credentialKind: 'api_key',
+	credentialField: 'api_key',
+	placeholderSeed: {
+		world_version: 1,
+		persona: { ref: 'person:me', name: 'Guard', email: 'guard@unknown.invalid' },
+	},
+};
+
+export const HTTP_PROFILES: readonly HttpVendorProfile[] = [GMAIL_PROFILE, FIRECRAWL_PROFILE];
