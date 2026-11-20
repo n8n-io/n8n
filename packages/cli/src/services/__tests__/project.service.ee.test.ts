@@ -965,6 +965,56 @@ describe('ProjectService', () => {
 		});
 	});
 
+	describe('createTeamProject', () => {
+		const project = mock<Project>({ id: 'new-project', type: 'team' });
+		const executionLimitsService = { applyDefaultLimitToNewProject: vi.fn() };
+
+		beforeEach(() => {
+			Object.defineProperty(projectService, 'executionLimitsService', {
+				configurable: true,
+				get: async () => executionLimitsService,
+			});
+			projectRepository.insertTeamProjectWithAdmin.mockResolvedValueOnce(project);
+		});
+
+		it('applies the default execution limit to the new project', async () => {
+			moduleRegistry.isActive.mockReturnValue(true);
+
+			await projectService.createTeamProject(user, { name: 'Team' });
+
+			expect(executionLimitsService.applyDefaultLimitToNewProject).toHaveBeenCalledWith(
+				'new-project',
+			);
+		});
+
+		it('applies no execution limit when the module is not active', async () => {
+			moduleRegistry.isActive.mockReturnValue(false);
+
+			await projectService.createTeamProject(user, { name: 'Team' });
+
+			expect(executionLimitsService.applyDefaultLimitToNewProject).not.toHaveBeenCalled();
+		});
+
+		it('creates the project when the default execution limit cannot be applied', async () => {
+			moduleRegistry.isActive.mockReturnValue(true);
+			executionLimitsService.applyDefaultLimitToNewProject.mockRejectedValueOnce(
+				new Error('limits are down'),
+			);
+
+			const created = await projectService.createTeamProject(user, { name: 'Team' });
+
+			expect(created).toBe(project);
+			expect(logger.error).toHaveBeenCalledWith(
+				'Failed to apply the default execution limit to a new project',
+				{ projectId: 'new-project', error: 'limits are down' },
+			);
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'team-project-created',
+				expect.objectContaining({ userId: 'actor-user' }),
+			);
+		});
+	});
+
 	describe('deleteProject', () => {
 		const user = {
 			id: 'user-1',

@@ -141,6 +141,12 @@ export class ProjectService {
 		);
 	}
 
+	private get executionLimitsService() {
+		return import('@n8n/backend-module-execution-limits').then(({ ExecutionLimitsService }) =>
+			Container.get(ExecutionLimitsService),
+		);
+	}
+
 	private get secretsProvidersConnectionsService() {
 		return import('@/modules/external-secrets.ee/secrets-providers-connections.service.ee.js').then(
 			({ SecretsProvidersConnectionsService }) => Container.get(SecretsProvidersConnectionsService),
@@ -560,6 +566,17 @@ export class ProjectService {
 			throw error;
 		}
 		if (!project) throw new TeamProjectOverQuotaError(limit);
+
+		if (this.moduleRegistry.isActive('execution-limits')) {
+			try {
+				await (await this.executionLimitsService).applyDefaultLimitToNewProject(project.id);
+			} catch (error) {
+				this.logger.error('Failed to apply the default execution limit to a new project', {
+					projectId: project.id,
+					error: error instanceof Error ? error.message : error,
+				});
+			}
+		}
 
 		this.eventService.emit('team-project-created', {
 			userId: adminUser.id,
