@@ -66,6 +66,13 @@ describe('Test HTTP Request Node', () => {
 			completed: true,
 			userId: 26,
 		});
+
+		// Raw JSON body with an integer above Number.MAX_SAFE_INTEGER.
+		// The string is sent verbatim so the test does not round it at the mock level.
+		nock(baseUrl)
+			.get('/big-integer-id')
+			.reply(200, '{"id": 9518930001498675}', { 'content-type': 'application/json' });
+
 		nock(baseUrl).matchHeader('Authorization', 'Bearer 12345').get('/todos/3').reply(200, {
 			id: 3,
 			todo: 'Watch a classic movie',

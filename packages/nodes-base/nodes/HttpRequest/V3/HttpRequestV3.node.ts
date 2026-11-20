@@ -552,7 +552,9 @@ export class HttpRequestV3 implements INodeType {
 					requestOptions.encoding = null;
 					requestOptions.json = false;
 					requestOptions.useStream = true;
-				} else if (bodyContentType === 'raw') {
+				} else if (responseFormat === 'text' || bodyContentType === 'raw') {
+					// A raw stream keeps the HTTP client from JSON-parsing the body, so the
+					// text format can pass it through verbatim (integers above 2^53 stay exact).
 					requestOptions.json = false;
 					// The response arrives as a stream. The paginated helper reads it for paginated requests.
 					// The response loop below reads it for json and text formats.
