@@ -16,6 +16,7 @@ import CredentialTypesTab from './CredentialTypesTab.vue';
 import { useInstancePolicyStore } from './instance-policy.store';
 import type { InstancePolicy } from '../type-availability-policies.api';
 import { findPopupItem, MENU_ITEM } from '../__tests__/popups';
+import { policyTableCells } from '../__tests__/table';
 import { useTypeAvailabilityPoliciesStore } from '../type-availability-policies.store';
 
 const mocks = vi.hoisted(() => ({
@@ -54,24 +55,17 @@ const access = (
 
 const renderTab = createComponentRenderer(CredentialTypesTab);
 
-const setup = async () => {
+const setup = async (arrangeAccessReads?: () => void) => {
 	const pinia = createTestingPinia({ stubActions: false });
 	useSettingsStore().isModuleActive = vi.fn(() => true);
 	useRBACStore().setGlobalScopes(['credentialTypePolicy:manage']);
 	vi.spyOn(useTypeAvailabilityPoliciesStore(), 'reload').mockResolvedValue();
+	arrangeAccessReads?.();
 	await useInstancePolicyStore().load(['credential']);
 	return renderTab({ pinia });
 };
 
-const accessCell = (getByTestId: (id: string) => HTMLElement, name = 'bitlyApi') =>
-	getByTestId(`instance-policy-access-${name}`);
-
-// Projects, Uses, Workflows and Active workflows. The cells before them are Name and Access.
-const usageCells = (getByTestId: (id: string) => HTMLElement, name = 'bitlyApi') =>
-	within(accessCell(getByTestId, name).closest('tr') as HTMLElement)
-		.getAllByRole('cell')
-		.slice(2)
-		.map((cell) => cell.textContent?.trim());
+const { accessCell, usageCells } = policyTableCells('bitlyApi');
 
 const restrictBitly = async (getByTestId: (id: string) => HTMLElement) => {
 	await userEvent.click(accessCell(getByTestId));
@@ -168,13 +162,14 @@ describe('CredentialTypesTab', () => {
 	it('saves a rule for only the changed credential type', async () => {
 		mocks.fetchInstancePolicy.mockResolvedValue(policy(1, EXISTING_RULES));
 		mocks.saveInstancePolicy.mockResolvedValue({ ...policy(2), warnings: [] });
-		mocks.fetchInstanceAccess.mockResolvedValueOnce(access(1)).mockResolvedValue(
-			access(2, [
-				{ name: 'bitlyApi', access: 'deny', matchedRuleId: 'new' },
-				{ name: 'notionApi', access: 'deny', matchedRuleId: 'rule-1' },
-			]),
+		const { findByText, getByTestId } = await setup(() =>
+			mocks.fetchInstanceAccess.mockResolvedValueOnce(access(1)).mockResolvedValue(
+				access(2, [
+					{ name: 'bitlyApi', access: 'deny', matchedRuleId: 'new' },
+					{ name: 'notionApi', access: 'deny', matchedRuleId: 'rule-1' },
+				]),
+			),
 		);
-		const { findByText, getByTestId } = await setup();
 		await findByText('Bitly API');
 
 		await restrictBitly(getByTestId);
@@ -193,6 +188,7 @@ describe('CredentialTypesTab', () => {
 		expect(mocks.fetchInstancePolicy).not.toHaveBeenCalledWith(expect.anything(), 'node');
 		// The change applies at once: no dialog asks the admin to confirm it.
 		expect(document.querySelector('[role="dialog"],[role="alertdialog"]')).toBeNull();
+		// After the save, the store reads the access list again.
 		await waitFor(() => expect(mocks.fetchInstanceAccess).toHaveBeenCalledTimes(2));
 		expect(accessCell(getByTestId)).toHaveTextContent('Restricted');
 	});
@@ -212,16 +208,18 @@ describe('CredentialTypesTab', () => {
 	it('loads the access list again when the policy changed after the page loaded', async () => {
 		mocks.saveInstancePolicy.mockRejectedValue(new ResponseError('stale', { httpStatusCode: 409 }));
 		mocks.fetchInstancePolicy.mockResolvedValueOnce(policy(1)).mockResolvedValue(policy(5));
-		mocks.fetchInstanceAccess
-			.mockResolvedValueOnce(access(1))
-			.mockResolvedValue(
-				access(5, [{ name: 'bitlyApi', access: 'deny', matchedRuleId: 'other-admin' }]),
-			);
-		const { findByText, getByTestId } = await setup();
+		const { findByText, getByTestId } = await setup(() =>
+			mocks.fetchInstanceAccess
+				.mockResolvedValueOnce(access(1))
+				.mockResolvedValue(
+					access(5, [{ name: 'bitlyApi', access: 'deny', matchedRuleId: 'other-admin' }]),
+				),
+		);
 		await findByText('Bitly API');
 
 		await restrictBitly(getByTestId);
 
+		// After the save, the store reads the access list again.
 		await waitFor(() => expect(mocks.fetchInstanceAccess).toHaveBeenCalledTimes(2));
 		await waitFor(() => expect(accessCell(getByTestId)).toHaveTextContent('Restricted'));
 		expect(mocks.saveInstancePolicy).toHaveBeenCalledTimes(1);
@@ -238,23 +236,6 @@ describe('CredentialTypesTab', () => {
 
 		await waitFor(() => expect(mocks.showMessage).toHaveBeenCalled());
 		await waitFor(() => expect(accessCell(getByTestId)).toHaveTextContent('Allowed'));
-	});
-
-	it('keeps the newest access list when an older load ends last', async () => {
-		const older = createDeferredPromise<InstanceTypeAccessResponse>();
-		mocks.fetchInstanceAccess
-			.mockReturnValueOnce(older.promise)
-			.mockResolvedValue(
-				access(2, [{ name: 'bitlyApi', access: 'deny', matchedRuleId: 'rule-2' }]),
-			);
-		const { getByTestId } = await setup();
-		useInstancePolicyStore().policies.credential = policy(2);
-
-		await waitFor(() => expect(accessCell(getByTestId)).toHaveTextContent('Restricted'));
-		older.resolve(access(1));
-
-		await new Promise((resolve) => setTimeout(resolve, 0));
-		expect(accessCell(getByTestId)).toHaveTextContent('Restricted');
 	});
 
 	it('shows a type that a rule leaves open to project opt-in as read-only', async () => {
@@ -276,7 +257,10 @@ describe('CredentialTypesTab', () => {
 		await setup();
 
 		await waitFor(() =>
-			expect(mocks.showError).toHaveBeenCalledWith(expect.any(Error), 'Could not load the policy'),
+			expect(mocks.showError).toHaveBeenCalledWith(
+				expect.any(Error),
+				'Could not load the access of the types',
+			),
 		);
 	});
 

@@ -19,7 +19,7 @@ test.use({
 
 async function mockModel(stack: N8NStack) {
 	const message = {
-		model: 'claude-sonnet-4-5',
+		model: 'claude-sonnet-5-5',
 		id: 'msg_activation',
 		type: 'message',
 		role: 'assistant',
@@ -127,7 +127,7 @@ test.describe(
 			try {
 				const agent = await ingress.agents.create(project.id, {
 					name: `e2e-agent-782-${randomUUID()}`,
-					model: 'anthropic/claude-sonnet-4-5',
+					model: 'anthropic/claude-sonnet-5-5',
 					credential: credential.id,
 					instructions: 'Reply briefly.',
 					integrations: [{ type: 'n8n_chat', credentialId: '' }],

@@ -73,7 +73,11 @@ import { SkillAccessService } from './skill-access.service';
 import { SkillSecurityScanner } from './skill-security-scanner.service';
 import { SkillSourceCredentialsProxy } from './skill-source-credentials-proxy.service';
 import { SkillSyncFlagGate } from './skill-sync-flag-gate';
-import { SkillsTelemetry, type SkillSourceTelemetryReason } from './skills-telemetry.service';
+import {
+	flaggedCodes,
+	SkillsTelemetry,
+	type SkillSourceTelemetryReason,
+} from './skills-telemetry.service';
 
 /** Check now checks a source at most this often. */
 const CHECK_NOW_INTERVAL_MS = 60_000;
@@ -911,13 +915,7 @@ export class SkillSyncService {
 				provider,
 				stage: 'update',
 				verdict: scan.verdict,
-				rule_codes: [
-					...new Set(
-						scan.findings
-							.filter((finding) => finding.severity !== 'info')
-							.map((finding) => finding.rule),
-					),
-				],
+				...flaggedCodes(scan.findings),
 			});
 		}
 		return scan.verdict;

@@ -15,6 +15,7 @@ const operation = (operationId: string, overrides: Partial<SpecOperation> = {}):
 	tag: tag('Workflow'),
 	deprecated: false,
 	paginated: false,
+	emptyResponse: false,
 	parameters: [],
 	blockers: [],
 	...overrides,
@@ -102,6 +103,102 @@ describe('resolveOperations', () => {
 		expect(errors).toEqual([]);
 	});
 
+	it('should report only a required parameter that has the name of a node field', () => {
+		const resourceParameter = (required: boolean) => ({
+			name: 'resource',
+			location: 'query' as const,
+			required,
+			deprecated: false,
+			schema: { type: 'string' },
+		});
+		const { errors } = resolveOperations(
+			spec(
+				operation('getCapabilities', { parameters: [resourceParameter(true)] }),
+				operation('getDiscover', { parameters: [resourceParameter(false)] }),
+			),
+			{ exclude: {} },
+		);
+
+		expect(errors).toEqual([
+			'"getCapabilities" is not in exclude, but the generator cannot build it: parameter name "resource". Add it to exclude with a reason, or add support to the generator.',
+		]);
+	});
+
+	it('should replace a flattened list with the fields of one item, without read-only fields', () => {
+		const relations = {
+			name: 'relations',
+			location: 'body' as const,
+			required: true,
+			deprecated: false,
+			schema: {
+				type: 'array',
+				items: {
+					type: 'object',
+					required: ['userId'],
+					properties: {
+						id: { type: 'string', readOnly: true },
+						userId: { type: 'string' },
+						role: { type: 'string' },
+					},
+				},
+			},
+		};
+		const { rows, errors } = resolveOperations(
+			spec(operation('addUsersToProject', { parameters: [relations] })),
+			{ exclude: {}, flatten: { addUsersToProject: 'relations' } },
+		);
+
+		expect(errors).toEqual([]);
+		expect(rows[0].operation.parameters).toEqual([
+			{
+				name: 'userId',
+				location: 'body',
+				property: 'relations[0].userId',
+				required: true,
+				deprecated: false,
+				schema: { type: 'string' },
+			},
+			{
+				name: 'role',
+				location: 'body',
+				property: 'relations[0].role',
+				required: false,
+				deprecated: false,
+				schema: { type: 'string' },
+			},
+		]);
+	});
+
+	it('should report a flatten entry that the generator cannot apply', () => {
+		const list = (name: string, location: 'body' | 'wholeBody' = 'body') => ({
+			name,
+			location,
+			required: true,
+			deprecated: false,
+			schema: {
+				type: 'array',
+				items: { type: 'object', properties: { name: { type: 'string' } } },
+			},
+		});
+		const name = { ...list('name'), schema: { type: 'string' } };
+		const { errors } = resolveOperations(
+			spec(
+				operation('createUser', { parameters: [list('body', 'wholeBody')] }),
+				operation('createTags', { parameters: [name, list('tags')] }),
+			),
+			{
+				exclude: {},
+				flatten: { createUser: 'body', createTags: 'tags', getTag: 'tags' },
+			},
+		);
+
+		expect(errors).toEqual([
+			'flatten: "createUser" has no body field "body" that is a list of objects.',
+			'flatten: "createTags" gets two fields with the name "name".',
+			'flatten: "getTag" is not an operation in the spec.',
+		]);
+	});
+
 	it('should report two operations in the node with the same summary in one tag', () => {
 		const { errors } = resolveOperations(
 			spec(
@@ -114,6 +211,18 @@ describe('resolveOperations', () => {
 		expect(errors).toEqual([
 			'"Workflow / Publish a workflow" is the name of 2 operations: activateWorkflow, publishWorkflow.',
 		]);
+	});
+
+	it('should accept the same summary when one of the operations is deprecated', () => {
+		const { errors } = resolveOperations(
+			spec(
+				operation('activateWorkflow', { summary: 'Publish a workflow', deprecated: true }),
+				operation('publishWorkflow', { summary: 'Publish a workflow' }),
+			),
+			{ exclude: {} },
+		);
+
+		expect(errors).toEqual([]);
 	});
 
 	it('should accept the same summary when one of the operations is in exclude', () => {

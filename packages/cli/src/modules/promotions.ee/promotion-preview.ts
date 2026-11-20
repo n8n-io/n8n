@@ -28,6 +28,8 @@ import type { PlannedChange } from './apply-preview';
 import type { PackageFile } from './base-branch-files';
 import { PACKAGE_SUBFOLDER } from './constants';
 import { compare } from './package-references';
+import { checkoutBranchName } from './promotions-git.utils';
+import type { PromotionOperationInput } from './promotions.types';
 
 /** One side of the comparison: its manifest, and the Git blob SHA of each file path. */
 export type PreviewSide = {
@@ -529,6 +531,28 @@ export function previewRevision(shown: {
 	return createHash('sha256')
 		.update(canonicalJson({ schemaVersion: PREVIEW_SCHEMA_VERSION, ...shown }))
 		.digest('hex');
+}
+
+/** The environment and branch that a preview reads. Apply sends it back as its expected source. */
+export function previewSource(input: PromotionOperationInput): PromotionPreview['source'] {
+	return { environmentId: input.environmentId, branchName: checkoutBranchName(input.config) };
+}
+
+/**
+ * How the environment of a preview presents itself. The UI shows it, so a user who can only
+ * preview does not need to read the environment settings. It stays out of the revision.
+ */
+export function previewEnvironment(
+	input: PromotionOperationInput,
+): PromotionPreview['environment'] {
+	const { environmentName, providerType, config } = input;
+	return {
+		name: environmentName,
+		providerType,
+		...(config.direction === 'promote'
+			? { createBranchOnPromotion: config.settings.createBranchOnPromotion }
+			: {}),
+	};
 }
 
 /** Parses JSON read from Git. `undefined` when it is not valid JSON. */

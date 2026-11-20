@@ -161,16 +161,22 @@ const tagNames = {
 	nameOf: (id: string) => useTagsStore().tagsById[id]?.name,
 };
 
-// The stores skip a load only after it ends, so callers that start together share one load.
+// The stores skip a load only after it ends, so callers that start together share one load. It
+// waits for both requests, also after one fails, so a retry does not repeat a request that still runs.
 let typeDescriptionsLoad: Promise<void> | undefined;
 
 const typeDescriptions = {
 	load: async () => {
-		typeDescriptionsLoad ??= Promise.all([
+		typeDescriptionsLoad ??= Promise.allSettled([
 			useNodeTypesStore().loadNodeTypesIfNotLoaded(),
 			useCredentialsStore().fetchCredentialTypes(false),
 		])
-			.then(() => undefined)
+			.then((results) => {
+				const failed = results.find(
+					(result): result is PromiseRejectedResult => result.status === 'rejected',
+				);
+				if (failed) throw failed.reason;
+			})
 			.finally(() => {
 				typeDescriptionsLoad = undefined;
 			});

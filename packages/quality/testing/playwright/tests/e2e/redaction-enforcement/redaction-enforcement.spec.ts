@@ -100,7 +100,7 @@ test.describe(
 			await expect(
 				n8n.notifications.getNotificationByTitleOrContent('Data redaction enforced'),
 			).toBeVisible();
-			await expect(n8n.securitySettings.getEnforcementSummary()).toContainText(
+			await expect(n8n.securitySettings.getEnforcementScopeSelect()).toContainText(
 				'Production executions',
 			);
 			expect(await n8n.api.securitySettings.getRedactionFloor()).toBe('production');
@@ -109,7 +109,7 @@ test.describe(
 			await expect(
 				n8n.notifications.getNotificationByTitleOrContent('Redaction scope updated'),
 			).toBeVisible();
-			await expect(n8n.securitySettings.getEnforcementSummary()).toContainText(
+			await expect(n8n.securitySettings.getEnforcementScopeSelect()).toContainText(
 				'Manual and production executions',
 			);
 			expect(await n8n.api.securitySettings.getRedactionFloor()).toBe('all');
