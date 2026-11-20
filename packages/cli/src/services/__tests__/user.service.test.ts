@@ -1318,9 +1318,30 @@ describe('UserService', () => {
 			it('deletes the service account of an agent that is being deleted', async () => {
 				serviceAccountUsage.findAgent.mockResolvedValue({ id: 'agent-1', name: 'Support' });
 
-				await userService.deleteServiceAccount(actor, serviceAccount.id, transfereeProject.id, {
-					security: mock<SecurityContext>({ subIdentityId: 'login-1' }),
-				});
+				const owner = {
+					cleanUp: vi.fn(async () => {}),
+					deleteInTransaction: vi.fn(async () => {}),
+				};
+
+				await userService.deleteServiceAccount(
+					actor,
+					serviceAccount.id,
+					transfereeProject.id,
+					{ security: mock<SecurityContext>({ subIdentityId: 'login-1' }) },
+					owner,
+				);
+
+				// The agent data goes after the work moved. The agent row goes in the
+				// transaction that deletes the account, before the account row.
+				expect(owner.cleanUp.mock.invocationCallOrder[0]).toBeGreaterThan(
+					ownershipTransferService.transferAllResources.mock.invocationCallOrder[0],
+				);
+				expect(owner.deleteInTransaction.mock.invocationCallOrder[0]).toBeGreaterThan(
+					owner.cleanUp.mock.invocationCallOrder[0],
+				);
+				expect(owner.deleteInTransaction.mock.invocationCallOrder[0]).toBeLessThan(
+					userRepository.deleteAccount.mock.invocationCallOrder[0],
+				);
 
 				expect(serviceAccountUsage.findAgent).not.toHaveBeenCalled();
 				expect(ownershipTransferService.transferAllResources).toHaveBeenCalledWith(

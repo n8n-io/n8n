@@ -2,6 +2,7 @@ import { Time } from '@n8n/constants';
 import { clusterTarget, intervalFromSeconds, SystemTask } from '@n8n/decorators';
 import type { SystemTaskSchedule } from '@n8n/decorators';
 
+import { SkillSyncSettingsService } from './skill-sync-settings.service';
 import { SkillSyncService } from './skill-sync.service';
 import { SkillSyncConfig } from '../skill-sync.config';
 
@@ -28,6 +29,7 @@ export class SkillSourceCheckTask implements SystemTask {
 	constructor(
 		config: SkillSyncConfig,
 		private readonly skillSync: SkillSyncService,
+		private readonly skillSyncSettings: SkillSyncSettingsService,
 	) {
 		this.schedule = intervalFromSeconds(config.checkIntervalSeconds);
 		// Spread checks across the interval when instances start together.
@@ -35,6 +37,7 @@ export class SkillSourceCheckTask implements SystemTask {
 	}
 
 	async run(signal: AbortSignal): Promise<void> {
+		if (!this.skillSyncSettings.isEnabled()) return;
 		await this.skillSync.checkAll(signal);
 	}
 }

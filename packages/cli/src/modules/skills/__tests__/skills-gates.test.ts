@@ -9,6 +9,7 @@ import { mock } from 'vitest-mock-extended';
 import { AssistantSkillsFlagGate } from '../services/assistant-skills-flag-gate';
 import type { SkillUsage } from '../services/skill-usage.contracts';
 import { SkillSyncFlagGate } from '../services/skill-sync-flag-gate';
+import type { SkillSyncSettingsService } from '../services/skill-sync-settings.service';
 import { SkillUsageProxy } from '../services/skill-usage-proxy.service';
 import { SkillsGate } from '../services/skills-gate';
 
@@ -27,8 +28,10 @@ describe('skills gates', () => {
 		const skillsGate = new SkillsGate(proxy, moduleRegistry);
 		const postHog = mock<PostHogClient>();
 		const assistantGate = new AssistantSkillsFlagGate(skillsGate, postHog);
-		const syncGate = new SkillSyncFlagGate(skillsGate, postHog);
-		return { proxy, skillsGate, postHog, assistantGate, syncGate };
+		const skillSyncSettings = mock<SkillSyncSettingsService>();
+		skillSyncSettings.isEnabled.mockReturnValue(true);
+		const syncGate = new SkillSyncFlagGate(skillsGate, postHog, skillSyncSettings);
+		return { proxy, skillsGate, postHog, assistantGate, syncGate, skillSyncSettings };
 	}
 
 	const user = mock<User>({ id: 'user-1' });
@@ -126,6 +129,32 @@ describe('skills gates', () => {
 			expect(postHog.getFeatureFlags).toHaveBeenCalledWith(user);
 		},
 	);
+
+	it.each([
+		{ flag: true, switchOn: true, expected: true },
+		{ flag: true, switchOn: false, expected: false },
+		{ flag: false, switchOn: true, expected: false },
+		{ flag: false, switchOn: false, expected: false },
+	])(
+		'turns Skill Sync on only with the flag and the switch on (flag: $flag, switch: $switchOn)',
+		async ({ flag, switchOn, expected }) => {
+			const { proxy, postHog, syncGate, skillSyncSettings } = createGates();
+			postHog.getFeatureFlags.mockResolvedValue({ [SKILL_SYNC_FLAG]: flag });
+			skillSyncSettings.isEnabled.mockReturnValue(switchOn);
+			proxy.register(mock<SkillUsage>());
+
+			expect(await syncGate.isEnabled(user)).toBe(expected);
+		},
+	);
+
+	it('answers 404 while the Skill Sync switch is off', async () => {
+		const { proxy, postHog, syncGate, skillSyncSettings } = createGates();
+		postHog.getFeatureFlags.mockResolvedValue({ [SKILL_SYNC_FLAG]: true });
+		skillSyncSettings.isEnabled.mockReturnValue(false);
+		proxy.register(mock<SkillUsage>());
+
+		await expect(syncGate.assertEnabled(user)).rejects.toThrow(NotFoundError);
+	});
 
 	it('answers 404 for a user without the Skill Sync flag', async () => {
 		const { proxy, postHog, syncGate } = createGates();

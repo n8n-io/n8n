@@ -30,6 +30,7 @@ import {
 } from '../../testing';
 import { linkSkill } from '../test-utils/skill-source-fixtures';
 
+import { createAgent } from '@test-integration/db/agents';
 import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
 import { createMember, createOwner } from '@test-integration/db/users';
 import type { SuperAgentTest } from '@test-integration/types';
@@ -131,16 +132,14 @@ describe('Delete a skill source', () => {
 	) {
 		const agents = Container.get(AgentRepository);
 		const versionId = randomUUID();
-		const agent = await agents.save(
-			agents.create({
-				id: randomUUID(),
-				name,
-				projectId,
-				integrations: [],
-				tools: {},
-				versionId,
-			}),
-		);
+		const agent = await createAgent({
+			id: randomUUID(),
+			name,
+			projectId,
+			integrations: [],
+			tools: {},
+			versionId,
+		});
 		const refs = Container.get(AgentSkillRepository);
 		if (published) {
 			await db().save(AgentHistory, { versionId, agentId: agent.id, author: 'Test' });

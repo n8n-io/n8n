@@ -131,16 +131,6 @@ reclaim idle remote sandboxes.
 
 Observer and Reflector run on the utility model (`N8N_INSTANCE_AI_UTILITY_MODEL`, see Core). Without a utility model they use the orchestrator agent's model.
 
-### Builder templates
-
-These environment variables are read directly by `BuilderTemplatesService`.
-
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
-| `N8N_INSTANCE_AI_TEMPLATES_URL` | string | `https://sdk-templates.n8n.io` | Override the builder-template CDN base URL |
-| `N8N_INSTANCE_AI_TEMPLATES_REFRESH_HOURS` | number | `24` | Refresh interval in hours. Invalid or non-positive values use 24 hours |
-| `N8N_INSTANCE_AI_TEMPLATES_DISABLED` | boolean | `false` | Disable remote builder templates |
-
 ### Lifecycle & Housekeeping
 
 | Variable | Type | Default | Description |

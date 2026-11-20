@@ -1034,6 +1034,41 @@ describe('LogStreamingEventRelay', () => {
 		});
 	});
 
+	describe('sso events', () => {
+		it('should log on `sso-settings-updated` event', () => {
+			const event: RelayEventMap['sso-settings-updated'] = {
+				user: {
+					id: '123',
+					email: 'owner@example.com',
+					firstName: 'Olga',
+					lastName: 'Owner',
+					role: { slug: 'global:owner' },
+				},
+				protocol: 'oidc',
+				loginEnabled: false,
+				fieldsChanged: ['clientSecret', 'loginEnabled'],
+				publicApi: true,
+			};
+
+			eventService.emit('sso-settings-updated', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.sso.settings.updated',
+				payload: {
+					userId: '123',
+					_email: 'owner@example.com',
+					_firstName: 'Olga',
+					_lastName: 'Owner',
+					globalRole: 'global:owner',
+					protocol: 'oidc',
+					loginEnabled: false,
+					fieldsChanged: ['clientSecret', 'loginEnabled'],
+					publicApi: true,
+				},
+			});
+		});
+	});
+
 	describe('user events', () => {
 		it('should log on `user-updated` event', () => {
 			const event: RelayEventMap['user-updated'] = {
@@ -3397,6 +3432,36 @@ describe('LogStreamingEventRelay', () => {
 			});
 		});
 
+		it.each([
+			[true, 'n8n.audit.workflow-reviews.approval-required.enabled'],
+			[false, 'n8n.audit.workflow-reviews.approval-required.disabled'],
+		])('should log the approval requirement set to %s as `%s`', (value, eventName) => {
+			const event: RelayEventMap['instance-policies-updated'] = {
+				user: {
+					id: 'user707',
+					email: 'admin10@example.com',
+					firstName: 'Tenth',
+					lastName: 'Admin',
+					role: { slug: 'global:owner' },
+				},
+				settingName: 'workflow_reviews_approval_required',
+				value,
+			};
+
+			eventService.emit('instance-policies-updated', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName,
+				payload: {
+					userId: 'user707',
+					_email: 'admin10@example.com',
+					_firstName: 'Tenth',
+					_lastName: 'Admin',
+					globalRole: 'global:owner',
+				},
+			});
+		});
+
 		it('should log `public-api-rate-limit.enabled` when public_api_rate_limit is turned on', () => {
 			const event: RelayEventMap['instance-policies-updated'] = {
 				user: {
@@ -3992,6 +4057,46 @@ describe('LogStreamingEventRelay', () => {
 			);
 		});
 	});
+	describe('provisioning settings events', () => {
+		const user = {
+			id: 'user-1',
+			email: 'owner@n8n.io',
+			firstName: 'Own',
+			lastName: 'Er',
+			role: { slug: 'global:owner' },
+		};
+		const redactedUser = {
+			userId: 'user-1',
+			_email: 'owner@n8n.io',
+			_firstName: 'Own',
+			_lastName: 'Er',
+			globalRole: 'global:owner',
+		};
+
+		it('should log a provisioning settings save with the state after it', () => {
+			eventService.emit('provisioning-settings-updated', {
+				user,
+				authenticationMethod: 'oidc',
+				assignmentMethod: 'instance_role',
+				roleMappingMethod: 'idp_rule_mapping',
+				instanceRuleCount: 0,
+				projectRuleCount: 0,
+			});
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.provisioning.settings.updated',
+				payload: {
+					...redactedUser,
+					authenticationMethod: 'oidc',
+					assignmentMethod: 'instance_role',
+					roleMappingMethod: 'idp_rule_mapping',
+					instanceRuleCount: 0,
+					projectRuleCount: 0,
+				},
+			});
+		});
+	});
+
 	describe('SCIM events', () => {
 		const user = {
 			id: 'user-1',

@@ -473,6 +473,10 @@ user how to edit the skill, or whom to ask. A skill that the user can use but
 not edit opens this way. Hide Save. Keep `Detach` for an attached skill, and
 `Add skill` for a preview of a skill that is not attached.
 
+Render Mermaid code blocks as diagrams in the skill view. Keep the source in a
+collapsed section below each diagram. If a block cannot render, show its source
+as code. Keep the original Markdown in the editor.
+
 A skill that the draft pins to an older version also opens read-only, with
 the hint that the agent uses an older version. Its primary action is
 `Use latest version`. The action removes the pin, saves the draft, and opens

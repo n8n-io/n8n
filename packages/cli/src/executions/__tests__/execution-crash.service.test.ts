@@ -1,4 +1,4 @@
-import type { EventService } from '@n8n/backend-services';
+import type { EventService, ExecutionLedger } from '@n8n/backend-services';
 import type { CrashedExecution, ExecutionRepository } from '@n8n/db';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
@@ -11,12 +11,14 @@ describe('ExecutionCrashService', () => {
 	const workflowStatisticsService = mock<WorkflowStatisticsService>();
 	const eventService = mock<EventService>();
 	const instanceSettings = mock<InstanceSettings>({ hostId: 'main-1' });
+	const executionLedger = mock<ExecutionLedger>({ isEnabled: true });
 
 	const crashService = new ExecutionCrashService(
 		executionRepository,
 		workflowStatisticsService,
 		eventService,
 		instanceSettings,
+		executionLedger,
 	);
 
 	const startedAt = new Date('2025-01-01T00:00:00.000Z');
@@ -78,9 +80,25 @@ describe('ExecutionCrashService', () => {
 
 	const emitted = () => workflowStatisticsService.emit.mock.calls;
 	const announced = () => eventService.emit.mock.calls;
+	const recordedBatches = () =>
+		executionLedger.recordEndedInSequence.mock.calls.map(([facts]) => facts);
+	const recordedEnded = () => recordedBatches().flat();
+
+	const endedFactsOf = (execution: CrashedExecution, rowStoppedAt = execution.stoppedAt) => ({
+		executionId: execution.id,
+		workflowId: execution.workflowId,
+		workflowName: execution.workflowName,
+		mode: execution.mode,
+		occurredAt: rowStoppedAt,
+		outcome: 'crashed',
+		runtimeMs: rowStoppedAt.getTime() - startedAt.getTime(),
+		timeSavedMin: 0,
+	});
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		executionLedger.recordEndedInSequence.mockResolvedValue();
+		Object.assign(executionLedger, { isEnabled: true });
 	});
 
 	test('reports the executions it transitioned for counting', async () => {
@@ -287,6 +305,120 @@ describe('ExecutionCrashService', () => {
 			await crashService.announceStalledExecution('1');
 
 			expect(announced()).toEqual([]);
+			expect(executionLedger.recordEndedInSequence).not.toHaveBeenCalled();
+		});
+
+		test('records the ended row of the stalled run with the workflow name', async () => {
+			executionRepository.findSingleExecution.mockResolvedValue({
+				id: '1',
+				workflowId: 'workflow-1',
+				mode: 'trigger',
+				status: 'crashed',
+				startedAt,
+				stoppedAt,
+			} as never);
+
+			await crashService.announceStalledExecution('1', 'Stalled workflow');
+
+			await vi.waitFor(() =>
+				expect(recordedEnded()).toEqual([
+					endedFactsOf(crashedExecution('1', { workflowName: 'Stalled workflow' })),
+				]),
+			);
+		});
+	});
+
+	describe('ledger ended rows', () => {
+		test('records an ended row for each execution it crashed', async () => {
+			const first = crashedExecution('1');
+			const second = crashedExecution('2');
+			transitions([first, second]);
+
+			await crashService.markAsCrashed(['1', '2'], 'queue-recovery');
+
+			await vi.waitFor(() =>
+				expect(recordedEnded()).toEqual([endedFactsOf(first), endedFactsOf(second)]),
+			);
+		});
+
+		test('records the ended row with the stop time the caller gives', async () => {
+			const first = crashedExecution('1');
+			const lastNodeStoppedAt = new Date('2025-01-01T00:00:30.000Z');
+			transitions([first]);
+
+			await crashService.markAsCrashedWithoutCounting('1', 'startup-recovery', {
+				stoppedAt: lastNodeStoppedAt,
+			});
+
+			await vi.waitFor(() =>
+				expect(recordedEnded()).toEqual([endedFactsOf(first, lastNodeStoppedAt)]),
+			);
+		});
+
+		test('records an ended row for each execution of a deactivated workflow', async () => {
+			const first = crashedExecution('1');
+			executionRepository.markWorkflowExecutionsAsCrashed.mockResolvedValue([first]);
+
+			await crashService.markWorkflowExecutionsAsCrashed('workflow-1');
+
+			await vi.waitFor(() => expect(recordedEnded()).toEqual([endedFactsOf(first)]));
+		});
+
+		test('records an ended row for a waiting execution that ran out of resume attempts', async () => {
+			const waiting = crashedExecution('1', { mode: 'webhook' });
+			executionRepository.markAsCrashedFrom.mockImplementation(async (_id, _status, options) => {
+				options?.onTransitioned?.([waiting]);
+				return await Promise.resolve(true);
+			});
+
+			await crashService.markAsCrashedFrom('1', 'waiting', 'resume-limit', 2);
+
+			await vi.waitFor(() => expect(recordedEnded()).toEqual([endedFactsOf(waiting)]));
+		});
+
+		test('sends a never-started execution as blocked with the reason startFailed', async () => {
+			transitions([crashedExecution('1', { startedAt: null })]);
+
+			await crashService.markAsCrashed(['1'], 'start-failure');
+
+			await vi.waitFor(() =>
+				expect(recordedEnded()).toMatchObject([{ outcome: 'blocked', blockedBy: 'startFailed' }]),
+			);
+			expect(recordedEnded()[0]).not.toHaveProperty('runtimeMs');
+		});
+
+		test('hands each batch to the ledger in one call', async () => {
+			executionRepository.markAsCrashed.mockImplementation(async (_ids, onBatchTransitioned) => {
+				onBatchTransitioned?.([crashedExecution('1'), crashedExecution('2')]);
+				onBatchTransitioned?.([crashedExecution('3')]);
+				return await Promise.resolve([]);
+			});
+
+			await crashService.markAsCrashed(['1', '2', '3'], 'queue-recovery');
+
+			expect(recordedBatches().map((batch) => batch.map((facts) => facts.executionId))).toEqual([
+				['1', '2'],
+				['3'],
+			]);
+		});
+
+		test('passes the project id of the execution to the ledger', async () => {
+			transitions([
+				crashedExecution('1', { project: { id: 'project-1', customTelemetryTags: [] } }),
+			]);
+
+			await crashService.markAsCrashed(['1'], 'queue-recovery');
+
+			expect(recordedEnded()).toMatchObject([{ projectId: 'project-1' }]);
+		});
+
+		test('records nothing when the ledger module is off', async () => {
+			Object.assign(executionLedger, { isEnabled: false });
+			transitions([crashedExecution('1')]);
+
+			await crashService.markAsCrashed(['1'], 'queue-recovery');
+
+			expect(executionLedger.recordEndedInSequence).not.toHaveBeenCalled();
 		});
 	});
 });

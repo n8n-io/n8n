@@ -4,6 +4,7 @@ import type { Settings } from '@n8n/db';
 import { SettingsRepository } from '@n8n/db';
 
 import config from '@/config';
+import { License } from '@/license';
 import { AiUsageService } from '@/services/ai-usage.service';
 import { CacheService } from '@n8n/backend-services';
 
@@ -12,10 +13,16 @@ vi.mock('@/config', () => ({ default: { set: vi.fn() } }));
 describe('AiUsageService', () => {
 	const settingsRepository = mockInstance(SettingsRepository);
 	const cacheService = mockInstance(CacheService);
+	const license = mockInstance(License);
 
 	const globalConfig = { ai: { allowSendingParameterValues: true } } as GlobalConfig;
 
-	const aiUsageService = new AiUsageService(settingsRepository, cacheService, globalConfig);
+	const aiUsageService = new AiUsageService(
+		settingsRepository,
+		cacheService,
+		globalConfig,
+		license,
+	);
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -126,6 +133,61 @@ describe('AiUsageService', () => {
 			);
 			expect(cacheService.set).toHaveBeenCalledWith('ai.allowSendingParameterValues', 'false');
 			expect(config.set).toHaveBeenCalledWith('ai.allowSendingParameterValues', false);
+		});
+	});
+
+	describe('isModelTrainingAllowed()', () => {
+		// Each plan's default is the opposite of the stored choice, so only the stored value can pass.
+		it.each([
+			['true', true, true],
+			['false', false, false],
+		])(
+			'should return the stored choice %s over the plan default (Enterprise: %s)',
+			async (stored, isEnterprise, expected) => {
+				license.isEnterprisePlan.mockReturnValue(isEnterprise);
+				cacheService.get.mockResolvedValue(undefined);
+				settingsRepository.findByKey.mockResolvedValue({ value: stored } as Settings);
+
+				expect(await aiUsageService.isModelTrainingAllowed()).toBe(expected);
+				expect(cacheService.set).toHaveBeenCalledWith('ai.allowModelTraining', stored);
+			},
+		);
+
+		it.each([
+			[false, true],
+			[true, false],
+		])(
+			'should default by plan when no choice is stored (Enterprise: %s)',
+			async (isEnterprise, expected) => {
+				license.isEnterprisePlan.mockReturnValue(isEnterprise);
+				cacheService.get.mockResolvedValue(undefined);
+				settingsRepository.findByKey.mockResolvedValue(null);
+
+				expect(await aiUsageService.isModelTrainingAllowed()).toBe(expected);
+				expect(cacheService.set).toHaveBeenCalledWith('ai.allowModelTraining', 'unset');
+			},
+		);
+
+		it('should resolve the plan default on each read when the cache holds no choice', async () => {
+			cacheService.get.mockResolvedValue('unset');
+			license.isEnterprisePlan.mockReturnValue(false);
+			expect(await aiUsageService.isModelTrainingAllowed()).toBe(true);
+
+			license.isEnterprisePlan.mockReturnValue(true);
+			expect(await aiUsageService.isModelTrainingAllowed()).toBe(false);
+			expect(settingsRepository.findByKey).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('updateModelTrainingSetting()', () => {
+		it('should store the choice and update the cache', async () => {
+			await aiUsageService.updateModelTrainingSetting(false);
+
+			expect(settingsRepository.upsert).toHaveBeenCalledWith(
+				{ key: 'ai.allowModelTraining', value: 'false', loadOnStartup: false },
+				['key'],
+			);
+			expect(cacheService.set).toHaveBeenCalledWith('ai.allowModelTraining', 'false');
 		});
 	});
 });

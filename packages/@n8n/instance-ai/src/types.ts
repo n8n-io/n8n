@@ -89,7 +89,6 @@ import type {
 	WorkflowVerificationEvidence,
 	WorkflowTriggerVerificationProgress,
 } from './workflow-loop/workflow-loop-state';
-import type { BuilderTemplatesService } from './workspace/builder-templates-service';
 
 // ── Data shapes ──────────────────────────────────────────────────────────────
 
@@ -1805,8 +1804,6 @@ export interface InstanceAiContext {
 		executionId?: string;
 	}) => Promise<{ title: string; sessionNumber: number; transcript: string } | null>;
 	webResearchService?: InstanceAiWebResearchService;
-	/** Curated workflow-template provider — materializes `knowledge-base/templates/` in the sandbox. */
-	templatesService?: BuilderTemplatesService;
 	workspaceService?: InstanceAiWorkspaceService;
 	workflowTemplateService: InstanceAiWorkflowTemplateService;
 	/**
@@ -2124,6 +2121,8 @@ export interface ServiceProxyConfig {
 	 * transparently refreshed during long-running agent turns.
 	 */
 	getAuthHeaders: () => Promise<Record<string, string>>;
+	/** Tags added to every span exported through the LangSmith proxy. Other proxies ignore them. */
+	traceTags?: string[];
 }
 
 // ── LangSmith tracing ────────────────────────────────────────────────────────

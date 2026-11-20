@@ -2690,6 +2690,61 @@ describe('TelemetryEventRelay', () => {
 				role: 'global:admin',
 			});
 		});
+
+		it('should track on `sso-settings-updated` event', () => {
+			const event: RelayEventMap['sso-settings-updated'] = {
+				user: {
+					id: 'user123',
+					email: 'owner@example.com',
+					firstName: 'Olga',
+					lastName: 'Owner',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
+				},
+				protocol: 'saml',
+				loginEnabled: true,
+				fieldsChanged: ['metadata', 'loginEnabled'],
+				publicApi: false,
+			};
+
+			eventService.emit('sso-settings-updated', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith(TELEMETRY_EVENT.SSO.USER_UPDATED_SSO_SETTINGS, {
+				user_id: 'user123',
+				authentication_method: 'saml',
+				is_active: true,
+				fields_changed: ['metadata', 'loginEnabled'],
+				public_api: false,
+			});
+		});
+
+		it('should track on `provisioning-settings-updated` event', () => {
+			eventService.emit('provisioning-settings-updated', {
+				user: { id: 'user123', email: 'user@example.com', role: { slug: GLOBAL_OWNER_ROLE.slug } },
+				authenticationMethod: 'saml',
+				assignmentMethod: 'instance_and_project_roles',
+				roleMappingMethod: 'n8n_rule_mapping',
+				instanceRuleCount: 2,
+				projectRuleCount: 1,
+			});
+
+			const [, properties] = telemetry.track.mock.calls.find(
+				([event]) =>
+					(event as unknown) === TELEMETRY_EVENT.PROVISIONING.USER_UPDATED_PROVISIONING_SETTINGS,
+			)!;
+			expect(properties).toEqual({
+				user_id: 'user123',
+				authentication_method: 'saml',
+				assignment_method: 'instance_and_project_roles',
+				role_mapping_method: 'n8n_rule_mapping',
+				instance_rule_count: 2,
+				project_rule_count: 1,
+			});
+			expect(
+				TELEMETRY_EVENT.PROVISIONING.USER_UPDATED_PROVISIONING_SETTINGS.getValidationError(
+					properties,
+				),
+			).toBeNull();
+		});
 	});
 
 	describe('workflow events', () => {

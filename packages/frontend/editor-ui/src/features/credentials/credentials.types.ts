@@ -1,4 +1,10 @@
-import type { CreateCredentialDto, Iso8601DateTimeString } from '@n8n/api-types';
+import type {
+	CreateCredentialDto,
+	CredentialRestriction,
+	CredentialTypeAvailability,
+	Iso8601DateTimeString,
+} from '@n8n/api-types';
+import type { TypeRestriction } from '@n8n/frontend-module-type-availability-policies';
 import type { ICredentialsEncrypted, ICredentialType } from 'n8n-workflow';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import type { Scope } from '@n8n/permissions';
@@ -6,6 +12,10 @@ import type { IUserResponse } from '@n8n/rest-api-client/api/users';
 import type { CredentialPayload } from '@n8n/frontend-module-sdk';
 
 export type { CredentialPayload };
+
+export type CredentialTypeUsability =
+	| { reason: 'typeRestricted'; restriction: CredentialTypeAvailability }
+	| { reason: 'nodesRestricted'; restriction: TypeRestriction; nodeTypeNames: string[] };
 
 export interface ICredentialsResponse
 	extends ICredentialsEncrypted,
@@ -39,6 +49,8 @@ export interface ICredentialsResponse
 	connectedAccountIdentifier?: string;
 	/** Total number of users connected to this credential. Set on resolvable credentials only. */
 	connectedUserCount?: number;
+	/** Why workflows cannot use it, in the listed project or else its home project. Set when the list asks for restrictions. */
+	restriction?: CredentialRestriction;
 }
 
 export interface IUsedCredential {
