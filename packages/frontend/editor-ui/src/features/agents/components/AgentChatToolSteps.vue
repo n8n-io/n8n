@@ -22,6 +22,7 @@ import {
 import type { ToolCall } from '@/features/ai/shared/agentsChat/types';
 import AiReasoningBlock from '@/features/ai/shared/components/AiReasoningBlock.vue';
 import ToolDataBlock from '@/features/ai/shared/components/ToolDataBlock/ToolDataBlock.vue';
+import ToolDataSection from '@/features/ai/shared/components/ToolDataBlock/ToolDataSection.vue';
 import type { AgentFixWithAssistantFailure } from '../types';
 import { useSubAgentNames } from '../composables/useSubAgentNames';
 import { isCompactToolName, resolveToolNameForDisplay } from '../utils/toolDisplayName';
@@ -354,23 +355,23 @@ function hasActiveToolCall(): boolean {
 							:class="$style.answer"
 						/>
 						<div v-if="view.hasRawData" :class="$style.toolDataList">
-							<div v-if="tc.input !== undefined" :class="$style.toolDataSection">
-								<span :class="$style.toolDataLabel">
-									{{ i18n.baseText('agentSessions.timeline.input') }}
-								</span>
+							<ToolDataSection
+								v-if="tc.input !== undefined"
+								:label="i18n.baseText('agentSessions.timeline.input')"
+							>
 								<ToolDataBlock :value="tc.input" />
-							</div>
-							<div v-if="showToolOutput(tc)" :class="$style.toolDataSection">
-								<span :class="$style.toolDataLabel">
-									{{ i18n.baseText('agentSessions.timeline.output') }}
-								</span>
+							</ToolDataSection>
+							<template v-if="showToolOutput(tc)">
 								<component
 									:is="toolOutputComponent(tc)"
 									v-if="toolOutputComponent(tc)"
 									:tool-call="tc"
+									:label="i18n.baseText('agentSessions.timeline.output')"
 								/>
-								<ToolDataBlock v-else :value="tc.output" />
-							</div>
+								<ToolDataSection v-else :label="i18n.baseText('agentSessions.timeline.output')">
+									<ToolDataBlock :value="tc.output" />
+								</ToolDataSection>
+							</template>
 						</div>
 					</N8nAiActivityStep>
 					<AgentChatMessageAttachments
@@ -438,23 +439,23 @@ function hasActiveToolCall(): boolean {
 							:class="$style.answer"
 						/>
 						<div v-if="view.hasRawData" :class="$style.toolDataList">
-							<div v-if="tc.input !== undefined" :class="$style.toolDataSection">
-								<span :class="$style.toolDataLabel">
-									{{ i18n.baseText('agentSessions.timeline.input') }}
-								</span>
+							<ToolDataSection
+								v-if="tc.input !== undefined"
+								:label="i18n.baseText('agentSessions.timeline.input')"
+							>
 								<ToolDataBlock :value="tc.input" />
-							</div>
-							<div v-if="showToolOutput(tc)" :class="$style.toolDataSection">
-								<span :class="$style.toolDataLabel">
-									{{ i18n.baseText('agentSessions.timeline.output') }}
-								</span>
+							</ToolDataSection>
+							<template v-if="showToolOutput(tc)">
 								<component
 									:is="toolOutputComponent(tc)"
 									v-if="toolOutputComponent(tc)"
 									:tool-call="tc"
+									:label="i18n.baseText('agentSessions.timeline.output')"
 								/>
-								<ToolDataBlock v-else :value="tc.output" />
-							</div>
+								<ToolDataSection v-else :label="i18n.baseText('agentSessions.timeline.output')">
+									<ToolDataBlock :value="tc.output" />
+								</ToolDataSection>
+							</template>
 						</div>
 					</template>
 				</N8nAiActivityStep>
@@ -562,22 +563,9 @@ function hasActiveToolCall(): boolean {
 .toolDataList {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--4xs);
+	gap: var(--spacing--xs);
 	margin-bottom: var(--spacing--xs);
 	max-width: min(520px, calc(100vw - var(--spacing--4xl)));
-}
-
-.toolDataSection {
-	min-width: 0;
-	user-select: text;
-}
-
-.toolDataLabel {
-	display: block;
-	font-size: var(--font-size--2xs);
-	line-height: var(--line-height--sm);
-	color: var(--text-color--subtle);
-	margin-bottom: var(--spacing--5xs);
 }
 </style>
 

@@ -22,9 +22,12 @@ const toolCall = {
 };
 
 describe('AssistantToolResultTable', () => {
-	it('shows the rows of the output as a table', () => {
-		const { container, queryByTestId } = renderComponent({ props: { toolCall } });
+	it('shows the rows of the output as a table under the label', () => {
+		const { container, getByText, queryByTestId } = renderComponent({
+			props: { toolCall, label: 'Output' },
+		});
 
+		expect(getByText('Output')).toBeInTheDocument();
 		const headers = [...container.querySelectorAll('th')].map((th) => th.textContent?.trim());
 		expect(headers).toEqual(['id', 'name']);
 		expect(container.querySelectorAll('tbody tr')).toHaveLength(2);
@@ -33,7 +36,9 @@ describe('AssistantToolResultTable', () => {
 	});
 
 	it('switches to the raw JSON', async () => {
-		const { container, getByRole, getByTestId } = renderComponent({ props: { toolCall } });
+		const { container, getByRole, getByTestId } = renderComponent({
+			props: { toolCall, label: 'Output' },
+		});
 
 		await fireEvent.click(getByRole('radio', { name: 'JSON' }));
 

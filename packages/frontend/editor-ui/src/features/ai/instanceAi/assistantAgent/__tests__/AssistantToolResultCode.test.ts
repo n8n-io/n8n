@@ -22,7 +22,9 @@ const toolCall = {
 
 describe('AssistantToolResultCode', () => {
 	it('shows the workflow code as highlighted TypeScript, not as JSON', async () => {
-		const { container, findByText, queryByTestId } = renderComponent({ props: { toolCall } });
+		const { container, findByText, queryByTestId } = renderComponent({
+			props: { toolCall, label: 'Output' },
+		});
 
 		await findByText(/Daily report/);
 		expect(container.querySelector('.hljs-keyword')?.textContent).toBe('const');
@@ -31,7 +33,7 @@ describe('AssistantToolResultCode', () => {
 	});
 
 	it('switches to the raw JSON with the fields that the code leaves out', async () => {
-		const { getByRole, getByTestId } = renderComponent({ props: { toolCall } });
+		const { getByRole, getByTestId } = renderComponent({ props: { toolCall, label: 'Output' } });
 
 		await fireEvent.click(getByRole('radio', { name: 'JSON' }));
 

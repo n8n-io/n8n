@@ -1,10 +1,11 @@
 <script lang="ts" setup>
-import { N8nCodeBlock, N8nSegmentControl } from '@n8n/design-system';
+import { N8nCodeBlock } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 
 import type { ToolCall } from '@/features/ai/shared/agentsChat/types';
 import ToolDataBlock from '@/features/ai/shared/components/ToolDataBlock/ToolDataBlock.vue';
+import ToolDataViews from '@/features/ai/shared/components/ToolDataBlock/ToolDataViews.vue';
 
 import { getAssistantToolCallCode } from './assistantCodeToolResults';
 
@@ -15,45 +16,27 @@ import { getAssistantToolCallCode } from './assistantCodeToolResults';
  */
 const props = defineProps<{
 	toolCall: ToolCall;
+	label: string;
 }>();
 
-type OutputView = 'code' | 'json';
-
 const i18n = useI18n();
-const view = ref<OutputView>('code');
 
 const code = computed(() => getAssistantToolCallCode(props.toolCall));
-const viewOptions = computed(() => [
-	{ label: i18n.baseText('instanceAi.toolResult.view.code'), value: 'code' as const },
-	{ label: i18n.baseText('instanceAi.toolResult.view.json'), value: 'json' as const },
-]);
 </script>
 
 <template>
-	<div :class="$style.output" data-test-id="assistant-tool-result-code">
-		<N8nSegmentControl v-model="view" :options="viewOptions" size="mini" :class="$style.toggle" />
-		<N8nCodeBlock
-			v-if="view === 'code' && code"
-			:code="code"
-			language="typescript"
-			:class="$style.code"
-		/>
+	<ToolDataViews
+		:label="label"
+		:value="toolCall.output"
+		:view-label="i18n.baseText('instanceAi.toolResult.view.code')"
+		data-test-id="assistant-tool-result-code"
+	>
+		<N8nCodeBlock v-if="code" :code="code" language="typescript" :class="$style.code" />
 		<ToolDataBlock v-else :value="toolCall.output" />
-	</div>
+	</ToolDataViews>
 </template>
 
 <style module>
-.output {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--4xs);
-	min-width: 0;
-}
-
-.toggle {
-	align-self: flex-start;
-}
-
 .code {
 	font-size: var(--font-size--2xs);
 	background-color: var(--background--surface);
