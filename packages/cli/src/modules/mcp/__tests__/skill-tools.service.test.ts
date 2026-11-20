@@ -193,6 +193,30 @@ describe('McpSkillToolsService', () => {
 			});
 		});
 
+		it('lists a binary file without its content', async () => {
+			skillService.get.mockResolvedValue({
+				...detail,
+				skill: {
+					...detail.skill,
+					references: [
+						{ path: 'assets/logo.png', content: 'AP8=', isBinary: true },
+						{ path: 'references/tone.md', content: 'Warm.' },
+					],
+				},
+			});
+
+			const result = await callTool('get_skill', { skillId: 'skill_a' });
+
+			expect((result.structuredContent as { skill: unknown }).skill).toEqual({
+				...detail.skill,
+				references: [
+					{ path: 'assets/logo.png', isBinary: true, characterCount: 4 },
+					{ path: 'references/tone.md', content: 'Warm.' },
+				],
+			});
+			expect(JSON.stringify(result)).not.toContain('AP8=');
+		});
+
 		it('reports a skill the user cannot read as an error', async () => {
 			skillService.get.mockRejectedValue(new Error('Skill not found'));
 
@@ -302,6 +326,8 @@ describe('McpSkillToolsService', () => {
 				'skill_a',
 				{ baseSkillHash: 'hash-2', instructions: 'Be kinder.', availableToAssistant: true },
 				'mcp',
+				// A client reads no binary content, so its update must not drop the binary files.
+				{ keepUnnamedBinaryFiles: true },
 			);
 			expect(result.structuredContent).toEqual({
 				id: 'skill_a',
@@ -326,6 +352,7 @@ describe('McpSkillToolsService', () => {
 				'skill_a',
 				{ baseSkillHash: 'hash-2', availableToMCP: true },
 				'mcp',
+				{ keepUnnamedBinaryFiles: true },
 			);
 		});
 

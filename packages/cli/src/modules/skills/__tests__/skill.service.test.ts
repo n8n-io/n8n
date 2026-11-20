@@ -982,6 +982,66 @@ describe('SkillService', () => {
 		});
 	});
 
+	describe('update by a caller that reads no binary content', () => {
+		const skill = skillRow('skill_a', { projectId: PROJECT });
+		const stored = versionRow(skill, 2, {}, [
+			{ path: 'assets/logo.png', content: 'AP8=', isBinary: true },
+			{ path: 'assets/old.png', content: 'AP4=', isBinary: true },
+			{ path: 'references/tone.md', content: 'Warm.' },
+		]);
+		let saveTrusted: ReturnType<typeof vi.spyOn>;
+
+		beforeEach(() => {
+			vi.spyOn(access, 'requireAccess').mockResolvedValue(skill);
+			skills.findLatestSaved.mockResolvedValue(new Map([['skill_a', stored]]));
+			saveTrusted = vi.spyOn(service, 'saveTrusted').mockResolvedValue({
+				created: true,
+				versionId: 'skill_a-v3',
+				version: 3,
+				skill: toAgentSkill(stored),
+				followingAgentIds: [],
+			});
+		});
+
+		it('keeps the binary files that the new references do not name', async () => {
+			await service.update(
+				user,
+				'skill_a',
+				{
+					references: [
+						{ path: 'references/new.md', content: 'New.' },
+						{ path: 'assets/old.png', content: 'Now text.' },
+					],
+				},
+				'mcp',
+				{ keepUnnamedBinaryFiles: true },
+			);
+
+			expect(saveTrusted.mock.calls[0][1]).toEqual({
+				references: [
+					{ path: 'references/new.md', content: 'New.' },
+					{ path: 'assets/old.png', content: 'Now text.' },
+					{ path: 'assets/logo.png', content: 'AP8=', isBinary: true },
+				],
+			});
+		});
+
+		it('reads no stored files when the update has no references', async () => {
+			await service.update(user, 'skill_a', { instructions: 'New.' }, 'mcp', {
+				keepUnnamedBinaryFiles: true,
+			});
+
+			expect(skills.findLatestSaved).not.toHaveBeenCalled();
+			expect(saveTrusted.mock.calls[0][1]).toEqual({ instructions: 'New.' });
+		});
+
+		it('replaces every file for the skill editor, which sends the binary files', async () => {
+			await service.update(user, 'skill_a', { references: [] });
+
+			expect(saveTrusted.mock.calls[0][1]).toEqual({ references: [] });
+		});
+	});
+
 	describe('setAssistantAvailability', () => {
 		it('throws NotFoundError for a skill that is gone under the lock', async () => {
 			await expect(

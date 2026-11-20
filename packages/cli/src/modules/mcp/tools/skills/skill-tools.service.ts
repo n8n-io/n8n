@@ -6,6 +6,7 @@ import {
 	skillScopeSchema,
 	type SkillDetail,
 	type SkillListItem,
+	withoutBinaryFileContent,
 } from '@n8n/api-types';
 import { TelemetryProxy } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
@@ -105,7 +106,7 @@ function summary(item: SkillListItem, flags: SkillAvailabilityFlags) {
 function details(detail: SkillDetail, flags: SkillAvailabilityFlags) {
 	return {
 		...summary(detail, flags),
-		skill: detail.skill,
+		skill: withoutBinaryFileContent(detail.skill),
 		skillHash: detail.skillHash,
 		usedBy: detail.usedBy,
 	};
@@ -162,7 +163,7 @@ export class McpSkillToolsService {
 			name: 'get_skill',
 			config: {
 				description:
-					'Read a skill with its instructions, references, skillHash and the Agents that use it.',
+					'Read a skill with its instructions, references, skillHash and the Agents that use it. A binary file shows its path without its content.',
 				inputSchema: skillIdInput,
 				annotations: {
 					title: 'Get Skill',
@@ -218,7 +219,7 @@ export class McpSkillToolsService {
 			name: 'update_skill',
 			config: {
 				description:
-					'Update a skill. Content changes create a new version. Pass only the fields to change.',
+					'Update a skill. Content changes create a new version. Pass only the fields to change. `references` replaces the text files. A binary file that you do not name stays in the skill.',
 				inputSchema: withAvailabilityInputs(updateSkillInput, flags),
 				annotations: {
 					title: 'Update Skill',
@@ -236,6 +237,7 @@ export class McpSkillToolsService {
 							skillId,
 							SaveSkillDto.parse(update),
 							'mcp',
+							{ keepUnnamedBinaryFiles: true },
 						);
 						return saved;
 					} catch (error) {

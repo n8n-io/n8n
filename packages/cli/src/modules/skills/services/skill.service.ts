@@ -483,6 +483,13 @@ export class SkillService {
 		skillId: string,
 		payload: SaveSkillDto,
 		source: SkillTelemetrySource = 'ui',
+		options: {
+			/**
+			 * For a caller that reads binary files without their content, such as a model. Its
+			 * `references` replace the text files, and the binary files that it does not name stay.
+			 */
+			keepUnnamedBinaryFiles?: boolean;
+		} = {},
 	): Promise<SkillSaveResponse> {
 		if (
 			payload.availableToAssistant !== undefined &&
@@ -492,6 +499,9 @@ export class SkillService {
 		}
 		const skill = await this.skillAccess.requireAccess(user, skillId, 'update');
 		const { scope, projectId, availableToAssistant, availableToMCP, ...update } = payload;
+		if (options.keepUnnamedBinaryFiles && update.references) {
+			update.references = await this.withStoredBinaryFiles(skillId, update.references);
+		}
 		const target = scope
 			? await this.skillAccess.resolveCreateTarget(user, { scope, projectId })
 			: undefined;
@@ -544,6 +554,20 @@ export class SkillService {
 			);
 		}
 		return { id: skillId, ...saved, skillHash: getSkillHash(saved.skill) };
+	}
+
+	private async withStoredBinaryFiles(
+		skillId: string,
+		references: NonNullable<AgentSkill['references']>,
+	): Promise<NonNullable<AgentSkill['references']>> {
+		const latest = (await this.skillRepository.findLatestSaved([skillId])).get(skillId);
+		const named = new Set(references.map((reference) => reference.path));
+		const kept = (latest?.files ?? []).flatMap((file) =>
+			file.isBinary && !named.has(file.path)
+				? [{ path: file.path, content: file.content, isBinary: true as const }]
+				: [],
+		);
+		return [...references, ...kept];
 	}
 
 	/** Every saved version of the skill, newest first, so the first one is the latest. Needs read access. */

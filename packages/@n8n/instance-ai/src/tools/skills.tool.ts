@@ -7,6 +7,7 @@ import {
 	type InstanceAiPermissionMode,
 	type SkillDetail,
 	type SkillListItem,
+	withoutBinaryFileContent,
 } from '@n8n/api-types';
 import { Tool } from '@n8n/agents';
 import { nanoid } from 'nanoid';
@@ -161,7 +162,7 @@ function summary(item: SkillListItem, assistantSkillsEnabled: boolean) {
 function details(detail: SkillDetail, assistantSkillsEnabled: boolean) {
 	return {
 		...summary(detail, assistantSkillsEnabled),
-		skill: detail.skill,
+		skill: withoutBinaryFileContent(detail.skill),
 		skillHash: detail.skillHash,
 		usedBy: detail.usedBy,
 	};

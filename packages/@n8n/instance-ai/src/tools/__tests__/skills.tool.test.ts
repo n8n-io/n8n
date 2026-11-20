@@ -144,6 +144,26 @@ describe('skills tool', () => {
 		expect(result).toMatchObject({ id: 'skill_a', skill: detail.skill, skillHash: 'hash-2' });
 	});
 
+	it('lists a binary file without its content', async () => {
+		service.get.mockResolvedValue({
+			...detail,
+			skill: {
+				...detail.skill,
+				references: [{ path: 'assets/logo.png', content: 'AP8=', isBinary: true }],
+			},
+		});
+		const tool = createSkillsTool(createContext(service));
+
+		const result = await executeTool<{ skill: { references: unknown[] } }>(tool, {
+			action: 'get',
+			skillId: 'skill_a',
+		});
+
+		expect(result.skill.references).toEqual([
+			{ path: 'assets/logo.png', isBinary: true, characterCount: 4 },
+		]);
+	});
+
 	describe('Assistant availability', () => {
 		const parseInput = (skillService: InstanceAiSkillService, input: Record<string, unknown>) =>
 			(createSkillsTool(createContext(skillService)).inputSchema as z.ZodType).parse(input);

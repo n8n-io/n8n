@@ -69,6 +69,29 @@ export const agentSkillReferenceSchema = z
 
 export type AgentSkillReference = z.infer<typeof agentSkillReferenceSchema>;
 
+/**
+ * A skill as a model reads it. A model cannot use Base64, so a binary file keeps its path
+ * and the length of its Base64, without the content.
+ */
+export function withoutBinaryFileContent<T extends { references?: AgentSkillReference[] }>(
+	skill: T,
+) {
+	const { references, ...body } = skill;
+	if (!references) return body;
+	return {
+		...body,
+		references: references.map((reference) =>
+			reference.isBinary
+				? {
+						path: reference.path,
+						isBinary: true as const,
+						characterCount: reference.content.length,
+					}
+				: reference,
+		),
+	};
+}
+
 const agentSkillReferencesSchema = z
 	.array(agentSkillReferenceSchema)
 	.max(AGENT_SKILL_REFERENCE_MAX_COUNT)
