@@ -45,6 +45,7 @@ jobs:
           ref: master
           token: ${{ steps.app-token.outputs.token }}
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Bump migrations
         uses: ./.github/actions/run-workflow-script

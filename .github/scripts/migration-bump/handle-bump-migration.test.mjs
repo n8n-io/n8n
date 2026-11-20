@@ -1,7 +1,15 @@
 import { afterEach, beforeEach, describe, it, mock } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import {
+	chmodSync,
+	mkdirSync,
+	mkdtempSync,
+	readdirSync,
+	rmSync,
+	symlinkSync,
+	writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 
@@ -106,10 +114,13 @@ describe('handle-bump-migration', () => {
 		).trim();
 	}
 
-	function addMigration(timestamp, name) {
+	/** @param {{ linkTo?: string, executable?: boolean }} [options] */
+	function addMigration(timestamp, name, { linkTo, executable = false } = {}) {
 		const path = join(seed, MIGRATIONS, 'common', `${timestamp}-${name}.ts`);
 		mkdirSync(dirname(path), { recursive: true });
-		writeFileSync(path, `export class ${name}${timestamp} {}\n`);
+		if (linkTo) symlinkSync(linkTo, path);
+		else writeFileSync(path, `export class ${name}${timestamp} {}\n`);
+		if (executable) chmodSync(path, 0o755);
 		git(seed, 'add', '-A');
 		git(seed, 'commit', '-m', `add ${name}`);
 	}
@@ -123,7 +134,7 @@ describe('handle-bump-migration', () => {
 	}
 
 	/** Seeds `master`, an optional `stack-parent`, and `feature`, then clones the workspace. */
-	function seedRepos({ featureMigration = ADDED, stacked = false } = {}) {
+	function seedRepos({ featureMigration = ADDED, stacked = false, featureOptions = {} } = {}) {
 		addMigration(OLD, 'Old');
 		const featureBase = stacked ? 'stack-parent' : 'master';
 		if (stacked) {
@@ -131,7 +142,7 @@ describe('handle-bump-migration', () => {
 			addMigration(BASE_HEAD, 'ParentHead');
 		}
 		git(seed, 'checkout', '-b', 'feature');
-		addMigration(featureMigration, 'New');
+		addMigration(featureMigration, 'New', featureOptions);
 		git(seed, 'checkout', 'master');
 		addMigration(stacked ? OTHER_BASE_HEAD : BASE_HEAD, 'Head');
 		git(seed, 'push', 'origin', '--all');
@@ -194,6 +205,29 @@ describe('handle-bump-migration', () => {
 				],
 			},
 		);
+	});
+
+	it('keeps the content of files outside the worktree out of the bump commit', async () => {
+		const outside = join(root, 'outside.txt');
+		writeFileSync(outside, `OUTSIDE-CONTENT New${ADDED}\n`);
+		seedRepos({ featureOptions: { linkTo: outside } });
+
+		await runCommand();
+
+		assert.deepEqual(
+			createdTrees
+				.flatMap(({ tree }) => tree)
+				.filter(({ content }) => content?.includes('OUTSIDE-CONTENT')),
+			[],
+		);
+	});
+
+	it('keeps the file mode of a moved file', async () => {
+		seedRepos({ featureOptions: { executable: true } });
+
+		await runCommand();
+
+		assert.equal(treeEntry(`${MIGRATIONS}/common/${BASE_HEAD + 1}-New.ts`)?.mode, '100755');
 	});
 
 	it('replies with the moves when a reaction fails', async () => {

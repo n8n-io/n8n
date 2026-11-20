@@ -1,5 +1,14 @@
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+	existsSync,
+	lstatSync,
+	mkdirSync,
+	mkdtempSync,
+	readFileSync,
+	rmSync,
+	symlinkSync,
+	writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -115,6 +124,28 @@ describe('bumpMigrations', () => {
 			migration: `export class Renamed${moved} {}\n`,
 			test: `const MIGRATION_NAME = 'Renamed${moved}';\n`,
 		});
+	});
+
+	it('leaves a symbolic link and the file it points to unchanged', () => {
+		const target = join(mkdtempSync(join(tmpdir(), 'bump-migrations-target-')), 'target.ts');
+		writeFileSync(target, `export class New${ADDED} {}\n`);
+		const link = `${MIGRATIONS}/common/${ADDED}-New.ts`;
+		git('checkout', '-b', 'feature');
+		mkdirSync(dirname(join(repo, link)), { recursive: true });
+		symlinkSync(target, join(repo, link));
+		commit('add a linked migration');
+		git('checkout', 'master');
+		addMigration('common', BASE_HEAD, 'Head');
+		commit('add Head');
+		git('checkout', 'feature');
+
+		bumpMigrations({ cwd: repo, base: 'master', now: NOW_BELOW_HEAD });
+
+		expect({
+			linkInPlace: existsSync(join(repo, link)) && lstatSync(join(repo, link)).isSymbolicLink(),
+			target: readFileSync(target, 'utf8'),
+		}).toEqual({ linkInPlace: true, target: `export class New${ADDED} {}\n` });
+		rmSync(dirname(target), { recursive: true, force: true });
 	});
 
 	it('gives a common and sqlite pair one new timestamp', () => {

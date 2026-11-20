@@ -2,7 +2,7 @@
 // @ts-check
 // Moves the migrations that the current branch adds to after the newest migration on `--base` (default `origin/master`).
 import { execFileSync } from 'node:child_process';
-import { existsSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
+import { existsSync, lstatSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -22,6 +22,15 @@ const EXPORTED_CLASS = /^export class (?<base>[A-Za-z0-9]*?)(?<timestamp>\d{10,1
 function gitLines(cwd, args) {
 	const output = execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
 	return output === '' ? [] : output.split('\n');
+}
+
+/**
+ * True only for a regular file, so the bump never reads or writes through a symbolic link.
+ *
+ * @param {string} absolutePath
+ */
+function isRegularFile(absolutePath) {
+	return existsSync(absolutePath) && lstatSync(absolutePath).isFile();
 }
 
 /**
@@ -47,7 +56,10 @@ function parseMigration(path) {
  * @returns {{ base: string, timestamp: string }}
  */
 function classOf(root, { path, timestamp, name }) {
-	const groups = EXPORTED_CLASS.exec(readFileSync(join(root, path), 'utf8'))?.groups;
+	const absolutePath = join(root, path);
+	const groups = isRegularFile(absolutePath)
+		? EXPORTED_CLASS.exec(readFileSync(absolutePath, 'utf8'))?.groups
+		: undefined;
 	return groups
 		? { base: groups.base, timestamp: groups.timestamp }
 		: { base: name, timestamp: String(timestamp) };
@@ -76,7 +88,7 @@ function applyMove(root, originalPaths, changedPaths, { name, from, to }, migrat
 	];
 	changedPaths.forEach((path, index) => {
 		const absolutePath = join(root, path);
-		if (!existsSync(absolutePath)) return;
+		if (!isRegularFile(absolutePath)) return;
 
 		const content = readFileSync(absolutePath, 'utf8');
 		const rewritten = replacements.reduce(

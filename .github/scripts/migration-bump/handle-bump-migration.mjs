@@ -4,7 +4,7 @@
  */
 
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -77,6 +77,24 @@ async function refusalReason(pullRequest, commenter, repository) {
 }
 
 /**
+ * The tree entry for one staged path, with the mode and content that git stores, never what a symbolic link points to.
+ *
+ * @param {string} worktree
+ * @param {string} status
+ * @param {string} path
+ */
+function stagedTreeEntry(worktree, status, path) {
+	if (status === 'D') return { path, mode: '100644', type: 'blob', sha: null };
+	const [mode, blobSha] = git(worktree, ['ls-files', '--stage', '--', path]).split(/\s+/);
+	const content = execFileSync('git', ['cat-file', 'blob', blobSha], {
+		cwd: worktree,
+		encoding: 'utf8',
+		stdio: CAPTURE_OUTPUT,
+	});
+	return { path, mode, type: 'blob', content };
+}
+
+/**
  * Creates the worktree changes as one commit through the Git Data API, with no custom author or committer, so GitHub signs it as the App.
  *
  * @param {{ octokit: any, owner: string, repo: string, worktree: string }} params
@@ -88,14 +106,7 @@ async function createSignedCommit({ octokit, owner, repo, worktree }) {
 		.split('\n')
 		.map((line) => {
 			const [status, path] = line.split('\t');
-			return status === 'D'
-				? { path, mode: '100644', type: 'blob', sha: null }
-				: {
-						path,
-						mode: '100644',
-						type: 'blob',
-						content: readFileSync(join(worktree, path), 'utf8'),
-					};
+			return stagedTreeEntry(worktree, status, path);
 		});
 	const parent = git(worktree, ['rev-parse', 'HEAD']);
 	const baseTree = git(worktree, ['rev-parse', 'HEAD^{tree}']);
