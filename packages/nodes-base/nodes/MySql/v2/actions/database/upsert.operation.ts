@@ -12,6 +12,7 @@ import type { QueryRunner, QueryValues, QueryWithValues } from '../../helpers/in
 import { AUTO_MAP, DATA_MODE } from '../../helpers/interfaces';
 import {
 	escapeSqlIdentifier,
+	getTableName,
 	prepareErrorItem,
 	replaceEmptyStringsByNulls,
 } from '../../helpers/utils';
@@ -153,9 +154,7 @@ export async function execute(
 
 	for (let i = 0; i < items.length; i++) {
 		try {
-			const table = this.getNodeParameter('table', i, undefined, {
-				extractValue: true,
-			}) as string;
+			const table = getTableName(this, i);
 
 			const columnToMatchOn = this.getNodeParameter('columnToMatchOn', i) as string;
 

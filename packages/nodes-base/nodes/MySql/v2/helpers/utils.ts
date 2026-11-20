@@ -7,7 +7,7 @@ import type {
 	IPairedItemData,
 	NodeExecutionWithMetadata,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { isExpression, NodeOperationError } from 'n8n-workflow';
 import { UserError } from '@n8n/errors';
 
 import {
@@ -54,6 +54,36 @@ export function escapeSqlIdentifier(identifier: string): string {
 			return `\`${trimmedPart}\``;
 		})
 		.join('.');
+}
+
+// The raw read does not depend on the item, so index 0 is enough.
+export function isDatabaseExpression(ctx: IExecuteFunctions): boolean {
+	const raw = ctx.getNodeParameter('database', 0, '', { rawExpressions: true });
+	// No `__rl` check: extractValueRLC also resolves a locator without it.
+	return isExpression(typeof raw === 'object' && raw !== null && 'value' in raw ? raw.value : raw);
+}
+
+// Returns the raw table when Database is empty and an escaped `db`.`tbl` when it is set.
+// Callers still pass the result through escapeSqlIdentifier.
+export function getTableName(ctx: IExecuteFunctions, itemIndex: number): string {
+	const table = ctx.getNodeParameter('table', itemIndex, '', { extractValue: true }) as string;
+	const database = ctx.getNodeParameter('database', itemIndex, '', { extractValue: true });
+	// A literal empty Database keeps the unqualified table name.
+	if (!database && !isDatabaseExpression(ctx)) return table;
+
+	const escapePart = (value: unknown) =>
+		typeof value === 'string' ? escapeSqlIdentifier(value) : '';
+	const databaseName = escapePart(database);
+	const tableName = escapePart(table);
+	// An empty part would collapse to a one-part name in the next escape pass.
+	if (!databaseName || !tableName) {
+		throw new NodeOperationError(
+			ctx.getNode(),
+			`The ${databaseName ? 'Table' : 'Database'} value did not resolve to a name`,
+			{ itemIndex, description: 'Make sure the value is a non-empty string' },
+		);
+	}
+	return `${databaseName}.${tableName}`;
 }
 
 function findParameterMatches(rawQuery: string, regex: RegExp): ParameterMatch[] {
