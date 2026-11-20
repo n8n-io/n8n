@@ -11,11 +11,12 @@ import { sleep } from '@n8n/utils/sleep';
 import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
+import { createAgent } from '@test-integration/db/agents';
+
 import { AgentCheckpointPruningTask } from '@/modules/agents/agent-checkpoint-pruning.task';
 import { AgentCheckpoint } from '@/modules/agents/entities/agent-checkpoint.entity';
 import { AgentBackgroundJobService } from '@/modules/agents/background/agent-background-job.service';
 import { AgentBackgroundJobRepository } from '@/modules/agents/repositories/agent-background-job.repository';
-import type { Agent } from '@/modules/agents/entities/agent.entity';
 import { N8NCheckpointStorage } from '@/modules/agents/integrations/n8n-checkpoint-storage';
 import { AgentCheckpointRepository } from '@/modules/agents/repositories/agent-checkpoint.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
@@ -76,7 +77,7 @@ describe('AgentCheckpointPruningTask', () => {
 	beforeEach(async () => {
 		logger.info.mockClear();
 		const project = await createTeamProject();
-		const agent = agentRepository.create({
+		const agent = await createAgent({
 			id: uuid(),
 			name: 'Test Agent',
 			projectId: project.id,
@@ -86,8 +87,8 @@ describe('AgentCheckpointPruningTask', () => {
 			skills: {},
 			versionId: 'version-1',
 			activeVersionId: null,
-		} as Partial<Agent>);
-		agentId = (await agentRepository.save(agent)).id;
+		});
+		agentId = agent.id;
 	});
 
 	afterEach(async () => {

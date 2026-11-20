@@ -2,7 +2,13 @@ import { ExecutionRetentionService } from '@n8n/backend-services';
 /* eslint-disable id-denylist */
 /* eslint-disable @typescript-eslint/unbound-method */
 
-import type { EventService, ExecutionLedger } from '@n8n/backend-services';
+import {
+	type EventService,
+	type ExecutionLedger,
+	CorruptedExecutionDataError,
+	type ExecutionDataJsonStore,
+	type ExecutionDataPayload,
+} from '@n8n/backend-services';
 import type { DatabaseConfig, ExecutionsConfig } from '@n8n/config';
 import {
 	ExecutionEntity,
@@ -22,11 +28,8 @@ import { UnexpectedError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
-import { CorruptedExecutionDataError } from '@/executions/execution-data/corrupted-execution-data.error';
 import type { DbStore } from '@/executions/execution-data/db-store';
-import type { ExecutionDataJsonStore } from '@/executions/execution-data/execution-data-json-store';
 import { MissingExecutionDataError } from '@/executions/execution-data/missing-execution-data.error';
-import type { ExecutionDataPayload } from '@/executions/execution-data/types';
 import { UnreadableRunDataError } from '@/executions/execution-data/unreadable-run-data.error';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 

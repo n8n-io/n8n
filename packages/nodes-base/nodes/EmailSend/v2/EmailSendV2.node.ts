@@ -24,6 +24,7 @@ export const versionDescription: INodeTypeDescription = {
 	group: ['output'],
 	version: [2, 2.1],
 	description: 'Sends an email using SMTP protocol',
+	annotations: { effect: 'write', destructive: false, idempotent: false },
 	defaults: {
 		name: 'Send Email',
 	},

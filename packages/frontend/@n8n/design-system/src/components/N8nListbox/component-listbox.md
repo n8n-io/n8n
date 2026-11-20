@@ -1,6 +1,6 @@
 # Component specification
 
-A single-select list. Arrow keys move a highlight over the whole item. Pointer movement moves the highlight. A click selects the item under the pointer. Enter or Space selects the highlighted item. Tab from a control inside an item moves the highlight to the next enabled item. Built on Reka UI `Listbox`.
+A single-select list. Arrow keys move a highlight over the whole item. Pointer movement moves the highlight. Pointer movement does not move the highlight while a menu opened from a row is open. A click selects the item under the pointer. Enter or Space selects the highlighted item. Tab from a control inside an item moves the highlight to the next enabled item. Tab from a control between items moves the highlight to the nearest item in that direction when no other control sits in front of that item. Tab moves to the next control when that control sits between the current control and the item, or inside that item. Built on Reka UI `Listbox`.
 
 - **Component Name:** N8nListbox, N8nListboxItem
 - **Reka UI Component:** [Listbox](https://reka-ui.com/docs/components/listbox)
@@ -35,7 +35,7 @@ A single-select list. Arrow keys move a highlight over the whole item. Pointer m
 
 **Item slots**
 
-- `default` Row content. Direct children stack in a column. Set `--n8n-listbox-item--content-gap` to change the space between those children. Wrap children in one element when they sit on one line.
+- `default` Row content. Direct children stack in a column. Each line stays on one line. A line that is wider than the row ends with an ellipsis. Set `--n8n-listbox-item--content-gap` to change the space between those children. Wrap children in one element when they sit on one line.
 - `leading` Content before the row content.
 - `trailing` Content after the row content. A control in this slot sits inside the item. Stop `click`, Enter, and Space on that control when the control must not select the item.
 
@@ -57,7 +57,7 @@ Set `--n8n-listbox-item--color--background--highlight` and `--n8n-listbox-item--
 - `--n8n-listbox-item--color--background--selected` Background of the selected item. This fill covers the item while it is highlighted. This fill stays when the highlight moves. | default: `--background--active`
 - `--n8n-listbox-item--color--text--disabled` Text color of a disabled item. | default: `--text-color--disabled`
 - `--n8n-listbox-item--radius` Corner radius of the item. | default: `--radius`
-- `--n8n-listbox-item--padding` Padding inside the item. | default: `--spacing--2xs` `--spacing--xs` (8px on the top and the bottom, 12px on the left and the right)
+- `--n8n-listbox-item--padding` Padding inside the item. | default: `--spacing--4xs` `--spacing--xs` (4px on the top and the bottom, 12px on the left and the right)
 - `--n8n-listbox-item--gap` Space between the leading content, the row content, and the trailing content. | default: `--spacing--2xs` (8px)
 - `--n8n-listbox-item--content-gap` Space between direct children of the row content. | default: `--spacing--5xs` (2px)
 - `--n8n-listbox-item--min-height` Minimum height of the item. | default: `--spacing--xl` (32px)

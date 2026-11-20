@@ -225,7 +225,7 @@ async function mountColumn(
 			],
 			localConfig: {
 				name: 'Agent',
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 				instructions: 'Help the user.',
 				memory: { enabled: true, storage: 'n8n' },
 			},
@@ -593,7 +593,7 @@ describe('AgentBuilderEditorColumn', () => {
 		expect(subAgentsPanel.exists()).toBe(true);
 		expect(subAgentsPanel.props('config')).toMatchObject({
 			name: 'Agent',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 		});
 		expect(subAgentsPanel.props('disabled')).toBe(false);
 		expect(subAgentsPanel.props('projectId')).toBe('project-1');

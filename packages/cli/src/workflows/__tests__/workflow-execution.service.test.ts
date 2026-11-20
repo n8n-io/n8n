@@ -27,6 +27,7 @@ import {
 	type IWorkflowExecuteAdditionalData,
 	type ExecutionError,
 	type IExecuteResponsePromiseData,
+	type IRun,
 	createRunExecutionData,
 } from 'n8n-workflow';
 import type { MockProxy } from 'vitest-mock-extended';
@@ -39,6 +40,9 @@ import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resumi
 import { PreExecuteBlockedError } from '@/errors/pre-execute-blocked.error';
 import { ForbiddenError } from '@n8n/errors';
 import type { ExecutionCrashService } from '@/executions/execution-crash.service';
+import type { ExecutionPersistence } from '@/executions/execution-persistence';
+import type { FailedRunFactory } from '@/executions/failed-run-factory';
+import type { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
 import type { IWorkflowErrorData } from '@/interfaces';
 import type { NodeTypes } from '@/node-types';
 import type { OwnershipService } from '@/services/ownership.service';
@@ -46,7 +50,10 @@ import type { TestWebhooks } from '@/webhooks/test-webhooks';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import type { WorkflowRunner } from '@/workflow-runner';
 import type { PollCursorService } from '@/workflows/triggers/poll-cursor.service';
-import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
+import {
+	TRIGGER_EVENT_REQUIRED_MESSAGE,
+	WorkflowExecutionService,
+} from '@/workflows/workflow-execution.service';
 
 const webhookNode: INode = {
 	name: 'Webhook',
@@ -147,6 +154,8 @@ describe('WorkflowExecutionService', () => {
 		vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
 		defaultTestWebhooks.registerWebhooks.mockReset();
 		defaultTestWebhooks.registerWebhooks.mockResolvedValue({ nodeNames: [], formTestUrls: [] });
+		defaultTestWebhooks.needsTriggerEvent.mockReset();
+		defaultTestWebhooks.needsTriggerEvent.mockResolvedValue(false);
 	});
 
 	describe('runWorkflow()', () => {
@@ -643,7 +652,11 @@ describe('WorkflowExecutionService', () => {
 
 			workflowRunner.run.mockResolvedValue(executionId);
 
-			const result = await workflowExecutionService.executeManually(workflowData, runPayload, user);
+			const result = await workflowExecutionService.executeManually({
+				workflowData,
+				payload: runPayload,
+				user,
+			});
 
 			expect(workflowRunner.run).toHaveBeenCalledWith({
 				destinationNode: runPayload.destinationNode,
@@ -678,7 +691,11 @@ describe('WorkflowExecutionService', () => {
 			);
 			workflowRunner.run.mockResolvedValue('fake-execution-id');
 
-			await workflowExecutionService.executeManually(workflowData, runPayload, user);
+			await workflowExecutionService.executeManually({
+				workflowData,
+				payload: runPayload,
+				user,
+			});
 
 			expect(workflowRunner.run).toHaveBeenCalledWith(
 				expect.objectContaining({ runData: runPayload.runData, pinData: undefined }),
@@ -716,9 +733,9 @@ describe('WorkflowExecutionService', () => {
 				triggerToStartFrom: { name: webhookNode.name },
 			};
 
-			await expect(service.executeManually(workflowData, runPayload, user)).rejects.toThrow(
-				ForbiddenError,
-			);
+			await expect(
+				service.executeManually({ workflowData, payload: runPayload, user }),
+			).rejects.toThrow(ForbiddenError);
 			expect(workflowRunner.run).not.toHaveBeenCalled();
 		});
 
@@ -741,7 +758,11 @@ describe('WorkflowExecutionService', () => {
 
 			workflowRunner.run.mockResolvedValue(executionId);
 
-			const result = await workflowExecutionService.executeManually(workflowData, runPayload, user);
+			const result = await workflowExecutionService.executeManually({
+				workflowData,
+				payload: runPayload,
+				user,
+			});
 
 			expect(workflowRunner.run).toHaveBeenCalledWith({
 				runData: undefined,
@@ -803,7 +824,11 @@ describe('WorkflowExecutionService', () => {
 
 			workflowRunner.run.mockResolvedValue(executionId);
 
-			const result = await workflowExecutionService.executeManually(workflowData, runPayload, user);
+			const result = await workflowExecutionService.executeManually({
+				workflowData,
+				payload: runPayload,
+				user,
+			});
 
 			expect(workflowRunner.run).toHaveBeenCalledWith({
 				destinationNode: runPayload.destinationNode,
@@ -860,7 +885,11 @@ describe('WorkflowExecutionService', () => {
 
 			workflowRunner.run.mockResolvedValue(executionId);
 
-			const result = await workflowExecutionService.executeManually(workflowData, runPayload, user);
+			const result = await workflowExecutionService.executeManually({
+				workflowData,
+				payload: runPayload,
+				user,
+			});
 
 			expect(workflowRunner.run).toHaveBeenCalledWith({
 				destinationNode: runPayload.destinationNode,
@@ -895,7 +924,11 @@ describe('WorkflowExecutionService', () => {
 
 			workflowRunner.run.mockResolvedValue(executionId);
 
-			const result = await workflowExecutionService.executeManually(workflowData, runPayload, user);
+			const result = await workflowExecutionService.executeManually({
+				workflowData,
+				payload: runPayload,
+				user,
+			});
 
 			expect(workflowRunner.run).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -938,7 +971,11 @@ describe('WorkflowExecutionService', () => {
 			);
 			workflowRunner.run.mockResolvedValue(executionId);
 
-			const result = await workflowExecutionService.executeManually(workflowData, runPayload, user);
+			const result = await workflowExecutionService.executeManually({
+				workflowData,
+				payload: runPayload,
+				user,
+			});
 
 			expect(workflowRunner.run).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -955,11 +992,11 @@ describe('WorkflowExecutionService', () => {
 			const workflowData = mock<IWorkflowBase>({ nodes: [], connections: {}, pinData: undefined });
 
 			await expect(
-				workflowExecutionService.executeManually(
+				workflowExecutionService.executeManually({
 					workflowData,
-					{} as WorkflowRequest.ManualRunPayload,
+					payload: {} as WorkflowRequest.ManualRunPayload,
 					user,
-				),
+				}),
 			).rejects.toThrow('`executeManually` was called with an unexpected payload');
 		});
 
@@ -985,7 +1022,11 @@ describe('WorkflowExecutionService', () => {
 
 			workflowRunner.run.mockResolvedValue(executionId);
 
-			const result = await workflowExecutionService.executeManually(workflowData, runPayload, user);
+			const result = await workflowExecutionService.executeManually({
+				workflowData,
+				payload: runPayload,
+				user,
+			});
 
 			expect(workflowRunner.run).toHaveBeenCalledTimes(1);
 			const callArgs = workflowRunner.run.mock.calls[0][0];
@@ -1041,11 +1082,11 @@ describe('WorkflowExecutionService', () => {
 					formTestUrls: [formTestUrl],
 				});
 
-				const result = await workflowExecutionService.executeManually(
+				const result = await workflowExecutionService.executeManually({
 					workflowData,
-					runPayload,
+					payload: runPayload,
 					user,
-				);
+				});
 
 				expect(defaultTestWebhooks.registerWebhooks).toHaveBeenCalledWith(
 					expect.objectContaining({ triggerToStartFrom: runPayload.triggerToStartFrom }),
@@ -1064,11 +1105,11 @@ describe('WorkflowExecutionService', () => {
 					formTestUrls: [formTestUrl],
 				});
 
-				const result = await workflowExecutionService.executeManually(
+				const result = await workflowExecutionService.executeManually({
 					workflowData,
-					runPayload,
+					payload: runPayload,
 					user,
-				);
+				});
 
 				expect(defaultTestWebhooks.registerWebhooks).toHaveBeenCalledWith(
 					expect.objectContaining({ destinationNode: runPayload.destinationNode }),
@@ -1085,11 +1126,11 @@ describe('WorkflowExecutionService', () => {
 				defaultTestWebhooks.registerWebhooks.mockResolvedValue({ nodeNames: [], formTestUrls: [] });
 				workflowRunner.run.mockResolvedValue('fake-execution-id');
 
-				const result = await workflowExecutionService.executeManually(
+				const result = await workflowExecutionService.executeManually({
 					workflowData,
-					runPayload,
+					payload: runPayload,
 					user,
-				);
+				});
 
 				expect(defaultTestWebhooks.registerWebhooks).toHaveBeenCalledTimes(1);
 				expect(result).toEqual({ executionId: 'fake-execution-id' });
@@ -1106,11 +1147,11 @@ describe('WorkflowExecutionService', () => {
 				};
 				workflowRunner.run.mockResolvedValue('fake-execution-id');
 
-				const result = await workflowExecutionService.executeManually(
+				const result = await workflowExecutionService.executeManually({
 					workflowData,
-					runPayload,
+					payload: runPayload,
 					user,
-				);
+				});
 
 				expect(defaultTestWebhooks.registerWebhooks).not.toHaveBeenCalled();
 				expect(workflowRunner.run).toHaveBeenCalledTimes(1);
@@ -1128,11 +1169,11 @@ describe('WorkflowExecutionService', () => {
 				};
 				workflowRunner.run.mockResolvedValue('fake-execution-id');
 
-				const result = await workflowExecutionService.executeManually(
+				const result = await workflowExecutionService.executeManually({
 					workflowData,
-					runPayload,
+					payload: runPayload,
 					user,
-				);
+				});
 
 				expect(defaultTestWebhooks.registerWebhooks).not.toHaveBeenCalled();
 				expect(workflowRunner.run).toHaveBeenCalledWith(
@@ -1142,6 +1183,77 @@ describe('WorkflowExecutionService', () => {
 					}),
 				);
 				expect(result).toEqual({ executionId: 'fake-execution-id' });
+			});
+
+			describe('when waitForWebhook is false', () => {
+				test('throws a 409 conflict and registers no webhook when the run needs a trigger event', async () => {
+					const workflowData = toWorkflowData([formTriggerNode]);
+					const runPayload: WorkflowRequest.FullManualExecutionFromUnknownTriggerPayload = {
+						destinationNode: { nodeName: hackerNewsNode.name, mode: 'inclusive' },
+					};
+					defaultTestWebhooks.needsTriggerEvent.mockResolvedValue(true);
+
+					await expect(
+						workflowExecutionService.executeManually({
+							workflowData,
+							payload: runPayload,
+							user,
+							waitForWebhook: false,
+						}),
+					).rejects.toMatchObject({
+						httpStatusCode: 409,
+						message: TRIGGER_EVENT_REQUIRED_MESSAGE,
+					});
+
+					expect(defaultTestWebhooks.needsTriggerEvent).toHaveBeenCalledWith(
+						expect.objectContaining({ destinationNode: runPayload.destinationNode }),
+					);
+					expect(defaultTestWebhooks.registerWebhooks).not.toHaveBeenCalled();
+					expect(workflowRunner.run).not.toHaveBeenCalled();
+				});
+
+				test('starts the run without registering a webhook when no trigger event is needed', async () => {
+					const workflowData = toWorkflowData([formTriggerNode]);
+					const runPayload: WorkflowRequest.FullManualExecutionFromUnknownTriggerPayload = {
+						destinationNode: { nodeName: hackerNewsNode.name, mode: 'inclusive' },
+					};
+					defaultTestWebhooks.needsTriggerEvent.mockResolvedValue(false);
+					workflowRunner.run.mockResolvedValue('fake-execution-id');
+
+					const result = await workflowExecutionService.executeManually({
+						workflowData,
+						payload: runPayload,
+						user,
+						waitForWebhook: false,
+					});
+
+					expect(defaultTestWebhooks.registerWebhooks).not.toHaveBeenCalled();
+					expect(workflowRunner.run).toHaveBeenCalledTimes(1);
+					expect(result).toEqual({ executionId: 'fake-execution-id' });
+				});
+
+				test('throws a 409 conflict for a run from a known trigger and registers no webhook', async () => {
+					const workflowData = toWorkflowData([formTriggerNode]);
+					const runPayload: WorkflowRequest.FullManualExecutionFromKnownTriggerPayload = {
+						triggerToStartFrom: { name: formTriggerNode.name },
+					};
+					defaultTestWebhooks.needsTriggerEvent.mockResolvedValue(true);
+
+					await expect(
+						workflowExecutionService.executeManually({
+							workflowData,
+							payload: runPayload,
+							user,
+							waitForWebhook: false,
+						}),
+					).rejects.toMatchObject({
+						httpStatusCode: 409,
+						message: TRIGGER_EVENT_REQUIRED_MESSAGE,
+					});
+
+					expect(defaultTestWebhooks.registerWebhooks).not.toHaveBeenCalled();
+					expect(workflowRunner.run).not.toHaveBeenCalled();
+				});
 			});
 		});
 
@@ -1202,7 +1314,9 @@ describe('WorkflowExecutionService', () => {
 				),
 			);
 
-			await expect(service.executeManually(activeWorkflowData, runPayload, user)).rejects.toThrow(
+			await expect(
+				service.executeManually({ workflowData: activeWorkflowData, payload: runPayload, user }),
+			).rejects.toThrow(
 				'Cannot test webhook for node "Telegram Trigger" while workflow is active. Please deactivate the workflow first.',
 			);
 
@@ -1271,7 +1385,7 @@ describe('WorkflowExecutionService', () => {
 				versionedSettings(),
 			);
 
-			const result = await service.executeManually(workflowData, runPayload, user);
+			const result = await service.executeManually({ workflowData, payload: runPayload, user });
 
 			expect(testWebhooks.registerWebhooks).toHaveBeenCalledWith(
 				expect.objectContaining({ chatSessionId: 'test-session-123' }),
@@ -1474,13 +1588,13 @@ describe('WorkflowExecutionService', () => {
 		test('when receiving no `runData`, should set `runData` to undefined in `executionData`', async () => {
 			// ACT
 			const workflowData = mock<IWorkflowBase>({ nodes: [] });
-			await service.executeManually(
+			await service.executeManually({
 				workflowData,
-				{
+				payload: {
 					triggerToStartFrom: executeWorkflowTriggerNode,
 				},
-				mock<User>({ id: 'user-id' }),
-			);
+				user: mock<User>({ id: 'user-id' }),
+			});
 
 			// ASSERT
 			const callArgs = workflowRunnerMock.run.mock.calls[0][0];
@@ -1510,15 +1624,15 @@ describe('WorkflowExecutionService', () => {
 				nodes: [hackerNewsNode, webhookNode],
 				connections,
 			});
-			await service.executeManually(
+			await service.executeManually({
 				workflowData,
-				{
+				payload: {
 					runData,
 					destinationNode: { nodeName: hackerNewsNode.name, mode: 'inclusive' },
 					dirtyNodeNames: [],
 				},
-				mock<User>({ id: 'user-id' }),
-			);
+				user: mock<User>({ id: 'user-id' }),
+			});
 
 			// ASSERT
 			const callArgs = workflowRunnerMock.run.mock.calls[0][0];
@@ -1528,13 +1642,13 @@ describe('WorkflowExecutionService', () => {
 		test('should not initialize nested `executionData.executionData` to avoid treating it as resumed execution', async () => {
 			// ACT
 			const workflowData = mock<IWorkflowBase>({ nodes: [] });
-			await service.executeManually(
+			await service.executeManually({
 				workflowData,
-				{
+				payload: {
 					triggerToStartFrom: executeWorkflowTriggerNode,
 				},
-				mock<User>({ id: 'user-id' }),
-			);
+				user: mock<User>({ id: 'user-id' }),
+			});
 
 			// ASSERT
 			const callArgs = workflowRunnerMock.run.mock.calls[0][0];
@@ -1887,6 +2001,83 @@ describe('WorkflowExecutionService', () => {
 			);
 			expect(workflowRunnerMock.run).toHaveBeenCalledTimes(1);
 			expect(workflowRunnerMock.run.mock.calls[0][0].workflowData.nodes).toEqual(mappingNodes);
+		});
+
+		test('marks the stored refusal as blocked by policy when the error workflow refuses its caller', async () => {
+			const workflowErrorData: IWorkflowErrorData = {
+				workflow: { id: 'workflow-id', name: 'Test Workflow' },
+				execution: {
+					id: 'execution-id',
+					mode: 'manual',
+					error: new Error('Test error') as ExecutionError,
+					lastNodeExecuted: 'Node with error',
+				},
+			};
+			const errorTriggerType = 'n8n-nodes-base.errorTrigger';
+			const errorTriggerNode: INode = {
+				id: 'error-trigger-node-id',
+				name: 'Error Trigger',
+				type: errorTriggerType,
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			};
+			const errorWorkflow = mock<WorkflowEntity>({
+				id: 'error-workflow-id',
+				name: 'Error Workflow',
+				pinData: {},
+				staticData: {},
+				nodes: [errorTriggerNode],
+				connections: {},
+				activeVersion: { nodes: [errorTriggerNode], connections: {} },
+			});
+			const workflowRepositoryMock = mock<WorkflowRepository>();
+			workflowRepositoryMock.get.mockResolvedValue(errorWorkflow);
+			nodeTypes.getByNameAndVersion.mockReturnValue(
+				mock<INodeType>({ description: { properties: [] } }),
+			);
+			const policyChecker = mock<SubworkflowPolicyChecker>();
+			policyChecker.check.mockRejectedValue(new Error('refused'));
+			const failedRunFactory = mock<FailedRunFactory>();
+			failedRunFactory.generateFailedExecutionFromError.mockReturnValue({
+				mode: 'error',
+				status: 'error',
+				data: createRunExecutionData({}),
+			} as IRun);
+			const executionPersistence = mock<ExecutionPersistence>();
+			const workflowRunnerMock = mock<WorkflowRunner>();
+
+			const service = new WorkflowExecutionService(
+				mock(),
+				mock(),
+				executionPersistence,
+				workflowRepositoryMock,
+				nodeTypes,
+				mock(),
+				workflowRunnerMock,
+				mock<GlobalConfig>({ nodes: { errorTriggerType } }),
+				policyChecker,
+				failedRunFactory,
+				mock(),
+				mockOwnershipService(),
+				mock(),
+				mock<WorkflowsConfig>({ useWorkflowPublicationService: false }),
+				mock(),
+				pollCursorService,
+				mock(),
+				mock(),
+				versionedSettings(),
+			);
+
+			await service.executeErrorWorkflow(
+				'error-workflow-id',
+				workflowErrorData,
+				mock<Project>({ id: 'project-id' }),
+			);
+
+			expect(workflowRunnerMock.run).not.toHaveBeenCalled();
+			const [payload] = executionPersistence.create.mock.calls[0];
+			expect(payload.data.resultData.failedBeforeStart).toBe('policy');
 		});
 
 		test('should not run the error workflow when it has no published version (flag on)', async () => {

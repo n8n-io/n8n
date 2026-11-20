@@ -1,0 +1,27 @@
+{
+	"properties": {
+		"billable_by_default": {
+			"type": "boolean"
+		},
+		"created_at": {
+			"type": "string"
+		},
+		"default_hourly_rate": {},
+		"id": {
+			"type": "number"
+		},
+		"is_active": {
+			"type": "boolean"
+		},
+		"is_default": {
+			"type": "boolean"
+		},
+		"name": {
+			"type": "string"
+		},
+		"updated_at": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

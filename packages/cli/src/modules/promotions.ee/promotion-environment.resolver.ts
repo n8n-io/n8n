@@ -93,6 +93,7 @@ export class PromotionEnvironmentResolver {
 
 		return Object.freeze({
 			environmentId: environment.id,
+			environmentName: environment.name,
 			scope: environment.scope,
 			providerId: provider.id,
 			providerType: providerType.data,

@@ -3,6 +3,7 @@ import {
 	CREDENTIAL_DESCRIPTIONS_FLAG,
 	MCP_AGENT_SCOPES,
 	MCP_SKILL_SCOPES,
+	MCP_PREFERENCE_SCOPES,
 	MCP_INSTANCE_SCOPES,
 } from '@n8n/api-types';
 import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
@@ -25,6 +26,7 @@ import {
 	areAgentToolsAvailable,
 	canReadMigrationReport,
 	isCommunityNodeInstallAvailable,
+	areMcpPreferencesAvailable,
 	isMigrationReportAvailable,
 } from './mcp-tool-availability';
 import { McpConfig } from './mcp.config';
@@ -37,6 +39,7 @@ import { McpSettingsService } from './mcp.settings.service';
 export const SUPPORTED_SCOPES: string[] = [...MCP_INSTANCE_SCOPES];
 const AGENT_SCOPES = new Set<string>(MCP_AGENT_SCOPES);
 const SKILL_SCOPES = new Set<string>(MCP_SKILL_SCOPES);
+const PREFERENCE_SCOPES = new Set<string>(MCP_PREFERENCE_SCOPES);
 const MIGRATION_REPORT_SCOPES = new Set<string>([
 	'breakingChanges:list',
 	'breakingChanges:migrate',
@@ -83,11 +86,13 @@ export class McpProtectedResource implements ProtectedResource {
 	get scopes(): string[] {
 		const agentsAvailable = areAgentToolsAvailable(this.globalConfig, this.moduleRegistry);
 		const skillsAvailable = Container.get(SkillsGate).isEnabled;
+		const preferencesAvailable = areMcpPreferencesAvailable(this.moduleRegistry);
 		const migrationReportAvailable = isMigrationReportAvailable(this.moduleRegistry);
 		return SUPPORTED_SCOPES.filter(
 			(scope) =>
 				(agentsAvailable || !AGENT_SCOPES.has(scope)) &&
 				(skillsAvailable || !SKILL_SCOPES.has(scope)) &&
+				(preferencesAvailable || !PREFERENCE_SCOPES.has(scope)) &&
 				(migrationReportAvailable || !MIGRATION_REPORT_SCOPES.has(scope)),
 		);
 	}
