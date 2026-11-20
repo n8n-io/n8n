@@ -1,10 +1,11 @@
 import FormData from 'form-data';
 import { mock, mockDeep } from 'vitest-mock-extended';
-import type { IExecuteFunctions, ILoadOptionsFunctions, INode } from 'n8n-workflow';
+import type { IBinaryData, IExecuteFunctions, ILoadOptionsFunctions, INode } from 'n8n-workflow';
 import { NodeApiError, requestUrl } from 'n8n-workflow';
 
 import {
 	buildRequestBody,
+	mindeeApiRequest,
 	extractPollingUrl,
 	isMindeeOperation,
 	pollMindee,
@@ -257,5 +258,134 @@ describe('Mindee V2 > buildRequestBody', () => {
 		expect(body).toContain('name="rag"');
 		expect(body).toContain('name="raw_text"');
 		expect(body).not.toContain('name="polygon"');
+	});
+});
+
+describe('Mindee V2 > mindeeApiRequest', () => {
+	const context = mockDeep<IExecuteFunctions>();
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		context.getNode.mockReturnValue(node);
+	});
+
+	it('should send the headers with the user agent of the node version', async () => {
+		context.helpers.httpRequestWithAuthentication.mockResolvedValueOnce({ ok: true });
+
+		const result = await mindeeApiRequest.call(context, 'GET', POLLING_URL, {}, {}, { a: 'b' });
+
+		expect(result).toEqual({ ok: true });
+		expect(context.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
+			'mindeeApi',
+			expect.objectContaining({ headers: { a: 'b', 'User-Agent': 'mindee-api-n8n@v4' } }),
+		);
+	});
+
+	it('should throw when the response is not an object', async () => {
+		context.helpers.httpRequestWithAuthentication.mockResolvedValueOnce('text');
+
+		await expect(mindeeApiRequest.call(context, 'GET', POLLING_URL)).rejects.toThrow(
+			'Mindee API returned a non-object response',
+		);
+	});
+
+	it('should wrap request failures', async () => {
+		context.helpers.httpRequestWithAuthentication.mockRejectedValueOnce(new Error('network'));
+
+		await expect(mindeeApiRequest.call(context, 'GET', POLLING_URL)).rejects.toThrow(NodeApiError);
+	});
+});
+
+describe('Mindee V2 > buildRequestBody (binary source)', () => {
+	const baseParams = {
+		modelId: 'model-id',
+		toggles: {},
+		pollingTimeoutCount: 180,
+	};
+
+	it('should append the binary file', async () => {
+		const context = mockDeep<IExecuteFunctions>();
+		context.helpers.assertBinaryData.mockReturnValue(mock<IBinaryData>({ fileName: 'doc.pdf' }));
+		context.helpers.getBinaryDataBuffer.mockResolvedValue(Buffer.from('content'));
+		const form = new FormData();
+
+		await buildRequestBody(
+			context,
+			0,
+			{ ...baseParams, documentSource: 'binary', binaryPropertyName: 'data' },
+			form,
+		);
+
+		const body = form.getBuffer().toString();
+		expect(body).toContain('name="file"; filename="doc.pdf"');
+		expect(body).toContain('content');
+	});
+
+	it('should require a binary field name', async () => {
+		const context = mockDeep<IExecuteFunctions>();
+		context.getNode.mockReturnValue(node);
+
+		await expect(
+			buildRequestBody(
+				context,
+				0,
+				{ ...baseParams, documentSource: 'binary', binaryPropertyName: '' },
+				new FormData(),
+			),
+		).rejects.toThrow('An input data field name is required');
+	});
+
+	it('should require a document URL', async () => {
+		const context = mockDeep<IExecuteFunctions>();
+		context.getNode.mockReturnValue(node);
+
+		await expect(
+			buildRequestBody(
+				context,
+				0,
+				{ ...baseParams, documentSource: 'url', documentUrl: '' },
+				new FormData(),
+			),
+		).rejects.toThrow('A document URL is required');
+	});
+});
+
+describe('Mindee V2 > readUIParams (options)', () => {
+	it('should use a custom polling timeout', () => {
+		const context = mockDeep<IExecuteFunctions>();
+		context.getNodeParameter.mockImplementation(
+			(name: string, _index: number, fallback?: unknown) =>
+				({ options: { pollingTimeoutCount: 30 } })[name as 'options'] ?? (fallback as never),
+		);
+
+		expect(readUIParams(context, 0).pollingTimeoutCount).toBe(30);
+	});
+});
+
+describe('Mindee V2 > getModels (fallbacks)', () => {
+	const context = mockDeep<ILoadOptionsFunctions>();
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		context.getNode.mockReturnValue(node);
+		context.getCurrentNodeParameter.mockReturnValue('extraction');
+	});
+
+	it('should return no models when the response has none', async () => {
+		context.helpers.httpRequestWithAuthentication.mockResolvedValueOnce({});
+
+		const result = await getModels.call(context);
+
+		expect(result).toEqual({ results: [], paginationToken: undefined });
+	});
+
+	it('should fall back to the ID when a model has no name', async () => {
+		context.helpers.httpRequestWithAuthentication.mockResolvedValueOnce({
+			models: [{ id: 'abc-123' }],
+		});
+
+		const result = await getModels.call(context);
+
+		expect(result.results).toEqual([{ name: 'abc-123', value: 'abc-123' }]);
 	});
 });
