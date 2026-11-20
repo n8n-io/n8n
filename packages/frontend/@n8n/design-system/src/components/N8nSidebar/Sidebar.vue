@@ -30,9 +30,23 @@ defineSlots<{
 	footer?: () => unknown;
 }>();
 
-const startingWidth = width.value;
-const resetWidth = computed(() => props.defaultWidth ?? startingWidth);
+function clampWidth(value: number): number {
+	const next = Number.isFinite(value) ? value : props.minWidth;
+	return Math.min(props.maxWidth, Math.max(props.minWidth, next));
+}
+
+const startingWidth = clampWidth(width.value);
+const resetWidth = computed(() => clampWidth(props.defaultWidth ?? startingWidth));
 const displayedWidth = ref(startingWidth);
+
+function assignWidth(value: number): number {
+	const next = clampWidth(value);
+	if (displayedWidth.value !== next) displayedWidth.value = next;
+	if (width.value !== next) width.value = next;
+	return next;
+}
+
+assignWidth(startingWidth);
 
 function readStoredWidth(key: string | undefined): number | undefined {
 	if (!key) return undefined;
@@ -47,8 +61,7 @@ function readStoredWidth(key: string | undefined): number | undefined {
 function applyStoredWidth(key: string | undefined): void {
 	const storedWidth = readStoredWidth(key);
 	if (storedWidth === undefined) return;
-	displayedWidth.value = storedWidth;
-	if (storedWidth !== width.value) width.value = storedWidth;
+	assignWidth(storedWidth);
 }
 
 function persistWidth(value: number): void {
@@ -71,9 +84,9 @@ watch(
 );
 
 watch(displayedWidth, persistWidth);
-watch(width, function syncBoundWidth(value) {
-	if (value === displayedWidth.value) return;
-	displayedWidth.value = value;
+watch(width, assignWidth);
+watch([() => props.minWidth, () => props.maxWidth], function clampToLimits() {
+	assignWidth(width.value);
 });
 
 const resizeDirections = computed<Direction[]>(() =>
@@ -89,9 +102,8 @@ const rootStyle = computed(() => ({
 }));
 
 function onResize(data: ResizeData) {
-	displayedWidth.value = data.width;
-	width.value = data.width;
-	emit('resize', data);
+	const next = assignWidth(data.width);
+	emit('resize', next === data.width ? data : { ...data, width: next });
 }
 </script>
 
