@@ -43,14 +43,16 @@ export class AgentServiceAccountService implements ServiceAccountProjectSource {
 	/**
 	 * Sends the audit event of a new agent service account. Call it only after
 	 * the transaction that created the account commits, so a rollback sends no event.
+	 * `ctx` is the context of the request, for the login of a service account.
 	 */
 	reportCreated(
 		agent: Pick<Agent, 'id' | 'identityId' | 'projectId'>,
 		actor: ServiceAccountCreationActor,
+		ctx?: OperationContext,
 	): void {
 		this.eventService.emit('agent-service-account-created', {
 			...(actor.kind === 'user'
-				? { user: actor.user }
+				? { user: actor.user, loginId: loginIdOf(ctx) }
 				: {
 						user: null,
 						source: actor.reason,

@@ -121,6 +121,19 @@ describe('Agent service accounts', () => {
 		});
 	});
 
+	it('sends an audit event with the login that created the agent', async () => {
+		const project = await createTeamProject();
+		const emit = vi.spyOn(Container.get(EventService), 'emit');
+		const ctx = { security: mock<SecurityContext>({ subIdentityId: 'login-1' }) };
+
+		const agent = await agentsService.create(project.id, 'Support Agent', { actor, ctx });
+
+		expect(emit).toHaveBeenCalledWith(
+			'agent-service-account-created',
+			expect.objectContaining({ user: actor.user, loginId: 'login-1', agentId: agent.id }),
+		);
+	});
+
 	it('sends no audit event when the agent insert fails', async () => {
 		const project = await createTeamProject();
 		const existing = await agentsService.create(project.id, 'First', { actor });
@@ -313,6 +326,10 @@ describe('Agent service accounts', () => {
 			// The main that lost the race rolled back, so it sends no event.
 			const created = emit.mock.calls.filter(([name]) => name === 'agent-service-account-created');
 			expect(created).toHaveLength(1);
+			const { identityId } = await agentRepo.findOneByOrFail({ id: agentId });
+			expect(created[0][1]).toEqual(
+				expect.objectContaining({ serviceAccountId: identityId, agentId }),
+			);
 		});
 
 		it('keeps the service account when the instance agent registers again', async () => {

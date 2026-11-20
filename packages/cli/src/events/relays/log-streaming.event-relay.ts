@@ -359,12 +359,15 @@ export class LogStreamingEventRelay extends EventRelay {
 	private agentServiceAccountCreated({
 		user,
 		source,
+		loginId,
 		...target
 	}: RelayEventMap['agent-service-account-created']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.agent.service-account.created',
 			// Without a user, name the system as the actor.
-			payload: user ? { ...user, ...target } : { userId: null, source, ...target },
+			payload: user
+				? { ...user, ...target, ...(loginId !== undefined && { loginId }) }
+				: { userId: null, source, ...target },
 		});
 	}
 

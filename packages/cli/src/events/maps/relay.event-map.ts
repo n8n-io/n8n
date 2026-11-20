@@ -1507,6 +1507,8 @@ export type RelayEventMap = ModuleEventMap & {
 		agentId: string;
 		/** `null` for an instance agent. */
 		projectId: string | null;
+		/** Login of the service account that acted. Absent for people and outside a request. */
+		loginId?: string;
 	};
 
 	/** n8n deleted the service account of an agent. Sent after the transaction commits. */

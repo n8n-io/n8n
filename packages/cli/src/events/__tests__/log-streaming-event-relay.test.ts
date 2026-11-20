@@ -1176,6 +1176,25 @@ describe('LogStreamingEventRelay', () => {
 			});
 		});
 
+		it('includes the login on an `agent-service-account-created` event of a service account', () => {
+			eventService.emit('agent-service-account-created', {
+				user: { id: 'user-1' },
+				loginId: 'login-1',
+				serviceAccountId: 'sa-1',
+				agentId: 'agent-1',
+				projectId: 'proj-1',
+			});
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.agent.service-account.created',
+				payload: expect.objectContaining({
+					userId: 'user-1',
+					loginId: 'login-1',
+					serviceAccountId: 'sa-1',
+				}),
+			});
+		});
+
 		it('names the system on an `agent-service-account-created` event without a user', () => {
 			eventService.emit('agent-service-account-created', {
 				user: null,
@@ -1212,6 +1231,8 @@ describe('LogStreamingEventRelay', () => {
 					userId: 'user-1',
 					source: 'project-deletion',
 					serviceAccountId: 'sa-1',
+					agentId: 'agent-1',
+					projectId: 'proj-1',
 				}),
 			});
 		});
