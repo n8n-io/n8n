@@ -29,6 +29,9 @@ import type { ExecutionIdV2 } from './execution-id';
  */
 export type V2Scope = 'all' | ReadonlyArray<Workflow['id']>;
 
+/** The ids of the workflows a caller may read, or a check of one workflow. */
+type WorkflowAccess = string[] | ((workflowId: string) => Promise<boolean>);
+
 /** The subset of a range query the data plane search actually understands. */
 export interface EngineV2SearchQuery {
 	/** A v1 status filter; resolved internally to the v2 statuses that map onto it. */
@@ -195,59 +198,30 @@ export class EngineV2ExecutionReader {
 	 * `undefined` for absent and for inaccessible alike, so neither reveals the
 	 * other.
 	 *
+	 * `access` is the `workflow:read` check: the ids of the workflows the caller
+	 * may read, or a check of the execution's one workflow. Pass the check when a
+	 * list of every shared workflow id costs more.
+	 *
 	 * The steps are the run data, so `includeData` decides both.
 	 */
 	async findOne(
 		executionId: ExecutionIdV2,
-		sharedWorkflowIds: string[],
+		access: WorkflowAccess,
 		options?: { includeData?: true },
 	): Promise<IExecutionResponse | undefined>;
 	async findOne(
 		executionId: ExecutionIdV2,
-		sharedWorkflowIds: string[],
+		access: WorkflowAccess,
 		options: { includeData: false },
 	): Promise<IExecutionBase | undefined>;
 	async findOne(
 		executionId: ExecutionIdV2,
-		sharedWorkflowIds: string[],
+		access: WorkflowAccess,
 		options?: { includeData?: boolean },
 	): Promise<IExecutionResponse | IExecutionBase | undefined>;
 	async findOne(
 		executionId: ExecutionIdV2,
-		sharedWorkflowIds: string[],
-		options: { includeData?: boolean } = {},
-	): Promise<IExecutionResponse | IExecutionBase | undefined> {
-		// The `workflow:read` check.
-		return await this.findOneIfReadable(
-			executionId,
-			async (workflowId) => sharedWorkflowIds.includes(workflowId),
-			options,
-		);
-	}
-
-	/**
-	 * As {@link findOne}, but `canRead` checks access to the workflow of the
-	 * execution. Use it when a list of every shared workflow id costs more than
-	 * one check for one workflow.
-	 */
-	async findOneIfReadable(
-		executionId: ExecutionIdV2,
-		canRead: (workflowId: string) => Promise<boolean>,
-		options?: { includeData?: true },
-	): Promise<IExecutionResponse | undefined>;
-	async findOneIfReadable(
-		executionId: ExecutionIdV2,
-		canRead: (workflowId: string) => Promise<boolean>,
-		options: { includeData: false },
-	): Promise<IExecutionBase | undefined>;
-	async findOneIfReadable(
-		executionId: ExecutionIdV2,
-		canRead: (workflowId: string) => Promise<boolean>,
-		options?: { includeData?: boolean },
-	): Promise<IExecutionResponse | IExecutionBase | undefined>;
-	async findOneIfReadable(
-		executionId: ExecutionIdV2,
-		canRead: (workflowId: string) => Promise<boolean>,
+		access: WorkflowAccess,
 		{ includeData = true }: { includeData?: boolean } = {},
 	): Promise<IExecutionResponse | IExecutionBase | undefined> {
 		// TODO(CAT-4235): mirror this metadata on the control plane, so we can
@@ -257,7 +231,10 @@ export class EngineV2ExecutionReader {
 		});
 		if (!snapshot) return undefined;
 
-		if (!(await canRead(snapshot.workflowId))) return undefined;
+		const canRead = Array.isArray(access)
+			? access.includes(snapshot.workflowId)
+			: await access(snapshot.workflowId);
+		if (!canRead) return undefined;
 
 		if (includeData) return await this.fromSnapshot(snapshot);
 

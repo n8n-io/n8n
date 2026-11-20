@@ -7978,15 +7978,13 @@ describe('createExecutionAdapter on engine v2', () => {
 		const statuses = [...(options?.statuses ?? ['success'])];
 		const nextStatus = () => (statuses.length > 1 ? statuses.shift() : statuses[0]);
 		const reader = mock<EngineV2ExecutionReader>();
-		reader.findOne.mockImplementation(
-			async (id: string) => ({ id, workflowId: 'wf-1', status: nextStatus() }) as never,
-		);
-		reader.findOneIfReadable.mockImplementation((async (
+		reader.findOne.mockImplementation((async (
 			id: string,
-			_canRead: unknown,
+			access: unknown,
 			readOptions?: { includeData?: boolean },
 		) => {
-			if (options?.readable === false) return undefined;
+			// The viewer reads check access with a function, the status polls with a list.
+			if (options?.readable === false && typeof access === 'function') return undefined;
 			if (readOptions?.includeData === false) {
 				return { id, workflowId: 'wf-1', status: nextStatus() };
 			}
@@ -8037,9 +8035,10 @@ describe('createExecutionAdapter on engine v2', () => {
 			});
 
 			expect(result).toMatchObject({ executionId: V2_ID, status: 'success' });
-			expect(reader.findOne).toHaveBeenCalledTimes(2);
+			// Two status polls, then one read of the result.
+			expect(reader.findOne).toHaveBeenCalledTimes(3);
 			expect(reader.findOne).toHaveBeenCalledWith(V2_ID, ['wf-1'], { includeData: false });
-			expect(reader.findOneIfReadable).toHaveBeenCalledWith(V2_ID, expect.any(Function));
+			expect(reader.findOne).toHaveBeenLastCalledWith(V2_ID, expect.any(Function));
 			expect(mockActiveExecutions.has).not.toHaveBeenCalled();
 			// No control-plane row exists, so no verification pins are pruned from one.
 			expect(mockExecutionPersistence.findSingleExecution).not.toHaveBeenCalled();
@@ -8162,7 +8161,7 @@ describe('createExecutionAdapter on engine v2', () => {
 				message: `Execution ${V2_ID} cancelled`,
 			});
 			expect(dataPlane.cancelExecution).toHaveBeenCalledWith(V2_ID);
-			expect(reader.findOneIfReadable).toHaveBeenCalledWith(V2_ID, expect.any(Function), {
+			expect(reader.findOne).toHaveBeenCalledWith(V2_ID, expect.any(Function), {
 				includeData: false,
 			});
 		});

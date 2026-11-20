@@ -568,11 +568,11 @@ describe('EngineV2ExecutionReader', () => {
 		});
 	});
 
-	describe('findOneIfReadable', () => {
+	describe('findOne with an access check', () => {
 		it('asks the check about the workflow of the execution, then maps the snapshot', async () => {
 			const canRead = vi.fn().mockResolvedValue(true);
 
-			const result = await reader.findOneIfReadable(EXECUTION_ID, canRead);
+			const result = await reader.findOne(EXECUTION_ID, canRead);
 
 			expect(canRead).toHaveBeenCalledWith(WORKFLOW_ID);
 			expect(dataPlane.getExecution).toHaveBeenCalledWith(EXECUTION_ID, { includeSteps: true });
@@ -583,9 +583,9 @@ describe('EngineV2ExecutionReader', () => {
 		it('returns undefined when the check refuses the workflow', async () => {
 			const canRead = vi.fn().mockResolvedValue(false);
 
-			await expect(reader.findOneIfReadable(EXECUTION_ID, canRead)).resolves.toBeUndefined();
+			await expect(reader.findOne(EXECUTION_ID, canRead)).resolves.toBeUndefined();
 			await expect(
-				reader.findOneIfReadable(EXECUTION_ID, canRead, { includeData: false }),
+				reader.findOne(EXECUTION_ID, canRead, { includeData: false }),
 			).resolves.toBeUndefined();
 		});
 
@@ -593,14 +593,14 @@ describe('EngineV2ExecutionReader', () => {
 			dataPlane.getExecution.mockResolvedValue(undefined);
 			const canRead = vi.fn().mockResolvedValue(true);
 
-			await expect(reader.findOneIfReadable(EXECUTION_ID, canRead)).resolves.toBeUndefined();
+			await expect(reader.findOne(EXECUTION_ID, canRead)).resolves.toBeUndefined();
 			expect(canRead).not.toHaveBeenCalled();
 		});
 
 		it('reads the status without the steps', async () => {
 			dataPlane.getExecution.mockResolvedValue(snapshot({ status: 'running', finishedAt: null }));
 
-			const result = await reader.findOneIfReadable(EXECUTION_ID, async () => true, {
+			const result = await reader.findOne(EXECUTION_ID, async () => true, {
 				includeData: false,
 			});
 

@@ -30,7 +30,7 @@ export async function loadExecutionForViewer(
 	viewer: User,
 ): Promise<IExecutionResponse | undefined> {
 	const execution = isExecutionIdV2(executionId)
-		? await Container.get(EngineV2ExecutionReader).findOneIfReadable(
+		? await Container.get(EngineV2ExecutionReader).findOne(
 				executionId,
 				async (workflowId) => await canAccessWorkflow(workflowId, viewer, EXECUTION_READ_SCOPES),
 			)
@@ -68,7 +68,7 @@ export async function findEngineV2ExecutionForViewer(
 	viewer: User,
 	scopes: Scope[],
 ): Promise<IExecutionBase | undefined> {
-	return await Container.get(EngineV2ExecutionReader).findOneIfReadable(
+	return await Container.get(EngineV2ExecutionReader).findOne(
 		executionId,
 		async (workflowId) => await canAccessWorkflow(workflowId, viewer, scopes),
 		{ includeData: false },

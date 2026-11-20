@@ -2485,13 +2485,8 @@ export class InstanceAiAdapterService {
 				// instance-wide or per-workflow save settings. Manual mode is gated by
 				// `saveManualExecutions`; trigger modes (webhook, chat, trigger) are
 				// gated by the success/error settings — override all three.
-				// Engine v2 drops pin data outside manual mode and cannot start a run at a
-				// pinned node. So a v2 run is always manual and names its trigger, and
-				// the engine takes the trigger's pin data as the trigger output.
-				const runsOnEngineV2 = workflow.settings?.engineType === 'v2';
 				const runData: IWorkflowExecutionDataProcess = {
-					executionMode:
-						triggerNode && !runsOnEngineV2 ? getExecutionModeForTrigger(triggerNode) : 'manual',
+					executionMode: triggerNode ? getExecutionModeForTrigger(triggerNode) : 'manual',
 					workflowData: {
 						...workflow,
 						nodes: waits.nodes,
@@ -2529,7 +2524,7 @@ export class InstanceAiAdapterService {
 					inputData,
 					triggerNode,
 				});
-				if (pinDataPlan.startNodeName && !runsOnEngineV2) {
+				if (pinDataPlan.startNodeName) {
 					runData.startNodes = [{ name: pinDataPlan.startNodeName, sourceData: null }];
 				} else if (triggerNode) {
 					// No inputData but we have a trigger node (e.g. test-trigger from
@@ -2540,11 +2535,20 @@ export class InstanceAiAdapterService {
 				if (pinDataPlan.runPinData) {
 					runData.pinData = pinDataPlan.runPinData;
 				}
-				if (pinDataPlan.triggerExecutionData && !runsOnEngineV2) {
+				if (pinDataPlan.triggerExecutionData) {
 					// Persist pin data in executionData so queued workers can hydrate
 					// verification fixtures while starting from the trigger node.
-					// Engine v2 reads the trigger output from the pin data instead.
 					runData.executionData = pinDataPlan.triggerExecutionData;
+				}
+
+				// Engine v2 drops pin data outside manual mode and cannot start a run at a
+				// pinned node. So a v2 run is always manual and names its trigger, and the
+				// engine reads the trigger output from the pin data.
+				if (workflow.settings?.engineType === 'v2') {
+					runData.executionMode = 'manual';
+					runData.startNodes = undefined;
+					runData.executionData = undefined;
+					if (triggerNode) runData.triggerToStartFrom = { name: triggerNode.name };
 				}
 
 				runData.source = 'instance_ai';
@@ -3001,8 +3005,6 @@ export class InstanceAiAdapterService {
 				}
 
 				try {
-					// Engine v2 cannot run a tool on its own yet. Its dispatcher refuses
-					// such a step run, and the error reaches the caller unchanged.
 					const executionId = await workflowRunner.run(runData);
 
 					const waitOutcome = await waitForRun({
@@ -6183,8 +6185,7 @@ function toWorkflowDetail(
 
 /** Whether a run that started at `startedAt` started before `otherStartedAt`. */
 function isOlderRun(startedAt: Date, otherStartedAt: Date | null | undefined): boolean {
-	if (!otherStartedAt) return false;
-	return new Date(startedAt).getTime() < new Date(otherStartedAt).getTime();
+	return otherStartedAt ? startedAt.getTime() < otherStartedAt.getTime() : false;
 }
 
 async function toWorkflowDetailWithChecksum(

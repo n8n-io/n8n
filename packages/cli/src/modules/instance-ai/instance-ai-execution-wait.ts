@@ -107,9 +107,7 @@ export const isEngineV2ExecutionUnsettled = (status: string | undefined) =>
  * sends the control plane no end-of-run signal, so polling is the only option.
  *
  * `readStatus` returns `undefined` when the execution is not (yet) readable.
- * The poll continues until the timeout in that case. A read that is still
- * pending when the time runs out or the signal aborts does not hold up the
- * result.
+ * The poll continues until the timeout in that case.
  */
 export async function pollEngineV2Execution(args: {
 	readStatus: () => Promise<string | undefined>;
@@ -117,55 +115,41 @@ export async function pollEngineV2Execution(args: {
 	abortSignal?: AbortSignal;
 }): Promise<'settled' | 'timeout' | 'abort'> {
 	const { readStatus, timeoutMs, abortSignal } = args;
-	const deadline = Date.now() + timeoutMs;
+	const timeout = new AbortController();
+	const timeoutId = setTimeout(() => timeout.abort(), timeoutMs);
+	const ended = abortSignal ? AbortSignal.any([abortSignal, timeout.signal]) : timeout.signal;
 
-	while (true) {
-		const status = await readStatusUntil(readStatus, deadline, abortSignal);
-		if (typeof status === 'string' && !isEngineV2ExecutionUnsettled(status)) return 'settled';
-		if (abortSignal?.aborted) return 'abort';
-		if (Date.now() >= deadline) return 'timeout';
-
-		try {
-			await sleep(Math.min(ENGINE_V2_POLL_INTERVAL_MS, deadline - Date.now()), abortSignal);
-		} catch {
-			// An abort ends the sleep early. The next pass reports it.
+	try {
+		while (!ended.aborted) {
+			const status = await untilAborted(readStatus(), ended);
+			if (status !== undefined && !isEngineV2ExecutionUnsettled(status)) return 'settled';
+			// An end of the wait cuts the sleep short. The loop condition reports it.
+			await sleep(ENGINE_V2_POLL_INTERVAL_MS, ended).catch(() => {});
 		}
+		return abortSignal?.aborted ? 'abort' : 'timeout';
+	} finally {
+		clearTimeout(timeoutId);
 	}
 }
 
-const READ_ABANDONED = Symbol('read abandoned');
-
 /**
- * Reads the status, but gives up when the deadline passes or the signal aborts.
- * The data plane client has no request timeout, so a stalled read would
- * otherwise keep the wait, and the run, going.
+ * Resolves with `undefined` once `signal` aborts. The data plane client has no
+ * request timeout, so a stalled read must not hold up the wait.
  */
-async function readStatusUntil(
-	readStatus: () => Promise<string | undefined>,
-	deadline: number,
-	abortSignal?: AbortSignal,
-): Promise<string | undefined | typeof READ_ABANDONED> {
-	const read = readStatus();
-	// An abandoned read can still reject later. Nothing waits for it then.
-	read.catch(() => {});
+async function untilAborted<T>(promise: Promise<T>, signal: AbortSignal): Promise<T | undefined> {
+	// An abandoned promise can still reject later. Nothing waits for it then.
+	promise.catch(() => {});
 
-	let timeoutId: NodeJS.Timeout | undefined;
-	let onAbort: (() => void) | undefined;
-	const giveUp = new Promise<typeof READ_ABANDONED>((resolve) => {
-		if (abortSignal?.aborted) {
-			resolve(READ_ABANDONED);
-			return;
-		}
-		timeoutId = setTimeout(() => resolve(READ_ABANDONED), Math.max(0, deadline - Date.now()));
-		onAbort = () => resolve(READ_ABANDONED);
-		abortSignal?.addEventListener('abort', onAbort, { once: true });
+	let onAbort = () => {};
+	const aborted = new Promise<undefined>((resolve) => {
+		onAbort = () => resolve(undefined);
+		signal.addEventListener('abort', onAbort, { once: true });
 	});
 
 	try {
-		return await Promise.race([read, giveUp]);
+		return await Promise.race([promise, aborted]);
 	} finally {
-		clearTimeout(timeoutId);
-		if (onAbort) abortSignal?.removeEventListener('abort', onAbort);
+		signal.removeEventListener('abort', onAbort);
 	}
 }
 
