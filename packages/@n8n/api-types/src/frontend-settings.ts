@@ -430,6 +430,15 @@ export type FrontendModuleSettings = {
 	};
 
 	/**
+	 * Client settings for the apps module.
+	 */
+	apps?: {
+		enabled: boolean;
+		/** Whether users can send feedback about n8n Apps to n8n. */
+		feedbackEnabled: boolean;
+	};
+
+	/**
 	 * Quick connect settings
 	 */
 	'quick-connect'?: {

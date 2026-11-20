@@ -52,3 +52,17 @@ it.each(['0', '-1', '1.5', 'not a number', '2147483648'])(
 		);
 	},
 );
+
+it.each(['', 'https://feedback.example.com/intake'])('accepts the feedback URL "%s"', (value) => {
+	vi.stubEnv('N8N_APPS_FEEDBACK_URL', value);
+	expect(Container.get(AppsConfig).feedbackUrl).toBe(value);
+});
+
+it.each(['http://feedback.example.com/intake', 'not a url'])(
+	'rejects a feedback URL that is not HTTPS: %s',
+	(value) => {
+		vi.stubEnv('N8N_APPS_FEEDBACK_URL', value);
+		vi.spyOn(console, 'warn').mockImplementation(() => {});
+		expect(Container.get(AppsConfig).feedbackUrl).toBe(new AppsConfig().feedbackUrl);
+	},
+);

@@ -1,6 +1,7 @@
 import type { AppResponse, AppVersionResponse } from '@n8n/api-types';
 import { createComponentRenderer } from '@n8n/frontend-test-utils';
 import { getProject, type Project } from '@n8n/rest-api-client/api/projects';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
 
@@ -76,6 +77,10 @@ const renderComponent = createComponentRenderer(AppHeader, {
 				emits: ['updated'],
 				template:
 					'<button data-test-id="app-share" @click="$emit(\'updated\', { ...app, visibility: \'instance\' })">{{ url }}</button>',
+			},
+			AppFeedbackDialog: {
+				props: ['open', 'app'],
+				template: '<div v-if="open" data-test-id="app-feedback-dialog-stub">{{ app.id }}</div>',
 			},
 			AppActions: {
 				props: ['app'],
@@ -190,5 +195,23 @@ describe('AppHeader', () => {
 		await userEvent.click(getByTestId('app-actions'));
 
 		expect(emitted('deleted')).toEqual([['app-1']]);
+	});
+
+	it('hides the feedback button when feedback is off', async () => {
+		vi.mocked(getProject).mockResolvedValue(project({ type: 'team', name: 'Marketing' }));
+		const { queryByTestId } = renderComponent();
+
+		await waitFor(() => expect(getProject).toHaveBeenCalled());
+		expect(queryByTestId('app-header-feedback')).not.toBeInTheDocument();
+	});
+
+	it('opens the feedback dialog for the app', async () => {
+		useSettingsStore().moduleSettings = { apps: { enabled: true, feedbackEnabled: true } };
+		vi.mocked(getProject).mockResolvedValue(project({ type: 'team', name: 'Marketing' }));
+		const { getByTestId, findByTestId } = renderComponent();
+
+		await userEvent.click(await findByTestId('app-header-feedback'));
+
+		expect(getByTestId('app-feedback-dialog-stub')).toHaveTextContent('app-1');
 	});
 });

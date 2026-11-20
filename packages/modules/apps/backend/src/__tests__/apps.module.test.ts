@@ -77,7 +77,7 @@ describe('AppsModule', () => {
 			'AppBuildReconciliationTask',
 		]);
 		expect(logger.warn).toHaveBeenCalledWith('The apps module is experimental.');
-		expect(await module.settings()).toEqual({ enabled: true });
+		expect(await module.settings()).toEqual({ enabled: true, feedbackEnabled: true });
 	});
 
 	it('rejects missing hosting configuration before initializing storage', async () => {
