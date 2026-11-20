@@ -14,7 +14,11 @@ import { Container } from '@n8n/di';
 export class McpModule implements ModuleInterface {
 	async init() {
 		await import('./mcp.controller.js');
-		await import('./mcp.settings.controller.js');
+		const { McpSettingsController } = await import('./mcp.settings.controller.js');
+		const { License } = await import('@/license.js');
+		Container.get(License).onCertRefresh(() => {
+			void Container.get(McpSettingsController).refreshMcpModuleSettings();
+		});
 
 		// Register the instance MCP server as a protected resource of the shared
 		// OAuth server, so its tokens are minted and verified with the right
@@ -28,19 +32,28 @@ export class McpModule implements ModuleInterface {
 	 * Settings exposed to the frontend under `/rest/module-settings`.
 	 *
 	 * The response shape will be
-	 * `{ mcp: { mcpAccessEnabled: boolean, mcpManagedByEnv: boolean, serverUrl: string, autoExposeNewWorkflows: boolean } }`.
+	 * `{ mcp: { mcpAccessEnabled: boolean, mcpManagedByEnv: boolean, serverUrl: string, autoExposeNewWorkflows: boolean, preferencesEnabled: boolean } }`.
 	 */
 	async settings() {
 		const { McpSettingsService } = await import('./mcp.settings.service.js');
 		const { McpProtectedResource } = await import('./mcp-protected-resource.js');
 		const mcpSettingsService = Container.get(McpSettingsService);
-		const mcpAccessEnabled = await mcpSettingsService.getEnabled();
-		const autoExposeNewWorkflows = await mcpSettingsService.getAutoExposeNewWorkflows();
+		const [mcpAccessEnabled, autoExposeNewWorkflows, preferencesEnabled] = await Promise.all([
+			mcpSettingsService.getEnabled(),
+			mcpSettingsService.getAutoExposeNewWorkflows(),
+			mcpSettingsService.getPreferencesEnabled(),
+		]);
 		const { mcpManagedByEnv } = Container.get(InstanceSettingsLoaderConfig);
 		// Canonical resource URL, so the UI shows the URL clients must actually
 		// use when a dedicated MCP base URL is configured.
 		const serverUrl = Container.get(McpProtectedResource).getResourceUrl();
-		return { mcpAccessEnabled, mcpManagedByEnv, serverUrl, autoExposeNewWorkflows };
+		return {
+			mcpAccessEnabled,
+			mcpManagedByEnv,
+			serverUrl,
+			autoExposeNewWorkflows,
+			preferencesEnabled,
+		};
 	}
 
 	@OnShutdown()

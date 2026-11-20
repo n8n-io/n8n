@@ -13,6 +13,7 @@ import {
 	N8nDialogFooter,
 	N8nNotice,
 	N8nSettingsLayout,
+	N8nSettingsEnableRow,
 	N8nSettingsPageHeader,
 	N8nSettingsRow,
 	N8nSettingsRowConfigure,
@@ -75,6 +76,22 @@ const exposedWorkflowsCount = ref<number | null>(null);
 const autoExposeSaving = ref(false);
 const showCallbackUrlsDialog = ref(false);
 const savingCallbackUrls = ref(false);
+
+const preferencesSaving = ref(false);
+const globalPreferencesEnabled = computed(
+	() => settingsStore.settings.aiPreferences?.enabled === true,
+);
+
+const onTogglePreferences = async (enabled: boolean) => {
+	preferencesSaving.value = true;
+	try {
+		await mcpStore.setPreferencesEnabled(enabled);
+	} catch (error) {
+		toast.showError(error, i18n.baseText('settings.mcp.preferences.error.title'));
+	} finally {
+		preferencesSaving.value = false;
+	}
+};
 
 const onAutoExposeSwitchUpdate = (value: string | number | boolean) => {
 	void onToggleAutoExpose(value === true);
@@ -425,6 +442,24 @@ onBeforeUnmount(() => {
 							<N8nSettingsRowConfigure :value="callbackUrlsValue" />
 						</template>
 					</N8nSettingsRow>
+				</N8nSettingsRowGroup>
+			</N8nSettingsSection>
+
+			<N8nSettingsSection
+				v-if="canManageMcpInstance"
+				:title="i18n.baseText('settings.mcp.context.title')"
+				data-test-id="mcp-context-section"
+			>
+				<N8nSettingsRowGroup>
+					<N8nSettingsEnableRow
+						:title="i18n.baseText('settings.mcp.preferences.title')"
+						:description="i18n.baseText('settings.mcp.preferences.description')"
+						:enabled="mcpStore.preferencesEnabled && globalPreferencesEnabled"
+						:disabled="!canToggleMCP || preferencesSaving || !globalPreferencesEnabled"
+						:show-enterprise-readiness-badge="settingsStore.isEnterprisePlan"
+						switch-test-id="mcp-preferences-toggle"
+						@update:enabled="onTogglePreferences"
+					/>
 				</N8nSettingsRowGroup>
 			</N8nSettingsSection>
 
