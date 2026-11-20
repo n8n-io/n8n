@@ -4,6 +4,10 @@ import userEvent from '@testing-library/user-event';
 import { STOP_MANY_EXECUTIONS_MODAL_KEY } from '@/app/constants';
 import StopManyExecutionsModal from './StopManyExecutionsModal.vue';
 import type { RenderResult } from '@testing-library/vue';
+import { flushPromises } from '@vue/test-utils';
+import { mockedStore } from '@/__tests__/utils';
+import { useUIStore } from '@/app/stores/ui.store';
+import { useExecutionsStore } from '@/features/execution/executions/executions.store';
 
 vi.mock('@n8n/composables/useToast', () => {
 	const showError = vi.fn();
@@ -31,20 +35,26 @@ vi.mock('vue-router', () => ({
 	RouterLink: vi.fn(),
 }));
 
-const ModalStub = {
+const DialogStub = {
+	props: ['header', 'description'],
 	template: `
-		<div>
-			<slot name="header" />
-			<slot name="title" />
-			<slot name="content" />
-			<slot name="footer" />
+		<div role="dialog">
+			<h2 v-if="header">{{ header }}</h2>
+			<p v-if="description">{{ description }}</p>
+			<slot />
 		</div>
 	`,
 };
 
+const dialogPartStub = { template: '<div><slot /></div>' };
+
 const global = {
 	stubs: {
-		Modal: ModalStub,
+		Dialog: DialogStub,
+		DialogHeader: dialogPartStub,
+		DialogTitle: dialogPartStub,
+		DialogFooter: dialogPartStub,
+		DialogDescription: dialogPartStub,
 	},
 };
 
@@ -93,5 +103,34 @@ describe('StopManyExecutionsModal', () => {
 
 		const submitButton = getByTestId('sme-submit-button');
 		expect(submitButton).toBeDisabled();
+	});
+
+	it('closes the dialog when the stop request finishes', async () => {
+		const { getByTestId } = renderModal();
+		const executionsStore = mockedStore(useExecutionsStore);
+		executionsStore.stopManyExecutions.mockResolvedValue({ stopped: 1 });
+
+		await userEvent.click(getByTestId('sme-submit-button'));
+		await flushPromises();
+
+		expect(useUIStore().closeModal).toHaveBeenCalledWith(STOP_MANY_EXECUTIONS_MODAL_KEY);
+	});
+
+	it('does not close a dialog opened after this instance unmounts', async () => {
+		const { getByTestId, unmount } = renderModal();
+		const executionsStore = mockedStore(useExecutionsStore);
+		let resolveStop: (value: { stopped: number }) => void = () => {};
+		executionsStore.stopManyExecutions.mockReturnValue(
+			new Promise((resolve) => {
+				resolveStop = resolve;
+			}),
+		);
+
+		await userEvent.click(getByTestId('sme-submit-button'));
+		unmount();
+		resolveStop({ stopped: 1 });
+		await flushPromises();
+
+		expect(useUIStore().closeModal).not.toHaveBeenCalled();
 	});
 });
