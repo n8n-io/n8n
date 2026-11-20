@@ -11,11 +11,16 @@ export type SkillFolderFile = { path: string; content: string | Buffer };
 
 export const SKILL_MD = 'SKILL.md';
 
+const MARKDOWN_FILE = /\.(?:md|markdown)$/i;
+
 /**
  * One skill folder to the content of one skill. The reader is lenient. It keeps every
  * frontmatter key other than name and description, so an imported skill keeps keys that
  * n8n does not know.
  * Keeps other files at their original relative paths. Files with invalid paths are left out.
+ * A Markdown file loses its byte order mark and gets LF line endings, as before n8n kept
+ * other files, so a skill that n8n synced earlier shows no update. Every other file keeps
+ * its bytes, because a script can depend on them.
  */
 export function readSkillFolder(
 	folderName: string,
@@ -42,11 +47,12 @@ export function readSkillFolder(
 			continue;
 		}
 		const bytes = Buffer.isBuffer(content) ? content : Buffer.from(content);
-		kept.push(
-			isUtf8(bytes) && !bytes.includes(0)
-				? { path, content: bytes.toString('utf8') }
-				: { path, content: bytes.toString('base64'), isBinary: true },
-		);
+		if (!isUtf8(bytes) || bytes.includes(0)) {
+			kept.push({ path, content: bytes.toString('base64'), isBinary: true });
+			continue;
+		}
+		const text = bytes.toString('utf8');
+		kept.push({ path, content: MARKDOWN_FILE.test(path) ? normalizeText(text) : text });
 	}
 	const { name, description, ...frontmatter } = data;
 	return {
@@ -64,7 +70,7 @@ export function readSkillFolder(
 /**
  * The content of one skill back to its folder: SKILL.md, then the references. For content
  * that `readSkillFolder` returned, reading the result gives the same `skillContentHash`.
- * Other content can change, because the reader trims and normalizes SKILL.md.
+ * Other content can change, because the reader trims SKILL.md and normalizes Markdown files.
  */
 export function writeSkillFolder(content: SkillContent): SkillFolderFile[] {
 	// The real name and description win over the same keys in the frontmatter.

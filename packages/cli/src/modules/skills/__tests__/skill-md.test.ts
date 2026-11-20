@@ -167,7 +167,22 @@ describe('readSkillFolder', () => {
 			expect(skippedFiles).toEqual(['references/a\0.md']);
 		});
 
-		it('preserves binary bytes, empty files, and text line endings', () => {
+		it('removes the byte order mark and CRLF from Markdown files only', () => {
+			const { content } = readSkillFolder('brand-voice', [
+				SKILL,
+				{ path: 'reference/guide.MD', content: '\uFEFFLine 1\r\nLine 2\r' },
+				{ path: 'notes.markdown', content: Buffer.from('\uFEFFA\r\n') },
+				{ path: 'scripts/run.bat', content: '\uFEFFecho 1\r\n' },
+			]);
+
+			expect(content.files).toEqual([
+				{ path: 'notes.markdown', content: 'A\n' },
+				{ path: 'reference/guide.MD', content: 'Line 1\nLine 2\n' },
+				{ path: 'scripts/run.bat', content: '\uFEFFecho 1\r\n' },
+			]);
+		});
+
+		it('preserves binary bytes, empty files, and the line endings of a script', () => {
 			const input = Buffer.from([0, 0xff, 0xfe, 10]);
 			const { content, skippedFiles } = readSkillFolder('brand-voice', [
 				SKILL,
@@ -222,7 +237,7 @@ describe('readSkillFolder', () => {
 
 			expect(content.files).toEqual([
 				{ path: 'references/a.md', content: 'A' },
-				{ path: 'references/b.md', content: 'B\r\n' },
+				{ path: 'references/b.md', content: 'B\n' },
 			]);
 			expect(skippedFiles).toEqual(['a/../LICENSE', 'z/../run.sh']);
 		});
