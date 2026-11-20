@@ -2,6 +2,7 @@ import { throwIfAborted } from '@n8n/agents';
 import { detectAuthenticationParameterValue } from '@n8n/ai-utilities/node-catalog';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
+import { sleep } from '@n8n/utils/sleep';
 import type { IDataObject, INodeParameters } from 'n8n-workflow';
 
 import { EphemeralNodeExecutor } from '@/node-execution/ephemeral-node-executor';
@@ -21,6 +22,9 @@ export interface NodeOperation {
 }
 
 const EPHEMERAL_NODE_NAME = 'Knowledge live source';
+/** A rate-limited call is tried again after these pauses, so a burst of questions does not lose a source. */
+const RATE_LIMIT_RETRY_PAUSES_MS = [5_000, 15_000];
+const RATE_LIMIT_PATTERN = /rate.?limit|too many requests|\b429\b/i;
 
 /**
  * Runs one node operation for a live source over `EphemeralNodeExecutor.executeInline`.
@@ -40,6 +44,25 @@ export class NodeOperationAdapter {
 	}
 
 	async execute(ctx: LiveRunContext, operation: NodeOperation): Promise<IDataObject[]> {
+		for (const [attempt, pause] of [...RATE_LIMIT_RETRY_PAUSES_MS, undefined].entries()) {
+			try {
+				return await this.executeOnce(ctx, operation);
+			} catch (error) {
+				const rateLimited =
+					error instanceof LiveSourceUnavailableError && RATE_LIMIT_PATTERN.test(error.message);
+				if (!rateLimited || pause === undefined) throw error;
+				this.logger.debug('Live source operation was rate limited, trying again', {
+					sourceId: ctx.sourceId,
+					attempt: attempt + 1,
+					pauseMs: pause,
+				});
+				await sleep(pause, ctx.signal);
+			}
+		}
+		throw new LiveSourceUnavailableError(ctx.sourceId, 'the operation was rate limited');
+	}
+
+	private async executeOnce(ctx: LiveRunContext, operation: NodeOperation): Promise<IDataObject[]> {
 		const { sourceId } = ctx;
 		throwIfAborted(ctx.signal);
 		const nodeType = this.nodeTypes.getByNameAndVersion(

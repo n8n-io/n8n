@@ -41,6 +41,7 @@ const SELECTED_KNOWLEDGE_RULES = [
 	'When nothing in the selected knowledge answers the question, say that it is not in the selected knowledge. Do not guess and do not use other sources for it.',
 	'list_knowledge without arguments shows everything that is selected. When the item the user names is not in that list, stop searching and say that it is not in the selected knowledge.',
 	'When two items conflict, prefer the one with the latest updatedAt and name both.',
+	'When search_knowledge reports a source as unavailable, say that the source is unavailable for a question about it. Do not answer such a question from another source.',
 ].join(' ');
 
 interface LiveKnowledgeToolErrorOutput {

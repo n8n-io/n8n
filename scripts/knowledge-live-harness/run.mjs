@@ -11,7 +11,8 @@
 //                            (default 3) per agent (default kb-native,kb-mcp-c0), with
 //                            scoring and a results table; rebuilds the indexes first
 //   report [files...]        the tables of one or more results files (default: the latest
-//                            run), also of a partial run
+//                            run), also of a partial run; `file@agent,agent` keeps only
+//                            those agents of that file
 //
 // Secrets come from env vars. Never pass one as a command argument.
 
@@ -461,7 +462,8 @@ function citesExpected(answer, expected) {
 	return id ? normalized.includes(id) : normalized.includes(url.toLowerCase());
 }
 
-const REFUSAL_PATTERN = /not in the selected knowledge/i;
+// The instructions ask for one line; a refusal in other words still counts.
+const REFUSAL_PATTERN = /not (in|part of) (the |my |your )?selected knowledge/i;
 
 function scoreAnswer(question, result, items, forbiddenIds) {
 	const answer = result.text;
@@ -511,9 +513,12 @@ function forbiddenIdsOf(items) {
 	return ids;
 }
 
+const isTimeout = (result) => result.errors.some((error) => error.startsWith('timeout'));
+
 function metricsOf(result) {
 	const execution = result.thread?.executions?.[0] ?? {};
 	return {
+		timeout: isTimeout(result),
 		promptTokens: execution.promptTokens ?? null,
 		completionTokens: execution.completionTokens ?? null,
 		totalTokens: execution.totalTokens ?? null,
@@ -568,8 +573,8 @@ const fmt = (value, digits = 0) => (value === null ? '-' : value.toFixed(digits)
 /** One line per agent and class, plus a total line, as a markdown table. */
 function summarize(runs) {
 	const lines = [
-		'| Agent | Class | Runs | Pass | Answer | Citation | Refusal | Violations | Prompt tokens | Tokens / pass | Tool calls | Wall s (median) |',
-		'| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |',
+		'| Agent | Class | Runs | Pass | Timeouts | Answer | Citation | Refusal | Violations | Prompt tokens | Tokens / pass | Tool calls | Wall s (median) |',
+		'| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |',
 	];
 	const groups = new Map();
 	for (const run of runs) {
@@ -582,6 +587,9 @@ function summarize(runs) {
 	for (const [key, group] of [...groups.entries()].sort()) {
 		const [agentKey, cls] = key.split('|');
 		const passes = group.filter((run) => run.score.pass).length;
+		// A timeout is a run that never answered: it counts as a fail, but not in the cost figures.
+		const timeouts = group.filter((run) => run.metrics.timeout).length;
+		const answered = group.filter((run) => !run.metrics.timeout);
 		const totalTokens = group.reduce((sum, run) => sum + (run.metrics.totalTokens ?? 0), 0);
 		const scored = (field) => {
 			const relevant = group.filter((run) => run.score[field] !== undefined);
@@ -590,7 +598,7 @@ function summarize(runs) {
 				: `${relevant.filter((run) => run.score[field]).length}/${relevant.length}`;
 		};
 		lines.push(
-			`| ${agentKey} | ${cls} | ${group.length} | ${passes}/${group.length} | ${scored('answered')} | ${scored('cited')} | ${scored('refused')} | ${group.reduce((sum, run) => sum + run.score.violations, 0)} | ${fmt(average(group.map((run) => run.metrics.promptTokens)))} | ${passes > 0 ? fmt(totalTokens / passes) : '-'} | ${fmt(average(group.map((run) => run.metrics.toolCalls)), 1)} | ${fmt(median(group.map((run) => run.metrics.wallMs / 1000)), 1)} |`,
+			`| ${agentKey} | ${cls} | ${group.length} | ${passes}/${group.length} | ${timeouts} | ${scored('answered')} | ${scored('cited')} | ${scored('refused')} | ${group.reduce((sum, run) => sum + run.score.violations, 0)} | ${fmt(average(answered.map((run) => run.metrics.promptTokens)))} | ${passes > 0 ? fmt(totalTokens / passes) : '-'} | ${fmt(average(answered.map((run) => run.metrics.toolCalls)), 1)} | ${fmt(median(answered.map((run) => run.metrics.wallMs / 1000)), 1)} |`,
 		);
 	}
 	return lines.join('\n');
@@ -608,12 +616,14 @@ function compare(runs, agentKeys) {
 			(agentKey) =>
 				runs
 					.filter((run) => run.question.id === questionId && run.agentKey === agentKey)
-					.map((run) => (run.score.pass ? 'P' : run.score.violations > 0 ? 'V' : 'F'))
+					.map((run) =>
+						run.score.pass ? 'P' : run.metrics.timeout ? 'T' : run.score.violations > 0 ? 'V' : 'F',
+					)
 					.join('') || '-',
 		);
 		lines.push(`| ${questionId} | ${cells.join(' | ')} |`);
 	}
-	return `${lines.join('\n')}\n\nP = pass, F = fail, V = fail with a scope violation; one mark per repetition.`;
+	return `${lines.join('\n')}\n\nP = pass, F = fail, V = fail with a scope violation, T = timeout (no answer); one mark per repetition.`;
 }
 
 async function run(client, scaffold, items, { agentKeys, repeat }) {
@@ -686,10 +696,15 @@ async function report(files) {
 	const forbiddenIds = items ? forbiddenIdsOf(items) : null;
 	const runs = [];
 	const agentKeys = [];
-	for (const file of paths) {
+	for (const spec of paths) {
+		// `file@agent,agent` keeps only those agents of the file, so a void repetition can be left out.
+		const [file, only] = spec.split('@');
+		const keep = only ? new Set(only.split(',')) : null;
 		const data = await readJson(file);
 		for (const run of data.runs) {
+			if (keep && !keep.has(run.agentKey)) continue;
 			if (items) run.score = scoreAnswer(run.question, run.result, items, forbiddenIds);
+			run.metrics.timeout = isTimeout(run.result);
 			runs.push(run);
 		}
 		for (const agentKey of data.agentKeys)

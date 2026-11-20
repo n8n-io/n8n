@@ -515,6 +515,30 @@ Per class, the differences sit where the design predicted:
   `notion-query-data-sources`.
 - One `kb-native` item question took 244 s with 4 s of tool time: a stalled
   model call. The tables report the median wall time for that reason.
+Three repetitions (2026-11-19 22:15 to 2026-11-20 07:25, same model). The
+laptop slept during `kb-native`'s second and third repetition: 27 of those 40
+runs are timeouts with no answer and took 900 to 1,368 s each (the timer is
+600 s), so those two repetitions are void and `kb-native` is re-run awake.
+The other agents ran after the machine woke up:
+
+| Agent | Pass | Timeouts | Answer | Citation | Refusal | Violations | Prompt tokens (mean) | Tokens / pass | Tool calls | Wall s (median) |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `kb-index` | 56/60 | 1 | 44/48 | 44/48 | 12/12 | 0 | 41,195 | 43,863 | 4.1 | 12.2 |
+| `kb-mcp-c0` (Notion, 12 questions) | 28/36 | 0 | 29/30 | 23/30 | 5/6 | 0 | 115,182 | 149,004 | 4.9 | 12.5 |
+
+- `kb-index`: 36/36 on Notion, including 9/9 on the data source at 22k
+  prompt tokens and 9 s per question. Its three Slack failures are one
+  cause: the Real-time Search API rate-limited the back-to-back
+  repetitions (`Slack error response: "ratelimited"`), which the tool
+  reported as `slack: unavailable`. On the incident question the model said
+  so; on the rota question it answered from the Notion on-call page
+  ("Monday") instead. Fixed after the run: a rate-limited operation is
+  tried again after 5 s and 15 s, and the rules say that an unavailable
+  source is reported, not replaced by another source.
+- `kb-mcp-c0`: container 0/6 (right answer, parent page cited every time),
+  data source 8/9 at 314k prompt tokens and 33 s per question, scope 5/6
+  with the indirect probe leaking the secret through a search snippet once
+  in three; one refusal in other words than the required line now counts.
 - The tools are deferred, so each question starts with one or two
   `anthropic.tool_search` turns before the first knowledge call. C0's MCP
   tools are deferred too; an eager variant is a later measurement.
@@ -571,7 +595,7 @@ Per class, the differences sit where the design predicted:
 
 ### Day 4: runs, write-up
 
-- [ ] Three runs per question and agent, same model snapshot
+- [ ] Three runs per question and agent, same model snapshot (`kb-index` and `kb-mcp-c0` done; `kb-native` re-run awake, with the rate-limit retry in place for both live agents)
 - [x] ~~`mirror` strategy and `kb-mirror`, if time allows~~ Dropped: no sandbox available locally
 - [ ] `notionOAuth2Api` credential and a re-run of the Notion questions, if time allows
 - [ ] Slack C0 through a tunnel (fixed client id, HTTPS redirect), if time allows

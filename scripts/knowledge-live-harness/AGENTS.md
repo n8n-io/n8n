@@ -53,7 +53,10 @@ N8N_EMAIL=… N8N_PASSWORD=… N8N_PROJECT_ID=… N8N_MODEL_CREDENTIAL_ID=… N8
 ```
 
 The instance needs `N8N_KNOWLEDGE_LIVE_SOURCES_ENABLED=true`, otherwise the
-agents get no live knowledge tools and answer from nothing.
+agents get no live knowledge tools and answer from nothing. A full run takes
+about an hour: keep the machine awake (`caffeinate -i pnpm knowledge:harness …`
+on macOS). When it sleeps, the questions in flight time out with no answer,
+and the tables count them as timeouts, not as retrieval failures.
 
 | Env var | Meaning |
 | --- | --- |
@@ -101,7 +104,10 @@ until the run ends, so a crash keeps what was measured) and `.md` with two
 tables: per agent and class (pass rate, answers, citations, refusals,
 violations, average prompt tokens, total tokens per pass, tool calls, median
 wall time), and per question and agent with one mark per repetition (`P`
-pass, `F` fail, `V` fail with a scope violation).
+pass, `F` fail, `V` fail with a scope violation, `T` timeout). A timeout
+counts as a fail but not in the token, call and wall-time figures.
+`report file@agent,agent` keeps only those agents of a file, so a clean re-run
+of one agent can replace a void repetition when several files are merged.
 
 ## Output
 
