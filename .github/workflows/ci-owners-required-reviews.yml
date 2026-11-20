@@ -29,10 +29,11 @@ permissions: {}
 
 jobs:
   required-reviews:
-    uses: n8n-io/github-actions/.github/workflows/ownership-checks.yml@fecf3cb96940e5d483bdc58ddb6936a642f87570 # TODO: pin to ownership-checks/v1.0.0
+    uses: n8n-io/github-actions/.github/workflows/ownership-checks.yml@be626e7b43cf88fe6d1404a29ed4e2b4f9cbb294 # main; TODO: pin to ownership-checks/v1.0.0 once it is released
     permissions:
       id-token: write
       pull-requests: read
     with:
       ownership-comment: false
+      devhub-url: https://devhub.services.n8n.cloud
       pull-request-number: ${{ inputs.pr_number }}
