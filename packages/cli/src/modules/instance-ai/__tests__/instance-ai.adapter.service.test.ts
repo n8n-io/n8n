@@ -3478,6 +3478,42 @@ describe('createWorkflowAdapter', () => {
 		expect(result.connections).toEqual({ 'Old Node': {} });
 	});
 
+	it("returns the version's engine, not the draft's, when a versionId is passed", async () => {
+		const { adapter, mockWorkflowHistoryService, mockWorkflowFinderService, savedWorkflow } =
+			createWorkflowAdapterForTests();
+		mockWorkflowFinderService.findWorkflowForUser.mockResolvedValue({
+			...savedWorkflow,
+			settings: { engineType: 'v2', timezone: 'Europe/Berlin' },
+		});
+		mockWorkflowHistoryService.getVersion.mockResolvedValue({
+			versionId: 'v-old',
+			nodes: [],
+			connections: {},
+			nodeGroups: null,
+			settings: { engineType: 'v1' },
+		});
+		const versionedSettings = mock<WorkflowVersionedSettingsService>();
+		versionedSettings.forVersionRun.mockImplementation((settings, version) => ({
+			...settings,
+			...version.settings,
+		}));
+		const get = Container.get.bind(Container);
+		const spy = vi
+			.spyOn(Container, 'get')
+			.mockImplementation(((token: Parameters<typeof Container.get>[0]) =>
+				token === WorkflowVersionedSettingsService
+					? versionedSettings
+					: get(token)) as typeof Container.get);
+
+		try {
+			const result = await adapter.getAsWorkflowJSON('wf-new', 'v-old');
+
+			expect(result.settings).toEqual({ engineType: 'v1', timezone: 'Europe/Berlin' });
+		} finally {
+			spy.mockRestore();
+		}
+	});
+
 	it('lists active workflows by default', async () => {
 		const { adapter, mockWorkflowService, mockUser } = createWorkflowAdapterForTests();
 

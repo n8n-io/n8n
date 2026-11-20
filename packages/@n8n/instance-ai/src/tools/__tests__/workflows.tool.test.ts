@@ -347,6 +347,7 @@ describe('workflows tool', () => {
 			expect(result).toEqual({
 				workflowId: 'w1',
 				name: 'Test WF',
+				engine: 'v1',
 				nodeCount: 0,
 				nodes: [],
 				code: '// generated code',
@@ -1268,6 +1269,35 @@ describe('workflows tool', () => {
 			expect(vi.mocked(generateWorkflowCode)).toHaveBeenCalledWith(
 				expect.objectContaining({ includeNodeIds: true, includePositions: false }),
 			);
+		});
+
+		it.each([
+			{ settings: { engineType: 'v2' }, engine: 'v2' },
+			{ settings: { engineType: 'v1' }, engine: 'v1' },
+			{ settings: undefined, engine: 'v1' },
+		])('returns engine $engine for settings $settings', async ({ settings, engine }) => {
+			const context = createMockContext();
+			(context.workflowService.getAsWorkflowJSON as Mock).mockResolvedValue({
+				name: 'Test WF',
+				nodes: [],
+				connections: {},
+				settings,
+			});
+			const tool = createWorkflowToolRouter(context);
+
+			const current = await executeTool(
+				tool,
+				{ action: 'get-as-code', workflowId: 'wf1' },
+				{} as never,
+			);
+			const past = await executeTool(
+				tool,
+				{ action: 'get-as-code', workflowId: 'wf1', versionId: 'v-old' },
+				{} as never,
+			);
+
+			expect(current).toEqual(expect.objectContaining({ engine }));
+			expect(past).toEqual(expect.objectContaining({ engine }));
 		});
 	});
 
