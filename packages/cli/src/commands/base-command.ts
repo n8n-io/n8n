@@ -594,7 +594,8 @@ export abstract class BaseCommand<F = never> {
 
 	/**
 	 * Registers the workflow review rules, so a one-off command that publishes is refused what the
-	 * server refuses. Call after `initLicense()`: the module is license-gated.
+	 * server refuses. Call after `initLicense()`: the module is license-gated. Call it once per
+	 * process: a second init of the module throws.
 	 */
 	async initWorkflowReviewRules() {
 		await this.moduleRegistry.initModules(this.instanceSettings.instanceType, ['workflow-reviews']);

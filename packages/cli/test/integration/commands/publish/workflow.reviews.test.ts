@@ -1,9 +1,14 @@
 /**
- * One command `init()` per file: the workflow-reviews module registers its inbox source once
- * per process, so a second `init()` in the same file would throw.
+ * The tests share one command: its `init()` runs once in `beforeAll`, because module init
+ * registers an inbox source and a second init throws. Telemetry is mocked there too, because
+ * `setupTestCommand` mocks it only in `beforeEach`.
  */
+import { randomUUID } from 'node:crypto';
+
 import {
+	createActiveWorkflow,
 	createTeamProject,
+	createWorkflowHistory,
 	createWorkflowWithTriggerAndHistory,
 	getPersonalProject,
 	getWorkflowById,
@@ -51,14 +56,11 @@ beforeAll(async () => {
 	await command.init();
 });
 
-const publish = async (workflowId: string) => {
+const publish = async (workflowId: string, versionId?: string) => {
 	// @ts-expect-error Read-only property, normally set by the command runner
-	command.flags = { id: workflowId };
+	command.flags = { id: workflowId, versionId };
 	await command.run();
 };
-
-const isPublished = async (workflowId: string) =>
-	(await getWorkflowById(workflowId))?.activeVersionId !== null;
 
 let owner: User;
 let ownerProject: Project;
@@ -79,6 +81,11 @@ beforeEach(async () => {
 	await policyService.update({ enabled: true, alwaysRequired: false });
 });
 
+afterAll(async () => {
+	await testDb.truncate([...REVIEW_TABLES]);
+	await policyService.update({ enabled: false, alwaysRequired: false });
+});
+
 test('publish:workflow refuses a workflow with an open review', async () => {
 	const workflow = await createWorkflowWithTriggerAndHistory({}, owner);
 	await seedReview({
@@ -91,7 +98,7 @@ test('publish:workflow refuses a workflow with an open review', async () => {
 	await expect(publish(workflow.id)).rejects.toThrow(
 		"Workflow can't be published while its review is open.",
 	);
-	expect(await isPublished(workflow.id)).toBe(false);
+	expect(await getWorkflowById(workflow.id)).toMatchObject({ activeVersionId: null });
 });
 
 describe('when reviews are always required', () => {
@@ -105,7 +112,20 @@ describe('when reviews are always required', () => {
 		await expect(publish(workflow.id)).rejects.toThrow(
 			"Workflow can't be published because this version has no approved review.",
 		);
-		expect(await isPublished(workflow.id)).toBe(false);
+		expect(await getWorkflowById(workflow.id)).toMatchObject({ activeVersionId: null });
+	});
+
+	test('publish:workflow keeps the live version when it refuses a new version', async () => {
+		const workflow = await createActiveWorkflow({}, teamProject);
+		const newVersionId = randomUUID();
+		await createWorkflowHistory(workflow, teamProject, undefined, { versionId: newVersionId });
+
+		await expect(publish(workflow.id, newVersionId)).rejects.toThrow(
+			"Workflow can't be published because this version has no approved review.",
+		);
+		expect(await getWorkflowById(workflow.id)).toMatchObject({
+			activeVersionId: workflow.versionId,
+		});
 	});
 
 	test('publish:workflow publishes a team project version with an approved review', async () => {
@@ -121,14 +141,8 @@ describe('when reviews are always required', () => {
 
 		await publish(workflow.id);
 
-		expect(await isPublished(workflow.id)).toBe(true);
-	});
-
-	test('publish:workflow publishes a personal space workflow without a review', async () => {
-		const workflow = await createWorkflowWithTriggerAndHistory({}, owner);
-
-		await publish(workflow.id);
-
-		expect(await isPublished(workflow.id)).toBe(true);
+		expect(await getWorkflowById(workflow.id)).toMatchObject({
+			activeVersionId: workflow.versionId,
+		});
 	});
 });

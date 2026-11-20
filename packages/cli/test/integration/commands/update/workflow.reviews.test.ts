@@ -41,6 +41,10 @@ const command = setupTestCommand(UpdateWorkflowCommand);
 
 afterAll(async () => {
 	await testDb.truncate([...REVIEW_TABLES]);
+	await Container.get(WorkflowReviewPolicyService).update({
+		enabled: false,
+		alwaysRequired: false,
+	});
 });
 
 test('update:workflow refuses to publish a workflow with an open review', async () => {
