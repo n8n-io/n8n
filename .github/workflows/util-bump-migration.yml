@@ -23,6 +23,9 @@ jobs:
       startsWith(github.event.comment.body, '/bump-migration')
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # The job uses only the App token; a non-empty block satisfies the poutine rule, which counts `{}` as unset.
+    permissions:
+      contents: read
     steps:
       - name: Generate App Token
         id: app-token

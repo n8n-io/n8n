@@ -12,6 +12,6 @@ export function pickTimestamp(existing, now = Date.now()) {
 	if (now > max) return { timestamp: now, source: 'Date.now()' };
 	return {
 		timestamp: max + 1,
-		source: `max + 1 (existing head ${max} is in the future — see AGENTS.md)`,
+		source: `max + 1 (existing head ${max} is in the future — see .agents/skills/db-migrations/SKILL.md)`,
 	};
 }

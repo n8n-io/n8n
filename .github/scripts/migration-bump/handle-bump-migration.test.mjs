@@ -30,7 +30,7 @@ let reactions = [];
 let createdTrees = [];
 let createdCommits = [];
 let refUpdates = [];
-/** @type {'createTree' | 'updateRef' | null} */
+/** @type {'createTree' | 'updateRef' | 'createForIssueComment' | null} */
 let failingCall = null;
 
 const BUMP_SHA = 'bump-commit-sha';
@@ -50,6 +50,7 @@ const octokit = {
 		},
 		reactions: {
 			createForIssueComment: async ({ content }) => {
+				failIf('createForIssueComment');
 				reactions.push(content);
 			},
 		},
@@ -188,6 +189,26 @@ describe('handle-bump-migration', () => {
 				moved: `export class New${BASE_HEAD + 1} {}\n`,
 				removed: null,
 				reactions: ['eyes', 'rocket'],
+				comments: [
+					`Moved the migrations after the head of \`master\`:\n\n\`\`\`\nNew: ${ADDED} -> ${BASE_HEAD + 1}\n\`\`\``,
+				],
+			},
+		);
+	});
+
+	it('replies with the moves when a reaction fails', async () => {
+		seedRepos();
+		failingCall = 'createForIssueComment';
+
+		const failed = await runCommand().then(
+			() => false,
+			() => true,
+		);
+
+		assert.deepEqual(
+			{ failed, comments },
+			{
+				failed: false,
 				comments: [
 					`Moved the migrations after the head of \`master\`:\n\n\`\`\`\nNew: ${ADDED} -> ${BASE_HEAD + 1}\n\`\`\``,
 				],

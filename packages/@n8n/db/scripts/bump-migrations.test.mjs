@@ -91,6 +91,32 @@ describe('bumpMigrations', () => {
 		});
 	});
 
+	it('moves the class of a migration whose class name differs from its file name', () => {
+		const classTimestamp = ADDED - 5;
+		git('checkout', '-b', 'feature');
+		write(`${MIGRATIONS}/common/${ADDED}-New.ts`, `export class Renamed${classTimestamp} {}\n`);
+		write(
+			`${MIGRATION_TESTS}/${ADDED}-new.test.ts`,
+			`const MIGRATION_NAME = 'Renamed${classTimestamp}';\n`,
+		);
+		commit('add New with another class name');
+		git('checkout', 'master');
+		addMigration('common', BASE_HEAD, 'Head');
+		commit('add Head');
+		git('checkout', 'feature');
+
+		bumpMigrations({ cwd: repo, base: 'master', now: NOW_BELOW_HEAD });
+
+		const moved = BASE_HEAD + 1;
+		expect({
+			migration: read(`${MIGRATIONS}/common/${moved}-New.ts`),
+			test: read(`${MIGRATION_TESTS}/${moved}-new.test.ts`),
+		}).toEqual({
+			migration: `export class Renamed${moved} {}\n`,
+			test: `const MIGRATION_NAME = 'Renamed${moved}';\n`,
+		});
+	});
+
 	it('gives a common and sqlite pair one new timestamp', () => {
 		git('checkout', '-b', 'feature');
 		addMigration('common', ADDED, 'Pair');

@@ -12,6 +12,7 @@ const MIGRATION_FOLDERS = ['common', 'sqlite', 'postgresdb'].map(
 	(folder) => `packages/@n8n/db/src/migrations/${folder}`,
 );
 const MIGRATION_FILE = /^(?<timestamp>\d{10,16})-(?<name>[A-Za-z][A-Za-z0-9]*)\.ts$/;
+const EXPORTED_CLASS = /^export class (?<base>[A-Za-z0-9]*?)(?<timestamp>\d{10,16})\b/m;
 
 /**
  * @param {string} cwd
@@ -25,16 +26,31 @@ function gitLines(cwd, args) {
 
 /**
  * @param {string} path
- * @returns {{ timestamp: number, name: string, fileBase: string } | null}
+ * @returns {{ path: string, timestamp: number, name: string, fileBase: string } | null}
  */
 function parseMigration(path) {
 	const groups = MIGRATION_FILE.exec(basename(path))?.groups;
 	if (!groups) return null;
 	return {
+		path,
 		timestamp: Number(groups.timestamp),
 		name: groups.name,
 		fileBase: `${groups.timestamp}-${groups.name}`,
 	};
+}
+
+/**
+ * The exported class name of a migration, which can differ from its file name, split into its base and timestamp.
+ *
+ * @param {string} root
+ * @param {{ path: string, timestamp: number, name: string }} migration
+ * @returns {{ base: string, timestamp: string }}
+ */
+function classOf(root, { path, timestamp, name }) {
+	const groups = EXPORTED_CLASS.exec(readFileSync(join(root, path), 'utf8'))?.groups;
+	return groups
+		? { base: groups.base, timestamp: groups.timestamp }
+		: { base: name, timestamp: String(timestamp) };
 }
 
 /**
@@ -51,10 +67,11 @@ function migrationsIn(paths) {
  * @param {string[]} originalPaths The changed paths before any move; renames match on these.
  * @param {string[]} changedPaths Updated in place when a file is renamed.
  * @param {{ name: string, from: number, to: number }} move
+ * @param {{ base: string, timestamp: string }} migrationClass
  */
-function applyMove(root, originalPaths, changedPaths, { name, from, to }) {
+function applyMove(root, originalPaths, changedPaths, { name, from, to }, migrationClass) {
 	const replacements = [
-		[`${name}${from}`, `${name}${to}`],
+		[`${migrationClass.base}${migrationClass.timestamp}`, `${migrationClass.base}${to}`],
 		[`${from}-${name}`, `${to}-${name}`],
 	];
 	changedPaths.forEach((path, index) => {
@@ -115,9 +132,12 @@ export function bumpMigrations({ cwd, base, now = Date.now() }) {
 		from: timestamp,
 		to: first + index,
 	}));
+	const classes = slots.map((slot) => classOf(root, slot));
 	const originalPaths = gitLines(root, ['diff', '--name-only', '--merge-base', base, 'HEAD']);
 	const changedPaths = [...originalPaths];
-	for (const move of moves) applyMove(root, originalPaths, changedPaths, move);
+	moves.forEach((move, index) =>
+		applyMove(root, originalPaths, changedPaths, move, classes[index]),
+	);
 	return moves;
 }
 

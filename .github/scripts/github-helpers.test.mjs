@@ -21,6 +21,7 @@ mock.module('@actions/github', {
 const {
 	findCommentByMarker,
 	initGithub,
+	isTeamMember,
 	postOrUpdateComment,
 	setOctokit,
 	updateCommentById,
@@ -28,6 +29,50 @@ const {
 } = await import('./github-helpers.mjs');
 
 const ORIGINAL_ENV = { ...process.env };
+
+describe('isTeamMember', () => {
+	beforeEach(() => {
+		process.env.GITHUB_TOKEN = 'token';
+		process.env.GITHUB_REPOSITORY = 'n8n-io/n8n';
+	});
+
+	afterEach(() => {
+		process.env = { ...ORIGINAL_ENV };
+	});
+
+	/** @param {() => Promise<unknown>} getMembershipForUserInOrg */
+	const withMembership = (getMembershipForUserInOrg) => {
+		octokitImpl = () => ({ rest: { teams: { getMembershipForUserInOrg } } });
+	};
+
+	it('is true for an active member', async () => {
+		withMembership(async () => ({ data: { state: 'active' } }));
+
+		assert.equal(await isTeamMember('r-d', 'poly'), true);
+	});
+
+	it('is false for a pending invitation', async () => {
+		withMembership(async () => ({ data: { state: 'pending' } }));
+
+		assert.equal(await isTeamMember('r-d', 'poly'), false);
+	});
+
+	it('is false when the user is not in the team', async () => {
+		withMembership(async () => {
+			throw Object.assign(new Error('Not Found'), { status: 404 });
+		});
+
+		assert.equal(await isTeamMember('r-d', 'poly'), false);
+	});
+
+	it('throws other API errors', async () => {
+		withMembership(async () => {
+			throw Object.assign(new Error('Server Error'), { status: 500 });
+		});
+
+		await assert.rejects(isTeamMember('r-d', 'poly'), { status: 500 });
+	});
+});
 
 describe('findCommentByMarker', () => {
 	beforeEach(() => {

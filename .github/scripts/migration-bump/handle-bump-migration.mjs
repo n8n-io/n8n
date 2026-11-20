@@ -181,8 +181,19 @@ async function bumpInWorktree({ octokit, owner, repo, worktree, head, base, reac
  */
 export async function run({ prNumber, commenter, commentId, repoDir }) {
 	const { octokit, owner, repo } = initGithub();
-	const react = (/** @type {string} */ content) =>
-		octokit.rest.reactions.createForIssueComment({ owner, repo, comment_id: commentId, content });
+	// Reactions only show progress, so a failed one never changes the outcome.
+	const react = async (/** @type {string} */ content) => {
+		try {
+			await octokit.rest.reactions.createForIssueComment({
+				owner,
+				repo,
+				comment_id: commentId,
+				content,
+			});
+		} catch (error) {
+			console.error(`/bump-migration reaction failed: ${errorSummary(error)}`);
+		}
+	};
 
 	const pullRequest = await getPullRequestById(prNumber);
 	let reply = await refusalReason(pullRequest, commenter, `${owner}/${repo}`);
