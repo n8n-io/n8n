@@ -261,4 +261,15 @@ describe('HttpGuardRouter', () => {
 
 		expect(context.authorization).toBe('Bearer real-token');
 	});
+
+	it('returns a 401 of the real read to the node, so that the node refreshes its token', async () => {
+		const { router, upstream, gym, hydrator } = setup();
+		upstream.callTool.mockResolvedValueOnce(result({ error: 'expired' }, 401));
+
+		const res = await router.handle(request('GET', LIST));
+
+		expect(res.status).toBe(401);
+		expect(gym.callTool).not.toHaveBeenCalled();
+		expect(hydrator.hydrate).not.toHaveBeenCalled();
+	});
 });
