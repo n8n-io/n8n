@@ -1,4 +1,4 @@
-import { ALL_API_KEY_SCOPES } from '@/scope-information';
+import { isApiKeyScope } from '@/types.ee';
 import { PROJECT_CUSTOM_ROLE_SCOPES } from '@/roles/custom-role-scopes.ee';
 import { GLOBAL_ADMIN_SCOPES, GLOBAL_OWNER_SCOPES } from '@/roles/scopes/global-scopes.ee';
 import {
@@ -39,7 +39,7 @@ describe.each(['workflow:manageOwner', 'agent:manageOwner'] as const)('%s scope'
 	});
 
 	it('is not available to API keys', () => {
-		expect(ALL_API_KEY_SCOPES.has(scope)).toBe(false);
+		expect(isApiKeyScope(scope)).toBe(false);
 	});
 });
 
