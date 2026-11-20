@@ -86,6 +86,15 @@ describe('agent skill DTOs', () => {
 		expect(agentSkillReferencePathSchema.safeParse('references/a b.md').success).toBe(true);
 	});
 
+	it.each(['assets/report\u202Efdp.exe', 'assets/a\u200Bb.md', 'assets/\u2066a.md', '\uFEFFa.md'])(
+		'rejects path %j with a hidden character',
+		(path) => expect(agentSkillReferencePathSchema.safeParse(path).success).toBe(false),
+	);
+
+	it('accepts a lower case skill.md below the skill root', () => {
+		expect(agentSkillReferencePathSchema.safeParse('examples/skill.md').success).toBe(true);
+	});
+
 	it.each([
 		'../guide.md',
 		'docs/../guide.md',
@@ -95,6 +104,8 @@ describe('agent skill DTOs', () => {
 		'a//b',
 		'SKILL.md',
 		'SKILL.md/guide.md',
+		'skill.md',
+		'Skill.MD',
 	])('rejects noncanonical or reserved path %s', (path) =>
 		expect(agentSkillReferencePathSchema.safeParse(path).success).toBe(false),
 	);

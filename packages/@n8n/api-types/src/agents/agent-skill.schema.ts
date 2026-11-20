@@ -10,6 +10,10 @@ export const AGENT_SKILL_REFERENCES_TOTAL_MAX_LENGTH = 2 * 1024 * 1024;
 
 const agentSkillStringArraySchema = z.array(z.string().trim().min(1));
 
+// Zero-width and bidirectional characters. They make a file list show a name that differs
+// from the stored path.
+const HIDDEN_PATH_CHARACTERS = /[\u200b-\u200f\u202a-\u202e\u2060-\u2064\u2066-\u2069\ufeff]/;
+
 export const agentSkillReferencePathSchema = z
 	.string()
 	.min(1)
@@ -22,7 +26,9 @@ export const agentSkillReferencePathSchema = z
 			// No control characters, such as NUL, which Postgres cannot store.
 			// eslint-disable-next-line no-control-regex
 			!/[\u0000-\u001f\u007f]/.test(path) &&
-			segments[0] !== 'SKILL.md' &&
+			!HIDDEN_PATH_CHARACTERS.test(path) &&
+			// A file system that ignores case stores `skill.md` and `SKILL.md` as one file.
+			segments[0].toLowerCase() !== 'skill.md' &&
 			!/^[A-Za-z]:/.test(path) &&
 			segments.every((segment) => segment !== '' && segment !== '.' && segment !== '..')
 		);
