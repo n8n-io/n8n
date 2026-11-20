@@ -22,7 +22,13 @@
  * `language: 'python'`. The prologue gives the names of n8n's Python runner:
  * `_items` in "all items" mode, `_item` in "each item" mode.
  */
-import { eachItemModeError, lowerCodeNative, previousRunsOnce } from './code-native/index.ts';
+import {
+	eachItemModeError,
+	lowerCodeNative,
+	previousRunsOnce,
+	runsOnceOnOneInput,
+} from './code-native/index.ts';
+import { freshCodeItems } from './code-native/translate.ts';
 import type { Code } from './code.ts';
 import { escapeControls, raw, str } from './code.ts';
 import type { NodeContext } from './context.ts';
@@ -575,6 +581,21 @@ export function lowerCode(c: NodeContext): void {
 	if (user.includes('$prevNode')) globals.push(`$prevNode: ${prevNode(c)}`);
 	if (/\$items\(\s*\)/.test(user) && previousRunsOnce(c) === true) globals.push('$itemsOnce: true');
 	if (pairLists.length > 0) globals.push(`$pairs: { ${pairLists.join(', ')} }`);
+	// A later expression that reads the item of another node through this step gets the paired
+	// item of each of its items. v1 gives a new item no paired item, in the host too, so the
+	// engine rule of `assignPairedItems` pairs them from the counts: the same proof as native
+	// code (`freshOutput`), and only when the code does not name `pairedItem`.
+	const freshPairs =
+		type === 'n8n-nodes-base.code' &&
+		c.pairsWanted === true &&
+		c.setPairs !== undefined &&
+		!/\bpairedItem\b/.test(user) &&
+		c.node.retryOnFail !== true &&
+		c.node.alwaysOutputData !== true &&
+		c.node.onError !== 'continueErrorOutput' &&
+		c.node.continueOnFail !== true &&
+		runsOnceOnOneInput(c.workflow.connections, c.node.name, c.engine === true) &&
+		freshCodeItems(user, eachItem ? 'each' : 'all');
 	// The prologue defines `$`, `$node`, `$items` and `$item` when the code reads them.
 	const context =
 		refs.length > 0 || globals.length > 0 || /\$items\b|\$item\b|\$\(|\$node\b/.test(user);
@@ -597,6 +618,7 @@ export function lowerCode(c: NodeContext): void {
 		perItem: false,
 		usesIndex: false,
 		oneErrorItem: !eachItem,
+		...(freshPairs ? { freshPairs: true, freshPairsByIndex: eachItem } : {}),
 		extraItems: context
 			? `{ ${[`$nodes: { ${lists.join(', ')} }`, ...globals].join(', ')} }`
 			: undefined,

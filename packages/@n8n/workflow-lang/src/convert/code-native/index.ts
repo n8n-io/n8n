@@ -14,7 +14,7 @@
  */
 import { NodeFailure, pairingNote } from '../context.ts';
 import type { NodeContext } from '../context.ts';
-import { emitWithHostForm } from '../steps.ts';
+import { emitFreshPairs, emitWithHostForm } from '../steps.ts';
 import type { HostForm } from '../steps.ts';
 import { checkTranslation } from './check.ts';
 import type { AsyncForm } from './emit.ts';
@@ -482,6 +482,31 @@ export function plannedFilesStore(name: string, step: string): string {
 }
 
 /**
+ * True when the node takes the items of output 0 from one connection, so v1's rule of
+ * `assignPairedItems` sees one input list. In the engine form a node with several connections
+ * into input 0 runs once for each of them, and each run pairs its items by count as one
+ * connection does.
+ */
+export function runsOnceOnOneInput(
+	connections: NodeContext['workflow']['connections'],
+	nodeName: string,
+	engine: boolean,
+): boolean {
+	let incoming = 0;
+	let severalInputs = false;
+	for (const [, outputs] of Object.entries(connections)) {
+		for (const targets of outputs?.main ?? []) {
+			for (const target of targets ?? []) {
+				if (target.node !== nodeName) continue;
+				incoming++;
+				if ((target.index ?? 0) !== 0) severalInputs = true;
+			}
+		}
+	}
+	return incoming === 1 || (engine && !severalInputs);
+}
+
+/**
  * Writes the node as native code and returns true, or returns false (with an
  * info diagnostic) when the host step must run it. `hostForm` gives the fallback-host form of
  * the node, for code that can end with the mark of `RUNS_IN_HOST`.
@@ -677,29 +702,15 @@ export function lowerCodeNative(c: NodeContext, hostForm?: () => HostForm | null
 				attempt.freshOutput === true
 			) {
 				const userCode = to.parameters[field];
-				if (typeof userCode === 'string' && !/\bpairedItem\b/.test(userCode)) {
-					let incomingCount = 0;
-					let severalInputs = false;
-					for (const [, outputs] of Object.entries(to.workflow.connections)) {
-						for (const targets of outputs?.main ?? []) {
-							for (const target of targets ?? []) {
-								if (target.node !== to.node.name) continue;
-								incomingCount++;
-								if ((target.index ?? 0) !== 0) severalInputs = true;
-							}
-						}
-					}
-					// In the engine form a node with several connections into input 0 runs once for
-					// each of them: each run pairs its items by length, as one connection does.
-					if (incomingCount === 1 || (to.engine === true && !severalInputs)) {
-						const pairVar = `${out}PairData`;
-						w.line(`const ${pairVar}: Json = { items: ${out}, paired: [] };`);
-						// Each null pair delegates to the engine rule in pairedSourceIndexes
-						// (the assignPairedItems logic: same count→by position, 1 output→0,
-						// 1 input→0, otherwise no pair).
-						w.line(`for (let __i = 0; __i < ${out}.length; __i++) ${pairVar}.paired.push(null);`);
-						to.setPairs(pairVar);
-					}
+				if (
+					typeof userCode === 'string' &&
+					!/\bpairedItem\b/.test(userCode) &&
+					runsOnceOnOneInput(to.workflow.connections, to.node.name, to.engine === true)
+				) {
+					// Each null pair delegates to the engine rule in pairedSourceIndexes
+					// (the assignPairedItems logic: same count→by position, 1 output→0,
+					// 1 input→0, otherwise no pair).
+					emitFreshPairs(to, out, `${out}PairData`, false);
 				}
 			}
 			return;

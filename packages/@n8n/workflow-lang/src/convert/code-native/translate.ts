@@ -234,7 +234,8 @@ export interface Translation {
 	 * True when every top-level return gives new items: an array of new items, a `map` of the
 	 * input items with a helper that gives a new item, a loop that pushes new items, a `filter`
 	 * or `slice` of such a list, or one new item. Then the engine rule of `assignPairedItems`
-	 * can pair the output items from the input and output counts.
+	 * can pair the output items from the input and output counts. In "each item" mode the body
+	 * must also end with a return of a new item, so that every input item gives one result.
 	 */
 	freshOutput: boolean;
 }
@@ -976,6 +977,58 @@ function fillsWithNewItems(name: string, body: ts.Block): boolean {
 	};
 	ts.forEachChild(body, walk);
 	return good;
+}
+
+/**
+ * True when every top-level return of the code gives new items: an array of new items, a
+ * `map` of the input items to new items, a loop that pushes new items, or one new item. Only
+ * then no output item holds a pairedItem from an input item, and v1's rule of
+ * `assignPairedItems` pairs the output items from the counts.
+ *
+ * In "each item" mode v1 gives each result the index of its input item, so that rule is exact
+ * only when every input item gives one result: the body must end with a return of a new item.
+ */
+function freshOutputOf(root: ts.FunctionDeclaration, mode: CodeMode): boolean {
+	const body = root.body;
+	if (!body || (mode !== 'all' && mode !== 'each')) return false;
+	let anyReturn = false;
+	let allFresh = true;
+	const scan = (n: ts.Node): void => {
+		if (!allFresh) return;
+		if (ts.isReturnStatement(n)) {
+			anyReturn = true;
+			const x = n.expression;
+			if (x === undefined) { allFresh = false; return; }
+			const s = stripParens(x);
+			if (!ts.isNewExpression(s) && !givesNewItems(s, body)) allFresh = false;
+			return;
+		}
+		if (n !== root && isFunctionNode(n)) return;
+		ts.forEachChild(n, scan);
+	};
+	ts.forEachChild(body, scan);
+	if (!anyReturn || !allFresh) return false;
+	if (mode === 'each') {
+		const last = body.statements[body.statements.length - 1];
+		if (last === undefined || !ts.isReturnStatement(last) || last.expression === undefined) return false;
+		if (!isNewItem(last.expression)) return false;
+	}
+	return true;
+}
+
+/**
+ * `Translation.freshOutput` for a body of code, also for code that the translator refuses and
+ * that runs in the fallback host: v1 gives new items no paired item there either, so the
+ * engine rule of `assignPairedItems` pairs them from the counts. Only a syntax parse, because
+ * the code has no native form.
+ */
+export function freshCodeItems(code: string, mode: CodeMode): boolean {
+	if (mode !== 'all' && mode !== 'each') return false;
+	const text = WRAP_PREFIX + code + WRAP_SUFFIX;
+	const sf = ts.createSourceFile('code.ts', text, ts.ScriptTarget.Latest, true);
+	const root = sf.statements[0];
+	if (!root || !ts.isFunctionDeclaration(root)) return false;
+	return freshOutputOf(root, mode);
 }
 
 function stringArgument(call: ts.CallExpression): string | null {
@@ -7572,31 +7625,8 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 			message: `The code has a Date value and the helper \`${unproven[0]}\`, which is not proven to read a Date value as JavaScript does.`,
 		});
 	}
-	// True when every top-level return gives new items: an array of new items, a `map` of the
-	// input items to new items, a loop that pushes new items, or one new item. Only then no
-	// output item holds a pairedItem from an input item, and the engine rule of
-	// `assignPairedItems` pairs the output items from the counts, as v1 does.
-	let freshOutput = false;
-	const rootBody = root.body;
-	if (rootBody && (input.mode === 'all' || input.mode === 'each')) {
-		let anyReturn = false;
-		let allFresh = true;
-		const scan = (n: ts.Node): void => {
-			if (!allFresh) return;
-			if (ts.isReturnStatement(n)) {
-				anyReturn = true;
-				const x = n.expression;
-				if (x === undefined) { allFresh = false; return; }
-				const s = stripParens(x);
-				if (!ts.isNewExpression(s) && !givesNewItems(s, rootBody)) allFresh = false;
-				return;
-			}
-			if (n !== root && isFunctionNode(n)) return;
-			ts.forEachChild(n, scan);
-		};
-		ts.forEachChild(rootBody, scan);
-		freshOutput = anyReturn && allFresh;
-	}
+	// True when every top-level return gives new items (see `freshOutputOf`).
+	const freshOutput = freshOutputOf(root, input.mode);
 	const translation = {
 		body,
 		nodes,
