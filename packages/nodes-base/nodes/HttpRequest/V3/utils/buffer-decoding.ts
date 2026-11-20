@@ -1,18 +1,10 @@
+import { isUtf8 } from 'buffer';
 import type { IExecuteFunctions } from 'n8n-workflow';
 import type { Readable } from 'stream';
 
 const CHINESE_ENCODINGS = ['gb18030', 'gbk', 'gb2312'] as const;
 const REPLACEMENT_CHAR = '�';
 const DEFAULT_ENCODING = 'utf-8';
-
-function isValidUtf8(data: Buffer): boolean {
-	try {
-		new TextDecoder('utf-8', { fatal: true }).decode(data);
-		return true;
-	} catch {
-		return false;
-	}
-}
 
 /**
  * Enhanced encoding detection for better handling of non-UTF-8 content
@@ -65,7 +57,7 @@ export async function binaryToStringWithEncodingDetection(
 	// Only invalid UTF-8 bytes need a legacy encoding fallback. Valid UTF-8 can
 	// contain replacement characters or Latin-1-range characters without being
 	// incorrectly reinterpreted as another encoding.
-	if (!isValidUtf8(bufferedData)) {
+	if (!isUtf8(bufferedData)) {
 		const detected = helpers.detectBinaryEncoding(bufferedData).toLowerCase() as BufferEncoding;
 		if (detected && detected !== DEFAULT_ENCODING) {
 			return await helpers.binaryToString(bufferedData, detected);
