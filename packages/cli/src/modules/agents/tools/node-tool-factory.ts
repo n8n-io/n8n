@@ -16,7 +16,8 @@ import { z } from 'zod';
 import { resolveToolNodeType, type EphemeralNodeExecutor } from '@/node-execution';
 import { NodeTypesProviderMissingError, NodeTypesProxy } from '@n8n/backend-services';
 
-import { withNodeGuard } from '../../mcp-guard/chat-scope';
+import { currentAgentId, currentChatId } from '../../mcp-guard/chat-scope';
+import { createNodeRequestGuard } from '../../mcp-guard/node-request-guard';
 import type { HydrationModel } from '../../mcp-guard/hydration-llm';
 import { AgentFileBridge, FILES_INPUT_SCHEMA } from '../agent-file-bridge.service';
 import type { InstrumentToolAdditionalData } from '../evaluation/agent-evaluation.contracts';
@@ -168,13 +169,22 @@ export async function resolveNodeTool(
 	// so hint lookup and request attribution key on the same identifier the
 	// model calls.
 	const instrument = ctx.instrumentToolAdditionalData;
-	const instrumentedExecution = instrument
-		? {
-				nodeName: sanitizedName,
-				configureAdditionalData: (additionalData: IWorkflowExecuteAdditionalData) =>
-					instrument(additionalData, { toolName: sanitizedName, toolKind: 'node' }),
-			}
-		: {};
+	const guardModel = ctx.guardModel;
+	// A test chat guards the requests of the node. Only this node execution gets the guard.
+	const configureAdditionalData = (additionalData: IWorkflowExecuteAdditionalData) => {
+		instrument?.(additionalData, { toolName: sanitizedName, toolKind: 'node' });
+		if (guardModel) {
+			additionalData.nodeRequestGuard = createNodeRequestGuard({
+				model: guardModel,
+				chatId: currentChatId(),
+				agentId: currentAgentId(),
+			});
+		}
+	};
+	const instrumentedExecution =
+		instrument || guardModel
+			? { ...(instrument && { nodeName: sanitizedName }), configureAdditionalData }
+			: {};
 
 	const { schema, acceptsFiles } = await resolveInputSchema(toolSchema, ctx);
 	const built = new Tool(sanitizedName)
@@ -190,21 +200,17 @@ export async function resolveNodeTool(
 							threadId: toolCtx.persistence?.threadId,
 						})
 					: undefined;
-			const execute = async () =>
-				await ctx.executor.executeInline({
-					nodeType,
-					nodeTypeVersion: toolSchema.node.nodeTypeVersion,
-					nodeParameters: toolSchema.node.nodeParameters as INodeParameters,
-					credentialDetails: toExecutorCredentials(toolSchema.node.credentials),
-					inputData: [
-						{ json: input as IDataObject, ...(inputFiles && { binary: inputFiles.binary }) },
-					],
-					projectId: ctx.projectId,
-					...instrumentedExecution,
-				});
-			const result = ctx.guardModel
-				? await withNodeGuard(ctx.guardModel, execute)
-				: await execute();
+			const result = await ctx.executor.executeInline({
+				nodeType,
+				nodeTypeVersion: toolSchema.node.nodeTypeVersion,
+				nodeParameters: toolSchema.node.nodeParameters as INodeParameters,
+				credentialDetails: toExecutorCredentials(toolSchema.node.credentials),
+				inputData: [
+					{ json: input as IDataObject, ...(inputFiles && { binary: inputFiles.binary }) },
+				],
+				projectId: ctx.projectId,
+				...instrumentedExecution,
+			});
 			// A refusal is returned, not thrown: thrown errors reach the chat as plain text.
 			if (result.status === 'error' && result.violations) {
 				return toPolicyRefusalResult(

@@ -5,18 +5,16 @@ import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import type { HttpVendorProfile } from './http-profiles';
 import { looksLikeId, toToolCall, type HttpToolArgs } from './http-tool-caller';
 import type { McpCaller } from './mcp-upstream';
-import type { CapturedRequest } from './net-interceptor';
+import type { CapturedRequest } from './network';
 import { isReadShaped } from './request-classifier';
 import type { Hydrator } from './router';
-import { canonicalHost, isTokenExchange, vendorForRequest } from './vendor-knowledge';
+import { canonicalHost, vendorForRequest } from './vendor-knowledge';
 
 export interface HttpGuardRouterDeps {
 	// The real service. Only a read-shaped request reaches it.
 	upstream: McpCaller;
 	gym: McpCaller;
 	hydrator: Hydrator;
-	// Sends a request of a sign-in host to the real network as it is.
-	realSend: (req: CapturedRequest) => Promise<Response>;
 	profile: HttpVendorProfile;
 	// The credential and the host of the latest request. The real reads of the hydration use them.
 	context: { authorization?: string; origin: string };
@@ -49,7 +47,6 @@ export class HttpGuardRouter {
 
 	async handle(req: CapturedRequest): Promise<Response> {
 		const host = canonicalHost(req.url.hostname);
-		if (isTokenExchange(req)) return await this.deps.realSend(req);
 		const vendor = vendorForRequest(host, req.url.pathname);
 		if (!vendor) return refusal(403, 'mcp-guard: this host is not available in a preview chat');
 

@@ -1,4 +1,4 @@
-import type { CapturedRequest } from './net-interceptor';
+import type { CapturedRequest } from './network';
 
 // A GraphQL operation keyword is a whole word. Commas, braces and spaces all separate definitions, so
 // only a letter, a digit or an underscore before or after the word makes it part of a longer name.

@@ -5,7 +5,7 @@ import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { UnexpectedError } from '@n8n/errors';
 
 import type { McpCaller } from './mcp-upstream';
-import type { CapturedRequest } from './net-interceptor';
+import type { CapturedRequest } from './network';
 
 /**
  * The hydration code is written for tools: a name, args, a result. An HTTP request is turned into one,

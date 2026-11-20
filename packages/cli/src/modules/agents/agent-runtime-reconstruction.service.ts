@@ -21,7 +21,6 @@ import {
 	withMcpGuard,
 } from '../mcp-guard/mcp-guard-fetch';
 import type { HydrationModel } from '../mcp-guard/hydration-llm';
-import { installNodeGuard } from '../mcp-guard/node-guard';
 import { getProviderPrefix } from '@n8n/ai-utilities/agent-config';
 import type { LanguageModel } from 'ai';
 import {
@@ -926,7 +925,6 @@ export class AgentRuntimeReconstructionService {
 		} = options;
 		// Test chat only, when enabled: the network calls of node tools go through the guard.
 		const guardActive = isMcpGuardActive(runType, instrumentation?.mcpFetch !== undefined);
-		if (guardActive) installNodeGuard();
 		const canResume = supportsHitl ?? runtimeProfile === 'top-level';
 		return this.makeToolResolver(
 			{

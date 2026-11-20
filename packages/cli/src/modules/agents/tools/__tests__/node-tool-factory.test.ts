@@ -10,7 +10,7 @@ import { NodeTypes } from '@/node-types';
 import type { NonEmptyViolations } from '@/policy/policy-violation.error';
 
 import { AgentFileBridge } from '../../agent-file-bridge.service';
-import { currentNodeGuard, withChatScope } from '../../../mcp-guard/chat-scope';
+import { withChatScope } from '../../../mcp-guard/chat-scope';
 import type { HydrationModel } from '../../../mcp-guard/hydration-llm';
 import { resolveNodeTool } from '../node-tool-factory';
 
@@ -542,13 +542,14 @@ describe('resolveNodeTool → $fromAI argument named files', () => {
 	});
 });
 
-describe('resolveNodeTool → mcp-guard scope', () => {
+describe('resolveNodeTool → mcp-guard request guard', () => {
 	const model: HydrationModel = { resolve: async () => ({}) as never };
 
 	const run = async (guardModel?: HydrationModel) => {
-		let seen: { model: HydrationModel } | undefined;
-		const executeInline = vi.fn(async () => {
-			seen = currentNodeGuard();
+		let additionalData: Record<string, unknown> | undefined;
+		const executeInline = vi.fn(async (request: Record<string, unknown>) => {
+			additionalData = {};
+			(request.configureAdditionalData as ((a: unknown) => void) | undefined)?.(additionalData);
 			return { status: 'success', data: [] };
 		});
 		const tool = await resolveNodeTool(baseToolSchema, {
@@ -562,14 +563,14 @@ describe('resolveNodeTool → mcp-guard scope', () => {
 			async () => await tool.handler!({ input: 'x' }, {} as never),
 			'a1',
 		);
-		return seen;
+		return additionalData;
 	};
 
-	it('runs the node inside the guard scope when the context has a guard model', async () => {
-		expect((await run(model))?.model).toBe(model);
+	it('sets a request guard on the execution of the node when the context has a guard model', async () => {
+		expect(typeof (await run(model))?.nodeRequestGuard).toBe('function');
 	});
 
-	it('runs the node outside the guard scope when the context has no guard model', async () => {
-		expect(await run(undefined)).toBeUndefined();
+	it('sets no request guard when the context has no guard model', async () => {
+		expect((await run(undefined))?.nodeRequestGuard).toBeUndefined();
 	});
 });

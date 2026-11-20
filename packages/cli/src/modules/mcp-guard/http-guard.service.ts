@@ -1,11 +1,11 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 
-import { currentAgentId, currentChatId, currentNodeGuard } from './chat-scope';
 import { GymAdmin } from './gym-admin';
 import { HttpRunRegistry } from './http-runs';
+import type { CapturedRequest } from './network';
 import { HTTP_PROFILES, type HttpVendorProfile } from './http-profiles';
-import { sendToNetwork, type CapturedRequest } from './net-interceptor';
+import type { NodeRequestGuardScope } from './node-request-guard';
 import {
 	canonicalHost,
 	isTokenExchange,
@@ -36,13 +36,12 @@ export class HttpGuardService {
 
 	constructor(private readonly logger: Logger) {}
 
-	async handle(req: CapturedRequest): Promise<Response> {
-		const guard = currentNodeGuard();
-		const chatId = currentChatId();
-		if (!guard || !chatId) return refusal(403, 'mcp-guard: no guarded node tool');
+	/** Answers a request of a node tool, or returns `undefined` to let the node send it as usual. */
+	async handle(req: CapturedRequest, scope: NodeRequestGuardScope): Promise<Response | undefined> {
+		if (!scope.chatId) return refusal(403, 'mcp-guard: no chat for this node tool');
 		const host = canonicalHost(req.url.hostname);
-		// A token exchange or refresh does not touch data. It goes to the real network.
-		if (isTokenExchange(req)) return await sendToNetwork(req);
+		// A token exchange or refresh does not touch data. The node sends it as usual.
+		if (isTokenExchange(req)) return undefined;
 		const vendor = vendorForRequest(host, req.url.pathname);
 		const registry = vendor && this.registries.get(vendor.name);
 		if (!registry) return refusal(403, 'mcp-guard: this host is not available in a preview chat');
@@ -50,7 +49,7 @@ export class HttpGuardService {
 		let run;
 		try {
 			// One run, so one gym tenant, for each chat of the agent.
-			run = await registry.getOrCreate(`${currentAgentId() ?? 'agent'}-${chatId}`, guard.model);
+			run = await registry.getOrCreate(`${scope.agentId ?? 'agent'}-${scope.chatId}`, scope.model);
 		} catch (e) {
 			// The message can hold the address of the gym. Keep an address out of the log.
 			const reason =

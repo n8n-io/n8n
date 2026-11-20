@@ -8,7 +8,7 @@ import {
 	isReadToolName,
 	toToolCall,
 } from '../http-tool-caller';
-import type { CapturedRequest } from '../net-interceptor';
+import type { CapturedRequest } from '../network';
 
 const req = (method: string, url: string, body?: unknown, headers: Record<string, string> = {}) =>
 	({

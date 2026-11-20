@@ -1,12 +1,8 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 
-import type { HydrationModel } from './hydration-llm';
-
 interface Scope {
 	chatId: string;
 	agentId?: string;
-	// Set around the run of a node tool of a guarded test chat. Only calls made inside it are guarded.
-	nodeGuard?: { model: HydrationModel };
 }
 
 // The chat a guarded tool call belongs to. MCP tool calls carry no chat identity and one MCP
@@ -25,14 +21,4 @@ export function currentChatId(): string | undefined {
 
 export function currentAgentId(): string | undefined {
 	return scope.getStore()?.agentId;
-}
-
-/** Runs a node tool as guarded: its network calls go to the guard. Needs a chat scope. */
-export function withNodeGuard<T>(model: HydrationModel, fn: () => T): T {
-	const store = scope.getStore();
-	return store ? scope.run({ ...store, nodeGuard: { model } }, fn) : fn();
-}
-
-export function currentNodeGuard(): { model: HydrationModel } | undefined {
-	return scope.getStore()?.nodeGuard;
 }
