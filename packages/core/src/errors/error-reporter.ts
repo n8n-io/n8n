@@ -183,14 +183,15 @@ export class ErrorReporter {
 			return;
 		}
 
-		let e = error;
+		let current: unknown = error;
 		const { executionId } = options ?? {};
 		const context = executionId ? ` (execution ${executionId})` : ``;
 
-		// Prevent infinite loops in cyclic cause chains.
+		// Prevent infinite loops in cyclic cause chains and ignore non-Error causes.
 		const seen = new Set<Error>();
 
-		do {
+		while (current instanceof Error && !seen.has(current)) {
+			const e = current;
 			seen.add(e);
 			let stack = '';
 			let meta = undefined;
@@ -206,8 +207,8 @@ export class ErrorReporter {
 			const ownLevel =
 				'level' in e && isErrorLevel(e.level) ? e.level : 'error';
 			if (options?.shouldBeLogged ?? true) log(msg, reportLevel ?? ownLevel, meta);
-			e = e.cause as Error;
-		} while (e && !seen.has(e));
+			current = e.cause;
+		}
 	}
 	async shutdown(timeoutInMs = 1000) {
 		clearTimeout(this.expirationTimer);
