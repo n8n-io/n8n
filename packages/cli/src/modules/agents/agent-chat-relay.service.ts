@@ -2,13 +2,13 @@ import {
 	type AgentChatAttachmentPayload,
 	type AgentSseEvent,
 	MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES,
-	MAX_AGENT_CHAT_ATTACHMENT_SIZE_MB,
 	ViewableMimeTypes,
 } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { sanitizeFilename } from '@n8n/utils/files/sanitize-filename';
 import type { Response } from 'express';
+import { readFile } from 'node:fs/promises';
 import { posix } from 'node:path';
 import { FileNotFoundError, getHtmlSandboxCSP } from 'n8n-core';
 
@@ -21,6 +21,14 @@ import { type FlushableResponse, initSseStream, toChatErrorEvent } from './agent
 import type { AgentChatAttachment } from './entities/agent-chat-attachment.entity';
 import type { StoredAttachmentRef } from './types/agent-chat-attachment';
 import { resolveInboundMimeType } from './utils/inbound-attachments';
+
+/** A file of a multipart chat request, which multer wrote to a temp file. */
+export interface ChatUploadFile {
+	fileName: string;
+	mimeType: string;
+	/** Path of the temp file. The caller deletes it. */
+	path: string;
+}
 
 /** The SSE stream of one chat request, with the helpers that the chat routes use. */
 export type AgentChatStream = ReturnType<AgentChatRelayService['createChatStream']>;
@@ -72,20 +80,49 @@ export class AgentChatRelayService {
 		threadId: string;
 		resourceId: string;
 		source?: string;
+		/** Files of a multipart request. They are stored after `attachments`. */
+		uploads?: ChatUploadFile[];
+		/** Largest file in bytes. Base64 attachments keep their own cap. */
+		maxUploadBytes?: number;
 	}): Promise<StoredAttachmentRef[] | undefined> {
-		const { attachments, agentId, projectId, threadId, resourceId, source = 'chat' } = params;
-		if (!attachments?.length) return undefined;
+		const {
+			attachments = [],
+			uploads = [],
+			agentId,
+			projectId,
+			threadId,
+			resourceId,
+			source = 'chat',
+			maxUploadBytes = MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES,
+		} = params;
+		if (attachments.length === 0 && uploads.length === 0) return undefined;
+
+		// Read one file at a time, so a request holds one file in memory, not all of them.
+		const inbound = [
+			...attachments.map((attachment) => ({
+				fileName: attachment.fileName,
+				mimeType: attachment.mimeType,
+				maxBytes: MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES,
+				read: async () => Buffer.from(attachment.data, 'base64'),
+			})),
+			...uploads.map((upload) => ({
+				fileName: upload.fileName,
+				mimeType: upload.mimeType,
+				maxBytes: maxUploadBytes,
+				read: async () => await readFile(upload.path),
+			})),
+		];
 
 		const stored: StoredAttachmentRef[] = [];
 		try {
-			for (const attachment of attachments) {
-				const data = Buffer.from(attachment.data, 'base64');
+			for (const attachment of inbound) {
+				const data = await attachment.read();
 				if (data.byteLength === 0) {
 					throw new BadRequestError(`Attachment "${attachment.fileName}" is empty`);
 				}
-				if (data.byteLength > MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES) {
+				if (data.byteLength > attachment.maxBytes) {
 					throw new BadRequestError(
-						`Attachment "${attachment.fileName}" exceeds the ${MAX_AGENT_CHAT_ATTACHMENT_SIZE_MB} MB limit`,
+						`Attachment "${attachment.fileName}" exceeds the ${formatMb(attachment.maxBytes)} MB limit`,
 					);
 				}
 
@@ -226,4 +263,8 @@ export class AgentChatRelayService {
 			}
 		});
 	}
+}
+
+function formatMb(bytes: number): string {
+	return String(Math.round((bytes / (1024 * 1024)) * 10) / 10);
 }

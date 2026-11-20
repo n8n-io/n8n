@@ -1,6 +1,10 @@
+import { MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES } from '@n8n/api-types';
 import { jsonParse } from 'n8n-workflow';
 import { UserError } from '@n8n/errors';
 import { EventEmitter } from 'node:events';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { Readable } from 'node:stream';
 import { mock } from 'vitest-mock-extended';
 
@@ -107,6 +111,88 @@ describe('AgentChatRelayService', () => {
 			await relay.relayQueuedStop(res as unknown as FlushableResponse, 'thread', async () => {});
 
 			expect(sentEvents(writes)).toEqual([{ type: 'done', sessionId: 'thread' }]);
+		});
+	});
+
+	describe('storeChatAttachments', () => {
+		const scope = {
+			agentId: 'assistant',
+			projectId: 'project-1',
+			threadId: 'thread-1',
+			resourceId: 'system-chat:user-1',
+			source: 'system_chat',
+		};
+		let dir: string;
+
+		beforeEach(async () => {
+			attachmentService.storeInbound.mockReset();
+			attachmentService.storeInbound.mockImplementation(async (params) =>
+				mock<AgentChatAttachment>({
+					id: `stored-${params.fileName}`,
+					fileName: params.fileName,
+					mimeType: params.mimeType,
+					fileSizeBytes: params.data.byteLength,
+				}),
+			);
+			dir = await mkdtemp(join(tmpdir(), 'agent-chat-relay-'));
+		});
+
+		afterEach(async () => {
+			await rm(dir, { recursive: true, force: true });
+		});
+
+		async function tempFile(name: string, data: Buffer) {
+			const path = join(dir, name);
+			await writeFile(path, data);
+			return path;
+		}
+
+		it('stores the files of a multipart request from their temp files', async () => {
+			const path = await tempFile('clip', Buffer.alloc(32, 1));
+
+			const stored = await relay.storeChatAttachments({
+				...scope,
+				attachments: undefined,
+				uploads: [{ fileName: 'clip.mp4', mimeType: 'video/mp4', path }],
+				maxUploadBytes: 64,
+			});
+
+			expect(stored).toEqual([
+				{ id: 'stored-clip.mp4', fileName: 'clip.mp4', mimeType: 'video/mp4', sizeBytes: 32 },
+			]);
+			expect(attachmentService.storeInbound).toHaveBeenCalledWith(
+				expect.objectContaining({ ...scope, fileName: 'clip.mp4', data: Buffer.alloc(32, 1) }),
+			);
+		});
+
+		it('rejects an upload over its cap and removes the files it stored', async () => {
+			const small = await tempFile('small', Buffer.alloc(8, 1));
+			const large = await tempFile('large', Buffer.alloc(1024 * 1024 + 1, 1));
+
+			await expect(
+				relay.storeChatAttachments({
+					...scope,
+					attachments: undefined,
+					uploads: [
+						{ fileName: 'small.bin', mimeType: 'application/octet-stream', path: small },
+						{ fileName: 'large.bin', mimeType: 'application/octet-stream', path: large },
+					],
+					maxUploadBytes: 1024 * 1024,
+				}),
+			).rejects.toThrow('Attachment "large.bin" exceeds the 1 MB limit');
+			expect(attachmentService.deleteByIds).toHaveBeenCalledWith(['stored-small.bin']);
+		});
+
+		it('keeps the base64 cap for attachments in the JSON body', async () => {
+			const data = Buffer.alloc(MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES + 1, 1).toString('base64');
+
+			await expect(
+				relay.storeChatAttachments({
+					...scope,
+					attachments: [{ fileName: 'big.txt', mimeType: 'text/plain', data }],
+					maxUploadBytes: MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES * 20,
+				}),
+			).rejects.toThrow('Attachment "big.txt" exceeds the 10 MB limit');
 		});
 	});
 

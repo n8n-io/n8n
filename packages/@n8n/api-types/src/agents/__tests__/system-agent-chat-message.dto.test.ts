@@ -40,4 +40,13 @@ describe('SystemAgentChatMessageDto', () => {
 			}).success,
 		).toBe(false);
 	});
+
+	it('accepts a message with only uploaded files', () => {
+		expect(SystemAgentChatMessageDto.safeParse({ message: '', uploadedFileCount: 1 }).success).toBe(
+			true,
+		);
+		expect(SystemAgentChatMessageDto.safeParse({ message: '', uploadedFileCount: 0 }).success).toBe(
+			false,
+		);
+	});
 });

@@ -120,8 +120,8 @@ import {
 	discardPendingN8nChatMessage,
 	stashPendingN8nChatMessage,
 } from '@/features/agents/n8nChatPage/pendingN8nChatMessage';
+import { useAssistantAgentAttachmentRules } from './assistantAgent/useAssistantAgentAttachmentRules';
 import {
-	ASSISTANT_AGENT_ACCEPTED_MIME_TYPES,
 	clearAssistantAgentLaunch,
 	discardPendingAssistantAgentMessage,
 	stashAssistantAgentLaunch,
@@ -688,8 +688,17 @@ const composerAttachOnlyMimeTypes = computed(() =>
 );
 
 // The Assistant agent accepts only the files it can read. Check them on drop, not at send.
+const assistantAttachmentRules = useAssistantAgentAttachmentRules();
 const composerAcceptedMimeTypes = computed(() =>
-	settingsStore.newThreadsUseAssistantAgent ? ASSISTANT_AGENT_ACCEPTED_MIME_TYPES : undefined,
+	settingsStore.newThreadsUseAssistantAgent
+		? assistantAttachmentRules.acceptedMimeTypes.value
+		: undefined,
+);
+// The Assistant agent uploads files as they are, so it can take larger files than the base64 limit.
+const composerMaxFileBytes = computed(() =>
+	settingsStore.newThreadsUseAssistantAgent && !selectedChatAgent.value
+		? assistantAttachmentRules.maxAttachmentBytes.value
+		: undefined,
 );
 
 const chatInputRef = ref<InstanceType<typeof InstanceAiInput> | null>(null);
@@ -926,7 +935,7 @@ async function startAssistantAgentThread(
 	authorship: InstanceAiMessageAuthorship,
 	mentionCounts: AssistantMentionCounts,
 ) {
-	const acceptString = ASSISTANT_AGENT_ACCEPTED_MIME_TYPES;
+	const acceptString = assistantAttachmentRules.acceptedMimeTypes.value;
 	const fileAttachments: InstanceAiFileAttachment[] = [];
 	for (const attachment of attachments ?? []) {
 		if (attachment.type !== 'file') continue;
@@ -1116,6 +1125,7 @@ async function handleWorkflowPreviewExampleUse(
 						:placeholder="isAgentsN8nChatVariantB ? n8nChatPickerPlaceholder : undefined"
 						:attach-only-mime-types="composerAttachOnlyMimeTypes"
 						:accepted-mime-types="composerAcceptedMimeTypes"
+						:max-file-bytes="composerMaxFileBytes"
 						v-bind="
 							// Experiment cleanup (124_workflow_previews_above_assistant)
 							showWorkflowPreviewsAboveAssistant
