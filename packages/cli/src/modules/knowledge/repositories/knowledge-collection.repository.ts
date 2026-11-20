@@ -19,11 +19,12 @@ export class KnowledgeCollectionRepository {
 	}
 
 	async findByIdAndProjectId(
-		id: string,
-		projectId: string,
+		{ collectionId, projectId }: { collectionId: string; projectId: string },
 		ctx: OperationContext,
 	): Promise<KnowledgeCollection | null> {
-		return await this.table.managerFor(ctx).findOneBy(KnowledgeCollection, { id, projectId });
+		return await this.table
+			.managerFor(ctx)
+			.findOneBy(KnowledgeCollection, { id: collectionId, projectId });
 	}
 
 	/** The ids of the agents that use the collection. */

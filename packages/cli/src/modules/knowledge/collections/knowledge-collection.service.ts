@@ -30,7 +30,7 @@ export class KnowledgeCollectionService {
 		collectionId,
 	}: KnowledgeCollectionRef): Promise<KnowledgeCollection> {
 		const collection = (await this.availabilityService.isCollectionsEnabled())
-			? await this.collectionRepository.findByIdAndProjectId(collectionId, projectId, {})
+			? await this.collectionRepository.findByIdAndProjectId({ collectionId, projectId }, {})
 			: null;
 
 		if (!collection) {

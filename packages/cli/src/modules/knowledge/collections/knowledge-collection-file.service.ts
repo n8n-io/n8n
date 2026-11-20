@@ -67,12 +67,12 @@ export class KnowledgeCollectionFileService {
 			await this.collectionService.getInProject({ projectId, collectionId });
 			this.knowledgeFileService.validateUploadMetadata(files);
 			this.validateFileSizes(files);
-			await this.validateFileNames(collectionId, files);
+			await this.validateFileNames({ collectionId, files });
 
 			const uploadedFiles: KnowledgeFile[] = [];
 			try {
 				for (const file of files) {
-					uploadedFiles.push(await this.storeFile(user, collectionId, file));
+					uploadedFiles.push(await this.storeFile({ user, collectionId, file }));
 				}
 			} catch (error) {
 				await this.cleanupFailedUploadBatch(uploadedFiles);
@@ -93,12 +93,12 @@ export class KnowledgeCollectionFileService {
 	}: KnowledgeCollectionRef & { fileId: string }): Promise<void> {
 		await this.collectionService.getInProject({ projectId, collectionId });
 
-		const file = await this.fileRepository.findByIdAndCollectionId(fileId, collectionId, {});
+		const file = await this.fileRepository.findByIdAndCollectionId({ fileId, collectionId }, {});
 		if (!file) {
 			return;
 		}
 
-		await this.fileRepository.deleteByIdAndCollectionId(fileId, collectionId, {});
+		await this.fileRepository.deleteByIdAndCollectionId({ fileId, collectionId }, {});
 		await this.fileStore
 			.delete([{ storedAt: file.storedAt, storageKey: file.storageKey }])
 			.catch((error) => {
@@ -127,7 +127,13 @@ export class KnowledgeCollectionFileService {
 	 * The check compares stored names: a PDF is stored as text, so `a.pdf` and
 	 * `a.txt` cannot both be in one collection.
 	 */
-	private async validateFileNames(collectionId: string, files: Express.Multer.File[]) {
+	private async validateFileNames({
+		collectionId,
+		files,
+	}: {
+		collectionId: string;
+		files: Express.Multer.File[];
+	}) {
 		const existingFiles = await this.fileRepository.findByCollectionId(collectionId, {});
 		const contentFileNames = new Set(
 			existingFiles.map((file) => toKnowledgeContentFileName(file.name)),
@@ -143,11 +149,15 @@ export class KnowledgeCollectionFileService {
 	}
 
 	/** Stores the bytes of the file, then its row. */
-	private async storeFile(
-		user: User,
-		collectionId: string,
-		file: Express.Multer.File,
-	): Promise<KnowledgeFile> {
+	private async storeFile({
+		user,
+		collectionId,
+		file,
+	}: {
+		user: User;
+		collectionId: string;
+		file: Express.Multer.File;
+	}): Promise<KnowledgeFile> {
 		const fileId = generateNanoId();
 		const content = await this.knowledgeFileService.prepareUploadContent(file);
 
@@ -186,7 +196,10 @@ export class KnowledgeCollectionFileService {
 				.delete([{ storedAt: file.storedAt, storageKey: file.storageKey }])
 				.catch(() => {});
 			await this.fileRepository
-				.deleteByIdAndCollectionId(file.id, file.knowledgeCollectionId, {})
+				.deleteByIdAndCollectionId(
+					{ fileId: file.id, collectionId: file.knowledgeCollectionId },
+					{},
+				)
 				.catch(() => {});
 		}
 	}

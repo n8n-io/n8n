@@ -28,8 +28,7 @@ export class KnowledgeCollectionFileRepository {
 	}
 
 	async findByIdAndCollectionId(
-		fileId: string,
-		collectionId: string,
+		{ fileId, collectionId }: { fileId: string; collectionId: string },
 		ctx: OperationContext,
 	): Promise<KnowledgeFile | null> {
 		return await this.table
@@ -57,8 +56,7 @@ export class KnowledgeCollectionFileRepository {
 	}
 
 	async deleteByIdAndCollectionId(
-		fileId: string,
-		collectionId: string,
+		{ fileId, collectionId }: { fileId: string; collectionId: string },
 		ctx: OperationContext,
 	): Promise<void> {
 		await this.table

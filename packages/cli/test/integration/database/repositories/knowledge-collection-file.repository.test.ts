@@ -79,13 +79,13 @@ describe('Knowledge collection repositories', () => {
 			const otherProjectId = (await createTeamProject()).id;
 
 			await expect(
-				collectionRepo.findByIdAndProjectId(collectionId, projectId, {}),
+				collectionRepo.findByIdAndProjectId({ collectionId, projectId }, {}),
 			).resolves.toMatchObject({ id: collectionId, projectId });
 			await expect(
-				collectionRepo.findByIdAndProjectId(collectionId, otherProjectId, {}),
+				collectionRepo.findByIdAndProjectId({ collectionId, projectId: otherProjectId }, {}),
 			).resolves.toBeNull();
 			await expect(
-				collectionRepo.findByIdAndProjectId('missing', projectId, {}),
+				collectionRepo.findByIdAndProjectId({ collectionId: 'missing', projectId }, {}),
 			).resolves.toBeNull();
 		});
 
@@ -154,16 +154,21 @@ describe('Knowledge collection repositories', () => {
 			const file = await fileRepo.saveUploadedFile(fileParams(collectionId, 'file.txt'), {});
 
 			await expect(
-				fileRepo.findByIdAndCollectionId(file.id, otherCollectionId, {}),
+				fileRepo.findByIdAndCollectionId({ fileId: file.id, collectionId: otherCollectionId }, {}),
 			).resolves.toBeNull();
-			await fileRepo.deleteByIdAndCollectionId(file.id, otherCollectionId, {});
+			await fileRepo.deleteByIdAndCollectionId(
+				{ fileId: file.id, collectionId: otherCollectionId },
+				{},
+			);
 			await expect(
-				fileRepo.findByIdAndCollectionId(file.id, collectionId, {}),
+				fileRepo.findByIdAndCollectionId({ fileId: file.id, collectionId }, {}),
 			).resolves.toMatchObject({ id: file.id });
 
-			await fileRepo.deleteByIdAndCollectionId(file.id, collectionId, {});
+			await fileRepo.deleteByIdAndCollectionId({ fileId: file.id, collectionId }, {});
 
-			await expect(fileRepo.findByIdAndCollectionId(file.id, collectionId, {})).resolves.toBeNull();
+			await expect(
+				fileRepo.findByIdAndCollectionId({ fileId: file.id, collectionId }, {}),
+			).resolves.toBeNull();
 		});
 	});
 });

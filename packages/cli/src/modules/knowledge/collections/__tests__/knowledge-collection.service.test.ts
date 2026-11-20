@@ -11,8 +11,9 @@ const collection = mock<KnowledgeCollection>({ id: 'collection-1', projectId: 'p
 function makeService({ collectionsFlag = true }: { collectionsFlag?: boolean } = {}) {
 	const collectionRepository = mock<KnowledgeCollectionRepository>();
 	// The repository returns a collection only for its home project.
-	collectionRepository.findByIdAndProjectId.mockImplementation(async (id, projectId) =>
-		id === collection.id && projectId === collection.projectId ? collection : null,
+	collectionRepository.findByIdAndProjectId.mockImplementation(
+		async ({ collectionId, projectId }) =>
+			collectionId === collection.id && projectId === collection.projectId ? collection : null,
 	);
 
 	return {

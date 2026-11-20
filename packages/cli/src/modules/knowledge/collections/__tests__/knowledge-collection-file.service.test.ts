@@ -258,8 +258,7 @@ describe('KnowledgeCollectionFileService', () => {
 				{ storedAt: 'fs', storageKey: 'key-of-first' },
 			]);
 			expect(fileRepository.deleteByIdAndCollectionId).toHaveBeenCalledWith(
-				firstFileId,
-				collectionId,
+				{ fileId: firstFileId, collectionId },
 				{},
 			);
 		});
@@ -316,8 +315,7 @@ describe('KnowledgeCollectionFileService', () => {
 
 			expect(collectionService.getInProject).toHaveBeenCalledWith({ projectId, collectionId });
 			expect(fileRepository.deleteByIdAndCollectionId).toHaveBeenCalledWith(
-				'file-1',
-				collectionId,
+				{ fileId: 'file-1', collectionId },
 				{},
 			);
 			expect(fileStore.delete).toHaveBeenCalledWith([
