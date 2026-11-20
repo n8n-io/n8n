@@ -449,16 +449,23 @@ void load();
 					<N8nText v-if="detailLoading" :class="$style.detailNotice">{{
 						i18n.baseText('generic.loading')
 					}}</N8nText>
-					<N8nCallout v-else-if="detailError" theme="warning" :class="$style.detailNotice"
-						>{{ detailError }}
-						<N8nButton variant="ghost" :label="i18n.baseText('generic.retry')" @click="loadPreview"
-					/></N8nCallout>
+					<!-- The findings of the skill come with the list, so they show when the files fail to load. -->
 					<SkillSourceFilesView
 						v-else
 						:skill="{ ...skill, ...detail?.preview }"
 						:diff-files="detail?.preview ? undefined : (detail?.files ?? [])"
 					>
 						<template #footer>
+							<N8nCallout
+								v-if="detailError"
+								theme="warning"
+								data-test-id="skill-update-detail-error"
+								>{{ detailError }}
+								<N8nButton
+									variant="ghost"
+									:label="i18n.baseText('generic.retry')"
+									@click="loadPreview"
+							/></N8nCallout>
 							<N8nText
 								v-if="detail && !focused?.newSkill && skill.check?.verdict !== 'blocked'"
 								size="small"

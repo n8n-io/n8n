@@ -264,6 +264,65 @@ it.each([true, false])('hides a new skill from the count with canImport=%s', asy
 	expect(view.emitted().close).toBeUndefined();
 });
 
+it('unchecks a selected new skill that the reviewer removes from the count, and confirms it', async () => {
+	const skill = newSkill();
+	vi.mocked(store.fetchSourceUpdates).mockResolvedValue({
+		updates: [],
+		newSkills: [skill],
+		commit: null,
+	});
+	const view = render();
+	const checkbox = await view.findByRole('checkbox', { name: 'pdf' });
+	await userEvent.click(checkbox);
+	expect(checkbox).toBeChecked();
+
+	await userEvent.click(view.getByTestId('skill-new-hide'));
+	await flushPromises();
+
+	expect(store.acceptSourceUpdates).toHaveBeenCalledWith(source.id, {
+		updates: [],
+		newSkills: [],
+		skippedNewSkills: [{ key: skill.key, contentHash: skill.contentHash }],
+		reviewedWarnings: false,
+	});
+	expect(view.getByRole('checkbox', { name: 'pdf' })).not.toBeChecked();
+	expect(view.getByRole('checkbox', { name: 'pdf' })).toBeEnabled();
+	expect(showMessage).toHaveBeenCalledWith({
+		type: 'success',
+		title: 'No longer counted as new',
+	});
+	expect(view.getByTestId('skill-updates-accept')).toBeDisabled();
+	expect(store.fetchSourceUpdates).toHaveBeenCalledTimes(1);
+	expect(view.emitted().changed).toHaveLength(1);
+});
+
+it('shows the error and lets the reviewer try again when the hide action fails', async () => {
+	vi.mocked(store.fetchSourceUpdates).mockResolvedValue({
+		updates: [],
+		newSkills: [newSkill()],
+		commit: null,
+	});
+	vi.mocked(store.acceptSourceUpdates).mockRejectedValueOnce(
+		new ResponseError('Server error', { httpStatusCode: 500 }),
+	);
+	const view = render();
+	const checkbox = await view.findByRole('checkbox', { name: 'pdf' });
+	await userEvent.click(checkbox);
+
+	await userEvent.click(view.getByTestId('skill-new-hide'));
+	await flushPromises();
+
+	expect(view.getByTestId('skill-updates-error')).toHaveTextContent(
+		'Could not load or save these updates. Try again.',
+	);
+	expect(showMessage).not.toHaveBeenCalled();
+	expect(view.getByTestId('skill-new-hide')).toBeEnabled();
+	expect(view.getByTestId('skill-new-hide')).toHaveTextContent('Remove from new count');
+	expect(view.getByRole('checkbox', { name: 'pdf' })).toBeChecked();
+	expect(store.fetchSourceUpdates).toHaveBeenCalledTimes(1);
+	expect(view.emitted().changed).toBeUndefined();
+});
+
 it('reports agent impact when new skills and updates are accepted together', async () => {
 	vi.mocked(store.fetchSourceUpdates).mockResolvedValue({
 		updates: [update('docx')],
@@ -477,6 +536,45 @@ it('does not select blocked updates or name clashes', async () => {
 		'An agent that follows this skill already uses another skill with a name like "agent-clash"',
 	);
 	expect(view.getByTestId('skill-source-skills')).not.toHaveTextContent('Links to a new domain');
+});
+
+it('keeps the findings of a blocked update above the error when its files do not load', async () => {
+	const blocked = update('docx', 'blocked');
+	blocked.check.findings = [
+		{
+			rule: 'over_limit',
+			severity: 'blocked',
+			file: 'SKILL.md',
+			detail: '',
+			limit: { field: 'instructions', max: 65536, current: 70000 },
+		},
+	];
+	vi.mocked(store.fetchSourceUpdates).mockResolvedValue({ updates: [blocked], commit: null });
+	vi.mocked(store.fetchSourceUpdate)
+		.mockRejectedValueOnce(new ResponseError('Server error', { httpStatusCode: 500 }))
+		.mockResolvedValue({
+			files: [{ path: 'SKILL.md', before: 'Old', after: 'New' }],
+			agents: [],
+			hiddenAgentCount: 0,
+		});
+	const view = render();
+
+	const error = await view.findByTestId('skill-update-detail-error');
+
+	expect(error).toHaveTextContent('Could not load or save these updates. Try again.');
+	const notice = view.getByTestId('skill-source-findings');
+	expect(notice).toHaveTextContent('Over the size limits in SKILL.md');
+	expect(notice).toHaveTextContent(
+		'The instructions can have at most 65536 characters. They have 70000.',
+	);
+	expect(notice.compareDocumentPosition(error) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+	expect(view.queryByTestId('skill-source-file')).not.toBeInTheDocument();
+
+	await userEvent.click(view.getByRole('button', { name: 'Retry' }));
+
+	expect(await view.findByTestId('skill-source-file-diff')).toBeVisible();
+	expect(view.queryByTestId('skill-update-detail-error')).not.toBeInTheDocument();
+	expect(view.getByTestId('skill-source-findings')).toBeVisible();
 });
 
 it('does not write when the dialog closes', async () => {
