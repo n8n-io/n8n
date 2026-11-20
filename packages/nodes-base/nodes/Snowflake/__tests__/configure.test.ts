@@ -34,15 +34,18 @@ beforeEach(() => {
 
 afterEach(() => vi.clearAllMocks());
 
-describe('Snowflake node — VARIANT column parser configuration', () => {
+describe('Snowflake node — SDK and session configuration', () => {
 	new NodeTestHarness().setupTests({
 		workflowFiles: ['insert.workflow.json'],
 		credentials: { snowflake: snowflakeCredentials },
 		customAssertions() {
-			// VARIANT/OBJECT/ARRAY columns are parsed with JSON.parse.
 			expect(snowflake.configure).toHaveBeenCalledWith(
-				expect.objectContaining({ jsonColumnVariantParser: JSON.parse }),
+				expect.objectContaining({
+					jsonColumnVariantParser: JSON.parse,
+					ocspFailOpen: true,
+				}),
 			);
+			expect(snowflake.configure).toHaveBeenCalledBefore(snowflake.createConnection);
 
 			// The session forces valid JSON output for those columns.
 			expect(mockExecute).toHaveBeenCalledWith(
