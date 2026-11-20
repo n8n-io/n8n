@@ -41,7 +41,7 @@ export interface ProjectPermissions {
 	isReadOnly(): boolean;
 }
 
-export type McpPreferencesEntryPoint = 'banner' | 'connection_row' | 'context_section';
+export type McpPreferencesEntryPoint = 'banner' | 'connection_row';
 
 export type McpPreferencesEntrySource = McpPreferencesEntryPoint | 'connect_dialog';
 

@@ -64,7 +64,6 @@ describe('mcpPreferencesEntryPoints store', () => {
 	it.each([
 		MCP_PREFERENCES_ENTRY_POINTS_EXPERIMENT.banner,
 		MCP_PREFERENCES_ENTRY_POINTS_EXPERIMENT.connectionRow,
-		MCP_PREFERENCES_ENTRY_POINTS_EXPERIMENT.contextSection,
 	])('returns the %s entry point', (variant) => {
 		mockGetVariant.mockReturnValue(variant);
 
@@ -131,7 +130,7 @@ describe('mcpPreferencesEntryPoints store', () => {
 	});
 
 	it('tracks entry point clicks and prompt copies with the variant', () => {
-		mockGetVariant.mockReturnValue(MCP_PREFERENCES_ENTRY_POINTS_EXPERIMENT.contextSection);
+		mockGetVariant.mockReturnValue(MCP_PREFERENCES_ENTRY_POINTS_EXPERIMENT.connectionRow);
 		const store = useMcpPreferencesEntryPointsStore();
 
 		store.trackEntryPointClicked('connect_dialog');
@@ -139,13 +138,13 @@ describe('mcpPreferencesEntryPoints store', () => {
 
 		expect(mockTrack).toHaveBeenCalledWith(TELEMETRY_EVENT.MCP.PREFERENCES_ENTRY_POINT_CLICKED, {
 			entry_point: 'connect_dialog',
-			variant: 'context_section',
-			[featureFlagProperty]: 'context_section',
+			variant: 'connection_row',
+			[featureFlagProperty]: 'connection_row',
 		});
 		expect(mockTrack).toHaveBeenCalledWith(TELEMETRY_EVENT.MCP.PREFERENCES_PROMPT_COPIED, {
 			client: 'cursor',
-			variant: 'context_section',
-			[featureFlagProperty]: 'context_section',
+			variant: 'connection_row',
+			[featureFlagProperty]: 'connection_row',
 		});
 	});
 

@@ -64,11 +64,11 @@ export const MCP_TELEMETRY = defineTelemetryEvents({
 		description:
 			'A user in experiment 150 clicked a link to the preferences page from the MCP settings page or the connect-client dialog. The click opens the preferences page.',
 		properties: z.looseObject({
-			variant: z.enum(['banner', 'connection_row', 'context_section']),
+			variant: z.enum(['banner', 'connection_row']),
 			entry_point: z
-				.enum(['banner', 'connection_row', 'context_section', 'connect_dialog'])
+				.enum(['banner', 'connection_row', 'connect_dialog'])
 				.describe(
-					'The banner at the top of the page, the row in Connection details, the row in the Context section, or the link at the end of the connect-client dialog',
+					'The banner at the top of the page, the row in Connection details, or the link at the end of the connect-client dialog',
 				),
 		}),
 	},
@@ -77,7 +77,7 @@ export const MCP_TELEMETRY = defineTelemetryEvents({
 		description:
 			'A user in experiment 150 copied the prompt in the connect-client dialog that asks the client to interview them and save the answers as preferences.',
 		properties: z.looseObject({
-			variant: z.enum(['banner', 'connection_row', 'context_section']),
+			variant: z.enum(['banner', 'connection_row']),
 			client: z.string().describe('The client selected in the dialog, for example `claude-ai`'),
 		}),
 	},

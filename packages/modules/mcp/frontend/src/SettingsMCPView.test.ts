@@ -973,7 +973,6 @@ describe('SettingsMCPView', () => {
 			expect(entryPoints.loadPreferenceCount).not.toHaveBeenCalled();
 			expect(queryByTestId('mcp-preferences-banner')).toBeNull();
 			expect(queryByTestId('mcp-preferences-connection-row')).toBeNull();
-			expect(queryByTestId('mcp-preferences-context-row')).toBeNull();
 		});
 
 		it('tracks no exposure while MCP is off', async () => {
@@ -1039,46 +1038,18 @@ describe('SettingsMCPView', () => {
 			expect(routerPush).toHaveBeenCalledWith({ name: 'SettingsContextPreferences' });
 		});
 
-		it.each([
-			[0, 'None yet'],
-			[1, '1 preference'],
-		])('shows the context row with %s preferences', async (count, value) => {
-			provideEntryPoints('context_section', count);
-
-			const { getByTestId } = createComponent({ pinia });
-			await waitAllPromises();
-
-			const row = getByTestId('mcp-preferences-context-row');
-			expect(row).toHaveTextContent(value);
-			await userEvent.click(row);
-
-			expect(entryPoints.trackEntryPointClicked).toHaveBeenCalledWith('context_section');
-			expect(routerPush).toHaveBeenCalledWith({ name: 'SettingsContextPreferences' });
-		});
-
-		it('shows the context row without the switch to a user without mcp:manage', async () => {
-			rbacStore.hasScope.mockReturnValue(false);
-			provideEntryPoints('context_section', 0);
-
-			const { getByTestId, queryByTestId } = createComponent({ pinia });
-			await waitAllPromises();
-
-			expect(getByTestId('mcp-preferences-context-row')).toBeInTheDocument();
-			expect(queryByTestId('mcp-preferences-toggle')).toBeNull();
-		});
-
 		it('shows a toast error when the count does not load', async () => {
-			provideEntryPoints('context_section', undefined);
+			provideEntryPoints('banner', undefined);
 			entryPoints.loadPreferenceCount.mockRejectedValueOnce(new Error('nope'));
 
-			const { getByTestId } = createComponent({ pinia });
+			const { queryByTestId } = createComponent({ pinia });
 			await waitAllPromises();
 
 			expect(useToast().showError).toHaveBeenCalledWith(
 				expect.anything(),
 				'Could not load preferences',
 			);
-			expect(getByTestId('mcp-preferences-context-row')).toHaveTextContent(UNKNOWN_COUNT_VALUE);
+			expect(queryByTestId('mcp-preferences-banner')).toBeNull();
 		});
 	});
 });

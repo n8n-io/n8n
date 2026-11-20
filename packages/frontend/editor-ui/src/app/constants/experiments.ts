@@ -213,7 +213,6 @@ export const MCP_PREFERENCES_ENTRY_POINTS_EXPERIMENT = createExperiment(
 		control: 'control',
 		banner: 'banner',
 		connectionRow: 'connection_row',
-		contextSection: 'context_section',
 	},
 );
 

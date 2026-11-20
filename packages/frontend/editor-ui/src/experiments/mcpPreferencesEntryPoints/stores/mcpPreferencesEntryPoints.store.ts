@@ -17,7 +17,6 @@ const BANNER_DISMISSED_KEY = 'N8N_MCP_PREFERENCES_BANNER_DISMISSED';
 const ENTRY_POINTS: readonly McpPreferencesEntryPoint[] = [
 	MCP_PREFERENCES_ENTRY_POINTS_EXPERIMENT.banner,
 	MCP_PREFERENCES_ENTRY_POINTS_EXPERIMENT.connectionRow,
-	MCP_PREFERENCES_ENTRY_POINTS_EXPERIMENT.contextSection,
 ];
 
 function isEntryPoint(value: unknown): value is McpPreferencesEntryPoint {

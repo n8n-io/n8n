@@ -98,21 +98,6 @@ const showPreferencesBanner = computed(
 		!preferencesEntryPoints?.isBannerDismissed(),
 );
 
-const showContextSection = computed(
-	() => canManageMcpInstance.value || preferencesEntryPoint.value === 'context_section',
-);
-
-const preferenceCountValue = computed(() => {
-	if (preferenceCount.value === undefined) return UNKNOWN_COUNT_VALUE;
-	if (preferenceCount.value === 0) {
-		return i18n.baseText('settings.mcp.preferencesEntry.contextRow.empty');
-	}
-	return i18n.baseText('settings.mcp.preferencesEntry.count', {
-		adjustToNumber: preferenceCount.value,
-		interpolate: { count: String(preferenceCount.value) },
-	});
-});
-
 const connectionRowDescription = computed(() =>
 	preferenceCount.value
 		? i18n.baseText('settings.mcp.preferencesEntry.connectionRow.description', {
@@ -540,25 +525,11 @@ onBeforeUnmount(() => {
 			</N8nSettingsSection>
 
 			<N8nSettingsSection
-				v-if="showContextSection"
+				v-if="canManageMcpInstance"
 				:title="i18n.baseText('settings.mcp.context.title')"
 				data-test-id="mcp-context-section"
 			>
-				<N8nSettingsRowGroup v-if="preferencesEntryPoint === 'context_section'">
-					<N8nSettingsRow
-						:title="i18n.baseText('settings.mcp.preferencesEntry.contextRow.title')"
-						:description="i18n.baseText('settings.mcp.preferencesEntry.contextRow.description')"
-						clickable
-						data-test-id="mcp-preferences-context-row"
-						data-attr="mcp-preferences-context-row"
-						@click="openPreferences('context_section')"
-					>
-						<template #action>
-							<N8nSettingsRowConfigure :value="preferenceCountValue" />
-						</template>
-					</N8nSettingsRow>
-				</N8nSettingsRowGroup>
-				<N8nSettingsRowGroup v-if="canManageMcpInstance">
+				<N8nSettingsRowGroup>
 					<N8nSettingsEnableRow
 						:title="i18n.baseText('settings.mcp.preferences.title')"
 						:description="i18n.baseText('settings.mcp.preferences.description')"
