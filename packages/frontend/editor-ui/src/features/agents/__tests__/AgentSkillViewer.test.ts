@@ -8,6 +8,10 @@ import {
 } from '@n8n/api-types';
 import AgentSkillViewer from '@/features/agents/components/AgentSkillViewer.vue';
 import { renderSkillMermaid } from '@/features/agents/components/skillMermaidRenderer';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
+
+const track = vi.fn();
+vi.mock('@n8n/composables/useTelemetry', () => ({ useTelemetry: () => ({ track }) }));
 
 vi.mock('@/features/agents/components/skillMermaidRenderer', { spy: true });
 vi.mock('@/app/stores/ui.store', () => ({ useUIStore: () => ({ appliedTheme: 'light' }) }));
@@ -177,10 +181,11 @@ describe('AgentSkillViewer', () => {
 
 	it('shows Mermaid diagrams in the skill file and references', async () => {
 		vi.mocked(renderSkillMermaid)
-			.mockResolvedValueOnce(
-				'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 50"><title>Skill steps</title></svg>',
-			)
-			.mockResolvedValueOnce('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 50"/>');
+			.mockResolvedValueOnce({
+				outcome: 'rendered',
+				svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 50"><title>Skill steps</title></svg>',
+			})
+			.mockResolvedValueOnce(renderedDiagram());
 		const wrapper = mountViewer({
 			readOnly: true,
 			skill: {
@@ -216,7 +221,7 @@ describe('AgentSkillViewer', () => {
 	});
 
 	it('keeps invalid Mermaid and ordinary code blocks visible as code', async () => {
-		vi.mocked(renderSkillMermaid).mockClear().mockResolvedValueOnce(undefined);
+		vi.mocked(renderSkillMermaid).mockClear().mockResolvedValueOnce({ outcome: 'invalid' });
 		const wrapper = mountViewer({
 			readOnly: true,
 			skill: {
@@ -238,9 +243,7 @@ describe('AgentSkillViewer', () => {
 	});
 
 	it('keeps the source visible when the diagram image cannot load', async () => {
-		vi.mocked(renderSkillMermaid).mockResolvedValueOnce(
-			'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 50"/>',
-		);
+		vi.mocked(renderSkillMermaid).mockResolvedValueOnce(renderedDiagram());
 		const code = 'flowchart LR\n  A --> B\n';
 		const wrapper = mountViewer({
 			readOnly: true,
@@ -258,6 +261,63 @@ describe('AgentSkillViewer', () => {
 		expect(instructions.get('pre code').element.textContent).toBe(code);
 		expect(instructions.find('img').exists()).toBe(false);
 		expect(instructions.find('details').exists()).toBe(false);
+	});
+
+	it('reports the diagram results of a file one time, when the last render ends', async () => {
+		track.mockClear();
+		vi.mocked(renderSkillMermaid)
+			.mockResolvedValueOnce(renderedDiagram())
+			.mockResolvedValueOnce({ outcome: 'invalid' })
+			.mockResolvedValueOnce({ outcome: 'timeout' })
+			.mockResolvedValueOnce({ outcome: 'failed' })
+			// The view cannot show an SVG without a size.
+			.mockResolvedValueOnce({
+				outcome: 'rendered',
+				svg: '<svg xmlns="http://www.w3.org/2000/svg"/>',
+			});
+		mountViewer({
+			readOnly: true,
+			selectedPath: 'references/steps.md',
+			skill: {
+				name: 'Triage',
+				description: 'Use for triage',
+				instructions: 'Check the SLA first.',
+				references: [
+					{
+						path: 'references/steps.md',
+						content: Array.from(
+							{ length: 5 },
+							() => '```mermaid\nflowchart LR\n  A --> B\n```',
+						).join('\n\n'),
+					},
+				],
+			},
+		});
+		await flushPromises();
+
+		expect(track).toHaveBeenCalledTimes(1);
+		expect(track).toHaveBeenCalledWith(TELEMETRY_EVENT.CONTEXT.USER_VIEWED_SKILL_DIAGRAMS, {
+			file: 'reference',
+			rendered: 1,
+			invalid: 1,
+			failed: 2,
+			timed_out: 1,
+		});
+	});
+
+	it('reports nothing for a file with no Mermaid block', async () => {
+		track.mockClear();
+		mountViewer({
+			readOnly: true,
+			skill: {
+				name: 'Triage',
+				description: 'Use for triage',
+				instructions: '```text\nCheck the labels\n```',
+			},
+		});
+		await flushPromises();
+
+		expect(track).not.toHaveBeenCalled();
 	});
 
 	it('keeps Mermaid fences in the editor for both files', async () => {
@@ -336,6 +396,13 @@ describe('AgentSkillViewer', () => {
 		expect(wrapper.emitted('update:valid')?.at(-1)).toEqual([false]);
 	});
 });
+
+function renderedDiagram() {
+	return {
+		outcome: 'rendered' as const,
+		svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 50"/>',
+	};
+}
 
 function mountViewer(props: Partial<InstanceType<typeof AgentSkillViewer>['$props']> = {}) {
 	return mount(AgentSkillViewer, {

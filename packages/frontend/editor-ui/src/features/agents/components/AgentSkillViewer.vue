@@ -16,10 +16,13 @@ import {
 } from '@n8n/design-system';
 import type { IValidator, Validatable } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 import type { Rule, RuleGroup } from '@/Interface';
 import type { AgentSkill, AgentSkillReference } from '../types';
 import AgentSkillMermaidDiagram from './AgentSkillMermaidDiagram.vue';
+import type { SkillMermaidResult } from './skillMermaidRenderer';
 
 const SKILL_FILE = 'SKILL.md';
 const READ_ONLY_MARKDOWN_OPTIONS = {
@@ -50,6 +53,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const telemetry = useTelemetry();
 const description = ref(props.skill.description);
 const referenceFileName = ref('');
 const formValidation = reactive({
@@ -279,6 +283,32 @@ watch(
 );
 
 watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
+
+// Count the diagram renders of one file view, and report them together when the last one ends.
+const openDiagramRenders = ref(0);
+const newDiagramCounts = () => ({ rendered: 0, invalid: 0, failed: 0, timeout: 0 });
+let diagramCounts = newDiagramCounts();
+
+function onDiagramRenderEnd(outcome: SkillMermaidResult['outcome']) {
+	openDiagramRenders.value--;
+	if (outcome !== 'aborted') diagramCounts[outcome]++;
+	if (openDiagramRenders.value > 0) return;
+
+	const { rendered, invalid, failed, timeout } = diagramCounts;
+	diagramCounts = newDiagramCounts();
+	if (rendered + invalid + failed + timeout === 0) return;
+	try {
+		telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_VIEWED_SKILL_DIAGRAMS, {
+			file: isSkillFileSelected.value ? 'skill' : 'reference',
+			rendered,
+			invalid,
+			failed,
+			timed_out: timeout,
+		});
+	} catch {
+		// Telemetry must not break the skill view.
+	}
+}
 </script>
 
 <template>
@@ -319,7 +349,12 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 					"
 				>
 					<template #code-block="{ code, language }">
-						<AgentSkillMermaidDiagram v-if="language.toLowerCase() === 'mermaid'" :code="code">
+						<AgentSkillMermaidDiagram
+							v-if="language.toLowerCase() === 'mermaid'"
+							:code="code"
+							@render-start="openDiagramRenders++"
+							@render-end="onDiagramRenderEnd"
+						>
 							<pre :class="$style.codeBlock"><code>{{ code }}</code></pre>
 						</AgentSkillMermaidDiagram>
 						<pre v-else :class="$style.codeBlock"><code>{{ code }}</code></pre>

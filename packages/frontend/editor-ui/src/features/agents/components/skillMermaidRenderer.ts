@@ -8,6 +8,14 @@ const MAX_CONCURRENT_RENDERS = 2;
 
 export const MAX_DIAGRAM_LENGTH = 50_000;
 
+/**
+ * `invalid`: Mermaid rejects the source. `failed`: the sandbox replied without a diagram.
+ * `timeout`: the sandbox did not reply, for example because a policy blocks its scripts.
+ */
+export type SkillMermaidResult =
+	| { outcome: 'rendered'; svg: string }
+	| { outcome: 'invalid' | 'failed' | 'timeout' | 'aborted' };
+
 let activeRenders = 0;
 const queuedRenders: Array<() => void> = [];
 
@@ -59,10 +67,10 @@ export async function renderSkillMermaid(
 	theme: 'default' | 'dark',
 	width: number,
 	signal: AbortSignal,
-): Promise<string | undefined> {
-	if (signal.aborted) return;
+): Promise<SkillMermaidResult> {
+	if (signal.aborted) return { outcome: 'aborted' };
 	if (activeRenders < MAX_CONCURRENT_RENDERS) activeRenders++;
-	else if (!(await waitForRenderSlot(signal))) return;
+	else if (!(await waitForRenderSlot(signal))) return { outcome: 'aborted' };
 
 	// Each render has its own document and Mermaid queue.
 	const frame = document.createElement('iframe');
@@ -77,15 +85,16 @@ export async function renderSkillMermaid(
 
 	const { port1, port2 } = new MessageChannel();
 	let timer: number | undefined;
-	let fallback: (() => void) | undefined;
+	let onAbort: (() => void) | undefined;
 	try {
-		return await new Promise<string | undefined>((resolve) => {
-			fallback = () => resolve(undefined);
-			signal.addEventListener('abort', fallback);
+		return await new Promise<SkillMermaidResult>((resolve) => {
+			onAbort = () => resolve({ outcome: 'aborted' });
+			signal.addEventListener('abort', onAbort);
 			// The limit starts with the frame, so the wait in the queue does not count.
-			timer = window.setTimeout(fallback, RENDER_TIMEOUT_MS);
+			timer = window.setTimeout(() => resolve({ outcome: 'timeout' }), RENDER_TIMEOUT_MS);
 			port1.onmessage = ({ data }: MessageEvent<unknown>) => {
-				resolve(typeof data === 'string' ? data : undefined);
+				if (typeof data === 'string') resolve({ outcome: 'rendered', svg: data });
+				else resolve({ outcome: data === null ? 'invalid' : 'failed' });
 			};
 			frame.onload = () =>
 				frame.contentWindow?.postMessage({ code, theme, maxTextSize: MAX_DIAGRAM_LENGTH }, '*', [
@@ -94,7 +103,7 @@ export async function renderSkillMermaid(
 			document.body.append(frame);
 		});
 	} finally {
-		if (fallback) signal.removeEventListener('abort', fallback);
+		if (onAbort) signal.removeEventListener('abort', onAbort);
 		window.clearTimeout(timer);
 		port1.close();
 		port2.close();

@@ -4,7 +4,9 @@ async function onMessage(event) {
 	// Keep the listener until the viewer sends its request.
 	window.removeEventListener('message', onMessage);
 	const { code, theme, maxTextSize } = event.data;
-	let svg;
+	// A string is the diagram. `null` says that Mermaid rejects the source.
+	// `undefined` says that the render failed for another reason.
+	let reply;
 	try {
 		const { mermaid } = window;
 		mermaid.initialize({
@@ -16,13 +18,15 @@ async function onMessage(event) {
 			theme,
 		});
 		const parsed = await mermaid.parse(code, { suppressErrors: true });
-		if (parsed && parsed.diagramType !== 'error') {
-			({ svg } = await mermaid.render('skill-diagram', code, document.body));
+		if (!parsed || parsed.diagramType === 'error') {
+			reply = null;
+		} else {
+			reply = (await mermaid.render('skill-diagram', code, document.body)).svg;
 		}
 	} catch {
 		// The viewer keeps the source if rendering fails.
 	}
-	event.ports[0].postMessage(svg);
+	event.ports[0].postMessage(reply);
 }
 
 window.addEventListener('message', onMessage);

@@ -37,7 +37,7 @@ describe('renderSkillMermaid', () => {
 		try {
 			expect(frames().map((frame) => frame.width)).toEqual(['800', '900']);
 			first.abort();
-			await expect(firstRender).resolves.toBeUndefined();
+			await expect(firstRender).resolves.toEqual({ outcome: 'aborted' });
 			expect(frames().map((frame) => frame.width)).toEqual(['900']);
 		} finally {
 			first.abort();
@@ -77,7 +77,7 @@ describe('renderSkillMermaid', () => {
 
 		try {
 			controllers[2].abort();
-			await expect(renders[2]).resolves.toBeUndefined();
+			await expect(renders[2]).resolves.toEqual({ outcome: 'aborted' });
 			controllers[0].abort();
 			await renders[0];
 			// The slot is free again, and the cancelled render does not take it.

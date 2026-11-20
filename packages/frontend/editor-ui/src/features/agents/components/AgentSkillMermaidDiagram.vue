@@ -2,12 +2,22 @@
 import { ref, useTemplateRef, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useUIStore } from '@/app/stores/ui.store';
-import { MAX_DIAGRAM_LENGTH, renderSkillMermaid } from './skillMermaidRenderer';
+import {
+	MAX_DIAGRAM_LENGTH,
+	renderSkillMermaid,
+	type SkillMermaidResult,
+} from './skillMermaidRenderer';
 
 // Give timelines room for axis labels. On narrow screens, scroll the image instead.
 const MIN_RENDER_WIDTH = 800;
 
 const props = defineProps<{ code: string }>();
+
+// Each `renderStart` gets exactly one `renderEnd`, so the parent can count the open renders.
+const emit = defineEmits<{
+	renderStart: [];
+	renderEnd: [outcome: SkillMermaidResult['outcome']];
+}>();
 
 const i18n = useI18n();
 const uiStore = useUIStore();
@@ -20,20 +30,36 @@ watch(
 		diagram.value = undefined;
 		if (!element || code.length > MAX_DIAGRAM_LENGTH) return;
 		const controller = new AbortController();
-		onCleanup(() => controller.abort());
+		let open = true;
+		const end = (outcome: SkillMermaidResult['outcome']) => {
+			if (open) emit('renderEnd', outcome);
+			open = false;
+		};
+		emit('renderStart');
+		onCleanup(() => {
+			controller.abort();
+			end('aborted');
+		});
 
 		try {
-			const svg = await renderSkillMermaid(
+			const result = await renderSkillMermaid(
 				code,
 				theme === 'dark' ? 'dark' : 'default',
 				Math.max(element.clientWidth, MIN_RENDER_WIDTH),
 				controller.signal,
 			);
-			if (!svg || controller.signal.aborted) return;
+			if (result.outcome !== 'rendered' || controller.signal.aborted) {
+				end(result.outcome);
+				return;
+			}
 
+			const { svg } = result;
 			const { documentElement } = new DOMParser().parseFromString(svg, 'image/svg+xml');
 			const width = Number(documentElement.getAttribute('viewBox')?.trim().split(/\s+/)[2]);
-			if (documentElement.localName !== 'svg' || !Number.isFinite(width) || width <= 0) return;
+			if (documentElement.localName !== 'svg' || !Number.isFinite(width) || width <= 0) {
+				end('failed');
+				return;
+			}
 			const [description, title] = ['desc', 'title'].map((name) =>
 				Array.from(documentElement.children)
 					.find((element) => element.localName === name)
@@ -46,8 +72,10 @@ watch(
 				width: Math.ceil(width),
 				description: description || title,
 			};
+			end('rendered');
 		} catch {
 			// Keep the source visible if the diagram cannot render.
+			end('failed');
 		}
 	},
 	{ flush: 'post' },
