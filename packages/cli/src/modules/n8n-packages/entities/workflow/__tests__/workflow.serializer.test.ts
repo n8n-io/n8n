@@ -2,6 +2,7 @@ import type { SerializedWorkflow } from '@n8n/api-types';
 import { WorkflowEntity } from '@n8n/db';
 
 import { WorkflowSerializer } from '../workflow.serializer';
+import { PackageWorkflowInvalidError } from '../../package-export.errors';
 
 const wire = (overrides: Partial<SerializedWorkflow> = {}): SerializedWorkflow => ({
 	id: 'wf-source-id',
@@ -168,5 +169,26 @@ describe('WorkflowSerializer.serializeMetadata', () => {
 		const neverPublished = workflow({ activeVersionId: null });
 
 		expect(serializer.serializeMetadata(neverPublished).publishedVersionId).toBeNull();
+	});
+});
+
+describe('WorkflowSerializer.serializeForExport', () => {
+	const serializer = new WorkflowSerializer();
+
+	it('reports a null credential reference as an invalid field instead of crashing', () => {
+		const workflow = Object.assign(new WorkflowEntity(), {
+			id: 'wf-bad',
+			name: 'Bad',
+			nodes: [{ ...wire().nodes[0], credentials: { someApi: null } }],
+			connections: {},
+			isArchived: false,
+		});
+
+		expect(() => serializer.serializeForExport(workflow, { includeTags: false })).toThrow(
+			PackageWorkflowInvalidError,
+		);
+		expect(() => serializer.serializeForExport(workflow, { includeTags: false })).toThrow(
+			'nodes.0.credentials.someApi',
+		);
 	});
 });

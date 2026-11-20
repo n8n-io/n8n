@@ -593,28 +593,31 @@ describe('CanvasNodeGroupTitleBar', () => {
 			expect(wrapper.getByTestId('canvas-node-group-status-warning')).toBeTruthy();
 		});
 
-		it('shows the validation issues triangle when executionStatus is issues', () => {
-			const wrapper = render({
-				data: makeData({ executionStatus: 'issues' }),
-			});
-			expect(wrapper.getByTestId('canvas-node-group-status-issues')).toBeTruthy();
-			// Issues must not render the execution-error mark.
-			expect(wrapper.queryByTestId('canvas-node-group-status-error')).toBeNull();
-		});
+		it.each([
+			{ status: 'issues', other: 'setup' },
+			{ status: 'setup', other: 'issues' },
+		] as const)(
+			'shows only the $status icon when executionStatus is $status',
+			({ status, other }) => {
+				const wrapper = render({
+					data: makeData({ executionStatus: status }),
+				});
+				expect(wrapper.getByTestId(`canvas-node-group-status-${status}`)).toBeTruthy();
+				expect(wrapper.queryByTestId(`canvas-node-group-status-${other}`)).toBeNull();
+				// Validation statuses must not render the execution-error mark.
+				expect(wrapper.queryByTestId('canvas-node-group-status-error')).toBeNull();
+			},
+		);
 
-		it('hides the status mark when the group is expanded (member nodes show their own)', () => {
-			const wrapper = render({
-				data: makeData({ executionStatus: 'success', isCollapsed: false }),
-			});
-			expect(wrapper.queryByTestId('canvas-node-group-status-success')).toBeNull();
-		});
-
-		it('hides the validation issues triangle when the group is expanded', () => {
-			const wrapper = render({
-				data: makeData({ executionStatus: 'issues', isCollapsed: false }),
-			});
-			expect(wrapper.queryByTestId('canvas-node-group-status-issues')).toBeNull();
-		});
+		it.each(['success', 'issues', 'setup'] as const)(
+			'hides the %s status icon when the group is expanded (member nodes show their own)',
+			(status) => {
+				const wrapper = render({
+					data: makeData({ executionStatus: status, isCollapsed: false }),
+				});
+				expect(wrapper.queryByTestId(`canvas-node-group-status-${status}`)).toBeNull();
+			},
+		);
 
 		it('applies a hashed `running` class when executionStatus is running', () => {
 			const wrapper = render({

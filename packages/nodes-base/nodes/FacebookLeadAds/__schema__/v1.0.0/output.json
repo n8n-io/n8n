@@ -1,0 +1,61 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"ad": {
+			"type": "object"
+		},
+		"adset": {
+			"type": "object"
+		},
+		"created_time": {
+			"type": "string"
+		},
+		"data": {
+			"additionalProperties": true,
+			"properties": {
+				"email": {
+					"type": "string"
+				},
+				"full_name": {
+					"type": "string"
+				},
+				"phone_number": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"form": {
+			"properties": {
+				"id": {
+					"type": "string"
+				},
+				"locale": {
+					"type": "string"
+				},
+				"name": {
+					"type": "string"
+				},
+				"status": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"id": {
+			"type": "string"
+		},
+		"page": {
+			"properties": {
+				"id": {
+					"type": "string"
+				},
+				"name": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		}
+	},
+	"type": "object"
+}

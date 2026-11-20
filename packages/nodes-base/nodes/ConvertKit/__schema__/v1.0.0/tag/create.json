@@ -1,0 +1,14 @@
+{
+	"properties": {
+		"created_at": {
+			"type": "string"
+		},
+		"id": {
+			"type": "number"
+		},
+		"name": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

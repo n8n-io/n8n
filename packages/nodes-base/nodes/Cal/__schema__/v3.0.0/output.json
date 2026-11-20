@@ -1,0 +1,362 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"additionalNotes": {
+			"type": "string"
+		},
+		"appsStatus": {
+			"items": {
+				"properties": {
+					"appName": {
+						"type": "string"
+					},
+					"errors": {
+						"items": {},
+						"type": "array"
+					},
+					"failures": {
+						"type": "number"
+					},
+					"success": {
+						"type": "number"
+					},
+					"type": {
+						"type": "string"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"assignmentReason": {
+			"items": {},
+			"type": "array"
+		},
+		"attendees": {
+			"items": {
+				"properties": {
+					"bookingSeat": {},
+					"email": {
+						"type": "string"
+					},
+					"firstName": {
+						"type": "string"
+					},
+					"language": {
+						"properties": {
+							"locale": {
+								"type": "string"
+							}
+						},
+						"type": "object"
+					},
+					"lastName": {
+						"type": "string"
+					},
+					"name": {
+						"type": "string"
+					},
+					"phoneNumber": {
+						"type": ["null", "string"]
+					},
+					"timeZone": {
+						"type": "string"
+					},
+					"utcOffset": {
+						"type": "number"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"bookerOrganizationId": {},
+		"bookerUrl": {
+			"type": "string"
+		},
+		"bookingId": {
+			"type": "number"
+		},
+		"cancellationReason": {},
+		"createdAt": {
+			"type": "string"
+		},
+		"currency": {
+			"type": "string"
+		},
+		"customInputs": {
+			"type": "object"
+		},
+		"customReplyToEmail": {},
+		"description": {
+			"type": "string"
+		},
+		"destinationCalendar": {
+			"items": {
+				"additionalProperties": true,
+				"properties": {
+					"credentialId": {
+						"type": "number"
+					},
+					"externalId": {
+						"type": "string"
+					},
+					"id": {
+						"type": "number"
+					},
+					"integration": {
+						"type": "string"
+					},
+					"primaryEmail": {
+						"type": "string"
+					},
+					"userId": {
+						"type": "number"
+					}
+				},
+				"type": "object"
+			},
+			"type": ["array", "null"]
+		},
+		"disableCancelling": {
+			"type": "boolean"
+		},
+		"disableCancellingScope": {
+			"type": "string"
+		},
+		"disableRescheduling": {
+			"type": "boolean"
+		},
+		"disableReschedulingScope": {
+			"type": "string"
+		},
+		"endTime": {
+			"type": "string"
+		},
+		"eventDescription": {
+			"type": ["null", "string"]
+		},
+		"eventTitle": {
+			"type": "string"
+		},
+		"eventTypeId": {
+			"type": "number"
+		},
+		"eventTypeTitle": {
+			"type": "string"
+		},
+		"hashedLink": {},
+		"hideBranding": {
+			"type": "boolean"
+		},
+		"hideCalendarEventDetails": {
+			"type": "boolean"
+		},
+		"hideCalendarNotes": {
+			"type": "boolean"
+		},
+		"hideOrganizerEmail": {
+			"type": "boolean"
+		},
+		"iCalSequence": {
+			"type": "number"
+		},
+		"iCalUID": {
+			"type": "string"
+		},
+		"length": {
+			"type": "number"
+		},
+		"location": {
+			"type": "string"
+		},
+		"metadata": {
+			"type": "object"
+		},
+		"oneTimePassword": {},
+		"organizationId": {},
+		"organizer": {
+			"properties": {
+				"email": {
+					"type": "string"
+				},
+				"id": {
+					"type": "number"
+				},
+				"language": {
+					"properties": {
+						"locale": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				},
+				"name": {
+					"type": "string"
+				},
+				"timeFormat": {
+					"type": "string"
+				},
+				"timeZone": {
+					"type": "string"
+				},
+				"username": {
+					"type": "string"
+				},
+				"utcOffset": {
+					"type": "number"
+				}
+			},
+			"type": "object"
+		},
+		"platformBookingUrl": {
+			"type": "string"
+		},
+		"platformCancelUrl": {
+			"type": "string"
+		},
+		"platformClientId": {
+			"type": "string"
+		},
+		"platformOAuthClientId": {},
+		"platformRescheduleUrl": {
+			"type": "string"
+		},
+		"price": {
+			"type": "number"
+		},
+		"privateNoteEnabled": {
+			"type": "boolean"
+		},
+		"privateNoteMode": {},
+		"privateNoteTemplate": {},
+		"rejectionReason": {},
+		"requiresConfirmation": {
+			"type": "boolean"
+		},
+		"responses": {
+			"additionalProperties": true,
+			"properties": {
+				"email": {
+					"additionalProperties": true,
+					"properties": {
+						"label": {
+							"type": "string"
+						},
+						"value": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				},
+				"guests": {
+					"additionalProperties": true,
+					"properties": {
+						"label": {
+							"type": "string"
+						},
+						"value": {
+							"items": {
+								"type": "string"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"location": {
+					"additionalProperties": true,
+					"properties": {
+						"label": {
+							"type": "string"
+						},
+						"value": {
+							"properties": {
+								"optionValue": {
+									"type": "string"
+								},
+								"value": {
+									"type": "string"
+								}
+							},
+							"type": "object"
+						}
+					},
+					"type": "object"
+				},
+				"name": {
+					"additionalProperties": true,
+					"properties": {
+						"label": {
+							"type": "string"
+						},
+						"value": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				},
+				"notes": {
+					"additionalProperties": true,
+					"properties": {
+						"label": {
+							"type": "string"
+						},
+						"value": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				}
+			},
+			"type": "object"
+		},
+		"schedulingType": {},
+		"seatsPerTimeSlot": {},
+		"seatsShowAttendees": {
+			"type": "boolean"
+		},
+		"seatsShowAvailabilityCount": {
+			"type": "boolean"
+		},
+		"startTime": {
+			"type": "string"
+		},
+		"status": {
+			"type": "string"
+		},
+		"title": {
+			"type": "string"
+		},
+		"triggerEvent": {
+			"type": "string"
+		},
+		"type": {
+			"type": "string"
+		},
+		"uid": {
+			"type": "string"
+		},
+		"userFieldsResponses": {
+			"type": "object"
+		},
+		"videoCallData": {
+			"properties": {
+				"id": {
+					"type": "string"
+				},
+				"password": {
+					"type": "string"
+				},
+				"type": {
+					"type": "string"
+				},
+				"url": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		}
+	},
+	"type": "object"
+}

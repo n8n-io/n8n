@@ -91,7 +91,7 @@ describe('HttpRequestV3', () => {
 	});
 
 	describe('Method dropdown', () => {
-		const webdavMethods = ['PROPFIND', 'MKCOL', 'MOVE', 'COPY', 'REPORT'];
+		const webdavMethods = ['PROPFIND', 'MKCOL', 'MOVE', 'COPY', 'REPORT', 'SEARCH'];
 
 		const visibleMethods = (nodeParameters: INodeParameters) => {
 			const methodProperty = node.description.properties.find((p) => p.name === 'method');
@@ -154,6 +154,7 @@ describe('HttpRequestV3', () => {
 		it.each([
 			['GET', {}, READ_ONLY_ANNOTATIONS],
 			['PROPFIND', { webdavMethods: true }, READ_ONLY_ANNOTATIONS],
+			['SEARCH', { webdavMethods: true }, READ_ONLY_ANNOTATIONS],
 			['PUT', {}, { effect: 'write', destructive: true, idempotent: true }],
 			['DELETE', {}, { effect: 'write', destructive: true, idempotent: false }],
 			[
@@ -185,7 +186,7 @@ describe('HttpRequestV3', () => {
 		});
 	});
 
-	it.each(['PROPFIND', 'MKCOL', 'MOVE', 'COPY', 'REPORT'])(
+	it.each(['PROPFIND', 'MKCOL', 'MOVE', 'COPY', 'REPORT', 'SEARCH'])(
 		'should make a %s request',
 		async (method) => {
 			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);

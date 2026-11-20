@@ -34,4 +34,11 @@ export class CredentialsGetManyRequestQuery extends Z.class({
 	 * The value should be the `providerKey` of the external secrets store.
 	 */
 	externalSecretsStore: z.string().optional(),
+
+	/**
+	 * Adds the `restriction` field to each credential that a type availability policy makes
+	 * unusable. A list filtered by `projectId` is judged by that project, other lists by each
+	 * credential's home project. A custom `select` ignores this option.
+	 */
+	includeRestrictions: booleanFromString.optional(),
 }) {}

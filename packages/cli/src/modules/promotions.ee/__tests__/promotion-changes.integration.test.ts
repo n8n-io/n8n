@@ -48,6 +48,7 @@ import {
 import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
 import { packageManifestSchema } from '@/modules/n8n-packages/spec/manifest.schema';
 import { TagService } from '@/services/tag.service';
+import { createAgent } from '@test-integration/db/agents';
 import { saveCredential } from '@test-integration/db/credentials';
 import { createTag } from '@test-integration/db/tags';
 import { createOwner, createOwnerWithApiKey } from '@test-integration/db/users';
@@ -213,21 +214,19 @@ it.each(['whole', 'selection'] as const)(
 			project,
 		);
 		const agents = Container.get(AgentRepository);
-		await agents.save([
-			{
-				id: 'active-agent',
-				name: 'Active Agent',
-				projectId: project.id,
-				parentFolderId: nested.id,
-			},
-			{
-				id: 'archived-agent',
-				name: 'Archived Agent',
-				projectId: project.id,
-				parentFolderId: agentFolder.id,
-				isArchived: true,
-			},
-		]);
+		await createAgent({
+			id: 'active-agent',
+			name: 'Active Agent',
+			projectId: project.id,
+			parentFolderId: nested.id,
+		});
+		await createAgent({
+			id: 'archived-agent',
+			name: 'Archived Agent',
+			projectId: project.id,
+			parentFolderId: agentFolder.id,
+			isArchived: true,
+		});
 		const environments = await createInstanceEnvironments(['promote', 'apply']);
 		const service = Container.get(PromotionsService);
 		const options = { commitMessage: 'Workflow changes', canExportVariableValues: true };
@@ -324,7 +323,7 @@ it("previews against the project's environment, not the instance one", async () 
 it('lists new, changed, moved, archived, restored and deleted workflows through the endpoint', async () => {
 	const owner = await createOwner();
 	const project = await createTeamProject('Preview', owner);
-	await Container.get(AgentRepository).save({
+	await createAgent({
 		id: 'local-agent',
 		name: 'Local Agent',
 		projectId: project.id,

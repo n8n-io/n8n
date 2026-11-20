@@ -5,7 +5,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { Skill } from '../database/entities/skill.entity';
 import type { SkillRepository } from '../database/repositories/skill.repository';
-import { SkillsTelemetry } from '../services/skills-telemetry.service';
+import { flaggedCodes, SkillsTelemetry } from '../services/skills-telemetry.service';
 
 function skill(id: string, target: Partial<Pick<Skill, 'projectId'>> = {}): Skill {
 	return mock<Skill>({ id, projectId: target.projectId ?? null });
@@ -147,6 +147,22 @@ describe('SkillsTelemetry', () => {
 			[TELEMETRY_EVENT.CONTEXT.SKILL_SOURCE_CHECK_FLAGGED_SKILL, { user_id: 'user-1', ...props }],
 			[TELEMETRY_EVENT.CONTEXT.SKILL_SOURCE_CHECK_FLAGGED_SKILL, { ...props, stage: 'update' }],
 		]);
+	});
+
+	it('gives each rule and each link reason of the flagged findings one time', () => {
+		const link = { rule: 'risky_url', severity: 'needs_review', detail: '' } as const;
+
+		expect(
+			flaggedCodes([
+				{ ...link, linkReason: 'not_https' },
+				{ ...link, linkReason: 'not_https' },
+				{ ...link, linkReason: 'ip_address' },
+				{ rule: 'new_url', severity: 'info', detail: '' },
+			]),
+		).toEqual({ rule_codes: ['risky_url'], link_reason_codes: ['not_https', 'ip_address'] });
+		expect(
+			flaggedCodes([{ rule: 'hidden_unicode', severity: 'needs_review', detail: '' }]),
+		).toEqual({ rule_codes: ['hidden_unicode'] });
 	});
 
 	it('reports a Skill Sync import with its counts', async () => {
