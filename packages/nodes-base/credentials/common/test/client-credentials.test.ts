@@ -104,10 +104,13 @@ describe('client credentials grant', () => {
 				httpError({ error_description: 'client_secret secret is not valid' }),
 			);
 
-			const error = await requestClientCredentialsToken(config).catch((e: Error) => e);
+			const failure = await requestClientCredentialsToken(config).then(
+				() => new Error('the grant was accepted'),
+				(error: Error) => error,
+			);
 
-			expect(error.message).not.toContain('secret');
-			expect(error.message).toContain('***');
+			expect(failure.message).not.toContain('secret');
+			expect(failure.message).toContain('***');
 		});
 
 		it.each([
