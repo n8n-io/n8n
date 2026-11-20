@@ -11,6 +11,8 @@ export interface SidebarProps {
 	/**
 	 * Current width in pixels.
 	 * Bind with v-model:width.
+	 * The sidebar clamps this value to minWidth and maxWidth.
+	 * It emits the clamped width.
 	 * @default 240
 	 */
 	width?: number;
@@ -26,16 +28,19 @@ export interface SidebarProps {
 	/**
 	 * Width restored on double-click.
 	 * Defaults to the width at mount, before a saved width is applied.
+	 * The sidebar clamps this value to minWidth and maxWidth.
 	 * The sidebar saves that restored width when widthStorageId is set.
 	 */
 	defaultWidth?: number;
 	/**
 	 * Minimum width in pixels.
+	 * The width stays at or above this value.
 	 * @default 160
 	 */
 	minWidth?: number;
 	/**
 	 * Maximum width in pixels.
+	 * The width stays at or below this value.
 	 * @default 480
 	 */
 	maxWidth?: number;
