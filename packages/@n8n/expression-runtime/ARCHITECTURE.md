@@ -158,7 +158,7 @@ reads it, and the host never guesses.
 | What the expression does | What the proxy asks the host for |
 | --- | --- |
 | Reads a value after it listed the keys (`JSON.stringify`, a returned item, a spread) | Every field of the object |
-| Reads the array index after the last one (`map`, `filter`, a `for` loop) | The next items. Each such read takes four times more items |
+| Reads the array index after the last one (`map`, `filter`, a `for` loop) | The next items. Each such read can take four times more characters |
 | Read every field of the item before | The next items whole |
 | Read fields by name on the item before (`row.name`) | Only these fields of the next items |
 | Reads one field, or one item out of order | That one value, as before |
