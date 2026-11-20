@@ -28,9 +28,9 @@ function makeAdapter() {
 	logger.scoped.mockReturnValue(logger);
 	const executor = mock<EphemeralNodeExecutor>();
 	const nodeTypes = mock<NodeTypes>();
-	nodeTypes.getByNameAndVersion.mockReturnValue(
-		mock<INodeType>({ description: mock<INodeTypeDescription>({ properties: [] }) }),
-	);
+	const nodeType = mock<INodeType>();
+	nodeType.description = { properties: [] } as unknown as INodeTypeDescription;
+	nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
 	return { adapter: new NodeOperationAdapter(logger, executor, nodeTypes), executor };
 }
 
