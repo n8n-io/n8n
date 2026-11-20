@@ -32,7 +32,7 @@ export type AiPreferenceWriteResult =
 	| ({ ok: false } & AiPreferenceWriteRefusal);
 
 /** The surfaces that write on the user's behalf. The settings area is a person writing. */
-export type AssistantSurface = Exclude<AiPreferenceSource, 'ui'>;
+export type AssistantSurface = Extract<AiPreferenceSource, 'aia' | 'mcp'>;
 
 /** The service refuses with HTTP error classes; an assistant surface speaks in reasons.
  *  A 4xx message is written for a person and passes through; anything else stays internal. */

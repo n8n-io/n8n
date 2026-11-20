@@ -120,6 +120,22 @@ const DisabledList = defineComponent({
 	`,
 });
 
+const OpenMenuHarness = defineComponent({
+	components: { N8nListbox, N8nListboxItem },
+	template: `
+		<div>
+			<div role="menu" tabindex="-1">Rename</div>
+			<N8nListbox label="Versions">
+				<N8nListboxItem value="v2">
+					v2
+					<button type="button" aria-expanded="true" aria-haspopup="menu">Actions</button>
+				</N8nListboxItem>
+				<N8nListboxItem value="v1">v1</N8nListboxItem>
+			</N8nListbox>
+		</div>
+	`,
+});
+
 const HoverHarness = defineComponent({
 	components: { N8nListbox, N8nListboxItem },
 	setup() {
@@ -175,6 +191,54 @@ const TabHarness = defineComponent({
 					<span>archive</span>
 					<button type="button">archive actions</button>
 				</N8nListboxItem>
+			</N8nListbox>
+			<button type="button">After</button>
+		</div>
+	`,
+});
+
+const SectionHarness = defineComponent({
+	components: { N8nListbox, N8nListboxItem },
+	setup() {
+		const value = ref('readme');
+		return { value };
+	},
+	template: `
+		<div>
+			<button type="button">Before</button>
+			<N8nListbox v-model="value" label="Plugin files">
+				<N8nListboxItem value="readme">README</N8nListboxItem>
+				<button type="button">Collapse skills</button>
+				<button type="button">Add skill</button>
+				<N8nListboxItem value="search">search</N8nListboxItem>
+				<N8nListboxItem value="recruiting">recruiting</N8nListboxItem>
+				<button type="button">Add workflow</button>
+				<N8nListboxItem value="draft" disabled>draft</N8nListboxItem>
+				<N8nListboxItem value="hybrid">hybrid</N8nListboxItem>
+			</N8nListbox>
+			<button type="button">After</button>
+		</div>
+	`,
+});
+
+const SectionActionHarness = defineComponent({
+	components: { N8nListbox, N8nListboxItem },
+	setup() {
+		const value = ref('readme');
+		return { value };
+	},
+	template: `
+		<div>
+			<button type="button">Before</button>
+			<N8nListbox v-model="value" label="Plugin files">
+				<N8nListboxItem value="readme">README</N8nListboxItem>
+				<button type="button">Add skill</button>
+				<N8nListboxItem value="search">
+					<span>search</span>
+					<button type="button">search actions</button>
+				</N8nListboxItem>
+				<button type="button">Add workflow</button>
+				<N8nListboxItem value="hybrid">hybrid</N8nListboxItem>
 			</N8nListbox>
 			<button type="button">After</button>
 		</div>
@@ -427,6 +491,18 @@ describe('N8nListbox', () => {
 		expect(getByRole('option', { name: 'v2' })).not.toHaveAttribute('data-highlighted');
 	});
 
+	it('keeps an open row menu focused when the pointer leaves the row', async () => {
+		const { getByRole } = render(OpenMenuHarness);
+		await nextTick();
+		const menu = getByRole('menu');
+		menu.focus();
+
+		await userEvent.hover(getByRole('option', { name: 'v1' }));
+
+		expect(menu).toHaveFocus();
+		expect(getByRole('option', { name: 'v1' })).not.toHaveAttribute('data-highlighted');
+	});
+
 	it('moves Tab from a control inside an item to the next item', async () => {
 		const { getByRole } = render(TabHarness);
 		await nextTick();
@@ -470,6 +546,85 @@ describe('N8nListbox', () => {
 
 		await userEvent.tab({ shift: true });
 		expect(getByRole('button', { name: 'Before' })).toHaveFocus();
+	});
+
+	it('moves Tab from a control between items to the nearest item', async () => {
+		const { getByRole } = render(SectionHarness);
+		await nextTick();
+		const readme = getByRole('option', { name: 'README' });
+		const search = getByRole('option', { name: 'search' });
+		const recruiting = getByRole('option', { name: 'recruiting' });
+		const hybrid = getByRole('option', { name: 'hybrid' });
+		const collapse = getByRole('button', { name: 'Collapse skills' });
+		const addSkill = getByRole('button', { name: 'Add skill' });
+		const addWorkflow = getByRole('button', { name: 'Add workflow' });
+
+		collapse.focus();
+		await userEvent.tab();
+		expect(addSkill).toHaveFocus();
+
+		await userEvent.tab();
+		expect(search).toHaveFocus();
+		expect(search).toHaveAttribute('data-highlighted');
+
+		await userEvent.tab();
+		expect(addWorkflow).toHaveFocus();
+		expect(recruiting).not.toHaveAttribute('data-highlighted');
+
+		await userEvent.tab();
+		expect(hybrid).toHaveFocus();
+		expect(hybrid).toHaveAttribute('data-highlighted');
+		expect(getByRole('option', { name: 'draft' })).not.toHaveAttribute('data-highlighted');
+
+		await userEvent.tab();
+		expect(getByRole('button', { name: 'After' })).toHaveFocus();
+
+		addWorkflow.focus();
+		await userEvent.tab({ shift: true });
+		expect(recruiting).toHaveFocus();
+		expect(recruiting).toHaveAttribute('data-highlighted');
+
+		await userEvent.tab({ shift: true });
+		expect(addSkill).toHaveFocus();
+
+		await userEvent.tab({ shift: true });
+		expect(collapse).toHaveFocus();
+
+		await userEvent.tab({ shift: true });
+		expect(readme).toHaveFocus();
+		expect(readme).toHaveAttribute('data-highlighted');
+	});
+
+	it('stops Tab from a section control on the next item action button', async () => {
+		const { getByRole } = render(SectionActionHarness);
+		const readme = getByRole('option', { name: 'README' });
+		const search = getByRole('option', { name: 'search search actions' });
+		const hybrid = getByRole('option', { name: 'hybrid' });
+		const addSkill = getByRole('button', { name: 'Add skill' });
+		const searchActions = getByRole('button', { name: 'search actions' });
+		const addWorkflow = getByRole('button', { name: 'Add workflow' });
+
+		await vi.waitFor(() => {
+			expect(readme).toHaveAttribute('data-highlighted');
+		});
+
+		addSkill.focus();
+		await userEvent.tab();
+		expect(searchActions).toHaveFocus();
+		expect(search).not.toHaveAttribute('data-highlighted');
+		expect(readme).toHaveAttribute('data-highlighted');
+
+		await userEvent.tab();
+		expect(addWorkflow).toHaveFocus();
+
+		await userEvent.tab();
+		expect(hybrid).toHaveFocus();
+		expect(hybrid).toHaveAttribute('data-highlighted');
+
+		addWorkflow.focus();
+		await userEvent.tab({ shift: true });
+		expect(searchActions).toHaveFocus();
+		expect(search).not.toHaveAttribute('data-highlighted');
 	});
 
 	it('moves the highlight with Left and Right when orientation is horizontal', async () => {

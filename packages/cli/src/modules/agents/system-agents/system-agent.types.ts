@@ -9,9 +9,11 @@ import type {
 	SerializableAgentState,
 	SideCallUsageReport,
 	TokenUsage,
+	Workspace,
 } from '@n8n/agents';
 import type { User } from '@n8n/db';
 
+import type { ImportedSandboxFile } from '../agent-sandbox-files.service';
 import type { AgentTurnRequest } from '../agent-turn-execution.service';
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
 import type { ToolRegistry } from '../tool-registry';
@@ -77,6 +79,31 @@ interface SystemAgentTurnBase<TLease> {
 	 * Gives `undefined` for a file of another thread.
 	 */
 	readFile(fileId: string): Promise<SystemAgentFile | undefined>;
+	/**
+	 * The sandbox files of project agents, for this turn. It is set only when
+	 * the sandbox files flag is on.
+	 */
+	sandboxFiles?: SystemAgentSandboxFiles;
+}
+
+/** The sandbox files feature of project agents, as a system-agent turn uses it. */
+export interface SystemAgentSandboxFiles {
+	/** The largest import into the sandbox, in bytes (`N8N_AGENTS_FILES_MAX_IMPORT_MB`). */
+	maxImportBytes: number;
+	/**
+	 * Copy files of the thread into `inputs/` of the workspace, as `import_files`
+	 * of project agents does. Each key is a path relative to `inputs/`, each
+	 * value a fileId. Nothing is written when a check fails.
+	 * @throws {UserError} with a message for the model, when a file is not in
+	 * the thread, a path leaves `inputs/`, the files are over the import cap, or
+	 * the copy fails. The message of a failed copy names the files that were
+	 * copied before it.
+	 */
+	importFiles(
+		workspace: Workspace,
+		files: Record<string, string>,
+		abortSignal?: AbortSignal,
+	): Promise<ImportedSandboxFile[]>;
 }
 
 /** A stored file of a system-agent thread. */

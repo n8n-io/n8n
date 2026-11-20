@@ -345,7 +345,7 @@ async function createLangSmithTracer(
  *   .recordOutputs(false);
  *
  * const agent = new Agent('assistant')
- *   .model('anthropic/claude-sonnet-4-5')
+ *   .model('anthropic/claude-sonnet-5-5')
  *   .telemetry(telemetry)
  *   .instructions('...');
  * ```

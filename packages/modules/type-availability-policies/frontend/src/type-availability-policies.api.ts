@@ -6,6 +6,7 @@ import type {
 	CredentialTypeUsageResponse,
 	FolderTransferPreview,
 	InstanceTypeAccessResponse,
+	NodeTypeUsageResponse,
 	PolicyEffectivePublicDto,
 	PolicyEffectiveWriteResultPublicDto,
 	SubWorkflowPolicyCheckResponse,
@@ -75,6 +76,10 @@ export async function fetchCredentialTypeUsage(
 	context: IRestApiContext,
 ): Promise<CredentialTypeUsageResponse> {
 	return await makeRestApiRequest(context, 'GET', '/credential-type-policies/usage');
+}
+
+export async function fetchNodeTypeUsage(context: IRestApiContext): Promise<NodeTypeUsageResponse> {
+	return await makeRestApiRequest(context, 'GET', '/node-type-policies/usage');
 }
 
 export type CredentialTypeSummary = {
@@ -173,7 +178,8 @@ export type NodeTypeSummary = {
 	iconColor?: string;
 };
 
-function latestVersion(version: unknown): number {
+/** The highest version of a node type description, which can list several. */
+export function latestVersion(version: unknown): number {
 	if (typeof version === 'number') return version;
 	if (!Array.isArray(version)) return 0;
 	return Math.max(0, ...version.filter((value): value is number => typeof value === 'number'));

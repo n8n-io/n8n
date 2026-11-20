@@ -19,6 +19,7 @@ import type {
 import type { AiGatewayNodeMeta } from '@n8n/ai-utilities/node-catalog';
 import type {
 	AgentConfigValidationIssueCode,
+	AgentToolOutputFile,
 	AgentJsonConfig,
 	AgentSessionStatus,
 	AgentSkill,
@@ -1711,6 +1712,29 @@ export interface InstanceAiStoredFile {
 	readContent(): Promise<Buffer | undefined>;
 }
 
+/** The sandbox files feature of the host: conversation files in and out of the sandbox. */
+export interface InstanceAiSandboxFiles {
+	/** Most bytes that one `import-files` call copies, for all files together. */
+	maxImportBytes: number;
+	/**
+	 * Copy conversation files into `inputs/` of the sandbox. Each key is a path
+	 * relative to `inputs/`, each value a fileId. The host checks every file,
+	 * path and the cap before the first write. Throws when a check or the copy
+	 * fails. The message is for the model, and for a failed copy it names the
+	 * files that were copied before it.
+	 */
+	importFiles(
+		files: Record<string, string>,
+		abortSignal?: AbortSignal,
+	): Promise<InstanceAiImportedFile[]>;
+}
+
+/** A conversation file that the host copied into the sandbox. */
+export type InstanceAiImportedFile = AgentToolOutputFile & {
+	/** Path relative to the workspace root, e.g. `inputs/sales.csv`. */
+	path: string;
+};
+
 export interface InstanceAiStoredFileReader {
 	/** Gives `undefined` when the thread has no such file. */
 	read(fileId: string): Promise<InstanceAiStoredFile | undefined>;
@@ -1917,6 +1941,11 @@ export interface InstanceAiContext {
 	 * and files from earlier messages stay readable.
 	 */
 	storedFiles?: InstanceAiStoredFileReader;
+	/**
+	 * Moves conversation files in and out of the sandbox. The host sets it only
+	 * when the sandbox files feature is on, so its presence is the gate.
+	 */
+	sandboxFiles?: InstanceAiSandboxFiles;
 	/** Logger for diagnostics from domain tools. */
 	logger: Logger;
 	/** Optional telemetry sink for domain tools. */
