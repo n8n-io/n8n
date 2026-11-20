@@ -82,6 +82,9 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.execution_data](public.execution_data.md) | 4 |  | BASE TABLE |
 | [public.execution_entity](public.execution_entity.md) | 20 |  | BASE TABLE |
 | [public.execution_ledger](public.execution_ledger.md) | 16 |  | BASE TABLE |
+| [public.execution_limit_audit](public.execution_limit_audit.md) | 8 |  | BASE TABLE |
+| [public.execution_limit_instance_usage](public.execution_limit_instance_usage.md) | 5 |  | BASE TABLE |
+| [public.execution_limit_usage](public.execution_limit_usage.md) | 6 |  | BASE TABLE |
 | [public.execution_metadata](public.execution_metadata.md) | 4 |  | BASE TABLE |
 | [public.folder](public.folder.md) | 7 |  | BASE TABLE |
 | [public.folder_tag](public.folder_tag.md) | 2 |  | BASE TABLE |
@@ -180,7 +183,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.workflow_entity](public.workflow_entity.md) | 20 |  | BASE TABLE |
 | [public.workflow_history](public.workflow_history.md) | 12 |  | BASE TABLE |
 | [public.workflow_publication_outbox](public.workflow_publication_outbox.md) | 8 |  | BASE TABLE |
-| [public.workflow_publication_retry_state](public.workflow_publication_retry_state.md) | 4 |  | BASE TABLE |
+| [public.workflow_publication_retry_state](public.workflow_publication_retry_state.md) | 5 |  | BASE TABLE |
 | [public.workflow_publication_trigger_status](public.workflow_publication_trigger_status.md) | 8 |  | BASE TABLE |
 | [public.workflow_publish_history](public.workflow_publish_history.md) | 6 |  | BASE TABLE |
 | [public.workflow_published_version](public.workflow_published_version.md) | 4 |  | BASE TABLE |
@@ -1319,6 +1322,31 @@ erDiagram
   varchar_32_ source
   integer timeSavedMin
 }
+"public.execution_limit_audit" {
+  timestamp_3__with_time_zone createdAt
+  varchar_32_ field
+  integer id
+  varchar_255_ loginId
+  json newValue
+  json oldValue
+  varchar_36_ projectId
+  uuid updatedBy
+}
+"public.execution_limit_instance_usage" {
+  integer blockedCount
+  date day
+  varchar_16_ entityType
+  integer startedCount
+  timestamp_3__with_time_zone updatedAt
+}
+"public.execution_limit_usage" {
+  integer blockedCount
+  date day
+  varchar_16_ entityType
+  varchar_36_ projectId
+  integer startedCount
+  timestamp_3__with_time_zone updatedAt
+}
 "public.execution_metadata" {
   integer executionId FK
   integer id
@@ -2303,6 +2331,7 @@ erDiagram
 }
 "public.workflow_publication_retry_state" {
   timestamp_3__with_time_zone createdAt
+  integer retryDelaySeconds
   varchar_36_ targetVersionId
   timestamp_3__with_time_zone updatedAt
   varchar_36_ workflowId FK

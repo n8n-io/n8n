@@ -1,0 +1,121 @@
+<script setup lang="ts">
+import { N8nButton, N8nText } from '@n8n/design-system';
+import { componentRegistry } from '@n8n/frontend-module-sdk';
+import { useI18n } from '@n8n/i18n';
+import type { INodeTypeDescription } from 'n8n-workflow';
+import { computed, ref } from 'vue';
+
+import TypeAccessSelect from './TypeAccessSelect.vue';
+import type { RelatedTypeItem } from './useRelatedTypeIndex';
+import { useTypeAccessEdits } from './useTypeAccessEdits';
+import type { RestrictedTypeKind } from '../../type-availability-policies.constants';
+
+const {
+	kind,
+	items,
+	iconSize = 20,
+} = defineProps<{
+	kind: RestrictedTypeKind;
+	heading: string;
+	items: RelatedTypeItem[];
+	/** Resolves a node type for its icon. */
+	nodeTypeOf: (name: string) => INodeTypeDescription | undefined;
+	iconSize?: number;
+}>();
+
+/** The section shows this many items, then a button for the rest. */
+const SECTION_LIMIT = 6;
+
+const i18n = useI18n();
+const NodeTypeIcon = computed(() => componentRegistry.get('node-type-icon'));
+const CredentialTypeIcon = computed(() => componentRegistry.get('credential-type-icon'));
+const { accessOf, isLocked, canManage, setAccess } = useTypeAccessEdits();
+
+const expanded = ref(false);
+const visibleItems = computed(() => (expanded.value ? items : items.slice(0, SECTION_LIMIT)));
+</script>
+
+<template>
+	<section :class="$style.section">
+		<N8nText tag="p" size="small" color="text-light" bold>{{ heading }}</N8nText>
+		<ul :class="$style.list">
+			<li
+				v-for="item in visibleItems"
+				:key="item.name"
+				:class="$style.item"
+				data-test-id="type-access-item"
+			>
+				<component
+					:is="NodeTypeIcon"
+					v-if="kind === 'node' && NodeTypeIcon"
+					:node-type="nodeTypeOf(item.name)"
+					:size="iconSize"
+				/>
+				<component
+					:is="CredentialTypeIcon"
+					v-else-if="kind === 'credential' && CredentialTypeIcon"
+					:credential-type-name="item.name"
+					:size="iconSize"
+				/>
+				<N8nText size="medium" color="text-dark" :class="$style.name">{{ item.label }}</N8nText>
+				<TypeAccessSelect
+					v-if="canManage(kind)"
+					:model-value="accessOf(kind, item.name)"
+					:label="item.label"
+					:disabled="isLocked(kind, item.name)"
+					@update:model-value="(action) => setAccess(kind, item.name, action)"
+				/>
+			</li>
+		</ul>
+		<N8nButton
+			v-if="!expanded && items.length > SECTION_LIMIT"
+			variant="ghost"
+			size="small"
+			:class="$style.more"
+			data-test-id="type-access-show-more"
+			@click="expanded = true"
+		>
+			{{
+				i18n.baseText('typeAvailabilityPolicies.accessDialog.related.more', {
+					interpolate: { count: String(items.length - SECTION_LIMIT) },
+				})
+			}}
+		</N8nButton>
+	</section>
+</template>
+
+<style lang="scss" module>
+.section {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+}
+
+.list {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	border: var(--border);
+	border-radius: var(--radius--lg);
+}
+
+.item {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--xs);
+	padding: var(--spacing--xs) var(--spacing--sm);
+
+	& + & {
+		border-top: var(--border);
+	}
+}
+
+.name {
+	flex: 1;
+	min-width: 0;
+}
+
+.more {
+	align-self: flex-start;
+}
+</style>

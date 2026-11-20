@@ -1,6 +1,6 @@
 ---
 title: Roll out a backend change
-last_reviewed: 2026-11-06
+last_reviewed: 2026-11-20
 contact: ivov
 ---
 
@@ -13,7 +13,7 @@ Release a risky backend change behind a flag that is off by default. Then turn t
 | Mechanism | Enables change for | Takes effect | Consumed by |
 |---|---|---|---|
 | n8n Cloud instance flag | A share of n8n Cloud instances | At the next upgrade of each instance | A `@Config` class, through an env var |
-| [PostHog](https://eu.posthog.com) flag | A share of instances or users, on n8n Cloud and self-hosted | Within 10m of an update in PostHog | `PostHogClient` |
+| [PostHog](https://eu.posthog.com) flag | A share of instances or users, on n8n Cloud and self-hosted | Within 10m of an update in PostHog | `PostHogClient` in `@n8n/backend-services` |
 
 Use an n8n Cloud instance flag when your code reads the setting once, at startup. Use a PostHog flag when you must be able to disable the flag without a restart.
 

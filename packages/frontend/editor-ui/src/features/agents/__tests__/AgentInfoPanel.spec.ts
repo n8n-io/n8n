@@ -22,9 +22,9 @@ function makeCatalog(): ProviderCatalog {
 			id: 'anthropic',
 			name: 'Anthropic',
 			models: {
-				'claude-sonnet-4-5': {
-					id: 'claude-sonnet-4-5',
-					name: 'Claude Sonnet 4.5',
+				'claude-sonnet-5-5': {
+					id: 'claude-sonnet-5-5',
+					name: 'Claude Sonnet 5.5',
 					reasoning: true,
 					toolCall: true,
 				},
@@ -130,8 +130,8 @@ vi.mock('../composables/useModelCatalog', () => ({
 				models: [
 					{
 						provider: 'anthropic',
-						model: 'claude-sonnet-4-5',
-						name: 'Claude Sonnet 4.5',
+						model: 'claude-sonnet-5-5',
+						name: 'Claude Sonnet 5.5',
 						description: null,
 						createdAt: null,
 						metadata: { functionCalling: true, available: true },
@@ -175,7 +175,7 @@ function mountPanel(
 		props: {
 			config: {
 				name: 'Support agent',
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 				credential: 'credential-1',
 				instructions,
 				...configOverride,
@@ -286,7 +286,7 @@ describe('AgentInfoPanel', () => {
 	it('removes reasoning immediately when selecting a model that does not support it', async () => {
 		const config: AgentJsonConfig = {
 			name: 'Support agent',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			credential: 'credential-1',
 			instructions: 'Help users.',
 			config: { reasoning: 'high', toolCallConcurrency: 2 },
@@ -312,9 +312,9 @@ describe('AgentInfoPanel', () => {
 	});
 
 	it.each([
-		{ provider: 'openrouter', model: 'anthropic/claude-sonnet-4.5', supported: true },
+		{ provider: 'openrouter', model: 'anthropic/claude-sonnet-5.5', supported: true },
 		{ provider: 'openrouter', model: 'openai/gpt-5', supported: false },
-		{ provider: 'google-vertex', model: 'claude-sonnet-4-5', supported: true },
+		{ provider: 'google-vertex', model: 'claude-sonnet-5-5', supported: true },
 		{ provider: 'google-vertex', model: 'gemini-2.5-pro', supported: false },
 	])(
 		'normalizes caching when selecting $provider/$model',
@@ -322,7 +322,7 @@ describe('AgentInfoPanel', () => {
 			credsHolder.value[provider] = 'credential-2';
 			const wrapper = mountModelPanel({
 				name: 'Support agent',
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 				credential: 'credential-1',
 				instructions: 'Help users.',
 				config: {
@@ -345,7 +345,7 @@ describe('AgentInfoPanel', () => {
 	it('forwards the model selector\'s own "auto" source through to update:config', async () => {
 		const config: AgentJsonConfig = {
 			name: 'Support agent',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			credential: 'credential-1',
 			instructions: 'Help users.',
 		};
@@ -367,7 +367,7 @@ describe('AgentInfoPanel', () => {
 	it('preserves reasoning when selecting a model that supports it', async () => {
 		const config: AgentJsonConfig = {
 			name: 'Support agent',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			credential: 'credential-1',
 			instructions: 'Help users.',
 			config: { reasoning: 'high' },
@@ -376,7 +376,7 @@ describe('AgentInfoPanel', () => {
 
 		wrapper.findComponent({ name: 'AgentModelSelector' }).vm.$emit('change', {
 			provider: 'anthropic',
-			model: 'claude-sonnet-4-5',
+			model: 'claude-sonnet-5-5',
 		});
 		await wrapper.vm.$nextTick();
 
@@ -391,7 +391,7 @@ describe('AgentInfoPanel', () => {
 		async (model) => {
 			const config: AgentJsonConfig = {
 				name: 'Support agent',
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 				credential: 'credential-1',
 				instructions: 'Help users.',
 				config: { reasoning: 'high' },
@@ -420,8 +420,8 @@ describe('AgentInfoPanel', () => {
 			});
 			defaultModelHolder.value = {
 				provider: 'anthropic',
-				model: 'claude-sonnet-4-5',
-				name: 'Claude Sonnet 4.5',
+				model: 'claude-sonnet-5-5',
+				name: 'Claude Sonnet 5.5',
 				description: null,
 				createdAt: null,
 				metadata: { functionCalling: true, available: true },
@@ -434,7 +434,7 @@ describe('AgentInfoPanel', () => {
 
 			expect(wrapper.emitted('update:config')).toContainEqual([
 				expect.objectContaining({
-					model: 'anthropic/claude-sonnet-4-5',
+					model: 'anthropic/claude-sonnet-5-5',
 					credential: 'credential-1',
 				}),
 				{ source: 'auto' },
@@ -444,8 +444,8 @@ describe('AgentInfoPanel', () => {
 		it('applies the verified default on mount when a credential is already available', async () => {
 			defaultModelHolder.value = {
 				provider: 'anthropic',
-				model: 'claude-sonnet-4-5',
-				name: 'Claude Sonnet 4.5',
+				model: 'claude-sonnet-5-5',
+				name: 'Claude Sonnet 5.5',
 				description: null,
 				createdAt: null,
 				metadata: { functionCalling: true, available: true },
@@ -462,7 +462,7 @@ describe('AgentInfoPanel', () => {
 
 			expect(wrapper.emitted('update:config')).toContainEqual([
 				expect.objectContaining({
-					model: 'anthropic/claude-sonnet-4-5',
+					model: 'anthropic/claude-sonnet-5-5',
 					credential: 'credential-1',
 				}),
 				{ source: 'auto' },
@@ -502,8 +502,8 @@ describe('AgentInfoPanel', () => {
 			credsHolder.value = { anthropic: AI_GATEWAY_MANAGED_TAG };
 			defaultModelHolder.value = {
 				provider: 'anthropic',
-				model: 'claude-sonnet-4-5',
-				name: 'Claude Sonnet 4.5',
+				model: 'claude-sonnet-5-5',
+				name: 'Claude Sonnet 5.5',
 				description: null,
 				createdAt: null,
 				metadata: { functionCalling: true, available: true },
@@ -523,8 +523,8 @@ describe('AgentInfoPanel', () => {
 		it('does not touch a draft that already has a model on mount', async () => {
 			defaultModelHolder.value = {
 				provider: 'anthropic',
-				model: 'claude-sonnet-4-5',
-				name: 'Claude Sonnet 4.5',
+				model: 'claude-sonnet-5-5',
+				name: 'Claude Sonnet 5.5',
 				description: null,
 				createdAt: null,
 				metadata: { functionCalling: true, available: true },
@@ -553,8 +553,8 @@ describe('AgentInfoPanel', () => {
 
 			defaultModelHolder.value = {
 				provider: 'anthropic',
-				model: 'claude-sonnet-4-5',
-				name: 'Claude Sonnet 4.5',
+				model: 'claude-sonnet-5-5',
+				name: 'Claude Sonnet 5.5',
 				description: null,
 				createdAt: null,
 				metadata: { functionCalling: true, available: true },
@@ -585,8 +585,8 @@ describe('AgentInfoPanel', () => {
 			});
 			defaultModelHolder.value = {
 				provider: 'anthropic',
-				model: 'claude-sonnet-4-5',
-				name: 'Claude Sonnet 4.5',
+				model: 'claude-sonnet-5-5',
+				name: 'Claude Sonnet 5.5',
 				description: null,
 				createdAt: null,
 				metadata: { functionCalling: true, available: true },

@@ -1,5 +1,6 @@
 interface Overrides {
 	exclude: Record<string, string>;
+	flatten?: Record<string, string>;
 }
 
 export const overrides = {
@@ -187,5 +188,8 @@ export const overrides = {
 		updateWorkflow: 'Not reviewed yet',
 		updateWorkflowTags: 'Not reviewed yet',
 		upsertDataTableRow: 'Not reviewed yet',
+	},
+	flatten: {
+		addUsersToProject: 'relations',
 	},
 } satisfies Overrides;

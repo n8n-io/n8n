@@ -18,6 +18,12 @@ import { TestError } from '../Types';
 export class SecuritySettingsApiHelper {
 	constructor(private readonly api: ApiHelpers) {}
 
+	/** The policy that the instance enforces on its own responses, or `undefined` if it enforces none. */
+	async getEnforcedContentSecurityPolicy(): Promise<string | undefined> {
+		const response = await this.api.request.get('/rest/settings');
+		return response.headers()['content-security-policy'];
+	}
+
 	async getRedactionFloor(): Promise<RedactionFloor | undefined> {
 		const response = await this.api.request.get('/rest/settings/security');
 		if (!response.ok()) {
