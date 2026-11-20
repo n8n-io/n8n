@@ -1,0 +1,51 @@
+packages/@n8n/nodes-langchain/nodes/tools/ToolSkill/ToolSkill.node.ts
+  s_126e90b504d18d::t_55ae18f7b36f0b 1,27-31,35,37-43,45-49,65,69,71-72,83,85,88-89,92,102-103,107,172,203-207,222-224,227,232-234
+  s_126e90b504d18d::t_848d1e5fdd7702 235-238
+packages/@n8n/nodes-langchain/nodes/agents/Agent/agents/ToolsAgent/common.ts
+  s_126e90b504d18d::t_a67700c8f69f27 599-603
+packages/frontend/editor-ui/src/features/ai/skills/skillDependencies.test.ts
+  s_126e90b504d18d::t_cec9ad918b2ded 52,54-59,61-65
+packages/frontend/editor-ui/src/features/ai/skills/skillDependencies.ts
+  s_126e90b504d18d::t_cec9ad918b2ded 66-70,75,79-87,93-99,101-103,108,111-113,117-118,121-123,128-135,137,140,142-143
+  s_126e90b504d18d::t_59b04b26442136 90-92
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/__snapshots__/CanvasNodeDefault.test.ts.snap
+  ai_agent 42,79,116,160,204
+packages/frontend/editor-ui/src/features/ai/skills/SkillMissingToolsDialog.vue
+  s_126e90b504d18d::t_542e4091d4e13f 1-4,6-19,21,23-26,28,30-50
+  s_126e90b504d18d::t_59b04b26442136 5
+  s_126e90b504d18d::t_9c3468a237276b 20,22,27,29
+packages/frontend/editor-ui/src/features/ai/skills/SkillMissingToolsButton.test.ts
+  s_126e90b504d18d::t_1819aff471fa6f 8,10,12,15,29,33,39
+packages/frontend/editor-ui/src/features/ai/skills/SkillMissingToolsButton.vue
+  s_126e90b504d18d::t_542e4091d4e13f 2,4,9
+packages/frontend/editor-ui/src/features/ai/skills/SkillMissingToolsDialog.test.ts
+  s_126e90b504d18d::t_a7a6a347a3cf27 24,29-30,34-37
+  s_126e90b504d18d::t_1819aff471fa6f 1-23,25-28,38-42
+  s_126e90b504d18d::t_848d1e5fdd7702 31-33
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeDefault.vue
+  s_126e90b504d18d::t_542e4091d4e13f 18,272-273
+packages/frontend/editor-ui/src/features/ai/skills/skillDependencyState.ts
+  s_126e90b504d18d::t_cec9ad918b2ded 4,6-9,13
+packages/frontend/editor-ui/src/app/views/NodeView.vue
+  s_126e90b504d18d::t_5ba14abdb32f6c 27,29-31,1846-1847,1854,1865-1895,1897,1900,1921-1923,1925,1927-1929,1934
+  s_126e90b504d18d::t_59b04b26442136 7,28,32
+packages/frontend/editor-ui/src/features/ai/skills/useSkillDependencies.ts
+  s_126e90b504d18d::t_848d1e5fdd7702 19-23
+  s_126e90b504d18d::t_cec9ad918b2ded 49-55,153-157
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "964c86529ff6f9cc36e00eed236ca05d44872a3e",
+  "prompts": {},
+  "sessions": {
+    "s_126e90b504d18d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "53d0ed1b-1ddd-4373-8a47-d0ff0bb754c7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

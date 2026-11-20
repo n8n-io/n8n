@@ -1,0 +1,32 @@
+packages/nodes-base/utils/workflow-backtracking.ts
+  s_87c16bfa58f985::t_725ba185fd8b36 7,51-54,56-57,60-84,88-90,96-97,102-110,114-120,122-133,135-139,144
+  s_87c16bfa58f985::t_ac345fffe3124e 121,134,140-141
+packages/cli/test/integration/sub-workflow-paired-item.test.ts
+  s_87c16bfa58f985::t_567ce74e889385 115-117,119,134,156
+  s_87c16bfa58f985::t_5c4500721f7869 16-17,19,33-34,80-107,111-114,118,120-133,135-152,166,186-189,205-221,223,237,245,252-276
+  s_87c16bfa58f985::t_c31bb1dd1568d5 277-282
+packages/nodes-base/nodes/ExecuteWorkflow/ExecuteWorkflow/ExecuteWorkflow.node.ts
+  s_87c16bfa58f985::t_725ba185fd8b36 531
+packages/nodes-base/utils/workflow-backtracking.test.ts
+  s_87c16bfa58f985::t_06ecbf5cfd455c 614-726
+  s_87c16bfa58f985::t_725ba185fd8b36 202,219,238,257,284,322,358,363,404,449,492,527,562,580,596,611
+packages/nodes-base/nodes/ExecuteWorkflow/ExecuteWorkflow/ExecuteWorkflow.node.test.ts
+  s_87c16bfa58f985::t_45a117e69faabb 207-208
+  s_87c16bfa58f985::t_9c26ae6dfa027e 203-206,209-255
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "224316b9ab1f24afe9c5e534b679de1c964b4358",
+  "prompts": {},
+  "sessions": {
+    "s_87c16bfa58f985": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f0164ac4-c441-4c8a-9bf8-90e488248722",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

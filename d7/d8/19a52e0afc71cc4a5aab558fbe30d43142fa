@@ -1,0 +1,19 @@
+packages/workflow/src/index.ts
+  s_87c16bfa58f985::t_725ba185fd8b36 61
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d7d819a52e0afc71cc4a5aab558fbe30d43142fa",
+  "prompts": {},
+  "sessions": {
+    "s_87c16bfa58f985": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f0164ac4-c441-4c8a-9bf8-90e488248722",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

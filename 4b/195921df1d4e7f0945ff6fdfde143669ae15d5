@@ -1,0 +1,25 @@
+packages/@n8n/instance-ai/skills/agent-builder/SKILL.md
+  s_67ceb9173fafe7::t_8d0e02ebe368e8 322-327
+packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
+  s_67ceb9173fafe7::t_cef6743ee926ba 3405-3412,3438,3448
+packages/cli/src/modules/agents/utils/__tests__/agent-publish-send-targets.test.ts
+  s_67ceb9173fafe7::t_dbefb7a19a9089 15-16
+packages/cli/src/modules/agents/utils/agent-publish-send-targets.ts
+  s_67ceb9173fafe7::t_db8d5a203ee14c 22,60-61
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4b195921df1d4e7f0945ff6fdfde143669ae15d5",
+  "prompts": {},
+  "sessions": {
+    "s_67ceb9173fafe7": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1f434-61c8-7540-bfea-4d6f94c2166b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}
