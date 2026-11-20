@@ -5,7 +5,7 @@
 // Usage: node scripts/lint-anti-slop-new-code.mjs [base-ref]   (default: origin/master)
 
 import { execFileSync, spawnSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
 const git = (...args) => execFileSync('git', args, { encoding: 'utf8', maxBuffer: 1 << 28 }).trim();
@@ -16,6 +16,10 @@ process.chdir(root);
 const baseRef = process.argv[2] ?? 'origin/master';
 const mergeBase = git('merge-base', baseRef, 'HEAD');
 const configDir = path.join(root, 'packages/@n8n/oxlint-config');
+if (!existsSync(path.join(configDir, 'dist/anti-slop/index.js'))) {
+	console.error('anti-slop: build the rules first: pnpm --filter @n8n/oxlint-config build');
+	process.exit(2);
+}
 
 /** Map of file -> Set of added line numbers. Compares against the working tree, so uncommitted edits count. */
 function addedLines() {
@@ -73,16 +77,26 @@ const result = spawnSync(
 	['-c', path.join(configDir, 'anti-slop-new-code.json'), '-f', 'json', ...files],
 	{ encoding: 'utf8', maxBuffer: 1 << 28 },
 );
-const jsonStart = result.stdout.indexOf('{');
+const jsonStart = result.stdout?.indexOf('{') ?? -1;
 if (jsonStart === -1) {
-	console.error(result.stdout, result.stderr);
+	console.error(result.error ?? '', result.stdout ?? '', result.stderr ?? '');
 	process.exit(2);
 }
 const { diagnostics } = JSON.parse(result.stdout.slice(jsonStart));
 
+// A hit counts when any line of its span is added. Rules report a whole chain,
+// so a new `.map()` line below an old receiver line still counts.
 const onAddedLines = diagnostics.filter((d) => {
 	const span = d.labels?.[0]?.span;
-	return span && added.get(d.filename)?.has(span.line);
+	const lines = added.get(d.filename);
+	if (!span || !lines) return false;
+	// Oxlint span offsets are in bytes.
+	const text = readFileSync(d.filename)
+		.subarray(span.offset, span.offset + span.length)
+		.toString();
+	const endLine = span.line + text.split('\n').length - 1;
+	for (let n = span.line; n <= endLine; n++) if (lines.has(n)) return true;
+	return false;
 });
 
 const inCi = process.env.GITHUB_ACTIONS === 'true';
@@ -100,4 +114,5 @@ for (const d of onAddedLines) {
 console.log(
 	`anti-slop: ${onAddedLines.length} on added lines (${diagnostics.length} in the ${files.length} changed files).`,
 );
-process.exit(onAddedLines.length > 0 ? 1 : 0);
+// exitCode, not exit(), so that stdout drains before Node exits.
+process.exitCode = onAddedLines.length > 0 ? 1 : 0;
