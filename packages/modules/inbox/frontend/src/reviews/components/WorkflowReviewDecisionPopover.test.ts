@@ -128,7 +128,7 @@ describe('WorkflowReviewDecisionPopover', () => {
 	it.each<[string, { posting: boolean; deciding: boolean }]>([
 		['a comment is still being posted', { posting: true, deciding: false }],
 		['a decision is already in flight', { posting: false, deciding: true }],
-	])('offers no decision while %s', async (_label, { posting, deciding }) => {
+	])('offers no decision or close while %s', async (_label, { posting, deciding }) => {
 		store.posting = posting;
 
 		const { getByTestId } = renderComponent({ props: { deciding } });
@@ -137,6 +137,7 @@ describe('WorkflowReviewDecisionPopover', () => {
 
 		expect(getByTestId('workflow-review-decision-request-changes-button')).toBeDisabled();
 		expect(getByTestId('workflow-review-decision-approve-button')).toBeDisabled();
+		expect(getByTestId('workflow-review-decision-close-button')).toBeDisabled();
 	});
 
 	it('submits a change request with the note', async () => {

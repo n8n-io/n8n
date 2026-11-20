@@ -186,14 +186,14 @@ async function onComment() {
 				<div v-if="viewerCanClose" :class="$style.closeRow">
 					<N8nTooltip
 						as-child
-						:disabled="deciding"
+						:disabled="decisionDisabled"
 						:content="i18n.baseText('workflowReviews.detail.decision.closeReview.tooltip')"
 						:show-after="300"
 					>
 						<N8nButton
 							variant="destructive"
 							size="small"
-							:disabled="deciding"
+							:disabled="decisionDisabled"
 							data-test-id="workflow-review-decision-close-button"
 							@click="onClose"
 						>
