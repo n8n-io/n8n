@@ -83,7 +83,12 @@ export const connectPublicSkillSourceSchema = discoverPublicSkillSourceSchema.ex
 	skillKeys: ConnectSkillSourceDto.schema.shape.skillKeys.describe(
 		'The keys of the selected skills that passed the check',
 	),
-	revision: z.string().min(1).max(128).describe('The revision returned by discovery'),
+	revision: z
+		.string()
+		.min(1)
+		.max(128)
+		.nullable()
+		.describe('The revision returned by discovery. Null when discovery returned null'),
 });
 
 export type DiscoverPublicSkillSource = z.infer<typeof discoverPublicSkillSourceSchema>;

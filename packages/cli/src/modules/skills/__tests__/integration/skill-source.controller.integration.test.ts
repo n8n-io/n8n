@@ -27,8 +27,11 @@ import { SkillSourceService } from '../../services/skill-source.service';
 import { SkillSourceToolBudget } from '../../services/skill-source-tool-budget';
 import { SkillsTelemetry } from '../../services/skills-telemetry.service';
 import { GitHubSkillSourceClient } from '../../sources/github/github-skill-source-client';
+import { SkillSourceClientRegistry } from '../../sources/skill-source-client-registry.service';
 import type { RemoteSkillRef } from '../../sources/skill-source-client';
 import { FakeGitHub } from '../test-utils/fake-github';
+import { InMemoryPagesStore } from '../test-utils/in-memory-pages-store';
+import { InMemorySkillSourceClient } from '../test-utils/in-memory-skill-source-client';
 import { linkSkill } from '../test-utils/skill-source-fixtures';
 
 import { createAdmin, createMember, createOwner } from '@test-integration/db/users';
@@ -821,6 +824,43 @@ describe('SkillSourceController', () => {
 
 			expect(result.imported.map(({ name }) => name)).toEqual(['docx']);
 			expect(await findSkill(result.imported[0].skillId)).toMatchObject({ projectId: team.id });
+		});
+	});
+
+	describe('a source type without revisions in the public source tools', () => {
+		const pages = new InMemoryPagesStore();
+
+		beforeAll(() => {
+			Container.get(SkillSourceClientRegistry).register(new InMemorySkillSourceClient(pages));
+		});
+
+		it('checks an import with the null revision of the preview, and does not call it stale', async () => {
+			const url = pages.publishDatabase([
+				{
+					name: 'brand-voice',
+					description: 'Write in our voice',
+					instructions: 'Use short sentences.',
+					frontmatter: null,
+					files: [],
+				},
+			]);
+			const service = Container.get(SkillSourceService);
+			const target = { url, scope: 'instance' } as const;
+
+			const preview = await service.discoverPublic(ownerUser, target, 'mcp');
+			expect(preview.revision).toBeNull();
+			const selection = connectPublicSkillSourceSchema.parse({
+				...target,
+				revision: preview.revision,
+				skillKeys: preview.skills.map(({ key }) => key),
+			});
+
+			await expect(
+				service.checkPublicImport(ownerUser, selection, 'assistant'),
+			).resolves.toMatchObject({ importable: [{ name: 'brand-voice' }], failed: [] });
+			await expect(
+				service.checkPublicImport(ownerUser, { ...selection, revision: 'commit' }, 'assistant'),
+			).rejects.toMatchObject({ reason: 'stale' });
 		});
 	});
 

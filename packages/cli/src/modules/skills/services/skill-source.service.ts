@@ -97,7 +97,7 @@ const FETCH_CONCURRENCY = 8;
 
 type ScopeType = 'global' | 'team' | 'personal';
 type SourceToolSurface = 'assistant' | 'mcp';
-type SourceToolPreview = { revision: string; surface: SourceToolSurface };
+type SourceToolPreview = { revision: string | null; surface: SourceToolSurface };
 
 type MoveAccess = {
 	canReadSource: boolean;
@@ -1342,9 +1342,12 @@ function refKey(ref: RemoteSkillRef): string {
 	return JSON.stringify(ref);
 }
 
-/** An import reads the revision that the user saw in the preview, or nothing. */
-function assertPreviewedRevision(discovered: Discovered, revision: string): void {
-	if (discovered.revision === revision) return;
+/**
+ * An import reads the revision that the user saw in the preview, or nothing. A source type
+ * without revisions gives null in the preview, and null matches it.
+ */
+function assertPreviewedRevision(discovered: Discovered, revision: string | null): void {
+	if ((discovered.revision ?? null) === revision) return;
 	throw new SkillSourceRequestError(
 		'stale',
 		'The source changed. Preview it again before importing.',
