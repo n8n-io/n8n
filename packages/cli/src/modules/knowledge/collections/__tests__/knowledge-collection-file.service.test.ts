@@ -12,6 +12,7 @@ import type { KnowledgeFile } from '../../entities';
 import type { KnowledgeFileStore } from '../../files/knowledge-file-store';
 import type { KnowledgeFileService } from '../../files/knowledge-file.service';
 import { KnowledgeUploadError } from '../../files/knowledge-upload.error';
+import type { KnowledgeConfig } from '../../knowledge.config';
 import type { KnowledgeCollectionFileRepository } from '../../repositories/knowledge-collection-file.repository';
 import { KnowledgeCollectionFileService } from '../knowledge-collection-file.service';
 import type { KnowledgeCollectionService } from '../knowledge-collection.service';
@@ -63,11 +64,14 @@ function makeUniqueViolation() {
 	} as unknown as Error);
 }
 
-function makeService() {
+function makeService({
+	maxTotalSizeBytes = MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES,
+}: { maxTotalSizeBytes?: number } = {}) {
 	const collectionService = mock<KnowledgeCollectionService>();
 	const fileRepository = mock<KnowledgeCollectionFileRepository>();
 	const fileStore = mock<KnowledgeFileStore>();
 	const knowledgeFileService = mock<KnowledgeFileService>();
+	const config = mock<KnowledgeConfig>({ maxTotalSizeBytes });
 	const logger = mock<Logger>();
 	logger.scoped.mockReturnValue(logger);
 
@@ -87,6 +91,7 @@ function makeService() {
 			fileRepository,
 			fileStore,
 			knowledgeFileService,
+			config,
 			logger,
 		),
 		collectionService,
@@ -193,6 +198,36 @@ describe('KnowledgeCollectionFileService', () => {
 			});
 			expect(fileStore.write).not.toHaveBeenCalled();
 			expect(fileRepository.saveUploadedFile).not.toHaveBeenCalled();
+		});
+
+		it('refuses an upload that takes the collection above the total size limit', async () => {
+			const { service, fileRepository, fileStore } = makeService({ maxTotalSizeBytes: 10 });
+			fileRepository.findByCollectionId.mockResolvedValue([makeFile({ fileSizeBytes: 6 })]);
+
+			const upload = service.uploadFiles({
+				user,
+				projectId,
+				collectionId,
+				files: [makeMulterFile({ size: 2 }), makeMulterFile({ originalname: 'more.txt', size: 3 })],
+			});
+
+			await expect(upload).rejects.toThrow(KnowledgeUploadError);
+			await expect(upload).rejects.toMatchObject({ reason: 'total_limit' });
+			expect(fileStore.write).not.toHaveBeenCalled();
+		});
+
+		it('accepts an upload that takes the collection to the total size limit', async () => {
+			const { service, fileRepository } = makeService({ maxTotalSizeBytes: 10 });
+			fileRepository.findByCollectionId.mockResolvedValue([makeFile({ fileSizeBytes: 6 })]);
+
+			await expect(
+				service.uploadFiles({
+					user,
+					projectId,
+					collectionId,
+					files: [makeMulterFile({ size: 4 })],
+				}),
+			).resolves.toHaveLength(1);
 		});
 
 		it.each([

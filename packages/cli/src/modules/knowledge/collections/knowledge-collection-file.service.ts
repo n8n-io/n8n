@@ -16,6 +16,7 @@ import { KnowledgeFileService } from '../files/knowledge-file.service';
 import { KnowledgeUploadError } from '../files/knowledge-upload.error';
 import { cleanupUploadedTempFiles } from '../files/knowledge-upload.middleware';
 import { toKnowledgeCollectionFileDto, toKnowledgeContentFileName } from '../files/storage-naming';
+import { KnowledgeConfig } from '../knowledge.config';
 import { KnowledgeCollectionFileRepository } from '../repositories/knowledge-collection-file.repository';
 import {
 	KnowledgeCollectionService,
@@ -38,6 +39,7 @@ export class KnowledgeCollectionFileService {
 		private readonly fileRepository: KnowledgeCollectionFileRepository,
 		private readonly fileStore: KnowledgeFileStore,
 		private readonly knowledgeFileService: KnowledgeFileService,
+		private readonly config: KnowledgeConfig,
 		logger: Logger,
 	) {
 		this.logger = logger.scoped('knowledge');
@@ -71,7 +73,7 @@ export class KnowledgeCollectionFileService {
 			await this.collectionService.getInProject({ projectId, collectionId });
 			this.knowledgeFileService.validateUploadMetadata(files);
 			this.validateFileSizes(files);
-			await this.validateFileNames({ collectionId, files });
+			await this.validateUploadBatch({ collectionId, files });
 
 			const uploadedFiles: KnowledgeFile[] = [];
 			try {
@@ -127,11 +129,13 @@ export class KnowledgeCollectionFileService {
 	}
 
 	/**
-	 * Rejects a name that a file of the collection or of the same upload has.
-	 * The check compares stored names: a PDF is stored as text, so `a.pdf` and
-	 * `a.txt` cannot both be in one collection.
+	 * Rejects an upload that takes the collection above the total size limit, the
+	 * limit of the knowledge base of an agent. Then rejects a name that a file of
+	 * the collection or of the same upload has. The name check compares stored
+	 * names: a PDF is stored as text, so `a.pdf` and `a.txt` cannot both be in one
+	 * collection.
 	 */
-	private async validateFileNames({
+	private async validateUploadBatch({
 		collectionId,
 		files,
 	}: {
@@ -139,6 +143,19 @@ export class KnowledgeCollectionFileService {
 		files: Express.Multer.File[];
 	}) {
 		const existingFiles = await this.fileRepository.findByCollectionId(collectionId, {});
+
+		const existingTotalSizeBytes = existingFiles.reduce(
+			(total, file) => total + file.fileSizeBytes,
+			0,
+		);
+		const uploadTotalSizeBytes = files.reduce((total, file) => total + file.size, 0);
+		if (existingTotalSizeBytes + uploadTotalSizeBytes > this.config.maxTotalSizeBytes) {
+			throw new KnowledgeUploadError(
+				`Collection limit reached. The total size can't be larger than ${formatMbOrGb(this.config.maxTotalSizeBytes)}.`,
+				'total_limit',
+			);
+		}
+
 		const contentFileNames = new Set(
 			existingFiles.map((file) => toKnowledgeContentFileName(file.name)),
 		);
