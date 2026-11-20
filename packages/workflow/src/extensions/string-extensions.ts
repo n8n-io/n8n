@@ -168,7 +168,7 @@ function isNotEmpty(value: string): boolean {
 }
 
 function length(value: string): number {
-	return value.length;
+	return [...value].length;
 }
 
 export function toJsonString(value: string): string {
