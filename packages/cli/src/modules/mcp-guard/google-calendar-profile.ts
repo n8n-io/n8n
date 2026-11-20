@@ -130,8 +130,6 @@ export const GOOGLE_CALENDAR_PROFILE: HttpVendorProfile = {
 	name: 'googlecalendar',
 	gymService: 'google-calendar',
 	opaqueIds: true,
-	defaultAdminUrl: 'http://127.0.0.1:9095',
-	defaultGymUrl: 'http://127.0.0.1:8085',
 	credentialKind: 'google_oauth',
 	credentialField: 'oauthTokenData.access_token',
 	placeholderSeed: {
