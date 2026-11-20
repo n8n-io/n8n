@@ -379,6 +379,9 @@ catalogs:
     '@qdrant/js-client-rest':
       specifier: ^1.19.0
       version: 1.19.0
+    '@redocly/cli':
+      specifier: ^2.76.0
+      version: 2.76.0
     '@rudderstack/rudder-sdk-node':
       specifier: 3.1.1
       version: 3.1.1
@@ -499,6 +502,9 @@ catalogs:
     '@types/oracledb':
       specifier: 6.10.3
       version: 6.10.3
+    '@types/pluralize':
+      specifier: ^0.0.33
+      version: 0.0.33
     '@types/proxy-from-env':
       specifier: ^1.0.4
       version: 1.0.4
@@ -751,6 +757,9 @@ catalogs:
     playwright-core:
       specifier: 1.62.1
       version: 1.62.1
+    pluralize:
+      specifier: ^8.0.0
+      version: 8.0.0
     posthog-node:
       specifier: 5.49.1
       version: 5.49.1
@@ -1984,6 +1993,9 @@ importers:
       '@n8n/backend-network':
         specifier: workspace:*
         version: link:../backend-network
+      '@n8n/blob-storage':
+        specifier: workspace:*
+        version: link:../blob-storage
       '@n8n/config':
         specifier: workspace:*
         version: link:../config
@@ -2017,6 +2029,9 @@ importers:
       '@types/express':
         specifier: 'catalog:'
         version: 5.0.1
+      bcryptjs:
+        specifier: 2.4.3
+        version: 2.4.3
       cache-manager:
         specifier: 'catalog:'
         version: 5.2.3
@@ -2057,6 +2072,9 @@ importers:
       '@n8n/vitest-config':
         specifier: workspace:*
         version: link:../vitest-config
+      '@types/bcryptjs':
+        specifier: ^2.4.2
+        version: 2.4.2
       '@types/jsonwebtoken':
         specifier: 'catalog:'
         version: 9.0.10
@@ -3115,7 +3133,7 @@ importers:
         specifier: 'catalog:'
         version: 1.0.16
       pluralize:
-        specifier: ^8.0.0
+        specifier: 'catalog:'
         version: 8.0.0
       postcss:
         specifier: 8.5.23
@@ -3137,7 +3155,7 @@ importers:
         specifier: ^20.17.50
         version: 20.19.41
       '@types/pluralize':
-        specifier: ^0.0.33
+        specifier: 'catalog:'
         version: 0.0.33
       '@typescript-eslint/rule-tester':
         specifier: 'catalog:'
@@ -3802,6 +3820,55 @@ importers:
       vitest:
         specifier: 'catalog:'
         version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@5.5.0)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+
+  packages/@n8n/n8n-node-codegen:
+    dependencies:
+      pluralize:
+        specifier: 'catalog:'
+        version: 8.0.0
+      yaml:
+        specifier: 'catalog:'
+        version: 2.8.3
+    devDependencies:
+      '@n8n/oxlint-config':
+        specifier: workspace:*
+        version: link:../oxlint-config
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+      '@n8n/vitest-config':
+        specifier: workspace:*
+        version: link:../vitest-config
+      '@redocly/cli':
+        specifier: 'catalog:'
+        version: 2.76.0
+      '@types/node':
+        specifier: ^20.17.50
+        version: 20.19.41
+      '@types/pluralize':
+        specifier: 'catalog:'
+        version: 0.0.33
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 7.0.2007
+      tsx:
+        specifier: 'catalog:'
+        version: 4.19.3
+      typescript:
+        specifier: catalog:typescript
+        version: 7.0.2
+      vite:
+        specifier: 'catalog:'
+        version: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+      vitest:
+        specifier: 'catalog:'
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+      zod:
+        specifier: 3.25.76
+        version: 3.25.76
 
   packages/@n8n/node-cli:
     dependencies:
@@ -5512,7 +5579,7 @@ importers:
         specifier: workspace:*
         version: link:../@n8n/vitest-config
       '@redocly/cli':
-        specifier: ^2.76.0
+        specifier: 'catalog:'
         version: 2.76.0
       '@types/bcryptjs':
         specifier: ^2.4.2
@@ -7848,6 +7915,9 @@ importers:
       n8n-containers:
         specifier: workspace:*
         version: link:../../../quality/environments/containers
+      n8n-workflow:
+        specifier: workspace:*
+        version: link:../../../workflow
       oxlint:
         specifier: 'catalog:'
         version: 1.93.0(oxlint-tsgolint@7.0.2007)
@@ -7872,6 +7942,12 @@ importers:
       '@n8n/api-types':
         specifier: workspace:*
         version: link:../../../@n8n/api-types
+      '@n8n/backend-common':
+        specifier: workspace:*
+        version: link:../../../@n8n/backend-common
+      '@n8n/backend-services':
+        specifier: workspace:*
+        version: link:../../../@n8n/backend-services
       '@n8n/constants':
         specifier: workspace:*
         version: link:../../../@n8n/constants
@@ -7881,13 +7957,22 @@ importers:
       '@n8n/decorators':
         specifier: workspace:*
         version: link:../../../@n8n/decorators
-      '@n8n/typeorm':
-        specifier: workspace:*
-        version: link:../../../@n8n/typeorm
-    devDependencies:
       '@n8n/di':
         specifier: workspace:*
         version: link:../../../@n8n/di
+      '@n8n/errors':
+        specifier: workspace:*
+        version: link:../../../@n8n/errors
+      '@n8n/typeorm':
+        specifier: workspace:*
+        version: link:../../../@n8n/typeorm
+      '@n8n/utils':
+        specifier: workspace:*
+        version: link:../../../@n8n/utils
+    devDependencies:
+      '@n8n/backend-test-utils':
+        specifier: workspace:*
+        version: link:../../../@n8n/backend-test-utils
       '@n8n/oxlint-config':
         specifier: workspace:*
         version: link:../../../@n8n/oxlint-config
@@ -7912,6 +7997,9 @@ importers:
       vitest:
         specifier: 'catalog:'
         version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+      vitest-mock-extended:
+        specifier: 'catalog:'
+        version: 3.1.0(typescript@7.0.2)(vitest@5.0.1)
 
   packages/modules/inbox/frontend:
     dependencies:

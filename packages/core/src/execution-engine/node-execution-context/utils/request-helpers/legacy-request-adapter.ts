@@ -10,6 +10,7 @@ import type {
 	Workflow,
 } from 'n8n-workflow';
 
+import { getEvalEgressProxy } from '@/execution-engine/eval-mock-helpers';
 import { addTraceHeaders } from './trace-headers';
 
 /**
@@ -24,6 +25,9 @@ export async function proxyRequestToAxios(
 ): Promise<any> {
 	const configObject: IRequestOptions =
 		typeof uriOrObject === 'string' ? { uri: uriOrObject, ...options } : (uriOrObject ?? {});
+	// Eval simulated-services runs: every request of the run reaches the sim server.
+	const evalEgressProxy = getEvalEgressProxy(additionalData);
+	if (evalEgressProxy) configObject.proxy = evalEgressProxy;
 
 	if (additionalData && node) addTraceHeaders(configObject, additionalData, node);
 

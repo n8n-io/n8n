@@ -71,6 +71,7 @@ describe('useInstanceTypeAccess', () => {
 			expect.objectContaining({ version: 1 }),
 			'n8n-nodes-base.slack',
 			'deny',
+			null,
 		);
 		expect(mocks.saveInstancePolicy).toHaveBeenCalledWith(expect.anything(), 'node', {
 			defaultAction: 'allow',

@@ -233,6 +233,101 @@ describe('ExecutionLedger', () => {
 		});
 	});
 
+	describe('recordEndedInSequence', () => {
+		const second = { ...endedFacts, executionId: 'exec-2' };
+		const third = { ...endedFacts, executionId: 'exec-3' };
+
+		const deferred = () => {
+			let resolve!: (value: boolean) => void;
+			const promise = new Promise<boolean>((r) => {
+				resolve = r;
+			});
+			return { promise, resolve };
+		};
+		const flush = async () => await new Promise((r) => setImmediate(r));
+
+		it('does nothing without a writer', async () => {
+			await expect(ledger.recordEndedInSequence([endedFacts])).resolves.toBeUndefined();
+
+			expect(writer.writeEnded).not.toHaveBeenCalled();
+		});
+
+		it('does nothing for an empty list', async () => {
+			ledger.setImplementation(writer);
+
+			await ledger.recordEndedInSequence([]);
+
+			expect(writer.writeEnded).not.toHaveBeenCalled();
+		});
+
+		it('writes the rows one at a time', async () => {
+			ledger.setImplementation(writer);
+			const first = deferred();
+			writer.writeEnded.mockReturnValueOnce(first.promise);
+
+			const done = ledger.recordEndedInSequence([endedFacts, second]);
+			await flush();
+
+			expect(writer.writeEnded).toHaveBeenCalledTimes(1);
+
+			first.resolve(true);
+			await done;
+
+			expect(writer.writeEnded).toHaveBeenCalledTimes(2);
+			expect(writer.writeEnded).toHaveBeenNthCalledWith(1, endedFacts, {});
+			expect(writer.writeEnded).toHaveBeenNthCalledWith(2, second, {});
+		});
+
+		it('keeps the order across two calls', async () => {
+			ledger.setImplementation(writer);
+			const first = deferred();
+			writer.writeEnded.mockReturnValueOnce(first.promise);
+
+			const one = ledger.recordEndedInSequence([endedFacts, second]);
+			const two = ledger.recordEndedInSequence([third]);
+			await flush();
+
+			expect(writer.writeEnded).toHaveBeenCalledTimes(1);
+
+			first.resolve(true);
+			await Promise.all([one, two]);
+
+			expect(writer.writeEnded.mock.calls.map(([facts]) => facts.executionId)).toEqual([
+				'exec-1',
+				'exec-2',
+				'exec-3',
+			]);
+		});
+
+		it('settles a call only after its own rows are written', async () => {
+			ledger.setImplementation(writer);
+			const gate = deferred();
+			writer.writeEnded.mockReturnValueOnce(gate.promise);
+			let settled = false;
+
+			const done = ledger.recordEndedInSequence([endedFacts]).then(() => (settled = true));
+			await flush();
+
+			expect(settled).toBe(false);
+
+			gate.resolve(true);
+			await done;
+
+			expect(settled).toBe(true);
+		});
+
+		it('writes the next rows after a failed write and does not reject', async () => {
+			ledger.setImplementation(writer);
+			writer.writeEnded.mockRejectedValueOnce(new Error('insert failed'));
+
+			await expect(ledger.recordEndedInSequence([endedFacts, second])).resolves.toBeUndefined();
+			await ledger.recordEndedInSequence([third]);
+
+			expect(writer.writeEnded).toHaveBeenCalledTimes(3);
+			expect(logger.error).toHaveBeenCalledTimes(1);
+		});
+	});
+
 	describe('getBacklogStats', () => {
 		it('returns what the bound writer resolves', async () => {
 			const stats = { rows: 3, oldestOccurredAt: new Date('2026-10-30T10:00:00Z') };

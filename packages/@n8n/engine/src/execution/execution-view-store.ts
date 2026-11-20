@@ -7,6 +7,7 @@ import type {
 	StepSlots,
 	StepStatus,
 	WorkflowDocument,
+	StepOutputSources,
 } from './execution.types';
 
 /**
@@ -89,6 +90,8 @@ export interface StepView {
 	status: StepStatus;
 	/** Outputs of a completed step, indexed by output slot; `null` until it completes. */
 	outputs: StepSlots | null;
+	/** Where the outputs' items came from. Only a loop node that ran states it. Otherwise `null`. */
+	outputSources: StepOutputSources | null;
 	/** The error that failed the step; `null` unless it failed. */
 	error: StepError | null;
 	createdAt: string;

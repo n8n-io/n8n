@@ -601,6 +601,7 @@ export type IHttpRequestMethods =
 	| 'MOVE'
 	| 'COPY'
 	| 'REPORT'
+	| 'SEARCH'
 	| 'HEAD';
 
 export type IgnoreStatusErrorConfig = {

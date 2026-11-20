@@ -28,8 +28,12 @@ import { InstanceAiCreditService } from '../instance-ai-credit.service';
 import { cleanStoredUserMessage } from '../internal-messages';
 import type { AssistantTurnMemory } from '../turn-setup/assistant-turn-runtime';
 
-/** The judge reads the recent part of the thread. Older turns rarely decide an approval. */
-const CONVERSATION_MESSAGE_LIMIT = 30;
+/**
+ * How far back the judge reads. The judge sees the user's messages of the older part,
+ * so a limit that the user set early stays in view. Each review that goes to the judge
+ * reads these messages again.
+ */
+const CONVERSATION_MESSAGE_LIMIT = 200;
 
 /** A review slower than this shows the card. It covers the judge model, the thread read and the judge call. */
 const APPROVAL_REVIEW_TIMEOUT_MS = 10_000;

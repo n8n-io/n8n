@@ -8,6 +8,8 @@ import { testModules } from '@n8n/backend-test-utils';
 import { type Project, ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
+import { createAgent } from '@test-integration/db/agents';
+
 import { AgentExecutionOrchestratorService } from '@/modules/agents/agent-execution-orchestrator.service';
 import { AgentExecutionService } from '@/modules/agents/agent-execution.service';
 import type { AgentExecutionThread } from '@/modules/agents/entities/agent-execution-thread.entity';
@@ -40,17 +42,15 @@ describe('webhook channel HTTP route', () => {
 		);
 		const schema = { name: 'Agent', model: 'openai/gpt-4o-mini', instructions: 'Help' };
 		const repository = Container.get(AgentRepository);
-		const agent = await repository.save(
-			repository.create({
-				id: randomUUID(),
-				name: 'Agent',
-				projectId: project.id,
-				schema,
-				integrations: [typeof webhook === 'function' ? await webhook(project) : webhook],
-				tools: {},
-				versionId: randomUUID(),
-			}),
-		);
+		const agent = await createAgent({
+			id: randomUUID(),
+			name: 'Agent',
+			projectId: project.id,
+			schema,
+			integrations: [typeof webhook === 'function' ? await webhook(project) : webhook],
+			tools: {},
+			versionId: randomUUID(),
+		});
 		const versionId = randomUUID();
 		await Container.get(AgentHistoryRepository).saveVersion(
 			{ versionId, agentId: agent.id, schema, tools: {}, publishedBy: 'test' },

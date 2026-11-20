@@ -62,5 +62,8 @@ export function useEditorContext() {
 			() => enabledFeatures?.value?.executionSuccessToasts !== false,
 		),
 		executionErrorToasts: computed(() => enabledFeatures?.value?.executionErrorToasts !== false),
+		credentialSetupWarnings: computed(
+			() => enabledFeatures?.value?.credentialSetupWarnings === true,
+		),
 	};
 }

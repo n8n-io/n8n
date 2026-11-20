@@ -24,7 +24,11 @@ import type {
 	LifecycleEvent,
 	LifecycleEventSubscription,
 } from '../../lifecycle-events';
-import { InMemoryWorkQueue, type OrchestrationMessage } from '../../queue';
+import {
+	createInMemoryWorkQueues,
+	InMemoryWorkQueue,
+	type OrchestrationMessage,
+} from '../../queue';
 import { noopExecutionResponseSender } from '../../response-channel';
 import { createEngineRuntime } from '../../runtime';
 import type { SeededSteps, TriggerOutputs } from '../execution.types';
@@ -118,7 +122,7 @@ describe('step execution (integration)', () => {
 			identityVerifier: new SharedSecretIdentityVerifier(secret),
 			responseSender: noopExecutionResponseSender,
 			waitSweepIntervalMs,
-			concurrency,
+			queues: createInMemoryWorkQueues({ concurrency }),
 			// also how the test reaches the stores the runtime owns
 			externalDependencies: ({ executionStore, stepStore }) => {
 				const finishExecution = executionStore.finishExecution.bind(executionStore);
