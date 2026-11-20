@@ -39,7 +39,7 @@ function setup(files: Record<string, InstanceAiStoredFile>) {
 			imported: Array<{ fileId: string; path: string; sizeBytes: number }>;
 			error?: string;
 		}>(tool, input, {});
-	return { tool, run, importFiles, reader };
+	return { tool, run, importFiles, reader, context };
 }
 
 describe('createImportFilesTool', () => {
@@ -123,6 +123,36 @@ describe('createImportFilesTool', () => {
 			error: 'File "missing" not found in this conversation',
 		});
 		expect(importFiles).not.toHaveBeenCalled();
+	});
+
+	it('hides a read error from the model and logs it', async () => {
+		const { run, importFiles, reader, context } = setup({ 'file-1': storedFile('a.csv') });
+		reader.read.mockRejectedValueOnce(new Error('QueryFailedError: connection to 10.0.0.3 lost'));
+
+		const result = await run({ files: [{ fileId: 'file-1' }] });
+
+		expect(result).toEqual({
+			imported: [],
+			error: 'File "file-1" could not be read. Nothing was copied.',
+		});
+		expect(context.logger.warn).toHaveBeenCalledWith(
+			'Failed to read a stored file for import-files',
+			{ fileId: 'file-1', error: 'QueryFailedError: connection to 10.0.0.3 lost' },
+		);
+		expect(importFiles).not.toHaveBeenCalled();
+	});
+
+	it('rethrows a read error when the call was cancelled', async () => {
+		const { tool, reader } = setup({ 'file-1': storedFile('a.csv') });
+		const controller = new AbortController();
+		reader.read.mockImplementationOnce(async () => {
+			controller.abort();
+			throw new Error('read stopped');
+		});
+
+		await expect(
+			executeTool(tool, { files: [{ fileId: 'file-1' }] }, { abortSignal: controller.signal }),
+		).rejects.toThrow('read stopped');
 	});
 
 	it('copies nothing when a path leaves the workspace', async () => {

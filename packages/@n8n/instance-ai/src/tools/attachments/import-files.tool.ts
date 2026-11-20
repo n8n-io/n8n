@@ -19,6 +19,7 @@ import { z } from 'zod';
 import type {
 	InstanceAiContext,
 	InstanceAiSandboxFiles,
+	InstanceAiStoredFile,
 	InstanceAiStoredFileReader,
 } from '../../types';
 import { joinWorkspacePath, normalizeWorkspaceRelativePath } from '../../workspace/workspace-paths';
@@ -143,7 +144,18 @@ export function createImportFilesTool(
 			// The default path needs the file name, so read the metadata of each file first.
 			const byPath = new Map<string, string>();
 			for (const { fileId, path } of files) {
-				const file = await reader.read(fileId);
+				let file: InstanceAiStoredFile | undefined;
+				try {
+					file = await reader.read(fileId);
+				} catch (error) {
+					if (isAbortError(error) || ctx.abortSignal?.aborted) throw error;
+					// A raw storage or database error must not reach the model, so log it for the operator.
+					context.logger.warn('Failed to read a stored file for import-files', {
+						fileId,
+						error: error instanceof Error ? error.message : String(error),
+					});
+					return fail(`File "${fileId}" could not be read. Nothing was copied.`);
+				}
 				if (!file) return fail(`File "${fileId}" not found in this conversation`);
 				let target: string;
 				try {
