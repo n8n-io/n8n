@@ -148,6 +148,31 @@ sequenceDiagram
     Proxy-->>Runtime: "test@example.com"
 ```
 
+### Batched reads
+
+One host call for each key costs much more than one JSON copy. So the two
+bridges read a batch of values of item data (`$json`) in one host call when the
+expression shows that it reads many. A lazy proxy records how the expression
+reads it, and the host never guesses.
+
+| What the expression does | What the proxy asks the host for |
+| --- | --- |
+| Reads a value after it listed the keys (`JSON.stringify`, a returned item, a spread) | Every field of the object |
+| Reads the array index after the last one (`map`, `filter`, a `for` loop) | The next items. Each such read takes four times more items |
+| Read every field of the item before | The next items whole |
+| Read fields by name on the item before (`row.name`) | Only these fields of the next items |
+| Reads one field, or one item out of order | That one value, as before |
+
+A value that is plain JSON data and small goes across whole. A larger value
+stays a lazy proxy, and the same rules apply to it. A value of a parent that
+the expression read whole can be as large as one read. `BATCH_READ_LIMITS`
+holds the sizes.
+
+`readBatchAtPath` in `src/bridge/batch-read.ts` is the host side. It never
+calls an accessor and it only reads `$json`. All other roots stay lazy. A
+bridge passes it to the runtime as the `readBatch` callback. Without this
+callback, a proxy reads one value for each host call.
+
 ## Environment-Specific Implementations
 
 ### IsolatedVmBridge (Node.js Backend)
