@@ -1,10 +1,9 @@
 import { DEFAULT_EXECUTION_LIMIT_SETTINGS } from '@n8n/api-types';
 import { EventService } from '@n8n/backend-services';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
-import { ProjectRepository, type OperationContext } from '@n8n/db';
+import { ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { BadRequestError } from '@n8n/errors';
-import { mock } from 'vitest-mock-extended';
 
 import type { ExecutionLimitsEventMap } from '../execution-limits.events';
 import { ExecutionLimitsService } from '../execution-limits.service';
@@ -296,9 +295,7 @@ describe('ExecutionLimitsService', () => {
 		});
 
 		it('adds the login of a service account to the event', async () => {
-			const ctx = mock<OperationContext>({ security: { subIdentityId: 'login-1' } });
-
-			await service.updateSettings({ instanceMaxExecutions: 1000 }, USER_ID, ctx);
+			await service.updateSettings({ instanceMaxExecutions: 1000 }, USER_ID, 'login-1');
 
 			expect(events).toEqual([expect.objectContaining({ loginId: 'login-1' })]);
 		});
