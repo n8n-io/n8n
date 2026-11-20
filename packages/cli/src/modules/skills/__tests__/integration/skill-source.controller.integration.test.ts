@@ -770,6 +770,17 @@ describe('SkillSourceController', () => {
 				text: '',
 				isBinary: true,
 			});
+			// The check cannot read a binary file, and this one has a Markdown name.
+			expect(binary?.check).toEqual({
+				verdict: 'needs_review',
+				findings: [
+					expect.objectContaining({
+						rule: 'binary_file',
+						severity: 'needs_review',
+						file: 'references/data.md',
+					}),
+				],
+			});
 			const broken = discovery.skills.find((skill) => skill.location === 'broken');
 			expect(broken?.check).toEqual({
 				verdict: 'blocked',
@@ -785,6 +796,7 @@ describe('SkillSourceController', () => {
 				url,
 				scope: 'instance',
 				skillKeys: discovery.skills.map((skill) => skill.key),
+				reviewedSkillKeys: binary ? [binary.key] : [],
 			});
 
 			expect(data.imported).toEqual([expect.objectContaining({ name: 'binary' })]);
