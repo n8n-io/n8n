@@ -1,4 +1,5 @@
 import {
+	AGENT_BUILDER_TOOL_NAMES,
 	buildDataTablesSessionGrantKey,
 	buildExecuteNodeSessionGrantKey,
 	buildRunStepSessionGrantKey,
@@ -99,6 +100,9 @@ function buildSingleAlwaysAllowKey(
 	confirmationWorkflowId?: string,
 ): string | null {
 	const toolName = resolveBuilderToolName(rawToolName);
+	// Going live is always the user's decision, so publishing an agent asks every time and
+	// never offers a grant that would approve the next card on its own (TRUST-1197).
+	if (toolName === AGENT_BUILDER_TOOL_NAMES.PUBLISH_AGENT) return null;
 	if (toolName === REMOVED_BUILDER_TOOL_NAMES.SUBMIT_WORKFLOW) {
 		const isUpdate = typeof args.workflowId === 'string' && args.workflowId.length > 0;
 		return `${REMOVED_BUILDER_TOOL_NAMES.SUBMIT_WORKFLOW}:${isUpdate ? 'update' : 'create'}`;
