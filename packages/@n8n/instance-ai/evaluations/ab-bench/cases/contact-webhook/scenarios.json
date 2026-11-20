@@ -1,0 +1,16 @@
+{
+	"trigger": [
+		{
+			"body": { "name": "Alice", "email": "alice@example.com", "message": "Hello!" },
+			"query": {},
+			"headers": {},
+			"params": {}
+		}
+	],
+	"scenarios": [
+		{
+			"name": "A submission is saved and confirmed",
+			"expect": { "reach": ["dataTable", "respondToWebhook"] }
+		}
+	]
+}

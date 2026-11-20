@@ -1,0 +1,78 @@
+{
+	"properties": {
+		"approval_feature": {
+			"type": "boolean"
+		},
+		"base_uri": {
+			"type": "string"
+		},
+		"clock": {
+			"type": "string"
+		},
+		"color_scheme": {
+			"type": "string"
+		},
+		"currency": {
+			"type": "string"
+		},
+		"currency_code_display": {
+			"type": "string"
+		},
+		"currency_symbol_display": {
+			"type": "string"
+		},
+		"date_format": {
+			"type": "string"
+		},
+		"day_entry_notes_required": {
+			"type": "boolean"
+		},
+		"decimal_symbol": {
+			"type": "string"
+		},
+		"e_invoicing_status": {},
+		"estimate_feature": {
+			"type": "boolean"
+		},
+		"expense_feature": {
+			"type": "boolean"
+		},
+		"full_domain": {
+			"type": "string"
+		},
+		"invoice_feature": {
+			"type": "boolean"
+		},
+		"is_active": {
+			"type": "boolean"
+		},
+		"name": {
+			"type": "string"
+		},
+		"plan_type": {
+			"type": "string"
+		},
+		"saml_sign_in_required": {
+			"type": "boolean"
+		},
+		"team_feature": {
+			"type": "boolean"
+		},
+		"thousands_separator": {
+			"type": "string"
+		},
+		"time_format": {
+			"type": "string"
+		},
+		"wants_timestamp_timers": {
+			"type": "boolean"
+		},
+		"week_start_day": {
+			"type": "string"
+		},
+		"weekly_capacity": {
+			"type": "number"
+		}
+	},
+	"type": "object"
+}

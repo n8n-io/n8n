@@ -1,27 +1,30 @@
 import type { Mock } from 'vitest';
 import type { Agent as RuntimeAgent } from '@n8n/agents';
+import type { AgentToolGuardrailConfig } from '@n8n/api-types';
+import type { LanguageModel } from 'ai';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
-import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { Publisher } from '@n8n/backend-services';
 
 import { AgentChangePublisher } from '../agent-change-publisher.service';
 import type { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
 import { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import { hashAgentSandboxPrincipal } from '../agent-sandbox-principal';
 import type { AgentSandboxRuntimeService } from '../agent-sandbox-runtime.service';
-import type { Agent } from '../entities/agent.entity';
+import type { Agent, ProjectAgent } from '../entities/agent.entity';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { ToolRegistry } from '../tool-registry';
+import { createAgentSkillRefsService, storedRunSource } from './test-utils/stored-agent-config';
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
 
-function makeAgent(overrides: Partial<Agent> = {}): Agent {
+function makeAgent(overrides: Partial<ProjectAgent> = {}): ProjectAgent {
 	return {
 		id: agentId,
 		projectId,
@@ -32,7 +35,7 @@ function makeAgent(overrides: Partial<Agent> = {}): Agent {
 		tools: {},
 		skills: {},
 		...overrides,
-	} as unknown as Agent;
+	} as unknown as ProjectAgent;
 }
 
 function makeRuntime() {
@@ -67,6 +70,7 @@ function makeService({
 		reconstructionService,
 		credentialsService,
 		sandboxRuntimeService,
+		createAgentSkillRefsService(),
 	);
 
 	return { service, agentRepository, publisher, reconstructionService };
@@ -97,7 +101,7 @@ describe('AgentRuntimeCacheService', () => {
 		);
 		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenCalledTimes(1);
 		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenCalledWith(
-			agent,
+			storedRunSource(agent),
 			expect.anything(),
 			'test',
 			undefined,
@@ -107,6 +111,40 @@ describe('AgentRuntimeCacheService', () => {
 			undefined,
 			{},
 		);
+	});
+
+	it('carries the tool guardrails from the reconstruction onto the cached runtime', async () => {
+		const { service, agentRepository, reconstructionService } = makeService();
+		const agent = makeAgent();
+		const toolGuardrails: AgentToolGuardrailConfig[] = [
+			{ kind: 'keywords', id: 'g1', stage: 'before', keywords: ['secret'] },
+		];
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		reconstructionService.reconstructFromAgentEntity.mockResolvedValue({
+			...makeRuntime(),
+			toolGuardrails,
+		});
+
+		const runtime = await service.getRuntime({ agentId, projectId });
+
+		// The cache service rebuilds the runtime object explicitly, so every
+		// reconstruction field must be carried over by hand.
+		expect(runtime.toolGuardrails).toBe(toolGuardrails);
+	});
+
+	it('carries the guardrail model from the reconstruction onto the cached runtime', async () => {
+		const { service, agentRepository, reconstructionService } = makeService();
+		const agent = makeAgent();
+		const guardrailModel = {} as LanguageModel;
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		reconstructionService.reconstructFromAgentEntity.mockResolvedValue({
+			...makeRuntime(),
+			guardrailModel,
+		});
+
+		const runtime = await service.getRuntime({ agentId, projectId });
+
+		expect(runtime.guardrailModel).toBe(guardrailModel);
 	});
 
 	it('keeps task runtimes separate and disables their background tools', async () => {
@@ -127,7 +165,7 @@ describe('AgentRuntimeCacheService', () => {
 		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenCalledTimes(2);
 		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenNthCalledWith(
 			2,
-			agent,
+			storedRunSource(agent),
 			expect.anything(),
 			'test',
 			undefined,
@@ -356,7 +394,7 @@ describe('AgentRuntimeCacheService', () => {
 		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenCalledTimes(2);
 		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenNthCalledWith(
 			2,
-			agent,
+			storedRunSource(agent),
 			expect.anything(),
 			'test',
 			undefined,
@@ -391,7 +429,7 @@ describe('AgentRuntimeCacheService', () => {
 		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenCalledTimes(2);
 		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenNthCalledWith(
 			2,
-			agent,
+			storedRunSource(agent),
 			expect.anything(),
 			'test',
 			'n8n_chat',
@@ -426,7 +464,7 @@ describe('AgentRuntimeCacheService', () => {
 		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenCalledTimes(2);
 		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenNthCalledWith(
 			1,
-			agent,
+			storedRunSource(agent),
 			expect.anything(),
 			'test',
 			undefined,
@@ -438,7 +476,7 @@ describe('AgentRuntimeCacheService', () => {
 		);
 		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenNthCalledWith(
 			2,
-			agent,
+			storedRunSource(agent),
 			expect.anything(),
 			'test',
 			undefined,
@@ -590,7 +628,6 @@ describe('AgentRuntimeCacheService', () => {
 				skills: [],
 			},
 			tools: { tool: { name: 'Tool' } },
-			skills: { skill: { name: 'Skill' } },
 			publishedById: 'publisher-1',
 		};
 		const runtime = makeRuntime();
@@ -608,11 +645,14 @@ describe('AgentRuntimeCacheService', () => {
 		});
 
 		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenCalledWith(
-			expect.objectContaining({
-				schema: activeVersion.schema,
-				tools: activeVersion.tools,
-				skills: activeVersion.skills,
-			}),
+			{
+				agent: expect.objectContaining({
+					schema: activeVersion.schema,
+					tools: activeVersion.tools,
+				}),
+				skillRefs: activeVersion.schema.skills,
+				skills: {},
+			},
 			expect.anything(),
 			'production',
 			'slack',
@@ -639,7 +679,6 @@ describe('AgentRuntimeCacheService', () => {
 					instructions: 'Published instructions',
 				},
 				tools: {},
-				skills: {},
 			} as Agent['activeVersion'],
 		});
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
@@ -656,7 +695,9 @@ describe('AgentRuntimeCacheService', () => {
 
 		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenCalledWith(
 			expect.objectContaining({
-				schema: expect.objectContaining({ instructions: 'Published instructions' }),
+				agent: expect.objectContaining({
+					schema: expect.objectContaining({ instructions: 'Published instructions' }),
+				}),
 			}),
 			expect.anything(),
 			'production',

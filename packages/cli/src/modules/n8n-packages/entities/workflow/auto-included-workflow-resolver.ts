@@ -10,11 +10,17 @@ import {
 	PackageExportBlockedError,
 	assertEveryRequestedEntityAccessible,
 } from '../package-export.errors';
+import { findExportableProjects } from '../project/project-export-access';
 import { applyWorkflowVersionPolicy, needsActiveVersion } from './workflow-version-policy';
 import type { WorkflowSubWorkflowRequirement } from './workflow.types';
-import type { WorkflowVersionPolicy } from '../../n8n-packages.types';
+import type { ExportVersionPolicy } from '../../n8n-packages.types';
 
 export type WorkflowExportOrigin = 'top-level' | 'folder' | 'project';
+
+export interface WorkflowExportSeed {
+	workflowId: string;
+	origin: WorkflowExportOrigin;
+}
 
 export interface AutoIncludedWorkflow {
 	workflow: WorkflowEntity;
@@ -38,19 +44,14 @@ export class AutoIncludedWorkflowResolver {
 
 	async resolve(options: {
 		user: User;
+		exportedWorkflowIds: string[];
+		workflowSeeds: WorkflowExportSeed[];
 		requirements: WorkflowSubWorkflowRequirement[];
-		topLevelWorkflowIds: string[];
-		folderWorkflowIds: string[];
-		projectWorkflowIds: string[];
 		includeTags: boolean;
-		workflowVersionPolicy: WorkflowVersionPolicy;
+		versionPolicy: ExportVersionPolicy;
 	}): Promise<AutoIncludedWorkflowResolution> {
-		const originsByWorkflowId = this.seedExportedOrigins({
-			topLevelWorkflowIds: options.topLevelWorkflowIds,
-			folderWorkflowIds: options.folderWorkflowIds,
-			projectWorkflowIds: options.projectWorkflowIds,
-		});
-		const exportedWorkflowIds = new Set(originsByWorkflowId.keys());
+		const exportedWorkflowIds = new Set(options.exportedWorkflowIds);
+		const originsByWorkflowId = this.seedOrigins(options.workflowSeeds);
 
 		this.propagateOrigins(originsByWorkflowId, options.requirements);
 
@@ -63,35 +64,20 @@ export class AutoIncludedWorkflowResolver {
 			workflowIds: autoIncludedWorkflowIds,
 			originsByWorkflowId,
 			includeTags: options.includeTags,
-			workflowVersionPolicy: options.workflowVersionPolicy,
+			versionPolicy: options.versionPolicy,
 		});
 
 		return { autoIncludedWorkflows };
 	}
 
-	/**
-	 * Seed origin sets from the export buckets in one pass. The same workflow can
-	 * appear in more than one bucket when export options overlap; origins are merged
-	 * so placement can pick the richest context later.
-	 */
-	private seedExportedOrigins(options: {
-		topLevelWorkflowIds: string[];
-		folderWorkflowIds: string[];
-		projectWorkflowIds: string[];
-	}): Map<string, Set<WorkflowExportOrigin>> {
+	private seedOrigins(seeds: WorkflowExportSeed[]): Map<string, Set<WorkflowExportOrigin>> {
 		const originsByWorkflowId = new Map<string, Set<WorkflowExportOrigin>>();
 
-		const add = (workflowIds: string[], origin: WorkflowExportOrigin) => {
-			for (const workflowId of workflowIds) {
-				const origins = originsByWorkflowId.get(workflowId) ?? new Set<WorkflowExportOrigin>();
-				origins.add(origin);
-				originsByWorkflowId.set(workflowId, origins);
-			}
-		};
-
-		add(options.topLevelWorkflowIds, 'top-level');
-		add(options.folderWorkflowIds, 'folder');
-		add(options.projectWorkflowIds, 'project');
+		for (const { workflowId, origin } of seeds) {
+			const origins = originsByWorkflowId.get(workflowId) ?? new Set<WorkflowExportOrigin>();
+			origins.add(origin);
+			originsByWorkflowId.set(workflowId, origins);
+		}
 
 		return originsByWorkflowId;
 	}
@@ -152,7 +138,7 @@ export class AutoIncludedWorkflowResolver {
 		workflowIds: string[];
 		originsByWorkflowId: Map<string, Set<WorkflowExportOrigin>>;
 		includeTags: boolean;
-		workflowVersionPolicy: WorkflowVersionPolicy;
+		versionPolicy: ExportVersionPolicy;
 	}): Promise<AutoIncludedWorkflow[]> {
 		if (options.workflowIds.length === 0) return [];
 
@@ -160,7 +146,7 @@ export class AutoIncludedWorkflowResolver {
 			options.user,
 			options.workflowIds,
 			options.includeTags,
-			options.workflowVersionPolicy,
+			options.versionPolicy,
 		);
 		const workflowsById = new Map(workflows.map((workflow) => [workflow.id, workflow]));
 		const ownersByWorkflowId = await this.sharedWorkflowRepository.findOwnerProjectsByWorkflowIds(
@@ -190,7 +176,12 @@ export class AutoIncludedWorkflowResolver {
 					.filter((projectId): projectId is string => projectId !== undefined),
 			),
 		];
-		const accessibleProjectsById = await this.findAccessibleProjects(options.user, projectIds);
+		const accessibleProjects = await findExportableProjects(
+			this.projectService,
+			options.user,
+			projectIds,
+		);
+		const accessibleProjectIds = new Set(accessibleProjects.map(({ id }) => id));
 
 		return options.workflowIds.map((workflowId) => {
 			const workflow = workflowsById.get(workflowId);
@@ -206,7 +197,7 @@ export class AutoIncludedWorkflowResolver {
 				placement = 'top-level';
 			}
 
-			if (placement === 'project' && !accessibleProjectsById.has(ownerProject.id)) {
+			if (placement === 'project' && !accessibleProjectIds.has(ownerProject.id)) {
 				throw new PackageExportBlockedError(
 					'Static sub-workflow dependency project metadata is not accessible. Export aborted.',
 				);
@@ -235,7 +226,7 @@ export class AutoIncludedWorkflowResolver {
 		user: User,
 		workflowIds: string[],
 		includeTags: boolean,
-		workflowVersionPolicy: WorkflowVersionPolicy,
+		versionPolicy: ExportVersionPolicy,
 	): Promise<WorkflowEntity[]> {
 		const workflows = await this.workflowFinder.findWorkflowsByIdsForUser(
 			workflowIds,
@@ -244,7 +235,7 @@ export class AutoIncludedWorkflowResolver {
 			{
 				includeParentFolder: true,
 				includeTags,
-				includeActiveVersion: needsActiveVersion(workflowVersionPolicy),
+				includeActiveVersion: needsActiveVersion(versionPolicy),
 			},
 		);
 
@@ -255,7 +246,7 @@ export class AutoIncludedWorkflowResolver {
 			async (ids) => await this.workflowFinder.findExistingWorkflowIds(ids),
 		);
 
-		const exportableWorkflows = applyWorkflowVersionPolicy(workflows, workflowVersionPolicy);
+		const exportableWorkflows = applyWorkflowVersionPolicy(workflows, versionPolicy);
 
 		// `ignore-unpublished` skips top-level workflows silently, but a dependency
 		// it drops is one the package cannot ship without — abort, naming the cause.
@@ -300,23 +291,5 @@ export class AutoIncludedWorkflowResolver {
 		);
 
 		return folderChainsByFolderId;
-	}
-
-	private async findAccessibleProjects(
-		user: User,
-		projectIds: string[],
-	): Promise<Map<string, Project>> {
-		const projects = await this.projectService.findProjectsByIdsForUser(user, projectIds, [
-			'project:export',
-		]);
-
-		await assertEveryRequestedEntityAccessible(
-			'project',
-			projectIds,
-			projects,
-			async (ids) => await this.projectService.findExistingProjectIds(ids),
-		);
-
-		return new Map(projects.map((project) => [project.id, project]));
 	}
 }

@@ -1,6 +1,8 @@
 import { readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 
+import { isTestFile } from "../test-files.mjs";
+
 /**
  * @typedef OwnersEntry
  * @property { string } pattern
@@ -236,7 +238,7 @@ export function assignOwnership(files, entries) {
 
 /**
  * Determine which teams must approve the changeset: a team is required when
- * its `required` entry wins (last-match) for a changed file.
+ * its `required` entry wins (last-match) for a changed non-test file.
  *
  * @param { Set<string> } files
  * @param { OwnersEntry[] } entries
@@ -247,6 +249,8 @@ export function resolveRequiredTeams(files, entries) {
 	const teamToFiles = new Map();
 
 	for (const file of [...files].sort()) {
+		if (isTestFile(file)) continue;
+
 		const entry = findOwningEntry(file, entries);
 		if (!entry?.required) continue;
 

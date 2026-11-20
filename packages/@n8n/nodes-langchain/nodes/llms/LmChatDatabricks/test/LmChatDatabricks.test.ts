@@ -174,9 +174,12 @@ describe('LmChatDatabricks', () => {
 			await node.supplyData.call(ctx, 0);
 
 			const [, databricksHandler] = mockedMakeN8nLlmFailedAttemptHandler.mock.calls[0];
-			expect(() => databricksHandler?.(Object.assign(new Error('429 x'), { status: 429 }))).toThrow(
-				'Databricks rate limit reached for my-chat-endpoint',
-			);
+			const rateLimited = Object.assign(new Error('429 x'), { status: 429 });
+			expect(() => databricksHandler?.(rateLimited)).not.toThrow();
+			expect(rateLimited).toMatchObject({
+				message: 'Databricks rate limit reached for my-chat-endpoint',
+				description: expect.stringMatching(/throttling requests to this model service/),
+			});
 		});
 
 		it('should send the bearer and the partner User-Agent on every request', async () => {
@@ -427,9 +430,11 @@ describe('LmChatDatabricks', () => {
 				'databricksOAuth2Api',
 				expect.objectContaining({
 					method: 'GET',
-					url: 'https://my.databricks.com/api/2.1/unity-catalog/model-services',
 					qs: expect.objectContaining({ view: 'FULL' }),
 				}),
+			);
+			expect(String(httpRequestWithAuthentication.mock.calls[0][1].url)).toBe(
+				'https://my.databricks.com/api/2.1/unity-catalog/model-services',
 			);
 			expect(result.results).toStrictEqual([
 				{
@@ -554,7 +559,7 @@ describe('LmChatDatabricks', () => {
 			await node.methods.listSearch.searchModels.call(mockContext);
 
 			const [, requestOptions] = httpRequestWithAuthentication.mock.calls[0];
-			expect(requestOptions.url).toBe(
+			expect(String(requestOptions.url)).toBe(
 				'https://my.databricks.com/api/2.1/unity-catalog/model-services',
 			);
 		});

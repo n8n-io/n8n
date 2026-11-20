@@ -11,11 +11,11 @@ import {
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 
 import { ActivationErrorsService } from '@/activation-errors.service';
 import { isPolicyRefusal } from '@/policy/policy-violation.error';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { Publisher } from '@n8n/backend-services';
 import { formatNodeFailures } from '@/workflows/publication/format-node-failures';
 import type {
 	FailedTriggerPublicationStatus,
@@ -105,12 +105,15 @@ export class PublicationStatusReporter {
 				// The record's failure stays the activation error; the abandoned
 				// deregistrations (whose teardown already ran) get their own report.
 				this.surfaceTeardownFailures(result.teardownFailures);
-				const { triggerStatuses } = result;
+				const { triggerState } = result;
 				await this.transactionRunner.run({}, async (ctx) => {
-					if (triggerStatuses) {
+					if (triggerState) {
 						await this.triggerStatusRepository.replaceForWorkflow(
 							record.workflowId,
-							this.toRows(record, triggerStatuses),
+							this.toRows(
+								{ publishedVersionId: triggerState.versionId },
+								triggerState.triggerStatuses,
+							),
 							ctx,
 						);
 					}
@@ -123,10 +126,15 @@ export class PublicationStatusReporter {
 				});
 				// An expected denial, already logged as a warning by the applier — the
 				// terminal state and the UI push stand, the fault report does not.
-				if (!isPolicyRefusal(result.error)) {
+				const policyRefusal = isPolicyRefusal(result.error);
+				if (!policyRefusal) {
 					this.errorReporter.error(result.error, { shouldBeLogged: true });
 				}
-				await this.pushFailedToActivate(record.workflowId, result.error.message);
+				await this.pushFailedToActivate(
+					record.workflowId,
+					result.error.message,
+					policyRefusal ? undefined : result.nodeId,
+				);
 				return;
 			}
 
@@ -152,7 +160,7 @@ export class PublicationStatusReporter {
 		const failures = triggerStatuses.filter(
 			(s): s is FailedTriggerPublicationStatus => s.status === 'failed',
 		);
-		const errorMessage = this.formatActivationError(failures);
+		const errorMessage = this.formatPartialActivationError(failures);
 
 		this.logger.warn('Workflow partially published; some triggers failed to activate', {
 			workflowId: record.workflowId,
@@ -187,7 +195,7 @@ export class PublicationStatusReporter {
 
 	/** Maps trigger publication statuses to repository row objects, stamping the published version. */
 	private toRows(
-		record: WorkflowPublicationOutbox,
+		record: Pick<WorkflowPublicationOutbox, 'publishedVersionId'>,
 		statuses: TriggerPublicationStatus[],
 	): TriggerStatusRow[] {
 		return statuses.map((triggerStatus) => ({
@@ -200,7 +208,7 @@ export class PublicationStatusReporter {
 	}
 
 	/** Builds a human-readable message naming each failed node and its error. */
-	private formatActivationError(failures: FailedTriggerPublicationStatus[]): string {
+	private formatPartialActivationError(failures: FailedTriggerPublicationStatus[]): string {
 		const detail = formatNodeFailures(
 			failures.map(({ nodeName, errorMessage }) => ({ nodeName, message: errorMessage })),
 		);
@@ -209,10 +217,14 @@ export class PublicationStatusReporter {
 	}
 
 	/** Pushes a failed-to-activate status to clients connected to any main. */
-	private async pushFailedToActivate(workflowId: string, errorMessage: string): Promise<void> {
+	private async pushFailedToActivate(
+		workflowId: string,
+		errorMessage: string,
+		nodeId?: string,
+	): Promise<void> {
 		await this.pushStatus({
 			type: 'workflowFailedToActivate',
-			data: { workflowId, errorMessage },
+			data: { workflowId, errorMessage, nodeId },
 		});
 	}
 

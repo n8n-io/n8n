@@ -44,13 +44,27 @@
                             "type": "object",
                             "properties": {
                                 "assignee": {
-                                    "type": "null"
+                                    "type": "object",
+                                    "properties": {
+                                        "email": {
+                                            "type": "string"
+                                        },
+                                        "id": {
+                                            "type": "integer"
+                                        },
+                                        "initials": {
+                                            "type": "string"
+                                        }
+                                    }
                                 },
                                 "date_created": {
                                     "type": "string"
                                 },
                                 "due_date": {
                                     "type": "null"
+                                },
+                                "due_date_time": {
+                                    "type": "boolean"
                                 },
                                 "group_assignee": {
                                     "type": "null"
@@ -61,14 +75,23 @@
                                 "name": {
                                     "type": "string"
                                 },
+                                "orderindex": {
+                                    "type": "integer"
+                                },
                                 "parent": {
                                     "type": "null"
                                 },
                                 "resolved": {
                                     "type": "boolean"
                                 },
+                                "sent_due_date_notif": {
+                                    "type": "null"
+                                },
                                 "start_date": {
                                     "type": "null"
+                                },
+                                "start_date_time": {
+                                    "type": "boolean"
                                 }
                             }
                         }
@@ -184,6 +207,9 @@
                     },
                     "depends_on": {
                         "type": "string"
+                    },
+                    "lag_ms": {
+                        "type": "null"
                     },
                     "task_id": {
                         "type": "string"
@@ -427,5 +453,5 @@
             }
         }
     },
-    "version": 3
+    "version": 5
 }

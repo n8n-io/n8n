@@ -17,10 +17,7 @@ async function lintFile(filePath: string, eslintConfig: typeof config) {
 	const eslint = new ESLint({
 		cwd: path.dirname(filePath),
 		overrideConfigFile: true,
-		// `tseslint.config()` returns the typescript-eslint `ConfigArray`, which
-		// is structurally a `Linter.Config[]` but nominally a different type due
-		// to duplicated `Parser` definitions across packages.
-		overrideConfig: eslintConfig as unknown as ESLint.Options['overrideConfig'],
+		overrideConfig: eslintConfig,
 	});
 	const [result] = await eslint.lintFiles([filePath]);
 	return result;

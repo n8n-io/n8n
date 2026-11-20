@@ -1,13 +1,12 @@
 import { expect, test, chatHubTestConfig } from './fixtures';
 import { INSTANCE_MEMBER_CREDENTIALS } from '../../../config/test-users';
-import { n8nPage } from '../../../pages/n8nPage';
 
 test.use(chatHubTestConfig);
 
 test.describe(
 	'Workflow agent',
 	{
-		annotation: [{ type: 'owner', description: 'Chat' }],
+		annotation: [{ type: 'owner', description: 'instanceAI' }],
 	},
 	() => {
 		test('manage workflow agents @auth:admin', async ({ n8n, agentWorkflow }) => {
@@ -29,7 +28,7 @@ test.describe(
 
 			// STEP: Open workflow in new tab and update system prompt
 			const tab1Page = await n8n.chatHubChat.clickOpenWorkflowButton();
-			const tab1 = new n8nPage(tab1Page);
+			const tab1 = n8n.start.forPage(tab1Page);
 
 			await tab1.canvas.openNode('AI Agent');
 			await tab1.ndv.fillParameterInput('System Message', 'Reply in Finnish');
@@ -51,7 +50,7 @@ test.describe(
 
 			// STEP: Open workflow in new tab and disable ChatHub
 			const tab2Page = await n8n.chatHubChat.clickOpenWorkflowButton();
-			const tab2 = new n8nPage(tab2Page);
+			const tab2 = n8n.start.forPage(tab2Page);
 
 			await tab2.canvas.openNode('When chat message received');
 			await tab2.ndv.getParameterSwitch('availableInChat').click();

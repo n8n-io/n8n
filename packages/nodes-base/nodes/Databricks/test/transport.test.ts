@@ -1,5 +1,6 @@
 import type { INode, IPollFunctions } from 'n8n-workflow';
-import { NodeOperationError, UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
+import { NodeOperationError, requestUrl } from 'n8n-workflow';
 import { mock, mockDeep } from 'vitest-mock-extended';
 
 import { DATABRICKS_PARTNER_USER_AGENT } from '../constants';
@@ -69,7 +70,7 @@ describe('listJobRuns', () => {
 			'databricksApi',
 			expect.objectContaining({
 				method: 'GET',
-				url: `${HOST}/api/2.2/jobs/runs/list`,
+				url: requestUrl`${HOST}/api/2.2/jobs/runs/list`,
 				qs: {
 					job_id: JOB_ID,
 					start_time_from: 1788260000000,
@@ -297,7 +298,7 @@ describe('listPipelineEvents', () => {
 			'databricksApi',
 			expect.objectContaining({
 				method: 'GET',
-				url: `${HOST}/api/2.0/pipelines/${PIPELINE_ID}/events`,
+				url: requestUrl`${HOST}/api/2.0/pipelines/${PIPELINE_ID}/events`,
 				qs: {
 					max_results: 25,
 					filter: `level in ('ERROR', 'WARN') AND timestamp > '${CURSOR}'`,
@@ -307,6 +308,15 @@ describe('listPipelineEvents', () => {
 			}),
 		);
 		expect(page).toEqual({ items: [event('e1')], nextPageToken: 'p2' });
+	});
+
+	it('never asks for more than 250 events per page, the limit Databricks enforces', async () => {
+		const context = createPollContext();
+		apiMock(context).mockResolvedValue({});
+
+		await listPipelineEvents(context, 'databricksApi', { pipelineId: PIPELINE_ID, pageSize: 1000 });
+
+		expect(requestQuery(context, 0)).toEqual({ max_results: 250, order_by: 'timestamp asc' });
 	});
 
 	const queryCases: Array<

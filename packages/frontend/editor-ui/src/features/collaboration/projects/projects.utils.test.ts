@@ -1,10 +1,29 @@
 import { createPinia, setActivePinia } from 'pinia';
 import {
+	compareSharingEntries,
 	splitName,
 	useRemoteProjectSearch,
 	DEFAULT_PROJECT_SEARCH_PAGE_SIZE,
 } from './projects.utils';
 import { useProjectsStore } from './projects.store';
+
+describe('compareSharingEntries', () => {
+	it('puts people before projects, and orders each by name', () => {
+		const entries = [
+			{ type: 'team', name: 'Sales' },
+			{ type: 'personal', name: 'Zoe Adams <zoe@acme.io>' },
+			{ type: 'team', name: 'Marketing' },
+			{ type: 'personal', name: 'Anna Berg <anna@acme.io>' },
+		];
+
+		expect([...entries].sort(compareSharingEntries).map(({ name }) => name)).toEqual([
+			'Anna Berg <anna@acme.io>',
+			'Zoe Adams <zoe@acme.io>',
+			'Marketing',
+			'Sales',
+		]);
+	});
+});
 
 describe('splitName', () => {
 	test.each([
@@ -116,6 +135,22 @@ describe('useRemoteProjectSearch', () => {
 			search: 'alice',
 			take: DEFAULT_PROJECT_SEARCH_PAGE_SIZE,
 			type: 'personal',
+		});
+	});
+
+	it('asks for service accounts only when the caller opts in', async () => {
+		const store = useProjectsStore();
+		const spy = vi
+			.spyOn(store, 'searchShareableProjects')
+			.mockResolvedValue({ count: 0, data: [] });
+
+		const search = useRemoteProjectSearch({ includeServiceAccounts: true });
+		await search('bot');
+
+		expect(spy).toHaveBeenCalledWith({
+			search: 'bot',
+			take: DEFAULT_PROJECT_SEARCH_PAGE_SIZE,
+			includeServiceAccounts: true,
 		});
 	});
 });

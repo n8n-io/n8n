@@ -1,0 +1,106 @@
+{
+	"properties": {
+		"archived": {
+			"type": "boolean"
+		},
+		"billable": {
+			"type": "boolean"
+		},
+		"budgetEstimate": {},
+		"clientId": {
+			"type": "string"
+		},
+		"clientName": {
+			"type": "string"
+		},
+		"color": {
+			"type": "string"
+		},
+		"costRate": {},
+		"duration": {
+			"type": "string"
+		},
+		"estimate": {
+			"properties": {
+				"estimate": {
+					"type": "string"
+				},
+				"type": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"estimateReset": {},
+		"hourlyRate": {
+			"properties": {
+				"amount": {
+					"type": "number"
+				},
+				"currency": {
+					"type": "string"
+				}
+			},
+			"type": ["null", "object"]
+		},
+		"id": {
+			"type": "string"
+		},
+		"memberships": {
+			"items": {
+				"properties": {
+					"costRate": {},
+					"hourlyRate": {},
+					"membershipStatus": {
+						"type": "string"
+					},
+					"membershipType": {
+						"type": "string"
+					},
+					"targetId": {
+						"type": "string"
+					},
+					"userId": {
+						"type": "string"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"name": {
+			"type": "string"
+		},
+		"note": {
+			"type": "string"
+		},
+		"public": {
+			"type": "boolean"
+		},
+		"template": {
+			"type": "boolean"
+		},
+		"timeEstimate": {
+			"properties": {
+				"active": {
+					"type": "boolean"
+				},
+				"estimate": {
+					"type": "string"
+				},
+				"includeNonBillable": {
+					"type": "boolean"
+				},
+				"resetOption": {},
+				"type": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"workspaceId": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

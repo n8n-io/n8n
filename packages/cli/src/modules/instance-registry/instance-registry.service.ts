@@ -1,12 +1,12 @@
 import type { InstanceRegistration } from '@n8n/api-types';
-import { Logger } from '@n8n/backend-common';
+import { getN8nVersion, Logger } from '@n8n/backend-common';
 import { ExecutionsConfig, ScalingModeConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import { randomUUID } from 'node:crypto';
 
-import { N8N_VERSION } from '@/constants';
 import { resolveWorkerPoolName } from '@/scaling/queue-name';
+import { getCpuLimit, getMemoryLimit } from '@/utils/container-limits';
 
 import type { InstanceStorage } from './storage/instance-storage.interface';
 
@@ -45,6 +45,31 @@ export class InstanceRegistryService {
 			backend: this.storage.kind,
 			instanceType: this.instanceSettings.instanceType,
 		});
+
+		await this.logClusterVersions();
+	}
+
+	private async logClusterVersions(): Promise<void> {
+		try {
+			const registrations = await this.storage.getAllRegistrations();
+			const versions = [...new Set(registrations.map((instance) => instance.version))].sort();
+			const instances = registrations.map(({ hostId, instanceType, instanceRole, version }) => ({
+				hostId,
+				instanceType,
+				instanceRole,
+				version,
+			}));
+
+			if (versions.length > 1) {
+				this.logger.warn(`Cluster is running multiple n8n versions: ${versions.join(', ')}`, {
+					instances,
+				});
+			} else if (versions.length === 1) {
+				this.logger.info(`Cluster aligned on version ${versions[0]}`, { instances });
+			}
+		} catch (error) {
+			this.logger.warn('Failed to inspect cluster versions after registration', { error });
+		}
 	}
 
 	async shutdown() {
@@ -122,9 +147,11 @@ export class InstanceRegistryService {
 			hostId: this.instanceSettings.hostId,
 			instanceType: this.instanceSettings.instanceType,
 			instanceRole: this.instanceSettings.instanceRole,
-			version: N8N_VERSION,
+			version: getN8nVersion(),
 			registeredAt: this.registeredAt,
 			lastSeen: Date.now(),
+			memoryLimit: getMemoryLimit(),
+			cpuLimit: getCpuLimit().limit,
 		};
 
 		if (this.instanceSettings.instanceType === 'worker') {

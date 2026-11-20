@@ -10,6 +10,7 @@ properties:
     type: string
     enum:
       - git
+      - gitlab
   authType:
     type: string
     enum:
@@ -44,6 +45,18 @@ properties:
               - 1
         required:
           - schemaVersion
+        additionalProperties: false
+      - type: object
+        properties:
+          schemaVersion:
+            type: number
+            enum:
+              - 1
+          baseUrl:
+            type: string
+        required:
+          - schemaVersion
+          - baseUrl
         additionalProperties: false
   createdAt:
     type: string

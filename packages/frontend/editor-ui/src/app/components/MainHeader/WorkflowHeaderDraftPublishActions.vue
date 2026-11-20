@@ -38,6 +38,11 @@ import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useWorkflowActivate } from '@/app/composables/useWorkflowActivate';
 import { useToast } from '@n8n/composables/useToast';
+import {
+	describeRestrictedNodeTypes,
+	collectRestrictedNodeTypes,
+} from '@n8n/frontend-module-type-availability-policies';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type { WorkflowVersionFormModalEventBusEvents } from '@/features/workflows/workflowHistory/components/WorkflowVersionFormModal.vue';
 import { useWorkflowHistoryStore } from '@/features/workflows/workflowHistory/workflowHistory.store';
@@ -47,6 +52,7 @@ import {
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 import { useWorkflowPublicationStatusSync } from '@/app/composables/useWorkflowPublicationStatusSync';
+import { useUnusableWorkflowCredentials } from '@/features/credentials/composables/useUnusableWorkflowCredentials';
 import { useWorkflowReviewsFeature } from '@/features/workflow-reviews/composables/useWorkflowReviewsFeature';
 import WorkflowReviewRequiredToggle from '@/features/workflow-reviews/components/WorkflowReviewRequiredToggle.vue';
 import WorkflowPublishChoiceDialog from '@/features/workflow-reviews/components/WorkflowPublishChoiceDialog.vue';
@@ -78,6 +84,11 @@ const workflowDocumentStore = computed(() =>
 // Pass a getter so the composable re-syncs internally when the user navigates
 // to a different workflow without this component being remounted.
 useWorkflowPublicationStatusSync(() => workflowDocumentStore.value.documentId);
+
+const { reason: unusableCredentialReason } = useUnusableWorkflowCredentials(
+	() => workflowDocumentStore.value.usedCredentials,
+	() => workflowDocumentStore.value.allNodes,
+);
 const { refetch: refetchReviewStatus } = useWorkflowReviewStatusSync(() =>
 	props.isNewWorkflow ? undefined : props.id,
 );
@@ -85,6 +96,7 @@ const collaborationStore = useCollaborationStore();
 const projectStore = useProjectsStore();
 const workflowHistoryStore = useWorkflowHistoryStore();
 const settingsStore = useSettingsStore();
+const nodeTypesStore = useNodeTypesStore();
 const i18n = useI18n();
 const router = useRouter();
 const toast = useToast();
@@ -92,22 +104,58 @@ const toast = useToast();
 const saveStore = useWorkflowSaveStore();
 const { saveCurrentWorkflow, cancelAutoSave } = useWorkflowSaving({ router });
 const workflowActivate = useWorkflowActivate();
-const { isWorkflowReviewsEnabled } = useWorkflowReviewsFeature();
+const { isWorkflowReviewsEnabled, isReviewRequiredFor } = useWorkflowReviewsFeature();
 const reviewRequiredStore = useReviewRequiredStore();
 const reviewStatusStore = useWorkflowReviewStatusStore();
 const { publishChoiceDismissed, submittedDialogDismissed } = useWorkflowReviewDialogPreferences();
 
-const effectiveReviewRequired = computed(
-	() => reviewStatusStore.hasOpenReview(props.id) || reviewRequiredStore.isReviewRequired(props.id),
+const homeProject = computed(() => workflowDocumentStore.value.homeProject);
+const isPersonalWorkflow = computed(() => homeProject.value?.type === ProjectTypes.Personal);
+const hasOpenReview = computed(() => reviewStatusStore.hasOpenReview(props.id));
+
+/** A legacy open review on a personal workflow keeps its controls until it closes. */
+const reviewsApply = computed(
+	() => isWorkflowReviewsEnabled.value && (!isPersonalWorkflow.value || hasOpenReview.value),
+);
+
+const isApprovalAlwaysRequired = computed(() => isReviewRequiredFor(homeProject.value));
+
+/** Whether the editor holds anything beyond the live version. */
+const hasUnpublishedChanges = computed(
+	() =>
+		workflowDocumentStore.value.versionId !== activeVersion.value?.versionId ||
+		uiStore.hasUnsavedWorkflowChanges,
+);
+
+/** Re-applying the live version needs no review, e.g. to retry a failed publication. */
+const savedVersionIsLive = computed(() => !!activeVersion.value && !hasUnpublishedChanges.value);
+
+/** An approved version needs no new review, e.g. when the publish after the approval failed. */
+const savedVersionIsApproved = computed(() => {
+	const review = reviewStatusStore.latestReviewRequest(props.id);
+	return (
+		review?.decision === 'approved' &&
+		review.workflowVersionId === workflowDocumentStore.value.versionId &&
+		!uiStore.hasUnsavedWorkflowChanges
+	);
+});
+
+const mustSubmitForReview = computed(
+	() =>
+		isApprovalAlwaysRequired.value && !savedVersionIsLive.value && !savedVersionIsApproved.value,
+);
+
+const effectiveReviewRequired = computed(() =>
+	isApprovalAlwaysRequired.value
+		? hasOpenReview.value || mustSubmitForReview.value
+		: hasOpenReview.value || reviewRequiredStore.isReviewRequired(props.id),
 );
 
 const isNamedVersionsEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.NamedVersions],
 );
 
-const showWorkflowReviewControls = computed(
-	() => isWorkflowReviewsEnabled.value && !props.isNewWorkflow,
-);
+const showWorkflowReviewControls = computed(() => reviewsApply.value && !props.isNewWorkflow);
 
 const latestReviewRequest = computed(() => reviewStatusStore.latestReviewRequest(props.id));
 
@@ -166,24 +214,36 @@ const containsTrigger = computed((): boolean => {
 	return foundTriggers.value.length > 0;
 });
 
-const nodesWithValidationIssues = computed(
-	() => workflowDocumentStore.value.nodesWithValidationIssues,
-);
+// The nodes that actually block publishing, so the count in the message matches
+// why the button is disabled.
+const nodesWithValidationIssues = computed(() => workflowDocumentStore.value.publishBlockingNodes);
 
 const hasNodeIssues = computed(() => workflowDocumentStore.value.hasPublishBlockingIssues);
 
-const isWorkflowPublishable = computed(() => containsTrigger.value && !hasNodeIssues.value);
+/** The publish policy check judges every node, disabled or unreachable ones too. */
+const restrictedNodeTypes = computed(() =>
+	collectRestrictedNodeTypes(
+		workflowDocumentStore.value.allNodes.map((node) => node.type),
+		(type) => nodeTypesStore.getNodeType(type)?.displayName ?? type,
+	),
+);
 
-/** Why publishing is blocked, or '' when it is not. Same copy as the Publish tooltip. */
+const hasRestrictedNodeTypes = computed(() => restrictedNodeTypes.value.length > 0);
+
+const isWorkflowPublishable = computed(
+	() => containsTrigger.value && !hasNodeIssues.value && !hasRestrictedNodeTypes.value,
+);
+
+/** Why publishing is blocked, or '' when it is not. Also the Publish tooltip. */
 const publishBlockedReason = computed(() => {
 	if (isWorkflowPublishable.value) return '';
+	if (!containsTrigger.value) return i18n.baseText('workflows.publishModal.noTriggerMessage');
+	if (hasRestrictedNodeTypes.value) return describeRestrictedNodeTypes(restrictedNodeTypes.value);
 
-	return !containsTrigger.value
-		? i18n.baseText('workflows.publishModal.noTriggerMessage')
-		: i18n.baseText('workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.title', {
-				interpolate: { count: nodesWithValidationIssues.value.length },
-				adjustToNumber: nodesWithValidationIssues.value.length,
-			});
+	return i18n.baseText('workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.title', {
+		interpolate: { count: nodesWithValidationIssues.value.length },
+		adjustToNumber: nodesWithValidationIssues.value.length,
+	});
 });
 
 type WorkflowPublishState =
@@ -210,9 +270,6 @@ const workflowPublishState = computed((): WorkflowPublishState => {
 	}
 
 	const hasBeenPublished = !!activeVersion.value;
-	const hasChanges =
-		workflowDocumentStore.value.versionId !== activeVersion.value?.versionId ||
-		uiStore.hasUnsavedWorkflowChanges;
 
 	// Not published states
 	if (!hasBeenPublished) {
@@ -224,11 +281,11 @@ const workflowPublishState = computed((): WorkflowPublishState => {
 		return 'published-invalid-trigger';
 	}
 
-	if (hasNodeIssues.value) {
+	if (hasNodeIssues.value || hasRestrictedNodeTypes.value) {
 		return 'published-node-issues';
 	}
 
-	return hasChanges ? 'published-with-changes' : 'published-no-changes';
+	return hasUnpublishedChanges.value ? 'published-with-changes' : 'published-no-changes';
 });
 
 const collaborationReadOnly = computed(() => collaborationStore.shouldBeReadOnly);
@@ -306,7 +363,7 @@ const flushSaveForReview = async (): Promise<string | undefined> => {
 const showReviewToast = (titleKey: BaseTextKey, reviewRequestId: string) => {
 	const reviewRoute = {
 		name: WORKFLOW_REVIEW_REQUESTS_VIEW,
-		params: { reviewRequestId },
+		params: { reviewId: reviewRequestId },
 	};
 	const reviewUrl = router.resolve(reviewRoute).href;
 
@@ -359,7 +416,7 @@ const onOpenReviewFromBanner = async () => {
 
 	await router.push({
 		name: WORKFLOW_REVIEW_REQUESTS_VIEW,
-		params: { reviewRequestId: review.id },
+		params: { reviewId: review.id },
 		// The inbox opens on its "Open" tab, so a closed review would land in a list
 		// that cannot contain its card. Keyed off the review's own state rather than
 		// an approved decision, so any way a review gets closed still lands right.
@@ -369,13 +426,17 @@ const onOpenReviewFromBanner = async () => {
 };
 
 const onPublishButtonClick = async () => {
+	// Event-bus callers skip the disabled button, so show the reason as a toast.
+	if (unusableCredentialReason.value) {
+		toast.showMessage({ title: unusableCredentialReason.value, type: 'warning' });
+		return;
+	}
+
 	if (!(await ensureWorkflowSaved())) return;
 
-	if (isWorkflowReviewsEnabled.value) {
-		// TODO(LIGO-604): backend publish enforcement. Until then this gate is
-		// best-effort: a not-yet-fetched status (e.g. Publish clicked before the
-		// on-mount fetch resolves) reads as "no open review" — accepted, since
-		// only backend enforcement can close that hole.
+	if (reviewsApply.value) {
+		// Best effort: a status that is not fetched yet reads as "no open review".
+		// The server rejects the publish in that case.
 		if (reviewStatusStore.hasOpenReview(props.id)) {
 			if (reviewContainsSavedVersion.value) return;
 			showUpdateReviewDialog.value = true;
@@ -388,7 +449,7 @@ const onPublishButtonClick = async () => {
 		}
 
 		// TODO(LIGO-784): once the designed secondary affordance exists, revisit this gate
-		if (!publishChoiceDismissed.value) {
+		if (!isApprovalAlwaysRequired.value && !publishChoiceDismissed.value) {
 			showPublishChoiceDialog.value = true;
 			return;
 		}
@@ -398,6 +459,19 @@ const onPublishButtonClick = async () => {
 };
 
 const publishButtonConfig = computed(() => {
+	// Published workflows run as the publisher, so check credentials before permissions.
+	if (unusableCredentialReason.value) {
+		return {
+			text: i18n.baseText('workflows.publish'),
+			enabled: false,
+			loading: false,
+			showIndicator: !!activeVersion.value,
+			indicatorClass: activeVersion.value ? 'published' : '',
+			tooltip: unusableCredentialReason.value,
+			showVersionInfo: !!activeVersion.value,
+		};
+	}
+
 	// Handle permission-denied state first
 	if (!hasPublishPermission.value) {
 		const defaultConfigForNoPermission = {
@@ -432,14 +506,7 @@ const publishButtonConfig = computed(() => {
 			loading: false,
 			showIndicator: false,
 			indicatorClass: '',
-			tooltip: !containsTrigger.value
-				? i18n.baseText('workflows.publishModal.noTriggerMessage')
-				: hasNodeIssues.value
-					? i18n.baseText('workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.title', {
-							interpolate: { count: nodesWithValidationIssues.value.length },
-							adjustToNumber: nodesWithValidationIssues.value.length,
-						})
-					: '',
+			tooltip: publishBlockedReason.value,
 			showVersionInfo: false,
 		};
 	}
@@ -452,12 +519,7 @@ const publishButtonConfig = computed(() => {
 			loading: false,
 			showIndicator: false,
 			indicatorClass: '',
-			tooltip: !containsTrigger.value
-				? i18n.baseText('workflows.publishModal.noTriggerMessage')
-				: i18n.baseText('workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.title', {
-						interpolate: { count: nodesWithValidationIssues.value.length },
-						adjustToNumber: nodesWithValidationIssues.value.length,
-					}),
+			tooltip: publishBlockedReason.value,
 			showVersionInfo: false,
 		},
 		'not-published-eligible': {
@@ -493,13 +555,7 @@ const publishButtonConfig = computed(() => {
 			loading: false,
 			showIndicator: true,
 			indicatorClass: 'error',
-			tooltip: i18n.baseText(
-				'workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.title',
-				{
-					interpolate: { count: nodesWithValidationIssues.value.length },
-					adjustToNumber: nodesWithValidationIssues.value.length,
-				},
-			),
+			tooltip: publishBlockedReason.value,
 			showVersionInfo: true,
 		},
 		'published-invalid-trigger': {
@@ -554,7 +610,33 @@ const shouldDisablePublishButton = computed(() => {
 		collaborationReadOnly.value ||
 		!publishButtonConfig.value.enabled ||
 		!hasPublishPermission.value ||
-		(isWorkflowReviewsEnabled.value && isReviewUpdateBlocked.value)
+		(reviewsApply.value && isReviewUpdateBlocked.value)
+	);
+});
+
+const showSubmitForReview = computed(
+	() => mustSubmitForReview.value && !shouldDisablePublishButton.value,
+);
+
+const publishButtonText = computed(() =>
+	showSubmitForReview.value
+		? i18n.baseText('workflows.submitForReview')
+		: publishButtonConfig.value.text,
+);
+
+/**
+ * A workflow that is ready to publish has nothing to explain, so the tooltip
+ * stays off. A credential this user cannot use is the exception: the button is
+ * disabled in that state too, and the reason is the only way to learn why.
+ */
+const isPublishTooltipDisabled = computed(() => {
+	if (unusableCredentialReason.value) return false;
+
+	return (
+		(workflowPublishState.value === 'not-published-eligible' &&
+			props.workflowPermissions.publish) ||
+		(!publishButtonConfig.value.tooltip &&
+			!(publishButtonConfig.value.showVersionInfo && activeVersion.value))
 	);
 });
 
@@ -601,7 +683,9 @@ const versionMenuActions = computed<Array<ActionDropdownItem<VERSION_ACTIONS>>>(
 	const actions: Array<ActionDropdownItem<VERSION_ACTIONS>> = [
 		{
 			id: VERSION_ACTIONS.PUBLISH,
-			label: i18n.baseText('workflows.publish'),
+			label: showSubmitForReview.value
+				? i18n.baseText('workflows.submitForReview')
+				: i18n.baseText('workflows.publish'),
 			shortcut: { shiftKey: true, keys: ['P'] },
 			disabled: shouldDisablePublishButton.value,
 		},
@@ -810,20 +894,11 @@ onBeforeUnmount(() => {
 		</div>
 		<div v-if="!shouldHidePublishButton" :class="$style.publishButtonWrapper">
 			<div :class="$style.buttonGroup">
-				<N8nTooltip
-					:disabled="
-						(workflowPublishState === 'not-published-eligible' &&
-							props.workflowPermissions.publish) ||
-						(!publishButtonConfig.tooltip &&
-							!(publishButtonConfig.showVersionInfo && activeVersion))
-					"
-					:show-after="300"
-					:offset="15"
-				>
+				<N8nTooltip :disabled="isPublishTooltipDisabled" :show-after="300" :offset="15">
 					<template #content>
 						<div>
 							<template v-if="publishButtonConfig.tooltip">
-								{{ publishButtonConfig.tooltip }} <br />
+								<span :class="$style.tooltipReason">{{ publishButtonConfig.tooltip }}</span> <br />
 							</template>
 							<template v-if="activeVersion && publishButtonConfig.showVersionInfo">
 								<span data-test-id="workflow-active-version-info">{{ activeVersionName }}</span
@@ -870,7 +945,7 @@ onBeforeUnmount(() => {
 									workflowPublishState === 'published-no-changes' && $style.indicatorPublishedText,
 								]"
 							>
-								{{ publishButtonConfig.text }}
+								{{ publishButtonText }}
 							</span>
 						</div>
 					</N8nButton>
@@ -893,7 +968,10 @@ onBeforeUnmount(() => {
 						/>
 					</template>
 					<template v-if="showWorkflowReviewControls" #footer>
-						<WorkflowReviewRequiredToggle :workflow-id="props.id" />
+						<WorkflowReviewRequiredToggle
+							:workflow-id="props.id"
+							:locked-by-instance="isApprovalAlwaysRequired"
+						/>
 					</template>
 				</N8nActionDropdown>
 			</div>
@@ -932,6 +1010,11 @@ onBeforeUnmount(() => {
 	display: contents;
 }
 
+/* A restricted node list puts one scope on each line. */
+.tooltipReason {
+	white-space: pre-line;
+}
+
 .activeVersionIndicator {
 	display: inline-flex;
 	align-items: center;
@@ -961,7 +1044,7 @@ onBeforeUnmount(() => {
 .buttonGroup {
 	display: inline-flex;
 	border: var(--border);
-	border-radius: var(--radius--3xs);
+	border-radius: var(--radius--full);
 }
 
 .groupButtonLeft,

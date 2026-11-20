@@ -31,13 +31,15 @@ export function satisfiesToolCapability(syntheticToolName: string, nodeType: INo
 
 function findWorkflowStart(executionMode: 'integrated' | 'cli') {
 	return function (nodes: INode[]) {
-		const executeWorkflowTriggerNode = nodes.find(
+		const eligibleNodes =
+			executionMode === 'cli' ? nodes.filter((node) => node.disabled !== true) : nodes;
+		const executeWorkflowTriggerNode = eligibleNodes.find(
 			(node) => node.type === 'n8n-nodes-base.executeWorkflowTrigger',
 		);
 
 		if (executeWorkflowTriggerNode) return executeWorkflowTriggerNode;
 
-		const startNode = nodes.find((node) => STARTING_NODES.includes(node.type));
+		const startNode = eligibleNodes.find((node) => STARTING_NODES.includes(node.type));
 
 		if (startNode) return startNode;
 
@@ -72,19 +74,9 @@ export function rightDiff<T1, T2>(
 	[arr1, keyExtractor1]: [T1[], (item: T1) => string],
 	[arr2, keyExtractor2]: [T2[], (item: T2) => string],
 ): T2[] {
-	// create map { itemKey => true } for fast lookup for diff
-	const keyMap = arr1.reduce<{ [key: string]: true }>((map, item) => {
-		map[keyExtractor1(item)] = true;
-		return map;
-	}, {});
+	const keys = new Set(arr1.map(keyExtractor1));
 
-	// diff against map
-	return arr2.reduce<T2[]>((acc, item) => {
-		if (!keyMap[keyExtractor2(item)]) {
-			acc.push(item);
-		}
-		return acc;
-	}, []);
+	return arr2.filter((item) => !keys.has(keyExtractor2(item)));
 }
 
 /**
@@ -141,26 +133,6 @@ export const getAllKeyPaths = (
 	}
 	return paths;
 };
-
-/**
- * Sets Microsoft 365 observability environment variables to their default values if not already set.
- * Sets ENABLE_OBSERVABILITY and ENABLE_A365_OBSERVABILITY_EXPORTER to 'true' if they are undefined or empty.
- */
-export function setMicrosoftObservabilityDefaults(): void {
-	if (process.env.ENABLE_OBSERVABILITY === undefined || process.env.ENABLE_OBSERVABILITY === '') {
-		process.env.ENABLE_OBSERVABILITY = 'true';
-	}
-	if (
-		process.env.ENABLE_A365_OBSERVABILITY_EXPORTER === undefined ||
-		process.env.ENABLE_A365_OBSERVABILITY_EXPORTER === ''
-	) {
-		process.env.ENABLE_A365_OBSERVABILITY_EXPORTER = 'true';
-	}
-}
-
-export function containsExpression(testString: string): boolean {
-	return /^=.*\{\{.+\}\}/.test(testString);
-}
 
 export function isObject(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);

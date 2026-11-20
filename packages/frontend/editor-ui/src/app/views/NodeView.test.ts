@@ -1,6 +1,7 @@
 import { createTestNode, createTestWorkflow, mockNodeTypeDescription } from '@/__tests__/mocks';
 import type { AddedNodesAndConnections } from '@/Interface';
-import { waitFor } from '@testing-library/vue';
+import { cleanup, waitFor } from '@testing-library/vue';
+import { flushPromises } from '@vue/test-utils';
 import userEvent from '@testing-library/user-event';
 import {
 	EVALUATION_TRIGGER_NODE_TYPE,
@@ -26,6 +27,7 @@ import {
 	NO_OP_NODE_TYPE,
 	SET_NODE_TYPE,
 	SPLIT_IN_BATCHES_NODE_TYPE,
+	STICKY_NODE_TYPE,
 	VIEWS,
 } from '../constants';
 import { WorkflowIdKey, WorkflowDocumentStoreKey } from '../constants/injectionKeys';
@@ -45,6 +47,14 @@ import { useCanvasStore } from '@/app/stores/canvas.store';
 import { DEFAULT_NODE_SIZE, snapPositionToGrid } from '@/app/utils/nodeViewUtils';
 import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
 import { usePostHog } from '@/app/stores/posthog.store';
+import { lazyModalLoaders, type LazyModalKey } from '@/app/modals/lazyModals';
+import {
+	DUPLICATE_MODAL_KEY,
+	WORKFLOW_PUBLISH_MODAL_KEY,
+	WORKFLOW_SETTINGS_MODAL_KEY,
+	WORKFLOW_SHARE_MODAL_KEY,
+} from '@/app/constants';
+import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 
 const mockMcpJsonNudgeGate = vi.hoisted(() => vi.fn());
 // Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
@@ -55,6 +65,15 @@ const mockGroupTelemetry = vi.hoisted(() => ({
 	trackCollapsed: vi.fn(),
 	trackExpanded: vi.fn(),
 }));
+
+// Spies replace the modal loaders, so a canvas prefetch loads no modal code.
+vi.mock('@/app/modals/lazyModals', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@/app/modals/lazyModals')>();
+	const loaders = Object.fromEntries(
+		Object.keys(actual.lazyModalLoaders).map((key) => [key, vi.fn(async () => ({}))]),
+	);
+	return { ...actual, lazyModalLoaders: loaders };
+});
 
 vi.mock('@/experiments/mcpJsonNudge/composables/useMcpJsonNudgeTrigger', () => ({
 	useMcpJsonNudgeTrigger: () => ({ gate: mockMcpJsonNudgeGate }),
@@ -88,6 +107,30 @@ vi.mock('vue-router', () => ({
 	},
 	onBeforeRouteLeave: vi.fn(),
 }));
+
+const mockRunEntireWorkflow = vi.hoisted(() => vi.fn());
+const mockShowMessage = vi.hoisted(() => vi.fn());
+
+// Only the entry point the canvas shortcut reaches is replaced; the rest of
+// the composable stays real so the view still wires itself up.
+vi.mock('@/app/composables/useRunWorkflow', async (importOriginal) => {
+	const original = await importOriginal<typeof import('@/app/composables/useRunWorkflow')>();
+	return {
+		...original,
+		useRunWorkflow: (...args: Parameters<typeof original.useRunWorkflow>) => ({
+			...original.useRunWorkflow(...args),
+			runEntireWorkflow: mockRunEntireWorkflow,
+		}),
+	};
+});
+
+vi.mock('@n8n/composables/useToast', async (importOriginal) => {
+	const original = await importOriginal<typeof import('@n8n/composables/useToast')>();
+	return {
+		...original,
+		useToast: () => ({ ...original.useToast(), showMessage: mockShowMessage }),
+	};
+});
 
 // Route actions open the NDV. The real NDV needs `route.meta` and `<dialog>`
 // APIs that this mock and jsdom lack; these tests only assert canvas state.
@@ -180,7 +223,14 @@ describe('NodeView', () => {
 					}),
 					LazySetupWorkflowCredentialsButton: { render: () => null },
 					WorkflowCanvas: defineComponent({
-						emits: ['copy:nodes', 'replace:node', 'viewport:change'],
+						emits: [
+							'copy:nodes',
+							'replace:node',
+							'viewport:change',
+							'run:workflow',
+							'cursor:position',
+							'create:sticky',
+						],
 						setup(_, { emit, expose }) {
 							const canvasStore = useCanvasStore();
 							expose({ ensureNodesAreVisible });
@@ -198,11 +248,20 @@ describe('NodeView', () => {
 						},
 						template: `<div>
 							<button data-test-id="canvas-stub-copy" @click="$emit('copy:nodes', copyNodeIds)" />
+							<button data-test-id="canvas-stub-paste" @click="$emit('paste:clipboard')" />
 							<button data-test-id="canvas-stub-replace-first" @click="replaceFirstNode" />
 							<button data-test-id="canvas-stub-select-first-group" @click="selectFirstGroup" />
 							<button
 								data-test-id="canvas-stub-set-viewport"
 								@click="$emit('viewport:change', { x: 0, y: 0, zoom: 1 }, { width: 1000, height: 1000 })"
+							/>
+							<button
+								data-test-id="canvas-stub-run-workflow"
+								@click="$emit('run:workflow')"
+							/>
+							<button
+								data-test-id="canvas-stub-add-sticky-at-click"
+								@click="$emit('cursor:position', { x: 48, y: 48 }); $emit('create:sticky', { x: 320, y: 160 })"
 							/>
 							<slot />
 						</div>`,
@@ -922,6 +981,41 @@ describe('NodeView', () => {
 		});
 	});
 
+	describe('Replace node from outside the canvas', () => {
+		const trigger = createTestNode({ id: 'trigger-1', type: MANUAL_TRIGGER_NODE_TYPE, name: 'n0' });
+
+		beforeEach(() => {
+			workflowDocumentStore.setNodes([trigger]);
+			useNodeTypesStore().setNodeTypes([
+				mockNodeTypeDescription({ name: MANUAL_TRIGGER_NODE_TYPE, group: ['trigger'] }),
+			]);
+		});
+
+		it('opens the replace flow on an editable canvas', async () => {
+			routeMock.meta = { nodeView: true };
+			useWorkflowsListStore().addWorkflow(
+				createTestWorkflow({ id: 'w0', scopes: ['workflow:read', 'workflow:update'] }),
+			);
+			const { findByTestId } = renderNodeView();
+			await findByTestId('canvas-stub-replace-first');
+
+			nodeViewEventBus.emit('replaceNode', trigger.id);
+
+			await waitFor(() => expect(useNodeCreatorStore().openingContext).toBe('replacement'));
+			expect(useNodeCreatorStore().isReplacingFromSetupPanel).toBe(true);
+		});
+
+		it('ignores the request on a read-only canvas', async () => {
+			routeMock.name = VIEWS.DEMO;
+			const { findByTestId } = renderNodeView();
+			await findByTestId('canvas-stub-replace-first');
+
+			nodeViewEventBus.emit('replaceNode', trigger.id);
+
+			expect(useNodeCreatorStore().openingContext).toBeNull();
+		});
+	});
+
 	describe('Canvas-only mode', () => {
 		it('shows the n8n logo on the canvas when canvas-only mode is enabled', async () => {
 			useSettingsStore().settings.canvasOnly = true;
@@ -948,6 +1042,67 @@ describe('NodeView', () => {
 
 			await findByTestId('canvas-stub-copy');
 			expect(queryByTestId('n8n-logo')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('Modal prefetch', () => {
+		const CANVAS_MODALS: LazyModalKey[] = [
+			WORKFLOW_PUBLISH_MODAL_KEY,
+			CREDENTIAL_EDIT_MODAL_KEY,
+			WORKFLOW_SETTINGS_MODAL_KEY,
+			WORKFLOW_SHARE_MODAL_KEY,
+			DUPLICATE_MODAL_KEY,
+		];
+		let idleCallbacks: IdleRequestCallback[];
+
+		/** Renders the canvas, then runs idle callbacks until no prefetch is pending. */
+		async function renderAndRunIdle() {
+			const view = renderNodeView();
+			await view.findByTestId('canvas-stub-copy');
+			for (let callback = idleCallbacks.shift(); callback; callback = idleCallbacks.shift()) {
+				callback({ didTimeout: false, timeRemaining: () => 50 });
+				await flushPromises();
+			}
+			return view;
+		}
+
+		function loadedModals() {
+			return Object.entries(lazyModalLoaders)
+				.filter(([, load]) => vi.mocked(load).mock.calls.length > 0)
+				.map(([key]) => key);
+		}
+
+		beforeEach(() => {
+			idleCallbacks = [];
+			vi.stubGlobal(
+				'requestIdleCallback',
+				vi.fn((callback: IdleRequestCallback) => idleCallbacks.push(callback)),
+			);
+			vi.stubGlobal('cancelIdleCallback', vi.fn());
+		});
+
+		afterEach(() => {
+			cleanup();
+			vi.unstubAllGlobals();
+		});
+
+		it('prefetches the canvas modals in order, and no other modal', async () => {
+			await renderAndRunIdle();
+
+			expect(loadedModals()).toEqual(expect.arrayContaining(CANVAS_MODALS));
+			expect(loadedModals()).toHaveLength(CANVAS_MODALS.length);
+			const firstCalls = CANVAS_MODALS.map(
+				(key) => vi.mocked(lazyModalLoaders[key]).mock.invocationCallOrder[0],
+			);
+			expect(firstCalls).toEqual([...firstCalls].sort((a, b) => a - b));
+		});
+
+		it('prefetches no modal in a workflow preview', async () => {
+			routeMock.name = VIEWS.DEMO;
+
+			await renderAndRunIdle();
+
+			expect(loadedModals()).toEqual([]);
 		});
 	});
 
@@ -1115,6 +1270,28 @@ describe('NodeView', () => {
 			expect(copiedText[0]).toContain('"name": "Existing"');
 		});
 
+		it('copies a restricted node and confirms the copy', async () => {
+			vi.spyOn(useTypeAvailabilityPoliciesStore(), 'getNodeTypeAvailability').mockReturnValue({
+				name: MANUAL_TRIGGER_NODE_TYPE,
+				available: false,
+			});
+			mockShowMessage.mockClear();
+			const { findByTestId } = renderNodeView();
+
+			await userEvent.click(await findByTestId('canvas-stub-copy'));
+
+			await waitFor(() =>
+				expect(mockMcpJsonNudgeGate).toHaveBeenCalledWith('copy', expect.any(Function)),
+			);
+			await deferred?.();
+
+			expect(copiedText).toHaveLength(1);
+			expect(mockShowMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
+			expect(mockShowMessage).not.toHaveBeenCalledWith(
+				expect.objectContaining({ type: 'warning' }),
+			);
+		});
+
 		it('drops a deferred copy once NodeView has unmounted', async () => {
 			const { findByTestId, unmount } = renderNodeView();
 
@@ -1150,6 +1327,31 @@ describe('NodeView', () => {
 			);
 		});
 
+		it('pastes a restricted node and warns that it is restricted', async () => {
+			vi.spyOn(useTypeAvailabilityPoliciesStore(), 'getNodeTypeAvailability').mockImplementation(
+				(name) => ({ name, available: name !== MANUAL_TRIGGER_NODE_TYPE, scope: 'instance' }),
+			);
+			mockShowMessage.mockClear();
+			renderNodeView();
+
+			pasteText(pastedJson);
+			await waitFor(() =>
+				expect(mockMcpJsonNudgeGate).toHaveBeenCalledWith('paste', expect.any(Function)),
+			);
+			await deferred?.();
+
+			await waitFor(() =>
+				expect(workflowDocumentStore.allNodes.map((node) => node.name)).toEqual([
+					'Existing',
+					'Pasted',
+				]),
+			);
+			expect(mockShowMessage).toHaveBeenCalledWith(
+				expect.objectContaining({ customClass: 'content-toast restricted-import-toast' }),
+				false,
+			);
+		});
+
 		it('does not open the paste nudge for clipboard text that is not workflow JSON', async () => {
 			renderNodeView();
 
@@ -1160,6 +1362,82 @@ describe('NodeView', () => {
 
 			expect(mockMcpJsonNudgeGate).not.toHaveBeenCalled();
 			expect(workflowDocumentStore.allNodes.map((node) => node.name)).toEqual(['Existing']);
+		});
+
+		it('pastes workflow JSON from the clipboard through the context menu', async () => {
+			Object.defineProperty(window.navigator, 'clipboard', {
+				value: { readText: vi.fn().mockResolvedValue(pastedJson) },
+				configurable: true,
+			});
+			const { findByTestId } = renderNodeView();
+
+			await userEvent.click(await findByTestId('canvas-stub-paste'));
+
+			await waitFor(() =>
+				expect(mockMcpJsonNudgeGate).toHaveBeenCalledWith('paste', expect.any(Function)),
+			);
+			await deferred?.();
+
+			await waitFor(() =>
+				expect(workflowDocumentStore.allNodes.map((node) => node.name)).toEqual([
+					'Existing',
+					'Pasted',
+				]),
+			);
+		});
+
+		it('explains a context menu paste when the clipboard cannot be read', async () => {
+			Object.defineProperty(window.navigator, 'clipboard', {
+				value: { readText: vi.fn().mockRejectedValue(new Error('NotAllowedError')) },
+				configurable: true,
+			});
+			mockShowMessage.mockClear();
+			const { findByTestId } = renderNodeView();
+
+			await userEvent.click(await findByTestId('canvas-stub-paste'));
+
+			await waitFor(() =>
+				expect(mockShowMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'warning' })),
+			);
+			expect(mockMcpJsonNudgeGate).not.toHaveBeenCalled();
+		});
+
+		it('explains a context menu paste when the clipboard has no workflow data', async () => {
+			Object.defineProperty(window.navigator, 'clipboard', {
+				value: { readText: vi.fn().mockResolvedValue('just some text') },
+				configurable: true,
+			});
+			mockShowMessage.mockClear();
+			const { findByTestId } = renderNodeView();
+
+			await userEvent.click(await findByTestId('canvas-stub-paste'));
+
+			await waitFor(() =>
+				expect(mockShowMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'info' })),
+			);
+			expect(mockMcpJsonNudgeGate).not.toHaveBeenCalled();
+		});
+
+		it('ignores a context menu clipboard read that ends after NodeView has unmounted', async () => {
+			let resolveRead: (text: string) => void = () => {};
+			Object.defineProperty(window.navigator, 'clipboard', {
+				value: {
+					readText: vi.fn(
+						async () => await new Promise<string>((resolve) => (resolveRead = resolve)),
+					),
+				},
+				configurable: true,
+			});
+			mockShowMessage.mockClear();
+			const { findByTestId, unmount } = renderNodeView();
+
+			await userEvent.click(await findByTestId('canvas-stub-paste'));
+			unmount();
+			resolveRead('just some text');
+			await new Promise((resolve) => setTimeout(resolve, 0));
+
+			expect(mockShowMessage).not.toHaveBeenCalled();
+			expect(mockMcpJsonNudgeGate).not.toHaveBeenCalled();
 		});
 
 		it('drops a deferred paste once NodeView has unmounted', async () => {
@@ -1175,6 +1453,86 @@ describe('NodeView', () => {
 			await deferred?.();
 
 			expect(workflowDocumentStore.allNodes.map((node) => node.name)).toEqual(['Existing']);
+		});
+	});
+
+	describe('Execute gating on an unusable credential', () => {
+		const trigger = createTestNode({
+			type: MANUAL_TRIGGER_NODE_TYPE,
+			name: 'trigger',
+			credentials: { gmailOAuth2: { id: 'c1', name: "Alice's Gmail" } },
+		});
+
+		const unusableCredential = {
+			id: 'c1',
+			name: "Alice's Gmail",
+			credentialType: 'gmailOAuth2',
+			currentUserCanUse: false,
+			homeProject: {
+				id: 'p1',
+				name: 'Alice Chen <alice@acme.io>',
+				type: 'personal' as const,
+				icon: null,
+				createdAt: '',
+				updatedAt: '',
+			},
+		};
+
+		beforeEach(() => {
+			useNodeTypesStore().setNodeTypes([
+				mockNodeTypeDescription({ name: MANUAL_TRIGGER_NODE_TYPE, group: ['trigger'] }),
+			]);
+			workflowDocumentStore.setNodes([trigger]);
+		});
+
+		// The shortcut bypasses the button, so it has to ask the same question.
+		it('stops the run shortcut and says which credential and whose', async () => {
+			workflowDocumentStore.setUsedCredentials([unusableCredential]);
+			const { findByTestId } = renderNodeView();
+
+			await userEvent.click(await findByTestId('canvas-stub-run-workflow'));
+
+			expect(mockRunEntireWorkflow).not.toHaveBeenCalled();
+			expect(mockShowMessage).toHaveBeenCalledWith(
+				expect.objectContaining({
+					title: expect.stringContaining("Alice's Gmail"),
+					type: 'warning',
+				}),
+			);
+			expect(mockShowMessage.mock.calls[0][0].title).toContain('Alice Chen');
+		});
+
+		it('runs from the shortcut when every credential is usable', async () => {
+			workflowDocumentStore.setUsedCredentials([
+				{ ...unusableCredential, currentUserCanUse: true },
+			]);
+			const { findByTestId } = renderNodeView();
+
+			await userEvent.click(await findByTestId('canvas-stub-run-workflow'));
+
+			expect(mockRunEntireWorkflow).toHaveBeenCalledWith('main');
+		});
+	});
+
+	it('places a sticky note at the right-click instead of the previous click', async () => {
+		routeMock.meta = { nodeView: true };
+		useWorkflowsListStore().addWorkflow(
+			createTestWorkflow({ id: 'w0', scopes: ['workflow:read', 'workflow:update'] }),
+		);
+		useNodeTypesStore().setNodeTypes([
+			mockNodeTypeDescription({
+				name: STICKY_NODE_TYPE,
+				displayName: 'Sticky Note',
+			}),
+		]);
+		const { findByTestId } = renderNodeView();
+
+		await userEvent.click(await findByTestId('canvas-stub-add-sticky-at-click'));
+
+		await waitFor(() => expect(workflowDocumentStore.allNodes).toHaveLength(1));
+		expect(workflowDocumentStore.allNodes[0]).toMatchObject({
+			type: STICKY_NODE_TYPE,
+			position: [320, 160],
 		});
 	});
 });

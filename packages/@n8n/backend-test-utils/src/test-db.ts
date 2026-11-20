@@ -233,7 +233,10 @@ type EntityName =
 	| 'TokenExchangeJti'
 	| 'TrustedKeySourceEntity'
 	| 'TrustedKeyEntity'
-	| 'WorkflowStatisticsDelta';
+	| 'TrustedSourceEntity'
+	| 'TrustedSourceIdentityEntity'
+	| 'WorkflowStatisticsDelta'
+	| 'ExecutionLedgerEntity';
 
 /**
  * Truncate specific DB tables in a test DB.
@@ -268,6 +271,11 @@ export async function truncate(entities: EntityName[]) {
 	// RESTRICT, so it has to go before either of them.
 	if (entities.includes('WorkflowEntity') || entities.includes('WorkflowHistory')) {
 		await connection.getRepository('WorkflowPublishedVersion').delete({});
+	}
+
+	// `agents.identityId` references `user` with RESTRICT, so agents go first.
+	if (entities.includes('User') && connection.hasMetadata('Agent')) {
+		await connection.getRepository('Agent').delete({});
 	}
 
 	for (const name of entities) {

@@ -1,10 +1,16 @@
 import { createPinia, setActivePinia } from 'pinia';
+import { createMemoryHistory, createRouter } from 'vue-router';
 import {
 	assertUniqueRouteNames,
 	modalRegistry,
 	pushHandlerRegistry,
 } from '@n8n/frontend-module-sdk';
 import type { FrontendModuleDescription } from '@n8n/frontend-module-sdk';
+import type { N8nEnvFeatFlags } from '@n8n/api-types';
+import {
+	INSTANCE_POLICY_VIEW,
+	POLICIES_LANDING_VIEW,
+} from '@n8n/frontend-module-type-availability-policies';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import merge from 'lodash/merge';
 
@@ -14,13 +20,91 @@ import { modules } from '@/app/modules.manifest';
 import {
 	registerModuleModals,
 	registerModulePushHandlers,
+	registerModuleRoutes,
 } from '@/app/moduleInitializer/moduleInitializer';
+import { AGENTS_LIST_VIEW, AGENTS_SETTINGS_VIEW } from '@/features/agents/constants';
 import {
 	ADD_DATA_TABLE_MODAL_KEY,
 	DOWNLOAD_DATA_TABLE_MODAL_KEY,
 	IMPORT_CSV_MODAL_KEY,
 } from '@/features/core/dataTable/constants';
 import { defaultSettings } from '@n8n/frontend-test-utils';
+
+it('keeps Agents settings reachable while the Agents routes are disabled', () => {
+	setActivePinia(createPinia());
+	const settings = useSettingsStore();
+	settings.setSettings(merge({}, defaultSettings, { activeModules: ['agents'] }));
+	settings.moduleSettings.agents = {
+		enabled: false,
+		modules: [],
+		knowledgeBaseEnabled: false,
+		proxyEnabled: false,
+	};
+	const stub = { render: () => null };
+	const testRouter = createRouter({
+		history: createMemoryHistory(),
+		routes: [
+			{ path: '/settings', name: VIEWS.SETTINGS, component: stub },
+			{ path: '/projects/:projectId', name: VIEWS.PROJECT_DETAILS, component: stub },
+		],
+	});
+	registerModuleRoutes(testRouter);
+	const settingsRoute = testRouter.resolve({ name: AGENTS_SETTINGS_VIEW });
+	const agentsRoute = testRouter.resolve({ name: AGENTS_LIST_VIEW });
+	const check = settingsRoute.meta.middlewareOptions?.custom;
+	expect(settingsRoute.path).toBe('/settings/agents');
+	const from = testRouter.currentRoute.value;
+	const next = vi.fn();
+	expect(check?.({ to: { ...settingsRoute, name: AGENTS_SETTINGS_VIEW }, from, next })).toBe(true);
+	expect(check?.({ to: { ...agentsRoute, name: AGENTS_LIST_VIEW }, from, next })).toBe(false);
+});
+
+describe('node and credential policy routes', () => {
+	const FLAG = 'N8N_ENV_FEAT_NODE_AND_CREDENTIAL_POLICIES_SETTINGS';
+
+	afterEach(() => {
+		vi.unstubAllEnvs();
+	});
+
+	function checkPolicyRoutes(envFeatureFlags: N8nEnvFeatFlags) {
+		setActivePinia(createPinia());
+		useSettingsStore().setSettings(
+			merge({}, defaultSettings, {
+				activeModules: ['type-availability-policies'],
+				envFeatureFlags,
+			}),
+		);
+		const stub = { render: () => null };
+		const testRouter = createRouter({
+			history: createMemoryHistory(),
+			routes: [
+				{ path: '/settings', name: VIEWS.SETTINGS, component: stub },
+				{ path: '/projects/:projectId', name: VIEWS.PROJECT_DETAILS, component: stub },
+			],
+		});
+		registerModuleRoutes(testRouter);
+		const from = testRouter.currentRoute.value;
+		return [POLICIES_LANDING_VIEW, INSTANCE_POLICY_VIEW].map((name) => {
+			const to = testRouter.resolve({ name });
+			return to.meta.middlewareOptions?.custom?.({ to: { ...to, name }, from, next: vi.fn() });
+		});
+	}
+
+	it('opens the policy pages while the flag is on', () => {
+		expect(checkPolicyRoutes({ [FLAG]: 'true' })).toEqual([true, true]);
+	});
+
+	it('blocks the policy pages while the flag is not set', () => {
+		// Without a value in the settings, `useEnvFeatureFlag` reads the build-time env.
+		vi.stubEnv(FLAG, undefined);
+
+		expect(checkPolicyRoutes({})).toEqual([false, false]);
+	});
+
+	it('blocks the policy pages while the flag is false', () => {
+		expect(checkPolicyRoutes({ [FLAG]: 'false' })).toEqual([false, false]);
+	});
+});
 
 describe('registerModuleModals', () => {
 	beforeEach(() => {

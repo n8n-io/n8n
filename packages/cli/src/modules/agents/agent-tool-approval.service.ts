@@ -1,9 +1,8 @@
 import type { ToolApprovalContext } from '@n8n/agents';
+import { TelemetryProxy } from '@n8n/backend-services';
 import { Service } from '@n8n/di';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
-import { OperationalError } from 'n8n-workflow';
-
-import { Telemetry } from '@/telemetry';
+import { OperationalError } from '@n8n/errors';
 
 import type { StartExecutionParams } from './agent-execution.service';
 import { buildApprovalArgs } from './execution-recorder';
@@ -14,7 +13,7 @@ import type { ToolRegistry } from './tool-registry';
 export class AgentToolApprovalService {
 	constructor(
 		private readonly grants: AgentThreadGrantRepository,
-		private readonly telemetry: Telemetry,
+		private readonly telemetry: TelemetryProxy,
 	) {}
 
 	async createContext(
@@ -22,7 +21,8 @@ export class AgentToolApprovalService {
 			threadId,
 			agentId,
 			telemetry,
-		}: Pick<StartExecutionParams, 'threadId' | 'agentId' | 'telemetry'>,
+			source,
+		}: Pick<StartExecutionParams, 'threadId' | 'agentId' | 'telemetry' | 'source'>,
 		toolRegistry?: ToolRegistry,
 	): Promise<ToolApprovalContext> {
 		const approvedKeys = await this.grants.findKeys(threadId);
@@ -37,6 +37,7 @@ export class AgentToolApprovalService {
 						run_type: telemetry.runType,
 						approved: decision.approved,
 						scope: decision.scope ?? 'once',
+						counts_by_source: { [source || 'unknown']: { count: 1 } },
 					});
 				}
 				if (!decision.approved || decision.scope !== 'session') return;

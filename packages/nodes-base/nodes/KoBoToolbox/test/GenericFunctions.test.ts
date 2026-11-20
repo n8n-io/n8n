@@ -1,6 +1,12 @@
 import type { IExecuteFunctions, IDataObject } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
-import { validateAttachmentUrl, downloadAttachments, formatSubmission } from '../GenericFunctions';
+import { NodeOperationError, requestPath } from 'n8n-workflow';
+import { mockDeep } from 'vitest-mock-extended';
+import {
+	validateAttachmentUrl,
+	downloadAttachments,
+	formatSubmission,
+	koBoToolboxApiRequest,
+} from '../GenericFunctions';
 import type { Mock } from 'vitest';
 
 describe('KoBoToolbox GenericFunctions', () => {
@@ -650,5 +656,60 @@ describe('KoBoToolbox GenericFunctions', () => {
 				expect(mockHttpRequest).toHaveBeenCalledTimes(5);
 			});
 		});
+	});
+});
+
+describe('koBoToolboxApiRequest pagination', () => {
+	const credentials = { URL: 'https://kf.kobotoolbox.org/', token: 'fake-token' };
+
+	const setup = (responses: IDataObject[]) => {
+		const context = mockDeep<IExecuteFunctions>();
+		context.getCredentials.mockResolvedValue(credentials);
+		for (const response of responses) {
+			context.helpers.httpRequestWithAuthentication.mockResolvedValueOnce(response);
+		}
+		return context;
+	};
+
+	const request = async (context: IExecuteFunctions) =>
+		await koBoToolboxApiRequest.call(context, {
+			url: requestPath`/api/v2/assets/`,
+			returnAll: true,
+		});
+
+	it('should follow the next page link on the credential host', async () => {
+		const next = 'https://kf.kobotoolbox.org/api/v2/assets/?limit=3000&offset=3000';
+		const context = setup([
+			{ results: [1], next },
+			{ results: [2], next: null },
+		]);
+
+		const result = await request(context);
+
+		expect(result).toEqual([1, 2]);
+		expect(context.helpers.httpRequestWithAuthentication).toHaveBeenCalledTimes(2);
+		expect(context.helpers.httpRequestWithAuthentication).toHaveBeenLastCalledWith(
+			'koBoToolboxApi',
+			expect.objectContaining({
+				url: next,
+				headers: { Accept: 'application/json' },
+			}),
+		);
+	});
+
+	it('should not follow a next page link on another host', async () => {
+		const context = setup([{ results: [1], next: 'https://other.example/api/v2/assets/' }]);
+
+		await expect(request(context)).rejects.toThrow(NodeOperationError);
+
+		expect(context.helpers.httpRequestWithAuthentication).toHaveBeenCalledTimes(1);
+	});
+
+	it('should not follow a malformed next page link', async () => {
+		const context = setup([{ results: [1], next: 'not a url' }]);
+
+		await expect(request(context)).rejects.toThrow(NodeOperationError);
+
+		expect(context.helpers.httpRequestWithAuthentication).toHaveBeenCalledTimes(1);
 	});
 });

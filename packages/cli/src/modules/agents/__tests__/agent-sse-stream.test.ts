@@ -1,9 +1,16 @@
-import type { StreamChunk } from '@n8n/agents';
+import { PromptCacheParamsError, type StreamChunk } from '@n8n/agents';
 import type { AgentSseEvent } from '@n8n/api-types';
 import { LoggerProxy } from 'n8n-workflow';
 import { EventEmitter } from 'node:events';
 
-import { emitChunkEvents, initSseStream, type FlushableResponse } from '../agent-sse-stream';
+import {
+	emitChunkEvents,
+	initSseStream,
+	toChatErrorEvent,
+	type FlushableResponse,
+} from '../agent-sse-stream';
+import { AgentN8nChatUnavailableError } from '../agent-n8n-chat-unavailable.error';
+import { AgentTurnAlreadyRunningError } from '../agent-turn-already-running.error';
 import type { SteeredMessageEvent } from '../types/agent-steering';
 
 // ---------------------------------------------------------------------------
@@ -57,6 +64,31 @@ async function collectSerializedEvents(chunks: StreamChunk[]): Promise<AgentSseE
 
 	return events;
 }
+
+describe('agent-sse-stream — usage', () => {
+	it('sends turn totals without internal usage metadata', async () => {
+		const usage = { promptTokens: 100, completionTokens: 20, totalTokens: 120, cost: 0.01 };
+		const events = await collectSerializedEvents([
+			{
+				type: 'usage',
+				model: 'openai/test',
+				usage: { ...usage, additionalMetadata: { internal: true } },
+			},
+			{ type: 'finish', finishReason: 'stop', usage },
+		]);
+		expect(events).toEqual([
+			{ type: 'usage', usage },
+			{ type: 'finish', finishReason: 'stop', usage },
+		]);
+	});
+
+	it('keeps an unavailable price absent from the event', async () => {
+		const usage = { promptTokens: 100, completionTokens: 20, totalTokens: 120 };
+		expect(await collectSerializedEvents([{ type: 'usage', model: 'openai/test', usage }])).toEqual(
+			[{ type: 'usage', usage }],
+		);
+	});
+});
 
 describe('agent-sse-stream — connection setup', () => {
 	afterEach(() => {
@@ -168,11 +200,10 @@ describe('agent-sse-stream — connection setup', () => {
 // stringifyError — tested through emitChunkEvents
 // ---------------------------------------------------------------------------
 
-vi.mock('n8n-workflow', () => ({
-	LoggerProxy: {
-		warn: vi.fn(),
-	},
-}));
+vi.mock(import('n8n-workflow'), async (importOriginal) => {
+	const actual = await importOriginal();
+	return { ...actual, LoggerProxy: { ...actual.LoggerProxy, warn: vi.fn() } };
+});
 
 describe('agent-sse-stream — stringifyError (via error chunk)', () => {
 	it('extracts .message from an Error instance', async () => {
@@ -234,6 +265,25 @@ describe('agent-sse-stream — stringifyError (via error chunk)', () => {
 		]);
 	});
 
+	it('shows the prompt caching guidance instead of the provider body on its cause', async () => {
+		const responseBody = JSON.stringify({
+			error: { message: "bedrock does not support parameters: ['prompt_cache_key']" },
+		});
+		const error = new PromptCacheParamsError(
+			Object.assign(new Error('Bad Request'), { responseBody }),
+		);
+
+		const events = await collectEvents([{ type: 'error', error }]);
+
+		expect(events).toEqual([
+			{
+				type: 'error',
+				message:
+					"This model endpoint doesn't accept prompt caching parameters. Turn off Prompt caching in the agent's settings.",
+			},
+		]);
+	});
+
 	it('surfaces the gateway message when the ai-sdk error is wrapped in error.cause', async () => {
 		const responseBody = JSON.stringify({
 			error: { message: 'Switch to using your own credential to continue.', type: 'x' },
@@ -264,13 +314,13 @@ describe('agent-sse-stream — stream completion', () => {
 		]);
 	});
 
-	it('forwards the finish reason and leaves completion delivery to the caller', async () => {
+	it.each(['stop', 'cancelled'] as const)('forwards the %s finish reason', async (finishReason) => {
 		const events = await collectEvents([
 			{ type: 'text-delta', id: 't-1', delta: 'hello' },
 			{ type: 'text-end', id: 't-1' },
 			{
 				type: 'finish',
-				finishReason: 'stop',
+				finishReason,
 				usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
 			},
 		]);
@@ -278,7 +328,11 @@ describe('agent-sse-stream — stream completion', () => {
 		expect(events).toEqual([
 			{ type: 'text-delta', id: 't-1', delta: 'hello' },
 			{ type: 'text-end', id: 't-1' },
-			{ type: 'finish', finishReason: 'stop' },
+			{
+				type: 'finish',
+				finishReason,
+				usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+			},
 		]);
 	});
 
@@ -298,14 +352,14 @@ describe('agent-sse-stream — stream completion', () => {
 				type: 'tool-call-suspended',
 				runId: 'run-1',
 				toolCallId: 'tc-1',
-				toolName: 'ask_questions',
+				toolName: 'agent_builder_ask_questions',
 				suspendPayload: { question: 'First question' },
 			},
 			{
 				type: 'tool-call-suspended',
 				runId: 'run-1',
 				toolCallId: 'tc-2',
-				toolName: 'ask_questions',
+				toolName: 'agent_builder_ask_questions',
 				suspendPayload: { question: 'Second question' },
 			},
 			{ type: 'finish', finishReason: 'other' },
@@ -318,7 +372,7 @@ describe('agent-sse-stream — stream completion', () => {
 				payload: {
 					toolCallId: 'tc-1',
 					runId: 'run-1',
-					toolName: 'ask_questions',
+					toolName: 'agent_builder_ask_questions',
 					input: { question: 'First question' },
 				},
 			},
@@ -327,7 +381,7 @@ describe('agent-sse-stream — stream completion', () => {
 				payload: {
 					toolCallId: 'tc-2',
 					runId: 'run-1',
-					toolName: 'ask_questions',
+					toolName: 'agent_builder_ask_questions',
 					input: { question: 'Second question' },
 				},
 			},
@@ -515,6 +569,30 @@ describe('agent-sse-stream — tool execution lifecycle chunks', () => {
 			},
 		]);
 	});
+});
+
+describe('agent-sse-stream — toChatErrorEvent', () => {
+	it.each([
+		[new AgentTurnAlreadyRunningError(), 'turn_already_running'],
+		[new AgentN8nChatUnavailableError(), 'agent_unavailable'],
+		[new Error('boom'), undefined],
+	] as const)('maps %s to errorCode %s', (error, errorCode) => {
+		expect(toChatErrorEvent(error, 'fallback')).toEqual({
+			type: 'error',
+			message: error.message,
+			...(errorCode && { errorCode }),
+		});
+	});
+});
+
+it('scrubs secrets from the error message it sends to the client', () => {
+	const event = toChatErrorEvent(
+		new Error('Request failed: Authorization: Bearer sk-abcdef1234567890abcdef1234567890'),
+		'fallback',
+	);
+	expect(event.type === 'error' && event.message).not.toContain(
+		'sk-abcdef1234567890abcdef1234567890',
+	);
 });
 
 describe('agent-sse-stream — subagent-chunk', () => {

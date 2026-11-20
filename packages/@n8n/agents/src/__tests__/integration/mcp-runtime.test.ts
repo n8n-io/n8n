@@ -127,6 +127,7 @@ describe_llm('agent stream() with MCP tool', () => {
 		// being wrapped in `message` envelopes.
 		const toolCallChunks = chunksOfType(chunks, 'tool-call');
 		expect(toolCallChunks.length).toBeGreaterThan(0);
+		expect(chunksOfType(chunks, 'finish').at(-1)?.finishReason).toBe('stop');
 
 		await client.close();
 	});

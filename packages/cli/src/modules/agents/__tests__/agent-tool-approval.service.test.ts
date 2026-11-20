@@ -1,9 +1,8 @@
 import type { ApprovalResumePayload } from '@n8n/agents';
+import type { TelemetryProxy } from '@n8n/backend-services';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { mock } from 'vitest-mock-extended';
-
-import type { Telemetry } from '@/telemetry';
 
 import { AgentToolApprovalService } from '../agent-tool-approval.service';
 import { buildAgentConfigurationTelemetryFromConfig } from '../agent-telemetry';
@@ -11,7 +10,7 @@ import type { AgentThreadGrantRepository } from '../repositories/agent-thread-gr
 import type { ToolRegistryEntry } from '../tool-registry';
 
 const grants = mock<AgentThreadGrantRepository>();
-const telemetry = mock<Telemetry>();
+const telemetry = mock<TelemetryProxy>();
 const service = new AgentToolApprovalService(grants, telemetry);
 const params = {
 	threadId: 'child-thread',
@@ -86,15 +85,44 @@ it.each<{ name: string; entry?: ToolRegistryEntry; input: unknown; expected: unk
 	expect(entry).toEqual(originalEntry);
 });
 
-it.each<{ decision: ApprovalResumePayload; allowed: boolean; scope: 'once' | 'session' }>([
-	{ decision: { approved: true }, allowed: false, scope: 'once' },
-	{ decision: { approved: true, scope: 'once' }, allowed: false, scope: 'once' },
-	{ decision: { approved: false, scope: 'session' }, allowed: false, scope: 'session' },
-	{ decision: { approved: true, scope: 'session' }, allowed: true, scope: 'session' },
+it.each<{
+	decision: ApprovalResumePayload;
+	allowed: boolean;
+	scope: 'once' | 'session';
+	source?: string;
+	expectedSource: string;
+}>([
+	{
+		decision: { approved: true },
+		allowed: false,
+		scope: 'once',
+		source: 'subagent',
+		expectedSource: 'subagent',
+	},
+	{
+		decision: { approved: true, scope: 'once' },
+		allowed: false,
+		scope: 'once',
+		source: 'n8n_chat_production',
+		expectedSource: 'n8n_chat_production',
+	},
+	{
+		decision: { approved: false, scope: 'session' },
+		allowed: false,
+		scope: 'session',
+		source: 'slack',
+		expectedSource: 'slack',
+	},
+	{
+		decision: { approved: true, scope: 'session' },
+		allowed: true,
+		scope: 'session',
+		expectedSource: 'unknown',
+	},
 ])(
 	'records the decision and grants only session approvals: $decision',
-	async ({ decision, allowed, scope }) => {
-		const context = await service.createContext(params);
+	async ({ decision, allowed, scope, source, expectedSource }) => {
+		const context = await service.createContext({ ...params, source });
 		await context.onDecision(key, decision);
 		expect(context.approvedKeys.has(key)).toBe(allowed);
 		if (allowed) expect(grants.grant).toHaveBeenCalledWith('child-thread', key);
@@ -107,8 +135,14 @@ it.each<{ decision: ApprovalResumePayload; allowed: boolean; scope: 'once' | 'se
 				run_type: 'test',
 				approved: decision.approved,
 				scope,
+				counts_by_source: { [expectedSource]: { count: 1 } },
 			},
 		);
+		expect(
+			TELEMETRY_EVENT.AGENTS.USER_RESPONDED_TO_AGENT_TOOL_APPROVAL.getValidationError(
+				telemetry.track.mock.calls[0][1],
+			),
+		).toBeNull();
 	},
 );
 

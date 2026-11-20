@@ -3,8 +3,7 @@ import { Container, Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
-import { RoleService } from '@n8n/backend-services';
-import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
+import { RoleService, WorkflowSharingService } from '@n8n/backend-services';
 
 import { hasPosition, type ExecutionCursor } from './execution-cursor';
 import {
@@ -13,6 +12,10 @@ import {
 	type ListExecutionsResponse,
 } from './execution-list-v1.service';
 import type { ExecutionListV2Service } from './execution-list-v2.service';
+
+function emptyPage(): ListExecutionsResponse {
+	return { results: [], nextCursor: null, count: 0, estimated: false };
+}
 
 /**
  * Entry point for execution list requests. Routes to the v1 provider, or to
@@ -49,6 +52,8 @@ export class ExecutionListService {
 			...(combinesCurrentAndCompleted ? { status: COMPLETED_STATUSES } : {}),
 		};
 
+		if (this.excludesEveryExecution(query)) return emptyPage();
+
 		const provider = await this.provider();
 
 		return combinesCurrentAndCompleted && !hasPositionInCursor
@@ -64,6 +69,8 @@ export class ExecutionListService {
 		query: ExecutionSummaries.RangeQuery,
 		cursor?: ExecutionCursor,
 	): Promise<ListExecutionsResponse> {
+		if (this.excludesEveryExecution(query)) return emptyPage();
+
 		const provider = await this.provider();
 
 		return await provider.findPageWithCount(query, cursor);
@@ -93,6 +100,14 @@ export class ExecutionListService {
 		const projectRoles = await this.roleService.rolesWithScope('project', [scope]);
 		const workflowRoles = await this.roleService.rolesWithScope('workflow', [scope]);
 		return { scopes: [scope], projectRoles, workflowRoles };
+	}
+
+	/**
+	 * Engine v2 executions live in the data plane. Without it, an engine v2
+	 * filter matches nothing, and must not fall back to the v1 executions.
+	 */
+	private excludesEveryExecution(query: ExecutionSummaries.RangeQuery) {
+		return query.engine === 'v2' && !this.dataPlane.isAvailable();
 	}
 
 	/** The provider for this request: v1 alone, or v1 merged with v2. */

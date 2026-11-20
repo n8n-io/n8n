@@ -18,7 +18,7 @@ __real='__N8N_REAL__'
 __bindir='__N8N_BINDIR__'
 __tracker='__N8N_TRACKER__' # installed copy of track.mjs, refreshed on each install
 
-# If the baked real binary moved (e.g. corepack/pnpm upgrade), re-resolve it via
+# If the baked real binary moved (e.g. pnpm upgrade), re-resolve it via
 # PATH with our own directory removed — never resolving back to this shim. Also
 # skip pnpm-managed dirs (version store, .tools/pnpm): resolving to one of those
 # can run a different pnpm version than the project pinned.

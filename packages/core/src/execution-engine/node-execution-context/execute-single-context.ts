@@ -11,9 +11,9 @@ import type {
 	WorkflowExecuteMode,
 	ITaskDataConnections,
 	IExecuteData,
-	IDataObject,
 } from 'n8n-workflow';
-import { UnexpectedError, NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import { BaseExecuteContext } from './base-execute-context';
 import {
@@ -87,16 +87,12 @@ export class ExecuteSingleContext extends BaseExecuteContext implements IExecute
 		};
 	}
 
-	async getRuntimeCredential(alias: string): Promise<IDataObject[string] | undefined> {
-		return await this.additionalData.getRuntimeCredential(this.runExecutionData, alias);
-	}
-
 	evaluateExpression(expression: string, itemIndex: number = this.itemIndex) {
 		return super.evaluateExpression(expression, itemIndex);
 	}
 
 	getInputData(inputIndex = 0, connectionType = NodeConnectionTypes.Main) {
-		if (!this.inputData.hasOwnProperty(connectionType)) {
+		if (!Object.hasOwn(this.inputData, connectionType)) {
 			// Return empty array because else it would throw error when nothing is connected to input
 			return { json: {} };
 		}

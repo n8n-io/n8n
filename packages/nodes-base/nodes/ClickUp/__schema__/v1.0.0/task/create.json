@@ -101,6 +101,9 @@
         "custom_item_id": {
             "type": "integer"
         },
+        "date_closed": {
+            "type": "null"
+        },
         "date_created": {
             "type": "string"
         },
@@ -277,5 +280,5 @@
             }
         }
     },
-    "version": 5
+    "version": 6
 }

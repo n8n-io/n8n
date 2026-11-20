@@ -1,5 +1,6 @@
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
+import uniqBy from 'lodash/uniqBy';
 import { pickVariableForProject } from 'n8n-workflow';
 
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
@@ -12,12 +13,7 @@ import {
 	variableMissingModeCreates,
 	variableMissingModeUsesPackageValue,
 } from './variable-missing-mode';
-import {
-	computeVariableLimitFailure,
-	createFailure,
-	dedupeCreationsByDestination,
-	destinationKey,
-} from './variable.types';
+import { computeVariableLimitFailure, destinationKey } from './variable.types';
 import type {
 	VariableApplyResult,
 	VariableConflict,
@@ -25,6 +21,7 @@ import type {
 	VariableImportPlan,
 	VariableImportRequest,
 	VariableLimitFailure,
+	VariableMatch,
 	VariableOverwrite,
 	VariableResolutionFailure,
 } from './variable.types';
@@ -50,7 +47,7 @@ export class VariableImporter {
 			else variablesByKey.set(variable.key, [variable]);
 		}
 
-		const matched: string[] = [];
+		const matched: VariableMatch[] = [];
 		const missing: VariableResolutionFailure[] = [];
 		const creations: VariableCreation[] = [];
 		const conflicts: VariableConflict[] = [];
@@ -61,13 +58,15 @@ export class VariableImporter {
 		const overwritesConflicts = request.conflictPolicy === VariableConflictPolicy.Overwrite;
 
 		for (const requirement of requirements) {
-			const picked = pickVariableForProject(
-				variablesByKey.get(requirement.name) ?? [],
-				requirement.name,
-				context.projectId,
-			);
+			const candidates = variablesByKey.get(requirement.name) ?? [];
+			const picked = pickVariableForProject(candidates, requirement.name, context.projectId);
 			if (picked) {
-				matched.push(requirement.name);
+				const scopes: VariableMatch['scopes'] = [];
+				if (candidates.some(({ project }) => project?.id === context.projectId)) {
+					scopes.push('project');
+				}
+				if (candidates.some(({ project }) => !project)) scopes.push('global');
+				matched.push({ name: requirement.name, scopes });
 
 				const packageValue = requirement.packageValue;
 				// An empty bundled value is nothing to write, the same way a creation treats it as a stub.
@@ -76,27 +75,24 @@ export class VariableImporter {
 				}
 
 				const scope = picked.project ? { projectId: picked.project.id } : {};
-				const usedByWorkflows = [...new Set(requirement.usedByWorkflows)].sort();
-				conflicts.push({ name: requirement.name, ...scope, usedByWorkflows });
+				conflicts.push({ name: requirement.name, ...scope });
 				if (overwritesConflicts) {
 					overwrites.push({
 						variableId: picked.id,
 						name: requirement.name,
 						...scope,
 						value: packageValue,
-						usedByWorkflows,
 					});
 				}
 				continue;
 			}
-			missing.push(createFailure(requirement));
+			missing.push({ name: requirement.name });
 			if (createsMissing) {
 				const value = usesPackageValue ? requirement.packageValue : undefined;
 				creations.push({
 					name: requirement.name,
 					...(requirement.globalPlacement ? {} : { projectId: context.projectId }),
 					...(value !== undefined ? { value } : {}),
-					usedByWorkflows: [...new Set(requirement.usedByWorkflows)].sort(),
 				});
 			}
 		}
@@ -109,7 +105,7 @@ export class VariableImporter {
 		if (creations.length === 0) return undefined;
 
 		return computeVariableLimitFailure(
-			dedupeCreationsByDestination(creations),
+			uniqBy(creations, destinationKey),
 			await this.variablesService.getRemainingVariableQuota(),
 		);
 	}
@@ -142,12 +138,16 @@ export class VariableImporter {
 			}
 
 			try {
-				await this.variablesService.create(context.user, {
-					key: creation.name,
-					type: 'string',
-					value: creation.value ?? '',
-					...(creation.projectId ? { projectId: creation.projectId } : {}),
-				});
+				await this.variablesService.create(
+					context.user,
+					{
+						key: creation.name,
+						type: 'string',
+						value: creation.value ?? '',
+						...(creation.projectId ? { projectId: creation.projectId } : {}),
+					},
+					context.ctx,
+				);
 				// A bundled-but-empty value still leaves the user something to fill in, so it is a stub.
 				if (creation.value) {
 					created.push(creation.name);
@@ -174,9 +174,12 @@ export class VariableImporter {
 			// Nothing to write if another writer deleted the row, or an earlier scope already applied it.
 			if (!current || current.value === overwrite.value) continue;
 
-			await this.variablesService.update(context.user, overwrite.variableId, {
-				value: overwrite.value,
-			});
+			await this.variablesService.update(
+				context.user,
+				overwrite.variableId,
+				{ value: overwrite.value },
+				context.ctx,
+			);
 			updated.push(overwrite.name);
 		}
 

@@ -106,14 +106,43 @@ describe('useMcpServerAdapter', () => {
 				transport: 'streamableHttp',
 				authentication: 'githubEnterpriseOAuth2Api',
 				credential: 'UZscC4Mgs5EMeouw',
-				toolFilter: undefined,
 				description: undefined,
-				approval: undefined,
+				toolPermissions: {
+					categories: { read: 'always_allow', write: 'require_approval' },
+				},
 				connectionTimeoutMs: 60001,
 				metadata: {
 					nodeTypeName: '@n8n/mcp-registry.gitHub',
 				},
 			});
+		});
+
+		it('preserves existing category and per-tool permissions when reopening a server', () => {
+			const toolPermissions = {
+				categories: { read: 'blocked', write: 'require_approval' },
+				tools: { search: 'always_allow', delete: 'blocked' },
+			} as const;
+			const node: INode = {
+				id: 'github-mcp',
+				name: 'github-mcp',
+				type: '@n8n/mcp-registry.gitHub',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {
+					endpointUrl: 'https://api.githubcopilot.com/mcp/',
+					serverTransport: 'httpStreamable',
+				},
+			};
+
+			expect(
+				nodeToMcpServer(node, {
+					name: 'github-mcp',
+					url: 'https://api.githubcopilot.com/mcp/',
+					transport: 'streamableHttp',
+					authentication: 'none',
+					toolPermissions,
+				}).toolPermissions,
+			).toEqual(toolPermissions);
 		});
 	});
 
@@ -142,6 +171,9 @@ describe('useMcpServerAdapter', () => {
 					transport: 'streamableHttp',
 					authentication: 'githubEnterpriseOAuth2Api',
 					credential: 'UZscC4Mgs5EMeouw',
+					toolPermissions: {
+						categories: { read: 'always_allow', write: 'require_approval' },
+					},
 					connectionTimeoutMs: 60001,
 				},
 				nodeType,

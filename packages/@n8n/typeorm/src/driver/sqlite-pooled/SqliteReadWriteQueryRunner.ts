@@ -16,6 +16,7 @@ import { BroadcasterResult } from '../../subscriber/BroadcasterResult';
 import { TransactionCommitFailedError } from '../../error/TransactionCommitFailedError';
 import { TransactionRollbackFailedError } from '../../error/TransactionRollbackFailedError';
 import { AbstractSqliteDriver } from '../sqlite-abstract/AbstractSqliteDriver';
+import { ReplicationMode } from '../types/ReplicationMode';
 
 export class SqliteReadWriteQueryRunner
 	extends AbstractSqliteQueryRunner
@@ -38,9 +39,15 @@ export class SqliteReadWriteQueryRunner
 		private readonly writePool: SqliteConnectionPool,
 		private readonly readPool: SqliteConnectionPool,
 		private readonly options: SqlitePooledConnectionOptions,
+		/**
+		 * `'slave'` marks a read-only runner. Its transactions lease from the
+		 * read pool, so they do not wait for the single write connection.
+		 */
+		mode: ReplicationMode = 'master',
 	) {
 		super();
 
+		this.mode = mode;
 		this.driver = driver;
 		this.connection = connection;
 		this.broadcaster = new Broadcaster(this);
@@ -82,21 +89,27 @@ export class SqliteReadWriteQueryRunner
 
 	/**
 	 * Starts transaction.
+	 *
+	 * A read-only runner opens a deferred transaction on a read pool
+	 * connection. Under WAL that gives a consistent snapshot without taking
+	 * the write lock. The connection is opened read-only, so a write
+	 * statement inside it fails instead of silently escalating.
 	 */
 	async startTransaction(): Promise<void> {
 		if (this.isTransactionActive) {
 			throw new TransactionAlreadyStartedError();
 		}
 
+		const isReadOnly = this.mode === 'slave';
+		const pool = isReadOnly ? this.readPool : this.writePool;
+		const beginStatement = isReadOnly ? 'BEGIN TRANSACTION' : 'BEGIN IMMEDIATE TRANSACTION';
+
 		try {
 			await this.broadcaster.broadcast('BeforeTransactionStart');
 
-			this.trxDbLease = await this.writePool.leaseConnection(this);
+			this.trxDbLease = await pool.leaseConnection(this);
 
-			await this.runQueryWithinConnection(
-				this.trxDbLease.connection,
-				'BEGIN IMMEDIATE TRANSACTION',
-			);
+			await this.runQueryWithinConnection(this.trxDbLease.connection, beginStatement);
 
 			await this.broadcaster.broadcast('AfterTransactionStart');
 		} catch (error) {

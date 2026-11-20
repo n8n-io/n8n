@@ -1,4 +1,4 @@
-import type { GraphEdge, WorkflowGraph, WorkflowLoop } from '../graph';
+import type { GraphEdge, StoredWorkflowGraph, WorkflowGraph, WorkflowLoop } from '../graph';
 import { stepKeyId, isSettledStatus, type StepKey, type StepKeyId } from './execution.types';
 import { classifyEdge, sourceRow, targetKey, type EdgeClass } from './iteration-mapping';
 import { isTerminalStep } from './loop-ledger';
@@ -52,6 +52,8 @@ import type { StepSummary } from './step-store';
 export interface SuccessorDecisions {
 	/** Successor steps with a live input, to enqueue — in edge order. */
 	toQueue: StepKey[];
+	/** Live successors whose outputs were seeded at start, to record as completed. */
+	toSeed: StepKey[];
 	/** Successor steps with settled but all-dead inputs, to record as skipped. */
 	toSkip: StepKey[];
 }
@@ -65,13 +67,14 @@ export interface SuccessorDecisions {
  * terminal iteration by batch node id, omitting the loops that have not ended.
  */
 export function decideSuccessors(
-	graph: WorkflowGraph,
+	graph: StoredWorkflowGraph,
 	loops: WorkflowLoop[],
 	settled: StepKey,
 	steps: Record<StepKeyId, StepSummary>,
 	terminalIterations: Map<string, number>,
 ): SuccessorDecisions {
-	const decisions: SuccessorDecisions = { toQueue: [], toSkip: [] };
+	const decisions: SuccessorDecisions = { toQueue: [], toSeed: [], toSkip: [] };
+	const seededIds = new Set(graph.seeded);
 	const batchStep = loops.some((loop) => loop.batchNodeId === settled.nodeId)
 		? steps[stepKeyId(settled)]
 		: undefined;
@@ -90,7 +93,8 @@ export function decideSuccessors(
 		decided.add(targetId);
 
 		const fate = decideNodeFate(graph, loops, target, steps, terminalIterations);
-		if (fate === 'queued') decisions.toQueue.push(target);
+		if (fate === 'queued')
+			(seededIds.has(target.nodeId) ? decisions.toSeed : decisions.toQueue).push(target);
 		else if (fate === 'skipped') decisions.toSkip.push(target);
 	}
 

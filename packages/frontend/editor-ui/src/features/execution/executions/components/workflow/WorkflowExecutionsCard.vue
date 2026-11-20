@@ -12,6 +12,8 @@ import type { PermissionsRecord } from '@n8n/permissions';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { toDayMonth, toTime } from '@/app/utils/formatters/dateFormatter';
 import PrivateCredentialIcon from '@/features/resolvers/components/PrivateCredentialIcon.vue';
+import EngineBadge from '@/app/components/EngineBadge.vue';
+import { getExecutionEngine } from '@/features/execution/executions/executions.utils';
 import {
 	N8nActionDropdown,
 	N8nIcon,
@@ -49,11 +51,13 @@ const hasPrivateCredentials = computed(() => props.execution.usedPrivateCredenti
 const retryExecutionActions = computed(() => [
 	{
 		id: 'current-workflow',
-		label: locale.baseText('executionsList.retryWithCurrentlySavedWorkflow'),
+		label: locale.baseText('executionsList.retryWithCurrentVersion'),
+		description: locale.baseText('executionsList.retryWithCurrentVersionDescription'),
 	},
 	{
 		id: 'original-workflow',
-		label: locale.baseText('executionsList.retryWithOriginalWorkflow'),
+		label: locale.baseText('executionsList.retryWithOriginalVersion'),
+		description: locale.baseText('executionsList.retryWithOriginalVersionDescription'),
 	},
 ]);
 const executionUIDetails = computed<IExecutionUIData>(() =>
@@ -105,6 +109,11 @@ function onRetryMenuItemSelect(action: string): void {
 				<N8nText v-else color="text-dark" :bold="true" size="medium" data-test-id="execution-time">
 					{{ executionUIDetails.startTime }}
 				</N8nText>
+				<EngineBadge
+					:engine="getExecutionEngine(execution.id)"
+					class="ml-3xs"
+					data-test-id="execution-engine-badge"
+				/>
 				<div :class="$style.executionStatus">
 					<N8nSpinner
 						v-if="executionUIDetails.name === 'running'"
@@ -168,9 +177,17 @@ function onRetryMenuItemSelect(action: string): void {
 					:items="retryExecutionActions"
 					:disabled="!workflowPermissions.execute"
 					activator-icon="redo-2"
+					placement="bottom-end"
 					data-test-id="retry-execution-button"
 					@select="onRetryMenuItemSelect"
-				/>
+				>
+					<template #menuItem="item">
+						<div :class="$style.retryMenuItem">
+							<N8nText size="small" color="text-dark" bold>{{ item.label }}</N8nText>
+							<N8nText size="xsmall" color="text-light">{{ item.description }}</N8nText>
+						</div>
+					</template>
+				</N8nActionDropdown>
 				<PrivateCredentialIcon
 					v-if="hasPrivateCredentials"
 					:class="$style.icon"
@@ -327,22 +344,30 @@ function onRetryMenuItemSelect(action: string): void {
 	}
 }
 
+.description {
+	min-width: 0;
+}
+
 .icons {
 	display: flex;
 	align-items: center;
 	justify-content: flex-end;
 	gap: var(--spacing--2xs);
 	min-width: calc(2 * var(--font-size--sm) + var(--spacing--2xs));
+	flex-shrink: 0;
 }
 
 .icon {
 	font-size: var(--font-size--sm);
 	width: var(--font-size--sm);
+	flex-shrink: 0;
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
 
 	&.retry {
+		width: var(--height--md);
+
 		svg {
 			color: var(--color--primary);
 		}
@@ -352,6 +377,12 @@ function onRetryMenuItemSelect(action: string): void {
 		position: relative;
 		top: 1px;
 	}
+}
+
+.retryMenuItem {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--5xs);
 }
 
 .showGap {

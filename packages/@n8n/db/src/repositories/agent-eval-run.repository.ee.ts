@@ -65,6 +65,11 @@ export class AgentEvalRunRepository extends Repository<AgentEvalRun> {
 		});
 	}
 
+	/** Rewrites only the recorded tally — used when a result is removed from a settled run. */
+	async updateMetrics(id: string, metrics: IDataObject) {
+		return await this.update(id, { metrics });
+	}
+
 	async markAsCancelled(id: string, metrics: IDataObject | null = null) {
 		return await this.update(id, {
 			status: 'cancelled',

@@ -1,9 +1,11 @@
-import type { IExecutionResponse } from '@n8n/db';
+import { toWorkflowSnapshot, type WorkflowRunDocument } from '@n8n/backend-services';
+import type { IExecutionBase, IExecutionResponse } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type {
 	ExecutionListItem,
 	ExecutionSnapshot,
 	ExecutionStatus,
+	FindLatestExecutionRequest,
 	SearchExecutionsRequest,
 } from '@n8n/engine';
 import type {
@@ -13,13 +15,12 @@ import type {
 	ExecutionSummary,
 	Workflow,
 } from 'n8n-workflow';
-import { UserError } from 'n8n-workflow';
+import { UnexpectedError, UserError } from '@n8n/errors';
 
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
 
-import { resolveV2Statuses, toV1Mode, toV1Status } from './engine-v2-mapping';
+import { resolveV2Statuses, toModeFilter, toV1Mode, toV1Status } from './engine-v2-mapping';
 import type { ExecutionPosition } from './execution-cursor';
-import { toWorkflowSnapshot, type WorkflowSnapshot } from './execution-data/types';
 import type { ExecutionIdV2 } from './execution-id';
 
 /**
@@ -44,6 +45,12 @@ export interface EngineV2SearchQuery {
 	};
 }
 
+/** A latest-execution read takes the search filter, but no paging: it names one execution. */
+export type EngineV2LatestQuery = Pick<
+	EngineV2SearchQuery,
+	'status' | 'mode' | 'startedAfter' | 'startedBefore'
+>;
+
 /**
  * The most workflow IDs one data plane search takes. A wider scope throws for
  * now; splitting it across several searches can come later.
@@ -51,7 +58,7 @@ export interface EngineV2SearchQuery {
 const MAX_SCOPE_SIZE = 10_000;
 
 /**
- * Reads an engine v2 execution for display. The data plane is its only store:
+ * Reads an engine v2 execution. The data plane is its only store:
  * the workflow comes from the copy captured when the run started, so an edit
  * after the run does not change what the execution reports.
  */
@@ -90,6 +97,28 @@ export class EngineV2ExecutionReader {
 		return { items: [], hasMore: false, total: 0 };
 	}
 
+	/**
+	 * The newest execution matching `query` within `scope`, with its run data,
+	 * or `undefined` when none matches. One data plane round trip: the scope is
+	 * the access check, so no second read is needed to authorize the result.
+	 */
+	async findLatest(
+		query: EngineV2LatestQuery,
+		scope: V2Scope,
+	): Promise<IExecutionResponse | undefined> {
+		if (scope !== 'all' && !scope.length) return undefined;
+
+		const status = resolveV2Statuses(query.status);
+		if (status?.length === 0) return undefined;
+
+		const snapshot = await this.dataPlane.findLatestExecution(
+			this.buildFilter(query, this.searchableScope(scope), status),
+		);
+		if (!snapshot) return undefined;
+
+		return await this.fromSnapshot(snapshot);
+	}
+
 	/** The deduplicated scope, or a user-facing error when one search cannot hold it. */
 	private searchableScope(scope: V2Scope): V2Scope {
 		if (scope === 'all') return scope;
@@ -111,15 +140,25 @@ export class EngineV2ExecutionReader {
 		includeTotal: boolean,
 	): SearchExecutionsRequest {
 		return {
-			workflowIds: scope,
-			status,
-			hostMode: query.mode,
-			createdAfter: query.startedAfter ? new Date(query.startedAfter).toISOString() : undefined,
-			createdBefore: query.startedBefore ? new Date(query.startedBefore).toISOString() : undefined,
+			...this.buildFilter(query, scope, status),
 			before: query.before ? { createdAt: query.before.timestamp, id: query.before.id } : undefined,
 			limit: query.limit,
 			includeTotal,
 			order: query.order,
+		};
+	}
+
+	private buildFilter(
+		query: EngineV2LatestQuery,
+		scope: V2Scope,
+		status: ExecutionStatus[] | undefined,
+	): FindLatestExecutionRequest {
+		return {
+			workflowIds: scope,
+			status,
+			...toModeFilter(query.mode),
+			createdAfter: query.startedAfter ? new Date(query.startedAfter).toISOString() : undefined,
+			createdBefore: query.startedBefore ? new Date(query.startedBefore).toISOString() : undefined,
 		};
 	}
 
@@ -128,7 +167,8 @@ export class EngineV2ExecutionReader {
 			id: item.id,
 			workflowId: item.workflowId,
 			status: toV1Status(item.status),
-			mode: toV1Mode(item.hostMode),
+			mode: toV1Mode(item),
+			// oxlint-disable-next-line typescript/no-deprecated -- Preserve the v1 execution response format.
 			finished: item.status === 'completed',
 			createdAt: new Date(item.createdAt),
 			startedAt: new Date(item.createdAt),
@@ -137,19 +177,71 @@ export class EngineV2ExecutionReader {
 		};
 	}
 
-	/** `undefined` for absent and for inaccessible alike, so neither reveals the other. */
+	/** Read identity without steps. The caller must check workflow access. */
+	async findReference(
+		executionId: ExecutionIdV2,
+	): Promise<{ id: string; workflowId: string } | undefined> {
+		const snapshot = await this.dataPlane.getExecution(executionId, {
+			includeSteps: false,
+		});
+		if (!snapshot) return undefined;
+		if (snapshot.id !== executionId) {
+			throw new UnexpectedError('The execution response does not match the requested execution.');
+		}
+		return { id: snapshot.id, workflowId: snapshot.workflowId };
+	}
+
+	/**
+	 * `undefined` for absent and for inaccessible alike, so neither reveals the
+	 * other.
+	 *
+	 * The steps are the run data, so `includeData` decides both.
+	 */
 	async findOne(
 		executionId: ExecutionIdV2,
 		sharedWorkflowIds: string[],
-	): Promise<IExecutionResponse | undefined> {
+		options?: { includeData?: true },
+	): Promise<IExecutionResponse | undefined>;
+	async findOne(
+		executionId: ExecutionIdV2,
+		sharedWorkflowIds: string[],
+		options: { includeData: false },
+	): Promise<IExecutionBase | undefined>;
+	async findOne(
+		executionId: ExecutionIdV2,
+		sharedWorkflowIds: string[],
+		options?: { includeData?: boolean },
+	): Promise<IExecutionResponse | IExecutionBase | undefined>;
+	async findOne(
+		executionId: ExecutionIdV2,
+		sharedWorkflowIds: string[],
+		{ includeData = true }: { includeData?: boolean } = {},
+	): Promise<IExecutionResponse | IExecutionBase | undefined> {
 		// TODO(CAT-4235): mirror this metadata on the control plane, so we can
 		// authorize before reading.
-		const snapshot = await this.dataPlane.getExecution(executionId, { includeSteps: true });
+		const snapshot = await this.dataPlane.getExecution(executionId, {
+			includeSteps: includeData,
+		});
 		if (!snapshot) return undefined;
 
 		// The `workflow:read` check.
 		if (!sharedWorkflowIds.includes(snapshot.workflowId)) return undefined;
 
+		if (includeData) return await this.fromSnapshot(snapshot);
+
+		// Checked in both modes, so a metadata read and a data read agree on
+		// whether the execution exists.
+		if (!asWorkflowSnapshot(snapshot.workflow)) return undefined;
+
+		return this.toExecutionBase(snapshot);
+	}
+
+	/**
+	 * The v1 shape of a snapshot that the caller already holds, or `undefined`
+	 * when the run's document lacks what the v1 paths read. It checks no workflow
+	 * access, so the caller must authorize the read.
+	 */
+	async fromSnapshot(snapshot: ExecutionSnapshot): Promise<IExecutionResponse | undefined> {
 		const workflow = asWorkflowSnapshot(snapshot.workflow);
 		if (!workflow) return undefined;
 
@@ -160,28 +252,35 @@ export class EngineV2ExecutionReader {
 		return this.toExecutionResponse(
 			snapshot,
 			workflow,
-			toV1RunExecutionData(snapshot.graph, snapshot.steps ?? []),
+			toV1RunExecutionData(snapshot.graph, snapshot.steps ?? [], workflow.pinData),
 		);
 	}
 
-	private toExecutionResponse(
-		snapshot: ExecutionSnapshot,
-		workflow: WorkflowSnapshot,
-		data: IRunExecutionData,
-	): IExecutionResponse {
+	private toExecutionBase(snapshot: ExecutionSnapshot): IExecutionBase {
 		// No real run timing yet (CAT-4234), so both come from the row.
 		const startedAt = new Date(snapshot.createdAt);
 
 		return {
 			id: snapshot.id,
 			workflowId: snapshot.workflowId,
-			mode: toV1Mode(snapshot.hostMode),
+			mode: toV1Mode(snapshot),
 			status: toV1Status(snapshot.status),
+			// oxlint-disable-next-line typescript/no-deprecated -- Preserve the v1 execution response format.
 			finished: snapshot.status === 'completed',
 			createdAt: startedAt,
 			startedAt,
 			stoppedAt: snapshot.finishedAt ? new Date(snapshot.finishedAt) : undefined,
 			storedAt: 'db',
+		};
+	}
+
+	private toExecutionResponse(
+		snapshot: ExecutionSnapshot,
+		workflow: WorkflowRunDocument,
+		data: IRunExecutionData,
+	): IExecutionResponse {
+		return {
+			...this.toExecutionBase(snapshot),
 			data,
 			// The same projection the v1 path reports, so the editor sees one shape.
 			// The cast: the declared type overstates what either path returns.
@@ -199,9 +298,9 @@ export class EngineV2ExecutionReader {
  * without — redaction walks it unguarded — so a document without it reads as no
  * execution at all rather than as a 500.
  */
-function asWorkflowSnapshot(document: unknown): WorkflowSnapshot | undefined {
+export function asWorkflowSnapshot(document: unknown): WorkflowRunDocument | undefined {
 	if (typeof document !== 'object' || document === null) return undefined;
 	if (!Array.isArray((document as { nodes?: unknown }).nodes)) return undefined;
 
-	return document as unknown as WorkflowSnapshot;
+	return document as unknown as WorkflowRunDocument;
 }

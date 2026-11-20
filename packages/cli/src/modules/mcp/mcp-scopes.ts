@@ -2,8 +2,12 @@ import type { McpScope } from '@n8n/api-types';
 import { MCP_INSTANCE_SCOPES } from '@n8n/api-types';
 
 import {
+	MCP_GET_MIGRATION_FINDINGS_TOOL_NAME,
+	MCP_GET_MIGRATION_REPORT_TOOL_NAME,
 	MCP_GET_USER_PREFERENCES_TOOL_NAME,
+	MCP_MIGRATE_WORKFLOW_TOOL_NAME,
 	MCP_SAVE_USER_PREFERENCE_TOOL_NAME,
+	MCP_SET_MIGRATION_FINDING_STATUS_TOOL_NAME,
 	MCP_UNDO_USER_PREFERENCE_TOOL_NAME,
 	MCP_UPDATE_USER_PREFERENCE_TOOL_NAME,
 } from './mcp.constants';
@@ -37,6 +41,9 @@ export const TOOLS_BY_SCOPE: Record<McpScope, readonly string[]> = {
 		'get_instance_activity',
 		'expand_instance_activity',
 		'get_node_usage',
+		// Lists credentials, data tables and agents too. The tool withholds the ones whose
+		// scope the grant lacks, and refuses a credential or data table as the requested resource.
+		'get_dependencies',
 	],
 	'workflow:write': [
 		'create_workflow_from_code',
@@ -60,6 +67,8 @@ export const TOOLS_BY_SCOPE: Record<McpScope, readonly string[]> = {
 		'search_agents',
 		'get_agent',
 		'list_agent_versions',
+		'list_agent_sessions',
+		'get_agent_session',
 		'discover_agent_assets',
 		'validate_agent',
 		'get_agent_builder_reference',
@@ -70,12 +79,15 @@ export const TOOLS_BY_SCOPE: Record<McpScope, readonly string[]> = {
 	'agent:write': [
 		'create_agent',
 		'mutate_agent',
+		'move_agent',
 		'revert_agent',
-		'delete_agent',
+		'archive_agent',
 		'verify_agent_mcp_server',
 		'search_agents',
 		'get_agent',
 		'list_agent_versions',
+		'list_agent_sessions',
+		'get_agent_session',
 		'discover_agent_assets',
 		'validate_agent',
 		'get_agent_builder_reference',
@@ -84,9 +96,12 @@ export const TOOLS_BY_SCOPE: Record<McpScope, readonly string[]> = {
 		'unpublish_agent',
 	],
 	'agent:execute': ['call_agent'],
+	'skill:read': ['search_n8n_skills', 'get_skill'],
+	'skill:write': ['create_skill', 'update_skill', 'delete_skill', 'search_n8n_skills', 'get_skill'],
 	// explore_node_resources queries external services with stored credentials,
 	// so it must sit behind the credential scope rather than a workflow one.
 	'credential:read': ['list_credentials', 'list_n8n_gateway_services', 'explore_node_resources'],
+	'credential:update': ['update_credential_description'],
 	'dataTable:read': ['search_data_tables', 'get_data_table_rows'],
 	// Writing requires finding tables, so search rides along.
 	'dataTable:write': [
@@ -120,6 +135,20 @@ export const TOOLS_BY_SCOPE: Record<McpScope, readonly string[]> = {
 		MCP_UPDATE_USER_PREFERENCE_TOOL_NAME,
 		MCP_UNDO_USER_PREFERENCE_TOOL_NAME,
 	],
+	// Both migration report scopes need the `breakingChanges:list` role permission, as the REST
+	// routes do. Registration still checks the role: a grant can outlive one.
+	'breakingChanges:list': [
+		MCP_GET_MIGRATION_REPORT_TOOL_NAME,
+		MCP_GET_MIGRATION_FINDINGS_TOOL_NAME,
+	],
+	// A fix or a status starts from the findings, so the read tools ride along. Neither scope
+	// grants update_workflow: fixing a workflow by hand needs `workflow:write`.
+	'breakingChanges:migrate': [
+		MCP_GET_MIGRATION_REPORT_TOOL_NAME,
+		MCP_GET_MIGRATION_FINDINGS_TOOL_NAME,
+		MCP_MIGRATE_WORKFLOW_TOOL_NAME,
+		MCP_SET_MIGRATION_FINDING_STATUS_TOOL_NAME,
+	],
 };
 
 /**
@@ -133,6 +162,7 @@ export const FOLDER_FEATURE_TOOLS: ReadonlySet<string> = new Set([
 	'create_folder',
 	'update_folder',
 	'move_workflows_to_folder',
+	'move_agent',
 ]);
 
 /**
@@ -155,7 +185,9 @@ export const BUILDER_TOOLS: ReadonlySet<string> = new Set([
 	'search_projects',
 	'search_folders',
 	'install_community_node',
-	...FOLDER_FEATURE_TOOLS,
+	'create_folder',
+	'update_folder',
+	'move_workflows_to_folder',
 ]);
 
 /**
@@ -181,12 +213,29 @@ export const INSTANCE_CONTEXT_TOOLS: ReadonlySet<string> = new Set([
 	'get_instance_activity',
 	'expand_instance_activity',
 	'get_node_usage',
+	'get_dependencies',
+]);
+
+/**
+ * Tools that need a migration report target version, the `breaking-changes`
+ * module, and a caller with `breakingChanges:list`. Excluded from the "every
+ * mapped tool is registered" drift guard like {@link AGENT_TOOLS}; their own
+ * registration tests live in migration-report-tools.test.ts.
+ */
+export const MIGRATION_REPORT_TOOLS: ReadonlySet<string> = new Set([
+	...TOOLS_BY_SCOPE['breakingChanges:list'],
+	...TOOLS_BY_SCOPE['breakingChanges:migrate'],
 ]);
 
 export const AGENT_TOOLS: ReadonlySet<string> = new Set([
 	...TOOLS_BY_SCOPE['agent:read'],
 	...TOOLS_BY_SCOPE['agent:write'],
 	...TOOLS_BY_SCOPE['agent:execute'],
+]);
+
+export const SKILL_TOOLS: ReadonlySet<string> = new Set([
+	...TOOLS_BY_SCOPE['skill:read'],
+	...TOOLS_BY_SCOPE['skill:write'],
 ]);
 
 function isMcpScope(scope: string): scope is McpScope {

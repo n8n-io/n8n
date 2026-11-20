@@ -7,16 +7,17 @@ import type {
 	WorkflowPublicationRetryStateRepository,
 	WorkflowPublicationTriggerStatusRepository,
 } from '@n8n/db';
+import { UserError } from '@n8n/errors';
 import type { ErrorReporter } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import type { ActivationErrorsService } from '@/activation-errors.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
 import type { Push } from '@/push';
-import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import { PublicationStatusReporter } from '@/workflows/publication/publication-status-reporter';
+import { TriggerNodeIdTooLongError } from '@/workflows/publication/trigger-node-id-too-long.error';
 import { WorkflowPushNotifier } from '@/workflows/workflow-push-notifier.service';
-import type { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
+import type { WorkflowSharingService, Publisher } from '@n8n/backend-services';
 
 describe('PublicationStatusReporter', () => {
 	const logger = mock<Logger>();
@@ -392,22 +393,26 @@ describe('PublicationStatusReporter', () => {
 		);
 	});
 
-	test('failed with triggerStatuses writes rows before marking failed', async () => {
-		const error = new Error('partial registration failed');
+	test('failed with trigger state writes rows before marking failed', async () => {
+		const error = new Error('cron unavailable');
 
 		await reporter.report(makeRecord(), {
 			type: 'failed',
 			error,
-			triggerStatuses: [
-				{ nodeId: 'a', nodeName: 'Webhook', status: 'activated', triggerKind: 'persisted' },
-				{
-					nodeId: 'b',
-					nodeName: 'Schedule',
-					status: 'failed',
-					triggerKind: 'in-memory',
-					errorMessage: 'cron unavailable',
-				},
-			],
+			nodeId: 'b',
+			triggerState: {
+				versionId: 'v-2',
+				triggerStatuses: [
+					{ nodeId: 'a', nodeName: 'Webhook', status: 'activated', triggerKind: 'persisted' },
+					{
+						nodeId: 'b',
+						nodeName: 'Schedule',
+						status: 'failed',
+						triggerKind: 'in-memory',
+						errorMessage: 'cron unavailable',
+					},
+				],
+			},
 		});
 
 		expect(triggerStatusRepository.replaceForWorkflow).toHaveBeenCalledWith(
@@ -432,13 +437,209 @@ describe('PublicationStatusReporter', () => {
 		);
 		expect(outboxRepository.markFailed).toHaveBeenCalledWith(
 			1,
-			'partial registration failed',
+			'cron unavailable',
 			operationContext,
 		);
 		expect(retryStateRepository.suppressRetry).toHaveBeenCalledWith(
 			'wf-1',
 			'v-2',
 			operationContext,
+		);
+		expect(push.sendToUsers).toHaveBeenCalledWith(
+			{
+				type: 'workflowFailedToActivate',
+				data: { workflowId: 'wf-1', errorMessage: 'cron unavailable', nodeId: 'b' },
+			},
+			userIds,
+		);
+	});
+
+	test.each(['v-1', 'v-2'])(
+		'preserves running %s trigger rows while reporting a refused request',
+		async (versionId) => {
+			const error = new Error('Credential access changed');
+			await reporter.report(makeRecord(), {
+				type: 'failed',
+				error,
+				triggerState: {
+					versionId,
+					triggerStatuses: [
+						{ nodeId: 'a', nodeName: 'Live', status: 'activated', triggerKind: 'in-memory' },
+						{
+							nodeId: 'c',
+							nodeName: 'Missing',
+							status: 'failed',
+							triggerKind: 'in-memory',
+							errorMessage: 'Trigger is not registered',
+						},
+					],
+				},
+			});
+
+			expect(triggerStatusRepository.replaceForWorkflow).toHaveBeenCalledWith(
+				'wf-1',
+				[
+					{
+						nodeId: 'a',
+						versionId,
+						status: 'activated',
+						triggerKind: 'in-memory',
+						errorMessage: null,
+					},
+					{
+						nodeId: 'c',
+						versionId,
+						status: 'failed',
+						triggerKind: 'in-memory',
+						errorMessage: 'Trigger is not registered',
+					},
+				],
+				operationContext,
+			);
+			expect(outboxRepository.markFailed).toHaveBeenCalledWith(1, error.message, operationContext);
+			expect(retryStateRepository.suppressRetry).toHaveBeenCalledWith(
+				'wf-1',
+				'v-2',
+				operationContext,
+			);
+			expect(push.sendToUsers).toHaveBeenCalledWith(
+				{
+					type: 'workflowFailedToActivate',
+					data: { workflowId: 'wf-1', errorMessage: error.message },
+				},
+				userIds,
+			);
+		},
+	);
+
+	test('failed with several failed triggers pushes no nodeId', async () => {
+		const errorMessage =
+			'Triggers failed to activate: "Schedule": cron unavailable; "Cron": bad cron';
+
+		await reporter.report(makeRecord(), {
+			type: 'failed',
+			error: new Error(errorMessage),
+			triggerState: {
+				versionId: 'v-2',
+				triggerStatuses: [
+					{
+						nodeId: 'b',
+						nodeName: 'Schedule',
+						status: 'failed',
+						triggerKind: 'in-memory',
+						errorMessage: 'cron unavailable',
+					},
+					{
+						nodeId: 'c',
+						nodeName: 'Cron',
+						status: 'failed',
+						triggerKind: 'in-memory',
+						errorMessage: 'bad cron',
+					},
+				],
+			},
+		});
+
+		expect(push.sendToUsers).toHaveBeenCalledWith(
+			{ type: 'workflowFailedToActivate', data: { workflowId: 'wf-1', errorMessage } },
+			userIds,
+		);
+	});
+
+	test('failed for one oversized trigger pushes that trigger node id', async () => {
+		const error = new TriggerNodeIdTooLongError([{ id: 'too-long', name: 'Long' }]);
+
+		await reporter.report(makeRecord(), {
+			type: 'failed',
+			error,
+			nodeId: 'too-long',
+			triggerState: {
+				versionId: 'v-2',
+				triggerStatuses: [
+					{
+						nodeId: 'fitting',
+						nodeName: 'Fitting',
+						status: 'failed',
+						triggerKind: 'in-memory',
+						errorMessage: error.message,
+					},
+				],
+			},
+		});
+
+		expect(push.sendToUsers).toHaveBeenCalledWith(
+			{
+				type: 'workflowFailedToActivate',
+				data: { workflowId: 'wf-1', errorMessage: error.message, nodeId: 'too-long' },
+			},
+			userIds,
+		);
+	});
+
+	test('failed for several oversized triggers pushes no node id', async () => {
+		const error = new TriggerNodeIdTooLongError([
+			{ id: 'first-long', name: 'First' },
+			{ id: 'second-long', name: 'Second' },
+		]);
+
+		await reporter.report(makeRecord(), {
+			type: 'failed',
+			error,
+			triggerState: {
+				versionId: 'v-2',
+				triggerStatuses: [
+					{
+						nodeId: 'fitting',
+						nodeName: 'Fitting',
+						status: 'failed',
+						triggerKind: 'in-memory',
+						errorMessage: error.message,
+					},
+				],
+			},
+		});
+
+		expect(push.sendToUsers).toHaveBeenCalledWith(
+			{
+				type: 'workflowFailedToActivate',
+				data: { workflowId: 'wf-1', errorMessage: error.message },
+			},
+			userIds,
+		);
+	});
+
+	test.each([
+		{
+			cause: 'policy',
+			error: new PolicyViolationError([
+				{ kind: 'node-type-unavailable', checkId: 'check-1', message: 'Blocked by policy' },
+			]),
+		},
+		{ cause: 'credential access', error: new UserError('Credential access changed') },
+	])('failed by $cause with one failed row pushes no nodeId', async ({ error }) => {
+		await reporter.report(makeRecord(), {
+			type: 'failed',
+			error,
+			triggerState: {
+				versionId: 'v-2',
+				triggerStatuses: [
+					{
+						nodeId: 'b',
+						nodeName: 'Schedule',
+						status: 'failed',
+						triggerKind: 'in-memory',
+						errorMessage: error.message,
+					},
+				],
+			},
+		});
+
+		expect(push.sendToUsers).toHaveBeenCalledWith(
+			{
+				type: 'workflowFailedToActivate',
+				data: { workflowId: 'wf-1', errorMessage: error.message },
+			},
+			userIds,
 		);
 	});
 

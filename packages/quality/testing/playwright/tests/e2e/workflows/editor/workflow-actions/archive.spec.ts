@@ -26,7 +26,7 @@ async function createWorkflowWithSingleNode(api: ApiHelpers): Promise<string> {
 test.describe(
 	'Workflow Archive',
 	{
-		annotation: [{ type: 'owner', description: 'Adore' }],
+		annotation: [{ type: 'owner', description: 'Knowledge' }],
 	},
 	() => {
 		test('should display archived workflow in read-only mode on canvas', async ({ n8n, api }) => {

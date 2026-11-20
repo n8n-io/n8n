@@ -12,7 +12,8 @@ import {
 	NodeConnectionTypes,
 } from 'n8n-workflow';
 
-import { flatten, generatePairedItemData, getResolvables } from '@utils/utilities';
+import { flatten, generatePairedItemData } from '@utils/utilities';
+import { resolveSqlQueryParameters } from '@utils/sql-query-parameters';
 
 import {
 	bindQueryParameters,
@@ -21,7 +22,7 @@ import {
 	deleteOperation,
 	executeSqlQueryAndPrepareResults,
 	insertOperation,
-	normalizeQueryReplacement,
+	resolveQuery,
 	updateOperation,
 } from './GenericFunctions';
 import type { ITables } from './interfaces';
@@ -32,7 +33,7 @@ export class MicrosoftSql implements INodeType {
 		name: 'microsoftSql',
 		icon: 'file:mssql.svg',
 		group: ['input'],
-		version: [1, 1.1, 1.2],
+		version: [1, 1.1, 1.2, 1.3],
 		description: 'Get, add and update data in Microsoft SQL',
 		defaults: {
 			name: 'Microsoft SQL',
@@ -298,18 +299,9 @@ export class MicrosoftSql implements INodeType {
 		if (operation === 'executeQuery' && nodeVersion >= 1.1) {
 			for (let i = 0; i < items.length; i++) {
 				try {
-					let rawQuery = this.getNodeParameter('query', i) as string;
+					const rawQuery = resolveQuery.call(this, i);
 
-					for (const resolvable of getResolvables(rawQuery)) {
-						rawQuery = rawQuery.replace(
-							resolvable,
-							() => this.evaluateExpression(resolvable, i) as string,
-						);
-					}
-
-					const queryValues = normalizeQueryReplacement(
-						this.getNodeParameter('options.queryReplacement', i, ''),
-					);
+					const queryValues = resolveSqlQueryParameters.call(this, i);
 
 					const results = await executeSqlQueryAndPrepareResults.call(
 						this,
@@ -338,21 +330,12 @@ export class MicrosoftSql implements INodeType {
 		}
 		try {
 			if (operation === 'executeQuery') {
-				let rawQuery = this.getNodeParameter('query', 0) as string;
+				const rawQuery = resolveQuery.call(this, 0);
 
-				for (const resolvable of getResolvables(rawQuery)) {
-					rawQuery = rawQuery.replace(
-						resolvable,
-						() => this.evaluateExpression(resolvable, 0) as string,
-					);
-				}
-
-				const queryValues = normalizeQueryReplacement(
-					this.getNodeParameter('options.queryReplacement', 0, ''),
-				);
+				const queryValues = resolveSqlQueryParameters.call(this, 0);
 
 				const request = pool.request();
-				const processedQuery = bindQueryParameters(request, rawQuery, queryValues);
+				const processedQuery = bindQueryParameters(this.getNode(), request, rawQuery, queryValues);
 				const { recordsets }: IResult<any[]> = await request.query(processedQuery);
 
 				const result = recordsets.length > 1 ? flatten(recordsets) : recordsets[0];

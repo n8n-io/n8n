@@ -1,0 +1,191 @@
+{
+	"name": "QuickBase Requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "field",
+				"operation": "getAll",
+				"tableId": "bck7gp3q2",
+				"limit": 1,
+				"options": {}
+			},
+			"id": "node-0",
+			"name": "Field Get Many",
+			"type": "n8n-nodes-base.quickbase",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"credentials": {
+				"quickbaseApi": {
+					"id": "1",
+					"name": "Quick Base account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "file",
+				"operation": "delete",
+				"tableId": "bck7gp3q2",
+				"recordId": "12",
+				"fieldId": "7",
+				"versionNumber": "1"
+			},
+			"id": "node-1",
+			"name": "File Delete",
+			"type": "n8n-nodes-base.quickbase",
+			"typeVersion": 1,
+			"position": [300, 150],
+			"credentials": {
+				"quickbaseApi": {
+					"id": "1",
+					"name": "Quick Base account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "file",
+				"operation": "download",
+				"tableId": "bck7gp3q2",
+				"recordId": "12",
+				"fieldId": "7",
+				"versionNumber": "1"
+			},
+			"id": "node-2",
+			"name": "File Download",
+			"type": "n8n-nodes-base.quickbase",
+			"typeVersion": 1,
+			"position": [300, 300],
+			"credentials": {
+				"quickbaseApi": {
+					"id": "1",
+					"name": "Quick Base account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "report",
+				"operation": "run",
+				"tableId": "bck7gp3q2",
+				"reportId": "5",
+				"returnAll": false,
+				"limit": 1
+			},
+			"id": "node-3",
+			"name": "Report Run",
+			"type": "n8n-nodes-base.quickbase",
+			"typeVersion": 1,
+			"position": [300, 450],
+			"credentials": {
+				"quickbaseApi": {
+					"id": "1",
+					"name": "Quick Base account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "report",
+				"operation": "get",
+				"tableId": "bck7gp3q2",
+				"reportId": "5"
+			},
+			"id": "node-4",
+			"name": "Report Get",
+			"type": "n8n-nodes-base.quickbase",
+			"typeVersion": 1,
+			"position": [300, 600],
+			"credentials": {
+				"quickbaseApi": {
+					"id": "1",
+					"name": "Quick Base account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Field Get Many": [
+			{
+				"json": {
+					"id": 6,
+					"label": "Name"
+				}
+			}
+		],
+		"File Delete": [
+			{
+				"json": {
+					"versionNumber": 1,
+					"fileName": "report.pdf"
+				}
+			}
+		],
+		"File Download": [
+			{
+				"json": {}
+			}
+		],
+		"Report Run": [
+			{
+				"json": {
+					"Name": "Ada"
+				}
+			}
+		],
+		"Report Get": [
+			{
+				"json": {
+					"id": "5",
+					"name": "List All",
+					"type": "table"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Field Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "File Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "File Download",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Report Run",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Report Get",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

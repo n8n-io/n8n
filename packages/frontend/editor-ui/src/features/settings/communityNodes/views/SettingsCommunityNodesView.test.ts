@@ -7,7 +7,13 @@ import { setActivePinia } from 'pinia';
 import { STORES } from '@n8n/stores';
 import { useCommunityNodesStore } from '../communityNodes.store';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { mockedStore } from '@/__tests__/utils';
+import { isModalPrefetchEnabled } from '@/__tests__/prefetchModals';
 import { COMMUNITY_PACKAGE_INSTALL_MODAL_KEY } from '../communityNodes.constants';
+
+vi.mock('@/app/composables/usePrefetchModals');
+import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
 import type { PublicInstalledPackage, PublicInstalledNode } from 'n8n-workflow';
 
 const mockPushInitialize = vi.fn();
@@ -111,6 +117,7 @@ const setup = (
 		availablePackageCount?: number;
 		communityNodesManagedByEnv?: boolean;
 	} = {},
+	{ beforeRender }: { beforeRender?: () => void } = {},
 ) => {
 	const {
 		packages = [],
@@ -139,6 +146,8 @@ const setup = (
 	const uiStore = useUIStore();
 
 	uiStore.openModal = vi.fn();
+
+	beforeRender?.();
 
 	return {
 		...renderComponent({ pinia }),
@@ -280,6 +289,42 @@ describe('SettingsCommunityNodesView', () => {
 			getByText('Install').click();
 
 			expect(uiStore.openModal).toHaveBeenCalledWith(COMMUNITY_PACKAGE_INSTALL_MODAL_KEY);
+		});
+	});
+
+	describe('node type availability', () => {
+		it("loads the policy for the user's personal project", async () => {
+			const PERSONAL_PROJECT_ID = 'personal-project-1';
+			let fetchForProject: ReturnType<typeof vi.fn>;
+
+			setup(undefined, {
+				beforeRender: () => {
+					mockedStore(useProjectsStore).personalProject = { id: PERSONAL_PROJECT_ID } as never;
+					fetchForProject = vi
+						.spyOn(useTypeAvailabilityPoliciesStore(), 'fetchForProject')
+						.mockResolvedValue(undefined);
+				},
+			});
+			await flushPromises();
+
+			expect(fetchForProject!).toHaveBeenCalledWith(PERSONAL_PROJECT_ID);
+		});
+	});
+
+	describe('modal prefetch', () => {
+		it('prefetches the install modal when the user can install packages', () => {
+			setup();
+			expect(isModalPrefetchEnabled(COMMUNITY_PACKAGE_INSTALL_MODAL_KEY)).toBe(true);
+		});
+
+		it('does not prefetch the install modal when unverified packages are disabled', () => {
+			setup({ isUnverifiedPackagesEnabled: false });
+			expect(isModalPrefetchEnabled(COMMUNITY_PACKAGE_INSTALL_MODAL_KEY)).toBe(false);
+		});
+
+		it('does not prefetch the install modal when the environment manages community nodes', () => {
+			setup({ communityNodesManagedByEnv: true });
+			expect(isModalPrefetchEnabled(COMMUNITY_PACKAGE_INSTALL_MODAL_KEY)).toBe(false);
 		});
 	});
 });

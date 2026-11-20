@@ -33,7 +33,7 @@ export class TokenExchangeModule implements ModuleInterface {
 		// Register the scoped JWT auth strategy into the public API auth chain.
 		// ScopedJwtStrategy runs after ApiKeyAuthStrategy (which abstains for token-exchange JWTs).
 		const { ScopedJwtStrategy } = await import('./services/scoped-jwt.strategy.js');
-		const { AuthStrategyRegistry } = await import('@/services/auth-strategy.registry.js');
+		const { AuthStrategyRegistry } = await import('@n8n/backend-services/auth');
 		Container.get(AuthStrategyRegistry).register(Container.get(ScopedJwtStrategy));
 	}
 

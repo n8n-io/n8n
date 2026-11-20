@@ -1,6 +1,14 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-import { EventService, UrlService, RoleCacheService } from '@n8n/backend-services';
+import {
+	EventService,
+	UrlService,
+	RoleCacheService,
+	JwtService,
+	Publisher,
+	PushProxy,
+	Subscriber,
+} from '@n8n/backend-services';
 import { HTML_NONCE_PLACEHOLDER, LICENSE_FEATURES } from '@n8n/constants';
 import {
 	AuthRolesService,
@@ -31,19 +39,14 @@ import { DeprecationService } from '@/deprecation/deprecation.service';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { Push } from '@/push';
 import { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
-import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { DurableScheduler } from '@/scheduling/durable-scheduler';
 import { PollJobProvider } from '@/scheduling/poll-trigger-node/poll-job-provider';
 import { mainSystemTasks } from '@/scheduling/system-tasks/main-system-tasks';
 import { Server } from '@/server';
-import { JwtService } from '@/services/jwt.service';
-import { ExecutionsPruningService } from '@/services/pruning/executions-pruning.service';
-import { WorkflowHistoryCompactionService } from '@/services/pruning/workflow-history-compaction.service';
 
-import { WorkflowStatisticsRollupService } from '@/services/workflow-statistics-rollup.service';
 import { WaitTracker } from '@/wait-tracker';
 
 import { BaseCommand } from './base-command';
@@ -70,7 +73,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 	override needsExpressionEngine = true;
 
-	override needsTaskRunner = true;
+	override needsCodeExecution = true;
 
 	override seedsInstanceIdentity = true;
 
@@ -212,7 +215,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 			scopedLogger.debug(`Host ID: ${this.instanceSettings.hostId}`);
 
 			if (process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true') {
-				this.needsTaskRunner = false;
+				this.needsCodeExecution = false;
 			}
 		}
 
@@ -279,20 +282,24 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 			await this.initInstanceSettingsLoader();
 			this.logger.debug('Instance settings loader init complete');
+
+			const { AiPreferenceSettingsService } = await import(
+				'@/services/ai-preference-settings.service.js'
+			);
+			await Container.get(AiPreferenceSettingsService).init();
 		}
 
 		await this.initBinaryDataService();
 		this.logger.debug('Binary data service init complete');
 		Container.get(WaitTracker).init();
 		this.logger.debug('Wait tracker init complete');
+		await this.initMemoryGuard();
 		await Container.get(CredentialsOverwrites).init();
 		this.logger.debug('Credentials overwrites init complete');
 		await this.initDataDeduplicationService();
 		this.logger.debug('Data deduplication service init complete');
 		await this.initExternalHooks();
 		this.logger.debug('External hooks init complete');
-		this.initWorkflowHistory();
-		this.logger.debug('Workflow history init complete');
 
 		if (!isMultiMainEnabled) {
 			await this.cleanupTestRunner();
@@ -303,7 +310,14 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 			await this.generateStaticAssets();
 		}
 
+		Container.get(PushProxy).registerProvider(Container.get(Push));
 		await this.moduleRegistry.initModules(this.instanceSettings.instanceType);
+
+		// The skills module reads the credentials of its sources through cli.
+		const { registerSkillSourceCredentials } = await import(
+			'@/credentials/skill-source-credentials.js'
+		);
+		registerSkillSourceCredentials();
 
 		// Initialize auth handler registry after modules are loaded
 		const { AuthHandlerRegistry } = await import('@/auth/auth-handler.registry.js');
@@ -315,6 +329,34 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		await this.executionContextHookRegistry.init();
 		await Container.get(LoadNodesAndCredentials).postProcessLoaders();
+	}
+
+	private async initMemoryGuard() {
+		const { enabled } = this.globalConfig.memoryGuard;
+		if (enabled && this.globalConfig.executions.mode === 'regular') {
+			await this.startMemoryGuard();
+			return;
+		}
+
+		if (enabled) this.logger.warn('Memory guard supports only regular mode, so it stays off');
+		const { removeMemoryGuardJournal } = await import('@/memory-guard/memory-guard-journal.js');
+		removeMemoryGuardJournal();
+	}
+
+	private async startMemoryGuard() {
+		// Importing the tracker registers its lifecycle handlers. Resolve it now, so
+		// that a wiring error stops startup instead of the first execution.
+		const { RunDataTracker } = await import('@/memory-guard/run-data-tracker.js');
+		Container.get(RunDataTracker);
+		if (this.globalConfig.endpoints.metrics.enable) {
+			const { PrometheusMemoryGuardMetricsService } = await import(
+				'@/metrics/prometheus/memory-guard-metrics.service.js'
+			);
+			Container.get(PrometheusMemoryGuardMetricsService).init();
+		}
+		const { MemoryGuardService } = await import('@/memory-guard/memory-guard.service.js');
+		Container.get(MemoryGuardService).init();
+		this.logger.debug('Memory guard init complete');
 	}
 
 	private async initInstanceSettingsLoader(): Promise<void> {
@@ -361,6 +403,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 	 * database yet when the follower starts up.
 	 */
 	private async ensureMultiMainLicensed() {
+		// oxlint-disable-next-line typescript/no-deprecated
 		if (this.license.isMultiMainLicensed()) return;
 
 		if (!this.instanceSettings.isLeader) {
@@ -372,6 +415,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 				);
 				await sleep(delayMs);
 				await this.license.reload();
+				// oxlint-disable-next-line typescript/no-deprecated
 				if (this.license.isMultiMainLicensed()) return;
 			}
 		}
@@ -419,10 +463,6 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		}
 
 		await this.server.start();
-
-		Container.get(ExecutionsPruningService).init();
-		Container.get(WorkflowHistoryCompactionService).init();
-		Container.get(WorkflowStatisticsRollupService).init();
 
 		// The runner provisions the durable system task jobs, so it must finish
 		// before the scheduler can claim one.

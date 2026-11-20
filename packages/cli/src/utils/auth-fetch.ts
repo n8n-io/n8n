@@ -1,6 +1,7 @@
 import { createRefreshingAuthFetch } from '@n8n/ai-utilities';
 import type { CustomFetch } from '@n8n/backend-network';
-import { assertUrlAllowed, UserError } from 'n8n-workflow';
+import { assertUrlAllowed } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import type { DomainRestrictionMode, ICredentialDataDecryptedObject } from 'n8n-workflow';
 
 export type AuthFetchDomainPolicy = { mode: 'domains'; domains: string } | { mode: 'none' };

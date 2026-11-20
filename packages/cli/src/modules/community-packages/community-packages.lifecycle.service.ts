@@ -1,6 +1,13 @@
+import type { PackagePolicyRestrictions } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
+import {
+	EventService,
+	InstalledTypeRestrictionsProxy,
+	PushProxy,
+	loginIdOf,
+} from '@n8n/backend-services';
 import { InstanceSettingsLoaderConfig } from '@n8n/config';
+import type { OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
@@ -14,7 +21,6 @@ import {
 import { BadRequestError, InternalServerError, NotFoundError } from '@n8n/errors';
 import { IncompatibleNodesApiVersionError } from '@/errors/response-errors/incompatible-nodes-api-version.error';
 import type { UserLike } from '@/events/maps/relay.event-map';
-import { Push } from '@/push';
 
 import { selectVettedVersion } from './community-node-types-utils';
 import { CommunityNodeTypesService } from './community-node-types.service';
@@ -48,13 +54,14 @@ const MANAGED_BY_ENV_MESSAGE =
 export class CommunityPackagesLifecycleService {
 	constructor(
 		private readonly logger: Logger,
-		private readonly push: Push,
+		private readonly push: PushProxy,
 		private readonly communityPackagesService: CommunityPackagesService,
 		private readonly eventService: EventService,
 		private readonly communityNodeTypesService: CommunityNodeTypesService,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly communityPackagesConfig: CommunityPackagesConfig,
 		private readonly instanceSettingsLoaderConfig: InstanceSettingsLoaderConfig,
+		private readonly installedTypeRestrictions: InstalledTypeRestrictionsProxy,
 	) {}
 
 	private assertNotManagedByEnv() {
@@ -105,6 +112,8 @@ export class CommunityPackagesLifecycleService {
 				await executeNpmCommand(['outdated', '--json'], {
 					doNotHandleError: true,
 					cwd: this.instanceSettings.nodesDownloadDir,
+					registry: this.communityPackagesConfig.registry,
+					authToken: this.communityPackagesConfig.authToken || undefined,
 				});
 			} catch (error) {
 				if (isNpmExecErrorWithStdout(error) && error.code === 1) {
@@ -131,6 +140,7 @@ export class CommunityPackagesLifecycleService {
 		args: { name: string | undefined; version?: string },
 		user: UserLike,
 		presentation: CommunityPackageInstallPresentation,
+		ctx: OperationContext = {},
 	): Promise<InstalledPackages> {
 		this.assertNotManagedByEnv();
 		const { name } = args;
@@ -209,6 +219,8 @@ export class CommunityPackagesLifecycleService {
 				success: false,
 				packageVersion,
 				failureReason: errorMessage,
+				source: presentation,
+				loginId: loginIdOf(ctx),
 			});
 
 			// Rethrow unwrapped: the actionable copy and its metadata must reach the UI.
@@ -243,15 +255,39 @@ export class CommunityPackagesLifecycleService {
 			packageNodeNames: installedPackage.installedNodes.map((node) => node.name),
 			packageAuthor: installedPackage.authorName,
 			packageAuthorEmail: installedPackage.authorEmail,
+			source: presentation,
+			loginId: loginIdOf(ctx),
 		});
 
 		return installedPackage;
+	}
+
+	/**
+	 * `undefined` when no policy was evaluated. The package is already installed when this runs,
+	 * so an evaluation error must not fail the install request.
+	 */
+	async describePolicyRestrictions(
+		installedPackage: Pick<InstalledPackages, 'packageName' | 'installedNodes'>,
+	): Promise<PackagePolicyRestrictions | undefined> {
+		try {
+			const restrictions = await this.installedTypeRestrictions.describeRestrictions({
+				nodeTypes: installedPackage.installedNodes.map((node) => node.type),
+			});
+			return restrictions ?? undefined;
+		} catch (error) {
+			this.logger.warn('Failed to evaluate policy restrictions for an installed package', {
+				packageName: installedPackage.packageName,
+				error: ensureError(error),
+			});
+			return undefined;
+		}
 	}
 
 	async update(
 		args: { name: string | undefined; version?: string },
 		user: UserLike,
 		whenMissing: MissingInstalledPackageBehavior,
+		ctx: OperationContext = {},
 	): Promise<InstalledPackages> {
 		this.assertNotManagedByEnv();
 		const { name } = args;
@@ -326,6 +362,7 @@ export class CommunityPackagesLifecycleService {
 				packageNodeNames: newInstalledPackage.installedNodes.map((n) => n.name),
 				packageAuthor: newInstalledPackage.authorName,
 				packageAuthorEmail: newInstalledPackage.authorEmail,
+				loginId: loginIdOf(ctx),
 			});
 
 			return newInstalledPackage;
@@ -357,6 +394,7 @@ export class CommunityPackagesLifecycleService {
 		packageName: string | undefined,
 		user: UserLike,
 		whenMissing: MissingInstalledPackageBehavior,
+		ctx: OperationContext = {},
 	): Promise<void> {
 		this.assertNotManagedByEnv();
 		if (!packageName) {
@@ -407,6 +445,7 @@ export class CommunityPackagesLifecycleService {
 			packageNodeNames: installedPackage.installedNodes.map((node) => node.name),
 			packageAuthor: installedPackage.authorName,
 			packageAuthorEmail: installedPackage.authorEmail,
+			loginId: loginIdOf(ctx),
 		});
 	}
 }

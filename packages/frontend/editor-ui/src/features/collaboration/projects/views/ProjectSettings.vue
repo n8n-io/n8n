@@ -1,9 +1,11 @@
 <script lang="ts" setup>
+import { ProjectSelfHealingSection } from '@n8n/frontend-module-self-healing';
 import type { Role } from '@n8n/permissions';
 import { computed, ref, watch, onBeforeMount, onMounted, nextTick } from 'vue';
-import { useRouter } from 'vue-router';
+import { onBeforeRouteLeave, useRouter } from 'vue-router';
 import { deepCopy } from 'n8n-workflow';
-import { useDebounceFn } from '@vueuse/core';
+import { useDebounceFn, useEventListener } from '@vueuse/core';
+import { matchesAllTerms } from '@n8n/utils/search/matches-all-terms';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useI18n } from '@n8n/i18n';
 import { type ResourceCounts, useProjectsStore } from '../projects.store';
@@ -11,7 +13,8 @@ import { DEFAULT_PROJECT_ICON } from '../projects.constants';
 import type { Project, ProjectRelation, ProjectMemberData } from '../projects.types';
 import { useToast } from '@n8n/composables/useToast';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
-import { DEBOUNCE_TIME, VIEWS } from '@/app/constants';
+import { DEBOUNCE_TIME, MODAL_CANCEL, MODAL_CONFIRM, VIEWS } from '@/app/constants';
+import { useMessage } from '@/app/composables/useMessage';
 import ProjectDeleteDialog from '../components/ProjectDeleteDialog.vue';
 import ProjectRoleUpgradeDialog from '../components/ProjectRoleUpgradeDialog.vue';
 import ProjectMembersTable from '../components/ProjectMembersTable.vue';
@@ -56,6 +59,7 @@ const rolesStore = useRolesStore();
 const cloudPlanStore = useCloudPlanStore();
 const settingsStore = useSettingsStore();
 const toast = useToast();
+const message = useMessage();
 const router = useRouter();
 const telemetry = useTelemetry();
 const documentTitle = useDocumentTitle();
@@ -114,7 +118,7 @@ const membersTableState = ref<TableOptions>({
 	sortBy: [],
 });
 
-const userSearchQuery = ref('');
+let latestUserSearchId = 0;
 const userSearchResults = ref<typeof usersStore.allUsers>([]);
 const isLoadingUsers = ref(false);
 
@@ -432,6 +436,8 @@ const onConfirmDelete = async (transferId?: string) => {
 		if (projectsStore.currentProject) {
 			const projectName = projectsStore.currentProject?.name ?? '';
 			await projectsStore.deleteProject(projectsStore.currentProject.id, transferId);
+			// The project no longer exists, so its pending edits cannot be saved
+			isDirty.value = false;
 			await router.push({ name: VIEWS.HOMEPAGE });
 			toast.showMessage({
 				title: i18n.baseText('projects.settings.delete.successful.title', {
@@ -552,16 +558,14 @@ const relationUsers = computed<ProjectMemberData[]>(() => {
 	return rows;
 });
 
-const filteredMembers = computed(() => {
-	if (!search.value.trim()) return relationUsers.value;
+const matchesUser = (
+	query: string,
+	user: { firstName?: string | null; lastName?: string | null; email?: string | null },
+) => matchesAllTerms(query, [user.firstName, user.lastName, user.email]);
 
-	const searchTerm = search.value.toLowerCase();
-	return relationUsers.value.filter((member) => {
-		const fullName = `${member.firstName ?? ''} ${member.lastName ?? ''}`.toLowerCase();
-		const email = (member.email ?? '').toLowerCase();
-		return fullName.includes(searchTerm) || email.includes(searchTerm);
-	});
-});
+const filteredMembers = computed(() =>
+	relationUsers.value.filter((member) => matchesUser(search.value, member)),
+);
 
 const memberSortName = (member: ProjectMemberData) =>
 	`${member.firstName ?? ''} ${member.lastName ?? ''}`.trim() || (member.email ?? '');
@@ -614,13 +618,10 @@ watch(shouldShowSearch, (show) => {
 	}
 });
 
-const debouncedSearch = useDebounceFn(() => {
-	membersTableState.value.page = 0; // Reset to first page on search
-}, getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH));
-
+// The filter applies on each keystroke, so the page must reset at the same time.
 const onSearch = (value: string) => {
 	search.value = value;
-	void debouncedSearch();
+	membersTableState.value.page = 0;
 };
 
 const onUpdateMembersTableOptions = (options: TableOptions) => {
@@ -628,7 +629,7 @@ const onUpdateMembersTableOptions = (options: TableOptions) => {
 };
 
 const searchUsers = async (query: string) => {
-	userSearchQuery.value = query;
+	const searchId = ++latestUserSearchId;
 
 	isLoadingUsers.value = true;
 	try {
@@ -647,21 +648,15 @@ const searchUsers = async (query: string) => {
 		}
 
 		await usersStore.fetchUsers({ take: 50, filter });
+		// Only the latest request may set the results and the loading state.
+		if (searchId !== latestUserSearchId) return;
 
-		if (query.trim()) {
-			userSearchResults.value = usersStore.allUsers.filter((user) => {
-				const searchLower = query.toLowerCase();
-				const fullName = `${user.firstName ?? ''} ${user.lastName ?? ''}`.toLowerCase();
-				const email = (user.email ?? '').toLowerCase();
-				return fullName.includes(searchLower) || email.includes(searchLower);
-			});
-		} else {
-			userSearchResults.value = usersStore.allUsers;
-		}
+		userSearchResults.value = usersStore.allUsers.filter((user) => matchesUser(query, user));
 	} catch (error) {
+		if (searchId !== latestUserSearchId) return;
 		toast.showError(error, i18n.baseText('projects.settings.users.search.error'));
 	} finally {
-		isLoadingUsers.value = false;
+		if (searchId === latestUserSearchId) isLoadingUsers.value = false;
 	}
 };
 
@@ -673,6 +668,48 @@ onBeforeMount(async () => {
 });
 
 const rolesManaged = computed(() => projectsStore.currentProject?.rolesManaged ?? false);
+
+// The icon saves on change, but the other fields need "Save". Warn before the user loses them.
+useEventListener(window, 'beforeunload', (event) => {
+	if (isDirty.value) {
+		event.preventDefault();
+	}
+});
+
+onBeforeRouteLeave(async (_to, _from, next) => {
+	if (!isDirty.value) {
+		next();
+		return;
+	}
+
+	const response = await message.confirm(
+		i18n.baseText('generic.unsavedWork.confirmMessage.message'),
+		{
+			title: i18n.baseText('generic.unsavedWork.confirmMessage.headline'),
+			type: 'warning',
+			confirmButtonText: i18n.baseText('generic.unsavedWork.confirmMessage.confirmButtonText'),
+			cancelButtonText: i18n.baseText('generic.unsavedWork.confirmMessage.cancelButtonText'),
+			showClose: true,
+		},
+	);
+
+	if (response === MODAL_CONFIRM) {
+		// An invalid form or a failed save stays dirty, so the user stays on the page
+		if (isValid.value) {
+			await onSubmit();
+		}
+		next(!isDirty.value);
+		return;
+	}
+
+	if (response === MODAL_CANCEL) {
+		onCancel();
+		next();
+		return;
+	}
+
+	next(false);
+});
 
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('projects.settings'));
@@ -694,7 +731,7 @@ onMounted(async () => {
 				</N8nText>
 				<div :class="$style.headerButtons">
 					<N8nButton
-						variant="subtle"
+						variant="outline"
 						native-type="button"
 						:disabled="!isDirty"
 						class="mr-2xs"
@@ -758,6 +795,13 @@ onMounted(async () => {
 						@validate="isDescriptionValid = $event"
 					/>
 				</fieldset>
+				<ProjectSelfHealingSection
+					v-if="
+						settingsStore.moduleSettings['instance-ai']?.workflowSuggestionsEnabled &&
+						projectsStore.currentProject
+					"
+					:project-id="projectsStore.currentProject.id"
+				/>
 			</template>
 
 			<ProjectExternalSecrets :class="$style.externalSecrets" />
@@ -856,7 +900,7 @@ onMounted(async () => {
 						i18n.baseText('projects.settings.danger.message')
 					}}</small>
 					<N8nButton
-						variant="subtle"
+						variant="outline"
 						size="large"
 						native-type="button"
 						data-test-id="project-settings-delete-button"
@@ -950,6 +994,10 @@ onMounted(async () => {
 
 .membersTableContainer {
 	margin-top: var(--spacing--sm);
+
+	:global(.table-scroll) {
+		scrollbar-gutter: auto;
+	}
 }
 
 .search {
@@ -971,6 +1019,15 @@ onMounted(async () => {
 .userSelect {
 	max-width: var(--project-field--width);
 	width: 100%;
+}
+
+/* N8nSelect still resolves its sizes to the legacy element-plus heights (large = 42px),
+   so it never lines up with N8nInput. Pin the picker to the token N8nInput "large" uses,
+   which is the height of every other input on this page. */
+.userSelect :global(.el-select .el-input__inner) {
+	height: var(--height--lg);
+	min-height: var(--height--lg);
+	line-height: var(--height--lg);
 }
 
 /* Ensure textarea uses regular UI font, not monospace */

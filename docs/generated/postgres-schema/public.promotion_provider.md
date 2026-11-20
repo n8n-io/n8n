@@ -8,9 +8,9 @@
 | authType | varchar(32) |  | false |  |  | PromotionProviderAuthType enum: "ssh-key", "token". "token" is an HTTP(S) username and password. |
 | config | json |  | false |  |  | Non-secret provider settings, with their own schemaVersion. Validated in code. |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
-| id | varchar(36) |  | false | [public.promotion_connection](public.promotion_connection.md) |  |  |
+| id | varchar(36) |  | false | [public.promotion_environment](public.promotion_environment.md) |  |  |
 | name | varchar(128) |  | false |  |  |  |
-| type | varchar(32) |  | false |  |  | PromotionProviderType enum: "git" |
+| type | varchar(32) |  | false |  |  | PromotionProviderType enum: "git", "gitlab" |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 
 ## Constraints
@@ -18,7 +18,7 @@
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
 | CHK_promotion_provider_authType | CHECK | CHECK ((("authType")::text = ANY ((ARRAY['ssh-key'::character varying, 'token'::character varying])::text[]))) |
-| CHK_promotion_provider_type | CHECK | CHECK (((type)::text = 'git'::text)) |
+| CHK_promotion_provider_type | CHECK | CHECK (((type)::text = ANY ((ARRAY['git'::character varying, 'gitlab'::character varying])::text[]))) |
 | PK_6e968555ff44699f59ad10be765 | PRIMARY KEY | PRIMARY KEY (id) |
 | promotion_provider_authType_not_null | n | NOT NULL "authType" |
 | promotion_provider_auth_not_null | n | NOT NULL auth |
@@ -40,7 +40,7 @@
 ```mermaid
 erDiagram
 
-"public.promotion_connection" }o--|| "public.promotion_provider" : "FOREIGN KEY (#quot;providerId#quot;) REFERENCES promotion_provider(id) ON DELETE RESTRICT"
+"public.promotion_environment" }o--|| "public.promotion_provider" : "FOREIGN KEY (#quot;providerId#quot;) REFERENCES promotion_provider(id) ON DELETE RESTRICT"
 
 "public.promotion_provider" {
   text auth
@@ -52,13 +52,15 @@ erDiagram
   varchar_32_ type
   timestamp_3__with_time_zone updatedAt
 }
-"public.promotion_connection" {
+"public.promotion_environment" {
   timestamp_3__with_time_zone createdAt
-  varchar_36_ id
+  varchar_16_ direction
+  uuid id
   varchar_128_ name
   varchar_36_ providerId FK
+  json remote
   varchar_16_ scope
-  json target
+  json settings
   timestamp_3__with_time_zone updatedAt
 }
 ```

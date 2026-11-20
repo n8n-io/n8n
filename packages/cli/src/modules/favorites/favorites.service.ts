@@ -1,5 +1,10 @@
 import type { FavoriteResourceType } from '@n8n/api-types';
 import {
+	FavoriteResourceResolverRegistry,
+	type FavoriteResourceMeta as ResourceMeta,
+	type ResolvedFavoriteResourceType,
+} from '@n8n/backend-services';
+import {
 	FolderRepository,
 	ProjectRepository,
 	SharedWorkflowRepository,
@@ -14,12 +19,6 @@ import { In } from '@n8n/typeorm';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 
 import { UserFavoriteRepository } from './database/repositories/user-favorite.repository';
-import type {
-	FavoriteResourceMeta as ResourceMeta,
-	ResolvedFavoriteResourceType,
-} from './favorite-resource-resolver.registry';
-import { FavoriteResourceResolverRegistry } from './favorite-resource-resolver.registry';
-
 type Favorite = { resourceId: string; resourceType: FavoriteResourceType };
 
 const idsOfType = (favorites: Favorite[], type: FavoriteResourceType): string[] =>
@@ -34,10 +33,19 @@ const enrichWithName = <F>(
 const enrichWithMeta = <F>(
 	fav: F,
 	meta: ResourceMeta | undefined,
-): Array<F & { resourceName: string; resourceProjectId: string }> =>
+): Array<
+	F & { resourceName: string; resourceProjectId: string; folderResourceType?: 'workflow' | 'agent' }
+> =>
 	meta === undefined
 		? []
-		: [{ ...fav, resourceName: meta.name, resourceProjectId: meta.projectId }];
+		: [
+				{
+					...fav,
+					resourceName: meta.name,
+					resourceProjectId: meta.projectId,
+					...(meta.folderResourceType ? { folderResourceType: meta.folderResourceType } : {}),
+				},
+			];
 
 @Service()
 export class FavoritesService {
@@ -188,7 +196,11 @@ export class FavoritesService {
 		for (const folder of folders) {
 			const projectId = folder.homeProject?.id;
 			if (projectId && (hasGlobalAccess || accessibleProjectIds.has(projectId))) {
-				result.set(folder.id, { name: folder.name, projectId });
+				result.set(folder.id, {
+					name: folder.name,
+					projectId,
+					folderResourceType: folder.resourceType,
+				});
 			}
 		}
 		return result;

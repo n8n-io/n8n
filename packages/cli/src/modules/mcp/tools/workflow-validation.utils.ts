@@ -1,5 +1,5 @@
 import { UrlService } from '@n8n/backend-services';
-import type { User } from '@n8n/db';
+import type { PublishHistoryScope, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 
@@ -43,6 +43,7 @@ export type GetMcpWorkflowOptions = {
 	includeActiveVersion?: boolean;
 	includeTags?: boolean;
 	includeParentFolder?: boolean;
+	publishHistory?: PublishHistoryScope;
 };
 
 /** The editor opens the workflow settings modal when the `settings` query parameter is set. */
@@ -59,7 +60,7 @@ function getWorkflowSettingsUrl(workflowId: string): string {
  */
 export function validateMcpWorkflow<
 	T extends Pick<FoundWorkflow, 'id' | 'isArchived' | 'settings'>,
->(workflow: T | null | undefined): T {
+>(workflow: T | null | undefined, { allowArchived = false } = {}): T {
 	if (!workflow) {
 		throw new WorkflowAccessError(
 			"Workflow not found or you don't have permission to access it.",
@@ -67,7 +68,7 @@ export function validateMcpWorkflow<
 		);
 	}
 
-	if (workflow.isArchived) {
+	if (workflow.isArchived && !allowArchived) {
 		throw new WorkflowAccessError(
 			`Workflow '${workflow.id}' is archived and cannot be accessed.`,
 			'workflow_archived',

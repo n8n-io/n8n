@@ -14,34 +14,12 @@
 
 import { initGithub, getEventFromGithubEventPath } from '../github-helpers.mjs';
 import { matchesGlob } from '../glob.mjs';
+import { isTestFile, TEST_PATTERNS } from '../test-files.mjs';
+
+export { isTestFile, TEST_PATTERNS };
 
 export const SIZE_LIMIT = 1000;
 export const OVERRIDE_COMMAND = '/size-limit-override';
-
-export const TEST_PATTERNS = [
-	// Test files (by extension)
-	'**/*.test.ts',
-	'**/*.test.js',
-	'**/*.test.mjs',
-	'**/*.spec.ts',
-	'**/*.spec.js',
-	'**/*.spec.mjs',
-	// Test directories
-	'**/test/**',
-	'**/tests/**',
-	'**/__tests__/**',
-	// Snapshots
-	'**/__snapshots__/**',
-	'**/*.snap',
-	// Fixtures and mocks
-	'**/fixtures/**',
-	'**/__mocks__/**',
-	// Former packages/testing workspaces
-	'packages/quality/policy/**',
-	'packages/quality/testing/**',
-	'packages/quality/environments/**',
-	'packages/quality/efficiency/microbenchmarks/**',
-];
 
 export const MISC_PATTERNS = [
 	// Lock file (can produce massive diffs on dependency changes)
@@ -59,7 +37,7 @@ export const EXCLUDE_PATTERNS = [...TEST_PATTERNS, ...MISC_PATTERNS];
  * @returns { 'testFiles' | 'misc' | 'sourceCode' }
  */
 export function categorizeFile(filename) {
-	if (TEST_PATTERNS.some((pattern) => matchesGlob(filename, pattern))) return 'testFiles';
+	if (isTestFile(filename)) return 'testFiles';
 	if (MISC_PATTERNS.some((pattern) => matchesGlob(filename, pattern))) return 'misc';
 	return 'sourceCode';
 }

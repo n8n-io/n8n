@@ -1,13 +1,25 @@
-import { In, type Repository } from '@n8n/typeorm';
+import { In, LessThanOrEqual, type EntityManager, type Repository } from '@n8n/typeorm';
 
-import type { WorkflowExecution } from './entities';
+import { WorkflowSeededStep, type WorkflowExecution } from './entities';
+import { parentLinkSql, toParentColumns } from './parent-link-columns';
 import {
 	ExecutionNotFoundError,
+	ParentExecutionEndedError,
 	type ExecutionRecord,
 	type ExecutionStore,
 	type NewExecutionRecord,
+	type StaleQueuedExecution,
 } from '../execution/execution-store';
-import { LIVE_EXECUTION_STATUSES, type ExecutionStatus } from '../execution/execution.types';
+import { DEFAULT_STALENESS_THRESHOLDS, type StalenessThresholds } from '../execution/staleness';
+import {
+	isEndedExecutionStatus,
+	LIVE_EXECUTION_STATUSES,
+	stepKeyId,
+	type ExecutionStatus,
+	type StepKey,
+	type StepKeyId,
+	type StepSlots,
+} from '../execution/execution.types';
 
 /**
  * Insert payload accepted by the repository. Derived from the method rather than
@@ -17,14 +29,75 @@ type InsertValues = Parameters<Repository<WorkflowExecution>['insert']>[0];
 
 /** TypeORM-backed `ExecutionStore` adapter. */
 export class TypeOrmExecutionStore implements ExecutionStore {
-	constructor(private readonly repo: Repository<WorkflowExecution>) {}
+	constructor(
+		private readonly repo: Repository<WorkflowExecution>,
+		private readonly staleness: StalenessThresholds = DEFAULT_STALENESS_THRESHOLDS,
+	) {}
 
-	async createExecution(record: NewExecutionRecord): Promise<void> {
-		const execution = this.repo.create({ ...record, finishedAt: null });
-		// The cast is needed because the insert payload type recurses into the
-		// opaque `graph` jsonb and rejects `StepConfig`'s deliberate `unknown`.
-		// NOTE: prefer insert to save for performance reasons.
-		await this.repo.insert(execution as InsertValues);
+	/** The `stale_after` value of an execution that enters `status` now. */
+	private staleAfterFor(status: ExecutionStatus): Date | null {
+		return status === 'queued' ? new Date(Date.now() + this.staleness.queuedMs) : null;
+	}
+
+	async createExecution({ seededSteps, parent, ...record }: NewExecutionRecord): Promise<void> {
+		const execution = this.repo.create({
+			...record,
+			...toParentColumns(parent),
+			finishedAt: null,
+			staleAfter: this.staleAfterFor(record.status),
+		});
+		const seeded = Object.entries(seededSteps ?? {}).flatMap(([nodeId, passes]) =>
+			passes.map((outputs, iteration) => ({ executionId: record.id, nodeId, iteration, outputs })),
+		);
+		await this.repo.manager.transaction(async (manager) => {
+			if (parent) await this.holdParentNotEnded(manager, parent.executionId);
+			// The cast is needed because the insert payload type recurses into the
+			// opaque `graph` jsonb and rejects `StepConfig`'s deliberate `unknown`.
+			// NOTE: prefer insert to save for performance reasons.
+			await manager.insert(this.repo.target, execution as InsertValues);
+			if (seeded.length > 0) await manager.insert(WorkflowSeededStep, seeded);
+		});
+	}
+
+	/**
+	 * Takes a shared lock on the parent row. We do this to prevent a race between
+	 * sub-execution creation and parent status update (cancellation, failure).
+	 */
+	private async holdParentNotEnded(manager: EntityManager, parentId: string): Promise<void> {
+		const row = await manager
+			.createQueryBuilder(this.repo.target, 'execution')
+			.setLock('pessimistic_read')
+			.select('execution.status', 'status')
+			.where('execution.id = :parentId', { parentId })
+			.getRawOne<{ status: ExecutionStatus }>();
+		if (!row) throw new ExecutionNotFoundError(parentId);
+		if (isEndedExecutionStatus(row.status)) {
+			throw new ParentExecutionEndedError(parentId, row.status);
+		}
+	}
+
+	async loadSeededOutputs(
+		executionId: string,
+		keys: StepKey[],
+	): Promise<Map<StepKeyId, StepSlots>> {
+		if (keys.length === 0) return new Map();
+
+		const tuples: string[] = [];
+		const parameters: Record<string, string | number> = { executionId };
+		keys.forEach(({ nodeId, iteration }, index) => {
+			tuples.push(`(:n${index}, :i${index})`);
+			parameters[`n${index}`] = nodeId;
+			parameters[`i${index}`] = iteration;
+		});
+		const rows = await this.repo.manager
+			.getRepository(WorkflowSeededStep)
+			.createQueryBuilder('seeded')
+			.where('seeded.execution_id = :executionId')
+			.andWhere(`(seeded.node_id, seeded.iteration) IN (${tuples.join(', ')})`)
+			.setParameters(parameters)
+			.getMany();
+
+		return new Map(rows.map((row) => [stepKeyId(row), row.outputs]));
 	}
 
 	async loadExecution(id: string): Promise<ExecutionRecord> {
@@ -38,14 +111,26 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 			.addSelect('execution.trigger_outputs', 'triggerOutputs')
 			.addSelect('execution.caller_context', 'callerContext')
 			.addSelect('execution.response_expectation', 'responseExpectation')
+			.addSelect(parentLinkSql('execution'), 'parent')
+			.addSelect('execution.lifecycle_event_subscription', 'lifecycleEventSubscription')
+			.addSelect('execution.finished_at', 'finishedAt')
 			.where('execution.id = :id', { id })
 			.getRawOne();
 		if (!row) throw new ExecutionNotFoundError(id);
 		return row;
 	}
 
+	async loadExecutionStatus(id: string): Promise<ExecutionStatus> {
+		const row = await this.repo.findOne({ select: { status: true }, where: { id } });
+		if (!row) throw new ExecutionNotFoundError(id);
+		return row.status;
+	}
+
 	async transitionStatus(id: string, from: ExecutionStatus, to: ExecutionStatus): Promise<boolean> {
-		const result = await this.repo.update({ id, status: from }, { status: to });
+		const result = await this.repo.update(
+			{ id, status: from },
+			{ status: to, staleAfter: this.staleAfterFor(to) },
+		);
 		return result.affected === 1;
 	}
 
@@ -66,9 +151,41 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 		const finishedAt = new Date();
 		const result = await this.repo.update(
 			{ id, status: In(['queued', ...LIVE_EXECUTION_STATUSES] satisfies ExecutionStatus[]) },
-			{ status: 'cancelled', finishedAt },
+			{ status: 'cancelled', finishedAt, staleAfter: null },
 		);
 		return result.affected === 1 ? { finishedAt } : null;
+	}
+
+	async findStaleQueuedExecutions(at: Date, limit: number): Promise<StaleQueuedExecution[]> {
+		// Served by the partial index on `stale_after` for `queued` rows.
+		const rows = await this.repo.find({
+			select: { id: true, staleAfter: true },
+			where: { status: 'queued', staleAfter: LessThanOrEqual(at) },
+			order: { staleAfter: 'ASC' },
+			take: limit,
+		});
+		return rows.flatMap(({ id, staleAfter }) => (staleAfter ? [{ id, staleAfter }] : []));
+	}
+
+	async renewQueuedExecution(id: string, staleAfter: Date): Promise<boolean> {
+		const result = await this.repo.update(
+			{ id, status: 'queued', staleAfter },
+			{ staleAfter: this.staleAfterFor('queued') },
+		);
+		return result.affected === 1;
+	}
+
+	async loadLiveSubExecutionIds(parentExecutionId: string): Promise<string[]> {
+		const rows: Array<{ id: string }> = await this.repo
+			.createQueryBuilder('execution')
+			.select('execution.id', 'id')
+			.where('execution.parent_execution_id = :parentExecutionId', { parentExecutionId })
+			.andWhere('execution.status IN (:...statuses)', {
+				statuses: ['queued', ...LIVE_EXECUTION_STATUSES] satisfies ExecutionStatus[],
+			})
+			.orderBy('execution.id', 'ASC')
+			.getRawMany();
+		return rows.map(({ id }) => id);
 	}
 
 	async refreshLiveStatus(id: string): Promise<void> {

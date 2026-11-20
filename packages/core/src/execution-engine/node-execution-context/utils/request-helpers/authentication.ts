@@ -1,21 +1,30 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 
-import { OutboundHttp, removeEmptyBody } from '@n8n/backend-network';
-import { Container } from '@n8n/di';
+import { removeEmptyBody } from '@n8n/backend-network';
 import type {
 	IAdditionalCredentialOptions,
 	IAllExecuteFunctions,
 	ICredentialDataDecryptedObject,
 	IHttpRequestOptions,
 	INode,
-	IRequestOptions,
+	LegacyRequestOptions,
 	IWorkflowExecuteAdditionalData,
+	WithRequestTarget,
 	Workflow,
 } from 'n8n-workflow';
-import { ExecutionBaseError, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import {
+	ExecutionBaseError,
+	hasPolicyRefusalMarker,
+	NodeApiError,
+	NodeOperationError,
+} from 'n8n-workflow';
 
-import { callEvalMockHandler, normalizeLegacyRequest } from '@/execution-engine/eval-mock-helpers';
+import {
+	callEvalMockHandler,
+	normalizeLegacyRequest,
+	resolveEvalMockRequestUrl,
+} from '@/execution-engine/eval-mock-helpers';
 
 import { proxyRequestToAxios } from './legacy-request-adapter';
 import {
@@ -25,6 +34,8 @@ import {
 	requestOAuth1,
 	requestOAuth2,
 } from './oauth';
+import { sendHttpRequest } from './outbound-request';
+import { toHttpRequestOptions, toLegacyRequestOptions } from './request-target';
 
 /**
  * Whether a failed request earns the generic `preAuthentication` refresh-and-resend. Only the
@@ -51,12 +62,13 @@ function shouldRetryAfterPreAuthentication(
 export async function httpRequestWithAuthentication(
 	this: IAllExecuteFunctions,
 	credentialsType: string,
-	requestOptions: IHttpRequestOptions,
+	requestOptions: IHttpRequestOptions | WithRequestTarget<IHttpRequestOptions>,
 	workflow: Workflow,
 	node: INode,
 	additionalData: IWorkflowExecuteAdditionalData,
 	additionalCredentialOptions?: IAdditionalCredentialOptions,
 ) {
+	requestOptions = toHttpRequestOptions(requestOptions);
 	removeEmptyBody(requestOptions);
 
 	// Cancel this request on execution cancellation
@@ -71,7 +83,7 @@ export async function httpRequestWithAuthentication(
 	if (additionalData.evalLlmMockHandler) {
 		const evalMockResponse = await callEvalMockHandler(
 			additionalData.evalLlmMockHandler,
-			requestOptions,
+			resolveEvalMockRequestUrl(requestOptions, credentialsType),
 			node,
 			requestOptions.returnFullResponse,
 		);
@@ -82,9 +94,11 @@ export async function httpRequestWithAuthentication(
 		const parentTypes = additionalData.credentialsHelper.getParentTypes(credentialsType);
 
 		if (parentTypes.includes('oAuth1Api')) {
+			// oxlint-disable-next-line typescript/no-deprecated
 			return await requestOAuth1.call(this, credentialsType, requestOptions, true);
 		}
 		if (parentTypes.includes('oAuth2Api')) {
+			// oxlint-disable-next-line typescript/no-deprecated
 			return await requestOAuth2.call(
 				this,
 				credentialsType,
@@ -133,8 +147,11 @@ export async function httpRequestWithAuthentication(
 			node,
 		);
 		requestSent = true;
-		return await Container.get(OutboundHttp).requests().request(requestOptions);
+		return await sendHttpRequest(requestOptions, additionalData, node);
 	} catch (error) {
+		// Keep the policy reason visible instead of reporting it as a failed API call.
+		if (hasPolicyRefusalMarker(error)) throw error;
+
 		// if there is a pre authorization method defined and
 		// the method failed due to unauthorized request
 		if (
@@ -179,7 +196,7 @@ export async function httpRequestWithAuthentication(
 					workflow,
 					node,
 				);
-				return await Container.get(OutboundHttp).requests().request(requestOptions);
+				return await sendHttpRequest(requestOptions, additionalData, node);
 			} catch (error) {
 				throw new NodeApiError(this.getNode(), error);
 			}
@@ -193,13 +210,14 @@ export async function httpRequestWithAuthentication(
 export async function requestWithAuthentication(
 	this: IAllExecuteFunctions,
 	credentialsType: string,
-	requestOptions: IRequestOptions,
+	requestOptions: LegacyRequestOptions,
 	workflow: Workflow,
 	node: INode,
 	additionalData: IWorkflowExecuteAdditionalData,
 	additionalCredentialOptions?: IAdditionalCredentialOptions,
 	itemIndex?: number,
 ) {
+	requestOptions = toLegacyRequestOptions(requestOptions);
 	removeEmptyBody(requestOptions);
 
 	let credentialsDecrypted: ICredentialDataDecryptedObject | undefined;
@@ -209,7 +227,7 @@ export async function requestWithAuthentication(
 	if (additionalData.evalLlmMockHandler) {
 		const evalMockResponse = await callEvalMockHandler(
 			additionalData.evalLlmMockHandler,
-			normalizeLegacyRequest(requestOptions),
+			normalizeLegacyRequest(resolveEvalMockRequestUrl(requestOptions, credentialsType)),
 			node,
 			requestOptions.resolveWithFullResponse,
 			'legacy',
@@ -221,9 +239,11 @@ export async function requestWithAuthentication(
 		const parentTypes = additionalData.credentialsHelper.getParentTypes(credentialsType);
 
 		if (credentialsType === 'oAuth1Api' || parentTypes.includes('oAuth1Api')) {
+			// oxlint-disable-next-line typescript/no-deprecated
 			return await requestOAuth1.call(this, credentialsType, requestOptions, false);
 		}
 		if (credentialsType === 'oAuth2Api' || parentTypes.includes('oAuth2Api')) {
+			// oxlint-disable-next-line typescript/no-deprecated
 			return await requestOAuth2.call(
 				this,
 				credentialsType,
@@ -274,6 +294,7 @@ export async function requestWithAuthentication(
 			node,
 		);
 		requestSent = true;
+		// oxlint-disable-next-line typescript/no-deprecated
 		return await proxyRequestToAxios(workflow, additionalData, node, requestOptions);
 	} catch (error) {
 		try {
@@ -304,12 +325,13 @@ export async function requestWithAuthentication(
 						workflow,
 						node,
 					);
+					// oxlint-disable-next-line typescript/no-deprecated
 					return await proxyRequestToAxios(workflow, additionalData, node, requestOptions);
 				}
 			}
 			throw error;
 		} catch (error) {
-			if (error instanceof ExecutionBaseError) throw error;
+			if (error instanceof ExecutionBaseError || hasPolicyRefusalMarker(error)) throw error;
 
 			throw new NodeApiError(this.getNode(), error);
 		}

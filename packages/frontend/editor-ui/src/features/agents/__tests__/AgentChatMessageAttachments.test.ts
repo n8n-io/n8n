@@ -1,8 +1,8 @@
-/* eslint-disable import-x/no-extraneous-dependencies -- test-only pattern: @vue/test-utils is a transitive devDep */
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { mount } from '@vue/test-utils';
 import type { ChatMessageAttachment } from '@/features/ai/shared/agentsChat/types';
 import AgentChatMessageAttachments from '../components/AgentChatMessageAttachments.vue';
+import { AGENT_ATTACHMENT_URL_KEY } from '../components/agentChatInjectionKeys';
 
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({ restApiContext: { baseUrl: '/rest' } }),
@@ -12,9 +12,17 @@ vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({ baseText: (key: string) => key }),
 }));
 
-function renderComponent(attachments: ChatMessageAttachment[]) {
+function renderComponent(
+	attachments: ChatMessageAttachment[],
+	options: { attachmentUrlBuilder?: (attachmentId: string) => string } = {},
+) {
 	return mount(AgentChatMessageAttachments, {
 		props: { attachments, projectId: 'project-1', agentId: 'agent-1' },
+		global: {
+			provide: options.attachmentUrlBuilder
+				? { [AGENT_ATTACHMENT_URL_KEY as symbol]: options.attachmentUrlBuilder }
+				: {},
+		},
 	});
 }
 
@@ -24,6 +32,10 @@ const imageAttachment: ChatMessageAttachment = {
 	mimeType: 'image/png',
 	sizeBytes: 1024,
 };
+
+afterEach(() => {
+	vi.unstubAllGlobals();
+});
 
 describe('AgentChatMessageAttachments', () => {
 	it('renders a linked thumbnail for a server-backed image', () => {
@@ -36,6 +48,14 @@ describe('AgentChatMessageAttachments', () => {
 		expect(wrapper.find('a').attributes('href')).toBe(img.attributes('src'));
 	});
 
+	it("uses the panel's injected URL builder when one is provided", () => {
+		const wrapper = renderComponent([imageAttachment], {
+			attachmentUrlBuilder: (id) => `/rest/n8n-chat/${id}`,
+		});
+
+		expect(wrapper.find('img').attributes('src')).toBe('/rest/n8n-chat/att-1');
+	});
+
 	it('renders a file chip with a download link for non-image attachments', () => {
 		const wrapper = renderComponent([
 			{ fileId: 'att-2', fileName: 'report.pdf', mimeType: 'application/pdf', sizeBytes: 2048 },
@@ -46,21 +66,22 @@ describe('AgentChatMessageAttachments', () => {
 		expect(link.text()).toContain('report.pdf');
 	});
 
-	it('swaps a thumbnail whose bytes are gone for an unavailable chip', async () => {
+	it('disables a server-backed image link when its preview is unavailable', async () => {
 		const wrapper = renderComponent([imageAttachment]);
 
 		await wrapper.find('img').trigger('error');
 
-		expect(wrapper.find('img').exists()).toBe(false);
-		const chip = wrapper.find('[data-testid="agent-chat-attachment-unavailable"]');
-		expect(chip.exists()).toBe(true);
-		expect(chip.text()).toContain('photo.png');
-		expect(chip.text()).toContain('agents.chat.attachments.unavailable');
+		const unavailableAttachment = wrapper.find('[data-testid="agent-chat-attachment-unavailable"]');
+		expect(unavailableAttachment.exists()).toBe(true);
+		expect(unavailableAttachment.text()).toContain('photo.png');
+		expect(unavailableAttachment.text()).toContain('agents.chat.attachments.unavailable');
+		expect(wrapper.find('a').exists()).toBe(false);
 	});
 
-	it('keeps local-only image previews even if the object URL errors', async () => {
+	it('keeps a local attachment when its preview URL errors', async () => {
 		const createObjectURL = vi.fn(() => 'blob:local-1');
-		vi.stubGlobal('URL', { ...URL, createObjectURL, revokeObjectURL: vi.fn() });
+		const revokeObjectURL = vi.fn();
+		vi.stubGlobal('URL', { ...URL, createObjectURL, revokeObjectURL });
 		const wrapper = renderComponent([
 			{
 				fileName: 'local.png',
@@ -70,11 +91,13 @@ describe('AgentChatMessageAttachments', () => {
 			},
 		]);
 
-		// No server href — an error on a local preview is not a pruned attachment.
+		// A local preview error keeps the attachment in the message.
 		await wrapper.find('img').trigger('error');
 
-		expect(wrapper.find('img').exists()).toBe(true);
+		expect(wrapper.find('img').exists()).toBe(false);
+		expect(wrapper.find('figure.n8n-attachment').exists()).toBe(true);
 		expect(wrapper.find('[data-testid="agent-chat-attachment-unavailable"]').exists()).toBe(false);
-		vi.unstubAllGlobals();
+		wrapper.unmount();
+		expect(revokeObjectURL).toHaveBeenCalledWith('blob:local-1');
 	});
 });

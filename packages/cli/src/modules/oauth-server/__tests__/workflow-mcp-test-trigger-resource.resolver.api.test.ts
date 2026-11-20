@@ -15,7 +15,12 @@ import { CacheService } from '@n8n/backend-services';
 import { UrlService } from '@n8n/backend-services';
 import { TestWebhookRegistrationsService } from '@/webhooks/test-webhook-registrations.service';
 
-const testServer = setupTestServer({ modules: ['oauth-server', 'mcp'], endpointGroups: ['mcp'] });
+// The OAuth server owns trigger metadata. Loading instance MCP also loads its tool graph
+// in the setup hook and can exceed the hook timeout under CI load.
+const testServer = setupTestServer({
+	modules: ['inbound-auth-core', 'oauth-server'],
+	endpointGroups: ['oauth-server'],
+});
 
 let owner: User;
 let mcpEndpoint: string;
@@ -51,7 +56,7 @@ const mcpTriggerNode = ({
 });
 
 /**
- * Mirrors what `TestWebhooks.needsWebhook` registers when the user tests an
+ * Mirrors what `TestWebhooks.registerWebhooks` registers when the user tests an
  * MCP trigger in the editor. The workflow does not need to exist in the DB:
  * the registration is self-contained.
  */

@@ -8,22 +8,17 @@ vi.mock('@n8n/instance-ai', async () => {
 		WorkflowNotFoundError,
 		WorkflowEditorLockedError,
 		wrapUntrustedData: (content: string) => content,
-		builderTemplatesOptionsFromEnv: () => ({}),
 		deriveCredentialHosts: vi.fn().mockReturnValue([]),
-		BuilderTemplatesService: class {
-			async getBundle() {
-				return { files: [], indexTxt: '', version: null };
-			}
-			getVersion() {
-				return null;
-			}
-		},
 	};
 });
 
 vi.mock('@n8n/ai-utilities', () => ({
 	braveSearch: vi.fn(),
 	searxngSearch: vi.fn(),
+}));
+vi.mock('@/utils/ai-proxy-fetch', () => ({
+	createAiProxyFetch: vi.fn(() => vi.fn()),
+	createWebSearchFetch: vi.fn(() => vi.fn()),
 }));
 
 import type { Logger } from '@n8n/backend-common';
@@ -33,6 +28,10 @@ import {
 	type EventService,
 	type RoleService,
 	type CredentialsFinderService,
+	type InstanceWriteAccessService,
+	type NodeTypesProxy,
+	PostHogClient,
+	type TelemetryProxy,
 } from '@n8n/backend-services';
 import type { GlobalConfig } from '@n8n/config';
 import type {
@@ -54,21 +53,18 @@ import type { CredentialsService } from '@/credentials/credentials.service';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { License } from '@/license';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
-import type { DataTableService } from '@/modules/data-table/data-table.service';
-import type { WorkflowDependencyQueryService } from '@/modules/workflow-index/workflow-dependency-query.service';
 import type { NodeTypes } from '@/node-types';
+import { type DataTableRepository, type DataTableService } from '@n8n/backend-module-data-table';
+
+import type { WorkflowDependencyQueryService } from '@/modules/workflow-index/workflow-dependency-query.service';
 import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
-import { PostHogClient } from '@/posthog';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import type { FolderService } from '@/services/folder.service';
-import type { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
 import type { ProjectService } from '@/services/project.service.ee';
 
 import type { TagService } from '@/services/tag.service';
-import type { Telemetry } from '@/telemetry';
 import type { WorkflowRunner } from '@/workflow-runner';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
@@ -101,7 +97,7 @@ function buildAdapter(options: { dependencyQueryService?: WorkflowDependencyQuer
 		mock<ActiveExecutions>(),
 		mock<WorkflowRunner>(),
 		mock<LoadNodesAndCredentials>(),
-		mock<NodeTypes>(),
+		mock<NodeTypesProxy>(),
 		mock<InstanceSettings>({ staticCacheDir: '/tmp/test-cache', n8nFolder: '/tmp/test-cache' }),
 		mock<DataTableService>(),
 		mock<DataTableRepository>(),
@@ -123,7 +119,7 @@ function buildAdapter(options: { dependencyQueryService?: WorkflowDependencyQuer
 		mock<ExecutionPersistence>(),
 		mock<EventService>(),
 		mock<RoleService>(),
-		mock<Telemetry>(),
+		mock<TelemetryProxy>(),
 		mock<AiBuilderTemporaryWorkflowRepository>(),
 		mock<OutboundHttp>(),
 		mock<AiGatewayService>(),

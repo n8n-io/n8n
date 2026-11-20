@@ -32,6 +32,15 @@ function createNodeType(name: string, displayName: string): SimplifiedNodeType {
 	};
 }
 
+// The store-backed fallback needs Pinia, which this suite does not mount.
+const storeRestrictions = new Map<string, { scope: 'instance' | 'project' }>();
+vi.mock('@n8n/frontend-module-type-availability-policies', () => ({
+	getNodeTypeRestriction: (name: string) => storeRestrictions.get(name) ?? null,
+	isNodeTypeRestricted: (name: string) => storeRestrictions.has(name),
+	describeAgentToolRestriction: (nodeType: string, verdict?: { scope?: string } | null) =>
+		`typeAvailabilityPolicies.restrictedNode.agentTool.${verdict?.scope ?? 'generic'}:${nodeType}`,
+}));
+
 vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: () => ({
 		getNodeType,
@@ -51,6 +60,15 @@ vi.mock('../composables/useCreateAgent', () => ({
 const canCreateAgentRef = ref(true);
 vi.mock('../composables/useAgentPermissions', () => ({
 	useAgentPermissions: () => ({ canCreate: canCreateAgentRef }),
+}));
+
+vi.mock('@n8n/stores/useRootStore', () => ({
+	useRootStore: () => ({ restApiContext: {} }),
+}));
+
+const listAgentsPageSpy = vi.hoisted(() => vi.fn());
+vi.mock('../composables/useAgentApi', () => ({
+	listAgentsPage: listAgentsPageSpy,
 }));
 
 const showErrorSpy = vi.fn();
@@ -145,14 +163,24 @@ function makeAgent(overrides: Partial<AgentResource> = {}): AgentResource {
 		id: 'agent-2',
 		name: 'Helper Agent',
 		projectId: 'project-id',
+		project: null,
 		resourceType: 'agent',
-		isCompiled: true,
+		availableInMCP: false,
+		isArchived: false,
 		createdAt: '2026-01-01T00:00:00.000Z',
 		updatedAt: '2026-01-01T00:00:00.000Z',
 		versionId: 'version-2',
 		activeVersionId: 'version-2',
+		config: null,
+		configHash: null,
 		tools: {},
 		skills: {},
+		skillHashes: {},
+		outdatedSkillIds: [],
+		skillVersions: {},
+		isRunnable: false,
+		hasPublishHistory: false,
+		hasVersionHistory: false,
 		activeVersion: null,
 		...overrides,
 	};
@@ -334,7 +362,7 @@ describe('AgentCapabilitiesSection', () => {
 		},
 	);
 
-	it('toggles skills and sub-agents without removing their configuration', async () => {
+	it('toggles sub-agents but not skills, without removing their configuration', async () => {
 		const config: AgentJsonConfig = {
 			...configWithMcpServers([]),
 			subAgents: {
@@ -356,7 +384,6 @@ describe('AgentCapabilitiesSection', () => {
 				skills: [
 					{
 						id: 'skill-1',
-						enabled: false,
 						skill: { name: 'Triage', description: '', instructions: '' },
 					},
 				],
@@ -365,14 +392,16 @@ describe('AgentCapabilitiesSection', () => {
 		);
 		await flushPromises();
 		const skill = wrapper.get('[data-testid="agent-capabilities-skill-row"]');
-		expect(skill.attributes('aria-description')).toBe('agents.builder.capabilities.deactivated');
+		expect(skill.attributes('aria-description')).toBeUndefined();
 		await skill.trigger('click');
 		expect(wrapper.emitted('open-skill')).toEqual([['skill-1']]);
+		// A skill has no on/off toggle: its menu only removes it.
 		await skill.trigger('contextmenu');
-		await userEvent.click(
-			await screen.findByRole('menuitem', { name: 'agents.builder.contextMenu.activate' }),
-		);
-		expect(wrapper.emitted('toggle-skill')).toEqual([[{ id: 'skill-1', enabled: true }]]);
+		await screen.findByRole('menuitem', { name: 'agents.builder.contextMenu.remove' });
+		expect(
+			screen.queryByRole('menuitem', { name: 'agents.builder.contextMenu.activate' }),
+		).not.toBeInTheDocument();
+		await userEvent.keyboard('{Escape}');
 
 		const subAgent = wrapper.findAll('[data-testid="agent-capabilities-sub-agent-row"]')[0];
 		expect(subAgent.attributes('aria-description')).toBe('agents.builder.capabilities.deactivated');
@@ -765,6 +794,9 @@ describe('AgentCapabilitiesSection', () => {
 					url: 'https://mcp.github.com',
 					transport: 'streamableHttp',
 					authentication: 'none',
+					toolPermissions: {
+						categories: { read: 'always_allow', write: 'require_approval' },
+					},
 				},
 			]),
 		);
@@ -909,6 +941,83 @@ describe('AgentCapabilitiesSection', () => {
 		expect(refreshProjectAgentsSpy).toHaveBeenCalledOnce();
 		expect(wrapper.text()).toContain('Notion Research Agent');
 		expect(wrapper.text()).not.toContain(child.id);
+	});
+
+	it('loads an archived sub-agent by id and shows the Archived badge', async () => {
+		const archived = makeAgent({ id: 'agent-archived', name: 'Old Agent', isArchived: true });
+		refreshProjectAgentsSpy.mockResolvedValueOnce([]);
+		listAgentsPageSpy.mockResolvedValueOnce({ count: 1, data: [archived] });
+
+		const wrapper = mountSection(
+			[],
+			{},
+			{
+				name: 'Parent Agent',
+				model: '',
+				instructions: '',
+				tools: [],
+				subAgents: { agents: [{ agentId: archived.id }] },
+			},
+			[],
+			[],
+		);
+		await flushPromises();
+
+		expect(listAgentsPageSpy).toHaveBeenCalledWith({}, expect.any(String), {
+			filter: { ids: [archived.id], includeArchived: true },
+		});
+		expect(wrapper.text()).toContain('Old Agent');
+		expect(wrapper.find('[data-testid="agent-capabilities-sub-agent-archived"]').exists()).toBe(
+			true,
+		);
+	});
+
+	it('does not look up a resolved archived sub-agent again when the config changes', async () => {
+		const archived = makeAgent({ id: 'agent-archived', name: 'Old Agent', isArchived: true });
+		listAgentsPageSpy.mockResolvedValueOnce({ count: 1, data: [archived] });
+		const makeConfig = (instructions: string) => ({
+			name: 'Parent Agent',
+			model: '',
+			instructions,
+			tools: [],
+			subAgents: { agents: [{ agentId: archived.id }] },
+		});
+
+		const wrapper = mountSection([], {}, makeConfig(''), [], []);
+		await flushPromises();
+		await wrapper.setProps({ config: makeConfig('Changed') });
+		await flushPromises();
+
+		expect(listAgentsPageSpy).toHaveBeenCalledOnce();
+		expect(refreshProjectAgentsSpy).toHaveBeenCalledOnce();
+		expect(wrapper.text()).toContain('Old Agent');
+	});
+
+	it('keeps the archived sub-agents of the latest selection when an older lookup resolves last', async () => {
+		const first = makeAgent({ id: 'agent-first', name: 'First Agent', isArchived: true });
+		const second = makeAgent({ id: 'agent-second', name: 'Second Agent', isArchived: true });
+		let resolveFirst: (page: { count: number; data: AgentResource[] }) => void = () => {};
+		listAgentsPageSpy
+			.mockReturnValueOnce(new Promise((resolve) => (resolveFirst = resolve)))
+			.mockResolvedValueOnce({ count: 1, data: [second] });
+		const config = { name: 'Parent Agent', model: '', instructions: '', tools: [] };
+
+		const wrapper = mountSection(
+			[],
+			{},
+			{ ...config, subAgents: { agents: [{ agentId: first.id }] } },
+			[],
+			[],
+		);
+		await flushPromises();
+		await wrapper.setProps({
+			config: { ...config, subAgents: { agents: [{ agentId: second.id }] } },
+		});
+		await flushPromises();
+		resolveFirst({ count: 1, data: [first] });
+		await flushPromises();
+
+		expect(wrapper.text()).toContain('Second Agent');
 	});
 
 	it('never exposes an unresolved sub-agent id as the chip label', async () => {
@@ -1083,6 +1192,9 @@ describe('AgentCapabilitiesSection', () => {
 					url: 'https://mcp.github.com',
 					transport: 'streamableHttp',
 					authentication: 'none',
+					toolPermissions: {
+						categories: { read: 'always_allow', write: 'require_approval' },
+					},
 				},
 			]),
 			[],
@@ -1191,6 +1303,9 @@ describe('AgentCapabilitiesSection', () => {
 						url: 'https://mcp.github.com',
 						transport: 'streamableHttp',
 						authentication: 'bearerAuth',
+						toolPermissions: {
+							categories: { read: 'always_allow', write: 'require_approval' },
+						},
 					},
 				]),
 				[],
@@ -1492,5 +1607,265 @@ describe('AgentCapabilitiesSection', () => {
 			/** The project-agent list is not needed for hidden sub-agents. */
 			expect(ensureProjectAgentsLoadedSpy).not.toHaveBeenCalled();
 		});
+	});
+});
+
+describe('AgentCapabilitiesSection — restricted node types', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		storeRestrictions.clear();
+	});
+
+	const slackTool = (name: string): AgentJsonToolRef => ({
+		type: 'node',
+		name,
+		node: { nodeType: 'n8n-nodes-base.slackTool', nodeTypeVersion: 1, nodeParameters: {} },
+	});
+
+	/** The text of every rendered tooltip; a restricted chip suppresses the error one. */
+	function lockText(w: ReturnType<typeof mountSection>): string {
+		return w
+			.findAll('[data-testid="stub-tooltip-content"]')
+			.map((node) => node.text())
+			.join(' ');
+	}
+
+	const restrictedToolIssue = (index: number, scope: 'instance' | 'project') => ({
+		code: 'restricted_node_type' as const,
+		path: `tools.${index}.node.nodeType`,
+		capability: { kind: 'tool' as const, index, toolType: 'node' as const, id: 'Slack' },
+		restriction: { nodeType: 'n8n-nodes-base.slackTool', scope },
+	});
+
+	const inlineRestrictedToolIssue = (index: number) => ({
+		code: 'restricted_node_type' as const,
+		reason: 'restricted_by_inline_tool',
+		path: `tools.${index}.node.nodeType`,
+		capability: { kind: 'tool' as const, index, toolType: 'node' as const, id: 'Slack' },
+		restriction: { nodeType: 'n8n-nodes-base.slackTool' },
+	});
+
+	it.each(['instance', 'project'] as const)(
+		'locks a tool chip and shows the %s scope',
+		async (scope) => {
+			getNodeType.mockReturnValue(createNodeType('n8n-nodes-base.slackTool', 'Slack Tool'));
+			const wrapper = mountSection([slackTool('send_message')], {}, null, [], [], {
+				validationIssues: [restrictedToolIssue(0, scope)],
+			});
+			await flushPromises();
+
+			expect(wrapper.find('[data-test-id="node-restricted-icon"]').exists()).toBe(true);
+			expect(lockText(wrapper)).toContain(
+				`typeAvailabilityPolicies.restrictedNode.agentTool.${scope}`,
+			);
+			expect(lockText(wrapper)).toContain('Slack');
+		},
+	);
+
+	it('dims the restricted chip', async () => {
+		getNodeType.mockReturnValue(createNodeType('n8n-nodes-base.slackTool', 'Slack Tool'));
+		const wrapper = mountSection([slackTool('send_message')], {}, null, [], [], {
+			validationIssues: [restrictedToolIssue(0, 'instance')],
+		});
+		await flushPromises();
+
+		const chip = wrapper.find('[data-testid="agent-capabilities-tool-row"]');
+		expect(chip.classes().some((c) => c.includes('restricted'))).toBe(true);
+	});
+
+	it('shows the lock alone, without the error icon of an invalid chip', async () => {
+		getNodeType.mockReturnValue(createNodeType('n8n-nodes-base.slackTool', 'Slack Tool'));
+		const wrapper = mountSection([slackTool('send_message')], {}, null, [], [], {
+			validationIssues: [restrictedToolIssue(0, 'instance')],
+		});
+		await flushPromises();
+
+		expect(wrapper.find('[data-test-id="node-restricted-icon"]').exists()).toBe(true);
+		expect(wrapper.find('[data-testid="agent-chip-invalid-icon"]').exists()).toBe(false);
+	});
+
+	it('leaves an unrestricted tool chip unlocked', async () => {
+		getNodeType.mockReturnValue(createNodeType('n8n-nodes-base.slackTool', 'Slack Tool'));
+		const wrapper = mountSection([slackTool('send_message')], {}, null, [], [], {
+			validationIssues: [],
+		});
+		await flushPromises();
+
+		expect(wrapper.find('[data-test-id="node-restricted-icon"]').exists()).toBe(false);
+	});
+
+	it('locks the grouped chip when the tools of a restricted type are grouped', async () => {
+		getNodeType.mockReturnValue(createNodeType('n8n-nodes-base.slackTool', 'Slack Tool'));
+		const wrapper = mountSection(
+			[slackTool('send_message'), slackTool('read_messages')],
+			{},
+			null,
+			[],
+			[],
+			{
+				validationIssues: [restrictedToolIssue(0, 'instance'), restrictedToolIssue(1, 'instance')],
+			},
+		);
+		await flushPromises();
+
+		expect(wrapper.findAll('[data-testid="agent-capabilities-tool-row"]')).toHaveLength(1);
+		expect(wrapper.findAll('[data-test-id="node-restricted-icon"]')).toHaveLength(1);
+	});
+
+	it('locks the restricted member rows of an open group menu', async () => {
+		getNodeType.mockReturnValue(createNodeType('n8n-nodes-base.slackTool', 'Slack Tool'));
+		mountSection(
+			[slackTool('send_message'), slackTool('read_messages')],
+			{},
+			null,
+			[],
+			[],
+			{
+				validationIssues: [restrictedToolIssue(0, 'instance'), restrictedToolIssue(1, 'instance')],
+			},
+			document.body,
+		);
+		await flushPromises();
+
+		await fireEvent.click(screen.getByRole('button', { name: /2 Slack/ }));
+		await flushPromises();
+
+		// The menu teleports out of the component root, so assert against the document.
+		// One lock on the group chip plus one on each member row, and no error icon anywhere.
+		expect(document.querySelectorAll('[data-test-id="node-restricted-icon"]')).toHaveLength(3);
+		expect(
+			document.querySelectorAll('[data-testid="agent-capabilities-tool-menu-invalid-icon"]'),
+		).toHaveLength(0);
+	});
+
+	it('does not open the tool when the lock itself is clicked', async () => {
+		getNodeType.mockReturnValue(createNodeType('n8n-nodes-base.slackTool', 'Slack Tool'));
+		const wrapper = mountSection([slackTool('send_message')], {}, null, [], [], {
+			validationIssues: [restrictedToolIssue(0, 'instance')],
+		});
+		await flushPromises();
+
+		await wrapper.find('[data-test-id="node-restricted-icon"]').trigger('click');
+
+		expect(wrapper.emitted('open-tool')).toBeUndefined();
+	});
+
+	it('shows no lock once an unsaved edit clears the issues, whatever the policy store says', async () => {
+		getNodeType.mockReturnValue(createNodeType('n8n-nodes-base.slackTool', 'Slack Tool'));
+		storeRestrictions.set('n8n-nodes-base.slackTool', { scope: 'project' });
+		// No issues: the builder drops the stale result as soon as the draft is edited.
+		const wrapper = mountSection([slackTool('send_message')], {}, null, [], [], {
+			validationIssues: [],
+		});
+		await flushPromises();
+
+		expect(wrapper.find('[data-test-id="node-restricted-icon"]').exists()).toBe(false);
+	});
+
+	it('shows the scope the publish gate reported, not the store verdict', async () => {
+		getNodeType.mockReturnValue(createNodeType('n8n-nodes-base.slackTool', 'Slack Tool'));
+		storeRestrictions.set('n8n-nodes-base.slackTool', { scope: 'project' });
+		const wrapper = mountSection([slackTool('send_message')], {}, null, [], [], {
+			validationIssues: [restrictedToolIssue(0, 'instance')],
+		});
+		await flushPromises();
+
+		expect(lockText(wrapper)).toContain(
+			'typeAvailabilityPolicies.restrictedNode.agentTool.instance',
+		);
+	});
+
+	it('labels an inline restriction with plain text, not the node popover', async () => {
+		getNodeType.mockReturnValue(createNodeType('n8n-nodes-base.slackTool', 'Slack Tool'));
+		const wrapper = mountSection([slackTool('ask_billing_agent')], {}, null, [], [], {
+			validationIssues: [inlineRestrictedToolIssue(0)],
+		});
+		await flushPromises();
+
+		// The embedded reason, not a scope line that would claim this tool's own type is denied.
+		expect(wrapper.find('[data-test-id="node-restricted-icon"]').exists()).toBe(true);
+		expect(lockText(wrapper)).toContain('agents.builder.validation.issue.restrictedByInlineTool');
+		expect(lockText(wrapper)).not.toContain('typeAvailabilityPolicies.restrictedNode.agentTool');
+	});
+
+	it('keeps a restricted tool out of the group of its allowed same-type siblings', async () => {
+		getNodeType.mockReturnValue(createNodeType('n8n-nodes-base.slackTool', 'Slack Tool'));
+		// Same node type, but only the first embeds something denied.
+		const wrapper = mountSection(
+			[slackTool('ask_billing_agent'), slackTool('message_an_agent')],
+			{},
+			null,
+			[],
+			[],
+			{ validationIssues: [inlineRestrictedToolIssue(0)] },
+		);
+		await flushPromises();
+
+		const chips = wrapper.findAll('[data-testid="agent-capabilities-tool-row"]');
+		expect(chips).toHaveLength(2);
+		expect(
+			chips.filter((c) => c.find('[data-test-id="node-restricted-icon"]').exists()),
+		).toHaveLength(1);
+	});
+
+	it('names the denied type, not the one the entry displays', async () => {
+		// A registry MCP server stays allowed on its own type and is denied as the MCP client.
+		getNodeType.mockImplementation((name: string) =>
+			name === '@n8n/n8n-nodes-langchain.mcpClientTool'
+				? createNodeType(name, 'MCP Client Tool')
+				: createNodeType('@n8n/mcp-registry.github', 'GitHub MCP'),
+		);
+		const config = configWithMcpServers([
+			{
+				name: 'GitHub',
+				url: 'https://mcp.example.com',
+				transport: 'streamableHttp',
+				authentication: 'none',
+				metadata: { nodeTypeName: '@n8n/mcp-registry.github' },
+			},
+		]);
+		const wrapper = mountSection([], {}, config, [], [], {
+			validationIssues: [
+				{
+					code: 'restricted_node_type',
+					path: 'mcpServers.0',
+					capability: { kind: 'mcpServer', id: 'GitHub', index: 0 },
+					restriction: { nodeType: '@n8n/n8n-nodes-langchain.mcpClientTool', scope: 'instance' },
+				},
+			],
+		});
+		await flushPromises();
+
+		expect(lockText(wrapper)).toContain('MCP Client');
+	});
+
+	it('locks an MCP server chip whose node type a policy denies', async () => {
+		getNodeType.mockReturnValue(
+			createNodeType('@n8n/n8n-nodes-langchain.mcpClientTool', 'MCP Client Tool'),
+		);
+		const config = configWithMcpServers([
+			{
+				name: 'Docs',
+				url: 'https://mcp.example.com',
+				transport: 'streamableHttp',
+				authentication: 'none',
+			},
+		]);
+		const wrapper = mountSection([], {}, config, [], [], {
+			validationIssues: [
+				{
+					code: 'restricted_node_type',
+					path: 'mcpServers.0',
+					capability: { kind: 'mcpServer', id: 'Docs', index: 0 },
+					restriction: { nodeType: '@n8n/n8n-nodes-langchain.mcpClientTool', scope: 'project' },
+				},
+			],
+		});
+		await flushPromises();
+
+		expect(wrapper.find('[data-test-id="node-restricted-icon"]').exists()).toBe(true);
+		expect(lockText(wrapper)).toContain(
+			'typeAvailabilityPolicies.restrictedNode.agentTool.project',
+		);
 	});
 });

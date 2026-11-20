@@ -1,5 +1,4 @@
-import type { CreateCredentialPublicDto, CredentialPublicDto } from '@n8n/api-types';
-import { request, type PublicApiContext } from '@n8n/rest-api-client';
+import type { CredentialOptionsRequestDto } from '@n8n/api-types';
 import type {
 	CredentialFetchScope,
 	CredentialPayload,
@@ -14,6 +13,7 @@ import type {
 	IDataObject,
 	INodeCredentialTestRequest,
 	INodeCredentialTestResult,
+	INodeListSearchResult,
 } from 'n8n-workflow';
 import axios from 'axios';
 import type { CreateCredentialDto } from '@n8n/api-types';
@@ -52,6 +52,7 @@ export interface GetAllCredentialsOptions {
 	includeScopes?: boolean;
 	onlySharedWithMe?: boolean;
 	includeGlobal?: boolean;
+	includeRestrictions?: boolean;
 	/**
 	 * The implementation of the externalSecretsStore filter option is not optimized for performance.
 	 * Don't expose it via the filter selection component. It shall only be provided when clicking on
@@ -67,7 +68,14 @@ export async function getAllCredentials(
 	context: IRestApiContext,
 	options: GetAllCredentialsOptions = {},
 ): Promise<ICredentialsResponse[]> {
-	const { filter, includeScopes, onlySharedWithMe, includeGlobal, externalSecretsStore } = options;
+	const {
+		filter,
+		includeScopes,
+		onlySharedWithMe,
+		includeGlobal,
+		includeRestrictions,
+		externalSecretsStore,
+	} = options;
 
 	return await makeRestApiRequest(context, 'GET', '/credentials', {
 		...(includeScopes ? { includeScopes } : {}),
@@ -76,6 +84,21 @@ export async function getAllCredentials(
 		...(onlySharedWithMe ? { onlySharedWithMe } : {}),
 		...(typeof includeGlobal === 'boolean' ? { includeGlobal } : {}),
 		...(externalSecretsStore ? { externalSecretsStore } : {}),
+		...(includeRestrictions ? { includeRestrictions } : {}),
+	});
+}
+
+export async function searchCredentials(
+	context: IRestApiContext,
+	options: { name: string; skip: number; take: number },
+): Promise<ICredentialsResponse[]> {
+	const { name, skip, take } = options;
+
+	return await makeRestApiRequest(context, 'GET', '/credentials', {
+		...(name ? { filter: { name } } : {}),
+		skip,
+		take,
+		includeGlobal: true,
 	});
 }
 
@@ -163,6 +186,29 @@ export async function testCredential(
 	);
 }
 
+export type CredentialOptionsDestination =
+	| { kind: 'stored'; credentialId: string }
+	| { kind: 'project'; projectId: string }
+	| { kind: 'instance' };
+
+export async function getCredentialOptions(
+	context: IRestApiContext,
+	destination: CredentialOptionsDestination,
+	data: CredentialOptionsRequestDto,
+): Promise<INodeListSearchResult> {
+	let path = '/credentials/options/instance';
+	if (destination.kind === 'stored') {
+		path = `/credentials/${destination.credentialId}/options`;
+	} else if (destination.kind === 'project') {
+		path = `/credentials/options/projects/${destination.projectId}`;
+	}
+	const requestData = { ...data, data: { ...data.data } };
+	if (requestData.data.oauthTokenData === null) {
+		delete requestData.data.oauthTokenData;
+	}
+	return await makeRestApiRequest(context, 'POST', path, requestData);
+}
+
 /**
  * Auth-probe a stored credential against the test URL persisted in the
  * credential itself (Templated Custom Auth) — for types `/credentials/test`
@@ -173,16 +219,4 @@ export async function probeCredential(
 	credentialId: string,
 ): Promise<INodeCredentialTestResult> {
 	return await makeRestApiRequest(context, 'POST', `/credentials/${credentialId}/probe`);
-}
-
-export async function createPublicCredential(
-	context: PublicApiContext,
-	data: CreateCredentialPublicDto,
-): Promise<CredentialPublicDto> {
-	return await request({
-		method: 'POST',
-		baseURL: context.baseUrl,
-		endpoint: '/credentials',
-		data,
-	});
 }

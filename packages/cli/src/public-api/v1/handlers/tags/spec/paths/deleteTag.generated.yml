@@ -2,11 +2,11 @@ operationId: deleteTag
 tags:
   - Tags
 summary: Delete a tag
-description: Deletes a tag.
+description: |-
+  Deletes a tag.
+
+  Requires the `tag:delete` API key scope.
 x-required-scope: tag:delete
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 parameters:
   - schema:
       type: string
@@ -27,3 +27,5 @@ responses:
     $ref: ../../../../shared/spec/responses/forbidden.yml
   '404':
     $ref: ../../../../shared/spec/responses/notFound.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml

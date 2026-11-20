@@ -3,7 +3,6 @@ import type { WorkflowPublishHistoryRepository } from '@n8n/db';
 import type { IWorkflowBase } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import * as credentialSharing from '@/constants/credential-sharing';
 import { WorkflowPublisherService } from '@/workflows/workflow-publisher.service';
 
 describe('WorkflowPublisherService', () => {
@@ -16,7 +15,6 @@ describe('WorkflowPublisherService', () => {
 
 	beforeEach(() => {
 		vi.resetAllMocks();
-		vi.spyOn(credentialSharing, 'isCredSharingEnabled').mockReturnValue(true);
 	});
 
 	// The caller passes the version whose nodes are about to run, never the
@@ -76,6 +74,30 @@ describe('WorkflowPublisherService', () => {
 		);
 	});
 
+	describe('findPublisherUserIdForAccessCheck', () => {
+		it("returns the version's publisher", async () => {
+			publishHistoryRepository.findPublisherUserId.mockResolvedValue('user-1');
+
+			await expect(
+				service.findPublisherUserIdForAccessCheck(workflowId, 'version-9'),
+			).resolves.toBe('user-1');
+			expect(publishHistoryRepository.findPublisherUserId).toHaveBeenCalledWith(
+				workflowId,
+				'version-9',
+			);
+		});
+
+		// An access check that reads a failed lookup as "no publisher" would refuse
+		// on a transient error, and the refusal would be final.
+		it('throws when the lookup fails', async () => {
+			publishHistoryRepository.findPublisherUserId.mockRejectedValue(new Error('connection lost'));
+
+			await expect(
+				service.findPublisherUserIdForAccessCheck(workflowId, 'version-9'),
+			).rejects.toThrow('connection lost');
+		});
+	});
+
 	// A wait resume and bootup recovery rebuild the run from the stored row, where
 	// the acting user is not a field. Without deriving it again, the run comes back
 	// unattributed and a credential only its publisher may use is refused halfway.
@@ -118,14 +140,5 @@ describe('WorkflowPublisherService', () => {
 
 			expect(publishHistoryRepository.findPublisherUserId).not.toHaveBeenCalled();
 		});
-	});
-
-	// The single gate for this behaviour, so every call site stays unconditional.
-	it('reads nothing at all while the feature flag is off', async () => {
-		vi.spyOn(credentialSharing, 'isCredSharingEnabled').mockReturnValue(false);
-
-		await expect(service.findPublisherUserId(workflowId, 'version-9')).resolves.toBeUndefined();
-
-		expect(publishHistoryRepository.findPublisherUserId).not.toHaveBeenCalled();
 	});
 });

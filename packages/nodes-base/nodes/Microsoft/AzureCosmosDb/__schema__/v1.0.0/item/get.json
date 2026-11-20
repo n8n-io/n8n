@@ -9,7 +9,10 @@
         },
         "threadId": {
             "type": "string"
+        },
+        "updatedAt": {
+            "type": "string"
         }
     },
-    "version": 2
+    "version": 3
 }

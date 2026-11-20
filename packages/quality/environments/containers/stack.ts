@@ -1,5 +1,8 @@
 import getPort from 'get-port';
 import { createHash } from 'node:crypto';
+import { mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import type { StartedNetwork, StartedTestContainer, StoppedTestContainer } from 'testcontainers';
 import { Network } from 'testcontainers';
 
@@ -10,7 +13,7 @@ import {
 } from './helpers/utils';
 import { waitForNetworkQuiet } from './network-stabilization';
 import { ResourceTracker, type CleanupReport } from './resource-tracker';
-import { assertEngineSupported } from './services/engine';
+import { assertEngineSupported, createEngineTlsFiles } from './services/engine';
 import type { LoadBalancerResult } from './services/load-balancer';
 import {
 	createN8NInstances,
@@ -18,6 +21,7 @@ import {
 	type N8NInstancesResult,
 	type N8NStartupDiagnostics,
 } from './services/n8n';
+import type { PostgresHelper } from './services/postgres';
 import { helperFactories, services } from './services/registry';
 import type { TaskRunnerResult } from './services/task-runner';
 import type {
@@ -72,6 +76,8 @@ export interface N8NStack {
 	 * stacks only — the substrate of the upgrade/downgrade cycles.
 	 */
 	replaceN8N: (options: ReplaceN8NOptions) => Promise<void>;
+	/** The database engine v2 writes to. Present only when the stack runs engine v2. */
+	engineDatabase?: PostgresHelper;
 	/** Direct URLs to each main instance (bypasses load balancer). Index 0 = main-1, etc. */
 	mainUrls: string[];
 	/**
@@ -80,7 +86,34 @@ export interface N8NStack {
 	 * which cannot reach the host-mapped ports in `baseUrl`/`mainUrls`.
 	 */
 	internalMainUrls: string[];
+	/**
+	 * Direct host-mapped URL of every n8n process (mains, workers, webhook procs),
+	 * for per-process diagnostics such as `/metrics` and `/rest/e2e/internals`.
+	 */
+	processUrls: N8NProcessUrl[];
 	startupDiagnostics: N8NStartupDiagnostics;
+}
+
+function logKeepalive(baseUrl: string, projectName: string): void {
+	console.log('\n=== KEEPALIVE: Containers left running for debugging ===');
+	console.log(`    URL: ${baseUrl}`);
+	console.log(`    Project: ${projectName}`);
+	console.log('    Cleanup: pnpm --filter n8n-containers stack:clean:all');
+	console.log('=========================================================\n');
+}
+
+export interface N8NProcessUrl {
+	role: 'main' | 'worker' | 'webhook';
+	/** Container name, e.g. `<project>-n8n-worker-1`. */
+	name: string;
+	url: string;
+}
+
+function n8nProcessRole(containerName: string): N8NProcessUrl['role'] | undefined {
+	if (containerName.endsWith('-n8n') || containerName.includes('-n8n-main-')) return 'main';
+	if (containerName.includes('-n8n-worker-')) return 'worker';
+	if (containerName.includes('-n8n-webhook-')) return 'webhook';
+	return undefined;
 }
 
 function shouldServiceStart(name: ServiceName, service: Service, ctx: StartContext): boolean {
@@ -157,6 +190,9 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		engine === 'container'
 			? createHash('sha256').update(`${uniqueProjectName}:engine-auth`).digest('hex')
 			: undefined;
+	// Once per stack, like the secret, so a replaced main still trusts the engine.
+	const engineTlsFiles =
+		engine === 'container' ? createEngineTlsFiles(uniqueProjectName) : undefined;
 
 	let allocatedMainPort: number | undefined;
 	let allocatedLbPort: number | undefined;
@@ -348,6 +384,14 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			return meta?.n8nFilesToMount ?? [];
 		});
 
+		// The main and the engine container share one binary data store, so a
+		// file one plane stores is read by the other. Deleted with the stack.
+		let binaryDataHostDir: string | undefined;
+		if (engine === 'container') {
+			binaryDataHostDir = mkdtempSync(join(tmpdir(), `${uniqueProjectName}-binary-data-`));
+			resources.trackPath(binaryDataHostDir);
+		}
+
 		// Earliest log line the readiness gate below may accept
 		const n8nStartedAtSeconds = Math.floor(Date.now() / 1000);
 		const n8nStartupStart = performance.now();
@@ -367,6 +411,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 				usePostgres,
 				engine,
 				engineAuthSecret,
+				engineTlsFiles,
 				baseUrl: needsLoadBalancer ? undefined : baseUrl,
 				allocatedPort: needsLoadBalancer ? undefined : allocatedMainPort,
 				resourceQuota,
@@ -381,6 +426,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 				startupDeadline,
 				image,
 				userHomeHostDir,
+				binaryDataHostDir,
 				user,
 				startupTimeoutMs,
 			});
@@ -422,21 +468,29 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		// runner's own log is the one place the signal is observable. Match each
 		// launcher separately, so one launcher reconnecting cannot stand in for the
 		// other, and only from this run, since a reused container keeps its old logs.
-		const taskRunnerResult = serviceResults.taskRunner as TaskRunnerResult | undefined;
-		if (taskRunnerResult) {
+		const runnerResults = [
+			serviceResults.taskRunner as TaskRunnerResult | undefined,
+			serviceResults.engineTaskRunner as TaskRunnerResult | undefined,
+		].filter((result): result is TaskRunnerResult => result !== undefined);
+		if (runnerResults.length > 0) {
 			telemetry.startStage('task-runner-registration');
 			try {
-				await waitForContainerLogMessages(
-					taskRunnerResult.container,
-					[
-						/\[launcher:js\].*Received message `broker:runnerregistered`/,
-						/\[launcher:py\].*Received message `broker:runnerregistered`/,
-					],
-					{
-						since: n8nStartedAtSeconds,
-						timeoutMs: startupDeadline.remainingMs,
-						signal: startupDeadline.signal,
-					},
+				await Promise.all(
+					runnerResults.map(
+						async (runnerResult) =>
+							await waitForContainerLogMessages(
+								runnerResult.container,
+								[
+									/\[launcher:js\].*Received message `broker:runnerregistered`/,
+									/\[launcher:py\].*Received message `broker:runnerregistered`/,
+								],
+								{
+									since: n8nStartedAtSeconds,
+									timeoutMs: startupDeadline.remainingMs,
+									signal: startupDeadline.signal,
+								},
+							),
+					),
 				);
 				telemetry.finishStage();
 			} catch (error) {
@@ -463,6 +517,15 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			}
 		}
 		log(`Direct main URLs: ${mainUrls.join(', ')}`);
+
+		const processUrls: N8NProcessUrl[] = [];
+		for (const container of containers) {
+			const name = container.getName().replace(/^\//, '');
+			const role = n8nProcessRole(name);
+			if (role) {
+				processUrls.push({ role, name, url: `http://localhost:${container.getMappedPort(5678)}` });
+			}
+		}
 
 		// Run verification hooks (e.g. keycloak connectivity check)
 		const n8nContainers = containers.filter((c) => {
@@ -543,6 +606,10 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			baseUrl,
 			projectName: uniqueProjectName,
 			stop: async () => {
+				if (process.env.N8N_CONTAINERS_KEEPALIVE === 'true') {
+					logKeepalive(baseUrl, uniqueProjectName);
+					return;
+				}
 				const cleanup = await resources.dispose(coverageHostDir ? { timeout: 30_000 } : undefined);
 				if (cleanup.failures.length > 0 || cleanup.remaining.length > 0) {
 					throw new Error(cleanupDetails(cleanup));
@@ -552,6 +619,8 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			serviceResults,
 			hostedServiceEnv,
 			services: servicesProxy,
+			// The engine uses its own server when one is started, otherwise the shared one.
+			engineDatabase: engine ? (servicesProxy.enginePostgres ?? servicesProxy.postgres) : undefined,
 			get logs() {
 				return servicesProxy.observability.logs;
 			},
@@ -591,6 +660,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 						// workflow that still asks for engine v2 fails far from the cause.
 						engine,
 						engineAuthSecret,
+						engineTlsFiles,
 						// The engine container is not replaced: it keeps running against the
 						// new main.
 						reuseEngine: true,
@@ -607,6 +677,8 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 						startupDeadline: replacementDeadline,
 						image: options.image,
 						userHomeHostDir,
+						// The kept engine container still writes here.
+						binaryDataHostDir,
 						user,
 						startupTimeoutMs,
 					});
@@ -617,6 +689,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			},
 			mainUrls,
 			internalMainUrls,
+			processUrls,
 			startupDiagnostics: n8nResult.diagnostics,
 		};
 	} catch (error) {

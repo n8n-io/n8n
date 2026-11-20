@@ -4,6 +4,7 @@ import type {
 	InstanceAiMcpConnectionFailureReason,
 	InstanceAiMcpConnectionToolResponse,
 	InstanceAiMcpConnectionToolsResponse,
+	InstanceAiMcpCreateConnectionRequestDto,
 	InstanceAiMcpUpdateConnectionRequestDto,
 } from '@n8n/api-types';
 import { isObjectLiteral, Logger } from '@n8n/backend-common';
@@ -13,13 +14,14 @@ import { EventService, CredentialsFinderService } from '@n8n/backend-services';
 import { isUniqueConstraintError, type CredentialsEntity, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { McpServerConfig } from '@n8n/instance-ai';
-import { isRecord } from '@n8n/utils/is-record';
 import type { ICredentialDataDecryptedObject, LiteralMcpRegistryConnection } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
+import { createMcpAuthFetch } from '@/modules/mcp-registry/mcp-auth-fetch';
+import { findUsableMcpCredential } from '@/modules/mcp-registry/mcp-credential-access';
 import {
 	isSupportedMcpRegistryCredentialType,
 	prepareMcpRegistryConnection,
@@ -30,7 +32,6 @@ import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry
 import type { McpRegistryServer } from '@/modules/mcp-registry/registry/mcp-registry.types';
 import { OauthService } from '@/oauth/oauth.service';
 import { createAiMcpFetch } from '@/utils/ai-proxy-fetch';
-import { createAuthFetch, getBearerTokenRevision } from '@/utils/auth-fetch';
 
 import type { InstanceAiMcpRegistryConnection } from '../entities/instance-ai-mcp-registry-connection.entity';
 import { InstanceAiSettingsService } from '../instance-ai-settings.service';
@@ -101,12 +102,12 @@ export class InstanceAiMcpRegistryService {
 	}
 
 	async listConnectionsForUser(user: User): Promise<InstanceAiMcpRegistryConnection[]> {
-		return await this.connectionRepository.findBy({ userId: user.id });
+		return await this.connectionRepository.findByUserId(user.id, {});
 	}
 
 	async createConnection(
 		user: User,
-		input: { serverSlug: string; credentialId: string },
+		input: InstanceAiMcpCreateConnectionRequestDto,
 	): Promise<{
 		connection: InstanceAiMcpRegistryConnection;
 		credential: CredentialsEntity;
@@ -130,36 +131,38 @@ export class InstanceAiMcpRegistryService {
 		// credentials the user must disconnect first (the FE orchestrates this
 		// as a two-step swap). The DB unique index is currently looser; this
 		// request-layer check is the canonical enforcement.
-		const existing = await this.connectionRepository.findOneBy({
-			userId: user.id,
-			serverSlug: input.serverSlug,
-		});
+		const existing = await this.connectionRepository.findByUserIdAndServerSlug(
+			user.id,
+			input.serverSlug,
+			{},
+		);
 		if (existing) {
 			throw new ConflictError(
 				'This MCP server is already connected. Disconnect first to use a different credential.',
 			);
 		}
 
-		const credential = await this.credentialsFinderService.findCredentialForUser(
+		const credential = await findUsableMcpCredential(
+			this.credentialsFinderService,
 			input.credentialId,
 			user,
-			['credential:read'],
 		);
 		if (!credential) {
 			throw new NotFoundError('Credential not found or not accessible');
 		}
 		this.assertCredentialAllowed(server, credential.type);
 
-		const entity = this.connectionRepository.create({
+		const values = {
 			id: randomUUID(),
 			userId: user.id,
 			serverSlug: input.serverSlug,
 			credentialId: input.credentialId,
-			toolPermissions: this.instanceAiSettingsService.getMcpToolPermissions(),
-		});
+			toolPermissions:
+				input.toolPermissions ?? this.instanceAiSettingsService.getMcpToolPermissions(),
+		};
 
 		try {
-			const connection = await this.connectionRepository.save(entity);
+			const connection = await this.connectionRepository.createConnection(values, {});
 			this.eventService.emit('instance-ai-mcp-registry-connection-created', {
 				userId: user.id,
 				serverSlug: input.serverSlug,
@@ -176,12 +179,12 @@ export class InstanceAiMcpRegistryService {
 	}
 
 	async deleteConnection(user: User, id: string): Promise<void> {
-		const connection = await this.connectionRepository.findOneBy({ id, userId: user.id });
+		const connection = await this.connectionRepository.findByIdAndUserId(id, user.id, {});
 		if (!connection) {
 			throw new NotFoundError('MCP registry connection not found');
 		}
 
-		await this.connectionRepository.delete({ id });
+		await this.connectionRepository.deleteById(id, {});
 		this.eventService.emit('instance-ai-mcp-registry-connection-deleted', {
 			userId: user.id,
 			serverSlug: connection.serverSlug,
@@ -193,7 +196,7 @@ export class InstanceAiMcpRegistryService {
 		id: string,
 		payload: InstanceAiMcpUpdateConnectionRequestDto,
 	): Promise<InstanceAiMcpRegistryConnection> {
-		const connection = await this.connectionRepository.findOneBy({ id, userId: user.id });
+		const connection = await this.connectionRepository.findByIdAndUserId(id, user.id, {});
 		if (!connection) {
 			throw new NotFoundError('MCP registry connection not found');
 		}
@@ -207,11 +210,11 @@ export class InstanceAiMcpRegistryService {
 		}
 
 		if (payload.toolPermissions) connection.toolPermissions = payload.toolPermissions;
-		return await this.connectionRepository.save(connection);
+		return await this.connectionRepository.saveConnectionChanges(connection, {});
 	}
 
 	async listConnectionTools(user: User, id: string): Promise<InstanceAiMcpConnectionToolsResponse> {
-		const connection = await this.connectionRepository.findOneBy({ id, userId: user.id });
+		const connection = await this.connectionRepository.findByIdAndUserId(id, user.id, {});
 		if (!connection) {
 			throw new NotFoundError('MCP registry connection not found');
 		}
@@ -220,7 +223,7 @@ export class InstanceAiMcpRegistryService {
 	}
 
 	async listAllConnectionTools(user: User): Promise<InstanceAiMcpConnectionToolsResponse[]> {
-		const connections = await this.connectionRepository.findBy({ userId: user.id });
+		const connections = await this.connectionRepository.findByUserId(user.id, {});
 		return await Promise.all(
 			connections.map(async (connection) => {
 				try {
@@ -308,7 +311,7 @@ export class InstanceAiMcpRegistryService {
 	}
 
 	async getRegistryMcpServers(user: User): Promise<McpServerConfig[]> {
-		const connections = await this.connectionRepository.findBy({ userId: user.id });
+		const connections = await this.connectionRepository.findByUserId(user.id, {});
 		if (connections.length === 0) {
 			return [];
 		}
@@ -467,32 +470,14 @@ export class InstanceAiMcpRegistryService {
 		}
 
 		const projectId = credentialWithData.credential.shared?.[0]?.projectId ?? null;
-		const storedTokenData = credentialWithData.data.oauthTokenData;
-		const oauthTokenData = isRecord(storedTokenData) ? { ...storedTokenData } : undefined;
-		return createAuthFetch({
+		return createMcpAuthFetch({
+			authentication: credentialType,
 			baseFetch,
+			credentialData: credentialWithData.data,
+			credentialId: config.credentialId,
 			initialHeaders: prepared.value.headers,
-			onUnauthorized: async (currentHeaders) => {
-				if (!projectId) return null;
-				const result = await this.oauthService.refreshOAuth2CredentialById(
-					config.credentialId,
-					projectId,
-					getBearerTokenRevision(currentHeaders, oauthTokenData?.n8n_expires_at),
-				);
-				if (result && oauthTokenData) {
-					if (result.expiresAt === undefined) {
-						delete oauthTokenData.n8n_expires_at;
-					} else {
-						oauthTokenData.n8n_expires_at = String(result.expiresAt);
-					}
-					if (result.expiresInSeconds === undefined) {
-						delete oauthTokenData.expires_in;
-					} else {
-						oauthTokenData.expires_in = result.expiresInSeconds;
-					}
-				}
-				return result?.headers ?? null;
-			},
+			oauthService: this.oauthService,
+			projectId,
 			allowedDomains: {
 				mode: 'domains',
 				domains: prepared.value.allowedDomains,
@@ -504,10 +489,10 @@ export class InstanceAiMcpRegistryService {
 		credentialId: string,
 		user: User,
 	): Promise<{ credential: CredentialsEntity; data: ICredentialDataDecryptedObject } | null> {
-		const credential = await this.credentialsFinderService.findCredentialForUser(
+		const credential = await findUsableMcpCredential(
+			this.credentialsFinderService,
 			credentialId,
 			user,
-			['credential:read'],
 		);
 		if (!credential) {
 			return null;
@@ -527,10 +512,10 @@ export class InstanceAiMcpRegistryService {
 		newCredentialId: string,
 		server: McpRegistryServer,
 	) {
-		const newCredential = await this.credentialsFinderService.findCredentialForUser(
+		const newCredential = await findUsableMcpCredential(
+			this.credentialsFinderService,
 			newCredentialId,
 			user,
-			['credential:read'],
 		);
 		if (!newCredential) {
 			throw new NotFoundError('Credential not found or not accessible');

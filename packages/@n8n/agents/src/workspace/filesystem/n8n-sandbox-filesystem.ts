@@ -1,4 +1,4 @@
-import { SandboxServiceError } from '@n8n/sandbox-client';
+import { type SandboxClient, SandboxServiceError } from '@n8n/sandbox-client';
 import { dirname } from 'node:path/posix';
 
 import { BaseFilesystem, type BaseFilesystemOptions } from './base-filesystem';
@@ -42,26 +42,15 @@ export class N8nSandboxFilesystem extends BaseFilesystem {
 		this.id = `n8n-sandbox-fs-${sandbox.id}`;
 	}
 
-	private async getClientAndSandboxId(abortSignal?: AbortSignal) {
-		await this.sandbox.ensureRunning({ abortSignal });
-		return {
-			client: this.sandbox.getClient(),
-			sandboxId: this.sandbox.id,
-		};
-	}
-
 	private async withSandbox<T>(
 		abortSignal: AbortSignal | undefined,
-		op: (
-			client: ReturnType<N8nSandboxServiceSandbox['getClient']>,
-			sandboxId: string,
-		) => Promise<T>,
+		op: (client: SandboxClient, sandboxId: string) => Promise<T>,
 	): Promise<T> {
 		await this.ensureReady();
-		return await raceWithAbort(async () => {
-			const { client, sandboxId } = await this.getClientAndSandboxId(abortSignal);
-			return await op(client, sandboxId);
-		}, abortSignal);
+		return await raceWithAbort(
+			async () => await this.sandbox.withClient(op, { abortSignal }),
+			abortSignal,
+		);
 	}
 
 	async readFile(path: string, options?: ReadOptions): Promise<string | Buffer> {

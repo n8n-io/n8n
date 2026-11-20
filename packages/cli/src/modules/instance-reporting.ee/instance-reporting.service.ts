@@ -1,4 +1,4 @@
-import { Logger } from '@n8n/backend-common';
+import { getN8nVersion, Logger } from '@n8n/backend-common';
 import type { HttpRequestClient } from '@n8n/backend-network';
 import { OutboundHttp } from '@n8n/backend-network';
 import { EventService } from '@n8n/backend-services';
@@ -7,12 +7,11 @@ import { LicenseMetricsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
 import { InstanceSettings } from 'n8n-core';
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 
-import { N8N_VERSION } from '@/constants';
 import { License } from '@/license';
-import { InsightsConfig } from '@/modules/insights/insights.config';
-import { InsightsService } from '@/modules/insights/insights.service';
+import { InsightsService } from '@n8n/backend-module-insights';
+import { InsightsConfig } from '@n8n/backend-module-insights/config';
 
 import type {
 	InstanceMonitoringReport,
@@ -237,7 +236,7 @@ export class InstanceReportingService {
 			instanceId: this.instanceSettings.instanceId,
 			batchId: report.id,
 			...(this.config.instanceReportingLabel ? { label: this.config.instanceReportingLabel } : {}),
-			n8nVersion: N8N_VERSION,
+			n8nVersion: getN8nVersion(),
 			dataPoints: report.dataPoints,
 			...(licenseCert ? { licenseCert } : {}),
 		};
@@ -386,15 +385,27 @@ export class InstanceReportingService {
 	 * cumulative ones.
 	 */
 	private async collectDataPoints(days: string[]): Promise<InstanceReportDataPoint[]> {
-		const [totals, { productionRootExecutions }] = await Promise.all([
-			this.insightsService.getDailyExecutionTotals({
-				startDate: new Date(`${days[0]}T00:00:00.000Z`),
-				endDate: new Date(`${days.at(-1)}T00:00:00.000Z`),
-			}),
+		const firstBillableDay = await this.insightsService.getFirstBillableDay();
+		// The billable number is only defined from the day this instance updated to 2.40.0 or higher.
+		// The first day with billable insight rows may be partial, so it and all earlier days
+		// report the total; later days report billable executions.
+		const totalDays = days.filter((day) => firstBillableDay === null || day <= firstBillableDay);
+		const billableDays = days.slice(totalDays.length);
+
+		const [totalsByDay, billableByDay, { productionRootExecutions }] = await Promise.all([
+			this.readDays(
+				totalDays,
+				async (range) => await this.insightsService.getDailyExecutionTotals(range),
+			),
+			this.readDays(
+				billableDays,
+				async (range) => await this.insightsService.getDailyBillableExecutions(range),
+			),
 			// Same source as the `productionRootExecutions` license metric, so the
 			// reported total matches what the license server sees.
 			this.licenseMetricsRepository.getLicenseRenewalMetrics(),
 		]);
+		const executionsByDay = new Map([...totalsByDay, ...billableByDay]);
 
 		return [
 			{ kind: 'cumulative', name: 'billableExecutions', value: productionRootExecutions },
@@ -403,10 +414,21 @@ export class InstanceReportingService {
 			...days.map((date) => ({
 				kind: 'daily' as const,
 				name: 'billableExecutions',
-				value: totals.get(date) ?? 0,
+				value: executionsByDay.get(date) ?? 0,
 				date,
 			})),
 		];
+	}
+
+	private async readDays(
+		days: string[],
+		read: (range: { startDate: Date; endDate: Date }) => Promise<Map<string, number>>,
+	): Promise<Map<string, number>> {
+		if (days.length === 0) {
+			return new Map();
+		}
+
+		return await read(utcDayRange(days));
 	}
 }
 
@@ -445,6 +467,13 @@ function utcDayBefore(instant: Date, count: number): string {
 /** The UTC calendar day `count` days after `day`, as `YYYY-MM-DD`. */
 function addUtcDays(day: string, count: number): string {
 	return utcDayBefore(new Date(`${day}T00:00:00.000Z`), -count);
+}
+
+function utcDayRange(days: string[]): { startDate: Date; endDate: Date } {
+	return {
+		startDate: new Date(`${days[0]}T00:00:00.000Z`),
+		endDate: new Date(`${days.at(-1)}T00:00:00.000Z`),
+	};
 }
 
 /** The later of two `YYYY-MM-DD` days; `null` counts as no bound. */
