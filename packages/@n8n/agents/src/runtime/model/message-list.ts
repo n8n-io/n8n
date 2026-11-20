@@ -2,6 +2,7 @@ import type { ProviderOptions } from '@ai-sdk/provider-utils';
 import type { ModelMessage, SystemModelMessage } from 'ai';
 
 import { toAiMessages } from './messages';
+import { sanitizeForeignModelMessages } from './model-compatibility';
 import { filterLlmMessages, getCreatedAt } from '../../sdk/message';
 import type { SerializedMessageList } from '../../types/runtime/message-list';
 import type {
@@ -24,6 +25,14 @@ export type { SerializedMessageList };
  */
 export const OBSERVATION_CONTINUATION_REMINDER =
 	'<system-reminder>Earlier conversation was reviewed for memory. Use the observation log in your system prompt if one is present. Continue the task from the available context. Do not repeat completed work. Do not mention this memory processing to the user.</system-reminder>';
+
+/**
+ * Synthetic user message appended when fallback foreign-model sanitization
+ * degrades a trailing tool turn into an assistant message, preventing
+ * assistant-prefill rejections on providers that disallow them.
+ */
+export const MODEL_SWITCH_CONTINUATION_REMINDER =
+	'<system-reminder>Earlier tool results were summarized above after a model change. Continue answering from the available context. Do not mention this transition to the user.</system-reminder>';
 
 export type LlmContext = {
 	system: SystemModelMessage | SystemModelMessage[];
@@ -347,15 +356,26 @@ export class AgentMessageList {
 		instructionProviderOptions?: ProviderOptions,
 		volatileInstructions?: string,
 		splitSystemMessages = true,
+		targetModelId?: string,
 	): LlmContext {
-		const messages = toAiMessages(
-			filterLlmMessages(stripOrphanedToolMessages(this.llmVisibleMessages())),
-		);
+		const llmMessages = filterLlmMessages(stripOrphanedToolMessages(this.llmVisibleMessages()));
+		const sanitized = targetModelId
+			? sanitizeForeignModelMessages(llmMessages, targetModelId)
+			: llmMessages;
+		const messages = toAiMessages(sanitized);
+
 		// A masked window may be empty or start mid-exchange; anchor it with a
 		// synthetic user message so the model call stays valid.
 		if (this.observationMaskBoundary && messages[0]?.role !== 'user') {
 			messages.unshift({ role: 'user', content: OBSERVATION_CONTINUATION_REMINDER });
 		}
+
+		// Degrading a trailing cross-provider tool turn into text can leave the
+		// conversation ending with an assistant message, which some models reject.
+		if (sanitized !== llmMessages && messages.at(-1)?.role === 'assistant') {
+			messages.push({ role: 'user', content: MODEL_SWITCH_CONTINUATION_REMINDER });
+		}
+
 		return {
 			system: buildSystemMessages(
 				baseInstructions,

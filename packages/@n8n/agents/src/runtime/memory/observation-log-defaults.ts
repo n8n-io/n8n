@@ -154,6 +154,7 @@ export function createObservationLogObserveFn(
 			model: createModel(model),
 			instructions: options.observerPrompt ?? DEFAULT_OBSERVATION_LOG_OBSERVER_PROMPT,
 			prompt: buildObservationLogObserverPrompt(input),
+			...(input.abortSignal ? { abortSignal: input.abortSignal } : {}),
 			...buildAiSdkTelemetry(input.telemetry, { functionSuffix: 'memory-observer' }),
 		});
 		incrementTokenCountFromUsage(input.executionCounter, usage);

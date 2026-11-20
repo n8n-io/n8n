@@ -2,6 +2,7 @@ import { isSensitiveKey } from '@n8n/utils/redaction/sensitive-key';
 
 import { renderObservationLog } from './observation-log-renderer';
 import { reportSideCallUsage } from './forward-usage';
+import { settleOrphanedToolMessages } from './strip-orphaned-tool-messages';
 import { redactText } from '../../sdk/guardrails';
 import type { AgentExecutionCounter, TokenUsage } from '../../types/sdk/agent';
 import type { BuiltMemory } from '../../types/sdk/memory';
@@ -15,6 +16,7 @@ import type {
 	ObservationLogObserverInput,
 } from '../../types/sdk/observation-log';
 import type { BuiltTelemetry } from '../../types/telemetry';
+import { fileMetadataText } from '../model/messages';
 import { estimateObservationTokens, type TokenCounter } from '../model/model-token-counter';
 import { guardToolResultForModel } from '../tools/tool-result-guard';
 
@@ -34,6 +36,8 @@ const DEFAULT_MAX_STRING_CHARS = 500;
 const DEFAULT_MAX_ARRAY_ITEMS = 20;
 const DEFAULT_MAX_OBJECT_KEYS = 40;
 const REDACTED_VALUE = '[REDACTED]';
+const MODEL_SWITCH_EMPTY_OBSERVATION_TEXT =
+	'Earlier conversation before model switch contained no additional durable facts.';
 
 export interface ParsedObservationLogEntry {
 	marker: ObservationLogMarker;
@@ -85,6 +89,17 @@ export interface RunObservationLogObserverOpts {
 	onMalformedLine?: (line: string) => void;
 	executionCounter?: AgentExecutionCounter;
 	telemetry?: BuiltTelemetry;
+	abortSignal?: AbortSignal;
+	/**
+	 * Settle abandoned pending tool calls in memory before observing, instead of
+	 * stopping the cursor before them. Used for pre-turn forced compaction.
+	 */
+	settlePendingToolCalls?: boolean;
+	/**
+	 * Advance the cursor even when the observer returns `NO_OBSERVATIONS` and no
+	 * prior active observations exist, by writing a minimal `info` entry.
+	 */
+	ensureCursorAdvance?: boolean;
 	/**
 	 * Receives the observer model call's usage the moment it resolves, before
 	 * any parsing or persistence. Forwarding it here (rather than only on the
@@ -154,8 +169,11 @@ export function renderObserverTranscript(
 			message.createdAt instanceof Date ? message.createdAt : new Date(message.createdAt);
 		const timestamp = createdAt.toISOString();
 		const text = message.content
-			.filter((content): content is { type: 'text'; text: string } => content.type === 'text')
-			.map((content) => content.text)
+			.flatMap((content) => {
+				if (content.type === 'text') return [content.text];
+				if (content.type === 'file') return [fileMetadataText(content)];
+				return [];
+			})
 			.join('\n');
 		if (text) {
 			// Messages synthesized from tool output (toMessage, e.g. MCP rich
@@ -211,11 +229,16 @@ export async function runObservationLogObserver(
 	// yet. Observing past its host would advance the cursor over it, and the
 	// later in-place resolution would land behind the cursor — masked from the
 	// LLM window and never part of a future observer delta. Observe only the
-	// messages before the host; the rest is picked up once the call settles.
-	const firstPendingIndex = deltaMessages.findIndex(hasPendingToolCall);
-	const observable =
-		firstPendingIndex === -1 ? deltaMessages : deltaMessages.slice(0, firstPendingIndex);
-	if (observable.length === 0) return { status: 'skipped', reason: 'pending-tool-call' };
+	// messages before the host unless the caller explicitly settles abandoned calls.
+	let observable: AgentDbMessage[];
+	if (opts.settlePendingToolCalls) {
+		observable = settleOrphanedToolMessages(deltaMessages);
+	} else {
+		const firstPendingIndex = deltaMessages.findIndex(hasPendingToolCall);
+		observable =
+			firstPendingIndex === -1 ? deltaMessages : deltaMessages.slice(0, firstPendingIndex);
+		if (observable.length === 0) return { status: 'skipped', reason: 'pending-tool-call' };
+	}
 
 	const tokenCounter = opts.tokenCounter ?? estimateObservationTokens;
 	const guardedMessages = await Promise.all(
@@ -243,6 +266,7 @@ export async function runObservationLogObserver(
 		renderedObservationLogTail,
 		executionCounter: opts.executionCounter,
 		telemetry: opts.telemetry,
+		...(opts.abortSignal ? { abortSignal: opts.abortSignal } : {}),
 	});
 	const markdown = typeof observeResult === 'string' ? observeResult : observeResult.text;
 	const observeUsage = typeof observeResult === 'string' ? undefined : observeResult.usage;
@@ -300,6 +324,20 @@ export async function runObservationLogObserver(
 				parentId,
 				tokenCount: entry.tokenCount,
 				createdAt: new Date(now.getTime() + inserted.length),
+			},
+		]);
+		inserted.push(row);
+	}
+
+	if (noObservations && !hasActiveObservations && opts.ensureCursorAdvance) {
+		const [row] = await memory.appendObservationLogEntries([
+			{
+				observationScopeId,
+				marker: 'info',
+				text: MODEL_SWITCH_EMPTY_OBSERVATION_TEXT,
+				parentId: null,
+				tokenCount: await tokenCounter(MODEL_SWITCH_EMPTY_OBSERVATION_TEXT),
+				createdAt: now,
 			},
 		]);
 		inserted.push(row);

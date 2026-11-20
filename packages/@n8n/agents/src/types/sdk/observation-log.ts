@@ -85,6 +85,7 @@ export interface ObservationLogObserverInput {
 	renderedObservationLogTail: string | null;
 	executionCounter?: AgentExecutionCounter;
 	telemetry?: BuiltTelemetry;
+	abortSignal?: AbortSignal;
 }
 
 /** Return observation bullets, or exactly NO_OBSERVATIONS when the batch has no new facts. */

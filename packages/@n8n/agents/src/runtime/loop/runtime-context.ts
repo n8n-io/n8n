@@ -173,6 +173,7 @@ export class RuntimeContextBuilder {
 			instructionProviderOptions,
 			combinedVolatileInstructions || undefined,
 			supportsSplitSystemMessages(this.config.model),
+			this.modelId,
 		);
 		// Cache breakpoints apply to this call only. Do not change stored messages or tools.
 		const cached = applyRuntimeCacheBreakpoints({
