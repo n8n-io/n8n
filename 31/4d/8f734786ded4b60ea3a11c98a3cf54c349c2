@@ -1,0 +1,42 @@
+packages/frontend/editor-ui/src/app/componentSlots.manifest.test.ts
+  s_b6d332c56aa1c5::t_d126875a8590d9 20-25
+  s_b6d332c56aa1c5::t_f8e902c70d8b75 26,28-30
+packages/frontend/editor-ui/src/features/collaboration/projects/components/InsightsSummarySlot.vue
+  s_b6d332c56aa1c5::t_d9060e061575dd 1-19
+packages/frontend/editor-ui/src/app/componentSlots.manifest.ts
+  s_b6d332c56aa1c5::t_74d0b39247792d 45-51
+  s_b6d332c56aa1c5::t_04c846d330af47 44
+packages/frontend/@n8n/frontend-module-sdk/src/types/component.ts
+  s_b6d332c56aa1c5::t_3e55d1f4badd87 30
+  s_b6d332c56aa1c5::t_9f5788d807d991 20-21
+packages/frontend/editor-ui/src/features/collaboration/projects/components/InsightsSummarySlot.test.ts
+  s_b6d332c56aa1c5::t_73315c9433b254 1
+  s_b6d332c56aa1c5::t_532fb1f4f97a1f 2-38
+packages/modules/apps/frontend/src/views/AppsListView.vue
+  s_b6d332c56aa1c5::t_4f5d0c0c0847c5 27
+  s_b6d332c56aa1c5::t_ad748f84a9f212 150-152
+packages/modules/apps/frontend/src/views/AppsListView.test.ts
+  s_b6d332c56aa1c5::t_f3354275efff87 74-79,121-129
+  s_b6d332c56aa1c5::t_4b8bb774477cf7 130-131
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "314d8f734786ded4b60ea3a11c98a3cf54c349c2",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_b6d332c56aa1c5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f6b2437c-b582-4a87-95e4-7349acfdcb64",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

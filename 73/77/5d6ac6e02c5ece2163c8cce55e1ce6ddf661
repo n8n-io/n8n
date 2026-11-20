@@ -1,0 +1,40 @@
+packages/cli/src/services/folder-content.service.ts
+  s_f47d4602e7ba0b::t_c1579274453ce7 1,6-7,10,28-32,34-35,38-41,45
+  s_f47d4602e7ba0b::t_b9e4a9dd0bcbca 9
+packages/cli/src/services/__tests__/folder-operations.test.ts
+  s_f47d4602e7ba0b::t_73a9d58b5c99ed 14,18,29,41-42,55,64,72,88,94,143,149,156-165
+  s_f47d4602e7ba0b::t_e7d15d3f345478 31-36,100-105,116-120,150-155
+packages/cli/src/modules/agents/agents.module.ts
+  s_f47d4602e7ba0b::t_c1579274453ce7 13
+packages/cli/test/integration/agents/agent-folders.test.ts
+  s_f47d4602e7ba0b::t_c1579274453ce7 46
+packages/cli/src/services/folder.service.ts
+  s_f47d4602e7ba0b::t_e7d15d3f345478 14,251-256
+  s_f47d4602e7ba0b::t_c1579274453ce7 147-149,157,223,235-244,314-322,326-328,363
+  s_f47d4602e7ba0b::t_48571056aa43a8 224,226-228
+packages/cli/test/integration/folder/folder.controller.test.ts
+  s_f47d4602e7ba0b::t_e7d15d3f345478 1201-1202,1210-1214,1220-1225
+  s_f47d4602e7ba0b::t_48571056aa43a8 23,1194-1200,1203-1209,1215-1219,1226-1228
+packages/cli/src/services/workflow-folder.service.ts
+  s_f47d4602e7ba0b::t_c1579274453ce7 1-6,8-43
+  s_f47d4602e7ba0b::t_48571056aa43a8 7
+packages/@n8n/db/src/repositories/workflow.repository.ts
+  s_f47d4602e7ba0b::t_48571056aa43a8 2046,2083,2094-2095
+  s_f47d4602e7ba0b::t_c1579274453ce7 2041-2045,2047-2080,2087-2093,2096-2097
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "73775d6ac6e02c5ece2163c8cce55e1ce6ddf661",
+  "prompts": {},
+  "sessions": {
+    "s_f47d4602e7ba0b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1d536-382e-7c22-8084-f34bb0a03002",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

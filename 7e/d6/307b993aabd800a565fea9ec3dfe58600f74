@@ -1,0 +1,21 @@
+packages/@n8n/cli/docs/commands/promotions.md
+  s_761400fb6cd0de::t_5e748a43258694 391-392
+packages/@n8n/cli/src/__tests__/client.test.ts
+  s_761400fb6cd0de::t_5e748a43258694 85,89,92,95-97,99,108-110,112
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7ed6307b993aabd800a565fea9ec3dfe58600f74",
+  "prompts": {},
+  "sessions": {
+    "s_761400fb6cd0de": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6a89e874-3e31-4613-9a5a-8ebff2abeda9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

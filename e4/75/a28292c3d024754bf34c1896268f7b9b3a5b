@@ -1,0 +1,57 @@
+packages/modules/page/frontend/src/resources/ResourceChip.test.ts
+  s_f27bda1bd0c713::t_d2738726131dfd 4,9,66-86
+packages/modules/page/frontend/src/components/PageOverviewBoard.test.ts
+  s_f27bda1bd0c713::t_5ca42ecc0636aa 115,118-119,337-369
+packages/modules/page/demo/README.md
+  ai_agent 37,45-47
+packages/modules/page/frontend/src/overview/workflowCategories.ts
+  s_f27bda1bd0c713::t_97adfc6cd3f095 1-9
+packages/modules/page/demo/seed-undocumented.mjs
+  ai_agent 2
+packages/modules/page/frontend/src/page.store.ts
+  s_f27bda1bd0c713::t_8610b090ef2b38 114-118,166
+packages/modules/page/frontend/src/components/ClippedContent.test.ts
+  s_f27bda1bd0c713::t_d2738726131dfd 1-2,4,6,8,10-15,17,19-21,23-25,27-28,30-33,35-37,40-41,43,45-46,49-52,54-56,58-63,66-72,74
+packages/modules/page/frontend/src/components/ClippedContent.vue
+  s_f27bda1bd0c713::t_97adfc6cd3f095 2-4,7-9,11-25,27-38,42-65,70-73,75-126
+packages/modules/page/frontend/src/components/PageEditorDocument.vue
+  ai_agent 27-28,182,226-238
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectTabs.test.ts
+  s_f27bda1bd0c713::t_331220bfb865fa 10,12-13,42,45,51-52,63
+packages/modules/page/frontend/src/components/PageOverviewBoard.vue
+  s_f27bda1bd0c713::t_5ca42ecc0636aa 206-210,233-238
+  s_f27bda1bd0c713::t_1b969e1c6c4c55 25-26,70-74,77-78,169-173,183-190,324-332,334-336,338-341
+  s_f27bda1bd0c713::t_8610b090ef2b38 2,4,7,9-10,15,23,27,62-69,75-76,79-106,174-182,195-205,211-230,239-242,315-323,342-372
+packages/modules/page/frontend/src/page.api.ts
+  s_f27bda1bd0c713::t_8610b090ef2b38 42-49
+packages/frontend/editor-ui/src/features/pages/components/DocumentProjectButton.vue
+  ai_agent 12-13,21,23,32-33,35-37,53-54
+  s_f27bda1bd0c713::t_0ebc350b919267 14,17-20,22,24,31,34,51,57
+packages/frontend/@n8n/frontend-module-sdk/src/types/component.ts
+  s_f27bda1bd0c713::t_8610b090ef2b38 34-35
+packages/frontend/editor-ui/src/features/pages/components/DocumentProjectButton.test.ts
+  s_f27bda1bd0c713::t_2ef5048653d19c 1,6,35-37,56-59,61-66,74,80-81
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectTabs.vue
+  s_f27bda1bd0c713::t_331220bfb865fa 16,42,65,67
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_f27bda1bd0c713::t_1b969e1c6c4c55 3465,3477
+  s_f27bda1bd0c713::t_8610b090ef2b38 3468-3470,3475-3476,3478-3479
+packages/modules/page/frontend/src/resources/ResourceChip.vue
+  s_f27bda1bd0c713::t_d2738726131dfd 99
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e475a28292c3d024754bf34c1896268f7b9b3a5b",
+  "prompts": {},
+  "sessions": {
+    "s_f27bda1bd0c713": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e884d7e-3c84-4428-98db-a0c5cff39be6",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

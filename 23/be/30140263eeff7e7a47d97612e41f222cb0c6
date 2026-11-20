@@ -68,7 +68,7 @@ packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
   s_50b1b090121afc::t_1ae85d8b300926 1229
 packages/cli/src/modules/n8n-packages/entities/credential/credential-conflict-policy.ts
   s_50b1b090121afc::t_f8f9671ffe1351 145-148
-  s_50b1b090121afc::t_74992e093871a6 1-8,10-21,33-49,54-144,149,153-160,163,168
+  s_50b1b090121afc::t_74992e093871a6 1-8,1-6,7-8,10-21,33-49,54-144,149,153-160,163,168
   s_50b1b090121afc::t_196efc61dadd20 9,150-152,161-162,164-167
   s_50b1b090121afc::t_3babd183db4de9 50-53
   s_50b1b090121afc::t_6c28908db1b9a8 22-32

@@ -1,0 +1,26 @@
+packages/cli/src/modules/instance-ai/turn-setup/assistant-turn-input.builder.ts
+  h_2f80f0e06f710c 92,289,580,586,617,635,730
+packages/cli/src/modules/instance-ai/turn-setup/__tests__/assistant-turn-input.builder.test.ts
+  s_c783295548c782::t_d45f4472829c1e 407,459
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0f2b511c328aa67a6981aeb8cf87208d3bb0ea3c",
+  "prompts": {},
+  "humans": {
+    "h_2f80f0e06f710c": {
+      "author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_c783295548c782": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6f156e56-ccc7-4bb1-820b-f54bd9c82498",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}

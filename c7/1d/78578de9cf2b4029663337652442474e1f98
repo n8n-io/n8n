@@ -1,0 +1,19 @@
+packages/@n8n/agents/src/runtime/__tests__/model-token-counter.test.ts
+  s_113cc50df1bdde::t_c7b54a4beee857 39-40,42-45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c71d78578de9cf2b4029663337652442474e1f98",
+  "prompts": {},
+  "sessions": {
+    "s_113cc50df1bdde": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e40b74fdeffemLkh6wFmMBeyRk",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,30 @@
+packages/frontend/editor-ui/src/features/workflows/workflowHistory/views/WorkflowHistory.test.ts
+  s_f9831d8f0ed93e::t_cc3d648b2f17c2 432-436
+  s_f9831d8f0ed93e::t_3ddf9020602481 373
+  s_f9831d8f0ed93e::t_9f86f0a7b725d7 397,402,404,408-411,414
+packages/frontend/editor-ui/src/features/workflows/workflowHistory/views/WorkflowHistory.vue
+  s_f9831d8f0ed93e::t_f960197b14c3b9 684
+packages/frontend/editor-ui/src/features/workflows/workflowHistory/components/WorkflowHistoryList.vue
+  s_f9831d8f0ed93e::t_e67e5a1201c253 32
+  s_f9831d8f0ed93e::t_fb0dade256a6bd 222
+  s_f9831d8f0ed93e::t_88fdc9e8884a45 241
+packages/frontend/editor-ui/src/features/workflows/workflowHistory/components/WorkflowHistoryListItem.vue
+  s_f9831d8f0ed93e::t_dc5375ec6d0a3c 241-252,254
+  s_f9831d8f0ed93e::t_0858bc758f853d 35,43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ff23575296df9c04b7ee37acfc4c78751e3851da",
+  "prompts": {},
+  "sessions": {
+    "s_f9831d8f0ed93e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8a83f255-a230-4236-9460-cfd7fca88ac2",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

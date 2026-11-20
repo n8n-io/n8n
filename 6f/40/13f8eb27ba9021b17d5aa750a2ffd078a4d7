@@ -1,0 +1,27 @@
+packages/frontend/editor-ui/src/features/agents/composables/useAgentVersionHistory.ts
+  s_5785bc20fb92a9::t_bacd1f95815068 7,10-11,16,24-25,171-177,179-180,182-185,187-195,197,202-204,206-209,227
+  s_5785bc20fb92a9::t_8d8c077d448365 31,33,45-48,50,63,68,86,91,93-95,100,220
+  s_5785bc20fb92a9::t_760f474b1b11db 168,200,140
+  h_7555c3ee6524cf 49,53,59,61,67,82,88,90,99,132,138,141,166,169,178,181,198,201,205
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6f4013f8eb27ba9021b17d5aa750a2ffd078a4d7",
+  "prompts": {},
+  "humans": {
+    "h_7555c3ee6524cf": {
+      "author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_5785bc20fb92a9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a162ad-ab21-7f50-b574-6896331f2bca",
+        "model": "gpt-6-astra"
+      },
+      "human_author": null
+    }
+  }
+}

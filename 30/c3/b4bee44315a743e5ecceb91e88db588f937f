@@ -1,0 +1,37 @@
+packages/modules/ui-extensions/frontend/src/ui-extensions.builtin.ts
+  s_85c95d3931e97d::t_ef037965998d51 73-74
+packages/quality/testing/playwright/tests/e2e/ui-extensions/side-panel.spec.ts
+  s_85c95d3931e97d::t_b77f85a914653e 275-280,286,289-292,306-309
+  s_85c95d3931e97d::t_ccb399c4b40b36 238,287-288,304
+  s_85c95d3931e97d::t_59e1c9ecb0ad34 36-41
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_85c95d3931e97d::t_ef037965998d51 5783,5800,5807-5808
+packages/modules/ui-extensions/frontend/src/examples/arcade.view.test.ts
+  s_85c95d3931e97d::t_2f9ee6043c076f 218,225-226,232-250
+  s_85c95d3931e97d::t_110e063a619378 170,174,177,179,181-185,187,191-217
+  s_85c95d3931e97d::t_8e324384d87828 219
+packages/modules/ui-extensions/frontend/src/examples/arcade.view.js
+  s_85c95d3931e97d::t_2f9ee6043c076f 90,319-327,347-348,379-383
+  s_85c95d3931e97d::t_4b44fb612e9a1a 104,106-110
+packages/modules/ui-extensions/frontend/src/examples/recentRuns.view.test.ts
+  s_85c95d3931e97d::t_9f54b72c555c54 185-186,197,235-236,271-293
+packages/modules/ui-extensions/frontend/src/examples/recentRuns.view.js
+  s_85c95d3931e97d::t_9f54b72c555c54 106-107,114,116
+  s_85c95d3931e97d::t_817a18e40f2038 31-32,49,80-81,136,141-144,155,178,238,274
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "30c3b4bee44315a743e5ecceb91e88db588f937f",
+  "prompts": {},
+  "sessions": {
+    "s_85c95d3931e97d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5414b146-7e78-4316-b391-228e75b753d9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

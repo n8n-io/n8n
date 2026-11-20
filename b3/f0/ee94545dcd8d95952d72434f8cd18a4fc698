@@ -1,0 +1,28 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentVersionHistoryPanel.test.ts
+  s_5785bc20fb92a9::t_04363ef0809755 57,303-311
+  s_5785bc20fb92a9::t_83663d453c940a 58-67,286-289,291-301,329,334-335,354-355,367
+  s_5785bc20fb92a9::t_5ebea7d39a2589 290
+packages/frontend/editor-ui/src/features/agents/components/VersionHistory/AgentVersionHistoryPanel.vue
+  s_5785bc20fb92a9::t_0d8da2ce123d2d 2,39
+  s_5785bc20fb92a9::t_83663d453c940a 4,12,40-44,172-175,182,197,209-214
+  s_5785bc20fb92a9::t_8d8c077d448365 18,115,122-125,193,198,207-208
+  s_5785bc20fb92a9::t_bacd1f95815068 55,68-69,72,96-97,100,130,139,141
+  s_5785bc20fb92a9::t_604932078a74a6 70-71,98-99
+  s_5785bc20fb92a9::t_760f474b1b11db 137-138,140,142-143,147-148,152-154
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b3f0ee94545dcd8d95952d72434f8cd18a4fc698",
+  "prompts": {},
+  "sessions": {
+    "s_5785bc20fb92a9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a162ad-ab21-7f50-b574-6896331f2bca",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,401 @@
+packages/cli/src/public-api/v1/controllers/rate-limits.public.controller.ts
+  s_b06ce20dc97250::t_f0a006dac108ea 53,71
+packages/cli/src/public-api/v1/controllers/sso-saml.public.controller.ts
+  s_b06ce20dc97250::t_293b5c08073b92 39,52
+packages/cli/src/public-api/v1/openapi-gen/decorator-routes.ts
+  s_b06ce20dc97250::t_c6b57e3dd77b38 304-323,325-330
+  s_b06ce20dc97250::t_89f558ce40ab1a 9
+  s_b06ce20dc97250::t_ae8d48e523fe94 19
+  s_b06ce20dc97250::t_cfec157485aea2 324
+  s_b06ce20dc97250::t_ed138926e5abc1 360,368
+  s_b06ce20dc97250::t_ba1da0830babb1 303
+packages/cli/src/public-api/v1/controllers/log-streaming.public.controller.ts
+  s_b06ce20dc97250::t_e9330426fcf98d 190
+  s_b06ce20dc97250::t_0424b3bfb246d5 91
+  s_b06ce20dc97250::t_8f99b5f487528a 111
+  s_b06ce20dc97250::t_f8b9751c430b01 158
+  s_b06ce20dc97250::t_b19de802a7e9ae 63,76
+  s_b06ce20dc97250::t_05be640eef75fa 131
+packages/cli/src/public-api/v1/controllers/ldap.public.controller.ts
+  s_b06ce20dc97250::t_c4e4c58a1c2eb2 80,103
+  s_b06ce20dc97250::t_c18ccdf3d7bcd9 47,61
+packages/cli/src/public-api/v1/openapi-gen/__tests__/generated-spec-drift.test.ts
+  s_b06ce20dc97250::t_a134c9f4f841b6 35-46
+packages/cli/src/public-api/v1/controllers/otel.public.controller.ts
+  s_b06ce20dc97250::t_c7945f66c9f2c1 43,62,94
+packages/cli/src/public-api/v1/controllers/security-policy.public.controller.ts
+  s_b06ce20dc97250::t_2d6233933b8f72 49,63
+packages/cli/src/public-api/v1/controllers/evaluations.public.controller.ts
+  s_b06ce20dc97250::t_9409e40f60ace0 243-244
+  s_b06ce20dc97250::t_32118d6d60d402 136
+packages/cli/src/public-api/v1/controllers/sso-oidc.public.controller.ts
+  s_b06ce20dc97250::t_78d58db40aecbf 52,67
+packages/cli/src/public-api/v1/openapi-gen/__tests__/decorator-routes.test.ts
+  s_b06ce20dc97250::t_cd70ad3d1533f5 94-156
+.agents/skills/public-api/SKILL.md
+  s_b06ce20dc97250::t_2072c1d277d4d8 174
+packages/cli/src/public-api/v1/handlers/audit/spec/paths/generateAudit.generated.yml
+  s_b06ce20dc97250::t_11872a3cb03732 5-8
+packages/cli/src/public-api/v1/handlers/community-packages/spec/paths/getInstalledPackages.generated.yml
+  s_b06ce20dc97250::t_f13341bedefa5f 5-8
+packages/cli/src/public-api/v1/handlers/community-packages/spec/paths/installPackage.generated.yml
+  s_b06ce20dc97250::t_53768a440c2998 5-8
+packages/cli/src/public-api/v1/handlers/community-packages/spec/paths/uninstallPackage.generated.yml
+  s_b06ce20dc97250::t_228a4a69d31091 5-8
+packages/cli/src/public-api/v1/handlers/community-packages/spec/paths/updatePackage.generated.yml
+  s_b06ce20dc97250::t_2bc5965eba4a8d 5-8
+packages/cli/src/public-api/v1/handlers/credential-type-policies/spec/paths/createCredentialTypePolicyDocument.generated.yml
+  s_b06ce20dc97250::t_a2e2529e37d48a 9-10
+packages/cli/src/public-api/v1/handlers/credential-type-policies/spec/paths/deleteCredentialTypePolicyDocument.generated.yml
+  s_b06ce20dc97250::t_08dfd8df53e8fe 9-10
+packages/cli/src/public-api/v1/handlers/credential-type-policies/spec/paths/getCredentialTypeInstancePolicy.generated.yml
+  s_b06ce20dc97250::t_683947436372c9 9-10
+packages/cli/src/public-api/v1/handlers/credential-type-policies/spec/paths/getCredentialTypePolicyAttachments.generated.yml
+  s_b06ce20dc97250::t_7f29a1d6b13f56 9-10
+packages/cli/src/public-api/v1/handlers/credential-type-policies/spec/paths/getCredentialTypePolicyDocument.generated.yml
+  s_b06ce20dc97250::t_9d3724e9c27b83 5-8
+packages/cli/src/public-api/v1/handlers/credential-type-policies/spec/paths/getCredentialTypeProjectPolicy.generated.yml
+  s_b06ce20dc97250::t_22df3067542345 9-10
+packages/cli/src/public-api/v1/handlers/credential-type-policies/spec/paths/listCredentialTypePolicyDocuments.generated.yml
+  s_b06ce20dc97250::t_951eb96f093ca1 9-10
+packages/cli/src/public-api/v1/handlers/credential-type-policies/spec/paths/putCredentialTypeInstancePolicy.generated.yml
+  s_b06ce20dc97250::t_03c6e40e3fe189 9-10
+packages/cli/src/public-api/v1/handlers/credential-type-policies/spec/paths/putCredentialTypeProjectPolicy.generated.yml
+  s_b06ce20dc97250::t_a0e873f5a0d5a3 9-10
+packages/cli/src/public-api/v1/handlers/credential-type-policies/spec/paths/replaceCredentialTypePolicyAttachments.generated.yml
+  s_b06ce20dc97250::t_74c52ba44a9621 9-10
+packages/cli/src/public-api/v1/handlers/credential-type-policies/spec/paths/updateCredentialTypePolicyDocument.generated.yml
+  s_b06ce20dc97250::t_2e46acefa94834 9-10
+packages/cli/src/public-api/v1/handlers/credentials/spec/paths/createCredential.generated.yml
+  s_b06ce20dc97250::t_c77a17900e6b04 5-8
+packages/cli/src/public-api/v1/handlers/credentials/spec/paths/deleteCredential.generated.yml
+  s_b06ce20dc97250::t_b78514234811d8 5-8
+packages/cli/src/public-api/v1/handlers/credentials/spec/paths/getCredential.generated.yml
+  s_b06ce20dc97250::t_a52b3f11079539 5-8
+packages/cli/src/public-api/v1/handlers/credentials/spec/paths/getCredentialDependencies.generated.yml
+  s_b06ce20dc97250::t_a7a1001695c5f3 5-8
+packages/cli/src/public-api/v1/handlers/credentials/spec/paths/getCredentials.generated.yml
+  s_b06ce20dc97250::t_2e278941340dd5 5-8
+packages/cli/src/public-api/v1/handlers/credentials/spec/paths/testCredential.generated.yml
+  s_b06ce20dc97250::t_5933374e09b93d 5-8
+packages/cli/src/public-api/v1/handlers/credentials/spec/paths/transferCredential.generated.yml
+  s_b06ce20dc97250::t_7de26979e9b777 5-8
+packages/cli/src/public-api/v1/handlers/credentials/spec/paths/updateCredential.generated.yml
+  s_b06ce20dc97250::t_b5673c77cbb1e8 5-8
+packages/cli/src/public-api/v1/handlers/data-tables/spec/paths/clearDataTableRows.generated.yml
+  s_b06ce20dc97250::t_7d30534a8a0475 5-8
+packages/cli/src/public-api/v1/handlers/data-tables/spec/paths/createDataTable.generated.yml
+  s_b06ce20dc97250::t_11a727eb7ff964 5-8
+packages/cli/src/public-api/v1/handlers/data-tables/spec/paths/createDataTableColumn.generated.yml
+  s_b06ce20dc97250::t_212d3e6df11df7 5-8
+packages/cli/src/public-api/v1/handlers/data-tables/spec/paths/createDataTableRows.generated.yml
+  s_b06ce20dc97250::t_51761c876a4852 5-8
+packages/cli/src/public-api/v1/handlers/data-tables/spec/paths/deleteDataTable.generated.yml
+  s_b06ce20dc97250::t_8c5c07f8fb5ddc 5-8
+packages/cli/src/public-api/v1/handlers/data-tables/spec/paths/deleteDataTableColumn.generated.yml
+  s_b06ce20dc97250::t_1e67c43bba423f 5-8
+packages/cli/src/public-api/v1/handlers/data-tables/spec/paths/deleteDataTableRows.generated.yml
+  s_b06ce20dc97250::t_decf0cfa10c7ac 5-8
+packages/cli/src/public-api/v1/handlers/data-tables/spec/paths/getDataTable.generated.yml
+  s_b06ce20dc97250::t_add53968d935e8 5-8
+packages/cli/src/public-api/v1/handlers/data-tables/spec/paths/getDataTableDependencies.generated.yml
+  s_b06ce20dc97250::t_c01d55ac550b22 5-8
+packages/cli/src/public-api/v1/handlers/data-tables/spec/paths/listDataTableColumns.generated.yml
+  s_b06ce20dc97250::t_dd363fb296aa3d 5-8
+packages/cli/src/public-api/v1/handlers/data-tables/spec/paths/listDataTableRows.generated.yml
+  s_b06ce20dc97250::t_b0a8b7ebb6b8b3 5-8
+packages/cli/src/public-api/v1/handlers/data-tables/spec/paths/listDataTables.generated.yml
+  s_b06ce20dc97250::t_a30c9cde9500fa 5-8
+packages/cli/src/public-api/v1/handlers/data-tables/spec/paths/updateDataTable.generated.yml
+  s_b06ce20dc97250::t_0105992460d192 5-8
+packages/cli/src/public-api/v1/handlers/data-tables/spec/paths/updateDataTableColumn.generated.yml
+  s_b06ce20dc97250::t_46e0a650a84e6f 5-8
+packages/cli/src/public-api/v1/handlers/data-tables/spec/paths/updateDataTableRows.generated.yml
+  s_b06ce20dc97250::t_7a1e49e4b7a6b9 5-8
+packages/cli/src/public-api/v1/handlers/data-tables/spec/paths/upsertDataTableRow.generated.yml
+  s_b06ce20dc97250::t_17640cc3b660a6 5-8
+packages/cli/src/public-api/v1/handlers/executions/spec/paths/deleteExecution.generated.yml
+  s_b06ce20dc97250::t_d940073db0d22c 5-8
+packages/cli/src/public-api/v1/handlers/executions/spec/paths/getExecution.generated.yml
+  s_b06ce20dc97250::t_72ebcfc50ffaf5 5-8
+packages/cli/src/public-api/v1/handlers/executions/spec/paths/getExecutionTags.generated.yml
+  s_b06ce20dc97250::t_aa26177f3c587c 5-8
+packages/cli/src/public-api/v1/handlers/executions/spec/paths/getExecutions.generated.yml
+  s_b06ce20dc97250::t_cac1e6d745ab8e 5-8
+packages/cli/src/public-api/v1/handlers/executions/spec/paths/retryExecution.generated.yml
+  s_b06ce20dc97250::t_f38bc99dfeb276 5-8
+packages/cli/src/public-api/v1/handlers/executions/spec/paths/stopExecution.generated.yml
+  s_b06ce20dc97250::t_5917f6db4497c7 5-8
+packages/cli/src/public-api/v1/handlers/executions/spec/paths/stopManyExecutions.generated.yml
+  s_b06ce20dc97250::t_0b667a47344b6b 5-8
+packages/cli/src/public-api/v1/handlers/executions/spec/paths/updateExecutionTags.generated.yml
+  s_b06ce20dc97250::t_e41100b5cd318a 5-8
+packages/cli/src/public-api/v1/handlers/insights/spec/paths/getInsightsSummary.generated.yml
+  s_b06ce20dc97250::t_57ca826313f5ee 5-8
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/exportPackage.generated.yml
+  s_b06ce20dc97250::t_b7466c6efa11ac 5,30-31
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/importPackage.generated.yml
+  s_b06ce20dc97250::t_fca806bd89d5b0 21-22
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/importPackageSelection.generated.yml
+  s_b06ce20dc97250::t_dc17ebe42ca7c8 13-14
+packages/cli/src/public-api/v1/handlers/node-type-policies/spec/paths/createNodeTypePolicyDocument.generated.yml
+  s_b06ce20dc97250::t_d228d80166edde 9-10
+packages/cli/src/public-api/v1/handlers/node-type-policies/spec/paths/deleteNodeTypePolicyDocument.generated.yml
+  s_b06ce20dc97250::t_d727160e26e120 9-10
+packages/cli/src/public-api/v1/handlers/node-type-policies/spec/paths/getNodeTypeInstancePolicy.generated.yml
+  s_b06ce20dc97250::t_fe695e8d2aabfc 9-10
+packages/cli/src/public-api/v1/handlers/node-type-policies/spec/paths/getNodeTypePolicyAttachments.generated.yml
+  s_b06ce20dc97250::t_a3c513bc36640a 9-10
+packages/cli/src/public-api/v1/handlers/node-type-policies/spec/paths/getNodeTypePolicyDocument.generated.yml
+  s_b06ce20dc97250::t_96740f922dac0f 5-8
+packages/cli/src/public-api/v1/handlers/node-type-policies/spec/paths/getNodeTypeProjectPolicy.generated.yml
+  s_b06ce20dc97250::t_d7b09c8da24d4f 9-10
+packages/cli/src/public-api/v1/handlers/node-type-policies/spec/paths/listNodeTypePolicyDocuments.generated.yml
+  s_b06ce20dc97250::t_afa2ed0e39fa51 9-10
+packages/cli/src/public-api/v1/handlers/node-type-policies/spec/paths/putNodeTypeInstancePolicy.generated.yml
+  s_b06ce20dc97250::t_bd16217f1c8241 9-10
+packages/cli/src/public-api/v1/handlers/node-type-policies/spec/paths/putNodeTypeProjectPolicy.generated.yml
+  s_b06ce20dc97250::t_cdcee1fa58bd9b 9-10
+packages/cli/src/public-api/v1/handlers/node-type-policies/spec/paths/replaceNodeTypePolicyAttachments.generated.yml
+  s_b06ce20dc97250::t_5eabb0b83d3c3f 9-10
+packages/cli/src/public-api/v1/handlers/node-type-policies/spec/paths/updateNodeTypePolicyDocument.generated.yml
+  s_b06ce20dc97250::t_f0e0e14541c172 9-10
+packages/cli/src/public-api/v1/handlers/projects/spec/paths/addUsersToProject.generated.yml
+  s_b06ce20dc97250::t_2e0b45dd1ac31a 5-8
+packages/cli/src/public-api/v1/handlers/projects/spec/paths/changeUserRoleInProject.generated.yml
+  s_b06ce20dc97250::t_719ecdcb8fa534 5-8
+packages/cli/src/public-api/v1/handlers/projects/spec/paths/createFolder.generated.yml
+  s_b06ce20dc97250::t_9e8bb72f5599d0 5-8
+packages/cli/src/public-api/v1/handlers/projects/spec/paths/createProject.generated.yml
+  s_b06ce20dc97250::t_f83128e726fbf7 5-8
+packages/cli/src/public-api/v1/handlers/projects/spec/paths/deleteFolder.generated.yml
+  s_b06ce20dc97250::t_fd9c1085399af4 5-8
+packages/cli/src/public-api/v1/handlers/projects/spec/paths/deleteProject.generated.yml
+  s_b06ce20dc97250::t_98280ed881f597 5-8
+packages/cli/src/public-api/v1/handlers/projects/spec/paths/deleteUserFromProject.generated.yml
+  s_b06ce20dc97250::t_a904f6e2ca5537 5-8
+packages/cli/src/public-api/v1/handlers/projects/spec/paths/getFolder.generated.yml
+  s_b06ce20dc97250::t_78afca8daa8621 5-8
+packages/cli/src/public-api/v1/handlers/projects/spec/paths/getProjectUsers.generated.yml
+  s_b06ce20dc97250::t_071a5d5313e826 5-8
+packages/cli/src/public-api/v1/handlers/projects/spec/paths/getProjects.generated.yml
+  s_b06ce20dc97250::t_fb09a7091cebde 5-8
+packages/cli/src/public-api/v1/handlers/projects/spec/paths/listFolders.generated.yml
+  s_b06ce20dc97250::t_c79201f5e80e5c 5-8
+packages/cli/src/public-api/v1/handlers/projects/spec/paths/updateFolder.generated.yml
+  s_b06ce20dc97250::t_13e76b4fca05b1 5-8
+packages/cli/src/public-api/v1/handlers/projects/spec/paths/updateProject.generated.yml
+  s_b06ce20dc97250::t_c585361c9527c7 5-8
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/addProjectToPromotionEnvironment.generated.yml
+  s_b06ce20dc97250::t_09cdcc220a3b33 9-10
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/applyPackage.generated.yml
+  s_b06ce20dc97250::t_965c90a164433e 9-10
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/applyProjectSelection.generated.yml
+  s_b06ce20dc97250::t_f6a02693c664b6 9-10
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/connectPromotionCheckout.generated.yml
+  s_b06ce20dc97250::t_684fe3d21edcc0 9-10
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/continueApplyPackage.generated.yml
+  s_b06ce20dc97250::t_69874c7f048c2b 9-10
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/continueApplyProjectSelection.generated.yml
+  s_b06ce20dc97250::t_d1b881cb6f90a9 9-10
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/createPromotionEnvironment.generated.yml
+  s_b06ce20dc97250::t_8808fe5a978874 9-10
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/createPromotionProvider.generated.yml
+  s_b06ce20dc97250::t_764a69ab767238 9-10
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/deletePromotionEnvironment.generated.yml
+  s_b06ce20dc97250::t_b3c76eb453a060 9-10
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/deletePromotionProvider.generated.yml
+  s_b06ce20dc97250::t_1b28163271532e 9-10
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/disconnectPromotionCheckout.generated.yml
+  s_b06ce20dc97250::t_541842efe0a925 9-10
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionChangeDetails.generated.yml
+  s_b06ce20dc97250::t_2310c538e68801 9-10
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionChanges.generated.yml
+  s_b06ce20dc97250::t_9628e98cb88a42 9-10
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionEnvironment.generated.yml
+  s_b06ce20dc97250::t_bdcb534bf108a9 9-10
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionEnvironmentMissingProjects.generated.yml
+  s_b06ce20dc97250::t_9cb04bbeec2d1c 9-10
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionEnvironmentProjects.generated.yml
+  s_b06ce20dc97250::t_5aaab64c89d62a 5-8
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionEnvironments.generated.yml
+  s_b06ce20dc97250::t_6af8f73c958d81 9-10
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionProvider.generated.yml
+  s_b06ce20dc97250::t_d89863e1559624 9-10
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionProviderRepositories.generated.yml
+  s_b06ce20dc97250::t_92204adba06a74 9-10
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionProviderRepositoryBranches.generated.yml
+  s_b06ce20dc97250::t_606befe23e3296 9-10
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionProviders.generated.yml
+  s_b06ce20dc97250::t_3a452b691f0fb4 9-10
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/promotePackage.generated.yml
+  s_b06ce20dc97250::t_7ec4c5c1a6eca2 9-10
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/promoteProjectSelection.generated.yml
+  s_b06ce20dc97250::t_018d7fe251a32e 9-10
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/removeProjectFromPromotionEnvironment.generated.yml
+  s_b06ce20dc97250::t_5ed7668f9e69dc 5-8
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/updatePromotionEnvironment.generated.yml
+  s_b06ce20dc97250::t_e7fb375b07fc18 9-10
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/updatePromotionProvider.generated.yml
+  s_b06ce20dc97250::t_f3ead1a6abfcfd 9-10
+packages/cli/src/public-api/v1/handlers/role-mapping-rules/spec/paths/createRoleMappingRule.generated.yml
+  s_b06ce20dc97250::t_62f03f548b5dd2 5-8
+packages/cli/src/public-api/v1/handlers/role-mapping-rules/spec/paths/deleteRoleMappingRule.generated.yml
+  s_b06ce20dc97250::t_0ea14d7b46a47e 5-8
+packages/cli/src/public-api/v1/handlers/role-mapping-rules/spec/paths/getRoleMappingRules.generated.yml
+  s_b06ce20dc97250::t_abea762cbc6b97 5-8
+packages/cli/src/public-api/v1/handlers/role-mapping-rules/spec/paths/moveRoleMappingRule.generated.yml
+  s_b06ce20dc97250::t_8e0e0f13a42c40 5-8
+packages/cli/src/public-api/v1/handlers/role-mapping-rules/spec/paths/updateRoleMappingRule.generated.yml
+  s_b06ce20dc97250::t_4383d5cd195010 5-8
+packages/cli/src/public-api/v1/handlers/roles/spec/paths/createRole.generated.yml
+  s_b06ce20dc97250::t_61ad7925100bc0 5-8
+packages/cli/src/public-api/v1/handlers/roles/spec/paths/deleteRole.generated.yml
+  s_b06ce20dc97250::t_8bb0c9a2c36efe 5-8
+packages/cli/src/public-api/v1/handlers/roles/spec/paths/getAllRoles.generated.yml
+  s_b06ce20dc97250::t_46882efe4cb7a2 5-8
+packages/cli/src/public-api/v1/handlers/roles/spec/paths/getRole.generated.yml
+  s_b06ce20dc97250::t_6c694957bcc7e2 5-8
+packages/cli/src/public-api/v1/handlers/roles/spec/paths/updateRole.generated.yml
+  s_b06ce20dc97250::t_c6bcb1f264b84e 5-8
+packages/cli/src/public-api/v1/handlers/settings/spec/paths/createLogStreamingDestination.generated.yml
+  s_b06ce20dc97250::t_8638711d23d57e 5-8
+packages/cli/src/public-api/v1/handlers/settings/spec/paths/deleteLogStreamingDestination.generated.yml
+  s_b06ce20dc97250::t_44f2463ff0ad97 5-8
+packages/cli/src/public-api/v1/handlers/settings/spec/paths/getLdapConfiguration.generated.yml
+  s_b06ce20dc97250::t_1e697115eb0f36 5-8
+packages/cli/src/public-api/v1/handlers/settings/spec/paths/getLdapSync.generated.yml
+  s_b06ce20dc97250::t_c9fb22341476c1 5-8
+packages/cli/src/public-api/v1/handlers/settings/spec/paths/getLogStreamingDestination.generated.yml
+  s_b06ce20dc97250::t_02af0e3248a65e 5-8
+packages/cli/src/public-api/v1/handlers/settings/spec/paths/getLogStreamingDestinations.generated.yml
+  s_b06ce20dc97250::t_8a29bc3ca9c581 5-8
+packages/cli/src/public-api/v1/handlers/settings/spec/paths/getLogStreamingEventTypes.generated.yml
+  s_b06ce20dc97250::t_321a6afe91963c 5-8
+packages/cli/src/public-api/v1/handlers/settings/spec/paths/getOidcConfiguration.generated.yml
+  s_b06ce20dc97250::t_d51841ba839d6d 5-8
+packages/cli/src/public-api/v1/handlers/settings/spec/paths/getOtelSettings.generated.yml
+  s_b06ce20dc97250::t_e99216bd95908c 5-8
+packages/cli/src/public-api/v1/handlers/settings/spec/paths/getRateLimitSettings.generated.yml
+  s_b06ce20dc97250::t_4801aa9984ce01 5-8
+packages/cli/src/public-api/v1/handlers/settings/spec/paths/getSamlConfiguration.generated.yml
+  s_b06ce20dc97250::t_b1b2c3fef71eec 5-8
+packages/cli/src/public-api/v1/handlers/settings/spec/paths/getSecurityPolicy.generated.yml
+  s_b06ce20dc97250::t_830c4f7987120f 5-8
+packages/cli/src/public-api/v1/handlers/settings/spec/paths/runLdapSync.generated.yml
+  s_b06ce20dc97250::t_3cab5465e495c5 5-8
+packages/cli/src/public-api/v1/handlers/settings/spec/paths/setOidcConfiguration.generated.yml
+  s_b06ce20dc97250::t_402c834c2200a5 5-8
+packages/cli/src/public-api/v1/handlers/settings/spec/paths/testLogStreamingDestination.generated.yml
+  s_b06ce20dc97250::t_adcd477e91318c 5-8
+packages/cli/src/public-api/v1/handlers/settings/spec/paths/testOtelTrace.generated.yml
+  s_b06ce20dc97250::t_e8f5223b42e941 5-8
+packages/cli/src/public-api/v1/handlers/settings/spec/paths/updateLdapConfiguration.generated.yml
+  s_b06ce20dc97250::t_5230040eb1c48d 5-8
+packages/cli/src/public-api/v1/handlers/settings/spec/paths/updateLogStreamingDestination.generated.yml
+  s_b06ce20dc97250::t_c63a18a0130c27 5-8
+packages/cli/src/public-api/v1/handlers/settings/spec/paths/updateOtelSettings.generated.yml
+  s_b06ce20dc97250::t_ac4a52ff1280e8 5-8
+packages/cli/src/public-api/v1/handlers/settings/spec/paths/updateRateLimitSettings.generated.yml
+  s_b06ce20dc97250::t_750123a4356612 5-8
+packages/cli/src/public-api/v1/handlers/settings/spec/paths/updateSamlConfiguration.generated.yml
+  s_b06ce20dc97250::t_52cb221d0cbce9 5-8
+packages/cli/src/public-api/v1/handlers/settings/spec/paths/updateSecurityPolicy.generated.yml
+  s_b06ce20dc97250::t_1da323292a7bed 5-8
+packages/cli/src/public-api/v1/handlers/source-control/spec/paths/getSourceControlStatus.generated.yml
+  s_b06ce20dc97250::t_acebcffca0869d 5-8
+packages/cli/src/public-api/v1/handlers/source-control/spec/paths/pullSourceControl.generated.yml
+  s_b06ce20dc97250::t_1de56befce189f 5-8
+packages/cli/src/public-api/v1/handlers/source-control/spec/paths/pushSourceControl.generated.yml
+  s_b06ce20dc97250::t_b3548c4e860190 5-8
+packages/cli/src/public-api/v1/handlers/tags/spec/paths/createTag.generated.yml
+  s_b06ce20dc97250::t_297cf2076d8c9b 5-8
+packages/cli/src/public-api/v1/handlers/tags/spec/paths/deleteTag.generated.yml
+  s_b06ce20dc97250::t_62143e4064c9de 5-8
+packages/cli/src/public-api/v1/handlers/tags/spec/paths/getTag.generated.yml
+  s_b06ce20dc97250::t_43b303e6897ad8 5-8
+packages/cli/src/public-api/v1/handlers/tags/spec/paths/getTags.generated.yml
+  s_b06ce20dc97250::t_2bc76c071a5dd1 5-8
+packages/cli/src/public-api/v1/handlers/tags/spec/paths/updateTag.generated.yml
+  s_b06ce20dc97250::t_5ad6f1047f239a 5-8
+packages/cli/src/public-api/v1/handlers/users/spec/paths/changeRole.generated.yml
+  s_b06ce20dc97250::t_0569a1e3292bc3 5-8
+packages/cli/src/public-api/v1/handlers/users/spec/paths/createUser.generated.yml
+  s_b06ce20dc97250::t_affb6e5af9474b 5-8
+packages/cli/src/public-api/v1/handlers/users/spec/paths/deleteUser.generated.yml
+  s_b06ce20dc97250::t_f0e363b660609e 5-8
+packages/cli/src/public-api/v1/handlers/users/spec/paths/getUser.generated.yml
+  s_b06ce20dc97250::t_272f30f59f4a54 5-8
+packages/cli/src/public-api/v1/handlers/users/spec/paths/getUsers.generated.yml
+  s_b06ce20dc97250::t_6100f63b25011c 5-8
+packages/cli/src/public-api/v1/handlers/variables/spec/paths/createVariable.generated.yml
+  s_b06ce20dc97250::t_5fbc002960fe07 5-8
+packages/cli/src/public-api/v1/handlers/variables/spec/paths/deleteVariable.generated.yml
+  s_b06ce20dc97250::t_446212aa77412f 5-8
+packages/cli/src/public-api/v1/handlers/variables/spec/paths/getVariables.generated.yml
+  s_b06ce20dc97250::t_afef1696b7dda7 5-8
+packages/cli/src/public-api/v1/handlers/variables/spec/paths/updateVariable.generated.yml
+  s_b06ce20dc97250::t_310bbb781df60f 5-8
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/activateWorkflow.generated.yml
+  s_b06ce20dc97250::t_6096a806484693 5-8
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/archiveWorkflow.generated.yml
+  s_b06ce20dc97250::t_a01e9aa86f9ebc 5-8
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/cancelTestRun.generated.yml
+  s_b06ce20dc97250::t_b81522f1103dcc 5-8
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/createTestRun.generated.yml
+  s_b06ce20dc97250::t_9cff106030c5b2 5-8
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/createWorkflow.generated.yml
+  s_b06ce20dc97250::t_ea719600e4ca04 5-8
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/deactivateWorkflow.generated.yml
+  s_b06ce20dc97250::t_7d9195542d00b6 5-8
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/deleteWorkflow.generated.yml
+  s_b06ce20dc97250::t_0edb3df49a9756 5-8
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/getDeprecatedWorkflowVersion.generated.yml
+  s_b06ce20dc97250::t_848006399a9bb3 5-8
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/getTestCases.generated.yml
+  s_b06ce20dc97250::t_42e4b83c71e529 5-8
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/getTestRun.generated.yml
+  s_b06ce20dc97250::t_4170a139c4e270 5-8
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/getTestRuns.generated.yml
+  s_b06ce20dc97250::t_b9ca7cc1e60bd6 5-8
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/getWorkflow.generated.yml
+  s_b06ce20dc97250::t_795bd23b0d6fee 5-8
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/getWorkflowDependencies.generated.yml
+  s_b06ce20dc97250::t_2f63dfef2628b3 5-8
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/getWorkflowHistory.generated.yml
+  s_b06ce20dc97250::t_329066b9959cb5 5-8
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/getWorkflowTags.generated.yml
+  s_b06ce20dc97250::t_4b56fb1f42273e 5-8
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/getWorkflowVersion.generated.yml
+  s_b06ce20dc97250::t_fed2c9c9c14b60 5-8
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/getWorkflows.generated.yml
+  s_b06ce20dc97250::t_1213b2549bb79a 5-8
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/publishWorkflow.generated.yml
+  s_b06ce20dc97250::t_4d210dc3d9f7ac 5-8
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/transferWorkflow.generated.yml
+  s_b06ce20dc97250::t_ef1c00803be1cb 5-8
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/unarchiveWorkflow.generated.yml
+  s_b06ce20dc97250::t_2e1e8b39686623 5-8
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/unpublishWorkflow.generated.yml
+  s_b06ce20dc97250::t_29b6295a8e1bb9 5-8
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/updateWorkflow.generated.yml
+  s_b06ce20dc97250::t_53f7e18108076a 5-8
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/updateWorkflowTags.generated.yml
+  s_b06ce20dc97250::t_4b99dfeb054f87 5-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7fffad99039dea598cedb7fc4633c90a1f209921",
+  "prompts": {},
+  "sessions": {
+    "s_b06ce20dc97250": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "12223ac6-c4aa-4aa4-857d-32df26791fb2",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,31 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentCapabilitiesSection.vue
+  s_08690fb8a4caf5::t_1171732afa5f07 229-230
+  s_08690fb8a4caf5::t_a26855ee790677 225-228,234-238
+  s_08690fb8a4caf5::t_b3bde10238b644 239-240
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentCapabilitiesSection.test.ts
+  s_08690fb8a4caf5::t_4c73ceacb31f21 968,971,974,976,978
+  s_08690fb8a4caf5::t_abfb18946e275a 965-967,969-970,972-973,975,977,979-985
+packages/frontend/editor-ui/src/features/ndv/parameters/composables/useAgentResourcesLocator.ts
+  s_08690fb8a4caf5::t_afa6326cb2b7e6 150,154-157
+  s_08690fb8a4caf5::t_66855c547a909c 44-45
+packages/frontend/editor-ui/src/features/ndv/parameters/composables/useAgentResourcesLocator.test.ts
+  s_08690fb8a4caf5::t_cf0c11556654bd 342-366
+packages/frontend/editor-ui/src/features/ndv/parameters/components/AgentSelectorParameterInput/AgentSelectorParameterInput.test.ts
+  s_08690fb8a4caf5::t_336f5235f53c1d 275-281
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "70fec0faf7e96199f570e9be4752841cc6797973",
+  "prompts": {},
+  "sessions": {
+    "s_08690fb8a4caf5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "33b03ae9-9b4e-49ba-ac90-ae160b5918c5",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

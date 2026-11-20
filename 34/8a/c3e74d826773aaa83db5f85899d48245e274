@@ -1,0 +1,24 @@
+demos/canvas-delight/evidence/real-app/session-isolation.json
+  s_c33bde4687101e::t_3da92f24b2d060 2-16
+  s_c33bde4687101e::t_77cce970c9d601 1,17
+demos/canvas-delight/README.md
+  s_c33bde4687101e::t_bd0a09dfe10911 5-6,22,26-29
+demos/canvas-delight/REPORT.md
+  s_c33bde4687101e::t_ae2217f5853e1d 5,19-26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "348ac3e74d826773aaa83db5f85899d48245e274",
+  "prompts": {},
+  "sessions": {
+    "s_c33bde4687101e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1edf6-ffe6-77f0-898f-eea7d7b98df2",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,32 @@
+packages/@n8n/instance-ai/src/agent/sanitize-mcp-schemas.ts
+  s_560b1bf90332f7::t_28709db57a52bf 466-504,513-516
+  s_560b1bf90332f7::t_ab17f0f52fa5ef 379-397
+  s_560b1bf90332f7::t_c35fabf903dcd2 537-538,540
+  s_560b1bf90332f7::t_a9c0f68c95457f 539,541,545-554
+  s_560b1bf90332f7::t_aeeb9030315517 915-916
+  s_560b1bf90332f7::t_d60baaf7c50f21 617-642,644-660
+  s_560b1bf90332f7::t_98994e021091e0 423-428
+packages/@n8n/instance-ai/src/tools/__tests__/research.tool.test.ts
+  s_560b1bf90332f7::t_83ae3ca3ce264e 3
+  s_560b1bf90332f7::t_4f9ff7ebe2e521 54-77
+packages/@n8n/instance-ai/src/agent/__tests__/sanitize-mcp-schemas.test.ts
+  s_560b1bf90332f7::t_601bb41b7f66cc 56-62
+  s_560b1bf90332f7::t_d6e5fd4bb4938e 768-880
+  s_560b1bf90332f7::t_9429b41992ab07 2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d51ccca3571c0623f0d4e49aee7575981d685f45",
+  "prompts": {},
+  "sessions": {
+    "s_560b1bf90332f7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cd9a330a-7ba8-442c-83d0-257f51ccf58f",
+        "model": "unknown"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

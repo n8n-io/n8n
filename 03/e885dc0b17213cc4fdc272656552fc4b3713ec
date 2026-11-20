@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/agents/components/timeline-items/SessionBackgroundTaskItem.vue
+  s_d12a42612095ef::t_36ba0859c6a037 8,77
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "03e885dc0b17213cc4fdc272656552fc4b3713ec",
+  "prompts": {},
+  "sessions": {
+    "s_d12a42612095ef": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a182ca-b359-7340-b12d-ad38710343eb",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": null
+    }
+  }
+}

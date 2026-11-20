@@ -1,0 +1,57 @@
+packages/cli/src/modules/agents/__tests__/agent-memory-entries.service.test.ts
+  s_a87ab30323b2bf::t_caa217a27fbe60 81-86,151-168,170-181,200-203,205-207
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentMemorySourceFilter.test.ts
+  s_a87ab30323b2bf::t_caa217a27fbe60 1-80
+packages/cli/src/modules/agents/agent-memory.controller.ts
+  s_a87ab30323b2bf::t_caa217a27fbe60 24-34
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_a87ab30323b2bf::t_caa217a27fbe60 9004-9011
+packages/cli/src/modules/agents/utils/memory-entry-source.ts
+  s_a87ab30323b2bf::t_caa217a27fbe60 17-19
+packages/cli/src/modules/agents/__tests__/agent-memory.controller.test.ts
+  s_a87ab30323b2bf::t_caa217a27fbe60 19,41-48
+  s_a87ab30323b2bf::t_9305b404b73920 49-50
+packages/cli/src/modules/agents/agent-memory-entries.service.ts
+  s_a87ab30323b2bf::t_caa217a27fbe60 5,16-19,23-26,107-108,111-117,125-135,141,144,205-207
+packages/@n8n/api-types/src/agents/types.ts
+  s_a87ab30323b2bf::t_caa217a27fbe60 249-266,290,295-316
+  s_a87ab30323b2bf::t_90a842fd53c20a 317
+packages/cli/src/modules/agents/utils/__tests__/memory-source-filter.test.ts
+  s_a87ab30323b2bf::t_caa217a27fbe60 1-93
+packages/frontend/editor-ui/src/features/agents/components/AgentMemorySourceFilter.vue
+  s_a87ab30323b2bf::t_caa217a27fbe60 1-180
+packages/cli/src/modules/agents/utils/memory-source-filter.ts
+  s_a87ab30323b2bf::t_caa217a27fbe60 1-179
+packages/cli/src/modules/agents/repositories/agent-memory-entry.repository.ts
+  s_a87ab30323b2bf::t_caa217a27fbe60 10,12,15-49,71,73-83,86-87,90-111,193-241
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  s_a87ab30323b2bf::t_caa217a27fbe60 20,45,399-403,408,422-430
+  s_a87ab30323b2bf::t_52c811e8f1de7a 431-433
+packages/@n8n/api-types/src/agents/dto.ts
+  s_a87ab30323b2bf::t_caa217a27fbe60 20-24,140-143
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentMemoryEntriesPanel.test.ts
+  s_a87ab30323b2bf::t_caa217a27fbe60 8,12,16,71,274,283,287,290,300-314,317,321-323,331
+packages/frontend/editor-ui/src/features/agents/components/AgentMemoryEntriesPanel.vue
+  s_a87ab30323b2bf::t_caa217a27fbe60 4,6-10,18-23,25-26,43,55,58-62,65,91-94,111-126,130-134,173,181,207-210,219-220,229,295
+packages/frontend/editor-ui/src/features/agents/composables/useAgentMemorySourceLabels.ts
+  s_a87ab30323b2bf::t_caa217a27fbe60 1-47
+packages/cli/test/integration/database/repositories/agent-memory-entry.repository.test.ts
+  s_a87ab30323b2bf::t_caa217a27fbe60 2,4,8-11,48-52,129-294
+  s_a87ab30323b2bf::t_a8eb4222e07a5e 295
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b0b82c6b682953cba12c29be0143456b316f81d0",
+  "prompts": {},
+  "sessions": {
+    "s_a87ab30323b2bf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b9f44e6d-79e1-4a2e-976f-3b0df0cd5b7f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

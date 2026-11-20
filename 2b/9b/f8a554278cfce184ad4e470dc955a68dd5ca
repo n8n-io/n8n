@@ -1,0 +1,21 @@
+packages/cli/src/modules/agents/simulation/__tests__/outbound-redaction.test.ts
+  s_85f2cb3d0204f7::t_fb3b43ec8d0afc 202-233
+packages/cli/src/modules/agents/simulation/outbound-redaction.ts
+  s_85f2cb3d0204f7::t_6a40fe477624d6 14-15,106-109,134-155,159-165,221-228
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2b9bf8a554278cfce184ad4e470dc955a68dd5ca",
+  "prompts": {},
+  "sessions": {
+    "s_85f2cb3d0204f7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_85f2cb3d0204f7",
+        "model": "unknown"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

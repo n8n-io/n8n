@@ -1,0 +1,88 @@
+packages/modules/apps/backend/src/versions/assert-built-version.ts
+  s_b6d332c56aa1c5::t_cb62635d40781a 1-13
+packages/modules/apps/backend/src/auth/app-auth.service.ts
+  s_b6d332c56aa1c5::t_28d28fe6d011d2 7,10,17-22
+  s_b6d332c56aa1c5::t_7d291447f08949 47,57,100,114-115,154-155,171
+packages/modules/apps/backend/src/publication/__tests__/app-publication.controller.test.ts
+  s_b6d332c56aa1c5::t_1325847d23093c 6,27-32
+  s_b6d332c56aa1c5::t_3db32c9ab4ce73 33-37
+packages/@n8n/api-types/src/dto/app/__tests__/app.dto.test.ts
+  s_b6d332c56aa1c5::t_cd4935c063cce2 16
+packages/modules/apps/backend/src/auth/__tests__/app-protected-resource.test.ts
+  s_b6d332c56aa1c5::t_922518f24d4b4f 136-148
+packages/modules/apps/backend/src/serving/app-serving.controller.ts
+  s_b6d332c56aa1c5::t_1e620f7384686a 15,17,26-27,42-46,53,68-70
+  s_b6d332c56aa1c5::t_d9049ac30ebee9 12
+packages/modules/apps/backend/src/apps.module.ts
+  s_b6d332c56aa1c5::t_d9049ac30ebee9 16
+packages/modules/apps/backend/src/serving/__tests__/app-host.service.test.ts
+  s_b6d332c56aa1c5::t_a20109dbf8e634 197-199
+  s_b6d332c56aa1c5::t_9aa7df582457bb 154-157,162-196,200-202
+  s_b6d332c56aa1c5::t_50100de4846639 59-68
+packages/modules/apps/backend/src/preview/__tests__/app-preview.service.test.ts
+  s_b6d332c56aa1c5::t_d6cc898116f1fe 264-265
+  s_b6d332c56aa1c5::t_a07a2f21cd5935 1-4,6-122,126-142,146-203,214-238,240-263,266-306
+  s_b6d332c56aa1c5::t_23d89e36c385f0 5
+  s_b6d332c56aa1c5::t_a20109dbf8e634 123-125,143-145,204-213,239
+packages/modules/apps/backend/src/serving/apps-hosting.service.ts
+  s_b6d332c56aa1c5::t_3da7fba8e37a84 25
+packages/modules/apps/backend/src/serving/__tests__/app-serving.controller.test.ts
+  s_b6d332c56aa1c5::t_8ff3d8848d5a63 28
+  s_b6d332c56aa1c5::t_1325847d23093c 6,8,22-24,33,96-130
+  s_b6d332c56aa1c5::t_03b02da6465f74 131
+packages/modules/apps/backend/src/auth/app-auth.controller.ts
+  s_b6d332c56aa1c5::t_7a3ad2e787c401 39
+  s_b6d332c56aa1c5::t_d9049ac30ebee9 6,12-15,38,40-41
+  s_b6d332c56aa1c5::t_03b02da6465f74 42
+packages/modules/apps/backend/src/preview/app-preview.service.ts
+  s_b6d332c56aa1c5::t_a20109dbf8e634 1
+  s_b6d332c56aa1c5::t_d42e6ca70d1a3b 2-151
+packages/modules/apps/backend/src/serving/__tests__/apps-hosting.service.test.ts
+  s_b6d332c56aa1c5::t_b8495c67c4e043 48-60
+packages/modules/apps/backend/src/apps.service.ts
+  s_b6d332c56aa1c5::t_6c99ac29db93f9 115
+packages/modules/apps/backend/src/publication/app-publication.service.ts
+  s_b6d332c56aa1c5::t_44a516aba647da 37
+  s_b6d332c56aa1c5::t_e66cdbd03af8ac 4,10
+packages/modules/apps/backend/src/__tests__/apps.service.test.ts
+  s_b6d332c56aa1c5::t_6ed9651ceb7103 38
+  s_b6d332c56aa1c5::t_aad29cda8b1ef2 195-196
+  s_b6d332c56aa1c5::t_f71608cbd3f4d8 165-167
+packages/modules/apps/backend/src/auth/app-cookies.ts
+  s_b6d332c56aa1c5::t_84d2fe6ecf7883 1-25
+packages/modules/apps/backend/src/serving/app-host.service.ts
+  s_b6d332c56aa1c5::t_107afae2f0bf2c 112-130
+  s_b6d332c56aa1c5::t_d578b9f6731073 66-70
+  s_b6d332c56aa1c5::t_be88fe2459ad0b 13
+packages/modules/apps/backend/src/preview/app-preview.controller.ts
+  s_b6d332c56aa1c5::t_1084ce5208ffef 1-18
+packages/@n8n/api-types/src/schemas/app.schema.ts
+  s_b6d332c56aa1c5::t_d343e435eee6eb 48-50
+  h_44f8d1c0f2f8c4 9
+  s_b6d332c56aa1c5::t_54c9844b4816bb 10
+packages/modules/apps/backend/src/auth/app-protected-resource.ts
+  s_b6d332c56aa1c5::t_9c3f0a669e2428 55-59
+packages/@n8n/backend-services/src/services/token-purposes.ts
+  s_b6d332c56aa1c5::t_cadd576e6fde19 25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "39b035ee21f9a74ea74476501ef2e977c6883c70",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_b6d332c56aa1c5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f6b2437c-b582-4a87-95e4-7349acfdcb64",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

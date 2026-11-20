@@ -1,0 +1,44 @@
+packages/nodes-base/nodes/E2eTest/E2eTestDeclarativeWebhookTrigger.node.ts
+  s_db33480b8c9c64::t_b09aa27b691c15 77-87
+packages/core/src/nodes-loader/__tests__/directory-loader.test.ts
+  s_db33480b8c9c64::t_75484976635622 1213-1231
+packages/workflow/src/interfaces.ts
+  s_db33480b8c9c64::t_c0f5943b134727 3097
+  s_db33480b8c9c64::t_594150529add5c 3089-3096,3098-3104,3554
+  s_db33480b8c9c64::t_79e502ce112962 3553
+packages/core/src/execution-engine/__tests__/declarative-webhook.test.ts
+  s_db33480b8c9c64::t_b67b1b6eeaa8fe 665-667
+  s_db33480b8c9c64::t_0970636a1a043b 697-707,750-758,789-806,848-853,857-862,930-954
+  s_db33480b8c9c64::t_79e64c1c077c0a 3,9,680-683,716-717,719,810,908-911,921-925
+  s_db33480b8c9c64::t_75484976635622 854-856
+  s_db33480b8c9c64::t_94348c6e9a7222 20-21,642-664,668-675,677-678,686-688,692-696,708-715,720-749,759-788,807-809,811-847,863-901,904-907,912-920,926-929
+  s_db33480b8c9c64::t_d1242905ce6297 718
+  s_db33480b8c9c64::t_13d5d492ec61bc 679
+packages/core/src/nodes-loader/directory-loader.ts
+  s_db33480b8c9c64::t_7dafa066a83c7b 28,426
+  s_db33480b8c9c64::t_79e502ce112962 427-433
+packages/quality/testing/playwright/tests/e2e/webhooks/declarative-webhook-trigger.spec.ts
+  s_db33480b8c9c64::t_e3d9f5a199e459 81
+  s_db33480b8c9c64::t_1597502183103e 48,75-80,82-84,88,93-95
+packages/core/src/execution-engine/declarative-webhook.ts
+  s_db33480b8c9c64::t_7dafa066a83c7b 10-11,14,16-22,26-28,44,46,252-256,258-260,263-264,266-275,277-318,321-323,326-332,334,336-337,341,343-347,350-351
+  s_db33480b8c9c64::t_d1242905ce6297 276
+  s_db33480b8c9c64::t_79e502ce112962 257,261-262,265,319-320,333,335,338-340,342,348-349
+  s_db33480b8c9c64::t_79e64c1c077c0a 324-325
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "57be8d8ab9e0befe02cc09db08d8355c506382f4",
+  "prompts": {},
+  "sessions": {
+    "s_db33480b8c9c64": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3a809806-fcd2-4a06-904e-42634dd34dd8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jonathan <jon@n8n.io>"
+    }
+  }
+}

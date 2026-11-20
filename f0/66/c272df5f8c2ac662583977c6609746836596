@@ -1,0 +1,14 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  h_f8b427917eda26 1899
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f066c272df5f8c2ac662583977c6609746836596",
+  "prompts": {},
+  "humans": {
+    "h_f8b427917eda26": {
+      "author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

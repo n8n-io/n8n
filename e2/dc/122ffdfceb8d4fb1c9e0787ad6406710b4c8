@@ -1,0 +1,23 @@
+packages/cli/src/modules/promotions.ee/__tests__/promotion-change-gate.test.ts
+  s_a9dc558c81cf08::t_ae2764f02d7378 29-30
+packages/cli/src/modules/promotions.ee/__tests__/promotion-change.service.test.ts
+  s_a9dc558c81cf08::t_5d78e4fb638529 93-94
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/preview/PromotionReviewBlocker.vue
+  s_a9dc558c81cf08::t_ae2764f02d7378 18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e2dc122ffdfceb8d4fb1c9e0787ad6406710b4c8",
+  "prompts": {},
+  "sessions": {
+    "s_a9dc558c81cf08": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d11da13a-126d-4c3f-a4db-c94513be09f3",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

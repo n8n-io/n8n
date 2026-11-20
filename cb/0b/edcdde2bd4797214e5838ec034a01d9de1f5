@@ -1,0 +1,27 @@
+packages/frontend/editor-ui/src/features/core/folders/components/MoveToFolderModal.test.ts
+  s_be017e370db0a5::t_1c2df09615b0f3 283-287,303
+  s_be017e370db0a5::t_901c75d7af7a0d 419-446
+packages/frontend/editor-ui/src/features/core/folders/components/MoveToFolderModal.vue
+  s_be017e370db0a5::t_816932572a4881 11
+  s_be017e370db0a5::t_9f7e60f81dd351 86
+  s_be017e370db0a5::t_87e1eec2d50b2d 558
+  s_be017e370db0a5::t_9c77c7e6e1baf3 111-113,121
+  s_be017e370db0a5::t_40e717e520ca1c 506
+  s_be017e370db0a5::t_c1c1c577dcccc4 131-134
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "cb0bedcdde2bd4797214e5838ec034a01d9de1f5",
+  "prompts": {},
+  "sessions": {
+    "s_be017e370db0a5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b9480e85-fb81-400c-a4df-0ef2e0bb2c35",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

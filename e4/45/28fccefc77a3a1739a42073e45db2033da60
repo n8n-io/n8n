@@ -1,0 +1,17 @@
+packages/frontend/editor-ui/src/features/pages/composables/useNodeLinkCopy.test.ts
+  ai_agent 1-45
+packages/frontend/editor-ui/src/features/shared/contextMenu/composables/useContextMenu.test.ts
+  ai_agent 36-41,1029-1065
+packages/frontend/editor-ui/src/features/pages/composables/useNodeLinkCopy.ts
+  ai_agent 1-34
+packages/frontend/editor-ui/src/features/workflows/canvas/components/Canvas.vue
+  ai_agent 116,1643,1759-1760
+packages/frontend/editor-ui/src/features/shared/contextMenu/composables/useContextMenuItems.ts
+  ai_agent 26,37,103,606-614
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e44528fccefc77a3a1739a42073e45db2033da60",
+  "prompts": {}
+}

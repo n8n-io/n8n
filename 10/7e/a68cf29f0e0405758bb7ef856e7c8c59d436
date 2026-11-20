@@ -1,0 +1,39 @@
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectTabs.vue
+  ai_agent 66,72-73
+  s_f27bda1bd0c713::t_87dc6b6f716628 16-23,42,54-65,67-71,74,135-146,148,188,190-196
+packages/frontend/@n8n/i18n/src/locales/en.json
+  ai_agent 3468
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectTabs.test.ts
+  s_f27bda1bd0c713::t_16b434509d923d 10-13,15-16,45,48,54-55,66
+  s_f27bda1bd0c713::t_c48c887064d265 14,17-18,46-47,49-53,56-65,67-70
+packages/frontend/editor-ui/src/app/views/WorkflowsView.vue
+  ai_agent 16,2343
+packages/frontend/editor-ui/src/features/pages/components/ProjectDocumentationOverview.vue
+  s_f27bda1bd0c713::t_87dc6b6f716628 9-13,32
+packages/frontend/editor-ui/src/features/pages/composables/useProjectDocumentation.test.ts
+  ai_agent 1-92
+packages/frontend/editor-ui/src/features/pages/composables/useOverviewMode.ts
+  s_f27bda1bd0c713::t_87dc6b6f716628 2,6,8,11-12,16,25-26,28-29,32
+packages/frontend/editor-ui/src/features/pages/components/ProjectDocumentationStart.vue
+  ai_agent 2,4-5,8-10,12,14-15,20-21,29,31
+packages/frontend/editor-ui/src/features/pages/composables/useProjectDocumentation.ts
+  ai_agent 1-33
+packages/frontend/editor-ui/src/features/pages/composables/useOverviewMode.test.ts
+  s_f27bda1bd0c713::t_87dc6b6f716628 24-25,28-29,34,47-48,52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "107ea68cf29f0e0405758bb7ef856e7c8c59d436",
+  "prompts": {},
+  "sessions": {
+    "s_f27bda1bd0c713": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e884d7e-3c84-4428-98db-a0c5cff39be6",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,83 @@
+packages/modules/apps/frontend/src/components/configure/connections/AppBindingPicker.vue
+  s_4bcab537e8dd3b::t_c81212e976a733 1-17,24-86,88-194
+  s_4bcab537e8dd3b::t_95c08ec5a795bd 87
+  s_4bcab537e8dd3b::t_4693746be67be9 18-23
+packages/modules/apps/frontend/src/components/configure/connections/AppConnectionsCard.test.ts
+  s_4bcab537e8dd3b::t_2f8e2e4807903b 191,195-196
+  s_4bcab537e8dd3b::t_e2db13a986204f 1,44
+  s_4bcab537e8dd3b::t_8ff9097d2f1356 2-33,39-43,45-190,192-194,197-200
+  s_4bcab537e8dd3b::t_36ce5e5a02908e 34-38
+packages/modules/apps/frontend/src/components/configure/AppConfigureTabBasics.test.ts
+  s_4bcab537e8dd3b::t_b2e68bc1d40b14 47-50
+  s_4bcab537e8dd3b::t_5537971b3ee5ac 8
+  s_4bcab537e8dd3b::t_8811f8c6d8cdd4 218-227
+packages/modules/apps/frontend/src/composables/useAppBindings.ts
+  s_4bcab537e8dd3b::t_dcc8ee5ade1697 17
+  s_4bcab537e8dd3b::t_d2e52ec2d0894e 1-16,18-82
+packages/frontend/editor-ui/src/features/core/dataTable/constants.ts
+  s_4bcab537e8dd3b::t_46825bae1a5ef0 3-8
+packages/modules/apps/frontend/src/components/configure/connections/bindingKey.ts
+  s_4bcab537e8dd3b::t_4f5d901d82a2c7 1-38
+packages/modules/apps/frontend/src/components/configure/connections/AppConnectionsCard.vue
+  s_4bcab537e8dd3b::t_605fdc0add8573 1-90,92-139
+  s_4bcab537e8dd3b::t_c043b5e494afa6 91
+  s_4bcab537e8dd3b::t_250794899a07bf 140-142
+packages/modules/apps/frontend/src/apps.api.test.ts
+  s_4bcab537e8dd3b::t_603dc17dc9fdf4 97,99,101-126,128-131,136-148,153-164
+  s_4bcab537e8dd3b::t_4294facfedf46f 11,13
+  s_4bcab537e8dd3b::t_36ce5e5a02908e 1,98,100
+  s_4bcab537e8dd3b::t_2a2a328de60c01 127
+  s_4bcab537e8dd3b::t_e6cd545e670b72 132-135,149-152
+packages/frontend/@n8n/frontend-constants/src/data-tables.test.ts
+  s_4bcab537e8dd3b::t_276a8d2d615039 1-11
+packages/modules/apps/frontend/src/components/configure/AppConfigure.test.ts
+  s_4bcab537e8dd3b::t_dde74620d5268d 40,57
+packages/modules/apps/frontend/src/components/configure/connections/AppBindingChip.vue
+  s_4bcab537e8dd3b::t_3fde1e55effbd2 1-21,23-51,53-73,75-190
+  s_4bcab537e8dd3b::t_8b833edb091f4f 52
+  s_4bcab537e8dd3b::t_8c9c1a9bd835a5 74
+  s_4bcab537e8dd3b::t_4f2d7f923f9d3b 22
+packages/modules/apps/frontend/src/apps.api.ts
+  s_4bcab537e8dd3b::t_fd28476725bb07 108-131,133-137,140-181
+  s_4bcab537e8dd3b::t_cf96740763732e 1-11
+  s_4bcab537e8dd3b::t_531c96ba20d029 138
+  s_4bcab537e8dd3b::t_a4a0ab38d8e2ac 132
+  s_4bcab537e8dd3b::t_b66fd1aa3a4a6d 139
+packages/modules/apps/frontend/src/components/configure/connections/bindingKinds.ts
+  s_4bcab537e8dd3b::t_cf25c3d68a71d8 20
+  s_4bcab537e8dd3b::t_be5057f302c802 1-4,6-7,10-17,21-23,26-27,30,33-39,41-47,49-55,77-88,90-92,104-107,109-117,122-123
+  s_4bcab537e8dd3b::t_dfd7f8febfba5c 67-71
+  s_4bcab537e8dd3b::t_daedde0a128dad 93-103
+  s_4bcab537e8dd3b::t_a352d0dea6db31 5,9,18-19,24-25,28-29,31-32,40,48,56-66,72-76,89,108,118-121
+  s_4bcab537e8dd3b::t_f58f2738c0da6c 8
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_4bcab537e8dd3b::t_f7494779bd3d2a 352,364-390
+packages/modules/apps/frontend/src/components/configure/connections/bindingKey.test.ts
+  s_4bcab537e8dd3b::t_c8f8a200a73438 1-27
+packages/frontend/@n8n/frontend-constants/src/data-tables.ts
+  s_4bcab537e8dd3b::t_70a61ac5b1b36e 1-3
+packages/modules/apps/frontend/src/composables/useAppBindings.test.ts
+  s_4bcab537e8dd3b::t_dde74620d5268d 1,20,26
+  s_4bcab537e8dd3b::t_43813ecc651cf3 2-19,21-25,27-49,53-60,77-91
+  s_4bcab537e8dd3b::t_9f5003898b766f 50-52,61-76
+packages/modules/apps/frontend/src/components/configure/AppConfigureTabBasics.vue
+  s_4bcab537e8dd3b::t_ccab9df239dce4 170,175-180
+  s_4bcab537e8dd3b::t_27667db1ebeef2 19
+  s_4bcab537e8dd3b::t_1591143db7c8d6 130
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f183378c7d83ad9b5ce88008b3445b7ee0f44f43",
+  "prompts": {},
+  "sessions": {
+    "s_4bcab537e8dd3b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c53408b8-c507-4016-9fc2-cf73b75fcf99",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

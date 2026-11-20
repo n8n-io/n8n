@@ -1,0 +1,25 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9f074c20c96b1b768108e73b2f1daff3d536870a",
+  "prompts": {},
+  "sessions": {
+    "s_7e8b46e4e5851d": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0aaf3-a40f-738d-a0b9-ae9519b02342",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_df3c52c3c4eb9c": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0aaf5-c12a-738d-a0b9-ae9711610ce8",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

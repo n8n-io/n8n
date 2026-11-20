@@ -1,0 +1,28 @@
+packages/cli/src/modules/agents/system-agents/system-agent.types.ts
+  s_ab80bf3dba8421::t_ce9db85bd188f5 228-236
+packages/cli/src/modules/agents/system-agents/system-agent-execution.service.ts
+  s_ab80bf3dba8421::t_5e31a2de00c4e5 591,685,934-935,942,952-977
+packages/cli/src/modules/instance-ai/assistant-agent/assistant-agent.provider.ts
+  s_ab80bf3dba8421::t_360df2100f712d 142-144,147
+packages/cli/src/modules/instance-ai/assistant-agent/__tests__/assistant-agent.provider.test.ts
+  s_ab80bf3dba8421::t_99c039d4ecdd84 394-395,398-402
+packages/cli/src/modules/agents/system-agents/__tests__/system-agent-execution.service.test.ts
+  s_ab80bf3dba8421::t_51f2ba10571e29 1041-1043
+  s_ab80bf3dba8421::t_7c159089145ec0 38,135-137,1010-1040,1044-1067
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "dfaedbd471d19b8351eb338d24ca9f60530aaf22",
+  "prompts": {},
+  "sessions": {
+    "s_ab80bf3dba8421": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "622abbc5-a35f-4cfa-a072-d511338d74e1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

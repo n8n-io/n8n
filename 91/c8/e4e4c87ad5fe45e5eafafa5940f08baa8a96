@@ -1,0 +1,26 @@
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/__tests__/messageMappers.attachments.test.ts
+  s_c4d55be4545ba1::t_0b415c86715839 125-148
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/messageMappers.ts
+  s_c4d55be4545ba1::t_0b415c86715839 27,377
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/replyFiles.ts
+  s_c4d55be4545ba1::t_0b415c86715839 31-44,49
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_c4d55be4545ba1::t_0b415c86715839 2648-2650,2683
+  ai_agent 2651-2674,2676-2679,2681-2682
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "91c8e4e4c87ad5fe45e5eafafa5940f08baa8a96",
+  "prompts": {},
+  "sessions": {
+    "s_c4d55be4545ba1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "846293ef-886e-46d0-9125-e48e5be2b0e8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

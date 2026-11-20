@@ -1,0 +1,17 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f2bfe179f61e9471e51f48dd4f0cd18ead81935a",
+  "prompts": {},
+  "sessions": {
+    "s_1c454f33116688": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0ab01-29a2-775a-944f-5e73dea2f7d0",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

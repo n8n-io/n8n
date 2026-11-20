@@ -1,0 +1,111 @@
+packages/cli/src/modules/agents/repositories/agent-chat-attachment.repository.ts
+  s_dfe3f914c8bb46::t_2fe5724853974c 35-39,41-43
+  s_dfe3f914c8bb46::t_05d64d1ebb8750 40,44
+packages/cli/src/modules/agents/agent-session-stop.service.ts
+  s_dfe3f914c8bb46::t_91e0281a6708f9 78-83,87-88
+  s_dfe3f914c8bb46::t_2fe5724853974c 75-77,85-86
+  s_dfe3f914c8bb46::t_63c3e7ec666ee3 1
+  s_dfe3f914c8bb46::t_e0e256009f7ff3 11,30,71-74,84,89-92
+  s_dfe3f914c8bb46::t_854d9f6e11a8bb 93-94
+packages/cli/src/modules/agents/repositories/agent-project-deletion.repository.ts
+  s_dfe3f914c8bb46::t_2fe5724853974c 1-7,23-26,40-43,46-50,68-69,71
+  s_dfe3f914c8bb46::t_05d64d1ebb8750 8-17,19-22,27-36,38-39,44-45,51-53,58-67,70,72-76
+  s_fabc25433f52d5::t_fb098cb96210f1 18,37
+  s_dfe3f914c8bb46::t_14754e693688aa 54-57
+packages/cli/src/modules/agents/__tests__/agent-project-cleanup.service.test.ts
+  s_dfe3f914c8bb46::t_87853cbff4067f 1-14,34,41,60,72,77
+  s_dfe3f914c8bb46::t_2fe5724853974c 15-33,35-40,42-59,61-71,73-76
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_fabc25433f52d5::t_fb098cb96210f1 6,1063-1064,1067
+  s_dfe3f914c8bb46::t_11487338656097 98,102,163,979,1086,1115-1119,1717
+  s_dfe3f914c8bb46::t_2fe5724853974c 99-101,1035-1039
+packages/cli/src/modules/agents/__tests__/agent-knowledge.service.test.ts
+  s_fabc25433f52d5::t_fb098cb96210f1 3
+  s_dfe3f914c8bb46::t_11487338656097 164,168,192
+  s_dfe3f914c8bb46::t_2fe5724853974c 165-167
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_dfe3f914c8bb46::t_11487338656097 1,221
+packages/cli/src/modules/agents/agent-chat-attachment.service.ts
+  s_dfe3f914c8bb46::t_2fe5724853974c 105-115,117-123,341-345,347-353
+  s_dfe3f914c8bb46::t_05d64d1ebb8750 12,77,340,346,354-355
+  s_dfe3f914c8bb46::t_0ce5588b2ce56f 97-98,116,127,130
+packages/cli/src/modules/agents/__tests__/agent-knowledge-mirror.service.test.ts
+  s_dfe3f914c8bb46::t_11487338656097 128
+  s_fabc25433f52d5::t_fb098cb96210f1 11
+  s_dfe3f914c8bb46::t_14754e693688aa 112,119,144-174
+  s_dfe3f914c8bb46::t_8c980df7ada298 175
+packages/cli/src/modules/agents/repositories/agent-execution-thread.repository.ts
+  s_dfe3f914c8bb46::t_05d64d1ebb8750 100,116-124
+  s_dfe3f914c8bb46::t_9018f472eef1f1 21
+  s_dfe3f914c8bb46::t_2fe5724853974c 96-99
+packages/cli/src/modules/agents/__tests__/agent-session-stop.service.test.ts
+  s_dfe3f914c8bb46::t_11487338656097 1,26,36
+  s_dfe3f914c8bb46::t_c2c5321efe3a6f 176-182
+packages/cli/test/integration/database/repositories/agent-project-deletion.repository.test.ts
+  s_dfe3f914c8bb46::t_63c3e7ec666ee3 2-9,14-15,46,54,77,84
+  s_dfe3f914c8bb46::t_9018f472eef1f1 56-57,60,72
+  s_dfe3f914c8bb46::t_91e0281a6708f9 11-13,16-45,47-53,55,58-59,61-71,73-76,78-83
+  s_dfe3f914c8bb46::t_9715ff6c746dc9 1,10
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_dfe3f914c8bb46::t_9018f472eef1f1 24,1255-1257
+  s_fabc25433f52d5::t_fb098cb96210f1 507
+  s_dfe3f914c8bb46::t_2fe5724853974c 234-238,242-245
+  s_dfe3f914c8bb46::t_05d64d1ebb8750 209,239-241
+  s_dfe3f914c8bb46::t_487691796bb7eb 233
+packages/cli/src/modules/agents/agent-project-cleanup.service.ts
+  s_dfe3f914c8bb46::t_e0e256009f7ff3 10-12,25-27,31-34,37-38
+  s_fabc25433f52d5::t_fb098cb96210f1 3-4
+  s_dfe3f914c8bb46::t_2fe5724853974c 35-36
+packages/cli/src/modules/agents/__tests__/agent-chat-attachment.service.test.ts
+  s_fabc25433f52d5::t_fb098cb96210f1 6
+  s_dfe3f914c8bb46::t_2fe5724853974c 15-17,61-63,68-77,81-86,101-107,109-119
+  s_dfe3f914c8bb46::t_63c3e7ec666ee3 100
+  s_dfe3f914c8bb46::t_c2c5321efe3a6f 57,59-60,64-67,78-80,87-99,120-121
+  s_dfe3f914c8bb46::t_11487338656097 14,18,55
+  s_fabc25433f52d5::t_b3030dd41f5fb7 56,58
+packages/cli/src/modules/agents/repositories/agent-execution.repository.ts
+  s_dfe3f914c8bb46::t_e0e256009f7ff3 129-132,265
+  s_dfe3f914c8bb46::t_2fe5724853974c 267-271
+packages/cli/src/services/__tests__/project.service.ee.test.ts
+  s_dfe3f914c8bb46::t_11487338656097 1-3,1006-1008,1025-1026,1216-1218
+packages/cli/src/modules/agents/agent-knowledge-mirror.service.ts
+  s_dfe3f914c8bb46::t_11487338656097 132
+  s_dfe3f914c8bb46::t_14754e693688aa 236-237,241-244,246-248
+  s_dfe3f914c8bb46::t_9018f472eef1f1 52
+  s_dfe3f914c8bb46::t_e6bde3bfc5ddca 245
+  s_dfe3f914c8bb46::t_2fe5724853974c 238-240
+packages/cli/src/modules/agents/agent-knowledge.service.ts
+  s_dfe3f914c8bb46::t_11487338656097 1,224
+  s_dfe3f914c8bb46::t_e0e256009f7ff3 80,236
+  s_dfe3f914c8bb46::t_2fe5724853974c 191-195,206-209
+  s_dfe3f914c8bb46::t_05d64d1ebb8750 39,61
+packages/cli/src/modules/agents/__tests__/agent-execution-thread.repository.test.ts
+  s_dfe3f914c8bb46::t_c2c5321efe3a6f 1-2,20,24,27-33,38,42-46,50-51
+  s_dfe3f914c8bb46::t_2fe5724853974c 26,34-37,39-41,47-49
+packages/cli/src/modules/agents/agent-chat-execution.service.ts
+  s_dfe3f914c8bb46::t_11487338656097 319-325
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "26a5f0039d08251da61b1d664026abf1d5a53194",
+  "prompts": {},
+  "sessions": {
+    "s_dfe3f914c8bb46": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a177de-1655-75e1-b502-74f6cb945148",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    },
+    "s_fabc25433f52d5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a19cc2-66d9-7442-999f-753273dafe03",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

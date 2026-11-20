@@ -1,0 +1,32 @@
+packages/cli/src/modules/agents/agent-task.service.ts
+  s_08690fb8a4caf5::t_4f3a53b124d1e3 635-638
+packages/cli/src/modules/agents/utils/agent-draft.utils.ts
+  s_08690fb8a4caf5::t_4f3a53b124d1e3 15-19,33
+packages/cli/src/modules/agents/__tests__/agent-task.service.test.ts
+  s_08690fb8a4caf5::t_ea0d9fb281e02e 1190-1199
+packages/cli/src/modules/agents/agent-knowledge.service.ts
+  s_08690fb8a4caf5::t_c4911b789c9216 17
+  s_08690fb8a4caf5::t_4f3a53b124d1e3 45,78,118-122,124-125
+packages/cli/src/modules/agents/__tests__/agent-skills.service.test.ts
+  s_08690fb8a4caf5::t_16cd4839fda955 354-366
+packages/cli/src/modules/agents/__tests__/agent-knowledge.service.test.ts
+  s_08690fb8a4caf5::t_16cd4839fda955 231-248
+packages/cli/src/modules/agents/agent-skills.service.ts
+  s_08690fb8a4caf5::t_c4911b789c9216 39-43,233-234
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3de2043f123512eda8e313e7356a0cfcad96981d",
+  "prompts": {},
+  "sessions": {
+    "s_08690fb8a4caf5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "33b03ae9-9b4e-49ba-ac90-ae160b5918c5",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/__tests__/AssistantConfirmationCard.test.ts
+  s_f974bcaa5a85b7::t_8c3f747e2fc2d8 55-56
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatMessageList.test.ts
+  s_f974bcaa5a85b7::t_8c3f747e2fc2d8 120,1181
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6947fd3bcf435c7261798d97eaaac82a88ed461b",
+  "prompts": {},
+  "sessions": {
+    "s_f974bcaa5a85b7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "44a25fca-7dea-46bf-8f21-afbbbf3dfb5e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

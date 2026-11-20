@@ -1,0 +1,74 @@
+packages/cli/src/modules/n8n-packages/entities/folder/folder-remover.ts
+  s_ea8398b491aecc::t_b8f271a14af2f2 156
+packages/@n8n/api-types/src/dto/promotions/promotion-operations.dto.ts
+  s_ea8398b491aecc::t_98e57a442c9796 70-72,75-79
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionOutcome.ts
+  s_ea8398b491aecc::t_43b3714d4c4872 8,46
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionPreview.content.test.ts
+  s_ea8398b491aecc::t_42428a38976f43 53,56-57,67
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/ApplyInstanceDialog.vue
+  s_ea8398b491aecc::t_43b3714d4c4872 18,66
+packages/cli/src/modules/promotions.ee/__tests__/promotion-changes.integration.test.ts
+  s_ea8398b491aecc::t_aa2fe191ab55a2 1049-1050
+  s_ea8398b491aecc::t_2a849181a57301 1062-1067
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/ApplyInstanceDialog.test.ts
+  s_ea8398b491aecc::t_0fed7e121813e7 112-135
+  s_ea8398b491aecc::t_fa7b0c51cc4822 84,89,105
+packages/cli/src/modules/n8n-packages/entities/folder/__tests__/folder-importer.test.ts
+  s_ea8398b491aecc::t_78ad01b741f60e 93-148
+  s_ea8398b491aecc::t_d1d325184b32cc 59,62,69,85,174,196
+packages/cli/src/public-api/v1/shared/spec/schemas/applyPackageResultDto.generated.yml
+  ai_agent 51-54,61-65,71,74
+packages/cli/src/modules/n8n-packages/entities/folder/folder-importer.ts
+  s_ea8398b491aecc::t_7bb4b99683ed4e 84,157-167
+  s_ea8398b491aecc::t_8afcd74d430503 59-61,81-83,85-95,101
+  s_ea8398b491aecc::t_f6b2323408cf61 124,126,128-129
+  s_ea8398b491aecc::t_74b201de4e89e9 109-110
+  s_ea8398b491aecc::t_9b8370316f641b 152,155
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/__tests__/bindings.fixtures.ts
+  s_ea8398b491aecc::t_fa7b0c51cc4822 90
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_ea8398b491aecc::t_43b3714d4c4872 9945
+packages/cli/src/modules/n8n-packages/entities/folder/folder-import.types.ts
+  s_ea8398b491aecc::t_573c5735af8f41 21,28-31
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_ea8398b491aecc::t_9fc10de50cfbcd 554-559
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_ea8398b491aecc::t_1231f66b29f553 1345-1347
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_ea8398b491aecc::t_d1d325184b32cc 1510-1512,1720
+packages/cli/src/modules/n8n-packages/entities/folder/__tests__/folder-remover.test.ts
+  s_ea8398b491aecc::t_7bb4b99683ed4e 159-165
+  s_ea8398b491aecc::t_73378d7e0e499e 133,137,152-158,166-169
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionPreview.content.ts
+  s_ea8398b491aecc::t_a2c8be4af280f3 118,124-128
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promotionResult.ts
+  s_ea8398b491aecc::t_3e73430c22c78f 68-70,72,77-92,94-99,101-103
+packages/@n8n/cli/src/client.ts
+  s_ea8398b491aecc::t_0d097ccf824b6f 78-87
+packages/cli/src/modules/promotions.ee/promotion-preview.ts
+  s_ea8398b491aecc::t_f519908aa63e1c 279-280,282-285
+  s_ea8398b491aecc::t_8a69b70a37eae0 64
+packages/cli/test/integration/public-api/promotions.test.ts
+  s_ea8398b491aecc::t_d1d325184b32cc 2539,2726
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_ea8398b491aecc::t_51f5448cd86df7 10,1781-1966
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_ea8398b491aecc::t_c038da5c93c0f7 504,506
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4c7abf01181f6fe50d9425d8b05870e4521b29f8",
+  "prompts": {},
+  "sessions": {
+    "s_ea8398b491aecc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "79fa3697-e88c-41ac-8b49-e4829ac9b740",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

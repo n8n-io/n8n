@@ -1,0 +1,30 @@
+packages/cli/src/encryption/key-manager.service.ts
+  s_11a0acc96dafeb::t_c89af7c81ab6c9 224-239
+  s_11a0acc96dafeb::t_9a982977995d3c 256-263
+  s_11a0acc96dafeb::t_e36cb27c75aad4 52-55,214-215
+packages/cli/src/encryption/__tests__/legacy-key-mismatch.integration.test.ts
+  s_11a0acc96dafeb::t_646141edfa5410 1-66
+packages/cli/src/encryption/__tests__/key-manager.service.test.ts
+  s_11a0acc96dafeb::t_ec5dc973b82b73 254,269,273,282-329
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ef3010aa4d784dd7809e3e1c04283ee2eb83b295",
+  "prompts": {},
+  "humans": {
+    "h_21437a83314767": {
+      "author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_11a0acc96dafeb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "51600bfd-1387-40cf-a815-b13eec7e5102",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}

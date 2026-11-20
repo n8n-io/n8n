@@ -1,0 +1,42 @@
+packages/cli/src/telemetry/__tests__/telemetry.test.ts
+  s_c64d6d408a247d::t_ac1775b268c041 243-270
+packages/cli/src/executions/pre-execution-checks/__tests__/credentials-permission-checker.test.ts
+  s_c64d6d408a247d::t_40de08b2b45910 154
+  s_c64d6d408a247d::t_9f9876feb1746c 119-121,220,235,317-319
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_c64d6d408a247d::t_cbf8f0b0dccabb 4798-4822
+packages/cli/src/executions/pre-execution-checks/__tests__/credential-refusal.test.ts
+  s_c64d6d408a247d::t_735b00589d2a88 17
+packages/cli/src/executions/pre-execution-checks/credentials-permission-checker.ts
+  s_c64d6d408a247d::t_2fca2b80767fb7 260-261,263-267,272,274-275,277-279,309-310,317-322,343,359,375-380,385-390,408-409,412,414
+packages/cli/src/__tests__/workflow-runner.test.ts
+  s_c64d6d408a247d::t_985dac1ee12289 803-805,829-860,867,907,944,970-972,1075-1077,1107,1164-1166,1227-1229,1651,1706,1752,1797,1930,2225
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_c64d6d408a247d::t_85940d6dc69bae 199-202,204-206,211
+packages/cli/src/interfaces.ts
+  s_c64d6d408a247d::t_b024d28274f95f 251-252
+packages/cli/src/telemetry/index.ts
+  s_c64d6d408a247d::t_fb9e725f371f7f 43-44,440-444
+packages/cli/src/workflow-runner.ts
+  s_c64d6d408a247d::t_10503de5fe990a 456,461-464
+packages/workflow/src/interfaces.ts
+  s_c64d6d408a247d::t_151adf190e4a90 3880-3881
+packages/cli/src/modules/engine-v2/__tests__/engine-credentials.service.test.ts
+  s_c64d6d408a247d::t_cc9091dbfabf11 49,102
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6a996cba17313ef3d910d584ca83a0ac312b5704",
+  "prompts": {},
+  "sessions": {
+    "s_c64d6d408a247d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c0b96140-17ec-4f49-8ba1-686de4227b99",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

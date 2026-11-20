@@ -1,0 +1,146 @@
+docs/generated/sqlite-schema/agent_version_skill_dependency.md
+  ai_agent 71
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  ai_agent 67-69,82-84,451-453
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/applyPackage.generated.yml
+  ai_agent 5-6
+packages/@n8n/cli/skills/n8n-cli/SKILL.md
+  ai_agent 298
+docs/generated/postgres-schema/public.skill.md
+  ai_agent 9,27,56
+packages/cli/src/public-api/v1/shared/spec/schemas/dependencyListPublicDto.generated.yml
+  ai_agent 1-42
+docs/generated/sqlite-schema/user.md
+  ai_agent 472
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionEnvironmentProjects.generated.yml
+  ai_agent 5
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/exportPackage.generated.yml
+  ai_agent 29
+packages/cli/src/public-api/v1/handlers/data-tables/spec/paths/getDataTableDependencies.generated.yml
+  ai_agent 1-32
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionProviderRepositoryBranches.generated.yml
+  ai_agent 6
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/promotePackage.generated.yml
+  ai_agent 5-6
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/continueApplyPackage.generated.yml
+  ai_agent 6
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/importPackage.generated.yml
+  ai_agent 8,12-21,69,75-76,84-85,90,97,188,206,226
+packages/cli/src/public-api/v1/handlers/credentials/spec/paths/getCredentialDependencies.generated.yml
+  ai_agent 1-30
+docs/generated/postgres-schema/README.md
+  ai_agent 144,1814
+packages/@n8n/instance-ai/skills/debugging-executions/SKILL.md
+  ai_agent 42,46
+docs/generated/postgres-schema/public.user.md
+  ai_agent 468
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/continueApplyProjectSelection.generated.yml
+  ai_agent 5-6
+docs/generated/postgres-schema/public.skill_version.md
+  ai_agent 109
+docs/generated/postgres-schema/public.agent_version_skill_dependency.md
+  ai_agent 62
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionProviderRepositories.generated.yml
+  ai_agent 6
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/removeProjectFromPromotionEnvironment.generated.yml
+  ai_agent 5
+docs/generated/sqlite-schema/README.md
+  ai_agent 144,1800
+packages/@n8n/instance-ai/skills/instance-awareness/SKILL.md
+  ai_agent 12-16,93
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/applyProjectSelection.generated.yml
+  ai_agent 5-6
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/addProjectToPromotionEnvironment.generated.yml
+  ai_agent 6
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/importPackageSelection.generated.yml
+  ai_agent 10,12,37,45,50,79
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/promoteProjectSelection.generated.yml
+  ai_agent 5-6
+packages/frontend/@n8n/design-system/src/components/N8nBreadcrumbs/__snapshots__/BreadCrumbs.test.ts.snap
+  ai_agent 9,11,13,27,29,31,45,47,49,64,66,68,83,85,87
+docs/generated/sqlite-schema/agents.md
+  ai_agent 344
+docs/generated/sqlite-schema/skill_version.md
+  ai_agent 112
+packages/cli/src/public-api/v1/shared/spec/schemas/importResultDto.generated.yml
+  ai_agent 17-102,113,139,288-292,303,430-431
+docs/generated/postgres-schema/public.agents.md
+  ai_agent 342
+docs/generated/sqlite-schema/agent_skill_dependency.md
+  ai_agent 76
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/connectPromotionCheckout.generated.yml
+  ai_agent 6
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionEnvironments.generated.yml
+  ai_agent 6
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionProvider.generated.yml
+  ai_agent 6
+packages/@n8n/instance-ai/skills/agent-builder/SKILL.md
+  ai_agent 177-180,229-230,256,287,290,317-323,338,379,391-394,487-491,558,560,642-644,663,665-666
+docs/generated/sqlite-schema/skill.md
+  ai_agent 9,20,62
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/updatePromotionProvider.generated.yml
+  ai_agent 6
+packages/cli/src/public-api/v1/shared/spec/schemas/applyPackageResultDto.generated.yml
+  ai_agent 51-54,58-65,71,73-74,88-91,126
+packages/@n8n/instance-ai/skills/workflow-builder/SKILL.md
+  ai_agent 13,25-28,30-33,62,70,121-122,142,215,219,222-223,229-230,379,393,405,407,437,495-496,500,503,506,517,521-522,528,548,831-832
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/createPromotionEnvironment.generated.yml
+  ai_agent 6
+.agents/skills/create-pr/SKILL.md
+  ai_agent 34,41-45,75-76,212,217,220,222-227
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionProviders.generated.yml
+  ai_agent 6
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/updatePromotionEnvironment.generated.yml
+  ai_agent 6
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  ai_agent 21,24-25,37,48,54,61,65-72,85,122-124,155,211-212,215-220,403,416-417,439-445,567-568,583,593,600-602,607,613,615-619,622-627,630-633,685,690-691,707-709,721-748,785-786,791-793,801-802,852-853,857,859-867,914,976-984,1015,1049,1056-1059,1066,1068,1165-1166,1172,1182-1185,1189-1296,1425-1427,1432,1489-1553
+packages/@n8n/instance-ai/skills/n8n-docs-assistant/SKILL.md
+  ai_agent 10-13
+packages/@n8n/permissions/src/__tests__/__snapshots__/scope-information.test.ts.snap
+  ai_agent 15,104-115
+docs/generated/postgres-schema/public.agent_skill_dependency.md
+  ai_agent 66
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/disconnectPromotionCheckout.generated.yml
+  ai_agent 6
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_d00cf175ed42d2::t_abc002adaf77b3 512-542,544
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionEnvironment.generated.yml
+  ai_agent 6
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionChanges.generated.yml
+  ai_agent 5-6
+pnpm-lock.yaml
+  ai_agent 2137-2139,2158-2160
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/deletePromotionEnvironment.generated.yml
+  ai_agent 6
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/deletePromotionProvider.generated.yml
+  ai_agent 6
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/getWorkflowDependencies.generated.yml
+  ai_agent 1-30
+packages/cli/src/public-api/v1/shared/spec/schemas/importBlockingIssue.generated.yml
+  ai_agent 7-123
+packages/cli/src/modules/promotions.ee/promotions-git.service.ts
+  s_d00cf175ed42d2::t_9deabadd4f573e 24,332-348,353,356-357,375,667
+  s_d00cf175ed42d2::t_4d793a5a6c6207 350-351
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/createPromotionProvider.generated.yml
+  ai_agent 6
+docs/generated/sqlite-schema/project.md
+  ai_agent 317
+docs/generated/postgres-schema/public.project.md
+  ai_agent 311
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "865c7fed50c01d60109d267154d77df4a50f0ea5",
+  "prompts": {},
+  "sessions": {
+    "s_d00cf175ed42d2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b248cf81-ccac-49c4-853d-d4acffb5451a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

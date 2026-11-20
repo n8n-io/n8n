@@ -1,0 +1,41 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiThreadView.test.ts
+  s_1cfc31402a4d82::t_12661fb5f482bc 2590-2591,2627,2818-2819,2947-2948
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiTestAgentPreviewPanel.test.ts
+  s_1cfc31402a4d82::t_1e0ccc5b634fa8 51,54-58,92,96-97,170-178
+  s_1cfc31402a4d82::t_bc5701f4a90209 187,245-250
+  s_1cfc31402a4d82::t_a55aec7c8fe6e2 223
+  s_1cfc31402a4d82::t_811a43e357c473 179-180,251,253
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentEvalAddCheckPanel.test.ts
+  s_1cfc31402a4d82::t_2b0b4efa927941 166
+  s_1cfc31402a4d82::t_c91731fc04673d 416,419-420,424,426-427,431,433-434,439-441
+  s_1cfc31402a4d82::t_feeb8029fb359c 1,35,69-71,80-87,89,107,112
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_1cfc31402a4d82::t_720408ab33da83 8522-8523
+packages/frontend/editor-ui/src/features/agents/components/AgentEvalAddCheckPanel.vue
+  s_1cfc31402a4d82::t_d1c2a7f17fc2dd 8,67,194-202
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiTestAgentPreviewPanel.vue
+  s_1cfc31402a4d82::t_20e052a5f19561 462-465,468
+  s_1cfc31402a4d82::t_f72edc4673bf44 6,53-54,466
+  s_1cfc31402a4d82::t_8bf8fd80364013 55-59,183-184,467,469-475
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiThreadView.vue
+  s_1cfc31402a4d82::t_70a29f71817271 624,635
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiTestAgentPanel.test.ts
+  s_1cfc31402a4d82::t_548d14495a043e 15
+  s_1cfc31402a4d82::t_9199f61db9e5ab 14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "40ecfb423452bc1dc233cdf0ad31218921aa4619",
+  "prompts": {},
+  "sessions": {
+    "s_1cfc31402a4d82": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a18e0b-98de-71df-9e22-818c5a5a5933",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

@@ -1,0 +1,23 @@
+packages/cli/src/modules/agent-determinism/trace-mining.ts
+  s_8b881202fd680e::t_a60c05ee5a15d7 2-165,171-205,209-211,216-257,261-272,279-347,350-395,401-410,412-414,418-436,441-470
+  s_8b881202fd680e::t_60bb3534801114 166-170,206-208,212-215,258-260,273-278,348-349,415-417,437-440
+  s_8b881202fd680e::t_e852a33a1c0a38 1,396-400,411
+packages/cli/src/modules/agent-determinism/trace-run-clusterer.ts
+  s_8b881202fd680e::t_9209ff1178685f 1-21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8584e2711fb0ddcf2e9844d03f6aeb0b623977d2",
+  "prompts": {},
+  "sessions": {
+    "s_8b881202fd680e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f1ea5cf4-fc38-4f7e-85d1-84234a035547",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

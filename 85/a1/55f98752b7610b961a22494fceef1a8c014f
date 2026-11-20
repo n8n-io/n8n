@@ -1,0 +1,52 @@
+packages/modules/promotions/frontend/src/components/dependencies/PromotionApplyResultDialog.vue
+  s_3dd47ea0104342::t_cfb05b33d49800 44,189,218-231
+  s_3dd47ea0104342::t_84c0d0dabc17ed 232-238
+packages/modules/promotions/frontend/src/composables/usePromotionDependencies.ts
+  s_3dd47ea0104342::t_cfb05b33d49800 6,19,38-40,59-60,80-81,89-93
+packages/modules/promotions/frontend/src/components/dependencies/PromotionDependencyReport.vue
+  s_3dd47ea0104342::t_cfb05b33d49800 42-43,292,297-298,300-301
+packages/modules/promotions/frontend/src/promotionApplyOutcome.ts
+  s_3dd47ea0104342::t_cfb05b33d49800 2,5,13,22-24,37-38,52
+packages/modules/promotions/frontend/src/promotionDependencies.ts
+  s_3dd47ea0104342::t_cfb05b33d49800 164
+packages/modules/promotions/frontend/src/promotions.api.ts
+  s_3dd47ea0104342::t_cfb05b33d49800 10-11,70-71,131-144
+  s_3dd47ea0104342::t_64ebfe5a55a6c5 145-148
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_3dd47ea0104342::t_8f767af13d70cc 11229-11232,11297-11298,11421-11424,11472
+packages/modules/promotions/frontend/src/composables/usePromotionPreviewLabels.ts
+  s_3dd47ea0104342::t_cfb05b33d49800 132-145,147
+packages/modules/promotions/frontend/src/composables/usePromotionPreview.ts
+  s_3dd47ea0104342::t_cfb05b33d49800 74-75,182,188
+packages/modules/promotions/frontend/src/composables/usePromotionSelectionReport.ts
+  s_3dd47ea0104342::t_bb4876cbee5a26 1-79,87-94
+  s_3dd47ea0104342::t_ddacc05ea5b4f4 80-86
+packages/modules/promotions/frontend/src/components/dependencies/PromotionApplyConfirmations.vue
+  s_3dd47ea0104342::t_cfb05b33d49800 50-51,318-346
+  s_3dd47ea0104342::t_1b52a1d26ed153 347-348
+packages/modules/promotions/frontend/src/composables/usePromotionOperation.ts
+  s_3dd47ea0104342::t_cfb05b33d49800 131-132
+spike/ligo-1159/poc/decisions.md
+  s_3dd47ea0104342::t_0293fcd122f5aa 709-724
+packages/modules/promotions/frontend/src/components/preview/PromotionBlockers.vue
+  s_3dd47ea0104342::t_cfb05b33d49800 104
+packages/modules/promotions/frontend/src/views/PromotionPreviewView.vue
+  s_3dd47ea0104342::t_cfb05b33d49800 49-52,147-150,252-258,274-279,519-544
+  s_3dd47ea0104342::t_d5b118f2798f4c 545-546,596-597,799,1179
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "85a155f98752b7610b961a22494fceef1a8c014f",
+  "prompts": {},
+  "sessions": {
+    "s_3dd47ea0104342": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c1a45d57-85a1-465a-839a-d3b98e3073fc",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

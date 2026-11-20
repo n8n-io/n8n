@@ -1,0 +1,447 @@
+docs/generated/postgres-schema/public.user.md
+  s_9af1b09aa006a5::t_89950c5a6407b5 190
+packages/@n8n/api-types/src/schemas/agent-safe-testing.schema.ts
+  s_9af1b09aa006a5::t_347d66c6f17cf7 69-72,83-93
+  s_9af1b09aa006a5::t_5da32c6d97741b 3,32,36
+  s_9416adef5f807e::t_7b38025c09cc67 6-13
+  s_9af1b09aa006a5::t_dae06a66141c59 1-2,14-31,33-35,37-42,67-68,73-82
+  s_9416adef5f807e::t_8f2698ff61d979 43-66
+  s_9af1b09aa006a5::t_28d5b886acf1aa 94-97
+  s_9416adef5f807e::t_c894081cfbf529 4-5
+packages/cli/src/modules/agents/agent-test-run.service.ts
+  s_9416adef5f807e::t_9d978d849bf81d 395-396,398
+  s_9416adef5f807e::t_b9d2f3f92e3fbf 8-12,81-82,243,247,400,412
+  s_9af1b09aa006a5::t_e8de57653b7578 28-29,52,65-69,71,73-76,142,184,254,261-265,277,282,292,397,399,401-411,413-419,424-428,432,438-439,446-447,454,459-466,498-513,515-518,525-526
+  s_9af1b09aa006a5::t_310d4c0ab0f0cb 70,72,394,514
+  s_9af1b09aa006a5::t_c31bafbb0f21bb 519-521,524
+  s_9416adef5f807e::t_7698bf2bd3a530 522-523
+packages/@n8n/api-types/src/agents/dto.ts
+  s_9416adef5f807e::t_68e9c5fc5ff27a 30,596-600
+docs/generated/postgres-schema/public.agent_plan.md
+  s_9af1b09aa006a5::t_f7a02a0f2d1808 107
+packages/quality/policy/code-health/src/rules/agents-instance-ai-boundary.rule.ts
+  s_9af1b09aa006a5::t_b5cc177bd8d4f9 29-31
+packages/cli/src/modules/agents/__tests__/agent-threads.controller.test.ts
+  s_9416adef5f807e::t_991fd34f4e4c6f 53,72,86
+packages/cli/src/modules/agents/simulation/__tests__/simulation-session.service.test.ts
+  s_9af1b09aa006a5::t_b4c332917a68c9 17-21,121-127,213-233,236-237,393-406
+  s_9af1b09aa006a5::t_303dd60253c050 15,457-480,507-513
+  s_9af1b09aa006a5::t_79d59073c20b8c 428
+  s_9af1b09aa006a5::t_d6714a67ade690 481
+  s_16b644290ae8de::t_d7798d6cde87e7 390
+  s_9af1b09aa006a5::t_fce6e0e1347af6 588-600
+  s_9af1b09aa006a5::t_247510c1a46f99 1-3,5-7,9,11-14,16,22-43,45-46,52-57,59-62,64-65,69-70,72-73,77-84,86,88-90,95,104-110,112,114,116-120,128-137,139-141,153-160,177-198,200-212,412-413,423-427,628
+  s_9af1b09aa006a5::t_73fe1385fd42ba 8,10,58,63,71,91-94,111,161-176,199,407-411,414-422,429-440,449-456
+  s_9af1b09aa006a5::t_0a72de268e9626 526
+  s_9416adef5f807e::t_0e5181310981f3 4,44,66,74,96,103,113,248-267,358-367,482-506
+  s_9416adef5f807e::t_e831316e4723bc 67-68,75-76,85,87,97-102,115,246,268-357,601-627
+  s_9af1b09aa006a5::t_b6ca041280be55 245,514-525,566-587
+  s_9416adef5f807e::t_fa1dd80fb1ff13 47-51,234-235,238-244,368-389,391-392
+  s_9416adef5f807e::t_639b9c97f772c6 138,142-152,441-448
+  s_9416adef5f807e::t_b9ef20c2ccb699 551-565
+  s_1d7f91d8784fe7::t_66c1931f7d7e1c 527-550
+  s_9416adef5f807e::t_08aab373b4bf46 247
+packages/cli/src/modules/agents/sub-agents/__tests__/sub-agent-runner.test.ts
+  s_9416adef5f807e::t_78641f9794cf56 225-248
+  s_8ec013ca0ad3fa::t_288a0953d39cc4 249-267
+packages/cli/src/modules/agents/evaluation/agent-evaluation.contracts.ts
+  s_9416adef5f807e::t_c0f042e7715886 83-84
+  s_9af1b09aa006a5::t_7ca2eef1b125f6 1,45-46,78-82
+  s_9416adef5f807e::t_23ae6cb8a5e701 85-91
+packages/cli/src/modules/agents/agents.module.ts
+  s_9af1b09aa006a5::t_998dc9e20de8a5 38
+packages/cli/src/modules/instance-ai/eval/mock-handler.ts
+  s_9416adef5f807e::t_f3ed942eaa10cd 164-168,355
+docs/generated/sqlite-schema/agent_background_job.md
+  s_9af1b09aa006a5::t_02791381ec11ae 157
+packages/cli/src/modules/agents/simulation/__tests__/outbound-redaction.test.ts
+  s_9af1b09aa006a5::t_c3bff65560db9f 3-5,7-85
+  s_16b644290ae8de::t_3ca10f6db693f9 336-342,344,383-384
+  s_9416adef5f807e::t_1d5a8e7c433800 363-371
+  s_1d7f91d8784fe7::t_42c97ebe3e25b0 348-352,357-358
+  s_9416adef5f807e::t_5bf94afb954a6f 202-220,268-282
+  s_a77c76e26fbd23::t_47cca721ff5ed2 345,353-356
+  s_9416adef5f807e::t_2b0a78741952cb 6,333,346,372-382,385-387
+  s_8ec013ca0ad3fa::t_b338681298feea 1-2,145-151,153-154,158-180
+  s_9416adef5f807e::t_cdca6fc841cd48 101-115
+  s_9416adef5f807e::t_c9565c073a2559 129-144,152,155-157
+  s_9416adef5f807e::t_932c44de9f23e5 236-267
+  s_9416adef5f807e::t_e883fd3adef5e8 87-100
+  s_9af1b09aa006a5::t_a09160a18b548a 86,116-127
+  s_9416adef5f807e::t_ad8820b1a1c5b9 221-235
+  s_9416adef5f807e::t_c4ae3e24d54be6 128,181-201,283-332
+  s_9416adef5f807e::t_8c2e86ec55ea86 334-335,343,359-362
+  s_9416adef5f807e::t_c9f114ba83fe52 347
+packages/cli/src/modules/agents/entities/agent-execution-thread.entity.ts
+  s_9af1b09aa006a5::t_4f0aea38c89c13 7,28-31
+packages/cli/src/modules/agents/simulation/__tests__/simulation-session.test.ts
+  s_9416adef5f807e::t_6fb1723133cd27 353-358,360-363,365-396
+  s_56a35d4dab1f2f::t_55a960e4ee24d5 430-465
+  s_04766f4c0ca171::t_fd64919b2503b3 397-402,404-407,409-429
+  s_9416adef5f807e::t_547e0e89d2abc1 681-707
+  s_9af1b09aa006a5::t_2c856ba7e60fe0 281-287,297,303-309,312-317,319-320
+  s_9af1b09aa006a5::t_0e12bf397f9e91 5-10,198-201,291-295,302,318,539,566-602
+  s_9416adef5f807e::t_f95386eb180179 323-348,350-352,478,492-493,502-503
+  s_9af1b09aa006a5::t_60e5b27241b90b 603-679
+  s_9af1b09aa006a5::t_4566a596be217f 2,27-32,72,92,124,143,161,180,204,220,235,259-280,508,520,525,527-537
+  s_9af1b09aa006a5::t_63adb5b60ffca5 23,504,510-516
+  s_9af1b09aa006a5::t_1e0219fa3751c5 321,509,538,680,708-726
+  s_9416adef5f807e::t_da457ee196ec95 466-477,479-491,494-501
+  s_16b644290ae8de::t_2139a4bfeebc9c 349,359,364,403,408
+  s_9416adef5f807e::t_9ade5d0fdc15ed 12,540-565
+  s_9af1b09aa006a5::t_a918fbca5e7773 1,3-4,11,13-22,24-26,33-71,73-91,93-123,125-142,144-160,162-179,181-197,202-203,205-219,221-234,236-258,288-290,296,298-301,310-311,505-507,517-519,521-524,526,727
+  s_9416adef5f807e::t_d9937ef4f90b99 322
+docs/generated/postgres-schema/public.agent_execution_threads.md
+  s_9af1b09aa006a5::t_6fb79fb5b78856 18,88
+  s_9af1b09aa006a5::t_fb4fd5641bcefa 138
+packages/cli/src/modules/instance-ai/instance-ai.module.ts
+  s_9af1b09aa006a5::t_0462c058db271c 120
+  s_9af1b09aa006a5::t_118cc424bb2f4a 102-103,121-130
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_9416adef5f807e::t_49acf59e3b6415 1236-1260
+  s_9af1b09aa006a5::t_16b422e5fb1334 54,95
+packages/cli/src/modules/agents/types/agent-queued-message.ts
+  s_9416adef5f807e::t_2548f48d5d17f6 2-6,42-43
+  s_44d5218dab8107::t_2b239cfe4c253c 96-97
+packages/cli/src/modules/instance-ai/eval/web-search-mock.ts
+  s_9416adef5f807e::t_e03df26d345a1c 22-25,125
+docs/generated/postgres-schema/public.agent_execution.md
+  s_9af1b09aa006a5::t_a3506e8544eca2 168
+  s_9af1b09aa006a5::t_d8bfba34c9ba7c 25,51,97
+docs/generated/postgres-schema/public.agent_background_job.md
+  s_9af1b09aa006a5::t_bcd6eb16c5e3ea 155
+packages/cli/src/modules/agents/__tests__/agent-test-run.service.test.ts
+  s_9416adef5f807e::t_21b4a768c9af0a 674
+  s_9af1b09aa006a5::t_e2fc5ed8f8207f 606,636
+  s_9416adef5f807e::t_19a0e29a45a96b 603,609-635
+  s_9af1b09aa006a5::t_e76aac7fe4de1c 19-20,77-78,90,96,561-602,604-605,607-608,637-673,675-705
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_9af1b09aa006a5::t_6b1200884000b7 92,126-127,155,226,325-332,617,619-623,865-866,1470,1786,2086,2088-2090
+  s_9af1b09aa006a5::t_4a1208ff22b392 125,2087
+  s_9416adef5f807e::t_222ecc98cb9c50 254,267,1502-1505,1826,1832-1834
+  s_9af1b09aa006a5::t_b2b83117287825 1501,1506,1831,1835
+  s_9af1b09aa006a5::t_26d2d24c225bd2 752-755
+  s_9416adef5f807e::t_454875040946c5 268-272,1325-1328,1510-1513,1822
+packages/cli/src/modules/agents/simulation/simulation-session.ts
+  s_9af1b09aa006a5::t_adcec4f5022162 30-31,121,143-144,168,171-174,177,180-183,186-192
+  s_04766f4c0ca171::t_e3e48e3543c498 504-507,509-526
+  s_9af1b09aa006a5::t_dd2facfe515900 82-83,85,88-89,119-120,152-153,156-157,167,262,348-355,484,502-503,508,527
+  s_9af1b09aa006a5::t_702a376d6f47c9 123-126,145-148,169-170,184-185,281-287,289,463-468,470,472-479,481
+  s_9416adef5f807e::t_f852fd90d2b467 16,103-110,255,290-295,356,417-422,428,435-438,440-445,449
+  s_9af1b09aa006a5::t_5d824a2ff0a9c6 1-9,17-21,23,25-29,32-33,36-81,90-94,97-102,111-113,115-116,127-128,130-140,150-151,154-155,158-165,193-198,204-219,226-229,234-254,256,261,263-271,304-307,312-344,346-347,357-360,362-371,413-416,423-427,429-434,439,446-447,450-462,469,471,482-483,485-493
+  s_9af1b09aa006a5::t_8d32c8a8fb4a73 480
+  s_9af1b09aa006a5::t_23cd8de95b253d 272-278
+  s_9416adef5f807e::t_c877bcb4c4164b 24,257-260
+  s_9af1b09aa006a5::t_825f546b334ad3 34-35,114,117,129,149,199,345,361,448
+  s_9af1b09aa006a5::t_44db96bb7425d8 308-311,372-377,387-401,412,494-501
+  s_56a35d4dab1f2f::t_b3d6c2c06b7929 95-96,220-225,379,402-411
+  s_9416adef5f807e::t_f1e1261bef2ba6 22,122,175-176,178-179,230-233
+  s_9416adef5f807e::t_d1d41f1698bcf0 84,86-87,378,380-386
+  s_9af1b09aa006a5::t_33ff23424d801e 10-15,118,141,166,200-203,279-280,288,296-303
+  s_9416adef5f807e::t_d09a90d479cebc 142
+docs/generated/postgres-schema/public.agent_message_queue.md
+  s_9af1b09aa006a5::t_da3f478e0c89ca 126
+  s_9af1b09aa006a5::t_21865c1c1a78a1 88
+packages/cli/src/modules/agents/json-config/from-json-config.ts
+  s_9416adef5f807e::t_d686ad77723aff 139-144,283-285,297,377,382-388
+  s_9af1b09aa006a5::t_8e13d3cb0b773e 531-532
+packages/@n8n/db/src/migrations/common/1794583011921-AddSimulatedToAgentExecution.ts
+  s_9af1b09aa006a5::t_8daacbf2213623 8
+  s_9416adef5f807e::t_957f613159f930 1-7,9-28
+packages/cli/src/modules/agents/__tests__/agent-runtime-cache.service.test.ts
+  s_9af1b09aa006a5::t_0580d8a84d2ac9 21,145-156,158,161-175
+  s_9af1b09aa006a5::t_35d18475ca05e4 157
+  s_9af1b09aa006a5::t_acef3e4e36b25d 159-160
+packages/cli/src/modules/agents/agent-sse-stream.ts
+  s_9af1b09aa006a5::t_03df95ef037022 161,222
+packages/cli/src/modules/agents/tools/instrumented-run-guard.ts
+  s_9416adef5f807e::t_746215f1c3a512 1-49
+docs/generated/sqlite-schema/user.md
+  s_9af1b09aa006a5::t_2db796d4d4c658 194
+docs/generated/sqlite-schema/agent_execution_threads.md
+  s_9af1b09aa006a5::t_c8ed0a5d5c1b26 9,29,88
+  s_9af1b09aa006a5::t_babd59a23621c0 138
+packages/cli/src/modules/agents/simulation/non-http-node-types.ts
+  s_9416adef5f807e::t_796a92db1cb4df 39-40,42-43
+  s_9416adef5f807e::t_274df22b65fd91 51,54-58,70-72
+  s_9af1b09aa006a5::t_e5404af44b6567 1,24-31,33-38,41,47-48,59,62,69
+  s_9af1b09aa006a5::t_81080612379152 2-23,32,44-46,49-50,52-53,60-61,63-68,73-74
+packages/cli/src/modules/agents/sub-agents/sub-agent-runner.ts
+  s_8ec013ca0ad3fa::t_5fb5c67bda4704 357-361
+docs/generated/sqlite-schema/agent_thread_grants.md
+  s_9af1b09aa006a5::t_070f20044607c2 63
+packages/cli/src/modules/agents/__tests__/agents-service-reconstruct-gating.test.ts
+  s_9416adef5f807e::t_eaecf0fdcd8b19 925-952
+docs/generated/sqlite-schema/agent_plan.md
+  s_9af1b09aa006a5::t_8bb5348964918f 112
+packages/cli/src/modules/agents/simulation/simulation-backend-registry.ts
+  s_9af1b09aa006a5::t_46cab85ba996e1 5
+  s_9af1b09aa006a5::t_9712ead0f471f3 1-4,6-17
+packages/@n8n/api-types/src/index.ts
+  s_9416adef5f807e::t_f99906bc2fbbe0 1100-1101
+  s_9af1b09aa006a5::t_37f8fd73fab0f4 1099,1103,1109,1111
+  s_9af1b09aa006a5::t_0c3ac9dcce94e5 1112
+  s_9af1b09aa006a5::t_8725674b08461e 1093-1098,1102,1104-1108,1110,1113
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_9416adef5f807e::t_3d42b01d6e315e 2393-2419
+  s_9af1b09aa006a5::t_229eb76fe0f1d6 2347-2368
+  s_9af1b09aa006a5::t_3b7453b0745f13 93-94,1742,1861,2321-2340,2342-2346
+  s_9af1b09aa006a5::t_f6fc9bc2d4368f 2341
+  s_9af1b09aa006a5::t_0c8c96b237660c 528-567
+  s_9416adef5f807e::t_961cbb346a7eab 2369-2392
+docs/generated/postgres-schema/public.project.md
+  s_9af1b09aa006a5::t_32da2d65850461 141
+packages/@n8n/api-types/src/agent-sse.ts
+  s_9af1b09aa006a5::t_c62de32ba25339 29,145-146
+packages/cli/src/modules/agents/__tests__/agent-test-run.controller.test.ts
+  s_9af1b09aa006a5::t_94a204d7795309 1-40
+packages/cli/src/modules/agents/__tests__/agent-sse-stream.test.ts
+  s_9416adef5f807e::t_8add793f6e7f16 653
+  s_9af1b09aa006a5::t_c43fc94bcdbf9e 633-652,654-658
+packages/cli/src/modules/agents/simulation/__tests__/node-network-imports.test.ts
+  s_9af1b09aa006a5::t_588e2b0d8e02e5 1-249
+docs/generated/postgres-schema/public.agents.md
+  s_9af1b09aa006a5::t_a1a49dc8b109e7 226
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  s_9416adef5f807e::t_acca74e80ca485 262,307
+packages/cli/src/modules/agents/agent-turn-execution.service.ts
+  s_9416adef5f807e::t_cdbe4a230ab37f 64-65,769
+packages/cli/src/modules/agents/entities/agent-execution.entity.ts
+  s_9af1b09aa006a5::t_5d53a80529813e 158-160
+  s_9416adef5f807e::t_02af7eb053b81f 154-157
+packages/@n8n/db/src/migrations/common/1794583011922-AddTestChatToAgentExecutionThreads.ts
+  s_1ee6f5ae8c81bf::t_047c524dba5b50 8
+  s_9416adef5f807e::t_56248ddeed5635 1-7,9-28
+docs/generated/sqlite-schema/agent_execution_message_links.md
+  s_9af1b09aa006a5::t_88e1d5949697f5 77
+packages/cli/src/modules/agents/simulation/outbound-redaction.ts
+  s_9416adef5f807e::t_ce64e386880509 228-229,271-272,274-275
+  s_9416adef5f807e::t_953bf4f4667b8f 81-91
+  s_8ec013ca0ad3fa::t_e1e10cffce143a 172-182
+  s_9416adef5f807e::t_1373907a815711 296-319
+  s_9416adef5f807e::t_a3a61daf4c5f8a 29-30,75-76,78,93,95,99-102,110,113
+  s_9416adef5f807e::t_5b65c29f9c0a93 201
+  s_85f2cb3d0204f7::t_6a40fe477624d6 295
+  s_9416adef5f807e::t_37165a5d99db19 260,265-270,273,276-277,288-289
+  s_9416adef5f807e::t_12dd7ad2e6bd42 11-13,16-28,31-32,36-39,103-105,111-112,114-118,210-226
+  s_9416adef5f807e::t_af77593d1b223a 200,202-203
+  s_9416adef5f807e::t_94c489f4bf3039 14-15,79,106-109,134-155,159-165,320-327
+  s_9416adef5f807e::t_6387c7ab18e74e 167-171,183-185,290-294
+  s_9af1b09aa006a5::t_58a48c0c4801e7 1-8,33-35,40-74,77,80,92,94,96-98,119-133,156-158,166,186-199,204-209
+  s_9af1b09aa006a5::t_88b010a7f22df0 9-10
+  s_9416adef5f807e::t_5c1c817bc502af 227
+  s_1d7f91d8784fe7::t_85848fbdc29a6d 259,263-264,278,282-284,286-287
+  s_a77c76e26fbd23::t_2b1be8d5d1f4bd 230-258,281,285
+  s_16b644290ae8de::t_8c3cdcb161f4e4 261-262,279-280
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_9416adef5f807e::t_b634d1fbf34985 146,914-921
+packages/cli/src/modules/agents/__tests__/agent-message-queue-consumer.service.test.ts
+  s_9416adef5f807e::t_bb0e7e1e091e07 171-185
+packages/cli/src/modules/agents/types/agent-steering.ts
+  s_9af1b09aa006a5::t_78d3c6dda61fa7 2,6-13
+packages/cli/src/modules/instance-ai/eval/__tests__/llm-mock-simulation-backend.test.ts
+  s_9416adef5f807e::t_e278255e89671b 168
+  s_9416adef5f807e::t_9747a625dafcb3 10,15-18,169-191
+  s_9af1b09aa006a5::t_a1dc86a1ee3abb 149-167
+  s_9af1b09aa006a5::t_57ab4efd218ced 4-7,9,11-12,14,19-33,35-41,44,47,52-56,77-99,105-119,137-148,256
+  s_9416adef5f807e::t_4ef4dab1df02cd 59-62,64,73,120-136,235-255
+  s_9af1b09aa006a5::t_8a5eba81af3a53 1-3,8,13,34,42-43,45-46,48-51,57,66-67,100-104,192-234
+  s_9af1b09aa006a5::t_62442e233a8ff5 58,63,65,68-72,74-76
+docs/generated/sqlite-schema/agents.md
+  s_9af1b09aa006a5::t_7c1d6ce18624af 226
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_9416adef5f807e::t_b077722afb6dce 827
+  s_9af1b09aa006a5::t_8e29d9fbadbe94 833-835
+  s_9416adef5f807e::t_fbd5fc911e14a7 1422-1429
+docs/generated/sqlite-schema/agent_execution.md
+  s_9af1b09aa006a5::t_b41b4ffaa644d7 9,36,100
+  s_9af1b09aa006a5::t_ed36636a22c4af 171
+packages/cli/src/modules/agents/agent-threads.controller.ts
+  s_9416adef5f807e::t_962b47c2c58a58 71
+packages/cli/src/modules/agents/tools/__tests__/workflow-tool-factory.test.ts
+  s_9416adef5f807e::t_bbeb9065e584a3 3,32,359-374,382,401-504,526-527
+  s_9416adef5f807e::t_a40fc7a049b208 505-525
+packages/cli/src/modules/agents/agent-message-queue-consumer.service.ts
+  s_9416adef5f807e::t_ab9fa2f6c31cde 319
+docs/generated/postgres-schema/public.agent_history.md
+  s_9af1b09aa006a5::t_d1cb1a1ce2ac79 115
+packages/@n8n/api-types/src/schemas/__tests__/agent-safe-testing.schema.test.ts
+  s_9416adef5f807e::t_401756b895de2b 1-20
+packages/cli/src/modules/agents/simulation/simulation-session.service.ts
+  s_9416adef5f807e::t_0a93b307e9f2b7 5,74,143-147,263-264,291-292,295,300,302,304,307-314
+  s_1d7f91d8784fe7::t_92a78094506880 10-11,29-34,60-62,81-83,151,182,185,191-193,199-201,393,405-409
+  s_9af1b09aa006a5::t_c8ab94257b1378 7,183,187-190
+  s_9416adef5f807e::t_748cfba3e1bbc8 25,141-142,221,231,234-235,242-243,282-286,389-390
+  s_9416adef5f807e::t_2b7f1601da4fd0 44-48,102-105
+  s_9af1b09aa006a5::t_4821fdc9d2a0aa 19,72,100-101,106,126,157-161,184,186,202-203
+  s_9af1b09aa006a5::t_26c933d803f32c 78,148-149
+  s_9af1b09aa006a5::t_38ff6572cf5bb9 58-59,91,93,96-99
+  s_9416adef5f807e::t_c2b79d320cbe78 22-23,79-80,84,92,94-95,153,222-227,262,265-271,293-294,296-299,301,303,305-306,347,351,353,376-378,394-404
+  s_9af1b09aa006a5::t_04009887c4c43c 1-2,24,85-88,108-110,140,209-213,218-220,228,237,239,244,246-247,257-261,272-273,275-281,287,290,316-326,330-346,348-350,352,354-375,379-388,391-392
+  s_9416adef5f807e::t_72458a04daaf85 120-124
+  s_9af1b09aa006a5::t_0819f3cfdadeef 229-230,245,315,327-329
+  s_9416adef5f807e::t_e4eef230419748 232-233,236,240,248-256
+  s_9416adef5f807e::t_7f87e54e4d9a3e 63-64,152,162-181,194-198
+  s_9af1b09aa006a5::t_0704c7b116ea14 3-4,6,8-9,12-18,20-21,26-28,35-39,41,43,49-50,52-57,65-71,73,75-77,89-90,111-119,125,127-139,150,154-156,204-207,214-217,238,241,274,288-289
+  s_9af1b09aa006a5::t_e3d0cb481b79d0 40,42,51,208
+  s_9416adef5f807e::t_abcb1de55bec13 107
+docs/generated/postgres-schema/public.agent_thread_grants.md
+  s_9af1b09aa006a5::t_4b8a3f10914263 54
+packages/cli/src/modules/agents/simulation/safe-testing-flag-gate.ts
+  s_9af1b09aa006a5::t_2266ca2042cca5 1-4,6,8-15,21
+  s_9af1b09aa006a5::t_1258a2447b7183 5,16-20
+  s_9af1b09aa006a5::t_189e195aaa9967 7
+docs/generated/sqlite-schema/README.md
+  s_9af1b09aa006a5::t_29bcd840fa5d0a 26,690
+  s_9af1b09aa006a5::t_68f27e92092d4f 24,659
+packages/cli/src/modules/agents/background/__tests__/agent-wake.service.test.ts
+  s_9416adef5f807e::t_cc474e16f1543e 997,1006,1094
+packages/cli/src/modules/instance-ai/eval/llm-mock-simulation-backend.ts
+  s_9af1b09aa006a5::t_90767e1067cbe7 1-2,5-6,9-11,13-18,20,23,25-27,30-31,34-38,63-66,83-84,86,88-89,93-96,128-131,139,174-193,198-214,216-219
+  s_9af1b09aa006a5::t_69f55c2dc76a00 32-33
+  s_9af1b09aa006a5::t_e4aaadaab0b145 4,7,19,21,29,39-43,85,87,91,98-127,140-141,145-157,166-170,172-173,215
+  s_9416adef5f807e::t_85f7aa1ba94a5e 220
+  s_9416adef5f807e::t_822d2686db390b 262
+  s_9416adef5f807e::t_94418e572fda39 24,142-144,158-165,171,263-281
+  s_9416adef5f807e::t_4ab35088490d45 22,76-82,90,92,97,136-137,194-197,221-231,239-261
+  s_9af1b09aa006a5::t_77377337152551 8,12,61-62,67-75,132-135,138,232-238
+  s_9af1b09aa006a5::t_1d48b12a08cfa6 3,28,44-60
+packages/cli/src/modules/agents/agent-runtime-cache.service.ts
+  s_9af1b09aa006a5::t_e77ce8e6bb5170 30,56,141,320,355
+  s_9af1b09aa006a5::t_6a8c3ec3da9d36 55
+packages/cli/src/modules/agents/simulation/__tests__/simulated-write-sends-nothing.test.ts
+  s_9af1b09aa006a5::t_50cc9080dc9879 1-105,107-110,112-184
+  s_9af1b09aa006a5::t_10266321dd0838 106
+  s_9af1b09aa006a5::t_cf35650d854fac 111
+packages/cli/src/modules/agents/tools/workflow-tool-factory.ts
+  s_9416adef5f807e::t_cef8d3bebda4e7 69-74,333-335,345-350,367-370,372,438-441,456-464,466-470,475-477
+  s_9416adef5f807e::t_380eb1f4391cc0 40,465,471-474
+docs/generated/postgres-schema/README.md
+  s_9af1b09aa006a5::t_076db0aa7bd5ea 26,704
+  s_9af1b09aa006a5::t_8c3fae9042d82d 24,673
+packages/cli/src/modules/instance-ai/eval/workflow-analysis.ts
+  s_9af1b09aa006a5::t_2dd66d04a3ae7d 20-21,107
+packages/cli/src/modules/agents/simulation/__tests__/non-http-node-types.test.ts
+  s_9416adef5f807e::t_4dfb3413d9f401 24-25
+  s_9416adef5f807e::t_31ac613de717e7 35-52
+  s_9af1b09aa006a5::t_41a0129339bfde 1-23,26-34,53-58
+docs/generated/sqlite-schema/project.md
+  s_9af1b09aa006a5::t_fab3acaed18273 147
+packages/cli/src/modules/agents/__tests__/agent-message-queue.service.test.ts
+  s_44d5218dab8107::t_4566ff02ad0e93 256-274,394-421
+docs/generated/sqlite-schema/agent_history.md
+  s_9af1b09aa006a5::t_7177b58b67741d 122
+packages/cli/src/modules/agents/__tests__/from-json-config.test.ts
+  s_9416adef5f807e::t_628bf6b77e967f 888-928
+packages/cli/src/modules/agents/agent-message-queue.service.ts
+  s_44d5218dab8107::t_435e5a7fa6594d 232
+docs/generated/postgres-schema/public.agent_execution_message_links.md
+  s_9af1b09aa006a5::t_fcb37c1f9814ef 69
+packages/cli/src/modules/agents/agent-test-run.controller.ts
+  s_9af1b09aa006a5::t_27aec6d11a9ec3 1-29
+docs/generated/sqlite-schema/agent_message_queue.md
+  s_9af1b09aa006a5::t_48df8dc4f8c9ad 91
+  s_9af1b09aa006a5::t_067c3a3c2b1010 129
+packages/cli/src/modules/agents/simulation/tool-simulation.contracts.ts
+  s_9af1b09aa006a5::t_f218851dab6da8 3-4,8-11,16-23,25,46-52,56-58,61-62,64-70,72,75-85,87,89-90,92-100,102-105,108
+  s_9af1b09aa006a5::t_01e901a772d68a 60,73-74,106-107
+  s_9af1b09aa006a5::t_efb1a04f88ff2f 5-7,15,24,59,63,71,86,88,91,101
+  s_9af1b09aa006a5::t_5080ab59bebda1 2,26-45,53-55
+  s_9af1b09aa006a5::t_86e44593fdfaad 1,12-14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "85134ec3b82601354f29c10b8963dc081c6feca9",
+  "prompts": {},
+  "sessions": {
+    "s_04766f4c0ca171": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_04766f4c0ca171",
+        "model": "unknown"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    },
+    "s_16b644290ae8de": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a830bc42-2947-4a1f-addb-2fc71964d310",
+        "model": "unknown"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    },
+    "s_1d7f91d8784fe7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "df8198d0-7e68-49b5-ac2c-f956834361e6",
+        "model": "unknown"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    },
+    "s_1ee6f5ae8c81bf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0db74d89-c1b8-4b20-9169-c588631cef31",
+        "model": "unknown"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    },
+    "s_44d5218dab8107": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dfbbab18-0990-4c83-a6e3-3838612119f6",
+        "model": "unknown"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    },
+    "s_56a35d4dab1f2f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a412265-46ba-4875-8e30-024fc46584c8",
+        "model": "unknown"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    },
+    "s_85f2cb3d0204f7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_85f2cb3d0204f7",
+        "model": "unknown"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    },
+    "s_8ec013ca0ad3fa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b49cadc2-ca49-4cf5-b2f8-18d9cbfcaa21",
+        "model": "unknown"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    },
+    "s_9416adef5f807e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1bf350b5-81ad-4f81-8310-868370228261",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    },
+    "s_9af1b09aa006a5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1eb6b7e9-1b4b-40b6-a96a-2131e0d0c9cf",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    },
+    "s_a77c76e26fbd23": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_a77c76e26fbd23",
+        "model": "unknown"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

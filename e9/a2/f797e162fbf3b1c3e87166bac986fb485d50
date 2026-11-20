@@ -1,0 +1,38 @@
+packages/cli/src/executions/__tests__/execution-list-v2.service.test.ts
+  s_cdca0ffb67006b::t_2e11e3f233e132 308
+  s_cdca0ffb67006b::t_e09866dbf40a9c 299-307,309-398
+packages/@n8n/api-types/src/dto/executions/execution-engine.ts
+  s_cdca0ffb67006b::t_209efa83513c7f 1-4
+packages/@n8n/api-types/src/index.ts
+  s_cdca0ffb67006b::t_209efa83513c7f 1020-1023
+packages/cli/src/executions/__tests__/execution.service.test.ts
+  s_cdca0ffb67006b::t_4a4097a1a8bdb3 1306-1356
+packages/@n8n/db/src/entities/types-db.ts
+  s_cdca0ffb67006b::t_209efa83513c7f 1,232,422
+packages/cli/src/executions/__tests__/parse-range-query.middleware.test.ts
+  s_cdca0ffb67006b::t_4a4097a1a8bdb3 101-118
+packages/cli/src/executions/execution.service.ts
+  s_cdca0ffb67006b::t_c5f88e014931ff 2,91,441-444
+  s_cdca0ffb67006b::t_69671bd73ffb59 445
+packages/cli/src/executions/__tests__/execution-list.service.test.ts
+  s_cdca0ffb67006b::t_18a2438679761d 89-106
+packages/cli/src/executions/execution-list-v2.service.ts
+  s_cdca0ffb67006b::t_22ce37570cf2e4 31-32,152-153,215-220,241-246
+  s_cdca0ffb67006b::t_41b6aa774a6d32 90
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e9a2f797e162fbf3b1c3e87166bac986fb485d50",
+  "prompts": {},
+  "sessions": {
+    "s_cdca0ffb67006b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f443b2e4-3325-43af-879b-834762b1d7fd",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

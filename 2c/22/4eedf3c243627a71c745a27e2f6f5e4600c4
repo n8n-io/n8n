@@ -1,0 +1,27 @@
+packages/cli/src/public-api/v1/__tests__/openapi-tags.test.ts
+  s_0636228609e6f6::t_8fb580fb4f2add 26
+  s_0636228609e6f6::t_25d89ea788cff1 82
+  s_0636228609e6f6::t_163e7884888aef 27-28
+  s_0636228609e6f6::t_0aa27b4ef2ac94 83
+  s_0636228609e6f6::t_9fd35efaaa6d35 5-6,18-19,73,76-79,85-88,96
+packages/cli/src/public-api/__tests__/swagger-spec.test.ts
+  s_0636228609e6f6::t_b36a84169a1edc 17-21
+  s_0636228609e6f6::t_007579068ef338 54
+  s_0636228609e6f6::t_7691bce9a171b6 5-9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2c224eedf3c243627a71c745a27e2f6f5e4600c4",
+  "prompts": {},
+  "sessions": {
+    "s_0636228609e6f6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "86d6be62-09bc-43af-a121-ac7a4e0dc159",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

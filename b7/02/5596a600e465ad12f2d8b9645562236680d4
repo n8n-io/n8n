@@ -1,0 +1,40 @@
+packages/nodes-base/nodes/Postgres/v2/helpers/utils.ts
+  s_9b3403f33f27bc::t_536589d45e85a4 721
+  s_9b3403f33f27bc::t_312af514d8745f 758-761,769
+  s_9b3403f33f27bc::t_cc345b764eb60a 832,837
+  s_9b3403f33f27bc::t_1182e4e2f5c429 833-836,838-839
+  s_9b3403f33f27bc::t_2bca7919e4a43d 762-768,770-774
+  s_9b3403f33f27bc::t_e995cfaedefa18 714
+  s_9b3403f33f27bc::t_fd1e7ab8da8f96 735
+packages/nodes-base/nodes/Postgres/test/v2/operations.test.ts
+  s_9b3403f33f27bc::t_b7f988c9508da8 1681,1684
+  s_9b3403f33f27bc::t_25f8117d108b9e 1686,1688,1690-1697,1699-1700,1704-1740
+  s_9b3403f33f27bc::t_d0881e88522ced 1643-1648
+  s_9b3403f33f27bc::t_a5cc3d3b9fb9f7 1689
+  s_9b3403f33f27bc::t_d40c809ee403a2 1764
+  s_9b3403f33f27bc::t_82fa263fa0effe 1355
+  s_9b3403f33f27bc::t_6d38f6ebf0434f 1347
+  s_9b3403f33f27bc::t_55c7f6d4bd0176 1259-1263,1267,1274-1275
+  s_9b3403f33f27bc::t_7f185e41f56c93 1698
+  s_9b3403f33f27bc::t_f695309278ed50 1790,1795-1797
+  s_9b3403f33f27bc::t_3a18327d3768f8 1685
+  s_9b3403f33f27bc::t_53f6821425048e 1687
+packages/nodes-base/nodes/Postgres/v2/actions/common.descriptions.ts
+  s_9b3403f33f27bc::t_183213ce4aaec4 407
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b7025596a600e465ad12f2d8b9645562236680d4",
+  "prompts": {},
+  "sessions": {
+    "s_9b3403f33f27bc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b824e7d0-3e6b-453b-803b-35e874412684",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

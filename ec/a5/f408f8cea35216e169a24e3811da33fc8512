@@ -1,0 +1,130 @@
+packages/cli/test/integration/scheduling/system-job.test.ts
+  s_565818c1363886::t_0d40c3a9fa1068 39,124
+packages/cli/test/integration/scheduling/scheduler-materialize.test.ts
+  s_565818c1363886::t_b7dfb4b371750d 76
+packages/@n8n/scheduler/src/core/factory.ts
+  s_565818c1363886::t_4aaf5456e12191 86
+  s_565818c1363886::t_341c7f8a06adeb 21,84-85
+  s_565818c1363886::t_3ee0603aca9a91 152
+  s_565818c1363886::t_c5b1a0e2f13547 290
+packages/cli/test/integration/scheduling/durable-scheduler-effect-boundary.test.ts
+  s_565818c1363886::t_ab1e9a228338f9 91
+packages/cli/test/integration/scheduling/scheduler-concurrent-loops.test.ts
+  s_565818c1363886::t_c7695a0c41e4a5 44
+packages/cli/src/modules/instance-reporting.ee/__tests__/instance-reporting-multi-main.integration.test.ts
+  s_565818c1363886::t_47d342e51a0c3e 106
+packages/cli/test/integration/scheduling/scheduler-cascade-delete.test.ts
+  s_565818c1363886::t_b6ae5409ee4eb5 45
+packages/@n8n/db/src/repositories/scheduled-job.repository.ts
+  s_e33c697cb16d0a::t_6f71f5d75a4973 173
+  s_565818c1363886::t_71b66a6e38d5e2 189-190
+  s_e33c697cb16d0a::t_30deed9ea4cdc0 21-24,26-27
+  s_565818c1363886::t_d9d04015c0faf0 20,25,176,178,182,186-188
+packages/@n8n/scheduler/src/core/__tests__/executor-lookahead.test.ts
+  s_565818c1363886::t_eed20362e12dac 121
+  s_565818c1363886::t_5daa992bc9e080 119
+  s_565818c1363886::t_1e419d36ef8916 120,122-129
+packages/cli/test/integration/scheduling/scheduler-multi-main.test.ts
+  s_565818c1363886::t_540c46878b55a3 42
+packages/cli/src/metrics/prometheus/database-metric-query.service.ts
+  s_c32ac2cf3a1c3f::t_5fe37c48c3c85c 28,92,103,105
+  s_565818c1363886::t_d4740b5a7a6321 98,104,106
+packages/cli/test/integration/scheduling/scheduler-task-timeout.test.ts
+  s_565818c1363886::t_510e4a79a81fe5 42
+packages/cli/test/integration/scheduling/scheduler-trigger-handler.test.ts
+  s_565818c1363886::t_f4374182c8b2ad 63
+packages/cli/src/scheduling/poll-trigger-node/__tests__/poll-trigger-task-handler.test.ts
+  s_565818c1363886::t_4556d92fcfc002 666,719
+packages/cli/src/metrics/prometheus/__tests__/system-task-metrics.service.test.ts
+  s_565818c1363886::t_7baca39dd89210 393,400,428
+  s_c32ac2cf3a1c3f::t_e08ca0b6b414a1 387-388,390-392,394-395,407,410-427,429-442,499,514-522,527,529,539-544,591,607-636
+  s_e33c697cb16d0a::t_cb51c85889149c 637
+packages/@n8n/scheduler/src/core/executor/store.ts
+  s_565818c1363886::t_b63d7535aa77f6 20-21
+  s_565818c1363886::t_ec185248bd83de 16-19
+packages/@n8n/scheduler/src/core/executor/__tests__/executor.test.ts
+  s_565818c1363886::t_c4ac33fc4b0a18 10,43,322,839
+  s_565818c1363886::t_22cd89f6004e34 269,273-279,283,286,289,294-311,314
+  s_565818c1363886::t_0d7e975493af90 74,81
+  s_565818c1363886::t_d4cad907ed83c5 270-272,280-282,284-285,287-288,290-293,312-313,315-321,323-324
+packages/@n8n/scheduler/src/core/__tests__/factory.test.ts
+  s_565818c1363886::t_af01b443a40a83 13,59
+packages/@n8n/scheduler/src/core/executor/__tests__/executor.property.test.ts
+  s_565818c1363886::t_5c4d524afee401 7,66
+packages/cli/test/integration/scheduling/scheduler-lease-renewal.test.ts
+  s_565818c1363886::t_bdb6f5cc64ee7e 39
+packages/cli/test/integration/scheduling/scheduler-retention.test.ts
+  s_565818c1363886::t_5450085fa438a7 43
+packages/cli/src/scheduling/durable-scheduler.ts
+  s_565818c1363886::t_b4c1b7dae61cb1 62
+packages/cli/test/integration/scheduling/scheduler-execute.test.ts
+  s_565818c1363886::t_33282e70a6b7fd 42
+packages/@n8n/db/src/repositories/__tests__/scheduled-job.repository.test.ts
+  s_122c352d9bbc34::t_0d0fdad16eaec7 158-172
+  s_565818c1363886::t_3ffbd5e01e08ea 122,129,137,140,149
+  s_565818c1363886::t_e1b1c91d33db6c 124-128,130,139,141
+packages/cli/test/integration/scheduling/license-renewal-multi-main.test.ts
+  s_565818c1363886::t_f76f8e2ed462a6 194
+packages/@n8n/scheduler/src/core/executor/executor.ts
+  s_565818c1363886::t_49bd2c1fde17bf 316-317,319-322
+  s_565818c1363886::t_40539f0680b499 11-14,16
+  s_565818c1363886::t_c10a866f56c0f6 15,154
+packages/@n8n/scheduler/src/core/index.ts
+  s_565818c1363886::t_8d9524600b9c84 9
+packages/@n8n/scheduler/src/core/executor/index.ts
+  s_565818c1363886::t_6f32e54f50ed81 9
+  s_565818c1363886::t_ad4e29f3d26b8e 5-8,10
+packages/cli/test/integration/scheduling/agent-task-multi-main.test.ts
+  s_565818c1363886::t_89d7aa07a58cff 58
+packages/cli/src/metrics/prometheus/system-task-metrics.service.ts
+  s_565818c1363886::t_ebe88835dc5eda 34-35
+  s_565818c1363886::t_c610efaf503af0 70
+  s_c32ac2cf3a1c3f::t_978ba794ace308 33,72,99-105,208,241-243,250,270-271
+  s_e33c697cb16d0a::t_040fb1c6cd74f9 272
+packages/cli/test/integration/database/repositories/scheduled-job.repository.test.ts
+  s_e33c697cb16d0a::t_413970ae947b68 1-3,5-54,71,84
+  s_565818c1363886::t_e21b8c73511aaf 72,74-77,79,82-83
+  s_565818c1363886::t_ca1937ae4cdae5 56-59,63-64,66-68,73,78,80-81
+  s_e33c697cb16d0a::t_dd741dfde68584 55,60-62,65,69-70
+  s_565818c1363886::t_c9a619140593d7 4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "eca5f408f8cea35216e169a24e3811da33fc8512",
+  "prompts": {},
+  "sessions": {
+    "s_122c352d9bbc34": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "85dd6495-03bc-44d8-8c1c-c118edc05fd0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    },
+    "s_565818c1363886": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "213678b0-e58b-43ff-9c09-3554fd4e5c79",
+        "model": "unknown"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    },
+    "s_c32ac2cf3a1c3f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1fa22ee8-4dd2-47ed-a525-9430c1f08152",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    },
+    "s_e33c697cb16d0a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "374d5610-1ad0-45c7-94a8-3ca730f4d487",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

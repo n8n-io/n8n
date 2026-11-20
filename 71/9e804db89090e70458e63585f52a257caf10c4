@@ -1,0 +1,40 @@
+packages/frontend/editor-ui/src/features/agents/components/timeline-items/SessionHitlItem.vue
+  s_fda8eaf2e03be1::t_49ce1e523fc1cc 106
+packages/frontend/editor-ui/src/features/agents/__tests__/SessionBackgroundTaskItem.test.ts
+  s_fda8eaf2e03be1::t_bcb6ceaf5214a2 53-56
+packages/frontend/editor-ui/src/features/agents/components/SessionTimelineTable.vue
+  s_fda8eaf2e03be1::t_15909a4ab39326 309
+packages/frontend/editor-ui/src/features/agents/components/timeline-items/SessionCapabilityItem.vue
+  s_fda8eaf2e03be1::t_58cab66e30ddd9 142
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/PreferenceCard.test.ts
+  s_b479354e713f54::t_dfa2a0d589be20 230
+packages/frontend/editor-ui/src/features/agents/components/timeline-items/SessionBackgroundJobItem.vue
+  s_fda8eaf2e03be1::t_1dae8728d6a695 74
+packages/frontend/editor-ui/src/features/agents/__tests__/SessionTimelineTable.spec.ts
+  s_fda8eaf2e03be1::t_6c77d11ef5600a 3,145,228
+  s_fda8eaf2e03be1::t_2835f556f0fd8e 229-231
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "719e804db89090e70458e63585f52a257caf10c4",
+  "prompts": {},
+  "sessions": {
+    "s_b479354e713f54": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1599f-cde2-7250-ac6e-a69ada67136c",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_fda8eaf2e03be1": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1597a-05bc-7250-ac6e-a6990c48d29e",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}
