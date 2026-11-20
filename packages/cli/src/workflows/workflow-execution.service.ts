@@ -378,7 +378,6 @@ export class WorkflowExecutionService {
 		user: User;
 		pushRef?: string;
 		n8nAuthCookie?: string;
-		/** When `false`, throw a 409 instead of registering a test webhook for a trigger event. */
 		waitForWebhook?: boolean;
 	}): Promise<ManualRunResponse> {
 		this.assertManualExecutionAllowed();
