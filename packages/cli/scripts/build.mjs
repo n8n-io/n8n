@@ -1,5 +1,5 @@
 import path from 'path';
-import { writeFileSync, readFileSync, rmSync, existsSync, mkdirSync } from 'fs';
+import { writeFileSync, readFileSync, rmSync, existsSync, mkdirSync, copyFileSync } from 'fs';
 import { fileURLToPath, pathToFileURL } from 'url';
 import shell from 'shelljs';
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
@@ -153,11 +153,16 @@ function copyMcpGuardVendorFiles() {
 	// tsc emits no non-TS files. The mcp-guard reads its vendor files from next to the compiled code.
 	const sourceDir = path.resolve(ROOT_DIR, 'src', 'modules', 'mcp-guard', 'vendors');
 	const destinationDir = path.resolve(ROOT_DIR, 'dist', 'modules', 'mcp-guard', 'vendors');
-	shell.mkdir('-p', destinationDir);
-	const copied = shell.cp(path.join(sourceDir, '*.md'), destinationDir);
+	// Find the files with fast-glob and copy them one by one. A glob that the shell copy expands
+	// does not match a Windows path.
+	const files = glob.sync('*.md', { cwd: sourceDir });
 	// Without a vendor file the guard fails at run time, so fail the build.
-	if (copied.code !== 0 || glob.sync('*.md', { cwd: destinationDir }).length === 0) {
-		throw new Error(`Could not copy the mcp-guard vendor files from ${sourceDir}`);
+	if (files.length === 0) {
+		throw new Error(`Could not find the mcp-guard vendor files in ${sourceDir}`);
+	}
+	mkdirSync(destinationDir, { recursive: true });
+	for (const file of files) {
+		copyFileSync(path.join(sourceDir, file), path.join(destinationDir, file));
 	}
 }
 
