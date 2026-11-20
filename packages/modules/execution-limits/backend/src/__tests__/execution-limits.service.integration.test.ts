@@ -238,6 +238,28 @@ describe('ExecutionLimitsService', () => {
 		});
 	});
 
+	describe('default limit for new projects', () => {
+		it('copies the default limit to the project and keeps it when the default changes', async () => {
+			const project = await createTeamProject();
+			await service.updateSettings({ defaultProjectMaxExecutions: 50 }, USER_ID);
+
+			await service.applyDefaultLimitToNewProject(project.id);
+			await service.updateSettings({ defaultProjectMaxExecutions: null }, USER_ID);
+
+			expect(await service.getProjectLimits([project.id])).toEqual([
+				{ projectId: project.id, maxExecutions: 50 },
+			]);
+		});
+
+		it('sets no limit when there is no default limit', async () => {
+			const project = await createTeamProject();
+
+			await service.applyDefaultLimitToNewProject(project.id);
+
+			expect(await service.getProjectLimits()).toEqual([]);
+		});
+	});
+
 	describe('audit events', () => {
 		it('emits one event for each setting that is set, changed or removed', async () => {
 			await service.updateSettings({ periodUnit: 'week', instanceMaxExecutions: 1000 }, USER_ID);
