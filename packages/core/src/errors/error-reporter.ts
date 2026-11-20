@@ -6,7 +6,7 @@ import type { ReportingOptions } from '@n8n/errors';
 import type { DataCollection, ErrorEvent, EventHint, Integration } from '@sentry/core';
 import type Sentry from '@sentry/node';
 import { ApplicationError, ExecutionCancelledError } from 'n8n-workflow';
-import { BaseError, UnexpectedError } from '@n8n/errors';
+import { BaseError, UnexpectedError, type ErrorLevel } from '@n8n/errors';
 import { createHash } from 'node:crypto';
 
 import {
@@ -75,6 +75,9 @@ const RELEASE_EXPIRATION_WARNING =
 	'Error tracking disabled because this release is older than 6 weeks.';
 
 const SENTRY_MAX_VALUE_LENGTH = 500;
+
+const isErrorLevel = (level: unknown): level is ErrorLevel =>
+	level === 'fatal' || level === 'error' || level === 'warning' || level === 'info';
 
 const TRACING_INTEGRATIONS: Array<{
 	name: SentryIntegration;
@@ -161,37 +164,51 @@ export class ErrorReporter {
 	}
 
 	private defaultReport(error: Error | string, options?: ReportingOptions) {
-		if (error instanceof Error) {
-			let e = error;
+		const reportLevel = options?.level && options.level !== 'error' ? options.level : undefined;
+		const log = (message: string, level: ErrorLevel, meta?: Record<string, unknown>) => {
+			switch (level) {
+				case 'info':
+					this.logger.info(message, meta);
+					break;
+				case 'warning':
+					this.logger.warn(message, meta);
+					break;
+				default:
+					this.logger.error(message, meta);
+			}
+		};
 
-			const { executionId } = options ?? {};
-			const context = executionId ? ` (execution ${executionId})` : '';
+		if (typeof error === 'string') {
+			if (options?.shouldBeLogged ?? true) log(error, reportLevel ?? 'error');
+			return;
+		}
 
-			// Prevent infinite loops in cyclic cause chains.
-			const seen = new Set<Error>();
+		let e = error;
+		const { executionId } = options ?? {};
+		const context = executionId ? ` (execution ${executionId})` : ``;
 
-			do {
-				seen.add(e);
-				let stack = '';
-				let meta = undefined;
-				if (e instanceof ApplicationError || e instanceof BaseError) {
-					if (e.level === 'error' && e.stack) {
-						stack = `\n${e.stack}\n`;
-					}
-					meta = e.extra;
-				} else if (e.stack) {
+		// Prevent infinite loops in cyclic cause chains.
+		const seen = new Set<Error>();
+
+		do {
+			seen.add(e);
+			let stack = '';
+			let meta = undefined;
+			if (e instanceof ApplicationError || e instanceof BaseError) {
+				if (e.level === 'error' && e.stack) {
 					stack = `\n${e.stack}\n`;
 				}
-				const msg = [e.message + context, stack].join('');
-				// Default to logging the error if option is not specified
-				if (options?.shouldBeLogged ?? true) {
-					this.logger.error(msg, meta);
-				}
-				e = e.cause as Error;
-			} while (e && !seen.has(e));
-		}
+				meta = e.extra;
+			} else if (e.stack) {
+				stack = `\n${e.stack}\n`;
+			}
+			const msg = [e.message + context, stack].join('');
+			const ownLevel =
+				'level' in e && isErrorLevel(e.level) ? e.level : 'error';
+			if (options?.shouldBeLogged ?? true) log(msg, reportLevel ?? ownLevel, meta);
+			e = e.cause as Error;
+		} while (e && !seen.has(e));
 	}
-
 	async shutdown(timeoutInMs = 1000) {
 		clearTimeout(this.expirationTimer);
 		const { close } = await import('@sentry/node');
