@@ -528,8 +528,7 @@ workflowInputs: {
 							// If the item already has a paired item, we need to follow these to the start of the child workflow
 							return workflowRunData === undefined
 								? item.pairedItem
-								: (findPairedItemThroughWorkflowData(workflowRunData, item, itemIndex) ??
-										item.pairedItem);
+								: (findPairedItemThroughWorkflowData(workflowRunData, item) ?? item.pairedItem);
 						}
 
 						return sameLength ? { item: itemIndex } : fallbackPairedItemData;
