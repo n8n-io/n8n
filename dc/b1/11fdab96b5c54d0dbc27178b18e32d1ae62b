@@ -1,0 +1,20 @@
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPublishActions.test.ts
+  s_3d42f5aac10616::t_075ff82bb2ab56 1553-1569,1575,1648-1649
+  s_3d42f5aac10616::t_d6e8faf8630bbb 1650-1672
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "dcb111fdab96b5c54d0dbc27178b18e32d1ae62b",
+  "prompts": {},
+  "sessions": {
+    "s_3d42f5aac10616": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "14440739-a8bf-40e4-b7b8-ad261dcda974",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}
