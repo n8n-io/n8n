@@ -26,8 +26,9 @@ const proxyPaths = new WeakMap<object, string[]>();
 // Batched reads.
 //
 // A proxy reads one value for each host call until the expression shows that it
-// reads many. A read of a value after a read of the key list is a read of every
-// field. From then on, one host call gives a batch of values.
+// reads many. Two patterns show this. A read of a value after a read of the key
+// list is a read of every field. A read of the array index after the last one is
+// a read of the items in order. From then on, one host call gives a batch of values.
 // ---------------------------------------------------------------------------
 
 /** Asks for each value that is small. */
@@ -41,8 +42,13 @@ export type BatchRequest = typeof SMALL_VALUES | typeof WHOLE_VALUES | string[];
 
 /** How an expression read the data of a lazy proxy so far. */
 interface ReadTrace {
-	/** The expression read every field. */
+	/** The expression read every field, or read the array items in order. */
 	bulk: boolean;
+}
+
+/** What the next items are asked for, from how the expression read the lazy items so far. */
+function requestAfter(itemTrace: ReadTrace | undefined): BatchRequest {
+	return itemTrace?.bulk === true ? WHOLE_VALUES : SMALL_VALUES;
 }
 
 /** What the fields of an object are asked for, from how the expression read its parent. */
@@ -55,6 +61,14 @@ function requestUnder(parentTrace: ReadTrace | undefined): BatchRequest {
  * its first use, so a proxy that reads one field makes none.
  */
 interface ChildReads {
+	/** The index after the last item that a host read gave. A read of this index is a read in order. */
+	nextInOrder: number;
+	/** The count of reads in order. Each one takes more items than the one before it. */
+	readAheadStep: number;
+	/** How the expression read the items that came as lazy proxies. They share this one trace. */
+	itemTrace?: ReadTrace;
+	/** True after the host gave one lazy item for a request of small items. The next items stay lazy. */
+	smallItemsAreLazy: boolean;
 	/** True between a read of the key list and the read of a value. */
 	keysWereListed: boolean;
 	/** The request of the last read of every field. The same request gives no new field. */
@@ -62,7 +76,7 @@ interface ChildReads {
 }
 
 function newChildReads(): ChildReads {
-	return { keysWereListed: false };
+	return { nextInOrder: -1, readAheadStep: 0, smallItemsAreLazy: false, keysWereListed: false };
 }
 
 /** A key list up to this length is searched. A longer one gets a lookup. */
@@ -93,6 +107,16 @@ function isHostKey(keys: string[], prop: string): boolean {
  */
 function batchReadOf(basePath: string[], callbacks?: { readBatch?: any }): any {
 	return basePath[0] === '$json' ? callbacks?.readBatch : undefined;
+}
+
+/** Cache the whole items that a host read gave from `start`. An item that is already cached stays. */
+function cacheItems(cache: Record<string, unknown>, start: number, items: unknown[]): void {
+	for (let offset = 0; offset < items.length; offset++) {
+		const prop = String(start + offset);
+		if (!hasOwn(cache, prop)) {
+			cache[prop] = items[offset];
+		}
+	}
 }
 
 /** The values that a host batched read gave. Undefined when the host gave one lazy value. */
@@ -223,6 +247,7 @@ export type ProxyMeta = { kind: 'object'; keys?: string[] } | { kind: 'array'; l
  * @param meta - Optional shape descriptor (object/array + known keys/length)
  * @param callbacks - ivm.Callback functions for cross-isolate communication
  * @param parentTrace - How the expression read the proxy that holds this one
+ * @param trace - Where this proxy records how the expression reads it
  * @returns Proxy object with lazy loading behavior
  */
 export function createDeepLazyProxy(
@@ -234,6 +259,7 @@ export function createDeepLazyProxy(
 		readBatch?: any;
 	},
 	parentTrace?: ReadTrace,
+	trace: ReadTrace = { bulk: false },
 ): Record<string | symbol, unknown> {
 	if (!callbacks) {
 		throw new Error('createDeepLazyProxy requires callbacks parameter');
@@ -261,7 +287,6 @@ export function createDeepLazyProxy(
 		return [];
 	}
 
-	const trace: ReadTrace = { bulk: false };
 	let childReads: ChildReads | undefined;
 
 	// Fields that a host read gave and that the expression did not read yet. A
@@ -276,18 +301,35 @@ export function createDeepLazyProxy(
 		return idx;
 	}
 
-	function materializeChild(basePath: string[], propOrIdx: string, value: unknown): unknown {
+	function materializeChild(
+		basePath: string[],
+		propOrIdx: string,
+		value: unknown,
+		childTrace?: ReadTrace,
+	): unknown {
 		if (value === undefined || value === null) return value;
 		throwIfErrorSentinel(value);
 		// `path = [...basePath, propOrIdx]` is built only inside the two branches
 		// that actually use it, so non-metadata objects don't pay for the spread.
 		if (isArrayMetadata(value)) {
 			const path = [...basePath, propOrIdx];
-			return createDeepLazyProxy(path, { kind: 'array', length: value.__length }, callbacks, trace);
+			return createDeepLazyProxy(
+				path,
+				{ kind: 'array', length: value.__length },
+				callbacks,
+				trace,
+				childTrace,
+			);
 		}
 		if (isObjectMetadata(value)) {
 			const path = [...basePath, propOrIdx];
-			return createDeepLazyProxy(path, { kind: 'object', keys: value.__keys }, callbacks, trace);
+			return createDeepLazyProxy(
+				path,
+				{ kind: 'object', keys: value.__keys },
+				callbacks,
+				trace,
+				childTrace,
+			);
 		}
 		// Decoded data can hold the same keys as metadata or callback errors.
 		return decodeHostValue(value);
@@ -312,13 +354,34 @@ export function createDeepLazyProxy(
 	// is always a canonical index string, never a setter-chain key like '__proto__'.
 	function fetchAndCacheArrayElement(idx: number, prop: string): unknown {
 		const t = target as Record<string, unknown>;
-		const element = getArrayElement(basePath, idx);
+		const reads = (childReads ??= newChildReads());
+		const request = requestAfter(reads.itemTrace);
+		const readBatch =
+			idx === reads.nextInOrder && !(request === SMALL_VALUES && reads.smallItemsAreLazy)
+				? batchReadOf(basePath, callbacks)
+				: undefined;
+		reads.nextInOrder = idx + 1;
+		let element: unknown;
+		if (readBatch !== undefined) {
+			trace.bulk = true;
+			element = readBatch(basePath, idx, reads.readAheadStep++, request);
+			const items = batchOf(element, isArrayValue);
+			if (items !== undefined && items.length > 0) {
+				reads.nextInOrder = idx + items.length;
+				cacheItems(t, idx, items);
+				return t[prop];
+			}
+			reads.smallItemsAreLazy = request === SMALL_VALUES;
+		} else {
+			element = getArrayElement(basePath, idx);
+		}
 		// Primitives (and null) skip `materializeChild`'s metadata checks.
 		if (element === null || typeof element !== 'object') {
 			t[prop] = element;
 			return element;
 		}
-		t[prop] = materializeChild(basePath, prop, element);
+		reads.itemTrace ??= { bulk: false };
+		t[prop] = materializeChild(basePath, prop, element, reads.itemTrace);
 		return t[prop];
 	}
 
