@@ -35,8 +35,15 @@ export function createImportFilesTool({
 		.handler(async ({ files }, ctx) => {
 			const threadId = ctx.persistence?.threadId;
 			if (!threadId) throw new UserError('Files can only be imported in a conversation');
+			// Not `files`: the chat shows the `files` of a tool result as new files, and these
+			// are copies of files that the conversation already has.
 			return {
-				files: await sandboxFiles.importFiles(workspace, files, { projectId, threadId }),
+				imported: await sandboxFiles.importFiles(
+					workspace,
+					files,
+					{ projectId, threadId },
+					ctx.abortSignal,
+				),
 			};
 		});
 }

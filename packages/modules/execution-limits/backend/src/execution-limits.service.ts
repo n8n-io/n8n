@@ -3,6 +3,7 @@ import {
 	executionLimitSettingsSchema,
 	type ExecutionLimitSettings,
 } from '@n8n/api-types';
+import { EventService } from '@n8n/backend-services';
 import {
 	isForeignKeyConstraintError,
 	ProjectRepository,
@@ -14,12 +15,18 @@ import { BadRequestError, NotFoundError } from '@n8n/errors';
 
 import {
 	findDuplicateProjectIds,
+	diffProjectLimits,
 	findProjectLimitsAboveInstanceLimit,
+	diffLimitSettings,
 	isDefaultProjectLimitAboveInstanceLimit,
 } from './execution-limit-rules';
 import { ExecutionLimitSettingsStore } from './execution-limit-settings.store';
 import { ExecutionLimitsSnapshot } from './execution-limits-snapshot';
-import type { ApplicableLimits, ProjectLimit } from './execution-limits.types';
+import type {
+	ApplicableLimits,
+	ExecutionLimitChange,
+	ProjectLimit,
+} from './execution-limits.types';
 import { ProjectExecutionLimitRepository } from './project-execution-limit.repository';
 
 function rejectIfAny(
@@ -38,6 +45,7 @@ export class ExecutionLimitsService {
 		private readonly projectRepository: ProjectRepository,
 		private readonly transactionRunner: TransactionRunner,
 		private readonly snapshot: ExecutionLimitsSnapshot,
+		private readonly eventService: EventService,
 	) {}
 
 	/**
@@ -58,10 +66,12 @@ export class ExecutionLimitsService {
 	 * An instance limit below a project limit is accepted. The project limit stays as it is.
 	 * The default limit for new projects cannot be above the instance limit.
 	 */
-	async updateSettings(changes: Partial<ExecutionLimitSettings>): Promise<ExecutionLimitSettings> {
-		return await this.commit(async (ctx) => {
-			const current = await this.settingsStore.lockAndRead(ctx);
-
+	async updateSettings(
+		changes: Partial<ExecutionLimitSettings>,
+		updatedBy: string | null,
+		loginId?: string,
+	): Promise<ExecutionLimitSettings> {
+		return await this.commit(updatedBy, loginId, async (ctx, current) => {
 			const merged = executionLimitSettingsSchema.safeParse({ ...current, ...changes });
 			if (!merged.success) {
 				throw BadRequestError.wrap('The execution limit settings are not valid', merged.error);
@@ -74,7 +84,7 @@ export class ExecutionLimitsService {
 
 			await this.settingsStore.write(merged.data, ctx);
 
-			return merged.data;
+			return { result: merged.data, changes: diffLimitSettings(current, merged.data) };
 		});
 	}
 
@@ -86,7 +96,11 @@ export class ExecutionLimitsService {
 	}
 
 	/** Sets the limit of one or many projects. One limit that is not valid rejects all of them. */
-	async setProjectLimits(limits: ProjectLimit[]): Promise<void> {
+	async setProjectLimits(
+		limits: ProjectLimit[],
+		updatedBy: string | null,
+		loginId?: string,
+	): Promise<void> {
 		const projectIds = limits.map(({ projectId }) => projectId);
 		rejectIfAny(findDuplicateProjectIds(limits), 'A project can have only one execution limit');
 		rejectIfAny(
@@ -108,14 +122,19 @@ export class ExecutionLimitsService {
 		);
 
 		try {
-			await this.commit(async (ctx) => {
-				const { instanceMaxExecutions } = await this.settingsStore.read(ctx);
+			await this.commit(updatedBy, loginId, async (ctx, { instanceMaxExecutions }) => {
 				rejectIfAny(
 					findProjectLimitsAboveInstanceLimit(limits, instanceMaxExecutions),
 					`The execution limit of these projects is above the instance limit of ${instanceMaxExecutions}`,
 				);
 
+				const before = await this.projectLimitRepository.findByProjectIds(projectIds, ctx);
 				await this.projectLimitRepository.upsertMany(limits, ctx);
+
+				return {
+					result: undefined,
+					changes: diffProjectLimits(before, limits),
+				};
 			});
 		} catch (error) {
 			// A project that was deleted after the check above.
@@ -127,15 +146,37 @@ export class ExecutionLimitsService {
 	}
 
 	/** Removes the limit of the given projects. A project with no limit is ignored. */
-	async removeProjectLimits(projectIds: string[]): Promise<void> {
-		await this.commit(async (ctx) => {
+	async removeProjectLimits(
+		projectIds: string[],
+		updatedBy: string | null,
+		loginId?: string,
+	): Promise<void> {
+		await this.commit(updatedBy, loginId, async (ctx) => {
+			const before = await this.projectLimitRepository.findByProjectIds(projectIds, ctx);
 			await this.projectLimitRepository.deleteByProjectIds(projectIds, ctx);
+
+			return { result: undefined, changes: diffProjectLimits(before, []) };
 		});
 	}
 
 	/** Every write goes through here, so the limits in memory reload after each commit. */
-	private async commit<T>(write: (ctx: OperationContext) => Promise<T>): Promise<T> {
-		const result = await this.transactionRunner.run({}, write);
+	private async commit<T>(
+		updatedBy: string | null,
+		loginId: string | undefined,
+		write: (
+			ctx: OperationContext,
+			settings: ExecutionLimitSettings,
+		) => Promise<{ result: T; changes: ExecutionLimitChange[] }>,
+	): Promise<T> {
+		const { result, changes } = await this.transactionRunner.run({}, async (ctx) => {
+			const settings = await this.settingsStore.lockAndRead(ctx);
+
+			return await write(ctx, settings);
+		});
+
+		for (const change of changes) {
+			this.eventService.emit('execution-limit-updated', { ...change, updatedBy, loginId });
+		}
 		await this.snapshot.refreshAfterWrite();
 
 		return result;

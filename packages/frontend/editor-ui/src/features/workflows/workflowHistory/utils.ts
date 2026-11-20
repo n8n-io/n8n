@@ -111,7 +111,8 @@ export const toVersionDiffWorkflow = (
 	settings: {
 		...workflow.settings,
 		...pickVersionedSettings(version.settings),
-		// A workflow without an execution order runs with the legacy `v0` order.
+		// The editor settings type requires an execution order, so `applyVersionedSettings`
+		// does not fit here. A workflow without one runs with the legacy `v0` order.
 		executionOrder: workflow.settings?.executionOrder ?? 'v0',
 	},
 });

@@ -45,6 +45,16 @@ export type RuntimeBinding =
 	| { key: string; kind: 'dataTable'; permissions: Array<'read' | 'insert' | 'update' | 'delete'> }
 	| { key: string; kind: 'agent'; permissions: Array<'chat' | 'history'> };
 
+/** An account that a workflow run needs from the visitor. */
+export interface CredentialConnection {
+	name: string;
+	type: string;
+	status: 'missing' | 'configured' | 'resolver_missing';
+	/** Opens n8n to connect the visitor's account. Set when `status` is `missing`. */
+	connectUrl?: string;
+	iconUrl?: string;
+}
+
 export type RunStatus = 'success' | 'error' | 'waiting' | 'canceled' | 'running' | 'unknown';
 
 export interface RunResult<T> {

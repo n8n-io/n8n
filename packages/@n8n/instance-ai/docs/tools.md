@@ -110,7 +110,7 @@ keep their explicit pattern. `like` matches case; `ilike` ignores case.
 | `agent-context` | 13 lookup types |
 | `skills` | 5 |
 | `apps` | 6 |
-| `workflow_builder_build_workflow`, `ask_user`, `parse-file`, `search_models`, `search_nodes`, `get_node_types`, `get_node_parameter_options`, `execute_node` | single-purpose |
+| `workflow_builder_build_workflow`, `ask_user`, `parse-file`, `import-files`, `search_models`, `search_nodes`, `get_node_types`, `get_node_parameter_options`, `execute_node` | single-purpose |
 
 ## Orchestration Tools
 
@@ -1329,6 +1329,107 @@ Tabular results contain normalized column metadata, rows, row counts,
 pagination, truncation state, and warnings. Text-like results contain extracted
 content and can include a title or page count. All results identify the source
 attachment and can contain an error.
+
+## `import-files`
+
+Copy stored files of the thread into `inputs/` of the sandbox workspace, so the
+agent can work on them with the workspace tools. The registry adds the tool only
+when the host sets `storedFiles` and `sandboxFiles` on the context and the
+turn has a workspace. Only the Assistant on the Agents runtime sets them. It
+sets `sandboxFiles` only when the instance flag `137_agent_sandbox_files`
+is on, and takes its byte cap from `N8N_AGENTS_FILES_MAX_IMPORT_MB`, like the
+`import_files` tool of project agents. When the tool is present, the
+`## Sandbox workspace` prompt section tells the model when to use it.
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `files` | array | yes | — | 1 to 20 items with `fileId` and an optional `path` |
+| `files[].fileId` | string | yes | — | Id of a stored file of the thread |
+| `files[].path` | string | no | file name | Path relative to `inputs/`. A leading `inputs/` is dropped. A folder path (`inputs`, or a path that ends with `/`) gets the file name |
+
+The tool reads the name of each file and picks its path in `inputs/`. Then
+`sandboxFiles.importFiles` of the host copies the files. On the Agents runtime,
+this is the same code as `import_files` of project agents
+(`AgentSandboxFilesService.importFilesFrom`), but the files come from the system
+chat of the user. The host checks every file, path and the total size before
+the first write, so a failed check copies nothing. The host then writes one
+file at a time. A cancelled turn stops the copy.
+
+The result lists each copied file under `imported`, with its absolute
+workspace path. When a check or the copy fails, the result has no files and an
+`error` for the model. A write can fail after other files were copied. These
+files stay in `inputs/`, and the `error` names them. The list is not named
+`files`, because the chat shows the `files` of a tool result as new files.
+
+The sandbox of a thread can be reset between turns. The prompt section tells the
+model to check that a file in `inputs/` from an earlier turn is there, and to
+import it again when it is missing.
+
+## `list-files`
+
+List the stored files of the thread, newest first: the uploads of every turn
+and the files from `outputs/` of the sandbox. The model learns a `fileId` from
+the label of the message that carried the file, and memory drops these labels
+when it compacts older messages. With this tool, the model can still find the
+files of earlier turns. The registry adds the tool only when the host sets
+`list` on `storedFiles`. The Assistant on the Agents runtime sets it only when
+the instance flag `137_agent_sandbox_files` is on. The host lists the files in
+the same scope as `read`, so `parse-file` and `import-files` can read each
+listed file. The chat files list of the Assistant uses the same query. When the
+tool is present, the `## Sandbox workspace` prompt section names it.
+
+The tool takes no input. The result lists up to 50 files under
+`conversationFiles`, with `fileId`, `fileName`, `mimeType`, `sizeBytes`,
+`origin` (`upload` or `sandbox`) and `createdAt`. `omitted` counts the older
+files that the list leaves out. The list is not named `files`, because the chat
+shows the `files` of a tool result as new files.
+
+## `share-files`
+
+Store files of `outputs/` in the sandbox workspace as conversation files, so
+the chat shows them in the reply and the user can download them. The registry
+adds the tool when the host sets `sandboxFiles` on the context and the turn has
+a workspace. The host stores each file with `storeOutput`. A file whose name and
+bytes did not change keeps its `fileId`. When the tool is present, the
+`## Sandbox workspace` prompt section tells the model to put the files for the
+user in `outputs/` and to share them.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `paths` | string[] | yes | 1 to 10 paths relative to `outputs/`. A leading `outputs/` is dropped |
+
+The result lists the stored files under `files`, with `fileId`, `fileName`,
+`mimeType` and `sizeBytes`, and lists each path that failed under `errors`.
+
+When a turn that used a workspace tool ends, the Agents runtime also stores
+the new files of `outputs/`. For the Assistant, these files belong to the
+system chat of the user, so `parse-file`, `import-files` and the chat download
+route can read them.
+
+## `view-file`
+
+Attach an image or a PDF of the thread for the model to see. The model cannot
+see a file that it makes in the sandbox. With this tool, it can share an image
+with `share-files` and then look at it, or look again at an upload of an
+earlier turn that is no longer attached. The registry adds the tool only when
+the host sets `list` and `canView` on `storedFiles`. When the tool
+is present, the `## Sandbox workspace` prompt section tells the model to check
+the images that it makes.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `fileId` | string | yes | A file of this conversation |
+
+The tool reads the metadata through `storedFiles.read`, so it finds the same
+files as `parse-file`. It accepts only the file types for which `canView` is
+true. The runtime attaches only the images and PDFs that the provider of the
+model supports, so the host decides from that provider. The file must also be
+smaller than the chat attachment cap (`MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES`),
+and storage must still have its bytes (`hasContent`). For any other file, the
+tool returns an `error`. The result has the file under `viewedFile`, not
+`files`, so the chat does not show the file again. The model output adds a file
+reference, and the runtime loads the bytes before each model call, the same as
+for an attached file.
 
 ## `ask_user`
 

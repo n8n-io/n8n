@@ -6,6 +6,7 @@ import {
 } from '@n8n/workflow-sdk/prompts/best-practices';
 import { NATIVE_NODE_PREFERENCE } from '@n8n/workflow-sdk/prompts/node-selection';
 import {
+	ADDITIONAL_FUNCTIONS,
 	NODE_GROUPS_REFERENCE,
 	SDK_LANGUAGE_REFERENCE,
 } from '@n8n/workflow-sdk/prompts/sdk-reference';
@@ -128,7 +129,7 @@ const KNOWLEDGE_BASE_REFERENCE_ENTRIES: Array<
 	{
 		id: 'workflow-sdk-language',
 		description:
-			'Allowed/forbidden constructs in workflow SDK builder code: methods, globals, language subset, node groups, native node mappings that replace Code nodes',
+			'Allowed/forbidden constructs in workflow SDK builder code: methods, globals, language subset, node groups, workflow settings (timezone), native node mappings that replace Code nodes',
 		fileName: 'workflow-sdk-language.md',
 		// The mapping table ships with the SDK reference so the builder reads
 		// "which native node replaces this Code node" in the same file.
@@ -140,6 +141,13 @@ const KNOWLEDGE_BASE_REFERENCE_ENTRIES: Array<
 			'Node group rules for SDK builder code: .group(name, members, { description }), what makes a group valid',
 		fileName: 'node-groups.md',
 		content: NODE_GROUPS_REFERENCE,
+	},
+	{
+		id: 'sdk-additional-functions',
+		description:
+			'SDK helpers for builder code: sticky notes (sticky()), placeholder(), .output(n), .onError(), nodeJson()',
+		fileName: 'sdk-additional-functions.md',
+		content: ADDITIONAL_FUNCTIONS,
 	},
 ];
 
