@@ -72,7 +72,9 @@ import { useDynamicCredentials } from '@/features/resolvers/composables/useDynam
 import * as securitySettingsApi from '@n8n/rest-api-client/api/security-settings';
 import type { RedactionFloor } from '@n8n/api-types';
 import { hasPermission } from '@/app/utils/rbac/permissions';
+import WorkflowSettingsRowTitle from '@/features/workflows/components/WorkflowSettings/WorkflowSettingsRowTitle.vue';
 import WorkflowCustomTelemetryTags from '@/features/workflows/components/WorkflowSettings/WorkflowCustomTelemetryTags.vue';
+import { useWorkflowSettingsLayout } from '@/features/workflows/components/WorkflowSettings/useWorkflowSettingsLayout';
 
 const i18n = useI18n();
 const externalHooks = useExternalHooks();
@@ -109,6 +111,8 @@ const workflowsEEStore = useWorkflowsEEStore();
 const nodeCreatorStore = useNodeCreatorStore();
 const posthogStore = usePostHog();
 const isLoading = ref(true);
+const settingsContainer = ref<HTMLElement | null>(null);
+const { rowLayout } = useWorkflowSettingsLayout(settingsContainer);
 const hasCustomTelemetryTagErrors = ref(false);
 const workflowCallerPolicyOptions = ref<Array<{ key: string; value: string }>>([]);
 const redactionToggleOptions = ref<Array<{ key: string; value: string }>>([
@@ -154,6 +158,11 @@ const filteredTimezones = computed(() => {
 const onTimezoneFilter = (query: string) => {
 	timezoneQuery.value = query;
 };
+// The filter removes the options that do not match, so the select reports "no data" for a
+// search with no result. Give it the no-match text for that case.
+const timezoneNoDataText = computed(() =>
+	timezoneQuery.value.trim() ? i18n.baseText('workflowSettings.timezone.noMatch') : undefined,
+);
 const workflowSettings = ref<IWorkflowSettings>({} as IWorkflowSettings);
 const workflows = ref<IWorkflowShortResponse[]>([]);
 const credentialResolverSelectRef = ref<InstanceType<typeof N8nSelect> | null>(null);
@@ -1081,22 +1090,27 @@ onBeforeUnmount(() => {
 	>
 		<template #content>
 			<div
+				ref="settingsContainer"
 				v-loading="isLoading"
-				:class="$style['workflow-settings']"
+				:class="[
+					$style['workflow-settings'],
+					{ [$style['workflow-settings--vertical']]: rowLayout === 'vertical' },
+				]"
 				data-test-id="workflow-settings-dialog"
 			>
 				<N8nSettingsSection :title="i18n.baseText('workflowSettings.sections.executions')">
 					<N8nSettingsRowGroup>
 						<N8nSettingsRow
+							:layout="rowLayout"
 							v-if="isEngineTypeSettingVisible"
 							data-test-id="workflow-settings-engine-type"
 							action-fill
 						>
 							<template #info>
-								<div :class="$style['row-title']">
-									<N8nText bold size="medium" color="text-dark">
-										{{ i18n.baseText('workflowSettings.engineType') }}
-									</N8nText>
+								<WorkflowSettingsRowTitle
+									:title="i18n.baseText('workflowSettings.engineType')"
+									:tooltip="helpTexts.engineType"
+								>
 									<N8nTooltip v-if="isEngineTypeChangePendingPublish" placement="top">
 										<template #content>
 											{{ i18n.baseText('workflowSettings.engineType.appliesOnPublish') }}
@@ -1109,8 +1123,7 @@ onBeforeUnmount(() => {
 											{{ i18n.baseText('workflowSettings.engineType.appliesOnPublish.badge') }}
 										</N8nBadge>
 									</N8nTooltip>
-								</div>
-								<N8nText size="small" color="text-light">{{ helpTexts.engineType }}</N8nText>
+								</WorkflowSettingsRowTitle>
 							</template>
 							<template #action>
 								<N8nSelect
@@ -1131,7 +1144,9 @@ onBeforeUnmount(() => {
 						</N8nSettingsRow>
 						<N8nSettingsRow
 							v-if="isExecutionLogicSettingVisible"
+							:layout="rowLayout"
 							:title="i18n.baseText('workflowSettings.executionLogic')"
+							:truncate-title="false"
 							action-fill
 						>
 							<template #action>
@@ -1159,12 +1174,13 @@ onBeforeUnmount(() => {
 								</N8nSelect>
 							</template>
 						</N8nSettingsRow>
-						<N8nSettingsRow
-							data-test-id="error-workflow"
-							:title="i18n.baseText('workflowSettings.errorWorkflow')"
-							:description="helpTexts.errorWorkflow"
-							action-fill
-						>
+						<N8nSettingsRow :layout="rowLayout" data-test-id="error-workflow" action-fill>
+							<template #info>
+								<WorkflowSettingsRowTitle
+									:title="i18n.baseText('workflowSettings.errorWorkflow')"
+									:tooltip="helpTexts.errorWorkflow"
+								/>
+							</template>
 							<template #action>
 								<N8nSelect
 									v-model="workflowSettings.errorWorkflow"
@@ -1199,12 +1215,17 @@ onBeforeUnmount(() => {
 							</template>
 						</N8nSettingsRow>
 						<N8nSettingsRow
+							:layout="rowLayout"
 							v-if="isCredentialResolverEnabled"
 							data-test-id="credential-resolver"
-							:title="i18n.baseText('workflowSettings.credentialResolver')"
-							:description="helpTexts.credentialResolver"
 							action-fill
 						>
+							<template #info>
+								<WorkflowSettingsRowTitle
+									:title="i18n.baseText('workflowSettings.credentialResolver')"
+									:tooltip="helpTexts.credentialResolver"
+								/>
+							</template>
 							<template #action>
 								<div :class="$style['credential-resolver-container']">
 									<N8nSelect
@@ -1252,17 +1273,20 @@ onBeforeUnmount(() => {
 								</div>
 							</template>
 						</N8nSettingsRow>
-						<N8nSettingsRow
-							:title="i18n.baseText('workflowSettings.timezone')"
-							:description="helpTexts.timezone"
-							action-fill
-						>
+						<N8nSettingsRow :layout="rowLayout" action-fill>
+							<template #info>
+								<WorkflowSettingsRowTitle
+									:title="i18n.baseText('workflowSettings.timezone')"
+									:tooltip="helpTexts.timezone"
+								/>
+							</template>
 							<template #action>
 								<N8nSelect
 									v-model="workflowSettings.timezone"
 									:placeholder="i18n.baseText('workflowSettings.timezone.placeholder')"
 									filterable
 									:filter-method="onTimezoneFilter"
+									:no-data-text="timezoneNoDataText"
 									:disabled="readOnlyEnv || !workflowPermissions.update"
 									:limit-popper-width="true"
 									data-test-id="workflow-settings-timezone"
@@ -1278,11 +1302,15 @@ onBeforeUnmount(() => {
 							</template>
 						</N8nSettingsRow>
 						<N8nSettingsRow
-							:title="i18n.baseText('workflowSettings.timeoutWorkflow')"
-							:description="helpTexts.executionTimeoutToggle"
+							:layout="rowLayout"
 							:show-divider="!((workflowSettings.executionTimeout ?? -1) > -1)"
-							action-fill
 						>
+							<template #info>
+								<WorkflowSettingsRowTitle
+									:title="i18n.baseText('workflowSettings.timeoutWorkflow')"
+									:tooltip="helpTexts.executionTimeoutToggle"
+								/>
+							</template>
 							<template #action>
 								<N8nSwitch
 									size="large"
@@ -1295,12 +1323,17 @@ onBeforeUnmount(() => {
 							</template>
 						</N8nSettingsRow>
 						<N8nSettingsRow
+							:layout="rowLayout"
 							v-if="(workflowSettings.executionTimeout ?? -1) > -1"
 							data-test-id="workflow-settings-timeout-form"
-							:title="i18n.baseText('workflowSettings.timeoutAfter')"
-							:description="helpTexts.executionTimeout"
 							action-fill
 						>
+							<template #info>
+								<WorkflowSettingsRowTitle
+									:title="i18n.baseText('workflowSettings.timeoutAfter')"
+									:tooltip="helpTexts.executionTimeout"
+								/>
+							</template>
 							<template #action>
 								<div :class="$style['timeout-fields']">
 									<N8nInput
@@ -1342,12 +1375,17 @@ onBeforeUnmount(() => {
 					<N8nSettingsRowGroup>
 						<template v-if="isSharingEnabled">
 							<N8nSettingsRow
-								:title="i18n.baseText('workflowSettings.callerPolicy')"
-								:description="helpTexts.workflowCallerPolicy"
+								:layout="rowLayout"
 								:show-divider="workflowSettings.callerPolicy !== 'workflowsFromAList'"
 								data-test-id="workflow-caller-policy"
 								action-fill
 							>
+								<template #info>
+									<WorkflowSettingsRowTitle
+										:title="i18n.baseText('workflowSettings.callerPolicy')"
+										:tooltip="helpTexts.workflowCallerPolicy"
+									/>
+								</template>
 								<template #action>
 									<N8nSelect
 										v-model="workflowSettings.callerPolicy"
@@ -1372,11 +1410,16 @@ onBeforeUnmount(() => {
 								</template>
 							</N8nSettingsRow>
 							<N8nSettingsRow
+								:layout="rowLayout"
 								v-if="workflowSettings.callerPolicy === 'workflowsFromAList'"
-								:title="i18n.baseText('workflowSettings.callerIds')"
-								:description="helpTexts.workflowCallerIds"
 								action-fill
 							>
+								<template #info>
+									<WorkflowSettingsRowTitle
+										:title="i18n.baseText('workflowSettings.callerIds')"
+										:tooltip="helpTexts.workflowCallerIds"
+									/>
+								</template>
 								<template #action>
 									<N8nInput
 										v-model="workflowSettings.callerIds"
@@ -1390,16 +1433,23 @@ onBeforeUnmount(() => {
 							</N8nSettingsRow>
 						</template>
 						<N8nSettingsRow
+							:layout="rowLayout"
 							v-if="isMCPEnabled"
-							:title="i18n.baseText('workflowSettings.availableInMCP')"
-							:description="mcpToggleTooltip"
 							data-test-id="workflow-settings-available-in-mcp"
 						>
+							<template #info>
+								<WorkflowSettingsRowTitle
+									:title="i18n.baseText('workflowSettings.availableInMCP')"
+									:tooltip="mcpToggleTooltip"
+									label-for="availableInMCP"
+								/>
+							</template>
 							<template #action>
 								<N8nSwitch
 									id="availableInMCP"
 									size="large"
 									:disabled="mcpToggleDisabled"
+									:aria-label="i18n.baseText('workflowSettings.availableInMCP')"
 									:model-value="workflowSettings.availableInMCP ?? false"
 									data-test-id="workflow-settings-available-in-mcp"
 									@update:model-value="toggleAvailableInMCP"
@@ -1411,11 +1461,13 @@ onBeforeUnmount(() => {
 
 				<N8nSettingsSection :title="i18n.baseText('workflowSettings.sections.executionData')">
 					<N8nSettingsRowGroup>
-						<N8nSettingsRow
-							:title="i18n.baseText('workflowSettings.saveDataErrorExecution')"
-							:description="helpTexts.saveDataErrorExecution"
-							action-fill
-						>
+						<N8nSettingsRow :layout="rowLayout" action-fill>
+							<template #info>
+								<WorkflowSettingsRowTitle
+									:title="i18n.baseText('workflowSettings.saveDataErrorExecution')"
+									:tooltip="helpTexts.saveDataErrorExecution"
+								/>
+							</template>
 							<template #action>
 								<N8nSelect
 									v-model="workflowSettings.saveDataErrorExecution"
@@ -1435,11 +1487,13 @@ onBeforeUnmount(() => {
 								</N8nSelect>
 							</template>
 						</N8nSettingsRow>
-						<N8nSettingsRow
-							:title="i18n.baseText('workflowSettings.saveDataSuccessExecution')"
-							:description="helpTexts.saveDataSuccessExecution"
-							action-fill
-						>
+						<N8nSettingsRow :layout="rowLayout" action-fill>
+							<template #info>
+								<WorkflowSettingsRowTitle
+									:title="i18n.baseText('workflowSettings.saveDataSuccessExecution')"
+									:tooltip="helpTexts.saveDataSuccessExecution"
+								/>
+							</template>
 							<template #action>
 								<N8nSelect
 									v-model="workflowSettings.saveDataSuccessExecution"
@@ -1459,11 +1513,13 @@ onBeforeUnmount(() => {
 								</N8nSelect>
 							</template>
 						</N8nSettingsRow>
-						<N8nSettingsRow
-							:title="i18n.baseText('workflowSettings.saveManualExecutions')"
-							:description="helpTexts.saveManualExecutions"
-							action-fill
-						>
+						<N8nSettingsRow :layout="rowLayout" action-fill>
+							<template #info>
+								<WorkflowSettingsRowTitle
+									:title="i18n.baseText('workflowSettings.saveManualExecutions')"
+									:tooltip="helpTexts.saveManualExecutions"
+								/>
+							</template>
 							<template #action>
 								<N8nSelect
 									v-model="workflowSettings.saveManualExecutions"
@@ -1483,11 +1539,13 @@ onBeforeUnmount(() => {
 								</N8nSelect>
 							</template>
 						</N8nSettingsRow>
-						<N8nSettingsRow
-							:title="i18n.baseText('workflowSettings.saveExecutionProgress')"
-							:description="helpTexts.saveExecutionProgress"
-							action-fill
-						>
+						<N8nSettingsRow :layout="rowLayout" action-fill>
+							<template #info>
+								<WorkflowSettingsRowTitle
+									:title="i18n.baseText('workflowSettings.saveExecutionProgress')"
+									:tooltip="helpTexts.saveExecutionProgress"
+								/>
+							</template>
 							<template #action>
 								<N8nSelect
 									v-model="workflowSettings.saveExecutionProgress"
@@ -1508,20 +1566,16 @@ onBeforeUnmount(() => {
 							</template>
 						</N8nSettingsRow>
 						<template v-if="isRedactionSettingVisible">
-							<N8nSettingsRow data-test-id="workflow-settings-redaction-policy" action-fill>
+							<N8nSettingsRow
+								:layout="rowLayout"
+								data-test-id="workflow-settings-redaction-policy"
+								action-fill
+							>
 								<template #info>
-									<div
-										:class="[
-											$style['row-title'],
-											{
-												[$style['row-title--disabled']]:
-													!isDataRedactionLicensed || isProductionRedactionLocked,
-											},
-										]"
+									<WorkflowSettingsRowTitle
+										:title="i18n.baseText('workflowSettings.redactProductionData')"
+										:disabled="!isDataRedactionLicensed || isProductionRedactionLocked"
 									>
-										<N8nText bold size="medium" color="text-dark">
-											{{ i18n.baseText('workflowSettings.redactProductionData') }}
-										</N8nText>
 										<N8nIcon
 											v-if="isProductionRedactionLocked"
 											icon="lock"
@@ -1539,18 +1593,18 @@ onBeforeUnmount(() => {
 										>
 											{{ i18n.baseText('generic.upgrade') }}
 										</N8nBadge>
-									</div>
-									<N8nText size="small" color="text-light">
-										{{ helpTexts.redactProductionData }}
-										<N8nLink
-											:to="EXECUTION_DATA_REDACTION_DOCS_URL"
-											size="small"
-											new-window
-											data-test-id="redact-production-data-docs-link"
-										>
-											{{ i18n.baseText('generic.learnMore') }}
-										</N8nLink>
-									</N8nText>
+										<template #tooltip>
+											{{ helpTexts.redactProductionData }}
+											<N8nLink
+												:to="EXECUTION_DATA_REDACTION_DOCS_URL"
+												size="small"
+												new-window
+												data-test-id="redact-production-data-docs-link"
+											>
+												{{ i18n.baseText('generic.learnMore') }}
+											</N8nLink>
+										</template>
+									</WorkflowSettingsRowTitle>
 									<N8nText v-if="workflowHasDynamicCredentials" size="small" color="text-light">
 										{{
 											i18n.baseText('workflowSettings.redactProductionData.dynamicCredentialsHint')
@@ -1609,22 +1663,16 @@ onBeforeUnmount(() => {
 									</div>
 								</template>
 							</N8nSettingsRow>
-							<N8nSettingsRow action-fill>
+							<N8nSettingsRow :layout="rowLayout" action-fill>
 								<template #info>
-									<div
-										:class="[
-											$style['row-title'],
-											{
-												[$style['row-title--disabled']]:
-													!isDataRedactionLicensed ||
-													isManualRedactionLocked ||
-													isManualRedactionDisabledByProduction,
-											},
-										]"
+									<WorkflowSettingsRowTitle
+										:title="i18n.baseText('workflowSettings.redactManualData')"
+										:disabled="
+											!isDataRedactionLicensed ||
+											isManualRedactionLocked ||
+											isManualRedactionDisabledByProduction
+										"
 									>
-										<N8nText bold size="medium" color="text-dark">
-											{{ i18n.baseText('workflowSettings.redactManualData') }}
-										</N8nText>
 										<N8nIcon
 											v-if="isManualRedactionLocked"
 											icon="lock"
@@ -1642,18 +1690,18 @@ onBeforeUnmount(() => {
 										>
 											{{ i18n.baseText('generic.upgrade') }}
 										</N8nBadge>
-									</div>
-									<N8nText size="small" color="text-light">
-										{{ helpTexts.redactManualData }}
-										<N8nLink
-											:to="EXECUTION_DATA_REDACTION_DOCS_URL"
-											size="small"
-											new-window
-											data-test-id="redact-manual-data-docs-link"
-										>
-											{{ i18n.baseText('generic.learnMore') }}
-										</N8nLink>
-									</N8nText>
+										<template #tooltip>
+											{{ helpTexts.redactManualData }}
+											<N8nLink
+												:to="EXECUTION_DATA_REDACTION_DOCS_URL"
+												size="small"
+												new-window
+												data-test-id="redact-manual-data-docs-link"
+											>
+												{{ i18n.baseText('generic.learnMore') }}
+											</N8nLink>
+										</template>
+									</WorkflowSettingsRowTitle>
 								</template>
 								<template #action>
 									<div
@@ -1714,35 +1762,28 @@ onBeforeUnmount(() => {
 								</template>
 							</N8nSettingsRow>
 							<N8nSettingsRow
+								:layout="rowLayout"
 								v-if="isCallerRedactionSettingVisible"
 								data-test-id="workflow-settings-redact-caller-executions-row"
 							>
 								<template #info>
-									<div
-										:class="[
-											$style['row-title'],
-											{
-												[$style['row-title--disabled']]:
-													!isDataRedactionLicensed || isCallerRedactionLocked,
-											},
-										]"
+									<WorkflowSettingsRowTitle
+										:title="i18n.baseText('workflowSettings.redactCallerExecutions')"
+										:disabled="!isDataRedactionLicensed || isCallerRedactionLocked"
 									>
-										<N8nText bold size="medium" color="text-dark">
-											{{ i18n.baseText('workflowSettings.redactCallerExecutions') }}
-										</N8nText>
 										<N8nIcon v-if="isCallerRedactionLocked" icon="lock" size="xsmall" />
-									</div>
-									<N8nText size="small" color="text-light">
-										{{ helpTexts.redactCallerExecutions }}
-										<N8nLink
-											:to="EXECUTION_DATA_REDACTION_DOCS_URL"
-											size="small"
-											new-window
-											data-test-id="redact-caller-executions-docs-link"
-										>
-											{{ i18n.baseText('generic.learnMore') }}
-										</N8nLink>
-									</N8nText>
+										<template #tooltip>
+											{{ helpTexts.redactCallerExecutions }}
+											<N8nLink
+												:to="EXECUTION_DATA_REDACTION_DOCS_URL"
+												size="small"
+												new-window
+												data-test-id="redact-caller-executions-docs-link"
+											>
+												{{ i18n.baseText('generic.learnMore') }}
+											</N8nLink>
+										</template>
+									</WorkflowSettingsRowTitle>
 								</template>
 								<template #action>
 									<N8nTooltip
@@ -1778,13 +1819,22 @@ onBeforeUnmount(() => {
 				<N8nSettingsSection :title="i18n.baseText('workflowSettings.sections.insights')">
 					<N8nSettingsRowGroup>
 						<N8nSettingsRow
-							:title="i18n.baseText('workflowSettings.timeSavedPerExecution')"
-							:description="i18n.baseText('workflowSettings.timeSavedPerExecution.tooltip')"
-							:model-value="Boolean(workflowSettings.timeSavedMode)"
+							:layout="rowLayout"
+							:model-value="workflowSettings.timeSavedMode === 'dynamic'"
+							:show-divider="workflowSettings.timeSavedMode !== 'fixed'"
 							:disclosure="false"
 							expandable
 							action-fill
 						>
+							<template #info>
+								<WorkflowSettingsRowTitle
+									:title="i18n.baseText('workflowSettings.timeSavedPerExecution')"
+									:tooltip="i18n.baseText('workflowSettings.timeSavedPerExecution.tooltip')"
+									:label-for="
+										workflowSettings.timeSavedMode === 'fixed' ? 'timeSavedPerExecution' : undefined
+									"
+								/>
+							</template>
 							<template #action>
 								<N8nSelect
 									v-model="workflowSettings.timeSavedMode"
@@ -1804,45 +1854,7 @@ onBeforeUnmount(() => {
 							</template>
 							<template #expanded>
 								<div :class="$style['time-saved-panel']">
-									<div
-										v-if="workflowSettings.timeSavedMode === 'fixed'"
-										:class="$style['time-saved-input']"
-									>
-										<N8nInputNumber
-											id="timeSavedPerExecution"
-											v-model="workflowSettings.timeSavedPerExecution"
-											controls-position="right"
-											size="medium"
-											:controls="true"
-											:class="$style.timeSavedPerExecution"
-											:disabled="readOnlyEnv || !workflowPermissions.update"
-											data-test-id="workflow-settings-time-saved-per-execution"
-											:min="0"
-											:precision="0"
-											@update:model-value="updateTimeSavedPerExecution"
-										/>
-										<span>{{ i18n.baseText('workflowSettings.timeSavedPerExecution.hint') }}</span>
-									</div>
-									<div
-										v-if="workflowSettings.timeSavedMode === 'fixed' && hasSavedTimeNodes"
-										:class="$style['time-saved-content']"
-									>
-										<div :class="$style['time-saved-warning']">
-											<span
-												v-n8n-html="
-													i18n.baseText('workflowSettings.timeSavedPerExecution.fixedTabWarning', {
-														interpolate: {
-															link: `<a href='#' class='${$style['time-saved-link']}' data-action='openSavedTimeNodeCreator'>${i18n.baseText('workflowSettings.timeSavedPerExecution.fixedTabWarning.link')}</a>`,
-														},
-													})
-												"
-											></span>
-										</div>
-									</div>
-									<div
-										v-if="workflowSettings.timeSavedMode === 'dynamic' && hasSavedTimeNodes"
-										:class="$style['time-saved-content']"
-									>
+									<div v-if="hasSavedTimeNodes" :class="$style['time-saved-content']">
 										<div :class="$style['time-saved-nodes-active']">
 											<div :class="$style['nodes-active-wrapper']">
 												<N8nIcon icon="clock" :class="$style['nodes-active-icon']" />
@@ -1879,10 +1891,7 @@ onBeforeUnmount(() => {
 											</a>
 										</div>
 									</div>
-									<div
-										v-if="workflowSettings.timeSavedMode === 'dynamic' && !hasSavedTimeNodes"
-										:class="$style['time-saved-content']"
-									>
+									<div v-else :class="$style['time-saved-content']">
 										<div :class="$style['time-saved-no-nodes']">
 											<div :class="$style['no-nodes-title']">
 												{{
@@ -1901,11 +1910,57 @@ onBeforeUnmount(() => {
 								</div>
 							</template>
 						</N8nSettingsRow>
+						<N8nSettingsRow
+							:layout="rowLayout"
+							v-if="workflowSettings.timeSavedMode === 'fixed'"
+							:model-value="hasSavedTimeNodes"
+							:disclosure="false"
+							expandable
+							action-fill
+						>
+							<template #action>
+								<div :class="$style['time-saved-input']">
+									<N8nInputNumber
+										id="timeSavedPerExecution"
+										v-model="workflowSettings.timeSavedPerExecution"
+										controls-position="right"
+										size="medium"
+										:controls="true"
+										:disabled="readOnlyEnv || !workflowPermissions.update"
+										data-test-id="workflow-settings-time-saved-per-execution"
+										:min="0"
+										:precision="0"
+										@update:model-value="updateTimeSavedPerExecution"
+									/>
+									<N8nText size="medium" color="text-dark">
+										{{ i18n.baseText('workflowSettings.timeSavedPerExecution.hint') }}
+									</N8nText>
+								</div>
+							</template>
+							<template #expanded>
+								<div :class="$style['time-saved-panel']">
+									<div :class="$style['time-saved-content']">
+										<div :class="$style['time-saved-warning']">
+											<span
+												v-n8n-html="
+													i18n.baseText('workflowSettings.timeSavedPerExecution.fixedTabWarning', {
+														interpolate: {
+															link: `<a href='#' class='${$style['time-saved-link']}' data-action='openSavedTimeNodeCreator'>${i18n.baseText('workflowSettings.timeSavedPerExecution.fixedTabWarning.link')}</a>`,
+														},
+													})
+												"
+											></span>
+										</div>
+									</div>
+								</div>
+							</template>
+						</N8nSettingsRow>
 						<WorkflowCustomTelemetryTags
 							v-if="settingsStore.isOtelCustomSpanAttributesEnabled"
 							v-model="workflowSettings.customTelemetryTags"
 							:is-read-only="isWorkflowSettingsReadOnly"
 							:save-tags="saveCustomTelemetryTags"
+							:layout="rowLayout"
 							@validity-change="hasCustomTelemetryTagErrors = $event"
 						/>
 					</N8nSettingsRowGroup>
@@ -1941,13 +1996,6 @@ onBeforeUnmount(() => {
 	flex-direction: column;
 }
 
-.row-title {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-	min-width: 0;
-}
-
 .row-title--disabled {
 	opacity: 0.5;
 }
@@ -1967,13 +2015,21 @@ onBeforeUnmount(() => {
 }
 
 .timeout-fields {
-	display: flex;
+	display: grid;
+	// The fields go to the next line when a column gets narrower than the minimum.
+	grid-template-columns: repeat(auto-fit, minmax(var(--spacing--4xl), 1fr));
 	gap: var(--spacing--3xs);
 	width: 100%;
+	padding-block: var(--spacing--xs);
 
+	// The unit label of N8nInput extends past its input by this distance. Keep it in the column.
 	> * {
-		flex: 1 1 0;
-		min-width: 0;
+		padding-inline-end: var(--spacing--xs);
+	}
+
+	// The vertical row has its own space around the control.
+	.workflow-settings--vertical & {
+		padding-block: 0;
 	}
 }
 
@@ -1997,17 +2053,6 @@ onBeforeUnmount(() => {
 	}
 }
 
-.time-saved-input {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-}
-
-.timeSavedPerExecution {
-	width: var(--spacing--4xl);
-	flex-shrink: 0;
-}
-
 .time-saved-dropdown {
 	margin-bottom: var(--spacing--sm);
 }
@@ -2016,6 +2061,13 @@ onBeforeUnmount(() => {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--sm);
+}
+
+.time-saved-input {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	width: 100%;
 }
 
 .time-saved-content {
