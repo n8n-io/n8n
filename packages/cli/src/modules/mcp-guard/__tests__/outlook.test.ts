@@ -145,8 +145,6 @@ describe('the Outlook vendor file', () => {
 
 	it('has a profile with the default ports of the table', () => {
 		expect(HTTP_PROFILES).toContain(OUTLOOK_PROFILE);
-		expect(OUTLOOK_PROFILE.defaultAdminUrl).toBe('http://127.0.0.1:9101');
-		expect(OUTLOOK_PROFILE.defaultGymUrl).toBe('http://127.0.0.1:8091');
 	});
 });
 

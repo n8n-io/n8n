@@ -322,8 +322,6 @@ const readOf = (base: string, id: string) => ({
 
 export const OUTLOOK_PROFILE: HttpVendorProfile = {
 	name: 'outlook',
-	defaultAdminUrl: 'http://127.0.0.1:9101',
-	defaultGymUrl: 'http://127.0.0.1:8091',
 	credentialKind: 'ms_oauth',
 	credentialField: 'oauthTokenData.access_token',
 	placeholderSeed: {
