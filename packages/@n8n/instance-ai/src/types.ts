@@ -812,6 +812,13 @@ export type ExecuteNodeResult =
 			outputSuppressed?: string;
 			/** Set when n8n redacted the run's data for the user. `output` is then empty. */
 			redaction?: ExecutionRedaction;
+			/**
+			 * Files of the output items, stored as conversation files. Set only when
+			 * the caller passed `storeOutputFile`.
+			 */
+			files?: InstanceAiConversationFile[];
+			/** Output files that were not stored, for example because they are too large. */
+			skippedFiles?: InstanceAiSkippedFile[];
 	  }
 	| {
 			status: 'error';
@@ -833,7 +840,15 @@ export interface InstanceAiExecuteNodeService {
 				{ id: string | null; name: string; __aiGatewayManaged?: boolean }
 			>;
 		};
-		input?: Array<{ json: Record<string, unknown> }>;
+		/** `binary` of an item points to stored bytes, such as a conversation file. */
+		input?: Array<{ json: Record<string, unknown>; binary?: IBinaryKeyData }>;
+		/**
+		 * Store each file of the output items as a conversation file. The result
+		 * lists them in `files`.
+		 */
+		storeOutputFile?: (
+			binary: IBinaryData,
+		) => Promise<InstanceAiConversationFile | InstanceAiSkippedFile | undefined>;
 		timeoutMs?: number;
 	}): Promise<ExecuteNodeResult>;
 }

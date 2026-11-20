@@ -287,6 +287,51 @@ describe('ExecuteNodeService', () => {
 			});
 		});
 
+		it('gives each input item its binary data', async () => {
+			const binary = {
+				data: { id: 'filesystem-v2:a', data: 'filesystem-v2', mimeType: 'image/png' },
+			};
+			const input = [{ json: { n: 1 } }, { json: { n: 2 }, binary }];
+
+			await service.run(user, baseRequest({ input }));
+
+			const runData = workflowRunner.run.mock.calls[0][0];
+			expect(runData.executionData?.executionData?.nodeExecutionStack[0].data).toEqual({
+				main: [input],
+			});
+		});
+
+		it('stores the output files before it deletes the temporary execution', async () => {
+			const item = {
+				json: {},
+				binary: { data: { id: 'filesystem-v2:b', data: 'filesystem-v2', mimeType: 'image/png' } },
+			};
+			executionPersistence.findSingleExecution.mockResolvedValue(
+				successExecution([{ data: { main: [[item]] } }]) as never,
+			);
+			const files = [{ fileId: 'f-1', fileName: 'b.png', mimeType: 'image/png', sizeBytes: 3 }];
+			const storeOutputFiles = vi.fn(async () => ({ files }));
+
+			const result = await service.run(user, baseRequest({ storeOutputFiles }));
+
+			expect(storeOutputFiles).toHaveBeenCalledWith([item]);
+			expect(result).toMatchObject({ status: 'success', files });
+			expect(storeOutputFiles.mock.invocationCallOrder[0]).toBeLessThan(
+				executionPersistence.hardDeleteByWorkflowId.mock.invocationCallOrder[0],
+			);
+		});
+
+		it('stores no output files of a failed run', async () => {
+			executionPersistence.findSingleExecution.mockResolvedValue({
+				data: { resultData: { runData: {}, error: { message: 'boom' } } },
+			} as never);
+			const storeOutputFiles = vi.fn();
+
+			await service.run(user, baseRequest({ storeOutputFiles }));
+
+			expect(storeOutputFiles).not.toHaveBeenCalled();
+		});
+
 		it('maps an execution error to an error result', async () => {
 			executionPersistence.findSingleExecution.mockResolvedValue({
 				data: {
