@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "execution_ledger_parked" ("id" integer PRIMARY KEY NOT NULL, "ledgerId" bigint NOT NULL, "step" varchar(48) NOT NULL, "error" varchar(255) NOT NULL, "parkedAt" datetime(3) NOT NULL, "executionId" varchar(36) NOT NULL, "occurredAt" datetime(3) NOT NULL, "entityType" varchar(16) NOT NULL, "entityName" varchar(128) NOT NULL, "entityId" varchar(36) NOT NULL, "projectId" varchar(36) NOT NULL, "mode" varchar(32) NOT NULL, "source" varchar(32) NOT NULL, "event" varchar(16) NOT NULL, "outcome" varchar(16) NOT NULL, "blockedBy" varchar(32) NOT NULL, "runtimeMs" bigint NOT NULL, "timeSavedMin" integer NOT NULL, "origin" varchar(8) NOT NULL, "eventId" varchar NOT NULL)
+CREATE TABLE "execution_ledger_parked" ("id" integer PRIMARY KEY NOT NULL, "ledgerId" bigint NOT NULL, "step" varchar(48) NOT NULL, "error" varchar(255) NOT NULL, "parkedAt" datetime(3) NOT NULL, "executionId" varchar(36) NOT NULL, "occurredAt" datetime(3) NOT NULL, "entityType" varchar(16) NOT NULL, "entityName" varchar(128) NOT NULL, "entityId" varchar(36) NOT NULL, "projectId" varchar(36), "mode" varchar(32) NOT NULL, "source" varchar(32) NOT NULL, "event" varchar(16) NOT NULL, "outcome" varchar(16) NOT NULL, "blockedBy" varchar(32) NOT NULL, "runtimeMs" bigint NOT NULL, "timeSavedMin" integer NOT NULL, "origin" varchar(8) NOT NULL, "eventId" varchar NOT NULL)
 ```
 
 </details>
@@ -30,7 +30,7 @@ CREATE TABLE "execution_ledger_parked" ("id" integer PRIMARY KEY NOT NULL, "ledg
 | origin | varchar(8) |  | false |  |  |  |
 | outcome | varchar(16) |  | false |  |  |  |
 | parkedAt | datetime(3) |  | false |  |  |  |
-| projectId | varchar(36) |  | false |  |  |  |
+| projectId | varchar(36) |  | true |  |  |  |
 | runtimeMs | bigint |  | false |  |  |  |
 | source | varchar(32) |  | false |  |  |  |
 | step | varchar(48) |  | false |  |  |  |

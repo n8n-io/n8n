@@ -34,8 +34,8 @@ export class CreateExecutionLedgerParkedTable1795118427933 implements Reversible
 					.notNull.comment('Workflow ID or agent ID. No foreign key: rows outlive the entity'),
 				column('projectId')
 					.varchar(36)
-					.notNull.comment(
-						'Project at the time of the event. No foreign key: rows outlive the project',
+					.comment(
+						'Project at the time of the event. No foreign key: rows outlive the project. Null when the workflow has no owner project',
 					),
 				column('mode').varchar(32).notNull.comment(unconstrained),
 				column('source').varchar(32).notNull.comment(unconstrained),

@@ -19,7 +19,7 @@
 | origin | varchar(8) |  | false |  |  | Copied from the ledger row. Not constrained, so an unknown value fits |
 | outcome | varchar(16) |  | false |  |  | Copied from the ledger row. Not constrained, so an unknown value fits |
 | parkedAt | timestamp(3) with time zone |  | false |  |  | When the fold parked the row |
-| projectId | varchar(36) |  | false |  |  | Project at the time of the event. No foreign key: rows outlive the project |
+| projectId | varchar(36) |  | true |  |  | Project at the time of the event. No foreign key: rows outlive the project. Null when the workflow has no owner project |
 | runtimeMs | bigint |  | false |  |  | Run time in milliseconds |
 | source | varchar(32) |  | false |  |  | Copied from the ledger row. Not constrained, so an unknown value fits |
 | step | varchar(48) |  | false |  |  | Name of the fold step that must still read the row. _unreadable: no step could read it |
@@ -45,7 +45,6 @@
 | execution_ledger_parked_origin_not_null | n | NOT NULL origin |
 | execution_ledger_parked_outcome_not_null | n | NOT NULL outcome |
 | execution_ledger_parked_parkedAt_not_null | n | NOT NULL "parkedAt" |
-| execution_ledger_parked_projectId_not_null | n | NOT NULL "projectId" |
 | execution_ledger_parked_runtimeMs_not_null | n | NOT NULL "runtimeMs" |
 | execution_ledger_parked_source_not_null | n | NOT NULL source |
 | execution_ledger_parked_step_not_null | n | NOT NULL step |

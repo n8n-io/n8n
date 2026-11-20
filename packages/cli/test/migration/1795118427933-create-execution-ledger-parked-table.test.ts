@@ -108,6 +108,12 @@ describe('CreateExecutionLedgerParkedTable Migration', () => {
 		expect(await selectRows()).toHaveLength(1);
 	});
 
+	it('accepts a row with no project', async () => {
+		await insertRow(parkedRow({ projectId: null }));
+
+		expect(await selectRows()).toHaveLength(1);
+	});
+
 	it('stores a runtime above the 32-bit range', async () => {
 		await insertRow(parkedRow({ runtimeMs: 3_000_000_000 }));
 
