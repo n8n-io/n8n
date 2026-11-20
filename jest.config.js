@@ -21,6 +21,13 @@ const esmDependencies = [
 	'jose',
 	'p-retry',
 	'is-network-error',
+	// sanitize-html's parser dependencies are ESM-only.
+	'htmlparser2',
+	'domelementtype',
+	'domhandler',
+	'domutils',
+	'dom-serializer',
+	'entities',
 	// Add other ESM dependencies that need to be transformed here
 ];
 
