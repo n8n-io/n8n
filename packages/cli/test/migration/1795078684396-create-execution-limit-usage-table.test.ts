@@ -179,8 +179,31 @@ describe('CreateExecutionLimitUsageTable Migration', () => {
 		expect(await selectRows()).toHaveLength(1);
 	});
 
-	it('rejects a row without updatedAt', async () => {
+	it('rejects a null updatedAt and defaults it to the current time', async () => {
 		await expect(insertRow(usageRow({ updatedAt: null }))).rejects.toThrow();
+
+		const { updatedAt: _, ...row } = usageRow();
+		await insertRow(row);
+
+		const [{ count }] = await context.runQuery<Array<{ count: string | number }>>(
+			`SELECT COUNT(*) AS "count" FROM ${usage()} WHERE ${column('updatedAt')} IS NOT NULL`,
+		);
+		expect(Number(count)).toBe(1);
+	});
+
+	it('has an index on day alone', async () => {
+		const table = `${context.tablePrefix}execution_limit_usage`;
+		const rows = context.isSqlite
+			? await context.runQuery<Array<{ definition: string }>>(
+					"SELECT sql AS definition FROM sqlite_master WHERE type = 'index' AND tbl_name = :table AND sql IS NOT NULL",
+					{ table },
+				)
+			: await context.runQuery<Array<{ definition: string }>>(
+					'SELECT indexdef AS definition FROM pg_indexes WHERE tablename = :table',
+					{ table },
+				);
+
+		expect(rows.some((row) => /\(\s*"?day"?\s*\)/.test(row.definition))).toBe(true);
 	});
 
 	it('adds to the counts of an existing row on conflict', async () => {
@@ -248,8 +271,16 @@ describe('CreateExecutionLimitUsageTable Migration', () => {
 			);
 		});
 
-		it('rejects a row without updatedAt', async () => {
+		it('rejects a null updatedAt and defaults it to the current time', async () => {
 			await expect(insertInstanceRow(instanceRow({ updatedAt: null }))).rejects.toThrow();
+
+			const { updatedAt: _, ...row } = instanceRow();
+			await insertInstanceRow(row);
+
+			const [{ count }] = await context.runQuery<Array<{ count: string | number }>>(
+				`SELECT COUNT(*) AS "count" FROM ${instanceUsage()} WHERE ${column('updatedAt')} IS NOT NULL`,
+			);
+			expect(Number(count)).toBe(1);
 		});
 
 		it('adds to the counts of an existing row on conflict', async () => {

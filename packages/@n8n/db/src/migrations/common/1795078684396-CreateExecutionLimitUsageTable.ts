@@ -10,7 +10,7 @@ const instanceTable = 'execution_limit_instance_usage';
  */
 export class CreateExecutionLimitUsageTable1795078684396 implements ReversibleMigration {
 	async up({
-		schemaBuilder: { createTable, column },
+		schemaBuilder: { createTable, createIndex, column },
 		escape,
 		isPostgres,
 		tablePrefix,
@@ -34,7 +34,8 @@ export class CreateExecutionLimitUsageTable1795078684396 implements ReversibleMi
 				),
 			column('updatedAt')
 				.timestampTimezone()
-				.notNull.comment('Time of the last fold that changed the row'),
+				.notNull.default('NOW()')
+				.comment('Time of the last fold that changed the row'),
 		];
 
 		await createTable(projectTable)
@@ -52,6 +53,9 @@ export class CreateExecutionLimitUsageTable1795078684396 implements ReversibleMi
 				`CHK_${tablePrefix}${projectTable}_counts_non_negative`,
 				`${startedCount} >= 0 AND ${blockedCount} >= 0`,
 			);
+
+		// The primary key starts with projectId, so reads of one day for all projects need this.
+		await createIndex(projectTable, ['day']);
 
 		// A separate table, so that a sum of project rows can never include the instance total.
 		await createTable(instanceTable)

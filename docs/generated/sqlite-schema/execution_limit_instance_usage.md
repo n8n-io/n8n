@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "execution_limit_instance_usage" ("day" date NOT NULL, "entityType" varchar(16) NOT NULL, "startedCount" integer NOT NULL DEFAULT (0), "blockedCount" integer NOT NULL DEFAULT (0), "updatedAt" datetime(3) NOT NULL, CONSTRAINT "CHK_execution_limit_instance_usage_counts_non_negative" CHECK ("startedCount" >= 0 AND "blockedCount" >= 0), CONSTRAINT "CHK_execution_limit_instance_usage_entityType" CHECK ("entityType" IN ('workflow', 'agent')), PRIMARY KEY ("day", "entityType"))
+CREATE TABLE "execution_limit_instance_usage" ("day" date NOT NULL, "entityType" varchar(16) NOT NULL, "startedCount" integer NOT NULL DEFAULT (0), "blockedCount" integer NOT NULL DEFAULT (0), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_execution_limit_instance_usage_counts_non_negative" CHECK ("startedCount" >= 0 AND "blockedCount" >= 0), CONSTRAINT "CHK_execution_limit_instance_usage_entityType" CHECK ("entityType" IN ('workflow', 'agent')), PRIMARY KEY ("day", "entityType"))
 ```
 
 </details>
@@ -19,7 +19,7 @@ CREATE TABLE "execution_limit_instance_usage" ("day" date NOT NULL, "entityType"
 | day | date |  | false |  |  |  |
 | entityType | varchar(16) |  | false |  |  |  |
 | startedCount | INTEGER | 0 | false |  |  |  |
-| updatedAt | datetime(3) |  | false |  |  |  |
+| updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 
 ## Constraints
 

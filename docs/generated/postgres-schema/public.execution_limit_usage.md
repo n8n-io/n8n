@@ -9,7 +9,7 @@
 | entityType | varchar(16) |  | false |  |  | workflow: workflow runs; agent: agent messages |
 | projectId | varchar(36) |  | false |  |  | Project at the time of the run. No foreign key: rows outlive the project |
 | startedCount | integer | 0 | false |  |  | Runs that started on this day |
-| updatedAt | timestamp(3) with time zone |  | false |  |  | Time of the last fold that changed the row |
+| updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  | Time of the last fold that changed the row |
 
 ## Constraints
 
@@ -29,6 +29,7 @@
 
 | Name | Definition |
 | ---- | ---------- |
+| IDX_execution_limit_usage_day | CREATE INDEX "IDX_execution_limit_usage_day" ON public.execution_limit_usage USING btree (day) |
 | PK_d2580db820ef0203e281e639e07 | CREATE UNIQUE INDEX "PK_d2580db820ef0203e281e639e07" ON public.execution_limit_usage USING btree ("projectId", day, "entityType") |
 
 ## Relations

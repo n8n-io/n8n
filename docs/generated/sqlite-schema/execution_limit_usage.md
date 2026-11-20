@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "execution_limit_usage" ("projectId" varchar(36) NOT NULL, "day" date NOT NULL, "entityType" varchar(16) NOT NULL, "startedCount" integer NOT NULL DEFAULT (0), "blockedCount" integer NOT NULL DEFAULT (0), "updatedAt" datetime(3) NOT NULL, CONSTRAINT "CHK_execution_limit_usage_counts_non_negative" CHECK ("startedCount" >= 0 AND "blockedCount" >= 0), CONSTRAINT "CHK_execution_limit_usage_entityType" CHECK ("entityType" IN ('workflow', 'agent')), PRIMARY KEY ("projectId", "day", "entityType"))
+CREATE TABLE "execution_limit_usage" ("projectId" varchar(36) NOT NULL, "day" date NOT NULL, "entityType" varchar(16) NOT NULL, "startedCount" integer NOT NULL DEFAULT (0), "blockedCount" integer NOT NULL DEFAULT (0), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_execution_limit_usage_counts_non_negative" CHECK ("startedCount" >= 0 AND "blockedCount" >= 0), CONSTRAINT "CHK_execution_limit_usage_entityType" CHECK ("entityType" IN ('workflow', 'agent')), PRIMARY KEY ("projectId", "day", "entityType"))
 ```
 
 </details>
@@ -20,7 +20,7 @@ CREATE TABLE "execution_limit_usage" ("projectId" varchar(36) NOT NULL, "day" da
 | entityType | varchar(16) |  | false |  |  |  |
 | projectId | varchar(36) |  | false |  |  |  |
 | startedCount | INTEGER | 0 | false |  |  |  |
-| updatedAt | datetime(3) |  | false |  |  |  |
+| updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 
 ## Constraints
 
@@ -37,6 +37,7 @@ CREATE TABLE "execution_limit_usage" ("projectId" varchar(36) NOT NULL, "day" da
 
 | Name | Definition |
 | ---- | ---------- |
+| IDX_execution_limit_usage_day | CREATE INDEX "IDX_execution_limit_usage_day" ON "execution_limit_usage" ("day")  |
 | sqlite_autoindex_execution_limit_usage_1 | PRIMARY KEY (projectId, day, entityType) |
 
 ## Relations

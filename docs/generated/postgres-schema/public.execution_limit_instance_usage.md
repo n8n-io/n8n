@@ -8,7 +8,7 @@
 | day | date |  | false |  |  | UTC day of the counted ledger row |
 | entityType | varchar(16) |  | false |  |  | workflow: workflow runs; agent: agent messages |
 | startedCount | integer | 0 | false |  |  | Runs that started on this day |
-| updatedAt | timestamp(3) with time zone |  | false |  |  | Time of the last fold that changed the row |
+| updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  | Time of the last fold that changed the row |
 
 ## Constraints
 
