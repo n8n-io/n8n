@@ -1,3 +1,5 @@
+import { sign } from 'aws4';
+import type { Request as Aws4Request } from 'aws4';
 import get from 'lodash/get';
 import type {
 	IDataObject,
@@ -12,6 +14,14 @@ import type {
 } from 'n8n-workflow';
 import { sanitizeXmlName } from 'n8n-workflow';
 import { parseString } from 'xml2js';
+
+import { getAwsDomain, type AWSRegion } from '@credentials/common/aws/regions';
+import type {
+	AwsSecurityHeaders,
+	AwsAssumeRoleCredentialsType,
+	AwsIamCredentialsType,
+} from '@credentials/common/aws/types';
+import { assumeRole } from '@credentials/common/aws/utils';
 import { getAwsCredentials } from '../../GenericFunctions';
 
 type S3RequestOption = Pick<IRequestOptions, 'encoding' | 'resolveWithFullResponse'>;
@@ -146,4 +156,89 @@ export async function awsApiRequestRESTAllItems(
 		get(responseData, [propertyName.split('.')[0], 'IsTruncated']) !== 'false'
 	);
 	return returnData;
+}
+
+export function normalizeS3Region(locationConstraint: string | null | undefined): AWSRegion {
+	if (locationConstraint === 'EU') {
+		return 'eu-west-1';
+	}
+
+	return (locationConstraint || 'us-east-1') as AWSRegion;
+}
+
+function encodeRFC5987ValueChars(value: string): string {
+	return encodeURIComponent(value).replace(
+		/[!'()*]/g,
+		(char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`,
+	);
+}
+
+// This function creates a Content-Disposition header value that is compatible with RFC 5987. 
+// Otherwise s3 will return error: Header value cannot be represented using ISO-8859-1 for some edge cases
+// e.g. when the filename contains non-ASCII characters.
+export function createContentDisposition(filename: string): string {
+	const asciiFilename = filename.replace(/[^\x20-\x7E]/g, '_').replace(/["\\]/g, '\\$&');
+
+	return (
+		`attachment; filename="${asciiFilename}"; ` +
+		`filename*=UTF-8''${encodeRFC5987ValueChars(filename)}`
+	);
+}
+
+export async function getPresignedS3Url(
+	this: IExecuteFunctions,
+	method: 'GET' | 'PUT',
+	bucketName: string,
+	objectPath: RequestPath,
+	region: AWSRegion,
+	expiresIn: number,
+	responseContentDisposition?: string,
+): Promise<string> {
+	const { credentials, credentialsType } = await getAwsCredentials(this);
+
+	// Resolve effective access key / secret / session token
+	let securityHeaders: AwsSecurityHeaders;
+	if (credentialsType === 'awsAssumeRole') {
+		const tmp = await assumeRole(credentials as AwsAssumeRoleCredentialsType, region);
+		securityHeaders = tmp;
+	} else {
+		const c = credentials as AwsIamCredentialsType;
+		securityHeaders = {
+			accessKeyId: `${c.accessKeyId}`.trim(),
+			secretAccessKey: `${c.secretAccessKey}`.trim(),
+			sessionToken: c.temporaryCredentials ? `${c.sessionToken}`.trim() : undefined,
+		};
+	}
+
+	// Bucket names must be lowercase, but the DNS names are case-insensitive; however, the signature calculation is case-sensitive.
+	// To avoid signature mismatches, we normalize the bucket name to lowercase.
+	const normalizedBucketName = bucketName.toLowerCase();
+
+	const useVirtualHost = !bucketName.includes('.');
+	const domain = getAwsDomain(region);
+
+	const host = useVirtualHost
+		? `${normalizedBucketName}.s3.${region}.${domain}`
+		: `s3.${region}.${domain}`;
+	// const basePath = useVirtualHost ? '' : `/${normalizedBucketName}`;
+
+	// Compose query for SigV4 query signing
+	const qs = new URLSearchParams({ 'X-Amz-Expires': String(expiresIn) });
+	if (responseContentDisposition) {
+		qs.set('response-content-disposition', responseContentDisposition);
+	}
+
+	const path = `${objectPath.value}?${qs.toString()}`;
+	const signOpts: Aws4Request = {
+		host,
+		method,
+		path,
+		service: 's3',
+		region,
+		signQuery: true,
+	};
+
+	const signed = sign(signOpts, securityHeaders);
+
+	return `https://${signed.host}${signed.path}`;
 }
