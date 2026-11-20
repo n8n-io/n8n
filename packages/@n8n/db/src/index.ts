@@ -6,6 +6,7 @@ export {
 	WithUpdatedAt,
 	jsonColumnType,
 	datetimeColumnType,
+	binaryColumnType,
 	dbType,
 	JsonColumn,
 	DateTimeColumn,

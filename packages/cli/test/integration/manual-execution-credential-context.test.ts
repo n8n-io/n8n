@@ -100,13 +100,12 @@ describe('Manual execution credential context (integration)', () => {
 			user,
 		);
 
-		const result = await workflowExecutionService.executeManually(
-			workflow,
-			{ triggerToStartFrom: { name: 'Trigger' } },
+		const result = await workflowExecutionService.executeManually({
+			workflowData: workflow,
+			payload: { triggerToStartFrom: { name: 'Trigger' } },
 			user,
-			undefined,
-			cookie,
-		);
+			n8nAuthCookie: cookie,
+		});
 
 		if (!('executionId' in result)) {
 			throw new Error(`Expected an executionId, got ${JSON.stringify(result)}`);
