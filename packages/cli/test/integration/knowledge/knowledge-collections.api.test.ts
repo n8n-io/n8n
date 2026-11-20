@@ -23,6 +23,7 @@ const server = setupTestServer({ endpointGroups: ['ai'] });
 
 describe('knowledge collection routes', () => {
 	let project: Project;
+	let owner: User;
 	let editor: User;
 	let viewer: User;
 	let outsider: User;
@@ -41,7 +42,8 @@ describe('knowledge collection routes', () => {
 	beforeEach(async () => {
 		Container.get(KnowledgeConfig).collectionsEnabled = true;
 
-		project = await createTeamProject('Docs', await createOwner());
+		owner = await createOwner();
+		project = await createTeamProject('Docs', owner);
 		editor = await createMember();
 		viewer = await createMember();
 		outsider = await createMember();
@@ -129,6 +131,13 @@ describe('knowledge collection routes', () => {
 				.getRepository(KnowledgeCollection)
 				.findOneByOrFail({ id: second.body.data.id });
 			expect(secondRow.slug).toMatch(/^returns_playbook_[a-z0-9]{6}$/);
+		});
+
+		it('answers 404 to the instance owner for a project that does not exist', async () => {
+			const response = await create(owner, input({ projectId: 'missing-project' }));
+
+			expect(response.status).toBe(404);
+			expect(response.body.message).toBe('Project not found');
 		});
 
 		it('answers 403 to a user who cannot update agents in the project', async () => {

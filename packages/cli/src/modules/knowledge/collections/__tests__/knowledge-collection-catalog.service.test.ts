@@ -1,4 +1,4 @@
-import type { User } from '@n8n/db';
+import type { ProjectRepository, User } from '@n8n/db';
 import { ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import type { Scope } from '@n8n/permissions';
 import { QueryFailedError } from '@n8n/typeorm';
@@ -47,14 +47,26 @@ function makeService({ collectionsFlag = true }: { collectionsFlag?: boolean } =
 		mock<KnowledgeCollection>({ id: 'collection-1' }),
 	);
 	collectionRepository.findSharedSummaryById.mockResolvedValue(summary);
+	const projectRepository = mock<ProjectRepository>();
+	projectRepository.existsBy.mockResolvedValue(true);
 
 	return {
 		service: new KnowledgeCollectionCatalogService(
 			collectionRepository,
 			makeKnowledgeAvailabilityService({ collectionsFlag }),
+			projectRepository,
 		),
 		collectionRepository,
+		projectRepository,
 	};
+}
+
+function uniqueConstraintError() {
+	return new QueryFailedError(
+		'INSERT',
+		[],
+		Object.assign(new Error('UNIQUE constraint failed'), { code: 'SQLITE_CONSTRAINT_UNIQUE' }),
+	);
 }
 
 /** The user has exactly these scopes in project-1. */
@@ -127,6 +139,15 @@ describe('KnowledgeCollectionCatalogService', () => {
 			expect(collectionRepository.insertShared).not.toHaveBeenCalled();
 		});
 
+		it('answers not found for a project that does not exist', async () => {
+			const { service, collectionRepository, projectRepository } = makeService();
+			projectRepository.existsBy.mockResolvedValue(false);
+
+			await expect(service.create(user, input)).rejects.toThrow(NotFoundError);
+			expect(projectRepository.existsBy).toHaveBeenCalledWith({ id: 'project-1' });
+			expect(collectionRepository.insertShared).not.toHaveBeenCalled();
+		});
+
 		it('answers conflict when the project has a collection with the name', async () => {
 			const { service, collectionRepository } = makeService();
 			collectionRepository.existsByProjectIdAndName.mockResolvedValue(true);
@@ -140,17 +161,33 @@ describe('KnowledgeCollectionCatalogService', () => {
 			collectionRepository.existsByProjectIdAndName
 				.mockResolvedValueOnce(false)
 				.mockResolvedValueOnce(true);
-			collectionRepository.insertShared.mockRejectedValue(
-				new QueryFailedError(
-					'INSERT',
-					[],
-					Object.assign(new Error('UNIQUE constraint failed'), {
-						code: 'SQLITE_CONSTRAINT_UNIQUE',
-					}),
-				),
-			);
+			collectionRepository.insertShared.mockRejectedValue(uniqueConstraintError());
 
 			await expect(service.create(user, input)).rejects.toThrow(ConflictError);
+		});
+
+		it('tries a new slug when another create takes the slug first', async () => {
+			const { service, collectionRepository } = makeService();
+			collectionRepository.existsBySlug
+				.mockResolvedValueOnce(false)
+				.mockImplementation(async (slug) => slug === 'returns_playbook');
+			collectionRepository.insertShared.mockRejectedValueOnce(uniqueConstraintError());
+
+			const result = await service.create(user, input);
+
+			expect(collectionRepository.insertShared).toHaveBeenCalledTimes(2);
+			const [[first], [second]] = collectionRepository.insertShared.mock.calls;
+			expect(first.slug).toBe('returns_playbook');
+			expect(second.slug).toMatch(/^returns_playbook_[a-z0-9]{6}$/);
+			expect(result.id).toBe('collection-1');
+		});
+
+		it('stops after a second slug conflict', async () => {
+			const { service, collectionRepository } = makeService();
+			collectionRepository.insertShared.mockRejectedValue(uniqueConstraintError());
+
+			await expect(service.create(user, input)).rejects.toThrow(QueryFailedError);
+			expect(collectionRepository.insertShared).toHaveBeenCalledTimes(2);
 		});
 	});
 });
