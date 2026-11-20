@@ -4,7 +4,7 @@ import { Service } from '@n8n/di';
 import { ExecutionLimitUsageRepository } from './execution-limit-usage.repository';
 import { ExecutionUsageCache } from './execution-usage-cache';
 import { periodRange } from './execution-usage-period';
-import { toUsage, type ExecutionUsage, type UsageScope } from './execution-usage.types';
+import { toUsage, type ExecutionUsage, type UsageScope } from './execution-usage';
 
 /** The one way to read execution usage, so the limit check and the reports show the same count. */
 @Service()

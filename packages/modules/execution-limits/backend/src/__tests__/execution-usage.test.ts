@@ -1,5 +1,5 @@
 import type { UsagePeriod } from '../execution-usage-period';
-import { toUsage, type UsageScope, type UsageTotals } from '../execution-usage.types';
+import { toUsage, type UsageScope, type UsageTotals } from '../execution-usage';
 
 const scope: UsageScope = { type: 'instance' };
 const period: UsagePeriod = {
