@@ -374,10 +374,11 @@ describe('ErrorReporter', () => {
 			expect(logger.error).toHaveBeenCalledWith(`Test error\n${error.stack}\n`, metadata);
 		});
 
-		it('should exclude stack trace for warning-level `ApplicationError`', () => {
+		it('should log warning-level `ApplicationError` at warn without a stack trace', () => {
 			error.level = 'warning';
 			errorReporter.error(error);
-			expect(logger.error).toHaveBeenCalledWith('Test error', metadata);
+			expect(logger.warn).toHaveBeenCalledWith('Test error', metadata);
+			expect(logger.error).not.toHaveBeenCalled();
 		});
 
 		it.each([true, undefined])(
@@ -403,6 +404,40 @@ describe('ErrorReporter', () => {
 				undefined,
 			);
 		});
+		it('should use an explicit warning level for generic errors and their cause chain', () => {
+			const cause = new Error('root cause');
+			const outer = new Error('outer', { cause });
+
+			errorReporter.warn(outer);
+
+			expect(logger.warn).toHaveBeenNthCalledWith(
+				1,
+				`outer\n${outer.stack}\n`,
+				undefined,
+			);
+			expect(logger.warn).toHaveBeenNthCalledWith(
+				2,
+				`root cause\n${cause.stack}\n`,
+				undefined,
+			);
+			expect(logger.error).not.toHaveBeenCalled();
+		});
+
+		it('should let the error level fall back to the error’s own level', () => {
+			error.level = 'warning';
+			errorReporter.error(error, { level: 'error' });
+
+			expect(logger.warn).toHaveBeenCalledWith('Test error', metadata);
+			expect(logger.error).not.toHaveBeenCalled();
+		});
+
+		it('should log info messages when Sentry is not configured', () => {
+			errorReporter.info('Informational message');
+
+			expect(logger.info).toHaveBeenCalledWith('Informational message', undefined);
+			expect(logger.error).not.toHaveBeenCalled();
+		});
+
 
 		it('should include stack trace for generic error cause chain', () => {
 			const cause = new Error('root cause');
