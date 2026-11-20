@@ -29,7 +29,7 @@ export function useTypeAccessEdits() {
 	}
 
 	function isLocked(kind: RestrictedTypeKind, name: string): boolean {
-		const type = instancePolicy.typeAccess[kind]?.types.get(name);
+		const type = currentTypeAccess(kind)?.types.get(name);
 		return type !== undefined && !isTypeAccessEditable(type);
 	}
 

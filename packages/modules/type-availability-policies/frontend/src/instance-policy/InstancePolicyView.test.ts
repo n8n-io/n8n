@@ -8,6 +8,7 @@ import { fireEvent, waitFor } from '@testing-library/vue';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 import InstancePolicyView from './InstancePolicyView.vue';
+import { useInstancePolicyStore } from './instance-policy.store';
 import { POLICIES_LANDING_VIEW } from '../type-availability-policies.constants';
 
 const { route, push, replace, fetchInstancePolicy, fetchInstanceAccess } = vi.hoisted(() => ({
@@ -69,6 +70,24 @@ const setup = (scopes: Scope[] = BOTH_SCOPES, query: Record<string, string> = {}
 	return renderView({ pinia });
 };
 
+const credentialAccess = (names: string[]) => ({
+	scopeId: null,
+	version: 0,
+	defaultAction: 'allow',
+	types: names.map((name) => ({ name, access: 'allow', matchedRuleId: null })),
+});
+
+/** Opens the view with the access that an earlier visit left in the store. */
+const setupAfterEarlierVisit = async (query: Record<string, string>) => {
+	route.query = query;
+	const pinia = createTestingPinia({ stubActions: false });
+	useSettingsStore().isModuleActive = vi.fn(() => true);
+	useRBACStore().setGlobalScopes(BOTH_SCOPES);
+	fetchInstanceAccess.mockResolvedValueOnce(credentialAccess(['bitlyApi']));
+	await useInstancePolicyStore().load(['credential']);
+	return renderView({ pinia });
+};
+
 describe('InstancePolicyView', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -84,6 +103,7 @@ describe('InstancePolicyView', () => {
 			defaultAction: 'allow',
 			types: [
 				{ name: 'bitlyApi', access: 'allow', matchedRuleId: null },
+				{ name: 'airtableApi', access: 'allow', matchedRuleId: null },
 				{ name: 'n8n-nodes-base.notion', access: 'allow', matchedRuleId: null },
 			],
 		});
@@ -122,6 +142,12 @@ describe('InstancePolicyView', () => {
 			'href',
 			'https://docs.n8n.io/administer/manage-users-and-access/control-node-availability',
 		);
+	});
+
+	it('marks the page as a preview', () => {
+		const { getByTestId } = setup();
+
+		expect(getByTestId('instance-policy-preview-badge')).toBeInTheDocument();
 	});
 
 	it('goes back to the landing page', async () => {
@@ -254,6 +280,65 @@ describe('InstancePolicyView', () => {
 			'airtableApi',
 		);
 		expect(queryByTestId('node-type-access-dialog')).not.toBeInTheDocument();
+	});
+
+	it('closes the dialog of a type that the server does not list', async () => {
+		setup(BOTH_SCOPES, { tab: 'credential', details: 'unknownApi' });
+
+		await waitFor(() => expect(replace).toHaveBeenCalledWith({ query: { tab: 'credential' } }));
+	});
+
+	it('keeps the dialog of a listed type open after the access loads', async () => {
+		const { getByTestId } = setup(BOTH_SCOPES, { tab: 'credential', details: 'airtableApi' });
+
+		await waitFor(() =>
+			expect(fetchInstanceAccess).toHaveBeenCalledWith(expect.anything(), 'credential'),
+		);
+		await new Promise((resolve) => setTimeout(resolve));
+
+		expect(replace).not.toHaveBeenCalled();
+		expect(getByTestId('credential-type-access-dialog')).toBeInTheDocument();
+	});
+
+	it('keeps the dialog open when the access does not load', async () => {
+		fetchInstanceAccess.mockRejectedValue(new Error('offline'));
+		setup(BOTH_SCOPES, { tab: 'credential', details: 'unknownApi' });
+
+		await waitFor(() =>
+			expect(fetchInstanceAccess).toHaveBeenCalledWith(expect.anything(), 'credential'),
+		);
+		await new Promise((resolve) => setTimeout(resolve));
+
+		expect(replace).not.toHaveBeenCalled();
+	});
+
+	it('keeps the dialog of a type installed after an earlier visit open', async () => {
+		fetchInstanceAccess.mockResolvedValue(credentialAccess(['bitlyApi', 'newApi']));
+		const { getByTestId } = await setupAfterEarlierVisit({ tab: 'credential', details: 'newApi' });
+
+		await waitFor(() => expect(fetchInstanceAccess).toHaveBeenCalledTimes(3));
+		await new Promise((resolve) => setTimeout(resolve));
+
+		expect(replace).not.toHaveBeenCalled();
+		expect(getByTestId('credential-type-access-dialog')).toBeInTheDocument();
+	});
+
+	it('keeps the dialog open when the access of this visit does not load', async () => {
+		fetchInstanceAccess.mockRejectedValue(new Error('offline'));
+		await setupAfterEarlierVisit({ tab: 'credential', details: 'newApi' });
+
+		// The view reads the access, and the tab reads it again after that read fails.
+		await waitFor(() => expect(fetchInstanceAccess).toHaveBeenCalledTimes(3));
+		await new Promise((resolve) => setTimeout(resolve));
+
+		expect(replace).not.toHaveBeenCalled();
+	});
+
+	it('closes the dialog of an unknown type after an earlier visit once the access loads', async () => {
+		fetchInstanceAccess.mockResolvedValue(credentialAccess(['bitlyApi']));
+		await setupAfterEarlierVisit({ tab: 'credential', details: 'unknownApi' });
+
+		await waitFor(() => expect(replace).toHaveBeenCalledWith({ query: { tab: 'credential' } }));
 	});
 
 	it('opens the credential dialog for a user who can manage only credential types', () => {

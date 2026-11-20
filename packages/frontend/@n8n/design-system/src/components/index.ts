@@ -187,6 +187,8 @@ export type { SegmentControlProps, SegmentControlSize, SegmentOption } from './N
 export { default as N8nRoute } from './N8nRoute';
 export { default as N8nRecycleScroller } from './N8nRecycleScroller';
 export { default as N8nResizeWrapper } from './N8nResizeWrapper';
+export { default as N8nSidebar } from './N8nSidebar';
+export type { SidebarProps, SidebarSide } from './N8nSidebar';
 export { default as N8nSelect } from './N8nSelect';
 export { default as N8nSpinner } from './N8nSpinner';
 export { default as N8nStatusDot } from './N8nStatusDot';

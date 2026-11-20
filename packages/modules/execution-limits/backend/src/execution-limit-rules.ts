@@ -1,6 +1,6 @@
-import type { ExecutionLimitSettings } from '@n8n/api-types';
+import { executionLimitSettingsSchema, type ExecutionLimitSettings } from '@n8n/api-types';
 
-import type { ProjectLimit } from './execution-limits.types';
+import type { ExecutionLimitChange, ProjectLimit } from './execution-limits.types';
 
 /** The project ids that occur more than one time in `limits`. */
 export function findDuplicateProjectIds(limits: ProjectLimit[]): string[] {
@@ -40,4 +40,42 @@ export function isDefaultProjectLimitAboveInstanceLimit({
 		defaultProjectMaxExecutions !== null &&
 		defaultProjectMaxExecutions > instanceMaxExecutions
 	);
+}
+
+export function diffLimitSettings(
+	before: ExecutionLimitSettings,
+	after: ExecutionLimitSettings,
+): ExecutionLimitChange[] {
+	return executionLimitSettingsSchema
+		.keyof()
+		.options.filter((field) => before[field] !== after[field])
+		.map((field) => ({
+			projectId: null,
+			field,
+			oldValue: before[field],
+			newValue: after[field],
+		}));
+}
+
+export function diffProjectLimits(
+	before: ProjectLimit[],
+	after: ProjectLimit[],
+): ExecutionLimitChange[] {
+	const oldValues = new Map(
+		before.map(({ projectId, maxExecutions }) => [projectId, maxExecutions]),
+	);
+	const newValues = new Map(
+		after.map(({ projectId, maxExecutions }) => [projectId, maxExecutions]),
+	);
+
+	return [...new Set([...newValues.keys(), ...oldValues.keys()])]
+		.map(
+			(projectId): ExecutionLimitChange => ({
+				projectId,
+				field: 'projectMaxExecutions',
+				oldValue: oldValues.get(projectId) ?? null,
+				newValue: newValues.get(projectId) ?? null,
+			}),
+		)
+		.filter(({ oldValue, newValue }) => oldValue !== newValue);
 }

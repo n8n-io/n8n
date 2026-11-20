@@ -386,6 +386,30 @@ describe('CredentialTypeAccessDialog', () => {
 		expect(oauth).toBeEnabled();
 	});
 
+	it('reads the lock of a type only from the access of the current policy version', async () => {
+		mocks.fetchInstanceAccess.mockImplementation(async (_context, kind: string) =>
+			access(
+				kind === 'node'
+					? NODE_ACCESS
+					: {
+							...CREDENTIAL_ACCESS,
+							airtableTokenApi: { access: 'delegate', matchedRuleId: 'rule-1' },
+						},
+			),
+		);
+		const { getByTestId } = await setup('airtableApi');
+		mocks.fetchInstanceAccess.mockRejectedValue(new Error('offline'));
+
+		await fireEvent.click(
+			within(getByTestId('credential-type-access-credential')).getByTestId('type-access-select'),
+		);
+		await waitFor(() => expect(toast.showError).toHaveBeenCalled());
+
+		const [, token] = selectsIn(getByTestId('credential-type-access-related-credential'));
+		expect(token).not.toHaveAttribute('data-value');
+		expect(token).toBeEnabled();
+	});
+
 	it('closes on Done', async () => {
 		const { getByTestId, emitted } = await setup('airtableApi');
 

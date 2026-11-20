@@ -1,4 +1,4 @@
-import type { InstanceTypeAccessResponse } from '@n8n/api-types';
+import type { InstanceTypeAccessResponse, NodeTypeUsageResponse } from '@n8n/api-types';
 import { createComponentRenderer } from '@n8n/frontend-test-utils';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useRBACStore } from '@n8n/stores/rbac.store';
@@ -12,6 +12,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useInstancePolicyStore } from './instance-policy.store';
 import NodeTypesTab from './NodeTypesTab.vue';
 import { findPopupItem, MENU_ITEM } from '../__tests__/popups';
+import { policyTableCells } from '../__tests__/table';
 import type { InstancePolicy, NodeTypeSummary } from '../type-availability-policies.api';
 import { useTypeAvailabilityPoliciesStore } from '../type-availability-policies.store';
 
@@ -20,6 +21,7 @@ const mocks = vi.hoisted(() => ({
 	saveInstancePolicy: vi.fn(),
 	fetchInstanceAccess: vi.fn(),
 	fetchNodeTypeSummaries: vi.fn(),
+	fetchNodeTypeUsage: vi.fn(),
 	showError: vi.fn(),
 	showMessage: vi.fn(),
 }));
@@ -74,8 +76,7 @@ const setup = async (arrangeAccessReads?: () => void) => {
 	return renderTab({ pinia });
 };
 
-const accessCell = (getByTestId: (id: string) => HTMLElement, name = SLACK) =>
-	getByTestId(`instance-policy-access-${name}`);
+const { accessCell, usageCells } = policyTableCells(SLACK);
 
 const restrict = async (getByTestId: (id: string) => HTMLElement, name = SLACK) => {
 	await userEvent.click(accessCell(getByTestId, name));
@@ -88,6 +89,19 @@ describe('NodeTypesTab', () => {
 		mocks.fetchInstancePolicy.mockResolvedValue(policy(1));
 		mocks.fetchInstanceAccess.mockResolvedValue(access(1));
 		mocks.fetchNodeTypeSummaries.mockResolvedValue(SUMMARIES);
+		mocks.fetchNodeTypeUsage.mockResolvedValue({
+			[SLACK]: { uses: 3, workflows: 2, activeWorkflows: 1, projects: 1 },
+		} satisfies NodeTypeUsageResponse);
+	});
+
+	// `useTypeUsage.test.ts` covers the loading and failure states.
+	it('shows the usage of each node type, and 0 for a node type that no workflow uses', async () => {
+		const { findByText, getByTestId } = await setup();
+
+		await findByText('Slack Trigger');
+		await waitFor(() => expect(usageCells(getByTestId)).toEqual(['1', '3', '2', '1']));
+		expect(usageCells(getByTestId, SLACK_TRIGGER)).toEqual(['0', '0', '0', '0']);
+		expect(mocks.fetchNodeTypeUsage).toHaveBeenCalledTimes(1);
 	});
 
 	it('gives a node type and its trigger a row each, with their access', async () => {

@@ -1,10 +1,15 @@
 <script setup lang="ts">
 import { useDocumentTitle } from '@n8n/composables/useDocumentTitle';
-import { N8nSegmentControl, N8nSettingsLayout, N8nSettingsPageHeader } from '@n8n/design-system';
+import {
+	N8nPreviewBadge,
+	N8nSegmentControl,
+	N8nSettingsLayout,
+	N8nSettingsPageHeader,
+} from '@n8n/design-system';
 import { VIEWS } from '@n8n/frontend-constants/views';
 import { useI18n } from '@n8n/i18n';
 import { createReusableTemplate } from '@vueuse/core';
-import { computed, onMounted } from 'vue';
+import { computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import CredentialTypesTab from './CredentialTypesTab.vue';
@@ -71,6 +76,27 @@ function closeDetails() {
 	void router.replace({ query: queryWithoutDetails() });
 }
 
+// The server lists every type of a kind, so the dialog of a name that it does not list closes. The
+// access from an earlier visit can miss types installed since, so only a read of this visit decides.
+const accessBeforeVisit = { ...instancePolicy.typeAccess };
+const detailsTypeUnknown = computed(() => {
+	if (!details.value) return false;
+	const access = instancePolicy.typeAccess[details.value.kind];
+	return (
+		!!access &&
+		access !== accessBeforeVisit[details.value.kind] &&
+		!access.types.has(details.value.name)
+	);
+});
+
+watch(
+	detailsTypeUnknown,
+	(unknown) => {
+		if (unknown) closeDetails();
+	},
+	{ immediate: true },
+);
+
 // A user who skips the landing page on the way in goes back to Policies.
 const back = computed(() =>
 	entryRouteName.value === POLICIES_LANDING_VIEW
@@ -106,7 +132,11 @@ onMounted(() => {
 			:title="i18n.baseText('typeAvailabilityPolicies.instancePolicy.title')"
 			:description="i18n.baseText('typeAvailabilityPolicies.instancePolicy.description')"
 			:docs-url="INSTANCE_POLICY_DOCS_URL"
-		/>
+		>
+			<template #titleTrailing>
+				<N8nPreviewBadge size="xsmall" data-test-id="instance-policy-preview-badge" />
+			</template>
+		</N8nSettingsPageHeader>
 		<DefineTabs>
 			<N8nSegmentControl
 				v-model="activeTab"
