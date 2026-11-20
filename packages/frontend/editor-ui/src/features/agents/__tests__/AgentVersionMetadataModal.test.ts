@@ -1,11 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { enableAutoUnmount, mount, flushPromises } from '@vue/test-utils';
-import { createTestingPinia } from '@pinia/testing';
 import { i18nInstance } from '@n8n/i18n';
-import { mockedStore } from '@/__tests__/utils';
-import { createTestProject } from '@/features/collaboration/projects/__tests__/utils';
-import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import { defineComponent } from 'vue';
 import { createMemoryHistory, createRouter } from 'vue-router';
 import { AGENT_N8N_CHAT_VIEW } from '../constants';
@@ -37,20 +32,11 @@ function createTestRouter() {
 	});
 }
 
-const n8nChat = { projectId: 'team-1', agentId: 'agent-1' };
+const n8nChatAgentId = 'agent-1';
 
 function render(data: Partial<AgentVersionMetadataModalData> = {}, stubModal = true) {
 	const onSubmit = vi.fn().mockResolvedValue(true);
 	const onClose = vi.fn();
-	const pinia = createTestingPinia();
-	const projectsStore = mockedStore(useProjectsStore);
-	projectsStore.currentProject = createTestProject({
-		id: 'team-1',
-		name: 'Marketing',
-		type: ProjectTypes.Team,
-	});
-	projectsStore.personalProject = null;
-	projectsStore.myProjects = [];
 	const wrapper = mount(AgentVersionMetadataModal, {
 		attachTo: document.body,
 		props: {
@@ -64,7 +50,7 @@ function render(data: Partial<AgentVersionMetadataModalData> = {}, stubModal = t
 			},
 		},
 		global: {
-			plugins: [pinia, i18nInstance, createTestRouter()],
+			plugins: [i18nInstance, createTestRouter()],
 			stubs: { AgentModal: stubModal ? AgentModalTestStub : false },
 		},
 	});
@@ -75,27 +61,35 @@ function render(data: Partial<AgentVersionMetadataModalData> = {}, stubModal = t
 beforeEach(() => vi.clearAllMocks());
 
 describe('AgentVersionMetadataModal', () => {
-	const N8N_CHAT_CALLOUT = '[data-testid="agent-version-metadata-n8n-chat"]';
+	const PUBLISH_CALLOUT = '[data-testid="agent-version-metadata-publish-callout"]';
 	const PUBLISH_AND_TALK = '[data-testid="agent-version-metadata-publish-and-talk"]';
 	const SUBMIT = '[data-testid="agent-version-metadata-submit"]';
 
-	it('tells the user that publishing adds the agent to n8n Chat for the project', () => {
-		const { wrapper } = render({ mode: 'publish', n8nChat });
+	it.each([undefined, n8nChatAgentId])(
+		'tells the user that later changes need another publish (n8nChatAgentId %s)',
+		(agentId) => {
+			const { wrapper } = render({ mode: 'publish', n8nChatAgentId: agentId });
 
-		expect(wrapper.get(N8N_CHAT_CALLOUT).text()).toBe(
-			'This agent will be available in n8n Chat to everyone in the Marketing project.',
-		);
+			expect(wrapper.get(PUBLISH_CALLOUT).text()).toBe(
+				'Any changes you make to this agent will not be published until you publish it again.',
+			);
+		},
+	);
+
+	it('shows no publish callout when the user only names a version', () => {
+		const { wrapper } = render({ mode: 'edit', n8nChatAgentId });
+
+		expect(wrapper.find(PUBLISH_CALLOUT).exists()).toBe(false);
 	});
 
 	it.each([
-		{ mode: 'publish' as const, n8nChat: undefined },
-		{ mode: 'edit' as const, n8nChat },
+		{ mode: 'publish' as const, n8nChatAgentId: undefined },
+		{ mode: 'edit' as const, n8nChatAgentId },
 	])(
-		'shows no n8n Chat callout or "Publish and talk to agent" in $mode mode with n8nChat $n8nChat',
-		({ mode, n8nChat: chat }) => {
-			const { wrapper } = render({ mode, n8nChat: chat });
+		'shows no "Publish and talk to agent" in $mode mode with n8nChatAgentId $n8nChatAgentId',
+		({ mode, n8nChatAgentId: agentId }) => {
+			const { wrapper } = render({ mode, n8nChatAgentId: agentId });
 
-			expect(wrapper.find(N8N_CHAT_CALLOUT).exists()).toBe(false);
 			expect(wrapper.find(PUBLISH_AND_TALK).exists()).toBe(false);
 		},
 	);
@@ -110,7 +104,7 @@ describe('AgentVersionMetadataModal', () => {
 		afterEach(() => vi.restoreAllMocks());
 
 		it('moves Cancel to the left of the footer', async () => {
-			const { wrapper, onClose } = render({ mode: 'publish', n8nChat }, false);
+			const { wrapper, onClose } = render({ mode: 'publish', n8nChatAgentId }, false);
 			await flushPromises();
 
 			const footerActions = document.querySelector('[data-testid="agent-modal-footer-actions"]');
@@ -136,7 +130,7 @@ describe('AgentVersionMetadataModal', () => {
 		});
 
 		it('demotes Publish to a secondary button', () => {
-			const { wrapper } = render({ mode: 'publish', n8nChat });
+			const { wrapper } = render({ mode: 'publish', n8nChatAgentId });
 
 			expect(wrapper.get(PUBLISH_AND_TALK).text()).toBe('Publish and talk to agent');
 			expect(wrapper.get(SUBMIT).attributes('class')).toContain('outline');
@@ -144,7 +138,7 @@ describe('AgentVersionMetadataModal', () => {
 
 		it('publishes, then opens the agent in n8n Chat in a new tab', async () => {
 			const { tab, open } = stubWindowOpen();
-			const { wrapper, onSubmit, onClose } = render({ mode: 'publish', n8nChat });
+			const { wrapper, onSubmit, onClose } = render({ mode: 'publish', n8nChatAgentId });
 
 			await wrapper.get(PUBLISH_AND_TALK).trigger('click');
 			await flushPromises();
@@ -159,7 +153,7 @@ describe('AgentVersionMetadataModal', () => {
 
 		it('closes the new tab when the publish fails', async () => {
 			const { tab } = stubWindowOpen();
-			const { wrapper, onSubmit, onClose } = render({ mode: 'publish', n8nChat });
+			const { wrapper, onSubmit, onClose } = render({ mode: 'publish', n8nChatAgentId });
 			onSubmit.mockResolvedValueOnce(false);
 
 			await wrapper.get(PUBLISH_AND_TALK).trigger('click');
@@ -172,7 +166,7 @@ describe('AgentVersionMetadataModal', () => {
 
 		it('opens no tab when Publish is used', async () => {
 			const { open } = stubWindowOpen();
-			const { wrapper, onSubmit } = render({ mode: 'publish', n8nChat });
+			const { wrapper, onSubmit } = render({ mode: 'publish', n8nChatAgentId });
 
 			await wrapper.get(SUBMIT).trigger('click');
 			await flushPromises();

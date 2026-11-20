@@ -7,13 +7,11 @@ import {
 } from '@n8n/api-types';
 import { N8nButton, N8nCallout, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { I18nT } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import { generateVersionLabelFromId } from '@n8n/composables/useWorkflowVersionLabel';
 import { useUIStore } from '@/app/stores/ui.store';
 import WorkflowVersionForm from '@/app/components/WorkflowVersionForm.vue';
 import { AGENT_N8N_CHAT_VIEW } from '../constants';
-import { useAgentProjectBreadcrumb } from '../composables/useAgentProjectBreadcrumb';
 import AgentModal from './modals/AgentModal.vue';
 
 type SubmitAction = 'submit' | 'publishAndTalk';
@@ -23,8 +21,8 @@ export type AgentVersionMetadataModalData = {
 	versionId: string;
 	name?: string | null;
 	description?: string | null;
-	/** Set when publishing adds the agent to n8n Chat for this project. */
-	n8nChat?: { projectId: string; agentId: string };
+	/** Set when publishing adds this agent to n8n Chat. */
+	n8nChatAgentId?: string;
 	onSubmit: (metadata: UpdateAgentVersionDto) => Promise<boolean>;
 	onClose: (saved: boolean) => void;
 };
@@ -34,11 +32,7 @@ const i18n = useI18n();
 const uiStore = useUIStore();
 const router = useRouter();
 const open = computed(() => uiStore.modalsById[props.modalName]?.open === true);
-const { projectName: n8nChatProjectName } = useAgentProjectBreadcrumb(
-	computed(() => props.data.n8nChat?.projectId ?? ''),
-);
-const canTalkToAgent = computed(() => props.data.mode === 'publish' && !!props.data.n8nChat);
-const showN8nChatCallout = computed(() => canTalkToAgent.value && !!n8nChatProjectName.value);
+const canTalkToAgent = computed(() => props.data.mode === 'publish' && !!props.data.n8nChatAgentId);
 const versionForm = useTemplateRef<InstanceType<typeof WorkflowVersionForm>>('versionForm');
 const name = ref(
 	props.data.name?.trim() ? props.data.name : generateVersionLabelFromId(props.data.versionId),
@@ -84,7 +78,7 @@ async function submit(action: SubmitAction = 'submit') {
 
 	// Open the tab before the publish request: browsers block `window.open` after an await.
 	const chatTab =
-		action === 'publishAndTalk' && props.data.n8nChat ? window.open('', '_blank') : null;
+		action === 'publishAndTalk' && props.data.n8nChatAgentId ? window.open('', '_blank') : null;
 	if (chatTab) chatTab.opener = null;
 	let chatOpened = false;
 
@@ -100,10 +94,10 @@ async function submit(action: SubmitAction = 'submit') {
 		) {
 			uiStore.closeModal(props.modalName);
 			props.data.onClose(true);
-			if (chatTab && props.data.n8nChat) {
+			if (chatTab && props.data.n8nChatAgentId) {
 				chatTab.location.href = router.resolve({
 					name: AGENT_N8N_CHAT_VIEW,
-					params: { agentId: props.data.n8nChat.agentId },
+					params: { agentId: props.data.n8nChatAgentId },
 				}).href;
 				chatOpened = true;
 			}
@@ -126,16 +120,12 @@ async function submit(action: SubmitAction = 'submit') {
 		@update:open="!$event && close()"
 	>
 		<N8nCallout
-			v-if="showN8nChatCallout"
+			v-if="data.mode === 'publish'"
 			theme="info"
-			:class="$style.n8nChatCallout"
-			data-testid="agent-version-metadata-n8n-chat"
+			:class="$style.publishCallout"
+			data-testid="agent-version-metadata-publish-callout"
 		>
-			<I18nT keypath="agents.versionHistory.metadata.n8nChatCallout" scope="global">
-				<template #projectName
-					><strong>{{ n8nChatProjectName }}</strong></template
-				>
-			</I18nT>
+			{{ i18n.baseText('agents.versionHistory.metadata.changesNotPublished') }}
 		</N8nCallout>
 		<WorkflowVersionForm
 			ref="versionForm"
@@ -187,7 +177,7 @@ async function submit(action: SubmitAction = 'submit') {
 </template>
 
 <style module lang="scss">
-.n8nChatCallout {
+.publishCallout {
 	margin-bottom: var(--spacing--sm);
 }
 </style>
