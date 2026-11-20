@@ -1,3 +1,14 @@
+## [2.49.3](https://github.com/n8n-io/n8n/compare/n8n@2.49.2...n8n@2.49.3) (2026-11-20)
+
+
+### Bug Fixes
+
+* **core, HTTP Request Node:** Handle empty response bodies in pagination ([#44443](https://github.com/n8n-io/n8n/issues/44443)) ([3443f12](https://github.com/n8n-io/n8n/commit/3443f12caac4f1f42128e438dcfdfe20ab05164f))
+* **core:** End memory guard hold when hold-limit stop frees no memory ([#44462](https://github.com/n8n-io/n8n/issues/44462)) ([2e2d425](https://github.com/n8n-io/n8n/commit/2e2d425990c74192b10fb63c42e7d95d6489b3fc))
+* **core:** Store plain input data in the error output of scripting nodes ([#44529](https://github.com/n8n-io/n8n/issues/44529)) ([102c0a9](https://github.com/n8n-io/n8n/commit/102c0a91b759702514e766e912e710dbc4b7e128))
+* **editor:** Keep announcements interactive above the account menu ([#44471](https://github.com/n8n-io/n8n/issues/44471)) ([583d187](https://github.com/n8n-io/n8n/commit/583d187dde251ff3417f0086c63576e12818b64b))
+
+
 ## [2.49.2](https://github.com/n8n-io/n8n/compare/n8n@2.49.1...n8n@2.49.2) (2026-11-19)
 
 
