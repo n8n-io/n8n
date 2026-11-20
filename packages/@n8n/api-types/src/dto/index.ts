@@ -892,6 +892,11 @@ export {
 	type PromotionReviewType,
 	type PromotionReviewTab,
 } from './promotions/promotion-review.dto';
+export {
+	PromotionSettingsPublicDto,
+	UpdatePromotionSettingsDto,
+	type PromotionSettings,
+} from './promotions/promotion-settings.dto';
 
 export {
 	ScimConfigPatchDto,
