@@ -374,6 +374,35 @@ describe('dropUnprovenIds', () => {
 	});
 });
 
+describe('dropUnprovenIds with opaque ids', () => {
+	const real = '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms';
+	const source = JSON.stringify([
+		{ spreadsheetId: real },
+		[],
+		{ path: `/v4/spreadsheets/${real}` },
+	]);
+
+	it('keeps an id that the real data shows word for word', () => {
+		expect(
+			dropUnprovenIds({ spreadsheets: [{ id: real, title: 'x' }] }, new Set(), source),
+		).toEqual({ spreadsheets: [{ id: real, title: 'x' }] });
+	});
+
+	it('drops an id that the real data does not show, also in another case', () => {
+		const out = dropUnprovenIds(
+			{ items: [{ id: real.toLowerCase() }, { id: 'madeUpId12345' }, { id: 'abc' }] },
+			new Set(),
+			source,
+		);
+
+		expect(out).toEqual({ items: [{}, {}, {}] });
+	});
+
+	it('still checks the id of a data source as a UUID', () => {
+		expect(dropUnprovenIds({ data_source_id: real }, new Set(), source)).toEqual({});
+	});
+});
+
 describe('PlanHydrator with invented ids', () => {
 	it('seeds without the ids that are not in the real data', async () => {
 		const plan = JSON.stringify({

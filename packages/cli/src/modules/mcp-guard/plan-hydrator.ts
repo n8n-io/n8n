@@ -45,6 +45,8 @@ export interface PlanHydratorDeps {
 	gymFirst?: ReadonlySet<string>;
 	// The gym takes a seed of an entity that it has and adds the new children, see SeededEntities.
 	keepParents?: boolean;
+	// Ids are no UUIDs. An id that the real data shows word for word stays in the plan.
+	opaqueIds?: boolean;
 }
 
 interface Verify {
@@ -430,11 +432,15 @@ export class PlanHydrator implements Hydrator {
 		const { admin, tenant } = this.deps;
 		const proven = provenIds(ctx.result, ctx.reads, ctx.args);
 		const known = knownText(ctx.result, ctx.reads, ctx.args);
+		// Case matters for an id such as a spreadsheet id, so this text keeps the case.
+		const opaqueSource = this.deps.opaqueIds
+			? JSON.stringify([ctx.result, ctx.reads, ctx.args])
+			: undefined;
 		const flagged: UnprovenLiteral[] = [];
 		// Pointers first, then ids and text: only data of the real call is left.
 		const clean = (value: unknown): unknown => {
 			const checked = removeUnprovenLiterals(
-				dropUnprovenIds(fillPointers(value, ctx), proven),
+				dropUnprovenIds(fillPointers(value, ctx), proven, opaqueSource),
 				known,
 			);
 			flagged.push(...checked.flagged);

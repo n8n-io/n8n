@@ -5,6 +5,11 @@ import { looksLikeId, type HttpToolArgs } from './http-tool-caller';
 export interface HttpVendorProfile {
 	// Name of the vendor file.
 	name: string;
+	// The service name that the gym knows, when it differs from the vendor file name.
+	gymService?: string;
+	// True when the real ids are no UUIDs (Google ids). The hydration then keeps an id that the real
+	// data shows word for word, so the agent can use the real id in the gym.
+	opaqueIds?: boolean;
 	// Local gym addresses. Env vars override them, see http-guard.service.ts.
 	defaultAdminUrl: string;
 	defaultGymUrl: string;
