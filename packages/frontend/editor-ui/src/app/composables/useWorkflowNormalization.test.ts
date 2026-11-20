@@ -12,6 +12,8 @@ import { mockedStore } from '@/__tests__/utils';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { SET_NODE_TYPE } from '@/app/constants';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
+import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useWorkflowNormalization } from '@/app/composables/useWorkflowNormalization';
 
 describe('useWorkflowNormalization', () => {
@@ -135,6 +137,45 @@ describe('useWorkflowNormalization', () => {
 			const { nodes } = normalizeWorkflowData(workflow);
 
 			expect(nodes).toEqual([expect.objectContaining({ parameters: { custom: 'value' } })]);
+		});
+
+		it('should report when a missing credential ID was replaced by a name match', () => {
+			mockedStore(useCredentialsStore).getCredentialsByType = vi
+				.fn()
+				.mockReturnValue([mock<ICredentialsResponse>({ id: 'new-id', name: 'Login API' })]);
+			const workflow = createTestWorkflow({
+				nodes: [
+					createTestNode({
+						credentials: { httpBasicAuth: { id: 'deleted-id', name: 'Login API' } },
+					}),
+				],
+				connections: {},
+			});
+
+			const { normalizeWorkflowData } = useWorkflowNormalization();
+			const { nodes, credentialsReplaced } = normalizeWorkflowData(workflow);
+
+			expect(credentialsReplaced).toBe(true);
+			expect(nodes[0].credentials?.httpBasicAuth).toEqual({ id: 'new-id', name: 'Login API' });
+		});
+
+		it('should not report a credential replacement when all credential IDs exist', () => {
+			mockedStore(useCredentialsStore).getCredentialsByType = vi
+				.fn()
+				.mockReturnValue([mock<ICredentialsResponse>({ id: 'existing-id', name: 'Login API' })]);
+			const workflow = createTestWorkflow({
+				nodes: [
+					createTestNode({
+						credentials: { httpBasicAuth: { id: 'existing-id', name: 'Login API' } },
+					}),
+				],
+				connections: {},
+			});
+
+			const { normalizeWorkflowData } = useWorkflowNormalization();
+			const { credentialsReplaced } = normalizeWorkflowData(workflow);
+
+			expect(credentialsReplaced).toBe(false);
 		});
 
 		it('should not mutate the input nodes array', () => {
