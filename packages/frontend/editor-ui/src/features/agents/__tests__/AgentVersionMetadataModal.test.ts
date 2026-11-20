@@ -1,5 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { enableAutoUnmount, mount, flushPromises } from '@vue/test-utils';
+import { createTestingPinia } from '@pinia/testing';
+import { i18nInstance } from '@n8n/i18n';
+import { mockedStore } from '@/__tests__/utils';
+import { createTestProject } from '@/features/collaboration/projects/__tests__/utils';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import AgentVersionMetadataModal, {
 	type AgentVersionMetadataModalData,
 } from '../components/AgentVersionMetadataModal.vue';
@@ -16,6 +22,15 @@ enableAutoUnmount(afterEach);
 function render(data: Partial<AgentVersionMetadataModalData> = {}, stubModal = true) {
 	const onSubmit = vi.fn().mockResolvedValue(true);
 	const onClose = vi.fn();
+	const pinia = createTestingPinia();
+	const projectsStore = mockedStore(useProjectsStore);
+	projectsStore.currentProject = createTestProject({
+		id: 'team-1',
+		name: 'Marketing',
+		type: ProjectTypes.Team,
+	});
+	projectsStore.personalProject = null;
+	projectsStore.myProjects = [];
 	const wrapper = mount(AgentVersionMetadataModal, {
 		attachTo: document.body,
 		props: {
@@ -28,7 +43,10 @@ function render(data: Partial<AgentVersionMetadataModalData> = {}, stubModal = t
 				...data,
 			},
 		},
-		global: { stubs: { AgentModal: stubModal ? AgentModalTestStub : false } },
+		global: {
+			plugins: [pinia, i18nInstance],
+			stubs: { AgentModal: stubModal ? AgentModalTestStub : false },
+		},
 	});
 
 	return { wrapper, onSubmit, onClose };
@@ -37,6 +55,28 @@ function render(data: Partial<AgentVersionMetadataModalData> = {}, stubModal = t
 beforeEach(() => vi.clearAllMocks());
 
 describe('AgentVersionMetadataModal', () => {
+	const N8N_CHAT_CALLOUT = '[data-testid="agent-version-metadata-n8n-chat"]';
+
+	it('tells the user that publishing adds the agent to n8n Chat for the project', () => {
+		const { wrapper } = render({ mode: 'publish', n8nChatProjectId: 'team-1' });
+
+		expect(wrapper.get(N8N_CHAT_CALLOUT).text()).toBe(
+			'This agent will be available in n8n Chat to everyone in the Marketing project.',
+		);
+	});
+
+	it.each([
+		{ mode: 'publish' as const, n8nChatProjectId: undefined },
+		{ mode: 'edit' as const, n8nChatProjectId: 'team-1' },
+	])(
+		'shows no n8n Chat callout in $mode mode with n8nChatProjectId $n8nChatProjectId',
+		({ mode, n8nChatProjectId }) => {
+			const { wrapper } = render({ mode, n8nChatProjectId });
+
+			expect(wrapper.find(N8N_CHAT_CALLOUT).exists()).toBe(false);
+		},
+	);
+
 	it('requires the workflow name field and keeps the character limits', () => {
 		const { wrapper } = render({ name: 'Release', description: 'First line\nSecond line' });
 		expect(wrapper.findComponent(WorkflowVersionForm).props('nameRequired')).toBe(true);

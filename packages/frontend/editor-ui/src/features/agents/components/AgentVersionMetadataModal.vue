@@ -5,11 +5,13 @@ import {
 	WORKFLOW_VERSION_DESCRIPTION_MAX_LENGTH,
 	type UpdateAgentVersionDto,
 } from '@n8n/api-types';
-import { N8nButton, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nCallout, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { I18nT } from 'vue-i18n';
 import { generateVersionLabelFromId } from '@n8n/composables/useWorkflowVersionLabel';
 import { useUIStore } from '@/app/stores/ui.store';
 import WorkflowVersionForm from '@/app/components/WorkflowVersionForm.vue';
+import { useAgentProjectBreadcrumb } from '../composables/useAgentProjectBreadcrumb';
 import AgentModal from './modals/AgentModal.vue';
 
 export type AgentVersionMetadataModalData = {
@@ -17,6 +19,8 @@ export type AgentVersionMetadataModalData = {
 	versionId: string;
 	name?: string | null;
 	description?: string | null;
+	/** Set when publishing adds the agent to n8n Chat for this project. */
+	n8nChatProjectId?: string;
 	onSubmit: (metadata: UpdateAgentVersionDto) => Promise<boolean>;
 	onClose: (saved: boolean) => void;
 };
@@ -25,6 +29,13 @@ const props = defineProps<{ modalName: string; data: AgentVersionMetadataModalDa
 const i18n = useI18n();
 const uiStore = useUIStore();
 const open = computed(() => uiStore.modalsById[props.modalName]?.open === true);
+const { projectName: n8nChatProjectName } = useAgentProjectBreadcrumb(
+	computed(() => props.data.n8nChatProjectId ?? ''),
+);
+const showN8nChatCallout = computed(
+	() =>
+		props.data.mode === 'publish' && !!props.data.n8nChatProjectId && !!n8nChatProjectName.value,
+);
 const versionForm = useTemplateRef<InstanceType<typeof WorkflowVersionForm>>('versionForm');
 const name = ref(
 	props.data.name?.trim() ? props.data.name : generateVersionLabelFromId(props.data.versionId),
@@ -94,6 +105,18 @@ async function submit() {
 		data-testid="agent-version-metadata-modal"
 		@update:open="!$event && close()"
 	>
+		<N8nCallout
+			v-if="showN8nChatCallout"
+			theme="info"
+			:class="$style.n8nChatCallout"
+			data-testid="agent-version-metadata-n8n-chat"
+		>
+			<I18nT keypath="agents.versionHistory.metadata.n8nChatCallout" scope="global">
+				<template #projectName
+					><strong>{{ n8nChatProjectName }}</strong></template
+				>
+			</I18nT>
+		</N8nCallout>
 		<WorkflowVersionForm
 			ref="versionForm"
 			v-model:version-name="name"
@@ -120,3 +143,9 @@ async function submit() {
 		</template>
 	</AgentModal>
 </template>
+
+<style module lang="scss">
+.n8nChatCallout {
+	margin-bottom: var(--spacing--sm);
+}
+</style>
