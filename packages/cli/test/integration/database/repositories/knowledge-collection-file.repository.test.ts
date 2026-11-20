@@ -74,14 +74,19 @@ describe('Knowledge collection repositories', () => {
 	}
 
 	describe('KnowledgeCollectionRepository', () => {
-		it('finds a collection by id', async () => {
+		it('finds a collection by id in its home project only', async () => {
 			const collectionId = await createCollection();
+			const otherProjectId = (await createTeamProject()).id;
 
-			await expect(collectionRepo.findById(collectionId, {})).resolves.toMatchObject({
-				id: collectionId,
-				projectId,
-			});
-			await expect(collectionRepo.findById('missing', {})).resolves.toBeNull();
+			await expect(
+				collectionRepo.findByIdAndProjectId(collectionId, projectId, {}),
+			).resolves.toMatchObject({ id: collectionId, projectId });
+			await expect(
+				collectionRepo.findByIdAndProjectId(collectionId, otherProjectId, {}),
+			).resolves.toBeNull();
+			await expect(
+				collectionRepo.findByIdAndProjectId('missing', projectId, {}),
+			).resolves.toBeNull();
 		});
 
 		it('finds the agents that use a collection', async () => {

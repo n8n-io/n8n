@@ -6,8 +6,6 @@ import type { KnowledgeCollectionService } from '@/modules/knowledge/collections
 import { KnowledgeCollectionAgentsController } from '../knowledge-collection-agents.controller';
 import type { AgentRepository } from '../repositories/agent.repository';
 
-const user = { id: 'user-1' };
-
 function makeController() {
 	const collectionService = mock<KnowledgeCollectionService>();
 	const agentRepository = mock<AgentRepository>();
@@ -28,12 +26,15 @@ describe('KnowledgeCollectionAgentsController', () => {
 		]);
 
 		await expect(
-			controller.listAgents({ user } as never, undefined as never, 'collection-1'),
+			controller.listAgents(undefined as never, undefined as never, 'project-1', 'collection-1'),
 		).resolves.toEqual([
 			{ id: 'agent-1', name: 'Alpha', projectId: 'project-1' },
 			{ id: 'agent-2', name: 'Beta', projectId: 'project-2' },
 		]);
-		expect(collectionService.listAgentIds).toHaveBeenCalledWith(user, 'collection-1');
+		expect(collectionService.listAgentIds).toHaveBeenCalledWith({
+			projectId: 'project-1',
+			collectionId: 'collection-1',
+		});
 		expect(agentRepository.findSummariesByIds).toHaveBeenCalledWith(['agent-1', 'agent-2']);
 	});
 
@@ -44,7 +45,7 @@ describe('KnowledgeCollectionAgentsController', () => {
 		);
 
 		await expect(
-			controller.listAgents({ user } as never, undefined as never, 'collection-1'),
+			controller.listAgents(undefined as never, undefined as never, 'project-1', 'collection-1'),
 		).rejects.toThrow(NotFoundError);
 		expect(agentRepository.findSummariesByIds).not.toHaveBeenCalled();
 	});

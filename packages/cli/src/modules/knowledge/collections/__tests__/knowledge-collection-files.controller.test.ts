@@ -16,6 +16,7 @@ vi.unmock('node:fs/promises');
 type UploadRequest = Parameters<KnowledgeCollectionFilesController['uploadFiles']>[0];
 
 const user = { id: 'user-1' };
+const projectId = 'project-1';
 const collectionId = 'collection-1';
 
 // A mock() request answers every unset property, so `fileUploadError` would always be set.
@@ -39,9 +40,9 @@ describe('KnowledgeCollectionFilesController', () => {
 		fileService.listFiles.mockResolvedValue(list);
 
 		await expect(
-			controller.listFiles({ user } as never, undefined as never, collectionId),
+			controller.listFiles(undefined as never, undefined as never, projectId, collectionId),
 		).resolves.toBe(list);
-		expect(fileService.listFiles).toHaveBeenCalledWith(user, collectionId);
+		expect(fileService.listFiles).toHaveBeenCalledWith({ projectId, collectionId });
 	});
 
 	describe('uploadFiles', () => {
@@ -51,17 +52,27 @@ describe('KnowledgeCollectionFilesController', () => {
 			fileService.uploadFiles.mockResolvedValue(uploaded);
 			const request = fakeUploadRequest();
 
-			await expect(controller.uploadFiles(request, undefined as never, collectionId)).resolves.toBe(
-				uploaded,
-			);
-			expect(fileService.uploadFiles).toHaveBeenCalledWith(user, collectionId, request.files);
+			await expect(
+				controller.uploadFiles(request, undefined as never, projectId, collectionId),
+			).resolves.toBe(uploaded);
+			expect(fileService.uploadFiles).toHaveBeenCalledWith({
+				user,
+				projectId,
+				collectionId,
+				files: request.files,
+			});
 		});
 
 		it('rejects an upload without files', async () => {
 			const { controller, fileService } = makeController();
 
 			await expect(
-				controller.uploadFiles(fakeUploadRequest({ files: [] }), undefined as never, collectionId),
+				controller.uploadFiles(
+					fakeUploadRequest({ files: [] }),
+					undefined as never,
+					projectId,
+					collectionId,
+				),
 			).rejects.toThrow('No files uploaded');
 			expect(fileService.uploadFiles).not.toHaveBeenCalled();
 		});
@@ -70,16 +81,18 @@ describe('KnowledgeCollectionFilesController', () => {
 			[new multer.MulterError('LIMIT_FILE_SIZE'), 'file_size'],
 			[new multer.MulterError('LIMIT_UNEXPECTED_FILE', 'files'), 'too_many_files'],
 		])('maps the multer error $code to its upload reason', async (fileUploadError, reason) => {
-			const { controller } = makeController();
+			const { controller, fileService } = makeController();
 
 			const upload = controller.uploadFiles(
 				fakeUploadRequest({ fileUploadError }),
 				undefined as never,
+				projectId,
 				collectionId,
 			);
 
 			await expect(upload).rejects.toThrow(KnowledgeUploadError);
 			await expect(upload).rejects.toMatchObject({ reason });
+			expect(fileService.uploadFiles).not.toHaveBeenCalled();
 		});
 
 		it('maps a multer error without a reason to a bad request', async () => {
@@ -88,6 +101,7 @@ describe('KnowledgeCollectionFilesController', () => {
 			const upload = controller.uploadFiles(
 				fakeUploadRequest({ fileUploadError: new multer.MulterError('LIMIT_FILE_COUNT') }),
 				undefined as never,
+				projectId,
 				collectionId,
 			);
 
@@ -103,13 +117,14 @@ describe('KnowledgeCollectionFilesController', () => {
 				controller.uploadFiles(
 					fakeUploadRequest({ fileUploadError: error }),
 					undefined as never,
+					projectId,
 					collectionId,
 				),
 			).rejects.toBe(error);
 		});
 
 		it('removes the temp files when it rejects the upload before the service runs', async () => {
-			const { controller } = makeController();
+			const { controller, fileService } = makeController();
 			const tempDir = await mkdtemp(path.join(tmpdir(), 'n8n-collection-controller-'));
 			const tempPath = path.join(tempDir, 'upload');
 			await writeFile(tempPath, 'hello');
@@ -122,10 +137,12 @@ describe('KnowledgeCollectionFilesController', () => {
 							fileUploadError: new multer.MulterError('LIMIT_FILE_COUNT'),
 						}),
 						undefined as never,
+						projectId,
 						collectionId,
 					),
 				).rejects.toThrow(BadRequestError);
 
+				expect(fileService.uploadFiles).not.toHaveBeenCalled();
 				await expect(access(tempPath)).rejects.toThrow();
 			} finally {
 				await rm(tempDir, { recursive: true, force: true });
@@ -139,9 +156,19 @@ describe('KnowledgeCollectionFilesController', () => {
 			fileService.deleteFile.mockResolvedValue();
 
 			await expect(
-				controller.deleteFile({ user } as never, undefined as never, collectionId, 'file-1'),
+				controller.deleteFile(
+					undefined as never,
+					undefined as never,
+					projectId,
+					collectionId,
+					'file-1',
+				),
 			).resolves.toEqual({ success: true });
-			expect(fileService.deleteFile).toHaveBeenCalledWith(user, collectionId, 'file-1');
+			expect(fileService.deleteFile).toHaveBeenCalledWith({
+				projectId,
+				collectionId,
+				fileId: 'file-1',
+			});
 		});
 	});
 });

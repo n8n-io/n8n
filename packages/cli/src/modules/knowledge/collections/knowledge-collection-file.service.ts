@@ -7,6 +7,7 @@ import { isUniqueConstraintError, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
+import { formatMbOrGb } from '@n8n/utils/number/bytes';
 
 import type { KnowledgeFile } from '../entities';
 import { KnowledgeFileStore } from '../files/knowledge-file-store';
@@ -15,7 +16,13 @@ import { KnowledgeUploadError } from '../files/knowledge-upload.error';
 import { cleanupUploadedTempFiles } from '../files/knowledge-upload.middleware';
 import { toKnowledgeCollectionFileDto, toKnowledgeContentFileName } from '../files/storage-naming';
 import { KnowledgeCollectionFileRepository } from '../repositories/knowledge-collection-file.repository';
-import { KnowledgeCollectionService } from './knowledge-collection.service';
+import {
+	KnowledgeCollectionService,
+	type KnowledgeCollectionRef,
+} from './knowledge-collection.service';
+
+/** The largest value of the `int` column `knowledge_file.fileSizeBytes`. */
+const MAX_FILE_SIZE_BYTES = 2_147_483_647;
 
 /** Upload, listing and deletion of the files of a knowledge collection. */
 @Service()
@@ -32,8 +39,11 @@ export class KnowledgeCollectionFileService {
 		this.logger = logger.scoped('knowledge');
 	}
 
-	async listFiles(user: User, collectionId: string): Promise<KnowledgeCollectionFileListResponse> {
-		await this.collectionService.getForUser(user, collectionId, 'agent:read');
+	async listFiles({
+		projectId,
+		collectionId,
+	}: KnowledgeCollectionRef): Promise<KnowledgeCollectionFileListResponse> {
+		await this.collectionService.getInProject({ projectId, collectionId });
 
 		const files = await this.fileRepository.findByCollectionId(collectionId, {});
 		return {
@@ -44,14 +54,19 @@ export class KnowledgeCollectionFileService {
 	}
 
 	/** Removes the multer temp files it was given, also when the upload is rejected. */
-	async uploadFiles(
-		user: User,
-		collectionId: string,
-		files: Express.Multer.File[],
-	): Promise<KnowledgeCollectionFileDto[]> {
+	async uploadFiles({
+		user,
+		projectId,
+		collectionId,
+		files,
+	}: KnowledgeCollectionRef & {
+		user: User;
+		files: Express.Multer.File[];
+	}): Promise<KnowledgeCollectionFileDto[]> {
 		try {
-			await this.collectionService.getForUser(user, collectionId, 'agent:update');
+			await this.collectionService.getInProject({ projectId, collectionId });
 			this.knowledgeFileService.validateUploadMetadata(files);
+			this.validateFileSizes(files);
 			await this.validateFileNames(collectionId, files);
 
 			const uploadedFiles: KnowledgeFile[] = [];
@@ -71,8 +86,12 @@ export class KnowledgeCollectionFileService {
 	}
 
 	/** Does nothing when the collection has no file with this id. */
-	async deleteFile(user: User, collectionId: string, fileId: string): Promise<void> {
-		await this.collectionService.getForUser(user, collectionId, 'agent:update');
+	async deleteFile({
+		projectId,
+		collectionId,
+		fileId,
+	}: KnowledgeCollectionRef & { fileId: string }): Promise<void> {
+		await this.collectionService.getInProject({ projectId, collectionId });
 
 		const file = await this.fileRepository.findByIdAndCollectionId(fileId, collectionId, {});
 		if (!file) {
@@ -89,6 +108,18 @@ export class KnowledgeCollectionFileService {
 					error: getErrorMessage(error),
 				});
 			});
+	}
+
+	/** Rejects a file that is too large for the size column. The configured limit has no upper bound. */
+	private validateFileSizes(files: Express.Multer.File[]) {
+		for (const file of files) {
+			if (file.size > MAX_FILE_SIZE_BYTES) {
+				throw new KnowledgeUploadError(
+					`"${file.originalname}" is too large. Files must be smaller than ${formatMbOrGb(MAX_FILE_SIZE_BYTES)}.`,
+					'file_size',
+				);
+			}
+		}
 	}
 
 	/**

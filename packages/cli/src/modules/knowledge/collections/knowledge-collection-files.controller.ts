@@ -1,12 +1,9 @@
-import { isAuthenticatedRequest, type AuthenticatedRequest } from '@n8n/db';
-import { Delete, Get, Param, Post, RestController } from '@n8n/decorators';
+import type { AuthenticatedRequest } from '@n8n/db';
+import { Delete, Get, Param, Post, ProjectScope, RestController } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import { BadRequestError, UnauthenticatedError } from '@n8n/errors';
-import { ensureError } from '@n8n/utils/errors/ensure-error';
-import type { RequestHandler, Response } from 'express';
+import { BadRequestError } from '@n8n/errors';
+import type { Response } from 'express';
 import multer from 'multer';
-
-import { reportError, sendErrorResponse } from '@/response-helper';
 
 import { KnowledgeUploadError } from '../files/knowledge-upload.error';
 import {
@@ -15,61 +12,40 @@ import {
 	multerFailureReason,
 } from '../files/knowledge-upload.middleware';
 import { KnowledgeCollectionFileService } from './knowledge-collection-file.service';
-import { KnowledgeCollectionService } from './knowledge-collection.service';
 
 const knowledgeUploadMiddleware = Container.get(KnowledgeUploadMiddleware);
 const KNOWLEDGE_FILES_FIELD = 'files';
 
 /**
- * Checks the collection before multer runs, so a user who cannot change the
- * collection gets that answer first and no file reaches the disk.
+ * The scope check of each route runs before multer, so a user who cannot
+ * change the collections of the project writes no file to the disk.
  */
-const requireCollectionUpdate: RequestHandler = async (req, res, next) => {
-	const { collectionId } = req.params;
-	try {
-		if (!isAuthenticatedRequest(req)) {
-			throw new UnauthenticatedError();
-		}
-		await Container.get(KnowledgeCollectionService).getForUser(
-			req.user,
-			collectionId,
-			'agent:update',
-		);
-	} catch (e) {
-		const error = ensureError(e);
-		reportError(error);
-		sendErrorResponse(res, error);
-		return;
-	}
-	next();
-};
-
-/**
- * The routes carry no scope decorator: the service checks the scope of the
- * user on the home project of the collection.
- */
-@RestController('/knowledge/collections')
+@RestController('/projects/:projectId/knowledge/collections')
 export class KnowledgeCollectionFilesController {
 	constructor(private readonly fileService: KnowledgeCollectionFileService) {}
 
 	@Get('/:collectionId/files')
+	@ProjectScope('agent:read')
 	async listFiles(
-		req: AuthenticatedRequest,
+		_req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
+		@Param('projectId') projectId: string,
 		@Param('collectionId') collectionId: string,
 	) {
-		return await this.fileService.listFiles(req.user, collectionId);
+		return await this.fileService.listFiles({ projectId, collectionId });
 	}
 
 	@Post('/:collectionId/files', {
-		middlewares: [requireCollectionUpdate, knowledgeUploadMiddleware.array(KNOWLEDGE_FILES_FIELD)],
+		middlewares: [knowledgeUploadMiddleware.array(KNOWLEDGE_FILES_FIELD)],
 	})
+	@ProjectScope('agent:update')
 	async uploadFiles(
-		req: AuthenticatedRequest & {
+		req: AuthenticatedRequest<{ projectId: string }> & {
 			files?: Express.Multer.File[];
 			fileUploadError?: Error;
 		},
 		_res: Response,
+		@Param('projectId') projectId: string,
 		@Param('collectionId') collectionId: string,
 	) {
 		const files = req.files ?? [];
@@ -94,17 +70,19 @@ export class KnowledgeCollectionFilesController {
 			throw error;
 		}
 
-		return await this.fileService.uploadFiles(req.user, collectionId, files);
+		return await this.fileService.uploadFiles({ user: req.user, projectId, collectionId, files });
 	}
 
 	@Delete('/:collectionId/files/:fileId')
+	@ProjectScope('agent:update')
 	async deleteFile(
-		req: AuthenticatedRequest,
+		_req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
+		@Param('projectId') projectId: string,
 		@Param('collectionId') collectionId: string,
 		@Param('fileId') fileId: string,
 	) {
-		await this.fileService.deleteFile(req.user, collectionId, fileId);
+		await this.fileService.deleteFile({ projectId, collectionId, fileId });
 		return { success: true };
 	}
 }

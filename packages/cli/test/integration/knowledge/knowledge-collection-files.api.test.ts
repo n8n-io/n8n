@@ -3,6 +3,9 @@ import { BinaryDataRepository, type Project, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
+import { mkdtemp, readdir, rm } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
 
 import { AgentKnowledgeDependency, KnowledgeCollection } from '@/modules/knowledge/entities';
 import { KnowledgeConfig } from '@/modules/knowledge/knowledge.config';
@@ -48,7 +51,9 @@ describe('knowledge collection file routes', () => {
 			});
 	});
 
-	const filesPath = () => `/knowledge/collections/${collectionId}/files`;
+	const collectionPath = (projectId = project.id) =>
+		`/projects/${projectId}/knowledge/collections/${collectionId}`;
+	const filesPath = () => `${collectionPath()}/files`;
 
 	async function upload(user: User, filename: string, content = 'hello') {
 		return await server
@@ -103,26 +108,52 @@ describe('knowledge collection file routes', () => {
 		await server.authAgentFor(viewer).delete(`${filesPath()}/any-file`).expect(403);
 	});
 
-	it('answers 404 to a user outside the home project', async () => {
-		await server.authAgentFor(outsider).get(filesPath()).expect(404);
-		await server.authAgentFor(outsider).delete(`${filesPath()}/any-file`).expect(404);
+	it('answers 403 to a user outside the home project', async () => {
+		await server.authAgentFor(outsider).get(filesPath()).expect(403);
+		await server.authAgentFor(outsider).delete(`${filesPath()}/any-file`).expect(403);
+		await server.authAgentFor(outsider).get(`${collectionPath()}/agents`).expect(403);
+	});
+
+	it('answers 404 for a collection of another project', async () => {
+		const otherProject = await createTeamProject('Sales', await createOwner());
+		await linkUserToProject(editor, otherProject, 'project:editor');
+		const otherPath = collectionPath(otherProject.id);
+
+		await server.authAgentFor(editor).get(`${otherPath}/files`).expect(404);
+		await server.authAgentFor(editor).delete(`${otherPath}/files/any-file`).expect(404);
+		await server.authAgentFor(editor).get(`${otherPath}/agents`).expect(404);
 		await server
-			.authAgentFor(outsider)
-			.get(`/knowledge/collections/${collectionId}/agents`)
+			.authAgentFor(editor)
+			.post(`${otherPath}/files`)
+			.attach('files', Buffer.from('hello'), 'guide.txt')
 			.expect(404);
 	});
 
-	it('refuses an upload by its collection check, before it reads the files', async () => {
-		expect((await upload(outsider, 'tool.exe')).status).toBe(404);
-		expect((await upload(viewer, 'tool.exe')).status).toBe(403);
+	it('leaves no temp file of a refused upload', async () => {
+		// Multer writes each accepted file to the temp directory. The scope check runs
+		// before multer, and the service removes the files of an upload that it refuses.
+		const tempDir = await mkdtemp(path.join(os.tmpdir(), 'n8n-collection-upload-'));
+		const tmpdirSpy = vi.spyOn(os, 'tmpdir').mockReturnValue(tempDir);
 
-		Container.get(KnowledgeConfig).collectionsEnabled = false;
+		try {
+			expect((await upload(outsider, 'guide.txt')).status).toBe(403);
+			expect((await upload(viewer, 'guide.txt')).status).toBe(403);
 
-		expect((await upload(editor, 'tool.exe')).status).toBe(404);
+			Container.get(KnowledgeConfig).collectionsEnabled = false;
+
+			expect((await upload(editor, 'guide.txt')).status).toBe(404);
+			expect(await readdir(tempDir)).toEqual([]);
+		} finally {
+			tmpdirSpy.mockRestore();
+			await rm(tempDir, { recursive: true, force: true });
+		}
 	});
 
 	it('answers 404 for a missing collection, and when collections are off', async () => {
-		await server.authAgentFor(editor).get('/knowledge/collections/missing/files').expect(404);
+		await server
+			.authAgentFor(editor)
+			.get(`/projects/${project.id}/knowledge/collections/missing/files`)
+			.expect(404);
 
 		Container.get(KnowledgeConfig).collectionsEnabled = false;
 
@@ -137,7 +168,7 @@ describe('knowledge collection file routes', () => {
 
 		const response = await server
 			.authAgentFor(viewer)
-			.get(`/knowledge/collections/${collectionId}/agents`)
+			.get(`${collectionPath()}/agents`)
 			.expect(200);
 
 		expect(response.body.data).toEqual([
