@@ -14,6 +14,7 @@ export * from './execution-context-establishment-hooks';
 export * from './execution-cancellation';
 export * from './redaction-channels';
 export * from './dynamic-credentials-helpers';
+export * from './sub-execution-run-data';
 export * from './safe-regex';
 export * from './global-state';
 export * from './interfaces';
