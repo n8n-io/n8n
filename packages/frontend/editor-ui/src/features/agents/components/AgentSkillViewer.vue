@@ -16,11 +16,26 @@ import {
 } from '@n8n/design-system';
 import type { IValidator, Validatable } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import type { PluginSimple } from 'markdown-it';
 
 import type { Rule, RuleGroup } from '@/Interface';
 import type { AgentSkill, AgentSkillReference } from '../types';
 
 const SKILL_FILE = 'SKILL.md';
+const SKILL_LINK_ORIGIN = 'https://skill.invalid';
+const LINK_THAT_SANITIZER_KEEPS = /^([a-z][a-z0-9+.-]*:|\.{0,2}\/|#)/i;
+const keepRelativeLinksThroughSanitizer: PluginSimple = (parser) => {
+	parser.core.ruler.after('inline', 'skill-relative-links', (state) => {
+		for (const blockToken of state.tokens) {
+			for (const token of blockToken.children ?? []) {
+				if (token.type !== 'link_open') continue;
+				const href = token.attrGet('href');
+				if (href && !LINK_THAT_SANITIZER_KEEPS.test(href)) token.attrSet('href', `./${href}`);
+			}
+		}
+	});
+};
+const READ_ONLY_MARKDOWN_PLUGINS = [keepRelativeLinksThroughSanitizer];
 const READ_ONLY_MARKDOWN_OPTIONS = {
 	tasklists: { enabled: false, label: true, labelAfter: false },
 };
@@ -173,6 +188,23 @@ const referencesError = computed(() => {
 	});
 });
 
+function onLinkClick(event: MouseEvent) {
+	if (!(event.target instanceof Element)) return;
+	const href = event.target.closest('a')?.getAttribute('href');
+	const openFileUrl = `${SKILL_LINK_ORIGIN}/${props.selectedPath}`;
+	if (!href || !URL.canParse(href, openFileUrl)) return;
+
+	const linkUrl = new URL(href, openFileUrl);
+	if (linkUrl.origin !== SKILL_LINK_ORIGIN) return;
+
+	event.preventDefault();
+	const linkedPath = decodeURIComponent(linkUrl.pathname.slice(1));
+	const isFileOfSkill =
+		linkedPath === SKILL_FILE ||
+		(props.skill.references ?? []).some((reference) => reference.path === linkedPath);
+	if (isFileOfSkill) emit('select:path', linkedPath);
+}
+
 function onDescriptionInput(value: string | number | boolean | null | undefined) {
 	const next = typeof value === 'string' ? value : String(value ?? '');
 	description.value = next;
@@ -281,7 +313,7 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 </script>
 
 <template>
-	<div :class="$style.panel" data-testid="agent-skill-viewer">
+	<div :class="$style.panel" data-testid="agent-skill-viewer" @click="onLinkClick">
 		<template v-if="props.readOnly">
 			<template v-if="isSkillFileSelected">
 				<N8nInputLabel
@@ -307,6 +339,7 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 					<N8nMarkdown
 						:class="$style.readOnlyMarkdown"
 						:options="READ_ONLY_MARKDOWN_OPTIONS"
+						:plugins="READ_ONLY_MARKDOWN_PLUGINS"
 						:content="props.skill.instructions"
 						data-testid="agent-skill-instructions-text"
 					/>
@@ -322,6 +355,7 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 				<N8nMarkdown
 					:class="$style.readOnlyMarkdown"
 					:options="READ_ONLY_MARKDOWN_OPTIONS"
+					:plugins="READ_ONLY_MARKDOWN_PLUGINS"
 					:content="selectedReference.content"
 					data-testid="agent-skill-reference-text"
 				/>

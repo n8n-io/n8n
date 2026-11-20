@@ -170,6 +170,104 @@ describe('AgentSkillViewer', () => {
 		expect(wrapper.find('[data-testid="agent-skill-reference-name-input"]').exists()).toBe(false);
 	});
 
+	it.each([
+		{
+			name: 'a reference file from SKILL.md',
+			selectedPath: 'SKILL.md',
+			instructions: 'See [labels](references/labels.md).',
+			labels: 'Use needs-repro.',
+			expectedPath: 'references/labels.md',
+		},
+		{
+			name: 'a sibling reference file from a reference file',
+			selectedPath: 'references/labels.md',
+			instructions: 'Check the SLA first.',
+			labels: 'See [priorities](priorities.md).',
+			expectedPath: 'references/priorities.md',
+		},
+		{
+			name: 'SKILL.md from a reference file',
+			selectedPath: 'references/labels.md',
+			instructions: 'Check the SLA first.',
+			labels: 'Back to [the skill](../SKILL.md).',
+			expectedPath: 'SKILL.md',
+		},
+	])(
+		'selects $name when its link is clicked',
+		({ selectedPath, instructions, labels, expectedPath }) => {
+			const wrapper = mountViewer({
+				readOnly: true,
+				selectedPath,
+				skill: {
+					name: 'Triage',
+					description: 'Use for triage',
+					instructions,
+					references: [
+						{ path: 'references/labels.md', content: labels },
+						{ path: 'references/priorities.md', content: 'P1 first.' },
+					],
+				},
+			});
+
+			const click = clickLink(wrapper);
+
+			expect(click.defaultPrevented).toBe(true);
+			expect(wrapper.emitted('select:path')).toEqual([[expectedPath]]);
+		},
+	);
+
+	it('selects a reference file when its link is clicked in the editor', async () => {
+		const wrapper = mountViewer(
+			{
+				skill: {
+					name: 'Triage',
+					description: 'Use for triage',
+					instructions: 'See [labels](references/labels.md).',
+					references: [{ path: 'references/labels.md', content: 'Use needs-repro.' }],
+				},
+			},
+			{ MarkdownEditor: false },
+		);
+		await vi.waitFor(() => expect(wrapper.find('a').exists()).toBe(true));
+
+		clickLink(wrapper);
+
+		expect(wrapper.emitted('select:path')).toEqual([['references/labels.md']]);
+	});
+
+	it('does not open a link to a file that the skill does not have', () => {
+		const wrapper = mountViewer({
+			readOnly: true,
+			skill: {
+				name: 'Triage',
+				description: 'Use for triage',
+				instructions: 'See [missing](references/missing.md).',
+			},
+		});
+
+		const click = clickLink(wrapper);
+
+		expect(click.defaultPrevented).toBe(true);
+		expect(wrapper.emitted('select:path')).toBeUndefined();
+	});
+
+	it('leaves a link to an external page to the browser', () => {
+		const wrapper = mountViewer({
+			readOnly: true,
+			skill: {
+				name: 'Triage',
+				description: 'Use for triage',
+				instructions: 'See [the docs](https://docs.n8n.io/).',
+			},
+		});
+
+		const click = clickLink(wrapper);
+
+		expect(click.defaultPrevented).toBe(false);
+		expect(wrapper.find('a').attributes('target')).toBe('_blank');
+		expect(wrapper.emitted('select:path')).toBeUndefined();
+	});
+
 	it('shows the instructions character count, not their byte size', () => {
 		const wrapper = mountViewer({
 			skill: {
@@ -224,7 +322,16 @@ describe('AgentSkillViewer', () => {
 	});
 });
 
-function mountViewer(props: Partial<InstanceType<typeof AgentSkillViewer>['$props']> = {}) {
+function clickLink(wrapper: ReturnType<typeof mountViewer>) {
+	const click = new MouseEvent('click', { bubbles: true, cancelable: true });
+	wrapper.find('a').element.dispatchEvent(click);
+	return click;
+}
+
+function mountViewer(
+	props: Partial<InstanceType<typeof AgentSkillViewer>['$props']> = {},
+	stubOverrides: Record<string, boolean> = {},
+) {
 	return mount(AgentSkillViewer, {
 		props: {
 			skill: {
@@ -249,6 +356,7 @@ function mountViewer(props: Partial<InstanceType<typeof AgentSkillViewer>['$prop
 				N8nText: { template: '<span><slot /></span>' },
 				N8nTooltip: { template: '<span><slot /></span>' },
 				MarkdownEditor: { props: ['modelValue'], template: '<textarea :value="modelValue" />' },
+				...stubOverrides,
 			},
 		},
 	});

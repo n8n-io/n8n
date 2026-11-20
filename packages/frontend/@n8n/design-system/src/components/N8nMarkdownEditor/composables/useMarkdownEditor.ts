@@ -47,7 +47,7 @@ export const useMarkdownEditor = (
 	emit: SetupContext<Omit<N8nMarkdownEditorEmits, 'update:collapsed'>>['emit'],
 ) => {
 	const baseExtensions = [
-		StarterKit,
+		StarterKit.configure({ link: false }),
 		Link.configure({
 			openOnClick: false,
 		}),
