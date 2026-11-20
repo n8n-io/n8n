@@ -93,13 +93,13 @@ Feature: Permissions in promotion
       Then the Promote writes "Sync orders" to the branch under project "Sales"
 
   Rule: The move of a credential to its owner on the branch has its own permission check
-    A placeholder moves with rights in the project of the branch only. Any
+    An empty credential moves with rights in the project of the branch only. Any
     other credential moves only when the user may move it.
 
     @open-decision-5
     Scenario: The user cannot access the old owner project
       Given the branch holds "CRM key" under project "Platform"
-      And the destination holds the placeholder "CRM key" in project "Ops"
+      And the destination holds the empty credential "CRM key" in project "Ops"
       And the user cannot access project "Ops"
       And the user may create and update credentials in project "Platform"
       When the user applies project "Platform"
@@ -108,7 +108,7 @@ Feature: Permissions in promotion
     @open-decision-5
     Scenario: The user may not create credentials in the project of the branch
       Given the branch holds "CRM key" under project "Platform"
-      And the destination holds the placeholder "CRM key" in project "Ops"
+      And the destination holds the empty credential "CRM key" in project "Ops"
       And the user may not create credentials in project "Platform"
       When the user applies project "Platform"
       Then the Apply stops before any write
@@ -128,13 +128,13 @@ Feature: Permissions in promotion
 
   Rule: The confirmation of an incomplete operation never gives a permission
 
-    Scenario: Confirming the gaps does not give the right to create a placeholder
+    Scenario: Confirming the gaps does not give the right to create an empty credential
       Given "Allow incomplete applies" is on for the apply environment
       And the branch does not hold "CRM key"
       And the destination does not hold "CRM key"
       And the user may not create a credential in project "Sales" on the destination
       When the user confirms the gaps and applies project "Sales"
-      Then the Apply creates no placeholder for "CRM key"
+      Then the Apply creates no empty credential for "CRM key"
       And the Apply stops on "CRM key"
 
   Rule: Selecting a credential in a Promote needs read access to it

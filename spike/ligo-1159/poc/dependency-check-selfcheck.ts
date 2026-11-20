@@ -175,7 +175,7 @@ function summary(report: PromotionDependencyReport): string {
 					`${gap.consumer.name}->${gap.target.name ?? gap.target.id}:${gap.group}` +
 					`{${gap.exits.join(',')}}${gap.state ? `<${gap.state}>` : ''}` +
 					`${gap.target.project ? `@${gap.target.project.name}` : ''}` +
-					`${gap.placeholder ? '+placeholder' : ''}${gap.detail ? `(${gap.detail})` : ''}`,
+					`${gap.createsEmptyCredential ? '+empty-credential' : ''}${gap.detail ? `(${gap.detail})` : ''}`,
 			)
 			.join(' ; ')}]`,
 	];
@@ -523,13 +523,13 @@ console.log('\n=== Promote ===');
 		promote({
 			references: [usesCrmKey()],
 			access: access([SALES, PLATFORM]),
-			sourceTargets: { 'credential:cred-crm': crmOnSource({ isPlaceholder: true }) },
+			sourceTargets: { 'credential:cred-crm': crmOnSource({ isEmpty: true }) },
 			plan: plan({ writtenCredentials: { 'cred-crm': PLATFORM.id } }),
 		}),
 	);
-	scenario('a reference to a placeholder is a gap, also when it is selected', report, [
+	scenario('a reference to an empty credential is a gap, also when it is selected', report, [
 		['gap without include', report.gaps.length === 1 && !report.gaps[0].exits.includes('include')],
-		['detail placeholder-on-source', report.gaps[0]?.detail === 'placeholder-on-source'],
+		['detail empty-on-source', report.gaps[0]?.detail === 'empty-on-source'],
 	]);
 }
 
@@ -580,7 +580,7 @@ console.log('\n=== Apply ===');
 			crm?.group === 'no-access' && crm.exits.join() === 'ask-owner' && !crm.target.project,
 		],
 		['does not name Platform', !/Platform/.test(text(report))],
-		['CRM key gets a placeholder', crm?.placeholder === true],
+		['CRM key gets an empty credential', crm?.createsEmptyCredential === true],
 		['not blocked', !report.blocked],
 	]);
 }
@@ -608,18 +608,18 @@ console.log('\n=== Apply ===');
 			access: access([SALES, OPS]),
 		}),
 	);
-	scenario('4.4 Apply with gaps: one placeholder for two consumer projects', report, [
+	scenario('4.4 Apply with gaps: one empty credential for two consumer projects', report, [
 		[
-			'2 gaps not-on-branch with the placeholder flag',
+			'2 gaps not-on-branch with the flag for a new empty credential',
 			report.gaps.length === 2 &&
-				report.gaps.every((g) => g.group === 'not-on-branch' && g.placeholder),
+				report.gaps.every((g) => g.group === 'not-on-branch' && g.createsEmptyCredential),
 		],
 		['not blocked', !report.blocked],
 		[
-			'one placeholder, in Sales, shared with Ops',
-			actions.placeholders.length === 1 &&
-				actions.placeholders[0].projectId === SALES.id &&
-				actions.placeholders[0].shareWithProjectIds.join() === OPS.id,
+			'one empty credential, in Sales, shared with Ops',
+			actions.emptyCredentials.length === 1 &&
+				actions.emptyCredentials[0].projectId === SALES.id &&
+				actions.emptyCredentials[0].shareWithProjectIds.join() === OPS.id,
 		],
 	]);
 }
@@ -640,10 +640,10 @@ console.log('\n=== Apply ===');
 			access: access([SALES], { createCredentialProjectIds: [] }),
 		}),
 	);
-	scenario('a placeholder needs the right to create a credential', report, [
+	scenario('an empty credential needs the right to create a credential', report, [
 		[
-			'hard block placeholder-create-forbidden',
-			report.hardBlocks[0]?.code === 'placeholder-create-forbidden' && report.blocked,
+			'hard block credential-create-forbidden',
+			report.hardBlocks[0]?.code === 'credential-create-forbidden' && report.blocked,
 		],
 	]);
 }
@@ -668,9 +668,9 @@ console.log('\n=== Apply ===');
 		],
 	]);
 	const notGrantable = computeApplyReport(apply({ ...base, access: access([SALES, PLATFORM]) }));
-	scenario('the user may not share it: a gap, no placeholder', notGrantable, [
+	scenario('the user may not share it: a gap, no empty credential', notGrantable, [
 		['gap access-not-grantable', notGrantable.gaps[0]?.group === 'access-not-grantable'],
-		['no placeholder', !notGrantable.gaps[0]?.placeholder],
+		['no empty credential', !notGrantable.gaps[0]?.createsEmptyCredential],
 	]);
 }
 
@@ -848,27 +848,27 @@ console.log('\n=== Apply ===');
 		references: [],
 		plan: plan({ writtenWorkflows: {}, writtenCredentials: { 'cred-crm': PLATFORM.id } }),
 	};
-	const placeholder = computeApplyReport(
+	const emptyMove = computeApplyReport(
 		apply({
 			...base,
 			destinationTargets: {
-				'credential:cred-crm': { ...crmOnDestination, project: OPS, isPlaceholder: true },
+				'credential:cred-crm': { ...crmOnDestination, project: OPS, isEmpty: true },
 			},
 			access: access([PLATFORM]),
 		}),
 	);
 	scenario(
-		'the owner follows the branch: a placeholder in a project that the user cannot access',
-		placeholder,
+		'the owner follows the branch: an empty credential in a project that the user cannot access',
+		emptyMove,
 		[
 			[
 				'move allowed',
-				placeholder.credentialMoves[0]?.allowed === true &&
-					placeholder.credentialMoves[0].placeholder,
+				emptyMove.credentialMoves[0]?.allowed === true &&
+					emptyMove.credentialMoves[0].empty,
 			],
 			[
 				'does not name Ops',
-				!placeholder.credentialMoves[0]?.fromProject && !/Ops/.test(text(placeholder)),
+				!emptyMove.credentialMoves[0]?.fromProject && !/Ops/.test(text(emptyMove)),
 			],
 		],
 	);
@@ -891,13 +891,13 @@ console.log('\n=== Apply ===');
 		apply({
 			...base,
 			destinationTargets: {
-				'credential:cred-crm': { ...crmOnDestination, project: OPS, isPlaceholder: true },
+				'credential:cred-crm': { ...crmOnDestination, project: OPS, isEmpty: true },
 			},
 			access: access([PLATFORM], { createCredentialProjectIds: [] }),
 		}),
 	);
 	scenario(
-		'a placeholder cannot move without the right to create in the new owner project',
+		'an empty credential cannot move without the right to create in the new owner project',
 		noCreate,
 		[
 			[
@@ -936,7 +936,7 @@ console.log('\n=== Apply ===');
 	);
 	scenario('an instance credential that the destination does not hold', instance, [
 		[
-			'hard block instance-credential-missing, no placeholder',
+			'hard block instance-credential-missing, no empty credential',
 			instance.hardBlocks[0]?.code === 'instance-credential-missing' && instance.gaps.length === 0,
 		],
 	]);

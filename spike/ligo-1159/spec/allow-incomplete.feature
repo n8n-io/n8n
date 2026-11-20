@@ -1,4 +1,4 @@
-# Source: solution.md sections 1, 3.3, 3.4, 3.5, 3.7 (placeholder), 3.8, 3.9, 3.12 and 6.
+# Source: solution.md sections 1, 3.3, 3.4, 3.5, 3.7 (empty credential), 3.8, 3.9, 3.12 and 6.
 Feature: Incomplete Promote and Apply
   "Allow incomplete" is an opt-in setting of each environment and each
   direction. It is off by default. On an environment that allows it, the user
@@ -114,7 +114,7 @@ Feature: Incomplete Promote and Apply
       When the user confirms the gaps and applies "Sync orders" of project "Sales"
       Then the Apply imports "Sync orders"
       And the reference of "Sync orders" to "Notify on-call" stays unresolved
-      And the Apply creates no placeholder workflow
+      And the Apply creates no workflow in its place
 
     Scenario: The reference resolves by itself when the dependency arrives
       Given an incomplete Apply imported "Sync orders" without "Notify on-call"
@@ -128,7 +128,7 @@ Feature: Incomplete Promote and Apply
       Then the Apply stops before any write
       And the result asks the user to confirm the new list
 
-  Rule: An incomplete Apply creates a placeholder for a credential that the destination does not hold
+  Rule: An incomplete Apply creates an empty credential for a credential that the destination does not hold
 
     Background:
       Given "Allow incomplete applies" is on for the apply environment
@@ -136,24 +136,24 @@ Feature: Incomplete Promote and Apply
       And the user can create a credential in project "Sales"
 
     @open-decision-6
-    Scenario: A credential that is not on the branch gets a placeholder
+    Scenario: A credential that is not on the branch gets an empty credential
       Given the branch does not hold "CRM key"
       And the destination does not hold "CRM key"
       When the user confirms the gaps and applies "Sync orders" of project "Sales"
       Then the destination holds an empty credential "CRM key" in project "Sales"
-      And the placeholder has the id, the name and the type of the source credential
-      And the placeholder has a marker
-      And "Sync orders" uses the placeholder
+      And the empty credential has the id, the name and the type of the source credential
+      And the empty credential has no values
+      And "Sync orders" uses the empty credential
 
-    Scenario: A credential in a project that the user cannot apply gets a placeholder
+    Scenario: A credential in a project that the user cannot apply gets an empty credential
       Given the branch holds "CRM key" under project "Platform"
       And the destination does not hold "CRM key"
       And the user cannot apply project "Platform"
       When the user confirms the gaps and applies "Sync orders" of project "Sales"
       Then the destination holds an empty credential "CRM key" in project "Sales"
-      And "Sync orders" uses the placeholder
+      And "Sync orders" uses the empty credential
 
-    Scenario: One credential gets one placeholder when two projects of the Apply use it
+    Scenario: One credential id gets one empty credential when two projects of the Apply use it
       Given workflow "Daily report" of project "Ops" uses "CRM key"
       And the branch holds "Daily report" under project "Ops"
       And the branch does not hold "CRM key"
@@ -161,24 +161,24 @@ Feature: Incomplete Promote and Apply
       And the changes view shows project "Sales" before project "Ops"
       And the user can create a credential in project "Ops"
       When the user confirms the gaps and applies "Sync orders" and "Daily report" in one Apply
-      Then the destination holds one placeholder "CRM key", in project "Sales"
-      And the Apply shares the placeholder with project "Ops"
-      And "Sync orders" and "Daily report" use the placeholder
+      Then the destination holds one empty credential "CRM key", in project "Sales"
+      And the Apply shares the empty credential with project "Ops"
+      And "Sync orders" and "Daily report" use the empty credential
 
-    Scenario: A placeholder needs the right to create a credential in the consumer project
+    Scenario: An empty credential needs the right to create a credential in the consumer project
       Given the user cannot create a credential in project "Sales"
       And the branch does not hold "CRM key"
       And the destination does not hold "CRM key"
       When the user confirms the gaps and applies "Sync orders" of project "Sales"
-      Then the Apply creates no placeholder for "CRM key"
+      Then the Apply creates no empty credential for "CRM key"
       And the Apply stops on "CRM key"
 
-    Scenario: A credential that the destination holds gets no placeholder
+    Scenario: A credential that the destination holds gets no empty credential
       Given the destination holds "CRM key" in project "Platform"
       And project "Sales" cannot use "CRM key" on the destination
       And the user cannot share "CRM key"
       When the user confirms the gaps and applies "Sync orders" of project "Sales"
-      Then the Apply creates no placeholder for "CRM key"
+      Then the Apply creates no empty credential for "CRM key"
       And "Sync orders" uses "CRM key"
       And the binding does not work until a user grants project "Sales" access to "CRM key"
 
@@ -198,15 +198,15 @@ Feature: Incomplete Promote and Apply
       And the new version waits until a user publishes it
 
     @open-decision-2
-    Scenario: The editor refuses to publish a workflow that uses an empty placeholder
-      Given "Sync orders" uses the empty placeholder "CRM key" on the destination
+    Scenario: The editor refuses to publish a workflow that uses an empty credential
+      Given "Sync orders" uses the empty credential "CRM key" on the destination
       When a user publishes "Sync orders" in the editor
       Then the editor refuses to publish
       And the editor says that "CRM key" has no values
 
     @open-decision-2
-    Scenario Outline: The public API and the CLI refuse to publish a workflow that uses a placeholder
-      Given "Sync orders" uses the empty placeholder "CRM key" on the destination
+    Scenario Outline: The public API and the CLI refuse to publish a workflow that uses an empty credential
+      Given "Sync orders" uses the empty credential "CRM key" on the destination
       When a user publishes "Sync orders" through the <surface>
       Then the <surface> refuses to publish
 
@@ -216,10 +216,9 @@ Feature: Incomplete Promote and Apply
         | CLI        |
 
     @open-decision-2 @open-decision-6
-    Scenario: A placeholder with a name from the branch and no secret is still a placeholder
-      Given "Sync orders" uses the placeholder "CRM key" on the destination
-      And a later Apply updated the name and the expression values of "CRM key"
-      And no person saved secret values in "CRM key"
+    Scenario: A credential with a name from the branch and no values is still empty
+      Given "Sync orders" uses the empty credential "CRM key" on the destination
+      And a later Apply updated the name of "CRM key"
+      And "CRM key" still has no values
       When a user publishes "Sync orders" in the editor
-      Then "CRM key" still has the marker
-      And the editor refuses to publish
+      Then the editor refuses to publish

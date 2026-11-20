@@ -120,7 +120,7 @@ The foundation changes make some existing test files fail the typecheck
 
 ### D13. Dependency check engine (stream B)
 
-Partly superseded by S1: there is one mode, and each credential gap whose id the destination does not hold gets the placeholder flag.
+Partly superseded by S1: there is one mode, and each credential gap whose id the destination does not hold gets the flag `createsEmptyCredential`.
 
 The engine is in `packages/cli/src/modules/promotions.ee/dependency-check/`. It decided these
 points:
@@ -139,11 +139,11 @@ points:
 - **`blocked` and the callers of a deleted workflow.** `deletionCallers` does not set
   `blocked`. The operation must stop while the list is not empty and
   `confirmDeletionCallers` is not set.
-- **Placeholder flag.** Each credential gap of an environment that allows incomplete applies
-  gets `placeholder: true` when the destination does not hold the id, also a gap with the exit
-  "include". Without it the import has no credential to bind.
-- **Placeholder on the source.** The gap keeps the group of its project and has no exit
-  "include". It has the detail `placeholder-on-source`.
+- **New empty credential.** Each credential gap of an environment that allows incomplete applies
+  gets `createsEmptyCredential: true` when the destination does not hold the id, also a gap with
+  the exit "include". Without it the import has no credential to bind.
+- **Empty credential on the source.** The gap keeps the group of its project and has no exit
+  "include". It has the detail `empty-on-source`.
 - **Written credentials.** The check counts a credential as written when a selected workflow
   of its own project uses it, or when the selection names it in `credentialIds` (D8), and the
   user can read it.
@@ -188,7 +188,7 @@ not exist, or when the user cannot run the operation in its project. It answers
   Apply request closes when this instance holds the resource. A Promote request
   closes when the base branch holds it. The inbox reads the branch of an
   environment at most one time in a minute.
-- A placeholder credential on the destination counts as "on the destination".
+- An empty credential on the destination counts as "on the destination".
 - The delete of the environment, of the owner project or of the requester
   deletes the request.
 ### F1. The import option for a move between projects
@@ -260,13 +260,15 @@ the user cannot access.
 
 The Promote preview reuses `dependencyReport.deletionCallers`. The callers come
 from the workflow requirement rows of the branch manifest. No new field.
-### D13. When the placeholder marker goes away
+### D13. When an empty credential stops to be empty
 
-The marker goes away when a person saves the credential with values: an update
-that carries `data`, through the editor or the public API. A rename alone keeps
-the marker. The update of a promotion Apply and of a package import never
-removes it. The OAuth callback does not remove it either: the person saves the
-credential first.
+Superseded by S2: no state is stored. A credential is empty while it has no
+values.
+
+A credential stops to be empty when a person saves it with values, through the
+editor or the public API. A rename alone keeps it empty. The update of a
+promotion Apply and of a package import writes only the name and the
+expression values.
 
 ### D14. The publish check and a live workflow
 
@@ -322,11 +324,11 @@ that it cannot resolve: it writes the reference unchanged. So the request has
 no list of allowed workflow ids. Only the dependency check of promotions
 decides whether such a reference stops an Apply.
 
-### D21. No policy check in the plan for a placeholder
+### D21. No policy check in the plan for a new empty credential
 
-The `credentialSave` policy check runs when the placeholder is written, not in
-the plan. A policy that refuses the credential type stops the Apply at the
-write of the placeholder.
+The `credentialSave` policy check runs when the empty credential is written,
+not in the plan. A policy that refuses the credential type stops the Apply at
+the write of the empty credential.
 
 ### D22. A move that cannot run does not stop the Apply
 
@@ -373,7 +375,7 @@ project. An export of several projects would also write a credential of project
 B that only a workflow of project A uses. The Promote removes that file again,
 so the reference stays a requirement row and the dependency check can report
 the gap. `credentialIds` refuses a credential that the project does not own, an
-instance credential and a placeholder.
+instance credential and an empty credential.
 
 ### A4. A selected credential in an Apply across projects
 
@@ -452,15 +454,15 @@ step, so it does not depend on the report.
 
 ### G6. What the import gets from the check
 
-Partly superseded by S1: the check gives the placeholders on every environment.
+Partly superseded by S1: the check gives the empty credentials on every environment.
 
 - `credentialOwnerPolicy: 'follow-package'` is in every Apply request, also in
   the previews, so a move is a change row of the credential.
-- `placeholderCredentialIds`: the credentials of the placeholders of the check.
+- `stubCredentialIds`: the credentials that the check wants created empty.
   The check gives them only on an environment that allows incomplete applies,
   and the operation reaches the import only after the user confirmed the gaps.
-  A gap with the exit "include" that the user confirmed instead also gets a
-  placeholder: without one the workflow has no credential to bind.
+  A gap with the exit "include" that the user confirmed instead also gets an
+  empty credential: without one the workflow has no credential to bind.
 - `allowedUnresolvedCredentialIds`: each other credential gap, and each
   credential reference that is broken on the source.
 - `credentialGrants`: the confirmed grants that the report lists. The gate gives
@@ -471,9 +473,9 @@ Partly superseded by S1: the check gives the placeholders on every environment.
 - `retainedWorkflowIds` (new, promotion-only): the workflows that reconciliation
   keeps, in any project of the import.
 
-The import plan is the second opinion on a placeholder: a placeholder that the
-plan may not create (`placeholderForbidden`) becomes the hard block
-`placeholder-create-forbidden`, and the Apply returns `gaps-changed`.
+The import plan is the second opinion on a new empty credential: one that the
+plan may not create (`stubForbidden`) becomes the hard block
+`credential-create-forbidden`, and the Apply returns `gaps-changed`.
 
 ### G7. The API key scope of a grant
 
@@ -491,7 +493,7 @@ of a kept project as deleted.
 ### G9. Texts for clients without their own texts
 
 The `applied` result has the new optional field `dependencyMessages`: one
-English sentence for each placeholder, each credential that did not move, and
+English sentence for each new empty credential, each credential that did not move, and
 each kept workflow or project. The CLI prints them. The editor writes its own
 texts from the structured lists.
 
@@ -564,10 +566,10 @@ has no caller left and stays in place.
 A `credential-type-mismatch` shows both types when `detail` holds the keys
 `sourceType` and `destinationType`.
 
-### E7. Where a placeholder goes
+### E7. Where a new empty credential goes
 
 The page names the project of the first consumer of a credential gap as the
-project of its placeholder. The server decides the real project.
+project of its empty credential. The server decides the real project.
 
 ## Decisions of the frontend integration (stream J)
 
@@ -626,7 +628,7 @@ block, and the moves of `check.plannedMoves` are changes.
 
 ### J6. The result of an Apply stays on the page when a person must act
 
-An Apply that created a placeholder, gave a grant, moved or did not move a
+An Apply that created an empty credential, gave a grant, moved or did not move a
 credential, moved an item between projects, kept a workflow or left a gap
 shows a result dialog before the page leaves. Any other Apply leaves with the
 toast, as before.
@@ -786,7 +788,7 @@ applies to source control, which shares the helper.
 
 The previews listed a credential only as a dependency of a listed workflow, so
 the owner could not find it. Now the export of a project for a preview holds
-every project credential that the project owns (no placeholder, no instance
+every project credential that the project owns (no empty credential, no instance
 credential), and a changed one is a selectable row under its project, on
 Promote and on Apply. "Select all" sends it as `credentialIds`. The reports of
 the previews count these rows as part of the operation.
@@ -876,7 +878,7 @@ warning and needs no confirmation.
 ### F6. Texts for values that this client does not know
 
 A warning code that the client does not know gets a sentence by the words of
-the code (`placeholder`, `data-table`, `variable`), else a generic sentence. A
+the code (`data-table`, `variable`), else a generic sentence. A
 target kind that it does not know reads "Item". A usage that it does not know
 reads "Used by".
 
@@ -901,7 +903,7 @@ user cannot read holds the id and the name of the requirement row of the
 consumer. It has no file, so the details routes return no content for it. The
 requirement row is what the consumer workflow shows: the exporter removes the
 credential name from the node and keeps it on the row. The same rule gives the
-name of a placeholder and of a gap. The file of the branch counts only when the
+name of a new empty credential and of a gap. The file of the branch counts only when the
 user can read its project.
 
 ### K2. A project that the user cannot read has no real id in a move
@@ -940,7 +942,7 @@ sharing licence.
 - Apply: without `credentialIds`, the Apply writes each credential that the
   branch holds under the project and that this instance already holds, in any
   project. So the Apply of the owner project moves a credential to its owner,
-  gives a placeholder its home and updates the name and the expression values.
+  gives an empty credential its home and updates the name and the expression values.
   A credential that this instance lacks is not in the default, so the Apply
   never asks for a credential that no selected workflow needs. An explicit
   list, also an empty one, replaces the default.
@@ -966,26 +968,26 @@ returns `gaps-changed`. The flag `confirmDeletionCallers` alone still accepts
 every caller, for a client of an earlier version. The server writes a log line
 then.
 
-### K8. The placeholder marker and the placeholder home
+### K8. What "empty" means and the home of a new empty credential
 
 Partly superseded by S1: "an incomplete Apply" is now every Apply with gaps.
+The first point is superseded by S2, which gives the rule for "no values".
 
-- The marker goes away only when the saved data holds a value: a text that is
-  not blank, a number, or a list or an object with such a value. A switch alone
-  is not a value. This narrows D13.
-- The check gives the home of each placeholder to the import
-  (`placeholderHomes`). The import creates the placeholder in that project,
-  whatever the order of its scopes.
+- A save with an empty `data` object keeps the credential empty. This narrows
+  D13.
+- The check gives the home of each new empty credential to the import
+  (`stubHomes`). The import creates the credential in that project, whatever
+  the order of its scopes.
 - A credential reference without a reason (a branch of an earlier version) gets
-  no placeholder. It can be an instance credential, and the branch does not
+  no empty credential. It can be an instance credential, and the branch does not
   say. The reference stays unresolved after an incomplete Apply. The block
   `instance-credential-missing` still needs the reason on the row.
 
-### K9. A live workflow and a new placeholder
+### K9. A live workflow and a new empty credential
 
 The Apply does not unpublish. The `applied` result lists in
-`livePlaceholderWorkflows` each workflow whose published version references the
-id of a placeholder that the Apply created, and `dependencyMessages` holds one
+`liveWorkflowsWithEmptyCredential` each workflow whose published version
+references the id of an empty credential that the Apply created, and `dependencyMessages` holds one
 sentence for it. The workflow index gives the references of the published
 versions. This keeps D14.
 
@@ -1075,7 +1077,7 @@ proof of concept adds no event, so the move of an Apply writes none either.
 - `resourceWarnings` rows are in the "warnings" section, with the owner
   project when the report holds it. A table without a name reads "Data table"
   with its id.
-- `livePlaceholderWorkflows` is a warning at the top of the Apply result.
+- `liveWorkflowsWithEmptyCredential` is a warning at the top of the Apply result.
 - A `broken-on-source` warning adds the sentence of its `cause`.
 - A home choice without a candidate shows the sentence of `noCandidateReason`
   in place of an empty selector. This case was not run.
@@ -1106,12 +1108,12 @@ What changed:
   continue, so the exit said nothing.
 - `PromotionDependencyReport.allowIncomplete` is removed. `blocked` is true
   only for a hard block, or for a top-level credential without a home.
-- An Apply plans a placeholder for each credential gap whose id the
+- An Apply plans an empty credential for each credential gap whose id the
   destination does not hold (solution 3.7), and creates it after the user
-  confirms the gaps. The other rules stay: no placeholder when the id is
+  confirms the gaps. The other rules stay: no empty credential when the id is
   taken, and the user needs `credential:create` in the consumer project
-  (`placeholder-create-forbidden` when not). A credential reference without a
-  reason on a branch of an earlier version still gets no placeholder (K8).
+  (`credential-create-forbidden` when not). A credential reference without a
+  reason on a branch of an earlier version still gets no empty credential (K8).
 - Hard blocks, grants that are not confirmed, missing bindings, the
   confirmation of deletion callers, destructive confirmations and moves stop
   the operation as before. Warnings and notes did not change.
@@ -1141,3 +1143,103 @@ default.
 Supersedes: D2. Partly: D3, D7, D12, D13 (the two points on modes), G4, G6,
 J11, K8 (the wording). The journeys 4.1, 4.2 and 4.4 of the README changed
 with it.
+
+### S2 (2026-11-20). No separate concept for a credential without values
+
+The product owner decided that the solution must not add a concept for "a
+credential that an Apply created and that has no values". The term
+"placeholder", which earlier versions of this file used, is no longer used, in
+the code or in the documents. n8n already has both halves, and the proof of concept now uses them:
+
+- **The creation** is the stub credential of the import engine
+  (`createStubCredential`). An Apply still creates one empty credential for a
+  credential gap whose id the destination does not hold: the id, the name and
+  the type of the source, in the first consumer project, shared with the other
+  consumer projects of the same Apply. The user needs `credential:create`
+  there (hard block `credential-create-forbidden`). The id that is taken gets
+  no new credential.
+- **The state** is the state "Needs first setup" of the editor. A credential is
+  empty when its data has no keys, or when each value is empty. Nothing is
+  stored: no flag, no column, no migration. `CredentialsService.hasNoValues`
+  decides it on the backend with the rule of the editor (`needsSetup` in
+  `CredentialsView.vue`). A resolvable credential and a managed credential are
+  never empty. A credential type that has no field to fill is never empty.
+  Data that cannot be decrypted is not known to be empty.
+
+The three rules read this state, for any credential:
+
+1. **Publish.** `WorkflowService.activateWorkflow` refuses a new version that
+   uses an empty credential: `"<name>" has no values. Add the values of the
+   credential before you publish.` D14 stays: a version that is live already
+   is not checked. The block `stub-credential` of the package import covers a
+   stub that the import created and a matched credential that is empty.
+2. **Promote.** An empty credential is never written to a branch. The
+   reference stays a requirement row, and the check reports a gap with the
+   detail `empty-on-source`. A selection that names it is refused.
+3. **The owner follows the branch.** An empty credential moves to the project
+   of the branch with the right to create a credential there only. Any other
+   credential needs `credential:move`, as before.
+
+Consequences:
+
+- The rules are wider than before. The publish refusal and "not promoted" now
+  hold for every empty credential: also one that a person created by hand and
+  did not fill, and also a stub of a package import of an earlier version.
+  The export of a package (not only a Promote) writes no file for an empty
+  credential and keeps the requirement row.
+- A person who types a value into the credential before the owner's Apply
+  makes it not empty. The move then needs `credential:move`. This is
+  consistent: the credential now holds a secret of its project.
+- An update of an Apply writes the name and the expression values. A branch
+  credential with expression values can make the destination credential not
+  empty without a person. A branch credential with secret values only leaves
+  it empty.
+- A later Apply that finds the empty credential on the destination shows
+  nothing special for it: it is a credential that the project can use.
+- The editor has no new badge. The credential list shows "Needs first setup",
+  as for any credential without values. The credential modal and the node
+  credential selector show nothing more.
+- The emptiness check decrypts the credential. The proof of concept does it
+  only where it decides something: the credentials of the version to publish,
+  the credentials that an operation references or writes, and the credential
+  of a move.
+- A database that ran the migration of the earlier proof of concept keeps an
+  unused boolean column on `credentials_entity`. No migration removes it. The databases of the test harness are reset.
+
+Open decisions of the solution, as implemented now:
+
+- **2** (publish): refused for each new version that uses an empty credential,
+  on every publish path.
+- **3** (a typed secret survives): yes. The move and the update keep the
+  values that a person typed. The typed secret also changes the right that
+  the move needs (see above).
+- **5** (rights of the move): an empty credential needs the right to create in
+  the new owner project only. Any other credential needs `credential:move`.
+- **6** (how n8n recognises it): derived from the data. No flag.
+
+Names of the contracts now:
+
+- Gap: the field `createsEmptyCredential`, and the detail `empty-on-source`.
+- Hard block: `credential-create-forbidden`.
+- Applied result: `createdEmptyCredentials` and
+  `liveWorkflowsWithEmptyCredential`.
+- Move: `credentialMoves[].empty`.
+- Import request: `stubCredentialIds` and `stubHomes`.
+- Import plan: `dependencyStubs`, `stubBindings`, `stubForbidden` and
+  `matchedEmpty`.
+- Import result: `createdStubs` and `emptyBound`.
+- Credentials service: `createSharedStubCredential` (the stub with the id of
+  the source and the shares), `hasNoValues`, `findWithNoValues`,
+  `findIdsWithNoValues` and `keepWithValues`.
+- Facts of the dependency check: `isEmpty`.
+
+Removed: the column and the entity field, the migration, the field in each
+credential DTO and in the editor types, the repository method that read the
+flag, the option of the update that cleared it, the option of
+`createStubCredential` that set it, the three i18n texts of the editor badge,
+and the badge in the credential card, the credential modal and the node
+credential selector.
+
+Supersedes: D13 ("When an empty credential stops to be empty"), the first
+point of K8, and the parts of the foundation, of D21, G6, E7, K9 and S1 that
+name the flag. The rules of those entries stay, with the state derived.

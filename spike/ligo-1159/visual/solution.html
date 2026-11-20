@@ -293,7 +293,7 @@ footer{color:var(--faint);font-size:12px;padding:26px 0 40px}
     <div><b>Gap</b>: a static reference from an item of the operation to a resource that will not resolve after the operation.</div>
     <div><b>Strict environment</b>: "allow incomplete" is off. A gap stops the operation. This is the default.</div>
     <div><b>Incomplete operation</b>: a Promote or Apply that writes items with gaps, after the user confirms the list. Opt-in for each environment.</div>
-    <div><b>Placeholder</b>: an empty credential with a marker. An incomplete Apply creates it in a project that uses it, when the destination does not hold the credential. It moves to its owner when the real credential arrives.</div>
+    <div><b>Empty credential</b>: a credential with no values. An incomplete Apply creates it in a project that uses it, when the destination does not hold the credential. It moves to its owner when the real credential arrives.</div>
     <div><b>Works on the source</b>: the target exists, is not archived, and the item can use it. When the check cannot tell, the reference counts as working.</div>
     <div><b>Changes view</b>: the changes grouped by project. A selection can span the projects that the user can access.</div>
     <div><b>Cast used on this page</b>: Sales (P) owns the workflows, Platform (Q) owns the credential, Ops (R) owns the sub-workflow. Alice has a personal project.</div>
@@ -344,7 +344,7 @@ footer{color:var(--faint);font-size:12px;padding:26px 0 40px}
       </div>
       <div class="legend">
         <span><i class="lg-chip"></i>workflow</span><span><i class="lg-chip c"></i>credential</span>
-        <span><i class="lg-chip ph"></i>missing here</span><span><i class="lg-chip st"></i>empty placeholder</span>
+        <span><i class="lg-chip ph"></i>missing here</span><span><i class="lg-chip st"></i>empty credential</span>
         <span><i class="lg-chip inc"></i>written with confirmed gaps</span><span><i class="lg-chip dash"></i>dashed: not written, not merged, archived or not live. The chip says which.</span>
         <span><i class="lg-line"></i>reference that resolves</span><span><i class="lg-line d"></i>reference that does not resolve</span>
         <span><i class="lg-share">shared with</i>credential access of a project</span>
@@ -369,7 +369,7 @@ footer{color:var(--faint);font-size:12px;padding:26px 0 40px}
       <li>A gap has exits: "Include it" for a user with the right, "Ask the owner" for a user without it.</li>
       <li>"Allow incomplete" is an opt-in setting of each environment. Strict stays the default.</li>
       <li>A selection can span projects. Cycles across projects no longer need an instance Promote.</li>
-      <li>The owner of a credential on the destination follows the branch. A placeholder from an incomplete Apply moves to its owner.</li></ul>
+      <li>The owner of a credential on the destination follows the branch. An empty credential from an incomplete Apply moves to its owner.</li></ul>
       <h3 style="margin-top:12px">What the chosen model takes from the alternative</h3><ul>
       <li>An operation can finish with gaps. Here only when an admin opts in, and the home of a credential still comes from the branch.</li></ul></div>
     <div class="card"><h3>Why the alternative is still not chosen</h3><ul>
@@ -401,7 +401,7 @@ footer{color:var(--faint);font-size:12px;padding:26px 0 40px}
       <li>Instance resources belong to no project.</li></ul>
       <p style="margin:6px 0 0;color:#344054">"Allow incomplete" gives that spike its "reference only" option.</p></div>
     <div class="card"><h3>What the code does not settle</h3><ul>
-      <li>The publish paths for a workflow whose credential is a placeholder (decision 2).</li>
+      <li>The publish paths for a workflow whose credential is empty (decision 2).</li>
       <li>A static reference in a disabled node. The check treats it as a reference. Not verified against the requirement exporter.</li>
       <li>The cost of the branch inventory check on a large branch. Not measured.</li></ul>
       <h3 style="margin-top:12px">Known limits</h3><ul>
@@ -441,7 +441,7 @@ const LANES = [
   { id: 'dst', title: 'Destination instance', sub: 'where Apply writes' },
 ];
 const FLAGSUB = { blocked: 'blocked · not written', held: 'not written', warn: 'written · reference broken', del: 'this Apply deletes it', policy: 'caller policy refuses Sales',
-  incomplete: 'written · gaps confirmed', stub: 'empty placeholder', unpub: 'written · not live', review: 'in an open review · not merged', archived: 'archived' };
+  incomplete: 'written · gaps confirmed', stub: 'empty credential', unpub: 'written · not live', review: 'in an open review · not merged', archived: 'archived' };
 
 /* ---------- decision trees ---------- */
 const TREES = {
@@ -465,12 +465,12 @@ const TREES = {
         { label: 'workflow', id: 'CP', k: 'gap', text: 'Gap: the caller policy refuses the caller' } ] } ] } },
     { id: 'B', k: 'q', text: 'On the branch?', down: 'yes', side: { label: 'no', id: 'T', k: 'q', text: 'Reason on the branch?', fork: [
       { label: 'broken', id: 'WN', k: 'warn', text: 'Warning: broken on the source. The reference stays broken.' },
-      { label: 'confirmed', id: 'G2', k: 'gap', text: 'Gap: an incomplete Promote left it out', note: 'strict: block · allowed: placeholder for a credential' },
+      { label: 'confirmed', id: 'G2', k: 'gap', text: 'Gap: an incomplete Promote left it out', note: 'strict: block · allowed: empty credential for a credential' },
       { label: 'none', id: 'L', k: 'q', text: 'An existing branch', fork: [
         { label: 'workflow', id: 'LW', k: 'warn', text: 'Warning' },
         { label: 'credential', id: 'LC', k: 'gap', text: 'Gap: credential not on the branch' } ] } ] } },
     { id: 'A', k: 'q', text: 'Can the user apply its project?', down: 'no', side: { label: 'yes', id: 'I', k: 'action', text: 'Gap with the action "Include it"', note: 'credential: a person creates it in its owner project' } },
-    { id: 'G1', k: 'gap', text: 'Gap: no access. "Ask the owner".', note: 'strict: block · allowed: a placeholder for a credential, an unresolved reference for a workflow' },
+    { id: 'G1', k: 'gap', text: 'Gap: no access. "Ask the owner".', note: 'strict: block · allowed: an empty credential for a credential, an unresolved reference for a workflow' },
   ] },
 };
 const PP = { pass: 'R E P N Q OK', include: 'R E P N Q A I', noaccess: 'R E P N Q A G3', personal: 'R E P G2', broken: 'R E W1', instance: 'R E P N NT' };
@@ -726,7 +726,7 @@ const SCENARIOS = [
   steps: [
     { t: 'Starting point', d: 'The branch holds the workflow and its sub-workflow. The destination holds neither.', br: 'W@P S@R', dst: '' },
     { t: 'The user confirms the gap and applies Sales', op: APP('Project Apply · Sales · 1 gap confirmed'), v: 'gap', dst: 'W@P!unpub',
-      d: 'Apply imports Sync orders. The reference stays unresolved: there is no placeholder workflow. Promotion Apply never changes what is live, so the new workflow lands unpublished.',
+      d: 'Apply imports Sync orders. The reference stays unresolved: Apply creates no workflow in its place. Promotion Apply never changes what is live, so the new workflow lands unpublished.',
       msgs: [['warn', 'Notify on-call', 'Not on the destination. The reference stays unresolved.', 1]], checks: [['W', 'S', 'apply', AP.noaccess, 'gap']] },
     { t: 'Ops applies Notify on-call', op: APP('Project Apply · Ops · Notify on-call'), v: 'pass', dst: 'W@P!unpub S@R', d: 'The target arrives with the same id. The reference resolves by itself. Nothing needs a clean-up.' },
     { t: 'An admin publishes Sync orders', op: DST('Admin publishes Sync orders'), v: 'info', dst: 'W@P S@R', d: 'A person decides when the workflow goes live.' },
@@ -834,20 +834,20 @@ const SCENARIOS = [
   ] },
 
 /* ===== Credentials: the owner follows the branch ===== */
-{ id: 'c-placeholder', group: 'Credentials', title: 'A placeholder, then the real credential', flow: '3.7, 4.4', lanes: 'bd', rows: ['P', 'Q'], decisions: [2, 3, 5, 6, 7],
-  intro: 'An incomplete Apply cannot bind a credential that the destination does not hold, so it creates one empty placeholder in a project that uses it. The placeholder has a marker. When the real credential arrives, the owner on the destination follows the branch.',
+{ id: 'c-empty-credential', group: 'Credentials', title: 'An empty credential, then the real credential', flow: '3.7, 4.4', lanes: 'bd', rows: ['P', 'Q'], decisions: [2, 3, 5, 6, 7],
+  intro: 'An incomplete Apply cannot bind a credential that the destination does not hold, so it creates one empty credential in a project that uses it. The credential has no values. When the real credential arrives, the owner on the destination follows the branch.',
   refs: [['W', 'C', 'uses']],
-  spec: [[F.ai, 'A credential that is not on the branch gets a placeholder'], [F.ac, 'A placeholder gets its home'], [F.ac, 'A secret typed into the placeholder survives the move'], [F.ai, 'The editor refuses to publish a workflow that uses an empty placeholder'], [F.ai, 'A credential that is not on the branch stops a strict Apply'], [F.ac, 'The move needs the rights of the user in the project of the branch only'], [F.perm, 'The user cannot access the old owner project'], [F.ai, 'A placeholder needs the right to create a credential in the consumer project'], [F.ai, 'A placeholder with a name from the branch and no secret is still a placeholder']],
+  spec: [[F.ai, 'A credential that is not on the branch gets an empty credential'], [F.ac, 'An empty credential gets its home'], [F.ac, 'A secret typed into the empty credential survives the move'], [F.ai, 'The editor refuses to publish a workflow that uses an empty credential'], [F.ai, 'A credential that is not on the branch stops a strict Apply'], [F.ac, 'The move needs the rights of the user in the project of the branch only'], [F.perm, 'The user cannot access the old owner project'], [F.ai, 'An empty credential needs the right to create a credential in the consumer project'], [F.ai, 'A credential with a name from the branch and no values is still empty']],
   steps: [
     { t: 'Starting point', d: 'An incomplete Promote wrote Sync orders without CRM key. The apply environment allows incomplete. On a strict environment, this Apply would stop: "CRM key is not on the branch. The owner team must promote it."', br: 'W@P', dst: '' },
     { t: 'The user confirms the gap and applies Sales', op: APP('Project Apply · Sales · 1 gap confirmed'), v: 'gap', dst: 'W@P!unpub C@P!stub',
-      d: 'The branch records CRM key as a confirmed gap (decision 7). Apply creates an empty placeholder with the id, the name and the type of the source credential, in Sales, and binds Sync orders to it. This needs the right to create credentials in Sales: the confirmation gives no permission. The placeholder has a marker (decision 6). The new workflow lands unpublished. No publish path accepts it while the credential is a placeholder (decision 2).',
-      msgs: [['warn', 'CRM key', 'Not on the branch. An empty placeholder is created in Sales.', 1]], checks: [['W', 'C', 'apply', AP.confirmed, 'gap']] },
+      d: 'The branch records CRM key as a confirmed gap (decision 7). Apply creates an empty credential with the id, the name and the type of the source credential, in Sales, and binds Sync orders to it. This needs the right to create credentials in Sales: the confirmation gives no permission. n8n knows that it is empty because it has no values (decision 6). The new workflow lands unpublished. No publish path accepts it while the credential is empty (decision 2).',
+      msgs: [['warn', 'CRM key', 'Not on the branch. An empty credential is created in Sales.', 1]], checks: [['W', 'C', 'apply', AP.confirmed, 'gap']] },
     { t: 'Platform promotes the credential', v: 'info', br: 'W@P C@Q', d: 'The branch now holds CRM key under Platform.' },
     { t: 'The admin applies Platform', op: APP('Project Apply · Platform'), v: 'pass', dst: 'W@P!unpub C@Q+P!stub',
-      d: 'The destination holds CRM key in Sales, and the branch places it in Platform. Apply moves it to Platform, keeps every share, so Sales can still use it, then updates the name and the expression values from the branch. The branch carries no secret values, so the credential is still a placeholder. A placeholder moves with rights in Platform only (decision 5). A secret that an admin typed into the placeholder stays (decision 3).',
+      d: 'The destination holds CRM key in Sales, and the branch places it in Platform. Apply moves it to Platform, keeps every share, so Sales can still use it, then updates the name and the expression values from the branch. The branch carries no secret values. A credential that still has no values after the update is still empty. An empty credential moves with rights in Platform only (decision 5). A secret that an admin typed into the credential stays (decision 3). The credential is then not empty, so the move needs the right to move it.',
       msgs: [['ok', 'Preview', 'CRM key moves into Platform. The projects that use it keep access.', 1]], checks: [['W', 'C', 'apply', AP.usable, 'pass']] },
-    { t: 'A member of Platform enters the secret values', op: DST('Platform enters the secret values of CRM key'), v: 'info', dst: 'W@P!unpub C@Q+P', d: 'A person saves the values. The marker of the placeholder goes away.' },
+    { t: 'A member of Platform enters the secret values', op: DST('Platform enters the secret values of CRM key'), v: 'info', dst: 'W@P!unpub C@Q+P', d: 'A person saves the values. The credential is no longer empty.' },
     { t: 'An admin publishes Sync orders', op: DST('Admin publishes Sync orders'), v: 'info', dst: 'W@P C@Q+P', d: 'Source, branch and destination now agree on the owner of CRM key.' },
   ] },
 { id: 'c-ownerchange', group: 'Credentials', title: 'The owner of a credential changes on the source', flow: '3.7', lanes: 'sbd', rows: ['P', 'Q', 'R'], decisions: [5],
@@ -862,13 +862,13 @@ const SCENARIOS = [
       msgs: [['ok', 'Preview', 'CRM key moves into Ops. The projects that use it keep access.', 1]], checks: [['W', 'C', 'apply', AP.usable, 'pass']] },
   ] },
 { id: 'c-rights', group: 'Credentials', title: 'A credential with values moves only when the user may move it', flow: '3.7, 3.12', lanes: 'bd', rows: ['P', 'Q', 'R'], decisions: [5],
-  intro: 'The branch places CRM key in Platform. The destination holds it in Ops, with secret values. A move changes who can edit, share and delete the credential, so rights in Platform are not enough. Only a placeholder moves with rights in the project of the branch alone.',
+  intro: 'The branch places CRM key in Platform. The destination holds it in Ops, with secret values. A move changes who can edit, share and delete the credential, so rights in Platform are not enough. Only an empty credential moves with rights in the project of the branch alone.',
   refs: [['W', 'C', 'uses']],
   spec: [[F.ac, 'A credential with values does not move without the right to move it'], [F.perm, 'The user may not move a credential with values'], [F.ac, 'A move made by hand on the destination is undone'], [F.ac, 'The members of the old owner project become users of the credential'], [F.ac, 'Some credentials never move']],
   steps: [
     { t: 'Starting point', d: 'A destination admin moved CRM key from Platform to Ops in the editor. Sales can use it. The branch still places it in Platform.', br: 'W@P C@Q', dst: 'W@P C@R+P' },
     { t: 'A user who may not move CRM key applies Platform', op: APP('Project Apply · Platform'), v: 'warn', marks: { 'dst:C': 'warn' }, sub: { 'dst:C': 'not moved · not updated' },
-      d: 'The user has rights in Platform and cannot access Ops. CRM key is not a placeholder, and the user may not move it. Apply does not move and does not update the credential. The Apply continues.',
+      d: 'The user has rights in Platform and cannot access Ops. CRM key is not empty, and the user may not move it. Apply does not move and does not update the credential. The Apply continues.',
       msgs: [['warn', 'Result', 'CRM key has another owner on the destination. A user who may move it must apply.']] },
     { t: 'A user who may move CRM key previews the Apply', op: APP('Preview · Platform'), v: 'info',
       d: 'The preview announces the move. It names the old owner project only when the user can access it.',
@@ -973,7 +973,7 @@ const JOURNEY = { id: 'journey', lanes: 'sbd', rows: ['P', 'Q', 'R'], refs: [['W
       d: 'Two dependencies of Sync orders are on the branch and not on the destination. The admin can apply Ops, so Notify on-call offers "Include it". CRM key is missing, and the branch names its owner. The environment is strict, so Apply stops before any write.',
       msgs: [['action', 'Notify on-call · Ops', 'Include it'], ['block', 'CRM key', 'Missing. Owner on the branch: Platform. Consumer: Sales.', 1]],
       today: 'Apply has no check for a missing sub-workflow. Sync orders arrives with a broken reference and nothing reports it.',
-      variants: ['a-wfdep', 'a-incwf', 'a-live', 'c-placeholder', 'a-archived', 'a-cycle', 'a-policy', 'a-notonbranch'] },
+      variants: ['a-wfdep', 'a-incwf', 'a-live', 'c-empty-credential', 'a-archived', 'a-cycle', 'a-policy', 'a-notonbranch'] },
     { short: 'Add credential', t: 'The admin adds CRM key in Platform', op: DST('Admin adds CRM key in Platform'), v: 'info', dst: 'C@Q', pop: ['C'],
       d: 'A person enters the secret values on the destination. The credential is created one time, in the owner project that the branch names, with the id of the source.',
       today: 'When the branch names no owner for the credential, Apply reports a hard conflict and the dialog offers no action.',
@@ -996,24 +996,24 @@ const PRINCIPLES = [
   ['On Apply', 'The dependency must be on the destination after the Apply: already there, or included in it.', 'a-wfdep', 'branch → destination'],
   ['An exit for each gap', '"Include it" when the user can promote or apply its project. "Ask the owner" when the user cannot. A user never sees what they cannot access.', 'p-include'],
   ['Strict by default', 'A gap stops the operation. An admin can turn on "allow incomplete" for each environment. The user then confirms the gaps. Promotion Apply never changes the publish state.', 'p-incomplete'],
-  ['The owner follows the branch', 'A credential lives in the project that owns it. A placeholder from an incomplete Apply moves there when the real credential arrives. A credential with values moves only when the user may move it. Every share stays.', 'c-placeholder'],
+  ['The owner follows the branch', 'A credential lives in the project that owns it. An empty credential from an incomplete Apply moves there when the real credential arrives. A credential with values moves only when the user may move it. Every share stays.', 'c-empty-credential'],
   ['Broken on the source', 'A reference that already fails on the source is a warning, on Promote and on Apply. The branch records the reason. Promotion copies the source. It does not repair it.', 'p-broken'],
 ];
 const SCOPE = [
   ['Credential that another team project owns', 'support', 'Support. Before or with what uses it.', 'On the branch under its owner project, or included. Otherwise a gap: "Include it", or "Ask the owner".', 'Usable: no step. Not usable: grant that the user confirms. Missing: created one time in the owner project.', 'a-cred'],
-  ['Credential with another owner on the destination', 'support', 'Support. The owner follows the branch.', 'No effect.', 'Apply of the owner on the branch moves it there. Every share stays. A placeholder: rights in that project. A credential with values: the right to move it.', 'c-rights'],
+  ['Credential with another owner on the destination', 'support', 'Support. The owner follows the branch.', 'No effect.', 'Apply of the owner on the branch moves it there. Every share stays. An empty credential: rights in that project. A credential with values: the right to move it.', 'c-rights'],
   ['Owner change of a credential on the source', 'support', 'Support. The owner follows the branch.', 'The new owner promotes it. The file moves to its folder.', 'Apply of the new owner moves it on the destination, when the user may move it. Every share stays.', 'c-ownerchange'],
-  ['Credential that is not on the branch', 'gap', 'Gap, or a warning when it is broken on the source', 'The requirement row records the reason: confirmed gap, or broken on the source.', 'Confirmed gap, or no reason on an existing branch: strict block, allowed placeholder. Broken on the source: warning.', 'c-placeholder'],
-  ['Personal credential that a team workflow uses', 'gap', 'Gap with a fix', 'Gap: "This credential belongs to a personal project. Move it to a team project, then promote it from there."', 'Never on the branch. Strict: block. Allowed: empty placeholder in the consumer project.', 'p-personal'],
+  ['Credential that is not on the branch', 'gap', 'Gap, or a warning when it is broken on the source', 'The requirement row records the reason: confirmed gap, or broken on the source.', 'Confirmed gap, or no reason on an existing branch: strict block, allowed empty credential. Broken on the source: warning.', 'c-empty-credential'],
+  ['Personal credential that a team workflow uses', 'gap', 'Gap with a fix', 'Gap: "This credential belongs to a personal project. Move it to a team project, then promote it from there."', 'Never on the branch. Strict: block. Allowed: empty credential in the consumer project.', 'p-personal'],
   ['Global credential', 'support', 'Support, as a credential of its owner team project', 'Same as a team credential. The global state does not travel.', 'Same as a team credential. The consumer projects get grants.', ''],
-  ['Credential with usage scope "instance"', 'exclude', 'Exclude. A note, not a gap.', 'The package records that the workflow needs it. The branch holds no file for it. Note: "An instance credential is not promoted. It must exist on the destination."', 'Must exist on the destination. Missing: block in both modes, no placeholder. Never moved.', ''],
+  ['Credential with usage scope "instance"', 'exclude', 'Exclude. A note, not a gap.', 'The package records that the workflow needs it. The branch holds no file for it. Note: "An instance credential is not promoted. It must exist on the destination."', 'Must exist on the destination. Missing: block in both modes, no empty credential. Never moved.', ''],
   ['Static sub-workflow or error workflow, same project', 'support', 'Support. Before or with what uses it.', 'Not selected and not on the branch: gap, "Include it".', 'Not on the destination and not in this Apply: gap, "Include it".', 'p-same'],
   ['Static sub-workflow or error workflow, other team project', 'support', 'Support. Before or with what uses it.', 'Not on the branch: gap. "Include it", or "Ask the owner".', 'On the branch and not on the destination: gap. "Include it", or "Ask the owner". Allowed: the reference stays unresolved. A target that the Apply writes must still allow the caller.', 'a-wfdep'],
   ['Static sub-workflow or error workflow, personal project', 'gap', 'Gap with a fix', 'Gap: "Personal projects are not promoted. Move it to a team project."', 'Not reached on a new branch. Existing branch: warning.', 'p-personal'],
   ['Dependency archived on the destination', 'gap', 'Gap with a fix', 'Not reached.', 'Gap: "Archived on the destination. Restore it."', 'a-archived'],
   ['Reference to a workflow that does not exist on the source', 'warn', 'Warning. Already broken on the source.', 'Warning: "This reference is broken." Promote continues. The branch records the reason.', 'Reason on the branch: broken on the source. Warning. Apply continues.', 'p-broken'],
   ['Workflows that call each other across two projects', 'support', 'Support. One operation across projects.', 'Select both items in one Promote. Without the right in both projects: a gap, "Ask the owner".', 'Select both items in one Apply.', 'p-cycle'],
-  ['Operation with confirmed gaps', 'support', 'Opt-in for each environment', 'The review and the commit list the gaps.', 'Credential that the destination lacks: placeholder. Other gaps: unresolved. The publish state never changes.', 'p-incomplete'],
+  ['Operation with confirmed gaps', 'support', 'Opt-in for each environment', 'The review and the commit list the gaps.', 'Credential that the destination lacks: empty credential. Other gaps: unresolved. The publish state never changes.', 'p-incomplete'],
   ['Variable', 'nochange', 'Support. No change.', 'Project variable under the project folder. Global variable at the top level.', 'Must exist in the declared scope. The binding step creates it.', ''],
   ['Data table of the own project', 'nochange', 'Support. No change.', 'Content.', 'Created or matched in the project.', ''],
   ['Data table of another project', 'warn', 'Warning. Broken on the source, stays broken.', 'Warning. No gap.', 'Apply never copies the table. Warning.', 'a-table'],
@@ -1032,10 +1032,10 @@ const SCOPE = [
 const KINDS = { support: ['Support', 'pass'], gap: ['Gap', 'gap'], block: ['Block', 'block'], warn: ['Warning', 'warn'], exclude: ['Exclude', 'plain'], nochange: ['No change', 'info'] };
 const COMPARE = [
   ['A gap on Promote', 'An exit for each gap: "Include it" or "Ask the owner". Strict by default. Opt-in "allow incomplete".', 'Block: "Promote it from project X first."', 'Never a gap. Promote informs.'],
-  ['A gap on Apply', 'Same exits. Opt-in continue: placeholder for a credential, unresolved reference for a workflow. The publish state never changes.', 'Block. No "apply anyway".', 'Block with "apply anyway". The acceptance repeats on each Apply.'],
+  ['A gap on Apply', 'Same exits. Opt-in continue: empty credential for a credential, unresolved reference for a workflow. The publish state never changes.', 'Block. No "apply anyway".', 'Block with "apply anyway". The acceptance repeats on each Apply.'],
   ['Who sees what', 'Only what the user can access. A gap shows what the workflow already holds.', 'A generic block when the user cannot read the dependency.', 'Not specified.'],
-  ['Home of a missing credential', 'The branch path. A placeholder moves there later.', 'The branch path.', 'A home that the user selects, or a new owner hint file.'],
-  ['Owner differs on the destination', 'Moved to the owner on the branch. A placeholder: with rights in that project. A credential with values: when the user may move it. Every share stays.', 'A note. No move.', 'Kept as it is.'],
+  ['Home of a missing credential', 'The branch path. An empty credential moves there later.', 'The branch path.', 'A home that the user selects, or a new owner hint file.'],
+  ['Owner differs on the destination', 'Moved to the owner on the branch. An empty credential: with rights in that project. A credential with values: when the user may move it. Every share stays.', 'A note. No move.', 'Kept as it is.'],
   ['Cycle across projects', 'One operation across projects.', 'Instance Promote and instance Apply only.', 'Passes Promote. Apply decides.'],
   ['Personal dependency', 'Strict: block. Allowed: broken reference.', 'Block.', 'Passes Promote. Apply needs a home or an acceptance.'],
   ['Who waits', 'A user without access asks the owner. A user with access includes it.', 'A team waits for the owner team.', 'Nobody on Promote. Apply can repeat the acceptance.'],
@@ -1043,11 +1043,11 @@ const COMPARE = [
 ];
 const DECISIONS = [
   ['Who receives an "ask the owner" request, and what does it show to them?', ['The admins of the owner project, or every member who can promote it.', 'The request never shows the project of the requester.'], 'The admins of the owner project, or the instance admins when the owner project is not on the destination. The request shows the requested resource, the requesting user and the operation.', ['p-other']],
-  ['Does n8n refuse to publish a workflow whose credential is a placeholder?', ['The generic import has this check (stub-credential). The editor publish path is not checked yet.'], 'Yes, on every publish path. Verify the editor publish path, and add the check when it is missing.', ['c-placeholder']],
-  ['Does a secret that a destination admin types into a placeholder survive the move and the update?', ['Promote carries no secret values. The update writes the name and the expression values.'], 'Yes.', ['c-placeholder']],
+  ['Does n8n refuse to publish a workflow whose credential is empty?', ['The generic import has this check (stub-credential). The editor publish path is not checked yet.'], 'Yes, on every publish path. Verify the editor publish path, and add the check when it is missing.', ['c-empty-credential']],
+  ['Does a secret that a destination admin types into an empty credential survive the move and the update?', ['Promote carries no secret values. The update writes the name and the expression values.'], 'Yes.', ['c-empty-credential']],
   ['How do stacked promotions work?', ['A Promote waits on another Promote and lands after it. A request to the owner can turn into a stack.', 'Until then, a cycle between two projects needs one user with the right in both.'], 'No recommendation yet. Not specified.', ['p-cycle']],
-  ['What authorizes the move of a credential to its owner on the branch?', ['Rights in the new owner project only: a user could take over a credential of a project that they cannot access.', 'The move takes edit, share and delete rights from the old owner.'], 'A placeholder moves with rights in the new owner project only. Any other credential moves only when the user may move it. Without the right, Apply leaves it as it is and says who must apply.', ['c-rights', 'c-placeholder']],
-  ['How does n8n recognise a placeholder?', ['Today a stub is a normal empty credential with no marker.', 'Without a marker, the next environment promotes a placeholder as a real credential and the gap disappears.'], 'A marker on the credential, cleared when a person saves values. The publish check reads it. Promote never writes a placeholder to a branch.', ['c-placeholder']],
+  ['What authorizes the move of a credential to its owner on the branch?', ['Rights in the new owner project only: a user could take over a credential of a project that they cannot access.', 'The move takes edit, share and delete rights from the old owner.'], 'An empty credential moves with rights in the new owner project only. Any other credential moves only when the user may move it. Without the right, Apply leaves it as it is and says who must apply.', ['c-rights', 'c-empty-credential']],
+  ['How does n8n recognise an empty credential?', ['Today a stub is a normal credential with no values.', 'When the next environment promotes an empty credential as a real credential, the gap disappears.'], 'n8n derives it from the data. A credential with no values is empty. There is no separate flag on the credential. The publish check reads the values. Promote never writes an empty credential to a branch.', ['c-empty-credential']],
   ['Does the branch record why a reference is not on the branch?', ['Apply cannot tell a reference that is broken on the source from one that an incomplete Promote left out.', 'One optional field on the requirement row. Older readers ignore it.'], 'Yes: "confirmed gap" or "broken on the source". A strict Apply blocks on a confirmed gap and warns on a broken reference, for workflows and for credentials.', ['p-incomplete', 'a-notonbranch']],
   ['Do the checks of an Apply also read the published version of a workflow?', ['A live version can use a dependency that the incoming version dropped.', 'Promotion Apply promises only the publish state.'], 'Yes, for the deletion check and for the grant check of a move.', ['a-callers', 'm-creds']],
 ];
@@ -1055,10 +1055,10 @@ const REJECTED = [
   ['Hard block only (previous revision)', 'It stops users who cannot access the dependency, and it gives no exit for archived or personal dependencies.'],
   ['"Allow incomplete" as an instance setting', 'The risk depends on the destination. The environments of one instance can need different values.'],
   ['"Allow incomplete" on by default', 'The override is opt-in.'],
-  ['No placeholder for a missing credential', 'The workflow cannot bind. The placeholder plus "the owner follows the branch" ends in the same state, with the credential in its owner project.'],
-  ['A placeholder in the owner project', 'Apply does not know the owner of a credential that is not on the branch, and the owner project can be missing on the destination.'],
-  ['Move placeholders only, with a marker', 'One rule also covers an owner change on the source. The marker itself is kept, for the rights of the move and for the publish check.'],
-  ['Require access to the old owner project for the move', 'Rejected for a placeholder: it holds no secret of the old owner. Kept for any other credential, as the right to move it.'],
+  ['No empty credential for a missing credential', 'The workflow cannot bind. The empty credential plus "the owner follows the branch" ends in the same state, with the credential in its owner project.'],
+  ['An empty credential in the owner project', 'Apply does not know the owner of a credential that is not on the branch, and the owner project can be missing on the destination.'],
+  ['Move empty credentials only', 'One rule also covers an owner change on the source. The empty state still decides the rights of the move and the publish check.'],
+  ['Require access to the old owner project for the move', 'Rejected for an empty credential: it holds no secret of the old owner. Kept for any other credential, as the right to move it.'],
   ['Any owner mismatch moves with rights in the new owner project only', 'A user with rights in one project could take over a credential of a project that they cannot access.'],
   ['A destination home that the user selects', 'The home comes from the branch. The one exception is a top-level credential of an existing branch, which has no owner.'],
   ['Promote adds the dependencies of other projects automatically', 'The owner team loses control of what ships and when. "Include it" is an action of a user who has the right.'],

@@ -9,7 +9,7 @@ Feature: Credentials on Apply
   The owner on the destination follows the branch: when Apply writes a
   credential that the branch places in another project than the destination,
   Apply moves it to the project of the branch and keeps every share. A
-  placeholder moves with rights in the project of the branch only. Any other
+  empty credential moves with rights in the project of the branch only. Any other
   credential moves only when the user may move it.
 
   Background:
@@ -71,20 +71,21 @@ Feature: Credentials on Apply
       And the Apply updates the name and the expression values of "CRM key" from the branch
 
     @open-decision-5 @open-decision-6
-    Scenario: A placeholder gets its home
-      Given an incomplete Apply of project "Sales" created the empty placeholder "CRM key" in project "Sales"
+    Scenario: An empty credential gets its home
+      Given an incomplete Apply of project "Sales" created the empty credential "CRM key" in project "Sales"
       And a user promoted credential "CRM key" from project "Platform"
       When the user applies project "Platform"
       Then "CRM key" is in project "Platform" on the destination
       And project "Sales" can still use "CRM key"
       And the Apply updates the name and the expression values of "CRM key" from the branch
       And "CRM key" holds no secret values, because the branch carries none
-      And "CRM key" keeps the placeholder marker until a person saves values in it
+      And "CRM key" is empty until a person saves values in it
 
     @open-decision-3
-    Scenario: A secret typed into the placeholder survives the move
-      Given the empty placeholder "CRM key" is in project "Sales" on the destination
+    Scenario: A secret typed into the empty credential survives the move
+      Given the empty credential "CRM key" is in project "Sales" on the destination
       And a destination admin typed a secret value into "CRM key"
+      And the user may move "CRM key"
       When the user applies project "Platform"
       Then "CRM key" is in project "Platform" on the destination
       And "CRM key" keeps the secret value that the admin typed
@@ -107,7 +108,7 @@ Feature: Credentials on Apply
 
     @open-decision-5
     Scenario: The move needs the rights of the user in the project of the branch only
-      Given the destination holds the placeholder "CRM key" in project "Ops"
+      Given the destination holds the empty credential "CRM key" in project "Ops"
       And the user cannot access project "Ops"
       And the user may create and update credentials in project "Platform"
       When the user applies project "Platform"
@@ -126,7 +127,7 @@ Feature: Credentials on Apply
 
     @open-decision-5
     Scenario: The preview announces the move without naming a project that the user cannot access
-      Given the destination holds the placeholder "CRM key" in project "Ops"
+      Given the destination holds the empty credential "CRM key" in project "Ops"
       And the user cannot access project "Ops"
       When the user previews the Apply of project "Platform"
       Then the preview says: "CRM key moves into Platform. The projects that use it keep access."
@@ -373,7 +374,7 @@ Feature: Credentials on Apply
       When the user applies project "Sales"
       Then the Apply stops before any write
       And the Apply says: "Create the instance credential on the destination."
-      And the Apply creates no placeholder for "Instance SMTP"
+      And the Apply creates no empty credential for "Instance SMTP"
 
       Examples:
         | mode                                                        |

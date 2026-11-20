@@ -121,18 +121,18 @@ Feature: Credentials in a project Promote
       Then the Promote stops
       And the message names the folders of project "Platform" and project "Ops"
 
-  Rule: A placeholder is never content
+  Rule: An empty credential is never content
 
     @open-decision-6
-    Scenario: The Promote does not write a placeholder to the branch
-      Given an incomplete Apply created the placeholder "CRM key" in project "Platform" on the source
+    Scenario: The Promote does not write an empty credential to the branch
+      Given an incomplete Apply created the empty credential "CRM key" in project "Platform" on the source
       And nobody saved values in "CRM key"
       When the user promotes credential "CRM key" from project "Platform"
       Then the branch holds no file for "CRM key"
 
     @open-decision-6
-    Scenario: A reference to a placeholder is a gap
-      Given an incomplete Apply created the placeholder "CRM key" in project "Platform" on the source
+    Scenario: A reference to an empty credential is a gap
+      Given an incomplete Apply created the empty credential "CRM key" in project "Platform" on the source
       And nobody saved values in "CRM key"
       And the branch does not hold "CRM key"
       When the user previews the Promote of "Sync orders" from project "Sales"

@@ -24,8 +24,10 @@ not for merge: it has no tests and no telemetry.
   moves the owner on the destination to follow the branch and keeps the access
   of the other projects.
 - Access grants on Apply, after the user confirms each one.
-- Placeholder credentials on an Apply with gaps: one for each credential gap
-  whose id the destination does not hold. A workflow that uses a placeholder
+- Empty credentials on an Apply with gaps: one for each credential gap whose
+  id the destination does not hold. An empty credential is a credential with
+  no values: the state "Needs first setup" of the editor, with no flag of its
+  own (decision S2 of 2026-11-20). A workflow that uses an empty credential
   cannot be published until the credential has values.
 - Moves of a workflow between two team projects, as one change.
 - Protection of deletions: an instance Apply keeps a workflow that the branch
@@ -106,7 +108,7 @@ Each step names the user, the page, and the screenshot in `screenshots/`.
    ![](screenshots/4.2-03-promote-with-2-gaps-dialog.png)
 2. builder on prod: project Sales, the Apply badge, tab "Dependencies". The
    branch does not hold the two dependencies. The Apply shows them as gaps
-   and plans a placeholder for "CRM key". The button reads "Apply with 2
+   and plans an empty credential "CRM key". The button reads "Apply with 2
    gaps". Journey 4.4 continues from here.
    ![](screenshots/4.2-06-apply-gaps-not-on-branch.png)
 
@@ -125,15 +127,19 @@ Each step names the user, the page, and the screenshot in `screenshots/`.
 
 1. Start: the branch of journey 4.2.
 2. builder on prod: project Sales, Apply, tab "Dependencies".
-   ![](screenshots/4.4-02-gaps-and-placeholder.png)
-3. "Apply with 2 gaps". The result names the placeholder.
-   ![](screenshots/4.4-04-apply-result-placeholder.png)
-4. builder: open "Sync orders", Publish. n8n refuses.
+   ![](screenshots/4.4-02-gaps-and-empty-credential.png)
+3. "Apply with 2 gaps". The result names the empty credential.
+   ![](screenshots/4.4-04-apply-result-empty-credential.png)
+4. builder: the credential list of Sales shows "CRM key" with the badge
+   "Needs first setup", as for any credential with no values.
+   ![](screenshots/4.4-05-credential-list-needs-first-setup.png)
+5. builder: open "Sync orders", Publish. n8n refuses.
    ![](screenshots/4.4-10-publish-refused.png)
-5. plat on dev promotes "CRM key". plat on prod: project Platform, Apply. The
-   placeholder moves into Platform, and Sales keeps access.
+6. plat on dev promotes "CRM key". plat on prod: project Platform, Apply. The
+   empty credential moves into Platform, and Sales keeps access.
    ![](screenshots/4.4-13-platform-apply-credential-moves.png)
-6. plat enters the values. The marker goes. builder publishes "Sync orders".
+7. plat enters the values. The credential is not empty any more. builder
+   publishes "Sync orders".
 
 ### Other cases
 
@@ -145,7 +151,7 @@ Each step names the user, the page, and the screenshot in `screenshots/`.
 | Apply deletes a workflow that another workflow calls | ![](screenshots/B-04c-deletion-accepted.png) |
 | Promote of a deletion with a caller on the branch | ![](screenshots/D-02-promote-deletion-callers.png) |
 | A data table of another project | ![](screenshots/T-02-promote-data-table-of-other-project.png) |
-| A published workflow gets a placeholder | ![](screenshots/L-02-apply-result-live-placeholder.png) |
+| A published workflow gets an empty credential | ![](screenshots/L-02-apply-result-live-empty-credential.png) |
 | A project viewer reads the changes | ![](screenshots/V-02-viewer-read-only-view.png) |
 | The gaps changed after the preview: the page shows the new list | ![](screenshots/B-05-gaps-changed-notice.png) |
 | The environment form has no setting for gaps | ![](screenshots/S-02-dev-environment-form.png) |
@@ -189,8 +195,8 @@ report and exits with code 4. It continues with gaps when each gap id is in
 
 ## Database
 
-Two migrations: `isPlaceholder` on the credentials table, and the table
-`promotion_owner_request`.
+One migration: the table `promotion_owner_request`. The credentials table
+has no new column (decision S2).
 
 ## Differences from solution.md after S1
 
@@ -208,7 +214,7 @@ changed. These parts still describe the removed setting:
 | 3.3 Promote check | The decision "Environment allows incomplete?" of the diagram. A gap always goes to the confirmation. |
 | 3.4 Apply check | The same decision of the diagram, "On a strict environment the fix is to restore", and "A strict Apply stops" for a confirmed gap. |
 | 3.5 "Allow incomplete" setting | The whole section, except the confirmation of the list of gaps. |
-| 3.7 Credentials | "Placeholder (incomplete Apply only)": each Apply with a credential gap can create one. |
+| 3.7 Credentials | "Empty credential (incomplete Apply only)": each Apply with a credential gap can create one. |
 | 3.10 Personal resources | The two modes. A personal reference is always a gap with the fix in the message. |
 | 3.13 What does not change | The note on "Allow incomplete" for one repository for each project. |
 | 4.1, 4.2, 4.4 User journeys | "strict environment", the setting on the promote environment, step 4 of 4.2 ("the Apply blocks"), step 1 of 4.4 ("the apply environment allows incomplete"). |

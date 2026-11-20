@@ -30,8 +30,8 @@ The decisions:
 4. **One dependency report** in Promote and Apply. It shows each gap, its state, and the exits.
 5. **No information leaks.** A user never sees information about a resource that they cannot access.
 6. **Credentials live in the project that owns them.** This is not negotiable.
-7. **Placeholders for credentials.** An incomplete Apply creates one empty placeholder credential, in a project that uses it, for a credential that the destination does not hold. A placeholder has a marker (open decision 6).
-8. **The owner on the destination follows the branch.** When Apply writes a credential that the branch places in project P, and the destination holds it in project Q, Apply moves it to P. A placeholder moves with rights in P only. Any other credential moves only when the user may move it (open decision 5). Every project keeps its access.
+7. **Empty credentials for credential gaps.** An incomplete Apply creates one empty credential, in a project that uses it, for a credential that the destination does not hold. An empty credential is a credential with no values (open decision 6).
+8. **The owner on the destination follows the branch.** When Apply writes a credential that the branch places in project P, and the destination holds it in project Q, Apply moves it to P. An empty credential moves with rights in P only. Any other credential moves only when the user may move it (open decision 5). Every project keeps its access.
 9. **The publish state never changes.** Promotion Apply never publishes and never unpublishes (current behavior). A workflow with a gap waits on the destination until somebody publishes it. Other writes of an Apply can still change what a live workflow does (section 3.9).
 10. **Personal dependencies** block on a strict environment. With "allow incomplete" they become broken references, and the message says how to fix them.
 11. **No closure.** Promote and Apply never add content of another project by themselves.
@@ -44,7 +44,7 @@ The decisions:
 - **Works on the source**: the target exists, is not archived, and the item can use it. For a credential: the project of the workflow can use it. For a workflow: its caller policy allows the caller. When the check cannot tell, the reference counts as working. Unknown is never "broken".
 - **Strict environment**: an environment where "allow incomplete" is off. This is the default.
 - **Incomplete operation**: a Promote or an Apply that writes items with gaps, after the user confirms the list of gaps.
-- **Placeholder credential**: an empty credential that an incomplete Apply creates, with the id, name and type of the source credential, and a marker. The marker goes away when a person saves values in it.
+- **Empty credential**: a credential with no values. Its data has no keys, or every value is empty. An incomplete Apply creates one, with the id, name and type of the source credential. When a person saves values in it, the credential is no longer empty.
 - **Changes view**: the list of changes that a Promote or an Apply can write, grouped by project.
 
 ## 3. Final state
@@ -109,7 +109,7 @@ flowchart TD
 - The check reads items, not projects. Most cycles between projects pass in the right order. A true cycle passes when the user selects all its items in one Promote.
 - An incomplete Promote writes the reference as a requirement row, as `ReferenceOnly` does today. The branch then holds a reference that is not on the branch.
 - The requirement row records why the target is not on the branch: "confirmed gap" or "broken on the source" (open decision 7). Apply needs this to tell the two apart.
-- A placeholder is never content. A Promote from an instance that holds a placeholder does not write it to the branch. The reference to it is a gap (open decision 6). So a gap does not disappear on the way through several environments.
+- An empty credential is never content. A Promote from an instance that holds an empty credential does not write it to the branch. The reference to it is a gap (open decision 6). So a gap does not disappear on the way through several environments.
 - A credential id under two project folders of the branch has no clear owner. Promote and Apply stop. The message names a folder only when the user can access its project.
 - A true cycle needs one user with the right in each project. Two owners who each have one right cannot close it, and "Ask the owner" does not help them. Until stacked promotions exist (open decision 4), an admin promotes the cycle.
 - The open-review gate still applies. A project with an open review cannot get a second Promote.
@@ -137,7 +137,7 @@ flowchart TD
     T -- "none (existing branch)" --> L["Workflow: warning.<br/>Credential: gap."]
     GD & GA & GR & GP & I & G1 & G2 & L --> S{"Environment allows<br/>incomplete?"}
     S -- no --> BL["Block until the gaps are closed"]
-    S -- yes --> C["User confirms the list.<br/>A credential that the destination does<br/>not hold gets a placeholder.<br/>Other gaps stay unresolved."]
+    S -- yes --> C["User confirms the list.<br/>A credential that the destination does<br/>not hold gets an empty credential.<br/>Other gaps stay unresolved."]
 ```
 
 - **The check reads the state after the Apply.** A target that the same Apply writes is present, but the consumer must still be able to use it. A credential that the Apply writes can still need a grant for a consumer project. A sub-workflow that the Apply writes can still refuse the caller. Including a target never changes a permission, a caller policy or an archive state.
@@ -180,14 +180,14 @@ flowchart TD
 
 **Grants.** A consumer project gets access through a grant that the user confirms. The grant needs the right to share the credential. Without that right, the missing grant is a gap. Apply never removes a share. A grant that the user confirmed stays when the Apply then stops on something else. The result lists it, and a retry does not grant it again.
 
-**Placeholder (incomplete Apply only).** A credential gap gets an empty placeholder when the destination does not hold the id: the credential is not on the branch, or it is on the branch in a project that the user cannot apply.
+**Empty credential (incomplete Apply only).** A credential gap gets an empty credential when the destination does not hold the id: the credential is not on the branch, or it is on the branch in a project that the user cannot apply.
 
-- The placeholder has the source id, name and type, and a marker. The workflow binds to it.
-- One id gets one placeholder. When several projects of the Apply use the credential, the placeholder goes to the first of them in the order of the changes view, and the Apply shares it with the others. A later Apply of another consumer finds the placeholder and follows the grant rule.
-- The placeholder needs `credential:create` in the consumer project. Without it the Apply stops on that credential. The confirmation of the gaps never gives a permission.
-- Sharing the new placeholder with the other consumer projects of the same Apply is part of its creation and needs no other right.
-- A placeholder for a credential that is on the branch moves to its owner in the same way, at the Apply of the owner project.
-- A credential that the destination holds, and that the consumer cannot use, gets no placeholder. The id is taken. The workflow arrives with a binding that does not work until somebody grants access.
+- The empty credential has the source id, name and type, and no values. The workflow binds to it.
+- One id gets one empty credential. When several projects of the Apply use the credential, the empty credential goes to the first of them in the order of the changes view, and the Apply shares it with the others. A later Apply of another consumer finds the empty credential and follows the grant rule.
+- The empty credential needs `credential:create` in the consumer project. Without it the Apply stops on that credential. The confirmation of the gaps never gives a permission.
+- Sharing the new empty credential with the other consumer projects of the same Apply is part of its creation and needs no other right.
+- An empty credential for a credential that is on the branch moves to its owner in the same way, at the Apply of the owner project.
+- A credential that the destination holds, and that the consumer cannot use, gets no empty credential. The id is taken. The workflow arrives with a binding that does not work until somebody grants access.
 - A credential with an incompatible usage scope blocks in both modes, as today.
 - The workflow does not go live (section 3.9).
 
@@ -199,19 +199,19 @@ flowchart TD
 
 This one rule covers two cases:
 
-- **A placeholder gets its home.** Sales applies incomplete, so an empty *CRM key* lands in Sales. Later Platform promotes and applies *CRM key*. Apply moves it to Platform, and Sales keeps access. A person then enters the secret values.
+- **An empty credential gets its home.** Sales applies incomplete, so an empty *CRM key* lands in Sales. Later Platform promotes and applies *CRM key*. Apply moves it to Platform, and Sales keeps access. A person then enters the secret values.
 - **An owner change on the source.** *CRM key* moves from Marketing to Billing on the source. The next Apply of Billing moves it on the destination too.
 
 Rules for the move (open decision 5):
 
-- **A placeholder moves with rights in P only.** It holds no secret of Q, and every share stays. The user does not need access to Q.
+- **An empty credential moves with rights in P only.** It holds no secret of Q, and every share stays. The user does not need access to Q. A secret that a person types into it before the move makes it a credential with values, so the move then needs `credential:move`.
 - **Any other credential moves only when the user may move it** (`credential:move` on the credential, as in the editor). The move changes who can edit, share and delete a credential that holds secret values, so rights in P are not enough. Without the right, Apply does not move and does not update the credential. The result says: "CRM key has another owner on the destination. A user who may move it must apply."
 - **The destination mirrors the branch.** A move made by hand on the destination is undone at the next Apply that writes the credential, when the user may move it. An owner mismatch alone makes a change row for the credential.
 - **Visibility.** The preview says "*CRM key* moves into Platform. The projects that use it keep access." It names Q only when the user can access Q.
 - **Excluded.** A managed credential and a resolvable (end-user) credential never move. The current update rules already exclude them (`isUpdateCandidate`). The Apply continues and the result says that the credential stays where it is. A destination credential with usage scope `instance` does not match a project credential of the branch: the usage scope is not compatible, and the Apply blocks in both modes, as today.
 - Members of Q who could edit the credential become users of it. This is accepted: the credential belongs to P.
 
-**Instance credentials.** A credential with usage scope `instance` is never in the package. Promote writes a requirement row and a note, not a gap. On Apply the destination must hold it: when it does not, the Apply blocks in both modes and says "Create the instance credential on the destination." It gets no placeholder.
+**Instance credentials.** A credential with usage scope `instance` is never in the package. Promote writes a requirement row and a note, not a gap. On Apply the destination must hold it: when it does not, the Apply blocks in both modes and says "Create the instance credential on the destination." Apply creates no empty credential for it.
 
 **Existing branches.** A credential file at the top level of the branch has no owner. This is the one case where the user selects the home: the Apply shows a home selector, in both modes. After the owner project promotes the credential, the file is under its folder and the rule above applies.
 
@@ -220,7 +220,7 @@ Rules for the move (open decision 5):
 ### 3.8 Sub-workflows and error workflows
 
 - A static reference to a workflow follows the same checks as a credential.
-- There is no placeholder workflow. In an incomplete Apply the reference stays unresolved.
+- Apply creates no workflow in its place. In an incomplete Apply the reference stays unresolved.
 - When the target arrives later with the same id, the reference resolves by itself.
 - A workflow reference that is not on the branch follows section 3.4: a warning when it is broken on the source, a gap when an incomplete Promote left it out.
 
@@ -230,7 +230,7 @@ Rules for the move (open decision 5):
 - So a new workflow with a gap lands unpublished. A workflow that is live keeps its live version. The new version waits until somebody publishes it on the destination.
 - The publish state is the only promise. Three writes of an Apply can change what a live version does: an update of a credential that it uses, a move of the workflow to another project, and the deletion of a workflow that it calls.
 - So the deletion check and the grant check of a move also read the published version, not only the incoming one (open decision 8).
-- To verify: every publish path (editor, public API, CLI) refuses to publish a workflow whose credential is a placeholder. The generic import has this check (`blockedReason: 'stub-credential'`). The editor publish path is not checked yet. The check reads the marker (open decision 6), so a placeholder that got a name from the branch and no secret is still a placeholder.
+- To verify: every publish path (editor, public API, CLI) refuses to publish a workflow whose credential is empty. The generic import has this check (`blockedReason: 'stub-credential'`). The editor publish path is not checked yet. The check reads the values of the credential (open decision 6), so a credential that got a name from the branch and no values is still empty.
 
 ### 3.10 Personal resources
 
@@ -255,7 +255,7 @@ Rules for the move (open decision 5):
 - An operation across projects needs the right in each project of the operation. Only global owners and admins have promotion rights today, so this matters when project-level promotion rights arrive (LIGO-1006).
 - A user never sees information about a resource that they cannot access: not its project, not its state, not its review.
 - Each write has its own permission check: create a project, create a credential, share a credential, move a workflow. A dependency never gives a permission.
-- Exception: moving a placeholder to its owner on the branch needs rights in the owner project only (section 3.7, open decision 5).
+- Exception: moving an empty credential to its owner on the branch needs rights in the owner project only (section 3.7, open decision 5).
 - The confirmation of an incomplete operation never gives a permission.
 
 ### 3.13 What does not change
@@ -296,10 +296,10 @@ Cast: **Sales** owns the workflow *Sync orders*. **Platform** owns the credentia
 ### 4.4 An incomplete Apply, then the real credential
 
 1. The apply environment allows incomplete. Sales applies *Sync orders*. *CRM key* is not on the branch.
-2. Apply creates an empty *CRM key* placeholder in Sales. *Sync orders* lands unpublished.
+2. Apply creates an empty *CRM key* credential in Sales. *Sync orders* lands unpublished.
 3. Later Platform promotes and applies *CRM key*.
 4. Apply moves *CRM key* to Platform, keeps the access of Sales, and updates the name and the expression values.
-5. A member of Platform enters the secret values. The marker of the placeholder goes away.
+5. A member of Platform enters the secret values. The credential is no longer empty.
 6. An admin publishes *Sync orders* on the destination.
 
 ## 5. Current state that the design depends on
@@ -311,8 +311,8 @@ Verified at `0b787546e38`. The fact ledger of the earlier revisions is in `conso
 - The open-review gate returns the blocker `reviewOpen`. A run stores `contents.projectIds` as a list (`promotions.ee/promotion-review-gate.service.ts`).
 - Promotion Apply never changes the publish state: `WorkflowPublishingPolicy.PreserveTargetState` (`promotions.ee/apply-preview.service.ts`).
 - Promotion Apply creates no credential: `credentialMissingMode: 'must-preexist'`. The client creates a missing credential with the source id, then calls Continue. The generic import can create stubs (`create-stub`).
-- A stub credential is created in the project of the import, not in the owner project (`n8n-packages/entities/credential/credential-importer.ts`, `createStubCredential({ projectId: context.projectId })`). A stub has no marker. It is an empty, normal credential (`credentials/credentials.service.ts`, `createStubCredential`).
-- Apply updates a credential only when a project of the Apply owns it on the destination. Any other match is bound and does not change (`isUpdateCandidate` in `n8n-packages/entities/credential/credential-conflict-policy.ts`). So today a placeholder in Sales stays in Sales and stays empty.
+- A stub credential is created in the project of the import, not in the owner project (`n8n-packages/entities/credential/credential-importer.ts`, `createStubCredential({ projectId: context.projectId })`). A stub is an empty, normal credential (`credentials/credentials.service.ts`, `createStubCredential`).
+- Apply updates a credential only when a project of the Apply owns it on the destination. Any other match is bound and does not change (`isUpdateCandidate` in `n8n-packages/entities/credential/credential-conflict-policy.ts`). So today an empty credential in Sales stays in Sales and stays empty.
 - The editor credential transfer removes every share and needs `credential:move` on the credential and `credential:create` in the new project (`credentials/credentials.service.ee.ts`, `transferOne`).
 - A credential that is not on the branch and not on the destination is the hard conflict `unknown-owner`, with no action.
 - Promote under `ReferenceOnly` writes a requirement row for a dependency outside the selection.
@@ -329,7 +329,7 @@ High level only. No ticket split.
 - **Incomplete Promote.** The Promote request carries a confirmation of the gaps. The server checks that the confirmed list matches the current gaps, like `expectedPreviewRevision`. A gap is one reference: a consumer and a target. "2 gaps" counts references.
 - **Incomplete Apply.** The Apply request carries the same confirmation, and the server makes the same check. A credential that the destination does not hold uses the stub path of the engine, in the consumer project. Other gaps write the reference unchanged.
 - **Reason on the requirement row.** One optional field: `confirmed-gap` or `broken-on-source`. The manifest reader of an older version drops unknown keys, so it reads the package as today.
-- **Placeholder marker.** A flag on the credential. It is set by the stub path of promotion and cleared when a person saves values.
+- **Empty credential rule.** One rule says that a credential has no values. The publish check, the Promote and the move read it. There is no flag and no column on the credential.
 - **Owner follows the branch.** A new step in the credential importer. A credential in the package whose destination owner differs from its branch project is transferred before the update step, when the rules of section 3.7 allow it. The transfer keeps every share. It goes through `CredentialsService`, as a general method next to `transferOne`, not through a repository.
 - **Ask the owner.** A new inbox item type in the owner project. It stores the requested resource, the requester, the operation and the environment.
 - **Public API and CLI.** Every new field goes through the DTO, the public API and `@n8n/cli`. A client must treat an unknown gap code as a blocker.
@@ -363,10 +363,10 @@ High level only. No ticket split.
 - **"Promote informs, Apply decides"** (`consolidated-solution.md`). Kept: an incomplete operation is possible. Not kept: a destination home that the user selects. The home comes from the branch. The one exception is a top-level credential of an existing branch, which has no owner (section 3.7).
 - **"Allow incomplete" as an instance setting.** Rejected: the risk depends on the destination, and environments of one instance can need different values.
 - **Default "allow incomplete" on.** Rejected: the override is opt-in.
-- **No placeholder for a missing credential.** Rejected for credentials: the workflow cannot bind. The placeholder plus "owner follows the branch" gives the same end state and keeps the credential in its owner project at the end.
-- **A placeholder in the owner project.** Rejected: Apply does not know the owner of a credential that is not on the branch, and the owner project can be missing on the destination.
-- **Move placeholders only (with a marker).** Rejected: one rule also covers an owner change on the source. The marker itself is kept, for the rights of the move and for the publish check (open decisions 5 and 6).
-- **Require access to the old owner project for the move.** Rejected for a placeholder: it holds no secret of the old owner. Kept for any other credential, as the right to move it: the move takes edit, share and delete rights from the old owner (open decision 5).
+- **No empty credential for a missing credential.** Rejected for credentials: the workflow cannot bind. The empty credential plus "owner follows the branch" gives the same end state and keeps the credential in its owner project at the end.
+- **An empty credential in the owner project.** Rejected: Apply does not know the owner of a credential that is not on the branch, and the owner project can be missing on the destination.
+- **Move empty credentials only.** Rejected: one rule also covers an owner change on the source. The empty state still decides the rights of the move and the publish check (open decisions 5 and 6).
+- **Require access to the old owner project for the move.** Rejected for an empty credential: it holds no secret of the old owner. Kept for any other credential, as the right to move it: the move takes edit, share and delete rights from the old owner (open decision 5).
 - **Any owner mismatch moves with rights in the new owner project only** (first text of this revision). Replaced: a user with rights in one project could take over a credential of a project that they cannot access.
 - **Promote adds the dependencies of other projects automatically.** Still rejected. The owner team loses control of what ships and when.
 - **A sharing list in Git.** Still rejected. A Promote of one project does not rewrite the credential file of another project, so the list goes out of date.
@@ -378,20 +378,20 @@ Each scenario of the specification that depends on one of these decisions carrie
 **Decision 1. Who receives an "ask the owner" request, and what does it show to them?**
 - Recommendation: the admins of the owner project, or the instance admins when the owner project is not on the destination. The request shows the requested resource, the requesting user and the operation. It never shows the project of the requester.
 
-**Decision 2. Does n8n refuse to publish a workflow whose credential is a placeholder?**
+**Decision 2. Does n8n refuse to publish a workflow whose credential is empty?**
 - Recommendation: yes, on every publish path. Verify the editor publish path, and add the check when it is missing.
 
-**Decision 3. Does a secret that a destination admin types into a placeholder survive the move and the update?**
+**Decision 3. Does a secret that a destination admin types into an empty credential survive the move and the update?**
 - Recommendation: yes. Promote carries no secret values, and the update writes only the name and the expression values.
 
 **Decision 4. How do stacked promotions work?**
 - No recommendation yet. The specification does not cover it. A request can turn into a stack later.
 
 **Decision 5. What authorizes the move of a credential to its owner on the branch?**
-- Recommendation: a placeholder moves with rights in the new owner project only. Any other credential moves only when the user may move it (`credential:move`). Without the right, Apply leaves the credential as it is and says who must apply.
+- Recommendation: an empty credential moves with rights in the new owner project only. Any other credential moves only when the user may move it (`credential:move`). Without the right, Apply leaves the credential as it is and says who must apply.
 
-**Decision 6. How does n8n recognise a placeholder?**
-- Recommendation: a marker on the credential, cleared when a person saves values. The publish check reads it. Promote never writes a placeholder to a branch, so the gap stays visible in the next environment.
+**Decision 6. How does n8n recognise an empty credential?**
+- Recommendation: n8n derives it from the data. A credential with no values is empty. There is no separate flag on the credential. The publish check reads the values. Promote never writes an empty credential to a branch, so the gap stays visible in the next environment.
 
 **Decision 7. Does the branch record why a reference is not on the branch?**
 - Recommendation: yes. One optional field on the requirement row: "confirmed gap" or "broken on the source". A strict Apply then blocks on a confirmed gap and warns on a broken reference, for workflows and for credentials.
