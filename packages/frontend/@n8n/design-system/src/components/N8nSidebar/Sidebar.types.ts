@@ -15,7 +15,7 @@ export interface SidebarProps {
 	 * The sidebar clamps this value to minWidth and maxWidth.
 	 * It emits the clamped width.
 	 * Pass width without v-model:width and the value is the start width.
-	 * A later render from the parent sets the width back to that value.
+	 * The sidebar keeps a resized width until the parent changes width or remounts the sidebar.
 	 * @default 240
 	 */
 	width?: number;
