@@ -3,6 +3,7 @@ import { Service } from '@n8n/di';
 
 import { ServiceAccountService } from '@/services/service-account.service';
 
+import { AgentServiceAccountService } from '../agent-service-account.service';
 import { AgentRepository } from '../repositories/agent.repository';
 import { SystemAgentRegistry } from './system-agent-registry';
 import type { SystemAgentProvider } from './system-agent.types';
@@ -22,6 +23,7 @@ export class SystemAgentRegistrationService {
 		private readonly agentRepository: AgentRepository,
 		private readonly serviceAccountService: ServiceAccountService,
 		private readonly transactionRunner: TransactionRunner,
+		private readonly agentServiceAccount: AgentServiceAccountService,
 	) {}
 
 	/** Register a provider and make sure its instance agent row exists. */
@@ -38,16 +40,24 @@ export class SystemAgentRegistrationService {
 	async ensureInstanceAgent(id: string, name: string): Promise<void> {
 		if (await this.agentRepository.renameInstanceAgentIfExists(id, name)) return;
 
+		let identityId: string;
 		try {
-			await this.transactionRunner.run({}, async (ctx) => {
+			identityId = await this.transactionRunner.run({}, async (ctx) => {
 				const { serviceAccount } = await this.serviceAccountService.create(name, ctx);
 				if (!(await this.agentRepository.insertInstanceAgent(id, name, serviceAccount.id, ctx))) {
 					throw new InstanceAgentExistsError();
 				}
+				return serviceAccount.id;
 			});
 		} catch (error) {
 			if (!(error instanceof InstanceAgentExistsError)) throw error;
 			await this.agentRepository.renameInstanceAgentIfExists(id, name);
+			return;
 		}
+		// After the commit: the main that lost the race rolled back and sends nothing.
+		this.agentServiceAccount.reportCreated(
+			{ id, identityId, projectId: null },
+			{ kind: 'system', reason: 'startup' },
+		);
 	}
 }

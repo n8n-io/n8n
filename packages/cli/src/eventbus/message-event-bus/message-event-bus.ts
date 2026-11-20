@@ -7,6 +7,7 @@ import uniqby from 'lodash/uniqBy';
 import { InstanceSettings } from 'n8n-core';
 import { existsSync } from 'node:fs';
 
+import { WorkflowCrashJournal } from '../../crash-loop/workflow-crash-journal';
 import { ExecutionCrashService } from '../../executions/execution-crash.service';
 import { ExecutionRecoveryService } from '../../executions/execution-recovery.service';
 import type { EventMessageTypes } from '../event-message-classes/';
@@ -63,6 +64,7 @@ export class MessageEventBus extends EventEmitter {
 		private readonly executionCrashService: ExecutionCrashService,
 		private readonly globalConfig: GlobalConfig,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly workflowCrashJournal: WorkflowCrashJournal,
 	) {
 		super();
 	}
@@ -293,6 +295,7 @@ export class MessageEventBus extends EventEmitter {
 			return;
 		}
 
+		await this.noteRunningExecutions(unsentAndUnfinished.unfinishedExecutions);
 		await this.logActiveWorkflows();
 
 		const recoveryAlreadyAttempted = this.logWriter?.isRecoveryProcessRunning();
@@ -341,6 +344,29 @@ export class MessageEventBus extends EventEmitter {
 	}
 
 	/**
+	 * Feeds the workflow crash journal the workflows of the logged executions that are still
+	 * `running` in this process. A logged execution that is waiting, or that an earlier recovery
+	 * already closed, was not in flight at the crash. In queue mode the executions run on workers,
+	 * except manual ones while they are not offloaded.
+	 */
+	private async noteRunningExecutions(
+		unfinishedExecutions: Record<string, EventMessageTypes[] | undefined>,
+	) {
+		const runsHere = (messages: EventMessageTypes[] | undefined) =>
+			this.globalConfig.executions.mode !== 'queue' ||
+			(process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS !== 'true' &&
+				(messages ?? []).some(({ payload }) => payload?.isManual === true));
+		const inProcessIds = Object.keys(unfinishedExecutions).filter((id) =>
+			runsHere(unfinishedExecutions[id]),
+		);
+		if (inProcessIds.length === 0) return;
+
+		const runningIds = await this.executionRepository.findRunningIds(inProcessIds);
+		const running = runningIds.map((id) => unfinishedExecutions[id]);
+		this.workflowCrashJournal.noteUnfinishedExecutions(collectWorkflowIds(running));
+	}
+
+	/**
 	 * Logs the currently active workflows
 	 */
 	private async logActiveWorkflows() {
@@ -374,4 +400,13 @@ export class MessageEventBus extends EventEmitter {
 
 		return Array.from(new Set([...unfinishedExecutionIds, ...dbUnfinishedExecutionIds]));
 	}
+}
+
+/** The workflows that the log messages name. */
+function collectWorkflowIds(logMessages: Array<EventMessageTypes[] | undefined>) {
+	const workflowIds = new Set<string>();
+	for (const { payload } of logMessages.flatMap((messages) => messages ?? [])) {
+		if (typeof payload?.workflowId === 'string') workflowIds.add(payload.workflowId);
+	}
+	return workflowIds;
 }

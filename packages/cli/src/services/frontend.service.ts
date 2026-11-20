@@ -407,6 +407,7 @@ export class FrontendService {
 			},
 			ai: {
 				allowSendingParameterValues: true,
+				allowModelTraining: true,
 			},
 			aiPreferences: {
 				enabled: false,
@@ -536,6 +537,12 @@ export class FrontendService {
 		} catch {
 			this.settings.ai.allowSendingParameterValues =
 				this.globalConfig.ai.allowSendingParameterValues;
+		}
+		try {
+			this.settings.ai.allowModelTraining = await this.aiUsageService.isModelTrainingAllowed();
+		} catch {
+			// Show the instance as opted out rather than claim its traces train models.
+			this.settings.ai.allowModelTraining = false;
 		}
 
 		this.settings.aiPreferences = {

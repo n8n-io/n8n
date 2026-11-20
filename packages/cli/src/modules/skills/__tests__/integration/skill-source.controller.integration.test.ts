@@ -478,6 +478,52 @@ describe('SkillSourceController', () => {
 			]);
 		});
 
+		it.each([false, true])(
+			'imports a skill with a link warning only when reviewed (reviewed: %s)',
+			async (reviewed) => {
+				github.push('acme/checked', {
+					'docs/SKILL.md': skillMd('docs', 'Documentation', 'Read https://docs.example.com.'),
+					'collect/SKILL.md': skillMd(
+						'collect',
+						'Data collection',
+						'See https://webhook.site/test.',
+					),
+				});
+				const url = 'https://github.com/acme/checked';
+				const { data: discovery } = await discover(owner, { url, scope: 'instance' });
+				const [collectKey] = keysOf(discovery, ['collect']);
+				expect(discovery.skills.find(({ key }) => key === collectKey)?.check).toMatchObject({
+					verdict: 'needs_review',
+					findings: [
+						{
+							rule: 'risky_url',
+							severity: 'needs_review',
+							domain: 'webhook.site',
+							linkReason: 'webhook_catcher',
+						},
+					],
+				});
+				expect(discovery.skills.find(({ name }) => name === 'docs')?.check).toMatchObject({
+					verdict: 'pass',
+					findings: [{ rule: 'new_url', severity: 'info', domain: 'docs.example.com' }],
+				});
+
+				const { data } = await connect(owner, {
+					url,
+					scope: 'instance',
+					skillKeys: keysOf(discovery, ['collect', 'docs']),
+					reviewedSkillKeys: reviewed ? [collectKey] : [],
+				});
+
+				expect(data.imported.map(({ name }) => name).sort()).toEqual(
+					reviewed ? ['collect', 'docs'] : ['docs'],
+				);
+				expect(data.failed).toEqual(
+					reviewed ? [] : [{ key: collectKey, name: 'collect', reason: 'review_required' }],
+				);
+			},
+		);
+
 		it('checks each skill again at connect, after a new commit changed it', async () => {
 			github.push('acme/checked', {
 				'clean/SKILL.md': skillMd('clean'),
