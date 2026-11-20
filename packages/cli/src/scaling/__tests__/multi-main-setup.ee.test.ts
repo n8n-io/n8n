@@ -1,4 +1,4 @@
-import { mockLogger } from '@n8n/backend-test-utils';
+import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import { MultiMainMetadata } from '@n8n/decorators';
 import type { MultiMainEventHandler } from '@n8n/decorators';
@@ -37,7 +37,8 @@ function createInstanceSettings(hostId: string) {
 
 describe('MultiMainSetup', () => {
 	const hostId = 'main-n8n-main-0';
-	const logger = mockLogger();
+	const scopedLogger = mock<Logger>();
+	const logger = mock<Logger>({ scoped: vi.fn().mockReturnValue(scopedLogger) });
 	const metadata = new MultiMainMetadata();
 	const errorReporter = mock<ErrorReporter>();
 	const client = mock<LeaderElectionClient>();
@@ -296,7 +297,7 @@ describe('MultiMainSetup', () => {
 			await multiMainSetup.shutdown();
 
 			expect(client.clearLeader).toHaveBeenCalledTimes(1);
-			expect(logger.warn).not.toHaveBeenCalled();
+			expect(scopedLogger.warn).not.toHaveBeenCalled();
 			expect(client.destroy).toHaveBeenCalled();
 		});
 
@@ -308,7 +309,7 @@ describe('MultiMainSetup', () => {
 			await multiMainSetup.shutdown();
 
 			expect(client.clearLeader).toHaveBeenCalledTimes(1);
-			expect(logger.warn).toHaveBeenCalledWith(
+			expect(scopedLogger.warn).toHaveBeenCalledWith(
 				'Leader key no longer held by this instance at shutdown, leaving it in place',
 			);
 			expect(client.destroy).toHaveBeenCalled();
@@ -322,7 +323,7 @@ describe('MultiMainSetup', () => {
 
 			await multiMainSetup.shutdown();
 
-			expect(logger.warn).toHaveBeenCalledWith('Failed to clear leader key from Redis', {
+			expect(scopedLogger.warn).toHaveBeenCalledWith('Failed to clear leader key from Redis', {
 				error,
 			});
 			expect(client.destroy).toHaveBeenCalled();
