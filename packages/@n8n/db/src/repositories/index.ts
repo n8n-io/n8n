@@ -64,6 +64,8 @@ export {
 } from './idempotency-key.repository';
 export { InvalidAuthTokenRepository } from './invalid-auth-token.repository';
 export { InstanceCredentialAssignmentRepository } from './instance-credential-assignment.repository';
+export { LeaseKindRepository } from './lease-kind.repository';
+export { LeaseSessionRepository, type NewLeaseSession } from './lease-session.repository';
 export { LicenseMetricsRepository } from './license-metrics.repository';
 export { ProjectPoolSettingsRepository } from './project-pool-settings.repository.ee';
 export { ProjectRelationRepository } from './project-relation.repository';
