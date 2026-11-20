@@ -29,7 +29,7 @@ permissions: {}
 
 jobs:
   required-reviews:
-    uses: n8n-io/github-actions/.github/workflows/ownership-checks.yml@be626e7b43cf88fe6d1404a29ed4e2b4f9cbb294 # main; TODO: pin to ownership-checks/v1.0.0 once it is released
+    uses: n8n-io/github-actions/.github/workflows/ownership-checks.yml@be626e7b43cf88fe6d1404a29ed4e2b4f9cbb294 # ownership-checks/v1.0.0
     permissions:
       id-token: write
       pull-requests: read
