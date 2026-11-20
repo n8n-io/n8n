@@ -15,10 +15,10 @@ import { AgentWorkflowToolResumeService } from '../agent-workflow-tool-resume.se
 import { WebhookChannelService } from '../integrations/platforms/webhook/webhook-channel.service';
 import { AgentBackgroundJobService } from '../background/agent-background-job.service';
 import { AgentQueueMetrics } from './agent-queue-metrics';
-import { AgentRemoteTurnService } from './agent-remote-turn.service';
 import { AgentWorkerCapacity } from './agent-worker-capacity.service';
 import { AgentTurnPlacement } from './agent-turn-placement.service';
 import { AgentTurnQueue } from './agent-turn-queue.service';
+import { QueuedTurnRunner } from './queued-turn-runner';
 
 /**
  * Starts and stops agent queue mode on this process.
@@ -43,7 +43,7 @@ export class AgentQueueLifecycle {
 		private readonly cluster: AgentClusterService,
 		private readonly turnQueue: AgentTurnQueue,
 		private readonly consumer: AgentMessageQueueConsumer,
-		private readonly remoteTurns: AgentRemoteTurnService,
+		private readonly queuedTurns: QueuedTurnRunner,
 		private readonly registry: InstanceRegistryProxyService,
 		private readonly agentsConfig: AgentsConfig,
 		private readonly logger: Logger,
@@ -78,6 +78,7 @@ export class AgentQueueLifecycle {
 		if (!this.placement.runsTurnsOnWorker) return;
 		await this.turnQueue.init();
 		this.consumer.startOnWorker();
+		await this.queuedTurns.startWorker();
 		const concurrency = this.agentsConfig.workerConcurrency;
 		// Background sub-agents outlive the job of the turn that started them. Count
 		// them too, and stop pulling jobs while they fill this worker.
@@ -91,7 +92,7 @@ export class AgentQueueLifecycle {
 			drain: async ({ threadId }) =>
 				await this.counted(async () => await this.consumer.drainForJob(threadId)),
 			request: async ({ requestId }) =>
-				await this.counted(async () => await this.remoteTurns.runRequest(requestId)),
+				await this.counted(async () => await this.queuedTurns.runJob(requestId)),
 		});
 		await this.advertise(AGENT_TURNS_CAPABILITY);
 		this.logger.info('This worker runs agent turns', { concurrency });
@@ -115,7 +116,7 @@ export class AgentQueueLifecycle {
 	/** One sweep per cluster is enough, so only the leader deletes. */
 	private startStaleRequestSweep(): void {
 		const sweep = () => {
-			if (this.cluster.isLeader) this.remoteTurns.removeStaleRequests();
+			if (this.cluster.isLeader) this.queuedTurns.removeStaleRequests();
 		};
 		sweep();
 		this.staleRequestSweep = setInterval(sweep, AgentQueueLifecycle.STALE_REQUEST_SWEEP_MS);

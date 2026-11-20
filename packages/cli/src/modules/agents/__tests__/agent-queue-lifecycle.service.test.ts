@@ -14,14 +14,14 @@ import type { AgentBackgroundJobService } from '../background/agent-background-j
 import { AgentQueueLifecycle } from '../queue/agent-queue-lifecycle.service';
 import { AgentQueueMetrics } from '../queue/agent-queue-metrics';
 import { AgentWorkerCapacity } from '../queue/agent-worker-capacity.service';
-import type { AgentRemoteTurnService } from '../queue/agent-remote-turn.service';
 import type { AgentTurnPlacement } from '../queue/agent-turn-placement.service';
 import type { AgentTurnQueue, AgentTurnJobHandlers } from '../queue/agent-turn-queue.service';
+import type { QueuedTurnRunner } from '../queue/queued-turn-runner';
 
 describe('AgentQueueLifecycle', () => {
 	const turnQueue = mock<AgentTurnQueue>();
 	const consumer = mock<AgentMessageQueueConsumer>();
-	const remoteTurns = mock<AgentRemoteTurnService>();
+	const queuedTurns = mock<QueuedTurnRunner>();
 	let backgroundJobs: AgentBackgroundJobService;
 	let capacity: AgentWorkerCapacity;
 	let registry: InstanceRegistryProxyService;
@@ -33,7 +33,7 @@ describe('AgentQueueLifecycle', () => {
 			mock<AgentClusterService>({ isLeader }),
 			turnQueue,
 			consumer,
-			remoteTurns,
+			queuedTurns,
 			registry,
 			{ workerConcurrency: 3 } as AgentsConfig,
 			mockLogger(),
@@ -77,13 +77,13 @@ describe('AgentQueueLifecycle', () => {
 	it('removes stale turn requests only on the leader', async () => {
 		const leader = setup({ dispatchEnabled: true }, true);
 		await leader.startOnMain();
-		expect(remoteTurns.removeStaleRequests).toHaveBeenCalledOnce();
+		expect(queuedTurns.removeStaleRequests).toHaveBeenCalledOnce();
 		await leader.stop();
 
-		remoteTurns.removeStaleRequests.mockClear();
+		queuedTurns.removeStaleRequests.mockClear();
 		const follower = setup({ dispatchEnabled: true }, false);
 		await follower.startOnMain();
-		expect(remoteTurns.removeStaleRequests).not.toHaveBeenCalled();
+		expect(queuedTurns.removeStaleRequests).not.toHaveBeenCalled();
 		await follower.stop();
 	});
 
@@ -103,7 +103,8 @@ describe('AgentQueueLifecycle', () => {
 		await handlers.drain({ threadId: 'thread' });
 		expect(consumer.drainForJob).toHaveBeenCalledWith('thread');
 		await handlers.request({ requestId: 'request' });
-		expect(remoteTurns.runRequest).toHaveBeenCalledWith('request');
+		expect(queuedTurns.startWorker).toHaveBeenCalledOnce();
+		expect(queuedTurns.runJob).toHaveBeenCalledWith('request');
 	});
 
 	it('stops pulling jobs while background sub-agents fill the worker', async () => {

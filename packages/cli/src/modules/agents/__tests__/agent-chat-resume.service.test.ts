@@ -1,3 +1,5 @@
+import { AGENT_CHAT_ERROR_CODES } from '@n8n/api-types';
+import type { AgentsConfig } from '@n8n/config';
 import type { User, UserRepository } from '@n8n/db';
 import { jsonParse } from 'n8n-workflow';
 import { EventEmitter } from 'node:events';
@@ -7,27 +9,13 @@ import { AgentChatResumeService } from '../agent-chat-resume.service';
 import type { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
 import type { FlushableResponse } from '../agent-sse-stream';
 import type { AgentTestRunService } from '../agent-test-run.service';
-import { AgentRemoteTurnService } from '../queue/agent-remote-turn.service';
 import type { AgentTurnGate } from '../queue/agent-turn-gate.service';
-import { AgentTurnPlacement } from '../queue/agent-turn-placement.service';
+import type { AgentTurnPlacement } from '../queue/agent-turn-placement.service';
 import type { AgentTurnQueue } from '../queue/agent-turn-queue.service';
-import type {
-	AgentChatResumeRequest,
-	AgentTurnRequestPayload,
-} from '../queue/agent-turn-request.types';
-import type { AgentTurnRequestRepository } from '../repositories/agent-turn-request.repository';
-import { testTurns } from './test-utils/turns';
-
-// The main polls a remote resume with `sleep`. A virtual clock lets the tests
-// step through the fallback and the lost-worker timeouts without waiting.
-let now = 0;
-vi.mock('node:timers/promises', () => ({
-	setTimeout: vi.fn(async (ms: number) => {
-		now += ms;
-		// Yield a full turn of the event loop, so that a simulated worker can run.
-		await new Promise((resolve) => setImmediate(resolve));
-	}),
-}));
+import type { AgentChatResumeRequest } from '../queue/agent-turn-request.types';
+import { QueuedTurnRunner } from '../queue/queued-turn-runner';
+import { fakeStreamChannel } from './test-utils/stream-channel';
+import { fakeRequests, testTurns } from './test-utils/turns';
 
 function makeSseResponse(writes: string[]) {
 	const emitter = new EventEmitter();
@@ -70,27 +58,27 @@ const request: AgentChatResumeRequest = {
 
 describe('AgentChatResumeService', () => {
 	const user = mock<User>({ id: 'user-1', disabled: false });
-	let placement: AgentTurnPlacement;
-	let turnQueue: ReturnType<typeof mock<AgentTurnQueue>>;
-	let requests: ReturnType<typeof mock<AgentTurnRequestRepository>>;
 	let userRepository: ReturnType<typeof mock<UserRepository>>;
 	let testRuns: ReturnType<typeof mock<AgentTestRunService>>;
 	let service: AgentChatResumeService;
-	let remoteTurns: AgentRemoteTurnService;
 
-	function setup({ workers }: { workers: boolean }) {
-		placement = mock<AgentTurnPlacement>({
+	function setup({
+		workers,
+		turnQueue,
+		queueMaxWaitSeconds = 0,
+	}: {
+		workers: boolean;
+		turnQueue?: AgentTurnQueue;
+		queueMaxWaitSeconds?: number;
+	}) {
+		const placement = mock<AgentTurnPlacement>({
 			dispatchEnabled: true,
 			queueFull: async () => false,
 			retryAfterSeconds: async () => 15,
 			workersAvailable: async () => workers,
-			mayFallBack: async (sentAt) => Date.now() - sentAt >= AgentTurnPlacement.FALLBACK_WAIT_MS,
 		});
-		turnQueue = mock<AgentTurnQueue>();
-		requests = mock<AgentTurnRequestRepository>();
-		requests.removeOlderThan.mockResolvedValue(0);
-		requests.remove.mockResolvedValue();
-		requests.findState.mockResolvedValue({ claimedBy: 'instance-a', result: null });
+		const { requests, rows } = fakeRequests();
+		const { channel, published } = fakeStreamChannel();
 		userRepository = mock<UserRepository>();
 		userRepository.findByIdWithRole.mockResolvedValue(user);
 		testRuns = mock<AgentTestRunService>();
@@ -98,15 +86,17 @@ describe('AgentChatResumeService', () => {
 			onExecutionStarted?.('exec-1', 'thread-1', []);
 			return { status: 'completed', executionId: 'exec-1' } as never;
 		});
-		// One process plays both the main and the worker: without relay across
-		// processes, a sender delivers straight to the local listener.
 		const turns = testTurns({
 			placement,
-			gate: mock<AgentTurnGate>({ waitForRoom: async () => ({ admitted: true }) }),
+			gate: mock<AgentTurnGate>({
+				waitForRoom: async () => ({ admitted: true }),
+				rejected: vi.fn(),
+			}),
+			agentsConfig: mock<AgentsConfig>({ queueMaxWaitSeconds }),
 			turnQueue,
 			requests,
+			channel,
 		});
-		remoteTurns = turns.remote;
 		service = new AgentChatResumeService(
 			userRepository,
 			testRuns,
@@ -114,19 +104,19 @@ describe('AgentChatResumeService', () => {
 			turns.dispatcher,
 			turns.handlers,
 		);
+		return { ...turns, requests, rows, published };
 	}
 
-	beforeEach(() => {
-		now = 1_000_000;
-		vi.spyOn(Date, 'now').mockImplementation(() => now);
-	});
-
 	afterEach(() => {
+		vi.useRealTimers();
 		vi.restoreAllMocks();
 	});
 
+	const useFakeTimers = () =>
+		vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'] });
+
 	it('runs the resume in this process when no agent worker is up', async () => {
-		setup({ workers: false });
+		const { requests } = setup({ workers: false });
 		const writes: string[] = [];
 		const res = makeSseResponse(writes);
 
@@ -139,94 +129,106 @@ describe('AgentChatResumeService', () => {
 	});
 
 	it('relays the events of a worker that claims the request', async () => {
-		setup({ workers: true });
-		const pending = new Map<string, AgentTurnRequestPayload>();
-		requests.createPending.mockImplementation(async (id, payload) => {
-			pending.set(id, payload);
-		});
-		requests.claim.mockImplementation(async (id) => {
-			const payload = pending.get(id) ?? null;
-			pending.delete(id);
-			return payload;
-		});
-		requests.isPending.mockImplementation(async (id) => pending.has(id));
-		turnQueue.enqueueRequest.mockImplementation(async (requestId) => {
-			// The worker picks the job up after the main starts to wait.
-			setImmediate(() => {
-				remoteTurns.runRequest(requestId).catch(() => {});
-			});
-		});
+		const { requests, rows, queued } = setup({ workers: true });
 		const writes: string[] = [];
 
 		await service.relay(makeSseResponse(writes), request);
+		await queued.whenIdle();
 
 		expect(testRuns.resumePreparedDraftRun).toHaveBeenCalledOnce();
 		expect(userRepository.findByIdWithRole).toHaveBeenCalledWith('user-1');
 		expect(sentEvents(writes).map((event) => event.type)).toEqual(['execution-started', 'done']);
 		const requestId = requests.createPending.mock.calls[0][0];
 		expect(requests.remove).toHaveBeenCalledWith(requestId);
+		expect(rows.size).toBe(0);
 	});
 
-	it('claims and runs the resume itself when no worker claims it in time', async () => {
-		setup({ workers: true });
-		requests.isPending.mockResolvedValue(true);
-		requests.claim.mockResolvedValue(request);
+	it('rejects the resume as busy when no worker claims it in time, and never runs it', async () => {
+		useFakeTimers();
+		// No worker takes the job.
+		const turnQueue = mock<AgentTurnQueue>({ enqueueRequest: async () => {} });
+		const { requests, rows } = setup({ workers: true, turnQueue, queueMaxWaitSeconds: 10 });
 		const writes: string[] = [];
 
-		await service.relay(makeSseResponse(writes), request);
+		const relayed = service.relay(makeSseResponse(writes), request);
+		await vi.advanceTimersByTimeAsync(10_000);
+		await relayed;
 
-		expect(turnQueue.enqueueRequest).toHaveBeenCalledOnce();
-		expect(now - 1_000_000).toBeGreaterThanOrEqual(AgentTurnPlacement.FALLBACK_WAIT_MS);
+		expect(testRuns.resumePreparedDraftRun).not.toHaveBeenCalled();
+		// The main claimed the row, so a worker that comes later does not run it.
 		expect(requests.claim).toHaveBeenCalledWith(expect.any(String), 'instance-a');
-		expect(testRuns.resumePreparedDraftRun).toHaveBeenCalledOnce();
-		expect(sentEvents(writes).map((event) => event.type)).toEqual(['execution-started', 'done']);
+		expect(rows.size).toBe(0);
+		expect(sentEvents(writes)).toEqual([
+			expect.objectContaining({
+				type: 'error',
+				errorCode: AGENT_CHAT_ERROR_CODES.mainBusy,
+				retryAfterSeconds: 15,
+			}),
+		]);
 	});
 
-	it('runs the resume itself when the job cannot be sent', async () => {
-		setup({ workers: true });
+	it('rejects the resume as busy when the job cannot be sent', async () => {
+		const turnQueue = mock<AgentTurnQueue>();
 		turnQueue.enqueueRequest.mockRejectedValue(new Error('Redis unavailable'));
-		requests.claim.mockResolvedValue(request);
-
-		await service.relay(makeSseResponse([]), request);
-
-		expect(testRuns.resumePreparedDraftRun).toHaveBeenCalledOnce();
-	});
-
-	it('reports a lost worker instead of running the resume twice', async () => {
-		setup({ workers: true });
-		// A worker claimed the request and then went silent.
-		requests.isPending.mockResolvedValue(false);
+		const { rows } = setup({ workers: true, turnQueue });
 		const writes: string[] = [];
 
 		await service.relay(makeSseResponse(writes), request);
 
 		expect(testRuns.resumePreparedDraftRun).not.toHaveBeenCalled();
-		expect(requests.claim).not.toHaveBeenCalled();
-		const events = sentEvents(writes);
-		expect(events).toEqual([expect.objectContaining({ type: 'error' })]);
-		expect(now - 1_000_000).toBeGreaterThanOrEqual(AgentRemoteTurnService.RELAY_TIMEOUT_MS);
+		expect(rows.size).toBe(0);
+		expect(sentEvents(writes)).toEqual([
+			expect.objectContaining({ type: 'error', errorCode: AGENT_CHAT_ERROR_CODES.queueFull }),
+		]);
 	});
 
-	describe('runRequest', () => {
-		it('does nothing when another process claimed the request', async () => {
-			setup({ workers: true });
-			requests.claim.mockResolvedValue(null);
+	it('reports a lost worker instead of running the resume twice', async () => {
+		useFakeTimers();
+		// A worker claims the request and then goes silent.
+		const worker: { turns?: ReturnType<typeof setup> } = {};
+		const turnQueue = mock<AgentTurnQueue>({
+			enqueueRequest: async (turnId) => {
+				await worker.turns?.requests.claim(turnId, 'worker-1');
+				await worker.turns?.channel.publishTo(
+					`turn:${turnId}`,
+					JSON.stringify({ type: 'claimed' }),
+				);
+			},
+		});
+		worker.turns = setup({ workers: true, turnQueue });
+		const writes: string[] = [];
 
-			await remoteTurns.runRequest('request-1');
+		const relayed = service.relay(makeSseResponse(writes), request);
+		await vi.advanceTimersByTimeAsync(QueuedTurnRunner.LOST_AFTER_MS);
+		await relayed;
+
+		expect(testRuns.resumePreparedDraftRun).not.toHaveBeenCalled();
+		expect(sentEvents(writes)).toEqual([expect.objectContaining({ type: 'error' })]);
+	});
+
+	describe('worker side', () => {
+		it('does nothing when another process claimed the request', async () => {
+			const { queued, requests, rows } = setup({ workers: true });
+			await requests.createPending('request-1', request);
+			await requests.claim('request-1', 'main');
+
+			await queued.runJob('request-1');
 
 			expect(testRuns.resumePreparedDraftRun).not.toHaveBeenCalled();
-			expect(requests.remove).not.toHaveBeenCalled();
+			expect(rows.has('request-1')).toBe(true);
 		});
 
 		it('refuses a resume for a user who can no longer execute the agent', async () => {
-			setup({ workers: true });
-			requests.claim.mockResolvedValue(request);
+			const { queued, requests, rows, published } = setup({ workers: true });
+			await requests.createPending('request-1', request);
 			userRepository.findByIdWithRole.mockResolvedValue(null);
 
-			await remoteTurns.runRequest('request-1');
+			await queued.runJob('request-1');
 
 			expect(testRuns.resumePreparedDraftRun).not.toHaveBeenCalled();
-			expect(requests.remove).toHaveBeenCalledWith('request-1');
+			expect(rows.size).toBe(0);
+			const sent = published.map(({ message }) => message).join('\n');
+			expect(sent).toContain('You can no longer execute this agent');
 		});
 	});
 });

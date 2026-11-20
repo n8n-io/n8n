@@ -94,8 +94,8 @@ function setup(options: SetupOptions = {}) {
 	placement.workersAvailable.mockResolvedValue(workers);
 	placement.retryAfterSeconds.mockResolvedValue(15);
 	const turns = testTurns({ cluster, placement });
-	// The job reaches the queue. The worker side is tested in the remote turn tests.
-	const sentToWorker = vi.spyOn(turns.remote, 'detached').mockResolvedValue(true);
+	// The job reaches the queue. The worker side is tested in the queued runner tests.
+	const sentToWorker = vi.spyOn(turns.queued, 'start').mockResolvedValue();
 	const service = new AgentWorkflowToolResumeService(
 		logger,
 		userRepository,
@@ -311,10 +311,11 @@ describe('AgentWorkflowToolResumeService → agent queue mode', () => {
 
 		await service.handleWorkflowExecuteAfter(afterContext('success', agentRun));
 
-		expect(sentToWorker).toHaveBeenCalledWith(
-			{ kind: 'workflow-tool-resume', agentRun, status: 'success' },
-			expect.any(Function),
-		);
+		expect(sentToWorker).toHaveBeenCalledWith({
+			turnId: expect.any(String),
+			payload: { kind: 'workflow-tool-resume', agentRun, status: 'success' },
+			mustRun: true,
+		});
 		expect(chatIntegrationService.getBridge).not.toHaveBeenCalled();
 	});
 

@@ -10,6 +10,14 @@ import { AgentClusterService } from '../agent-cluster.service';
 
 const AGENT_STREAM_CHANNEL = 'n8n.agent-stream';
 
+const AGENT_TURN_CONTROL_CHANNEL = 'n8n.agent-turn-control';
+
+/** A message on the control channel. Workers read it to stop a turn that they run. */
+interface AgentTurnControlMessage {
+	type: 'cancel';
+	turnId: string;
+}
+
 /**
  * One relayed stream entry. An empty entry is a heartbeat, `end` closes the
  * stream. JSON drops `undefined` in arrays, so entries are objects.
@@ -30,9 +38,17 @@ export interface AgentStreamBatch {
  * channel that every process reads. Workers that run agent turns publish here,
  * and only mains with agent queue mode subscribe.
  *
- * Every subscribed main receives every batch. A message starts with the queue
- * ID and a line break, so that a main parses only the batches of its own
- * browser streams.
+ * The shared channel carries the streams of queued chat messages. Every
+ * subscribed main receives every batch. A message starts with the queue ID and
+ * a line break, so that a main parses only the batches of its own browser
+ * streams.
+ *
+ * A key channel (`<prefix>:n8n.agent-stream:<key>`) carries the entries of one
+ * agent turn. Only the process that listens to the key receives them.
+ *
+ * The control channel tells workers to stop a turn.
+ *
+ * One subscriber connection serves all channels of a process.
  */
 @Service()
 export class AgentStreamChannel {
@@ -43,7 +59,15 @@ export class AgentStreamChannel {
 
 	private subscriber?: Redis | Cluster;
 
+	/** Set on the first subscribe, so concurrent subscribes share one client. */
+	private subscriberPromise?: Promise<Redis | Cluster>;
+
 	private readonly channel: string;
+
+	private readonly controlChannel: string;
+
+	/** Handlers of the channels that this process reads, by channel name. */
+	private readonly handlers = new Map<string, (message: string) => void>();
 
 	constructor(
 		private readonly agentsConfig: AgentsConfig,
@@ -52,6 +76,11 @@ export class AgentStreamChannel {
 		private readonly logger: Logger,
 	) {
 		this.channel = `${globalConfig.redis.prefix}:${AGENT_STREAM_CHANNEL}`;
+		this.controlChannel = `${globalConfig.redis.prefix}:${AGENT_TURN_CONTROL_CHANNEL}`;
+	}
+
+	private keyChannel(key: string): string {
+		return `${this.channel}:${key}`;
 	}
 
 	/**
@@ -70,11 +99,8 @@ export class AgentStreamChannel {
 		handler: (batch: AgentStreamBatch) => void,
 		wants: (queueId: string) => boolean,
 	): Promise<void> {
-		if (!this.enabled || !this.cluster.isMain || this.subscriber) return;
-		const client = await this.createClient();
-		this.subscriber = client;
-		client.on('message', (channel: string, message: string) => {
-			if (channel !== this.channel) return;
+		if (!this.enabled || !this.cluster.isMain || this.handlers.has(this.channel)) return;
+		await this.listenTo(this.channel, (message) => {
 			const split = message.indexOf('\n');
 			if (split < 0 || !wants(message.slice(0, split))) return;
 			const batch = jsonParse<AgentStreamBatch | null>(message.slice(split + 1), {
@@ -83,8 +109,78 @@ export class AgentStreamChannel {
 			if (!batch || typeof batch.queueId !== 'string' || !Array.isArray(batch.entries)) return;
 			handler(batch);
 		});
-		// ioredis replays SUBSCRIBE on reconnect.
-		await client.subscribe(this.channel);
+	}
+
+	/**
+	 * Read the channel of one key. Resolves once Redis confirms the
+	 * subscription, so a message published after that arrives. Returns a
+	 * function that stops the read.
+	 */
+	async listen(key: string, handler: (message: string) => void): Promise<() => Promise<void>> {
+		const channel = this.keyChannel(key);
+		await this.listenTo(channel, handler);
+		return async () => await this.unlistenFrom(channel);
+	}
+
+	/** Send a message to the process that listens to `key`. */
+	async publishTo(key: string, message: string): Promise<void> {
+		const publisher = await this.ensurePublisher();
+		await publisher.publish(this.keyChannel(key), message);
+	}
+
+	/** Read the requests to stop a turn. A worker calls this once. */
+	async onCancel(handler: (turnId: string) => void): Promise<void> {
+		await this.listenTo(this.controlChannel, (message) => {
+			const control = jsonParse<AgentTurnControlMessage | null>(message, { fallbackValue: null });
+			if (control?.type === 'cancel' && typeof control.turnId === 'string') {
+				handler(control.turnId);
+			}
+		});
+	}
+
+	/** Tell every worker to stop a turn. The worker that runs it stops it. */
+	async cancel(turnId: string): Promise<void> {
+		const message: AgentTurnControlMessage = { type: 'cancel', turnId };
+		const publisher = await this.ensurePublisher();
+		await publisher.publish(this.controlChannel, JSON.stringify(message));
+	}
+
+	private async listenTo(channel: string, handler: (message: string) => void): Promise<void> {
+		this.handlers.set(channel, handler);
+		try {
+			const client = await this.ensureSubscriber();
+			// ioredis replays SUBSCRIBE on reconnect.
+			await client.subscribe(channel);
+		} catch (error) {
+			this.handlers.delete(channel);
+			throw error;
+		}
+	}
+
+	private async unlistenFrom(channel: string): Promise<void> {
+		if (!this.handlers.delete(channel)) return;
+		try {
+			await this.subscriber?.unsubscribe(channel);
+		} catch (error) {
+			this.logger.debug('Failed to stop reading an agent stream channel', { channel, error });
+		}
+	}
+
+	private async ensureSubscriber(): Promise<Redis | Cluster> {
+		this.subscriberPromise ??= this.createClient().then(
+			(client) => {
+				this.subscriber = client;
+				client.on('message', (channel: string, message: string) => {
+					this.handlers.get(channel)?.(message);
+				});
+				return client;
+			},
+			(error: unknown) => {
+				this.subscriberPromise = undefined;
+				throw error;
+			},
+		);
+		return await this.subscriberPromise;
 	}
 
 	async publish(batch: AgentStreamBatch): Promise<void> {
@@ -115,6 +211,8 @@ export class AgentStreamChannel {
 			}
 		}
 		this.subscriber = undefined;
+		this.subscriberPromise = undefined;
+		this.handlers.clear();
 		this.publisher = undefined;
 		this.publisherPromise = undefined;
 	}

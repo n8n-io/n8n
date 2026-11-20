@@ -105,8 +105,8 @@ describe('InProcessTurnRunner', () => {
 
 describe('AgentTurnDispatcher', () => {
 	it('runs a result turn in this process when no agent worker is up', async () => {
-		const { handlers, dispatcher, remote } = testTurns();
-		const resultSpy = vi.spyOn(remote, 'result');
+		const { handlers, dispatcher, queued } = testTurns();
+		const queuedStart = vi.spyOn(queued, 'start');
 		handlers.handle('webhook-respond', {
 			mode: 'result',
 			run: async () => ({ status: 200 }),
@@ -116,7 +116,7 @@ describe('AgentTurnDispatcher', () => {
 			outcome: 'done',
 			result: { status: 200 },
 		});
-		expect(resultSpy).not.toHaveBeenCalled();
+		expect(queuedStart).not.toHaveBeenCalled();
 	});
 
 	it('rejects a result turn as busy when this process has no room', async () => {
@@ -204,17 +204,19 @@ describe('AgentTurnDispatcher', () => {
 			dispatchEnabled: true,
 			workersAvailable: async () => true,
 		});
-		const { handlers, dispatcher, remote } = testTurns({ placement });
+		const { handlers, dispatcher, queued, inProcess } = testTurns({ placement });
 		handlers.handle('webhook-respond', { mode: 'result', run });
-		const remoteResult = vi
-			.spyOn(remote, 'result')
-			.mockResolvedValue({ outcome: 'done', result: { status: 202 } });
+		const queuedStart = vi.spyOn(queued, 'start');
+		const inProcessStart = vi.spyOn(inProcess, 'start');
+		run.mockResolvedValue({ status: 202 });
 
 		await expect(dispatcher.result(webhook, new AbortController().signal)).resolves.toEqual({
 			outcome: 'done',
 			result: { status: 202 },
 		});
-		expect(remoteResult).toHaveBeenCalledTimes(1);
-		expect(run).not.toHaveBeenCalled();
+		// The fake queue hands the job to the worker side of the queued runner.
+		expect(queuedStart).toHaveBeenCalledTimes(1);
+		expect(inProcessStart).not.toHaveBeenCalled();
+		expect(run).toHaveBeenCalledTimes(1);
 	});
 });

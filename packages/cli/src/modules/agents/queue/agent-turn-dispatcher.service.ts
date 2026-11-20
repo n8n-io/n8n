@@ -5,7 +5,6 @@ import type { JsonObject } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
 import { busyEvent } from './agent-busy-event';
-import { AgentRemoteTurnService } from './agent-remote-turn.service';
 import { AgentTurnPlacement } from './agent-turn-placement.service';
 import type { AgentTurnRequestPayload } from './agent-turn-request.types';
 import {
@@ -14,6 +13,7 @@ import {
 	type AgentTurnRunner,
 } from './agent-turn-runner';
 import { InProcessTurnRunner } from './in-process-turn-runner';
+import { QueuedTurnRunner } from './queued-turn-runner';
 
 type Kind = AgentTurnRequestPayload['kind'];
 
@@ -44,9 +44,12 @@ const MUST_RUN_KINDS: ReadonlySet<Kind> = new Set(['wake', 'workflow-tool-resume
 
 /**
  * The one entry point for agent turns that a service starts on behalf of a
- * caller. It picks the runner: an agent worker when one is up and the kind
+ * caller. It picks the runner: the agent workers when one is up and the kind
  * can run there, else this process. The caller sees the same result in each
  * case, and never runs the turn itself.
+ *
+ * When agent workers are up, this main never runs a turn that can run on
+ * them. The turn waits in the agent queue, or n8n rejects it.
  *
  * Each runner admits the turn or rejects it. A rejected stream turn gets a
  * busy error event, a rejected result turn gets `busy`.
@@ -57,7 +60,7 @@ export class AgentTurnDispatcher {
 		private readonly logger: Logger,
 		private readonly placement: AgentTurnPlacement,
 		private readonly inProcess: InProcessTurnRunner,
-		private readonly remote: AgentRemoteTurnService,
+		private readonly queued: QueuedTurnRunner,
 	) {
 		this.logger = this.logger.scoped('agents');
 	}
@@ -65,6 +68,10 @@ export class AgentTurnDispatcher {
 	/** Whether a turn that can run on an agent worker goes to one now. */
 	async goesToWorker(workerCapable = true): Promise<boolean> {
 		return workerCapable && (await this.placement.workersAvailable());
+	}
+
+	private async runnerFor(workerCapable = true): Promise<AgentTurnRunner> {
+		return (await this.goesToWorker(workerCapable)) ? this.queued : this.inProcess;
 	}
 
 	/**
@@ -77,14 +84,17 @@ export class AgentTurnDispatcher {
 		delivery: AgentTurnDelivery,
 		options: { stopOnLeave: boolean },
 	): Promise<void> {
-		if (await this.goesToWorker()) {
-			if (await this.remote.stream(payload, delivery, options)) return;
-		}
-		const end = await this.runHere(this.inProcess, payload, delivery.abortSignal, {
+		const end = await this.run(await this.runnerFor(), payload, delivery.abortSignal, {
 			send: delivery.send,
 			stopOnLeave: options.stopOnLeave,
 		});
 		if (end.outcome === 'rejected') delivery.send(busyEvent(end.reason, end.retryAfterSeconds));
+		if (end.outcome === 'lost') {
+			delivery.send({
+				type: 'error',
+				message: 'The agent stopped responding. Reload the chat to see its latest state.',
+			});
+		}
 	}
 
 	/** Run a turn whose caller waits for one reply. A caller that leaves stops the turn. */
@@ -92,11 +102,9 @@ export class AgentTurnDispatcher {
 		payload: AgentTurnRequestPayload,
 		abortSignal: AbortSignal,
 	): Promise<AgentDispatchResult> {
-		if (await this.goesToWorker()) {
-			const remote = await this.remote.result(payload, abortSignal);
-			if (remote.outcome !== 'local') return remote;
-		}
-		const end = await this.runHere(this.inProcess, payload, abortSignal, { stopOnLeave: true });
+		const end = await this.run(await this.runnerFor(), payload, abortSignal, {
+			stopOnLeave: true,
+		});
 		return this.toResult(end, abortSignal);
 	}
 
@@ -110,19 +118,9 @@ export class AgentTurnDispatcher {
 		payload: AgentTurnRequestPayload,
 		options: { workerCapable: boolean; onRejected?: () => Promise<void> },
 	): Promise<void> {
-		const startHere = async () => await this.startDetachedHere(payload, options.onRejected);
-		if (await this.goesToWorker(options.workerCapable)) {
-			if (await this.remote.detached(payload, startHere)) return;
-		}
-		await startHere();
-	}
-
-	private async startDetachedHere(
-		payload: AgentTurnRequestPayload,
-		onRejected?: () => Promise<void>,
-	): Promise<void> {
+		const runner = await this.runnerFor(options.workerCapable);
 		try {
-			await this.inProcess.start({
+			await runner.start({
 				turnId: randomUUID(),
 				payload,
 				mustRun: MUST_RUN_KINDS.has(payload.kind),
@@ -130,7 +128,7 @@ export class AgentTurnDispatcher {
 		} catch (error) {
 			if (!(error instanceof AgentTurnNotAdmittedError)) throw error;
 			this.logger.warn('Skipped an agent turn, because n8n is busy', { kind: payload.kind });
-			await onRejected?.();
+			await options.onRejected?.();
 		}
 	}
 
@@ -140,7 +138,7 @@ export class AgentTurnDispatcher {
 	 * leaves while the turn runs stops it only with `stopOnLeave`, and then
 	 * gets `cancelled` without waiting for the end.
 	 */
-	private async runHere(
+	private async run(
 		runner: AgentTurnRunner,
 		payload: AgentTurnRequestPayload,
 		abortSignal: AbortSignal,
