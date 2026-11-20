@@ -1,0 +1,14 @@
+{
+	"description": "A Code node in the fallback host, in all-items mode, spreads the item itself: items.map(i => ({ ...i, json: { ...i.json, x: 1 } }))",
+	"trigger": {
+		"body": {
+			"label": "130-host-code-map-spread-item"
+		}
+	},
+	"compare": [
+		"Read Each",
+		"Read All",
+		"Read Expr"
+	],
+	"expectRefusal": true
+}

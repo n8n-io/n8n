@@ -1,0 +1,225 @@
+{
+	"name": "A Code node in the fallback host, in all-items mode, spreads the item itself after a Filter kept the items 1 and 3",
+	"nodes": [
+		{
+			"id": "webhook",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [
+				0,
+				0
+			],
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "135-host-code-map-spread-item-after-filter",
+				"options": {}
+			},
+			"webhookId": "9c2f5a41-7d38-4a6e-b130-2f8e5c6d4a17"
+		},
+		{
+			"id": "source",
+			"name": "Source",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [
+				200,
+				0
+			],
+			"parameters": {
+				"jsCode": "return [{ json: { id: 'a1' } }, { json: { id: 'b2' } }, { json: { id: 'c3' } }, { json: { id: 'd4' } }];"
+			}
+		},
+		{
+			"id": "tag",
+			"name": "Tag",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [
+				400,
+				0
+			],
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "t",
+							"name": "tag",
+							"value": "x",
+							"type": "string"
+						}
+					]
+				},
+				"includeOtherFields": true,
+				"options": {}
+			}
+		},
+		{
+			"id": "filter",
+			"name": "Filter",
+			"type": "n8n-nodes-base.filter",
+			"typeVersion": 2.2,
+			"position": [
+				600,
+				0
+			],
+			"parameters": {
+				"conditions": {
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "strict",
+						"version": 2
+					},
+					"conditions": [
+						{
+							"id": "c1",
+							"leftValue": "={{ $json.id }}",
+							"operator": {
+								"type": "string",
+								"operation": "notEquals"
+							},
+							"rightValue": "a1"
+						},
+						{
+							"id": "c2",
+							"leftValue": "={{ $json.id }}",
+							"operator": {
+								"type": "string",
+								"operation": "notEquals"
+							},
+							"rightValue": "c3"
+						}
+					],
+					"combinator": "and"
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "middle",
+			"name": "Middle",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [
+				800,
+				0
+			],
+			"parameters": {
+				"jsCode": "class Box {}\nreturn items.map(i => ({ ...i, json: { ...i.json, x: 1 } }));"
+			}
+		},
+		{
+			"id": "read-each",
+			"name": "Read Each",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [
+				1000,
+				0
+			],
+			"parameters": {
+				"mode": "runOnceForEachItem",
+				"jsCode": "return { json: { sourceId: $('Source').item.json.id } };"
+			}
+		},
+		{
+			"id": "read-all",
+			"name": "Read All",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [
+				1000,
+				100
+			],
+			"parameters": {
+				"jsCode": "return items.map((item, k) => ({ json: { sourceId: $('Source').item.json.id } }));"
+			}
+		},
+		{
+			"id": "read-expr",
+			"name": "Read Expr",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [
+				1000,
+				200
+			],
+			"parameters": {
+				"mode": "raw",
+				"jsonOutput": "={ \"sourceId\": \"{{ $('Source').item.json.id }}\" }",
+				"options": {}
+			}
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "Source",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Source": {
+			"main": [
+				[
+					{
+						"node": "Tag",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Tag": {
+			"main": [
+				[
+					{
+						"node": "Filter",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Filter": {
+			"main": [
+				[
+					{
+						"node": "Middle",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Middle": {
+			"main": [
+				[
+					{
+						"node": "Read Each",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Read All",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Read Expr",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

@@ -1,0 +1,14 @@
+{
+	"description": "A Code node in the fallback host, in all-items mode, returns the input items after a change of their json (items.map(i => { i.json.x = 1; return i; }))",
+	"trigger": {
+		"body": {
+			"label": "131-host-code-return-input-item"
+		}
+	},
+	"compare": [
+		"Read Each",
+		"Read All",
+		"Read Expr"
+	],
+	"expectRefusal": true
+}

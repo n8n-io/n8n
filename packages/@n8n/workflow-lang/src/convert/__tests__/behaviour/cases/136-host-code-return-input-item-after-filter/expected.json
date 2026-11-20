@@ -1,0 +1,136 @@
+{
+	"generatedBy": "oracle.ts: n8n-core WorkflowExecute with n8n-nodes-base, executionOrder v1",
+	"error": null,
+	"order": [
+		"Webhook",
+		"Source",
+		"Tag",
+		"Filter",
+		"Middle",
+		"Read Each",
+		"Read All",
+		"Read Expr"
+	],
+	"nodes": {
+		"Webhook": [
+			[
+				{
+					"headers": {},
+					"params": {},
+					"query": {},
+					"body": {
+						"label": "136-host-code-return-input-item-after-filter"
+					}
+				}
+			]
+		],
+		"Source": [
+			[
+				{
+					"id": "a1"
+				},
+				{
+					"id": "b2"
+				},
+				{
+					"id": "c3"
+				},
+				{
+					"id": "d4"
+				}
+			]
+		],
+		"Tag": [
+			[
+				{
+					"id": "a1",
+					"tag": "x"
+				},
+				{
+					"id": "b2",
+					"tag": "x",
+					"x": 1
+				},
+				{
+					"id": "c3",
+					"tag": "x"
+				},
+				{
+					"id": "d4",
+					"tag": "x",
+					"x": 1
+				}
+			]
+		],
+		"Filter": [
+			[
+				{
+					"id": "b2",
+					"tag": "x",
+					"x": 1
+				},
+				{
+					"id": "d4",
+					"tag": "x",
+					"x": 1
+				}
+			],
+			[
+				{
+					"id": "a1",
+					"tag": "x"
+				},
+				{
+					"id": "c3",
+					"tag": "x"
+				}
+			]
+		],
+		"Middle": [
+			[
+				{
+					"id": "b2",
+					"tag": "x",
+					"x": 1
+				},
+				{
+					"id": "d4",
+					"tag": "x",
+					"x": 1
+				}
+			]
+		],
+		"Read Each": [
+			[
+				{
+					"sourceId": "b2"
+				},
+				{
+					"sourceId": "d4"
+				}
+			]
+		],
+		"Read All": [
+			[
+				{
+					"sourceId": "b2"
+				},
+				{
+					"sourceId": "b2"
+				}
+			]
+		],
+		"Read Expr": [
+			[
+				{
+					"sourceId": "b2"
+				},
+				{
+					"sourceId": "d4"
+				}
+			]
+		]
+	},
+	"requests": [],
+	"responses": []
+}

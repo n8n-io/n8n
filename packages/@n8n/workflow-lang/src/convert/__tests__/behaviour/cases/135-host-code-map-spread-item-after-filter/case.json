@@ -1,0 +1,14 @@
+{
+	"description": "A Code node in the fallback host, in all-items mode, spreads the item itself after a Filter kept the items 1 and 3",
+	"trigger": {
+		"body": {
+			"label": "135-host-code-map-spread-item-after-filter"
+		}
+	},
+	"compare": [
+		"Read Each",
+		"Read All",
+		"Read Expr"
+	],
+	"expectRefusal": true
+}

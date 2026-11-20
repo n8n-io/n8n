@@ -1,0 +1,14 @@
+{
+	"description": "A Code node in the fallback host, in all-items mode, returns the input items after a Filter kept the items 1 and 3",
+	"trigger": {
+		"body": {
+			"label": "136-host-code-return-input-item-after-filter"
+		}
+	},
+	"compare": [
+		"Read Each",
+		"Read All",
+		"Read Expr"
+	],
+	"expectRefusal": true
+}

@@ -1,0 +1,14 @@
+{
+	"description": "A Code node in the fallback host, in all-items mode, builds new items in a loop (out.push({ json: { id: i.json.id } }))",
+	"trigger": {
+		"body": {
+			"label": "133-host-code-loop-push"
+		}
+	},
+	"compare": [
+		"Read Each",
+		"Read All",
+		"Read Expr"
+	],
+	"expectRefusal": true
+}

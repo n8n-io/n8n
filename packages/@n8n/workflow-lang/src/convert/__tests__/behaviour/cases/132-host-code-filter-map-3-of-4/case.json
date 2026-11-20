@@ -1,0 +1,14 @@
+{
+	"description": "A Code node in the fallback host, in all-items mode, keeps 3 of 4 input items with items.filter(...).map(...)",
+	"trigger": {
+		"body": {
+			"label": "132-host-code-filter-map-3-of-4"
+		}
+	},
+	"compare": [
+		"Read Each",
+		"Read All",
+		"Read Expr"
+	],
+	"expectRefusal": true
+}
