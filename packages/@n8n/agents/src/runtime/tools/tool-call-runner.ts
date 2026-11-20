@@ -52,7 +52,9 @@ interface InterruptedToolSuspension {
 type SettledToolCall = ContentToolCall & { state: 'resolved' | 'rejected' };
 
 function isDeniedApprovalResumeData(value: unknown): boolean {
-	return value !== null && typeof value === 'object' && Reflect.get(value, 'approved') === false;
+	return (
+		value !== null && typeof value === 'object' && 'approved' in value && value.approved === false
+	);
 }
 
 function shouldEmitToolExecutionStart(tool: BuiltTool, resumeData: unknown): boolean {

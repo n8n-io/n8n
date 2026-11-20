@@ -794,10 +794,7 @@ describe('Skill Sync with credentials', () => {
 		it('keeps a deleted credential visible while public access waits after a rate limit', async () => {
 			const { sourceId } = await importPrivate();
 			await db().update(SkillSourceConnection, { id: sourceId }, { credentialId: null });
-			const backoff = Reflect.get(Container.get(SkillSyncService), 'backoff') as Map<
-				string,
-				{ until: number; attempts: number }
-			>;
+			const backoff = Container.get(SkillSyncService)['backoff'];
 			backoff.set('public:github', { until: Date.now() + 3_600_000, attempts: 1 });
 			try {
 				await Container.get(SkillSyncService).checkAll();
@@ -913,11 +910,7 @@ describe('Skill Sync with credentials', () => {
 		});
 
 		describe('the wait after a rate limit, for each access', () => {
-			const backoff = () =>
-				Reflect.get(Container.get(SkillSyncService), 'backoff') as Map<
-					string,
-					{ until: number; attempts: number }
-				>;
+			const backoff = () => Container.get(SkillSyncService)['backoff'];
 
 			/** Imports a public repository into the team, with no credential. */
 			const importPublic = async () => {

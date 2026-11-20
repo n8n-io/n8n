@@ -45,6 +45,7 @@ const METHOD_LOCKED_PROTOTYPES: readonly object[] = [EventEmitter.prototype];
 type IteratorWithHelpers = { map: (fn: (value: unknown) => unknown) => object };
 
 const hasIteratorHelpers = (value: unknown): value is IteratorWithHelpers =>
+	// oxlint-disable-next-line anti-slop/no-reflect-get -- hardening reads arbitrary globals and prototypes by key
 	isFreezable(value) && typeof Reflect.get(value, 'map') === 'function';
 
 /** Prototypes no `globalThis` name leads to: only calling a global produces a value that carries them. */
@@ -98,6 +99,7 @@ const collectPrototypeChain = (value: unknown, collected: Set<object>) => {
  */
 export const freezeGlobals = () => {
 	const globalFunctions: unknown[] = Object.getOwnPropertyNames(globalThis)
+		// oxlint-disable-next-line anti-slop/no-reflect-get -- hardening reads arbitrary globals and prototypes by key
 		.map((name) => Reflect.get(globalThis, name) as unknown)
 		.filter((value) => typeof value === 'function');
 
@@ -107,6 +109,7 @@ export const freezeGlobals = () => {
 
 	for (const root of roots) {
 		collectPrototypeChain(root, collected);
+		// oxlint-disable-next-line anti-slop/no-reflect-get -- hardening reads arbitrary globals and prototypes by key
 		if (isFreezable(root)) collectPrototypeChain(Reflect.get(root, 'prototype'), collected);
 	}
 

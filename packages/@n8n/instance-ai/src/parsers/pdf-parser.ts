@@ -24,6 +24,7 @@ export async function extractPdfText(attachment: AttachmentInfo): Promise<PdfExt
 
 	// pdf-parse v2 is backed by pdfjs-dist, which expects a `DOMMatrix` global
 	// that Node.js does not provide. Polyfill it before parsing.
+	// oxlint-disable-next-line anti-slop/no-reflect-get -- the Node lib types do not declare DOMMatrix on globalThis
 	if (typeof Reflect.get(globalThis, 'DOMMatrix') === 'undefined') {
 		const { default: DOMMatrix } = await import('@thednp/dommatrix');
 		Reflect.set(globalThis, 'DOMMatrix', DOMMatrix);

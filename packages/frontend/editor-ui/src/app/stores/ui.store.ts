@@ -63,8 +63,8 @@ const CLOSED_MODAL_STATE: ModalState = Object.freeze({ open: false });
  */
 function withFallback<T>(source: Record<string, T>, fallback: T): Record<string, T> {
 	return new Proxy(source, {
-		get: (target, key) =>
-			typeof key === 'string' ? (target[key] ?? fallback) : Reflect.get(target, key),
+		get: (target, key, receiver) =>
+			typeof key === 'string' ? (target[key] ?? fallback) : Reflect.get(target, key, receiver),
 	});
 }
 

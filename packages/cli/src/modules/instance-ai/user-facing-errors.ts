@@ -34,7 +34,7 @@ function collectErrorText(value: unknown, depth = 0): string[] {
 	if (typeof value === 'string') return [value];
 	if (Array.isArray(value)) return value.flatMap((item) => collectErrorText(item, depth + 1));
 	if (value instanceof Error) {
-		return [value.message, ...collectErrorText(Reflect.get(value, 'cause'), depth + 1)];
+		return [value.message, ...collectErrorText(value.cause, depth + 1)];
 	}
 	if (typeof value === 'object') {
 		const record = value as Record<string, unknown>;

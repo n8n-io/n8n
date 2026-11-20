@@ -186,7 +186,9 @@ function getStableToolResultText(content: unknown): string | undefined {
 			const workflowNames = workflows
 				.map((workflow) =>
 					typeof workflow === 'object' && workflow !== null && !Array.isArray(workflow)
-						? Reflect.get(workflow, 'name')
+						? 'name' in workflow
+							? workflow.name
+							: undefined
 						: undefined,
 				)
 				.filter((name): name is string => typeof name === 'string' && name.length > 0);
@@ -309,15 +311,15 @@ function isBodyMatcher(body: unknown): body is BodyMatcher {
 function isToolTraceEvent(event: unknown): boolean {
 	if (typeof event !== 'object' || event === null || Array.isArray(event)) return false;
 
-	const kind = Reflect.get(event, 'kind');
+	const kind = 'kind' in event ? event.kind : undefined;
 	return kind === 'tool-call' || kind === 'tool-suspend' || kind === 'tool-resume';
 }
 
 function getTraceEventKey(event: unknown): string | undefined {
 	if (typeof event !== 'object' || event === null || Array.isArray(event)) return undefined;
 
-	const agentRole = Reflect.get(event, 'agentRole');
-	const toolName = Reflect.get(event, 'toolName');
+	const agentRole = 'agentRole' in event ? event.agentRole : undefined;
+	const toolName = 'toolName' in event ? event.toolName : undefined;
 	if (typeof agentRole !== 'string' || typeof toolName !== 'string') return undefined;
 
 	return `${agentRole}:${toolName}`;
@@ -329,7 +331,7 @@ function hasUnpairedToolResume(events: unknown[]): boolean {
 	for (const event of events) {
 		if (typeof event !== 'object' || event === null || Array.isArray(event)) continue;
 
-		const kind = Reflect.get(event, 'kind');
+		const kind = 'kind' in event ? event.kind : undefined;
 		const key = getTraceEventKey(event);
 		if (!key) continue;
 
@@ -517,13 +519,13 @@ async function fetchOrThrow(
 function getIdleState(body: unknown): boolean | undefined {
 	if (typeof body !== 'object' || body === null || Array.isArray(body)) return undefined;
 
-	const data = Reflect.get(body, 'data');
+	const data = 'data' in body ? body.data : undefined;
 	if (typeof data === 'object' && data !== null && !Array.isArray(data)) {
-		const idle = Reflect.get(data, 'idle');
+		const idle = 'idle' in data ? data.idle : undefined;
 		if (typeof idle === 'boolean') return idle;
 	}
 
-	const idle = Reflect.get(body, 'idle');
+	const idle = 'idle' in body ? body.idle : undefined;
 	return typeof idle === 'boolean' ? idle : undefined;
 }
 

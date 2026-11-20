@@ -25,8 +25,10 @@ let requestId = 0;
 function isRegExpMatch(value: unknown): value is RegExpMatchArray {
 	return (
 		Array.isArray(value) &&
-		typeof Reflect.get(value, 'index') === 'number' &&
-		typeof Reflect.get(value, 'input') === 'string'
+		'index' in value &&
+		typeof value.index === 'number' &&
+		'input' in value &&
+		typeof value.input === 'string'
 	);
 }
 

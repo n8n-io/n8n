@@ -45,7 +45,7 @@ export function normalizeChatModelId(raw: string): string {
 export function extractResourceLocatorValue(value: unknown): string | undefined {
 	if (typeof value === 'string' && value !== '') return value;
 	if (typeof value !== 'object' || value === null || !('__rl' in value)) return undefined;
-	const locatorValue: unknown = Reflect.get(value, 'value');
+	const locatorValue: unknown = 'value' in value ? value.value : undefined;
 	return typeof locatorValue === 'string' && locatorValue !== '' ? locatorValue : undefined;
 }
 
@@ -292,8 +292,8 @@ function resolveStoredCredential(
 		return { id: AI_GATEWAY_MANAGED_TAG, name: N8N_CONNECT_DISPLAY_NAME };
 	}
 
-	const id: unknown = Reflect.get(selected, 'id');
-	const name: unknown = Reflect.get(selected, 'name');
+	const id: unknown = 'id' in selected ? selected.id : undefined;
+	const name: unknown = 'name' in selected ? selected.name : undefined;
 	if (typeof id !== 'string' || id === '') return undefined;
 	return { id, name: typeof name === 'string' && name !== '' ? name : id };
 }

@@ -40,7 +40,7 @@ export function removeRequestOptions(error: unknown) {
 
 	Reflect.deleteProperty(error, 'options');
 
-	const cause = Reflect.get(error, 'cause');
+	const cause = 'cause' in error ? error.cause : undefined;
 	if (typeof cause === 'object' && cause !== null) {
 		Reflect.deleteProperty(cause, 'options');
 	}

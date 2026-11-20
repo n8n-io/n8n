@@ -531,6 +531,7 @@ function evalIterate(node: Extract<SimpleNode, { kind: 'iterate' }>, env: Env): 
  * result is charged per element; a callback body repeats the call per visit.
  */
 function evalNodeRefCall(proxy: unknown, method: string, env: Env): unknown {
+	// oxlint-disable-next-line anti-slop/no-reflect-get -- reads through the node proxy get trap
 	const fn: unknown = Reflect.get(proxy as object, method);
 	if (typeof fn !== 'function') throw new EngineFallbackError('unsupported_method');
 

@@ -12,7 +12,7 @@ const TOOL_TRACE_EVENT_KINDS = new Set(['tool-call', 'tool-suspend', 'tool-resum
 function getTraceEventKind(event: unknown): string | undefined {
 	if (typeof event !== 'object' || event === null || Array.isArray(event)) return undefined;
 
-	const kind = Reflect.get(event, 'kind');
+	const kind = 'kind' in event ? event.kind : undefined;
 	return typeof kind === 'string' ? kind : undefined;
 }
 

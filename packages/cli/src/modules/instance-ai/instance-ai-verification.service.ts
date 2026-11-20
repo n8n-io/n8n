@@ -56,8 +56,9 @@ function modelProviderOf(config: ModelConfig): string | null {
 
 function numericStatus(error: unknown): number | undefined {
 	if (typeof error !== 'object' || error === null) return undefined;
-	for (const key of ['status', 'statusCode', 'code']) {
-		const value = Reflect.get(error, key);
+	const fields: { status?: unknown; statusCode?: unknown; code?: unknown } = error;
+	for (const key of ['status', 'statusCode', 'code'] as const) {
+		const value = fields[key];
 		if (typeof value === 'number') return value;
 		if (typeof value === 'string' && /^\d{3}$/.test(value)) return Number(value);
 	}

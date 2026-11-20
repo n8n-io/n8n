@@ -7380,7 +7380,13 @@ describe('InstanceAiService — instance-context turn event', () => {
 					metadata: { hubSkillId: 'skill-1' },
 				},
 			]);
-			const createEnvironment = Reflect.get(run.service, 'createExecutionEnvironment');
+			const createEnvironment = (
+				run.service as TerminalGuardOrderServiceInternals & {
+					createExecutionEnvironment: Mock<
+						() => Promise<{ orchestrationContext: { skills: unknown } }>
+					>;
+				}
+			).createExecutionEnvironment;
 			const environment = await createEnvironment();
 			environment.orchestrationContext.skills = skills;
 			createEnvironment.mockResolvedValue(environment);

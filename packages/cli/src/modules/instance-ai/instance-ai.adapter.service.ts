@@ -5918,11 +5918,11 @@ function sdkNodeGroupsToRuntime(
  * without it simply carries no attribution.
  */
 function readHomeProject(workflow: object): { id: string; name: string } | undefined {
-	const home = Reflect.get(workflow, 'homeProject');
+	const home = 'homeProject' in workflow ? workflow.homeProject : undefined;
 	if (typeof home !== 'object' || home === null) return undefined;
 
-	const id = Reflect.get(home, 'id');
-	const name = Reflect.get(home, 'name');
+	const id = 'id' in home ? home.id : undefined;
+	const name = 'name' in home ? home.name : undefined;
 	if (typeof id !== 'string' || typeof name !== 'string') return undefined;
 
 	return { id, name };
@@ -5966,10 +5966,10 @@ async function readFolderPaths(
 
 function hasCredentialId(value: unknown): boolean {
 	if (typeof value !== 'object' || value === null) return false;
-	if (Reflect.get(value, 'id') === null && Reflect.get(value, '__aiGatewayManaged') === true) {
+	const id = 'id' in value ? value.id : undefined;
+	if (id === null && '__aiGatewayManaged' in value && value.__aiGatewayManaged === true) {
 		return true;
 	}
-	const id = Reflect.get(value, 'id');
 	return typeof id === 'string' && id.trim() !== '';
 }
 
@@ -5981,8 +5981,8 @@ function hasCredentialId(value: unknown): boolean {
  */
 function normalizeManagedCredentialForSave(value: unknown): unknown {
 	if (typeof value !== 'object' || value === null) return value;
-	if (Reflect.get(value, 'id') !== AI_GATEWAY_MANAGED_TAG) return value;
-	const name = Reflect.get(value, 'name');
+	if (!('id' in value) || value.id !== AI_GATEWAY_MANAGED_TAG) return value;
+	const name = 'name' in value ? value.name : undefined;
 	return {
 		id: null,
 		name: typeof name === 'string' && name !== '' ? name : 'Gateway credits',

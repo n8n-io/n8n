@@ -26,6 +26,7 @@ import {
 	N8nText,
 } from '@n8n/design-system';
 import { type BaseTextKey, useI18n } from '@n8n/i18n';
+import { isRecord } from '@n8n/utils/is-record';
 import { TIME } from '@/app/constants/durations';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { SANDBOX_PROVIDER_LABELS } from '../constants';
@@ -290,8 +291,8 @@ const existingCredentialTestId = computed(() =>
 );
 
 function readString(data: unknown, field: string): string {
-	if (typeof data !== 'object' || data === null) return '';
-	const value = Reflect.get(data, field);
+	if (!isRecord(data)) return '';
+	const value = data[field];
 	return typeof value === 'string' ? value : '';
 }
 

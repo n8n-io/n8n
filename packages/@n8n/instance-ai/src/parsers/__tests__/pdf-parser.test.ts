@@ -104,7 +104,7 @@ describe('extractPdfText', () => {
 	// exercise that code path.
 	describe('DOMMatrix polyfill', () => {
 		const hadDomMatrix = 'DOMMatrix' in globalThis;
-		const originalDomMatrix: unknown = Reflect.get(globalThis, 'DOMMatrix');
+		const originalDomMatrix: unknown = (globalThis as { DOMMatrix?: unknown }).DOMMatrix;
 
 		afterAll(() => {
 			if (hadDomMatrix) {
@@ -124,7 +124,7 @@ describe('extractPdfText', () => {
 				fileName: 'doc.pdf',
 			});
 
-			expect(typeof Reflect.get(globalThis, 'DOMMatrix')).toBe('function');
+			expect(typeof (globalThis as { DOMMatrix?: unknown }).DOMMatrix).toBe('function');
 		});
 	});
 });

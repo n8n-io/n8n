@@ -64,20 +64,25 @@ function globalFlag(flags?: string): string {
 }
 
 function isNodeRuntime(): boolean {
+	// oxlint-disable-next-line anti-slop/no-reflect-get -- probes for the Node.js runtime without a typed process global
 	const processValue = Reflect.get(globalThis, 'process');
 	if (typeof processValue !== 'object' || processValue === null) return false;
 
+	// oxlint-disable-next-line anti-slop/no-reflect-get -- probes for the Node.js runtime without a typed process global
 	const versions = Reflect.get(processValue, 'versions');
 	if (typeof versions !== 'object' || versions === null) return false;
 
+	// oxlint-disable-next-line anti-slop/no-reflect-get -- probes for the Node.js runtime without a typed process global
 	return typeof Reflect.get(versions, 'node') === 'string';
 }
 
 function loadNodeVm(): VmModule | undefined {
 	if (!isNodeRuntime()) return undefined;
 
+	// oxlint-disable-next-line anti-slop/no-reflect-get -- probes for the Node.js runtime without a typed process global
 	const processValue = Reflect.get(globalThis, 'process');
 	if (typeof processValue === 'object' && processValue !== null) {
+		// oxlint-disable-next-line anti-slop/no-reflect-get -- probes for the Node.js runtime without a typed process global
 		const getBuiltinModule = Reflect.get(processValue, 'getBuiltinModule');
 		if (typeof getBuiltinModule === 'function') {
 			const vmModule = getBuiltinModule('node:vm');
@@ -90,6 +95,7 @@ function isTimeout(error: unknown): boolean {
 	return (
 		typeof error === 'object' &&
 		error !== null &&
+		// oxlint-disable-next-line anti-slop/no-reflect-get -- probes for the Node.js runtime without a typed process global
 		Reflect.get(error, 'code') === 'ERR_SCRIPT_EXECUTION_TIMEOUT'
 	);
 }

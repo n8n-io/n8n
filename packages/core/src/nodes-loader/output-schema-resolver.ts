@@ -134,6 +134,7 @@ function valueAtPath(source: Record<string, unknown> | undefined, path: string):
 		if (current === null || typeof current !== 'object' || !Object.hasOwn(current, key)) {
 			return undefined;
 		}
+		// oxlint-disable-next-line anti-slop/no-reflect-get -- path segments may index arrays; a typed read needs a cast
 		current = Reflect.get(current, key);
 	}
 	return current;

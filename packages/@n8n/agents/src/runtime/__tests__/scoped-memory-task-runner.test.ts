@@ -171,7 +171,7 @@ describe('ScopedMemoryTaskRunner', () => {
 		await expect(handle.done).resolves.toMatchObject({ status: 'completed', value: 'done' });
 		await runner.flush();
 
-		expect(Reflect.get(runner, 'queuesByScope')).toHaveProperty('size', 0);
+		expect(runner['queuesByScope']).toHaveProperty('size', 0);
 	});
 
 	it('acquires and releases a store lock around the task', async () => {

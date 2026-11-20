@@ -106,7 +106,8 @@ function hasSetupRequestCredential(event: TraceEvent, credentialType: string): b
 		(request) =>
 			typeof request === 'object' &&
 			request !== null &&
-			Reflect.get(request, 'credentialType') === credentialType,
+			'credentialType' in request &&
+			request.credentialType === credentialType,
 	);
 }
 

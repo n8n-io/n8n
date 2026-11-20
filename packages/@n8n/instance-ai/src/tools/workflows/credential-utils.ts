@@ -38,8 +38,10 @@ export function isAiGatewayManagedCredential(
 	return (
 		typeof credential === 'object' &&
 		credential !== null &&
-		Reflect.get(credential, 'id') === null &&
-		Reflect.get(credential, '__aiGatewayManaged') === true
+		'id' in credential &&
+		credential.id === null &&
+		'__aiGatewayManaged' in credential &&
+		credential.__aiGatewayManaged === true
 	);
 }
 

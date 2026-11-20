@@ -50,7 +50,7 @@ export function applyOptOutAttributes(): void {
 
 	// Keyed by root, so a document nobody has observed yet still gets an observer.
 	const REGISTRY = '__n8nExtensionOptOut';
-	const existing: unknown = Reflect.get(window, REGISTRY);
+	const existing: unknown = REGISTRY in window ? window[REGISTRY] : undefined;
 	const observed = isRegistry(existing) ? existing : new WeakSet<Node>();
 	if (!isRegistry(existing)) Reflect.set(window, REGISTRY, observed);
 

@@ -108,7 +108,8 @@ function isAsyncIterable(value: unknown): value is AsyncIterable<unknown> {
 	return (
 		value !== null &&
 		typeof value === 'object' &&
-		typeof Reflect.get(value, Symbol.asyncIterator) === 'function'
+		Symbol.asyncIterator in value &&
+		typeof value[Symbol.asyncIterator] === 'function'
 	);
 }
 
@@ -116,7 +117,8 @@ function isReadableStream(value: unknown): value is ReadableStream<unknown> {
 	return (
 		value !== null &&
 		typeof value === 'object' &&
-		typeof Reflect.get(value, 'getReader') === 'function'
+		'getReader' in value &&
+		typeof value.getReader === 'function'
 	);
 }
 

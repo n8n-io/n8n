@@ -394,7 +394,7 @@ function getFirstReplayedToolCallInput(callIndex: number) {
 
 	const toolCall = assistantMessage.content.find(
 		(part): part is { type: 'tool-call'; input?: unknown } =>
-			typeof part === 'object' && part !== null && Reflect.get(part, 'type') === 'tool-call',
+			typeof part === 'object' && part !== null && 'type' in part && part.type === 'tool-call',
 	);
 	return toolCall?.input;
 }
@@ -2774,7 +2774,7 @@ describe('AgentRuntime — eager input persistence', () => {
 		if (!Array.isArray(content)) return undefined;
 		const block = content.find(
 			(c): c is { type: 'text'; text: string } =>
-				typeof c === 'object' && c !== null && Reflect.get(c, 'type') === 'text',
+				typeof c === 'object' && c !== null && 'type' in c && c.type === 'text',
 		);
 		return block?.text;
 	}
@@ -2786,8 +2786,10 @@ describe('AgentRuntime — eager input persistence', () => {
 			(c) =>
 				typeof c === 'object' &&
 				c !== null &&
-				Reflect.get(c, 'type') === 'tool-call' &&
-				Reflect.get(c, 'toolCallId') === toolCallId,
+				'type' in c &&
+				c.type === 'tool-call' &&
+				'toolCallId' in c &&
+				c.toolCallId === toolCallId,
 		);
 	}
 
@@ -2963,10 +2965,12 @@ describe('AgentRuntime — eager input persistence', () => {
 				(c) =>
 					typeof c === 'object' &&
 					c !== null &&
-					Reflect.get(c, 'type') === 'tool-call' &&
-					Reflect.get(c, 'toolCallId') === 'tc-1',
-			);
-			storedState = part ? Reflect.get(part, 'state') : undefined;
+					'type' in c &&
+					c.type === 'tool-call' &&
+					'toolCallId' in c &&
+					c.toolCallId === 'tc-1',
+			) as { state?: unknown } | undefined;
+			storedState = part?.state;
 			return makeGenerateSuccess('done');
 		});
 		await runtime.resume('generate', { approved: true }, { runId, toolCallId });

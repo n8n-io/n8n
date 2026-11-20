@@ -14,7 +14,7 @@ export function isInformationalIssue(issue: unknown): boolean {
 	if (typeof issue !== 'object' || issue === null || !('severity' in issue)) {
 		return false;
 	}
-	return Reflect.get(issue, 'severity') === 'informational';
+	return issue.severity === 'informational';
 }
 
 export function partitionValidationIssues<T>(issues: readonly T[]): {

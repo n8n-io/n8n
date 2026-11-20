@@ -11,7 +11,7 @@ function getStringProperty(value: unknown, keys: string[]): string | undefined {
 	if (!isRecord(value)) return undefined;
 
 	for (const key of keys) {
-		const candidate = Reflect.get(value, key);
+		const candidate = value[key];
 		if (typeof candidate === 'string' && candidate.trim() !== '') return candidate;
 	}
 
@@ -22,7 +22,7 @@ function getNumberProperty(value: unknown, keys: string[]): number | undefined {
 	if (!isRecord(value)) return undefined;
 
 	for (const key of keys) {
-		const candidate = Reflect.get(value, key);
+		const candidate = value[key];
 		if (typeof candidate === 'number') return candidate;
 		if (typeof candidate === 'string') {
 			const parsed = Number(candidate);

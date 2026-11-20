@@ -22,13 +22,15 @@ export function extractAnswerText(json: unknown): string {
 	if (json === null || json === undefined) return '';
 	if (typeof json !== 'object') return String(json);
 	const preferred =
-		Reflect.get(json, 'output') ?? Reflect.get(json, 'text') ?? Reflect.get(json, 'response');
+		('output' in json ? json.output : undefined) ??
+		('text' in json ? json.text : undefined) ??
+		('response' in json ? json.response : undefined);
 	if (preferred !== undefined && preferred !== null) {
 		return typeof preferred === 'object' ? JSON.stringify(preferred) : String(preferred);
 	}
 	const keys = Object.keys(json);
 	if (keys.length === 1) {
-		const only = Reflect.get(json, keys[0]);
+		const only: unknown = Object.values(json)[0];
 		return typeof only === 'object' && only !== null ? JSON.stringify(only) : String(only);
 	}
 	return JSON.stringify(json);

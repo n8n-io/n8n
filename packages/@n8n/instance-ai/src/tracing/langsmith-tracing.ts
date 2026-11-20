@@ -207,7 +207,8 @@ function isOtelTracer(value: unknown): value is OTelTracer {
 	return (
 		value !== null &&
 		typeof value === 'object' &&
-		typeof Reflect.get(value, 'startSpan') === 'function'
+		'startSpan' in value &&
+		typeof value.startSpan === 'function'
 	);
 }
 

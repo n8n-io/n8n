@@ -9,7 +9,7 @@ export type CredentialRefusal = { message: string; description?: string; nodeNam
 
 function isNodeLike(value: unknown): value is { name: string } {
 	return (
-		typeof value === 'object' && value !== null && typeof Reflect.get(value, 'name') === 'string'
+		typeof value === 'object' && value !== null && 'name' in value && typeof value.name === 'string'
 	);
 }
 
@@ -58,7 +58,7 @@ export async function findOwnAccessCredentialRefusal(
 }
 
 function toCredentialRefusal(error: UserError): CredentialRefusal {
-	const node: unknown = Reflect.get(error, 'node');
+	const node: unknown = 'node' in error ? error.node : undefined;
 	return {
 		message: error.message,
 		...(error.description ? { description: error.description } : {}),
