@@ -3,6 +3,7 @@ import { resolveSampleFileMarkers } from '@n8n/instance-ai';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
+	type IBinaryKeyData,
 	type IDataObject,
 	type INode,
 	type IRunExecutionData,
@@ -30,15 +31,18 @@ export function buildInstanceAiRunPinDataPlan(args: {
 	workflowPinData: IPinData;
 	verificationPinData?: Record<string, unknown[]>;
 	inputData?: Record<string, unknown>;
+	/** Binary data for the trigger item. With binary data, the trigger output is injected also without `inputData`. */
+	binary?: IBinaryKeyData;
 	triggerNode?: INode;
 }): InstanceAiRunPinDataPlan {
 	const workflowPinData = args.workflowPinData;
+	const inputData = args.inputData ?? (args.binary ? {} : undefined);
 	const verificationPinData = sdkPinDataToRuntime(args.verificationPinData);
 	const basePinData = { ...workflowPinData, ...verificationPinData };
 	let nonVerificationPinData = { ...workflowPinData };
 	const mockDataSources: WorkflowExecutionMockDataSource[] = [];
 
-	if (args.inputData && args.triggerNode) {
+	if (inputData && args.triggerNode) {
 		mockDataSources.push('trigger_input');
 	}
 
@@ -50,8 +54,10 @@ export function buildInstanceAiRunPinDataPlan(args: {
 		mockDataSources.push('workflow_pin_data');
 	}
 
-	if (args.inputData && args.triggerNode) {
-		const triggerPinData = getPinDataForTrigger(args.triggerNode, args.inputData);
+	if (inputData && args.triggerNode) {
+		const triggerPinData = getPinDataForTrigger(args.triggerNode, inputData);
+		const firstItem = triggerPinData[args.triggerNode.name]?.[0];
+		if (firstItem && args.binary) firstItem.binary = args.binary;
 		const runPinData = { ...basePinData, ...triggerPinData };
 		nonVerificationPinData = { ...nonVerificationPinData, ...triggerPinData };
 		const triggerItems = triggerPinData[args.triggerNode.name];

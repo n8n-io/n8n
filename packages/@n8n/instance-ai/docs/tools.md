@@ -611,8 +611,20 @@ Default timeout: 5 minutes; max: 10 minutes. On timeout, execution is cancelled.
 | `inputData` | object | no | — | Data passed to the trigger node |
 | `timeout` | number | no | 300000 | Max wait time in ms (max 600000) |
 | `triggerNodeName` | string | no | — | Trigger node to use when a workflow has more than one trigger |
+| `files` | Record<string, string> | no | — | Conversation files for the trigger item, by binary property name. Only when the host sets `readBinary` and `storeWorkflowFile` on `storedFiles` |
 
-**Returns**: `{ executionId, status, data?, error?, startedAt?, finishedAt?, verificationClaim? }`
+**Returns**: `{ executionId, status, data?, error?, startedAt?, finishedAt?, verificationClaim?, files?, skippedFiles? }`
+
+**Files**: the Assistant on the Agents runtime sets `readBinary` and
+`storeWorkflowFile`, the same as the workflow tools of project Agents. Each
+file in `files` becomes a binary data entry of the trigger item. The entry
+points to the stored bytes of the conversation file, so nothing is copied.
+With `files` and no `inputData`, the trigger output is still injected. After
+the run, the files of the last node are stored as conversation files with the
+`tool` source, one time for each binary and at most 10 for each run. The
+result lists them in `files`, so the chat shows them, and lists files over a
+cap in `skippedFiles`. A redacted execution stores no files. Without the host
+functions, the input schema has no `files` field.
 
 **Live test evidence**: `workflow_builder_verify_built_workflow` always simulates destructive
 nodes, so a live test runs through this action. When a successful run reaches
@@ -1384,7 +1396,7 @@ tool is present, the `## Sandbox workspace` prompt section names it.
 
 The tool takes no input. The result lists up to 50 files under
 `conversationFiles`, with `fileId`, `fileName`, `mimeType`, `sizeBytes`,
-`origin` (`upload` or `sandbox`) and `createdAt`. `omitted` counts the older
+`origin` (`upload`, `sandbox` or `workflow`) and `createdAt`. `omitted` counts the older
 files that the list leaves out. The list is not named `files`, because the chat
 shows the `files` of a tool result as new files.
 
