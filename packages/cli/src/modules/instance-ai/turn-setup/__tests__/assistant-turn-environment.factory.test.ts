@@ -52,6 +52,7 @@ function createSetupFactory() {
 				approvalModesEnabled: false,
 				instanceContextEnabled: false,
 				nodeUsageEnabled: false,
+				preferencesNoteVariant: undefined as string | undefined,
 			})),
 		},
 		settingsService: {
@@ -377,6 +378,21 @@ describe('AssistantTurnEnvironmentFactory', () => {
 			expect(fields.approvalModeService.resolveMode).toHaveBeenCalledWith(user, false);
 			expect(fields.approvalReviewerFactory.create).not.toHaveBeenCalled();
 		});
+
+		it.each(['control', 'variant'])(
+			'passes the preferences note variant %s to the turn',
+			async (variant) => {
+				const { factory, fields } = createSetupFactory();
+				fields.adapterService.resolveExperimentGates.mockResolvedValue({
+					...(await fields.adapterService.resolveExperimentGates()),
+					preferencesNoteVariant: variant,
+				});
+
+				const environment = await factory.create(params, createRuntime());
+
+				expect(environment.preferencesNoteVariant).toBe(variant);
+			},
+		);
 
 		it('keeps the MCP settings of a user who picked Manual', async () => {
 			const { factory, fields } = createSetupFactory();
