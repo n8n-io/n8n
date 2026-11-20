@@ -15,6 +15,7 @@ import N8nIcon from '../N8nIcon';
 import N8nIconButton from '../N8nIconButton';
 import N8nInput from '../N8nInput';
 import N8nInputLabel from '../N8nInputLabel';
+import { N8nRadioGroup, N8nRadioGroupItem } from '../N8nRadioGroup';
 import N8nText from '../N8nText';
 import N8nTooltip from '../N8nTooltip';
 import N8nListbox from '../N8nListbox/Listbox.vue';
@@ -75,13 +76,6 @@ const widthModeSectionStyle = [
 	'display: flex',
 	'flex-direction: column',
 	'gap: var(--spacing--sm)',
-].join('; ');
-
-const widthModeActionsStyle = [
-	'display: flex',
-	'gap: var(--spacing--2xs)',
-	'flex-wrap: wrap',
-	'align-items: center',
 ].join('; ');
 
 const frameStyle = [
@@ -937,7 +931,6 @@ const PluginFilesEditor = defineComponent({
 				:max-width="maxWidth"
 				:width-storage-id="widthStorageId"
 				label="Plugin files"
-				style="height: 100%"
 			>
 				<N8nListbox v-model="activeId" label="Plugin files" style="width: 100%">
 					<N8nListboxItem :value="readme.id">
@@ -1268,32 +1261,47 @@ export const ControlledUncontrolled: Story = {
 		docs: {
 			description: {
 				story:
-					'Both editors use the plugin file list. Set the controlled width with a button. A drag updates that same value. The uncontrolled sidebar omits width and keeps the size itself.',
+					'Both editors use the plugin file list. Choose a width in the radio group. That sets the controlled width. Drag the inner edge to change the same value. The option stays selected when the width matches it. The uncontrolled sidebar omits width and keeps the size itself.',
 			},
 		},
 	},
 	render: () => ({
-		components: { PluginFilesEditor, N8nText, N8nButton },
+		components: { PluginFilesEditor, N8nText, N8nRadioGroup, N8nRadioGroupItem },
 		setup() {
 			const controlledWidth = ref(240);
-			const widthPresets = [160, 240, 400];
-			return { controlledWidth, widthPresets };
+			const widthPresets = [
+				{ value: '160', width: 160 },
+				{ value: '240', width: 240 },
+				{ value: '400', width: 400 },
+			];
+			const selectedPreset = computed({
+				get(): string | undefined {
+					return widthPresets.find((preset) => preset.width === controlledWidth.value)?.value;
+				},
+				set(value: string | undefined) {
+					const preset = widthPresets.find((item) => item.value === value);
+					if (preset) controlledWidth.value = preset.width;
+				},
+			});
+			return { controlledWidth, widthPresets, selectedPreset };
 		},
 		template: `
 			<div style="${widthModesStyle}">
 				<section style="${widthModeSectionStyle}">
 					<N8nText bold size="medium">Controlled</N8nText>
-					<div style="${widthModeActionsStyle}">
-						<N8nText size="small" color="text-base">{{ controlledWidth }} px</N8nText>
-						<N8nButton
+					<N8nRadioGroup
+						v-model="selectedPreset"
+						orientation="horizontal"
+						name="controlled-sidebar-width"
+						aria-label="Sidebar width"
+					>
+						<N8nRadioGroupItem
 							v-for="preset in widthPresets"
-							:key="preset"
-							size="small"
-							variant="outline"
-							:label="String(preset)"
-							@click="controlledWidth = preset"
+							:key="preset.value"
+							:value="preset.value"
+							:label="preset.value"
 						/>
-					</div>
+					</N8nRadioGroup>
 					<div style="${editorFrameStyle}">
 						<PluginFilesEditor v-model:width="controlledWidth" :min-width="160" :max-width="480" />
 					</div>
