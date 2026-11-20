@@ -250,4 +250,52 @@ describe('TaskRequester', () => {
 			expect(capturedRejection).toBeInstanceOf(TaskCancelledError);
 		});
 	});
+
+	describe('requestExpired', () => {
+		it('reports instance shutdown when a request is cut short by shutdown', () => {
+			Object.assign(mockGlobalConfig, { deployment: { type: 'default' } });
+			const reject = vi.fn();
+			instance.requestAcceptRejects.set('request-1', {
+				accept: vi.fn(),
+				reject,
+				requestedAt: Date.now(),
+			});
+
+			instance.onMessage({
+				type: 'broker:requestexpired',
+				requestId: 'request-1',
+				reason: 'shutdown',
+			});
+
+			expect(reject).toHaveBeenCalledOnce();
+			const error = reject.mock.calls[0][0] as { message: string; description: string };
+			expect(error.message).toBe('Task aborted because the n8n instance was shutting down');
+			expect(error.description).toContain('shutting down');
+			expect(error.description).not.toContain('N8N_RUNNERS_TASK_REQUEST_TIMEOUT');
+			expect(error.description).not.toContain('at capacity');
+			expect(mockErrorReporter.error).not.toHaveBeenCalled();
+		});
+
+		it('still reports runner capacity when the request times out on its own', () => {
+			Object.assign(mockGlobalConfig, { deployment: { type: 'default' } });
+			const reject = vi.fn();
+			instance.requestAcceptRejects.set('request-1', {
+				accept: vi.fn(),
+				reject,
+				requestedAt: Date.now() - 60_000,
+			});
+
+			instance.onMessage({
+				type: 'broker:requestexpired',
+				requestId: 'request-1',
+				reason: 'timeout',
+			});
+
+			const error = reject.mock.calls[0][0] as { message: string; description: string };
+			expect(error.message).toBe('Task request timed out');
+			expect(error.description).toContain('waited 60 seconds');
+			expect(error.description).toContain('N8N_RUNNERS_TASK_REQUEST_TIMEOUT');
+			expect(mockErrorReporter.error).toHaveBeenCalled();
+		});
+	});
 });
