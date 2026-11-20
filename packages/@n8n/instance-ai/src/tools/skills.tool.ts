@@ -381,36 +381,23 @@ async function handleImportFromSource(
 	const refusal = scopeRefusal(input.scope, input.projectId);
 	if (refusal) return refusal;
 	if (!ctx.resumeData) {
-		const preview = await sources.discover(input);
-		if (preview.revision !== input.revision) {
-			return { success: false, reason: 'The source changed. Preview it again before importing.' };
-		}
-		if (preview.duplicate.kind === 'blocked') {
-			return {
-				success: false,
-				reason: 'This source is already connected. Review it in Settings > Context > Skills.',
-			};
-		}
-		const keys = new Set(input.skillKeys);
-		const selected = preview.skills.filter(({ key }) => keys.has(key));
-		if (
-			selected.length !== keys.size ||
-			selected.some(({ verdict, reason, nameTaken }) => verdict !== 'pass' || reason || nameTaken)
-		) {
-			return {
-				success: false,
-				reason:
-					'Import only available skills that passed the check. Review warnings in Settings > Context > Skills.',
-			};
-		}
+		// The service applies the import rules, so the card names what the import takes.
+		const { source, importable, failed } = await sources.checkImport(input);
 		const target = await audience(context, input.scope, input.projectId);
-		const { label, ref, path } = preview.source;
-		const names = selected.map(({ name }) => name).join(', ');
-		const selection = selected.length === 1 ? '1 synced skill' : `${selected.length} synced skills`;
+		const { label, ref, path } = source;
+		const names = importable.map(({ name }) => name).join(', ');
+		const selection =
+			importable.length === 1 ? '1 synced skill' : `${importable.length} synced skills`;
+		const leftOut =
+			failed.length === 0
+				? ''
+				: failed.length === 1
+					? ' 1 selected skill cannot come in.'
+					: ` ${failed.length} selected skills cannot come in.`;
 		return await ctx.suspend({
 			requestId: nanoid(),
 			resourceName: `${label}${ref ? ` · ${ref}` : ''}${path ? ` · ${path}` : ''}`,
-			message: `Connect this source and import ${selection} ${target}: ${names}.`,
+			message: `Connect this source and import ${selection} ${target}: ${names}.${leftOut}`,
 			severity: 'warning',
 		});
 	}
@@ -445,7 +432,7 @@ export function createSkillsTool(context: InstanceAiContext) {
 			'Manage skills: list, get, create, update and delete. A skill is reusable instructions. ' +
 				'This tool does not attach a skill to an agent.' +
 				(sources
-					? ' List connected sources or preview a public GitHub link with discover-source. Show the check verdicts to the user. To connect the source, use import-from-source with the same URL, scope and revision, and only the selected skills that passed. Review warnings and accept updates in Settings > Context > Skills.'
+					? ' List connected sources or preview a public GitHub link with discover-source. Show the check verdicts to the user. To connect the source, use import-from-source with the same URL, scope and revision, and the selected skills. Only skills that passed come in, and the result lists the others in failed. Review warnings and accept updates in Settings > Context > Skills.'
 					: ''),
 		)
 		.input(inputSchema)

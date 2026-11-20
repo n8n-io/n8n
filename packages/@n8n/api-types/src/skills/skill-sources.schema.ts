@@ -279,6 +279,18 @@ export type PublicSkillSourceDiscovery = Omit<SkillSourceDiscovery, 'skills'> & 
 	>;
 };
 
+/**
+ * What an import of the selection does at the previewed revision, before anything is
+ * stored. n8n Assistant shows it on the approval card.
+ */
+export type PublicSkillSourceImportCheck = {
+	source: SkillSourceSummary;
+	/** Selected skills that the import takes. */
+	importable: Array<{ key: string; name: string }>;
+	/** Selected skills that the import leaves out. */
+	failed: SkillSourceConnectResponse['failed'];
+};
+
 export type SkillSourceConnectResponse = {
 	sourceId: string;
 	imported: Array<{ key: string; skillId: string; name: string }>;

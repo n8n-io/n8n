@@ -54,6 +54,11 @@ describe('InstanceAiSkillsAdapterService', () => {
 		const input = { url: 'https://github.com/acme/skills', scope: 'instance' } as const;
 		await sources.discover(input);
 		expect(skillSources.discoverPublic).toHaveBeenCalledWith(user, input, 'assistant');
+		const selection = { ...input, skillKeys: ['brand-voice'], revision: 'commit' };
+		await sources.checkImport(selection);
+		expect(skillSources.checkPublicImport).toHaveBeenCalledWith(user, selection, 'assistant');
+		await sources.connect(selection);
+		expect(skillSources.connectPublic).toHaveBeenCalledWith(user, selection, 'assistant');
 	});
 
 	it('creates the skill with the Assistant availability the tool sent', async () => {

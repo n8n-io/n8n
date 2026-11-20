@@ -102,7 +102,15 @@ Both surfaces use `SkillSourceService` and the same Skill Sync gate as the UI.
 They list visible sources and show sync status on skill reads. They can preview
 public GitHub sources and import selected skills from the previewed revision.
 The service checks access and scans the skills again before it writes. Only
-skills that pass can come in. Use the Skills UI to review warnings, accept
+skills that pass can come in. The other selected skills come back in `failed`,
+on both surfaces. If no selected skill can come in, the request fails with the
+reason of the first one.
+
+The import rules are in `SkillSourceService` only. `checkPublicImport` applies
+them and stores nothing. n8n Assistant calls it before the approval, so the
+card names the skills that come in. A check that fails reports a failed connect,
+as `connectPublic` does. A check does not report flagged skills, because the
+preview reported them. Use the Skills UI to review warnings, accept
 updates, or connect private repositories.
 
 The MCP tools are `list_skill_sources` (`skill:read` or `skill:write`),

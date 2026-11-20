@@ -1670,8 +1670,10 @@ content. The tool does not attach a skill to an Agent.
 When Skill Sync is on, `list-sources` lists visible sources and their update
 counts. `discover-source` previews a public GitHub link and reports the check
 verdict for each skill. `import-from-source` connects the source and imports the
-selected skills that pass. It asks the user to confirm the import and checks the
-source revision again before writing. Use **Settings > Context > Skills** for
+selected skills that pass. The result lists the other selected skills in
+`failed`. The backend checks the selection first, so the approval card names the
+skills that come in. A selection with no skill that can come in is refused
+before the card. The import checks the source revision again before writing. Use **Settings > Context > Skills** for
 private repositories, warning review, and update acceptance.
 
 ## MCP Registry Tool

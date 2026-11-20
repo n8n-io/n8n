@@ -737,6 +737,151 @@ describe('SkillSourceController', () => {
 		});
 	});
 
+	describe('the import check of the public source tools', () => {
+		const target = { url: REPO, scope: 'instance' } as const;
+		const service = () => Container.get(SkillSourceService);
+		let connectedSource: MockInstance<SkillsTelemetry['connectedSource']>;
+		let flaggedSkill: MockInstance<SkillsTelemetry['flaggedSkill']>;
+
+		beforeEach(() => {
+			github.push('acme/skills', {
+				...FILES,
+				'skills/warning/SKILL.md': skillMd('warning', 'Warning', 'Follow\u200b this.'),
+			});
+			connectedSource = vi.spyOn(Container.get(SkillsTelemetry), 'connectedSource');
+			flaggedSkill = vi.spyOn(Container.get(SkillsTelemetry), 'flaggedSkill');
+		});
+
+		afterEach(() => {
+			connectedSource.mockRestore();
+			flaggedSkill.mockRestore();
+		});
+
+		const previewed = async () => {
+			const preview = await service().discoverPublic(ownerUser, target, 'assistant');
+			connectedSource.mockClear();
+			flaggedSkill.mockClear();
+			const keyOf = (location: string) =>
+				preview.skills.find((skill) => skill.location.endsWith(location))?.key ?? '';
+			const check = async (skillKeys: string[], revision = preview.revision) =>
+				await service().checkPublicImport(
+					ownerUser,
+					connectPublicSkillSourceSchema.parse({ ...target, revision, skillKeys }),
+					'assistant',
+				);
+			return { keyOf, check };
+		};
+
+		it('splits a mixed selection as the import does, and stores and reports nothing', async () => {
+			await createSkill({ projectId: null, content: { name: 'pdf' } });
+			const { keyOf, check } = await previewed();
+
+			const result = await check([
+				keyOf('docx'),
+				keyOf('pdf'),
+				keyOf('warning'),
+				keyOf('broken'),
+				'no-such-key',
+			]);
+
+			expect(result.source).toMatchObject({ type: 'github', label: 'acme/skills' });
+			expect(result.importable).toEqual([{ key: keyOf('docx'), name: 'docx' }]);
+			expect(result.failed.map(({ reason }) => reason).sort()).toEqual([
+				'blocked_by_check',
+				'name_taken',
+				'not_found',
+				'review_required',
+			]);
+			expect(await countSources()).toBe(0);
+			expect(connectedSource).not.toHaveBeenCalled();
+			// The preview reported the flagged skills. The check must not count them again.
+			expect(flaggedSkill).not.toHaveBeenCalled();
+		});
+
+		it('gives the same split as the import of the same selection', async () => {
+			const { keyOf, check } = await previewed();
+			const skillKeys = [keyOf('docx'), keyOf('warning'), keyOf('broken')];
+
+			const checked = await check(skillKeys);
+			const imported = await service().connectPublic(
+				ownerUser,
+				connectPublicSkillSourceSchema.parse({
+					...target,
+					revision: (await service().discoverPublic(ownerUser, target, 'assistant')).revision,
+					skillKeys,
+				}),
+				'assistant',
+			);
+
+			expect(imported.imported.map(({ key }) => key)).toEqual(
+				checked.importable.map(({ key }) => key),
+			);
+			expect(imported.failed).toEqual(checked.failed);
+		});
+
+		it.each([
+			['a skill that needs review', 'warning', 'review_required'],
+			['a skill that the security check blocks', 'broken', 'blocked_by_check'],
+			['a key that the source does not hold', 'no-such-skill', 'not_found'],
+		])('refuses a selection of only %s', async (_name, location, reason) => {
+			const { keyOf, check } = await previewed();
+
+			await expect(check([keyOf(location) || location])).rejects.toMatchObject({ reason });
+
+			expect(connectedSource).toHaveBeenCalledWith(
+				expect.objectContaining({ surface: 'assistant', status: 'failure', reason }),
+				ownerUser.id,
+			);
+		});
+
+		it('refuses a selection of only a skill whose name is taken', async () => {
+			await createSkill({ projectId: null, content: { name: 'docx' } });
+			const { keyOf, check } = await previewed();
+
+			await expect(check([keyOf('docx')])).rejects.toMatchObject({ reason: 'name_taken' });
+		});
+
+		it('refuses another revision than the previewed one', async () => {
+			const { keyOf, check } = await previewed();
+			github.push('acme/skills', { ...FILES, 'skills/docx/SKILL.md': skillMd('docx', 'New') });
+
+			await expect(check([keyOf('docx')])).rejects.toMatchObject({ reason: 'stale' });
+
+			expect(connectedSource).toHaveBeenCalledWith(
+				expect.objectContaining({ surface: 'assistant', status: 'failure', reason: 'stale' }),
+				ownerUser.id,
+			);
+		});
+
+		it('refuses a source that the scope already has', async () => {
+			const { keyOf, check } = await previewed();
+			await service().connectPublic(
+				ownerUser,
+				connectPublicSkillSourceSchema.parse({
+					...target,
+					revision: (await service().discoverPublic(ownerUser, target, 'assistant')).revision,
+					skillKeys: [keyOf('pdf')],
+				}),
+				'assistant',
+			);
+			connectedSource.mockClear();
+
+			await expect(check([keyOf('docx')])).rejects.toMatchObject({
+				reason: 'duplicate_source',
+			});
+
+			expect(connectedSource).toHaveBeenCalledWith(
+				expect.objectContaining({
+					surface: 'assistant',
+					status: 'failure',
+					reason: 'duplicate_source',
+					duplicate_result: 'blocked',
+				}),
+				ownerUser.id,
+			);
+		});
+	});
+
 	describe('limits of the listing', () => {
 		const client = () => Container.get(GitHubSkillSourceClient);
 

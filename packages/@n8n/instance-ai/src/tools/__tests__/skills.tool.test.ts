@@ -152,17 +152,24 @@ describe('skills tool', () => {
 			skillKeys: ['brand-voice'],
 			revision: 'commit',
 		};
-		const preview = {
-			source: { label: 'acme/skills' },
-			duplicate: { kind: 'none' },
-			revision: 'commit',
-			skills: [{ key: 'brand-voice', name: 'Brand voice', verdict: 'pass' }],
+		const check = {
+			source: { label: 'acme/skills', ref: 'main', path: 'skills' },
+			importable: [{ key: 'brand-voice', name: 'Brand voice' }],
+			failed: [],
 		};
+		const list = vi.fn();
 		const discover = vi.fn();
+		const checkImport = vi.fn();
 		const connect = vi.fn();
+		const sourceTool = (overrides: Parameters<typeof createContext>[1] = {}) =>
+			createSkillsTool(
+				createContext({ ...service, sources: { list, discover, checkImport, connect } }, overrides),
+			);
 
 		beforeEach(() => {
-			discover.mockReset().mockResolvedValue(preview);
+			list.mockReset();
+			discover.mockReset();
+			checkImport.mockReset().mockResolvedValue(check);
 			connect.mockReset().mockResolvedValue({ sourceId: 'source-1', imported: [], failed: [] });
 		});
 
@@ -174,20 +181,19 @@ describe('skills tool', () => {
 		});
 
 		it('always asks before connecting the source, even when other skill creation is always allowed', async () => {
-			const tool = createSkillsTool(
-				createContext(
-					{ ...service, sources: { list: vi.fn(), discover, connect } },
-					{
-						permissions: { createSkill: 'always_allow' },
-					},
-				),
-			);
+			const tool = sourceTool({ permissions: { createSkill: 'always_allow' } });
 			const suspend = vi.fn();
 			await executeTool(tool, input, suspendCtx(suspend));
+			expect(checkImport).toHaveBeenCalledWith({
+				...target,
+				revision: 'commit',
+				skillKeys: ['brand-voice'],
+			});
 			expect(suspend).toHaveBeenCalledWith(
 				expect.objectContaining({
-					resourceName: 'acme/skills',
-					message: expect.stringContaining('Brand voice'),
+					resourceName: 'acme/skills · main · skills',
+					message:
+						'Connect this source and import 1 synced skill for every project on this instance: Brand voice.',
 				}),
 			);
 			await executeTool(tool, input, resumeCtx(false));
@@ -203,21 +209,23 @@ describe('skills tool', () => {
 			});
 		});
 
-		it('refuses a selection that needs review before asking for approval', async () => {
-			discover.mockResolvedValue({
-				...preview,
-				skills: [{ ...preview.skills[0], verdict: 'needs_review' }],
+		it('names on the card the skills that come in, and counts the others', async () => {
+			checkImport.mockResolvedValue({
+				...check,
+				importable: [
+					{ key: 'brand-voice', name: 'Brand voice' },
+					{ key: 'docx', name: 'docx' },
+				],
+				failed: [{ key: 'warning', name: 'warning', reason: 'review_required' }],
 			});
-			const tool = createSkillsTool(
-				createContext({ ...service, sources: { list: vi.fn(), discover, connect } }),
-			);
 			const suspend = vi.fn();
-			await expect(executeTool(tool, input, suspendCtx(suspend))).resolves.toMatchObject({
-				success: false,
-				reason: expect.stringContaining('Review warnings'),
-			});
-			expect(suspend).not.toHaveBeenCalled();
-			expect(connect).not.toHaveBeenCalled();
+			await executeTool(sourceTool(), input, suspendCtx(suspend));
+			expect(suspend).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message:
+						'Connect this source and import 2 synced skills for every project on this instance: Brand voice, docx. 1 selected skill cannot come in.',
+				}),
+			);
 		});
 	});
 

@@ -36,6 +36,7 @@ import type {
 	ConnectPublicSkillSource,
 	DiscoverPublicSkillSource,
 	PublicSkillSourceDiscovery,
+	PublicSkillSourceImportCheck,
 	SkillSourceConnectResponse,
 	SkillSourceListItem,
 	EvaluationMetric,
@@ -1251,6 +1252,8 @@ export interface InstanceAiSkillService {
 	sources?: {
 		list(): Promise<SkillSourceListItem[]>;
 		discover(input: DiscoverPublicSkillSource): Promise<PublicSkillSourceDiscovery>;
+		/** What an import of the selection does, before the user approves it. Stores nothing. */
+		checkImport(input: ConnectPublicSkillSource): Promise<PublicSkillSourceImportCheck>;
 		connect(input: ConnectPublicSkillSource): Promise<SkillSourceConnectResponse>;
 	};
 	list(options: {

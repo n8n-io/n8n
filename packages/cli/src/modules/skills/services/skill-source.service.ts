@@ -18,6 +18,7 @@ import {
 	type SkillSourceListItem,
 	type MoveSkillSourceDto,
 	type PublicSkillSourceDiscovery,
+	type PublicSkillSourceImportCheck,
 	type SkillSourceMovePreview,
 	type SkillSourceDeleteBlock,
 	skillNameKey,
@@ -286,6 +287,61 @@ export class SkillSourceService {
 			{ url, scope, projectId, skillKeys },
 			{ revision, surface },
 		);
+	}
+
+	/**
+	 * Checks an import of the selection with the rules of `connectPublic`, and stores nothing.
+	 * A surface that asks the user first calls it, so the question names what comes in. A
+	 * selection that cannot come in at all fails here as it fails at connect, with the same
+	 * telemetry. A check that succeeds reports nothing: the connect reports it.
+	 */
+	async checkPublicImport(
+		user: User,
+		{ url, scope, projectId, skillKeys, revision }: ConnectPublicSkillSource,
+		surface: SourceToolSurface,
+	): Promise<PublicSkillSourceImportCheck> {
+		await this.flagGate.assertEnabled(user);
+		const payload = { url, scope, projectId };
+		const { target, scopeType } = await this.resolveScope(user, payload);
+		const report = connectReport(scopeType, undefined, surface);
+		try {
+			const source = await this.parse(payload, user, target.projectId);
+			report.provider = source.type;
+			const duplicate = await this.duplicateOf(user, source.identityKey, target.projectId);
+			report.duplicate_result = duplicate.kind;
+			if (duplicate.kind === 'blocked') throw duplicateError(duplicate.where);
+			const discovered = await this.discoverAll(source);
+			assertPreviewedRevision(discovered, revision);
+			const { importable: passed, failed } = selectImportable(
+				discovered,
+				await this.readAll(source, discovered),
+				[...new Set(skillKeys)],
+				new Set(),
+			);
+			const names = await this.skillRepository.findLatestNamesInTarget(target);
+			const importable: PublicSkillSourceImportCheck['importable'] = [];
+			for (const { key, skill } of passed) {
+				if (!skill) continue;
+				if (isNameTaken(skill.name, names)) {
+					failed.push({ key, name: skill.name, reason: 'name_taken' });
+				} else {
+					importable.push({ key, name: skill.name });
+				}
+			}
+			if (importable.length === 0) throw noImportError(failed);
+			const { client, locator } = source;
+			return {
+				source: { type: source.type, ...client.describe(locator), webUrl: client.webUrl(locator) },
+				importable,
+				failed,
+			};
+		} catch (error) {
+			await this.skillsTelemetry.connectedSource(
+				{ ...report, status: 'failure', reason: telemetryReasonOf(error) },
+				user.id,
+			);
+			throw error;
+		}
 	}
 
 	private async connectSelected(
@@ -792,7 +848,6 @@ export class SkillSourceService {
 		}: { skillKeys: string[]; reviewedSkillKeys: string[]; preview?: SourceToolPreview },
 	): Promise<{ response: SkillSourceConnectResponse; warning?: SkillSourceReason }> {
 		const keys = [...new Set(skillKeys)];
-		const reviewed = new Set(reviewedSkillKeys);
 		const failed: SkillSourceConnectResponse['failed'] = [];
 		const imported: SkillSourceConnectResponse['imported'] = [];
 		const skippedPaths: string[] = [];
@@ -826,42 +881,12 @@ export class SkillSourceService {
 		let discovered: Discovered;
 		try {
 			discovered = await this.discoverAll(source);
-			if (preview && discovered.revision !== preview.revision) {
-				throw new SkillSourceRequestError(
-					'stale',
-					'The source changed. Preview it again before importing.',
-				);
-			}
-			const byKey = new Map(discovered.refs.map((ref) => [refKey(ref), ref]));
-			const picked: RemoteSkillRef[] = [];
-			for (const key of keys) {
-				const ref = byKey.get(key);
-				if (ref) picked.push(ref);
-				else failed.push({ key, name: null, reason: 'not_found' });
-			}
+			if (preview) assertPreviewedRevision(discovered, preview.revision);
 			const allReads = await this.readAll(source, discovered);
-			const pickedKeys = new Set(picked.map(refKey));
-			const reads = allReads.filter(({ key }) => pickedKeys.has(key));
-			const importable: ReadSkill[] = [];
-			for (const read of reads) {
-				// The source can change after discover, so connect checks the content it imports.
-				// A SKILL.md that n8n cannot read is also blocked, and the check names the cause.
-				if (read.check?.verdict === 'blocked') {
-					failed.push({
-						key: read.key,
-						name: read.skill?.name ?? read.fetched?.content.name ?? null,
-						reason: 'blocked_by_check',
-					});
-				} else if (read.error) {
-					failed.push({ key: read.key, name: null, reason: read.error.reason });
-				} else if (read.check?.verdict === 'needs_review' && !reviewed.has(read.key)) {
-					// The user reviewed the warnings of the skills that the picker showed, so a skill
-					// that needs review only since discover did not get that review.
-					failed.push({ key: read.key, name: read.skill?.name ?? null, reason: 'review_required' });
-				} else {
-					importable.push(read);
-				}
-			}
+			// The source can change after discover, so connect checks the content it imports.
+			const selection = selectImportable(discovered, allReads, keys, new Set(reviewedSkillKeys));
+			failed.push(...selection.failed);
+			const { importable } = selection;
 
 			await this.txRunner.run({}, async (ctx) => {
 				await this.skillRepository.lockNames(ctx);
@@ -940,10 +965,7 @@ export class SkillSourceService {
 					skippedPaths.push(...fetched.skippedFiles);
 					if (read.check?.verdict === 'needs_review') needsReview += 1;
 				}
-				if (imported.length === 0) {
-					const reason = failed[0]?.reason ?? 'no_skills_found';
-					throw new SkillSourceRequestError(reason, noImportMessage(failed, reason));
-				}
+				if (imported.length === 0) throw noImportError(failed);
 				const importedKeys = new Set(imported.map(({ key }) => key));
 				await this.sourceRepository.saveUnlinkedSkills(
 					sourceId,
@@ -1313,6 +1335,61 @@ function isWebLink(input: string): boolean {
 /** The key of a skill in the picker. The ref is opaque, so its JSON is the key. */
 function refKey(ref: RemoteSkillRef): string {
 	return JSON.stringify(ref);
+}
+
+/** An import reads the revision that the user saw in the preview, or nothing. */
+function assertPreviewedRevision(discovered: Discovered, revision: string): void {
+	if (discovered.revision === revision) return;
+	throw new SkillSourceRequestError(
+		'stale',
+		'The source changed. Preview it again before importing.',
+	);
+}
+
+/**
+ * Splits the picked skills into those that the import takes and those that it leaves out.
+ * The name rule is not here: it needs the names of the scope, which the import reads in
+ * its transaction.
+ */
+function selectImportable(
+	discovered: Discovered,
+	reads: ReadSkill[],
+	keys: string[],
+	reviewed: Set<string>,
+): { importable: ReadSkill[]; failed: SkillSourceConnectResponse['failed'] } {
+	const failed: SkillSourceConnectResponse['failed'] = [];
+	const known = new Set(discovered.refs.map(refKey));
+	const picked = new Set<string>();
+	for (const key of keys) {
+		if (known.has(key)) picked.add(key);
+		else failed.push({ key, name: null, reason: 'not_found' });
+	}
+	const importable: ReadSkill[] = [];
+	for (const read of reads) {
+		if (!picked.has(read.key)) continue;
+		// A SKILL.md that n8n cannot read is also blocked, and the check names the cause.
+		if (read.check?.verdict === 'blocked') {
+			failed.push({
+				key: read.key,
+				name: read.skill?.name ?? read.fetched?.content.name ?? null,
+				reason: 'blocked_by_check',
+			});
+		} else if (read.error) {
+			failed.push({ key: read.key, name: null, reason: read.error.reason });
+		} else if (read.check?.verdict === 'needs_review' && !reviewed.has(read.key)) {
+			// The user reviewed the warnings of the skills that the picker showed, so a skill
+			// that needs review only since discover did not get that review.
+			failed.push({ key: read.key, name: read.skill?.name ?? null, reason: 'review_required' });
+		} else {
+			importable.push(read);
+		}
+	}
+	return { importable, failed };
+}
+
+function noImportError(failed: SkillSourceConnectResponse['failed']): SkillSourceRequestError {
+	const reason = failed[0]?.reason ?? 'no_skills_found';
+	return new SkillSourceRequestError(reason, noImportMessage(failed, reason));
 }
 
 /** The message names a cause only when every picked skill failed for it. */

@@ -39,6 +39,12 @@ export class InstanceAiSkillsAdapterService {
 									discoverPublicSkillSourceSchema.parse(input),
 									'assistant',
 								),
+							checkImport: async (input) =>
+								await this.skillSourceService.checkPublicImport(
+									user,
+									connectPublicSkillSourceSchema.parse(input),
+									'assistant',
+								),
 							connect: async (input) =>
 								await this.skillSourceService.connectPublic(
 									user,
