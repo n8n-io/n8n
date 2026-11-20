@@ -99,6 +99,12 @@ export class AgentBuilderPage extends BasePage {
 		return this.toolResourceLocator.getItems().getByText(name, { exact: true });
 	}
 
+	getToolMappingField(name: string): Locator {
+		return this.getToolModal()
+			.getByTestId('mapping-fields-container')
+			.getByText(name, { exact: true });
+	}
+
 	async getConfigurationWidthRatio(): Promise<number> {
 		const layout = await this.getLayout().boundingBox();
 		const configuration = await this.getConfiguration().boundingBox();

@@ -13,14 +13,15 @@ test.use({
 
 // AGENT-1620: A member must be able to choose a table while adding the tool.
 test(
-	'lists project tables when configuring the Data table tool @auth:member',
+	'lists project tables and loads the selected table columns in the Data table tool @auth:member',
 	{ annotation: [{ type: 'owner', description: 'Agent' }] },
 	async ({ n8n, api }) => {
 		const project = await api.projects.getMyPersonalProject();
 		const agent = await api.agents.create(project.id, `Data table agent ${nanoid(6)}`);
+		const columnName = 'contactName';
 		const table = await api.dataTables.create(project.id, {
 			name: `Contacts ${nanoid(6)}`,
-			columns: [{ name: 'name', type: 'string' }],
+			columns: [{ name: columnName, type: 'string' }],
 		});
 
 		await n8n.start.fromHome();
@@ -35,6 +36,7 @@ test(
 		const loadError = locator.getErrorMessage('dataTableId');
 		// Include the dropdown error in the failure output.
 		await expect(tableOption.or(loadError)).toHaveText(table.name);
-		await expect(tableOption).toBeVisible();
+		await tableOption.click();
+		await expect(n8n.agentBuilder.getToolMappingField(columnName)).toBeVisible();
 	},
 );
