@@ -109,6 +109,7 @@ import { NodeTypes } from '@/node-types';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { enforceWorkflowPublishPolicy } from '@/policy/enforce-workflow-publish';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
+import { findPolicyViolations } from '@/policy/policy-violation.error';
 import type { PublicApiCaller, PublicApiClient } from '@/public-api/public-api-client';
 import type { ListQuery } from '@/requests';
 import { hasSharing } from '@/requests';
@@ -131,6 +132,12 @@ class SystemPublishSupersededError extends Error {}
 const PUBLISH_API_KEY_SCOPE: ApiKeyScope = 'workflow:activate';
 
 type PublishedWorkflow = WorkflowEntity & { activeVersion: WorkflowHistory };
+
+function toTransferResult(error: unknown): WorkflowTransferResult {
+	const unpublishReasons = findPolicyViolations(error);
+	const { name, message } = ensureError(error);
+	return unpublishReasons ? { unpublishReasons } : { error: { name, message } };
+}
 
 /** What `getMany` should enrich or scope beyond the plain list query. */
 export type GetManyOptions = {
@@ -1715,15 +1722,82 @@ export class WorkflowService {
 		transfer: () => Promise<void>,
 		{ publicApi }: { publicApi: PublicApiCaller },
 	): Promise<Map<string, WorkflowTransferResult>> {
+		const workflows = (
+			await this.workflowRepository.findWithActiveVersionByIds(workflowIds)
+		).filter((workflow): workflow is PublishedWorkflow => workflow.activeVersion !== null);
+
+		const refusals = new Map<string, unknown>();
+		for (const workflow of workflows) {
+			try {
+				await this._enforcePublishInProject(workflow, destinationProjectId, user);
+			} catch (error) {
+				refusals.set(workflow.id, error);
+			}
+		}
+
 		try {
+			const removals = await Promise.allSettled(
+				[...refusals.keys()].map(
+					async (workflowId) => await this.activeWorkflowManager.remove(workflowId),
+				),
+			);
+			const failedRemoval = removals.find((removal) => removal.status === 'rejected');
+			if (failedRemoval) throw ensureError(failedRemoval.reason);
 			await transfer();
 		} catch (error) {
 			const movedIds = await this._ownedByProject(workflowIds, destinationProjectId);
-			await this._finishTransfer(user, movedIds, publicApi);
+			await this._restoreTriggersOfUntransferred(
+				[...refusals.keys()].filter((workflowId) => !movedIds.includes(workflowId)),
+			);
+			await this._finishTransfer(user, movedIds, refusals, publicApi);
 			throw error;
 		}
 
-		return await this._finishTransfer(user, workflowIds, publicApi);
+		return await this._finishTransfer(user, workflowIds, refusals, publicApi);
+	}
+
+	private async _enforcePublishInProject(
+		workflow: PublishedWorkflow,
+		projectId: string,
+		user: User,
+	): Promise<void> {
+		if (this.policyEnforcementService.hasChecksFor('workflowPublish')) {
+			try {
+				await this.policyEnforcementService.enforceWorkflowPublish(
+					{
+						workflow: { id: workflow.id, name: workflow.name, nodes: workflow.activeVersion.nodes },
+						projectId,
+					},
+					{ kind: 'user', user },
+				);
+			} catch (error) {
+				if (!findPolicyViolations(error)) {
+					this.logger.error(`Failed to check the publish policy for workflow "${workflow.id}"`, {
+						workflowId: workflow.id,
+						error,
+					});
+				}
+				throw error;
+			}
+		}
+	}
+
+	/** Never throws, so a transfer that failed half-way still reports its original error. */
+	private async _restoreTriggersOfUntransferred(workflowIds: string[]): Promise<void> {
+		if (workflowIds.length > 0) {
+			try {
+				await this.outboxRepository.enqueueByWorkflowIds(
+					workflowIds,
+					WorkflowPublicationReason.Reconcile,
+				);
+				this.workflowPublicationNotifier.requestDrain();
+			} catch (error) {
+				this.logger.error('Failed to restore the triggers after a failed transfer', {
+					workflowIds,
+					error,
+				});
+			}
+		}
 	}
 
 	/** Never throws, and counts every workflow as moved if the owners cannot be read. */
@@ -1746,16 +1820,23 @@ export class WorkflowService {
 	private async _finishTransfer(
 		user: User,
 		workflowIds: string[],
+		refusals: Map<string, unknown>,
 		publicApi: PublicApiCaller,
 	): Promise<Map<string, WorkflowTransferResult>> {
 		const workflows = await this._publishedWorkflows(workflowIds);
-		const failures = new Map<string, Error>();
+		const failures = new Map<string, unknown>();
 		for (const workflow of workflows) {
-			const refusal = await this._triggerCredentialRefusal(workflow);
-			if (refusal) failures.set(workflow.id, refusal);
+			if (refusals.has(workflow.id)) {
+				failures.set(workflow.id, refusals.get(workflow.id));
+			} else {
+				const credentialRefusal = await this._triggerCredentialRefusal(workflow);
+				if (credentialRefusal) failures.set(workflow.id, credentialRefusal);
+			}
 		}
 
-		const republishIds = workflowIds.filter((workflowId) => !failures.has(workflowId));
+		const republishIds = workflowIds.filter(
+			(workflowId) => !refusals.has(workflowId) && !failures.has(workflowId),
+		);
 		if (republishIds.length > 0) {
 			try {
 				await this.outboxRepository.enqueueByWorkflowIds(
@@ -1768,17 +1849,17 @@ export class WorkflowService {
 					workflowIds: republishIds,
 					error,
 				});
-				for (const workflowId of republishIds) failures.set(workflowId, ensureError(error));
+				for (const workflowId of republishIds) failures.set(workflowId, error);
 			}
 		}
 
 		const results = new Map<string, WorkflowTransferResult>();
 		for (const workflow of workflows) {
-			const failure = failures.get(workflow.id);
-			if (failure) {
+			if (failures.has(workflow.id)) {
 				const unpublished = await this._unpublishAfterTransfer(user, workflow, publicApi);
-				if (unpublished) {
-					results.set(workflow.id, { error: { name: failure.name, message: failure.message } });
+				// A refused workflow lost its triggers before the transfer, so it is reported even if it stays published.
+				if (unpublished || refusals.has(workflow.id)) {
+					results.set(workflow.id, toTransferResult(failures.get(workflow.id)));
 				}
 			}
 		}

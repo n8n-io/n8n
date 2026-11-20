@@ -904,7 +904,7 @@ export class EnterpriseWorkflowService {
 		let result: WorkflowTransferResult | undefined;
 		if (!this.isActiveWorkflow(workflow)) {
 			await transfer();
-		} else if (this.transfersThroughPublicationService()) {
+		} else if (this.workflowsConfig.useWorkflowPublicationService) {
 			const failures = await this.workflowService.republishAroundTransfer(
 				user,
 				[workflowId],
@@ -1187,7 +1187,7 @@ export class EnterpriseWorkflowService {
 		};
 
 		const unpublishedWorkflows: UnpublishedWorkflow[] = [];
-		if (this.transfersThroughPublicationService()) {
+		if (this.workflowsConfig.useWorkflowPublicationService) {
 			const failures = await this.workflowService.republishAroundTransfer(
 				user,
 				activeWorkflows.map((workflow) => workflow.id),
@@ -1391,13 +1391,5 @@ export class EnterpriseWorkflowService {
 		workflow: WorkflowEntity,
 	): workflow is WorkflowEntity & { activeVersionId: string } {
 		return workflow.activeVersionId !== null;
-	}
-
-	/** Only the direct path unpublishes a workflow that a `workflowPublish` check refuses after a move. */
-	private transfersThroughPublicationService(): boolean {
-		return (
-			this.workflowsConfig.useWorkflowPublicationService &&
-			!this.policyEnforcementService.hasChecksFor('workflowPublish')
-		);
 	}
 }
