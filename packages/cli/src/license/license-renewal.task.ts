@@ -24,6 +24,7 @@ export class LicenseRenewalTask implements SystemTask {
 			/** A check that missed its grace window still runs once, late. */
 			catchUp: true,
 		},
+		// oxlint-disable-next-line typescript/no-deprecated -- Keep timer scheduling while the durable scheduler is disabled.
 		leaderTimer: {
 			/** A new leader may inherit a due renewal whose window closes before the next interval. */
 			runOnTakeover: true,

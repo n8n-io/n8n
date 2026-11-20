@@ -2,6 +2,7 @@ import {
 	type AgentSkill,
 	type ConnectSkillSourceDto,
 	type DiscoverSkillSourceDto,
+	type DeleteSkillSourceQueryDto,
 	type DiscoveredSkill,
 	type SkillSourceConnectResponse,
 	type SkillSourceDiscovery,
@@ -13,23 +14,37 @@ import {
 	type SkillSourceCredentialOption,
 	type SkillSourceRepositoryList,
 	type SkillSourceListItem,
+	type MoveSkillSourceDto,
+	type SkillSourceMovePreview,
 	type SkillSourceDeleteBlock,
 	skillNameKey,
 } from '@n8n/api-types';
-import { ProjectScopeService } from '@n8n/backend-services';
-import { TransactionRunner, type User } from '@n8n/db';
+import { TransactionRunner, type OperationContext, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { ConflictError, ForbiddenError, NotFoundError, UnexpectedError } from '@n8n/errors';
+import {
+	BadRequestError,
+	ConflictError,
+	ForbiddenError,
+	NotFoundError,
+	UnexpectedError,
+	UserError,
+} from '@n8n/errors';
+import { ProjectScopeService } from '@n8n/backend-services';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { v7 as uuidv7, validate as isUuid } from 'uuid';
 
-import type { SkillSourceType } from '../database/entities/skill-source-connection.entity';
+import type {
+	SkillSourceConnection,
+	SkillSourceType,
+	UnlinkedSkill,
+} from '../database/entities/skill-source-connection.entity';
 import {
 	DuplicateSkillSourceError,
 	SkillSourceRepository,
 } from '../database/repositories/skill-source.repository';
 import { SkillRepository } from '../database/repositories/skill.repository';
+import { SkillSourceMoveError } from '../errors/skill-source-move.error';
 import { SkillParseError } from '../errors/skill-parse.error';
 import {
 	SkillSourceRequestError,
@@ -47,28 +62,43 @@ import {
 } from '../sources/skill-source-client';
 import {
 	contentToAgentSkill,
+	storedContentOf,
 	importableSkillSchema,
 	toSkillContent,
 	type SkillTarget,
 } from '../utils/skill-content';
 import { skillContentHash } from '../utils/skill-content-hash';
+import { unreadableSkillHash } from '../utils/skill-unlinked';
 import { skillPreview } from '../utils/skill-preview';
-import { skillSourceHealth } from '../utils/skill-source-health';
+import { canTakeCredential, skillSourceHealth } from '../utils/skill-source-health';
 import { countSkippedFiles } from '../utils/skipped-files';
 import { SkillAccessService } from './skill-access.service';
 import { SkillSourceCredentialsProxy } from './skill-source-credentials-proxy.service';
 import type { ResolvedSkillSourceCredential } from './skill-source-credentials.contracts';
-import { isNameTaken, nextFreeName } from './skill.policy';
+import { findLosingAgents, isNameTaken, nextFreeName } from './skill.policy';
 import { SkillSecurityScanner } from './skill-security-scanner.service';
 import { SkillService } from './skill.service';
 import { SkillSyncFlagGate } from './skill-sync-flag-gate';
 import { SkillUsageProxy } from './skill-usage-proxy.service';
-import { SkillsTelemetry, type SkillSourceTelemetryReason } from './skills-telemetry.service';
+import {
+	flaggedCodes,
+	SkillsTelemetry,
+	type SkillSourceTelemetryReason,
+	type SkillTelemetryRef,
+} from './skills-telemetry.service';
 
 /** Skills fetched at the same time from one source. */
 const FETCH_CONCURRENCY = 8;
 
 type ScopeType = 'global' | 'team' | 'personal';
+
+type MoveAccess = {
+	canReadSource: boolean;
+	canReadTarget: boolean;
+	agentProjectIds: string[] | null;
+	sourceProjectIds: string[] | 'all';
+	credentialEligible: boolean;
+};
 
 /** A source that a link points to, before anything is stored. */
 type ParsedSource = {
@@ -103,7 +133,7 @@ type ReadSkill = {
 	ref: RemoteSkillRef;
 	fetched?: FetchedSkill;
 	skill?: AgentSkill;
-	error?: { reason: SkillSourceReason; message: string };
+	error?: { reason: SkillSourceReason; message: string; contentHash?: string };
 	/** Absent when the skill is gone from the source. */
 	check?: SkillScanResult;
 };
@@ -175,7 +205,7 @@ export class SkillSourceService {
 						previewFiles: preview.files,
 						previewTruncated: preview.truncated,
 						nameTaken: nameTaken(read),
-						error: read.error ?? null,
+						error: read.error ? { reason: read.error.reason, message: read.error.message } : null,
 						check: read.check ?? null,
 						webUrl: client.webUrl(locator, read.ref),
 					};
@@ -234,12 +264,19 @@ export class SkillSourceService {
 			const client = this.clients.get(source.type);
 			return client ? [{ source, client }] : [];
 		});
-		const [counts, projects, canReview, canDelete] = await Promise.all([
+		const [counts, projects, canReview, canImport, canDelete] = await Promise.all([
 			this.sourceRepository.countLinksBySource(shown.map(({ source }) => source.id)),
 			this.skillRepository.findProjects(shown.flatMap(({ source }) => source.projectId ?? [])),
 			this.skillAccess.accessCheck(user, 'update'),
+			this.skillAccess.accessCheck(user, 'create'),
 			this.skillAccess.accessCheck(user, 'delete'),
 		]);
+		const missingLinks = await this.sourceRepository.findMissingLinks(
+			shown.map(({ source }) => source.id),
+		);
+		const missingNames = await this.skillRepository.findLatestSummaries(
+			missingLinks.map(({ skillId }) => skillId),
+		);
 		return shown.map(({ source, client }) => {
 			const project = source.projectId ? projects.get(source.projectId) : undefined;
 			const count = counts.get(source.id) ?? { skills: 0, available: 0, blocked: 0 };
@@ -255,16 +292,333 @@ export class SkillSourceService {
 				skillCount: count.skills,
 				updatesAvailable: canReview(source) ? count.available : 0,
 				updatesBlocked: canReview(source) ? count.blocked : 0,
-				health: skillSourceHealth(source.lastErrorReason),
+				newSkillsAvailable: canReview(source)
+					? (source.unlinkedSkills ?? []).filter(({ skipped }) => !skipped).length
+					: 0,
+				health: skillSourceHealth(
+					source.credentialRequired && !source.credentialId
+						? 'credential_missing'
+						: source.lastErrorReason,
+				),
 				lastCheckedAt: source.lastCheckedAt?.toISOString() ?? null,
+				missingSkills: missingLinks
+					.filter(({ sourceId }) => sourceId === source.id)
+					.flatMap(({ skillId }) => missingNames.get(skillId)?.name ?? []),
+				canReplaceCredential: canReview(source) && canTakeCredential(source),
 				canReview: canReview(source),
+				canImport: canImport(source),
+				canMove: canDelete(source),
 				canDelete: canDelete(source),
 			};
 		});
 	}
 
-	/** Deletes a source and all its synced skills, only when no agent uses any of them. */
-	async delete(user: User, sourceId: string): Promise<void> {
+	/** Preview uses only local metadata. It does not resolve or test a credential. */
+	async previewMove(
+		user: User,
+		sourceId: string,
+		payload: MoveSkillSourceDto,
+	): Promise<SkillSourceMovePreview> {
+		await this.flagGate.assertEnabled(user);
+		const source = await this.requireMoveSource(user, sourceId, payload.fromProjectId);
+		const { target } = await this.resolveScope(user, payload);
+		const access = await this.moveAccess(user, source, target, payload.credentialId);
+		return await this.movePreview(user, source, target, payload.credentialId, access, {});
+	}
+
+	/** Move the source and its current members together. Recheck the preview under locks. */
+	async move(user: User, sourceId: string, payload: MoveSkillSourceDto): Promise<{ ok: true }> {
+		await this.flagGate.assertEnabled(user);
+		const source = await this.requireMoveSource(user, sourceId, payload.fromProjectId);
+		const { target, scopeType } = await this.resolveScope(user, payload);
+		if (source.projectId === target.projectId) throw new UserError('Choose a different scope.');
+		const access = await this.moveAccess(user, source, target, payload.credentialId);
+		const fromProject = source.projectId
+			? (await this.skillRepository.findProjects([source.projectId])).get(source.projectId)
+			: undefined;
+		const fromScope =
+			source.projectId === null ? 'global' : fromProject?.type === 'personal' ? 'personal' : 'team';
+		let skillCount = 0;
+		try {
+			await this.txRunner.run({}, async (ctx) => {
+				await this.sourceRepository.lockForMove(sourceId, ctx);
+				const locked = await this.sourceRepository.findById(sourceId, ctx);
+				if (!locked) throw new NotFoundError('Source not found');
+				// Permissions were checked before the transaction. They apply only to that scope.
+				if (locked.projectId !== source.projectId) {
+					throw new ConflictError('The source scope changed. Reload the sources and try again.');
+				}
+				const links = await this.sourceRepository.findLinksBySource(sourceId, ctx);
+				await this.skillRepository.lockForEdit(
+					links.map(({ skillId }) => skillId),
+					ctx,
+				);
+				await this.skillRepository.lockNames(ctx);
+				// A stop or delete that held a skill lock first may have removed a link.
+				const members = await this.sourceRepository.findLinksBySource(sourceId, ctx);
+				const preview = await this.movePreview(
+					user,
+					locked,
+					target,
+					payload.credentialId,
+					access,
+					ctx,
+				);
+				skillCount = preview.skillCount;
+				if (!preview.canMove) throw new SkillSourceMoveError(preview);
+				for (const { skillId } of members) {
+					await this.skillService.moveTrusted(skillId, target, undefined, ctx, {
+						checkedSource: locked,
+						movingSourceId: sourceId,
+					});
+				}
+				await this.sourceRepository.moveScope(
+					sourceId,
+					target.projectId,
+					payload.credentialId ?? null,
+					ctx,
+				);
+			});
+		} catch (error) {
+			const reason =
+				error instanceof SkillSourceMoveError
+					? moveBlockerReason(error.meta.preview)
+					: error instanceof DuplicateSkillSourceError
+						? 'duplicate_source'
+						: 'unexpected';
+			await this.skillsTelemetry.changedSourceScope(
+				{
+					provider: source.type,
+					from_scope_type: fromScope,
+					to_scope_type: scopeType,
+					skill_count: skillCount,
+					status: 'failure',
+					reason,
+				},
+				user.id,
+			);
+			if (error instanceof DuplicateSkillSourceError) throw duplicateError('scope');
+			throw error;
+		}
+		await this.skillsTelemetry.changedSourceScope(
+			{
+				provider: source.type,
+				from_scope_type: fromScope,
+				to_scope_type: scopeType,
+				skill_count: skillCount,
+				status: 'success',
+			},
+			user.id,
+		);
+		return { ok: true };
+	}
+
+	private async requireMoveSource(user: User, sourceId: string, fromProjectId: string | null) {
+		const source = isUuid(sourceId) ? await this.sourceRepository.findById(sourceId) : null;
+		if (!source || !(await this.skillAccess.canOnSource(user, source, 'view'))) {
+			throw new NotFoundError('Source not found');
+		}
+		if (!(await this.skillAccess.canOnSource(user, source, 'disconnect'))) {
+			throw new ForbiddenError('You are not allowed to move this source out of its scope.');
+		}
+		if (source.projectId !== fromProjectId) {
+			throw new ConflictError('The source scope changed. Reload the sources and try again.');
+		}
+		return source;
+	}
+
+	/** Resolve permissions before the transaction, without holding a database connection. */
+	private async moveAccess(
+		user: User,
+		source: SkillSourceConnection,
+		target: SkillTarget,
+		credentialId?: string,
+	): Promise<MoveAccess> {
+		const client = this.clients.get(source.type);
+		const [canReadSource, canReadTarget, agentProjectIds, sourceProjectIds, credentials] =
+			await Promise.all([
+				this.skillAccess.canAccess(user, source, 'read'),
+				this.skillAccess.canAccess(user, target, 'read'),
+				this.projectScopeService.getProjectIds(user, ['agent:read']),
+				this.skillAccess.visibleSourceProjects(user),
+				credentialId && client
+					? this.credentials.listUsable(user, target.projectId, client.credentialTypes)
+					: [],
+			]);
+		return {
+			canReadSource,
+			canReadTarget,
+			agentProjectIds,
+			sourceProjectIds,
+			credentialEligible: credentials.some(({ id }) => id === credentialId),
+		};
+	}
+
+	private async movePreview(
+		user: User,
+		source: SkillSourceConnection,
+		target: SkillTarget,
+		credentialId: string | undefined,
+		access: MoveAccess,
+		ctx: OperationContext,
+	): Promise<SkillSourceMovePreview> {
+		const links = await this.sourceRepository.findLinksBySource(source.id, ctx);
+		const skillIds = links.map(({ skillId }) => skillId);
+		const names = await this.skillRepository.findLatestSummaries(skillIds, ctx);
+		const destinationNames = await this.skillRepository.findLatestNamesInTarget(target, ctx);
+		const memberIds = new Set(skillIds);
+		const conflictsByName = new Map<string, Array<{ skillId: string; name: string }>>();
+		for (const existing of destinationNames) {
+			if (memberIds.has(existing.skillId)) continue;
+			const key = skillNameKey(existing.name);
+			const matches = conflictsByName.get(key) ?? [];
+			matches.push(existing);
+			conflictsByName.set(key, matches);
+		}
+		const { canReadSource, canReadTarget, agentProjectIds } = access;
+		const nameConflicts: SkillSourceMovePreview['nameConflicts'] = [];
+		const usageConflicts: SkillSourceMovePreview['usageConflicts'] = [];
+		const usingBySkill =
+			target.projectId === null
+				? new Map<string, string[]>()
+				: await this.skillUsage.findUsingAgentIdsBySkill(skillIds, ctx);
+		const agents = await this.skillUsage.findAgents(
+			[...new Set([...usingBySkill.values()].flat())],
+			ctx,
+		);
+		for (const skillId of skillIds) {
+			const name = names.get(skillId)?.name;
+			const skill = { id: skillId, name: canReadSource ? (name ?? skillId) : null };
+			for (const existing of name ? (conflictsByName.get(skillNameKey(name)) ?? []) : []) {
+				nameConflicts.push({
+					moving: skill,
+					existing: canReadTarget ? { id: existing.skillId, name: existing.name } : null,
+				});
+			}
+			if (target.projectId === null) continue;
+			const ids = usingBySkill.get(skillId) ?? [];
+			const losing = findLosingAgents(ids, target, agents);
+			if (losing.length === 0) continue;
+			const visible = losing.flatMap((id) => {
+				const agent = agents.get(id);
+				return agent && (agentProjectIds === null || agentProjectIds.includes(agent.projectId))
+					? [{ id, name: agent.name }]
+					: [];
+			});
+			usageConflicts.push({ skill, agents: visible, hiddenAgents: losing.length - visible.length });
+		}
+		const required = source.credentialRequired || source.credentialId !== null;
+
+		const credential: SkillSourceMovePreview['credential'] = {
+			required,
+			reason: credentialId
+				? access.credentialEligible
+					? null
+					: 'credential_out_of_scope'
+				: required
+					? 'credential_missing'
+					: null,
+		};
+		const duplicate = await this.duplicateOf(
+			user,
+			source.identityKey,
+			target.projectId,
+			source.id,
+			ctx,
+			access.sourceProjectIds,
+		);
+		return {
+			skillCount: skillIds.length,
+			nameConflicts,
+			usageConflicts,
+			duplicate,
+			credential,
+			canMove:
+				nameConflicts.length === 0 &&
+				usageConflicts.length === 0 &&
+				duplicate.kind !== 'blocked' &&
+				credential.reason === null,
+		};
+	}
+
+	/** Lists usable replacements without requiring permission to create a source. */
+	async listReplacementCredentials(user: User, sourceId: string, projectId: string | null) {
+		const { source, client } = await this.requireCredentialChange(user, sourceId, projectId);
+		return await this.credentials.listUsable(user, source.projectId, client.credentialTypes);
+	}
+
+	/** Verifies the new credential before replacing the stored access. Saved skills do not change. */
+	async replaceCredential(
+		user: User,
+		sourceId: string,
+		credentialId: string,
+		projectId: string | null,
+	): Promise<void> {
+		const { source, client } = await this.requireCredentialChange(user, sourceId, projectId);
+		try {
+			const credential = await this.resolveCredential(user, credentialId, source.projectId, client);
+			const auth = client.authFrom(credential);
+			if (client.probe) await client.probe(source.locator, auth);
+			else await client.discover(source.locator, auth);
+			if (!(await this.sourceRepository.replaceCredential(source, credentialId))) {
+				throw new ConflictError('The source changed. Reload it and try again.');
+			}
+		} catch (error) {
+			await this.skillsTelemetry.updatedSourceCredential(
+				{ provider: source.type, status: 'failure', reason: telemetryReasonOf(error) },
+				user.id,
+			);
+			throw toSkillSourceRequestError(error);
+		}
+		await this.skillsTelemetry.updatedSourceCredential(
+			{ provider: source.type, status: 'success' },
+			user.id,
+		);
+		const previous = skillSourceHealth(
+			source.credentialRequired && !source.credentialId
+				? 'credential_missing'
+				: source.lastErrorReason,
+		);
+		if (previous !== 'connected') {
+			await this.skillsTelemetry.sourceHealthChanged({
+				provider: source.type,
+				previous_health: previous,
+				health: 'connected',
+			});
+		}
+	}
+
+	private async requireCredentialChange(
+		user: User,
+		sourceId: string,
+		projectId: string | null,
+	): Promise<{ source: SkillSourceConnection; client: SkillSourceClient }> {
+		await this.flagGate.assertEnabled(user);
+		const source = isUuid(sourceId) ? await this.sourceRepository.findById(sourceId) : null;
+		const client = source && this.clients.get(source.type);
+		if (
+			!source ||
+			!client ||
+			source.projectId !== projectId ||
+			!(await this.skillAccess.canOnSource(user, source, 'view'))
+		) {
+			throw new NotFoundError('Source not found');
+		}
+		if (!(await this.skillAccess.canOnSource(user, source, 'replaceCredential'))) {
+			throw new ForbiddenError('You are not allowed to replace the credential of this source.');
+		}
+		if (!canTakeCredential(source)) {
+			throw new BadRequestError('This source reads a public repository and needs no credential.');
+		}
+		return { source, client };
+	}
+
+	/** Removes a source and either keeps its skills or checks usage before deleting them. */
+	async delete(
+		user: User,
+		sourceId: string,
+		{ keepSkills = false, onlySkillId }: DeleteSkillSourceQueryDto = {},
+	): Promise<void> {
 		await this.flagGate.assertEnabled(user);
 		const source = isUuid(sourceId) ? await this.sourceRepository.findById(sourceId) : null;
 		if (!source || !(await this.skillAccess.canOnSource(user, source, 'view'))) {
@@ -276,6 +630,10 @@ export class SkillSourceService {
 			throw new ForbiddenError('You are not allowed to delete this source.');
 		}
 		const readable = await this.projectScopeService.getProjectIds(user, ['agent:read']);
+		// A stale request is a normal race, so telemetry must not report it as a bug.
+		let stale = false;
+		// The last-skill removal deletes one skill by choice, so it also reports a skill delete.
+		let deletedSkill: Exclude<SkillTelemetryRef, string> | undefined;
 		try {
 			await this.txRunner.run({}, async (ctx) => {
 				const locked = await this.sourceRepository.findForDelete(sourceId, ctx);
@@ -291,6 +649,15 @@ export class SkillSourceService {
 				);
 				// Stop syncing or a skill delete may have finished while the locks waited.
 				const current = await this.sourceRepository.findLinksBySource(sourceId, ctx);
+				if (onlySkillId && (current.length !== 1 || current[0].skillId !== onlySkillId)) {
+					stale = true;
+					throw new BadRequestError('The source skills changed. Refresh the list and try again.');
+				}
+				if (keepSkills) {
+					// Removing the links makes the same skills editable and preserves agent references.
+					await this.sourceRepository.deleteSource(sourceId, ctx);
+					return;
+				}
 				const agentIds = new Set<string>();
 				for (const { skillId } of current) {
 					for (const id of await this.skillUsage.findUsingAgentIds(skillId, ctx)) agentIds.add(id);
@@ -320,6 +687,9 @@ export class SkillSourceService {
 						block,
 					);
 				}
+				if (onlySkillId) {
+					[deletedSkill] = await this.skillRepository.findByIds([onlySkillId], ctx);
+				}
 				for (const { skillId } of current) await this.skillRepository.deleteSkill(skillId, ctx);
 				await this.sourceRepository.deleteSource(sourceId, ctx);
 			});
@@ -327,14 +697,19 @@ export class SkillSourceService {
 			await this.skillsTelemetry.deletedSource(
 				{
 					provider: source.type,
+					skills_kept: keepSkills,
 					status: 'failure',
-					reason: error instanceof ConflictError ? 'skills_in_use' : 'unexpected',
+					reason: stale ? 'stale' : error instanceof ConflictError ? 'skills_in_use' : 'unexpected',
 				},
 				user.id,
 			);
 			throw error;
 		}
-		await this.skillsTelemetry.deletedSource({ provider: source.type, status: 'success' }, user.id);
+		await this.skillsTelemetry.deletedSource(
+			{ provider: source.type, skills_kept: keepSkills, status: 'success' },
+			user.id,
+		);
+		if (deletedSkill) await this.skillsTelemetry.deleted(user.id, deletedSkill, 'ui');
 	}
 
 	// ---------------------------------------------------------------- steps
@@ -387,7 +762,9 @@ export class SkillSourceService {
 				if (ref) picked.push(ref);
 				else failed.push({ key, name: null, reason: 'not_found' });
 			}
-			const reads = await this.readAll(source, { ...discovered, refs: picked });
+			const allReads = await this.readAll(source, discovered);
+			const pickedKeys = new Set(picked.map(refKey));
+			const reads = allReads.filter(({ key }) => pickedKeys.has(key));
 			const importable: ReadSkill[] = [];
 			for (const read of reads) {
 				// The source can change after discover, so connect checks the content it imports.
@@ -410,6 +787,16 @@ export class SkillSourceService {
 			}
 
 			await this.txRunner.run({}, async (ctx) => {
+				await this.skillRepository.lockNames(ctx);
+				const duplicate = await this.duplicateOf(
+					user,
+					source.identityKey,
+					target.projectId,
+					undefined,
+					ctx,
+					[],
+				);
+				if (duplicate.kind === 'blocked') throw duplicateError(duplicate.where);
 				try {
 					await this.sourceRepository.insertConnected(
 						{
@@ -480,6 +867,25 @@ export class SkillSourceService {
 					const reason = failed[0]?.reason ?? 'no_skills_found';
 					throw new SkillSourceRequestError(reason, noImportMessage(failed, reason));
 				}
+				const importedKeys = new Set(imported.map(({ key }) => key));
+				await this.sourceRepository.saveUnlinkedSkills(
+					sourceId,
+					await Promise.all(
+						allReads
+							.filter((read) => !importedKeys.has(read.key) && read.check)
+							.map(
+								async (read): Promise<UnlinkedSkill> => ({
+									key: read.key,
+									contentHash: read.fetched
+										? skillContentHash(storedContentOf(read.fetched.content))
+										: await unreadableSkillHash(read.error?.message ?? '', read.error?.contentHash),
+									verdict: read.check?.verdict ?? 'blocked',
+									skipped: true,
+								}),
+							),
+					),
+					ctx,
+				);
 			});
 		} catch (error) {
 			// The transaction rolled back, so nothing came in.
@@ -506,15 +912,12 @@ export class SkillSourceService {
 		await Promise.all(
 			reads.map(async ({ check }) => {
 				if (!check || check.verdict === 'pass') return;
-				const ruleCodes = check.findings
-					.filter((finding) => finding.severity !== 'info')
-					.map((finding) => finding.rule);
 				await this.skillsTelemetry.flaggedSkill(
 					{
 						provider,
 						stage: 'import',
 						verdict: check.verdict,
-						rule_codes: [...new Set(ruleCodes)],
+						...flaggedCodes(check.findings),
 					},
 					user.id,
 				);
@@ -673,26 +1076,33 @@ export class SkillSourceService {
 		user: User,
 		identityKey: string,
 		projectId: string | null,
+		exceptSourceId?: string,
+		ctx: OperationContext = {},
+		visibleProjectIds?: string[] | 'all',
 	): Promise<SkillSourceDuplicate> {
-		const same = await this.sourceRepository.findSameSources(identityKey);
+		const same = (await this.sourceRepository.findSameSources(identityKey, ctx)).filter(
+			({ id }) => id !== exceptSourceId,
+		);
 		if (same.length === 0) return { kind: 'none' };
 		const blocking =
 			same.find((source) => source.projectId === null) ??
 			same.find((source) => source.projectId === projectId);
 		if (blocking) {
-			const canAdd = await this.skillAccess.canOnSource(user, blocking, 'addSkills');
+			const canAdd =
+				blocking.projectId === projectId ||
+				(await this.skillAccess.canOnSource(user, blocking, 'addSkills'));
 			return {
 				kind: 'blocked',
 				where: blocking.projectId === null ? 'global' : 'scope',
 				sourceId: canAdd ? blocking.id : null,
 			};
 		}
-		const visible = await this.skillAccess.visibleSourceProjects(user);
+		const visible = visibleProjectIds ?? (await this.skillAccess.visibleSourceProjects(user));
 		const shownIds = same.flatMap(({ projectId: id }) =>
 			id !== null && (visible === 'all' || visible.includes(id)) ? [id] : [],
 		);
 		if (shownIds.length === 0) return { kind: 'none' };
-		const projects = await this.skillRepository.findProjects(shownIds);
+		const projects = await this.skillRepository.findProjects(shownIds, ctx);
 		return {
 			kind: 'warning',
 			projects: shownIds.map((id) => ({ id, name: projects.get(id)?.name ?? id })),
@@ -766,7 +1176,11 @@ export class SkillSourceService {
 			return {
 				key,
 				ref,
-				error: { reason, message: getErrorMessage(error) },
+				error: {
+					reason,
+					message: getErrorMessage(error),
+					...(error instanceof SkillParseError ? { contentHash: error.contentHash } : {}),
+				},
 				...(error instanceof SkillParseError ? { check: this.scanner.scanUnreadable(error) } : {}),
 			};
 		}
@@ -840,6 +1254,13 @@ function duplicateError(where: 'global' | 'scope'): SkillSourceRequestError {
 		'duplicate_source',
 		where === 'global'
 			? 'This repository is already connected in Global. Every project can use its skills.'
-			: 'This repository is already connected in this scope. Add more skills to that source.',
+			: 'This repository is already connected in this scope. Review its skills to import more.',
 	);
+}
+
+function moveBlockerReason(preview: SkillSourceMovePreview) {
+	if (preview.duplicate.kind === 'blocked') return 'duplicate_source';
+	if (preview.nameConflicts.length > 0) return 'name_taken';
+	if (preview.usageConflicts.length > 0) return 'agent_in_use';
+	return preview.credential.reason ?? 'unexpected';
 }

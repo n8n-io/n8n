@@ -4,12 +4,6 @@ import {
 	type RedactionOptions,
 	type RuntimeSkillRegistry,
 } from '@n8n/agents';
-import {
-	DATA_TABLE_TOOL_NAMES,
-	EXECUTION_TOOL_NAMES,
-	getDataTableToolAction,
-	getExecutionCallAction,
-} from '@n8n/api-types';
 import type { InstanceAiPromptConfiguration } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { SUPPORTED_PII_CATEGORIES } from '@n8n/utils/redaction/pii-patterns';
@@ -17,12 +11,12 @@ import { isSensitiveKey } from '@n8n/utils/redaction/sensitive-key';
 import { createHash } from 'node:crypto';
 
 import {
-	DOMAIN_TOOL_IDS,
 	ORCHESTRATION_TOOL_IDS,
 	ORCHESTRATION_TOOL_NAMES,
 	WORKSPACE_TOOL_IDS,
 } from '../tools/tool-ids';
 import type { InstanceAiToolRegistry } from '../types';
+import { classifyToolCategory, classifyToolSideEffect } from './tool-classification';
 import { formatAgentRoleLabel, formatTraceLabel } from './trace-labels';
 import { modelConfigId } from '../utils/model-config-id';
 
@@ -1118,71 +1112,6 @@ function classifyToolSource(name: string, toolRecord: Record<string, unknown>): 
 	}
 
 	return 'domain';
-}
-
-/** Keyword checks must not match the builder prefix (`workflow_builder_` contains "workflow" and "build"). */
-function unprefixedToolName(name: string): string {
-	return name.replace(/^(workflow|agent)_builder_/, '');
-}
-
-function classifyToolCategory(name: string): string {
-	if (DATA_TABLE_TOOL_NAMES.includes(name)) return 'data-table';
-	if (
-		name === DOMAIN_TOOL_IDS.NODES ||
-		name === DOMAIN_TOOL_IDS.SEARCH_NODES ||
-		name === DOMAIN_TOOL_IDS.GET_NODE_TYPES ||
-		name === DOMAIN_TOOL_IDS.GET_NODE_PARAMETER_OPTIONS ||
-		name === DOMAIN_TOOL_IDS.EXECUTE_NODE ||
-		name === 'materialize-node-type'
-	)
-		return 'node';
-	if (EXECUTION_TOOL_NAMES.includes(name)) return 'execution';
-	const baseName = unprefixedToolName(name);
-	if (baseName.includes('credential')) return 'credential';
-	if (baseName.includes('browser')) return 'browser';
-	if (baseName.includes('data-table')) return 'data-table';
-	if (baseName.includes('workflow')) {
-		return 'workflow';
-	}
-	if (baseName.includes('research')) return 'research';
-	if (baseName.startsWith('workspace_')) return 'workspace';
-	if (baseName.includes('file') || baseName.includes('filesystem')) return 'filesystem';
-	return 'other';
-}
-
-function classifyToolSideEffect(name: string): string {
-	if (name === DOMAIN_TOOL_IDS.ASK_USER) return 'none';
-	const baseName = unprefixedToolName(name);
-	// Only run, run-step and stop change execution state; the other execution tools read.
-	const executionAction = getExecutionCallAction(baseName);
-	if (executionAction) {
-		return ['run', 'run-step', 'stop'].includes(executionAction) ? 'execute' : 'read';
-	}
-	// Names like `insert_data_table_rows` match no keyword below, so classify by action.
-	const dataTableAction = getDataTableToolAction(baseName);
-	if (dataTableAction) {
-		return ['list', 'schema', 'query'].includes(dataTableAction) ? 'read' : 'write';
-	}
-	if (baseName.includes('browser')) return 'browser';
-	if (baseName.includes('research')) return 'network';
-	if (baseName.includes('execute') || baseName.includes('run')) {
-		return 'execute';
-	}
-	if (
-		baseName.includes('write') ||
-		baseName.includes('submit') ||
-		baseName.includes('apply') ||
-		baseName.includes('build') ||
-		baseName.includes('create') ||
-		baseName.includes('update') ||
-		baseName.includes('delete') ||
-		baseName.includes('remove') ||
-		baseName.includes('complete')
-	) {
-		return 'write';
-	}
-	if (baseName.includes('pause-for-user')) return 'none';
-	return 'read';
 }
 
 function getToolInputSchema(tool: unknown): unknown {

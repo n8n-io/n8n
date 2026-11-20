@@ -3,6 +3,7 @@ import type { BaseTextKey } from '@n8n/i18n';
 import type { IconName } from '@n8n/design-system';
 import {
 	AGENT_BUILDER_TOOL_NAMES,
+	CHANGE_DATA_TABLES_TOOL_NAME,
 	REMOVED_BUILDER_TOOL_NAMES,
 	SHARED_BUILDER_TOOL_NAMES,
 	WORKFLOW_BUILDER_TOOL_NAMES,
@@ -160,7 +161,11 @@ export function getToolIcon(rawToolName: string): IconName {
 	if (toolName.endsWith('-with-agent')) return 'share';
 	if (toolName === 'resolve_integration') return 'share';
 	if (SKILL_TOOLS.has(toolName) || toolName === 'n8n-docs') return 'book-open';
-	if (getDataTableCallAction(rawToolName) || toolName === DATA_TABLE_LABEL_TOOL_NAME)
+	if (
+		getDataTableCallAction(rawToolName) ||
+		toolName === DATA_TABLE_LABEL_TOOL_NAME ||
+		toolName === CHANGE_DATA_TABLES_TOOL_NAME
+	)
 		return 'table';
 	if (toolName === 'activity') return 'history';
 	if (toolName === 'conversation-history') return 'message-square';

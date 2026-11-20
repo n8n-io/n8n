@@ -1,8 +1,8 @@
+import type { TelemetryProxy } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import z from 'zod';
 
 import type { AiGatewayService } from '@/services/ai-gateway.service';
-import type { Telemetry } from '@/telemetry';
 
 import { LIST_N8N_GATEWAY_SERVICES_TOOL_NAME, USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
@@ -53,7 +53,7 @@ const outputSchema = {
 export const createListN8nGatewayServicesTool = (
 	user: User,
 	aiGatewayService: AiGatewayService,
-	telemetry: Telemetry,
+	telemetry: TelemetryProxy,
 ): ToolDefinition<typeof inputSchema> => ({
 	name: LIST_N8N_GATEWAY_SERVICES_TOOL_NAME,
 	config: {

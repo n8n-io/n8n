@@ -417,9 +417,8 @@ export class RelayConnection {
 		// Without this, Chrome's debugger API throws "Cannot access a chrome-extension:// URL
 		// of a different extension" when the relay tries to send commands to these targets.
 		if (method === 'Target.attachedToTarget') {
-			const targetParams = params as
-				| { sessionId?: string; targetInfo?: { url?: string } }
-				| undefined;
+			const targetParams: { sessionId?: string; targetInfo?: { url?: string } } | undefined =
+				params;
 			if (isRestrictedUrl(targetParams?.targetInfo?.url)) {
 				log.debug('filtering restricted child target:', targetParams?.targetInfo?.url);
 				// Detach from the restricted child — sent on the parent tab session, not the child
@@ -614,9 +613,8 @@ export class RelayConnection {
 				function handler(src: chrome.debugger.Debuggee, evt: string, evtParams?: object): void {
 					if (src.tabId !== entry.chromeTabId) return;
 					if (evt !== 'Runtime.executionContextCreated') return;
-					const auxData = (
-						evtParams as { context?: { auxData?: { isDefault?: boolean } } } | undefined
-					)?.context?.auxData;
+					const params: { context?: { auxData?: { isDefault?: boolean } } } | undefined = evtParams;
+					const auxData = params?.context?.auxData;
 					if (auxData?.isDefault !== true) return;
 					clearTimeout(timeout);
 					chrome.debugger.onEvent.removeListener(handler);

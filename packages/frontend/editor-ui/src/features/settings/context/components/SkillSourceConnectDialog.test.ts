@@ -3,6 +3,7 @@ import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
 import type {
 	DiscoveredSkill,
+	SkillScanFinding,
 	SkillSourceConnectResponse,
 	SkillSourceCredentialOption,
 	SkillSourceDiscovery,
@@ -585,6 +586,53 @@ describe('SkillSourceConnectDialog', () => {
 			expect(tab(view, 'Blocked')).toHaveTextContent('Blocked (3)');
 			expect(rows(view)).toEqual(['skills/hidden']);
 			expect(view.getByTestId('skill-source-summary')).toHaveTextContent('acme/skills · main');
+			const warningIcon = view.getByRole('button', { name: '1 warning' });
+			expect(warningIcon.textContent).toBe('');
+			expect(view.getByTestId('skill-source-skills')).not.toHaveTextContent('Hidden Unicode');
+			warningIcon.focus();
+			expect(await view.findByTestId('tooltip-content')).toHaveTextContent(
+				'Hidden Unicode characters in SKILL.md',
+			);
+		});
+
+		it('shows the domain that needs review and keeps ordinary domains listed', async () => {
+			const docsLink: SkillScanFinding = {
+				rule: 'new_url',
+				severity: 'info',
+				file: 'SKILL.md',
+				detail: 'The skill links to docs.example.com.',
+				domain: 'docs.example.com',
+			};
+			const linked = discovered({
+				...warning,
+				check: {
+					verdict: 'needs_review',
+					findings: [
+						docsLink,
+						{
+							rule: 'risky_url',
+							severity: 'needs_review',
+							file: 'SKILL.md',
+							detail: 'The link uses a webhook catcher.',
+							domain: 'webhook.site',
+							linkReason: 'webhook_catcher',
+						},
+					],
+				},
+			});
+			const docs = discovered({ ...passed, check: { verdict: 'pass', findings: [docsLink] } });
+			skillsStore.discoverSource.mockResolvedValue(discovery({ skills: [linked, docs] }));
+			const view = render();
+			await review(view);
+
+			view.getByRole('button', { name: '1 warning' }).focus();
+			const tooltip = await view.findByTestId('tooltip-content');
+			expect(tooltip).toHaveTextContent('Link to a webhook catcher (webhook.site) in SKILL.md');
+			expect(tooltip).toHaveTextContent('Links to docs.example.com, webhook.site');
+			await userEvent.click(tab(view, 'Passed'));
+			expect(view.getByTestId('skill-source-skill-findings')).toHaveTextContent(
+				'Links to docs.example.com',
+			);
 		});
 
 		it('does not let the user tick a blocked skill, and says why in translated text', async () => {
@@ -634,9 +682,21 @@ describe('SkillSourceConnectDialog', () => {
 			const view = render();
 			await review(view);
 
-			await userEvent.type(view.getByTestId('skill-source-search'), 'tools');
+			const toggleSearch = view.getByRole('button', { name: 'Search skills' });
+			expect(view.queryByRole('textbox', { name: 'Search skills' })).not.toBeInTheDocument();
+			await userEvent.click(toggleSearch);
+			const search = view.getByRole('textbox', { name: 'Search skills' });
+			expect(search).toHaveFocus();
+			await userEvent.type(search, 'tools');
 
 			expect(rows(view)).toEqual(['tools/lint']);
+			await userEvent.click(view.getByRole('checkbox', { name: 'Select all' }));
+			expect(view.getByRole('checkbox', { name: 'lint' })).not.toBeChecked();
+			await userEvent.click(search);
+			await userEvent.keyboard('{Escape}');
+			expect(toggleSearch).toHaveFocus();
+			expect(rows(view)).toEqual(['tools/lint', 'skills/seo']);
+			expect(view.getByRole('checkbox', { name: 'seo' })).toBeChecked();
 		});
 
 		it('groups the skills by folder, with a checkbox for each group', async () => {

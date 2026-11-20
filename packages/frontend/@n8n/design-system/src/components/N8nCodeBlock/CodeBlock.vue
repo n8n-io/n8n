@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useResizeObserver } from '@vueuse/core';
+import { useClipboard, useResizeObserver } from '@vueuse/core';
 import { ElNotification as Notification } from 'element-plus';
 import hljs from 'highlight.js/lib/core';
 import * as xss from 'xss';
@@ -89,8 +89,8 @@ const expandButtonLabel = computed(() =>
 	collapsed.value ? t('codeBlock.expand') : t('codeBlock.collapse'),
 );
 const expandButtonIcon = computed(() => (collapsed.value ? 'arrow-down' : 'arrow-up'));
-const isClipboardAvailable =
-	typeof navigator !== 'undefined' && typeof navigator.clipboard?.writeText === 'function';
+// The legacy fallback copies on origins without the async Clipboard API, such as plain HTTP.
+const clipboard = useClipboard({ legacy: true });
 
 /** Here we check if the collapsible control is needed.
  * Only if we exceed the maxHeight (default: 280px) do we show the Expand/Collapse toggle
@@ -108,7 +108,7 @@ watch(() => [preRef.value, props.code, props.maxHeight], measureCollapsibility, 
 
 async function copyCode() {
 	try {
-		await navigator.clipboard.writeText(props.code);
+		await clipboard.copy(props.code);
 		showCopiedFeedback.value = true;
 		clearTimeout(feedbackTimer);
 		feedbackTimer = setTimeout(() => {
@@ -167,7 +167,7 @@ function onHeightTransitionEnd(event: TransitionEvent) {
 			:tabindex="ariaLabel ? 0 : undefined"
 			@transitionend="onHeightTransitionEnd"
 		><code class="hljs" v-html="highlightedCode" /></pre>
-		<div v-if="copyable && isClipboardAvailable" :class="$style.actions">
+		<div v-if="copyable" :class="$style.actions">
 			<N8nTooltip :content="copyButtonLabel">
 				<N8nButton
 					icon-only

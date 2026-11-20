@@ -3,7 +3,7 @@ import {
 	type ListRoleMappingRuleQueryInput,
 	type PatchRoleMappingRuleInput,
 } from '@n8n/api-types';
-import { EventService } from '@n8n/backend-services';
+import { EventService, loginIdOf } from '@n8n/backend-services';
 import {
 	isUniqueConstraintError,
 	type OperationContext,
@@ -18,7 +18,6 @@ import { type EntityManager, type FindOptionsOrder, In } from '@n8n/typeorm';
 import type { z } from 'zod';
 
 import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
-import { loginIdOf } from '@/events/login-id';
 import type { UserLike } from '@/events/maps/relay.event-map';
 
 import {
@@ -325,6 +324,15 @@ export class RoleMappingRuleService {
 		const repo = tx ? tx.getRepository(RoleMappingRule) : this.roleMappingRuleRepository;
 		const result = await repo.delete({ type });
 		return result.affected ?? 0;
+	}
+
+	/** How many rules of each type exist. */
+	async countByType(): Promise<Record<'instance' | 'project', number>> {
+		const [instance, project] = await Promise.all([
+			this.roleMappingRuleRepository.count({ where: { type: 'instance' } }),
+			this.roleMappingRuleRepository.count({ where: { type: 'project' } }),
+		]);
+		return { instance, project };
 	}
 
 	async move(

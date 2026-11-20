@@ -1,8 +1,7 @@
 import { LicenseState } from '@n8n/backend-common';
+import { TelemetryProxy } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { ProjectRepository, User } from '@n8n/db';
-
-import { Telemetry } from '@/telemetry';
 
 import { createSearchProjectsTool } from '../tools/search-projects.tool';
 
@@ -29,7 +28,7 @@ describe('search-projects MCP tool', () => {
 			isTeamProjectsLicensed: vi.fn().mockReturnValue(teamProjectsEnabled),
 		});
 
-		const telemetry = mockInstance(Telemetry, {
+		const telemetry = mockInstance(TelemetryProxy, {
 			track: vi.fn(),
 		});
 
@@ -388,7 +387,7 @@ describe('search-projects MCP tool', () => {
 		const licenseState = mockInstance(LicenseState, {
 			isTeamProjectsLicensed: vi.fn().mockReturnValue(true),
 		});
-		const telemetry = mockInstance(Telemetry, { track: vi.fn() });
+		const telemetry = mockInstance(TelemetryProxy, { track: vi.fn() });
 
 		const tool = createSearchProjectsTool(
 			user,

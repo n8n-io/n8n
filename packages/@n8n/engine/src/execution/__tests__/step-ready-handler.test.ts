@@ -16,9 +16,9 @@ import {
 	type StepStatus,
 	type WaitDeclaration,
 } from '../execution.types';
-import { resolveInputReads, StepReadyHandler } from '../step-ready-handler';
 import { InvalidParentLinkError, type StartExecutionService } from '../start-execution.service';
 import { attachStepErrorDetails } from '../step-error-details';
+import { resolveInputReads, StepReadyHandler } from '../step-ready-handler';
 import type { StepRecord, StepStore, StepSummary } from '../step-store';
 
 /** Key for a `loadStepsByKeys` result at iteration 0, as the handler requests them. */
@@ -33,6 +33,7 @@ function stepRow(nodeId: string, status: StepStatus, outputs: StepSlots | null =
 		iteration: 0,
 		status,
 		outputs,
+		outputSources: null,
 		waitDeclaration: null,
 		resumeCause: null,
 	};
@@ -113,7 +114,10 @@ function makeExecutionStore(
 		finishExecution: vi.fn().mockResolvedValue(null),
 		cancelExecution: vi.fn().mockResolvedValue(null),
 		loadSeededOutputs: vi.fn().mockResolvedValue(new Map()),
+		findStaleQueuedExecutions: vi.fn(),
+		renewQueuedExecution: vi.fn(),
 		refreshLiveStatus: vi.fn(),
+		loadLiveSubExecutionIds: vi.fn().mockResolvedValue([]),
 	};
 }
 
@@ -125,6 +129,7 @@ function makeStepStore(step: Partial<StepRecord> = {}, overrides: Partial<StepSt
 		iteration: 0,
 		status: 'running',
 		outputs: null,
+		outputSources: null,
 		waitDeclaration: null,
 		resumeCause: null,
 		...step,
@@ -152,6 +157,10 @@ function makeStepStore(step: Partial<StepRecord> = {}, overrides: Partial<StepSt
 		resumeStep: vi.fn().mockResolvedValue(true),
 		resumeDueSteps: vi.fn().mockResolvedValue([]),
 		nextWaitDeadline: vi.fn().mockResolvedValue(null),
+		findStaleQueuedSteps: vi.fn().mockResolvedValue([]),
+		renewQueuedStep: vi.fn(),
+		findStaleRunningSteps: vi.fn().mockResolvedValue([]),
+		failStaleRunningStep: vi.fn(),
 		failWaitingStep: vi.fn().mockResolvedValue(true),
 		...overrides,
 	} satisfies StepStore;
@@ -208,7 +217,7 @@ describe('StepReadyHandler', () => {
 			// The step can answer the caller while it runs.
 			respond: { send: expect.any(Function), chunk: expect.any(Function) },
 		});
-		expect(stepStore.completeStep).toHaveBeenCalledWith('step-a', [[{ json: { ok: true } }]]);
+		expect(stepStore.completeStep).toHaveBeenCalledWith('step-a', [[{ json: { ok: true } }]], null);
 		expect(stepStore.failStep).not.toHaveBeenCalled();
 		expect(queue.publish).toHaveBeenCalledWith({
 			type: 'step:settled',
@@ -423,10 +432,11 @@ describe('StepReadyHandler', () => {
 		await handler.handle(event);
 
 		expect(stepStore.failStep).not.toHaveBeenCalled();
-		expect(stepStore.completeStep).toHaveBeenCalledWith('step-a', [
-			[{ json: { taken: true } }],
+		expect(stepStore.completeStep).toHaveBeenCalledWith(
+			'step-a',
+			[[{ json: { taken: true } }], null],
 			null,
-		]);
+		);
 		expect(queue.publish).toHaveBeenCalledWith({
 			type: 'step:settled',
 			executionId: 'exec-1',
@@ -446,7 +456,7 @@ describe('StepReadyHandler', () => {
 		await handler.handle(event);
 
 		expect(stepStore.failStep).not.toHaveBeenCalled();
-		expect(stepStore.completeStep).toHaveBeenCalledWith('step-a', []);
+		expect(stepStore.completeStep).toHaveBeenCalledWith('step-a', [], null);
 	});
 
 	it('completes a terminal step that leaves its output slot unfilled', async () => {
@@ -467,7 +477,7 @@ describe('StepReadyHandler', () => {
 		await handler.handle({ ...event, stepId: 'step-b' });
 
 		expect(stepStore.failStep).not.toHaveBeenCalled();
-		expect(stepStore.completeStep).toHaveBeenCalledWith('step-b', [null]);
+		expect(stepStore.completeStep).toHaveBeenCalledWith('step-b', [null], null);
 	});
 
 	it('routes from the output slot the edge names', async () => {
@@ -617,12 +627,33 @@ describe('StepReadyHandler', () => {
 		await handler.handle(event);
 
 		expect(executor.execute).toHaveBeenCalledOnce();
-		expect(stepStore.completeStep).toHaveBeenCalledWith('step-a', [[{ json: { ok: true } }]]);
+		expect(stepStore.completeStep).toHaveBeenCalledWith('step-a', [[{ json: { ok: true } }]], null);
 		expect(queue.publish).toHaveBeenCalledExactlyOnceWith({
 			type: 'step:settled',
 			executionId: 'exec-1',
 			stepId: 'step-a',
 		});
+	});
+
+	it('does not report a failure when another owner took the step over', async () => {
+		const stepStore = makeStepStore({}, { failStep: vi.fn().mockResolvedValue(false) });
+		const queue = makeQueue();
+		const publisher = makeLifecycleEventPublisher();
+		const handler = makeHandler(
+			makeExecutionStore(),
+			stepStore,
+			queue,
+			{ v1StepExecutor: { execute: vi.fn().mockRejectedValue(new Error('node failed')) } },
+			publisher,
+		);
+
+		await handler.handle(event);
+
+		expect(stepStore.failStep).toHaveBeenCalled();
+		expect(queue.publish).not.toHaveBeenCalled();
+		expect(publisher.publish).not.toHaveBeenCalledWith(
+			expect.objectContaining({ type: 'step:failed' }),
+		);
 	});
 
 	it('does not report completion when the lifecycle event is not recorded', async () => {
@@ -896,16 +927,18 @@ describe('StepReadyHandler waits', () => {
 		expect(onStepSuspended).toHaveBeenCalledTimes(1);
 	});
 
-	it('reports no suspension when another owner took the step over', async () => {
+	it('reports no suspension when the step was taken over or its execution ended', async () => {
 		const stepStore = makeStepStore();
 		vi.mocked(stepStore.suspendStep).mockResolvedValue(false);
 		const onStepSuspended = vi.fn();
+		const executionStore = makeExecutionStore();
+		const lifecycleEventPublisher = makeLifecycleEventPublisher();
 		const handler = makeHandler(
-			makeExecutionStore(),
+			executionStore,
 			stepStore,
 			makeQueue(),
 			{ v1StepExecutor: makeExecutor({ wait: timeWait }) },
-			makeLifecycleEventPublisher(),
+			lifecycleEventPublisher,
 			noopExecutionResponseSender,
 			onStepSuspended,
 		);
@@ -913,6 +946,10 @@ describe('StepReadyHandler waits', () => {
 		await handler.handle(event);
 
 		expect(onStepSuspended).not.toHaveBeenCalled();
+		expect(lifecycleEventPublisher.publish).not.toHaveBeenCalledWith(
+			expect.objectContaining({ type: 'step:waiting' }),
+		);
+		expect(executionStore.refreshLiveStatus).not.toHaveBeenCalled();
 	});
 
 	it('suspends a wait that only a resume request ends', async () => {
@@ -1032,7 +1069,7 @@ describe('StepReadyHandler resumes', () => {
 		// so there is nothing to feed it either
 		expect(executor.execute).not.toHaveBeenCalled();
 		expect(stepStore.loadStepsByKeys).not.toHaveBeenCalled();
-		expect(stepStore.completeStep).toHaveBeenCalledWith('step-a', timeWait.outputsAtDeadline);
+		expect(stepStore.completeStep).toHaveBeenCalledWith('step-a', timeWait.outputsAtDeadline, null);
 		expect(stepStore.suspendStep).not.toHaveBeenCalled();
 		expect(queue.publish).toHaveBeenCalledWith({
 			type: 'step:settled',
@@ -1055,7 +1092,7 @@ describe('StepReadyHandler resumes', () => {
 
 		await handler.handle(event);
 
-		expect(stepStore.completeStep).toHaveBeenCalledWith('step-a', timeWait.outputsAtDeadline);
+		expect(stepStore.completeStep).toHaveBeenCalledWith('step-a', timeWait.outputsAtDeadline, null);
 		expect(queue.publish).toHaveBeenCalledWith({
 			type: 'step:settled',
 			executionId: 'exec-1',
@@ -1079,7 +1116,7 @@ describe('StepReadyHandler resumes', () => {
 		await handler.handle(event);
 
 		expect(stepStore.loadStepsByKeys).not.toHaveBeenCalled();
-		expect(stepStore.completeStep).toHaveBeenCalledWith('step-a', requestOutputs);
+		expect(stepStore.completeStep).toHaveBeenCalledWith('step-a', requestOutputs, null);
 		expect(stepStore.suspendStep).not.toHaveBeenCalled();
 		expect(queue.publish).toHaveBeenCalledWith({
 			type: 'step:settled',
@@ -1197,11 +1234,12 @@ describe('StepReadyHandler sub-executions', () => {
 		expect(executionStore.refreshLiveStatus).toHaveBeenCalledExactlyOnceWith('exec-1');
 	});
 
-	it('starts no sub-execution when another owner took the step over', async () => {
+	it('starts no sub-execution when the step was taken over or its execution ended', async () => {
 		const stepStore = makeStepStore({}, { suspendStep: vi.fn().mockResolvedValue(false) });
 		const subExecutionStarter = makeSubExecutionStarter();
+		const executionStore = makeExecutionStore();
 		const handler = makeHandler(
-			makeExecutionStore(),
+			executionStore,
 			stepStore,
 			makeQueue(),
 			{ v1StepExecutor: makeExecutor({ subExecution }) },
@@ -1214,6 +1252,7 @@ describe('StepReadyHandler sub-executions', () => {
 		await handler.handle(event);
 
 		expect(subExecutionStarter.start).not.toHaveBeenCalled();
+		expect(executionStore.refreshLiveStatus).not.toHaveBeenCalled();
 	});
 
 	it('announces no step:waiting while the step waits on an awaited sub-execution', async () => {
@@ -1303,7 +1342,11 @@ describe('StepReadyHandler sub-executions', () => {
 
 		await handler.handle(event);
 
-		expect(stepStore.completeStep).toHaveBeenCalledWith('step-a', [[{ json: { id: 'exec-sub' } }]]);
+		expect(stepStore.completeStep).toHaveBeenCalledWith(
+			'step-a',
+			[[{ json: { id: 'exec-sub' } }]],
+			null,
+		);
 		expect(stepStore.suspendStep).not.toHaveBeenCalled();
 		expect(subExecutionStarter.start).toHaveBeenCalledWith(
 			expect.objectContaining({
@@ -1349,7 +1392,7 @@ describe('StepReadyHandler sub-executions', () => {
 
 		expect(subExecutionStarter.start).toHaveBeenCalledTimes(1);
 		expect(stepStore.failStep).not.toHaveBeenCalled();
-		expect(stepStore.completeStep).toHaveBeenCalledWith('step-a', [[{ json: { ok: true } }]]);
+		expect(stepStore.completeStep).toHaveBeenCalledWith('step-a', [[{ json: { ok: true } }]], null);
 	});
 
 	it('fails the step instead of completing it when a detached sub-execution cannot start', async () => {
@@ -1407,7 +1450,11 @@ describe('StepReadyHandler sub-executions', () => {
 		expect(executor.execute).toHaveBeenCalledWith(
 			expect.objectContaining({ inputs: [{}], resume: cause }),
 		);
-		expect(stepStore.completeStep).toHaveBeenCalledWith('step-a', [[{ json: { shaped: true } }]]);
+		expect(stepStore.completeStep).toHaveBeenCalledWith(
+			'step-a',
+			[[{ json: { shaped: true } }]],
+			null,
+		);
 	});
 });
 
@@ -1684,6 +1731,7 @@ describe('StepReadyHandler over loop iterations', () => {
 			iteration,
 			status: 'completed',
 			outputs,
+			outputSources: null,
 			waitDeclaration: null,
 			resumeCause: null,
 		};

@@ -13,6 +13,7 @@ import {
 	SkillAccessService,
 	skillContentHashOf,
 	SkillService,
+	SkillRuntimeService,
 	type LatestSkill,
 	type SkillTarget,
 } from '@/modules/skills';
@@ -50,6 +51,7 @@ export class SkillImporter {
 		private readonly skillAccess: SkillAccessService,
 		private readonly transactionRunner: TransactionRunner,
 		private readonly agentSkillRefs: AgentSkillRefsService,
+		private readonly skillRuntime: SkillRuntimeService,
 	) {}
 
 	async plan(
@@ -126,6 +128,11 @@ export class SkillImporter {
 		await this.assertCanWrite(user, plan.shared);
 		if (plan.shared.length === 0) return;
 		const following = await this.transactionRunner.run({}, async (ctx) => {
+			// Lock every existing row before a create or save takes the name lock.
+			await this.skillRuntime.lockForEdit(
+				plan.shared.filter((write) => write.base).map((write) => write.skill.id),
+				ctx,
+			);
 			const agentIds: string[] = [];
 			for (const write of plan.shared) agentIds.push(...(await this.write(user, write, ctx)));
 			return agentIds;

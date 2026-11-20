@@ -52,7 +52,13 @@ import {
 	shareCredentialWithUsers,
 } from '../shared/db/credentials';
 import { createTag } from '../shared/db/tags';
-import { createAdmin, createOwner, createUser, createUserShell } from '../shared/db/users';
+import {
+	createAdmin,
+	createOwner,
+	createServiceAccountWithProject,
+	createUser,
+	createUserShell,
+} from '../shared/db/users';
 import type { SaveCredentialFunction, SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 import { makeWorkflow } from '../shared/utils/';
@@ -697,6 +703,24 @@ describe('GET /workflows/:workflowId', () => {
 		expect(responseWorkflow.sharedWithProjects).toHaveLength(0);
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		expect((responseWorkflow as any).shared).toBeUndefined();
+	});
+
+	test('returns the account kind of each personal project in the sharing', async () => {
+		const serviceAccount = await createServiceAccountWithProject();
+		const serviceAccountProject = await getPersonalProject(serviceAccount);
+		const workflow = await createWorkflow({}, owner);
+		await shareWorkflowWithProjects(workflow, [{ project: serviceAccountProject }]);
+
+		const response = await authOwnerAgent.get(`/workflows/${workflow.id}`).expect(200);
+		const responseWorkflow: WorkflowWithSharingsMetaDataAndCredentials = response.body.data;
+
+		expect(responseWorkflow.homeProject).toMatchObject({
+			id: ownerPersonalProject.id,
+			accountKind: 'person',
+		});
+		expect(responseWorkflow.sharedWithProjects).toEqual([
+			expect.objectContaining({ id: serviceAccountProject.id, accountKind: 'service' }),
+		]);
 	});
 
 	test('should return tags', async () => {

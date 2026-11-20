@@ -18,12 +18,20 @@ import groupBy from 'lodash/groupBy';
 import { ErrorReporter, StorageConfig } from 'n8n-core';
 
 import { ConflictError, OperationalError, UnexpectedError } from '@n8n/errors';
-import type { AgentRunTelemetryType, IAgentConfigurationTelemetryProperties } from '@/interfaces';
-import { Telemetry } from '@/telemetry';
 
 import { AgentProjectDeletionRepository } from './repositories/agent-project-deletion.repository';
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
+import type {
+	AgentRunTelemetryType,
+	IAgentConfigurationTelemetryProperties,
+} from './agent-telemetry.types';
+import { AgentUsageTelemetryService } from './agent-usage-telemetry.service';
 import type { StoredAttachmentRef } from './types/agent-chat-attachment';
+import {
+	AgentExecutionMetrics,
+	type AgentMetricsSubject,
+	type FinishedAgentExecutionStatus,
+} from './agent-execution-metrics';
 import { AgentExecutionUpdateBroadcaster } from './agent-execution-update-broadcaster';
 import { AgentTurnAlreadyRunningError } from './agent-turn-already-running.error';
 import { SESSION_STOPPED_REASON } from './agent-session-stop-reason';
@@ -51,6 +59,7 @@ import {
 	AgentExecutionLogStore,
 	type AgentExecutionLogRef,
 } from './execution-log/agent-execution-log-store';
+import { IntegrationMessageContextService } from './integrations/integration-message-context.service';
 import { N8nMemory } from './integrations/n8n-memory';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import {
@@ -76,6 +85,7 @@ import {
 	type ThreadFailureSummary,
 } from './utils/execution-failure-summary';
 import { applyFatalSessionOutcome } from './utils/fatal-session-outcome';
+import type { ChatHistoryPageRequest } from './utils/chat-history-page';
 
 export interface RecordMessageParams {
 	threadId: string;
@@ -140,6 +150,12 @@ export interface ThreadDetail {
 	executions: AgentExecution[];
 }
 
+/** One page of a thread's turns, oldest first. */
+export interface ThreadDetailPage extends ThreadDetail {
+	/** Whether the thread has turns older than this page. */
+	hasOlder: boolean;
+}
+
 export interface ThreadListItem
 	extends Omit<
 			AgentExecutionThread,
@@ -195,7 +211,7 @@ export class AgentExecutionService {
 		private readonly agentExecutionRepository: AgentExecutionRepository,
 		private readonly agentExecutionThreadRepository: AgentExecutionThreadRepository,
 		private readonly n8nMemory: N8nMemory,
-		private readonly telemetry: Telemetry,
+		private readonly agentUsageTelemetry: AgentUsageTelemetryService,
 		private readonly agentChatAttachmentService: AgentChatAttachmentService,
 		private readonly agentExecutionLogStore: AgentExecutionLogStore,
 		private readonly storageConfig: StorageConfig,
@@ -207,6 +223,8 @@ export class AgentExecutionService {
 		private readonly messageRepository: AgentMessageRepository,
 		private readonly systemAgents: SystemAgentRegistry,
 		private readonly projectDeletion: AgentProjectDeletionRepository,
+		private readonly integrationMessageContext: IntegrationMessageContextService,
+		private readonly metrics: AgentExecutionMetrics,
 	) {}
 
 	async startExecutionRecording(
@@ -395,6 +413,7 @@ export class AgentExecutionService {
 	): void {
 		this.executionControllers.set(execution.id, new AbortController());
 		this.startHeartbeat(execution.id);
+		this.metrics.started(execution.id, metricsSubjectOf(params));
 		if (needsTitleSync) this.executionsNeedingTitleSync.add(execution.id);
 		this.executionUpdateBroadcaster.notify({
 			projectId: params.projectId,
@@ -474,6 +493,9 @@ export class AgentExecutionService {
 
 		try {
 			await this.writeTerminalExecution(executionId, settled, status, stoppedAt, failureSummary);
+			// Report as soon as the outcome is stored. A failed write leaves the row
+			// running, and the sweep counts it as interrupted.
+			this.reportFinishedExecution(settled, status);
 
 			// Save the terminal row first. A rejected finalization must not replace a stored blob.
 			await this.moveFinalTimelineToBlob(executionId, settled, storedAt);
@@ -556,6 +578,7 @@ export class AgentExecutionService {
 				id: execution.threadId,
 			});
 			if (!thread) return;
+			this.metrics.interrupted({ agentId: thread.agentId, parentAgentId: thread.parentAgentId });
 			this.executionUpdateBroadcaster.notify({
 				projectId: thread.projectId,
 				agentId: thread.agentId,
@@ -596,11 +619,28 @@ export class AgentExecutionService {
 		this.stopHeartbeat(executionId);
 	}
 
+	/** A metrics failure must not fail an execution that is already stored. */
+	private reportFinishedExecution(
+		params: RecordMessageParams,
+		status: FinishedAgentExecutionStatus,
+	): void {
+		try {
+			this.metrics.finished(
+				metricsSubjectOf(params),
+				{ status, hitlStatus: params.hitlStatus },
+				params.record,
+			);
+		} catch (error) {
+			this.errorReporter.error(error);
+		}
+	}
+
 	private stopHeartbeat(executionId: string): void {
 		const timer = this.heartbeatTimers.get(executionId);
 		if (timer) clearInterval(timer);
 		this.heartbeatTimers.delete(executionId);
 		this.executionControllers.delete(executionId);
+		this.metrics.stopped(executionId);
 	}
 
 	private ensureTimelineSnapshotWrite(executionId: string): void {
@@ -737,27 +777,65 @@ export class AgentExecutionService {
 			if (!deletion) return null;
 			if (deletion.status === 'busy') return deletion;
 
+			// The memory delete removes the row that lists the bound threads, so read it first.
+			const boundThreadIds = await this.integrationMessageContext.findBoundThreadIds(threadId, ctx);
 			await this.n8nMemory.getImplementation(agentId).deleteThread(threadId, ctx);
-			return deletion;
+			return { ...deletion, boundThreadIds };
 		});
 		if (!result) return false;
 		if (result.status === 'busy') {
 			throw new ConflictError('The session has active work and cannot be deleted');
 		}
-		const { refs } = result;
+		const { refs, boundThreadIds } = result;
 
+		// The thread is already deleted, so a failed cleanup here only leaves stale data.
 		await Promise.all([
 			this.agentChatAttachmentService.deleteStoredData(refs.attachmentBinaryDataIds, { threadId }),
-			this.agentExecutionLogStore.delete(
-				this.toBlobRefs(refs.executionLogs).map((ref) => ({
+			this.deleteThreadExecutionLogs(agentId, threadId, refs.executionLogs),
+			this.clearSessionBindings(threadId, boundThreadIds),
+		]);
+		return true;
+	}
+
+	/**
+	 * Unbinds the recipient threads that a task session messaged, so replies
+	 * stop pointing at the deleted session. Runs after the commit: on SQLite a
+	 * write from inside the delete transaction would wait for that transaction.
+	 * If it fails, `IntegrationMessageContextService.resolveSession` ignores the
+	 * stale binding and the next reply or task send clears it.
+	 */
+	private async clearSessionBindings(threadId: string, boundThreadIds: string[]): Promise<void> {
+		if (boundThreadIds.length === 0) return;
+		try {
+			await this.integrationMessageContext.clearSessionBindings(threadId, boundThreadIds);
+		} catch (error) {
+			this.logger.warn('Failed to clear the session bindings of a deleted thread', {
+				threadId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
+	}
+
+	private async deleteThreadExecutionLogs(
+		agentId: string,
+		threadId: string,
+		executionLogs: Array<Pick<AgentExecution, 'id' | 'storedAt'>>,
+	): Promise<void> {
+		try {
+			await this.agentExecutionLogStore.delete(
+				this.toBlobRefs(executionLogs).map((ref) => ({
 					agentId,
 					threadId,
 					executionId: ref.id,
 					storedAt: ref.storedAt,
 				})),
-			),
-		]);
-		return true;
+			);
+		} catch (error) {
+			this.logger.warn('Failed to delete agent execution logs of a deleted thread', {
+				threadId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
 	}
 
 	/**
@@ -947,6 +1025,57 @@ export class AgentExecutionService {
 		await this.hydrateExecutionInputs(executions, thread.agentName);
 		await this.hydrateTimelines(agentId, threadId, executions);
 		return { thread, executions };
+	}
+
+	/**
+	 * Get the newest `limit` turns of a thread before `before`, oldest first.
+	 * Validates projectId and agentId ownership.
+	 *
+	 * A page never splits a continuation, such as a resume after a suspension,
+	 * from the execution that it continues. The transcript merges the tool calls
+	 * and the input messages of these executions, so they must load together.
+	 * Thus a page can hold more than `limit` executions.
+	 */
+	async getThreadDetailPage(
+		threadId: string,
+		projectId: string,
+		agentId: string,
+		userId: string,
+		{ limit, before }: ChatHistoryPageRequest,
+	): Promise<ThreadDetailPage | null> {
+		const thread = await this.agentExecutionThreadRepository.findOneBy({ id: threadId });
+		if (!thread) return null;
+		if (!threadBelongsTo(thread, projectId, agentId, userId)) return null;
+
+		const rows = await this.agentExecutionRepository.findByThreadIdNewestFirst(
+			threadId,
+			limit + 1,
+			before,
+		);
+		const executions = rows.slice(0, limit);
+		let older: AgentExecution | undefined = rows[limit];
+		// A page with older turns checks once whether its oldest turn continues the
+		// next older one. Each continuation adds up to two queries, but
+		// continuations are rare.
+		while (older && (await this.continues(executions[executions.length - 1], older))) {
+			executions.push(older);
+			[older] = await this.agentExecutionRepository.findByThreadIdNewestFirst(threadId, 1, older);
+		}
+		executions.reverse();
+
+		await this.hydrateExecutionInputs(executions, thread.agentName);
+		await this.hydrateTimelines(agentId, threadId, executions);
+		return { thread, executions, hasOlder: older !== undefined };
+	}
+
+	/**
+	 * Whether `execution` continues `older`, the execution before it. A resume
+	 * from before input messages were linked has no links, but it has the
+	 * `resumed` status.
+	 */
+	private async continues(execution: AgentExecution, older: AgentExecution): Promise<boolean> {
+		if (execution.hitlStatus === 'resumed') return true;
+		return await this.messageRepository.continuesExecution(execution.id, older.id);
 	}
 
 	private async hydrateExecutionInputs(
@@ -1415,7 +1544,7 @@ export class AgentExecutionService {
 		if (status === 'awaiting' || !params.telemetry) return;
 		const { agentId, threadId, record } = params;
 		try {
-			this.telemetry.trackAgentTurnFinished({
+			this.agentUsageTelemetry.trackAgentTurnFinished({
 				agent_id: agentId,
 				user_id: params.telemetry.userId,
 				thread_id: threadId,
@@ -1452,9 +1581,15 @@ function cleanUserMessage(message: string | null, agentName: string): string | n
 	return cleaned.length > 0 ? cleaned : null;
 }
 
+function metricsSubjectOf(
+	params: Pick<RecordMessageParams, 'agentId' | 'threadMetadata'>,
+): AgentMetricsSubject {
+	return { agentId: params.agentId, parentAgentId: params.threadMetadata?.parentAgentId };
+}
+
 function executionStatus(
 	params: Pick<RecordMessageParams, 'record' | 'hitlStatus' | 'source'>,
-): AgentExecution['status'] {
+): FinishedAgentExecutionStatus {
 	const { record } = params;
 	if (record.error !== null || record.finishReason === 'error') return 'error';
 	if (record.finishReason === 'cancelled') return 'cancelled';
