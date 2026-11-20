@@ -37,6 +37,7 @@ describe('agent skill DTOs', () => {
 				{ path: 'scripts/example.py', content: 'print(1)' },
 				{ path: 'assets/logo.png', content: 'AP8=', isBinary: true },
 				{ path: 'LICENSE', content: 'MIT' },
+				{ path: 'examples/nested/SKILL.md', content: 'Example' },
 			],
 		});
 
@@ -93,6 +94,7 @@ describe('agent skill DTOs', () => {
 		'a\\b.md',
 		'a//b',
 		'SKILL.md',
+		'SKILL.md/guide.md',
 	])('rejects noncanonical or reserved path %s', (path) =>
 		expect(agentSkillReferencePathSchema.safeParse(path).success).toBe(false),
 	);

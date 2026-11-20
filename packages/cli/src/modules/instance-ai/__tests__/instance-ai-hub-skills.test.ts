@@ -353,15 +353,22 @@ describe('Assistant Hub runtime skills', () => {
 		expect(source.getLoadError?.(entry.id)).toBeUndefined();
 	});
 
-	it('loads a large reference from its original path for the shared tool to cap', async () => {
+	it('loads a large reference from its original path and caps the tool response by bytes', async () => {
 		const body = 'é'.repeat(RUNTIME_SKILL_MAX_OUTPUT_BYTES / 2) + 'a';
 		const path = 'reference/degraded/guide.md';
 		const { source } = await load(providerFor([content({ files: [{ path, content: body }] })]));
-		const file = await source.loadFile?.(hubEntries(source)[0].id, path);
-		expect(file).toMatchObject({
+		const skillId = hubEntries(source)[0].id;
+		expect(await source.loadFile?.(skillId, path)).toMatchObject({
 			filePath: path,
 			content: body,
 			bytes: RUNTIME_SKILL_MAX_OUTPUT_BYTES + 1,
+		});
+		const tool = createSkillLoadTool(source);
+		expect(await tool.handler?.({ skillId, filePath: path }, {})).toMatchObject({
+			success: true,
+			filePath: path,
+			bytes: RUNTIME_SKILL_MAX_OUTPUT_BYTES + 1,
+			content: `${body.slice(0, -1)}\n\n[... output truncated to ${RUNTIME_SKILL_MAX_OUTPUT_BYTES / 1024} KB ...]`,
 		});
 	});
 

@@ -4,6 +4,8 @@ import {
 	type HttpRequestClient,
 } from '@n8n/backend-network';
 import {
+	AGENT_SKILL_BINARY_MAX_BYTES,
+	AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH,
 	GITHUB_SKILL_SOURCE_CREDENTIAL_TYPES,
 	isGitHubSkillSourceCredentialType,
 	type GitHubSkillSourceCredentialType,
@@ -73,6 +75,7 @@ const ARCHIVE_CACHE_SIZE = 4;
 const ARCHIVE_CACHE_BYTES = 64 * 1024 * 1024;
 /** A download in progress is not in the cache budget, so few run at a time. */
 const MAX_ARCHIVE_DOWNLOADS = 2;
+const MAX_SKILL_MD_BYTES = 1024 * 1024;
 
 const CANNOT_READ = 'n8n cannot read this repository. It is private or does not exist.';
 const CREDENTIAL_CANNOT_READ =
@@ -274,16 +277,28 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 		const parsed = readLocator(locator);
 		const { path } = readRef(ref);
 		const sha = revision ?? (await this.head(parsed, auth));
-		const archive = await this.archiveAt(parsed, sha, auth);
+		let archive = await this.archiveAt(parsed, sha, auth);
 		const inRepository = (file: string) => (path ? `${path}/${file}` : file);
 		const skillFile = inRepository(SKILL_FILE);
-		if (archive.oversized.has(skillFile)) {
-			throw new SkillParseError(
-				`The SKILL.md of ${path || '/'} is larger than 1 MB.`,
-				archive.oversized.get(skillFile) ?? undefined,
-			);
+		// A linked skill can fall out of the picker, for example when new skills fill it.
+		if (
+			parsed.path &&
+			path !== parsed.path &&
+			archive.paths.includes(skillFile) &&
+			!archive.files.has(skillFile) &&
+			!archive.oversized.has(skillFile)
+		) {
+			archive = await this.archiveAt({ ...parsed, path }, sha, auth);
 		}
 		const skillText = archive.files.get(skillFile);
+		if (archive.oversized.has(skillFile) || (skillText && skillText.length > MAX_SKILL_MD_BYTES)) {
+			throw new SkillParseError(
+				`The SKILL.md of ${path || '/'} is larger than 1 MB.`,
+				skillText
+					? createHash('sha256').update(skillText).digest('hex')
+					: (archive.oversized.get(skillFile) ?? undefined),
+			);
+		}
 		if (skillText === undefined) {
 			throw new SkillSourceNotFoundError(`The skill folder ${path || '/'} has no SKILL.md.`, {
 				skill: true,
@@ -299,6 +314,13 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 		const folderName = path.split('/').at(-1) || parsed.repository;
 		try {
 			const { content, skippedFiles } = readSkillFolder(folderName, files);
+			content.files = content.files.filter((file) => {
+				const tooLarge = file.isBinary
+					? Buffer.byteLength(file.content, 'base64') > AGENT_SKILL_BINARY_MAX_BYTES
+					: file.content.length > AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH;
+				if (tooLarge) oversized.push(file.path);
+				return !tooLarge;
+			});
 			return {
 				content,
 				revision: sha,
@@ -485,7 +507,7 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 					await this.send(
 						{ ...fileTarget(file, blob), method: 'GET', abortSignal: deadline.signal },
 						auth,
-						limit(Math.max(this.archiveLimits.maxTextFileBytes, 1024)),
+						limit(Math.max(this.archiveLimits.maxFileBytes, 1024)),
 					),
 				async (file, blob) => await this.sendStream(fileTarget(file, blob), auth, deadline.signal),
 			);

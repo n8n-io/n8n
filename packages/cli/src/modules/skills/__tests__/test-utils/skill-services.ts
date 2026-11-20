@@ -18,7 +18,7 @@ import type { SkillSyncFlagGate } from '../../services/skill-sync-flag-gate';
 import type { SkillSourceRepository } from '../../database/repositories/skill-source.repository';
 import type { SkillSourceClientRegistry } from '../../sources/skill-source-client-registry.service';
 import type { ResolvedSkillRow } from '../../utils/skill-content';
-import { skillContentHash } from '../../utils/skill-content-hash';
+import { skillContentHash, type SkillContent } from '../../utils/skill-content-hash';
 import { FakeSkillUsage } from '../../testing';
 
 export const PROJECT = 'project-1';
@@ -46,7 +46,7 @@ export function versionRow(
 	skill: Skill,
 	version: number,
 	overrides: Partial<SkillVersion> = {},
-	files: Array<{ path: string; content: string }> = [],
+	files: SkillContent['files'] = [],
 ): ResolvedSkillRow {
 	const base = {
 		name: 'Brand voice',
@@ -73,7 +73,7 @@ export function versionRow(
 			...base,
 			contentHash,
 		}),
-		files: files.map((file) => mock<SkillFile>(file)),
+		files: files.map((file) => mock<SkillFile>({ ...file, isBinary: file.isBinary ?? false })),
 	};
 }
 

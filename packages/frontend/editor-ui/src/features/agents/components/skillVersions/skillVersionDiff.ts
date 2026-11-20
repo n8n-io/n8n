@@ -1,10 +1,10 @@
 import { diffText, type DiffCount, type DiffLine } from '@n8n/utils/diff-text';
-import type { AgentSkill } from '../../types';
+import type { AgentSkill } from '@/features/agents/types';
 
 export type { DiffCount, DiffLine } from '@n8n/utils/diff-text';
 
-/** A reference file that only one version has. */
-export type FileStatus = 'added' | 'removed';
+/** File changes that can have no line counts. */
+export type FileStatus = 'added' | 'removed' | 'modified';
 export type FileChange = DiffCount & { status?: FileStatus };
 
 /** One field of SKILL.md, or one reference file, as two versions have it. */
@@ -14,7 +14,6 @@ export type DiffSection = DiffCount & {
 	lines: DiffLine[];
 	isFile?: true;
 	isBinary?: boolean;
-	/** Set for a reference file that only one version has. */
 	status?: FileStatus;
 };
 
@@ -38,21 +37,25 @@ export function diffSkills(from: AgentSkill, to: AgentSkill): DiffSection[] {
 			const before = fromFiles.get(path);
 			const after = toFiles.get(path);
 			const isBinary = before?.isBinary || after?.isBinary;
+			const status = !before
+				? 'added'
+				: !after
+					? 'removed'
+					: isBinary && (before.isBinary !== after.isBinary || before.content !== after.content)
+						? 'modified'
+						: undefined;
 			return {
-				...(isBinary
-					? { key: path, lines: [], added: 0, removed: 0, isBinary }
-					: section(path, before?.content ?? '', after?.content ?? '')),
-				...fileStatus(!!before, !!after),
+				...section(
+					path,
+					before?.isBinary ? '' : (before?.content ?? ''),
+					after?.isBinary ? '' : (after?.content ?? ''),
+				),
+				...(status ? { status } : {}),
+				...(isBinary ? { isBinary } : {}),
 				isFile: true,
 			};
 		}),
 	];
-}
-
-function fileStatus(inFrom: boolean, inTo: boolean): { status?: FileStatus } {
-	if (!inFrom) return { status: 'added' };
-	if (!inTo) return { status: 'removed' };
-	return {};
 }
 
 /** Lines added and removed in each file, keyed by path, for the file list. */

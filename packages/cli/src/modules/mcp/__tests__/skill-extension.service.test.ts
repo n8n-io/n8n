@@ -259,6 +259,26 @@ describe('McpSkillExtensionService', () => {
 			});
 		});
 
+		it('returns a binary file as a blob and reports its decoded size and digest', async () => {
+			const bytes = Buffer.from([0, 255]);
+			const blob = bytes.toString('base64');
+			const skill: AgentSkill = {
+				...releaseNotes,
+				references: [{ path: 'assets/logo.png', content: blob, isBinary: true }],
+			};
+			skillService.readForMcp.mockResolvedValue(content(skill));
+			const uri = 'skill://skill_a1/release-notes-writer/assets/logo.png';
+
+			const { result } = await client.request('resources/read', { uri });
+
+			expect(result.contents).toEqual([{ uri, mimeType: 'application/octet-stream', blob }]);
+			expect(toSkillEntry('skill_a1', skill).resources[1]).toEqual({
+				uri,
+				digest: `sha256:${createHash('sha256').update(bytes).digest('hex')}`,
+				size: bytes.length,
+			});
+		});
+
 		it('reports the provider and access of the source of a synced skill', async () => {
 			skillService.readForMcp.mockResolvedValue({
 				...content(releaseNotes, 'project-1'),

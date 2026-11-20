@@ -128,6 +128,9 @@ describe('SkillRepository', () => {
 			}),
 			null,
 		);
+		expect((await skills.findLatestSaved([scoped])).get(scoped)?.files).toContainEqual(
+			expect.objectContaining({ path: 'assets/logo.png', content: 'AP8=', isBinary: true }),
+		);
 		expect((await skillRuntime.listForAssistant({ user: owner })).map(({ id }) => id)).toEqual([
 			instance,
 		]);

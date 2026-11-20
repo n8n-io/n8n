@@ -82,12 +82,21 @@ function rendersAsMarkdown(section: DiffSection, text: string): boolean {
 		>
 			<div :class="$style.fieldHeader">
 				<N8nText size="small" bold>{{ labelOf(section) }}</N8nText>
-				<SkillDiffCount :count="section" />
+				<N8nText v-if="section.status === 'modified'" size="small">
+					{{ i18n.baseText('agents.builder.skills.versions.fileModified') }}
+				</N8nText>
+				<SkillDiffCount v-else :count="section" :hide-zero="section.isBinary" />
 			</div>
 			<N8nText v-if="section.isBinary" size="small">
-				{{ i18n.baseText('agents.builder.skills.files.binary') }}
+				{{
+					i18n.baseText(
+						section.blocks.length
+							? 'agents.builder.skills.versions.binarySide'
+							: 'agents.builder.skills.files.binary',
+					)
+				}}
 			</N8nText>
-			<div v-else :class="$style.body">
+			<div v-if="!section.isBinary || section.blocks.length" :class="$style.body">
 				<template v-for="(block, index) in section.blocks" :key="index">
 					<N8nMarkdown
 						v-if="block.kind === 'equal' && rendersAsMarkdown(section, block.text)"

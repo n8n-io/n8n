@@ -109,8 +109,8 @@ describe('readRepositoryArchive', () => {
 		});
 	});
 
-	it('stops reading the archive once it keeps too much text', async () => {
-		const limits = { ...DEFAULT_ARCHIVE_LIMITS, maxTextBytes: 1000 };
+	it('stops reading the archive once it keeps too many file bytes', async () => {
+		const limits = { ...DEFAULT_ARCHIVE_LIMITS, maxRetainedBytes: 1000 };
 		const files = { 'a/SKILL.md': 'x'.repeat(600), 'b/SKILL.md': 'x'.repeat(600) };
 
 		await expect(
@@ -118,8 +118,8 @@ describe('readRepositoryArchive', () => {
 		).rejects.toMatchObject({ reason: 'archive_too_large' });
 	});
 
-	it('keeps the path of a file over the text size, without its text', async () => {
-		const limits = { ...DEFAULT_ARCHIVE_LIMITS, maxTextFileBytes: 10 };
+	it('keeps the path of a file over the byte limit, without its content', async () => {
+		const limits = { ...DEFAULT_ARCHIVE_LIMITS, maxFileBytes: 10 };
 		const archive = await readRepositoryArchive(
 			streamOf(archiveOf({ 'a/SKILL.md': 'x'.repeat(10), 'b/SKILL.md': 'x'.repeat(11) })),
 			{ limits },

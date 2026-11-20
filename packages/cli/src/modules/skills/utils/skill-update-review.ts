@@ -1,4 +1,9 @@
-import { SKILL_SCAN_RULES, type SkillUpdateFile, type SkillScanResult } from '@n8n/api-types';
+import {
+	SKILL_SCAN_RULES,
+	type AgentSkillReference,
+	type SkillUpdateFile,
+	type SkillScanResult,
+} from '@n8n/api-types';
 import { UnexpectedError } from '@n8n/errors';
 import { diffText } from '@n8n/utils/diff-text';
 import { z } from 'zod';
@@ -46,33 +51,49 @@ export function pendingContent(link: SkillSourceLink): SkillContent | null {
 	return result.data;
 }
 
-/** Uses the scanner's file representation so findings retain their line and column offsets. */
-function filesOf(content: SkillContent): Map<string, { text: string; isBinary?: boolean }> {
+function filesOf(content: SkillContent): Map<string, AgentSkillReference> {
 	return new Map([
-		[SKILL_MD, { text: showHidden(skillMdText(content).text) }],
-		...content.files.map(
-			({ path, content: text, isBinary }): [string, { text: string; isBinary?: boolean }] => [
-				path,
-				isBinary ? { text: '', isBinary } : { text: showHidden(text) },
-			],
-		),
+		[SKILL_MD, { path: SKILL_MD, content: skillMdText(content).text }],
+		...content.files.map((file): [string, AgentSkillReference] => [file.path, file]),
 	]);
+}
+
+/** Uses the scanner's text representation so findings retain their line and column offsets. */
+function previewText(file?: AgentSkillReference): string {
+	return file && !file.isBinary ? showHidden(file.content) : '';
+}
+
+function fileStatus(
+	before?: AgentSkillReference,
+	after?: AgentSkillReference,
+): SkillUpdateFile['status'] {
+	if (!before) return 'added';
+	if (!after) return 'removed';
+	if (
+		(before.isBinary || after.isBinary) &&
+		(before.isBinary !== after.isBinary || before.content !== after.content)
+	) {
+		return 'modified';
+	}
+	return undefined;
 }
 
 export function updateFiles(before: SkillContent, after: SkillContent): SkillUpdateFile[] {
 	const from = filesOf(before);
 	const to = filesOf(after);
-	return [...new Set([...from.keys(), ...to.keys()])].map((path) => ({
-		path,
-		before: from.get(path)?.text ?? '',
-		after: to.get(path)?.text ?? '',
-		...(from.get(path)?.isBinary || to.get(path)?.isBinary ? { isBinary: true } : {}),
-		...(!from.has(path)
-			? { status: 'added' as const }
-			: !to.has(path)
-				? { status: 'removed' as const }
-				: {}),
-	}));
+	return [...new Set([...from.keys(), ...to.keys()])].map((path) => {
+		const previous = from.get(path);
+		const next = to.get(path);
+		const status = fileStatus(previous, next);
+		return {
+			path,
+			before: previewText(previous),
+			after: previewText(next),
+			...(previous?.isBinary ? { beforeIsBinary: true } : {}),
+			...(next?.isBinary ? { afterIsBinary: true } : {}),
+			...(status ? { status } : {}),
+		};
+	});
 }
 
 export function updateCounts(files: SkillUpdateFile[]): { added: number; removed: number } {

@@ -477,11 +477,13 @@ export type SkillNewUpdate = DiscoveredSkill & {
 };
 
 export type SkillUpdateFile = {
-	isBinary?: boolean;
 	path: string;
 	before: string;
 	after: string;
-	status?: 'added' | 'removed';
+	beforeIsBinary?: true;
+	afterIsBinary?: true;
+	/** Modified indicates a change to bytes or encoding that a text diff cannot show. */
+	status?: 'added' | 'removed' | 'modified';
 };
 
 /** Names are limited to agents the user can read. */

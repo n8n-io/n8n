@@ -3,7 +3,7 @@ import type { Readable } from 'node:stream';
 import { z } from 'zod';
 
 import { archiveTooLarge, type ArchiveLimits, type RepositoryArchive } from './github-archive';
-import { SKILL_FILE } from './skill-discovery';
+import { findSkillFolders, SKILL_FILE } from './skill-discovery';
 import { SkillSourceReadError } from '../../errors/skill-source-read.error';
 
 // GitHub limits recursive trees to 7 MB. Leave room for the response envelope.
@@ -59,7 +59,7 @@ export async function readRepositoryFolder(
 	if (entries.length > limits.maxEntries) throw archiveTooLarge(root);
 
 	let bytes = 0;
-	let textBytes = 0;
+	let retainedBytes = 0;
 	const reads: Array<{ path: string; sha: string; size: number; oversized: boolean }> = [];
 	const blobs = new Map<string, { sha: string; size: number }>();
 	for (const entry of entries) {
@@ -74,16 +74,17 @@ export async function readRepositoryFolder(
 		result.paths.push(path);
 		blobs.set(path, { sha: entry.sha, size });
 	}
-	// Only fetch files owned by a skill. The tree can also contain unrelated repository data.
+	const skillFolders = new Set(findSkillFolders(result.paths, root).folders);
+	// Only fetch files that belong to a skill in the picker.
 	for (const [path, { sha, size }] of blobs) {
-		if (!insideSkill(path, root, blobs)) continue;
-		const oversized = size > limits.maxTextFileBytes;
+		if (!insideSkill(path, root, skillFolders)) continue;
+		const oversized = size > limits.maxFileBytes;
 		if (oversized && !path.endsWith(`/${SKILL_FILE}`)) {
 			result.oversized.set(path, null);
 			continue;
 		}
-		if (!oversized) textBytes += size;
-		if (textBytes > limits.maxTextBytes) throw archiveTooLarge(root);
+		if (!oversized) retainedBytes += size;
+		if (retainedBytes > limits.maxRetainedBytes) throw archiveTooLarge(root);
 		reads.push({ path, sha, size, oversized });
 	}
 
@@ -104,13 +105,13 @@ export async function readRepositoryFolder(
 	return result;
 }
 
-function insideSkill(path: string, root: string, blobs: ReadonlyMap<string, unknown>): boolean {
+function insideSkill(path: string, root: string, skillFolders: ReadonlySet<string>): boolean {
 	for (
 		let slash = path.lastIndexOf('/');
 		slash >= root.length;
 		slash = path.lastIndexOf('/', slash - 1)
 	) {
-		if (blobs.has(`${path.slice(0, slash)}/${SKILL_FILE}`)) return true;
+		if (skillFolders.has(path.slice(0, slash))) return true;
 	}
 	return false;
 }

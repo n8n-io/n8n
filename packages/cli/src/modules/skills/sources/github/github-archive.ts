@@ -14,17 +14,18 @@ export type ArchiveLimits = {
 	/** Uncompressed bytes under the folder of the link. */
 	maxUncompressedBytes: number;
 	/** File bytes that one archive keeps. */
-	maxTextBytes: number;
-	/** A larger file keeps its path, without its contents. */
-	maxTextFileBytes: number;
+	maxRetainedBytes: number;
+	/** Raw byte limit before decoding a file. Larger files keep only their paths. */
+	maxFileBytes: number;
 };
 
 export const DEFAULT_ARCHIVE_LIMITS: ArchiveLimits = {
 	maxDownloadBytes: 512 * 1024 * 1024,
 	maxEntries: 50_000,
 	maxUncompressedBytes: 200 * 1024 * 1024,
-	maxTextBytes: 20 * 1024 * 1024,
-	maxTextFileBytes: AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH,
+	maxRetainedBytes: 20 * 1024 * 1024,
+	// One UTF-16 code unit can use up to three bytes in UTF-8.
+	maxFileBytes: 3 * AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH,
 };
 
 /**
@@ -73,7 +74,7 @@ export async function readRepositoryArchive(
 	let downloaded = 0;
 	let entries = 0;
 	let bytes = 0;
-	let textBytes = 0;
+	let retainedBytes = 0;
 
 	return await new Promise((resolve, reject) => {
 		let settled = false;
@@ -113,7 +114,7 @@ export async function readRepositoryArchive(
 				return;
 			}
 			paths.push(path);
-			if (entry.size > limits.maxTextFileBytes) {
+			if (entry.size > limits.maxFileBytes) {
 				if (path.split('/').at(-1) !== SKILL_FILE) {
 					oversized.set(path, null);
 					entry.resume();
@@ -124,8 +125,8 @@ export async function readRepositoryArchive(
 				entry.on('end', () => oversized.set(path, hash.digest('hex')));
 				return;
 			}
-			textBytes += entry.size;
-			if (textBytes > limits.maxTextBytes) {
+			retainedBytes += entry.size;
+			if (retainedBytes > limits.maxRetainedBytes) {
 				entry.resume();
 				return fail(archiveTooLarge(root));
 			}

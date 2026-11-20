@@ -3,8 +3,9 @@ import { z } from 'zod';
 export const AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH = 65_536;
 export const AGENT_SKILL_REFERENCE_MAX_COUNT = 500;
 export const AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH = 1024 * 1024;
+export const AGENT_SKILL_BINARY_MAX_BYTES = 1024 * 1024;
 export const AGENT_SKILL_BINARY_CONTENT_MAX_LENGTH =
-	4 * Math.ceil(AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH / 3);
+	4 * Math.ceil(AGENT_SKILL_BINARY_MAX_BYTES / 3);
 export const AGENT_SKILL_REFERENCES_TOTAL_MAX_LENGTH = 2 * 1024 * 1024;
 
 const agentSkillStringArraySchema = z.array(z.string().trim().min(1));
@@ -21,7 +22,7 @@ export const agentSkillReferencePathSchema = z
 			// No control characters, such as NUL, which Postgres cannot store.
 			// eslint-disable-next-line no-control-regex
 			!/[\u0000-\u001f\u007f]/.test(path) &&
-			path !== 'SKILL.md' &&
+			segments[0] !== 'SKILL.md' &&
 			!/^[A-Za-z]:/.test(path) &&
 			segments.every((segment) => segment !== '' && segment !== '.' && segment !== '..')
 		);
