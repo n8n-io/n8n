@@ -108,18 +108,18 @@ export const GATE_MS = 24 * 60 * 60 * 1000;
  * Applies the publisher check, the 24-hour gate and the package-set rule to a
  * candidate. A digest is ready when its publisher is verified and it is at
  * least 24 hours old. A manual run skips the gate. A digest that adds a
- * package is ready without auto-merge, so that a person reviews it.
+ * package, or that skipped the gate, is ready without auto-merge, so that a
+ * person reviews it.
  */
 export function applyGate(candidate, publisher, { now, skipGate }) {
 	const checked = { ...candidate, publisher };
 	if (!publisher.verified) return { ...checked, status: 'unverified' };
-	if (!skipGate) {
-		if (!publisher.publishedAt) return { ...checked, status: 'no-publish-time' };
-		if (now - Date.parse(publisher.publishedAt) < GATE_MS)
-			return { ...checked, status: 'in-24h-gate' };
+	const gated = !publisher.publishedAt || now - Date.parse(publisher.publishedAt) < GATE_MS;
+	if (gated && !skipGate) {
+		return { ...checked, status: publisher.publishedAt ? 'in-24h-gate' : 'no-publish-time' };
 	}
 	const addsPackage = candidate.platforms.some((platform) => platform.addedPackages.length > 0);
-	return { ...checked, status: 'ready', autoMerge: !addsPackage };
+	return { ...checked, status: 'ready', autoMerge: !addsPackage && !gated, gateSkipped: gated };
 }
 
 function resolveNewestDigest(pin) {
