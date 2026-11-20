@@ -38,6 +38,25 @@ end
 return redis.call("EXPIRE", KEYS[1], tonumber(ARGV[2]))
 `;
 
+/**
+ * Atomically deletes the leader key only if the current value matches the
+ * provided hostId, so that an instance never deletes another instance's key
+ *
+ * KEYS[1] - leader key
+ * ARGV[1] - hostId
+ *
+ * Returns:
+ * 1                   value matched and the key was deleted
+ * 0                   key does not exist, or another host holds it
+ */
+const DELETE_IF_LEADER = `
+if redis.call("GET", KEYS[1]) == ARGV[1] then
+  return redis.call("DEL", KEYS[1])
+end
+
+return 0
+`;
+
 export type TtlRenewalResultKeyMissing = { id: 'key-missing' };
 export type TtlRenewalResultOtherHostIsLeader = {
 	id: 'other-host-is-leader';
@@ -136,11 +155,15 @@ export class LeaderElectionClient {
 		}
 	}
 
-	/** Delete the leader key so another instance can claim leadership. */
-	async clearLeader(): Promise<Result<void, Error>> {
+	/**
+	 * Delete the leader key so another instance can claim leadership, but only if
+	 * this host still holds it. Returns `false` if the key had already expired or
+	 * another host had taken it, in which case the key is left untouched.
+	 */
+	async clearLeader(): Promise<Result<boolean, Error>> {
 		try {
-			await this.redisClient.del(this.leaderKey);
-			return createResultOk(undefined);
+			const result = await this.redisClient.eval(DELETE_IF_LEADER, 1, this.leaderKey, this.hostId);
+			return createResultOk(result === 1);
 		} catch (e) {
 			return createResultError(ensureError(e));
 		}

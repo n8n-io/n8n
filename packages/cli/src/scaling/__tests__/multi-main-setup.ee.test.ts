@@ -286,4 +286,56 @@ describe('MultiMainSetup', () => {
 			expect(emit).not.toHaveBeenCalledWith('leader-takeover');
 		});
 	});
+
+	describe('shutdown', () => {
+		it('should clear the leader key when this instance is leader', async () => {
+			client.setLeaderIfNotExists.mockResolvedValue(createResultOk(true));
+			await multiMainSetup.init();
+			client.clearLeader.mockResolvedValue(createResultOk(true));
+
+			await multiMainSetup.shutdown();
+
+			expect(client.clearLeader).toHaveBeenCalledTimes(1);
+			expect(logger.warn).not.toHaveBeenCalled();
+			expect(client.destroy).toHaveBeenCalled();
+		});
+
+		it('should leave the leader key in place when another instance has taken over', async () => {
+			client.setLeaderIfNotExists.mockResolvedValue(createResultOk(true));
+			await multiMainSetup.init();
+			client.clearLeader.mockResolvedValue(createResultOk(false));
+
+			await multiMainSetup.shutdown();
+
+			expect(client.clearLeader).toHaveBeenCalledTimes(1);
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Leader key no longer held by this instance at shutdown, leaving it in place',
+			);
+			expect(client.destroy).toHaveBeenCalled();
+		});
+
+		it('should warn and still disconnect when clearing the leader key fails', async () => {
+			client.setLeaderIfNotExists.mockResolvedValue(createResultOk(true));
+			await multiMainSetup.init();
+			const error = new Error('Command timed out');
+			client.clearLeader.mockResolvedValue(createResultError(error));
+
+			await multiMainSetup.shutdown();
+
+			expect(logger.warn).toHaveBeenCalledWith('Failed to clear leader key from Redis', {
+				error,
+			});
+			expect(client.destroy).toHaveBeenCalled();
+		});
+
+		it('should not touch the leader key when this instance is a follower', async () => {
+			client.setLeaderIfNotExists.mockResolvedValue(createResultOk(false));
+			await multiMainSetup.init();
+
+			await multiMainSetup.shutdown();
+
+			expect(client.clearLeader).not.toHaveBeenCalled();
+			expect(client.destroy).toHaveBeenCalled();
+		});
+	});
 });
