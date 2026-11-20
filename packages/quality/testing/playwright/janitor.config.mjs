@@ -116,6 +116,10 @@ export default defineConfig({
 		},
 		'selector-purity': { enabled: true, severity: 'error' },
 		deduplication: { enabled: true, severity: 'warning' },
+		'duplicate-logic': {
+			// Benchmark profiles repeat the same steps so their results are comparable.
+			excludeTestBodyPaths: [/^tests\/infrastructure\/benchmarks(?:-local)?\//],
+		},
 		'dead-code': { enabled: true, severity: 'warning' },
 		'no-page-in-flow': {
 			enabled: true,
@@ -126,6 +130,12 @@ export default defineConfig({
 				/\.page\.waitForLoadState/,
 				/\.page\.waitForURL/,
 				/\.page\.reload/,
+				// Network mocks, network waits, and popup waits do not touch the DOM.
+				// The `$` anchor keeps a locator on the call result reported.
+				/\.page\.(route|unroute|waitForRequest|waitForResponse|waitForEvent)$/,
+				// A composable can open a tab or get the browser from the context.
+				// The rule checks each prefix of a chain, so `context` must also match alone.
+				/\.page\.context(\(\)\.(newPage|browser))?$/,
 			],
 		},
 		'api-purity': { enabled: true, severity: 'warning' },

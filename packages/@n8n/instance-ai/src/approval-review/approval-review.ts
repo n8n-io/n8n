@@ -1,11 +1,15 @@
+import { isZodSchema } from '@n8n/agents';
 import type {
 	BuiltTool,
 	InterruptibleToolContext,
 	ToolContext,
 	ToolSuspendOptions,
 } from '@n8n/agents';
-import type { InstanceAiAutoApprovalDecider } from '@n8n/api-types';
+import { instanceAiApprovalAskReasonSchema } from '@n8n/api-types';
+import type { InstanceAiApprovalAskReason, InstanceAiAutoApprovalDecider } from '@n8n/api-types';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
+import { isRecord } from '@n8n/utils/is-record';
+import { z } from 'zod';
 
 import { createToolRegistry } from '../tool-registry';
 import type { InstanceAiContext, InstanceAiToolRegistry } from '../types';
@@ -99,6 +103,17 @@ async function review(
 	}
 }
 
+/** The field that carries the reason of a review on the payload of its card. */
+const askReasonFieldSchema = z.object({ askReason: instanceAiApprovalAskReasonSchema.optional() });
+
+/** What the card says about a review that asked. */
+function askReasonOf(outcome: ApprovalReviewOutcome): InstanceAiApprovalAskReason {
+	if (outcome.judgeFailed) return { kind: 'judge-failed' };
+	if (outcome.decidedBy === 'judge') return { kind: 'judge', text: outcome.reason };
+	// The rules ask for two causes: the route of the action, or the length of an MCP call.
+	return { kind: outcome.route === 'always-ask' ? 'always-ask' : 'too-long' };
+}
+
 type ApprovalReviewContext = Pick<InstanceAiContext, 'logger' | 'trackTelemetry'> & {
 	approvalReviewer: InstanceAiApprovalReviewer;
 };
@@ -110,16 +125,23 @@ type ApprovalReviewContext = Pick<InstanceAiContext, 'logger' | 'trackTelemetry'
  * `suspend()` that records the request. A plain approval then goes to review.
  * When the review approves, the tool runs again at once with the approval, as
  * if the user had approved the card. In every other case the real `suspend()`
- * shows the card. Telemetry that the probe tracks is sent only when the card
+ * shows the card. When the review asks, the card carries the reason as
+ * `askReason`. Telemetry that the probe tracks is sent only when the card
  * shows (see `holdProbeTelemetry`).
  */
 function withApprovalReview(tool: BuiltTool, context: ApprovalReviewContext): BuiltTool {
-	const { handler } = tool;
-	if (!handler || tool.suspendSchema === undefined) return tool;
+	const { handler, suspendSchema } = tool;
+	if (!handler || suspendSchema === undefined) return tool;
 	const { approvalReviewer: reviewer, logger } = context;
+	// The runtime stores only the fields that the suspend schema names, so the schema
+	// must name `askReason`. A JSON Schema is not extended: its card shows no reason.
+	const reviewedSuspendSchema = isZodSchema(suspendSchema)
+		? z.intersection(suspendSchema, askReasonFieldSchema)
+		: undefined;
 
 	return {
 		...tool,
+		...(reviewedSuspendSchema ? { suspendSchema: reviewedSuspendSchema } : {}),
 		async handler(input, ctx) {
 			// A resumed call carries a decision already.
 			if (!isInterruptible(ctx) || !isFirstCall(ctx)) return await handler.call(tool, input, ctx);
@@ -164,7 +186,11 @@ function withApprovalReview(tool: BuiltTool, context: ApprovalReviewContext): Bu
 			}
 			if (outcome.decision !== 'approve') {
 				sendHeldTelemetry();
-				return await ctx.suspend(requested.payload, requested.options);
+				const card =
+					reviewedSuspendSchema && isRecord(requested.payload)
+						? { ...requested.payload, askReason: askReasonOf(outcome) }
+						: requested.payload;
+				return await ctx.suspend(card, requested.options);
 			}
 
 			return await handler.call(tool, input, {

@@ -70,7 +70,12 @@ export class AgentProjectCleanupService {
 				agent,
 				deletion.actor,
 				deletion.transferId,
-				deletion.ctx,
+				deletion.ctx ?? {},
+				async () => {
+					await agentExecutionService.deleteExecutionLogsForAgent(agent.id);
+					await agentExecutionService.deleteMemoryThreadsForAgent(agent.id);
+					await agentChatAttachmentService.deleteByAgent(agent.id);
+				},
 			);
 		}
 		await agentExecutionService.deleteExecutionLogsForProject(projectId);

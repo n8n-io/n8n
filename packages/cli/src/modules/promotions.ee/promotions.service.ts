@@ -16,6 +16,7 @@ import {
 	type PromotionDirection,
 	type PromotionMissingProjectListPublicDto,
 	type PromotionPreviewCheck,
+	type PromotionPreview,
 	type PromotionRunContents,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
@@ -70,11 +71,13 @@ import {
 	instanceApplyRequest,
 } from './apply-preview.service';
 import { PromotePreviewService } from './promote-preview.service';
+import { previewEnvironment, previewSource } from './promotion-preview';
 import { GitCommitPackageReader } from './git-commit-package-reader';
 import { exportInstancePackage, instancePromotionExportRequest } from './instance-package';
 import { PromotionCheckoutCleanupService } from './promotion-checkout-cleanup.service';
 import {
 	PromotionEnvironmentLockService,
+	PromotionLockLostError,
 	throwIfLockLost,
 } from './promotion-environment-lock.service';
 import { PromotionEnvironmentResolver } from './promotion-environment.resolver';
@@ -253,10 +256,9 @@ export class PromotionsService {
 		signal: AbortSignal,
 	): Promise<PromotePackageResultDto> {
 		this.assertInstanceScope(input, 'Promote');
-		await this.assertCheckoutReady(input, 'promoting');
+		await this.ensureCheckout(input, signal);
 
 		const branchName = checkoutBranchName(input.config);
-		await this.removeLeftoverLockFiles(input, branchName);
 		const credentials = await this.credentialsFor(input);
 		const target = await this.prepareTargetBranch(input, branchName, credentials);
 		const targetBranchName = target?.targetBranchName;
@@ -292,11 +294,14 @@ export class PromotionsService {
 				{ targetDir: stagingFolder },
 			);
 
+			// The lease can expire during the long export. Check before the package changes,
+			// because another operation can own the folder after that.
+			throwIfLockLost(signal);
 			// Replace the managed package only after the new one is complete.
 			await rm(packageFolder, { recursive: true, force: true });
 			await rename(stagingFolder, packageFolder);
 
-			// Before the descriptor goes, so a stop here leaves the checkout usable.
+			// The lease can also expire during the write.
 			throwIfLockLost(signal);
 			if (targetBranchName) {
 				// The commit moves the local base branch. Remove trust before it moves, and
@@ -453,10 +458,9 @@ export class PromotionsService {
 
 		this.workingCopy.validateSelection(selection);
 		const project = await this.assertTeamProject(selection.projectId);
-		await this.assertCheckoutReady(input, 'promoting');
+		await this.ensureCheckout(input, signal);
 
 		const branchName = checkoutBranchName(input.config);
-		await this.removeLeftoverLockFiles(input, branchName);
 		const credentials = await this.credentialsFor(input);
 		// A branched environment resets the checkout to the latest base here, so the
 		// selection applies on top of it and pushes to a fresh promotion branch.
@@ -495,6 +499,8 @@ export class PromotionsService {
 		const prePushBackup = `${packageFolder}.pre-selection`;
 		let backedUp = false;
 		let keepPrePushBackup = false;
+		let packageChanged = false;
+		let lockLost = false;
 
 		let pushed: PushedPromotion;
 		try {
@@ -525,6 +531,10 @@ export class PromotionsService {
 				{ targetDir: stagingFolder },
 			);
 
+			// The lease can expire during the long export. Check before the package changes,
+			// because another operation can own the folder after that.
+			throwIfLockLost(signal);
+			packageChanged = true;
 			await this.workingCopy.applySelection(
 				packageFolder,
 				stagingFolder,
@@ -533,8 +543,7 @@ export class PromotionsService {
 				branch,
 			);
 
-			// Before the descriptor goes, so a stop here leaves the checkout usable. The catch
-			// below restores the package.
+			// The lease can also expire during the write.
 			throwIfLockLost(signal);
 			if (targetBranchName) {
 				// The commit moves the local base branch. Remove trust before it moves, and
@@ -565,34 +574,45 @@ export class PromotionsService {
 			});
 			pushed = { commitSha, counts, commitMessage };
 		} catch (error) {
-			if (backedUp) {
-				await rm(packageFolder, { recursive: true, force: true }).catch((restoreError: unknown) => {
-					this.logger.warn('Failed to remove the incomplete selection after a failed promote', {
-						packageFolder,
-						error: restoreError,
-					});
-				});
-				try {
-					await rename(prePushBackup, packageFolder);
-				} catch (restoreError: unknown) {
-					keepPrePushBackup = true;
-					this.logger.warn(
-						'Failed to restore the package from the pre-selection copy. The copy is at the backup path.',
-						{ packageFolder, backupFolder: prePushBackup, error: restoreError },
+			// After a lost lock, another operation can own the package and the backup. Leave them.
+			// The next Promote resets the package to the remote branch before it writes.
+			// The signal covers a lease that expired while a step failed with another error.
+			lockLost = error instanceof PromotionLockLostError || signal.aborted;
+			if (packageChanged && !lockLost) {
+				if (backedUp) {
+					await rm(packageFolder, { recursive: true, force: true }).catch(
+						(restoreError: unknown) => {
+							this.logger.warn('Failed to remove the incomplete selection after a failed promote', {
+								packageFolder,
+								error: restoreError,
+							});
+						},
+					);
+					try {
+						await rename(prePushBackup, packageFolder);
+					} catch (restoreError: unknown) {
+						keepPrePushBackup = true;
+						this.logger.warn(
+							'Failed to restore the package from the pre-selection copy. The copy is at the backup path.',
+							{ packageFolder, backupFolder: prePushBackup, error: restoreError },
+						);
+					}
+				} else if (!packageExisted) {
+					await rm(packageFolder, { recursive: true, force: true }).catch(
+						(cleanupError: unknown) => {
+							this.logger.warn('Failed to remove the first selection after a failed promote', {
+								packageFolder,
+								error: cleanupError,
+							});
+						},
 					);
 				}
-			} else if (!packageExisted) {
-				await rm(packageFolder, { recursive: true, force: true }).catch((cleanupError: unknown) => {
-					this.logger.warn('Failed to remove the first selection after a failed promote', {
-						packageFolder,
-						error: cleanupError,
-					});
-				});
 			}
 			throw error;
 		} finally {
-			// A first push has no backup of its own. Keep any backup left by an earlier failure.
-			if (packageExisted && !keepPrePushBackup) {
+			// A first push has no backup of its own. Keep any backup left by an earlier failure,
+			// or after a lost lock.
+			if (packageExisted && !keepPrePushBackup && !lockLost) {
 				await rm(prePushBackup, { recursive: true, force: true }).catch((error: unknown) => {
 					this.logger.warn('Failed to remove the selection backup', { prePushBackup, error });
 				});
@@ -652,12 +672,12 @@ export class PromotionsService {
 						// preview, stop and write nothing. This is a check, not a lock. It runs before the
 						// selection is read, so a selected folder that moved away gives this result too.
 						if (request.expectedPreviewRevision !== undefined) {
+							await this.ensureCheckout(current, signal);
 							const preview = await this.promotePreviewService.build({
 								user: actor,
 								projectId,
 								input: current,
-								readBranch: async () =>
-									await this.readBranchPackageResolved(current, projectId, 'promoting'),
+								readBranch: async () => await this.readBranchPackageResolved(current, projectId),
 							});
 							if (preview.revision !== request.expectedPreviewRevision) {
 								this.logger.info('Promote stopped because the preview changed', {
@@ -835,16 +855,21 @@ export class PromotionsService {
 	 */
 	async readInstanceApplyPackage(environmentId: string): Promise<{
 		commitSha: string;
-		source: { environmentId: string; branchName: string };
+		source: PromotionPreview['source'];
+		environment: PromotionPreview['environment'];
 		files: Map<string, Buffer>;
 	}> {
-		const input = await this.resolver.resolveForEnvironment(environmentId, 'apply');
-		this.assertInstanceScope(input, 'Previewing an Apply');
-		await this.assertCheckoutReady(input, 'reading its package');
+		const resolve = async () => {
+			const resolved = await this.resolver.resolveForEnvironment(environmentId, 'apply');
+			this.assertInstanceScope(resolved, 'Previewing an Apply');
+			return resolved;
+		};
+		const input = await this.ensureCheckoutForRead(await resolve(), resolve);
 		const { identity, files } = await this.readApplyTip(input, undefined);
 		return {
 			commitSha: identity.git.commitSha,
-			source: { environmentId: identity.environmentId, branchName: identity.git.branchName },
+			source: previewSource(input),
+			environment: previewEnvironment(input),
 			files,
 		};
 	}
@@ -855,9 +880,12 @@ export class PromotionsService {
 		commitSha: string,
 		filePaths: readonly string[],
 	): Promise<Map<string, string>> {
-		const input = await this.resolver.resolveForEnvironment(environmentId, 'apply');
-		this.assertInstanceScope(input, 'Reading Apply changes');
-		return await this.readFilesAtCommit(input, commitSha, filePaths);
+		const resolve = async () => {
+			const resolved = await this.resolver.resolveForEnvironment(environmentId, 'apply');
+			this.assertInstanceScope(resolved, 'Reading Apply changes');
+			return resolved;
+		};
+		return await this.readFilesAtCommit(await resolve(), resolve, commitSha, filePaths);
 	}
 
 	async applyProjectSelection(
@@ -965,8 +993,8 @@ export class PromotionsService {
 		projectId: string,
 		commitSha: string,
 	): Promise<Map<string, Buffer>> {
-		const input = await this.resolver.resolveForProject(projectId, 'apply');
-		await this.assertCheckoutReady(input, 'reading the Apply branch');
+		const resolve = async () => await this.resolver.resolveForProject(projectId, 'apply');
+		const input = await this.ensureCheckoutForRead(await resolve(), resolve);
 		return await this.gitService.readTreeAtCommit({
 			remoteUrl: repositoryUrl(input),
 			credentials: await this.credentialsFor(input),
@@ -1034,7 +1062,7 @@ export class PromotionsService {
 		expectedPreviewRevision?: string,
 		ctx: OperationContext = {},
 	): Promise<ApplyPackageResultDto> {
-		await this.assertCheckoutReady(input, 'applying');
+		await this.ensureCheckout(input, signal);
 
 		const tip = await this.readApplyTip(input, expectedSource);
 		if (tip.status === 'source-changed') return tip;
@@ -1137,7 +1165,7 @@ export class PromotionsService {
 		ctx: OperationContext = {},
 	): Promise<ApplyPackageResultDto> {
 		this.assertInstanceScope(input, 'Apply');
-		await this.assertCheckoutReady(input, 'applying');
+		await this.ensureCheckout(input, signal);
 
 		const tip = await this.readApplyTip(input, expectedSource);
 		if (tip.status === 'source-changed') return tip;
@@ -1198,10 +1226,11 @@ export class PromotionsService {
 	 * before they apply changes to them from the project page.
 	 */
 	async listMissingProjects(environmentId: string): Promise<PromotionMissingProjectListPublicDto> {
-		const input = await this.resolver.resolveForEnvironment(environmentId, 'apply');
+		const resolve = async () => await this.resolver.resolveForEnvironment(environmentId, 'apply');
 		// A new project has no environment link, so its project Apply reads the instance environment.
-		this.assertInstanceScope(input, 'Listing missing projects');
-		await this.assertCheckoutReady(input, 'reading its package');
+		const resolved = await resolve();
+		this.assertInstanceScope(resolved, 'Listing missing projects');
+		const input = await this.ensureCheckoutForRead(resolved, resolve);
 
 		const head = await this.fetchApplyHead(input);
 		const files = head && (await this.readApplyTree(head));
@@ -1333,18 +1362,16 @@ export class PromotionsService {
 		projectId: string,
 		direction: PromotionDirection,
 	): Promise<BranchPackage> {
-		const input = await this.resolver.resolveForProject(projectId, direction);
-		return await this.readBranchPackageResolved(input, projectId, 'listing branch files');
+		const resolve = async () => await this.resolver.resolveForProject(projectId, direction);
+		const input = await this.ensureCheckoutForRead(await resolve(), resolve);
+		return await this.readBranchPackageResolved(input, projectId);
 	}
 
-	/** `action` completes the error for a disconnected environment: "Connect it before <action>." */
+	/** Call it only when the checkout is ready. */
 	private async readBranchPackageResolved(
 		input: PromotionOperationInput,
 		projectId: string,
-		action: string,
 	): Promise<BranchPackage> {
-		await this.assertCheckoutReady(input, action);
-
 		const paths = this.workingDirectory.paths(input.environmentId);
 		const branchName = checkoutBranchName(input.config);
 		const manifestPath = `${PACKAGE_SUBFOLDER}/${MANIFEST_FILE}`;
@@ -1361,6 +1388,7 @@ export class PromotionsService {
 		});
 
 		return {
+			input,
 			environmentId: input.environmentId,
 			branchName,
 			commitSha,
@@ -1386,8 +1414,9 @@ export class PromotionsService {
 
 	/**
 	 * Reads files at a commit that an earlier change preview reported. The branch may have
-	 * moved since then, so this reads the commit and not the branch tip. Paths that the commit
-	 * does not hold are left out, for example the manifest before the first promotion.
+	 * moved since then, so this reads the commit and not the branch tip. Another main may have
+	 * served the preview, so this fetches the branch when the checkout lacks the commit. Paths
+	 * that the commit does not hold are left out, for example the manifest before the first promotion.
 	 */
 	async readBranchFilesAtCommit(
 		projectId: string,
@@ -1395,25 +1424,29 @@ export class PromotionsService {
 		commitSha: string,
 		filePaths: readonly string[],
 	): Promise<Map<string, string>> {
-		const input = await this.resolver.resolveForProject(projectId, direction);
-		return await this.readFilesAtCommit(input, commitSha, filePaths);
+		const resolve = async () => await this.resolver.resolveForProject(projectId, direction);
+		return await this.readFilesAtCommit(await resolve(), resolve, commitSha, filePaths);
 	}
 
 	private async readFilesAtCommit(
-		input: PromotionOperationInput,
+		resolved: PromotionOperationInput,
+		resolveAgain: () => Promise<PromotionOperationInput>,
 		commitSha: string,
 		filePaths: readonly string[],
 	): Promise<Map<string, string>> {
-		await this.assertCheckoutReady(input, 'reading branch files');
-		return await this.readExistingFiles(
-			{
-				paths: this.workingDirectory.paths(input.environmentId),
-				branchName: checkoutBranchName(input.config),
-				environmentId: input.environmentId,
-				commitSha,
-			},
-			filePaths,
-		);
+		const input = await this.ensureCheckoutForRead(resolved, resolveAgain);
+		const operation = {
+			paths: this.workingDirectory.paths(input.environmentId),
+			branchName: checkoutBranchName(input.config),
+			environmentId: input.environmentId,
+		};
+		await this.gitService.ensureCommit({
+			...operation,
+			remoteUrl: repositoryUrl(input),
+			credentials: await this.credentialsFor(input),
+			commitSha,
+		});
+		return await this.readExistingFiles({ ...operation, commitSha }, filePaths);
 	}
 
 	/**
@@ -1428,8 +1461,8 @@ export class PromotionsService {
 			baseline: { targetBranchName: string } | { commitSha: string; targetBranchName?: string };
 		},
 	): Promise<{ baseline: PackageCommit; head: PackageCommit }> {
-		const input = await this.resolver.resolveForEnvironment(environmentId, 'promote');
-		await this.assertCheckoutReady(input, 'reading a review');
+		const resolve = async () => await this.resolver.resolveForEnvironment(environmentId, 'promote');
+		const input = await this.ensureCheckoutForRead(await resolve(), resolve);
 		const operation = {
 			paths: this.workingDirectory.paths(input.environmentId),
 			branchName: checkoutBranchName(input.config),
@@ -1463,15 +1496,6 @@ export class PromotionsService {
 		return await this.gitService.readFilesAtCommit({
 			...operation,
 			filePaths: filePaths.filter((path) => existing.has(path)),
-		});
-	}
-
-	/** A killed earlier operation can leave Git lock files that block every write. Run under the lock. */
-	private async removeLeftoverLockFiles(input: PromotionOperationInput, branchName: string) {
-		await this.gitService.removeLeftoverLockFiles({
-			paths: this.workingDirectory.paths(input.environmentId),
-			branchName,
-			environmentId: input.environmentId,
 		});
 	}
 
@@ -1667,16 +1691,46 @@ export class PromotionsService {
 	 * environment we just resolved. Another process may have changed the remote or
 	 * the branch, which cannot invalidate this machine's cache.
 	 */
-	private async assertCheckoutReady(input: PromotionOperationInput, action: string) {
+	private async hasReadyCheckout(input: PromotionOperationInput): Promise<boolean> {
 		const { repositoryFolder } = this.workingDirectory.paths(input.environmentId);
-		const cloned = await this.gitService.hasCheckout(repositoryFolder);
-		const current =
-			cloned && (await this.workingDirectory.matchesDescriptor(this.descriptorFor(input)));
-		if (!current) {
-			throw new BadRequestError(
-				`This ${input.config.direction} environment is not connected. Connect it before ${action}.`,
-			);
-		}
+		return (
+			(await this.gitService.hasCheckout(repositoryFolder)) &&
+			(await this.workingDirectory.matchesDescriptor(this.descriptorFor(input)))
+		);
+	}
+
+	/**
+	 * Clones the branch when this main has no ready checkout. Each main keeps its own
+	 * checkout, so the first operation on a main clones, whichever main ran Connect.
+	 * Call it inside the environment lock. The lock is not reentrant, so this does not take it.
+	 */
+	private async ensureCheckout(input: PromotionOperationInput, signal: AbortSignal) {
+		if (await this.hasReadyCheckout(input)) return;
+
+		const startedAt = Date.now();
+		await this.cloneResolved(input, signal);
+		this.logger.info('Cloned a promotion branch on demand', {
+			environmentId: input.environmentId,
+			direction: input.config.direction,
+			durationMs: Date.now() - startedAt,
+		});
+	}
+
+	/**
+	 * Read paths run without the environment lock. Only a clone writes the folder, so take
+	 * the lock just for the clone. Returns the environment to read: the one read again inside
+	 * the lock when this cloned, so the read matches the clone.
+	 */
+	private async ensureCheckoutForRead(
+		input: PromotionOperationInput,
+		resolveAgain: () => Promise<PromotionOperationInput>,
+	): Promise<PromotionOperationInput> {
+		if (await this.hasReadyCheckout(input)) return input;
+
+		return await this.withEnvironmentLock(input, resolveAgain, async (current, signal) => {
+			await this.ensureCheckout(current, signal);
+			return current;
+		});
 	}
 
 	private descriptorFor(input: PromotionOperationInput): PromotionCacheDescriptor {

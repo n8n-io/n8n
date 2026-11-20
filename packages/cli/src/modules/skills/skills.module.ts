@@ -12,6 +12,10 @@ export class SkillsModule implements ModuleInterface {
 	async init() {
 		await import('./controllers/skills.controller.js');
 		await import('./controllers/skill-source.controller.js');
+		await import('./controllers/skill-sync-settings.controller.js');
+
+		const { SkillSyncSettingsService } = await import('./services/skill-sync-settings.service.js');
+		await Container.get(SkillSyncSettingsService).init();
 
 		const { SkillSourceClientRegistry } = await import(
 			'./sources/skill-source-client-registry.service.js'
@@ -20,6 +24,15 @@ export class SkillsModule implements ModuleInterface {
 			'./sources/github/github-skill-source-client.js'
 		);
 		Container.get(SkillSourceClientRegistry).register(Container.get(GitHubSkillSourceClient));
+	}
+
+	async settings() {
+		const { SkillSyncSettingsService } = await import('./services/skill-sync-settings.service.js');
+		const skillSyncSettings = Container.get(SkillSyncSettingsService);
+		return {
+			skillSyncEnabled: skillSyncSettings.isEnabled(),
+			skillSyncManagedByEnv: skillSyncSettings.isManagedByEnv,
+		};
 	}
 
 	async systemTasks() {

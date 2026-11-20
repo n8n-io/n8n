@@ -29,7 +29,13 @@ import {
 	TelemetryProxy,
 } from '@n8n/backend-services';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
-import { EndpointsConfig, ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
+import {
+	type AgentsConfig,
+	EndpointsConfig,
+	ExecutionsConfig,
+	GlobalConfig,
+	WorkflowsConfig,
+} from '@n8n/config';
 import {
 	GLOBAL_MEMBER_ROLE,
 	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
@@ -60,6 +66,7 @@ import { ExecutionService } from '@/executions/execution.service';
 import { DataTableProxyService } from '@n8n/backend-module-data-table';
 import { NodeCatalogService } from '@/node-catalog';
 import { AiGatewayService } from '@/services/ai-gateway.service';
+import { AiPreferenceSettingsService } from '@/services/ai-preference-settings.service';
 import { FolderService } from '@/services/folder.service';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
 import { ProjectService } from '@/services/project.service.ee';
@@ -105,11 +112,21 @@ const mockAiGatewayService = () =>
 		isAvailable: vi.fn().mockResolvedValue({ available: false }),
 	});
 
+const mockModuleRegistry = () => {
+	const moduleRegistry = mockInstance(ModuleRegistry);
+	Object.assign(moduleRegistry, {
+		settings: new Map([['mcp', { preferencesEnabled: true }]]),
+	});
+	return moduleRegistry;
+};
+
 const mcpFeatureFlags = (overrides: Partial<McpFeatureFlags> = {}): McpFeatureFlags => ({
 	mcpApps: { enabled: false, variant: 'unassigned' },
 	instanceContextEnabled: false,
 	...overrides,
 });
+
+const aiPreferenceSettings = mockInstance(AiPreferenceSettingsService, { isEnabled: true });
 
 describe('McpService', () => {
 	let mcpService: McpService;
@@ -120,8 +137,11 @@ describe('McpService', () => {
 	let logger: Logger;
 	let eventService: EventService;
 	let instanceWriteAccess: Mocked<InstanceWriteAccessService>;
+	let moduleRegistry: Mocked<ModuleRegistry>;
 
 	beforeEach(() => {
+		moduleRegistry = mockModuleRegistry();
+		Object.assign(aiPreferenceSettings, { isEnabled: true });
 		eventService = mockInstance(EventService);
 		instanceWriteAccess = mockInstance(InstanceWriteAccessService, {
 			isReadOnly: vi.fn().mockReturnValue(false),
@@ -174,7 +194,7 @@ describe('McpService', () => {
 			mockInstance(ErrorWorkflowValidationService),
 			mockAiGatewayService(),
 			mockInstance(McpPostSaveMetricsService),
-			mockInstance(ModuleRegistry),
+			moduleRegistry,
 			eventService,
 			mockInstance(FolderService),
 			aiPreferenceService,
@@ -234,7 +254,7 @@ describe('McpService', () => {
 				mockInstance(ErrorWorkflowValidationService),
 				mockAiGatewayService(),
 				mockInstance(McpPostSaveMetricsService),
-				mockInstance(ModuleRegistry),
+				mockModuleRegistry(),
 				mockInstance(EventService),
 				mockInstance(FolderService),
 				mockInstance(AiPreferenceService),
@@ -448,7 +468,7 @@ describe('McpService', () => {
 				mockInstance(ErrorWorkflowValidationService),
 				mockAiGatewayService(),
 				mockInstance(McpPostSaveMetricsService),
-				mockInstance(ModuleRegistry),
+				mockModuleRegistry(),
 				mockInstance(EventService),
 				mockInstance(FolderService),
 				mockInstance(AiPreferenceService),
@@ -672,6 +692,28 @@ describe('McpService', () => {
 			expect(typeof server.close).toBe('function');
 			expect(typeof server.registerTool).toBe('function');
 		});
+
+		it.each([true, false])(
+			'registers the preference tools only while the MCP Preferences switch is %s',
+			async (preferencesEnabled) => {
+				moduleRegistry.settings.set('mcp', { preferencesEnabled });
+				const user = Object.assign(new User(), { id: 'user-1', role: GLOBAL_MEMBER_ROLE });
+
+				const server = await mcpService.getServer(user, mcpFeatureFlags());
+				const toolNames = Object.keys(
+					(server as unknown as { _registeredTools: Record<string, unknown> })._registeredTools,
+				);
+
+				for (const tool of [
+					'get_user_preferences',
+					'save_user_preference',
+					'update_user_preference',
+					'undo_user_preference',
+				]) {
+					expect(toolNames.includes(tool)).toBe(preferencesEnabled);
+				}
+			},
+		);
 
 		describe('protocol serving through createMcpHandler', () => {
 			const sseData = (text: string): Array<Record<string, unknown>> =>
@@ -952,6 +994,18 @@ describe('McpService', () => {
 				expect(granted).toContain('call get_user_preferences first');
 			});
 
+			it('drops the pointer while the MCP Preferences switch is off', async () => {
+				moduleRegistry.settings.set('mcp', { preferencesEnabled: false });
+
+				expect(await initialize(mcpFeatureFlags())).not.toContain('get_user_preferences');
+			});
+
+			it('drops the pointer while the instance preferences switch is off', async () => {
+				Object.assign(aiPreferenceSettings, { isEnabled: false });
+
+				expect(await initialize(mcpFeatureFlags())).not.toContain('get_user_preferences');
+			});
+
 			it('serves a 2025-era client through the stateless legacy fallback', async () => {
 				const handler = await buildHandler();
 
@@ -1229,6 +1283,7 @@ describe('McpService', () => {
 					eventBus,
 					mock<InstanceSettings>(),
 					mock<UserRepository>(),
+					mock<AgentsConfig>(),
 				).init();
 				vi.mocked(eventService.emit).mockImplementation(relayEvents.emit.bind(relayEvents));
 				const telemetry = mock<TelemetryProxy>();
@@ -1670,7 +1725,7 @@ describe('McpService', () => {
 				mockInstance(ErrorWorkflowValidationService),
 				mockAiGatewayService(),
 				mockInstance(McpPostSaveMetricsService),
-				mockInstance(ModuleRegistry),
+				mockModuleRegistry(),
 				mockInstance(EventService),
 				mockInstance(FolderService),
 				mockInstance(AiPreferenceService),
@@ -1732,7 +1787,7 @@ describe('McpService', () => {
 				mockInstance(ErrorWorkflowValidationService),
 				mockAiGatewayService(),
 				mockInstance(McpPostSaveMetricsService),
-				mockInstance(ModuleRegistry),
+				mockModuleRegistry(),
 				mockInstance(EventService),
 				mockInstance(FolderService),
 				mockInstance(AiPreferenceService),
@@ -1819,7 +1874,7 @@ describe('McpService', () => {
 					mockInstance(ErrorWorkflowValidationService),
 					mockAiGatewayService(),
 					mockInstance(McpPostSaveMetricsService),
-					mockInstance(ModuleRegistry),
+					mockModuleRegistry(),
 					mockInstance(EventService),
 					mockInstance(FolderService),
 					mockInstance(AiPreferenceService),

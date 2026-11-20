@@ -16,4 +16,15 @@ describe('LicenseState', () => {
 			expect(provider.isLicensed).toHaveBeenCalledWith(LICENSE_FEATURES.EXECUTION_LIMITS);
 		});
 	});
+
+	describe('isEnterprisePlan', () => {
+		it.each([true, false])('returns %s when the provider returns %s', (enterprise) => {
+			const provider = mock<LicenseProvider>();
+			provider.isEnterprisePlan.mockReturnValue(enterprise);
+			const licenseState = new LicenseState();
+			licenseState.setLicenseProvider(provider);
+
+			expect(licenseState.isEnterprisePlan()).toBe(enterprise);
+		});
+	});
 });

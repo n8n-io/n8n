@@ -3,7 +3,8 @@ import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils'
 import { Container } from '@n8n/di';
 
 import { AgentChatSubscriptionRepository } from '../../repositories/agent-chat-subscription.repository';
-import { AgentRepository } from '../../repositories/agent.repository';
+
+import { createAgent } from '@test-integration/db/agents';
 
 /**
  * `agent_chat_subscriptions.integrationType` is guarded by a CHECK constraint
@@ -24,13 +25,11 @@ beforeAll(async () => {
 	await testDb.init();
 
 	const project = await createTeamProject();
-	const agent = await Container.get(AgentRepository).save(
-		Container.get(AgentRepository).create({
-			name: 'Subscription constraint agent',
-			projectId: project.id,
-			integrations: [],
-		}),
-	);
+	const agent = await createAgent({
+		name: 'Subscription constraint agent',
+		projectId: project.id,
+		integrations: [],
+	});
 	agentId = agent.id;
 });
 

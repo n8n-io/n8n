@@ -388,7 +388,7 @@
                 "type": "object",
                 "properties": {
                     "color": {
-                        "type": "null"
+                        "type": "string"
                     },
                     "email": {
                         "type": "string"
@@ -592,5 +592,5 @@
             }
         }
     },
-    "version": 5
+    "version": 6
 }

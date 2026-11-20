@@ -10,6 +10,7 @@ import {
 } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { CustomFetch, HttpTransport, OutboundHttp } from '@n8n/backend-network';
+import { AgentsConfig } from '@n8n/config';
 import type {
 	CredentialsEntity,
 	PersonRepository,
@@ -141,7 +142,7 @@ vi.mock('../json-config/from-json-config', async () => {
 function makeAgentEntity(tools: AgentJsonToolConfig[]): AgentRunSource {
 	const schema: AgentJsonConfig = {
 		name: 'Test Agent',
-		model: 'anthropic/claude-sonnet-4-5',
+		model: 'anthropic/claude-sonnet-5-5',
 		instructions: 'Be helpful',
 		tools,
 	};
@@ -265,7 +266,7 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 			];
 			const baseConfig = {
 				name: 'Test Agent',
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 				instructions: 'Be helpful',
 			};
 			const agent = {
@@ -330,7 +331,7 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 		const patternOnly = makeAgentEntity([]);
 		(patternOnly.agent as ProjectAgent).schema = storedAgentConfig({
 			name: 'Test Agent',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			instructions: 'Be helpful',
 			credential: AI_GATEWAY_MANAGED_TAG,
 			config: {
@@ -353,7 +354,7 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 		const withModelKind = makeAgentEntity([]);
 		(withModelKind.agent as ProjectAgent).schema = storedAgentConfig({
 			name: 'Test Agent',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			instructions: 'Be helpful',
 			credential: AI_GATEWAY_MANAGED_TAG,
 			config: {
@@ -868,7 +869,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromResolvedSource — pe
 	function makeResolvedSourceConfig(tools: AgentJsonToolConfig[]): AgentJsonConfig {
 		return {
 			name: 'Child Agent',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			instructions: 'Be helpful',
 			tools,
 		};
@@ -918,5 +919,147 @@ describe('AgentRuntimeReconstructionService.reconstructFromResolvedSource — pe
 		expect(toolNamesPassedToBuildFromJson()).toEqual(
 			expect.arrayContaining(['Send Slack message', 'Lookup customer', 'custom_tool']),
 		);
+	});
+});
+
+describe('AgentRuntimeReconstructionService — workflow tool attribution', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		// Earlier tests leave a rejecting implementation behind.
+		resolveWorkflowToolMock.mockReset();
+		builtAgent.hasCheckpointStorage.mockReturnValue(true);
+		Container.set(SubAgentRunner, mock<SubAgentRunner>());
+	});
+
+	afterEach(() => {
+		Container.reset();
+	});
+
+	function enableAgentServiceAccounts() {
+		Container.get(AgentsConfig).serviceAccountsEnabled = true;
+	}
+
+	function agentWithIdentity(identityId: string | null): AgentRunSource {
+		const runSource = makeAgentEntity([workflowTool]);
+		return { ...runSource, agent: Object.assign(runSource.agent, { identityId }) };
+	}
+
+	function workflowToolContext() {
+		expect(resolveWorkflowToolMock).toHaveBeenCalledTimes(1);
+		return resolveWorkflowToolMock.mock.calls[0][1] as Record<string, unknown>;
+	}
+
+	async function reconstructSubAgent(
+		service: AgentRuntimeReconstructionService,
+		params: Partial<
+			Parameters<AgentRuntimeReconstructionService['reconstructFromResolvedSource']>[0]
+		>,
+	) {
+		return await service.reconstructFromResolvedSource({
+			config: {
+				name: 'Child Agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Be helpful',
+				tools: [workflowTool],
+			},
+			memoryOwnerAgentId: 'child-1',
+			projectId,
+			credentialProvider: mock<CredentialProvider>(),
+			toolDescriptors: {},
+			toolCodeByName: {},
+			skills: {},
+			runtimeProfile: 'sub-agent',
+			runType: 'test',
+			...params,
+		});
+	}
+
+	it('gives workflow tools the agent service account when agent service accounts are on', async () => {
+		enableAgentServiceAccounts();
+		const { service } = makeService({});
+		buildFromJsonResolvingTools([]);
+
+		await service.reconstructFromAgentEntity(
+			agentWithIdentity('sa-1'),
+			mock<CredentialProvider>(),
+			'test',
+		);
+
+		const context = workflowToolContext();
+		expect(context).toMatchObject({ agentId: 'agent-1', agentServiceAccountId: 'sa-1' });
+		expect(context.delegatingAgentId).toBeUndefined();
+	});
+
+	it('gives workflow tools no service account when agent service accounts are off', async () => {
+		const { service } = makeService({});
+		buildFromJsonResolvingTools([]);
+
+		await service.reconstructFromAgentEntity(
+			agentWithIdentity('sa-1'),
+			mock<CredentialProvider>(),
+			'test',
+		);
+
+		expect(workflowToolContext().agentServiceAccountId).toBeUndefined();
+	});
+
+	it('gives workflow tools no service account when the agent has none', async () => {
+		enableAgentServiceAccounts();
+		const { service } = makeService({});
+		buildFromJsonResolvingTools([]);
+
+		await service.reconstructFromAgentEntity(
+			agentWithIdentity(null),
+			mock<CredentialProvider>(),
+			'test',
+		);
+
+		expect(workflowToolContext().agentServiceAccountId).toBeUndefined();
+	});
+
+	it('gives the tools of a sub-agent its own service account and the delegating agent', async () => {
+		enableAgentServiceAccounts();
+		const { service } = makeService({});
+		buildFromJsonResolvingTools([]);
+
+		await reconstructSubAgent(service, {
+			parentAgentIdForDelegation: 'agent-1',
+			agentServiceAccountId: 'sa-child',
+		});
+
+		expect(workflowToolContext()).toMatchObject({
+			agentId: 'child-1',
+			agentServiceAccountId: 'sa-child',
+			delegatingAgentId: 'agent-1',
+		});
+	});
+
+	it('names the agent as its own delegating agent when it delegates to itself', async () => {
+		enableAgentServiceAccounts();
+		const { service } = makeService({});
+		buildFromJsonResolvingTools([]);
+
+		await reconstructSubAgent(service, {
+			memoryOwnerAgentId: 'agent-1',
+			parentAgentIdForDelegation: 'agent-1',
+			agentServiceAccountId: 'sa-1',
+		});
+
+		expect(workflowToolContext()).toMatchObject({
+			agentId: 'agent-1',
+			delegatingAgentId: 'agent-1',
+		});
+	});
+
+	it('gives the workflow tools of an inline agent no service account', async () => {
+		enableAgentServiceAccounts();
+		const { service } = makeService({});
+		buildFromJsonResolvingTools([]);
+
+		await reconstructSubAgent(service, { runtimeProfile: 'inline' });
+
+		const context = workflowToolContext();
+		expect(context.agentServiceAccountId).toBeUndefined();
+		expect(context.delegatingAgentId).toBeUndefined();
 	});
 });

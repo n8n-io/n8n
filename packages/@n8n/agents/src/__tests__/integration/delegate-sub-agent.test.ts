@@ -30,7 +30,7 @@ describe('delegate_subagent integration', () => {
 		},
 	])('selects $mode execution through the consolidated tool', async ({ request, output }) => {
 		const parent = new Agent('delegation-mode-integration')
-			.model('anthropic/claude-sonnet-4-5')
+			.model('anthropic/claude-sonnet-5-5')
 			.instructions(
 				'Delegate the bounded research subtask once, then report the tool outcome. Choose the execution mode using the tool guidance and the user request.',
 			)
@@ -68,7 +68,7 @@ describe('delegate_subagent integration', () => {
 		});
 
 		const parent = new Agent('sub-agent-parent-integration')
-			.model('anthropic/claude-sonnet-4-5')
+			.model('anthropic/claude-sonnet-5-5')
 			.instructions(
 				[
 					'You are a parent test agent.',
@@ -121,7 +121,7 @@ describe('delegate_subagent integration', () => {
 		const events: AgentEventData[] = [];
 
 		const parent = new Agent('sub-agent-parent-stream-integration')
-			.model('anthropic/claude-sonnet-4-5')
+			.model('anthropic/claude-sonnet-5-5')
 			.instructions(
 				[
 					'You are a parent streaming test agent.',

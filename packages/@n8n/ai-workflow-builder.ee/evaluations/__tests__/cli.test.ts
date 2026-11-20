@@ -198,7 +198,7 @@ describe('CLI', () => {
 
 		// Setup default mocks
 		mockParseEvaluationArgs.mockReturnValue(createMockArgs());
-		mockArgsToStageModels.mockReturnValue({ default: 'claude-sonnet-4.5' });
+		mockArgsToStageModels.mockReturnValue({ default: 'claude-sonnet-4.6' });
 		mockSetupTestEnvironment.mockResolvedValue(createMockEnvironment());
 		mockCreateAgent.mockReturnValue(createMockAgentInstance());
 		mockGenerateRunId.mockReturnValue('test-run-id');

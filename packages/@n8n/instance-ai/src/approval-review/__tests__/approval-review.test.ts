@@ -1,4 +1,4 @@
-import { wrapToolForApproval } from '@n8n/agents';
+import { isZodSchema, wrapToolForApproval } from '@n8n/agents';
 import type { BuiltTool, InterruptibleToolContext } from '@n8n/agents';
 import { z } from 'zod';
 
@@ -123,7 +123,7 @@ describe('applyApprovalReview', () => {
 		]);
 	});
 
-	it('shows the card with the original payload when the judge asks', async () => {
+	it('shows the card with the reason of the judge when the judge asks', async () => {
 		const { tool, act } = approvalTool('publish_workflow', {
 			message: 'Publish',
 			severity: 'warning',
@@ -136,7 +136,12 @@ describe('applyApprovalReview', () => {
 		expect(result).toBe(SUSPENDED);
 		expect(act).not.toHaveBeenCalled();
 		expect(ctx.suspend).toHaveBeenCalledWith(
-			{ requestId: 'req_1', message: 'Publish', severity: 'warning' },
+			{
+				requestId: 'req_1',
+				message: 'Publish',
+				severity: 'warning',
+				askReason: { kind: 'judge', text: 'judge said ask' },
+			},
 			undefined,
 		);
 		expect(review.reviewed[0].outcome).toMatchObject({ decision: 'ask', decidedBy: 'judge' });
@@ -154,6 +159,7 @@ describe('applyApprovalReview', () => {
 
 		expect(act).not.toHaveBeenCalled();
 		expect(ctx.suspend).toHaveBeenCalledTimes(1);
+		expect(ctx.suspend.mock.calls[0][0]).toMatchObject({ askReason: { kind: 'judge-failed' } });
 		expect(review.reviewed[0].outcome).toMatchObject({ decision: 'ask', judgeFailed: true });
 	});
 
@@ -177,12 +183,13 @@ describe('applyApprovalReview', () => {
 		expect(act).not.toHaveBeenCalled();
 	});
 
-	it('shows a card that needs input without a review', async () => {
-		const { tool } = approvalTool('setup_workflow', {
+	it('shows a card that needs input without a review and without a reason', async () => {
+		const card = {
 			message: 'Set up the workflow',
 			severity: 'info',
 			setupRequests: [{ node: 'Slack' }],
-		});
+		};
+		const { tool } = approvalTool('setup_workflow', card);
 		const review = reviewer('approve');
 		const ctx = interruptibleContext();
 
@@ -190,7 +197,7 @@ describe('applyApprovalReview', () => {
 
 		expect(review.judge).not.toHaveBeenCalled();
 		expect(review.reviewed).toEqual([]);
-		expect(ctx.suspend).toHaveBeenCalledTimes(1);
+		expect(ctx.suspend.mock.calls).toEqual([[{ requestId: 'req_1', ...card }, undefined]]);
 	});
 
 	it('passes a resumed call through without a review', async () => {
@@ -296,9 +303,36 @@ describe('applyApprovalReview', () => {
 
 		expect(call).not.toHaveBeenCalled();
 		expect(ctx.suspend).toHaveBeenCalledWith(
-			expect.objectContaining({ type: 'approval', toolName: 'linear_delete_issue' }),
+			expect.objectContaining({
+				type: 'approval',
+				toolName: 'linear_delete_issue',
+				askReason: { kind: 'judge', text: 'judge said ask' },
+			}),
 			expect.objectContaining({ continuation: { __n8nApprovalGate: true } }),
 		);
+	});
+
+	it('names the reason in the suspend schema, so that the runtime keeps it on the card', () => {
+		const mcpTool = wrapToolForApproval(
+			{
+				name: 'linear_delete_issue',
+				description: 'Delete an issue',
+				mcpTool: true,
+				handler: vi.fn(),
+			},
+			{ requireApproval: true },
+		);
+		const card = {
+			type: 'approval',
+			toolName: 'linear_delete_issue',
+			args: { id: 'ISS-1' },
+			askReason: { kind: 'too-long' },
+		};
+
+		const schema = reviewed(mcpTool, reviewer('ask').value).suspendSchema;
+
+		if (!isZodSchema(schema)) throw new Error('expected a Zod suspend schema');
+		expect(schema.parse({ ...card, notInTheSchema: true })).toEqual(card);
 	});
 
 	it('shows the card of an MCP call that is too long to check, without the judge', async () => {
@@ -318,6 +352,7 @@ describe('applyApprovalReview', () => {
 		expect(call).not.toHaveBeenCalled();
 		expect(review.judge).not.toHaveBeenCalled();
 		expect(ctx.suspend).toHaveBeenCalledTimes(1);
+		expect(ctx.suspend.mock.calls[0][0]).toMatchObject({ askReason: { kind: 'too-long' } });
 		expect(review.reviewed[0].outcome).toMatchObject({
 			decision: 'ask',
 			decidedBy: 'rule',
