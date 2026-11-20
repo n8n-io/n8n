@@ -356,6 +356,19 @@ describe('QuickJsBridge workflow data', () => {
 		).toBe('from host');
 	});
 
+	it('keeps a change to a small item inside the evaluation', async () => {
+		const bridge = await newBridge();
+		const $json = { count: 1, rows: [{ id: 1 }] };
+
+		expect(
+			bridge.execute(
+				'this.$json.count = 2; this.$json.rows.push({ id: 2 }); return [this.$json.count, this.$json.rows.length];',
+				{ $json },
+			),
+		).toEqual([2, 2]);
+		expect($json).toEqual({ count: 1, rows: [{ id: 1 }] });
+	});
+
 	it.each([
 		{ label: 'a marker key', $json: { a: { __isDate: true, __isoString: 'text' }, b: 1 } },
 		{ label: 'a metadata key', $json: { __isObject: true, __keys: ['x'], __length: 3 } },
