@@ -195,6 +195,7 @@ export function createEngineRuntime({
 			lifecycleEventPublisherFactory,
 			responseSender,
 			cancelExecution,
+			logger,
 		),
 	);
 	const waitSweeper = new WaitSweeper(stepStore, stepQueue, logger, waitSweepIntervalMs);
@@ -283,7 +284,9 @@ export function createEngineRuntime({
 		stop: async () => {
 			// TODO(CAT-3882): drain in-flight work instead. Stopping a worker waits
 			// only for whatever it is mid-handling; anything queued behind it is
-			// dropped, since the in-memory queues die with the process.
+			// dropped, since the in-memory queues die with the process. Stopping the
+			// orchestration worker also waits for the settled-step acknowledgements
+			// in flight, so none writes after the host closes the database.
 
 			// The sweepers stop first: they feed the queues, so nothing lands
 			// there after the workers have drained.

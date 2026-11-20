@@ -7,6 +7,7 @@ import {
 	type GraphNode,
 } from '../graph';
 import type { LifecycleEventPublisherFactory } from '../lifecycle-events';
+import { createConsoleLogger, type EngineLogger } from '../logging';
 import type { ExecutionResponseSender } from '../response-channel';
 import type { OrchestrationMessage, StepMessage, StepSettledEvent, WorkQueue } from '../queue';
 import type { CancelExecutionService } from './cancel-execution.service';
@@ -44,6 +45,9 @@ import { validateStepContext } from './validate-step-context';
  * planned, leaving both executions untouched.
  */
 export class StepSettledHandler {
+	/** The acknowledgements in flight, so `drain` can wait for them to settle. */
+	private readonly pendingAcknowledgements = new Set<Promise<void>>();
+
 	constructor(
 		private readonly executionStore: ExecutionStore,
 		private readonly stepStore: StepStore,
@@ -52,6 +56,7 @@ export class StepSettledHandler {
 		private readonly lifecycleEventPublisherFactory: LifecycleEventPublisherFactory,
 		private readonly responseSender: ExecutionResponseSender,
 		private readonly cancelExecution: CancelExecutionService,
+		private readonly logger: EngineLogger = createConsoleLogger(),
 	) {}
 
 	async handle(event: StepSettledEvent): Promise<void> {
@@ -66,7 +71,29 @@ export class StepSettledHandler {
 		// Last, so an error before this line leaves the `stale_after` time on the
 		// step. The reconciliation sweeper then publishes `step:settled` to the
 		// orchestration queue again.
-		await this.stepStore.acknowledgeSettledStep(step.id);
+		this.acknowledge(step.id);
+	}
+
+	/** Waits for the acknowledgements in flight, so none outlives the store. */
+	async drain(): Promise<void> {
+		await Promise.all(this.pendingAcknowledgements);
+	}
+
+	/**
+	 * Clears the step's `stale_after` time without making the queue wait for the
+	 * write. A lost acknowledgement is safe: the reconciliation sweeper publishes
+	 * `step:settled` again, and this handler accepts the duplicate.
+	 */
+	private acknowledge(stepId: string): void {
+		// The async wrapper turns a synchronous throw into a rejection, so the
+		// `catch` sees every failure and none escapes as an unhandled rejection.
+		const pending = (async () => {
+			await this.stepStore.acknowledgeSettledStep(stepId);
+		})().catch((error: unknown) => {
+			this.logger.warn('Failed to acknowledge a settled step', { stepId, error });
+		});
+		this.pendingAcknowledgements.add(pending);
+		void pending.finally(() => this.pendingAcknowledgements.delete(pending));
 	}
 
 	/** Applies the consequences of the settled step to its execution. */

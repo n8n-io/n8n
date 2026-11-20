@@ -35,5 +35,6 @@ export class OrchestrationWorker {
 
 	async stop(): Promise<void> {
 		await this.orchestrationQueue.stop();
+		await this.settledHandler.drain();
 	}
 }

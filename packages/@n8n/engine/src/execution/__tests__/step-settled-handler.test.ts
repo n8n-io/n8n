@@ -6,6 +6,7 @@ import {
 	type LifecycleEventPublisher,
 } from '../../lifecycle-events';
 import type { OrchestrationMessage, StepMessage, WorkQueue } from '../../queue';
+import type { EngineLogger } from '../../logging';
 import type { ExecutionResponseSender } from '../../response-channel';
 import type { CancelExecutionService } from '../cancel-execution.service';
 import type { ExecutionRecord, ExecutionStore } from '../execution-store';
@@ -168,6 +169,10 @@ function makeResponseSender() {
 	return { send: vi.fn() } as unknown as ExecutionResponseSender;
 }
 
+function makeLogger(): EngineLogger {
+	return { error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn() };
+}
+
 /** The one method of the cancel service the handler calls; a stub stands in for the class. */
 type SubExecutionCanceller = Pick<CancelExecutionService, 'cancelSubExecutions'>;
 
@@ -180,6 +185,7 @@ function makeHandler(
 		lifecycleEventPublisher = makeLifecycleEventPublisher(),
 		responseSender = makeResponseSender(),
 		subExecutionCanceller = { cancelSubExecutions: vi.fn() } as SubExecutionCanceller,
+		logger = makeLogger(),
 	} = {},
 ) {
 	return {
@@ -191,7 +197,9 @@ function makeHandler(
 			new LifecycleEventPublisherFactory(lifecycleEventPublisher),
 			responseSender,
 			subExecutionCanceller as CancelExecutionService,
+			logger,
 		),
+		logger,
 		executionStore,
 		stepQueue,
 		orchestrationQueue,
@@ -641,6 +649,83 @@ describe('StepSettledHandler', () => {
 			await expect(handler.handle(event)).rejects.toThrow('db down');
 
 			expect(stepStore.acknowledgeSettledStep).not.toHaveBeenCalled();
+		});
+
+		it('returns before the acknowledgement resolves, and drain waits for it', async () => {
+			let resolveAcknowledgement = () => {};
+			const stepStore = makeStepStore(
+				{},
+				{
+					acknowledgeSettledStep: vi.fn(
+						async () =>
+							await new Promise<void>((resolve) => {
+								resolveAcknowledgement = resolve;
+							}),
+					),
+				},
+			);
+			const { handler } = makeHandler(stepStore);
+
+			await handler.handle(event);
+
+			expect(stepStore.acknowledgeSettledStep).toHaveBeenCalledExactlyOnceWith('step-a');
+			let drained = false;
+			const drain = handler.drain().then(() => {
+				drained = true;
+			});
+			await Promise.resolve();
+			expect(drained).toBe(false);
+
+			resolveAcknowledgement();
+			await drain;
+			expect(drained).toBe(true);
+		});
+
+		it('logs a failed acknowledgement instead of throwing it', async () => {
+			const error = new Error('db down');
+			const stepStore = makeStepStore(
+				{},
+				{ acknowledgeSettledStep: vi.fn().mockRejectedValue(error) },
+			);
+			const { handler, logger } = makeHandler(stepStore);
+
+			await expect(handler.handle(event)).resolves.toBeUndefined();
+			await expect(handler.drain()).resolves.toBeUndefined();
+
+			expect(logger.warn).toHaveBeenCalledExactlyOnceWith('Failed to acknowledge a settled step', {
+				stepId: 'step-a',
+				error,
+			});
+		});
+
+		it('logs an acknowledgement that throws synchronously instead of throwing it', async () => {
+			const error = new Error('not connected');
+			const stepStore = makeStepStore(
+				{},
+				{
+					acknowledgeSettledStep: vi.fn(() => {
+						throw error;
+					}),
+				},
+			);
+			const { handler, logger } = makeHandler(stepStore);
+
+			await expect(handler.handle(event)).resolves.toBeUndefined();
+			await handler.drain();
+
+			expect(logger.warn).toHaveBeenCalledExactlyOnceWith('Failed to acknowledge a settled step', {
+				stepId: 'step-a',
+				error,
+			});
+		});
+
+		it('drains immediately when no acknowledgement is in flight', async () => {
+			const { handler } = makeHandler(makeStepStore());
+
+			await handler.handle(event);
+			await handler.drain();
+
+			await expect(handler.drain()).resolves.toBeUndefined();
 		});
 
 		it('does not acknowledge a step that the event does not match', async () => {
