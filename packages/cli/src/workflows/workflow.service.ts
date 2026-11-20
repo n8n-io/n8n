@@ -1743,10 +1743,8 @@ export class WorkflowService {
 		for (const workflow of workflows) {
 			const failure = failures.get(workflow.id);
 			if (failure) {
-				const unpublished = await this._unpublishAfterTransfer(user, workflow, publicApi);
-				if (unpublished) {
-					results.set(workflow.id, { error: { name: failure.name, message: failure.message } });
-				}
+				await this._unpublishAfterTransfer(user, workflow, publicApi);
+				results.set(workflow.id, { error: { name: failure.name, message: failure.message } });
 			}
 		}
 
@@ -1795,17 +1793,15 @@ export class WorkflowService {
 		return checkFailure;
 	}
 
-	/** Returns false if the workflow stays published. */
+	/** Never throws: a failed unpublish is logged and the workflow stays published. */
 	private async _unpublishAfterTransfer(
 		user: User,
 		workflow: PublishedWorkflow,
 		publicApi: PublicApiCaller,
-	): Promise<boolean> {
+	): Promise<void> {
 		const deactivatedVersionId = workflow.activeVersion.versionId;
-		let unpublished = false;
 		try {
 			await this._forceUnpublish(workflow, deactivatedVersionId, user);
-			unpublished = true;
 
 			this.eventService.emit('workflow-deactivated', {
 				user,
@@ -1827,7 +1823,6 @@ export class WorkflowService {
 				error,
 			});
 		}
-		return unpublished;
 	}
 
 	/** Unpublishes in a way the `workflow.deactivate` hook cannot block: a hook failure is a warning. */
