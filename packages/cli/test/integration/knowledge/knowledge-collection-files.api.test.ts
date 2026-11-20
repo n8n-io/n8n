@@ -48,7 +48,7 @@ describe('knowledge collection file routes', () => {
 			});
 	});
 
-	const filesPath = () => `/knowledge-collections/${collectionId}/files`;
+	const filesPath = () => `/knowledge/collections/${collectionId}/files`;
 
 	async function upload(user: User, filename: string, content = 'hello') {
 		return await server
@@ -108,7 +108,7 @@ describe('knowledge collection file routes', () => {
 		await server.authAgentFor(outsider).delete(`${filesPath()}/any-file`).expect(404);
 		await server
 			.authAgentFor(outsider)
-			.get(`/knowledge-collections/${collectionId}/agents`)
+			.get(`/knowledge/collections/${collectionId}/agents`)
 			.expect(404);
 	});
 
@@ -122,7 +122,7 @@ describe('knowledge collection file routes', () => {
 	});
 
 	it('answers 404 for a missing collection, and when collections are off', async () => {
-		await server.authAgentFor(editor).get('/knowledge-collections/missing/files').expect(404);
+		await server.authAgentFor(editor).get('/knowledge/collections/missing/files').expect(404);
 
 		Container.get(KnowledgeConfig).collectionsEnabled = false;
 
@@ -137,7 +137,7 @@ describe('knowledge collection file routes', () => {
 
 		const response = await server
 			.authAgentFor(viewer)
-			.get(`/knowledge-collections/${collectionId}/agents`)
+			.get(`/knowledge/collections/${collectionId}/agents`)
 			.expect(200);
 
 		expect(response.body.data).toEqual([

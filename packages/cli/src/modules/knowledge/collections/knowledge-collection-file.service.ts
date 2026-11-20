@@ -1,4 +1,7 @@
-import type { KnowledgeCollectionFileDto, KnowledgeCollectionFileListDto } from '@n8n/api-types';
+import type {
+	KnowledgeCollectionFileDto,
+	KnowledgeCollectionFileListResponse,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { isUniqueConstraintError, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -29,7 +32,7 @@ export class KnowledgeCollectionFileService {
 		this.logger = logger.scoped('knowledge');
 	}
 
-	async listFiles(user: User, collectionId: string): Promise<KnowledgeCollectionFileListDto> {
+	async listFiles(user: User, collectionId: string): Promise<KnowledgeCollectionFileListResponse> {
 		await this.collectionService.getForUser(user, collectionId, 'agent:read');
 
 		const files = await this.fileRepository.findByCollectionId(collectionId, {});

@@ -11,7 +11,7 @@ import { AgentRepository } from './repositories/agent.repository';
  * The agents of a knowledge collection. The route is in this module because
  * the knowledge module does not read agents.
  */
-@RestController('/knowledge-collections')
+@RestController('/knowledge/collections')
 export class KnowledgeCollectionAgentsController {
 	constructor(
 		private readonly collectionService: KnowledgeCollectionService,

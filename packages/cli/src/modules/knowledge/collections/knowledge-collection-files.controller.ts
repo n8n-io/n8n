@@ -48,7 +48,7 @@ const requireCollectionUpdate: RequestHandler = async (req, res, next) => {
  * The routes carry no scope decorator: the service checks the scope of the
  * user on the home project of the collection.
  */
-@RestController('/knowledge-collections')
+@RestController('/knowledge/collections')
 export class KnowledgeCollectionFilesController {
 	constructor(private readonly fileService: KnowledgeCollectionFileService) {}
 
