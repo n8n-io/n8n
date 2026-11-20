@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 
@@ -66,10 +66,12 @@ export class McpGuardService {
 			return new Response('gym unavailable', { status: 502 });
 		}
 
-		const server = new Server(
+		// The tools are not static, so the low-level server of `McpServer` answers the requests.
+		const mcp = new McpServer(
 			{ name: 'mcp-guard', version: '0.1.0' },
 			{ capabilities: { tools: {} } },
 		);
+		const server = mcp.server;
 		server.setRequestHandler(ListToolsRequestSchema, async () => ({
 			tools: await run.router.listTools(),
 		}));
@@ -82,12 +84,12 @@ export class McpGuardService {
 			sessionIdGenerator: undefined,
 			enableJsonResponse: true,
 		});
-		await server.connect(transport);
+		await mcp.connect(transport);
 		try {
 			return await transport.handleRequest(req);
 		} finally {
 			void transport.close();
-			void server.close();
+			void mcp.close();
 		}
 	}
 }
