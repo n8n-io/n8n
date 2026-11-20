@@ -1,6 +1,6 @@
 ---
 title: Write a database migration
-last_reviewed: 2026-11-06
+last_reviewed: 2026-11-20
 contact: ivov
 ---
 
@@ -101,7 +101,7 @@ In a migration, import application code only as types, and copy any helper you n
 - **Expect bad data.** Old rows can hold `null`, an old JSON shape, or JSON that does not parse. Check each value before you use it.
 - **Work in SQL where you can.** One `INSERT ... SELECT` is faster than a loop in TypeScript.
 - **Read in batches.** Never run `SELECT *` without a limit. Use `runInBatches` with 100 to 500 rows, or `copyTable`.
-- **Fix the order.** Add an `ORDER BY` to each backfill, so that a second run gives the same result.
+- **Fix the order.** Add `ORDER BY` on a unique column to each `runInBatches` query. This keeps the order stable across pages. CI checks new migrations for the clause.
 - **Count before you swap.** When you copy a table to replace the old one, compare the row counts first.
 
 > [!WARNING]

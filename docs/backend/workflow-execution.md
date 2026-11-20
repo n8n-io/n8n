@@ -1,12 +1,12 @@
 ---
 title: Workflow execution
-last_reviewed: 2026-11-05
+last_reviewed: 2026-11-20
 contact: ivov
 ---
 
 # Workflow execution
 
-On [Start here](README.md), you called the production URL of the webhook in your workflow, and you got a greeting back. On this page, we follow that call through the main.
+On [Start here](README.md), you called the production URL of the webhook in your workflow, and you got a greeting back. On this page, we follow that call through the main and the default execution engine, v1.
 
 ```mermaid
 sequenceDiagram
@@ -24,7 +24,9 @@ sequenceDiagram
 
 ## Lookup
 
-When your call arrives, the main looks up which workflow has a webhook with the path `hello` and the method `POST`. Then it loads the published version of that workflow. Edits to the draft do not change production until you publish them.
+When your call arrives, the main looks up which workflow has a webhook with the path `hello` and the method `POST`. Then it loads the published version of that workflow. Edits to its nodes and connections do not change production until you publish them. With the `engine-v2` module enabled, production uses the engine of the published version.
+
+n8n stores live settings on the workflow itself. Changes to live settings alone do not create a new version. Production triggers that use cached settings can still use the previous values until n8n refreshes the cache.
 
 ## Start
 
@@ -97,7 +99,7 @@ A message to an agent starts an [agent turn](agent-turn.md) instead.
 <summary>Answers</summary>
 
 1. B. The engine never writes to the database itself. It calls the hooks before and after each node and the whole workflow.
-2. B. The main loads the published version of the workflow. Edits to the draft do not change production until you publish them.
+2. B. The main loads the nodes and connections of the published version.
 3. A. The process that took the call keeps the request open. It sends the response when the result of the worker arrives through the queue.
 4. C. Only a short wait stays in memory.
 5. B. The editor sends the run data that it already has, so the engine runs only what changed.
