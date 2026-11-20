@@ -494,9 +494,6 @@ overrides:
   '@vue/shared@3.5.26': 3.5.42
   '@opentelemetry/exporter-prometheus@<=0.217.0': 0.217.0
   '@opentelemetry/sdk-node@<=0.217.0': 0.217.0
-  '@daytona/sdk@0.205.1>@aws-sdk/client-s3': 3.808.0
-  '@daytona/sdk@0.205.1>@aws-sdk/lib-storage': 3.808.0
-  '@daytona/sdk@0.205.1>@opentelemetry/sdk-trace-base': 'catalog:'
   langsmith: 0.6.0
   hono: 4.13.11
   '@tiptap/core': 'catalog:'
