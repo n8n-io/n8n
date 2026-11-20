@@ -2,11 +2,11 @@ import { inTest, Logger } from '@n8n/backend-common';
 import { isAxiosError } from '@n8n/backend-network';
 import { type InstanceType } from '@n8n/constants';
 import { Service } from '@n8n/di';
-import type { ReportingOptions } from '@n8n/errors';
+import type { ErrorLevel, ReportingOptions } from '@n8n/errors';
 import type { DataCollection, ErrorEvent, EventHint, Integration } from '@sentry/core';
 import type Sentry from '@sentry/node';
 import { ApplicationError, ExecutionCancelledError } from 'n8n-workflow';
-import { BaseError, UnexpectedError, type ErrorLevel } from '@n8n/errors';
+import { BaseError, UnexpectedError } from '@n8n/errors';
 import { createHash } from 'node:crypto';
 
 import {
