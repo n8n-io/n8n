@@ -5,6 +5,7 @@ import {
 } from '@n8n/agents';
 import { APPROVAL_RESUME_SCHEMA } from '@n8n/agents/tool';
 import { zodToJsonSchema } from '@n8n/ai-utilities/json-schema';
+import { toolCallSimulationSchema, type ToolCallSimulation } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { ForbiddenError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
@@ -668,6 +669,47 @@ describe('AgentTestRunService', () => {
 					],
 				},
 			});
+		});
+
+		it('stores the same decision that it streams, with its evidence', async () => {
+			const { service, agentExecutionOrchestratorService, simulationSessions } = makeService();
+			const session = mock<SimulationSession>({ worldId: 'world-1' });
+			const decisions: Record<string, ToolCallSimulation> = {
+				'tc-1': {
+					route: 'simulated',
+					reason: 'served_from_world',
+					evidence: ['real_read', 'world_write'],
+				},
+				'tc-2': { route: 'simulated', reason: 'served_from_world' },
+			};
+			session.takeDecision.mockImplementation((toolCallId) => decisions[toolCallId]);
+			simulationSessions.openForDraftRun.mockResolvedValue(session);
+			const onChunk = vi.fn();
+
+			const result = await runWithStream(
+				service,
+				agentExecutionOrchestratorService,
+				[toolResult('tc-1'), toolResult('tc-2')],
+				onChunk,
+			);
+
+			expect(onChunk.mock.calls).toEqual([
+				[{ ...toolResult('tc-1'), simulation: decisions['tc-1'] }],
+				[{ ...toolResult('tc-2'), simulation: decisions['tc-2'] }],
+			]);
+			const stored = result.simulation?.toolCalls;
+			expect(stored).toEqual(
+				Object.entries(decisions).map(([toolCallId, decision]) => ({
+					toolCallId,
+					toolName: 'send_slack',
+					...decision,
+				})),
+			);
+			// No evidence key appears for a decision that has none.
+			expect(Object.keys(stored?.[1] ?? {})).not.toContain('evidence');
+			for (const call of stored ?? []) {
+				expect(toolCallSimulationSchema.safeParse(call).success).toBe(true);
+			}
 		});
 
 		it('resolves the session for a resumed draft run too', async () => {
