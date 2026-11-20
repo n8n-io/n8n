@@ -26,6 +26,7 @@ import type { AgentsChatInteractionExtension } from './interactionRegistry';
 import { summariseToolCall } from './interactiveSummary';
 import { addReplyAttachments, newReplyAttachments } from './replyFiles';
 import { isPolicyRefusedToolOutput } from './toolPolicyRefusal';
+import { resolveToolCatalogCall } from './toolCatalogCall';
 import type {
 	AgentsChatHostEvent,
 	ApprovalInput,
@@ -374,10 +375,11 @@ export function convertDbMessages(
 					output = undefined;
 				}
 
+				const call = resolveToolCatalogCall(part.toolName, part.input);
 				const toolCall: ToolCall = {
-					tool: part.toolName,
+					tool: call.tool,
 					toolCallId: part.toolCallId ?? '',
-					input: part.input,
+					input: call.input,
 					...(output !== undefined && { output }),
 					...(canceled && { canceled }),
 					state,
@@ -385,7 +387,7 @@ export function convertDbMessages(
 					...(part.endTime !== undefined && { endTime: part.endTime }),
 					...(part.suspendPayload !== undefined && { suspendPayload: part.suspendPayload }),
 					...(part.childTrace && { childProgress: part.childTrace }),
-					displaySummary: summariseToolCall(part.toolName, output, part.input),
+					displaySummary: summariseToolCall(call.tool, output, call.input),
 				};
 				toolCalls.push(toolCall);
 				attachments.push(...newReplyAttachments(attachments, toolCall));
