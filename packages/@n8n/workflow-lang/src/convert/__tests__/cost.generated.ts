@@ -45,6 +45,8 @@ export const CONVERT_COST: Record<string, [ops: number, allocations: number]> = 
 	"convert/14-cycle-if": [1810, 124],
 	"convert/141-subworkflow-paired-each-two": [4186, 270],
 	"convert/142-subworkflow-paired-no-wait": [1860, 149],
+	"convert/144-host-code-map-in-if-branch": [764, 78],
+	"convert/145-host-code-map-engine-form": [764, 78],
 	"convert/15-merge-waiting": [148, 21],
 	"convert/16-host-conditions": [4582, 155],
 	"convert/17-legacy-function": [118, 26],

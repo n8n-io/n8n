@@ -1,0 +1,13 @@
+{
+	"description": "A Code node in the fallback host on the way of a paired read, in the engine form: a Merge node takes its items and the items of the false branch",
+	"trigger": {
+		"body": {
+			"label": "145-host-code-map-engine-form"
+		}
+	},
+	"compare": [
+		"Read Each",
+		"Read All",
+		"Read Expr"
+	]
+}
