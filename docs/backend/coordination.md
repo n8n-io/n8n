@@ -12,8 +12,8 @@ contact: ivov
 
 In queue mode, the processes talk to each other over Redis pubsub, through two separate systems:
 
-- **Bull pubsub:** A worker reports on a job, e.g. a webhook response. Only the process that holds the open request acts on the report.
-- **n8n pubsub:** A main publishes a command to every process, e.g. "reload the license". Workers answer on a channel of their own. A service handles a command with a method that has `@OnPubSubEvent`.
+- **Bull pubsub:** A worker reports that a job finished. The process that enqueued the job can wait for that report, even if it is another worker.
+- **n8n pubsub:** A main publishes a command to every process, e.g. "reload the license". Workers answer on a channel of their own. The publisher and subscriber live in `@n8n/backend-services`. A service handles a command with a method that has `@OnPubSubEvent`.
 
 With worker pools, the jobs of a project go to a named queue, and only the workers of that pool dequeue them.
 
@@ -61,7 +61,7 @@ Use a leader hook only for a service that holds a live resource, e.g. a socket. 
 <details>
 <summary>Answers</summary>
 
-1. B. Every main and webhook process receives the message, but only the process with the open request acts on it.
+1. B. The process that holds the request uses the result from the worker to answer the caller.
 2. B. The leader keeps its role while it cannot reach Redis, and another main can take the expired key.
 3. D. All new periodic work is a system task, and n8n picks where the task runs.
 
