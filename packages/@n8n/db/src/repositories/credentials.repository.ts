@@ -593,6 +593,41 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 		return await this.findBy({ usageScope: 'project', shared: { projectId } });
 	}
 
+	/**
+	 * Find one credential that workflows in this project can use: a credential of
+	 * the project, or a global credential. Same set as `findAllCredentialsForProject`
+	 * plus `findAllGlobalCredentials`, but for one ID, and without credentials
+	 * that wait for OAuth authorization.
+	 *
+	 * @param options.anyPersonalCredential Accept a credential of any personal
+	 * project instead of only this project, like `findAllPersonalCredentials`.
+	 */
+	async findCredentialUsableInProject(
+		credentialId: string,
+		projectId: string,
+		options: { anyPersonalCredential: boolean },
+	): Promise<Pick<CredentialsEntity, 'id' | 'name' | 'type' | 'isResolvable'> | null> {
+		const projectShare: FindOptionsWhere<CredentialsEntity>['shared'] =
+			options.anyPersonalCredential ? { project: { type: 'personal' } } : { projectId };
+
+		return await this.findOne({
+			// A credential with OAuth still pending has no token to use yet.
+			where: [
+				this.excludePendingAuthorization({
+					id: credentialId,
+					usageScope: 'project',
+					shared: projectShare,
+				}),
+				this.excludePendingAuthorization({
+					id: credentialId,
+					usageScope: 'project',
+					isGlobal: true,
+				}),
+			],
+			select: ['id', 'name', 'type', 'isResolvable'],
+		});
+	}
+
 	/** Read execution metadata for credentials shared with this project or all projects. */
 	async findCredentialsUsableInProject(
 		projectId: string,

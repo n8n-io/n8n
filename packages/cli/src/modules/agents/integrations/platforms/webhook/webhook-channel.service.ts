@@ -54,6 +54,8 @@ const MAX_LOGGED_ERROR_LENGTH = 500;
 export interface WebhookChannelReply {
 	status: number;
 	body: unknown;
+	/** Seconds for the `Retry-After` header of a busy reply. */
+	retryAfterSeconds?: number;
 }
 
 type WebhookHeaders = Readonly<Record<string, string | string[] | undefined>>;
@@ -76,6 +78,13 @@ const LOST_TURN_ERROR = () =>
 		503,
 		'agent_unavailable',
 		'The agent stopped before it could answer. Send the request again.',
+	);
+
+const BUSY_ERROR = () =>
+	new WebhookChannelError(
+		503,
+		'server_busy',
+		'n8n is busy right now. Send the request again after the time in the Retry-After header.',
 	);
 
 const approvalNotFound = () =>
@@ -303,6 +312,11 @@ export class WebhookChannelService {
 				return { status: 500, body: null };
 			case 'lost':
 				return this.errorReply(abortSignal, LOST_TURN_ERROR());
+			case 'busy':
+				return {
+					...this.errorReply(abortSignal, BUSY_ERROR()),
+					retryAfterSeconds: remote.retryAfterSeconds,
+				};
 		}
 	}
 

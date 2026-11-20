@@ -102,6 +102,15 @@ declare module 'n8n-workflow' {
 		configureAdditionalData?: (
 			additionalData: IWorkflowExecuteAdditionalData,
 		) => Promise<void> | void;
+
+		/**
+		 * Run the workflow in the calling process, also in queue mode. A caller
+		 * that already holds a worker slot sets this, so that the run does not
+		 * wait for another slot in the same queue.
+		 *
+		 * @internal
+		 */
+		runInCurrentProcess?: boolean;
 	}
 }
 

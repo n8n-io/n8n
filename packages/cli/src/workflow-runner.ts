@@ -553,10 +553,12 @@ export class WorkflowRunner {
 		const heartbeat = this.setupV1StreamingHeartbeat(data);
 
 		// A `configureAdditionalData` closure does not survive queue serialization,
-		// so a run that has one must stay in this process.
+		// so a run that has one must stay in this process. So does a run that
+		// sets `runInCurrentProcess`.
 		// @TODO: Reduce to true branch once feature is stable
 		const shouldEnqueue =
 			data.configureAdditionalData === undefined &&
+			data.runInCurrentProcess !== true &&
 			(process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true'
 				? this.executionsConfig.mode === 'queue'
 				: this.executionsConfig.mode === 'queue' && data.executionMode !== 'manual');

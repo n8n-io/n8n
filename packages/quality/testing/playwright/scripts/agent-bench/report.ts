@@ -5,6 +5,16 @@ export interface TurnResult {
 	kind: TurnKind;
 	ok: boolean;
 	error?: string;
+	/**
+	 * The server refused the turn because it was full (HTTP 503 or a `main_busy`
+	 * stream error). This is the designed answer to overload, so it is counted
+	 * apart from errors.
+	 */
+	rejected?: boolean;
+	/** Seconds from the `Retry-After` header of a rejection. */
+	retryAfterSec?: number;
+	/** When the turn was sent, in ms since measuring started. */
+	sentAtMs?: number;
 	executionId?: string;
 	/**
 	 * The UUID at the end of the thread ID. Webhook and workflow turns return
@@ -42,7 +52,9 @@ export interface Stats {
 
 export interface GroupSummary {
 	turns: number;
+	/** Failed turns, rejections excluded. */
 	errors: number;
+	rejected: number;
 	start: Stats;
 	firstToken: Stats;
 	total: Stats;
@@ -68,7 +80,78 @@ export interface TopologyResult {
 	limits?: Partial<Record<'main' | 'worker', { memory?: number; cpu?: number }>>;
 	/** Containers that were killed for memory or restarted during the run. */
 	killed?: string[];
+	/** How the main answered other traffic while agents loaded it. */
+	probe?: ProbeSummary;
+	/** Executions of the schedule-triggered agent workflow, by status. */
+	schedule?: Record<string, number>;
+	/** The worker that the bench killed on purpose, and when. */
+	chaos?: { killed: string; atMs: number };
 	turns: TurnResult[];
+}
+
+export type ProbeTarget = 'health' | 'rest' | 'webhook';
+
+export interface ProbePoint {
+	/** ms since measuring started */
+	t: number;
+	target: ProbeTarget;
+	ms: number;
+	status: number;
+}
+
+export interface ProbeSummary {
+	targets: Record<ProbeTarget, Stats & { failed: number; slow: number }>;
+	/** True when every target stayed inside `PROBE_BUDGET_MS` at p95 and nothing failed. */
+	pass: boolean;
+	points: ProbePoint[];
+}
+
+/**
+ * The p95 budget of each probe target. A main that stays inside it still
+ * serves the editor, the REST API and production webhooks while agents load it.
+ */
+export const PROBE_BUDGET_MS: Record<ProbeTarget, number> = {
+	health: 500,
+	rest: 1000,
+	webhook: 1000,
+};
+
+export function summariseProbe(points: ProbePoint[]): ProbeSummary {
+	const targets = {} as ProbeSummary['targets'];
+	let pass = true;
+	for (const target of Object.keys(PROBE_BUDGET_MS) as ProbeTarget[]) {
+		const mine = points.filter((p) => p.target === target);
+		const ok = mine.filter((p) => p.status >= 200 && p.status < 300);
+		const s = stats(mine.map((p) => p.ms));
+		const failed = mine.length - ok.length;
+		const slow = mine.filter((p) => p.ms > PROBE_BUDGET_MS[target]).length;
+		targets[target] = { ...s, failed, slow };
+		if (failed > 0 || (s.p95 ?? 0) > PROBE_BUDGET_MS[target]) pass = false;
+	}
+	return { targets, pass, points };
+}
+
+export function renderProbe(results: TopologyResult[]): string {
+	const lines: string[] = [];
+	for (const r of results) {
+		if (!r.probe) continue;
+		lines.push(`Main probe for ${r.topology}: ${r.probe.pass ? 'PASS' : 'FAIL'}`);
+		for (const [target, s] of Object.entries(r.probe.targets)) {
+			const budget = PROBE_BUDGET_MS[target as ProbeTarget];
+			lines.push(
+				`  ${target.padEnd(8)} n=${s.n} p50 ${num(s.p50)} ms · p95 ${num(s.p95)} ms · max ${num(s.max)} ms · over ${budget} ms: ${s.slow} · failed: ${s.failed}`,
+			);
+		}
+		if (r.schedule) {
+			lines.push(
+				`  schedule-triggered agent workflow: ${Object.entries(r.schedule)
+					.map(([status, n]) => `${status} ${n}`)
+					.join(', ')}`,
+			);
+		}
+		if (r.chaos) lines.push(`  killed ${r.chaos.killed} at ${Math.round(r.chaos.atMs / 1000)} s`);
+	}
+	return lines.join('\n');
 }
 
 export interface ResourceStats {
@@ -181,6 +264,7 @@ function stats(values: Array<number | null | undefined>): Stats {
 
 export function summarise(turns: TurnResult[]): GroupSummary {
 	const ok = turns.filter((t) => t.ok);
+	const rejected = turns.filter((t) => t.rejected).length;
 	const ranOn: Record<string, number> = {};
 	for (const turn of turns) {
 		const where = turn.db?.process ?? 'unknown';
@@ -188,7 +272,8 @@ export function summarise(turns: TurnResult[]): GroupSummary {
 	}
 	return {
 		turns: turns.length,
-		errors: turns.length - ok.length,
+		errors: turns.length - ok.length - rejected,
+		rejected,
 		start: stats(ok.map((t) => t.startMs)),
 		firstToken: stats(ok.map((t) => t.firstTokenMs)),
 		total: stats(ok.map((t) => t.totalMs)),
@@ -309,6 +394,7 @@ export function renderTable(results: TopologyResult[]): string {
 		'kind',
 		'turns',
 		'err',
+		'503',
 		'start',
 		'1st token',
 		'total',
@@ -329,6 +415,7 @@ export function renderTable(results: TopologyResult[]): string {
 				kind,
 				String(g.turns),
 				String(g.errors),
+				String(g.rejected ?? 0),
 				ms(g.start),
 				ms(g.firstToken),
 				ms(g.total),

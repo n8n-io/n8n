@@ -23,17 +23,22 @@ import {
 	stackConfig,
 	topologyLoad,
 	type BenchConfig,
+	type LoadPhase,
 	type Topology,
 	type TurnKind,
 	type TurnMix,
 } from './config';
-import { N8nClient, OWNER } from './n8n-client';
+import { HttpError, N8nClient, OWNER } from './n8n-client';
 import {
 	renderLimitCheck,
+	renderProbe,
 	renderResourceTable,
 	renderTable,
 	summarise,
+	summariseProbe,
 	summariseResources,
+	type ProbePoint,
+	type ProbeTarget,
 	type TopologyResult,
 	type TurnResult,
 } from './report';
@@ -41,7 +46,9 @@ import {
 	AGENT_INSTRUCTIONS,
 	AGENT_NAME,
 	AGENT_WORKFLOW_PATH,
+	FOLLOW_UPS,
 	KIND_PATHS,
+	PING_PATH,
 	PROMPTS,
 	TOOLS,
 	modelProvider,
@@ -51,6 +58,17 @@ import {
 } from './workload';
 
 const TURN_TIMEOUT_MS = 300_000;
+
+/** Stream error codes and HTTP statuses that mean "full, try later", not "broken". */
+const REJECT_CODES = new Set(['main_busy', 'queue_full']);
+const KINDS_WITH_TOOLS = new Set<TurnKind>(['tool', 'datatable', 'multitool', 'slowtool']);
+
+function classifyRejection(result: TurnResult, error: unknown) {
+	if (error instanceof HttpError && (error.status === 503 || error.status === 429)) {
+		result.rejected = true;
+		if (error.retryAfterSec) result.retryAfterSec = error.retryAfterSec;
+	}
+}
 
 const log = (message: string) => process.stderr.write(`[agent-bench] ${message}\n`);
 
@@ -77,11 +95,16 @@ const noObserver: TurnObserver = { phase: () => {}, done: () => {} };
 type SettleTurn = (
 	sessionId: string,
 	timeoutMs: number,
+	/** How many earlier turns of the session already ended. */
+	earlier?: number,
 ) => Promise<{ executionId: string } | undefined>;
 
 /** Poll `agent_execution` for the turn of a session that has no live stream. */
 function settleFromDb(stack: N8NStack): SettleTurn {
-	const waiting = new Map<string, (result: { executionId: string } | undefined) => void>();
+	const waiting = new Map<
+		string,
+		{ earlier: number; finish: (result: { executionId: string } | undefined) => void }
+	>();
 	let polling = false;
 	// One query for every waiting turn, so that many turns do not load the database.
 	const poll = async () => {
@@ -93,17 +116,18 @@ function settleFromDb(stack: N8NStack): SettleTurn {
 			const ids = [...waiting.keys()].map((id) => `'${id}'`).join(',');
 			const output = await stack.services.postgres
 				.exec(
-					`SELECT right("threadId", 36), id FROM agent_execution WHERE right("threadId", 36) IN (${ids}) AND "stoppedAt" IS NOT NULL`,
+					`SELECT right("threadId", 36), count(*), max(id) FROM agent_execution WHERE right("threadId", 36) IN (${ids}) AND "stoppedAt" IS NOT NULL GROUP BY 1`,
 				)
 				.catch(() => '');
 			for (const line of output.trim().split('\n').filter(Boolean)) {
-				const [sessionId, executionId] = line.trim().split('\t');
-				waiting.get(sessionId)?.({ executionId });
+				const [sessionId, count, executionId] = line.trim().split('\t');
+				const entry = waiting.get(sessionId);
+				if (entry && Number(count) > entry.earlier) entry.finish({ executionId });
 			}
 		}
 		polling = false;
 	};
-	return async (sessionId, timeoutMs) =>
+	return async (sessionId, timeoutMs, earlier = 0) =>
 		await new Promise((resolve) => {
 			const timer = setTimeout(() => finish(undefined), Math.max(0, timeoutMs));
 			const finish = (result: { executionId: string } | undefined) => {
@@ -111,7 +135,7 @@ function settleFromDb(stack: N8NStack): SettleTurn {
 				waiting.delete(sessionId);
 				resolve(result);
 			};
-			waiting.set(sessionId, finish);
+			waiting.set(sessionId, { earlier, finish });
 			void poll();
 		});
 }
@@ -136,7 +160,9 @@ async function runTurn(
 	if (kind === 'webhook' || kind === 'workflow') {
 		return await requestTurn(client, agentId, kind, index, observer);
 	}
-	return await chatTurn(client, projectId, agentId, kind, index, observer, settle);
+	const messages =
+		kind === 'multiturn' ? [promptFor(kind, index), ...FOLLOW_UPS] : [promptFor(kind, index)];
+	return await chatTurn(client, projectId, agentId, kind, messages, observer, settle);
 }
 
 /**
@@ -173,6 +199,7 @@ async function requestTurn(
 		}
 	} catch (e) {
 		result.error = e instanceof Error ? e.message : String(e);
+		classifyRejection(result, e);
 	}
 	result.totalMs = performance.now() - sent;
 	result.ok = !result.error;
@@ -185,7 +212,7 @@ async function chatTurn(
 	projectId: string,
 	agentId: string,
 	kind: TurnKind,
-	index: number,
+	messages: string[],
 	observer: TurnObserver,
 	settle?: SettleTurn,
 ): Promise<TurnResult> {
@@ -193,61 +220,87 @@ async function chatTurn(
 	const result: TurnResult = { kind, ok: false, totalMs: 0, toolCalls: 0 };
 	let error: string | undefined;
 	let done = false;
-	let queued = false;
 	const sessionId = crypto.randomUUID();
-	try {
-		await client.chat(
-			projectId,
-			agentId,
-			promptFor(kind, index),
-			sessionId,
-			(event) => {
-				const elapsed = performance.now() - sent;
-				if (event.type === 'message-queued') {
-					queued = true;
-				} else if (event.type === 'execution-started') {
-					result.executionId ??= event.executionId;
-					if (result.startMs === undefined) observer.phase('running');
-					result.startMs ??= elapsed;
-				} else if (event.type === 'text-delta') {
-					if (result.firstTokenMs === undefined) observer.phase('streaming');
-					result.firstTokenMs ??= elapsed;
-				} else if (event.type === 'tool-call') {
-					result.toolCalls++;
-				} else if (event.type === 'tool-result' && event.isError) {
-					error ??= `Tool ${event.toolName} failed`;
-				} else if (event.type === 'error') {
-					error ??= event.message;
-				} else if (event.type === 'done') {
-					done = true;
-					result.executionId ??= event.executionId;
-				}
-			},
-			TURN_TIMEOUT_MS,
-		);
-	} catch (e) {
-		error ??= e instanceof Error ? e.message : String(e);
-	}
-	// A main with high memory accepts the message but opens no live stream. The
-	// editor then loads the reply from history, so wait for the execution here.
-	if (!error && !done && queued && result.executionId === undefined && settle) {
-		result.detached = true;
-		const settled = await settle(sessionId, TURN_TIMEOUT_MS - (performance.now() - sent));
-		if (settled) {
-			result.executionId = settled.executionId;
-			done = true;
-		} else error = 'Turn without a live stream did not finish in time';
+	// A multi-turn chat sends each message after the reply to the one before.
+	// Times cover the whole conversation; start and first token are of the first message.
+	for (const [i, message] of messages.entries()) {
+		done = false;
+		let queued = false;
+		let executionId: string | undefined;
+		try {
+			await client.chat(
+				projectId,
+				agentId,
+				message,
+				sessionId,
+				(event) => {
+					const elapsed = performance.now() - sent;
+					if (event.type === 'message-queued') {
+						queued = true;
+					} else if (event.type === 'execution-started') {
+						executionId ??= event.executionId;
+						result.executionId ??= event.executionId;
+						if (result.startMs === undefined) observer.phase('running');
+						result.startMs ??= elapsed;
+					} else if (event.type === 'text-delta') {
+						if (result.firstTokenMs === undefined) observer.phase('streaming');
+						result.firstTokenMs ??= elapsed;
+					} else if (event.type === 'tool-call') {
+						result.toolCalls++;
+					} else if (event.type === 'tool-result' && toolFailed(event.isError, event.output)) {
+						error ??= `Tool ${event.toolName} failed`;
+					} else if (event.type === 'error') {
+						error ??= event.message;
+						if (event.errorCode && REJECT_CODES.has(event.errorCode)) result.rejected = true;
+					} else if (event.type === 'done') {
+						done = true;
+						executionId ??= event.executionId;
+						result.executionId ??= event.executionId;
+					}
+				},
+				TURN_TIMEOUT_MS,
+				i === 0,
+			);
+		} catch (e) {
+			error ??= e instanceof Error ? e.message : String(e);
+			classifyRejection(result, e);
+		}
+		// A main with high memory accepts the message but opens no live stream. The
+		// editor then loads the reply from history, so wait for the execution here.
+		if (!error && !done && queued && executionId === undefined && settle) {
+			result.detached = true;
+			const settled = await settle(sessionId, TURN_TIMEOUT_MS - (performance.now() - sent), i);
+			if (settled) {
+				result.executionId ??= settled.executionId;
+				done = true;
+			} else error = 'Turn without a live stream did not finish in time';
+		}
+		if (error || !done) break;
 	}
 	result.totalMs = performance.now() - sent;
 	// The server closes a relayed stream without `done` when it loses the worker.
 	// The editor then reloads history, so the user does not see a reply.
 	if (!error && !done) error = 'Stream ended without a reply';
-	if (!error && !result.detached && kind === 'tool' && result.toolCalls === 0)
+	if (!error && !result.detached && KINDS_WITH_TOOLS.has(kind) && result.toolCalls === 0)
 		error = 'The model did not call the tool';
 	result.ok = !error;
 	if (error) result.error = error;
 	observer.done(result);
 	return result;
+}
+
+/**
+ * A workflow tool returns a failed sub-workflow as a normal result with
+ * `status: 'error'`, not as `isError`. Count both, or a broken tool looks like a success.
+ */
+function toolFailed(isError: boolean | undefined, output: unknown): boolean {
+	if (isError) return true;
+	return (
+		typeof output === 'object' &&
+		output !== null &&
+		'status' in output &&
+		(output.status === 'error' || output.status === 'canceled')
+	);
 }
 
 /** Run `plan` with at most `concurrency` turns in flight. */
@@ -269,6 +322,115 @@ async function runPlan(
 	};
 	await Promise.all(Array.from({ length: Math.min(concurrency, plan.length) }, lane));
 	return results;
+}
+
+/**
+ * Run turns by a timed load profile. Lane `i` sends turns while the current
+ * phase has more than `i` turns in flight, so the load ramps up and down
+ * with the phases. A lane finishes its turn when its phase ends.
+ */
+async function runPhases(
+	mix: TurnMix,
+	phases: LoadPhase[],
+	run: (kind: TurnKind, index: number) => Promise<TurnResult>,
+): Promise<TurnResult[]> {
+	const plan = turnPlan(mix, 1000);
+	const results: TurnResult[] = [];
+	const started = Date.now();
+	const ends = phases.reduce<number[]>(
+		(acc, p) => [...acc, (acc.at(-1) ?? started) + p.seconds * 1000],
+		[],
+	);
+	const end = ends.at(-1) ?? started;
+	const target = () => {
+		const now = Date.now();
+		const i = ends.findIndex((e) => now < e);
+		return i === -1 ? 0 : phases[i].concurrency;
+	};
+	let next = 0;
+	let lastLog = 0;
+	const lane = async (laneIndex: number) => {
+		while (Date.now() < end) {
+			if (laneIndex >= target()) {
+				await new Promise((resolve) => setTimeout(resolve, 250));
+				continue;
+			}
+			const index = next++;
+			const result = await run(plan[index % plan.length], index);
+			results.push(result);
+			// Back off like a real client after a busy answer, so a rejection does not become a retry storm.
+			if (result.rejected) {
+				const waitMs = Math.min((result.retryAfterSec ?? 15) * 1000, Math.max(0, end - Date.now()));
+				await new Promise((resolve) => setTimeout(resolve, waitMs));
+			}
+			if (Date.now() - lastLog > 10_000) {
+				lastLog = Date.now();
+				log(
+					`  ${Math.round((Date.now() - started) / 1000)} s: ${results.length} turns done, ${target()} in flight`,
+				);
+			}
+		}
+	};
+	const lanes = Math.max(...phases.map((p) => p.concurrency));
+	await Promise.all(Array.from({ length: lanes }, async (_, i) => await lane(i)));
+	return results;
+}
+
+/**
+ * Call the main every `intervalMs` with each probe target, until stopped.
+ * Each call has its own timer, so a slow answer does not delay the next probe.
+ */
+function startProbe(client: N8nClient, intervalMs: number, startedAt: number) {
+	const points: ProbePoint[] = [];
+	const pending = new Set<Promise<void>>();
+	const targets: ProbeTarget[] = ['health', 'rest', 'webhook'];
+	const timer = setInterval(() => {
+		for (const target of targets) {
+			const t = Date.now() - startedAt;
+			const call = client.probe(target, PING_PATH, 10_000).then(({ ms, status }) => {
+				points.push({ t, target, ms: Math.round(ms), status });
+			});
+			pending.add(call);
+			void call.finally(() => pending.delete(call));
+		}
+	}, intervalMs);
+	return async () => {
+		clearInterval(timer);
+		await Promise.all(pending);
+		return points.sort((a, b) => a.t - b.t);
+	};
+}
+
+/** Kill a worker container, like a node that dies. Returns its name. */
+function killWorker(stack: N8NStack): string | undefined {
+	const worker = stack.processUrls.find((p) => p.role === 'worker');
+	if (!worker) return undefined;
+	try {
+		execFileSync('docker', ['kill', worker.name]);
+		return worker.name;
+	} catch (e) {
+		log(`Could not kill ${worker.name}: ${String(e)}`);
+		return undefined;
+	}
+}
+
+/** Executions of the schedule-triggered workflow by status, from the database. */
+async function scheduleOutcome(stack: N8NStack, workflowId: string) {
+	const output = await stack.services.postgres
+		.exec(
+			`SELECT status, count(*) FROM execution_entity WHERE "workflowId" = '${workflowId.replace(/'/g, "''")}' GROUP BY status`,
+		)
+		.catch(() => '');
+	return Object.fromEntries(
+		output
+			.trim()
+			.split('\n')
+			.filter(Boolean)
+			.map((line) => {
+				const [status, count] = line.trim().split('\t');
+				return [status, Number(count)];
+			}),
+	);
 }
 
 /** Find the execution of turns that only know their session, by the end of the thread ID. */
@@ -448,10 +610,11 @@ async function benchTopology(topology: Topology, config: BenchConfig): Promise<T
 	activeStack = stack;
 	const client = new N8nClient(stack.baseUrl);
 	await client.setupOwner();
-	const { projectId, agentId } = await seedAgent(
+	const { projectId, agentId, startSchedule } = await seedAgent(
 		client,
 		config.model,
 		usesIntegrations(config.mix),
+		{ scheduleEverySec: config.scheduleEverySec },
 	);
 	log(`Ready at ${stack.baseUrl}`);
 
@@ -477,6 +640,7 @@ async function benchTopology(topology: Topology, config: BenchConfig): Promise<T
 			projectId,
 			agentId,
 			stackShape,
+			startSchedule,
 		);
 		const roles = Object.fromEntries(stack.processUrls.map((p) => [p.name, p.role]));
 		const measured = samples.filter(
@@ -509,6 +673,7 @@ async function measure(
 	projectId: string,
 	agentId: string,
 	stackShape: TopologyResult['stack'],
+	startSchedule: () => Promise<string | undefined>,
 ): Promise<{ result: TopologyResult; measureStartedAt: number }> {
 	const live = cockpit?.topology(topology.name);
 	const load = topologyLoad(topology, config);
@@ -542,8 +707,13 @@ async function measure(
 	};
 
 	const settle = settleFromDb(stack);
-	const run = (kind: TurnKind, index: number) =>
-		runTurn(client, projectId, agentId, kind, index, observe(kind), settle);
+	let measureStartedAt = Date.now();
+	const run = async (kind: TurnKind, index: number) => {
+		const sentAtMs = measuring ? Date.now() - measureStartedAt : undefined;
+		const result = await runTurn(client, projectId, agentId, kind, index, observe(kind), settle);
+		if (sentAtMs !== undefined) result.sentAtMs = sentAtMs;
+		return result;
+	};
 	if (config.warmup > 0) {
 		if (live) live.status = 'warmup';
 		log(`Warmup: ${config.warmup} turn(s)`);
@@ -551,9 +721,15 @@ async function measure(
 	}
 
 	const plan = turnPlan(config.mix, load.turns);
-	log(`Measuring ${plan.length} turns, ${load.concurrency} at a time`);
+	const phases = load.phases;
+	log(
+		phases
+			? `Measuring by phases: ${phases.map((p) => `${p.concurrency} for ${p.seconds} s`).join(', ')}`
+			: `Measuring ${plan.length} turns, ${load.concurrency} at a time`,
+	);
+	const scheduleId = await startSchedule();
 	measuring = true;
-	const measureStartedAt = Date.now();
+	measureStartedAt = Date.now();
 	if (live) {
 		live.status = 'running';
 		live.planned = plan.length;
@@ -561,10 +737,28 @@ async function measure(
 		live.measureStartedAt = measureStartedAt;
 		cockpit?.changed();
 	}
+	const stopProbe = config.probeMs > 0 ? startProbe(client, config.probeMs, measureStartedAt) : undefined;
+	let chaos: TopologyResult['chaos'];
+	const killAt = topology.killWorkerAtSec;
+	const chaosTimer =
+		killAt === undefined
+			? undefined
+			: setTimeout(() => {
+					const killed = killWorker(stack);
+					if (killed) {
+						chaos = { killed, atMs: Date.now() - measureStartedAt };
+						log(`Killed ${killed}`);
+					}
+				}, killAt * 1000);
 	const started = performance.now();
-	const turns = await runPlan(plan, load.concurrency, run);
+	const turns = phases
+		? await runPhases(config.mix, phases, run)
+		: await runPlan(plan, load.concurrency, run);
 	const wallMs = performance.now() - started;
+	clearTimeout(chaosTimer);
+	const probePoints = stopProbe ? await stopProbe() : undefined;
 	await attachDbTimings(stack, client, turns);
+	const schedule = scheduleId ? await scheduleOutcome(stack, scheduleId) : undefined;
 	if (live) {
 		// Swap in the copies with server timings.
 		live.turns = turns.map((t) => ({ ...t, finishedAt: finishedAt.get(t) ?? Date.now() }));
@@ -574,12 +768,15 @@ async function measure(
 	if (detached > 0) {
 		log(`  ${detached} turn(s) ran without a live stream, because the memory of a main was high`);
 	}
-	for (const failed of turns.filter((t) => !t.ok).slice(0, 5)) {
+	for (const failed of turns.filter((t) => !t.ok && !t.rejected).slice(0, 5)) {
 		log(`  ${failed.kind} failed: ${failed.error}`);
 	}
 
+	const rejected = turns.filter((t) => t.rejected).length;
+	if (rejected > 0) log(`  ${rejected} turn(s) were rejected because the stack was full`);
 	const byKind: Record<string, ReturnType<typeof summarise>> = {};
-	for (const kind of new Set(plan)) byKind[kind] = summarise(turns.filter((t) => t.kind === kind));
+	for (const kind of new Set(turns.map((t) => t.kind)))
+		byKind[kind] = summarise(turns.filter((t) => t.kind === kind));
 	return {
 		measureStartedAt,
 		result: {
@@ -590,6 +787,9 @@ async function measure(
 			turnsPerMinute: (turns.filter((t) => t.ok).length / wallMs) * 60_000,
 			byKind,
 			all: summarise(turns),
+			...(probePoints ? { probe: summariseProbe(probePoints) } : {}),
+			...(schedule ? { schedule } : {}),
+			...(chaos ? { chaos } : {}),
 			turns,
 		},
 	};
@@ -607,6 +807,7 @@ function warmupMix(mix: TurnMix): TurnMix {
 		...((mix.datatable ?? 0) > 0 ? { datatable: 1 } : {}),
 		...((mix.webhook ?? 0) > 0 ? { webhook: 1 } : {}),
 		...((mix.workflow ?? 0) > 0 ? { workflow: 1 } : {}),
+		...((mix.slowtool ?? 0) > 0 ? { slowtool: 1 } : {}),
 	};
 }
 
@@ -688,6 +889,8 @@ async function main() {
 	process.stdout.write(`\n${renderTable(results)}\n\n${renderResourceTable(results)}\n\n`);
 	const limitCheck = renderLimitCheck(results);
 	if (limitCheck) process.stdout.write(`${limitCheck}\n\n`);
+	const probe = renderProbe(results);
+	if (probe) process.stdout.write(`${probe}\n\n`);
 
 	const outDir = resolve(config.out);
 	mkdirSync(outDir, { recursive: true });

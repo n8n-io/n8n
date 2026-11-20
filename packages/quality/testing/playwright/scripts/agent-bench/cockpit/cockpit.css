@@ -19,6 +19,9 @@
 	--long: #b9a3ff;
 	--webhook: #8ec5ff;
 	--workflow: #ffc56b;
+	--multitool: #ff7a5c;
+	--slowtool: #c9a26b;
+	--multiturn: #7fd6e8;
 	color-scheme: dark;
 }
 
@@ -552,4 +555,109 @@ svg.chart .cursor {
 		grid-template-columns: 1fr;
 		gap: 12px;
 	}
+}
+
+/* Per-run config, behind a small button under the run's head line. */
+.run-config {
+	margin: -4px 0 12px;
+}
+
+.run-config summary {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 3px 10px;
+	border: 1px solid var(--line);
+	border-radius: 6px;
+	color: var(--muted);
+	font-size: 12px;
+	cursor: pointer;
+	list-style: none;
+}
+
+.run-config summary::-webkit-details-marker {
+	display: none;
+}
+
+.run-config summary::before {
+	content: '▸';
+}
+
+.run-config[open] summary::before {
+	content: '▾';
+}
+
+.run-config summary:hover {
+	color: var(--ink);
+	border-color: var(--muted);
+}
+
+.run-config .rows {
+	margin-top: 10px;
+	max-width: 720px;
+}
+
+/* Run config: one card per setup, load steps as chips. */
+.setup {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.setup-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: 4px;
+}
+
+.setup-head b {
+	font-size: 15px;
+	color: var(--ink);
+}
+
+.proc-line {
+	display: flex;
+	align-items: baseline;
+	gap: 6px;
+	color: var(--ink);
+}
+
+.proc-line .muted {
+	margin-left: auto;
+}
+
+.loads {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 6px;
+	margin-top: 8px;
+	padding-top: 12px;
+	border-top: 1px solid var(--line);
+}
+
+.loads .muted {
+	margin-right: 4px;
+}
+
+.load {
+	min-width: 32px;
+	padding: 2px 8px;
+	border: 1px solid var(--line);
+	border-radius: 6px;
+	text-align: center;
+	color: var(--muted);
+	font-variant-numeric: tabular-nums;
+}
+
+.load.done {
+	color: var(--ink);
+}
+
+.load.running,
+.load.warmup,
+.load.starting {
+	color: var(--ink);
+	border-color: var(--accent);
 }

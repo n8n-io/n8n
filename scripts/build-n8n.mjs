@@ -11,6 +11,7 @@
 import { $, echo, fs, chalk, YAML } from 'zx';
 import path from 'path';
 import os from 'os';
+import { fileURLToPath } from 'url';
 
 // Check if running in a CI environment
 const isCI = process.env.CI === 'true';
@@ -23,7 +24,8 @@ const excludeTestController =
 $.verbose = !isCI;
 process.env.FORCE_COLOR = isCI ? '0' : '1';
 
-const scriptDir = path.dirname(new URL(import.meta.url).pathname);
+// fileURLToPath decodes the path, so a checkout under a directory with spaces works.
+const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const isInScriptsDir = path.basename(scriptDir) === 'scripts';
 const rootDir = isInScriptsDir ? path.join(scriptDir, '..') : scriptDir;
 
@@ -326,9 +328,10 @@ try {
 	// Third-party source maps are 20k files that only help when debugging inside a
 	// dependency. First-party maps stay: source-map-support uses them for our own
 	// stack traces. pnpm names an injected workspace package after its `file:` path,
-	// `<name>@file+packages+<dir>` on Linux and `<name>@file++++<abs path>` on macOS;
-	// the glob covers both.
-	const workspacePackageGlob = '*@file+*packages+*';
+	// `<name>@file+packages+<dir>` on Linux and `<name>@file++++<abs path>` on macOS.
+	// pnpm cuts a long absolute path and adds a hash, so `packages` can be missing
+	// from the name. Only workspace packages are `file:` dependencies.
+	const workspacePackageGlob = '*@file+*';
 	echo(chalk.yellow('INFO: Stripping third-party source maps...'));
 	await $`find ${config.compiledAppDir}/node_modules/.pnpm -name "*.map" -not -path ${workspacePackageGlob} -delete 2>/dev/null || true`;
 	echo(chalk.green('✅ Third-party source maps stripped'));

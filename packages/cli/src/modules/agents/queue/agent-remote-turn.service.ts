@@ -1,5 +1,6 @@
-import type { AgentSseEvent } from '@n8n/api-types';
+import { AGENT_CHAT_ERROR_CODES, type AgentSseEvent } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { AgentsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type { JsonObject } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
@@ -65,12 +66,29 @@ export type AgentTurnHandler<K extends Kind> =
  * - `done`: a worker ran the turn and stored its outcome.
  * - `lost`: the worker that ran the turn left before it stored an outcome.
  * - `left`: the caller left, so the turn was stopped.
+ * - `busy`: n8n has no room for the turn now. The caller can try again after
+ *   `retryAfterSeconds`.
  */
 export type AgentRemoteResult =
 	| { outcome: 'local' }
 	| { outcome: 'done'; result: JsonObject }
 	| { outcome: 'lost' }
-	| { outcome: 'left' };
+	| { outcome: 'left' }
+	| { outcome: 'busy'; retryAfterSeconds: number };
+
+const BUSY: AgentRemoteResult = {
+	outcome: 'busy',
+	retryAfterSeconds: AgentTurnPlacement.BUSY_RETRY_AFTER_SECONDS,
+};
+
+/** The chat event of a turn that n8n rejected because it has no room now. */
+export const busyEvent = (
+	errorCode: typeof AGENT_CHAT_ERROR_CODES.mainBusy | typeof AGENT_CHAT_ERROR_CODES.queueFull,
+): AgentSseEvent => ({
+	type: 'error',
+	message: 'n8n is busy right now. Try again in a moment.',
+	errorCode,
+});
 
 /**
  * Runs an agent turn on an agent worker while a main holds the connection of
@@ -111,6 +129,7 @@ export class AgentRemoteTurnService {
 
 	constructor(
 		private readonly logger: Logger,
+		private readonly agentsConfig: AgentsConfig,
 		private readonly cluster: AgentClusterService,
 		private readonly placement: AgentTurnPlacement,
 		private readonly turnQueue: AgentTurnQueue,
@@ -132,9 +151,23 @@ export class AgentRemoteTurnService {
 	}
 
 	/**
+	 * Whether this main may run a turn that a caller waits for, when it cannot
+	 * send the turn to a worker. Sends the busy event when not.
+	 */
+	mayRunHere(send: (event: AgentSseEvent) => void): boolean {
+		if (this.placement.mayRunHere()) return true;
+		send(busyEvent(AGENT_CHAT_ERROR_CODES.mainBusy));
+		return false;
+	}
+
+	/**
 	 * Send a streamed turn to a worker and relay its events. Returns `false`
 	 * when this main must run the turn itself: no worker is up, the job could
 	 * not be sent, or no worker claimed the request in time.
+	 *
+	 * Returns `true` after it sends a busy error when n8n has no room for the
+	 * turn: too many turns wait, no process started the turn within
+	 * `N8N_AGENTS_QUEUE_MAX_WAIT`, or no worker is up and this main is full.
 	 *
 	 * With `stopOnLeave`, a caller that leaves stops the turn. Without it, the
 	 * turn runs to its end, as a local turn does.
@@ -144,7 +177,11 @@ export class AgentRemoteTurnService {
 		delivery: AgentRemoteDelivery,
 		options: { stopOnLeave: boolean },
 	): Promise<boolean> {
-		if (!(await this.canDispatch())) return false;
+		if (!(await this.canDispatch())) return !this.mayRunHere(delivery.send);
+		if (await this.placement.queueFull()) {
+			delivery.send(busyEvent(AGENT_CHAT_ERROR_CODES.queueFull));
+			return true;
+		}
 
 		const requestId = await this.create(payload);
 		let finished = false;
@@ -174,6 +211,10 @@ export class AgentRemoteTurnService {
 				if (claimedSeenAt === undefined) {
 					if (await this.requests.isPending(requestId)) {
 						if (await this.takeOverIfDue(requestId, sentAt)) return false;
+						if (await this.giveUpIfOverdue(requestId, sentAt)) {
+							delivery.send(busyEvent(AGENT_CHAT_ERROR_CODES.queueFull));
+							return true;
+						}
 						continue;
 					}
 					claimedSeenAt = Date.now();
@@ -204,7 +245,10 @@ export class AgentRemoteTurnService {
 		payload: AgentTurnRequestPayload,
 		abortSignal: AbortSignal,
 	): Promise<AgentRemoteResult> {
-		if (!(await this.canDispatch())) return { outcome: 'local' };
+		if (!(await this.canDispatch())) {
+			return this.placement.mayRunHere() ? { outcome: 'local' } : BUSY;
+		}
+		if (await this.placement.queueFull()) return BUSY;
 
 		const requestId = await this.create(payload);
 		try {
@@ -224,6 +268,7 @@ export class AgentRemoteTurnService {
 				if (state.result) return { outcome: 'done', result: state.result };
 				if (state.claimedBy === null) {
 					if (await this.takeOverIfDue(requestId, sentAt)) return { outcome: 'local' };
+					if (await this.giveUpIfOverdue(requestId, sentAt)) return BUSY;
 					continue;
 				}
 				if (Date.now() - ownerCheckedAt < AgentRemoteTurnService.OWNER_CHECK_INTERVAL_MS) continue;
@@ -392,6 +437,19 @@ export class AgentRemoteTurnService {
 	private async takeOverIfDue(requestId: string, sentAt: number): Promise<boolean> {
 		if (!(await this.placement.mayFallBack(sentAt, 'request'))) return false;
 		return await this.claimHere(requestId);
+	}
+
+	/**
+	 * Claim an unclaimed request so that no worker runs it, once it waited
+	 * longer than `N8N_AGENTS_QUEUE_MAX_WAIT`. The caller then rejects the turn.
+	 * A false result means the request may still run.
+	 */
+	private async giveUpIfOverdue(requestId: string, sentAt: number): Promise<boolean> {
+		const maxWaitMs = this.agentsConfig.queueMaxWaitSeconds * 1_000;
+		if (maxWaitMs <= 0 || Date.now() - sentAt < maxWaitMs) return false;
+		if (!(await this.claimHere(requestId))) return false;
+		this.placement.rejected('wait-too-long');
+		return true;
 	}
 
 	private async removeQuietly(requestId: string): Promise<void> {

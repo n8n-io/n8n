@@ -46,9 +46,21 @@ export class PrometheusAgentQueueMetricsService implements PrometheusMetricsColl
 
 		const streamsSkipped = new promClient.Counter({
 			name: `${prefix}agent_streams_skipped_total`,
-			help: 'Chat messages that a main accepted without a live stream, because its memory was above N8N_AGENTS_MAIN_MEMORY_HOLD_LEVEL.',
+			help: 'Chat messages that a main accepted without a live stream, by reason: main-memory-high (above N8N_AGENTS_MAIN_MEMORY_HOLD_LEVEL) or main-at-stream-limit (N8N_AGENTS_MAIN_MAX_STREAMS reached).',
+			labelNames: ['reason'],
 		});
-		streamsSkipped.inc(0);
+
+		const intakeRejected = new promClient.Counter({
+			name: `${prefix}agent_messages_rejected_total`,
+			help: 'Chat messages that a main rejected, because it accepted N8N_AGENTS_MAIN_MAX_INTAKE messages at the same time for too long.',
+		});
+		intakeRejected.inc(0);
+
+		const turnsRejected = new promClient.Counter({
+			name: `${prefix}agent_turns_rejected_total`,
+			help: 'Agent turns that a main rejected with a busy error, by reason: queue-full (N8N_AGENTS_QUEUE_MAX_WAITING reached), wait-too-long (not started within N8N_AGENTS_QUEUE_MAX_WAIT) or main-at-limit (no agent worker, and the main had no room).',
+			labelNames: ['reason'],
+		});
 
 		const relaysDropped = new promClient.Counter({
 			name: `${prefix}agent_relays_dropped_total`,
@@ -74,7 +86,13 @@ export class PrometheusAgentQueueMetricsService implements PrometheusMetricsColl
 					turnsHeld.inc({ reason: event.reason });
 					break;
 				case 'stream-skipped':
-					streamsSkipped.inc();
+					streamsSkipped.inc({ reason: event.reason });
+					break;
+				case 'intake-rejected':
+					intakeRejected.inc();
+					break;
+				case 'turn-rejected':
+					turnsRejected.inc({ reason: event.reason });
 					break;
 				case 'relay-dropped':
 					relaysDropped.inc({ channel: event.channel });

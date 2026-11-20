@@ -7,10 +7,24 @@ import { InstanceRegistryProxyService } from '@n8n/backend-services';
 import { AgentClusterService } from '../agent-cluster.service';
 import type { AgentQueueDispatch } from '../types/agent-queued-message';
 import { AgentMainMemory } from './agent-main-memory.service';
-import type { AgentTurnHoldReason } from './agent-queue-metrics';
+import type {
+	AgentStreamSkipReason,
+	AgentTurnHoldReason,
+	AgentTurnRejectReason,
+} from './agent-queue-metrics';
 import { AgentTurnQueue } from './agent-turn-queue.service';
 
 export type QueuedTurnKind = AgentQueueDispatch['kind'];
+
+/** Wrap `fn` so that only its first call runs. */
+function once(fn: () => void): () => void {
+	let called = false;
+	return () => {
+		if (called) return;
+		called = true;
+		fn();
+	};
+}
 
 /**
  * Turn kinds that a worker can run. The rest stay on mains.
@@ -70,7 +84,19 @@ export class AgentTurnPlacement {
 	 */
 	static readonly HELD_TTL_MS = 12_000;
 
+	/** How long a chat message waits for a free intake place before n8n rejects it. */
+	static readonly INTAKE_WAIT_MS = 10_000;
+
+	/** The `Retry-After` that n8n sends with a busy rejection. */
+	static readonly BUSY_RETRY_AFTER_SECONDS = 15;
+
 	private recentClaims: number[] = [];
+
+	private intakeRunning = 0;
+
+	private readonly intakeWaiters: Array<(granted: boolean) => void> = [];
+
+	private liveStreams = 0;
 
 	/** Queue time of each turn that `admit` held, with the time of the last check. */
 	private readonly held = new Map<number, number>();
@@ -169,14 +195,106 @@ export class AgentTurnPlacement {
 	}
 
 	/**
-	 * Whether this main may open a live chat stream now. False when its memory
-	 * is high. The message is still accepted, and the chat loads the reply from
-	 * the recorded history.
+	 * Open a live chat stream on this main. Returns the function that closes
+	 * it, or `undefined` when the memory of this main is high or it already has
+	 * `N8N_AGENTS_MAIN_MAX_STREAMS` live streams. The message is then still
+	 * accepted, and the chat loads the reply from the recorded history.
 	 */
-	mayOpenStream(): boolean {
-		if (!this.dispatchEnabled || !this.memory.isHigh()) return true;
-		this.cluster.metrics.record({ type: 'stream-skipped' });
+	openStream(): (() => void) | undefined {
+		if (!this.dispatchEnabled) return () => {};
+		if (this.memory.isHigh()) return this.skipStream('main-memory-high');
+		const limit = this.agentsConfig.mainMaxStreams;
+		if (limit > 0 && this.liveStreams >= limit) return this.skipStream('main-at-stream-limit');
+		this.liveStreams++;
+		return once(() => {
+			this.liveStreams--;
+		});
+	}
+
+	/**
+	 * Take one of the `N8N_AGENTS_MAIN_MAX_INTAKE` places that accept chat
+	 * messages on this main. Accepting a message runs permission, agent and
+	 * credential checks, so a burst of messages could use all of the CPU of
+	 * the main. When all places are taken, wait in order for up to
+	 * `INTAKE_WAIT_MS`.
+	 *
+	 * Returns the function that frees the place, or `undefined` when no place
+	 * was free in time or the request was aborted.
+	 */
+	async enterIntake(abortSignal: AbortSignal): Promise<(() => void) | undefined> {
+		const limit = this.agentsConfig.mainMaxIntake;
+		if (!this.dispatchEnabled || limit <= 0) return () => {};
+		if (abortSignal.aborted) return undefined;
+		if (this.intakeRunning < limit) {
+			this.intakeRunning++;
+			return this.intakeRelease();
+		}
+
+		const granted = await new Promise<boolean>((resolve) => {
+			const finish = (ok: boolean) => {
+				clearTimeout(timer);
+				abortSignal.removeEventListener('abort', drop);
+				resolve(ok);
+			};
+			const drop = () => {
+				const index = this.intakeWaiters.indexOf(finish);
+				if (index !== -1) this.intakeWaiters.splice(index, 1);
+				finish(false);
+			};
+			const timer = setTimeout(drop, AgentTurnPlacement.INTAKE_WAIT_MS);
+			abortSignal.addEventListener('abort', drop, { once: true });
+			this.intakeWaiters.push(finish);
+		});
+		if (granted) return this.intakeRelease();
+		if (!abortSignal.aborted) this.cluster.metrics.record({ type: 'intake-rejected' });
+		return undefined;
+	}
+
+	/** Give a freed intake place directly to the next waiter, so that a new request cannot take it first. */
+	private intakeRelease(): () => void {
+		return once(() => {
+			const next = this.intakeWaiters.shift();
+			if (next) next(true);
+			else this.intakeRunning--;
+		});
+	}
+
+	/**
+	 * Whether `N8N_AGENTS_QUEUE_MAX_WAITING` turns already wait for an agent
+	 * worker. A true result counts as a rejection, so call it only right before
+	 * a reject. Without an agent worker, turns do not wait in the agent queue,
+	 * and the limits of this main apply instead.
+	 */
+	async queueFull(): Promise<boolean> {
+		const limit = this.agentsConfig.queueMaxWaiting;
+		if (!this.dispatchEnabled || limit <= 0) return false;
+		if (!(await this.workersAvailable())) return false;
+		if ((await this.turnQueue.waitingCount()) < limit) return false;
+		this.rejected('queue-full');
+		return true;
+	}
+
+	/**
+	 * Whether this main may run a turn that a caller waits for, such as an app
+	 * chat or a webhook channel request, when no agent worker is up. The limits
+	 * of `admit` apply. Without agent queue mode, a main runs every turn, as
+	 * before. A false result counts as a rejection.
+	 */
+	mayRunHere(): boolean {
+		if (!this.dispatchEnabled) return true;
+		if (this.admit(Date.now())) return true;
+		this.rejected('main-at-limit');
 		return false;
+	}
+
+	/** Record a busy rejection. */
+	rejected(reason: AgentTurnRejectReason): void {
+		this.cluster.metrics.record({ type: 'turn-rejected', reason });
+	}
+
+	private skipStream(reason: AgentStreamSkipReason): undefined {
+		this.cluster.metrics.record({ type: 'stream-skipped', reason });
+		return undefined;
 	}
 
 	/**

@@ -7,6 +7,10 @@ export const TOOL_NAME = 'lookup_order';
 export const STOCK_TOOL = 'check_stock';
 export const SHIPPING_TOOL = 'shipping_quote';
 export const CUSTOMER_TOOL = 'find_customer';
+/** A tool that waits on a slow outside system, like a CRM report. */
+export const SLOW_TOOL = 'build_report';
+/** Seconds that `SLOW_TOOL` waits before it answers. */
+export const SLOW_TOOL_SECONDS = 5;
 
 /** The data table that `find_customer` reads, and the rows the bench puts in it. */
 export const CUSTOMER_TABLE = 'bench_customers';
@@ -56,10 +60,32 @@ export const PROMPTS: Record<TurnKind, string[]> = {
 		'Extract the city from: "Ship to 12 Rua Augusta, Lisbon, Portugal". Reply with the city only.',
 		`Use ${TOOL_NAME} for order 640 and write a one-line status update for the customer.`,
 	],
+	// Two tools in one turn: two model round trips and two tool workflows.
+	multitool: [
+		`Check stock of SKU KB-104 with ${STOCK_TOOL}, then quote shipping 3 kg to Porto with ${SHIPPING_TOOL}. Answer in two lines.`,
+		`Find grace@example.com with ${CUSTOMER_TOOL}, then use ${SHIPPING_TOOL} for 1 kg to her city. One line.`,
+		`Look up order 1042 with ${TOOL_NAME} and check stock of SKU MS-220 with ${STOCK_TOOL}. Reply briefly.`,
+	],
+	// The tool workflow waits, like a call to a slow outside API.
+	slowtool: [
+		`Use ${SLOW_TOOL} for the account ACME and give me its headline number.`,
+		`Run ${SLOW_TOOL} for account Globex and summarise it in one line.`,
+	],
+	// The first message of a conversation. `FOLLOW_UPS` continue it in the same session.
+	multiturn: [
+		'I run a small online shop that sells keyboards. Remember that. Say ok.',
+		'My shop ships from Lisbon. Remember that, and reply in one line.',
+	],
 };
 
+/** Later messages of a `multiturn` conversation. Each one needs the history. */
+export const FOLLOW_UPS = [
+	`What do I sell? Then check stock of SKU KB-104 with ${STOCK_TOOL}.`,
+	'Suggest a one-line tagline for my shop, using what you know about it.',
+];
+
 export const AGENT_NAME = 'Agent bench';
-export const AGENT_INSTRUCTIONS = `You are a concise assistant. Call each tool the user names exactly once, then answer. Use ${TOOL_NAME} for orders, ${STOCK_TOOL} for stock, ${SHIPPING_TOOL} for shipping costs and ${CUSTOMER_TOOL} for customers.`;
+export const AGENT_INSTRUCTIONS = `You are a concise assistant. Call each tool the user names exactly once, then answer. Use ${TOOL_NAME} for orders, ${STOCK_TOOL} for stock, ${SHIPPING_TOOL} for shipping costs, ${CUSTOMER_TOOL} for customers and ${SLOW_TOOL} for account reports.`;
 
 /** The agent's tools, in the words the cockpit shows. */
 export const TOOLS = [
@@ -86,6 +112,14 @@ export const TOOLS = [
 			`Data table: get rows of ${CUSTOMER_TABLE} where email = input`,
 		],
 	},
+	{
+		name: SLOW_TOOL,
+		steps: [
+			'Execute Workflow Trigger (account)',
+			`Wait ${SLOW_TOOL_SECONDS} s`,
+			'Set: revenue, open tickets',
+		],
+	},
 ];
 
 /** How the bench sends each kind of turn. */
@@ -96,7 +130,16 @@ export const KIND_PATHS: Record<TurnKind, string> = {
 	long: 'Editor chat (streamed). About 600 words of output.',
 	webhook: 'Responses API of the agent webhook integration. Not streamed.',
 	workflow: 'Production webhook of a workflow that runs the agent with Message an Agent.',
+	multitool: 'Editor chat (streamed). The agent calls two tools in one turn.',
+	slowtool: `Editor chat (streamed). The agent calls ${SLOW_TOOL}, which waits ${SLOW_TOOL_SECONDS} s.`,
+	multiturn: `Editor chat (streamed). ${1 + FOLLOW_UPS.length} messages in one session; times cover all of them.`,
 };
+
+/** The path of the plain webhook that the main probe calls. It answers on receipt. */
+export const PING_PATH = 'bench-ping';
+
+/** The name of the schedule-triggered workflow that messages the agent. */
+export const SCHEDULED_WORKFLOW_NAME = 'Agent bench schedule';
 
 /** The path of the production webhook that starts the agent workflow. */
 export const AGENT_WORKFLOW_PATH = 'agent-bench';
@@ -261,6 +304,120 @@ function customerWorkflow(dataTableId: string) {
 	});
 }
 
+function slowWorkflow() {
+	return {
+		name: `Agent bench ${SLOW_TOOL}`,
+		active: false,
+		nodes: [
+			{
+				id: 'trigger',
+				name: 'Start',
+				type: 'n8n-nodes-base.executeWorkflowTrigger',
+				typeVersion: 1.1,
+				position: [0, 0] as [number, number],
+				parameters: {
+					inputSource: 'workflowInputs',
+					workflowInputs: { values: [{ name: 'account', type: 'string' }] },
+				},
+			},
+			{
+				id: 'wait',
+				name: 'Wait',
+				type: 'n8n-nodes-base.wait',
+				typeVersion: 1.1,
+				position: [220, 0] as [number, number],
+				webhookId: crypto.randomUUID(),
+				parameters: { resume: 'timeInterval', amount: SLOW_TOOL_SECONDS, unit: 'seconds' },
+			},
+			{
+				id: 'report',
+				name: 'Report',
+				type: 'n8n-nodes-base.set',
+				typeVersion: 3.4,
+				position: [440, 0] as [number, number],
+				parameters: {
+					assignments: {
+						assignments: [
+							{ id: 'account', name: 'account', value: '={{ $json.account }}', type: 'string' },
+							{ id: 'revenue', name: 'revenueEur', value: 182000, type: 'number' },
+							{ id: 'tickets', name: 'openTickets', value: 7, type: 'number' },
+						],
+					},
+					options: {},
+				},
+			},
+		],
+		connections: {
+			Start: { main: [[{ node: 'Wait', type: 'main', index: 0 }]] },
+			Wait: { main: [[{ node: 'Report', type: 'main', index: 0 }]] },
+		},
+		settings: { executionOrder: 'v1' },
+	} satisfies Partial<IWorkflowBase>;
+}
+
+/**
+ * A plain production webhook that answers on receipt. The main probe calls it:
+ * the main must look up the webhook and enqueue the execution, as for any
+ * customer workflow, while agents load it.
+ */
+function pingWorkflow(): Partial<IWorkflowBase> {
+	return {
+		name: 'Agent bench ping',
+		active: false,
+		nodes: [
+			{
+				id: 'webhook',
+				name: 'Webhook',
+				type: 'n8n-nodes-base.webhook',
+				typeVersion: 2,
+				position: [0, 0],
+				webhookId: crypto.randomUUID(),
+				parameters: { httpMethod: 'POST', path: PING_PATH, responseMode: 'onReceived', options: {} },
+			},
+		],
+		connections: {},
+		settings: { executionOrder: 'v1', saveDataSuccessExecution: 'none' },
+	};
+}
+
+/** A schedule trigger that messages the agent, like a daily digest that runs often. */
+function scheduledWorkflow(agentId: string, everySec: number): Partial<IWorkflowBase> {
+	return {
+		name: SCHEDULED_WORKFLOW_NAME,
+		active: false,
+		nodes: [
+			{
+				id: 'schedule',
+				name: 'Schedule',
+				type: 'n8n-nodes-base.scheduleTrigger',
+				typeVersion: 1.2,
+				position: [0, 0],
+				parameters: {
+					rule: { interval: [{ field: 'seconds', secondsInterval: everySec }] },
+				},
+			},
+			{
+				id: 'agent',
+				name: 'Message an Agent',
+				type: 'n8n-nodes-base.messageAnAgent',
+				typeVersion: 3.1,
+				position: [220, 0],
+				parameters: {
+					agentId: { __rl: true, mode: 'id', value: agentId },
+					message: `Check stock of SKU KB-104 with ${STOCK_TOOL} and reply with the number only.`,
+					advanced: {
+						session: {
+							session: { sessionIdType: 'customKey', sessionKey: '=sched-{{ $execution.id }}' },
+						},
+					},
+				},
+			},
+		],
+		connections: { Schedule: { main: [[{ node: 'Message an Agent', type: 'main', index: 0 }]] } },
+		settings: { executionOrder: 'v1' },
+	};
+}
+
 /**
  * Webhook to Message an Agent. The caller sends the message and a session ID,
  * so the bench can find the turn in `agent_execution`. In queue mode a
@@ -328,7 +485,12 @@ export function modelProvider(model: string) {
  * With `integrations`, also connect the webhook integration, publish the agent
  * and activate the workflow that calls it.
  */
-export async function seedAgent(client: N8nClient, model: string, integrations: boolean) {
+export async function seedAgent(
+	client: N8nClient,
+	model: string,
+	integrations: boolean,
+	options: { scheduleEverySec?: number } = {},
+) {
 	const provider = modelProvider(model);
 	const projectId = await client.personalProjectId();
 	const credential = await client.createCredential('Agent bench model', provider.credentialType, {
@@ -346,6 +508,7 @@ export async function seedAgent(client: N8nClient, model: string, integrations: 
 		[STOCK_TOOL, 'Check how many units of a SKU are in stock.', stockWorkflow()],
 		[SHIPPING_TOOL, 'Quote the shipping price for a destination and weight.', shippingWorkflow()],
 		[CUSTOMER_TOOL, 'Find a customer by email in the customer table.', customerWorkflow(table.id)],
+		[SLOW_TOOL, 'Build the report of an account. It takes a few seconds.', slowWorkflow()],
 	];
 	const tools = [];
 	for (const [name, description, workflow] of definitions) {
@@ -378,5 +541,21 @@ export async function seedAgent(client: N8nClient, model: string, integrations: 
 		const caller = await client.createWorkflow(projectId, agentWorkflow(agent.id));
 		await client.activateWorkflow(caller.id, caller.versionId);
 	}
-	return { projectId, agentId: agent.id };
+	const ping = await client.createWorkflow(projectId, pingWorkflow());
+	await client.activateWorkflow(ping.id, ping.versionId);
+	return {
+		projectId,
+		agentId: agent.id,
+		/** Activate after warmup, so its executions fall in the measured window. */
+		startSchedule: async (): Promise<string | undefined> => {
+			if (!options.scheduleEverySec) return undefined;
+			if (!integrations) await client.publishAgent(projectId, agent.id);
+			const scheduled = await client.createWorkflow(
+				projectId,
+				scheduledWorkflow(agent.id, options.scheduleEverySec),
+			);
+			await client.activateWorkflow(scheduled.id, scheduled.versionId);
+			return scheduled.id;
+		},
+	};
 }

@@ -18,6 +18,7 @@ import { isRecord } from '@n8n/utils/is-record';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { sleep } from '@n8n/utils/sleep';
 import { DateTime } from 'luxon';
+import { InstanceSettings } from 'n8n-core';
 import type {
 	IBinaryKeyData,
 	IDataObject,
@@ -82,6 +83,12 @@ import { sanitizeToolName } from '../json-config/agent-config-composition';
 // ---------------------------------------------------------------------------
 
 const DEFAULT_TIMEOUT_MS = 120_000;
+
+/**
+ * A queued tool run that has not started by then is cancelled. A full queue
+ * otherwise holds the agent for the whole `DEFAULT_TIMEOUT_MS`.
+ */
+const QUEUE_START_TIMEOUT_MS = 15_000;
 
 /** Only a bounded wait due within this window is blocked on; longer ones go to HITL. */
 const WAIT_POLL_ELIGIBLE_MS = 60_000;
@@ -357,6 +364,16 @@ export async function executeWorkflow(
 	// Eval runs decorate the sub-execution's additionalData (HTTP mock handler,
 	// mocked credentials helper). The closure does not survive queue
 	// serialization, so WorkflowRunner keeps these runs in this process.
+	// An agent on a worker already holds a workflow slot. A tool run sent back to
+	// the same queue can wait for a slot that the agents hold, so run it here, as
+	// the Execute Workflow node does for sub-workflows.
+	const instanceSettings = Container.get(InstanceSettings);
+	if (instanceSettings.instanceType === 'worker') {
+		runData.runInCurrentProcess = true;
+	}
+	const mayWaitInQueue =
+		!runData.runInCurrentProcess && Container.get(GlobalConfig).executions.mode === 'queue';
+
 	const instrument = context.instrumentToolAdditionalData;
 	if (instrument && instrumentedToolName) {
 		runData.configureAdditionalData = (additionalData) => {
@@ -387,20 +404,47 @@ export async function executeWorkflow(
 		let completedRun: IRun | undefined;
 		if (activeExecutions.has(executionId)) {
 			let timeoutId: NodeJS.Timeout | undefined;
+			let startCheckId: NodeJS.Timeout | undefined;
 			const timeoutPromise = new Promise<never>((_, reject) => {
 				timeoutId = setTimeout(() => {
 					reject(new Error(`Execution timed out after ${timeoutMs}ms`));
 				}, timeoutMs);
+				if (mayWaitInQueue) {
+					startCheckId = setTimeout(() => {
+						void hasNotStarted(executionId).then((notStarted) => {
+							if (notStarted) reject(new QueueStartTimeoutError());
+						});
+					}, QUEUE_START_TIMEOUT_MS);
+				}
 			});
+			const clearTimers = () => {
+				clearTimeout(timeoutId);
+				clearTimeout(startCheckId);
+			};
 
 			try {
 				completedRun = await Promise.race([
 					activeExecutions.getPostExecutePromise(executionId),
 					timeoutPromise,
 				]);
-				clearTimeout(timeoutId);
+				clearTimers();
 			} catch (error) {
-				clearTimeout(timeoutId);
+				clearTimers();
+				if (error instanceof QueueStartTimeoutError) {
+					try {
+						activeExecutions.stopExecution(
+							executionId,
+							new TimeoutExecutionCancelledError(executionId),
+						);
+					} catch {
+						// Execution may have started between the check and the cancel
+					}
+					return {
+						executionId,
+						status: 'error',
+						error: `Execution did not start within ${QUEUE_START_TIMEOUT_MS / 1000}s because all workers are busy or no worker is running, and was cancelled. Do not retry right away.`,
+					};
+				}
 				if (error instanceof Error && error.message.includes('timed out')) {
 					// The time limit counts queue time too. Read the status before the stop changes it.
 					const neverStarted = await hasNotStarted(executionId);
@@ -444,6 +488,8 @@ export async function executeWorkflow(
 
 /** The foreground tool owns cancellation until it hands the workflow to a background job. */
 /** A queued execution stays `new` until a worker or a concurrency slot picks it up. */
+class QueueStartTimeoutError extends Error {}
+
 async function hasNotStarted(executionId: string): Promise<boolean> {
 	try {
 		const execution = await Container.get(ExecutionPersistence).findSingleExecution(executionId);

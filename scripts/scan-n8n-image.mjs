@@ -6,11 +6,12 @@
 
 import { $, echo, fs, chalk } from 'zx';
 import path from 'path';
+import { fileURLToPath } from 'url';
 
 $.verbose = false;
 process.env.FORCE_COLOR = '1';
 
-const scriptDir = path.dirname(new URL(import.meta.url).pathname);
+const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const isInScriptsDir = path.basename(scriptDir) === 'scripts';
 const rootDir = isInScriptsDir ? path.join(scriptDir, '..') : scriptDir;
 

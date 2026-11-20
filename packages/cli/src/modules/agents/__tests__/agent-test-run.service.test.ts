@@ -155,6 +155,16 @@ describe('AgentTestRunService', () => {
 		},
 	);
 
+	it('skips the runnable check without a credential provider', async () => {
+		const { service, agentValidationService } = makeService();
+		agentValidationService.validateAgentIsRunnable.mockResolvedValue({ missing: ['model'] });
+
+		await expect(service.prepareDraftRun({ agentId, projectId, user })).resolves.toMatchObject({
+			status: 'ready',
+		});
+		expect(agentValidationService.validateAgentIsRunnable).not.toHaveBeenCalled();
+	});
+
 	it('flags a run that stopped on the iteration cap', async () => {
 		const { service, agentExecutionOrchestratorService } = makeService();
 		agentExecutionOrchestratorService.executeForChat.mockImplementation(async function* (config) {

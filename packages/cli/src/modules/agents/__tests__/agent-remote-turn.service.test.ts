@@ -1,4 +1,5 @@
 import { mockLogger } from '@n8n/backend-test-utils';
+import type { AgentsConfig } from '@n8n/config';
 import { mock } from 'vitest-mock-extended';
 
 import type { AgentQueuedTestStreamService } from '../agent-queued-test-stream.service';
@@ -70,12 +71,25 @@ describe('AgentRemoteTurnService', () => {
 		workers = true,
 		instanceKey = 'main-a',
 		activeInstanceKeys = ['main-a', 'worker-a'],
-	}: { workers?: boolean; instanceKey?: string; activeInstanceKeys?: string[] } = {}) {
+		queueMaxWaitSeconds = 0,
+		roomHere = true,
+		queueFull = false,
+	}: {
+		workers?: boolean;
+		instanceKey?: string;
+		activeInstanceKeys?: string[];
+		queueMaxWaitSeconds?: number;
+		roomHere?: boolean;
+		queueFull?: boolean;
+	} = {}) {
 		return new AgentRemoteTurnService(
 			mockLogger(),
+			mock<AgentsConfig>({ queueMaxWaitSeconds }),
 			testCluster({ instanceKey, activeInstanceKeys }),
 			mock<AgentTurnPlacement>({
 				dispatchEnabled: true,
+				mayRunHere: () => roomHere,
+				queueFull: async () => queueFull,
 				workersAvailable: async () => workers,
 				mayFallBack: async (sentAt) => Date.now() - sentAt >= AgentTurnPlacement.FALLBACK_WAIT_MS,
 			}),
@@ -104,6 +118,27 @@ describe('AgentRemoteTurnService', () => {
 				outcome: 'local',
 			});
 			expect(requests.createPending).not.toHaveBeenCalled();
+		});
+
+		it('rejects the turn as busy when no worker is up and this main is full', async () => {
+			const service = setup({ workers: false, roomHere: false });
+
+			await expect(service.result(payload, new AbortController().signal)).resolves.toEqual({
+				outcome: 'busy',
+				retryAfterSeconds: AgentTurnPlacement.BUSY_RETRY_AFTER_SECONDS,
+			});
+			expect(requests.createPending).not.toHaveBeenCalled();
+		});
+
+		it('rejects the turn as busy without a row when too many turns wait', async () => {
+			const service = setup({ queueFull: true });
+
+			await expect(service.result(payload, new AbortController().signal)).resolves.toEqual({
+				outcome: 'busy',
+				retryAfterSeconds: AgentTurnPlacement.BUSY_RETRY_AFTER_SECONDS,
+			});
+			expect(requests.createPending).not.toHaveBeenCalled();
+			expect(turnQueue.enqueueRequest).not.toHaveBeenCalled();
 		});
 
 		it('returns the result that a worker stores, and removes the row', async () => {
@@ -135,6 +170,20 @@ describe('AgentRemoteTurnService', () => {
 			expect(outcome).toEqual({ outcome: 'local' });
 			expect(now - 1_000_000).toBeGreaterThanOrEqual(AgentTurnPlacement.FALLBACK_WAIT_MS);
 			expect(requests.claim).toHaveBeenCalledWith(expect.any(String), 'main-a');
+		});
+
+		it('rejects the turn as busy when no process starts it within the wait limit', async () => {
+			const service = setup({ queueMaxWaitSeconds: 10 });
+
+			const outcome = await service.result(payload, new AbortController().signal);
+
+			expect(outcome).toEqual({
+				outcome: 'busy',
+				retryAfterSeconds: AgentTurnPlacement.BUSY_RETRY_AFTER_SECONDS,
+			});
+			expect(now - 1_000_000).toBeGreaterThanOrEqual(10_000);
+			expect(now - 1_000_000).toBeLessThan(AgentTurnPlacement.FALLBACK_WAIT_MS);
+			expect(rows.size).toBe(0);
 		});
 
 		it('runs the turn itself when the job cannot be sent', async () => {

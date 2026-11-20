@@ -11,7 +11,6 @@ import { mock } from 'vitest-mock-extended';
 import { FileNotFoundError } from 'n8n-core';
 
 import type { AgentTaskCancellationService } from '@/modules/agents/agent-task-cancellation.service';
-import type { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
@@ -123,7 +122,6 @@ function makeController() {
 		agentTestRunService,
 		mock<AgentTestChatService>(),
 		checkpointStorage,
-		mock<CredentialsService>(),
 		agentsService as unknown as AgentsService,
 		agentChatAttachmentService,
 		agentExecutionService,
@@ -135,7 +133,10 @@ function makeController() {
 			messageQueue,
 			previewStreams,
 			agentChatAttachmentService,
-			mock<AgentTurnPlacement>({ mayOpenStream: () => true }),
+			mock<AgentTurnPlacement>({
+				enterIntake: async () => () => {},
+				openStream: () => () => {},
+			}),
 		),
 		plans,
 		new AgentChatResumeService(
@@ -144,8 +145,9 @@ function makeController() {
 			agentExecutionOrchestratorService,
 			new AgentRemoteTurnService(
 				mockLogger(),
+				agentsConfig,
 				testCluster(),
-				mock<AgentTurnPlacement>({ dispatchEnabled: false }),
+				mock<AgentTurnPlacement>({ dispatchEnabled: false, mayRunHere: () => true }),
 				mock<AgentTurnQueue>(),
 				mock<AgentTurnRequestRepository>(),
 				previewStreams,
@@ -163,6 +165,7 @@ function makeController() {
 		chatExecutionService,
 		checkpointStorage,
 		agentExecutionService,
+		agentValidationService,
 		backgroundJobService,
 		agentExecutionOrchestratorService,
 		agentTestRunService,
@@ -1320,6 +1323,28 @@ describe('AgentChatController HITL cancellation', () => {
 			});
 		},
 	);
+});
+
+describe('AgentChatController preview chat intake', () => {
+	it('queues the message without the runnable check, which the queue consumer runs', async () => {
+		const { controller, messageQueue, agentValidationService } = makeController();
+		agentValidationService.validateAgentIsRunnable.mockResolvedValue({ missing: ['model'] });
+		// A duplicate ends the request without waiting for a reply.
+		messageQueue.enqueue.mockResolvedValueOnce({ status: 'duplicate' } as never);
+
+		await controller.chat(
+			{ params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never,
+			makeSseResponse([]),
+			'agent-1',
+			{ message: 'hi' } as never,
+		);
+
+		expect(agentValidationService.validateAgentIsRunnable).not.toHaveBeenCalled();
+		expect(messageQueue.enqueue).toHaveBeenCalledWith(
+			expect.objectContaining({ agentId: 'agent-1', projectId: 'project-1' }),
+			expect.any(Function),
+		);
+	});
 });
 
 describe('AgentChatController attachment cleanup on failed turns', () => {

@@ -19,6 +19,8 @@ function setup({
 	memoryHigh = false,
 	localTurns = 0,
 	lastProgressAt,
+	mainMaxIntake = 0,
+	mainMaxStreams = 0,
 }: {
 	cluster?: TestClusterOptions;
 	queueModeEnabled?: boolean;
@@ -31,6 +33,8 @@ function setup({
 	localTurns?: number;
 	/** When an agent job last started or ended anywhere. Omit for never. */
 	lastProgressAt?: number;
+	mainMaxIntake?: number;
+	mainMaxStreams?: number;
 } = {}) {
 	const registry = new InstanceRegistryProxyService();
 	const getAllInstances = vi.fn(async () => {
@@ -43,6 +47,8 @@ function setup({
 		workerEnabled,
 		mainFallbackTurns,
 		mainMaxTurns,
+		mainMaxIntake,
+		mainMaxStreams,
 	} as AgentsConfig;
 	const agentCluster = testCluster(cluster);
 	agentCluster.metrics.registerGauges({ localTurns: () => localTurns });
@@ -253,18 +259,97 @@ describe('AgentTurnPlacement', () => {
 					memoryHigh: true,
 				});
 				expect(await placement.mayClaim('preview', recent())).toBe(true);
-				expect(placement.mayOpenStream()).toBe(true);
+				expect(placement.openStream()).toBeDefined();
 				expect(events).toEqual([]);
 			}
 		});
 
 		it('opens no live stream while memory is high', () => {
-			expect(setup().placement.mayOpenStream()).toBe(true);
+			expect(setup().placement.openStream()).toBeDefined();
 			const { placement, events } = setup({ memoryHigh: true });
-			expect(placement.mayOpenStream()).toBe(false);
-			expect(events).toEqual([{ type: 'stream-skipped' }]);
+			expect(placement.openStream()).toBeUndefined();
+			expect(events).toEqual([{ type: 'stream-skipped', reason: 'main-memory-high' }]);
 		});
 
+		it('opens no more live streams than the limit, and frees a place when one closes', () => {
+			const { placement, events } = setup({ mainMaxStreams: 2 });
+			const first = placement.openStream();
+			expect(placement.openStream()).toBeDefined();
+			expect(placement.openStream()).toBeUndefined();
+			expect(events).toEqual([{ type: 'stream-skipped', reason: 'main-at-stream-limit' }]);
+
+			first?.();
+			first?.();
+			expect(placement.openStream()).toBeDefined();
+			expect(placement.openStream()).toBeUndefined();
+		});
+	});
+
+	describe('enterIntake', () => {
+		const signal = () => new AbortController().signal;
+
+		it('applies no limit without agent queue mode or with a limit of 0', async () => {
+			for (const options of [{ queueModeEnabled: false, mainMaxIntake: 1 }, { mainMaxIntake: 0 }]) {
+				const { placement } = setup(options);
+				expect(await placement.enterIntake(signal())).toBeDefined();
+				expect(await placement.enterIntake(signal())).toBeDefined();
+			}
+		});
+
+		it('lets a waiting message in, in order, when a place is freed', async () => {
+			const { placement } = setup({ mainMaxIntake: 1 });
+			const leave = await placement.enterIntake(signal());
+			const order: string[] = [];
+			const second = placement.enterIntake(signal()).then((r) => {
+				order.push('second');
+				return r;
+			});
+			const third = placement.enterIntake(signal()).then((r) => {
+				order.push('third');
+				return r;
+			});
+
+			leave?.();
+			leave?.();
+			const leaveSecond = await second;
+			expect(leaveSecond).toBeDefined();
+			expect(order).toEqual(['second']);
+
+			leaveSecond?.();
+			expect(await third).toBeDefined();
+			expect(order).toEqual(['second', 'third']);
+		});
+
+		it('rejects a message that waits too long', async () => {
+			vi.useFakeTimers();
+			const { placement, events } = setup({ mainMaxIntake: 1 });
+			const leave = await placement.enterIntake(signal());
+			const waiting = placement.enterIntake(signal());
+			vi.advanceTimersByTime(AgentTurnPlacement.INTAKE_WAIT_MS);
+			expect(await waiting).toBeUndefined();
+			expect(events).toEqual([{ type: 'intake-rejected' }]);
+
+			// The rejected message does not keep a place.
+			leave?.();
+			expect(await placement.enterIntake(signal())).toBeDefined();
+		});
+
+		it('drops a waiting message when its request is aborted', async () => {
+			const { placement, events } = setup({ mainMaxIntake: 1 });
+			const leave = await placement.enterIntake(signal());
+			const controller = new AbortController();
+			const waiting = placement.enterIntake(controller.signal);
+			controller.abort();
+			expect(await waiting).toBeUndefined();
+			expect(events).toEqual([]);
+
+			leave?.();
+			expect(await placement.enterIntake(signal())).toBeDefined();
+			expect(await placement.enterIntake(controller.signal)).toBeUndefined();
+		});
+	});
+
+	describe('mayClaim on a main, by kind', () => {
 		it('runs every kind when no agent worker is registered', async () => {
 			const { placement } = setup();
 			expect(await placement.mayClaim('preview', recent())).toBe(true);

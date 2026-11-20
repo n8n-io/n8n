@@ -12,13 +12,32 @@ export type AgentTurnLocation = 'main' | 'worker';
  */
 export type AgentTurnHoldReason = 'workers-progressing' | 'main-at-limit' | 'main-memory-high';
 
+/**
+ * Why a main opened no live stream for an accepted chat message:
+ * - `main-memory-high`: the memory of this main is above `N8N_AGENTS_MAIN_MEMORY_HOLD_LEVEL`.
+ * - `main-at-stream-limit`: this main already has `N8N_AGENTS_MAIN_MAX_STREAMS` live streams.
+ */
+export type AgentStreamSkipReason = 'main-memory-high' | 'main-at-stream-limit';
+
+/**
+ * Why a main rejected an agent turn with a busy error:
+ * - `queue-full`: `N8N_AGENTS_QUEUE_MAX_WAITING` turns already wait for a worker.
+ * - `wait-too-long`: no process started the turn within `N8N_AGENTS_QUEUE_MAX_WAIT`.
+ * - `main-at-limit`: no agent worker is up, and this main has no room for the turn.
+ */
+export type AgentTurnRejectReason = 'queue-full' | 'wait-too-long' | 'main-at-limit';
+
 export type AgentQueueMetricEvent =
 	| { type: 'turn-started'; location: AgentTurnLocation }
 	| { type: 'fallback'; path: 'queued-message' | 'request' }
 	/** A main left a turn in the queue. Counts each check, not each turn. */
 	| { type: 'turn-held'; reason: AgentTurnHoldReason }
-	/** A main accepted a chat message but opened no live stream, because its memory was high. */
-	| { type: 'stream-skipped' }
+	/** A main accepted a chat message but opened no live stream. */
+	| { type: 'stream-skipped'; reason: AgentStreamSkipReason }
+	/** A main rejected a chat message, because it accepted too many messages at the same time. */
+	| { type: 'intake-rejected' }
+	/** A main rejected an agent turn with a busy error. */
+	| { type: 'turn-rejected'; reason: AgentTurnRejectReason }
 	| { type: 'relay-dropped'; channel: 'execution-update' | 'agent-update' | 'stream' }
 	| { type: 'turn-timed-out' };
 

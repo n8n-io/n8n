@@ -1,5 +1,4 @@
 import {
-	AGENT_CHAT_ERROR_CODES,
 	type AgentBackgroundJobsResponse,
 	type AgentSessionFilesResponse,
 	AgentChatMessageDto,
@@ -36,10 +35,8 @@ import { randomUUID } from 'node:crypto';
 import { AgentPlanService } from './agent-plan.service';
 import { presentPlan } from './plans/agent-plan-tools';
 import { AgentTaskCancellationService } from './agent-task-cancellation.service';
-import { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 
-import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
 import { AgentN8nChatUnavailableError } from './agent-n8n-chat-unavailable.error';
 import { AgentChatRelayService } from './agent-chat-relay.service';
@@ -82,7 +79,6 @@ export class AgentChatController {
 		private readonly agentTestRunService: AgentTestRunService,
 		private readonly agentTestChatService: AgentTestChatService,
 		private readonly checkpointStorage: N8NCheckpointStorage,
-		private readonly credentialsService: CredentialsService,
 		private readonly agentsService: AgentsService,
 		private readonly agentChatAttachmentService: AgentChatAttachmentService,
 		private readonly agentExecutionService: AgentExecutionService,
@@ -251,14 +247,9 @@ export class AgentChatController {
 		// The text-or-attachment invariant is enforced by the DTO schema.
 		const { message, sessionId, messageId, newSession, attachments } = payload;
 
-		const credentialProvider = new AgentsCredentialProvider(
-			this.credentialsService,
-			projectId,
-			req.user,
-			agentId,
-		);
-
 		await this.chatRelay.relayQueuedMessage(res, async (send, abortSignal) => {
+			// No runnable check here: the queue consumer checks the agent config and
+			// credentials before the turn, and a burst of chats would repeat it on main.
 			const prepared = await this.agentTestRunService.prepareDraftRun({
 				agentId,
 				projectId,
@@ -266,20 +257,10 @@ export class AgentChatController {
 				sessionId,
 				previewChat: true,
 				newSession,
-				credentialProvider,
 			});
 			if (abortSignal.aborted) return undefined;
-			if (prepared.status === 'session_not_found') {
+			if (prepared.status !== 'ready') {
 				send({ type: 'error', message: 'Session not found' });
-				return undefined;
-			}
-			if (prepared.status === 'agent_misconfigured') {
-				send({
-					type: 'error',
-					message: 'This agent is not ready to run yet.',
-					errorCode: AGENT_CHAT_ERROR_CODES.agentMisconfigured,
-					missing: prepared.missing,
-				});
 				return undefined;
 			}
 			const threadId = prepared.sessionId;

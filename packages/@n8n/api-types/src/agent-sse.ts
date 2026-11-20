@@ -221,6 +221,10 @@ export const AGENT_CHAT_ERROR_CODES = {
 	agentUnavailable: 'agent_unavailable',
 	/** The agent misses required config. `missing` lists the config slots. */
 	agentMisconfigured: 'agent_misconfigured',
+	/** The main instance accepts too many messages now. The message was not saved. */
+	mainBusy: 'main_busy',
+	/** Too many agent turns wait for a worker. The message was not saved. */
+	queueFull: 'queue_full',
 } as const;
 
 export type AgentChatErrorCode =

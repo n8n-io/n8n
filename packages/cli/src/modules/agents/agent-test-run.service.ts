@@ -33,7 +33,11 @@ interface PrepareDraftRunInput {
 	sessionId?: string;
 	previewChat?: boolean;
 	newSession?: boolean;
-	credentialProvider: CredentialProvider;
+	/**
+	 * Checks that the agent can run. Without it, the check is skipped: the main
+	 * leaves it to the queue consumer, which checks again before the turn.
+	 */
+	credentialProvider?: CredentialProvider;
 }
 
 export type PrepareDraftRunResult =
@@ -70,8 +74,9 @@ export interface ResumePreparedDraftRunInput
 	initialResponse?: string;
 }
 
-type ExecuteDraftRunInput = PrepareDraftRunInput &
-	Pick<ExecuteForChatConfig, 'message' | 'user' | 'source' | 'abortSignal'>;
+type ExecuteDraftRunInput = PrepareDraftRunInput & {
+	credentialProvider: CredentialProvider;
+} & Pick<ExecuteForChatConfig, 'message' | 'user' | 'source' | 'abortSignal'>;
 
 interface ResumeDraftRunInput
 	extends Omit<
@@ -186,12 +191,14 @@ export class AgentTestRunService {
 			}
 		}
 
-		const { missing } = await this.agentValidationService.validateAgentIsRunnable(
-			agentId,
-			projectId,
-			credentialProvider,
-		);
-		if (missing.length > 0) return { status: 'agent_misconfigured', missing };
+		if (credentialProvider) {
+			const { missing } = await this.agentValidationService.validateAgentIsRunnable(
+				agentId,
+				projectId,
+				credentialProvider,
+			);
+			if (missing.length > 0) return { status: 'agent_misconfigured', missing };
+		}
 
 		return {
 			status: 'ready',

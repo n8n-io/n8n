@@ -206,16 +206,18 @@ export class AgentsCredentialProvider
 		}));
 	}
 
-	private async findCredentialEntity(credentialId: string): Promise<CredentialsEntity | null> {
-		if (this.user) {
-			// Same user-scoped intersection as list() — a credential the project
-			// or global scope allows but this user can't see must not resolve.
-			const userAccessible = await this.getUserAccessibleCredentials();
-			if (!userAccessible.some((c) => c.id === credentialId)) return null;
-		}
-
-		const accessible = await this.getAllProjectAndGlobalCredentials();
-		return accessible.find((c) => c.id === credentialId) ?? null;
+	/**
+	 * Same set as list(): a credential the project or global scope allows but
+	 * this user can't see must not resolve. Checks only this ID, because every
+	 * agent turn resolves its model credential and the full lists grow with the
+	 * instance.
+	 */
+	private async findCredentialEntity(credentialId: string) {
+		return await this.credentialsService.findCredentialAnAgentCanUse(
+			credentialId,
+			this.projectId,
+			this.user,
+		);
 	}
 
 	private async getUserAccessibleCredentials() {

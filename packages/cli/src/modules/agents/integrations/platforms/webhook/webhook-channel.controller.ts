@@ -3,7 +3,7 @@ import { createIpRateLimit, Post, RootLevelController } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { Request, Response } from 'express';
 
-import { WebhookChannelService } from './webhook-channel.service';
+import { WebhookChannelService, type WebhookChannelReply } from './webhook-channel.service';
 
 const agentsConfig = Container.get(AgentsConfig);
 
@@ -30,7 +30,7 @@ export class WebhookChannelController {
 			body: req.body,
 			abortSignal: abortOnClose(res),
 		});
-		if (!res.headersSent) res.status(reply.status).json(reply.body);
+		send(res, reply);
 	}
 
 	@Post('/:agentId/approvals/:conversationId/:runId/:toolCallId', {
@@ -49,8 +49,16 @@ export class WebhookChannelController {
 			body: req.body,
 			abortSignal: abortOnClose(res),
 		});
-		if (!res.headersSent) res.status(reply.status).json(reply.body);
+		send(res, reply);
 	}
+}
+
+function send(res: Response, reply: WebhookChannelReply) {
+	if (res.headersSent) return;
+	if (reply.retryAfterSeconds !== undefined) {
+		res.setHeader('Retry-After', String(reply.retryAfterSeconds));
+	}
+	res.status(reply.status).json(reply.body);
 }
 
 /** A client that disconnects stops the run. */

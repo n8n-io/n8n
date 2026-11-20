@@ -4,11 +4,22 @@ import { parseArgs } from 'node:util';
 import type { N8NConfig } from 'n8n-containers';
 
 /**
- * `plain`, `tool` and `long` are editor chat turns. `webhook` calls the
- * Responses API of the agent's webhook integration. `workflow` calls a
- * production webhook of a workflow that runs the agent with Message an Agent.
+ * `plain`, `tool`, `datatable`, `long`, `multitool`, `slowtool` and
+ * `multiturn` are editor chat turns. `webhook` calls the Responses API of the
+ * agent's webhook integration. `workflow` calls a production webhook of a
+ * workflow that runs the agent with Message an Agent.
  */
-export const TURN_KINDS = ['plain', 'tool', 'datatable', 'long', 'webhook', 'workflow'] as const;
+export const TURN_KINDS = [
+	'plain',
+	'tool',
+	'datatable',
+	'long',
+	'webhook',
+	'workflow',
+	'multitool',
+	'slowtool',
+	'multiturn',
+] as const;
 export type TurnKind = (typeof TURN_KINDS)[number];
 export type TurnMix = Partial<Record<TurnKind, number>>;
 
@@ -30,6 +41,20 @@ export interface Topology {
 	/** Limits of each worker container. Set it with `resourceQuota`, or the workers get that one. */
 	workerResourceQuota?: N8NConfig['workerResourceQuota'];
 	env?: Record<string, string>;
+	/** Load phases for this topology. Default: `phases` of the config. */
+	phases?: LoadPhase[];
+	/** Kill one worker this many seconds after measuring starts. */
+	killWorkerAtSec?: number;
+}
+
+/**
+ * One phase of a load profile. The bench keeps `concurrency` turns in flight
+ * for `seconds`, then goes to the next phase. With phases, the run is timed
+ * and `turns` is not used.
+ */
+export interface LoadPhase {
+	concurrency: number;
+	seconds: number;
 }
 
 export interface BenchConfig {
@@ -66,6 +91,15 @@ export interface BenchConfig {
 	 * Replaces `topologies`. See `slotSweep`.
 	 */
 	slots?: number[];
+	/** Timed load profile, for ramps and spikes. Replaces `turns` and `concurrency`. */
+	phases?: LoadPhase[];
+	/**
+	 * Call the main every `probeMs` while measuring: `/healthz`, a REST read and
+	 * a plain production webhook. 0 turns the probe off.
+	 */
+	probeMs: number;
+	/** Fire a schedule-triggered workflow that messages the agent every this many seconds. 0 is off. */
+	scheduleEverySec: number;
 }
 
 const WORKLOADS: Record<string, TurnMix> = {
@@ -78,6 +112,22 @@ const WORKLOADS: Record<string, TurnMix> = {
 	// Editor chat only: the mix of runs before webhook and workflow turns.
 	chat: { plain: 5, tool: 3, long: 2 },
 	mixed: { plain: 1, tool: 1, datatable: 1, long: 1, webhook: 1, workflow: 1 },
+	multitool: { multitool: 1 },
+	slowtool: { slowtool: 1 },
+	multiturn: { multiturn: 1 },
+	// Weighted like production traffic: mostly short chats and integration calls,
+	// some tool chains, few long answers.
+	real: {
+		plain: 3,
+		tool: 3,
+		datatable: 1,
+		long: 1,
+		webhook: 3,
+		workflow: 2,
+		multitool: 2,
+		slowtool: 1,
+		multiturn: 1,
+	},
 };
 
 const DEFAULTS: BenchConfig = {
@@ -95,6 +145,12 @@ const DEFAULTS: BenchConfig = {
 	keep: false,
 	cockpit: 4790,
 	observability: false,
+	probeMs: 1000,
+	scheduleEverySec: 0,
+	// Every run has hard limits, so results match a sized deployment and not the laptop.
+	// Sizes follow Cloud Enterprise V2. Quotas are in GB and cores.
+	resourceQuota: { memory: 3, cpu: 1 },
+	workerResourceQuota: { memory: 4, cpu: 1 },
 };
 
 /**
@@ -162,9 +218,13 @@ export function slotSweep(
 
 /** Load for one topology, with the config as default. */
 export function topologyLoad(topology: Topology, config: BenchConfig) {
+	const phases = topology.phases ?? config.phases;
 	return {
 		turns: topology.turns ?? config.turns,
-		concurrency: topology.concurrency ?? config.concurrency,
+		concurrency: phases?.length
+			? Math.max(...phases.map((p) => p.concurrency))
+			: (topology.concurrency ?? config.concurrency),
+		...(phases?.length ? { phases } : {}),
 	};
 }
 
@@ -177,6 +237,12 @@ export function stackConfig(topology: Topology, config: BenchConfig): N8NConfig 
 		N8N_ENABLED_MODULES: 'agents',
 		N8N_COMMUNITY_PACKAGES_ENABLED: 'false',
 		N8N_DIAGNOSTICS_ENABLED: 'false',
+		// The stack defaults to debug, which costs measurable CPU under load. Match production.
+		N8N_LOG_LEVEL: 'info',
+		// The stack starts one external runner, bound to the first worker only. Code
+		// nodes on main or another worker then time out. An internal runner gives each
+		// process its own, and counts it against that process's memory quota.
+		N8N_RUNNERS_MODE: 'internal',
 		...(agentQueue
 			? {
 					N8N_AGENTS_QUEUE_MODE_ENABLED: 'true',
@@ -227,8 +293,10 @@ Usage: pnpm --filter n8n-playwright bench:agents -- [options]
 
   --config <file>        JSON file with any BenchConfig fields (flags override it)
   --topology <list>      main, queue, queue-agents-off, multi-main (comma-separated)
-  --workload <name>      plain | tool | long | webhook | workflow | chat | mixed
-                         mixed (default): 20% each of the five kinds
+  --workload <name>      plain | tool | long | webhook | workflow | datatable |
+                         multitool | slowtool | multiturn | chat | mixed | real
+                         mixed (default): equal parts of the first six kinds
+                         real: every kind, weighted like production traffic
                          chat: plain 5 : tool 3 : long 2, editor chat only
   --turns <n>            measured turns for each topology
   --concurrency <n>      turns in flight at the same time
@@ -249,6 +317,8 @@ Usage: pnpm --filter n8n-playwright bench:agents -- [options]
   --keep                 leave the last stack running
   --cockpit <port|off>   live cockpit page (default 4790)
   --observability        also start VictoriaMetrics, VictoriaLogs and Vector
+  --probe-ms <n>         main probe interval while measuring (default 1000, 0 = off)
+  --schedule-every <s>   also run a schedule-triggered agent workflow every s seconds
   -h, --help
 
 Env: ANTHROPIC_API_KEY or OPENAI_API_KEY for the model.
@@ -279,6 +349,8 @@ export function loadConfig(argv: string[]): BenchConfig {
 			keep: { type: 'boolean' },
 			cockpit: { type: 'string' },
 			observability: { type: 'boolean' },
+			'probe-ms': { type: 'string' },
+			'schedule-every': { type: 'string' },
 			help: { type: 'boolean', short: 'h' },
 		},
 	});
@@ -337,11 +409,13 @@ export function loadConfig(argv: string[]): BenchConfig {
 		config.workerResourceQuota = {
 			...config.workerResourceQuota,
 			memory: workerMemory ? workerMemory / 1024 : (config.workerResourceQuota?.memory ?? 4),
-			...(workerCpu ? { cpu: workerCpu } : {}),
+			cpu: workerCpu ?? config.workerResourceQuota?.cpu ?? 1,
 		};
 	}
 	config.keep = values.keep ?? config.keep;
 	config.observability = values.observability ?? config.observability;
+	config.probeMs = int(values['probe-ms'], 'probe-ms') ?? config.probeMs;
+	config.scheduleEverySec = int(values['schedule-every'], 'schedule-every') ?? config.scheduleEverySec;
 	if (values.cockpit !== undefined) {
 		config.cockpit = values.cockpit === 'off' ? 'off' : (int(values.cockpit, 'cockpit') ?? 4790);
 	}

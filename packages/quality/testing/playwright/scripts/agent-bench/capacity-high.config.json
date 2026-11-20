@@ -1,0 +1,18 @@
+{
+	"topologies": [
+		{ "name": "main-60", "mains": 1, "workers": 0, "agentQueue": false, "concurrency": 60, "turns": 180 },
+		{ "name": "queue-x25-60", "mains": 1, "workers": 2, "agentQueue": true, "workerConcurrency": 25, "concurrency": 60, "turns": 180 },
+		{ "name": "queue-x50-60", "mains": 1, "workers": 2, "agentQueue": true, "workerConcurrency": 50, "concurrency": 60, "turns": 180 },
+		{ "name": "main-90", "mains": 1, "workers": 0, "agentQueue": false, "concurrency": 90, "turns": 270 },
+		{ "name": "queue-x25-90", "mains": 1, "workers": 2, "agentQueue": true, "workerConcurrency": 25, "concurrency": 90, "turns": 270 },
+		{ "name": "queue-x50-90", "mains": 1, "workers": 2, "agentQueue": true, "workerConcurrency": 50, "concurrency": 90, "turns": 270 },
+		{ "name": "main-120", "mains": 1, "workers": 0, "agentQueue": false, "concurrency": 120, "turns": 360 },
+		{ "name": "queue-x25-120", "mains": 1, "workers": 2, "agentQueue": true, "workerConcurrency": 25, "concurrency": 120, "turns": 360 },
+		{ "name": "queue-x50-120", "mains": 1, "workers": 2, "agentQueue": true, "workerConcurrency": 50, "concurrency": 120, "turns": 360 }
+	],
+	"workload": "mixed",
+	"warmup": 2,
+	"workers": 2,
+	"resourceQuota": { "memory": 3, "cpu": 1 },
+	"workerResourceQuota": { "memory": 4, "cpu": 1 }
+}

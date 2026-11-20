@@ -13,6 +13,9 @@
 		long: 'var(--long)',
 		webhook: 'var(--webhook)',
 		workflow: 'var(--workflow)',
+		multitool: 'var(--multitool)',
+		slowtool: 'var(--slowtool)',
+		multiturn: 'var(--multiturn)',
 	};
 	const app = document.getElementById('app');
 	let last = null;
@@ -34,6 +37,11 @@
 	function duration(msTotal) {
 		const s = Math.max(0, Math.round(msTotal / 1000));
 		return s >= 60 ? `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, '0')}s` : `${s}s`;
+	}
+
+	function ms(v) {
+		if (v == null) return '–';
+		return v < 1000 ? `${Math.round(v)} ms` : `${(v / 1000).toFixed(1)} s`;
 	}
 
 	// ---- chart ----------------------------------------------------------
@@ -197,8 +205,11 @@
 			<span class="muted">${esc(shape)}</span>
 			<span class="facts">${t0 ? `${done} / ${t.planned} turns · ${errors} error${errors === 1 ? '' : 's'}${tpm ? ` · ${tpm.toFixed(0)} turns/min` : ''} · ${duration(end - t0)}` : esc(t.status === 'pending' ? 'not started' : t.status)}</span>
 		</div>`;
+		const config = c
+			? `<details class="run-config"><summary>Config<span hidden>${esc(t.name)}</span></summary><div class="rows">${configRows(t)}</div></details>`
+			: '';
 		if (t.error) return `<div class="run">${head}<p class="bad">${esc(t.error)}</p></div>`;
-		if (!t0) return `<div class="run">${head}</div>`;
+		if (!t0) return `<div class="run">${head}${config}</div>`;
 
 		const mains = t.processes.filter((p) => p.role === 'main').map((p) => p.name);
 		const samples = t.samples.filter((x) => x.t >= t0 && x.t <= end);
@@ -260,6 +271,31 @@
 				limit: memLimit ? { value: memLimit, label: `limit ${mb(memLimit)}` } : undefined,
 			},
 		);
+		// Each point is one finished message, smoothed over the last 10 so the line shows the trend.
+		const finished = t.turns
+			.filter((x) => x.ok && x.finishedAt >= t0)
+			.sort((a, b) => a.finishedAt - b.finishedAt);
+		const rolling = (key) =>
+			finished.map((x, i) => [
+				sec(x.finishedAt),
+				quantile(
+					finished.slice(Math.max(0, i - 9), i + 1).map((y) => y[key] ?? null),
+					0.5,
+				),
+			]);
+		const startValues = finished.map((x) => x.startMs ?? null);
+		const totalValues = finished.map((x) => x.totalMs);
+		const latencyChart = chart(
+			[
+				{ name: 'full reply', color: 'var(--ink)', points: rolling('totalMs') },
+				{ name: 'until the agent starts', color: 'var(--accent)', points: rolling('startMs') },
+			],
+			{ id: `lat-${t.name}`, yFormat: ms, xMax },
+		);
+		const latency = `<h4 class="proc">Agent latency</h4>
+			<div class="stat"><span>Until the agent starts</span><b>${ms(quantile(startValues, 0.5))}</b><span class="muted">typical</span><b>${ms(quantile(startValues, 0.95))}</b><span class="muted">slowest 5%</span>
+			<span>Full reply</span><b>${ms(quantile(totalValues, 0.5))}</b><span class="muted">typical</span><b>${ms(quantile(totalValues, 0.95))}</b><span class="muted">slowest 5%</span></div>
+			${latencyChart}`;
 		const share = (v, limit) =>
 			v != null && limit
 				? ` <span class="muted">· ${Math.round((v / limit) * 100)}% of limit</span>`
@@ -272,7 +308,8 @@
 				<div><div class="stat"><span>Memory</span><b>${mb(workerPeakMem)}</b><span class="muted">peak, largest${share(workerPeakMem, wMemLimit)}</span></div>${chart(workerSeries('rssMb'), { id: `wmem-${t.name}`, yFormat: mb, xMax, limit: lim(wMemLimit, mb) })}</div>
 			</div>`
 			: '';
-		return `<div class="run">${head}
+		return `<div class="run">${head}${config}
+			${latency}
 			<h4 class="proc">Main</h4>
 			<div class="pair">
 				<div><div class="stat"><span>CPU</span><b>${pct(quantile(cpuValues, 0.5))}</b><span class="muted">typical</span><b>${pct(peakCpu)}</b><span class="muted">peak${share(peakCpu, cpuLimit)}</span></div>${cpuChart}</div>
@@ -283,9 +320,9 @@
 	function runsSection(state, now) {
 		return section(
 			4,
-			'CPU and memory, per run',
+			'Latency, CPU and memory, per run',
 			state.topologies.map((t) => runCard(t, now)).join(''),
-			'x = time since measuring started · CPU in % of one core · hover for values',
+			'x = time since measuring started · latency = median of the last 10 replies · CPU in % of one core · hover for values',
 		);
 	}
 
@@ -296,10 +333,7 @@
 					.join(' · ') || 'none'
 			: 'none';
 
-	function configSection(state) {
-		const runs = state.topologies.filter((t) => t.config);
-		if (!runs.length) return '';
-		const rows = [
+	const CONFIG_ROWS = [
 			['Mains', (c) => c.mains],
 			['Workers', (c) => c.workers],
 			['Agent turns run on', (c) => (c.agentQueue ? 'workers (agent queue on)' : 'main')],
@@ -310,23 +344,58 @@
 			['Main limit', (c) => limitText(c.limits?.main)],
 			['Worker limit', (c) => (c.workers ? limitText(c.limits?.worker) : '–')],
 		];
-		const card = (t) => {
-			const env = Object.keys(t.config.env).sort();
-			return `<div class="block rows">
-				<div class="block-head"><b>${esc(t.name)}</b></div>
-				${rows.map(([label, get]) => `<div class="row"><span class="label">${label}</span><div>${esc(get(t.config))}</div></div>`).join('')}
-				<div class="row"><span class="label">n8n env</span><div class="env">${env.length ? env.map((k) => `<code>${esc(k)}=${esc(t.config.env[k])}</code>`).join('') : '<span class="muted">none</span>'}</div></div>
-			</div>`;
-		};
-		const shared = `<div class="block tiles">
-			<div><span class="label">Model</span><code>${esc(state.model)}</code></div>
-			<div><span class="label">Image</span><code>${esc(state.image)}</code></div>
-			<div><span class="label">Database</span><span>Postgres, one per run</span></div>
+
+	/** One run's settings as label rows; shared by section 3 and the button on each run. */
+	function configRows(t) {
+		const env = Object.keys(t.config.env).sort();
+		return `${CONFIG_ROWS.map(([label, get]) => `<div class="row"><span class="label">${label}</span><div>${esc(get(t.config))}</div></div>`).join('')}
+				<div class="row"><span class="label">n8n env</span><div class="env">${env.length ? env.map((k) => `<code>${esc(k)}=${esc(t.config.env[k])}</code>`).join('') : '<span class="muted">none</span>'}</div></div>`;
+	}
+
+	function configSection(state) {
+		const runs = state.topologies.filter((t) => t.config);
+		if (!runs.length) return '';
+		// Runs are setups × load steps. Show each setup once, with the loads it ran at.
+		const setupKey = (c) =>
+			JSON.stringify([c.mains, c.workers, c.agentQueue, c.slotsPerWorker, c.limits]);
+		const setups = new Map();
+		for (const t of runs) {
+			const key = setupKey(t.config);
+			if (!setups.has(key)) setups.set(key, { name: t.name.replace(/-\d+$/, ''), c: t.config, runs: [] });
+			setups.get(key).runs.push(t);
+		}
+		const proc = (n, word, limit) =>
+			`<div class="proc-line"><b>${n}</b> ${word}${n === 1 ? '' : 's'}<span class="muted">${esc(limitText(limit))}</span></div>`;
+		const card = ({ name, c, runs: rs }) => `<div class="block setup">
+			<div class="setup-head"><b>${esc(name)}</b><span class="pill">agent turns on ${c.agentQueue ? 'workers' : 'main'}</span></div>
+			${proc(c.mains, 'main', c.limits?.main)}
+			${c.workers ? proc(c.workers, 'worker', c.limits?.worker) + `<div class="proc-line"><b>${c.agentQueue ? (c.slotsPerWorker ?? '–') : '–'}</b> slots per worker</div>` : ''}
+			<div class="loads"><span class="muted">Chats at once</span>${rs
+				.map((t) => `<span class="load ${t.status}" title="${esc(`${t.name} · ${t.config.turns} turns`)}">${t.config.concurrency}</span>`)
+				.join('')}</div>
 		</div>`;
+		const c0 = runs[0].config;
+		const perChat = c0.concurrency ? Math.round(c0.turns / c0.concurrency) : null;
 		return section(
 			3,
 			'Run config',
-			`<p class="muted lead">Same for every run:</p>${shared}<div class="cards wide">${runs.map(card).join('')}</div>`,
+			`<div class="cards wide">${[...setups.values()].map(card).join('')}</div>
+			<h4 class="proc">How each run works</h4>
+			<div class="block rows">
+				<div class="row"><span class="label">1. Start</span><div>A fresh n8n with the setup above. The bench creates the agent and its tools.</div></div>
+				<div class="row"><span class="label">2. Warm up</span><div>Sends ${c0.warmup} message${c0.warmup === 1 ? '' : 's'} first. They are not counted.</div></div>
+				<div class="row"><span class="label">3. Load</span><div>Keeps the given number of chats open at once. When a reply ends, the next message goes out${perChat ? `, until ${perChat}× that number are done. For example, 10 chats at once sends ${10 * perChat} messages` : ''}.</div></div>
+				<div class="row"><span class="label">4. Messages</span><div>Each message starts a new chat, taken from the scenarios above, and goes to <code>${esc(state.model)}</code>.</div></div>
+				<div class="row"><span class="label">5. Stop</span><div>Tears n8n down and starts the next run. The last one stays up to try.</div></div>
+			</div>
+			<h4 class="proc">What slots are</h4>
+			<div class="block rows">
+				<div class="row"><span class="label">Slot</span><div>Room for one agent reply on a worker. A worker with 10 slots writes at most 10 replies at the same time.</div></div>
+				<div class="row"><span class="label">Total</span><div>Workers × slots. 2 workers with 10 slots each run at most 20 replies at once.</div></div>
+				<div class="row"><span class="label">When full</span><div>Extra messages wait in line until a slot frees up. That wait shows up as a longer time until the agent starts.</div></div>
+				<div class="row"><span class="label">Main only</span><div>Main has no slots. It starts every message right away, until its CPU runs out.</div></div>
+				<div class="row"><span class="label">Setting</span><div><code>N8N_AGENTS_WORKER_CONCURRENCY</code>. n8n's default is 30.</div></div>
+			</div>`,
 		);
 	}
 

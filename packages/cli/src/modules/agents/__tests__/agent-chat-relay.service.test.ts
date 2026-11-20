@@ -68,7 +68,9 @@ describe('AgentChatRelayService', () => {
 			payload: { kind: 'preview' as const, message: 'hi', userId: 'user', resourceId: 'r' },
 		};
 
-		function setup(mayOpenStream: boolean) {
+		function setup(mayOpenStream: boolean, intakeFree = true) {
+			const closeStream = vi.fn();
+			const leaveIntake = vi.fn();
 			const streams = mock<AgentQueuedTestStreamService>();
 			const subscription = {
 				accepted: vi.fn(),
@@ -88,19 +90,49 @@ describe('AgentChatRelayService', () => {
 				messageQueue,
 				streams,
 				mock<AgentChatAttachmentService>(),
-				mock<AgentTurnPlacement>({ mayOpenStream: () => mayOpenStream }),
+				mock<AgentTurnPlacement>({
+					enterIntake: async () => (intakeFree ? leaveIntake : undefined),
+					openStream: () => (mayOpenStream ? closeStream : undefined),
+				}),
 			);
-			return { service, streams, subscription };
+			return { service, streams, subscription, messageQueue, closeStream, leaveIntake };
 		}
 
 		it('subscribes the browser stream to the queued message', async () => {
-			const { service, streams, subscription } = setup(true);
+			const { service, streams, subscription, closeStream, leaveIntake } = setup(true);
 			const writes: string[] = [];
 			const res = makeSseResponse(writes);
 			await service.relayQueuedMessage(res as unknown as FlushableResponse, async () => input);
 
 			expect(streams.subscribe).toHaveBeenCalledWith('7', expect.anything());
 			expect(subscription.accepted).toHaveBeenCalledOnce();
+			expect(leaveIntake).toHaveBeenCalled();
+			expect(closeStream).toHaveBeenCalledOnce();
+		});
+
+		it('rejects the message without running accept when no intake place is free', async () => {
+			const { service, messageQueue } = setup(true, false);
+			const writes: string[] = [];
+			const res = makeSseResponse(writes);
+			const accept = vi.fn(async () => input);
+			await service.relayQueuedMessage(res as unknown as FlushableResponse, accept);
+
+			expect(accept).not.toHaveBeenCalled();
+			expect(messageQueue.enqueue).not.toHaveBeenCalled();
+			expect(sentEvents(writes)).toEqual([
+				expect.objectContaining({ type: 'error', errorCode: 'main_busy' }),
+			]);
+			expect(res.end).toHaveBeenCalledOnce();
+		});
+
+		it('frees the intake place when accept fails', async () => {
+			const { service, leaveIntake } = setup(true);
+			const res = makeSseResponse([]);
+			await service.relayQueuedMessage(res as unknown as FlushableResponse, async () => {
+				throw new UserError('nope');
+			});
+
+			expect(leaveIntake).toHaveBeenCalled();
 		});
 
 		it('accepts the message without a live stream when the main may not open one', async () => {

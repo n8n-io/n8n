@@ -1,0 +1,18 @@
+{
+	"topologies": [
+		{ "name": "main-60", "mains": 1, "workers": 0, "agentQueue": false, "concurrency": 60, "turns": 120 },
+		{ "name": "queue-x50-60", "mains": 1, "workers": 2, "agentQueue": true, "workerConcurrency": 50, "env": { "N8N_CONCURRENCY_PRODUCTION_LIMIT": "50" }, "concurrency": 60, "turns": 120 },
+		{ "name": "main-120", "mains": 1, "workers": 0, "agentQueue": false, "concurrency": 120, "turns": 240 },
+		{ "name": "queue-x50-120", "mains": 1, "workers": 2, "agentQueue": true, "workerConcurrency": 50, "env": { "N8N_CONCURRENCY_PRODUCTION_LIMIT": "50" }, "concurrency": 120, "turns": 240 },
+		{ "name": "queue-x100-120", "mains": 1, "workers": 2, "agentQueue": true, "workerConcurrency": 100, "env": { "N8N_CONCURRENCY_PRODUCTION_LIMIT": "100" }, "concurrency": 120, "turns": 240 },
+		{ "name": "main-200", "mains": 1, "workers": 0, "agentQueue": false, "concurrency": 200, "turns": 400 },
+		{ "name": "queue-x100-200", "mains": 1, "workers": 2, "agentQueue": true, "workerConcurrency": 100, "env": { "N8N_CONCURRENCY_PRODUCTION_LIMIT": "100" }, "concurrency": 200, "turns": 400 },
+		{ "name": "main-300", "mains": 1, "workers": 0, "agentQueue": false, "concurrency": 300, "turns": 600 },
+		{ "name": "queue-x150-300", "mains": 1, "workers": 2, "agentQueue": true, "workerConcurrency": 150, "env": { "N8N_CONCURRENCY_PRODUCTION_LIMIT": "150" }, "concurrency": 300, "turns": 600 }
+	],
+	"workload": "mixed",
+	"warmup": 2,
+	"workers": 2,
+	"resourceQuota": { "memory": 1, "cpu": 1 },
+	"workerResourceQuota": { "memory": 1, "cpu": 1 }
+}

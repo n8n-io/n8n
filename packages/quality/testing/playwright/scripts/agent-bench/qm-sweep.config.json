@@ -1,0 +1,11 @@
+{
+	"slots": [5, 10, 20, 40, 60],
+	"workers": 2,
+	"workload": "real",
+	"model": "anthropic/claude-haiku-4-5",
+	"warmup": 4,
+	"probeMs": 1000,
+	"scheduleEverySec": 30,
+	"resourceQuota": { "memory": 1, "cpu": 1 },
+	"workerResourceQuota": { "memory": 1, "cpu": 1 }
+}

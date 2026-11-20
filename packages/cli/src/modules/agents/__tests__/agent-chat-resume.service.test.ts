@@ -1,4 +1,5 @@
 import { mockLogger } from '@n8n/backend-test-utils';
+import type { AgentsConfig } from '@n8n/config';
 import type { User, UserRepository } from '@n8n/db';
 import { jsonParse } from 'n8n-workflow';
 import { EventEmitter } from 'node:events';
@@ -86,6 +87,8 @@ describe('AgentChatResumeService', () => {
 	function setup({ workers }: { workers: boolean }) {
 		placement = mock<AgentTurnPlacement>({
 			dispatchEnabled: true,
+			mayRunHere: () => true,
+			queueFull: async () => false,
 			workersAvailable: async () => workers,
 			mayFallBack: async (sentAt) => Date.now() - sentAt >= AgentTurnPlacement.FALLBACK_WAIT_MS,
 		});
@@ -113,6 +116,7 @@ describe('AgentChatResumeService', () => {
 		);
 		remoteTurns = new AgentRemoteTurnService(
 			mockLogger(),
+			mock<AgentsConfig>({ queueMaxWaitSeconds: 0 }),
 			testCluster({ instanceKey: 'instance-a' }),
 			placement,
 			turnQueue,

@@ -11,6 +11,7 @@ import type {
 	IRun,
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
+import { InstanceSettings } from 'n8n-core';
 import { createRunExecutionData, WAIT_INDEFINITELY } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
@@ -214,6 +215,74 @@ describe('executeWorkflow → execution classification', () => {
 		} finally {
 			vi.useRealTimers();
 		}
+	});
+
+	it.each([
+		['worker', true],
+		['main', undefined],
+	] as const)('on a %s, sets runInCurrentProcess to %s', async (instanceType, expected) => {
+		Container.set(InstanceSettings, mock<InstanceSettings>({ instanceType }));
+		const run = vi.fn().mockResolvedValue('exec-1');
+
+		await executeWorkflow(workflow, triggerNode, {}, buildContext(run));
+
+		const runData = run.mock.calls[0][0] as IWorkflowExecutionDataProcess;
+		expect(runData.runInCurrentProcess).toBe(expected);
+	});
+
+	describe('in queue mode on main', () => {
+		function startQueued(status: string) {
+			Container.set(InstanceSettings, mock<InstanceSettings>({ instanceType: 'main' }));
+			Container.set(GlobalConfig, { executions: { mode: 'queue' } } as GlobalConfig);
+			Container.set(ExecutionPersistence, {
+				findSingleExecution: vi.fn().mockResolvedValue({ status }),
+			} as unknown as ExecutionPersistence);
+			const stopExecution = vi.fn();
+			const pending = executeWorkflow(
+				workflow,
+				triggerNode,
+				{},
+				buildContext(vi.fn().mockResolvedValue('exec-1'), {
+					activeExecutions: mock<ActiveExecutions>({
+						has: () => true,
+						getPostExecutePromise: async () => await new Promise<IRun>(() => {}),
+						stopExecution,
+					}),
+				}),
+			);
+			return { pending, stopExecution };
+		}
+
+		it('cancels a run that does not start within 15 s and says why', async () => {
+			vi.useFakeTimers();
+			try {
+				const { pending, stopExecution } = startQueued('new');
+
+				await vi.advanceTimersByTimeAsync(15_000);
+				const result = await pending;
+
+				expect(result).toMatchObject({ executionId: 'exec-1', status: 'error' });
+				expect(result.error).toContain('did not start within 15s');
+				expect(stopExecution).toHaveBeenCalledOnce();
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
+		it('keeps waiting for a run that started', async () => {
+			vi.useFakeTimers();
+			try {
+				const { pending, stopExecution } = startQueued('running');
+
+				await vi.advanceTimersByTimeAsync(15_000);
+				expect(stopExecution).not.toHaveBeenCalled();
+
+				await vi.advanceTimersByTimeAsync(105_000);
+				expect((await pending).error).toBe('Execution timed out after 120000ms and was cancelled');
+			} finally {
+				vi.useRealTimers();
+			}
+		});
 	});
 
 	it('does not cancel a workflow after the foreground tool has returned', async () => {
@@ -756,7 +825,11 @@ describe('workflow tool → Wait-node handoff', () => {
 	// The card is read by a person in a chat, so the deadline is spelled out in
 	// the instance timezone instead of handing them a machine timestamp.
 	it('renders the deadline as a readable local time, not an ISO string', async () => {
-		Container.set(GlobalConfig, { generic: { timezone: 'UTC' } } as GlobalConfig);
+		Container.set(InstanceSettings, mock<InstanceSettings>({ instanceType: 'main' }));
+		Container.set(GlobalConfig, {
+			generic: { timezone: 'UTC' },
+			executions: { mode: 'regular' },
+		} as GlobalConfig);
 		const waitTill = new Date('2027-01-15T18:03:00.000Z');
 		setPersistence(parkedInDb(waitTill));
 		const { tool } = await buildWaitTool(activeExecutionsParkedAt(waitTill));
@@ -774,7 +847,11 @@ describe('workflow tool → Wait-node handoff', () => {
 
 	// A zone the instance cannot resolve would otherwise render "Invalid DateTime".
 	it('falls back to UTC when the instance timezone is unusable', async () => {
-		Container.set(GlobalConfig, { generic: { timezone: 'Not/AZone' } } as GlobalConfig);
+		Container.set(InstanceSettings, mock<InstanceSettings>({ instanceType: 'main' }));
+		Container.set(GlobalConfig, {
+			generic: { timezone: 'Not/AZone' },
+			executions: { mode: 'regular' },
+		} as GlobalConfig);
 		const waitTill = new Date('2027-01-15T18:03:00.000Z');
 		setPersistence(parkedInDb(waitTill));
 		const { tool } = await buildWaitTool(activeExecutionsParkedAt(waitTill));

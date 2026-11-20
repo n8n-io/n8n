@@ -48,7 +48,10 @@ export class AgentAppTurnService {
 	/** The events of one turn. A visitor that leaves stops the turn. */
 	async *events(request: AppTurnRequest, signal: AbortSignal): AsyncGenerator<AgentSseEvent> {
 		if (!(await this.remoteTurns.canDispatch())) {
-			yield* this.runHere(request, signal);
+			const rejected: AgentSseEvent[] = [];
+			if (this.remoteTurns.mayRunHere((event) => rejected.push(event))) {
+				yield* this.runHere(request, signal);
+			} else yield* rejected;
 			return;
 		}
 		const relayed = new EventBuffer<AgentSseEvent>();

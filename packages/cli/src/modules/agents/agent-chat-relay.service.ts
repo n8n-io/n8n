@@ -1,4 +1,5 @@
 import {
+	AGENT_CHAT_ERROR_CODES,
 	type AgentChatAttachmentPayload,
 	type AgentSseEvent,
 	MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES,
@@ -19,6 +20,7 @@ import { AgentMessageQueueService } from './agent-message-queue.service';
 import { AgentQueuedTestStreamService } from './agent-queued-test-stream.service';
 import { type FlushableResponse, initSseStream, toChatErrorEvent } from './agent-sse-stream';
 import type { AgentChatAttachment } from './entities/agent-chat-attachment.entity';
+import { busyEvent } from './queue/agent-remote-turn.service';
 import { AgentTurnPlacement } from './queue/agent-turn-placement.service';
 import type { StoredAttachmentRef } from './types/agent-chat-attachment';
 import { resolveInboundMimeType } from './utils/inbound-attachments';
@@ -125,9 +127,17 @@ export class AgentChatRelayService {
 	 * Enqueue a chat message and relay its execution to the browser stream.
 	 * `accept` validates the request and stores attachments. It returns nothing after it sends its own error.
 	 *
-	 * When the memory of this main is high, the message is accepted but the
-	 * stream closes right after `message-queued`. The client then loads the
-	 * reply from the recorded history, as it does after a lost stream.
+	 * Only `N8N_AGENTS_MAIN_MAX_INTAKE` messages run `accept` and the enqueue at
+	 * the same time. Other messages wait for a place, and get a `main_busy`
+	 * error when no place is free in time. The message is then not saved.
+	 *
+	 * A message for an agent worker gets a `queue_full` error when
+	 * `N8N_AGENTS_QUEUE_MAX_WAITING` turns already wait. It is not saved either.
+	 *
+	 * When the memory of this main is high, or it has `N8N_AGENTS_MAIN_MAX_STREAMS`
+	 * live streams, the message is accepted but the stream closes right after
+	 * `message-queued`. The client then loads the reply from the recorded
+	 * history, as it does after a lost stream.
 	 */
 	async relayQueuedMessage(
 		res: FlushableResponse,
@@ -141,15 +151,28 @@ export class AgentChatRelayService {
 		let accepted = false;
 		let subscription: ReturnType<AgentQueuedTestStreamService['subscribe']> | undefined;
 		let attachments: StoredAttachmentRef[] | undefined;
+		let leaveIntake: (() => void) | undefined;
+		let closeStream: (() => void) | undefined;
 		try {
+			leaveIntake = await this.placement.enterIntake(abortSignal);
+			if (!leaveIntake) {
+				if (!abortSignal.aborted) send(busyEvent(AGENT_CHAT_ERROR_CODES.mainBusy));
+				return;
+			}
 			const input = await accept(send, abortSignal);
 			if (!input) return;
 			attachments = input.payload.attachments;
 			abortSignal.throwIfAborted();
-			const live = this.placement.mayOpenStream();
+			if (this.placement.isWorkerKind(input.payload.kind) && (await this.placement.queueFull())) {
+				send(busyEvent(AGENT_CHAT_ERROR_CODES.queueFull));
+				return;
+			}
+			closeStream = this.placement.openStream();
 			const result = await this.messageQueue.enqueue(input, (queueId) => {
-				if (live) subscription = this.queuedPreviewStreams.subscribe(queueId, delivery);
+				if (closeStream) subscription = this.queuedPreviewStreams.subscribe(queueId, delivery);
 			});
+			// The message is in the queue. Waiting for the reply costs this main no intake work.
+			leaveIntake();
 			if (result.status === 'duplicate') {
 				send({ type: 'done' });
 				return;
@@ -161,6 +184,8 @@ export class AgentChatRelayService {
 		} catch (error) {
 			send(toChatErrorEvent(error, 'Chat failed'));
 		} finally {
+			leaveIntake?.();
+			closeStream?.();
 			// Committed messages own their attachments, including after a disconnect.
 			if (!accepted && attachments?.length) {
 				await this.agentChatAttachmentService

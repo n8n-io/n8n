@@ -51,6 +51,8 @@ export class AgentTurnQueue {
 
 	private progressAt?: number;
 
+	private waiting?: { at: number; count: Promise<number> };
+
 	constructor(
 		private readonly globalConfig: GlobalConfig,
 		private readonly logger: Logger,
@@ -158,6 +160,29 @@ export class AgentTurnQueue {
 		} catch (error) {
 			this.logger.warn('Failed to change the agent turn queue hold', { hold, error });
 		}
+	}
+
+	/** How long a read of the waiting job count stays valid. */
+	static readonly WAITING_CHECK_TTL_MS = 1_000;
+
+	/**
+	 * Jobs that wait for a worker. Reads Redis at most once each
+	 * `WAITING_CHECK_TTL_MS`, so a burst of requests costs one read. Returns 0
+	 * when the queue is not open or the read fails.
+	 */
+	async waitingCount(): Promise<number> {
+		if (!this.queue) return 0;
+		const now = Date.now();
+		if (!this.waiting || now - this.waiting.at >= AgentTurnQueue.WAITING_CHECK_TTL_MS) {
+			this.waiting = {
+				at: now,
+				count: this.queue.getWaitingCount().catch((error: unknown) => {
+					this.logger.debug('Failed to read the agent turn queue length', { error });
+					return 0;
+				}),
+			};
+		}
+		return await this.waiting.count;
 	}
 
 	/** Waiting and active drain jobs, for metrics. */

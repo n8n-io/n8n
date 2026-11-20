@@ -1,0 +1,35 @@
+{
+	"topologies": [
+		{
+			"name": "slots-20",
+			"mains": 1,
+			"workers": 2,
+			"agentQueue": true,
+			"workerConcurrency": 20,
+			"phases": [{ "concurrency": 60, "seconds": 240 }]
+		},
+		{
+			"name": "slots-30",
+			"mains": 1,
+			"workers": 2,
+			"agentQueue": true,
+			"workerConcurrency": 30,
+			"phases": [{ "concurrency": 90, "seconds": 240 }]
+		},
+		{
+			"name": "slots-40",
+			"mains": 1,
+			"workers": 2,
+			"agentQueue": true,
+			"workerConcurrency": 40,
+			"phases": [{ "concurrency": 120, "seconds": 240 }]
+		}
+	],
+	"workload": "real",
+	"model": "anthropic/claude-haiku-4-5",
+	"warmup": 4,
+	"probeMs": 1000,
+	"scheduleEverySec": 30,
+	"resourceQuota": { "memory": 1, "cpu": 1 },
+	"workerResourceQuota": { "memory": 1, "cpu": 1 }
+}

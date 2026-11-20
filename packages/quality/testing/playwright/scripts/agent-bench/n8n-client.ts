@@ -9,6 +9,26 @@ export const OWNER = {
 	password: 'AgentBench123',
 };
 
+/** A non-2xx reply. `retryAfterSec` comes from the `Retry-After` header. */
+export class HttpError extends Error {
+	constructor(
+		message: string,
+		readonly status: number,
+		readonly retryAfterSec?: number,
+	) {
+		super(message);
+	}
+}
+
+function httpError(label: string, response: Response, body: string) {
+	const retryAfter = Number(response.headers.get('retry-after'));
+	return new HttpError(
+		`${label} returned HTTP ${response.status}: ${body.slice(0, 300)}`,
+		response.status,
+		Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : undefined,
+	);
+}
+
 /** A small fetch client. The bench runs outside Playwright, so it has no request context. */
 export class N8nClient {
 	private cookie = '';
@@ -124,7 +144,7 @@ export class N8nClient {
 			signal: AbortSignal.timeout(timeoutMs),
 		});
 		const body = await response.text();
-		if (!response.ok) throw new Error(`Responses API returned HTTP ${response.status}: ${body}`);
+		if (!response.ok) throw httpError('Responses API', response, body);
 		const json: {
 			conversation?: { id?: string };
 			output?: Array<{ type: string; content?: Array<{ text?: string }> }>;
@@ -156,8 +176,41 @@ export class N8nClient {
 				await new Promise((resolve) => setTimeout(resolve, 500));
 				continue;
 			}
-			if (!response.ok) throw new Error(`Webhook returned HTTP ${response.status}: ${text}`);
+			if (!response.ok) throw httpError('Webhook', response, text);
 			return JSON.parse(text);
+		}
+	}
+
+	/**
+	 * One timed call for the main probe. Returns the time in ms and the HTTP
+	 * status, or status 0 when the call failed or timed out.
+	 */
+	async probe(
+		target: 'health' | 'rest' | 'webhook',
+		webhookPath: string,
+		timeoutMs: number,
+	): Promise<{ ms: number; status: number }> {
+		const started = performance.now();
+		const [method, path, auth] =
+			target === 'health'
+				? ['GET', '/healthz', false]
+				: target === 'rest'
+					? ['GET', '/rest/workflows?take=5', true]
+					: ['POST', `/webhook/${webhookPath}`, false];
+		try {
+			const response = await fetch(`${this.baseUrl}${path}`, {
+				method,
+				headers: {
+					'Content-Type': 'application/json',
+					...(auth ? { Cookie: this.cookie } : {}),
+				},
+				body: method === 'POST' ? '{"ping":true}' : undefined,
+				signal: AbortSignal.timeout(timeoutMs),
+			});
+			await response.arrayBuffer();
+			return { ms: performance.now() - started, status: response.status };
+		} catch {
+			return { ms: performance.now() - started, status: 0 };
 		}
 	}
 
@@ -184,6 +237,7 @@ export class N8nClient {
 		sessionId: string,
 		onEvent: (event: AgentSseEvent) => void,
 		timeoutMs: number,
+		newSession = true,
 	): Promise<void> {
 		const response = await fetch(
 			`${this.baseUrl}/rest/projects/${projectId}/agents/v2/${agentId}/chat`,
@@ -194,13 +248,14 @@ export class N8nClient {
 					sessionId,
 					message,
 					messageId: crypto.randomUUID(),
-					newSession: true,
+					// The API accepts only `true`. A follow-up leaves the field out.
+					...(newSession ? { newSession: true } : {}),
 				}),
 				signal: AbortSignal.timeout(timeoutMs),
 			},
 		);
 		if (!response.ok || !response.body) {
-			throw new Error(`Chat returned HTTP ${response.status}: ${await response.text()}`);
+			throw httpError('Chat', response, await response.text());
 		}
 		const reader = response.body.getReader();
 		const decoder = new TextDecoder();

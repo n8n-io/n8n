@@ -31,7 +31,9 @@ describe('PrometheusAgentQueueMetricsService', () => {
 		bridge.record({ type: 'turn-held', reason: 'workers-progressing' });
 		bridge.record({ type: 'turn-held', reason: 'main-at-limit' });
 		bridge.record({ type: 'turn-held', reason: 'main-memory-high' });
-		bridge.record({ type: 'stream-skipped' });
+		bridge.record({ type: 'stream-skipped', reason: 'main-memory-high' });
+		bridge.record({ type: 'stream-skipped', reason: 'main-at-stream-limit' });
+		bridge.record({ type: 'intake-rejected' });
 
 		expect(await valueOf('n8n_agent_turns_started_total', { location: 'worker' })).toBe(2);
 		expect(await valueOf('n8n_agent_turn_fallbacks_total', { path: 'request' })).toBe(1);
@@ -40,7 +42,10 @@ describe('PrometheusAgentQueueMetricsService', () => {
 		for (const reason of ['workers-progressing', 'main-at-limit', 'main-memory-high']) {
 			expect(await valueOf('n8n_agent_turns_held_total', { reason })).toBe(1);
 		}
-		expect(await valueOf('n8n_agent_streams_skipped_total')).toBe(1);
+		for (const reason of ['main-memory-high', 'main-at-stream-limit']) {
+			expect(await valueOf('n8n_agent_streams_skipped_total', { reason })).toBe(1);
+		}
+		expect(await valueOf('n8n_agent_messages_rejected_total')).toBe(1);
 	});
 
 	it('reads the gauges at scrape time', async () => {
