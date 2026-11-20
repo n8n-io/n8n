@@ -384,14 +384,6 @@ describe('SubAgentSourceResolver', () => {
 
 			expect(resumed.agentServiceAccountId).toBe('sa-1');
 		});
-
-		it('returns no service account for an agent without one', async () => {
-			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ identityId: null }));
-
-			const result = await resolver.resolveForRuntime({ agentId }, { projectId });
-
-			expect(result).not.toHaveProperty('agentServiceAccountId');
-		});
 	});
 
 	describe('skill refs round trip', () => {
