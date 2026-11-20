@@ -20,7 +20,7 @@ export function coerceLedgerRow(raw: RawLedgerRow) {
 		entityType: String(raw.entityType),
 		entityName: String(raw.entityName),
 		entityId: String(raw.entityId),
-		projectId: String(raw.projectId),
+		projectId: typeof raw.projectId === 'string' ? raw.projectId : null,
 		mode: String(raw.mode),
 		source: String(raw.source),
 		event: String(raw.event),
@@ -35,19 +35,20 @@ export function coerceLedgerRow(raw: RawLedgerRow) {
 
 /** Returns `undefined` for a row with a value that this version does not know. */
 export function parseLedgerRow(raw: RawLedgerRow): ExecutionLedgerRow | undefined {
-	const { entityType, event, outcome, blockedBy, origin } = raw;
+	const { entityType, event, outcome, blockedBy, origin, projectId } = raw;
 	if (
 		!isOneOf(EXECUTION_LEDGER_ENTITY_TYPES, entityType) ||
 		!isOneOf(EXECUTION_LEDGER_EVENTS, event) ||
 		!isOneOf(EXECUTION_LEDGER_OUTCOMES, outcome) ||
 		!isOneOf(EXECUTION_LEDGER_BLOCKED_BY, blockedBy) ||
 		!isOneOf(EXECUTION_LEDGER_ORIGINS, origin) ||
-		!isDbTime(raw.occurredAt)
+		!isDbTime(raw.occurredAt) ||
+		!(typeof projectId === 'string' || projectId === null)
 	) {
 		return undefined;
 	}
 
-	return { ...coerceLedgerRow(raw), entityType, event, outcome, blockedBy, origin };
+	return { ...coerceLedgerRow(raw), entityType, event, outcome, blockedBy, origin, projectId };
 }
 
 function isDbTime(value: unknown): value is Date | string {

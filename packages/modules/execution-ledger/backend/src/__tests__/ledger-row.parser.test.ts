@@ -55,6 +55,14 @@ describe('parseLedgerRow', () => {
 		expect(parseLedgerRow(rawRow({ occurredAt: 1_761_645_600_000 }))).toBeUndefined();
 	});
 
+	it('keeps a null project', () => {
+		expect(parseLedgerRow(rawRow({ projectId: null }))?.projectId).toBeNull();
+	});
+
+	it('returns undefined for a project that is neither a string nor null', () => {
+		expect(parseLedgerRow(rawRow({ projectId: 42 }))).toBeUndefined();
+	});
+
 	it.each([
 		['entityType', 'team'],
 		['event', 'paused'],

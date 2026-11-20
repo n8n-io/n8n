@@ -92,6 +92,12 @@ describe('ExecutionLedgerParkedRepository', () => {
 		expect((await parkedRows())[0]).toMatchObject({ outcome: 'unknown_outcome' });
 	});
 
+	it('parks a row with no project', async () => {
+		await park('first', [rawRow(1, { projectId: null })]);
+
+		expect((await parkedRows())[0].projectId).toBeNull();
+	});
+
 	it('parks 1,200 rows in one call', async () => {
 		const rows = Array.from({ length: 1200 }, (_, i) => rawRow(i + 1));
 
