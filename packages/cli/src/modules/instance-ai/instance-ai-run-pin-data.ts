@@ -113,8 +113,9 @@ export async function pruneUnreachedVerificationPinData(args: {
 	const { executionId, verificationPinData, nonVerificationPinData, executedNodeNames } = args;
 	const verificationNodeNames = Object.keys(verificationPinData);
 	if (verificationNodeNames.length === 0) return;
-	// An engine v2 run is stored only on the data plane, so no control-plane copy
-	// of its pin data exists to prune.
+	// An engine v2 run is stored only on the data plane, and the data plane has
+	// no API to update a stored run. So a v2 run keeps the verification pin data
+	// of the nodes it did not reach.
 	if (isExecutionIdV2(executionId)) return;
 
 	const executionPersistence = Container.get(ExecutionPersistence);

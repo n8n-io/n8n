@@ -1824,8 +1824,7 @@ export class InstanceAiAdapterService {
 						order: { startedAt: 'DESC' },
 						take: 1,
 					}),
-					// A data plane failure must not break validation, which reads this
-					// for each node.
+					// A data plane failure must not hide the v1 run data from validation.
 					loadLatestEngineV2ExecutionForViewer(workflowId, user).catch((error: unknown) => {
 						logger.warn('Failed to read the latest engine v2 execution', {
 							workflowId,

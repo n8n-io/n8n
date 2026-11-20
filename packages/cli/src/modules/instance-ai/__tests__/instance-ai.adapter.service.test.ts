@@ -1954,6 +1954,7 @@ import {
 	type RoleService,
 	AiPreferenceScopeFullError,
 	type AiPreferenceService,
+	ExecutionRedactionServiceProxy,
 	WorkflowVersionedSettingsService,
 } from '@n8n/backend-services';
 import { type DataTableRepository, type DataTableService } from '@n8n/backend-module-data-table';
@@ -2907,6 +2908,7 @@ function createWorkflowAdapterForTests(overrides?: {
 	// Mirrors `EXECUTIONS_TIMEOUT_MAX`, in seconds.
 	maxExecutionTimeout?: number;
 	temporaryWorkflowMarkers?: TemporaryWorkflowMarkers;
+	executionRepository?: { find: Mock };
 }) {
 	const mockProjectRepository = {
 		getPersonalProjectForUserOrFail: vi.fn().mockResolvedValue({ id: 'personal-project-id' }),
@@ -3011,7 +3013,9 @@ function createWorkflowAdapterForTests(overrides?: {
 		mockWorkflowRepository as unknown as WorkflowRepository,
 		mockSharedWorkflowRepository as unknown as SharedWorkflowRepository,
 		mockProjectRepository as unknown as ProjectRepository,
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[7],
+		(overrides?.executionRepository ?? {}) as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[7],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[8],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[9],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[10],
@@ -3516,6 +3520,123 @@ describe('createWorkflowAdapter', () => {
 		} finally {
 			spy.mockRestore();
 		}
+	});
+
+	describe('getLatestRunData', () => {
+		const v1RunData = { Fetch: [makeTaskData([{ engine: 'v1' }])] };
+		const v2RunData = { Fetch: [makeTaskData([{ engine: 'v2' }])] };
+
+		let containerSpy: MockInstance | undefined;
+
+		afterEach(() => {
+			containerSpy?.mockRestore();
+			containerSpy = undefined;
+		});
+
+		/**
+		 * `v1StartedAt` and `v2StartedAt` set the newest run on each engine. Leave one
+		 * out for a workflow without runs on that engine. `v2Error` fails the data plane.
+		 */
+		function setup(options: { v1StartedAt?: Date; v2StartedAt?: Date; v2Error?: Error }) {
+			const executionRepository = {
+				find: vi
+					.fn()
+					.mockResolvedValue(
+						options.v1StartedAt ? [{ id: 'exec-v1', startedAt: options.v1StartedAt }] : [],
+					),
+			};
+			const harness = createWorkflowAdapterForTests({ executionRepository });
+
+			const reader = mock<EngineV2ExecutionReader>();
+			if (options.v2Error) {
+				reader.findLatest.mockRejectedValue(options.v2Error);
+			} else {
+				reader.findLatest.mockResolvedValue(
+					(options.v2StartedAt
+						? makeExecution({ startedAt: options.v2StartedAt, runData: v2RunData })
+						: undefined) as never,
+				);
+			}
+			const persistence = mock<ExecutionPersistence>();
+			persistence.findSingleExecution.mockResolvedValue(
+				makeExecution({ runData: v1RunData }) as never,
+			);
+			const redaction = { processExecution: vi.fn() };
+
+			containerSpy = vi.spyOn(Container, 'get').mockImplementation(((token: unknown) => {
+				if (token === EngineV2ExecutionReader) return reader;
+				if (token === ExecutionRedactionServiceProxy) return redaction;
+				return persistence;
+			}) as typeof Container.get);
+
+			const getLatestRunData = harness.adapter.getLatestRunData as NonNullable<
+				typeof harness.adapter.getLatestRunData
+			>;
+			return { ...harness, getLatestRunData, reader, persistence, redaction };
+		}
+
+		const older = new Date('2026-01-01T00:00:00Z');
+		const newer = new Date('2026-01-02T00:00:00Z');
+
+		it('returns the engine v2 run data when the engine v2 run is newer', async () => {
+			const { getLatestRunData, reader, persistence, redaction } = setup({
+				v1StartedAt: older,
+				v2StartedAt: newer,
+			});
+
+			await expect(getLatestRunData('wf-new')).resolves.toEqual(v2RunData);
+			expect(reader.findLatest).toHaveBeenCalledWith({}, ['wf-new']);
+			expect(redaction.processExecution).toHaveBeenCalledTimes(1);
+			expect(persistence.findSingleExecution).not.toHaveBeenCalled();
+		});
+
+		it('returns the v1 run data when the v1 run is newer', async () => {
+			const { getLatestRunData, persistence } = setup({ v1StartedAt: newer, v2StartedAt: older });
+
+			await expect(getLatestRunData('wf-new')).resolves.toEqual(v1RunData);
+			expect(persistence.findSingleExecution).toHaveBeenCalledWith('exec-v1', expect.anything());
+		});
+
+		it('returns the engine v2 run data when the workflow has no v1 run', async () => {
+			const { getLatestRunData } = setup({ v2StartedAt: older });
+
+			await expect(getLatestRunData('wf-new')).resolves.toEqual(v2RunData);
+		});
+
+		it('returns the v1 run data when the workflow has no engine v2 run', async () => {
+			const { getLatestRunData } = setup({ v1StartedAt: older });
+
+			await expect(getLatestRunData('wf-new')).resolves.toEqual(v1RunData);
+		});
+
+		it('falls back to the v1 run data when the data plane fails', async () => {
+			const { getLatestRunData, mockLogger } = setup({
+				v1StartedAt: older,
+				v2Error: new Error('data plane down'),
+			});
+
+			await expect(getLatestRunData('wf-new')).resolves.toEqual(v1RunData);
+			expect(mockLogger.warn).toHaveBeenCalledWith(
+				'Failed to read the latest engine v2 execution',
+				{ workflowId: 'wf-new', error: 'data plane down' },
+			);
+		});
+
+		it('returns null without a read when the user cannot read the executions', async () => {
+			const { getLatestRunData, mockWorkflowFinderService, reader } = setup({
+				v1StartedAt: older,
+				v2StartedAt: newer,
+			});
+			mockWorkflowFinderService.findWorkflowForUser.mockResolvedValue(null);
+
+			await expect(getLatestRunData('wf-new')).resolves.toBeNull();
+			expect(mockWorkflowFinderService.findWorkflowForUser).toHaveBeenCalledWith(
+				'wf-new',
+				expect.anything(),
+				['workflow:read', 'execution:read'],
+			);
+			expect(reader.findLatest).not.toHaveBeenCalled();
+		});
 	});
 
 	it('lists active workflows by default', async () => {
