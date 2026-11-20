@@ -24,7 +24,7 @@ N8nSidebar
 **Props**
 
 - `side?: 'left' | 'right'` Edge of the parent, and the resize direction. `left` places the handle on the right edge, so a drag grows the column to the right. `right` places the handle on the left edge, so a drag grows the column to the left. Place the sidebar on that side of the parent. The component stays where the parent puts it. | `default: 'left'`
-- `width?: number` Current width in pixels. Bind with `v-model:width` and the parent stores the width. Omit this prop and the sidebar stores the width. The sidebar clamps a bound value to `minWidth` and `maxWidth`. It emits the clamped width. Pass `width` without `v-model:width` and the value is the start width. A later render from the parent sets the width back to that value. | `default: 240`
+- `width?: number` Current width in pixels. Bind with `v-model:width` and the parent stores the width. Omit this prop and the sidebar stores the width. The sidebar clamps a bound value to `minWidth` and `maxWidth`. It emits the clamped width. Pass `width` without `v-model:width` and the value is the start width. The sidebar keeps a resized width until the parent changes `width` or remounts the sidebar. | `default: 240`
 - `widthStorageId?: string` Local storage key for the width. Set this key and the sidebar reads it on mount. A saved width inside `minWidth` and `maxWidth` becomes the current width. The sidebar emits `update:width`. The sidebar writes the width after each later change. Give each sidebar its own key. Omit this prop and the sidebar does not read or write storage.
 - `defaultWidth?: number` Width restored on double-click. Defaults to the `width` value at mount, before a saved width is applied. The sidebar clamps this value to `minWidth` and `maxWidth`. The sidebar saves that restored width when `widthStorageId` is set.
 - `minWidth?: number` Minimum width in pixels. The width stays at or above this value. | `default: 160`
@@ -73,7 +73,7 @@ type SidebarProps = {
 	 * The sidebar clamps this value to minWidth and maxWidth.
 	 * It emits the clamped width.
 	 * Pass width without v-model:width and the value is the start width.
-	 * A later render from the parent sets the width back to that value.
+	 * The sidebar keeps a resized width until the parent changes width or remounts the sidebar.
 	 * @default 240
 	 */
 	width?: number;
