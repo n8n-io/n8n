@@ -86,7 +86,8 @@ const ACCESS_PATTERNS: AccessPattern[] = [
 	},
 	{
 		checkPattern: '$node.',
-		replacePattern: (s) => String.raw`(\$node\.)${s}(\.?)`,
+		// The lookahead keeps `$node.Node1` from matching the start of `$node.Node12`
+		replacePattern: (s) => String.raw`(\$node\.)${s}(?![\w$])(\.?)`,
 		customCallback: (expression: string, newName: string, escapedNewName: string) => {
 			if (hasDotNotationBannedChar(newName)) {
 				return expression.replace(

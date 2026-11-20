@@ -514,6 +514,22 @@ describe('Workflow', () => {
 					},
 				},
 				{
+					description:
+						'should not rename dot notation references to a node whose name starts with it',
+					input: {
+						currentName: 'Node1',
+						newName: 'NewName',
+						parameters: {
+							value1: '={{$node.Node12.data.value1}}',
+							value2: '={{$node.Node1_old.data.value1 + $node.Node1.data.value1}}',
+						},
+					},
+					output: {
+						value1: '={{$node.Node12.data.value1}}',
+						value2: '={{$node.Node1_old.data.value1 + $node.NewName.data.value1}}',
+					},
+				},
+				{
 					description: "should work with ['nodeName']",
 					input: {
 						currentName: 'Node1',
