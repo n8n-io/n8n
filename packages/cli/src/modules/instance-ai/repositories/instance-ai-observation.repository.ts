@@ -1,5 +1,6 @@
 import {
 	activeLifecycleState,
+	observationCursorPosition,
 	prepareObservationLogBatchCursor,
 	type ObservationCursor,
 	type ObservationLogBatch,
@@ -45,7 +46,11 @@ export class InstanceAiObservationRepository extends BaseRepository<InstanceAiOb
 		cursor: ObservationCursor,
 	): Promise<boolean> {
 		if (expected) {
-			const result = await manager.update(InstanceAiObservationCursor, expected, cursor);
+			const result = await manager.update(
+				InstanceAiObservationCursor,
+				observationCursorPosition(expected),
+				cursor,
+			);
 			return result.affected === 1;
 		}
 		try {

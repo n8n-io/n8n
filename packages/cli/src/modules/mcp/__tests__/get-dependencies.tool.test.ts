@@ -3,7 +3,7 @@ import type { User, WorkflowEntity } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import type { WorkflowDependencyQueryService } from '@/modules/workflow-index/workflow-dependency-query.service';
-import type { Telemetry } from '@/telemetry';
+import type { TelemetryProxy } from '@n8n/backend-services';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
@@ -26,7 +26,7 @@ const workflowEntity = (attributes: Partial<WorkflowEntity>) =>
 function harness(options: Partial<GetDependenciesToolOptions> = {}) {
 	const dependencies = mock<WorkflowDependencyQueryService>();
 	const workflowFinder = mock<WorkflowFinderService>();
-	const telemetry = mock<Telemetry>();
+	const telemetry = mock<TelemetryProxy>();
 
 	workflowFinder.findWorkflowForUser.mockResolvedValue(workflowEntity({ id: 'wf-1' }));
 	dependencies.canReadResource.mockResolvedValue(true);

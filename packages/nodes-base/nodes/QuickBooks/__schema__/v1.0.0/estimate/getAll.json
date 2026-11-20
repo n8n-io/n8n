@@ -1,0 +1,291 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"ApplyTaxAfterDiscount": {
+			"type": "boolean"
+		},
+		"BillAddr": {
+			"additionalProperties": true,
+			"properties": {
+				"City": {
+					"type": "string"
+				},
+				"CountrySubDivisionCode": {
+					"type": "string"
+				},
+				"Id": {
+					"type": "string"
+				},
+				"Line1": {
+					"type": "string"
+				},
+				"Line2": {
+					"type": "string"
+				},
+				"PostalCode": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"BillEmail": {
+			"properties": {
+				"Address": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"CurrencyRef": {
+			"properties": {
+				"name": {
+					"type": "string"
+				},
+				"value": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"CustomerMemo": {
+			"properties": {
+				"value": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"CustomerRef": {
+			"properties": {
+				"name": {
+					"type": "string"
+				},
+				"value": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"CustomField": {
+			"items": {
+				"properties": {
+					"DefinitionId": {
+						"type": "string"
+					},
+					"Name": {
+						"type": "string"
+					},
+					"StringValue": {
+						"type": "string"
+					},
+					"Type": {
+						"type": "string"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"DocNumber": {
+			"type": "string"
+		},
+		"domain": {
+			"type": "string"
+		},
+		"EmailStatus": {
+			"type": "string"
+		},
+		"FreeFormAddress": {
+			"type": "boolean"
+		},
+		"Id": {
+			"type": "string"
+		},
+		"Line": {
+			"items": {
+				"additionalProperties": true,
+				"properties": {
+					"Amount": {
+						"type": "number"
+					},
+					"CustomExtensions": {
+						"items": {},
+						"type": "array"
+					},
+					"Description": {
+						"type": "string"
+					},
+					"DetailType": {
+						"type": "string"
+					},
+					"Id": {
+						"type": "string"
+					},
+					"LineNum": {
+						"type": "number"
+					},
+					"SalesItemLineDetail": {
+						"additionalProperties": true,
+						"properties": {
+							"ItemAccountRef": {
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"ItemRef": {
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"Qty": {
+								"type": "number"
+							},
+							"TaxCodeRef": {
+								"properties": {
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"UnitPrice": {
+								"type": "number"
+							}
+						},
+						"type": "object"
+					},
+					"SubTotalLineDetail": {
+						"type": "object"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"LinkedTxn": {
+			"items": {
+				"properties": {
+					"TxnId": {
+						"type": "string"
+					},
+					"TxnType": {
+						"type": "string"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"MetaData": {
+			"properties": {
+				"CreateTime": {
+					"type": "string"
+				},
+				"LastUpdatedTime": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"PrintStatus": {
+			"type": "string"
+		},
+		"ShipAddr": {
+			"additionalProperties": true,
+			"properties": {
+				"City": {
+					"type": "string"
+				},
+				"CountrySubDivisionCode": {
+					"type": "string"
+				},
+				"Id": {
+					"type": "string"
+				},
+				"Line1": {
+					"type": "string"
+				},
+				"Line2": {
+					"type": "string"
+				},
+				"Line3": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"sparse": {
+			"type": "boolean"
+		},
+		"SyncToken": {
+			"type": "string"
+		},
+		"TotalAmt": {
+			"type": "number"
+		},
+		"TxnDate": {
+			"type": "string"
+		},
+		"TxnStatus": {
+			"type": "string"
+		},
+		"TxnTaxDetail": {
+			"additionalProperties": true,
+			"properties": {
+				"TaxLine": {
+					"items": {
+						"properties": {
+							"Amount": {
+								"type": "number"
+							},
+							"DetailType": {
+								"type": "string"
+							},
+							"TaxLineDetail": {
+								"properties": {
+									"NetAmountTaxable": {
+										"type": "number"
+									},
+									"PercentBased": {
+										"type": "boolean"
+									},
+									"TaxPercent": {
+										"type": "number"
+									},
+									"TaxRateRef": {
+										"properties": {
+											"value": {
+												"type": "string"
+											}
+										},
+										"type": "object"
+									}
+								},
+								"type": "object"
+							}
+						},
+						"type": "object"
+					},
+					"type": "array"
+				},
+				"TotalTax": {
+					"type": "number"
+				}
+			},
+			"type": "object"
+		}
+	},
+	"type": "object"
+}

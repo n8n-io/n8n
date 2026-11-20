@@ -1,0 +1,116 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"headers": {
+			"additionalProperties": true,
+			"properties": {
+				"accept": {
+					"type": "string"
+				},
+				"accept-encoding": {
+					"type": "string"
+				},
+				"accept-language": {
+					"type": "string"
+				},
+				"cdn-loop": {
+					"type": "string"
+				},
+				"cf-connecting-ip": {
+					"type": "string"
+				},
+				"cf-ew-via": {
+					"type": "string"
+				},
+				"cf-ipcountry": {
+					"type": "string"
+				},
+				"cf-ray": {
+					"type": "string"
+				},
+				"cf-visitor": {
+					"type": "string"
+				},
+				"cf-worker": {
+					"type": "string"
+				},
+				"content-length": {
+					"type": "string"
+				},
+				"content-type": {
+					"type": "string"
+				},
+				"host": {
+					"type": "string"
+				},
+				"mcp-protocol-version": {
+					"type": "string"
+				},
+				"mcp-session-id": {
+					"type": "string"
+				},
+				"sec-fetch-mode": {
+					"type": "string"
+				},
+				"user-agent": {
+					"type": "string"
+				},
+				"x-forwarded-for": {
+					"type": "string"
+				},
+				"x-forwarded-host": {
+					"type": "string"
+				},
+				"x-forwarded-port": {
+					"type": "string"
+				},
+				"x-forwarded-proto": {
+					"type": "string"
+				},
+				"x-forwarded-server": {
+					"type": "string"
+				},
+				"x-is-trusted": {
+					"type": "string"
+				},
+				"x-real-ip": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"mcpMessageId": {
+			"type": "string"
+		},
+		"mcpToolCall": {
+			"properties": {
+				"arguments": {
+					"additionalProperties": true,
+					"properties": {
+						"action": {
+							"type": "string"
+						},
+						"chatInput": {
+							"type": "string"
+						},
+						"sessionId": {
+							"type": "string"
+						},
+						"toolCallId": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				},
+				"sourceNodeName": {
+					"type": "string"
+				},
+				"toolName": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		}
+	},
+	"type": "object"
+}

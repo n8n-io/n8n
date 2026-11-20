@@ -22,7 +22,6 @@ import {
 	type KnowledgeBaseWorkspaceBundle,
 } from '../knowledge-base/materialize-knowledge-base';
 import type { Logger } from '../logger';
-import type { BuilderTemplatesService } from './builder-templates-service';
 import { packSnapshotWorkspacePackages } from './pack-workspace-sdk';
 import {
 	PACKAGE_JSON,
@@ -198,7 +197,6 @@ export class SnapshotManager {
 		private readonly baseImage: string | undefined,
 		private readonly logger: Logger,
 		private readonly n8nVersion: string | undefined,
-		private readonly templatesService: BuilderTemplatesService,
 		private readonly options: SnapshotManagerOptions = {},
 	) {}
 
@@ -767,11 +765,8 @@ export class SnapshotManager {
 	}
 
 	private async buildKnowledgeBaseBundle(): Promise<KnowledgeBaseWorkspaceBundle> {
-		const templatesBundle = await this.templatesService.getBundle();
-
 		return await buildKnowledgeBaseWorkspaceBundle({
 			root: PORTABLE_WORKSPACE_ROOT,
-			templatesArchive: templatesBundle.archive,
 			logger: this.logger,
 		});
 	}

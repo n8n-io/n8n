@@ -20,8 +20,9 @@ import { computed, inject, nextTick, onBeforeUnmount, provide, ref, watch } from
 
 import { useApprovalCardLabels } from '@/app/composables/useApprovalCardLabels';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
+import ApprovalAskReason from '@/features/ai/shared/components/ApprovalAskReason.vue';
 
-import { buildAlwaysAllowKey } from '../alwaysAllow';
+import { buildAlwaysAllowKeys } from '../alwaysAllow';
 import { formatApprovalDetails, formatApprovalTitle } from '../approvalDetails';
 import { ASSISTANT_RUNTIME } from '../assistantRuntime';
 import {
@@ -307,9 +308,9 @@ if (props.input.testListener) {
 // --- Plain approval ---
 
 const approvalTitle = computed(() => {
-	const { targetApproval, toolName, args, resourceName } = props.input;
+	const { targetApproval, toolName, args, resourceName, approvalDetails } = props.input;
 	if (targetApproval || !toolName) return i18n.baseText('agents.chat.approval.title');
-	return formatApprovalTitle({ toolName, args, resourceName });
+	return formatApprovalTitle({ toolName, args, resourceName, approvalDetails });
 });
 
 const approvalDescription = computed(() => {
@@ -329,7 +330,7 @@ const canAlwaysAllow = computed(() => {
 	if (!toolName || severity === 'destructive' || targetApproval || credentialDestination) {
 		return false;
 	}
-	return buildAlwaysAllowKey(toolName, args ?? {}, workflowId) !== null;
+	return buildAlwaysAllowKeys(toolName, args ?? {}, workflowId).length > 0;
 });
 
 function onApprovalSelect(key: string) {
@@ -468,12 +469,14 @@ function onApprovalSelect(key: string) {
 			:url="input.domainAccess.url"
 			:host="input.domainAccess.host"
 			:severity="input.severity"
+			:ask-reason="input.askReason"
 			@decide="submit"
 		/>
 		<DomainAccessApproval
 			v-else-if="variant === 'web-search' && input.webSearch"
 			:query="input.webSearch.query"
 			:severity="input.severity"
+			:ask-reason="input.askReason"
 			@decide="submit"
 		/>
 		<N8nCard v-else-if="variant === 'text'" :class="$style.card">
@@ -545,7 +548,11 @@ function onApprovalSelect(key: string) {
 			:disabled="isInactive"
 			data-test-id="assistant-agent-approval"
 			@select="onApprovalSelect"
-		/>
+		>
+			<template v-if="input.askReason" #description>
+				<ApprovalAskReason :description="approvalDescription" :reason="input.askReason" />
+			</template>
+		</N8nApprovalCard>
 	</div>
 </template>
 

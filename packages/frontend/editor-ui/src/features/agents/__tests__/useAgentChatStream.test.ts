@@ -8,6 +8,7 @@ import {
 	N8N_CHAT_ACTION_TOOL_NAME,
 	WAIT_TOOL_NAME,
 	type AgentChatMessagesResponse,
+	type AgentPersistedMessageDto,
 	type AgentSseEvent,
 } from '@n8n/api-types';
 
@@ -2123,6 +2124,33 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		expect(assistant.status).toBe('awaitingUser');
 	});
 
+	it('shows the tool that a tool catalog call_tool call runs', async () => {
+		const events: AgentSseEvent[] = [
+			{ type: 'start-step' },
+			{ type: 'tool-input-start', toolCallId: 'tc-1', toolName: 'call_tool' },
+			{
+				type: 'tool-call',
+				toolCallId: 'tc-1',
+				toolName: 'call_tool',
+				input: { tool: 'list_workflows', arguments: { limit: 5 } },
+			},
+			{ type: 'tool-result', toolCallId: 'tc-1', toolName: 'call_tool', output: { workflows: [] } },
+			{ type: 'finish-step' },
+			{ type: 'done' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('list my workflows');
+		await flushPromises();
+		await nextTick();
+
+		const toolCall = hook.messages.value[1].toolCalls?.[0];
+		expect(toolCall?.tool).toBe('list_workflows');
+		expect(toolCall?.input).toEqual({ limit: 5 });
+		expect(toolCall?.output).toEqual({ workflows: [] });
+	});
+
 	// -----------------------------------------------------------------------
 	// Error event handling
 	// -----------------------------------------------------------------------
@@ -3333,6 +3361,7 @@ describe('useAgentChatStream — loadHistory', () => {
 			'a1',
 			'thread-1',
 			'chat',
+			{ limit: 20 },
 		);
 		const msg = hook.messages.value.at(-1)!;
 		expect(msg.interactive?.toolName).toBe(N8N_CHAT_ACTION_TOOL_NAME);
@@ -3352,6 +3381,182 @@ describe('useAgentChatStream — loadHistory', () => {
 
 		expect(onSessionCreated).toHaveBeenCalledOnce();
 		expect(onSessionCreated).toHaveBeenCalledWith('thread-new');
+	});
+});
+
+describe('useAgentChatStream — older messages', () => {
+	function turn(executionId: string, text: string): AgentPersistedMessageDto[] {
+		return [
+			{
+				id: `${executionId}:user`,
+				role: 'user',
+				executionId,
+				content: [{ type: 'text', text }],
+			},
+			{
+				id: `${executionId}:assistant`,
+				role: 'assistant',
+				executionId,
+				content: [{ type: 'text', text: `Reply to ${text}` }],
+			},
+		];
+	}
+
+	const page = (
+		messages: AgentPersistedMessageDto[],
+		nextCursor: string | null,
+	): AgentChatMessagesResponse => ({
+		messages,
+		openSuspensions: [],
+		activeExecutionId: null,
+		nextCursor,
+	});
+
+	const ids = (hook: ReturnType<typeof buildHook>) => hook.messages.value.map(({ id }) => id);
+
+	it('loads the newest page first, then adds the older pages before it', async () => {
+		getChatMessagesMock
+			.mockResolvedValueOnce(page(turn('e3', 'Third'), 'cursor-2'))
+			.mockResolvedValueOnce(page(turn('e2', 'Second'), 'cursor-1'))
+			.mockResolvedValueOnce(page(turn('e1', 'First'), null));
+		const hook = buildHook('thread-1', { channel: ref('system') });
+
+		await hook.loadHistory();
+		expect(hook.hasOlderMessages.value).toBe(true);
+		expect(ids(hook)).toEqual(['e3:user', 'e3:assistant']);
+
+		await hook.loadOlderMessages();
+		expect(getChatMessagesMock).toHaveBeenLastCalledWith(
+			{ baseUrl: 'http://localhost:5678' },
+			'p1',
+			'a1',
+			'thread-1',
+			'system',
+			{ limit: 20, cursor: 'cursor-2' },
+		);
+		await hook.loadOlderMessages();
+
+		expect(ids(hook)).toEqual([
+			'e1:user',
+			'e1:assistant',
+			'e2:user',
+			'e2:assistant',
+			'e3:user',
+			'e3:assistant',
+		]);
+		expect(hook.hasOlderMessages.value).toBe(false);
+	});
+
+	it('keeps the loaded older pages when the newest page refreshes', async () => {
+		getChatMessagesMock
+			.mockResolvedValueOnce(page(turn('e2', 'Second'), 'cursor-1'))
+			.mockResolvedValueOnce(page(turn('e1', 'First'), null))
+			.mockResolvedValueOnce(page([...turn('e2', 'Second'), ...turn('e3', 'Third')], 'cursor-1'));
+		const hook = buildHook('thread-1');
+		await hook.loadHistory();
+		await hook.loadOlderMessages();
+
+		hook.refresh();
+		await vi.waitFor(() => expect(getChatMessagesMock).toHaveBeenCalledTimes(3));
+		await flushPromises();
+
+		expect(ids(hook)).toEqual([
+			'e1:user',
+			'e1:assistant',
+			'e2:user',
+			'e2:assistant',
+			'e3:user',
+			'e3:assistant',
+		]);
+		expect(hook.hasOlderMessages.value).toBe(false);
+	});
+
+	it('drops the older pages when the newest page no longer overlaps them', async () => {
+		getChatMessagesMock
+			.mockResolvedValueOnce(page(turn('e2', 'Second'), 'cursor-1'))
+			.mockResolvedValueOnce(page(turn('e1', 'First'), null))
+			.mockResolvedValueOnce(page(turn('e9', 'Much later'), 'cursor-8'));
+		const hook = buildHook('thread-1');
+		await hook.loadHistory();
+		await hook.loadOlderMessages();
+
+		hook.refresh();
+		await vi.waitFor(() => expect(getChatMessagesMock).toHaveBeenCalledTimes(3));
+		await flushPromises();
+
+		expect(ids(hook)).toEqual(['e9:user', 'e9:assistant']);
+		expect(hook.hasOlderMessages.value).toBe(true);
+	});
+
+	it('rejects a failed page and keeps its cursor for a retry', async () => {
+		getChatMessagesMock
+			.mockResolvedValueOnce(page(turn('e2', 'Second'), 'cursor-1'))
+			.mockRejectedValueOnce(new Error('offline'))
+			.mockResolvedValueOnce(page(turn('e1', 'First'), null));
+		const hook = buildHook('thread-1');
+		await hook.loadHistory();
+
+		await expect(hook.loadOlderMessages()).rejects.toThrow('offline');
+		expect(hook.hasOlderMessages.value).toBe(true);
+
+		// The retry loads the page, so the failed load did not leave a lock behind.
+		await hook.loadOlderMessages();
+		expect(ids(hook)).toEqual(['e1:user', 'e1:assistant', 'e2:user', 'e2:assistant']);
+	});
+
+	it('drops a page that arrives after the chat moved to another thread', async () => {
+		const older = Promise.withResolvers<AgentChatMessagesResponse>();
+		getChatMessagesMock
+			.mockResolvedValueOnce(page(turn('e2', 'Second'), 'cursor-1'))
+			.mockReturnValueOnce(older.promise)
+			.mockResolvedValue(page(turn('x1', 'Other thread'), null));
+		const sessionId = ref<string | undefined>('thread-1');
+		const scope = effectScope();
+		hookScopes.push(scope);
+		const hook = scope.run(() =>
+			useAgentChatStream({
+				projectId: ref('p1'),
+				agentId: ref('a1'),
+				continueSessionId: sessionId,
+			}),
+		)!;
+		await hook.loadHistory();
+
+		const loading = hook.loadOlderMessages();
+		sessionId.value = 'thread-2';
+		await vi.waitFor(() => expect(ids(hook)).toEqual(['x1:user', 'x1:assistant']));
+		older.resolve(page(turn('e1', 'First'), null));
+		await loading;
+
+		expect(ids(hook)).toEqual(['x1:user', 'x1:assistant']);
+	});
+
+	it('returns the whole thread for a copy without changing the loaded messages', async () => {
+		getChatMessagesMock
+			.mockResolvedValueOnce(page(turn('e2', 'Second'), 'cursor-1'))
+			.mockResolvedValueOnce({
+				messages: [...turn('e1', 'First'), ...turn('e2', 'Second')],
+				openSuspensions: [],
+			});
+		const hook = buildHook('thread-1');
+		await hook.loadHistory();
+
+		const thread = await hook.getFullHistory();
+
+		expect(getChatMessagesMock).toHaveBeenLastCalledWith(
+			{ baseUrl: 'http://localhost:5678' },
+			'p1',
+			'a1',
+			'thread-1',
+			'chat',
+		);
+		expect(thread.map(({ id }) => id)).toEqual([
+			'e1:user',
+			'e1:assistant',
+			'e2:user',
+			'e2:assistant',
+		]);
+		expect(ids(hook)).toEqual(['e2:user', 'e2:assistant']);
 	});
 });
 
@@ -5700,6 +5905,7 @@ describe('useAgentChatStream — n8n Chat channel', () => {
 			'a1',
 			'thread-1',
 			'n8n-chat',
+			{ limit: 20 },
 		);
 		expect(getAgentChatQueueMock).toHaveBeenCalledWith(
 			{ baseUrl: 'http://localhost:5678' },

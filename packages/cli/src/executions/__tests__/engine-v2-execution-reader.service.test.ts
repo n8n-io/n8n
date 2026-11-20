@@ -19,6 +19,7 @@ const step = (overrides: Partial<StepDetail> = {}): StepDetail => ({
 	iteration: 0,
 	status: 'completed',
 	outputs: [[{ json: { hello: 'world' } }]],
+	outputSources: null,
 	error: null,
 	createdAt: '2026-08-25T10:00:00.000Z',
 	updatedAt: '2026-08-25T10:00:00.000Z',
@@ -64,14 +65,28 @@ describe('EngineV2ExecutionReader', () => {
 	describe('findMany', () => {
 		const query: EngineV2SearchQuery = { limit: 2 };
 		it.each(['manual', 'webhook', 'trigger'] as const)(
-			'forwards the mode %s without conversion',
+			'forwards the mode %s as the host mode of a top-level execution',
 			async (mode) => {
 				await reader.findMany({ ...query, mode }, ['wf-1']);
 				expect(dataPlane.searchExecutions).toHaveBeenCalledWith(
-					expect.objectContaining({ hostMode: mode }),
+					expect.objectContaining({ hostMode: mode, hasParent: false }),
 				);
 			},
 		);
+
+		it('asks for sub-executions, whatever their host mode, for the integrated mode', async () => {
+			await reader.findMany({ ...query, mode: 'integrated' }, ['wf-1']);
+			const [request] = dataPlane.searchExecutions.mock.calls[0];
+			expect(request.hasParent).toBe(true);
+			expect(request.hostMode).toBeUndefined();
+		});
+
+		it('sends no mode filter when the caller asked for none', async () => {
+			await reader.findMany(query, ['wf-1']);
+			const [request] = dataPlane.searchExecutions.mock.calls[0];
+			expect(request.hasParent).toBeUndefined();
+			expect(request.hostMode).toBeUndefined();
+		});
 
 		it('maps supported statuses and drops statuses that the DP cannot match', async () => {
 			await reader.findMany({ ...query, status: ['success', 'crashed', 'waiting'] }, 'all');
@@ -122,6 +137,26 @@ describe('EngineV2ExecutionReader', () => {
 				],
 			});
 			expect(dataPlane.getExecution).not.toHaveBeenCalled();
+		});
+
+		it('lists a sub-execution in integrated mode, whatever host mode it inherited', async () => {
+			dataPlane.searchExecutions.mockResolvedValue({
+				items: [
+					snapshot({ mode: 'production', hostMode: 'webhook' }),
+					snapshot({
+						id: '01a038ae-c4a8-7799-8a3e-e3c2ca055cfb',
+						mode: 'production',
+						hostMode: 'webhook',
+						parent: { executionId: EXECUTION_ID, stepId: 'step-1', awaited: true },
+					}),
+				],
+				total: 2,
+				nextCursor: null,
+			});
+
+			const result = await reader.findMany(query, ['wf-1']);
+
+			expect(result.items.map((item) => item.mode)).toEqual(['webhook', 'integrated']);
 		});
 
 		// Splitting a wider scope across searches can come later; until then the
@@ -382,6 +417,20 @@ describe('EngineV2ExecutionReader', () => {
 			},
 		);
 
+		it('should report a sub-execution in integrated mode, whatever host mode it inherited', async () => {
+			dataPlane.getExecution.mockResolvedValue(
+				snapshot({
+					mode: 'production',
+					hostMode: 'webhook',
+					parent: { executionId: 'parent-id', stepId: 'step-1', awaited: true },
+				}),
+			);
+
+			const result = await reader.findOne(EXECUTION_ID, [WORKFLOW_ID]);
+
+			expect(result?.mode).toBe('integrated');
+		});
+
 		it('should leave stoppedAt unset while the execution is unfinished', async () => {
 			dataPlane.getExecution.mockResolvedValue(snapshot({ status: 'running', finishedAt: null }));
 
@@ -431,6 +480,48 @@ describe('EngineV2ExecutionReader', () => {
 			dataPlane.getExecution.mockResolvedValue(snapshot({ workflow }));
 
 			await expect(reader.findOne(EXECUTION_ID, [WORKFLOW_ID])).resolves.toBeUndefined();
+		});
+
+		describe('without the run data', () => {
+			it('should not ask the data plane for the steps', async () => {
+				const result = await reader.findOne(EXECUTION_ID, [WORKFLOW_ID], { includeData: false });
+
+				expect(dataPlane.getExecution).toHaveBeenCalledWith(EXECUTION_ID, { includeSteps: false });
+				expect(result).toEqual({
+					id: EXECUTION_ID,
+					workflowId: WORKFLOW_ID,
+					mode: 'manual',
+					status: 'success',
+					finished: true,
+					createdAt: new Date('2026-08-25T10:00:00.000Z'),
+					startedAt: new Date('2026-08-25T10:00:00.000Z'),
+					stoppedAt: new Date('2026-08-25T10:00:05.000Z'),
+					storedAt: 'db',
+				});
+			});
+
+			// Absent data and empty data must stay tellable apart.
+			it('should report no data at all, rather than empty data', async () => {
+				const result = await reader.findOne(EXECUTION_ID, [WORKFLOW_ID], { includeData: false });
+
+				expect(result).not.toHaveProperty('data');
+			});
+
+			it('should return undefined when the stored workflow is unusable', async () => {
+				// The same reads as the data mode, so a status cannot appear in one
+				// mode and vanish in the other.
+				dataPlane.getExecution.mockResolvedValue(snapshot({ workflow: { nodes: 'Trigger' } }));
+
+				await expect(
+					reader.findOne(EXECUTION_ID, [WORKFLOW_ID], { includeData: false }),
+				).resolves.toBeUndefined();
+			});
+
+			it('should return undefined when the workflow is not accessible to the caller', async () => {
+				await expect(
+					reader.findOne(EXECUTION_ID, ['other-wf'], { includeData: false }),
+				).resolves.toBeUndefined();
+			});
 		});
 
 		describe('reporting the workflow that ran', () => {

@@ -5,7 +5,7 @@ import {
 	ImportPackageSelectionRequestDto,
 	ImportResultDto,
 } from '@n8n/api-types';
-import { EventService } from '@n8n/backend-services';
+import { EventService, loginIdOf } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -24,7 +24,6 @@ import {
 import { BadRequestError, ForbiddenError, UserError } from '@n8n/errors';
 import type { Response } from 'express';
 
-import { loginIdOf } from '@/events/login-id';
 import {
 	PackageEntityAccessDeniedError,
 	PackageEntityNotFoundError,
@@ -41,6 +40,7 @@ import type { PublicApiRequest } from '@/public-api/public-api-client';
 
 import {
 	EXPORT_200_DESCRIPTION,
+	EXPORT_422_DESCRIPTION,
 	EXPORT_COUNTS_HEADER_DESCRIPTION,
 	EXPORT_DESCRIPTION,
 	EXPORT_SUMMARY,
@@ -221,6 +221,7 @@ export class N8nPackagesPublicController {
 		headers: { [EXPORT_COUNTS_HEADER]: { description: EXPORT_COUNTS_HEADER_DESCRIPTION } },
 	})
 	@ApiErrorResponse(404)
+	@ApiErrorResponse(422, { description: EXPORT_422_DESCRIPTION })
 	async exportPackage(
 		req: AuthenticatedRequest,
 		_res: Response,

@@ -1,12 +1,15 @@
 <script lang="ts" setup>
-import { computed, onBeforeUnmount, onMounted, provide, useTemplateRef, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, provide, ref, useTemplateRef, watch } from 'vue';
 import { N8nIcon } from '@n8n/design-system';
+import { ResponseError } from '@n8n/rest-api-client';
 import type { IWorkflowDb } from '@/Interface';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import { injectStrict } from '@/app/utils/injectStrict';
 import { EmbeddedCanvasElementKey, WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import { useWorkflowInitialization } from '@/app/composables/useWorkflowInitialization';
 import MainHeader from '@/app/components/MainHeader/MainHeader.vue';
+import EntityNotFound from '@/app/views/EntityNotFound.vue';
+import EntityUnAuthorised from '@/app/views/EntityUnAuthorised.vue';
 import NodeView from '@/app/views/NodeView.vue';
 import LogsPanel from '@/features/execution/logs/components/LogsPanel.vue';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
@@ -42,8 +45,20 @@ const canvasStore = useCanvasStore();
 const nodeCreatorStore = useNodeCreatorStore();
 const workflowSaveStore = useWorkflowSaveStore();
 
+// The host sits inside another page, so a failed load shows here and that page stays open.
+const loadError = ref<'unauthorized' | 'notFound'>();
+
 const { isLoading, initializeData, initializeWorkflow, openWorkflow, cleanup } =
-	useWorkflowInitialization();
+	useWorkflowInitialization({
+		onLoadError: (error, workflowId) => {
+			// A late failure of a workflow the user left must not cover the open one.
+			if (workflowId !== props.workflowId) return;
+			loadError.value =
+				error instanceof ResponseError && error.httpStatusCode === 403
+					? 'unauthorized'
+					: 'notFound';
+		},
+	});
 
 /**
  * Display-only counterpart of the editor's debug-mode execution loading: shows
@@ -73,6 +88,7 @@ function showInitialExecution() {
 // `pushHandlers` do not depend on it — App.vue dispatches those.
 
 async function loadWorkflow(force: boolean) {
+	loadError.value = undefined;
 	// One-shot: open the editor hand-off snapshot on the initial mount instead
 	// of fetching. Later refresh-key bumps (e.g. an agent edit) go through the
 	// fetch path so the canvas reflects the saved workflow, not the stale snapshot.
@@ -85,7 +101,7 @@ async function loadWorkflow(force: boolean) {
 	} else {
 		await initializeWorkflow(force);
 	}
-	if (currentWorkflowDocumentStore.value) {
+	if (!loadError.value && currentWorkflowDocumentStore.value) {
 		emit('workflow-loaded', props.workflowId);
 	}
 }
@@ -132,7 +148,20 @@ const isReady = computed(() => !isLoading.value && !!currentWorkflowDocumentStor
 
 <template>
 	<div :class="$style.host" data-test-id="workflow-canvas-host">
-		<template v-if="isReady">
+		<EntityUnAuthorised
+			v-if="loadError === 'unauthorized'"
+			entity-type="workflow"
+			:class="$style.centerState"
+			data-test-id="workflow-canvas-host-error"
+		/>
+		<EntityNotFound
+			v-else-if="loadError === 'notFound'"
+			entity-type="workflow"
+			hide-action
+			:class="$style.centerState"
+			data-test-id="workflow-canvas-host-error"
+		/>
+		<template v-else-if="isReady">
 			<MainHeader :class="$style.header" />
 			<div ref="canvas" :class="$style.canvas">
 				<NodeView />

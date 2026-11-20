@@ -13,9 +13,10 @@ import {
 	N8nText,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { usePrefetchModals } from '@/app/composables/usePrefetchModals';
 import dateformat from 'dateformat';
 import { computed, onMounted } from 'vue';
-import { END_USER_CREDENTIALS_DOCS_URL } from '@/app/constants';
+import { CREDENTIAL_RESOLVER_EDIT_MODAL_KEY, END_USER_CREDENTIALS_DOCS_URL } from '@/app/constants';
 import { useCredentialResolvers } from './composables/useCredentialResolvers';
 
 const i18n = useI18n();
@@ -30,6 +31,8 @@ const {
 	openCreateModal,
 	openEditModal,
 } = useCredentialResolvers();
+
+usePrefetchModals([CREDENTIAL_RESOLVER_EDIT_MODAL_KEY]);
 
 const RESOLVER_LIST_ITEM_ACTIONS = {
 	EDIT: 'edit',
