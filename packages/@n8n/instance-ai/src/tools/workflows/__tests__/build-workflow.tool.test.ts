@@ -468,6 +468,67 @@ describe('createBuildWorkflowTool', () => {
 			expect(compiledEngine()).toBe('v1');
 			expect(result).not.toHaveProperty('targetEngine');
 		});
+
+		describe('without the engine-v2 module', () => {
+			const noV2 = { engineV2Available: false, newWorkflowEngine: 'v1' } as const;
+
+			it('checks an edit of a saved v2 workflow for v2', async () => {
+				// The dispatcher sends a v2 workflow to engine v2 even without the module.
+				const { context, filePath } = makeContext({ overrides: { engineSetup: noV2 } });
+				vi.mocked(context.workflowService.getAsWorkflowJSON).mockResolvedValue({
+					name: 'Target workflow',
+					nodes: [],
+					connections: {},
+					settings: { engineType: 'v2' },
+				});
+
+				const result = await executeTool<EngineOutput>(createBuildWorkflowTool(context), {
+					filePath,
+					workflowId: 'wf-1',
+				});
+
+				expect(compiledEngine()).toBe('v2');
+				expect(result.targetEngine).toBe('target engine: v2 (engine of the saved workflow)');
+			});
+
+			it('names the engine when the code sets v2', async () => {
+				const { context, filePath } = makeContext({ overrides: { engineSetup: noV2 } });
+				compileWithSettings({ engineType: 'v2' });
+
+				const result = await executeTool<EngineOutput>(createBuildWorkflowTool(context), {
+					filePath,
+				});
+
+				expect(result.targetEngine).toBe('target engine: v2 (set in the workflow settings)');
+			});
+
+			it('checks an edit for v1 when the saved workflow cannot be read', async () => {
+				const { context, filePath } = makeContext({ overrides: { engineSetup: noV2 } });
+				vi.mocked(context.workflowService.getAsWorkflowJSON).mockRejectedValue(
+					new Error('read failed'),
+				);
+
+				const result = await executeTool<EngineOutput>(createBuildWorkflowTool(context), {
+					filePath,
+					workflowId: 'wf-1',
+				});
+
+				expect(compiledEngine()).toBe('v1');
+				expect(result).not.toHaveProperty('targetEngine');
+			});
+
+			it('checks a new workflow for v1 and does not name the engine', async () => {
+				const { context, filePath } = makeContext({ overrides: { engineSetup: noV2 } });
+
+				const result = await executeTool<EngineOutput>(createBuildWorkflowTool(context), {
+					filePath,
+				});
+
+				expect(result.success).toBe(true);
+				expect(compiledEngine()).toBe('v1');
+				expect(result).not.toHaveProperty('targetEngine');
+			});
+		});
 	});
 
 	describe('publish state', () => {
