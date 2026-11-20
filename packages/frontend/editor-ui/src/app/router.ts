@@ -27,6 +27,14 @@ import { usePostHog, waitForFeatureFlagsWithTimeout } from '@/app/stores/posthog
 import { RESOURCE_CENTER_EXPERIMENT, TEMPLATE_SETUP_EXPERIENCE } from '@/app/constants/experiments';
 import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
 import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
+// Experiment cleanup (151_force_first_workflow)
+import {
+	FORCE_FIRST_WORKFLOW_QUERY,
+	FORCE_FIRST_WORKFLOW_ROUTE,
+	FORCE_FIRST_WORKFLOW_ROUTE_NAME,
+} from '@/experiments/forceFirstWorkflow/constants';
+import { useForceFirstWorkflowStore } from '@/experiments/forceFirstWorkflow/stores/forceFirstWorkflow.store';
+// EOF Experiment cleanup
 import { PROMOTIONS_SETTINGS_VIEW } from '@n8n/frontend-module-promotions';
 import { usePromotionsEnabled } from '@/features/shared/promotions/usePromotionsEnabled';
 import {
@@ -1147,6 +1155,26 @@ export const routes: RouteRecordRaw[] = [
 			},
 		],
 	},
+	// Experiment cleanup (151_force_first_workflow)
+	{
+		path: FORCE_FIRST_WORKFLOW_ROUTE,
+		name: FORCE_FIRST_WORKFLOW_ROUTE_NAME,
+		component: async () =>
+			await import('@/experiments/forceFirstWorkflow/components/FirstWorkflowView.vue'),
+		beforeEnter: (to) => {
+			// Only an eligible treatment user stays. Everyone else gets the usual landing.
+			if (!useForceFirstWorkflowStore().shouldForceFlow) return { path: '/' };
+
+			const hasQuery = Object.entries(FORCE_FIRST_WORKFLOW_QUERY).every(
+				([key, value]) => to.query[key] === value,
+			);
+			return hasQuery
+				? true
+				: { path: to.path, query: { ...to.query, ...FORCE_FIRST_WORKFLOW_QUERY } };
+		},
+		meta: { layout: 'auth', middleware: ['authenticated'] },
+	},
+	// EOF Experiment cleanup
 	{
 		path: '/saml/onboarding',
 		name: VIEWS.SAML_ONBOARDING,

@@ -70,6 +70,15 @@ const freeNudgeVariant = z.enum(['control', 'variant-1', 'variant-2']);
 const freeNudgeTreatmentVariant = z.enum(['variant-1', 'variant-2']);
 const workflowPreviewsAboveAssistantVariant = z.enum(['control', 'variant']);
 const taxonomyInspirationVariant = z.enum(['control', 'variant']);
+const forceFirstWorkflowVariant = z.enum(['control', 'variant']);
+const forceFirstWorkflowStep = z.enum([
+	'summary',
+	'schedule',
+	'email',
+	'destination',
+	'test',
+	'publish',
+]);
 const assistantMentionKind = z.enum(['workflow', 'node', 'group']);
 const assistantMentionTriggerSource = z.enum(['typed', 'button']);
 /** Cap on the query text the empty-search event carries; the emitter cuts to it after redaction. */
@@ -331,6 +340,54 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 			),
 			// eslint-disable-next-line @typescript-eslint/naming-convention -- PostHog feature property
 			'$feature/142_aia_inspiration_from_taxonomy_v3': taxonomyInspirationVariant,
+		}),
+	},
+	// EOF Experiment cleanup
+	// Experiment cleanup (151_force_first_workflow)
+	FORCE_FIRST_WORKFLOW_EXPOSED: {
+		name: 'Force first workflow exposed',
+		description:
+			'An eligible new cloud user was assigned to 151_force_first_workflow, including the control variant. Fires once per user when the post-signup landing decides between the guided first-workflow flow and the existing onboarding.',
+		properties: z.object({
+			variant: forceFirstWorkflowVariant.describe('Variant of the feature flag the user saw'),
+			// eslint-disable-next-line @typescript-eslint/naming-convention -- PostHog feature property
+			'$feature/151_force_first_workflow': forceFirstWorkflowVariant,
+		}),
+	},
+	FORCE_FIRST_WORKFLOW_STEP_COMPLETED: {
+		name: 'Force first workflow step completed',
+		description:
+			'The user finished a step of the guided first-workflow flow. The test step reports whether the test run succeeded.',
+		properties: z.object({
+			variant: forceFirstWorkflowVariant,
+			// eslint-disable-next-line @typescript-eslint/naming-convention -- PostHog feature property
+			'$feature/151_force_first_workflow': forceFirstWorkflowVariant,
+			step: forceFirstWorkflowStep,
+			succeeded: z
+				.boolean()
+				.optional()
+				.describe('Only on the test step: whether the test run succeeded'),
+		}),
+	},
+	FORCE_FIRST_WORKFLOW_SKIPPED: {
+		name: 'Force first workflow skipped',
+		description:
+			'The user left the guided first-workflow flow with the Skip button before publishing.',
+		properties: z.object({
+			variant: forceFirstWorkflowVariant,
+			// eslint-disable-next-line @typescript-eslint/naming-convention -- PostHog feature property
+			'$feature/151_force_first_workflow': forceFirstWorkflowVariant,
+			step: forceFirstWorkflowStep.describe('The step the user was on when they skipped'),
+		}),
+	},
+	FORCE_FIRST_WORKFLOW_PUBLISHED: {
+		name: 'Force first workflow published',
+		description: 'The user published the workflow that the guided first-workflow flow built.',
+		properties: z.object({
+			variant: forceFirstWorkflowVariant,
+			// eslint-disable-next-line @typescript-eslint/naming-convention -- PostHog feature property
+			'$feature/151_force_first_workflow': forceFirstWorkflowVariant,
+			workflow_id: z.string(),
 		}),
 	},
 	// EOF Experiment cleanup

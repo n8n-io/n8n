@@ -27,6 +27,10 @@ import {
 import { launchWorkflowThread } from '@/experiments/openWorkflowInAssistant/launchWorkflowThread';
 // Experiment cleanup: remove with openWorkflowInAssistant.
 import { useOpenWorkflowInAssistantStore } from '@/experiments/openWorkflowInAssistant/stores/openWorkflowInAssistant.store';
+// Experiment cleanup (151_force_first_workflow)
+import { FORCE_FIRST_WORKFLOW_ROUTE } from '@/experiments/forceFirstWorkflow/constants';
+import { useForceFirstWorkflowStore } from '@/experiments/forceFirstWorkflow/stores/forceFirstWorkflow.store';
+// EOF Experiment cleanup
 import {
 	useInstanceAiAvailable,
 	useInstanceAiReady,
@@ -202,6 +206,16 @@ export const InstanceAiModule = defineFrontendModule({
 					// answers the team question from the URL, so one account can run it again.
 					beforeEnter: async (to) => {
 						if (to.query[INSTANCE_AI_SOURCE_QUERY] !== 'onboarding') return true;
+						// Experiment cleanup (151_force_first_workflow)
+						// An eligible treatment user builds one first workflow before the assistant.
+						// The flow ends in the assistant, so whoever cannot use it yet keeps the old path.
+						if (useInstanceAiReady().value) {
+							const forceFirstWorkflowStore = useForceFirstWorkflowStore();
+							forceFirstWorkflowStore.trackExposure();
+							if (forceFirstWorkflowStore.shouldForceFlow)
+								return { path: FORCE_FIRST_WORKFLOW_ROUTE };
+						}
+						// EOF Experiment cleanup
 						// Whoever cannot use the assistant yet lands on the empty view and its setup.
 						const projectId = useInstanceAiReady().value ? await ensurePersonalProjectId() : null;
 						const threadId = projectId

@@ -64,6 +64,7 @@ export const STORES = {
 	EXPERIMENT_INSTANCE_AI_FREE_NUDGE: 'instanceAiFreeNudge',
 	EXPERIMENT_AGENT_BUILDER: 'agentBuilderExperiment',
 	EXPERIMENT_OPEN_WORKFLOW_IN_ASSISTANT: 'openWorkflowInAssistant',
+	EXPERIMENT_FORCE_FIRST_WORKFLOW: 'forceFirstWorkflow',
 	SETUP_PANEL: 'setupPanel',
 	FOCUSED_NODES: 'focusedNodes',
 	FAVORITES: 'favorites',

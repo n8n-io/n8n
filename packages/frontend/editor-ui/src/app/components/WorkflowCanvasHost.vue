@@ -15,8 +15,14 @@ const props = withDefaults(
 		initialWorkflow?: IWorkflowDb;
 		/** Execution to display once on open, seeded directly (e.g. an editor hand-off snapshot). */
 		initialExecution?: IExecutionResponse;
+		/**
+		 * Strip the editor chrome down to a `header` slot. It replaces the editor header, drops the
+		 * logs panel, and the host then starts the push connection that the header normally starts.
+		 * Experiment cleanup (151_force_first_workflow): remove with it, unless another host needs it.
+		 */
+		minimalChrome?: boolean;
 	}>(),
-	{ refreshKey: 0, initialWorkflow: undefined, initialExecution: undefined },
+	{ refreshKey: 0, initialWorkflow: undefined, initialExecution: undefined, minimalChrome: false },
 );
 
 const emit = defineEmits<{
@@ -56,7 +62,10 @@ defineExpose({ requestFitView });
 		:refresh-key="refreshKey"
 		:initial-workflow="initialWorkflow"
 		:initial-execution="initialExecution"
+		:minimal-chrome="minimalChrome"
 		@ready="emit('ready')"
 		@workflow-loaded="(id) => emit('workflow-loaded', id)"
-	/>
+	>
+		<template v-if="minimalChrome" #header><slot name="header" /></template>
+	</WorkflowCanvasHostBody>
 </template>

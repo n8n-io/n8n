@@ -4,6 +4,9 @@ import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
+// Experiment cleanup (151_force_first_workflow)
+import { useForceFirstWorkflowStore } from '@/experiments/forceFirstWorkflow/stores/forceFirstWorkflow.store';
+// EOF Experiment cleanup
 import { getExperimentTelemetryPayload } from '@/experiments/utils';
 import { useUsersStore } from '@n8n/stores/users.store';
 import type { Cloud } from '@n8n/rest-api-client/api/cloudPlans';
@@ -41,6 +44,9 @@ export const useTrialIntroModalStore = defineStore(STORES.EXPERIMENT_TRIAL_INTRO
 	const usersStore = useUsersStore();
 	const settingsStore = useSettingsStore();
 	const uiStore = useUIStore();
+	// Experiment cleanup (151_force_first_workflow)
+	const forceFirstWorkflowStore = useForceFirstWorkflowStore();
+	// EOF Experiment cleanup
 
 	const currentVariant = computed(() => posthogStore.getVariant(TRIAL_INTRO_MODAL_EXPERIMENT.name));
 
@@ -57,7 +63,12 @@ export const useTrialIntroModalStore = defineStore(STORES.EXPERIMENT_TRIAL_INTRO
 			!usersStore.isCalloutDismissed(TRIAL_INTRO_SEEN_CALLOUT),
 	);
 
-	const shouldShowModal = computed(() => isVariantEnabled.value && isEligible.value);
+	// Experiment cleanup (151_force_first_workflow): no modal over the guided first-workflow flow.
+	// Restore: `computed(() => isVariantEnabled.value && isEligible.value)`.
+	const shouldShowModal = computed(
+		() => isVariantEnabled.value && isEligible.value && !forceFirstWorkflowStore.shouldForceFlow,
+	);
+	// EOF Experiment cleanup
 	const hasAttemptedModalOpen = ref(false);
 	const isModalPresentationActive = ref(false);
 	const shouldSuppressTrialBackground = computed(

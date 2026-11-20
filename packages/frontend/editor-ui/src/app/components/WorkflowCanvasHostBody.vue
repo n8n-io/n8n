@@ -1,5 +1,16 @@
 <script lang="ts" setup>
-import { computed, onBeforeUnmount, onMounted, provide, ref, useTemplateRef, watch } from 'vue';
+import {
+	computed,
+	onBeforeMount,
+	onBeforeUnmount,
+	onMounted,
+	provide,
+	ref,
+	useTemplateRef,
+	watch,
+} from 'vue';
+import { useRouter } from 'vue-router';
+import { usePushConnection } from '@/app/composables/usePushConnection';
 import { N8nIcon } from '@n8n/design-system';
 import { ResponseError } from '@n8n/rest-api-client';
 import type { IWorkflowDb } from '@/Interface';
@@ -27,6 +38,12 @@ const props = defineProps<{
 	initialWorkflow?: IWorkflowDb;
 	/** Execution to display once on open, seeded directly (e.g. an editor hand-off snapshot). */
 	initialExecution?: IExecutionResponse;
+	/**
+	 * Strip the editor chrome down to a `header` slot. It replaces MainHeader, drops the logs panel,
+	 * and the host then owns push init.
+	 * Experiment cleanup (151_force_first_workflow): remove with it, unless another host needs it.
+	 */
+	minimalChrome?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -80,12 +97,16 @@ function showInitialExecution() {
 // NOTE: push-connection handlers (executionStarted, nodeExecuteAfter, etc.) are
 // initialized today via MainHeader's onBeforeMount calling
 // usePushConnection({ router }).initialize(). Because MainHeader is rendered
-// inside this host, the artifact gets push handlers for free. If MainHeader
-// were ever omitted from this body (e.g. a slimmer artifact header), execution
-// events would silently stop landing on the canvas. Calling initialize() here
-// would double-register the listener and double-process every event.
-// Decoupling built-in push init from MainHeader is a follow-up. Module
-// `pushHandlers` do not depend on it — App.vue dispatches those.
+// inside this host, the artifact gets push handlers for free. Calling
+// initialize() here as well would double-register the listener and
+// double-process every event, so only minimal chrome, which replaces
+// MainHeader, initializes it. Module `pushHandlers` do not depend on it —
+// App.vue dispatches those.
+const pushConnection = props.minimalChrome ? usePushConnection({ router: useRouter() }) : undefined;
+
+onBeforeMount(() => {
+	pushConnection?.initialize();
+});
 
 async function loadWorkflow(force: boolean) {
 	loadError.value = undefined;
@@ -124,6 +145,7 @@ watch(
 );
 
 onBeforeUnmount(() => {
+	pushConnection?.terminate();
 	cleanup();
 
 	// Reset global singletons that hold per-workflow state and don't otherwise
@@ -162,11 +184,14 @@ const isReady = computed(() => !isLoading.value && !!currentWorkflowDocumentStor
 			data-test-id="workflow-canvas-host-error"
 		/>
 		<template v-else-if="isReady">
-			<MainHeader :class="$style.header" />
+			<div v-if="minimalChrome" :class="$style.header">
+				<slot name="header" />
+			</div>
+			<MainHeader v-else :class="$style.header" />
 			<div ref="canvas" :class="$style.canvas">
 				<NodeView />
 			</div>
-			<LogsPanel :class="$style.logs" />
+			<LogsPanel v-if="!minimalChrome" :class="$style.logs" />
 		</template>
 		<div v-else :class="$style.centerState">
 			<N8nIcon icon="loader-circle" :size="80" spin />

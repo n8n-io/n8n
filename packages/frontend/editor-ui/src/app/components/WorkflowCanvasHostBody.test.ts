@@ -26,11 +26,24 @@ vi.mock('@/app/composables/useWorkflowInitialization', async () => {
 		}),
 	};
 });
-vi.mock('@/app/components/MainHeader/MainHeader.vue', () => ({ default: { render: () => null } }));
-vi.mock('@/app/views/NodeView.vue', () => ({ default: { render: () => null } }));
-vi.mock('@/features/execution/logs/components/LogsPanel.vue', () => ({
-	default: { render: () => null },
+const pushConnection = vi.hoisted(() => ({ initialize: vi.fn(), terminate: vi.fn() }));
+
+vi.mock('@/app/composables/usePushConnection', () => ({
+	usePushConnection: () => pushConnection,
 }));
+vi.mock('vue-router', async (importOriginal) => ({
+	...(await importOriginal<typeof import('vue-router')>()),
+	useRouter: () => ({}),
+}));
+vi.mock('@/app/components/MainHeader/MainHeader.vue', async () => {
+	const { h } = await import('vue');
+	return { default: { render: () => h('div', { 'data-test-id': 'main-header' }) } };
+});
+vi.mock('@/app/views/NodeView.vue', () => ({ default: { render: () => null } }));
+vi.mock('@/features/execution/logs/components/LogsPanel.vue', async () => {
+	const { h } = await import('vue');
+	return { default: { render: () => h('div', { 'data-test-id': 'logs-panel' }) } };
+});
 
 const renderComponent = createComponentRenderer(WorkflowCanvasHostBody, {
 	props: { workflowId: 'wf-1', refreshKey: 0 },
@@ -73,5 +86,45 @@ describe('WorkflowCanvasHostBody', () => {
 
 		expect(queryByTestId('workflow-canvas-host-error')).not.toBeInTheDocument();
 		expect(emitted('workflow-loaded')).toEqual([['wf-1']]);
+	});
+
+	describe('minimal chrome', () => {
+		const renderMinimalChrome = createComponentRenderer(WorkflowCanvasHostBody, {
+			props: { workflowId: 'wf-1', refreshKey: 0, minimalChrome: true },
+			slots: { header: '<div data-test-id="minimal-chrome" />' },
+		});
+
+		it('renders the header slot without the editor header or logs panel', async () => {
+			loadFailure.value = undefined;
+			const { getByTestId, queryByTestId } = renderMinimalChrome({ pinia: createTestingPinia() });
+			await flushPromises();
+
+			expect(getByTestId('minimal-chrome')).toBeInTheDocument();
+			expect(queryByTestId('main-header')).not.toBeInTheDocument();
+			expect(queryByTestId('logs-panel')).not.toBeInTheDocument();
+		});
+
+		it('initializes the push connection once and terminates it on unmount', async () => {
+			pushConnection.initialize.mockClear();
+			pushConnection.terminate.mockClear();
+			loadFailure.value = undefined;
+			const { unmount } = renderMinimalChrome({ pinia: createTestingPinia() });
+			await flushPromises();
+
+			expect(pushConnection.initialize).toHaveBeenCalledTimes(1);
+
+			unmount();
+
+			expect(pushConnection.terminate).toHaveBeenCalledTimes(1);
+		});
+
+		it('leaves push initialization to the editor header without minimal chrome', async () => {
+			pushConnection.initialize.mockClear();
+			const { getByTestId } = await renderHost();
+
+			expect(getByTestId('main-header')).toBeInTheDocument();
+			expect(getByTestId('logs-panel')).toBeInTheDocument();
+			expect(pushConnection.initialize).not.toHaveBeenCalled();
+		});
 	});
 });
