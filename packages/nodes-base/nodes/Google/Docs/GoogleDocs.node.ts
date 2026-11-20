@@ -260,7 +260,7 @@ export class GoogleDocs implements INodeType {
 												return (element.textRun as IDataObject).content as string;
 											}
 										}) as string[];
-										arr.push(...texts);
+										for (const text of texts) arr.push(text);
 									}
 									return arr;
 								}, [])

@@ -86,7 +86,7 @@ export function useTypescript(
 
 					return {
 						json: schema,
-						binary: Object.keys(Object.assign({}, ...binaryData)),
+						binary: [...new Set(binaryData.flatMap((data) => Object.keys(data)))],
 						params: getSchemaForExecutionData([node.parameters]),
 					};
 				}
