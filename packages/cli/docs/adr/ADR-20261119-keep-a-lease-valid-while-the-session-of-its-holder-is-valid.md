@@ -35,7 +35,8 @@ the instance holds for the kind.
    being valid at the same time.
 3. A renewal extends only a session that has not expired, so an expired session never becomes
    valid again. The next session of the instance has a new id.
-4. Every expiry uses database time.
+4. The expiry of a session row uses database time. An instance also ends a session on its own clocks
+   when the renewal deadline passes, so a session can end before its row expires.
 
 ## Links
 
@@ -43,4 +44,4 @@ RFC: https://app.notion.com/p/4055b6e0c94f81bd8f96c22c386c778c
 
 Documentation: https://app.notion.com/p/4165b6e0c94f81b1a074da1a750f16d3
 
-Related ADRs: ADR-20261119-run-leases-as-an-opt-in-backend-module-behind-an-always-available-service
+Related ADRs: ADR-20261119-run-leases-as-an-opt-in-backend-module
