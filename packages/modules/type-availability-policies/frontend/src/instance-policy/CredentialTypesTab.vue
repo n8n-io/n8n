@@ -18,7 +18,9 @@ import {
 const i18n = useI18n();
 const rootStore = useRootStore();
 const theme = useAppliedTheme();
-const typeUsage = useTypeUsage(async () => await fetchCredentialTypeUsage(rootStore.restApiContext));
+const typeUsage = useTypeUsage(
+	async () => await fetchCredentialTypeUsage(rootStore.restApiContext),
+);
 const { types, loading, changeAccess } = useInstanceTypeAccess('credential', setTypeAccess);
 
 const typeSummaries = shallowRef(new Map<string, CredentialTypeSummary>());
