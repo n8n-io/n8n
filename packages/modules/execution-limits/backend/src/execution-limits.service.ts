@@ -13,6 +13,7 @@ import {
 import { Service } from '@n8n/di';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 
+import { ExecutionLimitAuditRepository } from './execution-limit-audit.repository';
 import {
 	findDuplicateProjectIds,
 	diffProjectLimits,
@@ -26,6 +27,7 @@ import type {
 	ApplicableLimits,
 	ExecutionLimitChange,
 	ProjectLimit,
+	RecordedExecutionLimitChange,
 } from './execution-limits.types';
 import { ProjectExecutionLimitRepository } from './project-execution-limit.repository';
 
@@ -45,6 +47,7 @@ export class ExecutionLimitsService {
 		private readonly projectRepository: ProjectRepository,
 		private readonly transactionRunner: TransactionRunner,
 		private readonly snapshot: ExecutionLimitsSnapshot,
+		private readonly auditRepository: ExecutionLimitAuditRepository,
 		private readonly eventService: EventService,
 	) {}
 
@@ -145,6 +148,20 @@ export class ExecutionLimitsService {
 		}
 	}
 
+	async applyDefaultLimitToNewProject(projectId: string): Promise<void> {
+		if ((await this.settingsStore.read({})).defaultProjectMaxExecutions === null) return;
+
+		await this.commit(null, undefined, async (ctx, { defaultProjectMaxExecutions }) => {
+			if (defaultProjectMaxExecutions === null) return { result: undefined, changes: [] };
+
+			const limits = [{ projectId, maxExecutions: defaultProjectMaxExecutions }];
+			const before = await this.projectLimitRepository.findByProjectIds([projectId], ctx);
+			await this.projectLimitRepository.upsertMany(limits, ctx);
+
+			return { result: undefined, changes: diffProjectLimits(before, limits) };
+		});
+	}
+
 	/** Removes the limit of the given projects. A project with no limit is ignored. */
 	async removeProjectLimits(
 		projectIds: string[],
@@ -168,14 +185,21 @@ export class ExecutionLimitsService {
 			settings: ExecutionLimitSettings,
 		) => Promise<{ result: T; changes: ExecutionLimitChange[] }>,
 	): Promise<T> {
-		const { result, changes } = await this.transactionRunner.run({}, async (ctx) => {
+		const { result, recorded } = await this.transactionRunner.run({}, async (ctx) => {
 			const settings = await this.settingsStore.lockAndRead(ctx);
+			const { result, changes } = await write(ctx, settings);
+			const recorded: RecordedExecutionLimitChange[] = changes.map((change) => ({
+				...change,
+				updatedBy,
+				loginId,
+			}));
+			await this.auditRepository.append(recorded, ctx);
 
-			return await write(ctx, settings);
+			return { result, recorded };
 		});
 
-		for (const change of changes) {
-			this.eventService.emit('execution-limit-updated', { ...change, updatedBy, loginId });
+		for (const change of recorded) {
+			this.eventService.emit('execution-limit-updated', change);
 		}
 		await this.snapshot.refreshAfterWrite();
 

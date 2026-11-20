@@ -1,10 +1,15 @@
 import { isHitlToolType, type INodeTypeDescription } from 'n8n-workflow';
 
-import { GENERIC_CREDENTIAL_TYPES, RELATION_EXCLUDED_NODE_TYPES } from './relatedTypes.constants';
+import {
+	GENERIC_CREDENTIAL_TYPES,
+	RELATION_EXCLUDED_NODE_TYPES,
+	SHARED_CREDENTIAL_TYPES,
+} from './relatedTypes.constants';
 import { latestVersion } from '../type-availability-policies.api';
 
 const TOOL_SUFFIX = 'Tool';
 const HITL_TOOL_SUFFIX = 'HitlTool';
+const TRIGGER_SUFFIX = 'Trigger';
 
 type BaseLookup = (name: string) => Pick<INodeTypeDescription, 'usableAsTool'> | null | undefined;
 
@@ -97,9 +102,45 @@ function isRelatableNodeType(name: string, index: CredentialTypeIndex): boolean 
 }
 
 /**
+ * The node and credential types that an admin may also want to review for `nodeType`. Relations
+ * are direct only: the rules never follow a chain of related types.
+ */
+export function getRelatedTypes(nodeType: string, index: CredentialTypeIndex): RelatedTypes {
+	const { nodeTypesByCredentialType, credentialTypesByNodeType } = index;
+	const isRelatable = (name: string) =>
+		name !== nodeType &&
+		!RELATION_EXCLUDED_NODE_TYPES.has(name) &&
+		isRelatableNodeType(name, index);
+
+	const credentialTypes = [...(credentialTypesByNodeType.get(nodeType) ?? [])].filter(
+		(name) => !GENERIC_CREDENTIAL_TYPES.has(name),
+	);
+
+	if (RELATION_EXCLUDED_NODE_TYPES.has(nodeType)) return { nodeTypes: [], credentialTypes };
+
+	const nodeTypes = new Set<string>();
+
+	for (const credentialType of credentialTypes) {
+		if (SHARED_CREDENTIAL_TYPES.has(credentialType)) continue;
+
+		for (const other of nodeTypesByCredentialType.get(credentialType) ?? []) {
+			if (isRelatable(other)) nodeTypes.add(other);
+		}
+	}
+
+	// A trigger and its node type can list different credential types, so only the name relates them.
+	const counterpart = nodeType.endsWith(TRIGGER_SUFFIX)
+		? nodeType.slice(0, -TRIGGER_SUFFIX.length)
+		: `${nodeType}${TRIGGER_SUFFIX}`;
+	if (isRelatable(counterpart)) nodeTypes.add(counterpart);
+
+	return { nodeTypes: [...nodeTypes], credentialTypes };
+}
+
+/**
  * The node types that list `credentialType`, and the other credential types of those node types.
- * A credential type that node types of several products share, such as Google Service Account,
- * relates all of them, because a rule on it applies to all of them.
+ * Unlike the node rules, a shared credential type relates every node type that lists it, because a
+ * rule on it applies to all of them.
  */
 export function getCredentialRelatedTypes(
 	credentialType: string,

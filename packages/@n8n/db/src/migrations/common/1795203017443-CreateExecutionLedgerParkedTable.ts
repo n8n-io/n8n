@@ -8,7 +8,7 @@ const unconstrained = 'Copied from the ledger row. Not constrained, so an unknow
  * Ledger rows that one fold step could not fold. The rows stay here until a replay
  * gives them to that step again. The table is empty in normal operation.
  */
-export class CreateExecutionLedgerParkedTable1795186884348 implements ReversibleMigration {
+export class CreateExecutionLedgerParkedTable1795203017443 implements ReversibleMigration {
 	async up({ schemaBuilder: { createTable, column } }: MigrationContext) {
 		await createTable(tableName)
 			.withColumns(
