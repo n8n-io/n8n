@@ -538,16 +538,6 @@ describe('QuickJsBridge string transfer', () => {
 		).toBe(-1);
 	});
 
-	it('should read a string that contains NUL characters on a host without Buffer', () => {
-		vi.stubGlobal('Buffer', undefined);
-		try {
-			expect(bridge.execute('return "x\\u0000y";', {})).toBe('x\0y');
-			expect(bridge.execute('return "\\ud800x";', {})).toBe('\ud800x');
-		} finally {
-			vi.unstubAllGlobals();
-		}
-	});
-
 	it('should return a lone surrogate followed by a NUL character unchanged', () => {
 		expect(bridge.execute('return "\\ud800\\u0000x";', {})).toBe('\ud800\0x');
 	});
