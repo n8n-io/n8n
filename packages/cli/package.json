@@ -166,6 +166,7 @@
     "@n8n/backend-module-apps": "workspace:*",
     "@n8n/backend-module-code-sandbox": "workspace:*",
     "@n8n/backend-module-data-table": "workspace:*",
+    "@n8n/backend-module-durable-leases": "workspace:*",
     "@n8n/backend-module-execution-ledger": "workspace:*",
     "@n8n/backend-module-execution-limits": "workspace:*",
     "@n8n/backend-module-insights": "workspace:*",
