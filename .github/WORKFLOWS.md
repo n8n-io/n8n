@@ -840,7 +840,7 @@ Scripts in `.github/scripts/`:
 | `docker/should-smoke-build.mjs`| Narrow the `pnpm-workspace.yaml` smoke trigger to native dependency pins | `docker-build-smoke.yml`|
 | `docker/base-debian-smoke-check.mjs`| Verify the Debian base image contract (tools, no package manager, fonts, global npm modules) on amd64 and arm64 | `build-base-image.yml`|
 | `docker/bake-inputs-changed.mjs`| Decide whether an image must build: compare its resolved bake inputs and Dockerfile between two commits | `build-base-image.yml`, `build-node-pc-image.yml`|
-| `docker/base-image-candidates.mjs`| Find the newest digest of each upstream base image pin and keep it when a Trivy scan shows that it removes fixable OS findings. A candidate is ready when its publisher is verified and it is at least 24 hours old. A manual run skips the age check | `sec-base-image-refresh.yml`|
+| `docker/base-image-candidates.mjs`| Find the newest digest of each upstream base image pin and keep it when a Trivy scan shows that it removes fixable OS findings. A candidate is ready when its publisher is verified and it is at least 24 hours old. A manual run skips the age check. When the tag has no fix, the moving tag of its line shows whether a newer patch needs a version update | `sec-base-image-refresh.yml`|
 | `docker/base-image-publisher.mjs`| Verify the publisher of a base image digest (cosign for DHI and distroless, SLSA provenance for Docker Official Images) and read its publication time | `sec-base-image-refresh.yml`|
 | `attest-image-sbom.mjs` | Generate, validate, and optionally attest image SBOMs | `docker-build-push.yml`, `test-sbom-nightly.yml` |
 
