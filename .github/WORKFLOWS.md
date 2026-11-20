@@ -893,13 +893,13 @@ See [Slack Notifications](#slack-notifications) for the calling pattern.
 
 ## Telemetry
 
-CI metrics are collected via webhooks to n8n, then stored in BigQuery for analysis.
+CI metrics are collected via webhooks to n8n, then stored in ClickHouse for analysis.
 
 See **[CI-TELEMETRY.md](CI-TELEMETRY.md)** for:
 - Common data points (git, CI context, runner info)
 - Existing implementations (build stats, container stack)
 - How to add new telemetry
-- BigQuery schema patterns and queries
+- ClickHouse schema patterns and queries
 
 ---
 
@@ -910,7 +910,7 @@ it and assign reviewers live in `.github/scripts/owners/`. DevHub evaluates
 required reviews and writes the review overview comment. Line format:
 
 ```
-<pattern> <@org/team> [required]
+<pattern> <@org/team> [required[(k)] | involved[(k)]]
 ```
 
 Patterns are a catch-all (`*`), a directory prefix (`packages/x/`), or an
@@ -919,8 +919,9 @@ after general rules.
 
 The format is strict, enforced by `node .github/scripts/owners/owners.mjs --check`:
 
-- Tokens on a line come in a fixed order: pattern, one team, then options
-  such as `required`.
+- Tokens on a line come in a fixed order: pattern, one team, then at most
+  one review option (`required` or `involved`).
+- A review count `(k)` is from 1 to 5.
 - Directory patterns end with `/` and must be existing directories; all other
   patterns must be existing files. Duplicate patterns are rejected.
 
@@ -934,13 +935,13 @@ The file drives four workflows:
 | `ci-owners-validation.yml`        | Validates OWNERS (syntax, dead paths) via `owners.mjs --check` |
 | `ci-owners-review-recommendations.yml` | Calls DevHub: advisory PR comment with owning teams, line stats, required teams |
 | `ci-owners-assign-reviewers.yml`  | Opt-in reviewer auto-assignment (label-triggered)                        |
-| `ci-owners-required-reviews.yml`  | Calls DevHub: enforces `required` entries through the "Required Reviews" commit status |
+| `ci-owners-required-reviews.yml`  | Calls DevHub: enforces `required` and `involved` entries through the "Required Reviews" commit status |
 
 ### Auto-assign reviewers
 
 On an eligible PR into `master`, apply `Auto-assign reviewers` to request all
 owning teams. Apply `Auto-assign required reviewers` to request only teams whose
-`required` OWNERS entries match changed non-test files. If both labels are
+`required` or `involved` OWNERS entries match changed non-test files. If both labels are
 present, the workflow requests all owning teams.
 
 After it requests reviews, the workflow replaces the trigger labels with
@@ -951,9 +952,17 @@ update can try again.
 
 ### Required reviews
 
-An entry with the `required` option makes team approval mandatory: when a PR
-changes a non-test file whose winning entry carries `required`, a member of each
-listed team must approve the PR. Test files do not trigger required reviews.
+When a PR changes a non-test file whose winning entry has a review option, the
+team must review the PR. Test files do not trigger required reviews.
+
+| Option | Rule |
+|--------|------|
+| `required(k)` | `k` team members other than the PR author approve |
+| `involved(k)` | `k` team members review. A PR author in the team counts as one, so `involved` needs no approval when the author is a team member |
+
+Without `(k)`, the count is 1. When the files of one team have different
+options, the team must satisfy all of them. An approval from the author never
+counts.
 
 DevHub evaluates this rule. `ci-owners-required-reviews.yml` calls the shared
 `ownership-checks` workflow in `n8n-io/github-actions`, which sends the PR

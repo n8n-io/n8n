@@ -45,7 +45,13 @@ tool with a probe `suspend()` and, when the review approves, again with
 `{ approved: true }`. Cards that need input (setup, credentials, questions,
 resource decisions) always show. An approved call emits `auto-approval`, its
 judge tokens are claimed from the user's credits, and a tool keeps the grant
-that its approval gives, as "Allow once" does in Manual mode. Telemetry that
+that its approval gives, as "Allow once" does in Manual mode. A call that the
+review sends to the user suspends with the tool's payload and `askReason`, and
+the card shows the reason below the description. `askReason.kind` is `judge`
+with the judge's sentence in `text`, or a fixed cause that the frontend
+translates (`instanceAi.approvalAskReason.*`): `always-ask`, `too-long` or
+`judge-failed`. The wrapper adds `askReason` to the tool's suspend schema, so
+the stored suspension keeps it. Telemetry that
 the probe tracks is sent only when the card shows. `approval-judge.ts`
 describes what the judge reads and how it cuts long input.
 

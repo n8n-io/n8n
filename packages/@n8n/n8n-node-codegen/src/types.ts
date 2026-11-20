@@ -5,11 +5,14 @@ export interface Schema {
 	format?: string;
 	enum?: unknown[];
 	default?: unknown;
+	minimum?: number;
+	maximum?: number;
 	description?: string;
 	readOnly?: boolean;
 	deprecated?: boolean;
 	items?: Schema;
 	properties?: Record<string, Schema>;
+	anyOf?: Schema[];
 	required?: string[];
 	[key: string]: unknown;
 }
@@ -23,6 +26,7 @@ export interface ApiParameter {
 	deprecated: boolean;
 	schema: Schema;
 	description?: string;
+	property?: string;
 }
 
 export interface SpecGroup {
@@ -44,6 +48,7 @@ export interface SpecOperation {
 	tag: SpecTag;
 	deprecated: boolean;
 	paginated: boolean;
+	emptyResponse: boolean;
 	parameters: ApiParameter[];
 	blockers: string[];
 }
@@ -56,12 +61,15 @@ export interface SpecOptions {
 	ignoredHeaderParameters: string[];
 	cursorParameter: string;
 	limitParameter: string;
+	nextCursorProperty: string;
+	itemsProperty: string;
 }
 
 export interface GenerateConfig {
 	envelopeFile: string;
 	routesFile: string;
 	overridesFile: string;
+	outputFile: string;
 	spec: SpecOptions;
 }
 
