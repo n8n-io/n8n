@@ -1,9 +1,9 @@
-import { DateTimeColumn, type ExecutionLedgerEntityType } from '@n8n/db';
-import { BaseEntity, Column, Entity, PrimaryColumn } from '@n8n/typeorm';
+import { type ExecutionLedgerEntityType, WithUpdatedAt } from '@n8n/db';
+import { Column, Entity, PrimaryColumn } from '@n8n/typeorm';
 
 /** Run counts of one project for one UTC day. */
 @Entity('execution_limit_usage')
-export class ExecutionLimitUsage extends BaseEntity {
+export class ExecutionLimitUsage extends WithUpdatedAt {
 	@PrimaryColumn({ type: 'varchar', length: 36 })
 	projectId: string;
 
@@ -20,7 +20,4 @@ export class ExecutionLimitUsage extends BaseEntity {
 	/** Blocked runs do not count toward a limit. Usage is `startedCount - blockedCount`. */
 	@Column({ type: 'int', default: 0 })
 	blockedCount: number;
-
-	@DateTimeColumn()
-	updatedAt: Date;
 }
