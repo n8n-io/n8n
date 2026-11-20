@@ -80,7 +80,7 @@ export const ENGINE_V2_NODE_SETTING_RULES: Record<
 };
 
 export function isEngineV2NodeSettingCode(code: string): code is EngineV2NodeSettingCode {
-	return code in ENGINE_V2_NODE_SETTING_RULES;
+	return Object.hasOwn(ENGINE_V2_NODE_SETTING_RULES, code);
 }
 
 /**
