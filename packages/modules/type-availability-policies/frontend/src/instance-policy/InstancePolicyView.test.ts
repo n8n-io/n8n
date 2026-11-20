@@ -103,6 +103,12 @@ describe('InstancePolicyView', () => {
 		);
 	});
 
+	it('marks the page as a preview', () => {
+		const { getByTestId } = setup();
+
+		expect(getByTestId('instance-policy-preview-badge')).toBeInTheDocument();
+	});
+
 	it('goes back to the landing page', async () => {
 		const { getByText } = setup();
 

@@ -99,6 +99,12 @@ describe('PoliciesLandingView', () => {
 		);
 	});
 
+	it('marks the page as a preview', () => {
+		const { getByTestId } = renderView({ pinia: createTestingPinia() });
+
+		expect(getByTestId('policies-landing-preview-badge')).toBeInTheDocument();
+	});
+
 	it('shows an icon on the Global instance policy row', () => {
 		const { getByTestId } = renderView({ pinia: createTestingPinia() });
 

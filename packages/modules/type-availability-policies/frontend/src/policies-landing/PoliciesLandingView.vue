@@ -2,6 +2,7 @@
 import { useDocumentTitle } from '@n8n/composables/useDocumentTitle';
 import {
 	N8nIcon,
+	N8nPreviewBadge,
 	N8nSettingsLayout,
 	N8nSettingsPageHeader,
 	N8nSettingsRow,
@@ -75,7 +76,11 @@ onMounted(() => {
 			:title="i18n.baseText('typeAvailabilityPolicies.landing.title')"
 			:description="i18n.baseText('typeAvailabilityPolicies.landing.description')"
 			:docs-url="INSTANCE_POLICY_DOCS_URL"
-		/>
+		>
+			<template #titleTrailing>
+				<N8nPreviewBadge size="xsmall" data-test-id="policies-landing-preview-badge" />
+			</template>
+		</N8nSettingsPageHeader>
 		<N8nSettingsSection
 			:title="i18n.baseText('typeAvailabilityPolicies.landing.global')"
 			data-test-id="policies-landing-global-section"
