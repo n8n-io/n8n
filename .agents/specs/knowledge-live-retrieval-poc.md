@@ -567,6 +567,14 @@ place; `pnpm knowledge:harness report run-2026-11-19T22-15-06-911Z.json@kb-mcp-c
   Fixed after the run: sources are searched in parallel, and a
   rate-limited source is retried once after 3 s, then answers "unavailable"
   at once for a minute (a breaker per credential and node).
+- Expected on a Slack re-run with a recovered quota: both live agents around
+  22 to 24 of 24 on Slack (the healthy repetitions before the throttle gave
+  `kb-native` 8/8 and 6/8 with two sleep timeouts), at 3 to 4 tool calls and
+  12 to 15 s per question, `kb-index` equal to `kb-native` there (no Slack
+  index), and the Notion medians back to about 12 s whatever Slack does. The
+  fix does not raise the quota: staying inside it (cached searches, fewer
+  searches per question, channel history for small channels) is P1 provider
+  work.
 - Write-up: section 13 of the Notion research page.
 - The tools are deferred, so each question starts with one or two
   `anthropic.tool_search` turns before the first knowledge call. C0's MCP
