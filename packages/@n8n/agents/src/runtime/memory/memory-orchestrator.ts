@@ -19,7 +19,7 @@ import {
 	type ScopedMemoryTaskHandle,
 	type ScopedMemoryTaskResult,
 } from './scoped-memory-task-runner';
-import { settleOrphanedToolMessages } from './strip-orphaned-tool-messages';
+import { settleOrphanedToolMessagesWithChanges } from './strip-orphaned-tool-messages';
 import { filterLlmMessages, getCreatedAt } from '../../sdk/message';
 import type {
 	AgentExecutionCounter,
@@ -262,7 +262,11 @@ export class MemoryOrchestrator {
 			if (memMessages.length > 0) {
 				// Settle (not strip) so an abandoned suspension stays visible as an
 				// explicit "never completed" record instead of vanishing (INS-1223).
-				list.addHistory(settleOrphanedToolMessages(memMessages));
+				const { settled, changed } = settleOrphanedToolMessagesWithChanges(memMessages);
+				list.addHistory(settled);
+				if (options.persistence.persistSettledSuspensions && changed.length > 0) {
+					await this.persistSettledHistory(changed, options.persistence, telemetry);
+				}
 			}
 		}
 
@@ -334,6 +338,36 @@ export class MemoryOrchestrator {
 			logger.warn('Failed to remove rejected input', {
 				error,
 				threadId: options.persistence.threadId,
+			});
+		}
+	}
+
+	/**
+	 * Write back history messages whose abandoned tool calls were settled at load. A
+	 * stored pending call stops the Observer, so compaction would stop for the thread.
+	 * Best-effort: the next fresh run settles and writes the same messages again.
+	 */
+	private async persistSettledHistory(
+		messages: AgentDbMessage[],
+		persistence: AgentPersistenceOptions,
+		telemetry: BuiltTelemetry | undefined,
+	): Promise<void> {
+		const memory = this.config.memory;
+		if (!memory) return;
+		try {
+			// No host metadata: these messages belong to an earlier run, not to this one.
+			await this.saveMessagesWithSpan(
+				memory,
+				persistence.threadId,
+				persistence.resourceId,
+				messages,
+				telemetry,
+				undefined,
+			);
+		} catch (error) {
+			logger.warn('Failed to persist settled tool calls from history', {
+				error,
+				threadId: persistence.threadId,
 			});
 		}
 	}

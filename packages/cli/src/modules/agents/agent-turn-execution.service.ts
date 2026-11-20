@@ -662,6 +662,7 @@ export class AgentTurnExecutionService {
 				...turn.options.persistence.hostMetadata,
 				[EXECUTION_METADATA_KEY]: executionId,
 			};
+			turn.options.persistence.persistSettledSuspensions = true;
 		} else if (turn.type === 'resume') {
 			turn.options.hostMetadata = {
 				...turn.options.hostMetadata,
