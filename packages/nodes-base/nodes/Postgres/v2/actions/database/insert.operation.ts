@@ -8,7 +8,7 @@ import {
 
 import { createEventLoopYielder } from '@n8n/utils/promise/create-event-loop-yielder';
 
-import { updateDisplayOptions } from '@utils/utilities';
+import { generatePairedItemData, updateDisplayOptions } from '@utils/utilities';
 
 import { copyRows, type CopyRow } from '../../helpers/copy';
 import type {
@@ -302,7 +302,7 @@ async function insertWithCopy(
 	// COPY loads all rows or none
 	if (errorItemsMap.size > 0) return Array.from(errorItemsMap.values());
 
-	const allItems = items.map((_, item) => ({ item }));
+	const allItems = generatePairedItemData(items.length);
 
 	try {
 		const rows = await copyRows(this.getNode(), db, pgp, rowsToCopy);
