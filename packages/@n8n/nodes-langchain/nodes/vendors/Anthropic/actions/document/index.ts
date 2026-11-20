@@ -16,6 +16,7 @@ export const description: INodeProperties[] = [
 				value: 'analyze',
 				action: 'Analyze document',
 				description: 'Take in documents and answer questions about them',
+				annotations: { effect: 'write', destructive: false, idempotent: false },
 			},
 		],
 		default: 'analyze',
