@@ -18,6 +18,7 @@ const tooltipStub = {
 const renderComponent = createComponentRenderer(WorkflowReviewDecisionPopover, {
 	global: { stubs: tooltipStub },
 	props: {
+		reviewTitle: 'Rename the Slack node',
 		deciding: false,
 		viewerCanDecide: true,
 		viewerCanClose: true,
@@ -89,13 +90,28 @@ describe('WorkflowReviewDecisionPopover', () => {
 		expect(emitted('decide')).toEqual([[{ decision: 'approved' }]]);
 	});
 
-	it('closes the review straight from the menu', async () => {
+	it('closes the review only once the viewer confirms', async () => {
 		const { emitted } = renderComponent();
 
 		await choose('Close review');
+		const dialog = await screen.findByRole('dialog');
+		expect(dialog).toHaveTextContent("Close 'Rename the Slack node'?");
+		expect(emitted('close')).toBeUndefined();
+		await userEvent.click(within(dialog).getByRole('button', { name: 'Close review' }));
 
 		expect(emitted('close')).toHaveLength(1);
 		expect(emitted('decide')).toBeUndefined();
+	});
+
+	it('leaves the review open when the viewer cancels the close', async () => {
+		const { emitted } = renderComponent();
+
+		await choose('Close review');
+		await userEvent.click(
+			within(await screen.findByRole('dialog')).getByRole('button', { name: 'Cancel' }),
+		);
+
+		expect(emitted('close')).toBeUndefined();
 	});
 
 	it('asks for a note before it requests changes', async () => {

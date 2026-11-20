@@ -137,6 +137,7 @@ const tabOptions = computed(() => [
 				detail payload, so the list item alone can't say who may decide. -->
 			<div v-if="detail?.state === 'open'" :class="$style.decisionActions">
 				<WorkflowReviewDecisionPopover
+					:review-title="detail.title"
 					:deciding="deciding"
 					:viewer-can-decide="viewerCanDecide"
 					:viewer-can-close="viewerCanClose"

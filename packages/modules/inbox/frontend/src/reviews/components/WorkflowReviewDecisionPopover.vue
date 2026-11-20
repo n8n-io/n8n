@@ -2,6 +2,11 @@
 import { WORKFLOW_REVIEW_TEXT_MAX_LENGTH } from '@n8n/api-types';
 import {
 	N8nButton,
+	N8nDialog,
+	N8nDialogDescription,
+	N8nDialogFooter,
+	N8nDialogHeader,
+	N8nDialogTitle,
 	N8nDropdownMenu,
 	N8nIcon,
 	N8nInput,
@@ -18,6 +23,7 @@ import { useReviewActivityStore } from '../reviewActivity.store';
 import type { WorkflowReviewDecisionInput } from '../workflowReviews.api';
 
 const props = defineProps<{
+	reviewTitle: string | null;
 	deciding: boolean;
 	viewerCanDecide: boolean;
 	viewerCanClose: boolean;
@@ -37,6 +43,7 @@ const { decisionNote } = storeToRefs(useReviewActivityStore());
 
 const anchor = useTemplateRef<HTMLElement>('anchor');
 const noteOpen = ref(false);
+const confirmCloseOpen = ref(false);
 const note = computed(() => decisionNote.value.trim());
 
 const canOpen = computed(() => props.viewerCanDecide || props.viewerCanClose);
@@ -73,8 +80,13 @@ const menuItems = computed<Array<DropdownMenuItemProps<MenuAction>>>(() => {
 
 function onSelect(action: MenuAction) {
 	if (action === 'approve') emit('decide', { decision: 'approved' });
-	else if (action === 'close') emit('close');
+	else if (action === 'close') confirmCloseOpen.value = true;
 	else noteOpen.value = true;
+}
+
+function onConfirmClose() {
+	confirmCloseOpen.value = false;
+	emit('close');
 }
 
 function onRequestChanges() {
@@ -156,6 +168,36 @@ function onRequestChanges() {
 				</form>
 			</template>
 		</N8nPopover>
+		<N8nDialog v-model:open="confirmCloseOpen" size="small" :show-close-button="false">
+			<N8nDialogHeader>
+				<N8nDialogTitle>
+					{{
+						reviewTitle
+							? i18n.baseText('workflowReviews.detail.decision.closeReview.confirm.titleNamed', {
+									interpolate: { title: reviewTitle },
+								})
+							: i18n.baseText('workflowReviews.detail.decision.closeReview.confirm.title')
+					}}
+				</N8nDialogTitle>
+				<N8nDialogDescription>
+					{{ i18n.baseText('workflowReviews.detail.decision.closeReview.confirm.description') }}
+				</N8nDialogDescription>
+			</N8nDialogHeader>
+			<N8nDialogFooter>
+				<N8nButton
+					variant="outline"
+					:label="i18n.baseText('generic.cancel')"
+					@click="confirmCloseOpen = false"
+				/>
+				<N8nButton
+					variant="destructive"
+					:label="i18n.baseText('workflowReviews.detail.decision.closeReview')"
+					:disabled="deciding"
+					data-test-id="workflow-review-close-confirm"
+					@click="onConfirmClose"
+				/>
+			</N8nDialogFooter>
+		</N8nDialog>
 	</span>
 </template>
 
