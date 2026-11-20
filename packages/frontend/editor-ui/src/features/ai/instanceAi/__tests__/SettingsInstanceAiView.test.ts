@@ -1056,6 +1056,44 @@ describe('SettingsInstanceAiView', () => {
 				expect(save).toHaveBeenCalled();
 			});
 
+			it('shows the Save button only while the list has unsaved changes', async () => {
+				setSavedLogins({
+					cloudBrowserSavedLoginsMode: 'only',
+					cloudBrowserSavedLoginSites: ['github.com'],
+				});
+				const { getByTestId, queryByTestId } = renderComponent();
+				await flushPromises();
+
+				expect(queryByTestId('n8n-agent-saved-login-sites-save')).toBeNull();
+
+				await fireEvent.update(
+					getByTestId('n8n-agent-saved-login-sites'),
+					'github.com\ngitlab.com',
+				);
+
+				expect(getByTestId('n8n-agent-saved-login-sites-save')).toBeVisible();
+			});
+
+			it('saves once when the list loses focus as the Save button is clicked', async () => {
+				setSavedLogins({ cloudBrowserSavedLoginsMode: 'only' });
+				let finishSave: (saved: boolean) => void = () => {};
+				const save = vi
+					.spyOn(store, 'save')
+					.mockImplementation(async () => await new Promise((resolve) => (finishSave = resolve)));
+				const { getByTestId } = renderComponent();
+				await flushPromises();
+				const sites = getByTestId('n8n-agent-saved-login-sites');
+				await fireEvent.update(sites, 'github.com');
+				const saveButton = getByTestId('n8n-agent-saved-login-sites-save');
+
+				await fireEvent.blur(sites);
+				await fireEvent.click(saveButton);
+				finishSave(true);
+				await flushPromises();
+
+				expect(save).toHaveBeenCalledTimes(1);
+			});
+
 			it('does not save an unchanged list', async () => {
 				setSavedLogins({
 					cloudBrowserSavedLoginsMode: 'only',

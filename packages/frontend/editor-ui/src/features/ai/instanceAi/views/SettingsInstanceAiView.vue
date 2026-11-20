@@ -465,11 +465,28 @@ function handleSavedLoginsModeChange(value: InstanceAiSavedLoginsMode) {
 	void store.save();
 }
 
+const enteredSavedLoginSites = computed(() =>
+	savedLoginSitesText.value.split(/[\s,]+/).filter(Boolean),
+);
+const hasUnsavedLoginSites = computed(
+	() =>
+		enteredSavedLoginSites.value.join(',') !==
+		(store.settings?.cloudBrowserSavedLoginSites ?? []).join(','),
+);
+
+// The list saves when it loses focus, or with the Save button. A click on the button also
+// moves the focus, so the second call reuses the save that is still running.
+let pendingSavedLoginSitesSave: Promise<void> | undefined;
 async function handleSavedLoginSitesChange() {
-	const sites = savedLoginSitesText.value.split(/[\s,]+/).filter(Boolean);
-	const stored = store.settings?.cloudBrowserSavedLoginSites ?? [];
-	if (sites.join(',') === stored.join(',')) return;
-	store.setField('cloudBrowserSavedLoginSites', sites);
+	pendingSavedLoginSitesSave ??= saveSavedLoginSites().finally(() => {
+		pendingSavedLoginSitesSave = undefined;
+	});
+	await pendingSavedLoginSitesSave;
+}
+
+async function saveSavedLoginSites() {
+	if (!hasUnsavedLoginSites.value) return;
+	store.setField('cloudBrowserSavedLoginSites', enteredSavedLoginSites.value);
 	// The server rejects a site it cannot read, so show the stored list again.
 	if (!(await store.save())) showStoredSavedLoginSites();
 }
@@ -741,9 +758,20 @@ async function handleDataSharingToggle(value: boolean) {
 								data-test-id="n8n-agent-saved-login-sites"
 								@blur="handleSavedLoginSitesChange"
 							/>
-							<N8nText size="small" color="text-light">
-								{{ i18n.baseText('settings.n8nAgent.savedLogins.sites.hint') }}
-							</N8nText>
+							<div :class="$style.savedLoginSitesFooter">
+								<N8nText size="small" color="text-light">
+									{{ i18n.baseText('settings.n8nAgent.savedLogins.sites.hint') }}
+								</N8nText>
+								<N8nButton
+									v-if="hasUnsavedLoginSites"
+									variant="solid"
+									size="small"
+									:label="i18n.baseText('generic.save')"
+									:disabled="store.isSaving"
+									data-test-id="n8n-agent-saved-login-sites-save"
+									@click="handleSavedLoginSitesChange"
+								/>
+							</div>
 						</div>
 					</N8nSettingsRow>
 				</N8nSettingsRowGroup>
@@ -966,6 +994,13 @@ async function handleDataSharingToggle(value: boolean) {
 	flex-direction: column;
 	gap: var(--spacing--4xs);
 	width: 100%;
+}
+
+.savedLoginSitesFooter {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: var(--spacing--xs);
 }
 
 .permissionSelect {
