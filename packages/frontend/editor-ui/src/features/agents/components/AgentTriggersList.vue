@@ -235,7 +235,7 @@ defineExpose({ reloadTasks });
 			<template #icon>
 				<N8nIcon icon="plus" :size="16" />
 			</template>
-			{{ i18n.baseText('agents.builder.triggers.add') }}
+			{{ i18n.baseText('agents.builder.channel.add') }}
 		</N8nButton>
 	</div>
 </template>
