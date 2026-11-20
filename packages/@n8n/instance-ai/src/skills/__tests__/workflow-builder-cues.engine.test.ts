@@ -5,6 +5,10 @@ import {
 	WORKFLOW_BUILDER_CUES,
 } from '../context-cues/workflow-builder.cues';
 
+function escapeRegExp(text: string): string {
+	return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 function cueText(cues: ReturnType<typeof getWorkflowBuilderCues>, id: string): string | undefined {
 	return cues.cues.find((cue) => cue.id === id)?.text;
 }
@@ -24,7 +28,7 @@ describe('getWorkflowBuilderCues', () => {
 
 			// The duplicate-notifications hint belongs to the v1 advice, so it comes before v2.
 			expect(cueText(cues, 'execute-once')).toMatch(
-				/^On engine v1: set `executeOnce: true`.*Duplicate notifications mean that it is missing\. On engine v2: /,
+				/^On engine v1: set `executeOnce: true`.*Duplicate notifications mean it is missing\. On engine v2: /,
 			);
 			expect(cueText(cues, 'execute-once')).toContain(
 				`On engine v2: ${ENGINE_V2_NODE_SETTING_RULES.EXECUTE_ONCE.text}`,
@@ -43,6 +47,25 @@ describe('getWorkflowBuilderCues', () => {
 			);
 		},
 	);
+
+	it('builds each engine-aware text from the v1 cue text', () => {
+		const cues = getWorkflowBuilderCues({ engineV2Available: true, newWorkflowEngine: 'v2' });
+		const v1 = (id: string) => cueText(WORKFLOW_BUILDER_CUES, id) ?? '';
+		const lowerFirst = (text: string) => text.charAt(0).toLowerCase() + text.slice(1);
+
+		// An edit to a v1 cue reaches its engine-aware text, so the two cannot drift.
+		expect(cueText(cues, 'on-error-one-handler')).toMatch(
+			new RegExp(`^${escapeRegExp(v1('on-error-one-handler'))} On engine v2: `),
+		);
+		expect(cueText(cues, 'zero-items-end-branch')).toMatch(
+			new RegExp(`^${escapeRegExp(v1('zero-items-end-branch'))} On engine v2: `),
+		);
+		for (const id of ['execute-once', 'always-output-data-empty-json']) {
+			expect(cueText(cues, id)).toMatch(
+				new RegExp(`^On engine v1: ${escapeRegExp(lowerFirst(v1(id)))} On engine v2: `),
+			);
+		}
+	});
 
 	it('keeps the ids, phases and other cues', () => {
 		const cues = getWorkflowBuilderCues({ engineV2Available: true, newWorkflowEngine: 'v2' });

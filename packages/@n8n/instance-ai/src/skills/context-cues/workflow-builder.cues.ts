@@ -303,35 +303,22 @@ export const WORKFLOW_BUILDER_CUES: ContextCueSet = {
 type WorkflowBuilderCue = ContextCueSet['cues'][number];
 
 /**
- * Cue text for instances with the `engine-v2` module. A cue can apply to a v1 or a v2
- * workflow, so each text names both engines. `v2` is the text of the build check for
- * `code`. A cue keeps its v1 text when the engine check no longer blocks `code`.
+ * Cues that recommend a node setting that engine v2 rejects. With the `engine-v2`
+ * module, the cue text gets the build check text for `code` as the v2 way, because a
+ * cue can apply to a v1 or a v2 workflow. `v1Only` marks a cue whose own text is only
+ * for engine v1, so it gets an "On engine v1:" prefix. A cue keeps its text when the
+ * engine check no longer blocks `code`.
  */
-const ENGINE_AWARE_CUE_TEXT: Record<
-	string,
-	{ code: EngineV2NodeSettingCode; text: (v2: string) => string }
-> = {
-	'on-error-one-handler': {
-		code: 'CONTINUE_ERROR_OUTPUT',
-		text: (v2) =>
-			`\`.onError()\` takes one handler, not an array. Call it once for each handler. ${v2}`,
-	},
-	'zero-items-end-branch': {
-		code: 'ALWAYS_OUTPUT_DATA',
-		text: (v2) =>
-			`Zero items end a branch. Do not add \`alwaysOutputData: true\` or empty-check IF gates, unless a digest or alert must still send when upstream is empty. ${v2}`,
-	},
-	'always-output-data-empty-json': {
-		code: 'ALWAYS_OUTPUT_DATA',
-		text: (v2) =>
-			`On engine v1: when a digest or alert must send on empty input, set \`alwaysOutputData: true\` on every node that can emit zero items before it; the result is one item with empty json (\`{}\`), so the formatter must filter out empty-json items before counting rows. ${v2}`,
-	},
-	'execute-once': {
-		code: 'EXECUTE_ONCE',
-		text: (v2) =>
-			`On engine v1: set \`executeOnce: true\` on a node that receives many items but must run once (summary notification, report, shared-context fetch). Duplicate notifications mean that it is missing. ${v2}`,
-	},
+const ENGINE_AWARE_CUES: Record<string, { code: EngineV2NodeSettingCode; v1Only?: true }> = {
+	'on-error-one-handler': { code: 'CONTINUE_ERROR_OUTPUT' },
+	'zero-items-end-branch': { code: 'ALWAYS_OUTPUT_DATA' },
+	'always-output-data-empty-json': { code: 'ALWAYS_OUTPUT_DATA', v1Only: true },
+	'execute-once': { code: 'EXECUTE_ONCE', v1Only: true },
 };
+
+function lowerFirst(text: string): string {
+	return text.charAt(0).toLowerCase() + text.slice(1);
+}
 
 function buildEngineAwareCues(): ContextCueSet {
 	const blocked = getBlockedEngineV2NodeSettingRules();
@@ -341,9 +328,13 @@ function buildEngineAwareCues(): ContextCueSet {
 	};
 
 	const cues: WorkflowBuilderCue[] = WORKFLOW_BUILDER_CUES.cues.map((cue) => {
-		const override = ENGINE_AWARE_CUE_TEXT[cue.id];
-		const v2 = override && v2Rule(override.code);
-		return override && v2 ? { ...cue, text: override.text(v2) } : cue;
+		const engineAware = Object.hasOwn(ENGINE_AWARE_CUES, cue.id)
+			? ENGINE_AWARE_CUES[cue.id]
+			: undefined;
+		const v2 = engineAware && v2Rule(engineAware.code);
+		if (!engineAware || !v2) return cue;
+		const v1 = engineAware.v1Only ? `On engine v1: ${lowerFirst(cue.text)}` : cue.text;
+		return { ...cue, text: `${v1} ${v2}` };
 	});
 
 	const retryOnFail = v2Rule('RETRY_ON_FAIL');

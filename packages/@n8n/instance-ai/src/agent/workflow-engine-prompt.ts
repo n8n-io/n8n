@@ -13,16 +13,23 @@ export function getWorkflowEngineSection(engineSetup?: InstanceAiEngineSetup): s
 	if (engineSetup?.engineV2Available !== true) return '';
 
 	const defaultEngine = newWorkflowEngine(engineSetup);
+	// On a v1 default, a new workflow already gets v1, so only a v2 default needs the opt-out.
+	const newWorkflowRules =
+		defaultEngine === 'v2'
+			? `- Do not set \`engineType\` on a new workflow, unless the user asks for an engine or the workflow needs engine v1.
+- Use engine v1 only when the workflow must have a behaviour that engine v2 cannot give. For a new workflow, set \`engineType: 'v1'\` in the \`workflow()\` settings, for example \`workflow('id', 'Name', { engineType: 'v1' })\`, and tell the user why. For an existing v2 workflow, ask the user before you move it to engine v1.`
+			: `- Do not set \`engineType\` on a new workflow, unless the user asks for an engine.
+- For an existing v2 workflow that must have a behaviour that engine v2 cannot give, ask the user before you move it to engine v1.`;
 	return `
 ## Workflow Engine
 
 This instance has two workflow engines, v1 and v2. New workflows run on engine ${defaultEngine}.
 
 - The engine of a saved workflow is \`engineType\` in its \`workflow()\` settings. A workflow without \`engineType\` runs on engine v1.
-- Keep an existing workflow on its engine. Change \`engineType\` only when the user asks for a different engine. Do not set \`engineType\` on a new workflow unless the user asks for an engine.
-- The build result names the target engine, for example "target engine: v2 (instance default)".
+- Keep an existing workflow on its engine. Change its \`engineType\` only when the user asks for a different engine or approves the change.
+- The \`targetEngine\` field of the build result names the engine and where it comes from, for example \`{ engine: 'v2', source: 'instance-default' }\`.
 - When you build for engine v2, use the v2-safe patterns below. They win over skill, cue and reference text that recommends \`executeOnce\`, \`alwaysOutputData\`, \`retryOnFail\` or the error output.
-- Use engine v1 only when the workflow must have a behaviour that engine v2 cannot give. For a new workflow, set \`engineType: 'v1'\` in the \`workflow()\` settings, for example \`workflow('id', 'Name', { engineType: 'v1' })\`, and tell the user why. For an existing v2 workflow, ask the user before you move it to engine v1.
+${newWorkflowRules}
 
 What engine v2 cannot do yet:
 

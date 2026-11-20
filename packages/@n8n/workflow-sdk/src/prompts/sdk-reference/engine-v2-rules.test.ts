@@ -1,6 +1,10 @@
 import { NODE_TYPE_DENYLIST } from '@n8n/workflow-engine-check';
 
-import { getBlockedEngineV2NodeSettingRules, getEngineV2BuildRules } from './engine-v2-rules';
+import {
+	getBlockedEngineV2Limits,
+	getBlockedEngineV2NodeSettingRules,
+	getEngineV2BuildRules,
+} from './engine-v2-rules';
 import { ENGINE_V2_NODE_SETTING_RULES } from '../../validation/engine-v2-support';
 
 describe('getEngineV2BuildRules', () => {
@@ -22,6 +26,15 @@ describe('getEngineV2BuildRules', () => {
 		expect(rules).toContain('community and custom nodes');
 		expect(rules).toContain('error workflows');
 		expect(rules).toContain('the Merge mode "Choose Branch"');
+	});
+
+	it('reports each blocked limit by its id', () => {
+		// Every limit is blocked today. A limit leaves this set when engine v2 supports it.
+		expect([...getBlockedEngineV2Limits()].sort()).toEqual([
+			'community-nodes',
+			'error-workflows',
+			'merge-choose-branch',
+		]);
 	});
 
 	it('keeps a node setting rule only while the engine check blocks the setting', () => {

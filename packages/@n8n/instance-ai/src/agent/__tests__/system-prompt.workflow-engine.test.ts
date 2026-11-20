@@ -30,7 +30,12 @@ describe('getSystemPrompt — workflow engine', () => {
 		expect(prompt).toContain('## Workflow Engine');
 		expect(prompt).toContain('New workflows run on engine v1.');
 		expect(prompt).toContain('Keep an existing workflow on its engine.');
-		expect(prompt).toContain("`workflow('id', 'Name', { engineType: 'v1' })`");
+		expect(prompt).toContain(
+			'Do not set `engineType` on a new workflow, unless the user asks for an engine.',
+		);
+		// A new workflow already gets v1, so the prompt does not tell the model to opt out.
+		expect(prompt).not.toContain("`workflow('id', 'Name', { engineType: 'v1' })`");
+		expect(prompt).toContain('ask the user before you move it to engine v1');
 		expect(prompt).toContain(getEngineV2BuildRules());
 	});
 
@@ -45,6 +50,18 @@ describe('getSystemPrompt — workflow engine', () => {
 		expect(prompt).toContain('`n8n-nodes-base.formTrigger`');
 		expect(prompt).toContain('every node whose type starts with `@n8n/n8n-nodes-langchain.`');
 		expect(prompt).toContain('ask the user before you move it to engine v1');
+	});
+
+	it('lets a new workflow on a v2 default opt out to engine v1', () => {
+		const prompt = getSystemPrompt({
+			engineSetup: { engineV2Available: true, newWorkflowEngine: 'v2' },
+		});
+
+		// The rule against `engineType` on a new workflow must allow the v1 opt-out.
+		expect(prompt).toContain(
+			'Do not set `engineType` on a new workflow, unless the user asks for an engine or the workflow needs engine v1.',
+		);
+		expect(prompt).toContain("`workflow('id', 'Name', { engineType: 'v1' })`");
 	});
 
 	it('changes nothing else in the prompt', () => {

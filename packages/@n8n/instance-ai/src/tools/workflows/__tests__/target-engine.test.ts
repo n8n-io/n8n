@@ -2,6 +2,7 @@ import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
 import type { InstanceAiEngineSetup } from '../../../types';
 import {
+	namesEngineV2,
 	newWorkflowEngine,
 	resolveFallbackEngine,
 	resolveTargetEngine,
@@ -137,6 +138,25 @@ describe('targetEngineSchema', () => {
 		expect(targetEngineSchema.safeParse({ engine: 'v3', source: 'instance-default' }).success).toBe(
 			false,
 		);
+	});
+});
+
+describe('namesEngineV2', () => {
+	it('reads the engine from the target engine field', () => {
+		expect(namesEngineV2({ engine: 'v2', source: 'instance-default' })).toBe(true);
+		expect(namesEngineV2({ engine: 'v1', source: 'saved-workflow' })).toBe(false);
+	});
+
+	it.each([
+		undefined,
+		42,
+		'',
+		'v2',
+		'target engine: v2 (instance default)',
+		{ engine: 'v2' },
+		{ engine: 'v2', source: 'unknown' },
+	])('returns false for %p', (value) => {
+		expect(namesEngineV2(value)).toBe(false);
 	});
 });
 

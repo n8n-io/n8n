@@ -36,16 +36,25 @@ const NODE_SETTING_PROBES: Record<EngineV2NodeSettingCode, NodeSettings> = {
  * that has the limit. A limit goes into the prompt only while the engine check blocks
  * its probe, so the text drops a limit when engine v2 supports it.
  */
-const LIMIT_PROBES: Array<{ text: string; workflow: EngineV2EligibilityWorkflow }> = [
+export type EngineV2LimitId = 'community-nodes' | 'error-workflows' | 'merge-choose-branch';
+
+const LIMIT_PROBES: Array<{
+	id: EngineV2LimitId;
+	text: string;
+	workflow: EngineV2EligibilityWorkflow;
+}> = [
 	{
+		id: 'community-nodes',
 		text: 'community and custom nodes',
 		workflow: probeWorkflow({ type: 'n8n-nodes-community-probe.probe' }),
 	},
 	{
+		id: 'error-workflows',
 		text: 'error workflows (`errorWorkflow` in the workflow settings)',
 		workflow: { ...probeWorkflow(), settings: { errorWorkflow: 'probe-error-workflow' } },
 	},
 	{
+		id: 'merge-choose-branch',
 		text: 'the Merge mode "Choose Branch"',
 		workflow: probeWorkflow({
 			type: 'n8n-nodes-base.merge',
@@ -133,6 +142,19 @@ export function getBlockedEngineV2NodeSettingRules(): Partial<
 	return cachedSettingRules;
 }
 
+let cachedBlockedLimits: ReadonlySet<EngineV2LimitId> | undefined;
+
+/**
+ * The workflow-level limits that the engine check still blocks. Callers that change
+ * their advice for a limit use this, so the change stops when engine v2 supports it.
+ */
+export function getBlockedEngineV2Limits(): ReadonlySet<EngineV2LimitId> {
+	cachedBlockedLimits ??= new Set(
+		LIMIT_PROBES.filter((probe) => isBlocked(probe.workflow)).map((probe) => probe.id),
+	);
+	return cachedBlockedLimits;
+}
+
 let cachedRules: string | undefined;
 
 /**
@@ -154,7 +176,8 @@ function buildEngineV2BuildRules(): string {
 		lines.push(`- Engine v2 does not run these nodes yet: ${joinList(nodeTypes)}.`);
 	}
 
-	const limits = LIMIT_PROBES.filter((probe) => isBlocked(probe.workflow)).map(
+	const blockedLimits = getBlockedEngineV2Limits();
+	const limits = LIMIT_PROBES.filter((probe) => blockedLimits.has(probe.id)).map(
 		(probe) => probe.text,
 	);
 	if (limits.length > 0) {
