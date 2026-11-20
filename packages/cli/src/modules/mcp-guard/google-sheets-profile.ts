@@ -131,8 +131,6 @@ export const GOOGLE_SHEETS_PROFILE: HttpVendorProfile = {
 	name: 'googlesheets',
 	gymService: 'google-sheets',
 	opaqueIds: true,
-	defaultAdminUrl: 'http://127.0.0.1:9094',
-	defaultGymUrl: 'http://127.0.0.1:8084',
 	credentialKind: 'google_oauth',
 	credentialField: 'oauthTokenData.access_token',
 	placeholderSeed: {
