@@ -2,6 +2,7 @@
 import type {
 	AgentJsonConfig,
 	AgentSseEvent,
+	AssistantAgentTargetsState,
 	InstanceAiAttachment,
 	InstanceAiHandoffContext,
 	InstanceAiNodesAttachment,
@@ -354,16 +355,33 @@ provideArtifactAgentTargets(agentTargets.agentTargets);
 // Set from the preview tabs below, which need the thread first.
 const activeArtifactId = ref<string>();
 
-// The apps of the thread metadata, and the saved app of a new thread before the server has it.
+// The preview shows the subject of a new thread until the server has its bindings, which the
+// first message writes. Only a saved resource: a pending one needs a thread that the server knows.
+const launchSubject = launch?.subject?.pending ? undefined : launch?.subject;
+const projectAndName = ({ projectId, name }: { projectId: string; name?: string }) => ({
+	projectId,
+	...(name ? { name } : {}),
+});
+
+// The agent of the launch subject. The server state replaces it once it loads.
+const launchAgentTargets: AssistantAgentTargetsState | null =
+	launchSubject?.type === 'agent'
+		? {
+				bound: { agentId: launchSubject.id, ...projectAndName(launchSubject) },
+				pending: null,
+				targets: [],
+				previewSession: null,
+			}
+		: null;
+
+// The apps of the thread metadata, and the app of the launch subject.
 const appTargets = computed(() => {
 	const targets = getAppTargetsFromThreadMetadata(
 		threadsStore.threadsById.get(props.threadId)?.metadata,
 	);
-	const subject = launch?.subject;
-	if (subject?.type !== 'app' || subject.pending) return targets;
-	if (targets.some(({ appId }) => appId === subject.id)) return targets;
-	const { id: appId, projectId, name } = subject;
-	return [...targets, { appId, projectId, ...(name ? { name } : {}) }];
+	if (launchSubject?.type !== 'app') return targets;
+	if (targets.some(({ appId }) => appId === launchSubject.id)) return targets;
+	return [...targets, { appId: launchSubject.id, ...projectAndName(launchSubject) }];
 });
 // An app page opens its chat with `?appId=`. Only an app of this thread opens.
 const requestedAppId = computed(() => {
@@ -390,7 +408,7 @@ const thread = useAssistantArtifactThread({
 		);
 	},
 	pendingWorkflowAttachment: handoff.workflow,
-	agentTargets: () => agentTargets.state.value,
+	agentTargets: () => agentTargets.state.value ?? launchAgentTargets,
 	appTargets: () => appTargets.value,
 	activeArtifactId: () => activeArtifactId.value,
 });
@@ -399,6 +417,7 @@ provideArtifactThread(thread);
 const preview = useCanvasPreview({
 	thread,
 	threadId: () => props.threadId,
+	initialAgentId: () => launchAgentTargets?.bound?.agentId,
 	initialAppId: () => requestedAppId.value ?? appTargets.value[0]?.appId,
 	tabsStorage: {
 		// A new thread has no stored tabs, and the server does not know it before its first message.

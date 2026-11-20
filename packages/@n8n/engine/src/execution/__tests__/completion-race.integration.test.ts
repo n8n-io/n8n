@@ -111,7 +111,7 @@ async function setup(dataSource: DataSource, graph: WorkflowGraph, queued: strin
 		async complete(nodeId: string, { iteration = 0, outputs = items } = {}) {
 			const id = await stepId(nodeId, iteration);
 			expect(await stepStore.claimStep(id)).not.toBeNull();
-			expect(await stepStore.completeStep(id, outputs)).toBe(true);
+			expect(await stepStore.completeStep(id, outputs, null)).toBe(true);
 		},
 		async settle(nodeId: string, iteration = 0) {
 			const id = await stepId(nodeId, iteration);

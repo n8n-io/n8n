@@ -88,6 +88,31 @@ describe('token refresh proxy routing', () => {
 		expect(connects).toEqual(['token.host.invalid:443']);
 	});
 
+	it('should send a token refresh through the proxy option, with no proxy environment', async () => {
+		const connects: string[] = [];
+		const proxy = createServer();
+		proxy.on('connect', (req, socket) => {
+			connects.push(req.url ?? '');
+			socket.end('HTTP/1.1 502 Bad Gateway\r\n\r\n');
+		});
+		servers.push(proxy);
+		const proxyUrl = `http://127.0.0.1:${await listen(proxy)}`;
+
+		await expect(
+			new ClientOAuth2({
+				clientId: 'client-id',
+				clientSecret: 'client-secret',
+				accessTokenUri: 'https://token.host.invalid/oauth/token',
+				authentication: 'header',
+				proxy: proxyUrl,
+			})
+				.createToken({ access_token: 'expired', refresh_token: 'refresh-1' })
+				.refresh(),
+		).rejects.toThrow();
+
+		expect(connects).toEqual(['token.host.invalid:443']);
+	});
+
 	it('should connect directly when NO_PROXY excludes the token host', async () => {
 		const proxiedRequests: string[] = [];
 		const proxy = createServer((req, res) => {

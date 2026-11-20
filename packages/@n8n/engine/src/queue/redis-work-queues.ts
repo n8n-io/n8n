@@ -21,10 +21,12 @@ export interface RedisWorkQueuesOptions {
 	keyPrefix: string;
 	/** The maximum number of handlers that each queue runs at once. */
 	concurrency: { orchestration: number; step: number };
+	/** Defaults to the console. */
 	logger?: EngineLogger;
 }
 
 export interface RedisWorkQueues {
+	/** Pass them to `createEngineRuntime`, which starts and stops them. */
 	queues: EngineWorkQueues;
 	/** Closes the consumer connections. Call it after the engine has stopped the queues. */
 	close(): void;

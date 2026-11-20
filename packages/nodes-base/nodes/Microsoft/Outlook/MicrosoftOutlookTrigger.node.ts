@@ -16,6 +16,7 @@ export class MicrosoftOutlookTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Microsoft Outlook Trigger',
 		name: 'microsoftOutlookTrigger',
+		schemaPath: 'Microsoft/Outlook',
 		icon: 'file:outlook.svg',
 		group: ['trigger'],
 		version: 1,

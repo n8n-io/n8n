@@ -317,6 +317,19 @@ function quotePropertyName(name: string): string {
 }
 
 /**
+ * Map a displayOptions key to the base property it references, or undefined
+ * for meta-properties like `@version`. Root paths (`/foo.bar`) resolve against
+ * top-level node properties, the level where conditional schemas are generated.
+ * The validator looks up root-path defaults without the `/` prefix.
+ */
+function getReferencedBaseProperty(key: string): string | undefined {
+	if (key.startsWith('@')) return undefined;
+	const path = key.startsWith('/') ? key.slice(1) : key;
+	// Handle nested paths like "options.format" - only use the first part
+	return path.split('.')[0];
+}
+
+/**
  * Extract default values for properties referenced in displayOptions.
  * This is used to generate the `defaults` parameter for resolveSchema calls,
  * ensuring that validation uses default values when properties aren't explicitly set.
@@ -329,34 +342,14 @@ export function extractDefaultsForDisplayOptions(
 	displayOptions: { show?: Record<string, unknown[]>; hide?: Record<string, unknown[]> },
 	allProperties: NodeProperty[],
 ): Record<string, unknown> {
+	const keys = [
+		...Object.keys(displayOptions.show ?? {}),
+		...Object.keys(displayOptions.hide ?? {}),
+	];
 	const defaults: Record<string, unknown> = {};
-	const referencedProps = new Set<string>();
 
-	// Collect property names referenced in show conditions
-	if (displayOptions.show) {
-		for (const key of Object.keys(displayOptions.show)) {
-			// Skip meta-properties like @version and root paths
-			if (!key.startsWith('@') && !key.startsWith('/')) {
-				// Handle nested paths like "options.format" - only use the first part
-				const baseProp = key.split('.')[0];
-				referencedProps.add(baseProp);
-			}
-		}
-	}
-
-	// Collect property names referenced in hide conditions
-	if (displayOptions.hide) {
-		for (const key of Object.keys(displayOptions.hide)) {
-			// Skip meta-properties like @version and root paths
-			if (!key.startsWith('@') && !key.startsWith('/')) {
-				const baseProp = key.split('.')[0];
-				referencedProps.add(baseProp);
-			}
-		}
-	}
-
-	// Find defaults for referenced properties
-	for (const propName of referencedProps) {
+	for (const propName of new Set(keys.map(getReferencedBaseProperty))) {
+		if (propName === undefined) continue;
 		const prop = allProperties.find((p) => p.name === propName);
 		if (prop?.default !== undefined) {
 			defaults[propName] = prop.default;

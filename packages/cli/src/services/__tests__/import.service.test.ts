@@ -332,88 +332,6 @@ describe('ImportService', () => {
 			});
 		});
 
-		it('should read the files of a renamed entity under its current name', async () => {
-			// @ts-expect-error Accessing private property for testing
-			mockDataSource.entityMetadatas = [
-				{
-					name: 'KnowledgeFile',
-					tableName: 'agent_files',
-					columns: [{ databaseName: 'id' }, { databaseName: 'agentId' }],
-				},
-			] as any;
-			// An export from before the rename holds `agentfile.jsonl`, numbered when large.
-			const mockFiles = ['agentfile.jsonl', 'agentfile.2.jsonl'];
-
-			vi.mocked(readdir).mockResolvedValue(mockFiles as any);
-			vi.mocked(safeJoinPath)
-				.mockReturnValueOnce('/test/input/agentfile.jsonl')
-				.mockReturnValueOnce('/test/input/agentfile.2.jsonl');
-
-			const result = await importService.getImportMetadata('/test/input');
-
-			expect(result).toEqual({
-				entityFiles: {
-					knowledgefile: ['/test/input/agentfile.jsonl', '/test/input/agentfile.2.jsonl'],
-				},
-				tableNames: ['agent_files'],
-				dataTableFiles: {},
-			});
-		});
-
-		it('should skip the old-name files of a renamed entity when the directory also holds current-name files', async () => {
-			// @ts-expect-error Accessing private property for testing
-			mockDataSource.entityMetadatas = [
-				{
-					name: 'KnowledgeFile',
-					tableName: 'agent_files',
-					columns: [{ databaseName: 'id' }, { databaseName: 'agentId' }],
-				},
-			] as any;
-			// One export never writes both names: the old file is a leftover of an earlier run.
-			const mockFiles = ['agentfile.jsonl', 'agentfile.2.jsonl', 'knowledgefile.jsonl'];
-
-			vi.mocked(readdir).mockResolvedValue(mockFiles as any);
-			vi.mocked(safeJoinPath).mockReturnValueOnce('/test/input/knowledgefile.jsonl');
-
-			const result = await importService.getImportMetadata('/test/input');
-
-			expect(result).toEqual({
-				entityFiles: { knowledgefile: ['/test/input/knowledgefile.jsonl'] },
-				tableNames: ['agent_files'],
-				dataTableFiles: {},
-			});
-			expect(mockLogger.warn).toHaveBeenCalledWith(expect.stringContaining('agentfile.jsonl'));
-			expect(mockLogger.warn).toHaveBeenCalledWith(expect.stringContaining('agentfile.2.jsonl'));
-		});
-
-		it('should not remap an old-name file while an entity carries that name', async () => {
-			// @ts-expect-error Accessing private property for testing
-			mockDataSource.entityMetadatas = [
-				{
-					name: 'AgentFile',
-					tableName: 'agent_file_other',
-					columns: [{ databaseName: 'id' }],
-				},
-				{
-					name: 'KnowledgeFile',
-					tableName: 'agent_files',
-					columns: [{ databaseName: 'id' }, { databaseName: 'agentId' }],
-				},
-			] as any;
-			const mockFiles = ['agentfile.jsonl'];
-
-			vi.mocked(readdir).mockResolvedValue(mockFiles as any);
-			vi.mocked(safeJoinPath).mockReturnValueOnce('/test/input/agentfile.jsonl');
-
-			const result = await importService.getImportMetadata('/test/input');
-
-			expect(result).toEqual({
-				entityFiles: { agentfile: ['/test/input/agentfile.jsonl'] },
-				tableNames: ['agent_file_other'],
-				dataTableFiles: {},
-			});
-		});
-
 		it('should skip entities without metadata', async () => {
 			const mockFiles = ['unknown.jsonl', 'invalid.txt'];
 
@@ -932,6 +850,33 @@ describe('ImportService', () => {
 			vi.mocked(mockDataSource.query).mockResolvedValue(dbMigrations);
 
 			await expect(importService.validateMigrations('/test/input')).resolves.not.toThrow();
+		});
+
+		it('should reject a 2.49.0 archive before any insert', async () => {
+			// 2.48 and 2.49 wrote the `agent_files` rows to a file named after the entity class of that
+			// time. The class `KnowledgeFile` now maps `knowledge_file`, so only this check keeps them out.
+			// The last migration of 2.49.0 against the migration of the collection tables.
+			const migrationsContent =
+				'{"id":"1","timestamp":"1794826383663","name":"AddAgentFolderPlacement1794826383663"}';
+			const dbMigrations = [
+				{
+					id: '2',
+					timestamp: '1795076463180',
+					name: 'CreateKnowledgeCollectionTables1795076463180',
+				},
+			];
+
+			const { existsSync } = await import('fs');
+			vi.mocked(existsSync).mockReturnValueOnce(true);
+			vi.mocked(readFile).mockResolvedValue(migrationsContent);
+			vi.mocked(mockDataSource.query).mockResolvedValue(dbMigrations);
+
+			await expect(importService.importEntities('/test/input', false)).rejects.toThrow(
+				'Migration timestamp mismatch',
+			);
+
+			expect(mockDataSource.transaction).not.toHaveBeenCalled();
+			expect(mockEntityManager.query).not.toHaveBeenCalled();
 		});
 	});
 

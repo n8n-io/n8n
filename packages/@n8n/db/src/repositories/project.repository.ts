@@ -143,6 +143,19 @@ export class ProjectRepository extends BaseRepository<Project> {
 		});
 	}
 
+	/**
+	 * Returns every project. With `serviceAccountIds`, it hides the personal
+	 * projects of service accounts that are not in the list. An empty list hides
+	 * all of them. Team projects and the personal projects of people always stay.
+	 */
+	async findAllProjects(options: { serviceAccountIds?: string[] } = {}): Promise<Project[]> {
+		const query = this.createQueryBuilder('project').leftJoin('project.creator', 'creator');
+		if (options.serviceAccountIds !== undefined) {
+			this.limitServiceAccountProjects(query, 'project', options.serviceAccountIds);
+		}
+		return await query.getMany();
+	}
+
 	/** An undefined role list allows global access. An empty list matches no projects. */
 	async findOneWithUserRoles(
 		projectId: string,

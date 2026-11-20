@@ -1,0 +1,430 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"active": {
+			"type": "boolean"
+		},
+		"activity_calendar_event_id": {
+			"type": "boolean"
+		},
+		"activity_date_deadline": {
+			"type": ["boolean", "string"]
+		},
+		"activity_exception_decoration": {
+			"type": "boolean"
+		},
+		"activity_exception_icon": {
+			"type": "boolean"
+		},
+		"activity_ids": {
+			"items": {
+				"type": "number"
+			},
+			"type": "array"
+		},
+		"activity_state": {
+			"type": ["boolean", "string"]
+		},
+		"activity_summary": {
+			"type": ["boolean", "string"]
+		},
+		"activity_type_icon": {
+			"type": ["boolean", "string"]
+		},
+		"activity_type_id": {
+			"items": {
+				"type": ["number", "string"]
+			},
+			"type": ["array", "boolean"]
+		},
+		"activity_user_id": {
+			"items": {
+				"type": ["number", "string"]
+			},
+			"type": ["array", "boolean"]
+		},
+		"automated_probability": {
+			"type": "number"
+		},
+		"calendar_event_ids": {
+			"items": {},
+			"type": "array"
+		},
+		"campaign_id": {
+			"type": "boolean"
+		},
+		"city": {
+			"type": ["boolean", "string"]
+		},
+		"color": {
+			"type": "number"
+		},
+		"company_currency": {
+			"items": {
+				"type": ["number", "string"]
+			},
+			"type": "array"
+		},
+		"company_id": {
+			"items": {
+				"type": ["number", "string"]
+			},
+			"type": "array"
+		},
+		"contact_name": {
+			"type": ["boolean", "string"]
+		},
+		"country_id": {
+			"items": {
+				"type": ["number", "string"]
+			},
+			"type": ["array", "boolean"]
+		},
+		"create_date": {
+			"type": "string"
+		},
+		"create_uid": {
+			"items": {
+				"type": ["number", "string"]
+			},
+			"type": ["array", "boolean"]
+		},
+		"date_automation_last": {
+			"type": ["boolean", "string"]
+		},
+		"date_closed": {
+			"type": ["boolean", "string"]
+		},
+		"date_conversion": {
+			"type": "boolean"
+		},
+		"date_deadline": {
+			"type": ["boolean", "string"]
+		},
+		"date_last_stage_update": {
+			"type": "string"
+		},
+		"date_open": {
+			"type": "string"
+		},
+		"day_close": {
+			"type": "number"
+		},
+		"day_open": {
+			"type": "number"
+		},
+		"days_exceeding_closing": {
+			"type": "number"
+		},
+		"days_to_convert": {
+			"type": "number"
+		},
+		"description": {
+			"type": ["boolean", "string"]
+		},
+		"display_name": {
+			"type": "string"
+		},
+		"duplicate_lead_count": {
+			"type": "number"
+		},
+		"duplicate_lead_ids": {
+			"items": {
+				"type": "number"
+			},
+			"type": "array"
+		},
+		"duration_tracking": {
+			"type": "object"
+		},
+		"email_domain_criterion": {
+			"type": ["boolean", "string"]
+		},
+		"email_from": {
+			"type": ["boolean", "string"]
+		},
+		"email_normalized": {
+			"type": ["boolean", "string"]
+		},
+		"email_state": {
+			"type": ["boolean", "string"]
+		},
+		"expected_revenue": {
+			"type": "number"
+		},
+		"function": {
+			"type": ["boolean", "string"]
+		},
+		"has_message": {
+			"type": "boolean"
+		},
+		"iap_enrich_done": {
+			"type": "boolean"
+		},
+		"id": {
+			"type": "number"
+		},
+		"is_automated_probability": {
+			"type": "boolean"
+		},
+		"is_blacklisted": {
+			"type": "boolean"
+		},
+		"is_rotting": {
+			"type": "boolean"
+		},
+		"lang_active_count": {
+			"type": "number"
+		},
+		"lang_code": {
+			"type": ["boolean", "string"]
+		},
+		"lang_id": {
+			"items": {
+				"type": ["number", "string"]
+			},
+			"type": ["array", "boolean"]
+		},
+		"lead_mining_request_id": {
+			"type": "boolean"
+		},
+		"lead_properties": {
+			"items": {
+				"additionalProperties": true,
+				"properties": {
+					"name": {
+						"type": "string"
+					},
+					"string": {
+						"type": "string"
+					},
+					"type": {
+						"type": "string"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"lost_reason_id": {
+			"items": {
+				"type": ["number", "string"]
+			},
+			"type": ["array", "boolean"]
+		},
+		"medium_id": {
+			"type": "boolean"
+		},
+		"meeting_display_date": {
+			"type": "boolean"
+		},
+		"meeting_display_label": {
+			"type": "string"
+		},
+		"message_attachment_count": {
+			"type": "number"
+		},
+		"message_bounce": {
+			"type": "number"
+		},
+		"message_follower_ids": {
+			"items": {
+				"type": "number"
+			},
+			"type": "array"
+		},
+		"message_has_error": {
+			"type": "boolean"
+		},
+		"message_has_error_counter": {
+			"type": "number"
+		},
+		"message_has_sms_error": {
+			"type": "boolean"
+		},
+		"message_ids": {
+			"items": {
+				"type": "number"
+			},
+			"type": "array"
+		},
+		"message_is_follower": {
+			"type": "boolean"
+		},
+		"message_needaction": {
+			"type": "boolean"
+		},
+		"message_needaction_counter": {
+			"type": "number"
+		},
+		"message_partner_ids": {
+			"items": {
+				"type": "number"
+			},
+			"type": "array"
+		},
+		"my_activity_date_deadline": {
+			"type": ["boolean", "string"]
+		},
+		"name": {
+			"type": "string"
+		},
+		"order_ids": {
+			"items": {
+				"type": "number"
+			},
+			"type": "array"
+		},
+		"partner_email_update": {
+			"type": "boolean"
+		},
+		"partner_id": {
+			"items": {
+				"type": ["number", "string"]
+			},
+			"type": ["array", "boolean"]
+		},
+		"partner_is_blacklisted": {
+			"type": "boolean"
+		},
+		"partner_name": {
+			"type": ["boolean", "string"]
+		},
+		"partner_phone_update": {
+			"type": "boolean"
+		},
+		"phone": {
+			"type": ["boolean", "string"]
+		},
+		"phone_blacklisted": {
+			"type": "boolean"
+		},
+		"phone_mobile_search": {
+			"type": "boolean"
+		},
+		"phone_sanitized": {
+			"type": ["boolean", "string"]
+		},
+		"phone_sanitized_blacklisted": {
+			"type": "boolean"
+		},
+		"phone_state": {
+			"type": ["boolean", "string"]
+		},
+		"priority": {
+			"type": "string"
+		},
+		"probability": {
+			"type": "number"
+		},
+		"prorated_revenue": {
+			"type": "number"
+		},
+		"quotation_count": {
+			"type": "number"
+		},
+		"recurring_plan": {
+			"items": {
+				"type": ["number", "string"]
+			},
+			"type": ["array", "boolean"]
+		},
+		"recurring_revenue": {
+			"type": "number"
+		},
+		"recurring_revenue_monthly": {
+			"type": "number"
+		},
+		"recurring_revenue_monthly_prorated": {
+			"type": "number"
+		},
+		"recurring_revenue_prorated": {
+			"type": "number"
+		},
+		"referred": {
+			"type": "boolean"
+		},
+		"reveal_id": {
+			"type": ["boolean", "string"]
+		},
+		"rotting_days": {
+			"type": "number"
+		},
+		"sale_amount_total": {
+			"type": "number"
+		},
+		"sale_order_count": {
+			"type": "number"
+		},
+		"show_enrich_button": {
+			"type": "boolean"
+		},
+		"source_id": {
+			"type": "boolean"
+		},
+		"stage_id": {
+			"items": {
+				"type": ["number", "string"]
+			},
+			"type": "array"
+		},
+		"state_id": {
+			"items": {
+				"type": ["number", "string"]
+			},
+			"type": ["array", "boolean"]
+		},
+		"street": {
+			"type": ["boolean", "string"]
+		},
+		"street2": {
+			"type": ["boolean", "string"]
+		},
+		"tag_ids": {
+			"items": {
+				"type": "number"
+			},
+			"type": "array"
+		},
+		"team_id": {
+			"items": {
+				"type": ["number", "string"]
+			},
+			"type": "array"
+		},
+		"type": {
+			"type": "string"
+		},
+		"user_company_ids": {
+			"items": {
+				"type": "number"
+			},
+			"type": "array"
+		},
+		"user_id": {
+			"items": {
+				"type": ["number", "string"]
+			},
+			"type": ["array", "boolean"]
+		},
+		"website": {
+			"type": ["boolean", "string"]
+		},
+		"won_status": {
+			"type": "string"
+		},
+		"write_date": {
+			"type": "string"
+		},
+		"write_uid": {
+			"items": {
+				"type": ["number", "string"]
+			},
+			"type": ["array", "boolean"]
+		},
+		"zip": {
+			"type": ["boolean", "string"]
+		}
+	},
+	"type": "object"
+}

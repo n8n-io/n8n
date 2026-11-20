@@ -59,10 +59,22 @@ export class TypeAvailabilityPolicyInstanceController {
 	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
 	@GlobalScope('nodeTypePolicy:manage')
 	async getInstanceAccess(): Promise<InstanceTypeAccessResponse> {
-		return await this.service.getInstanceAccess(
+		const access = await this.service.getInstanceAccess(
 			NODE_TYPES_KIND,
 			Object.keys(this.nodeTypes.getKnownTypes()),
 		);
+		const matchedRuleIdByName = new Map(
+			access.types.map((type) => [type.name, type.matchedRuleId]),
+		);
+
+		// A generated tool variant usually follows its base type, so it gets no row. A rule can name
+		// the variant itself, and then the variant keeps its row: the admin must see that rule.
+		const types = access.types.filter((type) => {
+			const { baseName, isSyntheticTool } = this.nodeTypes.resolveBaseName(type.name);
+			return !isSyntheticTool || type.matchedRuleId !== matchedRuleIdByName.get(baseName);
+		});
+
+		return { ...access, types };
 	}
 
 	@Put('/instance')
