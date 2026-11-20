@@ -1487,6 +1487,27 @@ describe('LoadNodesAndCredentials', () => {
 
 				expect(() => instance['assertNoCredentialTypeConflicts'](loader, false)).not.toThrow();
 			});
+
+			it('should log a warning that names the conflicting types and their owners', () => {
+				const loader = createLoader('community-package', ['awsAssumeRole', 'uniqueApi']);
+
+				instance['assertNoCredentialTypeConflicts'](loader, false);
+
+				expect(logger.warn).toHaveBeenCalledTimes(1);
+				expect(logger.warn).toHaveBeenCalledWith(
+					expect.stringContaining('"awsAssumeRole" (provided by "n8n-nodes-base")'),
+				);
+				expect(logger.warn).toHaveBeenCalledWith(expect.not.stringContaining('uniqueApi'));
+			});
+
+			it('should not log a warning for a package with unique credential types', () => {
+				instance['assertNoCredentialTypeConflicts'](
+					createLoader('community-package', ['uniqueApi']),
+					false,
+				);
+
+				expect(logger.warn).not.toHaveBeenCalled();
+			});
 		});
 
 		it('should reject a package that reuses the credential type of a loaded package', () => {
@@ -1526,118 +1547,83 @@ describe('LoadNodesAndCredentials', () => {
 			expect(() => instance['assertNoCredentialTypeConflicts'](loader)).not.toThrow();
 		});
 
-		it('should record why a package was rejected, until it is unloaded', async () => {
-			const loader = createLoader('community-package', ['awsAssumeRole']);
-			expect(instance.getPackageLoadError('community-package')).toBeUndefined();
-
-			expect(() => instance['assertNoCredentialTypeConflicts'](loader)).toThrow();
-			expect(instance.getPackageLoadError('community-package')).toContain(
-				'"awsAssumeRole" (provided by "n8n-nodes-base")',
-			);
-
-			await instance.unloadPackage('community-package');
-			expect(instance.getPackageLoadError('community-package')).toBeUndefined();
-		});
-
-		it('should clear a recorded rejection once the package loads without conflicts', () => {
-			expect(() =>
-				instance['assertNoCredentialTypeConflicts'](
-					createLoader('community-package', ['awsAssumeRole']),
-				),
-			).toThrow();
-
-			instance['assertNoCredentialTypeConflicts'](createLoader('community-package', ['uniqueApi']));
-
-			expect(instance.getPackageLoadError('community-package')).toBeUndefined();
-		});
-
-		describe('reloadRejectedPackages', () => {
-			const reject = (packageName: string) =>
-				expect(() =>
-					instance['assertNoCredentialTypeConflicts'](createLoader(packageName, ['awsAssumeRole'])),
-				).toThrow();
-
-			it('should load a rejected package again and clear its recorded reason', async () => {
-				reject('community-package');
-				const loadPackage = vi.spyOn(instance, 'loadPackage').mockImplementation(async () => {
-					instance['assertNoCredentialTypeConflicts'](
-						createLoader('community-package', ['uniqueApi']),
-					);
-					return await mock();
-				});
-
-				await instance.reloadRejectedPackages();
-
-				expect(loadPackage).toHaveBeenCalledWith('community-package');
-				expect(instance.getPackageLoadError('community-package')).toBeUndefined();
-			});
-
-			it('should keep the recorded reason while the conflict remains', async () => {
-				reject('community-package');
-				vi.spyOn(instance, 'loadPackage').mockImplementation(async () => {
-					instance['assertNoCredentialTypeConflicts'](
-						createLoader('community-package', ['awsAssumeRole']),
-					);
-					return await mock();
-				});
-
-				await expect(instance.reloadRejectedPackages()).resolves.toBeUndefined();
-
-				expect(instance.getPackageLoadError('community-package')).toContain('awsAssumeRole');
-			});
-
-			it('should drop the recorded reason when the reload fails for another cause', async () => {
-				reject('community-package');
-				vi.spyOn(instance, 'loadPackage').mockRejectedValue(new Error('ENOENT'));
-
-				await expect(instance.reloadRejectedPackages()).resolves.toBeUndefined();
-
-				expect(instance.getPackageLoadError('community-package')).toBeUndefined();
-			});
-
-			it('should do nothing when no package was rejected', async () => {
-				const loadPackage = vi.spyOn(instance, 'loadPackage');
-
-				await instance.reloadRejectedPackages();
-
-				expect(loadPackage).not.toHaveBeenCalled();
-			});
-		});
-
-		it('should reject a loader on load without registering it', async () => {
-			const conflicting = createLoader('community-package', ['awsAssumeRole']);
-			conflicting.loadAll.mockResolvedValue(undefined);
-
-			await expect(
-				instance['runDirectoryLoader'](
-					class {
-						constructor() {
-							return conflicting;
-						}
-					} as never,
-					'/downloads/community-package',
-					{ rejectCredentialTypeConflicts: true },
-				),
-			).rejects.toThrow(CredentialTypeConflictError);
-
-			expect(instance.loaders).not.toHaveProperty('community-package');
-		});
-
-		it('should register a conflicting loader when conflicts are not rejected', async () => {
-			const conflicting = createLoader('community-package', ['awsAssumeRole']);
-			conflicting.loadAll.mockResolvedValue(undefined);
-
-			await instance['runDirectoryLoader'](
-				class {
+		describe('runDirectoryLoader', () => {
+			const conflictingLoaderClass = () => {
+				const conflicting = createLoader('community-package', ['awsAssumeRole']);
+				conflicting.loadAll.mockResolvedValue(undefined);
+				return class {
 					constructor() {
 						return conflicting;
 					}
-				} as never,
-				'/downloads/community-package',
-			);
+				} as never;
+			};
 
-			expect(instance.loaders).toHaveProperty('community-package');
-			expect(logger.warn).not.toHaveBeenCalled();
+			it('should reject a conflicting loader without registering it', async () => {
+				await expect(
+					instance['runDirectoryLoader'](conflictingLoaderClass(), '/downloads/community-package', {
+						credentialTypeConflicts: 'reject',
+					}),
+				).rejects.toThrow(CredentialTypeConflictError);
+
+				expect(instance.loaders).not.toHaveProperty('community-package');
+			});
+
+			it('should register a conflicting loader and log a warning in warn mode', async () => {
+				await instance['runDirectoryLoader'](
+					conflictingLoaderClass(),
+					'/downloads/community-package',
+					{ credentialTypeConflicts: 'warn' },
+				);
+
+				expect(instance.loaders).toHaveProperty('community-package');
+				expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('awsAssumeRole'));
+			});
+
+			it('should register a conflicting loader without a check when no mode is set', async () => {
+				await instance['runDirectoryLoader'](
+					conflictingLoaderClass(),
+					'/downloads/community-package',
+				);
+
+				expect(instance.loaders).toHaveProperty('community-package');
+				expect(logger.warn).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('loadPackage', () => {
+			let runDirectoryLoader: ReturnType<typeof vi.spyOn>;
+
+			beforeEach(() => {
+				instance = new LoadNodesAndCredentials(
+					logger,
+					mock(),
+					mock({ nodesDownloadDir: '/downloads' }),
+					mock(),
+					mock(),
+					mock(),
+				);
+				runDirectoryLoader = vi
+					.spyOn(instance as never, 'runDirectoryLoader')
+					.mockResolvedValue(mock() as never);
+			});
+
+			it('should only warn on conflicts by default, so installed packages keep loading', async () => {
+				await instance.loadPackage('community-package');
+
+				expect(runDirectoryLoader).toHaveBeenCalledWith(
+					expect.anything(),
+					join('/downloads', 'node_modules', 'community-package'),
+					{ credentialTypeConflicts: 'warn' },
+				);
+			});
+
+			it('should reject conflicts when the caller asks for it', async () => {
+				await instance.loadPackage('community-package', { rejectCredentialTypeConflicts: true });
+
+				expect(runDirectoryLoader).toHaveBeenCalledWith(expect.anything(), expect.any(String), {
+					credentialTypeConflicts: 'reject',
+				});
+			});
 		});
 	});
 });

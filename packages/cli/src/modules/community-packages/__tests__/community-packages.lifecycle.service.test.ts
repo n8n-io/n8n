@@ -123,6 +123,7 @@ describe('CommunityPackagesLifecycleService', () => {
 				'n8n-nodes-test',
 				'1.5.0',
 				undefined,
+				{ rejectCredentialTypeConflicts: true },
 			);
 		});
 
@@ -158,6 +159,7 @@ describe('CommunityPackagesLifecycleService', () => {
 				'n8n-nodes-test',
 				'1.0.0',
 				'checksum',
+				{ rejectCredentialTypeConflicts: true },
 			);
 			expect(eventService.emit).toHaveBeenCalledWith(
 				'community-package-installed',
@@ -189,6 +191,7 @@ describe('CommunityPackagesLifecycleService', () => {
 				'n8n-nodes-test',
 				'1.2.3',
 				'vetted-checksum',
+				{ rejectCredentialTypeConflicts: true },
 			);
 		});
 
@@ -220,6 +223,7 @@ describe('CommunityPackagesLifecycleService', () => {
 				'@scope/n8n-nodes-test',
 				'1.0.0',
 				'v1-checksum',
+				{ rejectCredentialTypeConflicts: true },
 			);
 		});
 
@@ -285,6 +289,7 @@ describe('CommunityPackagesLifecycleService', () => {
 				'n8n-nodes-test',
 				'1.0.0',
 				undefined,
+				{ rejectCredentialTypeConflicts: true },
 			);
 		});
 
@@ -553,6 +558,7 @@ describe('CommunityPackagesLifecycleService', () => {
 				previouslyInstalledPackage,
 				'2.0.0',
 				undefined,
+				{ rejectCredentialTypeConflicts: true },
 			);
 
 			expect(result).toBe(newInstalledPackage);
@@ -593,6 +599,7 @@ describe('CommunityPackagesLifecycleService', () => {
 				previouslyInstalledPackage,
 				'2.0.0',
 				'vetted-checksum',
+				{ rejectCredentialTypeConflicts: true },
 			);
 		});
 
@@ -622,6 +629,7 @@ describe('CommunityPackagesLifecycleService', () => {
 				previouslyInstalledPackage,
 				'1.0.0',
 				'v1-checksum',
+				{ rejectCredentialTypeConflicts: true },
 			);
 		});
 
@@ -646,6 +654,7 @@ describe('CommunityPackagesLifecycleService', () => {
 				previouslyInstalledPackage,
 				'2.0.0',
 				'vetted-checksum',
+				{ rejectCredentialTypeConflicts: true },
 			);
 		});
 
@@ -679,6 +688,7 @@ describe('CommunityPackagesLifecycleService', () => {
 				previouslyInstalledPackage,
 				'1.0.0',
 				'v1-checksum',
+				{ rejectCredentialTypeConflicts: true },
 			);
 		});
 

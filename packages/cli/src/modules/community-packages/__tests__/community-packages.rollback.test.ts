@@ -198,13 +198,17 @@ describe('CommunityPackagesService install rollback (real filesystem)', () => {
 			loadNodesAndCredentials.loadPackage.mockRejectedValueOnce(conflictError);
 
 			// Unwrapped, so the caller sees which credential types clash.
-			await expect(communityPackagesService.installPackage(PACKAGE_NAME)).rejects.toBe(
-				conflictError,
-			);
+			await expect(
+				communityPackagesService.installPackage(PACKAGE_NAME, undefined, undefined, {
+					rejectCredentialTypeConflicts: true,
+				}),
+			).rejects.toBe(conflictError);
 
 			expect(logger.error).toHaveBeenCalledWith(conflictError.message);
 			expect(existsSync(markerPath())).toBe(true);
 			expect(loadNodesAndCredentials.loadPackage).toHaveBeenCalledTimes(2);
+			// The restored package is loaded without the check, so it keeps working.
+			expect(loadNodesAndCredentials.loadPackage).toHaveBeenNthCalledWith(2, PACKAGE_NAME);
 			expect(await ledgerDependencies()).toEqual({ [PACKAGE_NAME]: '1.0.0' });
 		});
 

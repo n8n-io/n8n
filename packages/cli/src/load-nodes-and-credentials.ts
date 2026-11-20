@@ -46,7 +46,10 @@ import path from 'path';
 import picocolors from 'picocolors';
 
 import { CUSTOM_API_CALL_KEY, CUSTOM_API_CALL_NAME, CLI_DIR, inE2ETests } from '@/constants';
-import { CredentialTypeConflictError } from '@/errors/response-errors/credential-type-conflict.error';
+import {
+	CredentialTypeConflictError,
+	formatCredentialTypeConflicts,
+} from '@/errors/response-errors/credential-type-conflict.error';
 import { defaultDiscriminators, getParameterDefaults } from '@/output-schema-parameter-defaults';
 import { createAiTools, createHitlTools } from '@/tool-generation';
 
@@ -62,9 +65,6 @@ export class LoadNodesAndCredentials {
 	types: Types = { nodes: [], credentials: [] };
 
 	loaders: Record<string, NodeLoader> = {};
-
-	/** Why a package was rejected at load time, by package name. Cleared on unload. */
-	private readonly packageLoadErrors = new Map<string, string>();
 
 	excludeNodes = this.globalConfig.nodes.exclude;
 
@@ -133,11 +133,6 @@ export class LoadNodesAndCredentials {
 				this.assertNoCredentialTypeConflicts(loader, false);
 				this.loaders[loader.packageName] = loader;
 			} catch (error) {
-				// Expected, author-side problem: no stack trace and no error report needed.
-				if (error instanceof CredentialTypeConflictError) {
-					this.logger.error(error.message);
-					continue;
-				}
 				this.logger.error(`Failed to load package "${loader.packageName}"`, {
 					error: ensureError(error),
 				});
@@ -385,47 +380,29 @@ export class LoadNodesAndCredentials {
 		}
 	}
 
-	async loadPackage(packageName: string) {
+	/**
+	 * @param options.rejectCredentialTypeConflicts Throw on a credential type conflict
+	 * instead of logging it. Only for a version that a user asks to install: a package
+	 * that is already installed must keep loading, so existing workflows keep running.
+	 */
+	async loadPackage(
+		packageName: string,
+		options: { rejectCredentialTypeConflicts?: boolean } = {},
+	) {
 		const finalNodeUnpackedPath = path.join(
 			this.instanceSettings.nodesDownloadDir,
 			'node_modules',
 			packageName,
 		);
 		return await this.runDirectoryLoader(PackageDirectoryLoader, finalNodeUnpackedPath, {
-			rejectCredentialTypeConflicts: true,
+			credentialTypeConflicts: options.rejectCredentialTypeConflicts ? 'reject' : 'warn',
 		});
 	}
 
-	/** The reason a package was rejected at load time, if it was. */
-	getPackageLoadError(packageName: string): string | undefined {
-		return this.packageLoadErrors.get(packageName);
-	}
-
 	async unloadPackage(packageName: string) {
-		this.packageLoadErrors.delete(packageName);
 		if (packageName in this.loaders) {
 			this.loaders[packageName].reset();
 			delete this.loaders[packageName];
-		}
-	}
-
-	/**
-	 * Retry the packages that were rejected for a credential type conflict.
-	 */
-	async reloadRejectedPackages() {
-		for (const packageName of [...this.packageLoadErrors.keys()]) {
-			try {
-				await this.loadPackage(packageName);
-			} catch (error) {
-				// Still in conflict: the new rejection is already recorded.
-				if (error instanceof CredentialTypeConflictError) continue;
-
-				// The old reason no longer applies.
-				this.packageLoadErrors.delete(packageName);
-				this.logger.warn(`Failed to reload package "${packageName}"`, {
-					error: ensureError(error),
-				});
-			}
 		}
 	}
 
@@ -635,7 +612,7 @@ export class LoadNodesAndCredentials {
 	private async runDirectoryLoader<T extends DirectoryLoader>(
 		constructor: Class<T, ConstructorParameters<typeof DirectoryLoader>>,
 		dir: string,
-		options: { rejectCredentialTypeConflicts?: boolean } = {},
+		options: { credentialTypeConflicts?: 'reject' | 'warn' } = {},
 	) {
 		const loader = new constructor(dir, this.excludeNodes, this.includeNodes);
 		if (loader instanceof PackageDirectoryLoader && loader.packageName in this.loaders) {
@@ -646,15 +623,17 @@ export class LoadNodesAndCredentials {
 			);
 		}
 		await loader.loadAll();
-		if (options.rejectCredentialTypeConflicts) this.assertNoCredentialTypeConflicts(loader);
+		if (options.credentialTypeConflicts) {
+			this.assertNoCredentialTypeConflicts(loader, options.credentialTypeConflicts === 'reject');
+		}
 		this.loaders[loader.packageName] = loader;
 		return loader;
 	}
 
 	/**
 	 * Credential types live in one flat namespace (unlike node types, which are
-	 * prefixed with the package name). A second definition would silently replace
-	 * the first, so reject the package that comes later.
+	 * prefixed with the package name). A second definition replaces the first, so
+	 * reject the package that comes later, or log a warning when it must keep loading.
 	 * @param {boolean} [throwOnConflict=true] Whether to throw an error if a conflict is detected
 	 */
 	private assertNoCredentialTypeConflicts(loader: NodeLoader, throwOnConflict = true) {
@@ -669,19 +648,13 @@ export class LoadNodesAndCredentials {
 			if (owner) conflicts[credentialType] = owner.packageName;
 		}
 
-		if (Object.keys(conflicts).length > 0) {
-			if (throwOnConflict) {
-				const error = new CredentialTypeConflictError(loader.packageName, conflicts);
-				this.packageLoadErrors.set(loader.packageName, error.message);
-				throw error;
-			}
-			this.logger.warn(
-				`Credential type conflict detected for package ${loader.packageName}: ${Object.keys(conflicts).join(', ')}`,
-			);
-			return;
-		}
+		if (Object.keys(conflicts).length === 0) return;
 
-		this.packageLoadErrors.delete(loader.packageName);
+		if (throwOnConflict) throw new CredentialTypeConflictError(loader.packageName, conflicts);
+
+		this.logger.warn(
+			`Package "${loader.packageName}" declares credential types that already exist: ${formatCredentialTypeConflicts(conflicts)}. The definitions from "${loader.packageName}" replace the existing ones. Ask the package author to rename them.`,
+		);
 	}
 
 	async postProcessLoaders() {

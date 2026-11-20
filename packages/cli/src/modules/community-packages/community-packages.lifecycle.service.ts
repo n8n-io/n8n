@@ -209,6 +209,7 @@ export class CommunityPackagesLifecycleService {
 				parsed.packageName,
 				packageVersion,
 				checksum,
+				{ rejectCredentialTypeConflicts: true },
 			);
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : UNKNOWN_FAILURE_REASON;
@@ -334,6 +335,7 @@ export class CommunityPackagesLifecycleService {
 				previouslyInstalledPackage,
 				version,
 				checksum,
+				{ rejectCredentialTypeConflicts: true },
 			);
 
 			previouslyInstalledPackage.installedNodes.forEach((node) => {

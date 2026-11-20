@@ -15,6 +15,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { NPM_PACKAGE_STATUS_GOOD } from '@/constants';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
+import { CredentialTypeConflictError } from '@/errors/response-errors/credential-type-conflict.error';
 import type { License } from '@/license';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { Publisher } from '@n8n/backend-services';
@@ -366,40 +367,6 @@ describe('CommunityPackagesService', () => {
 
 			expect(communityPackagesService.withLoadStatus([pkg])[0].failedLoading).toBe(false);
 		});
-
-		test('should include the load error of a package that failed to load', () => {
-			const pkg = installedPackageWithNodeTypes(['node-a']);
-			loadNodesAndCredentials.isKnownNode.mockReturnValue(false);
-			loadNodesAndCredentials.getPackageLoadError.mockReturnValue('Credential types clash');
-
-			const [matched] = communityPackagesService.withLoadStatus([pkg]);
-
-			expect(matched.failedLoading).toBe(true);
-			expect(matched.failedLoadingReason).toBe('Credential types clash');
-			expect(loadNodesAndCredentials.getPackageLoadError).toHaveBeenCalledWith(pkg.packageName);
-		});
-
-		test('should omit the reason when the package failed without a recorded load error', () => {
-			const pkg = installedPackageWithNodeTypes(['node-a']);
-			loadNodesAndCredentials.isKnownNode.mockReturnValue(false);
-			loadNodesAndCredentials.getPackageLoadError.mockReturnValue(undefined);
-
-			const [matched] = communityPackagesService.withLoadStatus([pkg]);
-
-			expect(matched.failedLoading).toBe(true);
-			expect(matched).not.toHaveProperty('failedLoadingReason');
-		});
-
-		test('should not include a reason for a package that loaded', () => {
-			const pkg = installedPackageWithNodeTypes(['node-a']);
-			loadNodesAndCredentials.isKnownNode.mockReturnValue(true);
-			loadNodesAndCredentials.getPackageLoadError.mockReturnValue('stale error');
-
-			const [matched] = communityPackagesService.withLoadStatus([pkg]);
-
-			expect(matched.failedLoading).toBe(false);
-			expect(matched).not.toHaveProperty('failedLoadingReason');
-		});
 	});
 
 	describe('checkNpmPackageStatus()', () => {
@@ -657,6 +624,49 @@ describe('CommunityPackagesService', () => {
 			expect(loadNodesAndCredentials.releaseTypes).toHaveBeenCalledTimes(1);
 		});
 
+		describe('credential type conflicts', () => {
+			const conflictError = new CredentialTypeConflictError(PACKAGE_NAME, {
+				awsAssumeRole: 'n8n-nodes-base',
+			});
+
+			test('should only warn on conflicts by default, so restores and reinstalls keep loading', async () => {
+				license.isCustomNpmRegistryEnabled.mockReturnValue(true);
+
+				await communityPackagesService.updatePackage(
+					installedPackageForUpdateTest.packageName,
+					installedPackageForUpdateTest,
+				);
+
+				expect(loadNodesAndCredentials.loadPackage).toHaveBeenCalledWith(PACKAGE_NAME, {
+					rejectCredentialTypeConflicts: false,
+				});
+			});
+
+			test('should reject the new version and reload the previous one without the check', async () => {
+				license.isCustomNpmRegistryEnabled.mockReturnValue(true);
+				loadNodesAndCredentials.loadPackage.mockRejectedValueOnce(conflictError);
+
+				await expect(
+					communityPackagesService.updatePackage(
+						installedPackageForUpdateTest.packageName,
+						installedPackageForUpdateTest,
+						undefined,
+						undefined,
+						{ rejectCredentialTypeConflicts: true },
+					),
+				).rejects.toBe(conflictError);
+
+				expect(loadNodesAndCredentials.loadPackage).toHaveBeenCalledTimes(2);
+				expect(loadNodesAndCredentials.loadPackage).toHaveBeenNthCalledWith(1, PACKAGE_NAME, {
+					rejectCredentialTypeConflicts: true,
+				});
+				// A previous version that already had the conflict must keep loading.
+				expect(loadNodesAndCredentials.loadPackage).toHaveBeenNthCalledWith(2, PACKAGE_NAME);
+				expect(installedPackageRepository.replaceInstalledPackageWithNodes).not.toHaveBeenCalled();
+				expect(publisher.publishCommand).not.toHaveBeenCalled();
+			});
+		});
+
 		test('should restore the previous package without reloading when the download fails during an update', async () => {
 			license.isCustomNpmRegistryEnabled.mockReturnValue(true);
 			vi.spyOn(Date, 'now').mockReturnValue(1_717_171_717_171);
@@ -739,7 +749,9 @@ describe('CommunityPackagesService', () => {
 
 				await expect(updateToIncompatible(N8N_NODES_API_VERSION)).resolves.toBe(packageAfterUpdate);
 
-				expect(loadNodesAndCredentials.loadPackage).toHaveBeenCalledWith(PACKAGE_NAME);
+				expect(loadNodesAndCredentials.loadPackage).toHaveBeenCalledWith(PACKAGE_NAME, {
+					rejectCredentialTypeConflicts: false,
+				});
 				expect(installedPackageRepository.replaceInstalledPackageWithNodes).toHaveBeenCalled();
 			});
 
@@ -750,7 +762,9 @@ describe('CommunityPackagesService', () => {
 					packageAfterUpdate,
 				);
 
-				expect(loadNodesAndCredentials.loadPackage).toHaveBeenCalledWith(PACKAGE_NAME);
+				expect(loadNodesAndCredentials.loadPackage).toHaveBeenCalledWith(PACKAGE_NAME, {
+					rejectCredentialTypeConflicts: false,
+				});
 			});
 		});
 
@@ -1001,7 +1015,9 @@ describe('CommunityPackagesService', () => {
 			);
 
 			expect(loadNodesAndCredentials.unloadPackage).toHaveBeenCalledWith(PACKAGE_NAME);
-			expect(loadNodesAndCredentials.loadPackage).toHaveBeenCalledWith(PACKAGE_NAME);
+			expect(loadNodesAndCredentials.loadPackage).toHaveBeenCalledWith(PACKAGE_NAME, {
+				rejectCredentialTypeConflicts: false,
+			});
 			expect(loadNodesAndCredentials.postProcessLoaders).toHaveBeenCalledTimes(1);
 
 			expect(installedPackageRepository.replaceInstalledPackageWithNodes).toHaveBeenCalledWith(
@@ -1143,28 +1159,6 @@ describe('CommunityPackagesService', () => {
 			});
 			expect(installedPackageRepository.remove).toHaveBeenCalledWith(installedPackage);
 			expect(loadNodesAndCredentials.loadPackage).not.toHaveBeenCalled();
-		});
-
-		test('should retry rejected packages after unloading, before rebuilding the registry', async () => {
-			const PACKAGE_NAME = 'n8n-nodes-test';
-			const installedPackage = mock<InstalledPackages>({ packageName: PACKAGE_NAME });
-			const callOrder: string[] = [];
-
-			loadNodesAndCredentials.unloadPackage.mockImplementation(async () => {
-				callOrder.push('unload');
-			});
-			loadNodesAndCredentials.reloadRejectedPackages.mockImplementation(async () => {
-				callOrder.push('reloadRejected');
-			});
-			loadNodesAndCredentials.postProcessLoaders.mockImplementation(async () => {
-				callOrder.push('postProcess');
-			});
-			vi.mocked(rm).mockResolvedValue(undefined);
-			installedPackageRepository.remove.mockResolvedValue(undefined as never);
-
-			await communityPackagesService.removePackage(PACKAGE_NAME, installedPackage);
-
-			expect(callOrder).toEqual(['unload', 'reloadRejected', 'postProcess']);
 		});
 
 		test('should log and not throw when publishing the uninstall event fails', async () => {

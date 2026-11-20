@@ -1,5 +1,11 @@
 import { ResponseError } from '@n8n/errors';
 
+/** Formats credential type names mapped to the package that already provides each one. */
+export const formatCredentialTypeConflicts = (conflicts: Record<string, string>) =>
+	Object.entries(conflicts)
+		.map(([credentialType, owner]) => `"${credentialType}" (provided by "${owner}")`)
+		.join(', ');
+
 /**
  * A node package declares a credential type that another loaded package already
  * provides. Credential types share one flat namespace, so the second definition
@@ -11,12 +17,8 @@ export class CredentialTypeConflictError extends ResponseError {
 		/** Credential type name mapped to the package that already provides it. */
 		readonly conflicts: Record<string, string>,
 	) {
-		const details = Object.entries(conflicts)
-			.map(([credentialType, owner]) => `"${credentialType}" (provided by "${owner}")`)
-			.join(', ');
-
 		super(
-			`Package "${packageName}" cannot be loaded. It declares credential types that already exist: ${details}. Ask the package author to rename them.`,
+			`Package "${packageName}" cannot be loaded. It declares credential types that already exist: ${formatCredentialTypeConflicts(conflicts)}. Ask the package author to rename them.`,
 			400,
 		);
 		this.name = 'CredentialTypeConflictError';
