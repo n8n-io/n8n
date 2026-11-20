@@ -80,7 +80,7 @@ describe('N8nSidebar', () => {
 		await fireEvent.mouseMove(window, { clientX: 400, clientY: 20 });
 		await fireEvent.mouseUp(window, { clientX: 400, clientY: 20 });
 
-		const widths = emitted('update:width') ?? [];
+		const widths = emitted<[number]>('update:width') ?? [];
 		expect(widths.length).toBeGreaterThan(0);
 		const nextWidth = widths.at(-1)?.[0];
 		expect(nextWidth).toBeGreaterThanOrEqual(160);
@@ -107,7 +107,7 @@ describe('N8nSidebar', () => {
 		await fireEvent.mouseMove(window, { clientX: 180, clientY: 20 });
 		await fireEvent.mouseUp(window, { clientX: 180, clientY: 20 });
 
-		const nextWidth = emitted('update:width')?.at(-1)?.[0];
+		const nextWidth = emitted<[number]>('update:width')?.at(-1)?.[0];
 		expect(nextWidth).not.toBe(360);
 		expect(window.localStorage.getItem(storageKey)).toBe(String(nextWidth));
 	});
