@@ -247,8 +247,6 @@ export const GOOGLE_DOCS_PROFILE: HttpVendorProfile = {
 	name: 'googledocs',
 	gymService: 'google-drive',
 	opaqueIds: true,
-	defaultAdminUrl: 'http://127.0.0.1:9099',
-	defaultGymUrl: 'http://127.0.0.1:8089',
 	credentialKind: 'google_oauth',
 	credentialField: 'oauthTokenData.access_token',
 	placeholderSeed: {
