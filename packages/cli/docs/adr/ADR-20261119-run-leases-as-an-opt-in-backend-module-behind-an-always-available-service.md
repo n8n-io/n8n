@@ -10,7 +10,7 @@ Source: https://linear.app/n8n/issue/CAP-760
 
 ## Context
 
-Leases coordinate work between main instances through the database. Code in several parts of the
+Leases coordinate work between instances through the database. Code in several parts of the
 cli registers lease kinds and reports changes. Leases must stay off until an operator turns them
 on. Backend modules are the way to turn a feature on or off in the cli. Default modules load
 unless `N8N_DISABLED_MODULES` lists them. Any other module loads only when `N8N_ENABLED_MODULES`
