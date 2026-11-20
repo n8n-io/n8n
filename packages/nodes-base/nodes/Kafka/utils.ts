@@ -640,8 +640,10 @@ export async function setSchemaRegistry(ctx: ITriggerFunctions) {
 			const schemaRegistryUrl = ctx.getNodeParameter('schemaRegistryUrl', 0) as string;
 			return await createSchemaRegistry(ctx, schemaRegistryUrl);
 		} catch (error) {
-			// Credential/config misconfiguration must fail loudly at activation
-			if (error instanceof NodeOperationError) {
+			// Credential/config misconfiguration must fail loudly at activation. The TLS
+			// checks raise UserError, so a malformed PEM or a half-configured mTLS pair
+			// would otherwise warn and leave the trigger running with no registry.
+			if (error instanceof NodeOperationError || error instanceof UserError) {
 				throw error;
 			}
 			// Connection-type failures keep the warn-and-continue behavior

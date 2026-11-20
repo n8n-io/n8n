@@ -1474,6 +1474,27 @@ describe('Kafka Utils', () => {
 				});
 			});
 
+			it.each([
+				[
+					'a half-configured mTLS pair',
+					{ cert: '-----BEGIN CERTIFICATE-----\nQ0VSVA==\n-----END CERTIFICATE-----' },
+				],
+				['a malformed CA', { ca: 'not-a-pem' }],
+			])('fails activation on %s rather than running without a registry', async (_case, tls) => {
+				const ctx = createRegistryContext({
+					params: { useSchemaRegistry: true, schemaRegistryUrl: '' },
+					nodeCredentials: schemaRegistryNodeCredentials,
+					credentialData: {
+						url: 'https://schema-registry.local:8081',
+						authentication: 'none',
+						...tls,
+					},
+				});
+
+				await expect(setSchemaRegistry(ctx)).rejects.toThrow();
+				expect(ctx.logger.warn).not.toHaveBeenCalled();
+			});
+
 			it('should redact URL userinfo and omit status in the warn payload when absent', async () => {
 				const ctx = createRegistryContext({
 					params: {
