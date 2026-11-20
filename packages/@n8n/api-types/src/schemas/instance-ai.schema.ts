@@ -1,6 +1,7 @@
 import type { InstanceAiEventLifecycle } from './instance-ai-event-lifecycle';
 import {
 	autoApprovalPayloadSchema,
+	instanceAiApprovalAskReasonSchema,
 	instanceAiApprovalDetailsSchema,
 } from './instance-ai-approval.schema';
 import type { InstanceAiAutoApprovalDecider } from './instance-ai-approval.schema';
@@ -948,6 +949,9 @@ export const confirmationRequestPayloadSchema = z.object({
 	severity: instanceAiConfirmationSeveritySchema,
 	message: z.string().describe('Human-readable description of the action'),
 	approvalDetails: instanceAiApprovalDetailsSchema.optional(),
+	askReason: instanceAiApprovalAskReasonSchema
+		.optional()
+		.describe('Why Auto approval mode showed this card. Absent in Manual mode'),
 	resourceName: z
 		.string()
 		.optional()
