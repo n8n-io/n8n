@@ -1,4 +1,9 @@
-import type { PublicSkillSourceDiscovery, SkillDetail, SkillListItem } from '@n8n/api-types';
+import type {
+	PublicSkillSourceDiscovery,
+	SkillDetail,
+	SkillListItem,
+	SkillSourceListItem,
+} from '@n8n/api-types';
 import type { TelemetryProxy } from '@n8n/backend-services';
 import { User } from '@n8n/db';
 import { ConflictError } from '@n8n/errors';
@@ -50,6 +55,28 @@ const detail: SkillDetail = {
 	skillHash: 'hash-2',
 	usedBy: { drafts: [], pins: [], hiddenAgents: 0 },
 	syncedFrom: null,
+};
+
+const syncedListItem: SkillListItem = {
+	...listItem,
+	source: 'github',
+	canEdit: false,
+	canStopSyncing: true,
+	sourceId: 'source-1',
+	syncState: 'update_available',
+};
+
+const syncedDetail: SkillDetail = {
+	...detail,
+	...syncedListItem,
+	syncedFrom: {
+		sourceId: 'source-1',
+		type: 'github',
+		label: 'acme/skills',
+		ref: 'main',
+		webUrl: 'https://github.com/acme/skills/tree/main/brand-voice',
+		canStopSyncing: true,
+	},
 };
 
 describe('McpSkillToolsService', () => {
@@ -205,6 +232,21 @@ describe('McpSkillToolsService', () => {
 			});
 		});
 
+		it('shows that a skill is synced, with its source and sync state', async () => {
+			skillService.list.mockResolvedValue({ count: 2, data: [listItem, syncedListItem] });
+
+			const result = await callTool('search_n8n_skills', { limit: 50, skip: 0 });
+
+			expect(result.structuredContent.skills).toEqual([
+				expect.objectContaining({ sourceId: null, syncState: null, canEdit: true }),
+				expect.objectContaining({
+					sourceId: 'source-1',
+					syncState: 'update_available',
+					canEdit: false,
+				}),
+			]);
+		});
+
 		it('does not return who created a skill', async () => {
 			skillService.list.mockResolvedValue({ count: 1, data: [listItem] });
 
@@ -244,6 +286,31 @@ describe('McpSkillToolsService', () => {
 				usedBy: detail.usedBy,
 				availableToAssistant: true,
 				availableToMCP: true,
+			});
+		});
+
+		it('shows where a synced skill comes from', async () => {
+			skillService.get.mockResolvedValue(syncedDetail);
+
+			const result = await callTool('get_skill', { skillId: 'skill_a' });
+
+			expect(result.structuredContent).toMatchObject({
+				sourceId: 'source-1',
+				syncState: 'update_available',
+				canEdit: false,
+				syncedFrom: syncedDetail.syncedFrom,
+			});
+		});
+
+		it('says that a skill with no source is not synced', async () => {
+			skillService.get.mockResolvedValue(detail);
+
+			const result = await callTool('get_skill', { skillId: 'skill_a' });
+
+			expect(result.structuredContent).toMatchObject({
+				sourceId: null,
+				syncState: null,
+				syncedFrom: null,
 			});
 		});
 
@@ -446,6 +513,70 @@ describe('McpSkillToolsService', () => {
 				message: expect.stringContaining('Do not retry.'),
 			});
 			expect(skillService.get).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('list_skill_sources', () => {
+		it('lists the sources that the user can see', async () => {
+			const sources = [mock<SkillSourceListItem>({ id: 'source-1', label: 'acme/skills' })];
+			skillSources.list.mockResolvedValue(sources);
+
+			const result = await callTool('list_skill_sources', {});
+
+			expect(result.isError).toBeFalsy();
+			expect(result.structuredContent).toEqual({ sources });
+			expect(skillSources.list).toHaveBeenCalledWith(user);
+			expect(telemetry.track).toHaveBeenCalledWith(USER_CALLED_MCP_TOOL_EVENT, {
+				user_id: user.id,
+				tool_name: 'list_skill_sources',
+				parameters: {},
+				results: { success: true },
+			});
+		});
+	});
+
+	describe('import_skills_from_source', () => {
+		const input = {
+			url: 'https://github.com/acme/skills',
+			scope: 'instance',
+			skillKeys: ['brand-voice'],
+			revision: 'commit',
+		};
+
+		it.each([
+			['stale', 'The source changed. Preview it again before importing.'],
+			['review_required', 'Every picked skill needs a review of its warnings.'],
+			['duplicate_source', 'This repository is already connected in Global.'],
+		] as const)('reports a refused import with the reason %s', async (reason, message) => {
+			skillSources.connectPublic.mockRejectedValue(new SkillSourceRequestError(reason, message));
+
+			const result = await callTool('import_skills_from_source', input);
+
+			expect(result.isError).toBe(true);
+			expect(result.structuredContent).toEqual({ ok: false, code: reason, error: message });
+			expect(telemetry.track).toHaveBeenCalledWith(USER_CALLED_MCP_TOOL_EVENT, {
+				user_id: user.id,
+				tool_name: 'import_skills_from_source',
+				parameters: { scope: 'instance' },
+				results: { success: false, data: { reason } },
+			});
+		});
+
+		it('returns the skills that did not come in with the ones that did', async () => {
+			const partial = {
+				sourceId: 'source-1',
+				imported: [{ key: 'brand-voice', skillId: 'skill_a', name: 'brand-voice' }],
+				failed: [{ key: 'warning', name: 'warning', reason: 'review_required' as const }],
+			};
+			skillSources.connectPublic.mockResolvedValue(partial);
+
+			const result = await callTool('import_skills_from_source', {
+				...input,
+				skillKeys: ['brand-voice', 'warning'],
+			});
+
+			expect(result.isError).toBeFalsy();
+			expect(result.structuredContent).toEqual(partial);
 		});
 	});
 

@@ -39,6 +39,28 @@ const detail: SkillDetail = {
 
 const skill = { name: 'Brand voice', description: 'd', instructions: 'Be kind.' };
 
+const syncedListItem: SkillListItem = {
+	...listItem,
+	source: 'github',
+	canEdit: false,
+	canStopSyncing: true,
+	sourceId: 'source-1',
+	syncState: 'update_available',
+};
+
+const syncedDetail: SkillDetail = {
+	...detail,
+	...syncedListItem,
+	syncedFrom: {
+		sourceId: 'source-1',
+		type: 'github',
+		label: 'acme/skills',
+		ref: 'main',
+		webUrl: 'https://github.com/acme/skills/tree/main/brand-voice',
+		canStopSyncing: true,
+	},
+};
+
 type SkillServiceMock = {
 	[K in Exclude<keyof InstanceAiSkillService, 'assistantSkillsEnabled' | 'sources'>]: Mock;
 } & Pick<InstanceAiSkillService, 'assistantSkillsEnabled' | 'sources'>;
@@ -144,6 +166,50 @@ describe('skills tool', () => {
 		expect(result).toMatchObject({ id: 'skill_a', skill: detail.skill, skillHash: 'hash-2' });
 	});
 
+	describe('synced skills', () => {
+		it('shows in the list that a skill is synced, with its source and sync state', async () => {
+			service.list.mockResolvedValue({ count: 2, data: [listItem, syncedListItem] });
+
+			const result = await executeTool(createSkillsTool(createContext(service)), {
+				action: 'list',
+			});
+
+			expect(result.skills).toEqual([
+				expect.objectContaining({ sourceId: null, syncState: null, canEdit: true }),
+				expect.objectContaining({
+					sourceId: 'source-1',
+					syncState: 'update_available',
+					canEdit: false,
+				}),
+			]);
+		});
+
+		it('shows where a synced skill comes from', async () => {
+			service.get.mockResolvedValue(syncedDetail);
+
+			const result = await executeTool(createSkillsTool(createContext(service)), {
+				action: 'get',
+				skillId: 'skill_a',
+			});
+
+			expect(result).toMatchObject({
+				sourceId: 'source-1',
+				syncState: 'update_available',
+				canEdit: false,
+				syncedFrom: syncedDetail.syncedFrom,
+			});
+		});
+
+		it('says that a skill with no source is not synced', async () => {
+			const result = await executeTool(createSkillsTool(createContext(service)), {
+				action: 'get',
+				skillId: 'skill_a',
+			});
+
+			expect(result).toMatchObject({ sourceId: null, syncState: null, syncedFrom: null });
+		});
+	});
+
 	describe('skill sources', () => {
 		const target = { url: 'https://github.com/acme/skills', scope: 'instance' };
 		const input = {
@@ -178,6 +244,36 @@ describe('skills tool', () => {
 			expect((tool.inputSchema as z.ZodType).safeParse({ action: 'list-sources' }).success).toBe(
 				false,
 			);
+		});
+
+		it('lists the sources that the user can see', async () => {
+			const sources = [{ id: 'source-1', label: 'acme/skills', skillCount: 2 }];
+			list.mockResolvedValue(sources);
+
+			const result = await executeTool(sourceTool(), { action: 'list-sources' });
+
+			expect(result).toEqual({ sources });
+		});
+
+		it('previews a source without asking for approval', async () => {
+			const preview = {
+				source: { label: 'acme/skills' },
+				duplicate: { kind: 'none' },
+				revision: 'commit',
+				skills: [{ key: 'brand-voice', name: 'Brand voice', verdict: 'pass' }],
+			};
+			discover.mockResolvedValue(preview);
+			const suspend = vi.fn();
+
+			const result = await executeTool(
+				sourceTool(),
+				{ ...target, action: 'discover-source' },
+				suspendCtx(suspend),
+			);
+
+			expect(result).toEqual(preview);
+			expect(discover).toHaveBeenCalledWith(target);
+			expect(suspend).not.toHaveBeenCalled();
 		});
 
 		it('always asks before connecting the source, even when other skill creation is always allowed', async () => {
