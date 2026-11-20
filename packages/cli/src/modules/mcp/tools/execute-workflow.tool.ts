@@ -38,10 +38,10 @@ import {
 import { getMcpWorkflow, type FoundWorkflow } from './workflow-validation.utils';
 
 import type { McpService } from '@/modules/mcp/mcp.service';
-import type { Telemetry } from '@/telemetry';
 import type { WorkflowRunner } from '@/workflow-runner';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import {
+	type TelemetryProxy,
 	type WorkflowPublishedDataService,
 	WorkflowVersionedSettingsService,
 } from '@n8n/backend-services';
@@ -87,7 +87,7 @@ export const createExecuteWorkflowTool = (
 	user: User,
 	workflowFinderService: WorkflowFinderService,
 	workflowRunner: WorkflowRunner,
-	telemetry: Telemetry,
+	telemetry: TelemetryProxy,
 	mcpService: McpService,
 	workflowsConfig: WorkflowsConfig,
 	workflowPublishedDataService: WorkflowPublishedDataService,

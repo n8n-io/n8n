@@ -409,6 +409,44 @@ describe('CredentialConfig', () => {
 			expect(screen.queryByTestId('credential-type-selector')).not.toBeInTheDocument();
 		});
 
+		it.each(['new', 'edit'])(
+			'hides credential type selection for fixed-only %s modals',
+			async (mode) => {
+				const { rerender } = renderComponent({
+					pinia: createPiniaWithStoredCredential('team'),
+					props: {
+						isManaged: false,
+						mode,
+						credentialId: 'cred-1',
+						credentialType: mockCredentialType,
+						credentialProperties: [],
+						credentialData: {},
+						isPrivateCredentialsEnabled: true,
+						isOAuthType: true,
+						isNewCredential: mode === 'new',
+						newCredentialProjectType: 'team',
+						fixedCredentialsOnly: true,
+						credentialPermissions: {
+							create: true,
+							createEndUser: true,
+							update: true,
+							read: true,
+							delete: false,
+							share: false,
+							list: true,
+							move: false,
+						},
+					},
+				});
+
+				expect(screen.queryByTestId('credential-type-selector')).not.toBeInTheDocument();
+
+				await rerender({ fixedCredentialsOnly: false });
+
+				expect(screen.getByTestId('credential-type-selector')).toBeInTheDocument();
+			},
+		);
+
 		it('should display dynamic credentials section when all conditions are met for new credential', async () => {
 			renderComponent({
 				props: {

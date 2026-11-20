@@ -1,0 +1,164 @@
+{
+	"properties": {
+		"city": {
+			"properties": {
+				"coord": {
+					"properties": {
+						"lat": {
+							"type": "number"
+						},
+						"lon": {
+							"type": "number"
+						}
+					},
+					"type": "object"
+				},
+				"country": {
+					"type": "string"
+				},
+				"id": {
+					"type": "number"
+				},
+				"name": {
+					"type": "string"
+				},
+				"population": {
+					"type": "number"
+				},
+				"sunrise": {
+					"type": "number"
+				},
+				"sunset": {
+					"type": "number"
+				},
+				"timezone": {
+					"type": "number"
+				}
+			},
+			"type": "object"
+		},
+		"cnt": {
+			"type": "number"
+		},
+		"cod": {
+			"type": "string"
+		},
+		"list": {
+			"items": {
+				"properties": {
+					"clouds": {
+						"properties": {
+							"all": {
+								"type": "number"
+							}
+						},
+						"type": "object"
+					},
+					"dt": {
+						"type": "number"
+					},
+					"dt_txt": {
+						"type": "string"
+					},
+					"main": {
+						"properties": {
+							"dew_point": {
+								"type": "number"
+							},
+							"feels_like": {
+								"type": "number"
+							},
+							"grnd_level": {
+								"type": "number"
+							},
+							"humidity": {
+								"type": "number"
+							},
+							"pressure": {
+								"type": "number"
+							},
+							"sea_level": {
+								"type": "number"
+							},
+							"temp": {
+								"type": "number"
+							},
+							"temp_kf": {
+								"type": "number"
+							},
+							"temp_max": {
+								"type": "number"
+							},
+							"temp_min": {
+								"type": "number"
+							}
+						},
+						"type": "object"
+					},
+					"pop": {
+						"type": "number"
+					},
+					"rain": {
+						"properties": {
+							"3h": {
+								"type": "number"
+							}
+						},
+						"type": "object"
+					},
+					"sys": {
+						"properties": {
+							"pod": {
+								"type": "string"
+							}
+						},
+						"type": "object"
+					},
+					"visibility": {
+						"type": "number"
+					},
+					"weather": {
+						"items": {
+							"properties": {
+								"description": {
+									"type": "string"
+								},
+								"icon": {
+									"type": "string"
+								},
+								"id": {
+									"type": "number"
+								},
+								"main": {
+									"type": "string"
+								}
+							},
+							"type": "object"
+						},
+						"type": "array"
+					},
+					"wind": {
+						"properties": {
+							"deg": {
+								"type": "number"
+							},
+							"gust": {
+								"type": "number"
+							},
+							"speed": {
+								"type": "number"
+							}
+						},
+						"type": "object"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"message": {
+			"type": "number"
+		}
+	},
+	"type": "object"
+}

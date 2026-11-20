@@ -84,9 +84,9 @@ export class AgentsConfig {
 	backgroundTasksEnabled: boolean = false;
 
 	/**
-	 * Whether n8n gives each new agent its own service account, so users can
-	 * share credentials and other resources with the agent. Set the same value
-	 * on every main instance.
+	 * Whether users can share credentials and other resources with agents, and
+	 * see agent projects in project lists. Each agent has its own service account
+	 * either way. Set the same value on every main instance.
 	 */
 	@Env('N8N_AGENTS_SERVICE_ACCOUNTS_ENABLED')
 	serviceAccountsEnabled: boolean = false;

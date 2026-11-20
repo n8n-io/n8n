@@ -515,6 +515,10 @@ export const v1Workflow = (
 		parameters?: IDataObject;
 		credentials?: INodeCredentials;
 		onError?: INode['onError'];
+		disabled?: boolean;
+		retryOnFail?: boolean;
+		alwaysOutputData?: boolean;
+		executeOnce?: boolean;
 	}>,
 	connections: IConnections = {},
 ): IWorkflowBase =>

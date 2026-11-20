@@ -18,6 +18,7 @@ export class WorkflowPublicationOutboxCleanupTask implements SystemTask {
 
 	readonly target = clusterTarget({
 		scheduler: { retryOnFailure: true },
+		// oxlint-disable-next-line typescript/no-deprecated -- Keep timer scheduling while the durable scheduler is disabled.
 		leaderTimer: {
 			/** A new leader enqueues one terminal row per active workflow, so a backlog is waiting. */
 			runOnTakeover: true,

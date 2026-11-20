@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "agents" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(128) NOT NULL, "projectId" varchar(255), "integrations" text NOT NULL DEFAULT ('[]'), "schema" text, "tools" text NOT NULL DEFAULT ('{}'), "skills" text NOT NULL DEFAULT ('{}'), "versionId" varchar(36), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "activeVersionId" varchar(36), "availableInMCP" boolean NOT NULL DEFAULT (false), "setupCompletedAt" datetime(3), "revision" integer NOT NULL DEFAULT (0), "scope" varchar(16) NOT NULL DEFAULT ('project'), "publicationRevision" integer NOT NULL DEFAULT (0), "isArchived" boolean NOT NULL DEFAULT (false), "identityId" varchar, "parentFolderId" varchar(36), CONSTRAINT "CHK_agents_scope" CHECK ((("scope" IN ('project', 'instance')))), CONSTRAINT "CHK_agents_scope_project" CHECK ((("scope" = 'instance') = ("projectId" IS NULL))), CONSTRAINT "CHK_agents_folder_scope" CHECK ("scope" != 'instance' OR "parentFolderId" IS NULL), CONSTRAINT "FK_a30d560207c4071d98aa03c179c" FOREIGN KEY ("projectId") REFERENCES "project" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_940597dfe9753375309ce6aeea0" FOREIGN KEY ("activeVersionId") REFERENCES "agent_history" ("versionId") ON DELETE SET NULL ON UPDATE NO ACTION, CONSTRAINT "FK_agents_identity" FOREIGN KEY ("identityId") REFERENCES "user" ("id") ON DELETE SET NULL, CONSTRAINT "FK_agents_parent_folder" FOREIGN KEY ("parentFolderId") REFERENCES "folder" ("id") ON DELETE RESTRICT)
+CREATE TABLE "agents" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(128) NOT NULL, "projectId" varchar(255), "integrations" text NOT NULL DEFAULT ('[]'), "schema" text, "tools" text NOT NULL DEFAULT ('{}'), "skills" text NOT NULL DEFAULT ('{}'), "versionId" varchar(36), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "activeVersionId" varchar(36), "availableInMCP" boolean NOT NULL DEFAULT (false), "setupCompletedAt" datetime(3), "revision" integer NOT NULL DEFAULT (0), "scope" varchar(16) NOT NULL DEFAULT ('project'), "publicationRevision" integer NOT NULL DEFAULT (0), "isArchived" boolean NOT NULL DEFAULT (false), "identityId" varchar NOT NULL, "parentFolderId" varchar(36), CONSTRAINT "CHK_agents_scope" CHECK ((((("scope" IN ('project', 'instance')))))), CONSTRAINT "CHK_agents_scope_project" CHECK ((((("scope" = 'instance') = ("projectId" IS NULL))))), CONSTRAINT "CHK_agents_folder_scope" CHECK ((("scope" != 'instance' OR "parentFolderId" IS NULL))), CONSTRAINT "FK_a30d560207c4071d98aa03c179c" FOREIGN KEY ("projectId") REFERENCES "project" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_940597dfe9753375309ce6aeea0" FOREIGN KEY ("activeVersionId") REFERENCES "agent_history" ("versionId") ON DELETE SET NULL ON UPDATE NO ACTION, CONSTRAINT "FK_agents_parent_folder" FOREIGN KEY ("parentFolderId") REFERENCES "folder" ("id") ON DELETE RESTRICT ON UPDATE NO ACTION, CONSTRAINT "FK_agents_identity" FOREIGN KEY ("identityId") REFERENCES "user" ("id") ON DELETE RESTRICT)
 ```
 
 </details>
@@ -18,8 +18,8 @@ CREATE TABLE "agents" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(128
 | activeVersionId | varchar(36) |  | true |  | [agent_history](agent_history.md) |  |
 | availableInMCP | boolean | false | false |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
-| id | varchar(36) |  | false | [agent_background_job](agent_background_job.md) [agent_channel_status](agent_channel_status.md) [agent_chat_attachments](agent_chat_attachments.md) [agent_chat_subscriptions](agent_chat_subscriptions.md) [agent_checkpoints](agent_checkpoints.md) [agent_credential_dependency](agent_credential_dependency.md) [agent_eval_dataset](agent_eval_dataset.md) [agent_execution_threads](agent_execution_threads.md) [agent_files](agent_files.md) [agent_history](agent_history.md) [agent_publish_history](agent_publish_history.md) [agent_skill_dependency](agent_skill_dependency.md) [agent_task_definition](agent_task_definition.md) [agent_task_run_lock](agent_task_run_lock.md) [agent_workflow_dependency](agent_workflow_dependency.md) [agents_memory_entries](agents_memory_entries.md) [agents_memory_entry_candidates](agents_memory_entry_candidates.md) [agents_memory_entry_locks](agents_memory_entry_locks.md) [agents_memory_entry_sources](agents_memory_entry_sources.md) [agents_observation_cursors](agents_observation_cursors.md) [agents_observation_locks](agents_observation_locks.md) [agents_observations](agents_observations.md) [agents_tags](agents_tags.md) |  |  |
-| identityId | varchar |  | true |  | [user](user.md) |  |
+| id | varchar(36) |  | false | [agent_background_job](agent_background_job.md) [agent_channel_status](agent_channel_status.md) [agent_chat_attachments](agent_chat_attachments.md) [agent_chat_subscriptions](agent_chat_subscriptions.md) [agent_checkpoints](agent_checkpoints.md) [agent_credential_dependency](agent_credential_dependency.md) [agent_eval_dataset](agent_eval_dataset.md) [agent_execution_threads](agent_execution_threads.md) [agent_files](agent_files.md) [agent_history](agent_history.md) [agent_knowledge_dependency](agent_knowledge_dependency.md) [agent_publish_history](agent_publish_history.md) [agent_skill_dependency](agent_skill_dependency.md) [agent_task_definition](agent_task_definition.md) [agent_task_run_lock](agent_task_run_lock.md) [agent_workflow_dependency](agent_workflow_dependency.md) [agents_memory_entries](agents_memory_entries.md) [agents_memory_entry_candidates](agents_memory_entry_candidates.md) [agents_memory_entry_locks](agents_memory_entry_locks.md) [agents_memory_entry_sources](agents_memory_entry_sources.md) [agents_observation_cursors](agents_observation_cursors.md) [agents_observation_locks](agents_observation_locks.md) [agents_observations](agents_observations.md) [agents_tags](agents_tags.md) [knowledge_collection](knowledge_collection.md) |  |  |
+| identityId | varchar |  | false |  | [user](user.md) |  |
 | integrations | TEXT | '[]' | false |  |  |  |
 | isArchived | boolean | false | false |  |  |  |
 | name | varchar(128) |  | false |  |  |  |
@@ -39,11 +39,11 @@ CREATE TABLE "agents" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(128
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| - | CHECK | CHECK ((("scope" IN ('project', 'instance')))) |
-| - | CHECK | CHECK ((("scope" = 'instance') = ("projectId" IS NULL))) |
-| - | CHECK | CHECK ("scope" != 'instance' OR "parentFolderId" IS NULL) |
-| - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (parentFolderId) REFERENCES folder (id) ON UPDATE NO ACTION ON DELETE RESTRICT MATCH NONE |
-| - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (identityId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE |
+| - | CHECK | CHECK ((((("scope" IN ('project', 'instance')))))) |
+| - | CHECK | CHECK ((((("scope" = 'instance') = ("projectId" IS NULL))))) |
+| - | CHECK | CHECK ((("scope" != 'instance' OR "parentFolderId" IS NULL))) |
+| - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (identityId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE RESTRICT MATCH NONE |
+| - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (parentFolderId) REFERENCES folder (id) ON UPDATE NO ACTION ON DELETE RESTRICT MATCH NONE |
 | - (Foreign key ID: 2) | FOREIGN KEY | FOREIGN KEY (activeVersionId) REFERENCES agent_history (versionId) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE |
 | - (Foreign key ID: 3) | FOREIGN KEY | FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | id | PRIMARY KEY | PRIMARY KEY (id) |
@@ -75,6 +75,7 @@ erDiagram
 "agent_execution_threads" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_files" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_history" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"agent_knowledge_dependency" |o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_publish_history" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_skill_dependency" |o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_task_definition" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -88,7 +89,8 @@ erDiagram
 "agents_observation_locks" |o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agents_observations" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agents_tags" |o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"agents" }o--o| "user" : "FOREIGN KEY (identityId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"knowledge_collection" }o--o| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"agents" }o--|| "user" : "FOREIGN KEY (identityId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE RESTRICT MATCH NONE"
 "agents" }o--o| "folder" : "FOREIGN KEY (parentFolderId) REFERENCES folder (id) ON UPDATE NO ACTION ON DELETE RESTRICT MATCH NONE"
 "agents" }o--o| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
@@ -251,6 +253,11 @@ erDiagram
   varchar_2_ storedAt
   datetime_3_ updatedAt
 }
+"agent_knowledge_dependency" {
+  varchar_36_ agentId PK
+  datetime_3_ createdAt
+  varchar_16_ knowledgeCollectionId PK
+}
 "agent_publish_history" {
   varchar_36_ agentId FK
   varchar_255_ author
@@ -353,6 +360,7 @@ erDiagram
   varchar_36_ resumeFromMessageId
   TEXT resumeNotes
   datetime_3_ updatedAt
+  TEXT workingSet
 }
 "agents_observation_locks" {
   varchar_36_ agentId PK
@@ -379,6 +387,19 @@ erDiagram
 "agents_tags" {
   varchar_36_ agentId PK
   varchar_36_ tagId PK
+}
+"knowledge_collection" {
+  varchar_36_ agentId FK
+  datetime_3_ createdAt
+  varchar createdById FK
+  varchar_512_ description
+  varchar_16_ id PK
+  boolean isGlobal
+  varchar_16_ kind
+  varchar_128_ name
+  varchar_36_ projectId FK
+  varchar_24_ slug
+  datetime_3_ updatedAt
 }
 "user" {
   datetime_3_ createdAt

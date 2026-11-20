@@ -1,3 +1,4 @@
+import { ExecutionLedger } from '@n8n/backend-services';
 import { ScheduledJobOwnerType, Time } from '@n8n/constants';
 import {
 	LicenseMetricsRepository,
@@ -19,6 +20,9 @@ type PublicationStats = Partial<
 	Record<WorkflowPublicationOutboxStatus, { count: number; oldestMs: number }>
 >;
 
+/** The ledger backlog, as JSON so the cache can hold it. */
+export type LedgerBacklogState = { rows: number; oldestMs: number | null };
+
 /** The stored schedule of one durable system task, as JSON so the cache can hold it. */
 export type DurableJobState = {
 	task: string;
@@ -38,6 +42,7 @@ export class DatabaseMetricQueryService {
 		private readonly outboxRepository: WorkflowPublicationOutboxRepository,
 		private readonly taskRepository: ScheduledTaskRepository,
 		private readonly jobRepository: ScheduledJobRepository,
+		private readonly executionLedger: ExecutionLedger,
 	) {}
 
 	activeWorkflowCount(ttlMs: number) {
@@ -75,6 +80,18 @@ export class DatabaseMetricQueryService {
 					byStatus[status] = { count, oldestMs: oldestCreatedAt.getTime() };
 				}
 				return byStatus;
+			},
+		});
+	}
+
+	/** Call only while `ExecutionLedger.isEnabled`, that is once the module bound its writer. */
+	executionLedgerBacklog(ttlMs: number) {
+		return this.cachedQueries.create<LedgerBacklogState>({
+			cacheKey: 'metrics:execution-ledger:backlog:v1',
+			ttlMs,
+			query: async () => {
+				const { rows, oldestOccurredAt } = await this.executionLedger.getBacklogStats();
+				return { rows, oldestMs: oldestOccurredAt?.getTime() ?? null };
 			},
 		});
 	}

@@ -3,12 +3,17 @@ import { normalizeEndpoint } from '../normalizeEndpoint';
 
 export type CustomModelEndpointCredentialData = {
 	url?: string;
-	authentication?: 'bearer' | 'header' | 'basic' | 'none';
+	authentication?: 'bearer' | 'header' | 'basic' | 'oauth2' | 'none';
 	apiKey?: string;
 	authHeaderName?: string;
 	authHeaderPrefix?: string;
 	username?: string;
 	password?: string;
+	tokenUrl?: string;
+	clientId?: string;
+	clientSecret?: string;
+	scope?: string;
+	sendCredentialsIn?: 'header' | 'body';
 	gatewayHeaders?: { headers?: Array<{ name?: string; value?: string }> };
 };
 
@@ -28,11 +33,49 @@ function readLoginMethod(data: CustomModelEndpointCredentialData): LoginMethod {
 				// A password may start or end with a space on purpose
 				password: data.password ?? '',
 			};
+		case 'oauth2':
+			return {
+				type: 'oauth2',
+				tokenUrl: data.tokenUrl?.trim() ?? '',
+				clientId: data.clientId?.trim() ?? '',
+				clientSecret: data.clientSecret ?? '',
+				scope: data.scope?.trim() ?? '',
+				sendCredentialsIn: data.sendCredentialsIn ?? 'header',
+			};
 		case 'none':
 			return { type: 'none' };
 		default:
 			return { type: 'bearer', token: data.apiKey?.trim() ?? '' };
 	}
+}
+
+export type OpenAiCredentialData = {
+	apiKey?: string;
+	organizationId?: string;
+	url?: string;
+	header?: boolean;
+	headerName?: string;
+	headerValue?: string;
+};
+
+/** The credential's own field carries this, but a credential saved with it cleared has none. */
+const OPENAI_BASE_URL = 'https://api.openai.com/v1';
+
+/** So a workflow already reaching a gateway through the OpenAI node keeps its credential. */
+export function readOpenAiCredential(data: OpenAiCredentialData): EndpointCredential {
+	const custom: Record<string, string> =
+		data.header && data.headerName?.trim()
+			? { [data.headerName.trim()]: data.headerValue ?? '' }
+			: {};
+	const organization: Record<string, string> = data.organizationId?.trim()
+		? { 'OpenAI-Organization': data.organizationId.trim() }
+		: {};
+
+	return {
+		baseUrl: normalizeEndpoint(data.url) || OPENAI_BASE_URL,
+		login: { type: 'bearer', token: data.apiKey?.trim() ?? '' },
+		gatewayHeaders: { ...organization, ...custom },
+	};
 }
 
 export function readCustomModelEndpointCredential(

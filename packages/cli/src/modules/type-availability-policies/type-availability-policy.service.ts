@@ -1,5 +1,5 @@
-import type { NodeTypeAvailabilityScope } from '@n8n/api-types';
-import { EventService } from '@n8n/backend-services';
+import type { InstanceTypeAccessResponse, NodeTypeAvailabilityScope } from '@n8n/api-types';
+import { EventService, loginIdOf } from '@n8n/backend-services';
 import { TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import {
@@ -9,7 +9,6 @@ import {
 } from 'n8n-workflow';
 
 import { ConflictError, NotFoundError, UserError } from '@n8n/errors';
-import { loginIdOf } from '@/events/login-id';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { NodeTypes } from '@/node-types';
 
@@ -27,7 +26,12 @@ import {
 	type ProjectEffectivePolicy,
 } from './effective-policy';
 import { loadedCheckFor, packageResolverFor, policedTypeFor } from './package-resolver';
-import { evaluateComposedType, orderedAttachments, type ComposedVerdict } from './policy-evaluator';
+import {
+	evaluateComposedType,
+	evaluateRules,
+	orderedAttachments,
+	type ComposedVerdict,
+} from './policy-evaluator';
 import type { PolicyAction, PolicyAttachment, PolicyRule } from './policy-rule.types';
 import { lintPolicyRules, type PolicyRuleWarning } from './policy-rule-lint';
 import { TypeAvailabilityPolicySnapshot } from './type-availability-policy-snapshot';
@@ -48,6 +52,11 @@ export type ScopeAttachments = {
 
 /** One type's composed verdict, as `evaluateComposedTypes` reports it. */
 export type ComposedTypeVerdict = ComposedVerdict & { readonly name: string };
+
+export type AllProjectsEvaluation = {
+	withoutProjectPolicy: ComposedTypeVerdict[];
+	byProject: Array<{ projectId: string; verdicts: ComposedTypeVerdict[] }>;
+};
 
 /**
  * Composed verdicts plus the version of every scope that was read.
@@ -829,6 +838,35 @@ export class TypeAvailabilityPolicyService {
 	}
 
 	/**
+	 * What the instance policy alone decides for each type, evaluated against one read so that
+	 * `version` matches the verdicts. Uncached for the reason on `getEffectivePolicy`.
+	 */
+	async getInstanceAccess(
+		kind: string,
+		typeNames: readonly string[],
+	): Promise<InstanceTypeAccessResponse> {
+		const effective = await this.getEffectivePolicy(kind, null);
+		const resolvePackage = packageResolverFor(kind, this.loadNodesAndCredentials);
+		const policedType = policedTypeFor(kind, this.nodeTypes, this.loadNodesAndCredentials);
+
+		return {
+			scopeId: effective.scopeId,
+			version: effective.version,
+			defaultAction: effective.defaultAction,
+			types: typeNames.map((name) => {
+				const { action, matchedRuleId } = evaluateRules(
+					effective.rules,
+					effective.defaultAction,
+					policedType(name),
+					resolvePackage,
+				);
+
+				return { name, access: action, matchedRuleId };
+			}),
+		};
+	}
+
+	/**
 	 * Composes the instance and project verdicts for one type, per `evaluateComposedType`.
 	 */
 	async evaluateComposedType(
@@ -890,10 +928,7 @@ export class TypeAvailabilityPolicyService {
 	async evaluateComposedTypesForAllProjects(
 		kind: string,
 		typeNames: readonly string[],
-	): Promise<{
-		withoutProjectPolicy: ComposedTypeVerdict[];
-		byProject: Array<{ projectId: string; verdicts: ComposedTypeVerdict[] }>;
-	}> {
+	): Promise<AllProjectsEvaluation> {
 		const [instance, projects] = await Promise.all([
 			this.readEnforcedScope(kind, null),
 			this.snapshot.projectScopes(kind) ?? this.readProjectScopes(kind),

@@ -1,0 +1,19 @@
+{
+	"properties": {
+		"text": {
+			"type": "string"
+		},
+		"usage": {
+			"properties": {
+				"seconds": {
+					"type": "number"
+				},
+				"type": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		}
+	},
+	"type": "object"
+}

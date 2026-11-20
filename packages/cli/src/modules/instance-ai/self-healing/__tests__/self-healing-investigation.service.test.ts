@@ -19,7 +19,7 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import type { Telemetry } from '@/telemetry';
+import type { TelemetryProxy } from '@n8n/backend-services';
 
 import type { DurableEventLog } from '../../event-bus/durable-event-log';
 import type { InterruptedRunSweeper } from '../../event-bus/interrupted-run-sweeper';
@@ -66,7 +66,7 @@ describe('SelfHealingInvestigationService', () => {
 		enabledById: user.id,
 		includeSubWorkflows: false,
 	});
-	const telemetry = mock<Telemetry>();
+	const telemetry = mock<TelemetryProxy>();
 	const instanceSettings = mock<InstanceSettings>({ isLeader: true });
 	const { SELF_HEALING_EVALUATED_FAILURE, SELF_HEALING_FINISHED_INVESTIGATION } =
 		TELEMETRY_EVENT.SELF_HEALING;

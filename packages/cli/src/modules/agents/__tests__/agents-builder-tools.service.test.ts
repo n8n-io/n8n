@@ -17,7 +17,11 @@ import {
 	type AgentJsonConfig,
 	type AgentTaskDto,
 } from '@n8n/api-types';
-import type { CredentialsFinderService, NodeTypesProxy } from '@n8n/backend-services';
+import type {
+	CredentialsFinderService,
+	NodeTypesProxy,
+	TelemetryProxy,
+} from '@n8n/backend-services';
 import type { CustomFetch, HttpTransport, OutboundHttp } from '@n8n/backend-network';
 import { GLOBAL_MEMBER_ROLE, type User } from '@n8n/db';
 import { convertArrayToReadableStream, MockLanguageModelV3 } from 'ai/test';
@@ -33,7 +37,6 @@ import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { AiService } from '@/services/ai.service';
 import type { AgentWriteLockService } from '../agent-write-lock.service';
 import type { FreeAiCreditsService } from '@/services/free-ai-credits.service';
-import type { Telemetry } from '@/telemetry';
 
 import type { AgentConfigService } from '../agent-config.service';
 import type { AgentCustomToolsService } from '../agent-custom-tools.service';
@@ -102,7 +105,7 @@ function makeService() {
 	const agentTaskService = mock<AgentTaskService>();
 	const agentPublishService = mock<AgentPublishService>();
 	const agentTestRunService = mock<AgentTestRunService>();
-	const telemetry = mock<Telemetry>();
+	const telemetry = mock<TelemetryProxy>();
 	const aiService = mock<AiService>();
 	aiService.isProxyEnabled.mockReturnValue(false);
 	const nodeTypes = mock<NodeTypesProxy>();
@@ -165,7 +168,7 @@ function makeService() {
 
 const baseConfig: AgentJsonConfig = {
 	name: 'Agent One',
-	model: 'anthropic/claude-sonnet-4-5',
+	model: 'anthropic/claude-sonnet-5-5',
 	credential: 'Anthropic Key',
 	instructions: 'Help the user.',
 	tools: [],
@@ -1872,9 +1875,9 @@ describe('AgentsBuilderToolsService', () => {
 
 		describe('prompt caching defaults', () => {
 			it.each([
-				'anthropic/claude-sonnet-4-5',
-				'openrouter/anthropic/claude-sonnet-4.5',
-				'google-vertex/claude-sonnet-4-5',
+				'anthropic/claude-sonnet-5-5',
+				'openrouter/anthropic/claude-sonnet-5.5',
+				'google-vertex/claude-sonnet-5-5',
 			])('agent_builder_write_config enables caching for %s when omitted', async (model) => {
 				const { service, agentsService } = makeService();
 				const currentConfig = { ...baseConfig, model, integrations: [] };
@@ -1974,13 +1977,13 @@ describe('AgentsBuilderToolsService', () => {
 				const currentConfig = { ...baseAgent };
 				const updatedConfig: AgentJsonConfig = {
 					...currentConfig,
-					model: 'anthropic/claude-sonnet-4-5',
+					model: 'anthropic/claude-sonnet-5-5',
 					credential: 'Anthropic Key',
 					config: { webSearch: { enabled: false }, promptCaching: { enabled: false } },
 				};
 				const normalizedConfig = {
 					...currentConfig,
-					model: 'anthropic/claude-sonnet-4-5',
+					model: 'anthropic/claude-sonnet-5-5',
 					credential: 'Anthropic Key',
 					config: { webSearch: { enabled: false }, promptCaching: { enabled: false } },
 				};
@@ -2054,9 +2057,9 @@ describe('AgentsBuilderToolsService', () => {
 			});
 
 			it.each([
-				'anthropic/claude-sonnet-4-5',
-				'openrouter/anthropic/claude-sonnet-4.5',
-				'google-vertex/claude-sonnet-4-5',
+				'anthropic/claude-sonnet-5-5',
+				'openrouter/anthropic/claude-sonnet-5.5',
+				'google-vertex/claude-sonnet-5-5',
 			])('agent_builder_write_config preserves the cache TTL for %s', async (model) => {
 				const { service, agentsService } = makeService();
 				const baseAgent = {

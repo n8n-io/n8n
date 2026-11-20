@@ -220,6 +220,25 @@ describe('useAgentApi', () => {
 			]);
 		});
 
+		it('reads a page of chat messages, with the cursor only when set', async () => {
+			vi.mocked(makeRestApiRequest).mockResolvedValue({ messages: [], openSuspensions: [] });
+
+			await getChatMessages(restApiContext, 'project-1', 'agent-1', 'thread-1');
+			await getChatMessages(restApiContext, 'project-1', 'agent-1', 'thread-1', 'chat', {
+				limit: 20,
+			});
+			await getChatMessages(restApiContext, 'project-1', 'agent-1', 'thread-1', 'chat', {
+				limit: 20,
+				cursor: 'cursor-1',
+			});
+
+			expect(vi.mocked(makeRestApiRequest).mock.calls.map((call) => call.slice(3))).toEqual([
+				[],
+				[{ limit: '20' }],
+				[{ limit: '20', cursor: 'cursor-1' }],
+			]);
+		});
+
 		it('lists a page of system-agent threads, with the cursor and search only when set', async () => {
 			vi.mocked(makeRestApiRequest).mockResolvedValue({ data: [], nextCursor: null });
 
@@ -594,7 +613,7 @@ describe('useAgentApi', () => {
 		it('posts the initial config and reserved agent id', async () => {
 			const config: AgentJsonConfig = {
 				name: 'Support Agent',
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 				instructions: 'Triage tickets.',
 			};
 
@@ -616,7 +635,7 @@ describe('useAgentApi', () => {
 		it('fetches the source agent, then creates a clone with the new name', async () => {
 			const sourceConfig = {
 				name: 'Support Agent',
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 				instructions: 'Triage tickets.',
 			} as unknown as AgentJsonConfig;
 			const sourceAgent = {
@@ -664,7 +683,7 @@ describe('useAgentApi', () => {
 		it('copies channels without their credential so the clone opens as drafts', async () => {
 			const sourceConfig = {
 				name: 'Support Agent',
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 				instructions: 'Triage tickets.',
 				integrations: [
 					{ type: 'telegram', credentialId: 'cred-telegram-1' },

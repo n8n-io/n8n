@@ -249,6 +249,7 @@ export const setupTestServer = ({
 
 					case 'ai-preferences':
 						await import('@/controllers/ai-preference.controller.js');
+						await import('@/controllers/ai-preference-settings.controller.js');
 						break;
 
 					case 'instance-ai':

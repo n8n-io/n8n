@@ -33,6 +33,7 @@ import { PackageImportConfig } from '@/modules/n8n-packages/n8n-packages.config'
 import type { ExportPackageEventCounts } from '@/modules/n8n-packages/n8n-packages.types';
 import { serializedAgentSchema } from '@/modules/n8n-packages/spec/serialized/agent.schema';
 import { serializedSkillSchema } from '@/modules/n8n-packages/spec/serialized/skill.schema';
+import { createAgent } from '@test-integration/db/agents';
 import { createFolder } from '@test-integration/db/folders';
 import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
 import { createMemberWithApiKey, createOwnerWithApiKey } from '@test-integration/db/users';
@@ -61,7 +62,7 @@ beforeEach(async () => {
 	owner = await createOwnerWithApiKey();
 	project = await createTeamProject('Selected project', owner);
 	otherProject = await createTeamProject('Dependency project', owner);
-	agent = await repository.save({
+	agent = await createAgent({
 		id: 'support_source',
 		name: 'Support',
 		projectId: project.id,
@@ -70,7 +71,7 @@ beforeEach(async () => {
 		),
 		versionId: 'draft-version',
 	});
-	dependency = await repository.save({
+	dependency = await createAgent({
 		id: 'dependency',
 		name: 'Dependency',
 		projectId: otherProject.id,

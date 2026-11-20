@@ -1,4 +1,5 @@
 import {
+	NodeOperationError,
 	type IDataObject,
 	type IExecuteFunctions,
 	type INodeExecutionData,
@@ -7,8 +8,9 @@ import {
 
 import { createEventLoopYielder } from '@n8n/utils/promise/create-event-loop-yielder';
 
-import { updateDisplayOptions } from '@utils/utilities';
+import { generatePairedItemData, updateDisplayOptions } from '@utils/utilities';
 
+import { copyRows, type CopyRow } from '../../helpers/copy';
 import type {
 	PgpClient,
 	PgpDatabase,
@@ -183,6 +185,8 @@ export async function execute(
 
 	let tableSchema = await getTableSchema(db, schema, table);
 
+	const useCopy = nodeOptions.useCopy === true;
+	const rowsToCopy: CopyRow[] = [];
 	const queries: QueryWithValues[] = [];
 	const errorItemsMap = new Map<number, INodeExecutionData>();
 	const yieldToEventLoop = createEventLoopYielder();
@@ -240,11 +244,25 @@ export async function execute(
 
 			tableSchema = await updateTableSchema(db, tableSchema, schema, table);
 
-			if (nodeVersion >= 2.4) {
+			if (nodeVersion >= 2.4 || useCopy) {
 				item = convertArraysToPostgresFormat(item, tableSchema, this.getNode(), i);
 			}
 
-			values.push(checkItemAgainstSchema(this.getNode(), item, tableSchema, i));
+			checkItemAgainstSchema(this.getNode(), item, tableSchema, i);
+
+			if (useCopy) {
+				if (Object.keys(item).length === 0) {
+					throw new NodeOperationError(
+						this.getNode(),
+						'Load Rows With COPY needs at least one column value in each item',
+						{ itemIndex: i },
+					);
+				}
+				rowsToCopy.push({ itemIndex: i, schema, table, item });
+				continue;
+			}
+
+			values.push(item);
 
 			const outputColumns = this.getNodeParameter('options.outputColumns', i, ['*']) as string[];
 
@@ -266,5 +284,33 @@ export async function execute(
 		}
 	}
 
+	if (useCopy) {
+		return await insertWithCopy.call(this, items, rowsToCopy, errorItemsMap, db, pgp);
+	}
+
 	return await runQueriesAndHandleErrors(runQueries, queries, nodeOptions, errorItemsMap);
+}
+
+async function insertWithCopy(
+	this: IExecuteFunctions,
+	items: INodeExecutionData[],
+	rowsToCopy: CopyRow[],
+	errorItemsMap: Map<number, INodeExecutionData>,
+	db: PgpDatabase,
+	pgp: PgpClient,
+): Promise<INodeExecutionData[]> {
+	// COPY loads all rows or none
+	if (errorItemsMap.size > 0) return Array.from(errorItemsMap.values());
+
+	const allItems = generatePairedItemData(items.length);
+
+	try {
+		const rows = await copyRows(this.getNode(), db, pgp, rowsToCopy);
+		return [{ json: { rows }, pairedItem: allItems }];
+	} catch (error) {
+		if (!this.continueOnFail() || !(error instanceof NodeOperationError)) throw error;
+		const { itemIndex } = error.context;
+		const pairedItem = typeof itemIndex === 'number' ? { item: itemIndex } : allItems;
+		return [{ json: { error: { ...error, message: error.message } }, pairedItem }];
+	}
 }
