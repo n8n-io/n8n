@@ -121,12 +121,16 @@ export interface StepCall {
  * later read pairs them by the engine rule of `assignPairedItems` (`pairedSourceIndexes`), from
  * the counts of the input items and the output items. With `index`, each item gets the index of
  * its input item, as v1's Code node in "each item" mode gives it.
+ *
+ * The registration names the depth of the writer: a form that is written below the place of the
+ * body (`HostForm`, a block of a traced step) registers no pairs, because no reader sees it.
  */
 export function emitFreshPairs(c: NodeContext, list: string, pairs: string, index: boolean): void {
 	const { w } = c;
+	if (c.setPairs === undefined) return;
+	c.setPairs(pairs, 0, index, undefined, w.depth);
 	w.line(`const ${pairs}: Json = { items: ${list}, paired: [] };`);
 	w.line(`for (let k = 0; k < ${list}.length; k++) ${pairs}.paired.push(${index ? 'k' : 'null'});`);
-	c.setPairs?.(pairs, 0, index);
 }
 
 /** Fails the node when a raw expression would not give the v1 value in the host. */
@@ -313,7 +317,9 @@ export function emitStep(c: NodeContext, call: StepCall): void {
 			emitCall(c, out, null, fn, opts, `${out}[0]`, call.hostLimit);
 			failTrace(c, call.hostLimit);
 			w.close();
+			// At the depth of the body (not in the block of the step): a later read sees the pairs.
 			emitPosition();
+			if (fresh !== null) emitFreshPairs(c, out, fresh, call.freshPairsByIndex === true);
 			return;
 		}
 		w.line(`let ${out}: Json[] = [];`);
@@ -483,9 +489,6 @@ export function emitStep(c: NodeContext, call: StepCall): void {
 		emitCall(c, 'result', 'let result: Json[]', fn, opts, 'result[0]', call.hostLimit);
 		w.line(`for (const r of result) ${push('r')}`);
 		failTrace(c, call.hostLimit);
-		if (call.freshPairs === true) {
-			emitFreshPairs(c, out, c.local('Pairs'), call.freshPairsByIndex === true);
-		}
 	} else if (onError === 'stopWorkflow') {
 		emitCall(c, 'result', 'let result: Json[]', fn, opts, 'result[0]', call.hostLimit, plain);
 		w.line(`for (const r of result) ${push('r')}`);
@@ -1139,6 +1142,8 @@ export function hostFormOf(
 		...renamed(c, form.out, form.errors),
 		// A step name is unique in a module. n8n reads this name as a step of the node.
 		node: { ...c.node, name: `${c.node.name}${HOST_STEP}` },
+		// A form that another form replaces gives no pairs to the readers of the workflow.
+		pairsWanted: false,
 		w,
 		print: (code, prefix = '') => print(code, w.indent, w.indent.length * 4 + prefix.length),
 		warn: () => {},

@@ -76,7 +76,7 @@ export interface NodeContext {
 	 * Records the pair data of an output. `inputs` gives the code of the list with the input
 	 * index of each item, for a node with several inputs (the Merge node).
 	 */
-	setPairs?(run: string, output?: number, total?: boolean, inputs?: string): void;
+	setPairs?(run: string, output?: number, total?: boolean, inputs?: string, at?: number): void;
 	/** True when the source traces every node (`trace: 'all'`), sub-nodes of AI clusters too. */
 	traceAll?: boolean;
 	/** Code of a condition under which the node gives no output at all (v1 run data has none). */

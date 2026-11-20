@@ -430,6 +430,11 @@ const CASES: Case[] = [...PAIRING, ...GLOBALS, ...RETURNS];
 /** The members of `$('Node')` that read a paired item. */
 const PAIRED = /(?:\$\([^)]*\)|\bnode)\.(?:item\b(?!\()|itemMatching\(|pairedItem\()/;
 
+/** A paired read through a name that the code computes: the code can read every node. */
+const COMPUTED_PAIRED = /(?:\$\(\s*[^'"`\s)]|\$node\s*\[\s*[^'"`\s\]])/;
+const PAIRED_MEMBER = /\.(?:item\b(?!\()|itemMatching\(|pairedItem\()/;
+const computedPaired = (code: string) => COMPUTED_PAIRED.test(code) && PAIRED_MEMBER.test(code);
+
 /**
  * The forms that the host cannot give as v1 does, with the diagnostic of the converter. The
  * converter must refuse each of them, and no other case: n8n then runs the workflow on v1.
@@ -437,7 +442,13 @@ const PAIRED = /(?:\$\([^)]*\)|\bnode)\.(?:item\b(?!\()|itemMatching\(|pairedIte
 const REFUSALS: Array<{ code: string; when: (c: Case) => boolean }> = [
 	{
 		code: 'code-node-reference',
-		when: (c) => (c.chain === 'drop' || c.chain === 'reverse') && PAIRED.test(c.code),
+		// The `drop` chain keeps no pairs: a read of its target converts and fails as v1 fails (the
+		// counts of its input and output items differ). The `reverse` chain gives paired items that
+		// the host cannot follow, and a computed name can read every node, so a node without pairs
+		// stays refused.
+		when: (c) =>
+			(c.chain === 'reverse' && PAIRED.test(c.code)) ||
+			(c.chain === 'drop' && computedPaired(c.code)),
 	},
 	{
 		code: 'code-node-reference',

@@ -503,6 +503,9 @@ export function runsOnceOnOneInput(
 			}
 		}
 	}
+	// No connection at all is no input list: the node has no such name (a form of the node that
+	// the workflow does not have) or no items to pair.
+	if (incoming === 0) return false;
 	return incoming === 1 || (engine && !severalInputs);
 }
 

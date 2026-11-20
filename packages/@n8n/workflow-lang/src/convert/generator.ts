@@ -317,6 +317,15 @@ class Body {
 	/** Why a node keeps no paired items, by node name: fixed words, for `pairingReason`. */
 	readonly noPairs = new Map<string, string>();
 
+	/**
+	 * The names that a read of a pair in this body can see: the output lists of the nodes and
+	 * the pair data of their outputs, declared where the code of the body declares the nodes.
+	 */
+	readonly visible = new Set<string>();
+
+	/** The depth of the writer where the code of a node of this body is written. */
+	depth = 0;
+
 	/** The first reason of a read of a paired item that is not known, by the node that reads. */
 	readonly notPaired = new Map<string, string>();
 
@@ -616,7 +625,10 @@ export class ModuleGenerator {
 	/** The list of a node output that other nodes read; `noItems` when the output has no list. */
 	private outputVar(b: Body, node: string, index: number): string {
 		const found = b.engine ? b.engineVars.get(node)?.get(index) : b.outputs.get(node)?.get(index);
-		if (found) return found;
+		if (found) {
+			b.visible.add(found);
+			return found;
+		}
 		this.usesNoItems = true;
 		return 'noItems';
 	}
@@ -1174,6 +1186,25 @@ export class ModuleGenerator {
 		const hops: Hop[] = [];
 		let chain: ((index: string) => string) | null = null;
 		const walk = this.pairingWalk(b, current, target);
+		// A name of the walk that is not declared where the code of the reader is written (a form
+		// of a step that another form replaced, a block that the reader does not see) has no read:
+		// the refusal names the scope, and never a name that the compiler cannot find.
+		if (!('reason' in walk)) {
+			const hopsOf = [
+				...walk.hops,
+				...(walk.fork?.alternatives ?? []).flatMap((alt) => alt.hops),
+				...(walk.merge?.alternatives ?? []).flatMap((alt) => alt.hops),
+			];
+			const away = hopsOf.find((hop) => !b.visible.has(hop.run) || !b.visible.has(hop.input));
+			const mergeAway =
+				walk.merge !== undefined && !b.visible.has(walk.merge.run) ? walk.merge.node : undefined;
+			const name = away?.name ?? mergeAway;
+			if (name !== undefined) {
+				b.noPairs.set(name, `pair data of ${this.typeOf(b, name)} is not in scope`);
+				this.pairedHops.set(key, { chain: null, values: [] });
+				return null;
+			}
+		}
 		let mergeValues: Array<{ param: string; value: string }> = [];
 		let mergeAccess: (() => { paired: string; inputs: string }) | undefined;
 		if (!('reason' in walk)) {
@@ -1519,13 +1550,22 @@ export class ModuleGenerator {
 				this.compiledSteps.add(node.name);
 			},
 			pairsWanted: this.lineageOf(b).has(node.name),
-			setPairs: (run, output = 0, total = false, withInputs) => {
+			setPairs: (run, output = 0, total = false, withInputs, at) => {
+				// A form of the node that is written below the place of the body (the fallback-host
+				// form of a native node, a block of a traced step) declares its names where the readers
+				// of the walk cannot see them: it keeps no pairs, and the refusal names the reason.
+				if (at !== undefined && at !== b.depth) {
+					b.noPairs.set(node.name, `pair data of ${this.typeOf(b, node.name)} is not in scope`);
+					return;
+				}
 				b.pairs.set(`${node.name}|${output}`, {
 					run,
 					input,
 					total,
 					...(withInputs === undefined ? {} : { inputs: withInputs }),
 				});
+				b.visible.add(run);
+				b.visible.add(input);
 			},
 			noOutputWhen: (condition) => {
 				// "Always output data" gives one empty item instead (ensureAlwaysOutputData of v1).
@@ -1812,6 +1852,9 @@ export class ModuleGenerator {
 	// ---- Nodes ------------------------------------------------------------------
 
 	private emitNode(b: Body, node: N8nNode, inputs: string[]) {
+		// The depth where the code of this node goes: a form written below it (a fallback-host
+		// form of the node, a block of a traced step) is not in the scope of the readers.
+		b.depth = this.w.depth;
 		// The node that runs now, for the error trace of the run (see `assemble`).
 		if (this.traceMode === 'all') this.w.line(`${CURRENT_NODE} = ${str(b.short(node.name))};`);
 		const from = this.w.length;
@@ -2402,6 +2445,7 @@ export class ModuleGenerator {
 				w.line(
 					`${latest} = { items: ${local.run}.items, paired: ${local.run}.paired${withInputs}, length: ${local.input}.length };`,
 				);
+				b.visible.add(latest);
 				b.pairs.set(`${name}|${k}`, {
 					run: latest,
 					input: latest,
