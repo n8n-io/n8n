@@ -19,7 +19,7 @@ export interface PublishSendTargets {
  * - each connected channel it replies in (n8n Chat stays inside n8n, so it is left out),
  * - each enabled scheduled task,
  * - each MCP server whose tools it can call,
- * - its own tools, as a count.
+ * - its own enabled tools, as a count.
  *
  * Unfinished entries are left out, as `countAgentCapabilities` does: a channel without a
  * credential, an MCP server without a URL and a task without a definition do nothing live. The tool count is always
@@ -57,7 +57,8 @@ export function describePublishSendTargets(args: {
 			.map((server) => ({ kind: 'mcp-server' as const, name: server.name })),
 	];
 
-	const toolCount = config?.tools?.length ?? 0;
+	// The runtime drops a tool with `enabled: false`, so it cannot act live.
+	const toolCount = (config?.tools ?? []).filter((tool) => tool.enabled !== false).length;
 	const tools: AgentPublishSendTarget[] =
 		toolCount > 0 ? [{ kind: 'tools', count: toolCount }] : [];
 	const room = AGENT_PUBLISH_SEND_TARGETS_LIMIT - tools.length;

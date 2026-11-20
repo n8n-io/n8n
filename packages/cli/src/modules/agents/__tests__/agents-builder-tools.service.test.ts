@@ -3402,6 +3402,14 @@ describe('AgentsBuilderToolsService', () => {
 				schema: {
 					...baseConfig,
 					tools: [{ type: 'node', name: 'gmail' }],
+					mcpServers: [
+						{
+							name: 'Linear',
+							url: 'https://mcp.linear.app',
+							transport: 'streamableHttp',
+							authentication: 'none',
+						},
+					],
 					tasks: [
 						{ type: 'task', id: 'digest', enabled: true },
 						{ type: 'task', id: 'paused', enabled: false },
@@ -3427,7 +3435,7 @@ describe('AgentsBuilderToolsService', () => {
 			});
 			expect(result).toEqual({
 				message:
-					'Republish Support agent and go live. These might get sent for real: replies in Slack, runs the scheduled task "Daily digest", uses its 1 tool.',
+					'Republish Support agent and go live. These might get sent for real: replies in Slack, runs the scheduled task "Daily digest", calls tools from Linear, uses its 1 tool.',
 				severity: 'warning',
 				resourceName: 'Support agent',
 				approvalDetails: {
@@ -3437,6 +3445,7 @@ describe('AgentsBuilderToolsService', () => {
 					sendTargets: [
 						{ kind: 'channel', name: 'Slack' },
 						{ kind: 'task', name: 'Daily digest' },
+						{ kind: 'mcp-server', name: 'Linear' },
 						{ kind: 'tools', count: 1 },
 					],
 				},

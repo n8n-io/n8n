@@ -12,8 +12,8 @@ describe('describePublishSendTargets', () => {
 	it('lists connected channels, enabled tasks and MCP servers, then counts the tools', () => {
 		const result = describePublishSendTargets({
 			config: {
-				// Only the number of tools matters here.
-				tools: [{}, {}] as StoredAgentConfig['tools'],
+				// Only the number of enabled tools matters here.
+				tools: [{}, {}, { enabled: false }] as StoredAgentConfig['tools'],
 				tasks: [
 					{ type: 'task', id: 'digest', enabled: true },
 					{ type: 'task', id: 'paused', enabled: false },
