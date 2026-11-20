@@ -121,7 +121,7 @@ function onRequestChanges() {
 					data-test-id="workflow-review-decision-trigger"
 				>
 					{{ i18n.baseText('workflowReviews.detail.decision.trigger') }}
-					<N8nIcon icon="chevron-down" />
+					<N8nIcon :icon="deciding ? 'loader' : 'chevron-down'" :spin="deciding" />
 				</N8nButton>
 			</template>
 		</N8nDropdownMenu>
