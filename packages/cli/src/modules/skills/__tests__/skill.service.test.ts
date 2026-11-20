@@ -1008,6 +1008,7 @@ describe('SkillService', () => {
 				user,
 				'skill_a',
 				{
+					baseSkillHash: 'hash-2',
 					references: [
 						{ path: 'references/new.md', content: 'New.' },
 						{ path: 'assets/old.png', content: 'Now text.' },
@@ -1018,6 +1019,7 @@ describe('SkillService', () => {
 			);
 
 			expect(saveTrusted.mock.calls[0][1]).toEqual({
+				baseSkillHash: 'hash-2',
 				references: [
 					{ path: 'references/new.md', content: 'New.' },
 					{ path: 'assets/old.png', content: 'Now text.' },
@@ -1027,18 +1029,25 @@ describe('SkillService', () => {
 		});
 
 		it('reads no stored files when the update has no references', async () => {
-			await service.update(user, 'skill_a', { instructions: 'New.' }, 'mcp', {
-				keepUnnamedBinaryFiles: true,
-			});
+			await service.update(
+				user,
+				'skill_a',
+				{ baseSkillHash: 'hash-2', instructions: 'New.' },
+				'mcp',
+				{ keepUnnamedBinaryFiles: true },
+			);
 
 			expect(skills.findLatestSaved).not.toHaveBeenCalled();
-			expect(saveTrusted.mock.calls[0][1]).toEqual({ instructions: 'New.' });
+			expect(saveTrusted.mock.calls[0][1]).toEqual({
+				baseSkillHash: 'hash-2',
+				instructions: 'New.',
+			});
 		});
 
 		it('replaces every file for the skill editor, which sends the binary files', async () => {
-			await service.update(user, 'skill_a', { references: [] });
+			await service.update(user, 'skill_a', { baseSkillHash: 'hash-2', references: [] });
 
-			expect(saveTrusted.mock.calls[0][1]).toEqual({ references: [] });
+			expect(saveTrusted.mock.calls[0][1]).toEqual({ baseSkillHash: 'hash-2', references: [] });
 		});
 	});
 
