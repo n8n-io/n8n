@@ -8,11 +8,12 @@
 import {
 	deriveLoops,
 	type GraphEdge,
+	type ItemSource,
 	type StepOutputSources,
 	type WorkflowGraph,
 	type WorkflowLoop,
 } from '@n8n/engine';
-import type { INodeExecutionData, ISourceData, ITaskData } from 'n8n-workflow';
+import type { INodeExecutionData, IPairedItemData, ISourceData, ITaskData } from 'n8n-workflow';
 
 import { MAIN_CONNECTION_TYPE } from './constants';
 
@@ -110,7 +111,8 @@ export function toSourceSlots(
 
 		const inputIndex = edge.inputIndex ?? 0;
 		while (sources.length <= inputIndex) sources.push(null);
-		// First edge into a slot wins.
+		// First edge into a slot wins. When several edges feed a slot, every item
+		// carries its own source in `pairedItem` (`item-links.ts`).
 		if (sources[inputIndex] !== null) continue;
 
 		const run = previousNodeRun?.(edge) ?? 0;
@@ -144,6 +146,31 @@ export function emptyRun(
 }
 
 /**
+ * One link per item of `sources`, in item order: the item's index in its source
+ * slot, with the source as `sourceOverwrite`. `undefined` for an item whose
+ * source node is unknown.
+ */
+export function sourceLinks(
+	sources: ItemSource[],
+	namesById: Map<string, string>,
+): Array<IPairedItemData | undefined> {
+	return sources.flatMap((source) => {
+		const previousNode = namesById.get(source.nodeId);
+		// Keep the positions of the sources after this one.
+		if (previousNode === undefined)
+			return Array.from({ length: source.itemCount }, () => undefined);
+		return Array.from({ length: source.itemCount }, (_, offset) => ({
+			item: source.offset + offset,
+			sourceOverwrite: {
+				previousNode,
+				previousNodeOutput: source.outputIndex,
+				previousNodeRun: source.iteration,
+			},
+		}));
+	});
+}
+
+/**
  * Returns the output items of a step with the paired item the engine states for
  * them. The engine says "these `itemCount` items came from node X, slot s, pass
  * p, from `offset` on"; v1's data proxy reads the same fact as
@@ -160,20 +187,7 @@ export function linkOutputSources(
 	return slots.map((items, slotIndex) => {
 		const sources = outputSources[slotIndex];
 		if (!sources) return items;
-		const links = sources.flatMap((source) => {
-			const previousNode = namesById.get(source.nodeId);
-			// Keep the positions of the sources after this one.
-			if (previousNode === undefined)
-				return Array.from({ length: source.itemCount }, () => undefined);
-			return Array.from({ length: source.itemCount }, (_, offset) => ({
-				item: source.offset + offset,
-				sourceOverwrite: {
-					previousNode,
-					previousNodeOutput: source.outputIndex,
-					previousNodeRun: source.iteration,
-				},
-			}));
-		});
+		const links = sourceLinks(sources, namesById);
 		return items.map((item, index) =>
 			links[index] === undefined ? item : { ...item, pairedItem: links[index] },
 		);

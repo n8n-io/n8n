@@ -455,9 +455,31 @@ class AsksForReply implements INodeType {
 	}
 }
 
+/** Returns its input with a fresh link per item, as Set does. */
+class LinksToInput implements INodeType {
+	description = {
+		displayName: 'Links To Input',
+		name: 'linksToInput',
+		group: ['transform'],
+		version: 1,
+		description: 'Passes items through, each linked to its input position',
+		defaults: { name: 'Links To Input' },
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
+		properties: [],
+	} as unknown as INodeType['description'];
+
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		return await Promise.resolve([
+			this.getInputData().map((item, i) => ({ json: item.json, pairedItem: { item: i } })),
+		]);
+	}
+}
+
 const registry = new Map<string, INodeType>([
 	['n8n-nodes-base.noOp', new NoOp()],
 	['test.echoParam', new EchoParam()],
+	['test.linksToInput', new LinksToInput()],
 	['test.alwaysFails', new AlwaysFails()],
 	['test.failsWithDescription', new FailsWithDescription()],
 	['test.noExecute', new NoExecute()],

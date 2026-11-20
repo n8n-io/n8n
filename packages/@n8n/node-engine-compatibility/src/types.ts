@@ -8,6 +8,7 @@ import type {
 	WorkflowGraph,
 } from '@n8n/engine';
 
+import type { ItemLinks } from './item-links';
 import type { SubWorkflowCalls } from './sub-workflow-calls';
 import type { DurableWaitExecuteContext } from './v1-adapters';
 import type {
@@ -147,6 +148,8 @@ export interface CreateExecuteContextParams {
 	source: Array<ISourceData | null>;
 	additionalData: IWorkflowExecuteAdditionalData;
 	itemsByConnection: INodeExecutionData[][];
+	/** The link of every item in `itemsByConnection`, from `itemLinks`. */
+	itemLinks: ItemLinks;
 	stepContext: StepExecutionContext;
 	resumeToken?: string;
 	subWorkflowCalls: SubWorkflowCalls;
