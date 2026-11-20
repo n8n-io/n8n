@@ -1687,12 +1687,10 @@ export class WorkflowService {
 		transfer: () => Promise<void>,
 		{ publicApi }: { publicApi: PublicApiCaller },
 	): Promise<Map<string, WorkflowTransferResult>> {
-		const workflows = (
-			await this.workflowRepository.findWithActiveVersionByIds(workflowIds)
-		).filter((workflow): workflow is PublishedWorkflow => workflow.activeVersion !== null);
+		const publishedBeforeTransfer = await this._findPublished(workflowIds);
 
 		const refusals = new Map<string, unknown>();
-		for (const workflow of workflows) {
+		for (const workflow of publishedBeforeTransfer) {
 			try {
 				await this._enforcePublishInProject(workflow, destinationProjectId, user);
 			} catch (error) {
@@ -1714,11 +1712,17 @@ export class WorkflowService {
 			await this._restoreTriggersOfUntransferred(
 				[...refusals.keys()].filter((workflowId) => !movedIds.includes(workflowId)),
 			);
-			await this._finishTransfer(user, movedIds, refusals, publicApi);
+			await this._finishTransfer(user, movedIds, refusals, publishedBeforeTransfer, publicApi);
 			throw error;
 		}
 
-		return await this._finishTransfer(user, workflowIds, refusals, publicApi);
+		return await this._finishTransfer(
+			user,
+			workflowIds,
+			refusals,
+			publishedBeforeTransfer,
+			publicApi,
+		);
 	}
 
 	private async _enforcePublishInProject(
@@ -1786,16 +1790,17 @@ export class WorkflowService {
 		user: User,
 		workflowIds: string[],
 		refusals: Map<string, unknown>,
+		publishedBeforeTransfer: PublishedWorkflow[],
 		publicApi: PublicApiCaller,
 	): Promise<Map<string, WorkflowTransferResult>> {
-		const workflows = await this._publishedWorkflows(workflowIds);
+		const workflows = await this._publishedAfterTransfer(workflowIds, publishedBeforeTransfer);
 		const failures = new Map<string, unknown>();
 		for (const workflow of workflows) {
 			if (refusals.has(workflow.id)) {
 				failures.set(workflow.id, refusals.get(workflow.id));
 			} else {
-				const credentialRefusal = await this._triggerCredentialRefusal(workflow);
-				if (credentialRefusal) failures.set(workflow.id, credentialRefusal);
+				const checkFailure = await this._triggerCredentialCheckFailure(workflow);
+				if (checkFailure) failures.set(workflow.id, checkFailure);
 			}
 		}
 
@@ -1821,36 +1826,38 @@ export class WorkflowService {
 		const results = new Map<string, WorkflowTransferResult>();
 		for (const workflow of workflows) {
 			if (failures.has(workflow.id)) {
-				const unpublished = await this._unpublishAfterTransfer(user, workflow, publicApi);
-				// A refused workflow lost its triggers before the transfer, so it is reported even if it stays published.
-				if (unpublished || refusals.has(workflow.id)) {
-					results.set(workflow.id, toTransferResult(failures.get(workflow.id)));
-				}
+				await this._unpublishAfterTransfer(user, workflow, publicApi);
+				results.set(workflow.id, toTransferResult(failures.get(workflow.id)));
 			}
 		}
 
 		return results;
 	}
 
-	/** Never throws: if the read fails, only the leader checks the credentials. */
-	private async _publishedWorkflows(workflowIds: string[]): Promise<PublishedWorkflow[]> {
-		let published: PublishedWorkflow[] = [];
+	private async _findPublished(workflowIds: string[]): Promise<PublishedWorkflow[]> {
+		const workflows = await this.workflowRepository.findWithActiveVersionByIds(workflowIds);
+		return workflows.filter(
+			(workflow): workflow is PublishedWorkflow => workflow.activeVersion !== null,
+		);
+	}
+
+	/** Never throws: if the read fails, returns the workflows that were published before the transfer. */
+	private async _publishedAfterTransfer(
+		workflowIds: string[],
+		publishedBeforeTransfer: PublishedWorkflow[],
+	): Promise<PublishedWorkflow[]> {
+		let published = publishedBeforeTransfer.filter((workflow) => workflowIds.includes(workflow.id));
 		try {
-			const workflows = await this.workflowRepository.findWithActiveVersionByIds(workflowIds);
-			published = workflows.filter(
-				(workflow): workflow is PublishedWorkflow => workflow.activeVersion !== null,
-			);
+			published = await this._findPublished(workflowIds);
 		} catch (error) {
 			this.logger.error('Failed to read the transferred workflows', { workflowIds, error });
 		}
 		return published;
 	}
 
-	/** Never throws: after any other error, the leader checks the credentials again. */
-	private async _triggerCredentialRefusal(
-		workflow: PublishedWorkflow,
-	): Promise<TriggerCredentialAccessError | null> {
-		let refusal: TriggerCredentialAccessError | null = null;
+	/** Never throws: any failed check, not only a refusal, makes the transfer unpublish the workflow. */
+	private async _triggerCredentialCheckFailure(workflow: PublishedWorkflow): Promise<Error | null> {
+		let checkFailure: Error | null = null;
 		try {
 			await this.activeWorkflowManager.checkTriggerCredentialAccess(
 				workflow.id,
@@ -1858,29 +1865,26 @@ export class WorkflowService {
 				undefined,
 			);
 		} catch (error) {
-			if (error instanceof TriggerCredentialAccessError) {
-				refusal = error;
-			} else {
-				this.logger.warn(`Failed to check the credentials of workflow "${workflow.id}"`, {
+			checkFailure = ensureError(error);
+			if (!(error instanceof TriggerCredentialAccessError)) {
+				this.logger.error(`Failed to check the credentials of workflow "${workflow.id}"`, {
 					workflowId: workflow.id,
 					error,
 				});
 			}
 		}
-		return refusal;
+		return checkFailure;
 	}
 
-	/** Returns false if the workflow stays published. */
+	/** Never throws: a failed unpublish is logged and the workflow stays published. */
 	private async _unpublishAfterTransfer(
 		user: User,
 		workflow: PublishedWorkflow,
 		publicApi: PublicApiCaller,
-	): Promise<boolean> {
+	): Promise<void> {
 		const deactivatedVersionId = workflow.activeVersion.versionId;
-		let unpublished = false;
 		try {
 			await this._forceUnpublish(workflow, deactivatedVersionId, user);
-			unpublished = true;
 
 			this.eventService.emit('workflow-deactivated', {
 				user,
@@ -1902,7 +1906,6 @@ export class WorkflowService {
 				error,
 			});
 		}
-		return unpublished;
 	}
 
 	/** Unpublishes in a way the `workflow.deactivate` hook cannot block: a hook failure is a warning. */

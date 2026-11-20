@@ -25,9 +25,11 @@ import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
+import { ExternalHooks, toWorkflowLifecycleHookActor } from '@/external-hooks';
 import { Telemetry } from '@/telemetry';
 import { WorkflowPublicationNotifier } from '@/workflows/publication/workflow-publication-notifier';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
+import { WorkflowPublisherService } from '@/workflows/workflow-publisher.service';
 
 import { saveCredential } from '../shared/db/credentials';
 import { createFolder } from '../shared/db/folders';
@@ -198,7 +200,7 @@ describe('PUT /workflows/:workflowId/transfer', () => {
 		]);
 	});
 
-	test('does not report a workflow as unpublished when its unpublish after a failed transfer enqueue also fails', async () => {
+	test('reports the error of the transfer enqueue when the unpublish after it also fails', async () => {
 		const workflow = await createActiveWorkflow({}, sourceProject);
 		failTransferEnqueue();
 		vi.spyOn(Container.get(WorkflowPublishHistoryRepository), 'addRecord').mockRejectedValue(
@@ -210,12 +212,104 @@ describe('PUT /workflows/:workflowId/transfer', () => {
 			.send({ destinationProjectId: targetProject.id })
 			.expect(200);
 
-		expect(response.body).toEqual({});
+		expect(response.body.data).toEqual({ error: { name: 'Error', message: 'outbox is down' } });
+		expect(deactivatedEvents).toEqual([]);
 	});
 
 	test('unpublishes the workflow and reports the error when the destination cannot use its credential', async () => {
 		const workflow = await createActiveWorkflow({}, sourceProject);
 		await addCredentialOnlySourceHolds(workflow.versionId);
+
+		const response = await authMemberAgent
+			.put(`/workflows/${workflow.id}/transfer`)
+			.send({ destinationProjectId: targetProject.id })
+			.expect(200);
+
+		const UNPUBLISHED_AND_REPORTED = {
+			error: expect.objectContaining({ name: 'TriggerCredentialAccessError' }),
+			activeVersionId: null,
+			records: [{ status: 'pending', reason: 'publish', publishedVersionId: workflow.versionId }],
+		};
+		expect({
+			error: response.body.data?.error,
+			activeVersionId: await activeVersionIdOf(workflow.id),
+			records: await outboxRecordsOf(workflow.id),
+		}).toEqual(UNPUBLISHED_AND_REPORTED);
+	});
+
+	test('runs the workflow.deactivate hook with the moving user when the destination cannot use its credential', async () => {
+		const workflow = await createActiveWorkflow({}, sourceProject);
+		await addCredentialOnlySourceHolds(workflow.versionId);
+		const runHook = vi.spyOn(Container.get(ExternalHooks), 'run');
+
+		await authMemberAgent
+			.put(`/workflows/${workflow.id}/transfer`)
+			.send({ destinationProjectId: targetProject.id })
+			.expect(200);
+
+		expect(runHook).toHaveBeenCalledWith('workflow.deactivate', [
+			expect.objectContaining({ id: workflow.id }),
+			expect.anything(),
+			toWorkflowLifecycleHookActor(member),
+		]);
+	});
+
+	test('unpublishes the workflow and reports the error when its credential check fails for another reason', async () => {
+		const workflow = await createActiveWorkflow({}, sourceProject);
+		vi.spyOn(
+			Container.get(WorkflowPublisherService),
+			'findPublisherUserIdForAccessCheck',
+		).mockRejectedValue(new Error('publishers are down'));
+
+		const response = await authMemberAgent
+			.put(`/workflows/${workflow.id}/transfer`)
+			.send({ destinationProjectId: targetProject.id })
+			.expect(200);
+
+		const UNPUBLISHED_AND_REPORTED = {
+			error: expect.objectContaining({ name: 'PublisherLookupError' }),
+			activeVersionId: null,
+			records: [{ status: 'pending', reason: 'publish', publishedVersionId: workflow.versionId }],
+		};
+		expect({
+			error: response.body.data?.error,
+			activeVersionId: await activeVersionIdOf(workflow.id),
+			records: await outboxRecordsOf(workflow.id),
+		}).toEqual(UNPUBLISHED_AND_REPORTED);
+	});
+
+	test('fails the move and leaves the workflow in its project when the workflows cannot be read before the move', async () => {
+		const workflow = await createActiveWorkflow({}, sourceProject);
+		vi.spyOn(Container.get(WorkflowRepository), 'findWithActiveVersionByIds').mockRejectedValueOnce(
+			new Error('workflows are down'),
+		);
+
+		await authMemberAgent
+			.put(`/workflows/${workflow.id}/transfer`)
+			.send({ destinationProjectId: targetProject.id })
+			.expect(500);
+
+		const NOT_MOVED = {
+			sharing: [expect.objectContaining({ projectId: sourceProject.id, role: 'workflow:owner' })],
+			records: [],
+		};
+		expect({
+			sharing: await getWorkflowSharing(workflow),
+			records: await outboxRecordsOf(workflow.id),
+		}).toEqual(NOT_MOVED);
+	});
+
+	test('checks the credentials of the version read before the move when the workflows cannot be read after it', async () => {
+		const workflow = await createActiveWorkflow({}, sourceProject);
+		await addCredentialOnlySourceHolds(workflow.versionId);
+		const workflows = Container.get(WorkflowRepository);
+		const read = workflows.findWithActiveVersionByIds.bind(workflows);
+		vi.spyOn(workflows, 'findWithActiveVersionByIds').mockImplementation(async (workflowIds) => {
+			const owners =
+				await Container.get(SharedWorkflowRepository).findOwnerProjectsByWorkflowIds(workflowIds);
+			if (owners.get(workflow.id)?.id === targetProject.id) throw new Error('workflows are down');
+			return await read(workflowIds);
+		});
 
 		const response = await authMemberAgent
 			.put(`/workflows/${workflow.id}/transfer`)
@@ -299,6 +393,23 @@ describe('PUT /workflows/:workflowId/transfer', () => {
 			sharing: await getWorkflowSharing(workflow),
 			records: await outboxRecordsOf(workflow.id),
 		}).toEqual(AFTER_FAILED_MOVE);
+	});
+
+	test('a move that fails before the ownership change enqueues no record', async () => {
+		const workflow = await createActiveWorkflow({}, sourceProject);
+		vi.spyOn(
+			Container.get(EnterpriseWorkflowService) as unknown as {
+				transferWorkflowOwnership: () => Promise<void>;
+			},
+			'transferWorkflowOwnership',
+		).mockRejectedValue(new Error('ownership is down'));
+
+		await authMemberAgent
+			.put(`/workflows/${workflow.id}/transfer`)
+			.send({ destinationProjectId: targetProject.id })
+			.expect(500);
+
+		expect(await outboxRecordsOf(workflow.id)).toEqual([]);
 	});
 
 	test('reports the error of the move and enqueues the transfer record when reading the new owners also fails', async () => {
