@@ -19,6 +19,11 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({ restApiContext: { baseUrl: '/rest', pushRef: 'x' } }),
 }));
 
+const preferences = vi.hoisted(() => ({ enabled: true }));
+vi.mock('@/features/settings/context/context.utils', () => ({
+	isContextPreferencesEnabled: () => preferences.enabled,
+}));
+
 const savedOutput = {
 	ok: true,
 	preference: { id: 'pref-1', content: 'Keep replies short.', scope: 'user', userId: 'user-1' },
@@ -52,6 +57,15 @@ describe('isPreferenceCardToolCall', () => {
 	it('does not match another tool or another result shape', () => {
 		expect(isPreferenceCardToolCall(toolCall({ tool: 'other_tool' }))).toBe(false);
 		expect(isPreferenceCardToolCall(toolCall({ output: 'Error: failed' }))).toBe(false);
+	});
+
+	it('does not match when preferences are off, as the current Assistant hides the card', () => {
+		preferences.enabled = false;
+		try {
+			expect(isPreferenceCardToolCall(toolCall())).toBe(false);
+		} finally {
+			preferences.enabled = true;
+		}
 	});
 });
 

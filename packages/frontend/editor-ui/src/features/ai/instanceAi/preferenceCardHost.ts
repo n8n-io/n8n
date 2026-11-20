@@ -42,6 +42,12 @@ export interface PreferenceCardHost {
 	 * server refused.
 	 */
 	edit(target: PreferenceCardTarget, edit: PreferenceCardEdit): Promise<AiPreferenceDto | null>;
+	/**
+	 * Returns `true` the first time that the card of a call may report that the
+	 * user saw it. Set by a chat that can mount the same card more than once.
+	 * Without it, each card mount reports once.
+	 */
+	claimSeenReport?(toolCallId: string): boolean;
 }
 
 /** Set by a chat that is not the current Assistant chat. */

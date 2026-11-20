@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { screen, waitFor } from '@testing-library/vue';
 import type { AiPreferenceDto, AssistantPreferenceCard } from '@n8n/api-types';
 import { useUsersStore } from '@n8n/stores/users.store';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
@@ -14,6 +15,7 @@ import { ASSISTANT_AGENT_PROJECT_ID } from '../assistantAgentThreads';
 import AssistantPreferenceCardResult from '../AssistantPreferenceCardResult.vue';
 import {
 	ASSISTANT_PREFERENCE_CARDS,
+	type AssistantPreferenceCards,
 	useAssistantPreferenceCards,
 } from '../assistantPreferenceCards';
 
@@ -24,7 +26,8 @@ const api = vi.hoisted(() => ({
 }));
 vi.mock('../assistantPreferenceCards.api', () => api);
 
-vi.mock('@n8n/composables/useTelemetry', () => ({ useTelemetry: () => ({ track: vi.fn() }) }));
+const track = vi.hoisted(() => vi.fn());
+vi.mock('@n8n/composables/useTelemetry', () => ({ useTelemetry: () => ({ track }) }));
 
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({ restApiContext: { baseUrl: '/rest', pushRef: 'x' } }),
@@ -52,9 +55,8 @@ const renderComponent = createComponentRenderer(AssistantPreferenceCardResult, {
 	pinia: createTestingPinia(),
 });
 
-/** Renders the card in a thread whose last message is `lastToolCallIds`. */
-function render(lastToolCallIds: string[] = ['tc-1']) {
-	const cards = useAssistantPreferenceCards({
+function useCards(lastToolCallIds: string[] = ['tc-1']) {
+	return useAssistantPreferenceCards({
 		threadId: 'thread-1',
 		projectId: 'project-1',
 		messages: () => [
@@ -66,6 +68,13 @@ function render(lastToolCallIds: string[] = ['tc-1']) {
 			},
 		],
 	});
+}
+
+/** Renders the card in a thread whose last message is `lastToolCallIds`. */
+function render(
+	lastToolCallIds: string[] = ['tc-1'],
+	cards: AssistantPreferenceCards = useCards(lastToolCallIds),
+) {
 	return renderComponent({
 		props: { toolCall },
 		global: {
@@ -96,6 +105,17 @@ describe('AssistantPreferenceCardResult', () => {
 		await openCard();
 		expect(screen.getByTestId('instance-ai-preference-card-text')).toHaveTextContent(STORED_TEXT);
 		expect(api.fetchAssistantPreferenceCards).toHaveBeenCalledWith(expect.anything(), 'thread-1');
+	});
+
+	it('reports that the user saw the card once, when the chat mounts the card again', () => {
+		const cards = useCards();
+		render(['tc-1'], cards).unmount();
+		render(['tc-1'], cards);
+
+		const seen = track.mock.calls.filter(
+			([event]) => event === TELEMETRY_EVENT.CONTEXT.USER_SAW_PREFERENCE_CARD,
+		);
+		expect(seen).toHaveLength(1);
 	});
 
 	it('shows the stored undone state after a reload', async () => {

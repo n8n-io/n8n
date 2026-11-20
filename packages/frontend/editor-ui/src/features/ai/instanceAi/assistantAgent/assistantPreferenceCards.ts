@@ -7,6 +7,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { isRecord } from '@n8n/utils/is-record';
 import { defineAsyncComponent, reactive, type DeepReadonly, type InjectionKey } from 'vue';
 
+import { isContextPreferencesEnabled } from '@/features/settings/context/context.utils';
 import type { AgentsChatInteractionExtension } from '@/features/ai/shared/agentsChat/interactionRegistry';
 import type { ChatMessage, ToolCall } from '@/features/ai/shared/agentsChat/types';
 
@@ -54,6 +55,8 @@ export function useAssistantPreferenceCards({
 }): AssistantPreferenceCards {
 	const rootStore = useRootStore();
 	const cards = reactive(new Map<string, AssistantPreferenceCard>());
+	// The chat mounts a card again when the history refetch replaces the streamed message.
+	const reportedSeen = new Set<string>();
 	let loading: Promise<void> | undefined;
 
 	async function load(): Promise<void> {
@@ -108,15 +111,25 @@ export function useAssistantPreferenceCards({
 			apply(card);
 			return preference;
 		},
+		claimSeenReport(toolCallId) {
+			if (reportedSeen.has(toolCallId)) return false;
+			reportedSeen.add(toolCallId);
+			return true;
+		},
 	};
 
 	return { get: (toolCallId) => cards.get(toolCallId), load, isLatest, host };
 }
 
-/** True for a `save_user_preference` result that the card shows: a saved row or a refused write. */
+/**
+ * True for a `save_user_preference` result that the card shows: a saved row or
+ * a refused write. When preferences are off, the call shows as a tool step,
+ * because the card endpoints refuse every edit.
+ */
 export function isPreferenceCardToolCall(toolCall: ToolCall): boolean {
 	return (
 		toolCall.tool === SAVE_USER_PREFERENCE_TOOL_NAME &&
+		isContextPreferencesEnabled() &&
 		(isSavedPreferenceResult(toolCall.output) || isRejectedPreferenceResult(toolCall.output))
 	);
 }

@@ -132,6 +132,7 @@ watch(
 	([value, readOnly]) => {
 		if (reportedSeen.value || !value || readOnly) return;
 		reportedSeen.value = true;
+		if (host.claimSeenReport?.(props.toolCall.toolCallId) === false) return;
 		telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_SAW_PREFERENCE_CARD, {
 			// What the card shows, which is the row when it is known. Reporting the fact would
 			// name a scope the person on the screen is not looking at.
