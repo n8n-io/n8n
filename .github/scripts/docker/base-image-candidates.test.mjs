@@ -228,11 +228,20 @@ describe('applyGate', () => {
 		assert.equal(result.status, 'no-publish-time');
 	});
 
-	it('skips the gate on a manual run', () => {
+	it('skips the gate on a manual run, without auto-merge', () => {
 		const young = applyGate(candidate(), publisher(hoursAgo(1)), { now, skipGate: true });
 		const unknown = applyGate(candidate(), publisher(null), { now, skipGate: true });
-		assert.equal(young.status, 'ready');
-		assert.equal(unknown.status, 'ready');
+		for (const result of [young, unknown]) {
+			assert.equal(result.status, 'ready');
+			assert.equal(result.autoMerge, false);
+			assert.equal(result.gateSkipped, true);
+		}
+	});
+
+	it('keeps auto-merge on a manual run for a digest older than 24 hours', () => {
+		const result = applyGate(candidate(), publisher(hoursAgo(48)), { now, skipGate: true });
+		assert.equal(result.autoMerge, true);
+		assert.equal(result.gateSkipped, false);
 	});
 
 	it('turns auto-merge off for a digest that adds a package', () => {

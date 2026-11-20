@@ -60,7 +60,7 @@ jobs:
         with:
           cosign-release: v3.1.4
 
-      # A manual run skips the 24-hour gate.
+      # A manual run skips the 24-hour gate. A digest that it lets through gets no auto-merge.
       - name: Find candidate digests
         env:
           EVENT: ${{ github.event_name }}
