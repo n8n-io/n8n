@@ -23,6 +23,16 @@ describe('WorkflowPublishBlockedErrorPublicDto', () => {
 		},
 	);
 
+	test('accepts the review-required shape with the version that needs a review', () => {
+		const result = WorkflowPublishBlockedErrorPublicDto.safeParse({
+			message: "Workflow can't be published because this version has no approved review.",
+			reason: 'review_required',
+			versionId: 'version-2',
+		});
+
+		expect(result.success).toBe(true);
+	});
+
 	test('rejects a missing message', () => {
 		const result = WorkflowPublishBlockedErrorPublicDto.safeParse({
 			reason: 'review_pending',

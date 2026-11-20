@@ -30,6 +30,7 @@ exports[`Scope Information > ensure scopes are defined correctly 1`] = `
   "skill:update",
   "skill:delete",
   "skill:list",
+  "skill:manage",
   "projectSkill:create",
   "projectSkill:read",
   "projectSkill:update",

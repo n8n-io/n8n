@@ -381,6 +381,10 @@ export class SkillSourceRepository {
 		return (result.affected ?? 0) > 0;
 	}
 
+	async hasAnySource(): Promise<boolean> {
+		return await this.sources.managerFor({}).exists(SkillSourceConnection);
+	}
+
 	/**
 	 * Every source, the longest unchecked first, for the check task. A run that times out
 	 * checks the others first next time.

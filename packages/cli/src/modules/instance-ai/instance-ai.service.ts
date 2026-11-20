@@ -15,9 +15,7 @@ import {
 	type InstanceAiConfirmResponse,
 	type InstanceAiEvent,
 	type InstanceAiThreadStatusResponse,
-	type InstanceContextInjection,
 	type InstanceContextReach,
-	INSTANCE_CONTEXT_SURFACE_DEPTH,
 	type InstanceAiEvalThreadMemoryResponse,
 	type InstanceAiThreadArtifactsContext,
 	TOOL_CATALOG_CALL_TOOL_NAME,
@@ -110,6 +108,11 @@ import { assertNever } from '@/utils';
 
 import { buildPreferencesAppliedTelemetry } from './ai-preferences-telemetry';
 import { InstanceAiSkillTelemetry } from './instance-ai-skill-telemetry';
+import {
+	trackInstanceContextTurn,
+	type InstanceContextTurn,
+	type InstanceContextTurnSegment,
+} from './instance-context-turn-telemetry';
 import { InstanceAiBrowserSessionService } from './browser/instance-ai-browser-session.service';
 import { InstanceAiCloudBrowserTaskService } from './browser/instance-ai-cloud-browser-task.service';
 import { InstanceAiCloudBrowserService } from './browser/instance-ai-cloud-browser.service';
@@ -365,15 +368,7 @@ const MAX_CONSECUTIVE_FAILED_INTERNAL_FOLLOW_UPS = 3;
 const TITLE_REFINE_HISTORY_LIMIT = 50;
 
 /** Bind identity, gate results, and injection once for all segments of a turn. */
-type InstanceContextTurnBinding = {
-	skills?: InstanceAiSkillTelemetry;
-	userId: string;
-	threadId: string;
-	runId: string;
-	injection: InstanceContextInjection;
-	instanceContextEnabled: boolean;
-	nodeUsageEnabled: boolean;
-};
+type InstanceContextTurnBinding = Omit<InstanceContextTurn, 'runtime'>;
 
 @Service()
 export class InstanceAiService {
@@ -581,7 +576,6 @@ export class InstanceAiService {
 			backgroundTasks: this.backgroundTasks,
 			settingsService: this.settingsService,
 			aiService: this.aiService,
-			getTemplatesService: () => this.adapterService.getTemplatesService(),
 			resolveTracingConfig: async (threadId, userId) => {
 				const ownerId = userId ?? (await this.memoryService.getThreadActorId(threadId));
 				if (!ownerId) return { userId: 'system' };
@@ -4981,9 +4975,6 @@ export class InstanceAiService {
 		}
 	}
 
-	/** Use a fixed estimate to avoid loading a tokenizer on every turn. */
-	private static readonly BLOCK_CHARS_PER_TOKEN = 4;
-
 	/** Save the summary before the confirmation card is visible. */
 	private async persistSuspendedInstanceContext(
 		checkpointKey: string,
@@ -5043,62 +5034,10 @@ export class InstanceAiService {
 
 	private emitInstanceContextTurn(
 		turn: InstanceContextTurnBinding | undefined,
-		input: {
-			/** A turn can suspend more than once. Aggregate segments by run ID. */
-			segment: 'whole' | 'suspended' | 'resumed';
-			status: 'completed' | 'cancelled' | 'errored' | 'suspended';
-			reach: InstanceContextReach;
-			workSummary?: WorkSummary;
-			/** Measured usage for this segment, not the estimated block size. */
-			usage?: RunTokenUsage;
-		},
+		input: InstanceContextTurnSegment,
 	): void {
 		if (!turn) return;
-		const { injection } = turn;
-		this.telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.INSTANCE_CONTEXT_TURN, {
-			...turn.skills?.snapshot(),
-			user_id: turn.userId,
-			thread_id: turn.threadId,
-			run_id: turn.runId,
-			surface: 'aia',
-			segment: input.segment,
-			instance_context_enabled: turn.instanceContextEnabled,
-			node_usage_enabled: turn.nodeUsageEnabled,
-			...(injection.state === 'absent'
-				? { block_state: injection.state, absence_reason: injection.reason }
-				: {
-						block_state: injection.state,
-						block_is_update: injection.isUpdate,
-						block_inventory_rows: injection.legs.inventory,
-						block_event_rows: injection.legs.events,
-						block_run_rows: injection.legs.runs,
-						block_chars: injection.chars,
-						// The block is not tokenized separately. Report an estimate beside its exact length.
-						block_tokens_estimated: Math.ceil(
-							injection.chars / InstanceAiService.BLOCK_CHARS_PER_TOKEN,
-						),
-					}),
-			// Derived here rather than shipped: the depth is a function of the surfaces, and
-			// the map that defines it is in scope at the only place that needs a number.
-			context_depth: input.reach.surfaces.reduce(
-				(deepest, surface) => Math.max(deepest, INSTANCE_CONTEXT_SURFACE_DEPTH[surface]),
-				0,
-			),
-			context_surfaces: input.reach.surfaces,
-			asked_clarifying_question: input.workSummary?.askedClarifyingQuestion ?? false,
-			tool_calls: input.workSummary?.totalToolCalls ?? 0,
-			// A suspended turn spends tokens in each segment, so these are per segment and
-			// sum over the shared `run_id`. Absent when the segment reported no usage.
-			...(input.usage
-				? {
-						turn_prompt_tokens: input.usage.promptTokens,
-						turn_completion_tokens: input.usage.completionTokens,
-						turn_total_tokens: input.usage.totalTokens,
-						turn_cost_usd: input.usage.costUsd,
-					}
-				: {}),
-			status: input.status,
-		});
+		trackInstanceContextTurn(this.telemetry, { ...turn, runtime: 'instance-ai' }, input);
 	}
 
 	/** Emit a typed event consumed by the Prometheus Instance AI metrics collector. */

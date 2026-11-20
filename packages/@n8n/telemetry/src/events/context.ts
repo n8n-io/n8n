@@ -1,4 +1,9 @@
-import { SKILL_SCAN_RULES, SKILL_SOURCE_REASONS, skillScopeSchema } from '@n8n/api-types';
+import {
+	SKILL_LINK_REVIEW_REASONS,
+	SKILL_SCAN_RULES,
+	SKILL_SOURCE_REASONS,
+	skillScopeSchema,
+} from '@n8n/api-types';
 import { z } from 'zod/v4';
 
 import { defineTelemetryEvents } from '../define';
@@ -591,6 +596,12 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 			rule_codes: z
 				.array(z.enum(SKILL_SCAN_RULES))
 				.describe('The rules that gave a `needs_review` or `blocked` finding, each one time'),
+			link_reason_codes: z
+				.array(z.enum(SKILL_LINK_REVIEW_REASONS))
+				.optional()
+				.describe(
+					'Why each `risky_url` finding needs review, each reason one time. Absent when no link needs review',
+				),
 		}),
 	},
 	SKILL_SOURCE_UPDATE_FOUND: {

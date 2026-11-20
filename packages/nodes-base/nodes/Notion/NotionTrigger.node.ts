@@ -66,6 +66,7 @@ export class NotionTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Notion Trigger',
 		name: 'notionTrigger',
+		schemaPath: 'Notion',
 		icon: { light: 'file:notion.svg', dark: 'file:notion.dark.svg' },
 		group: ['trigger'],
 		version: [1, 1.1],
