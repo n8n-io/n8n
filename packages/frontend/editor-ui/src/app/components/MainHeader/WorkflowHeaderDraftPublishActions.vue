@@ -436,11 +436,12 @@ const onPublishButtonClick = async () => {
 	}
 
 	if (isCheckingReviewStatus.value) return;
-	if (!(await ensureWorkflowSaved())) return;
-	// Saving a new workflow changes the ID, so capture it after the save.
-	const workflowId = props.id;
 	isCheckingReviewStatus.value = true;
+	let workflowId = props.id;
 	try {
+		if (!(await ensureWorkflowSaved())) return;
+		// Saving a new workflow changes the ID, so capture it after the save.
+		workflowId = props.id;
 		await refetchReviewStatus();
 	} finally {
 		isCheckingReviewStatus.value = false;
