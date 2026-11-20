@@ -6,7 +6,10 @@
 import { getEngineV2BuildRules } from '@n8n/workflow-sdk/prompts/sdk-reference';
 
 import { getSystemPrompt } from '../system-prompt';
-import { getWorkflowEngineSection } from '../workflow-engine-prompt';
+import {
+	getSelfHealingWorkflowEngineSection,
+	getWorkflowEngineSection,
+} from '../workflow-engine-prompt';
 
 describe('getSystemPrompt — workflow engine', () => {
 	it('does not change the prompt without the engine-v2 module', () => {
@@ -70,4 +73,32 @@ describe('getSystemPrompt — workflow engine', () => {
 
 		expect(withEngine.replace(getWorkflowEngineSection(engineSetup), '')).toBe(getSystemPrompt({}));
 	});
+});
+
+describe('getSelfHealingWorkflowEngineSection', () => {
+	it.each([undefined, { engineV2Available: false, newWorkflowEngine: 'v1' } as const])(
+		'is empty without the engine-v2 module (%p)',
+		(engineSetup) => {
+			expect(getSelfHealingWorkflowEngineSection(engineSetup)).toBe('');
+		},
+	);
+
+	it.each(['v1', 'v2'] as const)(
+		'keeps each workflow on its engine with %s as the default',
+		(newWorkflowEngine) => {
+			const section = getSelfHealingWorkflowEngineSection({
+				engineV2Available: true,
+				newWorkflowEngine,
+			});
+
+			expect(section).toContain('## Workflow Engine');
+			expect(section).toContain('Do not add, change or remove `engineType`.');
+			expect(section).toContain('`verify_candidate` is the build check');
+			expect(section).toContain('Use `needs_you`');
+			expect(section).toContain(getEngineV2BuildRules());
+			// The agent works without a user and does not create workflows.
+			expect(section).not.toContain('New workflows run on engine');
+			expect(section).not.toContain('ask the user');
+		},
+	);
 });
