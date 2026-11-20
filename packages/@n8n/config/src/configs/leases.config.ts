@@ -13,7 +13,7 @@ export class LeasesConfig {
 	leaseSeconds: number = 20;
 
 	/**
-	 * How often an instance renews the leases it holds, in seconds. Use a whole number from 1 to 2147483. The renewal interval must be at most a third of the lease length minus the margin. If the values break this rule, n8n doesn't start.
+	 * How often an instance renews the leases it holds, in seconds. Use a whole number from 1 to 2147483. The renewal interval must be at most the lease length minus the margin, divided by three. If the values break this rule, n8n doesn't start.
 	 */
 	@Env('N8N_LEASES_RENEW_SECONDS', leaseSecondsSchema)
 	renewSeconds: number = 5;
