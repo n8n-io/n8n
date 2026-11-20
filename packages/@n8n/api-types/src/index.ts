@@ -164,6 +164,7 @@ export { passwordSchema, createPasswordSchema } from './schemas/password.schema'
 export { n8nIdSchema } from './schemas/id.schema';
 export {
 	agentIdParamSchema,
+	aiPreferenceIdParamSchema,
 	columnIdParamSchema,
 	communityPackageNameParamSchema,
 	credentialIdParamSchema,
@@ -893,6 +894,7 @@ export {
 	MCP_APPS_VARIANT_ENABLED,
 	MCP_AGENT_SCOPES,
 	MCP_SKILL_SCOPES,
+	MCP_PREFERENCE_SCOPES,
 	MCP_INSTANCE_SCOPES,
 	MCP_CLIENT_BRAND_MATCHERS,
 	MCP_CLIENT_TYPE_FILTERS,
@@ -1057,12 +1059,14 @@ export { SSO_LOGIN_REQUIRED_ERROR_CODE } from './constants/auth';
 export { N8N_CLIENT_HEADER, N8N_CLIENT_EDITOR_UI, N8N_CLIENT_N8N_NODE } from './constants/client';
 
 export {
+	instanceAiApprovalAskReasonSchema,
 	instanceAiApprovalDetailsSchema,
 	instanceAiApprovalModeSchema,
 	instanceAiAutoApprovalDeciderSchema,
 	autoApprovalPayloadSchema,
 	DATA_TABLE_CHANGE_SEVERITY,
 	isSessionGrantableDataTableAction,
+	type InstanceAiApprovalAskReason,
 	type InstanceAiApprovalDetails,
 	type InstanceAiDataTableChangeDetails,
 	type InstanceAiApprovalMode,

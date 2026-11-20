@@ -1,9 +1,15 @@
-import { agentSkillSchema, type SkillScanFinding, type SkillScanLocation } from '@n8n/api-types';
+import {
+	agentSkillSchema,
+	type SkillLinkReviewReason,
+	type SkillScanFinding,
+	type SkillScanLocation,
+} from '@n8n/api-types';
 import { kebabCase } from 'change-case';
 import { isDeepStrictEqual } from 'node:util';
 import type { ZodIssue } from 'zod';
 
 import type { SkillContent } from './skill-content-hash';
+import { extractSkillLinks, linkReviewReason } from './skill-link-review-policy';
 import { SKILL_MD } from './skill-md';
 import { codePointOf, HIDDEN_PATTERN, locate, skillMdText } from './skill-text';
 import { isScriptFile } from './skipped-files';
@@ -106,68 +112,76 @@ export function findHiddenUnicode(input: SkillScanInput): SkillScanFinding[] {
 	});
 }
 
-/**
- * A link up to the first character that cannot be part of it. An IPv6 host sits in brackets,
- * which the rest of a link cannot hold, so it has its own group after the optional user info.
- */
-const URL_PATTERN =
-	/\b(?:https?|wss?|ftp):\/\/(?:[^\s<>"'`()[\]{}/?#@]*@)?(?:\[[\d:a-f.]+\])?[^\s<>"'`()[\]{}]*/gi;
+/** The English text of each reason, for the `detail` of a finding. */
+const LINK_REASON_DETAIL: Record<SkillLinkReviewReason, string> = {
+	ip_address: 'it uses an IP address',
+	not_https: 'it does not use HTTPS',
+	paste_site: 'it uses a paste site',
+	webhook_catcher: 'it uses a webhook catcher',
+	url_shortener: 'it uses a URL shortener',
+	unreadable: 'n8n cannot read its address',
+};
 
 /**
- * A new domain can be a place where a model sends data, so an update with a domain that the
- * previous version did not have needs review. A new link on a known domain does not. At
- * import there is no previous version, so each domain is only listed.
+ * An update needs review if it links to a new domain. At import, list each domain and flag
+ * destinations that need review even without a previous version.
  */
 export function findNewUrls({ content, previous }: SkillScanInput): SkillScanFinding[] {
-	const known = previous ? new Set(domainsByFile(previous).keys()) : new Set<string>();
-	return [...domainsByFile(content)]
-		.filter(([domain]) => !known.has(domain))
-		.map(([domain, { file, location }]) =>
-			previous
-				? {
-						rule: 'new_url',
-						severity: 'needs_review',
-						file,
-						domain,
-						detail: `The update links to ${domain}, a domain that the current version does not use.`,
-						location,
-					}
-				: {
-						rule: 'new_url',
-						severity: 'info',
-						file,
-						domain,
-						detail: `The skill links to ${domain}.`,
-						location,
-					},
-		);
+	const known = previous ? domainsByFile(previous) : undefined;
+	return [...domainsByFile(content, !previous)]
+		.filter(([key]) => !known?.has(key))
+		.map(([key, { file, locate, domain, reviewReason }]) => ({
+			rule: reviewReason ? 'risky_url' : 'new_url',
+			severity: previous || reviewReason ? 'needs_review' : 'info',
+			file,
+			...(domain ? { domain } : {}),
+			...(reviewReason ? { linkReason: reviewReason } : {}),
+			detail: previous
+				? `The update links to ${key}, a domain that the current version does not use.`
+				: reviewReason
+					? `The link ${domain ? `to ${domain}` : key} needs review because ${LINK_REASON_DETAIL[reviewReason]}.`
+					: `The skill links to ${domain}.`,
+			location: locate(),
+		}));
 }
 
-/** Each domain that the skill links to, with the first file and place that has it. */
+/** `domain` is absent for a link with an address that n8n cannot read. */
+type DomainOccurrence = {
+	file: string;
+	locate: () => SkillScanLocation;
+	domain?: string;
+	reviewReason?: SkillLinkReviewReason;
+};
+
+/**
+ * Keep the first link per domain. At import, prefer the first link that needs review. A link
+ * with an address that n8n cannot read has its text as the key, and counts only at import.
+ */
 function domainsByFile(
 	content: SkillContent,
-): Map<string, { file: string; location: SkillScanLocation }> {
-	const domains = new Map<string, { file: string; location: SkillScanLocation }>();
+	checkImportRisk = false,
+): Map<string, DomainOccurrence> {
+	const domains = new Map<string, DomainOccurrence>();
 	for (const { file, texts } of textsByFile(content)) {
 		for (const entry of texts) {
-			for (const match of entry.text.matchAll(URL_PATTERN)) {
-				const domain = domainOf(match[0]);
-				if (!domain || domains.has(domain)) continue;
-				const index = match.index;
-				domains.set(domain, { file, location: entry.locate(index, index + match[0].length) });
+			for (const { link, start, end, url, domain } of extractSkillLinks(entry.text)) {
+				if (!domain && !checkImportRisk) continue;
+				const key = domain || link;
+				const existing = domains.get(key);
+				if (existing && (!checkImportRisk || existing.reviewReason)) continue;
+				const reviewReason = checkImportRisk ? linkReviewReason(url, domain) : undefined;
+				if (existing && !reviewReason) continue;
+				domains.set(key, {
+					file,
+					domain,
+					reviewReason,
+					// Resolve the location only for links that produce a finding.
+					locate: () => entry.locate(start, end),
+				});
 			}
 		}
 	}
 	return domains;
-}
-
-function domainOf(url: string): string | undefined {
-	try {
-		// A dot that ends a sentence can follow the host, as in "see https://example.com."
-		return new URL(url).hostname.toLowerCase().replace(/\.+$/, '') || undefined;
-	} catch {
-		return undefined;
-	}
 }
 
 /**

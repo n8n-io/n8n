@@ -1916,12 +1916,30 @@ describe('workflows tool', () => {
 			});
 		});
 
+		it('stores a per-workflow grant for unarchive and skips the next approval', async () => {
+			const context = createMockContext();
+			context.grantSessionToolApproval = vi.fn(async () => {});
+			const tool = toolFor(context, 'unarchive');
+
+			await executeTool(tool, { action: 'unarchive', workflowId: 'wf1' }, {
+				resumeData: { approved: true, scope: 'session' },
+			} as never);
+
+			expect(context.grantSessionToolApproval).toHaveBeenCalledWith('workflows:unarchive:wf1');
+			expect(context.workflowService.unarchive).toHaveBeenCalledWith('wf1');
+
+			context.sessionApprovedToolKeys = new Set(['workflows:unarchive:wf1']);
+			const suspend = vi.fn();
+			await executeTool(tool, { action: 'unarchive', workflowId: 'wf1' }, { suspend } as never);
+
+			expect(suspend).not.toHaveBeenCalled();
+		});
+
 		it.each([
 			['delete', 'archive'],
-			['unarchive', 'unarchive'],
 			['unpublish', 'unpublish'],
 		] as const)(
-			'stores a per-workflow grant for %s and skips the next approval',
+			'stores one grant for %s that skips the approval for other workflows',
 			async (action, serviceMethod) => {
 				const context = createMockContext();
 				context.grantSessionToolApproval = vi.fn(async () => {});
@@ -1931,14 +1949,14 @@ describe('workflows tool', () => {
 					resumeData: { approved: true, scope: 'session' },
 				} as never);
 
-				expect(context.grantSessionToolApproval).toHaveBeenCalledWith(`workflows:${action}:wf1`);
-				expect(context.workflowService[serviceMethod]).toHaveBeenCalledWith('wf1');
+				expect(context.grantSessionToolApproval).toHaveBeenCalledWith(`workflows:${action}`);
 
-				context.sessionApprovedToolKeys = new Set([`workflows:${action}:wf1`]);
+				context.sessionApprovedToolKeys = new Set([`workflows:${action}`]);
 				const suspend = vi.fn();
-				await executeTool(tool, { action, workflowId: 'wf1' }, { suspend } as never);
+				await executeTool(tool, { action, workflowId: 'wf2' }, { suspend } as never);
 
 				expect(suspend).not.toHaveBeenCalled();
+				expect(context.workflowService[serviceMethod]).toHaveBeenCalledWith('wf2');
 			},
 		);
 	});

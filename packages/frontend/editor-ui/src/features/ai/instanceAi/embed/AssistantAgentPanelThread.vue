@@ -35,6 +35,7 @@ import {
 	assistantPreferenceCardExtension,
 	useAssistantPreferenceCards,
 } from '../assistantAgent/assistantPreferenceCards';
+import { assistantSharedFilesExtension } from '../assistantAgent/assistantSharedFiles';
 import {
 	useAssistantAgentMessageTelemetry,
 	type AssistantAgentSendingMessage,
@@ -244,7 +245,11 @@ watch(
 	{ immediate: true },
 );
 
-const interactionExtensions = [assistantConfirmationExtension, assistantPreferenceCardExtension];
+const interactionExtensions = [
+	assistantConfirmationExtension,
+	assistantPreferenceCardExtension,
+	assistantSharedFilesExtension,
+];
 
 provide(
 	ASSISTANT_PREFERENCE_CARDS,

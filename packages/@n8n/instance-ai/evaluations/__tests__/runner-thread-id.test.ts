@@ -62,7 +62,27 @@ describe('buildWorkflow thread IDs', () => {
 			logger: silentLogger,
 		});
 
-		expect(client.ensureThread).toHaveBeenCalledWith(threadId, 'project-1', undefined);
+		expect(vi.mocked(client.ensureThread).mock.calls[0][0]).toBe(threadId);
 		expect(result.threadId).toBe(threadId);
+	});
+
+	it('refuses a supplied thread ID that is not a UUID, before any setup', async () => {
+		const client = {
+			getPersonalProjectId: vi.fn(),
+			ensureThread: vi.fn(),
+		} as unknown as N8nClient;
+
+		await expect(
+			buildWorkflow({
+				client,
+				conversation: [{ role: 'user', text: 'build a workflow' }],
+				threadId: 'case-42',
+				preRunWorkflowIds: new Set(),
+				claimedWorkflowIds: new Set(),
+				logger: silentLogger,
+			}),
+		).rejects.toThrow('threadId must be a UUID');
+		expect(client.getPersonalProjectId).not.toHaveBeenCalled();
+		expect(client.ensureThread).not.toHaveBeenCalled();
 	});
 });

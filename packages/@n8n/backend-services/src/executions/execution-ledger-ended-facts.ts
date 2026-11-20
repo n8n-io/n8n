@@ -1,4 +1,4 @@
-import type { CrashedExecution } from '@n8n/db';
+import type { CanceledExecution, CrashedExecution } from '@n8n/db';
 import type { IRun, IWorkflowBase, WorkflowExecutionSource } from 'n8n-workflow';
 
 import { toLedgerFact, toLedgerOutcome } from './counting-rules';
@@ -65,6 +65,22 @@ export function toEndedFactsFromCrash(execution: CrashedExecution): ExecutionLed
 	return {
 		...facts,
 		outcome: 'crashed',
+		runtimeMs: startedAt ? stoppedAt.getTime() - startedAt.getTime() : 0,
+		timeSavedMin: 0,
+	};
+}
+
+/** The `ended` facts of a row that a cancel write moved to `canceled`. */
+export function toEndedFactsFromCancel(execution: CanceledExecution): ExecutionLedgerEndedFacts {
+	const { startedAt, stoppedAt } = execution;
+
+	return {
+		executionId: execution.id,
+		workflowId: execution.workflowId,
+		workflowName: execution.workflowName ?? '',
+		mode: execution.mode,
+		occurredAt: stoppedAt,
+		outcome: 'canceled',
 		runtimeMs: startedAt ? stoppedAt.getTime() - startedAt.getTime() : 0,
 		timeSavedMin: 0,
 	};

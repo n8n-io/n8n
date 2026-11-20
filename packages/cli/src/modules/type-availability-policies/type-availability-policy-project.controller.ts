@@ -1,10 +1,11 @@
-import { PutProjectPolicyDto } from '@n8n/api-types';
+import { PutProjectPolicyDto, type NodeTypeUsageResponse } from '@n8n/api-types';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Body, Get, Licensed, ProjectScope, Put, RestController } from '@n8n/decorators';
 import type { Response } from 'express';
 
 import { NODE_TYPES_KIND } from './constants';
+import { NodeTypeUsageService } from './node-type-usage.service';
 import { TypeAvailabilityPolicyService } from './type-availability-policy.service';
 
 /**
@@ -13,13 +14,16 @@ import { TypeAvailabilityPolicyService } from './type-availability-policy.servic
  * granted to project admins so they self-govern their own project's row (per IAM-1142's RFC
  * decision).
  *
- * Deliberately narrower than the instance controller: only the composed read/write, mirroring
- * `GET`/`PUT /instance`. Policy-document CRUD and multi-attachment management stay
+ * Deliberately narrower than the instance controller: the composed read/write, mirroring
+ * `GET`/`PUT /instance`, and the usage read. Policy-document CRUD and multi-attachment management stay
  * instance-only — those act on documents and attachments potentially shared across scopes.
  */
 @RestController('/projects/:projectId/node-type-policies')
 export class TypeAvailabilityPolicyProjectController {
-	constructor(private readonly service: TypeAvailabilityPolicyService) {}
+	constructor(
+		private readonly service: TypeAvailabilityPolicyService,
+		private readonly nodeTypeUsageService: NodeTypeUsageService,
+	) {}
 
 	@Get('/project')
 	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
@@ -33,6 +37,13 @@ export class TypeAvailabilityPolicyProjectController {
 			defaultAction: effective.defaultAction,
 			version: effective.version,
 		};
+	}
+
+	@Get('/usage')
+	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
+	@ProjectScope('nodeTypePolicy:manage')
+	async getUsage(req: AuthenticatedRequest<{ projectId: string }>): Promise<NodeTypeUsageResponse> {
+		return await this.nodeTypeUsageService.getUsage(req.params.projectId);
 	}
 
 	@Put('/project')

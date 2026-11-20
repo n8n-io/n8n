@@ -110,6 +110,8 @@ type CreateAgentOptions =
 			metadata?: AgentDefinitionMetadata;
 			plannedDestinations?: PlannedAgentDestinations;
 			writeSkills?: AgentSkillWriter;
+			/** Context of the request, for the audit event. */
+			ctx?: OperationContext;
 	  };
 
 type DraftAgentCreateOptions = {
@@ -141,6 +143,8 @@ type DraftAgentCreateOptions = {
 	tagIds?: string[];
 	/** User for configuration validation and product save effects. With schema, duplicates safely. */
 	user?: User;
+	/** Context of the request, for the audit event. */
+	ctx?: OperationContext;
 };
 
 export type AgentCreationResult = AgentCreationState & { agent: ProjectAgent };
@@ -298,6 +302,7 @@ export class AgentsService {
 			);
 			return await this.getCreationResult(existing, true);
 		}
+		this.agentServiceAccount.reportCreated(agent, options.actor, options.ctx);
 
 		// The mappings were written in the insert transaction; carry them on the
 		// entity so the create response reports the agent's tags.
@@ -515,6 +520,7 @@ export class AgentsService {
 			await this.definitionService.captureVersion(agent, user, ctx);
 			return savedRefs;
 		});
+		this.agentServiceAccount.reportCreated(agent, options.actor, options.ctx);
 		await Container.get(AgentSaveCompletionService).definitionSaved(
 			buildAgentMutationEvent(
 				agent,
