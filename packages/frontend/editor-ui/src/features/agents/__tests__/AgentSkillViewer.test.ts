@@ -7,7 +7,10 @@ import {
 	AGENT_SKILL_REFERENCE_MAX_COUNT,
 } from '@n8n/api-types';
 import AgentSkillViewer from '@/features/agents/components/AgentSkillViewer.vue';
-import { renderSkillMermaid } from '@/features/agents/components/skillMermaidRenderer';
+import {
+	MAX_DIAGRAM_LENGTH,
+	renderSkillMermaid,
+} from '@/features/agents/components/skillMermaidRenderer';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 const track = vi.fn();
@@ -242,6 +245,46 @@ describe('AgentSkillViewer', () => {
 		expect(renderSkillMermaid).toHaveBeenCalledTimes(1);
 	});
 
+	it('renders a Mermaid block of the maximum length', async () => {
+		vi.mocked(renderSkillMermaid).mockClear().mockResolvedValueOnce(renderedDiagram());
+		const code = mermaidSourceOfLength(MAX_DIAGRAM_LENGTH);
+		const wrapper = mountViewer({
+			readOnly: true,
+			skill: {
+				name: 'Triage',
+				description: 'Use for triage',
+				instructions: `\`\`\`mermaid\n${code}\`\`\``,
+			},
+		});
+		await flushPromises();
+
+		expect(renderSkillMermaid).toHaveBeenCalledTimes(1);
+		expect(vi.mocked(renderSkillMermaid).mock.calls[0][0]).toHaveLength(MAX_DIAGRAM_LENGTH);
+		expect(wrapper.get('[data-testid="agent-skill-instructions-text"]').find('img').exists()).toBe(
+			true,
+		);
+	});
+
+	it('shows a Mermaid block over the maximum length as code, without a render', async () => {
+		vi.mocked(renderSkillMermaid).mockClear();
+		const code = mermaidSourceOfLength(MAX_DIAGRAM_LENGTH + 1);
+		const wrapper = mountViewer({
+			readOnly: true,
+			skill: {
+				name: 'Triage',
+				description: 'Use for triage',
+				instructions: `\`\`\`mermaid\n${code}\`\`\``,
+			},
+		});
+		await flushPromises();
+
+		const instructions = wrapper.get('[data-testid="agent-skill-instructions-text"]');
+		expect(renderSkillMermaid).not.toHaveBeenCalled();
+		expect(instructions.get('pre code').element.textContent).toBe(code);
+		expect(instructions.find('img').exists()).toBe(false);
+		expect(instructions.find('details').exists()).toBe(false);
+	});
+
 	it('keeps the source visible when the diagram image cannot load', async () => {
 		vi.mocked(renderSkillMermaid).mockResolvedValueOnce(renderedDiagram());
 		const code = 'flowchart LR\n  A --> B\n';
@@ -396,6 +439,12 @@ describe('AgentSkillViewer', () => {
 		expect(wrapper.emitted('update:valid')?.at(-1)).toEqual([false]);
 	});
 });
+
+/** The code of a Mermaid block with this many characters, with the line break before the closing fence. */
+function mermaidSourceOfLength(length: number) {
+	const start = 'flowchart LR\n  A --> B\n%% ';
+	return `${start}${'x'.repeat(length - start.length - 1)}\n`;
+}
 
 function renderedDiagram() {
 	return {
