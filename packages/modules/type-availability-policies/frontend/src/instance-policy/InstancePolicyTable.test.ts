@@ -127,6 +127,69 @@ describe('InstancePolicyTable', () => {
 		);
 	});
 
+	describe('usage sort', () => {
+		const usage = (workflows: number) => ({ uses: 0, workflows, activeWorkflows: 0, projects: 0 });
+		const USAGE_ROWS = [
+			row('bitlyApi', 'Bitly API', 'allow', false, usage(2)),
+			row('notionApi', 'Notion API', 'allow', false, usage(5)),
+			row('airtableApi', 'Airtable API', 'allow', false),
+			row('zoomApi', 'Zoom API', 'allow', false, usage(2)),
+			row('boxApi', 'Box API', 'allow', false),
+			row('asanaApi', 'Asana API', 'allow', false, usage(2)),
+		];
+
+		const clickWorkflows = async (getByRole: (role: string, options?: object) => HTMLElement) =>
+			await userEvent.click(getByRole('columnheader', { name: /^Workflows/ }));
+
+		it('sorts the counts from low to high, with names A to Z for equal counts and unknown usage last', async () => {
+			const { getByTestId, getByRole } = setup(USAGE_ROWS);
+
+			await clickWorkflows(getByRole);
+
+			await waitFor(() =>
+				expect(rowNames(getByTestId('instance-policy-table'))).toEqual([
+					'Asana API',
+					'Bitly API',
+					'Zoom API',
+					'Notion API',
+					'Airtable API',
+					'Box API',
+				]),
+			);
+		});
+
+		it('sorts from low to high on the first click when the first row has a count', async () => {
+			const { getByTestId, getByRole } = setup([
+				row('asanaApi', 'Asana API', 'allow', false, usage(5)),
+				row('bitlyApi', 'Bitly API', 'allow', false, usage(2)),
+			]);
+
+			await clickWorkflows(getByRole);
+
+			await waitFor(() =>
+				expect(rowNames(getByTestId('instance-policy-table'))).toEqual(['Bitly API', 'Asana API']),
+			);
+		});
+
+		it('sorts the counts from high to low, with names A to Z for equal counts and unknown usage last', async () => {
+			const { getByTestId, getByRole } = setup(USAGE_ROWS);
+
+			await clickWorkflows(getByRole);
+			await clickWorkflows(getByRole);
+
+			await waitFor(() =>
+				expect(rowNames(getByTestId('instance-policy-table'))).toEqual([
+					'Notion API',
+					'Asana API',
+					'Bitly API',
+					'Zoom API',
+					'Airtable API',
+					'Box API',
+				]),
+			);
+		});
+	});
+
 	it('does not emit a change when the admin picks the current access', async () => {
 		const { getByTestId, emitted } = setup();
 

@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import { useDocumentTitle } from '@n8n/composables/useDocumentTitle';
-import { N8nSegmentControl, N8nSettingsLayout, N8nSettingsPageHeader } from '@n8n/design-system';
+import {
+	N8nPreviewBadge,
+	N8nSegmentControl,
+	N8nSettingsLayout,
+	N8nSettingsPageHeader,
+} from '@n8n/design-system';
 import { VIEWS } from '@n8n/frontend-constants/views';
 import { useI18n } from '@n8n/i18n';
 import { createReusableTemplate } from '@vueuse/core';
@@ -80,7 +85,11 @@ onMounted(() => {
 			:title="i18n.baseText('typeAvailabilityPolicies.instancePolicy.title')"
 			:description="i18n.baseText('typeAvailabilityPolicies.instancePolicy.description')"
 			:docs-url="INSTANCE_POLICY_DOCS_URL"
-		/>
+		>
+			<template #titleTrailing>
+				<N8nPreviewBadge size="xsmall" data-test-id="instance-policy-preview-badge" />
+			</template>
+		</N8nSettingsPageHeader>
 		<DefineTabs>
 			<N8nSegmentControl
 				v-model="activeTab"
