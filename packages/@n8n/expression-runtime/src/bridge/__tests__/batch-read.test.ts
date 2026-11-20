@@ -161,14 +161,12 @@ describe('readBatchAtPath on an array, for a request of named fields', () => {
 
 	it('returns only the named fields of each item', () => {
 		// An item counts for 8 characters, and a number for 8 more. The first read takes 60.
-		expect(readItems(rows, 2, 0, ['id'])).toEqual(
-			whole([{ id: 2 }, { id: 3 }, { id: 4 }, { id: 5 }]),
-		);
+		expect(readItems(rows, 2, 0, ['id'])).toEqual(whole([{ id: 2 }, { id: 3 }, { id: 4 }]));
 	});
 
 	it('returns a small object field whole', () => {
 		expect(readItems(rows, 0, 0, ['nested'])).toEqual(
-			whole([{ nested: { a: 0 } }, { nested: { a: 1 } }, { nested: { a: 2 } }]),
+			whole([{ nested: { a: 0 } }, { nested: { a: 1 } }]),
 		);
 	});
 
@@ -201,6 +199,14 @@ describe('readBatchAtPath on an array, for a request of named fields', () => {
 
 		expect(readItems([item], 0, 0, ['id', 'computed'])).toEqual(whole([{ id: 1 }]));
 		expect(read).not.toHaveBeenCalled();
+	});
+
+	it('stops the run before an item whose fields go over what is left of the read', () => {
+		const long = { id: 2, text: 'x'.repeat(50) };
+		const items = [{ id: 1 }, long, { id: 3 }];
+
+		expect(readItems(items, 0, 0, ['id', 'text'])).toEqual(whole([{ id: 1 }]));
+		expect(readItems(items, 1, 0, ['id', 'text'])).toEqual(whole([long]));
 	});
 
 	it('stops the run before an item that is not a plain object', () => {

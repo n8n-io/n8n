@@ -138,8 +138,8 @@ function isPlainRecord(value: unknown): value is Record<string, unknown> {
 
 /**
  * For the run of plain objects from `start`, the fields in `names` of each one.
- * It stops before the first item that is not a plain object, and when the fields
- * took `readChars` characters.
+ * It stops before the first item that is not a plain object. It also stops before
+ * an item after `start` whose fields take more than what is left of `readChars`.
  */
 function namedFieldsOfItemsFrom(
 	items: unknown[],
@@ -156,6 +156,9 @@ function namedFieldsOfItemsFrom(
 			break;
 		}
 		const { fields, chars } = namedFieldsOf(item, names, childChars);
+		if (index !== start && chars > remaining) {
+			break;
+		}
 		remaining -= chars;
 		rows.push(fields);
 	}
