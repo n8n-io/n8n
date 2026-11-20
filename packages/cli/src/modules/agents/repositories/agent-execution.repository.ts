@@ -80,6 +80,41 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 	}
 
 	/**
+	 * The top-level runs of one agent, newest first, with the total row count.
+	 * Runs of a sub-agent are not listed. The `timeline` column is skipped.
+	 */
+	async findListForAgent(
+		agentId: string,
+		filter: { sessionId?: string; status?: AgentExecutionStatus },
+		{ offset, limit }: { offset: number; limit: number },
+	): Promise<[AgentExecution[], number]> {
+		return await this.findAndCount({
+			select: {
+				id: true,
+				threadId: true,
+				status: true,
+				source: true,
+				createdAt: true,
+				startedAt: true,
+				stoppedAt: true,
+				promptTokens: true,
+				completionTokens: true,
+				totalTokens: true,
+				cost: true,
+			},
+			where: {
+				thread: { agentId },
+				parentExecutionId: IsNull(),
+				...(filter.sessionId ? { threadId: filter.sessionId } : {}),
+				...(filter.status ? { status: filter.status } : {}),
+			},
+			order: { createdAt: 'DESC', id: 'DESC' },
+			skip: offset,
+			take: limit,
+		});
+	}
+
+	/**
 	 * Up to `limit` executions of a thread, newest first. With `before`, only
 	 * the executions older than that one. The `id` breaks ties in `createdAt`.
 	 */

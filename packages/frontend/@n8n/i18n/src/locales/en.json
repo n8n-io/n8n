@@ -1921,6 +1921,7 @@
 	"agentSessions.origin.whatsapp": "WhatsApp",
 	"agentSessions.origin.teams": "Microsoft Teams",
 	"agentSessions.origin.webhook": "API",
+	"agentSessions.origin.publicApi": "Public API",
 	"agentSessions.origin.n8nChat": "n8n Chat",
 	"agentSessions.goToParentRun": "Go to parent run",
 	"agentSessions.stop": "Stop session",

@@ -63,6 +63,7 @@ describe('Agent package export scope', () => {
 			'publish',
 			'unpublish',
 			'delete',
+			'execute',
 		]);
 	});
 	it.each(

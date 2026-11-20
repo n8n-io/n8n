@@ -50,6 +50,12 @@ describe('canContinueThreadOnSurface', () => {
 		);
 	});
 
+	it('does not let Preview continue a Public API session', () => {
+		expect(canContinueThreadOnSurface('preview', thread, 'user-1', 'public_api', false)).toBe(
+			false,
+		);
+	});
+
 	describe('system threads', () => {
 		it('lets the owner continue a system thread before its first execution', () => {
 			expect(canContinueThreadOnSurface('system', thread, 'user-1', undefined, true)).toBe(true);
