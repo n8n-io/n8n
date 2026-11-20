@@ -934,23 +934,18 @@ describe('SkillSourceConnectDialog', () => {
 		const preset = {
 			name: 'Brand voice',
 			description: 'Write copy in a consistent voice.',
-			requirements: 'Provide your brand guidelines.',
-			publisher: 'Acme',
-			license: 'MIT',
 			url: 'https://github.com/acme/skills/tree/main/skills/brand-voice',
 			location: 'skills/brand-voice',
 		};
 
-		it('shows the selected skill and source with the save scope as the main choice', async () => {
+		it('shows the selected skill summary with the save scope as the main choice', async () => {
 			skillsStore.discoverSource.mockResolvedValue(discovery());
 			const view = renderDialog({ props: { open: true, scopeOptions: SCOPES, preset } });
 			const summary = within(view.getByTestId('skill-source-catalog-selection'));
-			expect(summary.getByText('Brand voice')).toBeVisible();
+			expect(summary.getByRole('heading', { name: 'Brand voice' })).toBeVisible();
 			expect(summary.getByText(preset.description)).toBeVisible();
-			expect(summary.getByText(preset.requirements)).toBeVisible();
-			expect(summary.getByText(/Acme.*MIT/)).toBeVisible();
 			expect(view.getAllByRole('dialog')).toHaveLength(1);
-			expect(summary.getByRole('link', { name: preset.url })).toHaveAttribute('href', preset.url);
+			expect(summary.queryByRole('link')).not.toBeInTheDocument();
 			expect(view.queryByTestId('skill-source-repository-select')).not.toBeInTheDocument();
 			expect(view.getByTestId('skill-source-credential-select')).not.toBeVisible();
 			expect(view.getByLabelText('Save to')).toBeVisible();
@@ -966,13 +961,13 @@ describe('SkillSourceConnectDialog', () => {
 				reuseExistingSource: true,
 			});
 			await userEvent.click(view.getByTestId('skill-source-back'));
-			expect(view.getByText(preset.requirements)).toBeVisible();
+			expect(view.getByRole('heading', { name: preset.name })).toBeVisible();
 			expect(view.getByTestId('skill-source-scope-select')).toHaveTextContent('Marketing');
 		});
 
-		it('allows reading catalog details without a writable scope', async () => {
+		it('shows the selected skill summary without a writable scope', async () => {
 			const view = renderDialog({ props: { open: true, scopeOptions: [], preset } });
-			expect(view.getByText(preset.requirements)).toBeVisible();
+			expect(view.getByRole('heading', { name: preset.name })).toBeVisible();
 			expect(view.getByText(/permission/)).toBeVisible();
 			expect(view.getByRole('button', { name: 'Review skill' })).toBeDisabled();
 			expect(view.queryByTestId('skill-source-scope-select')).not.toBeInTheDocument();

@@ -3,7 +3,8 @@ import { createTestingPinia } from '@pinia/testing';
 import { waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { ResponseError } from '@n8n/rest-api-client';
-import type { DiscoveredSkill, SkillSourcePreview } from '@n8n/api-types';
+import type { DiscoveredSkill, FrontendModuleSettings, SkillSourcePreview } from '@n8n/api-types';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { mock } from 'vitest-mock-extended';
 import SkillCatalogDetail from './SkillCatalogDetail.vue';
 import { SKILL_CATALOG } from './skillCatalog';
@@ -55,6 +56,61 @@ it('keeps browsing available without permission to add and links to the installe
 	expect(view.getByTestId('skill-catalog-add')).toBeDisabled();
 	await userEvent.click(view.getByRole('button', { name: 'View skill in Global' }));
 	expect(view.emitted('openInstalled')).toEqual([['saved-1']]);
+});
+
+it.each([
+	{ assistantEnabled: true, mcpEnabled: true },
+	{ assistantEnabled: true, mcpEnabled: false },
+	{ assistantEnabled: false, mcpEnabled: true },
+	{ assistantEnabled: false, mcpEnabled: false },
+])(
+	'explains setup when Assistant is $assistantEnabled and MCP is $mcpEnabled without blocking import',
+	async ({ assistantEnabled, mcpEnabled }) => {
+		const settings = useSettingsStore();
+		vi.mocked(settings.isModuleActive).mockReturnValue(true);
+		settings.moduleSettings = {
+			'instance-ai': mock<NonNullable<FrontendModuleSettings['instance-ai']>>({
+				enabled: assistantEnabled,
+			}),
+			mcp: { mcpAccessEnabled: mcpEnabled },
+		};
+		const view = render();
+		expect(
+			view.getByText(
+				assistantEnabled ? /n8n Assistant is enabled/ : /Enable it in Settings > Assistant/,
+			),
+		).toBeVisible();
+		expect(
+			view.getByText(
+				mcpEnabled ? /Connect your external agent/ : /enable instance-level MCP in Settings/,
+			),
+		).toBeVisible();
+		await waitFor(() => expect(view.getByTestId('skill-catalog-add')).toBeEnabled());
+	},
+);
+
+it('does not offer settings for unavailable modules', () => {
+	const settings = useSettingsStore();
+	vi.mocked(settings.isModuleActive).mockReturnValue(false);
+	settings.moduleSettings = {
+		'instance-ai': mock<NonNullable<FrontendModuleSettings['instance-ai']>>({ enabled: true }),
+		mcp: { mcpAccessEnabled: true },
+	};
+	const view = render();
+	expect(view.getByText(/n8n Assistant isn't available/)).toBeVisible();
+	expect(view.getByText(/Instance-level MCP isn't available/)).toBeVisible();
+	expect(view.queryByText(/Settings >/)).not.toBeInTheDocument();
+});
+
+it('keeps requirements for content skills independent of n8n tool settings', () => {
+	const view = render({
+		props: {
+			entry: { ...entry, requirementsKey: 'settings.context.skills.catalog.requirements.text' },
+		},
+	});
+	expect(view.getByText(/Provide the relevant text, audience, and product context/)).toBeVisible();
+	expect(view.queryByText(/n8n Assistant isn't available/)).not.toBeInTheDocument();
+	expect(view.queryByText(/Instance-level MCP isn't available/)).not.toBeInTheDocument();
 });
 
 it('keeps an unpublished skill unavailable and allows retry after publication', async () => {

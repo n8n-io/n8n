@@ -4,6 +4,7 @@ import isEqual from 'lodash/isEqual';
 import { computed, nextTick, onMounted, ref, useCssModule, useTemplateRef, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { I18nT } from 'vue-i18n';
+import { useEventListener } from '@vueuse/core';
 import {
 	AGENT_SKILL_DESCRIPTION_MAX_LENGTH,
 	AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
@@ -902,6 +903,12 @@ async function loadLibrarySkills() {
 		libraryLoading.value = false;
 	}
 }
+
+useEventListener(window, 'focus', () => {
+	if (hasPicker && modalOpen.value && step.value === 'select' && !libraryLoading.value) {
+		void loadLibrarySkills();
+	}
+});
 
 function targetForPickerCategory(category: ToolCategoryKey): AgentSkillAvailability {
 	return category === 'global' && props.data.canCreateInstanceSkills ? 'instance' : 'project';

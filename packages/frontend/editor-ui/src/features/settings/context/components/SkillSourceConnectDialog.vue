@@ -19,7 +19,7 @@ import {
 	N8nDialog,
 	N8nDialogBody,
 	N8nDialogFooter,
-	N8nExternalLink,
+	N8nHeading,
 	N8nIcon,
 	N8nInputLabel,
 	N8nSelect2,
@@ -54,9 +54,6 @@ export type SkillSourceConnected = {
 export type SkillSourcePreset = {
 	name: string;
 	description: string;
-	requirements: string;
-	publisher: string;
-	license: string;
 	url: string;
 	location: string;
 	allowedSkippedFiles?: string[];
@@ -784,24 +781,8 @@ function onInteractOutside(event: Event) {
 		<N8nDialogBody v-if="step === 'repository'" :class="$style.body">
 			<template v-if="preset">
 				<div :class="$style.catalogSelection" data-test-id="skill-source-catalog-selection">
-					<N8nText bold>{{ preset.name }}</N8nText>
-					<N8nText>{{ preset.description }}</N8nText>
-					<N8nText size="small" color="text-light">
-						{{ preset.publisher }} · {{ i18n.baseText('settings.context.skills.catalog.license') }}:
-						{{ preset.license }}
-					</N8nText>
-					<N8nText bold size="small">{{
-						i18n.baseText('settings.context.skills.catalog.requirements')
-					}}</N8nText>
-					<N8nText size="small">{{ preset.requirements }}</N8nText>
-					<N8nText size="small" color="text-light">
-						{{ i18n.baseText('settings.context.skills.connect.catalog.source') }}
-					</N8nText>
-					<N8nText size="small" :class="$style.catalogUrl">
-						<N8nExternalLink :href="preset.url" inline size="small">
-							<span>{{ preset.url }}</span>
-						</N8nExternalLink>
-					</N8nText>
+					<N8nHeading tag="h3" size="large" bold>{{ preset.name }}</N8nHeading>
+					<N8nText size="medium" color="text-light">{{ preset.description }}</N8nText>
 				</div>
 				<N8nText color="text-base">
 					{{
@@ -1045,21 +1026,6 @@ function onInteractOutside(event: Event) {
 	border: var(--border);
 	border-radius: var(--radius--xs);
 	background: var(--background--subtle);
-}
-
-.catalogUrl {
-	align-self: stretch;
-	max-width: 100%;
-	overflow-wrap: anywhere;
-
-	a {
-		align-items: baseline;
-		max-width: 100%;
-	}
-
-	svg {
-		flex-shrink: 0;
-	}
 }
 
 .credentialToggle {

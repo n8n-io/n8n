@@ -167,9 +167,6 @@ function onCatalogSelect(entry: SkillCatalogEntry) {
 	catalogPreset.value = {
 		name: i18n.baseText(entry.nameKey),
 		description: i18n.baseText(entry.descriptionKey),
-		requirements: i18n.baseText(entry.requirementsKey),
-		publisher: entry.publisher,
-		license: entry.license,
 		url: entry.url,
 		location: entry.location,
 		allowedSkippedFiles: entry.allowedSkippedFiles,

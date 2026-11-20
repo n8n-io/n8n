@@ -1177,6 +1177,7 @@ describe('AgentSkillModal', () => {
 		it('offers discovery and hides the old recommendations when Skill Sync is enabled', async () => {
 			skillSync.value = true;
 			recommendedSkills.show.value = true;
+			resolveRoute.mockReturnValueOnce({ href: '/settings/context/skills?view=discover' });
 			const open = vi.spyOn(window, 'open').mockReturnValue(null);
 			const view = renderModal({ skillRefsEnabled: true, onAttach: vi.fn() });
 			await fireEvent.click(view.getByTestId('agent-skill-picker-discover'));
@@ -1184,10 +1185,76 @@ describe('AgentSkillModal', () => {
 				name: VIEWS.SETTINGS_CONTEXT_SKILLS,
 				query: { view: 'discover' },
 			});
+			expect(open).toHaveBeenCalledWith(
+				'/settings/context/skills?view=discover',
+				'_blank',
+				'noopener',
+			);
 			expect(view.queryByText('humanizer')).not.toBeInTheDocument();
 			expect(recommendedSkills.trackCardsShown).not.toHaveBeenCalled();
 			open.mockRestore();
 			recommendedSkills.show.value = false;
+		});
+
+		it('refreshes skills on return without replacing the picker or overlapping requests', async () => {
+			listAttachableSkills.mockResolvedValue([projectSkill]);
+			const onAttach = vi.fn();
+			const view = renderModal({ skillRefsEnabled: true, onAttach });
+			await view.findByText(projectSkill.name);
+			const picker = view.getByTestId('agent-skill-picker');
+			let finishRefresh = (_skills: SkillListItem[]) => {};
+			listAttachableSkills.mockImplementationOnce(
+				async () => await new Promise<SkillListItem[]>((resolve) => (finishRefresh = resolve)),
+			);
+
+			await fireEvent(window, new Event('focus'));
+			await fireEvent(window, new Event('focus'));
+
+			expect(listAttachableSkills).toHaveBeenCalledTimes(2);
+			expect(view.getByText(projectSkill.name)).toBeVisible();
+			finishRefresh([projectSkill, instanceSkill]);
+			await view.findByText(instanceSkill.name);
+			expect(view.getByTestId('agent-skill-picker')).toBe(picker);
+			const addedRow = view
+				.getAllByTestId('agent-skill-picker-row')
+				.find((row) => row.textContent?.includes(instanceSkill.name))!;
+			await fireEvent.click(within(addedRow).getByTestId('agent-skill-picker-add'));
+			expect(onAttach).toHaveBeenCalledWith(instanceSkill);
+		});
+
+		it('keeps the current skills when a refresh fails and retries on the next return', async () => {
+			listAttachableSkills.mockResolvedValue([projectSkill]);
+			const view = renderModal({ skillRefsEnabled: true, onAttach: vi.fn() });
+			await view.findByText(projectSkill.name);
+			const error = new Error('Network unavailable');
+			listAttachableSkills.mockRejectedValueOnce(error);
+
+			await fireEvent(window, new Event('focus'));
+
+			await waitFor(() =>
+				expect(showError).toHaveBeenCalledWith(error, 'agents.builder.skills.picker.loadError'),
+			);
+			expect(view.getByText(projectSkill.name)).toBeVisible();
+			listAttachableSkills.mockResolvedValue([projectSkill, instanceSkill]);
+			await fireEvent(window, new Event('focus'));
+			expect(await view.findByText(instanceSkill.name)).toBeVisible();
+		});
+
+		it('does not refresh when the picker is closed, on another step, or unmounted', async () => {
+			listAttachableSkills.mockResolvedValue([projectSkill]);
+			const view = renderModal({ skillRefsEnabled: true, onAttach: vi.fn() });
+			await view.findByText(projectSkill.name);
+
+			uiStore.modalsById[MODAL_NAME].open = false;
+			await fireEvent(window, new Event('focus'));
+			uiStore.modalsById[MODAL_NAME].open = true;
+			await flushPromises();
+			await fireEvent.click(view.getByTestId('agent-skill-picker-create'));
+			await fireEvent(window, new Event('focus'));
+			view.unmount();
+			await fireEvent(window, new Event('focus'));
+
+			expect(listAttachableSkills).toHaveBeenCalledTimes(1);
 		});
 
 		it('shows the settings link only on the picker step', async () => {

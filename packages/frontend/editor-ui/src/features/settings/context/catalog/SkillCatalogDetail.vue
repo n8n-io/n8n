@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import type { DiscoveredSkill } from '@n8n/api-types';
-import { useI18n } from '@n8n/i18n';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { ResponseError } from '@n8n/rest-api-client';
 import {
 	N8nButton,
@@ -26,11 +27,30 @@ const props = defineProps<{
 const emit = defineEmits<{ add: []; openInstalled: [id: string] }>();
 const i18n = useI18n();
 const rootStore = useRootStore();
+const settingsStore = useSettingsStore();
 const { reasonText, findingsText } = useSkillSourceReasons();
 const skill = ref<DiscoveredSkill>();
 const loading = ref(false);
 const error = ref('');
 const retry = ref(0);
+
+const requirements = computed<BaseTextKey[]>(() => {
+	if (props.entry.requirementsKey !== 'settings.context.skills.catalog.requirements.n8n') {
+		return [props.entry.requirementsKey];
+	}
+	return [
+		!settingsStore.isModuleActive('instance-ai')
+			? 'settings.context.skills.catalog.requirements.assistant.unavailable'
+			: settingsStore.moduleSettings['instance-ai']?.enabled
+				? 'settings.context.skills.catalog.requirements.assistant.enabled'
+				: 'settings.context.skills.catalog.requirements.assistant.disabled',
+		!settingsStore.isModuleActive('mcp')
+			? 'settings.context.skills.catalog.requirements.mcp.unavailable'
+			: settingsStore.moduleSettings.mcp?.mcpAccessEnabled
+				? 'settings.context.skills.catalog.requirements.mcp.enabled'
+				: 'settings.context.skills.catalog.requirements.mcp.disabled',
+	];
+});
 
 watch(
 	[() => props.entry, retry],
@@ -134,7 +154,14 @@ const checkDetails = computed(() => {
 			<N8nHeading tag="h2" size="small" bold>{{
 				i18n.baseText('settings.context.skills.catalog.requirements')
 			}}</N8nHeading>
-			<N8nText size="small" color="text-light">{{ i18n.baseText(entry.requirementsKey) }}</N8nText>
+			<N8nText
+				v-for="requirement in requirements"
+				:key="requirement"
+				size="small"
+				color="text-light"
+			>
+				{{ i18n.baseText(requirement) }}
+			</N8nText>
 			<div
 				v-if="skill && !blocked && !warnings"
 				:class="$style.check"
