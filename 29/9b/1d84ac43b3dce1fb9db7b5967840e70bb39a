@@ -1,0 +1,21 @@
+packages/modules/inbox/frontend/src/reviews/components/WorkflowReviewDecisionPopover.test.ts
+  s_419bed5e9fbd75::t_986ce94e549a53 131,140
+packages/modules/inbox/frontend/src/reviews/components/WorkflowReviewDecisionPopover.vue
+  s_419bed5e9fbd75::t_986ce94e549a53 189,196
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "299b1d84ac43b3dce1fb9db7b5967840e70bb39a",
+  "prompts": {},
+  "sessions": {
+    "s_419bed5e9fbd75": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "152a2e1a-fb2a-4e99-b693-ebe21d600421",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

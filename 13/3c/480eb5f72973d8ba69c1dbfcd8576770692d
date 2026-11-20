@@ -1,0 +1,21 @@
+packages/@n8n/api-types/src/schemas/instance-ai-approval.schema.ts
+  s_67ceb9173fafe7::t_327616b959a126 153,155
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_67ceb9173fafe7::t_ad20978c6663f1 1197,1205,1226-1228,1233-1241,1278-1281,1316
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "133c480eb5f72973d8ba69c1dbfcd8576770692d",
+  "prompts": {},
+  "sessions": {
+    "s_67ceb9173fafe7": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1f434-61c8-7540-bfea-4d6f94c2166b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}
