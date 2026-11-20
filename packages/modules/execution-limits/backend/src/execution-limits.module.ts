@@ -20,6 +20,14 @@ export class ExecutionLimitsModule implements ModuleInterface {
 		// Loaded before the process takes work, so the first read already has the limits.
 		const { ExecutionLimitsSnapshot } = await import('./execution-limits-snapshot.js');
 		await Container.get(ExecutionLimitsSnapshot).start();
+
+		// A worker does not admit runs, so it needs no usage.
+		const { InstanceSettings } = await import('n8n-core');
+		const { instanceType } = Container.get(InstanceSettings);
+		if (instanceType !== 'main' && instanceType !== 'webhook') return;
+
+		const { ExecutionUsageCache } = await import('./execution-usage-cache.js');
+		await Container.get(ExecutionUsageCache).start();
 	}
 
 	async entities() {

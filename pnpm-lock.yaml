@@ -485,6 +485,9 @@ catalogs:
     '@types/oracledb':
       specifier: 6.10.3
       version: 6.10.3
+    '@types/pg-copy-streams':
+      specifier: 1.2.5
+      version: 1.2.5
     '@types/pluralize':
       specifier: ^0.0.33
       version: 0.0.33
@@ -7984,6 +7987,9 @@ importers:
       '@n8n/utils':
         specifier: workspace:*
         version: link:../../../@n8n/utils
+      n8n-core:
+        specifier: workspace:*
+        version: link:../../../core
     devDependencies:
       '@n8n/backend-test-utils':
         specifier: workspace:*
