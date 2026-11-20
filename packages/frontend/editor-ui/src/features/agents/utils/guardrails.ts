@@ -22,45 +22,10 @@ export function guardrailKindLabelKey(kind: AgentToolGuardrailKind): BaseTextKey
 	return `agents.builder.guardrails.kind.${kind}` as BaseTextKey;
 }
 
-/** Display labels for the PII entities, mirroring the Guardrails node's PII_NAME_MAP. */
-export const PII_ENTITY_LABELS: Record<ToolGuardrailPiiEntity, string> = {
-	CREDIT_CARD: 'Credit card',
-	CRYPTO: 'Crypto',
-	DATE_TIME: 'Date time',
-	EMAIL_ADDRESS: 'Email address',
-	IBAN_CODE: 'IBAN code',
-	IP_ADDRESS: 'IP address',
-	LOCATION: 'Location',
-	PHONE_NUMBER: 'Phone number',
-	MEDICAL_LICENSE: 'Medical license',
-	US_BANK_NUMBER: 'US bank number',
-	US_DRIVER_LICENSE: 'US driver license',
-	US_ITIN: 'US ITIN',
-	US_PASSPORT: 'US passport',
-	US_SSN: 'US SSN',
-	UK_NHS: 'UK NHS',
-	UK_NINO: 'UK NINO',
-	ES_NIF: 'ES NIF',
-	ES_NIE: 'ES NIE',
-	IT_FISCAL_CODE: 'IT fiscal code',
-	IT_DRIVER_LICENSE: 'IT driver license',
-	IT_VAT_CODE: 'IT VAT code',
-	IT_PASSPORT: 'IT passport',
-	IT_IDENTITY_CARD: 'IT identity card',
-	PL_PESEL: 'PL PESEL',
-	SG_NRIC_FIN: 'SG NRIC FIN',
-	SG_UEN: 'SG UEN',
-	AU_ABN: 'AU ABN',
-	AU_ACN: 'AU ACN',
-	AU_TFN: 'AU TFN',
-	AU_MEDICARE: 'AU Medicare',
-	IN_PAN: 'IN PAN',
-	IN_AADHAAR: 'IN Aadhaar',
-	IN_VEHICLE_REGISTRATION: 'IN vehicle registration',
-	IN_VOTER: 'IN voter',
-	IN_PASSPORT: 'IN passport',
-	FI_PERSONAL_IDENTITY_CODE: 'FI personal identity code',
-};
+/** The i18n key holding a PII entity's display label. */
+export function piiEntityLabelKey(entity: ToolGuardrailPiiEntity): BaseTextKey {
+	return `agents.builder.guardrails.pii.entity.${entity}` as BaseTextKey;
+}
 
 /**
  * Slug of the name that passes the schema's `[A-Za-z0-9_-]` id check. An empty

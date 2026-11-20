@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { TOOL_GUARDRAIL_PII_ENTITIES } from '@n8n/api-types';
 import type {
 	AgentToolGuardrailConfig,
 	AgentToolGuardrailKind,
@@ -19,12 +20,12 @@ import {
 	N8nText,
 } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import { computed, ref, watch } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 
 import type { AgentJsonToolRef } from '../types';
 import {
 	guardrailKindLabelKey,
-	PII_ENTITY_LABELS,
+	piiEntityLabelKey,
 	slugifyGuardrailId,
 	TOOL_GUARDRAIL_KINDS,
 } from '../utils/guardrails';
@@ -134,7 +135,11 @@ watch(
 		stage.value = guardrail?.stage ?? 'before';
 		toolScope.value = guardrail?.tools ? 'selected' : 'all';
 		selectedToolKeys.value = (guardrail?.tools ?? []).map(toolRefKey);
-		initializing = false;
+		// The kind watcher runs as a queued job after this one; clearing the
+		// flag only after that tick keeps a loaded entry's fields intact.
+		nextTick(() => {
+			initializing = false;
+		});
 	},
 	{ immediate: true },
 );
@@ -214,9 +219,10 @@ const stageOptions = computed(() =>
 );
 
 const piiEntityOptions = computed(() =>
-	(Object.entries(PII_ENTITY_LABELS) as Array<[ToolGuardrailPiiEntity, string]>).map(
-		([value, label]) => ({ value, label }),
-	),
+	TOOL_GUARDRAIL_PII_ENTITIES.map((value) => ({
+		value,
+		label: i18n.baseText(piiEntityLabelKey(value)),
+	})),
 );
 
 /** Light client checks; the backend schema stays the authority on save. */

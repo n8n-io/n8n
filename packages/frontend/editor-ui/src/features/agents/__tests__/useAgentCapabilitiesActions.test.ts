@@ -442,6 +442,51 @@ describe('useAgentCapabilitiesActions — tools modal host seam', () => {
 			false,
 		);
 	});
+
+	it('does not retarget guardrails when the confirm removes one of two identical node tools', () => {
+		const { uiStore, actions, scheduleConfigUpdate, localConfig } = setup();
+		const node = {
+			nodeType: 'n8n-nodes-base.slack',
+			nodeTypeVersion: 2.1,
+			nodeParameters: { channel: '#alerts' },
+		};
+		const firstSlack = { type: 'node', name: 'Slack', node } as Extract<
+			AgentJsonToolRef,
+			{ type: 'node' }
+		>;
+		const secondSlack = { type: 'node', name: 'Slack (2)', node } as Extract<
+			AgentJsonToolRef,
+			{ type: 'node' }
+		>;
+		localConfig.value = makeConfig({
+			tools: [firstSlack, secondSlack],
+			config: {
+				guardrails: {
+					tools: [
+						{
+							kind: 'keywords',
+							id: 'g1',
+							stage: 'before',
+							keywords: ['secret'],
+							tools: [{ type: 'node', name: 'Slack' }],
+						},
+					],
+				},
+			},
+		});
+
+		actions.onOpenAddToolModal();
+		const modalData = uiStore.modalsById[AGENT_TOOLS_MODAL_KEY].data as unknown as ToolsModalData;
+		// The two tools share node type and parameters; the shift after the
+		// removal must not read as a rename of Slack to Slack (2).
+		modalData.onConfirm({ tools: [secondSlack] });
+
+		expect(scheduleConfigUpdate).toHaveBeenCalledTimes(1);
+		expect(scheduleConfigUpdate).toHaveBeenCalledWith({ tools: [secondSlack] });
+		expect(scheduleConfigUpdate.mock.calls.some(([update]) => 'config' in (update as object))).toBe(
+			false,
+		);
+	});
 });
 
 type SkillModalData = {

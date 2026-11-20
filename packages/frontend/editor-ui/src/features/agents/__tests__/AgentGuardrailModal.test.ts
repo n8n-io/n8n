@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
+import type { Component } from 'vue';
 import { N8nDropdownMenu } from '@n8n/design-system';
 import type { AgentToolGuardrailConfig } from '@n8n/api-types';
 
@@ -184,7 +185,8 @@ function selectSingle(wrapper: ReturnType<typeof mountModal>, testId: string, va
 
 /** Picks a guardrail kind from the type dropdown menu, as a menu select does. */
 async function pickKind(wrapper: ReturnType<typeof mountModal>, kind: string) {
-	const menu = wrapper.findComponent(N8nDropdownMenu);
+	// N8nDropdownMenu is generic, so `findComponent` cannot infer its type on its own.
+	const menu = wrapper.findComponent(N8nDropdownMenu as Component);
 	expect(menu.exists()).toBe(true);
 	menu.vm.$emit('select', kind);
 	await wrapper.vm.$nextTick();
@@ -459,10 +461,35 @@ describe('AgentGuardrailModal', () => {
 		expect(callout.exists()).toBe(true);
 		expect(callout.text()).toContain('agents.builder.guardrails.tools.callout');
 		// Below the tool selection, inside the trigger group.
-		const toolsRadio = wrapper.get('[data-testid="agent-guardrail-tools-all"]');
+		const toolsSwitch = wrapper.get('[data-testid="agent-guardrail-tools-all"]');
 		expect(
-			toolsRadio.element.compareDocumentPosition(callout.element) &
+			toolsSwitch.element.compareDocumentPosition(callout.element) &
 				Node.DOCUMENT_POSITION_FOLLOWING,
 		).toBeTruthy();
+	});
+
+	it('keeps a reopened entrys kind fields loaded across a kind change', async () => {
+		// The mounted modal reopens with a different kind: the queued kind
+		// watcher must not wipe the fields the open watcher just loaded.
+		const nsfwEntry: AgentToolGuardrailConfig = {
+			kind: 'nsfw',
+			id: 'nsfw-guard',
+			name: 'Content check',
+			stage: 'before',
+			prompt: 'Refuse unsafe content',
+			threshold: 0.9,
+		};
+		const wrapper = mountModal({ guardrail: KEYWORDS_ENTRY });
+		await wrapper.setProps({ open: false });
+		await wrapper.setProps({ guardrail: nsfwEntry, open: true });
+
+		expect(wrapper.find('[data-testid="agent-guardrail-prompt"]').element).toBeTruthy();
+		await expect
+			.poll(
+				() =>
+					(wrapper.find('[data-testid="agent-guardrail-prompt"]').element as HTMLTextAreaElement)
+						.value,
+			)
+			.toBe('Refuse unsafe content');
 	});
 });

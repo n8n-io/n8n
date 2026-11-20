@@ -245,6 +245,10 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 						...(payload.mcpServers && { mcpServers: payload.mcpServers }),
 					});
 					if (!toolGuardrailsEnabled || !payload.tools) return;
+					// The picker commits each operation separately, so a shorter
+					// list is always a removal: every same-index pair is then a
+					// shift, not a rename, and must not retarget guardrail refs.
+					if (payload.tools.length < previousTools.length) return;
 					const renames = payload.tools.flatMap((next, index) => {
 						const before = previousTools[index];
 						if (before?.type !== 'node' || next.type !== 'node') return [];
