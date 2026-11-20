@@ -125,7 +125,10 @@ function confirmDisable() {
 				<template #info>
 					<N8nText :bold="true">
 						{{ i18n.baseText('settings.security.workflowReviews.enable.title') }}
-						<N8nPreviewBadge class="ml-4xs" data-test-id="settings-enable-row-preview-badge" />
+						<N8nPreviewBadge
+							class="ml-4xs"
+							data-test-id="security-workflow-reviews-preview-badge"
+						/>
 					</N8nText>
 					<N8nText size="small" color="text-light">
 						{{ i18n.baseText('settings.security.workflowReviews.enable.description') }}
