@@ -1,7 +1,10 @@
 import type { ProjectRepository, User } from '@n8n/db';
-import { ConflictError, NotFoundError } from '@n8n/errors';
+import { ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
+import type { Scope } from '@n8n/permissions';
 import { QueryFailedError } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
+
+import { userHasScopes } from '@/permissions.ee/check-access';
 
 import { makeKnowledgeAvailabilityService } from '../../__tests__/test-utils/knowledge-availability.service';
 import type { KnowledgeCollection } from '../../entities';
@@ -10,6 +13,8 @@ import type {
 	KnowledgeCollectionSummary,
 } from '../../repositories/knowledge-collection.repository';
 import { KnowledgeCollectionCatalogService } from '../knowledge-collection-catalog.service';
+
+vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes: vi.fn() }));
 
 const user = mock<User>({ id: 'user-1' });
 const projectId = 'project-1';
@@ -64,7 +69,20 @@ function uniqueConstraintError() {
 	);
 }
 
+/** The user has exactly these scopes in project-1. */
+function grantScopes(...granted: Scope[]) {
+	vi.mocked(userHasScopes).mockImplementation(
+		async (_user, scopes, _globalOnly, options) =>
+			options?.projectId === projectId && scopes.every((scope) => granted.includes(scope)),
+	);
+}
+
 describe('KnowledgeCollectionCatalogService', () => {
+	beforeEach(() => {
+		vi.mocked(userHasScopes).mockReset();
+		grantScopes('agent:read', 'agent:update');
+	});
+
 	describe('create', () => {
 		it('creates a shared collection with a slug from its name and returns it', async () => {
 			const { service, collectionRepository } = makeService();
@@ -110,6 +128,14 @@ describe('KnowledgeCollectionCatalogService', () => {
 			const { service, collectionRepository } = makeService({ collectionsFlag: false });
 
 			await expect(service.create(user, projectId, input)).rejects.toThrow(NotFoundError);
+			expect(collectionRepository.insertShared).not.toHaveBeenCalled();
+		});
+
+		it('answers forbidden to a user who cannot update agents in the project', async () => {
+			grantScopes('agent:read');
+			const { service, collectionRepository } = makeService();
+
+			await expect(service.create(user, projectId, input)).rejects.toThrow(ForbiddenError);
 			expect(collectionRepository.insertShared).not.toHaveBeenCalled();
 		});
 
