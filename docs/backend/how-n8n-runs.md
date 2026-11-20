@@ -1,6 +1,6 @@
 ---
 title: How n8n runs
-last_reviewed: 2026-11-05
+last_reviewed: 2026-11-20
 contact: ivov
 ---
 
@@ -60,7 +60,7 @@ In queue mode, workers run only workflow executions, and agent turns still run o
 
 With one main, a stopped main takes down the editor, the APIs, the schedules and polling triggers, and the agent turns. **Multi-main** runs several mains behind a load balancer for higher availability.
 
-Several mains cause a new problem: some work must happen exactly once. If two mains ran the same poller, each new record would start two executions. Therefore one main is the **leader**, and only the leader runs pollers. Schedules need no leader, because any main starts each due run from a job in the database. The leader holds a key in Redis that expires after a few seconds and renews it while it runs. If the leader dies, another main takes the key.
+Several mains cause a new problem: some work must happen exactly once. If two mains held the same trigger connection, e.g. to a mailbox, each new email would start two executions. Therefore one main is the **leader**, and only the leader keeps trigger connections open. Schedules and pollers need no leader, because any main starts each due run from a job in the database. A poll can run more than once, so pollers do not get the exactly-once guarantee. If you turn off durable polling with `N8N_SCHEDULER_POLL_TRIGGERS_ENABLED=false`, only the leader runs pollers. The leader holds a key in Redis that expires after a few seconds and renews it while it runs. If the leader dies, another main takes the key.
 
 Mains and workers broadcast changes over [Redis pubsub](https://redis.io/docs/latest/develop/pubsub/). For example, you publish a workflow through a main that is not the leader. That main broadcasts a command, and the leader starts the triggers.
 
@@ -147,10 +147,10 @@ Upgrading an n8n instance must not change what a saved workflow does. Common way
    - B. It writes the result only into the job in Redis.
    - C. It sends the result to the editor over websocket.
    - D. It saves the result to the database, and tells the main through the queue.
-3. In multi-main, the leader dies. What happens to pollers?
+3. In multi-main, the leader dies. What happens to the triggers that keep a connection open?
    - A. They stop until an admin picks a new leader.
-   - B. Every main starts running them.
-   - C. Another main becomes the leader and runs them.
+   - B. Every main opens their connections.
+   - C. Another main becomes the leader and opens their connections.
    - D. Workers take them over.
 4. You rename an environment variable, and all tests pass. What can still break?
    - A. Nothing. CI checks every use of each variable.
