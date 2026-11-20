@@ -10,5 +10,19 @@
 		"id": "SENT",
 		"name": "SENT",
 		"type": "system"
+	},
+	{
+		"id": "Label_1",
+		"name": "Work",
+		"type": "user",
+		"messageListVisibility": "show",
+		"labelListVisibility": "labelShow"
+	},
+	{
+		"id": "Label_2",
+		"name": "Work/Projects",
+		"type": "user",
+		"messageListVisibility": "show",
+		"labelListVisibility": "labelShow"
 	}
 ]

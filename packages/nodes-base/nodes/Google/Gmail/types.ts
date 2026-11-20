@@ -45,12 +45,46 @@ type MessagePartBody = {
 	data: string;
 };
 
+export type LabelColor = {
+	textColor: string;
+	backgroundColor: string;
+};
+
 export type Label = {
 	id: string;
 	name: string;
-	messageListVisibility?: 'hide';
-	labelListVisibility?: 'labelHide';
-	type?: 'system';
+	messageListVisibility?: 'show' | 'hide';
+	labelListVisibility?: 'labelShow' | 'labelShowIfUnread' | 'labelHide';
+	type?: 'system' | 'user';
+	color?: LabelColor;
+	messagesTotal?: number;
+	messagesUnread?: number;
+	threadsTotal?: number;
+	threadsUnread?: number;
+};
+
+export type FilterCriteria = {
+	from?: string;
+	to?: string;
+	subject?: string;
+	query?: string;
+	negatedQuery?: string;
+	hasAttachment?: boolean;
+	excludeChats?: boolean;
+	size?: number;
+	sizeComparison?: 'unspecified' | 'smaller' | 'larger';
+};
+
+export type FilterAction = {
+	addLabelIds?: string[];
+	removeLabelIds?: string[];
+	forward?: string;
+};
+
+export type GmailFilter = {
+	id: string;
+	criteria?: FilterCriteria;
+	action?: FilterAction;
 };
 
 export type GmailWorkflowStaticData = {

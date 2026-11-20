@@ -1,0 +1,22 @@
+[
+	{
+		"id": "filter-1",
+		"criteria": {
+			"from": "sender@example.com"
+		},
+		"action": {
+			"addLabelIds": ["Label_1"],
+			"removeLabelIds": ["INBOX"]
+		}
+	},
+	{
+		"id": "filter-2",
+		"criteria": {
+			"subject": "invoice",
+			"hasAttachment": true
+		},
+		"action": {
+			"addLabelIds": ["STARRED"]
+		}
+	}
+]

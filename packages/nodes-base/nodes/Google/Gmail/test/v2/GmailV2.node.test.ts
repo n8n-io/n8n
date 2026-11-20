@@ -1,10 +1,13 @@
 /* eslint-disable n8n-nodes-base/node-param-display-name-miscased */
+/* eslint-disable n8n-nodes-base/node-param-display-name-excess-inner-whitespace */
+/* eslint-disable n8n-nodes-base/node-param-display-name-untrimmed */
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import { mock, mockDeep } from 'vitest-mock-extended';
 import { jsonParse, type ILoadOptionsFunctions, type INode } from 'n8n-workflow';
 import nock from 'nock';
 
-import { getGmailAliases, getLabels, getThreadMessages } from '../../v2/loadOptions';
+import { getGmailAliases, getLabels, getThreadMessages, getUserLabels } from '../../v2/loadOptions';
+import filters from '../fixtures/filters.json';
 import labels from '../fixtures/labels.json';
 import messages from '../fixtures/messages.json';
 
@@ -20,13 +23,19 @@ describe('Test Gmail Node v2', () => {
 			gmailNock.get('/v1/users/me/messages').query({ maxResults: 2 }).reply(200, {
 				messages,
 			});
+			// Match date filters by shape — avoid fake timers (they break nock HTTPS matching).
 			gmailNock
 				.get('/v1/users/me/messages')
-				.query({
-					includeSpamTrash: 'true',
-					labelIds: 'CHAT',
-					q: 'test from:Test Sender after:1734393600 before:1735171200',
-					maxResults: '2',
+				.query((query) => {
+					return (
+						query.includeSpamTrash === 'true' &&
+						query.labelIds === 'CHAT' &&
+						typeof query.q === 'string' &&
+						query.q.includes('test from:Test Sender') &&
+						query.q.includes('after:') &&
+						query.q.includes('before:') &&
+						query.maxResults === '2'
+					);
 				})
 				.reply(200, { messages });
 			gmailNock
@@ -39,12 +48,17 @@ describe('Test Gmail Node v2', () => {
 				.reply(200, messages[0]);
 			gmailNock
 				.get('/v1/users/me/messages/a1b2c3d4e5f6g7h8')
-				.query({
-					includeSpamTrash: 'true',
-					labelIds: 'CHAT',
-					q: 'test from:Test Sender after:1734393600 before:1735171200',
-					maxResults: '2',
-					format: 'raw',
+				.query((query) => {
+					return (
+						query.includeSpamTrash === 'true' &&
+						query.labelIds === 'CHAT' &&
+						typeof query.q === 'string' &&
+						query.q.includes('test from:Test Sender') &&
+						query.q.includes('after:') &&
+						query.q.includes('before:') &&
+						query.maxResults === '2' &&
+						query.format === 'raw'
+					);
 				})
 				.reply(200, {
 					...messages[0],
@@ -52,12 +66,17 @@ describe('Test Gmail Node v2', () => {
 				});
 			gmailNock
 				.get('/v1/users/me/messages/z9y8x7w6v5u4t3s2')
-				.query({
-					includeSpamTrash: 'true',
-					labelIds: 'CHAT',
-					q: 'test from:Test Sender after:1734393600 before:1735171200',
-					maxResults: '2',
-					format: 'raw',
+				.query((query) => {
+					return (
+						query.includeSpamTrash === 'true' &&
+						query.labelIds === 'CHAT' &&
+						typeof query.q === 'string' &&
+						query.q.includes('test from:Test Sender') &&
+						query.q.includes('after:') &&
+						query.q.includes('before:') &&
+						query.maxResults === '2' &&
+						query.format === 'raw'
+					);
 				})
 				.reply(200, {
 					...messages[1],
@@ -135,17 +154,70 @@ describe('Test Gmail Node v2', () => {
 					name: 'Test Label Name',
 				})
 				.reply(200, labels[0]);
+			gmailNock
+				.post('/v1/users/me/labels', {
+					labelListVisibility: 'labelShow',
+					messageListVisibility: 'show',
+					name: 'Work/Projects',
+				})
+				.reply(200, labels[3]);
 			gmailNock.delete('/v1/users/me/labels/test-label-id').reply(200, labels[0]);
 			gmailNock.get('/v1/users/me/labels/test-label-id').reply(200, labels[0]);
-			gmailNock.get('/v1/users/me/labels').reply(200, {
+			// Read by Get Many and by the nested create, which checks the parent exists.
+			gmailNock.get('/v1/users/me/labels').times(2).reply(200, {
 				labels,
 			});
+			gmailNock
+				.patch('/v1/users/me/labels/test-label-id', {
+					name: 'Updated Label',
+					labelListVisibility: 'labelHide',
+				})
+				.reply(200, {
+					id: 'Label_1',
+					name: 'Updated Label',
+					type: 'user',
+					messageListVisibility: 'show',
+					labelListVisibility: 'labelHide',
+				});
 		});
 
 		afterAll(() => gmailNock.done());
 
 		new NodeTestHarness().setupTests({
 			workflowFiles: ['labels.workflow.json'],
+		});
+	});
+
+	describe('Filters', () => {
+		const gmailNock = nock('https://www.googleapis.com/gmail');
+
+		beforeAll(() => {
+			gmailNock
+				.post('/v1/users/me/settings/filters', {
+					criteria: { from: 'sender@example.com' },
+					action: { addLabelIds: ['Label_1'], removeLabelIds: ['INBOX'] },
+				})
+				.reply(200, filters[0]);
+			gmailNock.delete('/v1/users/me/settings/filters/filter-1').times(2).reply(200);
+			// Read once by Get and once by Replace, which compares before swapping.
+			gmailNock.get('/v1/users/me/settings/filters/filter-1').times(2).reply(200, filters[0]);
+			gmailNock.get('/v1/users/me/settings/filters').reply(200, { filter: filters });
+			gmailNock
+				.post('/v1/users/me/settings/filters', {
+					criteria: { subject: 'invoice' },
+					action: { addLabelIds: ['STARRED'] },
+				})
+				.reply(200, {
+					id: 'filter-3',
+					criteria: { subject: 'invoice' },
+					action: { addLabelIds: ['STARRED'] },
+				});
+		});
+
+		afterAll(() => gmailNock.done());
+
+		new NodeTestHarness().setupTests({
+			workflowFiles: ['filters.workflow.json'],
 		});
 	});
 
@@ -331,6 +403,40 @@ describe('Test Gmail Node v2', () => {
 					{ name: 'CHAT', value: 'CHAT' },
 					{ name: 'SENT', value: 'SENT' },
 					{ name: 'SENT', value: 'SENT' },
+					{ name: 'Work', value: 'Label_1' },
+					{ name: 'Work', value: 'Label_1' },
+					{ name: 'Work/Projects', value: 'Label_2' },
+					{ name: 'Work/Projects', value: 'Label_2' },
+				]);
+			});
+		});
+
+		describe('getUserLabels', () => {
+			it('should return user labels across pages with indented nested names', async () => {
+				const pageTwoLabels = [
+					{
+						id: 'Label_3',
+						name: 'Archive',
+						type: 'user',
+						messageListVisibility: 'show',
+						labelListVisibility: 'labelShow',
+					},
+				];
+				const loadOptionsFunctions = mockDeep<ILoadOptionsFunctions>({
+					getNode: vi.fn(() => mock<INode>()),
+					helpers: mock<ILoadOptionsFunctions['helpers']>({
+						requestWithAuthentication: vi
+							.fn()
+							.mockImplementationOnce(async () => ({ labels, nextPageToken: 'nextPageToken' }))
+							.mockImplementationOnce(async () => ({ labels: pageTwoLabels })),
+					}),
+				});
+
+				expect(await getUserLabels.call(loadOptionsFunctions)).toEqual([
+					{ name: 'None (Top Level)', value: '' },
+					{ name: 'Archive', value: 'Archive' },
+					{ name: 'Work', value: 'Work' },
+					{ name: '  Work/Projects', value: 'Work/Projects' },
 				]);
 			});
 		});

@@ -1,0 +1,226 @@
+{
+	"name": "Gmail Filters",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-60, 100],
+			"id": "636b40bc-2c98-4b9a-8ce2-9d1322294518",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"resource": "filter",
+				"operation": "create",
+				"criteria": {
+					"from": "sender@example.com"
+				},
+				"action": {
+					"addLabelIds": ["Label_1"],
+					"removeLabelIds": ["INBOX"]
+				}
+			},
+			"type": "n8n-nodes-base.gmail",
+			"typeVersion": 2.2,
+			"position": [220, -180],
+			"id": "f1111111-1111-1111-1111-111111111111",
+			"name": "Gmail - Filters - Create",
+			"credentials": {
+				"gmailOAuth2": {
+					"id": "22",
+					"name": "Gmail 0auth"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "filter",
+				"operation": "delete",
+				"filterId": "filter-1"
+			},
+			"type": "n8n-nodes-base.gmail",
+			"typeVersion": 2.2,
+			"position": [220, 20],
+			"id": "f2222222-2222-2222-2222-222222222222",
+			"name": "Gmail - Filters - Delete",
+			"credentials": {
+				"gmailOAuth2": {
+					"id": "22",
+					"name": "Gmail 0auth"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "filter",
+				"operation": "get",
+				"filterId": "filter-1"
+			},
+			"type": "n8n-nodes-base.gmail",
+			"typeVersion": 2.2,
+			"position": [220, 200],
+			"id": "f3333333-3333-3333-3333-333333333333",
+			"name": "Gmail - Filters - Get",
+			"credentials": {
+				"gmailOAuth2": {
+					"id": "22",
+					"name": "Gmail 0auth"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "filter",
+				"limit": 2
+			},
+			"type": "n8n-nodes-base.gmail",
+			"typeVersion": 2.2,
+			"position": [220, 400],
+			"id": "f4444444-4444-4444-4444-444444444444",
+			"name": "Gmail - Filters - Get Many",
+			"credentials": {
+				"gmailOAuth2": {
+					"id": "22",
+					"name": "Gmail 0auth"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "filter",
+				"operation": "replace",
+				"filterId": "filter-1",
+				"criteria": {
+					"subject": "invoice"
+				},
+				"action": {
+					"addLabelIds": ["STARRED"]
+				}
+			},
+			"type": "n8n-nodes-base.gmail",
+			"typeVersion": 2.2,
+			"position": [220, 580],
+			"id": "f5555555-5555-5555-5555-555555555555",
+			"name": "Gmail - Filters - Replace",
+			"credentials": {
+				"gmailOAuth2": {
+					"id": "22",
+					"name": "Gmail 0auth"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Gmail - Filters - Create": [
+			{
+				"json": {
+					"id": "filter-1",
+					"criteria": {
+						"from": "sender@example.com"
+					},
+					"action": {
+						"addLabelIds": ["Label_1"],
+						"removeLabelIds": ["INBOX"]
+					}
+				}
+			}
+		],
+		"Gmail - Filters - Delete": [{ "json": { "success": true } }],
+		"Gmail - Filters - Get": [
+			{
+				"json": {
+					"id": "filter-1",
+					"criteria": {
+						"from": "sender@example.com"
+					},
+					"action": {
+						"addLabelIds": ["Label_1"],
+						"removeLabelIds": ["INBOX"]
+					}
+				}
+			}
+		],
+		"Gmail - Filters - Get Many": [
+			{
+				"json": {
+					"id": "filter-1",
+					"criteria": {
+						"from": "sender@example.com"
+					},
+					"action": {
+						"addLabelIds": ["Label_1"],
+						"removeLabelIds": ["INBOX"]
+					}
+				}
+			},
+			{
+				"json": {
+					"id": "filter-2",
+					"criteria": {
+						"subject": "invoice",
+						"hasAttachment": true
+					},
+					"action": {
+						"addLabelIds": ["STARRED"]
+					}
+				}
+			}
+		],
+		"Gmail - Filters - Replace": [
+			{
+				"json": {
+					"id": "filter-3",
+					"criteria": {
+						"subject": "invoice"
+					},
+					"action": {
+						"addLabelIds": ["STARRED"]
+					}
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Gmail - Filters - Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Gmail - Filters - Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Gmail - Filters - Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Gmail - Filters - Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Gmail - Filters - Replace",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "",
+	"meta": {
+		"instanceId": "27cc9b56542ad45b38725555722c50a1c3fee1670bbb67980558314ee08517c4"
+	},
+	"tags": []
+}
