@@ -79,6 +79,7 @@ describe('LlmMockSimulationBackend', () => {
 		httpMock.mockResolvedValue({ statusCode: 200, headers: {}, body: { ok: true, ts: '1.2' } });
 
 		const world = await backend.openWorld({
+			ownerId: 'user-1',
 			testChatId: 'chat-1',
 			agent,
 			firstMessage: 'Post the release note',
@@ -124,7 +125,12 @@ describe('LlmMockSimulationBackend', () => {
 			headers: {},
 			body: { _evalMockError: true, message: 'Mock generation failed: timeout' },
 		});
-		const world = await backend.openWorld({ testChatId: 'chat-1', agent, firstMessage: 'hi' });
+		const world = await backend.openWorld({
+			ownerId: 'user-1',
+			testChatId: 'chat-1',
+			agent,
+			firstMessage: 'hi',
+		});
 
 		await expect(
 			world.handleRequest(
@@ -137,7 +143,12 @@ describe('LlmMockSimulationBackend', () => {
 	it('says unsupported when the mock has no answer, so the call is blocked', async () => {
 		const { backend, httpMock } = setup();
 		httpMock.mockResolvedValue(undefined);
-		const world = await backend.openWorld({ testChatId: 'chat-1', agent, firstMessage: 'hi' });
+		const world = await backend.openWorld({
+			ownerId: 'user-1',
+			testChatId: 'chat-1',
+			agent,
+			firstMessage: 'hi',
+		});
 
 		await expect(
 			world.handleRequest(
@@ -155,7 +166,12 @@ describe('LlmMockSimulationBackend', () => {
 			}),
 		);
 		webSearch.mockResolvedValue({ query: 'n8n', results: [], note: WEB_SEARCH_MOCK_FAILURE_NOTE });
-		const world = await backend.openWorld({ testChatId: 'chat-1', agent, firstMessage: 'hi' });
+		const world = await backend.openWorld({
+			ownerId: 'user-1',
+			testChatId: 'chat-1',
+			agent,
+			firstMessage: 'hi',
+		});
 
 		const mcpReply = await world.handleRequest(
 			{ protocol: 'mcp', server: 'linear', method: 'POST', body: {} },
@@ -179,7 +195,12 @@ describe('LlmMockSimulationBackend', () => {
 			}),
 		);
 		webSearch.mockResolvedValue({ results: [] });
-		const world = await backend.openWorld({ testChatId: 'chat-1', agent, firstMessage: 'hi' });
+		const world = await backend.openWorld({
+			ownerId: 'user-1',
+			testChatId: 'chat-1',
+			agent,
+			firstMessage: 'hi',
+		});
 
 		const mcpReply = await world.handleRequest(
 			{ protocol: 'mcp', server: 'linear', method: 'POST', body: { method: 'tools/call' } },
@@ -207,7 +228,12 @@ describe('LlmMockSimulationBackend', () => {
 
 	it('answers an MCP server it does not know with unsupported', async () => {
 		const { backend, mcpFetch } = setup();
-		const world = await backend.openWorld({ testChatId: 'chat-1', agent, firstMessage: 'hi' });
+		const world = await backend.openWorld({
+			ownerId: 'user-1',
+			testChatId: 'chat-1',
+			agent,
+			firstMessage: 'hi',
+		});
 
 		const reply = await world.handleRequest(
 			{ protocol: 'mcp', server: 'other', method: 'POST', body: {} },

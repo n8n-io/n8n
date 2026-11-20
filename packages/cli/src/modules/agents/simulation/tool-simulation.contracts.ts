@@ -13,11 +13,20 @@ export interface SimulationBackend {
 
 	/** A test chat gets a new world after a restart or an expired cache. */
 	openWorld(input: OpenWorldInput): Promise<SimulationWorld>;
+
+	/**
+	 * Set to `true` when a world depends on the MCP server connections of the draft. Then a test
+	 * chat gets a new world when the saved connections change or its thread is removed. The
+	 * backend never receives the connections. Default: off.
+	 */
+	readonly worldDependsOnDraftConnections?: boolean;
 }
 
 export type SimulationBackendId = 'llm-mock' | 'shared-simulation-layer';
 
 export interface OpenWorldInput {
+	/** ID of the user who runs the test chat. */
+	ownerId: string;
 	testChatId: string;
 	agent: SimulatedAgent;
 	/** Can seed the world. */

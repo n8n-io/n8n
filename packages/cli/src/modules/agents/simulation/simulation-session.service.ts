@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 import type { AgentJsonConfig, ToolTestCapability } from '@n8n/api-types';
 import { isCredentialAgentIntegration } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
@@ -45,9 +47,7 @@ export interface OpenSimulationInput {
 /** Decides whether a draft run is a test run. A marked test chat stays one, also with the flag off. */
 @Service()
 export class SimulationSessionService {
-	private readonly sessions = new TtlMap<string, SimulationSession>(
-		30 * Time.minutes.toMilliseconds,
-	);
+	private readonly sessions = new TtlMap<string, CachedSession>(30 * Time.minutes.toMilliseconds);
 
 	private readonly opening = new Map<string, Promise<SimulationSession | undefined>>();
 
@@ -65,26 +65,59 @@ export class SimulationSessionService {
 
 	async openForDraftRun(input: OpenSimulationInput): Promise<SimulationSession | undefined> {
 		const key = sessionKey(input);
+		// Such a world belongs to the connections of the draft, so each turn checks them again.
+		const bound = this.registry.get()?.worldDependsOnDraftConnections === true;
 		const cached = this.sessions.get(key);
-		if (cached) {
+		if (cached && !bound) {
 			this.sessions.touch(key);
 			// Keep the same session, so its cached runtime stays valid, but use the current tools.
-			cached.updateCapabilities(
+			cached.session.updateCapabilities(
 				await this.capabilitiesFor(await this.describeAgent(input.agentId, input.projectId)),
 			);
-			return cached;
+			return cached.session;
 		}
 		// Overlapping turns of a new chat share one open, so the chat gets one world.
 		const opening = this.opening.get(key);
 		if (opening) {
 			const shared = await opening;
+			// The draft can change during the shared open, so this turn checks the binding itself.
+			if (bound && shared) return await this.openForDraftRun(input);
 			// A shared open that came back live never answers a caller that asked for a test run.
 			if (shared || !input.testRunRequested) return shared;
 			return await this.openForDraftRun(input);
 		}
-		const open = this.openNew(input).finally(() => this.opening.delete(key));
+		const open = (cached ? this.reuseOrReplace(input, key, cached) : this.openNew(input)).finally(
+			() => this.opening.delete(key),
+		);
 		this.opening.set(key, open);
 		return await open;
+	}
+
+	/** Only for a backend whose world depends on the connections of the draft. */
+	private async reuseOrReplace(
+		input: OpenSimulationInput,
+		key: string,
+		cached: CachedSession,
+	): Promise<SimulationSession | undefined> {
+		// A session that stored the marker and finds it gone belongs to a thread that was removed.
+		if (
+			cached.marked &&
+			!(await this.threadRepository.findTestChatState(input.testChatId))?.testChat
+		) {
+			this.sessions.delete(key);
+			return await this.openNew(input);
+		}
+		const described = await this.describeAgent(input.agentId, input.projectId);
+		if (
+			connectionBinding(described.config) === cached.connectionBinding &&
+			this.sessions.touch(key)
+		) {
+			cached.session.updateCapabilities(await this.capabilitiesFor(described));
+			return cached.session;
+		}
+		// The old session leaves the cache, so a switch back to its connections opens a new world.
+		this.sessions.delete(key);
+		return await this.createSession(input, described);
 	}
 
 	private async openNew(input: OpenSimulationInput): Promise<SimulationSession | undefined> {
@@ -105,7 +138,16 @@ export class SimulationSessionService {
 		}
 
 		// After a restart or an expired cache, a test chat gets a new world.
-		const described = await this.describeAgent(input.agentId, input.projectId);
+		return await this.createSession(
+			input,
+			await this.describeAgent(input.agentId, input.projectId),
+		);
+	}
+
+	private async createSession(
+		input: OpenSimulationInput,
+		described: DescribedAgent,
+	): Promise<SimulationSession> {
 		const capabilities = await this.capabilitiesFor(described);
 		const { agent } = described;
 		const backend = this.registry.get();
@@ -116,6 +158,7 @@ export class SimulationSessionService {
 		} else {
 			try {
 				world = await backend.openWorld({
+					ownerId: input.user.id,
 					testChatId: input.testChatId,
 					// Tools n8n blocks (SSE MCP servers, custom code) stay out of the world too.
 					agent: {
@@ -142,9 +185,18 @@ export class SimulationSessionService {
 				if (!(await this.threadRepository.markTestChat(input.testChatId))) {
 					throw new UnexpectedError('Could not mark the test chat, so this test run cannot start.');
 				}
+				entry.marked = true;
 			},
 		});
-		this.sessions.set(sessionKey(input), session);
+		const entry: CachedSession = {
+			session,
+			// The binding stays in this process. The backend never receives it.
+			...(backend?.worldDependsOnDraftConnections
+				? { connectionBinding: connectionBinding(described.config) }
+				: {}),
+			marked: false,
+		};
+		this.sessions.set(sessionKey(input), entry);
 		return session;
 	}
 
@@ -224,6 +276,7 @@ export class SimulationSessionService {
 		}
 
 		return {
+			config,
 			agent: {
 				agentId,
 				projectId,
@@ -324,7 +377,16 @@ export class SimulationSessionService {
 	}
 }
 
+interface CachedSession {
+	session: SimulationSession;
+	/** Set only for a backend whose world depends on the connections of the draft. */
+	connectionBinding?: string;
+	/** True after this session stored the test chat marker of its thread. */
+	marked: boolean;
+}
+
 interface DescribedAgent {
+	config: AgentJsonConfig;
 	agent: SimulatedAgent;
 	/** Tools that n8n blocks before any backend sees them, with the reason. */
 	hostGaps: Map<string, string>;
@@ -333,6 +395,25 @@ interface DescribedAgent {
 /** A session belongs to one chat of one agent and user, so a reused chat ID never shares a world. */
 function sessionKey({ user, projectId, agentId, testChatId }: OpenSimulationInput): string {
 	return `${user.id}:${projectId}:${agentId}:${testChatId}`;
+}
+
+/**
+ * Identifies the saved MCP server connections of a draft. It reads the credential reference
+ * (an ID) and never the credential. A URL can hold a key, so only a digest is kept.
+ */
+function connectionBinding(config: AgentJsonConfig): string {
+	const connections = (config.mcpServers ?? [])
+		.map((server) =>
+			JSON.stringify([
+				server.name,
+				server.url,
+				server.authentication ?? 'none',
+				server.credential ?? null,
+			]),
+		)
+		// The order of the servers in the draft does not change the connections.
+		.sort();
+	return createHash('sha256').update(JSON.stringify(connections)).digest('hex');
 }
 
 function urlOrigin(url: string): string | undefined {
