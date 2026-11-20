@@ -349,7 +349,7 @@ export function shouldUseLastNodeForChatHistory(
 		nodeType === CHAT_TRIGGER_NODE_TYPE &&
 		isRecord(body) &&
 		body.action === 'loadPreviousSession' &&
-		(responseMode === 'streaming' || responseMode === 'hostedChat')
+		(responseMode === 'lastNode' || responseMode === 'streaming' || responseMode === 'hostedChat')
 	);
 }
 
@@ -1159,9 +1159,12 @@ export async function executeWebhook(
 		);
 
 		// The widget loads history from one JSON response.
-		if (shouldUseLastNodeForChatHistory(workflowStartNode.type, req.body, responseMode)) {
-			responseMode = 'lastNode';
-		}
+		const useLastNodeForChatHistory = shouldUseLastNodeForChatHistory(
+			workflowStartNode.type,
+			req.body,
+			responseMode,
+		);
+		if (useLastNodeForChatHistory) responseMode = 'lastNode';
 
 		// TODO: remove this hack, and make sure that execution data is properly created before the MCP trigger is executed
 		if (
@@ -1275,6 +1278,8 @@ export async function executeWebhook(
 			userId: webhookData.userId,
 			encryptedRunnerIdentity: additionalData.encryptedRunnerIdentity,
 			callerAwaitsOutcome: IMMEDIATE_RESPONSE_MODES.has(responseMode) ? 'none' : 'response',
+			// A queue worker can finish before this handler registers the response mode.
+			forceFullExecutionData: useLastNodeForChatHistory,
 			// v1 reads this from `executionData.startData`, which `prepareExecutionData`
 			// sets, so carrying it here changes nothing for v1. Engine v2 has no way to
 			// stop at a node, and its dispatcher refuses the run on this field.

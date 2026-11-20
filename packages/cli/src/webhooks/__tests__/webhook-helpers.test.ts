@@ -16,7 +16,13 @@ import {
 	type ExpressionEngineConfig,
 	type WorkflowsConfig,
 } from '@n8n/config';
-import type { Project, WebhookEntity, WorkflowEntity, WorkflowRepository } from '@n8n/db';
+import type {
+	IExecutionResponse,
+	Project,
+	WebhookEntity,
+	WorkflowEntity,
+	WorkflowRepository,
+} from '@n8n/db';
 import { Person, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import {
@@ -34,6 +40,7 @@ import {
 	ExecutionContextService,
 	getHtmlSandboxCSP,
 	isWebhookHtmlSandboxingDisabled,
+	type StorageConfig,
 } from 'n8n-core';
 
 import type { ExecutionResponseReceiver } from '@/modules/engine-v2/execution-channel/execution-response-receiver';
@@ -83,10 +90,17 @@ import { mock, type MockProxy } from 'vitest-mock-extended';
 
 import { ActiveExecutions } from '@/active-executions';
 import { AuthService } from '@/auth/auth.service';
+import * as ExecutionLifecycleHooks from '@/execution-lifecycle/execution-lifecycle-hooks';
+import type { ExecutionPersistence } from '@/executions/execution-persistence';
+import type { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
+import type { ExternalHooks } from '@/external-hooks';
 import type { EngineV2ResumeRequest } from '@/interfaces';
 import { rawBodyReader } from '@/middlewares';
 import type { NodeTypes } from '@/node-types';
 import { type ResponseError, OperationalError, UnexpectedError, UserError } from '@n8n/errors';
+import { PoolConfigService } from '@/scaling/pool-config.service.ee';
+import { ScalingService } from '@/scaling/scaling.service';
+import type { Job } from '@/scaling/scaling.types';
 import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
 import { EngineV2Dispatcher } from '@/services/engine-v2-dispatcher.service';
@@ -247,12 +261,12 @@ describe('shouldUseLastNodeForChatHistory', () => {
 	test.each<[WebhookResponseMode, boolean]>([
 		['streaming', true],
 		['hostedChat', true],
-		['lastNode', false],
+		['lastNode', true],
 		['responseNode', false],
-	])('overrides %s for chat history: %s', (responseMode, shouldOverride) => {
+	])('uses the last node for %s chat history: %s', (responseMode, usesLastNode) => {
 		expect(
 			shouldUseLastNodeForChatHistory(CHAT_TRIGGER_NODE_TYPE, historyRequest, responseMode),
-		).toBe(shouldOverride);
+		).toBe(usesLastNode);
 	});
 
 	test.each([
@@ -2818,10 +2832,14 @@ describe('executeWebhook manual chat history', () => {
 		workflowExecuteAdditionalData: mock<IWorkflowExecuteAdditionalData>(),
 	});
 
+	let postExecute: IDeferredPromise<IRun | undefined>;
+
 	beforeEach(() => {
 		vi.restoreAllMocks();
 		vi.clearAllMocks();
 
+		postExecute = createDeferredPromise<IRun | undefined>();
+		activeExecutions.getPostExecutePromise.mockReturnValue(postExecute.promise);
 		vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
 			mock<IWorkflowExecuteAdditionalData>({ otel: undefined }),
 		);
@@ -2866,8 +2884,6 @@ describe('executeWebhook manual chat history', () => {
 				),
 			},
 		});
-		const postExecute = createDeferredPromise<IRun | undefined>();
-		activeExecutions.getPostExecutePromise.mockReturnValue(postExecute.promise);
 		const req = mock<WebhookRequest>({
 			method: 'POST',
 			contentType: 'application/json',
@@ -2894,13 +2910,13 @@ describe('executeWebhook manual chat history', () => {
 			responseCallback,
 		);
 
-		return { req, res, responseCallback, postExecute };
+		return { req, res, responseCallback };
 	};
 
 	it.each(['lastNode', 'responseNode', 'streaming', 'responseNodes'])(
 		'returns the workflow history as plain JSON in %s mode',
 		async (responseMode) => {
-			const { req, res, responseCallback, postExecute } = await startWebhook(responseMode);
+			const { req, res, responseCallback } = await startWebhook(responseMode);
 			postExecute.resolve(successfulRun);
 			await new Promise(process.nextTick);
 
@@ -2910,6 +2926,7 @@ describe('executeWebhook manual chat history', () => {
 			expect(runData.streamingEnabled).not.toBe(true);
 			expect(runData.httpResponse).toBeUndefined();
 			expect(runData.callerAwaitsOutcome).toBe('response');
+			if (responseMode === 'responseNode') expect(runData.forceFullExecutionData).not.toBe(true);
 			expect(activeExecutions.setResponseMode).toHaveBeenCalledWith(
 				EXECUTION_ID,
 				responseMode === 'responseNode' ? 'responseNode' : 'lastNode',
@@ -2924,10 +2941,85 @@ describe('executeWebhook manual chat history', () => {
 		},
 	);
 
+	it.each(['lastNode', 'streaming', 'responseNodes'])(
+		'returns history in %s mode when the worker already finished',
+		async (responseMode) => {
+			const scalingService = mockInstance(ScalingService);
+			scalingService.addJob.mockResolvedValueOnce(mock<Job>({ id: 'job-1' }));
+			scalingService.waitForJob.mockResolvedValueOnce();
+			scalingService.popJobResult.mockReturnValueOnce({
+				success: true,
+				status: 'success',
+				startedAt: successfulRun.startedAt,
+				stoppedAt: new Date(1),
+				lastNodeExecuted: successfulRun.data.resultData.lastNodeExecuted,
+			});
+
+			const executionPersistence = mock<ExecutionPersistence>();
+			const persistedRun: IExecutionResponse = {
+				...successfulRun,
+				id: EXECUTION_ID,
+				workflowId: WORKFLOW_ID,
+				workflowData: mock<IWorkflowBase>(),
+				createdAt: successfulRun.startedAt,
+				finished: true,
+				customData: {},
+				annotation: { tags: [] },
+			};
+			executionPersistence.findSingleExecution.mockResolvedValueOnce(persistedRun);
+			const credentialsPermissionChecker = mock<CredentialsPermissionChecker>();
+			credentialsPermissionChecker.check.mockResolvedValueOnce({ personalCredentialsCount: 0 });
+
+			const runner = new WorkflowRunner(
+				mock(),
+				mock(),
+				activeExecutions,
+				mock(),
+				executionPersistence,
+				mock(),
+				mock(),
+				credentialsPermissionChecker,
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				mock<ExecutionsConfig>({ mode: 'queue' }),
+				mock<StorageConfig>({ modeTag: 'db' }),
+				mock<ExternalHooks>({ hasHook: () => false }),
+				engineV2Dispatcher,
+				mock(),
+				mock(),
+			);
+			mockInstance(PoolConfigService).resolvePoolForExecution.mockResolvedValueOnce({
+				queueName: 'jobs',
+				poolName: undefined,
+			});
+			vi.spyOn(ExecutionLifecycleHooks, 'getLifecycleHooksForScalingMain').mockReturnValueOnce(
+				mock(),
+			);
+			vi.spyOn(runner, 'establishContextForPersistence').mockResolvedValueOnce(undefined);
+			vi.spyOn(runner, 'prepareNewExecution').mockResolvedValueOnce(undefined);
+			workflowRunner.run.mockImplementationOnce(runner.run.bind(runner));
+
+			activeExecutions.add.mockResolvedValueOnce(EXECUTION_ID);
+			activeExecutions.finalizeExecution.mockImplementationOnce((_, run) =>
+				postExecute.resolve(run),
+			);
+			const { responseCallback } = await startWebhook(responseMode);
+			await vi.waitFor(() => expect(responseCallback).toHaveBeenCalled());
+
+			expect(scalingService.popJobResult).toHaveBeenCalledBefore(activeExecutions.setResponseMode);
+			expect(responseCallback).toHaveBeenCalledExactlyOnceWith(
+				null,
+				expect.objectContaining({ body: history, code: 200 }),
+			);
+		},
+	);
+
 	it.each(['streaming', 'responseNodes'])(
 		'keeps %s mode for normal chat messages',
 		async (responseMode) => {
-			const { res, postExecute } = await startWebhook(responseMode, {
+			const { res } = await startWebhook(responseMode, {
 				action: 'sendMessage',
 				chatInput: 'Hello',
 				sessionId: 's1',
@@ -2935,6 +3027,7 @@ describe('executeWebhook manual chat history', () => {
 			postExecute.resolve(successfulRun);
 
 			const [runData] = workflowRunner.run.mock.calls[0];
+			expect(runData.forceFullExecutionData).not.toBe(true);
 			if (responseMode === 'streaming') {
 				expect(runData.streamingEnabled).toBe(true);
 				expect(runData.httpResponse).toBe(res);
@@ -2947,10 +3040,11 @@ describe('executeWebhook manual chat history', () => {
 	);
 
 	it('keeps streaming for other webhook node types with the same action', async () => {
-		const { res, postExecute } = await startWebhook('streaming', historyRequest, WEBHOOK_NODE_TYPE);
+		const { res } = await startWebhook('streaming', historyRequest, WEBHOOK_NODE_TYPE);
 		postExecute.resolve(successfulRun);
 
 		const [runData] = workflowRunner.run.mock.calls[0];
+		expect(runData.forceFullExecutionData).not.toBe(true);
 		expect(runData.streamingEnabled).toBe(true);
 		expect(runData.httpResponse).toBe(res);
 	});
