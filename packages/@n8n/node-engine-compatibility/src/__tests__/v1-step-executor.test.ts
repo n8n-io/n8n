@@ -523,6 +523,62 @@ describe('V1StepExecutor', () => {
 				expect(result.outputs).toEqual([[{ json: { message: 2 } }]]);
 			});
 
+			describe('$prevNode', () => {
+				// B's connections come first, but A comes first in node order.
+				const edgesListedBFirst = converter.convert(
+					v1Workflow(
+						[
+							{ id: 't', name: 'Manual', type: 'n8n-nodes-base.manualTrigger' },
+							{ id: 'a', name: 'A', type: 'test.echoParam' },
+							{ id: 'b', name: 'B', type: 'test.echoParam' },
+							{
+								id: 'n',
+								name: 'N',
+								type: 'test.echoParam',
+								parameters: { message: '={{ $prevNode.name }}' },
+							},
+						],
+						{
+							Manual: {
+								main: [
+									[
+										{ node: 'B', type: 'main', index: 0 },
+										{ node: 'A', type: 'main', index: 0 },
+									],
+								],
+							},
+							B: { main: [[{ node: 'N', type: 'main', index: 0 }]] },
+							A: { main: [[{ node: 'N', type: 'main', index: 0 }]] },
+						},
+					),
+				);
+
+				it('names the first source in node order, not in edge order', async () => {
+					const result = await testStepExecutor(edgesListedBFirst, outputsByNodeId).execute(
+						stepRequest(edgesListedBFirst, 'n', inputs, inputSources),
+					);
+
+					expect(result.outputs).toEqual([
+						[{ json: { message: 'A' } }, { json: { message: 'A' } }],
+					]);
+				});
+
+				it('keeps naming the first source when its edge is dead', async () => {
+					const { a: _deadEdge, ...onlyB } = outputsByNodeId;
+
+					const result = await testStepExecutor(edgesListedBFirst, onlyB).execute(
+						stepRequest(
+							edgesListedBFirst,
+							'n',
+							[[{ json: { message: 'from-B' } }]],
+							[[inputSources[0][1]]],
+						),
+					);
+
+					expect(result.outputs).toEqual([[{ json: { message: 'A' } }]]);
+				});
+			});
+
 			it('links output items from every edge to their own source', async () => {
 				const graph = convergingWorkflow('test.linksToInput');
 

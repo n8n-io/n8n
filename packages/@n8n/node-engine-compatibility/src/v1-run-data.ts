@@ -6,6 +6,7 @@
  */
 
 import {
+	compareByConcatenationOrder,
 	deriveLoops,
 	type GraphEdge,
 	type ItemSource,
@@ -24,7 +25,7 @@ export function nodeNamesById(graph: WorkflowGraph): Map<string, string> {
 /** What a node's input lineage needs. */
 export interface SourceLineage {
 	namesById: Map<string, string>;
-	/** Forward edges into each node, by the node's id. */
+	/** Forward edges into each node, by the node's id, in concatenation order. */
 	incomingEdgesByNodeId: Map<string, GraphEdge[]>;
 	loops: WorkflowLoop[];
 	/** The last pass each node is known to have run. */
@@ -88,6 +89,9 @@ export function incomingEdgesByNodeId(graph: WorkflowGraph): Map<string, GraphEd
 		else byNodeId.set(edge.to, [edge]);
 	}
 
+	const byConcatenationOrder = compareByConcatenationOrder(graph);
+	for (const edges of byNodeId.values()) edges.sort(byConcatenationOrder);
+
 	return byNodeId;
 }
 
@@ -95,7 +99,7 @@ export function incomingEdgesByNodeId(graph: WorkflowGraph): Map<string, GraphEd
  * One entry for each input slot of one node, indexed by slot. Empty for a node
  * with no input, `null` for an unconnected slot.
  *
- * @param edges The forward edges into the node.
+ * @param edges The forward edges into the node, in concatenation order.
  * @param previousNodeRun Which run of the predecessor fed this one.
  */
 export function toSourceSlots(
@@ -111,8 +115,9 @@ export function toSourceSlots(
 
 		const inputIndex = edge.inputIndex ?? 0;
 		while (sources.length <= inputIndex) sources.push(null);
-		// First edge into a slot wins. When several edges feed a slot, every item
-		// carries its own source in `pairedItem` (`item-links.ts`).
+		// The first edge into a slot wins, even a dead one, so `$prevNode` names
+		// its node. When several edges feed a slot, every item carries its own
+		// source in `pairedItem` (`item-links.ts`).
 		if (sources[inputIndex] !== null) continue;
 
 		const run = previousNodeRun?.(edge) ?? 0;
