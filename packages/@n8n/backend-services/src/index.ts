@@ -19,6 +19,7 @@ export {
 } from './executions/counting-rules';
 export { computeTimeSavedMinutes, sumNodeTimeSavedMinutes } from './executions/time-saved';
 export {
+	toEndedFactsFromCancel,
 	toEndedFactsFromCrash,
 	toEndedFactsFromRun,
 } from './executions/execution-ledger-ended-facts';

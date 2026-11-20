@@ -3,6 +3,7 @@ export {
 	WithCreatedAt,
 	WithTimestamps,
 	WithTimestampsAndStringId,
+	WithUpdatedAt,
 	jsonColumnType,
 	datetimeColumnType,
 	binaryColumnType,

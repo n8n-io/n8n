@@ -2,6 +2,9 @@ import { workflow } from './fixtures';
 import type { WorkflowNodeResponse } from '../clients/n8n-client';
 import { buildWorkflowContextBlock } from '../harness/workflow-context';
 
+const HEADER =
+	'**Workflow settings** (an absent or "DEFAULT" value means the instance default; an absent `executionOrder` means the legacy `v0` order):';
+
 const node = (id: string, name: string): WorkflowNodeResponse => ({
 	id,
 	name,
@@ -21,7 +24,7 @@ describe('buildWorkflowContextBlock', () => {
 
 		expect(buildWorkflowContextBlock(wf)).toContain(
 			[
-				'**Workflow settings:**',
+				HEADER,
 				'```json',
 				JSON.stringify({ executionOrder: 'v1', timezone: 'America/New_York' }, null, 2),
 				'```',
@@ -32,13 +35,13 @@ describe('buildWorkflowContextBlock', () => {
 	it('states that no workflow settings exist when the API returns null settings', () => {
 		const wf = workflow('wf-1', { nodes: [node('id-a', 'Fetch Data')], settings: null });
 
-		expect(buildWorkflowContextBlock(wf)).toContain('**Workflow settings:**\n\n(none)');
+		expect(buildWorkflowContextBlock(wf)).toContain(`${HEADER}\n\n(none set)`);
 	});
 
 	it('states that no workflow settings exist when the workflow has none', () => {
 		const wf = workflow('wf-1', { nodes: [node('id-a', 'Fetch Data')] });
 
-		expect(buildWorkflowContextBlock(wf)).toContain('**Workflow settings:**\n\n(none)');
+		expect(buildWorkflowContextBlock(wf)).toContain(`${HEADER}\n\n(none set)`);
 	});
 
 	it('renders "(no workflow built)" without a workflow', () => {
@@ -106,5 +109,36 @@ describe('buildWorkflowContextBlock', () => {
 			const block = buildWorkflowContextBlock(wf);
 			expect(block).toContain('**Node groups:**\n\n(none)');
 		}
+	});
+
+	it('renders every saved node field except the id and the canvas position', () => {
+		// `notes` is not on WorkflowNodeResponse: a field the harness does not
+		// know about must still reach the judge.
+		const saved = {
+			...node('id-a', 'Fetch Data'),
+			position: [240, 300],
+			retryOnFail: true,
+			notes: 'Retries the flaky API',
+		} as WorkflowNodeResponse;
+
+		const block = buildWorkflowContextBlock(workflow('wf-1', { nodes: [saved] }));
+
+		expect(block).toContain(
+			JSON.stringify(
+				[
+					{
+						name: 'Fetch Data',
+						type: 'n8n-nodes-base.set',
+						retryOnFail: true,
+						notes: 'Retries the flaky API',
+						parameters: {},
+					},
+				],
+				null,
+				2,
+			),
+		);
+		expect(block).not.toContain('id-a');
+		expect(block).not.toContain('240');
 	});
 });
