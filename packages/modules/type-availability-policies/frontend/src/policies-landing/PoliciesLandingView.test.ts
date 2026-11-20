@@ -124,13 +124,18 @@ describe('PoliciesLandingView', () => {
 		);
 	});
 
-	it('shows no counts when a request fails', async () => {
-		api.fetchInstanceAccess.mockRejectedValue(new Error('Request failed'));
-		const { queryByTestId } = renderForAdmin();
+	it.each(['fetchInstanceAccess', 'fetchInstancePolicy', 'fetchNodeTypeSummaries'] as const)(
+		'shows no counts when %s fails',
+		async (request) => {
+			api[request].mockRejectedValue(new Error('Request failed'));
+			const { queryByTestId } = renderForAdmin();
 
-		await waitFor(() => expect(api.fetchInstanceAccess).toHaveBeenCalled());
-		expect(queryByTestId('policies-landing-instance-counts')).not.toBeInTheDocument();
-	});
+			await waitFor(() => expect(api[request]).toHaveBeenCalled());
+			// Lets the other requests settle, so that counts would render if the failure were swallowed.
+			await new Promise((resolve) => setTimeout(resolve, 0));
+			expect(queryByTestId('policies-landing-instance-counts')).not.toBeInTheDocument();
+		},
+	);
 
 	it('opens the instance policy page from the Global instance policy row', async () => {
 		const { getByTestId } = renderView({ pinia: createTestingPinia() });

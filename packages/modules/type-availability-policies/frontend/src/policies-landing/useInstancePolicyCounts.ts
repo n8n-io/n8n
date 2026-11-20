@@ -7,7 +7,6 @@ import {
 	fetchInstanceAccess,
 	fetchInstancePolicy,
 	fetchNodeTypeSummaries,
-	type NodeTypeSummary,
 } from '../type-availability-policies.api';
 
 export type TypeCount = { restricted: number; total: number };
@@ -27,22 +26,13 @@ export function useInstancePolicyCounts() {
 	// Stays `null` when a request fails, so the page shows no counts instead of wrong ones.
 	const counts = shallowRef<InstancePolicyCounts | null>(null);
 
-	async function loadSummaries(): Promise<ReadonlyMap<string, NodeTypeSummary>> {
-		try {
-			return await fetchNodeTypeSummaries(rootStore.baseUrl);
-		} catch {
-			// The Node types tab then lists the hidden types too, so the count does the same.
-			return new Map();
-		}
-	}
-
 	async function load(): Promise<void> {
 		try {
 			const [nodeAccess, nodePolicy, credentialAccess, summaries] = await Promise.all([
 				fetchInstanceAccess(rootStore.restApiContext, 'node'),
 				fetchInstancePolicy(rootStore.restApiContext, 'node'),
 				fetchInstanceAccess(rootStore.restApiContext, 'credential'),
-				loadSummaries(),
+				fetchNodeTypeSummaries(rootStore.baseUrl),
 			]);
 			counts.value = {
 				node: countRestricted(visibleNodeTypes(nodeAccess.types, summaries, nodePolicy.rules)),
