@@ -245,50 +245,15 @@ export class LiveRetrievalService {
 		const run = this.runState(call.runId);
 		const targets = this.searchTargets(run, sources, input.scope);
 
-		const ranked: SourceMatch[] = [];
-		const searched: SearchedSourceOutput[] = [];
-		for (const target of targets) {
-			const { source, state } = target;
-			const strategy = this.resolveStrategy(source);
-			try {
-				const provider = this.registry.get(source.provider);
-				const ctx = await this.runContext(scope, call, state, source, provider);
-				const matches = await strategy.search(
-					{
-						ctx,
-						agentId: scope.agentId,
-						source,
-						provider,
-						scope: target.entries,
-						pickedItems: target.pickedItems,
-						readDocument: async (entry) => await this.readDocument(ctx, state, provider, entry),
-					},
-					input.query,
-					limit,
-				);
-				for (const match of matches) {
-					const entry = this.allow(state, match.entry);
-					ranked.push({ ...match, entry, source });
-				}
-				searched.push({
-					sourceId: source.id,
-					retrieval: strategy.id,
-					status: 'ok',
-					index:
-						strategy.id === 'index'
-							? this.indexService.status(liveIndexKey(scope.agentId, source.id))
-							: undefined,
-				});
-			} catch (error) {
-				// A failing source must show as unavailable, never as "nothing found".
-				searched.push({
-					sourceId: source.id,
-					retrieval: strategy.id,
-					status: 'unavailable',
-					error: this.unavailableMessage(source, error),
-				});
-			}
-		}
+		// The sources are searched at the same time: a slow or throttled source
+		// must not hold up the answer of the others.
+		const results = await Promise.all(
+			targets.map(
+				async (target) => await this.searchSource(scope, call, target, input.query, limit),
+			),
+		);
+		const ranked: SourceMatch[] = results.flatMap((result) => result.matches);
+		const searched: SearchedSourceOutput[] = results.map((result) => result.searched);
 
 		const hits: LiveHit[] = [];
 		const seen = new Map<string, number>();
@@ -351,6 +316,62 @@ export class LiveRetrievalService {
 			return { ...result, text: lines.map(cutLine).join('\n') };
 		}
 		return { ...result, ranges: input.ranges.map((range) => readRange(lines, range)) };
+	}
+
+	private async searchSource(
+		scope: LiveKnowledgeScope,
+		call: LiveCallContext,
+		target: SearchTarget,
+		query: string,
+		limit: number,
+	): Promise<{ matches: SourceMatch[]; searched: SearchedSourceOutput }> {
+		const { source, state } = target;
+		const strategy = this.resolveStrategy(source);
+		try {
+			const provider = this.registry.get(source.provider);
+			const ctx = await this.runContext(scope, call, state, source, provider);
+			const found = await strategy.search(
+				{
+					ctx,
+					agentId: scope.agentId,
+					source,
+					provider,
+					scope: target.entries,
+					pickedItems: target.pickedItems,
+					readDocument: async (entry) => await this.readDocument(ctx, state, provider, entry),
+				},
+				query,
+				limit,
+			);
+			const matches = found.map((match) => ({
+				...match,
+				entry: this.allow(state, match.entry),
+				source,
+			}));
+			return {
+				matches,
+				searched: {
+					sourceId: source.id,
+					retrieval: strategy.id,
+					status: 'ok',
+					index:
+						strategy.id === 'index'
+							? this.indexService.status(liveIndexKey(scope.agentId, source.id))
+							: undefined,
+				},
+			};
+		} catch (error) {
+			// A failing source must show as unavailable, never as "nothing found".
+			return {
+				matches: [],
+				searched: {
+					sourceId: source.id,
+					retrieval: strategy.id,
+					status: 'unavailable',
+					error: this.unavailableMessage(source, error),
+				},
+			};
+		}
 	}
 
 	/** Drops the state of a run. The turn execution calls it when the run ends. */
