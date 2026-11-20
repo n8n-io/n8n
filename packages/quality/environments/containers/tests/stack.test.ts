@@ -1,10 +1,13 @@
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import {
 	Network,
 	type GenericContainer,
 	type StartedNetwork,
 	type StartedTestContainer,
 } from 'testcontainers';
-import { afterEach, beforeEach, expect, test, vi } from 'vitest';
+import { afterEach, beforeEach, expect, onTestFinished, test, vi } from 'vitest';
 
 import { createN8NStack, type N8NConfig, type N8NStack } from '../stack';
 
@@ -125,12 +128,38 @@ test('copies stack and service files into the main, worker, and webhook', async 
 });
 
 test('keeps the default env and service files when the new options are absent', async () => {
-	await startStack();
+	await startStack(queue);
 
-	const { environment, files, reuse } = built.get(main)!;
-	expect(Object.hasOwn(environment, 'N8N_ENCRYPTION_KEY')).toBe(true);
-	expect(files).toEqual([serviceFile]);
-	expect(reuse).toBe(true);
+	for (const name of queueNames) {
+		const { environment, files, reuse } = built.get(name)!;
+		expect(Object.hasOwn(environment, 'N8N_ENCRYPTION_KEY')).toBe(true);
+		expect(files).toEqual([serviceFile]);
+		expect(reuse).toBe(true);
+	}
+});
+
+test.each([
+	{
+		scenario: 'sets the coverage variable on main and worker',
+		unsetEnv: undefined,
+		coveragePaths: ['/cov', '/cov', null],
+	},
+	{
+		scenario: 'removes the coverage variable even when the stack enables coverage',
+		unsetEnv: ['NODE_V8_COVERAGE'],
+		coveragePaths: [null, null, null],
+	},
+])('$scenario', async ({ unsetEnv, coveragePaths }) => {
+	const coverageHostDir = await mkdtemp(join(tmpdir(), 'n8n-stack-coverage-'));
+	onTestFinished(async () => await rm(coverageHostDir, { recursive: true, force: true }));
+
+	await startStack({ ...queue, coverageHostDir, unsetEnv });
+
+	const paths = queueNames.map((name) => {
+		const { environment } = built.get(name)!;
+		return Object.hasOwn(environment, 'NODE_V8_COVERAGE') ? environment.NODE_V8_COVERAGE : null;
+	});
+	expect(paths).toEqual(coveragePaths);
 });
 
 test('keeps the file-based configuration when replacing the main', async () => {
