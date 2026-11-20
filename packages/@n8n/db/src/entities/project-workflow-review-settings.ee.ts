@@ -16,8 +16,4 @@ export class ProjectWorkflowReviewSettings extends WithTimestamps {
 	/** Set by a project admin. Applies only when the instance requires approval "When configured". */
 	@Column({ default: false })
 	requiredByProject: boolean;
-
-	/** Set by an instance admin for this project. Overrides `requiredByProject`. Nothing reads it yet: the instance policy page for single projects adds the reader. */
-	@Column({ default: false })
-	requiredByInstance: boolean;
 }

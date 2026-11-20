@@ -12,11 +12,6 @@ export class CreateProjectWorkflowReviewSettingsTable1795098232033 implements Re
 					.comment(
 						'Set by a project admin. When true, a workflow version in this project needs an approved review before it is published',
 					),
-				column('requiredByInstance')
-					.bool.notNull.default(false)
-					.comment(
-						'Set by an instance admin. When true, a workflow version in this project needs an approved review before it is published, whatever requiredByProject says',
-					),
 			)
 			.withForeignKey('projectId', {
 				tableName: 'project',

@@ -273,7 +273,6 @@ erDiagram
 "project_workflow_review_settings" {
   datetime_3_ createdAt
   varchar_36_ projectId PK
-  boolean requiredByInstance
   boolean requiredByProject
   datetime_3_ updatedAt
 }
