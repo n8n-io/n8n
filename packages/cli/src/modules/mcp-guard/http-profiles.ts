@@ -202,8 +202,6 @@ const methodOf = (path: string): string => path.split('/').pop() ?? '';
 
 export const TELEGRAM_PROFILE: HttpVendorProfile = {
 	name: 'telegram',
-	defaultAdminUrl: 'http://127.0.0.1:9097',
-	defaultGymUrl: 'http://127.0.0.1:8087',
 	credentialKind: 'bot_token',
 	credentialField: 'accessToken',
 	placeholderSeed: {
