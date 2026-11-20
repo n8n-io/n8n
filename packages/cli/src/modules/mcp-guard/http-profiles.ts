@@ -180,4 +180,190 @@ export const GMAIL_PROFILE: HttpVendorProfile = {
 	},
 };
 
-export const HTTP_PROFILES: readonly HttpVendorProfile[] = [GMAIL_PROFILE];
+// ---- Microsoft Outlook (Graph) ----
+
+const NAMED_ENTITIES: Record<string, string> = {
+	amp: '&',
+	lt: '<',
+	gt: '>',
+	quot: '"',
+	apos: "'",
+	nbsp: ' ',
+};
+
+// Plain text of an HTML body. The model reads it and copies it. It is not a security filter.
+export function htmlToText(html: string): string {
+	return html
+		.replace(/<(style|script|head)\b[\s\S]*?<\/\1\s*>/gi, '')
+		.replace(/<br\s*\/?>|<\/(?:p|div|li|tr|h[1-6])\s*>/gi, '\n')
+		.replace(/<[^>]*>/g, '')
+		.replace(/&(?:#(\d+)|#x([0-9a-f]+)|([a-z]+));/gi, (whole, dec, hex, name) => {
+			const code = dec ? Number(dec) : hex ? parseInt(hex, 16) : undefined;
+			if (code === undefined) return NAMED_ENTITIES[String(name).toLowerCase()] ?? whole;
+			return code > 0 && code <= 0x10ffff ? String.fromCodePoint(code) : whole;
+		})
+		.replace(/[ \t]+\n/g, '\n')
+		.replace(/\n{3,}/g, '\n\n')
+		.trim();
+}
+
+const addressOf = (recipient: unknown): string | undefined => {
+	const email = isRecord(recipient) ? recipient.emailAddress : undefined;
+	return isRecord(email) && typeof email.address === 'string' ? email.address : undefined;
+};
+
+const addressesOf = (list: unknown): string[] =>
+	(Array.isArray(list) ? list : []).flatMap((item) => addressOf(item) ?? []);
+
+function enrichGraphObject(item: Record<string, unknown>): Record<string, unknown> {
+	const out: Record<string, unknown> = { ...item };
+	const body = item.body;
+	if (isRecord(body) && typeof body.content === 'string') {
+		const text =
+			String(body.contentType).toLowerCase() === 'html' ? htmlToText(body.content) : body.content;
+		out.decodedBody = text.slice(0, MAX_BODY);
+	}
+	const from = addressOf(item.from);
+	if (from !== undefined) out.fromAddress = from;
+	if (Array.isArray(item.toRecipients)) out.toAddresses = addressesOf(item.toRecipients);
+	if (Array.isArray(item.ccRecipients)) out.ccAddresses = addressesOf(item.ccRecipients);
+	// A message has a received time. An event has a start time with a zone, so it is not a plain ISO text.
+	if (typeof item.receivedDateTime === 'string') out.isoDate = item.receivedDateTime;
+	else if (isRecord(item.start) && typeof item.start.dateTime === 'string') {
+		const zone = item.start.timeZone === 'UTC' || item.start.timeZone === undefined ? 'Z' : '';
+		out.isoDate = `${item.start.dateTime}${zone}`;
+		const end = isRecord(item.end) ? item.end.dateTime : undefined;
+		const minutes =
+			typeof end === 'string'
+				? (Date.parse(`${end}${zone}`) - Date.parse(`${item.start.dateTime}${zone}`)) / 60_000
+				: Number.NaN;
+		if (Number.isFinite(minutes) && minutes > 0) out.duration = `${Math.round(minutes)}m`;
+	}
+	return out;
+}
+
+/** Adds `decodedBody`, `fromAddress`, `toAddresses`, `ccAddresses` and `isoDate` to messages and events. */
+export function enrichOutlook(json: unknown): unknown {
+	if (Array.isArray(json)) return json.map(enrichOutlook);
+	if (!isRecord(json)) return json;
+	if (Array.isArray(json.value)) return { ...json, value: json.value.map(enrichOutlook) };
+	return enrichGraphObject(json);
+}
+
+const OUTLOOK_PERSONA = 'person:me';
+
+// The gym placeholder account is the only mailbox that the credential of the tenant reads. Code sets
+// it, so that a message of a real address with no account in the gym has a mailbox.
+export function withOutlookMailbox(overlay: Record<string, unknown>): Record<string, unknown> {
+	const native = isRecord(overlay.native) ? overlay.native : undefined;
+	const outlook = native && isRecord(native.outlook) ? native.outlook : undefined;
+	if (!native || !outlook) return overlay;
+	const place = (items: unknown) =>
+		Array.isArray(items)
+			? items.map((item) => (isRecord(item) ? { ...item, account: OUTLOOK_PERSONA } : item))
+			: items;
+	return {
+		...overlay,
+		native: {
+			...native,
+			outlook: {
+				...outlook,
+				...(outlook.messages !== undefined && { messages: place(outlook.messages) }),
+				...(outlook.folders !== undefined && { folders: place(outlook.folders) }),
+				...(outlook.contacts !== undefined && { contacts: place(outlook.contacts) }),
+				...(outlook.calendars !== undefined && { calendars: place(outlook.calendars) }),
+			},
+		},
+	};
+}
+
+// The last collection of the path that has an id after it, such as `/v1.0/me/messages/<id>/move`.
+const GRAPH_OBJECT = /^(.*\/(?:messages|mailFolders|events|contacts|calendars))\/([^/?]+)/;
+
+// `/v1.0/me` or `/v1.0/users/<address>`.
+const MAILBOX_PREFIX = /^(\/v1\.0\/(?:me|users\/[^/]+))\//;
+
+const decodeSegment = (segment: string): string => {
+	try {
+		return decodeURIComponent(segment);
+	} catch {
+		return segment;
+	}
+};
+
+const graphObject = (path: string): { base: string; id: string } | undefined => {
+	const named = GRAPH_OBJECT.exec(path);
+	if (!named) return undefined;
+	const id = decodeSegment(named[2]);
+	return looksLikeId(id) ? { base: named[1], id } : undefined;
+};
+
+const WELL_KNOWN_FOLDERS: ReadonlySet<string> = new Set(
+	[
+		'Inbox',
+		'Drafts',
+		'Sent Items',
+		'Deleted Items',
+		'Junk Email',
+		'Archive',
+		'Outbox',
+		'Conversation History',
+		'Clutter',
+		'Notes',
+		'Sync Issues',
+		'Scheduled',
+	].map((name) => name.toLowerCase()),
+);
+
+const readOf = (base: string, id: string) => ({
+	tool: `read_get_${base.split('/').pop()}`,
+	args: { method: 'GET', path: `${base}/${encodeURIComponent(id)}` },
+});
+
+export const OUTLOOK_PROFILE: HttpVendorProfile = {
+	name: 'outlook',
+	defaultAdminUrl: 'http://127.0.0.1:9101',
+	defaultGymUrl: 'http://127.0.0.1:8091',
+	credentialKind: 'ms_oauth',
+	credentialField: 'oauthTokenData.access_token',
+	placeholderSeed: {
+		world_version: 1,
+		persona: { ref: OUTLOOK_PERSONA, name: 'Guard', email: PLACEHOLDER_ACCOUNT },
+	},
+	enrich: enrichOutlook,
+	finalize: withOutlookMailbox,
+	lookups: (tool, args) => {
+		// A list holds full messages, so a list needs no extra read. A write on an object needs that
+		// object in the gym.
+		if (!tool.startsWith('write_')) return [];
+		const reads: Array<{ tool: string; args: Record<string, unknown> }> = [];
+		const named = graphObject(String(args.path));
+		if (named) reads.push(readOf(named.base, named.id));
+		// A move names its destination folder in the body.
+		const body = isRecord(args.body) ? args.body : undefined;
+		const destination = body && typeof body.destinationId === 'string' ? body.destinationId : '';
+		const mailbox = MAILBOX_PREFIX.exec(String(args.path))?.[1];
+		if (mailbox && looksLikeId(destination))
+			reads.push(readOf(`${mailbox}/mailFolders`, destination));
+		return reads.slice(0, MAX_LOOKUPS);
+	},
+	hydrateRead: (args, real) => {
+		// The gym has the system folders. Only a folder that the user made needs a copy.
+		if (/\/(?:mailFolders|childFolders)$/.test(args.path)) {
+			const folders = isRecord(real) && Array.isArray(real.value) ? real.value : [];
+			return folders.some(
+				(folder) =>
+					isRecord(folder) &&
+					typeof folder.displayName === 'string' &&
+					!WELL_KNOWN_FOLDERS.has(folder.displayName.toLowerCase()),
+			);
+		}
+		return true;
+	},
+	hydrateWrite: (args, gymIds) => {
+		const named = graphObject(args.path);
+		return named !== undefined && !gymIds.has(named.id);
+	},
+};
+
+export const HTTP_PROFILES: readonly HttpVendorProfile[] = [GMAIL_PROFILE, OUTLOOK_PROFILE];
