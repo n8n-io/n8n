@@ -42,7 +42,7 @@ export function isDefaultProjectLimitAboveInstanceLimit({
 	);
 }
 
-export function findSettingsChanges(
+export function diffLimitSettings(
 	before: ExecutionLimitSettings,
 	after: ExecutionLimitSettings,
 ): ExecutionLimitChange[] {
@@ -57,9 +57,8 @@ export function findSettingsChanges(
 		}));
 }
 
-export function findProjectLimitChanges(
+export function diffProjectLimits(
 	before: ProjectLimit[],
-	projectIds: string[],
 	after: ProjectLimit[],
 ): ExecutionLimitChange[] {
 	const oldValues = new Map(
@@ -69,7 +68,7 @@ export function findProjectLimitChanges(
 		after.map(({ projectId, maxExecutions }) => [projectId, maxExecutions]),
 	);
 
-	return [...new Set(projectIds)]
+	return [...new Set([...newValues.keys(), ...oldValues.keys()])]
 		.map(
 			(projectId): ExecutionLimitChange => ({
 				projectId,

@@ -15,9 +15,9 @@ import { BadRequestError, NotFoundError } from '@n8n/errors';
 
 import {
 	findDuplicateProjectIds,
-	findProjectLimitChanges,
+	diffProjectLimits,
 	findProjectLimitsAboveInstanceLimit,
-	findSettingsChanges,
+	diffLimitSettings,
 	isDefaultProjectLimitAboveInstanceLimit,
 } from './execution-limit-rules';
 import { ExecutionLimitSettingsStore } from './execution-limit-settings.store';
@@ -86,7 +86,7 @@ export class ExecutionLimitsService {
 
 			await this.settingsStore.write(merged.data, ctx);
 
-			return { result: merged.data, changes: findSettingsChanges(current, merged.data) };
+			return { result: merged.data, changes: diffLimitSettings(current, merged.data) };
 		});
 	}
 
@@ -136,7 +136,7 @@ export class ExecutionLimitsService {
 
 				return {
 					result: undefined,
-					changes: findProjectLimitChanges(before, projectIds, limits),
+					changes: diffProjectLimits(before, limits),
 				};
 			});
 		} catch (error) {
@@ -159,7 +159,7 @@ export class ExecutionLimitsService {
 			const before = await this.projectLimitRepository.findByProjectIds(projectIds, ctx);
 			await this.projectLimitRepository.deleteByProjectIds(projectIds, ctx);
 
-			return { result: undefined, changes: findProjectLimitChanges(before, projectIds, []) };
+			return { result: undefined, changes: diffProjectLimits(before, []) };
 		});
 	}
 
