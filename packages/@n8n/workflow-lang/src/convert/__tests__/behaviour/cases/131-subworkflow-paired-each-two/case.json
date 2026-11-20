@@ -1,0 +1,29 @@
+{
+	"description": "As 129, but a Code node in the sub-workflow gives two items for each call, so the node gives eight items.",
+	"trigger": {
+		"body": {
+			"ids": [
+				{
+					"id": "a0"
+				},
+				{
+					"id": "a1"
+				},
+				{
+					"id": "a2"
+				},
+				{
+					"id": "a3"
+				}
+			]
+		}
+	},
+	"compare": [
+		"Read Each",
+		"Read All",
+		"Read Expr"
+	],
+	"runDetails": true,
+	"skipNodeMetadata": true,
+	"expectRefusal": true
+}

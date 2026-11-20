@@ -1,0 +1,148 @@
+{
+	"name": "Sub-workflow paired reads",
+	"nodes": [
+		{
+			"id": "webhook",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [
+				0,
+				0
+			],
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "129-subworkflow-paired-each-v13",
+				"options": {}
+			}
+		},
+		{
+			"id": "a",
+			"name": "A",
+			"type": "n8n-nodes-base.splitOut",
+			"typeVersion": 1,
+			"position": [
+				200,
+				0
+			],
+			"parameters": {
+				"fieldToSplitOut": "body.ids",
+				"options": {}
+			}
+		},
+		{
+			"id": "call",
+			"name": "Call",
+			"type": "n8n-nodes-base.executeWorkflow",
+			"typeVersion": 1.3,
+			"position": [
+				600,
+				0
+			],
+			"parameters": {
+				"source": "parameter",
+				"workflowJson": "{\"name\":\"Tagger\",\"nodes\":[{\"id\":\"start\",\"name\":\"Start\",\"type\":\"n8n-nodes-base.executeWorkflowTrigger\",\"typeVersion\":1,\"position\":[0,0],\"parameters\":{}},{\"id\":\"tag\",\"name\":\"Tag\",\"type\":\"n8n-nodes-base.set\",\"typeVersion\":3.4,\"position\":[200,0],\"parameters\":{\"assignments\":{\"assignments\":[{\"id\":\"tag-tag\",\"name\":\"tag\",\"value\":\"t\",\"type\":\"string\"}]},\"options\":{}}}],\"connections\":{\"Start\":{\"main\":[[{\"node\":\"Tag\",\"type\":\"main\",\"index\":0}]]}}}",
+				"mode": "each",
+				"options": {}
+			}
+		},
+		{
+			"id": "read-each",
+			"name": "Read Each",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [
+				1000,
+				-100
+			],
+			"parameters": {
+				"mode": "runOnceForEachItem",
+				"jsCode": "return { json: { from: $('A').item.json.id } };"
+			}
+		},
+		{
+			"id": "read-all",
+			"name": "Read All",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [
+				1000,
+				100
+			],
+			"parameters": {
+				"jsCode": "return [{ json: { from: $('A').item.json.id } }];"
+			}
+		},
+		{
+			"id": "read-expr",
+			"name": "Read Expr",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [
+				1000,
+				300
+			],
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "rx-f",
+							"name": "from",
+							"value": "={{ $('A').item.json.id }}",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			}
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "A",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"A": {
+			"main": [
+				[
+					{
+						"node": "Call",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Call": {
+			"main": [
+				[
+					{
+						"node": "Read Each",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Read All",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Read Expr",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

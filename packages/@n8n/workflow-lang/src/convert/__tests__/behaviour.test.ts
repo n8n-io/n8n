@@ -359,7 +359,9 @@ describe('converted workflows behave as in n8n', () => {
 			// The same custom data of the execution, and the same metadata on the runs of the nodes.
 			const kept = applyExecutionCalls(out.effects);
 			expect(kept.customData).toEqual(expected.customData);
-			expect(kept.nodeMetadata).toEqual(expected.nodeMetadata ?? {});
+			if (spec.skipNodeMetadata !== true) {
+				expect(kept.nodeMetadata).toEqual(expected.nodeMetadata ?? {});
+			}
 
 			// The same webhook responses.
 			const responses = out.effects

@@ -1,0 +1,215 @@
+{
+	"nodeMetadata": {
+		"Call": [
+			{
+				"subExecution": {
+					"executionId": "sub-2",
+					"workflowId": "oracle"
+				},
+				"subExecutionsCount": 1
+			}
+		]
+	},
+	"pairedItems": {
+		"Webhook": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"A": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 0
+				},
+				{
+					"item": 0
+				},
+				{
+					"item": 0
+				}
+			]
+		],
+		"Call": [
+			[
+				[
+					{
+						"item": 0
+					},
+					{
+						"item": 1
+					},
+					{
+						"item": 2
+					},
+					{
+						"item": 3
+					}
+				],
+				[
+					{
+						"item": 0
+					},
+					{
+						"item": 1
+					},
+					{
+						"item": 2
+					},
+					{
+						"item": 3
+					}
+				]
+			],
+			[
+				[
+					{
+						"item": 0
+					},
+					{
+						"item": 1
+					},
+					{
+						"item": 2
+					},
+					{
+						"item": 3
+					}
+				],
+				[
+					{
+						"item": 0
+					},
+					{
+						"item": 1
+					},
+					{
+						"item": 2
+					},
+					{
+						"item": 3
+					}
+				]
+			]
+		],
+		"Read Each": []
+	},
+	"runSizes": {
+		"Webhook": [
+			[
+				1
+			]
+		],
+		"A": [
+			[
+				4
+			]
+		],
+		"Call": [
+			[
+				2,
+				2
+			]
+		],
+		"Read Each": [
+			[]
+		]
+	},
+	"runs": {
+		"Webhook": [
+			[
+				1
+			]
+		],
+		"A": [
+			[
+				4
+			]
+		],
+		"Call": [
+			[
+				2,
+				2
+			]
+		],
+		"Read Each": [
+			[]
+		]
+	},
+	"generatedBy": "oracle.ts: n8n-core WorkflowExecute with n8n-nodes-base, executionOrder v1",
+	"error": "Multiple matches",
+	"order": [
+		"Webhook",
+		"A",
+		"Call",
+		"Read Each"
+	],
+	"nodes": {
+		"Webhook": [
+			[
+				{
+					"headers": {},
+					"params": {},
+					"query": {},
+					"body": {
+						"ids": [
+							{
+								"id": "a0"
+							},
+							{
+								"id": "a1"
+							},
+							{
+								"id": "a2"
+							},
+							{
+								"id": "a3"
+							}
+						]
+					}
+				}
+			]
+		],
+		"A": [
+			[
+				{
+					"id": "a0"
+				},
+				{
+					"id": "a1"
+				},
+				{
+					"id": "a2"
+				},
+				{
+					"id": "a3"
+				}
+			]
+		],
+		"Call": [
+			[
+				{
+					"id": "a1"
+				},
+				{
+					"id": "a3"
+				}
+			],
+			[
+				{
+					"id": "a0"
+				},
+				{
+					"id": "a2"
+				}
+			]
+		],
+		"Read Each": []
+	},
+	"requests": [],
+	"responses": []
+}

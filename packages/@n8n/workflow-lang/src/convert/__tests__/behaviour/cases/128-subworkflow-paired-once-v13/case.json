@@ -1,0 +1,28 @@
+{
+	"description": "A gives four items. An Execute Workflow node (version 1.3, the default mode \"run once with all items\") runs a sub-workflow whose Edit Fields node adds a field. Three readers after it read the item of A in both Code modes and in an expression.",
+	"trigger": {
+		"body": {
+			"ids": [
+				{
+					"id": "a0"
+				},
+				{
+					"id": "a1"
+				},
+				{
+					"id": "a2"
+				},
+				{
+					"id": "a3"
+				}
+			]
+		}
+	},
+	"compare": [
+		"Read Each",
+		"Read All",
+		"Read Expr"
+	],
+	"runDetails": true,
+	"expectRefusal": true
+}

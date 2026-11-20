@@ -1,0 +1,263 @@
+{
+	"nodeMetadata": {
+		"Call": [
+			{
+				"subExecutionsCount": 4
+			}
+		]
+	},
+	"pairedItems": {
+		"Webhook": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"A": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 0
+				},
+				{
+					"item": 0
+				},
+				{
+					"item": 0
+				}
+			]
+		],
+		"Call": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				},
+				{
+					"item": 2
+				},
+				{
+					"item": 3
+				}
+			]
+		],
+		"Read Each": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				},
+				{
+					"item": 2
+				},
+				{
+					"item": 3
+				}
+			]
+		],
+		"Read All": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"Read Expr": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				},
+				{
+					"item": 2
+				},
+				{
+					"item": 3
+				}
+			]
+		]
+	},
+	"runSizes": {
+		"Webhook": [
+			[
+				1
+			]
+		],
+		"A": [
+			[
+				4
+			]
+		],
+		"Call": [
+			[
+				4
+			]
+		],
+		"Read Each": [
+			[
+				4
+			]
+		],
+		"Read All": [
+			[
+				1
+			]
+		],
+		"Read Expr": [
+			[
+				4
+			]
+		]
+	},
+	"runs": {
+		"Webhook": [
+			[
+				1
+			]
+		],
+		"A": [
+			[
+				4
+			]
+		],
+		"Call": [
+			[
+				4
+			]
+		],
+		"Read Each": [
+			[
+				4
+			]
+		],
+		"Read All": [
+			[
+				1
+			]
+		],
+		"Read Expr": [
+			[
+				4
+			]
+		]
+	},
+	"generatedBy": "oracle.ts: n8n-core WorkflowExecute with n8n-nodes-base, executionOrder v1",
+	"error": null,
+	"order": [
+		"Webhook",
+		"A",
+		"Call",
+		"Read Each",
+		"Read All",
+		"Read Expr"
+	],
+	"nodes": {
+		"Webhook": [
+			[
+				{
+					"headers": {},
+					"params": {},
+					"query": {},
+					"body": {
+						"ids": [
+							{
+								"id": "a0"
+							},
+							{
+								"id": "a1"
+							},
+							{
+								"id": "a2"
+							},
+							{
+								"id": "a3"
+							}
+						]
+					}
+				}
+			]
+		],
+		"A": [
+			[
+				{
+					"id": "a0"
+				},
+				{
+					"id": "a1"
+				},
+				{
+					"id": "a2"
+				},
+				{
+					"id": "a3"
+				}
+			]
+		],
+		"Call": [
+			[
+				{
+					"tag": "t"
+				},
+				{
+					"tag": "t"
+				},
+				{
+					"tag": "t"
+				},
+				{
+					"tag": "t"
+				}
+			]
+		],
+		"Read Each": [
+			[
+				{
+					"from": "a0"
+				},
+				{
+					"from": "a1"
+				},
+				{
+					"from": "a2"
+				},
+				{
+					"from": "a3"
+				}
+			]
+		],
+		"Read All": [
+			[
+				{
+					"from": "a0"
+				}
+			]
+		],
+		"Read Expr": [
+			[
+				{
+					"from": "a0"
+				},
+				{
+					"from": "a1"
+				},
+				{
+					"from": "a2"
+				},
+				{
+					"from": "a3"
+				}
+			]
+		]
+	},
+	"requests": [],
+	"responses": []
+}

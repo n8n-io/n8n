@@ -1,0 +1,28 @@
+{
+	"description": "As 128, but the Execute Workflow node is version 1.2.",
+	"trigger": {
+		"body": {
+			"ids": [
+				{
+					"id": "a0"
+				},
+				{
+					"id": "a1"
+				},
+				{
+					"id": "a2"
+				},
+				{
+					"id": "a3"
+				}
+			]
+		}
+	},
+	"compare": [
+		"Read Each",
+		"Read All",
+		"Read Expr"
+	],
+	"runDetails": true,
+	"expectRefusal": true
+}

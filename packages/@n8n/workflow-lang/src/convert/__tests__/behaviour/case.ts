@@ -55,6 +55,12 @@ export interface BehaviourCase {
 	 */
 	runDetails?: boolean;
 	/**
+	 * True for a case whose node saves metadata on its own run that the compiled engine does not
+	 * record. An Execute Workflow node saves the ids of its sub-executions, which the compiled
+	 * engine does not have (it runs the sub-workflow in the same run).
+	 */
+	skipNodeMetadata?: boolean;
+	/**
 	 * The time that the v1 run may take, for a case whose workflow runs until the execution
 	 * times out (a loop with the "reset" option). The oracle gives the run this time.
 	 */

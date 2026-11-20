@@ -1,0 +1,29 @@
+{
+	"description": "As 128, but the node does not wait for the sub-workflow (waitForSubWorkflow off).",
+	"trigger": {
+		"body": {
+			"ids": [
+				{
+					"id": "a0"
+				},
+				{
+					"id": "a1"
+				},
+				{
+					"id": "a2"
+				},
+				{
+					"id": "a3"
+				}
+			]
+		}
+	},
+	"compare": [
+		"Read Each",
+		"Read All",
+		"Read Expr"
+	],
+	"runDetails": true,
+	"skipNodeMetadata": true,
+	"expectRefusal": true
+}

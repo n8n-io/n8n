@@ -1,0 +1,28 @@
+{
+	"description": "As 128, but a Filter in the sub-workflow keeps items 1 and 3 of the four, so the sub-workflow gives two items.",
+	"trigger": {
+		"body": {
+			"ids": [
+				{
+					"id": "a0"
+				},
+				{
+					"id": "a1"
+				},
+				{
+					"id": "a2"
+				},
+				{
+					"id": "a3"
+				}
+			]
+		}
+	},
+	"compare": [
+		"Read Each",
+		"Read All",
+		"Read Expr"
+	],
+	"runDetails": true,
+	"expectRefusal": true
+}
