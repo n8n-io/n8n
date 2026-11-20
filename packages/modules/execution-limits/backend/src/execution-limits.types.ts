@@ -1,4 +1,4 @@
-import type { ExecutionLimitPeriodUnit, ExecutionLimitSettings } from '@n8n/api-types';
+import type { ExecutionLimitPeriodUnit } from '@n8n/api-types';
 
 /** The execution limit of one project, as stored. */
 export type ProjectLimit = {
@@ -17,18 +17,15 @@ export type ApplicableLimits = {
 	projectMaxExecutions: number | null;
 };
 
-type ExecutionLimitSettingValue = ExecutionLimitSettings[keyof ExecutionLimitSettings];
+export type ExecutionLimitField =
+	| 'periodUnit'
+	| 'instanceMaxExecutions'
+	| 'defaultProjectMaxExecutions'
+	| 'projectMaxExecutions';
 
-export type ExecutionLimitChange =
-	| {
-			projectId: null;
-			field: keyof ExecutionLimitSettings;
-			oldValue: ExecutionLimitSettingValue;
-			newValue: ExecutionLimitSettingValue;
-	  }
-	| {
-			projectId: string;
-			field: 'projectMaxExecutions';
-			oldValue: number | null;
-			newValue: number | null;
-	  };
+export type ExecutionLimitChange = {
+	projectId: string | null;
+	field: ExecutionLimitField;
+	oldValue: ExecutionLimitPeriodUnit | number | null;
+	newValue: ExecutionLimitPeriodUnit | number | null;
+};
