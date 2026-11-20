@@ -6181,6 +6181,7 @@
 	"workflowSettings.tags": "Tags",
 	"workflowSettings.timezone": "Timezone",
 	"workflowSettings.timezone.placeholder": "Select timezone",
+	"workflowSettings.timezone.noMatch": "No matching timezones",
 	"workflowSettings.credentialResolver": "End-user credential resolver",
 	"workflowSettings.credentialResolver.placeholder": "Select resolver",
 	"workflowSettings.credentialResolver.createNew": "Create new resolver",

@@ -1,4 +1,4 @@
-import { reactive } from 'vue';
+import { computed, nextTick, reactive, ref, type Ref } from 'vue';
 import { flushPromises } from '@vue/test-utils';
 import { createTestingPinia } from '@pinia/testing';
 import type { MockInstance } from 'vitest';
@@ -7,9 +7,13 @@ import userEvent from '@testing-library/user-event';
 import { SYSTEM_RESOLVER_ID, type FrontendSettings } from '@n8n/api-types';
 import { i18n, i18nInstance } from '@n8n/i18n';
 import { createComponentRenderer } from '@/__tests__/render';
-import { createTestWorkflow } from '@/__tests__/mocks';
+import { createTestNode, createTestWorkflow } from '@/__tests__/mocks';
 import { getDropdownItems, mockedStore, type MockedStore } from '@/__tests__/utils';
-import { EnterpriseEditionFeature, EXECUTE_WORKFLOW_NODE_TYPE } from '@/app/constants';
+import {
+	EnterpriseEditionFeature,
+	EXECUTE_WORKFLOW_NODE_TYPE,
+	TIME_SAVED_NODE_TYPE,
+} from '@/app/constants';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useRBACStore } from '@n8n/stores/rbac.store';
 import WorkflowSettingsVue from '@/features/workflows/components/WorkflowSettings/WorkflowSettings.vue';
@@ -22,7 +26,7 @@ import type { Project } from '@/features/collaboration/projects/projects.types';
 import * as restApiClient from '@n8n/rest-api-client';
 import { mock } from 'vitest-mock-extended';
 import type { Scope } from '@n8n/permissions';
-import { BINARY_MODE_COMBINED } from 'n8n-workflow';
+import { BINARY_MODE_COMBINED, type INode } from 'n8n-workflow';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
@@ -65,6 +69,16 @@ const getSecuritySettings = vi.fn();
 vi.mock('@n8n/rest-api-client/api/security-settings', () => ({
 	getSecuritySettings: (...args: unknown[]) => getSecuritySettings(...args),
 	updateSecuritySettings: vi.fn(),
+}));
+
+// jsdom has no layout, so the modal width is always 0. The tests set the row layout here.
+const rowLayout = ref<'horizontal' | 'vertical'>('horizontal');
+let layoutContainer: Ref<HTMLElement | null | undefined> | undefined;
+vi.mock('@/features/workflows/components/WorkflowSettings/useWorkflowSettingsLayout', () => ({
+	useWorkflowSettingsLayout: (container: Ref<HTMLElement | null | undefined>) => {
+		layoutContainer = container;
+		return { rowLayout: computed(() => rowLayout.value) };
+	},
 }));
 
 const DEFAULT_SECURITY_SETTINGS = {
@@ -120,6 +134,16 @@ const createComponent = createComponentRenderer(WorkflowSettingsVue, {
 	},
 });
 
+// Renders the real N8nSwitch, for tests that need its accessible name and its label.
+const createComponentWithRealSwitch = createComponentRenderer(WorkflowSettingsVue, {
+	global: {
+		stubs: {
+			Modal: workflowSettingsStubs.Modal,
+			ParameterInputFull: workflowSettingsStubs.ParameterInputFull,
+		},
+	},
+});
+
 const createComponentWithCustomTelemetryTagsStub = createComponentRenderer(WorkflowSettingsVue, {
 	global: {
 		stubs: {
@@ -162,8 +186,53 @@ const createComponentWithCustomTelemetryTagsStub = createComponentRenderer(Workf
 	},
 });
 
+const getRow = (element: HTMLElement) => {
+	const row = element.closest<HTMLElement>('[data-layout]');
+	if (!row) throw new Error('The element is not in a settings row');
+	return row;
+};
+
+const hasDivider = (row: HTMLElement) =>
+	Array.from(row.children).some(
+		(child) => child.getAttribute('data-test-id') === 'settings-row-divider',
+	);
+
+const getSection = (dialog: HTMLElement, title: string) => {
+	const section = within(dialog)
+		.getByRole('heading', { level: 2, name: title })
+		.closest<HTMLElement>('section');
+	if (!section) throw new Error(`The heading "${title}" is not in a section`);
+	return section;
+};
+
 describe('WorkflowSettingsVue', () => {
+	const useWorkflowWithNodes = (nodes: INode[]) => {
+		const workflow = createTestWorkflow({
+			id: '1',
+			name: 'Test Workflow',
+			active: true,
+			scopes: ['workflow:update'],
+			nodes,
+		});
+		workflowsListStore.workflowsById = { '1': workflow };
+		workflowsListStore.getWorkflowById.mockImplementation(() => workflow);
+	};
+
+	const enableMcpAccess = () => {
+		settingsStore.moduleSettings = {
+			mcp: { mcpAccessEnabled: true, mcpManagedByEnv: false, autoExposeNewWorkflows: false },
+		};
+	};
+
+	const enableCustomSpanAttributes = () => {
+		settingsStore.settings.activeModules = ['dynamic-credentials', 'otel'];
+		settingsStore.settings.enterprise.otelCustomSpanAttributes = true;
+		settingsStore.moduleSettings = { ...settingsStore.moduleSettings, otel: { enabled: true } };
+	};
+
 	beforeEach(async () => {
+		rowLayout.value = 'horizontal';
+		layoutContainer = undefined;
 		getSecuritySettings.mockResolvedValue({
 			...DEFAULT_SECURITY_SETTINGS,
 			redactionEnforcement: { floor: 'off' },
@@ -286,6 +355,275 @@ describe('WorkflowSettingsVue', () => {
 
 			await waitFor(() => expect(getTimezoneLabels(timezoneSelect)).toHaveLength(4));
 		});
+
+		it('narrows a long timezone list down to the entries that match the query', async () => {
+			const otherTimezones = Object.fromEntries(
+				Array.from({ length: 320 }, (_, index) => [`Etc/Zone_${index}`, `Zone ${index}`]),
+			);
+			settingsStore.getTimezones = vi.fn().mockResolvedValue({
+				...otherTimezones,
+				'Europe/Berlin': '(GMT+01:00) Berlin',
+				'America/New_Berlin': '(GMT-06:00) New Berlin',
+			});
+			const { getByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			const timezoneSelect = getByTestId('workflow-settings-timezone');
+			await userEvent.type(within(timezoneSelect).getByRole('combobox'), 'berlin');
+
+			await waitFor(() =>
+				expect(getTimezoneLabels(timezoneSelect)).toEqual([
+					'(GMT+01:00) Berlin',
+					'(GMT-06:00) New Berlin',
+				]),
+			);
+		});
+
+		it('shows a message when no timezone matches the query', async () => {
+			const { getByTestId, findByText } = createComponent({ pinia });
+			await flushPromises();
+
+			const timezoneSelect = getByTestId('workflow-settings-timezone');
+			await userEvent.type(within(timezoneSelect).getByRole('combobox'), 'atlantis');
+
+			expect(await findByText('No matching timezones')).toBeVisible();
+			expect(getTimezoneLabels(timezoneSelect)).toEqual([]);
+		});
+
+		it('removes the no-match message after the user clears the query', async () => {
+			const { getByTestId, findByText, queryByText } = createComponent({ pinia });
+			await flushPromises();
+
+			const timezoneSelect = getByTestId('workflow-settings-timezone');
+			const combobox = within(timezoneSelect).getByRole('combobox');
+			await userEvent.type(combobox, 'atlantis');
+			expect(await findByText('No matching timezones')).toBeVisible();
+
+			await userEvent.clear(combobox);
+
+			await waitFor(() => expect(getTimezoneLabels(timezoneSelect)).toHaveLength(4));
+			expect(queryByText('No matching timezones')).not.toBeInTheDocument();
+		});
+
+		it('does not show the no-match message for an empty query when no timezone is available', async () => {
+			settingsStore.getTimezones = vi.fn().mockRejectedValue(new Error('Request failed'));
+			const { getByTestId, queryByText } = createComponent({ pinia });
+			await flushPromises();
+
+			const timezoneSelect = getByTestId('workflow-settings-timezone');
+			await getDropdownItems(timezoneSelect);
+
+			expect(getTimezoneLabels(timezoneSelect)).toEqual([]);
+			expect(queryByText('No matching timezones')).not.toBeInTheDocument();
+		});
+
+		it('keeps the label of the selected timezone after the user dismisses a search that excludes it', async () => {
+			settingsStore.getTimezones = vi.fn().mockResolvedValue({
+				'Europe/Berlin': '(GMT+01:00) Berlin',
+				'Europe/Paris': '(GMT+01:00) Paris',
+			});
+			workflowDocumentStore.setSettings({ timezone: 'Europe/Berlin' });
+			const { getByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			const timezoneSelect = getByTestId('workflow-settings-timezone');
+			const combobox = within(timezoneSelect).getByRole('combobox');
+			await waitFor(() => expect(combobox).toHaveValue('(GMT+01:00) Berlin'));
+
+			await userEvent.type(combobox, 'paris');
+			await waitFor(() => expect(getTimezoneLabels(timezoneSelect)).toEqual(['(GMT+01:00) Paris']));
+			await userEvent.click(document.body);
+
+			await waitFor(() => expect(combobox).toHaveValue('(GMT+01:00) Berlin'));
+		});
+	});
+
+	describe('Row layout', () => {
+		const getRowLayouts = (dialog: HTMLElement) =>
+			Array.from(dialog.querySelectorAll('[data-layout]'), (row) =>
+				row.getAttribute('data-layout'),
+			);
+
+		// Shows each conditional row, so that a row without the layout binding fails the test.
+		beforeEach(() => {
+			settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing] = true;
+			enableMcpAccess();
+			enableCustomSpanAttributes();
+			workflowDocumentStore.setSettings({
+				callerPolicy: 'workflowsFromAList',
+				executionTimeout: 60,
+				redactionPolicy: 'all',
+				timeSavedMode: 'fixed',
+			});
+		});
+
+		it('renders each setting row in the horizontal layout by default', async () => {
+			const { getByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			const layouts = getRowLayouts(getByTestId('workflow-settings-dialog'));
+			expect(layouts.length).toBeGreaterThan(0);
+			expect(new Set(layouts)).toEqual(new Set(['horizontal']));
+		});
+
+		it('renders each setting row in the vertical layout when the modal is narrow', async () => {
+			const { getByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			rowLayout.value = 'vertical';
+			await nextTick();
+
+			const layouts = getRowLayouts(getByTestId('workflow-settings-dialog'));
+			expect(layouts.length).toBeGreaterThan(0);
+			expect(new Set(layouts)).toEqual(new Set(['vertical']));
+		});
+
+		it('measures the width of the settings dialog content', async () => {
+			const { getByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			expect(layoutContainer?.value).toBe(getByTestId('workflow-settings-dialog'));
+		});
+	});
+
+	describe('Timeout', () => {
+		type TimeoutUnit = 'hours' | 'minutes' | 'seconds';
+
+		// The inputs have no accessible name. Find each one by the unit text that it shows.
+		const getTimeoutInput = (form: HTMLElement, unit: TimeoutUnit) => {
+			let field: HTMLElement | null = within(form).getByText(unit);
+			while (field && field !== form && !field.querySelector('input')) {
+				field = field.parentElement;
+			}
+			const input = field && field !== form ? field.querySelector('input') : null;
+			if (!input) throw new Error(`There is no timeout input for ${unit}`);
+			return input;
+		};
+
+		const setTimeoutValue = async (form: HTMLElement, unit: TimeoutUnit, value: string) => {
+			await userEvent.clear(getTimeoutInput(form, unit));
+			await userEvent.type(getTimeoutInput(form, unit), value);
+		};
+
+		it('shows the hours, minutes and seconds fields only after the user turns the timeout on', async () => {
+			const { getByTestId, queryByTestId } = createComponent({ pinia });
+			await flushPromises();
+			expect(queryByTestId('workflow-settings-timeout-form')).not.toBeInTheDocument();
+
+			await userEvent.click(getByTestId('workflow-settings-timeout-workflow'));
+
+			const form = getByTestId('workflow-settings-timeout-form');
+			expect(getTimeoutInput(form, 'hours')).toBeVisible();
+			expect(getTimeoutInput(form, 'minutes')).toBeVisible();
+			expect(getTimeoutInput(form, 'seconds')).toBeVisible();
+			expect(form.querySelectorAll('input')).toHaveLength(3);
+		});
+
+		it('shows a stored timeout as hours, minutes and seconds', async () => {
+			workflowDocumentStore.setSettings({ executionTimeout: 3723 });
+			const { getByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			const form = getByTestId('workflow-settings-timeout-form');
+			expect(getByTestId('workflow-settings-timeout-workflow')).toHaveAttribute(
+				'aria-checked',
+				'true',
+			);
+			expect(getTimeoutInput(form, 'hours')).toHaveValue('1');
+			expect(getTimeoutInput(form, 'minutes')).toHaveValue('2');
+			expect(getTimeoutInput(form, 'seconds')).toHaveValue('3');
+		});
+
+		it('saves the hours, minutes and seconds as a total number of seconds', async () => {
+			const { getByTestId, getByRole } = createComponent({ pinia });
+			await flushPromises();
+
+			await userEvent.click(getByTestId('workflow-settings-timeout-workflow'));
+			const form = getByTestId('workflow-settings-timeout-form');
+			await setTimeoutValue(form, 'hours', '1');
+			await setTimeoutValue(form, 'minutes', '2');
+			await setTimeoutValue(form, 'seconds', '3');
+			await userEvent.click(getByRole('button', { name: 'Save' }));
+
+			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
+				'1',
+				expect.objectContaining({
+					settings: expect.objectContaining({ executionTimeout: 3723 }),
+				}),
+			);
+		});
+
+		it('saves -1 after the user turns the timeout off', async () => {
+			workflowDocumentStore.setSettings({ executionTimeout: 3600 });
+			const { getByTestId, queryByTestId, getByRole } = createComponent({ pinia });
+			await flushPromises();
+
+			await userEvent.click(getByTestId('workflow-settings-timeout-workflow'));
+			expect(queryByTestId('workflow-settings-timeout-form')).not.toBeInTheDocument();
+			await userEvent.click(getByRole('button', { name: 'Save' }));
+
+			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
+				'1',
+				expect.objectContaining({
+					settings: expect.objectContaining({ executionTimeout: -1 }),
+				}),
+			);
+		});
+
+		it('rejects a timeout of zero and does not save', async () => {
+			const { getByTestId, getByRole } = createComponent({ pinia });
+			await flushPromises();
+
+			await userEvent.click(getByTestId('workflow-settings-timeout-workflow'));
+			await userEvent.click(getByRole('button', { name: 'Save' }));
+
+			expect(toast.showError).toHaveBeenCalledWith(
+				expect.objectContaining({ message: 'Timeout is activated but set to 0' }),
+				'Problem saving settings',
+				expect.anything(),
+			);
+			expect(workflowsStore.updateWorkflow).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('Row dividers', () => {
+		it('renders no divider between Timeout Workflow and Timeout After when the timeout is on', async () => {
+			workflowDocumentStore.setSettings({ executionTimeout: 60 });
+			const { getByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			const timeoutRow = getRow(getByTestId('workflow-settings-timeout-workflow'));
+			expect(timeoutRow.nextElementSibling).toBe(getByTestId('workflow-settings-timeout-form'));
+			expect(hasDivider(timeoutRow)).toBe(false);
+		});
+
+		it('renders a divider on the Timeout Workflow row when the timeout is off', async () => {
+			const { getByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			expect(hasDivider(getRow(getByTestId('workflow-settings-timeout-workflow')))).toBe(true);
+		});
+
+		it('renders no divider between the caller policy and the caller IDs when the policy is a list of workflows', async () => {
+			settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing] = true;
+			workflowDocumentStore.setSettings({ callerPolicy: 'workflowsFromAList' });
+			const { getByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			expect(hasDivider(getByTestId('workflow-caller-policy'))).toBe(false);
+		});
+
+		it.each(['none', 'workflowsFromSameOwner', 'any'] as const)(
+			'renders a divider on the caller policy row when the policy is %s',
+			async (callerPolicy) => {
+				settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing] = true;
+				workflowDocumentStore.setSettings({ callerPolicy });
+				const { getByTestId } = createComponent({ pinia });
+				await flushPromises();
+
+				expect(hasDivider(getByTestId('workflow-caller-policy'))).toBe(true);
+			},
+		);
 	});
 
 	describe('Sections', () => {
@@ -340,6 +678,73 @@ describe('WorkflowSettingsVue', () => {
 				insightsSection?.contains(getByTestId('workflow-settings-custom-telemetry-tags')),
 			).toBe(true);
 		});
+
+		it('shows the Access section with the caller policy and no MCP row when only sharing is on', async () => {
+			settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing] = true;
+			const { getByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			const accessSection = getSection(getByTestId('workflow-settings-dialog'), 'Access');
+			expect(within(accessSection).getByTestId('workflow-caller-policy')).toBeVisible();
+			expect(
+				within(accessSection).queryByRole('switch', { name: 'Available in MCP' }),
+			).not.toBeInTheDocument();
+			expect(within(accessSection).queryByText('Available in MCP')).not.toBeInTheDocument();
+		});
+
+		it.each([
+			[
+				'Executions',
+				[
+					'workflow-settings-execution-order',
+					'workflow-settings-error-workflow',
+					'workflow-settings-timezone',
+					'workflow-settings-timeout-workflow',
+					'workflow-settings-timeout-form',
+				],
+			],
+			['Access', ['workflow-caller-policy-select', 'workflow-settings-available-in-mcp']],
+			[
+				'Execution data',
+				[
+					'workflow-settings-save-failed-executions',
+					'workflow-settings-save-success-executions',
+					'workflow-settings-save-manual-executions',
+					'workflow-settings-save-execution-progress',
+					'workflow-settings-redact-production-select',
+					'workflow-settings-redact-manual-select',
+				],
+			],
+			[
+				'Insights',
+				['workflow-settings-time-saved-mode', 'workflow-settings-time-saved-per-execution'],
+			],
+		])('groups the expected settings in the %s section', async (title, testIds) => {
+			settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing] = true;
+			enableMcpAccess();
+			workflowDocumentStore.setSettings({ executionTimeout: 60, timeSavedMode: 'fixed' });
+			const { getByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			const section = getSection(getByTestId('workflow-settings-dialog'), title);
+			const testIdsInSection = testIds.filter(
+				(testId) => within(section).queryAllByTestId(testId).length > 0,
+			);
+			expect(testIdsInSection).toEqual(testIds);
+		});
+
+		it('renders the custom span attributes row in the Insights row group, without a divider', async () => {
+			enableCustomSpanAttributes();
+			const { getByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			const insightsSection = getSection(getByTestId('workflow-settings-dialog'), 'Insights');
+			const insightsGroup = within(insightsSection).getByTestId('settings-row-group');
+			const tagsRow = getByTestId('workflow-settings-custom-telemetry-tags');
+			expect(tagsRow).toHaveAttribute('data-layout');
+			expect(tagsRow.closest('[data-test-id="settings-row-group"]')).toBe(insightsGroup);
+			expect(hasDivider(tagsRow)).toBe(false);
+		});
 	});
 
 	it('should not render workflow caller policy when sharing is not enabled', async () => {
@@ -362,18 +767,234 @@ describe('WorkflowSettingsVue', () => {
 		expect(getByTestId('workflow-caller-policy')).toBeVisible();
 	});
 
-	it('renders selected-workflow IDs in the same group as the caller policy', async () => {
+	it('renders the selected-workflow IDs row directly after the caller policy row, in the same group', async () => {
 		settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing] = true;
 		workflowDocumentStore.setSettings({ callerPolicy: 'workflowsFromAList' });
 		const { getByTestId } = createComponent({ pinia });
 
 		await flushPromises();
 
-		const callerPolicyGroup = getByTestId('workflow-caller-policy').parentElement;
-		const callerIdsInput = getByTestId('workflow-caller-policy-workflow-ids');
+		const callerPolicyRow = getByTestId('workflow-caller-policy');
+		const callerIdsRow = getRow(getByTestId('workflow-caller-policy-workflow-ids'));
 
-		expect(callerPolicyGroup).toHaveAttribute('data-test-id', 'settings-row-group');
-		expect(callerPolicyGroup?.contains(callerIdsInput)).toBe(true);
+		expect(callerPolicyRow.parentElement).toHaveAttribute('data-test-id', 'settings-row-group');
+		expect(callerIdsRow.parentElement).toBe(callerPolicyRow.parentElement);
+		expect(callerPolicyRow.nextElementSibling).toBe(callerIdsRow);
+	});
+
+	describe('Available in MCP', () => {
+		beforeEach(() => {
+			enableMcpAccess();
+		});
+
+		it('names the switch after the setting title', async () => {
+			const { getByRole } = createComponentWithRealSwitch({ pinia });
+			await flushPromises();
+
+			const mcpSwitch = getByRole('switch', { name: 'Available in MCP' });
+			expect(mcpSwitch).toBeEnabled();
+			expect(mcpSwitch).toHaveAttribute('aria-checked', 'false');
+		});
+
+		it('shows a stored value of true as a switch that is on', async () => {
+			workflowDocumentStore.setSettings({ availableInMCP: true });
+			const { getByRole } = createComponentWithRealSwitch({ pinia });
+			await flushPromises();
+
+			expect(getByRole('switch', { name: 'Available in MCP' })).toHaveAttribute(
+				'aria-checked',
+				'true',
+			);
+		});
+
+		it('toggles the switch when the user clicks the setting title', async () => {
+			const { getByRole, getByTestId } = createComponentWithRealSwitch({ pinia });
+			await flushPromises();
+
+			await userEvent.click(
+				within(getByTestId('workflow-settings-dialog')).getByText('Available in MCP'),
+			);
+
+			expect(getByRole('switch', { name: 'Available in MCP' })).toHaveAttribute(
+				'aria-checked',
+				'true',
+			);
+		});
+
+		it('saves the value that the user toggled', async () => {
+			const { getByRole } = createComponentWithRealSwitch({ pinia });
+			await flushPromises();
+
+			await userEvent.click(getByRole('switch', { name: 'Available in MCP' }));
+			await userEvent.click(getByRole('button', { name: 'Save' }));
+
+			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
+				'1',
+				expect.objectContaining({
+					settings: expect.objectContaining({ availableInMCP: true }),
+				}),
+			);
+		});
+
+		it('disables the switch when the environment is read-only', async () => {
+			sourceControlStore.preferences.branchReadOnly = true;
+			const { getByRole } = createComponentWithRealSwitch({ pinia });
+			await flushPromises();
+
+			expect(getByRole('switch', { name: 'Available in MCP' })).toBeDisabled();
+		});
+
+		it('disables the switch when the user has no permission to update the workflow', async () => {
+			const readOnlyWorkflow = createTestWorkflow({
+				id: '1',
+				name: 'Test Workflow',
+				active: true,
+				scopes: ['workflow:read'],
+			});
+			workflowsListStore.workflowsById = { '1': readOnlyWorkflow };
+			workflowsListStore.getWorkflowById.mockImplementation(() => readOnlyWorkflow);
+			const { getByRole } = createComponentWithRealSwitch({ pinia });
+			await flushPromises();
+
+			expect(getByRole('switch', { name: 'Available in MCP' })).toBeDisabled();
+		});
+	});
+
+	describe('Estimated time saved', () => {
+		const FIXED_MODE_WARNING =
+			'Time saved for this workflow is tracked using a fixed value. Any Time Saved nodes in this workflow are ignored with this setting.';
+		const NO_NODES_TITLE = 'No time saved nodes detected';
+
+		const timeSavedNode = (node: Partial<INode> = {}) =>
+			createTestNode({ type: TIME_SAVED_NODE_TYPE, ...node });
+
+		// Content in a collapsed region of a row is in the DOM only after its first expansion.
+		const isShown = (element: HTMLElement | null) =>
+			element?.closest('[role="region"]')?.getAttribute('data-expanded') === 'true';
+
+		it('names the fixed time-saved input after the setting title', async () => {
+			workflowDocumentStore.setSettings({ timeSavedMode: 'fixed' });
+			const { getByRole } = createComponent({ pinia });
+			await flushPromises();
+
+			expect(getByRole('spinbutton', { name: 'Estimated time saved' })).toHaveAttribute(
+				'id',
+				'timeSavedPerExecution',
+			);
+		});
+
+		it('moves the focus to the fixed time-saved input when the user clicks the setting title', async () => {
+			workflowDocumentStore.setSettings({ timeSavedMode: 'fixed' });
+			const { getByRole, getByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			await userEvent.click(
+				within(getByTestId('workflow-settings-dialog')).getByText('Estimated time saved'),
+			);
+
+			expect(getByRole('spinbutton', { name: 'Estimated time saved' })).toHaveFocus();
+		});
+
+		it('shows the number input and no node status in fixed mode without time saved nodes', async () => {
+			workflowDocumentStore.setSettings({ timeSavedMode: 'fixed' });
+			const { getByTestId, queryByText } = createComponent({ pinia });
+			await flushPromises();
+
+			expect(
+				getByTestId('workflow-settings-time-saved-per-execution').querySelector('input'),
+			).toBeVisible();
+			expect(isShown(queryByText(FIXED_MODE_WARNING))).toBe(false);
+			expect(isShown(queryByText(NO_NODES_TITLE))).toBe(false);
+		});
+
+		it('shows a warning in fixed mode when the workflow has active time saved nodes', async () => {
+			useWorkflowWithNodes([timeSavedNode()]);
+			workflowDocumentStore.setSettings({ timeSavedMode: 'fixed' });
+			const { getByText } = createComponent({ pinia });
+			await flushPromises();
+
+			expect(isShown(getByText(FIXED_MODE_WARNING))).toBe(true);
+		});
+
+		it('shows no warning in fixed mode when each time saved node is disabled', async () => {
+			useWorkflowWithNodes([timeSavedNode({ disabled: true })]);
+			workflowDocumentStore.setSettings({ timeSavedMode: 'fixed' });
+			const { queryByText } = createComponent({ pinia });
+			await flushPromises();
+
+			expect(isShown(queryByText(FIXED_MODE_WARNING))).toBe(false);
+		});
+
+		it('shows the count of active time saved nodes and a link to add more in dynamic mode', async () => {
+			useWorkflowWithNodes([
+				timeSavedNode({ name: 'Time Saved 1' }),
+				timeSavedNode({ name: 'Time Saved 2' }),
+				timeSavedNode({ name: 'Time Saved 3', disabled: true }),
+				createTestNode({ name: 'Set' }),
+			]);
+			workflowDocumentStore.setSettings({ timeSavedMode: 'dynamic' });
+			const { getByText, getByRole, queryByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			expect(isShown(getByText('Active - 2 time saved nodes currently setup'))).toBe(true);
+			expect(getByRole('link', { name: 'Add more time saved nodes' })).toHaveAttribute(
+				'data-action',
+				'openSavedTimeNodeCreator',
+			);
+			expect(queryByTestId('workflow-settings-time-saved-per-execution')).not.toBeInTheDocument();
+		});
+
+		it('shows an empty state in dynamic mode when the workflow has no active time saved nodes', async () => {
+			useWorkflowWithNodes([timeSavedNode({ disabled: true })]);
+			workflowDocumentStore.setSettings({ timeSavedMode: 'dynamic' });
+			const { getByText, queryByRole } = createComponent({ pinia });
+			await flushPromises();
+
+			expect(isShown(getByText(NO_NODES_TITLE))).toBe(true);
+			expect(queryByRole('link', { name: 'Add more time saved nodes' })).not.toBeInTheDocument();
+		});
+
+		it('replaces the number input with the node status and saves the mode after the user selects dynamic mode', async () => {
+			workflowDocumentStore.setSettings({ timeSavedMode: 'fixed' });
+			const { getByTestId, getByText, getByRole, queryByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			const modeOptions = await getDropdownItems(getByTestId('workflow-settings-time-saved-mode'));
+			expect(modeOptions[1]).toHaveTextContent('Dynamic (uses time saved nodes)');
+			await userEvent.click(modeOptions[1]);
+
+			await waitFor(() => expect(isShown(getByText(NO_NODES_TITLE))).toBe(true));
+			expect(queryByTestId('workflow-settings-time-saved-per-execution')).not.toBeInTheDocument();
+
+			await userEvent.click(getByRole('button', { name: 'Save' }));
+
+			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
+				'1',
+				expect.objectContaining({
+					settings: expect.objectContaining({ timeSavedMode: 'dynamic' }),
+				}),
+			);
+		});
+
+		it.each(['fixed', 'dynamic'] as const)(
+			'renders no disclosure toggle for the expandable content in %s mode',
+			async (timeSavedMode) => {
+				useWorkflowWithNodes([timeSavedNode()]);
+				workflowDocumentStore.setSettings({ timeSavedMode });
+				const { getByTestId } = createComponent({ pinia });
+				await flushPromises();
+
+				const insightsSection = getSection(getByTestId('workflow-settings-dialog'), 'Insights');
+				const regionIds = within(insightsSection)
+					.getAllByRole('region')
+					.map((region) => region.id);
+				expect(regionIds.length).toBeGreaterThan(0);
+				const toggles = Array.from(insightsSection.querySelectorAll('[aria-controls]')).filter(
+					(element) => regionIds.includes(element.getAttribute('aria-controls') ?? ''),
+				);
+				expect(toggles).toEqual([]);
+			},
+		);
 	});
 
 	it('should lock caller policy to none when executeWorkflow is excluded', async () => {
@@ -1766,6 +2387,41 @@ describe('WorkflowSettingsVue', () => {
 				getByTestId('workflow-settings-redact-manual-select'),
 			).getByRole('combobox');
 			expect(manualCombobox).toBeDisabled();
+		});
+
+		const DYNAMIC_CREDENTIALS_HINT =
+			'Prod. execution data is always redacted in workflows that use end-user credentials.';
+
+		it('shows a hint on the production redaction row when the workflow uses a credential resolver', async () => {
+			vi.mocked(restApiClient.getCredentialResolvers).mockResolvedValue([
+				{
+					id: 'resolver-1',
+					name: 'Test Resolver 1',
+					type: 'editable-type',
+					config: '{}',
+					createdAt: new Date(),
+					updatedAt: new Date(),
+				},
+			]);
+			useRBACStore().addGlobalScope('credentialResolver:list');
+			workflowDocumentStore.setSettings({ credentialResolverId: 'resolver-1' });
+
+			const { getByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			expect(
+				within(getByTestId('workflow-settings-redaction-policy')).getByText(
+					DYNAMIC_CREDENTIALS_HINT,
+				),
+			).toBeVisible();
+		});
+
+		it('shows no dynamic credentials hint when the workflow uses no credential resolver', async () => {
+			const { getByTestId, queryByText } = createComponent({ pinia });
+			await flushPromises();
+
+			expect(getByTestId('workflow-settings-redaction-policy')).toBeVisible();
+			expect(queryByText(DYNAMIC_CREDENTIALS_HINT)).not.toBeInTheDocument();
 		});
 
 		it('should disable production redaction select and force "Redact" when dynamic credentials are configured', async () => {

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import WorkflowSettingsRowTitle from './WorkflowSettingsRowTitle.vue';
+import type { WorkflowSettingsRowLayout } from './useWorkflowSettingsLayout';
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import {
 	N8nButton,
@@ -24,6 +26,8 @@ type Props = {
 	modelValue?: ICustomTelemetryTag[];
 	isReadOnly: boolean;
 	saveTags?: (tags: ICustomTelemetryTag[]) => Promise<void> | void;
+	/** The layout of the settings row. The settings modal sets it from its width. */
+	layout?: WorkflowSettingsRowLayout;
 };
 
 type Emits = {
@@ -31,7 +35,7 @@ type Emits = {
 	'validity-change': [hasErrors: boolean];
 };
 
-const props = defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), { layout: 'horizontal' });
 const emit = defineEmits<Emits>();
 
 const i18n = useI18n();
@@ -196,13 +200,23 @@ const onModalOpenChange = (open: boolean) => {
 <template>
 	<div :class="$style.wrapper">
 		<N8nSettingsRow
-			:title="i18n.baseText('workflowSettings.customSpanAttributes.displayName')"
-			:description="i18n.baseText('workflowSettings.customSpanAttributes.description')"
+			:layout="layout"
 			:show-divider="false"
 			data-test-id="workflow-settings-custom-telemetry-tags"
 		>
+			<template #info>
+				<WorkflowSettingsRowTitle
+					:title="i18n.baseText('workflowSettings.customSpanAttributes.displayName')"
+					:tooltip="i18n.baseText('workflowSettings.customSpanAttributes.description')"
+				/>
+			</template>
 			<template #action>
-				<div :class="$style.customTelemetryTagsControl">
+				<div
+					:class="[
+						$style.customTelemetryTagsControl,
+						{ [$style.customTelemetryTagsControlVertical]: layout === 'vertical' },
+					]"
+				>
 					<div :class="$style.customTelemetryTagsSummary">
 						<N8nButton
 							variant="outline"
@@ -397,6 +411,10 @@ const onModalOpenChange = (open: boolean) => {
 	display: flex;
 	flex-direction: column;
 	align-items: flex-end;
+}
+
+.customTelemetryTagsControlVertical {
+	align-items: flex-start;
 }
 
 .customTelemetryTagsSummary {
