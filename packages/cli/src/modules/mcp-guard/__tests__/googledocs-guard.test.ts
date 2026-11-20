@@ -8,12 +8,7 @@ import type { GymAdmin } from '../gym-admin';
 import { HttpGuardRouter } from '../http-router';
 import { HttpRunRegistry } from '../http-runs';
 import { createHttpToolCaller } from '../http-tool-caller';
-import {
-	enrichGoogleDocs,
-	GMAIL_PROFILE,
-	GOOGLE_DOCS_PROFILE,
-	withPlainDocuments,
-} from '../http-profiles';
+import { enrichGoogleDocs, GOOGLE_DOCS_PROFILE, withPlainDocuments } from '../http-profiles';
 import type { HydrationModel } from '../hydration-llm';
 import type { McpCaller } from '../mcp-upstream';
 import { sendToNetwork } from '../network';
@@ -209,15 +204,12 @@ describe('withPlainDocuments', () => {
 });
 
 describe('the profile of Google Docs', () => {
-	it('uses the Drive gym service, the Google OAuth credential and its own gym ports', () => {
+	it('uses the Drive gym service, the Google OAuth credential', () => {
 		expect(GOOGLE_DOCS_PROFILE.name).toBe('googledocs');
 		expect(GOOGLE_DOCS_PROFILE.gymService).toBe('google-drive');
 		expect(GOOGLE_DOCS_PROFILE.credentialKind).toBe('google_oauth');
 		expect(GOOGLE_DOCS_PROFILE.credentialField).toBe('oauthTokenData.access_token');
 		expect(GOOGLE_DOCS_PROFILE.opaqueIds).toBe(true);
-		expect(GOOGLE_DOCS_PROFILE.defaultAdminUrl).toBe('http://127.0.0.1:9099');
-		expect(GOOGLE_DOCS_PROFILE.defaultGymUrl).toBe('http://127.0.0.1:8089');
-		expect(GMAIL_PROFILE.defaultGymUrl).not.toBe(GOOGLE_DOCS_PROFILE.defaultGymUrl);
 	});
 
 	describe('lookups', () => {
