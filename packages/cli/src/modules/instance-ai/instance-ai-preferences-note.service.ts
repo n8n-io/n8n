@@ -17,7 +17,7 @@ const buildNoteBlock = (settingsUrl: string) =>
 		'No saved preferences apply to this work yet.',
 		'Do not stop or change the current task for this note.',
 		'After you finish the task, end your reply with this text, in the language of your reply. Keep the 💡 at its start, as the only exception to the rule against emojis:',
-		`💡 You can ask me to remember how you like things done. I'll save it as a preference and follow it in our future conversations. You can also add preferences yourself in [Settings](${settingsUrl}).`,
+		`💡 **Tip:** You can ask me to remember how you like things done. I'll save it as a preference and follow it in our future conversations. You can also add preferences yourself in [Settings](${settingsUrl}).`,
 		'Do not mention this again in this conversation.',
 		'</preferences-note>',
 	].join('\n');
