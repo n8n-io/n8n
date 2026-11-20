@@ -14,7 +14,7 @@ import { computed } from 'vue';
 
 import { useCredentialTypeNames } from '../../composables/useCredentialTypeNames';
 import { usePromotionDependencyLabels } from '../../composables/usePromotionDependencyLabels';
-import { placeholderGaps, type ApplyConfirmations } from '../../promotionDependencies';
+import { emptyCredentialGaps, type ApplyConfirmations } from '../../promotionDependencies';
 import type { ResourceKey } from '../../promotionPreview.selection';
 import PromotionWorkflowLinks from '../preview/PromotionWorkflowLinks.vue';
 import PromotionDependencySection from './PromotionDependencySection.vue';
@@ -53,8 +53,8 @@ const hiddenKeptProjects = computed(() => props.report.hiddenKeptProjectCount ??
 const workflowLinks = (workflows: ReadonlyArray<{ id: string; name: string }>) =>
 	workflows.map(({ id, name }) => ({ key: `workflow:${id}`, name }));
 
-const placeholders = computed(() =>
-	placeholderGaps(props.report.gaps).map((gap) => ({
+const emptyCredentials = computed(() =>
+	emptyCredentialGaps(props.report.gaps).map((gap) => ({
 		id: gap.target.id,
 		target: gap.target,
 		project: props.projectNames.get(gap.consumer.projectId),
@@ -283,8 +283,8 @@ const placeholders = computed(() =>
 						}}
 					</N8nText>
 				</div>
-				<N8nBadge v-if="move.placeholder" variant="subtle">
-					{{ i18n.baseText('promotions.dependencies.placeholder.badge') }}
+				<N8nBadge v-if="move.empty" variant="subtle">
+					{{ i18n.baseText('promotions.dependencies.emptyCredential.badge') }}
 				</N8nBadge>
 			</li>
 		</PromotionDependencySection>
@@ -361,28 +361,28 @@ const placeholders = computed(() =>
 		</PromotionDependencySection>
 
 		<PromotionDependencySection
-			v-if="placeholders.length > 0"
-			:title="i18n.baseText('promotions.dependencies.placeholders.title')"
-			:description="i18n.baseText('promotions.dependencies.placeholders.description')"
+			v-if="emptyCredentials.length > 0"
+			:title="i18n.baseText('promotions.dependencies.emptyCredentials.title')"
+			:description="i18n.baseText('promotions.dependencies.emptyCredentials.description')"
 			tone="quiet"
-			data-test-id="promotion-dependency-placeholders"
+			data-test-id="promotion-dependency-empty-credentials"
 		>
-			<li v-for="placeholder in placeholders" :key="placeholder.id" :class="$style.row">
+			<li v-for="emptyCredential in emptyCredentials" :key="emptyCredential.id" :class="$style.row">
 				<N8nText step="xs" color="text-dark" :class="$style.sentence">
 					<N8nIcon icon="key-round" size="small" :class="$style.icon" />
 					<span>
 						{{
-							placeholder.project
-								? i18n.baseText('promotions.dependencies.placeholders.inProject', {
+							emptyCredential.project
+								? i18n.baseText('promotions.dependencies.emptyCredentials.inProject', {
 										interpolate: {
-											credential: placeholder.target.name ?? placeholder.id,
-											project: placeholder.project,
+											credential: emptyCredential.target.name ?? emptyCredential.id,
+											project: emptyCredential.project,
 										},
 									})
-								: i18n.baseText('promotions.dependencies.placeholders.forWorkflow', {
+								: i18n.baseText('promotions.dependencies.emptyCredentials.forWorkflow', {
 										interpolate: {
-											credential: placeholder.target.name ?? placeholder.id,
-											workflow: placeholder.consumer,
+											credential: emptyCredential.target.name ?? emptyCredential.id,
+											workflow: emptyCredential.consumer,
 										},
 									})
 						}}

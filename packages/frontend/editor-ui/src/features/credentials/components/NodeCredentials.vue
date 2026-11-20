@@ -1971,17 +1971,6 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 													data-test-id="credential-option-private-badge"
 												/>
 											</N8nTooltip>
-											<N8nTooltip v-if="row.option.isPlaceholder" placement="top">
-												<template #content>{{
-													i18n.baseText('credentials.placeholder.tooltip')
-												}}</template>
-												<N8nIcon
-													icon="square-dashed"
-													size="small"
-													color="warning"
-													data-test-id="credential-option-placeholder-badge"
-												/>
-											</N8nTooltip>
 										</div>
 										<N8nText size="small" color="text-light" :class="$style.optionMeta">
 											{{

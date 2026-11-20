@@ -13,7 +13,7 @@ import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 
 import { usePromotionDependencyLabels } from '../../composables/usePromotionDependencyLabels';
-import { groupGaps, placeholderGaps } from '../../promotionDependencies';
+import { groupGaps, emptyCredentialGaps } from '../../promotionDependencies';
 import PromotionCommitMessageField from '../PromotionCommitMessageField.vue';
 import PromotionDependencySection from './PromotionDependencySection.vue';
 import PromotionGapRow from './PromotionGapRow.vue';
@@ -72,17 +72,19 @@ const effects = computed((): string[] => {
 			i18n.baseText('promotions.dependencies.confirm.effect.apply'),
 		];
 	}
-	const placeholders = placeholderGaps(props.report.gaps);
-	const unresolved = props.report.gaps.filter(({ placeholder }) => !placeholder).length;
+	const emptyCredentials = emptyCredentialGaps(props.report.gaps);
+	const unresolved = props.report.gaps.filter(
+		({ createsEmptyCredential }) => !createsEmptyCredential,
+	).length;
 	return [
-		...placeholders.map((gap) => {
+		...emptyCredentials.map((gap) => {
 			const project = props.projectNames.get(gap.consumer.projectId);
 			const credential = gap.target.name ?? gap.target.id;
 			return project
-				? i18n.baseText('promotions.dependencies.placeholders.inProject', {
+				? i18n.baseText('promotions.dependencies.emptyCredentials.inProject', {
 						interpolate: { credential, project },
 					})
-				: i18n.baseText('promotions.dependencies.placeholders.forWorkflow', {
+				: i18n.baseText('promotions.dependencies.emptyCredentials.forWorkflow', {
 						interpolate: { credential, workflow: gap.consumer.name },
 					});
 		}),
@@ -156,11 +158,7 @@ function submit() {
 			>
 				{{ i18n.baseText('generic.cancel') }}
 			</N8nButton>
-			<N8nButton
-				type="submit"
-				form="promotion-gaps-form"
-				data-test-id="promotion-gaps-confirm"
-			>
+			<N8nButton type="submit" form="promotion-gaps-form" data-test-id="promotion-gaps-confirm">
 				{{ confirmLabel }}
 			</N8nButton>
 		</N8nDialogFooter>

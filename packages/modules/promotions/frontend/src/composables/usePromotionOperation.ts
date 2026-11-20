@@ -133,7 +133,7 @@ export function usePromotionOperation(
 	 */
 	const gapsReport = shallowRef<PromotionDependencyReport | null>(null);
 	/**
-	 * The result of an Apply that did more than import: placeholders, grants, moves. The page
+	 * The result of an Apply that did more than import: empty credentials, grants, moves. The page
 	 * shows it before it leaves, because the user must act on it.
 	 */
 	const applied = shallowRef<{
@@ -321,7 +321,7 @@ export function usePromotionOperation(
 				projectId.value !== undefined
 					? outcome.appliedSummary(result)
 					: outcome.instanceAppliedSummary(result);
-			// The user must act on a placeholder or a refused move, so the page lists them first.
+			// The user must act on an empty credential or a refused move, so the page lists them first.
 			// The dialog then says everything, and no toast repeats it.
 			if (hasApplyOutcome(result)) {
 				applied.value = { result, acrossProjects, summary: summary.message };

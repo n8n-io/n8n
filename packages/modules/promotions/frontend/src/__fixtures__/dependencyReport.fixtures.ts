@@ -224,7 +224,7 @@ function sharedGaps(direction: PromotionDirection): PromotionGap[] {
 			group: 'no-access',
 			exits: ['ask-owner'],
 			ownerRequestSent: true,
-			...(direction === 'apply' ? { placeholder: true } : {}),
+			...(direction === 'apply' ? { createsEmptyCredential: true } : {}),
 		},
 		{
 			id: 'gap:wf-sync:credential:cred-alice',
@@ -238,7 +238,7 @@ function sharedGaps(direction: PromotionDirection): PromotionGap[] {
 			usage: 'credential',
 			group: 'personal',
 			exits: ['move-to-team-project'],
-			...(direction === 'apply' ? { placeholder: true } : {}),
+			...(direction === 'apply' ? { createsEmptyCredential: true } : {}),
 		},
 		{
 			id: 'gap:wf-daily:workflow:wf-audit',
@@ -271,7 +271,7 @@ const applyGaps: PromotionGap[] = [
 		group: 'not-on-branch',
 		state: 'not-on-branch',
 		exits: [],
-		placeholder: true,
+		createsEmptyCredential: true,
 	},
 	{
 		id: 'gap:wf-sync:workflow:wf-escalate',
@@ -349,7 +349,7 @@ function hardBlocks(direction: PromotionDirection): PromotionHardBlock[] {
 			consumer: dailyReport,
 		},
 		{
-			code: 'placeholder-create-forbidden',
+			code: 'credential-create-forbidden',
 			target: {
 				kind: 'credential',
 				id: 'cred-billing',
@@ -439,19 +439,19 @@ function report(name: string, direction: PromotionDirection): PromotionDependenc
 						credential: { id: 'cred-crm', name: 'CRM key', type: 'hubspotApi' },
 						toProject: platform,
 						fromProject: sales,
-						placeholder: true,
+						empty: true,
 						allowed: true,
 					},
 					{
 						credential: { id: 'cred-geo', name: 'Geocoder', type: 'httpHeaderAuth' },
 						toProject: ops,
-						placeholder: false,
+						empty: false,
 						allowed: true,
 					},
 					{
 						credential: { id: 'cred-export', name: 'Billing export', type: 'sftp' },
 						toProject: platform,
-						placeholder: false,
+						empty: false,
 						allowed: false,
 					},
 				]
@@ -556,8 +556,8 @@ const applied = (gaps: PromotionGap[]): ApplyPackageResultDto => ({
 		tags: { matched: 0, created: 1, renamed: 0, reconciled: 0, skipped: 0 },
 	},
 	warnings: [],
-	placeholders: gaps
-		.filter(({ placeholder }) => placeholder)
+	createdEmptyCredentials: gaps
+		.filter(({ createsEmptyCredential }) => createsEmptyCredential)
 		.map(({ target, consumer }) => ({
 			id: target.id,
 			name: target.name ?? target.id,

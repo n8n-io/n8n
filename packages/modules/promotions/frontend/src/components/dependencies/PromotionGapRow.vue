@@ -31,8 +31,8 @@ const props = defineProps<{
 	/** False when the page has no way to send a request to the owner. */
 	canAskOwner?: boolean;
 	ownerRequest?: OwnerRequestState;
-	/** Where the Apply creates the placeholder of this credential. */
-	placeholderProject?: string;
+	/** Where the Apply creates the empty credential for this gap. */
+	emptyCredentialProject?: string;
 }>();
 
 const emit = defineEmits<{
@@ -131,19 +131,19 @@ const ownerRequestSent = computed(
 				{{ text }}
 			</N8nText>
 			<N8nText
-				v-if="placeholderProject !== undefined"
+				v-if="emptyCredentialProject !== undefined"
 				tag="p"
 				step="2xs"
 				color="text-base"
 				:class="$style.detail"
-				data-test-id="promotion-gap-placeholder"
+				data-test-id="promotion-gap-empty-credential"
 			>
 				{{
-					placeholderProject
-						? i18n.baseText('promotions.dependencies.placeholder.inProject', {
-								interpolate: { project: placeholderProject },
+					emptyCredentialProject
+						? i18n.baseText('promotions.dependencies.emptyCredential.inProject', {
+								interpolate: { project: emptyCredentialProject },
 							})
-						: i18n.baseText('promotions.dependencies.placeholder')
+						: i18n.baseText('promotions.dependencies.emptyCredential')
 				}}
 			</N8nText>
 			<N8nText

@@ -119,9 +119,9 @@ function ownerRequestOf(row: GapTargetRow): OwnerRequestState | undefined {
 	return row.gaps.some((gap) => props.isRequestSent?.(gap)) ? 'sent' : undefined;
 }
 
-/** The project that gets the placeholder of a credential gap: the project of its consumer. */
-function placeholderProject(row: GapTargetRow): string | undefined {
-	if (!row.placeholder || props.direction !== 'apply') {
+/** The project that gets the empty credential of a credential gap: the project of its consumer. */
+function emptyCredentialProject(row: GapTargetRow): string | undefined {
+	if (!row.createsEmptyCredential || props.direction !== 'apply') {
 		return undefined;
 	}
 	return props.projectNames.get(row.gaps[0].consumer.projectId) ?? '';
@@ -242,7 +242,7 @@ const consumerLink = (consumer: { id: string; name: string }) => [
 				:locked="locked"
 				:can-ask-owner="!!ownerRequester && !!environmentId"
 				:owner-request="ownerRequestOf(row)"
-				:placeholder-project="placeholderProject(row)"
+				:empty-credential-project="emptyCredentialProject(row)"
 				@include="emit('include', row)"
 				@ask-owner="askOwner(row)"
 				@remove-deletion="emit('removeDeletion', row.target.id)"

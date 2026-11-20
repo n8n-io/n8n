@@ -50,7 +50,7 @@ export type GapTargetRow = {
 	exits: PromotionGapExit[];
 	include?: PromotionGap['include'];
 	ownerRequestSent: boolean;
-	placeholder: boolean;
+	createsEmptyCredential: boolean;
 	/** More about the row, for its message. One entry for each kind of detail. */
 	details: PromotionGapDetail[];
 	gaps: PromotionGap[];
@@ -76,7 +76,7 @@ export function groupGaps(gaps: readonly PromotionGap[]): GapGroup[] {
 				exits: [...gap.exits],
 				include: gap.include,
 				ownerRequestSent: gap.ownerRequestSent === true,
-				placeholder: gap.placeholder === true,
+				createsEmptyCredential: gap.createsEmptyCredential === true,
 				details: gap.detail ? [gap.detail] : [],
 				gaps: [gap],
 			});
@@ -89,7 +89,7 @@ export function groupGaps(gaps: readonly PromotionGap[]): GapGroup[] {
 		row.review ??= gap.review;
 		row.state ??= gap.state;
 		row.ownerRequestSent ||= gap.ownerRequestSent === true;
-		row.placeholder ||= gap.placeholder === true;
+		row.createsEmptyCredential ||= gap.createsEmptyCredential === true;
 	}
 	return GAP_GROUP_ORDER.flatMap((id) => {
 		const rows = groups.get(id);
@@ -199,11 +199,11 @@ export function isEmptyReport(report: PromotionDependencyReport) {
 	);
 }
 
-/** The credentials that the Apply creates as placeholders, one for each id. */
-export function placeholderGaps(gaps: readonly PromotionGap[]): PromotionGap[] {
+/** The credentials that the Apply creates empty, one for each id. */
+export function emptyCredentialGaps(gaps: readonly PromotionGap[]): PromotionGap[] {
 	const seen = new Set<string>();
 	return gaps.filter((gap) => {
-		if (!gap.placeholder || seen.has(gap.target.id)) return false;
+		if (!gap.createsEmptyCredential || seen.has(gap.target.id)) return false;
 		seen.add(gap.target.id);
 		return true;
 	});

@@ -43,7 +43,7 @@ const WARNING_CAUSE_KEYS = new Map<string, BaseTextKey>([
 ]);
 
 const GAP_DETAIL_KEYS: Record<PromotionGapDetail, BaseTextKey> = {
-	'placeholder-on-source': 'promotions.dependencies.detail.placeholder-on-source',
+	'empty-on-source': 'promotions.dependencies.detail.empty-on-source',
 	'sharing-not-licensed': 'promotions.dependencies.detail.sharing-not-licensed',
 	'confirmed-gap': 'promotions.dependencies.detail.confirmed-gap',
 	'legacy-reference': 'promotions.dependencies.detail.legacy-reference',
@@ -55,7 +55,7 @@ const HARD_BLOCK_KEYS: Record<PromotionHardBlock['code'], BaseTextKey> = {
 	'ambiguous-credential-owner': 'promotions.dependencies.hardBlock.ambiguous-credential-owner',
 	'instance-credential-missing': 'promotions.dependencies.hardBlock.instance-credential-missing',
 	'incompatible-usage-scope': 'promotions.dependencies.hardBlock.incompatible-usage-scope',
-	'placeholder-create-forbidden': 'promotions.dependencies.hardBlock.placeholder-create-forbidden',
+	'credential-create-forbidden': 'promotions.dependencies.hardBlock.credential-create-forbidden',
 	'credential-move-forbidden': 'promotions.dependencies.hardBlock.credential-move-forbidden',
 };
 
@@ -194,7 +194,7 @@ export function usePromotionDependencyLabels() {
 			name: targetName(block.target),
 			consumer: block.consumer?.name ?? '',
 		};
-		// A placeholder must get its home, and the user cannot create a credential there.
+		// An empty credential must get its home, and the user cannot create a credential there.
 		if (
 			block.code === 'credential-move-forbidden' &&
 			block.detail?.cause === 'missing-create-right'

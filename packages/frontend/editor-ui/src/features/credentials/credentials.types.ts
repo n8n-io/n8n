@@ -21,8 +21,6 @@ export interface ICredentialsResponse
 	isManaged: boolean;
 	isGlobal?: boolean;
 	isResolvable?: boolean;
-	/** True for an empty credential that an incomplete promotion Apply created. */
-	isPlaceholder?: boolean;
 	usageScope?: 'project' | 'instance';
 	/**
 	 * How this credential reaches the workflow being edited: `project` when the
@@ -61,7 +59,6 @@ export interface ICredentialsDecryptedResponse extends ICredentialsBase, Credent
 	scopes?: Scope[];
 	id: string;
 	isResolvable?: boolean;
-	isPlaceholder?: boolean;
 	/** Whether the current user has personally connected this credential. Set on resolvable credentials only. */
 	connectedByMe?: boolean;
 	/**

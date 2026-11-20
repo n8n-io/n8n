@@ -24,7 +24,7 @@ import PromotionDependencySection from './PromotionDependencySection.vue';
 
 /**
  * What an Apply did for its dependencies, shown before the page leaves. A person must finish
- * some of it by hand: enter the values of a placeholder, or apply again with more rights.
+ * some of it by hand: enter the values of an empty credential, or apply again with more rights.
  */
 const props = defineProps<{
 	open: boolean;
@@ -48,11 +48,14 @@ const warningCount = computed(
 	() => outcome.value.warnings.length + outcome.value.resourceWarnings.length,
 );
 /** "Sync orders, Report and 1 workflow that you cannot access". */
-function liveWorkflowNames(row: { workflows: Array<{ name: string }>; hiddenWorkflowCount: number }) {
+function liveWorkflowNames(row: {
+	workflows: Array<{ name: string }>;
+	hiddenWorkflowCount: number;
+}) {
 	const names = row.workflows.map(({ name }) => name);
 	if (row.hiddenWorkflowCount > 0) {
 		names.push(
-			i18n.baseText('promotions.applyResult.livePlaceholders.hidden', {
+			i18n.baseText('promotions.applyResult.liveEmptyCredentials.hidden', {
 				adjustToNumber: row.hiddenWorkflowCount,
 				interpolate: { count: String(row.hiddenWorkflowCount) },
 			}),
@@ -112,13 +115,13 @@ const credentialHref = (projectId: string, credentialId: string) =>
 				</N8nCallout>
 
 				<N8nCallout
-					v-for="live in outcome.livePlaceholderWorkflows"
+					v-for="live in outcome.liveWorkflowsWithEmptyCredential"
 					:key="`live:${live.credential.id}`"
 					theme="warning"
-					data-test-id="promotion-apply-result-live-placeholder"
+					data-test-id="promotion-apply-result-live-empty-credential"
 				>
 					{{
-						i18n.baseText('promotions.applyResult.livePlaceholders.row', {
+						i18n.baseText('promotions.applyResult.liveEmptyCredentials.row', {
 							adjustToNumber: live.workflows.length + live.hiddenWorkflowCount,
 							interpolate: {
 								credential: live.credential.name,
@@ -129,51 +132,51 @@ const credentialHref = (projectId: string, credentialId: string) =>
 				</N8nCallout>
 
 				<PromotionDependencySection
-					v-if="outcome.placeholders.length > 0"
+					v-if="outcome.createdEmptyCredentials.length > 0"
 					:title="
-						i18n.baseText('promotions.applyResult.placeholders.title', {
-							adjustToNumber: outcome.placeholders.length,
-							interpolate: { count: String(outcome.placeholders.length) },
+						i18n.baseText('promotions.applyResult.emptyCredentials.title', {
+							adjustToNumber: outcome.createdEmptyCredentials.length,
+							interpolate: { count: String(outcome.createdEmptyCredentials.length) },
 						})
 					"
-					:description="i18n.baseText('promotions.applyResult.placeholders.description')"
+					:description="i18n.baseText('promotions.applyResult.emptyCredentials.description')"
 					icon="key-round"
 					compact
-					data-test-id="promotion-apply-result-placeholders"
+					data-test-id="promotion-apply-result-empty-credentials"
 				>
 					<li
-						v-for="placeholder in outcome.placeholders"
-						:key="placeholder.id"
+						v-for="emptyCredential in outcome.createdEmptyCredentials"
+						:key="emptyCredential.id"
 						:class="[$style.row, $style.withAction]"
 					>
 						<div :class="$style.main">
-							<N8nText step="xs" bold color="text-dark">{{ placeholder.name }}</N8nText>
+							<N8nText step="xs" bold color="text-dark">{{ emptyCredential.name }}</N8nText>
 							<N8nText step="2xs" color="text-light">
-								{{ credentialTypeName(placeholder.type) }}
-								<template v-if="projectNames.get(placeholder.projectId)">
+								{{ credentialTypeName(emptyCredential.type) }}
+								<template v-if="projectNames.get(emptyCredential.projectId)">
 									·
 									{{
 										i18n.baseText('promotions.dependencies.target.inProject', {
-											interpolate: { project: projectNames.get(placeholder.projectId) ?? '' },
+											interpolate: { project: projectNames.get(emptyCredential.projectId) ?? '' },
 										})
 									}}
 								</template>
 							</N8nText>
 						</div>
 						<N8nLink
-							:to="credentialHref(placeholder.projectId, placeholder.id)"
+							:to="credentialHref(emptyCredential.projectId, emptyCredential.id)"
 							new-window
 							size="small"
 							data-test-id="promotion-apply-result-open-credential"
 						>
-							{{ i18n.baseText('promotions.applyResult.placeholders.open') }}
+							{{ i18n.baseText('promotions.applyResult.emptyCredentials.open') }}
 						</N8nLink>
 					</li>
 					<li :class="[$style.row, $style.note]">
 						<N8nIcon icon="info" size="small" />
 						<N8nText step="2xs" color="text-base">
 							{{ i18n.baseText('promotions.dependencies.confirm.effect.notPublished') }}
-							{{ i18n.baseText('promotions.applyResult.placeholders.publish') }}
+							{{ i18n.baseText('promotions.applyResult.emptyCredentials.publish') }}
 						</N8nText>
 					</li>
 				</PromotionDependencySection>
@@ -220,7 +223,7 @@ const credentialHref = (projectId: string, credentialId: string) =>
 					<li
 						v-for="move in outcome.credentialsMoved"
 						:key="move.credential.id"
-						:class="[$style.row, { [$style.withAction]: move.placeholder }]"
+						:class="[$style.row, { [$style.withAction]: move.empty }]"
 					>
 						<div :class="$style.main">
 							<N8nText step="xs" color="text-dark">
@@ -231,18 +234,18 @@ const credentialHref = (projectId: string, credentialId: string) =>
 								}}
 							</N8nText>
 							<!-- The move keeps the marker: the credential still has no values. -->
-							<N8nText v-if="move.placeholder" step="2xs" color="text-light">
-								{{ i18n.baseText('promotions.applyResult.credentials.stillPlaceholder') }}
+							<N8nText v-if="move.empty" step="2xs" color="text-light">
+								{{ i18n.baseText('promotions.applyResult.credentials.stillEmpty') }}
 							</N8nText>
 						</div>
 						<N8nLink
-							v-if="move.placeholder"
+							v-if="move.empty"
 							:to="credentialHref(move.toProject.id, move.credential.id)"
 							new-window
 							size="small"
 							data-test-id="promotion-apply-result-open-moved-credential"
 						>
-							{{ i18n.baseText('promotions.applyResult.placeholders.open') }}
+							{{ i18n.baseText('promotions.applyResult.emptyCredentials.open') }}
 						</N8nLink>
 					</li>
 					<li v-for="move in outcome.moves" :key="`${move.kind}:${move.id}`" :class="$style.row">
