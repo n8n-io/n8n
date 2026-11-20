@@ -45,7 +45,7 @@ describe('Snowflake node — SDK and session configuration', () => {
 					ocspFailOpen: true,
 				}),
 			);
-			expect(snowflake.configure).toHaveBeenCalledBefore(snowflake.createConnection);
+			expect(snowflake.configure).toHaveBeenCalledBefore(vi.mocked(snowflake.createConnection));
 
 			// The session forces valid JSON output for those columns.
 			expect(mockExecute).toHaveBeenCalledWith(
