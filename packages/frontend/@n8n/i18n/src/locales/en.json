@@ -2160,7 +2160,7 @@
 	"executionStopManyModal.queued": "Queued",
 	"executionStopManyModal.running": "Running",
 	"executionStopManyModal.waiting": "Waiting",
-	"executionStopManyModal.success": "Stopped {count} executions.",
+	"executionStopManyModal.success": "Stopped {count} execution. | Stopped {count} executions.",
 	"executionStopManyModal.error.failure": "Failed to stop executions.",
 	"executionStopManyModal.dateHint.startEnd": "Will only affect executions between '{startedAfter}' and '{startedBefore}' based on your current filter.",
 	"executionStopManyModal.dateHint.startOnly": "Will only affect executions from '{startedAfter}' based on your current filter.",
