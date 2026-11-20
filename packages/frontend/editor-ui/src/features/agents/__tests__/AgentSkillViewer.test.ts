@@ -1,6 +1,6 @@
 import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils';
-import { defineComponent, h, onMounted } from 'vue';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { defineComponent, h, onMounted, reactive } from 'vue';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
 	AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
 	AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH,
@@ -18,9 +18,13 @@ const track = vi.fn();
 vi.mock('@n8n/composables/useTelemetry', () => ({ useTelemetry: () => ({ track }) }));
 
 vi.mock('@/features/agents/components/skillMermaidRenderer', { spy: true });
-vi.mock('@/app/stores/ui.store', () => ({ useUIStore: () => ({ appliedTheme: 'light' }) }));
+const uiStore = reactive({ appliedTheme: 'light' });
+vi.mock('@/app/stores/ui.store', () => ({ useUIStore: () => uiStore }));
 
 enableAutoUnmount(afterEach);
+beforeEach(() => {
+	uiStore.appliedTheme = 'light';
+});
 
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
@@ -464,6 +468,38 @@ describe('AgentSkillViewer', () => {
 			expect.objectContaining({ file: 'skill', rendered: 0, failed: 1 }),
 		);
 	});
+
+	it.each(['load', 'error'])(
+		'ignores a late image %s event after the theme changes',
+		async (event) => {
+			track.mockClear();
+			vi.mocked(renderSkillMermaid)
+				.mockResolvedValueOnce(renderedDiagram('Light diagram'))
+				.mockResolvedValueOnce(renderedDiagram('Dark diagram'));
+			const wrapper = mountViewer({
+				readOnly: true,
+				skill: {
+					name: 'Triage',
+					description: 'Use for triage',
+					instructions: '```mermaid\nflowchart LR\n  A --> B\n```',
+				},
+			});
+			await flushPromises();
+			const oldImage = wrapper.get('img');
+
+			uiStore.appliedTheme = 'dark';
+			await flushPromises();
+			await oldImage.trigger(event);
+
+			expect(wrapper.get('img').attributes('alt')).toBe('Dark diagram');
+			expect(track).not.toHaveBeenCalled();
+			await wrapper.get('img').trigger('load');
+			expect(track).toHaveBeenCalledExactlyOnceWith(
+				TELEMETRY_EVENT.CONTEXT.USER_VIEWED_SKILL_DIAGRAMS,
+				{ file: 'skill', rendered: 1, invalid: 0, failed: 0, timed_out: 0 },
+			);
+		},
+	);
 
 	it('reports the diagrams of the file that the user left, not of the file that opens', async () => {
 		track.mockClear();

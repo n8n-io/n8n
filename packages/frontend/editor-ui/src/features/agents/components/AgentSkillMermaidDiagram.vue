@@ -22,28 +22,28 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const uiStore = useUIStore();
 const viewport = useTemplateRef<HTMLDivElement>('viewport');
-const diagram = ref<{ src: string; width: number; description?: string }>();
-
-// Ends the open render. The image ends it, because only the image knows if the diagram shows.
-let endRender: (outcome: SkillMermaidResult['outcome']) => void = () => {};
-
-function onImageError() {
-	diagram.value = undefined;
-	endRender('failed');
-}
+const diagram = ref<{
+	id: number;
+	src: string;
+	width: number;
+	description?: string;
+	listeners: { load: () => void; error: () => void };
+}>();
+let renderId = 0;
 
 watch(
 	[viewport, () => props.code, () => uiStore.appliedTheme],
 	async ([element, code, theme], _, onCleanup) => {
 		diagram.value = undefined;
 		if (!element || code.length > MAX_DIAGRAM_LENGTH) return;
+		const id = ++renderId;
 		const controller = new AbortController();
 		let open = true;
 		const end = (outcome: SkillMermaidResult['outcome']) => {
-			if (open) emit('renderEnd', outcome);
+			if (!open) return;
 			open = false;
+			emit('renderEnd', outcome);
 		};
-		endRender = end;
 		emit('renderStart');
 		onCleanup(() => {
 			controller.abort();
@@ -77,9 +77,19 @@ watch(
 
 			// Display the SVG as an image so its markup and styles stay out of the document.
 			diagram.value = {
+				id,
 				src: `data:image/svg+xml,${encodeURIComponent(svg)}`,
 				width: Math.ceil(width),
 				description: description || title,
+				// Let this image finish only its own render.
+				listeners: {
+					load: () => end('rendered'),
+					error: () => {
+						if (controller.signal.aborted) return;
+						diagram.value = undefined;
+						end('failed');
+					},
+				},
 			};
 		} catch {
 			// Keep the source visible if the diagram cannot render.
@@ -94,12 +104,12 @@ watch(
 	<div ref="viewport" :class="$style.diagram">
 		<img
 			v-if="diagram"
+			:key="`diagram-${diagram.id}`"
 			:class="$style.image"
 			:src="diagram.src"
 			:width="diagram.width"
 			:alt="diagram.description || i18n.baseText('agents.builder.skills.mermaid.diagram')"
-			@load="endRender('rendered')"
-			@error="onImageError"
+			v-on="diagram.listeners"
 		/>
 		<details v-if="diagram">
 			<summary :class="$style.sourceLabel">
