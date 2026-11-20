@@ -41,7 +41,12 @@ export function escapeForStringLiteral(value: string, quote: StringQuote): strin
 	return unescapedDoubleQuotes.replace(/`|\$\{/g, '\\$&');
 }
 
-const applyCompletionInString: Completion['apply'] = (view, completion, from, to) => {
+/**
+ * TypeScript returns property names raw, so a key inserted after an opening quote
+ * (e.g. `json["`) must be escaped. String-literal suggestions (e.g. node names in `$("`)
+ * are already escaped by TypeScript and must not use this.
+ */
+const applyPropertyCompletion: Completion['apply'] = (view, completion, from, to) => {
 	const quote = view.state.sliceDoc(from - 1, from);
 	const text = isStringQuote(quote)
 		? escapeForStringLiteral(completion.label, quote)
@@ -158,7 +163,8 @@ export const typescriptCompletionSource: CompletionSource = async (context) => {
 			return [0, lcp.length];
 		},
 		options: filteredOptions.map((completion) => {
-			if (completion.label.endsWith('()')) {
+			const isCallable = completion.type === 'method' || completion.type === 'function';
+			if (isCallable && completion.label.endsWith('()')) {
 				completion.apply = (view, _, from, to) => {
 					const cursorPosition = from + completion.label.length - 1;
 					view.dispatch({
@@ -167,8 +173,8 @@ export const typescriptCompletionSource: CompletionSource = async (context) => {
 						selection: { anchor: cursorPosition, head: cursorPosition },
 					});
 				};
-			} else if (!completion.apply) {
-				completion.apply = applyCompletionInString;
+			} else if (completion.type === 'property' && !completion.apply) {
+				completion.apply = applyPropertyCompletion;
 			}
 			return completion;
 		}),

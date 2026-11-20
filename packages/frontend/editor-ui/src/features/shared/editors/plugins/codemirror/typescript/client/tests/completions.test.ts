@@ -1,6 +1,6 @@
 import { escapeForStringLiteral, matchText, typescriptCompletionSource } from '../completions';
 import { typescriptWorkerFacet } from '../facet';
-import { CompletionContext, type Completion } from '@codemirror/autocomplete';
+import { CompletionContext, insertCompletionText, type Completion } from '@codemirror/autocomplete';
 import { EditorState } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 import { n8nLang } from '@/features/shared/editors/plugins/codemirror/n8nLang';
@@ -93,16 +93,21 @@ describe('typescriptCompletionSource', () => {
 			new CompletionContext(view.state, cursorPosition, false),
 		);
 		const completion = result?.options.find((option: Completion) => option.label === label);
-		expect(completion).toBeDefined();
-		expect(typeof completion?.apply).toBe('function');
+		if (!result || !completion) throw new Error(`Completion "${label}" was not returned`);
 
-		if (typeof completion?.apply === 'function') {
-			completion.apply(view, completion, result?.from ?? cursorPosition, cursorPosition);
+		if (typeof completion.apply === 'function') {
+			completion.apply(view, completion, result.from, cursorPosition);
+		} else {
+			// Mirror the default CodeMirror insertion for completions without `apply`
+			view.dispatch(
+				insertCompletionText(view.state, completion.label, result.from, cursorPosition),
+			);
 		}
 
 		const text = view.state.doc.toString();
+		const cursor = view.state.selection.main.head;
 		view.destroy();
-		return text;
+		return { text, cursor };
 	}
 
 	it.each([
@@ -115,15 +120,34 @@ describe('typescriptCompletionSource', () => {
 		{ doc: 'json[`a|`]', label: 'a`b', expected: 'json[`a\\`b`]' },
 		{ doc: 'json[`x|`]', label: 'x${y}', expected: 'json[`x\\${y}`]' },
 		{ doc: 'json[`b|`]', label: 'back\\slash', expected: 'json[`back\\\\slash`]' },
-	])('should escape $label when inserted in $doc', async ({ doc, label, expected }) => {
-		expect(await acceptCompletion(doc, label)).toBe(expected);
+		{ doc: 'json["|"]', label: 'say "hi"()', expected: 'json["say \\"hi\\"()"]' },
+		{ doc: 'json["|"]', label: 'back\\slash()', expected: 'json["back\\\\slash()"]' },
+	])('should escape property $label when inserted in $doc', async ({ doc, label, expected }) => {
+		expect((await acceptCompletion(doc, label)).text).toBe(expected);
 	});
+
+	// TypeScript already escapes string-literal suggestions for the active quote
+	it.each([
+		{ doc: '$("|")', label: 'Set \\"x\\"', expected: '$("Set \\"x\\"")' },
+		{ doc: '$("|")', label: 'back\\\\s', expected: '$("back\\\\s")' },
+		{ doc: "$('|')", label: "it\\'s", expected: "$('it\\'s')" },
+		{ doc: "$('|')", label: 'back\\\\s', expected: "$('back\\\\s')" },
+		{ doc: '$(`a|`)', label: 'a\\`b', expected: '$(`a\\`b`)' },
+	])(
+		'should insert string literal $label in $doc without changes',
+		async ({ doc, label, expected }) => {
+			expect((await acceptCompletion(doc, label, 'string')).text).toBe(expected);
+		},
+	);
 
 	it('should insert a property after a dot without changes', async () => {
-		expect(await acceptCompletion('json.|', 'myKey')).toBe('json.myKey');
+		expect((await acceptCompletion('json.|', 'myKey')).text).toBe('json.myKey');
 	});
 
-	it('should insert a method after a dot without changes', async () => {
-		expect(await acceptCompletion('json.|', 'first()', 'method')).toBe('json.first()');
+	it('should place the cursor inside the parentheses of a method', async () => {
+		const { text, cursor } = await acceptCompletion('json.|', 'first()', 'method');
+
+		expect(text).toBe('json.first()');
+		expect(cursor).toBe('json.first('.length);
 	});
 });
