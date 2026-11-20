@@ -8,7 +8,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest
 import { ExpressionEvaluator } from '../../evaluator/expression-evaluator';
 import { classifyExpressionError, errorOriginOf } from '../../evaluator/error-classification';
 import type { BridgeConfig, RuntimeBridge } from '../../types';
-import { HostCallError, RuntimeRestartingError, TimeoutError } from '../../types';
+import { HostCallError, MemoryLimitError, RuntimeRestartingError } from '../../types';
 import { QuickJsBridge } from '../quickjs-bridge';
 
 // Deep enough that V8 runs out of native stack inside the QuickJS WASM code
@@ -552,22 +552,22 @@ describe('QuickJsBridge string transfer', () => {
 		expect(bridge.execute('return "\\ud800\\u0000x";', {})).toBe('\ud800\0x');
 	});
 
-	it('should report a timeout during a string read and keep the engine running', async () => {
-		const slow = new QuickJsBridge({ timeout: 100 });
-		await slow.initialize();
+	it('should report the memory limit during a string read and keep the engine running', async () => {
+		const small = new QuickJsBridge({ timeout: 5000, memoryLimit: 32 });
+		await small.initialize();
 		try {
-			expect(() => slow.execute('return "x".repeat(5_000_000) + "\\u0000";', {})).toThrow(
-				TimeoutError,
+			expect(() => small.execute('return "\\u0000".repeat(8_000_000);', {})).toThrow(
+				MemoryLimitError,
 			);
-			expect(slow.execute('return 1 + 1;', {})).toBe(2);
+			expect(small.execute('return 1 + 1;', {})).toBe(2);
 		} finally {
-			await slow.dispose();
+			await small.dispose();
 		}
 	});
 
-	it('should report a timeout during a string read for Intl in a template expression', async () => {
+	it('should report the memory limit during a string read for Intl in a template expression', async () => {
 		const evaluator = new ExpressionEvaluator({
-			createBridge: () => new QuickJsBridge({ timeout: 100 }),
+			createBridge: () => new QuickJsBridge({ timeout: 5000, memoryLimit: 32 }),
 			maxCodeCacheSize: 16,
 			poolSize: 1,
 		});
@@ -575,9 +575,8 @@ describe('QuickJsBridge string transfer', () => {
 		const execution = {};
 		await evaluator.acquire(execution);
 		try {
-			const expression =
-				'{{ new Intl.Collator("en").compare("x".repeat(5_000_000) + "\\u0000", "a") }}';
-			expect(() => evaluator.evaluate(expression, {}, execution)).toThrow(TimeoutError);
+			const expression = '{{ new Intl.Collator("en").compare("\\u0000".repeat(8_000_000), "a") }}';
+			expect(() => evaluator.evaluate(expression, {}, execution)).toThrow(MemoryLimitError);
 			expect(evaluator.evaluate('{{ 1 + 1 }}', {}, execution)).toBe(2);
 		} finally {
 			await evaluator.release(execution);
@@ -605,12 +604,12 @@ describe('QuickJsBridge string transfer', () => {
 	});
 
 	it('should read a string without NUL characters in one dump', () => {
-		const getArrayBuffer = vi.spyOn(QuickJSContext.prototype, 'getArrayBuffer');
+		const callFunction = vi.spyOn(QuickJSContext.prototype, 'callFunction');
 		try {
 			expect(bridge.execute('return "abc";', {})).toBe('abc');
-			expect(getArrayBuffer).not.toHaveBeenCalled();
+			expect(callFunction).toHaveBeenCalledTimes(1);
 		} finally {
-			getArrayBuffer.mockRestore();
+			callFunction.mockRestore();
 		}
 	});
 });

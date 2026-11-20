@@ -122,13 +122,13 @@ type GuestRead = { value: unknown } | { error: QuickJSHandle };
 
 /**
  * Read a guest value on the host. A top-level string that vm.dump() changed is
- * read again as UTF-16 code units through `codeUnitsReader`. The guest can stop
- * that read, for example on a timeout.
+ * read again as JSON text through `guestStringify`. The guest can stop that
+ * read, for example at its memory limit.
  */
 function readGuestValue(
 	vm: QuickJSContext,
 	handle: QuickJSHandle,
-	codeUnitsReader: QuickJSHandle,
+	guestStringify: QuickJSHandle,
 ): GuestRead {
 	const dump: unknown = vm.dump(handle);
 	// vm.dump() also gives a string for an object with a toJSON() that returns one.
@@ -137,7 +137,7 @@ function readGuestValue(
 		vm.typeof(handle) === 'string' &&
 		isChangedStringDump(vm, handle, dump)
 	) {
-		return readGuestString(vm, handle, codeUnitsReader);
+		return readGuestString(vm, handle, guestStringify);
 	}
 	return { value: dump };
 }
@@ -160,35 +160,24 @@ function guestStringLength(vm: QuickJSContext, handle: QuickJSHandle): number {
 	}
 }
 
-/** Read a guest string as UTF-16 code units, so no guest JSON hook can change it. */
+/**
+ * Read a guest string as JSON text, which has an escape for NUL and for a lone surrogate.
+ * A string has no toJSON() hook, so guest code cannot change the text.
+ */
 function readGuestString(
 	vm: QuickJSContext,
 	handle: QuickJSHandle,
-	codeUnitsReader: QuickJSHandle,
+	guestStringify: QuickJSHandle,
 ): GuestRead {
-	const result = vm.callFunction(codeUnitsReader, vm.undefined, handle);
+	const result = vm.callFunction(guestStringify, vm.undefined, handle);
 	if (!result.error) {
 		try {
-			return { value: utf16StringOf(vm, result.value) };
+			return { value: JSON.parse(vm.getString(result.value)) as unknown };
 		} finally {
 			result.value.dispose();
 		}
 	}
 	return { error: result.error };
-}
-
-/** Decode a guest ArrayBuffer of UTF-16 code units. A lone surrogate stays as it is. */
-function utf16StringOf(vm: QuickJSContext, buffer: QuickJSHandle): string {
-	const bytes = vm.getArrayBuffer(buffer).consume((view) => view.value.slice());
-	return fromCodeUnits(new Uint16Array(bytes.buffer, 0, bytes.length / 2));
-}
-
-/** Build a string from UTF-16 code units, in chunks that stay under the argument limit. */
-function fromCodeUnits(units: Uint16Array): string {
-	const chunkSize = 8192;
-	return Array.from({ length: Math.ceil(units.length / chunkSize) }, (_, chunk) =>
-		String.fromCharCode(...units.subarray(chunk * chunkSize, (chunk + 1) * chunkSize)),
-	).join('');
 }
 
 // ============================================================================
@@ -655,8 +644,8 @@ export class QuickJsBridge implements RuntimeBridge {
 	// Long-lived host-callback handles (Intl polyfill, character map) — disposed on dispose()
 	private hostFunctionHandles: QuickJSHandle[] = [];
 
-	// Guest function that copies a string into an ArrayBuffer of UTF-16 code units.
-	private codeUnitsReader?: QuickJSHandle;
+	// The guest JSON.stringify from context setup. An expression can replace the global one.
+	private guestStringify?: QuickJSHandle;
 
 	// The guest error that stopped a string read in a host callback of the current
 	// guest call. It replaces the outcome of the call, because the guest can catch it.
@@ -764,7 +753,7 @@ export class QuickJsBridge implements RuntimeBridge {
 		// Wrap __prepareForTransfer to mark Date/NaN/Map/Set/Error so they survive vm.dump()
 		this.injectTransferWrapper();
 
-		this.injectCodeUnitsReader();
+		this.captureGuestStringify();
 
 		// Inject E() error handler matching IsolatedVmBridge's E() semantics
 		this.injectErrorHandler();
@@ -1268,42 +1257,26 @@ export class QuickJsBridge implements RuntimeBridge {
 		this.logger.debug('[QuickJsBridge] Transfer wrapper injected');
 	}
 
-	/** Build the guest function that copies a string into an ArrayBuffer of UTF-16 code units. */
-	private injectCodeUnitsReader(): void {
+	/** Keep a handle to the guest JSON.stringify for string reads. */
+	private captureGuestStringify(): void {
 		if (!this.vm) {
 			throw new Error('Context not initialized');
 		}
 
-		const result = this.vm.evalCode(`
-(function() {
-	// An expression can replace a built-in, so keep the ones from context setup.
-	var apply = Reflect.apply;
-	var charCodeAt = String.prototype.charCodeAt;
-	var CodeUnits = Uint16Array;
-	var Buffer = ArrayBuffer;
-	return function(s) {
-		var buffer = new Buffer(s.length * 2);
-		var units = new CodeUnits(buffer);
-		for (var i = 0; i < s.length; i++) {
-			units[i] = apply(charCodeAt, s, [i]);
-		}
-		return buffer;
-	};
-})()
-`);
+		const result = this.vm.evalCode('JSON.stringify');
 		if (result.error) {
 			result.error.dispose();
-			throw new Error('Failed to inject the string reader');
+			throw new Error('Failed to capture the string reader');
 		}
-		this.codeUnitsReader = result.value;
+		this.guestStringify = result.value;
 		this.hostFunctionHandles.push(result.value);
 	}
 
 	private readGuestValue(vm: QuickJSContext, handle: QuickJSHandle): GuestRead {
-		if (!this.codeUnitsReader) {
+		if (!this.guestStringify) {
 			throw new Error('Context not initialized');
 		}
-		return readGuestValue(vm, handle, this.codeUnitsReader);
+		return readGuestValue(vm, handle, this.guestStringify);
 	}
 
 	/** Dump a guest value to the host with every string intact. */
@@ -1794,7 +1767,7 @@ export class QuickJsBridge implements RuntimeBridge {
 			if (this.wasm) retireQuickJSWasm(this.wasm, this.logger);
 		} finally {
 			this.hostFunctionHandles = [];
-			this.codeUnitsReader = undefined;
+			this.guestStringify = undefined;
 			this.vm = undefined;
 			this.runtime = undefined;
 			this.wasm = undefined;
@@ -1812,7 +1785,7 @@ export class QuickJsBridge implements RuntimeBridge {
 		this.vm = undefined;
 		this.runtime = undefined;
 		this.hostFunctionHandles = [];
-		this.codeUnitsReader = undefined;
+		this.guestStringify = undefined;
 		this.initialized = false;
 		this.logger.warn('[QuickJsBridge] Discarded the runtime after a host error in a guest call');
 	}
@@ -1852,7 +1825,7 @@ export class QuickJsBridge implements RuntimeBridge {
 			handle.dispose();
 		}
 		this.hostFunctionHandles = [];
-		this.codeUnitsReader = undefined;
+		this.guestStringify = undefined;
 
 		if (this.vm) {
 			this.vm.dispose();
