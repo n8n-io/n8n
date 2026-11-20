@@ -1168,6 +1168,77 @@ describe('Kafka Utils', () => {
 			});
 		});
 
+		describe('TLS material', () => {
+			const CA = '-----BEGIN CERTIFICATE-----\nQ0E=\n-----END CERTIFICATE-----';
+			const CERT = '-----BEGIN CERTIFICATE-----\nQ0VSVA==\n-----END CERTIFICATE-----';
+			const KEY = '-----BEGIN PRIVATE KEY-----\nS0VZ\n-----END PRIVATE KEY-----';
+
+			const contextFor = (credentialData: ICredentialDataDecryptedObject, protocol = 'https') =>
+				createRegistryContext({
+					nodeCredentials: schemaRegistryNodeCredentials,
+					credentialData: {
+						url: `${protocol}://schema-registry.local:8081`,
+						authentication: 'none',
+						...credentialData,
+					},
+				});
+
+			const optionsFor = async (credentialData: ICredentialDataDecryptedObject) =>
+				await getSchemaRegistryOptions(contextFor(credentialData), '');
+
+			// `options` is set on the agent at runtime but not part of the public type.
+			const agentOptions = (agent?: http.Agent) =>
+				(agent as unknown as { options: Record<string, string> }).options;
+
+			const lastRegistryArg = () => {
+				const calls = (SchemaRegistry as Mock).mock.calls;
+				return calls[calls.length - 1][0] as { agent?: http.Agent; tls?: unknown };
+			};
+
+			it('carries no TLS material when no PEM field is set', async () => {
+				await expect(optionsFor({})).resolves.not.toHaveProperty('tls');
+			});
+
+			it.each<[string, ICredentialDataDecryptedObject, Record<string, string>]>([
+				['a CA on its own', { ca: CA }, { ca: CA }],
+				['a client certificate and its key', { cert: CERT, key: KEY }, { cert: CERT, key: KEY }],
+				['all three together', { ca: CA, cert: CERT, key: KEY }, { ca: CA, cert: CERT, key: KEY }],
+			])('reads %s', async (_name, credentialData, expected) => {
+				await expect(optionsFor(credentialData)).resolves.toMatchObject({ tls: expected });
+			});
+
+			it.each<[string, ICredentialDataDecryptedObject]>([
+				['a client certificate with no key', { cert: CERT }],
+				['a key with no client certificate', { key: KEY }],
+				['a blank key beside a certificate', { cert: CERT, key: '   ' }],
+			])('rejects %s', async (_name, credentialData) => {
+				await expect(optionsFor(credentialData)).rejects.toThrow(
+					'Schema Registry mTLS needs both a client certificate and a client private key',
+				);
+			});
+
+			it('rejects a PEM field that is not a PEM block', async () => {
+				await expect(optionsFor({ ca: 'not-a-pem' })).rejects.toThrow(
+					'The Kafka Schema Registry CA certificate is not a valid PEM block',
+				);
+			});
+
+			it('puts the material on the agent and keeps it off the client options', async () => {
+				await createSchemaRegistry(contextFor({ ca: CA, cert: CERT, key: KEY }), '');
+
+				const arg = lastRegistryArg();
+
+				expect(arg).not.toHaveProperty('tls');
+				expect(agentOptions(arg.agent)).toMatchObject({ ca: CA, cert: CERT, key: KEY });
+			});
+
+			it('leaves an http registry agent without TLS material', async () => {
+				await createSchemaRegistry(contextFor({ ca: CA }, 'http'), '');
+
+				expect(agentOptions(lastRegistryArg().agent)).not.toHaveProperty('ca');
+			});
+		});
+
 		describe('createSchemaRegistry', () => {
 			const lastConstructorArg = () => {
 				const calls = (SchemaRegistry as Mock).mock.calls;

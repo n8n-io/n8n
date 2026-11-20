@@ -111,12 +111,18 @@ interface SchemaRegistryCredentials {
 	authentication: 'none' | 'basicAuth';
 	username?: string;
 	password?: string;
+	ca?: string;
+	cert?: string;
+	key?: string;
 }
 
 interface SchemaRegistryOptions {
 	host: string;
 	auth?: { username: string; password: string };
+	tls?: TlsMaterial;
 }
+
+type TlsMaterial = { ca?: string; cert?: string; key?: string };
 
 type ResolveOffsetMode = 'immediately' | 'onCompletion' | 'onSuccess' | 'onStatus';
 
@@ -132,6 +138,33 @@ type ResolveOffsetMode = 'immediately' | 'onCompletion' | 'onSuccess' | 'onStatu
  * @param value - The raw PEM string from the credential
  * @param fieldName - Human-readable field name used in the error message
  */
+/**
+ * Reads the three PEM credential fields, rejecting a client certificate that
+ * arrives without its private key. Shared by the broker and the Schema Registry
+ * so both refuse the same half-configured mTLS setup.
+ * @param credentials - The decrypted credential holding the PEM fields
+ * @param subject - What the fields belong to, used in the error message
+ */
+export function readTlsMaterial(credentials: TlsMaterial, subject: string): TlsMaterial {
+	const cert = credentials.cert?.trim() ? credentials.cert : undefined;
+	const key = credentials.key?.trim() ? credentials.key : undefined;
+	const ca = credentials.ca?.trim() ? credentials.ca : undefined;
+
+	// A client certificate and its private key are only meaningful together.
+	if (Boolean(cert) !== Boolean(key)) {
+		throw new UserError(
+			`${subject} mTLS needs both a client certificate and a client private key`,
+			{
+				level: 'warning',
+				description:
+					'Set both the "Client Certificate" and "Client Private Key" credential fields, or clear both.',
+			},
+		);
+	}
+
+	return { ca, cert, key };
+}
+
 export function formatAndValidatePem(value: string, fieldName: string): string {
 	const formatted = formatPemBlock(value);
 	// Require a matching BEGIN/END pair with the same label — a lone BEGIN header
@@ -522,6 +555,15 @@ export async function getSchemaRegistryOptions(
 
 	const options: SchemaRegistryOptions = { host };
 
+	const { ca, cert, key } = readTlsMaterial(credentials, 'Schema Registry');
+	if (ca ?? cert) {
+		options.tls = {
+			...(ca ? { ca: formatAndValidatePem(ca, 'Schema Registry CA certificate') } : {}),
+			...(cert ? { cert: formatAndValidatePem(cert, 'Schema Registry client certificate') } : {}),
+			...(key ? { key: formatAndValidatePem(key, 'Schema Registry client private key') } : {}),
+		};
+	}
+
 	if (credentials.authentication === 'basicAuth') {
 		if (!(credentials.username && credentials.password)) {
 			throw new NodeOperationError(
@@ -582,11 +624,14 @@ export async function createSchemaRegistry(
 	// Connect using the canonical href so the client re-parses the exact
 	// authority we validated, and validate the resolved addresses at connect
 	// time via the secure lookup.
+	// `tls` is ours, not the client's, so it reaches the agent and never the
+	// SchemaRegistry constructor.
+	const { tls, ...clientOptions } = options;
 	const agent =
 		parsed.protocol === 'https:'
-			? new https.Agent({ lookup: filter.createSecureLookup() })
+			? new https.Agent({ lookup: filter.createSecureLookup(), ...tls })
 			: new http.Agent({ lookup: filter.createSecureLookup() });
-	return new SchemaRegistry({ ...options, host: parsed.href, agent });
+	return new SchemaRegistry({ ...clientOptions, host: parsed.href, agent });
 }
 
 /**
