@@ -7,6 +7,7 @@ import type { Scope } from '@n8n/permissions';
 import type { Project } from '@n8n/rest-api-client';
 import type { ICredentialsDecrypted, INodeTypeDescription } from 'n8n-workflow';
 import type { ComputedRef, Ref } from 'vue';
+import type { RouteLocationRaw } from 'vue-router';
 
 /**
  * A typed key for a capability. `declareCapability()` is the only way to make
@@ -38,6 +39,22 @@ export interface ProjectPermissions {
 	defaultProjectId?(): string | undefined;
 	/** Whether the instance blocks writes (source control read-only branch). Reads reactive state. */
 	isReadOnly(): boolean;
+}
+
+export type McpPreferencesEntryPoint = 'banner' | 'connection_row' | 'context_section';
+
+export type McpPreferencesEntrySource = McpPreferencesEntryPoint | 'connect_dialog';
+
+export interface McpPreferencesEntryPoints {
+	entryPoint(): McpPreferencesEntryPoint | undefined;
+	trackExposure(): void;
+	preferenceCount(): number | undefined;
+	loadPreferenceCount(): Promise<void>;
+	isBannerDismissed(): boolean;
+	dismissBanner(): void;
+	preferencesRoute: RouteLocationRaw;
+	trackEntryPointClicked(source: McpPreferencesEntrySource): void;
+	trackPromptCopied(client: string): void;
 }
 
 export interface McpExposeAllOffer {

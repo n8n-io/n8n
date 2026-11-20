@@ -1,8 +1,12 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
-import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
+import {
+	capabilities,
+	capabilityRegistry,
+	type McpPreferencesEntryPoint,
+} from '@n8n/frontend-module-sdk';
 import type { OAuthClientResponseDto } from '@n8n/api-types';
 import {
 	N8nButton,
@@ -28,6 +32,7 @@ import MCPEmptyState from './components/MCPEmptyState.vue';
 import McpAllowedCallbackUrlsDialog from './components/McpAllowedCallbackUrlsDialog.vue';
 import McpConnectClientDialog from './components/McpConnectClientDialog.vue';
 import McpConnectedClientRow from './components/McpConnectedClientRow.vue';
+import McpPreferencesBanner from './components/McpPreferencesBanner.vue';
 import McpStatusControl from './components/McpStatusControl.vue';
 import OAuthClientDetailsModal from './components/OAuthClientDetailsModal.vue';
 import RevokeOAuthClientConfirmModal from './components/RevokeOAuthClientConfirmModal.vue';
@@ -80,6 +85,71 @@ const savingCallbackUrls = ref(false);
 const preferencesSaving = ref(false);
 const globalPreferencesEnabled = computed(
 	() => settingsStore.settings.aiPreferences?.enabled === true,
+);
+
+const preferencesEntryPoints = capabilityRegistry.tryUse(capabilities.mcpPreferencesEntryPoints);
+const preferencesEntryPoint = computed(() => preferencesEntryPoints?.entryPoint());
+const preferenceCount = computed(() => preferencesEntryPoints?.preferenceCount());
+
+const showPreferencesBanner = computed(
+	() =>
+		preferencesEntryPoint.value === 'banner' &&
+		preferenceCount.value === 0 &&
+		!preferencesEntryPoints?.isBannerDismissed(),
+);
+
+const showContextSection = computed(
+	() => canManageMcpInstance.value || preferencesEntryPoint.value === 'context_section',
+);
+
+const preferenceCountValue = computed(() => {
+	if (preferenceCount.value === undefined) return UNKNOWN_COUNT_VALUE;
+	if (preferenceCount.value === 0) {
+		return i18n.baseText('settings.mcp.preferencesEntry.contextRow.empty');
+	}
+	return i18n.baseText('settings.mcp.preferencesEntry.count', {
+		adjustToNumber: preferenceCount.value,
+		interpolate: { count: String(preferenceCount.value) },
+	});
+});
+
+const connectionRowDescription = computed(() =>
+	preferenceCount.value
+		? i18n.baseText('settings.mcp.preferencesEntry.connectionRow.description', {
+				adjustToNumber: preferenceCount.value,
+				interpolate: { count: String(preferenceCount.value) },
+			})
+		: i18n.baseText('settings.mcp.preferencesEntry.connectionRow.description.empty'),
+);
+
+const connectionRowButtonLabel = computed(() =>
+	preferenceCount.value
+		? i18n.baseText('settings.mcp.preferencesEntry.connectionRow.button')
+		: i18n.baseText('settings.mcp.preferencesEntry.connectionRow.button.empty'),
+);
+
+const openPreferences = (source: McpPreferencesEntryPoint) => {
+	if (!preferencesEntryPoints) return;
+	preferencesEntryPoints.trackEntryPointClicked(source);
+	void router.push(preferencesEntryPoints.preferencesRoute);
+};
+
+const loadPreferenceCount = async () => {
+	try {
+		await preferencesEntryPoints?.loadPreferenceCount();
+	} catch (error) {
+		toast.showError(error, i18n.baseText('settings.mcp.preferencesEntry.error.loading'));
+	}
+};
+
+watch(
+	() => [mcpStore.mcpAccessEnabled, mcpStore.preferencesEnabled, preferencesEntryPoint.value],
+	([accessEnabled, , entryPoint]) => {
+		if (!accessEnabled) return;
+		preferencesEntryPoints?.trackExposure();
+		if (entryPoint) void loadPreferenceCount();
+	},
+	{ immediate: true },
 );
 
 const onTogglePreferences = async (enabled: boolean) => {
@@ -341,6 +411,12 @@ onBeforeUnmount(() => {
 				:content="instanceCapacityNoticeContent"
 			/>
 
+			<McpPreferencesBanner
+				v-if="showPreferencesBanner"
+				@open="openPreferences('banner')"
+				@dismiss="preferencesEntryPoints?.dismissBanner()"
+			/>
+
 			<N8nSettingsSection
 				:title="i18n.baseText('settings.mcp.connectionDetails.title')"
 				data-test-id="mcp-enabled-section"
@@ -383,6 +459,24 @@ onBeforeUnmount(() => {
 									@click="onConnectClient"
 								/>
 							</component>
+						</template>
+					</N8nSettingsRow>
+					<N8nSettingsRow
+						v-if="preferencesEntryPoint === 'connection_row'"
+						:title="i18n.baseText('settings.mcp.preferencesEntry.connectionRow.title')"
+						:description="connectionRowDescription"
+						data-test-id="mcp-preferences-connection-row"
+					>
+						<template #action>
+							<N8nButton
+								variant="outline"
+								size="medium"
+								icon="sliders-horizontal"
+								:label="connectionRowButtonLabel"
+								data-test-id="mcp-preferences-connection-row-button"
+								data-attr="mcp-preferences-connection-row-button"
+								@click="openPreferences('connection_row')"
+							/>
 						</template>
 					</N8nSettingsRow>
 				</N8nSettingsRowGroup>
@@ -446,11 +540,25 @@ onBeforeUnmount(() => {
 			</N8nSettingsSection>
 
 			<N8nSettingsSection
-				v-if="canManageMcpInstance"
+				v-if="showContextSection"
 				:title="i18n.baseText('settings.mcp.context.title')"
 				data-test-id="mcp-context-section"
 			>
-				<N8nSettingsRowGroup>
+				<N8nSettingsRowGroup v-if="preferencesEntryPoint === 'context_section'">
+					<N8nSettingsRow
+						:title="i18n.baseText('settings.mcp.preferencesEntry.contextRow.title')"
+						:description="i18n.baseText('settings.mcp.preferencesEntry.contextRow.description')"
+						clickable
+						data-test-id="mcp-preferences-context-row"
+						data-attr="mcp-preferences-context-row"
+						@click="openPreferences('context_section')"
+					>
+						<template #action>
+							<N8nSettingsRowConfigure :value="preferenceCountValue" />
+						</template>
+					</N8nSettingsRow>
+				</N8nSettingsRowGroup>
+				<N8nSettingsRowGroup v-if="canManageMcpInstance">
 					<N8nSettingsEnableRow
 						:title="i18n.baseText('settings.mcp.preferences.title')"
 						:description="i18n.baseText('settings.mcp.preferences.description')"

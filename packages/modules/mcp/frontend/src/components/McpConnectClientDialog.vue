@@ -11,6 +11,7 @@ import {
 	N8nDialogTitle,
 	N8nDropdownMenu,
 	N8nIcon,
+	N8nLink,
 	N8nSettingsRow,
 	N8nSettingsRowGroup,
 	N8nTabs,
@@ -18,6 +19,7 @@ import {
 } from '@n8n/design-system';
 import type { DropdownMenuItemProps, TabOptions } from '@n8n/design-system';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
 import { useMCPStore } from '../mcp.store';
 import { getMcpClientCatalog } from '../mcp.clients.catalog';
 import type { McpClientSetup } from '../mcp.clients.catalog';
@@ -153,6 +155,28 @@ const serverUrlDescription = computed(() =>
 		interpolate: { client: activeClient.value?.name ?? '' },
 	}),
 );
+
+const preferencesEntryPoints = capabilityRegistry.tryUse(capabilities.mcpPreferencesEntryPoints);
+const showPreferencesPrompt = computed(() => !!preferencesEntryPoints?.entryPoint());
+const preferencesPromptTitle = computed(() =>
+	i18n.baseText('settings.mcp.connectDialog.preferences.title', {
+		interpolate: { client: activeClient.value?.name ?? '' },
+	}),
+);
+const preferencesPromptDescription = computed(() =>
+	i18n.baseText('settings.mcp.connectDialog.preferences.description', {
+		interpolate: { client: activeClient.value?.name ?? '' },
+	}),
+);
+
+const onPreferencesPromptCopy = () => {
+	preferencesEntryPoints?.trackPromptCopied(activeClientId.value);
+};
+
+const onPreferencesLinkClick = () => {
+	preferencesEntryPoints?.trackEntryPointClicked('connect_dialog');
+	mcpStore.closeConnectPopover();
+};
 </script>
 
 <template>
@@ -386,6 +410,53 @@ const serverUrlDescription = computed(() =>
 						</template>
 					</N8nSettingsRow>
 				</template>
+
+				<N8nSettingsRow
+					v-if="showPreferencesPrompt && activeClient"
+					layout="vertical"
+					:show-divider="false"
+					data-test-id="mcp-connect-preferences-prompt"
+				>
+					<template #info>
+						<div :class="$style['prompt-info']">
+							<span :class="$style['prompt-title']">
+								<N8nText size="medium" color="text-dark" bold>
+									{{ preferencesPromptTitle }}
+								</N8nText>
+								<N8nText size="small" color="text-light">
+									{{ i18n.baseText('settings.mcp.connectDialog.preferences.optional') }}
+								</N8nText>
+							</span>
+							<N8nText size="small" color="text-base">
+								{{ preferencesPromptDescription }}
+							</N8nText>
+						</div>
+					</template>
+					<template #action>
+						<div :class="$style['copy-field']">
+							<McpConfigSnippet
+								:class="$style['prompt-snippet']"
+								:value="i18n.baseText('settings.mcp.connectDialog.preferences.prompt')"
+								language="text"
+								@copy="onPreferencesPromptCopy"
+							/>
+							<N8nText tag="p" size="small" color="text-base" :class="$style['prompt-hint']">
+								{{ i18n.baseText('settings.mcp.connectDialog.preferences.settingsHint') }}
+								<N8nLink
+									v-if="preferencesEntryPoints"
+									:to="preferencesEntryPoints.preferencesRoute"
+									size="small"
+									underline
+									data-test-id="mcp-connect-preferences-link"
+									data-attr="mcp-connect-preferences-link"
+									@click="onPreferencesLinkClick"
+								>
+									{{ i18n.baseText('settings.mcp.connectDialog.preferences.settingsLink') }}
+								</N8nLink>
+							</N8nText>
+						</div>
+					</template>
+				</N8nSettingsRow>
 			</N8nSettingsRowGroup>
 
 			<div v-else data-test-id="mcp-connect-token-setup">
@@ -460,5 +531,26 @@ const serverUrlDescription = computed(() =>
    should span the full row width. */
 .copy-field {
 	width: 100%;
+}
+
+.prompt-info {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--5xs);
+}
+
+.prompt-title {
+	display: inline-flex;
+	align-items: baseline;
+	gap: var(--spacing--2xs);
+}
+
+.prompt-snippet code {
+	white-space: pre-wrap;
+	padding-right: var(--spacing--xl) !important;
+}
+
+.prompt-hint {
+	margin-top: var(--spacing--2xs);
 }
 </style>

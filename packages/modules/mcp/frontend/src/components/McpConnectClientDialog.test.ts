@@ -5,6 +5,15 @@ import { createComponentRenderer, mockedStore, type MockedStore } from '@n8n/fro
 import McpConnectClientDialog from './McpConnectClientDialog.vue';
 import { useMCPStore } from '../mcp.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
+import type { McpPreferencesEntryPoints } from '@n8n/frontend-module-sdk';
+import { ref } from 'vue';
+
+const { copySpy } = vi.hoisted(() => ({ copySpy: vi.fn() }));
+
+vi.mock('@n8n/composables/useClipboard', () => ({
+	useClipboard: () => ({ copy: copySpy, copied: ref(false), isSupported: ref(true) }),
+}));
 
 let pinia: ReturnType<typeof createTestingPinia>;
 let mcpStore: MockedStore<typeof useMCPStore>;
@@ -14,6 +23,9 @@ const renderComponent = createComponentRenderer(McpConnectClientDialog, {
 		stubs: {
 			McpAccessTokenTab: {
 				template: '<div data-test-id="token-tab-stub" />',
+			},
+			RouterLink: {
+				template: '<a><slot /></a>',
 			},
 		},
 	},
@@ -155,5 +167,63 @@ describe('McpConnectClientDialog', () => {
 		await userEvent.keyboard('{Escape}');
 
 		expect(mcpStore.closeConnectPopover).toHaveBeenCalled();
+	});
+
+	describe('preferences prompt', () => {
+		const provideEntryPoints = (
+			entryPoint: ReturnType<McpPreferencesEntryPoints['entryPoint']>,
+		) => {
+			const entryPoints = {
+				entryPoint: vi.fn(() => entryPoint),
+				trackExposure: vi.fn(),
+				preferenceCount: vi.fn(() => 0),
+				loadPreferenceCount: vi.fn(async () => {}),
+				isBannerDismissed: vi.fn(() => false),
+				dismissBanner: vi.fn(),
+				preferencesRoute: { name: 'SettingsContextPreferences' },
+				trackEntryPointClicked: vi.fn(),
+				trackPromptCopied: vi.fn(),
+			};
+			capabilityRegistry.provide(capabilities.mcpPreferencesEntryPoints, entryPoints);
+			return entryPoints;
+		};
+
+		afterEach(() => {
+			capabilityRegistry.clear();
+		});
+
+		it('hides the prompt for control', async () => {
+			provideEntryPoints(undefined);
+			renderComponent({ pinia });
+
+			await waitFor(() => {
+				expect(body().getByTestId('mcp-connect-client-picker-trigger')).toBeInTheDocument();
+			});
+			expect(body().queryByTestId('mcp-connect-preferences-prompt')).not.toBeInTheDocument();
+		});
+
+		it('shows the prompt for the selected client and tracks the copy', async () => {
+			const entryPoints = provideEntryPoints('connection_row');
+			renderComponent({ pinia });
+
+			const prompt = await body().findByTestId('mcp-connect-preferences-prompt');
+			expect(prompt).toHaveTextContent('Teach Claude.ai how you build');
+			expect(prompt).toHaveTextContent('Ask me 3 short questions about how I like to build in n8n');
+
+			await userEvent.click(within(prompt).getByTestId('mcp-config-snippet-copy'));
+
+			expect(copySpy).toHaveBeenCalledWith(expect.stringContaining('Ask me 3 short questions'));
+			expect(entryPoints.trackPromptCopied).toHaveBeenCalledWith('claude-ai');
+		});
+
+		it('closes the dialog when the user opens the preferences page', async () => {
+			const entryPoints = provideEntryPoints('banner');
+			renderComponent({ pinia });
+
+			await userEvent.click(await body().findByTestId('mcp-connect-preferences-link'));
+
+			expect(entryPoints.trackEntryPointClicked).toHaveBeenCalledWith('connect_dialog');
+			expect(mcpStore.closeConnectPopover).toHaveBeenCalled();
+		});
 	});
 });
