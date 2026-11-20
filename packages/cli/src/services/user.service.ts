@@ -6,11 +6,13 @@ import {
 	RoleService,
 	JwtService,
 	PostHogClient,
+	loginIdOf,
 } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type { AuthIdentity, OperationContext, Person, PublicUser } from '@n8n/db';
 import {
 	isPerson,
+	isServiceAccount,
 	TransactionRunner,
 	Project,
 	ProjectRelation,
@@ -40,6 +42,7 @@ import { validate as uuidValidate } from 'uuid';
 import { OwnershipService } from './ownership.service';
 import { ProjectService } from './project.service.ee';
 import { PublicApiKeyService } from './public-api-key.service';
+import { ServiceAccountUsageProxy } from './service-account-usage-proxy.service';
 
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import {
@@ -49,7 +52,6 @@ import {
 	NotFoundError,
 	UserError,
 } from '@n8n/errors';
-import { loginIdOf } from '@/events/login-id';
 import { ExternalHooks } from '@/external-hooks';
 import type { Invitation } from '@/interfaces';
 import { License } from '@/license';
@@ -74,6 +76,16 @@ export const INVITE_ROLE_MANAGED_MESSAGE =
 /** The system as the actor of a user deletion that no user asked for. */
 export type SystemDeletionActor = Extract<PolicyActor, { kind: 'system' }> & { reason: 'scim' };
 
+/**
+ * Removes what acts as a service account, such as an agent, when the account goes.
+ * `cleanUp` runs after the work of the account moved. `deleteInTransaction` runs in
+ * the transaction that deletes the account, before the account row goes.
+ */
+export type ServiceAccountOwnerRemoval = {
+	cleanUp: () => Promise<void>;
+	deleteInTransaction: (ctx: OperationContext) => Promise<void>;
+};
+
 @Service()
 export class UserService {
 	constructor(
@@ -96,6 +108,7 @@ export class UserService {
 		private readonly personRepository: PersonRepository,
 		private readonly scimSwitchReader: ScimSwitchReader,
 		private readonly txRunner: TransactionRunner,
+		private readonly serviceAccountUsage: ServiceAccountUsageProxy,
 	) {}
 
 	/** Updates the profile or password of a person. A service account id is a no-op. */
@@ -634,6 +647,9 @@ export class UserService {
 	 *
 	 * The actor is a user, or the system for a deletion that no user asked for,
 	 * such as a SCIM deletion from the identity provider.
+	 *
+	 * Rejects the service account of an agent. The agent deletion deletes that
+	 * account with {@link deleteServiceAccount}.
 	 */
 	async deleteUser(
 		actor: User | SystemDeletionActor,
@@ -641,6 +657,45 @@ export class UserService {
 		transferId?: string,
 		publicApi: PublicApiCaller = false,
 		ctx: OperationContext = {},
+	) {
+		return await this.deleteAccount(actor, idToDelete, transferId, publicApi, ctx, {
+			allowAgentAccount: false,
+		});
+	}
+
+	/**
+	 * Deletes the service account of an agent that is being deleted, so it skips
+	 * the check that an agent acts as the account. Only
+	 * `ServiceAccountService.remove` calls this.
+	 *
+	 * `owner` is the agent that acts as the account. Its cleanup runs after the
+	 * work of the account moved or was deleted. Its row goes in the transaction
+	 * that deletes the account, because the account cannot go while the agent
+	 * exists, and both rows must go together.
+	 */
+	async deleteServiceAccount(
+		actor: User | SystemDeletionActor,
+		idToDelete: string,
+		transferId: string | undefined,
+		ctx: OperationContext,
+		owner: ServiceAccountOwnerRemoval,
+	) {
+		return await this.deleteAccount(actor, idToDelete, transferId, false, ctx, {
+			allowAgentAccount: true,
+			owner,
+		});
+	}
+
+	private async deleteAccount(
+		actor: User | SystemDeletionActor,
+		idToDelete: string,
+		transferId: string | undefined,
+		publicApi: PublicApiCaller,
+		ctx: OperationContext,
+		{
+			allowAgentAccount,
+			owner,
+		}: { allowAgentAccount: boolean; owner?: ServiceAccountOwnerRemoval },
 	) {
 		// A user also has a `kind` (person or service), so test the value.
 		const systemActor = actor.kind === 'system' ? actor : null;
@@ -666,6 +721,15 @@ export class UserService {
 
 		if (userToDelete.role.slug === GLOBAL_OWNER_ROLE.slug) {
 			throw new ForbiddenError('Instance owner cannot be deleted.');
+		}
+
+		if (!allowAgentAccount && isServiceAccount(userToDelete)) {
+			const agent = await this.serviceAccountUsage.findAgent(userToDelete.id);
+			if (agent) {
+				throw new BadRequestError(
+					`This service account belongs to the agent "${agent.name}". Delete the agent instead.`,
+				);
+			}
 		}
 
 		const personalProjectToDelete = await this.projectRepository.getPersonalProjectForUserOrFail(
@@ -739,9 +803,16 @@ export class UserService {
 		}
 
 		// Clean up user-owned module data before account deletion, including on transfer.
-		await ownershipTransferService.deleteUserOwnedModuleResources([userToDelete.id]);
+		await ownershipTransferService.deleteUserOwnedModuleResources([userToDelete.id], {
+			actor,
+			transferId,
+			ctx,
+		});
+
+		await owner?.cleanUp();
 
 		await this.txRunner.run({}, async (ctx) => {
+			await owner?.deleteInTransaction(ctx);
 			await ownershipTransferService.finalizeUserDeletion(
 				userToDelete.id,
 				personalProjectToDelete.id,

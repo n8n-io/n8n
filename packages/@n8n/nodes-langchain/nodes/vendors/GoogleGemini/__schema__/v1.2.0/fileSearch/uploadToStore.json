@@ -1,0 +1,20 @@
+{
+	"properties": {
+		"@type": {
+			"type": "string"
+		},
+		"documentName": {
+			"type": "string"
+		},
+		"mimeType": {
+			"type": "string"
+		},
+		"parent": {
+			"type": "string"
+		},
+		"sizeBytes": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

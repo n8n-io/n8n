@@ -36,9 +36,23 @@ export class GmailTriggerVersionRule implements IBreakingChangeWorkflowRule {
 	): Promise<BreakingChangeRecommendation[]> {
 		return [
 			{
-				action: 'Review Gmail Trigger nodes on versions below 1.4',
+				action: 'Replace the node with Gmail Trigger 1.4',
 				description:
-					'Each trigger event now emits at most 10 emails by default (configurable via "Max Emails per Poll"); the rest are picked up in later polls. Drafts only trigger workflows if "Include Drafts" is enabled in Filters. Sent (non-inbox) and scheduled emails no longer trigger workflows at all — if a workflow depends on them, use a Schedule Trigger with a Gmail "Get Many messages" operation (e.g. search "in:sent") instead.',
+					"Add a new Gmail Trigger node with the same name, connections, credential and settings. If the version 1.4 behavior works for this workflow, set the finding to Won't fix instead.",
+			},
+			{
+				action: 'Raise "Max Emails per Poll"',
+				description:
+					'If a poll can return more than 10 emails and the workflow must process them at once, raise this limit on the new node.',
+			},
+			{
+				action: 'Enable "Include Drafts"',
+				description: 'If the workflow must run on drafts, enable "Include Drafts" in Filters.',
+			},
+			{
+				action: 'Poll sent or scheduled emails on a schedule',
+				description:
+					'If the workflow must run on sent or scheduled emails, use a Schedule Trigger and a Gmail "Get Many messages" operation with the search "in:sent" or "in:scheduled". Add a Remove Duplicates node set to "Remove Items Processed in Previous Executions" on the message ID, just before the steps that must not repeat. Raise its History Size (10,000 by default) if the search can return more messages than that.',
 			},
 		];
 	}

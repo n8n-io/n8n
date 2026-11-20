@@ -7,6 +7,7 @@ import type {
 	SharedCredentialsRepository,
 	SharedWorkflow,
 	SharedWorkflowRepository,
+	User,
 	UserRepository,
 	WorkflowEntity,
 	WorkflowRepository,
@@ -211,10 +212,11 @@ describe('OwnershipTransferService', () => {
 				policyEnforcementService,
 			);
 
-			await service.deleteUserOwnedModuleResources(['u-1', 'u-2']);
+			const deletion = { actor: mock<User>({ id: 'actor-1' }), transferId: 'target-1' };
+			await service.deleteUserOwnedModuleResources(['u-1', 'u-2'], deletion);
 
-			expect(userHandler.deleteAllForUser).toHaveBeenCalledWith('u-1');
-			expect(userHandler.deleteAllForUser).toHaveBeenCalledWith('u-2');
+			expect(userHandler.deleteAllForUser).toHaveBeenCalledWith('u-1', deletion);
+			expect(userHandler.deleteAllForUser).toHaveBeenCalledWith('u-2', deletion);
 			expect(projectOnlyHandler.deleteAll).not.toHaveBeenCalled();
 			expect(projectOnlyHandler.transferAll).not.toHaveBeenCalled();
 			expect(userHandler.deleteAll).not.toHaveBeenCalled();

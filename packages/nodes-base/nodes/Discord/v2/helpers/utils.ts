@@ -76,7 +76,10 @@ export function parseDiscordError(this: IExecuteFunctions, error: any, itemIndex
 				'Something has to be send to the channel whether it is a message, an embed or a file';
 		}
 	}
-	return new NodeOperationError(this.getNode(), errorData || error, errorOptions);
+
+	// Response data without a message gives an empty error, keep the original error instead
+	const hasMessage = typeof errorData === 'string' || errorData?.message;
+	return new NodeOperationError(this.getNode(), (hasMessage && errorData) || error, errorOptions);
 }
 
 export function prepareErrorData(this: IExecuteFunctions, error: any, i: number) {

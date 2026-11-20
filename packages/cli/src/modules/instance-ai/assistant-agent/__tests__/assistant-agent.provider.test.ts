@@ -13,7 +13,7 @@ import type {
 	SystemAgentResumeTurn,
 	SystemAgentStartTurn,
 } from '@/modules/agents/system-agents/system-agent.types';
-import type { Telemetry } from '@/telemetry';
+import type { TelemetryProxy } from '@n8n/backend-services';
 
 import type { InstanceAiCreditService } from '../../instance-ai-credit.service';
 import { InstanceAiErrorReporterService } from '../../instance-ai-error-reporter.service';
@@ -35,6 +35,7 @@ import { QUOTA_EXHAUSTED_USER_MESSAGE } from '../../user-facing-errors';
 import { AssistantAgentProvider, FILES_ONLY_MESSAGE } from '../assistant-agent.provider';
 import type { AssistantThreadTabsService } from '../assistant-thread-tabs.service';
 import type { AssistantTurnTrace, AssistantTurnTracer } from '../assistant-turn-trace';
+import type { AssistantClientRequest } from '../assistant-turn-options';
 import type {
 	AssistantSandboxLease,
 	AssistantSandboxWorkspaceSource,
@@ -99,7 +100,7 @@ function setup() {
 	);
 	// The real default, so that the tests see "no override" unless a test sets one.
 	const turnOverrides = new AssistantTurnOverrides();
-	const telemetry = mock<Telemetry>();
+	const telemetry = mock<TelemetryProxy>();
 	const provider = new AssistantAgentProvider(
 		logger,
 		mock<GlobalConfig>({ ai: {} }),
@@ -224,6 +225,18 @@ describe('AssistantAgentProvider', () => {
 			approved: true,
 		});
 		expect(provider.normalizeResumeData({ other: 'shape' })).toEqual({ other: 'shape' });
+	});
+
+	it('tracks a user stop on the Agents runtime', () => {
+		const { provider, telemetry } = setup();
+
+		provider.onUserStoppedTurn({ agentId: 'assistant', threadId: 'thread-1', userId: 'user-1' });
+
+		expect(telemetry.track).toHaveBeenCalledWith(TELEMETRY_EVENT.INSTANCE_AI.USER_STOPPED_RUN, {
+			user_id: 'user-1',
+			thread_id: 'thread-1',
+			runtime: 'agents',
+		});
 	});
 
 	describe('onBeforeThreadDeletion', () => {
@@ -510,40 +523,69 @@ describe('AssistantAgentProvider', () => {
 			expect(turn.readFile).toHaveBeenCalledWith('att-1');
 		});
 
-		describe('attached agent', () => {
-			type ThreadPatchArgs = {
-				threadId: string;
-				update: (current: {
-					id: string;
-					metadata?: Record<string, unknown>;
-				}) => { metadata?: Record<string, unknown> } | null | undefined;
-			};
+		type ThreadPatchArgs = {
+			threadId: string;
+			update: (current: {
+				id: string;
+				metadata?: Record<string, unknown>;
+			}) => { metadata?: Record<string, unknown> } | null | undefined;
+		};
 
-			/** A turn whose memory behaves like `N8nMemory`: a patch replaces the metadata,
-			 *  and it returns `null` when the thread row does not exist yet. */
+		/** A turn whose memory behaves like `N8nMemory`: a patch replaces the metadata,
+		 *  and it returns `null` when the thread row does not exist yet. */
+		function turnWithMetadata(
+			request: AssistantClientRequest,
+			metadata: Record<string, unknown> | undefined,
+		) {
+			const memory = mock<SystemAgentStartTurn['memory']>();
+			const written: { metadata?: Record<string, unknown> } = {};
+			const patchThread = vi.fn(async ({ threadId, update }: ThreadPatchArgs) => {
+				if (!metadata) return null;
+				const patch = update({ id: threadId, metadata: { ...metadata } });
+				if (patch?.metadata) written.metadata = patch.metadata;
+				return { id: threadId, metadata: written.metadata ?? metadata };
+			});
+			Object.assign(memory, { patchThread });
+			const base = startTurn();
+			const turn = startTurn({ memory, options: { ...base.options, request } });
+			return { turn, written };
+		}
+
+		describe('agent subject', () => {
 			function agentTurn(
 				agent: Record<string, unknown>,
 				metadata: Record<string, unknown> | undefined = undefined,
 			) {
-				const memory = mock<SystemAgentStartTurn['memory']>();
-				const written: { metadata?: Record<string, unknown> } = {};
-				const patchThread = vi.fn(async ({ threadId, update }: ThreadPatchArgs) => {
-					if (!metadata) return null;
-					const patch = update({ id: threadId, metadata: { ...metadata } });
-					if (patch?.metadata) written.metadata = patch.metadata;
-					return { id: threadId, metadata: written.metadata ?? metadata };
-				});
-				Object.assign(memory, { patchThread });
-				const base = startTurn();
-				const turn = startTurn({
-					memory,
-					options: {
-						...base.options,
-						request: { attachments: [{ type: 'agent', projectId: 'project-1', ...agent }] },
-					},
-				});
-				return { turn, written };
+				return turnWithMetadata(
+					{ subject: { type: 'agent', projectId: 'project-1', ...agent } as never },
+					metadata,
+				);
 			}
+
+			it('keeps every approval card on the first turn of an agent subject', async () => {
+				const { provider, turnEnvironment } = setup();
+				const { turn } = agentTurn({ id: 'agent-1' });
+
+				await provider.prepareTurn(turn);
+
+				expect(turnEnvironment.create).toHaveBeenCalledWith(
+					expect.objectContaining({ attachesAgent: true }),
+					expect.anything(),
+				);
+			});
+
+			it('does not bind an agent that is only attached to the message', async () => {
+				const { provider } = setup();
+				const { turn, written } = turnWithMetadata(
+					{ attachments: [{ type: 'agent', id: 'agent-1', projectId: 'project-1' }] },
+					{ emoji: '🤖' },
+				);
+
+				await provider.prepareTurn(turn);
+
+				expect(written.metadata).toBeUndefined();
+				expect(turn.memory.saveThread).not.toHaveBeenCalled();
+			});
 
 			it('binds a saved agent to a new thread', async () => {
 				const { provider } = setup();
@@ -619,6 +661,78 @@ describe('AssistantAgentProvider', () => {
 			])('keeps the thread metadata when %s', async (_case, agent, metadata) => {
 				const { provider } = setup();
 				const { turn, written } = agentTurn(agent, metadata);
+
+				await provider.prepareTurn(turn);
+
+				expect(written.metadata).toBeUndefined();
+				expect(turn.memory.saveThread).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('thread subject', () => {
+			const APP_ID = '0190a5d2-6f4b-7c3e-8a1d-2b3c4d5e6f70';
+
+			function appTurn(
+				app: Record<string, unknown>,
+				metadata: Record<string, unknown> | undefined = undefined,
+			) {
+				return turnWithMetadata(
+					{ subject: { type: 'app', id: APP_ID, projectId: 'project-1', ...app } as never },
+					metadata,
+				);
+			}
+
+			it('binds a saved app to a new thread', async () => {
+				const { provider } = setup();
+				const { turn } = appTurn({ name: 'Inventory' });
+
+				await provider.prepareTurn(turn);
+
+				expect(turn.memory.saveThread).toHaveBeenCalledWith({
+					id: 'thread-1',
+					resourceId: 'system-chat:user-1',
+					metadata: {
+						instanceAiAppTargets: [{ appId: APP_ID, projectId: 'project-1', name: 'Inventory' }],
+					},
+				});
+			});
+
+			it('marks a pending app, so the first build creates it under its id', async () => {
+				const { provider } = setup();
+				const { turn, written } = appTurn({ pending: true }, { emoji: '🧩' });
+
+				await provider.prepareTurn(turn);
+
+				expect(written.metadata).toEqual({
+					emoji: '🧩',
+					instanceAiPendingAppTarget: { appId: APP_ID, projectId: 'project-1' },
+				});
+				expect(turn.memory.saveThread).not.toHaveBeenCalled();
+			});
+
+			it('binds an app next to the agent of the thread', async () => {
+				const { provider } = setup();
+				const agentTarget = { agentId: 'agent-1', projectId: 'project-1' };
+				const { turn, written } = appTurn({}, { instanceAiAgentBuilderTarget: agentTarget });
+
+				await provider.prepareTurn(turn);
+
+				expect(written.metadata).toEqual({
+					instanceAiAgentBuilderTarget: agentTarget,
+					instanceAiAppTargets: [{ appId: APP_ID, projectId: 'project-1' }],
+				});
+			});
+
+			it.each([
+				[
+					'the thread already has the app',
+					{},
+					{ instanceAiAppTargets: [{ appId: APP_ID, projectId: 'project-1' }] },
+				],
+				['the app is in another project', { projectId: 'project-2' }, undefined],
+			])('keeps the thread metadata when %s', async (_case, app, metadata) => {
+				const { provider } = setup();
+				const { turn, written } = appTurn(app, metadata);
 
 				await provider.prepareTurn(turn);
 
@@ -842,6 +956,103 @@ describe('AssistantAgentProvider', () => {
 					TELEMETRY_EVENT.INSTANCE_AI.BUILDER_ASKED_FOR_INPUT,
 					expect.objectContaining({ approval_mode: 'auto' }),
 				);
+			});
+		});
+
+		describe('instance context turn telemetry', () => {
+			const injection = { state: 'absent', reason: 'disabled' } as const;
+
+			function contextRows(telemetry: ReturnType<typeof setup>['telemetry']) {
+				return telemetry.track.mock.calls
+					.filter(
+						([event]) => (event as unknown) === TELEMETRY_EVENT.INSTANCE_AI.INSTANCE_CONTEXT_TURN,
+					)
+					.map(([, properties]) => properties);
+			}
+
+			function resumeOf(
+				start: SystemAgentStartTurn<AssistantSandboxLease>,
+			): SystemAgentResumeTurn<AssistantSandboxLease> {
+				return {
+					type: 'resume',
+					user,
+					thread,
+					resourceId: start.resourceId,
+					abortSignal: start.abortSignal,
+					emitHostEvent: start.emitHostEvent,
+					memory: start.memory,
+					checkpointStore: start.checkpointStore,
+					sessionGrants: start.sessionGrants,
+					readFile: vi.fn(async () => undefined),
+					runId: 'agent-run-1',
+					toolCallId: 'tc-1',
+					checkpointHostMetadata: { assistantTurn: { runId: 'run-1', messageGroupId: 'mg-1' } },
+					openSuspensions: [{ toolCallId: 'tc-1', toolName: 'ask-user', suspendPayload: {} }],
+					resumeData: { approved: true },
+				};
+			}
+
+			it('reports each segment of a suspended turn with the Agents runtime', async () => {
+				const { provider, telemetry, turnInput, input, environment } = setup();
+				environment.instanceContextEnabled = false;
+				environment.nodeUsageEnabled = true;
+				turnInput.buildInput.mockImplementation(async (_environment, _runtime, params) => {
+					params.onInstanceContextInjection?.(injection);
+					return input;
+				});
+				const start = startTurn({ memory: createMemory() });
+
+				const startHandle = await provider.prepareTurn(start);
+				startHandle.onChunk?.({
+					type: 'tool-call',
+					toolCallId: 'tc-1',
+					toolName: 'ask-user',
+					input: {},
+				});
+				startHandle.onChunk?.({
+					type: 'finish',
+					finishReason: 'tool-calls',
+					model: 'anthropic/claude-sonnet',
+					usage: { promptTokens: 10, completionTokens: 2, totalTokens: 12 },
+				});
+				await startHandle.onSettled?.({ executionId: 'exec-1', status: 'suspended' });
+
+				const resumeHandle = await provider.prepareTurn(resumeOf(start));
+				await resumeHandle.onSettled?.({ executionId: 'exec-2', status: 'completed' });
+
+				const rows = contextRows(telemetry);
+				for (const row of rows) {
+					expect(
+						TELEMETRY_EVENT.INSTANCE_AI.INSTANCE_CONTEXT_TURN.getValidationError(row),
+					).toBeNull();
+				}
+				expect(rows).toEqual([
+					expect.objectContaining({
+						runtime: 'agents',
+						run_id: 'run-1',
+						segment: 'suspended',
+						status: 'suspended',
+						instance_context_enabled: false,
+						node_usage_enabled: true,
+						block_state: 'absent',
+						tool_calls: 1,
+						turn_total_tokens: 12,
+						hub_skill_snapshot_sequence: 1,
+					}),
+					expect.objectContaining({
+						runtime: 'agents',
+						run_id: 'run-1',
+						segment: 'resumed',
+						status: 'completed',
+						instance_context_enabled: false,
+						node_usage_enabled: true,
+						block_state: 'absent',
+						tool_calls: 0,
+						hub_skill_snapshot_sequence: 2,
+					}),
+				]);
+				const stored = await start.memory.getThread('thread-1');
+				expect(stored?.metadata).not.toHaveProperty('assistantSuspendedContextTurn');
 			});
 		});
 

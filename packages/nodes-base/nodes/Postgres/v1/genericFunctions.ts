@@ -3,7 +3,7 @@ import { UserError } from '@n8n/errors';
 import type pgPromise from 'pg-promise';
 import type pg from 'pg-promise/typescript/pg-subset';
 
-import { getResolvables } from '@utils/utilities';
+import { resolveExpressions } from '@utils/utilities';
 
 import type { PgpDatabase } from '../v2/helpers/interfaces';
 
@@ -188,6 +188,7 @@ export async function pgQueryV2(
 	options?: {
 		overrideMode?: string;
 		resolveExpression?: boolean;
+		literalExpressions?: boolean;
 	},
 ): Promise<IDataObject[]> {
 	const additionalFields = this.getNodeParameter('additionalFields', 0);
@@ -206,9 +207,9 @@ export async function pgQueryV2(
 		let query = this.getNodeParameter('query', i) as string;
 
 		if (options?.resolveExpression) {
-			for (const resolvable of getResolvables(query)) {
-				query = query.replace(resolvable, this.evaluateExpression(resolvable, i) as string);
-			}
+			query = resolveExpressions(query, (resolvable) => this.evaluateExpression(resolvable, i), {
+				legacy: !options.literalExpressions,
+			});
 		}
 
 		const values = valuesArray[i];

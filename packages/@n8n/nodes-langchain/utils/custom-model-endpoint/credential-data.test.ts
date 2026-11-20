@@ -1,4 +1,4 @@
-import { readCustomModelEndpointCredential } from './credential-data';
+import { readCustomModelEndpointCredential, readOpenAiCredential } from './credential-data';
 
 describe('readCustomModelEndpointCredential', () => {
 	describe('Base URL', () => {
@@ -29,6 +29,30 @@ describe('readCustomModelEndpointCredential', () => {
 			});
 
 			expect(login).toEqual({ type: 'bearer', token: 'sk-test' });
+		});
+
+		it.each<[string, 'header' | 'body' | undefined, 'header' | 'body']>([
+			['sends the credentials in the header by default', undefined, 'header'],
+			['sends them in the body when asked', 'body', 'body'],
+		])('reads an OAuth2 login and %s', (_name, sendCredentialsIn, expected) => {
+			const { login } = readCustomModelEndpointCredential({
+				authentication: 'oauth2',
+				tokenUrl: ' https://login.example.com/token ',
+				clientId: ' client-1 ',
+				// A secret may start or end with a space on purpose
+				clientSecret: ' cs-9f2a71c4ab ',
+				scope: ' read write ',
+				...(sendCredentialsIn ? { sendCredentialsIn } : {}),
+			});
+
+			expect(login).toEqual({
+				type: 'oauth2',
+				tokenUrl: 'https://login.example.com/token',
+				clientId: 'client-1',
+				clientSecret: ' cs-9f2a71c4ab ',
+				scope: 'read write',
+				sendCredentialsIn: expected,
+			});
 		});
 
 		it('reads the key, the header name and the prefix of "API key in header"', () => {
@@ -99,5 +123,31 @@ describe('readCustomModelEndpointCredential', () => {
 			expect(readCustomModelEndpointCredential({}).gatewayHeaders).toEqual({});
 			expect(readCustomModelEndpointCredential({ gatewayHeaders: {} }).gatewayHeaders).toEqual({});
 		});
+	});
+});
+
+describe('readOpenAiCredential', () => {
+	it('reads the key as a Bearer login and the custom header as a gateway header', () => {
+		const endpoint = readOpenAiCredential({
+			apiKey: ' sk-test ',
+			url: 'https://gateway.example.com/v1/',
+			organizationId: ' org-1 ',
+			header: true,
+			headerName: ' x-tenant ',
+			headerValue: 'acme',
+		});
+
+		expect(endpoint).toEqual({
+			baseUrl: 'https://gateway.example.com/v1',
+			login: { type: 'bearer', token: 'sk-test' },
+			gatewayHeaders: { 'OpenAI-Organization': 'org-1', 'x-tenant': 'acme' },
+		});
+	});
+
+	it.each([
+		['the field was never saved', {}],
+		['the field was cleared', { url: '   ' }],
+	])('falls back to the OpenAI base URL when %s', (_name, data) => {
+		expect(readOpenAiCredential(data).baseUrl).toBe('https://api.openai.com/v1');
 	});
 });

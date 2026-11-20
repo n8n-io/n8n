@@ -1,6 +1,8 @@
 import {
 	acceptedMimeTypesFromCapabilities,
+	instanceAiThreadSubjectSchema,
 	type InstanceAiAttachment,
+	type InstanceAiThreadSubject,
 	type InstanceAiThreadOrigin,
 	type InstanceAiThreadSource,
 } from '@n8n/api-types';
@@ -84,7 +86,11 @@ export function isKnownAssistantAgentThread(threadId: string): boolean {
 	return knownAgentThreads.has(threadId);
 }
 
-const launchMarkerSchema = z.object({ projectId: z.string().min(1) });
+const launchMarkerSchema = z.object({
+	projectId: z.string().min(1),
+	// An invalid subject must not drop the marker, which says which runtime runs the thread.
+	subject: instanceAiThreadSubjectSchema.optional().catch(undefined),
+});
 
 /** A new Assistant agent thread: its project, and where it came from for telemetry. */
 export interface AssistantAgentThreadLaunch {
@@ -94,6 +100,8 @@ export interface AssistantAgentThreadLaunch {
 	templateId?: string;
 	/** Hand-off context. Only the launch telemetry reads it. */
 	sourceContext?: Record<string, unknown>;
+	/** The resource that the thread starts on. The first message binds it on the server. */
+	subject?: InstanceAiThreadSubject;
 }
 
 /** Link a thread that starts from a self-healing result to that result. */
@@ -123,8 +131,7 @@ const launchKey = (threadId: string) => `n8n-assistant-agent-launch:${threadId}`
  * fields into the hand-off stash and remove the marker (AST-1898).
  */
 export function stashAssistantAgentLaunch(threadId: string, launch: AssistantAgentThreadLaunch) {
-	rememberAssistantAgentThread(threadId, launch.projectId);
-	localStorage.setItem(launchKey(threadId), JSON.stringify({ projectId: launch.projectId }));
+	markAssistantAgentLaunch(threadId, launch);
 	useTelemetry().track('User launched Instance AI thread', {
 		thread_id: threadId,
 		instance_id: useRootStore().instanceId,
@@ -136,8 +143,28 @@ export function stashAssistantAgentLaunch(threadId: string, launch: AssistantAge
 	});
 }
 
-/** The project of a new thread that the server does not know yet. */
-export function getAssistantAgentLaunch(threadId: string): { projectId: string } | undefined {
+/**
+ * Marks a new thread as an Assistant agent thread without the launch telemetry,
+ * for a thread whose launch another place tracks.
+ */
+export function markAssistantAgentLaunch(
+	threadId: string,
+	launch: Pick<AssistantAgentThreadLaunch, 'projectId' | 'subject'>,
+): void {
+	rememberAssistantAgentThread(threadId, launch.projectId);
+	localStorage.setItem(
+		launchKey(threadId),
+		JSON.stringify({
+			projectId: launch.projectId,
+			...(launch.subject ? { subject: launch.subject } : {}),
+		}),
+	);
+}
+
+/** The project and the subject of a new thread that the server does not know yet. */
+export function getAssistantAgentLaunch(
+	threadId: string,
+): { projectId: string; subject?: InstanceAiThreadSubject } | undefined {
 	const raw = localStorage.getItem(launchKey(threadId));
 	if (!raw) return undefined;
 	const parsed = launchMarkerSchema.safeParse(jsonParse(raw, { fallbackValue: null }));

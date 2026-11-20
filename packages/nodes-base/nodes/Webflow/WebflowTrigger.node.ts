@@ -9,6 +9,7 @@ export class WebflowTrigger extends VersionedNodeType {
 		const baseDescription: INodeTypeBaseDescription = {
 			displayName: 'Webflow Trigger',
 			name: 'webflowTrigger',
+			schemaPath: 'Webflow',
 			icon: 'file:webflow.svg',
 			group: ['trigger'],
 			description: 'Handle Webflow events via webhooks',

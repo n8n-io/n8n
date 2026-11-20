@@ -1,0 +1,72 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"accept_all": {
+			"type": ["boolean", "null"]
+		},
+		"company": {
+			"type": ["null", "string"]
+		},
+		"domain": {
+			"type": "string"
+		},
+		"email": {
+			"type": ["null", "string"]
+		},
+		"first_name": {
+			"type": ["null", "string"]
+		},
+		"last_name": {
+			"type": ["null", "string"]
+		},
+		"linkedin_url": {
+			"type": ["null", "string"]
+		},
+		"phone_number": {},
+		"position": {
+			"type": ["null", "string"]
+		},
+		"score": {
+			"type": ["null", "number"]
+		},
+		"source_type": {
+			"type": ["null", "string"]
+		},
+		"sources": {
+			"items": {
+				"properties": {
+					"domain": {
+						"type": "string"
+					},
+					"extracted_on": {
+						"type": "string"
+					},
+					"last_seen_on": {
+						"type": "string"
+					},
+					"still_on_page": {
+						"type": "boolean"
+					},
+					"uri": {
+						"type": "string"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"twitter": {},
+		"verification": {
+			"properties": {
+				"date": {
+					"type": ["null", "string"]
+				},
+				"status": {
+					"type": ["null", "string"]
+				}
+			},
+			"type": "object"
+		}
+	},
+	"type": "object"
+}

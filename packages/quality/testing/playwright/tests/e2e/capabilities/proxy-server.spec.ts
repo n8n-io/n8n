@@ -24,7 +24,7 @@ test.describe(
 			expect(await services.proxy.wasRequestMade({ method: 'GET', path: '/health' })).toBe(false);
 
 			// Verify the mock endpoint works
-			const healthResponse = await fetch(`${services.proxy.url}/health`);
+			const healthResponse = await services.proxy.getMockedEndpoint('/health');
 			expect(healthResponse.ok).toBe(true);
 			const healthData = await healthResponse.json();
 			expect(healthData.status).toBe('healthy');
@@ -61,7 +61,7 @@ test.describe(
 		test('should use stored expectations respond to api request', async ({ services }) => {
 			await services.proxy.loadExpectations('proxy-server');
 
-			const response = await fetch(`${services.proxy.url}/mock-endpoint`);
+			const response = await services.proxy.getMockedEndpoint('/mock-endpoint');
 			expect(response.ok).toBe(true);
 			const data = await response.json();
 			expect(data.title).toBe('delectus aut autem');

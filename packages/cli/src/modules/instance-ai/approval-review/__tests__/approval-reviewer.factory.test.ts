@@ -11,7 +11,7 @@ vi.mock('@n8n/instance-ai', async (importOriginal) => ({
 	judgeApproval,
 }));
 
-import type { Telemetry } from '@/telemetry';
+import type { TelemetryProxy } from '@n8n/backend-services';
 
 import type { InstanceAiCreditService } from '../../instance-ai-credit.service';
 import { InstanceAiApprovalReviewerFactory } from '../approval-reviewer.factory';
@@ -30,7 +30,7 @@ describe('InstanceAiApprovalReviewerFactory', () => {
 	const logger = mock<Logger>();
 	logger.scoped.mockReturnValue(logger);
 	const creditService = mock<InstanceAiCreditService>();
-	const telemetry = mock<Telemetry>();
+	const telemetry = mock<TelemetryProxy>();
 	const factory = new InstanceAiApprovalReviewerFactory(logger, creditService, telemetry);
 
 	const eventBus = mock<InstanceAiEventBus>();
@@ -85,7 +85,7 @@ describe('InstanceAiApprovalReviewerFactory', () => {
 				decision: 'approve',
 				reason: 'The user asked to publish it.',
 			});
-			expect(getMessages).toHaveBeenCalledWith('thread-1', { limit: 30, resourceId: 'user-1' });
+			expect(getMessages).toHaveBeenCalledWith('thread-1', { limit: 200, resourceId: 'user-1' });
 			expect(judgeApproval).toHaveBeenCalledWith(
 				{
 					conversation: [{ role: 'user', text: 'Publish Lead router' }],
@@ -175,7 +175,7 @@ describe('InstanceAiApprovalReviewerFactory', () => {
 
 		it('tells the judge when it read only the newest messages of the thread', async () => {
 			getMessages.mockResolvedValue(
-				Array.from({ length: 30 }, () => ({
+				Array.from({ length: 200 }, () => ({
 					role: 'user',
 					content: [{ type: 'text', text: 'Publish Lead router' }],
 				})),

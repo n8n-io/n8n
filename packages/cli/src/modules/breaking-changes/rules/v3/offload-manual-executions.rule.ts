@@ -20,7 +20,7 @@ export class OffloadManualExecutionsRule implements IBreakingChangeInstanceRule 
 			version: 'v3',
 			title: 'Manual executions always run on workers in queue mode',
 			description:
-				'In queue mode, manual executions are always routed to workers. The OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS environment variable is removed and running manual executions on the main instance is no longer possible.',
+				'In queue mode, manual executions are always routed to workers. The OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS environment variable is removed and running manual executions on the main instance is no longer possible. Make sure your workers have enough memory to run manual executions.',
 			category: BreakingChangeCategory.instance,
 			impact: 'behaviorChanges',
 		};

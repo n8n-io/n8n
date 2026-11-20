@@ -3,6 +3,11 @@ import type { FrontendSettings } from '@n8n/api-types';
 export const defaultSettings: FrontendSettings = {
 	ai: {
 		allowSendingParameterValues: true,
+		allowModelTraining: true,
+	},
+	aiPreferences: {
+		enabled: true,
+		managedByEnv: false,
 	},
 	inE2ETests: false,
 	databaseType: 'sqlite',

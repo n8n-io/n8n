@@ -119,16 +119,15 @@ export class Agent extends WithTimestampsAndStringId {
 
 	/**
 	 * The identity this agent acts as. Today it is always a service account.
-	 * Null for an instance agent, and for an agent created while agent service
-	 * accounts were off.
+	 * Every agent has one. The identity cannot be deleted while the agent exists.
 	 */
 	@Index({ unique: true, where: '"identityId" IS NOT NULL' })
-	@Column({ type: 'uuid', nullable: true })
-	identityId: string | null;
+	@Column({ type: 'uuid' })
+	identityId: string;
 
-	@ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
+	@ManyToOne(() => User, { nullable: false, onDelete: 'RESTRICT' })
 	@JoinColumn({ name: 'identityId', foreignKeyConstraintName: 'FK_agents_identity' })
-	identity?: Relation<User> | null;
+	identity?: Relation<User>;
 
 	/** Draft revision. Fenced saves advance it to reject stale draft writes. */
 	@Column({ type: 'int', default: 0 })

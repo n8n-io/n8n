@@ -14,11 +14,11 @@ import {
 	CredentialsFinderService,
 	NodeTypesProxy,
 	PostHogClient,
+	TelemetryProxy,
 } from '@n8n/backend-services';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { EndpointsConfig, ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import {
-	ExecutionRepository,
 	GLOBAL_CHAT_USER_ROLE,
 	GLOBAL_MEMBER_ROLE,
 	GLOBAL_OWNER_ROLE,
@@ -45,6 +45,7 @@ import {
 import { McpConfig } from '../mcp.config';
 import { McpService } from '../mcp.service';
 import type { McpFeatureFlags } from '../mcp.service';
+import { McpAgentToolsService } from '../tools/agents/agent-tools.service';
 
 import { ActiveExecutions } from '@/active-executions';
 import { CollaborationService } from '@/collaboration/collaboration.service';
@@ -59,6 +60,7 @@ import { MigrationFindingQueryService } from '@/modules/breaking-changes/query/m
 import { MigrationFindingSyncService } from '@/modules/breaking-changes/sync/migration-finding-sync.service';
 import { MigrationFindingTriageService } from '@/modules/breaking-changes/triage/migration-finding-triage.service';
 import { SkillService, SkillsGate } from '@/modules/skills';
+import { AiPreferenceSettingsService } from '@/services/ai-preference-settings.service';
 import { DataTableProxyService } from '@n8n/backend-module-data-table';
 import { InstanceContextService } from '@/modules/instance-ai/instance-context.service';
 import {
@@ -74,7 +76,6 @@ import { NodeResourceExplorerService } from '@/services/node-resource-explorer.s
 import { ProjectService } from '@/services/project.service.ee';
 
 import { TagService } from '@/services/tag.service';
-import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
@@ -82,6 +83,7 @@ import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-hi
 import { ErrorWorkflowValidationService } from '@/workflows/error-workflow-validation.service';
 
 import { WorkflowService } from '@/workflows/workflow.service';
+import { WorkflowPublicationStatusService } from '@/workflows/publication/workflow-publication-status.service';
 import { McpPreferencesNoteService } from '../mcp-preferences-note.service';
 
 vi.mock('@n8n/mcp-apps/server', async (importOriginal) => ({
@@ -257,7 +259,7 @@ describe('McpService scope enforcement', () => {
 				tags: { disabled: false },
 				diagnostics: { enabled: false, frontendConfig: '' },
 			}),
-			mockInstance(Telemetry),
+			mockInstance(TelemetryProxy),
 			mockInstance(WorkflowRunner),
 			mockInstance(RoleService),
 			mockInstance(ProjectService),
@@ -267,7 +269,6 @@ describe('McpService scope enforcement', () => {
 			mockInstance(ProjectRepository),
 			mockInstance(FolderFinderService),
 			mockInstance(SharedWorkflowRepository),
-			mockInstance(ExecutionRepository),
 			mockInstance(ExecutionService),
 			mockInstance(ExecutionListService),
 			mockInstance(DataTableProxyService),
@@ -295,7 +296,9 @@ describe('McpService scope enforcement', () => {
 							(agentsActive && name === 'agents') ||
 							(breakingChangesActive && name === 'breaking-changes'),
 					),
-				settings: { get: () => undefined } as unknown as ModuleRegistry['settings'],
+				settings: {
+					get: (name: string) => (name === 'mcp' ? { preferencesEnabled: true } : undefined),
+				} as unknown as ModuleRegistry['settings'],
 			}),
 			mockInstance(EventService),
 			mockInstance(FolderService),
@@ -304,11 +307,13 @@ describe('McpService scope enforcement', () => {
 			mockInstance(ExecutionRedactionServiceProxy),
 			mockInstance(InstanceWriteAccessService),
 			mockInstance(McpPreferencesNoteService),
+			mockInstance(WorkflowPublicationStatusService),
 		);
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mockInstance(SkillsGate, { isEnabled: false });
+		mockInstance(AiPreferenceSettingsService, { isEnabled: true });
 	});
 
 	it.each([false, true])(
@@ -687,6 +692,24 @@ describe('McpService scope enforcement', () => {
 			expect(getRegisteredToolNames(server)).toContain('get_user_preferences');
 		});
 
+		it('registers no preference tool and drops the instructions while preferences are off', async () => {
+			mockInstance(AiPreferenceSettingsService, { isEnabled: false });
+			const server = await buildService().getServer(user, mcpFeatureFlags());
+			const registered = getRegisteredToolNames(server);
+			const instructions =
+				(server as unknown as { server: { _instructions?: string } }).server._instructions ?? '';
+
+			expect(
+				[
+					'get_user_preferences',
+					'save_user_preference',
+					'update_user_preference',
+					'undo_user_preference',
+				].filter((name) => registered.has(name)),
+			).toEqual([]);
+			expect(instructions).not.toContain('get_user_preferences');
+		});
+
 		it('is not a builder tool, so it stays out of the builder-gated set', () => {
 			expect(BUILDER_TOOLS.has('get_user_preferences')).toBe(false);
 		});
@@ -754,6 +777,27 @@ describe('McpService scope enforcement', () => {
 		expect(registered).not.toContain('move_workflows_to_folder');
 		expect(registered).toContain('search_projects');
 	});
+
+	it.each([false, true])(
+		'gates Agent move registration on the folder license: %s',
+		async (foldersLicensed) => {
+			mockInstance(McpAgentToolsService, {
+				registerTools: vi.fn((registerTool) => {
+					for (const name of ['move_agent', 'create_agent']) {
+						registerTool({ name, config: {}, handler: vi.fn() });
+					}
+				}),
+			});
+			const server = await buildService({ foldersLicensed, agentsActive: true }).getServer(
+				user,
+				mcpFeatureFlags(),
+			);
+			const registered = getRegisteredToolNames(server);
+
+			expect(registered.has('move_agent')).toBe(foldersLicensed);
+			expect(registered).toContain('create_agent');
+		},
+	);
 
 	it('registers all tools when no scopes are provided (API keys, legacy tokens)', async () => {
 		const service = buildService();

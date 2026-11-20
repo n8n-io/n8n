@@ -296,6 +296,37 @@ describe('UI Store', () => {
 		const credentialModalState = () =>
 			useUIStore().modalsById[CREDENTIAL_EDIT_MODAL_KEY] as NewCredentialsModal;
 
+		it('clears the fixed-only restriction when the credential modal opens outside Agents', () => {
+			const uiStore = useUIStore();
+
+			uiStore.openNewCredential(
+				'mcpOAuth2Api',
+				false,
+				false,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				{
+					fixedCredentialsOnly: true,
+				},
+			);
+
+			expect(credentialModalState().fixedCredentialsOnly).toBe(true);
+
+			uiStore.openExistingCredential('cred-1');
+
+			expect(credentialModalState().fixedCredentialsOnly).toBeUndefined();
+
+			uiStore.openExistingCredential('cred-1', { fixedCredentialsOnly: true });
+
+			expect(credentialModalState().fixedCredentialsOnly).toBe(true);
+
+			uiStore.openNewCredential('mcpOAuth2Api');
+
+			expect(credentialModalState().fixedCredentialsOnly).toBeUndefined();
+		});
+
 		it('should store the workflowId option in the modal state', () => {
 			const uiStore = useUIStore();
 

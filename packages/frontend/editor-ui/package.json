@@ -1,6 +1,6 @@
 {
   "name": "n8n-editor-ui",
-  "version": "2.48.0",
+  "version": "2.49.0",
   "description": "Workflow Editor UI for n8n",
   "main": "index.js",
   "type": "module",
@@ -144,6 +144,7 @@
     "luxon": "catalog:",
     "markdown-it": "catalog:",
     "markdown-it-footnote": "^4.0.0",
+    "mermaid": "catalog:",
     "miragejs": "^0.1.48",
     "n8n-workflow": "workspace:*",
     "nanoid": "catalog:",
