@@ -69,6 +69,35 @@ describe('matchesVendor', () => {
 	});
 });
 
+describe('matchesVendor with a `*` in a path prefix', () => {
+	const vendor = parseVendorFile(
+		'---\nname: tok\nhosts: api.tok.test\npath_prefixes: /bot*, /file/bot*\n---\nx',
+		'tok.md',
+	);
+
+	it('matches a segment that has text where the `*` is', () => {
+		expect(matchesVendor(vendor, 'api.tok.test', '/bot123:AAH-x/sendMessage')).toBe(true);
+		expect(matchesVendor(vendor, 'api.tok.test', '/bot123:AAH-x')).toBe(true);
+		expect(matchesVendor(vendor, 'api.tok.test', '/file/bot123:AAH-x/photos/a.jpg')).toBe(true);
+	});
+
+	it('does not match a segment without text for the `*`, or another path', () => {
+		expect(matchesVendor(vendor, 'api.tok.test', '/bot/sendMessage')).toBe(false);
+		expect(matchesVendor(vendor, 'api.tok.test', '/other/bot123:AA/x')).toBe(false);
+		expect(matchesVendor(vendor, 'api.tok.test', '/file/other')).toBe(false);
+	});
+
+	it('treats a dot in a prefix as a plain dot', () => {
+		const dotted = parseVendorFile(
+			'---\nname: d\nhosts: a.test\npath_prefixes: /v1.0/x*\n---\nx',
+			'd.md',
+		);
+
+		expect(matchesVendor(dotted, 'a.test', '/v1.0/xa/y')).toBe(true);
+		expect(matchesVendor(dotted, 'a.test', '/v1a0/xa/y')).toBe(false);
+	});
+});
+
 describe('the Gmail vendor file', () => {
 	it('loads and names the Gmail API of www.googleapis.com and gmail.googleapis.com', () => {
 		const gmail = loadVendorKnowledge('gmail');

@@ -11,6 +11,7 @@ import {
 	runWithRequestContext,
 	type RequestContext,
 } from './request-context';
+import { redactPathSecret } from './path-secret';
 import { isReadShaped } from './request-classifier';
 import type { Hydrator } from './router';
 import { canonicalHost, vendorForRequest } from './vendor-knowledge';
@@ -52,7 +53,10 @@ export class HttpGuardRouter {
 
 	constructor(private readonly deps: HttpGuardRouterDeps) {}
 
-	async handle(req: CapturedRequest, signal?: AbortSignal): Promise<Response> {
+	async handle(incoming: CapturedRequest, signal?: AbortSignal): Promise<Response> {
+		// Take a secret out of the path first. Nothing below, not a log, an error or the gym, sees it.
+		const { url, secret } = redactPathSecret(incoming.url, this.deps.profile.pathSecret);
+		const req = secret === undefined ? incoming : { ...incoming, url };
 		const host = canonicalHost(req.url.hostname);
 		const vendor = vendorForRequest(host, req.url.pathname);
 		if (!vendor) return refusal(403, 'mcp-guard: this host is not available in a preview chat');
@@ -60,6 +64,7 @@ export class HttpGuardRouter {
 		// The real reads of the hydration use the credential and the host of this request.
 		const context: RequestContext = { origin: `${req.url.protocol}//${req.url.host}`, signal };
 		if (req.headers.authorization) context.authorization = req.headers.authorization;
+		if (secret !== undefined) context.pathSecret = secret;
 		return await runWithRequestContext(context, async () => {
 			const readShaped = isReadShaped(req, vendor.readPaths, vendor.graphqlPaths);
 			const { name, args } = toToolCall(req, readShaped);

@@ -5,6 +5,7 @@ import { createGymSender, createHttpToolCaller, isReadToolName } from './http-to
 import { createPlanLlm, type HydrationModel } from './hydration-llm';
 import { PLAN_INSTRUCTIONS } from './hydration-prompts';
 import { sendToNetwork, type CapturedRequest } from './network';
+import { fillPathSecret } from './path-secret';
 import { PlanHydrator } from './plan-hydrator';
 import { isReadShaped } from './request-classifier';
 import { currentRequestContext, withRequestSignal } from './request-context';
@@ -72,11 +73,14 @@ export class HttpRunRegistry {
 		);
 
 		// The real reads use the credential of the request that is being answered.
+		const sendReal =
+			this.cfg.send ??
+			(async (req: CapturedRequest) => await sendToNetwork(req, { timeoutMs: REQUEST_TIMEOUT_MS }));
 		const upstream = createHttpToolCaller({
 			origin: () => currentRequestContext().origin,
-			send:
-				this.cfg.send ??
-				(async (req) => await sendToNetwork(req, { timeoutMs: REQUEST_TIMEOUT_MS })),
+			// The path has a placeholder where the API wants a secret. Fill it only on the way out.
+			send: async (req) =>
+				await sendReal(fillPathSecret(req, profile.pathSecret, currentRequestContext().pathSecret)),
 			headers: () => {
 				const { authorization } = currentRequestContext();
 				return { accept: 'application/json', ...(authorization && { authorization }) };
@@ -89,9 +93,15 @@ export class HttpRunRegistry {
 				isReadShaped(req, vendor.readPaths, vendor.graphqlPaths) &&
 				matchesVendor(vendor, req.url.hostname, req.url.pathname),
 		});
+		const sendToGym = createGymSender({
+			gymUrl,
+			bearer: () => token,
+			timeoutMs: REQUEST_TIMEOUT_MS,
+		});
 		const gym = createHttpToolCaller({
 			origin: () => currentRequestContext().origin,
-			send: createGymSender({ gymUrl, bearer: () => token, timeoutMs: REQUEST_TIMEOUT_MS }),
+			// An API with a secret in the path finds the tenant by it. Use the token of the tenant there.
+			send: async (req) => await sendToGym(fillPathSecret(req, profile.pathSecret, token)),
 			headers: () => ({ accept: 'application/json' }),
 		});
 		const hydrator = new PlanHydrator({

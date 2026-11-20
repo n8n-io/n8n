@@ -1,5 +1,6 @@
 import { isRecord } from '@n8n/utils/is-record';
 import { looksLikeId, type HttpToolArgs } from './http-tool-caller';
+import type { PathSecretPattern } from './path-secret';
 
 /** What the guard needs to run one HTTP vendor on a gym. The instructions are in `vendors/<name>.md`. */
 export interface HttpVendorProfile {
@@ -18,6 +19,9 @@ export interface HttpVendorProfile {
 	credentialField: string;
 	// The gym issues a credential only for a tenant with an account. Seed one placeholder.
 	placeholderSeed: unknown;
+	// Set when the API puts a secret in the URL path. The guard removes the secret from the path at once.
+	// The real reads get it back, and the gym path gets the token of the tenant.
+	pathSecret?: PathSecretPattern;
 	// Adds fields to a real JSON answer that the model needs to copy it (decoded text, flat headers).
 	enrich?: (json: unknown) => unknown;
 	// Last change to an overlay, after the checks. Code adds data here that the real data does not hold.

@@ -6,6 +6,7 @@ import { UnexpectedError } from '@n8n/errors';
 
 import type { McpCaller } from './mcp-upstream';
 import type { CapturedRequest } from './network';
+import { REDACTED_SECRET } from './path-secret';
 
 /**
  * The hydration code is written for tools: a name, args, a result. An HTTP request is turned into one,
@@ -28,7 +29,11 @@ export const looksLikeId = (segment: string): boolean => segment.length >= 8 && 
 function describePath(method: string, pathname: string): string {
 	const segments = pathname.split('/').filter((s) => s !== '');
 	const nouns = segments.filter(
-		(s) => !looksLikeId(s) && !VERSION_SEGMENT.test(s) && !NOISE_SEGMENTS.has(s),
+		(s) =>
+			!looksLikeId(s) &&
+			!VERSION_SEGMENT.test(s) &&
+			!NOISE_SEGMENTS.has(s) &&
+			!s.includes(REDACTED_SECRET),
 	);
 	if (method === 'GET' || method === 'HEAD') {
 		const last = segments[segments.length - 1];

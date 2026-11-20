@@ -12,6 +12,7 @@ export interface VendorKnowledge {
 	name: string;
 	hosts: string[];
 	// Only paths under one of these prefixes belong to the vendor. A host can serve several APIs.
+	// A `*` stands for the rest of one path segment, such as the token in `/bot<token>`.
 	pathPrefixes: string[];
 	// Hosts whose requests go to the real network as they are (sign-in and token refresh).
 	passthroughHosts: string[];
@@ -88,12 +89,19 @@ export function loadVendorKnowledge(name: string): VendorKnowledge {
 	return vendor;
 }
 
+const escapeRegExp = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+// A prefix without `*` is a plain text. With `*`, each one matches one or more characters of a segment.
+function matchesPrefix(prefix: string, pathname: string): boolean {
+	if (!prefix.includes('*')) return pathname === prefix || pathname.startsWith(`${prefix}/`);
+	const source = prefix.split('*').map(escapeRegExp).join('[^/]+');
+	return new RegExp(`^${source}(?:/|$)`).test(pathname);
+}
+
 export function matchesVendor(vendor: VendorKnowledge, host: string, pathname: string): boolean {
 	if (!vendor.hosts.includes(canonicalHost(host))) return false;
 	if (vendor.pathPrefixes.length === 0) return true;
-	return vendor.pathPrefixes.some(
-		(prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
-	);
+	return vendor.pathPrefixes.some((prefix) => matchesPrefix(prefix, pathname));
 }
 
 // The vendors that have a file. Add a name here when a file is added.
