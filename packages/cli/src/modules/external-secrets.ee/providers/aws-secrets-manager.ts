@@ -11,6 +11,7 @@ import {
 	type SecretsProviderOperationFailureParams,
 } from '../errors/secrets-provider-errors';
 import { UnknownAuthTypeError } from '../errors/unknown-auth-type.error';
+import { formatSecretPath } from '../secret-path';
 import { SecretsProvider, type SecretsProviderSettings } from '../types';
 
 export type Secret = {
@@ -136,11 +137,15 @@ export class AwsSecretsManager extends SecretsProvider {
 			// Drive the AWS SDK's HTTP transport through n8n's outbound client,
 			// so its calls reuse our agents (proxy + TLS) like every other outbound request.
 			// SigV4 signing and the credential chain stay with the SDK.
+			//
+			// Keep connections pooled so the sequential ListSecrets/BatchGetSecretValue refresh
+			// reuses sockets instead of paying a fresh TLS handshake per request. `maxSockets`
+			// caps concurrent sockets, matching the AWS SDK's own defaults.
 			clientConfig.requestHandler = this.outboundHttp
 				.transport({
-					ssrf: 'disabled', // fixed AWS-resolved Secrets Manager host, not user-controlled
+					useDefaultSsrfPolicy: 'unsafe', // fixed AWS-resolved Secrets Manager host, not user-controlled
 				})
-				.getNodeAgent();
+				.getNodeAgent({ keepAlive: true, maxSockets: 50 });
 
 			const { SecretsManager } = await import('@aws-sdk/client-secrets-manager');
 			this.client = new SecretsManager(clientConfig);
@@ -219,7 +224,7 @@ export class AwsSecretsManager extends SecretsProvider {
 	}
 
 	getSecretNames() {
-		return Object.keys(this.cachedSecrets);
+		return Object.keys(this.cachedSecrets).map((name) => formatSecretPath([name]));
 	}
 
 	private assertAuthType(context: AwsSecretsManagerContext) {

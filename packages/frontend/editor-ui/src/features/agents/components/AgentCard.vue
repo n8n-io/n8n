@@ -6,28 +6,34 @@ import {
 	N8nBadge,
 	N8nCard,
 	N8nIcon,
+	N8nIconButton,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { MODAL_CONFIRM } from '@/app/constants';
+import PublicationIndicator from '@/app/components/PublicationIndicator.vue';
 import TimeAgo from '@/app/components/TimeAgo.vue';
 import { useToast } from '@n8n/composables/useToast';
 import { useSettingsStore } from '@n8n/stores/settings.store';
-import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
-import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
+import { useMcp, useMCPStore } from '@n8n/frontend-module-mcp';
 import { deleteAgent } from '../composables/useAgentApi';
+import { useAgentArchive } from '../composables/useAgentArchive';
 import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
 import { useAgentPermissions } from '../composables/useAgentPermissions';
 import { useAgentPublish } from '../composables/useAgentPublish';
 import { removeProjectAgentFromListCache } from '../composables/useProjectAgentsList';
+import type { AgentListItem } from '../agent.types';
 import type { AgentResource } from '../types';
+import { hasAgentUnpublishedChanges } from '../utils/agentPublication';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
+import type { ActionToggleItem } from '@n8n/design-system/components/N8nActionToggle/ActionToggle.types';
 
 const props = defineProps<{
-	agent: AgentResource;
+	agent: AgentListItem;
 	projectId: string;
+	showFolderPath?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -35,6 +41,11 @@ const emit = defineEmits<{
 	published: [agent: AgentResource];
 	unpublished: [agent: AgentResource];
 	deleted: [agentId: string];
+	archived: [agent: AgentResource];
+	unarchived: [agent: AgentResource];
+	'new-chat': [agentId: string, projectId: string];
+	duplicate: [agentId: string];
+	move: [agentId: string];
 }>();
 
 const locale = useI18n();
@@ -45,11 +56,15 @@ const mcpStore = useMCPStore();
 const mcp = useMcp();
 const { openAgentConfirmationModal } = useAgentConfirmationModal();
 const { publish, unpublish } = useAgentPublish();
-const { canUpdate, canDelete, canPublish, canUnpublish } = useAgentPermissions(
+const { archive, unarchive } = useAgentArchive();
+const { canCreate, canUpdate, canDelete, canPublish, canUnpublish } = useAgentPermissions(
 	() => props.projectId,
 );
 
 const isPublished = computed(() => props.agent.activeVersionId !== null);
+
+const hasUnpublishedChanges = computed(() => hasAgentUnpublishedChanges(props.agent));
+const isUntitled = computed(() => props.agent.name === locale.baseText('agents.new.defaultName'));
 
 const isMcpEnabled = computed(
 	() => settingsStore.isModuleActive('mcp') && !!settingsStore.moduleSettings.mcp?.mcpAccessEnabled,
@@ -67,24 +82,70 @@ watch([() => props.agent, () => props.agent.availableInMCP], () => {
 	mcpToggleStatus.value = null;
 });
 
-const showMcpIndicator = computed(() => isMcpEnabled.value && isAvailableInMCP.value);
+// MCP tools refuse an archived agent, so the indicator would mislead.
+const showMcpIndicator = computed(
+	() => isMcpEnabled.value && isAvailableInMCP.value && !props.agent.isArchived,
+);
 
 const favoriteStore = useFavoritesStore();
 const isFavorite = computed(() => favoriteStore.isFavorite(props.agent.id, 'agent'));
 
-const actions = computed(() => {
-	const items: Array<{ value: string; label: string; divided?: boolean }> = [];
+const archiveActions = computed((): ActionToggleItem[] => {
+	if (!canDelete.value) return [];
+	if (!props.agent.isArchived) {
+		return [{ value: 'archive', label: locale.baseText('menuActions.archive'), divided: true }];
+	}
+	return [
+		{
+			value: 'delete',
+			label: locale.baseText('agents.list.actions.delete'),
+			divided: true,
+			destructive: true,
+		},
+		{ value: 'unarchive', label: locale.baseText('menuActions.unarchive') },
+	];
+});
 
-	if (isPublished.value && canUnpublish.value) {
-		items.push({ value: 'unpublish', label: locale.baseText('agents.list.actions.unpublish') });
-	} else if (!isPublished.value && canPublish.value) {
-		items.push({ value: 'publish', label: locale.baseText('agents.list.actions.publish') });
+const favoriteAction = computed(
+	(): ActionToggleItem => ({
+		value: 'toggleFavorite',
+		label: locale.baseText(isFavorite.value ? 'favorites.remove' : 'favorites.add'),
+	}),
+);
+
+const actions = computed(() => {
+	// An archived agent is read-only. Offer only the favorite and archive actions.
+	if (props.agent.isArchived) return [favoriteAction.value, ...archiveActions.value];
+
+	const items: ActionToggleItem[] = [];
+
+	if (canUpdate.value && settingsStore.isFoldersFeatureEnabled) {
+		items.push({ value: 'move', label: locale.baseText('agents.folders.move') });
 	}
 
 	items.push({
-		value: 'toggleFavorite',
-		label: locale.baseText(isFavorite.value ? 'favorites.remove' : 'favorites.add'),
+		...favoriteAction.value,
+		divided: !isPublished.value ? !canPublish.value : !canUnpublish.value,
 	});
+
+	if (canCreate.value) {
+		items.push({
+			value: 'duplicate',
+			label: locale.baseText('agents.list.actions.duplicate'),
+		});
+	}
+
+	if (isPublished.value && canUnpublish.value) {
+		items.push({
+			value: 'unpublish',
+			label: locale.baseText('agents.list.actions.unpublish'),
+		});
+	} else if (!isPublished.value && canPublish.value) {
+		items.push({
+			value: 'publish',
+			label: locale.baseText('agents.list.actions.publish'),
+		});
+	}
 
 	if (isMcpEnabled.value && canUpdate.value) {
 		items.push({
@@ -94,18 +155,11 @@ const actions = computed(() => {
 					? 'agents.list.actions.disableMCPAccess'
 					: 'agents.list.actions.enableMCPAccess',
 			),
+			divided: true,
 		});
 	}
 
-	if (canDelete.value) {
-		items.push({
-			value: 'delete',
-			label: locale.baseText('agents.list.actions.delete'),
-			divided: items.length > 0,
-		});
-	}
-
-	return items;
+	return [...items, ...archiveActions.value];
 });
 
 const showActions = computed(() => actions.value.length > 0);
@@ -119,8 +173,39 @@ const formattedCreatedAtDate = computed(() => {
 	);
 });
 
+async function deleteArchivedAgent() {
+	const confirmed = await openAgentConfirmationModal({
+		title: locale.baseText('agents.delete.modal.title', {
+			interpolate: { name: props.agent.name },
+		}),
+		description: locale.baseText('agents.delete.modal.description', {
+			interpolate: { name: props.agent.name },
+		}),
+		isDestructive: true,
+		confirmButtonText: locale.baseText('agents.delete.modal.button.delete'),
+		cancelButtonText: locale.baseText('generic.cancel'),
+	});
+	if (confirmed !== MODAL_CONFIRM) return;
+	await deleteAgent(rootStore.restApiContext, props.projectId, props.agent.id);
+	removeProjectAgentFromListCache(props.projectId, props.agent.id);
+	favoriteStore.removeFavoriteLocally(props.agent.id, 'agent');
+	emit('deleted', props.agent.id);
+}
+
 async function onAction(action: string) {
-	if (action === 'publish') {
+	if (action === 'move') {
+		emit('move', props.agent.id);
+
+		return;
+	}
+
+	if (action === 'archive') {
+		const updated = await archive(props.agent);
+		if (updated) emit('archived', updated);
+	} else if (action === 'unarchive') {
+		const updated = await unarchive(props.agent);
+		if (updated) emit('unarchived', updated);
+	} else if (action === 'publish') {
 		const updated = await publish(props.projectId, props.agent.id);
 		if (updated) emit('published', updated);
 	} else if (action === 'unpublish') {
@@ -131,21 +216,9 @@ async function onAction(action: string) {
 	} else if (action === 'toggleMCPAccess') {
 		await toggleMCPAccess(!isAvailableInMCP.value);
 	} else if (action === 'delete') {
-		const confirmed = await openAgentConfirmationModal({
-			title: locale.baseText('agents.delete.modal.title', {
-				interpolate: { name: props.agent.name },
-			}),
-			description: locale.baseText('agents.delete.modal.description', {
-				interpolate: { name: props.agent.name },
-			}),
-			confirmButtonText: locale.baseText('agents.delete.modal.button.delete'),
-			cancelButtonText: locale.baseText('generic.cancel'),
-		});
-		if (confirmed !== MODAL_CONFIRM) return;
-		await deleteAgent(rootStore.restApiContext, props.projectId, props.agent.id);
-		removeProjectAgentFromListCache(props.projectId, props.agent.id);
-		favoriteStore.removeFavoriteLocally(props.agent.id, 'agent');
-		emit('deleted', props.agent.id);
+		await deleteArchivedAgent();
+	} else if (action === 'duplicate') {
+		emit('duplicate', props.agent.id);
 	}
 }
 
@@ -163,28 +236,48 @@ async function toggleMCPAccess(enabled: boolean) {
 </script>
 
 <template>
-	<N8nCard :class="$style.cardLink" data-test-id="agent-card" @click="emit('select', agent.id)">
+	<N8nCard
+		:class="[$style.cardLink, { [$style.cardArchived]: agent.isArchived }]"
+		data-test-id="agent-card"
+		@click="emit('select', agent.id)"
+	>
 		<template #header>
-			<N8nText tag="h2" bold :class="$style.cardHeading" data-test-id="agent-card-name">
+			<N8nText
+				tag="h2"
+				:bold="!isUntitled"
+				:color="isUntitled ? 'text-light' : undefined"
+				:class="[
+					$style.cardHeading,
+					{ [$style.untitledName]: isUntitled, [$style.cardHeadingArchived]: agent.isArchived },
+				]"
+				data-test-id="agent-card-name"
+			>
 				{{ agent.name }}
 				<N8nBadge
 					v-if="!canUpdate"
 					:class="$style.readonlyBadge"
-					theme="tertiary"
-					bold
+					variant="outline"
 					data-test-id="agent-card-readonly-badge"
 				>
 					{{ locale.baseText('agents.list.readonly') }}
 				</N8nBadge>
 			</N8nText>
 		</template>
+		<N8nText
+			v-if="showFolderPath && agent.folderPath?.length"
+			:class="$style.folderPath"
+			size="small"
+			color="text-light"
+			>{{ agent.folderPath.join(' / ') }}</N8nText
+		>
 		<div :class="$style.cardDescription">
 			<span>
 				{{ locale.baseText('agents.list.updated') }}
-				<TimeAgo :date="String(agent.updatedAt)" /> |
+				<TimeAgo :date="String(agent.updatedAt)" />
 			</span>
-			<span> {{ locale.baseText('agents.list.created') }} {{ formattedCreatedAtDate }} </span>
-			<span v-if="showMcpIndicator">|</span>
+			<span :class="$style.divider">|</span>
+			<span>{{ locale.baseText('agents.list.created') }} {{ formattedCreatedAtDate }}</span>
+			<span v-if="showMcpIndicator" :class="$style.divider">|</span>
 			<span v-if="showMcpIndicator" :class="$style.mcpIndicator" data-test-id="agent-card-mcp">
 				<N8nTooltip placement="right" :content="locale.baseText('agents.list.availableInMCP')">
 					<N8nIcon icon="mcp" size="medium" />
@@ -193,16 +286,40 @@ async function toggleMCPAccess(enabled: boolean) {
 		</div>
 		<template #append>
 			<div :class="$style.cardActions" @click.stop>
-				<div
-					v-if="isPublished"
-					:class="$style.publishIndicator"
-					data-test-id="agent-card-publish-indicator"
+				<N8nText
+					v-if="agent.isArchived"
+					color="text-light"
+					size="small"
+					bold
+					class="mr-2xs"
+					data-test-id="agent-card-archived"
 				>
-					<span :class="$style.publishIndicatorDot" />
-					<N8nText size="small" color="text-base">
-						{{ locale.baseText('agents.list.published') }}
-					</N8nText>
-				</div>
+					{{ locale.baseText('workflows.item.archived') }}
+				</N8nText>
+				<PublicationIndicator
+					v-else-if="isPublished"
+					:label="
+						locale.baseText(
+							hasUnpublishedChanges ? 'agents.list.changesToPublish' : 'agents.list.published',
+						)
+					"
+					:variant="hasUnpublishedChanges ? 'warning' : 'success'"
+					:data-state="hasUnpublishedChanges ? 'changes-to-publish' : 'published'"
+					data-test-id="agent-card-publish-indicator"
+				/>
+				<N8nTooltip
+					v-if="!agent.isArchived"
+					:content="locale.baseText('agents.list.actions.newTest')"
+				>
+					<N8nIconButton
+						icon="flask-conical"
+						variant="ghost"
+						size="medium"
+						:aria-label="locale.baseText('agents.list.actions.newTest')"
+						data-test-id="agent-card-new-chat"
+						@click="emit('new-chat', agent.id, projectId)"
+					/>
+				</N8nTooltip>
 				<N8nActionToggle
 					v-if="showActions"
 					:actions="actions"
@@ -216,15 +333,12 @@ async function toggleMCPAccess(enabled: boolean) {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/breakpoints';
+
 .cardLink {
-	transition: box-shadow 0.3s ease;
 	cursor: pointer;
 	padding: 0;
 	align-items: stretch;
-
-	&:hover {
-		box-shadow: var(--shadow--card-hover);
-	}
 }
 
 .cardHeading {
@@ -233,6 +347,20 @@ async function toggleMCPAccess(enabled: boolean) {
 	font-size: var(--font-size--sm);
 	word-break: break-word;
 	padding: var(--spacing--sm) 0 0 var(--spacing--sm);
+}
+
+.untitledName {
+	font-style: italic;
+}
+
+.cardHeadingArchived {
+	color: var(--color--text--tint-1);
+}
+
+.cardArchived {
+	background-color: var(--color--background--light-2);
+	border-color: var(--color--foreground--tint-1);
+	color: var(--color--text);
 }
 
 .readonlyBadge {
@@ -247,6 +375,12 @@ async function toggleMCPAccess(enabled: boolean) {
 	font-size: var(--font-size--2xs);
 	color: var(--color--text--tint-1);
 	gap: var(--spacing--2xs);
+	flex-wrap: wrap;
+}
+
+.folderPath {
+	padding: 0 var(--spacing--sm);
+	overflow-wrap: anywhere;
 }
 
 .mcpIndicator {
@@ -254,9 +388,13 @@ async function toggleMCPAccess(enabled: boolean) {
 	align-items: center;
 }
 
+.divider {
+	user-select: none;
+}
+
 .cardActions {
 	display: flex;
-	gap: var(--spacing--2xs);
+	gap: var(--spacing--4xs);
 	flex-direction: row;
 	justify-content: center;
 	align-items: center;
@@ -265,28 +403,7 @@ async function toggleMCPAccess(enabled: boolean) {
 	cursor: default;
 }
 
-.publishIndicator {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
-	padding: var(--spacing--4xs) var(--spacing--2xs);
-	border-radius: var(--spacing--4xs);
-	border: var(--border);
-
-	* {
-		// This is needed to line height up with ownership badge
-		line-height: calc(var(--font-size--sm) + 1px);
-	}
-}
-
-.publishIndicatorDot {
-	width: var(--spacing--2xs);
-	height: var(--spacing--2xs);
-	border-radius: 50%;
-	background-color: var(--color--mint-600);
-}
-
-@include mixins.breakpoint('sm-and-down') {
+@include breakpoints.breakpoint('sm-and-down') {
 	.cardLink {
 		--card--padding: 0 var(--spacing--sm) var(--spacing--sm);
 		--card--append--width: 100%;

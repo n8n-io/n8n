@@ -11,10 +11,11 @@ import {
 	type IPairedItemData,
 	NodeConnectionTypes,
 	type NodeExecutionHint,
+	READ_ONLY_ANNOTATIONS,
 } from 'n8n-workflow';
 
 import { addBinariesToItem } from './utils';
-import { prepareFieldsArray } from '../utils/utils';
+import { fieldNotFoundHint, prepareFieldsArray } from '../utils/utils';
 
 export class Aggregate implements INodeType {
 	description: INodeTypeDescription = {
@@ -26,6 +27,7 @@ export class Aggregate implements INodeType {
 		subtitle: '',
 		version: 1,
 		description: 'Combine a field from many items into a list in a single item',
+		annotations: READ_ONLY_ANNOTATIONS,
 		defaults: {
 			name: 'Aggregate',
 		},
@@ -439,10 +441,7 @@ export class Aggregate implements INodeType {
 
 			for (const [field, values] of Object.entries(notFoundedFields)) {
 				if (values.every((value) => !value)) {
-					hints.push({
-						message: `The field '${field}' wasn't found in any input item`,
-						location: 'outputPane',
-					});
+					hints.push(fieldNotFoundHint(field));
 				}
 			}
 

@@ -8,7 +8,7 @@ import type { TournamentHooks } from './ast';
 import { splitExpression } from './ExpressionSplitter';
 import type { ExpressionCode, ExpressionText } from './ExpressionSplitter';
 import { parseWithEsprimaNext } from './Parser';
-import { globalIdentifier, jsVariablePolyfill } from './VariablePolyfill';
+import { globalIdentifier, jsVariablePolyfill, rawStringLiteral } from './VariablePolyfill';
 import type { DataNode } from './VariablePolyfill';
 
 export interface ExpressionAnalysis {
@@ -123,35 +123,178 @@ const buildFunctionBody = (expr: ExpressionKind) => {
 					b.binaryExpression('===', v, b.literal(false)),
 				),
 				v,
-				b.literal(''),
+				rawStringLiteral(''),
 			),
 		),
 	]);
 };
 
-type ParsedCode = ExpressionCode & { parsed: types.namedTypes.File };
+export type ParsedCode = ExpressionCode & { parsed: types.namedTypes.File };
 
-// This replaces any actual new lines with \n's. This only happens in
-// template strings.
-const fixStringNewLines = (node: types.namedTypes.File): types.namedTypes.File => {
-	const replace = (str: string): string => {
-		return str.replace(/\n/g, '\\n');
-	};
+const LINE_TERMINATOR = /[\n\r\u2028\u2029]/;
+
+/** Whether the node is a string literal whose source text spans more than one line. */
+const isMultiLineStringLiteral = (
+	node: types.namedTypes.Literal,
+): node is types.namedTypes.Literal & { value: string; raw: string } =>
+	typeof node.value === 'string' &&
+	'raw' in node &&
+	typeof node.raw === 'string' &&
+	LINE_TERMINATOR.test(node.raw);
+
+const hasLineTerminator = (element: types.namedTypes.TemplateElement): boolean =>
+	LINE_TERMINATOR.test(element.value.raw);
+
+type LiteralTextStore = {
+	/** Returns a one-line token that `restore` turns back into `text`. */
+	hold: (text: string) => string;
+	restore: (code: string) => string;
+};
+
+/** The identifier names and string values in the node, with their escapes decoded. */
+const getDecodedTexts = (node: types.namedTypes.ASTNode): string[] => {
+	const texts: string[] = [];
 	visit(node, {
-		visitTemplateElement(path) {
+		visitIdentifier(path) {
+			texts.push(path.node.name);
 			this.traverse(path);
-			const el = b.templateElement(
-				{
-					cooked: path.node.value.cooked === null ? null : replace(path.node.value.cooked),
-					raw: replace(path.node.value.raw),
-				},
-				path.node.tail,
-			);
-			path.replace(el);
+		},
+		visitLiteral(path) {
+			if (typeof path.node.value === 'string') {
+				texts.push(path.node.value);
+			}
+			this.traverse(path);
+		},
+		visitTemplateElement(path) {
+			texts.push(path.node.value.cooked ?? '');
+			this.traverse(path);
+		},
+	});
+	return texts;
+};
+
+/** The smallest number `id` such that no text contains `__n8n_literal_text_<id>_`. */
+const getFreeTokenId = (texts: string[]): number => {
+	const usedIds = new Set(
+		texts.flatMap((text) =>
+			Array.from(text.matchAll(/__n8n_literal_text_(\d+)(?=_)/g), (match) => Number(match[1])),
+		),
+	);
+	let id = 0;
+	while (usedIds.has(id)) {
+		id++;
+	}
+	return id;
+};
+
+/**
+ * Tokens that cannot occur in any of `texts`, so `restore` replaces only what `hold` returned.
+ * `texts` must hold the source and every decoded name or value that the printer can emit.
+ */
+const createLiteralTextStore = (texts: string[]): LiteralTextStore => {
+	const prefix = `__n8n_literal_text_${getFreeTokenId(texts)}_`;
+	const held: string[] = [];
+	return {
+		hold: (text) => `${prefix}${held.push(text) - 1}__`,
+		restore: (code) =>
+			held.length === 0
+				? code
+				: code.replace(
+						new RegExp(`${prefix}(\\d+)__`, 'g'),
+						(_, index: string) => held[Number(index)],
+					),
+	};
+};
+
+// recast re-indents the lines of a node it prints, and inside a literal those
+// lines are part of the value. The source text of a literal that spans lines
+// goes through recast as a one-line token, and comes back unchanged after printing.
+const fixStringNewLines = (
+	node: types.namedTypes.File,
+	literalText: LiteralTextStore,
+): types.namedTypes.File => {
+	visit(node, {
+		visitLiteral(path) {
+			this.traverse(path);
+			if (isMultiLineStringLiteral(path.node)) {
+				const { value, raw } = path.node;
+				path.replace(
+					Object.assign(b.literal(value), {
+						extra: { raw: literalText.hold(raw), rawValue: value },
+					}),
+				);
+			}
+		},
+		// recast drops the parentheses around a tag such as `((s) => s.raw)` when
+		// it prints the tagged template again.
+		visitTaggedTemplateExpression(path) {
+			const isMultiLine = path.node.quasi.quasis.some(hasLineTerminator);
+			this.traverse(path);
+			if (isMultiLine) {
+				Object.assign(path.node.tag, { extra: { parenthesized: true } });
+			}
+		},
+		visitTemplateLiteral(path) {
+			this.traverse(path);
+			if (path.node.quasis.some(hasLineTerminator)) {
+				const quasis = path.node.quasis.map((el) =>
+					b.templateElement(
+						{
+							cooked: el.value.cooked,
+							raw: hasLineTerminator(el) ? literalText.hold(el.value.raw) : el.value.raw,
+						},
+						el.tail,
+					),
+				);
+				// `original: null` makes recast print the literal from scratch. When
+				// recast patches a changed element into the source instead, it adds
+				// a space between an element that ends in an identifier character
+				// and the `${` after it, which changes the string value.
+				const literal: types.namedTypes.TemplateLiteral & { original: null } = {
+					...b.templateLiteral(quasis, path.node.expressions),
+					original: null,
+				};
+				path.replace(literal);
+			}
 		},
 	});
 
 	return node;
+};
+
+type MultiLineLiteralFix = {
+	/** Returns the node with each literal that spans lines held as a one-line token. */
+	hold: (node: types.namedTypes.File) => types.namedTypes.File;
+	/** Returns the code with each held literal back in its source text. */
+	restore: (code: string) => string;
+};
+
+const noMultiLineLiteralFix: MultiLineLiteralFix = {
+	hold: (node) => node,
+	restore: (code) => code,
+};
+
+/**
+ * The fix for the literals of `expr` that span lines. The source text of such a literal
+ * is part of `expr`, so an expression without a line terminator needs no fix.
+ */
+const createMultiLineLiteralFix = (
+	expr: string,
+	dataNodeName: string,
+	chunks: Array<ExpressionText | ParsedCode>,
+): MultiLineLiteralFix => {
+	if (LINE_TERMINATOR.test(expr)) {
+		const literalText = createLiteralTextStore([
+			expr,
+			dataNodeName,
+			...chunks.flatMap((chunk) => (chunk.type === 'code' ? getDecodedTexts(chunk.parsed) : [])),
+		]);
+		return {
+			hold: (node) => fixStringNewLines(node, literalText),
+			restore: literalText.restore,
+		};
+	}
+	return noMultiLineLiteralFix;
 };
 
 export const getParsedExpression = (expr: string): Array<ExpressionText | ParsedCode> => {
@@ -174,25 +317,22 @@ export const getExpressionCode = (
 	hooks: TournamentHooks,
 ): [string, ExpressionAnalysis] => {
 	const chunks = getParsedExpression(expr);
+	const multiLineLiterals = createMultiLineLiteralFix(expr, dataNodeName, chunks);
 
 	const newProg = b.program([
 		b.variableDeclaration('var', [b.variableDeclarator(globalIdentifier, b.objectExpression([]))]),
 	]);
 
-	// This is what's used to access that's passed in. For compatibility we us
-	// `this` unless the expression contains a function. If it contains an
-	// expression we instead assign a different variable to hold onto the contents
-	// of `this` (default: `___n8n_data`) since functions aren't compatibility
-	// anyway.
-	let dataNode: DataNode = b.thisExpression();
+	// Hold the passed-in `this` in a lexically-bound variable (default:
+	// `___n8n_data`) and route all data access and the sanitizer through it.
+	// A lexical binding cannot be reached by member shadowing the way `this`
+	// can, and the reserved-name guards already block rebinding it.
+	const dataNode: DataNode = b.identifier(dataNodeName);
+	newProg.body.push(
+		b.variableDeclaration('var', [b.variableDeclarator(dataNode, b.thisExpression())]),
+	);
+	// Reported back to callers, no longer used to shape the emitted code.
 	const hasFn = chunks.filter((c) => c.type === 'code').some((c) => hasFunction(c.parsed));
-	if (hasFn) {
-		dataNode = b.identifier(dataNodeName);
-		newProg.body.push(
-			b.variableDeclaration('var', [b.variableDeclarator(dataNode, b.thisExpression())]),
-		);
-	}
-
 	const hasTempString = chunks
 		.filter((c) => c.type === 'code')
 		.some((c) => hasTemplateString(c.parsed));
@@ -211,15 +351,15 @@ export const getExpressionCode = (
 		for (const chunk of chunks) {
 			// This is just a text chunks, push it up as a literal.
 			if (chunk.type === 'text') {
-				parts.push(b.literal(chunk.text));
+				parts.push(rawStringLiteral(chunk.text));
 				// This is a code chunk so do some magic
 			} else {
-				const fixed = fixStringNewLines(chunk.parsed);
+				const fixed = multiLineLiterals.hold(chunk.parsed);
 				for (const hook of hooks.before) {
 					hook(fixed, dataNode);
 				}
 				const parsed = jsVariablePolyfill(fixed, dataNode)?.[0];
-				if (!parsed || parsed.type !== 'ExpressionStatement') {
+				if (parsed?.type !== 'ExpressionStatement') {
 					throw new SyntaxError('Not a expression statement');
 				}
 
@@ -264,18 +404,18 @@ export const getExpressionCode = (
 			newProg.body.push(
 				b.returnStatement(
 					b.callExpression(b.memberExpression(b.arrayExpression(parts), b.identifier('join')), [
-						b.literal(''),
+						rawStringLiteral(''),
 					]),
 				),
 			);
 		}
 	} else {
-		const fixed = fixStringNewLines((chunks[1] as ParsedCode).parsed);
+		const fixed = multiLineLiterals.hold((chunks[1] as ParsedCode).parsed);
 		for (const hook of hooks.before) {
 			hook(fixed, dataNode);
 		}
 		const parsed = jsVariablePolyfill(fixed, dataNode)?.[0];
-		if (!parsed || parsed.type !== 'ExpressionStatement') {
+		if (parsed?.type !== 'ExpressionStatement') {
 			throw new SyntaxError('Not a expression statement');
 		}
 
@@ -290,5 +430,8 @@ export const getExpressionCode = (
 		newProg.body.push(retData);
 	}
 
-	return [print(newProg).code, { has: { function: hasFn, templateString: hasTempString } }];
+	return [
+		multiLineLiterals.restore(print(newProg).code),
+		{ has: { function: hasFn, templateString: hasTempString } },
+	];
 };

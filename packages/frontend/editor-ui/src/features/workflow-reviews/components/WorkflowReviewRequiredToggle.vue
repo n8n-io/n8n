@@ -8,6 +8,7 @@ import { useWorkflowReviewStatusStore } from '@/features/workflow-reviews/review
 
 const props = defineProps<{
 	workflowId: string;
+	lockedByInstance?: boolean;
 }>();
 
 const i18n = useI18n();
@@ -15,11 +16,21 @@ const reviewRequiredStore = useReviewRequiredStore();
 const reviewStatusStore = useWorkflowReviewStatusStore();
 
 const hasOpenReview = computed(() => reviewStatusStore.hasOpenReview(props.workflowId));
+const isLocked = computed(() => props.lockedByInstance === true || hasOpenReview.value);
+
+const description = computed(() => {
+	if (props.lockedByInstance) {
+		return i18n.baseText('workflowReviews.reviewRequired.enforcedDescription');
+	}
+	return hasOpenReview.value
+		? i18n.baseText('workflowReviews.reviewRequired.lockedDescription')
+		: i18n.baseText('workflowReviews.reviewRequired.description');
+});
 
 const reviewRequired = computed({
-	get: () => hasOpenReview.value || reviewRequiredStore.isReviewRequired(props.workflowId),
+	get: () => isLocked.value || reviewRequiredStore.isReviewRequired(props.workflowId),
 	set: (value: boolean) => {
-		if (hasOpenReview.value) return;
+		if (isLocked.value) return;
 		reviewRequiredStore.setReviewRequired(props.workflowId, value);
 	},
 });
@@ -33,7 +44,7 @@ const reviewRequired = computed({
 			:checked="reviewRequired"
 			checkbox
 			:close-on-select="false"
-			:disabled="hasOpenReview"
+			:disabled="isLocked"
 			divided
 			test-id="workflow-review-required-toggle"
 			@select="reviewRequired = !reviewRequired"
@@ -46,7 +57,7 @@ const reviewRequired = computed({
 			<template #item-trailing="{ ui }">
 				<N8nSwitch
 					:model-value="reviewRequired"
-					:disabled="hasOpenReview"
+					:disabled="isLocked"
 					aria-hidden="true"
 					tabindex="-1"
 					data-test-id="workflow-review-required-switch"
@@ -55,11 +66,7 @@ const reviewRequired = computed({
 			</template>
 		</N8nDropdownMenuItem>
 		<N8nText tag="p" size="xsmall" color="text-base" :class="$style.description">
-			{{
-				hasOpenReview
-					? i18n.baseText('workflowReviews.reviewRequired.lockedDescription')
-					: i18n.baseText('workflowReviews.reviewRequired.description')
-			}}
+			{{ description }}
 		</N8nText>
 	</div>
 </template>

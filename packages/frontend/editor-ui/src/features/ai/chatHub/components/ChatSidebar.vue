@@ -1,9 +1,10 @@
 <script lang="ts" setup>
-import { nextTick, computed } from 'vue';
+import { nextTick, computed, onMounted } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useRouter } from 'vue-router';
 import { VIEWS } from '@/app/constants';
 import { type IMenuItem, N8nResizeWrapper } from '@n8n/design-system';
+import { useAiGateway } from '@/app/composables/useAiGateway';
 import { useSettingsItems } from '@/app/composables/useSettingsItems';
 import { useKeybindings } from '@/app/composables/useKeybindings';
 import {
@@ -44,7 +45,13 @@ function openCommandBar(event: MouseEvent) {
 	});
 }
 
-const { settingsItems } = useSettingsItems();
+const { settingsItems, settingsSections, handleSettingsItemSelect } = useSettingsItems();
+const { fetchWallet, isEnabled: isAiGatewayEnabled } = useAiGateway();
+
+// The settings menu shows the Gateway credits balance, so it is fetched where it is shown.
+onMounted(() => {
+	if (isAiGatewayEnabled.value) void fetchWallet();
+});
 
 const mainMenuItems = computed<IMenuItem[]>(() => [
 	{
@@ -96,13 +103,21 @@ const onLogout = () => {
 		<N8nScrollArea as-child>
 			<div :class="$style.scrollArea">
 				<ChatSidebarContent :is-collapsed="isCollapsed" />
-				<BottomMenu :items="visibleMenuItems" :is-collapsed="isCollapsed" @logout="onLogout" />
+				<BottomMenu
+					:items="visibleMenuItems"
+					:settings-sections="settingsSections"
+					:is-collapsed="isCollapsed"
+					@select="handleSettingsItemSelect"
+					@logout="onLogout"
+				/>
 			</div>
 		</N8nScrollArea>
 	</N8nResizeWrapper>
 </template>
 
 <style lang="scss" module>
+@use '@/app/css/variables' as *;
+
 .sideMenu {
 	position: relative;
 	height: 100%;

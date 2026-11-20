@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 
 import type { WorkflowGraph } from '../workflow-graph';
 import {
+	createNodeLabeler,
 	findTriggerNode,
+	getDescendantNodeIds,
 	getPredecessorNodeIds,
 	getSuccessorNodeIds,
 } from '../workflow-graph-queries';
@@ -21,6 +23,16 @@ const graph: WorkflowGraph = {
 		{ from: 'a', to: 'b', outputIndex: 0, inputIndex: 0 },
 	],
 };
+
+describe('createNodeLabeler', () => {
+	it('labels a node id with the quoted node name', () => {
+		expect(createNodeLabeler(graph)('a')).toBe('"A"');
+	});
+
+	it('falls back to the quoted id for an id that is not in the graph', () => {
+		expect(createNodeLabeler(graph)('missing')).toBe('"missing"');
+	});
+});
 
 describe('findTriggerNode', () => {
 	it('returns the trigger node', () => {
@@ -77,5 +89,33 @@ describe('getPredecessorNodeIds', () => {
 			],
 		};
 		expect(getPredecessorNodeIds(looping, 'a')).toEqual(['b']);
+	});
+});
+
+describe('getDescendantNodeIds', () => {
+	it('returns all transitive successors, excluding the node itself', () => {
+		expect(getDescendantNodeIds(graph, 'trigger')).toEqual(['a', 'b']);
+	});
+
+	it('reports a diamond reconvergence once', () => {
+		const diamond: WorkflowGraph = {
+			nodes: [
+				{ id: 'if', name: 'If', type: 'v1-node' },
+				{ id: 'a', name: 'A', type: 'v1-node' },
+				{ id: 'b', name: 'B', type: 'v1-node' },
+				{ id: 'm', name: 'M', type: 'v1-node' },
+			],
+			edges: [
+				{ from: 'if', to: 'a', outputIndex: 0, inputIndex: 0 },
+				{ from: 'if', to: 'b', outputIndex: 1, inputIndex: 0 },
+				{ from: 'a', to: 'm', outputIndex: 0, inputIndex: 0 },
+				{ from: 'b', to: 'm', outputIndex: 0, inputIndex: 1 },
+			],
+		};
+		expect(getDescendantNodeIds(diamond, 'if')).toEqual(['a', 'b', 'm']);
+	});
+
+	it('returns an empty array for a terminal node', () => {
+		expect(getDescendantNodeIds(graph, 'b')).toEqual([]);
 	});
 });

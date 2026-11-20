@@ -7,12 +7,7 @@ import type { InstanceAiMessage } from '@n8n/api-types';
 import { N8nApiError, type N8nClient, type WorkflowResponse } from '../clients/n8n-client';
 import type { AgentOutcome, EventOutcome, ExecutionSummary, WorkflowSummary } from '../types';
 import { collectArtifactRefIds } from './collect-refs';
-
-// ---------------------------------------------------------------------------
-// Tool names whose results contain workflow IDs
-// ---------------------------------------------------------------------------
-
-const WORKFLOW_TOOLS = new Set(['build-workflow', 'submit-workflow', 'patch-workflow']);
+import { WORKFLOW_TOOLS } from './event-parser';
 
 // ---------------------------------------------------------------------------
 // snapshotWorkflowIds -- call before the run to know what existed prior
@@ -31,6 +26,19 @@ export async function snapshotWorkflowIds(client: N8nClient): Promise<Set<string
 export async function snapshotDataTableIds(client: N8nClient): Promise<Set<string>> {
 	try {
 		return new Set(await client.listDataTableIds(await client.getPersonalProjectId()));
+	} catch {
+		return new Set();
+	}
+}
+
+/** Root folders present before any build on a lane — the seed-folder eviction's
+ *  allowlist, so it can never delete a sibling iteration's live folder. */
+export async function snapshotRootFolderIds(client: N8nClient): Promise<Set<string>> {
+	try {
+		const folders = await client.listFolders(await client.getPersonalProjectId());
+		return new Set(
+			folders.filter((folder) => folder.parentFolderId === null).map((folder) => folder.id),
+		);
 	} catch {
 		return new Set();
 	}
@@ -95,7 +103,7 @@ export async function buildAgentOutcome(
 	}
 
 	// Fetch workflow details. Candidate ids come from tool results and agent
-	// trees, which echo agent-INVENTED ids too (e.g. a failed build-workflow
+	// trees, which echo agent-INVENTED ids too (e.g. a failed workflow_builder_build_workflow
 	// bind to a made-up id) — a 404/403 means no workflow ever carried the id,
 	// so drop it instead of recording a stub: a stub at index 0 becomes
 	// build.workflowId and every scenario then executes a nonexistent workflow.
@@ -167,7 +175,7 @@ export async function buildAgentOutcome(
 // extractWorkflowIdsFromMessages
 //
 // Extracts workflow IDs from agent tree targetResource fields AND from
-// tool call results (build-workflow, submit-workflow, etc.).
+// tool call results (workflow_builder_build_workflow, submit-workflow, etc.).
 // Thread-scoped -- avoids cross-run workflow attribution.
 // ---------------------------------------------------------------------------
 

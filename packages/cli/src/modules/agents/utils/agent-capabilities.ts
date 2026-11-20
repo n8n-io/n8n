@@ -1,4 +1,5 @@
 import {
+	N8N_CHAT_INTEGRATION_TYPE,
 	isDraftIntegration,
 	type AgentIntegrationConfig,
 	type AgentJsonConfig,
@@ -23,7 +24,9 @@ export type AgentCapabilityCounts = {
 /**
  * Count each capability the agent has configured. Half-finished entries don't
  * count: a channel without a credential and an MCP server without a URL are
- * both placeholders that validation reports as incomplete.
+ * both placeholders that validation reports as incomplete. n8n Chat doesn't
+ * count either: new agents get it by default, so it says nothing about whether
+ * the builder configured the agent.
  */
 export function countAgentCapabilities(
 	config: AgentJsonConfig | null,
@@ -38,7 +41,10 @@ export function countAgentCapabilities(
 		mcpServer: size(config?.mcpServers?.filter((server) => server.url.trim() !== '')),
 		vectorStore: size(config?.vectorStores),
 		task: size(config?.tasks),
-		channel: integrations.filter((integration) => !isDraftIntegration(integration)).length,
+		channel: integrations.filter(
+			(integration) =>
+				integration.type !== N8N_CHAT_INTEGRATION_TYPE && !isDraftIntegration(integration),
+		).length,
 	};
 }
 
@@ -56,17 +62,20 @@ export function configuredCapabilityKinds(
 }
 
 /**
- * Whether the agent had nothing behind it yet — the state a freshly created row
- * is in. A write leaving this state is the agent's creation for telemetry.
- *
- * `name` and `personalisation` are deliberately not consulted: an agent that
- * has only been renamed or recoloured has not been configured.
+ * The capability shape every agent telemetry event carries. Single place that
+ * maps count fields to their snake_case property names, so a new capability
+ * kind reaches all events at once.
  */
-export function isUnconfiguredAgent(
-	schema: AgentJsonConfig | null,
-	integrations: AgentIntegrationConfig[],
-): boolean {
-	if (!schema) return true;
-	if (schema.model?.trim() || schema.instructions?.trim()) return false;
-	return totalAgentCapabilities(countAgentCapabilities(schema, integrations)) === 0;
+export function capabilityCountTelemetryProperties(counts: AgentCapabilityCounts) {
+	return {
+		capability_kinds: configuredCapabilityKinds(counts),
+		capability_count: totalAgentCapabilities(counts),
+		tool_count: counts.tool,
+		skill_count: counts.skill,
+		sub_agent_count: counts.subAgent,
+		mcp_server_count: counts.mcpServer,
+		vector_store_count: counts.vectorStore,
+		task_count: counts.task,
+		trigger_count: counts.channel,
+	} as const;
 }

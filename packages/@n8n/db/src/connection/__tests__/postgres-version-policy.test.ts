@@ -1,3 +1,5 @@
+import postgresVersions from 'n8n-containers/postgres-versions.json';
+
 import {
 	getPostgresVersionWarning,
 	OLDEST_COMPATIBILITY_POSTGRES_MAJOR,
@@ -34,5 +36,42 @@ describe('getPostgresVersionWarning', () => {
 	it('should stay silent when the version cannot be parsed', () => {
 		expect(getPostgresVersionWarning('CockroachDB CCL v23.1.11')).toBeNull();
 		expect(getPostgresVersionWarning('')).toBeNull();
+	});
+});
+
+// These thresholds and the DB test matrix move together every November.
+describe('policy thresholds vs the versions CI tests', () => {
+	const tested = postgresVersions.matrix;
+
+	it('should stay silent for every fully supported major CI tests', () => {
+		const supported = tested.filter(({ support }) => support === 'supported');
+
+		for (const { major } of supported) {
+			expect(getPostgresVersionWarning(`${major}.0`), `Postgres ${major}`).toBeNull();
+		}
+	});
+
+	it('should warn about compatibility support only for the compatibility major CI tests', () => {
+		const compatibility = tested.filter(({ support }) => support === 'compatibility');
+
+		for (const { major } of compatibility) {
+			expect(getPostgresVersionWarning(`${major}.0`), `Postgres ${major}`).toContain(
+				'compatibility support only',
+			);
+		}
+	});
+
+	it('should treat the oldest tested major as the compatibility major', () => {
+		const oldest = Math.min(...tested.map(({ major }) => major));
+
+		expect(oldest).toBe(OLDEST_COMPATIBILITY_POSTGRES_MAJOR);
+	});
+
+	it('should treat the oldest fully supported tested major as the supported floor', () => {
+		const supported = tested
+			.filter(({ support }) => support === 'supported')
+			.map(({ major }) => major);
+
+		expect(Math.min(...supported)).toBe(OLDEST_SUPPORTED_POSTGRES_MAJOR);
 	});
 });

@@ -1,4 +1,4 @@
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsHelper,
@@ -99,6 +99,24 @@ describe('HookContext', () => {
 				await hookContext.getCredentials<ICredentialDataDecryptedObject>(testCredentialType);
 
 			expect(credentials).toEqual({ secret: 'token' });
+		});
+
+		it('should surface the node to the credentials helper', async () => {
+			credentialsHelper.getDecrypted.mockResolvedValue({ secret: 'token' });
+			credentialsHelper.isCredentialUsableByNode.mockReturnValue(true);
+
+			await hookContext.getCredentials<ICredentialDataDecryptedObject>(testCredentialType);
+
+			expect(credentialsHelper.getDecrypted).toHaveBeenCalledWith(
+				additionalData,
+				expect.anything(),
+				testCredentialType,
+				mode,
+				expect.objectContaining({ node }),
+				false,
+				undefined,
+				undefined,
+			);
 		});
 	});
 

@@ -26,3 +26,9 @@ services:
       DB_POSTGRESDB_HOST: postgres
       DB_TYPE: postgresdb
       DB_POSTGRESDB_PASSWORD: password
+      # Prompt-cache TTL in seconds. 1 hour keeps the cache warm between turns.
+      ANTHROPIC_PROMPT_CACHE_TTL: '3600'
+      # Do not add CODESPACE_NAME here. Codespaces does not give it to compose, so
+      # this file can set an empty value only. An empty value is worse than no
+      # value, because tmux keeps it for each new pane. The consumers read the name
+      # with scripts/codespace-env.mjs.

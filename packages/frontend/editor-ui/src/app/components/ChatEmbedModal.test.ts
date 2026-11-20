@@ -9,7 +9,7 @@ const renderComponent = createComponentRenderer(ChatEmbedModal, {
 	pinia: createTestingPinia({
 		initialState: {
 			[STORES.UI]: {
-				modalsById: {
+				modalStateById: {
 					[CHAT_EMBED_MODAL_KEY]: { open: true },
 				},
 			},

@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { useCredentialDescriptionsExperiment } from '@/experiments/credentialDescriptions/useCredentialDescriptionsExperiment';
+import { computed, ref, useTemplateRef } from 'vue';
 import dateformat from 'dateformat';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { PROJECT_MOVE_RESOURCE_MODAL } from '@/features/collaboration/projects/projects.constants';
@@ -20,6 +21,15 @@ import type { CredentialsResource } from '@/Interface';
 import { usePrivateCredentials } from '@/features/resolvers/composables/usePrivateCredentials';
 import PrivateCredentialIcon from '@/features/resolvers/components/PrivateCredentialIcon.vue';
 import { useCredentialOAuth } from '../composables/useCredentialOAuth';
+import { useCredentialTypeUsability } from '../composables/useCredentialTypeUsability';
+import {
+	ContactAdminModal,
+	RestrictedNodePopover,
+	useTypeAvailabilityPoliciesStore,
+	type ContactAudience,
+} from '@n8n/frontend-module-type-availability-policies';
+import type { Project } from '@n8n/rest-api-client';
+import { useContactAdminDialog } from '../composables/useContactAdminDialog';
 
 import {
 	N8nActionToggle,
@@ -29,6 +39,8 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
+const { isEnabled: credentialDescriptionsEnabled } = useCredentialDescriptionsExperiment();
+
 const CREDENTIAL_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
 	DELETE: 'delete',
@@ -59,16 +71,48 @@ const toast = useToast();
 const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
 const projectsStore = useProjectsStore();
+const policiesStore = useTypeAvailabilityPoliciesStore();
 const { isEnabled: isPrivateCredentialsEnabled } = usePrivateCredentials();
 const { hasDependencies } = useDependencies();
 const { authorize, isOAuthCredentialType } = useCredentialOAuth();
 
+const { describeCredentialTypeUsability } = useCredentialTypeUsability();
+
+const {
+	isOpen: isContactAdminOpen,
+	state: contactAdmin,
+	request: requestContactAdmin,
+} = useContactAdminDialog(() => {});
+
 const isConnecting = ref(false);
+const restrictedBadgeRef = useTemplateRef<HTMLElement>('restrictedBadgeRef');
 
 const resourceTypeLabel = computed(() => locale.baseText('generic.credential').toLowerCase());
 const credentialType = computed(() =>
 	credentialsStore.getCredentialTypeByName(props.data.type ?? ''),
 );
+const credentialTypeDisplayName = computed(
+	() => credentialType.value?.displayName ?? props.data.type,
+);
+const restriction = computed(() =>
+	props.data.restriction
+		? describeCredentialTypeUsability(props.data.restriction, credentialTypeDisplayName.value)
+		: null,
+);
+/** Whose admins the dialog lists. `undefined` keeps the dialog's default: the open policy project. */
+const contactProject = ref<Project | null | undefined>(undefined);
+
+// For restricted nodes the admin must allow the nodes, so the request names them, not the type.
+async function onContactAdmin(audience: ContactAudience) {
+	if (!restriction.value) return;
+	const { id } = props.data.restrictionProject ?? {};
+	contactProject.value =
+		audience === 'project' && id && id !== policiesStore.policyProject?.id
+			? await projectsStore.fetchProject(id).catch(() => null)
+			: undefined;
+	requestContactAdmin(restriction.value.contactSubject, audience, restriction.value.kind);
+}
+
 const credentialPermissions = computed(() => getResourcePermissions(props.data.scopes).credential);
 
 const isPrivateUnconnected = computed(
@@ -124,7 +168,7 @@ const formattedCreatedAtDate = computed(() => {
 	);
 });
 
-const credentialHasDependents = computed(() => hasDependencies(props.data.id));
+const credentialHasDependents = computed(() => hasDependencies(props.data.id, 'credential'));
 
 function onClick() {
 	emit('click', props.data.id);
@@ -230,22 +274,59 @@ function moveResource() {
 </script>
 
 <template>
-	<N8nCard :class="$style.cardLink" @click.stop="onClick">
+	<N8nCard :class="[$style.cardLink, { [$style.restricted]: restriction }]" @click.stop="onClick">
 		<template #prepend>
-			<CredentialIcon :credential-type-name="credentialType?.name ?? ''" />
+			<CredentialIcon :class="$style.dimmable" :credential-type-name="credentialType?.name ?? ''" />
 		</template>
 		<template #header>
 			<N8nText tag="h2" bold :class="$style.cardHeading">
-				{{ data.name }}
-				<N8nBadge v-if="readOnly" class="ml-3xs" theme="tertiary" bold>
+				<span :class="$style.dimmable">{{ data.name }}</span>
+				<N8nBadge v-if="readOnly" class="ml-3xs" variant="outline">
 					{{ locale.baseText('credentials.item.readonly') }}
 				</N8nBadge>
-				<N8nBadge v-if="needsSetup" class="ml-3xs" theme="warning">
+				<N8nBadge v-if="needsSetup" class="ml-3xs" variant="warning">
 					{{ locale.baseText('credentials.item.needsSetup') }}
 				</N8nBadge>
+				<!-- The card stays clickable, so a press on the badge must not open it. -->
+				<span
+					v-if="restriction"
+					ref="restrictedBadgeRef"
+					:class="['ml-3xs', $style.restrictedBadge]"
+					data-test-id="credential-card-restricted"
+					@click.stop
+				>
+					<N8nBadge>
+						<RestrictedNodePopover
+							:kind="restriction.kind"
+							side="right"
+							marker-size="xsmall"
+							:node-type-name="credentialTypeDisplayName"
+							:restriction="restriction.restriction"
+							:scope-label="restriction.popoverScopeLabel"
+							:description="restriction.description"
+							:project-type="data.restrictionProject?.type"
+							:anchor="restrictedBadgeRef"
+							@contact-admin="onContactAdmin"
+						/>
+						{{ locale.baseText('credentials.item.restricted') }}
+					</N8nBadge>
+					<ContactAdminModal
+						v-model:open="isContactAdminOpen"
+						:kind="contactAdmin.kind"
+						:type-name="contactAdmin.subject"
+						:audience="contactAdmin.audience"
+						:project="contactProject"
+					/>
+				</span>
 			</N8nText>
 		</template>
-		<div :class="$style.cardDescription">
+		<div
+			:class="[
+				$style.cardDescription,
+				$style.dimmable,
+				{ [$style.hasDescription]: data.description },
+			]"
+		>
 			<N8nText color="text-light" size="small">
 				<span v-if="credentialType">{{ credentialType.displayName }} | </span>
 				<span v-show="data"
@@ -267,6 +348,18 @@ function moveResource() {
 				/>
 			</span>
 		</div>
+		<N8nTooltip v-if="credentialDescriptionsEnabled && data.description" placement="top" as-child>
+			<template #content>{{ data.description }}</template>
+			<N8nText
+				tag="p"
+				size="small"
+				color="text-light"
+				:class="$style.credentialDescription"
+				data-test-id="credential-card-description"
+			>
+				{{ data.description }}
+			</N8nText>
+		</N8nTooltip>
 		<template #append>
 			<div :class="$style.cardActions" @click.stop>
 				<DependencyPill
@@ -310,6 +403,8 @@ function moveResource() {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/breakpoints';
+
 .cardLink {
 	--card--padding: 0 0 0 var(--spacing--sm);
 
@@ -329,11 +424,39 @@ function moveResource() {
 	padding: var(--spacing--sm) 0 0;
 }
 
+.restrictedBadge {
+	display: inline-flex;
+
+	// The lock is the badge's leading icon. Its own padding already spaces it from the label.
+	:global(.n8n-badge) {
+		--n8n-badge--gap: 0;
+		--n8n-badge--padding-inline-start: var(--spacing--4xs);
+	}
+}
+
+.restricted .dimmable {
+	opacity: 0.5;
+}
+
 .cardDescription {
 	min-height: 19px;
 	display: flex;
 	align-items: center;
 	padding: 0 0 var(--spacing--sm);
+}
+
+.hasDescription {
+	padding-bottom: var(--spacing--3xs);
+}
+
+.credentialDescription {
+	display: block;
+	width: 0;
+	min-width: 100%;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	padding-bottom: var(--spacing--sm);
 }
 
 .privateCredentialIndicator {
@@ -353,7 +476,7 @@ function moveResource() {
 	cursor: default;
 }
 
-@include mixins.breakpoint('sm-and-down') {
+@include breakpoints.breakpoint('sm-and-down') {
 	.cardLink {
 		--card--padding: 0 var(--spacing--sm) var(--spacing--sm);
 		--card--append--width: 100%;

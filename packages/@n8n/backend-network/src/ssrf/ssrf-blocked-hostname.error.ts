@@ -1,4 +1,6 @@
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
+
+import { markNonRetryable } from '../http/retryability';
 
 /**
  * Error thrown when a destination hostname is denied by SSRF hostname policy.
@@ -20,5 +22,6 @@ export class SsrfBlockedHostnameError extends UserError {
 
 		this.name = 'SsrfBlockedHostnameError';
 		this.hostname = hostname;
+		markNonRetryable(this);
 	}
 }

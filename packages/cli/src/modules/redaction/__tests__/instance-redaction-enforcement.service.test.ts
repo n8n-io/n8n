@@ -4,11 +4,10 @@ import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import type { Settings, SettingsRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
-import { SELF_SEND_COMMANDS } from '@/scaling/constants';
-import type { Publisher } from '@/scaling/pubsub/publisher.service';
-import type { CacheService } from '@/services/cache/cache.service';
+import { SELF_SEND_COMMANDS, type Publisher } from '@n8n/backend-services';
+import type { CacheService } from '@n8n/backend-services';
 
 import { InstanceRedactionEnforcementService } from '../instance-redaction-enforcement.service';
 

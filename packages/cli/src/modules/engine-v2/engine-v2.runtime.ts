@@ -1,0 +1,283 @@
+import type { HttpRequestClient } from '@n8n/backend-network';
+import { Logger } from '@n8n/backend-common';
+import { EngineConfig } from '@n8n/config';
+import { Service } from '@n8n/di';
+import type {
+	EngineRuntime,
+	EngineWorkQueues,
+	ExecutionResponseSender,
+	LifecycleEventCallback,
+} from '@n8n/engine';
+import {
+	AllowAllAdmittance,
+	createDataSource,
+	createEngineRuntime,
+	mintApprovalCallback,
+	mintResumeToken,
+	mintStepBoundResumeToken,
+	SharedSecretIdentityVerifier,
+} from '@n8n/engine';
+import type { AdditionalDataContext, V1StepExecutorDeps } from '@n8n/node-engine-compatibility';
+import { createEngineStepDataLoader, V1StepExecutor } from '@n8n/node-engine-compatibility';
+import { BinaryDataService, FileLocation } from 'n8n-core';
+import type { IWorkflowExecuteAdditionalData } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
+import assert from 'node:assert';
+import type { Server } from 'node:http';
+
+import { CredentialTypes } from '@/credential-types';
+import { CredentialsHelper } from '@/credentials-helper';
+import { NodeTypesProxy } from '@n8n/backend-services';
+
+import { EngineAdditionalDataBuilder } from './engine-additional-data';
+import { EngineControlPlaneTransport } from './engine-control-plane-transport';
+import { EngineCredentialsClient } from './engine-credentials-client';
+import { EngineSubWorkflowClient } from './engine-sub-workflow-client';
+import { EngineMtls } from './engine-mtls';
+import { RemoteCredentialsHelper } from './remote-credentials-helper';
+import { RemoteDataTableProxyProvider } from './remote-data-table-proxy-provider';
+
+export interface EngineV2RuntimeOptions {
+	/** The data plane end of the execution channel for responses. */
+	responseSender: ExecutionResponseSender;
+	/** Without it, the engine publishes no lifecycle events. */
+	lifecycleEventSender?: { send: LifecycleEventCallback };
+	/** The queues the engine runs on. The caller closes their connections. */
+	queues: EngineWorkQueues;
+}
+
+/**
+ * Runs the engine v2 data plane inside the n8n process.
+ *
+ * This is the integrated-mode composition root. It chooses the adapters the
+ * engine needs — the data plane `DataSource`, the admittance policy, the v1 step
+ * executor — and owns the connection and the HTTP listener. Its caller chooses
+ * the work queues. The engine owns its own wiring, so this host never sees the
+ * workers.
+ */
+@Service()
+export class EngineV2Runtime {
+	private dataSource?: ReturnType<typeof createDataSource>;
+
+	private engine?: EngineRuntime;
+
+	private server?: Server;
+
+	/**
+	 * Shared by every credential request. Aborted after the engine has stopped,
+	 * so no request outlives it.
+	 * TODO(CAT-4526): replace with a per-step signal once the engine produces one.
+	 */
+	private stopping?: AbortController;
+
+	/** Sends the data table operations of every step to the control plane. */
+	private readonly dataTablesHttp: HttpRequestClient;
+
+	constructor(
+		private readonly engineConfig: EngineConfig,
+		private readonly mtls: EngineMtls,
+		private readonly nodeTypes: NodeTypesProxy,
+		private readonly logger: Logger,
+		private readonly credentialsClient: EngineCredentialsClient,
+		transport: EngineControlPlaneTransport,
+		private readonly subWorkflowClient: EngineSubWorkflowClient,
+		private readonly credentialsHelper: CredentialsHelper,
+		private readonly credentialTypes: CredentialTypes,
+		private readonly additionalDataBuilder: EngineAdditionalDataBuilder,
+		private readonly binaryDataService: BinaryDataService,
+	) {
+		this.logger = this.logger.scoped('engine-v2');
+		this.dataTablesHttp = transport.forScope('data-tables:use');
+	}
+
+	async init(options: EngineV2RuntimeOptions): Promise<void> {
+		try {
+			await this.initDb();
+
+			this.initEngine(options);
+
+			await this.initServer();
+		} catch (error) {
+			// A half-started engine holds a connection and its worker loops, and the
+			// host has no handle to it, so roll back before surfacing the failure.
+			await this.shutdown().catch((teardownError) => {
+				this.logger.error('Failed to roll back after Engine v2 could not start', {
+					teardownError,
+				});
+			});
+			throw error;
+		}
+	}
+
+	private async initDb(): Promise<void> {
+		const { databaseUrl, databasePoolSize, databaseConnectionTimeoutMs } = this.engineConfig;
+
+		if (!databaseUrl) {
+			throw new UserError(
+				'The engine-v2 module needs a data plane database. Set N8N_ENGINE_DATABASE_URL.',
+			);
+		}
+
+		this.dataSource = createDataSource(databaseUrl, {
+			poolSize: databasePoolSize,
+			connectTimeoutMS: databaseConnectionTimeoutMs,
+		});
+		await this.dataSource.initialize();
+		await this.dataSource.runMigrations();
+	}
+
+	private initEngine({
+		responseSender,
+		lifecycleEventSender,
+		queues,
+	}: EngineV2RuntimeOptions): void {
+		assert(this.dataSource, 'Engine v2 cannot start without a data source');
+
+		const stopping = new AbortController();
+		this.stopping = stopping;
+
+		const engine = createEngineRuntime({
+			dataSource: this.dataSource,
+			// TODO(CAT-2909): placeholder policy — every execution is admitted and no
+			// limits are applied.
+			admittance: new AllowAllAdmittance(),
+			identityVerifier: new SharedSecretIdentityVerifier(this.engineConfig.authSecret),
+			logger: this.logger,
+			responseSender,
+			resumeSecret: this.engineConfig.resumeSecret,
+			queues,
+			externalDependencies: ({ executionStore, stepStore }) => ({
+				lifecycleEventCallback: lifecycleEventSender
+					? async (events, signal) => await lifecycleEventSender.send(events, signal)
+					: undefined,
+				// The same call the v1 hard delete makes: one prefix per run, safe to repeat.
+				deleteExecutionFiles: async ({ workflowId, executionId }) =>
+					await this.binaryDataService.deleteMany([
+						FileLocation.ofExecution(workflowId, executionId),
+					]),
+				v1StepExecutor: new V1StepExecutor({
+					nodeTypes: this.nodeTypes,
+					additionalDataFactory: async (context) => this.buildAdditionalData(context, stopping),
+					loadStepData: createEngineStepDataLoader(executionStore, stepStore),
+					...this.resumeMinters(),
+					resolveSubWorkflow: async (request) =>
+						await this.subWorkflowClient.resolve(request, stopping.signal),
+				}),
+			}),
+		});
+		engine.start();
+
+		this.engine = engine;
+	}
+
+	private resumeMinters(): Pick<
+		V1StepExecutorDeps,
+		'resumeToken' | 'stepBoundResumeToken' | 'approvalCallback'
+	> {
+		const { resumeSecret } = this.engineConfig;
+		if (!resumeSecret) return {};
+
+		return {
+			resumeToken: ({ executionId }) => mintResumeToken(resumeSecret, executionId),
+			stepBoundResumeToken: ({ stepId, binding }) =>
+				mintStepBoundResumeToken(resumeSecret, stepId, binding),
+			approvalCallback: ({ stepId, decision }) =>
+				mintApprovalCallback(resumeSecret, stepId, decision),
+		};
+	}
+
+	private buildAdditionalData(
+		context: AdditionalDataContext,
+		stopping: AbortController,
+	): IWorkflowExecuteAdditionalData {
+		const credentialsHelper = new RemoteCredentialsHelper(
+			this.credentialsClient,
+			this.credentialsHelper,
+			this.credentialTypes,
+			context,
+			stopping.signal,
+		);
+		const dataTableProxyProvider = new RemoteDataTableProxyProvider(
+			this.dataTablesHttp,
+			context,
+			stopping.signal,
+		);
+
+		return this.additionalDataBuilder.build(context, credentialsHelper, dataTableProxyProvider);
+	}
+
+	private async initServer(): Promise<void> {
+		const { host, port } = this.engineConfig;
+
+		this.server = await new Promise<Server>((resolve, reject) => {
+			assert(this.engine, 'Engine v2 cannot start without an engine runtime');
+
+			const listener = this.mtls.createServer(this.engine.app).listen(port, host);
+			listener.once('listening', () => resolve(listener));
+			listener.once('error', (error) => {
+				// A failed bind: closing also ends its subscription to TLS reloads.
+				if (!listener.listening) listener.close();
+				reject(error);
+			});
+		});
+
+		// An IPv6 literal needs brackets to read as a URL.
+		const shownHost = host.includes(':') ? `[${host}]` : host;
+		this.logger.info(
+			`Engine v2 listening on ${this.mtls.enabled ? 'https' : 'http'}://${shownHost}:${port}`,
+		);
+	}
+
+	/**
+	 * Releases each resource `init()` reached, in reverse order of acquisition.
+	 *
+	 * Each resource is released on its own, so one failure cannot leave the others
+	 * holding a connection or running worker loops.
+	 */
+	async shutdown(): Promise<void> {
+		const errors: unknown[] = [];
+		const shutdownTasks = [
+			async () => await this.closeServer(),
+			async () => await this.stopEngine(),
+			async () => await this.destroyDataSource(),
+		];
+
+		for (const release of shutdownTasks) {
+			await release().catch((error) => {
+				errors.push(error);
+			});
+		}
+
+		if (errors.length > 0) {
+			throw new AggregateError(errors, 'Engine v2 could not release every resource');
+		}
+	}
+
+	private async closeServer(): Promise<void> {
+		if (!this.server) return;
+
+		await new Promise<void>((resolve, reject) => {
+			this.server!.close((error) => (error ? reject(error) : resolve()));
+		});
+
+		// Each release drops its handle only after it succeeds, so a resource that
+		// failed to release is tried again on the next `shutdown()`.
+		this.server = undefined;
+	}
+
+	private async stopEngine(): Promise<void> {
+		if (!this.engine) return;
+
+		await this.engine.stop();
+		this.engine = undefined;
+		this.stopping?.abort();
+		this.stopping = undefined;
+	}
+
+	private async destroyDataSource(): Promise<void> {
+		if (!this.dataSource) return;
+
+		if (this.dataSource.isInitialized) await this.dataSource.destroy();
+		this.dataSource = undefined;
+	}
+}

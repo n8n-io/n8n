@@ -54,7 +54,8 @@ export function useWorkflowExtraction() {
 	const i18n = useI18n();
 	const telemetry = useTelemetry();
 	const groupTelemetry = useCanvasNodeGroupTelemetry();
-	const { expandSelectionWithSubNodes, isSelectionExtractable } = useSelectionValidation();
+	const { expandSelectionWithSubNodes, isSelectionExtractable, isSubworkflowConversionDisabled } =
+		useSelectionValidation();
 
 	function showError(message: string) {
 		toast.showMessage({
@@ -127,7 +128,7 @@ export function useWorkflowExtraction() {
 				options: {},
 			},
 			type: EXECUTE_WORKFLOW_NODE_TYPE,
-			typeVersion: 1.2,
+			typeVersion: 1.4,
 			position,
 			name,
 		};
@@ -425,10 +426,7 @@ export function useWorkflowExtraction() {
 		uiStore.resetLastInteractedWith();
 
 		const executeWorkflowNode = (
-			await canvasOperations.addNodes([executeWorkflowNodeData], {
-				...CANVAS_HISTORY_OPTIONS,
-				forcePosition: true,
-			})
+			await canvasOperations.addNodes([executeWorkflowNodeData], CANVAS_HISTORY_OPTIONS)
 		)[0];
 
 		addReplacementNodeToCanvasGroup(
@@ -512,6 +510,17 @@ export function useWorkflowExtraction() {
 
 	function tryExtractNodesIntoSubworkflow(nodeIds: string[]): boolean {
 		const expandedNodeIds = expandSelectionWithSubNodes(nodeIds);
+		const deprecatedNodes = workflowDocumentStore.value
+			.getNodesByIds(expandedNodeIds)
+			.filter(nodeTypesStore.isNodeDeprecated);
+		if (deprecatedNodes.length > 0) {
+			showError(
+				i18n.baseText('workflowExtraction.error.deprecatedSelected', {
+					interpolate: { nodes: deprecatedNodes.map(({ name }) => `'${name}'`).join(', ') },
+				}),
+			);
+			return false;
+		}
 		const result = isSelectionExtractable(expandedNodeIds);
 
 		if (!result.valid) {
@@ -689,7 +698,7 @@ export function useWorkflowExtraction() {
 	 * @param nodeIds the ids to be extracted from the current workflow into a sub-workflow
 	 */
 	function extractWorkflow(nodeIds: string[]) {
-		if (nodeIds.length === 0) return;
+		if (nodeIds.length === 0 || isSubworkflowConversionDisabled()) return;
 
 		const success = tryExtractNodesIntoSubworkflow(nodeIds);
 		trackStartExtractWorkflow(nodeIds.length, success);

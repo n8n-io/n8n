@@ -1,8 +1,17 @@
+import {
+	ActivityEvent,
+	activityEventCategories,
+	activityResourceTypes,
+	type ActivityEventCategory,
+	type ActivityResourceType,
+} from './activity-event';
 import { AgentEvalDataset, type AgentEvalColumnMapping } from './agent-eval-dataset.ee';
 import { AgentEvalRating, type AgentEvalVote } from './agent-eval-rating.ee';
 import { AgentEvalResult, type AgentEvalResultStatus } from './agent-eval-result.ee';
 import { AgentEvalRun, type AgentEvalRunStatus } from './agent-eval-run.ee';
+import { AgentTagMapping } from './agent-tag-mapping';
 import { AiBuilderTemporaryWorkflow } from './ai-builder-temporary-workflow';
+import { AiPreference } from './ai-preference';
 import { AnnotationTagEntity } from './annotation-tag-entity.ee';
 import { AnnotationTagMapping } from './annotation-tag-mapping.ee';
 import { ApiKey } from './api-key';
@@ -11,10 +20,15 @@ import { AuthProviderSyncHistory } from './auth-provider-sync-history';
 import { BinaryDataFile, SourceTypeSchema, type SourceType } from './binary-data-file';
 import {
 	CredentialDependency,
+	EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE,
 	type CredentialDependencyType,
 } from './credential-dependency-entity';
 import { CredentialsEntity, type CredentialUsageScope } from './credentials-entity';
-import { DeploymentKey } from './deployment-key';
+import {
+	DeploymentKey,
+	OAUTH_JWE_PRIVATE_KEY_TYPE,
+	OAUTH_SIGNING_KEY_TYPE,
+} from './deployment-key';
 import { EvaluationCollection } from './evaluation-collection.ee';
 import { EvaluationConfig } from './evaluation-config.ee';
 import { ExecutionAnnotation } from './execution-annotation.ee';
@@ -24,10 +38,21 @@ import type { ExecutionDataStorageLocation } from './execution-entity';
 import { ExecutionMetadata } from './execution-metadata';
 import { Folder } from './folder';
 import { FolderTagMapping } from './folder-tag-mapping';
+import {
+	IdempotencyKey,
+	idempotencyKeyStatuses,
+	IDEMPOTENCY_KEY_TTL_MS,
+	type IdempotencyKeyStatus,
+} from './idempotency-key';
 import { InstanceCredentialAssignment } from './instance-credential-assignment';
 import { InvalidAuthToken } from './invalid-auth-token';
+import { Lease } from './lease';
+import { LeaseKind } from './lease-kind';
+import { LeaseSession } from './lease-session';
+import { PollerState } from './poller-state';
 import { ProcessedData } from './processed-data';
 import { Project } from './project';
+import { ProjectPoolSettings } from './project-pool-settings.ee';
 import { ProjectRelation } from './project-relation';
 import { ProjectSecretsProviderAccess } from './project-secrets-provider-access';
 import type { SecretsProviderAccessRole } from './project-secrets-provider-access';
@@ -38,6 +63,9 @@ import {
 	ScheduledJobKind,
 	ScheduledJobKindList,
 	ScheduledJobMisfirePolicy,
+	type ScheduledJobOwner,
+	type ScheduledJobOwnerRef,
+	ScheduledJobOwnerType,
 } from './scheduled-job';
 import {
 	ScheduledTask,
@@ -54,17 +82,25 @@ import { SharedWorkflow } from './shared-workflow';
 import { TagEntity } from './tag-entity';
 import { TestCaseExecution } from './test-case-execution.ee';
 import { TestRun } from './test-run.ee';
-import { User } from './user';
+import { Person } from './person';
+import { ServiceAccount } from './service-account';
+import { ServiceAccountDetails } from './service-account-details';
+import { User, type UserKind } from './user';
 import { Variables } from './variables';
 import { WebhookEntity } from './webhook-entity';
-import { WorkflowDependency } from './workflow-dependency-entity';
+import {
+	WorkflowDependency,
+	WORKFLOW_DEPENDENCY_INDEX_VERSION,
+} from './workflow-dependency-entity';
 import { WorkflowEntity } from './workflow-entity';
 import { WorkflowHistory } from './workflow-history';
 import {
 	UNPUBLISH_VERSION_SENTINEL,
 	WorkflowPublicationOutbox,
 	WorkflowPublicationOutboxStatus,
+	WorkflowPublicationReason,
 } from './workflow-publication-outbox';
+import { WorkflowPublicationRetryState } from './workflow-publication-retry-state';
 import {
 	WorkflowPublicationTriggerStatus,
 	type WorkflowPublicationTriggerStatusType,
@@ -72,6 +108,8 @@ import {
 } from './workflow-publication-trigger-status';
 import { WorkflowPublishHistory } from './workflow-publish-history';
 import { WorkflowPublishedVersion } from './workflow-published-version';
+import { WorkflowReviewActivityComment } from './workflow-review-activity-comment.ee';
+import { WorkflowReviewActivity } from './workflow-review-activity.ee';
 import { WorkflowReviewRequestAuthor } from './workflow-review-request-author.ee';
 import { WorkflowReviewRequestReviewer } from './workflow-review-request-reviewer.ee';
 import { WorkflowReviewRequestWorkflow } from './workflow-review-request-workflow.ee';
@@ -86,6 +124,15 @@ import { WorkflowStatistics } from './workflow-statistics';
 import { WorkflowTagMapping } from './workflow-tag-mapping';
 
 export {
+	Person,
+	ServiceAccount,
+	ServiceAccountDetails,
+	type UserKind,
+	ActivityEvent,
+	activityEventCategories,
+	activityResourceTypes,
+	type ActivityEventCategory,
+	type ActivityResourceType,
 	AgentEvalDataset,
 	type AgentEvalColumnMapping,
 	AgentEvalRun,
@@ -94,11 +141,21 @@ export {
 	type AgentEvalResultStatus,
 	AgentEvalRating,
 	type AgentEvalVote,
+	AgentTagMapping,
+	IdempotencyKey,
+	idempotencyKeyStatuses,
+	IDEMPOTENCY_KEY_TTL_MS,
+	type IdempotencyKeyStatus,
 	InvalidAuthToken,
 	InstanceCredentialAssignment,
+	Lease,
+	LeaseKind,
+	LeaseSession,
 	AiBuilderTemporaryWorkflow,
+	PollerState,
 	ProcessedData,
 	Settings,
+	AiPreference,
 	Variables,
 	ApiKey,
 	BinaryDataFile,
@@ -110,8 +167,11 @@ export {
 	CredentialsEntity,
 	type CredentialUsageScope,
 	CredentialDependency,
+	EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE,
 	type CredentialDependencyType,
 	DeploymentKey,
+	OAUTH_JWE_PRIVATE_KEY_TYPE,
+	OAUTH_SIGNING_KEY_TYPE,
 	EvaluationCollection,
 	EvaluationConfig,
 	Folder,
@@ -123,6 +183,9 @@ export {
 	ScheduledJobKind,
 	ScheduledJobKindList,
 	ScheduledJobMisfirePolicy,
+	type ScheduledJobOwner,
+	type ScheduledJobOwnerRef,
+	ScheduledJobOwnerType,
 	ScheduledTask,
 	ScheduledTaskStatus,
 	ScheduledTaskStatusList,
@@ -134,6 +197,7 @@ export {
 	TagEntity,
 	User,
 	WorkflowDependency,
+	WORKFLOW_DEPENDENCY_INDEX_VERSION,
 	WorkflowEntity,
 	WorkflowStatistics,
 	WorkflowTagMapping,
@@ -142,7 +206,9 @@ export {
 	WorkflowHistory,
 	WorkflowPublicationOutbox,
 	WorkflowPublicationOutboxStatus,
+	WorkflowPublicationReason,
 	UNPUBLISH_VERSION_SENTINEL,
+	WorkflowPublicationRetryState,
 	WorkflowPublicationTriggerStatus,
 	type WorkflowPublicationTriggerStatusType,
 	type WorkflowPublicationTriggerKind,
@@ -156,6 +222,8 @@ export {
 	WorkflowReviewRequestWorkflow,
 	WorkflowReviewRequestReviewer,
 	WorkflowReviewRequestAuthor,
+	WorkflowReviewActivity,
+	WorkflowReviewActivityComment,
 	ExecutionData,
 	ExecutionMetadata,
 	AnnotationTagEntity,
@@ -164,21 +232,30 @@ export {
 	TestRun,
 	TestCaseExecution,
 	ExecutionEntity,
+	ProjectPoolSettings,
 	ProjectSecretsProviderAccess,
 	type SecretsProviderAccessRole,
 	SecretsProviderConnection,
 };
 
 export const entities = {
+	ActivityEvent,
 	AgentEvalDataset,
 	AgentEvalRun,
 	AgentEvalResult,
 	AgentEvalRating,
+	AgentTagMapping,
+	IdempotencyKey,
 	InvalidAuthToken,
 	InstanceCredentialAssignment,
+	Lease,
+	LeaseKind,
+	LeaseSession,
 	AiBuilderTemporaryWorkflow,
+	PollerState,
 	ProcessedData,
 	Settings,
+	AiPreference,
 	Variables,
 	ApiKey,
 	BinaryDataFile,
@@ -198,6 +275,9 @@ export const entities = {
 	SharedWorkflow,
 	TagEntity,
 	User,
+	Person,
+	ServiceAccount,
+	ServiceAccountDetails,
 	WorkflowDependency,
 	WorkflowEntity,
 	WorkflowStatistics,
@@ -206,6 +286,7 @@ export const entities = {
 	AuthProviderSyncHistory,
 	WorkflowHistory,
 	WorkflowPublicationOutbox,
+	WorkflowPublicationRetryState,
 	WorkflowPublicationTriggerStatus,
 	WorkflowPublishedVersion,
 	WorkflowPublishHistory,
@@ -213,6 +294,8 @@ export const entities = {
 	WorkflowReviewRequestWorkflow,
 	WorkflowReviewRequestReviewer,
 	WorkflowReviewRequestAuthor,
+	WorkflowReviewActivity,
+	WorkflowReviewActivityComment,
 	ExecutionData,
 	ExecutionMetadata,
 	AnnotationTagEntity,
@@ -224,6 +307,7 @@ export const entities = {
 	Role,
 	ScheduledJob,
 	ScheduledTask,
+	ProjectPoolSettings,
 	ProjectSecretsProviderAccess,
 	SecretsProviderConnection,
 };

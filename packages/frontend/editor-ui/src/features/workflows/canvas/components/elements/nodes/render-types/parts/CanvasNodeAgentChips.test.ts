@@ -1,4 +1,6 @@
 import { createComponentRenderer } from '@/__tests__/render';
+import userEvent from '@testing-library/user-event';
+import { waitFor } from '@testing-library/vue';
 import CanvasNodeAgentChips from './CanvasNodeAgentChips.vue';
 import type { AgentCardChip } from './canvasNodeAgentChips.utils';
 
@@ -19,7 +21,7 @@ const renderComponent = createComponentRenderer(CanvasNodeAgentChips, {
 });
 
 function chip(label: string, overrides: Partial<AgentCardChip> = {}): AgentCardChip {
-	return { key: `k:${label}`, icon: 'zap', label, ...overrides };
+	return { key: `k:${label}`, icon: 'zap', label, activityKeys: [], ...overrides };
 }
 
 beforeEach(() => {
@@ -68,4 +70,81 @@ describe('CanvasNodeAgentChips', () => {
 
 		expect(queryByTestId('chip-node-icon')).toBeNull();
 	});
+
+	it('animates a matching inline capability with the canvas running state', () => {
+		const { getByTestId } = renderComponent({
+			props: {
+				chips: [chip('Lookup', { activityKeys: ['tool:lookup'] })],
+				activeCapabilityKeys: new Set(['tool:lookup']),
+			},
+		});
+
+		const activeChip = getByTestId('canvas-node-agent-chip');
+		expect(activeChip).toHaveAttribute('aria-busy', 'true');
+		expect(activeChip.className).not.toContain('running');
+		expect(activeChip.parentElement?.className).toContain('running');
+		expect(activeChip.parentElement?.querySelector('.statusRing')).not.toBeNull();
+	});
+
+	it('does not animate an inactive inline capability', () => {
+		const { getByTestId } = renderComponent({
+			props: {
+				chips: [chip('Lookup', { activityKeys: ['tool:lookup'] })],
+				activeCapabilityKeys: new Set(),
+			},
+		});
+
+		const inactiveChip = getByTestId('canvas-node-agent-chip');
+		expect(inactiveChip).toHaveAttribute('aria-busy', 'false');
+		expect(inactiveChip.className).not.toContain('running');
+		expect(inactiveChip.parentElement?.className).not.toContain('running');
+		expect(inactiveChip.parentElement?.querySelector('.statusRing')).toBeNull();
+	});
+
+	it('marks the overflow pill active when a hidden capability is active', () => {
+		const { getByTestId } = renderComponent({
+			props: {
+				chips: [
+					chip('Visible', { activityKeys: ['tool:visible'] }),
+					chip('Hidden', { activityKeys: ['tool:hidden'] }),
+				],
+				maxInline: 1,
+				isReadOnly: true,
+				activeCapabilityKeys: new Set(['tool:hidden']),
+			},
+		});
+
+		const overflowChip = getByTestId('canvas-node-agent-chips-overflow');
+		expect(overflowChip).toHaveAttribute('aria-busy', 'true');
+		expect(overflowChip.className).not.toContain('running');
+		expect(overflowChip.parentElement?.className).toContain('running');
+		expect(overflowChip.parentElement?.querySelector('.statusRing')).not.toBeNull();
+	});
+
+	it.each([[true], [false]])(
+		'keeps the editable overflow button as the menu trigger (active: %s)',
+		async (active) => {
+			const { getByTestId, container } = renderComponent({
+				props: {
+					chips: [chip('Visible'), chip('Hidden', { activityKeys: ['tool:hidden'] })],
+					maxInline: 1,
+					activeCapabilityKeys: new Set(active ? ['tool:hidden'] : []),
+				},
+			});
+
+			const trigger = getByTestId('canvas-node-agent-chips-overflow');
+			expect(trigger.tagName).toBe('BUTTON');
+			expect(trigger).toHaveAttribute('aria-haspopup', 'menu');
+			expect(trigger).toHaveAttribute('aria-expanded', 'false');
+			expect(container.querySelectorAll('.statusRing')).toHaveLength(active ? 1 : 0);
+
+			trigger.focus();
+			await userEvent.keyboard('{Enter}');
+			await waitFor(() => expect(trigger).toHaveAttribute('aria-expanded', 'true'));
+
+			await userEvent.keyboard('{Escape}');
+			await waitFor(() => expect(trigger).toHaveAttribute('aria-expanded', 'false'));
+			expect(trigger).toHaveFocus();
+		},
+	);
 });

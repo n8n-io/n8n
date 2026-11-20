@@ -8,17 +8,20 @@ import {
 	hasButtonMatching,
 	highEntropyCandidates,
 	isSensitiveInput,
+	isSecretLabelledCell,
+	opaqueFieldValues,
+	opaqueTokenCandidates,
 	getLabelTextByControlIdMap,
 	REVEAL_BUTTON_PATTERN,
 	REVEAL_PHRASE_PATTERNS,
-	sensitiveInputValues,
+	sensitiveFieldHits,
 	SENSITIVE_ARIA_LABEL_PATTERN,
 	SENSITIVE_FIELD_LABEL_PATTERN,
 	SENSITIVE_TESTID_PATTERN,
 	getTestId,
 } from './dom-matchers';
 import type { SecretHit } from '../redaction/redact';
-import { findRegexSecretHits } from '../redaction/redact';
+import { CONCATENATED_ONLY, collectHit, findRegexSecretHits } from '../redaction/redact';
 import type { HtmlProbeNode, HtmlProbeResult } from '../types';
 
 export interface SensitivityOk {
@@ -34,20 +37,22 @@ export interface SensitivityErr {
 
 export type SensitivityResult = SensitivityOk | SensitivityErr;
 
-function addHit(hits: Map<string, SecretHit>, hit: SecretHit): void {
-	if (!hit.value) return;
-	// Deduplicate by replacement target. The same secret can appear in text,
-	// snapshot, and iframe/shadow copies during one probe.
-	hits.set(`${hit.type}:${hit.value}:${hit.ref ?? ''}`, hit);
-}
-
 function analyzeDocument(html: string, hits: Map<string, SecretHit>): void {
 	const virtualConsole = new VirtualConsole();
 	const dom = new JSDOM(html, { virtualConsole });
 	const { document } = dom.window;
 
-	const bodyText = document.documentElement.textContent ?? '';
-	for (const hit of findRegexSecretHits(bodyText)) addHit(hits, hit);
+	// Markup with no whitespace between tags runs sibling text together in
+	// `textContent`, where a match can span text the model never sees as one
+	// token — and then nothing replaces it. Such a match still marks the page
+	// sensitive, but it cannot become a credential.
+	const rendered = elementText(document.documentElement);
+	for (const hit of findRegexSecretHits(rendered)) collectHit(hits, hit);
+	for (const hit of findRegexSecretHits(document.documentElement.textContent ?? '')) {
+		if (rendered.includes(hit.value)) continue; // the rendered pass has it, with a span we can trust
+		hit.captureBlocked = CONCATENATED_ONLY;
+		collectHit(hits, hit);
+	}
 
 	// Inputs/textareas that are password-shaped or whose label reads as a secret
 	// expose their values in the collected HTML; no entropy needed to flag them.
@@ -59,22 +64,30 @@ function analyzeDocument(html: string, hits: Map<string, SecretHit>): void {
 				getAssociatedLabelText(field, document, labelsByControlIdMap),
 			);
 		if (!sensitive) continue;
-		for (const value of sensitiveInputValues(field)) {
-			addHit(hits, { type: 'password', value });
-		}
+		for (const hit of sensitiveFieldHits(field)) collectHit(hits, hit);
+	}
+
+	// A console renders an issued credential as static text beside its label, with
+	// no input to key off. A conservative first cut: div-soup rows, a second `dd`
+	// under one `dt`, and `thead` column headers are all still uncovered.
+	for (const cell of Array.from(document.querySelectorAll('dd, td'))) {
+		if (!isSecretLabelledCell(cell)) continue;
+		for (const hit of opaqueTokenCandidates(cell)) collectHit(hits, hit);
 	}
 
 	// Reveal dialogs are the high-risk flow: newly created credentials are often
 	// rendered once with copy affordances and explanatory text.
+	// Both signals read attributes or child controls rather than the dialog's own
+	// text, so a dialog holding only the field and an icon-only copy control still
+	// confirms. No text means no phrase and no entropy candidates, which the two
+	// passes below already report as nothing.
 	for (const dialog of Array.from(document.querySelectorAll('[role="dialog"], dialog[open]'))) {
 		const text = elementText(dialog);
-		if (!text) continue;
 		const hasRevealPhrase = REVEAL_PHRASE_PATTERNS.some((pattern) => pattern.test(text));
 		const hasCopyButton = hasButtonMatching(dialog, COPY_BUTTON_PATTERN);
 		if (!hasRevealPhrase && !hasCopyButton) continue;
-		for (const value of highEntropyCandidates(text)) {
-			addHit(hits, { type: 'secret', value });
-		}
+		for (const hit of highEntropyCandidates(text)) collectHit(hits, hit);
+		for (const hit of opaqueFieldValues(dialog)) collectHit(hits, hit);
 	}
 
 	// Product UIs frequently label secret containers with test IDs even when the
@@ -85,9 +98,7 @@ function analyzeDocument(html: string, hits: Map<string, SecretHit>): void {
 		const testId = getTestId(el);
 		if (!testId || !SENSITIVE_TESTID_PATTERN.test(testId)) continue;
 		if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') continue;
-		for (const value of highEntropyCandidates(elementText(el))) {
-			addHit(hits, { type: 'secret', value });
-		}
+		for (const hit of highEntropyCandidates(elementText(el))) collectHit(hits, hit);
 	}
 
 	// aria-label/labelledby captures Stripe-style inline secret displays where
@@ -95,9 +106,7 @@ function analyzeDocument(html: string, hits: Map<string, SecretHit>): void {
 	for (const el of Array.from(document.querySelectorAll('[aria-label], [aria-labelledby]'))) {
 		if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') continue;
 		if (!SENSITIVE_ARIA_LABEL_PATTERN.test(elementLabel(el, document))) continue;
-		for (const value of highEntropyCandidates(elementText(el))) {
-			addHit(hits, { type: 'secret', value });
-		}
+		for (const hit of highEntropyCandidates(elementText(el))) collectHit(hits, hit);
 	}
 
 	// Non-dialog pages need both copy and reveal signals before we treat a
@@ -112,9 +121,8 @@ function analyzeDocument(html: string, hits: Map<string, SecretHit>): void {
 		}
 		if (!container || container.matches('[role="dialog"], dialog[open]')) continue;
 		if (!hasButtonMatching(container, REVEAL_BUTTON_PATTERN)) continue;
-		for (const value of highEntropyCandidates(elementText(container))) {
-			addHit(hits, { type: 'secret', value });
-		}
+		for (const hit of highEntropyCandidates(elementText(container))) collectHit(hits, hit);
+		for (const hit of opaqueFieldValues(container)) collectHit(hits, hit);
 	}
 
 	// Monospace tokens inside a nearby sensitive ancestor are common in API-key
@@ -133,9 +141,7 @@ function analyzeDocument(html: string, hits: Map<string, SecretHit>): void {
 			depth++;
 		}
 		if (!confident) continue;
-		for (const value of highEntropyCandidates(elementText(code))) {
-			addHit(hits, { type: 'secret', value });
-		}
+		for (const hit of highEntropyCandidates(elementText(code))) collectHit(hits, hit);
 	}
 }
 

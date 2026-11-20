@@ -1,6 +1,16 @@
-import { jsonParse, type IExecuteFunctions, type INodeExecutionData } from 'n8n-workflow';
+import {
+	jsonParse,
+	type IExecuteFunctions,
+	type INodeExecutionData,
+	requestUrl,
+} from 'n8n-workflow';
 
-import { extractResourceLocatorValue, getActiveCredentialType, getHost } from '../helpers';
+import {
+	databricksApiRequest,
+	extractResourceLocatorValue,
+	getActiveCredentialType,
+	getHost,
+} from '../helpers';
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	const credentialType = getActiveCredentialType(this, i);
@@ -21,30 +31,34 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		type_json: param.type_json ?? JSON.stringify({ name: param.type_name }),
 	}));
 
-	const response = await this.helpers.httpRequestWithAuthentication.call(this, credentialType, {
-		method: 'POST',
-		url: `${host}/api/2.1/unity-catalog/functions`,
-		body: {
-			function_info: {
-				name: functionName,
-				catalog_name: catalogName,
-				schema_name: schemaName,
-				input_params: { parameters: normalizedParams },
-				data_type: returnType,
-				full_data_type: returnType,
-				specific_name: functionName,
-				parameter_style: 'S',
-				security_type: 'DEFINER',
-				sql_data_access: 'CONTAINS_SQL',
-				is_deterministic: false,
-				is_null_call: true,
-				routine_body: routineBody,
-				routine_definition: routineDefinition,
+	const response = await databricksApiRequest(
+		this,
+		credentialType,
+		requestUrl`${host}/api/2.1/unity-catalog/functions`,
+		{
+			method: 'POST',
+			body: {
+				function_info: {
+					name: functionName,
+					catalog_name: catalogName,
+					schema_name: schemaName,
+					input_params: { parameters: normalizedParams },
+					data_type: returnType,
+					full_data_type: returnType,
+					specific_name: functionName,
+					parameter_style: 'S',
+					security_type: 'DEFINER',
+					sql_data_access: 'CONTAINS_SQL',
+					is_deterministic: false,
+					is_null_call: true,
+					routine_body: routineBody,
+					routine_definition: routineDefinition,
+				},
 			},
+			headers: { 'Content-Type': 'application/json' },
+			json: true,
 		},
-		headers: { 'Content-Type': 'application/json' },
-		json: true,
-	});
+	);
 
 	return [{ json: response, pairedItem: { item: i } }];
 }

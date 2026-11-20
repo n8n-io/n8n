@@ -113,6 +113,35 @@ describe('createInspectionTools', () => {
 				expect(data.snapshot).toBe('- text "Your key is [REDACTED:anthropic_api_key:1]" [ref=e1]');
 				expect(textOf(result)).not.toContain(secret);
 			});
+
+			// A console shows the issued value in a readonly textbox with no accessible
+			// name. The aria snapshot renders the live value as the node's text, while the
+			// HTML probe reflects it into the `value` attribute.
+			it('redacts a reveal-dialog field value with no accessible name', async () => {
+				const issued = 'notreal-IMzLaCKsU6ZxAbt2qFc9XYdRpQ7vNtBmKL';
+				mockConnection.adapter.snapshot.mockResolvedValue({
+					tree: `- dialog [ref=e1]:\n  - textbox [ref=e2]: ${issued}`,
+					refCount: 2,
+				});
+				mockConnection.adapter.probePageHtml.mockResolvedValue({
+					ok: true,
+					root: {
+						kind: 'document',
+						html: `<div role="dialog"><p>Please save your secret key in a safe place.</p><input type="text" readonly value="${issued}"><button type="button">Copy</button></div>`,
+						path: ['document'],
+						children: [],
+						errors: [],
+					},
+				});
+
+				const result = await getTool().execute({}, TOOL_CONTEXT);
+				const data = structuredOf(result);
+
+				expect(data.snapshot).toBe(
+					'- dialog [ref=e1]:\n  - textbox [ref=e2]: [REDACTED:password:1]',
+				);
+				expect(textOf(result)).not.toContain(issued);
+			});
 		});
 	});
 

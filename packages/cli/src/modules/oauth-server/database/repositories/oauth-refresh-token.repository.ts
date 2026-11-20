@@ -1,4 +1,4 @@
-import { BaseRepository, type OperationContext } from '@n8n/db';
+import { BaseRepository, TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, MoreThanOrEqual } from '@n8n/typeorm';
 
@@ -10,12 +10,13 @@ type NewRefreshToken = {
 	userId: string;
 	expiresAt: number;
 	scope: string[];
+	resource: string;
 };
 
 @Service()
 export class RefreshTokenRepository extends BaseRepository<RefreshToken> {
-	constructor(dataSource: DataSource) {
-		super(RefreshToken, dataSource.manager);
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(RefreshToken, dataSource.manager, transactionRunner);
 	}
 
 	async findByToken(

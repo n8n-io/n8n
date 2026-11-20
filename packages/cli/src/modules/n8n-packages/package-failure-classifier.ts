@@ -1,15 +1,17 @@
-import { UserError } from 'n8n-workflow';
-
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
+import {
+	BadRequestError,
+	ConflictError,
+	ForbiddenError,
+	NotFoundError,
+	UnprocessableRequestError,
+	UserError,
+} from '@n8n/errors';
 
 import {
 	PackageEntityAccessDeniedError,
 	PackageEntityNotFoundError,
 	PackageExportBlockedError,
+	PackageWorkflowInvalidError,
 } from './entities/package-export.errors';
 import type { PackageFailureReason } from './n8n-packages.types';
 
@@ -21,6 +23,7 @@ export function classifyPackageFailure(error: unknown): PackageFailureReason {
 	if (error instanceof PackageEntityAccessDeniedError) return 'access-denied';
 	if (error instanceof PackageEntityNotFoundError) return 'entity-not-found';
 	if (error instanceof PackageExportBlockedError) return 'blocked';
+	if (error instanceof PackageWorkflowInvalidError) return 'validation';
 	if (error instanceof ForbiddenError) return 'access-denied';
 	if (error instanceof NotFoundError) return 'entity-not-found';
 	if (error instanceof ConflictError || error instanceof UnprocessableRequestError) {

@@ -1,22 +1,21 @@
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests intentionally reference unbound methods */
 import type { Mock, Mocked, MockedFunction } from 'vitest';
 import type { Logger } from '@n8n/backend-common';
-import type { HttpRequestClient, OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
-import type { SsrfProtectionConfig } from '@n8n/config';
+import type { HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import type { Author } from 'chat';
 import { createHmac } from 'crypto';
 import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import type { UrlService } from '@/services/url.service';
+import { BadRequestError, ConflictError } from '@n8n/errors';
+import type { UrlService } from '@n8n/backend-services';
 
-import type { Agent } from '../../../../entities/agent.entity';
+import type { ProjectAgent } from '../../../../entities/agent.entity';
 import type { AgentRepository } from '../../../../repositories/agent.repository';
+import { queuedAccessSender } from '../../../../types/agent-queued-message';
 import type { AgentChatIntegrationContext } from '../../../agent-chat-integration';
 import { loadTelegramAdapter } from '../../../esm-loader';
-import { TelegramIntegration } from '../../telegram-integration';
+import { TelegramIntegration } from '../../telegram/telegram-integration';
 
 vi.mock('../../../esm-loader', () => ({
 	loadTelegramAdapter: vi.fn(),
@@ -31,13 +30,18 @@ const makeAgent = (
 	id: string,
 	name: string,
 	integrations: Array<{ type: string; credentialId: string }>,
-) => ({ id, name, integrations }) as Agent;
+) => ({ id, name, integrations }) as ProjectAgent;
 
 const makeContext = (
 	overrides: Partial<AgentChatIntegrationContext> = {},
 ): AgentChatIntegrationContext => ({
 	agentId: 'agent-1',
 	projectId: 'proj-1',
+	integration: {
+		type: 'telegram',
+		credentialId: 'cred-1',
+		settings: { accessMode: 'public', allowedUsers: [] },
+	},
 	credentialId: 'cred-1',
 	credential: { accessToken: 'bot-token' },
 	ingressEnabled: true,
@@ -51,7 +55,6 @@ const makeIntegration = (
 		urlService?: Mocked<UrlService>;
 		agentRepository?: Mocked<AgentRepository>;
 		encryptionKey?: string;
-		ssrfEnabled?: boolean;
 	} = {},
 ) => {
 	const urlService =
@@ -69,16 +72,12 @@ const makeIntegration = (
 	const requestMock = httpClient.request as Mock;
 	const outboundHttp = mock<OutboundHttp>();
 	outboundHttp.requests.mockReturnValue(httpClient);
-	const ssrfConfig = { enabled: opts.ssrfEnabled ?? false } as SsrfProtectionConfig;
-	const ssrfProtectionService = mock<SsrfProtectionService>();
 	const integration = new TelegramIntegration(
 		mock<Logger>(),
 		urlService,
 		agentRepository,
 		instanceSettings,
 		outboundHttp,
-		ssrfConfig,
-		ssrfProtectionService,
 	);
 	return {
 		integration,
@@ -87,7 +86,6 @@ const makeIntegration = (
 		instanceSettings,
 		outboundHttp,
 		requestMock,
-		ssrfProtectionService,
 	};
 };
 
@@ -186,10 +184,16 @@ describe('TelegramIntegration.requiresLeader', () => {
 });
 describe('TelegramIntegration.isUserAllowed', () => {
 	const { integration } = makeIntegration();
+	const author = { userId: '999', userName: 'someuser' } as Author;
+	const privateSettings = (allowedUsers: string[]) => ({
+		type: 'telegram' as const,
+		credentialId: 'cred-1',
+		settings: { accessMode: 'private' as const, allowedUsers },
+	});
 
 	it('allows everyone in public mode', () => {
 		expect(
-			integration.isUserAllowed({ userId: '999', userName: 'someuser' } as Author, {
+			integration.isUserAllowed(author, {
 				type: 'telegram',
 				credentialId: 'cred-1',
 				settings: {
@@ -201,47 +205,54 @@ describe('TelegramIntegration.isUserAllowed', () => {
 	});
 
 	it('allows everyone for legacy connections without saved settings', () => {
-		expect(
-			integration.isUserAllowed({ userId: '999', userName: 'someuser' } as Author, undefined),
-		).toBe(true);
+		expect(integration.isUserAllowed(author, undefined)).toBe(true);
 	});
 
 	it('accepts a whitelisted user by numeric ID in private mode', () => {
 		expect(
-			integration.isUserAllowed({ userId: '123', userName: 'someuser' } as Author, {
-				type: 'telegram',
-				credentialId: 'cred-1',
-				settings: {
-					accessMode: 'private',
-					allowedUsers: ['123', '456'],
-				},
+			integration.isUserAllowed(author, privateSettings(['123', '456']), {
+				userId: '123',
+				userName: 'someuser',
 			}),
 		).toBe(true);
 	});
 
-	it('accepts a whitelisted user by username in private mode', () => {
-		expect(
-			integration.isUserAllowed({ userId: '999', userName: 'john_doe123' } as Author, {
-				type: 'telegram',
-				credentialId: 'cred-1',
-				settings: {
-					accessMode: 'private',
-					allowedUsers: ['john_doe123', '456'],
-				},
-			}),
-		).toBe(true);
-	});
+	it.each(['john_doe123', '@john_doe123', 'John_Doe123'])(
+		'accepts a whitelisted user by username in private mode (%s)',
+		(entry) => {
+			expect(
+				integration.isUserAllowed(author, privateSettings([entry, '456']), {
+					userId: '999',
+					userName: 'john_doe123',
+				}),
+			).toBe(true);
+		},
+	);
 
 	it('rejects a user whose ID and username are both absent from the allowlist', () => {
 		expect(
-			integration.isUserAllowed({ userId: '999', userName: 'stranger' } as Author, {
-				type: 'telegram',
-				credentialId: 'cred-1',
-				settings: {
-					accessMode: 'private',
-					allowedUsers: ['123', 'john_doe123'],
-				},
+			integration.isUserAllowed(author, privateSettings(['123', 'john_doe123']), {
+				userId: '999',
+				userName: 'stranger',
 			}),
+		).toBe(false);
+	});
+
+	it('matches numeric entries only against the user ID', () => {
+		expect(
+			integration.isUserAllowed(author, privateSettings(['123']), {
+				userId: '999',
+				userName: '123',
+			}),
+		).toBe(false);
+	});
+
+	it('rejects a sender without a verified identity in private mode', () => {
+		expect(
+			integration.isUserAllowed(
+				{ userId: '999', userName: 'john_doe123' } as Author,
+				privateSettings(['john_doe123', '999']),
+			),
 		).toBe(false);
 	});
 
@@ -256,6 +267,87 @@ describe('TelegramIntegration.isUserAllowed', () => {
 				} as never,
 			),
 		).toThrow();
+	});
+});
+
+describe('TelegramIntegration.isUserAllowed for queued turns', () => {
+	const { integration } = makeIntegration();
+	const settings = {
+		type: 'telegram' as const,
+		credentialId: 'cred-1',
+		settings: { accessMode: 'private' as const, allowedUsers: ['123', 'john_doe123'] },
+	};
+	const sender = (userId: string, userName: string) =>
+		({ userId, userName, fullName: userName, isBot: false, isMe: false }) as Author;
+	const allowed = (payload: Parameters<typeof queuedAccessSender>[0]) =>
+		integration.isUserAllowed(payload.sender, settings, queuedAccessSender(payload));
+
+	it('uses the stored sender identity', () => {
+		expect(
+			allowed({
+				sender: sender('999', 'other'),
+				verifiedSender: { userId: '999', userName: 'john_doe123' },
+			}),
+		).toBe(true);
+		expect(allowed({ sender: sender('123', 'john_doe123'), verifiedSender: null })).toBe(false);
+	});
+
+	it('accepts an older queue item by numeric user ID', () => {
+		expect(allowed({ sender: sender('123', 'someone') })).toBe(true);
+	});
+
+	it('rejects an older queue item listed only by username', () => {
+		expect(allowed({ sender: sender('999', 'john_doe123') })).toBe(false);
+	});
+
+	it('rejects an older queue item from a chat sender', () => {
+		expect(allowed({ sender: sender('chat:123', '123') })).toBe(false);
+	});
+});
+
+describe('TelegramIntegration.verifiedSender', () => {
+	const { integration } = makeIntegration();
+
+	it('reads the user ID and username from a message', () => {
+		expect(
+			integration.verifiedSender({
+				message_id: 1,
+				chat: { id: 5, type: 'private' },
+				from: { id: 123, is_bot: false, first_name: 'Ada', username: 'ada_l' },
+			}),
+		).toEqual({ userId: '123', userName: 'ada_l' });
+	});
+
+	it('leaves the username unset when the user has none', () => {
+		expect(
+			integration.verifiedSender({ from: { id: 123, is_bot: false, first_name: 'ada_l' } }),
+		).toEqual({ userId: '123', userName: undefined });
+	});
+
+	it('reads the user from a callback query', () => {
+		expect(
+			integration.verifiedSender({
+				id: 'cb-1',
+				chat_instance: 'x',
+				data: 'a',
+				from: { id: 7, is_bot: false, first_name: 'Bo', username: 'bo' },
+			}),
+		).toEqual({ userId: '7', userName: 'bo' });
+	});
+
+	it.each([
+		[
+			'a message sent on behalf of a chat',
+			{
+				from: { id: 136817688, is_bot: true, first_name: 'Channel', username: 'Channel_Bot' },
+				sender_chat: { id: -100, type: 'channel', title: 'ada_l' },
+			},
+		],
+		['a message without a user', { sender_chat: { id: -100, type: 'channel', title: 'ada_l' } }],
+		['a non-object value', undefined],
+		['a user without a numeric ID', { from: { id: '123' } }],
+	])('returns undefined for %s', (_label, raw) => {
+		expect(integration.verifiedSender(raw)).toBeUndefined();
 	});
 });
 
@@ -335,6 +427,7 @@ describe('TelegramIntegration secret token', () => {
 			botToken: 'bot-token',
 			mode: 'webhook',
 			secretToken: expected,
+			longPolling: { allowedUpdates: expect.arrayContaining(['message', 'callback_query']) },
 		});
 	});
 
@@ -347,6 +440,20 @@ describe('TelegramIntegration secret token', () => {
 
 		expect(createTelegramAdapter).toHaveBeenCalledWith(
 			expect.objectContaining({ mode: 'polling' }),
+		);
+	});
+
+	it('createAdapter polls for button clicks, not only messages', async () => {
+		const urlService = mock<UrlService>();
+		urlService.getWebhookBaseUrl.mockReturnValue('http://localhost:5678/');
+		const { integration } = makeIntegration({ urlService });
+
+		await integration.createAdapter(makeContext());
+
+		expect(createTelegramAdapter).toHaveBeenCalledWith(
+			expect.objectContaining({
+				longPolling: { allowedUpdates: expect.arrayContaining(['message', 'callback_query']) },
+			}),
 		);
 	});
 
@@ -403,24 +510,25 @@ describe('TelegramIntegration secret token', () => {
 		expect(request.body.secret_token).toBe(expectedSecret('cluster-key', 'agent-Z', 'cred-Z'));
 	});
 
-	it('onAfterConnect applies SSRF protection when enabled (user-configurable Bot API host)', async () => {
-		const { integration, requestMock, outboundHttp, ssrfProtectionService } = makeIntegration({
-			ssrfEnabled: true,
-		});
+	it('onAfterConnect uses the default safe client (user-configurable Bot API host)', async () => {
+		const { integration, requestMock, outboundHttp } = makeIntegration();
 		requestMock.mockResolvedValue({ statusCode: 200, body: {} });
 
 		await integration.onAfterConnect(makeContext());
 
-		expect(outboundHttp.requests).toHaveBeenCalledWith({ ssrf: ssrfProtectionService });
+		expect(outboundHttp.requests).toHaveBeenCalledWith();
 	});
 
-	it('onAfterConnect disables SSRF protection when the global flag is off', async () => {
-		const { integration, requestMock, outboundHttp } = makeIntegration({ ssrfEnabled: false });
+	it('onAfterConnect subscribes the webhook to button clicks, not only messages', async () => {
+		const { integration, requestMock } = makeIntegration();
 		requestMock.mockResolvedValue({ statusCode: 200, body: {} });
 
 		await integration.onAfterConnect(makeContext());
 
-		expect(outboundHttp.requests).toHaveBeenCalledWith({ ssrf: 'disabled' });
+		const request = requestMock.mock.calls[0][0] as { body: { allowed_updates?: string[] } };
+		expect(request.body.allowed_updates).toEqual(
+			expect.arrayContaining(['message', 'callback_query']),
+		);
 	});
 
 	it('onAfterConnect throws when Telegram rejects setWebhook', async () => {

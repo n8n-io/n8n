@@ -7,7 +7,7 @@ import userEvent from '@testing-library/user-event';
 import { SET_NODE_TYPE } from '@/app/constants';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { defaultSettings } from '@/__tests__/defaults';
+import { defaultSettings } from '@n8n/frontend-test-utils';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import VirtualSchemaHeader from '@/features/ndv/runData/components/VirtualSchemaHeader.vue';
 

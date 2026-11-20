@@ -9,7 +9,7 @@ import type {
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import { NodeExecutionContext } from './node-execution-context';
 import { getBinaryHelperFunctions } from './utils/binary-helper-functions';
@@ -57,6 +57,7 @@ export class TriggerContext extends NodeExecutionContext implements ITriggerFunc
 			...getRequestHelperFunctions(workflow, node, additionalData),
 			...getBinaryHelperFunctions(additionalData, workflow.id),
 			...schedulingFunctions,
+			withExpressionIsolate: async (fn) => await workflow.expression.withIsolate(fn),
 		};
 	}
 
@@ -64,7 +65,12 @@ export class TriggerContext extends NodeExecutionContext implements ITriggerFunc
 		return this.activation;
 	}
 
+	override getExecutionContext() {
+		// Trigger contexts have no run data, so preserve context established by the entry point.
+		return super.getExecutionContext() ?? this.additionalData.executionContext;
+	}
+
 	async getCredentials<T extends object = ICredentialDataDecryptedObject>(type: string) {
-		return await this._getCredentials<T>(type);
+		return await this._getRunlessCredentials<T>(type, { credentialUsage: 'trigger' });
 	}
 }

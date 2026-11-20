@@ -6,8 +6,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ProjectService } from '@/services/project.service.ee';
-import { RoleService } from '@/services/role.service';
-import { Telemetry } from '@/telemetry';
+import { type CredentialsFinderService, RoleService, TelemetryProxy } from '@n8n/backend-services';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { createWorkflow } from './mock.utils';
@@ -24,6 +23,7 @@ describe('get-workflow-details MCP tool', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
 	const baseWebhookUrl = 'https://example.test';
 	const nodeTypes = mock<INodeTypes>();
+	const credentialsFinderService = mock<CredentialsFinderService>();
 
 	describe('smoke tests', () => {
 		test('it creates tool correctly', () => {
@@ -31,7 +31,7 @@ describe('get-workflow-details MCP tool', () => {
 				findWorkflowForUser: vi.fn(),
 			});
 			const credentialsService = mockInstance(CredentialsService, {});
-			const telemetry = mockInstance(Telemetry, {
+			const telemetry = mockInstance(TelemetryProxy, {
 				track: vi.fn(),
 			});
 			const roleService = mockInstance(RoleService, {
@@ -47,6 +47,7 @@ describe('get-workflow-details MCP tool', () => {
 				baseWebhookUrl,
 				workflowFinderService,
 				credentialsService,
+				credentialsFinderService,
 				nodeTypes,
 				endpoints,
 				telemetry,
@@ -86,6 +87,7 @@ describe('get-workflow-details MCP tool', () => {
 				baseWebhookUrl,
 				workflowFinderService,
 				credentialsService,
+				credentialsFinderService,
 				nodeTypes,
 				endpoints,
 				roleService,
@@ -124,7 +126,7 @@ describe('get-workflow-details MCP tool', () => {
 						disabled: false,
 						parameters: {},
 						credentials: {
-							openAiApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+							openAiApi: { id: null, name: 'Gateway credits', __aiGatewayManaged: true },
 						},
 					},
 					{
@@ -152,6 +154,7 @@ describe('get-workflow-details MCP tool', () => {
 				baseWebhookUrl,
 				workflowFinderService,
 				credentialsService,
+				credentialsFinderService,
 				nodeTypes,
 				endpoints,
 				roleService,
@@ -165,6 +168,32 @@ describe('get-workflow-details MCP tool', () => {
 			expect(payload.workflow.nodes?.[1].credentials).toEqual({
 				httpHeaderAuth: { id: 'cred-1', name: 'HeaderAuth' },
 			});
+		});
+
+		test('reports the parent folder of a workflow inside a folder', async () => {
+			const workflow = createWorkflow({
+				parentFolder: { id: 'folder-1' } as WorkflowEntity['parentFolder'],
+			});
+			const workflowFinderService = mockInstance(WorkflowFinderService, {
+				findWorkflowForUser: vi.fn().mockResolvedValue(workflow),
+			});
+			const credentialsService = mockInstance(CredentialsService, {});
+			const endpoints = { webhook: 'webhook', webhookTest: 'webhook-test' };
+
+			const payload = await getWorkflowDetails(
+				user,
+				baseWebhookUrl,
+				workflowFinderService,
+				credentialsService,
+				credentialsFinderService,
+				nodeTypes,
+				endpoints,
+				roleService,
+				projectService,
+				{ workflowId: 'wf-1', detailLevel: 'execution' },
+			);
+
+			expect(payload.workflow.parentFolderId).toBe('folder-1');
 		});
 
 		test("omits graph fields when detailLevel is 'execution'", async () => {
@@ -181,6 +210,7 @@ describe('get-workflow-details MCP tool', () => {
 				baseWebhookUrl,
 				workflowFinderService,
 				credentialsService,
+				credentialsFinderService,
 				nodeTypes,
 				endpoints,
 				roleService,
@@ -189,12 +219,17 @@ describe('get-workflow-details MCP tool', () => {
 			);
 
 			// The published version stays loaded: its graph is omitted, but its
-			// triggers still feed activeVersionTriggerInfo
+			// triggers still feed activeVersionTriggerInfo. The parent folder must
+			// be requested too — without it parentFolderId is silently always null.
 			expect(findWorkflowForUser).toHaveBeenCalledWith(
 				'wf-1',
 				user,
 				['workflow:read'],
-				expect.objectContaining({ includeActiveVersion: true }),
+				expect.objectContaining({
+					includeActiveVersion: true,
+					includeParentFolder: true,
+					publishHistory: 'none',
+				}),
 			);
 
 			expect(payload.workflow.nodes).toBeUndefined();
@@ -229,6 +264,7 @@ describe('get-workflow-details MCP tool', () => {
 				baseWebhookUrl,
 				workflowFinderService,
 				credentialsService,
+				credentialsFinderService,
 				nodeTypes,
 				endpoints,
 				roleService,
@@ -260,6 +296,7 @@ describe('get-workflow-details MCP tool', () => {
 				baseWebhookUrl,
 				inSyncFinder,
 				credentialsService,
+				credentialsFinderService,
 				nodeTypes,
 				endpoints,
 				roleService,
@@ -287,6 +324,7 @@ describe('get-workflow-details MCP tool', () => {
 				baseWebhookUrl,
 				divergedFinder,
 				credentialsService,
+				credentialsFinderService,
 				nodeTypes,
 				endpoints,
 				roleService,
@@ -321,6 +359,7 @@ describe('get-workflow-details MCP tool', () => {
 				baseWebhookUrl,
 				movedFinder,
 				credentialsService,
+				credentialsFinderService,
 				nodeTypes,
 				endpoints,
 				roleService,
@@ -330,6 +369,56 @@ describe('get-workflow-details MCP tool', () => {
 			expect(payload.activeVersionTriggerInfo).toBeUndefined();
 			// The node-level guard let this through, so the notice compare is what suppressed it
 			expect(getTriggerDetailsMock).toHaveBeenCalledTimes(2);
+		});
+
+		test('normalizes nodes persisted without a parameters key in the draft and published graphs', async () => {
+			// Regression (ADO-5355): drafts can hold skeleton nodes with no
+			// `parameters` key at all; the payload and the trigger-info builders
+			// must see an object instead.
+			getTriggerDetailsMock.mockClear();
+			const credentialsService = mockInstance(CredentialsService, {});
+			const endpoints = { webhook: 'webhook', webhookTest: 'webhook-test' };
+			const skeletonNode = {
+				id: 'node-1',
+				name: 'Webhook',
+				type: 'n8n-nodes-base.webhook',
+				typeVersion: 1,
+				position: [0, 0],
+				webhookId: 'hook-1',
+			} as INode;
+			const workflow = createWorkflow({
+				activeVersionId: uuid(),
+				nodes: [skeletonNode],
+				activeVersion: { nodes: [{ ...skeletonNode }] },
+			} as unknown as Partial<WorkflowEntity>);
+			const workflowFinderService = mockInstance(WorkflowFinderService, {
+				findWorkflowForUser: vi.fn().mockResolvedValue(workflow),
+			});
+
+			const payload = await getWorkflowDetails(
+				user,
+				baseWebhookUrl,
+				workflowFinderService,
+				credentialsService,
+				credentialsFinderService,
+				nodeTypes,
+				endpoints,
+				roleService,
+				projectService,
+				{ workflowId: 'wf-1' },
+			);
+
+			expect(payload.workflow.nodes?.[0].parameters).toEqual({});
+			expect(payload.workflow.activeVersion).toMatchObject({
+				sameAsDraft: false,
+				nodes: [{ parameters: {} }],
+			});
+			// The trigger builder received the normalized node ...
+			const [, supported] = getTriggerDetailsMock.mock.calls[0];
+			expect(supported[0].parameters).toEqual({});
+			// ... and the missing key alone did not read as a trigger divergence.
+			expect(getTriggerDetailsMock).toHaveBeenCalledTimes(1);
+			expect(payload.activeVersionTriggerInfo).toBeUndefined();
 		});
 
 		test('never emits activeVersionTriggerInfo when the published version is the draft', async () => {
@@ -348,6 +437,7 @@ describe('get-workflow-details MCP tool', () => {
 				baseWebhookUrl,
 				workflowFinderService,
 				credentialsService,
+				credentialsFinderService,
 				nodeTypes,
 				endpoints,
 				roleService,
@@ -374,6 +464,7 @@ describe('get-workflow-details MCP tool', () => {
 				baseWebhookUrl,
 				workflowFinderService,
 				credentialsService,
+				credentialsFinderService,
 				nodeTypes,
 				endpoints,
 				roleService,
@@ -400,6 +491,7 @@ describe('get-workflow-details MCP tool', () => {
 				baseWebhookUrl,
 				workflowFinderService,
 				credentialsService,
+				credentialsFinderService,
 				nodeTypes,
 				endpoints,
 				roleService,
@@ -431,6 +523,7 @@ describe('get-workflow-details MCP tool', () => {
 				baseWebhookUrl,
 				workflowFinderService,
 				credentialsService,
+				credentialsFinderService,
 				nodeTypes,
 				endpoints,
 				roleService,
@@ -483,6 +576,7 @@ describe('get-workflow-details MCP tool', () => {
 				baseWebhookUrl,
 				workflowFinderService,
 				credentialsService,
+				credentialsFinderService,
 				nodeTypes,
 				endpoints,
 				roleService,
@@ -510,6 +604,7 @@ describe('get-workflow-details MCP tool', () => {
 					baseWebhookUrl,
 					wfFinder,
 					credentialsService,
+					credentialsFinderService,
 					nodeTypes,
 					endpoints,
 					roleService,
@@ -532,6 +627,7 @@ describe('get-workflow-details MCP tool', () => {
 				baseWebhookUrl,
 				workflowFinderService,
 				credentialsService,
+				credentialsFinderService,
 				nodeTypes,
 				endpoints,
 				roleService,

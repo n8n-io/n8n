@@ -1,24 +1,56 @@
-import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
+import { mapCredentialForProvider } from '@n8n/agents';
+import {
+	AI_GATEWAY_MANAGED_TAG,
+	getAgentModelProviderCredentialTypes,
+	type AgentModelsUnavailableReason,
+} from '@n8n/api-types';
 import { OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { UserError } from '@n8n/errors';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
+import { CredentialsHelper } from '@/credentials-helper';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 
-import { mapCredentialForProvider } from '../json-config/credential-field-mapping';
+import type { ModelChoice } from './model-lookup.types';
+import { AzureFoundryDeploymentsService } from '../azure-foundry-deployments.service';
+import { LLM_PROVIDER_DEFAULTS } from '../llm-provider-defaults';
+import { decryptAgentCredential } from '../utils/decrypt-agent-credential';
 
 export type ModelCatalogPolicy = 'curated' | 'endpoint-only' | 'managed';
 
 export type LiveModelLookupResult =
 	| {
 			status: 'success';
-			models: Array<{ name: string; value: string }>;
+			models: ModelChoice[];
 			policy: ModelCatalogPolicy;
 	  }
-	| { status: 'unavailable'; error: unknown; policy: ModelCatalogPolicy };
+	| {
+			status: 'unavailable';
+			error: unknown;
+			policy: ModelCatalogPolicy;
+			/** Set when the user can fix the cause, so the picker can say how. */
+			reason?: AgentModelsUnavailableReason;
+	  };
+
+/**
+ * Why a Foundry credential has no deployment list, written for the Agent
+ * Builder, which tells the user how to fix it.
+ */
+const FOUNDRY_UNAVAILABLE_MESSAGES: Record<AgentModelsUnavailableReason, string> = {
+	endpoint_type_unsupported:
+		'This Azure OpenAI credential uses the Classic endpoint type. Agents need a Microsoft Foundry credential. Ask the user to select or create one.',
+	project_missing:
+		'This Microsoft Foundry credential has no project, so n8n cannot list its deployments. Ask the user to add the Foundry project to the credential.',
+	project_not_found:
+		'Microsoft Foundry does not know the project on this credential. Ask the user to check the project name in the credential.',
+};
+
+interface ModelLookupOptions {
+	useEvalModelCatalog?: boolean;
+}
 
 /**
  * Fetches a provider's live chat-model list for a credential, via the shared
@@ -26,16 +58,18 @@ export type LiveModelLookupResult =
  * that backs the chat sub-nodes' model dropdowns). Nothing from
  * `@n8n/n8n-nodes-langchain` is loaded on this path.
  *
- * The credential must be usable by the user within the given project — the
- * same set as the workflow editor's credential picker.
+ * The credential must be usable by the user within the given project.
+ * Agent lookups exclude resolvable credentials and credentials available only
+ * through the personal route.
  */
 @Service()
 export class BuilderModelLiveLookupService {
 	constructor(
 		private readonly credentialsService: CredentialsService,
-		private readonly credentialsFinderService: CredentialsFinderService,
+		private readonly credentialsHelper: CredentialsHelper,
 		private readonly outboundHttp: OutboundHttp,
 		private readonly aiGatewayService: AiGatewayService,
+		private readonly azureFoundryDeploymentsService: AzureFoundryDeploymentsService,
 	) {}
 
 	/**
@@ -51,10 +85,19 @@ export class BuilderModelLiveLookupService {
 		credentialId: string,
 		credentialType: string,
 		provider: string,
-	): Promise<Array<{ name: string; value: string }>> {
-		const result = await this.lookup(user, projectId, credentialId, credentialType, provider);
-		if (result.status === 'unavailable') throw result.error;
-		return result.models;
+		options?: ModelLookupOptions,
+	): Promise<ModelChoice[]> {
+		const result = await this.lookup(
+			user,
+			projectId,
+			credentialId,
+			credentialType,
+			provider,
+			options,
+		);
+		if (result.status === 'success') return result.models;
+		if (result.reason) throw new UserError(FOUNDRY_UNAVAILABLE_MESSAGES[result.reason]);
+		throw result.error;
 	}
 
 	async lookup(
@@ -63,27 +106,106 @@ export class BuilderModelLiveLookupService {
 		credentialId: string,
 		credentialType: string,
 		provider: string,
+		options?: ModelLookupOptions,
 	): Promise<LiveModelLookupResult> {
 		if (credentialId === AI_GATEWAY_MANAGED_TAG) {
+			if (options?.useEvalModelCatalog) {
+				return this.getEvalModelCatalog(credentialType, provider, 'managed');
+			}
 			return await this.lookupAiGatewayManagedModels(projectId, provider, user);
 		}
 
+		const usable = await this.findUsableCredential(user, projectId, credentialId, [credentialType]);
+		if (options?.useEvalModelCatalog) {
+			return this.getEvalModelCatalog(credentialType, provider, 'curated');
+		}
+
+		const credentialData = await decryptAgentCredential(this.credentialsHelper, usable, {
+			projectId,
+			userId: user.id,
+		});
+
+		if (provider === 'azure-openai') return await this.listFoundryDeployments(credentialData);
+		return await this.discoverModels(provider, credentialData);
+	}
+
+	/**
+	 * Lists the deployments of the Microsoft Foundry project on an Azure OpenAI
+	 * credential. The deployment names are the exact model ids, so the list is
+	 * authoritative (`endpoint-only`) and has no static catalog fallback.
+	 */
+	async lookupAzureFoundryDeployments(
+		user: User,
+		projectId: string,
+		credentialId: string,
+	): Promise<LiveModelLookupResult> {
+		const usable = await this.findUsableCredential(
+			user,
+			projectId,
+			credentialId,
+			getAgentModelProviderCredentialTypes('azure-openai'),
+		);
+		const credentialData = await decryptAgentCredential(this.credentialsHelper, usable, {
+			projectId,
+			userId: user.id,
+		});
+
+		return await this.listFoundryDeployments(credentialData);
+	}
+
+	private async listFoundryDeployments(
+		credentialData: Record<string, unknown>,
+	): Promise<LiveModelLookupResult> {
+		const result = await this.azureFoundryDeploymentsService.list(credentialData);
+		if (result.status === 'unavailable') {
+			const { error, reason } = result;
+			return { status: 'unavailable', error, reason, policy: 'endpoint-only' };
+		}
+		return {
+			status: 'success',
+			models: result.deployments.map(({ id, name, modelName }) => ({
+				name,
+				value: id,
+				...(modelName ? { servedModel: modelName } : {}),
+			})),
+			policy: 'endpoint-only',
+		};
+	}
+
+	/** The credential must be usable by the user in the project and have one of the given types. */
+	private async findUsableCredential(
+		user: User,
+		projectId: string,
+		credentialId: string,
+		credentialTypes: readonly string[],
+	) {
 		const usableCredentials = await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(
 			user,
-			{ projectId },
+			{ projectId, excludePersonalRoute: true, excludeResolvable: true },
 		);
 		const usable = usableCredentials.find((c) => c.id === credentialId);
-		if (!usable || usable.type !== credentialType) {
+		if (!usable || !credentialTypes.includes(usable.type)) {
 			throw new Error(`Credential ${credentialId} not found or not accessible`);
 		}
+		return usable;
+	}
 
-		const credential = await this.credentialsFinderService.findCredentialById(credentialId);
-		if (!credential) {
-			throw new Error(`Credential ${credentialId} not found or not accessible`);
-		}
-		const rawData = await this.credentialsService.decrypt(credential, true);
+	private getEvalModelCatalog(
+		credentialType: string,
+		provider: string,
+		policy: ModelCatalogPolicy,
+	): LiveModelLookupResult {
+		const configuredDefault = LLM_PROVIDER_DEFAULTS[credentialType];
+		const model =
+			configuredDefault?.provider === provider && configuredDefault.defaultModel
+				? configuredDefault.defaultModel
+				: `eval-${provider}-model`;
 
-		return await this.discoverModels(provider, rawData);
+		return {
+			status: 'success',
+			models: [{ name: model, value: model }],
+			policy,
+		};
 	}
 
 	/**
@@ -99,7 +221,7 @@ export class BuilderModelLiveLookupService {
 		try {
 			const credentialType = await this.aiGatewayService.getCredentialTypeForProvider(provider);
 			if (!credentialType) {
-				throw new Error(`n8n credits does not support the "${provider}" model provider`);
+				throw new Error(`Gateway credits do not support the "${provider}" model provider`);
 			}
 			const raw = await this.aiGatewayService.getSyntheticCredential({
 				credentialType,
@@ -113,8 +235,9 @@ export class BuilderModelLiveLookupService {
 	}
 
 	/**
-	 * Runs provider model discovery against a raw credential record (real or the
-	 * gateway synthetic credential), preserving the applicable catalog policy.
+	 * Runs provider model discovery against a resolved credential record (a
+	 * decrypted stored credential or the gateway synthetic credential),
+	 * preserving the applicable catalog policy.
 	 */
 	private async discoverModels(
 		provider: string,
@@ -138,7 +261,7 @@ export class BuilderModelLiveLookupService {
 			const models = await listModelsForProvider(provider, {
 				apiKey,
 				baseURL,
-				fetch: createAiProxyFetch(this.outboundHttp) as typeof globalThis.fetch,
+				fetch: createAiProxyFetch(this.outboundHttp),
 				...(headers ? { headers } : {}),
 			});
 
@@ -150,7 +273,11 @@ export class BuilderModelLiveLookupService {
 
 			return {
 				status: 'success',
-				models: models.map((model) => ({ name: model.name, value: model.id })),
+				models: models.map((model) => ({
+					name: model.name,
+					value: model.id,
+					...(model.priority !== undefined ? { priority: model.priority } : {}),
+				})),
 				policy,
 			};
 		} catch (error) {
@@ -179,12 +306,12 @@ export class BuilderModelLiveLookupService {
 			typeof credentialData.headerValue === 'string'
 		) {
 			const normalizedName = credentialData.headerName.toLowerCase();
-			const headerName =
-				normalizedName === 'authorization'
-					? 'Authorization'
-					: normalizedName === 'openai-organization'
-						? 'OpenAI-Organization'
-						: credentialData.headerName;
+			let headerName = credentialData.headerName;
+			if (normalizedName === 'authorization') {
+				headerName = 'Authorization';
+			} else if (normalizedName === 'openai-organization') {
+				headerName = 'OpenAI-Organization';
+			}
 			headers[headerName] = credentialData.headerValue;
 		}
 

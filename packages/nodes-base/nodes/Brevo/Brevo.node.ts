@@ -12,9 +12,10 @@ export class Brevo implements INodeType {
 		displayName: 'Brevo',
 		// keep sendinblue name for backward compatibility
 		name: 'sendInBlue',
+		schemaPath: 'Brevo',
 		icon: 'file:brevo.svg',
 		group: ['transform'],
-		version: 1,
+		version: [1, 1.1],
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Brevo API',
 		defaults: {

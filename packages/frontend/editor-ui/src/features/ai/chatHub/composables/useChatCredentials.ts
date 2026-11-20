@@ -103,7 +103,7 @@ export function useChatCredentials(userId: string) {
 			if (personalProject) {
 				await Promise.all([
 					credentialsStore.fetchCredentialTypes(false),
-					credentialsStore.fetchAllCredentialsForWorkflow({ projectId: personalProject.id }),
+					credentialsStore.fetchUsableCredentials({ projectId: personalProject.id }),
 				]);
 
 				isInitialized.value = true;

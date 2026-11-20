@@ -4,7 +4,6 @@ import { effectScope } from 'vue';
 import { createTestNode } from '@/__tests__/mocks';
 import { MESSAGE_AN_AGENT_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { useAgentNodeCanvasGeometryStore } from '@/features/agents/agentNodeCanvasGeometry.store';
-import type { CanvasNodeMoveEvent } from '../canvas.types';
 import { useCanvasAgentNodeGeometry } from './useCanvasAgentNodeGeometry';
 
 const canvasId = 'canvas';
@@ -19,15 +18,16 @@ function createAgent() {
 	});
 }
 
-function setupGeometry() {
+function setupGeometry({ loaded = true } = {}) {
 	const agent = createAgent();
+	if (loaded) useAgentNodeCanvasGeometryStore().setNodeContentKey(canvasId, agent.id, 'summary');
 	let nodesChangeHandler: (changes: NodeChange[]) => void = () => {};
 	const off = vi.fn();
 	const setNodePosition = vi.fn((id: string, position: { x: number; y: number }) => {
 		if (id === agent.id) agent.position = [position.x, position.y];
 	});
 	const scope = effectScope();
-	const geometry = scope.run(() =>
+	scope.run(() =>
 		useCanvasAgentNodeGeometry({
 			canvasId,
 			getNodeById: (id) => (id === agent.id ? agent : undefined),
@@ -40,8 +40,8 @@ function setupGeometry() {
 	);
 
 	return {
-		geometry: geometry!,
-		nodesChangeHandler,
+		measure: (height: number) =>
+			nodesChangeHandler([{ id: 'agent', type: 'dimensions', dimensions: { width: 320, height } }]),
 		off,
 		scope,
 		setNodePosition,
@@ -53,15 +53,13 @@ describe('useCanvasAgentNodeGeometry', () => {
 		setActivePinia(createPinia());
 	});
 
-	it('centers a new agent on its pending center after its first measurement', () => {
+	it('places a new agent by its handle on the pending axis after its first measurement', () => {
 		const store = useAgentNodeCanvasGeometryStore();
 		store.setPendingCenterY(canvasId, 'agent', 176);
-		const { nodesChangeHandler, scope, setNodePosition, off } = setupGeometry();
+		const { measure, scope, setNodePosition, off } = setupGeometry();
 
-		nodesChangeHandler([
-			{ id: 'agent', type: 'dimensions', dimensions: { width: 320, height: 224 } },
-		]);
-
+		// The 224px card's handle sits 112px from its top: on the grid, unlike 356/2.
+		measure(224);
 		expect(setNodePosition).toHaveBeenCalledWith('agent', { x: 112, y: 64 });
 		expect(store.getNodeHeight(canvasId, 'agent')).toBe(224);
 
@@ -70,41 +68,22 @@ describe('useCanvasAgentNodeGeometry', () => {
 		expect(store.getNodeHeight(canvasId, 'agent')).toBeUndefined();
 	});
 
-	it('preserves an existing agent center as its measured height changes', () => {
-		const { nodesChangeHandler, scope, setNodePosition } = setupGeometry();
+	it('holds the saved position while a loaded card settles and keeps its handle axis only for new content', () => {
+		const store = useAgentNodeCanvasGeometryStore();
+		const { measure, scope, setNodePosition } = setupGeometry({ loaded: false });
 
-		nodesChangeHandler([
-			{ id: 'agent', type: 'dimensions', dimensions: { width: 320, height: 128 } },
-		]);
-		nodesChangeHandler([
-			{ id: 'agent', type: 'dimensions', dimensions: { width: 320, height: 128 } },
-		]);
+		// Cold load: painted before the summary, then with it, then a late font/icon stage.
+		measure(64);
+		store.setNodeContentKey(canvasId, 'agent', 'summary');
+		measure(128);
+		measure(144);
 		expect(setNodePosition).not.toHaveBeenCalled();
 
-		nodesChangeHandler([
-			{ id: 'agent', type: 'dimensions', dimensions: { width: 320, height: 224 } },
-		]);
-		expect(setNodePosition).toHaveBeenCalledOnce();
-		expect(setNodePosition).toHaveBeenCalledWith('agent', { x: 112, y: 64 });
-		scope.stop();
-	});
-
-	it('snaps an agent drag by its measured center and keeps selected nodes together', () => {
-		const { geometry, scope } = setupGeometry();
-		const moves: CanvasNodeMoveEvent[] = [
-			{ id: 'agent', position: { x: 112, y: 112 } },
-			{ id: 'selected-node', position: { x: 300, y: 300 } },
-		];
-
-		expect(
-			geometry.snapDraggedNodeMoves(
-				{ id: 'agent', dimensions: { width: 320, height: 206 } },
-				moves,
-			),
-		).toEqual([
-			{ id: 'agent', position: { x: 112, y: 105 } },
-			{ id: 'selected-node', position: { x: 300, y: 293 } },
-		]);
+		// The agent was edited: the handle (144 → grid line 80, 224 → 112) stays on
+		// its axis at y=192, and the card's top-left stays on the grid.
+		store.setNodeContentKey(canvasId, 'agent', 'edited summary');
+		measure(224);
+		expect(setNodePosition).toHaveBeenCalledExactlyOnceWith('agent', { x: 112, y: 80 });
 		scope.stop();
 	});
 });

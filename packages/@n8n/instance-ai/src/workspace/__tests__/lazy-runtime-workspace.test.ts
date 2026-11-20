@@ -1,14 +1,13 @@
 import {
+	CORE_WORKSPACE_TOOL_NAMES,
 	Workspace,
 	type CommandResult,
 	type WorkspaceFilesystem,
 	type WorkspaceSandbox,
 } from '@n8n/agents';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 
-import {
-	INSTANCE_AI_WORKSPACE_TOOL_ALLOWLIST,
-	createLazyRuntimeWorkspace,
-} from '../lazy-runtime-workspace';
+import { createLazyRuntimeWorkspace } from '../lazy-runtime-workspace';
 
 function createMockWorkspace() {
 	const executeCommand = vi.fn<
@@ -69,7 +68,6 @@ function createMockWorkspace() {
 			await Promise.resolve();
 		}),
 		getInstructions: vi.fn(() => 'Real sandbox instructions.'),
-		getDefaultCommandEnv: vi.fn(() => ({ CUSTOM_ENV: 'enabled' })),
 		executeCommand,
 	};
 
@@ -79,6 +77,10 @@ function createMockWorkspace() {
 		sandbox,
 		executeCommand,
 	};
+}
+
+async function flushMacrotask(): Promise<void> {
+	await new Promise((resolve) => setTimeout(resolve, 0));
 }
 
 describe('createLazyRuntimeWorkspace', () => {
@@ -91,9 +93,7 @@ describe('createLazyRuntimeWorkspace', () => {
 		lazyWorkspace.getInstructions();
 
 		expect(ensureWorkspace).not.toHaveBeenCalled();
-		expect(tools.map((tool) => tool.name).sort()).toEqual(
-			[...INSTANCE_AI_WORKSPACE_TOOL_ALLOWLIST].sort(),
-		);
+		expect(tools.map((tool) => tool.name).sort()).toEqual([...CORE_WORKSPACE_TOOL_NAMES].sort());
 		expect(tools.some((tool) => tool.name === 'workspace_list_files')).toBe(false);
 		expect(tools.some((tool) => tool.name === 'workspace_append_file')).toBe(false);
 
@@ -103,22 +103,34 @@ describe('createLazyRuntimeWorkspace', () => {
 		expect(ensureWorkspace).toHaveBeenCalledTimes(1);
 	});
 
-	it('merges sandbox default env after the real workspace is created', async () => {
+	it('reports cancellation when an active command returns a transport cancellation', async () => {
 		const { workspace, executeCommand } = createMockWorkspace();
-		const ensureWorkspace = vi.fn(async () => await Promise.resolve(workspace));
-		const lazyWorkspace = createLazyRuntimeWorkspace({ ensureWorkspace });
-		const executeCommandTool = lazyWorkspace
-			.getTools()
-			.find((tool) => tool.name === 'workspace_execute_command');
-
-		const result = await executeCommandTool?.handler?.({ command: 'echo $CUSTOM_ENV' }, {});
-
-		expect(result).toMatchObject({ stdout: 'enabled' });
-		expect(executeCommand.mock.calls[0]?.[0]).toBe('echo $CUSTOM_ENV');
-		expect(executeCommand.mock.calls[0]?.[1]).toEqual([]);
-		expect(executeCommand.mock.calls[0]?.[2]?.env).toMatchObject({
-			CUSTOM_ENV: 'enabled',
+		const started = createDeferredPromise();
+		executeCommand.mockImplementation(
+			async (_command, _args, options) =>
+				await new Promise<CommandResult>((_resolve, reject) => {
+					options?.abortSignal?.addEventListener(
+						'abort',
+						() => {
+							const error = new Error('canceled');
+							error.name = 'CanceledError';
+							reject(error);
+						},
+						{ once: true },
+					);
+					started.resolve();
+				}),
+		);
+		const lazyWorkspace = createLazyRuntimeWorkspace({
+			ensureWorkspace: async () => await Promise.resolve(workspace),
 		});
+		const controller = new AbortController();
+		const operation = lazyWorkspace.sandbox!.executeCommand!('sleep 10', [], {
+			abortSignal: controller.signal,
+		});
+		await started.promise;
+		controller.abort();
+		await expect(operation).rejects.toMatchObject({ name: 'AbortError' });
 	});
 
 	it('retries workspace creation after the first lazy initialization fails', async () => {
@@ -157,6 +169,90 @@ describe('createLazyRuntimeWorkspace', () => {
 		});
 
 		expect(ensureWorkspace).toHaveBeenCalledTimes(2);
+	});
+
+	it('starts workspace creation on prewarm and reuses it for the first tool call', async () => {
+		const { workspace } = createMockWorkspace();
+		const creation = createDeferredPromise<Workspace>();
+		const ensureWorkspace = vi.fn(async () => await creation.promise);
+		const lazyWorkspace = createLazyRuntimeWorkspace({ ensureWorkspace });
+		const readFile = lazyWorkspace.getTools().find((tool) => tool.name === 'workspace_read_file');
+
+		lazyWorkspace.prewarm();
+		expect(ensureWorkspace).toHaveBeenCalledTimes(1);
+
+		const read = readFile?.handler?.({ path: '/workspace/report.md' }, {});
+		creation.resolve(workspace);
+
+		await expect(read).resolves.toEqual({ content: 'hello' });
+		expect(ensureWorkspace).toHaveBeenCalledTimes(1);
+	});
+
+	it('creates the workspace again in the tool call after a failed prewarm', async () => {
+		const { workspace } = createMockWorkspace();
+		const ensureWorkspace = vi
+			.fn()
+			.mockRejectedValueOnce(new Error('setup failed'))
+			.mockResolvedValueOnce(workspace);
+		const lazyWorkspace = createLazyRuntimeWorkspace({ ensureWorkspace });
+		const readFile = lazyWorkspace.getTools().find((tool) => tool.name === 'workspace_read_file');
+
+		lazyWorkspace.prewarm();
+		await vi.waitFor(() => expect(ensureWorkspace).toHaveBeenCalledTimes(1));
+
+		await expect(readFile?.handler?.({ path: '/workspace/report.md' }, {})).resolves.toEqual({
+			content: 'hello',
+		});
+		expect(ensureWorkspace).toHaveBeenCalledTimes(2);
+	});
+
+	it('creates the workspace again when a prewarm the tool call joined fails', async () => {
+		const { workspace } = createMockWorkspace();
+		const prewarmCreation = createDeferredPromise<Workspace>();
+		const ensureWorkspace = vi
+			.fn<() => Promise<Workspace>>()
+			.mockImplementationOnce(async () => await prewarmCreation.promise)
+			.mockResolvedValueOnce(workspace);
+		const lazyWorkspace = createLazyRuntimeWorkspace({ ensureWorkspace });
+		const readFile = lazyWorkspace.getTools().find((tool) => tool.name === 'workspace_read_file');
+
+		lazyWorkspace.prewarm();
+		const read = readFile?.handler?.({ path: '/workspace/report.md' }, {});
+		// Let the tool call reach the shared creation before it fails.
+		await flushMacrotask();
+		prewarmCreation.reject(new Error('setup failed'));
+
+		await expect(read).resolves.toEqual({ content: 'hello' });
+		expect(ensureWorkspace).toHaveBeenCalledTimes(2);
+	});
+
+	it('creates the workspace once for concurrent tool calls that joined a failed prewarm', async () => {
+		const { workspace } = createMockWorkspace();
+		const prewarmCreation = createDeferredPromise<Workspace>();
+		const ensureWorkspace = vi
+			.fn<() => Promise<Workspace>>()
+			.mockImplementationOnce(async () => await prewarmCreation.promise)
+			.mockResolvedValue(workspace);
+		const lazyWorkspace = createLazyRuntimeWorkspace({ ensureWorkspace });
+		const readFile = lazyWorkspace.getTools().find((tool) => tool.name === 'workspace_read_file');
+
+		lazyWorkspace.prewarm();
+		const read = async (path: string) => await readFile?.handler?.({ path }, {});
+		const reads = [read('/workspace/a.md'), read('/workspace/b.md')];
+		await flushMacrotask();
+		prewarmCreation.reject(new Error('setup failed'));
+
+		await expect(Promise.all(reads)).resolves.toEqual([{ content: 'hello' }, { content: 'hello' }]);
+		expect(ensureWorkspace).toHaveBeenCalledTimes(2);
+	});
+
+	it('marks the workspace tools as needing the workspace', () => {
+		const { workspace } = createMockWorkspace();
+		const lazyWorkspace = createLazyRuntimeWorkspace({
+			ensureWorkspace: async () => await Promise.resolve(workspace),
+		});
+
+		expect(lazyWorkspace.getTools().every((tool) => tool.requiresWorkspace)).toBe(true);
 	});
 
 	it('reflects resolved provider statuses and instructions', async () => {

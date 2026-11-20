@@ -18,7 +18,7 @@ import {
 	jsonParse,
 } from 'n8n-workflow';
 
-import { getAllowedDomains } from '../HttpRequest/GenericFunctions';
+import { getAllowedDomains, getOAuth2AdditionalParameters } from '../HttpRequest/GenericFunctions';
 
 export class GraphQL implements INodeType {
 	description: INodeTypeDescription = {
@@ -73,6 +73,15 @@ export class GraphQL implements INodeType {
 				},
 			},
 			{
+				name: 'httpMultipleHeadersAuth',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['multipleHeadersAuth'],
+					},
+				},
+			},
+			{
 				name: 'httpQueryAuth',
 				required: true,
 				displayOptions: {
@@ -106,7 +115,14 @@ export class GraphQL implements INodeType {
 				name: 'authentication',
 				type: 'options',
 				noDataExpression: true,
+				// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 				options: [
+					{
+						name: 'Predefined Credential Type',
+						value: 'predefinedCredentialType',
+						description:
+							"We've already implemented auth for many services so that you don't have to set it up manually",
+					},
 					{
 						name: 'Basic Auth',
 						value: 'basicAuth',
@@ -122,6 +138,10 @@ export class GraphQL implements INodeType {
 					{
 						name: 'Header Auth',
 						value: 'headerAuth',
+					},
+					{
+						name: 'Multiple Headers Auth',
+						value: 'multipleHeadersAuth',
 					},
 					{
 						name: 'None',
@@ -142,6 +162,20 @@ export class GraphQL implements INodeType {
 				],
 				default: 'none',
 				description: 'The way to authenticate',
+			},
+			{
+				displayName: 'Credential Type',
+				name: 'nodeCredentialType',
+				type: 'credentialsSelect',
+				noDataExpression: true,
+				required: true,
+				default: '',
+				credentialTypes: ['extends:oAuth2Api', 'extends:oAuth1Api', 'has:authenticate'],
+				displayOptions: {
+					show: {
+						authentication: ['predefinedCredentialType'],
+					},
+				},
 			},
 			{
 				displayName: 'HTTP Request Method',
@@ -344,6 +378,8 @@ export class GraphQL implements INodeType {
 		let httpQueryAuth;
 		let oAuth1Api;
 		let oAuth2Api;
+		let nodeCredentialType;
+		let predefinedCredentialData;
 
 		const authentication = this.getNodeParameter('authentication', 0) as string;
 		try {
@@ -355,12 +391,18 @@ export class GraphQL implements INodeType {
 				httpDigestAuth = await this.getCredentials('httpDigestAuth');
 			} else if (authentication === 'headerAuth') {
 				httpHeaderAuth = await this.getCredentials('httpHeaderAuth');
+			} else if (authentication === 'multipleHeadersAuth') {
+				nodeCredentialType = 'httpMultipleHeadersAuth';
+				predefinedCredentialData = await this.getCredentials(nodeCredentialType);
 			} else if (authentication === 'queryAuth') {
 				httpQueryAuth = await this.getCredentials('httpQueryAuth');
 			} else if (authentication === 'oAuth1') {
 				oAuth1Api = await this.getCredentials('oAuth1Api');
 			} else if (authentication === 'oAuth2') {
 				oAuth2Api = await this.getCredentials('oAuth2Api');
+			} else if (authentication === 'predefinedCredentialType') {
+				nodeCredentialType = this.getNodeParameter('nodeCredentialType', 0) as string;
+				predefinedCredentialData = await this.getCredentials(nodeCredentialType);
 			}
 		} catch {}
 
@@ -402,6 +444,8 @@ export class GraphQL implements INodeType {
 					allowedDomains = getAllowedDomains(this.getNode(), oAuth1Api);
 				} else if (oAuth2Api !== undefined) {
 					allowedDomains = getAllowedDomains(this.getNode(), oAuth2Api);
+				} else if (predefinedCredentialData !== undefined) {
+					allowedDomains = getAllowedDomains(this.getNode(), predefinedCredentialData);
 				}
 
 				requestOptions = {
@@ -517,6 +561,15 @@ export class GraphQL implements INodeType {
 					);
 					// since we are using `resolveWithFullResponse: true`, we need to grab the body
 					response = response.body;
+				} else if (nodeCredentialType !== undefined) {
+					const additionalOAuth2Options = getOAuth2AdditionalParameters(nodeCredentialType);
+					response = await this.helpers.requestWithAuthentication.call(
+						this,
+						nodeCredentialType,
+						requestOptions,
+						additionalOAuth2Options && { oauth2: additionalOAuth2Options },
+						itemIndex,
+					);
 				} else {
 					response = await this.helpers.request(requestOptions);
 				}

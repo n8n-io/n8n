@@ -192,7 +192,7 @@ describe('ApiKeyScopes', () => {
 
 	it('keeps Custom selected when the user explicitly picks it even if selection matches Read only', async () => {
 		// Start in "All" so clicking Custom is a real transition that fires
-		// ElRadioGroup's @change handler (and not a re-click no-op).
+		// N8nRadioGroup's update handler (and not a re-click no-op).
 		const { getByTestId, rerender } = renderComponent({
 			props: { modelValue: availableScopes, availableScopes },
 		});

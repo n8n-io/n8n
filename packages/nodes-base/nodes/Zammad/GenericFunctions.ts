@@ -6,59 +6,45 @@ import type {
 	JsonObject,
 	IRequestOptions,
 	IHttpRequestMethods,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, requestPath, requestUrl } from 'n8n-workflow';
 
 import type { Zammad } from './types';
-
-export function tolerateTrailingSlash(url: string) {
-	return url.endsWith('/') ? url.substr(0, url.length - 1) : url;
-}
 
 export async function zammadApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
-	const options: IRequestOptions = {
+	const authentication = this.getNodeParameter('authentication', 0) as 'basicAuth' | 'tokenAuth';
+
+	const credentials =
+		authentication === 'basicAuth'
+			? await this.getCredentials<Zammad.BasicAuthCredentials>('zammadBasicAuthApi')
+			: await this.getCredentials<Zammad.TokenAuthCredentials>('zammadTokenAuthApi');
+
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		method,
 		body,
 		qs,
-		uri: '',
+		uri: requestUrl`${credentials.baseUrl}/api/v1${endpoint}`,
 		json: true,
+		rejectUnauthorized: !credentials.allowUnauthorizedCerts,
 	};
 
-	const authentication = this.getNodeParameter('authentication', 0) as 'basicAuth' | 'tokenAuth';
-
-	if (authentication === 'basicAuth') {
-		const credentials =
-			await this.getCredentials<Zammad.BasicAuthCredentials>('zammadBasicAuthApi');
-
-		const baseUrl = tolerateTrailingSlash(credentials.baseUrl);
-
-		options.uri = `${baseUrl}/api/v1${endpoint}`;
-
+	if ('accessToken' in credentials) {
+		options.headers = {
+			Authorization: `Token token=${credentials.accessToken}`,
+		};
+	} else {
 		options.auth = {
 			user: credentials.username,
 			pass: credentials.password,
 		};
-
-		options.rejectUnauthorized = !credentials.allowUnauthorizedCerts;
-	} else {
-		const credentials =
-			await this.getCredentials<Zammad.TokenAuthCredentials>('zammadTokenAuthApi');
-
-		const baseUrl = tolerateTrailingSlash(credentials.baseUrl);
-
-		options.uri = `${baseUrl}/api/v1${endpoint}`;
-
-		options.headers = {
-			Authorization: `Token token=${credentials.accessToken}`,
-		};
-
-		options.rejectUnauthorized = !credentials.allowUnauthorizedCerts;
 	}
 
 	if (!Object.keys(body).length) {
@@ -83,7 +69,7 @@ export async function zammadApiRequest(
 export async function zammadApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject = {},
 	qs: IDataObject = {},
 	limit = 0,
@@ -131,7 +117,11 @@ export const isCustomer = (user: Zammad.User) =>
 	user.role_ids.includes(3) && !user.email.endsWith('@zammad.org');
 
 export async function getAllFields(this: ILoadOptionsFunctions) {
-	return (await zammadApiRequest.call(this, 'GET', '/object_manager_attributes')) as Zammad.Field[];
+	return (await zammadApiRequest.call(
+		this,
+		'GET',
+		requestPath`/object_manager_attributes`,
+	)) as Zammad.Field[];
 }
 
 const isTypeField =

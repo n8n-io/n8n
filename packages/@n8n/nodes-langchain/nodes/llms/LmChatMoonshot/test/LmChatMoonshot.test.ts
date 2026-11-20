@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/unbound-method */
 import { ChatOpenAI } from '@langchain/openai';
-import { makeN8nLlmFailedAttemptHandler, getProxyAgent } from '@n8n/ai-utilities';
+import { makeN8nLlmFailedAttemptHandler, getProxyAgent, aiClientFetch } from '@n8n/ai-utilities';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
@@ -15,6 +15,7 @@ vi.mock('@n8n/ai-utilities');
 const MockedChatOpenAI = vi.mocked(ChatOpenAI);
 const mockedMakeN8nLlmFailedAttemptHandler = vi.mocked(makeN8nLlmFailedAttemptHandler);
 const mockedGetProxyAgent = vi.mocked(getProxyAgent);
+const mockedAiClientFetch = vi.mocked(aiClientFetch);
 
 describe('LmChatMoonshot', () => {
 	let node: LmChatMoonshot;
@@ -91,6 +92,7 @@ describe('LmChatMoonshot', () => {
 					callbacks: expect.arrayContaining([expect.any(Object)]),
 					onFailedAttempt: expect.any(Function),
 					configuration: expect.objectContaining({
+						fetch: mockedAiClientFetch,
 						baseURL: 'https://api.moonshot.ai/v1',
 					}),
 				}),
@@ -171,6 +173,7 @@ describe('LmChatMoonshot', () => {
 					headersTimeout: undefined,
 					bodyTimeout: undefined,
 				}),
+				ctx.helpers.getSecureEgressFilter(),
 			);
 		});
 
@@ -190,6 +193,7 @@ describe('LmChatMoonshot', () => {
 					headersTimeout: 120000,
 					bodyTimeout: 120000,
 				}),
+				ctx.helpers.getSecureEgressFilter(),
 			);
 		});
 	});

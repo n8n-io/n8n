@@ -7,6 +7,9 @@ import type { ComponentProps } from 'vue-component-type-helpers';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import { computed } from 'vue';
+import userEvent from '@testing-library/user-event';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { mockedStore } from '@/__tests__/utils';
 
 vi.mock('vue-router', () => ({
 	useRoute: () => ({
@@ -149,15 +152,43 @@ describe('WorkflowExecutionsCard', () => {
 				expect(retryButton).toBeVisible();
 
 				if (disabled) {
-					expect(retryButton?.querySelector('.is-disabled')).toBeVisible();
+					expect(retryButton).toBeDisabled();
 				} else {
-					expect(retryButton?.querySelector('.is-disabled')).toBe(null);
+					expect(retryButton).not.toBeDisabled();
 				}
 			} else {
 				expect(retryButton).toBe(null);
 			}
 		},
 	);
+
+	test('aligns the retry menu and explains both retry options', async () => {
+		const { getByTestId, findByRole, getByText, emitted } = renderComponent({
+			props: {
+				execution: {
+					id: '2',
+					mode: 'manual',
+					status: 'error',
+					retryOf: null,
+					retrySuccessId: null,
+				} as ExecutionSummary,
+				workflowPermissions: { execute: true },
+			},
+		});
+
+		await userEvent.click(getByTestId('retry-execution-button'));
+
+		expect(await findByRole('menu')).toHaveAttribute('data-align', 'end');
+		expect(getByText('Retry with current version')).toBeVisible();
+		expect(getByText('Includes the latest changes')).toBeVisible();
+		expect(getByText('Retry with original version')).toBeVisible();
+		expect(getByText('Exactly as it ran')).toBeVisible();
+
+		await userEvent.click(getByText('Retry with current version'));
+		expect(emitted('retryExecution')).toEqual([
+			[{ execution: expect.objectContaining({ id: '2' }), command: 'current-workflow' }],
+		]);
+	});
 
 	test('displays correct text for new execution', () => {
 		const createdAt = new Date('2024-09-27T12:00:00Z');
@@ -303,6 +334,35 @@ describe('WorkflowExecutionsCard', () => {
 			const executionTimeInStatus = queryByTestId('execution-time-in-status');
 			expect(executionTimeInStatus).toBeVisible();
 			expect(executionTimeInStatus?.textContent).toContain('for');
+		});
+	});
+
+	describe('engine badge', () => {
+		const renderWithId = (id: string) =>
+			renderComponent({
+				props: {
+					execution: { id, mode: 'manual', status: 'success' } as unknown as ExecutionSummary,
+					workflowPermissions: { execute: true },
+				},
+			});
+
+		test.each([
+			['123', 'Engine v1'],
+			['019a3b2c-4d5e-7f60-8a1b-2c3d4e5f6a7b', 'Engine v2'],
+		])('shows the engine of execution %s with the engine-v2 module active', (id, label) => {
+			mockedStore(useSettingsStore).isEngineV2Enabled = true;
+
+			const { getByTestId } = renderWithId(id);
+
+			expect(getByTestId('execution-engine-badge')).toHaveTextContent(new RegExp(`^${label}$`));
+		});
+
+		test('shows no engine with the engine-v2 module inactive', () => {
+			mockedStore(useSettingsStore).isEngineV2Enabled = false;
+
+			const { queryByTestId } = renderWithId('019a3b2c-4d5e-7f60-8a1b-2c3d4e5f6a7b');
+
+			expect(queryByTestId('execution-engine-badge')).not.toBeInTheDocument();
 		});
 	});
 });

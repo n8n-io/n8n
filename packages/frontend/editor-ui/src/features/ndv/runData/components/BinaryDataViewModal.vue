@@ -1,15 +1,18 @@
 <script setup lang="ts">
 import { computed, ref, watch, onBeforeUnmount } from 'vue';
-import Modal from '@/app/components/Modal.vue';
+import { N8nDialog, N8nDialogBody } from '@n8n/design-system';
 import VueJsonPretty from 'vue-json-pretty';
-import RunDataHtml from './RunDataHtml.vue';
 import RunDataMarkdown from './RunDataMarkdown.vue';
 import { BINARY_DATA_VIEW_MODAL_KEY } from '@/app/constants';
 import { useI18n } from '@n8n/i18n';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import type { BinaryMetadata } from '@n8n/design-system';
+import { N8nHtmlPreview, type BinaryMetadata } from '@n8n/design-system';
+
+defineOptions({ inheritAttrs: false });
 
 const i18n = useI18n();
+const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
 
 const props = defineProps<{
@@ -27,25 +30,33 @@ let currentBlobUrl: string | null = null;
 
 const binaryData = computed(() => {
 	const { id, mimeType, fileName } = props.data.binaryData;
-	let fileType = props.data.binaryData.fileType;
+
+	// The renderer choice always comes from mimeType. fileType is supplied by
+	// the item's producer and does not steer it. An unrecognised, empty or
+	// absent mimeType gives `other`, which has no renderer.
+	let fileType = 'other';
 
 	if (mimeType) {
-		if (mimeType.startsWith('image/')) fileType = 'image';
-		else if (mimeType.startsWith('audio/')) fileType = 'audio';
-		else if (mimeType.startsWith('video/')) fileType = 'video';
-		else if (mimeType === 'application/pdf') fileType = 'pdf';
-		else if (mimeType === 'application/json' || mimeType === 'text/json') fileType = 'json';
-		else if (mimeType === 'text/html') fileType = 'html';
-		else if (mimeType === 'text/markdown' || mimeType.includes('markdown')) fileType = 'markdown';
-		else if (mimeType === 'text/plain') fileType = 'text';
-		else if (fileType === undefined) fileType = 'other';
+		// Match on the base type, so a parameter such as `; charset=utf-8` does not
+		// stop a type matching. Each single type is compared whole, so a longer name
+		// such as `application/pdfx` does not match a shorter one.
+		const baseType = mimeType.split(';')[0].trim();
+
+		if (baseType.startsWith('image/')) fileType = 'image';
+		else if (baseType.startsWith('audio/')) fileType = 'audio';
+		else if (baseType.startsWith('video/')) fileType = 'video';
+		else if (baseType === 'application/pdf') fileType = 'pdf';
+		else if (baseType === 'application/json' || baseType === 'text/json') fileType = 'json';
+		else if (baseType === 'text/html') fileType = 'html';
+		else if (baseType === 'text/markdown' || baseType.includes('markdown')) fileType = 'markdown';
+		else if (baseType.startsWith('text/')) fileType = 'text';
 	}
 
 	return {
 		id,
 		mimeType,
 		fileName,
-		fileType: fileType || 'other',
+		fileType,
 	};
 });
 
@@ -87,7 +98,9 @@ async function loadBinaryData() {
 
 			case 'pdf': {
 				const fetched = await fetch(binaryUrl, { credentials: 'include' });
-				const blob = await fetched.blob();
+				// The blob type is fixed to application/pdf, not taken from the fetched
+				// response, so the iframe always renders it as a PDF.
+				const blob = new Blob([await fetched.blob()], { type: 'application/pdf' });
 
 				currentBlobUrl = URL.createObjectURL(blob);
 				embedSource.value = currentBlobUrl;
@@ -116,20 +129,37 @@ watch(
 onBeforeUnmount(() => {
 	revokeBlobUrl();
 });
+
+const modalOpen = computed(() => uiStore.modalsById[BINARY_DATA_VIEW_MODAL_KEY]?.open === true);
+
+function closeDialog() {
+	uiStore.closeModal(BINARY_DATA_VIEW_MODAL_KEY);
+}
+
+function onDialogOpenUpdate(open: boolean) {
+	if (!open) closeDialog();
+}
 </script>
 
 <template>
-	<Modal
-		width="60%"
-		height="90%"
-		title="File Preview"
-		:name="BINARY_DATA_VIEW_MODAL_KEY"
-		:center="true"
+	<N8nDialog
+		:open="modalOpen"
+		size="2xlarge"
+		:header="i18n.baseText('binaryDataDisplay.filePreview')"
+		container-class="binary-data-view-dialog"
+		@update:open="onDialogOpenUpdate"
 	>
-		<template #content>
-			<div :class="['binary-data-modal-content', binaryData.fileType]">
-				<div v-if="isLoading" class="loading-message">Loading binary data...</div>
-				<div v-else-if="error" class="error-message">Error loading binary data</div>
+		<N8nDialogBody>
+			<div
+				:class="['binary-data-modal-content', binaryData.fileType]"
+				data-test-id="binaryDataView-modal"
+			>
+				<div v-if="isLoading" class="loading-message">
+					{{ i18n.baseText('binaryDataDisplay.loading') }}
+				</div>
+				<div v-else-if="error" class="error-message">
+					{{ i18n.baseText('binaryDataDisplay.errorLoading') }}
+				</div>
 
 				<div v-else class="content-wrapper">
 					<!-- VIDEO -->
@@ -148,7 +178,7 @@ onBeforeUnmount(() => {
 					<img
 						v-else-if="binaryData.fileType === 'image'"
 						:src="embedSource"
-						:alt="binaryData.fileName || 'Image preview'"
+						:alt="binaryData.fileName || i18n.baseText('binaryDataDisplay.imagePreview')"
 					/>
 
 					<!-- JSON -->
@@ -160,7 +190,7 @@ onBeforeUnmount(() => {
 					/>
 
 					<!-- HTML -->
-					<RunDataHtml v-else-if="binaryData.fileType === 'html'" :input-html="displayData" />
+					<N8nHtmlPreview v-else-if="binaryData.fileType === 'html'" :html="displayData" />
 
 					<!-- Markdown -->
 					<RunDataMarkdown
@@ -175,32 +205,38 @@ onBeforeUnmount(() => {
 					>
 
 					<!-- PDF -->
-					<embed
+					<!-- An iframe, not an embed: an `object-src 'none'` CSP refuses embeds -->
+					<iframe
 						v-else-if="binaryData.fileType === 'pdf'"
 						:src="embedSource"
 						class="binary-data"
-						type="application/pdf"
+						:title="binaryData.fileName || i18n.baseText('binaryDataDisplay.filePreview')"
 					/>
 
 					<!-- UNKNOWN -->
-					<div v-else class="error-message">Preview not available for this file type</div>
+					<div v-else class="error-message">
+						{{ i18n.baseText('binaryDataDisplay.previewNotAvailable') }}
+					</div>
 				</div>
 			</div>
-		</template>
-	</Modal>
+		</N8nDialogBody>
+	</N8nDialog>
 </template>
 
 <style lang="scss">
-.el-overlay:has([data-test-id='binaryDataView-modal']),
-.el-dialog__wrapper:has([data-test-id='binaryDataView-modal']) {
-	z-index: 10000000 !important;
+.binary-data-view-dialog {
+	/* Previews size their children with percentages. A max-height alone leaves
+	   the dialog at its content height, so a PDF collapses. */
+	height: 90dvh;
+	max-height: calc(100dvh - var(--spacing--lg));
 }
 </style>
 
 <style lang="scss" scoped>
 .binary-data-modal-content {
 	width: 100%;
-	height: 100%;
+	flex: 1;
+	min-height: 0;
 	display: flex;
 	flex-direction: column;
 	overflow: hidden;
@@ -234,6 +270,7 @@ onBeforeUnmount(() => {
 	.binary-data {
 		height: 100%;
 		width: 100%;
+		border: 0;
 	}
 
 	.text-content {

@@ -1,19 +1,39 @@
-import { flushPromises, mount } from '@vue/test-utils';
-import { defineComponent, h, onMounted } from 'vue';
-import { nextTick } from 'vue';
-import { describe, expect, it, vi } from 'vitest';
+import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils';
+import { defineComponent, h, onMounted, reactive } from 'vue';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-	AGENT_SKILL_REFERENCE_CONTENT_MAX_BYTES,
+	AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
+	AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH,
 	AGENT_SKILL_REFERENCE_MAX_COUNT,
 } from '@n8n/api-types';
+import AgentSkillViewer from '@/features/agents/components/AgentSkillViewer.vue';
+import {
+	MAX_DIAGRAM_LENGTH,
+	renderSkillMermaid,
+	type SkillMermaidResult,
+} from '@/features/agents/components/skillMermaidRenderer';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
-import AgentSkillViewer from '../components/AgentSkillViewer.vue';
+const track = vi.fn();
+vi.mock('@n8n/composables/useTelemetry', () => ({ useTelemetry: () => ({ track }) }));
+
+vi.mock('@/features/agents/components/skillMermaidRenderer', { spy: true });
+const uiStore = reactive({ appliedTheme: 'light' });
+vi.mock('@/app/stores/ui.store', () => ({ useUIStore: () => uiStore }));
+
+enableAutoUnmount(afterEach);
+beforeEach(() => {
+	uiStore.appliedTheme = 'light';
+});
 
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
 		baseText: (key: string, options?: { interpolate?: Record<string, string> }) => {
-			if (key === 'agents.builder.skills.references.byteCount') {
-				return `${options?.interpolate?.count} / ${options?.interpolate?.max} bytes`;
+			if (
+				key === 'agents.builder.skills.instructions.characterCount' ||
+				key === 'agents.builder.skills.references.characterCount'
+			) {
+				return `${options?.interpolate?.count} / ${options?.interpolate?.max} characters`;
 			}
 			if (key === 'agents.builder.skills.references.maxCount') {
 				return `Skills can have up to ${options?.interpolate?.max} reference files.`;
@@ -44,109 +64,6 @@ const N8nFormInputStub = defineComponent({
 });
 
 describe('AgentSkillViewer', () => {
-	it('imports SKILL.md frontmatter and instructions', async () => {
-		const wrapper = mount(AgentSkillViewer, {
-			props: {
-				skill: {
-					name: 'Summarize',
-					description: 'Use when summarizing notes',
-					instructions: '',
-				},
-			},
-			global: {
-				stubs: {
-					N8nButton: {
-						template:
-							'<button type="button" v-bind="$attrs" @click="$emit(\'click\')"><slot name="prefix" /><slot name="icon" /><slot /></button>',
-						emits: ['click'],
-					},
-					N8nDialog: { props: ['open'], template: '<div v-if="open"><slot /></div>' },
-					N8nDialogHeader: { template: '<div><slot /></div>' },
-					N8nDialogTitle: { template: '<h3><slot /></h3>' },
-					N8nFormInput: N8nFormInputStub,
-					N8nIcon: { template: '<i />' },
-					N8nText: { template: '<span><slot /></span>' },
-					N8nTooltip: { template: '<span><slot /></span>' },
-					// N8nMarkdownEditor uses a filename-inferred name (no N8n prefix).
-					MarkdownEditor: { props: ['modelValue'], template: '<textarea :value="modelValue" />' },
-				},
-			},
-		});
-
-		const file = makeFile(
-			'---\nname: Summarize notes\ndescription: Use for notes\nallowed_tools:\n  - load_workflow\nrecommended_tools:\n  - search_docs\n---\n# Playbook\nFollow these steps.',
-			'SKILL.md',
-		);
-		const input = wrapper.find('[data-testid="agent-skill-skill-md-file-input"]');
-		Object.defineProperty(input.element, 'files', {
-			value: [file],
-			configurable: true,
-		});
-
-		await input.trigger('change');
-		await flushPromises();
-
-		const importedSkill = wrapper.emitted('update:skill')?.at(-1)?.[0] as Record<string, unknown>;
-		expect(importedSkill).toEqual(
-			expect.objectContaining({
-				name: 'Summarize notes',
-				description: 'Use for notes',
-				instructions: '# Playbook\nFollow these steps.',
-				allowedTools: ['load_workflow'],
-				references: undefined,
-			}),
-		);
-		expect(importedSkill).not.toHaveProperty('recommendedTools');
-	});
-
-	it('imports markdown references from a folder', async () => {
-		const wrapper = mountViewer();
-		const skillFile = makeFile(
-			'---\nname: Research\ndescription: Use for research\n---\nMain instructions',
-			'skill-folder/SKILL.md',
-		);
-		const referenceFile = makeFile('# Guide', 'skill-folder/references/guide.md');
-		const input = wrapper.find('[data-testid="agent-skill-folder-file-input"]');
-		Object.defineProperty(input.element, 'files', {
-			value: [skillFile, referenceFile],
-			configurable: true,
-		});
-
-		await input.trigger('change');
-		await flushPromises();
-
-		expect(wrapper.emitted('update:skill')?.at(-1)).toEqual([
-			expect.objectContaining({
-				name: 'Research',
-				references: [
-					{
-						path: 'references/guide.md',
-						content: '# Guide',
-					},
-				],
-			}),
-		]);
-	});
-
-	it('rejects scripts in imported folders', async () => {
-		const wrapper = mountViewer();
-		const skillFile = makeFile(
-			'---\nname: Research\ndescription: Use for research\n---\nMain instructions',
-			'skill-folder/SKILL.md',
-		);
-		const scriptFile = makeFile('print("no")', 'skill-folder/scripts/run.py');
-		const input = wrapper.find('[data-testid="agent-skill-folder-file-input"]');
-		Object.defineProperty(input.element, 'files', {
-			value: [skillFile, scriptFile],
-			configurable: true,
-		});
-
-		await input.trigger('change');
-		await flushPromises();
-
-		expect(wrapper.text()).toContain('agents.builder.skills.import.scriptsUnsupported');
-	});
-
 	it('renames the selected reference without changing its directory', async () => {
 		const wrapper = mountViewer({
 			skill: {
@@ -215,7 +132,459 @@ describe('AgentSkillViewer', () => {
 		expect(wrapper.emitted('select:path')).toBeUndefined();
 	});
 
-	it('shows the selected reference byte count', () => {
+	it('shows a read-only skill as text, without form fields', () => {
+		const wrapper = mountViewer({
+			readOnly: true,
+			skill: {
+				name: 'Triage',
+				description: 'Use for triage',
+				instructions: 'Check the SLA first.',
+				references: [{ path: 'references/labels.md', content: 'Use needs-repro.' }],
+			},
+		});
+
+		expect(wrapper.find('[data-testid="agent-skill-description-text"]').text()).toBe(
+			'Use for triage',
+		);
+		expect(wrapper.find('[data-testid="agent-skill-instructions-text"]').text()).toContain(
+			'Check the SLA first.',
+		);
+		expect(wrapper.find('[data-testid="agent-skill-description-input"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-skill-instructions-editor"]').exists()).toBe(false);
+		expect(wrapper.text()).not.toContain('characters');
+	});
+
+	it('shows the task lists of a read-only skill as disabled checkboxes', () => {
+		const wrapper = mountViewer({
+			readOnly: true,
+			skill: {
+				name: 'Triage',
+				description: 'Use for triage',
+				instructions: '- [ ] Check the SLA',
+			},
+		});
+
+		const checkbox = wrapper.find('[data-testid="agent-skill-instructions-text"] input');
+		expect(checkbox.attributes('type')).toBe('checkbox');
+		expect(checkbox.attributes('disabled')).toBeDefined();
+	});
+
+	it('shows a read-only reference as text', () => {
+		const wrapper = mountViewer({
+			readOnly: true,
+			selectedPath: 'references/labels.md',
+			skill: {
+				name: 'Triage',
+				description: 'Use for triage',
+				instructions: 'Check the SLA first.',
+				references: [{ path: 'references/labels.md', content: 'Use needs-repro.' }],
+			},
+		});
+
+		expect(wrapper.find('[data-testid="agent-skill-reference-text"]').text()).toContain(
+			'Use needs-repro.',
+		);
+		expect(wrapper.find('[data-testid="agent-skill-reference-name-input"]').exists()).toBe(false);
+	});
+
+	it('shows Mermaid diagrams in the skill file and references', async () => {
+		vi.mocked(renderSkillMermaid)
+			.mockResolvedValueOnce({
+				outcome: 'rendered',
+				svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 50"><title>Skill steps</title></svg>',
+			})
+			.mockResolvedValueOnce(renderedDiagram());
+		const wrapper = mountViewer({
+			readOnly: true,
+			skill: {
+				name: 'Triage',
+				description: 'Use for triage',
+				instructions: '# Steps\n\n```mermaid\nflowchart LR\n  A --> B\n```',
+				references: [
+					{ path: 'references/steps.md', content: '```mermaid\nflowchart TD\n  C --> D\n```' },
+				],
+			},
+		});
+		await flushPromises();
+
+		const instructions = wrapper.get('[data-testid="agent-skill-instructions-text"]');
+		expect(instructions.get('h1').text()).toBe('Steps');
+		expect(instructions.get('img').attributes('alt')).toBe('Skill steps');
+		expect(instructions.get('details').attributes('open')).toBeUndefined();
+
+		await wrapper.setProps({ selectedPath: 'references/steps.md' });
+		await flushPromises();
+
+		const reference = wrapper.get('[data-testid="agent-skill-reference-text"]');
+		expect(reference.get('img').attributes('src')).toMatch(/^data:image\/svg\+xml,/);
+		expect(reference.get('img').attributes('alt')).toBe('agents.builder.skills.mermaid.diagram');
+		expect(reference.get('summary').text()).toBe('agents.builder.skills.mermaid.source');
+		expect(reference.get('details pre code').element.textContent).toBe('flowchart TD\n  C --> D\n');
+		expect(renderSkillMermaid).toHaveBeenLastCalledWith(
+			'flowchart TD\n  C --> D\n',
+			'default',
+			expect.any(Number),
+			expect.any(AbortSignal),
+		);
+	});
+
+	it('keeps invalid Mermaid and ordinary code blocks visible as code', async () => {
+		vi.mocked(renderSkillMermaid).mockClear().mockResolvedValueOnce({ outcome: 'invalid' });
+		const wrapper = mountViewer({
+			readOnly: true,
+			skill: {
+				name: 'Triage',
+				description: 'Use for triage',
+				instructions: '```mermaid\nflowchart LR\n  A -->\n```\n\n```text\n  Check the labels\n```',
+			},
+		});
+		await flushPromises();
+
+		const instructions = wrapper.get('[data-testid="agent-skill-instructions-text"]');
+		expect(instructions.findAll('pre code').map(({ element }) => element.textContent)).toEqual([
+			'flowchart LR\n  A -->\n',
+			'  Check the labels\n',
+		]);
+		expect(instructions.find('img').exists()).toBe(false);
+		expect(instructions.find('details').exists()).toBe(false);
+		expect(renderSkillMermaid).toHaveBeenCalledTimes(1);
+	});
+
+	it('renders a Mermaid block of the maximum length', async () => {
+		vi.mocked(renderSkillMermaid).mockClear().mockResolvedValueOnce(renderedDiagram());
+		const code = mermaidSourceOfLength(MAX_DIAGRAM_LENGTH);
+		const wrapper = mountViewer({
+			readOnly: true,
+			skill: {
+				name: 'Triage',
+				description: 'Use for triage',
+				instructions: `\`\`\`mermaid\n${code}\`\`\``,
+			},
+		});
+		await flushPromises();
+
+		expect(renderSkillMermaid).toHaveBeenCalledTimes(1);
+		expect(vi.mocked(renderSkillMermaid).mock.calls[0][0]).toHaveLength(MAX_DIAGRAM_LENGTH);
+		expect(wrapper.get('[data-testid="agent-skill-instructions-text"]').find('img').exists()).toBe(
+			true,
+		);
+	});
+
+	it('shows a Mermaid block over the maximum length as code, without a render', async () => {
+		vi.mocked(renderSkillMermaid).mockClear();
+		const code = mermaidSourceOfLength(MAX_DIAGRAM_LENGTH + 1);
+		const wrapper = mountViewer({
+			readOnly: true,
+			skill: {
+				name: 'Triage',
+				description: 'Use for triage',
+				instructions: `\`\`\`mermaid\n${code}\`\`\``,
+			},
+		});
+		await flushPromises();
+
+		const instructions = wrapper.get('[data-testid="agent-skill-instructions-text"]');
+		expect(renderSkillMermaid).not.toHaveBeenCalled();
+		expect(instructions.get('pre code').element.textContent).toBe(code);
+		expect(instructions.find('img').exists()).toBe(false);
+		expect(instructions.find('details').exists()).toBe(false);
+	});
+
+	it('cancels the render of a file when the user selects another file', async () => {
+		const first = deferredRender();
+		const second = deferredRender();
+		vi.mocked(renderSkillMermaid)
+			.mockClear()
+			.mockReturnValueOnce(first.promise)
+			.mockReturnValueOnce(second.promise);
+		const wrapper = mountViewer({
+			readOnly: true,
+			skill: {
+				name: 'Triage',
+				description: 'Use for triage',
+				instructions: '```mermaid\nflowchart LR\n  A --> B\n```',
+				references: [
+					{ path: 'references/steps.md', content: '```mermaid\nflowchart TD\n  C --> D\n```' },
+				],
+			},
+		});
+		await flushPromises();
+		const signalOf = (call: number) => vi.mocked(renderSkillMermaid).mock.calls[call][3];
+		expect(signalOf(0).aborted).toBe(false);
+
+		await wrapper.setProps({ selectedPath: 'references/steps.md' });
+		await flushPromises();
+
+		expect(renderSkillMermaid).toHaveBeenCalledTimes(2);
+		expect(signalOf(0).aborted).toBe(true);
+		expect(signalOf(1).aborted).toBe(false);
+
+		second.resolve(renderedDiagram('Reference steps'));
+		await flushPromises();
+		first.resolve(renderedDiagram('Skill steps'));
+		await flushPromises();
+
+		const images = wrapper.findAll('img');
+		expect(images).toHaveLength(1);
+		expect(images[0].attributes('alt')).toBe('Reference steps');
+	});
+
+	it('does not show the late result of a cancelled render', async () => {
+		const first = deferredRender();
+		const second = deferredRender();
+		vi.mocked(renderSkillMermaid)
+			.mockClear()
+			.mockReturnValueOnce(first.promise)
+			.mockReturnValueOnce(second.promise);
+		const wrapper = mountViewer({
+			readOnly: true,
+			skill: {
+				name: 'Triage',
+				description: 'Use for triage',
+				instructions: '```mermaid\nflowchart LR\n  A --> B\n```',
+				references: [
+					{ path: 'references/steps.md', content: '```mermaid\nflowchart TD\n  C --> D\n```' },
+				],
+			},
+		});
+		await flushPromises();
+		await wrapper.setProps({ selectedPath: 'references/steps.md' });
+		await flushPromises();
+
+		// The first render ends while the second render is still open.
+		first.resolve(renderedDiagram('Skill steps'));
+		await flushPromises();
+
+		expect(wrapper.find('img').exists()).toBe(false);
+		expect(wrapper.get('pre code').element.textContent).toBe('flowchart TD\n  C --> D\n');
+		second.resolve({ outcome: 'aborted' });
+	});
+
+	it('cancels the render when the view closes', async () => {
+		const render = deferredRender();
+		vi.mocked(renderSkillMermaid).mockClear().mockReturnValueOnce(render.promise);
+		const wrapper = mountViewer({
+			readOnly: true,
+			skill: {
+				name: 'Triage',
+				description: 'Use for triage',
+				instructions: '```mermaid\nflowchart LR\n  A --> B\n```',
+			},
+		});
+		await flushPromises();
+		const [, , , signal] = vi.mocked(renderSkillMermaid).mock.calls[0];
+		expect(signal.aborted).toBe(false);
+
+		wrapper.unmount();
+
+		expect(signal.aborted).toBe(true);
+		render.resolve({ outcome: 'aborted' });
+	});
+
+	it('keeps the source visible when the diagram image cannot load', async () => {
+		vi.mocked(renderSkillMermaid).mockResolvedValueOnce(renderedDiagram());
+		const code = 'flowchart LR\n  A --> B\n';
+		const wrapper = mountViewer({
+			readOnly: true,
+			skill: {
+				name: 'Triage',
+				description: 'Use for triage',
+				instructions: `\`\`\`mermaid\n${code}\`\`\``,
+			},
+		});
+		await flushPromises();
+
+		const instructions = wrapper.get('[data-testid="agent-skill-instructions-text"]');
+		await instructions.get('img').trigger('error');
+
+		expect(instructions.get('pre code').element.textContent).toBe(code);
+		expect(instructions.find('img').exists()).toBe(false);
+		expect(instructions.find('details').exists()).toBe(false);
+	});
+
+	it('reports the diagram results of a file one time, when the last render ends', async () => {
+		track.mockClear();
+		vi.mocked(renderSkillMermaid)
+			.mockResolvedValueOnce(renderedDiagram())
+			.mockResolvedValueOnce({ outcome: 'invalid' })
+			.mockResolvedValueOnce({ outcome: 'timeout' })
+			.mockResolvedValueOnce({ outcome: 'failed' })
+			// The view cannot show an SVG without a size.
+			.mockResolvedValueOnce({
+				outcome: 'rendered',
+				svg: '<svg xmlns="http://www.w3.org/2000/svg"/>',
+			});
+		const wrapper = mountViewer({
+			readOnly: true,
+			selectedPath: 'references/steps.md',
+			skill: {
+				name: 'Triage',
+				description: 'Use for triage',
+				instructions: 'Check the SLA first.',
+				references: [
+					{
+						path: 'references/steps.md',
+						content: Array.from(
+							{ length: 5 },
+							() => '```mermaid\nflowchart LR\n  A --> B\n```',
+						).join('\n\n'),
+					},
+				],
+			},
+		});
+		await flushPromises();
+
+		// The first diagram is still open, until its image loads.
+		expect(track).not.toHaveBeenCalled();
+		await wrapper.get('img').trigger('load');
+
+		expect(track).toHaveBeenCalledTimes(1);
+		expect(track).toHaveBeenCalledWith(TELEMETRY_EVENT.CONTEXT.USER_VIEWED_SKILL_DIAGRAMS, {
+			file: 'reference',
+			rendered: 1,
+			invalid: 1,
+			failed: 2,
+			timed_out: 1,
+		});
+	});
+
+	it('reports a diagram as failed when its image cannot load', async () => {
+		track.mockClear();
+		vi.mocked(renderSkillMermaid).mockResolvedValueOnce(renderedDiagram());
+		const wrapper = mountViewer({
+			readOnly: true,
+			skill: {
+				name: 'Triage',
+				description: 'Use for triage',
+				instructions: '```mermaid\nflowchart LR\n  A --> B\n```',
+			},
+		});
+		await flushPromises();
+		await wrapper.get('img').trigger('error');
+
+		expect(track).toHaveBeenCalledTimes(1);
+		expect(track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.CONTEXT.USER_VIEWED_SKILL_DIAGRAMS,
+			expect.objectContaining({ file: 'skill', rendered: 0, failed: 1 }),
+		);
+	});
+
+	it.each(['load', 'error'])(
+		'ignores a late image %s event after the theme changes',
+		async (event) => {
+			track.mockClear();
+			vi.mocked(renderSkillMermaid)
+				.mockResolvedValueOnce(renderedDiagram('Light diagram'))
+				.mockResolvedValueOnce(renderedDiagram('Dark diagram'));
+			const wrapper = mountViewer({
+				readOnly: true,
+				skill: {
+					name: 'Triage',
+					description: 'Use for triage',
+					instructions: '```mermaid\nflowchart LR\n  A --> B\n```',
+				},
+			});
+			await flushPromises();
+			const oldImage = wrapper.get('img');
+
+			uiStore.appliedTheme = 'dark';
+			await flushPromises();
+			await oldImage.trigger(event);
+
+			expect(wrapper.get('img').attributes('alt')).toBe('Dark diagram');
+			expect(track).not.toHaveBeenCalled();
+			await wrapper.get('img').trigger('load');
+			expect(track).toHaveBeenCalledExactlyOnceWith(
+				TELEMETRY_EVENT.CONTEXT.USER_VIEWED_SKILL_DIAGRAMS,
+				{ file: 'skill', rendered: 1, invalid: 0, failed: 0, timed_out: 0 },
+			);
+		},
+	);
+
+	it('reports the diagrams of the file that the user left, not of the file that opens', async () => {
+		track.mockClear();
+		const open = deferredRender();
+		vi.mocked(renderSkillMermaid)
+			.mockResolvedValueOnce({ outcome: 'invalid' })
+			.mockReturnValueOnce(open.promise);
+		const wrapper = mountViewer({
+			readOnly: true,
+			skill: {
+				name: 'Triage',
+				description: 'Use for triage',
+				instructions:
+					'```mermaid\nflowchart LR\n  A -->\n```\n\n```mermaid\nflowchart LR\n  A --> B\n```',
+				references: [{ path: 'references/labels.md', content: 'Use needs-repro.' }],
+			},
+		});
+		await flushPromises();
+		expect(track).not.toHaveBeenCalled();
+
+		await wrapper.setProps({ selectedPath: 'references/labels.md' });
+		await flushPromises();
+
+		expect(track).toHaveBeenCalledTimes(1);
+		expect(track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.CONTEXT.USER_VIEWED_SKILL_DIAGRAMS,
+			expect.objectContaining({ file: 'skill', rendered: 0, invalid: 1 }),
+		);
+		open.resolve({ outcome: 'aborted' });
+	});
+
+	it('reports nothing for a file with no Mermaid block', async () => {
+		track.mockClear();
+		mountViewer({
+			readOnly: true,
+			skill: {
+				name: 'Triage',
+				description: 'Use for triage',
+				instructions: '```text\nCheck the labels\n```',
+			},
+		});
+		await flushPromises();
+
+		expect(track).not.toHaveBeenCalled();
+	});
+
+	it('keeps Mermaid fences in the editor for both files', async () => {
+		const instructions = '```mermaid\nflowchart LR\n  A --> B\n```';
+		const reference = '```mermaid\nflowchart TD\n  C --> D\n```';
+		const wrapper = mountViewer({
+			skill: {
+				name: 'Triage',
+				description: 'Use for triage',
+				instructions,
+				references: [{ path: 'references/steps.md', content: reference }],
+			},
+		});
+
+		expect(
+			wrapper.get<HTMLTextAreaElement>('[data-testid="agent-skill-instructions-editor"]').element
+				.value,
+		).toBe(instructions);
+		await wrapper.setProps({ selectedPath: 'references/steps.md' });
+		expect(
+			wrapper.get<HTMLTextAreaElement>('[data-testid="agent-skill-reference-editor"]').element
+				.value,
+		).toBe(reference);
+	});
+
+	it('shows the instructions character count, not their byte size', () => {
+		const wrapper = mountViewer({
+			skill: {
+				name: 'Research',
+				description: 'Use for research',
+				// Each of these is 3 UTF-8 bytes, so a byte counter would read 9.
+				instructions: '日本語',
+			},
+		});
+
+		expect(wrapper.text()).toContain(
+			`3 / ${AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH.toLocaleString()} characters`,
+		);
+	});
+
+	it('shows the selected reference character count, not its byte size', () => {
 		const wrapper = mountViewer({
 			skill: {
 				name: 'Research',
@@ -231,8 +600,9 @@ describe('AgentSkillViewer', () => {
 			selectedPath: 'references/guide.md',
 		});
 
+		// '€' is 3 UTF-8 bytes but one character — the counter shows characters.
 		expect(wrapper.text()).toContain(
-			`9 / ${AGENT_SKILL_REFERENCE_CONTENT_MAX_BYTES.toLocaleString()} bytes`,
+			`3 / ${AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH.toLocaleString()} characters`,
 		);
 	});
 
@@ -251,45 +621,29 @@ describe('AgentSkillViewer', () => {
 		);
 		expect(wrapper.emitted('update:valid')?.at(-1)).toEqual([false]);
 	});
-
-	it('updates allowed tools from the picker and chips', async () => {
-		const wrapper = mountViewer({
-			skill: {
-				name: 'Research',
-				description: 'Use for research',
-				instructions: 'Main body',
-			},
-			availableTools: [{ name: 'load_workflow', label: 'Load workflow', icon: 'workflow' }],
-		});
-
-		await wrapper.find('[data-testid="agent-skill-add-allowed-tool"]').trigger('click');
-		await flushPromises();
-		await nextTick();
-
-		const option = document.querySelector('[data-testid="agent-skill-allowed-tool-option"]');
-		expect(option).toBeInTheDocument();
-		await (option as HTMLElement).click();
-		await nextTick();
-
-		expect(wrapper.emitted('update:skill')?.at(-1)).toEqual([{ allowedTools: ['load_workflow'] }]);
-		await wrapper.setProps({
-			skill: {
-				name: 'Research',
-				description: 'Use for research',
-				instructions: 'Main body',
-				allowedTools: ['load_workflow'],
-			},
-		});
-
-		expect(wrapper.find('[data-testid="agent-skill-allowed-tool-chip"]').text()).toContain(
-			'Load workflow',
-		);
-
-		await wrapper.find('[data-testid="agent-skill-allowed-tool-remove"]').trigger('click');
-
-		expect(wrapper.emitted('update:skill')?.at(-1)).toEqual([{ allowedTools: undefined }]);
-	});
 });
+
+/** The code of a Mermaid block with this many characters, with the line break before the closing fence. */
+function mermaidSourceOfLength(length: number) {
+	const start = 'flowchart LR\n  A --> B\n%% ';
+	return `${start}${'x'.repeat(length - start.length - 1)}\n`;
+}
+
+function renderedDiagram(title?: string) {
+	return {
+		outcome: 'rendered' as const,
+		svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 50">${title ? `<title>${title}</title>` : ''}</svg>`,
+	};
+}
+
+/** A render that the test ends by hand. */
+function deferredRender() {
+	let resolve: (result: SkillMermaidResult) => void = () => {};
+	const promise = new Promise<SkillMermaidResult>((resolvePromise) => {
+		resolve = resolvePromise;
+	});
+	return { promise, resolve };
+}
 
 function mountViewer(props: Partial<InstanceType<typeof AgentSkillViewer>['$props']> = {}) {
 	return mount(AgentSkillViewer, {
@@ -319,19 +673,6 @@ function mountViewer(props: Partial<InstanceType<typeof AgentSkillViewer>['$prop
 			},
 		},
 	});
-}
-
-function makeFile(content: string, path: string): File {
-	const file = new File([content], path.split('/').at(-1) ?? 'file.md');
-	Object.defineProperty(file, 'webkitRelativePath', {
-		value: path,
-		configurable: true,
-	});
-	Object.defineProperty(file, 'text', {
-		value: async () => await Promise.resolve(content),
-		configurable: true,
-	});
-	return file;
 }
 
 function makeReferences(count: number) {

@@ -35,7 +35,25 @@ describe('CredentialRequirementsExtractor', () => {
 			],
 		});
 
-		expect(extractor.extract(workflow)).toEqual([]);
+		expect(extractor.extractFromWorkflow(workflow)).toEqual([]);
+	});
+
+	it('ignores a null credential reference', () => {
+		const workflow = makeWorkflow({
+			nodes: [
+				{
+					id: 'n1',
+					name: 'HTTP',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+					credentials: { httpHeaderAuth: null },
+				},
+			] as never,
+		});
+
+		expect(extractor.extractFromWorkflow(workflow)).toEqual([]);
 	});
 
 	it('emits one requirement per node credential slot, keyed by credential type', () => {
@@ -59,7 +77,7 @@ describe('CredentialRequirementsExtractor', () => {
 			],
 		});
 
-		expect(extractor.extract(workflow)).toEqual(
+		expect(extractor.extractFromWorkflow(workflow)).toEqual(
 			expect.arrayContaining([
 				{
 					workflowId: 'wf-creds',
@@ -75,7 +93,7 @@ describe('CredentialRequirementsExtractor', () => {
 				},
 			]),
 		);
-		expect(extractor.extract(workflow)).toHaveLength(2);
+		expect(extractor.extractFromWorkflow(workflow)).toHaveLength(2);
 	});
 
 	it('dedupes when the same credential id appears in two nodes of one workflow', () => {
@@ -107,11 +125,48 @@ describe('CredentialRequirementsExtractor', () => {
 			],
 		});
 
-		expect(extractor.extract(workflow)).toEqual([
+		expect(extractor.extractFromWorkflow(workflow)).toEqual([
 			{
 				workflowId: 'wf-dup',
 				credentialId: 'cred-shared',
 				credentialName: 'Shared',
+				credentialType: 'httpHeaderAuth',
+			},
+		]);
+	});
+
+	it('extracts credentials used by an inline workflow', () => {
+		const workflow = makeWorkflow({
+			id: 'wf-inline',
+			nodes: [
+				{
+					id: 'n1',
+					name: 'Execute Workflow',
+					type: 'n8n-nodes-base.executeWorkflow',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {
+						source: 'parameter',
+						workflowJson: JSON.stringify({
+							nodes: [
+								{
+									credentials: {
+										httpHeaderAuth: { id: 'cred-inline', name: 'Inline credential' },
+									},
+								},
+							],
+							connections: {},
+						}),
+					},
+				},
+			],
+		});
+
+		expect(extractor.extractFromWorkflow(workflow)).toEqual([
+			{
+				workflowId: 'wf-inline',
+				credentialId: 'cred-inline',
+				credentialName: 'Inline credential',
 				credentialType: 'httpHeaderAuth',
 			},
 		]);
@@ -135,7 +190,7 @@ describe('CredentialRequirementsExtractor', () => {
 			],
 		});
 
-		expect(extractor.extract(workflow)).toEqual([]);
+		expect(extractor.extractFromWorkflow(workflow)).toEqual([]);
 	});
 
 	it('returns an empty list when the workflow has no nodes array at all', () => {
@@ -143,6 +198,6 @@ describe('CredentialRequirementsExtractor', () => {
 		// `nodes` may be absent rather than empty.
 		const workflow = makeWorkflow({ id: 'wf-no-nodes', nodes: undefined as unknown as [] });
 
-		expect(extractor.extract(workflow)).toEqual([]);
+		expect(extractor.extractFromWorkflow(workflow)).toEqual([]);
 	});
 });

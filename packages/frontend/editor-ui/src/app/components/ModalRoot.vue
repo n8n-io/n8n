@@ -22,7 +22,7 @@ const uiStore = useUIStore();
 
 // Resolves to a closed state while `name` is not registered, so this renders
 // nothing instead of throwing when it mounts ahead of registration.
-const modalState = computed(() => uiStore.modalStateById[props.name]);
+const modalState = computed(() => uiStore.modalsById[props.name]);
 </script>
 
 <template>

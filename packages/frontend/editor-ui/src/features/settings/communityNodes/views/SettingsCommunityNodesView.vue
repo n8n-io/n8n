@@ -6,6 +6,7 @@ import {
 import CommunityPackageCard from '../components/CommunityPackageCard.vue';
 import { useToast } from '@n8n/composables/useToast';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { usePrefetchModals } from '@/app/composables/usePrefetchModals';
 import type { PublicInstalledPackage } from 'n8n-workflow';
 
 import { useCommunityNodesStore } from '../communityNodes.store';
@@ -18,6 +19,8 @@ import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useTypeAvailability } from '@n8n/frontend-module-type-availability-policies';
 
 import { N8nEmptyState, N8nButton, N8nHeading, N8nNotice } from '@n8n/design-system';
 const PACKAGE_COUNT_THRESHOLD = 31;
@@ -36,6 +39,7 @@ const documentTitle = useDocumentTitle();
 const communityNodesStore = useCommunityNodesStore();
 const uiStore = useUIStore();
 const settingsStore = useSettingsStore();
+const projectsStore = useProjectsStore();
 
 const isManagedByEnv = computed((): boolean => {
 	return settingsStore.settings.communityNodesManagedByEnv ?? false;
@@ -44,6 +48,8 @@ const isManagedByEnv = computed((): boolean => {
 const canInstall = computed((): boolean => {
 	return settingsStore.isUnverifiedPackagesEnabled && !isManagedByEnv.value;
 });
+
+usePrefetchModals([COMMUNITY_PACKAGE_INSTALL_MODAL_KEY], { enabled: () => canInstall.value });
 
 const getEmptyStateTitle = computed(() => {
 	if (!settingsStore.isUnverifiedPackagesEnabled) {
@@ -154,6 +160,10 @@ onBeforeUnmount(() => {
 	pushStore.pushDisconnect();
 	pushConnection.terminate();
 });
+
+// Node type availability is project-scoped, but this page has no project context of its own.
+// The personal project is only used to carry the instance-wide verdicts the cards need.
+useTypeAvailability(() => projectsStore.personalProject?.id);
 </script>
 
 <template>

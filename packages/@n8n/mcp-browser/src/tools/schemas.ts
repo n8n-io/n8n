@@ -9,6 +9,13 @@ export const pageIdField = z
 	.optional()
 	.describe('Target page/tab ID. Defaults to active page');
 
+export const snapshotField = z
+	.enum(['interactive', 'non-interactive'])
+	.optional()
+	.describe(
+		'Return a fresh page snapshot after the action. "interactive" annotates interactive elements with refs for follow-up actions; "non-interactive" returns the plain accessibility tree. Omit to skip.',
+	);
+
 const refTargetSchema = z
 	.object({
 		ref: z.string().describe('Element ref from browser_snapshot (preferred)'),

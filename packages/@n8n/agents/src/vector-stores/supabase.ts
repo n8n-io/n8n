@@ -1,5 +1,3 @@
-import type { SupabaseClient } from '@supabase/supabase-js';
-
 import { BaseVectorStore } from '../storage/base-vector-store';
 import type {
 	FilterCondition,
@@ -9,24 +7,75 @@ import type {
 } from '../types/sdk/vector-store';
 import type { JSONObject } from '../types/utils/json';
 
-interface SupabaseMatchRow {
+/**
+ * Written as `type` aliases, not `interface`s: the schema below assigns these to
+ * `postgrest-js`'s `Record<string, unknown>` row slots, and only type-alias
+ * object types carry the implicit index signature that assignment requires.
+ */
+type SupabaseMatchRow = {
 	id: string;
 	content: string;
 	metadata: JSONObject;
 	similarity: number;
-}
+};
+
+/** Row layout of the pgvector-backed table this store reads from and writes to. */
+type SupabaseVectorRow = {
+	id: string;
+	content: string;
+	metadata: JSONObject;
+	embedding: number[];
+};
 
 /**
- * Explicit RPC function shape passed to `client.rpc<FnName, Fn>()` — without it,
- * TypeScript can't resolve `Fn` from the untyped (no generated `Database` type)
- * client, and `Fn['Returns']` collapses to `any`, which trips up `.returns()`'s
- * array-vs-object validation. Providing this directly gives the whole
- * `rpc()` → `.filter()`/`.limit()` chain a concrete result type.
+ * Minimal typed schema for the (otherwise untyped) Supabase project this store
+ * talks to. Table and RPC names are both configurable, so each is an index
+ * signature: every table has the standard pgvector row layout and every RPC is
+ * the similarity search taking `query_embedding` and returning
+ * `SupabaseMatchRow[]`. Supplying this gives the whole
+ * `from()`/`rpc()` → `.filter()`/`.limit()` chain concrete result types — without
+ * a generated `Database` type, `postgrest-js` collapses the RPC `Returns` to
+ * `any`.
  */
-interface MatchDocumentsFn {
-	Args: { query_embedding: number[] };
-	Returns: SupabaseMatchRow[];
+type SupabaseVectorSchema = {
+	public: {
+		Tables: {
+			[table: string]: {
+				Row: SupabaseVectorRow;
+				Insert: SupabaseVectorRow;
+				Update: Partial<SupabaseVectorRow>;
+				Relationships: [];
+			};
+		};
+		Views: Record<string, never>;
+		Functions: {
+			[fn: string]: {
+				Args: { query_embedding: number[] };
+				Returns: SupabaseMatchRow[];
+			};
+		};
+	};
+};
+
+/**
+ * Lazily loads `@supabase/supabase-js` (an optional peer dependency) and builds a
+ * client typed against {@link SupabaseVectorSchema}. The stored client type is
+ * derived from this function's return (see {@link SupabaseVectorClient}) so it
+ * stays tied to the exact `SupabaseClient` declaration the runtime `import()`
+ * resolves. A top-level `import type` in this CommonJS package would resolve a
+ * different (`require`-condition, `.d.cts`) declaration whose `protected` members
+ * make it nominally incompatible with the imported one.
+ */
+async function createSupabaseVectorClient(url: string, apiKey: string) {
+	const { createClient } = await import('@supabase/supabase-js');
+	// supabase-js arms a 30s token-refresh interval per client; PostgREST-only
+	// usage does not need auth refresh or session persistence.
+	return createClient<SupabaseVectorSchema>(url, apiKey, {
+		auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false },
+	});
 }
+
+type SupabaseVectorClient = Awaited<ReturnType<typeof createSupabaseVectorClient>>;
 
 /**
  * Structural subset of `@supabase/postgrest-js`'s `PostgrestFilterBuilder` —
@@ -98,7 +147,7 @@ export class SupabaseVectorStore extends BaseVectorStore<SupabaseVectorStoreOpti
 
 	private readonly queryName: string;
 
-	private client?: SupabaseClient;
+	private client?: SupabaseVectorClient;
 
 	constructor(name: string, options: SupabaseVectorStoreOptions) {
 		super(name, options);
@@ -127,7 +176,7 @@ export class SupabaseVectorStore extends BaseVectorStore<SupabaseVectorStoreOpti
 		opts: { topK: number; filter?: VectorFilter },
 	): Promise<VectorQueryResult[]> {
 		const client = await this.getClient();
-		const rpcCall = client.rpc<string, MatchDocumentsFn>(this.queryName, {
+		const rpcCall = client.rpc(this.queryName, {
 			query_embedding: vector,
 		});
 		const filtered =
@@ -153,11 +202,11 @@ export class SupabaseVectorStore extends BaseVectorStore<SupabaseVectorStoreOpti
 		this.client = undefined;
 	}
 
-	private async getClient(): Promise<SupabaseClient> {
-		if (!this.client) {
-			const { createClient } = await import('@supabase/supabase-js');
-			this.client = createClient(this.constructorOptions.url, this.constructorOptions.apiKey);
-		}
+	private async getClient(): Promise<SupabaseVectorClient> {
+		this.client ??= await createSupabaseVectorClient(
+			this.constructorOptions.url,
+			this.constructorOptions.apiKey,
+		);
 		return this.client;
 	}
 }

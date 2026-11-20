@@ -1,5 +1,5 @@
 import type { AiGatewayConfigDto } from '@n8n/api-types';
-import type { INode } from 'n8n-workflow';
+import { isMcpAiGatewayAuthentication, type INode } from 'n8n-workflow';
 
 import { stripToolSuffix } from '@/utils';
 
@@ -47,6 +47,8 @@ export function checkAiGatewayEligibility(
 	config: AiGatewayConfigDto,
 	resolvedParameters?: Record<string, unknown>,
 ): AiGatewayEligibility {
+	// Registry MCP servers generate these types only for a server the AI Gateway lists.
+	if (isMcpAiGatewayAuthentication(credentialType)) return { eligible: true };
 	const key = resolveNodeKey(node.type, config.nodes);
 	if (!key) return { eligible: false, reason: 'nodeNotCovered' };
 
@@ -71,7 +73,7 @@ export function checkAiGatewayEligibility(
 			return {
 				eligible: false,
 				reason: 'hiddenPropertySet',
-				details: `property "${offending}" is hidden when using n8n credits`,
+				details: `property "${offending}" is hidden when using Gateway credits`,
 			};
 		}
 	}

@@ -7,12 +7,35 @@ import {
 } from './types.ee';
 
 export const OWNER_API_KEY_SCOPES: ApiKeyScope[] = [
+	'agent:export',
+	'agent:import',
+	'agent:read',
+	'agent:list',
+	'agent:create',
+	'agent:update',
+	'agent:publish',
+	'agent:unpublish',
+	'agent:delete',
+	'skill:create',
+	'skill:update',
 	'user:read',
 	'user:list',
 	'user:create',
 	'user:changeRole',
 	'user:delete',
 	'sourceControl:pull',
+	'sourceControl:push',
+	'sourceControl:read',
+	'promotions:create',
+	'promotions:read',
+	'promotions:update',
+	'promotions:delete',
+	'promotions:list',
+	'promotions:discover',
+	'promotions:connect',
+	'promotions:promote',
+	'promotions:manageProjects',
+	'promotions:apply',
 	'securityAudit:generate',
 	'securitySettings:manage',
 	'saml:manage',
@@ -31,6 +54,7 @@ export const OWNER_API_KEY_SCOPES: ApiKeyScope[] = [
 	'project:delete',
 	'project:list',
 	'project:export',
+	'project:manageMembers',
 	'variable:create',
 	'variable:delete',
 	'variable:list',
@@ -54,6 +78,7 @@ export const OWNER_API_KEY_SCOPES: ApiKeyScope[] = [
 	'workflow:move',
 	'workflow:activate',
 	'workflow:deactivate',
+	'workflow:execute',
 	'execution:delete',
 	'execution:read',
 	'execution:retry',
@@ -89,11 +114,30 @@ export const OWNER_API_KEY_SCOPES: ApiKeyScope[] = [
 	'dataTableColumn:delete',
 	'insights:read',
 	'role:manage',
+	'role:list',
+	'role:read',
+	'roleMappingRule:create',
+	'roleMappingRule:delete',
+	'roleMappingRule:list',
+	'roleMappingRule:update',
+	'nodeTypePolicy:manage',
+	'credentialTypePolicy:manage',
 ];
 
 export const ADMIN_API_KEY_SCOPES: ApiKeyScope[] = OWNER_API_KEY_SCOPES;
 
 export const MEMBER_API_KEY_SCOPES: ApiKeyScope[] = [
+	'agent:export',
+	'agent:import',
+	'agent:read',
+	'agent:list',
+	'agent:create',
+	'agent:update',
+	'agent:publish',
+	'agent:unpublish',
+	'agent:delete',
+	'skill:create',
+	'skill:update',
 	'tag:create',
 	'tag:read',
 	'tag:update',
@@ -112,6 +156,7 @@ export const MEMBER_API_KEY_SCOPES: ApiKeyScope[] = [
 	'workflow:move',
 	'workflow:activate',
 	'workflow:deactivate',
+	'workflow:execute',
 	'project:export',
 	'execution:delete',
 	'execution:read',
@@ -126,6 +171,10 @@ export const MEMBER_API_KEY_SCOPES: ApiKeyScope[] = [
 	'credential:update',
 	'credential:move',
 	'credential:delete',
+	'variable:create',
+	'variable:delete',
+	'variable:list',
+	'variable:update',
 	'dataTable:create',
 	'dataTable:read',
 	'dataTable:update',
@@ -145,9 +194,13 @@ export const MEMBER_API_KEY_SCOPES: ApiKeyScope[] = [
 	'dataTableColumn:read',
 	'dataTableColumn:update',
 	'dataTableColumn:delete',
+	'nodeTypePolicy:manage',
+	'credentialTypePolicy:manage',
 ];
 
 export const CHAT_USER_API_KEY_SCOPES: ApiKeyScope[] = [];
+
+export const AGENT_API_KEY_SCOPES: ApiKeyScope[] = [];
 
 /**
  * This is a bit of a mess, because we are handing out scopes in API keys that are only
@@ -156,6 +209,17 @@ export const CHAT_USER_API_KEY_SCOPES: ApiKeyScope[] = [];
  * This is a temporary solution until we have a better way to handle personal projects and API key scopes!
  */
 export const API_KEY_SCOPES_FOR_IMPLICIT_PERSONAL_PROJECT: ApiKeyScope[] = [
+	'agent:export',
+	'agent:import',
+	'agent:read',
+	'agent:list',
+	'agent:create',
+	'agent:update',
+	'agent:publish',
+	'agent:unpublish',
+	'agent:delete',
+	'skill:create',
+	'skill:update',
 	'workflowTags:update',
 	'workflowTags:list',
 	'executionTags:update',
@@ -170,6 +234,7 @@ export const API_KEY_SCOPES_FOR_IMPLICIT_PERSONAL_PROJECT: ApiKeyScope[] = [
 	'workflow:move',
 	'workflow:activate',
 	'workflow:deactivate',
+	'workflow:execute',
 	'project:export',
 	'execution:delete',
 	'execution:read',
@@ -184,6 +249,11 @@ export const API_KEY_SCOPES_FOR_IMPLICIT_PERSONAL_PROJECT: ApiKeyScope[] = [
 	'credential:update',
 	'credential:move',
 	'credential:delete',
+	// Members hold these for team projects where they are editor or admin.
+	// The variables service checks the project role on every request.
+	'variable:create',
+	'variable:delete',
+	'variable:update',
 	'dataTable:create',
 	'dataTable:read',
 	'dataTable:update',
@@ -194,10 +264,17 @@ export const API_KEY_SCOPES_FOR_IMPLICIT_PERSONAL_PROJECT: ApiKeyScope[] = [
 	'dataTableRow:update',
 	'dataTableRow:delete',
 	'dataTableRow:upsert',
+	'folder:create',
+	'folder:delete',
+	'folder:read',
+	'folder:update',
+	'folder:list',
 	'dataTableColumn:create',
 	'dataTableColumn:read',
 	'dataTableColumn:update',
 	'dataTableColumn:delete',
+	'nodeTypePolicy:manage',
+	'credentialTypePolicy:manage',
 ];
 
 const MAP_ROLE_SCOPES: Record<GlobalRole, ApiKeyScope[]> = {
@@ -205,10 +282,11 @@ const MAP_ROLE_SCOPES: Record<GlobalRole, ApiKeyScope[]> = {
 	'global:admin': ADMIN_API_KEY_SCOPES,
 	'global:member': MEMBER_API_KEY_SCOPES,
 	'global:chatUser': CHAT_USER_API_KEY_SCOPES,
+	'global:agent': AGENT_API_KEY_SCOPES,
 };
 
 export const getApiKeyScopesForRole = (user: AuthPrincipal) => {
-	if (user.role.slug === 'global:chatUser') {
+	if (user.role.slug === 'global:chatUser' || user.role.slug === 'global:agent') {
 		return [];
 	}
 

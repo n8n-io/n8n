@@ -55,10 +55,15 @@ const search = computed(() => useViewStacks().activeViewStack.search ?? '');
 
 // The panel search bar writes into the view stack; forward it to the remote
 // agent catalog instead of the node creator's local fuzzy search.
-const debouncedSearchFilter = debounce((term: string) => void onSearchFilter(term), {
-	debounceTime: getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH),
-	trailing: true,
-});
+const debouncedSearchFilter = debounce(
+	(term: string) => {
+		void onSearchFilter(term);
+	},
+	{
+		debounceTime: getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH),
+		trailing: true,
+	},
+);
 watch(search, (term) => debouncedSearchFilter(term));
 
 const { isFeatureEnabled: isInlineAgentsEnabled } = useInlineAgentsExperiment();
@@ -121,7 +126,9 @@ const loadMoreSentinel = ref<HTMLElement | null>(null);
 const observerRoot = ref<Element | null>(null);
 const { observe: observeForLoadMore } = useIntersectionObserver({
 	root: observerRoot,
-	onIntersect: () => void loadMore(),
+	onIntersect: () => {
+		void loadMore();
+	},
 });
 
 watch(

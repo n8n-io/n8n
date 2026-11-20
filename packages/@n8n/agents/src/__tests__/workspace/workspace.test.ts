@@ -278,7 +278,6 @@ describe('Workspace', () => {
 			const names = tools.map((t) => t.name);
 			expect(names).toContain('workspace_read_file');
 			expect(names).toContain('workspace_str_replace_file');
-			expect(names).toContain('workspace_batch_str_replace_file');
 			expect(names).toContain('workspace_write_file');
 			expect(names).toContain('workspace_list_files');
 			expect(names).toContain('workspace_file_stat');
@@ -309,5 +308,24 @@ describe('Workspace', () => {
 			const names = tools.map((t) => t.name);
 			expect(names).not.toContain('workspace_execute_command');
 		});
+	});
+});
+
+describe('Workspace prewarm', () => {
+	it('handles a rejection from an async prewarm hook', async () => {
+		const unhandled = vi.fn();
+		process.on('unhandledRejection', unhandled);
+		try {
+			const workspace = new Workspace({
+				prewarm: async () => await Promise.reject(new Error('sandbox unavailable')),
+			});
+
+			workspace.prewarm();
+			await new Promise((resolve) => setTimeout(resolve, 0));
+
+			expect(unhandled).not.toHaveBeenCalled();
+		} finally {
+			process.off('unhandledRejection', unhandled);
+		}
 	});
 });

@@ -155,8 +155,8 @@ describe('prompt caching via stream', () => {
 describe('reasoning + cacheControl coexistence', () => {
 	it('both reasoning and prompt caching work simultaneously', async () => {
 		const agent = new Agent('thinking-cache-test')
-			.model('anthropic', 'claude-sonnet-4-5')
-			.reasoning('medium')
+			.model('anthropic', 'claude-sonnet-4-6')
+			.reasoning('high')
 			.instructions(LONG_SYSTEM_PROMPT, {
 				providerOptions: {
 					anthropic: { cacheControl: { type: 'ephemeral' } },
@@ -164,9 +164,10 @@ describe('reasoning + cacheControl coexistence', () => {
 			});
 
 		// First call — cache miss, but reasoning should work
-		const { stream: stream1 } = await agent.stream('What is 7 * 8?', {
-			persistence: { resourceId: 'user1', threadId: 'thread1' },
-		});
+		const { stream: stream1 } = await agent.stream(
+			'Find the smallest positive integer divisible by every integer from 1 through 17.',
+			{ persistence: { resourceId: 'user1', threadId: 'thread1' } },
+		);
 		const chunks1 = await collectStreamChunks(stream1);
 
 		// Should have reasoning chunks
@@ -174,9 +175,10 @@ describe('reasoning + cacheControl coexistence', () => {
 		expect(reasoningChunks.length).toBeGreaterThan(0);
 
 		// Second call — cache hit, reasoning should still work
-		const { stream: stream2 } = await agent.stream('What is 12 * 13?', {
-			persistence: { resourceId: 'user1', threadId: 'thread2' },
-		});
+		const { stream: stream2 } = await agent.stream(
+			'Find the smallest positive integer divisible by every integer from 1 through 19.',
+			{ persistence: { resourceId: 'user1', threadId: 'thread2' } },
+		);
 		const chunks2 = await collectStreamChunks(stream2);
 
 		// Should still have reasoning

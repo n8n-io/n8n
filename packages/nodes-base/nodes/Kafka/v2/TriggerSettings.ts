@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { ITriggerFunctions, Logger } from 'n8n-workflow';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { DEFAULT_EXECUTION_TIMEOUT_SECONDS } from './consumer';
 import type { DataEmitterOptions, KafkaMessageParserOptions, ResolveOffsetMode } from './consumer';
@@ -95,7 +95,8 @@ function heartbeatWithinSession(
 	sessionTimeout: number,
 	logger?: Logger,
 ): number {
-	// An unusable session timeout is left to librdkafka to reject by name.
+	// An unusable session timeout is left to the broker, which refuses the join;
+	// `transport/LibraryLogger` matches that refusal as non-recoverable.
 	if (!Number.isFinite(sessionTimeout) || sessionTimeout <= 0) return heartbeatInterval;
 
 	const largest = Math.floor(sessionTimeout / HEARTBEATS_PER_SESSION);

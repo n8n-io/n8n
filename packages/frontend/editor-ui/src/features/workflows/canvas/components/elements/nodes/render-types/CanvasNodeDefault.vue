@@ -39,6 +39,7 @@ const {
 	subtitle,
 	connections,
 	isDisabled,
+	isDeprecated,
 	isReadOnly,
 	isSelected,
 	executionStatus,
@@ -48,6 +49,7 @@ const {
 	hasRunData,
 	render,
 	isNotInstalledCommunityNode,
+	isRestricted,
 } = useCanvasNode();
 const { hasPrivateCredential, tooltipText: privateCredentialTooltip } =
 	useNodePrivateCredential(name);
@@ -55,38 +57,46 @@ const renderData = injectCanvasRenderData();
 const inputs = computed(() => renderData.value.nodeInputsByNodeId.get(id.value)?.value ?? []);
 const outputs = computed(() => renderData.value.nodeOutputsByNodeId.get(id.value)?.value ?? []);
 const hasExecutionErrors = computed(
-	() => (renderData.value.executionIssuesByNodeName.get(name.value)?.value?.length ?? 0) > 0,
+	() => (renderData.value.executionIssuesByNodeId.get(id.value)?.value?.length ?? 0) > 0,
 );
-const hasPinnedData = computed(
-	() =>
-		!renderData.value.isExecutionDataDisplayed &&
-		!!renderData.value.pinnedDataByNodeName[name.value],
-);
+const hasPinnedData = computed(() => !!renderData.value.pinnedDataByNodeName[name.value]);
 const hasExecutionPinData = computed(
-	() =>
-		renderData.value.isExecutionDataDisplayed &&
-		!!renderData.value.executionPinDataByNodeName[name.value],
+	() => !!renderData.value.getDisplayedExecutionPinData(id.value),
 );
 const hasSubstitutedOutput = computed(() => hasPinnedData.value || hasExecutionPinData.value);
-const { mainOutputs, mainOutputConnections, mainInputs, mainInputConnections, nonMainInputs } =
-	useNodeConnections({
-		inputs,
-		outputs,
-		connections,
-	});
+const {
+	mainOutputs,
+	mainOutputConnections,
+	mainInputs,
+	mainInputConnections,
+	nonMainInputs,
+	nonMainOutputs,
+} = useNodeConnections({
+	inputs,
+	outputs,
+	connections,
+});
 
 const nodeHelpers = useNodeHelpers();
 const renderOptions = computed(() => render.value.options as CanvasNodeDefaultRender['options']);
 const isDemoRoute = computed(() => route.name === VIEWS.DEMO);
 
+const isWaiting = computed(() =>
+	Boolean(executionWaiting.value || executionStatus.value === 'waiting'),
+);
+const isRunning = computed(() => Boolean(executionRunning.value || executionWaitingForNext.value));
+
 const classes = computed(() => {
-	const waiting = Boolean(executionWaiting.value || executionStatus.value === 'waiting');
-	const running = Boolean(executionRunning.value || executionWaitingForNext.value);
+	const waiting = isWaiting.value;
+	const running = isRunning.value;
 	return {
 		[$style.node]: true,
 		[$style.selected]: isSelected.value,
 		[$style.disabled]:
-			isDisabled.value || (isNotInstalledCommunityNode.value && !isDemoRoute.value),
+			isDisabled.value ||
+			isRestricted.value ||
+			(isNotInstalledCommunityNode.value && !isDemoRoute.value),
+		[$style.deprecated]: isDeprecated.value,
 		[$style.success]: Boolean(
 			hasRunData.value && executionStatus.value === 'success' && !hasExecutionPinData.value,
 		),
@@ -117,6 +127,7 @@ const nodeSize = computed(() =>
 		mainInputs.value.length,
 		mainOutputs.value.length,
 		nonMainInputs.value.length,
+		nonMainOutputs.value.length,
 		isExperimentalNdvActive.value,
 	),
 );
@@ -221,18 +232,20 @@ function onActivate(event: MouseEvent) {
 		@contextmenu="openContextMenu"
 		@dblclick.stop="onActivate"
 	>
+		<span v-if="isRunning || isWaiting" :class="$style.statusRing" />
 		<CanvasNodeTooltip v-if="renderOptions.tooltip" :visible="showTooltip" />
 		<NodeIcon
 			:icon-source="iconSource"
 			:size="iconSize"
 			:shrink="false"
-			:disabled="isDisabled"
+			:disabled="isDisabled || isRestricted || isDeprecated"
 			:class="$style.icon"
 		/>
 		<CanvasNodeSettingsIcons
 			v-if="
 				!renderOptions.configuration &&
 				!isDisabled &&
+				!isRestricted &&
 				!(hasSubstitutedOutput && !nodeHelpers.isProductionExecutionPreview.value)
 			"
 		/>
@@ -244,11 +257,17 @@ function onActivate(event: MouseEvent) {
 			<div v-if="isDisabled" :class="$style.disabledLabel">
 				({{ i18n.baseText('node.disabled') }})
 			</div>
-			<div v-if="subtitle && !isNotInstalledCommunityNode" :class="$style.subtitle">
+			<div v-if="isRestricted" :class="$style.subtitle" data-test-id="canvas-node-restricted">
+				{{ i18n.baseText('node.restricted') }}
+			</div>
+			<div v-else-if="subtitle && !isNotInstalledCommunityNode" :class="$style.subtitle">
 				{{ subtitle }}
 			</div>
 		</div>
-		<CanvasNodeStatusIcons v-if="!isDisabled" :class="$style.statusIcons" />
+		<CanvasNodeStatusIcons
+			v-if="!isDisabled || isRestricted || isDeprecated"
+			:class="$style.statusIcons"
+		/>
 	</div>
 </template>
 
@@ -276,10 +295,13 @@ function onActivate(event: MouseEvent) {
 		border-radius: var(--trigger-node--radius) var(--radius--lg) var(--radius--lg)
 			var(--trigger-node--radius);
 
-		&.running::after,
-		&.waiting::after {
-			border-radius: var(--trigger-node--radius) var(--radius--lg) var(--radius--lg)
-				var(--trigger-node--radius);
+		> .statusRing {
+			border-top-left-radius: calc(
+				var(--trigger-node--radius) + var(--canvas-node--status-radius-offset)
+			);
+			border-bottom-left-radius: calc(
+				var(--trigger-node--radius) + var(--canvas-node--status-radius-offset)
+			);
 		}
 	}
 
@@ -290,9 +312,10 @@ function onActivate(event: MouseEvent) {
 	&.configuration {
 		border-radius: calc(var(--canvas-node--height) / 2);
 
-		&.running::after,
-		&.waiting::after {
-			border-radius: calc(var(--canvas-node--height) / 2);
+		> .statusRing {
+			border-radius: calc(
+				var(--canvas-node--height) / 2 + var(--canvas-node--status-radius-offset)
+			);
 		}
 
 		.statusIcons {
@@ -373,6 +396,11 @@ function onActivate(event: MouseEvent) {
 		);
 	}
 
+	&.deprecated {
+		--canvas-node--border-width: 2px;
+		--canvas-node--border-color: var(--color--danger);
+	}
+
 	&.disabled {
 		--canvas-node--border-color: var(
 			--color-canvas-node-disabled-border-color,
@@ -401,21 +429,22 @@ function onActivate(event: MouseEvent) {
 	}
 }
 
-/* stylelint-disable */
-.running::after,
-.waiting::after {
-	@include styles.status-animated-after;
+.statusRing {
+	$status-inset: 3px;
+	@include styles.status-animated-ring($status-inset);
+	// The ring starts at the padding edge. Keep its curve concentric with the node.
+	--canvas-node--status-radius-offset: calc(#{$status-inset} - var(--canvas-node--border-width));
+	border-radius: calc(var(--radius--lg) + var(--canvas-node--status-radius-offset));
 }
 
-.running::after {
+.running > .statusRing {
 	@include styles.status-running-animation;
 }
-.waiting::after {
+.waiting > .statusRing {
 	@include styles.status-waiting-animation;
 }
 
 @include styles.status-animation-definitions;
-/* stylelint-enable */
 
 .description {
 	top: 100%;

@@ -18,6 +18,7 @@ import { CanvasConnectionMode, CanvasNodeRenderType } from '../canvas.types';
 import type { CanvasNodeGroupView } from './useCanvasNodeGroupView';
 import {
 	buildCollapsedGroupByNodeId,
+	getStickyZIndex,
 	remapCollapsedGroupConnections,
 } from './useCanvasMapping.groups';
 import {
@@ -26,8 +27,14 @@ import {
 	mapLegacyConnectionsToCanvasConnections,
 	parseCanvasConnectionHandleString,
 } from '../canvas.utils';
-import type { IConnections, ITaskData, IWorkflowGroup } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { DEFAULT_AGENT_HEIGHT, DEFAULT_AGENT_WIDTH } from '@/features/agents/utils/agentNode';
+import {
+	isEmptyGroupAnchor,
+	NodeConnectionTypes,
+	type IConnections,
+	type ITaskData,
+	type IWorkflowGroup,
+} from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import { MarkerType } from '@vue-flow/core';
 import type { Connection } from '@vue-flow/core';
@@ -52,6 +59,8 @@ export function useCanvasMapping({
 	allGroups = ref([]),
 	nodeGroupView,
 	isExperimentalNdvActive = ref(false),
+	isNodeSetupRequired,
+	getAgentNodeHeight,
 }: {
 	nodes: Ref<INodeUi[]>;
 	connections: Ref<IConnections>;
@@ -59,47 +68,46 @@ export function useCanvasMapping({
 	allGroups?: Ref<IWorkflowGroup[]>;
 	nodeGroupView?: CanvasNodeGroupView;
 	isExperimentalNdvActive?: Ref<boolean>;
+	/** True when the host shows the node's missing credentials as "setup required". */
+	isNodeSetupRequired?: (id: string) => boolean;
+	getAgentNodeHeight?: (id: string) => number | undefined;
 }) {
 	const i18n = useI18n();
 
-	// `executionIssuesByNodeName` is keyed by name; groups address nodes by id.
-	const nodeNameById = computed(() => {
-		const map = new Map<string, string>();
-		for (const node of nodes.value) map.set(node.id, node.name);
-		return map;
-	});
+	function getCanvasNodeLabel(node: INodeUi): string {
+		const isEmptyGroupAnchorNode = isEmptyGroupAnchor(node);
+
+		return isEmptyGroupAnchorNode ? i18n.baseText('nodeView.replaceMe') : node.name;
+	}
 
 	function countNonCanceledIterations(tasks: ITaskData[] | null | undefined): number {
-		if (!tasks) return 0;
-		let count = 0;
-		for (const task of tasks) {
-			if (task.executionStatus !== 'canceled') count++;
-		}
-		return count;
+		return tasks?.filter((task) => task.executionStatus !== 'canceled').length ?? 0;
 	}
 
 	// Per-node execution projection feeding the group-status aggregation.
 	function getNodeExecutionSnapshot(id: string): NodeExecutionSnapshot {
 		const rd = renderData.value;
 		const render = rd.renderTypeByNodeId.get(id)?.value;
-		const name = nodeNameById.value.get(id);
 		const status = rd.executionStatusByNodeId.get(id)?.value;
 		const tasks = rd.executionRunDataByNodeId.get(id)?.value;
 
 		// Mirror the single-node `computeHasIssues`
-		const executionIssues = name ? rd.executionIssuesByNodeName.get(name)?.value : undefined;
+		const executionIssues = rd.executionIssuesByNodeId.get(id)?.value;
 		const hasExecutionError =
 			status === 'error' ||
 			status === 'crashed' ||
 			(executionIssues?.length ?? 0) > 0 ||
 			Boolean(tasks?.at(-1)?.error);
+		const hasValidationError = (rd.validationErrorsByNodeId.get(id)?.value?.length ?? 0) > 0;
 
 		return {
 			running: rd.executionRunningByNodeId.get(id)?.value ?? false,
 			waitingForNext: rd.executionWaitingForNextByNodeId.get(id)?.value ?? false,
 			waiting: rd.executionWaitingByNodeId.get(id)?.value,
 			hasExecutionError,
-			hasValidationError: (rd.validationErrorsByNodeId.get(id)?.value?.length ?? 0) > 0,
+			hasValidationError,
+			// Only nodes with validation errors can need setup; skip the node lookup for the rest.
+			needsCredentialSetup: hasValidationError && (isNodeSetupRequired?.(id) ?? false),
 			status,
 			dirty:
 				render?.type === CanvasNodeRenderType.Default && render.options.dirtiness !== undefined,
@@ -113,6 +121,8 @@ export function useCanvasMapping({
 		return buildCollapsedGroupByNodeId(allGroups.value, (id) => nodeGroupView.isGroupCollapsed(id));
 	});
 
+	const groupMemberIds = computed(() => new Set(allGroups.value.flatMap((group) => group.nodeIds)));
+
 	// Display size by node id. WorkflowCanvas uses this for group bounds so
 	// they wrap each node's actual rendered size. Sticky notes are omitted —
 	// their own width/height parameters are read by the group mapper directly.
@@ -123,25 +133,26 @@ export function useCanvasMapping({
 		for (const node of nodes.value) {
 			const render = rd.renderTypeByNodeId.get(node.id)?.value;
 
-			if (render?.type !== CanvasNodeRenderType.Default) continue;
-
-			dimensionsById[node.id] = computeNodeDisplaySize(
-				node.id,
-				render.options,
-				rd,
-				isExperimentalNdvActive.value,
-			);
+			if (render?.type === CanvasNodeRenderType.Default) {
+				dimensionsById[node.id] = computeNodeDisplaySize(
+					node.id,
+					render.options,
+					rd,
+					isExperimentalNdvActive.value,
+				);
+			} else if (render?.type === CanvasNodeRenderType.Agent) {
+				dimensionsById[node.id] = {
+					width: DEFAULT_AGENT_WIDTH,
+					height: getAgentNodeHeight?.(node.id) ?? DEFAULT_AGENT_HEIGHT,
+				};
+			}
 		}
 		return dimensionsById;
 	});
 
 	function getVisiblePinDataByNodeId(id: string) {
 		const rd = renderData.value;
-		const nodeName = nodeNameById.value.get(id);
-		if (rd.isExecutionDataDisplayed) {
-			return nodeName ? rd.executionPinDataByNodeName[nodeName] : undefined;
-		}
-		return rd.pinnedDataByNodeId.get(id)?.value;
+		return rd.pinnedDataByNodeId.get(id)?.value ?? rd.getDisplayedExecutionPinData(id);
 	}
 
 	const mappedNodes = computed<CanvasNode[]>(() => {
@@ -172,6 +183,7 @@ export function useCanvasMapping({
 				issues: {
 					validation: rd.validationErrorsByNodeId.get(node.id)?.value ?? [],
 					visible: rd.hasIssuesByNodeId.get(node.id)?.value ?? false,
+					setupRequired: executionSnapshot.needsCredentialSetup,
 				},
 				execution: {
 					status: executionSnapshot.status,
@@ -189,14 +201,19 @@ export function useCanvasMapping({
 					({ type: node.type, options: {} } as CanvasNodeData['render']),
 			};
 			const offset = nodeGroupView?.getVisualOffsetForNode(node.id) ?? { x: 0, y: 0 };
+			const stickyStyle = additionalProperties[node.id]?.style;
 
 			return {
 				id: node.id,
-				label: node.name,
+				label: getCanvasNodeLabel(node),
 				type: 'canvas-node',
 				position: applyOffset(node.position, offset),
 				data,
-				...additionalProperties[node.id],
+				...(stickyStyle && {
+					style: {
+						zIndex: getStickyZIndex(stickyStyle.zIndex, groupMemberIds.value.has(node.id)),
+					},
+				}),
 				draggable: node.draggable,
 				hidden: collapsedGroupByNodeId.value.has(node.id) ? true : undefined,
 			};

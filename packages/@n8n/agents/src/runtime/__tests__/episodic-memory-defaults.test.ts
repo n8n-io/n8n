@@ -2,13 +2,8 @@ import type * as AiImport from 'ai';
 
 import type { ModelConfig } from '../../types';
 import {
-	DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL,
-	DEFAULT_EPISODIC_MEMORY_EXTRACTION_PROMPT,
-	DEFAULT_EPISODIC_MEMORY_REFLECTION_PROMPT,
-	buildEpisodicMemoryExtractorPrompt,
-	buildEpisodicMemoryReflectorPrompt,
-	createEpisodicMemoryExtractFn,
-	createEpisodicMemoryReflectFn,
+	buildEpisodicMemoryConsolidatorPrompt,
+	createEpisodicMemoryConsolidateFn,
 } from '../memory/episodic-memory-defaults';
 
 type GenerateTextCall = {
@@ -46,184 +41,97 @@ vi.mock('ai', async () => {
 
 const fakeModel = { doGenerate: vi.fn() } as unknown as ModelConfig;
 
+const consolidatorInput = {
+	scope: { resourceId: 'user-1', threadId: 'thread-1' },
+	now: new Date('2026-05-12T15:00:00.000Z'),
+	facts: [
+		{
+			candidateId: 'candidate-1',
+			content: 'Acme renewal moved to 15 March.',
+			evidenceText: 'the renewal is now on March 15',
+			createdAt: new Date('2026-05-12T14:00:00.000Z'),
+			neighbours: [
+				{
+					id: 'entry-1',
+					content: 'Acme renewal is on 1 March.',
+					createdAt: new Date('2026-04-01T10:00:00.000Z'),
+					lastSeenAt: new Date('2026-04-20T10:00:00.000Z'),
+					evidenceText: 'renewal is March 1',
+				},
+			],
+		},
+	],
+};
+
 describe('episodic memory defaults', () => {
 	beforeEach(() => {
 		mockGenerateText.mockReset();
 	});
 
-	it('defines the default extraction and reflection policy', () => {
-		expect(DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL).toBe('openai/text-embedding-3-small');
-		expect(DEFAULT_EPISODIC_MEMORY_EXTRACTION_PROMPT).toContain('Return JSON only');
-		expect(DEFAULT_EPISODIC_MEMORY_EXTRACTION_PROMPT).toContain('"sources"');
-		expect(DEFAULT_EPISODIC_MEMORY_EXTRACTION_PROMPT).toContain('"observationId"');
-		expect(DEFAULT_EPISODIC_MEMORY_EXTRACTION_PROMPT).toContain(
-			'Only store assistant-proposed material when the user adopts',
+	it('renders each new fact with its stored neighbours and their newest evidence', () => {
+		expect(buildEpisodicMemoryConsolidatorPrompt(consolidatorInput)).toBe(
+			[
+				'Current timestamp: 2026-05-12T15:00:00.000Z',
+				'',
+				'New memory [candidate-1] (stored 2026-05-12): Acme renewal moved to 15 March.',
+				'  Evidence: the renewal is now on March 15',
+				'Stored memories:',
+				'- [entry-1] (stored 2026-04-01, last seen 2026-04-20): Acme renewal is on 1 March.',
+				'  Evidence: renewal is March 1',
+			].join('\n'),
 		);
-		expect(DEFAULT_EPISODIC_MEMORY_EXTRACTION_PROMPT).not.toContain('supersedes');
-		expect(DEFAULT_EPISODIC_MEMORY_REFLECTION_PROMPT).toContain('Return JSON only');
-		expect(DEFAULT_EPISODIC_MEMORY_REFLECTION_PROMPT).toContain('"drop"');
-		expect(DEFAULT_EPISODIC_MEMORY_REFLECTION_PROMPT).toContain('"merge"');
-		expect(DEFAULT_EPISODIC_MEMORY_REFLECTION_PROMPT).toContain('Similar but distinct');
 	});
 
-	it('builds extractor and reflector prompts from runtime inputs', () => {
-		const now = new Date('2026-05-12T15:00:00.000Z');
-		const createdAt = new Date('2026-05-12T14:30:00.000Z');
-		const entry = {
-			id: 'mem-1',
-			resourceId: 'user-1',
-			content: 'User planned SQLite for local-first memory storage.',
-			contentHash: 'hash-1',
-			status: 'active' as const,
-			supersededBy: null,
-			metadata: null,
-			createdAt,
-			updatedAt: createdAt,
-			lastSeenAt: createdAt,
-			lexicalScore: 1,
-			vectorScore: 1,
-			rrfScore: 1,
-			finalScore: 1,
-		};
-
-		const extractorPrompt = buildEpisodicMemoryExtractorPrompt({
-			scope: { resourceId: 'user-1' },
-			observationScope: {
-				observationScopeId: 'thread-1',
-			},
-			now,
-			observations: [
-				{
-					id: 'obs-1',
-					observationScopeId: 'thread-1',
-					marker: 'critical',
-					text: 'User switched memory store choice to Postgres.',
-					parentId: null,
-					tokenCount: 12,
-					status: 'active',
-					supersededBy: null,
-					createdAt,
-				},
-			],
-			renderedObservations: '',
-			existingEntries: [entry],
-		});
-		const reflectorPrompt = buildEpisodicMemoryReflectorPrompt({
-			scope: { resourceId: 'user-1' },
-			now,
-			seedEntryIds: ['mem-1'],
-			entries: [entry],
-			sources: [
-				{
-					id: 'source-1',
-					memoryEntryId: 'mem-1',
-					observationId: 'obs-1',
-					threadId: 'thread-1',
-					evidenceText: 'User planned SQLite',
-					createdAt,
-				},
-			],
-		});
-
-		expect(extractorPrompt).toContain('Scope: resource:user-1');
-		expect(extractorPrompt).toContain('[obs-1] CRITICAL 2026-05-12T14:30:00.000Z');
-		expect(extractorPrompt).toContain(
-			'[mem-1] User planned SQLite for local-first memory storage.',
-		);
-		expect(reflectorPrompt).toContain('Seed entry IDs: mem-1');
-		expect(reflectorPrompt).toContain('source observation obs-1');
-		expect(reflectorPrompt).toContain('User planned SQLite');
-	});
-
-	it('rejects extracted entries without source evidence', async () => {
+	it('rejects a relation outside duplicate, update, and different', async () => {
 		mockGenerateText.mockImplementation(async ({ output }) => {
 			const parsedOutput = output.schema.parse({
-				entries: [
+				facts: [
 					{
-						content: 'User chose Postgres for the memory store.',
-						sources: [],
+						candidateId: 'candidate-1',
+						relations: [{ entryId: 'entry-1', reason: 'Same renewal.', relation: 'merge' }],
+						mergedContent: null,
 					},
 				],
 			});
-			return await Promise.resolve({ output: parsedOutput });
-		});
-
-		await expect(
-			createEpisodicMemoryExtractFn(fakeModel)({
-				scope: { resourceId: 'user-1' },
-				observationScope: {
-					observationScopeId: 'thread-1',
-				},
-				now: new Date('2026-05-12T15:00:00.000Z'),
-				observations: [],
-				renderedObservations: '',
-				existingEntries: [],
-			}),
-		).rejects.toThrow();
-	});
-
-	it('rejects reflection merges without superseded entry IDs', async () => {
-		mockGenerateText.mockImplementation(async ({ output }) => {
-			const parsedOutput = output.schema.parse({
-				drop: [],
-				merge: [
-					{
-						supersedes: [],
-						content: 'User chose Postgres for the memory store.',
-					},
-				],
+			return await Promise.resolve({
+				output: parsedOutput,
+				finalStep: { providerMetadata: undefined },
 			});
-			return await Promise.resolve({ output: parsedOutput });
 		});
 
-		await expect(
-			createEpisodicMemoryReflectFn(fakeModel)({
-				scope: { resourceId: 'user-1' },
-				now: new Date('2026-05-12T15:00:00.000Z'),
-				seedEntryIds: [],
-				entries: [],
-				sources: [],
-			}),
-		).rejects.toThrow();
+		await expect(createEpisodicMemoryConsolidateFn(fakeModel)(consolidatorInput)).rejects.toThrow();
 	});
 
-	it('counts extraction and reflection generation tokens when usage is available', async () => {
+	it('counts consolidation generation tokens when usage is available', async () => {
 		const counter = {
 			incrementMessageCount: vi.fn(),
 			incrementToolCallCount: vi.fn(),
 			incrementTokenCount: vi.fn(),
 		};
-
+		const consolidation = {
+			facts: [
+				{
+					candidateId: 'candidate-1',
+					relations: [{ entryId: 'entry-1', reason: 'Same renewal date.', relation: 'update' }],
+					mergedContent: 'Acme renewal is on 15 March.',
+				},
+			],
+		};
 		mockGenerateText.mockImplementationOnce(async ({ output }) => {
-			const parsedOutput = output.schema.parse({ entries: [] });
-			return await Promise.resolve({ output: parsedOutput, usage: { totalTokens: 11 } });
+			const parsedOutput = output.schema.parse(consolidation);
+			return await Promise.resolve({
+				output: parsedOutput,
+				usage: { totalTokens: 13 },
+				finalStep: { providerMetadata: undefined },
+			});
 		});
 
-		await createEpisodicMemoryExtractFn(fakeModel)({
-			scope: { resourceId: 'user-1' },
-			observationScope: { observationScopeId: 'thread-1' },
-			now: new Date('2026-05-12T15:00:00.000Z'),
-			observations: [],
-			renderedObservations: '',
-			existingEntries: [],
+		const result = await createEpisodicMemoryConsolidateFn(fakeModel)({
+			...consolidatorInput,
 			executionCounter: counter,
 		});
 
-		mockGenerateText.mockImplementationOnce(async ({ output }) => {
-			const parsedOutput = output.schema.parse({ drop: [], merge: [] });
-			return await Promise.resolve({ output: parsedOutput, usage: { totalTokens: 13 } });
-		});
-
-		await createEpisodicMemoryReflectFn(fakeModel)({
-			scope: { resourceId: 'user-1' },
-			now: new Date('2026-05-12T15:00:00.000Z'),
-			seedEntryIds: [],
-			entries: [],
-			sources: [],
-			executionCounter: counter,
-		});
-
-		expect(counter.incrementTokenCount).toHaveBeenCalledWith(11);
+		expect(result.consolidation).toEqual(consolidation);
 		expect(counter.incrementTokenCount).toHaveBeenCalledWith(13);
 		expect(counter.incrementMessageCount).not.toHaveBeenCalled();
 		expect(counter.incrementToolCallCount).not.toHaveBeenCalled();

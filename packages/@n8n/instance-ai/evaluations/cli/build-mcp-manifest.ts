@@ -5,12 +5,13 @@
 // loader uses, so shape regressions surface here rather than at eval time.
 
 import { execSync } from 'child_process';
-import { existsSync, mkdirSync, readFileSync, readdirSync, unlinkSync, writeFileSync } from 'fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'fs';
 import { basename, join, resolve } from 'path';
 import { z } from 'zod';
 
 import {
 	buildWorkflowViaMcp,
+	isolatedClaudeAuthError,
 	stageMcpConfigFromClaudeJson,
 	uniqueProjectScopes,
 } from './mcp-builder';
@@ -461,6 +462,8 @@ async function main(): Promise<void> {
 	if (args.buildCwd && !existsSync(args.buildCwd)) {
 		throw new Error(`--build-cwd directory does not exist: ${args.buildCwd}`);
 	}
+	const authError = isolatedClaudeAuthError(args.buildCwd);
+	if (authError) throw new Error(authError);
 
 	// Resolve slug -> conversation from the chosen source. Disk reads --workflow-dir
 	// (positional slugs or discovered), langtracer pulls a suite over MCP; both feed
@@ -523,14 +526,8 @@ async function main(): Promise<void> {
 		repoRoot,
 		repoRoot ? undefined : process.cwd(),
 	]);
+	// Removed on process exit by the staging module itself.
 	const mcpConfigPath = stageMcpConfigFromClaudeJson(args.mcpServerName, projectScopes);
-	process.on('exit', () => {
-		try {
-			unlinkSync(mcpConfigPath);
-		} catch {
-			// best-effort
-		}
-	});
 
 	const tasks: Array<{ slug: string; iteration: number }> = [];
 	for (const slug of args.slugs) {

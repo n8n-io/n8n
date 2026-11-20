@@ -1,0 +1,11 @@
+{
+	"extends": "@n8n/typescript-config/tsconfig.common.go.json",
+	"compilerOptions": {
+		"types": ["node"],
+		"module": "ESNext",
+		"moduleResolution": "bundler",
+		// The frontend reads this package from source. No command must emit a `.js` file here.
+		"noEmit": true
+	},
+	"include": ["**/*.ts"]
+}

@@ -3,6 +3,7 @@ import type { WorkflowEntity } from '@n8n/db';
 import { BreakingChangeRule } from '@n8n/decorators';
 import type { INode } from 'n8n-workflow';
 
+import { reportAffectedNodes } from '../../detection-report';
 import type {
 	BreakingChangeRuleMetadata,
 	IBreakingChangeWorkflowRule,
@@ -23,7 +24,8 @@ export class GetPairedItemRule implements IBreakingChangeWorkflowRule {
 			description:
 				'The $getPairedItem expression helper is removed. Expressions using it will fail to evaluate.',
 			category: BreakingChangeCategory.workflow,
-			severity: 'medium',
+			impact: 'executionsFail',
+			assistant: 'fix',
 		};
 	}
 
@@ -35,7 +37,7 @@ export class GetPairedItemRule implements IBreakingChangeWorkflowRule {
 			{
 				action: 'Replace $getPairedItem usages',
 				description:
-					'Rewrite the affected expressions using $input.all() or $("Node").all(), $("Node").item, or $("Node").itemMatching() instead of $getPairedItem.',
+					"Use $('Node').item for the item paired with the current item. Use $('Node').pairedItem(n) or $('Node').itemMatching(n) for the item paired with input item n of this node. Node is the name of the node that produced the item.",
 			},
 		];
 	}
@@ -46,20 +48,13 @@ export class GetPairedItemRule implements IBreakingChangeWorkflowRule {
 		_nodesGroupedByType: Map<string, INode[]>,
 	): Promise<WorkflowDetectionReport> {
 		const affectedNodes = workflow.nodes.filter((node) =>
-			JSON.stringify(node.parameters).includes(HELPER_NAME),
+			JSON.stringify(node.parameters ?? {}).includes(HELPER_NAME),
 		);
 
-		if (affectedNodes.length === 0) return { isAffected: false, issues: [] };
-
-		return {
-			isAffected: true,
-			issues: affectedNodes.map((node) => ({
-				title: `Node '${node.name}' uses the removed ${HELPER_NAME} helper`,
-				description: `Expressions in this node call ${HELPER_NAME}, which is removed. They will fail to evaluate after the update.`,
-				level: 'error',
-				nodeId: node.id,
-				nodeName: node.name,
-			})),
-		};
+		return reportAffectedNodes(affectedNodes, (node) => ({
+			title: `Node '${node.name}' uses the removed ${HELPER_NAME} helper`,
+			description: `Expressions in this node call ${HELPER_NAME}, which is removed. They will fail to evaluate after the update.`,
+			level: 'error',
+		}));
 	}
 }

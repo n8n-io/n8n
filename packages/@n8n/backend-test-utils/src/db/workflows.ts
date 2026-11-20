@@ -1,5 +1,8 @@
 import type { SharedWorkflow, IWorkflowDb, WorkflowPublishHistory, WorkflowHistory } from '@n8n/db';
 import {
+	accountFullName,
+	isPerson,
+	isServiceAccount,
 	Project,
 	User,
 	ProjectRepository,
@@ -7,6 +10,7 @@ import {
 	WorkflowRepository,
 	WorkflowHistoryRepository,
 	WorkflowPublishHistoryRepository,
+	WorkflowPublishedVersionRepository,
 	WorkflowDependencies,
 	WorkflowDependencyRepository,
 	WebhookRepository,
@@ -277,18 +281,22 @@ export const getWorkflowById = async (id: string) =>
  * @param withPublishHistory publish history to create (optional)
  * @param autosaved whether this is an autosave (optional)
  */
+/** The author name that workflow history records: a service account by its name, a person by first and last name. */
+function historyAuthor(user: User): string {
+	if (isServiceAccount(user)) return accountFullName(user);
+	if (isPerson(user) && user.firstName && user.lastName) {
+		return `${user.firstName} ${user.lastName}`;
+	}
+	return 'Test User';
+}
+
 export async function createWorkflowHistory(
 	workflow: IWorkflowDb,
 	userOrProject?: User | Project,
 	withPublishHistory?: Partial<WorkflowPublishHistory>,
 	overrides: Partial<WorkflowHistory> = {},
 ): Promise<void> {
-	const authors =
-		userOrProject instanceof User
-			? userOrProject.firstName && userOrProject.lastName
-				? `${userOrProject.firstName} ${userOrProject.lastName}`
-				: 'Test User'
-			: 'Test User';
+	const authors = userOrProject instanceof User ? historyAuthor(userOrProject) : 'Test User';
 
 	const repo = Container.get(WorkflowHistoryRepository);
 	await repo.insert(
@@ -348,6 +356,12 @@ export async function createActiveWorkflow(
 	);
 
 	await setActiveVersion(workflow.id, workflow.versionId);
+	// The publication service serves webhooks and sub-workflow calls from this
+	// mapping, so a "running" fixture needs it as well as `activeVersionId`.
+	await Container.get(WorkflowPublishedVersionRepository).setPublishedVersion(
+		workflow.id,
+		workflow.versionId,
+	);
 
 	workflow.activeVersionId = workflow.versionId;
 
@@ -355,6 +369,8 @@ export async function createActiveWorkflow(
 }
 
 export async function deleteWorkflowAndWebhooks(workflowId: string) {
+	// RESTRICT FK: the mapping must go before the workflow row.
+	await Container.get(WorkflowPublishedVersionRepository).removePublishedVersion(workflowId);
 	await Container.get(WorkflowRepository).delete({ id: workflowId });
 	await Container.get(WebhookRepository).delete({ workflowId });
 }

@@ -1,7 +1,8 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { fireEvent } from '@testing-library/vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
+import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 
 import ToolCredentialPicker from '../ToolCredentialPicker.vue';
 import {
@@ -29,14 +30,14 @@ const baseMcpItem: McpServerConnectionItem = {
 	title: 'Notion',
 	description: 'Notion MCP',
 	availableTools: [],
-	isConnected: false,
+	status: 'none',
 };
 
 const baseNodeItem: NodeConnectionItem = {
 	id: 'node:slack',
 	kind: 'node',
 	title: 'Slack',
-	isConnected: false,
+	status: 'none',
 	nodeTypeName: 'n8n-nodes-base.slack',
 };
 
@@ -63,11 +64,65 @@ describe('ToolCredentialPicker', () => {
 		expect(queryByTestId('tool-credential-picker-trigger-connected')).toBeNull();
 	});
 
-	it('shows the Connected pill when at least one credential is selected', () => {
-		const { getByTestId, queryByTestId } = render(baseMcpItem, [
-			{ authType: 'mcpOAuth2Api', credentialId: 'cred-1' },
-		]);
-		expect(getByTestId('tool-credential-picker-trigger-connected')).toBeTruthy();
+	it('shows the selected credential name for a connected item', () => {
+		const item = { ...baseMcpItem, status: 'connected' as const };
+		const { getByTestId, queryByTestId } = render(
+			item,
+			[{ authType: 'mcpOAuth2Api', credentialId: 'cred-1' }],
+			[{ id: 'cred-1', name: 'My Notion account', type: 'mcpOAuth2Api' }],
+		);
+		expect(getByTestId('tool-credential-picker-trigger-connected')).toHaveTextContent(
+			'My Notion account',
+		);
+		expect(queryByTestId('tool-credential-picker-trigger-connect')).toBeNull();
+	});
+
+	it('hides the connected checkmark for a temporary connection', () => {
+		const item = { ...baseMcpItem, status: 'connected' as const };
+		const { getByTestId } = renderPicker({
+			props: {
+				item,
+				credentials: [{ authType: 'mcpOAuth2Api', credentialId: 'cred-1' }],
+				adapter: makeAdapter([{ id: 'cred-1', name: 'My Notion account', type: 'mcpOAuth2Api' }]),
+				showConnectedIcon: false,
+			},
+			pinia: createTestingPinia(),
+		});
+
+		const trigger = getByTestId('tool-credential-picker-trigger-connected');
+		expect(trigger).toHaveTextContent('My Notion account');
+		expect(trigger.querySelector('[data-icon="check"]')).toBeNull();
+	});
+
+	it('distinguishes a disconnected connection from a tool that was never added', () => {
+		const disconnectedItem = { ...baseMcpItem, status: 'disconnected' as const };
+		const disconnected = render(
+			disconnectedItem,
+			[{ authType: 'mcpOAuth2Api', credentialId: 'cred-1' }],
+			[{ id: 'cred-1', name: 'My Notion account', type: 'mcpOAuth2Api' }],
+		);
+
+		expect(
+			disconnected.getByTestId('tool-credential-picker-trigger-disconnected'),
+		).toHaveTextContent('My Notion account');
+		expect(disconnected.queryByTestId('tool-credential-picker-trigger-connect')).toBeNull();
+		disconnected.unmount();
+
+		const neverAdded = render(baseMcpItem, [{ authType: 'mcpOAuth2Api' }]);
+		expect(neverAdded.getByTestId('tool-credential-picker-trigger-connect')).toHaveTextContent(
+			'Connect',
+		);
+		expect(neverAdded.queryByTestId('tool-credential-picker-trigger-disconnected')).toBeNull();
+	});
+
+	it('shows only a non-interactive status while connecting', () => {
+		const item = { ...baseMcpItem, status: 'connecting' as const };
+		const { getByTestId, queryByTestId } = render(item, [{ authType: 'mcpOAuth2Api' }]);
+
+		expect(getByTestId('tool-credential-picker-trigger-connecting')).toHaveTextContent(
+			'Connecting',
+		);
+		expect(queryByTestId('tool-credential-picker')).toBeNull();
 		expect(queryByTestId('tool-credential-picker-trigger-connect')).toBeNull();
 	});
 
@@ -88,6 +143,42 @@ describe('ToolCredentialPicker', () => {
 		await fireEvent.click(row);
 		const events = emitted()['select-credential'];
 		expect(events?.[0]).toEqual([baseNodeItem, 'slackApi', 'c-1']);
+	});
+
+	describe('Gateway credits', () => {
+		const aiGatewayRef = { authType: 'n8nConnectFirecrawlMcpAiGatewayApi', aiGateway: true };
+
+		it('connects a gateway-only server with one button that emits the Gateway credits tag', async () => {
+			const { getByTestId, queryByTestId, emitted } = render(baseMcpItem, [aiGatewayRef]);
+
+			await fireEvent.click(getByTestId('tool-credential-picker-ai-gateway'));
+
+			expect(queryByTestId('tool-credential-picker-trigger-connect')).toBeNull();
+			expect(emitted()['select-credential']?.[0]).toEqual([
+				baseMcpItem,
+				aiGatewayRef.authType,
+				AI_GATEWAY_MANAGED_TAG,
+			]);
+		});
+
+		it('lists Gateway credits first on a paired server, and emits the tag', async () => {
+			const { getByTestId, findAllByRole, emitted } = render(
+				baseMcpItem,
+				[aiGatewayRef, { authType: 'firecrawlMcpOAuth2Api' }],
+				[{ id: 'c-1', name: 'My Firecrawl', type: 'firecrawlMcpOAuth2Api' }],
+			);
+
+			await fireEvent.click(getByTestId('tool-credential-picker-trigger-connect'));
+			const [firstRow] = await findAllByRole('listitem');
+			await fireEvent.click(firstRow);
+
+			expect(firstRow).toHaveAttribute('data-test-id', 'tool-credential-picker-ai-gateway-row');
+			expect(emitted()['select-credential']?.[0]).toEqual([
+				baseMcpItem,
+				aiGatewayRef.authType,
+				AI_GATEWAY_MANAGED_TAG,
+			]);
+		});
 	});
 
 	it('emits credential-dropdown-open when the credential dropdown opens', async () => {
@@ -129,5 +220,68 @@ describe('ToolCredentialPicker', () => {
 			{ authType: 'gmailOAuth2' },
 		]);
 		expect(getAllByTestId('tool-credential-picker-trigger-connect')).toHaveLength(1);
+	});
+
+	it('opens one create action with all supported credential types', async () => {
+		const openNewCredential = vi.fn();
+		const credentials = [
+			{ authType: 'githubOAuth2Api', displayName: 'OAuth2' },
+			{ authType: 'githubApi', displayName: 'Access Token' },
+		];
+		const { getByTestId, findAllByTestId } = renderPicker({
+			props: { item: baseMcpItem, credentials },
+			pinia: createTestingPinia(),
+			global: {
+				provide: {
+					[TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY as symbol]: {
+						...makeAdapter([]),
+						openNewCredential,
+					},
+				},
+			},
+		});
+
+		await fireEvent.click(getByTestId('tool-credential-picker-trigger-connect'));
+		const createActions = await findAllByTestId('tool-credential-picker-create');
+		expect(createActions).toHaveLength(1);
+		expect(createActions[0]).toHaveTextContent('Create credential');
+
+		await fireEvent.click(createActions[0]);
+		expect(openNewCredential).toHaveBeenCalledWith('githubOAuth2Api', baseMcpItem, [
+			'githubOAuth2Api',
+			'githubApi',
+		]);
+	});
+
+	it('prefers the prop adapter over the injected adapter', async () => {
+		const propAdapter = makeAdapter([
+			{ id: 'prop-credential', name: 'Prop account', type: 'mcpOAuth2Api' },
+		]);
+		propAdapter.openExistingCredential = vi.fn();
+		const injectedAdapter = makeAdapter([
+			{ id: 'injected-credential', name: 'Injected account', type: 'mcpOAuth2Api' },
+		]);
+
+		const { getByTestId, findByTestId } = renderPicker({
+			props: {
+				item: { ...baseMcpItem, status: 'connected' },
+				credentials: [{ authType: 'mcpOAuth2Api', credentialId: 'prop-credential' }],
+				adapter: propAdapter,
+			},
+			pinia: createTestingPinia(),
+			global: {
+				provide: {
+					[TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY as symbol]: injectedAdapter,
+				},
+			},
+		});
+
+		expect(getByTestId('tool-credential-picker-trigger-connected')).toHaveTextContent(
+			'Prop account',
+		);
+		await fireEvent.click(getByTestId('tool-credential-picker-trigger-connected'));
+		await fireEvent.click(await findByTestId('tool-credential-picker-edit'));
+
+		expect(propAdapter.openExistingCredential).toHaveBeenCalledWith('prop-credential');
 	});
 });

@@ -1,9 +1,13 @@
 import { vi } from 'vitest';
-import { fireEvent } from '@testing-library/vue';
+import { fireEvent, waitFor } from '@testing-library/vue';
 import { WAIT_INDEFINITELY, type ExecutionSummary } from 'n8n-workflow';
 import GlobalExecutionsListItem from './GlobalExecutionsListItem.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { DateTime } from 'luxon';
+import { setActivePinia } from 'pinia';
+import { createTestingPinia } from '@pinia/testing';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { mockedStore, hoverTooltipTrigger, getTooltip, queryTooltip } from '@/__tests__/utils';
 
 vi.mock('vue-router', async () => {
 	const actual = await vi.importActual('vue-router');
@@ -31,6 +35,14 @@ const renderComponent = createComponentRenderer(GlobalExecutionsListItem, {
 });
 
 describe('GlobalExecutionsListItem', () => {
+	let settingsStore: ReturnType<typeof mockedStore<typeof useSettingsStore>>;
+
+	beforeEach(() => {
+		setActivePinia(createTestingPinia());
+		settingsStore = mockedStore(useSettingsStore);
+		settingsStore.isEngineV2Enabled = false;
+	});
+
 	it('should render the status text for an execution', () => {
 		const { getByTestId } = renderComponent({
 			props: {
@@ -74,6 +86,7 @@ describe('GlobalExecutionsListItem', () => {
 			},
 		});
 
+		await fireEvent.click(getByTestId('execution-actions-menu'));
 		await fireEvent.click(getByTestId('execution-retry-saved-dropdown-item'));
 		expect(emitted().retrySaved).toBeTruthy();
 
@@ -89,14 +102,55 @@ describe('GlobalExecutionsListItem', () => {
 					id: 123,
 					stoppedAt: undefined,
 				} as unknown as ExecutionSummary,
-				workflowPermissions: {
-					update: true,
+				workflowPermissions: {},
+				executionPermissions: {
+					delete: true,
 				},
 			},
 		});
 
+		await fireEvent.click(getByTestId('execution-actions-menu'));
 		await fireEvent.click(getByTestId('execution-delete-dropdown-item'));
 		expect(emitted().delete).toBeTruthy();
+	});
+
+	it('disables the delete dropdown item when the user cannot delete executions, even with workflow edit rights', async () => {
+		const { getByTestId } = renderComponent({
+			props: {
+				execution: {
+					status: 'error',
+					id: 123,
+					stoppedAt: undefined,
+				} as unknown as ExecutionSummary,
+				workflowPermissions: {
+					update: true,
+					execute: true,
+				},
+				executionPermissions: {},
+			},
+		});
+
+		await fireEvent.click(getByTestId('execution-actions-menu'));
+		expect(getByTestId('execution-delete-dropdown-item')).toHaveClass('is-disabled');
+	});
+
+	it('enables the delete dropdown item when the user can delete executions', async () => {
+		const { getByTestId } = renderComponent({
+			props: {
+				execution: {
+					status: 'error',
+					id: 123,
+					stoppedAt: undefined,
+				} as unknown as ExecutionSummary,
+				workflowPermissions: {},
+				executionPermissions: {
+					delete: true,
+				},
+			},
+		});
+
+		await fireEvent.click(getByTestId('execution-actions-menu'));
+		expect(getByTestId('execution-delete-dropdown-item')).not.toHaveClass('is-disabled');
 	});
 
 	it('should show formatted start date', () => {
@@ -165,6 +219,70 @@ describe('GlobalExecutionsListItem', () => {
 		});
 
 		expect(globalExecutionsListItemQueuedTooltipRenderSpy).toHaveBeenCalled();
+	});
+
+	describe('engine', () => {
+		const v1Id = '123';
+		const v2Id = '019a3b2c-4d5e-7f60-8a1b-2c3d4e5f6a7b';
+		const renderWithId = (id: string) =>
+			renderComponent({
+				props: {
+					execution: {
+						status: 'success',
+						id,
+						workflowName: 'Test Workflow',
+					} as unknown as ExecutionSummary,
+					workflowPermissions: {},
+					concurrencyCap: 5,
+				},
+			});
+
+		describe('with the engine-v2 module active', () => {
+			beforeEach(() => {
+				settingsStore.isEngineV2Enabled = true;
+			});
+
+			it.each([
+				[v1Id, 'Engine v1'],
+				[v2Id, 'Engine v2'],
+			])('shows the engine badge for execution %s', (id, label) => {
+				const { getByTestId } = renderWithId(id);
+
+				expect(getByTestId('execution-engine-badge')).toHaveTextContent(new RegExp(`^${label}$`));
+			});
+
+			it('shows the engine badge in front of the execution ID', () => {
+				const { getByTestId } = renderWithId(v2Id);
+
+				const badge = getByTestId('execution-engine-badge');
+				const id = getByTestId('execution-id');
+
+				expect(badge.compareDocumentPosition(id) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+			});
+
+			it.each([
+				[v1Id, 'Ran on engine v1'],
+				[v2Id, 'Ran on engine v2'],
+			])('names the engine in the tooltip of execution %s', async (id, text) => {
+				const { getByTestId } = renderWithId(id);
+
+				await hoverTooltipTrigger(getByTestId('execution-id'));
+
+				await waitFor(() => expect(getTooltip()).toHaveTextContent(new RegExp(`^${text}$`)));
+			});
+		});
+
+		describe('with the engine-v2 module inactive', () => {
+			it('shows the execution ID without a badge or a tooltip', async () => {
+				const { getByText, queryByTestId } = renderWithId(v2Id);
+
+				await hoverTooltipTrigger(getByText(v2Id));
+
+				expect(queryByTestId('execution-engine-badge')).not.toBeInTheDocument();
+				expect(queryByTestId('execution-id')).not.toBeInTheDocument();
+				expect(queryTooltip()).not.toBeInTheDocument();
+			});
+		});
 	});
 
 	afterEach(() => {

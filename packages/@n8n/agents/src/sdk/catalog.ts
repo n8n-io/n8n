@@ -1,3 +1,4 @@
+import { splitModelId } from '@n8n/ai-utilities/agent-config';
 import { z } from 'zod';
 
 const MODELS_DEV_URL = 'https://models.dev/api.json';
@@ -11,6 +12,7 @@ const MODELS_DEV_PROVIDER_ALIASES: Record<string, string> = {
 const AGENT_PROVIDER_NAMES: Record<string, string> = {
 	'aws-bedrock': 'AWS Bedrock',
 	'azure-openai': 'Azure OpenAI',
+	'google-vertex-anthropic': 'Google Vertex Anthropic',
 };
 
 /** Cost per million tokens. */
@@ -43,16 +45,27 @@ export interface ModelModalities {
 
 /** Information about a single model. */
 export interface ModelInfo {
-	/** Model ID (e.g. 'claude-sonnet-4-5'). */
+	/** Model ID (e.g. 'claude-sonnet-5-5'). */
 	id: string;
-	/** Human-readable name (e.g. 'Claude Sonnet 4.5'). */
+	/** Human-readable name (e.g. 'Claude Sonnet 5.5'). */
 	name: string;
+	/** AI SDK package selected by the model or its parent provider. */
+	sdk?: string;
 	/** Release date in ISO date format when available from models.dev. */
 	releaseDate?: string;
+	/** Lifecycle status reported by the catalog, such as alpha or beta. */
+	status?: string;
 	/** Whether the model supports reasoning / thinking, when reported by models.dev. */
 	reasoning?: boolean;
+	/**
+	 * Whether the model accepts a temperature sampling parameter, when
+	 * reported by models.dev. Reasoning-family models typically report false.
+	 */
+	temperature?: boolean;
 	/** Whether the model supports tool calling. */
 	toolCall: boolean;
+	/** Whether the catalog supplied tool-call support. Keeps the legacy false default intact. */
+	toolCallKnown?: boolean;
 	/** Input and output types supported by the model. */
 	modalities?: ModelModalities;
 	/** Cost per million tokens. */
@@ -67,8 +80,14 @@ export interface ProviderInfo {
 	id: string;
 	/** Human-readable name (e.g. 'Anthropic'). */
 	name: string;
-	/** Available models keyed by model ID. */
+	/** Available (non-deprecated) models keyed by model ID. */
 	models: Record<string, ModelInfo>;
+	/**
+	 * Model IDs models.dev marks as deprecated for this provider. Kept out of
+	 * `models` so existing consumers never offer them, but exposed so callers
+	 * can distinguish known-retired IDs (hard error) from merely-absent ones.
+	 */
+	deprecatedModelIds?: string[];
 }
 
 /** The full catalog of providers and their models. */
@@ -77,8 +96,10 @@ export type ProviderCatalog = Record<string, ProviderInfo>;
 const modelsDevModelSchema = z.object({
 	id: z.string().min(1),
 	name: z.string().min(1),
+	provider: z.object({ npm: z.string().optional() }).optional(),
 	release_date: z.string().optional(),
 	reasoning: z.boolean().optional(),
+	temperature: z.boolean().optional(),
 	tool_call: z.boolean().optional(),
 	status: z.string().optional(),
 	modalities: z
@@ -106,6 +127,7 @@ const modelsDevModelSchema = z.object({
 const modelsDevProviderSchema = z.object({
 	id: z.string().min(1),
 	name: z.string().min(1),
+	npm: z.string().optional(),
 	models: z.record(z.string(), z.unknown()).optional(),
 });
 
@@ -152,15 +174,16 @@ function normalizeLatestModelNames(models: Record<string, ModelInfo>): void {
  * ```typescript
  * import { fetchProviderCatalog } from '@n8n/agents';
  *
- * const catalog = await fetchProviderCatalog();
+ * const catalog = await fetchProviderCatalog({ fetch });
  * console.log(Object.keys(catalog)); // ['anthropic', 'openai', ...]
- * console.log(catalog.anthropic.models['claude-sonnet-4-5'].reasoning); // true
+ * console.log(catalog.anthropic.models['claude-sonnet-5-5'].reasoning); // true
  * ```
  */
-export async function fetchProviderCatalog(options?: {
+export async function fetchProviderCatalog(options: {
 	signal?: AbortSignal;
+	fetch: typeof globalThis.fetch;
 }): Promise<ProviderCatalog> {
-	const response = await fetch(MODELS_DEV_URL, { signal: options?.signal });
+	const response = await options.fetch(MODELS_DEV_URL, { signal: options.signal });
 	if (!response.ok) {
 		throw new Error(`Failed to fetch provider catalog: ${response.statusText}`);
 	}
@@ -174,20 +197,32 @@ export async function fetchProviderCatalog(options?: {
 		const provider = providerResult.data;
 		if (!provider.models || Object.keys(provider.models).length === 0) continue;
 
+		const providerId = toAgentProviderId(key);
 		const models: Record<string, ModelInfo> = {};
+		const deprecatedModelIds = new Set<string>(catalog[providerId]?.deprecatedModelIds);
 		for (const [modelId, rawModel] of Object.entries(provider.models)) {
 			const modelResult = modelsDevModelSchema.safeParse(rawModel);
 			if (!modelResult.success) continue;
 			const model = modelResult.data;
 			// Deprecated models still 404 at call time when the provider retires
-			// them, so never offer them.
-			if (model.status === 'deprecated') continue;
+			// them, so never offer them in `models` — but record the id so
+			// validation can flag known-retired picks as hard errors.
+			if (model.status === 'deprecated') {
+				deprecatedModelIds.add(modelId);
+				deprecatedModelIds.add(model.id);
+				continue;
+			}
+			const sdk = model.provider?.npm ?? provider.npm;
 			const info: ModelInfo = {
 				id: model.id,
 				name: model.name,
+				...(sdk !== undefined && { sdk }),
 				...(model.release_date !== undefined && { releaseDate: model.release_date }),
+				...(model.status !== undefined && { status: model.status }),
 				...(model.reasoning !== undefined && { reasoning: model.reasoning }),
+				...(model.temperature !== undefined && { temperature: model.temperature }),
 				toolCall: model.tool_call ?? false,
+				toolCallKnown: model.tool_call !== undefined,
 				...(model.modalities !== undefined && { modalities: model.modalities }),
 			};
 			if (model.cost?.input !== undefined && model.cost?.output !== undefined) {
@@ -207,9 +242,8 @@ export async function fetchProviderCatalog(options?: {
 			models[modelId] = info;
 		}
 
-		if (Object.keys(models).length === 0) continue;
+		if (Object.keys(models).length === 0 && deprecatedModelIds.size === 0) continue;
 
-		const providerId = toAgentProviderId(key);
 		catalog[providerId] = {
 			id: providerId,
 			name: catalog[providerId]?.name ?? AGENT_PROVIDER_NAMES[providerId] ?? provider.name,
@@ -217,6 +251,7 @@ export async function fetchProviderCatalog(options?: {
 				...(catalog[providerId]?.models ?? {}),
 				...models,
 			},
+			deprecatedModelIds: Array.from(deprecatedModelIds),
 		};
 	}
 
@@ -236,12 +271,16 @@ let catalogFetchPromise: Promise<ProviderCatalog | undefined> | undefined;
  * Get the cached catalog, fetching once if needed.
  * Returns undefined if the fetch fails (offline, timeout, etc.).
  * On failure, clears the in-flight promise so the next call retries.
+ * `fetch` is used only when this call starts the fetch.
  * @internal
  */
-export async function getCachedCatalog(): Promise<ProviderCatalog | undefined> {
+export async function getCachedCatalog(options?: {
+	fetch?: typeof globalThis.fetch;
+}): Promise<ProviderCatalog | undefined> {
 	if (cachedCatalog) return cachedCatalog;
 
-	catalogFetchPromise ??= fetchProviderCatalog()
+	// The runtime falls back to the global `fetch` until `modelFetch` is required.
+	catalogFetchPromise ??= fetchProviderCatalog({ fetch: options?.fetch ?? fetch })
 		.then((c) => {
 			cachedCatalog = c;
 			return c;
@@ -250,7 +289,7 @@ export async function getCachedCatalog(): Promise<ProviderCatalog | undefined> {
 			// Clear so subsequent calls retry
 			catalogFetchPromise = undefined;
 			console.warn(
-				'[agents] Failed to fetch model catalog from models.dev — cost data will be unavailable:',
+				'[agents] Failed to fetch model catalog from models.dev — model metadata will be unavailable:',
 				error instanceof Error ? error.message : error,
 			);
 			return undefined;
@@ -260,18 +299,37 @@ export async function getCachedCatalog(): Promise<ProviderCatalog | undefined> {
 }
 
 /**
- * Look up cost info for a model by its full ID (e.g. 'anthropic/claude-sonnet-4-5').
+ * Look up cost info for a model by its full ID (e.g. 'anthropic/claude-sonnet-5-5').
  * Returns undefined if catalog is unavailable or model not found.
  * @internal
  */
-export async function getModelCost(modelId: string): Promise<ModelCost | undefined> {
-	const catalog = await getCachedCatalog();
+export async function getModelCost(
+	modelId: string,
+	fetch?: typeof globalThis.fetch,
+): Promise<ModelCost | undefined> {
+	const catalog = await getCachedCatalog({ fetch });
 	if (!catalog) return undefined;
 
-	const [provider, ...rest] = modelId.split('/');
-	const modelName = rest.join('/');
+	const { provider, model: modelName } = splitModelId(modelId);
 
 	return catalog[provider]?.models[modelName]?.cost;
+}
+
+/**
+ * Look up a model's context window size by its full ID.
+ * Returns undefined if catalog is unavailable or the model has no limit.
+ * @internal
+ */
+export async function getModelContextWindow(
+	modelId: string,
+	fetch?: typeof globalThis.fetch,
+): Promise<number | undefined> {
+	const catalog = await getCachedCatalog({ fetch });
+	if (!catalog) return undefined;
+
+	const { provider, model: modelName } = splitModelId(modelId);
+
+	return catalog[provider]?.models[modelName]?.limits?.context;
 }
 
 /**

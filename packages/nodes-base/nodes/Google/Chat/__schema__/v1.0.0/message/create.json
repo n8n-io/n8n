@@ -10,13 +10,22 @@
         "formattedText": {
             "type": "string"
         },
+        "markupSyntax": {
+            "type": "string"
+        },
         "name": {
             "type": "string"
         },
         "sender": {
             "type": "object",
             "properties": {
+                "avatarUrl": {
+                    "type": "string"
+                },
                 "displayName": {
+                    "type": "string"
+                },
+                "email": {
                     "type": "string"
                 },
                 "name": {
@@ -73,5 +82,5 @@
             }
         }
     },
-    "version": 6
+    "version": 9
 }

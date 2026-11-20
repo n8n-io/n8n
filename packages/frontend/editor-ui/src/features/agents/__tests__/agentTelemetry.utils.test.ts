@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import {
 	buildAgentConfigFingerprint,
 	deriveAgentStatus,
@@ -37,27 +37,60 @@ describe('buildAgentConfigFingerprint', () => {
 			},
 		],
 		memory: { enabled: true, storage: 'n8n' },
+		integrations: [
+			{ type: 'slack', credentialId: 'cred-slack' },
+			{ type: 'telegram', credentialId: 'cred-telegram' },
+		],
 	};
 
-	it('produces a 16-char hex config_version and includes the raw instructions', async () => {
+	it('produces a 16-char hex config_version without configuration text', async () => {
 		const fp = await buildAgentConfigFingerprint(baseConfig, ['slack']);
 		expect(fp.config_version).toMatch(/^[0-9a-f]{16}$/);
-		expect(fp.instructions).toBe('do things');
+		expect(fp).not.toHaveProperty('instructions');
+		expect(fp).not.toHaveProperty('tools');
+		expect(fp).not.toHaveProperty('vector_stores');
+		expect(fp).not.toHaveProperty('model');
 	});
 
-	it('sorts tools and triggers alphabetically', async () => {
+	it('keeps the same fingerprint when Web Crypto is unavailable', async () => {
+		const expected = await buildAgentConfigFingerprint(baseConfig, ['slack']);
+		vi.stubGlobal('crypto', { getRandomValues: crypto.getRandomValues.bind(crypto) });
+		try {
+			expect(await buildAgentConfigFingerprint(baseConfig, ['slack'])).toEqual(expected);
+		} finally {
+			vi.unstubAllGlobals();
+		}
+	});
+
+	it('sorts identifiers and triggers alphabetically', async () => {
 		const fp = await buildAgentConfigFingerprint(baseConfig, ['telegram', 'slack']);
-		expect(fp.tools).toEqual(['alpha', 'zulu']);
 		expect(fp.skills).toEqual(['summarize_notes']);
 		expect(fp.tasks).toEqual(['daily_digest']);
 		expect(fp.triggers).toEqual(['slack', 'telegram']);
-		expect(fp.vector_stores).toEqual(['pinecone:docs']);
 	});
 
 	it('returns the same config_version for trigger inputs in different orders', async () => {
 		const a = await buildAgentConfigFingerprint(baseConfig, ['slack', 'telegram']);
 		const b = await buildAgentConfigFingerprint(baseConfig, ['telegram', 'slack']);
 		expect(a.config_version).toBe(b.config_version);
+	});
+
+	it('excludes draft trigger placeholders while including a newly configured trigger', async () => {
+		const config = {
+			...baseConfig,
+			integrations: [
+				{ type: 'slack' as const, credentialId: '' },
+				{ type: 'telegram' as const, credentialId: 'cred-telegram' },
+			],
+		};
+
+		const fingerprint = await buildAgentConfigFingerprint(
+			config,
+			['slack', 'telegram', 'linear'],
+			['linear'],
+		);
+
+		expect(fingerprint.triggers).toEqual(['linear', 'telegram']);
 	});
 
 	it('returns the same config_version for vector stores in different orders', async () => {
@@ -187,12 +220,8 @@ describe('buildAgentConfigFingerprint', () => {
 
 	it('handles null config', async () => {
 		const fp = await buildAgentConfigFingerprint(null, []);
-		expect(fp.instructions).toBe('');
-		expect(fp.tools).toEqual([]);
 		expect(fp.skills).toEqual([]);
 		expect(fp.tasks).toEqual([]);
-		expect(fp.vector_stores).toEqual([]);
-		expect(fp.model).toBeNull();
 	});
 });
 

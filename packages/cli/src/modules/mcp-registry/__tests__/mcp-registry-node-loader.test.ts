@@ -13,9 +13,14 @@ import {
 	MCP_REGISTRY_BASE_NODE_NAME,
 	MCP_REGISTRY_PACKAGE_NAME,
 } from '../node-description-transform';
+import { pairAiGatewayServers } from '../registry/mcp-registry-ai-gateway';
 import type { McpRegistryServer } from '../registry/mcp-registry.types';
 import {
+	databricksGenieTemplatedMockServer,
+	firecrawlAiGatewayMockServer,
+	firecrawlMockServer,
 	gmailDirectExtendMockServer,
+	githubUsesCredentialsMockServer,
 	notionMockServer,
 	slackExtendingMockServer,
 } from '../registry/mock-servers';
@@ -37,7 +42,6 @@ const baseDescription: INodeTypeDescription = {
 	outputs: [],
 	credentials: [{ name: 'mcpOAuth2Api', required: true }],
 	properties: [
-		{ displayName: 'Endpoint URL', name: 'endpointUrl', type: 'hidden', default: '' },
 		{
 			displayName: 'Server Transport',
 			name: 'serverTransport',
@@ -48,8 +52,9 @@ const baseDescription: INodeTypeDescription = {
 };
 
 function createBaseNodeClass() {
-	const baseInstance: INodeType = {
+	const baseInstance: INodeType & { setRegistryRuntime: ReturnType<typeof vi.fn> } = {
 		description: baseDescription,
+		setRegistryRuntime: vi.fn(),
 		methods: {
 			loadOptions: {
 				getTools: vi.fn(),
@@ -84,13 +89,23 @@ function createLoadNodesAndCredentials(options?: {
 
 	const knownCredentials: Record<string, unknown> = {};
 	for (const name of options?.knownCredentialTypes ?? []) {
-		knownCredentials[name] = {};
+		knownCredentials[name] = {
+			extends: name.toLowerCase().includes('oauth') ? ['oAuth2Api'] : [],
+		};
 	}
 
 	const loadNodesAndCredentials = mock<LoadNodesAndCredentials>({
 		loaders: loaders as never,
 		knownCredentials: knownCredentials as never,
 	});
+	loadNodesAndCredentials.getCredential.mockImplementation((credentialType) => ({
+		type: {
+			name: credentialType,
+			displayName: credentialType,
+			properties: [],
+		},
+		sourcePath: '',
+	}));
 
 	return { loadNodesAndCredentials, baseNode, sourcePath };
 }
@@ -107,7 +122,7 @@ describe('McpRegistryNodeLoader', () => {
 
 	describe('loadAll', () => {
 		it('populates `types`, `known`, registers synthetic nodes and credentials for each supported server', async () => {
-			const { loadNodesAndCredentials, sourcePath } = createLoadNodesAndCredentials();
+			const { loadNodesAndCredentials, baseNode, sourcePath } = createLoadNodesAndCredentials();
 			const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger);
 			loader.setServers([notionMockServer]);
 
@@ -140,6 +155,16 @@ describe('McpRegistryNodeLoader', () => {
 				sourcePath: '',
 				extends: ['mcpOAuth2Api'],
 				supportedNodes: ['notion'],
+			});
+			expect(
+				(baseNode as typeof baseNode & { setRegistryRuntime: ReturnType<typeof vi.fn> })
+					.setRegistryRuntime,
+			).toHaveBeenCalledOnce();
+			expect(loader.getConnection('@n8n/mcp-registry.notion')).toMatchObject({
+				nodeTypeName: '@n8n/mcp-registry.notion',
+				endpointUrl: 'https://mcp.notion.com/mcp',
+				endpointHostname: 'mcp.notion.com',
+				transport: 'httpStreamable',
 			});
 		});
 
@@ -280,6 +305,37 @@ describe('McpRegistryNodeLoader', () => {
 			expect(loadedNode.sourcePath).toBe(sourcePath);
 		});
 
+		it('registers a node using existing credential types without synthetic credentials', async () => {
+			const { loadNodesAndCredentials, baseNode } = createLoadNodesAndCredentials({
+				knownCredentialTypes: ['githubOAuth2Api', 'githubApi'],
+			});
+			const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger);
+			loader.setServers([githubUsesCredentialsMockServer]);
+
+			await loader.loadAll();
+
+			expect(loader.types.nodes).toHaveLength(1);
+			expect(loader.types.nodes[0]).toMatchObject({
+				name: 'gitHub',
+				credentials: [{ name: 'githubOAuth2Api', required: true }],
+			});
+			expect(loader.types.credentials).toHaveLength(0);
+			expect(loader.known.credentials).toEqual({});
+			const setRegistryRuntime = (
+				baseNode as INodeType & { setRegistryRuntime: ReturnType<typeof vi.fn> }
+			).setRegistryRuntime;
+			const runtime = setRegistryRuntime.mock.calls[0][0] as {
+				resolveConnection: (nodeTypeName: string, selector?: string) => unknown;
+			};
+			expect(runtime.resolveConnection('@n8n/mcp-registry.gitHub', 'oAuth2')).toMatchObject({
+				binding: { credentialType: 'githubOAuth2Api', selector: 'oAuth2' },
+				connection: {
+					endpointUrl: 'https://api.githubcopilot.com/mcp/',
+					endpointHostname: 'api.githubcopilot.com',
+				},
+			});
+		});
+
 		it('skips servers whose extendsCredential parent matches an inherited prototype key', async () => {
 			const { loadNodesAndCredentials } = createLoadNodesAndCredentials({
 				knownCredentialTypes: ['slackOAuth2Api'],
@@ -327,6 +383,116 @@ describe('McpRegistryNodeLoader', () => {
 
 			expect(loader.types.nodes).toHaveLength(1);
 			expect(loader.types.nodes[0].name).toBe('deprecatedServer');
+		});
+
+		it.each([
+			{ status: 'active' as const, registersCredential: true },
+			{ status: 'deprecated' as const, registersCredential: false },
+		])(
+			'registers the Gateway credits credential type of an $status AI Gateway row: $registersCredential',
+			async ({ status, registersCredential }) => {
+				const { loadNodesAndCredentials } = createLoadNodesAndCredentials();
+				const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger);
+				loader.setServers([{ ...firecrawlAiGatewayMockServer, status }]);
+
+				await loader.loadAll();
+
+				expect(loader.types.nodes.map(({ name }) => name)).toEqual(['n8nConnectFirecrawl']);
+				expect('n8nConnectFirecrawlMcpAiGatewayApi' in loader.known.credentials).toBe(
+					registersCredential,
+				);
+			},
+		);
+
+		it('keeps the Gateway credits binding of a paired server, with the AI Gateway endpoint', async () => {
+			const { loadNodesAndCredentials } = createLoadNodesAndCredentials();
+			const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger);
+			loader.setServers(
+				pairAiGatewayServers([firecrawlMockServer, firecrawlAiGatewayMockServer], () => true),
+			);
+
+			await loader.loadAll();
+
+			expect(loader.getConnection('@n8n/mcp-registry.firecrawl')?.credentialBindings).toEqual([
+				{ credentialType: 'firecrawlMcpOAuth2Api', selector: 'oAuth2' },
+				{
+					credentialType: 'n8nConnectFirecrawlMcpAiGatewayApi',
+					selector: 'aiGateway',
+					endpoint: {
+						url: 'https://gateway.n8n.test/v1/gateway/mcp/firecrawl',
+						hostname: 'gateway.n8n.test',
+						transport: 'httpStreamable',
+					},
+				},
+			]);
+		});
+	});
+
+	describe('registryRuntime.prepareConnection', () => {
+		function getRegisteredPrepareConnection(baseNode: INodeType) {
+			const setRegistryRuntime = (
+				baseNode as INodeType & { setRegistryRuntime: ReturnType<typeof vi.fn> }
+			).setRegistryRuntime;
+			const runtime = setRegistryRuntime.mock.calls[0][0] as {
+				prepareConnection: (input: unknown) => unknown;
+			};
+			return runtime.prepareConnection;
+		}
+
+		it('merges the registry-configured headers (e.g. the Databricks partner User-Agent) into the connection headers', async () => {
+			const { loadNodesAndCredentials, baseNode } = createLoadNodesAndCredentials({
+				knownCredentialTypes: ['databricksOAuth2Api'],
+			});
+			(
+				loadNodesAndCredentials.knownCredentials as Record<string, unknown>
+			).databricksGenieMcpOAuth2Api = { extends: ['databricksOAuth2Api'] };
+
+			const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger);
+			loader.setServers([databricksGenieTemplatedMockServer]);
+			await loader.loadAll();
+
+			const connection = loader.getConnection('@n8n/mcp-registry.databricksGenie');
+			const result = getRegisteredPrepareConnection(baseNode)({
+				connection,
+				credentialType: 'databricksGenieMcpOAuth2Api',
+				credentialData: {
+					oauthTokenData: { access_token: 'token' },
+					serverUrl: 'https://acme.cloud.databricks.com',
+				},
+			});
+
+			expect(result).toMatchObject({
+				ok: true,
+				value: {
+					headers: { Authorization: 'Bearer token', 'User-Agent': 'n8n_DatabricksNode' },
+				},
+			});
+		});
+
+		it('does not add any extra header for a server with no headers configured on its remote', async () => {
+			const { loadNodesAndCredentials, baseNode } = createLoadNodesAndCredentials();
+			const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger);
+			loader.setServers([notionMockServer]);
+			await loader.loadAll();
+
+			const connection = loader.getConnection('@n8n/mcp-registry.notion');
+			const result = getRegisteredPrepareConnection(baseNode)({
+				connection,
+				credentialType: 'notionMcpOAuth2Api',
+				credentialData: { oauthTokenData: { access_token: 'token' } },
+			});
+
+			expect(result).toMatchObject({
+				ok: true,
+				value: { headers: { Authorization: 'Bearer token' } },
+			});
+			expect(
+				(
+					result as {
+						value: { headers: Record<string, string> };
+					}
+				).value.headers,
+			).not.toHaveProperty('User-Agent');
 		});
 	});
 
@@ -385,6 +551,7 @@ describe('McpRegistryNodeLoader', () => {
 			expect(loader.types.credentials).toEqual([]);
 			expect(loader.known.nodes).toEqual({});
 			expect(loader.known.credentials).toEqual({});
+			expect(loader.getConnection('@n8n/mcp-registry.notion')).toBeUndefined();
 			expect(() => loader.getNode('notion')).toThrow(UnrecognizedNodeTypeError);
 			expect(() => loader.getCredential('notionMcpOAuth2Api')).toThrow(
 				UnrecognizedCredentialTypeError,

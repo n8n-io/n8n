@@ -35,7 +35,8 @@ const CURRENCY_REGEXP =
 /*
 	Extract the domain part from various inputs, including URLs, email addresses, and plain domains.
 
-	/^(?:(?:https?|ftp):\/\/)? 								// Match optional http, https, or ftp protocols
+	/^(?:(?:https?|ftp):\/\/ 									// Match optional http, https, or ftp protocols
+    (?:[^\s/?#\\]*@)?)?     								// Match optional user information after the protocol
   (?:mailto:)?               								// Match optional mailto:
   (?:\/\/)?                  								// Match optional double slashes
   (?:www\.)?                 								// Match optional www prefix
@@ -48,12 +49,12 @@ const CURRENCY_REGEXP =
     )
   )
   (?::\d+)?                   							// Match optional port number
-  (?:\/[^\s?]*)?              							// Match optional path
+  (?:\/[^\s?#]*)?             							// Match optional path
   (?:\?[^\s#]*)?              							// Match optional query string
   (?:#[^\s]*)?$/i;            							// Match optional hash fragment
 */
 const DOMAIN_EXTRACT_REGEXP =
-	/^(?:(?:https?|ftp):\/\/)?(?:mailto:)?(?:\/\/)?((?:www\.)?(?:(?:[-\w]+\.)+(?:[a-zA-Z]{2,}|xn--[a-zA-Z0-9]+)|localhost|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}))(?::\d+)?(?:\/[^\s?]*)?(?:\?[^\s#]*)?(?:#[^\s]*)?$/i;
+	/^(?:(?:https?|ftp):\/\/(?:[^\s/?#\\]*@)?)?(?:mailto:)?(?:\/\/)?((?:www\.)?(?:(?:[-\w]+\.)+(?:[a-zA-Z]{2,}|xn--[a-zA-Z0-9]+)|localhost|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}))(?::\d+)?(?:\/[^\s?#]*)?(?:\?[^\s#]*)?(?:#[^\s]*)?$/i;
 
 /*
 	Matches domain names without the protocol or optional subdomains
@@ -81,17 +82,20 @@ const DOMAIN_REGEXP =
     ( 																											// Capture local part of the email address
       ([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*) 	// One or more characters not in the set, followed by
 																														a	period, followed by one or more characters not in the set
-      |(".+") 																							// Or one or more characters inside quotes
+      |("(?:[^"\\\r\n]|\\.)+") 																		// Or one or more characters inside one pair of quotes
     )
   )
   @                             														// Match @ symbol
   (?<domain>(                   														// Capture the domain part of the email address
     \[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\] 			// Match IPv4 address inside brackets
-    |(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}) 											// Or match domain with at least two subdomains and TLD
+    |(([a-zA-Z\-0-9]+\.)+(?:[xX][nN]--[a-zA-Z0-9-]+|[a-zA-Z]{2,})) 	// Or match domain with at least two subdomains and TLD or Punycode TLD
   ))/;
 */
 const EMAIL_REGEXP =
-	/(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@(?<domain>(\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))/;
+	/(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|("(?:[^"\\\r\n]|\\.)+"))@(?<domain>(\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+(?:[xX][nN]--[a-zA-Z0-9-]+|[a-zA-Z]{2,})))/;
+
+// Tabs and line breaks around the address stay accepted to keep existing workflows working
+const EMAIL_REGEXP_EXACT = new RegExp(`^\\s*(?:${EMAIL_REGEXP.source})\\s*$`);
 
 /*
 	Matches URLs with strict beginning and end of the string checks
@@ -324,14 +328,8 @@ function isDomain(value: string) {
 }
 
 function isEmail(value: string) {
-	const result = EMAIL_REGEXP.test(value);
-
 	// email regex is loose so check manually for now
-	if (result && value.includes(' ')) {
-		return false;
-	}
-
-	return result;
+	return EMAIL_REGEXP_EXACT.test(value) && !value.includes(' ');
 }
 
 function toTitleCase(value: string) {
@@ -368,7 +366,8 @@ function toSentenceCase(value: string) {
 function toSnakeCase(value: string) {
 	return value
 		.toLocaleLowerCase()
-		.replace(/[ \-]/g, '_')
+		.replace(/\uFEFF/g, '')
+		.replace(/[\p{White_Space}-]/gu, '_')
 		.replace(/[\u2000-\u206F\u2E00-\u2E7F\\'!"#$%&()*+,.\/:;<=>?@\[\]^`{|}~]/g, '');
 }
 
@@ -380,22 +379,17 @@ function extractEmail(value: string) {
 	return matched[0];
 }
 
+/** Returns the domain of the first email address in a value that has no space. */
+function extractEmailDomain(value: string) {
+	return value.includes(' ') ? undefined : EMAIL_REGEXP.exec(value)?.groups?.domain;
+}
+
 function extractDomain(value: string) {
 	if (isEmail(value)) {
-		const matched = EMAIL_REGEXP.exec(value);
-		// This shouldn't happen
-		if (!matched) {
-			return undefined;
-		}
-		return matched.groups?.domain;
+		return extractEmailDomain(value);
 	}
 
-	const domainMatch = value.match(DOMAIN_EXTRACT_REGEXP);
-	if (domainMatch) {
-		return domainMatch[1];
-	}
-
-	return undefined;
+	return value.match(DOMAIN_EXTRACT_REGEXP)?.[1] ?? extractEmailDomain(value);
 }
 
 function extractUrl(value: string) {
@@ -446,7 +440,7 @@ removeMarkdown.doc = {
 	section: 'edit',
 	returnType: 'string',
 	docURL:
-		'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-removeMarkdown',
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/string#stringremovemarkdown',
 	examples: [{ example: '"*bold*, [link]()".removeMarkdown()', evaluated: '"bold, link"' }],
 };
 
@@ -456,7 +450,7 @@ removeTags.doc = {
 	section: 'edit',
 	returnType: 'string',
 	docURL:
-		'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-removeTags',
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/string#stringremovetags',
 	examples: [{ example: '"<b>bold</b>, <a>link</a>".removeTags()', evaluated: '"bold, link"' }],
 };
 
@@ -466,17 +460,18 @@ toDate.doc = {
 	section: 'cast',
 	returnType: 'Date',
 	hidden: true,
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-toDate',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/string#stringtodatetime',
 };
 
 toDateTime.doc = {
 	name: 'toDateTime',
 	description:
-		'Converts the string to a <a target="_blank" href="https://moment.github.io/luxon/api-docs/">Luxon</a> DateTime. Useful for further transformation. Supported formats for the string are ISO 8601, HTTP, RFC2822, SQL and Unix timestamp in milliseconds. To parse other formats, use <a target="_blank" href=”https://moment.github.io/luxon/api-docs/index.html#datetimefromformat”> <code>DateTime.fromFormat()</code></a>.',
+		'Converts the string to a <a target="_blank" href="https://moment.github.io/luxon/api-docs/">Luxon</a> DateTime. Useful for further transformation. Supported formats for the string are ISO 8601, HTTP, RFC2822, SQL and Unix timestamp in milliseconds. To parse other formats, use <a target="_blank" href="https://moment.github.io/luxon/api-docs/index.html#datetimefromformat"> <code>DateTime.fromFormat()</code></a>.',
 	section: 'cast',
 	returnType: 'DateTime',
 	docURL:
-		'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-toDateTime',
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/string#stringtodatetime',
 	examples: [
 		{ example: '"2024-03-29T18:06:31.798+01:00".toDateTime()' },
 		{ example: '"Fri, 29 Mar 2024 18:08:01 +0100".toDateTime()' },
@@ -502,7 +497,7 @@ toBoolean.doc = {
 	section: 'cast',
 	returnType: 'boolean',
 	docURL:
-		'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-toBoolean',
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/string#stringtoboolean',
 	examples: [
 		{ example: '"true".toBoolean()', evaluated: 'true' },
 		{ example: '"false".toBoolean()', evaluated: 'false' },
@@ -519,7 +514,7 @@ toFloat.doc = {
 	aliases: ['toDecimalNumber'],
 	hidden: true,
 	docURL:
-		'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-toDecimalNumber',
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/string#stringtonumber',
 };
 
 toInt.doc = {
@@ -530,7 +525,8 @@ toInt.doc = {
 	args: [{ name: 'radix?', type: 'number' }],
 	aliases: ['toWholeNumber'],
 	hidden: true,
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-toInt',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/string#stringtonumber',
 };
 
 toSentenceCase.doc = {
@@ -541,7 +537,7 @@ toSentenceCase.doc = {
 	section: 'case',
 	returnType: 'string',
 	docURL:
-		'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-toSentenceCase',
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/string#stringtosentencecase',
 };
 
 toSnakeCase.doc = {
@@ -552,7 +548,7 @@ toSnakeCase.doc = {
 	section: 'case',
 	returnType: 'string',
 	docURL:
-		'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-toSnakeCase',
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/string#stringtosnakecase',
 };
 
 toTitleCase.doc = {
@@ -563,7 +559,7 @@ toTitleCase.doc = {
 	section: 'case',
 	returnType: 'string',
 	docURL:
-		'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-toTitleCase',
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/string#stringtotitlecase',
 };
 
 urlEncode.doc = {
@@ -583,7 +579,7 @@ urlEncode.doc = {
 	],
 	returnType: 'string',
 	docURL:
-		'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-urlEncode',
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/string#stringurlencode',
 	examples: [
 		{ example: '"name=Nathan Automat".urlEncode()', evaluated: '"name%3DNathan%20Automat"' },
 		{ example: '"name=Nathan Automat".urlEncode(true)', evaluated: '"name=Nathan%20Automat"' },
@@ -607,7 +603,7 @@ urlDecode.doc = {
 	section: 'edit',
 	returnType: 'string',
 	docURL:
-		'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-urlDecode',
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/string#stringurldecode',
 	examples: [
 		{ example: '"name%3DNathan%20Automat".urlDecode()', evaluated: '"name=Nathan Automat"' },
 		{ example: '"name%3DNathan%20Automat".urlDecode(true)', evaluated: '"name%3DNathan Automat"' },
@@ -620,7 +616,7 @@ replaceSpecialChars.doc = {
 	section: 'edit',
 	returnType: 'string',
 	docURL:
-		'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-replaceSpecialChars',
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/string#stringreplacespecialchars',
 	examples: [{ example: '"déjà".replaceSpecialChars()', evaluated: '"deja"' }],
 };
 
@@ -630,7 +626,8 @@ length.doc = {
 	hidden: true,
 	description: 'Returns the character count of a string.',
 	returnType: 'number',
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/strings',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/string#stringlength',
 };
 
 isDomain.doc = {
@@ -638,7 +635,8 @@ isDomain.doc = {
 	description: 'Returns <code>true</code> if a string is a domain.',
 	section: 'validation',
 	returnType: 'boolean',
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-isDomain',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/string#stringisdomain',
 	examples: [
 		{ example: '"n8n.io".isDomain()', evaluated: 'true' },
 		{ example: '"http://n8n.io".isDomain()', evaluated: 'false' },
@@ -648,13 +646,17 @@ isDomain.doc = {
 
 isEmail.doc = {
 	name: 'isEmail',
-	description: 'Returns <code>true</code> if the string is an email.',
+	description:
+		'Returns <code>true</code> if the whole string is one email address. If the string also contains other content, try using <code>extractEmail()</code> first.',
 	section: 'validation',
 	returnType: 'boolean',
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-isEmail',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/string#stringisemail',
 	examples: [
 		{ example: '"me@example.com".isEmail()', evaluated: 'true' },
 		{ example: '"It\'s me@example.com".isEmail()', evaluated: 'false' },
+		{ example: '"mailto:me@example.com".isEmail()', evaluated: 'false' },
+		{ example: '"https://medium.com/@jane.doe".isEmail()', evaluated: 'false' },
 		{ example: '"hello".isEmail()', evaluated: 'false' },
 	],
 };
@@ -665,7 +667,7 @@ isNumeric.doc = {
 	section: 'validation',
 	returnType: 'boolean',
 	docURL:
-		'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-isNumeric',
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/string#stringisnumeric',
 	examples: [
 		{ example: '"1.2234".isNumeric()', evaluated: 'true' },
 		{ example: '"hello".isNumeric()', evaluated: 'false' },
@@ -678,7 +680,8 @@ isUrl.doc = {
 	description: 'Returns <code>true</code> if a string is a valid URL',
 	section: 'validation',
 	returnType: 'boolean',
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-isUrl',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/string#stringisurl',
 	examples: [
 		{ example: '"https://n8n.io".isUrl()', evaluated: 'true' },
 		{ example: '"n8n.io".isUrl()', evaluated: 'false' },
@@ -691,7 +694,8 @@ isEmpty.doc = {
 	description: 'Returns <code>true</code> if the string has no characters or is <code>null</code>',
 	section: 'validation',
 	returnType: 'boolean',
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-isEmpty',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/string#stringisempty',
 	examples: [
 		{ example: '"".isEmpty()', evaluated: 'true' },
 		{ example: '"hello".isEmpty()', evaluated: 'false' },
@@ -704,7 +708,7 @@ isNotEmpty.doc = {
 	section: 'validation',
 	returnType: 'boolean',
 	docURL:
-		'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-isNotEmpty',
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/string#stringisnotempty',
 	examples: [
 		{ example: '"hello".isNotEmpty()', evaluated: 'true' },
 		{ example: '"".isNotEmpty()', evaluated: 'false' },
@@ -718,7 +722,7 @@ toJsonString.doc = {
 	section: 'edit',
 	returnType: 'string',
 	docURL:
-		'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-toJsonString',
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/string#stringtojsonstring',
 	examples: [
 		{
 			example: 'The "best" colours: red\nbrown.toJsonString()',
@@ -735,7 +739,7 @@ extractEmail.doc = {
 	section: 'edit',
 	returnType: 'string',
 	docURL:
-		'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-extractEmail',
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/string#stringextractemail',
 	examples: [
 		{ example: '"My email is me@example.com".extractEmail()', evaluated: "'me@example.com'" },
 	],
@@ -748,10 +752,12 @@ extractDomain.doc = {
 	section: 'edit',
 	returnType: 'string',
 	docURL:
-		'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-extractDomain',
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/string#stringextractdomain',
 	examples: [
 		{ example: '"me@example.com".extractDomain()', evaluated: "'example.com'" },
 		{ example: '"http://n8n.io/workflows".extractDomain()', evaluated: "'n8n.io'" },
+		{ example: '"https://medium.com/@jane.doe".extractDomain()', evaluated: "'medium.com'" },
+		{ example: '"mailto:me@example.com".extractDomain()', evaluated: "'example.com'" },
 		{
 			example: '"It\'s me@example.com".extractEmail().extractDomain()',
 			evaluated: "'example.com'",
@@ -766,7 +772,7 @@ extractUrl.doc = {
 	section: 'edit',
 	returnType: 'string',
 	docURL:
-		'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-extractUrl',
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/string#stringextracturl',
 	examples: [{ example: '"Check out http://n8n.io".extractUrl()', evaluated: "'http://n8n.io'" }],
 };
 
@@ -777,7 +783,7 @@ extractUrlPath.doc = {
 	section: 'edit',
 	returnType: 'string',
 	docURL:
-		'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-extractUrlPath',
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/string#stringextracturlpath',
 	examples: [
 		{ example: '"http://n8n.io/workflows".extractUrlPath()', evaluated: "'/workflows'" },
 		{
@@ -803,7 +809,8 @@ hash.doc = {
 			type: 'string',
 		},
 	],
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-hash',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/string#stringhash',
 	examples: [{ example: '"hello".hash()', evaluated: "'5d41402abc4b2a76b9719d911017c592'" }],
 };
 
@@ -822,7 +829,8 @@ quote.doc = {
 			type: 'string',
 		},
 	],
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-quote',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/string#stringquote',
 	examples: [{ example: '\'Nathan says "hi"\'.quote()', evaluated: '\'"Nathan says \\"hi\\""\'' }],
 };
 
@@ -834,7 +842,7 @@ parseJson.doc = {
 	section: 'cast',
 	returnType: 'any',
 	docURL:
-		'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-parseJson',
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/string#stringparsejson',
 	examples: [
 		{ example: '\'{"name":"Nathan"}\'.parseJson()', evaluated: '\'{"name":"Nathan"}\'' },
 		{ example: "\"{'name':'Nathan'}\".parseJson()", evaluated: 'undefined' },
@@ -850,7 +858,7 @@ base64Encode.doc = {
 	section: 'edit',
 	returnType: 'string',
 	docURL:
-		'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-base64Encode',
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/string#stringbase64encode',
 };
 
 base64Decode.doc = {
@@ -861,7 +869,7 @@ base64Decode.doc = {
 	section: 'edit',
 	returnType: 'string',
 	docURL:
-		'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-base64Decode',
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/string#stringbase64decode',
 };
 
 toNumber.doc = {
@@ -870,7 +878,8 @@ toNumber.doc = {
 		"Converts a string representing a number to a number. Errors if the string doesn't start with a valid number.",
 	section: 'cast',
 	returnType: 'number',
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/strings/#string-toNumber',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/string#stringtonumber',
 	examples: [
 		{ example: '"123".toNumber()', evaluated: '123' },
 		{ example: '"1.23E10".toNumber()', evaluated: '12300000000' },

@@ -90,6 +90,7 @@ vi.mock('@/app/composables/useAiGateway', () => ({
 		isNodePropertyHidden: vi.fn(() => false),
 		balance: { value: undefined },
 		budget: { value: undefined },
+		creditsLabelKey: { value: 'generic.freeCredits' },
 		fetchError: { value: null },
 		fetchConfig: vi.fn(),
 		fetchWallet: vi.fn(),
@@ -832,6 +833,51 @@ describe('ParameterInputList', () => {
 			expect(await findByTestId('parameter-item')).toBeInTheDocument();
 		});
 
+		it('should resolve relative loadOptionsDependsOn against the fixedCollection entry', async () => {
+			const parameters: INodeProperties[] = [
+				{
+					displayName: 'Attributes',
+					name: 'attributes',
+					type: 'resourceMapper',
+					default: { mappingMode: 'defineBelow', value: null },
+					typeOptions: {
+						loadOptionsDependsOn: ['&recordType'],
+						resourceMapper: { resourceMapperMethod: 'getAttributeFields', mode: 'add' },
+					},
+				},
+			];
+			const nodeParameters = {
+				options: { entries: { entry: [{ recordType: 'first' }, { recordType: 'second' }] } },
+			};
+			ndvStore.activeNode = { ...TEST_NODE_NO_ISSUES, parameters: nodeParameters };
+			const actualUseWorkflowHelpers = workflowHelpers.useWorkflowHelpers;
+			const workflowHelpersSpy = vi
+				.spyOn(workflowHelpers, 'useWorkflowHelpers')
+				.mockImplementation(() => ({
+					...actualUseWorkflowHelpers(),
+					resolveParameter: vi.fn(async (value) => value),
+				}));
+
+			const { findByTestId } = renderComponent({
+				props: {
+					parameters,
+					nodeValues: { parameters: nodeParameters },
+					path: 'parameters.options.entries.entry[1]',
+				},
+				global: {
+					stubs: {
+						ResourceMapper: {
+							props: ['dependentParametersValues'],
+							template: '<div data-test-id="rm-stub">{{ dependentParametersValues }}</div>',
+						},
+					},
+				},
+			});
+
+			await waitFor(async () => expect(await findByTestId('rm-stub')).toHaveTextContent('second'));
+			workflowHelpersSpy.mockRestore();
+		});
+
 		it('should render filter parameter', async () => {
 			const filterParameters: INodeProperties[] = [
 				{
@@ -1254,7 +1300,12 @@ describe('ParameterInputList', () => {
 				type: 'options',
 				default: 'auto',
 				options: [
-					{ name: 'Connected Chat Trigger Node', value: 'auto' },
+					{
+						name: 'Connected Chat Trigger Node',
+						value: 'auto',
+						description:
+							"Looks for an input field called 'chatInput' that is coming from a directly connected Chat Trigger",
+					},
 					{ name: 'Define below', value: 'define' },
 				],
 			},
@@ -1953,6 +2004,7 @@ describe('ParameterInputList', () => {
 				isNodePropertyHidden: vi.fn(() => false),
 				balance: { value: undefined } as never,
 				budget: { value: undefined } as never,
+				creditsLabelKey: { value: 'generic.freeCredits' } as never,
 				fetchError: { value: null } as never,
 				fetchConfig: vi.fn(),
 				fetchWallet: vi.fn(),
@@ -1990,6 +2042,7 @@ describe('ParameterInputList', () => {
 				isNodePropertyHidden: vi.fn(() => false),
 				balance: { value: undefined } as never,
 				budget: { value: undefined } as never,
+				creditsLabelKey: { value: 'generic.freeCredits' } as never,
 				fetchError: { value: null } as never,
 				fetchConfig: vi.fn(),
 				fetchWallet: vi.fn(),
@@ -2050,6 +2103,7 @@ describe('ParameterInputList', () => {
 				),
 				balance: { value: undefined } as never,
 				budget: { value: undefined } as never,
+				creditsLabelKey: { value: 'generic.freeCredits' } as never,
 				fetchError: { value: null } as never,
 				fetchConfig: vi.fn(),
 				fetchWallet: vi.fn(),
@@ -2100,6 +2154,7 @@ describe('ParameterInputList', () => {
 				),
 				balance: { value: undefined } as never,
 				budget: { value: undefined } as never,
+				creditsLabelKey: { value: 'generic.freeCredits' } as never,
 				fetchError: { value: null } as never,
 				fetchConfig: vi.fn(),
 				fetchWallet: vi.fn(),
@@ -2168,6 +2223,7 @@ describe('ParameterInputList', () => {
 				isNodePropertyHidden: vi.fn(() => false),
 				balance: { value: undefined } as never,
 				budget: { value: undefined } as never,
+				creditsLabelKey: { value: 'generic.freeCredits' } as never,
 				fetchError: { value: null } as never,
 				fetchConfig: vi.fn(),
 				fetchWallet: vi.fn(),
@@ -2204,6 +2260,7 @@ describe('ParameterInputList', () => {
 				isNodePropertyHidden: vi.fn(() => false),
 				balance: { value: undefined } as never,
 				budget: { value: undefined } as never,
+				creditsLabelKey: { value: 'generic.freeCredits' } as never,
 				fetchError: { value: null } as never,
 				fetchConfig: vi.fn(),
 				fetchWallet: vi.fn(),
@@ -2244,6 +2301,7 @@ describe('ParameterInputList', () => {
 				isNodePropertyHidden: vi.fn(() => false),
 				balance: { value: undefined } as never,
 				budget: { value: undefined } as never,
+				creditsLabelKey: { value: 'generic.freeCredits' } as never,
 				fetchError: { value: null } as never,
 				fetchConfig: vi.fn(),
 				fetchWallet: vi.fn(),
@@ -2289,6 +2347,7 @@ describe('ParameterInputList', () => {
 				isNodePropertyHidden: vi.fn(() => false),
 				balance: { value: undefined } as never,
 				budget: { value: undefined } as never,
+				creditsLabelKey: { value: 'generic.freeCredits' } as never,
 				fetchError: { value: null } as never,
 				fetchConfig: vi.fn(),
 				fetchWallet: vi.fn(),

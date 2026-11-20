@@ -40,12 +40,12 @@ export const LLM_JUDGE_PROVIDERS: LlmJudgeProvider[] = [
 	},
 	{
 		nodeType: '@n8n/n8n-nodes-langchain.lmChatAzureOpenAi',
-		displayName: 'Azure OpenAI Chat Model',
+		displayName: 'Microsoft Foundry Chat Model',
 		credentialTypes: [
-			{ name: 'azureOpenAiApi', displayName: 'Azure OpenAI' },
+			{ name: 'azureOpenAiApi', displayName: 'Microsoft Foundry (API Key)' },
 			{
 				name: 'azureEntraCognitiveServicesOAuth2Api',
-				displayName: 'Azure Entra (Cognitive Services)',
+				displayName: 'Microsoft Foundry (Entra ID)',
 			},
 		],
 	},

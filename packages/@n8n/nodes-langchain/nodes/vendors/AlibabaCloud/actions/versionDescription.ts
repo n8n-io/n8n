@@ -20,7 +20,17 @@ export const versionDescription: INodeTypeDescription = {
 	},
 	usableAsTool: true,
 	codex: {
-		alias: ['qwen', 'happyhorse', 'wan', 'dashscope', 'alibaba', 'model studio', 'video', 'image'],
+		alias: [
+			'qwen',
+			'happyhorse',
+			'wan',
+			'dashscope',
+			'alibaba',
+			'model studio',
+			'video',
+			'image',
+			'deepseek',
+		],
 		categories: ['AI'],
 		subcategories: {
 			AI: ['Agents', 'Miscellaneous', 'Root Nodes'],

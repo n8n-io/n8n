@@ -8,13 +8,7 @@ import {
 	type SubAgentTaskDifficulty,
 } from '@n8n/api-types';
 import type { BaseTextKey } from '@n8n/i18n';
-import {
-	N8nIconButton,
-	N8nInputNumber2,
-	N8nSwitch2,
-	N8nText,
-	N8nTooltip,
-} from '@n8n/design-system';
+import { N8nIconButton, N8nInputNumber, N8nSwitch2, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import { useUsersStore } from '@n8n/stores/users.store';
@@ -22,6 +16,7 @@ import { useUsersStore } from '@n8n/stores/users.store';
 import { useAgentModelCredentials } from '../composables/useAgentModelCredentials';
 import { useModelCatalog } from '../composables/useModelCatalog';
 import AgentModelSelector from './AgentModelSelector.vue';
+import AgentPanel from './AgentPanel.vue';
 import {
 	type AgentCredentialsByProvider,
 	type AgentModelOption,
@@ -317,9 +312,14 @@ function clearDifficultyMapping(difficulty: SubAgentTaskDifficulty) {
 </script>
 
 <template>
-	<div :class="$style.subAgentsPanel" :aria-disabled="disabled">
-		<div :class="$style.settingRow">
-			<div :class="$style.settingLabel">
+	<AgentPanel
+		:header="i18n.baseText('agents.builder.subAgents.title')"
+		:description="i18n.baseText('agents.builder.subAgents.settings.description')"
+		:class="$style.subAgentsPanel"
+		:aria-disabled="disabled"
+	>
+		<div :class="shared.settingRow">
+			<div :class="shared.settingLabel">
 				<N8nText step="sm" bold :class="shared.dataEntryLabel">
 					{{ i18n.baseText('agents.builder.subAgents.maxChildren.label') }}
 				</N8nText>
@@ -331,20 +331,21 @@ function clearDifficultyMapping(difficulty: SubAgentTaskDifficulty) {
 					}}
 				</N8nText>
 			</div>
-			<N8nInputNumber2
+			<N8nInputNumber
 				:model-value="maxChildrenModelValue"
 				:min="SUB_AGENT_MAX_CHILDREN_MIN"
 				:max="SUB_AGENT_MAX_CHILDREN_MAX"
 				:precision="0"
+				:controls="false"
 				:disabled="disabled"
-				:class="$style.shortInput"
+				:class="shared.settingControlShort"
 				data-testid="agent-sub-agents-max-children-input"
 				@update:model-value="onMaxChildrenChange"
 			/>
 		</div>
 
-		<div :class="$style.settingRow">
-			<div :class="$style.settingLabel">
+		<div :class="shared.settingRow">
+			<div :class="shared.settingLabel">
 				<N8nText step="sm" bold :class="shared.dataEntryLabel">
 					{{ i18n.baseText('agents.builder.subAgents.customModelRouting.label' as BaseTextKey) }}
 				</N8nText>
@@ -355,6 +356,7 @@ function clearDifficultyMapping(difficulty: SubAgentTaskDifficulty) {
 			<N8nSwitch2
 				:model-value="customModelRoutingEnabled"
 				:disabled="disabled"
+				:class="shared.settingControl"
 				data-testid="agent-sub-agents-custom-model-routing-toggle"
 				@update:model-value="onCustomModelRoutingToggle"
 			/>
@@ -369,10 +371,10 @@ function clearDifficultyMapping(difficulty: SubAgentTaskDifficulty) {
 				<div
 					v-for="difficulty in SUB_AGENT_TASK_DIFFICULTIES"
 					:key="difficulty"
-					:class="$style.difficultyRow"
+					:class="shared.settingRow"
 					:data-testid="`agent-sub-agents-difficulty-row-${difficulty}`"
 				>
-					<div :class="$style.difficultyLabel">
+					<div :class="shared.settingLabel">
 						<N8nText step="sm" bold :class="shared.dataEntryLabel">
 							{{ i18n.baseText(DIFFICULTY_LABEL_KEYS[difficulty]) }}
 						</N8nText>
@@ -380,7 +382,7 @@ function clearDifficultyMapping(difficulty: SubAgentTaskDifficulty) {
 							{{ i18n.baseText(DIFFICULTY_DESCRIPTION_KEYS[difficulty]) }}
 						</N8nText>
 					</div>
-					<div :class="$style.difficultyControls">
+					<div :class="shared.settingControlWide">
 						<AgentModelSelector
 							:selected-model="selectedModelForDifficulty(difficulty)"
 							:credentials="credentialsForDifficulty(difficulty)"
@@ -417,7 +419,7 @@ function clearDifficultyMapping(difficulty: SubAgentTaskDifficulty) {
 				</div>
 			</div>
 		</div>
-	</div>
+	</AgentPanel>
 </template>
 
 <style lang="scss" module>
@@ -426,28 +428,6 @@ function clearDifficultyMapping(difficulty: SubAgentTaskDifficulty) {
 	flex-direction: column;
 	gap: var(--spacing--sm);
 	width: 100%;
-}
-
-.settingRow {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: var(--spacing--sm);
-	min-height: var(--spacing--xl);
-	width: 100%;
-}
-
-.settingLabel {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--5xs);
-	flex: 1;
-	min-width: 0;
-}
-
-.shortInput {
-	width: 140px;
-	flex-shrink: 0;
 }
 
 .inlineModelsSection {
@@ -463,34 +443,5 @@ function clearDifficultyMapping(difficulty: SubAgentTaskDifficulty) {
 	gap: var(--spacing--xs);
 	padding-left: var(--spacing--sm);
 	border-left: var(--border);
-}
-
-.difficultyRow {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: var(--spacing--sm);
-	min-height: var(--spacing--xl);
-}
-
-.difficultyLabel {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--5xs);
-	flex: 1;
-	min-width: 0;
-}
-
-.difficultyControls {
-	display: flex;
-	align-items: center;
-	justify-content: flex-end;
-	gap: var(--spacing--2xs);
-	min-width: calc(var(--spacing--5xl) + var(--spacing--2xs));
-}
-
-.difficultyControls > :first-child {
-	flex: 1;
-	min-width: calc(var(--spacing--5xl) - var(--spacing--xl));
 }
 </style>

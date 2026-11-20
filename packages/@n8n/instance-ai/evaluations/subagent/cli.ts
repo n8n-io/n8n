@@ -9,6 +9,7 @@
 //   pnpm eval:subagent --dataset my-dataset --experiment my-exp --verbose
 // ---------------------------------------------------------------------------
 
+import { truncate } from '@n8n/utils/string/truncate';
 import { Client } from 'langsmith/client';
 import { evaluate } from 'langsmith/evaluation';
 import { readFileSync, readdirSync } from 'node:fs';
@@ -149,10 +150,6 @@ function loadLocalTestCases(filter?: string): WorkflowBuildEvalCase[] {
 // ---------------------------------------------------------------------------
 // Display helpers
 // ---------------------------------------------------------------------------
-
-function truncate(text: string, maxLen: number): string {
-	return text.length > maxLen ? text.slice(0, maxLen) + '...' : text;
-}
 
 function printResult(result: WorkflowBuildEvalResult, verbose: boolean): void {
 	const { testCase, capturedWorkflows, feedback, durationMs, error } = result;

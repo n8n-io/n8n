@@ -1,6 +1,6 @@
 import type { InstanceAiRunDebugResponse } from '@n8n/api-types';
-import pLimit from 'p-limit';
 
+import { runDebugFromUsage } from './assistant-agents';
 import type { EvalLogger } from './logger';
 import type { N8nClient } from '../clients/n8n-client';
 
@@ -45,6 +45,12 @@ async function captureAllRuns(
 	logger?: EvalLogger,
 ): Promise<InstanceAiRunDebugResponse[]> {
 	try {
+		// The Agents runtime has no run debug. Its usage route gives tokens and cost for each turn.
+		const agents = client.assistantAgents();
+		if (agents) {
+			const usage = await agents.getUsage(threadId, REQUEST_TIMEOUT_MS);
+			return runDebugFromUsage(threadId, usage);
+		}
 		const response = await client.listThreadDebugRuns(threadId, REQUEST_TIMEOUT_MS);
 		const runs = response.runs ?? [];
 		if (runs.length === 0) {
@@ -52,6 +58,7 @@ async function captureAllRuns(
 			return [];
 		}
 
+		const { default: pLimit } = await import('p-limit');
 		const limit = pLimit(RUN_FETCH_CONCURRENCY);
 		const records = await Promise.all(
 			runs.map(

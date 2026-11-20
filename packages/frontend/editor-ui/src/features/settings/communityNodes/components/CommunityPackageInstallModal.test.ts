@@ -39,7 +39,7 @@ const renderComponent = (modalData = {}) => {
 		pinia: createTestingPinia({
 			initialState: {
 				[STORES.UI]: {
-					modalsById: {
+					modalStateById: {
 						[COMMUNITY_PACKAGE_INSTALL_MODAL_KEY]: {
 							open: true,
 							data: modalData,

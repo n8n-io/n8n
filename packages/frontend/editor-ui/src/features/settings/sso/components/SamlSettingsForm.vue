@@ -4,7 +4,7 @@ import { SupportedProtocols, useSSOStore } from '../sso.store';
 import { useI18n } from '@n8n/i18n';
 import { captureMessage } from '@sentry/vue';
 
-import { N8nButton, N8nInput, N8nOption, N8nRadioButtons, N8nSelect } from '@n8n/design-system';
+import { N8nButton, N8nInput, N8nOption, N8nSegmentControl, N8nSelect } from '@n8n/design-system';
 import { useClipboard } from '@n8n/composables/useClipboard';
 import { useToast } from '@n8n/composables/useToast';
 import { useMessage } from '@/app/composables/useMessage';
@@ -13,9 +13,11 @@ import UserRoleProvisioningDropdown from '../provisioning/components/UserRolePro
 import { useUserRoleProvisioningForm } from '../provisioning/composables/useUserRoleProvisioningForm';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import ConfirmProvisioningDialog from '../provisioning/components/ConfirmProvisioningDialog.vue';
 import RoleMappingRuleEditor from '../provisioning/components/RoleMappingRuleEditor.vue';
 import { MODAL_CONFIRM } from '@/app/constants/modals';
+import { openSafeUrl } from '@/app/utils/htmlUtils';
 
 const i18n = useI18n();
 const ssoStore = useSSOStore();
@@ -147,13 +149,12 @@ const sendTrackingEvent = (config?: SamlPreferences) => {
 		captureMessage('Single Sign-On SAML: telemtetry data undefined on submit', { level: 'error' });
 		return;
 	}
-	const trackingMetadata = {
+	telemetry.track(TELEMETRY_EVENT.SSO.USER_UPDATED_SSO_SETTINGS, {
 		instance_id: useRootStore().instanceId,
 		authentication_method: SupportedProtocols.SAML,
 		identity_provider: config.metadataUrl ? 'metadata' : 'xml',
 		is_active: config.loginEnabled ?? false,
-	};
-	telemetry.track('User updated single sign on settings', trackingMetadata);
+	});
 };
 
 const promptConfirmDisablingSamlLogin = async () => {
@@ -311,7 +312,7 @@ const onTest = async () => {
 		const url = await ssoStore.testSamlConfig(metaDataConfig);
 
 		if (typeof window !== 'undefined') {
-			window.open(url, '_blank');
+			openSafeUrl(url);
 		}
 	} catch (error) {
 		toast.showError(error, 'error');
@@ -341,7 +342,9 @@ const hasUnsavedChanges = computed(
 	() => isSaveEnabled.value && (!isSsoManagedByEnv.value || isRulesMappingInN8n.value),
 );
 
-defineExpose({ hasUnsavedChanges, onSave });
+// The SSO page saves through its save bar and shows the test button below
+// the SCIM section, so it needs these.
+defineExpose({ hasUnsavedChanges, onSave, saving: savingForm, isTestEnabled, onTest });
 
 onMounted(async () => {
 	await loadSamlConfig();
@@ -363,7 +366,7 @@ onMounted(async () => {
 						</div>
 						<div :class="$style.copyButtonWrapper">
 							<N8nButton
-								variant="subtle"
+								variant="outline"
 								icon-only
 								:icon="redirectUrlCopied ? 'check' : 'copy'"
 								@click="handleCopy(redirectUrl, 'redirectUrl')"
@@ -384,7 +387,7 @@ onMounted(async () => {
 						</div>
 						<div :class="$style.copyButtonWrapper">
 							<N8nButton
-								variant="subtle"
+								variant="outline"
 								icon-only
 								:icon="entityIdCopied ? 'check' : 'copy'"
 								@click="handleCopy(entityId, 'entityId')"
@@ -399,7 +402,7 @@ onMounted(async () => {
 						<label>{{ i18n.baseText('settings.sso.settings.ips.label') }}</label>
 					</div>
 					<div :class="$style.settingsItemControl">
-						<N8nRadioButtons
+						<N8nSegmentControl
 							v-model="ipsType"
 							:disabled="isSsoManagedByEnv"
 							:options="ipsOptions"
@@ -488,28 +491,6 @@ onMounted(async () => {
 					</N8nSelect>
 				</div>
 			</div>
-		</div>
-
-		<div :class="$style.buttons">
-			<N8nButton
-				v-if="!isSsoManagedByEnv || isRulesMappingInN8n"
-				:disabled="!isSaveEnabled"
-				:loading="savingForm"
-				size="large"
-				data-test-id="sso-save"
-				@click="onSave(false)"
-			>
-				{{ i18n.baseText('settings.sso.settings.save') }}
-			</N8nButton>
-			<N8nButton
-				variant="subtle"
-				:disabled="!isTestEnabled"
-				size="large"
-				data-test-id="sso-test"
-				@click="onTest"
-			>
-				{{ i18n.baseText('settings.sso.settings.test') }}
-			</N8nButton>
 		</div>
 	</div>
 </template>

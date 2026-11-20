@@ -137,8 +137,13 @@ const addOptionalFieldButtonText = computed(() => {
 	return locale.nodeText(activeNode.value?.type).addOptionalFieldButtonText(props.parameter);
 });
 
+// Keyed by stable index so revealed fields follow their item when the list is
+// reordered or an earlier item is deleted.
 const getOptionalValuesKey = (propertyName: string, index?: number): string => {
-	return index !== undefined ? `${propertyName}-${index}` : propertyName;
+	if (index !== undefined) {
+		return `${propertyName}-${itemState.getItemStableIndex(propertyName, index)}`;
+	}
+	return propertyName;
 };
 
 const hasNonDefaultValue = (
@@ -670,7 +675,7 @@ const onAddButtonClick = () => {
 			<div v-if="shouldShowAddAtBottom" :class="$style.controls">
 				<N8nButton
 					class="n8n-button--highlightFill"
-					variant="subtle"
+					variant="outline"
 					v-if="hasSingleOption"
 					icon="plus"
 					size="small"
@@ -690,7 +695,7 @@ const onAddButtonClick = () => {
 					<template #trigger>
 						<N8nButton
 							class="n8n-button--highlightFill"
-							variant="subtle"
+							variant="outline"
 							icon="plus"
 							size="small"
 							:label="placeholder"
@@ -772,7 +777,7 @@ const onAddButtonClick = () => {
 					<div v-if="shouldShowAddAtBottom" :class="$style.controls">
 						<N8nButton
 							class="n8n-button--highlightFill"
-							variant="subtle"
+							variant="outline"
 							v-if="hasSingleOption"
 							icon="plus"
 							size="small"
@@ -790,7 +795,7 @@ const onAddButtonClick = () => {
 							<template #trigger>
 								<N8nButton
 									class="n8n-button--highlightFill"
-									variant="subtle"
+									variant="outline"
 									icon="plus"
 									size="small"
 									:label="placeholder"

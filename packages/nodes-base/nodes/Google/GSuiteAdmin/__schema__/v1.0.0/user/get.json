@@ -91,6 +91,29 @@
                 }
             }
         },
+        "organizations": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "customType": {
+                        "type": "string"
+                    },
+                    "department": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "primary": {
+                        "type": "boolean"
+                    },
+                    "title": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
         "orgUnitPath": {
             "type": "string"
         },
@@ -101,5 +124,5 @@
             "type": "boolean"
         }
     },
-    "version": 5
+    "version": 7
 }

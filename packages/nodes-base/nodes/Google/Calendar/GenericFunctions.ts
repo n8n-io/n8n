@@ -11,31 +11,65 @@ import type {
 	IPollFunctions,
 	IRequestOptions,
 	JsonObject,
+	RequestPath,
+	RequestUrl,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import {
+	NodeApiError,
+	NodeOperationError,
+	decodePathValue,
+	requestPath,
+	requestUrl,
+} from 'n8n-workflow';
 import { RRule } from 'rrule';
 
 import { sleep } from '@n8n/utils/sleep';
 
 import type { RecurringEventInstance } from './EventInterface';
 
+export function parseAttendees(
+	this: IExecuteFunctions,
+	attendees: unknown,
+	itemIndex: number,
+): Array<{ email: string }> {
+	if (
+		!Array.isArray(attendees) ||
+		!attendees.every(
+			(attendee: unknown): attendee is string =>
+				typeof attendee === 'string' &&
+				attendee.split(',').every((email) => email.trim().length > 0),
+		)
+	) {
+		throw new NodeOperationError(this.getNode(), 'Invalid attendee value', {
+			description:
+				'Set each attendee to an email address string. To include multiple addresses in one entry, separate them with commas.',
+			itemIndex,
+		});
+	}
+
+	return attendees.flatMap((attendee) =>
+		attendee.split(',').map((email) => ({ email: email.trim() })),
+	);
+}
+
 export async function googleApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 	body: any = {},
 	qs: IDataObject = {},
-	uri?: string,
+	uri?: RequestUrl,
 	headers: IDataObject = {},
 ): Promise<any> {
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {
 			'Content-Type': 'application/json',
 		},
 		method,
 		body,
 		qs,
-		uri: uri || `https://www.googleapis.com${resource}`,
+		uri: uri ?? requestUrl`https://www.googleapis.com${resource}`,
 		json: true,
 	};
 	try {
@@ -55,7 +89,7 @@ export async function googleApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	propertyName: string,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: any = {},
 	query: IDataObject = {},
 ): Promise<any> {
@@ -73,11 +107,6 @@ export async function googleApiRequestAllItems(
 	return returnData;
 }
 
-export function encodeURIComponentOnce(uri: string) {
-	// load options used to save encoded uri strings
-	return encodeURIComponent(decodeURIComponent(uri));
-}
-
 export async function getCalendars(
 	this: ILoadOptionsFunctions,
 	filter?: string,
@@ -86,7 +115,7 @@ export async function getCalendars(
 		this,
 		'items',
 		'GET',
-		'/calendar/v3/users/me/calendarList',
+		requestPath`/calendar/v3/users/me/calendarList`,
 	)) as Array<{ id: string; summary: string }>;
 
 	const results: INodeListSearchItems[] = calendars
@@ -257,10 +286,10 @@ export async function googleApiRequestWithRetries({
 }: {
 	context: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions;
 	method: IHttpRequestMethods;
-	resource: string;
+	resource: RequestPath;
 	body?: any;
 	qs?: IDataObject;
-	uri?: string;
+	uri?: RequestUrl;
 	headers?: IDataObject;
 	itemIndex?: number;
 }) {
@@ -304,3 +333,6 @@ export function dateObjectToISO<T>(date: T): string {
 	if (date instanceof Date) return date.toISOString();
 	return date as string;
 }
+
+export const toPathValue = (version: number, value: string) =>
+	version < 1.4 ? decodePathValue(value) : value;

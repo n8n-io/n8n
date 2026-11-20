@@ -1,0 +1,30 @@
+{
+    "type": "object",
+    "properties": {
+        "error": {
+            "type": "string"
+        },
+        "properties": {
+            "type": "object",
+            "properties": {
+                "dealname": {
+                    "type": "object",
+                    "properties": {
+                        "value": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "dealstage": {
+                    "type": "object",
+                    "properties": {
+                        "value": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "version": 2
+}

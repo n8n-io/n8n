@@ -854,7 +854,7 @@ exports[`CodeDiff > renders replaced code diff correctly 1`] = `
           icononly="false"
           loading="false"
           size="xsmall"
-          variant="subtle"
+          variant="outline"
         />
         <n8n-icon-stub
           class="ml-xs"
@@ -1147,7 +1147,7 @@ exports[`CodeDiff > renders replacing code diff correctly 1`] = `
         icononly="false"
         loading="true"
         size="xsmall"
-        variant="subtle"
+        variant="outline"
       />
     </div>
   </div>

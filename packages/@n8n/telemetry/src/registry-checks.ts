@@ -24,8 +24,10 @@ export function validateEntrySchemas(registry: TelemetryEventRegistry): string[]
 			if (!entry.description.trim()) {
 				errors.push(`${id}: description must not be empty`);
 			}
-			if (!(entry.properties instanceof z.ZodObject)) {
-				errors.push(`${id}: properties must be a zod object schema`);
+			const schemas =
+				entry.properties instanceof z.ZodUnion ? entry.properties.options : [entry.properties];
+			if (!schemas.every((schema) => schema instanceof z.ZodObject)) {
+				errors.push(`${id}: properties must be a zod object schema or a union of object schemas`);
 				continue;
 			}
 			try {

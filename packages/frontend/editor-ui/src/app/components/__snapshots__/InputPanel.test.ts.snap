@@ -28,41 +28,54 @@ exports[`InputPanel > should render 1`] = `
             
           </span>
           <div
-            class="n8n-radio-buttons radioGroup"
+            class="n8n-segment-control segmentControl"
             data-test-id="input-panel-mode"
+            aria-orientation="horizontal"
+            aria-required="false"
+            data-orientation="horizontal"
+            dir="ltr"
             role="radiogroup"
+            style="outline: none;"
+            tabindex="-1"
           >
             
-            <label
+            <button
               aria-checked="true"
-              class="n8n-radio-button container hoverable"
+              aria-label="Mapping"
+              class="n8n-segment-control-item item medium hoverable"
+              data-orientation="horizontal"
+              data-reka-collection-item=""
+              data-state="checked"
+              data-test-id="radio-button-mapping"
               role="radio"
               tabindex="-1"
+              type="button"
+              value="mapping"
+              data-active=""
+              required="false"
             >
-              <div
-                class="button active medium"
-                data-test-id="radio-button-mapping"
-              >
-                
-                Mapping
-                
-              </div>
-            </label>
-            <label
+              
+              Mapping
+              <!--v-if-->
+            </button>
+            <button
               aria-checked="false"
-              class="n8n-radio-button container hoverable"
+              aria-label="From AI"
+              class="n8n-segment-control-item item medium hoverable"
+              data-orientation="horizontal"
+              data-reka-collection-item=""
+              data-state="unchecked"
+              data-test-id="radio-button-debugging"
               role="radio"
               tabindex="-1"
+              type="button"
+              value="debugging"
+              required="false"
             >
-              <div
-                class="button medium"
-                data-test-id="radio-button-debugging"
-              >
-                
-                From AI
-                
-              </div>
-            </label>
+              
+              From AI
+              <!--v-if-->
+            </button>
             
           </div>
         </div>
@@ -76,57 +89,73 @@ exports[`InputPanel > should render 1`] = `
         <!---->
         <!--v-if-->
         <div
-          class="n8n-radio-buttons radioGroup"
+          class="n8n-segment-control segmentControl"
           data-test-id="ndv-run-data-display-mode"
           data-v-2e5cd75c=""
+          aria-orientation="horizontal"
+          aria-required="false"
+          data-orientation="horizontal"
+          dir="ltr"
           role="radiogroup"
+          style="outline: none;"
+          tabindex="-1"
         >
           
-          <label
+          <button
             aria-checked="true"
-            class="n8n-radio-button container hoverable"
+            aria-label="Schema"
+            class="n8n-segment-control-item item medium hoverable"
+            data-orientation="horizontal"
+            data-reka-collection-item=""
+            data-state="checked"
+            data-test-id="radio-button-schema"
             role="radio"
             tabindex="-1"
+            type="button"
+            value="schema"
+            data-active=""
+            required="false"
           >
-            <div
-              class="button active medium"
-              data-test-id="radio-button-schema"
-            >
-              
-              Schema
-              
-            </div>
-          </label>
-          <label
+            
+            Schema
+            <!--v-if-->
+          </button>
+          <button
             aria-checked="false"
-            class="n8n-radio-button container hoverable"
+            aria-label="Table"
+            class="n8n-segment-control-item item medium hoverable"
+            data-orientation="horizontal"
+            data-reka-collection-item=""
+            data-state="unchecked"
+            data-test-id="radio-button-table"
             role="radio"
             tabindex="-1"
+            type="button"
+            value="table"
+            required="false"
           >
-            <div
-              class="button medium"
-              data-test-id="radio-button-table"
-            >
-              
-              Table
-              
-            </div>
-          </label>
-          <label
+            
+            Table
+            <!--v-if-->
+          </button>
+          <button
             aria-checked="false"
-            class="n8n-radio-button container hoverable"
+            aria-label="JSON"
+            class="n8n-segment-control-item item medium hoverable"
+            data-orientation="horizontal"
+            data-reka-collection-item=""
+            data-state="unchecked"
+            data-test-id="radio-button-json"
             role="radio"
             tabindex="-1"
+            type="button"
+            value="json"
+            required="false"
           >
-            <div
-              class="button medium"
-              data-test-id="radio-button-json"
-            >
-              
-              JSON
-              
-            </div>
-          </label>
+            
+            JSON
+            <!--v-if-->
+          </button>
           
         </div>
         <!--v-if-->

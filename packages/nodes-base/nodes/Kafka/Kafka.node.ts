@@ -11,7 +11,7 @@ export class Kafka extends VersionedNodeType {
 			name: 'kafka',
 			icon: { light: 'file:kafka.svg', dark: 'file:kafka.dark.svg' },
 			group: ['transform'],
-			defaultVersion: 1,
+			defaultVersion: 2,
 			description: 'Sends messages to a Kafka topic',
 		};
 

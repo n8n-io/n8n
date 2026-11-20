@@ -5,23 +5,31 @@ import type {
 	IDataObject,
 	IHttpRequestOptions,
 	IHttpRequestMethods,
+	IRequestOptions,
+	RequestPath,
+	RequestUrl,
+	WithRequestTarget,
 } from 'n8n-workflow';
+import { requestUrl } from 'n8n-workflow';
 
 export async function theHiveApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 	body: IDataObject | FormData = {},
 	query: IDataObject = {},
-	uri?: string,
-	option: IDataObject = {},
+	uri?: RequestUrl,
+	option: Pick<
+		IRequestOptions,
+		'formData' | 'useStream' | 'resolveWithFullResponse' | 'encoding' | 'json'
+	> & { Headers?: IDataObject } = {},
 ) {
 	const credentials = await this.getCredentials('theHiveProjectApi');
 
-	let options: IHttpRequestOptions = {
+	let options: WithRequestTarget<IHttpRequestOptions> = {
 		method,
 		qs: query,
-		url: uri || `${credentials.url}/api${resource}`,
+		url: uri ?? requestUrl`${credentials.url}/api${resource}`,
 		body,
 		skipSslCertificateValidation: credentials.allowUnauthorizedCerts as boolean,
 		json: true,

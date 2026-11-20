@@ -110,7 +110,7 @@ export class AssistantHandler {
 
 		if (context.errorContext) {
 			initPayload.context = {
-				...((initPayload.context as object) ?? {}),
+				...(initPayload.context ?? {}),
 				activeNodeInfo: {
 					node: { name: context.errorContext.nodeName },
 					executionStatus: {
@@ -126,7 +126,7 @@ export class AssistantHandler {
 
 		if (context.credentialContext) {
 			initPayload.context = {
-				...((initPayload.context as object) ?? {}),
+				...(initPayload.context ?? {}),
 				activeCredentials: {
 					name: context.credentialContext.credentialType,
 					displayName: context.credentialContext.displayName,

@@ -29,6 +29,7 @@ import {
 	type ExtensionNotConnectedPhase,
 } from './errors';
 import { createLogger } from './logger';
+import type { DisconnectDetails } from './types';
 
 const log = createLogger('relay');
 
@@ -89,8 +90,13 @@ export class CDPRelayServer {
 	private extensionConnectedReject?: (error: Error) => void;
 	private extensionConnectedPromise: Promise<void>;
 
+	private blockingExtensionIds: string[] = [];
+
 	/** Called when the extension disconnects with a typed reason. */
-	onExtensionDisconnect?: (reason: ConnectionLostReason) => void;
+	onExtensionDisconnect?: (reason: ConnectionLostReason, details?: DisconnectDetails) => void;
+
+	/** Fired before any teardown, so an in-flight action can fail fast. */
+	onTabBlocked?: (details: DisconnectDetails) => void;
 
 	/** Called when the extension (re)connects. */
 	onExtensionConnect?: () => void;
@@ -630,6 +636,8 @@ export class CDPRelayServer {
 	/** Handle tabOpened event from extension. */
 	private handleTabOpened(id: string, title: string, url: string): void {
 		if (this.tabCache.has(id)) return;
+		// A new tab is the agent recovering; the earlier block is history.
+		this.blockingExtensionIds = [];
 
 		log.debug('tabOpened:', id, url);
 		this.tabCache.set(id, { title, url });
@@ -638,8 +646,21 @@ export class CDPRelayServer {
 	}
 
 	/** Handle tabClosed event from extension. */
-	private handleTabClosed(id: string): void {
-		log.debug('tabClosed:', id);
+	private handleTabClosed(
+		id: string,
+		reason?: 'blocked_by_extension',
+		blockingExtensionIds?: string[],
+	): void {
+		if (reason === 'blocked_by_extension') {
+			log.debug('tabClosed:', id, 'blocked by', blockingExtensionIds);
+			this.blockingExtensionIds = blockingExtensionIds ?? [];
+			this.onTabBlocked?.({ blockingExtensionIds: this.blockingExtensionIds });
+		} else {
+			log.debug('tabClosed:', id);
+			// The session carried on past the block, so stop attributing later
+			// disconnects to it.
+			this.blockingExtensionIds = [];
+		}
 
 		this.tabCache.delete(id);
 		const wasActivated = this.activatedTabs.delete(id);
@@ -694,12 +715,20 @@ export class CDPRelayServer {
 		}
 
 		log.debug('extension connected');
+		// A fresh session must not inherit the previous one's block.
+		this.blockingExtensionIds = [];
 		this.extensionConn = new ExtensionConnection(ws);
 
 		this.extensionConn.onclose = () => {
-			const rawReason = this.extensionConn?.closeReason;
-			log.debug('extension disconnected, reason:', rawReason ?? '(none)');
-			this.onExtensionDisconnect?.(asConnectionLostReason(rawReason));
+			const blockingExtensionIds = this.blockingExtensionIds;
+			// A recorded block outranks the socket's own reason: it says why the tab
+			// went, which the close frame never does.
+			const reason: ConnectionLostReason =
+				blockingExtensionIds.length > 0
+					? 'blocked_by_extension'
+					: asConnectionLostReason(this.extensionConn?.closeReason);
+			log.debug('extension disconnected, reason:', reason);
+			this.onExtensionDisconnect?.(reason, { blockingExtensionIds });
 
 			// Clear extension ref but KEEP tabCache, activatedTabs, and Playwright connection.
 			// Pending requests are already rejected by ExtensionConnection.handleClose.
@@ -827,7 +856,7 @@ export class CDPRelayServer {
 				this.handleTabOpened(p.id, p.title, p.url);
 			} else if (method === 'tabClosed') {
 				const p = params as ExtensionEvents['tabClosed']['params'];
-				this.handleTabClosed(p.id);
+				this.handleTabClosed(p.id, p.reason, p.blockingExtensionIds);
 			}
 		};
 	}
@@ -878,6 +907,7 @@ export class CDPRelayServer {
 		this.activatedTabs.clear();
 		this.primaryTabId = undefined;
 		this.lastCreatedTabId = undefined;
+		this.blockingExtensionIds = [];
 		this.browserContextId = 'n8n-default-context';
 		this.extensionConn = null;
 		this.extensionConnectedPromise = new Promise((resolve, reject) => {
@@ -1081,6 +1111,7 @@ const VALID_REASONS = new Set<ConnectionLostReason>([
 	'browser_closed',
 	'extension_disconnected',
 	'debugger_detached',
+	'blocked_by_extension',
 	'network_error',
 	'heartbeat_timeout',
 ]);

@@ -3,6 +3,7 @@ import { Container, Service, type Constructable } from '@n8n/di';
 import type { NodeLoader } from 'n8n-workflow';
 
 import { ModuleMetadata } from './module-metadata';
+import type { SystemTaskClass } from '../system-task/system-task';
 
 /**
  * Structurally similar (not identical) interface to typeorm's `BaseEntity`
@@ -20,9 +21,10 @@ export interface BaseEntity {
 export interface CreatedAtEntity {
 	createdAt: Date;
 }
-export interface TimestampedEntity extends CreatedAtEntity {
+export interface UpdatedAtEntity {
 	updatedAt: Date;
 }
+export interface TimestampedEntity extends CreatedAtEntity, UpdatedAtEntity {}
 
 export interface TimestampedIdEntity extends TimestampedEntity {
 	id: string;
@@ -32,7 +34,8 @@ export type EntityClass = new () =>
 	| BaseEntity
 	| TimestampedIdEntity
 	| TimestampedEntity
-	| CreatedAtEntity;
+	| CreatedAtEntity
+	| UpdatedAtEntity;
 
 export type ModuleSettings = Record<string, unknown>;
 export type ModuleContext = Record<string, unknown>;
@@ -81,6 +84,16 @@ export interface ModuleInterface {
 	 * ```
 	 */
 	context?(): Promise<ModuleContext>;
+
+	/**
+	 * Return the system task classes this module contributes. Each returned
+	 * class is registered with the system task registry after the module's
+	 * `init()`. Return an empty array when a config or environment gate keeps
+	 * the module's tasks off.
+	 *
+	 * @example [ InsightsCompactionTask, InsightsPruningTask ]
+	 */
+	systemTasks?(): Promise<SystemTaskClass[]>;
 
 	/**
 	 * Return zero or more node loaders contributed by this module.

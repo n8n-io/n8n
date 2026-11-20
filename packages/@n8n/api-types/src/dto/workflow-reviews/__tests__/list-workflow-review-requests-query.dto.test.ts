@@ -3,7 +3,7 @@ import { ListWorkflowReviewRequestsQueryDto } from '../list-workflow-review-requ
 const DEFAULT_PAGINATION = { skip: 0, take: 10 };
 
 describe('ListWorkflowReviewRequestsQueryDto', () => {
-	describe('Valid requests', () => {
+	describe('accepted', () => {
 		test.each([
 			{
 				name: 'workflowId only',
@@ -25,7 +25,7 @@ describe('ListWorkflowReviewRequestsQueryDto', () => {
 				request: { workflowId: 'workflow-1', skip: '5', take: '1' },
 				parsedResult: { workflowId: 'workflow-1', skip: 5, take: 1 },
 			},
-		])('should validate $name', ({ request, parsedResult }) => {
+		])('accepts $name', ({ request, parsedResult }) => {
 			const result = ListWorkflowReviewRequestsQueryDto.safeParse(request);
 			expect(result.success).toBe(true);
 			if (parsedResult) {
@@ -34,7 +34,7 @@ describe('ListWorkflowReviewRequestsQueryDto', () => {
 		});
 	});
 
-	describe('Invalid requests', () => {
+	describe('rejected', () => {
 		test.each([
 			{
 				name: 'missing workflowId',
@@ -61,7 +61,7 @@ describe('ListWorkflowReviewRequestsQueryDto', () => {
 				request: { workflowId: 'workflow-1', skip: '-1' },
 				expectedErrorPath: ['skip'],
 			},
-		])('should fail validation for $name', ({ request, expectedErrorPath }) => {
+		])('rejects $name', ({ request, expectedErrorPath }) => {
 			const result = ListWorkflowReviewRequestsQueryDto.safeParse(request);
 			expect(result.success).toBe(false);
 			if (expectedErrorPath) {

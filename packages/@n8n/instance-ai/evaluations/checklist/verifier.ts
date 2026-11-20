@@ -5,6 +5,7 @@ import { z } from 'zod';
 import {
 	EPHEMERAL_CACHE,
 	createEvalAgent,
+	resolveJudgeModel,
 	resolveEvalModelConfig,
 } from '../../src/utils/eval-agents';
 import type { VerificationArtifact } from '../harness/scenario-execution';
@@ -17,10 +18,12 @@ import type { ChecklistItem, ChecklistResult } from '../types';
 
 const checklistResultSchema = z.object({
 	results: z.array(
+		// `reasoning` before `pass`: the model writes keys in schema order, and a verdict
+		// written first can disagree with the reasoning that follows it.
 		z.object({
 			id: z.number(),
-			pass: z.boolean(),
 			reasoning: z.string(),
+			pass: z.boolean(),
 			failureCategory: z.string().nullable().optional(),
 			rootCause: z.string().nullable().optional(),
 		}),
@@ -36,6 +39,47 @@ export const VERIFY_ATTEMPT_TIMEOUTS_MS = [60_000, 120_000, 240_000];
 /** Abort when the stream goes silent for this long AFTER its first chunk (agents path only).
  *  Pre-first-chunk time is bounded by the attempt cap, not this window. */
 export const VERIFY_INACTIVITY_TIMEOUT_MS = 45_000;
+/**
+ * Completion budget for checklist JSON. Some OpenAI-compatible defaults (~250)
+ * truncate mid-result (~298 tokens observed). Judges at effort high think past 4096
+ * (Sonnet 4.6 / 5 replays hit it), so leave room for thinking plus the JSON.
+ */
+export const VERIFIER_MAX_OUTPUT_TOKENS = 16_384;
+
+/**
+ * Native OpenAI Responses `text.format` for the verifier: the JSON-schema twin of
+ * `checklistResultSchema`. `reasoning` comes before `pass` for the same reason.
+ * Shared with `export-latest-verifier-request.ts`, so a replayed request has the same
+ * instructions, schema and request settings (the export builds its own user message).
+ */
+export const VERIFIER_RESPONSE_FORMAT = {
+	type: 'json_schema',
+	strict: true,
+	name: 'response',
+	schema: {
+		type: 'object',
+		properties: {
+			results: {
+				type: 'array',
+				items: {
+					type: 'object',
+					properties: {
+						id: { type: 'number' },
+						reasoning: { type: 'string' },
+						pass: { type: 'boolean' },
+						failureCategory: { type: ['string', 'null'] },
+						rootCause: { type: ['string', 'null'] },
+					},
+					required: ['id', 'reasoning', 'pass', 'failureCategory', 'rootCause'],
+					additionalProperties: false,
+				},
+			},
+		},
+		required: ['results'],
+		additionalProperties: false,
+		$schema: 'http://json-schema.org/draft-07/schema#',
+	},
+};
 const VERIFIER_DEBUG = process.env.N8N_EVAL_VERIFIER_DEBUG === '1';
 
 function jitteredPauseMs(attempt: number): number {
@@ -156,19 +200,16 @@ export function supportsOpenAiReasoning(modelId: string): boolean {
 	return /^(gpt-5(?:$|[-.])|o[1-9](?:$|[-.]))/.test(normalized);
 }
 
-async function runNativeOpenAiVerifier(
-	userMessage: string,
-	abortSignal: AbortSignal,
-): Promise<{
-	finishReason: unknown;
-	usage: unknown;
-	assistantText: string;
-	parsed: z.infer<typeof checklistResultSchema> | undefined;
-}> {
-	const model = resolveEvalModelConfig();
-	const requestBody = {
-		model: model.providerModelId,
-		...(supportsOpenAiReasoning(model.providerModelId) ? { reasoning: { effort: 'high' } } : {}),
+/**
+ * The OpenAI Responses request the native verifier sends. The replay export builds its
+ * request here too, so both send the same instructions, schema and request settings. The
+ * user message is the caller's: the export builds its own, so that part can differ.
+ */
+export function buildNativeVerifierRequestBody(userMessage: string, providerModelId: string) {
+	return {
+		model: providerModelId,
+		max_output_tokens: VERIFIER_MAX_OUTPUT_TOKENS,
+		...(supportsOpenAiReasoning(providerModelId) ? { reasoning: { effort: 'high' } } : {}),
 		input: [
 			{
 				role: 'developer',
@@ -184,37 +225,21 @@ async function runNativeOpenAiVerifier(
 				],
 			},
 		],
-		text: {
-			format: {
-				type: 'json_schema',
-				strict: true,
-				name: 'response',
-				schema: {
-					type: 'object',
-					properties: {
-						results: {
-							type: 'array',
-							items: {
-								type: 'object',
-								properties: {
-									id: { type: 'number' },
-									pass: { type: 'boolean' },
-									reasoning: { type: 'string' },
-									failureCategory: { type: ['string', 'null'] },
-									rootCause: { type: ['string', 'null'] },
-								},
-								required: ['id', 'pass', 'reasoning', 'failureCategory', 'rootCause'],
-								additionalProperties: false,
-							},
-						},
-					},
-					required: ['results'],
-					additionalProperties: false,
-					$schema: 'http://json-schema.org/draft-07/schema#',
-				},
-			},
-		},
+		text: { format: VERIFIER_RESPONSE_FORMAT },
 	};
+}
+
+async function runNativeOpenAiVerifier(
+	userMessage: string,
+	abortSignal: AbortSignal,
+): Promise<{
+	finishReason: unknown;
+	usage: unknown;
+	assistantText: string;
+	parsed: z.infer<typeof checklistResultSchema> | undefined;
+}> {
+	const model = resolveEvalModelConfig(resolveJudgeModel());
+	const requestBody = buildNativeVerifierRequestBody(userMessage, model.providerModelId);
 	const response = await fetch(getOpenAiResponsesUrl(model.url), {
 		method: 'POST',
 		headers: {
@@ -388,7 +413,7 @@ export async function verifyChecklist(
 
 	const validIds = new Set(llmItems.map((i) => i.id));
 	const attempts: VerifierAttemptDebug[] = [];
-	const model = resolveEvalModelConfig();
+	const model = resolveEvalModelConfig(resolveJudgeModel());
 	const useNativeOpenAiVerifier = model.provider === 'openai';
 
 	logVerifierDebug('request summary', {
@@ -447,6 +472,7 @@ export async function verifyChecklist(
 				const agent = createEvalAgent('eval-checklist-verifier', {
 					instructions: MOCK_EXECUTION_VERIFY_PROMPT,
 					cache: true,
+					judge: true,
 				}).structuredOutput(checklistResultSchema);
 
 				// The inactivity watchdog arms on the FIRST chunk (inside the consume
@@ -455,6 +481,7 @@ export async function verifyChecklist(
 				const streamResult = await agent.stream(messages, {
 					abortSignal: abortController.signal,
 					smoothStream: false,
+					maxOutputTokens: VERIFIER_MAX_OUTPUT_TOKENS,
 				});
 				const streamed = await consumeVerifierStream(
 					streamResult.stream,

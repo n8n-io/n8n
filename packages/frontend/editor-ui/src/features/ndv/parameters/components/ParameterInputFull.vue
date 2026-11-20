@@ -38,6 +38,7 @@ import { ChatHubToolContextKey, ExpressionLocalResolveContextSymbol } from '@/ap
 
 import { N8nInputLabel } from '@n8n/design-system';
 import { useCollectionOverhaul } from '@/app/composables/useCollectionOverhaul';
+import { useParameterInputContribution } from '@/features/ndv/parameters/composables/useParameterInputContribution';
 import type { ParameterOptionsOverrides } from '@/features/ndv/shared/ndv.utils';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
@@ -58,6 +59,9 @@ type Props = {
 	showDelete?: boolean;
 	onDelete?: () => void;
 	optionsOverrides?: ParameterOptionsOverrides;
+	externalIssues?: string[];
+	disableFromAi?: boolean;
+	inputMode?: 'ai' | 'fixed' | 'expression';
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -70,10 +74,14 @@ const props = withDefaults(defineProps<Props>(), {
 	label: () => ({ size: 'small' }),
 	showDelete: false,
 	onDelete: undefined,
+	externalIssues: () => [],
+	disableFromAi: false,
 });
 const emit = defineEmits<{
 	blur: [];
 	update: [value: IUpdateInformation];
+	textInput: [value: IUpdateInformation];
+	'update:inputMode': [mode: NonNullable<Props['inputMode']>];
 	hover: [hovered: boolean];
 	drop: [value: string];
 }>();
@@ -105,16 +113,30 @@ const activeNode = computed(() => {
 });
 const fromAIOverride = ref<FromAIOverride | null>(makeOverrideValue(props, activeNode.value));
 
+// A module-contributed input declares the same capabilities the built-in
+// resource-locator family behaves with, so both go through one value here.
+const { capabilities: inputCapabilities } = useParameterInputContribution(
+	computed(() => props.parameter.type),
+);
+
 const canCreateContentOverride = computed(() => {
-	// The resourceLocator handles overrides separately
-	if (!activeNode.value || isResourceLocator.value) return false;
+	// An input that owns the from-AI override handles it separately
+	if (props.disableFromAi || inputCapabilities.value.ownsFromAiOverride) return false;
+	if (props.inputMode !== undefined) return true;
+	if (!activeNode.value) return false;
 
 	return canBeContentOverride(props, activeNode.value);
 });
 
-const isContentOverride = computed(
-	() => fromAIOverride.value !== null && !!isFromAIOverrideValue(props.value?.toString() ?? ''),
-);
+const isContentOverride = computed(() => {
+	if (props.inputMode !== undefined) return props.inputMode === 'ai';
+	return fromAIOverride.value !== null && !!isFromAIOverrideValue(props.value?.toString() ?? '');
+});
+
+const inputParameter = computed(() => {
+	if (props.inputMode !== 'fixed') return props.parameter;
+	return { ...props.parameter, noDataExpression: true };
+});
 
 const hint = computed(() =>
 	i18n.nodeText(activeNode.value?.type).hint(props.parameter, props.path),
@@ -128,16 +150,23 @@ const isResourceLocator = computed(
 );
 const isDropDisabled = computed(
 	() =>
-		props.parameter.noDataExpression ||
+		inputParameter.value.noDataExpression ||
+		isContentOverride.value ||
 		props.isReadOnly ||
-		isResourceLocator.value ||
+		inputCapabilities.value.disableDrop ||
 		isExpression.value,
 );
-const isExpression = computed(() => isValueExpression(props.parameter, props.value));
+const isExpression = computed(() => {
+	if (props.inputMode !== undefined) return props.inputMode === 'expression';
+	return isValueExpression(props.parameter, props.value);
+});
 
 const useInlineSwitchLayout = computed(
 	() =>
-		props.parameter.type === 'boolean' && isCollectionOverhaulEnabled.value && !isExpression.value,
+		props.parameter.type === 'boolean' &&
+		isCollectionOverhaulEnabled.value &&
+		!isExpression.value &&
+		!isContentOverride.value,
 );
 
 const parameterTooltipText = computed(() =>
@@ -147,8 +176,8 @@ const parameterTooltipText = computed(() =>
 const showExpressionSelector = computed(() => {
 	if (props.optionsOverrides?.hideExpressionSelector) return false;
 
-	if (isResourceLocator.value) {
-		// The resourceLocator handles overrides itself, so we use this hack to
+	if (inputCapabilities.value.ownsExpressionRendering) {
+		// The input handles overrides itself, so we use this hack to
 		// infer whether it's overridden and we should hide the toggle
 		const value =
 			props.value && typeof props.value === 'object' && 'value' in props.value && props.value.value;
@@ -164,7 +193,7 @@ const showExpressionSelector = computed(() => {
 
 function onFocus() {
 	focused.value = true;
-	if (!props.parameter.noDataExpression) {
+	if (!inputParameter.value.noDataExpression) {
 		ndvStore.value.setMappableNDVInputFocus(props.parameter.displayName);
 	}
 	ndvStore.value.setFocusedInputPath(props.path ?? '');
@@ -173,7 +202,7 @@ function onFocus() {
 function onBlur() {
 	focused.value = false;
 	if (
-		!props.parameter.noDataExpression &&
+		!inputParameter.value.noDataExpression &&
 		ndvStore.value.focusedMappableInput === props.parameter.displayName
 	) {
 		ndvStore.value.setMappableNDVInputFocus('');
@@ -195,6 +224,16 @@ function onWrapperMouseLeave() {
 }
 
 function optionSelected(command: string) {
+	if (props.inputMode !== undefined) {
+		if (command === 'addExpression') {
+			emit('update:inputMode', 'expression');
+			return;
+		}
+		if (command === 'removeExpression' || command === 'resetValue') {
+			emit('update:inputMode', 'fixed');
+			return;
+		}
+	}
 	if (isContentOverride.value && command === 'resetValue') {
 		removeOverride(true);
 	}
@@ -206,6 +245,8 @@ function valueChanged(parameterData: IUpdateInformation) {
 }
 
 function onTextInput(parameterData: IUpdateInformation) {
+	emit('textInput', parameterData);
+	if (props.inputMode !== undefined) return;
 	if (isValueExpression(props.parameter, parameterData.value)) {
 		eventBus.value.emit('optionSelected', 'addExpression');
 	}
@@ -315,6 +356,10 @@ const isSingleLineInput: ComputedRef<boolean> = computed(
 );
 
 function applyOverride() {
+	if (props.inputMode !== undefined) {
+		emit('update:inputMode', 'ai');
+		return;
+	}
 	if (!fromAIOverride.value) return;
 
 	telemetry.track('User turned on fromAI override', {
@@ -331,22 +376,26 @@ function applyOverride() {
 }
 
 function removeOverride(clearField = false) {
-	if (!fromAIOverride.value) return;
+	if (props.inputMode !== undefined) {
+		emit('update:inputMode', 'fixed');
+	} else {
+		if (!fromAIOverride.value) return;
 
-	// In chat hub tool configuration context, always reset to default since expressions aren't supported
-	const shouldClear = clearField || isChatHubToolContext;
+		// Reset standalone node tools to their default because expressions are disabled.
+		const shouldClear = clearField || isChatHubToolContext;
 
-	telemetry.track('User turned off fromAI override', {
-		nodeType: activeNode.value?.type,
-		parameter: props.path,
-	});
-	valueChanged({
-		node: activeNode.value?.name,
-		name: props.path,
-		value: shouldClear
-			? props.parameter.default
-			: buildValueFromOverride(fromAIOverride.value, props, false),
-	});
+		telemetry.track('User turned off fromAI override', {
+			nodeType: activeNode.value?.type,
+			parameter: props.path,
+		});
+		valueChanged({
+			node: activeNode.value?.name,
+			name: props.path,
+			value: shouldClear
+				? props.parameter.default
+				: buildValueFromOverride(fromAIOverride.value, props, false),
+		});
+	}
 	void setTimeout(async () => {
 		await parameterInputWrapper.value?.focusInput();
 		parameterInputWrapper.value?.selectInput();
@@ -372,7 +421,7 @@ function removeOverride(clearField = false) {
 			<template #default="{ droppable, activeDrop }">
 				<ParameterInputWrapper
 					ref="parameterInputWrapper"
-					:parameter="parameter"
+					:parameter="inputParameter"
 					:model-value="value"
 					:path="path"
 					:is-read-only="isReadOnly"
@@ -381,6 +430,7 @@ function removeOverride(clearField = false) {
 					:active-drop="activeDrop"
 					:force-show-expression="forceShowExpression"
 					:hide-issues="hideIssues"
+					:external-issues="externalIssues"
 					:label="label"
 					:event-bus="eventBus"
 					input-size="small"
@@ -408,6 +458,7 @@ function removeOverride(clearField = false) {
 					v-if="displayOptions"
 					:parameter="parameter"
 					:value="value"
+					:input-mode="inputMode"
 					:is-read-only="isReadOnly"
 					:show-options="displayOptions"
 					:show-expression-selector="showExpressionSelector"
@@ -456,6 +507,7 @@ function removeOverride(clearField = false) {
 			<ParameterOptions
 				:parameter="parameter"
 				:value="value"
+				:input-mode="inputMode"
 				:is-read-only="isReadOnly"
 				:show-options="displayOptions"
 				:show-expression-selector="showExpressionSelector"
@@ -476,14 +528,15 @@ function removeOverride(clearField = false) {
 		>
 			<template #default="{ droppable, activeDrop }">
 				<FromAiOverrideField
-					v-if="fromAIOverride && isContentOverride"
+					v-if="isContentOverride"
 					:is-read-only="isReadOnly"
+					:issues="externalIssues"
 					@close="removeOverride(!canCreateContentOverride)"
 				/>
 				<div v-else>
 					<ParameterInputWrapper
 						ref="parameterInputWrapper"
-						:parameter="parameter"
+						:parameter="inputParameter"
 						:model-value="value"
 						:path="path"
 						:is-read-only="isReadOnly"
@@ -495,6 +548,7 @@ function removeOverride(clearField = false) {
 						:hint="hint"
 						:hide-hint="hideHint"
 						:hide-issues="hideIssues"
+						:external-issues="externalIssues"
 						:label="label"
 						:event-bus="eventBus"
 						:can-be-overridden="canCreateContentOverride"
@@ -507,7 +561,14 @@ function removeOverride(clearField = false) {
 						@drop="onDrop"
 					>
 						<template v-if="showOverrideButton && isSingleLineInput" #overrideButton>
-							<FromAiOverrideButton @click="applyOverride" />
+							<FromAiOverrideButton
+								:size="
+									!isExpression && ['number', 'multiOptions'].includes(parameter.type)
+										? 'small'
+										: 'medium'
+								"
+								@click="applyOverride"
+							/>
 						</template>
 					</ParameterInputWrapper>
 				</div>
@@ -523,6 +584,7 @@ function removeOverride(clearField = false) {
 				v-if="optionsPosition === 'bottom'"
 				:parameter="parameter"
 				:value="value"
+				:input-mode="inputMode"
 				:is-read-only="isReadOnly"
 				:show-options="displayOptions"
 				:show-expression-selector="showExpressionSelector"
@@ -544,6 +606,7 @@ function removeOverride(clearField = false) {
 				v-if="displayOptions && optionsPosition === 'top-absolute'"
 				:parameter="parameter"
 				:value="value"
+				:input-mode="inputMode"
 				:is-read-only="isReadOnly"
 				:show-options="displayOptions"
 				:show-expression-selector="showExpressionSelector"
@@ -556,7 +619,9 @@ function removeOverride(clearField = false) {
 			/>
 		</div>
 		<ParameterOverrideSelectableList
-			v-if="canCreateContentOverride && isContentOverride && fromAIOverride"
+			v-if="
+				inputMode === undefined && canCreateContentOverride && isContentOverride && fromAIOverride
+			"
 			v-model="fromAIOverride"
 			:parameter="parameter"
 			:path="path"

@@ -7,6 +7,8 @@ import type { SchedulerDeps } from '@n8n/scheduler';
 
 import { buildMaterializerTransaction } from '@/scheduling/durable-scheduler';
 
+import { selfOwned } from './shared/job-factory';
+
 describe('scheduler retention', () => {
 	let jobRepo: ScheduledJobRepository;
 	let taskRepo: ScheduledTaskRepository;
@@ -41,10 +43,12 @@ describe('scheduler retention', () => {
 			retention,
 		});
 
-	const createJob = async (overrides: Partial<ScheduledJob> = {}) =>
-		await jobRepo.save(
+	const createJob = async (overrides: Partial<ScheduledJob> = {}) => {
+		const jobName = `job-${++sequence}`;
+		return await jobRepo.save(
 			jobRepo.create({
-				name: `job-${++sequence}`,
+				name: jobName,
+				...selfOwned(jobName),
 				taskType: 'test',
 				payload: {},
 				kind: 'interval',
@@ -55,6 +59,7 @@ describe('scheduler retention', () => {
 				...overrides,
 			}),
 		);
+	};
 
 	const createTask = async (jobId: number, overrides: Partial<ScheduledTask> = {}) => {
 		// Each row gets its own scheduledFor to satisfy the (jobId, scheduledFor) identity.

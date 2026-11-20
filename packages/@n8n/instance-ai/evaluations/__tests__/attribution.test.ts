@@ -35,6 +35,8 @@ describe('attributionFromVerifierCategory', () => {
 		expect(attributionFromVerifierCategory(undefined)).toBe('builder_issue');
 		expect(attributionFromVerifierCategory('verification_failure')).toBe('builder_issue');
 		expect(attributionFromVerifierCategory('brand_new_category')).toBe('builder_issue');
+		// `timeout` is the harness's own bucket, never a verifier verdict.
+		expect(attributionFromVerifierCategory('timeout')).toBe('builder_issue');
 	});
 
 	it('stays in step with the enum the verifier prompt actually defines', () => {
@@ -115,6 +117,8 @@ describe('buildFailedOnInfra', () => {
 		expect(buildFailedOnInfra(build({ seedingFailed: true }))).toBe(true);
 		expect(buildFailedOnInfra(build({ transportFailure: true }))).toBe(true);
 		expect(buildFailedOnInfra(build({ providerOutage: 'provider HTTP 529' }))).toBe(true);
+		// A credential-setup lane that never booted is the runner's problem too.
+		expect(buildFailedOnInfra(build({ laneBootFailed: true }))).toBe(true);
 	});
 });
 

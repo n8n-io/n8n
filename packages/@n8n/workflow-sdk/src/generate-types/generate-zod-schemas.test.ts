@@ -5,6 +5,7 @@ import {
 } from './generate-types';
 import {
 	generateConditionalSchemaLine,
+	generateResourceIndexSchemaFile,
 	generateSingleVersionSchemaFile,
 	stripDiscriminatorKeysFromDisplayOptions,
 	generateDiscriminatorSchemaFile,
@@ -536,6 +537,63 @@ describe('duplicate property declarations with mutually-exclusive displayOptions
 		const result = schema.safeParse({ parameters });
 		expect(result.success).toBe(true);
 	});
+
+	describe('root-path show condition', () => {
+		// Mirrors the OpenAI Chat Model node: `builtInTools` is shown by
+		// `/responsesApiEnabled`, which defaults to true.
+		const rootPathNode: NodeTypeDescription = {
+			...baseNode,
+			name: 'n8n-nodes-base.rootPathShow',
+			displayName: 'Root Path Show',
+			version: 1,
+			properties: [
+				{
+					displayName: 'Use Responses API',
+					name: 'responsesApiEnabled',
+					type: 'boolean',
+					default: true,
+				},
+				{
+					displayName: 'Built-in Tools',
+					name: 'builtInTools',
+					type: 'collection',
+					default: {},
+					options: [
+						{
+							displayName: 'Code Interpreter',
+							name: 'codeInterpreter',
+							type: 'boolean',
+							default: true,
+						} as NodeProperty,
+					],
+					displayOptions: { show: { '/responsesApiEnabled': [true] } },
+				},
+			],
+		};
+
+		function parse(parameters: Record<string, unknown>): boolean {
+			const factory = loadFactory(generateSingleVersionSchemaFile(rootPathNode, 1));
+			const schema = factory({
+				...schemaHelpers,
+				parameters,
+				resolveSchema: (cfg: Parameters<typeof schemaHelpers.resolveSchema>[0]) =>
+					schemaHelpers.resolveSchema(cfg),
+				resolveOneOfSchemas: (cfg: Parameters<typeof schemaHelpers.resolveOneOfSchemas>[0]) =>
+					schemaHelpers.resolveOneOfSchemas(cfg),
+			});
+			return schema.safeParse({ parameters }).success;
+		}
+
+		it('accepts the field when the root-path property is unset and its default shows it', () => {
+			expect(parse({ builtInTools: { codeInterpreter: true } })).toBe(true);
+		});
+
+		it('rejects the field when the root-path property is set to a value that hides it', () => {
+			expect(parse({ responsesApiEnabled: false, builtInTools: { codeInterpreter: true } })).toBe(
+				false,
+			);
+		});
+	});
 });
 
 describe('extractDefaultsForDisplayOptions', () => {
@@ -643,7 +701,7 @@ describe('extractDefaultsForDisplayOptions', () => {
 		expect(defaults).not.toHaveProperty('@version');
 	});
 
-	it('skips root path references (/ prefix)', () => {
+	it('extracts defaults for root path references (/ prefix) without the prefix', () => {
 		const displayOptions = { show: { '/globalSetting': ['enabled'], mode: ['advanced'] } };
 		const allProperties: NodeProperty[] = [
 			{
@@ -662,8 +720,7 @@ describe('extractDefaultsForDisplayOptions', () => {
 
 		const defaults = extractDefaultsForDisplayOptions(displayOptions, allProperties);
 
-		// Should only include mode, not globalSetting (since it was referenced with /)
-		expect(defaults).toEqual({ mode: 'simple' });
+		expect(defaults).toEqual({ mode: 'simple', globalSetting: 'enabled' });
 	});
 
 	it('handles nested property paths by extracting base property', () => {
@@ -2479,5 +2536,108 @@ describe('mapPropertyToZodSchema for agentSelector', () => {
 		expect(schema).toContain('value: z.union([z.string(), z.number()])');
 		expect(schema).toContain('cachedResultName: z.string().optional()');
 		expect(schema).toContain('expressionSchema');
+	});
+});
+
+describe('per-resource operation defaults', () => {
+	// Mirrors nodes like Salesforce that declare one `operation` property per
+	// resource, each gated by displayOptions and carrying its own default.
+	const multiResourceNode: NodeTypeDescription = {
+		group: ['transform'],
+		inputs: ['main'],
+		outputs: ['main'],
+		name: 'n8n-nodes-base.testNode',
+		displayName: 'Test Node',
+		version: 1,
+		properties: [
+			{
+				name: 'resource',
+				displayName: 'Resource',
+				type: 'options',
+				options: [
+					{ name: 'Lead', value: 'lead' },
+					{ name: 'Search', value: 'search' },
+				],
+				default: 'lead',
+			},
+			{
+				name: 'operation',
+				displayName: 'Operation',
+				type: 'options',
+				displayOptions: { show: { resource: ['lead'] } },
+				options: [
+					{ name: 'Create', value: 'create' },
+					{ name: 'Get', value: 'get' },
+				],
+				default: 'create',
+			},
+			{
+				name: 'operation',
+				displayName: 'Operation',
+				type: 'options',
+				displayOptions: { show: { resource: ['search'] } },
+				options: [{ name: 'Query', value: 'query' }],
+				default: 'query',
+			},
+		],
+	};
+
+	it('applies the default of the operation property scoped to the resource', () => {
+		const code = generateResourceIndexSchemaFile(multiResourceNode, 1, 'search', ['query']);
+
+		expect(code).toContain("operation: 'query'");
+	});
+
+	it('does not apply another resource’s operation default', () => {
+		const code = generateResourceIndexSchemaFile(multiResourceNode, 1, 'search', ['query']);
+
+		expect(code).not.toContain("operation: 'create'");
+	});
+
+	it('still applies the default for the first resource', () => {
+		const code = generateResourceIndexSchemaFile(multiResourceNode, 1, 'lead', ['create', 'get']);
+
+		expect(code).toContain("operation: 'create'");
+	});
+
+	// The editor omits `operation` when it equals the resource's default, so the
+	// leaf schema has to accept it as absent.
+	it('makes the operation literal defaultable when it is the resource default', () => {
+		const code = generateDiscriminatorSchemaFile(
+			multiResourceNode,
+			1,
+			{ resource: 'search', operation: 'query' },
+			[],
+			5,
+			[],
+		);
+
+		expect(code).toContain("operation: z.literal('query').default('query')");
+	});
+
+	it('keeps the operation literal required when it is not the resource default', () => {
+		const code = generateDiscriminatorSchemaFile(
+			multiResourceNode,
+			1,
+			{ resource: 'lead', operation: 'get' },
+			[],
+			5,
+			[],
+		);
+
+		expect(code).toContain("operation: z.literal('get'),");
+	});
+
+	it('makes the operation literal defaultable for the first resource default', () => {
+		const code = generateDiscriminatorSchemaFile(
+			multiResourceNode,
+			1,
+			{ resource: 'lead', operation: 'create' },
+			[],
+			5,
+			[],
+		);
+
+		expect(code).toContain("operation: z.literal('create').default('create')");
 	});
 });

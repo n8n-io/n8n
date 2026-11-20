@@ -2,7 +2,7 @@ import type { SamlPreferences } from '@n8n/api-types';
 import { Container } from '@n8n/di';
 import type { ServiceProviderInstance } from 'samlify';
 
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 
 let serviceProviderInstance: ServiceProviderInstance | undefined;
 
@@ -32,6 +32,7 @@ export function getServiceProviderInstance(
 			wantAssertionsSigned: prefs.wantAssertionsSigned,
 			wantMessageSigned: prefs.wantMessageSigned,
 			signatureConfig: prefs.signatureConfig,
+			// oxlint-disable-next-line typescript/no-deprecated -- Preserve the configured default RelayState for existing SAML setups.
 			relayState: prefs.relayState,
 			nameIDFormat: ['urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress'],
 			assertionConsumerService: [

@@ -9,23 +9,45 @@
  * non-null alternatives. For example:
  *   z.union([z.string(), z.null()])  →  z.string().optional()
  *   z.nullable(z.string())           →  z.string().optional()
+ *
+ * The same walk bounds and strips the server-supplied description text it
+ * carries (see `sanitize-mcp-descriptions.ts`), which otherwise reaches the
+ * model verbatim.
  */
 
 import type { BuiltTool } from '@n8n/agents';
 import { isRecord } from '@n8n/utils/is-record';
 import { z } from 'zod';
 
+import type { ReportTruncation } from './sanitize-mcp-descriptions';
+import {
+	MCP_SCHEMA_DESCRIPTION_MAX_LENGTH,
+	MCP_TOOL_DESCRIPTION_MAX_LENGTH,
+	sanitizeMcpDescription,
+	sanitizeMcpJsonSchemaDescriptions,
+} from './sanitize-mcp-descriptions';
 import type { InstanceAiToolRegistry } from '../types';
 
 export const MCP_SCHEMA_MAX_DEPTH = 32;
 export const MCP_SCHEMA_MAX_NODES = 1_000;
 export const MCP_SCHEMA_MAX_OBJECT_PROPERTIES = 250;
 export const MCP_SCHEMA_MAX_UNION_OPTIONS = 100;
+/**
+ * Whole-schema byte cap, the backstop for the free text the description caps do
+ * not cover — enum values, defaults, consts, property names. Those are data the
+ * model has to echo back verbatim, so they are rejected rather than rewritten:
+ * a clipped enum value would just produce failing tool calls. Counted in UTF-8
+ * bytes, so a schema written in a non-Latin script is held to the same size as
+ * an ASCII one rather than three times it. 64 KB is ~3x the largest single tool
+ * schema on mcp.notion.com (21,815 bytes, 2026-08-20).
+ */
+export const MCP_SCHEMA_MAX_SERIALIZED_LENGTH = 65_536;
 
 type McpSchemaLimitType =
 	| 'depth'
 	| 'nodes'
 	| 'objectProperties'
+	| 'serializedLength'
 	| 'unionOptions'
 	| 'unsupportedType';
 
@@ -54,6 +76,7 @@ interface SanitizeBudget {
 
 interface SanitizeContext {
 	strict: boolean;
+	reportTruncation?: ReportTruncation;
 	toolName?: string;
 	path: string;
 	depth: number;
@@ -65,6 +88,7 @@ interface SanitizeContext {
 }
 
 interface SanitizeZodTypeOptions {
+	reportTruncation?: ReportTruncation;
 	maxDepth?: number;
 	maxNodes?: number;
 	maxObjectProperties?: number;
@@ -75,6 +99,7 @@ interface SanitizeZodTypeOptions {
 }
 
 interface ValidateJsonSchemaOptions {
+	maxSerializedLength?: number;
 	maxDepth?: number;
 	maxNodes?: number;
 	maxObjectProperties?: number;
@@ -88,8 +113,15 @@ interface JsonSchemaValidationContext {
 	maxDepth: number;
 	maxNodes: number;
 	maxObjectProperties: number;
+	maxSerializedLength: number;
 	maxUnionOptions: number;
-	budget: SanitizeBudget;
+	budget: JsonSchemaBudget;
+}
+
+interface JsonSchemaBudget {
+	nodes: number;
+	/** Serialized characters accounted for so far, across every node visited. */
+	serialized: number;
 }
 
 function throwJsonSchemaLimitError(
@@ -110,6 +142,38 @@ function throwJsonSchemaLimitError(
 		limitType,
 		count,
 	});
+}
+
+/**
+ * UTF-8 bytes `text` takes as a JSON string, quotes and escapes included — a
+ * control character costs six (`\u0001`), a quote or backslash two.
+ *
+ * Text longer than the budget left is returned unescaped instead of being
+ * serialized: escaping only ever adds, and UTF-8 never spends less than a byte
+ * on a UTF-16 code unit, so such a string is over the cap either way. That
+ * keeps an oversized leaf from costing a copy of its full length.
+ */
+function serializedStringCost(text: string, remaining: number): number {
+	if (text.length > remaining) return text.length;
+	return Buffer.byteLength(JSON.stringify(text), 'utf8');
+}
+
+/**
+ * What this node alone adds to the serialized form in UTF-8 bytes: its own
+ * braces, separators and keys, but not its children.
+ */
+function ownSerializedCost(value: unknown, remaining: number): number {
+	if (typeof value === 'string') return serializedStringCost(value, remaining);
+	if (Array.isArray(value)) return 2 + Math.max(0, value.length - 1);
+	if (isRecord(value)) {
+		const keys = Object.keys(value);
+		// Per key: the quoted key, a colon, and a comma for every key but the first.
+		return keys.reduce(
+			(total, key) => total + serializedStringCost(key, remaining) + 1,
+			2 + Math.max(0, keys.length - 1),
+		);
+	}
+	return String(value).length;
 }
 
 function validateJsonSchemaNode(
@@ -140,6 +204,20 @@ function validateJsonSchemaNode(
 			'nodes',
 			context.maxNodes,
 			context.budget.nodes,
+		);
+	}
+
+	const remaining = context.maxSerializedLength - context.budget.serialized;
+	context.budget.serialized += ownSerializedCost(value, remaining);
+	if (context.budget.serialized > context.maxSerializedLength) {
+		throwJsonSchemaLimitError(
+			context,
+			path,
+			depth,
+			`MCP schema exceeds maximum serialized length of ${context.maxSerializedLength}`,
+			'serializedLength',
+			context.maxSerializedLength,
+			context.budget.serialized,
 		);
 	}
 
@@ -197,8 +275,9 @@ export function assertMcpJsonSchemaWithinLimits(
 		maxDepth: options.maxDepth ?? MCP_SCHEMA_MAX_DEPTH,
 		maxNodes: options.maxNodes ?? MCP_SCHEMA_MAX_NODES,
 		maxObjectProperties: options.maxObjectProperties ?? MCP_SCHEMA_MAX_OBJECT_PROPERTIES,
+		maxSerializedLength: options.maxSerializedLength ?? MCP_SCHEMA_MAX_SERIALIZED_LENGTH,
 		maxUnionOptions: options.maxUnionOptions ?? MCP_SCHEMA_MAX_UNION_OPTIONS,
-		budget: { nodes: 0 },
+		budget: { nodes: 0, serialized: 0 },
 	});
 }
 
@@ -217,6 +296,7 @@ export function sanitizeZodType(
 ): z.ZodTypeAny {
 	return sanitizeZodTypeInner(schema, {
 		strict,
+		reportTruncation: options.reportTruncation,
 		toolName: options.toolName,
 		path: options.path ?? '$',
 		depth: 0,
@@ -296,7 +376,25 @@ function isSupportedLeafSchema(schema: z.ZodTypeAny): boolean {
 
 type SanitizeChild = (child: z.ZodTypeAny, path: string) => z.ZodTypeAny;
 
-type DiscriminatedFieldEntry = { action: string; description?: string; type: z.ZodTypeAny };
+type DiscriminatedFieldEntry = {
+	action: string;
+	description?: string;
+	type: z.ZodTypeAny;
+	required: boolean;
+};
+
+/**
+ * Whether the model must send this field. Nullable counts as optional, because
+ * the sanitizer turns `T | null` into an optional `T` on the wire.
+ */
+function isRequiredField(type: z.ZodTypeAny): boolean {
+	try {
+		return !type.isOptional() && !type.isNullable();
+	} catch {
+		// A preprocess step can throw on undefined. Do not enforce what we cannot check.
+		return false;
+	}
+}
 
 /** Collect per-action and per-field metadata from a discriminated union's variants. */
 function collectDiscriminatedUnionMeta(
@@ -322,9 +420,12 @@ function collectDiscriminatedUnionMeta(
 		for (const [key, value] of Object.entries(variant.shape)) {
 			if (key === discriminator) continue;
 			if (!fieldMeta.has(key)) fieldMeta.set(key, []);
-			fieldMeta
-				.get(key)!
-				.push({ action: actionValue, description: value.description, type: value });
+			fieldMeta.get(key)!.push({
+				action: actionValue,
+				description: value.description,
+				type: value,
+				required: isRequiredField(value),
+			});
 		}
 	}
 
@@ -362,15 +463,57 @@ function assertNoEnumConflict(fieldName: string, entries: DiscriminatedFieldEntr
 	);
 }
 
-/** Build a single flattened, optional field for a merged discriminated union, merging descriptions. */
+const quoteActions = (actions: string[]) => actions.map((action) => `"${action}"`).join(', ');
+
+/**
+ * Hint for a field that only some actions use, or only some actions require.
+ * Names whichever side is shorter where it can, to keep the schema small.
+ */
+function buildActionHint(
+	entries: DiscriminatedFieldEntry[],
+	allActions: string[],
+	hasDescription: boolean,
+): string | undefined {
+	const used = entries.map((e) => e.action);
+	const required = entries.filter((e) => e.required).map((e) => e.action);
+	const optional = entries.filter((e) => !e.required).map((e) => e.action);
+	const excluded = allActions.filter((action) => !used.includes(action));
+	const inAllActions = excluded.length === 0;
+
+	if (required.length === 0) {
+		if (inAllActions) return undefined;
+		return excluded.length < used.length
+			? `Not for ${quoteActions(excluded)}`
+			: `${hasDescription ? 'For' : 'Only for'} ${quoteActions(used)}`;
+	}
+
+	if (optional.length === 0) {
+		return excluded.length < used.length
+			? `Required, not for ${quoteActions(excluded)}`
+			: `Required for ${quoteActions(used)}`;
+	}
+
+	const requiredHint = `Required for ${quoteActions(required)}`;
+	return inAllActions ? requiredHint : `${requiredHint}, optional for ${quoteActions(optional)}`;
+}
+
+/**
+ * Build a single flattened field for a merged discriminated union, merging descriptions.
+ * The field stays required on the wire only when every action requires it.
+ * For the other fields, `buildRequiredFieldCheck` enforces the per-action rule at parse time.
+ */
 function buildMergedDiscriminatedField(
 	fieldName: string,
 	entries: DiscriminatedFieldEntry[],
-	actionCount: number,
+	allActions: string[],
 	context: SanitizeContext,
 	sanitizeChild: SanitizeChild,
 ): z.ZodTypeAny {
-	const sanitizedField = sanitizeChild(entries[0].type, `${context.path}.${fieldName}`).optional();
+	const fieldPath = `${context.path}.${fieldName}`;
+	const requiredEverywhere =
+		entries.length === allActions.length && entries.every((e) => e.required);
+	const baseField = sanitizeChild(entries[0].type, fieldPath);
+	const sanitizedField = requiredEverywhere ? baseField : baseField.optional();
 
 	if (context.strict && entries.length > 1) {
 		assertNoEnumConflict(fieldName, entries);
@@ -391,21 +534,24 @@ function buildMergedDiscriminatedField(
 			);
 		}
 		// Non-strict: combine with action context for external MCP tools
-		const combined = withDesc.map((d) => `For "${d.action}": ${d.description}`).join('. ');
-		return sanitizedField.describe(combined);
+		const markRequired = (d: DiscriminatedFieldEntry) =>
+			d.required && !requiredEverywhere ? ' (required)' : '';
+		const combined = withDesc
+			.map((d) => `For "${d.action}"${markRequired(d)}: ${d.description}`)
+			.join('. ');
+		return sanitizedField.describe(boundDescription(combined, context, fieldPath));
 	}
 
-	if (entries.length < actionCount) {
-		// Field appears in a subset of variants. Annotate with an action hint so
-		// the model binds the (now-flattened-optional) field to the right actions
-		// and stops cross-mixing fields between sibling actions.
-		const actionList = entries.map((e) => `"${e.action}"`).join(', ');
-		const baseDesc = withDesc[0]?.description;
-		const merged = baseDesc ? `For ${actionList}: ${baseDesc}` : `Only for ${actionList}`;
-		return sanitizedField.describe(merged);
-	}
+	if (requiredEverywhere) return sanitizedField;
 
-	return sanitizedField;
+	// Every flattened field is optional on the wire. Annotate it with an action
+	// hint so the model binds it to the right actions, sends it where an action
+	// requires it, and stops cross-mixing fields between sibling actions.
+	const baseDesc = withDesc[0]?.description;
+	const hint = buildActionHint(entries, allActions, !!baseDesc);
+	if (!hint) return sanitizedField;
+	const merged = baseDesc ? `${hint}: ${baseDesc}` : hint;
+	return sanitizedField.describe(boundDescription(merged, context, fieldPath));
 }
 
 /**
@@ -453,20 +599,65 @@ function sanitizeDiscriminatedUnion(
 		);
 		mergedShape[discriminator] = z
 			.enum(enumValues as [string, ...string[]])
-			.describe(actionDescParts.join(' | '));
+			.describe(
+				boundDescription(actionDescParts.join(' | '), context, `${context.path}.${discriminator}`),
+			);
 	}
 
 	for (const [fieldName, entries] of fieldMeta) {
 		mergedShape[fieldName] = buildMergedDiscriminatedField(
 			fieldName,
 			entries,
-			actionMeta.length,
+			actionMeta.map((a) => a.value),
 			context,
 			sanitizeChild,
 		);
 	}
 
-	return z.object(mergedShape);
+	return buildRequiredFieldCheck(z.object(mergedShape), discriminator, fieldMeta);
+}
+
+/**
+ * Flattening makes action-specific fields optional, so the flat object accepts a
+ * call that leaves out a field its action requires. Check this at parse time and
+ * name the action in the error, so the model can correct its call. A refinement
+ * does not change the JSON schema that the provider gets.
+ */
+function buildRequiredFieldCheck(
+	flattened: z.ZodObject<z.ZodRawShape>,
+	discriminator: string,
+	fieldMeta: Map<string, DiscriminatedFieldEntry[]>,
+): z.ZodTypeAny {
+	const requiredByAction = new Map<string, string[]>();
+	for (const [fieldName, entries] of fieldMeta) {
+		for (const entry of entries) {
+			if (!entry.required) continue;
+			const fields = requiredByAction.get(entry.action) ?? [];
+			fields.push(fieldName);
+			requiredByAction.set(entry.action, fields);
+		}
+	}
+	if (requiredByAction.size === 0) return flattened;
+
+	return flattened.superRefine((value, ctx) => {
+		const action: unknown = value[discriminator];
+		if (typeof action !== 'string') return;
+		for (const fieldName of requiredByAction.get(action) ?? []) {
+			if (value[fieldName] !== undefined) continue;
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				path: [fieldName],
+				message: `"${fieldName}" is required when ${discriminator} is "${action}"`,
+			});
+		}
+	});
+}
+
+/** The flattened object, with or without its required-field check. */
+function unwrapRequiredFieldCheck(schema: z.ZodTypeAny): z.ZodTypeAny {
+	return schema instanceof z.ZodEffects
+		? (schema as z.ZodEffects<z.ZodTypeAny>).innerType()
+		: schema;
 }
 
 /** Strip ZodNull members from a union, making the result optional if null was present. */
@@ -500,7 +691,54 @@ function sanitizeUnion(
 	return hadNull ? union.optional() : union;
 }
 
+/**
+ * Bound a description this module composes from MCP-supplied parts. `path` is
+ * the field the composed text lands on, not the union it was merged from — a
+ * report naming the parent leaves an operator with no way to tell which of the
+ * flattened fields was clipped.
+ */
+function boundDescription(description: string, context: SanitizeContext, path: string): string {
+	return context.strict
+		? description
+		: sanitizeMcpDescription(description, MCP_SCHEMA_DESCRIPTION_MAX_LENGTH, {
+				toolName: context.toolName,
+				path,
+				report: context.reportTruncation,
+			});
+}
+
+/**
+ * Carry the source node's description onto its sanitized replacement, bounded
+ * and stripped. Only for non-strict (MCP-sourced) schemas: strict mode is our
+ * own tool schemas, whose descriptions are trusted and can legitimately be
+ * longer than the MCP cap.
+ */
+function withSanitizedDescription(
+	source: z.ZodTypeAny,
+	sanitized: z.ZodTypeAny,
+	context: SanitizeContext,
+): z.ZodTypeAny {
+	if (context.strict) return sanitized;
+
+	const description = source.description;
+	if (description === undefined) return sanitized;
+
+	const safeDescription = sanitizeMcpDescription(description, MCP_SCHEMA_DESCRIPTION_MAX_LENGTH, {
+		toolName: context.toolName,
+		path: context.path,
+		report: context.reportTruncation,
+	});
+	if (safeDescription === sanitized.description) return sanitized;
+	// Leaf types pass through untouched, so an empty result has to be written
+	// back — otherwise the invisible-only original survives on the schema.
+	return sanitized.describe(safeDescription);
+}
+
 function sanitizeZodTypeInner(schema: z.ZodTypeAny, context: SanitizeContext): z.ZodTypeAny {
+	return withSanitizedDescription(schema, sanitizeZodTypeNode(schema, context), context);
+}
+
+function sanitizeZodTypeNode(schema: z.ZodTypeAny, context: SanitizeContext): z.ZodTypeAny {
 	if (context.depth > context.maxDepth) {
 		throw createLimitError(
 			context,
@@ -674,7 +912,8 @@ function sanitizeZodTypeInner(schema: z.ZodTypeAny, context: SanitizeContext): z
  * which accepts any object — same fallback used when schema conversion fails.
  */
 export function ensureTopLevelObject(schema: z.ZodTypeAny): z.ZodTypeAny {
-	if (schema instanceof z.ZodObject || schema instanceof z.ZodRecord) {
+	const objectSchema = unwrapRequiredFieldCheck(schema);
+	if (objectSchema instanceof z.ZodObject || objectSchema instanceof z.ZodRecord) {
 		return schema;
 	}
 	// Fallback: accept any object rather than sending a non-object schema that
@@ -709,6 +948,9 @@ export function sanitizeInputSchema<T extends z.ZodTypeAny>(schema: T): T {
  * unlikely to be hit. If it is, conflicting descriptions are merged with
  * action context (e.g. 'For "create": ... For "delete": ...') rather than
  * throwing.
+ *
+ * Also bounds and strips every description the server supplies — the tool's
+ * own and the ones on its schema fields.
  */
 export function sanitizeMcpToolSchemas(
 	tools: InstanceAiToolRegistry,
@@ -717,9 +959,12 @@ export function sanitizeMcpToolSchemas(
 		maxNodes?: number;
 		maxObjectProperties?: number;
 		maxUnionOptions?: number;
+		maxSerializedLength?: number;
 		onError?: (error: McpSchemaSanitizationError) => void;
+		onDescriptionTruncated?: ReportTruncation;
 	} = {},
 ): InstanceAiToolRegistry {
+	const reportTruncation = options.onDescriptionTruncated;
 	for (const [name, tool] of tools) {
 		let inputSchema: BuiltTool['inputSchema'] = tool.inputSchema;
 		let outputSchema: BuiltTool['outputSchema'] = tool.outputSchema;
@@ -729,6 +974,7 @@ export function sanitizeMcpToolSchemas(
 				if (inputSchema instanceof z.ZodType) {
 					inputSchema = ensureTopLevelObject(
 						sanitizeZodType(inputSchema, false, {
+							reportTruncation,
 							maxDepth: options.maxDepth,
 							maxNodes: options.maxNodes,
 							maxObjectProperties: options.maxObjectProperties,
@@ -744,13 +990,20 @@ export function sanitizeMcpToolSchemas(
 						maxNodes: options.maxNodes,
 						maxObjectProperties: options.maxObjectProperties,
 						maxUnionOptions: options.maxUnionOptions,
+						maxSerializedLength: options.maxSerializedLength,
 						toolName: name,
+					});
+					inputSchema = sanitizeMcpJsonSchemaDescriptions(inputSchema, {
+						toolName: name,
+						path: '$.inputSchema',
+						report: reportTruncation,
 					});
 				}
 			}
 			if (outputSchema) {
 				if (outputSchema instanceof z.ZodType) {
 					outputSchema = sanitizeZodType(outputSchema, false, {
+						reportTruncation,
 						maxDepth: options.maxDepth,
 						maxNodes: options.maxNodes,
 						maxObjectProperties: options.maxObjectProperties,
@@ -765,8 +1018,14 @@ export function sanitizeMcpToolSchemas(
 						maxNodes: options.maxNodes,
 						maxObjectProperties: options.maxObjectProperties,
 						maxUnionOptions: options.maxUnionOptions,
+						maxSerializedLength: options.maxSerializedLength,
 						toolName: name,
 						path: '$.outputSchema',
+					});
+					outputSchema = sanitizeMcpJsonSchemaDescriptions(outputSchema, {
+						toolName: name,
+						path: '$.outputSchema',
+						report: reportTruncation,
 					});
 				}
 			}
@@ -781,6 +1040,11 @@ export function sanitizeMcpToolSchemas(
 
 		tools.set(name, {
 			...tool,
+			description: sanitizeMcpDescription(tool.description, MCP_TOOL_DESCRIPTION_MAX_LENGTH, {
+				toolName: name,
+				path: '$.description',
+				report: reportTruncation,
+			}),
 			...(inputSchema ? { inputSchema } : {}),
 			...(outputSchema ? { outputSchema } : {}),
 		});

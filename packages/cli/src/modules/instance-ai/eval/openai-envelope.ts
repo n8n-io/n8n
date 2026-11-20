@@ -233,7 +233,7 @@ function extractAssistantContent(body: unknown): string {
 	if (typeof body === 'string') return body;
 	// Express body-parser only produces JSON-compatible values, so the only
 	// remaining non-object primitives here are number / boolean / bigint.
-	if (typeof body !== 'object') return String(body as number | boolean | bigint);
+	if (typeof body !== 'object') return String(body);
 
 	const obj = body as Record<string, unknown>;
 

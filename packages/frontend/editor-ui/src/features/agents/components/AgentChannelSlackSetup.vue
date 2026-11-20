@@ -12,7 +12,11 @@ import {
 import AgentChannelSlackSetupSnapshots from './AgentChannelSlackSetupSnapshots.vue';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import type { ChatIntegrationDescriptor } from '@n8n/api-types';
+import type {
+	AgentIntegrationSettings,
+	AgentSlackIntegrationSettings,
+	ChatIntegrationDescriptor,
+} from '@n8n/api-types';
 import type { PermissionsRecord } from '@n8n/permissions';
 import { getSlackAgentAppManifest } from '../channels/slack/api';
 import AgentIntegrationCredentialConnection from './AgentIntegrationCredentialConnection.vue';
@@ -36,6 +40,7 @@ const props = withDefaults(
 		errorIsConflict?: boolean;
 		forceNewCredential?: boolean;
 		setupMode?: 'simple' | 'advanced';
+		savedSettings?: AgentIntegrationSettings;
 	}>(),
 	{
 		connected: false,
@@ -52,6 +57,7 @@ const props = withDefaults(
 		errorMessage: '',
 		errorIsConflict: false,
 		forceNewCredential: false,
+		savedSettings: undefined,
 	},
 );
 
@@ -73,6 +79,12 @@ const slackAppManifest = shallowRef('');
 const manifestLoading = shallowRef(false);
 const manifestError = shallowRef(false);
 const manifestCopied = shallowRef(false);
+// A draft channel keeps its saved settings. A new channel uses the agent experience.
+const currentSettings = computed<AgentSlackIntegrationSettings>(() =>
+	props.savedSettings && 'messagingExperience' in props.savedSettings
+		? props.savedSettings
+		: { messagingExperience: 'agent' },
+);
 
 const steps = computed(() => [
 	{
@@ -175,7 +187,7 @@ watch(
 	{ immediate: true },
 );
 
-defineExpose({ credentialId, validationError: null });
+defineExpose({ credentialId, currentSettings, validationError: null, loading: setupLoading });
 </script>
 
 <template>
@@ -184,16 +196,18 @@ defineExpose({ credentialId, validationError: null });
 			<template #default="{ step }">
 				<div :class="$style.stepContent">
 					<div v-if="step.id === 'create-token'" :class="$style.createTokenContainer">
-						<N8nButton
-							href="https://api.slack.com/apps"
-							target="_blank"
-							variant="subtle"
-							size="medium"
-							icon="slack"
-							data-testid="slack-app-configuration-token-link"
-						>
-							{{ i18n.baseText('agents.channels.slack.setup.createToken.link') }}
-						</N8nButton>
+						<div :class="$style.dashboardRow">
+							<N8nButton
+								href="https://api.slack.com/apps"
+								target="_blank"
+								variant="outline"
+								size="medium"
+								icon="slack"
+								data-testid="slack-app-configuration-token-link"
+							>
+								{{ i18n.baseText('agents.channels.slack.setup.createToken.link') }}
+							</N8nButton>
+						</div>
 						<AgentChannelSlackSetupSnapshots />
 					</div>
 
@@ -240,7 +254,7 @@ defineExpose({ credentialId, validationError: null });
 					</div>
 					<template v-else-if="step.id === 'install-app'">
 						<N8nButton
-							variant="subtle"
+							variant="outline"
 							size="medium"
 							:loading="setupLoading"
 							:disabled="!canInstallApp"
@@ -373,7 +387,7 @@ defineExpose({ credentialId, validationError: null });
 .setupDescriptionContainer {
 	display: flex;
 	align-items: center;
-	height: var(--height--xs);
+	min-height: var(--height--xs);
 }
 
 .setupDescription {
@@ -400,6 +414,12 @@ defineExpose({ credentialId, validationError: null });
 	gap: var(--spacing--sm);
 	width: 100%;
 	min-width: 0;
+}
+
+.dashboardRow {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
 }
 
 .manualPanel {

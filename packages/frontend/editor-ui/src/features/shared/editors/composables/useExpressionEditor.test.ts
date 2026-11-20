@@ -1,5 +1,7 @@
 import { renderComponent } from '@/__tests__/render';
+import { createTestWorkflowExecutionResponse } from '@/__tests__/mocks';
 import * as workflowHelpers from '@/app/composables/useWorkflowHelpers';
+import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import { n8nLang } from '../plugins/codemirror/n8nLang';
 import { EditorSelection } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
@@ -10,7 +12,7 @@ import { setActivePinia } from 'pinia';
 import { beforeEach, describe, vi } from 'vitest';
 import { defineComponent, h, ref, toValue } from 'vue';
 import { useExpressionEditor } from './useExpressionEditor';
-import { Expression } from 'n8n-workflow';
+import { createRunExecutionData, Expression } from 'n8n-workflow';
 import * as completionUtils from '../plugins/codemirror/completions/utils';
 
 vi.mock('@/app/composables/useAutocompleteTelemetry', () => ({
@@ -25,6 +27,25 @@ vi.mock('@/features/ndv/shared/ndv.store', () => ({
 	useNDVStore: vi.fn(() => mockNdvStoreValue),
 	injectNDVStore: vi.fn(() => ({ value: mockNdvStoreValue })),
 }));
+
+let mockActiveExecution: IExecutionResponse | null = null;
+
+vi.mock('@/app/stores/workflowExecutionState.store', async (importOriginal) => {
+	const actual = await importOriginal<Record<string, unknown>>();
+	return {
+		...actual,
+		injectWorkflowExecutionStateStore: vi.fn(() => ({
+			// Plain accessor (not `computed`) so per-test reassignment of the
+			// non-reactive `mockActiveExecution` is always picked up.
+			get value() {
+				return {
+					activeExecution: mockActiveExecution,
+					activeExecutionRunData: mockActiveExecution?.data?.resultData.runData,
+				};
+			},
+		})),
+	};
+});
 
 vi.mock(import('../plugins/codemirror/completions/utils'), async (importOriginal) => {
 	const actual = await importOriginal();
@@ -66,6 +87,7 @@ describe('useExpressionEditor', () => {
 
 	beforeEach(() => {
 		setActivePinia(createTestingPinia());
+		mockActiveExecution = null;
 	});
 
 	afterEach(() => {
@@ -270,6 +292,146 @@ describe('useExpressionEditor', () => {
 		});
 	});
 
+	describe('redacted execution data', () => {
+		/**
+		 * Redaction empties `item.json` and marks the item, so every expression that
+		 * reads a field of it resolves to `undefined` until the user reveals.
+		 */
+		const createRedactedExecution = (canReveal = true) =>
+			createTestWorkflowExecutionResponse({
+				status: 'success',
+				data: createRunExecutionData({
+					redactionInfo: { isRedacted: true, reason: 'workflow_redaction_policy', canReveal },
+					resultData: {
+						runData: {
+							Set: [
+								{
+									startTime: 0,
+									executionTime: 1,
+									executionIndex: 0,
+									source: [],
+									executionStatus: 'success',
+									data: {
+										main: [
+											[
+												{
+													json: {},
+													redaction: { redacted: true, reason: 'workflow_redaction_policy' },
+												},
+											],
+										],
+									},
+								},
+							],
+						},
+					},
+				}),
+			});
+
+		test('shows a redacted reveal prompt instead of [undefined] when data is redacted', async () => {
+			mockResolveExpression().mockReturnValueOnce(undefined);
+			mockActiveExecution = createRedactedExecution();
+
+			const {
+				expressionEditor: { segments },
+			} = await renderExpressionEditor({
+				editorValue: '{{ $json.test }}',
+				extensions: [n8nLang()],
+			});
+
+			await waitFor(() => {
+				expect(toValue(segments.resolvable)).toEqual([
+					{
+						error: null,
+						from: 0,
+						kind: 'resolvable',
+						resolvable: '{{ $json.test }}',
+						resolved: 'Reveal data first to see value',
+						state: 'redacted',
+						to: 16,
+					},
+				]);
+			});
+		});
+
+		test('shows a no-permission prompt when the user cannot reveal redacted data', async () => {
+			mockResolveExpression().mockReturnValueOnce(undefined);
+			mockActiveExecution = createRedactedExecution(false);
+
+			const {
+				expressionEditor: { segments },
+			} = await renderExpressionEditor({
+				editorValue: '{{ $json.test }}',
+				extensions: [n8nLang()],
+			});
+
+			await waitFor(() => {
+				expect(toValue(segments.resolvable)).toEqual([
+					{
+						error: null,
+						from: 0,
+						kind: 'resolvable',
+						resolvable: '{{ $json.test }}',
+						resolved: 'No permission to reveal redacted data',
+						state: 'redacted',
+						to: 16,
+					},
+				]);
+			});
+		});
+
+		test('shows [undefined] for a redacted execution when the expression does not read item data', async () => {
+			mockResolveExpression().mockReturnValueOnce(undefined);
+			mockActiveExecution = createRedactedExecution();
+
+			const {
+				expressionEditor: { segments },
+			} = await renderExpressionEditor({
+				editorValue: '{{ $vars.test }}',
+				extensions: [n8nLang()],
+			});
+
+			await waitFor(() => {
+				expect(toValue(segments.resolvable)).toEqual([
+					{
+						error: null,
+						from: 0,
+						kind: 'resolvable',
+						resolvable: '{{ $vars.test }}',
+						resolved: '[undefined]',
+						state: 'invalid',
+						to: 16,
+					},
+				]);
+			});
+		});
+
+		test('shows [undefined] when the expression is undefined and data is not redacted', async () => {
+			mockResolveExpression().mockReturnValueOnce(undefined);
+
+			const {
+				expressionEditor: { segments },
+			} = await renderExpressionEditor({
+				editorValue: '{{ $json.test }}',
+				extensions: [n8nLang()],
+			});
+
+			await waitFor(() => {
+				expect(toValue(segments.resolvable)).toEqual([
+					{
+						error: null,
+						from: 0,
+						kind: 'resolvable',
+						resolvable: '{{ $json.test }}',
+						resolved: '[undefined]',
+						state: 'invalid',
+						to: 16,
+					},
+				]);
+			});
+		});
+	});
+
 	describe('readEditorValue()', () => {
 		test('should return the full editor value (unresolved)', async () => {
 			mockResolveExpression().mockReturnValueOnce(15);
@@ -362,6 +524,25 @@ describe('useExpressionEditor', () => {
 			});
 
 			expect(toValue(editor)?.state.selection).toEqual(EditorSelection.single(3));
+		});
+
+		test('should keep the cursor position set by a click', async () => {
+			const editorValue = 'text here';
+			const {
+				expressionEditor: { editor },
+			} = await renderExpressionEditor({
+				editorValue,
+				initialCursorPosition: 'end',
+			});
+
+			const view = toValue(editor);
+			if (!view) throw new Error('editor not created');
+			await fireEvent.mouseDown(view.contentDOM);
+			view.dispatch({ selection: EditorSelection.cursor(2) });
+			view.focus();
+			await new Promise((resolve) => requestAnimationFrame(resolve));
+
+			expect(view.state.selection).toEqual(EditorSelection.single(2));
 		});
 
 		test('should default to position 0 when no option is provided', async () => {
@@ -475,6 +656,75 @@ describe('useExpressionEditor', () => {
 				secretsData,
 			);
 			expect(resolveExpressionMock).not.toHaveBeenCalled();
+		});
+
+		test('should defer previewing transformed external secrets until execution', async () => {
+			vi.spyOn(completionUtils, 'isCredentialsModalOpen').mockReturnValueOnce(true);
+
+			const {
+				expressionEditor: { segments },
+			} = await renderExpressionEditor({
+				editorValue: "{{ JSON.parse($secrets.awsSecretsManager['cred']).password }}",
+				extensions: [n8nLang()],
+				additionalData: {
+					$secrets: { awsSecretsManager: { cred: '*********' } },
+				},
+			});
+
+			await waitFor(() => {
+				expect(toValue(segments.resolvable)).toEqual([
+					expect.objectContaining({
+						resolved: '[evaluated during execution]',
+						state: 'pending',
+					}),
+				]);
+			});
+		});
+
+		test('should keep unknown external secret references invalid', async () => {
+			vi.spyOn(completionUtils, 'isCredentialsModalOpen').mockReturnValueOnce(true);
+
+			const {
+				expressionEditor: { segments },
+			} = await renderExpressionEditor({
+				editorValue: "{{ JSON.parse($secrets.awsSecretsManager['name-with-typo']).password }}",
+				extensions: [n8nLang()],
+				additionalData: {
+					$secrets: { awsSecretsManager: { cred: '*********' } },
+				},
+			});
+
+			await waitFor(() => {
+				expect(toValue(segments.resolvable)).toEqual([
+					expect.objectContaining({
+						resolved: '[secret not found]',
+						state: 'invalid',
+					}),
+				]);
+			});
+		});
+
+		test('should leave secret previews to the credential modal', async () => {
+			mockResolveExpression();
+
+			const {
+				expressionEditor: { segments },
+			} = await renderExpressionEditor({
+				editorValue: "{{ JSON.parse($secrets.awsSecretsManager['cred']).password }}",
+				extensions: [n8nLang()],
+				additionalData: {
+					$secrets: { awsSecretsManager: { cred: '*********' } },
+				},
+			});
+
+			await waitFor(() => {
+				expect(toValue(segments.resolvable)).toEqual([
+					expect.objectContaining({
+						resolved: '[undefined]',
+						state: 'invalid',
+					}),
+				]);
+			});
 		});
 	});
 });

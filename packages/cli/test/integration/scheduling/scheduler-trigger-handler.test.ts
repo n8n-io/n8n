@@ -5,6 +5,7 @@ import {
 	ScheduledJobRepository,
 	ScheduledTaskRepository,
 	WorkflowPublishedVersionRepository,
+	WorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { createScheduler } from '@n8n/scheduler';
@@ -20,6 +21,8 @@ import { createOwner } from '../shared/db/users';
 import { retryUntil } from '../shared/retry-until';
 import * as utils from '../shared/utils';
 import { loadNodesFromDist } from '../shared/utils/node-types-data';
+
+import { workflowOwned } from './shared/job-factory';
 
 /**
  * The whole schedule-trigger path against a real database and the real engine:
@@ -71,7 +74,7 @@ describe('schedule-trigger occurrence to a real execution', () => {
 	});
 
 	// A published workflow whose Schedule Trigger the handler fires. The published
-	// version mapping is what `loadPublishedWorkflowData` reads, so all three parts
+	// version mapping is what `findPublishedWorkflowData` reads, so all three parts
 	// (workflow, history, mapping) must exist.
 	const createPublishedScheduleWorkflow = async () => {
 		const triggerNodeId = uuid();
@@ -117,6 +120,7 @@ describe('schedule-trigger occurrence to a real execution', () => {
 		await jobRepo.save(
 			jobRepo.create({
 				name: `schedule-job-${++seq}`,
+				...workflowOwned(workflowId, nodeId),
 				taskType: SCHEDULE_TRIGGER_TASK_TYPE,
 				payload: { workflowId, nodeId },
 				kind: 'interval',
@@ -213,5 +217,26 @@ describe('schedule-trigger occurrence to a real execution', () => {
 		// execution for the occurrence.
 		const executions = await executionRepo.find({ where: { deduplicationKey } });
 		expect(executions).toHaveLength(1);
+	}, 30_000);
+
+	it('skips an occurrence of a workflow whose active version is cleared before main applies the unpublish', async () => {
+		const { workflow, triggerNodeId } = await createPublishedScheduleWorkflow();
+		await Container.get(WorkflowRepository).update(workflow.id, {
+			active: false,
+			activeVersionId: null,
+		});
+		const job = await createScheduleJob(workflow.id, triggerNodeId);
+
+		await scheduler.materialize();
+		await scheduler.execute();
+		await retryUntil(
+			async () => {
+				const task = await taskRepo.findOneByOrFail({ jobId: job.id });
+				expect(task.status).toBe('succeeded');
+			},
+			{ timeoutMs: 15_000 },
+		);
+
+		expect(await executionRepo.find({ where: { workflowId: workflow.id } })).toEqual([]);
 	}, 30_000);
 });

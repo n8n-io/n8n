@@ -19,7 +19,11 @@ import {
 	type EffectScope,
 } from 'vue';
 import type { CanvasEventBusEvents, GroupExpansionMode } from '../canvas.types';
-import { createEmptyCanvasRenderData, type CanvasRenderData } from '../canvas.utils';
+import {
+	createEmptyCanvasRenderData,
+	nodeNeedsCredentialSetup,
+	type CanvasRenderData,
+} from '../canvas.utils';
 import { useCanvasMapping } from '../composables/useCanvasMapping';
 import {
 	aggregateGroupExecution,
@@ -34,8 +38,10 @@ import { buildNodeGroupLayoutComponents } from '../composables/useCanvasNodeGrou
 import { ContextMenuGroupViewKey } from '@/features/shared/contextMenu/composables/contextMenuGroupView';
 import Canvas from './Canvas.vue';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useEditorContext } from '@/app/composables/useEditorContext';
 import { useWorkflowDocumentRenderData } from '@/app/stores/workflowDocument/useWorkflowDocumentRenderData';
 import { useExperimentalNdvStore } from '../experimental/experimentalNdv.store';
+import { useAgentNodeCanvasGeometryStore } from '@/features/agents/agentNodeCanvasGeometry.store';
 
 defineOptions({
 	inheritAttrs: false,
@@ -130,6 +136,8 @@ const suppressInteractionRef = computed(() => props.suppressInteraction ?? false
 
 const experimentalNdvStore = useExperimentalNdvStore();
 const isExperimentalNdvActive = computed(() => experimentalNdvStore.isActive(viewport.value.zoom));
+const agentNodeGeometryStore = useAgentNodeCanvasGeometryStore();
+const { credentialSetupWarnings } = useEditorContext();
 
 const {
 	nodes: mappedWorkflowNodes,
@@ -143,6 +151,10 @@ const {
 	allGroups,
 	nodeGroupView,
 	isExperimentalNdvActive,
+	isNodeSetupRequired: (id) =>
+		credentialSetupWarnings.value &&
+		nodeNeedsCredentialSetup(workflowDocumentStore.value.getNodeById(id)),
+	getAgentNodeHeight: (id) => agentNodeGeometryStore.getNodeHeight(props.id, id),
 });
 
 const groupIdsToExpand = computed(() => {

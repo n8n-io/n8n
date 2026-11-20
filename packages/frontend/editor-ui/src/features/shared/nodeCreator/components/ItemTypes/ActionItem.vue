@@ -121,6 +121,8 @@ const { draggableDataTransfer, dragging } = toRefs(state);
 </template>
 
 <style lang="scss" module>
+@use '@/app/css/variables' as *;
+
 .action {
 	--node-creator--name--font-size: var(--font-size--2xs);
 	--node-creator--name--font-weight: var(--font-weight--regular);

@@ -1,3 +1,4 @@
+import { WorkflowPublicationStatusSchema, folderResourceTypeSchema } from '@n8n/api-types';
 import type {
 	IConnections,
 	INode,
@@ -30,6 +31,16 @@ export const nodeSchema = z
 	.passthrough();
 
 /**
+ * Drafts can be persisted with nodes that have no `parameters` key at all (the
+ * REST write paths accept them), even though INode types the field as required.
+ * Normalize so every reader sees an object (ADO-5355).
+ */
+const ensureParameters = (node: INode): INode =>
+	node.parameters ? node : { ...node, parameters: {} };
+
+export const ensureNodeParameters = (nodes: INode[]): INode[] => nodes.map(ensureParameters);
+
+/**
  * Reduces a node's credentials to `{ id, name }` per slot for the read path,
  * keeping only slots a client can reference by id when reusing them. Any slot
  * with no id is dropped; in practice those are AI Gateway synthetic sentinels
@@ -37,8 +48,12 @@ export const nodeSchema = z
  * whose marker is stripped here, leaving them indistinguishable from a real
  * credential. DB-backed managed credentials (`isManaged`) keep a real id and
  * are retained.
+ *
+ * Also guarantees `parameters` is an object, so every tool that emits node
+ * payloads through this mapper reports the same shape for the same stored node.
  */
-export const sanitizeNodeCredentials = ({ credentials, ...node }: INode) => {
+export const sanitizeNodeCredentials = (rawNode: INode) => {
+	const { credentials, ...node } = ensureParameters(rawNode);
 	const referenceable: Array<[string, { id: string; name: string }]> = [];
 	for (const [type, cred] of Object.entries(credentials ?? {})) {
 		if (!cred?.id) continue;
@@ -109,6 +124,26 @@ export const columnNameSchema = z
 		'Column name. Must start with a letter, contain only letters, numbers, and underscores (max 63 chars)',
 	);
 
+export const folderOutputSchema = {
+	resourceType: folderResourceTypeSchema.optional(),
+	id: z.string().optional().describe('The ID of the folder'),
+	name: z.string().optional().describe('The name of the folder'),
+	parentFolderId: z
+		.string()
+		.nullable()
+		.optional()
+		.describe('The ID of the parent folder, or null if the folder is at the project root'),
+	error: z
+		.string()
+		.optional()
+		.describe('Error message explaining why the operation failed. Present only on failure.'),
+} satisfies z.ZodRawShape;
+
+export const dataTableRowSchema = z.record(
+	z.string(),
+	z.union([z.string(), z.number(), z.boolean(), z.null()]),
+);
+
 export const successMessageOutputSchema = {
 	success: z.boolean().describe('Whether the operation succeeded'),
 	message: z.string().describe('Description of the result'),
@@ -148,18 +183,26 @@ export const toNodeGroupSummary = (
 
 const FULL_DETAIL_ONLY_NOTE = "Only included when detailLevel is 'full'.";
 
+export const workflowPublicationStatusOutputSchema = WorkflowPublicationStatusSchema.extend({
+	versionId: z.string().nullable().describe('The version in the latest publication request'),
+	errorMessage: z.string().nullable().describe('The activation error, if publication failed'),
+});
+
 export const workflowDetailsOutputSchema = z.object({
 	workflow: z
 		.object({
 			id: z.string(),
 			name: z.string().nullable(),
-			active: z.boolean(),
+			active: z.boolean().describe('Whether the workflow has a live version'),
+			publicationStatus: workflowPublicationStatusOutputSchema.optional(),
 			isArchived: z.boolean(),
 			versionId: z.string().describe('The current workflow version ID'),
 			activeVersionId: z
 				.string()
 				.nullable()
-				.describe('The active workflow version ID, if available'),
+				.describe(
+					'The published version ID. Check publicationStatus to confirm trigger activation.',
+				),
 			triggerCount: z.number(),
 			nodeCount: z
 				.number()

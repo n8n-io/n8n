@@ -5,7 +5,11 @@ import { mock } from 'vitest-mock-extended';
 import { SCHEDULER_ATTRIBUTES, SCHEDULER_FIRE_OUTCOME } from '../../observability/attributes';
 import type { SchedulerMetrics } from '../../observability/metrics';
 import { SpanStatus, type Span, type Tracer } from '../../observability/tracer';
-import { InvalidLifecycleOptionsError } from '../errors';
+import {
+	InvalidLifecycleOptionsError,
+	InvalidReconciliationOptionsError,
+	InvalidSchedulerDepsError,
+} from '../errors';
 import { DEFAULT_EXECUTOR_OPTIONS } from '../executor';
 import { createScheduler, DEFAULT_DISPATCH_LAG_WARN_THRESHOLD_SECONDS } from '../factory';
 import type { SchedulerDeps, SchedulerEvent, SchedulerTaskStore } from '../factory';
@@ -13,6 +17,11 @@ import { DEFAULT_LIFECYCLE_OPTIONS, PASS_TIMED_OUT, pollLookaheadSeconds } from 
 import { DEFAULT_MATERIALIZER_OPTIONS } from '../materializer';
 import type { MaterializerTransaction, RunInTransaction } from '../materializer';
 import type { ExpiredLeaseRow } from '../reaper';
+import {
+	ScheduledJobOwnerRegistry,
+	type ReconciliationJobStore,
+	type ReconciliationOptions,
+} from '../reconciliation';
 import { DEFAULT_RETENTION_OPTIONS } from '../retention';
 import type { ClaimedTask, ScheduledJob } from '../types';
 
@@ -40,7 +49,7 @@ const makeTracer = () => {
 function makeScheduler(deps: Partial<SchedulerDeps> = {}) {
 	const taskStore = mock<SchedulerTaskStore>();
 	taskStore.markDispatched.mockResolvedValue(1);
-	taskStore.retireMissedPending.mockResolvedValue(0);
+	taskStore.retireMissedPending.mockResolvedValue({ retired: 0, heldByConcurrencyLimit: [] });
 	const onEvent = vi.fn<(event: SchedulerEvent) => void>();
 	const materializerTransaction: RunInTransaction = vi.fn();
 	const scheduler = createScheduler({
@@ -241,6 +250,7 @@ const claimedTask = (overrides: Partial<ClaimedTask> = {}): ClaimedTask => ({
 	status: ScheduledTaskStatus.Running,
 	attempts: 0,
 	maxAttempts: 3,
+	timeoutSeconds: 300,
 	leaseEpoch: 1,
 	...overrides,
 });
@@ -346,8 +356,11 @@ describe('createScheduler materialize', () => {
 			nextRunAt: new Date('2026-01-01T00:00:00.000Z'),
 			lastFiredAt: null,
 			maxAttempts: 3,
+			timeoutSeconds: 300,
+			concurrencyLimit: null,
 			misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 			misfireGraceSeconds: 60,
+			ownerKey: 'owner-1',
 		};
 		const tx = mock<MaterializerTransaction>();
 		tx.retireSuperseded.mockResolvedValue(0);
@@ -391,8 +404,11 @@ describe('createScheduler materialize', () => {
 			nextRunAt: new Date('2026-01-01T00:00:00.000Z'),
 			lastFiredAt: null,
 			maxAttempts: 3,
+			timeoutSeconds: 300,
+			concurrencyLimit: null,
 			misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 			misfireGraceSeconds: 60,
+			ownerKey: 'owner-1',
 		};
 		const tx = mock<MaterializerTransaction>();
 		tx.retireSuperseded.mockResolvedValue(0);
@@ -463,7 +479,7 @@ describe('createScheduler lifecycle', () => {
 		expect(taskStore.findExpiredLeases).toHaveBeenCalledTimes(1);
 		expect(onEvent).toHaveBeenCalledWith({
 			level: 'error',
-			message: 'Scheduler pass failed; retrying on its next tick',
+			message: 'Scheduler pass "reaper" failed; retrying on its next tick: db down',
 			context: { pass: 'reaper', error: 'db down' },
 		});
 
@@ -518,6 +534,47 @@ describe('createScheduler lifecycle', () => {
 		expect(taskStore.findExpiredLeases).toHaveBeenCalledTimes(1);
 		await vi.advanceTimersByTimeAsync(2000);
 		expect(taskStore.findExpiredLeases).toHaveBeenCalledTimes(2);
+
+		await scheduler.stop();
+	});
+
+	it('start drives owner reconciliation on its cadence when reconciliation is composed', async () => {
+		const jobStore = mock<ReconciliationJobStore>();
+		jobStore.findOwnerTypes.mockResolvedValue([]);
+		const { scheduler } = makeScheduler({
+			reconciliation: { jobStore, owners: new ScheduledJobOwnerRegistry() },
+			now: async () => await Promise.resolve(new Date()),
+			lifecycle: { reconciliationIntervalSeconds: 2 },
+		});
+
+		scheduler.start();
+		await vi.advanceTimersByTimeAsync(1000);
+		expect(jobStore.findOwnerTypes).toHaveBeenCalledTimes(1);
+		await vi.advanceTimersByTimeAsync(2000);
+		expect(jobStore.findOwnerTypes).toHaveBeenCalledTimes(2);
+
+		await scheduler.stop();
+	});
+
+	it('composes no reconciliation loop without reconciliation deps', async () => {
+		const { scheduler, onEvent } = makeScheduler({
+			lifecycle: { reconciliationIntervalSeconds: 2 },
+		});
+
+		scheduler.start();
+		await vi.advanceTimersByTimeAsync(10_000);
+
+		await expect(scheduler.reconcile()).resolves.toEqual({
+			ownersChecked: 0,
+			quarantined: 0,
+			deleted: 0,
+			revived: 0,
+			skippedOwnerTypes: [],
+			drained: true,
+		});
+		// The pass-level sink never saw the reconciliation loop run or fail.
+		const passes = onEvent.mock.calls.map(([event]) => event.context.pass);
+		expect(passes).not.toContain('owner reconciliation');
 
 		await scheduler.stop();
 	});
@@ -761,6 +818,9 @@ describe('createScheduler lifecycle config', () => {
 		expect(() => makeScheduler({ lifecycle: { retentionIntervalSeconds: Infinity } })).toThrow(
 			InvalidLifecycleOptionsError,
 		);
+		expect(() => makeScheduler({ lifecycle: { reconciliationIntervalSeconds: 0 } })).toThrow(
+			InvalidLifecycleOptionsError,
+		);
 	});
 
 	it('rejects a pass timeout that would abandon every pass as it starts', () => {
@@ -774,6 +834,9 @@ describe('createScheduler lifecycle config', () => {
 			InvalidLifecycleOptionsError,
 		);
 		expect(() => makeScheduler({ lifecycle: { retentionTimeoutSeconds: Infinity } })).toThrow(
+			InvalidLifecycleOptionsError,
+		);
+		expect(() => makeScheduler({ lifecycle: { reconciliationTimeoutSeconds: -1 } })).toThrow(
 			InvalidLifecycleOptionsError,
 		);
 	});
@@ -790,6 +853,170 @@ describe('createScheduler lifecycle config', () => {
 		);
 		expect(() => makeScheduler({ lifecycle: { maxConcurrentPasses: 2.5 } })).toThrow(
 			InvalidLifecycleOptionsError,
+		);
+	});
+});
+
+describe('createScheduler reconciliation config', () => {
+	const withReconciliation = (options: Partial<Omit<ReconciliationOptions, 'defaultTimezone'>>) => {
+		const jobStore = mock<ReconciliationJobStore>();
+		const owners = new ScheduledJobOwnerRegistry();
+		return () =>
+			makeScheduler({
+				reconciliation: { jobStore, owners, options },
+				now: async () => await Promise.resolve(new Date('2026-03-01T12:00:00.000Z')),
+			});
+	};
+
+	it('rejects a quarantine grace that would delete a job in the pass that quarantined it', () => {
+		expect(withReconciliation({ quarantineGraceSeconds: 0 })).toThrow(
+			InvalidReconciliationOptionsError,
+		);
+		expect(withReconciliation({ quarantineGraceSeconds: -60 })).toThrow(
+			InvalidReconciliationOptionsError,
+		);
+		expect(withReconciliation({ quarantineGraceSeconds: NaN })).toThrow(
+			InvalidReconciliationOptionsError,
+		);
+	});
+
+	it('rejects a settle window that would judge owners whose row may not be committed', () => {
+		expect(withReconciliation({ settleSeconds: 0 })).toThrow(InvalidReconciliationOptionsError);
+		expect(withReconciliation({ settleSeconds: -1 })).toThrow(InvalidReconciliationOptionsError);
+		expect(withReconciliation({ settleSeconds: Infinity })).toThrow(
+			InvalidReconciliationOptionsError,
+		);
+	});
+
+	it('rejects a page size or page budget that would make the pass a no-op', () => {
+		expect(withReconciliation({ batchSize: 0 })).toThrow(InvalidReconciliationOptionsError);
+		expect(withReconciliation({ batchSize: 2.5 })).toThrow(InvalidReconciliationOptionsError);
+		expect(withReconciliation({ maxPagesPerPass: 0 })).toThrow(InvalidReconciliationOptionsError);
+		expect(withReconciliation({ maxPagesPerPass: -1 })).toThrow(InvalidReconciliationOptionsError);
+	});
+
+	it('refuses reconciliation without the shared clock its windows are judged on', () => {
+		expect(() =>
+			makeScheduler({
+				reconciliation: {
+					jobStore: mock<ReconciliationJobStore>(),
+					owners: new ScheduledJobOwnerRegistry(),
+				},
+			}),
+		).toThrow(InvalidSchedulerDepsError);
+	});
+
+	it('composes with the defaults and with usable overrides', () => {
+		expect(withReconciliation({})).not.toThrow();
+		expect(
+			withReconciliation({
+				settleSeconds: 1,
+				quarantineGraceSeconds: 3600,
+				batchSize: 10,
+				maxPagesPerPass: 1,
+			}),
+		).not.toThrow();
+	});
+});
+
+describe('createScheduler reconciliation cursor', () => {
+	it('hands the point one pass stopped on to the next one', async () => {
+		const jobStore = mock<ReconciliationJobStore>();
+		const owners = new ScheduledJobOwnerRegistry();
+		owners.register('workflow', {
+			findExisting: async (ownerIds) => await Promise.resolve(new Set(ownerIds)),
+		});
+		jobStore.findOwnerTypes.mockResolvedValue(['workflow']);
+		jobStore.findQuarantinedByOwnerIds.mockResolvedValue([]);
+		// One owner per page and one page per pass: every pass stops on its budget.
+		jobStore.findOwnerIds
+			.mockResolvedValueOnce(['wf-1'])
+			.mockResolvedValueOnce(['wf-2'])
+			.mockResolvedValue([]);
+		const { scheduler } = makeScheduler({
+			reconciliation: {
+				jobStore,
+				owners,
+				options: { batchSize: 1, maxPagesPerPass: 1 },
+			},
+			now: async () => await Promise.resolve(new Date('2026-03-01T12:00:00.000Z')),
+		});
+
+		const first = await scheduler.reconcile();
+		const second = await scheduler.reconcile();
+
+		expect(first.resumeFrom).toEqual({ ownerType: 'workflow', after: 'wf-1' });
+		expect(second.resumeFrom).toEqual({ ownerType: 'workflow', after: 'wf-2' });
+		// The second pass continued after the first one's last owner.
+		expect(jobStore.findOwnerIds).toHaveBeenNthCalledWith(
+			1,
+			'workflow',
+			expect.any(Date),
+			1,
+			undefined,
+		);
+		expect(jobStore.findOwnerIds).toHaveBeenNthCalledWith(
+			2,
+			'workflow',
+			expect.any(Date),
+			1,
+			'wf-1',
+		);
+	});
+
+	it('keeps a pass that started behind from rewinding the cursor a newer one published', async () => {
+		const jobStore = mock<ReconciliationJobStore>();
+		const owners = new ScheduledJobOwnerRegistry();
+		owners.register('workflow', {
+			findExisting: async (ownerIds) => await Promise.resolve(new Set(ownerIds)),
+		});
+		jobStore.findOwnerTypes.mockResolvedValue(['workflow']);
+		jobStore.findQuarantinedByOwnerIds.mockResolvedValue([]);
+		// One owner per page and one page per pass, so every pass stops with a cursor.
+		const pages = [['wf-1'], ['wf-2'], ['wf-3']];
+		let holdFirstPage: (() => void) | undefined;
+		let firstPageReached: (() => void) | undefined;
+		const held = new Promise<void>((resolve) => {
+			holdFirstPage = resolve;
+		});
+		const reached = new Promise<void>((resolve) => {
+			firstPageReached = resolve;
+		});
+		let page = 0;
+		jobStore.findOwnerIds.mockImplementation(async () => {
+			const index = page++;
+			if (index === 0) {
+				firstPageReached?.();
+				await held;
+			}
+			return pages[index] ?? [];
+		});
+		const { scheduler } = makeScheduler({
+			reconciliation: {
+				jobStore,
+				owners,
+				options: { batchSize: 1, maxPagesPerPass: 1 },
+			},
+			now: async () => await Promise.resolve(new Date('2026-03-01T12:00:00.000Z')),
+		});
+
+		// The held pass reads the cursor first and comes back last.
+		const heldPass = scheduler.reconcile();
+		await reached;
+		const newer = await scheduler.reconcile();
+		holdFirstPage?.();
+		const behind = await heldPass;
+		await scheduler.reconcile();
+
+		// Each pass reports the point it reached; only the newer one is published.
+		expect(newer.resumeFrom).toEqual({ ownerType: 'workflow', after: 'wf-2' });
+		expect(behind.resumeFrom).toEqual({ ownerType: 'workflow', after: 'wf-1' });
+		expect(jobStore.findOwnerIds).toHaveBeenNthCalledWith(
+			3,
+			'workflow',
+			expect.any(Date),
+			1,
+			'wf-2',
 		);
 	});
 });
@@ -820,7 +1047,8 @@ describe('createScheduler pass timeout and overlap', () => {
 		await vi.advanceTimersByTimeAsync(2000);
 		expect(onEvent).toHaveBeenCalledWith({
 			level: 'error',
-			message: 'Scheduler pass timed out and was abandoned; retrying on its next tick',
+			message:
+				'Scheduler pass "reaper" timed out after 2000ms and was abandoned; retrying on its next tick',
 			context: { pass: 'reaper', timeoutMs: 2000 },
 		});
 
@@ -882,7 +1110,8 @@ describe('createScheduler pass timeout and overlap', () => {
 		await vi.advanceTimersByTimeAsync(2000);
 		expect(onEvent).toHaveBeenCalledWith({
 			level: 'error',
-			message: 'Scheduler pass timed out and was abandoned; retrying on its next tick',
+			message:
+				'Scheduler pass "executor" timed out after 2000ms and was abandoned; retrying on its next tick',
 			context: { pass: 'executor', timeoutMs: 2000 },
 		});
 
@@ -923,12 +1152,14 @@ describe('createScheduler pass timeout and overlap', () => {
 		await vi.advanceTimersByTimeAsync(5000 + 2000);
 		expect(onEvent).toHaveBeenCalledWith({
 			level: 'error',
-			message: 'Scheduler pass timed out and was abandoned; retrying on its next tick',
+			message:
+				'Scheduler pass "materializer" timed out after 2000ms and was abandoned; retrying on its next tick',
 			context: { pass: 'materializer', timeoutMs: 2000 },
 		});
 		expect(onEvent).not.toHaveBeenCalledWith({
 			level: 'error',
-			message: 'Scheduler pass timed out and was abandoned; retrying on its next tick',
+			message:
+				'Scheduler pass "reaper" timed out after 60000ms and was abandoned; retrying on its next tick',
 			context: { pass: 'reaper', timeoutMs: 60_000 },
 		});
 
@@ -938,7 +1169,8 @@ describe('createScheduler pass timeout and overlap', () => {
 		await stopping;
 		expect(onEvent).toHaveBeenCalledWith({
 			level: 'error',
-			message: 'Scheduler pass timed out and was abandoned; retrying on its next tick',
+			message:
+				'Scheduler pass "reaper" timed out after 60000ms and was abandoned; retrying on its next tick',
 			context: { pass: 'reaper', timeoutMs: 60_000 },
 		});
 	});
@@ -955,7 +1187,8 @@ describe('createScheduler pass timeout and overlap', () => {
 		expect(taskStore.findExpiredLeases).toHaveBeenCalledTimes(1);
 		expect(onEvent).toHaveBeenCalledWith({
 			level: 'warn',
-			message: 'Scheduler pass tick dropped; in-flight passes at the concurrency limit',
+			message:
+				'Scheduler pass "reaper" tick dropped; 1 of 1 passes in flight at the concurrency limit',
 			context: { pass: 'reaper', inFlight: 1, limit: 1 },
 		});
 
@@ -981,7 +1214,8 @@ describe('createScheduler pass timeout and overlap', () => {
 		expect(taskStore.findExpiredLeases).toHaveBeenCalledTimes(2);
 		expect(onEvent).toHaveBeenCalledWith({
 			level: 'warn',
-			message: 'Scheduler pass tick dropped; in-flight passes at the concurrency limit',
+			message:
+				'Scheduler pass "reaper" tick dropped; 2 of 2 passes in flight at the concurrency limit',
 			context: { pass: 'reaper', inFlight: 2, limit: 2 },
 		});
 
@@ -1025,6 +1259,18 @@ describe('createScheduler reap', () => {
 			context: { taskId: '7', attempts: 3, maxAttempts: 3 },
 		});
 	});
+
+	it('hands the host the occurrences a concurrency limit held back', async () => {
+		const onHeldByConcurrencyLimit = vi.fn();
+		const { scheduler, taskStore } = makeScheduler({ onHeldByConcurrencyLimit });
+		const held = [{ id: '7', jobId: 3, taskType: 'system:pruning' }];
+		taskStore.findExpiredLeases.mockResolvedValue([]);
+		taskStore.retireMissedPending.mockResolvedValue({ retired: 1, heldByConcurrencyLimit: held });
+
+		await scheduler.reap();
+
+		expect(onHeldByConcurrencyLimit).toHaveBeenCalledWith(held);
+	});
 });
 
 describe('createScheduler tracing', () => {
@@ -1043,8 +1289,11 @@ describe('createScheduler tracing', () => {
 			nextRunAt: new Date('2026-01-01T00:00:00.000Z'),
 			lastFiredAt: null,
 			maxAttempts: 3,
+			timeoutSeconds: 300,
+			concurrencyLimit: null,
 			misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 			misfireGraceSeconds: 60,
+			ownerKey: 'owner-1',
 		};
 		const tx = mock<MaterializerTransaction>();
 		tx.retireSuperseded.mockResolvedValue(0);
@@ -1095,8 +1344,11 @@ describe('createScheduler tracing', () => {
 			nextRunAt: new Date('2026-01-01T00:00:00.000Z'),
 			lastFiredAt: null,
 			maxAttempts: 3,
+			timeoutSeconds: 300,
+			concurrencyLimit: null,
 			misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 			misfireGraceSeconds: 60,
+			ownerKey: 'owner-1',
 		};
 		const tx = mock<MaterializerTransaction>();
 		tx.retireSuperseded.mockResolvedValue(0);
@@ -1390,8 +1642,11 @@ describe('createScheduler metrics', () => {
 			nextRunAt: new Date('2026-01-01T00:00:00.000Z'),
 			lastFiredAt: null,
 			maxAttempts: 3,
+			timeoutSeconds: 300,
+			concurrencyLimit: null,
 			misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 			misfireGraceSeconds: 60,
+			ownerKey: 'owner-1',
 		};
 		const tx = mock<MaterializerTransaction>();
 		tx.retireSuperseded.mockResolvedValue(0);
@@ -1430,6 +1685,27 @@ describe('createScheduler metrics', () => {
 		await scheduler.prune();
 
 		expect(metrics.recordPruned).toHaveBeenCalledWith(5);
+	});
+
+	it('records the reconciliation outcome from the pass summary', async () => {
+		const metrics = mock<SchedulerMetrics>();
+		const jobStore = mock<ReconciliationJobStore>();
+		const owners = new ScheduledJobOwnerRegistry();
+		owners.register('workflow', { findExisting: async () => await Promise.resolve(new Set()) });
+		jobStore.findOwnerTypes.mockResolvedValue(['workflow']);
+		jobStore.findOwnerIds.mockResolvedValueOnce(['wf-gone']).mockResolvedValue([]);
+		jobStore.quarantineByOwnerIds.mockResolvedValue(2);
+		jobStore.deleteQuarantinedByOwnerIds.mockResolvedValue(1);
+		jobStore.findQuarantinedByOwnerIds.mockResolvedValue([]);
+		const { scheduler } = makeScheduler({
+			metrics,
+			reconciliation: { jobStore, owners },
+			now: async () => await Promise.resolve(new Date('2026-03-01T12:00:00.000Z')),
+		});
+
+		await scheduler.reconcile();
+
+		expect(metrics.recordReconciled).toHaveBeenCalledWith(2, 1, 0);
 	});
 
 	it('defaults to a safe no-op when no metrics port is supplied', async () => {
@@ -1498,6 +1774,135 @@ describe('createScheduler metrics', () => {
 		});
 		expect(metrics.recordFireOutcome).not.toHaveBeenCalled();
 		expect(metrics.recordDeadLettered).not.toHaveBeenCalled();
+	});
+
+	it('maps a handler that finished after losing its lease onto a lease-lost metric', async () => {
+		const metrics = mock<SchedulerMetrics>();
+		const { scheduler, taskStore } = makeScheduler({ metrics });
+		scheduler.registerTaskHandler('test-task', { execute: vi.fn().mockResolvedValue(undefined) });
+		taskStore.claimDueTasks.mockResolvedValue([claimedTask()]);
+		taskStore.beginDispatch.mockResolvedValue(1);
+		// The lease was reclaimed while the handler ran: the terminal write matches no row.
+		taskStore.completeTask.mockResolvedValue(0);
+
+		await scheduler.execute();
+
+		await vi.waitFor(() => {
+			expect(metrics.recordLeaseLost).toHaveBeenCalledWith('test-task');
+		});
+		expect(metrics.recordFireOutcome).not.toHaveBeenCalled();
+	});
+
+	describe('lease renewal', () => {
+		beforeEach(() => {
+			vi.useFakeTimers();
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		// A 15s lease renews every 5 seconds, the shortest interval.
+		const LEASE_SECONDS = 15;
+		const RENEWAL_INTERVAL_MS = 5_000;
+
+		/** Fires one long handler that stays pending until `finish` is called. */
+		const fireLongHandler = async (metrics: SchedulerMetrics, task = claimedTask()) => {
+			const made = makeScheduler({
+				metrics,
+				executor: { leaseSeconds: LEASE_SECONDS, lookaheadSeconds: 1 },
+			});
+			let finish!: () => void;
+			made.scheduler.registerTaskHandler('test-task', {
+				execute: async (_task, report) => {
+					await new Promise<void>((resolve) => {
+						finish = resolve;
+					});
+					return report.notDispatched();
+				},
+			});
+			made.taskStore.claimDueTasks.mockResolvedValue([task]);
+			made.taskStore.beginDispatch.mockResolvedValue(1);
+			made.taskStore.completeTask.mockResolvedValue(1);
+			await made.scheduler.execute();
+			return { ...made, finish: () => finish() };
+		};
+
+		it('maps renewals onto the renewal metric, and warns when the claim is lost', async () => {
+			const metrics = mock<SchedulerMetrics>();
+			const { taskStore, onEvent, finish } = await fireLongHandler(metrics);
+			taskStore.renewLease.mockResolvedValueOnce(true).mockResolvedValue(false);
+
+			await vi.advanceTimersByTimeAsync(2 * RENEWAL_INTERVAL_MS);
+
+			expect(metrics.recordLeaseRenewal).toHaveBeenCalledWith('test-task', 'renewed');
+			expect(metrics.recordLeaseRenewal).toHaveBeenCalledWith('test-task', 'lost');
+			expect(onEvent).toHaveBeenCalledWith({
+				level: 'warn',
+				message:
+					'Scheduler lost the claim of a running task; another instance may run it unless it was already dispatched',
+				context: { taskId: claimedTask().id, taskType: 'test-task' },
+			});
+			finish();
+		});
+
+		it('maps a whole lease without a renewal onto the renewal metric, and warns', async () => {
+			const metrics = mock<SchedulerMetrics>();
+			const { taskStore, onEvent, finish } = await fireLongHandler(metrics);
+			taskStore.renewLease.mockRejectedValue(new Error('db down'));
+
+			await vi.advanceTimersByTimeAsync(LEASE_SECONDS * 1_000);
+
+			expect(metrics.recordLeaseRenewal).toHaveBeenCalledWith('test-task', 'expired');
+			expect(onEvent).toHaveBeenCalledWith({
+				level: 'warn',
+				message:
+					'Scheduler could not renew the lease of a running task in time; another instance may run it unless it was already dispatched',
+				context: { taskId: claimedTask().id, taskType: 'test-task' },
+			});
+			finish();
+		});
+
+		it('warns when a renewal write fails', async () => {
+			const metrics = mock<SchedulerMetrics>();
+			const { taskStore, onEvent, finish } = await fireLongHandler(metrics);
+			taskStore.renewLease.mockRejectedValue(new Error('db down'));
+
+			await vi.advanceTimersByTimeAsync(RENEWAL_INTERVAL_MS);
+
+			expect(onEvent).toHaveBeenCalledWith(
+				expect.objectContaining({
+					level: 'warn',
+					message: 'Scheduler could not renew the lease of a running task; retrying',
+				}),
+			);
+			expect(metrics.recordLeaseRenewal).not.toHaveBeenCalled();
+			finish();
+		});
+
+		it('counts and warns once when a run reaches its timeout', async () => {
+			const metrics = mock<SchedulerMetrics>();
+			const { taskStore, onEvent, finish } = await fireLongHandler(metrics);
+			taskStore.renewLease.mockResolvedValue(true);
+			const { timeoutSeconds } = claimedTask();
+			const timeoutWarning = {
+				level: 'warn',
+				message: 'Scheduler task run reached its timeout',
+				context: { taskId: claimedTask().id, taskType: 'test-task', timeoutSeconds },
+			};
+
+			await vi.advanceTimersByTimeAsync(timeoutSeconds * 1_000 - 1);
+			expect(onEvent).not.toHaveBeenCalledWith(timeoutWarning);
+			expect(metrics.recordTaskTimeout).not.toHaveBeenCalled();
+
+			await vi.advanceTimersByTimeAsync(60_000);
+			const warnings = onEvent.mock.calls.filter(
+				([event]) => event.message === timeoutWarning.message,
+			);
+			expect(warnings).toEqual([[timeoutWarning]]);
+			expect(metrics.recordTaskTimeout).toHaveBeenCalledExactlyOnceWith('test-task');
+			finish();
+		});
 	});
 
 	it('does not let a throwing metrics sink break a pass', async () => {

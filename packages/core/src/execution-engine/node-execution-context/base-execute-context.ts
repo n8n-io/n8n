@@ -1,3 +1,4 @@
+import { sleep } from '@n8n/utils/sleep';
 import type { Result } from '@n8n/utils/result';
 import get from 'lodash/get';
 import type {
@@ -23,28 +24,73 @@ import type {
 	IWorkflowDataProxyData,
 	ISourceData,
 	AiEvent,
+	ChunkType,
 	NodeConnectionType,
 	IExecuteFunctions,
 	ExecuteAgentWorkflowContext,
+	IDataObject,
+	StructuredChunk,
 } from 'n8n-workflow';
 import {
-	UnexpectedError,
-	OperationalError,
 	NodeHelpers,
 	NodeConnectionTypes,
-	WAIT_INDEFINITELY,
+	WAIT_FOR_SUB_EXECUTION,
+	MAX_IN_PROCESS_WAIT_MS,
 	WorkflowDataProxy,
 	createEnvProviderState,
 	applyDynamicCredentialsUsage,
 	takeAttachedDynamicCredentialsUsage,
-	shouldRedactConsoleOutput,
+	escalateSubWorkflowRedaction,
+	takeAttachedSubWorkflowRedaction,
+	isExecutionOutputRedacted,
 	CONSOLE_OUTPUT_REDACTED_MESSAGE,
+	AI_EVENT_REDACTED_MESSAGE,
+	NodeApiError,
 } from 'n8n-workflow';
+import { UnexpectedError, OperationalError, UserError } from '@n8n/errors';
+import { randomUUID } from 'node:crypto';
 
 import { PLACEHOLDER_EMPTY_EXECUTION_ID } from '@/constants';
 import { deepMerge } from '@/utils/deep-merge';
 
 import { NodeExecutionContext } from './node-execution-context';
+
+/** The parts of an Agent error that the node shows. Node context stores only JSON. */
+interface StoredAgentError {
+	message: string;
+	description?: string;
+	httpCode?: string;
+	userError?: boolean;
+}
+
+interface AgentInvocationState {
+	runIndex: number;
+	items: Array<{
+		threadId: string;
+		result?: ExecuteAgentData;
+		error?: StoredAgentError;
+	}>;
+}
+
+function storeAgentError(error: unknown): StoredAgentError {
+	if (!(error instanceof Error)) return { message: String(error) };
+	const stored: StoredAgentError = { message: error.message };
+	if ('description' in error && typeof error.description === 'string')
+		stored.description = error.description;
+	if ('httpCode' in error && typeof error.httpCode === 'string') stored.httpCode = error.httpCode;
+	if (error instanceof UserError) stored.userError = true;
+	return stored;
+}
+
+/** Rebuild an Agent error after a resume, so the node shows the same details as before. */
+function restoreAgentError(node: INode, stored: StoredAgentError): Error {
+	const { message, description, httpCode } = stored;
+	if (httpCode)
+		return new NodeApiError(node, { message, httpCode }, { message, description, httpCode });
+	return stored.userError
+		? new UserError(message, { description })
+		: new OperationalError(message, { description });
+}
 
 export class BaseExecuteContext extends NodeExecutionContext {
 	constructor(
@@ -126,7 +172,23 @@ export class BaseExecuteContext extends NodeExecutionContext {
 		);
 	}
 
-	async putExecutionToWait(waitTill: Date): Promise<void> {
+	async getRuntimeCredential(alias: string): Promise<IDataObject[string] | undefined> {
+		return await this.additionalData.getRuntimeCredential(this.runExecutionData, alias);
+	}
+
+	async putExecutionToWait(
+		waitTill: Date,
+		options?: { acceptsResumeRequest?: boolean },
+	): Promise<void> {
+		const waitMs = Math.max(waitTill.getTime() - Date.now(), 0);
+
+		// Suspending a short wait costs a write and a reload, and the tracker polls too
+		// slowly to promise an on-time resume.
+		if (options?.acceptsResumeRequest === false && waitMs < MAX_IN_PROCESS_WAIT_MS) {
+			// A cancelled execution ends the wait, and the step still returns its input.
+			return await sleep(waitMs, this.abortSignal).catch(() => undefined);
+		}
+
 		this.runExecutionData.waitTill = waitTill;
 		if (this.additionalData.setExecutionStatus) {
 			this.additionalData.setExecutionStatus('waiting');
@@ -174,6 +236,11 @@ export class BaseExecuteContext extends NodeExecutionContext {
 			// still inherits the flags.
 			const usage = takeAttachedDynamicCredentialsUsage(error);
 			if (usage) applyDynamicCredentialsUsage(this.additionalData, usage);
+			// A failed sub-workflow may have produced output before it failed.
+			escalateSubWorkflowRedaction(
+				this.runExecutionData.executionData?.runtimeData,
+				takeAttachedSubWorkflowRedaction(error),
+			);
 			throw error;
 		}
 
@@ -181,39 +248,55 @@ export class BaseExecuteContext extends NodeExecutionContext {
 		// usage onto this parent node so its task inherits the flag and redaction covers the
 		// embedded output.
 		applyDynamicCredentialsUsage(this.additionalData, result);
+		// This execution keeps a copy of the sub-workflow's output, so it redacts at least
+		// the channels the sub-workflow redacts.
+		escalateSubWorkflowRedaction(
+			this.runExecutionData.executionData?.runtimeData,
+			result.subWorkflowRedaction,
+		);
 
 		// If a sub-workflow execution goes into the waiting state
 		if (result.waitTill) {
+			this.setMetadata({
+				waitingChildExecutionIds: [
+					...(this.executeData.metadata?.waitingChildExecutionIds ?? []),
+					result.executionId,
+				],
+			});
 			// then put the parent workflow execution also into the waiting state,
 			// but do not use the sub-workflow `waitTill` to avoid WaitTracker resuming the parent execution at the same time as the sub-workflow
-			await this.putExecutionToWait(WAIT_INDEFINITELY);
+			await this.putExecutionToWait(WAIT_FOR_SUB_EXECUTION);
 		}
 
 		return result;
 	}
 
-	async executeAgent(
-		agentInfo: ExecuteAgentInfo,
-		message: string,
-		executionId: string,
-		itemIndex: number,
-	): Promise<ExecuteAgentData> {
-		if (!this.additionalData.executeAgent) {
-			throw new OperationalError('Agent execution is not available in this context');
-		}
-
-		let source: ExecuteAgentSource;
-		if (agentInfo.inlineAgent) {
-			source = { inlineAgent: agentInfo.inlineAgent };
-		} else if (agentInfo.agentId) {
-			source = { agentId: agentInfo.agentId };
-		} else {
-			throw new OperationalError('Either an agent id or an inline agent definition is required');
-		}
-
+	private prepareAgentInvocation(agentInfo: ExecuteAgentInfo, itemIndex: number) {
 		const callerSessionId = agentInfo.sessionId?.trim();
-		const threadId = callerSessionId || `${executionId}-${itemIndex}`;
+		const supportsSuspension =
+			this.node.type === 'n8n-nodes-base.messageAnAgent' &&
+			this.node.typeVersion >= 4 &&
+			!agentInfo.inlineAgent;
+		let invocations: AgentInvocationState | undefined;
+		if (supportsSuspension) {
+			const context = this.getContext('node');
+			const saved: AgentInvocationState | undefined = context.agentInvocations;
+			invocations =
+				saved?.runIndex === this.runIndex ? saved : { runIndex: this.runIndex, items: [] };
+			context.agentInvocations = invocations;
+			this.setMetadata({ resumeMode: 'reexecute' });
+		}
+		const previous = invocations?.items[itemIndex];
+		if (previous?.error) throw restoreAgentError(this.node, previous.error);
+		const threadId = previous?.threadId ?? (callerSessionId || randomUUID());
+		if (invocations) {
+			invocations.items[itemIndex] = { ...previous, threadId };
+		}
 
+		return { supportsSuspension, invocations, previous, threadId, callerSessionId };
+	}
+
+	private getAgentWorkflowInput(agentInfo: ExecuteAgentInfo, itemIndex: number) {
 		const inputDataScope = agentInfo.inputDataScope ?? 'item';
 		const mainBranches = this.inputData?.main ?? [];
 		const primaryBranch = mainBranches[0] ?? [];
@@ -227,7 +310,37 @@ export class BaseExecuteContext extends NodeExecutionContext {
 					? [primaryBranch[itemIndex]]
 					: [];
 
+		return { inputDataScope, scopedInput };
+	}
+
+	async executeAgent(
+		agentInfo: ExecuteAgentInfo,
+		message: string,
+		executionId: string,
+		itemIndex: number,
+	): Promise<ExecuteAgentData> {
+		const runAgent = this.additionalData.executeAgent;
+		if (!runAgent) {
+			throw new OperationalError('Agent execution is not available in this context');
+		}
+
+		let source: ExecuteAgentSource;
+		if (agentInfo.inlineAgent) {
+			source = { inlineAgent: agentInfo.inlineAgent };
+		} else if (agentInfo.agentId) {
+			source = { agentId: agentInfo.agentId };
+		} else {
+			throw new OperationalError('Either an agent id or an inline agent definition is required');
+		}
+
+		const { supportsSuspension, invocations, previous, threadId, callerSessionId } =
+			this.prepareAgentInvocation(agentInfo, itemIndex);
+		if (previous?.result && !previous.result.waiting) return previous.result;
+		const { inputDataScope, scopedInput } = this.getAgentWorkflowInput(agentInfo, itemIndex);
+
 		const workflowContext: ExecuteAgentWorkflowContext = {
+			...(supportsSuspension && { supportsSuspension: true }),
+			...(previous?.result?.waiting && { continuation: previous.result.waiting }),
 			workflowId: this.workflow.id,
 			workflowName: this.workflow.name,
 			callingNodeName: this.node.name,
@@ -240,16 +353,95 @@ export class BaseExecuteContext extends NodeExecutionContext {
 			runExecutionData: this.runExecutionData,
 		};
 
-		return await this.additionalData.executeAgent(
-			source,
-			message,
-			executionId,
+		const sendResponseChunk =
+			agentInfo.enableStreaming !== false &&
+			agentInfo.outputSchema === undefined &&
+			this.isStreaming()
+				? async (type: 'begin' | 'item' | 'end' | 'error', content?: string) =>
+						await this.sendChunk(type, itemIndex, content)
+				: undefined;
+
+		return await this.runAgentInvocation(
+			async () =>
+				await runAgent(
+					source,
+					message,
+					executionId,
+					threadId,
+					this.additionalData,
+					this.additionalData.rootExecutionMode ?? this.getMode(),
+					agentInfo.outputSchema,
+					workflowContext,
+					{
+						nodeId: this.node.id,
+						nodeName: this.node.name,
+						runIndex: this.runIndex,
+						itemIndex,
+						...(sendResponseChunk ? { sendResponseChunk } : {}),
+					},
+				),
+			invocations,
 			threadId,
-			this.additionalData,
-			this.additionalData.rootExecutionMode ?? this.getMode(),
-			agentInfo.outputSchema,
-			workflowContext,
+			itemIndex,
 		);
+	}
+
+	private async runAgentInvocation(
+		run: () => Promise<ExecuteAgentData>,
+		invocations: AgentInvocationState | undefined,
+		threadId: string,
+		itemIndex: number,
+	): Promise<ExecuteAgentData> {
+		let result: ExecuteAgentData;
+		try {
+			result = await run();
+		} catch (error) {
+			if (invocations) {
+				invocations.items[itemIndex] = { threadId, error: storeAgentError(error) };
+			}
+			throw error;
+		}
+		if (invocations) {
+			invocations.items[itemIndex] = { threadId, result };
+			this.setMetadata({
+				waitingChildExecutionIds: result.waiting?.executionIds,
+			});
+			if (result.waiting) await this.putExecutionToWait(WAIT_FOR_SUB_EXECUTION);
+		}
+		return result;
+	}
+
+	isStreaming(): boolean {
+		const handlers = this.additionalData.hooks?.handlers?.sendChunk?.length;
+		const hasHandlers = handlers !== undefined && handlers > 0;
+		const streamingEnabled = this.additionalData.streamingEnabled === true;
+		const executionModeSupportsStreaming = ['manual', 'webhook', 'integrated', 'chat'];
+
+		return hasHandlers && executionModeSupportsStreaming.includes(this.mode) && streamingEnabled;
+	}
+
+	async sendChunk(
+		type: ChunkType,
+		itemIndex: number,
+		content?: IDataObject | string,
+	): Promise<void> {
+		const metadata = {
+			nodeId: this.node.id,
+			nodeName: this.node.name,
+			itemIndex,
+			runIndex: this.runIndex,
+			timestamp: Date.now(),
+		};
+
+		const parsedContent = typeof content === 'string' ? content : JSON.stringify(content);
+
+		const message: StructuredChunk = {
+			type,
+			content: parsedContent,
+			metadata,
+		};
+
+		await this.additionalData.hooks?.runHook('sendChunk', [message]);
 	}
 
 	async getExecutionDataById(executionId: string): Promise<IRunExecutionData | undefined> {
@@ -298,20 +490,13 @@ export class BaseExecuteContext extends NodeExecutionContext {
 	}
 
 	/**
-	 * Console output never passes through the execution-data redaction pipeline,
-	 * so the push/stdout sinks gate on this before emitting. Fails closed: an
-	 * error while resolving the policy redacts rather than emits.
+	 * Console output and AI event payloads never pass through the execution-data
+	 * redaction pipeline, so the push, stdout and log-streaming sinks gate on this
+	 * before emitting. Fails closed: an error while resolving the policy redacts
+	 * rather than emits.
 	 */
 	isConsoleOutputRedacted(): boolean {
-		try {
-			return shouldRedactConsoleOutput(
-				this.runExecutionData.executionData?.runtimeData?.redaction,
-				this.workflow.settings,
-				this.mode,
-			);
-		} catch {
-			return true;
-		}
+		return isExecutionOutputRedacted(this.runExecutionData, this.workflow.settings, this.mode);
 	}
 
 	/**
@@ -334,6 +519,8 @@ export class BaseExecuteContext extends NodeExecutionContext {
 		try {
 			if (this.additionalData.sendDataToUI) {
 				args = args.map((arg) => {
+					if (arg === null || arg === undefined) return String(arg);
+
 					// prevent invalid dates from being logged as null
 					// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return
 					if (arg.isLuxonDateTime && arg.invalidReason) return { ...arg };
@@ -365,7 +552,9 @@ export class BaseExecuteContext extends NodeExecutionContext {
 			workflowName: this.workflow.name ?? 'Unnamed workflow',
 			nodeType: this.node.type,
 			workflowId: this.workflow.id ?? 'unsaved-workflow',
-			msg,
+			// The payload holds prompts, completions and tool I/O, which the
+			// log-streaming sink would otherwise carry unredacted.
+			msg: this.isConsoleOutputRedacted() ? AI_EVENT_REDACTED_MESSAGE : msg,
 		});
 	}
 

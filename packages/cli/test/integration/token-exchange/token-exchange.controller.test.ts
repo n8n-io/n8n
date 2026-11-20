@@ -1,5 +1,5 @@
 import { testDb } from '@n8n/backend-test-utils';
-import { AuthIdentityRepository, ProjectRepository, UserRepository } from '@n8n/db';
+import { AuthIdentityRepository, PersonRepository, ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { generateKeyPairSync, randomUUID } from 'crypto';
 import jwt from 'jsonwebtoken';
@@ -14,7 +14,7 @@ import {
 	type IssuedJwtPayload,
 	type TokenExchangeSuccessResponse,
 } from '@/modules/token-exchange/token-exchange.types';
-import { JwtService } from '@/services/jwt.service';
+import { JwtService } from '@n8n/backend-services';
 
 import { createUser } from '../shared/db/users';
 import * as utils from '../shared/utils';
@@ -126,10 +126,6 @@ beforeEach(async () => {
 	await Container.get(TrustedKeyService).initialize();
 });
 
-afterEach(() => {
-	Container.get(TrustedKeyService).stopRefresh();
-});
-
 const postToken = (body: Record<string, string>) =>
 	testServer.authlessAgent.post('/auth/oauth/token').send(body);
 
@@ -162,7 +158,7 @@ describe('POST /auth/oauth/token', () => {
 		);
 
 		// Issued token is valid and has correct claims
-		const decoded = jwtService.verify<IssuedJwtPayload>(body.access_token);
+		const decoded = jwtService.verify<IssuedJwtPayload>('tokenExchange', body.access_token);
 		expect(decoded.iss).toBe(TOKEN_EXCHANGE_ISSUER);
 		expect(decoded.sub).toEqual(expect.any(String));
 		expect(decoded.act).toBeUndefined();
@@ -170,16 +166,12 @@ describe('POST /auth/oauth/token', () => {
 		expect(decoded.resource).toBeUndefined();
 
 		// User provisioned in DB with correct fields
-		const userRepo = Container.get(UserRepository);
-		const user = await userRepo.findOne({
-			where: { email },
-			relations: ['role'],
-		});
-		expect(user).not.toBeNull();
-		expect(user!.firstName).toBe('Jane');
-		expect(user!.lastName).toBe('Doe');
-		expect(user!.role.slug).toBe('global:admin');
-		expect(decoded.sub).toBe(user!.id);
+		const person = await Container.get(PersonRepository).findByEmailWithAuthIdentities(email);
+		expect(person).not.toBeNull();
+		expect(person!.firstName).toBe('Jane');
+		expect(person!.lastName).toBe('Doe');
+		expect(person!.role.slug).toBe('global:admin');
+		expect(decoded.sub).toBe(person!.id);
 
 		// AuthIdentity linked
 		const identity = await Container.get(AuthIdentityRepository).findOne({
@@ -189,10 +181,10 @@ describe('POST /auth/oauth/token', () => {
 			},
 		});
 		expect(identity).not.toBeNull();
-		expect(identity!.userId).toBe(user!.id);
+		expect(identity!.userId).toBe(person!.id);
 
 		// Personal project created
-		const project = await Container.get(ProjectRepository).getPersonalProjectForUser(user!.id);
+		const project = await Container.get(ProjectRepository).getPersonalProjectForUser(person!.id);
 		expect(project).toBeDefined();
 	});
 
@@ -215,9 +207,11 @@ describe('POST /auth/oauth/token', () => {
 		}).expect(200);
 
 		const decodedA = jwtService.verify<IssuedJwtPayload>(
+			'tokenExchange',
 			(responseA.body as TokenExchangeSuccessResponse).access_token,
 		);
 		const decodedB = jwtService.verify<IssuedJwtPayload>(
+			'tokenExchange',
 			(responseB.body as TokenExchangeSuccessResponse).access_token,
 		);
 
@@ -260,6 +254,7 @@ describe('POST /auth/oauth/token', () => {
 		}).expect(200);
 
 		const decoded = jwtService.verify<IssuedJwtPayload>(
+			'tokenExchange',
 			(response.body as TokenExchangeSuccessResponse).access_token,
 		);
 
@@ -272,10 +267,9 @@ describe('POST /auth/oauth/token', () => {
 		expect(decoded.act!.sub).not.toBe(decoded.sub);
 
 		// Both users exist in DB
-		const userRepo = Container.get(UserRepository);
-		const actorUser = await userRepo.findOneBy({ id: decoded.act!.sub });
-		expect(actorUser).not.toBeNull();
-		expect(actorUser!.email).toBe('actor@example.com');
+		const actorPerson = await Container.get(PersonRepository).findById(decoded.act!.sub);
+		expect(actorPerson).not.toBeNull();
+		expect(actorPerson!.email).toBe('actor@example.com');
 	});
 
 	it('should pass through scope and split resource into array in issued token', async () => {
@@ -292,6 +286,7 @@ describe('POST /auth/oauth/token', () => {
 		}).expect(200);
 
 		const decoded = jwtService.verify<IssuedJwtPayload>(
+			'tokenExchange',
 			(response.body as TokenExchangeSuccessResponse).access_token,
 		);
 		expect(decoded.scope).toBe('workflow:read');

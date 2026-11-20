@@ -1,63 +1,33 @@
-<script lang="ts">
-import { N8nButton, N8nCallout, N8nIcon } from '@n8n/design-system';
-import { useI18n } from '@n8n/i18n';
-import { defineComponent, h } from 'vue';
-
-/** Shared Fix CTA used in both grouped and ungrouped tool-step layouts. */
-const FixWithAssistantCallout = defineComponent({
-	name: 'FixWithAssistantCallout',
-	props: {
-		errorText: { type: String, required: true },
-	},
-	emits: ['fix'],
-	setup(calloutProps, { emit: calloutEmit }) {
-		const calloutI18n = useI18n();
-		return () =>
-			h(
-				N8nCallout,
-				{
-					theme: 'danger',
-					'data-test-id': 'agent-chat-tool-fix-with-assistant-callout',
-				},
-				{
-					default: () => calloutProps.errorText,
-					trailingContent: () =>
-						h(
-							N8nButton,
-							{
-								size: 'small',
-								variant: 'subtle',
-								'data-test-id': 'agent-chat-tool-fix-with-assistant',
-								onClick: () => calloutEmit('fix'),
-							},
-							{
-								icon: () => h(N8nIcon, { icon: 'sparkles', size: 'small' }),
-								default: () => calloutI18n.baseText('agents.builder.preview.fixWithAssistant'),
-							},
-						),
-				},
-			);
-	},
-});
-
-export default {
-	components: { FixWithAssistantCallout },
-};
-</script>
-
 <script setup lang="ts">
-import { N8nAiActivityStep, N8nAiActivityStepGroup, N8nMarkdownEditor } from '@n8n/design-system';
+import {
+	N8nAiActivityStep,
+	N8nAiActivityStepGroup,
+	N8nButton,
+	N8nCallout,
+	N8nIcon,
+	N8nMarkdownEditor,
+} from '@n8n/design-system';
+import {
+	getViolationVerdict,
+	SCOPE_LABEL_KEY,
+} from '@n8n/frontend-module-type-availability-policies';
+import { N8N_CHAT_ACTION_TOOL_NAME } from '@n8n/api-types';
+import { useI18n } from '@n8n/i18n';
 import { computed, toRef } from 'vue';
+import type { AgentsChatHostEventItem } from '@/features/ai/shared/agentsChat/interactionRegistry';
 import type { ToolCall } from '@/features/ai/shared/agentsChat/types';
 import AiReasoningBlock from '@/features/ai/shared/components/AiReasoningBlock.vue';
+import ToolDataBlock from '@/features/ai/shared/components/ToolDataBlock/ToolDataBlock.vue';
+import type { AgentFixWithAssistantFailure } from '../types';
 import { useSubAgentNames } from '../composables/useSubAgentNames';
-import { resolveToolNameForDisplay } from '../utils/toolDisplayName';
+import { isCompactToolName, resolveToolNameForDisplay } from '../utils/toolDisplayName';
 import {
 	getDelegateDifficultySummary,
 	isDelegateSubAgentTool,
 	resolveSubAgentName,
 } from '../utils/delegate-tool';
 import { getToolCallDetails } from '../utils/tool-call-details';
+import { isRecoverablePlanError } from '../utils/agent-plan';
 import {
 	countIncompleteTodos,
 	isWriteTodosTool,
@@ -66,25 +36,87 @@ import {
 	writeTodosSummaryLabel,
 } from '../utils/write-todos-tool';
 import { TOOL_CALL_STATE } from '../constants';
+import { parseToolPolicyRefusal } from '@/features/ai/shared/agentsChat/toolPolicyRefusal';
+import AgentChatToolPolicyRefusal from './AgentChatToolPolicyRefusal.vue';
+import AgentChatHostEvents from './AgentChatHostEvents.vue';
+import AgentChatMessageAttachments from './AgentChatMessageAttachments.vue';
+import { getToolOutputAttachments } from '../utils/tool-output-files';
 
 const props = defineProps<{
 	toolCalls: ToolCall[];
 	projectId?: string;
+	agentId?: string;
 	canFixWithAssistant?: boolean;
+	dismissedToolCallIds?: string[];
 	executionId?: string;
+	/** Host events that show right before the step of their call, by call. */
+	hostEvents?: ReadonlyMap<string, AgentsChatHostEventItem[]>;
 }>();
 
 const emit = defineEmits<{
-	fixWithAssistant: [];
+	fixWithAssistant: [failures: AgentFixWithAssistantFailure[]];
 }>();
 
 const i18n = useI18n();
 
 const showFix = computed(() => Boolean(props.canFixWithAssistant && props.executionId));
 
-const fixableErroredTools = computed(() =>
-	showFix.value ? props.toolCalls.filter((tc) => tc.state === TOOL_CALL_STATE.ERROR) : [],
+const dismissedToolCallIds = computed(() => new Set(props.dismissedToolCallIds ?? []));
+
+const outputFilesByToolCallId = computed(
+	() =>
+		new Map(
+			props.toolCalls.map((tc) => [
+				tc.toolCallId,
+				// The reply files of n8n Chat show on the message, not under the step.
+				tc.tool === N8N_CHAT_ACTION_TOOL_NAME ? [] : getToolOutputAttachments(tc.output),
+			]),
+		),
 );
+
+function outputFiles(tc: ToolCall) {
+	return outputFilesByToolCallId.value.get(tc.toolCallId) ?? [];
+}
+
+function hostEventsFor(tc: ToolCall): AgentsChatHostEventItem[] {
+	return props.hostEvents?.get(tc.toolCallId) ?? [];
+}
+
+const fixableFailures = computed<AgentFixWithAssistantFailure[]>(() => {
+	if (!showFix.value) return [];
+
+	const dismissed = dismissedToolCallIds.value;
+	const failures: AgentFixWithAssistantFailure[] = [];
+
+	for (const toolCall of props.toolCalls) {
+		if (dismissed.has(toolCall.toolCallId)) continue;
+
+		if (isCanceledToolCall(toolCall)) continue;
+
+		if (toolCall.state !== TOOL_CALL_STATE.ERROR) continue;
+		if (isRecoverablePlanError(toolCall)) continue;
+		// The assistant cannot lift a policy.
+		if (toolStepRefusal(toolCall)) continue;
+
+		const error = toolStepError(toolCall)?.trim();
+		if (!error) continue;
+
+		failures.push({
+			toolCallId: toolCall.toolCallId,
+			toolName: toolCall.tool,
+			toolDisplayName: toolStepLabel(toolCall),
+			error,
+			...(toolCall.startTime !== undefined ? { startedAt: toolCall.startTime } : {}),
+			...(toolCall.endTime !== undefined ? { endedAt: toolCall.endTime } : {}),
+		});
+	}
+
+	return failures;
+});
+
+const fixableErrorTexts = computed(() => {
+	return [...new Set(fixableFailures.value.map(({ error }) => error))];
+});
 
 function toolCallsNeedSubAgentNames(toolCalls: ToolCall[]): boolean {
 	return toolCalls.some((tc) => {
@@ -107,19 +139,22 @@ interface ToolStepDisplay {
 	expandable: boolean;
 }
 
-function getToolDisplayName(toolName: string): string {
-	return resolveToolNameForDisplay(toolName, i18n);
+function getToolDisplayName(toolName: string, output?: unknown): string {
+	return resolveToolNameForDisplay(toolName, i18n, output);
 }
 
-function toolStepLabel(tc: ToolCall): string {
+function toolStepLabel(tc: ToolCall, isCompact = false): string {
 	if (isDelegateSubAgentTool(tc.tool)) {
 		return i18n.baseText('agents.chat.delegate.labelFallback');
 	}
 	if (isWriteTodosTool(tc.tool)) return writeTodosLabel(i18n);
-	return getToolDisplayName(tc.tool);
+	// The compact "Memory noted" label only applies once the call has finished.
+	return getToolDisplayName(tc.tool, isCompact ? tc.output : undefined);
 }
 
 function toolStepMetadata(tc: ToolCall): string[] {
+	if (isCanceledToolCall(tc)) return [i18n.baseText('agentSessions.status.cancelled')];
+
 	if (isDelegateSubAgentTool(tc.tool)) {
 		return [
 			resolveSubAgentName(tc.input, subAgentNameById.value),
@@ -169,23 +204,62 @@ function isEmptyToolErrorPayload(value: unknown): boolean {
 }
 
 function toolStepView(tc: ToolCall): ToolStepDisplay {
-	const details = getToolCallDetails(tc, i18n, subAgentNameById.value) ?? '';
+	const isCompact = tc.state === TOOL_CALL_STATE.DONE && isCompactToolName(tc.tool, tc.output);
+	const details = isCompact ? '' : (getToolCallDetails(tc, i18n, subAgentNameById.value) ?? '');
 	const metadata = toolStepMetadata(tc);
 	const hasChildProgress = Boolean(tc.childProgress);
 	return {
-		label: [toolStepLabel(tc), ...metadata].join(' · '),
+		label: [toolStepLabel(tc, isCompact), ...metadata].join(' · '),
 		details,
-		hasRawData: details.length === 0 && hasToolData(tc) && !hasChildProgress,
-		expandable: details.length > 0 || hasToolData(tc) || hasChildProgress,
+		hasRawData: !isCompact && details.length === 0 && hasToolData(tc) && !hasChildProgress,
+		expandable: !isCompact && (details.length > 0 || hasToolData(tc) || hasChildProgress),
 	};
 }
 
-function toolStepError(tc: ToolCall): string | undefined {
+function toolStepRefusal(tc: ToolCall) {
 	if (tc.state !== TOOL_CALL_STATE.ERROR) return undefined;
+	return parseToolPolicyRefusal(tc.output);
+}
+
+function isCanceledToolCall(tc: ToolCall): boolean {
+	return (
+		tc.canceled === true ||
+		tc.state === TOOL_CALL_STATE.CANCELLED ||
+		// Older saved cancellations used the tool-error path.
+		(tc.state === TOOL_CALL_STATE.ERROR &&
+			tc.output === 'Error: Tool call stopped by guardrail: tasks-cancelled')
+	);
+}
+
+function toolStepError(tc: ToolCall): string | undefined {
+	if (isCanceledToolCall(tc)) return undefined;
+
+	if (isRecoverablePlanError(tc)) return i18n.baseText('agents.chat.plan.error.rejected');
+	if (tc.state !== TOOL_CALL_STATE.ERROR) return undefined;
+	const refusal = toolStepRefusal(tc);
+	if (refusal) {
+		const { scope } = getViolationVerdict(refusal.violations[0]);
+		return i18n.baseText(SCOPE_LABEL_KEY[scope ?? 'instance']);
+	}
 	if (isEmptyToolErrorPayload(tc.output)) {
 		return i18n.baseText('agents.chat.toolError.generic');
 	}
 	return formatToolData(tc.output);
+}
+
+function hideToolErrorCallout(tc: ToolCall): boolean {
+	if (toolStepRefusal(tc)) return false;
+	return isRecoverablePlanError(tc) || (showFix.value && tc.state === TOOL_CALL_STATE.ERROR);
+}
+
+/** The refusal payload is for the model; the callout explains it to the user. */
+function showToolOutput(tc: ToolCall): boolean {
+	return tc.output !== undefined && !toolStepRefusal(tc);
+}
+
+function emitFixWithAssistant() {
+	if (fixableFailures.value.length === 0) return;
+	emit('fixWithAssistant', fixableFailures.value);
 }
 
 function isToolStepLoading(tc: ToolCall): boolean {
@@ -213,17 +287,25 @@ function hasActiveToolCall(): boolean {
 <template>
 	<div :class="$style.toolSteps">
 		<template v-if="toolCalls.length > 1">
-			<N8nAiActivityStepGroup :label="groupLabel()" size="small" :loading="hasActiveToolCall()">
+			<N8nAiActivityStepGroup :label="groupLabel()" size="medium" :loading="hasActiveToolCall()">
 				<template v-for="tc in toolCalls" :key="tc.toolCallId">
+					<AgentChatHostEvents :items="hostEventsFor(tc)" />
 					<N8nAiActivityStep
 						v-for="view in [toolStepView(tc)]"
 						:key="`${tc.toolCallId}-${view.label}`"
 						:label="view.label"
 						:loading="isToolStepLoading(tc)"
 						:error="toolStepError(tc)"
-						:hide-error-callout="showFix && tc.state === TOOL_CALL_STATE.ERROR"
+						:error-icon="toolStepRefusal(tc) ? 'lock' : undefined"
+						:hide-error-callout="hideToolErrorCallout(tc)"
 						:has-content="view.expandable"
 					>
+						<template v-if="toolStepRefusal(tc)" #errorCallout>
+							<AgentChatToolPolicyRefusal
+								:refusal="toolStepRefusal(tc)!"
+								:fallback-name="toolStepLabel(tc)"
+							/>
+						</template>
 						<div
 							v-if="tc.childProgress"
 							:class="$style.childProgress"
@@ -264,35 +346,44 @@ function hasActiveToolCall(): boolean {
 								<span :class="$style.toolDataLabel">
 									{{ i18n.baseText('agentSessions.timeline.input') }}
 								</span>
-								<pre :class="$style.toolDataContent">{{ formatToolData(tc.input) }}</pre>
+								<ToolDataBlock :value="tc.input" />
 							</div>
-							<div v-if="tc.output !== undefined" :class="$style.toolDataSection">
+							<div v-if="showToolOutput(tc)" :class="$style.toolDataSection">
 								<span :class="$style.toolDataLabel">
 									{{ i18n.baseText('agentSessions.timeline.output') }}
 								</span>
-								<pre :class="$style.toolDataContent">{{ formatToolData(tc.output) }}</pre>
+								<ToolDataBlock :value="tc.output" />
 							</div>
 						</div>
 					</N8nAiActivityStep>
+					<AgentChatMessageAttachments
+						v-if="outputFiles(tc).length && projectId && agentId"
+						:class="$style.outputFiles"
+						:attachments="outputFiles(tc)"
+						:project-id="projectId"
+						:agent-id="agentId"
+					/>
 				</template>
 			</N8nAiActivityStepGroup>
-			<FixWithAssistantCallout
-				v-for="tc in fixableErroredTools"
-				:key="`fix-${tc.toolCallId}`"
-				:error-text="toolStepError(tc) ?? ''"
-				@fix="emit('fixWithAssistant')"
-			/>
 		</template>
 
 		<template v-else>
 			<template v-for="tc in toolCalls" :key="tc.toolCallId">
+				<AgentChatHostEvents :items="hostEventsFor(tc)" />
 				<N8nAiActivityStep
 					:label="toolStepView(tc).label"
 					:loading="isToolStepLoading(tc)"
 					:error="toolStepError(tc)"
-					:hide-error-callout="showFix && tc.state === TOOL_CALL_STATE.ERROR"
+					:error-icon="toolStepRefusal(tc) ? 'lock' : undefined"
+					:hide-error-callout="hideToolErrorCallout(tc)"
 					:has-content="toolStepView(tc).expandable"
 				>
+					<template v-if="toolStepRefusal(tc)" #errorCallout>
+						<AgentChatToolPolicyRefusal
+							:refusal="toolStepRefusal(tc)!"
+							:fallback-name="toolStepLabel(tc)"
+						/>
+					</template>
 					<template v-for="view in [toolStepView(tc)]" :key="view.label">
 						<div
 							v-if="tc.childProgress"
@@ -334,30 +425,93 @@ function hasActiveToolCall(): boolean {
 								<span :class="$style.toolDataLabel">
 									{{ i18n.baseText('agentSessions.timeline.input') }}
 								</span>
-								<pre :class="$style.toolDataContent">{{ formatToolData(tc.input) }}</pre>
+								<ToolDataBlock :value="tc.input" />
 							</div>
-							<div v-if="tc.output !== undefined" :class="$style.toolDataSection">
+							<div v-if="showToolOutput(tc)" :class="$style.toolDataSection">
 								<span :class="$style.toolDataLabel">
 									{{ i18n.baseText('agentSessions.timeline.output') }}
 								</span>
-								<pre :class="$style.toolDataContent">{{ formatToolData(tc.output) }}</pre>
+								<ToolDataBlock :value="tc.output" />
 							</div>
 						</div>
 					</template>
 				</N8nAiActivityStep>
-				<FixWithAssistantCallout
-					v-if="showFix && tc.state === TOOL_CALL_STATE.ERROR"
-					:error-text="toolStepError(tc) ?? ''"
-					@fix="emit('fixWithAssistant')"
+				<AgentChatMessageAttachments
+					v-if="outputFiles(tc).length && projectId && agentId"
+					:class="$style.outputFiles"
+					:attachments="outputFiles(tc)"
+					:project-id="projectId"
+					:agent-id="agentId"
 				/>
 			</template>
 		</template>
+
+		<Transition name="fix-callout">
+			<N8nCallout
+				v-if="fixableErrorTexts.length > 0"
+				theme="danger"
+				:class="$style.fixCallout"
+				data-test-id="agent-chat-tool-fix-with-assistant-callout"
+			>
+				<template v-if="fixableErrorTexts.length === 1">
+					{{ fixableErrorTexts[0] }}
+				</template>
+				<ul v-else :class="$style.errorList">
+					<li v-for="error in fixableErrorTexts" :key="error">{{ error }}</li>
+				</ul>
+				<template #trailingContent>
+					<N8nButton
+						size="small"
+						variant="outline"
+						:class="$style.fixCalloutButton"
+						data-test-id="agent-chat-tool-fix-with-assistant"
+						@click="emitFixWithAssistant"
+					>
+						<template #icon><N8nIcon icon="sparkles" size="small" /></template>
+						{{ i18n.baseText('agents.builder.preview.fixWithAssistant') }}
+					</N8nButton>
+				</template>
+			</N8nCallout>
+		</Transition>
 	</div>
 </template>
 
 <style module>
 .toolSteps {
 	margin: 0 0 var(--spacing--sm);
+}
+
+.fixCallout {
+	flex-wrap: wrap;
+	gap: var(--spacing--2xs);
+}
+
+.fixCallout > :first-child {
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+.fixCallout :global(.n8n-text) {
+	min-width: 0;
+	overflow-wrap: anywhere;
+}
+
+.fixCalloutButton {
+	flex-shrink: 0;
+	margin-left: auto;
+}
+
+.errorList {
+	margin: 0;
+	padding-left: var(--spacing--sm);
+}
+
+.errorList li + li {
+	margin-top: var(--spacing--4xs);
+}
+
+.outputFiles {
+	margin: var(--spacing--4xs) 0 var(--spacing--2xs);
 }
 
 .childProgress {
@@ -392,10 +546,7 @@ function hasActiveToolCall(): boolean {
 }
 
 .toolDataSection {
-	border: var(--border-width) var(--border-style) var(--border-color);
-	border-radius: var(--radius--xs);
-	background-color: var(--background--base);
-	padding: var(--spacing--2xs);
+	min-width: 0;
 	user-select: text;
 }
 
@@ -406,15 +557,14 @@ function hasActiveToolCall(): boolean {
 	color: var(--text-color--subtle);
 	margin-bottom: var(--spacing--5xs);
 }
+</style>
 
-.toolDataContent {
-	margin: 0;
-	font-family: monospace;
-	font-size: var(--font-size--xs);
-	line-height: var(--line-height--sm);
-	color: var(--text-color);
-	white-space: pre-wrap;
-	overflow-wrap: anywhere;
-	user-select: text;
+<style lang="scss">
+.fix-callout-leave-active {
+	transition: opacity var(--duration--snappy) var(--easing--ease-in);
+}
+
+.fix-callout-leave-to {
+	opacity: 0;
 }
 </style>

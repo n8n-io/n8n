@@ -1,8 +1,26 @@
 import { Logger } from '@n8n/backend-common';
-import { detectAuthenticationParameterValue } from '@n8n/ai-utilities/node-catalog';
+import {
+	collectDynamicNodeParameterPaths,
+	detectAuthenticationParameterValue,
+	findNodeParameterProperty,
+	getDynamicNodeParameterLookup,
+	getRequiredNodeCredentialSlots,
+	hasNodeCredentials,
+	normalizeParameterPath,
+	toDynamicParameterPath,
+	toLoadedOptionParameterValue,
+	toResourceLocatorParameterValue,
+} from '@n8n/ai-utilities/node-catalog';
+import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 import { ProjectRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import type { ExploreResourcesParams, ExploreResourcesResult } from '@n8n/instance-ai';
+import { UserError } from '@n8n/errors';
+import type {
+	ExploreResourcesParams,
+	ExploreResourcesResult,
+	ResolveParameterOptionsParams,
+	ResolveParameterOptionsResult,
+} from '@n8n/instance-ai';
 import type {
 	INodeCredentials,
 	INodeParameters,
@@ -14,7 +32,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import { CredentialsFinderService } from '@n8n/backend-services';
 import { NodeTypes } from '@/node-types';
 import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import { getBase } from '@/workflow-execute-additional-data';
@@ -26,6 +44,27 @@ import { getBase } from '@/workflow-execute-additional-data';
  * channel lists — where a stale value is actually worth reporting.
  */
 const MAX_AVAILABILITY_PAGES = 5;
+
+/** Display name for the managed n8n Connect credential slot in node parameter option lookups. */
+const N8N_CONNECT_DISPLAY_NAME = 'Gateway credits';
+
+type CredentialReference = Pick<ExploreResourcesParams, 'credentialId' | 'credentialType'>;
+
+/** The credentials a parameter option lookup uses: the `credentials` map, or the single credential. */
+export function getParameterOptionsCredentialReferences(
+	params: Pick<ResolveParameterOptionsParams, 'credentials' | 'credentialId' | 'credentialType'>,
+): CredentialReference[] {
+	if (params.credentials && Object.keys(params.credentials).length > 0) {
+		return Object.entries(params.credentials).map(([credentialType, { id }]) => ({
+			credentialId: id,
+			credentialType,
+		}));
+	}
+	if (params.credentialId && params.credentialType) {
+		return [{ credentialId: params.credentialId, credentialType: params.credentialType }];
+	}
+	return [];
+}
 
 /**
  * Looks up dynamic resource locator and load-options values for a node on
@@ -48,23 +87,13 @@ export class NodeResourceExplorerService {
 		user: User,
 		params: ExploreResourcesParams,
 	): Promise<ExploreResourcesResult> {
-		const credential = await this.credentialsFinderService.findCredentialForUser(
-			params.credentialId,
-			user,
-			['credential:read'],
-		);
-		if (!credential || credential.type !== params.credentialType) {
-			throw new Error(`Credential ${params.credentialId} not found or not accessible`);
-		}
+		const credentials = await this.resolveExploreCredentials(user, params);
 		const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(user.id);
 
 		const nodeTypeAndVersion = { name: params.nodeType, version: params.version };
 		const currentNodeParameters = structuredClone(
 			params.currentNodeParameters ?? {},
 		) as INodeParameters;
-		const credentials: INodeCredentials = {
-			[credential.type]: { id: credential.id, name: credential.name },
-		};
 
 		const nodeDescription = this.getNodeDescription(params.nodeType, params.version);
 
@@ -83,7 +112,7 @@ export class NodeResourceExplorerService {
 
 		// Look up the property's builderHint so the agent sees selection guidance
 		// alongside the raw list. This makes the hint reachable even when the
-		// agent jumps straight to explore-resources without reading type-definition.
+		// agent calls get_node_parameter_options without reading get_node_types first.
 		const builderHint = nodeDescription
 			? findBuilderHintForMethod(nodeDescription, params.methodName, params.methodType)
 			: undefined;
@@ -112,14 +141,26 @@ export class NodeResourceExplorerService {
 				};
 			}
 
-			const options = await this.dynamicNodeParametersService.getOptionsViaMethodName(
-				params.methodName,
-				'',
-				additionalData,
-				nodeTypeAndVersion,
-				currentNodeParameters,
-				credentials,
-			);
+			const isRouted = nodeDescription
+				? isRoutedLoadOptionsProperty(nodeDescription, params.methodName)
+				: false;
+
+			const options = isRouted
+				? await this.dynamicNodeParametersService.getOptionsViaLoadOptionsByPath(
+						params.methodName,
+						additionalData,
+						nodeTypeAndVersion,
+						currentNodeParameters,
+						credentials,
+					)
+				: await this.dynamicNodeParametersService.getOptionsViaMethodName(
+						params.methodName,
+						'',
+						additionalData,
+						nodeTypeAndVersion,
+						currentNodeParameters,
+						credentials,
+					);
 			return {
 				results: options.map((o) => ({
 					name: String(o.name),
@@ -129,11 +170,257 @@ export class NodeResourceExplorerService {
 				...(builderHint ? { builderHint } : {}),
 			};
 		} catch (error) {
-			this.logger.error('Failed to load options for explore-resources', {
+			this.logger.error('Failed to load node parameter options', {
 				error: error instanceof Error ? error.message : String(error),
 			});
 			throw error;
 		}
+	}
+
+	async resolveParameterOptions(
+		user: User,
+		params: ResolveParameterOptionsParams & { projectId?: string },
+	): Promise<ResolveParameterOptionsResult> {
+		let nodeTypeDescription;
+		try {
+			nodeTypeDescription = this.nodeTypes.getByNameAndVersion(params.nodeType, params.version);
+		} catch (error) {
+			return {
+				ok: false,
+				code: 'node_type_not_found',
+				message:
+					error instanceof Error ? error.message : `Node type "${params.nodeType}" not found`,
+			};
+		}
+
+		const description = nodeTypeDescription.description;
+		const node = { typeVersion: params.version };
+		const rawParameters = (params.nodeParameters ?? {}) as INodeParameters;
+		const resolvedParameters =
+			NodeHelpers.getNodeParameters(
+				description.properties,
+				rawParameters,
+				true,
+				false,
+				node,
+				description,
+			) ?? rawParameters;
+		const property = findNodeParameterProperty(description.properties, params.parameterPath, (p) =>
+			NodeHelpers.displayParameter(resolvedParameters, p, node, description),
+		);
+		if (!property) {
+			return {
+				ok: false,
+				code: 'parameter_not_found',
+				message: `Parameter "${params.parameterPath}" was not found on ${params.nodeType}.`,
+				dynamicParameters: collectDynamicNodeParameterPaths(
+					nodeTypeDescription.description.properties,
+				),
+			};
+		}
+
+		const lookup = getDynamicNodeParameterLookup(property);
+		if (!lookup) {
+			return {
+				ok: false,
+				code: 'not_dynamic_selector',
+				message: `Parameter "${params.parameterPath}" does not expose a resource locator or load-options lookup.`,
+				dynamicParameters: collectDynamicNodeParameterPaths(
+					nodeTypeDescription.description.properties,
+				),
+			};
+		}
+
+		let credentials: INodeCredentials | undefined;
+		try {
+			const references = getParameterOptionsCredentialReferences(params);
+			if (references.length > 0) {
+				credentials = {};
+				for (const reference of references) {
+					Object.assign(credentials, await this.resolveExploreCredentials(user, reference));
+				}
+			}
+		} catch (error) {
+			return {
+				ok: false,
+				code: 'lookup_failed',
+				message: error instanceof Error ? error.message : String(error),
+			};
+		}
+
+		const credentialSlots = getRequiredNodeCredentialSlots(nodeTypeDescription.description);
+		if (
+			credentialSlots.length > 0 &&
+			!lookup.skipCredentialsCheck &&
+			!hasNodeCredentials(credentials)
+		) {
+			return {
+				ok: false,
+				code: 'missing_credentials',
+				message:
+					'This parameter needs node credentials before live options can be fetched. Resolve a credential for one of the returned credential slots, then retry with credentialId + credentialType or credentials.',
+				credentialSlots,
+			};
+		}
+
+		const projectId =
+			params.projectId ??
+			(await this.projectRepository.getPersonalProjectForUserOrFail(user.id)).id;
+		const currentNodeParameters = structuredClone(params.nodeParameters ?? {}) as INodeParameters;
+		const resourceIds = { projectId, credentials };
+		try {
+			await this.dynamicNodeParametersService.refineResourceIds(user, resourceIds);
+		} catch (error) {
+			return {
+				ok: false,
+				code: 'lookup_failed',
+				message: error instanceof Error ? error.message : 'Failed to verify credentials',
+			};
+		}
+
+		if (!currentNodeParameters.authentication && resourceIds.credentials) {
+			for (const credentialType of Object.keys(resourceIds.credentials)) {
+				const authValue = detectAuthenticationParameterValue(
+					nodeTypeDescription.description,
+					credentialType,
+				);
+				if (authValue !== undefined) {
+					currentNodeParameters.authentication = authValue;
+					break;
+				}
+			}
+		}
+
+		const builderHint = property.builderHint?.propertyHint;
+		const additionalData = await getBase({
+			userId: user.id,
+			projectId: resourceIds.projectId,
+			currentNodeParameters,
+		});
+		additionalData.dataTableProjectId = resourceIds.projectId;
+
+		const nodeTypeAndVersion = { name: params.nodeType, version: params.version };
+		const dynamicPath = toDynamicParameterPath(params.parameterPath);
+
+		try {
+			if (lookup.kind === 'resourceLocator') {
+				const result = await this.dynamicNodeParametersService.getResourceLocatorResults(
+					lookup.methodName,
+					dynamicPath,
+					additionalData,
+					nodeTypeAndVersion,
+					currentNodeParameters,
+					resourceIds.credentials,
+					params.filter,
+					params.paginationToken,
+				);
+
+				return {
+					ok: true,
+					kind: lookup.kind,
+					parameterPath: normalizeParameterPath(params.parameterPath),
+					methodName: lookup.methodName,
+					mode: lookup.mode,
+					results: (result.results ?? []).map((option) => ({
+						name: String(option.name),
+						value: option.value,
+						...(option.url ? { url: option.url } : {}),
+						parameterValue: toResourceLocatorParameterValue(option, lookup.mode),
+					})),
+					paginationToken:
+						typeof result.paginationToken === 'string' ? result.paginationToken : undefined,
+					...(builderHint ? { builderHint } : {}),
+				};
+			}
+
+			const options =
+				lookup.kind === 'loadOptionsMethod'
+					? await this.dynamicNodeParametersService.getOptionsViaMethodName(
+							lookup.methodName,
+							dynamicPath,
+							additionalData,
+							nodeTypeAndVersion,
+							currentNodeParameters,
+							resourceIds.credentials,
+						)
+					: await this.dynamicNodeParametersService.getOptionsViaLoadOptions(
+							lookup.loadOptions,
+							additionalData,
+							nodeTypeAndVersion,
+							currentNodeParameters,
+							resourceIds.credentials,
+						);
+
+			return {
+				ok: true,
+				kind: lookup.kind,
+				parameterPath: normalizeParameterPath(params.parameterPath),
+				...(lookup.kind === 'loadOptionsMethod' ? { methodName: lookup.methodName } : {}),
+				results: options.map((option) => ({
+					name: String(option.name),
+					value: option.value,
+					...(option.description ? { description: option.description } : {}),
+					parameterValue: toLoadedOptionParameterValue(option),
+				})),
+				...(builderHint ? { builderHint } : {}),
+			};
+		} catch (error) {
+			return {
+				ok: false,
+				code: 'lookup_failed',
+				message: error instanceof Error ? error.message : 'Failed to fetch parameter options',
+			};
+		}
+	}
+
+	/**
+	 * Run the credential access and type check `exploreResources` runs, without the
+	 * provider lookup. Throws as `exploreResources` does when the check fails.
+	 */
+	async assertExploreCredentialAccess(user: User, params: CredentialReference): Promise<void> {
+		await this.resolveExploreCredentials(user, params);
+	}
+
+	/**
+	 * Resolve credentials for node parameter option lookups and availability checks.
+	 * The n8n Connect managed tag skips the credential store and passes the
+	 * gateway-managed marker so CredentialsHelper mints a synthetic credential
+	 * against the gateway allowlist.
+	 */
+	private async resolveExploreCredentials(
+		user: User,
+		params: Pick<ExploreResourcesParams, 'credentialId' | 'credentialType'>,
+	): Promise<INodeCredentials> {
+		if (params.credentialId === AI_GATEWAY_MANAGED_TAG) {
+			return {
+				[params.credentialType]: {
+					id: null,
+					name: N8N_CONNECT_DISPLAY_NAME,
+					__aiGatewayManaged: true,
+				},
+			};
+		}
+
+		const credential = await this.credentialsFinderService.findCredentialForUser(
+			params.credentialId,
+			user,
+			['credential:read'],
+			{ excludeSeeOnlyRoles: true },
+		);
+		if (!credential) {
+			throw new UserError(`Credential ${params.credentialId} not found or not accessible`);
+		}
+		// The user can read this credential, so naming its type reveals nothing new.
+		if (credential.type !== params.credentialType) {
+			throw new UserError(
+				`Credential ${params.credentialId} has type "${credential.type}", not "${params.credentialType}". ` +
+					'Pass the type of the credential, or use a credential of the type the node needs.',
+			);
+		}
+
+		return {
+			[credential.type]: { id: credential.id, name: credential.name },
+		};
 	}
 
 	/**
@@ -228,7 +515,7 @@ export class NodeResourceExplorerService {
 			credentialId: string;
 			parameters: Record<string, unknown>;
 		},
-		candidate: Pick<CandidateLocator, 'name' | 'methodName'>,
+		candidate: Pick<CandidateLocator, 'name' | 'methodName' | 'methodType'>,
 	): Promise<{ options: Array<{ name: string; value: string }>; complete: boolean }> {
 		const byValue = new Map<string, { name: string; value: string }>();
 		let paginationToken: string | undefined;
@@ -240,7 +527,7 @@ export class NodeResourceExplorerService {
 					nodeType: params.nodeType,
 					version: params.version,
 					methodName: candidate.methodName,
-					methodType: 'listSearch',
+					methodType: candidate.methodType,
 					credentialType: params.credentialType,
 					credentialId: params.credentialId,
 					currentNodeParameters: params.parameters,
@@ -301,6 +588,7 @@ interface CandidateLocator {
 	name: string;
 	displayName: string;
 	methodName: string;
+	methodType: 'listSearch' | 'loadOptions';
 	currentValue: string;
 }
 
@@ -388,14 +676,32 @@ function collectListBackedLocators(
 	const seen = new Set<string>();
 
 	for (const property of nodeDescription.properties) {
-		if (property.type !== 'resourceLocator') continue;
 		if (seen.has(property.name)) continue;
 
-		const methodName = property.modes?.reduce<string | undefined>(
-			(found, mode: INodePropertyMode) =>
-				found ?? (mode.type === 'list' ? mode.typeOptions?.searchListMethod : undefined),
-			undefined,
-		);
+		let methodName: string | undefined;
+		let methodType: 'listSearch' | 'loadOptions' = 'listSearch';
+
+		if (property.type === 'resourceLocator') {
+			methodName = property.modes?.reduce<string | undefined>(
+				(found, mode: INodePropertyMode) =>
+					found ?? (mode.type === 'list' ? mode.typeOptions?.searchListMethod : undefined),
+				undefined,
+			);
+			methodType = 'listSearch';
+		} else if (property.type === 'options') {
+			if (property.typeOptions?.loadOptionsMethod) {
+				methodName = property.typeOptions.loadOptionsMethod;
+				methodType =
+					property.typeOptions.loadOptionsMethod === 'listSearch' ? 'listSearch' : 'loadOptions';
+			} else if (property.typeOptions?.searchListMethod) {
+				methodName = property.typeOptions.searchListMethod;
+				methodType = 'listSearch';
+			} else if (property.typeOptions?.loadOptions?.routing) {
+				methodName = property.name;
+				methodType = 'loadOptions';
+			}
+		}
+
 		if (!methodName) continue;
 
 		if (!NodeHelpers.displayParameter(resolved, property, node, nodeDescription)) continue;
@@ -408,6 +714,7 @@ function collectListBackedLocators(
 			name: property.name,
 			displayName: property.displayName,
 			methodName,
+			methodType,
 			currentValue,
 		});
 	}
@@ -428,7 +735,10 @@ function findBuilderHintForMethod(
 	const referencesMethod = (prop: INodeProperties): boolean => {
 		switch (methodType) {
 			case 'loadOptions':
-				return prop.typeOptions?.loadOptionsMethod === methodName;
+				return (
+					prop.typeOptions?.loadOptionsMethod === methodName ||
+					(Boolean(prop.typeOptions?.loadOptions?.routing) && prop.name === methodName)
+				);
 			case 'listSearch': {
 				const modes: INodePropertyMode[] = prop.modes ?? [];
 				return modes.some((mode) => mode.typeOptions?.searchListMethod === methodName);
@@ -463,4 +773,28 @@ function findBuilderHintForMethod(
 	};
 
 	return searchProps(nodeDesc.properties);
+}
+
+function isRoutedLoadOptionsProperty(
+	nodeDesc: INodeTypeDescription,
+	propertyName: string,
+): boolean {
+	const search = (
+		items?: Array<INodePropertyOptions | INodeProperties | INodePropertyCollection>,
+	): boolean => {
+		for (const item of items ?? []) {
+			if ('values' in item && Array.isArray(item.values)) {
+				if (search(item.values)) return true;
+				continue;
+			}
+			if ('type' in item) {
+				if (item.name === propertyName && Boolean(item.typeOptions?.loadOptions?.routing)) {
+					return true;
+				}
+				if (item.options && search(item.options)) return true;
+			}
+		}
+		return false;
+	};
+	return search(nodeDesc.properties);
 }

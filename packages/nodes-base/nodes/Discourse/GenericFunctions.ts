@@ -5,13 +5,18 @@ import type {
 	JsonObject,
 	IHttpRequestMethods,
 	IRequestOptions,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, decodePathValue, requestUrl } from 'n8n-workflow';
+
+export const toPathValue = (version: number, value: string) =>
+	version < 1.1 ? decodePathValue(value) : value;
 
 export async function discourseApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	path: string,
+	path: RequestPath,
 
 	body: any = {},
 	qs: IDataObject = {},
@@ -19,15 +24,15 @@ export async function discourseApiRequest(
 ): Promise<any> {
 	const credentials = await this.getCredentials<{ url: string }>('discourseApi');
 
-	const options: IRequestOptions = {
-		method,
-		body,
-		qs,
-		uri: `${credentials.url}${path}`,
-		json: true,
-	};
-
 	try {
+		const options: WithRequestTarget<IRequestOptions, 'uri'> = {
+			method,
+			body,
+			qs,
+			uri: requestUrl`${credentials.url}${path}`,
+			json: true,
+		};
+
 		if (Object.keys(body as IDataObject).length === 0) {
 			delete options.body;
 		}
@@ -40,7 +45,7 @@ export async function discourseApiRequest(
 export async function discourseApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 
 	body: any = {},
 	query: IDataObject = {},

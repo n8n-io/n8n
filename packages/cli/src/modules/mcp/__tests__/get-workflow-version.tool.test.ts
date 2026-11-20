@@ -1,10 +1,10 @@
+import { TelemetryProxy } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { User } from '@n8n/db';
 import type { INode } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
-import { Telemetry } from '@/telemetry';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 
@@ -25,12 +25,12 @@ describe('get-workflow-version MCP tool', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
 	let workflowFinderService: WorkflowFinderService;
 	let workflowHistoryService: WorkflowHistoryService;
-	let telemetry: Telemetry;
+	let telemetry: TelemetryProxy;
 
 	beforeEach(() => {
 		workflowFinderService = mockInstance(WorkflowFinderService);
 		workflowHistoryService = mockInstance(WorkflowHistoryService);
-		telemetry = mockInstance(Telemetry, { track: vi.fn() });
+		telemetry = mockInstance(TelemetryProxy, { track: vi.fn() });
 	});
 
 	const buildTool = () =>
@@ -83,6 +83,33 @@ describe('get-workflow-version MCP tool', () => {
 				httpHeaderAuth: { id: 'cred-1', name: 'Secret' },
 			});
 			expect(content.nodes[0]).toMatchObject({ name: 'HTTP Request' });
+		});
+
+		test('normalizes nodes persisted without a parameters key, matching get_workflow_details', async () => {
+			// Regression (ADO-5355): the same stored node must read identically
+			// through every MCP tool that emits node payloads.
+			const skeletonNode = {
+				id: 'node-1',
+				name: 'Webhook',
+				type: 'n8n-nodes-base.webhook',
+				typeVersion: 1,
+				position: [0, 0],
+				webhookId: 'hook-1',
+			} as INode;
+			(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(createWorkflow());
+			(workflowHistoryService.getVersion as Mock).mockResolvedValue(
+				createWorkflowHistoryVersion({
+					workflowId: 'wf-1',
+					versionId: 'v1',
+					nodes: [skeletonNode],
+				}),
+			);
+
+			const tool = buildTool();
+			const result = await tool.handler({ workflowId: 'wf-1', versionId: 'v1' }, callContext);
+
+			const content = result.structuredContent as { nodes: Array<Record<string, unknown>> };
+			expect(content.nodes[0].parameters).toEqual({});
 		});
 
 		test('omits group member ids that no longer resolve to a node', async () => {

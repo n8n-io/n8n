@@ -1,9 +1,9 @@
-import { type User, WorkflowEntity } from '@n8n/db';
+import type { TelemetryProxy } from '@n8n/backend-services';
+import { type OperationContext, type User, WorkflowEntity } from '@n8n/db';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import z from 'zod';
 
 import type { CollaborationService } from '@/collaboration/collaboration.service';
-import type { Telemetry } from '@/telemetry';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
@@ -51,8 +51,9 @@ export const createRestoreWorkflowVersionTool = (
 	workflowFinderService: WorkflowFinderService,
 	workflowHistoryService: WorkflowHistoryService,
 	workflowService: WorkflowService,
-	telemetry: Telemetry,
+	telemetry: TelemetryProxy,
 	collaborationService: CollaborationService,
+	ctx: OperationContext = {},
 ): ToolDefinition<typeof inputSchema.shape> => ({
 	name: 'restore_workflow_version',
 	config: {
@@ -101,12 +102,19 @@ export const createRestoreWorkflowVersionTool = (
 
 			const versionMetadata = buildRestoreVersionMetadata(version);
 
-			const updatedWorkflow = await workflowService.update(user, workflowUpdateData, workflowId, {
-				forceSave: true,
-				source: 'n8n-mcp',
-				versionName: versionMetadata.name,
-				versionDescription: versionMetadata.description,
-			});
+			const updatedWorkflow = await workflowService.update(
+				user,
+				workflowUpdateData,
+				workflowId,
+				{
+					forceSave: true,
+					source: 'n8n-mcp',
+					restoredVersionSettings: version.settings,
+					versionName: versionMetadata.name,
+					versionDescription: versionMetadata.description,
+				},
+				ctx,
+			);
 
 			void collaborationService.broadcastWorkflowUpdate(workflowId, user.id).catch(() => {});
 

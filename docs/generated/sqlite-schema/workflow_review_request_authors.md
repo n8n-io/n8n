@@ -32,6 +32,7 @@ CREATE TABLE "workflow_review_request_authors" ("workflowReviewRequestId" varcha
 
 | Name | Definition |
 | ---- | ---------- |
+| IDX_workflow_review_request_authors_user | CREATE INDEX "IDX_workflow_review_request_authors_user" ON "workflow_review_request_authors" ("userId", "workflowReviewRequestId")  |
 | sqlite_autoindex_workflow_review_request_authors_1 | PRIMARY KEY (workflowReviewRequestId, userId) |
 
 ## Relations
@@ -52,6 +53,7 @@ erDiagram
   varchar_255_ email
   varchar_32_ firstName
   varchar id PK
+  VARCHAR_16_ kind
   date lastActiveAt
   varchar_32_ lastName
   boolean mfaEnabled

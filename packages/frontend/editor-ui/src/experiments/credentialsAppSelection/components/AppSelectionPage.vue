@@ -181,7 +181,13 @@ const validateCredential = async (credentialId: string, credentialTypeName: stri
 			// Check if this is an OAuth credential type
 			const credentialType = credentialsStore.getCredentialTypeByName(credentialTypeName);
 			const isOAuth = credentialType?.extends?.some((ext) =>
-				['oAuth2Api', 'oAuth1Api', 'googleOAuth2Api', 'microsoftOAuth2Api'].includes(ext),
+				[
+					'oAuth2Api',
+					'oAuth1Api',
+					'googleOAuth2Api',
+					'microsoftOAuth2Api',
+					'atlassianOAuth2Api',
+				].includes(ext),
 			);
 
 			let isValid = false;

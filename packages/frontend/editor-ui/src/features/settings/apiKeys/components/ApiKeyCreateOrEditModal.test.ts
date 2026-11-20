@@ -24,20 +24,18 @@ vi.mock('@n8n/composables/useTelemetry', () => {
 	};
 });
 
-const clipboardCopy = vi.fn();
-vi.mock('@vueuse/core', async (importOriginal) => {
-	const original = await importOriginal<typeof import('@vueuse/core')>();
-	return {
-		...original,
-		useClipboard: () => ({ copy: clipboardCopy }),
-	};
+// N8nCopyInput writes through the Clipboard API of the window it renders in.
+const clipboardCopy = vi.fn<(text: string) => Promise<void>>().mockResolvedValue(undefined);
+Object.defineProperty(navigator, 'clipboard', {
+	value: { writeText: clipboardCopy },
+	configurable: true,
 });
 
 const renderComponent = createComponentRenderer(ApiKeyEditModal, {
 	pinia: createTestingPinia({
 		initialState: {
 			[STORES.UI]: {
-				modalsById: {
+				modalStateById: {
 					[API_KEY_CREATE_OR_EDIT_MODAL_KEY]: { open: true },
 				},
 			},

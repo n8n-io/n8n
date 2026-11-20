@@ -1,20 +1,24 @@
+import {
+	OFFICIAL_OPENAI_HOSTNAMES,
+	shouldIncludeOpenAiModel,
+} from '@n8n/ai-utilities/model-discovery';
 import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeListSearchItems,
 	INodeListSearchResult,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 import type { Assistant } from 'openai/resources/beta/assistants';
 import type { Model } from 'openai/resources/models';
 
-import { shouldIncludeModel } from '../helpers/modelFiltering';
 import { apiRequest } from '../transport';
 
 export async function fileSearch(
 	this: ILoadOptionsFunctions,
 	filter?: string,
 ): Promise<INodeListSearchResult> {
-	const { data } = await apiRequest.call(this, 'GET', '/files');
+	const { data } = await apiRequest.call(this, 'GET', requestPath`/files`);
 
 	if (filter) {
 		const results: INodeListSearchItems[] = [];
@@ -44,7 +48,7 @@ export async function fileSearch(
 const getModelSearch =
 	(filterCondition: (model: Model) => boolean) =>
 	async (ctx: ILoadOptionsFunctions, filter?: string): Promise<INodeListSearchResult> => {
-		let { data } = (await apiRequest.call(ctx, 'GET', '/models')) as { data: Model[] };
+		let { data } = (await apiRequest.call(ctx, 'GET', requestPath`/models`)) as { data: Model[] };
 
 		data = data?.filter((model) => filterCondition(model));
 
@@ -78,8 +82,11 @@ export async function modelSearch(
 ): Promise<INodeListSearchResult> {
 	const credentials = await this.getCredentials<{ url: string }>('openAiApi');
 	const url = credentials.url && new URL(credentials.url);
-	const isCustomAPI = !!(url && !['api.openai.com', 'ai-assistant.n8n.io'].includes(url.hostname));
-	return await getModelSearch((model) => shouldIncludeModel(model.id, isCustomAPI))(this, filter);
+	const isCustomAPI = !!(url && !OFFICIAL_OPENAI_HOSTNAMES.includes(url.hostname));
+	return await getModelSearch((model) => shouldIncludeOpenAiModel(model.id, isCustomAPI))(
+		this,
+		filter,
+	);
 }
 
 export async function videoModelSearch(
@@ -132,15 +139,20 @@ export async function assistantSearch(
 	filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
-	const { data, has_more, last_id } = (await apiRequest.call(this, 'GET', '/assistants', {
-		headers: {
-			'OpenAI-Beta': 'assistants=v2',
+	const { data, has_more, last_id } = (await apiRequest.call(
+		this,
+		'GET',
+		requestPath`/assistants`,
+		{
+			headers: {
+				'OpenAI-Beta': 'assistants=v2',
+			},
+			qs: {
+				limit: 100,
+				after: paginationToken,
+			},
 		},
-		qs: {
-			limit: 100,
-			after: paginationToken,
-		},
-	})) as {
+	)) as {
 		data: Assistant[];
 		has_more: boolean;
 		last_id: string;

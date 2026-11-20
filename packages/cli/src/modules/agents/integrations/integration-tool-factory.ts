@@ -1,5 +1,13 @@
-import { Tool, type InterruptibleToolContext } from '@n8n/agents';
-import type { AgentIntegrationConfig } from '@n8n/api-types';
+import {
+	APPROVAL_RESUME_SCHEMA,
+	APPROVAL_SUSPEND_SCHEMA,
+	Tool,
+	type ApprovalResumePayload,
+	type InterruptibleToolContext,
+	type ToolContext,
+} from '@n8n/agents';
+import type { AgentIntegrationConfig, RichCardComponentType } from '@n8n/api-types';
+import { UserError } from '@n8n/errors';
 import { z } from 'zod';
 
 import {
@@ -11,22 +19,28 @@ import {
 import {
 	buildActionToolDescription,
 	buildContextToolDescription,
+	buildChannelToolInstruction,
 } from './integration-tool-descriptions';
 import {
 	executeActionToolBatch,
 	executeActionToolOperation,
 	executeContextToolOperation,
+	INTEGRATION_ACTION_RESUME_SCHEMA,
+	integrationActionApprovalKey,
+	isSilentActionOutput,
 } from './integration-tool-execution';
+import { INTEGRATION_ERROR_CODES } from './integration-error-codes';
 import {
 	buildActionInputSchema,
 	buildContextInputSchema,
-	type RawActionToolInput,
 	type RawContextToolInput,
+	type RawActionToolInput,
 	toSingleActionOperation,
 	toSingleContextOperation,
 } from './integration-tool-schema';
 import type {
 	IntegrationAction,
+	ConversationToolName,
 	IntegrationActionDefinition,
 	IntegrationActionExecutor,
 	IntegrationContextQuery,
@@ -38,6 +52,8 @@ import type {
 } from './integration-tool-types';
 
 export interface IntegrationToolCapabilities {
+	supportedComponents?: readonly RichCardComponentType[];
+	conversationTools?: readonly ConversationToolName[];
 	contextQueries?: IntegrationContextQuery[];
 	actions?: IntegrationAction[];
 	contextToolDefinitions?: IntegrationContextQueryDefinition[];
@@ -48,14 +64,23 @@ export interface IntegrationToolCapabilities {
 
 // Suspend payload is intentionally looser than tool input: the action name has
 // already been validated by the generated action schema before suspension.
-const actionSuspendSchema = z.object({
+const integrationActionSuspendSchema = z.object({
 	type: z.literal('integration_action'),
 	action: z.string(),
 	integrationConnectionId: z.string(),
 	messageContext: z.unknown(),
+	files: z.unknown().optional(),
 });
 
-const actionResumeSchema = z.record(z.string(), z.unknown());
+/**
+ * The tool suspends for two unrelated reasons: an interactive card waiting on a
+ * user response, and an action held for approval. The approval branch reuses the
+ * SDK payload so the chat bridge renders its Approve/Deny card unchanged.
+ */
+export const INTEGRATION_ACTION_SUSPEND_SCHEMA = z.union([
+	integrationActionSuspendSchema,
+	APPROVAL_SUSPEND_SCHEMA,
+]);
 
 export function getIntegrationToolConnectionDescriptors(
 	integrations: AgentIntegrationConfig[],
@@ -94,6 +119,11 @@ export function getIntegrationToolConnectionDescriptors(
 			actionToolDefinitions,
 			contextToolGuidance: capabilities?.contextToolGuidance,
 			actionToolGuidance: capabilities?.actionToolGuidance,
+			conversationTools: capabilities?.conversationTools,
+			supportedComponents: capabilities?.supportedComponents,
+			...('approval' in integration && integration.approval
+				? { approval: integration.approval }
+				: {}),
 		};
 	});
 }
@@ -106,10 +136,9 @@ export function buildIntegrationConnectionId(integration: IntegrationToolConnect
 
 export function createIntegrationContextTool(params: {
 	descriptor: IntegrationToolConnectionDescriptor;
-	messageContextStore: IntegrationMessageContextStore;
 	queryExecutor: IntegrationContextQueryExecutor;
 }) {
-	const { descriptor, messageContextStore, queryExecutor } = params;
+	const { descriptor, queryExecutor } = params;
 
 	return new Tool(descriptor.contextToolName)
 		.description(buildContextToolDescription(descriptor))
@@ -125,9 +154,9 @@ export function createIntegrationContextTool(params: {
 							result: await executeContextToolOperation({
 								operation,
 								descriptor,
-								messageContextStore,
 								queryExecutor,
 								persistence: ctx.persistence,
+								abortSignal: ctx.abortSignal,
 							}),
 						};
 					}),
@@ -139,53 +168,122 @@ export function createIntegrationContextTool(params: {
 			return await executeContextToolOperation({
 				operation: toSingleContextOperation(toolInput),
 				descriptor,
-				messageContextStore,
 				queryExecutor,
 				persistence: ctx.persistence,
+				abortSignal: ctx.abortSignal,
 			});
 		});
 }
 
-export function createIntegrationActionTool(params: {
+export interface IntegrationActionToolParams {
 	descriptor: IntegrationToolConnectionDescriptor;
 	messageContextStore: IntegrationMessageContextStore;
 	actionExecutor: IntegrationActionExecutor;
-}) {
-	const { descriptor, messageContextStore, actionExecutor } = params;
+	projectId?: string;
+}
 
+export function createIntegrationActionTool(params: IntegrationActionToolParams) {
+	const { descriptor } = params;
+	const definitions = descriptor.actionToolDefinitions.filter(
+		(definition) =>
+			definition.name !== 'do_not_respond' ||
+			!descriptor.conversationTools?.includes('do_not_respond'),
+	);
+	const exposedDescriptor = {
+		...descriptor,
+		actions: definitions.map(({ name }) => name),
+		actionToolDefinitions: definitions,
+	};
 	return new Tool(descriptor.actionToolName)
-		.description(buildActionToolDescription(descriptor))
-		.input(buildActionInputSchema(descriptor.actionToolDefinitions))
-		.suspend(actionSuspendSchema)
-		.resume(actionResumeSchema)
-		.handler(async (input, ctx) => {
-			if (ctx.resumeData) {
-				return ctx.resumeData;
-			}
+		.description(buildActionToolDescription(exposedDescriptor))
+		.systemInstruction(buildChannelToolInstruction(exposedDescriptor))
+		.input(buildActionInputSchema(definitions))
+		.suspend(INTEGRATION_ACTION_SUSPEND_SCHEMA)
+		.resume(INTEGRATION_ACTION_RESUME_SCHEMA)
+		.endsTurnWhen(isSilentActionOutput)
+		.handler(async (input, ctx) => await executeIntegrationActionTool(params, input, ctx));
+}
 
-			const interruptCtx = ctx as InterruptibleToolContext;
-			const toolInput = input as RawActionToolInput;
+/** Shared execution preserves channel approval and interactive-card resumes. */
+export async function executeIntegrationActionTool(
+	params: IntegrationActionToolParams,
+	input: RawActionToolInput,
+	ctx: ToolContext,
+): Promise<unknown> {
+	const { descriptor, messageContextStore, actionExecutor, projectId } = params;
+	const interruptCtx = ctx as InterruptibleToolContext;
+	const approvalDecision = readApprovalDecision(interruptCtx);
 
-			if (toolInput.actions !== undefined) {
-				return await executeActionToolBatch({
-					operations: toolInput.actions.map(toSingleActionOperation),
-					descriptor,
-					messageContextStore,
-					actionExecutor,
-					ctx,
-				});
-			}
+	// A card resume carries the user's answer straight back to the model. An
+	// approval resume is a decision about work that has not run yet, so it
+	// either falls through to execution below or stops here.
+	if (approvalDecision === undefined && interruptCtx.resumeData) {
+		return interruptCtx.resumeData;
+	}
+	if (approvalDecision) {
+		const { action, ...decision } = approvalDecision;
+		if (decision.scope === 'session' && !ctx.approvalContext) {
+			throw new UserError('Session approvals are not available for this tool.');
+		}
+		await ctx.approvalContext?.onDecision(
+			integrationActionApprovalKey(descriptor.integrationConnectionId, action),
+			decision,
+		);
+		ctx.abortSignal?.throwIfAborted();
+	}
+	if (approvalDecision?.approved === false) {
+		return {
+			ok: false,
+			error: {
+				code: INTEGRATION_ERROR_CODES.ACTION_DECLINED,
+				message: `The action "${approvalDecision.action}" was not approved.`,
+			},
+		};
+	}
 
-			return await executeActionToolOperation({
-				operation: toSingleActionOperation(toolInput),
-				descriptor,
-				messageContextStore,
-				actionExecutor,
-				ctx,
-				interruptCtx,
-				allowSuspend: true,
-			});
+	const toolInput = input;
+
+	if (toolInput.actions !== undefined) {
+		return await executeActionToolBatch({
+			operations: toolInput.actions.map(toSingleActionOperation),
+			descriptor,
+			messageContextStore,
+			actionExecutor,
+			ctx,
+			projectId,
 		});
+	}
+
+	return await executeActionToolOperation({
+		operation: toSingleActionOperation(toolInput),
+		descriptor,
+		messageContextStore,
+		actionExecutor,
+		ctx,
+		interruptCtx,
+		projectId,
+		allowSuspend: true,
+		...(approvalDecision ? { approvedAction: approvalDecision.action } : {}),
+	});
+}
+
+/**
+ * The decision a user made on an approval card, or undefined when this is not
+ * an approval resume. `suspendPayload` is what the tool suspended with, so it
+ * tells the two suspend reasons apart without guessing from the resume shape.
+ */
+function readApprovalDecision(
+	ctx: InterruptibleToolContext,
+): ({ action: string } & ApprovalResumePayload) | undefined {
+	const payload = APPROVAL_SUSPEND_SCHEMA.safeParse(ctx.suspendPayload);
+	if (!payload.success) return undefined;
+
+	const resume = APPROVAL_RESUME_SCHEMA.safeParse(ctx.resumeData);
+	return {
+		action: payload.data.toolName,
+		// An unreadable resume payload is not consent.
+		...(resume.success ? resume.data : { approved: false }),
+	};
 }
 
 function getContextToolDefinitions(

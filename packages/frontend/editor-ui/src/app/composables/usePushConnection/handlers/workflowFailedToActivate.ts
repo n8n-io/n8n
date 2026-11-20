@@ -5,12 +5,17 @@ import { useI18n } from '@n8n/i18n';
 import { useWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+import { clearPendingActivationModal } from '@/app/composables/workflowPublicationConfirmation';
 import type { PushHandlerOptions } from './types';
 
 export async function workflowFailedToActivate(
 	{ data }: WorkflowFailedToActivate,
 	{ documentId }: PushHandlerOptions,
 ) {
+	// The publication failed: make sure the success modal deferred by the
+	// publish flow never shows, even when this tab moved to another workflow.
+	clearPendingActivationModal(data.workflowId);
+
 	const workflowDocumentStore = useWorkflowDocumentStore(documentId);
 
 	if (workflowDocumentStore.workflowId !== data.workflowId) {
@@ -45,7 +50,7 @@ export async function workflowFailedToActivate(
 	const i18n = useI18n();
 	const { errorMessage } = useActivationError(() => data.nodeId);
 	const title = i18n.baseText('workflowActivator.showError.title', {
-		interpolate: { newStateName: 'activated' },
+		interpolate: { newStateName: 'published' },
 	});
 	toast.showError(new Error(data.errorMessage), title, {
 		message: errorMessage.value,

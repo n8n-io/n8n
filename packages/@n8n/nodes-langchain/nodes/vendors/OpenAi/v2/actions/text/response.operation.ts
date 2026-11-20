@@ -1,4 +1,5 @@
 import type { Tool } from '@langchain/core/tools';
+import { isZodSchema } from '@n8n/ai-utilities/json-schema';
 import { getConnectedTools } from '@utils/helpers';
 import get from 'lodash/get';
 import type {
@@ -11,6 +12,7 @@ import {
 	accumulateTokenUsage,
 	jsonParse,
 	NodeOperationError,
+	requestPath,
 	updateDisplayOptions,
 } from 'n8n-workflow';
 import { MODELS_NOT_SUPPORT_FUNCTION_CALLS } from '../../../helpers/constants';
@@ -284,7 +286,7 @@ const properties: INodeProperties[] = [
 				name: 'promptConfig',
 				type: 'fixedCollection',
 				description:
-					'Configure the reusable prompt template configured via OpenAI Dashboard. <a href="https://platform.openai.com/docs/guides/prompt-engineering#reusable-prompts">Learn more</a>.',
+					'Configure the reusable prompt template configured via OpenAI Dashboard. <a href="https://developers.openai.com/api/docs/guides/prompting/migrate-from-prompt-object">Learn more</a>.',
 				default: { promptOptions: [{ promptId: '' }] },
 				options: [
 					{
@@ -618,7 +620,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		tools,
 		builtInTools,
 	});
-	let response = (await apiRequest.call(this, 'POST', '/responses', {
+	let response = (await apiRequest.call(this, 'POST', requestPath`/responses`, {
 		body,
 	})) as ChatResponse;
 
@@ -627,7 +629,11 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		response = await pollUntilAvailable(
 			this,
 			async () => {
-				return (await apiRequest.call(this, 'GET', `/responses/${response.id}`)) as ChatResponse;
+				return (await apiRequest.call(
+					this,
+					'GET',
+					requestPath`/responses/${response.id}`,
+				)) as ChatResponse;
 			},
 			(response) => {
 				if (response.error) {
@@ -681,7 +687,17 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 				for (const tool of externalTools ?? []) {
 					if (tool.name === functionName) {
 						const parsedArgs: { input: string } = jsonParse(functionArgs);
-						const functionInput = parsedArgs.input ?? parsedArgs ?? functionArgs;
+						if (!isZodSchema(tool.schema)) {
+							throw new NodeOperationError(
+								this.getNode(),
+								`The connected tool "${tool.name}" has an unsupported input schema. Connect a tool with a Zod input schema.`,
+								{ itemIndex: i },
+							);
+						}
+						const validatedArgs = tool.schema.safeParse(parsedArgs);
+						const functionInput = validatedArgs.success
+							? validatedArgs.data
+							: (parsedArgs.input ?? parsedArgs);
 						functionResponse = await tool.invoke(functionInput);
 					}
 
@@ -698,7 +714,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			}
 		}
 
-		response = (await apiRequest.call(this, 'POST', '/responses', {
+		response = (await apiRequest.call(this, 'POST', requestPath`/responses`, {
 			body,
 		})) as ChatResponse;
 

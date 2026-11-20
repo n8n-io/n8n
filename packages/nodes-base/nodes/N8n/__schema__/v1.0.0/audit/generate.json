@@ -1,0 +1,184 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"Credentials Risk Report": {
+			"properties": {
+				"risk": {
+					"type": "string"
+				},
+				"sections": {
+					"items": {
+						"properties": {
+							"description": {
+								"type": "string"
+							},
+							"location": {
+								"items": {
+									"properties": {
+										"id": {
+											"type": "string"
+										},
+										"kind": {
+											"type": "string"
+										},
+										"name": {
+											"type": "string"
+										}
+									},
+									"type": "object"
+								},
+								"type": "array"
+							},
+							"recommendation": {
+								"type": "string"
+							},
+							"title": {
+								"type": "string"
+							}
+						},
+						"type": "object"
+					},
+					"type": "array"
+				}
+			},
+			"type": "object"
+		},
+		"Instance Risk Report": {
+			"properties": {
+				"risk": {
+					"type": "string"
+				},
+				"sections": {
+					"items": {
+						"additionalProperties": true,
+						"properties": {
+							"description": {
+								"type": "string"
+							},
+							"location": {
+								"items": {
+									"properties": {
+										"kind": {
+											"type": "string"
+										},
+										"nodeId": {
+											"type": "string"
+										},
+										"nodeName": {
+											"type": "string"
+										},
+										"nodeType": {
+											"type": "string"
+										},
+										"workflowId": {
+											"type": "string"
+										},
+										"workflowName": {
+											"type": "string"
+										}
+									},
+									"type": "object"
+								},
+								"type": "array"
+							},
+							"nextVersions": {
+								"items": {
+									"properties": {
+										"createdAt": {
+											"type": "string"
+										},
+										"description": {
+											"type": "string"
+										},
+										"documentationUrl": {
+											"type": "string"
+										},
+										"hasBreakingChange": {
+											"type": ["boolean", "null"]
+										},
+										"hasSecurityFix": {},
+										"hasSecurityIssue": {},
+										"name": {
+											"type": "string"
+										},
+										"nodes": {
+											"items": {},
+											"type": "array"
+										},
+										"securityIssueFixVersion": {}
+									},
+									"type": "object"
+								},
+								"type": "array"
+							},
+							"recommendation": {
+								"type": "string"
+							},
+							"title": {
+								"type": "string"
+							}
+						},
+						"type": "object"
+					},
+					"type": "array"
+				}
+			},
+			"type": "object"
+		},
+		"Nodes Risk Report": {
+			"properties": {
+				"risk": {
+					"type": "string"
+				},
+				"sections": {
+					"items": {
+						"properties": {
+							"description": {
+								"type": "string"
+							},
+							"location": {
+								"items": {
+									"properties": {
+										"kind": {
+											"type": "string"
+										},
+										"nodeId": {
+											"type": "string"
+										},
+										"nodeName": {
+											"type": "string"
+										},
+										"nodeType": {
+											"type": "string"
+										},
+										"packageUrl": {
+											"type": "string"
+										},
+										"workflowId": {
+											"type": "string"
+										},
+										"workflowName": {
+											"type": "string"
+										}
+									},
+									"type": "object"
+								},
+								"type": "array"
+							},
+							"recommendation": {
+								"type": "string"
+							},
+							"title": {
+								"type": "string"
+							}
+						},
+						"type": "object"
+					},
+					"type": "array"
+				}
+			},
+			"type": "object"
+		}
+	},
+	"type": "object"
+}

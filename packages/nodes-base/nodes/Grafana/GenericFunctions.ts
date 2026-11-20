@@ -5,34 +5,34 @@ import type {
 	JsonObject,
 	IHttpRequestMethods,
 	IRequestOptions,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, requestUrl } from 'n8n-workflow';
+
+import { removeTrailingSlash } from '@utils/utilities';
 
 import type { GrafanaCredentials } from './types';
-
-export function tolerateTrailingSlash(baseUrl: string) {
-	return baseUrl.endsWith('/') ? baseUrl.substr(0, baseUrl.length - 1) : baseUrl;
-}
 
 export async function grafanaApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
 	const { baseUrl: rawBaseUrl } = await this.getCredentials<GrafanaCredentials>('grafanaApi');
 
-	const baseUrl = tolerateTrailingSlash(rawBaseUrl);
+	const baseUrl = removeTrailingSlash(rawBaseUrl);
 
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {
 			'Content-Type': 'application/json',
 		},
 		method,
 		body,
 		qs,
-		uri: `${baseUrl}/api${endpoint}`,
+		uri: requestUrl`${baseUrl}/api${endpoint}`,
 		json: true,
 	};
 
@@ -92,7 +92,7 @@ export function throwOnEmptyUpdate(
 export function deriveUid(this: IExecuteFunctions, uidOrUrl: string) {
 	if (!uidOrUrl.startsWith('http')) return uidOrUrl;
 
-	const urlSegments = uidOrUrl.split('/');
+	const urlSegments = uidOrUrl.split(/[?#]/)[0].split('/');
 	const uid = urlSegments[urlSegments.indexOf('d') + 1];
 
 	if (!uid) {

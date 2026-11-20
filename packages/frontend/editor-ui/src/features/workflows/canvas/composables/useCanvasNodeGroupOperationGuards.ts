@@ -347,6 +347,7 @@ export function useCanvasNodeGroupOperationGuards() {
 		nodeIds,
 		connectionsToRemove,
 		connectionsToAdd,
+		additionalGroupNodeIds = [],
 		connectionsBySourceNode,
 	}: {
 		previousNodeId: string;
@@ -354,6 +355,8 @@ export function useCanvasNodeGroupOperationGuards() {
 		nodeIds: string[];
 		connectionsToRemove: Array<[IConnection, IConnection]>;
 		connectionsToAdd: Array<[IConnection, IConnection]>;
+		/** Nodes that will be added to the previous node's group as part of the same operation. */
+		additionalGroupNodeIds?: string[];
 		connectionsBySourceNode: IConnections;
 	}): boolean {
 		const previousGroup = workflowDocumentStore.value.getGroupForNode(previousNodeId);
@@ -380,9 +383,10 @@ export function useCanvasNodeGroupOperationGuards() {
 			connectionsToRemove,
 			connectionsToAdd,
 		});
-		const swappedPreviousGroupNodeIds = uniq(
-			previousGroup.nodeIds.map((nodeId) => (nodeId === previousNodeId ? newNodeId : nodeId)),
-		);
+		const swappedPreviousGroupNodeIds = uniq([
+			...previousGroup.nodeIds.map((nodeId) => (nodeId === previousNodeId ? newNodeId : nodeId)),
+			...additionalGroupNodeIds,
+		]);
 		const getNodeIdsForGroup = (group: IWorkflowGroup) =>
 			group.id === previousGroup.id ? swappedPreviousGroupNodeIds : group.nodeIds;
 

@@ -1,3 +1,5 @@
+import { N8N_CLIENT_EDITOR_UI, N8N_CLIENT_HEADER } from '@n8n/api-types';
+import type { PublicApiContext } from '@n8n/rest-api-client';
 import { randomString, setGlobalState } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
@@ -29,6 +31,7 @@ export type RootStoreState = {
 		[key: string]: string | number | undefined;
 	};
 	pushRef: string;
+	publicApiPath: string;
 	urlBaseWebhook: string;
 	urlBaseEditor: string;
 	urlBaseWebhookTest: string;
@@ -57,6 +60,7 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 		jwksUri: '',
 		n8nMetadata: {},
 		pushRef: randomString(10).toLowerCase(),
+		publicApiPath: 'api/v1',
 		urlBaseWebhook: 'http://localhost:5678/',
 		urlBaseEditor: 'http://localhost:5678',
 		urlBaseWebhookTest: 'http://localhost:5678/',
@@ -125,6 +129,12 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 	const restApiContext = computed(() => ({
 		baseUrl: restUrl.value,
 		pushRef: state.value.pushRef,
+	}));
+
+	// The header tells the backend that the editor UI made the call. Telemetry reads it.
+	const publicApiContext = computed<PublicApiContext>(() => ({
+		baseUrl: `${state.value.baseUrl}${state.value.publicApiPath}`,
+		headers: { [N8N_CLIENT_HEADER]: N8N_CLIENT_EDITOR_UI },
 	}));
 
 	// #endregion
@@ -225,6 +235,10 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 		state.value.pushRef = value;
 	};
 
+	const setPublicApiPath = (value: string) => {
+		state.value.publicApiPath = value;
+	};
+
 	// #endregion
 
 	return {
@@ -239,6 +253,7 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 		webhookWaitingUrl,
 		restUrl,
 		restApiContext,
+		publicApiContext,
 		urlBaseEditor,
 		urlBaseWebhook,
 		versionCli,
@@ -273,5 +288,6 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 		setDefaultLocale,
 		setBinaryDataMode,
 		setPushRef,
+		setPublicApiPath,
 	};
 });

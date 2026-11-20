@@ -1,4 +1,4 @@
-![Banner image](https://user-images.githubusercontent.com/10284570/173569848-c624317f-42b1-45a6-ab09-f0ea3c247648.png)
+![Banner image](https://raw.githubusercontent.com/n8n-io/n8n/master/assets/readme-banner.jpg)
 
 # n8n – The Platform for AI Agents and Workflow Automation
 
@@ -17,13 +17,13 @@ Fair-code platform to build and deploy AI agents and workflows. Combine a visual
 
 ## Quick Start
 
-Try n8n instantly with [npx](https://docs.n8n.io/hosting/installation/npm/) (requires [Node.js](https://nodejs.org/en/)):
+Try n8n instantly with our install script (requires [Docker](https://www.docker.com/)):
 
-```
-npx n8n
+```sh
+curl -fsSL https://get.n8n.io | sh
 ```
 
-Or deploy with [Docker](https://docs.n8n.io/hosting/installation/docker/):
+Or deploy manually with [Docker](https://docs.n8n.io/hosting/installation/docker/):
 
 ```
 docker volume create n8n_data
@@ -56,7 +56,7 @@ n8n is [fair-code](https://faircode.io) distributed under the [Sustainable Use L
 
 [Enterprise Licenses](mailto:license@n8n.io) available for additional features and support.
 
-Additional information about the license model can be found in the [docs](https://docs.n8n.io/sustainable-use-license/).
+Additional information about the license model can be found in the [docs](https://docs.n8n.io/n8n-community-license/).
 
 ## Contributing
 

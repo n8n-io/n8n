@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import type { InstanceAiAgentNode, InstanceAiMessage } from '@n8n/api-types';
-import { messageHasVisibleContent } from '../builderAgents';
+import { getAgentSectionTitle, messageHasVisibleContent } from '../builderAgents';
 
 function makeAgentNode(overrides: Partial<InstanceAiAgentNode> = {}): InstanceAiAgentNode {
 	return {
@@ -43,7 +43,14 @@ describe('messageHasVisibleContent', () => {
 					{ type: 'tool-call', toolCallId: 'tc-build', responseId: 'r1' },
 					{ type: 'child', agentId: 'builder-1', responseId: 'r1' },
 				],
-				toolCalls: [{ toolCallId: 'tc-build', toolName: 'build-agent', args: {}, isLoading: true }],
+				toolCalls: [
+					{
+						toolCallId: 'tc-build',
+						toolName: 'agent_builder_build_agent',
+						args: {},
+						isLoading: true,
+					},
+				],
 				children: [builderChild],
 			}),
 		);
@@ -66,12 +73,49 @@ describe('messageHasVisibleContent', () => {
 					{ type: 'child', agentId: 'builder-1', responseId: 'r2' },
 				],
 				toolCalls: [
-					{ toolCallId: 'tc-build-old', toolName: 'build-agent', args: {}, isLoading: false },
+					{
+						toolCallId: 'tc-build-old',
+						toolName: 'agent_builder_build_agent',
+						args: {},
+						isLoading: false,
+					},
 				],
 				children: [builderChild],
 			}),
 		);
 
 		expect(messageHasVisibleContent(message)).toBe(true);
+	});
+});
+
+describe('getAgentSectionTitle', () => {
+	test('uses the translated activity for an Agent Builder', () => {
+		const node = makeAgentNode({ activity: 'exploring', role: 'agent-builder' });
+
+		expect(getAgentSectionTitle(node, 'Exploring agent')).toBe('Exploring agent');
+	});
+
+	test('uses the title when the backend set one', () => {
+		const node = makeAgentNode({ title: 'Building agent', role: 'agent-builder' });
+
+		expect(getAgentSectionTitle(node)).toBe('Building agent');
+	});
+
+	test('skips a blank title and falls back to the builder role label', () => {
+		const node = makeAgentNode({ title: '', role: 'workflow-builder', kind: 'builder' });
+
+		expect(getAgentSectionTitle(node)).toBe('Building workflow');
+	});
+
+	test('skips a blank subtitle so the caller can show its own fallback', () => {
+		const node = makeAgentNode({ title: '', subtitle: '   ', role: '' });
+
+		expect(getAgentSectionTitle(node)).toBeUndefined();
+	});
+
+	test('falls back to the subtitle of a non-builder sub-agent', () => {
+		const node = makeAgentNode({ role: 'eval-setup', subtitle: 'Set up evaluations' });
+
+		expect(getAgentSectionTitle(node)).toBe('Set up evaluations');
 	});
 });

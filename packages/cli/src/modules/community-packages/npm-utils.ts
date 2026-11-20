@@ -1,7 +1,7 @@
-import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
-import { SsrfProtectionConfig } from '@n8n/config';
+import { OutboundHttp } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
-import { jsonParse, UnexpectedError, LoggerProxy } from 'n8n-workflow';
+import { jsonParse, LoggerProxy } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import { execFile } from 'node:child_process';
 import { access } from 'node:fs/promises';
 import { dirname, isAbsolute, join } from 'node:path';
@@ -267,12 +267,9 @@ export async function executeNpmRequest<T = unknown>(
 	LoggerProxy.debug('Executing npm registry request', { url, headers: redactedHeaders, timeout });
 
 	try {
-		const ssrfProtectionConfig = Container.get(SsrfProtectionConfig);
+		// User-configurable registry URL, so the default safe mode applies.
 		const data = (await Container.get(OutboundHttp)
-			.requests({
-				// User-configurable registry URL → SSRF on, gated on global config.
-				ssrf: ssrfProtectionConfig.enabled ? Container.get(SsrfProtectionService) : 'disabled',
-			})
+			.requests()
 			.request({
 				url,
 				method: 'GET',

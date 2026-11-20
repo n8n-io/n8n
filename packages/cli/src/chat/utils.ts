@@ -12,6 +12,43 @@ import {
 const AI_TOOL = 'ai_tool';
 
 /**
+ * When the parked node is the virtual PartialExecutionToolExecutor, resolves the
+ * real tool node it wraps (stored in the executor's `node` parameter). Pure — does
+ * not mutate the execution. Returns null when the parked node isn't the executor.
+ *
+ * Keyed off `executionData.node` (the parked stack entry) rather than
+ * `resultData.lastNodeExecuted` so it matches the node the engine resumes.
+ */
+function getToolExecutorTargetNode(executionData: IExecuteData, workflow: Workflow): INode | null {
+	if (executionData.node.name !== TOOL_EXECUTOR_NODE_NAME) return null;
+
+	const toolNodeName = executionData.node.parameters?.node as string | undefined;
+	return toolNodeName ? workflow.getNode(toolNodeName) : null;
+}
+
+/**
+ * Resolves the node a chat message would resume — the parked node, or the tool node
+ * behind the virtual PartialExecutionToolExecutor. Pure: does not mutate the
+ * execution, so callers deciding *whether* to resume can share it with the resume
+ * path without side effects. Returns null when no resumable node can be resolved.
+ *
+ * Resolves from `executionData.node` — the top of `nodeExecutionStack`, i.e. the
+ * node the engine actually resumes — not `resultData.lastNodeExecuted` (a report of
+ * what last ran). The two agree in every real waiting state, but reading the
+ * authoritative field keeps the resume decision from ever authorizing a different
+ * node than the one that runs.
+ */
+export function findResumeNode(executionData: IExecuteData, workflow: Workflow): INode | null {
+	const parkedNode = executionData.node;
+
+	if (parkedNode.name === TOOL_EXECUTOR_NODE_NAME) {
+		return getToolExecutorTargetNode(executionData, workflow);
+	}
+
+	return workflow.getNode(parkedNode.name);
+}
+
+/**
  * Redirects execution from PartialExecutionToolExecutor to the actual tool node
  * it wraps (stored in the executor's `node` parameter).
  *
@@ -27,11 +64,7 @@ export function redirectIfToolExecutor(
 	executionData: IExecuteData,
 	workflow: Workflow,
 ): INode | null {
-	const lastNodeExecuted = execution.data.resultData.lastNodeExecuted;
-	if (lastNodeExecuted !== TOOL_EXECUTOR_NODE_NAME) return null;
-
-	const toolNodeName = executionData.node.parameters?.node as string | undefined;
-	const toolNode = toolNodeName ? workflow.getNode(toolNodeName) : null;
+	const toolNode = getToolExecutorTargetNode(executionData, workflow);
 	if (!toolNode) return null;
 
 	executionData.node = toolNode;

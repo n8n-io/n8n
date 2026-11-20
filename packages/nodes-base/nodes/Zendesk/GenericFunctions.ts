@@ -5,41 +5,61 @@ import type {
 	ILoadOptionsFunctions,
 	IHttpRequestMethods,
 	IRequestOptions,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
+import { requestUrl } from 'n8n-workflow';
 
-function getUri(resource: string, subdomain: string) {
-	if (resource.includes('webhooks')) {
-		return `https://${subdomain}.zendesk.com/api/v2${resource}`;
+type ZendeskCredentials = {
+	subdomain: string;
+	marketplaceName?: string;
+	marketplaceOrganizationId?: string;
+	marketplaceAppId?: string;
+};
+
+function getMarketplaceHeaders(credentials: ZendeskCredentials): IDataObject | undefined {
+	const headers = {
+		'X-Zendesk-Marketplace-Name': credentials.marketplaceName,
+		'X-Zendesk-Marketplace-Organization-Id': credentials.marketplaceOrganizationId,
+		'X-Zendesk-Marketplace-App-Id': credentials.marketplaceAppId,
+	};
+
+	return Object.values(headers).every(Boolean) ? headers : undefined;
+}
+
+function getUri(resource: RequestPath, subdomain: string) {
+	if (resource.value.includes('webhooks')) {
+		return requestUrl`https://${subdomain}.zendesk.com/api/v2${resource}`;
 	} else {
-		return `https://${subdomain}.zendesk.com/api/v2${resource}.json`;
+		return requestUrl`https://${subdomain}.zendesk.com/api/v2${resource}.json`;
 	}
 }
 
 export async function zendeskApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
-	option: IDataObject = {},
+	option: Pick<IRequestOptions, 'headers'> = {},
 ) {
 	const authenticationMethod = this.getNodeParameter('authentication', 0);
 
-	let credentials;
+	let credentials: ZendeskCredentials;
 
 	if (authenticationMethod === 'apiToken') {
-		credentials = await this.getCredentials<{ subdomain: string }>('zendeskApi');
+		credentials = await this.getCredentials<ZendeskCredentials>('zendeskApi');
 	} else {
-		credentials = await this.getCredentials<{ subdomain: string }>('zendeskOAuth2Api');
+		credentials = await this.getCredentials<ZendeskCredentials>('zendeskOAuth2Api');
 	}
 
-	let options: IRequestOptions = {
+	let options: IRequestOptions | WithRequestTarget<IRequestOptions, 'uri'> = {
 		method,
 		qs,
 		body,
-		uri: uri || getUri(resource, credentials.subdomain),
+		...(uri ? { uri } : { uri: getUri(resource, credentials.subdomain) }),
 		json: true,
 		qsStringifyOptions: {
 			arrayFormat: 'brackets',
@@ -49,6 +69,11 @@ export async function zendeskApiRequest(
 	options = Object.assign({}, options, option);
 	if (Object.keys(options.body as IDataObject).length === 0) {
 		delete options.body;
+	}
+
+	const marketplaceHeaders = getMarketplaceHeaders(credentials);
+	if (marketplaceHeaders) {
+		options.headers = { ...(options.headers ?? {}), ...marketplaceHeaders };
 	}
 
 	const credentialType = authenticationMethod === 'apiToken' ? 'zendeskApi' : 'zendeskOAuth2Api';
@@ -64,7 +89,7 @@ export async function zendeskApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 
 	body: any = {},
 	query: IDataObject = {},

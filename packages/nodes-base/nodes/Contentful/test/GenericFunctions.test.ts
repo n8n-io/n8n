@@ -1,16 +1,46 @@
+import { mockDeep } from 'vitest-mock-extended';
 import type { IDataObject, IExecuteFunctions, IRequestOptions } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
-import { contentfulApiRequestAllItems } from '../GenericFunctions';
+import { contentfulApiRequest, contentfulApiRequestAllItems } from '../GenericFunctions';
 
-describe('Contentful -> contentfulApiRequestAllItems', () => {
-	let executeFunctions: IExecuteFunctions;
-	const mockRequest = vi.fn();
-	/** The function mutates its `qs` argument across calls, so capture a copy per request. */
-	const sentQueryStrings: IDataObject[] = [];
+describe('contentfulApiRequest', () => {
+	it('should encode path values as one segment', async () => {
+		const context = mockDeep<IExecuteFunctions>();
+		context.getNodeParameter.mockReturnValue('deliveryApi');
+		context.getCredentials.mockResolvedValue({
+			spaceId: 'cfexampleapi',
+			ContentDeliveryaccessToken: 'fake-delivery-token',
+			ContentPreviewaccessToken: 'fake-preview-token',
+		});
+		context.helpers.request.mockResolvedValue({});
 
+		const entryId = 'nyancat/happycat';
+		await contentfulApiRequest.call(
+			context,
+			'GET',
+			requestPath`/spaces/cfexampleapi/environments/master/entries/${entryId}`,
+		);
+
+		expect(context.helpers.request).toHaveBeenCalledWith(
+			expect.objectContaining({
+				uri: expect.objectContaining({
+					value:
+						'https://cdn.contentful.com/spaces/cfexampleapi/environments/master/entries/nyancat%2Fhappycat',
+				}),
+			}),
+		);
+	});
+});
+
+describe('contentfulApiRequestAllItems', () => {
 	const TOTAL_RECORDS = 250;
 	/** Guards against a non-advancing skip spinning forever. */
 	const MAX_REQUESTS = 1000;
+
+	let context: ReturnType<typeof mockDeep<IExecuteFunctions>>;
+	/** The function mutates its `qs` argument across calls, so capture a copy per request. */
+	let sentQueryStrings: IDataObject[];
 
 	const buildPage = (skip: number, limit: number) => ({
 		items: Array.from(
@@ -20,30 +50,36 @@ describe('Contentful -> contentfulApiRequestAllItems', () => {
 		total: TOTAL_RECORDS,
 	});
 
+	const getAllEntries = async () =>
+		await contentfulApiRequestAllItems.call(
+			context,
+			'items',
+			'GET',
+			requestPath`/spaces/space/entries`,
+			{},
+			{},
+		);
+
 	beforeEach(() => {
-		sentQueryStrings.length = 0;
-		vi.clearAllMocks();
-		mockRequest.mockImplementation(async (options: IRequestOptions) => {
-			const qs = options.qs as { limit: number; skip: number };
+		sentQueryStrings = [];
+		context = mockDeep<IExecuteFunctions>();
+		context.getNodeParameter.mockReturnValue('deliveryApi');
+		context.getCredentials.mockResolvedValue({
+			ContentDeliveryaccessToken: 'test-token',
+			ContentPreviewaccessToken: 'preview-token',
+		});
+		context.helpers.request.mockImplementation(async (options) => {
+			const qs = (options as IRequestOptions).qs as { limit: number; skip: number };
 			sentQueryStrings.push({ ...qs });
 			if (sentQueryStrings.length > MAX_REQUESTS) {
 				throw new Error(`Pagination did not terminate within ${MAX_REQUESTS} requests`);
 			}
 			return buildPage(qs.skip, qs.limit);
 		});
-		executeFunctions = {
-			getNodeParameter: vi.fn().mockReturnValue('deliveryApi'),
-			getCredentials: vi.fn().mockResolvedValue({
-				ContentDeliveryaccessToken: 'test-token',
-				ContentPreviewaccessToken: 'preview-token',
-			}),
-			helpers: { request: mockRequest },
-			getNode: vi.fn().mockReturnValue({}),
-		} as unknown as IExecuteFunctions;
 	});
 
 	it('should advance skip by the page size on every request', async () => {
-		await contentfulApiRequestAllItems.call(executeFunctions, 'items', 'GET', '/spaces/space/entries', {}, {});
+		await getAllEntries();
 
 		expect(sentQueryStrings).toEqual([
 			expect.objectContaining({ limit: 100, skip: 0 }),
@@ -53,24 +89,17 @@ describe('Contentful -> contentfulApiRequestAllItems', () => {
 	});
 
 	it('should return every record exactly once', async () => {
-		const result = await contentfulApiRequestAllItems.call(
-			executeFunctions,
-			'items',
-			'GET',
-			'/spaces/space/entries',
-			{},
-			{},
-		);
+		const result = (await getAllEntries()) as IDataObject[];
 
 		expect(result).toHaveLength(TOTAL_RECORDS);
-		expect(new Set(result.map((item: IDataObject) => item.id)).size).toBe(TOTAL_RECORDS);
+		expect(new Set(result.map((item) => item.id)).size).toBe(TOTAL_RECORDS);
 		expect(result[0]).toEqual({ id: 'item-0' });
 		expect(result[TOTAL_RECORDS - 1]).toEqual({ id: 'item-249' });
 	});
 
 	it('should stop requesting once all records have been collected', async () => {
-		await contentfulApiRequestAllItems.call(executeFunctions, 'items', 'GET', '/spaces/space/entries', {}, {});
+		await getAllEntries();
 
-		expect(mockRequest).toHaveBeenCalledTimes(3);
+		expect(context.helpers.request).toHaveBeenCalledTimes(3);
 	});
 });

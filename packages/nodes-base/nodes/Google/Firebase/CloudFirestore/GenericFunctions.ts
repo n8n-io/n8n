@@ -1,4 +1,6 @@
 import moment from 'moment-timezone';
+
+import { UserError } from '@n8n/errors';
 import type {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
@@ -6,20 +8,29 @@ import type {
 	JsonObject,
 	IHttpRequestMethods,
 	IRequestOptions,
+	RequestPath,
+	RequestUrl,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { isSafeObjectProperty, NodeApiError } from 'n8n-workflow';
+import {
+	decodePathValue,
+	isSafeObjectProperty,
+	NodeApiError,
+	requestPath,
+	requestUrl,
+} from 'n8n-workflow';
 
 import { getGoogleAccessToken } from '../../GenericFunctions';
 
 export async function googleApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 	body: any = {},
 	qs: IDataObject = {},
-	uri: string | null = null,
+	uri?: RequestUrl,
 ): Promise<any> {
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {
 			'Content-Type': 'application/json',
 		},
@@ -29,7 +40,7 @@ export async function googleApiRequest(
 		qsStringifyOptions: {
 			arrayFormat: 'repeat',
 		},
-		uri: uri || `https://firestore.googleapis.com/v1/projects${resource}`,
+		uri: uri ?? requestUrl`https://firestore.googleapis.com/v1/projects${resource}`,
 		json: true,
 	};
 	try {
@@ -59,11 +70,11 @@ export async function googleApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 
 	body: any = {},
 	query: IDataObject = {},
-	uri: string | null = null,
+	uri?: RequestUrl,
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -79,25 +90,52 @@ export async function googleApiRequestAllItems(
 	return returnData;
 }
 
+export const toPathValue = (nodeVersion: number, value: string) =>
+	nodeVersion < 1.2 ? decodePathValue(value) : value;
+
+export function documentsPath(
+	projectId: string,
+	database: string,
+	collection: string,
+	nodeVersion: number,
+): RequestPath {
+	return collection
+		.split('/')
+		.filter((segment, index, segments) => {
+			if (!segment && index > 0 && index < segments.length - 1) {
+				throw new UserError('The collection path cannot contain empty segments');
+			}
+			return Boolean(segment);
+		})
+		.reduce(
+			(path, segment) => requestPath`${path}/${toPathValue(nodeVersion, segment)}`,
+			requestPath`/${projectId}/databases/${database}/documents`,
+		);
+}
+
 const isValidDate = (str: string) =>
 	moment(str, ['YYYY-MM-DD HH:mm:ss Z', moment.ISO_8601], true).isValid();
 
 // Both functions below were taken from Stack Overflow jsonToDocument was fixed as it was unable to handle null values correctly
 // https://stackoverflow.com/questions/62246410/how-to-convert-a-firestore-document-to-plain-json-and-vice-versa
 // Great thanks to https://stackoverflow.com/users/3915246/mahindar
-export function jsonToDocument(value: string | number | IDataObject | IDataObject[]): IDataObject {
+export function jsonToDocument(
+	value: string | number | boolean | null | undefined | IDataObject | IDataObject[],
+): IDataObject {
 	if (value === 'true' || value === 'false' || typeof value === 'boolean') {
 		return { booleanValue: value };
+	} else if (value === undefined) {
+		return { nullValue: null };
 	} else if (value === null) {
 		return { nullValue: null };
-	} else if (value !== '' && typeof value !== 'object' && !isNaN(value as number)) {
+	} else if (typeof value === 'number' && !Number.isNaN(value)) {
 		if (value.toString().indexOf('.') !== -1) {
 			return { doubleValue: value };
 		} else {
 			return { integerValue: value };
 		}
-	} else if (isValidDate(value as string)) {
-		const date = new Date(Date.parse(value as string));
+	} else if (typeof value === 'string' && /[-T:]/.test(value) && isValidDate(value)) {
+		const date = new Date(Date.parse(value));
 		return { timestampValue: date.toISOString() };
 	} else if (typeof value === 'string') {
 		return { stringValue: value };
@@ -106,7 +144,7 @@ export function jsonToDocument(value: string | number | IDataObject | IDataObjec
 	} else if (typeof value === 'object') {
 		const obj: IDataObject = {};
 		for (const key of Object.keys(value)) {
-			if (value.hasOwnProperty(key) && isSafeObjectProperty(key)) {
+			if (Object.prototype.hasOwnProperty.call(value, key) && isSafeObjectProperty(key)) {
 				obj[key] = jsonToDocument((value as IDataObject)[key] as IDataObject);
 			}
 		}

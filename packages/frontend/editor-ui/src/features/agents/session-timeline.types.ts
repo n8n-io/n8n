@@ -1,17 +1,61 @@
-export type EventKind = 'user' | 'agent' | 'tool' | 'node' | 'workflow' | 'suspension';
+import type { AgentBackgroundJobDto, AgentBackgroundJobSignal } from '@n8n/api-types';
+import type { BadgeVariant } from '@n8n/design-system';
+import type { ThinkingSegment } from '@/features/ai/shared/agentsChat/types';
+
+export type EventKind =
+	| 'user'
+	| 'agent'
+	| 'skill'
+	| 'memory'
+	| 'tool'
+	| 'node'
+	| 'workflow'
+	| 'execution-error'
+	| 'suspension'
+	| 'hitl-response'
+	| 'background-task-signal'
+	| 'background-task';
+
+export type ToolCallOutcome = 'success' | 'error';
+/** A memory row shows a recall_memory or a flag_memory call. */
+export type MemoryAction = 'recall' | 'flag';
+export type TimelineActivityStatus = 'running' | 'waiting' | 'completed' | 'failed' | 'interrupted';
+/**
+ * What a suspension is waiting for. `wait` is a workflow tool parked on a Wait
+ * node: nobody is being asked anything, the resume arrives from the workflow.
+ */
+export type HitlRequestType = 'approval' | 'interaction' | 'wait';
+export type HitlResponseStatus = 'approved' | 'declined' | 'responded';
+export type TimelineStatusFilterKey = 'approved' | 'declined' | 'error';
 
 export interface TimelineItem {
+	id?: string;
 	kind: EventKind;
 	executionId: string;
 	timestamp: number;
 	endTimestamp?: number;
+	activityStatus?: TimelineActivityStatus;
 	content?: string;
+	thinkingSegments?: ThinkingSegment[];
+	backgroundJobSignal?: AgentBackgroundJobSignal;
+	/** Current task state. The task ID stays stable across updates. */
+	backgroundTask?: AgentBackgroundJobDto;
+	/** Display name of the chat platform user who wrote the turn (only set for `kind: 'user'`). */
+	authorName?: string;
 	/** Files attached to the user turn (only set for `kind: 'user'`). */
 	attachments?: Array<{ id: string; fileName: string; mimeType: string; sizeBytes: number }>;
 	toolName?: string;
+	/** Only set for `kind: 'memory'`. */
+	memoryAction?: MemoryAction;
+	/** Display name of the skill loaded by a `load_skill` call. */
+	skillName?: string;
 	toolCallId?: string;
 	toolInput?: unknown;
 	toolOutput?: unknown;
+	executionStatus?: 'error' | 'interrupted';
+	/** Terminal outcome of a tool execution. Human decisions are represented on HITL response items. */
+	toolOutcome?: ToolCallOutcome;
+	/** @deprecated Use `toolOutcome`. Kept for compatibility with existing timeline consumers. */
 	toolSuccess?: boolean;
 	workflowId?: string;
 	workflowName?: string;
@@ -20,6 +64,12 @@ export interface TimelineItem {
 	nodeType?: string;
 	nodeTypeVersion?: number;
 	nodeDisplayName?: string;
+	/** Request and response data correlated across a suspended tool call. */
+	hitlRequestType?: HitlRequestType;
+	hitlRequest?: unknown;
+	hitlResponse?: unknown;
+	hitlResponseStatus?: HitlResponseStatus;
+	hitlToolDisplayName?: string;
 	/**
 	 * Configured node parameters from the agent's JSON config (only set for
 	 * `kind: 'node'`). Surfaced in the IO viewer so the user can see the node's
@@ -34,22 +84,18 @@ export interface TimelineItem {
 	 */
 	subAgentName?: string;
 	resumed?: boolean;
-	/**
-	 * True for the tool-call entry a resumed execution records when the user
-	 * answers an interactive suspension: it carries the user's feedback as its
-	 * output and is labelled "User feedback received" instead of a tool call.
-	 */
-	isUserFeedback?: boolean;
+	guardrailCode?: string;
 }
 
-export interface IdleRange {
-	start: number;
-	end: number;
-}
-
-export interface FilterOption {
+interface BaseFilterOption {
 	key: string;
 	label: string;
-	color: string;
 	count: number;
 }
+
+export type FilterOption =
+	| (BaseFilterOption & { presentation: 'swatch'; color: string })
+	| (BaseFilterOption & {
+			presentation: 'badge';
+			badgeTheme: Extract<BadgeVariant, 'outline' | 'success' | 'danger'>;
+	  });

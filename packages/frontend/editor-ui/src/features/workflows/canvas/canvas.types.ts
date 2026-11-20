@@ -1,14 +1,16 @@
-import type {
-	ExecutionStatus,
-	IConnections,
-	INodeConnections,
-	INodeParameterResourceLocator,
-	IWorkflowGroup,
-	NodeConnectionType,
+import {
+	NodeConnectionTypes,
+	type ExecutionStatus,
+	type IConnections,
+	type INodeConnections,
+	type INodeParameterResourceLocator,
+	type IWorkflowGroup,
+	type NodeConnectionType,
 } from 'n8n-workflow';
 import type {
 	Connection,
 	DefaultEdge,
+	GraphNode,
 	Node,
 	NodeProps,
 	Position,
@@ -20,7 +22,10 @@ import type { INodeUi } from '@/Interface';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import type { ComputedRef, Ref } from 'vue';
 import type { EventBus } from '@n8n/utils/event-bus';
-import type { CanvasLayoutSource } from '@/features/workflows/canvas/composables/useCanvasLayout';
+import type {
+	CanvasLayoutSource,
+	CanvasLayoutTarget,
+} from '@/features/workflows/canvas/composables/useCanvasLayout';
 import type { NodeIconSource } from '@/app/utils/nodeIcon';
 import type { ExecutionOutputMap, ExecutionOutputMapData } from '@/app/types/executionData';
 
@@ -81,6 +86,8 @@ export type CanvasNodeDefaultRender = {
 		dirtiness?: CanvasNodeDirtinessType;
 		icon?: NodeIconSource;
 		placeholder?: boolean;
+		deprecated?: boolean;
+		deprecatedReplacementName?: string;
 	}>;
 };
 
@@ -136,6 +143,8 @@ export interface CanvasNodeData {
 	issues: {
 		validation: string[];
 		visible: boolean;
+		/** The only issues are missing credentials, shown as "setup required". */
+		setupRequired?: boolean;
 	};
 	execution: {
 		status?: ExecutionStatus;
@@ -160,8 +169,8 @@ export type CanvasNode = Node<CanvasNodeData>;
 
 export const CANVAS_NODE_GROUP_TYPE = 'canvas-node-group';
 export const CANVAS_NODE_GROUP_ID_PREFIX = 'group:';
-export const CANVAS_NODE_GROUP_HANDLE_LEFT = 'left';
-export const CANVAS_NODE_GROUP_HANDLE_RIGHT = 'right';
+export const CANVAS_NODE_GROUP_INPUT_HANDLE = `${CanvasConnectionMode.Input}/${NodeConnectionTypes.Main}/0`;
+export const CANVAS_NODE_GROUP_OUTPUT_HANDLE = `${CanvasConnectionMode.Output}/${NodeConnectionTypes.Main}/0`;
 
 // Host override for group expansion; leaves persisted view state untouched.
 export type GroupExpansionMode = 'all' | 'errored';
@@ -185,6 +194,7 @@ export type GroupExecutionStatus =
 	| 'running'
 	| 'error'
 	| 'issues'
+	| 'setup'
 	| 'warning'
 	| 'success';
 
@@ -195,6 +205,8 @@ export interface NodeExecutionSnapshot {
 	waiting: string | undefined;
 	hasExecutionError: boolean;
 	hasValidationError: boolean;
+	/** The only validation issues are credentials that are not set yet. */
+	needsCredentialSetup: boolean;
 	status: ExecutionStatus | undefined;
 	/** Parameters changed since the last run — the single-node "dirty" warning. */
 	dirty: boolean;
@@ -205,6 +217,7 @@ export interface CanvasGroupNodeData {
 	group: IWorkflowGroup;
 	nodesRect: { x: number; y: number; width: number; height: number };
 	isCollapsed: boolean;
+	isEmptyGroup?: boolean;
 	executionStatus?: GroupExecutionStatus;
 	allNodesDisabled?: boolean;
 }
@@ -212,6 +225,10 @@ export interface CanvasGroupNodeData {
 export type CanvasGroupNode = Node<CanvasGroupNodeData>;
 
 export type CanvasNodeOrGroup = CanvasNode | CanvasGroupNode;
+
+/** A rendered VueFlow node as auto-layout sees it: a regular node or a group node. */
+export type CanvasLayoutNode = GraphNode<CanvasNodeData> | GraphNode<CanvasGroupNodeData>;
+export type CanvasLayoutNodeData = CanvasNodeData | CanvasGroupNodeData;
 
 export function isCanvasGroupNode(node: CanvasNodeOrGroup): node is CanvasGroupNode;
 export function isCanvasGroupNode(node: { type?: string }): boolean;
@@ -273,6 +290,7 @@ export type CanvasEventBusEvents = {
 	};
 	tidyUp: {
 		source: CanvasLayoutSource;
+		target?: CanvasLayoutTarget;
 		nodeIdsFilter?: string[];
 		trackEvents?: boolean;
 		trackHistory?: boolean;
@@ -306,6 +324,8 @@ export interface CanvasNodeHandleInjectionData {
 
 export type ConnectStartEvent = {
 	event?: MouseEvent | undefined;
+	/** True when a collapsed empty group's left input started the drag. */
+	isEmptyGroupTargetStart?: boolean;
 } & OnConnectStartParams;
 
 export type CanvasNodeMoveEvent = { id: string; position: CanvasNode['position'] };

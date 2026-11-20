@@ -1,3 +1,4 @@
+import { sleep } from '@n8n/utils/sleep';
 import type { RequestHandler } from 'express';
 
 export interface JitterOptions {
@@ -18,7 +19,7 @@ export const createJitterMiddleware = (options: JitterOptions = {}): RequestHand
 	return async (_req, _res, next) => {
 		const delay = Math.floor(Math.random() * (maxMs - minMs + 1)) + minMs;
 
-		await new Promise((resolve) => setTimeout(resolve, delay));
+		await sleep(delay);
 
 		next();
 	};

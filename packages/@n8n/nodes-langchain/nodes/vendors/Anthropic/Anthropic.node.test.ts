@@ -1,4 +1,5 @@
-import type { IExecuteFunctions, IBinaryData } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
+import type { IExecuteFunctions, IBinaryData, IDataObject } from 'n8n-workflow';
 import type { MockInstance } from 'vitest';
 import { mockDeep } from 'vitest-mock-extended';
 
@@ -78,7 +79,7 @@ describe('Anthropic Node', () => {
 					pairedItem: { item: 0 },
 				},
 			]);
-			expect(apiRequestMock).toHaveBeenCalledWith('POST', '/v1/messages', {
+			expect(apiRequestMock).toHaveBeenCalledWith('POST', requestPath`/v1/messages`, {
 				body: {
 					model: 'claude-sonnet-4-20250514',
 					max_tokens: 1024,
@@ -165,7 +166,7 @@ describe('Anthropic Node', () => {
 			]);
 			expect(downloadFileMock).toHaveBeenCalledWith('https://example.com/file.pdf');
 			expect(uploadFileMock).toHaveBeenCalledWith(Buffer.from('abcdefgh'), 'application/pdf');
-			expect(apiRequestMock).toHaveBeenCalledWith('POST', '/v1/messages', {
+			expect(apiRequestMock).toHaveBeenCalledWith('POST', requestPath`/v1/messages`, {
 				body: {
 					model: 'claude-sonnet-4-20250514',
 					max_tokens: 1024,
@@ -251,7 +252,7 @@ describe('Anthropic Node', () => {
 				url: 'https://example.com/file.pdf',
 				returnFullResponse: true,
 			});
-			expect(apiRequestMock).toHaveBeenCalledWith('POST', '/v1/messages', {
+			expect(apiRequestMock).toHaveBeenCalledWith('POST', requestPath`/v1/messages`, {
 				body: {
 					model: 'claude-sonnet-4-20250514',
 					max_tokens: 1024,
@@ -276,6 +277,187 @@ describe('Anthropic Node', () => {
 					tools: [],
 				},
 				enableAnthropicBetas: {},
+			});
+		});
+	});
+
+	describe('Text -> Message prompt caching', () => {
+		const mockNodeParameters = (options: IDataObject) => {
+			executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
+				switch (parameter) {
+					case 'modelId':
+						return 'claude-sonnet-4-20250514';
+					case 'messages.values':
+						return [{ role: 'user', content: 'Hello, world!' }];
+					case 'simplify':
+						return true;
+					case 'addAttachments':
+						return false;
+					case 'options':
+						return options;
+					default:
+						return undefined;
+				}
+			});
+			executeFunctionsMock.getNodeInputs.mockReturnValue([{ type: 'main' }]);
+		};
+
+		it('should send a top-level cache breakpoint when prompt caching is enabled', async () => {
+			mockNodeParameters({ promptCaching: '5m', system: 'You are a helpful assistant.' });
+			apiRequestMock.mockResolvedValue({
+				content: [{ type: 'text', text: 'Hi!' }],
+				stop_reason: 'end_turn',
+			});
+
+			await text.message.execute.call(executeFunctionsMock, 0);
+
+			expect(apiRequestMock).toHaveBeenCalledWith('POST', requestPath`/v1/messages`, {
+				body: {
+					model: 'claude-sonnet-4-20250514',
+					max_tokens: 1024,
+					system: 'You are a helpful assistant.',
+					messages: [{ role: 'user', content: 'Hello, world!' }],
+					tools: [],
+					cache_control: { type: 'ephemeral', ttl: '5m' },
+				},
+				enableAnthropicBetas: {},
+			});
+		});
+
+		it('should send a one hour cache breakpoint when the 1h option is selected', async () => {
+			mockNodeParameters({ promptCaching: '1h' });
+			apiRequestMock.mockResolvedValue({
+				content: [{ type: 'text', text: 'Hi!' }],
+				stop_reason: 'end_turn',
+			});
+
+			await text.message.execute.call(executeFunctionsMock, 0);
+
+			expect(apiRequestMock).toHaveBeenCalledWith('POST', requestPath`/v1/messages`, {
+				body: {
+					model: 'claude-sonnet-4-20250514',
+					max_tokens: 1024,
+					messages: [{ role: 'user', content: 'Hello, world!' }],
+					tools: [],
+					cache_control: { type: 'ephemeral', ttl: '1h' },
+				},
+				enableAnthropicBetas: {},
+			});
+		});
+
+		it('should not send a cache breakpoint when prompt caching is disabled', async () => {
+			mockNodeParameters({ promptCaching: 'disabled', system: 'You are a helpful assistant.' });
+			apiRequestMock.mockResolvedValue({
+				content: [{ type: 'text', text: 'Hi!' }],
+				stop_reason: 'end_turn',
+			});
+
+			await text.message.execute.call(executeFunctionsMock, 0);
+
+			// An exact body match, so an unconditional cache_control would fail here.
+			expect(apiRequestMock).toHaveBeenCalledWith('POST', requestPath`/v1/messages`, {
+				body: {
+					model: 'claude-sonnet-4-20250514',
+					max_tokens: 1024,
+					system: 'You are a helpful assistant.',
+					messages: [{ role: 'user', content: 'Hello, world!' }],
+					tools: [],
+				},
+				enableAnthropicBetas: {},
+			});
+		});
+
+		it('should keep the cache breakpoint on follow-up requests in the tool call loop', async () => {
+			mockNodeParameters({ promptCaching: '5m' });
+
+			// Every call receives the same mutable body object, so the recorded arguments
+			// all point at its final state. Snapshot each payload as it is sent, otherwise
+			// the first request would be asserted against the grown conversation.
+			const responses = [
+				{
+					content: [{ type: 'tool_use', id: 'toolu_1', name: 'my_tool', input: {} }],
+					stop_reason: 'tool_use',
+				},
+				{ content: [{ type: 'text', text: 'Done.' }], stop_reason: 'end_turn' },
+			];
+			const sentBodies: IDataObject[] = [];
+			apiRequestMock.mockImplementation(
+				async (_method: string, _endpoint: string, parameters: { body: IDataObject }) => {
+					sentBodies.push(structuredClone(parameters.body));
+					return responses[sentBodies.length - 1];
+				},
+			);
+
+			await text.message.execute.call(executeFunctionsMock, 0);
+
+			expect(sentBodies).toHaveLength(2);
+
+			// First request: only the original prompt, breakpoint already in place.
+			expect(sentBodies[0]).toEqual({
+				model: 'claude-sonnet-4-20250514',
+				max_tokens: 1024,
+				messages: [{ role: 'user', content: 'Hello, world!' }],
+				tools: [],
+				cache_control: { type: 'ephemeral', ttl: '5m' },
+			});
+
+			// Follow-up request: the conversation has grown by the tool exchange, and the
+			// breakpoint has to survive it -- this is where caching actually pays off.
+			expect(sentBodies[1]).toEqual({
+				model: 'claude-sonnet-4-20250514',
+				max_tokens: 1024,
+				messages: [
+					{ role: 'user', content: 'Hello, world!' },
+					{
+						role: 'assistant',
+						content: [{ type: 'tool_use', id: 'toolu_1', name: 'my_tool', input: {} }],
+					},
+					{ role: 'user', content: [{ type: 'tool_result', tool_use_id: 'toolu_1', content: '' }] },
+				],
+				tools: [],
+				cache_control: { type: 'ephemeral', ttl: '5m' },
+			});
+		});
+
+		it('should count cached tokens towards the reported token usage', async () => {
+			mockNodeParameters({ promptCaching: '5m' });
+			executeFunctionsMock.getExecuteData.mockReturnValue(
+				undefined as unknown as ReturnType<IExecuteFunctions['getExecuteData']>,
+			);
+			apiRequestMock.mockResolvedValue({
+				content: [{ type: 'text', text: 'Hi!' }],
+				stop_reason: 'end_turn',
+				usage: {
+					input_tokens: 12,
+					output_tokens: 34,
+					cache_creation_input_tokens: 500,
+					cache_read_input_tokens: 1000,
+				},
+			});
+
+			await text.message.execute.call(executeFunctionsMock, 0);
+
+			// Anthropic reports cached tokens outside input_tokens, so all three add up.
+			expect(executeFunctionsMock.setMetadata).toHaveBeenCalledWith({
+				tokenUsage: { inputTokens: 1512, outputTokens: 34 },
+			});
+		});
+
+		it('should report token usage unchanged when the response has no cache fields', async () => {
+			mockNodeParameters({});
+			executeFunctionsMock.getExecuteData.mockReturnValue(
+				undefined as unknown as ReturnType<IExecuteFunctions['getExecuteData']>,
+			);
+			apiRequestMock.mockResolvedValue({
+				content: [{ type: 'text', text: 'Hi!' }],
+				stop_reason: 'end_turn',
+				usage: { input_tokens: 12, output_tokens: 34 },
+			});
+
+			await text.message.execute.call(executeFunctionsMock, 0);
+
+			expect(executeFunctionsMock.setMetadata).toHaveBeenCalledWith({
+				tokenUsage: { inputTokens: 12, outputTokens: 34 },
 			});
 		});
 	});
@@ -555,7 +737,7 @@ describe('Anthropic Node', () => {
 					pairedItem: { item: 0 },
 				},
 			]);
-			expect(apiRequestMock).toHaveBeenCalledWith('GET', '/v1/files', {
+			expect(apiRequestMock).toHaveBeenCalledWith('GET', requestPath`/v1/files`, {
 				qs: {
 					limit: 10,
 				},
@@ -653,7 +835,7 @@ describe('Anthropic Node', () => {
 			const result = await file.deleteFile.execute.call(executeFunctionsMock, 0);
 
 			expect(result).toEqual([{ json: { id: 'file_123' }, pairedItem: { item: 0 } }]);
-			expect(apiRequestMock).toHaveBeenCalledWith('DELETE', '/v1/files/file_123');
+			expect(apiRequestMock).toHaveBeenCalledWith('DELETE', requestPath`/v1/files/file_123`);
 		});
 	});
 
@@ -738,7 +920,7 @@ describe('Anthropic Node', () => {
 					pairedItem: { item: 0 },
 				},
 			]);
-			expect(apiRequestMock).toHaveBeenCalledWith('POST', '/v1/messages', {
+			expect(apiRequestMock).toHaveBeenCalledWith('POST', requestPath`/v1/messages`, {
 				body: {
 					model: 'claude-sonnet-4-20250514',
 					max_tokens: 1024,
@@ -822,7 +1004,7 @@ describe('Anthropic Node', () => {
 					pairedItem: { item: 0 },
 				},
 			]);
-			expect(apiRequestMock).toHaveBeenCalledWith('POST', '/v1/messages', {
+			expect(apiRequestMock).toHaveBeenCalledWith('POST', requestPath`/v1/messages`, {
 				body: {
 					model: 'claude-sonnet-4-20250514',
 					max_tokens: 1024,
@@ -896,7 +1078,7 @@ describe('Anthropic Node', () => {
 					pairedItem: { item: 0 },
 				},
 			]);
-			expect(apiRequestMock).toHaveBeenCalledWith('POST', '/v1/messages', {
+			expect(apiRequestMock).toHaveBeenCalledWith('POST', requestPath`/v1/messages`, {
 				body: {
 					model: 'claude-sonnet-4-20250514',
 					max_tokens: 1024,
@@ -963,14 +1145,18 @@ describe('Anthropic Node', () => {
 					pairedItem: { item: 0 },
 				},
 			]);
-			expect(apiRequestMock).toHaveBeenCalledWith('POST', '/v1/experimental/generate_prompt', {
-				body: {
-					task: 'A chef for a meal prep planning service',
+			expect(apiRequestMock).toHaveBeenCalledWith(
+				'POST',
+				requestPath`/v1/experimental/generate_prompt`,
+				{
+					body: {
+						task: 'A chef for a meal prep planning service',
+					},
+					enableAnthropicBetas: {
+						promptTools: true,
+					},
 				},
-				enableAnthropicBetas: {
-					promptTools: true,
-				},
-			});
+			);
 		});
 	});
 
@@ -1026,21 +1212,25 @@ describe('Anthropic Node', () => {
 					pairedItem: { item: 0 },
 				},
 			]);
-			expect(apiRequestMock).toHaveBeenCalledWith('POST', '/v1/experimental/improve_prompt', {
-				body: {
-					messages: [
-						{
-							role: 'user',
-							content: 'Plan meals for the week',
-						},
-					],
-					system: 'You are a chef',
-					feedback: 'Make it more detailed and include cooking times',
+			expect(apiRequestMock).toHaveBeenCalledWith(
+				'POST',
+				requestPath`/v1/experimental/improve_prompt`,
+				{
+					body: {
+						messages: [
+							{
+								role: 'user',
+								content: 'Plan meals for the week',
+							},
+						],
+						system: 'You are a chef',
+						feedback: 'Make it more detailed and include cooking times',
+					},
+					enableAnthropicBetas: {
+						promptTools: true,
+					},
 				},
-				enableAnthropicBetas: {
-					promptTools: true,
-				},
-			});
+			);
 		});
 	});
 
@@ -1101,20 +1291,24 @@ describe('Anthropic Node', () => {
 					pairedItem: { item: 0 },
 				},
 			]);
-			expect(apiRequestMock).toHaveBeenCalledWith('POST', '/v1/experimental/templatize_prompt', {
-				body: {
-					messages: [
-						{
-							role: 'user',
-							content: 'Translate hello to German',
-						},
-					],
-					system: 'You are a professional English to German translator',
+			expect(apiRequestMock).toHaveBeenCalledWith(
+				'POST',
+				requestPath`/v1/experimental/templatize_prompt`,
+				{
+					body: {
+						messages: [
+							{
+								role: 'user',
+								content: 'Translate hello to German',
+							},
+						],
+						system: 'You are a professional English to German translator',
+					},
+					enableAnthropicBetas: {
+						promptTools: true,
+					},
 				},
-				enableAnthropicBetas: {
-					promptTools: true,
-				},
-			});
+			);
 		});
 	});
 });

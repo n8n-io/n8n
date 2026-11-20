@@ -4,18 +4,19 @@ import type {
 	INodeProperties,
 	ResourceMapperField,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../../utils/utilities';
 import {
 	addUniqueConstraintHint,
 	assertPathSegment,
 	HYPERLINK_WRITE_HEADERS,
-} from '../../helpers/utils';
+} from '../../../helpers/utils';
 import { buildItemFieldsPayload, resolveItemMapperValues } from '../../item';
-import { listRLC, untilSiteSelected } from '../../list';
+import { listRLC, untilSiteSelected } from '../../../list';
 import { itemColumns } from '../../list/columns';
-import { resolveSiteId, siteRLC } from '../../site';
-import { microsoftApiRequest } from '../../transport';
+import { resolveSiteId, siteRLC } from '../../../site';
+import { microsoftApiRequest } from '../../../transport';
 
 const properties: INodeProperties[] = [
 	{
@@ -64,7 +65,7 @@ export async function execute(
 		return await microsoftApiRequest.call(
 			this,
 			'POST',
-			`/v1.0/sites/${encodeURIComponent(siteId)}/lists/${encodeURIComponent(listIdOrTitle)}/items`,
+			requestPath`/v1.0/sites/${siteId}/lists/${listIdOrTitle}/items`,
 			{ fields },
 			{},
 			undefined,

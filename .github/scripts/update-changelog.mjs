@@ -27,10 +27,12 @@ const changelogStream = new ConventionalChangelog()
 		releaseCount: 1,
 		transformCommit(commit) {
 			const hasNoChangelogInHeader = commit.header?.includes('(no-changelog)');
-			const isBenchmarkScope = commit.scope === 'benchmark';
+			// 'engine' is ignored for now. We will show it in the changelog when the engine is stable.
+			const ignoredScopes = ['benchmark', 'engine'];
+			const hasIgnoredScope = ignoredScopes.includes(commit.scope);
 
-			// Ignore commits that have 'benchmark' scope or '(no-changelog)' in the header
-			if (hasNoChangelogInHeader || isBenchmarkScope) return null;
+			// Ignore commits that have an ignored scope or '(no-changelog)' in the header
+			if (hasNoChangelogInHeader || hasIgnoredScope) return null;
 
 			// Strip backport information from commit subject, e.g.:
 			// "Fix something (backport to release-candidate/2.12.x) (#123)" → "Fix something (#123)"

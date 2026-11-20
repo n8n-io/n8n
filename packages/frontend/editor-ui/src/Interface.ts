@@ -1,3 +1,4 @@
+import type { ResourceEditorDestination } from '@/features/collaboration/projects/projects.types';
 import type {
 	AgentJsonConfig,
 	FrontendSettings,
@@ -5,13 +6,18 @@ import type {
 	IUserManagementSettings,
 	IVersionNotificationSettings,
 	Role,
+	WorkflowListPublicationStatus,
 } from '@n8n/api-types';
 import type { ILogInStatus } from '@/features/settings/users/users.types';
 import type { NodeViewItemSection } from '@/features/shared/nodeCreator/views/viewsData';
-import type { IUsedCredential } from '@/features/credentials/credentials.types';
+import type {
+	CredentialPayload,
+	CredentialTypeUsability,
+	IUsedCredential,
+} from '@/features/credentials/credentials.types';
 import type { Scope, WorkflowSharingRole } from '@n8n/permissions';
 import type { NodeCreatorTag, IconName, BinaryMetadata } from '@n8n/design-system';
-import type { ModalState } from '@n8n/frontend-module-sdk';
+import type { DisplayMode, ModalState, SlotResourcesListFilters } from '@n8n/frontend-module-sdk';
 import type {
 	GenericValue,
 	IConnections,
@@ -27,6 +33,7 @@ import type {
 	NodeParameterValueType,
 	IDisplayOptions,
 	FeatureFlags,
+	FeatureFlagPayloads,
 	ITelemetryTrackProperties,
 	WorkflowSettings,
 	WorkflowSettingsBinaryMode,
@@ -103,7 +110,8 @@ declare global {
 				options?: {
 					api_host?: string;
 					tracing_headers?: string[];
-					autocapture?: boolean;
+					autocapture?: boolean | { element_attribute_ignorelist?: string[] };
+					mask_all_text?: boolean;
 					disable_session_recording?: boolean;
 					advanced_disable_feature_flags?: boolean;
 					debug?: boolean;
@@ -111,6 +119,7 @@ declare global {
 						distinctID?: string;
 						isIdentifiedID?: boolean;
 						featureFlags: FeatureFlags;
+						featureFlagPayloads?: FeatureFlagPayloads;
 					};
 					session_recording?: {
 						maskAllInputs?: boolean;
@@ -121,6 +130,7 @@ declare global {
 			): void;
 			isFeatureEnabled?(flagName: string): boolean;
 			getFeatureFlag?(flagName: string): boolean | string;
+			getFeatureFlagPayload?(flagName: string): FeatureFlagPayloads[string] | undefined;
 			identify?(
 				id: string,
 				userProperties?: Record<string, string | number>,
@@ -137,6 +147,8 @@ declare global {
 			};
 			debug?(): void;
 			get_session_id?(): string | null;
+			/** Set by posthog-js once init() has run; further init() calls are no-ops. */
+			__loaded?: boolean;
 		};
 		analytics?: {
 			identify(userId: string): void;
@@ -146,7 +158,11 @@ declare global {
 		featureFlags?: {
 			getAll: () => FeatureFlags;
 			getVariant: (name: string) => string | boolean | undefined;
-			override: (name: string, value: string) => void;
+			override: (
+				name: string,
+				value: string | boolean,
+				payload?: FeatureFlagPayloads[string],
+			) => void;
 		};
 	}
 }
@@ -329,6 +345,7 @@ export type WorkflowResource = BaseResource & {
 	parentFolder?: ResourceParentFolder;
 	settings?: Partial<IWorkflowSettings>;
 	hasResolvableCredentials?: boolean;
+	publicationStatus?: WorkflowListPublicationStatus;
 };
 
 export type VariableResource = BaseResource & {
@@ -340,6 +357,7 @@ export type VariableResource = BaseResource & {
 
 export type CredentialsResource = BaseResource & {
 	resourceType: 'credential';
+	description?: string | null;
 	updatedAt: string;
 	createdAt: string;
 	type: string;
@@ -348,9 +366,14 @@ export type CredentialsResource = BaseResource & {
 	sharedWithProjects?: ProjectSharingData[];
 	readOnly: boolean;
 	needsSetup: boolean;
+	/** Why workflows cannot use this credential, when a policy restricts its type or its nodes. */
+	restriction?: CredentialTypeUsability;
+	/** The project whose policy set the restriction: the listed project, or else the home project. */
+	restrictionProject?: { id: string; type?: ProjectSharingData['type'] };
 	isGlobal?: boolean;
 	isResolvable?: boolean;
 	connectedByMe?: boolean;
+	connectedAccountIdentifier?: string;
 };
 
 // Base resource types that are always available
@@ -367,11 +390,7 @@ export interface ModuleResources {}
 // The Resource type is the union of core resources and any module resources
 export type Resource = CoreResource | ModuleResources[keyof ModuleResources];
 
-export type BaseFilters = {
-	search: string;
-	homeProject: string;
-	[key: string]: boolean | string | string[];
-};
+export type BaseFilters = SlotResourcesListFilters;
 
 export type SortingAndPaginationUpdates = {
 	page?: number;
@@ -386,6 +405,7 @@ export type WorkflowListItem = Omit<
 	resource?: 'workflow'; // only included if list may contain folders
 	description?: string;
 	hasResolvableCredentials?: boolean;
+	publicationStatus?: WorkflowListPublicationStatus;
 };
 
 export type WorkflowListResource = WorkflowListItem | FolderListItem;
@@ -485,6 +505,7 @@ export type SimplifiedNodeType = Pick<
 	| 'codex'
 	| 'defaults'
 	| 'outputs'
+	| 'deprecated'
 > & {
 	tag?: NodeCreatorTag;
 	isNew?: boolean;
@@ -610,6 +631,11 @@ export interface ViewCreateElement extends CreateElementBase {
 	properties: ViewItemProps;
 }
 
+export interface CommandCreateElement extends CreateElementBase {
+	type: 'command';
+	properties: ViewItemProps;
+}
+
 export interface LabelCreateElement extends CreateElementBase {
 	type: 'label';
 	subcategory: string;
@@ -643,6 +669,7 @@ export type INodeCreateElement =
 	| SubcategoryCreateElement
 	| SectionCreateElement
 	| ViewCreateElement
+	| CommandCreateElement
 	| LabelCreateElement
 	| ActionCreateElement
 	| AgentCreateElement
@@ -690,11 +717,23 @@ export type ModalKey = keyof Modals;
 export type { ModalState };
 
 export interface NewCredentialsModal extends ModalState {
+	notice?: () => string;
+	initialName?: string;
+	initialData?: Record<string, unknown>;
+	destination?: ResourceEditorDestination;
+	createCredential?: (details: CredentialPayload, projectId: string) => Promise<string>;
+	onInitializeError?: (error: unknown) => void;
 	showAuthSelector?: boolean;
 	forceManualMode?: boolean;
 	closeOnSave?: boolean;
+	fixedCredentialsOnly?: boolean;
+	onCredentialCreated?: (credential: { id: string }) => void;
 	projectId?: string;
 	suggestedName?: string;
+	/** Workflow the credential is being set up for, supplied by workflow-scoped
+	 * surfaces (NDV, Instance AI workflow setup) for telemetry attribution — the
+	 * modal itself can open where no workflow document is loaded. */
+	workflowId?: string;
 	/** Agent-supplied Templated Custom Auth recipe — pre-fills the credential's
 	 * template fields so the modal opens on the guided simple view. */
 	credentialSetupHint?: InstanceAiCredentialSetupHint;
@@ -703,6 +742,8 @@ export interface NewCredentialsModal extends ModalState {
 	hideAskAssistant?: boolean;
 	appendToBody?: boolean;
 	usageScope?: 'project' | 'instance';
+	/** The tab the modal opens on, for a surface that sends the user to one part of it. */
+	initialTab?: 'connection' | 'sharing' | 'details';
 	/** Behavior for the Instance AI credential setup-help button, supplied by the
 	 * surface that opened the modal (an editor capability, or the credentials list).
 	 * Resolves to whether the credential modal should close (false keeps it open for
@@ -720,7 +761,8 @@ export interface NewCredentialsModal extends ModalState {
 	}) => Promise<boolean>;
 }
 
-export type IRunDataDisplayMode = 'table' | 'json' | 'binary' | 'schema' | 'html' | 'ai';
+/** A built-in display mode, or the id of a display mode that a module registered. */
+export type IRunDataDisplayMode = DisplayMode;
 
 export interface TargetItem {
 	nodeName: string;
@@ -757,8 +799,7 @@ export type NodeCreatorOpenSource =
 	| 'notice_error_message'
 	| 'add_node_button'
 	| 'add_evaluation_node_button'
-	| 'templates_callout'
-	| 'instance_ai';
+	| 'templates_callout';
 
 export interface INodeCreatorState {
 	itemsFilter: string;

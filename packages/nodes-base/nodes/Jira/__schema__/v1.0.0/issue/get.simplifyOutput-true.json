@@ -1,0 +1,1005 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"Affects versions": {
+			"items": {},
+			"type": "array"
+		},
+		"Agent Sessions": {},
+		"Assignee": {
+			"properties": {
+				"accountId": {
+					"type": "string"
+				},
+				"accountType": {
+					"type": "string"
+				},
+				"active": {
+					"type": "boolean"
+				},
+				"avatarUrls": {
+					"properties": {
+						"16x16": {
+							"type": "string"
+						},
+						"24x24": {
+							"type": "string"
+						},
+						"32x32": {
+							"type": "string"
+						},
+						"48x48": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				},
+				"displayName": {
+					"type": "string"
+				},
+				"emailAddress": {
+					"type": "string"
+				},
+				"self": {
+					"type": "string"
+				},
+				"timeZone": {
+					"type": "string"
+				}
+			},
+			"type": ["null", "object"]
+		},
+		"Attachment": {
+			"items": {
+				"properties": {
+					"author": {
+						"properties": {
+							"accountId": {
+								"type": "string"
+							},
+							"accountType": {
+								"type": "string"
+							},
+							"active": {
+								"type": "boolean"
+							},
+							"avatarUrls": {
+								"properties": {
+									"16x16": {
+										"type": "string"
+									},
+									"24x24": {
+										"type": "string"
+									},
+									"32x32": {
+										"type": "string"
+									},
+									"48x48": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"displayName": {
+								"type": "string"
+							},
+							"emailAddress": {
+								"type": "string"
+							},
+							"self": {
+								"type": "string"
+							},
+							"timeZone": {
+								"type": "string"
+							}
+						},
+						"type": "object"
+					},
+					"content": {
+						"type": "string"
+					},
+					"created": {
+						"type": "string"
+					},
+					"filename": {
+						"type": "string"
+					},
+					"id": {
+						"type": "string"
+					},
+					"mimeType": {
+						"type": "string"
+					},
+					"self": {
+						"type": "string"
+					},
+					"size": {
+						"type": "number"
+					},
+					"thumbnail": {
+						"type": "string"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"Comment": {
+			"properties": {
+				"comments": {
+					"items": {
+						"properties": {
+							"author": {
+								"properties": {
+									"accountId": {
+										"type": "string"
+									},
+									"accountType": {
+										"type": "string"
+									},
+									"active": {
+										"type": "boolean"
+									},
+									"avatarUrls": {
+										"properties": {
+											"16x16": {
+												"type": "string"
+											},
+											"24x24": {
+												"type": "string"
+											},
+											"32x32": {
+												"type": "string"
+											},
+											"48x48": {
+												"type": "string"
+											}
+										},
+										"type": "object"
+									},
+									"displayName": {
+										"type": "string"
+									},
+									"emailAddress": {
+										"type": "string"
+									},
+									"self": {
+										"type": "string"
+									},
+									"timeZone": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"body": {
+								"type": "string"
+							},
+							"created": {
+								"type": "string"
+							},
+							"id": {
+								"type": "string"
+							},
+							"jsdPublic": {
+								"type": "boolean"
+							},
+							"self": {
+								"type": "string"
+							},
+							"updateAuthor": {
+								"properties": {
+									"accountId": {
+										"type": "string"
+									},
+									"accountType": {
+										"type": "string"
+									},
+									"active": {
+										"type": "boolean"
+									},
+									"avatarUrls": {
+										"properties": {
+											"16x16": {
+												"type": "string"
+											},
+											"24x24": {
+												"type": "string"
+											},
+											"32x32": {
+												"type": "string"
+											},
+											"48x48": {
+												"type": "string"
+											}
+										},
+										"type": "object"
+									},
+									"displayName": {
+										"type": "string"
+									},
+									"emailAddress": {
+										"type": "string"
+									},
+									"self": {
+										"type": "string"
+									},
+									"timeZone": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"updated": {
+								"type": "string"
+							}
+						},
+						"type": "object"
+					},
+					"type": "array"
+				},
+				"maxResults": {
+					"type": "number"
+				},
+				"self": {
+					"type": "string"
+				},
+				"startAt": {
+					"type": "number"
+				},
+				"total": {
+					"type": "number"
+				}
+			},
+			"type": "object"
+		},
+		"Components": {
+			"items": {
+				"properties": {
+					"description": {
+						"type": "string"
+					},
+					"id": {
+						"type": "string"
+					},
+					"name": {
+						"type": "string"
+					},
+					"self": {
+						"type": "string"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"Created": {
+			"type": "string"
+		},
+		"Creator": {
+			"properties": {
+				"accountId": {
+					"type": "string"
+				},
+				"accountType": {
+					"type": "string"
+				},
+				"active": {
+					"type": "boolean"
+				},
+				"avatarUrls": {
+					"properties": {
+						"16x16": {
+							"type": "string"
+						},
+						"24x24": {
+							"type": "string"
+						},
+						"32x32": {
+							"type": "string"
+						},
+						"48x48": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				},
+				"displayName": {
+					"type": "string"
+				},
+				"emailAddress": {
+					"type": "string"
+				},
+				"self": {
+					"type": "string"
+				},
+				"timeZone": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"Description": {
+			"type": ["null", "string"]
+		},
+		"Due date": {
+			"type": ["null", "string"]
+		},
+		"Environment": {
+			"properties": {
+				"id": {
+					"type": "string"
+				},
+				"self": {
+					"type": "string"
+				},
+				"value": {
+					"type": "string"
+				}
+			},
+			"type": ["null", "object"]
+		},
+		"Fix versions": {
+			"items": {
+				"properties": {
+					"archived": {
+						"type": "boolean"
+					},
+					"description": {
+						"type": "string"
+					},
+					"id": {
+						"type": "string"
+					},
+					"name": {
+						"type": "string"
+					},
+					"released": {
+						"type": "boolean"
+					},
+					"releaseDate": {
+						"type": "string"
+					},
+					"self": {
+						"type": "string"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"Flagged": {},
+		"id": {
+			"type": "string"
+		},
+		"Issue Type": {
+			"additionalProperties": true,
+			"properties": {
+				"avatarId": {
+					"type": "number"
+				},
+				"description": {
+					"type": "string"
+				},
+				"hierarchyLevel": {
+					"type": "number"
+				},
+				"iconUrl": {
+					"type": "string"
+				},
+				"id": {
+					"type": "string"
+				},
+				"name": {
+					"type": "string"
+				},
+				"self": {
+					"type": "string"
+				},
+				"subtask": {
+					"type": "boolean"
+				}
+			},
+			"type": "object"
+		},
+		"key": {
+			"type": "string"
+		},
+		"Labels": {
+			"items": {
+				"type": "string"
+			},
+			"type": "array"
+		},
+		"Last Viewed": {
+			"type": ["null", "string"]
+		},
+		"Linked Issues": {
+			"items": {
+				"additionalProperties": true,
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"outwardIssue": {
+						"properties": {
+							"fields": {
+								"properties": {
+									"issuetype": {
+										"properties": {
+											"avatarId": {
+												"type": "number"
+											},
+											"description": {
+												"type": "string"
+											},
+											"hierarchyLevel": {
+												"type": "number"
+											},
+											"iconUrl": {
+												"type": "string"
+											},
+											"id": {
+												"type": "string"
+											},
+											"name": {
+												"type": "string"
+											},
+											"self": {
+												"type": "string"
+											},
+											"subtask": {
+												"type": "boolean"
+											}
+										},
+										"type": "object"
+									},
+									"priority": {
+										"properties": {
+											"iconUrl": {
+												"type": "string"
+											},
+											"id": {
+												"type": "string"
+											},
+											"name": {
+												"type": "string"
+											},
+											"self": {
+												"type": "string"
+											}
+										},
+										"type": "object"
+									},
+									"status": {
+										"properties": {
+											"description": {
+												"type": "string"
+											},
+											"iconUrl": {
+												"type": "string"
+											},
+											"id": {
+												"type": "string"
+											},
+											"name": {
+												"type": "string"
+											},
+											"self": {
+												"type": "string"
+											},
+											"statusCategory": {
+												"properties": {
+													"colorName": {
+														"type": "string"
+													},
+													"id": {
+														"type": "number"
+													},
+													"key": {
+														"type": "string"
+													},
+													"name": {
+														"type": "string"
+													},
+													"self": {
+														"type": "string"
+													}
+												},
+												"type": "object"
+											}
+										},
+										"type": "object"
+									},
+									"summary": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"id": {
+								"type": "string"
+							},
+							"key": {
+								"type": "string"
+							},
+							"self": {
+								"type": "string"
+							}
+						},
+						"type": "object"
+					},
+					"self": {
+						"type": "string"
+					},
+					"type": {
+						"properties": {
+							"id": {
+								"type": "string"
+							},
+							"inward": {
+								"type": "string"
+							},
+							"name": {
+								"type": "string"
+							},
+							"outward": {
+								"type": "string"
+							},
+							"self": {
+								"type": "string"
+							}
+						},
+						"type": "object"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"Log Work": {
+			"properties": {
+				"maxResults": {
+					"type": "number"
+				},
+				"startAt": {
+					"type": "number"
+				},
+				"total": {
+					"type": "number"
+				},
+				"worklogs": {
+					"items": {},
+					"type": "array"
+				}
+			},
+			"type": "object"
+		},
+		"Original estimate": {},
+		"Priority": {
+			"properties": {
+				"iconUrl": {
+					"type": "string"
+				},
+				"id": {
+					"type": "string"
+				},
+				"name": {
+					"type": "string"
+				},
+				"self": {
+					"type": "string"
+				}
+			},
+			"type": ["null", "object"]
+		},
+		"Progress": {
+			"properties": {
+				"progress": {
+					"type": "number"
+				},
+				"total": {
+					"type": "number"
+				}
+			},
+			"type": "object"
+		},
+		"Project": {
+			"additionalProperties": true,
+			"properties": {
+				"avatarUrls": {
+					"properties": {
+						"16x16": {
+							"type": "string"
+						},
+						"24x24": {
+							"type": "string"
+						},
+						"32x32": {
+							"type": "string"
+						},
+						"48x48": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				},
+				"id": {
+					"type": "string"
+				},
+				"key": {
+					"type": "string"
+				},
+				"name": {
+					"type": "string"
+				},
+				"projectTypeKey": {
+					"type": "string"
+				},
+				"self": {
+					"type": "string"
+				},
+				"simplified": {
+					"type": "boolean"
+				}
+			},
+			"type": "object"
+		},
+		"Rank": {
+			"type": "string"
+		},
+		"Remaining Estimate": {},
+		"Reporter": {
+			"properties": {
+				"accountId": {
+					"type": "string"
+				},
+				"accountType": {
+					"type": "string"
+				},
+				"active": {
+					"type": "boolean"
+				},
+				"avatarUrls": {
+					"properties": {
+						"16x16": {
+							"type": "string"
+						},
+						"24x24": {
+							"type": "string"
+						},
+						"32x32": {
+							"type": "string"
+						},
+						"48x48": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				},
+				"displayName": {
+					"type": "string"
+				},
+				"emailAddress": {
+					"type": "string"
+				},
+				"self": {
+					"type": "string"
+				},
+				"timeZone": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"Resolution": {
+			"properties": {
+				"description": {
+					"type": "string"
+				},
+				"id": {
+					"type": "string"
+				},
+				"name": {
+					"type": "string"
+				},
+				"self": {
+					"type": "string"
+				}
+			},
+			"type": ["null", "object"]
+		},
+		"Resolved": {
+			"type": ["null", "string"]
+		},
+		"Security Level": {
+			"properties": {
+				"description": {
+					"type": "string"
+				},
+				"id": {
+					"type": "string"
+				},
+				"name": {
+					"type": "string"
+				},
+				"self": {
+					"type": "string"
+				}
+			},
+			"type": ["null", "object"]
+		},
+		"self": {
+			"type": "string"
+		},
+		"Sprint": {
+			"items": {
+				"properties": {
+					"boardId": {
+						"type": "number"
+					},
+					"completeDate": {
+						"type": "string"
+					},
+					"endDate": {
+						"type": "string"
+					},
+					"goal": {
+						"type": "string"
+					},
+					"id": {
+						"type": "number"
+					},
+					"name": {
+						"type": "string"
+					},
+					"startDate": {
+						"type": "string"
+					},
+					"state": {
+						"type": "string"
+					}
+				},
+				"type": "object"
+			},
+			"type": ["array", "null"]
+		},
+		"Start date": {},
+		"Status": {
+			"properties": {
+				"description": {
+					"type": "string"
+				},
+				"iconUrl": {
+					"type": "string"
+				},
+				"id": {
+					"type": "string"
+				},
+				"name": {
+					"type": "string"
+				},
+				"self": {
+					"type": "string"
+				},
+				"statusCategory": {
+					"properties": {
+						"colorName": {
+							"type": "string"
+						},
+						"id": {
+							"type": "number"
+						},
+						"key": {
+							"type": "string"
+						},
+						"name": {
+							"type": "string"
+						},
+						"self": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				}
+			},
+			"type": "object"
+		},
+		"Sub-tasks": {
+			"items": {
+				"properties": {
+					"fields": {
+						"properties": {
+							"issuetype": {
+								"properties": {
+									"avatarId": {
+										"type": "number"
+									},
+									"description": {
+										"type": "string"
+									},
+									"entityId": {
+										"type": "string"
+									},
+									"hierarchyLevel": {
+										"type": "number"
+									},
+									"iconUrl": {
+										"type": "string"
+									},
+									"id": {
+										"type": "string"
+									},
+									"name": {
+										"type": "string"
+									},
+									"self": {
+										"type": "string"
+									},
+									"subtask": {
+										"type": "boolean"
+									}
+								},
+								"type": "object"
+							},
+							"priority": {
+								"properties": {
+									"iconUrl": {
+										"type": "string"
+									},
+									"id": {
+										"type": "string"
+									},
+									"name": {
+										"type": "string"
+									},
+									"self": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"status": {
+								"properties": {
+									"description": {
+										"type": "string"
+									},
+									"iconUrl": {
+										"type": "string"
+									},
+									"id": {
+										"type": "string"
+									},
+									"name": {
+										"type": "string"
+									},
+									"self": {
+										"type": "string"
+									},
+									"statusCategory": {
+										"properties": {
+											"colorName": {
+												"type": "string"
+											},
+											"id": {
+												"type": "number"
+											},
+											"key": {
+												"type": "string"
+											},
+											"name": {
+												"type": "string"
+											},
+											"self": {
+												"type": "string"
+											}
+										},
+										"type": "object"
+									}
+								},
+								"type": "object"
+							},
+							"summary": {
+								"type": "string"
+							}
+						},
+						"type": "object"
+					},
+					"id": {
+						"type": "string"
+					},
+					"key": {
+						"type": "string"
+					},
+					"self": {
+						"type": "string"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"Summary": {
+			"type": "string"
+		},
+		"Team": {
+			"properties": {
+				"avatarUrl": {
+					"type": "string"
+				},
+				"id": {
+					"type": "string"
+				},
+				"isShared": {
+					"type": "boolean"
+				},
+				"isVerified": {
+					"type": "boolean"
+				},
+				"isVisible": {
+					"type": "boolean"
+				},
+				"name": {
+					"type": "string"
+				},
+				"title": {
+					"type": "string"
+				}
+			},
+			"type": ["null", "object"]
+		},
+		"Time Spent": {},
+		"Time tracking": {
+			"type": "object"
+		},
+		"Updated": {
+			"type": "string"
+		},
+		"Votes": {
+			"properties": {
+				"hasVoted": {
+					"type": "boolean"
+				},
+				"self": {
+					"type": "string"
+				},
+				"votes": {
+					"type": "number"
+				}
+			},
+			"type": "object"
+		},
+		"Watchers": {
+			"properties": {
+				"isWatching": {
+					"type": "boolean"
+				},
+				"self": {
+					"type": "string"
+				},
+				"watchCount": {
+					"type": "number"
+				}
+			},
+			"type": "object"
+		},
+		"Work Ratio": {
+			"type": "number"
+		},
+		"Σ Original Estimate": {},
+		"Σ Progress": {
+			"properties": {
+				"progress": {
+					"type": "number"
+				},
+				"total": {
+					"type": "number"
+				}
+			},
+			"type": "object"
+		},
+		"Σ Remaining Estimate": {},
+		"Σ Time Spent": {}
+	},
+	"type": "object"
+}

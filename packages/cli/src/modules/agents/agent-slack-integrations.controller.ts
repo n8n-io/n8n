@@ -1,17 +1,27 @@
 import {
 	CreateSlackAgentAppDto,
 	type CreateSlackAgentAppResponse,
+	type CreateSlackManagerCredentialResponse,
+	InstallSlackManagedAppDto,
+	type InstallSlackManagedAppResponse,
 	type SlackAgentAppManifestResponse,
+	type SlackManagedAppSettings,
+	type SlackManagedSetupState,
+	UpdateSlackManagedAppSettingsDto,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Body, Get, Param, Post, ProjectScope, RestController } from '@n8n/decorators';
 import type { Request, Response } from 'express';
 
+import { SlackManagedSetupService } from './integrations/platforms/slack/slack-managed-setup.service';
 import { SlackManualSetupService } from './integrations/platforms/slack/slack-manual-setup.service';
 
 @RestController('/projects/:projectId/agents/v2')
 export class AgentSlackIntegrationsController {
-	constructor(private readonly manualSetup: SlackManualSetupService) {}
+	constructor(
+		private readonly manualSetup: SlackManualSetupService,
+		private readonly managedSetup: SlackManagedSetupService,
+	) {}
 
 	@Post('/:agentId/integrations/slack/app')
 	@ProjectScope('agent:update')
@@ -36,9 +46,102 @@ export class AgentSlackIntegrationsController {
 		_res: Response,
 		@Param('agentId') agentId: string,
 	): Promise<SlackAgentAppManifestResponse> {
-		return await this.manualSetup.getManifest({
+		return await this.manualSetup.getManifest({ projectId: req.params.projectId, agentId });
+	}
+
+	@Get('/:agentId/integrations/slack/managed/setup')
+	@ProjectScope('agent:read')
+	async getManagedSlackSetup(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+	): Promise<SlackManagedSetupState> {
+		return await this.managedSetup.getSetupState({
 			projectId: req.params.projectId,
 			agentId,
+			user: req.user,
+		});
+	}
+
+	@Post('/:agentId/integrations/slack/managed/credentials')
+	@ProjectScope('agent:update')
+	async createManagedSlackCredential(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+	): Promise<CreateSlackManagerCredentialResponse> {
+		return await this.managedSetup.createManagerCredential({
+			projectId: req.params.projectId,
+			agentId,
+			user: req.user,
+		});
+	}
+
+	@Post('/:agentId/integrations/slack/managed/credentials/:credentialId/finalize')
+	@ProjectScope('agent:update')
+	async finalizeManagedSlackCredential(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+		@Param('credentialId') credentialId: string,
+	): Promise<void> {
+		await this.managedSetup.finalizeManagerCredential({
+			projectId: req.params.projectId,
+			agentId,
+			credentialId,
+			user: req.user,
+		});
+	}
+
+	@Post('/:agentId/integrations/slack/managed/install')
+	@ProjectScope('agent:update')
+	async installManagedSlackApp(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+		@Body payload: InstallSlackManagedAppDto,
+	): Promise<InstallSlackManagedAppResponse> {
+		return await this.managedSetup.installApp({
+			projectId: req.params.projectId,
+			agentId,
+			user: req.user,
+			managerCredentialId: payload.managerCredentialId,
+			workspaceId: payload.workspaceId,
+		});
+	}
+
+	@Get('/:agentId/integrations/slack/managed/settings/:credentialId')
+	@ProjectScope('agent:read')
+	async getManagedSlackAppSettings(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+		@Param('credentialId') credentialId: string,
+	): Promise<SlackManagedAppSettings> {
+		return await this.managedSetup.getAppSettings({
+			projectId: req.params.projectId,
+			agentId,
+			credentialId,
+			user: req.user,
+		});
+	}
+
+	@Post('/:agentId/integrations/slack/managed/settings')
+	@ProjectScope('agent:update')
+	async updateManagedSlackAppSettings(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+		@Body payload: UpdateSlackManagedAppSettingsDto,
+	): Promise<SlackManagedAppSettings> {
+		return await this.managedSetup.updateAppSettings({
+			projectId: req.params.projectId,
+			agentId,
+			user: req.user,
+			credentialId: payload.credentialId,
+			name: payload.name,
+			description: payload.description,
+			alwaysOnline: payload.alwaysOnline,
 		});
 	}
 
@@ -58,10 +161,7 @@ export class AgentSlackIntegrationsController {
 		const { code, state, error, error_description: errorDescription } = req.query;
 		if (error) {
 			return res.render('oauth-error-callback', {
-				error: {
-					message: error,
-					...(errorDescription ? { reason: errorDescription } : {}),
-				},
+				error: { message: error, ...(errorDescription ? { reason: errorDescription } : {}) },
 			});
 		}
 		if (!code || !state) {
@@ -79,10 +179,11 @@ export class AgentSlackIntegrationsController {
 			});
 			return res.render('oauth-callback');
 		} catch (callbackError) {
-			const message =
-				callbackError instanceof Error ? callbackError.message : 'Slack app setup failed';
 			return res.render('oauth-error-callback', {
-				error: { message },
+				error: {
+					message:
+						callbackError instanceof Error ? callbackError.message : 'Slack app setup failed',
+				},
 			});
 		}
 	}

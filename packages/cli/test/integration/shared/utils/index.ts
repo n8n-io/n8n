@@ -1,4 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
+import { NodeTypesProxy } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -17,6 +18,8 @@ import { HttpHeaderAuth } from 'n8n-nodes-base/credentials/HttpHeaderAuth.creden
 import { OpenAiApi } from 'n8n-nodes-base/credentials/OpenAiApi.credentials';
 import { Cron } from 'n8n-nodes-base/nodes/Cron/Cron.node';
 import { FormTrigger } from 'n8n-nodes-base/nodes/Form/FormTrigger.node';
+import { Function as FunctionNode } from 'n8n-nodes-base/nodes/Function/Function.node';
+import { FunctionItem } from 'n8n-nodes-base/nodes/FunctionItem/FunctionItem.node';
 import { ManualTrigger } from 'n8n-nodes-base/nodes/ManualTrigger/ManualTrigger.node';
 import { ScheduleTrigger } from 'n8n-nodes-base/nodes/Schedule/ScheduleTrigger.node';
 import { Set } from 'n8n-nodes-base/nodes/Set/Set.node';
@@ -28,6 +31,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { AUTH_COOKIE_NAME } from '@/constants';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { NodeTypes } from '@/node-types';
 import { Push } from '@/push';
 
 export { setupTestServer } from './test-server';
@@ -87,7 +91,10 @@ export async function initCredentialsTypes(): Promise<void> {
  * its credentials — and every one of those iterates a field on the description. `properties` must
  * declare any parameter a test relies on: parameter resolution drops what the type doesn't declare.
  */
-function minimalNodeType(name: string, properties: INodeProperties[] = []): INodeTypeData[string] {
+export function minimalNodeType(
+	name: string,
+	properties: INodeProperties[] = [],
+): INodeTypeData[string] {
 	// A plain object, not `mock<INodeType>`: vitest-mock-extended deep-wraps `properties` in
 	// proxies, and parameter dependency resolution then fails to converge on them.
 	return {
@@ -110,7 +117,7 @@ function minimalNodeType(name: string, properties: INodeProperties[] = []): INod
 	};
 }
 
-function buildDefaultNodes(): INodeTypeData {
+export function buildDefaultNodes(): INodeTypeData {
 	ScheduleTrigger.prototype.trigger = async () => ({});
 	return {
 		'n8n-nodes-base.manualTrigger': {
@@ -139,6 +146,14 @@ function buildDefaultNodes(): INodeTypeData {
 			type: new WebhookNode() as unknown as INodeType,
 			sourcePath: '',
 		},
+		'n8n-nodes-base.function': {
+			type: new FunctionNode(),
+			sourcePath: '',
+		},
+		'n8n-nodes-base.functionItem': {
+			type: new FunctionItem(),
+			sourcePath: '',
+		},
 		// Minimal mocks for node types the package-import fixtures reference at typeVersion 1.
 		'n8n-nodes-base.httpRequest': minimalNodeType('n8n-nodes-base.httpRequest'),
 		'n8n-nodes-base.dataTable': minimalNodeType('n8n-nodes-base.dataTable'),
@@ -146,6 +161,11 @@ function buildDefaultNodes(): INodeTypeData {
 		// publishing validates it, and a dropped parameter silently skips that check.
 		'n8n-nodes-base.executeWorkflow': minimalNodeType('n8n-nodes-base.executeWorkflow', [
 			{ displayName: 'Workflow', name: 'workflowId', type: 'workflowSelector', default: '' },
+		]),
+		// Declares the inline agent parameters so the policy can read the tools they hold.
+		'n8n-nodes-base.messageAnAgent': minimalNodeType('n8n-nodes-base.messageAnAgent', [
+			{ displayName: 'Agent Source', name: 'agentSource', type: 'string', default: '' },
+			{ displayName: 'Inline Agent', name: 'inlineAgent', type: 'json', default: '' },
 		]),
 	};
 }
@@ -176,6 +196,7 @@ export async function initNodeTypes(customNodes?: INodeTypeData) {
 	const loadNodesAndCredentials = Container.get(LoadNodesAndCredentials);
 	loadNodesAndCredentials.loaders = { 'n8n-nodes-base': loader };
 	loadNodesAndCredentials.loaded.nodes = nodes;
+	Container.get(NodeTypesProxy).registerProvider(Container.get(NodeTypes));
 }
 
 /**

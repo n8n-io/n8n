@@ -1,11 +1,19 @@
 import { ModuleRegistry, Logger } from '@n8n/backend-common';
+import { EventService, Publisher } from '@n8n/backend-services';
 import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { type AuthenticatedRequest } from '@n8n/db';
-import { Body, Post, Get, Patch, RestController, GlobalScope } from '@n8n/decorators';
+import {
+	Body,
+	Post,
+	Get,
+	Patch,
+	RestController,
+	GlobalScope,
+	OnPubSubEvent,
+} from '@n8n/decorators';
 import type { Response } from 'express';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { EventService } from '@/events/event.service';
+import { ForbiddenError } from '@n8n/errors';
 import { listQueryMiddleware } from '@/middlewares';
 import type { ListQuery } from '@/requests';
 import { WorkflowService } from '@/workflows/workflow.service';
@@ -26,6 +34,7 @@ export class McpSettingsController {
 		private readonly workflowService: WorkflowService,
 		private readonly instanceSettingsLoaderConfig: InstanceSettingsLoaderConfig,
 		private readonly eventService: EventService,
+		private readonly publisher: Publisher,
 	) {}
 
 	@GlobalScope('mcp:manage')
@@ -34,17 +43,41 @@ export class McpSettingsController {
 		if (this.instanceSettingsLoaderConfig.mcpManagedByEnv) {
 			throw new ForbiddenError('MCP settings are managed via environment variables');
 		}
-		const enabled = dto.mcpAccessEnabled;
-		await this.mcpSettingsService.setEnabled(enabled);
-		this.eventService.emit('mcp-access-updated', { user: req.user, enabled });
+
+		if (dto.mcpAccessEnabled !== undefined) {
+			await this.mcpSettingsService.setEnabled(dto.mcpAccessEnabled);
+			this.eventService.emit('mcp-access-updated', {
+				user: req.user,
+				enabled: dto.mcpAccessEnabled,
+			});
+		}
+
+		if (dto.autoExposeNewWorkflows !== undefined) {
+			await this.mcpSettingsService.setAutoExposeNewWorkflows(dto.autoExposeNewWorkflows);
+		}
+
+		if (dto.preferencesEnabled !== undefined) {
+			await this.mcpSettingsService.setPreferencesEnabled(dto.preferencesEnabled);
+		}
+
+		await this.refreshMcpModuleSettings();
 		try {
-			await this.moduleRegistry.refreshModuleSettings('mcp');
+			await this.publisher.publishCommand({ command: 'reload-mcp-settings' });
 		} catch (error) {
-			this.logger.warn('Failed to sync MCP settings to module registry', {
+			this.logger.warn('Failed to notify other main processes of the MCP settings', {
 				cause: error instanceof Error ? error.message : String(error),
 			});
 		}
-		return { mcpAccessEnabled: enabled };
+
+		// Always return every value (read back from the source of truth) so the
+		// client can sync local state without a follow-up module-settings fetch.
+		const [mcpAccessEnabled, autoExposeNewWorkflows, preferencesEnabled] = await Promise.all([
+			this.mcpSettingsService.getEnabled(),
+			this.mcpSettingsService.getAutoExposeNewWorkflows(),
+			this.mcpSettingsService.getPreferencesEnabled(),
+		]);
+
+		return { mcpAccessEnabled, autoExposeNewWorkflows, preferencesEnabled };
 	}
 
 	@GlobalScope('mcpApiKey:create')
@@ -77,6 +110,7 @@ export class McpSettingsController {
 		return { success: true };
 	}
 
+	// oxlint-disable-next-line typescript/no-deprecated
 	@Get('/workflows', { middlewares: listQueryMiddleware })
 	async getMcpEligibleWorkflows(req: ListQuery.Request, res: Response) {
 		const options: ListQuery.Options = {
@@ -88,14 +122,10 @@ export class McpSettingsController {
 			},
 		};
 
-		const { workflows, count } = await this.workflowService.getMany(
-			req.user,
-			options,
-			false, // includeScopes
-			false, // includeFolders
-			false, // onlySharedWithMe
-			['workflow:update'], // requiredScopes - only return workflows the user can edit
-		);
+		const { workflows, count } = await this.workflowService.getMany(req.user, options, {
+			// Only return workflows the user can edit
+			requiredScopes: ['workflow:update'],
+		});
 
 		res.json({ count, data: workflows });
 	}
@@ -115,5 +145,17 @@ export class McpSettingsController {
 		void this.mcpSettingsService.broadcastWorkflowMCPAvailabilityChanged(changedWorkflows);
 
 		return result;
+	}
+
+	@OnPubSubEvent('reload-mcp-settings', { instanceType: 'main' })
+	@OnPubSubEvent('pubsub-reconnected', { instanceType: 'main' })
+	async refreshMcpModuleSettings() {
+		try {
+			await this.moduleRegistry.refreshModuleSettings('mcp');
+		} catch (error) {
+			this.logger.warn('Failed to sync MCP settings to module registry', {
+				cause: error instanceof Error ? error.message : String(error),
+			});
+		}
 	}
 }

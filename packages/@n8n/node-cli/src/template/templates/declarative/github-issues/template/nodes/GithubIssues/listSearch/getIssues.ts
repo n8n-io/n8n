@@ -3,6 +3,7 @@ import type {
 	INodeListSearchResult,
 	INodeListSearchItems,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 import { githubApiRequest } from '../shared/transport';
 
 type IssueSearchItem = {
@@ -32,7 +33,7 @@ export async function getIssues(
 	const repository = this.getNodeParameter('repository', '', { extractValue: true });
 	const filters = [filter, `repo:${owner}/${repository}`];
 
-	responseData = await githubApiRequest.call(this, 'GET', '/search/issues', {
+	responseData = await githubApiRequest.call(this, 'GET', requestPath`/search/issues`, {
 		q: filters.filter(Boolean).join(' '),
 		page,
 		per_page,
@@ -45,5 +46,5 @@ export async function getIssues(
 	}));
 
 	const nextPaginationToken = page * per_page < responseData.total_count ? page + 1 : undefined;
-	return { results, paginationToken: nextPaginationToken };
+	return { results, paginationToken: nextPaginationToken?.toString() };
 }

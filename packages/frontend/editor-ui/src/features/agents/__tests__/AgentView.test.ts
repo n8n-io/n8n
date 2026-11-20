@@ -24,11 +24,18 @@ vi.mock('@/app/composables/useDocumentTitle', () => ({
 	useDocumentTitle: () => ({ set: vi.fn() }),
 }));
 
-const returnContextStore = reactive<{ context: AgentReturnContext | null; clear: () => void }>({
+const returnContextStore = reactive<{
+	context: AgentReturnContext | null;
+	clear: () => void;
+	setPendingArtifactReturn: ReturnType<typeof vi.fn>;
+	consumePendingArtifactReturn: ReturnType<typeof vi.fn>;
+}>({
 	context: null,
 	clear: vi.fn(() => {
 		returnContextStore.context = null;
 	}),
+	setPendingArtifactReturn: vi.fn(),
+	consumePendingArtifactReturn: vi.fn(),
 });
 vi.mock('../agentReturnContext.store', () => ({
 	useAgentReturnContextStore: () => returnContextStore,
@@ -87,6 +94,41 @@ describe('AgentView', () => {
 			name: VIEWS.WORKFLOW,
 			params: { workflowId: 'wf-1' },
 		});
+	});
+
+	it('returns to an embedded workflow route and carries its artifact and node ids', async () => {
+		returnContextStore.context = {
+			workflowId: 'artifact-workflow',
+			nodeId: 'node-1',
+			agentId: 'agent-1',
+			returnPath: '/assistant/thread-1',
+		};
+		const { getByRole } = renderComponent();
+
+		await userEvent.click(getByRole('button'));
+
+		expect(returnContextStore.setPendingArtifactReturn).toHaveBeenCalledWith({
+			workflowId: 'artifact-workflow',
+			nodeId: 'node-1',
+		});
+		expect(push).toHaveBeenCalledWith({ path: '/assistant/thread-1' });
+	});
+
+	it('omits the node id when returning to an embedded canvas', async () => {
+		returnContextStore.context = {
+			workflowId: 'artifact-workflow',
+			nodeId: '',
+			agentId: 'agent-1',
+			returnPath: '/assistant/thread-1',
+		};
+		const { getByRole } = renderComponent();
+
+		await userEvent.click(getByRole('button'));
+
+		expect(returnContextStore.setPendingArtifactReturn).toHaveBeenCalledWith({
+			workflowId: 'artifact-workflow',
+		});
+		expect(push).toHaveBeenCalledWith({ path: '/assistant/thread-1' });
 	});
 
 	it('clears the round-trip context on a real route-level exit', () => {

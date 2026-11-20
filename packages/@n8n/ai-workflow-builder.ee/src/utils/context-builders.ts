@@ -1,5 +1,6 @@
 import type { BaseMessage } from '@langchain/core/messages';
 import { AIMessage, HumanMessage } from '@langchain/core/messages';
+import { escapeXmlAttribute, escapeXmlText } from '@n8n/utils/string/escape-xml';
 
 import { MAX_AI_RESPONSE_CHARS } from '../constants';
 import { mermaidStringify } from '../tools/utils/mermaid.utils';
@@ -577,14 +578,14 @@ export function buildSelectedNodesContextBlock(
 	parts.push('');
 
 	for (const node of selectedNodes) {
-		parts.push(`<node name="${escapeXmlAttr(node.name)}">`);
+		parts.push(`<node name="${escapeXmlAttribute(node.name)}">`);
 
 		if (node.issues && Object.keys(node.issues).length > 0) {
 			parts.push('  <issues>');
 			for (const [param, issues] of Object.entries(node.issues)) {
 				for (const issue of issues) {
 					parts.push(
-						`    <issue parameter="${escapeXmlAttr(param)}">${escapeXmlContent(issue)}</issue>`,
+						`    <issue parameter="${escapeXmlAttribute(param)}">${escapeXmlText(issue)}</issue>`,
 					);
 				}
 			}
@@ -593,12 +594,12 @@ export function buildSelectedNodesContextBlock(
 
 		if (node.incomingConnections.length > 0) {
 			parts.push(
-				`  <incoming_connections>${node.incomingConnections.map(escapeXmlContent).join(', ')}</incoming_connections>`,
+				`  <incoming_connections>${node.incomingConnections.map(escapeXmlText).join(', ')}</incoming_connections>`,
 			);
 		}
 		if (node.outgoingConnections.length > 0) {
 			parts.push(
-				`  <outgoing_connections>${node.outgoingConnections.map(escapeXmlContent).join(', ')}</outgoing_connections>`,
+				`  <outgoing_connections>${node.outgoingConnections.map(escapeXmlText).join(', ')}</outgoing_connections>`,
 			);
 		}
 
@@ -631,24 +632,6 @@ export function buildSelectedNodesSummary(
 	}
 
 	return summary;
-}
-
-/**
- * Escape XML attribute value (replaces quotes, ampersand, less-than, greater-than)
- */
-function escapeXmlAttr(str: string): string {
-	return str
-		.replace(/&/g, '&amp;')
-		.replace(/"/g, '&quot;')
-		.replace(/</g, '&lt;')
-		.replace(/>/g, '&gt;');
-}
-
-/**
- * Escape XML content (replaces ampersand, less-than, greater-than)
- */
-function escapeXmlContent(str: string): string {
-	return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 // ============================================================================

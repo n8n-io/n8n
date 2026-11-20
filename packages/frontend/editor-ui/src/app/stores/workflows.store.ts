@@ -8,14 +8,13 @@ import type { INodeUi, IStartRunData, IWorkflowDb } from '@/Interface';
 import type {
 	IExecutionPushResponse,
 	IExecutionResponse,
-	IExecutionsListResponse,
 	IExecutionFlattedResponse,
 } from '@/features/execution/executions/executions.types';
 import type { IWorkflowTemplateNode } from '@n8n/rest-api-client/api/templates';
 import type { WorkflowDataCreate, WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import { defineStore } from 'pinia';
 import type { IDataObject, INodeCredentials, IWorkflowSettings } from 'n8n-workflow';
-import { deepCopy } from 'n8n-workflow';
+import { applyVersionedSettings, deepCopy } from 'n8n-workflow';
 
 import { useRootStore } from '@n8n/stores/useRootStore';
 import * as workflowsApi from '@/app/api/workflows';
@@ -249,25 +248,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return newName;
 	}
 
-	// TODO: For sure needs some kind of default filter like last day, with max 10 results, ...
-	async function getPastExecutions(
-		filter: IDataObject,
-		limit: number,
-		lastId?: string,
-		firstId?: string,
-	): Promise<IExecutionsListResponse> {
-		let sendData = {};
-		if (filter) {
-			sendData = {
-				filter,
-				firstId,
-				lastId,
-				limit,
-			};
-		}
-		return await makeRestApiRequest(rootStore.restApiContext, 'GET', '/executions', sendData);
-	}
-
 	async function getExecution(id: string): Promise<IExecutionResponse | undefined> {
 		const response = await makeRestApiRequest<IExecutionFlattedResponse | undefined>(
 			rootStore.restApiContext,
@@ -294,12 +274,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	async function createNewWorkflow(sendData: WorkflowDataCreate): Promise<IWorkflowDb> {
 		// make sure that the new ones are not active
 		sendData.active = false;
-
-		// When activation is false, ensure MCP is disabled
-		if (!sendData.settings) {
-			sendData.settings ??= {};
-		}
-		sendData.settings.availableInMCP = false;
 
 		const projectStore = useProjectsStore();
 
@@ -347,12 +321,25 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 		if (id === workflowId.value) {
 			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(id));
+			// An engine change saves a new version. A new version has no name or description yet.
+			const keptVersionData =
+				workflowDocumentStore.versionData?.versionId === updatedWorkflow.versionId
+					? workflowDocumentStore.versionData
+					: null;
 			workflowDocumentStore.setVersionData({
 				versionId: updatedWorkflow.versionId,
-				name: workflowDocumentStore.versionData?.name ?? null,
-				description: workflowDocumentStore.versionData?.description ?? null,
+				name: keptVersionData?.name ?? null,
+				description: keptVersionData?.description ?? null,
 			});
 			workflowDocumentStore.setChecksum(updatedWorkflow.checksum);
+			// The server can change version-scoped settings (a restore sets the engine of the
+			// restored version), so a later settings save must not send the old value back.
+			workflowDocumentStore.setSettings(
+				applyVersionedSettings(
+					workflowDocumentStore.getSettingsSnapshot(),
+					updatedWorkflow.settings ?? {},
+				),
+			);
 		}
 
 		if (
@@ -539,7 +526,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		setWorkflowActive,
 		setWorkflowInactive,
 		getDuplicateCurrentWorkflowName,
-		getPastExecutions,
 		getExecution,
 		createNewWorkflow,
 		updateWorkflow,

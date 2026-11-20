@@ -6,8 +6,13 @@ import {
 } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { User, WorkflowEntity } from '@n8n/db';
-import { ExecutionRepository, WebhookRepository } from '@n8n/db';
+import {
+	ExecutionRepository,
+	WebhookRepository,
+	WorkflowPublishedVersionRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
+import { DataSource } from '@n8n/typeorm';
 import { Cipher } from 'n8n-core';
 import { FormTrigger } from 'n8n-nodes-base/nodes/Form/FormTrigger.node';
 import type { CredentialConnectionsRequiredResponse, INode } from 'n8n-workflow';
@@ -18,10 +23,13 @@ import { agent as testAgent } from 'supertest';
 import { SYSTEM_RESOLVER_ID } from '@/modules/dynamic-credentials.ee/constants';
 import { DynamicCredentialUserEntryStorage } from '@/modules/dynamic-credentials.ee/credential-resolvers/storage/dynamic-credential-user-entry-storage';
 import { N8nResolverSeeder } from '@/modules/dynamic-credentials.ee/services/n8n-resolver-seeder.service';
-import { OAuthClientRepository } from '@/modules/oauth-server/database/repositories/oauth-client.repository';
+import { AccessTokenRepository } from '@/modules/oauth-server/database/repositories/oauth-access-token.repository';
+import { OAuthClient } from '@/modules/oauth-server/database/entities/oauth-client.entity';
+import { SYSTEM_TRUSTED_SOURCE_ID } from '@/modules/inbound-auth-core/constants';
+import { TrustedSourceDbStore } from '@/modules/inbound-auth-core/trusted-source.store';
 import { OAuthTokenService } from '@/modules/oauth-server/oauth-token.service';
-import { CacheService } from '@/services/cache/cache.service';
-import { UrlService } from '@/services/url.service';
+import { CacheService } from '@n8n/backend-services';
+import { UrlService } from '@n8n/backend-services';
 import { WebhookServer } from '@/webhooks/webhook-server';
 
 import { createCredentials } from '../shared/db/credentials';
@@ -32,7 +40,9 @@ import { initNodeTypes, setupTestServer } from '../shared/utils';
 setupTestServer({
 	endpointGroups: ['credentials'],
 	enabledFeatures: ['feat:dynamicCredentials'],
-	modules: ['dynamic-credentials', 'oauth-server'],
+	// inbound-auth-core first: it binds the admission contract the webhook path resolves, and seeds
+	// the system trusted source that oauth-server discovers on init.
+	modules: ['inbound-auth-core', 'dynamic-credentials', 'oauth-server'],
 });
 
 let owner: User;
@@ -79,6 +89,10 @@ const setupPublishedForm = async () => {
 
 	const workflow = await createWorkflowWithHistory({ active: true, nodes: [node] }, owner);
 	await setActiveVersion(workflow.id, workflow.versionId);
+	await Container.get(WorkflowPublishedVersionRepository).setPublishedVersion(
+		workflow.id,
+		workflow.versionId,
+	);
 	await Container.get(WebhookRepository).insert({
 		workflowId: workflow.id,
 		webhookPath,
@@ -94,7 +108,8 @@ const mintAccessToken = async (userId: string, resourceUrl: string) => {
 	const tokenService = Container.get(OAuthTokenService);
 	// A registered client is needed only to satisfy the token rows' FK.
 	const clientId = `client-${randomUUID()}`;
-	await Container.get(OAuthClientRepository).save({
+	const clients = Container.get(DataSource).getRepository(OAuthClient);
+	await clients.save({
 		id: clientId,
 		name: 'Form submit gate tests',
 		redirectUris: ['https://example.com/callback'],
@@ -102,7 +117,14 @@ const mintAccessToken = async (userId: string, resourceUrl: string) => {
 		tokenEndpointAuthMethod: 'none',
 	});
 	const pair = tokenService.generateTokenPair(userId, clientId, resourceUrl, []);
-	await tokenService.saveTokenPair(pair.accessToken, pair.refreshToken, clientId, userId, []);
+	await tokenService.saveTokenPair(
+		pair.accessToken,
+		pair.refreshToken,
+		clientId,
+		userId,
+		[],
+		pair.audience,
+	);
 	return pair.accessToken;
 };
 
@@ -129,7 +151,6 @@ const executionCountFor = async (workflowId: string) =>
 	await Container.get(ExecutionRepository).count({ where: { workflowId } });
 
 beforeAll(async () => {
-	process.env.N8N_ENV_FEAT_FORM_TRIGGER_OAUTH2 = 'true';
 	formEndpoint = Container.get(GlobalConfig).endpoints.form;
 
 	// The webhook path is served by a real `WebhookServer` running the real Form
@@ -146,10 +167,6 @@ beforeAll(async () => {
 	const server = new WebhookServer();
 	await server.start();
 	agent = testAgent(server.app) as unknown as SuperAgentTest;
-});
-
-afterAll(() => {
-	delete process.env.N8N_ENV_FEAT_FORM_TRIGGER_OAUTH2;
 });
 
 beforeEach(async () => {
@@ -174,6 +191,12 @@ beforeEach(async () => {
 	// an explicit `resolverId`. Seeding (not a hand-written row) matters: the
 	// resolver's config has to be encrypted for it to be readable at resolve time.
 	await Container.get(N8nResolverSeeder).seed();
+});
+
+test('discovers the system trusted source at boot, so the gate accepts its tokens before the first task run', async () => {
+	const source = await Container.get(TrustedSourceDbStore).getById(SYSTEM_TRUSTED_SOURCE_ID);
+
+	expect(source?.status).toBe('healthy');
 });
 
 describe('form trigger submit-time credential gate', () => {
@@ -236,5 +259,16 @@ describe('form trigger submit-time credential gate', () => {
 			'credential_connections_required',
 		);
 		await expect(executionCountFor(workflow.id)).resolves.toBe(1); // only the pre-revoke run
+	});
+
+	test('rejects a submission that presents a revoked access token', async () => {
+		await connectCredential(credentialId, submitter.id);
+		await Container.get(AccessTokenRepository).delete({ token });
+
+		const response = await submitForm(webhookPath, token);
+
+		expect(response.statusCode).toBe(401);
+		expect(response.headers['www-authenticate']).toContain('error_description="revoked"');
+		await expect(executionCountFor(workflow.id)).resolves.toBe(0);
 	});
 });

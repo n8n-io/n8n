@@ -1,6 +1,13 @@
-import { describe, it, expect, vi } from 'vitest';
+import { beforeEach, describe, it, expect, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import CreditsSettingsDropdown from './CreditsSettingsDropdown.vue';
+
+const { telemetryTrack } = vi.hoisted(() => ({ telemetryTrack: vi.fn() }));
+
+vi.mock('@n8n/composables/useTelemetry', () => ({
+	useTelemetry: () => ({ track: telemetryTrack }),
+}));
 
 vi.mock('@n8n/i18n', () => {
 	const baseText = (key: string, options?: { interpolate?: Record<string, string> }) => {
@@ -28,6 +35,29 @@ function mountOpen(props: {
 }
 
 describe('CreditsSettingsDropdown', () => {
+	beforeEach(() => {
+		telemetryTrack.mockClear();
+	});
+
+	it('tracks every credit balance button click', async () => {
+		const wrapper = mount(CreditsSettingsDropdown, {
+			props: {
+				creditsRemaining: 50,
+				creditsQuota: 100,
+				isLowCredits: false,
+			},
+		});
+		const button = wrapper.get('[data-test-id="credits-dropdown-button"]');
+
+		await button.trigger('click');
+		await button.trigger('click');
+
+		expect(telemetryTrack.mock.calls).toEqual([
+			[TELEMETRY_EVENT.INSTANCE_AI.USER_CLICKED_AI_CREDIT_BALANCE, {}],
+			[TELEMETRY_EVENT.INSTANCE_AI.USER_CLICKED_AI_CREDIT_BALANCE, {}],
+		]);
+	});
+
 	it('rounds creditsRemaining to two decimal places', async () => {
 		const wrapper = mountOpen({
 			creditsRemaining: 97.357,

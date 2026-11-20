@@ -1,5 +1,7 @@
 import type { IExecuteSingleFunctions, IHttpRequestOptions } from 'n8n-workflow';
 
+import { requestUrl } from 'n8n-workflow';
+
 import { taskUpdatePreSendAction } from '../GenericFunctions';
 import type { Mock } from 'vitest';
 
@@ -33,7 +35,9 @@ describe('taskUpdatePreSendAction', () => {
 	});
 
 	it('should fetch missing title and dueDate from the API', async () => {
-		(mockThis.getNodeParameter as Mock).mockReturnValueOnce('123').mockReturnValueOnce('456');
+		(mockThis.getNodeParameter as Mock)
+			.mockReturnValueOnce('contact/id?x#y')
+			.mockReturnValueOnce('task/id');
 
 		const mockApiResponse = {
 			title: 'Fetched Task Title',
@@ -59,6 +63,12 @@ describe('taskUpdatePreSendAction', () => {
 			title: 'Fetched Task Title',
 			dueDate: '2024-12-25T00:00:00+00:00',
 		});
+		expect(mockThis.helpers?.httpRequestWithAuthentication).toHaveBeenCalledWith(
+			'highLevelOAuth2Api',
+			expect.objectContaining({
+				url: requestUrl`https://services.leadconnectorhq.com/contacts/contact%2Fid%3Fx%23y/tasks/task%2Fid`,
+			}),
+		);
 	});
 
 	it('should only fetch title if dueDate is provided', async () => {

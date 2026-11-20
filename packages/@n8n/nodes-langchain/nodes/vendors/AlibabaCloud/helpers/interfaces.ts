@@ -22,6 +22,7 @@ export interface IModelStudioRequestBody {
 	input: {
 		messages?: IMessage[];
 		prompt?: string;
+		images?: string[];
 		img_url?: string;
 		audio_url?: string;
 	};
@@ -35,6 +36,7 @@ export interface IModelStudioRequestBody {
 		enable_search?: boolean;
 		seed?: number;
 		prompt_extend?: boolean;
+		n?: number;
 		size?: string;
 		duration?: string | number;
 		resolution?: string;

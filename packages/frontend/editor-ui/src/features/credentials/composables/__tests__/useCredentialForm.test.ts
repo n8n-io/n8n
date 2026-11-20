@@ -1,3 +1,6 @@
+import { mock } from 'vitest-mock-extended';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import type { Project, ProjectListItem } from '@/features/collaboration/projects/projects.types';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
@@ -89,6 +92,13 @@ const templatedCustomAuth: ICredentialType = {
 	],
 };
 
+// A type with a plain required string field.
+const requiredStringAuth: ICredentialType = {
+	name: 'requiredStringApi',
+	displayName: 'Required String API',
+	properties: [{ displayName: 'Host', name: 'host', type: 'string', required: true, default: '' }],
+};
+
 // Plain per-auth-option types for a node with an auth selector.
 const alphaApi: ICredentialType = {
 	name: 'alphaApi',
@@ -103,11 +113,17 @@ const betaApi: ICredentialType = {
 };
 
 const typesByName: Record<string, ICredentialType> = {
+	jsonAuth: {
+		name: 'jsonAuth',
+		displayName: 'JSON Auth',
+		properties: [{ displayName: 'JSON', name: 'json', type: 'json', required: true, default: '' }],
+	},
 	httpBasicAuth,
 	acmeOAuth2Api: managedOAuth,
 	privateOAuth2Api: privateOAuth,
 	skipOAuth2Api: skipManagedOAuth,
 	httpTemplatedCustomAuth: templatedCustomAuth,
+	requiredStringApi: requiredStringAuth,
 	alphaApi,
 	betaApi,
 };
@@ -119,6 +135,7 @@ const falSetupHint = {
 	testUrl: 'https://fal.run/v1/models',
 	docsUrl: 'https://fal.ai/dashboard/keys',
 	serviceHost: 'fal.run',
+	serviceOrigin: 'https://fal.run',
 };
 
 describe('useCredentialForm', () => {
@@ -164,6 +181,79 @@ describe('useCredentialForm', () => {
 	});
 
 	describe('initialize', () => {
+		it('accepts a JSON prefill with nested expressions', async () => {
+			const json = { headers: { Authorization: '={{ $vars.API_KEY }}' } };
+			const form = useCredentialForm({
+				mode: 'new',
+				activeId: 'jsonAuth',
+				initialData: { json },
+			});
+
+			await form.initialize();
+
+			expect(form.requiredPropertiesFilled.value).toBe(true);
+			expect(form.credentialData.value.json).toBe(JSON.stringify(json));
+		});
+
+		it('copies initial expressions and keeps the exact name', async () => {
+			const initialData = { user: '={{ $vars.USER }}', nested: { values: ['={{ $vars.KEY }}'] } };
+			const form = useCredentialForm({
+				mode: 'new',
+				activeId: 'httpBasicAuth',
+				initialName: 'Source name',
+				initialData,
+			});
+			await form.initialize();
+			expect(form.credentialName.value).toBe('Source name');
+			expect(form.credentialData.value).toMatchObject({ ...initialData, password: '' });
+			expect(form.credentialData.value.nested).not.toBe(initialData.nested);
+			form.onDataChange({ name: 'nested.values[0]', value: 'edited' });
+			expect(initialData.nested.values[0]).toBe('={{ $vars.KEY }}');
+			form.setCredentialPropertyDefaults();
+			expect(form.credentialData.value.nested).toEqual({ values: ['edited'] });
+			expect(credentialsStore.getNewCredentialName).not.toHaveBeenCalled();
+			expect(credentialsStore.getDedupedCredentialName).not.toHaveBeenCalled();
+		});
+
+		it('uses pending create permission until the real project loads', () => {
+			const projects = mockedStore(useProjectsStore);
+			projects.currentProject = mock<Project>({
+				id: 'active-project',
+				scopes: ['credential:create'],
+			});
+			const form = useCredentialForm({
+				mode: 'new',
+				activeId: 'httpBasicAuth',
+				destination: {
+					kind: 'pending',
+					id: 'source-project',
+					name: 'Source project',
+					permissions: { create: true },
+				},
+			});
+			expect(form.homeProject.value).toBeUndefined();
+			expect(form.credentialPermissions.value.create).toBe(true);
+			expect(form.credentialPermissions.value.update).toBeFalsy();
+			expect(form.credentialPermissions.value.share).toBeFalsy();
+			projects.myProjects = [mock<ProjectListItem>({ id: 'source-project', scopes: [] })];
+			expect(form.homeProject.value?.id).toBe('source-project');
+			expect(form.credentialPermissions.value.create).toBeFalsy();
+			projects.myProjects = [];
+			form.credentialId.value = 'saved-id';
+			expect(form.credentialPermissions.value.create).toBeFalsy();
+		});
+
+		it('uses a resolved project even when the project list omits it', () => {
+			const project = mock<Project>({ id: 'destination', scopes: ['credential:create'] });
+			const form = useCredentialForm({
+				mode: 'new',
+				activeId: 'httpBasicAuth',
+				destination: { kind: 'resolved', project },
+			});
+			expect(form.homeProject.value).toEqual(project);
+			expect(form.credentialPermissions.value.create).toBe(true);
+		});
+
 		it('seeds a generated name and property defaults for a new credential', async () => {
 			const form = useCredentialForm({ mode: 'new', activeId: 'httpBasicAuth' });
 
@@ -222,6 +312,7 @@ describe('useCredentialForm', () => {
 				testUrl: falSetupHint.testUrl,
 				docsUrl: falSetupHint.docsUrl,
 				serviceHost: falSetupHint.serviceHost,
+				serviceOrigin: falSetupHint.serviceOrigin,
 			});
 			// Freshly seeded = the required placeholder has no value yet, so the
 			// save/test gate holds until the user pastes it.
@@ -300,7 +391,45 @@ describe('useCredentialForm', () => {
 		});
 	});
 
+	describe('isCredentialTestable', () => {
+		// The store getter checks every registered node version; the composable must defer to
+		// it rather than deciding for itself, or a test declared on an older version stays
+		// hidden and the credential silently saves without being tested.
+		const stubStoreTestable = (testable: boolean) => {
+			Object.defineProperty(credentialsStore, 'isCredentialTypeTestable', {
+				configurable: true,
+				get: () => () => testable,
+			});
+		};
+
+		it('is testable when the store finds a test for the type', async () => {
+			stubStoreTestable(true);
+			const form = useCredentialForm({ mode: 'new', activeId: 'httpBasicAuth' });
+			await form.initialize();
+
+			expect(form.isCredentialTestable.value).toBe(true);
+		});
+
+		it('is not testable when the store finds no test on any version', async () => {
+			stubStoreTestable(false);
+			const form = useCredentialForm({ mode: 'new', activeId: 'httpBasicAuth' });
+			await form.initialize();
+
+			expect(form.isCredentialTestable.value).toBe(false);
+		});
+	});
+
 	describe('requiredPropertiesFilled', () => {
+		it('is false while a required string field is empty and true once it is set', async () => {
+			const form = useCredentialForm({ mode: 'new', activeId: 'requiredStringApi' });
+			await form.initialize();
+
+			expect(form.requiredPropertiesFilled.value).toBe(false);
+
+			form.credentialData.value = { ...form.credentialData.value, host: 'example.com' };
+			expect(form.requiredPropertiesFilled.value).toBe(true);
+		});
+
 		it('blocks save and test while a required placeholder has no value', async () => {
 			const form = useCredentialForm({ mode: 'new', activeId: 'httpTemplatedCustomAuth' });
 			await form.initialize();

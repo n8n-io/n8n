@@ -1,0 +1,39 @@
+name: 'CI: Owners Required Reviews'
+run-name: "${{ github.event_name == 'workflow_dispatch' && format('CI: Owners Required Reviews (PR #{0})', inputs.pr_number) || '' }}"
+
+# Enforces the `required` entries in OWNERS through DevHub. DevHub reads OWNERS
+# from master, checks approvals and team membership, and writes the
+# "Required Reviews" commit status as its own GitHub App. This workflow only
+# tells DevHub which pull request to evaluate. It authenticates with its
+# GitHub Actions OIDC token and checks out no code, so pull_request_target is
+# safe. See .github/WORKFLOWS.md ("Required reviews") and
+# n8n-io/github-actions ownership-checks/README.md.
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, ready_for_review, edited, labeled, unlabeled]
+  pull_request_review:
+    types: [submitted, dismissed]
+  workflow_run:
+    workflows: ['Util: Notify PR Status']
+    types: [completed]
+  merge_group:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'Pull request number to re-evaluate'
+        required: true
+        type: string
+
+permissions: {}
+
+jobs:
+  required-reviews:
+    uses: n8n-io/github-actions/.github/workflows/ownership-checks.yml@be626e7b43cf88fe6d1404a29ed4e2b4f9cbb294 # ownership-checks/v1.0.0
+    permissions:
+      id-token: write
+      pull-requests: read
+    with:
+      ownership-comment: false
+      devhub-url: https://devhub.services.n8n.cloud
+      pull-request-number: ${{ inputs.pr_number }}

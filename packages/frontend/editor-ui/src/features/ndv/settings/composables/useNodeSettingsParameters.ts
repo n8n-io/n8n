@@ -18,6 +18,7 @@ import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import type { INodeUi, IUpdateInformation } from '@/Interface';
 import {
 	mustHideDuringCustomApiCall,
+	resetValuesOfChangedShape,
 	setValue,
 	updateDynamicConnections,
 	updateParameterByPath,
@@ -104,6 +105,12 @@ export function useNodeSettingsParameters() {
 			node.typeVersion,
 		);
 
+		if (nodeParameters) {
+			nodeParameters = resetValuesOfChangedShape(nodeTypeDescription, node, nodeParameters, [
+				parameterPath,
+			]);
+		}
+
 		// Get the parameters with the now new defaults according to the
 		// from the user actually defined parameters
 		nodeParameters = NodeHelpers.getNodeParameters(
@@ -171,6 +178,8 @@ export function useNodeSettingsParameters() {
 
 		nodeHelpers.updateNodeParameterIssuesByName(node.name);
 		nodeHelpers.updateNodeCredentialIssuesByName(node.name);
+		// A parameter can change which inputs the node exposes, e.g. `autoFix`.
+		nodeHelpers.updateNodeInputIssuesByName(node.name);
 		telemetry.trackNodeParametersValuesChange(nodeTypeDescription.name, parameterData);
 	}
 

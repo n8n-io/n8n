@@ -1,3 +1,4 @@
+import { SUPPORTED_WORKFLOW_TOOL_TRIGGERS } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
@@ -7,18 +8,12 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 export interface AttachableWorkflow {
 	id: string;
 	name: string;
-	active: boolean;
+	/** The published agent can only call published workflows. */
+	published: boolean;
 	triggerType: string;
 }
 
-// Keys are dotted n8n node type IDs; the naming-convention rule doesn't apply.
-/* eslint-disable @typescript-eslint/naming-convention */
-const SUPPORTED_TRIGGERS: Record<string, string> = {
-	'n8n-nodes-base.manualTrigger': 'manual',
-	'n8n-nodes-base.executeWorkflowTrigger': 'executeWorkflow',
-	'n8n-nodes-base.chatTrigger': 'chat',
-	'n8n-nodes-base.formTrigger': 'form',
-};
+const SUPPORTED_TRIGGER_TYPES: readonly string[] = SUPPORTED_WORKFLOW_TOOL_TRIGGERS;
 
 // The result is embedded in an LLM tool response, so cap it because large tenants
 // can have thousands of readable workflows in a project.
@@ -56,14 +51,16 @@ export class AttachableWorkflowsService {
 			)
 			.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())
 			.flatMap((workflow) => {
-				const triggerNode = (workflow.nodes ?? []).find((node) => SUPPORTED_TRIGGERS[node.type]);
-				if (!triggerNode) return [];
+				const hasSupportedTrigger = (workflow.nodes ?? []).some((node) =>
+					SUPPORTED_TRIGGER_TYPES.includes(node.type),
+				);
+				if (!hasSupportedTrigger) return [];
 				return [
 					{
 						id: workflow.id,
 						name: workflow.name,
-						active: workflow.active,
-						triggerType: SUPPORTED_TRIGGERS[triggerNode.type],
+						published: workflow.activeVersionId !== null,
+						triggerType: 'executeWorkflow',
 					},
 				];
 			})

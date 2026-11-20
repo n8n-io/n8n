@@ -37,6 +37,20 @@ async function onBackToWorkflow() {
 	if (!ctx) return;
 
 	returnContext.clear();
+	if (ctx.returnPath) {
+		returnContext.setPendingArtifactReturn({
+			workflowId: ctx.workflowId,
+			...(ctx.nodeId ? { nodeId: ctx.nodeId } : {}),
+		});
+		try {
+			const failure = await router.push({ path: ctx.returnPath });
+			if (failure) returnContext.consumePendingArtifactReturn();
+		} catch (error) {
+			returnContext.consumePendingArtifactReturn();
+			throw error;
+		}
+		return;
+	}
 
 	await router.push({
 		name: VIEWS.WORKFLOW,

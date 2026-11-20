@@ -1,7 +1,7 @@
 import type { AIMessage, BaseMessage } from '@langchain/core/messages';
 
 export function isAIMessage(msg: BaseMessage): msg is AIMessage {
-	return msg.getType() === 'ai';
+	return msg.type === 'ai';
 }
 
 /**
@@ -13,7 +13,7 @@ export function isBaseMessage(value: unknown): value is BaseMessage {
 		typeof value === 'object' &&
 		value !== null &&
 		'getType' in value &&
-		typeof (value as { getType: unknown }).getType === 'function' &&
+		typeof value.getType === 'function' &&
 		'content' in value
 	);
 }

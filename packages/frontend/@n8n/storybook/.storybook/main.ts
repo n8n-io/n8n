@@ -16,7 +16,6 @@ const config: StorybookConfig = {
 		'../../design-system/src/**/*.mdx',
 	],
 	addons: [
-		getAbsolutePath('@chromatic-com/storybook'),
 		getAbsolutePath('@storybook/addon-vitest'),
 		getAbsolutePath('@storybook/addon-a11y'),
 		{
@@ -30,11 +29,20 @@ const config: StorybookConfig = {
 			},
 		},
 		getAbsolutePath('storybook-addon-vue-mdx'),
+		getAbsolutePath('@storybook/addon-themes'),
 	],
-	framework: getAbsolutePath('@storybook/vue3-vite'),
+	framework: {
+		name: getAbsolutePath('@storybook/vue3-vite'),
+		options: {
+			docgen: 'vue-docgen-api',
+		},
+	},
 	staticDirs: ['../../design-system/assets'],
 	core: {
 		disableTelemetry: true,
+	},
+	features: {
+		sidebarOnboardingChecklist: false,
 	},
 };
 export default config;

@@ -1,3 +1,4 @@
+import { extractJsonCandidate } from '@n8n/ai-utilities/llm-output';
 import type { InstanceAiEvalAgentScenarioSeed } from '@n8n/api-types';
 import { createEvalAgent, extractText } from '@n8n/instance-ai';
 import { jsonParse } from 'n8n-workflow';
@@ -90,8 +91,9 @@ const MAX_SEED_ATTEMPTS = 2;
 const SEED_LLM_TIMEOUT_MS = 300_000;
 
 function parseSeed(raw: string): Omit<InstanceAiEvalAgentScenarioSeed, 'warnings'> | undefined {
-	const text = raw.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?\s*```\s*$/i, '');
-	const parsed = jsonParse<Record<string, unknown>>(text, { fallbackValue: {} });
+	const parsed = jsonParse<Record<string, unknown>>(extractJsonCandidate(raw), {
+		fallbackValue: {},
+	});
 
 	const openingMessage = typeof parsed.openingMessage === 'string' ? parsed.openingMessage : '';
 	if (openingMessage.trim().length === 0) return undefined;

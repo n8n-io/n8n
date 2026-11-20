@@ -1,29 +1,33 @@
 import { describe, it, expect, vi } from 'vitest';
-import { mock } from 'vitest-mock-extended';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import NodeSettingsTabs from './NodeSettingsTabs.vue';
 import { ref } from 'vue';
-import type { ExtendedPublicInstalledPackage } from '@/features/settings/communityNodes/communityNodes.utils';
-import { useInstalledCommunityPackage } from '@/features/settings/communityNodes/composables/useInstalledCommunityPackage';
+import type { PublicInstalledPackage } from 'n8n-workflow';
 
 const renderComponent = createComponentRenderer(NodeSettingsTabs);
+const installedPackage = ref<PublicInstalledPackage>();
+const isCommunityNode = ref(false);
+const canUpdatePackage = ref(false);
+const hasUpdateAvailable = ref(false);
 
 vi.mock('@/features/settings/communityNodes/composables/useInstalledCommunityPackage', () => ({
 	useInstalledCommunityPackage: vi.fn(() => ({
-		installedPackage: ref<ExtendedPublicInstalledPackage | undefined>(undefined),
-		isCommunityNode: ref(false),
-		isUpdateCheckAvailable: ref(false),
+		installedPackage,
+		isCommunityNode,
+		canUpdatePackage,
+		hasUpdateAvailable,
 		initInstalledPackage: vi.fn(),
 	})),
 }));
 
-let installedCommunityPackage: ReturnType<typeof useInstalledCommunityPackage>;
-
 describe('NodeSettingsTabs', () => {
 	beforeEach(() => {
 		createTestingPinia({ stubActions: false });
-		installedCommunityPackage = useInstalledCommunityPackage();
+		installedPackage.value = undefined;
+		isCommunityNode.value = false;
+		canUpdatePackage.value = false;
+		hasUpdateAvailable.value = false;
 	});
 
 	afterEach(() => {
@@ -37,24 +41,16 @@ describe('NodeSettingsTabs', () => {
 		expect(getByText('Parameters')).toBeInTheDocument();
 	});
 
-	it('displays notification when updateAvailable', async () => {
-		vi.spyOn(installedCommunityPackage.isUpdateCheckAvailable, 'value', 'get').mockReturnValue(
-			true,
-		);
-		vi.spyOn(installedCommunityPackage.installedPackage, 'value', 'get').mockReturnValue(
-			mock<ExtendedPublicInstalledPackage>({
-				packageName: 'test-package',
-				installedVersion: '1.0.0',
-				updateAvailable: '1.0.1',
-			}),
-		);
+	it('displays notification when an update is available', async () => {
+		canUpdatePackage.value = true;
+		hasUpdateAvailable.value = true;
 
 		const { findByTestId } = renderComponent({
 			props: {},
 		});
 
-		const notification = await findByTestId('tab-settings');
-		expect(notification).toBeDefined();
+		const tab = await findByTestId('tab-settings');
+		expect(tab.querySelector('.notification')).toBeInTheDocument();
 	});
 
 	it('does not display notification when not updateAvailable', () => {

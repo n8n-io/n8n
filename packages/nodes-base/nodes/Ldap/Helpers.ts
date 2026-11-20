@@ -1,6 +1,9 @@
 import { Client } from 'ldapts';
 import type { ClientOptions, Entry } from 'ldapts';
 import type { ICredentialDataDecryptedObject, IDataObject, Logger } from 'n8n-workflow';
+
+import { resolveExpressions } from '@utils/utilities';
+
 export const BINARY_AD_ATTRIBUTES = ['objectGUID', 'objectSid'];
 
 const resolveEntryBinaryAttributes = (entry: Entry): Entry => {
@@ -64,4 +67,23 @@ export function escapeValue(value: string) {
 		.replace(/\(/g, '\\28')
 		.replace(/\)/g, '\\29')
 		.replace(/\x00/g, '\\00');
+}
+
+/**
+ * Resolves the expressions in a raw, expression-capable filter field and escapes
+ * only what each expression evaluated to.
+ *
+ * The literal text around the expressions is filter syntax the user wrote on
+ * purpose, so it has to reach the server untouched — escaping the whole
+ * resolved string would turn every hand-written `*`, `(` and `)` into a literal
+ * character and break the field.
+ */
+export function escapeResolvables(
+	rawValue: string,
+	evaluateExpression: (resolvable: string) => unknown,
+): string {
+	// A raw expression-capable value keeps the leading `=` that marks it as an expression
+	return resolveExpressions(rawValue.replace(/^=+/, ''), (resolvable) =>
+		escapeValue(String(evaluateExpression(resolvable))),
+	);
 }

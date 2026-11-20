@@ -23,6 +23,7 @@ export const LOG_SCOPES = [
 	'task-runner-py',
 	'insights',
 	'workflow-statistics',
+	'execution-ledger',
 	'workflow-activation',
 	'ssh-client',
 	'data-table',
@@ -32,6 +33,7 @@ export const LOG_SCOPES = [
 	'breaking-changes',
 	'circuit-breaker',
 	'source-control',
+	'promotions',
 	'dynamic-credentials',
 	'workflow-history-compaction',
 	'data-table-csv-import',
@@ -51,7 +53,16 @@ export const LOG_SCOPES = [
 	'poll-trigger',
 	'metrics',
 	'scheduler',
+	'system-tasks',
 	'enqueued-execution-recovery',
+	'memory-guard',
+	'engine-v2',
+	'policy',
+	'activity-log',
+	'instance-reporting',
+	'idempotency-key',
+	'inbound-auth',
+	'knowledge',
 ] as const;
 
 export type LogScope = (typeof LOG_SCOPES)[number];

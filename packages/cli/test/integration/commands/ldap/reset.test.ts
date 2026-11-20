@@ -363,3 +363,7 @@ describe('--projectId', () => {
 		).resolves.not.toBeNull();
 	});
 });
+
+test('ldap:reset needs the expression engine', () => {
+	expect(new Reset().needsExpressionEngine).toBe(true);
+});

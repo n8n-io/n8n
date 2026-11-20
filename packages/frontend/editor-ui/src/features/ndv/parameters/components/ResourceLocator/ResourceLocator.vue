@@ -21,7 +21,9 @@ import {
 import stringify from 'fast-json-stable-stringify';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
+import { extractPlaceholderLabels, isPlaceholderValue } from '@n8n/utils/placeholder';
 import {
+	DATA_TABLE_NODE_TYPES,
 	isResourceLocatorValue,
 	type INode,
 	type INodeListSearchItems,
@@ -53,13 +55,12 @@ import {
 	updateFromAIOverrideValues,
 	type FromAIOverride,
 } from '../../utils/fromAIOverride.utils';
-import { completeExpressionSyntax } from '@/app/utils/expressions';
+import { completeExpressionSyntax, shouldConvertToExpression } from '@/app/utils/expressions';
 import { openSafeUrl } from '@/app/utils/htmlUtils';
 import { DEBOUNCE_TIME, ExpressionLocalResolveContextSymbol } from '@/app/constants';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
 import { DATA_TABLE_DETAILS } from '@/features/core/dataTable/constants';
-import { DATA_TABLE_NODES } from '@/app/constants/nodeTypes';
 import { useRouter } from 'vue-router';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import FromAiOverrideButton from '../ParameterInputOverrides/FromAiOverrideButton.vue';
@@ -91,7 +92,7 @@ const NODE_API_AUTH_ERROR_MESSAGES = [
 
 interface IResourceLocatorQuery {
 	results: INodeListSearchItems[];
-	nextPageToken: unknown;
+	nextPageToken: string | null;
 	error: boolean;
 	errorDetails?: {
 		message?: string;
@@ -160,6 +161,11 @@ const dropdownRef = ref<InstanceType<typeof ResourceLocatorDropdown>>();
 const showSlowLoadNotice = ref(false);
 const longLoadingTimer = ref<NodeJS.Timeout | null>(null);
 
+// Leaving the dropdown's search field does not blur the locator input again.
+watch(resourceDropdownVisible, (visible) => {
+	if (!visible) emit('blur');
+});
+
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = injectNDVStore();
 const rootStore = useRootStore();
@@ -194,7 +200,14 @@ const selectedMode = computed(() => {
 
 const isListMode = computed(() => selectedMode.value === 'list');
 
-const isDataTableNode = computed(() => !!props.node && DATA_TABLE_NODES.includes(props.node.type));
+// Same rule the backend uses to find data table references: the node types that
+// carry a `dataTableId` resource locator (Data table and Evaluation nodes).
+const isDataTableParameter = computed(
+	() =>
+		!!props.node &&
+		DATA_TABLE_NODE_TYPES.includes(props.node.type) &&
+		props.parameter.name === 'dataTableId',
+);
 
 /**
  * Check if the current response contains an error that indicates a credential issue.
@@ -226,7 +239,20 @@ const credentialsRequiredAndNotSet = computed(() => {
 	return false;
 });
 
+const resourceValue = computed(() =>
+	isResourceLocatorValue(props.modelValue) ? props.modelValue.value : props.modelValue,
+);
+const isValueEmpty = computed(
+	() =>
+		resourceValue.value === '' ||
+		resourceValue.value === null ||
+		resourceValue.value === undefined ||
+		isPlaceholderValue(resourceValue.value),
+);
+
 const inputPlaceholder = computed(() => {
+	const label = extractPlaceholderLabels(resourceValue.value)[0];
+	if (label) return label;
 	if (currentMode.value.placeholder) {
 		return currentMode.value.placeholder;
 	}
@@ -249,6 +275,7 @@ const hasMultipleModes = computed(() => {
 
 const hasOnlyListMode = computed(() => hasOnlyListModeUtil(props.parameter));
 const valueToDisplay = computed<INodeParameterResourceLocator['value']>(() => {
+	if (isValueEmpty.value) return '';
 	if (typeof props.modelValue !== 'object') {
 		return `${props.modelValue}`;
 	}
@@ -261,8 +288,12 @@ const valueToDisplay = computed<INodeParameterResourceLocator['value']>(() => {
 });
 
 const urlValue = computedAsync(async () => {
+	if (isValueEmpty.value) return null;
 	if (isListMode.value && typeof props.modelValue === 'object') {
-		return props.modelValue?.cachedResultUrl ?? null;
+		const cachedResultUrl = props.modelValue?.cachedResultUrl;
+		// A data table value set outside the dropdown (import, template, AI builder)
+		// has no cached url, so fall through to the lookup by id below.
+		if (cachedResultUrl || !isDataTableParameter.value) return cachedResultUrl ?? null;
 	}
 
 	if (selectedMode.value === 'url') {
@@ -279,15 +310,24 @@ const urlValue = computedAsync(async () => {
 		}
 	}
 
-	// Data table nodes have no url template, so resolve a link from the id by
+	// Data table parameters have no url template, so resolve a link from the id by
 	// looking the table up — only link it when it actually exists for the user.
-	if (isDataTableNode.value && selectedMode.value === 'id') {
+	if (isDataTableParameter.value && (selectedMode.value === 'id' || isListMode.value)) {
 		// Use the resolved value for expressions, but only if it's a concrete id —
 		// an unresolved template (still containing `{{ }}`) can't identify a table.
-		const raw = props.isValueExpression ? props.expressionComputedValue : valueToDisplay.value;
+		// In list mode `valueToDisplay` holds the table name, so read the raw value.
+		const raw = props.isValueExpression
+			? props.expressionComputedValue
+			: isListMode.value && typeof props.modelValue === 'object'
+				? props.modelValue?.value
+				: valueToDisplay.value;
 		const id = typeof raw === 'string' ? raw.trim() : '';
 		if (!id || id.includes('{{') || id.includes('}}')) return null;
-		const table = await dataTableStore.fetchDataTableById(id);
+		// Reuse a table the store already holds before asking the API. A failed
+		// request only means there is no link to show.
+		const table =
+			dataTableStore.dataTables.find((dataTable) => dataTable.id === id) ??
+			(await dataTableStore.fetchDataTableById(id).catch(() => null));
 		// Resolve via the router so the link honours the configured base path (N8N_PATH).
 		return table
 			? router.resolve({
@@ -441,9 +481,10 @@ const handleAddResourceClick = async () => {
 		let resolvedUrl = redirectUrl;
 
 		if (resolvedUrl.includes('{{$projectId}}')) {
+			// Create the resource where the workflow runs.
 			const projectId =
+				workflowDocumentStore.value.homeProject?.id ??
 				projectsStore.currentProjectId ??
-				workflowDocumentStore?.value?.homeProject?.id ??
 				projectsStore.personalProject?.id ??
 				'';
 			resolvedUrl = resolvedUrl.replace(/\{\{\$projectId\}\}/g, projectId);
@@ -748,7 +789,9 @@ function onInputChange(value: INodeParameterResourceLocator['value']): void {
 			params.cachedResultUrl = resource.url;
 		}
 	} else {
-		params.value = completeExpressionSyntax(value);
+		// A literal `{{ }}` is never a valid id or url, so a pasted expression
+		// always switches to expression mode, even when it replaces a stored value.
+		params.value = shouldConvertToExpression(value) ? '=' + value : completeExpressionSyntax(value);
 	}
 	emit('update:modelValue', params);
 }
@@ -858,7 +901,7 @@ async function loadResources() {
 
 	try {
 		if (cachedResponse) {
-			const nextPageToken = cachedResponse.nextPageToken as string;
+			const nextPageToken = cachedResponse.nextPageToken;
 			if (nextPageToken) {
 				paginationToken = nextPageToken;
 				setResponse(paramsKey, { loading: true });
@@ -1080,8 +1123,8 @@ function removeOverride() {
 	>
 		<ResourceLocatorDropdown
 			ref="dropdownRef"
-			:model-value="modelValue"
 			:show="resourceDropdownVisible"
+			:model-value="modelValue"
 			:filterable="isSearchable"
 			:filter-required="requiresSearchFilter"
 			:resources="currentQueryResults"
@@ -1095,6 +1138,7 @@ function removeOverride() {
 			:slow-load-notice="slowLoadNoticeMessage"
 			:show-slow-load-notice="showSlowLoadNotice"
 			@update:model-value="onListItemSelected"
+			@update:show="!$event && hideResourceDropdown()"
 			@filter="onSearchFilter"
 			@load-more="loadResourcesDebounced"
 			@add-resource-click="onAddResourceClicked"
@@ -1254,7 +1298,10 @@ function removeOverride() {
 									</template>
 								</N8nInput>
 								<div v-if="showOverrideButton" :class="$style.overrideButtonInline">
-									<FromAiOverrideButton @click="applyOverride" />
+									<FromAiOverrideButton
+										:size="isValueExpression || forceShowExpression ? 'medium' : 'small'"
+										@click="applyOverride"
+									/>
 								</div>
 							</div>
 						</template>

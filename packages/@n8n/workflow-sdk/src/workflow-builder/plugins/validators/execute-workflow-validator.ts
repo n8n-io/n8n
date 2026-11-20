@@ -23,7 +23,7 @@ const DATABASE_SOURCE = 'database';
 const DEFINE_BELOW_MODE = 'defineBelow';
 const WORKFLOW_INPUTS_VALUE_PATH = 'parameters.workflowInputs.value';
 const VALID_MAPPING_EXAMPLE =
-	"{ mappingMode: 'defineBelow', value: { orderId: expr('{{ $json.id }}'), amount: expr('{{ $json.total }}') }, matchingColumns: [], schema: [{ id: 'orderId', displayName: 'orderId', required: false, defaultMatch: false, display: true, canBeUsedToMatch: true, type: 'string' }, { id: 'amount', displayName: 'amount', required: false, defaultMatch: false, display: true, canBeUsedToMatch: true, type: 'number' }], attemptToConvertTypes: false, convertFieldsToString: true }";
+	"{ mappingMode: 'defineBelow', value: { orderId: expr('{{ $json.id }}'), amount: expr('{{ $json.total }}') }, matchingColumns: [], schema: [{ id: 'orderId', displayName: 'orderId', required: false, defaultMatch: false, display: true, canBeUsedToMatch: true, type: 'string' }, { id: 'amount', displayName: 'amount', required: false, defaultMatch: false, display: true, canBeUsedToMatch: true, type: 'number' }], attemptToConvertTypes: false }";
 
 export const executeWorkflowValidator: ValidatorPlugin = {
 	id: 'core:execute-workflow',

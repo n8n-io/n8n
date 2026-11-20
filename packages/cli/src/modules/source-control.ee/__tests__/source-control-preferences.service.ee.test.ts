@@ -5,9 +5,9 @@ import { readFile, writeFile, access, mkdir } from 'fs/promises';
 import type { InstanceSettings, Cipher } from 'n8n-core';
 import os from 'os';
 import path from 'path';
-import { mock } from 'vitest-mock-extended';
+import { mock, mockReset } from 'vitest-mock-extended';
 
-import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import { InstanceWriteAccessService, type Publisher } from '@n8n/backend-services';
 
 import { SourceControlPreferencesService } from '../source-control-preferences.service.ee';
 import type { SourceControlPreferences } from '../types/source-control-preferences';
@@ -26,6 +26,7 @@ describe('SourceControlPreferencesService', () => {
 		mockLogger,
 		mockCipher,
 		mockSettingsRepository,
+		mock(),
 		mock(),
 	);
 
@@ -84,6 +85,7 @@ describe('SourceControlPreferencesService', () => {
 				mockCipher,
 				mock(),
 				mock(),
+				mock(),
 			);
 
 			// Mock the getKeyPairFromDatabase method to return a key pair
@@ -114,6 +116,7 @@ describe('SourceControlPreferencesService', () => {
 				instanceSettings,
 				mock(),
 				mockCipher,
+				mock(),
 				mock(),
 				mock(),
 			);
@@ -148,6 +151,7 @@ describe('SourceControlPreferencesService', () => {
 				instanceSettings,
 				mock(),
 				mockCipher,
+				mock(),
 				mock(),
 				mock(),
 			);
@@ -190,6 +194,7 @@ describe('SourceControlPreferencesService', () => {
 				mockCipher,
 				mock(),
 				mock(),
+				mock(),
 			);
 
 			// Mock the getKeyPairFromDatabase method
@@ -219,6 +224,7 @@ describe('SourceControlPreferencesService', () => {
 				mock(),
 				mock(),
 				mock(),
+				mock(),
 			);
 
 			const testKey =
@@ -244,6 +250,7 @@ describe('SourceControlPreferencesService', () => {
 				instanceSettings,
 				mock(),
 				mockCipher,
+				mock(),
 				mock(),
 				mock(),
 			);
@@ -323,10 +330,12 @@ describe('SourceControlPreferencesService', () => {
 					mock(),
 					mock(),
 					mock(),
+					mock(),
 				);
 
 				singleMainService = new SourceControlPreferencesService(
 					singleMainInstanceSettings,
+					mock(),
 					mock(),
 					mock(),
 					mock(),
@@ -431,6 +440,7 @@ describe('SourceControlPreferencesService', () => {
 				mock(),
 				mock(),
 				mock(),
+				mock(),
 			);
 
 			const knownHostsPath = path.join(sshFolder, 'known_hosts');
@@ -451,9 +461,95 @@ describe('SourceControlPreferencesService', () => {
 				mock(),
 				mock(),
 				mock(),
+				mock(),
 			);
 
 			await expect(testService.resetKnownHosts()).resolves.toBeUndefined();
+		});
+	});
+
+	describe('loadFromDbAndApplySourceControlPreferences', () => {
+		let loader: SourceControlPreferencesService;
+
+		beforeEach(() => {
+			mockReset(mockSettingsRepository);
+			loader = new SourceControlPreferencesService(
+				instanceSettings,
+				mockLogger,
+				mockCipher,
+				mockSettingsRepository,
+				mock(),
+				mock(),
+			);
+			vi.spyOn(loader as any, 'getKeyPairFromDatabase').mockResolvedValue({
+				publicKey: 'test',
+				encryptedPrivateKey: 'test',
+			});
+		});
+
+		const savedVersion = () => {
+			const [, value] = mockSettingsRepository.upsertByKey.mock.calls[0];
+			return JSON.parse(value).environmentsVersion;
+		};
+
+		it.each([
+			[true, 'v1'],
+			[false, 'v2'],
+		])(
+			'writes the environments version once for a row without one (connected: %s -> %s)',
+			async (connected, version) => {
+				mockSettingsRepository.findOne.mockResolvedValue({
+					value: JSON.stringify({ connected, branchName: 'main' }),
+				} as never);
+
+				await loader.loadFromDbAndApplySourceControlPreferences();
+
+				expect(mockSettingsRepository.upsertByKey).toHaveBeenCalledTimes(1);
+				expect(savedVersion()).toBe(version);
+				expect(loader.getPreferences().environmentsVersion).toBe(version);
+			},
+		);
+
+		it('keeps the stored environments version and does not write', async () => {
+			mockSettingsRepository.findOne.mockResolvedValue({
+				value: JSON.stringify({ connected: true, environmentsVersion: 'v2' }),
+			} as never);
+
+			await loader.loadFromDbAndApplySourceControlPreferences();
+
+			expect(mockSettingsRepository.upsertByKey).not.toHaveBeenCalled();
+			expect(loader.getPreferences().environmentsVersion).toBe('v2');
+		});
+
+		it('starts a new instance on v2', async () => {
+			mockSettingsRepository.findOne.mockResolvedValue(null);
+
+			await loader.loadFromDbAndApplySourceControlPreferences();
+
+			expect(savedVersion()).toBe('v2');
+		});
+	});
+
+	describe('instance write access mirroring', () => {
+		it('mirrors branchReadOnly into InstanceWriteAccessService on preference updates', async () => {
+			const instanceWriteAccess = new InstanceWriteAccessService();
+			const service = new SourceControlPreferencesService(
+				instanceSettings,
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				instanceWriteAccess,
+			);
+
+			expect(instanceWriteAccess.isReadOnly()).toBe(false);
+
+			// connectionType 'https' avoids SSH key generation in setPreferences
+			await service.setPreferences({ branchReadOnly: true, connectionType: 'https' }, false);
+			expect(instanceWriteAccess.isReadOnly()).toBe(true);
+
+			await service.setPreferences({ branchReadOnly: false, connectionType: 'https' }, false);
+			expect(instanceWriteAccess.isReadOnly()).toBe(false);
 		});
 	});
 });

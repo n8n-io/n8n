@@ -1,21 +1,29 @@
+import { ModuleRegistry } from '@n8n/backend-common';
 import {
 	mockInstance,
 	testDb,
+	createWorkflow,
 	createWorkflowWithTriggerAndHistory,
 	setActiveVersion,
 	createWorkflowHistory,
 	createTeamProject,
+	shareWorkflowWithProjects,
 } from '@n8n/backend-test-utils';
 import { WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import fs from 'fs';
+import { jsonParse } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import os from 'os';
 import path from 'path';
 
 import { ExportWorkflowsCommand } from '@/commands/export/workflow';
+import type { IWorkflowWithVersionMetadata } from '@/interfaces';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { captureStatements, countCopies } from '@test-integration/utils/query-capture';
 import { setupTestCommand } from '@test-integration/utils/test-command';
+
+import { createTag } from '../../shared/db/tags';
 
 mockInstance(LoadNodesAndCredentials);
 
@@ -93,6 +101,54 @@ test('should export workflows by project with --projectId', async () => {
 	expect(exportedData).toHaveLength(1);
 	expect(exportedData[0].id).toBe(workflowInProjectA.id);
 	expect(exportedData[0].name).toBe('Project A workflow');
+});
+
+test('should export tags and shares, reading each workflow once', async () => {
+	const ownerProject = await createTeamProject();
+	const opsProject = await createTeamProject();
+	// The name is a workflow column, so it is repeated in every row a join returns.
+	const name = `Tagged ${nanoid()}`;
+	const workflow = await createWorkflowWithTriggerAndHistory({ name }, ownerProject);
+	await shareWorkflowWithProjects(workflow, [{ project: opsProject }]);
+	const baseTime = Date.now();
+	const firstTag = await createTag({ createdAt: new Date(baseTime) }, workflow);
+	const secondTag = await createTag({ createdAt: new Date(baseTime + 1000) }, workflow);
+
+	const outputFile = path.join(testOutputDir, 'output.json');
+	const { statements } = await captureStatements(
+		async () => await command.run(['--all', `--output=${outputFile}`]),
+	);
+
+	const [exported] = JSON.parse(fs.readFileSync(outputFile, 'utf-8'));
+	expect(exported.tags.map(({ id }: { id: string }) => id)).toEqual([firstTag.id, secondTag.id]);
+	expect(exported.shared.map(({ projectId }: { projectId: string }) => projectId).sort()).toEqual(
+		[ownerProject.id, opsProject.id].sort(),
+	);
+	expect(
+		exported.shared.every(
+			(share: { projectId: string; project: { id: string } }) =>
+				share.project.id === share.projectId,
+		),
+	).toBe(true);
+	expect(countCopies(statements, name)).toBe(1);
+});
+
+test('should export only the filtered project share with --projectId', async () => {
+	const ownerProject = await createTeamProject();
+	const opsProject = await createTeamProject();
+	const workflow = await createWorkflowWithTriggerAndHistory({ name: 'Shared' }, ownerProject);
+	await shareWorkflowWithProjects(workflow, [{ project: opsProject }]);
+	await createTag({}, workflow);
+
+	const outputFile = path.join(testOutputDir, 'output.json');
+	await command.run([`--projectId=${opsProject.id}`, `--output=${outputFile}`]);
+
+	const [exported] = JSON.parse(fs.readFileSync(outputFile, 'utf-8'));
+	expect(exported.id).toBe(workflow.id);
+	expect(exported.shared.map(({ projectId }: { projectId: string }) => projectId)).toEqual([
+		opsProject.id,
+	]);
+	expect(exported.tags).toHaveLength(1);
 });
 
 test('should export current draft version when no flags set', async () => {
@@ -483,5 +539,74 @@ test('should include versionMetadata with historical description when set', asyn
 	expect(exportedData.versionMetadata).toEqual({
 		name: null,
 		description: 'Version 2 Historical Description',
+	});
+});
+
+describe('engine of the exported version', () => {
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	const enableEngineV2 = () =>
+		vi
+			.spyOn(Container.get(ModuleRegistry), 'eligibleModules', 'get')
+			.mockReturnValue(['engine-v2']);
+
+	/** A saved version on engine v2, then a draft on engine v1 with a live setting. */
+	const createVersionWithDifferentDraftEngine = async () => {
+		const workflow = await createWorkflow({ settings: { engineType: 'v2' } });
+		const savedVersionId = workflow.versionId;
+		await createWorkflowHistory(workflow, undefined, undefined, {
+			settings: { engineType: 'v2' },
+		});
+
+		workflow.versionId = nanoid();
+		workflow.settings = { engineType: 'v1', timezone: 'Europe/Kyiv' };
+		await Container.get(WorkflowRepository).save(workflow);
+		await createWorkflowHistory(workflow, undefined, undefined, {
+			settings: { engineType: 'v1' },
+		});
+
+		return { workflow, savedVersionId };
+	};
+
+	const exportWorkflow = async (args: string[]) => {
+		const outputFile = path.join(testOutputDir, 'output.json');
+		await command.run([...args, `--output=${outputFile}`]);
+		const [exported] = jsonParse<IWorkflowWithVersionMetadata[]>(
+			fs.readFileSync(outputFile, 'utf-8'),
+		);
+		return exported;
+	};
+
+	test('should export the engine of the published version with --published', async () => {
+		enableEngineV2();
+		const { workflow, savedVersionId } = await createVersionWithDifferentDraftEngine();
+		await setActiveVersion(workflow.id, savedVersionId);
+
+		const exported = await exportWorkflow([`--id=${workflow.id}`, '--published']);
+
+		expect(exported.versionId).toBe(savedVersionId);
+		expect(exported.settings).toEqual({ engineType: 'v2', timezone: 'Europe/Kyiv' });
+	});
+
+	test('should export the engine of the selected version with --version', async () => {
+		enableEngineV2();
+		const { workflow, savedVersionId } = await createVersionWithDifferentDraftEngine();
+
+		const exported = await exportWorkflow([`--id=${workflow.id}`, `--version=${savedVersionId}`]);
+
+		expect(exported.versionId).toBe(savedVersionId);
+		expect(exported.settings).toEqual({ engineType: 'v2', timezone: 'Europe/Kyiv' });
+	});
+
+	test('should export the draft settings with --published when engine-v2 is off', async () => {
+		vi.spyOn(Container.get(ModuleRegistry), 'eligibleModules', 'get').mockReturnValue([]);
+		const { workflow, savedVersionId } = await createVersionWithDifferentDraftEngine();
+		await setActiveVersion(workflow.id, savedVersionId);
+
+		const exported = await exportWorkflow([`--id=${workflow.id}`, '--published']);
+
+		expect(exported.settings).toEqual({ engineType: 'v1', timezone: 'Europe/Kyiv' });
 	});
 });

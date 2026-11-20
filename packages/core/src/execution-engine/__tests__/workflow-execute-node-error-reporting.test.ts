@@ -11,15 +11,15 @@ vi.mock('@n8n/di', () => ({
 
 import { Container } from '@n8n/di';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
-import {
-	ApplicationError,
-	NodeConnectionTypes,
-	OperationalError,
-	UnexpectedError,
-	UserError,
-	Workflow,
+import { ApplicationError, NodeConnectionTypes, NodeOperationError, Workflow } from 'n8n-workflow';
+import { OperationalError, UnexpectedError, UserError } from '@n8n/errors';
+import type {
+	INodeType,
+	INodeTypes,
+	IWorkflowExecuteAdditionalData,
+	IWorkflowSettings,
+	IRun,
 } from 'n8n-workflow';
-import type { INodeType, INodeTypes, IWorkflowExecuteAdditionalData, IRun } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -43,7 +43,10 @@ describe('WorkflowExecute node error forwarding to ErrorReporter', () => {
 	let mockErrorReporter: { error: ReturnType<typeof vi.fn> };
 	let mockNodeTypes: Mocked<INodeTypes>;
 	let mockLogger: { error: ReturnType<typeof vi.fn>; warn: ReturnType<typeof vi.fn> };
-	let mockExecutionContextService: { augmentExecutionContextWithHooks: ReturnType<typeof vi.fn> };
+	let mockExecutionContextService: {
+		augmentExecutionContextWithHooks: ReturnType<typeof vi.fn>;
+		maybeBindExecutionId: ReturnType<typeof vi.fn>;
+	};
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -59,6 +62,9 @@ describe('WorkflowExecute node error forwarding to ErrorReporter', () => {
 				context: { version: 1, establishedAt: Date.now(), source: 'manual' },
 				triggerItems: undefined,
 			}),
+			// establishExecutionContext also binds the execution id onto an already
+			// established context; pass through so the run isn't aborted.
+			maybeBindExecutionId: vi.fn(async (context) => context),
 		};
 
 		mockContainer.get.mockImplementation((token) => {
@@ -80,7 +86,8 @@ describe('WorkflowExecute node error forwarding to ErrorReporter', () => {
 	async function runWorkflowThatThrows(
 		error: unknown,
 		additionalDataOverrides: Partial<IWorkflowExecuteAdditionalData> = {},
-	): Promise<void> {
+		workflowSettings: IWorkflowSettings = {},
+	): Promise<IRun> {
 		const nodeType = mock<INodeType>({
 			description: {
 				name: 'manualTrigger',
@@ -104,6 +111,7 @@ describe('WorkflowExecute node error forwarding to ErrorReporter', () => {
 			connections: {},
 			active: false,
 			nodeTypes: mockNodeTypes,
+			settings: workflowSettings,
 		});
 
 		const waitPromise = createDeferredPromise<IRun>();
@@ -116,7 +124,23 @@ describe('WorkflowExecute node error forwarding to ErrorReporter', () => {
 		).mockImplementation(() => {});
 
 		await workflowExecute.run({ workflow, startNode: triggerNode });
-		await waitPromise.promise;
+		return await waitPromise.promise;
+	}
+
+	function createAxiosError() {
+		return Object.assign(new Error('connect ECONNREFUSED 127.0.0.1:443'), {
+			name: 'AxiosError',
+			isAxiosError: true,
+			code: 'ECONNREFUSED',
+			config: {
+				headers: { 'x-request-header': 'payload' },
+				data: '{"requestField":"payload"}',
+			},
+			options: {
+				headers: { 'x-request-header': 'payload' },
+				data: '{"requestField":"payload"}',
+			},
+		});
 	}
 
 	it('should report a Error instance as class + stack only, without its message', async () => {
@@ -163,6 +187,99 @@ describe('WorkflowExecute node error forwarding to ErrorReporter', () => {
 		expect(reported).toBe(baseError);
 	});
 
+	describe('when the run is redacted', () => {
+		// The engine runs in manual mode here, so 'all' covers the run and
+		// 'non-manual' does not.
+		const redactAll: IWorkflowSettings = { redactionPolicy: 'all' };
+
+		it('should report a BaseError as class + stack only, without its message', async () => {
+			const baseError = new UnexpectedError('secret value');
+
+			await runWorkflowThatThrows(baseError, {}, redactAll);
+
+			expect(mockErrorReporter.error).toHaveBeenCalledTimes(1);
+			const [reported] = mockErrorReporter.error.mock.calls[0] as [Error];
+			expect(reported).not.toBe(baseError);
+			expect(reported.name).toBe('UnexpectedError');
+			expect(reported.message).toBe('UnexpectedError');
+			expect(reported.stack).not.toContain('secret value');
+			expect(reported.stack).toMatch(/^UnexpectedError\n\s+at /);
+		});
+
+		it('should label the report with the class when the error name was changed', async () => {
+			const baseError = Object.assign(new UnexpectedError('secret value'), { name: 'secret name' });
+
+			await runWorkflowThatThrows(baseError, {}, redactAll);
+
+			const [reported] = mockErrorReporter.error.mock.calls[0] as [Error];
+			expect(reported.name).toBe('UnexpectedError');
+			expect(reported.message).toBe('UnexpectedError');
+			expect(reported.stack).not.toContain('secret');
+		});
+
+		it('should not report a BaseError that must not reach Sentry', async () => {
+			const baseError = new OperationalError('secret value');
+			expect(baseError.shouldReport).toBe(false);
+
+			await runWorkflowThatThrows(baseError, {}, redactAll);
+
+			expect(mockErrorReporter.error).not.toHaveBeenCalled();
+		});
+
+		it('should not report a warning-level BaseError that Sentry would ignore', async () => {
+			// `NodeOperationError` keeps `shouldReport` true while it sets `level` to
+			// 'warning' after construction, so the level check must run here.
+			const node = createNodeData({ name: 'ThrowingNode', type: 'n8n-nodes-base.manualTrigger' });
+			const baseError = new NodeOperationError(node, 'secret value');
+			expect(baseError.shouldReport).toBe(true);
+			expect(baseError.level).toBe('warning');
+
+			await runWorkflowThatThrows(baseError, {}, redactAll);
+
+			expect(mockErrorReporter.error).not.toHaveBeenCalled();
+		});
+
+		it('should not report an ApplicationError whose cause is an axios error', async () => {
+			const wrappedError = new ApplicationError('wrapper', { cause: createAxiosError() });
+
+			await runWorkflowThatThrows(wrappedError, {}, redactAll);
+
+			expect(mockErrorReporter.error).not.toHaveBeenCalled();
+		});
+
+		it('should not report an ApplicationError whose cause must not reach Sentry', async () => {
+			const wrappedError = new ApplicationError('wrapper', {
+				cause: new OperationalError('secret value'),
+			});
+
+			await runWorkflowThatThrows(wrappedError, {}, redactAll);
+
+			expect(mockErrorReporter.error).not.toHaveBeenCalled();
+		});
+
+		it('should report the cause of an ApplicationError as class + stack only', async () => {
+			const causeError = new Error('secret value');
+			const wrappedError = new ApplicationError('wrapper', { cause: causeError });
+
+			await runWorkflowThatThrows(wrappedError, {}, redactAll);
+
+			expect(mockErrorReporter.error).toHaveBeenCalledTimes(1);
+			const [reported] = mockErrorReporter.error.mock.calls[0] as [Error];
+			expect(reported).not.toBe(causeError);
+			expect(reported.message).toBe('Error');
+			expect(reported.stack).not.toContain('secret value');
+		});
+
+		it('should report a BaseError as-is when the policy does not cover the run mode', async () => {
+			const baseError = new UnexpectedError('visible value');
+
+			await runWorkflowThatThrows(baseError, {}, { redactionPolicy: 'non-manual' });
+
+			const [reported] = mockErrorReporter.error.mock.calls[0] as [Error];
+			expect(reported).toBe(baseError);
+		});
+	});
+
 	it('should not report an axios error', async () => {
 		const axiosError = Object.assign(new Error('connect ECONNREFUSED 127.0.0.1:443'), {
 			name: 'AxiosError',
@@ -172,6 +289,39 @@ describe('WorkflowExecute node error forwarding to ErrorReporter', () => {
 		await runWorkflowThatThrows(axiosError);
 
 		expect(mockErrorReporter.error).not.toHaveBeenCalled();
+	});
+
+	it('should store unhandled axios errors as NodeApiError', async () => {
+		const run = await runWorkflowThatThrows(createAxiosError());
+		const nodeError = run.data.resultData.runData.ThrowingNode[0].error;
+		const resultError = run.data.resultData.error;
+
+		expect(nodeError?.name).toBe('NodeApiError');
+		expect(resultError?.name).toBe('NodeApiError');
+	});
+
+	it('should omit axios config from stored errors', async () => {
+		const run = await runWorkflowThatThrows(createAxiosError());
+		const nodeError = run.data.resultData.runData.ThrowingNode[0].error;
+		const resultError = run.data.resultData.error;
+
+		expect(nodeError).not.toHaveProperty('config');
+		expect(resultError).not.toHaveProperty('config');
+	});
+
+	it('should omit legacy request options from stored errors', async () => {
+		const run = await runWorkflowThatThrows(createAxiosError());
+		const nodeError = run.data.resultData.runData.ThrowingNode[0].error;
+		const resultError = run.data.resultData.error;
+
+		expect(nodeError).not.toHaveProperty('options');
+		expect(resultError).not.toHaveProperty('options');
+	});
+
+	it('should omit request values from serialized execution errors', async () => {
+		const run = await runWorkflowThatThrows(createAxiosError());
+
+		expect(JSON.stringify(run.data.resultData)).not.toContain('payload');
 	});
 
 	it('should not report an ApplicationError with no cause', async () => {

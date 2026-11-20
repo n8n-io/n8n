@@ -30,6 +30,13 @@ import type { EventBus } from '@n8n/utils/event-bus';
 import { truncate } from '@n8n/utils/string/truncate';
 import { computed, onMounted, ref } from 'vue';
 import { I18nT } from 'vue-i18n';
+import {
+	TransferPolicyWarning,
+	useTransferPreview,
+	type TransferPreviewTarget,
+} from '@n8n/frontend-module-type-availability-policies';
+import PolicyViolationTypeIcon from '@/app/components/PolicyViolationTypeIcon.vue';
+import { usePolicyViolationLabels } from '@/app/composables/usePolicyViolationLabels';
 
 import {
 	N8nButton,
@@ -59,6 +66,7 @@ const credentialsStore = useCredentialsStore();
 const privateCredentials = usePrivateCredentials();
 const telemetry = useTelemetry();
 const { showMoveToProjectToast } = useMoveResourceToProjectToast();
+const { labelOf } = usePolicyViolationLabels();
 
 const selectedProject = ref<ProjectSharingData | null>(null);
 const shareUsedCredentials = ref(false);
@@ -93,22 +101,41 @@ const homeProjectName = computed(
 	() => processProjectName(props.data.resource.homeProject?.name ?? '') ?? '',
 );
 
-const projectFilterFn = (p: ProjectListItem): boolean =>
-	!p.scopes || !!getResourcePermissions(p.scopes)[props.data.resourceType].create;
-
 const isResourceInTeamProject = computed(() => isHomeProjectTeam(props.data.resource));
 const isResourceWorkflow = computed(() => props.data.resourceType === ResourceType.Workflow);
 
-const isResolvableCredential = computed(
+// What the credential is — the backend rejects the move on `isResolvable` alone,
+// so the destination filter must not depend on module/license state.
+const isEndUserCredential = computed(
 	() =>
-		privateCredentials.isEnabled.value &&
 		props.data.resourceType === ResourceType.Credential &&
 		(props.data.resource as ICredentialsResponse).isResolvable === true,
 );
+// What we surface about it — gated on the module being enabled.
+const isResolvableCredential = computed(
+	() => privateCredentials.isEnabled.value && isEndUserCredential.value,
+);
+
+const projectFilterFn = (p: ProjectListItem): boolean => {
+	// End-user credentials can't move into personal projects
+	if (isEndUserCredential.value && p.type === ProjectTypes.Personal) return false;
+	return !p.scopes || !!getResourcePermissions(p.scopes)[props.data.resourceType].create;
+};
 const targetProjectName = computed(() => {
 	return getTruncatedProjectName(selectedProject.value?.name);
 });
 const resourceName = computed(() => truncate(props.data.resource.name, MAX_NAME_LENGTH));
+
+const transferPreviewTarget = computed(
+	(): TransferPreviewTarget => ({
+		resourceType: isResourceWorkflow.value ? 'workflow' : 'credential',
+		id: props.data.resource.id,
+	}),
+);
+const { preview: transferPreview } = useTransferPreview(
+	transferPreviewTarget,
+	() => selectedProject.value?.id,
+);
 const isPersonalSpaceRestricted = computed(
 	() =>
 		props.data.resource.homeProject?.type === ProjectTypes.Personal &&
@@ -244,6 +271,19 @@ onMounted(async () => {
 					"
 					data-test-id="project-move-resource-modal-select"
 				/>
+				<TransferPolicyWarning
+					v-if="transferPreview && selectedProject"
+					class="mb-xs"
+					:preview="transferPreview"
+					:resource-type="transferPreviewTarget.resourceType"
+					:project-id="selectedProject.id"
+					:project-name="targetProjectName"
+					:label-of="labelOf"
+				>
+					<template #icon="{ violation }">
+						<PolicyViolationTypeIcon :violation="violation" />
+					</template>
+				</TransferPolicyWarning>
 				<N8nText>
 					<I18nT keypath="projects.move.resource.modal.message.sharingNote" scope="global">
 						<template #note

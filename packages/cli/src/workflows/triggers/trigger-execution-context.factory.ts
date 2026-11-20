@@ -1,8 +1,12 @@
 import { Logger } from '@n8n/backend-common';
-import type { IWorkflowDb } from '@n8n/db';
+import { EventService, WorkflowPublishedDataService } from '@n8n/backend-services';
+import { Time } from '@n8n/constants';
+import type { IWorkflowDb, PollerCursor, PollLeaseFence } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import cloneDeep from 'lodash/cloneDeep';
+import isEqual from 'lodash/isEqual';
 import {
 	ErrorReporter,
 	PollContext,
@@ -20,14 +24,17 @@ import type {
 	IRun,
 	IWorkflowBase,
 	IWorkflowExecuteAdditionalData,
+	IWorkflowExecutionDataProcess,
+	PollCursor,
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { Workflow, UnexpectedError, createRunExecutionData } from 'n8n-workflow';
+import { Workflow, createRunExecutionData } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
+import { AsyncLocalStorage } from 'node:async_hooks';
 
 import { ActiveExecutions } from '@/active-executions';
 import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
-import { EventService } from '@/events/event.service';
 import { executeErrorWorkflow } from '@/execution-lifecycle/execute-error-workflow';
 import { ExecutionService } from '@/executions/execution.service';
 import { NodeTypes } from '@/node-types';
@@ -35,10 +42,24 @@ import type { ScheduleTriggerCollectionSession } from '@/scheduling/schedule-tri
 import { ScheduleTriggerJobRegistrar } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
 import { OwnershipService } from '@/services/ownership.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
+import type { EngineV2ActiveTriggerEmit } from '@/workflows/triggers/engine-v2-active-triggers';
+import { EngineV2ActiveTriggers } from '@/workflows/triggers/engine-v2-active-triggers';
+import { PollCursorService } from '@/workflows/triggers/poll-cursor.service';
 import { getWorkflowProjectDetailsSafe } from '@/workflows/utils';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
-import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
+
+import { WorkflowPublisherService } from '@/workflows/workflow-publisher.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
+
+/** What the trigger node waits on from the run it starts. A done promise outranks a response. */
+function awaitedByTrigger(
+	responsePromise: IDeferredPromise<IExecuteResponsePromiseData> | undefined,
+	donePromise: IDeferredPromise<IRun | undefined> | undefined,
+): NonNullable<IWorkflowExecutionDataProcess['callerAwaitsOutcome']> {
+	if (donePromise) return 'completion';
+	if (responsePromise) return 'response';
+	return 'none';
+}
 
 export type TriggerFailureHandler = (opts: {
 	error: Error;
@@ -47,6 +68,14 @@ export type TriggerFailureHandler = (opts: {
 	mode: WorkflowExecuteMode;
 	activation: WorkflowActivateMode;
 }) => void;
+
+/** A poll run by a claimed occurrence: the fence of its writes, and the timeout of the occurrence. */
+export interface LeasedPoll {
+	fence: PollLeaseFence;
+	timeoutSeconds: number;
+	/** Milliseconds until the occurrence times out. */
+	remainingMs(): number;
+}
 
 /**
  * Builds the execution-context functions (`IGetExecuteTriggerFunctions` /
@@ -73,6 +102,9 @@ export class TriggerExecutionContextFactory {
 		private readonly scheduleTriggerJobRegistrar: ScheduleTriggerJobRegistrar,
 		private readonly ownershipService: OwnershipService,
 		private readonly nodeTypes: NodeTypes,
+		private readonly pollCursorService: PollCursorService,
+		private readonly engineV2ActiveTriggers: EngineV2ActiveTriggers,
+		private readonly workflowPublisherService: WorkflowPublisherService,
 	) {
 		this.logger = this.logger.scoped(['workflow-activation']);
 	}
@@ -95,6 +127,25 @@ export class TriggerExecutionContextFactory {
 					: await this.activeExecutions.getPostExecutePromise(executionId),
 			)
 			.then(donePromise.resolve, (error: unknown) => donePromise.reject(ensureError(error)));
+	}
+
+	/**
+	 * Refuses an emit the engine v2 path cannot carry, settling the response
+	 * promise on the way out. `runWorkflow` never receives that promise when the
+	 * emit is refused, and an unsettled deferred promise leaves the node waiting.
+	 * The done promise needs no help here: {@link settleDonePromise} rejects it
+	 * from the returned promise chain.
+	 */
+	private assertEngineV2Supported(
+		data: INodeExecutionData[][],
+		emit: EngineV2ActiveTriggerEmit,
+	): void {
+		try {
+			this.engineV2ActiveTriggers.assertSupported(emit, data);
+		} catch (error) {
+			emit.responsePromise?.reject(ensureError(error));
+			throw error;
+		}
 	}
 
 	/**
@@ -170,18 +221,25 @@ export class TriggerExecutionContextFactory {
 				// can feature-flag between in-memory data and the published data
 				// service. Once the flag is removed, we'll call the service directly.
 				const executePromise = resolveWorkflowData()
-					.then(
-						async (freshWorkflowData) =>
-							await this.workflowExecutionService.runWorkflow(
-								freshWorkflowData,
-								node,
-								data,
-								additionalData,
-								mode,
-								responsePromise,
-								deduplicationKey,
-							),
-					)
+					.then(async (freshWorkflowData) => {
+						// Checked against the fresh data, so this agrees with the dispatcher,
+						// which decides on the same copy.
+						if (this.engineV2ActiveTriggers.handles(freshWorkflowData, mode)) {
+							this.assertEngineV2Supported(data, { responsePromise, donePromise });
+						}
+
+						return await this.workflowExecutionService.runWorkflow(
+							freshWorkflowData,
+							node,
+							data,
+							await this.attributeToPublisher(additionalData, freshWorkflowData),
+							mode,
+							responsePromise,
+							deduplicationKey,
+							// A node awaiting the run's end, or a response from it, must not get a paused segment instead.
+							awaitedByTrigger(responsePromise, donePromise),
+						);
+					})
 					.catch((error: unknown) => {
 						if (error instanceof DuplicateExecutionError) {
 							const context = {
@@ -269,30 +327,119 @@ export class TriggerExecutionContextFactory {
 		// service (flag on). Once the feature flag is removed, we'll call the
 		// service directly and this parameter will go away.
 		resolveWorkflowData: () => Promise<IWorkflowBase>,
+		leasedPoll?: LeasedPoll,
+		prefetchedCursor?: PollerCursor,
 	): IGetExecutePollFunctions {
+		const fence = leasedPoll?.fence;
 		return (workflow: Workflow, node: INode) => {
+			// A poll must finish inside the timeout of its occurrence; past it, the
+			// executor aborts the run and its commits are discarded. The lease is
+			// renewed while the poll runs, so it does not bound the poll. The margin
+			// — 20%, at least 5s, at most half the ceiling — leaves room for the
+			// trailing hand-off and cursor commit.
+			const ceilingMs = (leasedPoll?.timeoutSeconds ?? 0) * Time.seconds.toMilliseconds;
+			const marginMs = Math.min(Math.max(0.2 * ceilingMs, 5_000), ceilingMs / 2);
+			// Setup before `poll()` uses part of the timeout, so the budget counts down with it.
+			const pollBudgetMs = () => Math.max(0, (leasedPoll?.remainingMs() ?? 0) - marginMs);
+			// A poll's staged snapshot lives in an async scope entered per poll, rather
+			// than in a variable per node: only the poll that staged it can commit it, and
+			// two overlapping polls of the same node never share a slot. An unmigrated
+			// node gets no snapshot: it reads and writes the real static-data bucket
+			// directly.
+			const stagedCursorStore = new AsyncLocalStorage<
+				{ migrated: true; snapshot: PollCursor; seed: PollCursor } | { migrated: false }
+			>();
+
+			const __runPoll = async <T>(poll: () => Promise<T>): Promise<T> => {
+				const resolved = await this.pollCursorService.resolveCursor(
+					workflowData.id,
+					node.id,
+					workflow.getStaticData('node', node),
+					prefetchedCursor,
+				);
+				const store = resolved.migrated
+					? { migrated: true as const, snapshot: cloneDeep(resolved.cursor), seed: resolved.cursor }
+					: { migrated: false as const };
+				return await stagedCursorStore.run(store, poll);
+			};
+
+			/**
+			 * Returns a copy of the staged snapshot if it changed since it was seeded,
+			 * so one advance is committed at most once and a later mutation of the
+			 * node's own object can't reach an in-flight commit.
+			 */
+			const takeStagedCursor = (): PollCursor | null => {
+				const staged = stagedCursorStore.getStore();
+				if (staged === undefined || !staged.migrated || isEqual(staged.snapshot, staged.seed)) {
+					return null;
+				}
+				const cursor = cloneDeep(staged.snapshot);
+				staged.seed = cursor;
+				return cursor;
+			};
+
 			const __emit = (
 				data: INodeExecutionData[][],
 				responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 				donePromise?: IDeferredPromise<IRun | undefined>,
 			) => {
 				this.logger.debug(`Received event to trigger execution for workflow "${workflow.name}"`);
+
+				const cursor = takeStagedCursor();
+
+				// A migrated node's cursor lives in `poller_state`, not static data, so
+				// saving here can't race the cursor commit; this persists global static
+				// data, or an unmigrated node's own bucket, which still doubles as its cursor.
 				void this.workflowStaticDataService.saveStaticData(workflow);
 
 				// TODO(CAT-3202): resolves workflow data via callback so we
 				// can feature-flag between in-memory data and the published data
 				// service. Once the flag is removed, we'll call the service directly.
-				const executePromise = resolveWorkflowData().then(
-					async (freshWorkflowData) =>
-						await this.workflowExecutionService.runWorkflow(
+				const executePromise = resolveWorkflowData().then(async (freshWorkflowData) => {
+					// Decided on the fresh copy, which is the one the dispatcher decides on.
+					const routesToV2 = this.engineV2ActiveTriggers.handles(freshWorkflowData, mode);
+
+					const runAdditionalData = await this.attributeToPublisher(
+						additionalData,
+						freshWorkflowData,
+					);
+
+					if (cursor === null) {
+						return await this.workflowExecutionService.runWorkflow(
 							freshWorkflowData,
 							node,
 							data,
-							additionalData,
+							runAdditionalData,
 							mode,
 							responsePromise,
-						),
-				);
+							undefined,
+							awaitedByTrigger(responsePromise, donePromise),
+						);
+					}
+
+					return routesToV2
+						? await this.workflowExecutionService.runPolledWorkflowV2(
+								freshWorkflowData,
+								node,
+								data,
+								runAdditionalData,
+								mode,
+								cursor,
+								responsePromise,
+								fence,
+							)
+						: await this.workflowExecutionService.runPolledWorkflow(
+								freshWorkflowData,
+								node,
+								data,
+								runAdditionalData,
+								mode,
+								cursor,
+								responsePromise,
+								fence,
+								awaitedByTrigger(responsePromise, donePromise),
+							);
+				});
 
 				if (donePromise) this.settleDonePromise(executePromise, donePromise);
 
@@ -305,18 +452,67 @@ export class TriggerExecutionContextFactory {
 				this.recordTriggerFailure(error, node, workflowData, workflow, mode);
 			};
 
-			return new PollContext(workflow, node, additionalData, mode, activation, __emit, __emitError);
+			// Persists a snapshot advance that emitted no items, so a source that only
+			// ever moves its cursor is not re-fetched forever.
+			const __commitCursor = async () => {
+				const cursor = takeStagedCursor();
+				if (cursor === null) return;
+				const committed = await this.pollCursorService.commitCursorOnly({
+					workflowId: workflowData.id,
+					nodeId: node.id,
+					cursor,
+					fence,
+				});
+				if (!committed) {
+					this.logger.debug(
+						`Poll node "${node.name}" cursor-only commit skipped: the poll no longer holds its lease`,
+						{ workflowId: workflowData.id, nodeId: node.id, nodeName: node.name },
+					);
+				}
+			};
+
+			// Hands a migrated node its per-poll snapshot in place of the real
+			// static-data bucket, so mutations are captured for `takeStagedCursor` above.
+			// An unmigrated node gets the real bucket directly.
+			const resolveNodeStaticData = () => {
+				const staged = stagedCursorStore.getStore();
+				if (staged === undefined) {
+					throw new UnexpectedError(
+						'Poll node read its static data outside of a poll; __runPoll was not entered',
+						{ extra: { workflowId: workflowData.id, nodeId: node.id, nodeName: node.name } },
+					);
+				}
+				return staged.migrated ? staged.snapshot : workflow.getStaticData('node', node);
+			};
+
+			return new PollContext(
+				workflow,
+				node,
+				additionalData,
+				mode,
+				activation,
+				__emit,
+				__emitError,
+				__commitCursor,
+				__runPoll,
+				resolveNodeStaticData,
+				// Only a leased (durable) poll is bounded by the timeout; a
+				// legacy in-memory poll keeps PollContext's generous default.
+				fence ? pollBudgetMs : undefined,
+			);
 		};
 	}
 
 	/**
 	 * Assemble the poll execution context: the Workflow, additionalData, and
-	 * resolve-at-emit closure needed to run `poll()`. The closure reads fresh
-	 * (non-cached) so the poll cursor in staticData is never stale.
+	 * resolve-at-emit closure needed to run `poll()`. The closure bypasses the
+	 * published-workflow cache so it always reads the workflow's current data.
 	 */
 	async createPollExecutionContext(
 		workflowData: IWorkflowBase,
 		node: INode,
+		leasedPoll?: LeasedPoll,
+		prefetchedCursor?: PollerCursor,
 	): Promise<{ workflow: Workflow; pollFunctions: IPollFunctions }> {
 		const workflow = new Workflow({
 			id: workflowData.id,
@@ -329,6 +525,8 @@ export class TriggerExecutionContextFactory {
 			settings: workflowData.settings,
 		});
 
+		// Carries no user: the emit attributes the run to the publisher of the
+		// version it resolves, which may be newer than this one.
 		const additionalData = await WorkflowExecuteAdditionalData.getBase({
 			workflowId: workflowData.id,
 			workflowSettings: workflowData.settings,
@@ -343,11 +541,41 @@ export class TriggerExecutionContextFactory {
 			'trigger',
 			'update',
 			resolveWorkflowData,
+			leasedPoll,
+			prefetchedCursor,
 		);
 		// getPollFunctions already closed over these; its signature still requires them.
 		const pollFunctions = getPollFunctions(workflow, node, additionalData, 'trigger', 'update');
 
 		return { workflow, pollFunctions };
+	}
+
+	/**
+	 * A triggered run has nobody to be, so it is attributed to whoever published
+	 * the version it runs.
+	 *
+	 * Read here rather than when the trigger was registered: a registration
+	 * outlives republishes — `resolveWorkflowData` re-reads the published version
+	 * at every emit precisely so a republish needs no deactivate/reactivate — and
+	 * a publisher deleted since then must leave the run unattributed.
+	 *
+	 * Keyed on `versionId`, the version whose nodes are about to run, rather than
+	 * the workflow row's `activeVersionId`, which already names the next version
+	 * while publication is still applying. On the pre-publication-service path
+	 * `versionId` is the draft pointer instead; it matches no activation, so the
+	 * lookup falls back to the latest one, which is the live version's publisher.
+	 */
+	private async attributeToPublisher(
+		additionalData: IWorkflowExecuteAdditionalData,
+		workflowData: IWorkflowBase,
+	): Promise<IWorkflowExecuteAdditionalData> {
+		return {
+			...additionalData,
+			userId: await this.workflowPublisherService.findPublisherUserId(
+				workflowData.id,
+				workflowData.versionId,
+			),
+		};
 	}
 
 	executeErrorWorkflow(
@@ -362,6 +590,7 @@ export class TriggerExecutionContextFactory {
 					runData: {},
 				},
 			}),
+			// oxlint-disable-next-line typescript/no-deprecated -- Keep the legacy execution field for existing consumers.
 			finished: false,
 			mode,
 			startedAt: new Date(),
@@ -375,23 +604,37 @@ export class TriggerExecutionContextFactory {
 
 	/**
 	 * Builds the {@link IWorkflowBase} to execute for an active trigger from the
-	 * published data. `pinData` and `meta` are deliberately left out: they are
+	 * published data, or returns `null` when the workflow has no published
+	 * version. `pinData` and `meta` are deliberately left out: they are
 	 * irrelevant to a production trigger execution.
 	 *
-	 * Pass `bypassCache` on the poll path: `saveStaticData` writes the poll cursor
-	 * into `staticData` without refreshing the cache, so a cached read would be stale.
+	 * Pass `bypassCache` on the poll path: the poll cursor lives in `poller_state`,
+	 * written outside the publish-time cache, so a cached read would be stale.
 	 *
 	 * TODO: Add error handling / fallback strategy for transient DB failures.
 	 */
-	async loadPublishedWorkflowData(
+	async findPublishedWorkflowData(
 		workflowId: string,
 		{ bypassCache = false }: { bypassCache?: boolean } = {},
-	): Promise<IWorkflowBase> {
-		const publishedData = bypassCache
+	): Promise<IWorkflowBase | null> {
+		return bypassCache
 			? await this.workflowPublishedDataService.getPublishedWorkflowDataForExecution(workflowId)
 			: await this.workflowPublishedDataService.getCachedPublishedWorkflowDataForExecution(
 					workflowId,
 				);
+	}
+
+	/**
+	 * Same as {@link findPublishedWorkflowData}, for callers that require a
+	 * published version to exist.
+	 *
+	 * @throws {UnexpectedError} when the workflow has no published version
+	 */
+	async loadPublishedWorkflowData(
+		workflowId: string,
+		options: { bypassCache?: boolean } = {},
+	): Promise<IWorkflowBase> {
+		const publishedData = await this.findPublishedWorkflowData(workflowId, options);
 
 		if (!publishedData) {
 			throw new UnexpectedError('Published version not found for workflow', {

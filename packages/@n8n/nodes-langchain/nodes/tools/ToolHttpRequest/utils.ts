@@ -23,6 +23,8 @@ import {
 } from 'n8n-workflow';
 import { z } from 'zod';
 
+import { logAiEvent, redactSecrets } from '@n8n/ai-utilities';
+
 import type {
 	ParameterInputType,
 	ParametersValues,
@@ -65,6 +67,17 @@ const genericCredentialRequest = async (ctx: ISupplyDataFunctions, itemIndex: nu
 				password: basicAuth.password as string,
 				sendImmediately,
 			};
+			return await ctx.helpers.httpRequest(options);
+		};
+	}
+
+	if (genericType === 'httpBearerAuth') {
+		const bearerAuth = await ctx.getCredentials('httpBearerAuth', itemIndex);
+
+		return async (options: IHttpRequestOptions) => {
+			assertCredentialUrlAllowed(ctx, bearerAuth, options);
+			if (!options.headers) options.headers = {};
+			options.headers.Authorization = `Bearer ${String(bearerAuth.token)}`;
 			return await ctx.helpers.httpRequest(options);
 		};
 	}
@@ -112,16 +125,12 @@ const genericCredentialRequest = async (ctx: ISupplyDataFunctions, itemIndex: nu
 		};
 	}
 
-	if (genericType === 'httpTemplatedCustomAuth') {
-		const templatedAuth = await ctx.getCredentials('httpTemplatedCustomAuth', itemIndex);
+	if (genericType === 'httpTemplatedCustomAuth' || genericType === 'httpMultipleHeadersAuth') {
+		const credentials = await ctx.getCredentials(genericType, itemIndex);
 
 		return async (options: IHttpRequestOptions) => {
-			assertCredentialUrlAllowed(ctx, templatedAuth, options);
-			return await ctx.helpers.httpRequestWithAuthentication.call(
-				ctx,
-				'httpTemplatedCustomAuth',
-				options,
-			);
+			assertCredentialUrlAllowed(ctx, credentials, options);
+			return await ctx.helpers.httpRequestWithAuthentication.call(ctx, genericType, options);
 		};
 	}
 
@@ -194,32 +203,6 @@ const defaultOptimizer = <T>(response: T) => {
 
 /** Error payloads are appended to the tool output, so they must not flood the model's context. */
 const MAX_ERROR_BODY_LENGTH = 2000;
-
-const SECRET_REDACTION = '[redacted]';
-
-/**
- * Masks credential-shaped values that an API echoed back in its error payload, so they do not
- * reach the model or the stored execution data. The key is kept, so `invalid api_key: <secret>`
- * still tells the model which credential the API rejected.
- *
- * A sibling of the redaction applied to skill tool output in
- * `packages/@n8n/agents/src/skills/tools.ts`; kept separate because `@n8n/agents` is not a
- * dependency here. Keep the two in mind when changing either.
- *
- * The leading `[\w-]*` matters: `\b` alone never fires inside a compound key such as
- * `client_secret`, where every character before `secret` is a word character. The auth scheme is
- * optional so an `Authorization` header holding a bare key is masked too.
- */
-const redactSecrets = (content: string): string =>
-	content
-		.replace(
-			/\b(authorization)(["']?\s*[:=]\s*["']?\s*(?:(?:bearer|basic)\s+)?)[^\s"',;}]+/gi,
-			`$1$2${SECRET_REDACTION}`,
-		)
-		.replace(
-			/([\w-]*(?:api[_-]?key|access[_-]?token|refresh[_-]?token|token|password|passwd|secret|credential|private[_-]?key))(["']?\s*[:=]\s*)(["']?)[^\s"',;}]+\3/gi,
-			`$1$2$3${SECRET_REDACTION}$3`,
-		);
 
 type FailedRequest = {
 	error?: unknown;
@@ -922,6 +905,8 @@ export const configureToolFunction = (
 		} else {
 			void ctx.addOutputData(NodeConnectionTypes.AiTool, index, [[{ json: { response } }]]);
 		}
+
+		logAiEvent(ctx, 'ai-tool-called', { query, response });
 
 		return response;
 	};

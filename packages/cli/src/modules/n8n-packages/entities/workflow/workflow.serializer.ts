@@ -1,18 +1,72 @@
+import {
+	type SerializedWorkflow,
+	type SerializedWorkflowMetadata,
+	serializedWorkflowMetadataSchema,
+	serializedWorkflowSchema,
+} from '@n8n/api-types';
 import type { WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { IConnections, INode } from 'n8n-workflow';
+import { ZodError } from 'zod';
 
-import {
-	serializedWorkflowSchema,
-	type SerializedWorkflow,
-} from '../../spec/serialized/workflow.schema';
+import { visitWorkflowCredentials } from '../credential/workflow-credential-references';
+import { PackageWorkflowInvalidError } from '../package-export.errors';
+import { definePackageSerializationPayload } from '../package-serialization.types';
 import { compareTagsByName } from '../tag/tag.types';
 
-/** Fields restored from package workflow.json; the target instance assigns the rest. */
-type WorkflowPackageContent = Pick<
+type WorkflowPackageKeyHandling = {
+	id: 'copy';
+	createdAt: 'exclude';
+	updatedAt: 'exclude';
+	name: 'copy';
+	description: 'copy';
+	active: 'exclude';
+	isArchived: 'copy';
+	nodes: 'copy';
+	connections: 'copy';
+	settings: 'copy';
+	staticData: 'exclude';
+	meta: 'exclude';
+	nodeGroups: 'copy';
+	tags: 'transform';
+	tagMappings: 'exclude';
+	shared: 'exclude';
+	pinData: 'exclude';
+	versionId: 'exclude';
+	activeVersionId: 'transform';
+	activeVersion: 'exclude';
+	versionCounter: 'exclude';
+	triggerCount: 'exclude';
+	parentFolder: 'transform';
+	testRuns: 'exclude';
+	sourceWorkflowId: 'exclude';
+};
+
+export type WorkflowPackageContent = Pick<
 	WorkflowEntity,
-	'name' | 'nodes' | 'connections' | 'isArchived' | 'settings'
+	'name' | 'description' | 'nodes' | 'connections' | 'nodeGroups' | 'isArchived' | 'settings'
 >;
+
+const serializePayload = definePackageSerializationPayload<
+	WorkflowEntity,
+	SerializedWorkflow,
+	WorkflowPackageKeyHandling
+>();
+
+/** The same decisions from the metadata file's side. */
+type WorkflowMetadataKeyHandling = Record<
+	Exclude<keyof WorkflowPackageKeyHandling, 'versionId' | 'activeVersionId'>,
+	'exclude'
+> & {
+	versionId: 'copy';
+	activeVersionId: 'transform';
+};
+
+const serializeMetadataPayload = definePackageSerializationPayload<
+	WorkflowEntity,
+	SerializedWorkflowMetadata,
+	WorkflowMetadataKeyHandling
+>();
 
 @Service()
 export class WorkflowSerializer {
@@ -23,36 +77,81 @@ export class WorkflowSerializer {
 			? [...(workflow.tags ?? [])].sort(compareTagsByName)
 			: undefined;
 
-		return serializedWorkflowSchema.parse({
-			id: workflow.id,
-			name: workflow.name,
-			nodes: workflow.nodes,
-			connections: workflow.connections,
-			settings: workflow.settings,
-			versionId: workflow.versionId,
-			parentFolderId: workflow.parentFolder?.id ?? null,
-			isPublished: workflow.activeVersionId === workflow.versionId,
-			isArchived: workflow.isArchived,
-			...(tags ? { tagIds: tags.map((tag) => tag.id) } : {}),
-		});
+		return serializedWorkflowSchema.parse(
+			serializePayload({
+				id: workflow.id,
+				name: workflow.name,
+				// Omit an empty description, so an old export keeps its blob hash.
+				...(workflow.description ? { description: workflow.description } : {}),
+				nodes: this.stripCredentialNames(workflow.nodes),
+				connections: workflow.connections,
+				settings: workflow.settings ? { ...workflow.settings } : undefined,
+				parentFolderId: workflow.parentFolder?.id ?? null,
+				isArchived: workflow.isArchived,
+				...(workflow.nodeGroups?.length ? { nodeGroups: workflow.nodeGroups } : {}),
+				...(tags ? { tagIds: tags.map((tag) => tag.id) } : {}),
+			}),
+		);
 	}
 
 	/**
-	 * Turns a workflow from a package back into something we can save on
-	 * the target instance.
-	 *
-	 * We drop anything the target owns — its id, versionId, where it lives,
-	 * whether it's published, timestamps — so the caller can set those fresh.
-	 * The content of the workflow comes along, and we keep whichever
-	 * archived state the source had it in.
+	 * Drops the display name from each credential reference, inline sub-workflows
+	 * included. A node resolves its credential by id and the target backfills the
+	 * name on import, so an exported name is only a copy that goes stale.
+	 */
+	private stripCredentialNames(nodes: INode[]): SerializedWorkflow['nodes'] {
+		// Clone so the live entity keeps its names for requirement extraction.
+		const copy = structuredClone(nodes);
+		visitWorkflowCredentials(copy, (_type, details) => {
+			if (details.name === undefined) return false;
+			const mutable: { name?: string } = details;
+			delete mutable.name;
+			return true;
+		});
+		return copy;
+	}
+
+	serializeForExport(workflow: WorkflowEntity, options: { includeTags: boolean }) {
+		try {
+			return [this.serialize(workflow, options), this.serializeMetadata(workflow)] as const;
+		} catch (error) {
+			if (!(error instanceof ZodError)) throw error;
+
+			const fields = error.issues
+				.slice(0, 10)
+				.map((issue) => `${issue.path.join('.') || '(root)'}: ${issue.message}`)
+				.join('; ');
+			throw new PackageWorkflowInvalidError(
+				`Workflow ${workflow.id} cannot be exported because its stored data is invalid (${fields}). Export aborted.`,
+				error,
+			);
+		}
+	}
+
+	serializeMetadata(workflow: WorkflowEntity): SerializedWorkflowMetadata {
+		return serializedWorkflowMetadataSchema.parse(
+			serializeMetadataPayload({
+				versionId: workflow.versionId,
+				publishedVersionId: workflow.activeVersionId,
+			}),
+		);
+	}
+
+	/**
+	 * Turns a workflow from a package back into something we can save on the
+	 * target instance. We drop anything the target owns — its id, where it
+	 * lives, timestamps — so the caller can set those fresh.
 	 */
 	deserialize(wire: SerializedWorkflow): WorkflowPackageContent {
 		const parsed = serializedWorkflowSchema.parse(wire);
 
 		return {
 			name: parsed.name,
+			// An absent key means the source has no description, so the import clears it.
+			description: parsed.description ?? null,
 			nodes: parsed.nodes as INode[],
 			connections: parsed.connections as IConnections,
+			nodeGroups: parsed.nodeGroups ?? [],
 			isArchived: parsed.isArchived,
 			...(parsed.settings !== undefined ? { settings: parsed.settings } : {}),
 		};

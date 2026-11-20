@@ -1,7 +1,12 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import type { User } from '@n8n/db';
-import { SettingsRepository, WorkflowEntity, WorkflowRepository } from '@n8n/db';
+import {
+	SettingsRepository,
+	WorkflowEntity,
+	WorkflowRepository,
+	type User,
+	type EntityManager,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 import { In } from '@n8n/typeorm';
 import {
@@ -12,8 +17,9 @@ import {
 } from 'n8n-workflow';
 
 import { CollaborationService } from '@/collaboration/collaboration.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { CacheService } from '@/services/cache/cache.service';
+import { BadRequestError } from '@n8n/errors';
+import { CacheService } from '@n8n/backend-services';
+import { License } from '@/license';
 import { removeDefaultValues } from '@/workflow-helpers';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -21,6 +27,8 @@ import type { UpdateWorkflowsAvailabilityDto } from './dto/update-workflows-avai
 
 const KEY = 'mcp.access.enabled';
 const REDIRECT_URIS_KEY = 'mcp.oauth.allowedRedirectUris';
+const AUTO_EXPOSE_NEW_WORKFLOWS_KEY = 'mcp.autoExposeNewWorkflows';
+const PREFERENCES_ENABLED_KEY = 'mcp.preferences.enabled';
 
 const BULK_CHUNK_SIZE = 500;
 
@@ -53,16 +61,17 @@ export class McpSettingsService {
 		private readonly globalConfig: GlobalConfig,
 		private readonly logger: Logger,
 		private readonly collaborationService: CollaborationService,
+		private readonly license: License,
 	) {}
 
-	async getEnabled(): Promise<boolean> {
+	async getEnabled(em?: EntityManager): Promise<boolean> {
 		const isMcpAccessEnabled = await this.cacheService.get<string>(KEY);
 
 		if (isMcpAccessEnabled !== undefined) {
 			return isMcpAccessEnabled === 'true';
 		}
 
-		const row = await this.settingsRepository.findByKey(KEY);
+		const row = await this.settingsRepository.findByKey(KEY, em);
 
 		const enabled = row?.value === 'true';
 
@@ -103,6 +112,49 @@ export class McpSettingsService {
 		);
 
 		await this.cacheService.set(REDIRECT_URIS_KEY, JSON.stringify(uris));
+	}
+
+	async getAutoExposeNewWorkflows(em?: EntityManager): Promise<boolean> {
+		if (!(await this.getEnabled(em))) {
+			return false;
+		}
+
+		const cached = await this.cacheService.get<string>(AUTO_EXPOSE_NEW_WORKFLOWS_KEY);
+
+		if (cached !== undefined) {
+			return cached === 'true';
+		}
+
+		const row = await this.settingsRepository.findByKey(AUTO_EXPOSE_NEW_WORKFLOWS_KEY, em);
+
+		const enabled = row?.value === 'true';
+
+		await this.cacheService.set(AUTO_EXPOSE_NEW_WORKFLOWS_KEY, enabled.toString());
+
+		return enabled;
+	}
+
+	async setAutoExposeNewWorkflows(enabled: boolean): Promise<void> {
+		await this.settingsRepository.upsert(
+			{ key: AUTO_EXPOSE_NEW_WORKFLOWS_KEY, value: enabled.toString(), loadOnStartup: true },
+			['key'],
+		);
+
+		await this.cacheService.set(AUTO_EXPOSE_NEW_WORKFLOWS_KEY, enabled.toString());
+	}
+
+	async getPreferencesEnabled(): Promise<boolean> {
+		const row = await this.settingsRepository.findByKey(PREFERENCES_ENABLED_KEY);
+		return row ? row.value === 'true' : !this.license.isEnterprisePlan();
+	}
+
+	async setPreferencesEnabled(enabled: boolean): Promise<void> {
+		await this.settingsRepository.upsertByKey(
+			PREFERENCES_ENABLED_KEY,
+			enabled.toString(),
+			true,
+			{},
+		);
 	}
 
 	async bulkSetAvailableInMCP(

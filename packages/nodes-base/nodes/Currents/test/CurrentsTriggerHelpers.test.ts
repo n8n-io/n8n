@@ -190,7 +190,7 @@ describe('CurrentsTriggerHelpers', () => {
 				'currentsApi',
 				{
 					method: 'GET',
-					url: 'https://api.currents.dev/v1/webhooks',
+					url: expect.objectContaining({ value: 'https://api.currents.dev/v1/webhooks' }),
 					qs: { projectId: 'project-123' },
 				},
 			);
@@ -309,7 +309,7 @@ describe('CurrentsTriggerHelpers', () => {
 				'currentsApi',
 				{
 					method: 'POST',
-					url: 'https://api.currents.dev/v1/webhooks',
+					url: expect.objectContaining({ value: 'https://api.currents.dev/v1/webhooks' }),
 					qs: { projectId: 'project-123' },
 					body: {
 						url: 'https://example.com/webhook',
@@ -342,7 +342,7 @@ describe('CurrentsTriggerHelpers', () => {
 				'currentsApi',
 				{
 					method: 'POST',
-					url: 'https://api.currents.dev/v1/webhooks',
+					url: expect.objectContaining({ value: 'https://api.currents.dev/v1/webhooks' }),
 					qs: { projectId: 'project-123' },
 					body: {
 						url: 'https://example.com/webhook',
@@ -379,7 +379,7 @@ describe('CurrentsTriggerHelpers', () => {
 				data: updatedWebhook,
 			});
 
-			const result = await updateWebhook.call(mockHookFunctions as IHookFunctions, 'hook-123', {
+			const result = await updateWebhook.call(mockHookFunctions as IHookFunctions, 'hook/id?x#y', {
 				hookEvents: ['RUN_FINISH', 'RUN_TIMEOUT'],
 			});
 
@@ -387,7 +387,9 @@ describe('CurrentsTriggerHelpers', () => {
 				'currentsApi',
 				{
 					method: 'PUT',
-					url: 'https://api.currents.dev/v1/webhooks/hook-123',
+					url: expect.objectContaining({
+						value: 'https://api.currents.dev/v1/webhooks/hook%2Fid%3Fx%23y',
+					}),
 					body: {
 						hookEvents: ['RUN_FINISH', 'RUN_TIMEOUT'],
 					},
@@ -421,7 +423,7 @@ describe('CurrentsTriggerHelpers', () => {
 				'currentsApi',
 				{
 					method: 'PUT',
-					url: 'https://api.currents.dev/v1/webhooks/hook-123',
+					url: expect.objectContaining({ value: 'https://api.currents.dev/v1/webhooks/hook-123' }),
 					body: {
 						url: 'https://example.com/new-webhook',
 						hookEvents: ['RUN_START'],
@@ -448,13 +450,15 @@ describe('CurrentsTriggerHelpers', () => {
 		it('should delete webhook by hookId', async () => {
 			(mockHookFunctions.helpers!.httpRequestWithAuthentication as Mock).mockResolvedValue({});
 
-			await deleteWebhook.call(mockHookFunctions as IHookFunctions, 'hook-123');
+			await deleteWebhook.call(mockHookFunctions as IHookFunctions, 'parent/child');
 
 			expect(mockHookFunctions.helpers!.httpRequestWithAuthentication).toHaveBeenCalledWith(
 				'currentsApi',
 				{
 					method: 'DELETE',
-					url: 'https://api.currents.dev/v1/webhooks/hook-123',
+					url: expect.objectContaining({
+						value: 'https://api.currents.dev/v1/webhooks/parent%2Fchild',
+					}),
 				},
 			);
 		});

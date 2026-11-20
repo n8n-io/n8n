@@ -45,6 +45,7 @@ export interface LdapConfig {
 	searchPageSize: number;
 	searchTimeout: number;
 	enforceEmailUniqueness: boolean;
+	linkExistingAccountsByEmail: boolean;
 }
 
 export async function getLdapConfig(context: IRestApiContext): Promise<LdapConfig> {
@@ -68,7 +69,7 @@ export async function updateLdapConfig(
 }
 
 export async function runLdapSync(context: IRestApiContext, data: IDataObject): Promise<{}> {
-	return await makeRestApiRequest(context, 'POST', '/ldap/sync', data as unknown as IDataObject);
+	return await makeRestApiRequest(context, 'POST', '/ldap/sync', data);
 }
 
 export async function getLdapSynchronizations(

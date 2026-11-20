@@ -105,7 +105,7 @@ Run when `AutoReject` is `null`. Full rules for each in `reference/checks.md`:
 
 - **A. CLA** — `cla-signed` label present.
 - **B. Title** — matches the conventional-commit regex. Authoritative rules in `.github/pull_request_title_conventions.md`.
-- **C. Description** — every section heading and checklist item from `.github/pull_request_template.md` is present in the PR body. The template is read at check time, so changes to it propagate automatically.
+- **C. Description** — every section heading from `.github/pull_request_template.md` is present in the PR body, and the Summary has content. The template is read at check time, so changes to it propagate automatically.
 - **D. Tests** — source logic changes have matching test files (a `fix` needs a regression test covering the bug). Skip for `docs/ci/chore/build` PRs.
 - **E. cubic-dev-ai** — no unresolved comments (resolved = "Addressed in commit" marker).
 - **F. Linked issue or forum discussion** — `fix` PRs link a GitHub issue; `feat`/`refactor`/`perf` PRs link an issue or `community.n8n.io` topic. Skip for `docs/ci/chore/build/test`.
@@ -113,7 +113,7 @@ Run when `AutoReject` is `null`. Full rules for each in `reference/checks.md`:
 
 ## Step 4 — Identify the responsible team
 
-Run `node .github/scripts/owners.mjs` against the changed file list and map the winning GitHub team to a Linear team. Full mapping table, sub-agent fallback procedure, and label rules: see `reference/teams.md`.
+Run `node .github/scripts/owners/owners.mjs` against the changed file list and map the winning GitHub team to a Linear team. Full mapping table, sub-agent fallback procedure, and label rules: see `reference/teams.md`.
 
 ## Step 5 — Extract the Linear ticket
 
