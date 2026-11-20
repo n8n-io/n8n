@@ -1,0 +1,22 @@
+packages/cli/src/services/__tests__/export.service.test.ts
+  s_fa4157c6078c9b::t_de17d2b72dccc3 159,168
+  s_fa4157c6078c9b::t_54778d5c05382c 180,182-184,186-187
+packages/cli/src/services/entity-archive-writer.ts
+  s_fa4157c6078c9b::t_c6c2107764231c 10-11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "153ad6883d603cc03102edd1830e474b10e7f0f9",
+  "prompts": {},
+  "sessions": {
+    "s_fa4157c6078c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6b40ffc9-a4f4-4c7a-8bc6-797ab5344f03",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}
