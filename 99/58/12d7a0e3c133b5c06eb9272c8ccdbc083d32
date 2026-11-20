@@ -1,0 +1,19 @@
+packages/nodes-base/nodes/Postgres/v2/actions/database/insert.operation.ts
+  s_5c1ecd57d60262::t_e1a7f9d8407ccf 11,305
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "995812d7a0e3c133b5c06eb9272c8ccdbc083d32",
+  "prompts": {},
+  "sessions": {
+    "s_5c1ecd57d60262": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6e14320d-908e-4b1c-aae6-04d9eb36cd24",
+        "model": "unknown"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}
