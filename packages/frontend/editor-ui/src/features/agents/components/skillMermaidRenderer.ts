@@ -3,7 +3,36 @@ import sandboxScriptUrl from './skillMermaidSandbox.js?url&no-inline';
 
 const RENDER_TIMEOUT_MS = 10_000;
 
+// Each frame evaluates the whole Mermaid file, so a file with many diagrams must not start them all at once.
+const MAX_CONCURRENT_RENDERS = 2;
+
 export const MAX_DIAGRAM_LENGTH = 50_000;
+
+let activeRenders = 0;
+const queuedRenders: Array<() => void> = [];
+
+/** Resolves `true` when the render can start, or `false` if the signal aborts first. */
+async function waitForRenderSlot(signal: AbortSignal): Promise<boolean> {
+	return await new Promise<boolean>((resolve) => {
+		const start = () => {
+			signal.removeEventListener('abort', cancel);
+			resolve(true);
+		};
+		const cancel = () => {
+			queuedRenders.splice(queuedRenders.indexOf(start), 1);
+			resolve(false);
+		};
+		queuedRenders.push(start);
+		signal.addEventListener('abort', cancel, { once: true });
+	});
+}
+
+function releaseRenderSlot() {
+	// The next render in the queue takes the slot over.
+	const next = queuedRenders.shift();
+	if (next) next();
+	else activeRenders--;
+}
 
 function sandboxDocument() {
 	// srcdoc inherits the editor's policy. Vite exposes the response nonce in this tag.
@@ -32,6 +61,8 @@ export async function renderSkillMermaid(
 	signal: AbortSignal,
 ): Promise<string | undefined> {
 	if (signal.aborted) return;
+	if (activeRenders < MAX_CONCURRENT_RENDERS) activeRenders++;
+	else if (!(await waitForRenderSlot(signal))) return;
 
 	// Each render has its own document and Mermaid queue.
 	const frame = document.createElement('iframe');
@@ -51,6 +82,7 @@ export async function renderSkillMermaid(
 		return await new Promise<string | undefined>((resolve) => {
 			fallback = () => resolve(undefined);
 			signal.addEventListener('abort', fallback);
+			// The limit starts with the frame, so the wait in the queue does not count.
 			timer = window.setTimeout(fallback, RENDER_TIMEOUT_MS);
 			port1.onmessage = ({ data }: MessageEvent<unknown>) => {
 				resolve(typeof data === 'string' ? data : undefined);
@@ -67,5 +99,6 @@ export async function renderSkillMermaid(
 		port1.close();
 		port2.close();
 		frame.remove();
+		releaseRenderSlot();
 	}
 }

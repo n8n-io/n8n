@@ -46,4 +46,45 @@ describe('renderSkillMermaid', () => {
 		}
 		expect(frames()).toHaveLength(0);
 	});
+
+	it('renders two diagrams at a time and starts the next one when a frame is done', async () => {
+		const controllers = [new AbortController(), new AbortController(), new AbortController()];
+		const renders = controllers.map(
+			async ({ signal }, index) =>
+				await renderSkillMermaid('flowchart LR\n  A --> B', 'default', 800 + index, signal),
+		);
+		const widths = () => [...document.body.querySelectorAll('iframe')].map(({ width }) => width);
+
+		try {
+			expect(widths()).toEqual(['800', '801']);
+			controllers[0].abort();
+			await renders[0];
+			await vi.waitFor(() => expect(widths()).toEqual(['801', '802']));
+		} finally {
+			controllers.forEach((controller) => controller.abort());
+			await Promise.all(renders);
+		}
+		expect(widths()).toHaveLength(0);
+	});
+
+	it('creates no frame for a queued render that is cancelled', async () => {
+		const controllers = [new AbortController(), new AbortController(), new AbortController()];
+		const renders = controllers.map(
+			async ({ signal }, index) =>
+				await renderSkillMermaid('flowchart LR\n  A --> B', 'default', 800 + index, signal),
+		);
+		const widths = () => [...document.body.querySelectorAll('iframe')].map(({ width }) => width);
+
+		try {
+			controllers[2].abort();
+			await expect(renders[2]).resolves.toBeUndefined();
+			controllers[0].abort();
+			await renders[0];
+			// The slot is free again, and the cancelled render does not take it.
+			expect(widths()).toEqual(['801']);
+		} finally {
+			controllers.forEach((controller) => controller.abort());
+			await Promise.all(renders);
+		}
+	});
 });
