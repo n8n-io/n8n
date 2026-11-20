@@ -12,6 +12,7 @@ import {
 } from '../execution/execution-store';
 import { DEFAULT_STALENESS_THRESHOLDS, type StalenessThresholds } from '../execution/staleness';
 import {
+	ANNOUNCED_STEP_STATUSES,
 	isEndedExecutionStatus,
 	LIVE_EXECUTION_STATUSES,
 	stepKeyId,
@@ -188,12 +189,30 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 		return rows.map(({ id }) => id);
 	}
 
-	async refreshLiveStatus(id: string): Promise<void> {
+	async refreshLiveStatus(id: string, acknowledgeStepId?: string): Promise<void> {
+		// The acknowledgement is a data-modifying CTE, so it commits with the
+		// refresh or not at all, and costs no extra round trip. It runs even when
+		// the refresh writes nothing. It changes only `stale_after`, so the probes
+		// below, which read `status`, are not affected. A raw query does not set
+		// `updated_at`, so the time the step settled stays as it is.
+		const acknowledge =
+			acknowledgeStepId === undefined
+				? ''
+				: `acknowledged AS (
+				UPDATE workflow_step_execution
+				SET stale_after = NULL
+				WHERE id = $2
+					AND execution_id = $1
+					AND status IN (${ANNOUNCED_STEP_STATUSES.map((status) => `'${status}'`).join(', ')})
+					-- A second call writes no row version.
+					AND stale_after IS NOT NULL
+			),`;
+
 		// The probes read the steps before the UPDATE takes the row's lock, so a
 		// step can change in between.
 		await this.repo.query(
 			// MATERIALIZED, because `live.runnable` is read three times below.
-			`WITH live AS MATERIALIZED (
+			`WITH ${acknowledge} live AS MATERIALIZED (
 				SELECT
 					EXISTS (
 						SELECT 1 FROM workflow_step_execution
@@ -215,7 +234,7 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 				AND (live.runnable OR live.waiting)
 				-- Skip a write that changes nothing, so the row is not locked for it.
 				AND e.status IS DISTINCT FROM CASE WHEN live.runnable THEN 'running' ELSE 'waiting' END`,
-			[id],
+			acknowledgeStepId === undefined ? [id] : [id, acknowledgeStepId],
 		);
 	}
 }

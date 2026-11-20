@@ -154,8 +154,14 @@ export interface ExecutionStore {
 	 * The refresh takes no lock, so it can lose a race and confuse `running`
 	 * with `waiting`. Callers may test whether the execution ended, as both step
 	 * handlers do. Read the step rows to tell `running` from `waiting`.
+	 *
+	 * With `acknowledgeStepId`, the same statement also does what
+	 * `StepStore.acknowledgeSettledStep` does for that step of this execution.
+	 * The settled handler makes this call its last write, so the
+	 * acknowledgement costs no extra round trip and no extra commit, and it
+	 * takes effect only if the refresh does.
 	 */
-	refreshLiveStatus(id: string): Promise<void>;
+	refreshLiveStatus(id: string, acknowledgeStepId?: string): Promise<void>;
 
 	/**
 	 * The ids of the sub-executions of an execution that have not ended: `queued`,

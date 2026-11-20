@@ -61,30 +61,34 @@ export class StepSettledHandler {
 		]);
 		const node = validateStepContext(step, execution);
 
-		await this.advanceExecution(execution, step, node);
+		const acknowledged = await this.advanceExecution(execution, step, node);
 
 		// Last, so an error before this line leaves the `stale_after` time on the
 		// step. The reconciliation sweeper then publishes `step:settled` to the
-		// orchestration queue again.
-		await this.stepStore.acknowledgeSettledStep(step.id);
+		// orchestration queue again. The common path has already acknowledged
+		// the step in its last write.
+		if (!acknowledged) await this.stepStore.acknowledgeSettledStep(step.id);
 	}
 
-	/** Applies the consequences of the settled step to its execution. */
+	/**
+	 * Applies the consequences of the settled step to its execution. Returns
+	 * `true` when its last write also acknowledged the step.
+	 */
 	private async advanceExecution(
 		execution: ExecutionRecord,
 		step: StepRecord,
 		node: GraphNode,
-	): Promise<void> {
+	): Promise<boolean> {
 		// v1 parity: an error that escapes a node ends the whole execution, not
 		// just its branch.
 		if (step.status === 'failed') {
 			await this.failExecution(execution, step, node);
-			return;
+			return false;
 		}
 
 		// A `waiting` execution is live, and this settlement may be what lets it
 		// move on, so only an ended one stops here.
-		if (!isLiveExecutionStatus(execution.status)) return;
+		if (!isLiveExecutionStatus(execution.status)) return false;
 
 		let queued = 0;
 		if (step.status === 'completed' || step.status === 'skipped') {
@@ -92,7 +96,7 @@ export class StepSettledHandler {
 			// this one, so it must end the execution here, before planning
 			if (await this.stepStore.hasFailedSteps(execution.id)) {
 				await this.failExecution(execution, step, node);
-				return;
+				return false;
 			}
 
 			queued = await this.planSuccessors(execution, step);
@@ -103,8 +107,10 @@ export class StepSettledHandler {
 		if (queued === 0) await this.finishExecutionIfDone(execution, step, node);
 
 		// If this call just finished the execution, it is no longer live, and the
-		// refresh leaves it alone.
-		await this.executionStore.refreshLiveStatus(execution.id);
+		// refresh leaves it alone. The refresh is the last write of this path, so
+		// it acknowledges the step in the same statement.
+		await this.executionStore.refreshLiveStatus(execution.id, step.id);
+		return true;
 	}
 
 	private async failExecution(

@@ -408,6 +408,93 @@ describe('workflow_execution table (integration)', () => {
 			const after = await repo.findOneOrFail({ where: { id } });
 			expect(after.updatedAt).toEqual(before.updatedAt);
 		});
+
+		describe('with a settled step to acknowledge', () => {
+			const staleAfter = new Date('2026-01-01T00:00:00.000Z');
+
+			/** Gives the step of the first iteration a `stale_after` time and returns it. */
+			async function settledStep(executionId: string): Promise<WorkflowStepExecution> {
+				const stepRepo = dataSource.getRepository(WorkflowStepExecution);
+				const step = await stepRepo.findOneOrFail({ where: { executionId, iteration: 0 } });
+				await stepRepo.update({ id: step.id }, { staleAfter, updatedAt: () => 'updated_at' });
+				return await stepRepo.findOneOrFail({ where: { id: step.id } });
+			}
+
+			async function reload(stepId: string): Promise<WorkflowStepExecution> {
+				return await dataSource
+					.getRepository(WorkflowStepExecution)
+					.findOneOrFail({ where: { id: stepId } });
+			}
+
+			it('clears the time of the step in the statement that refreshes the status', async () => {
+				const repo = dataSource.getRepository(WorkflowExecution);
+				const id = await seed('running', ['completed', 'waiting']);
+				const step = await settledStep(id);
+
+				await new TypeOrmExecutionStore(repo).refreshLiveStatus(id, step.id);
+
+				expect((await repo.findOneOrFail({ where: { id } })).status).toBe('waiting');
+				const after = await reload(step.id);
+				expect(after.staleAfter).toBeNull();
+				// readers use `updated_at` as the time the step settled
+				expect(after.updatedAt).toEqual(step.updatedAt);
+			});
+
+			it.each<[string, ExecutionStatus, StepStatus[]]>([
+				['the status already holds', 'running', ['completed', 'running']],
+				['the execution already ended', 'completed', ['completed']],
+			])('clears the time of the step when %s', async (_case, status, stepStatuses) => {
+				const repo = dataSource.getRepository(WorkflowExecution);
+				const id = await seed(status, stepStatuses);
+				const step = await settledStep(id);
+				const before = await repo.findOneOrFail({ where: { id } });
+
+				await new TypeOrmExecutionStore(repo).refreshLiveStatus(id, step.id);
+
+				expect((await reload(step.id)).staleAfter).toBeNull();
+				expect((await repo.findOneOrFail({ where: { id } })).updatedAt).toEqual(before.updatedAt);
+			});
+
+			it('keeps the time of a step of another execution', async () => {
+				const repo = dataSource.getRepository(WorkflowExecution);
+				const id = await seed('running', ['completed', 'running']);
+				const otherId = await seed('running', ['completed', 'running']);
+				const step = await settledStep(otherId);
+
+				await new TypeOrmExecutionStore(repo).refreshLiveStatus(id, step.id);
+
+				expect((await reload(step.id)).staleAfter).toEqual(staleAfter);
+			});
+
+			it('keeps the time of the step when the refresh fails', async () => {
+				const id = await seed('running', ['completed', 'waiting']);
+				const step = await settledStep(id);
+				// Another transaction holds the execution row, so the refresh, which
+				// must change the status, runs into the lock timeout.
+				const holder = dataSource.createQueryRunner();
+				const refresher = dataSource.createQueryRunner();
+				try {
+					await holder.startTransaction();
+					await holder.query('SELECT id FROM workflow_execution WHERE id = $1 FOR UPDATE', [id]);
+					await refresher.query("SET lock_timeout = '100ms'");
+
+					await expect(
+						new TypeOrmExecutionStore(
+							refresher.manager.getRepository(WorkflowExecution),
+						).refreshLiveStatus(id, step.id),
+					).rejects.toThrow(/lock timeout/);
+				} finally {
+					await refresher.query('RESET lock_timeout');
+					await refresher.release();
+					await holder.rollbackTransaction();
+					await holder.release();
+				}
+
+				expect((await reload(step.id)).staleAfter).toEqual(staleAfter);
+				const repo = dataSource.getRepository(WorkflowExecution);
+				expect((await repo.findOneOrFail({ where: { id } })).status).toBe('running');
+			});
+		});
 	});
 
 	it('TypeOrmExecutionStore.createExecution stores seeded outputs by node and pass, read back by key', async () => {
