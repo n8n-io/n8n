@@ -74,6 +74,14 @@ const ACTIVATION_MODE_BY_REASON: Record<WorkflowPublicationReason, WorkflowActiv
 	[WorkflowPublicationReason.Transfer]: 'update',
 };
 
+/** Whether a user asked for the publication; records from before the `reason` column count as `publish`. */
+function isUserIntent(record: WorkflowPublicationOutbox): boolean {
+	const reason = record.reason ?? WorkflowPublicationReason.Publish;
+	return (
+		reason === WorkflowPublicationReason.Publish || reason === WorkflowPublicationReason.Transfer
+	);
+}
+
 /** Removes every old trigger and adds every new one, so unchanged triggers also register again. */
 function replaceAllTriggers(oldTriggers: INode[], newTriggers: INode[]): TriggerDiff {
 	return {
@@ -272,10 +280,14 @@ export class WorkflowPublicationApplier {
 			abort.signal.throwIfAborted();
 			if (toAdd.size > 0) {
 				const activationMode = this.resolveActivationMode(record, oldVersion);
-				const retriedNodeIds = await this.triggerStatusRepository.findRetriedTriggerNodeIds(
-					record.workflowId,
-					newVersion.versionId,
-				);
+				// A user publication keeps the full attempt budget even when a retry note exists.
+				let retriedNodeIds = new Set<INode['id']>();
+				if (!isUserIntent(record)) {
+					retriedNodeIds = await this.triggerStatusRepository.findRetriedTriggerNodeIds(
+						record.workflowId,
+						newVersion.versionId,
+					);
+				}
 				const outcome = await this.workflowTriggerActivator.activate(
 					workflow,
 					newVersion,
@@ -656,11 +668,8 @@ export class WorkflowPublicationApplier {
 		record: WorkflowPublicationOutbox,
 		oldVersion: WorkflowHistory | null,
 	): WorkflowActivateMode {
-		const reason = record.reason ?? WorkflowPublicationReason.Publish;
-		const isUserIntent =
-			reason === WorkflowPublicationReason.Publish || reason === WorkflowPublicationReason.Transfer;
-		if (isUserIntent && oldVersion === null) return 'activate';
-		return ACTIVATION_MODE_BY_REASON[reason];
+		if (isUserIntent(record) && oldVersion === null) return 'activate';
+		return ACTIVATION_MODE_BY_REASON[record.reason ?? WorkflowPublicationReason.Publish];
 	}
 
 	/**

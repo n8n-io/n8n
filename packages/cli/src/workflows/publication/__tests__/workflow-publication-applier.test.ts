@@ -785,6 +785,45 @@ describe('WorkflowPublicationApplier', () => {
 		});
 	});
 
+	describe('retried trigger nodes', () => {
+		beforeEach(() => {
+			triggerStatusRepository.findRetriedTriggerNodeIds.mockResolvedValue(new Set(['a']));
+			setTriggerSets([], [triggerNode('a')]);
+		});
+
+		test.each(['startup', 'leadership-takeover', 'reconcile'] as const)(
+			'reason %s passes the retried trigger nodes to the activator',
+			async (reason) => {
+				await applier.apply(makeRecord({ reason }), abort);
+
+				expect(workflowTriggerActivator.activate).toHaveBeenCalledWith(
+					expect.objectContaining({ id: 'wf-1' }),
+					newVersion,
+					new Set(['a']),
+					expect.any(String),
+					abort,
+					new Set(['a']),
+				);
+			},
+		);
+
+		test.each(['publish', 'transfer'] as const)(
+			'reason %s passes no retried trigger nodes to the activator',
+			async (reason) => {
+				await applier.apply(makeRecord({ reason }), abort);
+
+				expect(workflowTriggerActivator.activate).toHaveBeenCalledWith(
+					expect.objectContaining({ id: 'wf-1' }),
+					newVersion,
+					new Set(['a']),
+					expect.any(String),
+					abort,
+					new Set(),
+				);
+			},
+		);
+	});
+
 	test('reconciles by registering desired non-webhook triggers missing from memory', async () => {
 		// Same version on both sides: a pure version diff is empty, but a live
 		// trigger is not actually registered, so it must be re-added.
