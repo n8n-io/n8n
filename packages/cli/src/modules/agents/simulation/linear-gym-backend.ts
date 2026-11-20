@@ -11,6 +11,7 @@ import { GuardRouter } from '../../mcp-guard/router';
 import { PlanHydrator } from '../../mcp-guard/plan-hydrator';
 
 import { LinearGymManifest } from './linear-gym-manifest';
+import type { ReadCapabilityFactory } from './read-capability';
 import type {
 	OpenWorldInput,
 	SimulatedAgent,
@@ -71,6 +72,39 @@ const rpc = (name: string, args: unknown) => ({
 	method: 'tools/call',
 	params: { name, arguments: args },
 });
+const upstreamResult = content.extend({ isError: z.boolean().optional() });
+/**
+ * The only read caller in this package: the loopback Linear fixture. It sends no credential. The
+ * fixture tells the worlds apart by a digest of the binding. Only this factory reads
+ * `LINEAR_UPSTREAM_URL`, so another factory does not need that variable.
+ */
+export const loopbackFixtureReadCapability: ReadCapabilityFactory = async (binding, readTools) => {
+	const upstream = endpoint(process.env.LINEAR_UPSTREAM_URL, '/mcp');
+	// The fixture and the Gym must be two services. A read must never go to the Gym.
+	const gym = process.env.GYM_BASE_URL;
+	if (gym && URL.canParse(gym) && new URL(gym).origin === new URL(upstream).origin)
+		throw unavailable();
+	const scope = createHash('sha256')
+		.update(
+			JSON.stringify([
+				binding.ownerId,
+				binding.projectId,
+				binding.agentId,
+				binding.testChatId,
+				'linear',
+			]),
+		)
+		.digest('hex');
+	return {
+		read: async (toolName, args) => {
+			if (!readTools.has(toolName)) throw unavailable();
+			const raw = await json(upstream, 'POST', rpc(toolName, args), { 'x-fixture-scope': scope });
+			return z
+				.object({ jsonrpc: z.literal('2.0'), id: z.literal(1), result: upstreamResult })
+				.parse(raw).result;
+		},
+	};
+};
 type ServedReply = Extract<SimulatedReply, { outcome: 'served' }>;
 /** What one request of a tool did. The evidence of its reply comes from this record only. */
 interface RequestTrace {
@@ -98,6 +132,10 @@ export class LinearGymBackend implements SimulationBackend {
 	readonly worldDependsOnDraftConnections = true;
 
 	private readonly manifest = new LinearGymManifest();
+
+	constructor(
+		private readonly readCapability: ReadCapabilityFactory = loopbackFixtureReadCapability,
+	) {}
 
 	/**
 	 * The name of the one MCP server of the agent that the Gym serves. A world holds one Linear
@@ -138,13 +176,21 @@ export class LinearGymBackend implements SimulationBackend {
 			const server = await this.servedServer(agent);
 			if (!server) throw unavailable();
 			const base = endpoint(process.env.GYM_BASE_URL, '/');
-			const upstream = endpoint(process.env.LINEAR_UPSTREAM_URL, '/mcp');
 			const token = process.env.GYM_HARNESS_TOKEN;
-			if (token !== harnessToken || new URL(upstream).origin === new URL(base).origin)
-				throw unavailable();
-			const scope = createHash('sha256')
-				.update(JSON.stringify([ownerId, agent.projectId, agent.agentId, testChatId, 'linear']))
-				.digest('hex');
+			if (token !== harnessToken) throw unavailable();
+			const readTools = new Set(['get_issue']);
+			// One read caller for each world. Only this closure holds it, so a later world cannot
+			// replace it. It gets the binding and a copy of the allowlist, and nothing of the Gym.
+			// The Gym gets a tenant only after the factory gave a caller.
+			const reader = await this.readCapability(
+				Object.freeze({
+					ownerId,
+					projectId: agent.projectId,
+					agentId: agent.agentId,
+					testChatId,
+				}),
+				new Set(readTools),
+			);
 			const worldId = randomUUID();
 			const world = {
 				world_version: 1,
@@ -162,7 +208,6 @@ export class LinearGymBackend implements SimulationBackend {
 					n8n_credentials: z.object({ linearApi: z.object({ apiKey: z.string().min(1) }) }),
 				})
 				.parse(tenant).n8n_credentials.linearApi.apiKey;
-			const readTools = new Set(['get_issue']);
 			// Overlapping requests of one world each get their own record.
 			const requests = new AsyncLocalStorage<RequestTrace>();
 			const response = z.object({
@@ -176,10 +221,7 @@ export class LinearGymBackend implements SimulationBackend {
 					if (!readTools.has(name) || !readArgs.safeParse(args).success) throw unavailable();
 					const trace = requests.getStore();
 					if (trace) trace.upstreamReads++;
-					const raw = await json(upstream, 'POST', rpc('get_issue', { id: identifier }), {
-						'x-fixture-scope': scope,
-					});
-					const { result } = response.parse(raw);
+					const result = upstreamResult.parse(await reader.read(name, { id: identifier }));
 					if (result.isError) throw unavailable();
 					const issue = fixtureIssue.parse(JSON.parse(result.content[0].text));
 					return { content: [{ type: 'text', text: JSON.stringify(issue) }] };
