@@ -404,6 +404,7 @@ describe('ErrorReporter', () => {
 				undefined,
 			);
 		});
+
 		it('should use an explicit warning level for generic errors and their cause chain', () => {
 			const cause = new Error('root cause');
 			const outer = new Error('outer', { cause });
@@ -437,7 +438,6 @@ describe('ErrorReporter', () => {
 			expect(logger.info).toHaveBeenCalledWith('Informational message', undefined);
 			expect(logger.error).not.toHaveBeenCalled();
 		});
-
 
 		it('should include stack trace for generic error cause chain', () => {
 			const cause = new Error('root cause');
