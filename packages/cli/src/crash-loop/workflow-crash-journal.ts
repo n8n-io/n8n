@@ -2,9 +2,11 @@ import { Logger } from '@n8n/backend-common';
 import { ExecutionsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
+import { OperationalError } from '@n8n/errors';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { isRecord } from '@n8n/utils/is-record';
-import { readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { constants, ftruncateSync, openSync, readFileSync, rmSync, writeSync } from 'node:fs';
+import { crc32 } from 'node:zlib';
 
 import { journalFile } from '@/crash-journal';
 import { isWorkflowNodeTaskPayload } from '@/scheduling/workflow-node-task-payload';
@@ -49,6 +51,9 @@ const attemptKey = ({ id, leaseEpoch }: JobAttempt) => `${id}:${leaseEpoch}`;
 @Service()
 export class WorkflowCrashJournal {
 	private readonly file = `${journalFile}.workflows`;
+
+	/** Opened at the first write, so that only the main that runs the jobs creates the file. */
+	private fd: number | undefined;
 
 	private streak: Streak | null;
 
@@ -126,7 +131,9 @@ export class WorkflowCrashJournal {
 
 	private read(): JournalState | undefined {
 		try {
-			const parsed: unknown = JSON.parse(readFileSync(this.file, 'utf8'));
+			const body = decode(readFileSync(this.file));
+			if (body === undefined) return undefined;
+			const parsed: unknown = JSON.parse(body);
 			return isJournalState(parsed) ? parsed : undefined;
 		} catch {
 			return undefined;
@@ -134,18 +141,19 @@ export class WorkflowCrashJournal {
 	}
 
 	private write() {
-		const state: JournalState = {
-			streak: this.streak,
-			inFlight: Object.fromEntries(this.inFlight),
-		};
+		const content = encode({ streak: this.streak, inFlight: Object.fromEntries(this.inFlight) });
 		try {
-			writeFileSync(`${this.file}.tmp`, JSON.stringify(state));
-			renameSync(`${this.file}.tmp`, this.file);
+			// Writes over the start of the open file, because a rename to replace it can block for milliseconds.
+			this.fd ??= openSync(this.file, constants.O_RDWR | constants.O_CREAT);
+			const written = writeSync(this.fd, content, 0, content.length, 0);
+			if (written !== content.length)
+				throw new OperationalError(`Wrote ${written} of ${content.length} bytes`);
 		} catch (error) {
 			// A stale file would blame a workflow for the wrong crash, so the next session starts from nothing.
 			let cleared = true;
 			try {
-				rmSync(this.file, { force: true });
+				if (this.fd === undefined) rmSync(this.file, { force: true });
+				else ftruncateSync(this.fd, 0);
 			} catch {
 				cleared = false;
 			}
@@ -157,6 +165,24 @@ export class WorkflowCrashJournal {
 			);
 		}
 	}
+}
+
+/**
+ * Each write leaves the bytes of a longer earlier state after its own, and a crash can cut a
+ * write short, so a header gives the checksum and the length of the current state.
+ */
+function encode(state: JournalState): Buffer {
+	const body = Buffer.from(JSON.stringify(state));
+	return Buffer.concat([Buffer.from(`${crc32(body)} ${body.length}\n`), body]);
+}
+
+function decode(content: Buffer): string | undefined {
+	const newline = content.indexOf('\n');
+	if (newline === -1) return undefined;
+	const [checksum, length] = content.subarray(0, newline).toString().split(' ').map(Number);
+	const body = content.subarray(newline + 1, newline + 1 + length);
+	if (body.length !== length || crc32(body) !== checksum) return undefined;
+	return body.toString();
 }
 
 const isStreak = (value: unknown): value is Streak =>

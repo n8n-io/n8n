@@ -13,13 +13,13 @@ vi.mock('node:fs', async (importOriginal) => {
 	const fs = await importOriginal<typeof import('node:fs')>();
 	return {
 		...fs,
-		writeFileSync: (...args: Parameters<typeof fs.writeFileSync>) => {
+		writeSync: (...args: Parameters<typeof fs.writeSync>) => {
 			if (crashJournal.failWrites) throw new Error('ENOSPC');
-			fs.writeFileSync(...args);
+			return fs.writeSync(...args);
 		},
-		rmSync: (...args: Parameters<typeof fs.rmSync>) => {
+		ftruncateSync: (...args: Parameters<typeof fs.ftruncateSync>) => {
 			if (crashJournal.failRemoves) throw new Error('EROFS');
-			fs.rmSync(...args);
+			fs.ftruncateSync(...args);
 		},
 	};
 });
@@ -43,7 +43,12 @@ describe('WorkflowCrashJournal', () => {
 	let dir: string;
 
 	const journalPath = () => `${crashJournal.file}.workflows`;
-	const readJournal = (): unknown => JSON.parse(readFileSync(journalPath(), 'utf8'));
+	/** The state after the header line, cut to the length that the header gives. */
+	const readJournal = (): unknown => {
+		const [header, ...rest] = readFileSync(journalPath(), 'utf8').split('\n');
+		const length = Number(header.split(' ')[1]);
+		return JSON.parse(rest.join('\n').slice(0, length));
+	};
 	const executionsConfig = (workflowDeactivationEnabled = true) =>
 		mock<ExecutionsConfig>({ recovery: { workflowDeactivationEnabled } });
 	const newSession = () => new WorkflowCrashJournal(mockLogger(), executionsConfig());
@@ -203,7 +208,7 @@ describe('WorkflowCrashJournal', () => {
 			crashJournal.failWrites = true;
 			settle();
 
-			expect(existsSync(journalPath())).toBe(false);
+			expect(readFileSync(journalPath()).length).toBe(0);
 			crashJournal.failWrites = false;
 			expect(newSession().startSession(true, t0 + 2 * HOUR)).toBeUndefined();
 		});
@@ -228,6 +233,27 @@ describe('WorkflowCrashJournal', () => {
 			writeFileSync(journalPath(), '{"streak":1}');
 
 			expect(newSession().startSession(true, t0)).toBeUndefined();
+		});
+
+		it('starts over from a write that a crash cut short', () => {
+			crashWith(attempt('1', 'wf-a'));
+			const content = readFileSync(journalPath());
+			writeFileSync(journalPath(), content.subarray(0, content.length - 5));
+
+			expect(newSession().startSession(true, t0)).toBeUndefined();
+		});
+
+		it('ignores the bytes that a longer earlier state left after the current one', () => {
+			const journal = newSession();
+			journal.startSession(false, t0);
+			const settleFirst = journal.recordStart(attempt('1', 'wf-a'));
+			journal.recordStart(attempt('2', 'wf-a'));
+			settleFirst();
+
+			expect(newSession().startSession(true, t0 + HOUR)).toEqual({
+				workflowId: 'wf-a',
+				crashes: 1,
+			});
 		});
 	});
 
