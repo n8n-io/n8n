@@ -57,18 +57,11 @@ vi.mock('./WorkflowReviewDetailMetadata.vue', () => ({
 	},
 }));
 
-// The real popover cannot open in jsdom (Reka UI), so expose what this component passes
-// down as attributes and let a button stand in for the comment it reports back.
+// Expose what this component passes down as attributes, and let a button stand in for the close.
 vi.mock('./WorkflowReviewDecisionPopover.vue', () => ({
 	default: {
 		name: 'WorkflowReviewDecisionPopover',
-		props: [
-			'deciding',
-			'viewerCanDecide',
-			'viewerCanComment',
-			'viewerCanClose',
-			'ineligibilityHint',
-		],
+		props: ['deciding', 'viewerCanDecide', 'viewerCanClose', 'ineligibilityHint'],
 		template: `
 			<div
 				data-test-id="workflow-review-decision-popover"
@@ -76,7 +69,6 @@ vi.mock('./WorkflowReviewDecisionPopover.vue', () => ({
 				:data-can-close="viewerCanClose"
 				:data-ineligibility-hint="ineligibilityHint"
 			>
-				<button data-test-id="emit-comment-posted" @click="$emit('comment-posted')" />
 				<button data-test-id="emit-close" @click="$emit('close')" />
 			</div>`,
 	},
@@ -424,18 +416,6 @@ describe('WorkflowReviewDetailTabs', () => {
 	});
 
 	describe('decision actions', () => {
-		// The trigger lives outside the tab panel, so a comment posted from the Changes tab
-		// would otherwise succeed with nothing to show for it.
-		it('switches to the activity tab once a comment was posted from the popover', () => {
-			const { getByTestId, emitted } = renderComponent({
-				props: { review: makeDetail(), tab: 'changes', deciding: false },
-			});
-
-			getByTestId('emit-comment-posted').click();
-
-			expect(emitted('update:tab')).toEqual([['activity']]);
-		});
-
 		it('offers no decision on a closed review', () => {
 			const { queryByTestId } = renderComponent({
 				props: {

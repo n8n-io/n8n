@@ -34,18 +34,11 @@ const renderComponent = createComponentRenderer(WorkflowReviewDetail, {
 	global: {
 		stubs: {
 			WorkflowReviewDecisionPopover: {
-				props: [
-					'deciding',
-					'viewerCanDecide',
-					'viewerCanComment',
-					'viewerCanClose',
-					'ineligibilityHint',
-				],
+				props: ['deciding', 'viewerCanDecide', 'viewerCanClose', 'ineligibilityHint'],
 				template: `<div data-test-id="workflow-review-decision-popover" :data-deciding="deciding">
     <button data-test-id="approve-review" @click="$emit('decide', { decision: 'approved' })" />
     <button data-test-id="close-review" @click="$emit('close')" />
     <button data-test-id="request-changes" @click="$emit('decide', { decision: 'changes_requested', note: 'needs work' })" />
-    <button data-test-id="comment-posted" @click="$emit('comment-posted')" />
    </div>`,
 			},
 		},

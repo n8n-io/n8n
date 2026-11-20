@@ -139,12 +139,10 @@ const tabOptions = computed(() => [
 				<WorkflowReviewDecisionPopover
 					:deciding="deciding"
 					:viewer-can-decide="viewerCanDecide"
-					:viewer-can-comment="viewerCanComment"
 					:viewer-can-close="viewerCanClose"
 					:ineligibility-hint="ineligibilityHint"
 					@decide="emit('decide', $event)"
 					@close="emit('close')"
-					@comment-posted="emit('update:tab', 'activity')"
 				/>
 			</div>
 		</div>
