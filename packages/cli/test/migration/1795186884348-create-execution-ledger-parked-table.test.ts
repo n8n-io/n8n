@@ -11,7 +11,7 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { v7 as uuidv7 } from 'uuid';
 
-const MIGRATION_NAME = 'CreateExecutionLedgerParkedTable1795184208131';
+const MIGRATION_NAME = 'CreateExecutionLedgerParkedTable1795186884348';
 
 const parkedRow = (overrides: Record<string, unknown> = {}): Record<string, unknown> => ({
 	ledgerId: 1,
