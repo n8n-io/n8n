@@ -1,0 +1,94 @@
+{
+	"properties": {
+		"album_type": {
+			"type": "string"
+		},
+		"artists": {
+			"items": {
+				"properties": {
+					"external_urls": {
+						"properties": {
+							"spotify": {
+								"type": "string"
+							}
+						},
+						"type": "object"
+					},
+					"href": {
+						"type": "string"
+					},
+					"id": {
+						"type": "string"
+					},
+					"name": {
+						"type": "string"
+					},
+					"type": {
+						"type": "string"
+					},
+					"uri": {
+						"type": "string"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"available_markets": {
+			"items": {
+				"type": "string"
+			},
+			"type": "array"
+		},
+		"external_urls": {
+			"properties": {
+				"spotify": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"href": {
+			"type": "string"
+		},
+		"id": {
+			"type": "string"
+		},
+		"images": {
+			"items": {
+				"properties": {
+					"height": {
+						"type": "number"
+					},
+					"url": {
+						"type": "string"
+					},
+					"width": {
+						"type": "number"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"name": {
+			"type": "string"
+		},
+		"release_date": {
+			"type": "string"
+		},
+		"release_date_precision": {
+			"type": "string"
+		},
+		"total_tracks": {
+			"type": "number"
+		},
+		"type": {
+			"type": "string"
+		},
+		"uri": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

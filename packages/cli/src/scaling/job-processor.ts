@@ -230,6 +230,7 @@ export class JobProcessor {
 		additionalData.streamingEnabled = job.data.streamingEnabled;
 		additionalData.restartExecutionId = job.data.restartExecutionId;
 		additionalData.evaluationRunId = execution.data.manualData?.evaluationRunId;
+		additionalData.rootExecutionMode = execution.data.rootExecutionMode;
 		// Rehydrate the manual-execution identity for private credential resolution.
 		additionalData.encryptedRunnerIdentity = job.data.encryptedRunnerIdentity;
 

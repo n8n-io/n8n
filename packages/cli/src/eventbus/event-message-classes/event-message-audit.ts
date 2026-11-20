@@ -39,7 +39,7 @@ export interface EventPayloadAudit extends AbstractEventPayload {
 	userAgent?: string;
 	redactionPolicy?: WorkflowSettings.RedactionPolicy;
 	rejectionReason?: string;
-	updatedBy?: string;
+	updatedBy?: string | null;
 	kind?: string;
 	scopeId?: string;
 	policyId?: string;

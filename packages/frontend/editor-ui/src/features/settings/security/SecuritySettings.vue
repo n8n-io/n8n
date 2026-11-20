@@ -33,7 +33,6 @@ import WorkflowReviewsSection from './WorkflowReviewsSection.vue';
 import ApiKeyRateLimitsSection from './rateLimits/ApiKeyRateLimitsSection.vue';
 import { PUBLIC_API_RATE_LIMIT_SETTINGS_FLAG } from './rateLimits/rateLimits';
 import { usePostHog } from '@/app/stores/posthog.store';
-import { useWorkflowReviewsFeature } from '@/features/workflow-reviews/composables/useWorkflowReviewsFeature';
 import { usePolicyAdminAccess } from '@n8n/frontend-module-type-availability-policies';
 import { useTypePoliciesSettingsFlag } from './composables/useTypePoliciesSettingsFlag';
 
@@ -44,7 +43,6 @@ const usersStore = useUsersStore();
 const i18n = useI18n();
 const { showToast, showError } = useToast();
 const pageRedirectionHelper = usePageRedirectionHelper();
-const { isWorkflowReviewsAvailable } = useWorkflowReviewsFeature();
 const posthogStore = usePostHog();
 const { canManagePolicies: canManageTypePolicies, entryRouteName: typePoliciesRouteName } =
 	usePolicyAdminAccess();
@@ -103,7 +101,7 @@ const { state, isReady, error } = useAsyncState(async () => {
 		sharedPersonalCredentialsCount: settings.sharedPersonalCredentialsCount,
 		managedByEnv: settings.managedByEnv,
 		initialRedactionFloor: (settings.redactionEnforcement?.floor ?? 'off') as RedactionFloor,
-		workflowReviewsEnabled: settings.workflowReviews?.enabled ?? false,
+		workflowReviews: settings.workflowReviews,
 	};
 }, undefined);
 
@@ -434,12 +432,14 @@ const sharingCountText = computed(() => {
 		</N8nSettingsSection>
 
 		<N8nSettingsSection
-			v-if="isSecuritySettingsSettled && isWorkflowReviewsAvailable && state !== undefined"
+			v-if="state?.workflowReviews"
 			:title="i18n.baseText('settings.security.workflowReviews.title')"
+			:description="i18n.baseText('settings.security.workflowReviews.description')"
 			data-test-id="security-workflow-reviews-section"
 		>
 			<WorkflowReviewsSection
-				:initial-enabled="state.workflowReviewsEnabled"
+				:initial-enabled="state.workflowReviews.enabled"
+				:initial-always-required="state.workflowReviews.alwaysRequired === true"
 				:managed-by-env="isManagedByEnv"
 			/>
 		</N8nSettingsSection>

@@ -17,7 +17,7 @@ export const RESOURCES = {
 	projectAiPreference: [...DEFAULT_OPERATIONS] as const,
 	// Skills. `skill`: instance skills. `projectSkill`: the skills of a project and of
 	// its agents.
-	skill: [...DEFAULT_OPERATIONS] as const,
+	skill: [...DEFAULT_OPERATIONS, 'manage'] as const,
 	projectSkill: [...DEFAULT_OPERATIONS] as const,
 	annotationTag: [...DEFAULT_OPERATIONS] as const,
 	app: [...DEFAULT_OPERATIONS] as const,
@@ -141,9 +141,18 @@ export const API_KEY_RESOURCES = {
 		'unpublish',
 		'delete',
 	] as const,
+	aiPreference: ['read', 'list', 'create', 'update', 'delete'] as const,
 	skill: ['create', 'update'] as const,
 	tag: [...DEFAULT_OPERATIONS] as const,
-	workflow: [...DEFAULT_OPERATIONS, 'move', 'activate', 'deactivate', 'export', 'import'] as const,
+	workflow: [
+		...DEFAULT_OPERATIONS,
+		'move',
+		'activate',
+		'deactivate',
+		'export',
+		'import',
+		'execute',
+	] as const,
 	variable: ['create', 'update', 'delete', 'list'] as const,
 	securityAudit: ['generate'] as const,
 	securitySettings: ['manage'] as const,

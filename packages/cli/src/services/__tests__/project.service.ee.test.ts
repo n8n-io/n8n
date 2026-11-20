@@ -1151,6 +1151,8 @@ describe('ProjectService', () => {
 				user,
 				undefined,
 				{},
+				expect.any(Function),
+				{ source: 'project-deletion' },
 			);
 			expect(agentChatAttachmentService.deleteByProject).toHaveBeenCalledWith(project.id);
 			expect(agentChatAttachmentService.deleteByProject.mock.invocationCallOrder[0]).toBeLessThan(

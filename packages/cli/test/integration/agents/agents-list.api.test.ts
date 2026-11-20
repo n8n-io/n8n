@@ -3,6 +3,8 @@ import { randomUUID } from 'node:crypto';
 import { createTeamProject, linkUserToProject, testModules } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
 
+import { createAgent } from '@test-integration/db/agents';
+
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
 
@@ -21,18 +23,15 @@ const server = setupTestServer({ endpointGroups: ['ai'] });
  */
 describe('agents list HTTP routes', () => {
 	async function createDraftAgent(projectId: string, name: string) {
-		const agentRepository = Container.get(AgentRepository);
-		return await agentRepository.save(
-			agentRepository.create({
-				id: randomUUID(),
-				name,
-				projectId,
-				schema: { name, model: 'anthropic/claude-sonnet-4-5', instructions: 'Help' },
-				integrations: [],
-				tools: {},
-				versionId: randomUUID(),
-			}),
-		);
+		return await createAgent({
+			id: randomUUID(),
+			name,
+			projectId,
+			schema: { name, model: 'anthropic/claude-sonnet-4-5', instructions: 'Help' },
+			integrations: [],
+			tools: {},
+			versionId: randomUUID(),
+		});
 	}
 
 	async function createPublishedAgent(projectId: string, name: string) {

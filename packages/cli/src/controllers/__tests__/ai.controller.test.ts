@@ -768,4 +768,12 @@ describe('AiController', () => {
 			expect(aiUsageService.updateAiUsageSettings).toHaveBeenCalledWith(true);
 		});
 	});
+
+	describe('updateModelTrainingSettings', () => {
+		it.each([true, false])('should store allowModelTraining=%s', async (allowModelTraining) => {
+			await controller.updateModelTrainingSettings(request, response, { allowModelTraining });
+
+			expect(aiUsageService.updateModelTrainingSetting).toHaveBeenCalledWith(allowModelTraining);
+		});
+	});
 });

@@ -1,0 +1,26 @@
+{
+	"properties": {
+		"createdDateTime": {
+			"type": "string"
+		},
+		"description": {
+			"type": "string"
+		},
+		"displayName": {
+			"type": "string"
+		},
+		"id": {
+			"type": "string"
+		},
+		"lastModifiedDateTime": {
+			"type": "string"
+		},
+		"name": {
+			"type": "string"
+		},
+		"webUrl": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

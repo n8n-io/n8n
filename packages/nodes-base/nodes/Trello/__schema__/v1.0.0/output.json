@@ -1,0 +1,478 @@
+{
+	"properties": {
+		"action": {
+			"properties": {
+				"agenticIdentity": {},
+				"appCreator": {
+					"additionalProperties": true,
+					"properties": {
+						"authType": {
+							"type": "string"
+						},
+						"id": {
+							"type": "string"
+						}
+					},
+					"type": ["null", "object"]
+				},
+				"data": {
+					"additionalProperties": true,
+					"properties": {
+						"board": {
+							"properties": {
+								"id": {
+									"type": "string"
+								},
+								"name": {
+									"type": "string"
+								},
+								"shortLink": {
+									"type": "string"
+								}
+							},
+							"type": "object"
+						},
+						"card": {
+							"additionalProperties": true,
+							"properties": {
+								"id": {
+									"type": "string"
+								},
+								"idShort": {
+									"type": "number"
+								},
+								"name": {
+									"type": "string"
+								},
+								"shortLink": {
+									"type": "string"
+								}
+							},
+							"type": "object"
+						},
+						"list": {
+							"additionalProperties": true,
+							"properties": {
+								"id": {
+									"type": "string"
+								},
+								"name": {
+									"type": "string"
+								}
+							},
+							"type": "object"
+						}
+					},
+					"type": "object"
+				},
+				"date": {
+					"type": "string"
+				},
+				"display": {
+					"properties": {
+						"entities": {
+							"additionalProperties": true,
+							"properties": {
+								"card": {
+									"additionalProperties": true,
+									"properties": {
+										"id": {
+											"type": "string"
+										},
+										"shortLink": {
+											"type": "string"
+										},
+										"text": {
+											"type": "string"
+										},
+										"type": {
+											"type": "string"
+										}
+									},
+									"type": "object"
+								},
+								"memberCreator": {
+									"properties": {
+										"id": {
+											"type": "string"
+										},
+										"text": {
+											"type": "string"
+										},
+										"type": {
+											"type": "string"
+										},
+										"username": {
+											"type": "string"
+										}
+									},
+									"type": "object"
+								}
+							},
+							"type": "object"
+						},
+						"translationKey": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				},
+				"id": {
+					"type": "string"
+				},
+				"idMemberCreator": {
+					"type": "string"
+				},
+				"limits": {
+					"properties": {
+						"reactions": {
+							"properties": {
+								"perAction": {
+									"properties": {
+										"disableAt": {
+											"type": "number"
+										},
+										"status": {
+											"type": "string"
+										},
+										"warnAt": {
+											"type": "number"
+										}
+									},
+									"type": "object"
+								},
+								"uniquePerAction": {
+									"properties": {
+										"disableAt": {
+											"type": "number"
+										},
+										"status": {
+											"type": "string"
+										},
+										"warnAt": {
+											"type": "number"
+										}
+									},
+									"type": "object"
+								}
+							},
+							"type": "object"
+						}
+					},
+					"type": ["null", "object"]
+				},
+				"memberCreator": {
+					"properties": {
+						"activityBlocked": {
+							"type": "boolean"
+						},
+						"avatarHash": {
+							"type": "string"
+						},
+						"avatarUrl": {
+							"type": "string"
+						},
+						"fullName": {
+							"type": "string"
+						},
+						"id": {
+							"type": "string"
+						},
+						"idMemberReferrer": {
+							"type": ["null", "string"]
+						},
+						"initials": {
+							"type": "string"
+						},
+						"nonPublic": {
+							"type": "object"
+						},
+						"nonPublicAvailable": {
+							"type": "boolean"
+						},
+						"username": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				},
+				"type": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"model": {
+			"additionalProperties": true,
+			"properties": {
+				"closed": {
+					"type": "boolean"
+				},
+				"desc": {
+					"type": "string"
+				},
+				"descData": {},
+				"id": {
+					"type": "string"
+				},
+				"idEnterprise": {},
+				"idOrganization": {
+					"type": "string"
+				},
+				"labelNames": {
+					"properties": {
+						"black": {
+							"type": "string"
+						},
+						"black_dark": {
+							"type": "string"
+						},
+						"black_light": {
+							"type": "string"
+						},
+						"blue": {
+							"type": "string"
+						},
+						"blue_dark": {
+							"type": "string"
+						},
+						"blue_light": {
+							"type": "string"
+						},
+						"green": {
+							"type": "string"
+						},
+						"green_dark": {
+							"type": "string"
+						},
+						"green_light": {
+							"type": "string"
+						},
+						"lime": {
+							"type": "string"
+						},
+						"lime_dark": {
+							"type": "string"
+						},
+						"lime_light": {
+							"type": "string"
+						},
+						"orange": {
+							"type": "string"
+						},
+						"orange_dark": {
+							"type": "string"
+						},
+						"orange_light": {
+							"type": "string"
+						},
+						"pink": {
+							"type": "string"
+						},
+						"pink_dark": {
+							"type": "string"
+						},
+						"pink_light": {
+							"type": "string"
+						},
+						"purple": {
+							"type": "string"
+						},
+						"purple_dark": {
+							"type": "string"
+						},
+						"purple_light": {
+							"type": "string"
+						},
+						"red": {
+							"type": "string"
+						},
+						"red_dark": {
+							"type": "string"
+						},
+						"red_light": {
+							"type": "string"
+						},
+						"sky": {
+							"type": "string"
+						},
+						"sky_dark": {
+							"type": "string"
+						},
+						"sky_light": {
+							"type": "string"
+						},
+						"yellow": {
+							"type": "string"
+						},
+						"yellow_dark": {
+							"type": "string"
+						},
+						"yellow_light": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				},
+				"name": {
+					"type": "string"
+				},
+				"pinned": {
+					"type": "boolean"
+				},
+				"prefs": {
+					"properties": {
+						"autoArchive": {},
+						"background": {
+							"type": "string"
+						},
+						"backgroundBottomColor": {
+							"type": "string"
+						},
+						"backgroundBrightness": {
+							"type": "string"
+						},
+						"backgroundColor": {
+							"type": ["null", "string"]
+						},
+						"backgroundDarkColor": {},
+						"backgroundDarkImage": {},
+						"backgroundImage": {
+							"type": ["null", "string"]
+						},
+						"backgroundImageScaled": {
+							"items": {
+								"properties": {
+									"height": {
+										"type": "number"
+									},
+									"url": {
+										"type": "string"
+									},
+									"width": {
+										"type": "number"
+									}
+								},
+								"type": "object"
+							},
+							"type": ["array", "null"]
+						},
+						"backgroundTile": {
+							"type": "boolean"
+						},
+						"backgroundTopColor": {
+							"type": "string"
+						},
+						"calendarFeedEnabled": {
+							"type": "boolean"
+						},
+						"canBeEnterprise": {
+							"type": "boolean"
+						},
+						"canBeOrg": {
+							"type": "boolean"
+						},
+						"canBePrivate": {
+							"type": "boolean"
+						},
+						"canBePublic": {
+							"type": "boolean"
+						},
+						"canInvite": {
+							"type": "boolean"
+						},
+						"cardAging": {
+							"type": "string"
+						},
+						"cardCounts": {
+							"type": "boolean"
+						},
+						"cardCovers": {
+							"type": "boolean"
+						},
+						"comments": {
+							"type": "string"
+						},
+						"hiddenPluginBoardButtons": {
+							"items": {
+								"type": "string"
+							},
+							"type": "array"
+						},
+						"hideVotes": {
+							"type": "boolean"
+						},
+						"invitations": {
+							"type": "string"
+						},
+						"isTemplate": {
+							"type": "boolean"
+						},
+						"permissionLevel": {
+							"type": "string"
+						},
+						"selfJoin": {
+							"type": "boolean"
+						},
+						"sharedSourceUrl": {
+							"type": ["null", "string"]
+						},
+						"showCompleteStatus": {
+							"type": "boolean"
+						},
+						"switcherViews": {
+							"items": {
+								"properties": {
+									"enabled": {
+										"type": "boolean"
+									},
+									"viewType": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						},
+						"voting": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				},
+				"shortUrl": {
+					"type": "string"
+				},
+				"url": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"webhook": {
+			"properties": {
+				"active": {
+					"type": "boolean"
+				},
+				"callbackURL": {
+					"type": "string"
+				},
+				"consecutiveFailures": {
+					"type": "number"
+				},
+				"description": {
+					"type": "string"
+				},
+				"firstConsecutiveFailDate": {},
+				"id": {
+					"type": "string"
+				},
+				"idModel": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		}
+	},
+	"type": "object"
+}

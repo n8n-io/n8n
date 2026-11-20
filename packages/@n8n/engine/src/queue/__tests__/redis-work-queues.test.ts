@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import type { EngineLogger } from '../../logging';
 import { createRedisWorkQueues } from '../redis-work-queues';
 import { FakeRedisList } from './fake-redis-list';
 
@@ -12,7 +13,7 @@ const stepKey = 'n8n:engine-v2-queue:step';
 const enqueued = JSON.stringify({ type: 'execution:enqueued', executionId: 'exec-1' });
 const ready = JSON.stringify({ type: 'step:ready', executionId: 'exec-1', stepId: 'step-1' });
 
-function create(concurrency = { orchestration: 1, step: 1 }) {
+function create(concurrency = { orchestration: 1, step: 1 }, logger?: EngineLogger) {
 	const publisher = new FakeRedisConnection();
 	const consumers: FakeRedisConnection[] = [];
 	const { queues, close } = createRedisWorkQueues({
@@ -24,12 +25,13 @@ function create(concurrency = { orchestration: 1, step: 1 }) {
 		},
 		keyPrefix: 'n8n',
 		concurrency,
+		logger,
 	});
 	const [orchestrationConsumer, stepConsumer] = consumers;
 	return { publisher, consumers, orchestrationConsumer, stepConsumer, queues, close };
 }
 
-/** Starts both queues with handlers that wait until `release` is called. */
+/** Starts both queues with handlers that block until `stop()`. */
 function startBlocked({ queues }: ReturnType<typeof create>) {
 	let release = () => {};
 	const blocked = new Promise<void>((resolve) => (release = resolve));
@@ -97,6 +99,23 @@ describe('createRedisWorkQueues', () => {
 		} finally {
 			await stop();
 		}
+	});
+
+	it('drops a message of the other queue and logs it through the given logger', async () => {
+		const logger = { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
+		const created = create(undefined, logger);
+		created.orchestrationConsumer.items.push(ready);
+		created.stepConsumer.items.push(enqueued);
+		const { orchestrationHandler, stepHandler, stop } = startBlocked(created);
+
+		try {
+			await vi.waitFor(() => expect(logger.error).toHaveBeenCalledTimes(2));
+		} finally {
+			await stop();
+		}
+
+		expect(orchestrationHandler).not.toHaveBeenCalled();
+		expect(stepHandler).not.toHaveBeenCalled();
 	});
 
 	it('closes the consumer connections it opened but not the publisher', () => {

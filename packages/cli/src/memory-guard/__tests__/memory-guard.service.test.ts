@@ -2,7 +2,7 @@ import type { Logger } from '@n8n/backend-common';
 import type { EventService } from '@n8n/backend-services';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { GlobalConfig, MemoryGuardConfig } from '@n8n/config';
-import type { ExecutionRepository, User, WorkflowEntity, WorkflowRepository } from '@n8n/db';
+import type { User, WorkflowEntity, WorkflowRepository } from '@n8n/db';
 import type { WorkflowExecuteAfterContext } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type {
@@ -187,7 +187,7 @@ describe('MemoryGuardService', () => {
 		productionHold = new ProductionHold(mock<EventService>());
 		concurrencyControl = new ConcurrencyControlService(
 			mockLogger(),
-			mock<ExecutionRepository>(),
+			mock(),
 			mock<Telemetry>(),
 			mock<EventService>(),
 			globalConfig,
