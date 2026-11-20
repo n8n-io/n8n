@@ -1,191 +1,91 @@
-# Component specification
+# N8nTabs
 
-A tab bar for switching between views. Use it to select one view from a set of related views. The component can render the panel content, or the caller can show and hide the content.
+A tab bar selects one view from a set of related views. The caller can render the content, or the component can render panels with the correct ARIA links.
 
-Built on Reka UI `Tabs`. `TabsRoot` holds the selected value, orientation, roving focus, and ids. `TabsContent` is optional. Callers that control their own content do not need it.
+## API Contract
 
-- **Component Name:** N8nTabs
-- **Reka UI Component:** [Tabs](https://reka-ui.com/docs/components/tabs)
+`N8nTabs` is generic over `Value extends string | number`. Vue gets `Value` from `modelValue` and `options`, so `update:modelValue` and `#content` use the narrowed type. A route option (`to`) goes to its route and does not select a tab. The caller sets `modelValue` from the current route. The Reka primitives are exported as `N8nTabsRoot`, `N8nTabsList`, `N8nTabsTrigger`, `N8nTabsContent`, and `N8nTabsIndicator` for layouts that the props cannot express.
 
+Breaking changes from the previous version: `href`, `isDestructive`, the `danger` tab variant, icon-only tabs, and `variant: 'legacy' | 'modern'` are removed. 18 `.vue` files in `packages/frontend` use `N8nTabs`.
 
-## Public API Definition
-
-**Props**
-
-- `modelValue?: Value` - The selected tab value. Bind with `v-model`
-- `options?: Array<TabOptions<Value>>` - Tabs to render. See `TabOptions` below | `default: []`
-- `size?: 'small' | 'medium' | 'large'` - Tab size | `default: 'medium'`
-- `justified?: boolean` - Spreads the tabs over the full width in equal slots. Every tab stays in place when a label changes width. Long labels are truncated | `default: false`
-- `orientation?: 'horizontal' | 'vertical'` - Layout of the tab list. Also sets the arrow keys for keyboard navigation | `default: 'horizontal'`
-
-
-**Events**
-
-- `update:modelValue(value: Value)` - Fired when the user selects a tab
-- `tooltipClick(value: Value, e: MouseEvent)` - Fired when the user clicks inside the tooltip of a tab
-
-
-**Slots**
-
-- `default` - Rendered inside `TabsRoot`, after the tab list, with no wrapper. Use it to keep caller-controlled show and hide logic. It can also contain `N8nTabsContent` panels
-- `content`: `{ value: Value }` - Rendered inside a `TabsContent` for the selected tab. Use it to get full panel accessibility wiring with no extra markup
-
-
-**Types**
-
-```typescript
-/** packages/frontend/@n8n/design-system/src/types/tabs.ts */
+```ts
 interface TabOptions<Value extends string | number> {
+  /** Unique id of the tab. Also used for `id` and `data-test-id="tab-${value}"`. */
   value: Value;
+  /** Visible text. Required, because icon-only tabs are not supported. */
   label: string;
   icon?: IconName | (string & {});
+  /** Side of the icon. Default 'left'. */
   iconPosition?: 'left' | 'right';
-  /** Colors only the icon, for example `danger` to flag a problem. */
+  /** Colors only the icon, for example 'danger' to flag a problem. */
   iconColor?: IconColor;
+  /** Prevents selection. Combine with `tooltip` to explain why. */
   disabled?: boolean;
+  /** HTML content of the tooltip on the tab. */
   tooltip?: string;
+  /** 'right' groups the tab at the right end of the list. */
   align?: 'left' | 'right';
+  /** Makes the tab a route link. It does not emit `update:modelValue`. */
   to?: RouteLocationRaw;
+  /** Shows a notification dot. */
   notification?: boolean;
+  /** Shows the text in a badge after the label. */
   tag?: string;
+  /** Shows a preview badge after the label. */
   preview?: boolean;
 }
 
 interface TabsProps<Value extends string | number = string | number> {
+  /** The selected tab. Bind with `v-model`. */
   modelValue?: Value;
-  /** Base generic. Callers can narrow `Value` outside the component. */
+  /** The tabs to render. Default []. */
   options?: Array<TabOptions<Value>>;
-  /** These sizes should align with UI sizes in Select/Input etc */
-  size?: 'small' | 'medium' | 'large';  
-  /**
-   * Spread the tabs over the full width in equal slots. Keeps every tab in
-   * place when a label changes width, at the cost of truncating long ones.
-   */
+  /** Tab height. Aligns with the sizes of Select and Input. Default 'medium'. */
+  size?: 'small' | 'medium' | 'large';
+  /** Equal-width tabs over the full width, so a label change does not move other tabs. Default false. */
   justified?: boolean;
-  /** Determines the layout. Default horizontal. */
+  /** Layout and arrow keys for keyboard navigation. Default 'horizontal'. */
   orientation?: 'horizontal' | 'vertical';
+  /** Marks the active tab with a bar or a background. Default 'underline'. */
+  variant?: 'underline' | 'filled';
+}
+
+interface TabsEvents<Value extends string | number> {
+  /** The user selected an enabled tab that is not a route option. */
+  'update:modelValue': [value: Value];
+  /** The user clicked inside the tooltip content of a tab. */
+  tooltipClick: [value: Value, e: MouseEvent];
+}
+
+interface TabsSlots<Value extends string | number> {
+  /** Caller-controlled content or `N8nTabsContent` panels, after the tab bar, with no wrapper. */
+  default?: () => unknown;
+  /** Content of the selected tab, in a panel with ARIA links to its tab. */
+  content?: (props: { value: Value }) => unknown;
+  /** Actions or external links in the tab bar, after the tab list. */
+  suffix?: () => unknown;
 }
 ```
 
-`N8nTabs` is generic over `Value extends string | number`. Vue infers `Value` from `modelValue` and `options`. `update:modelValue` and the `content` slot use the narrowed type.
+## Behaviour
 
+- **Must** select exactly one view at a time. The caller owns the selected value through `v-model`.
+- **Must** let the caller choose who renders the content: the tab bar only, the caller's own content in `#default`, or component panels in `#content`.
+- **Must** treat route options as navigation, not selection. A click goes to the route and does not emit `update:modelValue`.
+- **Must** move focus with arrow keys and select only on Enter or Space, so keyboard users can look through tabs with no view change.
+- **Must** keep every tab reachable when the tabs do not fit a horizontal bar: scroll buttons, and scroll into view on focus.
+- **Must** keep tabs in place when `justified`, so a label change does not move the other tabs.
+- **Should** let a disabled tab explain itself with a `tooltip`, for mouse and keyboard users.
+- **Should** match the heights of `N8nSelect` and `N8nInput` at the same `size`, so tabs fit in a toolbar with other controls.
+- **Won't** support external links as tabs. A tab changes the view. Use `#suffix` for links.
+- **Won't** cover layouts that the props cannot express. Use the exported primitives.
 
-## Structure
+## Open questions
+- The notification dot is `aria-hidden`. How does a screen reader user learn about it?
+- Reka can remove disabled tabs from focus. How do keyboard users read the tooltip that explains why a tab is disabled?
 
-```vue
-<!-- N8nTabs.vue -->
-<TabsRoot
-  :model-value="modelValue"
-  :orientation="orientation"  
-  @update:model-value="emit('update:modelValue', $event)"
->
-  <div :class="['n8n-tabs', $style.container]">
-    <!-- scroll buttons + TabsList + TabsTriggers -->
-  </div>
+## References
 
-  <TabsContent v-if="$slots.content && modelValue !== undefined" :value="modelValue">
-    <slot name="content" :value="modelValue" />
-  </TabsContent>
-
-  <slot />
-</TabsRoot>
-```
-
-- `TabsRoot` has no styles. The tab bar styles stay on `tabsContainer`.
-- The scroll buttons stay outside `TabsList`, so arrow-key navigation does not stop on them.
-- The order of the slots is: tab bar, `content` slot, default slot.
-
-
-## Notes
-
-- **Model name.** The prop is `modelValue`, so `v-model` works with no argument. Bind `TabsRoot` with `:model-value` and `@update:model-value`. Do not use `:v-model` or a different event name.
-- **Backward compatibility.** With no slots, `N8nTabs` works the same as before. Existing callers do not need changes.
-- **Dangling `aria-controls`.** Each `TabsTrigger` sets `aria-controls` to the id of its panel. Content in the default slot that has no `N8nTabsContent` wrapper leaves this id without a target. To fix this, wrap panels in `N8nTabsContent` or use the `content` slot.
-- **Route options (`to`).** These options render in `TabsList` as `TabsTrigger` with `as` set to `RouterLink`. They keep their order, style, and arrow-key focus like other tabs. A click goes to the route, and the component does not emit `update:modelValue`. The consumer sets `modelValue` from the current route. A disabled route option renders as a disabled button.
-- **Disabled tabs.** Pass `disabled` to `TabsTrigger`. Disabled `to` options render as inert tabs and do not navigate.
-- **External links.** Tabs do not support external links. Put them in the `suffix` slot. The call site owns the link markup and its click handling.
-- **Tooltips.** `N8nTooltip` wraps the trigger through `as-child`, so focus and hover reach the trigger.
-- **Active state styles.** Use `[data-state='active']` and `[data-disabled]` from Reka. Do not use custom active classes.
-- **Overflow scroll.** `TabsList` is a component ref. Use `$el` for the `ResizeObserver` and scroll logic. When roving focus moves to a tab outside the visible area, scroll that tab into view.
-- **Layout change for migrated callers.** Callers that move content into a slot get `TabsRoot` as the new parent. Some callers need CSS changes for flex or grid layouts.
-- **Test ids.** Each tab keeps `id="${value}"` and `data-test-id="tab-${value}"`.
-- **Primitives.** `N8nTabsRoot`, `N8nTabsList`, `N8nTabsTrigger`, and `N8nTabsContent` stay exported for layouts that `N8nTabs` cannot express.
-
-
-### Template usage example
-
-```vue
-<script setup lang="ts">
-import { ref } from 'vue'
-
-const tab = ref('general')
-</script>
-
-<template>
-  <!-- Tab bar only. The caller shows and hides content outside the component. -->
-  <N8nTabs
-    v-model="tab"
-    :options="[
-      { label: 'General', value: 'general' },
-      { label: 'Advanced', value: 'advanced' },
-    ]"
-  />
-</template>
-```
-
-```vue
-<script setup lang="ts">
-import { ref } from 'vue'
-
-const tab = ref('general')
-</script>
-
-<template>
-  <!-- Existing call site, moved into the default slot -->
-  <N8nTabs v-model="tab" :options="options">
-    <GeneralPanel v-if="tab === 'general'" />
-    <AdvancedPanel v-else />
-  </N8nTabs>
-</template>
-```
-
-```vue
-<script setup lang="ts">
-import { ref } from 'vue'
-
-const tab = ref('general')
-</script>
-
-<template>
-  <!-- Opt in to panel wiring. The default slot is inside TabsRoot. -->
-  <N8nTabs v-model="tab" :options="options">
-    <N8nTabsContent value="general"><GeneralPanel /></N8nTabsContent>
-    <N8nTabsContent value="advanced"><AdvancedPanel /></N8nTabsContent>
-  </N8nTabs>
-</template>
-```
-
-```vue
-<script setup lang="ts">
-import { ref } from 'vue'
-import type { TabOptions } from '@n8n/design-system'
-
-type SettingsTab = 'general' | 'advanced'
-
-const tab = ref<SettingsTab>('general')
-const options: Array<TabOptions<SettingsTab>> = [
-  { label: 'General', value: 'general' },
-  { label: 'Advanced', value: 'advanced' },
-]
-</script>
-
-<template>
-  <!-- Content slot. `value` has the type SettingsTab. -->
-  <N8nTabs v-model="tab" :options="options" orientation="vertical">
-    <template #content="{ value }">
-      <GeneralPanel v-if="value === 'general'" />
-      <AdvancedPanel v-else />
-    </template>
-  </N8nTabs>
-</template>
-```
+- Reka UI Tabs: https://reka-ui.com/docs/components/tabs
+- WAI-ARIA APG Tabs pattern: https://www.w3.org/WAI/ARIA/apg/patterns/tabs/
+- Source: `packages/frontend/@n8n/design-system/src/components/N8nTabs/`
