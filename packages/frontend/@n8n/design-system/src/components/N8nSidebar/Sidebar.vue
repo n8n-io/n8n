@@ -44,16 +44,18 @@ let clampedSource: string | undefined;
 function assignWidth(value: number): number {
 	const next = clampWidth(value);
 	if (displayedWidth.value !== next) displayedWidth.value = next;
-	const source = `${value}:${props.minWidth}:${props.maxWidth}`;
-	if (value !== next && clampedSource !== source) {
-		clampedSource = source;
-		width.value = next;
+	if (width.value === next) {
+		clampedSource = undefined;
+		return next;
 	}
-	if (value === next) clampedSource = undefined;
+	const source = `${value}:${props.minWidth}:${props.maxWidth}`;
+	if (clampedSource === source) return next;
+	clampedSource = source;
+	width.value = next;
 	return next;
 }
 
-assignWidth(startingWidth);
+assignWidth(width.value);
 
 function readStoredWidth(key: string | undefined): number | undefined {
 	if (!key) return undefined;
