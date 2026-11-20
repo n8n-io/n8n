@@ -106,6 +106,65 @@ describe('waitForEngineV2Execution', () => {
 		expect(stop).toHaveBeenCalledTimes(1);
 	});
 
+	it('stops the execution when the time runs out during a stalled read', async () => {
+		const stop = vi.fn().mockResolvedValue(undefined);
+		const readStatus = vi.fn(async () => await new Promise<string>(() => {}));
+
+		const outcome = waitForEngineV2Execution({ readStatus, stop, timeoutMs: 1_000 });
+		await vi.advanceTimersByTimeAsync(1_000);
+
+		await expect(outcome).resolves.toMatchObject({ kind: 'cancelled', reason: 'timeout' });
+		expect(readStatus).toHaveBeenCalledTimes(1);
+		expect(stop).toHaveBeenCalledTimes(1);
+	});
+
+	it('stops the execution when the signal aborts during a stalled read', async () => {
+		const controller = new AbortController();
+		const stop = vi.fn().mockResolvedValue(undefined);
+		const readStatus = vi.fn(async () => await new Promise<string>(() => {}));
+
+		const outcome = waitForEngineV2Execution({
+			readStatus,
+			stop,
+			timeoutMs: 60_000,
+			abortSignal: controller.signal,
+		});
+		await vi.advanceTimersByTimeAsync(0);
+		controller.abort();
+		await vi.advanceTimersByTimeAsync(0);
+
+		await expect(outcome).resolves.toMatchObject({ kind: 'cancelled', reason: 'abort' });
+		expect(stop).toHaveBeenCalledTimes(1);
+	});
+
+	it('ignores a stalled read that rejects after the wait gave up', async () => {
+		let rejectRead: (error: Error) => void = () => {};
+		const readStatus = vi.fn(
+			async () =>
+				await new Promise<string>((_, reject) => {
+					rejectRead = reject;
+				}),
+		);
+
+		const outcome = waitForEngineV2Execution({ readStatus, stop: vi.fn(), timeoutMs: 1_000 });
+		await vi.advanceTimersByTimeAsync(1_000);
+		await expect(outcome).resolves.toMatchObject({ kind: 'cancelled', reason: 'timeout' });
+
+		// An unhandled rejection here would fail the test run.
+		rejectRead(new Error('data plane went away'));
+		await vi.advanceTimersByTimeAsync(0);
+	});
+
+	it('passes on an error from a read that ends before the deadline', async () => {
+		const stop = vi.fn();
+		const readStatus = vi.fn().mockRejectedValue(new Error('data plane error'));
+
+		await expect(waitForEngineV2Execution({ readStatus, stop, timeoutMs: 1_000 })).rejects.toThrow(
+			'data plane error',
+		);
+		expect(stop).not.toHaveBeenCalled();
+	});
+
 	it('reports the cancellation when the stop fails because the run settled first', async () => {
 		const stop = vi.fn().mockRejectedValue(new Error('already finished'));
 
