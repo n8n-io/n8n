@@ -7,64 +7,56 @@ import type { Mock } from 'vitest';
 // mock the shared sandbox module. The mock classes live in vi.hoisted
 // so they are shared between the mock factory and the test (`instanceof` checks in
 // source must see the same DaytonaError the test constructs).
-const { DaytonaError, DaytonaNotFoundError, Image } = vi.hoisted(() => {
-	class DaytonaError extends Error {
-		statusCode?: number;
-		constructor(message: string, statusCode?: number) {
-			super(message);
-			this.name = 'DaytonaError';
-			this.statusCode = statusCode;
+const { DaytonaError, DaytonaNotFoundError, Image, packSnapshotWorkspacePackages } = vi.hoisted(
+	() => {
+		class DaytonaError extends Error {
+			statusCode?: number;
+			constructor(message: string, statusCode?: number) {
+				super(message);
+				this.name = 'DaytonaError';
+				this.statusCode = statusCode;
+			}
 		}
-	}
-	class DaytonaNotFoundError extends DaytonaError {
-		constructor(message: string, statusCode = 404) {
-			super(message, statusCode);
-			this.name = 'DaytonaNotFoundError';
+		class DaytonaNotFoundError extends DaytonaError {
+			constructor(message: string, statusCode = 404) {
+				super(message, statusCode);
+				this.name = 'DaytonaNotFoundError';
+			}
 		}
-	}
-	class Image {
-		dockerfile: string;
-		contextList: Array<{ sourcePath: string; archivePath: string }>;
-		constructor(base = 'node:20') {
-			this.dockerfile = `FROM ${base}`;
-			this.contextList = [];
+		class Image {
+			dockerfile: string;
+			contextList: Array<{ sourcePath: string; archivePath: string }>;
+			constructor(base = 'node:20') {
+				this.dockerfile = `FROM ${base}`;
+				this.contextList = [];
+			}
+			static base(base: string) {
+				return new Image(base);
+			}
+			addLocalDir(localPath: string, remotePath: string) {
+				this.contextList.push({ sourcePath: localPath, archivePath: localPath });
+				this.dockerfile += `\nCOPY ${localPath} ${remotePath}`;
+				return this;
+			}
+			runCommands(...commands: string[]) {
+				this.dockerfile += commands.map((command) => `\nRUN ${command}`).join('');
+				return this;
+			}
 		}
-		static base(base: string) {
-			return new Image(base);
-		}
-		addLocalDir(localPath: string, remotePath: string) {
-			this.contextList.push({ sourcePath: localPath, archivePath: localPath });
-			this.dockerfile += `\nCOPY ${localPath} ${remotePath}`;
-			return this;
-		}
-		runCommands(...commands: string[]) {
-			this.dockerfile += commands.map((command) => `\nRUN ${command}`).join('');
-			return this;
-		}
-	}
-	return { DaytonaError, DaytonaNotFoundError, Image };
-});
+		return { DaytonaError, DaytonaNotFoundError, Image, packSnapshotWorkspacePackages: vi.fn() };
+	},
+);
 
 vi.mock('@n8n/agents/sandbox', async (importOriginal) => ({
 	...(await importOriginal<typeof SharedSandboxMod>()),
 	loadDaytona: () => ({ DaytonaError, DaytonaNotFoundError, Image }),
 }));
 
-vi.mock('../builder-templates-service', () => {
-	class MockBuilderTemplatesService {
-		getBundle = vi.fn().mockResolvedValue({ archive: null, version: null });
-	}
-	return {
-		BuilderTemplatesService: MockBuilderTemplatesService,
-		builderTemplatesOptionsFromEnv: vi.fn().mockReturnValue({}),
-	};
-});
+vi.mock('../pack-workspace-sdk', async (importOriginal) => ({
+	...(await importOriginal<typeof import('../pack-workspace-sdk')>()),
+	packSnapshotWorkspacePackages,
+}));
 
-import {
-	RUNTIME_SKILL_REGISTRY_SCHEMA_VERSION,
-	type RuntimeSkillLinkedFiles,
-	type RuntimeSkillSource,
-} from '@n8n/agents';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
@@ -72,8 +64,6 @@ import type { Logger } from '../../logger';
 import { SnapshotManager } from '../snapshot-manager';
 
 const SNAPSHOT_NAME = 'n8n/instance-ai:1.123.0';
-const SKILLS_HASH_A = 'aaaaaaaaaaaa';
-const SKILLS_HASH_B = 'bbbbbbbbbbbb';
 
 const NOOP_LOGGER: Logger = {
 	info: () => {},
@@ -114,42 +104,6 @@ interface FakeDaytona {
 	snapshot: FakeSnapshotApi;
 }
 
-function emptyLinkedFiles(): RuntimeSkillLinkedFiles {
-	return {
-		references: [],
-		templates: [],
-		scripts: [],
-		assets: [],
-		examples: [],
-		other: [],
-	};
-}
-
-function createRuntimeSkillSource(skillsHash: string): RuntimeSkillSource {
-	return {
-		registry: {
-			schemaVersion: RUNTIME_SKILL_REGISTRY_SCHEMA_VERSION,
-			skillsHash,
-			skills: [
-				{
-					id: 'snapshot-skill',
-					name: 'snapshot-skill',
-					description: 'Snapshot skill',
-					hash: skillsHash,
-					linkedFiles: emptyLinkedFiles(),
-				},
-			],
-		},
-		loadSkill: async () =>
-			await Promise.resolve({
-				id: 'snapshot-skill',
-				name: 'snapshot-skill',
-				description: 'Snapshot skill',
-				instructions: 'Use baked skills.',
-			}),
-	};
-}
-
 function makeFakeDaytona(): FakeDaytona {
 	return {
 		snapshot: {
@@ -185,6 +139,10 @@ function mockGetActiveOnlyFor(daytona: FakeDaytona, name: string): void {
 }
 
 describe('SnapshotManager.ensureImage', () => {
+	afterEach(() => {
+		packSnapshotWorkspacePackages.mockReset();
+	});
+
 	it('stages workspace files and builds a small COPY-based Daytona image descriptor', async () => {
 		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0');
 
@@ -192,10 +150,13 @@ describe('SnapshotManager.ensureImage', () => {
 
 		expect(image.dockerfile).toContain('COPY');
 		expect(image.dockerfile).toContain('/tmp/n8n-workspace-bake');
-		expect(image.dockerfile).toContain('cp -a /tmp/n8n-workspace-bake/. /home/daytona/workspace/');
 		expect(image.dockerfile).toContain(
-			'mkdir -p /home/daytona/workspace/src /home/daytona/workspace/chunks /home/daytona/workspace/node-types',
+			'SUDO=$([ "$(id -u)" = 0 ] || echo sudo) && $SUDO mkdir -p /home/user/workspace && $SUDO chown -R "$(id -u):$(id -g)" /home/user && cp -a /tmp/n8n-workspace-bake/. /home/user/workspace/',
 		);
+		expect(image.dockerfile).toContain(
+			'mkdir -p /home/user/workspace/src /home/user/workspace/chunks /home/user/workspace/node-types',
+		);
+		expect(image.dockerfile).not.toContain('/home/daytona/workspace');
 		expect(image.dockerfile).toContain(
 			'npm install --ignore-scripts --no-audit --no-fund --prefer-offline',
 		);
@@ -206,21 +167,6 @@ describe('SnapshotManager.ensureImage', () => {
 			'typescript/unstable/async',
 		);
 		expect(stagingDir).toContain('n8n-snapshot-context-1.123.0');
-		await expect(
-			readFile(join(stagingDir, 'skills/data-table-manager/SKILL.md'), 'utf-8'),
-		).resolves.toContain('data-table');
-		await expect(
-			readFile(
-				join(stagingDir, 'skills/data-table-manager/references/data-table-playbook.md'),
-				'utf-8',
-			),
-		).resolves.toBeDefined();
-		await expect(
-			readFile(join(stagingDir, 'skills/registry.json'), 'utf-8'),
-		).resolves.toBeDefined();
-		await expect(
-			readFile(join(stagingDir, 'skills/.manifest.json'), 'utf-8'),
-		).resolves.toBeDefined();
 		await expect(
 			readFile(join(stagingDir, 'knowledge-base/best-practices/scheduling.md'), 'utf-8'),
 		).resolves.toBeDefined();
@@ -240,32 +186,34 @@ describe('SnapshotManager.ensureImage', () => {
 
 		expect(stagingDir).toBeDefined();
 		expect(stagingDir).not.toContain('n8n-snapshot-context-temp-');
-		expect(stagingDir).toMatch(/n8n-snapshot-context-.+-/);
+		expect(stagingDir).toMatch(/n8n-snapshot-context-[0-9a-f]+$/);
 	});
 
-	it('uses the same snapshot name regardless of runtime skills hash', async () => {
-		const daytonaA = makeFakeDaytona();
-		const daytonaB = makeFakeDaytona();
-		daytonaA.snapshot.create.mockResolvedValue({ name: SNAPSHOT_NAME });
-		daytonaB.snapshot.create.mockResolvedValue({ name: SNAPSHOT_NAME });
-		const managerA = new SnapshotManager(
-			undefined,
-			NOOP_LOGGER,
-			'1.123.0',
-			createRuntimeSkillSource(SKILLS_HASH_A),
-		);
-		const managerB = new SnapshotManager(
-			undefined,
-			NOOP_LOGGER,
-			'1.123.0',
-			createRuntimeSkillSource(SKILLS_HASH_B),
-		);
+	it('bakes local workspace package tarballs into release snapshots', async () => {
+		packSnapshotWorkspacePackages.mockResolvedValue([
+			{
+				filename: 'n8n-workflow-sdk-0.41.0.tgz',
+				packageName: '@n8n/workflow-sdk',
+				packagePath: '/repo/packages/@n8n/workflow-sdk',
+				tarball: Buffer.from([0, 1, 2, 255]),
+				version: '0.41.0',
+			},
+		]);
+		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.1', {
+			packWorkspacePackages: true,
+		});
 
-		const snapshotA = await managerA.createSnapshot(daytonaA as never);
-		const snapshotB = await managerB.createSnapshot(daytonaB as never);
+		const image = await manager.ensureImage();
+		const stagingDir = image.contextList[0]?.sourcePath;
 
-		expect(snapshotA).toBe(SNAPSHOT_NAME);
-		expect(snapshotB).toBe(SNAPSHOT_NAME);
+		expect(packSnapshotWorkspacePackages).toHaveBeenCalledWith(NOOP_LOGGER);
+		expect(stagingDir).toBeDefined();
+		await expect(readFile(join(stagingDir, 'package.json'), 'utf8')).resolves.toContain(
+			'file:.n8n-packages/n8n-workflow-sdk-0.41.0.tgz',
+		);
+		await expect(
+			readFile(join(stagingDir, '.n8n-packages/n8n-workflow-sdk-0.41.0.tgz')),
+		).resolves.toEqual(Buffer.from([0, 1, 2, 255]));
 	});
 
 	it('keeps the snapshot name stable when the base image changes', async () => {
@@ -273,18 +221,8 @@ describe('SnapshotManager.ensureImage', () => {
 		const daytonaB = makeFakeDaytona();
 		daytonaA.snapshot.create.mockResolvedValue({ name: 'ignored-a' });
 		daytonaB.snapshot.create.mockResolvedValue({ name: 'ignored-b' });
-		const managerA = new SnapshotManager(
-			'daytonaio/sandbox:0.5.0',
-			NOOP_LOGGER,
-			'1.123.0',
-			createRuntimeSkillSource(SKILLS_HASH_A),
-		);
-		const managerB = new SnapshotManager(
-			'node:24',
-			NOOP_LOGGER,
-			'1.123.0',
-			createRuntimeSkillSource(SKILLS_HASH_A),
-		);
+		const managerA = new SnapshotManager('daytonaio/sandbox:0.5.0', NOOP_LOGGER, '1.123.0');
+		const managerB = new SnapshotManager('node:24', NOOP_LOGGER, '1.123.0');
 
 		const snapshotA = await managerA.createSnapshot(daytonaA as never);
 		const snapshotB = await managerB.createSnapshot(daytonaB as never);

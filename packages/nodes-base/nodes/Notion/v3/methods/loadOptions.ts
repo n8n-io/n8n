@@ -1,6 +1,6 @@
 import moment from 'moment-timezone';
 import type { IDataObject, ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
-import { toPathSegment } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { extractPageId, getBlockTypesOptions } from '../../shared/GenericFunctions';
 import { splitPropertyKey } from '../helpers/utils';
@@ -109,7 +109,7 @@ export async function getPropertySelectValues(
 
 export async function getUsers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	const returnData: INodePropertyOptions[] = [];
-	const users = await notionApiRequestAllItemsV3.call(this, 'results', 'GET', '/users');
+	const users = await notionApiRequestAllItemsV3.call(this, 'results', 'GET', requestPath`/users`);
 	for (const user of users) {
 		if (isDataObject(user) && user.type === 'person') {
 			returnData.push({
@@ -131,7 +131,7 @@ async function getParentDataSourceIdFromPage(
 	if (!pageId) {
 		return undefined;
 	}
-	const page = await notionApiRequestV3.call(this, 'GET', `/pages/${toPathSegment(pageId)}`);
+	const page = await notionApiRequestV3.call(this, 'GET', requestPath`/pages/${pageId}`);
 	if (!isDataObject(page) || !isDataObject(page.parent)) {
 		return undefined;
 	}

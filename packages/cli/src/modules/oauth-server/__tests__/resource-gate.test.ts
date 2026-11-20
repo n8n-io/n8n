@@ -1,9 +1,10 @@
 import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
+import { authorizeAgainstGrant } from '@/modules/inbound-auth-core/grant-authorization';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
-import { authorizeAgainstGrant, triggerResourceGate } from '../resource-gate';
+import { triggerResourceGate } from '../resource-gate';
 
 const user = mock<User>({ id: 'user-1' });
 const workflowFinderService = mock<WorkflowFinderService>();
@@ -16,39 +17,6 @@ const withExecuteAccessTo = (...workflowIds: string[]) => {
 
 beforeEach(() => {
 	vi.clearAllMocks();
-});
-
-describe('authorizeAgainstGrant', () => {
-	it('allows a holder who still has execute access on the named workflow', async () => {
-		withExecuteAccessTo('wf-1');
-
-		await expect(
-			authorizeAgainstGrant(
-				workflowFinderService,
-				{ audiences: ['aud'], executeAccessWorkflowId: 'wf-1' },
-				user,
-			),
-		).resolves.toBe(true);
-	});
-
-	it('denies a holder who has lost it', async () => {
-		withExecuteAccessTo();
-
-		await expect(
-			authorizeAgainstGrant(
-				workflowFinderService,
-				{ audiences: ['aud'], executeAccessWorkflowId: 'wf-1' },
-				user,
-			),
-		).resolves.toBe(false);
-	});
-
-	it('names no workflow when the trigger does not require execute access', async () => {
-		await expect(
-			authorizeAgainstGrant(workflowFinderService, { audiences: ['aud'] }, user),
-		).resolves.toBe(true);
-		expect(workflowFinderService.findWorkflowIdsWithScopeForUser).not.toHaveBeenCalled();
-	});
 });
 
 describe('triggerResourceGate', () => {

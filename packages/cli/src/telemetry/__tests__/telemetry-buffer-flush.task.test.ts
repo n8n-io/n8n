@@ -16,8 +16,7 @@ describe('TelemetryBufferFlushTask', () => {
 	it('should flush in every kind of instance every 6 hours', () => {
 		expect(task.name).toBe('telemetry-buffer-flush');
 		expect(task.schedule).toEqual({ kind: 'interval', intervalSeconds: 21600 });
-		expect(task.effects).toBe('non-idempotent');
-		expect(task.placement).toEqual({
+		expect(task.target).toEqual({
 			scope: 'instance',
 			instanceTypes: ['main', 'worker', 'webhook'],
 		});

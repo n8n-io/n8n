@@ -9,9 +9,9 @@ import {
 	type User,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { DataSource } from '@n8n/typeorm';
 
-import { Agent } from '@/modules/agents/entities/agent.entity';
+import type { Agent } from '@/modules/agents/entities/agent.entity';
+import { createAgent as createTestAgent } from '@test-integration/db/agents';
 import { createUserShell } from '@test-integration/db/users';
 
 // `findLatestByRunId` joins two tables, so it runs against the real driver here:
@@ -25,9 +25,7 @@ let datasetRepository: AgentEvalDatasetRepository;
 
 /** Insert a minimal real agent row so `agent_eval_dataset.agentId`'s FK holds. */
 async function createAgent(projectId: string): Promise<Agent> {
-	return await Container.get(DataSource)
-		.getRepository(Agent)
-		.save(Object.assign(new Agent(), { name: 'test agent', projectId }));
+	return await createTestAgent({ name: 'test agent', projectId });
 }
 
 /** A run with `count` seeded result rows, wired through a real dataset + agent. */

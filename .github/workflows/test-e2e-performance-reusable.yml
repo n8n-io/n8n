@@ -1,5 +1,8 @@
 name: 'Test: E2E Performance'
 
+permissions:
+  contents: read
+
 on:
   workflow_call:
   workflow_dispatch:
@@ -22,6 +25,17 @@ jobs:
       pre-generated-matrix: '[{"shard":1,"images":""},{"shard":2,"images":""}]'
       currents-project-id: 'O9BJaN'
       artifact-prefix: performance
+    secrets: inherit
+
+  idle-memory-baselines:
+    needs: [prepare-docker]
+    uses: ./.github/workflows/test-e2e-reusable.yml
+    with:
+      test-mode: docker-artifact
+      test-command: pnpm --filter=@n8n/efficiency test:memory
+      workers: '1'
+      currents-project-id: 'O9BJaN'
+      artifact-prefix: memory-performance
     secrets: inherit
 
   canvas-perf-sentinels:

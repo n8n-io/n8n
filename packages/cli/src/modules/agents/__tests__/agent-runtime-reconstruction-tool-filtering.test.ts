@@ -2,19 +2,24 @@ import type * as agents from '@n8n/agents';
 import type { CredentialProvider } from '@n8n/agents';
 import {
 	N8N_CHAT_INTEGRATION_TYPE,
+	AI_GATEWAY_MANAGED_TAG,
+	type AgentIntegrationConfig,
 	type AgentJsonConfig,
+	type AgentJsonSkillConfig,
 	type AgentJsonToolConfig,
 } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { CustomFetch, HttpTransport, OutboundHttp } from '@n8n/backend-network';
+import { AgentsConfig } from '@n8n/config';
 import type {
 	CredentialsEntity,
+	PersonRepository,
 	User,
-	UserRepository,
 	WorkflowEntity,
 	WorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { UserError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
@@ -25,34 +30,54 @@ import type { OauthService } from '@/oauth/oauth.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import type { AiService } from '@/services/ai.service';
 import { WorkflowRunner } from '@/workflow-runner';
+import type { CredentialsService } from '@/credentials/credentials.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { CallableWorkflowLoader } from '@/workflows/callable/callable-workflow-loader.service';
+import { CallableWorkflowUnavailableError } from '@/workflows/callable/callable-workflow-unavailable.error';
+import { makeKnowledgeAvailabilityService } from '@/modules/knowledge/__tests__/test-utils/knowledge-availability.service';
 
+import { AgentsCredentialProvider } from '../adapters/agents-credential-provider';
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
-import type { AgentKnowledgeMirrorService } from '../agent-knowledge-mirror.service';
+import type { KnowledgeRetrievalService } from '@/modules/knowledge/retrieval/knowledge-retrieval.service';
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
+import type { AgentKnowledgeUsageTracker } from '../agent-knowledge-usage-tracker';
 import type { AgentSandboxRuntimeService } from '../agent-sandbox-runtime.service';
 import type { AgentWorkspaceService } from '../agent-workspace.service';
-import type { Agent } from '../entities/agent.entity';
+import type { ProjectAgent } from '../entities/agent.entity';
+import { resolveAgentRunSource, type AgentRunSource } from '../utils/agent-published-snapshot';
+import { createAgentSkillRefsService, storedAgentConfig } from './test-utils/stored-agent-config';
+import type { AgentCredentialProvider } from '../agent-credential-provider.contracts';
 import { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
 import { ChatIntegrationActionExecutor } from '../integrations/integration-action-executor';
 import { ChatIntegrationContextQueryExecutor } from '../integrations/integration-context-query-executor';
 import { IntegrationMessageContextService } from '../integrations/integration-message-context.service';
 import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import type { N8nMemory } from '../integrations/n8n-memory';
-import { N8nChatIntegration } from '../integrations/platforms/n8n-chat-integration';
+import { N8nChatIntegration } from '../integrations/platforms/n8n-chat/n8n-chat-integration';
+import type * as IntegrationTools from '../integrations/integration-tools';
 import type * as FromJsonConfig from '../json-config/from-json-config';
 import type { BuildFromJsonOptions, ToolExecutor } from '../json-config/from-json-config';
-import type { AgentFileRepository } from '../repositories/agent-file.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { SubAgentRunner } from '../sub-agents/sub-agent-runner';
 import type * as WorkflowToolFactory from '../tools/workflow-tool-factory';
-import { WorkflowToolUnavailableError } from '../tools/workflow-tool-unavailable-error';
-import { WorkflowToolWorkflowLoader } from '../tools/workflow-tool-workflow-loader.service';
+import type { AgentSandboxFilesService } from '../agent-sandbox-files.service';
 
 vi.mock('@/permissions.ee/check-access', () => ({
 	userHasScopes: vi.fn(),
 }));
+
+const integrationDescriptorsMock = vi.fn().mockReturnValue([]);
+vi.mock('../integrations/integration-tools', async () => {
+	const actual = await vi.importActual<typeof IntegrationTools>(
+		'../integrations/integration-tools',
+	);
+	return {
+		...actual,
+		getIntegrationToolConnectionDescriptors: (...args: unknown[]) =>
+			integrationDescriptorsMock(...args),
+	};
+});
 
 const resolveWorkflowToolMock = vi.fn();
 vi.mock('../tools/workflow-tool-factory', async () => {
@@ -114,25 +139,27 @@ vi.mock('../json-config/from-json-config', async () => {
 	};
 });
 
-function makeAgentEntity(tools: AgentJsonToolConfig[]): Agent {
+function makeAgentEntity(tools: AgentJsonToolConfig[]): AgentRunSource {
 	const schema: AgentJsonConfig = {
 		name: 'Test Agent',
-		model: 'anthropic/claude-sonnet-4-5',
+		model: 'anthropic/claude-sonnet-5-5',
 		instructions: 'Be helpful',
 		tools,
 	};
-	return {
+	const agent = {
 		id: 'agent-1',
 		projectId,
 		schema,
 		tools: { custom_tool: { descriptor: { name: 'custom_tool' }, code: '' } },
-	} as unknown as Agent;
+	} as unknown as ProjectAgent;
+	return { agent, skillRefs: undefined, skills: {} };
 }
 
 function makeService(overrides: {
 	credentialsFinderService?: ReturnType<typeof mock<CredentialsFinderService>>;
 	workflowFinderService?: ReturnType<typeof mock<WorkflowFinderService>>;
 	workflowRepository?: ReturnType<typeof mock<WorkflowRepository>>;
+	credentialsService?: ReturnType<typeof mock<CredentialsService>>;
 }) {
 	const secureRuntime = mock<AgentSecureRuntime>();
 	secureRuntime.createToolExecutor.mockReturnValue(mock<ToolExecutor>());
@@ -145,11 +172,11 @@ function makeService(overrides: {
 		overrides.credentialsFinderService ?? mock<CredentialsFinderService>();
 	const workflowFinderService = overrides.workflowFinderService ?? mock<WorkflowFinderService>();
 	const workflowRepository = overrides.workflowRepository ?? mock<WorkflowRepository>();
+	const credentialsService = overrides.credentialsService ?? mock<CredentialsService>();
 
 	const service = new AgentRuntimeReconstructionService(
 		mock<Logger>(),
 		mock<AgentRepository>(),
-		mock<AgentFileRepository>(),
 		mock<ActiveExecutions>(),
 		workflowRepository,
 		mock<N8NCheckpointStorage>(),
@@ -162,10 +189,14 @@ function makeService(overrides: {
 		mock<AiService>(),
 		outboundHttp,
 		mock<AgentWorkspaceService>(),
-		mock<AgentKnowledgeMirrorService>(),
+		mock<KnowledgeRetrievalService>(),
 		credentialsFinderService,
 		workflowFinderService,
 		mock<AgentChatAttachmentService>(),
+		credentialsService,
+		mock<AgentKnowledgeUsageTracker>(),
+		makeKnowledgeAvailabilityService(),
+		mock<AgentSandboxFilesService>(),
 	);
 
 	return {
@@ -173,13 +204,14 @@ function makeService(overrides: {
 		credentialsFinderService,
 		workflowFinderService,
 		workflowRepository,
+		credentialsService,
 	};
 }
 
 /** Routes every tool ref through `resolveTool`, as the real `buildFromJson` does. */
 function buildFromJsonResolvingTools(resolved: Array<agents.BuiltTool | null | undefined>) {
 	// The workflow tool context is assembled from the container.
-	Container.set(WorkflowToolWorkflowLoader, mock<WorkflowToolWorkflowLoader>());
+	Container.set(CallableWorkflowLoader, mock<CallableWorkflowLoader>());
 	Container.set(WorkflowRunner, mock<WorkflowRunner>());
 	Container.set(SubworkflowPolicyChecker, mock<SubworkflowPolicyChecker>());
 	buildFromJsonMock.mockImplementationOnce(
@@ -192,7 +224,7 @@ function buildFromJsonResolvingTools(resolved: Array<agents.BuiltTool | null | u
 
 function setupN8nChatToolDependencies() {
 	const registry = new ChatIntegrationRegistry();
-	registry.register(new N8nChatIntegration(mock<UserRepository>()));
+	registry.register(new N8nChatIntegration(mock<PersonRepository>()));
 	Container.set(ChatIntegrationRegistry, registry);
 	Container.set(IntegrationMessageContextService, mock<IntegrationMessageContextService>());
 	Container.set(ChatIntegrationActionExecutor, mock<ChatIntegrationActionExecutor>());
@@ -217,6 +249,61 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 		Container.reset();
 	});
 
+	it.each([
+		{ run: 'draft', usePublishedVersion: false },
+		{ run: 'published', usePublishedVersion: true },
+	])(
+		'builds a $run runtime with the skill refs of the same $run',
+		async ({ usePublishedVersion }) => {
+			const { service } = makeService({});
+			const draftRefs: AgentJsonSkillConfig[] = [
+				{ type: 'skill', id: 'zeta' },
+				{ type: 'skill', id: 'alpha', versionId: '0b2c6f1e-7d3a-4c1b-9f2e-5a6b7c8d9e0f' },
+			];
+			const publishedRefs: AgentJsonSkillConfig[] = [
+				{ type: 'skill', id: 'mid' },
+				{ type: 'skill', id: 'zeta' },
+			];
+			const baseConfig = {
+				name: 'Test Agent',
+				model: 'anthropic/claude-sonnet-5-5',
+				instructions: 'Be helpful',
+			};
+			const agent = {
+				id: 'agent-1',
+				projectId,
+				schema: storedAgentConfig({ ...baseConfig, skills: draftRefs }),
+				tools: {},
+				skills: {},
+				activeVersion: {
+					versionId: 'version-1',
+					schema: storedAgentConfig({ ...baseConfig, skills: publishedRefs }),
+					tools: {},
+					skills: {},
+				},
+			} as unknown as ProjectAgent;
+
+			const runSource = await resolveAgentRunSource(
+				agent,
+				usePublishedVersion,
+				createAgentSkillRefsService(),
+				{},
+			);
+			await service.reconstructFromAgentEntity(runSource, mock<CredentialProvider>(), 'test');
+
+			const [config] = buildFromJsonMock.mock.calls.at(-1) as [AgentJsonConfig];
+			expect(config.skills).toEqual(usePublishedVersion ? publishedRefs : draftRefs);
+		},
+	);
+
+	it('rejects an archived agent with a user error', async () => {
+		const agent = { id: 'agent-1', isArchived: true } as unknown as ProjectAgent;
+
+		await expect(
+			resolveAgentRunSource(agent, false, createAgentSkillRefsService(), {}),
+		).rejects.toThrow(UserError);
+	});
+
 	it('does not filter tools when no user is supplied (published/integration runs)', async () => {
 		const { service } = makeService({});
 		const entity = makeAgentEntity([nodeToolWithCredential, workflowTool, customTool]);
@@ -228,6 +315,62 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 		expect(toolNamesPassedToBuildFromJson()).toEqual(
 			expect.arrayContaining(['Send Slack message', 'Lookup customer', 'custom_tool']),
 		);
+	});
+
+	it('resolves a guardrail model only when a model kind is configured', async () => {
+		const { service } = makeService({});
+		const resolveAiGatewayCredential = vi.fn().mockResolvedValue({ apiKey: 'gw-key' });
+		const credentialProvider = {
+			list: vi.fn().mockResolvedValue([]),
+			resolve: vi.fn().mockResolvedValue({}),
+			resolveAiGatewayModelCredential: resolveAiGatewayCredential,
+		} as unknown as AgentCredentialProvider;
+		Container.set(CallableWorkflowLoader, mock<CallableWorkflowLoader>());
+
+		// Pattern kinds only: no model is resolved even though the agent has one.
+		const patternOnly = makeAgentEntity([]);
+		(patternOnly.agent as ProjectAgent).schema = storedAgentConfig({
+			name: 'Test Agent',
+			model: 'anthropic/claude-sonnet-5-5',
+			instructions: 'Be helpful',
+			credential: AI_GATEWAY_MANAGED_TAG,
+			config: {
+				guardrails: {
+					tools: [{ kind: 'keywords', id: 'g1', stage: 'before', keywords: ['secret'] }],
+				},
+			},
+		});
+
+		const withoutModelKind = await service.reconstructFromAgentEntity(
+			patternOnly,
+			credentialProvider,
+			'test',
+		);
+		expect(withoutModelKind.guardrailModel).toBeUndefined();
+		expect(resolveAiGatewayCredential).not.toHaveBeenCalled();
+
+		// A model kind resolves through the Gateway credential path, using the
+		// agent's own model id.
+		const withModelKind = makeAgentEntity([]);
+		(withModelKind.agent as ProjectAgent).schema = storedAgentConfig({
+			name: 'Test Agent',
+			model: 'anthropic/claude-sonnet-5-5',
+			instructions: 'Be helpful',
+			credential: AI_GATEWAY_MANAGED_TAG,
+			config: {
+				guardrails: {
+					tools: [{ kind: 'jailbreak', id: 'g2', stage: 'before' }],
+				},
+			},
+		});
+
+		const runtime = await service.reconstructFromAgentEntity(
+			withModelKind,
+			credentialProvider,
+			'test',
+		);
+		expect(resolveAiGatewayCredential).toHaveBeenCalledWith('anthropic');
+		expect(runtime.guardrailModel).toBeDefined();
 	});
 
 	it('forwards the production n8n Chat marker to workflow tools', async () => {
@@ -254,6 +397,23 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 				publishedN8nChat: true,
 			}),
 		);
+	});
+
+	it('uses the AI Gateway token refresh fetch of the credential provider for models', async () => {
+		const { service } = makeService({});
+		buildFromJsonResolvingTools([]);
+		const credentialProvider = new AgentsCredentialProvider(mock<CredentialsService>(), projectId);
+		const refreshFetch = vi.fn<typeof fetch>();
+		vi.spyOn(credentialProvider, 'createAiGatewayTokenRefreshFetch').mockReturnValue(refreshFetch);
+
+		await service.reconstructFromAgentEntity(makeAgentEntity([]), credentialProvider, 'test');
+
+		const [, , options] = buildFromJsonMock.mock.calls.at(-1) as [
+			unknown,
+			unknown,
+			BuildFromJsonOptions,
+		];
+		expect(options.modelFetch).toBe(refreshFetch);
 	});
 
 	it('forwards the preview marker to workflow tools', async () => {
@@ -320,6 +480,103 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 			['credential:read'],
 		);
 		expect(toolNamesPassedToBuildFromJson()).toEqual(['Get date']);
+	});
+
+	describe('with credentials not supported by agents', () => {
+		function makeReadableCredentialFinder() {
+			const credentialsFinderService = mock<CredentialsFinderService>();
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(
+				mock<CredentialsEntity>({ id: 'cred-1' }),
+			);
+			return credentialsFinderService;
+		}
+
+		it('drops a node tool whose credential the project list leaves out', async () => {
+			vi.mocked(userHasScopes).mockResolvedValue(true);
+			const credentialsService = mock<CredentialsService>();
+			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([]);
+			const { service } = makeService({
+				credentialsFinderService: makeReadableCredentialFinder(),
+				credentialsService,
+			});
+			const entity = makeAgentEntity([nodeToolWithCredential, nodeToolWithoutCredential]);
+
+			const result = await service.reconstructFromAgentEntity(
+				entity,
+				mock<CredentialProvider>(),
+				'production',
+				undefined,
+				testUser,
+			);
+
+			expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(
+				testUser,
+				{ projectId, excludePersonalRoute: true, excludeResolvable: true },
+			);
+			expect(toolNamesPassedToBuildFromJson()).toEqual(['Get date']);
+			expect(result.userToolAccessSnapshot?.credentialIds).toEqual([]);
+		});
+
+		it('keeps a node tool whose credential is in the project list', async () => {
+			vi.mocked(userHasScopes).mockResolvedValue(true);
+			const credentialsService = mock<CredentialsService>();
+			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+				{ id: 'cred-1' },
+			] as never);
+			const { service } = makeService({
+				credentialsFinderService: makeReadableCredentialFinder(),
+				credentialsService,
+			});
+			const entity = makeAgentEntity([nodeToolWithCredential, nodeToolWithoutCredential]);
+
+			await service.reconstructFromAgentEntity(
+				entity,
+				mock<CredentialProvider>(),
+				'production',
+				undefined,
+				testUser,
+			);
+
+			expect(toolNamesPassedToBuildFromJson()).toEqual(['Send Slack message', 'Get date']);
+		});
+
+		it('refuses a cached runtime whose credential the project list now leaves out', async () => {
+			vi.mocked(userHasScopes).mockResolvedValue(true);
+			const credentialsService = mock<CredentialsService>();
+			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([]);
+			const { service } = makeService({
+				credentialsFinderService: makeReadableCredentialFinder(),
+				credentialsService,
+			});
+
+			await expect(
+				service.userStillHasToolAccess(
+					{ credentialIds: ['cred-1'], workflowIds: [] },
+					projectId,
+					testUser,
+				),
+			).resolves.toBe(false);
+		});
+
+		it('accepts a cached runtime whose credential is in the project list', async () => {
+			vi.mocked(userHasScopes).mockResolvedValue(true);
+			const credentialsService = mock<CredentialsService>();
+			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+				{ id: 'cred-1' },
+			] as never);
+			const { service } = makeService({
+				credentialsFinderService: makeReadableCredentialFinder(),
+				credentialsService,
+			});
+
+			await expect(
+				service.userStillHasToolAccess(
+					{ credentialIds: ['cred-1'], workflowIds: [] },
+					projectId,
+					testUser,
+				),
+			).resolves.toBe(true);
+		});
 	});
 
 	it('skips disabled tools before looking up user access', async () => {
@@ -390,10 +647,15 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 		workflowFinderService.findWorkflowForUser.mockResolvedValue(
 			mock<Awaited<ReturnType<WorkflowFinderService['findWorkflowForUser']>>>({ id: 'wf-1' }),
 		);
+		const credentialsService = mock<CredentialsService>();
+		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+			{ id: 'cred-1' },
+		] as never);
 		const { service } = makeService({
 			credentialsFinderService,
 			workflowFinderService,
 			workflowRepository,
+			credentialsService,
 		});
 		const entity = makeAgentEntity([nodeToolWithCredential, workflowTool, customTool]);
 		const credentialProvider = mock<CredentialProvider>();
@@ -425,10 +687,15 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 		workflowFinderService.findWorkflowForUser.mockResolvedValue(
 			mock<Awaited<ReturnType<WorkflowFinderService['findWorkflowForUser']>>>({ id: 'wf-1' }),
 		);
+		const credentialsService = mock<CredentialsService>();
+		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+			{ id: 'cred-1' },
+		] as never);
 		const { service } = makeService({
 			credentialsFinderService,
 			workflowFinderService,
 			workflowRepository,
+			credentialsService,
 		});
 		const entity = makeAgentEntity([nodeToolWithCredential, workflowTool, customTool]);
 
@@ -449,7 +716,7 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 	it('stubs a workflow tool that cannot be built so a call reports the reason', async () => {
 		const { service } = makeService({});
 		resolveWorkflowToolMock.mockRejectedValue(
-			new WorkflowToolUnavailableError('not_found', 'Workflow "Lookup customer" not found'),
+			new CallableWorkflowUnavailableError('not_found', 'Workflow "Lookup customer" not found'),
 		);
 		const resolved: Array<agents.BuiltTool | null | undefined> = [];
 		buildFromJsonResolvingTools(resolved);
@@ -466,6 +733,111 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 		await expect(resolved[0]?.handler?.({}, mock())).rejects.toThrow(
 			'Workflow "Lookup customer" is no longer accessible',
 		);
+	});
+
+	describe('credential integrations', () => {
+		const slackIntegration = (credentialId: string) =>
+			({ type: 'slack', credentialId, settings: {} }) as unknown as AgentIntegrationConfig;
+
+		function makeEntityWithIntegrations(): AgentRunSource {
+			const runSource = makeAgentEntity([]);
+			runSource.agent.integrations = [slackIntegration('cred-hidden'), slackIntegration('cred-1')];
+			return runSource;
+		}
+
+		function integrationsPassedToDescriptors(): AgentIntegrationConfig[] {
+			const [integrations] = integrationDescriptorsMock.mock.calls.at(-1) as [
+				AgentIntegrationConfig[],
+			];
+			return integrations;
+		}
+
+		it('drops a draft integration whose credential the user cannot use', async () => {
+			const credentialsService = mock<CredentialsService>();
+			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+				{ id: 'cred-1' },
+			] as never);
+			const { service } = makeService({ credentialsService });
+			setupN8nChatToolDependencies();
+
+			await service.reconstructFromAgentEntity(
+				makeEntityWithIntegrations(),
+				mock<CredentialProvider>(),
+				'test',
+				undefined,
+				testUser,
+			);
+
+			expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(
+				testUser,
+				{ projectId, excludePersonalRoute: true, excludeResolvable: true },
+			);
+			expect(integrationsPassedToDescriptors()).toEqual([slackIntegration('cred-1')]);
+		});
+
+		it('records the kept integration credential so cached runtimes re-check it', async () => {
+			const credentialsService = mock<CredentialsService>();
+			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+				{ id: 'cred-1' },
+			] as never);
+			const { service } = makeService({ credentialsService });
+			setupN8nChatToolDependencies();
+
+			const result = await service.reconstructFromAgentEntity(
+				makeEntityWithIntegrations(),
+				mock<CredentialProvider>(),
+				'test',
+				undefined,
+				testUser,
+			);
+
+			expect(result.userToolAccessSnapshot).toEqual({
+				credentialIds: [],
+				workflowIds: [],
+				integrationCredentialIds: ['cred-1'],
+				requiresWorkflowExecute: false,
+			});
+		});
+
+		it('refuses a cached runtime whose integration credential is no longer usable', async () => {
+			const credentialsService = mock<CredentialsService>();
+			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([]);
+			const { service } = makeService({ credentialsService });
+
+			await expect(
+				service.userStillHasToolAccess(
+					{
+						credentialIds: [],
+						workflowIds: [],
+						integrationCredentialIds: ['cred-1'],
+						requiresWorkflowExecute: false,
+					},
+					projectId,
+					testUser,
+				),
+			).resolves.toBe(false);
+			expect(userHasScopes).not.toHaveBeenCalled();
+		});
+
+		it('keeps every integration of a published run', async () => {
+			const credentialsService = mock<CredentialsService>();
+			const { service } = makeService({ credentialsService });
+			setupN8nChatToolDependencies();
+
+			await service.reconstructFromAgentEntity(
+				makeEntityWithIntegrations(),
+				mock<CredentialProvider>(),
+				'production',
+				undefined,
+				testUser,
+			);
+
+			expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).not.toHaveBeenCalled();
+			expect(integrationsPassedToDescriptors()).toEqual([
+				slackIntegration('cred-hidden'),
+				slackIntegration('cred-1'),
+			]);
+		});
 	});
 
 	it('still fails the build for any other workflow tool error', async () => {
@@ -497,7 +869,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromResolvedSource — pe
 	function makeResolvedSourceConfig(tools: AgentJsonToolConfig[]): AgentJsonConfig {
 		return {
 			name: 'Child Agent',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			instructions: 'Be helpful',
 			tools,
 		};
@@ -547,5 +919,147 @@ describe('AgentRuntimeReconstructionService.reconstructFromResolvedSource — pe
 		expect(toolNamesPassedToBuildFromJson()).toEqual(
 			expect.arrayContaining(['Send Slack message', 'Lookup customer', 'custom_tool']),
 		);
+	});
+});
+
+describe('AgentRuntimeReconstructionService — workflow tool attribution', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		// Earlier tests leave a rejecting implementation behind.
+		resolveWorkflowToolMock.mockReset();
+		builtAgent.hasCheckpointStorage.mockReturnValue(true);
+		Container.set(SubAgentRunner, mock<SubAgentRunner>());
+	});
+
+	afterEach(() => {
+		Container.reset();
+	});
+
+	function enableAgentServiceAccounts() {
+		Container.get(AgentsConfig).serviceAccountsEnabled = true;
+	}
+
+	function agentWithIdentity(identityId: string | null): AgentRunSource {
+		const runSource = makeAgentEntity([workflowTool]);
+		return { ...runSource, agent: Object.assign(runSource.agent, { identityId }) };
+	}
+
+	function workflowToolContext() {
+		expect(resolveWorkflowToolMock).toHaveBeenCalledTimes(1);
+		return resolveWorkflowToolMock.mock.calls[0][1] as Record<string, unknown>;
+	}
+
+	async function reconstructSubAgent(
+		service: AgentRuntimeReconstructionService,
+		params: Partial<
+			Parameters<AgentRuntimeReconstructionService['reconstructFromResolvedSource']>[0]
+		>,
+	) {
+		return await service.reconstructFromResolvedSource({
+			config: {
+				name: 'Child Agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Be helpful',
+				tools: [workflowTool],
+			},
+			memoryOwnerAgentId: 'child-1',
+			projectId,
+			credentialProvider: mock<CredentialProvider>(),
+			toolDescriptors: {},
+			toolCodeByName: {},
+			skills: {},
+			runtimeProfile: 'sub-agent',
+			runType: 'test',
+			...params,
+		});
+	}
+
+	it('gives workflow tools the agent service account when agent service accounts are on', async () => {
+		enableAgentServiceAccounts();
+		const { service } = makeService({});
+		buildFromJsonResolvingTools([]);
+
+		await service.reconstructFromAgentEntity(
+			agentWithIdentity('sa-1'),
+			mock<CredentialProvider>(),
+			'test',
+		);
+
+		const context = workflowToolContext();
+		expect(context).toMatchObject({ agentId: 'agent-1', agentServiceAccountId: 'sa-1' });
+		expect(context.delegatingAgentId).toBeUndefined();
+	});
+
+	it('gives workflow tools no service account when agent service accounts are off', async () => {
+		const { service } = makeService({});
+		buildFromJsonResolvingTools([]);
+
+		await service.reconstructFromAgentEntity(
+			agentWithIdentity('sa-1'),
+			mock<CredentialProvider>(),
+			'test',
+		);
+
+		expect(workflowToolContext().agentServiceAccountId).toBeUndefined();
+	});
+
+	it('gives workflow tools no service account when the agent has none', async () => {
+		enableAgentServiceAccounts();
+		const { service } = makeService({});
+		buildFromJsonResolvingTools([]);
+
+		await service.reconstructFromAgentEntity(
+			agentWithIdentity(null),
+			mock<CredentialProvider>(),
+			'test',
+		);
+
+		expect(workflowToolContext().agentServiceAccountId).toBeUndefined();
+	});
+
+	it('gives the tools of a sub-agent its own service account and the delegating agent', async () => {
+		enableAgentServiceAccounts();
+		const { service } = makeService({});
+		buildFromJsonResolvingTools([]);
+
+		await reconstructSubAgent(service, {
+			parentAgentIdForDelegation: 'agent-1',
+			agentServiceAccountId: 'sa-child',
+		});
+
+		expect(workflowToolContext()).toMatchObject({
+			agentId: 'child-1',
+			agentServiceAccountId: 'sa-child',
+			delegatingAgentId: 'agent-1',
+		});
+	});
+
+	it('names the agent as its own delegating agent when it delegates to itself', async () => {
+		enableAgentServiceAccounts();
+		const { service } = makeService({});
+		buildFromJsonResolvingTools([]);
+
+		await reconstructSubAgent(service, {
+			memoryOwnerAgentId: 'agent-1',
+			parentAgentIdForDelegation: 'agent-1',
+			agentServiceAccountId: 'sa-1',
+		});
+
+		expect(workflowToolContext()).toMatchObject({
+			agentId: 'agent-1',
+			delegatingAgentId: 'agent-1',
+		});
+	});
+
+	it('gives the workflow tools of an inline agent no service account', async () => {
+		enableAgentServiceAccounts();
+		const { service } = makeService({});
+		buildFromJsonResolvingTools([]);
+
+		await reconstructSubAgent(service, { runtimeProfile: 'inline' });
+
+		const context = workflowToolContext();
+		expect(context.agentServiceAccountId).toBeUndefined();
+		expect(context.delegatingAgentId).toBeUndefined();
 	});
 });

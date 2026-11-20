@@ -7,6 +7,7 @@ import type { Scope } from '../types.ee';
  * every operation exists in that resource's definition in @n8n/permissions.
  */
 export const PROJECT_CUSTOM_ROLE_OPERATIONS = {
+	app: ['read', 'list', 'create', 'update', 'delete'],
 	project: ['read', 'update', 'delete', 'export', 'manageMembers'],
 	folder: ['read', 'update', 'create', 'move', 'delete'],
 	workflow: [
@@ -23,7 +24,18 @@ export const PROJECT_CUSTOM_ROLE_OPERATIONS = {
 		'enableRedaction',
 		'disableRedaction',
 	],
-	agent: ['read', 'execute', 'list', 'create', 'update', 'delete', 'publish', 'unpublish'],
+	agent: [
+		'read',
+		'execute',
+		'list',
+		'create',
+		'update',
+		'delete',
+		'publish',
+		'unpublish',
+		'export',
+		'import',
+	],
 	credential: [
 		'read',
 		'connect',
@@ -51,6 +63,7 @@ export const PROJECT_CUSTOM_ROLE_OPERATIONS = {
 	],
 	projectVariable: ['read', 'update', 'create', 'delete'],
 	projectAiPreference: ['read', 'update', 'create', 'delete'],
+	projectSkill: ['read', 'update', 'create', 'delete'],
 } as const satisfies {
 	[R in keyof typeof RESOURCES]?: ReadonlyArray<(typeof RESOURCES)[R][number]>;
 };
@@ -73,6 +86,10 @@ type InstanceScopeGroups = {
 };
 
 export const GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS = {
+	app: {
+		View: ['app:list', 'app:read'],
+		Manage: ['app:list', 'app:read', 'app:create', 'app:update', 'app:delete'],
+	},
 	settings: {
 		// Grants access to every instance Settings page, including MCP and n8n
 		// Assistant management. MCP and n8n Assistant also have their own narrower
@@ -94,6 +111,7 @@ export const GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS = {
 			'logStreaming:manage', // Log Streaming
 			'ldap:manage', // LDAP
 			'otel:manage', // OpenTelemetry
+			'workflowSettings:manage', // Workflow settings
 			'eventBusDestination:create', // Log Streaming
 			'eventBusDestination:read',
 			'eventBusDestination:update',
@@ -103,11 +121,18 @@ export const GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS = {
 			'aiPreference:update',
 			'aiPreference:delete',
 			'aiPreference:list',
+			'aiPreference:manage',
+			'skill:create', // Context (instance skills)
+			'skill:read',
+			'skill:update',
+			'skill:delete',
+			'skill:list',
+			'skill:manage',
 			'chatHub:manage', // Chat
 			'aiAssistant:manage', // n8n Assistant
 			'instanceAi:manage',
 			'instanceAi:message',
-			'instanceAi:gateway', // computer-use gateway pairing
+			'instanceAi:gateway', // Browser Use pairing
 			'mcp:manage', // Instance-level MCP
 			'mcp:oauth', // MCP OAuth clients
 			'mcpApiKey:create', // MCP personal API key
@@ -226,13 +251,15 @@ export const GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS = {
 
 /**
  * Scopes every instance role carries without a checkbox of their own. The default
- * Member role holds them and they only unlock read-only surfaces: the Chat page,
- * the data table list, and the log streaming and credential resolver lists that
- * other settings pages read. `resolveScopes` and the role editor union them into
- * every global role, so a custom role never trails Member on these pages and the
- * editor never has to render them as a half-checked "Manage all settings".
+ * Member role holds them and they only unlock what Member can already do: the
+ * Chat page, the data table list, the Migration Report (triage is limited to
+ * workflows the user can edit), and the log streaming and credential resolver
+ * lists that other settings pages read. `resolveScopes` and the role editor union
+ * them into every global role, so a custom role never trails Member on these pages
+ * and the editor never has to render them as a half-checked "Manage all settings".
  */
 export const BASELINE_INSTANCE_SCOPES = [
+	'breakingChanges:list',
 	'chatHub:message',
 	'credentialResolver:list',
 	'dataTable:list',

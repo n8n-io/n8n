@@ -936,11 +936,15 @@ describe('N8nDropdownMenu', () => {
 		it('should focus the real control inside a custom trigger wrapper', async () => {
 			const dropdownRef = ref<DropdownMenuExposed | null>(null);
 			const wrapper = render({
-				components: { DropdownMenu },
+				components: { DropdownMenu, Tooltip },
 				setup: () => ({ dropdownRef, items: createItems(1) }),
 				template: `
 					<DropdownMenu ref="dropdownRef" :items="items">
-						<template #trigger><button data-test-id="focus-target">Open</button></template>
+						<template #trigger>
+							<Tooltip as-child content="History">
+								<button data-test-id="focus-target">Open</button>
+							</Tooltip>
+						</template>
 					</DropdownMenu>
 				`,
 			});
@@ -963,6 +967,30 @@ describe('N8nDropdownMenu', () => {
 			await waitFor(() => expect(document.activeElement).toBe(textarea));
 
 			await userEvent.click(textarea);
+			expect(document.querySelector('[role="menu"]')).toBeInTheDocument();
+		});
+
+		it('keeps the menu open when ArrowUp is pressed on the first item below a header', async () => {
+			const wrapper = renderExternalDropdown([
+				{ id: 'section', label: 'Workflows', header: true },
+				{ id: 'orders', label: 'Orders' },
+				{ id: 'invoices', label: 'Invoices' },
+			]);
+			const textarea = wrapper.container.querySelector('textarea')!;
+			await waitFor(() => expect(document.activeElement).toBe(textarea));
+
+			await userEvent.keyboard('{ArrowDown}');
+			const orders = await waitFor(() => {
+				const item = wrapper.getByRole('menuitem', { name: 'Orders' });
+				expect(item).toHaveAttribute('data-virtual-highlighted');
+				return item;
+			});
+
+			await userEvent.keyboard('{ArrowUp}{ArrowUp}');
+
+			await waitFor(() => {
+				expect(orders).toHaveAttribute('data-virtual-highlighted');
+			});
 			expect(document.querySelector('[role="menu"]')).toBeInTheDocument();
 		});
 

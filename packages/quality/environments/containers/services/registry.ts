@@ -1,11 +1,13 @@
 import { cadvisor } from './cadvisor';
 import { cloudflared } from './cloudflared';
 import { createEnginePostgresHelper, enginePostgres } from './engine-postgres';
+import { engineTaskRunner } from './engine-task-runner';
 import { gitea, createGiteaHelper } from './gitea';
 import { kafka, createKafkaHelper } from './kafka';
 import { kent, createKentHelper } from './kent';
 import { keycloak, createKeycloakHelper } from './keycloak';
 import { loadBalancer } from './load-balancer';
+import { liteLlm } from './litellm';
 import { localstack, createLocalStackHelper } from './localstack';
 import { mailpit, createMailpitHelper } from './mailpit';
 import { mysqlService } from './mysql';
@@ -20,6 +22,7 @@ import { sandbox } from './sandbox';
 import { taskRunner } from './task-runner';
 import { tracing, createTracingHelper } from './tracing';
 import type { Service, ServiceName, ServiceResult, HelperFactories } from './types';
+import { vault, createVaultHelper } from './vault';
 import { vector } from './vector';
 import { victoriaLogs } from './victoria-logs';
 import { victoriaMetrics } from './victoria-metrics';
@@ -38,17 +41,20 @@ export const services: Record<ServiceName, Service<ServiceResult>> = {
 	tracing,
 	proxy,
 	taskRunner,
+	engineTaskRunner,
 	loadBalancer,
 	cloudflared,
 	ngrok,
 	kafka,
 	mysql: mysqlService,
 	localstack,
+	vault,
 	kent,
 	postgresExporter,
 	cadvisor,
 	sandbox,
 	npmRegistry,
+	litellm: liteLlm,
 };
 
 export const helperFactories: Partial<HelperFactories> = {
@@ -62,6 +68,7 @@ export const helperFactories: Partial<HelperFactories> = {
 	proxy: createProxyHelper,
 	kafka: createKafkaHelper,
 	localstack: createLocalStackHelper,
+	vault: createVaultHelper,
 	kent: createKentHelper,
 	npmRegistry: createNpmRegistryHelper,
 };

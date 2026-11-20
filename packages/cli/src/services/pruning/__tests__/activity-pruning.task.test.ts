@@ -25,10 +25,10 @@ describe('ActivityPruningTask', () => {
 	});
 
 	it('runs durably, on any main, and on the fallback timer as soon as a leader takes over', () => {
-		expect(taskWith().placement).toEqual({
+		expect(taskWith().target).toEqual({
 			scope: 'cluster',
-			durable: true,
-			runOnTakeover: true,
+			scheduler: { retryOnFailure: true },
+			leaderTimer: { runOnTakeover: true },
 		});
 	});
 

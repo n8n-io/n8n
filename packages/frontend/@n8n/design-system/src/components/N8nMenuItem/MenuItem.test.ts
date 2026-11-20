@@ -111,6 +111,18 @@ describe('N8nMenuItem', () => {
 			});
 			expect(getByText('🏠')).toBeVisible();
 		});
+
+		it('should render the icon slot instead of the item icon when given', () => {
+			const { getByTestId, queryByTestId } = render(N8nMenuItem, {
+				props: {
+					item: createMenuItem({ icon: 'house' }),
+				},
+				slots: { icon: '<div data-test-id="custom-icon" />' },
+				global: { stubs },
+			});
+			expect(getByTestId('custom-icon')).toBeVisible();
+			expect(queryByTestId('menu-item')?.querySelector('svg')).toBeNull();
+		});
 	});
 
 	describe('active prop', () => {
@@ -140,6 +152,18 @@ describe('N8nMenuItem', () => {
 	});
 
 	describe('compact prop', () => {
+		it('renders large icons when compact', () => {
+			const { html } = render(N8nMenuItem, {
+				props: {
+					item: createMenuItem({ icon: 'house' }),
+					compact: true,
+				},
+				global: { stubs: { ...stubs, N8nIcon: true } },
+			});
+
+			expect(html()).toContain('size="large"');
+		});
+
 		it('should apply compact class when compact is true', () => {
 			const { getByTestId } = render(N8nMenuItem, {
 				props: {
@@ -259,7 +283,7 @@ describe('N8nMenuItem', () => {
 				},
 				global: { stubs: { ...stubs, N8nIcon: true } },
 			});
-			expect(html()).toContain('icon="chevron-right"');
+			expect(html()).toContain('icon="chevron-right-12"');
 		});
 
 		it('should not render chevron icon when compact', () => {

@@ -1,0 +1,5 @@
+1. A Schedule Trigger runs every day at 8:00.
+2. The workflow retrieves the top Hacker News stories.
+3. The workflow limits the stories to 5.
+4. A Slack node posts one message to the #news channel.
+5. The Slack message contains the title and the link of each of the 5 stories.

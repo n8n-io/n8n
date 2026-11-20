@@ -130,7 +130,7 @@ const primaryModel = languageModel({
   version: 1.6,
   config: {
     name: 'Claude (Primary)',
-    parameters: { model: { __rl: true, mode: 'list', value: 'claude-sonnet-4-5' } }
+    parameters: { model: { __rl: true, mode: 'list', value: 'claude-sonnet-5-5' } }
   }
 });
 

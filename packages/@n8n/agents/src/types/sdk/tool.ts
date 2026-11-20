@@ -2,10 +2,10 @@ import type { JSONSchema7 } from 'json-schema';
 import type { ZodType } from 'zod';
 
 import type { AgentExecutionCounter } from './agent';
+import type { GuardrailNotice } from './guardrail';
 import type { McpToolAnnotations } from './mcp';
 import type { AgentMessage } from './message';
 import type { ApprovalResumePayload } from '../../sdk/tool';
-import type { RuntimeSkillLoader } from '../../skills/types';
 import type { AgentEventData } from '../runtime/event';
 import type { BuiltTelemetry } from '../telemetry';
 import type { JSONObject, JSONValue } from '../utils/json';
@@ -26,8 +26,6 @@ export interface ToolSuspendOptions {
 }
 
 export interface ToolExecutionContext {
-	/** Load and retain instructions from this run's selected skill catalog. */
-	loadSkill?: RuntimeSkillLoader;
 	/** Agent run ID for the current execution. */
 	runId?: string;
 	/**
@@ -64,10 +62,11 @@ export interface ToolExecutionContext {
 	continuation?: JSONValue;
 	/** Resume schema restored from persistence for a resumed tool call. */
 	resumeSchema?: ToolSuspendOptions['resumeSchema'];
+
+	onGuardrailNotice?: (notice: GuardrailNotice) => void;
 }
 
 export interface ToolContext {
-	loadSkill?: ToolExecutionContext['loadSkill'];
 	/** AI SDK tool call ID for the current local tool execution. */
 	toolCallId?: string;
 	/** Exact model-facing name of the tool being executed. */
@@ -85,10 +84,10 @@ export interface ToolContext {
 	/** Aggregate execution counter for usage telemetry inherited from the current agent run. */
 	executionCounter?: ToolExecutionContext['executionCounter'];
 	approvalContext?: ToolExecutionContext['approvalContext'];
+	onGuardrailNotice?: (notice: GuardrailNotice) => void;
 }
 
 export interface InterruptibleToolContext<S = unknown, R = unknown> {
-	loadSkill?: ToolExecutionContext['loadSkill'];
 	/**
 	 * Suspend execution and send a payload to the consumer.
 	 * Must be used with `return await` — the branded return type signals
@@ -122,6 +121,7 @@ export interface InterruptibleToolContext<S = unknown, R = unknown> {
 	continuation?: JSONValue;
 	/** Resume schema persisted for this suspension. */
 	resumeSchema?: ToolSuspendOptions['resumeSchema'];
+	onGuardrailNotice?: (notice: GuardrailNotice) => void;
 }
 
 export interface ToolCancellationContext extends ToolContext {
@@ -135,8 +135,30 @@ export interface ToolCancellationContext extends ToolContext {
 	resumeSchema?: ToolSuspendOptions['resumeSchema'];
 }
 
+/** Turns the stored input of a call under a former tool name into the current tool's input. */
+export type LegacyCallConverter = (formerName: string, input: JSONValue) => JSONValue;
+
 export interface BuiltTool {
 	readonly name: string;
+	/**
+	 * Former names of this tool. Persisted checkpoints and message history can
+	 * still reference them, so the runtime resolves them to this tool. They are
+	 * never exposed to the model.
+	 */
+	readonly legacyNames?: readonly string[];
+	/**
+	 * Former tool names that this tool owns only for some values of the call's
+	 * `action` input, keyed by former name. Use it when one multi-action tool
+	 * became one tool for each action, so each persisted call resumes in the
+	 * tool that now owns its action. Never exposed to the model.
+	 */
+	readonly legacyActions?: Readonly<Record<string, readonly string[]>>;
+	/**
+	 * Former names and former actions resolve only for a suspended call that
+	 * resumes, and `convert` turns its stored input into this tool's input. A
+	 * new model call under a former name fails as an unknown tool.
+	 */
+	readonly legacyResumeOnly?: { readonly convert: LegacyCallConverter };
 	readonly description: string;
 	/**
 	 * Behavioural directive paired with the tool, injected into the agent's
@@ -164,8 +186,26 @@ export interface BuiltTool {
 	 * The raw output is stored in history; only the transformed version goes to the model.
 	 */
 	readonly toModelOutput?: (output: unknown) => unknown;
+	/** Derive host-only trace data from the handler output. The model never sees it. */
+	readonly toTraceOutput?: (output: unknown) => unknown;
 	/** Treat every model-facing result and error from this tool as external reference data. */
 	readonly outputTrust?: 'untrusted';
+	/**
+	 * The handler uses the agent's workspace. The runtime starts preparing the
+	 * workspace when the model begins to stream this tool's input, so a cold
+	 * sandbox can start while the arguments generate.
+	 */
+	readonly requiresWorkspace?: true;
+	/**
+	 * Ends the run after this call's batch settles, without another model call,
+	 * when it returns true for the output. For tools whose result is the last
+	 * thing the turn should do, so the model cannot repeat them.
+	 *
+	 * After a resume, the calls that settled before the suspension are checked
+	 * against the output stored in history. Keep the output small and do not
+	 * combine this with `toModelOutput`, so both checks see the same value.
+	 */
+	readonly endsTurn?: (output: unknown) => boolean;
 	readonly handler?: (
 		input: unknown,
 		ctx: ToolContext | InterruptibleToolContext,
@@ -202,6 +242,25 @@ export interface BuiltTool {
 	 * Defaults to `true` when absent.
 	 */
 	readonly editable?: boolean;
+	/**
+	 * Marks a tool that runs other tools, such as the tool catalog's `call_tool`.
+	 * The runtime asks it which tool owns each call, so approval, suspension,
+	 * output trust, and result transforms are the owning tool's own.
+	 */
+	readonly dispatch?: ToolDispatch;
+}
+
+export interface ToolDispatch {
+	/**
+	 * The tool that handles this call and the input to give it, or `undefined`
+	 * to run the dispatcher itself (for example, to report an unknown tool).
+	 */
+	resolve(input: unknown): { tool: BuiltTool; input: unknown } | undefined;
+	/**
+	 * The dispatcher input for a model call to `toolName` made directly, or
+	 * `undefined` when this dispatcher does not own that tool.
+	 */
+	wrap(toolName: string, input: unknown): Record<string, unknown> | undefined;
 }
 
 /**

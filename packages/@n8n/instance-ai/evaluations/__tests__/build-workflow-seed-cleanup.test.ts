@@ -253,6 +253,7 @@ describe('buildWorkflow declared credentials', () => {
 			'httpHeaderAuth',
 			{},
 			undefined,
+			undefined,
 		);
 		expect(setThreadCredentialAllowlist).toHaveBeenCalledWith(
 			expect.any(String),

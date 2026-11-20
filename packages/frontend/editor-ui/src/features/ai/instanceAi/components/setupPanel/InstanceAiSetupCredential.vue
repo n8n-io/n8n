@@ -2,7 +2,6 @@
 import { computed, onMounted, onScopeDispose, ref, watch } from 'vue';
 import isEqual from 'lodash/isEqual';
 import { TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE } from '@n8n/api-types';
-import { getResourcePermissions } from '@n8n/permissions';
 import {
 	N8nButton,
 	N8nCallout,
@@ -29,7 +28,7 @@ import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import type { InstanceAiCredentialContext } from '@/app/composables/useInstanceAiEditorCapability';
 import { useCredentialForm } from '@/features/credentials/composables/useCredentialForm';
 import { useCredentialOAuth } from '@/features/credentials/composables/useCredentialOAuth';
-import { hasOAuthTokenData } from '@/features/credentials/composables/oauthCallback';
+import { isOAuthCredentialConnected } from '@/features/credentials/composables/oauthCallback';
 import { useQuickConnect } from '@/features/credentials/quickConnect/composables/useQuickConnect';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { groupCredentialSetupFields } from '@/features/credentials/credentialSetupFields';
@@ -160,7 +159,10 @@ const connected = computed(
 		!needsAuthorization.value,
 );
 const usableCredentials = computed(() =>
-	credentialsStore.hasUsableCredentialsForScope({ workflowId: props.workflowId })
+	credentialsStore.hasUsableCredentialsForScope({
+		workflowId: props.workflowId,
+		forAssistant: true,
+	})
 		? credentialsStore.getUsableCredentialByType(props.item.credentialType)
 		: [],
 );
@@ -186,30 +188,24 @@ watch(
 		onCleanup(() => {
 			stale = true;
 		});
-		const permissions = getResourcePermissions(storedCredential.value?.scopes).credential;
-		oauthConnection.value = storedCredential.value?.isResolvable
-			? storedCredential.value.connectedByMe
-			: permissions.read === true && !permissions.update;
+		oauthConnection.value = isOAuthCredentialConnected(storedCredential.value);
 		oauthMode.value = 'unknown';
 		loadingOAuth.value = Boolean(id);
 		if (!id) return;
 		try {
 			const credential = await credentialsStore.getCredentialData({ id });
 			if (stale) return;
+			oauthConnection.value = isOAuthCredentialConnected(storedCredential.value, credential);
 			const data = credential?.data;
-			if (credential?.isResolvable) oauthConnection.value = credential.connectedByMe;
 			if (data && typeof data === 'object') {
-				if (!credential?.isResolvable) {
-					oauthConnection.value =
-						Boolean(
-							data.grantType && !['authorizationCode', 'pkce'].includes(String(data.grantType)),
-						) || hasOAuthTokenData(credential);
-				}
 				// Stored client fields identify a custom app even when managed OAuth is available.
-				const customClient = Boolean(
-					(data.clientId && data.clientSecret) || (data.consumerKey && data.consumerSecret),
-				);
-				oauthMode.value = customClient || !form.managedOAuthAvailable.value ? 'custom' : 'managed';
+				const isCustomClient =
+					!data.useDynamicClientRegistration &&
+					Boolean(
+						(data.clientId && data.clientSecret) || (data.consumerKey && data.consumerSecret),
+					);
+				oauthMode.value =
+					isCustomClient || !form.managedOAuthAvailable.value ? 'custom' : 'managed';
 			}
 		} catch {
 			// Keep the permission-based fallback when credential data is unavailable.
@@ -517,7 +513,7 @@ async function saveKey() {
 	credentialsStore.upsertCredential(credential);
 	if (!active || props.workflowId !== workflowId) return;
 	// Creation succeeded. A picker refresh must not force another credential creation.
-	await credentialsStore.fetchUsableCredentials({ workflowId }).catch(() => {});
+	await credentialsStore.fetchUsableCredentials({ workflowId, forAssistant: true }).catch(() => {});
 	emitBinding(credential.id, details.data);
 }
 
@@ -696,7 +692,9 @@ onScopeDispose(() => {
 				:workflow-id="workflowId"
 				:credential-setup-hint="item.setupHint"
 				:credentials-field-label="i18n.baseText('instanceAi.setupPanel.credential')"
+				:credentials="usableCredentials"
 				standalone
+				for-assistant
 				hide-issues
 				skip-auto-select
 				@credential-selected="onCredentialSelected"
@@ -785,7 +783,7 @@ onScopeDispose(() => {
 					:disabled="!helpDisabled"
 					:content="i18n.baseText('instanceAi.setupPanel.helpUnavailableWhileBuilding')"
 				>
-					<span :tabindex="helpDisabled ? 0 : undefined">
+					<span :class="$style.helpTrigger" :tabindex="helpDisabled ? 0 : undefined">
 						<N8nButton
 							variant="ghost"
 							size="small"
@@ -814,6 +812,7 @@ onScopeDispose(() => {
 					<N8nCopyInput
 						:class="$style.redirectInput"
 						:value="redirectUrl"
+						:label="i18n.baseText('instanceAi.setupPanel.redirectUrl')"
 						:copy-label="i18n.baseText('instanceAi.setupPanel.copyRedirectUrl')"
 						size="small"
 					/>
@@ -863,9 +862,17 @@ onScopeDispose(() => {
 	color: var(--text-color--subtle);
 }
 
+// The tooltip anchors to this wrapper. Inline-flex keeps it the size of the
+// button; a plain inline span around the button spans the full row.
+.helpTrigger {
+	display: inline-flex;
+	// Offset the button padding so the label aligns with the content above
+	margin-inline-start: calc(-1 * var(--spacing--2xs));
+}
+
 .help {
-	padding-inline: 0;
-	color: var(--text-color--subtle);
+	--button--color: var(--text-color--subtler);
+	padding-inline: var(--spacing--2xs);
 }
 
 .form .existing {

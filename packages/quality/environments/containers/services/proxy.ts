@@ -11,20 +11,17 @@ import type {
 import { join } from 'path';
 import { GenericContainer, Wait } from 'testcontainers';
 
-import { createSilentLogConsumer } from '../helpers/utils';
 import { TEST_CONTAINER_IMAGES } from '../test-containers';
 import type { HelperContext, Service, ServiceResult } from './types';
 
 const HOSTNAME = 'proxyserver';
 const PORT = 1080;
-const MOCKSERVER_WAIT_STRATEGY = Wait.forAll([
-	Wait.forLogMessage(`INFO ${PORT} started on port: ${PORT}`),
-	Wait.forHttp('/mockserver/status', PORT)
-		.withMethod('PUT')
-		.forStatusCode(200)
-		.withStartupTimeout(60_000)
-		.withReadTimeout(250),
-]);
+// The status check proves readiness without following MockServer logs.
+const MOCKSERVER_WAIT_STRATEGY = Wait.forHttp('/mockserver/status', PORT)
+	.withMethod('PUT')
+	.forStatusCode(200)
+	.withStartupTimeout(60_000)
+	.withReadTimeout(250);
 
 export interface ProxyMeta {
 	host: string;
@@ -49,36 +46,29 @@ export const proxy: Service<ProxyResult> = {
 	},
 
 	async start(network, projectName): Promise<ProxyResult> {
-		const { consumer, throwWithLogs } = createSilentLogConsumer();
+		const container = await new GenericContainer(TEST_CONTAINER_IMAGES.mockserver)
+			.withNetwork(network)
+			.withNetworkAliases(HOSTNAME)
+			.withExposedPorts(PORT)
+			// Keep MockServer heap predictable under parallel container load.
+			.withEnvironment({ JVM_OPTIONS: '-Xmx512m -Xms512m' })
+			.withWaitStrategy(MOCKSERVER_WAIT_STRATEGY)
+			.withLabels({
+				'com.docker.compose.project': projectName,
+				'com.docker.compose.service': HOSTNAME,
+			})
+			.withName(`${projectName}-${HOSTNAME}`)
+			.withReuse()
+			.start();
 
-		try {
-			const container = await new GenericContainer(TEST_CONTAINER_IMAGES.mockserver)
-				.withNetwork(network)
-				.withNetworkAliases(HOSTNAME)
-				.withExposedPorts(PORT)
-				// Keep MockServer heap predictable under parallel container load.
-				.withEnvironment({ JVM_OPTIONS: '-Xmx512m -Xms512m' })
-				.withWaitStrategy(MOCKSERVER_WAIT_STRATEGY)
-				.withLabels({
-					'com.docker.compose.project': projectName,
-					'com.docker.compose.service': HOSTNAME,
-				})
-				.withName(`${projectName}-${HOSTNAME}`)
-				.withReuse()
-				.withLogConsumer(consumer)
-				.start();
-
-			return {
-				container,
-				meta: {
-					host: HOSTNAME,
-					port: PORT,
-					internalUrl: `http://${HOSTNAME}:${PORT}`,
-				},
-			};
-		} catch (error) {
-			return throwWithLogs(error);
-		}
+		return {
+			container,
+			meta: {
+				host: HOSTNAME,
+				port: PORT,
+				internalUrl: `http://${HOSTNAME}:${PORT}`,
+			},
+		};
 	},
 
 	env(result: ProxyResult, external?: boolean): Record<string, string> {
@@ -110,7 +100,7 @@ export interface ProxyServerRequest {
 export interface ProxyServerResponse {
 	statusCode: number;
 	headers?: Record<string, string[]>;
-	body?: string;
+	body?: HttpResponse['body'];
 	delay?: {
 		timeUnit: 'MICROSECONDS' | 'MILLISECONDS' | 'SECONDS' | 'MINUTES';
 		value: number;
@@ -365,6 +355,10 @@ export class ProxyServer {
 		});
 	}
 
+	async getMockedEndpoint(path: string): Promise<Response> {
+		return await fetch(`${this.url}${path}`);
+	}
+
 	async wasRequestMade(request: RequestDefinition, numberOfRequests = 1): Promise<boolean> {
 		return await this.verifyRequest(request, numberOfRequests);
 	}
@@ -372,6 +366,11 @@ export class ProxyServer {
 	async getAllRequestsMade(): Promise<RequestMade[]> {
 		// @ts-expect-error mockserver types seem to be messed up
 		return await this.client.retrieveRecordedRequestsAndResponses('');
+	}
+
+	/** Includes requests whose delayed response is still pending. */
+	async getReceivedRequests(path: string): Promise<HttpRequest[]> {
+		return await this.client.retrieveRecordedRequests({ path });
 	}
 
 	async recordExpectations(

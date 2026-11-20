@@ -3,9 +3,9 @@ import { isIconOrEmoji, type IconOrEmoji, type SelectSize } from '@n8n/design-sy
 import { useI18n } from '@n8n/i18n';
 import type { AllRolesMap } from '@n8n/permissions';
 import { useDebounceFn } from '@vueuse/core';
-import { computed, ref, watch, onMounted } from 'vue';
+import { computed, ref, onMounted } from 'vue';
 import { ProjectTypes, type ProjectListItem, type ProjectSharingData } from '../projects.types';
-import type { ProjectSearchFn } from '../projects.utils';
+import { compareSharingEntries, type ProjectSearchFn } from '../projects.utils';
 import ProjectSharingInfo from './ProjectSharingInfo.vue';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
 import { DEBOUNCE_TIME, MODAL_CONFIRM } from '@/app/constants';
@@ -42,6 +42,16 @@ type Props = {
 	// Show the dropdown chevron even in remote+filterable mode (element-plus hides it by default)
 	showSuffix?: boolean;
 	roleDescriptions?: Record<string, string>;
+	/**
+	 * List the entries in a stable order, people first, then projects, each by
+	 * name, so sharing with one does not move it.
+	 */
+	sortSelected?: boolean;
+	/**
+	 * Projects not shared with yet, listed among the shared ones. The
+	 * `unshared-actions` slot renders what can be done with each.
+	 */
+	unsharedProjects?: Array<{ project: ProjectSharingData; subtitle: string }>;
 	confirmRemoval?: (project: ProjectSharingData) => {
 		title: string;
 		message: string;
@@ -80,14 +90,31 @@ const emit = defineEmits<{
 	'update:shareWithAllUsers': [value: boolean];
 }>();
 
-const selectedProject = ref(Array.isArray(model.value) ? '' : (model.value?.id ?? ''));
+const selectedSingleProject = computed(() =>
+	Array.isArray(model.value) ? null : (model.value ?? null),
+);
+const selectedProject = computed(() => selectedSingleProject.value?.id ?? '');
 
-const selectedProjects = computed((): ProjectSharingData[] | null => {
+type ListEntry =
+	| { kind: 'shared'; project: ProjectSharingData }
+	| { kind: 'unshared'; project: ProjectSharingData; subtitle: string };
+
+const listEntries = computed((): ListEntry[] | null => {
 	if (!Array.isArray(model.value)) {
 		return null;
 	}
 
-	return props.isSharedGlobally ? [GLOBAL_GROUP, ...model.value] : model.value;
+	const entries: ListEntry[] = [
+		...model.value.map((project): ListEntry => ({ kind: 'shared', project })),
+		...(props.unsharedProjects ?? []).map(
+			({ project, subtitle }): ListEntry => ({ kind: 'unshared', project, subtitle }),
+		),
+	];
+	if (props.sortSelected) {
+		entries.sort((entryA, entryB) => compareSharingEntries(entryA.project, entryB.project));
+	}
+
+	return props.isSharedGlobally ? [{ kind: 'shared', project: GLOBAL_GROUP }, ...entries] : entries;
 });
 
 const selectPlaceholder = computed(
@@ -124,9 +151,24 @@ const filteredProjects = computed(() => {
 	return list;
 });
 
-const sortedProjects = computed((): ProjectListItem[] => {
-	const projects = [...filteredProjects.value].sort((projectA, projectB) =>
-		(projectA.name ?? '').localeCompare(projectB.name ?? ''),
+// The select shows a name only for a matching option, and search results can miss the
+// selected project. List it while the search is empty; Element Plus keeps its label after.
+const selectedProjectOption = computed((): ProjectSharingData | null => {
+	const selected = selectedSingleProject.value;
+	if (
+		!selected ||
+		filter.value !== '' ||
+		filteredProjects.value.some((p) => p.id === selected.id)
+	) {
+		return null;
+	}
+	return selected;
+});
+
+const sortedProjects = computed((): ProjectSharingData[] => {
+	const option = selectedProjectOption.value;
+	const projects = [...filteredProjects.value, ...(option ? [option] : [])].sort(
+		(projectA, projectB) => (projectA.name ?? '').localeCompare(projectB.name ?? ''),
 	);
 	return [
 		...(props.canShareGlobally && !props.isSharedGlobally ? [GLOBAL_GROUP] : []),
@@ -135,7 +177,10 @@ const sortedProjects = computed((): ProjectListItem[] => {
 });
 
 const moreResultsCount = computed(() => {
-	return Math.max(0, searchCount.value - searchResults.value.length);
+	// An off-page selected option is part of the count, so it is not one of the "more" results.
+	const option = selectedProjectOption.value;
+	const offPage = option && !searchResults.value.some((p) => p.id === option.id) ? 1 : 0;
+	return Math.max(0, searchCount.value - searchResults.value.length - offPage);
 });
 const showSearchHint = computed(
 	() => filter.value === '' && sortedProjects.value.length === 0 && moreResultsCount.value > 0,
@@ -143,7 +188,8 @@ const showSearchHint = computed(
 
 const projectIcon = computed<IconOrEmoji>(() => {
 	const defaultIcon: IconOrEmoji = { type: 'icon', value: 'layers' };
-	const project = searchResults.value.find((p) => p.id === selectedProject.value);
+	const project =
+		searchResults.value.find((p) => p.id === selectedProject.value) ?? selectedSingleProject.value;
 
 	if (project?.type === ProjectTypes.Personal) {
 		return { type: 'icon', value: 'user' };
@@ -244,18 +290,6 @@ const onRoleAction = async (project: ProjectSharingData, role: string) => {
 		emit('projectRemoved', project);
 	}
 };
-
-watch(
-	() => model.value,
-	() => {
-		if (model.value === null || Array.isArray(model.value)) {
-			selectedProject.value = '';
-		} else {
-			selectedProject.value = model.value.id;
-		}
-	},
-	{ immediate: true },
-);
 </script>
 <template>
 	<div>
@@ -321,7 +355,7 @@ watch(
 				</N8nOption>
 			</N8nSelect>
 		</N8nTooltip>
-		<ul v-if="selectedProjects" :class="$style.selectedProjects">
+		<ul v-if="listEntries" :class="$style.selectedProjects">
 			<li v-if="props.homeProject" :class="$style.project" data-test-id="project-sharing-owner">
 				<ProjectSharingInfo :project="props.homeProject">
 					<span v-if="showStaticRole" :class="$style.rectBadge">
@@ -332,64 +366,83 @@ watch(
 					</N8nBadge></ProjectSharingInfo
 				>
 			</li>
-			<li
-				v-for="project in selectedProjects"
-				:key="project.id"
-				:class="$style.project"
-				data-test-id="project-sharing-list-item"
-			>
-				<ProjectSharingInfo :project="project">
-					<span v-if="staticRole" :class="$style.trailingRow">
-						<N8nText
-							color="text-light"
-							:title="staticRoleDescription"
-							data-test-id="project-sharing-static-role"
-						>
-							{{ staticRole.displayName }}
-						</N8nText>
+			<template v-for="entry in listEntries" :key="entry.project.id">
+				<li
+					v-if="entry.kind === 'unshared'"
+					:class="$style.project"
+					data-test-id="project-sharing-unshared-item"
+				>
+					<ProjectSharingInfo :project="entry.project" :subtitle="entry.subtitle">
+						<slot name="unshared-actions" :project="entry.project" />
+					</ProjectSharingInfo>
+				</li>
+				<li v-else :class="$style.project" data-test-id="project-sharing-list-item">
+					<ProjectSharingInfo :project="entry.project">
+						<span v-if="staticRole" :class="$style.trailingRow">
+							<N8nText
+								color="text-light"
+								:title="staticRoleDescription"
+								data-test-id="project-sharing-static-role"
+							>
+								{{ staticRole.displayName }}
+							</N8nText>
+							<N8nTooltip
+								v-if="canRemoveProject(entry.project)"
+								:content="locale.baseText('projects.sharing.removeAccess')"
+								placement="top"
+							>
+								<N8nButton
+									variant="outline"
+									icon-only
+									native-type="button"
+									icon="trash-2"
+									:aria-label="locale.baseText('projects.sharing.removeAccess')"
+									:disabled="props.readonly"
+									data-test-id="project-sharing-remove"
+									@click="onRoleAction(entry.project, 'remove')"
+								/>
+							</N8nTooltip>
+						</span>
+					</ProjectSharingInfo>
+					<N8nSelect
+						v-if="
+							props.roles?.length &&
+							!props.static &&
+							!showStaticRole &&
+							canRemoveProject(entry.project)
+						"
+						:class="$style.projectRoleSelect"
+						:model-value="props.roles[0]"
+						:disabled="props.readonly"
+						data-test-id="project-sharing-role-select"
+						size="small"
+						@update:model-value="onRoleAction(entry.project, $event)"
+					>
+						<N8nOption
+							v-for="role in roles"
+							:key="role.slug"
+							:value="role.slug"
+							:label="role.displayName"
+						/>
+					</N8nSelect>
+					<N8nTooltip
+						v-if="!props.static && !showStaticRole && canRemoveProject(entry.project)"
+						:content="locale.baseText('projects.sharing.removeAccess')"
+						placement="top"
+					>
 						<N8nButton
-							v-if="canRemoveProject(project)"
-							variant="subtle"
+							variant="outline"
 							icon-only
 							native-type="button"
 							icon="trash-2"
-							:aria-label="locale.baseText('generic.delete')"
+							:aria-label="locale.baseText('projects.sharing.removeAccess')"
 							:disabled="props.readonly"
 							data-test-id="project-sharing-remove"
-							@click="onRoleAction(project, 'remove')"
+							@click="onRoleAction(entry.project, 'remove')"
 						/>
-					</span>
-				</ProjectSharingInfo>
-				<N8nSelect
-					v-if="
-						props.roles?.length && !props.static && !showStaticRole && canRemoveProject(project)
-					"
-					:class="$style.projectRoleSelect"
-					:model-value="props.roles[0]"
-					:disabled="props.readonly"
-					data-test-id="project-sharing-role-select"
-					size="small"
-					@update:model-value="onRoleAction(project, $event)"
-				>
-					<N8nOption
-						v-for="role in roles"
-						:key="role.slug"
-						:value="role.slug"
-						:label="role.displayName"
-					/>
-				</N8nSelect>
-				<N8nButton
-					v-if="!props.static && !showStaticRole && canRemoveProject(project)"
-					variant="subtle"
-					icon-only
-					native-type="button"
-					icon="trash-2"
-					:aria-label="locale.baseText('generic.delete')"
-					:disabled="props.readonly"
-					data-test-id="project-sharing-remove"
-					@click="onRoleAction(project, 'remove')"
-				/>
-			</li>
+					</N8nTooltip>
+				</li>
+			</template>
 		</ul>
 	</div>
 </template>

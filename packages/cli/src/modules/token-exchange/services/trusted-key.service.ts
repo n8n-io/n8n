@@ -5,7 +5,8 @@ import { OnLeaderTakeover } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { In, Not } from '@n8n/typeorm';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import { UnexpectedError, jsonParse } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import type { KeyObject } from 'node:crypto';
 import { createHash, createPublicKey } from 'node:crypto';
 import { z } from 'zod';
@@ -27,7 +28,7 @@ import type {
 import { TrustedKeyDataSchema, TrustedKeySourceSchema } from '../token-exchange.schemas';
 import { JwksResolverService } from './jwks-resolver';
 
-type AlgorithmFamily = 'RSA' | 'EC' | 'EdDSA';
+type AlgorithmFamily = 'RSA' | 'EC';
 
 const ALGORITHM_FAMILY: Record<string, AlgorithmFamily> = {
 	RS256: 'RSA',
@@ -39,7 +40,6 @@ const ALGORITHM_FAMILY: Record<string, AlgorithmFamily> = {
 	ES256: 'EC',
 	ES384: 'EC',
 	ES512: 'EC',
-	EdDSA: 'EdDSA',
 };
 
 const STATIC_SOURCE_ID = 'static';
@@ -540,7 +540,6 @@ export class TrustedKeyService {
 		const expectedTypes: Record<AlgorithmFamily, string[]> = {
 			RSA: ['rsa'],
 			EC: ['ec'],
-			EdDSA: ['ed25519', 'ed448'],
 		};
 
 		if (!expectedTypes[family].includes(keyType ?? '')) {

@@ -28,6 +28,8 @@ export type InMemorySystemTaskHooks = {
 export type InMemorySystemTaskOptions = {
 	/** Runs the task once on start, on top of its schedule. */
 	runOnStart?: boolean;
+	/** How long after a failed run the task runs again, instead of at its next occurrence. */
+	retryDelaySeconds?: number;
 	/** Skips a run when it returns `true`. It reports the skip itself. */
 	shouldSkipRun?: () => Promise<boolean>;
 };
@@ -128,7 +130,7 @@ export class InMemorySystemTaskRunner {
 	}
 
 	private startTimer(entry: Entry, from: Date): void {
-		entry.timer.start(from);
+		entry.timer.start(from, entry.task.initialDelaySeconds);
 		if (entry.runOnStart) {
 			void this.run(entry);
 		}
@@ -225,8 +227,8 @@ export class InMemorySystemTaskRunner {
 	}
 
 	private scheduleRetry(entry: Entry): void {
-		const { retryDelaySeconds, effects } = entry.task;
-		if (retryDelaySeconds !== undefined && effects !== 'non-idempotent' && this.started) {
+		const { retryDelaySeconds } = entry;
+		if (retryDelaySeconds !== undefined && this.started) {
 			this.cancelRetry(entry);
 			entry.retryTimer = setTimeout(() => {
 				void this.run(entry);

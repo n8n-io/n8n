@@ -32,6 +32,8 @@ export const FINISH_REASONS = [
 	'tool-calls',
 	'error',
 	'other',
+	'paused',
+	'cancelled',
 ] as const;
 
 export type FinishReason = (typeof FINISH_REASONS)[number];
@@ -55,7 +57,22 @@ export type TokenUsage<T extends Record<string, unknown> = Record<string, unknow
 	outputTokenDetails?: {
 		reasoning?: number;
 	};
+	/**
+	 * The same usage split by the prompt size of each model call. Some providers
+	 * charge more for a call with a long prompt, so a sum over many calls is not
+	 * enough to price it. Present only when every summed call is in the split.
+	 */
+	byPromptSize?: PromptSizeUsage[];
 	additionalMetadata?: T;
+};
+
+/** Token counts of the model calls whose prompt size falls in one bucket. */
+export type PromptSizeUsage = {
+	/** Lower bound of the bucket: every call had a prompt of more than this many tokens. */
+	promptTokensOver: number;
+	/** Largest prompt among the calls, in tokens, cache reads and writes included. */
+	maxPromptTokens: number;
+	usage: Omit<TokenUsage, 'byPromptSize' | 'cost' | 'additionalMetadata'>;
 };
 
 /**
@@ -96,6 +113,7 @@ export type StreamChunk = ContentMetadata &
 		| { type: 'input'; message: AgentDbMessage }
 		| { type: 'start-step' }
 		| { type: 'finish-step' }
+		| { type: 'usage'; usage: TokenUsage; model: string }
 		| { type: 'text-start'; id: string }
 		| { type: 'text-delta'; id: string; delta: string }
 		| { type: 'text-end'; id: string }
@@ -141,6 +159,8 @@ export type StreamChunk = ContentMetadata &
 				canceled?: boolean;
 				/** Configured name of the MCP server the tool belongs to; absent for non-MCP tools. */
 				mcpServerName?: string;
+				/** Host-only trace data from the tool's `toTraceOutput`. The model never sees it. */
+				traceOutput?: unknown;
 		  }
 		| {
 				type: 'tool-call-suspended';
@@ -198,16 +218,19 @@ export type SideCallTask = 'title' | 'observer' | 'reflector' | 'episodic';
 
 /**
  * Reported after a side-call model turn completes, so the host can add the
- * estimated USD cost to the execution and thread totals. The `reportId` is
- * minted once per call so hosts can dedupe idempotently.
+ * estimated USD cost to the execution and thread totals, or bill the tokens.
+ * The `reportId` is minted once per call so hosts can dedupe idempotently.
  */
 export interface SideCallUsageReport {
 	task: SideCallTask;
-	/** Stable model id string (e.g. 'anthropic/claude-sonnet-4-5'). */
+	/** Stable model id string (e.g. 'anthropic/claude-sonnet-5-5'). */
 	model: string;
 	usage: TokenUsage;
-	/** Estimated cost in USD, computed from models.dev pricing. */
-	cost: number;
+	/**
+	 * Estimated cost in USD, computed from models.dev pricing. Absent when the
+	 * catalog is unavailable or the model has no pricing.
+	 */
+	cost?: number;
 	/** Stable per-LLM-call id, generated once at the call site for idempotent billing. */
 	reportId: string;
 }
@@ -222,6 +245,17 @@ export interface AgentInputBoundary {
 }
 
 export interface ExecutionOptions {
+	/** Allow tool calls. Defaults to true. Keep tool definitions for history replay when false. */
+	toolsEnabled?: boolean;
+	/**
+	 * The text that title generation titles a new thread from. Set it when the
+	 * run input carries host context next to the user's own words, so that the
+	 * title describes what the user asked. An empty string generates no title on
+	 * this turn. Defaults to the text of the first user message of the turn.
+	 */
+	titleText?: string;
+	/** Request a cooperative pause before the next model step. */
+	shouldPause?: () => Promise<boolean>;
 	/** Commit additional input between model calls. Stream consumers must acknowledge input-boundary chunks. */
 	onInputBoundary?: (boundary: AgentInputBoundary) => Promise<AgentDbMessage[]>;
 	maxIterations?: number;
@@ -268,6 +302,7 @@ export interface ExecutionOptions {
 	 * observer/reflector, episodic-memory model calls) completes, so the host
 	 * can add the estimated USD cost to the execution and thread totals. The
 	 * runtime computes the cost via the model catalog; the host only adds it.
+	 * A call without pricing is still reported, without `cost`.
 	 * Best-effort: a host failure here must not break the run.
 	 */
 	onSideCallUsage?: (report: SideCallUsageReport) => void | Promise<void>;
@@ -275,8 +310,6 @@ export interface ExecutionOptions {
 	approvalContext?: ToolApprovalContext;
 	onStepStart?: (event: GenerateTextStepStartEvent) => void | Promise<void>;
 	onStepEnd?: (event: GenerateTextStepEndEvent) => void | Promise<void>;
-	/** @deprecated Use `onStepEnd` instead. */
-	onStepFinish?: (event: GenerateTextStepEndEvent) => void | Promise<void>;
 	/**
 	 * Durable-log RFC (resilience phase), opt-in: persist a `running`-status
 	 * checkpoint at every step boundary (after a tool batch settles, before the
@@ -285,10 +318,37 @@ export interface ExecutionOptions {
 	 */
 	stepCheckpoints?: boolean;
 	guardrails?: GuardrailsOptions;
+	/**
+	 * Map a model-call failure to a guardrail stop (e.g. a gateway `402`
+	 * depleted-credits rejection). The run then ends with `finishReason
+	 * 'guardrail'` and the returned code, instead of `finishReason 'error'`.
+	 * Return `undefined` to keep the default error finish.
+	 */
+	classifyModelError?: (error: unknown) => GuardrailStop | undefined;
 }
 
 export interface PersistedExecutionOptions {
 	maxIterations?: number;
+}
+
+export interface NativeToolDeferralConfig {
+	/** Local tools that stay available without provider tool search. */
+	eagerToolNames: readonly string[];
+}
+
+/**
+ * How the runtime exposes tools added with `.deferredTool()`.
+ *
+ * - `provider` (default): the provider's own tool search (Anthropic, OpenAI).
+ *   When the model or endpoint does not support it, the runtime uses `tool-catalog`.
+ * - `tool-catalog`: the prompt lists deferred tool names by tool group. The model
+ *   reads schemas with `find_tools` and runs a tool with `call_tool`. The tool
+ *   list never changes, so the prompt cache stays valid.
+ */
+export type ToolDeferralMode = 'provider' | 'tool-catalog';
+
+export interface ToolDeferralConfig {
+	mode: ToolDeferralMode;
 }
 
 export interface AnthropicPromptCachingConfig {
@@ -309,7 +369,10 @@ export interface OpenAIPromptCachingConfig {
 	 * explicitly for per-tenant routing.
 	 */
 	promptCacheKey?: string;
-	/** Retention policy. Default `'24h'` (free on gpt-4.1/5/5.1; the only supported value on gpt-5.5+). */
+	/**
+	 * Retention policy. Default `'24h'` (free on gpt-4.1/5/5.1; the only supported value on gpt-5.5 and 5.6).
+	 * GPT-6 and later do not accept it: n8n never sends it for them, even when it is set here.
+	 */
 	promptCacheRetention?: 'in_memory' | '24h';
 }
 
@@ -322,7 +385,7 @@ export interface OpenAIPromptCachingConfig {
 export interface PromptCachingConfig {
 	/** Master switch. Defaults to `true` when this config is set. */
 	enabled?: boolean;
-	/** Anthropic-specific config, or `false` to disable for Anthropic models. */
+	/** Claude cache settings, including OpenRouter and Vertex. Set `false` to disable. */
 	anthropic?: false | AnthropicPromptCachingConfig;
 	/** OpenAI-specific config, or `false` to disable for OpenAI models. */
 	openai?: false | OpenAIPromptCachingConfig;
@@ -434,6 +497,11 @@ export interface BuiltAgent {
 		options: ResumeOptions & ExecutionOptions,
 	): Promise<StreamResult>;
 
+	/** Resume a user pause without repeating completed tools. */
+	resumePaused(
+		options: Omit<ResumeOptions, 'toolCallId'> & ExecutionOptions,
+	): Promise<StreamResult>;
+
 	/** Approve a tool that uses requireApproval or needsApprovalFn */
 	approve(method: 'generate', options: ResumeOptions & ExecutionOptions): Promise<GenerateResult>;
 	approve(method: 'stream', options: ResumeOptions & ExecutionOptions): Promise<StreamResult>;
@@ -504,4 +572,10 @@ export type AgentPersistenceOptions = {
 	 * exactly instead of guessing by recency.
 	 */
 	hostRunId?: string;
+	/**
+	 * Set only when the host starts a fresh run only after every suspension in the
+	 * thread has ended. The runtime then writes back the tool calls that it settles
+	 * as abandoned when it loads history. A stored pending call stops the Observer.
+	 */
+	persistSettledSuspensions?: true;
 };

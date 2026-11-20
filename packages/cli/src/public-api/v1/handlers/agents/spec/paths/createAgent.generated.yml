@@ -1,0 +1,205 @@
+operationId: createAgent
+tags:
+  - Agent
+summary: Create an agent
+description: |-
+  Create an agent in your personal project or a team project you have access to.
+
+  Requires the `agent:create` API key scope.
+x-required-scope: agent:create
+parameters:
+  - $ref: ../../../../shared/spec/parameters/idempotencyKey.yml
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          name:
+            type: string
+            minLength: 1
+          projectId:
+            type: string
+            minLength: 1
+          config:
+            type: object
+            description: Agent configuration. Set name, model, and instructions. An empty model creates an unconfigured draft.
+            example:
+              name: Support
+              model: anthropic/claude-sonnet-4-5
+              instructions: Help customers.
+          tools:
+            type: object
+            additionalProperties:
+              type: object
+              properties:
+                code:
+                  type: string
+                descriptor:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                  required:
+                    - name
+              required:
+                - code
+                - descriptor
+          availableInMCP:
+            type: boolean
+        required:
+          - name
+        additionalProperties: false
+responses:
+  '201':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+            projectId:
+              type: string
+            project:
+              type: object
+              nullable: true
+              properties:
+                id:
+                  type: string
+                name:
+                  type: string
+                type:
+                  type: string
+              required:
+                - id
+                - name
+                - type
+            availableInMCP:
+              type: boolean
+            isArchived:
+              type: boolean
+            versionId:
+              type: string
+              nullable: true
+            activeVersionId:
+              type: string
+              nullable: true
+            createdAt:
+              type: string
+            updatedAt:
+              type: string
+            config:
+              type: object
+              nullable: true
+            configHash:
+              type: string
+              nullable: true
+            tools:
+              type: object
+              additionalProperties:
+                type: object
+                description: 'A custom tool: the code it runs and its descriptor.'
+                properties:
+                  code:
+                    type: string
+                  descriptor:
+                    type: object
+                    description: The tool descriptor. `name` is required; other fields pass through.
+                    properties:
+                      name:
+                        type: string
+                    required:
+                      - name
+                    additionalProperties: true
+                required:
+                  - code
+                  - descriptor
+            activeVersion:
+              type: object
+              nullable: true
+              properties:
+                versionId:
+                  type: string
+                integrations:
+                  type: array
+                  items:
+                    type: object
+                    description: A channel integration. `type` picks the platform.
+                    properties:
+                      type:
+                        type: string
+                        description: The integration type, for example `slack` or `webhook`.
+                      credentialId:
+                        type: string
+                      settings:
+                        type: object
+                        description: Platform-specific integration settings.
+                      approval:
+                        type: object
+                        description: Channel actions that need approval before they run.
+                    required:
+                      - type
+                      - credentialId
+              required:
+                - versionId
+                - integrations
+            parentFolder:
+              type: object
+              nullable: true
+              properties:
+                id:
+                  type: string
+                name:
+                  type: string
+                parentFolderId:
+                  type: string
+                  nullable: true
+                createdAt:
+                  type: string
+                  format: date-time
+                updatedAt:
+                  type: string
+                  format: date-time
+              required:
+                - id
+                - name
+                - parentFolderId
+                - createdAt
+                - updatedAt
+          required:
+            - id
+            - name
+            - projectId
+            - project
+            - availableInMCP
+            - isArchived
+            - versionId
+            - activeVersionId
+            - createdAt
+            - updatedAt
+            - config
+            - configHash
+            - tools
+            - activeVersion
+            - parentFolder
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
+  '409':
+    $ref: ../../../../shared/spec/responses/conflict.yml
+  '415':
+    $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
+  '422':
+    $ref: ../../../../shared/spec/responses/unprocessableEntity.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml

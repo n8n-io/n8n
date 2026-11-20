@@ -1,0 +1,152 @@
+import type { DatabaseConfig } from '@n8n/config';
+import { sql } from '@n8n/db';
+import { DateTime } from 'luxon';
+
+/**
+ * Generates a SQL Common Table Expression (CTE) query that provides three date boundaries for insights queries
+ *
+ * Behavior:
+ * - If the end date is today and the start date is also today, start date is set to the start of the day to take today's data.
+ * - If the end date is in the past, both start and end dates are set to the start of their respective days, to take full days.
+ *
+ * The SQL CTE can be joined with the insights table for filtering/aggregation.
+ *
+ * @param startDate - The start date of the range (inclusive)
+ * @param endDate - The end date of the range (inclusive, or "now" if today)
+ * @param dbType - The database type (postgresdb or sqlite)
+ * @param timeZone - IANA timezone used to floor/compare dates to day boundaries. Defaults to `'utc'`. Threaded from the caller's browser so day boundaries match the day the user selected, not the UTC calendar day. The DB still stores/compares `periodStart` in UTC, so boundaries are converted back to UTC before building the SQL.
+ * @param now - Reference "now" used to decide whether `endDate` is today. Defaults to `DateTime.now()`. Passed explicitly by callers/tests to keep the helper deterministic and avoid a midnight race against an externally-captured timestamp.
+ * @returns SQL CTE query with `prev_start_date`, `start_date`, and `end_date` columns
+ * - `prev_start_date`: The start of the previous period (used for comparison)
+ * - `start_date`: The start of the current period (inclusive)
+ * - `end_date`: The end of the current period (exclusive)
+ */
+export const getDateRangesCommonTableExpressionQuery = ({
+	startDate,
+	endDate,
+	dbType,
+	timeZone = 'utc',
+	now = DateTime.now(),
+}: {
+	startDate: Date;
+	endDate: Date;
+	dbType: DatabaseConfig['type'];
+	timeZone?: string;
+	now?: DateTime;
+}) => {
+	let startDateTime = DateTime.fromJSDate(startDate).setZone(timeZone);
+	let endDateTime = DateTime.fromJSDate(endDate).setZone(timeZone);
+	const nowInZone = now.setZone(timeZone);
+
+	const isEndDateToday = endDateTime.hasSame(nowInZone, 'day');
+
+	// Past range, take full days
+	if (!isEndDateToday) {
+		startDateTime = startDateTime.startOf('day');
+		endDateTime = endDateTime.plus({ days: 1 }).startOf('day');
+	}
+
+	// Today range, take all day data starting from the beginning of the day
+	if (isEndDateToday && startDateTime.hasSame(endDateTime, 'day')) {
+		startDateTime = startDateTime.startOf('day');
+	}
+
+	const prevStartDateTime = startDateTime.minus(endDateTime.diff(startDateTime));
+
+	// Boundaries are computed in the caller's zone but stored/compared in UTC.
+	return getDateRangesSelectQuery({
+		dbType,
+		prevStartDateTime: prevStartDateTime.toUTC(),
+		startDateTime: startDateTime.toUTC(),
+		endDateTime: endDateTime.toUTC(),
+	});
+};
+
+export function getDateRangesSelectQuery({
+	dbType,
+	prevStartDateTime,
+	startDateTime,
+	endDateTime,
+}: {
+	dbType: DatabaseConfig['type'];
+	prevStartDateTime: DateTime;
+	startDateTime: DateTime;
+	endDateTime: DateTime;
+}) {
+	const prevStartStr = prevStartDateTime.toSQL({ includeZone: false, includeOffset: false });
+	const startStr = startDateTime.toSQL({ includeZone: false, includeOffset: false });
+	const endStr = endDateTime.toSQL({ includeZone: false, includeOffset: false });
+
+	// Database-specific timestamp casting
+	// PostgreSQL requires explicit CAST or :: syntax for timestamp comparisons
+	// SQLite can work with string literals in comparisons
+	if (dbType === 'postgresdb') {
+		return sql`SELECT
+			CAST('${prevStartStr}' AS TIMESTAMP) AT TIME ZONE 'UTC' AS prev_start_date,
+			CAST('${startStr}' AS TIMESTAMP) AT TIME ZONE 'UTC' AS start_date,
+			CAST('${endStr}' AS TIMESTAMP) AT TIME ZONE 'UTC' AS end_date
+		`;
+	}
+
+	return sql`SELECT
+			'${prevStartStr}' AS prev_start_date,
+			'${startStr}' AS start_date,
+			'${endStr}' AS end_date
+	`;
+}
+
+/** A stretch of time with one UTC offset. `fromUtc` is absent on the first segment. */
+export type UtcOffsetSegment = { fromUtc?: string; offsetMinutes: number };
+
+/**
+ * Lists the UTC offsets that apply to `timeZone` between `startDate` and `endDate`, so that a
+ * database without a timezone database (SQLite) can still bucket rows into local days across
+ * DST transitions. The scan extends a day past both ends to cover the range widening that
+ * `getDateRangesCommonTableExpressionQuery` applies.
+ *
+ * @returns Segments in ascending order. `fromUtc` is the first UTC instant of the segment, in the
+ * same SQL format that SQLite stores `periodStart` in, so it compares as a string.
+ */
+export function getUtcOffsetSegments({
+	startDate,
+	endDate,
+	timeZone,
+}: {
+	startDate: Date;
+	endDate: Date;
+	timeZone: string;
+}): UtcOffsetSegment[] {
+	const offsetAt = (epochMinutes: number) =>
+		DateTime.fromMillis(epochMinutes * 60_000, { zone: timeZone }).offset;
+
+	const minutesPerDay = 24 * 60;
+	const scanEnd = Math.ceil(endDate.getTime() / 60_000) + 2 * minutesPerDay;
+	let cursor = Math.floor(startDate.getTime() / 60_000) - minutesPerDay;
+
+	const segments: UtcOffsetSegment[] = [{ offsetMinutes: offsetAt(cursor) }];
+
+	// Zones change offset at most a few times a year, so step a day at a time and binary-search
+	// the minute of each change.
+	while (cursor < scanEnd) {
+		const next = cursor + minutesPerDay;
+		const currentOffset = segments[segments.length - 1].offsetMinutes;
+		if (offsetAt(next) !== currentOffset) {
+			let low = cursor;
+			let high = next;
+			while (high - low > 1) {
+				const middle = Math.floor((low + high) / 2);
+				if (offsetAt(middle) === currentOffset) low = middle;
+				else high = middle;
+			}
+			segments.push({
+				fromUtc: DateTime.fromMillis(high * 60_000, { zone: 'utc' }).toSQL({
+					includeOffset: false,
+				}),
+				offsetMinutes: offsetAt(high),
+			});
+		}
+		cursor = next;
+	}
+
+	return segments;
+}

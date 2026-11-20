@@ -90,6 +90,40 @@ describe('InstanceAiMessage', () => {
 		expect(getByText('Hello there')).toBeInTheDocument();
 	});
 
+	it.each(['Build from this image', ''])(
+		'renders a restored image with user text %j',
+		(content) => {
+			const { getByRole, getByText, queryByTestId } = renderComponent({
+				props: {
+					message: makeMessage({
+						role: 'user',
+						content,
+						attachments: [
+							{
+								type: 'file',
+								fileName: 'diagram.png',
+								mimeType: 'image/png',
+								data: 'aW1hZ2U=',
+							},
+						],
+					}),
+				},
+			});
+
+			expect(getByRole('img', { name: 'diagram.png' })).toHaveAttribute(
+				'src',
+				'data:image/png;base64,aW1hZ2U=',
+			);
+			expect(queryByTestId('attachment-preview-remove')).not.toBeInTheDocument();
+			if (content) {
+				expect(
+					getByText(content).compareDocumentPosition(getByRole('img', { name: 'diagram.png' })) &
+						Node.DOCUMENT_POSITION_FOLLOWING,
+				).toBeTruthy();
+			}
+		},
+	);
+
 	it('should render assistant message with assistant wrapper', () => {
 		const { getByTestId, queryByTestId } = renderComponent({
 			props: {
@@ -263,7 +297,7 @@ describe('InstanceAiMessage', () => {
 		});
 
 		expect(getByTestId('instance-ai-out-of-credits')).toBeInTheDocument();
-		expect(getByText("You've run out of AI credits")).toBeInTheDocument();
+		expect(getByText("You've run out of Assistant credits")).toBeInTheDocument();
 		// Raw provider text and status code are hidden for the tailored state.
 		expect(queryByText('Have reached end of quota')).not.toBeInTheDocument();
 		expect(queryByText('403')).not.toBeInTheDocument();
@@ -385,7 +419,7 @@ describe('InstanceAiMessage', () => {
 	describe('answered questions', () => {
 		const answeredCall = {
 			toolCallId: 'tc-1',
-			toolName: 'ask-user',
+			toolName: 'ask_user',
 			args: {},
 			isLoading: false,
 			confirmation: {

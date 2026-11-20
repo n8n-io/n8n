@@ -1,6 +1,11 @@
 import { testDb } from '@n8n/backend-test-utils';
 import type { CredentialSharingRelation, ListQuery } from '@n8n/db';
-import { CredentialsRepository, SharedCredentials, SharedCredentialsRepository } from '@n8n/db';
+import {
+	CredentialsRepository,
+	SharedCredentials,
+	SharedCredentialsRepository,
+	TransactionRunner,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 
@@ -870,6 +875,90 @@ describe('CredentialsRepository', () => {
 
 		it('returns false for an empty id list without querying', async () => {
 			await expect(credentialsRepository.hasResolvableCredential([])).resolves.toBe(false);
+		});
+	});
+
+	describe('existsById', () => {
+		it('returns true for an existing credential and false for an unknown id', async () => {
+			const { createCredentials } = await import('../../shared/db/credentials.js');
+			const credential = await createCredentials({ name: 'Test', type: 'githubApi', data: '' });
+			const credentialsRepository = Container.get(CredentialsRepository);
+
+			await expect(credentialsRepository.existsById(credential.id)).resolves.toBe(true);
+			await expect(credentialsRepository.existsById('missing')).resolves.toBe(false);
+		});
+
+		it('reads through the transaction carried by ctx', async () => {
+			const { createCredentials } = await import('../../shared/db/credentials.js');
+			const credential = await createCredentials({
+				name: 'Instance',
+				type: 'githubApi',
+				data: '',
+				usageScope: 'instance',
+			});
+			const credentialsRepository = Container.get(CredentialsRepository);
+			const transactionRunner = Container.get(TransactionRunner);
+
+			await expect(
+				transactionRunner.run({}, async (ctx) => {
+					await credentialsRepository.deleteInstanceCredentialIfUnassigned(credential.id, ctx);
+					await expect(credentialsRepository.existsById(credential.id, ctx)).resolves.toBe(false);
+					throw new Error('roll back');
+				}),
+			).rejects.toThrow('roll back');
+
+			await expect(credentialsRepository.existsById(credential.id)).resolves.toBe(true);
+		});
+	});
+
+	describe('findStoredData', () => {
+		it('returns the stored data of the credential', async () => {
+			const { createCredentials } = await import('../../shared/db/credentials.js');
+			const credential = await createCredentials({
+				name: 'Test',
+				type: 'githubApi',
+				data: 'ciphertext',
+			});
+			const credentialsRepository = Container.get(CredentialsRepository);
+
+			const stored = await credentialsRepository.findStoredData(credential.id);
+
+			expect(stored?.data).toBe('ciphertext');
+		});
+
+		it('returns null for an unknown id', async () => {
+			const credentialsRepository = Container.get(CredentialsRepository);
+
+			await expect(credentialsRepository.findStoredData('missing')).resolves.toBeNull();
+		});
+
+		it('reads through the transaction carried by ctx', async () => {
+			const { createCredentials } = await import('../../shared/db/credentials.js');
+			const credential = await createCredentials({
+				name: 'Test',
+				type: 'githubApi',
+				data: 'before',
+			});
+			const credentialsRepository = Container.get(CredentialsRepository);
+			const transactionRunner = Container.get(TransactionRunner);
+
+			await expect(
+				transactionRunner.run({}, async (ctx) => {
+					await credentialsRepository.updateDataIfUnchanged(
+						credential.id,
+						'githubApi',
+						'before',
+						'after',
+						ctx,
+					);
+					const stored = await credentialsRepository.findStoredData(credential.id, ctx);
+					expect(stored?.data).toBe('after');
+					throw new Error('roll back');
+				}),
+			).rejects.toThrow('roll back');
+
+			const stored = await credentialsRepository.findStoredData(credential.id);
+			expect(stored?.data).toBe('before');
 		});
 	});
 });

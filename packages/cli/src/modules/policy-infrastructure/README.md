@@ -8,7 +8,7 @@ The module holds no policy of its own. A policy feature adds a check class and a
 store for its rules. It does not add an enforcement path, an error shape, or an
 audit gap.
 
-Why these seven points, why every check must pass, and why a check that does not
+Why these eight points, why every check must pass, and why a check that does not
 answer blocks: read the policy infrastructure RFC in Notion. This README is the
 working reference for writing a check. It does not restate the RFC.
 
@@ -25,7 +25,7 @@ flowchart LR
         save["workflowSave<br/>WorkflowCreationService, WorkflowService,<br/>chat hub, instance AI, public API"]
         publish["workflowPublish<br/>WorkflowService.activateWorkflow,<br/>WorkflowPublicationApplier, ActiveWorkflowManager"]
         start["workflowStart<br/>PolicyLifecycleHandler on<br/>workflowExecuteBefore"]
-        other["workflowTransfer<br/>credentialSave<br/>contentImport<br/>credentialDecrypt"]
+        other["workflowTransfer<br/>credentialSave<br/>credentialTransfer<br/>contentImport<br/>credentialDecrypt"]
     end
 
     subgraph pep["Enforcement point · src/policy (always loaded)"]
@@ -97,6 +97,7 @@ request. A check can compare it with `workflow` to judge only what the save adds
 | `workflowStart`     | 250 ms   | row id                            | `workflowExecuteBefore` on main, workers, sub-executions, manual runs |
 | `workflowTransfer`  | 1000 ms  | row id                            | move to another project                                               |
 | `credentialSave`    | 1000 ms  | row id, or type hash for a create | editor, public API, package import stubs, provider connections        |
+| `credentialTransfer` | 1000 ms | row id                            | move to another project                                               |
 | `contentImport`     | 1000 ms  | row id                            | CLI import, source control import, package and git-connection import  |
 | `credentialDecrypt` | 250 ms   | credential id                     | credential resolution during a run or a test                          |
 
@@ -125,6 +126,7 @@ Each point hands its check a different context. The types are in
 | `workflowStart`     | `WorkflowStartContext`     | `workflow`, `projectId`                                                                  |
 | `workflowTransfer`  | `WorkflowTransferContext`  | `workflow`, `targetProjectId` — the project it moves _into_, whose policy applies        |
 | `credentialSave`    | `CredentialSaveContext`    | `credential`, `storedCredential` (`null` for a create), `projectId`                      |
+| `credentialTransfer` | `CredentialTransferContext` | `credential`, `targetProjectId` — the project it moves _into_, whose policy applies   |
 | `contentImport`     | `ContentImportContext`     | `workflow`, `projectId`, `transport`                                                     |
 | `credentialDecrypt` | `CredentialDecryptContext` | `credentialType`, `credentialId`, `consumer` (`null` for a credential test), `projectId` |
 
@@ -138,6 +140,34 @@ Every field is `readonly` — a check reads, it never writes.
 to hold an unattended sync to a different standard than a hand-run import. The
 host reads it too, to pick its fail posture: a package import refuses the whole
 package, a source-control pull skips and reports the workflow.
+
+## Agents and embedded nodes
+
+An agent has no enforcement point of its own. It goes through the workflow
+points, so every check that reads `nodes` covers agents with no change.
+
+- **An agent is a `PolicedWorkflow` with `artifactKind: 'agent'`.** Its `nodes`
+  are its node tools, one node each, built by `toPolicedNodes` in
+  `src/policy/policed-agent-nodes.ts`. Each node has the type the tool runs as,
+  which is its `…Tool` variant when one exists, and the tool's own parameters.
+  The mapper reads tools through the agent config schema, so a renamed field
+  breaks the build. A tool that fails the schema is still policed by what it
+  names. The token binds to an `agent` subject, and the audit line records
+  `agentId` and `agentName`.
+- **Agent hosts:** config update and create (`workflowSave`), revert
+  (`workflowSave` over the current draft), and publish (`workflowPublish`).
+- **Agent node tools run through `EphemeralNodeExecutor`, not `WorkflowRunner`.**
+  So `workflowExecuteBefore` never fires. Each run path of the executor calls
+  `workflowStart` on the one-node workflow it builds, and returns a refusal as a
+  tool error. Expression evaluation for a workflow tool runs no node, so it is
+  not policed there.
+- **Inline agents.** `PolicyEnforcementService` adds the node tools of an inline
+  agent in a Message an Agent node to the nodes it gives the checks, at every
+  workflow point. An agent tool that is itself a Message an Agent node adds its
+  inline tools the same way, at any depth. The added nodes are for the checks only. The token
+  binds to the host's own subject, and the host does not write the added nodes.
+  An inline agent set by an expression is not expanded; the executor polices its
+  tools when they run.
 
 ## Fail posture
 
@@ -184,6 +214,8 @@ warn  Policy blocked workflowSave  {
   row — the seal discards it for the same reason, binding a create to its content. The
   line does not reproduce that content subject: computing it is the enforcement point's
   job, and mirroring it here would let the two drift.
+- **An agent logs `agentId` and `agentName`** instead of the workflow fields, with
+  the same `null` rule for a create.
 - **`warn`, not `info`**, so the line survives an operator quietening logs. It matches
   the `warning` level `PolicyViolationError` already gives itself.
 

@@ -2,11 +2,11 @@ operationId: updateDataTableRows
 tags:
   - DataTable
 summary: Update rows in a data table
-description: Update rows matching filter conditions in a data table.
+description: |-
+  Update rows matching filter conditions in a data table.
+
+  Requires the `dataTableRow:update` API key scope.
 x-required-scope: dataTableRow:update
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 parameters:
   - schema:
       type: string
@@ -179,3 +179,5 @@ responses:
     $ref: ../../../../shared/spec/responses/notFound.yml
   '415':
     $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml

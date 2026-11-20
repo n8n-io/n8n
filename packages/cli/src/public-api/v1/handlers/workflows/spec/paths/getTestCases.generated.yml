@@ -2,7 +2,10 @@ operationId: getTestCases
 tags:
   - Evaluation
 summary: Retrieve test run cases
-description: Retrieve the per-case results of an evaluation test run.
+description: |-
+  Retrieve the per-case results of an evaluation test run.
+
+  Requires the `testRun:read` API key scope.
 x-required-scope: testRun:read
 parameters:
   - $ref: ../../../../shared/spec/parameters/limit.yml
@@ -19,9 +22,6 @@ parameters:
     description: The ID of the test run.
     name: runId
     in: path
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 responses:
   '200':
     description: Operation successful.
@@ -109,3 +109,5 @@ responses:
     $ref: ../../../../shared/spec/responses/forbidden.yml
   '404':
     $ref: ../../../../shared/spec/responses/notFound.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml

@@ -457,7 +457,9 @@ describe('EvalTestCaseSchema', () => {
 						type: 'llm',
 						role: 'assistant',
 						createdAt: '2026-06-29T09:00:00.000Z',
-						content: [{ type: 'tool-call', toolCallId: 'c1', toolName: 'build-workflow' }],
+						content: [
+							{ type: 'tool-call', toolCallId: 'c1', toolName: 'workflow_builder_build_workflow' },
+						],
 					},
 				],
 			},
@@ -467,7 +469,7 @@ describe('EvalTestCaseSchema', () => {
 		// The tool-call block's own keys survive (`.passthrough()`), so the seeded
 		// history the agent reads isn't gutted.
 		expect(messages[1].content).toEqual([
-			{ type: 'tool-call', toolCallId: 'c1', toolName: 'build-workflow' },
+			{ type: 'tool-call', toolCallId: 'c1', toolName: 'workflow_builder_build_workflow' },
 		]);
 	});
 
@@ -511,7 +513,7 @@ describe('EvalTestCaseSchema', () => {
 						id: 'agent12345678',
 						config: {
 							name: 'Notion research',
-							model: 'anthropic/claude-sonnet-4-5',
+							model: 'anthropic/claude-sonnet-5-5',
 							instructions: 'Research company notes.',
 						},
 					},
@@ -585,7 +587,7 @@ describe('EvalTestCaseSchema', () => {
 							id: 'agent12345678',
 							config: {
 								name: 'Notion research',
-								model: 'anthropic/claude-sonnet-4-5',
+								model: 'anthropic/claude-sonnet-5-5',
 								instructions: 'Research company notes.',
 							},
 						},

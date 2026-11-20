@@ -1,5 +1,6 @@
 import type { IDataObject } from 'n8n-workflow';
-import { assert, UserError } from 'n8n-workflow';
+import { assert } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import type {
 	AdjustedPutItem,

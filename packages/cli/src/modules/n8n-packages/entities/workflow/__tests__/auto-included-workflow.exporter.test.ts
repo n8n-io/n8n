@@ -8,12 +8,14 @@ import type { ManifestEntry } from '../../../spec/manifest.schema';
 import { CredentialRequirementsExtractor } from '../../credential/credential-requirements.extractor';
 import { DataTableRequirementsExtractor } from '../../data-table/data-table-requirements.extractor';
 import { FolderSerializer } from '../../folder/folder.serializer';
+import { ProjectShellExporter } from '../../project/project-shell.exporter';
 import { ProjectSerializer } from '../../project/project.serializer';
 import { TagRequirementsExtractor } from '../../tag/tag-requirements.extractor';
 import { VariableRequirementsExtractor } from '../../variable/variable-requirements.extractor';
 import type { AutoIncludedWorkflow } from '../auto-included-workflow-resolver';
 import { AutoIncludedWorkflowExporter } from '../auto-included-workflow.exporter';
 import { WorkflowSerializer } from '../workflow.serializer';
+import { PackageWorkflowInvalidError } from '../../package-export.errors';
 
 function makeWorkflow(overrides: Partial<WorkflowEntity> = {}): WorkflowEntity {
 	return {
@@ -56,7 +58,7 @@ function makeExporter(
 	return new AutoIncludedWorkflowExporter(
 		new WorkflowSerializer(),
 		new FolderSerializer(),
-		new ProjectSerializer(),
+		new ProjectShellExporter(new ProjectSerializer()),
 		credentialExtractor ?? new CredentialRequirementsExtractor(),
 		dataTableExtractor ?? new DataTableRequirementsExtractor(),
 		variableExtractor ?? new VariableRequirementsExtractor(),
@@ -86,9 +88,25 @@ describe('AutoIncludedWorkflowExporter', () => {
 		);
 
 		expect(result.workflowEntries).toEqual([
-			{ id: 'wf_triage', name: 'Triage', target: 'workflows/triage-wf_triage' },
+			{ id: 'wf_triage', name: 'Triage', target: 'workflows/triage-wf_triage', isArchived: false },
 		]);
 		expect(writer.files.map((f) => f.path)).toContain('workflows/triage-wf_triage/workflow.json');
+	});
+
+	it('throws a 422 that names the workflow when its stored data fails the schema', async () => {
+		const exporter = makeExporter();
+		const workflow = makeWorkflow({
+			id: 'wf_bad',
+			nodes: [{ id: 'n1', name: 'Node', type: 'x', typeVersion: 1, parameters: {} }] as never,
+		});
+
+		const error = await exporter
+			.export(emptyRequest(new CapturingWriter(), [includedWorkflow({ workflow })]))
+			.catch((e: unknown) => e);
+
+		expect(error).toBeInstanceOf(PackageWorkflowInvalidError);
+		expect((error as PackageWorkflowInvalidError).message).toContain('wf_bad');
+		expect((error as PackageWorkflowInvalidError).message).toContain('nodes.0.position');
 	});
 
 	it('skips a workflow already present in the existing workflow entries', async () => {
@@ -166,7 +184,7 @@ describe('AutoIncludedWorkflowExporter', () => {
 		expect(writer.files.some((f) => f.path === 'folders/root-f_root/folder.json')).toBe(false);
 	});
 
-	it('creates a project shell for a project workflow and reports its target', async () => {
+	it('shares one project shell between workflows in the same project', async () => {
 		const exporter = makeExporter();
 		const writer = new CapturingWriter();
 		const workflow = makeWorkflow({ id: 'wf_p', name: 'In Project' });
@@ -180,19 +198,26 @@ describe('AutoIncludedWorkflowExporter', () => {
 					ownerProject: project,
 					folderChain: [],
 				}),
+				includedWorkflow({
+					workflow: makeWorkflow({ id: 'wf_second', name: 'Second' }),
+					placement: 'project',
+					ownerProject: project,
+					folderChain: [],
+				}),
 			]),
 		);
 
 		expect(result.projectEntries).toEqual([
 			{ id: 'proj_9', name: 'Marketing', target: 'projects/marketing-proj_9' },
 		]);
-		expect(result.workflowEntries[0].target).toBe(
+		expect(result.workflowEntries.map(({ target }) => target)).toEqual([
 			'projects/marketing-proj_9/workflows/in-project-wf_p',
-		);
+			'projects/marketing-proj_9/workflows/second-wf_second',
+		]);
 		expect(result.projectTargetsById.get('proj_9')).toBe('projects/marketing-proj_9');
-		expect(writer.files.some((f) => f.path === 'projects/marketing-proj_9/project.json')).toBe(
-			true,
-		);
+		expect(
+			writer.files.filter((f) => f.path === 'projects/marketing-proj_9/project.json'),
+		).toHaveLength(1);
 	});
 
 	it('nests a project workflow with a folder chain under the project folders/', async () => {
@@ -250,7 +275,7 @@ describe('AutoIncludedWorkflowExporter', () => {
 
 	it('extracts credential, data-table, and variable requirements from each workflow', async () => {
 		const credentialExtractor = mock<CredentialRequirementsExtractor>();
-		credentialExtractor.extract.mockReturnValue([
+		credentialExtractor.extractFromWorkflow.mockReturnValue([
 			{
 				workflowId: 'wf_1',
 				credentialId: 'cred-1',
@@ -308,7 +333,7 @@ describe('AutoIncludedWorkflowExporter', () => {
 
 	it('does not extract requirements from a skipped (already-exported) workflow', async () => {
 		const credentialExtractor = mock<CredentialRequirementsExtractor>();
-		credentialExtractor.extract.mockReturnValue([]);
+		credentialExtractor.extractFromWorkflow.mockReturnValue([]);
 		const exporter = makeExporter(credentialExtractor);
 		const writer = new CapturingWriter();
 		const workflow = makeWorkflow({ id: 'wf_dup', name: 'Already Here' });
@@ -320,7 +345,7 @@ describe('AutoIncludedWorkflowExporter', () => {
 			],
 		});
 
-		expect(credentialExtractor.extract).not.toHaveBeenCalled();
+		expect(credentialExtractor.extractFromWorkflow).not.toHaveBeenCalled();
 		expect(result.requirements.nodeTypes).toEqual([]);
 	});
 

@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import {
 	N8nButton,
+	N8nDropdownMenu,
 	N8nIcon,
 	N8nLoading,
 	N8nText,
 	N8nTooltip,
 	updatedIconSet,
+	type DropdownMenuItemProps,
 	type IconName,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -15,6 +17,8 @@ import type { AgentChannelConnectAction } from '../channels/types';
 
 interface Props {
 	integration: ChatIntegrationDescriptor;
+	/** What the channel does and what setup needs, shown under the name. */
+	description?: string;
 	configured: boolean;
 	connected: boolean;
 	connectAction: AgentChannelConnectAction;
@@ -26,6 +30,18 @@ interface Props {
 	notRunning?: boolean;
 	/** Why it isn't running, shown on hover. */
 	runtimeError?: string;
+	/**
+	 * Overrides the connected/not-running label — for a channel with no
+	 * meaningful running state of its own (n8n Chat), which is simply available
+	 * or not.
+	 */
+	configuredLabel?: string;
+	/**
+	 * When set, clicking the configured trigger opens this menu instead of
+	 * emitting `edit` directly. Selecting the `edit` item still emits `edit`;
+	 * any other item emits `remove`.
+	 */
+	menuItems?: Array<DropdownMenuItemProps<string>>;
 }
 
 const props = defineProps<Props>();
@@ -33,6 +49,7 @@ const props = defineProps<Props>();
 const emit = defineEmits<{
 	setup: [channelType: string];
 	edit: [channelType: string];
+	remove: [channelType: string];
 }>();
 
 const i18n = useI18n();
@@ -42,10 +59,19 @@ function isIconName(icon: string): icon is IconName {
 }
 
 const statusLabel = computed(() => {
+	if (props.configuredLabel) return props.configuredLabel;
 	if (props.notRunning) return i18n.baseText('agents.channels.modal.notRunning');
 	if (props.connected) return i18n.baseText('agents.channels.modal.connected');
 	return i18n.baseText('agents.channels.modal.configured');
 });
+
+function selectMenuItem(itemId: string) {
+	if (itemId === 'edit') {
+		emit('edit', props.integration.type);
+		return;
+	}
+	emit('remove', props.integration.type);
+}
 
 /**
  * The tooltip is the only place the startup error is shown, so it must not be
@@ -66,6 +92,7 @@ const statusTooltip = computed(() => {
 			</div>
 			<div :class="$style.content">
 				<N8nLoading variant="text" :class="$style.nameSkeleton" />
+				<N8nLoading v-if="description" variant="text" :class="$style.descriptionSkeleton" />
 			</div>
 			<div :class="$style.channelActions">
 				<N8nLoading variant="rect" :class="$style.buttonSkeleton" />
@@ -84,11 +111,38 @@ const statusTooltip = computed(() => {
 				<N8nText :class="$style.name" size="medium" bold color="text-dark">
 					{{ integration.label }}
 				</N8nText>
+				<N8nText
+					v-if="description"
+					size="small"
+					color="text-light"
+					data-testid="agent-channel-description"
+				>
+					{{ description }}
+				</N8nText>
 			</div>
 
 			<div :class="$style.channelActions">
+				<N8nDropdownMenu
+					v-if="configured && menuItems && menuItems.length > 0"
+					:items="menuItems"
+					placement="bottom-end"
+					@select="selectMenuItem"
+				>
+					<template #trigger>
+						<button
+							type="button"
+							:class="$style.connectedTrigger"
+							data-testid="agent-channel-connected-trigger"
+						>
+							<span :class="$style.connectedIcon" data-testid="agent-channel-connected-indicator">
+								<N8nIcon icon="check" :size="14" aria-hidden="true" />
+							</span>
+							{{ statusLabel }}
+						</button>
+					</template>
+				</N8nDropdownMenu>
 				<N8nTooltip
-					v-if="configured"
+					v-else-if="configured"
 					:content="statusTooltip"
 					:disabled="!notRunning"
 					placement="top"
@@ -115,7 +169,7 @@ const statusTooltip = computed(() => {
 				</N8nTooltip>
 				<N8nButton
 					v-else
-					variant="subtle"
+					variant="outline"
 					size="medium"
 					:icon="connectAction.icon"
 					@click="emit('setup', integration.type)"
@@ -152,6 +206,10 @@ const statusTooltip = computed(() => {
 
 .nameSkeleton {
 	width: 30%;
+}
+
+.descriptionSkeleton {
+	width: 70%;
 }
 
 .buttonSkeleton {

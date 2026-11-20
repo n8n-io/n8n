@@ -1,4 +1,5 @@
 import {
+	N8NOAuthMetadataSchema,
 	toErrorWorkflowContext,
 	toExecutionContext,
 	type IExecutionContext,
@@ -52,6 +53,14 @@ describe('toExecutionContext — redaction snapshot', () => {
 		).toThrow();
 	});
 
+	it('parses the channels reported by sub-workflows', () => {
+		const parsed = toExecutionContext({
+			...baseContext,
+			subWorkflowRedaction: { production: true, manual: false },
+		});
+		expect(parsed.subWorkflowRedaction).toEqual({ production: true, manual: false });
+	});
+
 	it('parses a context without a redaction snapshot', () => {
 		const parsed = toExecutionContext({ ...baseContext });
 
@@ -87,6 +96,7 @@ describe('toErrorWorkflowContext', () => {
 		credentials: 'encrypted-identity-carrier',
 		secureArtifacts: 'encrypted-secure-artifacts',
 		redaction: { version: 2, production: true, manual: false },
+		subWorkflowRedaction: { production: true, manual: true },
 		executedByUserId: 'user-1',
 		usesDynamicCredentials: true,
 	};
@@ -106,6 +116,7 @@ describe('toErrorWorkflowContext', () => {
 			triggerNode: { name: 'Webhook', type: 'n8n-nodes-base.webhook' },
 			parentExecutionId: 'parent-1',
 			redaction: { version: 2, production: true, manual: false },
+			subWorkflowRedaction: { production: true, manual: true },
 			executedByUserId: 'user-1',
 			usesDynamicCredentials: true,
 		});
@@ -144,5 +155,37 @@ describe('toErrorWorkflowContext', () => {
 
 	it('produces a context that still parses as an execution context', () => {
 		expect(() => toExecutionContext(toErrorWorkflowContext(fullContext)!)).not.toThrow();
+	});
+});
+
+describe('N8NOAuthMetadataSchema — sealed grant', () => {
+	const grant = {
+		audiences: ['https://app.example.com/callback'],
+		executeAccessWorkflowId: 'wf-1',
+		projectAccess: { projectId: 'project-1', scopes: ['app:read'] },
+	};
+	const metadata = { source: 'n8n-oauth', resource: 'https://app.example.com/callback' };
+
+	// The gate re-checks only what the parsed grant keeps, so a dropped field passes silently.
+	it('keeps every requirement of the grant in a sealed identity', () => {
+		const parsed = N8NOAuthMetadataSchema.parse({ ...metadata, version: 2, grant });
+
+		expect(parsed.grant).toEqual(grant);
+	});
+
+	it('keeps every requirement of the grant in a legacy sealed identity', () => {
+		const parsed = N8NOAuthMetadataSchema.parse({ ...metadata, grant });
+
+		expect(parsed.grant).toEqual(grant);
+	});
+
+	it('rejects a project requirement without scopes', () => {
+		const result = N8NOAuthMetadataSchema.safeParse({
+			...metadata,
+			version: 2,
+			grant: { ...grant, projectAccess: { projectId: 'project-1', scopes: [] } },
+		});
+
+		expect(result.success).toBe(false);
 	});
 });

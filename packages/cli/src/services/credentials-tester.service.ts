@@ -51,8 +51,6 @@ export type CredentialAuthProbeResult = INodeCredentialTestResult & {
 	outcome: CredentialAuthProbeOutcome;
 };
 
-const { nodesData: mockNodesData, nodeTypes: mockNodeTypes } = createMockNodeTypes();
-
 @Service()
 export class CredentialsTester {
 	constructor(
@@ -76,6 +74,9 @@ export class CredentialsTester {
 	): ICredentialTestFunction | ICredentialTestRequestData | undefined {
 		// Check if test is defined on credentials
 		const type = this.credentialTypes.getByName(credentialType);
+		if (typeof type.test === 'function') {
+			return type.test;
+		}
 		if (type.test) {
 			return {
 				testRequest: type.test,
@@ -288,7 +289,7 @@ export class CredentialsTester {
 		}
 
 		if (typeof credentialTestFunction === 'function') {
-			// The credentials get tested via a function that is defined on the node.
+			// The credentials get tested via a function.
 			// Pass the base additional data so the test's HTTP requests honour the
 			// egress policy carried by its SSRF bridge.
 			const context = new CredentialTestContext(baseAdditionalData);
@@ -449,7 +450,11 @@ export class CredentialsTester {
 			},
 		};
 
-		mockNodesData[nodeTypeCopy.description.name] = {
+		// One registry per test run. Request tests run concurrently and most of
+		// them register under the same `noOp` name, so a shared registry let one
+		// run overwrite another's node type and remove it before that run read it.
+		const { nodesData, nodeTypes } = createMockNodeTypes();
+		nodesData[nodeTypeCopy.description.name] = {
 			sourcePath: '',
 			type: nodeTypeCopy,
 		};
@@ -458,7 +463,7 @@ export class CredentialsTester {
 			nodes: workflowData.nodes,
 			connections: workflowData.connections,
 			active: false,
-			nodeTypes: mockNodeTypes,
+			nodeTypes,
 		});
 
 		const mode = 'internal';
@@ -576,7 +581,6 @@ export class CredentialsTester {
 			};
 		} finally {
 			await workflow.expression.releaseIsolate();
-			delete mockNodesData[nodeTypeCopy.description.name];
 		}
 
 		if (

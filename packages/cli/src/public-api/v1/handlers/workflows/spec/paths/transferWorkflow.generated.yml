@@ -2,11 +2,11 @@ operationId: transferWorkflow
 tags:
   - Workflow
 summary: Transfer a workflow to another project
-description: Transfer a workflow to another project.
+description: |-
+  Transfer a workflow to another project.
+
+  Requires the `workflow:move` API key scope.
 x-required-scope: workflow:move
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 parameters:
   - schema:
       type: string
@@ -38,3 +38,5 @@ responses:
     $ref: ../../../../shared/spec/responses/notFound.yml
   '415':
     $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml

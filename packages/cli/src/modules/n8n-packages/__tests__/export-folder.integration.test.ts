@@ -78,6 +78,7 @@ describe('folder package export', () => {
 		expect(jsonParse(folderFile!.content.toString())).toEqual({
 			id: folder.id,
 			name: 'to_production',
+			resourceType: 'workflow',
 			parentFolderId: null,
 		});
 	});
@@ -181,7 +182,7 @@ describe('folder package export', () => {
 		const { stream } = await service.exportPackage({
 			user: owner,
 			folderIds: [exportedFolder.id],
-			missingWorkflowDependencyPolicy: 'include-in-package',
+			dependencyPolicy: 'include-in-package',
 		});
 		const { manifest, entries } = await readExport(stream);
 
@@ -246,7 +247,11 @@ describe('folder package export', () => {
 		expect(childEntry?.target).toBe(`workflows/external-child-${externalChild.id}`);
 		expect(entries.find((e) => e.name === `${childEntry!.target}/workflow.json`)).toBeDefined();
 		expect(manifest.requirements?.workflows).toEqual([
-			{ id: externalChild.id, name: externalChild.name, usedByWorkflows: [parent.id] },
+			{
+				id: externalChild.id,
+				name: externalChild.name,
+				usedBy: [{ kind: 'workflow', id: parent.id }],
+			},
 		]);
 	});
 
@@ -275,7 +280,7 @@ describe('folder package export', () => {
 			user: owner,
 			folderIds: [exportedFolder.id],
 			workflowIds: [topLevelParent.id],
-			missingWorkflowDependencyPolicy: 'include-in-package',
+			dependencyPolicy: 'include-in-package',
 		});
 		const { manifest } = await readExport(stream);
 
@@ -470,12 +475,16 @@ describe('folder package export — with contained workflows', () => {
 					id: credential.id,
 					name: credential.name,
 					type: 'httpHeaderAuth',
-					usedByWorkflows: [workflow.id],
+					usedBy: [{ kind: 'workflow', id: workflow.id }],
 				},
 			],
 			// Folder packages fold node type usage too (shared WorkflowExporter path).
 			nodeTypes: [
-				{ type: 'n8n-nodes-base.httpRequest', typeVersion: 1, usedByWorkflows: [workflow.id] },
+				{
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 1,
+					usedBy: [{ kind: 'workflow', id: workflow.id }],
+				},
 			],
 		});
 		expect(
@@ -512,7 +521,7 @@ describe('folder package export — with contained workflows', () => {
 		]);
 		expect(manifest.requirements).toEqual({
 			nodeTypes: expect.any(Array),
-			variables: [{ name: 'API_URL', usedByWorkflows: [workflow.id] }],
+			variables: [{ name: 'API_URL', usedBy: [{ kind: 'workflow', id: workflow.id }] }],
 		});
 		expect(
 			entries.find((e) => e.name === `${manifest.variables![0].target}/variable.json`),

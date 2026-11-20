@@ -9,7 +9,12 @@ import {
 	refreshWalletAfterBilledRun,
 	type SimplifiedExecution,
 } from './executionFinished';
-import type { IRunExecutionData, ITaskData, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	ExecutionError,
+	IRunExecutionData,
+	ITaskData,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 import {
 	createRunExecutionData,
 	EVALUATION_TRIGGER_NODE_TYPE,
@@ -81,23 +86,19 @@ vi.mock('@/app/composables/useRunWorkflow', () => ({
 	})),
 }));
 
-// Experiment cleanup (119_surface_assistant_on_workflow_error)
+// Workflow error nudge
 const nudge = vi.hoisted(() => ({
 	dismiss: vi.fn(),
 	release: vi.fn(),
 	trigger: vi.fn(),
 }));
 
-vi.mock(
-	'@/experiments/surfaceAssistantOnWorkflowError/composables/useSurfaceAssistantOnWorkflowError',
-	() => ({
-		WORKFLOW_ERROR_NUDGE_TOAST_CUSTOM_CLASS: 'content-toast workflow-error-nudge-toast',
-		dismissWorkflowErrorNudge: nudge.dismiss,
-		releaseWorkflowErrorNudge: nudge.release,
-		useSurfaceAssistantOnWorkflowError: () => ({ triggerOnWorkflowError: nudge.trigger }),
-	}),
-);
-// EOF Experiment cleanup
+vi.mock('@/features/ai/instanceAi/workflowErrorNudge/composables/useWorkflowErrorNudge', () => ({
+	WORKFLOW_ERROR_NUDGE_TOAST_CUSTOM_CLASS: 'content-toast workflow-error-nudge-toast',
+	dismissWorkflowErrorNudge: nudge.dismiss,
+	releaseWorkflowErrorNudge: nudge.release,
+	useWorkflowErrorNudge: () => ({ triggerOnWorkflowError: nudge.trigger }),
+}));
 
 describe('refreshWalletAfterBilledRun()', () => {
 	beforeEach(() => {
@@ -774,6 +775,36 @@ describe('executionFinished', () => {
 		});
 	});
 
+	it('shows the error toast when the fetched execution crashed', async () => {
+		setActivePinia(createTestingPinia({ stubActions: false }));
+		mockShowMessage.mockClear();
+
+		const executionId = 'crashed-exec';
+		useWorkflowExecutionStateStore(documentId).setActiveExecutionId(executionId);
+		const error = { message: 'Workflow crashed', name: 'WorkflowCrashedError' } as ExecutionError;
+		vi.spyOn(useWorkflowsStore(), 'fetchExecutionDataById').mockResolvedValue({
+			id: executionId,
+			workflowId: '1',
+			finished: false,
+			mode: 'manual',
+			status: 'crashed',
+			startedAt: new Date(),
+			createdAt: new Date(),
+			workflowData: mock<IWorkflowDb>({ id: '1', nodes: [], connections: {} }),
+			data: createRunExecutionData({ resultData: { runData: {}, error } }),
+		});
+
+		await executionFinished(
+			{
+				type: 'executionFinished',
+				data: { executionId, workflowId: '1', status: 'crashed' },
+			},
+			opts,
+		);
+
+		expect(mockShowMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }));
+	});
+
 	it('processes a late finish for the execution this document just stopped', async () => {
 		setActivePinia(createTestingPinia());
 
@@ -1084,7 +1115,6 @@ describe('manual execution stats tracking', () => {
 	});
 });
 
-// Experiment cleanup (119_surface_assistant_on_workflow_error)
 describe('workflow error nudge', () => {
 	beforeEach(() => {
 		setActivePinia(createTestingPinia());

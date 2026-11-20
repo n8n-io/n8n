@@ -70,7 +70,7 @@ function onCancelFeedback() {
 		<div v-if="showRatingButtons" :class="$style.buttons">
 			<template v-if="!minimal">
 				<N8nButton
-					variant="subtle"
+					variant="outline"
 					size="small"
 					:label="t('assistantChat.rating.thumbsUp')"
 					data-test-id="message-thumbs-up-button"
@@ -78,7 +78,7 @@ function onCancelFeedback() {
 					@click="onRateButton('up')"
 				/>
 				<N8nButton
-					variant="subtle"
+					variant="outline"
 					size="small"
 					data-test-id="message-thumbs-down-button"
 					:label="t('assistantChat.rating.thumbsDown')"
@@ -121,7 +121,7 @@ function onCancelFeedback() {
 			/>
 			<div :class="$style.feedbackActions">
 				<N8nButton
-					variant="subtle"
+					variant="outline"
 					size="small"
 					:label="t('generic.cancel')"
 					@click="onCancelFeedback"

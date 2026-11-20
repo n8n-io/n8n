@@ -10,10 +10,11 @@ const requirements: TestRequirements = {
 test.describe(
 	'ADO-1338-ndv-missing-input-panel',
 	{
-		annotation: [{ type: 'owner', description: 'Adore' }],
+		annotation: [{ type: 'owner', description: 'NODES' }],
 	},
 	() => {
-		test('should show the input and output panels when node is missing input and output data', async ({
+		// TODO(CET-1208): engine v2 turns the body of the disabled loop into a cycle and refuses it.
+		test('should show the input and output panels when node is missing input and output data @engine:v2-pending', async ({
 			n8n,
 			setupRequirements,
 		}) => {

@@ -85,7 +85,7 @@ User code never touches raw API keys.
 
 ```typescript
 const agent = new Agent('assistant')
-  .model('anthropic/claude-sonnet-4-5')
+  .model('anthropic/claude-sonnet-5-5')
   .credential('anthropic')
   .instructions('You are helpful.');
 ```
@@ -116,7 +116,8 @@ class EngineAgent extends Agent {
   - A `.env` file at the package root is loaded automatically by the vitest config.
     Always assume it exists when running integration tests. Never commit it.
   - Required keys:
-    - `ANTHROPIC_API_KEY` — all integration tests
+    - `ANTHROPIC_API_KEY` — Anthropic integration tests
+    - `VERCEL_AI_GATEWAY_API_KEY` — Vercel AI Gateway integration tests
   - Tests skip automatically when the required API key is not set
 - Run from the package directory: `cd packages/@n8n/agents && pnpm test`
 

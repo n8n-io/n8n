@@ -10,6 +10,7 @@ import type {
 	ICredentialTypeMap,
 	IUsedCredential,
 } from './credentials.types';
+import type { CredentialRestriction } from '@n8n/api-types';
 import * as credentialsApi from './credentials.api';
 import * as credentialsEeApi from './credentials.ee.api';
 import { EnterpriseEditionFeature } from '@/app/constants';
@@ -44,7 +45,7 @@ export type CredentialsStore = ReturnType<typeof useCredentialsStore>;
 export type { CredentialFetchScope };
 
 const scopeKey = (scope: CredentialFetchScope): string =>
-	'workflowId' in scope ? `workflow:${scope.workflowId}` : `project:${scope.projectId}`;
+	`${'workflowId' in scope ? `workflow:${scope.workflowId}` : `project:${scope.projectId}`}${scope.forAgent ? ':agent' : ''}${scope.forAssistant ? ':assistant' : ''}`;
 
 export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 	const { isEnabled: credentialDescriptionsEnabled } = useCredentialDescriptionsExperiment();
@@ -57,6 +58,11 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 	 * fetch to resolve would otherwise own the credential picker.
 	 */
 	const usableCredentials = ref<ICredentialMap>({});
+	/**
+	 * Restrictions from the last fetch that asked for them, by credential id. Kept apart from
+	 * `state.credentials` for the same reason: other fetches replace it without restrictions.
+	 */
+	const restrictionsById = ref<Record<string, CredentialRestriction>>({});
 	/**
 	 * An unfetched slice reads as empty, never as a fallback to the flat map —
 	 * falling back is the bug. Callers that must not act on "no credentials yet"
@@ -332,6 +338,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 			includeScopes?: boolean;
 			onlySharedWithMe?: boolean;
 			includeGlobal?: boolean;
+			includeRestrictions?: boolean;
 			externalSecretsStore?: string;
 		} = {},
 	): Promise<ICredentialsResponse[]> => {
@@ -340,6 +347,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 			includeScopes = true,
 			onlySharedWithMe = false,
 			includeGlobal = true,
+			includeRestrictions = false,
 			externalSecretsStore,
 		} = options;
 
@@ -352,9 +360,15 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 			includeScopes,
 			onlySharedWithMe,
 			includeGlobal,
+			includeRestrictions,
 			externalSecretsStore,
 		});
 		setCredentials(credentials);
+		if (includeRestrictions) {
+			restrictionsById.value = Object.fromEntries(
+				credentials.flatMap(({ id, restriction }) => (restriction ? [[id, restriction]] : [])),
+			);
+		}
 		return credentials;
 	};
 
@@ -500,13 +514,14 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		return credential;
 	};
 
-	const deleteCredential = async ({ id }: { id: string }) => {
+	const deleteCredential = async ({ id }: { id: string }): Promise<boolean> => {
 		const deleted = await credentialsApi.deleteCredential(rootStore.restApiContext, id);
 		if (deleted) {
 			const { [id]: deletedCredential, ...rest } = state.value.credentials;
 			state.value.credentials = rest;
 			credentialTestResults.value.delete(id);
 		}
+		return deleted;
 	};
 
 	const disconnectMyConnection = async ({ id }: { id: string }) => {
@@ -676,6 +691,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		fetchCredentialTypes,
 		fetchAllCredentials,
 		fetchUsableCredentials,
+		restrictionsById,
 		createNewCredential,
 		updateCredential,
 		getCredentialData,
@@ -725,6 +741,8 @@ export const listenForCredentialChanges = (opts: {
 					break;
 
 				case 'deleteCredential':
+					// Action returns the API delete flag; do not treat failures as deletes.
+					if (returnValue !== true) return;
 					const credentialId = args[0].id;
 					onCredentialDeleted?.(credentialId);
 					break;

@@ -53,8 +53,18 @@ const renderComponent = createComponentRenderer(WorkflowHistoryDiff, {
 	global: {
 		stubs: {
 			WorkflowDiffView: defineComponent({
-				template:
-					'<div><slot name="sourceLabel" /><slot name="targetLabel" /><button data-test-id="diff-rendered" /></div>',
+				props: {
+					sourceWorkflow: { type: Object, required: true },
+					targetWorkflow: { type: Object, required: true },
+				},
+				template: `
+					<div>
+						<slot name="sourceLabel" /><slot name="targetLabel" />
+						<span data-test-id="source-engine">{{ sourceWorkflow.settings?.engineType }}</span>
+						<span data-test-id="target-engine">{{ targetWorkflow.settings?.engineType }}</span>
+						<button data-test-id="diff-rendered" />
+					</div>
+				`,
 			}),
 			WorkflowHistoryVersionSelect: defineComponent({
 				props: {
@@ -95,6 +105,39 @@ const createWorkflowVersion = (versionId: string): WorkflowVersion => ({
 });
 
 describe('WorkflowHistoryDiff', () => {
+	it('gives each side the engine of its version', async () => {
+		const pinia = createTestingPinia();
+		const workflowHistoryStore = useWorkflowHistoryStore();
+		const workflowsListStore = useWorkflowsListStore();
+
+		vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue({
+			id: workflowId,
+			versionId: targetVersionId,
+			activeVersionId: sourceVersionId,
+			settings: { engineType: 'v2', timezone: 'UTC' },
+		} as IWorkflowDb);
+		vi.spyOn(workflowHistoryStore, 'getWorkflowVersion').mockImplementation(
+			async (_workflowId, versionId) => ({
+				...createWorkflowVersion(versionId),
+				settings: versionId === targetVersionId ? { engineType: 'v2' } : {},
+			}),
+		);
+
+		const rendered = renderComponent({
+			pinia,
+			props: {
+				workflowId,
+				sourceWorkflowVersionId: sourceVersionId,
+				targetWorkflowVersionId: targetVersionId,
+				availableVersions,
+			},
+		});
+
+		await waitFor(() => expect(rendered.getByTestId('diff-rendered')).toBeInTheDocument());
+		expect(rendered.getByTestId('source-engine')).toHaveTextContent('v1');
+		expect(rendered.getByTestId('target-engine')).toHaveTextContent('v2');
+	});
+
 	it('swaps source and target when source selection equals current target', async () => {
 		const pinia = createTestingPinia();
 		const workflowHistoryStore = useWorkflowHistoryStore();

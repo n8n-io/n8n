@@ -89,7 +89,7 @@ type N8nDocsToolContext = Pick<InstanceAiContext, 'logger'> &
  * Fill in `documentationUrl` from the credential type when the caller named a type
  * but no URL. Ranking scores an exact docs-URL match far above query tokens, so
  * without this the answer depends on the model first chaining
- * `credentials(action="search-types")` to fetch the URL itself — which it often
+ * `search_credential_types` to fetch the URL itself — which it often
  * skips, landing on the wrong pages and then answering from memory (AGENT-743).
  */
 async function withResolvedDocumentationUrl<
@@ -226,7 +226,7 @@ async function handleRead(
 export function createN8nDocsTool(context: N8nDocsToolContext) {
 	return new Tool(N8N_DOCS_TOOL_ID)
 		.description(
-			`Search and read current n8n documentation from docs.n8n.io. Always available — call it directly, no \`load_tool\` step. Use for n8n product, setup, credential, node, hosting, API, and troubleshooting questions, and prefer it over web search for anything n8n ships. ${SOURCE_ATTRIBUTION_INSTRUCTION}`,
+			`Search and read current n8n documentation from docs.n8n.io. This tool is in your toolset: call it directly. Use for n8n product, setup, credential, node, hosting, API, and troubleshooting questions, and prefer it over web search for anything n8n ships. ${SOURCE_ATTRIBUTION_INSTRUCTION}`,
 		)
 		.input(n8nDocsToolInputSchema)
 		.handler(async (input, ctx) => {

@@ -1,13 +1,15 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
-import { updateDisplayOptions } from 'n8n-workflow';
+import { requestPath, updateDisplayOptions } from 'n8n-workflow';
 
+import { getFilesDataFromUrls } from '../../helpers/baseAnalyze';
+import { assertResponseHasCandidates } from '../../helpers/candidates';
 import type {
 	Content,
 	GenerateContentRequest,
 	GenerateContentResponse,
 } from '../../helpers/interfaces';
-import { downloadFile, uploadFile } from '../../helpers/utils';
-import { apiRequest } from '../../transport';
+import { uploadFile } from '../../helpers/utils';
+import { apiRequest, modelPath } from '../../transport';
 import { modelRLC } from '../descriptions';
 
 const properties: INodeProperties[] = [
@@ -108,23 +110,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	let contents: Content[];
 	if (inputType === 'url') {
 		const urls = this.getNodeParameter('audioUrls', i, '') as string;
-		const filesDataPromises = urls
-			.split(',')
-			.map((url) => url.trim())
-			.filter((url) => url)
-			.map(async (url) => {
-				if (url.startsWith('https://generativelanguage.googleapis.com')) {
-					const { mimeType } = (await apiRequest.call(this, 'GET', '', {
-						option: { url },
-					})) as { mimeType: string };
-					return { fileUri: url, mimeType };
-				} else {
-					const { fileContent, mimeType } = await downloadFile.call(this, url, 'audio/mpeg');
-					return await uploadFile.call(this, fileContent, mimeType);
-				}
-			});
-
-		const filesData = await Promise.all(filesDataPromises);
+		const filesData = await getFilesDataFromUrls.call(this, urls, 'audio/mpeg');
 		contents = [
 			{
 				role: 'user',
@@ -165,9 +151,14 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		contents,
 	};
 
-	const response = (await apiRequest.call(this, 'POST', `/v1beta/${model}:generateContent`, {
-		body,
-	})) as GenerateContentResponse;
+	const response = (await apiRequest.call(
+		this,
+		'POST',
+		requestPath`/v1beta${modelPath.call(this, model)}:generateContent`,
+		{ body },
+	)) as GenerateContentResponse;
+
+	assertResponseHasCandidates(response);
 
 	if (simplify) {
 		return response.candidates.map((candidate) => ({

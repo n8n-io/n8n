@@ -1,5 +1,6 @@
 import {
 	PACKAGE_ENTITY_LAYOUT,
+	entityIdOfSegment,
 	type ManifestEntityCollection,
 } from '../n8n-packages/io/manifest-entry';
 
@@ -11,30 +12,30 @@ const BASE_BRANCH_ENTITIES = {
 	dataTables: { ...PACKAGE_ENTITY_LAYOUT.dataTables, type: 'dataTable', includeRoot: true },
 	variables: { ...PACKAGE_ENTITY_LAYOUT.variables, type: 'variable', includeRoot: true },
 	tags: { ...PACKAGE_ENTITY_LAYOUT.tags, type: 'tag', includeRoot: true },
-} as const satisfies Record<ManifestEntityCollection, { type: string; includeRoot: boolean }>;
+} as const satisfies Record<
+	Exclude<ManifestEntityCollection, 'agents' | 'skills'>,
+	{ type: string; includeRoot: boolean }
+>;
+
+type BaseBranchEntity = (typeof BASE_BRANCH_ENTITIES)[keyof typeof BASE_BRANCH_ENTITIES];
 
 export type PackageFile = Readonly<{
 	entityId: string;
 	slug: string;
 	projectId: string | null;
-	fileName: (typeof PACKAGE_ENTITY_LAYOUT)[ManifestEntityCollection]['fileName'];
+	fileName: BaseBranchEntity['fileName'];
 	path: string;
 	blobSha: string;
-	type: (typeof BASE_BRANCH_ENTITIES)[ManifestEntityCollection]['type'];
+	type: BaseBranchEntity['type'];
 }>;
 
 export const BASE_BRANCH_DIRECTORIES: string[] = Object.values(BASE_BRANCH_ENTITIES)
 	.filter(({ includeRoot }) => includeRoot)
 	.map(({ directory }) => directory);
 
-const ENTITIES_BY_DIRECTORY = new Map<
-	string,
-	(typeof BASE_BRANCH_ENTITIES)[ManifestEntityCollection]
->(Object.values(BASE_BRANCH_ENTITIES).map((entity) => [entity.directory, entity]));
-
-function entityIdOfSegment(segment: string): string {
-	return segment.slice(segment.lastIndexOf('-') + 1);
-}
+const ENTITIES_BY_DIRECTORY = new Map<string, BaseBranchEntity>(
+	Object.values(BASE_BRANCH_ENTITIES).map((entity) => [entity.directory, entity]),
+);
 
 export function parseBaseBranchFiles(
 	lsTreeOutput: string,
@@ -46,14 +47,18 @@ export function parseBaseBranchFiles(
 		const [, objectType, blobSha] = record.slice(0, tabIndex).split(' ');
 		return objectType === 'blob' ? [{ path: record.slice(tabIndex + 1), blobSha }] : [];
 	});
-	return parsePackageFiles(files, options);
+	return parsePackageFiles(files, {
+		exportRoot: options.exportRoot,
+		projectIds: [options.projectId],
+	});
 }
 
 export function parsePackageFiles(
 	packageFiles: Array<{ path: string; blobSha: string }>,
-	{ exportRoot, projectId }: { exportRoot: string; projectId: string },
+	{ exportRoot, projectIds }: { exportRoot: string; projectIds: readonly string[] },
 ): PackageFile[] {
 	const { projects, folders } = BASE_BRANCH_ENTITIES;
+	const wanted = new Set(projectIds);
 	const files: PackageFile[] = [];
 	const rootPrefix = `${exportRoot}/`;
 
@@ -63,8 +68,9 @@ export function parsePackageFiles(
 		const segments = path.slice(rootPrefix.length).split('/');
 		if (segments.length < 3) continue;
 
-		if (segments[0] === projects.directory) {
-			if (entityIdOfSegment(segments[1]) !== projectId) continue;
+		const projectId = segments[0] === projects.directory ? entityIdOfSegment(segments[1]) : null;
+		if (projectId !== null) {
+			if (!wanted.has(projectId)) continue;
 		} else if (!BASE_BRANCH_DIRECTORIES.includes(segments[0])) {
 			continue;
 		}
@@ -85,7 +91,7 @@ export function parsePackageFiles(
 		files.push({
 			entityId: entityIdOfSegment(entitySegment),
 			slug: entitySegment.slice(0, entitySegment.lastIndexOf('-')),
-			projectId: segments[0] === projects.directory ? projectId : null,
+			projectId,
 			fileName: entity.fileName,
 			path,
 			blobSha,

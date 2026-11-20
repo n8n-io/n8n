@@ -1,50 +1,46 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue';
 import {
+	AGENT_SKILL_DESCRIPTION_MAX_LENGTH,
 	AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
 	AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH,
 	AGENT_SKILL_REFERENCE_MAX_COUNT,
 	AGENT_SKILL_REFERENCES_TOTAL_MAX_LENGTH,
 } from '@n8n/api-types';
 import {
-	N8nButton,
 	N8nFormInput,
-	N8nIcon,
 	N8nInputLabel,
+	N8nMarkdown,
 	N8nMarkdownEditor,
 	N8nText,
-	N8nTooltip,
 } from '@n8n/design-system';
-import type { IconName } from '@n8n/design-system';
 import type { IValidator, Validatable } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 import type { Rule, RuleGroup } from '@/Interface';
 import type { AgentSkill, AgentSkillReference } from '../types';
-import { formatToolNameForDisplay } from '../utils/toolDisplayName';
-import AgentChipButton from './AgentChipButton.vue';
-import AgentModal from './modals/AgentModal.vue';
+import AgentSkillMermaidDiagram from './AgentSkillMermaidDiagram.vue';
+import type { SkillMermaidResult } from './skillMermaidRenderer';
 
 const SKILL_FILE = 'SKILL.md';
-
-export type AgentSkillAllowedToolOption = {
-	name: string;
-	label: string;
-	icon?: IconName;
+const READ_ONLY_MARKDOWN_OPTIONS = {
+	tasklists: { enabled: false, label: true, labelAfter: false },
 };
 
 const props = withDefaults(
 	defineProps<{
 		skill: AgentSkill;
-		availableTools?: AgentSkillAllowedToolOption[];
 		disabled?: boolean;
+		readOnly?: boolean;
 		errors?: Partial<Record<keyof AgentSkill, string>>;
 		selectedPath?: string;
 		showValidationWarnings?: boolean;
 	}>(),
 	{
-		availableTools: () => [],
 		disabled: false,
+		readOnly: false,
 		selectedPath: SKILL_FILE,
 		showValidationWarnings: false,
 	},
@@ -57,16 +53,16 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const telemetry = useTelemetry();
 const description = ref(props.skill.description);
 const referenceFileName = ref('');
-const addToolDialogOpen = ref(false);
 const formValidation = reactive({
 	description: false,
 	referenceName: true,
 });
 
 const descriptionValidationRules: Array<Rule | RuleGroup> = [
-	{ name: 'MAX_LENGTH', config: { maximum: 512 } },
+	{ name: 'MAX_LENGTH', config: { maximum: AGENT_SKILL_DESCRIPTION_MAX_LENGTH } },
 ];
 const referenceNameValidationRules: Array<Rule | RuleGroup> = [{ name: 'referenceFileName' }];
 const referenceNameValidators: Record<string, IValidator> = {
@@ -139,24 +135,6 @@ const isSkillFileSelected = computed(() => props.selectedPath === SKILL_FILE);
 const selectedReference = computed(() =>
 	(props.skill.references ?? []).find((reference) => reference.path === props.selectedPath),
 );
-const availableToolsByName = computed(
-	() => new Map(props.availableTools.map((tool) => [tool.name, tool])),
-);
-const selectedAllowedTools = computed(() =>
-	(props.skill.allowedTools ?? []).map((toolName) => {
-		const availableTool = availableToolsByName.value.get(toolName);
-		return {
-			name: toolName,
-			label: availableTool?.label || formatToolNameForDisplay(toolName) || toolName,
-			icon: availableTool?.icon ?? 'wrench',
-		};
-	}),
-);
-const hasAllowedTools = computed(() => selectedAllowedTools.value.length > 0);
-const addableAllowedTools = computed(() => {
-	const selected = new Set(props.skill.allowedTools ?? []);
-	return props.availableTools.filter((tool) => !selected.has(tool.name));
-});
 const selectedReferenceCharacterCount = computed(() =>
 	i18n.baseText('agents.builder.skills.references.characterCount' as BaseTextKey, {
 		interpolate: {
@@ -184,7 +162,20 @@ const referencesError = computed(() => {
 	if (referencesCountError.value) return referencesCountError.value;
 	if (referencesTotalError.value) return referencesTotalError.value;
 	if (referencesValid.value) return '';
-	return i18n.baseText('agents.builder.skills.references.invalidSummary');
+	// Name the file, so the user knows which reference blocks the save.
+	const [first] = invalidReferences.value;
+	if (!first) return i18n.baseText('agents.builder.skills.references.invalidSummary');
+	if (!first.content.trim()) {
+		return i18n.baseText('agents.builder.skills.references.emptyFile', {
+			interpolate: { path: first.path },
+		});
+	}
+	return i18n.baseText('agents.builder.skills.references.tooLongFile', {
+		interpolate: {
+			path: first.path,
+			max: AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH.toLocaleString(),
+		},
+	});
 });
 
 function onDescriptionInput(value: string | number | boolean | null | undefined) {
@@ -203,22 +194,6 @@ function onReferenceNameValidate(valid: boolean) {
 
 function onInstructionsInput(value: string) {
 	emit('update:skill', { instructions: value });
-}
-
-function updateAllowedTools(allowedTools: string[]) {
-	emit('update:skill', { allowedTools: allowedTools.length > 0 ? allowedTools : undefined });
-}
-
-function onAddAllowedTool(toolName: string) {
-	const allowedTools = props.skill.allowedTools ?? [];
-	if (!allowedTools.includes(toolName)) {
-		updateAllowedTools([...allowedTools, toolName]);
-	}
-	addToolDialogOpen.value = false;
-}
-
-function onRemoveAllowedTool(toolName: string) {
-	updateAllowedTools((props.skill.allowedTools ?? []).filter((name) => name !== toolName));
 }
 
 function replaceReference(updated: AgentSkillReference, currentPath = updated.path) {
@@ -308,15 +283,108 @@ watch(
 );
 
 watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
+
+// Count the diagram renders of one file view, and report them together when the last one ends.
+const openDiagramRenders = ref(0);
+const newDiagramCounts = () => ({ rendered: 0, invalid: 0, failed: 0, timeout: 0 });
+let diagramCounts = newDiagramCounts();
+// The file of the open renders. The selected file can change before the last render ends.
+let diagramFile: 'skill' | 'reference' = 'skill';
+
+function onDiagramRenderStart() {
+	if (openDiagramRenders.value === 0) {
+		diagramFile = isSkillFileSelected.value ? 'skill' : 'reference';
+	}
+	openDiagramRenders.value++;
+}
+
+function onDiagramRenderEnd(outcome: SkillMermaidResult['outcome']) {
+	openDiagramRenders.value--;
+	if (outcome !== 'aborted') diagramCounts[outcome]++;
+	if (openDiagramRenders.value > 0) return;
+
+	const { rendered, invalid, failed, timeout } = diagramCounts;
+	diagramCounts = newDiagramCounts();
+	if (rendered + invalid + failed + timeout === 0) return;
+	try {
+		telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_VIEWED_SKILL_DIAGRAMS, {
+			file: diagramFile,
+			rendered,
+			invalid,
+			failed,
+			timed_out: timeout,
+		});
+	} catch {
+		// Telemetry must not break the skill view.
+	}
+}
 </script>
 
 <template>
 	<div :class="$style.panel" data-testid="agent-skill-viewer">
-		<template v-if="isSkillFileSelected">
-			<N8nText v-if="referencesError" size="small" color="danger">{{ referencesError }}</N8nText>
+		<template v-if="props.readOnly">
+			<N8nInputLabel
+				v-if="isSkillFileSelected"
+				:class="$style.readOnlyField"
+				:label="i18n.baseText('agents.builder.skills.description.label')"
+				size="medium"
+				color="text-light"
+			>
+				<N8nText
+					tag="p"
+					color="text-base"
+					:class="$style.readOnlyText"
+					data-testid="agent-skill-description-text"
+					>{{ props.skill.description }}</N8nText
+				>
+			</N8nInputLabel>
+			<N8nInputLabel
+				v-if="isSkillFileSelected || selectedReference"
+				:class="$style.readOnlyField"
+				:label="
+					isSkillFileSelected
+						? i18n.baseText('agents.builder.skills.instructions.label')
+						: selectedReference?.path
+				"
+				size="medium"
+				color="text-light"
+			>
+				<N8nMarkdown
+					:class="$style.readOnlyMarkdown"
+					:options="READ_ONLY_MARKDOWN_OPTIONS"
+					:content="isSkillFileSelected ? props.skill.instructions : selectedReference?.content"
+					:data-testid="
+						isSkillFileSelected ? 'agent-skill-instructions-text' : 'agent-skill-reference-text'
+					"
+				>
+					<template #code-block="{ code, language }">
+						<AgentSkillMermaidDiagram
+							v-if="language.toLowerCase() === 'mermaid'"
+							:code="code"
+							@render-start="onDiagramRenderStart"
+							@render-end="onDiagramRenderEnd"
+						>
+							<pre :class="$style.codeBlock"><code>{{ code }}</code></pre>
+						</AgentSkillMermaidDiagram>
+						<pre v-else :class="$style.codeBlock"><code>{{ code }}</code></pre>
+					</template>
+				</N8nMarkdown>
+			</N8nInputLabel>
+		</template>
+
+		<template v-else-if="isSkillFileSelected">
+			<!-- A form-level notice, above the fields, so it does not read as an error of the first one. -->
+			<N8nText
+				v-if="referencesError"
+				size="small"
+				color="danger"
+				data-testid="agent-skill-references-error"
+				>{{ referencesError }}</N8nText
+			>
 			<N8nText v-if="props.errors?.references && !referencesError" size="small" color="danger">{{
 				props.errors.references
 			}}</N8nText>
+			<slot name="fields-start" />
 
 			<div :class="$style.field">
 				<N8nFormInput
@@ -344,10 +412,11 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 				>
 					<N8nMarkdownEditor
 						:class="$style.editor"
+						:container-class="$style.resizable"
 						:model-value="props.skill.instructions ?? ''"
 						:placeholder="i18n.baseText('agents.builder.skills.instructions.placeholder')"
 						show-toolbar="floating"
-						:readonly="props.disabled"
+						:disabled="props.disabled"
 						max-height="none"
 						data-testid="agent-skill-instructions-editor"
 						@update:model-value="onInstructionsInput"
@@ -362,63 +431,6 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 						<N8nText size="xsmall" color="text-light" :class="$style.characterCount">
 							{{ instructionsCharacterCount }}
 						</N8nText>
-					</div>
-				</N8nInputLabel>
-			</div>
-
-			<div :class="$style.field">
-				<N8nInputLabel
-					:label="i18n.baseText('agents.builder.skills.allowedTools.label')"
-					size="small"
-				>
-					<div :class="$style.allowedTools" data-testid="agent-skill-allowed-tools">
-						<span
-							v-for="tool in selectedAllowedTools"
-							:key="tool.name"
-							:class="$style.allowedToolChip"
-							data-testid="agent-skill-allowed-tool-chip"
-						>
-							<N8nIcon :icon="tool.icon" :size="16" color="text-light" />
-							<N8nText size="small" color="text-dark" :class="$style.allowedToolLabel">
-								{{ tool.label }}
-							</N8nText>
-							<N8nButton
-								:class="$style.allowedToolRemove"
-								variant="ghost"
-								size="xsmall"
-								icon-only
-								icon="x"
-								:disabled="props.disabled"
-								:aria-label="
-									i18n.baseText('agents.builder.skills.allowedTools.remove' as BaseTextKey, {
-										interpolate: { tool: tool.label },
-									})
-								"
-								data-testid="agent-skill-allowed-tool-remove"
-								@click="onRemoveAllowedTool(tool.name)"
-							/>
-						</span>
-						<N8nTooltip
-							:disabled="!hasAllowedTools"
-							:content="i18n.baseText('agents.builder.tools.add' as BaseTextKey)"
-							placement="top"
-						>
-							<N8nButton
-								variant="ghost"
-								size="medium"
-								:icon-only="hasAllowedTools"
-								:disabled="props.disabled"
-								data-testid="agent-skill-add-allowed-tool"
-								@click="addToolDialogOpen = true"
-							>
-								<template #icon>
-									<N8nIcon icon="plus" :size="16" color="text-light" />
-								</template>
-								<template v-if="!hasAllowedTools">
-									{{ i18n.baseText('agents.builder.tools.add' as BaseTextKey) }}
-								</template>
-							</N8nButton>
-						</N8nTooltip>
 					</div>
 				</N8nInputLabel>
 			</div>
@@ -454,7 +466,7 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 					:model-value="selectedReference.content"
 					:placeholder="i18n.baseText('agents.builder.skills.references.content.placeholder')"
 					show-toolbar="floating"
-					:readonly="props.disabled"
+					:disabled="props.disabled"
 					max-height="none"
 					data-testid="agent-skill-reference-editor"
 					@update:model-value="onReferenceInput"
@@ -472,48 +484,79 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 				</div>
 			</N8nInputLabel>
 		</template>
-
-		<AgentModal
-			:open="addToolDialogOpen"
-			:title="i18n.baseText('agents.builder.skills.allowedTools.addModal.title' as BaseTextKey)"
-			size="small"
-			stacked
-			:show-footer="false"
-			@update:open="addToolDialogOpen = $event"
-		>
-			<div :class="$style.allowedToolOptions">
-				<N8nText v-if="props.availableTools.length === 0" size="small" color="text-light">
-					{{ i18n.baseText('agents.builder.skills.allowedTools.addModal.empty' as BaseTextKey) }}
-				</N8nText>
-				<N8nText v-else-if="addableAllowedTools.length === 0" size="small" color="text-light">
-					{{
-						i18n.baseText('agents.builder.skills.allowedTools.addModal.allSelected' as BaseTextKey)
-					}}
-				</N8nText>
-				<AgentChipButton
-					v-for="tool in addableAllowedTools"
-					:key="tool.name"
-					:icon="tool.icon"
-					:class="$style.allowedToolOption"
-					data-testid="agent-skill-allowed-tool-option"
-					@click="onAddAllowedTool(tool.name)"
-				>
-					{{ tool.label }}
-				</AgentChipButton>
-			</div>
-		</AgentModal>
 	</div>
 </template>
 
 <style lang="scss" module>
 .panel {
-	padding: var(--spacing--xl);
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--md);
 	min-width: 0;
 	width: 100%;
 	box-sizing: border-box;
+}
+
+.readOnlyField {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+}
+
+.readOnlyText {
+	margin: 0;
+	line-height: var(--line-height--xl);
+	white-space: pre-wrap;
+}
+
+.panel .readOnlyMarkdown {
+	--n8n-markdown--font-size--base: var(--font-size--sm);
+
+	:global(p),
+	:global(li) {
+		font-size: var(--font-size--sm);
+		line-height: var(--line-height--xl);
+	}
+
+	:global(h1),
+	:global(h2) {
+		margin: var(--spacing--sm) 0 var(--spacing--2xs);
+		font-size: var(--font-size--md);
+		line-height: var(--line-height--lg);
+	}
+
+	:global(h3),
+	:global(h4),
+	:global(h5),
+	:global(h6) {
+		margin: var(--spacing--xs) 0 var(--spacing--3xs);
+		font-size: var(--font-size--sm);
+		line-height: var(--line-height--lg);
+	}
+
+	:global(:is(h1, h2, h3, h4, h5, h6):first-child) {
+		margin-top: 0;
+	}
+
+	:global(li label) {
+		display: inline;
+		line-height: inherit;
+	}
+}
+
+.codeBlock {
+	margin: 0;
+	padding: calc(var(--n8n-markdown--spacing) * 2);
+	overflow-x: auto;
+	white-space: pre-wrap;
+	font-family: var(--font-family--monospace);
+	font-size: calc(var(--n8n-markdown--font-size--base) * 0.875);
+	line-height: var(--line-height--xl);
+	color: var(--color--text--shade-1);
+	background: var(--background--subtle);
+	border: var(--border);
+	border-radius: var(--n8n-markdown--radius);
+	tab-size: 4;
 }
 
 .field {
@@ -528,54 +571,22 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 	}
 }
 
+/* The user drags the bottom edge to make the box taller or shorter. Doubled, so it wins over the
+   editor's own overflow. The text scrolls inside the editor's content, which clips it by default,
+   so a shorter box still shows all of it. */
+.resizable.resizable {
+	resize: vertical;
+	overflow: hidden;
+
+	:global([data-markdown-editor-content-wrapper]) {
+		overflow-y: auto;
+	}
+}
+
 .referenceEditor {
 	:global(.n8n-markdown) {
 		min-height: calc(var(--height--5xl) + var(--height--4xl));
 	}
-}
-
-.allowedTools {
-	display: flex;
-	align-items: center;
-	flex-wrap: wrap;
-	gap: var(--spacing--2xs);
-	margin-top: var(--spacing--5xs);
-}
-
-.allowedToolChip {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	height: var(--height--md);
-	max-width: min(12rem, 100%);
-	padding: var(--spacing--xs) var(--spacing--4xs) var(--spacing--xs) var(--spacing--xs);
-	border: var(--border);
-	border-radius: var(--radius--full);
-	background: light-dark(var(--background--surface), var(--background--subtle));
-	box-shadow: var(--shadow--xs);
-}
-
-.allowedToolLabel {
-	min-width: 0;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-	font-weight: var(--font-weight--medium);
-}
-
-.allowedToolRemove {
-	--button--color--background-hover: transparent;
-	--button--color--background-active: transparent;
-}
-
-.allowedToolOptions {
-	display: flex;
-	flex-wrap: wrap;
-	gap: var(--spacing--2xs);
-}
-
-.allowedToolOption {
-	max-width: min(12rem, 100%);
 }
 
 .editorLabel {
@@ -592,11 +603,5 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 
 .characterCount {
 	text-align: right;
-}
-
-@media (max-width: 480px) {
-	.panel {
-		padding: var(--spacing--md);
-	}
 }
 </style>

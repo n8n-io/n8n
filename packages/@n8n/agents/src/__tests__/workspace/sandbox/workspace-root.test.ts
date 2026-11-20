@@ -1,6 +1,8 @@
 import {
 	DAYTONA_HOME,
+	DAYTONA_WORKSPACE_ROOT,
 	N8N_SANDBOX_HOME,
+	PORTABLE_WORKSPACE_ROOT,
 	getPromptWorkspaceRoot,
 	getWorkspaceRoot,
 	WORKSPACE_DIR,
@@ -72,10 +74,10 @@ describe('getWorkspaceRoot', () => {
 		expect(executeCommand).toHaveBeenCalledWith('echo $HOME', [], { cwd: undefined });
 	});
 
-	it('uses DAYTONA_HOME when echo $HOME returns empty stdout for Daytona', async () => {
+	it('returns the portable root for a Daytona sandbox from a current snapshot', async () => {
 		const executeCommand = vi.fn().mockResolvedValue({
 			exitCode: 0,
-			stdout: '   \n',
+			stdout: `${PORTABLE_WORKSPACE_ROOT}\n`,
 			stderr: '',
 		});
 		const workspace = {
@@ -85,7 +87,82 @@ describe('getWorkspaceRoot', () => {
 			},
 		} as SandboxWorkspace;
 
-		await expect(getWorkspaceRoot(workspace)).resolves.toBe(`${DAYTONA_HOME}/${WORKSPACE_DIR}`);
+		await expect(getWorkspaceRoot(workspace)).resolves.toBe('/home/user/workspace');
+		await expect(getWorkspaceRoot(workspace)).resolves.toBe('/home/user/workspace');
+
+		expect(executeCommand).toHaveBeenCalledTimes(1);
+		expect(executeCommand).toHaveBeenCalledWith(
+			expect.stringContaining("[ -d '/home/user/workspace' ]"),
+			[],
+			{ cwd: undefined },
+		);
+	});
+
+	it('links the portable root to the Daytona root with sudo', async () => {
+		const executeCommand = vi.fn().mockResolvedValue({
+			exitCode: 0,
+			stdout: `${PORTABLE_WORKSPACE_ROOT}\n`,
+			stderr: '',
+		});
+		const workspace = {
+			sandbox: {
+				provider: 'daytona',
+				executeCommand,
+			},
+		} as SandboxWorkspace;
+
+		await expect(getWorkspaceRoot(workspace)).resolves.toBe(PORTABLE_WORKSPACE_ROOT);
+
+		const command = executeCommand.mock.calls[0][0] as string;
+		expect(command).toContain('sudo -n');
+		expect(command).toContain("$SUDO mkdir -p '/home/user'");
+		expect(command).toContain(
+			"ln -sn '/home/daytona/workspace' '/home/user/workspace' || [ -d '/home/user/workspace' ]",
+		);
+	});
+
+	it('returns the Daytona root when the portable root cannot be made', async () => {
+		const executeCommand = vi.fn().mockResolvedValue({
+			exitCode: 0,
+			stdout: `${DAYTONA_WORKSPACE_ROOT}\n`,
+			stderr: '',
+		});
+		const workspace = {
+			sandbox: {
+				provider: 'daytona',
+				executeCommand,
+			},
+		} as SandboxWorkspace;
+
+		await expect(getWorkspaceRoot(workspace)).resolves.toBe(DAYTONA_WORKSPACE_ROOT);
+	});
+
+	it('uses the Daytona root when the Daytona detection prints something unexpected', async () => {
+		const executeCommand = vi.fn().mockResolvedValue({ exitCode: 1, stdout: '', stderr: 'oops' });
+		const workspace = {
+			sandbox: {
+				provider: 'daytona',
+				executeCommand,
+			},
+		} as SandboxWorkspace;
+
+		await expect(getWorkspaceRoot(workspace)).resolves.toBe(DAYTONA_WORKSPACE_ROOT);
+	});
+
+	it('does not cache a failed Daytona detection', async () => {
+		const executeCommand = vi
+			.fn()
+			.mockRejectedValueOnce(new Error('sandbox unreachable'))
+			.mockResolvedValueOnce({ exitCode: 0, stdout: `${PORTABLE_WORKSPACE_ROOT}\n`, stderr: '' });
+		const workspace = {
+			sandbox: {
+				provider: 'daytona',
+				executeCommand,
+			},
+		} as SandboxWorkspace;
+
+		await expect(getWorkspaceRoot(workspace)).rejects.toThrow('sandbox unreachable');
+		await expect(getWorkspaceRoot(workspace)).resolves.toBe(PORTABLE_WORKSPACE_ROOT);
 	});
 
 	it('uses N8N_SANDBOX_HOME when echo $HOME returns empty stdout for n8n-sandbox', async () => {

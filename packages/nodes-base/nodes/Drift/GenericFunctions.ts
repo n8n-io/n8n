@@ -7,25 +7,25 @@ import type {
 	JsonObject,
 	IHttpRequestMethods,
 	IRequestOptions,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestUrl } from 'n8n-workflow';
 
 export async function driftApiRequest(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 
 	body: any = {},
 	query: IDataObject = {},
-	uri?: string,
-	option: IDataObject = {},
 ): Promise<any> {
-	let options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {},
 		method,
 		body,
 		qs: query,
-		uri: uri || `https://driftapi.com${resource}`,
+		uri: requestUrl`https://driftapi.com${resource}`,
 		json: true,
 	};
 
@@ -35,7 +35,6 @@ export async function driftApiRequest(
 	if (!Object.keys(query).length) {
 		delete options.qs;
 	}
-	options = Object.assign({}, options, option);
 
 	const authenticationMethod = this.getNodeParameter('authentication', 0);
 

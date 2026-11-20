@@ -55,6 +55,7 @@ erDiagram
   varchar_255_ email
   varchar_32_ firstName
   uuid id
+  varchar_16_ kind
   date lastActiveAt
   varchar_32_ lastName
   boolean mfaEnabled
@@ -75,6 +76,7 @@ erDiagram
   varchar_128_ name
   json nodeGroups
   json nodes
+  json settings
   timestamp_3__with_time_zone updatedAt
   varchar_36_ versionId
   varchar_36_ workflowId FK

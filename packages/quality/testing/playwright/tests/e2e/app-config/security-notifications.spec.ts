@@ -4,7 +4,7 @@ import type { n8nPage } from '../../../pages/n8nPage';
 test.describe(
 	'Security Notifications',
 	{
-		annotation: [{ type: 'owner', description: 'Adore' }],
+		annotation: [{ type: 'owner', description: 'Cloud Growth' }],
 	},
 	() => {
 		async function setupVersionsApiMock(

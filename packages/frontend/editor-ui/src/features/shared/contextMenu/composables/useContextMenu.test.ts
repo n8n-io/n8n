@@ -102,6 +102,7 @@ import {
 	WEBHOOK_NODE_TYPE,
 	WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
 } from 'n8n-workflow';
+import type { INodeTypeDescription } from 'n8n-workflow';
 
 const nodeFactory = (data: Partial<INodeUi> = {}): INodeUi => ({
 	id: faker.string.uuid(),
@@ -118,6 +119,7 @@ describe('useContextMenu', () => {
 	let uiStore: ReturnType<typeof useUIStore>;
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 	let workflowDocumentStore: ReturnType<typeof useWorkflowDocumentStore>;
+	let nodeTypesStore: ReturnType<typeof useNodeTypesStore>;
 	let focusedNodesStore: ReturnType<typeof useFocusedNodesStore>;
 	const nodes = [nodeFactory(), nodeFactory(), nodeFactory()];
 	const selectedNodes = nodes.slice(0, 2);
@@ -146,12 +148,15 @@ describe('useContextMenu', () => {
 		workflowDocumentStore.setScopes(['workflow:update']);
 		vi.mocked(injectWorkflowDocumentStore).mockReturnValue(shallowRef(workflowDocumentStore));
 
+		nodeTypesStore = useNodeTypesStore();
+
 		vi.spyOn(NodeHelpers, 'getNodeInputs').mockReturnValue([]);
 		vi.spyOn(NodeHelpers, 'isExecutable').mockReturnValue(true);
 	});
 
 	afterEach(() => {
 		useContextMenu().close();
+		nodeTypesStore.nodeTypes = {};
 		vi.clearAllMocks();
 	});
 
@@ -537,6 +542,84 @@ describe('useContextMenu', () => {
 			const byId = Object.fromEntries(actions.value.map((action) => [action.id, action]));
 			expect(byId.add_node?.disabled).toBe(true);
 			expect(byId.add_sticky?.disabled).toBe(true);
+			expect(byId.paste?.disabled).toBe(true);
+		});
+
+		it('offers an enabled paste action in the empty-selection menu', () => {
+			const { open, actions } = useContextMenu();
+			open(mockEvent, { source: 'canvas', nodeIds: [] });
+
+			const paste = actions.value.find((action) => action.id === 'paste');
+			expect(paste?.disabled).toBe(false);
+		});
+
+		describe('with clipboard access', () => {
+			function mockClipboard(state: PermissionState, text: string) {
+				Object.defineProperty(window.navigator, 'permissions', {
+					value: { query: vi.fn().mockResolvedValue({ state }) },
+					configurable: true,
+				});
+				Object.defineProperty(window.navigator, 'clipboard', {
+					value: { readText: vi.fn().mockResolvedValue(text) },
+					configurable: true,
+				});
+			}
+
+			afterEach(() => {
+				Reflect.deleteProperty(window.navigator, 'permissions');
+				Reflect.deleteProperty(window.navigator, 'clipboard');
+			});
+
+			const pasteDisabled = (actions: ReturnType<typeof useContextMenu>['actions']) =>
+				actions.value.find((action) => action.id === 'paste')?.disabled;
+
+			it('disables paste when the clipboard has no workflow data', async () => {
+				mockClipboard('granted', 'just some text');
+				const { open, actions } = useContextMenu();
+				open(mockEvent, { source: 'canvas', nodeIds: [] });
+
+				await vi.waitFor(() => expect(pasteDisabled(actions)).toBe(true));
+			});
+
+			it('keeps paste enabled when the clipboard has workflow data', async () => {
+				mockClipboard('granted', JSON.stringify({ nodes: [], connections: {} }));
+				const { open, actions } = useContextMenu();
+				open(mockEvent, { source: 'canvas', nodeIds: [] });
+
+				await new Promise((resolve) => setTimeout(resolve, 0));
+				expect(pasteDisabled(actions)).toBe(false);
+			});
+
+			it('ignores a clipboard result that arrives after the menu was reopened', async () => {
+				let resolveRead: (text: string) => void = () => {};
+				mockClipboard('granted', '');
+				vi.mocked(navigator.clipboard.readText)
+					.mockImplementationOnce(
+						async () => await new Promise<string>((resolve) => (resolveRead = resolve)),
+					)
+					.mockImplementationOnce(async () => await new Promise<string>(() => {}));
+				const { open, close, actions } = useContextMenu();
+
+				open(mockEvent, { source: 'canvas', nodeIds: [] });
+				close();
+				open(mockEvent, { source: 'canvas', nodeIds: [] });
+				// Let both permission checks finish so both reads have started
+				await vi.waitFor(() => expect(navigator.clipboard.readText).toHaveBeenCalledTimes(2));
+				resolveRead('just some text');
+
+				await new Promise((resolve) => setTimeout(resolve, 0));
+				expect(pasteDisabled(actions)).toBe(false);
+			});
+
+			it('keeps paste enabled and does not read the clipboard without permission', async () => {
+				mockClipboard('prompt', 'just some text');
+				const { open, actions } = useContextMenu();
+				open(mockEvent, { source: 'canvas', nodeIds: [] });
+
+				await new Promise((resolve) => setTimeout(resolve, 0));
+				expect(pasteDisabled(actions)).toBe(false);
+				expect(navigator.clipboard.readText).not.toHaveBeenCalled();
+			});
 		});
 
 		it('leaves out add sticky when the sticky note type is not loaded', () => {
@@ -1054,6 +1137,37 @@ describe('useContextMenu', () => {
 		expect(targetNodeIds.value).toEqual([node.id]);
 	});
 
+	describe('Deprecated node', () => {
+		it('should disable mutating actions when the node type is deprecated', () => {
+			const node = nodeFactory();
+			nodeTypesStore.nodeTypes = {
+				[node.type]: {
+					[node.typeVersion]: {
+						deprecated: true,
+						group: [],
+					} as Partial<INodeTypeDescription> as INodeTypeDescription,
+				},
+			};
+			vi.spyOn(workflowDocumentStore, 'getNodeById').mockReturnValue(node);
+
+			const { open, isOpen, actions, targetNodeIds } = useContextMenu();
+			open(mockEvent, { source: 'node-right-click', nodeId: node.id });
+
+			expect(isOpen.value).toBe(true);
+			expect(targetNodeIds.value).toEqual([node.id]);
+			for (const id of [
+				'extract_sub_workflow',
+				'toggle_activation',
+				'duplicate',
+				'execute',
+				'rename',
+			] as const) {
+				expect(actions.value.find((action) => action.id === id)?.disabled).toBe(true);
+			}
+			expect(actions.value.find((action) => action.id === 'delete')?.disabled).toBe(false);
+		});
+	});
+
 	describe('Read-only mode', () => {
 		it('should return the correct actions when right clicking a sticky', () => {
 			vi.spyOn(uiStore, 'isReadOnlyView', 'get').mockReturnValue(true);
@@ -1091,7 +1205,7 @@ describe('useContextMenu', () => {
 			);
 		});
 
-		it('keeps replace, rename, open, deactivate and copy available but blocks running, pinning and duplicating', () => {
+		it('keeps replace, rename, open and copy available but blocks running, deactivating, pinning and duplicating', () => {
 			const { open, actions } = useContextMenu();
 			open(mockEvent, { source: 'node-right-click', nodeId: restrictedNode.id });
 
@@ -1100,7 +1214,7 @@ describe('useContextMenu', () => {
 			expect(byId.rename?.disabled).toBe(false);
 			expect(byId.open).toBeDefined();
 			expect(byId.open?.disabled).toBeFalsy();
-			expect(byId.toggle_activation?.disabled).toBe(false);
+			expect(byId.toggle_activation?.disabled).toBe(true);
 			expect(byId.execute?.disabled).toBe(true);
 			expect(byId.toggle_pin?.disabled).toBe(true);
 			expect(byId.copy?.disabled).toBeFalsy();
@@ -1112,6 +1226,7 @@ describe('useContextMenu', () => {
 			open(mockEvent, { source: 'canvas', nodeIds: [nodes[0].id, restrictedNode.id] });
 
 			const byId = Object.fromEntries(actions.value.map((action) => [action.id, action]));
+			expect(byId.toggle_activation?.disabled).toBe(true);
 			expect(byId.toggle_pin?.disabled).toBe(true);
 			expect(byId.copy?.disabled).toBeFalsy();
 			expect(byId.duplicate?.disabled).toBe(true);

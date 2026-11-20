@@ -193,8 +193,44 @@ describe('credentials.store', () => {
 				includeScopes: true,
 				onlySharedWithMe: false,
 				includeGlobal: true,
+				includeRestrictions: false,
 				externalSecretsStore: undefined,
 			});
+		});
+
+		it('asks the API for restrictions when requested', async () => {
+			const store = useCredentialsStore();
+			vi.spyOn(credentialsApi, 'getAllCredentials').mockResolvedValue([]);
+
+			await store.fetchAllCredentials({ includeRestrictions: true });
+
+			expect(credentialsApi.getAllCredentials).toHaveBeenCalledWith(
+				mockRootStore.restApiContext,
+				expect.objectContaining({ includeRestrictions: true }),
+			);
+		});
+
+		it('keeps the restrictions of the last fetch that asked for them', async () => {
+			const store = useCredentialsStore();
+			const restriction = {
+				reason: 'typeRestricted' as const,
+				restriction: { name: 'slackApi', available: false, scope: 'instance' as const },
+			};
+			const credential = (id: string, extra = {}) =>
+				({ id, name: id, type: 'slackApi', ...extra }) as ICredentialsResponse;
+			const getAll = vi.spyOn(credentialsApi, 'getAllCredentials');
+
+			getAll.mockResolvedValueOnce([credential('cred-1', { restriction }), credential('cred-2')]);
+			await store.fetchAllCredentials({ includeRestrictions: true });
+			expect(store.restrictionsById).toEqual({ 'cred-1': restriction });
+
+			getAll.mockResolvedValueOnce([credential('cred-1')]);
+			await store.fetchAllCredentials();
+			expect(store.restrictionsById).toEqual({ 'cred-1': restriction });
+
+			getAll.mockResolvedValueOnce([credential('cred-1')]);
+			await store.fetchAllCredentials({ includeRestrictions: true });
+			expect(store.restrictionsById).toEqual({});
 		});
 
 		it('should pass includeGlobal as true when not provided', async () => {
@@ -218,6 +254,7 @@ describe('credentials.store', () => {
 				includeScopes: true,
 				onlySharedWithMe: false,
 				includeGlobal: true,
+				includeRestrictions: false,
 				externalSecretsStore: undefined,
 			});
 		});
@@ -284,6 +321,29 @@ describe('credentials.store', () => {
 			expect(store.getUsableCredentialByType('httpBasicAuth')).toEqual([inScope]);
 			// The flat map keeps its existing replace semantics.
 			expect(store.allCredentials).toEqual([inScope]);
+		});
+
+		it('does not treat the agent slice and the non-agent slice of a scope as interchangeable', async () => {
+			const store = useCredentialsStore();
+
+			vi.spyOn(credentialsApi, 'getUsableCredentials').mockResolvedValue([inScope]);
+			await store.fetchUsableCredentials({ projectId: 'project-1' });
+
+			expect(store.hasUsableCredentialsForScope({ projectId: 'project-1' })).toBe(true);
+			expect(store.hasUsableCredentialsForScope({ projectId: 'project-1', forAgent: true })).toBe(
+				false,
+			);
+
+			await store.fetchUsableCredentials({ projectId: 'project-1', forAgent: true });
+
+			expect(credentialsApi.getUsableCredentials).toHaveBeenLastCalledWith(
+				mockRootStore.restApiContext,
+				{ projectId: 'project-1', forAgent: true },
+			);
+			expect(store.hasUsableCredentialsForScope({ projectId: 'project-1', forAgent: true })).toBe(
+				true,
+			);
+			expect(store.hasUsableCredentialsForScope({ projectId: 'project-1' })).toBe(false);
 		});
 
 		it('reads an unfetched slice as empty rather than falling back to the flat map', async () => {

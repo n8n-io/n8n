@@ -1,10 +1,12 @@
 <script lang="ts" setup>
-import { computed, nextTick, onBeforeUnmount, ref, watch, type Component } from 'vue';
+import { computed, nextTick, onBeforeUnmount, ref, watch, type Component, type Ref } from 'vue';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
 import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
 import { EXTENDED_PROMPT_MAX_LENGTH } from '@/features/ai/shared/constants';
 import AttachmentPreview from './AttachmentPreview.vue';
+import { N8nAttachment, N8nAttachmentGroup } from '@n8n/design-system';
+import { useAttachmentPreviews } from '@/features/ai/shared/composables/useAttachmentPreviews';
 import InstanceAiPromptSuggestions from './InstanceAiPromptSuggestions.vue';
 import InstanceAiInputMenu from './InstanceAiInputMenu.vue';
 import { convertFileToBinaryData } from '@/app/utils/fileUtils';
@@ -20,12 +22,10 @@ import { useAssistantMentionAttachments } from '@/features/ai/assistant-at-menti
 import { useAssistantMentionAvailability } from '@/features/ai/assistant-at-mentions/composables/useAssistantMentionAvailability';
 import { useAssistantAtMentionsTelemetry } from '@/features/ai/assistant-at-mentions/assistantAtMentions.telemetry';
 import type {
-	AssistantMentionArtifactReference,
 	AssistantMentionCounts,
 	AssistantMentionSelection,
 	WorkflowArtifactReference,
 } from '@/features/ai/assistant-at-mentions/assistantAtMentions.types';
-import { EMPTY_ASSISTANT_MENTION_COUNTS } from '@/features/ai/assistant-at-mentions/assistantAtMentions.types';
 import { buildMentionKey } from '@/features/ai/assistant-at-mentions/utils/buildMentionItems';
 import { INSTANCE_AI_EMPTY_STATE_SUGGESTIONS_VERSION } from '../emptyStateSuggestions';
 import { useInstanceAiPromptSuggestionsTelemetry } from '../instanceAiPromptSuggestions.telemetry';
@@ -33,7 +33,7 @@ import { instanceAiResponseNow } from '../instanceAi.responseTiming';
 import type { ContextChip } from '../instanceAi.contextChip';
 import { useInstanceAiStore } from '../instanceAi.store';
 import {
-	USER_TYPED_MESSAGE,
+	resolveAuthorship,
 	type InstanceAiMessageAuthorship,
 	type InstanceAiPrefillType,
 	type InstanceAiPrefillPayload,
@@ -58,6 +58,7 @@ export type SuggestionSelectionPayload = SuggestionPromptPayload & {
 	telemetryPayload?: ITelemetryTrackProperties;
 	/** Required so a new catalog cannot emit suggestions that report as user-typed. */
 	prefillType: InstanceAiPrefillType;
+	suggestionTitle?: string;
 	/**
 	 * Catalog this row belongs to. A host-triggered submit (agent templates)
 	 * is not the home-screen catalog mounted on this input.
@@ -86,7 +87,6 @@ const props = withDefaults(
 		isStreaming?: boolean;
 		isSubmitting?: boolean;
 		isAwaitingConfirmation?: boolean;
-		isAwaitingPlanReview?: boolean;
 		currentThreadId?: string;
 		amendContext?: AmendContext;
 		contextualSuggestion?: string | null;
@@ -98,39 +98,40 @@ const props = withDefaults(
 		suggestionCatalogVersion?: string;
 		suggestionTelemetryPayload?: ITelemetryTrackProperties;
 		placeholderKey?: BaseTextKey;
-		// Experiment cleanup: remove with instanceAiSplitEmptyState.
+		/** Already-translated base placeholder; wins over `placeholderKey`. Never used as a prefill. */
+		placeholder?: string;
+		placeholderPreview?: Readonly<Ref<string | undefined>>;
+		composerHeight?: string;
+		// Experiment cleanup (124_workflow_previews_above_assistant)
 		previewPromptKey?: BaseTextKey | null;
-		// Experiment cleanup: remove with instanceAiSplitEmptyState.
-		fixedRows?: number | null;
-		// Experiment cleanup: remove with instanceAiSplitEmptyState.
-		submitLabel?: string;
-		submitActiveRequiresFocus?: boolean;
 		contextChip?: ContextChip | null;
 		mentionsEnabled?: boolean;
 		mentionProjectId?: string;
 		mentionArtifacts?: readonly WorkflowArtifactReference[];
 		mentionActiveWorkflowId?: string;
 		reservedAttachmentCount?: number;
+		isOutOfCredits?: boolean;
+		/** Undefined keeps the default "+" menu; a string replaces it with a plain attach button restricted to those MIME types (`''` hides attaching). */
+		attachOnlyMimeTypes?: string;
+		/** Restricts the accepted file types, as an `accept` string, and keeps the "+" menu. `attachOnlyMimeTypes` wins when both are set. */
+		acceptedMimeTypes?: string;
 	}>(),
 	{
 		isStreaming: false,
 		isSubmitting: false,
 		isAwaitingConfirmation: false,
-		isAwaitingPlanReview: false,
 		currentThreadId: '',
 		amendContext: null,
 		contextualSuggestion: null,
 		isWorkflowBuilderAvailable: true,
 		previewPromptKey: null,
-		fixedRows: null,
-		submitLabel: undefined,
-		submitActiveRequiresFocus: false,
 		contextChip: null,
 		mentionsEnabled: false,
 		mentionProjectId: undefined,
 		mentionArtifacts: () => [],
 		mentionActiveWorkflowId: undefined,
 		reservedAttachmentCount: 0,
+		isOutOfCredits: false,
 	},
 );
 
@@ -139,26 +140,21 @@ const emit = defineEmits<{
 	// false when the user has already typed something newer, so the caller can
 	// tell whether the draft was recovered. It also restores the pre-fill the
 	// draft came from, so a retry stays attributed to the surface that wrote it.
+	// `mentionedWorkflowIds` lists the workflows the mentions point at, in the
+	// order they were picked: the mentions reach the thread only as attachments.
 	submit: [
 		message: string,
 		attachments: InstanceAiAttachment[] | undefined,
 		restoreDraft: () => boolean,
 		authorship: InstanceAiMessageAuthorship,
 		responseStartedAtEpochMs: number,
-		acceptDraft: () => void,
 		mentionCounts: AssistantMentionCounts,
 		mentionedWorkflowIds: readonly string[],
 	];
 	stop: [];
 	'dismiss-context-chip': [];
 	'workflow-preview': [workflowFile: string | null];
-	'mention-reference-added': [reference: AssistantMentionArtifactReference];
-	'mention-reference-removed': [referenceId: string];
-	'mention-workflow-open': [workflowId: string];
-	// Experiment cleanup: remove with instanceAiSplitEmptyState.
-	// Fires when the composer goes between empty and non-empty so the split
-	// empty state can pause its cycling placeholders only once the user types
-	// (auto-focus on mount must NOT pause the cycle).
+	// Placeholder previews pause for draft content.
 	'content-change': [hasContent: boolean];
 }>();
 
@@ -171,9 +167,34 @@ const mentionTelemetry = useAssistantAtMentionsTelemetry({
 const instanceAiStore = useInstanceAiStore();
 const inputText = ref('');
 const attachedFiles = ref<File[]>([]);
+const removingFiles = ref(new Set<File>());
+
+/** Clear stale removal state only after the draft file list changes. */
+watch(
+	() => [...attachedFiles.value],
+	(files) => {
+		for (const file of removingFiles.value) {
+			if (!files.includes(file)) removingFiles.value.delete(file);
+		}
+	},
+);
+
+const { previewUrl } = useAttachmentPreviews(() => attachedFiles.value);
+const fileIds = new WeakMap<File, number>();
+let nextFileId = 0;
+
+function getFileId(file: File): number {
+	let id = fileIds.get(file);
+	if (id === undefined) {
+		id = nextFileId++;
+		fileIds.set(file, id);
+	}
+	return id;
+}
 const attachedResources = ref<InstanceAiResourceAttachment[]>([]);
 const isPreparingSubmission = ref(false);
 const chatInputRef = ref<InstanceType<typeof ChatInputBase> | null>(null);
+const attachmentGroupRef = ref<InstanceType<typeof N8nAttachmentGroup> | null>(null);
 const mentionPickerRef = ref<InstanceType<typeof AssistantAtMentionPicker> | null>(null);
 const composerRef = ref<HTMLElement | null>(null);
 // Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
@@ -186,7 +207,7 @@ const selectedSuggestionDraft = ref<SelectedSuggestionDraft | null>(null);
  */
 const activePrefill = ref<ActivePrefill | null>(null);
 
-// Experiment cleanup: remove with instanceAiSplitEmptyState.
+// Experiment cleanup (124_workflow_previews_above_assistant)
 const typedPreview = ref('');
 const TYPEWRITER_SPEED_MS = 9;
 let typewriterTimer: ReturnType<typeof setInterval> | null = null;
@@ -198,7 +219,7 @@ function stopTypewriter() {
 	}
 }
 
-// Only the split-empty-state preview prompt (the `previewPromptKey` prop) types
+// Only the workflow preview prompt (the `previewPromptKey` prop) types
 // out; the suggestion hover ghost (previewPrompt) stays instant.
 watch(
 	() => props.previewPromptKey,
@@ -266,17 +287,16 @@ defineExpose({
 	setTextIfEmpty,
 	clearTextIfMatches,
 	isDirty,
-	// Experiment cleanup: remove with instanceAiSplitEmptyState.
 	insertSuggestion: handleSuggestionInsert,
 	submitSuggestion,
+	// Lets a host disable other controls (e.g. an agent picker) while a file
+	// attachment is still encoding, so they cannot change who a send targets.
+	isPreparingSubmission,
+	getSendStopButtonElement: () => chatInputRef.value?.getSendStopButtonElement(),
 });
 
-// A run suspended on a plan review is parked, not working: the user is meant to
-// type into it. Only a real in-flight submission blocks the composer then.
-const isBusy = computed(() =>
-	props.isAwaitingPlanReview
-		? props.isSubmitting
-		: props.isStreaming || props.isSubmitting || isPreparingSubmission.value,
+const isBusy = computed(
+	() => props.isStreaming || props.isSubmitting || isPreparingSubmission.value,
 );
 const hasNonWhitespaceDraftText = computed(() => inputText.value.trim().length > 0);
 const isInputVisuallyEmpty = computed(() => inputText.value.length === 0);
@@ -321,14 +341,14 @@ const attachedEncodedBytes = computed(() =>
 	attachedFiles.value.reduce((sum, file) => sum + base64EncodedSize(file.size), 0),
 );
 const isComposerDirty = computed(() => hasNonWhitespaceDraftText.value || hasAttachments.value);
-// Experiment cleanup: remove with instanceAiSplitEmptyState.
-watch(isComposerDirty, (hasContent) => emit('content-change', hasContent));
+watch(isComposerDirty, (hasContent) => emit('content-change', hasContent), { immediate: true });
 const isGatedBySetup = computed(
 	() => props.isAwaitingConfirmation || !props.isWorkflowBuilderAvailable,
 );
-const shouldShowMentions = computed(
-	() => props.mentionsEnabled && Boolean(props.mentionProjectId) && !props.isAwaitingPlanReview,
+const showAttach = computed(
+	() => props.attachOnlyMimeTypes === undefined || props.attachOnlyMimeTypes.length > 0,
 );
+const shouldShowMentions = computed(() => props.mentionsEnabled && Boolean(props.mentionProjectId));
 const mentionAvailability = useAssistantMentionAvailability({
 	enabled: shouldShowMentions,
 	projectId: () => props.mentionProjectId,
@@ -371,14 +391,16 @@ const mentionAttachments = useAssistantMentionAttachments({
 	resources: attachedResources,
 	projectId: () => props.mentionProjectId,
 	reservedAttachmentCount: () => props.reservedAttachmentCount,
-	onReferenceAdded: (reference) => emit('mention-reference-added', reference),
-	onReferenceRemoved: (referenceId) => emit('mention-reference-removed', referenceId),
 	onMentionRemoved: mentionTelemetry.trackMentionRemoved,
 	onCleared: () => mentions.close(false, 'unavailable'),
 });
 
+/**
+ * A pick only stages the mention as a draft attachment. The mentioned workflow
+ * gets its tab with the message it rides on, once that message is sent, so
+ * picking it does not move the thread's tabs or preview around.
+ */
 async function handleMentionSelection(selection: AssistantMentionSelection): Promise<void> {
-	// Read before the pick stages anything: a workflow mention opens its own tab.
 	const existingArtifact = props.mentionArtifacts.find(
 		(artifact) => artifact.id === selection.item.workflowId,
 	);
@@ -399,8 +421,7 @@ async function handleMentionSelection(selection: AssistantMentionSelection): Pro
 			i18n.baseText('instanceAi.nodeContext.truncated.title'),
 		);
 	}
-	emit('mention-workflow-open', selection.item.workflowId);
-	await mentions.replaceActiveRange(selection.item.label);
+	await mentions.clearActiveRange();
 }
 
 const canSubmit = computed(() =>
@@ -412,7 +433,6 @@ const canSubmit = computed(() =>
 const canShowSuggestions = computed(
 	() =>
 		Boolean(props.suggestions?.length) &&
-		!props.isAwaitingPlanReview &&
 		!isComposerDirty.value &&
 		!isBusy.value &&
 		!isGatedBySetup.value,
@@ -433,10 +453,7 @@ const placeholder = computed(() => {
 	if (isGatedBySetup.value) {
 		return i18n.baseText('instanceAi.input.suspendedPlaceholder');
 	}
-	if (props.isAwaitingPlanReview) {
-		return i18n.baseText('instanceAi.input.planReviewPlaceholder');
-	}
-	// Experiment cleanup: remove with instanceAiSplitEmptyState. Split types the prompt out.
+	// Experiment cleanup (124_workflow_previews_above_assistant). Types the prompt out.
 	if (props.previewPromptKey && isInputVisuallyEmpty.value) {
 		return typedPreview.value;
 	}
@@ -451,11 +468,17 @@ const placeholder = computed(() => {
 	if (props.contextualSuggestion) {
 		return props.contextualSuggestion;
 	}
-	if (props.contextChip?.type === 'agent-artifact' && props.contextChip.isNewAgent) {
-		return i18n.baseText('instanceAi.input.newAgentPlaceholder');
-	}
-	return i18n.baseText(props.placeholderKey ?? 'instanceAi.input.placeholder');
+	return props.placeholder ?? i18n.baseText(props.placeholderKey ?? 'instanceAi.input.placeholder');
 });
+
+const canPreviewPlaceholder = computed(
+	() =>
+		!isGatedBySetup.value &&
+		!props.previewPromptKey &&
+		!previewPrompt.value &&
+		!props.amendContext &&
+		!props.contextualSuggestion,
+);
 
 watch(
 	[shouldTrackVisibleSuggestions, resolvedSuggestionCatalogVersion, () => props.currentThreadId],
@@ -488,7 +511,6 @@ function emitSubmittedMessage(
 	restoreDraft: () => boolean,
 	authorship: InstanceAiMessageAuthorship,
 	responseStartedAtEpochMs: number,
-	acceptDraft: () => void,
 	mentionCounts: AssistantMentionCounts,
 	mentionedWorkflowIds: readonly string[] = [],
 ) {
@@ -500,53 +522,22 @@ function emitSubmittedMessage(
 		restoreDraft,
 		authorship,
 		responseStartedAtEpochMs,
-		acceptDraft,
 		mentionCounts,
 		mentionedWorkflowIds,
 	);
 }
 
-/**
- * The composer is the only place that knows whether the text came from a
- * pre-fill, so it resolves authorship for every send that leaves it.
- */
-function resolveAuthorship(
-	message: string,
-	prefill: ActivePrefill | null,
-): InstanceAiMessageAuthorship {
-	if (!prefill) return USER_TYPED_MESSAGE;
-	return {
-		kind: 'prefill',
-		prefillType: prefill.prefillType,
-		...(prefill.prefillId ? { prefillId: prefill.prefillId } : {}),
-		promptModified: message !== prefill.text.trim(),
-	};
-}
-
-function resetDraftComposer({ keepAttachments = false } = {}) {
+function resetDraftComposer() {
 	inputText.value = '';
-	if (keepAttachments) return;
 	attachedFiles.value = [];
 	attachedResources.value = [];
 }
 
 /** The single submission gate — `canSubmit` is this predicate over the draft. */
 function canSubmitMessage(message: string, attachmentCount = 0) {
+	if (props.isOutOfCredits || removingFiles.value.size > 0) return false;
 	if (isBusy.value || isGatedBySetup.value) return false;
-	// Plan feedback travels as a plain string, so an attachment cannot carry it.
-	if (props.isAwaitingPlanReview) return message.length > 0;
 	return message.length > 0 || attachmentCount > 0;
-}
-
-/**
- * Put failed plan feedback back. Only the text was submitted, so this cannot use
- * `isDirty()` as its guard: staged attachments keep that true even when the text
- * box is empty, which would block every restore.
- */
-function restorePlanFeedbackDraft(message: string) {
-	if (hasNonWhitespaceDraftText.value) return false;
-	inputText.value = message;
-	return true;
 }
 
 /**
@@ -594,33 +585,12 @@ function submitComposerMessage(
 	draftSnapshot?: {
 		files: File[];
 		resources: InstanceAiResourceAttachment[];
-		mentionReferenceIds: readonly string[];
+		mentionRecordIds: readonly string[];
 		mentionCounts: AssistantMentionCounts;
 		mentionedWorkflowIds: readonly string[];
 	},
 ) {
 	if (!canSubmitMessage(message, attachments?.length ?? 0)) {
-		return;
-	}
-
-	// Plan feedback is resumed as a plain string. Send the text alone and leave
-	// anything staged in place, so it stays visible for a later real message
-	// instead of being dropped on a send that could never carry it. A suggestion
-	// draft can reach here, but feedback on a plan is not a suggestion submission.
-	if (props.isAwaitingPlanReview) {
-		// Feedback on a plan is the user's own answer, so it reports as typed even
-		// when a pre-filled draft is what reached here -- the same reason this path
-		// skips the suggestion-submitted event below.
-		emitSubmittedMessage(
-			message,
-			undefined,
-			() => restorePlanFeedbackDraft(message),
-			USER_TYPED_MESSAGE,
-			responseStartedAtEpochMs,
-			() => {},
-			EMPTY_ASSISTANT_MENTION_COUNTS,
-		);
-		resetDraftComposer({ keepAttachments: true });
 		return;
 	}
 
@@ -631,26 +601,24 @@ function submitComposerMessage(
 	const mentionCounts = draftSnapshot?.mentionCounts ?? mentionAttachments.snapshotCounts();
 	const mentionedWorkflowIds =
 		draftSnapshot?.mentionedWorkflowIds ?? mentionAttachments.snapshotMentionedWorkflowIds();
-	const mentionSubmission = mentionAttachments.detachSubmission(draftSnapshot?.mentionReferenceIds);
+	const restoreMentions = mentionAttachments.detachSubmission(draftSnapshot?.mentionRecordIds);
 	emitSubmittedMessage(
 		message,
 		attachments,
 		() => {
 			const restored = restoreSubmittedDraft(message, submittedFiles, submittedResources, prefill);
-			mentionSubmission.restore();
+			restoreMentions();
 			return restored;
 		},
 		resolveAuthorship(message, prefill),
 		responseStartedAtEpochMs,
-		mentionSubmission.accept,
 		mentionCounts,
 		mentionedWorkflowIds,
 	);
 	resetDraftComposer();
 }
 
-// Experiment cleanup: remove with instanceAiSplitEmptyState. A split example row
-// click sends the prompt directly — attribute the submit (unedited) without a
+// A suggestion click sends the prompt directly — attribute the submit (unedited) without a
 // separate 'selected' event, since there is no insert step.
 function submitSuggestion(payload: SuggestionSelectionPayload) {
 	const prompt = getSuggestionPrompt(payload);
@@ -676,15 +644,9 @@ async function handleSubmit() {
 	mentions.close();
 	const responseStartedAtEpochMs = instanceAiResponseNow();
 
-	// Plan feedback carries no attachments, so skip encoding the staged files.
-	if (props.isAwaitingPlanReview) {
-		submitComposerMessage(text, undefined, null, responseStartedAtEpochMs);
-		return;
-	}
-
 	const submittedFiles = [...attachedFiles.value];
 	const submittedResources = [...attachedResources.value];
-	const mentionReferenceIds = mentionAttachments.snapshotSubmission();
+	const mentionRecordIds = mentionAttachments.snapshotSubmission();
 	const mentionCounts = mentionAttachments.snapshotCounts();
 	const mentionedWorkflowIds = mentionAttachments.snapshotMentionedWorkflowIds();
 	isPreparingSubmission.value = true;
@@ -711,7 +673,7 @@ async function handleSubmit() {
 		{
 			files: submittedFiles,
 			resources: submittedResources,
-			mentionReferenceIds,
+			mentionRecordIds,
 			mentionCounts,
 			mentionedWorkflowIds,
 		},
@@ -729,6 +691,9 @@ watch(
 		const consumed = instanceAiStore.consumePendingAttachments();
 		for (const attachment of consumed) {
 			if (attachment.type === 'file') continue;
+			if (attachment.type === 'element') {
+				attachedResources.value = attachedResources.value.filter((a) => a.type !== 'element');
+			}
 			if (attachment.type === 'nodes') {
 				const existing = attachedResources.value.find(
 					(a): a is Extract<InstanceAiResourceAttachment, { type: 'nodes' }> =>
@@ -746,13 +711,48 @@ watch(
 	{ deep: true, immediate: true },
 );
 
+watch(
+	() => {
+		const element = attachedResources.value.find((a) => a.type === 'element');
+		return element?.type === 'element' ? element.appId : null;
+	},
+	(appId) => instanceAiStore.setComposerElementAppId(appId),
+	{ immediate: true },
+);
+
+onBeforeUnmount(() => instanceAiStore.setComposerElementAppId(null));
+
 function handleStop() {
 	mentions.close();
 	emit('stop');
 }
 
 function handleComposerKeydown(event: KeyboardEvent): void {
-	if (!mentionMenuOpen.value) return;
+	if (!mentionMenuOpen.value) {
+		/** Keep text navigation, modified shortcuts, and composition unchanged. */
+		if (
+			event.key === 'ArrowUp' &&
+			event.target instanceof HTMLTextAreaElement &&
+			event.target === chatInputRef.value?.getInputElement() &&
+			!event.target.value &&
+			!event.defaultPrevented &&
+			!event.altKey &&
+			!event.ctrlKey &&
+			!event.metaKey &&
+			!event.shiftKey &&
+			!event.isComposing &&
+			event.keyCode !== IME_COMPOSITION_KEYCODE &&
+			!event.repeat &&
+			attachedFiles.value.length > 0 &&
+			removingFiles.value.size === 0
+		) {
+			event.preventDefault();
+			event.stopPropagation();
+			attachmentGroupRef.value?.focus();
+			return;
+		}
+		return;
+	}
 	const handled = mentionPickerRef.value?.handleExternalKeydown(event) ?? false;
 	const hasModifier = event.shiftKey || event.ctrlKey || event.metaKey || event.altKey;
 	const isComposing = event.isComposing || event.keyCode === IME_COMPOSITION_KEYCODE;
@@ -771,6 +771,17 @@ function handleTabAutocomplete() {
 
 function handleFilesSelected(files: File[]) {
 	attachedFiles.value.push(...files);
+}
+
+function handleFilesRejected(files: File[]) {
+	for (const file of files) {
+		toast.showMessage({
+			type: 'error',
+			title: i18n.baseText('agents.chat.attachments.unsupportedType', {
+				interpolate: { fileName: file.name },
+			}),
+		});
+	}
 }
 
 function handleFileRemove(file: File) {
@@ -843,6 +854,7 @@ function trackSuggestionSelected(payload: SuggestionSelectionPayload) {
 		suggestionId: payload.suggestionId,
 		suggestionKind: payload.suggestionKind,
 		position: payload.position,
+		suggestionTitle: payload.suggestionTitle,
 	});
 }
 
@@ -876,10 +888,6 @@ async function handleSuggestionInsert(payload: SuggestionSelectionPayload) {
 }
 
 const resizable = computed(() => {
-	// Experiment cleanup: remove with instanceAiSplitEmptyState.
-	if (props.fixedRows) {
-		return { minRows: props.fixedRows, maxRows: props.fixedRows };
-	}
 	if (previewPrompt.value) {
 		return { minRows: DEFAULT_AUTOSIZE_ROWS, maxRows: DEFAULT_AUTOSIZE_ROWS };
 	}
@@ -903,22 +911,24 @@ const resizable = computed(() => {
 			:model-value="inputText"
 			:class="$style.inputWrapper"
 			:placeholder="placeholder"
-			:is-streaming="props.isAwaitingPlanReview ? false : props.isStreaming"
+			:placeholder-preview="canPreviewPlaceholder ? props.placeholderPreview : undefined"
+			:is-streaming="props.isStreaming"
 			:can-submit="canSubmit"
-			:disabled="isGatedBySetup || isPreparingSubmission"
+			:disabled="isGatedBySetup || isPreparingSubmission || props.isOutOfCredits"
 			:autosize="resizable"
-			:button-label="props.submitLabel"
-			:active-requires-focus="props.submitActiveRequiresFocus"
+			:composer-height="props.composerHeight"
 			:max-length="EXTENDED_PROMPT_MAX_LENGTH"
 			show-voice
-			:show-attach="!props.isAwaitingPlanReview"
-			:show-attach-button="false"
+			:show-attach="showAttach"
+			:show-attach-button="props.attachOnlyMimeTypes !== undefined"
+			:accepted-mime-types="props.attachOnlyMimeTypes ?? props.acceptedMimeTypes"
 			:attached-encoded-bytes="attachedEncodedBytes"
 			@update:model-value="mentions.handleTextChange"
 			@submit="handleSubmit"
 			@stop="handleStop"
 			@tab="handleTabAutocomplete"
 			@files-selected="handleFilesSelected"
+			@files-rejected="handleFilesRejected"
 		>
 			<template #attachments>
 				<div v-if="props.contextChip || attachedResources.length > 0" :class="$style.attachments">
@@ -941,22 +951,43 @@ const resizable = computed(() => {
 						@update:attachment="mentionAttachments.updateResource(index, $event)"
 					/>
 				</div>
-				<div v-if="attachedFiles.length > 0" :class="$style.attachments">
-					<AttachmentPreview
-						v-for="(file, index) in attachedFiles"
-						:key="index"
-						:file="file"
+				<N8nAttachmentGroup
+					v-if="attachedFiles.length > 0"
+					ref="attachmentGroupRef"
+					:class="$style.attachmentGroup"
+				>
+					<N8nAttachment
+						v-for="file in attachedFiles"
+						:key="getFileId(file)"
+						:file-name="file.name"
+						:mime-type="file.type"
+						:size-bytes="file.size"
+						:src="previewUrl(file)"
 						:is-removable="true"
-						@remove="handleFileRemove"
+						@remove-start="removingFiles.add(file)"
+						@remove="handleFileRemove(file)"
+						@remove-end="removingFiles.delete(file)"
 					/>
-				</div>
+				</N8nAttachmentGroup>
 			</template>
-			<template v-if="!props.isAwaitingPlanReview" #footer-start>
+			<template
+				v-if="
+					$slots['footer-start'] ||
+					$slots['footer-after-menu'] ||
+					props.attachOnlyMimeTypes === undefined
+				"
+				#footer-start
+			>
+				<slot name="footer-start" />
 				<InstanceAiInputMenu
+					v-if="props.attachOnlyMimeTypes === undefined"
 					:disabled="isBusy || isGatedBySetup"
-					:thread-id="props.currentThreadId || undefined"
+					:is-streaming="props.isStreaming"
+					:project-id="props.mentionProjectId"
 					@attach-files="chatInputRef?.openFilePicker()"
 				/>
+				<!-- Controls that sit to the right of the add menu, such as the approval mode. -->
+				<slot name="footer-after-menu" />
 			</template>
 			<template v-if="shouldShowMentions" #right-actions>
 				<AssistantAtMentionPicker
@@ -978,6 +1009,9 @@ const resizable = computed(() => {
 			</template>
 		</ChatInputBase>
 		<slot name="footer"></slot>
+		<!-- Experiment cleanup (123_surface_mcp_to_claude_trial_users) -->
+		<slot name="before-suggestions"></slot>
+		<!-- EOF Experiment cleanup -->
 		<Transition name="suggestions-fade" :duration="SUGGESTIONS_TRANSITION_DURATION">
 			<component
 				:is="resolvedSuggestionsComponent"
@@ -1044,5 +1078,9 @@ const resizable = computed(() => {
 :global(.suggestions-fade-leave-to) {
 	opacity: 0;
 	transform: translateY(4px);
+}
+
+.attachmentGroup {
+	margin-block-start: calc(var(--spacing--4xs) * -1);
 }
 </style>

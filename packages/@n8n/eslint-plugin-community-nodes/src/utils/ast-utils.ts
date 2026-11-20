@@ -55,6 +55,32 @@ export function isTriggerNode(
 	return hasTriggerGroup(descriptionValue) || isTriggerNodeClass(node);
 }
 
+/** Matches a non-main connection type, written as `NodeConnectionTypes.X` or the string literal. */
+function isNonMainConnectionType(node: TSESTree.Node | null | undefined): boolean {
+	const isEnumMember =
+		node?.type === AST_NODE_TYPES.MemberExpression &&
+		node.object.type === AST_NODE_TYPES.Identifier &&
+		node.object.name === 'NodeConnectionTypes' &&
+		node.property.type === AST_NODE_TYPES.Identifier &&
+		node.property.name !== 'Main';
+	const isStringLiteral = node?.type === AST_NODE_TYPES.Literal && node.value !== 'main';
+	return isEnumMember || isStringLiteral;
+}
+
+export function isAiOnlyNode(descriptionValue: TSESTree.ObjectExpression): boolean {
+	const outputs = findArrayLiteralProperty(descriptionValue, 'outputs');
+	const inputs = findArrayLiteralProperty(descriptionValue, 'inputs');
+	if (!outputs || inputs?.elements.length !== 0) return false;
+
+	return outputs.elements.some((element) => {
+		if (element?.type === AST_NODE_TYPES.ObjectExpression) {
+			const typeProperty = findObjectProperty(element, 'type');
+			return isNonMainConnectionType(typeProperty?.value);
+		}
+		return isNonMainConnectionType(element);
+	});
+}
+
 /**
  * Returns the name a property key stands for, or null when it is only known at
  * runtime. `delete`, `'delete'` and `['delete']` all name the same property, so
@@ -95,10 +121,9 @@ export function findClassProperty(
 }
 
 /**
- * Returns the object literal behind an expression, and looks through the type
- * assertions node authors write, e.g. `{ … } as INodeTypeDescription`.
+ * Returns the expression behind TypeScript assertions and non-null assertions.
  */
-function asObjectExpression(node: TSESTree.Node | null): TSESTree.ObjectExpression | null {
+export function unwrapExpression(node: TSESTree.Node | null): TSESTree.Node | null {
 	let current = node;
 	while (
 		current?.type === AST_NODE_TYPES.TSAsExpression ||
@@ -109,6 +134,11 @@ function asObjectExpression(node: TSESTree.Node | null): TSESTree.ObjectExpressi
 		current = current.expression;
 	}
 
+	return current;
+}
+
+function asObjectExpression(node: TSESTree.Node | null): TSESTree.ObjectExpression | null {
+	const current = unwrapExpression(node);
 	return current?.type === AST_NODE_TYPES.ObjectExpression ? current : null;
 }
 
@@ -323,6 +353,38 @@ export function isThisHelpersAccess(node: TSESTree.MemberExpression): boolean {
 		node.object?.type === AST_NODE_TYPES.MemberExpression &&
 		node.object.object?.type === AST_NODE_TYPES.ThisExpression &&
 		node.object.property?.type === AST_NODE_TYPES.Identifier &&
+		node.object.property.name === 'helpers'
+	);
+}
+
+/** Execution context interfaces from `n8n-workflow` that expose a `helpers` object. */
+export const EXECUTION_CONTEXT_TYPES = new Set([
+	'IAllExecuteFunctions',
+	'ICredentialTestFunctions',
+	'IExecuteFunctions',
+	'IExecutePaginationFunctions',
+	'IExecuteSingleFunctions',
+	'IHookFunctions',
+	'ILoadOptionsFunctions',
+	'IPollFunctions',
+	'ISupplyDataFunctions',
+	'ITriggerFunctions',
+	'IWebhookFunctions',
+]);
+
+/**
+ * Matches `<receiver>.helpers.<method>` for any receiver, and a bare `helpers.<method>` left by
+ * destructuring. Deliberately does not identify the receiver: the rule runs without type
+ * information, so callers gate this on the file importing an execution context type instead.
+ */
+export function isHelpersAccess(node: TSESTree.MemberExpression): boolean {
+	if (node.object.type === AST_NODE_TYPES.Identifier) {
+		return node.object.name === 'helpers';
+	}
+
+	return (
+		node.object.type === AST_NODE_TYPES.MemberExpression &&
+		node.object.property.type === AST_NODE_TYPES.Identifier &&
 		node.object.property.name === 'helpers'
 	);
 }

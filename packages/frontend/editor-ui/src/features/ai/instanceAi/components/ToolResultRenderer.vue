@@ -10,6 +10,8 @@ import ToolResultCode from './ToolResultCode.vue';
 import ToolResultImage from './ToolResultImage.vue';
 import ToolResultFile from './ToolResultFile.vue';
 import ToolResultText from './ToolResultText.vue';
+import { extractToolCallCode, isCodeToolCall } from '../toolResultCode';
+import { extractTableRows, isTableToolCall } from '../toolResultTable';
 
 const props = defineProps<{
 	result: unknown;
@@ -19,10 +21,6 @@ const props = defineProps<{
 
 type ResultType = 'content' | 'code' | 'table' | 'json';
 type McpContentItem = McpToolCallResult['content'][number];
-
-function isAction(family: string, action: string): boolean {
-	return props.toolName === family && props.toolArgs?.action === action;
-}
 
 function normalizeImageContentItem(item: Record<string, unknown>): McpContentItem | null {
 	if (typeof item.data !== 'string') return null;
@@ -53,6 +51,20 @@ function normalizeContentItem(item: unknown): McpContentItem | null {
 		return { type: 'text', text: item.text };
 	}
 	if (
+		item.type === 'file' &&
+		typeof item.mediaType === 'string' &&
+		isRecord(item.data) &&
+		item.data.type === 'data' &&
+		typeof item.data.data === 'string'
+	) {
+		return item.mediaType.startsWith('image/')
+			? { type: 'image', data: item.data.data, mimeType: item.mediaType }
+			: {
+					type: 'resource',
+					resource: { uri: '', blob: item.data.data, mimeType: item.mediaType },
+				};
+	}
+	if (
 		item.type === 'file-data' &&
 		typeof item.mediaType === 'string' &&
 		typeof item.data === 'string' &&
@@ -79,22 +91,6 @@ function normalizeContentItems(items: unknown[]): McpContentItem[] | null {
 	return content.length > 0 ? content : null;
 }
 
-function isCodeTool(): boolean {
-	return isAction('workflows', 'get-as-code') || isAction('nodes', 'type-definition');
-}
-
-function isTableTool(): boolean {
-	return (
-		isAction('data-tables', 'query') ||
-		isAction('workflows', 'list') ||
-		isAction('executions', 'list') ||
-		isAction('credentials', 'list') ||
-		isAction('nodes', 'search') ||
-		isAction('nodes', 'list') ||
-		isAction('data-tables', 'list')
-	);
-}
-
 function extractMcpContent(result: unknown): McpToolCallResult['content'] | null {
 	if (Array.isArray(result)) return normalizeContentItems(result);
 	if (
@@ -113,51 +109,17 @@ function extractMcpContent(result: unknown): McpToolCallResult['content'] | null
 
 function detectType(result: unknown): ResultType {
 	if (extractMcpContent(result) !== null) return 'content';
-	if (isCodeTool()) return 'code';
-	if (isTableTool() && result && typeof result === 'object') return 'table';
+	if (isCodeToolCall(props.toolName, props.toolArgs)) return 'code';
+	if (isTableToolCall(props.toolName, props.toolArgs) && result && typeof result === 'object')
+		return 'table';
 	return 'json';
-}
-
-function extractCode(result: unknown): string | null {
-	if (!result || typeof result !== 'object') return null;
-	const obj = result as Record<string, unknown>;
-
-	if (isAction('workflows', 'get-as-code') && typeof obj.code === 'string') {
-		return obj.code;
-	}
-	if (isAction('nodes', 'type-definition') && Array.isArray(obj.definitions)) {
-		const defs = obj.definitions as Array<Record<string, unknown>>;
-		return defs
-			.filter((d) => typeof d.content === 'string')
-			.map((d) => d.content as string)
-			.join('\n\n');
-	}
-	return null;
-}
-
-function extractTableRows(result: unknown): Array<Record<string, unknown>> | null {
-	if (!result || typeof result !== 'object') return null;
-	const obj = result as Record<string, unknown>;
-
-	for (const key of [
-		'data',
-		'workflows',
-		'executions',
-		'credentials',
-		'results',
-		'nodes',
-		'tables',
-	]) {
-		if (Array.isArray(obj[key]) && obj[key].length > 0 && typeof obj[key][0] === 'object') {
-			return obj[key] as Array<Record<string, unknown>>;
-		}
-	}
-	return null;
 }
 
 const resultType = computed(() => detectType(props.result));
 const contentItems = computed(() => extractMcpContent(props.result));
-const codeContent = computed(() => extractCode(props.result));
+const codeContent = computed(() =>
+	extractToolCallCode(props.toolName, props.toolArgs, props.result),
+);
 const tableRows = computed(() => extractTableRows(props.result));
 </script>
 

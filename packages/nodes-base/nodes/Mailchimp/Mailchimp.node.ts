@@ -8,12 +8,13 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import {
 	campaignFieldsMetadata,
 	mailchimpApiRequest,
 	mailchimpApiRequestAllItems,
+	toPathValue,
 	validateJSON,
 } from './GenericFunctions';
 
@@ -55,7 +56,8 @@ export class Mailchimp implements INodeType {
 		name: 'mailchimp',
 		icon: { light: 'file:mailchimp.svg', dark: 'file:mailchimp.dark.svg' },
 		group: ['output'],
-		version: 1,
+		version: [1, 1.1],
+		defaultVersion: 1.1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Mailchimp API',
 		defaults: {
@@ -1586,7 +1588,12 @@ export class Mailchimp implements INodeType {
 			// select them easily
 			async getLists(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const lists = await mailchimpApiRequestAllItems.call(this, '/lists', 'GET', 'lists');
+				const lists = await mailchimpApiRequestAllItems.call(
+					this,
+					requestPath`/lists`,
+					'GET',
+					'lists',
+				);
 				for (const list of lists) {
 					const listName = list.name;
 					const listId = list.id;
@@ -1605,7 +1612,7 @@ export class Mailchimp implements INodeType {
 				const listId = this.getCurrentNodeParameter('list');
 				const { merge_fields } = await mailchimpApiRequest.call(
 					this,
-					`/lists/${listId}/merge-fields`,
+					requestPath`/lists/${listId}/merge-fields`,
 					'GET',
 				);
 				for (const mergeField of merge_fields) {
@@ -1626,7 +1633,7 @@ export class Mailchimp implements INodeType {
 				const listId = this.getCurrentNodeParameter('list');
 				const { categories } = await mailchimpApiRequest.call(
 					this,
-					`/lists/${listId}/interest-categories`,
+					requestPath`/lists/${listId}/interest-categories`,
 					'GET',
 				);
 				for (const category of categories) {
@@ -1645,7 +1652,7 @@ export class Mailchimp implements INodeType {
 				const returnData: INodePropertyOptions[] = [];
 				const campaigns = await mailchimpApiRequestAllItems.call(
 					this,
-					'/campaigns',
+					requestPath`/campaigns`,
 					'GET',
 					'campaigns',
 				);
@@ -1676,6 +1683,7 @@ export class Mailchimp implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
+		const version = this.getNode().typeVersion;
 		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		let responseData;
@@ -1686,7 +1694,7 @@ export class Mailchimp implements INodeType {
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'listGroup') {
-					//https://mailchimp.com/developer/reference/lists/interest-categories/#get_/lists/-list_id-/interest-categories/-interest_category_id-
+					//https://mailchimp.com/developer/marketing/api/lists/interest-categories/list-interest-category-interests/
 					if (operation === 'getAll') {
 						const listId = this.getNodeParameter('list', i) as string;
 						const categoryId = this.getNodeParameter('groupCategory', i) as string;
@@ -1695,7 +1703,7 @@ export class Mailchimp implements INodeType {
 						if (returnAll) {
 							responseData = await mailchimpApiRequestAllItems.call(
 								this,
-								`/lists/${listId}/interest-categories/${categoryId}/interests`,
+								requestPath`/lists/${listId}/interest-categories/${categoryId}/interests`,
 								'GET',
 								'interests',
 								{},
@@ -1705,7 +1713,7 @@ export class Mailchimp implements INodeType {
 							qs.count = this.getNodeParameter('limit', i);
 							responseData = await mailchimpApiRequest.call(
 								this,
-								`/lists/${listId}/interest-categories/${categoryId}/interests`,
+								requestPath`/lists/${listId}/interest-categories/${categoryId}/interests`,
 								'GET',
 								{},
 								qs,
@@ -1715,7 +1723,7 @@ export class Mailchimp implements INodeType {
 					}
 				}
 				if (resource === 'member') {
-					//https://mailchimp.com/developer/reference/lists/list-members/#post_/lists/-list_id-/members
+					//https://mailchimp.com/developer/marketing/api/lists/members/create-member/
 					if (operation === 'create') {
 						const listId = this.getNodeParameter('list', i) as string;
 						const email = this.getNodeParameter('email', i) as string;
@@ -1810,27 +1818,27 @@ export class Mailchimp implements INodeType {
 						}
 						responseData = await mailchimpApiRequest.call(
 							this,
-							`/lists/${listId}/members`,
+							requestPath`/lists/${listId}/members`,
 							'POST',
 							body,
 						);
 					}
-					//https://mailchimp.com/developer/reference/lists/list-members/
+					//https://mailchimp.com/developer/marketing/api/lists/members/create-member-action-delete-permanent/
 					if (operation === 'delete') {
 						const listId = this.getNodeParameter('list', i) as string;
-						const email = this.getNodeParameter('email', i) as string;
+						const email = toPathValue(version, this.getNodeParameter('email', i) as string);
 
 						responseData = await mailchimpApiRequest.call(
 							this,
-							`/lists/${listId}/members/${email}/actions/delete-permanent`,
+							requestPath`/lists/${listId}/members/${email}/actions/delete-permanent`,
 							'POST',
 						);
 						responseData = { success: true };
 					}
-					//https://mailchimp.com/developer/reference/lists/list-members/#get_/lists/-list_id-/members/-subscriber_hash-
+					//https://mailchimp.com/developer/marketing/api/lists/members/get-member/
 					if (operation === 'get') {
 						const listId = this.getNodeParameter('list', i) as string;
-						const email = this.getNodeParameter('email', i) as string;
+						const email = toPathValue(version, this.getNodeParameter('email', i) as string);
 						const options = this.getNodeParameter('options', i);
 
 						if (options.fields) {
@@ -1843,13 +1851,13 @@ export class Mailchimp implements INodeType {
 
 						responseData = await mailchimpApiRequest.call(
 							this,
-							`/lists/${listId}/members/${email}`,
+							requestPath`/lists/${listId}/members/${email}`,
 							'GET',
 							{},
 							qs,
 						);
 					}
-					//https://mailchimp.com/developer/reference/lists/list-members/#get_/lists/-list_id-/members
+					//https://mailchimp.com/developer/marketing/api/lists/members/list-members/
 					if (operation === 'getAll') {
 						const listId = this.getNodeParameter('list', i) as string;
 						const returnAll = this.getNodeParameter('returnAll', i);
@@ -1883,7 +1891,7 @@ export class Mailchimp implements INodeType {
 						if (returnAll) {
 							responseData = await mailchimpApiRequestAllItems.call(
 								this,
-								`/lists/${listId}/members`,
+								requestPath`/lists/${listId}/members`,
 								'GET',
 								'members',
 								{},
@@ -1893,7 +1901,7 @@ export class Mailchimp implements INodeType {
 							qs.count = this.getNodeParameter('limit', i);
 							responseData = await mailchimpApiRequest.call(
 								this,
-								`/lists/${listId}/members`,
+								requestPath`/lists/${listId}/members`,
 								'GET',
 								{},
 								qs,
@@ -1901,7 +1909,7 @@ export class Mailchimp implements INodeType {
 							responseData = responseData.members;
 						}
 					}
-					//https://mailchimp.com/developer/reference/lists/list-members/#put_/lists/-list_id-/members/-subscriber_hash-
+					//https://mailchimp.com/developer/marketing/api/lists/members/upsert-member/
 					if (operation === 'update') {
 						const listId = this.getNodeParameter('list', i) as string;
 						const email = this.getNodeParameter('email', i) as string;
@@ -2001,17 +2009,17 @@ export class Mailchimp implements INodeType {
 						}
 						responseData = await mailchimpApiRequest.call(
 							this,
-							`/lists/${listId}/members/${email}`,
+							requestPath`/lists/${listId}/members/${toPathValue(version, email)}`,
 							'PUT',
 							body,
 						);
 					}
 				}
 				if (resource === 'memberTag') {
-					//https://mailchimp.com/developer/reference/lists/list-members/list-member-tags/#post_/lists/-list_id-/members/-subscriber_hash-/tags
+					//https://mailchimp.com/developer/marketing/api/lists/members/create-member-tag/
 					if (operation === 'create') {
 						const listId = this.getNodeParameter('list', i) as string;
-						const email = this.getNodeParameter('email', i) as string;
+						const email = toPathValue(version, this.getNodeParameter('email', i) as string);
 						const tags = this.getNodeParameter('tags', i) as string[];
 						const options = this.getNodeParameter('options', i);
 
@@ -2033,16 +2041,16 @@ export class Mailchimp implements INodeType {
 
 						responseData = await mailchimpApiRequest.call(
 							this,
-							`/lists/${listId}/members/${email}/tags`,
+							requestPath`/lists/${listId}/members/${email}/tags`,
 							'POST',
 							body,
 						);
 						responseData = { success: true };
 					}
-					//https://mailchimp.com/developer/reference/lists/list-members/list-member-tags/#post_/lists/-list_id-/members/-subscriber_hash-/tags
+					//https://mailchimp.com/developer/marketing/api/lists/members/create-member-tag/
 					if (operation === 'delete') {
 						const listId = this.getNodeParameter('list', i) as string;
-						const email = this.getNodeParameter('email', i) as string;
+						const email = toPathValue(version, this.getNodeParameter('email', i) as string);
 						const tags = this.getNodeParameter('tags', i) as string[];
 						const options = this.getNodeParameter('options', i);
 
@@ -2063,7 +2071,7 @@ export class Mailchimp implements INodeType {
 						}
 						responseData = await mailchimpApiRequest.call(
 							this,
-							`/lists/${listId}/members/${email}/tags`,
+							requestPath`/lists/${listId}/members/${email}/tags`,
 							'POST',
 							body,
 						);
@@ -2071,7 +2079,7 @@ export class Mailchimp implements INodeType {
 					}
 				}
 				if (resource === 'campaign') {
-					//https://mailchimp.com/developer/api/marketing/campaigns/list-campaigns/
+					//https://mailchimp.com/developer/marketing/api/campaigns/list/
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
 						const options = this.getNodeParameter('options', i);
@@ -2121,7 +2129,7 @@ export class Mailchimp implements INodeType {
 						if (returnAll) {
 							responseData = await mailchimpApiRequestAllItems.call(
 								this,
-								'/campaigns',
+								requestPath`/campaigns`,
 								'GET',
 								'campaigns',
 								{},
@@ -2129,58 +2137,64 @@ export class Mailchimp implements INodeType {
 							);
 						} else {
 							qs.count = this.getNodeParameter('limit', i);
-							responseData = await mailchimpApiRequest.call(this, '/campaigns', 'GET', {}, qs);
+							responseData = await mailchimpApiRequest.call(
+								this,
+								requestPath`/campaigns`,
+								'GET',
+								{},
+								qs,
+							);
 							responseData = responseData.campaigns;
 						}
 					}
-					//https://mailchimp.com/developer/api/marketing/campaigns/send-campaign/
+					//https://mailchimp.com/developer/marketing/api/campaigns/create-action-send/
 					if (operation === 'send') {
 						const campaignId = this.getNodeParameter('campaignId', i) as string;
 						responseData = await mailchimpApiRequest.call(
 							this,
-							`/campaigns/${campaignId}/actions/send`,
+							requestPath`/campaigns/${campaignId}/actions/send`,
 							'POST',
 							{},
 						);
 						responseData = { success: true };
 					}
-					//https://mailchimp.com/developer/api/marketing/campaigns/get-campaign-info/
+					//https://mailchimp.com/developer/marketing/api/campaigns/get/
 					if (operation === 'get') {
 						const campaignId = this.getNodeParameter('campaignId', i) as string;
 						responseData = await mailchimpApiRequest.call(
 							this,
-							`/campaigns/${campaignId}`,
+							requestPath`/campaigns/${campaignId}`,
 							'GET',
 							{},
 						);
 					}
-					//https://mailchimp.com/developer/api/marketing/campaigns/delete-campaign/
+					//https://mailchimp.com/developer/marketing/api/campaigns/delete/
 					if (operation === 'delete') {
 						const campaignId = this.getNodeParameter('campaignId', i) as string;
 						responseData = await mailchimpApiRequest.call(
 							this,
-							`/campaigns/${campaignId}`,
+							requestPath`/campaigns/${campaignId}`,
 							'DELETE',
 							{},
 						);
 						responseData = { success: true };
 					}
-					//https://mailchimp.com/developer/api/marketing/campaigns/replicate-campaign/
+					//https://mailchimp.com/developer/marketing/api/campaigns/create-action-replicate/
 					if (operation === 'replicate') {
 						const campaignId = this.getNodeParameter('campaignId', i) as string;
 						responseData = await mailchimpApiRequest.call(
 							this,
-							`/campaigns/${campaignId}/actions/replicate`,
+							requestPath`/campaigns/${campaignId}/actions/replicate`,
 							'POST',
 							{},
 						);
 					}
-					//https://mailchimp.com/developer/api/marketing/campaigns/resend-campaign/
+					//https://mailchimp.com/developer/marketing/api/campaigns/create-action-create-resend/
 					if (operation === 'resend') {
 						const campaignId = this.getNodeParameter('campaignId', i) as string;
 						responseData = await mailchimpApiRequest.call(
 							this,
-							`/campaigns/${campaignId}/actions/create-resend`,
+							requestPath`/campaigns/${campaignId}/actions/create-resend`,
 							'POST',
 							{},
 						);

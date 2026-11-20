@@ -8,7 +8,7 @@ import { test, expect } from '../../../../../fixtures/base';
 test.describe(
 	'Workflow Publish',
 	{
-		annotation: [{ type: 'owner', description: 'Adore' }],
+		annotation: [{ type: 'owner', description: 'Knowledge' }],
 	},
 	() => {
 		test.beforeEach(async ({ n8n }) => {

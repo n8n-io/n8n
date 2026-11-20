@@ -1,27 +1,34 @@
 import { OwnerSetupRequestDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { CacheService, EventService } from '@n8n/backend-services';
-import type { ListQueryDb } from '@n8n/db';
+import {
+	CacheService,
+	EventService,
+	WorkflowProjectService,
+	PasswordUtility,
+} from '@n8n/backend-services';
+import type { ListQueryDb, UserKind } from '@n8n/db';
 import {
 	GLOBAL_OWNER_ROLE,
+	isPerson,
+	Person,
 	Project,
 	User,
 	ProjectRelationRepository,
 	ProjectRepository,
-	SharedWorkflowRepository,
 	UserRepository,
+	PersonRepository,
 	Role,
+	ServiceAccount,
+	ServiceAccountDetails,
 	SettingsRepository,
 	Scope,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { IsNull } from '@n8n/typeorm/find-options/operator/IsNull';
-import { Not } from '@n8n/typeorm/find-options/operator/Not';
 
 import config from '@/config';
 import { BadRequestError } from '@n8n/errors';
 
-import { PasswordUtility } from './password.utility';
+import { type AccountProject, ServiceAccountProjects } from './service-account-projects';
 
 @Service()
 export class OwnershipService {
@@ -32,9 +39,11 @@ export class OwnershipService {
 		private passwordUtility: PasswordUtility,
 		private projectRelationRepository: ProjectRelationRepository,
 		private projectRepository: ProjectRepository,
-		private sharedWorkflowRepository: SharedWorkflowRepository,
+		private workflowProjectService: WorkflowProjectService,
 		private userRepository: UserRepository,
+		private personRepository: PersonRepository,
 		private settingsRepository: SettingsRepository,
+		private serviceAccountProjects: ServiceAccountProjects,
 	) {}
 
 	// To make use of the cache service we should store POJOs, these
@@ -49,17 +58,27 @@ export class OwnershipService {
 	}
 
 	reconstructProject(project: Partial<Project>): Project | undefined {
-		if (typeof project !== 'object' || project === null) {
+		if (typeof project?.id !== 'string') {
 			return undefined;
 		}
 		return Object.assign(new Project(), project);
 	}
-
 	copyUser(user: User): Partial<User> {
 		return {
 			...user,
 			role: { ...user.role, scopes: [...user.role.scopes] },
 		};
+	}
+
+	/** Rebuilds the child class that `kind` names, so the account guards work on a cached copy. */
+	private reconstructAccount(cachedUser: Partial<User>): User {
+		if (cachedUser.kind !== 'service') return Object.assign(new Person(), cachedUser);
+
+		const serviceAccount = Object.assign(new ServiceAccount(), cachedUser);
+		if ('details' in cachedUser && cachedUser.details && typeof cachedUser.details === 'object') {
+			serviceAccount.details = Object.assign(new ServiceAccountDetails(), cachedUser.details);
+		}
+		return serviceAccount;
 	}
 
 	reconstructUser(cachedUser: Partial<User>): User | undefined {
@@ -68,7 +87,7 @@ export class OwnershipService {
 			// an external system our cache
 			return undefined;
 		}
-		const user = Object.assign(new User(), cachedUser);
+		const user = this.reconstructAccount(cachedUser);
 		if ('role' in cachedUser && cachedUser.role && typeof cachedUser.role === 'object') {
 			user.role = Object.assign(new Role(), cachedUser.role);
 			if ('scopes' in cachedUser.role && Array.isArray(cachedUser.role.scopes)) {
@@ -90,34 +109,11 @@ export class OwnershipService {
 	 * {@link invalidateWorkflowProjectCacheByIds} afterwards.
 	 */
 	async getWorkflowProjectCached(workflowId: string): Promise<Project> {
-		const cachedValue = await this.cacheService.getHashValue<Partial<Project>>(
-			'workflow-project',
-			workflowId,
-		);
-
-		if (cachedValue) {
-			const project = this.reconstructProject(cachedValue);
-			if (project) return project;
-		}
-
-		const sharedWorkflow = await this.sharedWorkflowRepository.findOneOrFail({
-			where: { workflowId, role: 'workflow:owner' },
-			relations: ['project'],
-		});
-
-		void this.cacheService.setHash('workflow-project', {
-			[workflowId]: this.copyProject(sharedWorkflow.project),
-		});
-
-		return sharedWorkflow.project;
+		return await this.workflowProjectService.getWorkflowProjectCached(workflowId);
 	}
 
 	async setWorkflowProjectCacheEntry(workflowId: string, project: Project): Promise<Project> {
-		void this.cacheService.setHash('workflow-project', {
-			[workflowId]: this.copyProject(project),
-		});
-
-		return project;
+		return await this.workflowProjectService.setWorkflowProjectCacheEntry(workflowId, project);
 	}
 
 	/**
@@ -159,7 +155,9 @@ export class OwnershipService {
 			ownerByProjectId.set(projectId, user);
 			ownersToCache[projectId] = this.copyUser(user);
 		}
-		void this.cacheService.setHash('project-owner', ownersToCache);
+		if (Object.keys(ownersToCache).length > 0) {
+			void this.cacheService.setHash('project-owner', ownersToCache);
+		}
 
 		return ownerByProjectId;
 	}
@@ -172,16 +170,7 @@ export class OwnershipService {
 	}
 
 	async invalidateWorkflowProjectCacheForProject(projectId: string): Promise<void> {
-		const rows = await this.sharedWorkflowRepository.find({
-			where: { projectId, role: 'workflow:owner' },
-			select: ['workflowId'],
-		});
-		await Promise.all(
-			rows.map(
-				async ({ workflowId }) =>
-					await this.cacheService.deleteFromHash('workflow-project', workflowId),
-			),
-		);
+		await this.workflowProjectService.invalidateWorkflowProjectCacheForProject(projectId);
 	}
 
 	/**
@@ -190,12 +179,7 @@ export class OwnershipService {
 	 * `workflow:owner` rows have moved to a different project.
 	 */
 	async invalidateWorkflowProjectCacheByIds(workflowIds: string[]): Promise<void> {
-		await Promise.all(
-			workflowIds.map(
-				async (workflowId) =>
-					await this.cacheService.deleteFromHash('workflow-project', workflowId),
-			),
-		);
+		await this.workflowProjectService.invalidateWorkflowProjectCacheByIds(workflowIds);
 	}
 
 	addOwnedByAndSharedWith(
@@ -205,6 +189,14 @@ export class OwnershipService {
 		rawCredential: ListQueryDb.Credentials.WithSharing,
 	): ListQueryDb.Credentials.WithOwnedByAndSharedWith;
 	addOwnedByAndSharedWith(
+		rawEntity: ListQueryDb.Workflow.WithSharing | ListQueryDb.Credentials.WithSharing,
+	):
+		| ListQueryDb.Workflow.WithOwnedByAndSharedWith
+		| ListQueryDb.Credentials.WithOwnedByAndSharedWith {
+		return this.toOwnedByAndSharedWith(rawEntity);
+	}
+
+	private toOwnedByAndSharedWith(
 		rawEntity: ListQueryDb.Workflow.WithSharing | ListQueryDb.Credentials.WithSharing,
 	):
 		| ListQueryDb.Workflow.WithOwnedByAndSharedWith
@@ -246,6 +238,56 @@ export class OwnershipService {
 		return entity;
 	}
 
+	/**
+	 * Adds the owner and the shares, plus the account kind of each project.
+	 * Use it for responses that show each share target, such as a share modal.
+	 * Lists show only a share count, so they use the sync method.
+	 */
+	async addSharingWithAccountKinds(
+		rawWorkflow: ListQueryDb.Workflow.WithSharing,
+	): Promise<ListQueryDb.Workflow.WithOwnedByAndSharedWith>;
+	async addSharingWithAccountKinds(
+		rawCredential: ListQueryDb.Credentials.WithSharing,
+	): Promise<ListQueryDb.Credentials.WithOwnedByAndSharedWith>;
+	async addSharingWithAccountKinds(
+		rawEntity: ListQueryDb.Workflow.WithSharing | ListQueryDb.Credentials.WithSharing,
+	): Promise<
+		ListQueryDb.Workflow.WithOwnedByAndSharedWith | ListQueryDb.Credentials.WithOwnedByAndSharedWith
+	> {
+		const entity = this.toOwnedByAndSharedWith(rawEntity);
+		await this.addAccountKinds([entity.homeProject, ...entity.sharedWithProjects]);
+		return entity;
+	}
+
+	/**
+	 * Sets `accountKind` on each personal project, so the UI can show the
+	 * personal project of a service account as that account, not as a person.
+	 * For a service account, also sets the project that the account acts for,
+	 * so users can tell two accounts with the same name apart.
+	 */
+	async addAccountKinds<
+		T extends { id: string; type: string; accountKind?: UserKind; accountProject?: AccountProject },
+	>(projects: Array<T | null | undefined>): Promise<void> {
+		const personalProjects = projects.filter(
+			(project): project is T => project?.type === 'personal',
+		);
+		if (personalProjects.length === 0) return;
+
+		const accountByProject = await this.projectRepository.findServiceAccountIdsByProject(
+			personalProjects.map((project) => project.id),
+		);
+		const projectOfAccount = await this.serviceAccountProjects.findProjectsOfAccounts([
+			...new Set(accountByProject.values()),
+		]);
+
+		for (const project of personalProjects) {
+			const accountId = accountByProject.get(project.id);
+			project.accountKind = accountId ? 'service' : 'person';
+			const accountProject = accountId ? projectOfAccount.get(accountId) : undefined;
+			if (accountProject) project.accountProject = accountProject;
+		}
+	}
+
 	async getInstanceOwner() {
 		return await this.userRepository.findOneOrFail({
 			where: { role: { slug: GLOBAL_OWNER_ROLE.slug } },
@@ -256,23 +298,7 @@ export class OwnershipService {
 	}
 
 	async hasInstanceOwner() {
-		return await this.userRepository.exists({
-			where: [
-				{
-					role: { slug: GLOBAL_OWNER_ROLE.slug },
-					// We use this to avoid selecting the "shell" user
-					lastActiveAt: Not(IsNull()),
-				},
-				// OR
-				// This condition only exists because of PAY-4247
-				{
-					role: { slug: GLOBAL_OWNER_ROLE.slug },
-					// We use this to avoid selecting the "shell" user
-					password: Not(IsNull()),
-				},
-			],
-			relations: ['role'],
-		});
+		return await this.personRepository.hasClaimedInstanceOwner();
 	}
 
 	async setupOwner(
@@ -288,12 +314,13 @@ export class OwnershipService {
 			throw new BadRequestError('Instance owner already setup');
 		}
 
-		let shellUser = await this.userRepository.findOne({
+		const shellUser = await this.userRepository.findOne({
 			where: { role: { slug: GLOBAL_OWNER_ROLE.slug } },
 			relations: ['role'],
 		});
 
-		if (!shellUser) {
+		// The owner is always a person.
+		if (!shellUser || !isPerson(shellUser)) {
 			this.logger.error('Could not find shell user with global:owner role');
 			throw new BadRequestError('Instance owner shell user not found');
 		}
@@ -306,7 +333,8 @@ export class OwnershipService {
 			? password
 			: await this.passwordUtility.hash(password);
 
-		shellUser = await this.userRepository.save(shellUser, { transaction: false });
+		// `save` updates the instance in place.
+		await this.userRepository.save(shellUser, { transaction: false });
 
 		this.logger.info('Owner was set up successfully');
 		this.eventService.emit('instance-owner-setup', { userId: shellUser.id });

@@ -31,8 +31,10 @@ vi.mock('ai', async () => {
 	const actual = await vi.importActual<typeof AiImport>('ai');
 	return {
 		...actual,
-		generateText: async (call: GenerateTextCall): Promise<GenerateTextResult> =>
-			await mockGenerateText(call),
+		generateText: async (call: GenerateTextCall) => {
+			const result = await mockGenerateText(call);
+			return { ...result, finalStep: { providerMetadata: undefined } };
+		},
 	};
 });
 
@@ -157,6 +159,36 @@ describe('observation-log reflector defaults', () => {
 		expect(rendered).toContain(context.text);
 		expect(rendered).toContain(mergedText);
 		expect(rendered).not.toContain(noise.text);
+	});
+
+	it('counts merged observations in the output tokens the provider reports', async () => {
+		const store = new InMemoryMemory();
+		const [a, b] = await store.appendObservationLogEntries([
+			{ observationScopeId: 'thread-1', marker: 'info', text: 'Old fact A.', tokenCount: 5 },
+			{ observationScopeId: 'thread-1', marker: 'info', text: 'Old fact B.', tokenCount: 5 },
+		]);
+		const mergedText = 'Facts A and B, merged.';
+		const output = JSON.stringify({
+			drop: [],
+			merge: [{ supersedes: [a.id, b.id], marker: 'INFO', text: mergedText }],
+		});
+
+		await runObservationLogReflector({
+			memory: store,
+			observationScopeId: 'thread-1',
+			reflectorThresholdTokens: 1,
+			// Three tokens for each output character.
+			reflect: async () => ({
+				text: output,
+				model: 'test/model',
+				usage: { promptTokens: 50, completionTokens: output.length * 3, totalTokens: 0 },
+			}),
+			tokenCounter: () => 1,
+		});
+
+		expect(await store.getActiveObservationLog({ observationScopeId: 'thread-1' })).toEqual([
+			expect.objectContaining({ text: mergedText, tokenCount: mergedText.length * 3 }),
+		]);
 	});
 
 	it.each([

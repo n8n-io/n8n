@@ -2,11 +2,10 @@ import type { EventService } from '@n8n/backend-services';
 import { createWorkflow, createWorkflowHistory, mockLogger, testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import { DbConnection, WorkflowHistoryRepository } from '@n8n/db';
+import { WorkflowHistoryRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import repeat from 'lodash/repeat';
-import type { InstanceSettings } from 'n8n-core';
 import type { INode } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
@@ -93,8 +92,6 @@ describe('WorkflowHistoryCompactionOptimizeTask', () => {
 			config,
 			globalConfig,
 			logger,
-			mock<InstanceSettings>({ instanceType: 'main', isLeader: false }),
-			Container.get(DbConnection),
 			repository,
 			eventService,
 		);

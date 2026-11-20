@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { defineComponent, nextTick, ref } from 'vue';
+import { defineComponent, h, nextTick, ref } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
+import { fireEvent, waitFor } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
 import ChatInputBase from './ChatInputBase.vue';
 import {
@@ -75,6 +76,37 @@ describe('ChatInputBase', () => {
 		vi.clearAllMocks();
 	});
 
+	it('renders preview frames in the input without updating its host or draft', async () => {
+		const placeholderPreview = ref<string | undefined>('Build');
+		const renderHost = vi.fn();
+		const Host = defineComponent({
+			setup() {
+				return () => {
+					renderHost();
+					return h(
+						ChatInputBase,
+						makeProps({
+							placeholder: 'Ask anything',
+							placeholderPreview,
+						}),
+					);
+				};
+			},
+		});
+		const { getByRole } = createComponentRenderer(Host)();
+		const input = getByRole('textbox');
+		expect(input).toHaveAttribute('placeholder', 'Build');
+		const initialRenders = renderHost.mock.calls.length;
+		placeholderPreview.value = 'Build me an agent';
+		await nextTick();
+		expect(input).toHaveAttribute('placeholder', 'Build me an agent');
+		expect(input).toHaveValue('');
+		expect(renderHost).toHaveBeenCalledTimes(initialRenders);
+		placeholderPreview.value = undefined;
+		await nextTick();
+		expect(input).toHaveAttribute('placeholder', 'Ask anything');
+	});
+
 	it('should show send button when not streaming', () => {
 		const { getByTestId, queryByTestId } = renderComponent({
 			props: makeProps({ isStreaming: false }),
@@ -90,6 +122,7 @@ describe('ChatInputBase', () => {
 				isStreaming: true,
 				canSubmit: false,
 				showAttach: true,
+				acceptedMimeTypes: 'image/*',
 				showVoice: true,
 			}),
 		});
@@ -135,6 +168,23 @@ describe('ChatInputBase', () => {
 		expect(emitted().submit).toBeFalsy();
 	});
 
+	it('keeps multiline keyboard behavior when the composer has a fixed height', () => {
+		const { getByRole, emitted } = renderComponent({
+			props: makeProps({ composerHeight: '184px', modelValue: 'A longer prompt' }),
+		});
+		const textarea = getByRole('textbox');
+		textarea.dispatchEvent(
+			new KeyboardEvent('keydown', {
+				key: 'Enter',
+				shiftKey: true,
+				bubbles: true,
+			}),
+		);
+		expect(emitted().submit).toBeFalsy();
+		textarea.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+		expect(emitted().submit).toEqual([[]]);
+	});
+
 	it('should NOT emit submit on Enter during IME composition', () => {
 		const { getByRole, emitted } = renderComponent({
 			props: makeProps(),
@@ -172,12 +222,28 @@ describe('ChatInputBase', () => {
 		expect(sendButton.closest('button')?.disabled).toBe(true);
 	});
 
-	it('should show attach button only when showAttach is true', () => {
+	it('shows the attach button when accepted types are set', () => {
 		const { getByTestId } = renderComponent({
-			props: makeProps({ showAttach: true }),
+			props: makeProps({ showAttach: true, acceptedMimeTypes: 'image/*' }),
 		});
 
 		expect(getByTestId('chat-input-attach-button')).toBeInTheDocument();
+	});
+
+	it('hides the attach button when no accepted types are set', () => {
+		const { queryByTestId } = renderComponent({
+			props: makeProps({ showAttach: true }),
+		});
+
+		expect(queryByTestId('chat-input-attach-button')).not.toBeInTheDocument();
+	});
+
+	it('hides the built-in attach button when showAttachButton is false', () => {
+		const { queryByTestId } = renderComponent({
+			props: makeProps({ showAttach: true, showAttachButton: false, acceptedMimeTypes: 'image/*' }),
+		});
+
+		expect(queryByTestId('chat-input-attach-button')).not.toBeInTheDocument();
 	});
 
 	it('shows the drop overlay and emits dropped files', async () => {
@@ -210,6 +276,7 @@ describe('ChatInputBase', () => {
 		getByRole('textbox').dispatchEvent(createFileDragEvent('drop', [file]));
 
 		expect(emitted()['files-selected']).toBeFalsy();
+		expect(emitted()['files-rejected']).toEqual([[[file]]]);
 		expect(mockShowError).not.toHaveBeenCalled();
 	});
 
@@ -228,6 +295,22 @@ describe('ChatInputBase', () => {
 		});
 
 		expect(getByTestId('chat-input-voice-button')).toBeInTheDocument();
+	});
+
+	it('explains why dictation is disabled while streaming', async () => {
+		const { getByTestId, getByText, rerender } = renderComponent({
+			props: makeProps({ showVoice: true, isStreaming: true }),
+		});
+		const voiceButton = getByTestId('chat-input-voice-button');
+		expect(voiceButton).toBeDisabled();
+		await fireEvent.pointerMove(voiceButton.parentElement!, { pointerType: 'mouse' });
+		await waitFor(() => expect(getByText('Stop the response to dictate')).toBeVisible());
+
+		await fireEvent.pointerLeave(voiceButton.parentElement!);
+		await rerender({ isStreaming: false });
+		expect(voiceButton).toBeEnabled();
+		await fireEvent.pointerMove(voiceButton.parentElement!, { pointerType: 'mouse' });
+		await waitFor(() => expect(getByText('Dictate')).toBeVisible());
 	});
 
 	it('should expose the native textarea', () => {
@@ -252,7 +335,7 @@ describe('ChatInputBase', () => {
 
 	it('should render custom right actions with built-in controls', () => {
 		const { getByTestId } = renderComponent({
-			props: makeProps({ showAttach: true, showVoice: true }),
+			props: makeProps({ showAttach: true, acceptedMimeTypes: 'image/*', showVoice: true }),
 			slots: {
 				'right-actions': '<button data-test-id="custom-right-action">Mention</button>',
 			},
@@ -310,6 +393,23 @@ describe('ChatInputBase', () => {
 		expect(emittedValues.length).toBeGreaterThan(0);
 		const lastValue = emittedValues[emittedValues.length - 1];
 		expect(lastValue).not.toMatch(/^\s/);
+	});
+
+	it('stops voice input and ignores late results when the composer becomes disabled', async () => {
+		mockIsListening.value = true;
+		const { rerender, emitted } = renderComponent({
+			props: makeProps({ showVoice: true, modelValue: 'draft' }),
+		});
+
+		await rerender(makeProps({ showVoice: true, modelValue: 'draft', disabled: true }));
+
+		expect(mockStop).toHaveBeenCalledOnce();
+
+		mockIsFinal.value = true;
+		mockResult.value = 'late speech result';
+		await nextTick();
+
+		expect(emitted()['update:modelValue']).toBeUndefined();
 	});
 
 	describe('oversized attachments', () => {

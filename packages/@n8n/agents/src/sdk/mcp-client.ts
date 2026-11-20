@@ -32,7 +32,7 @@ function formatErrorWithCause(error: unknown): string {
  * ]);
  *
  * const agent = new Agent('assistant')
- *   .model('anthropic/claude-sonnet-4-5')
+ *   .model('anthropic/claude-sonnet-5-5')
  *   .instructions('You are a helpful assistant.')
  *   .mcp(client);
  *
@@ -191,8 +191,9 @@ export class McpClient {
 
 	/**
 	 * Returns true when any configured server declares per-server approval
-	 * requirements (`requireApproval: true` or a non-empty `requireApproval`
-	 * string array). Does NOT require a network connection.
+	 * requirements (`requireApproval: true`, a non-empty `requireApproval`
+	 * string array, or a `configureTools` callback that is not marked
+	 * `configureToolsNonInterrupting`). Does NOT require a network connection.
 	 *
 	 * Used by the Agent builder to validate checkpoint configuration before
 	 * attempting to connect.

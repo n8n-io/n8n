@@ -9,11 +9,7 @@ import type { AgentDbMessage } from '../../types/sdk/message';
 import { AgentRuntime, type AgentRuntimeConfig } from '../loop/agent-runtime';
 import { MemoryOrchestrator } from '../memory/memory-orchestrator';
 import { InMemoryMemory } from '../memory/memory-store';
-import {
-	AgentMessageList,
-	MODEL_SWITCH_CONTINUATION_REMINDER,
-	OBSERVATION_CONTINUATION_REMINDER,
-} from '../model/message-list';
+import { AgentMessageList, MODEL_SWITCH_CONTINUATION_REMINDER } from '../model/message-list';
 import { BackgroundTaskTracker } from '../state/background-task-tracker';
 import { AgentEventBus } from '../state/event-bus';
 import { RuntimeTelemetry } from '../telemetry/runtime-telemetry';
@@ -158,17 +154,14 @@ describe('Model-switch observational memory compaction and fallback', () => {
 		expect(observe.mock.calls[0][0].transcript).toContain('anthropic.web_search_20250305');
 		expect(observe.mock.calls[0][0].transcript).not.toContain('sig-abc');
 
-		// New model receives observations in system prompt and ONLY the new user message.
+		// New model receives observations and ONLY the new user message (no foreign assistant messages).
 		expect(gemini.calls).toHaveLength(1);
 		const prompt = gemini.calls[0].prompt;
-		const systemText = prompt
-			.filter((m) => m.role === 'system')
-			.map((m) => m.content)
-			.join('\n');
 		const nonSystem = prompt.filter((m) => m.role !== 'system');
+		const renderedPrompt = JSON.stringify(prompt);
 
-		expect(systemText).toContain('<observations>');
-		expect(systemText).toContain('showing errors on blur');
+		expect(renderedPrompt).toContain('<observations>');
+		expect(renderedPrompt).toContain('showing errors on blur');
 		expect(nonSystem).toHaveLength(1);
 		expect(nonSystem[0].role).toBe('user');
 
@@ -261,7 +254,7 @@ describe('Model-switch observational memory compaction and fallback', () => {
 
 		expect(observe).toHaveBeenCalledTimes(1);
 		expect((await store.getCursor(THREAD_ID))?.lastObservedMessageId).toBe('m-2');
-		expect(await store.getActiveObservationLog({ observationScopeId: THREAD_ID })).toHaveLength(1);
+		expect((await store.getResumeState(THREAD_ID))?.resumeFrom?.lastObservedMessageId).toBe('m-2');
 		expect(gemini.calls[0].prompt.filter((m) => m.role !== 'system')).toHaveLength(1);
 
 		// A subsequent turn stays past the cursor and does not re-trigger compaction.
@@ -576,17 +569,12 @@ describe('Model-switch observational memory compaction and fallback', () => {
 
 		const prompt = gemini.calls[0].prompt;
 		const nonSystem = prompt.filter((m) => m.role !== 'system');
-		expect(nonSystem).toEqual([
-			{
-				role: 'user',
-				content: [{ type: 'text', text: OBSERVATION_CONTINUATION_REMINDER }],
-			},
-		]);
-		const systemText = prompt
-			.filter((m) => m.role === 'system')
-			.map((m) => m.content)
-			.join('\n');
-		expect(systemText).toContain('Sent email to a@b.c');
+		expect(nonSystem).toHaveLength(1);
+		expect(nonSystem[0].role).toBe('user');
+		const renderedPrompt = JSON.stringify(prompt);
+		expect(renderedPrompt).toContain('<observations>');
+		expect(renderedPrompt).toContain('Sent email to a@b.c');
+		expect(renderedPrompt).not.toContain('sig');
 	});
 
 	it('appends a continuation user message on fallback sanitization when a resumed cross-provider tool turn would end with assistant', () => {
@@ -617,7 +605,14 @@ describe('Model-switch observational memory compaction and fallback', () => {
 			},
 		]);
 
-		const context = list.forLlm('base', undefined, undefined, true, 'anthropic/claude-sonnet-5-5');
+		const context = list.forLlm(
+			'base',
+			undefined,
+			undefined,
+			true,
+			'anthropic',
+			'anthropic/claude-sonnet-5-5',
+		);
 
 		expect(context.messages.map((m) => m.role)).toEqual(['user', 'assistant', 'user']);
 		expect(context.messages[2]).toEqual({

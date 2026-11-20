@@ -7,7 +7,7 @@
  * Example: Instead of "IF node output 0", we say "trueBranch"
  */
 
-import type { NodeJSON, IDataObject } from '../types/base';
+import { resolveErrorOutputIndex, type NodeJSON, type IDataObject } from '../types/base';
 
 /**
  * Composite types that the codegen can generate
@@ -78,23 +78,6 @@ function hasErrorOutput(node: NodeJSON): boolean {
 }
 
 /**
- * Get the error output index for a node.
- * For most nodes with onError: 'continueErrorOutput', the error output is at index 1.
- * Some composite nodes (IF, Switch) may have error at a different index.
- */
-function getErrorOutputIndex(type: string, node: NodeJSON): number {
-	const semantics = NODE_SEMANTICS[type];
-	if (semantics) {
-		// For composite nodes, error output is AFTER all regular outputs
-		const outputs =
-			typeof semantics.outputs === 'function' ? semantics.outputs(node) : semantics.outputs;
-		return outputs.length;
-	}
-	// For regular nodes, error output is at index 1
-	return 1;
-}
-
-/**
  * Get the semantic name for a node's output at given index
  *
  * @param type - Node type (e.g., 'n8n-nodes-base.if')
@@ -105,7 +88,7 @@ function getErrorOutputIndex(type: string, node: NodeJSON): number {
 export function getOutputName(type: string, index: number, node: NodeJSON): string {
 	// Check for error output first (when node has onError: 'continueErrorOutput')
 	if (hasErrorOutput(node)) {
-		const errorIndex = getErrorOutputIndex(type, node);
+		const errorIndex = resolveErrorOutputIndex({ ...node, type });
 		if (index === errorIndex) {
 			return 'error';
 		}

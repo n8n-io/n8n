@@ -347,26 +347,39 @@ function resolveJsonPointer(root: unknown, pointer: string): unknown {
 	}
 
 	let value = root;
+	let parentPointer = '';
 	for (const encodedSegment of pointer.slice(1).split('/')) {
 		const segment = decodeJsonPointerSegment(encodedSegment);
 		if (Array.isArray(value)) {
-			if (!/^(0|[1-9]\d*)$/.test(segment)) {
-				throw new Error('JSON Pointer does not reference a stored value');
-			}
-			const index = Number(segment);
+			const index = /^(0|[1-9]\d*)$/.test(segment) ? Number(segment) : Number.NaN;
 			if (!Number.isSafeInteger(index) || index >= value.length) {
-				throw new Error('JSON Pointer does not reference a stored value');
+				throw unresolvedPointerError(pointer, parentPointer, `has no index "${segment}"`);
 			}
 			value = value[index];
-			continue;
-		}
-		if (isRecord(value) && Object.hasOwn(value, segment)) {
+		} else if (isRecord(value) && Object.hasOwn(value, segment)) {
 			value = value[segment];
-			continue;
+		} else {
+			const reason = isRecord(value)
+				? `has no key "${segment}"`
+				: `is a ${getJsonValueType(value)} without children`;
+			throw unresolvedPointerError(pointer, parentPointer, reason);
 		}
-		throw new Error('JSON Pointer does not reference a stored value');
+		parentPointer = appendJsonPointer(parentPointer, segment);
 	}
 	return value;
+}
+
+function unresolvedPointerError(pointer: string, parentPointer: string, reason: string): Error {
+	// "/" is the most common guess for the root, but RFC 6901 reads it as an empty-string key.
+	if (pointer === '/') {
+		return new Error(
+			'JSON Pointer "/" does not select the root value. To read the root value, omit the pointer or set it to an empty string.',
+		);
+	}
+	const location = parentPointer === '' ? 'The root value' : `The value at "${parentPointer}"`;
+	return new Error(
+		`JSON Pointer does not reference a stored value: ${location} ${reason}. Copy pointer values from the children of a view=json result.`,
+	);
 }
 
 function decodeJsonPointerSegment(segment: string): string {

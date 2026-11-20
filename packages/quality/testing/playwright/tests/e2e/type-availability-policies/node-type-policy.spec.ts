@@ -5,6 +5,7 @@ import {
 	availabilityInProjects,
 	findAvailability,
 	manualRunOutcome,
+	POLICY_PROPAGATION,
 	prepareTypePolicyInstance,
 	publishOutcome,
 	saveMovedNodes,
@@ -106,13 +107,13 @@ test.describe(
 			test('should fail a run of the workflow with the violation on the execution', async ({
 				api,
 			}) => {
-				expect(await manualRunOutcome(api, workflow)).toEqual({
-					status: 'error',
-					violations: [expect.objectContaining(BLOCKED_NO_OP)],
-				});
+				await expect
+					.poll(async () => await manualRunOutcome(api, workflow), POLICY_PROPAGATION)
+					.toEqual({ status: 'error', violations: [expect.objectContaining(BLOCKED_NO_OP)] });
 			});
 
 			test('should show the blocked node as restricted and keep the workflow editable', async ({
+				api,
 				n8n,
 			}) => {
 				await n8n.start.fromExistingWorkflow(workflow.id);
@@ -123,10 +124,13 @@ test.describe(
 				await expect(n8n.ndv.getRestrictedNodePanel()).toBeVisible();
 				await n8n.ndv.close();
 
-				const saved = n8n.canvas.waitForSaveWorkflowCompleted();
 				await n8n.canvas.addNode('Code', { action: 'Code in JavaScript', closeNDV: true });
 
-				expect((await saved).status()).toBe(200);
+				// Autosave fires after a debounce, so no single click owns the save request. Read
+				// the stored workflow instead of racing a one-shot response wait.
+				await expect
+					.poll(async () => (await api.workflows.getWorkflow(workflow.id)).nodes.map((n) => n.type))
+					.toEqual(expect.arrayContaining([NO_OP.type, 'n8n-nodes-base.code']));
 			});
 		});
 

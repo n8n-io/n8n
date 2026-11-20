@@ -1,0 +1,164 @@
+{
+	"properties": {
+		"browserId": {
+			"items": {},
+			"type": "array"
+		},
+		"campaignStatus": {
+			"items": {},
+			"type": "array"
+		},
+		"concurrent_save_allowed": {
+			"type": "boolean"
+		},
+		"created_time": {
+			"type": "number"
+		},
+		"emailBounceStatus": {
+			"items": {},
+			"type": "array"
+		},
+		"entity_type": {
+			"type": "string"
+		},
+		"formId": {
+			"type": "number"
+		},
+		"id": {
+			"type": "number"
+		},
+		"is_client_import": {
+			"type": "boolean"
+		},
+		"is_duplicate_existed": {
+			"type": "boolean"
+		},
+		"is_duplicate_verification_failed": {
+			"type": "boolean"
+		},
+		"is_lead_converted": {
+			"type": "boolean"
+		},
+		"klout_score": {
+			"type": "string"
+		},
+		"last_called": {
+			"type": "number"
+		},
+		"last_campaign_emaild": {
+			"type": "number"
+		},
+		"last_contacted": {
+			"type": "number"
+		},
+		"last_emailed": {
+			"type": "number"
+		},
+		"lead_converted_time": {
+			"type": "number"
+		},
+		"lead_score": {
+			"type": "number"
+		},
+		"lead_source_id": {
+			"type": "number"
+		},
+		"lead_status_id": {
+			"type": "number"
+		},
+		"owner": {
+			"properties": {
+				"calendar_url": {
+					"type": "string"
+				},
+				"calendarURL": {
+					"type": "string"
+				},
+				"domain": {
+					"type": "string"
+				},
+				"email": {
+					"type": "string"
+				},
+				"id": {
+					"type": "number"
+				},
+				"name": {
+					"type": "string"
+				},
+				"phone": {
+					"type": "string"
+				},
+				"pic": {
+					"type": "string"
+				},
+				"schedule_id": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"properties": {
+			"items": {
+				"properties": {
+					"name": {
+						"type": "string"
+					},
+					"subtype": {
+						"type": "string"
+					},
+					"type": {
+						"type": "string"
+					},
+					"value": {
+						"type": "string"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"restored_time": {
+			"type": "number"
+		},
+		"source": {
+			"type": "string"
+		},
+		"star_value": {
+			"type": "number"
+		},
+		"tags": {
+			"items": {},
+			"type": "array"
+		},
+		"tagsWithTime": {
+			"items": {},
+			"type": "array"
+		},
+		"trashed_time": {
+			"type": "number"
+		},
+		"type": {
+			"type": "string"
+		},
+		"unsubscribeStatus": {
+			"items": {},
+			"type": "array"
+		},
+		"updated_time": {
+			"type": "number"
+		},
+		"viewed": {
+			"properties": {
+				"viewed_time": {
+					"type": "number"
+				}
+			},
+			"type": "object"
+		},
+		"viewed_time": {
+			"type": "number"
+		}
+	},
+	"type": "object"
+}

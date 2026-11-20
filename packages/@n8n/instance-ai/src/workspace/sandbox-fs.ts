@@ -18,7 +18,6 @@ import {
 
 import { formatErrorForLog } from '../error-formatting';
 import type { Logger } from '../logger';
-import { getTemplateTelemetrySession } from './template-telemetry';
 import {
 	traceSandboxOperation,
 	sandboxCommandTraceResult,
@@ -38,6 +37,11 @@ export interface SandboxWorkspace extends SharedSandboxWorkspace {
 			path: string,
 			content: string | Buffer,
 			options?: { recursive?: boolean; abortSignal?: AbortSignal },
+		) => Promise<void>;
+		/** Write many files in one request, creating parent directories. */
+		writeFiles?: (
+			files: Array<{ path: string; content: string | Buffer }>,
+			options?: { abortSignal?: AbortSignal },
 		) => Promise<void>;
 		mkdir: (
 			path: string,
@@ -116,17 +120,13 @@ export async function retryTransientSandboxIo<T>(
 /**
  * Execute a shell command in the sandbox and wait for completion.
  * Tries `executeCommand` first, falls back to `processes.spawn` + wait.
- *
- * If a TemplateTelemetrySession is bound to the workspace via
- * `attachTemplateTelemetrySession`, the command + stdout get observed for
- * template-usage events. Failures in the observer never break the command.
  */
 export async function runInSandbox(
 	workspace: SandboxCommandTarget,
 	command: string,
 	cwdOrOptions?: string | RunInSandboxOptions,
 ): Promise<{ exitCode: number; stdout: string; stderr: string }> {
-	const result = await traceSandboxOperation(
+	return await traceSandboxOperation(
 		'execute-command',
 		{
 			kind: 'io',
@@ -138,17 +138,6 @@ export async function runInSandbox(
 		},
 		async () => await runInSharedSandbox(workspace, command, cwdOrOptions),
 	);
-
-	const session = getTemplateTelemetrySession(workspace);
-	if (session) {
-		try {
-			session.observe(command, result.stdout);
-		} catch {
-			// Telemetry must never fail a command. Swallow.
-		}
-	}
-
-	return result;
 }
 
 /**

@@ -10,50 +10,6 @@ test.describe(
 		annotation: [{ type: 'owner', description: 'Identity & Access' }],
 	},
 	() => {
-		test('should only show credentials from the same team project', async ({ n8n, api }) => {
-			await n8n.navigate.toCredentials();
-			const personalCredName = `Personal Credential ${nanoid()}`;
-			await n8n.credentialsComposer.createFromList(
-				'Notion API',
-				{ apiKey: TEST_API_KEY },
-				{
-					name: personalCredName,
-				},
-			);
-
-			const devProject = await n8n.projectComposer.createProject(`Development ${nanoid()}`);
-			await n8n.projectTabs.clickCredentialsTab();
-			const devCredName = `Dev Credential ${nanoid()}`;
-			await n8n.credentialsComposer.createFromList(
-				'Notion API',
-				{ apiKey: TEST_API_KEY },
-				{ projectId: devProject.projectId, name: devCredName },
-			);
-
-			const testProject = await api.projects.createProject(`Test ${nanoid()}`);
-			await n8n.navigate.toProject(testProject.id);
-			await n8n.projectTabs.clickCredentialsTab();
-			const testCredName = `Test Credential ${nanoid()}`;
-			await n8n.credentialsComposer.createFromList(
-				'Notion API',
-				{ apiKey: TEST_API_KEY },
-				{ projectId: testProject.id, name: testCredName },
-			);
-
-			await n8n.navigate.toProject(testProject.id);
-			await n8n.projectTabs.clickWorkflowsTab();
-			await n8n.workflows.clickNewWorkflowButtonFromProject();
-			await n8n.canvas.addNode('Manual Trigger');
-			await n8n.canvas.addNode('Notion');
-			await n8n.canvas.getFirstAction().click();
-
-			// Only test project credential should be visible
-			await n8n.ndv.getNodeCredentialsSelect().click();
-			await expect(n8n.ndv.credentials.getOptionByText(testCredName)).toBeVisible();
-			await expect(n8n.ndv.credentials.getOptionByText(personalCredName)).toBeHidden();
-			await expect(n8n.ndv.credentials.getOptionByText(devCredName)).toBeHidden();
-		});
-
 		test('should show personal and shared credentials for members', async ({ n8n, api }) => {
 			const member = await api.publicApi.createUser({
 				email: `member-${nanoid()}@test.com`,

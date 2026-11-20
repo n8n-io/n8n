@@ -134,6 +134,14 @@ export class ScheduledTask extends WithCreatedAt {
 	maxAttempts: number;
 
 	/**
+	 * How long, in seconds, one attempt may run before the executor stops it.
+	 * Copied from the job when this run is created, and updated while the run is
+	 * `pending` when the job's timeout changes.
+	 */
+	@Column({ type: 'int', default: 300 })
+	timeoutSeconds: number;
+
+	/**
 	 * Which worker is currently running this;
 	 * `null` when no one has claimed it.
 	 */

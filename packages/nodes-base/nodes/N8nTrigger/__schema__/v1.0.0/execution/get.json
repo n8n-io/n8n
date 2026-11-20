@@ -19,6 +19,9 @@
         "mode": {
             "type": "string"
         },
+        "retrySuccessId": {
+            "type": "null"
+        },
         "startedAt": {
             "type": "string"
         },
@@ -34,9 +37,12 @@
         "waitTill": {
             "type": "null"
         },
+        "workflowId": {
+            "type": "string"
+        },
         "workflowVersionId": {
             "type": "string"
         }
     },
-    "version": 1
+    "version": 3
 }
