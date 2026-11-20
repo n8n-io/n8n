@@ -1991,6 +1991,9 @@ import { InstanceAiSkillsAdapterService } from '../instance-ai-skills.adapter';
 import { SkillsGate, SkillSyncFlagGate } from '@/modules/skills';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { AiPreferenceSettingsService } from '@/services/ai-preference-settings.service';
+import { WorkflowEngineDefaults } from '@/workflows/workflow-engine-defaults';
+
+const engineV1Setup = { engineV2Available: false, newWorkflowEngine: 'v1' } as const;
 import type { TemporaryWorkflowMarkers } from '../temporary-workflow-markers';
 import { AgentsBuilderService } from '@/modules/agents/builder/agents-builder.service';
 import type { AgentCredentialProvider } from '@/modules/agents/agent-credential-provider.contracts';
@@ -2134,6 +2137,21 @@ describe('createContext models', () => {
 		const context = service.createContext(mockUser, { modelId: 'openai/gpt-6.1-sol' });
 
 		expect(context).not.toHaveProperty('utilityModelId');
+	});
+});
+
+describe('createContext engine setup', () => {
+	it('puts the engine setup of the instance on the context', () => {
+		const engineSetup = { engineV2Available: true, newWorkflowEngine: 'v2' } as const;
+		const getSetup = vi
+			.spyOn(WorkflowEngineDefaults.prototype, 'getSetup')
+			.mockReturnValue(engineSetup);
+		const { service, mockUser } = createNodeAdapterServiceForTests([]);
+
+		const context = service.createContext(mockUser);
+
+		expect(context.engineSetup).toEqual(engineSetup);
+		getSetup.mockRestore();
 	});
 });
 
@@ -8352,6 +8370,7 @@ describe('MCP registry discovery', () => {
 			if (token === McpRegistryService) return { search, getBySlugs };
 			if (token === InstanceAiMcpRegistryService) return { listConnectionsForUser };
 			if (token === ModuleRegistry) return { isActive: () => false };
+			if (token === WorkflowEngineDefaults) return { getSetup: () => engineV1Setup };
 			throw new Error(`Unexpected Container.get call in test: ${String(token)}`);
 		});
 
@@ -8696,6 +8715,7 @@ describe('createContext — builder delegate wiring', () => {
 			if (token === ModuleRegistry) return moduleRegistry;
 			if (token === InstanceAiBuilderDelegateAdapterService) return builderDelegateAdapter;
 			if (token === AgentsBuilderService) return builderService;
+			if (token === WorkflowEngineDefaults) return { getSetup: () => engineV1Setup };
 			throw new Error(`Unexpected Container.get call in test: ${String(token)}`);
 		});
 		return { ...builderDelegateAdapter, builderService, credentialProvider };
@@ -9561,6 +9581,7 @@ describe('createContext — skill service wiring', () => {
 				return { createService: vi.fn().mockReturnValue(skillService) };
 			}
 			if (token === InstanceAiBuilderDelegateAdapterService) return { createDelegate: vi.fn() };
+			if (token === WorkflowEngineDefaults) return { getSetup: () => engineV1Setup };
 			throw new Error(`Unexpected Container.get call in test: ${String(token)}`);
 		});
 		const service = createAdapterWithGatewayMock(vi.fn());
@@ -9584,6 +9605,7 @@ describe('createContext — skill service wiring', () => {
 				if (token === SkillsGate) return { isEnabled: true };
 				if (token === InstanceAiSkillsAdapterService) return { createService };
 				if (token === InstanceAiBuilderDelegateAdapterService) return { createDelegate: vi.fn() };
+				if (token === WorkflowEngineDefaults) return { getSetup: () => engineV1Setup };
 				throw new Error(`Unexpected Container.get call in test: ${String(token)}`);
 			});
 			const service = createAdapterWithGatewayMock(vi.fn());
