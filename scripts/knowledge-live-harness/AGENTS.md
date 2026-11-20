@@ -107,8 +107,10 @@ violations, average prompt tokens, total tokens per pass, tool calls, median
 wall time), and per question and agent with one mark per repetition (`P`
 pass, `F` fail, `V` fail with a scope violation, `T` timeout). A timeout
 counts as a fail but not in the token, call and wall-time figures.
-`report file@agent,agent` keeps only those agents of a file, so a clean re-run
-of one agent can replace a void repetition when several files are merged.
+`report file@agent,agent#prefix,prefix` keeps only those agents, and only the
+questions whose id starts with one of the prefixes, of a file, so a clean
+re-run of one agent or one source can replace part of a run when several
+files are merged (the ids start with `n-` for Notion and `s-` for Slack).
 
 ## Output
 

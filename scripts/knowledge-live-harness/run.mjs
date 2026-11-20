@@ -12,7 +12,8 @@
 //                            scoring and a results table; rebuilds the indexes first
 //   report [files...]        the tables of one or more results files (default: the latest
 //                            run), also of a partial run; `file@agent,agent` keeps only
-//                            those agents of that file
+//                            those agents of that file, `file#s-,n-item` only the
+//                            questions whose id starts with one of the prefixes
 //
 // Secrets come from env vars. Never pass one as a command argument.
 
@@ -711,12 +712,18 @@ async function report(files) {
 	const runs = [];
 	const agentKeys = [];
 	for (const spec of paths) {
-		// `file@agent,agent` keeps only those agents of the file, so a void repetition can be left out.
-		const [file, only] = spec.split('@');
+		// `file@agent,agent#prefix,prefix` keeps only those agents and question ids of the
+		// file, so a void repetition or a re-run of one source can replace part of a run.
+		const [fileAndAgents, prefixes] = spec.split('#');
+		const [file, only] = fileAndAgents.split('@');
 		const keep = only ? new Set(only.split(',')) : null;
+		const keepPrefixes = prefixes ? prefixes.split(',').filter(Boolean) : null;
 		const data = await readJson(file);
 		for (const run of data.runs) {
 			if (keep && !keep.has(run.agentKey)) continue;
+			if (keepPrefixes && !keepPrefixes.some((prefix) => run.question.id.startsWith(prefix))) {
+				continue;
+			}
 			if (items) run.score = scoreAnswer(run.question, run.result, items, forbiddenIds);
 			run.metrics.timeout = isTimeout(run.result);
 			runs.push(run);
