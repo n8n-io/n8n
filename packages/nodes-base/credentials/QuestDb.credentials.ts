@@ -56,6 +56,35 @@ export class QuestDb implements ICredentialType {
 			default: 'disable',
 		},
 		{
+			displayName: 'CA Certificate',
+			name: 'caCertificate',
+			type: 'string',
+			typeOptions: {
+				password: true,
+			},
+			default: '',
+			displayOptions: {
+				show: {
+					ssl: ['allow', 'require'],
+				},
+			},
+			description:
+				'PEM-encoded CA certificate used to verify the server. Leave empty to use the system CAs.',
+		},
+		{
+			displayName: 'Ignore SSL Issues (Insecure)',
+			name: 'allowUnauthorizedCerts',
+			type: 'boolean',
+			default: false,
+			displayOptions: {
+				show: {
+					ssl: ['allow', 'require'],
+				},
+			},
+			description:
+				'Whether to keep the connection encrypted but skip certificate verification, for example against a self-signed or hostname-mismatched certificate',
+		},
+		{
 			displayName: 'Port',
 			name: 'port',
 			type: 'number',

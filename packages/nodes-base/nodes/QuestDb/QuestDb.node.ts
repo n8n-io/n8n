@@ -1,4 +1,6 @@
+import { formatPemBlock } from '@n8n/utils/format-pem-block';
 import type {
+	ICredentialDataDecryptedObject,
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
@@ -10,6 +12,46 @@ import pgPromise from 'pg-promise';
 import { getDateAsStringTypeParsers } from '@utils/postgres';
 
 import { pgInsert, pgQueryV2 } from '../Postgres/v1/genericFunctions';
+
+type QuestDbSsl = boolean | { ca?: string; rejectUnauthorized?: false };
+
+type QuestDbConfig = {
+	host: string;
+	port: number;
+	database: string;
+	user: string;
+	password: string;
+	ssl: QuestDbSsl;
+};
+
+function buildSsl(credentials: ICredentialDataDecryptedObject): QuestDbSsl {
+	if (['disable', undefined].includes(credentials.ssl as string | undefined)) return false;
+
+	const ssl: { ca?: string; rejectUnauthorized?: false } = {};
+
+	if (credentials.caCertificate) {
+		ssl.ca = formatPemBlock(credentials.caCertificate as string);
+	}
+
+	if (credentials.allowUnauthorizedCerts === true) {
+		ssl.rejectUnauthorized = false;
+	}
+
+	// `true` is what a credential carrying neither field produced before these
+	// fields existed, and pg reads it the same way as an empty options object.
+	return Object.keys(ssl).length > 0 ? ssl : true;
+}
+
+export function getQuestDbConfig(credentials: ICredentialDataDecryptedObject): QuestDbConfig {
+	return {
+		host: credentials.host as string,
+		port: credentials.port as number,
+		database: credentials.database as string,
+		user: credentials.user as string,
+		password: credentials.password as string,
+		ssl: buildSsl(credentials),
+	};
+}
 
 export class QuestDb implements INodeType {
 	description: INodeTypeDescription = {
@@ -204,15 +246,7 @@ export class QuestDb implements INodeType {
 
 		const pgp = pgPromise();
 
-		const config = {
-			host: credentials.host as string,
-			port: credentials.port as number,
-			database: credentials.database as string,
-			user: credentials.user as string,
-			password: credentials.password as string,
-			ssl: !['disable', undefined].includes(credentials.ssl as string | undefined),
-			sslmode: (credentials.ssl as string) || 'disable',
-		};
+		const config = getQuestDbConfig(credentials);
 
 		const db = pgp({
 			...config,
