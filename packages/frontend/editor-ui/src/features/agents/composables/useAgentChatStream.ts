@@ -75,6 +75,26 @@ interface AgentChatWarning {
 	code?: string;
 }
 
+const SERVER_BUSY_CODES = [
+	AGENT_CHAT_ERROR_CODES.mainBusy,
+	AGENT_CHAT_ERROR_CODES.queueFull,
+	AGENT_CHAT_ERROR_CODES.lowMemory,
+] as const;
+
+export type AgentServerBusyCode = (typeof SERVER_BUSY_CODES)[number];
+
+const isServerBusyCode = (code: string | undefined): code is AgentServerBusyCode =>
+	SERVER_BUSY_CODES.some((busyCode) => busyCode === code);
+
+/** n8n had no room for the turn. */
+export interface AgentServerBusyNotice {
+	code: AgentServerBusyCode;
+	/** True when n8n rejected the message before it accepted it, so the draft stays in the composer. */
+	draftKept: boolean;
+	/** Epoch milliseconds after which a new try can work. */
+	retryAt: number;
+}
+
 export interface UseAgentChatStreamParams {
 	projectId: Ref<string>;
 	agentId: Ref<string>;
@@ -248,6 +268,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	 */
 	const warnings = ref<AgentChatWarning[]>([]);
 	const dismissedWarningKeys = new Set<string>();
+	/** Set when n8n rejects a turn because it has no room now. Cleared when the next execution starts. */
+	const serverBusy = ref<AgentServerBusyNotice | null>(null);
 
 	const messagingState = computed<'idle' | 'waitingFirstChunk' | 'receiving'>(() => {
 		if (!isStreaming.value && !earlySend.value) return 'idle';
@@ -1201,6 +1223,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				streamVersion++;
 				fatalError.value = null;
 				warnings.value = [];
+				serverBusy.value = null;
 				if (session.userMessage) {
 					const started = messages.value.some(
 						(message) =>
@@ -1516,6 +1539,13 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					fatalError.value = { message: event.message, missing: event.missing ?? [] };
 				} else if (event.errorCode === AGENT_CHAT_ERROR_CODES.agentUnavailable) {
 					params.onAgentUnavailable?.();
+				} else if (isServerBusyCode(event.errorCode)) {
+					serverBusy.value = {
+						code: event.errorCode,
+						// A message that n8n never accepted stays in the composer for a new try.
+						draftKept: Boolean(session.userMessage) && !session.queueId && !session.executionId,
+						retryAt: Date.now() + (event.retryAfterSeconds ?? 0) * TIME.SECOND,
+					};
 				} else if (session.userMessage && !session.executionId) {
 					showError(new Error(event.message), locale.baseText('agents.chat.queue.sendError'));
 				} else {
@@ -2073,6 +2103,10 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		fatalError.value = null;
 	}
 
+	function dismissServerBusy(): void {
+		serverBusy.value = null;
+	}
+
 	function dismissWarning(index: number): void {
 		const warning = warnings.value[index];
 		if (!warning) return;
@@ -2205,6 +2239,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		messagingState,
 		fatalError,
 		warnings,
+		serverBusy,
+		dismissServerBusy,
 		loadHistory,
 		refresh,
 		clearHistory,

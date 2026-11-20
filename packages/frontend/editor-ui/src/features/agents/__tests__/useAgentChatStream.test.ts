@@ -2491,6 +2491,48 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		expect(hook.fatalError.value).toBeNull();
 	});
 
+	it.each(['main_busy', 'queue_full', 'low_memory'] as const)(
+		'sets serverBusy (not a toast, not a message bubble) for %s errors',
+		async (errorCode) => {
+			vi.spyOn(Date, 'now').mockReturnValue(1_000_000);
+			const events: AgentSseEvent[] = [
+				{ type: 'error', message: 'n8n is busy', errorCode, retryAfterSeconds: 15 },
+			];
+			// n8n rejects the message before it accepts it.
+			globalThis.fetch = vi.fn(async () => makeSseResponse(events, false)) as typeof fetch;
+
+			const hook = buildHook();
+			await hook.sendMessage('run');
+			await flushPromises();
+			await nextTick();
+
+			expect(hook.messages.value.some((m) => m.status === 'error')).toBe(false);
+			expect(showQueueErrorMock).not.toHaveBeenCalled();
+			expect(hook.serverBusy.value).toEqual({
+				code: errorCode,
+				draftKept: true,
+				retryAt: 1_000_000 + 15_000,
+			});
+
+			hook.dismissServerBusy();
+			expect(hook.serverBusy.value).toBeNull();
+		},
+	);
+
+	it('marks a busy rejection after acceptance as not keeping the draft', async () => {
+		const events: AgentSseEvent[] = [
+			{ type: 'error', message: 'n8n is busy', errorCode: 'main_busy', retryAfterSeconds: 5 },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('run');
+		await flushPromises();
+		await nextTick();
+
+		expect(hook.serverBusy.value).toMatchObject({ code: 'main_busy', draftKept: false });
+	});
+
 	it('drops empty orphan minted bubbles when any error arrives', async () => {
 		const events: AgentSseEvent[] = [
 			// start-step mints a ChatMessage but no text/tool follows — it stays empty

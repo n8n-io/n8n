@@ -16,6 +16,15 @@ export const APP_AGENT_INTEGRATION_TYPE = 'app';
 
 export const APP_VISITOR_ERROR_MESSAGE = 'The agent could not answer.';
 
+export const APP_VISITOR_TOO_SLOW_MESSAGE =
+	'The connection was too slow to receive the answer. Try again.';
+
+/**
+ * Events that wait for a slow visitor. Over this, n8n stops the turn, so that
+ * a visitor that stops to read cannot fill the memory of the process.
+ */
+export const APP_MAX_BUFFERED_EVENTS = 5_000;
+
 type AppTurnRequest = AgentAppChatRequest | AgentAppResumeRequest;
 
 /**
@@ -49,12 +58,16 @@ export class AgentAppTurnService {
 
 	/** The events of one turn. A visitor that leaves stops the turn. */
 	async *events(request: AppTurnRequest, signal: AbortSignal): AsyncGenerator<AgentSseEvent> {
-		const relayed = new EventBuffer<AgentSseEvent>();
+		const overflow = new AbortController();
+		const relayed = new EventBuffer<AgentSseEvent>(APP_MAX_BUFFERED_EVENTS, () => overflow.abort());
 		// Settles without rejecting, so a failure while the turn runs is not an unhandled rejection.
 		const turn = this.dispatcher
 			.stream(
 				request,
-				{ send: (event) => relayed.push(event), abortSignal: signal },
+				{
+					send: (event) => relayed.push(event),
+					abortSignal: AbortSignal.any([signal, overflow.signal]),
+				},
 				{ stopOnLeave: true },
 			)
 			.then(
@@ -64,6 +77,11 @@ export class AgentAppTurnService {
 			.finally(() => relayed.end());
 		yield* relayed;
 		const error = await turn;
+		if (overflow.signal.aborted) {
+			this.logger.warn('Stopped an app turn, because the visitor read its events too slowly');
+			yield { type: 'error', message: APP_VISITOR_TOO_SLOW_MESSAGE };
+			return;
+		}
 		if (error !== undefined) yield { type: 'error', message: this.messageForVisitor(error) };
 	}
 
@@ -135,16 +153,30 @@ export class AgentAppTurnService {
 	}
 }
 
-/** Turns pushed values into an async iterable that ends after `end`. */
-class EventBuffer<T> implements AsyncIterable<T> {
+/**
+ * Turns pushed values into an async iterable that ends after `end`. When more
+ * than `maxValues` values wait for the reader, the buffer ends and calls
+ * `onOverflow`. The reader still gets the values that wait.
+ */
+export class EventBuffer<T> implements AsyncIterable<T> {
 	private readonly values: T[] = [];
 
 	private ended = false;
 
 	private wake: (() => void) | undefined;
 
+	constructor(
+		private readonly maxValues: number,
+		private readonly onOverflow: () => void,
+	) {}
+
 	push(value: T) {
 		if (this.ended) return;
+		if (this.values.length >= this.maxValues) {
+			this.end();
+			this.onOverflow();
+			return;
+		}
 		this.values.push(value);
 		this.notify();
 	}
@@ -156,8 +188,10 @@ class EventBuffer<T> implements AsyncIterable<T> {
 
 	async *[Symbol.asyncIterator](): AsyncIterator<T> {
 		while (true) {
-			if (this.values.length > 0) {
-				yield* this.values.splice(0);
+			// One at a time, so that `values` holds every value that the reader did not take.
+			const [next] = this.values.splice(0, 1);
+			if (next !== undefined) {
+				yield next;
 				continue;
 			}
 			if (this.ended) return;

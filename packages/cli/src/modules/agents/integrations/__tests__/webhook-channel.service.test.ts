@@ -356,6 +356,25 @@ describe('WebhookChannelService', () => {
 		});
 	});
 
+	it('stops the run and returns 500 when the reply text is too large', async () => {
+		const { respond, orchestrator } = makeService();
+		const chunk = 'x'.repeat(400_000);
+		orchestrator.executeForChatPublished.mockReturnValue(
+			streamOf(
+				...Array.from({ length: 3 }, () => ({
+					type: 'text-delta' as const,
+					id: 't1',
+					delta: chunk,
+				})),
+			),
+		);
+
+		await expect(respond()).resolves.toMatchObject({
+			status: 500,
+			body: { error: { code: 'reply_too_large' } },
+		});
+	});
+
 	it('returns 409 while another turn runs in the conversation', async () => {
 		const { respond, orchestrator } = makeService();
 		orchestrator.executeForChatPublished.mockImplementation(async function* () {

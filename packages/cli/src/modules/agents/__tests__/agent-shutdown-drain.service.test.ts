@@ -5,23 +5,35 @@ import { mock } from 'vitest-mock-extended';
 import type { AgentExecutionService } from '../agent-execution.service';
 import { AgentShutdownDrain, BACKGROUND_JOB_SHUTDOWN_ERROR } from '../agent-shutdown-drain.service';
 import type { AgentBackgroundJobService } from '../background/agent-background-job.service';
+import type { InProcessTurnRunner } from '../queue/in-process-turn-runner';
+import type { QueuedTurnRunner } from '../queue/queued-turn-runner';
 
 describe('AgentShutdownDrain', () => {
 	const globalConfig = mock<GlobalConfig>({ generic: { gracefulShutdownTimeout: 10 } });
 	const budgetMs = 10_000 * AgentShutdownDrain.DRAIN_BUDGET_RATIO;
 
-	const setup = (localIds: () => string[], backgroundRuns: () => number = () => 0) => {
+	const setup = (
+		localIds: () => string[],
+		backgroundRuns: () => number = () => 0,
+		requestTurns: () => number = () => 0,
+	) => {
 		const executionService = mock<AgentExecutionService>();
 		executionService.localExecutionIds.mockImplementation(localIds);
 		executionService.interruptLocalExecutions.mockResolvedValue(1);
 		const backgroundJobs = mock<AgentBackgroundJobService>();
 		Object.defineProperty(backgroundJobs, 'localRunCount', { get: backgroundRuns });
 		backgroundJobs.stopLocalRuns.mockResolvedValue(1);
+		const inProcessTurns = mock<InProcessTurnRunner>();
+		Object.defineProperty(inProcessTurns, 'runningCount', { get: requestTurns });
+		const queuedTurns = mock<QueuedTurnRunner>();
+		Object.defineProperty(queuedTurns, 'runningCount', { get: () => 0 });
 		const drain = new AgentShutdownDrain(
 			mockLogger(),
 			globalConfig,
 			executionService,
 			backgroundJobs,
+			inProcessTurns,
+			queuedTurns,
 		);
 		return { drain, executionService, backgroundJobs };
 	};
@@ -62,6 +74,27 @@ describe('AgentShutdownDrain', () => {
 		await done;
 
 		expect(executionService.interruptLocalExecutions).toHaveBeenCalledOnce();
+	});
+
+	it('waits for request turns that have no execution yet', async () => {
+		let requestTurns = 1;
+		const { drain, executionService } = setup(
+			() => [],
+			() => 0,
+			() => requestTurns,
+		);
+
+		let finished = false;
+		const done = drain.drain().then(() => {
+			finished = true;
+		});
+		await vi.advanceTimersByTimeAsync(1_000);
+		expect(finished).toBe(false);
+		requestTurns = 0;
+		await vi.advanceTimersByTimeAsync(AgentShutdownDrain.POLL_INTERVAL_MS);
+		await done;
+
+		expect(executionService.interruptLocalExecutions).not.toHaveBeenCalled();
 	});
 
 	it('waits for background sub-agents that run without a turn of their own', async () => {

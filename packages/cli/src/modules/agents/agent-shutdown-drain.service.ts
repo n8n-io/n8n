@@ -7,6 +7,8 @@ import { sleep } from '@n8n/utils/sleep';
 
 import { AgentExecutionService } from './agent-execution.service';
 import { AgentBackgroundJobService } from './background/agent-background-job.service';
+import { InProcessTurnRunner } from './queue/in-process-turn-runner';
+import { QueuedTurnRunner } from './queue/queued-turn-runner';
 
 export const BACKGROUND_JOB_SHUTDOWN_ERROR =
 	'Background job stopped before it finished, because the n8n process that ran it shut down.';
@@ -31,6 +33,8 @@ export class AgentShutdownDrain {
 		private readonly globalConfig: GlobalConfig,
 		private readonly executionService: AgentExecutionService,
 		private readonly backgroundJobs: AgentBackgroundJobService,
+		private readonly inProcessTurns: InProcessTurnRunner,
+		private readonly queuedTurns: QueuedTurnRunner,
 	) {
 		this.logger = this.logger.scoped('agents');
 	}
@@ -38,6 +42,8 @@ export class AgentShutdownDrain {
 	private remaining() {
 		return {
 			turns: this.executionService.localExecutionIds().length,
+			// A request turn can run before its execution starts, for example while it loads the agent.
+			requestTurns: this.inProcessTurns.runningCount + this.queuedTurns.runningCount,
 			backgroundJobs: this.backgroundJobs.localRunCount,
 		};
 	}
@@ -55,7 +61,8 @@ export class AgentShutdownDrain {
 		const deadline = Date.now() + budgetMs;
 
 		let remaining = this.remaining();
-		const busy = () => remaining.turns > 0 || remaining.backgroundJobs > 0;
+		const busy = () =>
+			remaining.turns > 0 || remaining.requestTurns > 0 || remaining.backgroundJobs > 0;
 		if (busy()) {
 			this.logger.info('Waiting for running agent turns to finish before shutdown', {
 				...remaining,

@@ -6,7 +6,11 @@ import { Container } from '@n8n/di';
 import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
-import { AgentAppTurnService } from '@/modules/agents/agent-app-turn.service';
+import {
+	AgentAppTurnService,
+	APP_MAX_BUFFERED_EVENTS,
+	APP_VISITOR_TOO_SLOW_MESSAGE,
+} from '@/modules/agents/agent-app-turn.service';
 import { AgentExecutionOrchestratorService } from '@/modules/agents/agent-execution-orchestrator.service';
 import { AgentPublishService } from '@/modules/agents/agent-publish.service';
 import { AgentsService } from '@/modules/agents/agents.service';
@@ -385,5 +389,37 @@ describe('AppAgentAdapter', () => {
 			expect.objectContaining({ type: 'error', message: 'The agent could not answer.' }),
 		);
 		expect(events.at(-1)).toEqual({ type: 'done', sessionId: SESSION });
+	});
+
+	it('stops the turn when the visitor reads its events too slowly', async () => {
+		const { adapter, orchestrator } = setup();
+		let stopped = false;
+		orchestrator.executeForChatPublished.mockImplementation(async function* ({ abortSignal }) {
+			for (let i = 0; i <= APP_MAX_BUFFERED_EVENTS + 10; i++) {
+				if (abortSignal?.aborted) {
+					stopped = true;
+					return;
+				}
+				yield { type: 'text-delta', id: '1', delta: 'x' };
+			}
+		});
+
+		const turn = await adapter.chat(
+			userCtx,
+			'agent-1',
+			{ message: 'Hi', sessionId: SESSION },
+			new AbortController().signal,
+		);
+		const iterator = turn.events[Symbol.asyncIterator]();
+		// The visitor reads one event, then stops to read until the turn fills the buffer.
+		await iterator.next();
+		await vi.waitFor(() => expect(stopped).toBe(true));
+		const rest: unknown[] = [];
+		for (let next = await iterator.next(); !next.done; next = await iterator.next()) {
+			rest.push(next.value);
+		}
+
+		expect(rest).toContainEqual({ type: 'error', message: APP_VISITOR_TOO_SLOW_MESSAGE });
+		expect(rest.length).toBeLessThanOrEqual(APP_MAX_BUFFERED_EVENTS + 1);
 	});
 });

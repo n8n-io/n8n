@@ -52,6 +52,19 @@ import { authenticateWebhookRequest } from './webhook-auth';
 
 const MAX_LOGGED_ERROR_LENGTH = 500;
 
+/**
+ * Characters of agent text that one webhook reply can hold. n8n keeps the text
+ * in memory until the run ends, so a run that writes more stops with an error.
+ */
+export const MAX_WEBHOOK_REPLY_TEXT_LENGTH = 1_000_000;
+
+const REPLY_TOO_LARGE_ERROR = () =>
+	new WebhookChannelError(
+		500,
+		'reply_too_large',
+		`The agent wrote more than ${MAX_WEBHOOK_REPLY_TEXT_LENGTH} characters, so n8n stopped the run.`,
+	);
+
 export interface WebhookChannelReply {
 	status: number;
 	body: unknown;
@@ -485,7 +498,10 @@ export class WebhookChannelService {
 			if (chunk.type === 'error') throw ensureError(chunk.error);
 			if (chunk.type === 'tool-call-suspended') suspensions.push(chunk);
 			if (chunk.type === 'tool-call') text = '';
-			if (chunk.type === 'text-delta') text += chunk.delta;
+			if (chunk.type === 'text-delta') {
+				text += chunk.delta;
+				if (text.length > MAX_WEBHOOK_REPLY_TEXT_LENGTH) throw REPLY_TOO_LARGE_ERROR();
+			}
 		}
 		return { text, suspensions };
 	}

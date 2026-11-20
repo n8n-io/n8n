@@ -69,6 +69,7 @@ import {
 	type AgentsChatInteractionExtension,
 } from '@/features/ai/shared/agentsChat/interactionRegistry';
 import { INTERACTION_EXTENSION_TOOL_NAME } from '@/features/ai/shared/agentsChat/constants';
+import AgentChatBusyNotice from './AgentChatBusyNotice.vue';
 import AgentChatEmptyState from './AgentChatEmptyState.vue';
 import type { ChatMessage, ChatMessageAttachment } from '@/features/ai/shared/agentsChat/types';
 import { resolveFileMimeType } from '@/app/utils/fileUtils';
@@ -320,6 +321,8 @@ const {
 	resume,
 	cancelAndSteer,
 	dismissFatalError,
+	serverBusy,
+	dismissServerBusy,
 	dismissWarning,
 	clearBudgetNotices,
 } = useAgentChatStream({
@@ -2198,6 +2201,10 @@ onBeforeUnmount(() => {
 					</N8nTooltip>
 				</template>
 			</N8nCallout>
+		</div>
+
+		<div v-if="serverBusy" :class="$style.warningBanner">
+			<AgentChatBusyNotice :notice="serverBusy" @dismiss="dismissServerBusy" />
 		</div>
 
 		<template v-if="isCenteredEmpty">
