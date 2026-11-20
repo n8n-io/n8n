@@ -444,4 +444,65 @@ describe('addExecutionHints', () => {
 		);
 		expect(context.addExecutionHints).toHaveBeenCalledWith(selectHint);
 	});
+
+	// These operations also send one query for each input item, but only Postgres has them
+	it.each(['listSchemas', 'listTables'])(
+		'should add run per item hint to Postgres %s operation',
+		(operation) => {
+			const context = {
+				addExecutionHints: vi.fn(),
+			} as unknown as IExecuteFunctions;
+
+			addExecutionHints(
+				context,
+				mock<INode>({
+					type: POSTGRES_NODE_TYPE,
+				}),
+				[{ json: {} }, { json: {} }],
+				operation,
+				false,
+			);
+			expect(context.addExecutionHints).toHaveBeenCalledWith(selectHint);
+		},
+	);
+
+	it.each(['listSchemas', 'listTables'])(
+		'should add no hint to MySQL %s operation',
+		(operation) => {
+			const context = {
+				addExecutionHints: vi.fn(),
+			} as unknown as IExecuteFunctions;
+
+			addExecutionHints(
+				context,
+				mock<INode>({
+					type: MYSQL_NODE_TYPE,
+				}),
+				[{ json: {} }, { json: {} }],
+				operation,
+				false,
+			);
+			expect(context.addExecutionHints).not.toHaveBeenCalled();
+		},
+	);
+
+	it.each(['listSchemas', 'listTables'])(
+		'should add no hint to Postgres %s operation when execute once is on',
+		(operation) => {
+			const context = {
+				addExecutionHints: vi.fn(),
+			} as unknown as IExecuteFunctions;
+
+			addExecutionHints(
+				context,
+				mock<INode>({
+					type: POSTGRES_NODE_TYPE,
+				}),
+				[{ json: {} }, { json: {} }],
+				operation,
+				true,
+			);
+			expect(context.addExecutionHints).not.toHaveBeenCalled();
+		},
+	);
 });

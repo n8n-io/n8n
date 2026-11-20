@@ -3,12 +3,14 @@ import { READ_ONLY_ANNOTATIONS, type INodeProperties } from 'n8n-workflow';
 import * as deleteTable from './deleteTable.operation';
 import * as executeQuery from './executeQuery.operation';
 import * as insert from './insert.operation';
+import * as listSchemas from './listSchemas.operation';
+import * as listTables from './listTables.operation';
 import * as select from './select.operation';
 import * as update from './update.operation';
 import * as upsert from './upsert.operation';
 import { schemaRLC, tableRLC } from '../common.descriptions';
 
-export { deleteTable, executeQuery, insert, select, update, upsert };
+export { deleteTable, executeQuery, insert, listSchemas, listTables, select, update, upsert };
 
 export const description: INodeProperties[] = [
 	{
@@ -47,6 +49,20 @@ export const description: INodeProperties[] = [
 				annotations: { effect: 'write', destructive: true, idempotent: false },
 			},
 			{
+				name: 'List Schemas',
+				value: 'listSchemas',
+				description: 'List the schemas, the same ones the Schema list offers',
+				action: 'List schemas',
+				annotations: READ_ONLY_ANNOTATIONS,
+			},
+			{
+				name: 'List Tables',
+				value: 'listTables',
+				description: 'List the tables, views and foreign tables in a schema',
+				action: 'List tables in a schema',
+				annotations: READ_ONLY_ANNOTATIONS,
+			},
+			{
 				name: 'Select',
 				value: 'select',
 				description: 'Select rows from a table',
@@ -68,11 +84,25 @@ export const description: INodeProperties[] = [
 		},
 		default: 'insert',
 	},
-	{ ...schemaRLC, displayOptions: { hide: { operation: ['executeQuery'] } } },
-	{ ...tableRLC, displayOptions: { hide: { operation: ['executeQuery'] } } },
+	{
+		...schemaRLC,
+		displayOptions: { hide: { operation: ['executeQuery', 'listSchemas', 'listTables'] } },
+	},
+	{
+		// List Tables hides the Table picker, so here the schema is what you list, not where a table lives
+		...schemaRLC,
+		description: 'The schema that contains the tables you want to list',
+		displayOptions: { show: { operation: ['listTables'] } },
+	},
+	{
+		...tableRLC,
+		displayOptions: { hide: { operation: ['executeQuery', 'listSchemas', 'listTables'] } },
+	},
 	...deleteTable.description,
 	...executeQuery.description,
 	...insert.description,
+	...listSchemas.description,
+	...listTables.description,
 	...select.description,
 	...update.description,
 	...upsert.description,
