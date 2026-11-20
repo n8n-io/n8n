@@ -1,5 +1,6 @@
 import {
 	GLOBAL_MEMBER_ROLE,
+	GLOBAL_OWNER_ROLE,
 	ProjectRepository,
 	RoleRepository,
 	SharedCredentialsRepository,
@@ -9,7 +10,11 @@ import {
 	type Role,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { type Scope } from '@n8n/permissions';
+import {
+	CREDENTIALS_SHARING_SCOPE_MAP,
+	WORKFLOW_SHARING_SCOPE_MAP,
+	type Scope,
+} from '@n8n/permissions';
 import type { EntityManager } from '@n8n/typeorm';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -244,6 +249,197 @@ describe('userHasScopes', () => {
 			await expect(
 				userHasScopes(user, ['agent:delete'], false, { agentId: 'agent123' }),
 			).rejects.toThrow(NotFoundError);
+		});
+	});
+
+	describe('composite agent and credential resources', () => {
+		const agentId = 'agent123';
+		const credentialId = 'cred123';
+		const agent = { id: agentId, projectId: 'projectId', scope: 'project' };
+		const credentialShare = {
+			credentialsId: credentialId,
+			projectId: 'projectId',
+			role: 'credential:owner',
+		};
+		const user = { id: 'userId', scopes: [], role: GLOBAL_MEMBER_ROLE } as unknown as User;
+
+		// Resolve sharing roles from the real role definitions instead of
+		// returning a predetermined success.
+		const resolveRolesWithScope = (namespace: 'credential' | 'workflow', scopes: Scope[]) => {
+			const roleMap =
+				namespace === 'credential' ? CREDENTIALS_SHARING_SCOPE_MAP : WORKFLOW_SHARING_SCOPE_MAP;
+
+			return Object.entries(roleMap)
+				.filter(([, roleScopes]) => scopes.every((scope) => roleScopes.includes(scope)))
+				.map(([slug]) => slug);
+		};
+
+		const denyGlobalCredentialAccess = () => {
+			hasGlobalReadOnlyAccessMock.mockReturnValue(false);
+			hasGlobalConnectAccessMock.mockReturnValue(false);
+			findGlobalCredentialByIdMock.mockResolvedValue(null);
+		};
+
+		it('allows agent:update for a personal project owner when a credential is also in the URL', async () => {
+			agentFindByIdMock.mockResolvedValue(agent);
+			findByCredentialMock.mockResolvedValue([credentialShare]);
+			roleServiceMock.mockImplementation(resolveRolesWithScope);
+			denyGlobalCredentialAccess();
+
+			const result = await userHasScopes(user, ['agent:update'], false, {
+				agentId,
+				credentialId,
+			});
+
+			expect(result).toBe(true);
+		});
+
+		it('denies an agent scope when the agent belongs to another project, even if the credential is shared', async () => {
+			agentFindByIdMock.mockResolvedValue({ ...agent, projectId: 'otherProjectId' });
+			findByCredentialMock.mockResolvedValue([credentialShare]);
+			roleServiceMock.mockImplementation(resolveRolesWithScope);
+			denyGlobalCredentialAccess();
+
+			const result = await userHasScopes(user, ['agent:update'], false, {
+				agentId,
+				credentialId,
+			});
+
+			expect(result).toBe(false);
+		});
+
+		it('does not let credential access satisfy an agent scope when the agent ID is missing', async () => {
+			findByCredentialMock.mockResolvedValue([credentialShare]);
+			roleServiceMock.mockImplementation(resolveRolesWithScope);
+			denyGlobalCredentialAccess();
+
+			const result = await userHasScopes(user, ['agent:update'], false, { credentialId });
+
+			expect(result).toBe(false);
+		});
+
+		it('allows a credential scope on a composite route with valid credential access', async () => {
+			agentFindByIdMock.mockResolvedValue(agent);
+			findByCredentialMock.mockResolvedValue([credentialShare]);
+			roleServiceMock.mockImplementation(resolveRolesWithScope);
+			denyGlobalCredentialAccess();
+
+			const result = await userHasScopes(user, ['credential:read'], false, {
+				agentId,
+				credentialId,
+			});
+
+			expect(result).toBe(true);
+		});
+
+		it('does not let agent access satisfy a credential scope on a composite route', async () => {
+			agentFindByIdMock.mockResolvedValue(agent);
+			findByCredentialMock.mockResolvedValue([{ ...credentialShare, projectId: 'otherProjectId' }]);
+			roleServiceMock.mockImplementation(resolveRolesWithScope);
+			denyGlobalCredentialAccess();
+
+			const result = await userHasScopes(user, ['credential:read'], false, {
+				agentId,
+				credentialId,
+			});
+
+			expect(result).toBe(false);
+		});
+
+		it('evaluates mixed agent and credential scopes independently when both are allowed', async () => {
+			agentFindByIdMock.mockResolvedValue(agent);
+			findByCredentialMock.mockResolvedValue([credentialShare]);
+			roleServiceMock.mockImplementation(resolveRolesWithScope);
+			denyGlobalCredentialAccess();
+
+			const result = await userHasScopes(user, ['agent:update', 'credential:read'], false, {
+				agentId,
+				credentialId,
+			});
+
+			expect(result).toBe(true);
+		});
+
+		it('denies a mixed request when the credential permission is missing', async () => {
+			agentFindByIdMock.mockResolvedValue(agent);
+			findByCredentialMock.mockResolvedValue([{ ...credentialShare, projectId: 'otherProjectId' }]);
+			roleServiceMock.mockImplementation(resolveRolesWithScope);
+			denyGlobalCredentialAccess();
+
+			const result = await userHasScopes(user, ['agent:update', 'credential:read'], false, {
+				agentId,
+				credentialId,
+			});
+
+			expect(result).toBe(false);
+		});
+
+		it('denies a mixed request when the agent permission is missing', async () => {
+			agentFindByIdMock.mockResolvedValue({ ...agent, projectId: 'otherProjectId' });
+			findByCredentialMock.mockResolvedValue([credentialShare]);
+			roleServiceMock.mockImplementation(resolveRolesWithScope);
+			denyGlobalCredentialAccess();
+
+			const result = await userHasScopes(user, ['agent:update', 'credential:read'], false, {
+				agentId,
+				credentialId,
+			});
+
+			expect(result).toBe(false);
+		});
+
+		it('allows mixed scopes when the agent and credential belong to different accessible projects', async () => {
+			agentFindByIdMock.mockResolvedValue(agent);
+			findByCredentialMock.mockResolvedValue([{ ...credentialShare, projectId: 'otherProjectId' }]);
+			mockQueryBuilder.getRawMany.mockResolvedValue([
+				{ id: 'projectId' },
+				{ id: 'otherProjectId' },
+			]);
+			roleServiceMock.mockImplementation(resolveRolesWithScope);
+			denyGlobalCredentialAccess();
+
+			const result = await userHasScopes(user, ['agent:update', 'credential:read'], false, {
+				agentId,
+				credentialId,
+			});
+
+			expect(result).toBe(true);
+		});
+
+		it('denies mixed scopes when the credential project is inaccessible', async () => {
+			agentFindByIdMock.mockResolvedValue(agent);
+			findByCredentialMock.mockResolvedValue([{ ...credentialShare, projectId: 'otherProjectId' }]);
+			mockQueryBuilder.getRawMany.mockResolvedValue([{ id: 'projectId' }]);
+			roleServiceMock.mockImplementation(resolveRolesWithScope);
+			denyGlobalCredentialAccess();
+
+			const result = await userHasScopes(user, ['agent:update', 'credential:read'], false, {
+				agentId,
+				credentialId,
+			});
+
+			expect(result).toBe(false);
+		});
+
+		it('keeps resource checks for an empty scope list', async () => {
+			findByCredentialMock.mockResolvedValue([]);
+
+			await expect(userHasScopes(user, [], false, { agentId, credentialId })).rejects.toThrow(
+				NotFoundError,
+			);
+		});
+
+		it('preserves global owner behaviour on composite routes', async () => {
+			const owner = { id: 'ownerId', scopes: [], role: GLOBAL_OWNER_ROLE } as unknown as User;
+
+			const result = await userHasScopes(owner, ['agent:update', 'credential:read'], false, {
+				agentId,
+				credentialId,
+			});
+
+			expect(result).toBe(true);
+			expect(agentFindByIdMock).not.toHaveBeenCalled();
+			expect(findByCredentialMock).not.toHaveBeenCalled();
 		});
 	});
 
