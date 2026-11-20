@@ -52,6 +52,7 @@ export class DatabaseLeaseProvider implements LeaseProvider<LeaseTransaction> {
 		const manager = new LeaseSessionManager({
 			kind,
 			leaseSeconds,
+			renewSeconds: config.renewSeconds,
 			hostId: this.deps.hostId,
 			bootId: this.deps.bootId,
 			kinds: this.deps.kinds,
