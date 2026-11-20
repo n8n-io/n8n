@@ -131,6 +131,7 @@ const SKILL_SCAN_RULE_KEYS = {
 	file_unstorable: 'settings.context.skills.connect.check.rule.fileUnstorable',
 	file_too_large: 'settings.context.skills.connect.check.rule.fileTooLarge',
 	script_file: 'settings.context.skills.connect.check.rule.scriptFile',
+	binary_file: 'settings.context.skills.connect.check.rule.binaryFile',
 	hidden_unicode: 'settings.context.skills.connect.check.rule.hiddenUnicode',
 	new_url: 'settings.context.skills.connect.check.rule.newUrl',
 	risky_url: 'settings.context.skills.connect.check.rule.riskyUrl',

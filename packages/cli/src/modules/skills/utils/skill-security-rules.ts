@@ -126,6 +126,40 @@ export function findScriptChanges({ content, previous }: SkillScanInput): SkillS
 	});
 }
 
+/** Text file types. A file with one of these names that is not UTF-8 text is not what it claims. */
+const TEXT_FILE =
+	/\.(?:md|markdown|txt|json|ya?ml|toml|xml|html?|css|csv|tsv|ini|cfg|conf|env|svg)$/i;
+/** `#!` as Base64. A file that starts with it is a script for the operating system. */
+const SHEBANG_BASE64 = /^Iy[E-H]/;
+
+/**
+ * The scanner reads text only, so the rules for hidden characters and links do not see a
+ * binary file. The reviewer learns of each new or changed binary file. One that has a text or
+ * script name, or starts like a script, needs review: another tool can still read it as text.
+ */
+export function findUnscannedBinaryFiles({
+	content,
+	previous,
+}: SkillScanInput): SkillScanFinding[] {
+	const before = new Map(previous?.files.map((file) => [file.path, file]));
+	return content.files.flatMap(({ path, content: base64, isBinary }) => {
+		if (!isBinary) return [];
+		const old = before.get(path);
+		if (old?.isBinary && old.content === base64) return [];
+		const looksLikeText = TEXT_FILE.test(path) || isScriptFile(path) || SHEBANG_BASE64.test(base64);
+		return [
+			{
+				rule: 'binary_file',
+				severity: looksLikeText ? 'needs_review' : 'info',
+				file: path,
+				detail: looksLikeText
+					? 'n8n did not check this file, because it is not UTF-8 text. Its name or its start says that it is text or a script. Agents cannot read it.'
+					: 'n8n did not check this binary file. Agents cannot read it.',
+			},
+		];
+	});
+}
+
 /** The English text of each reason, for the `detail` of a finding. */
 const LINK_REASON_DETAIL: Record<SkillLinkReviewReason, string> = {
 	ip_address: 'it uses an IP address',

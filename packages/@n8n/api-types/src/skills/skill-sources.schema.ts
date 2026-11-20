@@ -153,6 +153,7 @@ export const SKILL_SCAN_RULES = [
 	'file_unstorable',
 	'file_too_large',
 	'script_file',
+	'binary_file',
 	'hidden_unicode',
 	'new_url',
 	'risky_url',

@@ -68,7 +68,9 @@ describe('SkillSecurityScanner', () => {
 			const result = scanner.scan(fetched(content));
 
 			expect(result.verdict).toBe('blocked');
-			expect(result.findings.map((finding) => finding.rule)).toEqual(['invalid_skill']);
+			expect(
+				result.findings.flatMap(({ rule, severity }) => (severity === 'blocked' ? [rule] : [])),
+			).toEqual(['invalid_skill']);
 		});
 	});
 
@@ -175,6 +177,113 @@ describe('SkillSecurityScanner', () => {
 					}),
 				],
 			});
+		});
+	});
+
+	describe('rule script_file: scripts that the skill keeps', () => {
+		const withFiles = (files: SkillContent['files']) => skill({ files });
+		const scriptFinding = (file: string) =>
+			expect.objectContaining({ rule: 'script_file', severity: 'needs_review', file });
+
+		it.each(['scripts/run.py', 'scripts/extract', 'tools/check.TS'])(
+			'flags the script %s for review at import',
+			(path) => {
+				const result = scanner.scan(fetched(withFiles([{ path, content: 'echo 1' }])));
+
+				expect(result).toEqual({ verdict: 'needs_review', findings: [scriptFinding(path)] });
+			},
+		);
+
+		it('passes a skill with only a reference and an asset', () => {
+			const result = scanner.scan(
+				fetched(
+					withFiles([
+						{ path: 'assets/logo.svg', content: '<svg/>' },
+						{ path: 'references/guide.md', content: 'Guide.' },
+					]),
+				),
+			);
+
+			expect(result).toEqual({ verdict: 'pass', findings: [] });
+		});
+
+		it('does not flag an unchanged script at update', () => {
+			const content = withFiles([{ path: 'scripts/run.py', content: 'print(1)' }]);
+
+			expect(scanner.scan(fetched(content), content).findings).toEqual([]);
+		});
+
+		it('flags a changed script at update', () => {
+			const previous = withFiles([{ path: 'scripts/run.py', content: 'print(1)' }]);
+			const next = withFiles([{ path: 'scripts/run.py', content: 'print(2)' }]);
+
+			expect(scanner.scan(fetched(next), previous).findings).toEqual([
+				scriptFinding('scripts/run.py'),
+			]);
+		});
+
+		it('flags a script that changes from text to binary with the same content string', () => {
+			const previous = withFiles([{ path: 'scripts/run', content: 'AP8=' }]);
+			const next = withFiles([{ path: 'scripts/run', content: 'AP8=', isBinary: true }]);
+
+			expect(scanner.scan(fetched(next), previous).findings).toContainEqual(
+				scriptFinding('scripts/run'),
+			);
+		});
+
+		it('does not flag a removed script', () => {
+			const previous = withFiles([{ path: 'scripts/run.py', content: 'print(1)' }]);
+
+			expect(scanner.scan(fetched(withFiles([])), previous).findings).toEqual([]);
+		});
+	});
+
+	describe('rule binary_file: binary files that the check cannot read', () => {
+		const png = { path: 'assets/logo.png', content: 'AP8=', isBinary: true as const };
+		const binaryFinding = (file: string, severity: 'info' | 'needs_review') =>
+			expect.objectContaining({ rule: 'binary_file', severity, file });
+
+		it('tells the reviewer of a new binary asset, and still passes', () => {
+			const result = scanner.scan(fetched(skill({ files: [png] })));
+
+			expect(result).toEqual({
+				verdict: 'pass',
+				findings: [binaryFinding('assets/logo.png', 'info')],
+			});
+			expect(result.findings[0].detail).toContain('Agents cannot read it');
+		});
+
+		it.each([
+			['a Markdown name', 'references/guide.md', 'AP8='],
+			['a script name', 'tools/check.py', 'AP8='],
+			['a script start', 'bin/run', Buffer.from('#!/bin/sh\n\0').toString('base64')],
+		])('needs review for a binary file with %s', (_case, path, content) => {
+			const result = scanner.scan(fetched(skill({ files: [{ path, content, isBinary: true }] })));
+
+			expect(result.verdict).toBe('needs_review');
+			expect(result.findings).toContainEqual(binaryFinding(path, 'needs_review'));
+		});
+
+		it('does not repeat the finding for an unchanged binary file at update', () => {
+			const content = skill({ files: [png] });
+
+			expect(scanner.scan(fetched(content), content).findings).toEqual([]);
+		});
+
+		it('reports a changed binary file at update', () => {
+			const next = skill({ files: [{ ...png, content: 'AP4=' }] });
+
+			expect(scanner.scan(fetched(next), skill({ files: [png] })).findings).toEqual([
+				binaryFinding('assets/logo.png', 'info'),
+			]);
+		});
+
+		it('reports a file that changes from text to binary', () => {
+			const previous = skill({ files: [{ path: 'assets/logo.png', content: 'AP8=' }] });
+
+			expect(scanner.scan(fetched(skill({ files: [png] })), previous).findings).toEqual([
+				binaryFinding('assets/logo.png', 'info'),
+			]);
 		});
 	});
 
