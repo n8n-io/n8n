@@ -82,6 +82,18 @@ export interface StepCall {
 	 */
 	pairsByPosition?: boolean;
 	/**
+	 * The code of a Code node that runs in the fallback host gives new items (the proof of
+	 * `freshOutput`), so v1 gives them no paired item and its rule of `assignPairedItems` pairs
+	 * them from the input and output counts. The step fills the pairs of output 0 after the
+	 * call, for `$('Node').item` in a later node.
+	 */
+	freshPairs?: boolean;
+	/**
+	 * With `freshPairs` in "each item" mode: v1 gives each result the index of its input item,
+	 * so each item gets that index and not the count rule.
+	 */
+	freshPairsByIndex?: boolean;
+	/**
 	 * The options of a fallback-host call for one item (`[ITEM]`), for a library node that the
 	 * converter calls once for each item and that sends what v1 sends once (a message). When
 	 * the call for an item ends with the mark of `RUNS_IN_HOST`, nothing went out for that
@@ -102,6 +114,19 @@ export interface StepCall {
 	 * requests of the items after it go out too, and then the node gives the first error.
 	 */
 	sendsAll?: boolean;
+}
+
+/**
+ * Marks the items of a step as new items that the code built: each carries no paired item, so a
+ * later read pairs them by the engine rule of `assignPairedItems` (`pairedSourceIndexes`), from
+ * the counts of the input items and the output items. With `index`, each item gets the index of
+ * its input item, as v1's Code node in "each item" mode gives it.
+ */
+export function emitFreshPairs(c: NodeContext, list: string, pairs: string, index: boolean): void {
+	const { w } = c;
+	w.line(`const ${pairs}: Json = { items: ${list}, paired: [] };`);
+	w.line(`for (let k = 0; k < ${list}.length; k++) ${pairs}.paired.push(${index ? 'k' : 'null'});`);
+	c.setPairs?.(pairs, 0, index);
 }
 
 /** Fails the node when a raw expression would not give the v1 value in the host. */
@@ -263,11 +288,14 @@ export function emitStep(c: NodeContext, call: StepCall): void {
 			w.line(`for (let k = 0; k < ${out}.length; k++) ${position}.paired.push(k);`);
 			c.setPairs?.(position, 0, true);
 		};
+		// The code of a Code node in the host gives new items: v1 pairs them by its own rule.
+		const fresh = call.freshPairs === true && onError === 'stopWorkflow' ? c.local('Pairs') : null;
 		if (onError === 'stopWorkflow' && !c.traceAll && !errorRetry(c)) {
 			w.block(
 				`const ${out}: Json[] = ${input}.length > 0 ? await ${fn}(${c.print(opts, `const ${out}: Json[] = ${input}.length > 0 ? await ${fn}(`)}) : [];`,
 			);
 			emitPosition();
+			if (fresh !== null) emitFreshPairs(c, out, fresh, call.freshPairsByIndex === true);
 			return;
 		}
 		if (onError === 'stopWorkflow' && !c.traceAll) {
@@ -455,6 +483,9 @@ export function emitStep(c: NodeContext, call: StepCall): void {
 		emitCall(c, 'result', 'let result: Json[]', fn, opts, 'result[0]', call.hostLimit);
 		w.line(`for (const r of result) ${push('r')}`);
 		failTrace(c, call.hostLimit);
+		if (call.freshPairs === true) {
+			emitFreshPairs(c, out, c.local('Pairs'), call.freshPairsByIndex === true);
+		}
 	} else if (onError === 'stopWorkflow') {
 		emitCall(c, 'result', 'let result: Json[]', fn, opts, 'result[0]', call.hostLimit, plain);
 		w.line(`for (const r of result) ${push('r')}`);

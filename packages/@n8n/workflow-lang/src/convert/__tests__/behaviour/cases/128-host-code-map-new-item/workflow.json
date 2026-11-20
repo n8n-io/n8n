@@ -1,0 +1,137 @@
+{
+	"name": "A Code node in the fallback host, in all-items mode, maps 4 input items to new items with items.map(i => ({ json: { ...i.json, x: 1 } }))",
+	"nodes": [
+		{
+			"id": "webhook",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [
+				0,
+				0
+			],
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "128-host-code-map-new-item",
+				"options": {}
+			},
+			"webhookId": "9c2f5a41-7d38-4a6e-b130-2f8e5c6d4a17"
+		},
+		{
+			"id": "source",
+			"name": "Source",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [
+				200,
+				0
+			],
+			"parameters": {
+				"jsCode": "return [{ json: { id: 'a1' } }, { json: { id: 'b2' } }, { json: { id: 'c3' } }, { json: { id: 'd4' } }];"
+			}
+		},
+		{
+			"id": "middle",
+			"name": "Middle",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [
+				800,
+				0
+			],
+			"parameters": {
+				"jsCode": "class Box {}\nreturn items.map(i => ({ json: { ...i.json, x: 1 } }));"
+			}
+		},
+		{
+			"id": "read-each",
+			"name": "Read Each",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [
+				1000,
+				0
+			],
+			"parameters": {
+				"mode": "runOnceForEachItem",
+				"jsCode": "return { json: { sourceId: $('Source').item.json.id } };"
+			}
+		},
+		{
+			"id": "read-all",
+			"name": "Read All",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [
+				1000,
+				100
+			],
+			"parameters": {
+				"jsCode": "return items.map((item, k) => ({ json: { sourceId: $('Source').item.json.id } }));"
+			}
+		},
+		{
+			"id": "read-expr",
+			"name": "Read Expr",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [
+				1000,
+				200
+			],
+			"parameters": {
+				"mode": "raw",
+				"jsonOutput": "={ \"sourceId\": \"{{ $('Source').item.json.id }}\" }",
+				"options": {}
+			}
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "Source",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Source": {
+			"main": [
+				[
+					{
+						"node": "Middle",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Middle": {
+			"main": [
+				[
+					{
+						"node": "Read Each",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Read All",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Read Expr",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

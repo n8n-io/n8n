@@ -1,0 +1,108 @@
+{
+	"generatedBy": "oracle.ts: n8n-core WorkflowExecute with n8n-nodes-base, executionOrder v1",
+	"error": null,
+	"order": [
+		"Webhook",
+		"Source",
+		"Middle",
+		"Read Each",
+		"Read All",
+		"Read Expr"
+	],
+	"nodes": {
+		"Webhook": [
+			[
+				{
+					"headers": {},
+					"params": {},
+					"query": {},
+					"body": {
+						"label": "129-host-code-input-all-map-new-item"
+					}
+				}
+			]
+		],
+		"Source": [
+			[
+				{
+					"id": "a1"
+				},
+				{
+					"id": "b2"
+				},
+				{
+					"id": "c3"
+				},
+				{
+					"id": "d4"
+				}
+			]
+		],
+		"Middle": [
+			[
+				{
+					"id": "a1"
+				},
+				{
+					"id": "b2"
+				},
+				{
+					"id": "c3"
+				},
+				{
+					"id": "d4"
+				}
+			]
+		],
+		"Read Each": [
+			[
+				{
+					"sourceId": "a1"
+				},
+				{
+					"sourceId": "b2"
+				},
+				{
+					"sourceId": "c3"
+				},
+				{
+					"sourceId": "d4"
+				}
+			]
+		],
+		"Read All": [
+			[
+				{
+					"sourceId": "a1"
+				},
+				{
+					"sourceId": "a1"
+				},
+				{
+					"sourceId": "a1"
+				},
+				{
+					"sourceId": "a1"
+				}
+			]
+		],
+		"Read Expr": [
+			[
+				{
+					"sourceId": "a1"
+				},
+				{
+					"sourceId": "b2"
+				},
+				{
+					"sourceId": "c3"
+				},
+				{
+					"sourceId": "d4"
+				}
+			]
+		]
+	},
+	"requests": [],
+	"responses": []
+}
