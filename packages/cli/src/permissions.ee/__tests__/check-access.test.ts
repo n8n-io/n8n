@@ -338,7 +338,7 @@ describe('userHasScopes', () => {
 			expect(agentFindByIdMock).not.toHaveBeenCalled();
 		});
 
-		it('rejects a recognized scope with no matching ID even when another resource ID is present', async () => {
+		it('rejects a recognized scope with no matching ID when no project ID is present', async () => {
 			agentFindByIdMock.mockResolvedValue(agent);
 			roleServiceMock.mockImplementation(resolveRolesWithScope);
 			denyGlobalCredentialAccess();
@@ -352,6 +352,20 @@ describe('userHasScopes', () => {
 			expect(findByWorkflowMock).not.toHaveBeenCalled();
 			expect(findByCredentialMock).not.toHaveBeenCalled();
 		});
+
+		it.each<Scope>(['credential:create', 'agent:execute', 'workflow:read'])(
+			'allows the project-level scope %s when only the project ID is in the URL',
+			async (scope) => {
+				denyGlobalCredentialAccess();
+
+				const result = await userHasScopes(user, [scope], false, { projectId: 'projectId' });
+
+				expect(result).toBe(true);
+				expect(findByCredentialMock).not.toHaveBeenCalled();
+				expect(findByWorkflowMock).not.toHaveBeenCalled();
+				expect(agentFindByIdMock).not.toHaveBeenCalled();
+			},
+		);
 
 		it('allows a credential scope on a composite route with valid credential access', async () => {
 			agentFindByIdMock.mockResolvedValue(agent);

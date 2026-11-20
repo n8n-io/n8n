@@ -299,13 +299,17 @@ export async function userHasScopes(
 			continue;
 		}
 
-		// Reject a recognized scope without its own resource ID. Checking it
-		// against another resource's project could grant unintended access.
-		if (!resolved.id) {
+		// A known namespace without its own ID is a project-level operation
+		// when the route carries a project ID. Otherwise there is no resource
+		// to authorize, so reject it rather than use an unrelated resource.
+		let resource: ResourceCheck;
+		if (resolved.id) {
+			resource = { type: resolved.type, id: resolved.id };
+		} else if (projectId) {
+			resource = { type: 'project', id: projectId };
+		} else {
 			return false;
 		}
-
-		const resource: ResourceCheck = { type: resolved.type, id: resolved.id };
 		const key = `${resource.type}:${resource.id}`;
 		const group = resourceScopes.get(key);
 		if (group) {
