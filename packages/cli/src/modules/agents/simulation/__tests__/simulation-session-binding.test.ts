@@ -343,6 +343,33 @@ describe('SimulationSessionService connection binding', () => {
 			expect(opened).toHaveLength(2);
 		});
 
+		it('should detect a removed thread after a replacement that did not mark again', async () => {
+			const { service, turn, opened, draft, threads, input } = setup();
+			await turn();
+
+			// The connections change. This turn opens the replacement and does not store the marker.
+			draft.current = draftWith([serverB]);
+			const replaced = await service.openForDraftRun(input({ testRunRequested: false }));
+			expect(replaced?.worldId).toBe('world-2');
+			threads.delete('chat-1');
+
+			expect(await service.openForDraftRun(input({ testRunRequested: false }))).toBeUndefined();
+			expect(opened).toHaveLength(2);
+		});
+
+		it('should detect a removed thread after an expired cache without a new mark', async () => {
+			const { service, turn, opened, threads, input } = setup();
+			await turn();
+
+			vi.advanceTimersByTime(31 * 60 * 1000);
+			const later = await service.openForDraftRun(input({ testRunRequested: false }));
+			expect(later?.worldId).toBe('world-2');
+			threads.delete('chat-1');
+
+			expect(await service.openForDraftRun(input({ testRunRequested: false }))).toBeUndefined();
+			expect(opened).toHaveLength(2);
+		});
+
 		it('should keep a session that has not stored its marker yet', async () => {
 			const { service, opened, threads, input } = setup();
 			threads.set('chat-1', { testChat: false });

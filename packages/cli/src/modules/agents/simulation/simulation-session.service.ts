@@ -117,7 +117,8 @@ export class SimulationSessionService {
 		}
 		// The old session leaves the cache, so a switch back to its connections opens a new world.
 		this.sessions.delete(key);
-		return await this.createSession(input, described);
+		// The thread keeps its marker, so the replacement still detects a removed thread.
+		return await this.createSession(input, described, cached.marked);
 	}
 
 	private async openNew(input: OpenSimulationInput): Promise<SimulationSession | undefined> {
@@ -141,12 +142,15 @@ export class SimulationSessionService {
 		return await this.createSession(
 			input,
 			await this.describeAgent(input.agentId, input.projectId),
+			thread?.testChat === true,
 		);
 	}
 
 	private async createSession(
 		input: OpenSimulationInput,
 		described: DescribedAgent,
+		/** True when the thread already holds the test chat marker. */
+		marked = false,
 	): Promise<SimulationSession> {
 		const capabilities = await this.capabilitiesFor(described);
 		const { agent } = described;
@@ -194,7 +198,7 @@ export class SimulationSessionService {
 			...(backend?.worldDependsOnDraftConnections
 				? { connectionBinding: connectionBinding(described.config) }
 				: {}),
-			marked: false,
+			marked,
 		};
 		this.sessions.set(sessionKey(input), entry);
 		return session;
