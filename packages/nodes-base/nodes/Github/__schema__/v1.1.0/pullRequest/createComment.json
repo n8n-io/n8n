@@ -1,0 +1,98 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"author_association": {
+			"type": "string"
+		},
+		"body": {
+			"type": "string"
+		},
+		"created_at": {
+			"type": "string"
+		},
+		"html_url": {
+			"type": "string"
+		},
+		"id": {
+			"type": "number"
+		},
+		"issue_url": {
+			"type": "string"
+		},
+		"node_id": {
+			"type": "string"
+		},
+		"reactions": {
+			"properties": {
+				"-1": {
+					"type": "number"
+				},
+				"+1": {
+					"type": "number"
+				},
+				"confused": {
+					"type": "number"
+				},
+				"eyes": {
+					"type": "number"
+				},
+				"heart": {
+					"type": "number"
+				},
+				"hooray": {
+					"type": "number"
+				},
+				"laugh": {
+					"type": "number"
+				},
+				"rocket": {
+					"type": "number"
+				},
+				"total_count": {
+					"type": "number"
+				},
+				"url": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"updated_at": {
+			"type": "string"
+		},
+		"url": {
+			"type": "string"
+		},
+		"user": {
+			"additionalProperties": true,
+			"properties": {
+				"avatar_url": {
+					"type": "string"
+				},
+				"html_url": {
+					"type": "string"
+				},
+				"id": {
+					"type": "number"
+				},
+				"login": {
+					"type": "string"
+				},
+				"node_id": {
+					"type": "string"
+				},
+				"site_admin": {
+					"type": "boolean"
+				},
+				"type": {
+					"type": "string"
+				},
+				"url": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		}
+	},
+	"type": "object"
+}

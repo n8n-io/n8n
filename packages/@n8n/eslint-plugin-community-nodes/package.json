@@ -36,7 +36,7 @@
     "culori": "^4.0.2",
     "domhandler": "^5.0.3",
     "fastest-levenshtein": "catalog:",
-    "pluralize": "^8.0.0",
+    "pluralize": "catalog:",
     "postcss": "^8.4.38",
     "saxes": "^6.0.0"
   },
@@ -45,7 +45,7 @@
     "@n8n/vitest-config": "workspace:*",
     "@types/node": "catalog:",
     "@types/culori": "^4.0.1",
-    "@types/pluralize": "^0.0.33",
+    "@types/pluralize": "catalog:",
     "n8n-workflow": "workspace:*",
     "@typescript-eslint/rule-tester": "catalog:",
     "eslint-doc-generator": "^2.2.2",

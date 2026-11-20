@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
+import { usePrefetchModals } from '@/app/composables/usePrefetchModals';
 import { useToast } from '@n8n/composables/useToast';
 import {
 	DELETE_SECRETS_PROVIDER_MODAL_KEY,
@@ -35,6 +36,10 @@ const toast = useToast();
 const documentTitle = useDocumentTitle();
 const pageRedirectionHelper = usePageRedirectionHelper();
 const uiStore = useUIStore();
+
+usePrefetchModals([SECRETS_PROVIDER_CONNECTION_MODAL_KEY, DELETE_SECRETS_PROVIDER_MODAL_KEY], {
+	enabled: () => secretsProviders.isEnterpriseExternalSecretsEnabled.value,
+});
 const secretsProviderConnection = useSecretsProviderConnection(projectsStore.currentProjectId);
 const hasActiveProviders = computed(() => secretsProviders.activeProviders.value.length > 0);
 

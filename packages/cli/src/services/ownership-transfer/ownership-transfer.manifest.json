@@ -140,6 +140,16 @@
 			"reason": "Workflow selections belong to the original project configuration. A transfer to another project removes them. Deleting the configuration, project, or workflow also removes them through its foreign key."
 		},
 		{
+			"name": "KnowledgeCollection",
+			"path": "packages/cli/src/modules/knowledge/entities/knowledge-collection.entity.ts",
+			"reason": "Dropped with its owner project through the foreign-key cascade until project deletion can transfer collections. Its files, vector stores, share rows and agent dependencies go with it. An agent collection has no project and goes with its agent."
+		},
+		{
+			"name": "SharedKnowledgeCollection",
+			"path": "packages/cli/src/modules/knowledge/entities/shared-knowledge-collection.entity.ts",
+			"reason": "Dropped with its project through the foreign-key cascade until project deletion can transfer collections. The owner row repeats KnowledgeCollection.projectId and goes with its collection. A user row goes alone: the collection stays in its owner project."
+		},
+		{
 			"name": "ExecutionLedgerEntity",
 			"path": "packages/modules/execution-ledger/backend/src/database/entities/execution-ledger.entity.ts",
 			"reason": "Event record of runs in the project at the time they happened; re-homing rows would misstate where they ran. Rows live only seconds before the fold deletes them, and no foreign key ties them to the project."

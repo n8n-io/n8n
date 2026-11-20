@@ -2,6 +2,7 @@ import {
 	type AgentSkill,
 	type ConnectSkillSourceDto,
 	type DiscoverSkillSourceDto,
+	type DeleteSkillSourceQueryDto,
 	type DiscoveredSkill,
 	type SkillSourceConnectResponse,
 	type SkillSourceDiscovery,
@@ -79,7 +80,12 @@ import { SkillSecurityScanner } from './skill-security-scanner.service';
 import { SkillService } from './skill.service';
 import { SkillSyncFlagGate } from './skill-sync-flag-gate';
 import { SkillUsageProxy } from './skill-usage-proxy.service';
-import { SkillsTelemetry, type SkillSourceTelemetryReason } from './skills-telemetry.service';
+import {
+	flaggedCodes,
+	SkillsTelemetry,
+	type SkillSourceTelemetryReason,
+	type SkillTelemetryRef,
+} from './skills-telemetry.service';
 
 /** Skills fetched at the same time from one source. */
 const FETCH_CONCURRENCY = 8;
@@ -607,8 +613,12 @@ export class SkillSourceService {
 		return { source, client };
 	}
 
-	/** Deletes a source and all its synced skills, only when no agent uses any of them. */
-	async delete(user: User, sourceId: string): Promise<void> {
+	/** Removes a source and either keeps its skills or checks usage before deleting them. */
+	async delete(
+		user: User,
+		sourceId: string,
+		{ keepSkills = false, onlySkillId }: DeleteSkillSourceQueryDto = {},
+	): Promise<void> {
 		await this.flagGate.assertEnabled(user);
 		const source = isUuid(sourceId) ? await this.sourceRepository.findById(sourceId) : null;
 		if (!source || !(await this.skillAccess.canOnSource(user, source, 'view'))) {
@@ -620,6 +630,10 @@ export class SkillSourceService {
 			throw new ForbiddenError('You are not allowed to delete this source.');
 		}
 		const readable = await this.projectScopeService.getProjectIds(user, ['agent:read']);
+		// A stale request is a normal race, so telemetry must not report it as a bug.
+		let stale = false;
+		// The last-skill removal deletes one skill by choice, so it also reports a skill delete.
+		let deletedSkill: Exclude<SkillTelemetryRef, string> | undefined;
 		try {
 			await this.txRunner.run({}, async (ctx) => {
 				const locked = await this.sourceRepository.findForDelete(sourceId, ctx);
@@ -635,6 +649,15 @@ export class SkillSourceService {
 				);
 				// Stop syncing or a skill delete may have finished while the locks waited.
 				const current = await this.sourceRepository.findLinksBySource(sourceId, ctx);
+				if (onlySkillId && (current.length !== 1 || current[0].skillId !== onlySkillId)) {
+					stale = true;
+					throw new BadRequestError('The source skills changed. Refresh the list and try again.');
+				}
+				if (keepSkills) {
+					// Removing the links makes the same skills editable and preserves agent references.
+					await this.sourceRepository.deleteSource(sourceId, ctx);
+					return;
+				}
 				const agentIds = new Set<string>();
 				for (const { skillId } of current) {
 					for (const id of await this.skillUsage.findUsingAgentIds(skillId, ctx)) agentIds.add(id);
@@ -664,6 +687,9 @@ export class SkillSourceService {
 						block,
 					);
 				}
+				if (onlySkillId) {
+					[deletedSkill] = await this.skillRepository.findByIds([onlySkillId], ctx);
+				}
 				for (const { skillId } of current) await this.skillRepository.deleteSkill(skillId, ctx);
 				await this.sourceRepository.deleteSource(sourceId, ctx);
 			});
@@ -671,14 +697,19 @@ export class SkillSourceService {
 			await this.skillsTelemetry.deletedSource(
 				{
 					provider: source.type,
+					skills_kept: keepSkills,
 					status: 'failure',
-					reason: error instanceof ConflictError ? 'skills_in_use' : 'unexpected',
+					reason: stale ? 'stale' : error instanceof ConflictError ? 'skills_in_use' : 'unexpected',
 				},
 				user.id,
 			);
 			throw error;
 		}
-		await this.skillsTelemetry.deletedSource({ provider: source.type, status: 'success' }, user.id);
+		await this.skillsTelemetry.deletedSource(
+			{ provider: source.type, skills_kept: keepSkills, status: 'success' },
+			user.id,
+		);
+		if (deletedSkill) await this.skillsTelemetry.deleted(user.id, deletedSkill, 'ui');
 	}
 
 	// ---------------------------------------------------------------- steps
@@ -881,15 +912,12 @@ export class SkillSourceService {
 		await Promise.all(
 			reads.map(async ({ check }) => {
 				if (!check || check.verdict === 'pass') return;
-				const ruleCodes = check.findings
-					.filter((finding) => finding.severity !== 'info')
-					.map((finding) => finding.rule);
 				await this.skillsTelemetry.flaggedSkill(
 					{
 						provider,
 						stage: 'import',
 						verdict: check.verdict,
-						rule_codes: [...new Set(ruleCodes)],
+						...flaggedCodes(check.findings),
 					},
 					user.id,
 				);

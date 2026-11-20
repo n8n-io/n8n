@@ -487,6 +487,25 @@ describe('Skill Sync with credentials', () => {
 			expect(source.credentialId).toBe(teamCredential.id);
 		});
 
+		it('imports from a folder of a private repository only with a credential', async () => {
+			const body = { url: `${PRIVATE}/tree/main/skills`, ...scope() };
+			const withCredential = { ...body, credentialId: teamCredential.id };
+			const { data: discovery } = await post<SkillSourceDiscovery>(
+				editor,
+				'/skill-sources/discover',
+				withCredential,
+			);
+			const { data } = await post<SkillSourceConnectResponse>(editor, '/skill-sources', {
+				...withCredential,
+				skillKeys: discovery.skills.map(({ key }) => key),
+			});
+
+			expect(data.imported.map(({ name }) => name)).toEqual(['pdf']);
+			expect(github.requests.archives).toBe(0);
+			const { meta } = await post(editor, '/skill-sources/discover', body, 404);
+			expect(meta).toEqual({ reason: 'not_found' });
+		});
+
 		it('cannot read the private repository without a credential', async () => {
 			const { meta } = await post(
 				editor,

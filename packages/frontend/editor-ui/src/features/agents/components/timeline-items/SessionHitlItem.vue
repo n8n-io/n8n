@@ -6,12 +6,13 @@ import {
 	N8nAiActivityStepResultSection,
 	N8nAnimatedCollapsibleContent,
 	N8nBadge,
-	N8nCodeBlock,
 	N8nText,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
 import { computed } from 'vue';
+import ToolDataBlock from '@/features/ai/shared/components/ToolDataBlock/ToolDataBlock.vue';
+import { formatToolData } from '@/features/ai/shared/components/ToolDataBlock/toolData.utils';
 import { useTimelineItemExpansion } from '../../composables/useTimelineItemExpansion';
 import type { TimelineItem } from '../../session-timeline.types';
 import {
@@ -69,9 +70,7 @@ const content = computed(function getContent() {
 });
 
 const contentCode = computed(function getContentCode() {
-	return typeof content.value === 'string'
-		? content.value
-		: (JSON.stringify(content.value, null, 2) ?? String(content.value));
+	return formatToolData(content.value).text;
 });
 
 const canExpand = computed(function getCanExpand() {
@@ -138,7 +137,7 @@ const { isOpen } = useTimelineItemExpansion({
 							)
 						}}
 					</N8nText>
-					<N8nCodeBlock :code="contentCode" language="json" :class="$style.code" />
+					<ToolDataBlock :value="content" />
 				</N8nAiActivityStepResultSection>
 			</N8nAnimatedCollapsibleContent>
 		</CollapsibleRoot>
@@ -214,9 +213,5 @@ const { isOpen } = useTimelineItemExpansion({
 
 .title {
 	margin-top: var(--spacing--xs);
-}
-
-.code {
-	background-color: var(--background--surface);
 }
 </style>

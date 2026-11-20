@@ -2,6 +2,7 @@ import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import {
 	CodeExecutionBackend,
 	EventService,
+	ExecutionLedger,
 	UrlService,
 	WorkflowPublishedDataService,
 } from '@n8n/backend-services';
@@ -300,6 +301,55 @@ describe('WorkflowExecuteAdditionalData', () => {
 				}),
 			).rejects.toThrow('Stop after persistence check');
 		});
+
+		it("sends a simulated-services eval run's sub-workflow requests through its egress proxy", async () => {
+			await executeWorkflow(
+				mock<IExecuteWorkflowInfo>(),
+				mock<IWorkflowExecuteAdditionalData>({ evalEgressProxy: 'http://127.0.0.1:4567' }),
+				mock<ExecuteWorkflowOptions>({ loadedWorkflowData: undefined, doNotWaitToFinish: false }),
+			);
+
+			const subExecutionData = vi.mocked(WorkflowExecute).mock.calls.at(-1)?.[0];
+			expect(subExecutionData?.evalEgressProxy).toBe('http://127.0.0.1:4567');
+		});
+
+		it.each<{ parentRootMode: WorkflowExecuteMode | undefined; parentMode: WorkflowExecuteMode }>([
+			{ parentRootMode: undefined, parentMode: 'manual' },
+			{ parentRootMode: 'manual', parentMode: 'integrated' },
+		])(
+			'persists the root execution mode before the child starts (parent root mode $parentRootMode, parent mode $parentMode)',
+			async ({ parentRootMode, parentMode }) => {
+				const workflowData = mock<IWorkflowBase>({
+					nodes: [
+						{
+							id: 'trigger',
+							name: 'Start',
+							type: 'n8n-nodes-base.executeWorkflowTrigger',
+							typeVersion: 1.3,
+							position: [0, 0],
+							parameters: {},
+						},
+					],
+					connections: {},
+				});
+				activeExecutions.add.mockImplementationOnce(async (runData) => {
+					expect(runData.executionData?.rootExecutionMode).toBe('manual');
+					throw new Error('Stop after persistence check');
+				});
+				await expect(
+					executeWorkflow(
+						mock<IExecuteWorkflowInfo>(),
+						mock<IWorkflowExecuteAdditionalData>({ rootExecutionMode: parentRootMode }),
+						{
+							...mock<ExecuteWorkflowOptions>(),
+							loadedWorkflowData: workflowData,
+							loadedRunData: undefined,
+							executionMode: parentMode,
+						},
+					),
+				).rejects.toThrow('Stop after persistence check');
+			},
+		);
 
 		it('should execute workflow, return data and execution id', async () => {
 			const response = await executeWorkflow(
@@ -676,6 +726,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 		describe('pre-run check failure', () => {
 			const nodeTypes = mockInstance(NodeTypes);
 			const executionPersistence = Container.get(ExecutionPersistence);
+			const executionLedger = mockInstance(ExecutionLedger, { isEnabled: true });
 			const subWorkflowData = () =>
 				mock<IWorkflowBase>({
 					id: 'sub-id',
@@ -712,7 +763,8 @@ describe('WorkflowExecuteAdditionalData', () => {
 					mock<INodeType>({ description: { properties: [] } }),
 				);
 				executeErrorWorkflow.mockClear();
-				vi.mocked(executionPersistence.updateExistingExecution).mockClear();
+				vi.mocked(executionPersistence.saveExecutionOutcome).mockClear();
+				executionLedger.recordEnded.mockClear();
 				vi.mocked(WorkflowExecute).mockClear();
 				activeExecutions.finalizeExecution.mockClear();
 			});
@@ -746,6 +798,60 @@ describe('WorkflowExecuteAdditionalData', () => {
 				expect(executionId).toBe(EXECUTION_ID);
 			});
 
+			it('marks the run as blocked by credential access when the credential check fails', async () => {
+				failCredentialCheck();
+
+				await expect(runSubWorkflow(false)).rejects.toThrow('does not have access');
+
+				const [, fullRunData] = executeErrorWorkflow.mock.calls[0];
+				expect(fullRunData.data.resultData.failedBeforeStart).toBe('credentialAccess');
+			});
+
+			it('marks the run as blocked by policy when the sub-workflow refuses its caller', async () => {
+				failPolicyCheck();
+
+				await expect(runSubWorkflow(false)).rejects.toThrow('cannot be called by this workflow');
+
+				expect(executionPersistence.saveExecutionOutcome).toHaveBeenCalledWith(
+					EXECUTION_ID,
+					expect.objectContaining({
+						data: expect.objectContaining({
+							resultData: expect.objectContaining({ failedBeforeStart: 'policy' }),
+						}),
+					}),
+				);
+			});
+
+			const expectFinalizedAsStartFailed = async () =>
+				await vi.waitFor(() =>
+					expect(activeExecutions.finalizeExecution).toHaveBeenCalledWith(
+						EXECUTION_ID,
+						expect.objectContaining({
+							data: expect.objectContaining({
+								resultData: expect.objectContaining({ failedBeforeStart: 'startFailed' }),
+							}),
+						}),
+					),
+				);
+
+			it('marks the run as start failed when it cannot be set to running', async () => {
+				executionRepository.setRunning.mockRejectedValueOnce(new Error('database unavailable'));
+
+				await expect(runSubWorkflow(true)).resolves.toBeDefined();
+
+				await expectFinalizedAsStartFailed();
+			});
+
+			it('marks the run as start failed when the engine throws before it starts', async () => {
+				processRunExecutionData.mockImplementationOnce(() => {
+					throw new Error('setup failed');
+				});
+
+				await expect(runSubWorkflow(true)).resolves.toBeDefined();
+
+				await expectFinalizedAsStartFailed();
+			});
+
 			it('starts the sub-workflow error workflow when the caller does not wait', async () => {
 				failCredentialCheck();
 
@@ -768,7 +874,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 
 				expect(WorkflowExecute).not.toHaveBeenCalled();
 				expect(executeErrorWorkflow).not.toHaveBeenCalled();
-				expect(executionPersistence.updateExistingExecution).toHaveBeenCalledTimes(1);
+				expect(executionPersistence.saveExecutionOutcome).toHaveBeenCalledTimes(1);
 			});
 
 			it.each([false, true])(
@@ -790,7 +896,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 					}
 
 					await vi.waitFor(() =>
-						expect(executionPersistence.updateExistingExecution).toHaveBeenCalledTimes(1),
+						expect(executionPersistence.saveExecutionOutcome).toHaveBeenCalledTimes(1),
 					);
 					expect(credentialsPermissionChecker.check).not.toHaveBeenCalled();
 					expect(executeErrorWorkflow).not.toHaveBeenCalled();
@@ -809,7 +915,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 
 				await expect(runSubWorkflow(false)).rejects.toThrow('does not have access');
 
-				expect(executionPersistence.updateExistingExecution).toHaveBeenCalledWith(
+				expect(executionPersistence.saveExecutionOutcome).toHaveBeenCalledWith(
 					EXECUTION_ID,
 					expect.objectContaining({ status: 'error' }),
 				);
@@ -852,7 +958,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				});
 
 				await vi.waitFor(() =>
-					expect(executionPersistence.updateExistingExecution).toHaveBeenCalledTimes(1),
+					expect(executionPersistence.saveExecutionOutcome).toHaveBeenCalledTimes(1),
 				);
 				expect(activeExecutions.finalizeExecution).toHaveBeenCalledWith(
 					EXECUTION_ID,
@@ -863,11 +969,38 @@ describe('WorkflowExecuteAdditionalData', () => {
 
 			it('keeps the original error when recording the failure fails', async () => {
 				processRunExecutionData.mockReturnValueOnce(Promise.reject(new Error('run failed')));
-				vi.mocked(executionPersistence.updateExistingExecution).mockRejectedValueOnce(
+				vi.mocked(executionPersistence.saveExecutionOutcome).mockRejectedValueOnce(
 					new Error('database unavailable'),
 				);
 
 				await expect(runSubWorkflow(false)).rejects.toThrow('run failed');
+			});
+
+			it('records the ended row when the failure save finished the run', async () => {
+				processRunExecutionData.mockReturnValueOnce(Promise.reject(new Error('run failed')));
+				vi.mocked(executionPersistence.saveExecutionOutcome).mockResolvedValueOnce({
+					updated: true,
+					ended: true,
+				});
+
+				await expect(runSubWorkflow(false)).rejects.toThrow('run failed');
+
+				expect(executionLedger.recordEnded).toHaveBeenCalledWith(
+					expect.objectContaining({
+						executionId: EXECUTION_ID,
+						workflowId: 'sub-id',
+						outcome: 'error',
+						mode: 'integrated',
+					}),
+				);
+			});
+
+			it('records no ended row when the engine already finished the run', async () => {
+				processRunExecutionData.mockReturnValueOnce(Promise.reject(new Error('run failed')));
+
+				await expect(runSubWorkflow(false)).rejects.toThrow('run failed');
+
+				expect(executionLedger.recordEnded).not.toHaveBeenCalled();
 			});
 
 			it('leaves the error workflow to the engine hooks when the run itself fails', async () => {
@@ -876,7 +1009,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				await expect(runSubWorkflow(false)).rejects.toThrow('run failed');
 
 				expect(executeErrorWorkflow).not.toHaveBeenCalled();
-				expect(executionPersistence.updateExistingExecution).toHaveBeenCalledTimes(1);
+				expect(executionPersistence.saveExecutionOutcome).toHaveBeenCalledTimes(1);
 			});
 		});
 

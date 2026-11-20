@@ -1,15 +1,6 @@
 {
     "type": "object",
     "properties": {
-        "@odata.context": {
-            "type": "string"
-        },
-        "@odata.mediaContentType": {
-            "type": "string"
-        },
-        "@odata.type": {
-            "type": "string"
-        },
         "contentType": {
             "type": "string"
         },
@@ -33,12 +24,6 @@
             "items": {
                 "type": "object",
                 "properties": {
-                    "@odata.mediaContentType": {
-                        "type": "string"
-                    },
-                    "@odata.type": {
-                        "type": "string"
-                    },
                     "contentType": {
                         "type": "string"
                     },
@@ -61,5 +46,5 @@
             }
         }
     },
-    "version": 9
+    "version": 10
 }

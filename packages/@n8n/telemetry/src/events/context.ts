@@ -1,4 +1,9 @@
-import { SKILL_SCAN_RULES, SKILL_SOURCE_REASONS, skillScopeSchema } from '@n8n/api-types';
+import {
+	SKILL_LINK_REVIEW_REASONS,
+	SKILL_SCAN_RULES,
+	SKILL_SOURCE_REASONS,
+	skillScopeSchema,
+} from '@n8n/api-types';
 import { z } from 'zod/v4';
 
 import { defineTelemetryEvents } from '../define';
@@ -591,6 +596,12 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 			rule_codes: z
 				.array(z.enum(SKILL_SCAN_RULES))
 				.describe('The rules that gave a `needs_review` or `blocked` finding, each one time'),
+			link_reason_codes: z
+				.array(z.enum(SKILL_LINK_REVIEW_REASONS))
+				.optional()
+				.describe(
+					'Why each `risky_url` finding needs review, each reason one time. Absent when no link needs review',
+				),
 		}),
 	},
 	SKILL_SOURCE_UPDATE_FOUND: {
@@ -653,12 +664,17 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 	USER_DELETED_SKILL_SOURCE: {
 		name: 'User deleted skill source',
 		description:
-			'A user deleted a source and its synced skills. Fires after the transaction commits or fails. An agent draft or published pin blocks the delete with reason skills_in_use. Contains no skill, source, agent, or project names.',
+			'A user removed a source. The user deleted its synced skills, or kept them as normal skills that n8n can edit (`skills_kept`). Fires after the transaction commits or fails. An agent draft or published pin blocks a delete of the skills with reason skills_in_use. A request for a skill list that changed in the meantime fails with reason stale. Contains no skill, source, agent, or project names.',
 		properties: z.object({
 			user_id: userId,
 			provider: skillSourceProvider,
+			skills_kept: z
+				.boolean()
+				.describe(
+					'True when the user chose Stop syncing in the dialog, so the skills stay. This choice does not fire `User stopped skill sync`',
+				),
 			status: skillSourceStatus,
-			reason: z.enum(['skills_in_use', 'unexpected']).optional(),
+			reason: z.enum(['skills_in_use', 'stale', 'unexpected']).optional(),
 		}),
 	},
 	USER_UPDATED_SKILL_SOURCE_CREDENTIAL: {
@@ -697,7 +713,7 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 	USER_DELETED_SKILL: {
 		name: 'User deleted skill',
 		description:
-			'A user deleted a skill from the settings page, n8n Assistant or an MCP client. Fires once the delete commits. Removing a skill from one agent keeps the skill and reports nothing here.',
+			'A user deleted a skill from the settings page, n8n Assistant or an MCP client. Fires once the delete commits, also when the user removes the source with its last skill. Removing a skill from one agent keeps the skill and reports nothing here.',
 		properties: z.object({
 			user_id: userId,
 			skill_id: skillId,

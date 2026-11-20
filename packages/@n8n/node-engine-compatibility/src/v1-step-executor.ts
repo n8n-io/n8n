@@ -119,6 +119,7 @@ export class V1StepExecutor implements IStepExecutor {
 			stepData.outputsByNode,
 			request.node.id,
 			request.context.iteration,
+			stepData.outputSourcesByNode,
 		);
 		const workflow = toV1Workflow(request.context.workflowId, node, execution, this.deps.nodeTypes);
 
@@ -131,7 +132,12 @@ export class V1StepExecutor implements IStepExecutor {
 			node,
 			workflow,
 			execution,
-			source: toV1Sources(stepData.graph).get(node.id) ?? [],
+			source: toV1Sources(
+				stepData.graph,
+				stepData.outputsByNode,
+				node.id,
+				request.context.iteration,
+			),
 			additionalData,
 			stepContext: request.context,
 			itemsByConnection: fromStepInputs(request.inputs),

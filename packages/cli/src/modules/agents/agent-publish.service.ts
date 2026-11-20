@@ -9,7 +9,7 @@ import {
 	type PublishAgentDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { EventService, TelemetryProxy } from '@n8n/backend-services';
+import { EventService, TelemetryProxy, loginIdOf } from '@n8n/backend-services';
 import {
 	TransactionRunner,
 	isUniqueConstraintError,
@@ -22,7 +22,6 @@ import isEqual from 'lodash/isEqual';
 import { v4 as uuid } from 'uuid';
 
 import { CredentialsService } from '@/credentials/credentials.service';
-import { loginIdOf } from '@/events/login-id';
 import { BadRequestError, ConflictError, NotFoundError, UserError } from '@n8n/errors';
 import { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
 import {

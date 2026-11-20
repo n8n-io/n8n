@@ -1,6 +1,7 @@
 import { createTestNode, createTestWorkflow, mockNodeTypeDescription } from '@/__tests__/mocks';
 import type { AddedNodesAndConnections } from '@/Interface';
-import { waitFor } from '@testing-library/vue';
+import { cleanup, waitFor } from '@testing-library/vue';
+import { flushPromises } from '@vue/test-utils';
 import userEvent from '@testing-library/user-event';
 import {
 	EVALUATION_TRIGGER_NODE_TYPE,
@@ -46,6 +47,14 @@ import { useCanvasStore } from '@/app/stores/canvas.store';
 import { DEFAULT_NODE_SIZE, snapPositionToGrid } from '@/app/utils/nodeViewUtils';
 import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
 import { usePostHog } from '@/app/stores/posthog.store';
+import { lazyModalLoaders, type LazyModalKey } from '@/app/modals/lazyModals';
+import {
+	DUPLICATE_MODAL_KEY,
+	WORKFLOW_PUBLISH_MODAL_KEY,
+	WORKFLOW_SETTINGS_MODAL_KEY,
+	WORKFLOW_SHARE_MODAL_KEY,
+} from '@/app/constants';
+import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 
 const mockMcpJsonNudgeGate = vi.hoisted(() => vi.fn());
 // Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
@@ -56,6 +65,15 @@ const mockGroupTelemetry = vi.hoisted(() => ({
 	trackCollapsed: vi.fn(),
 	trackExpanded: vi.fn(),
 }));
+
+// Spies replace the modal loaders, so a canvas prefetch loads no modal code.
+vi.mock('@/app/modals/lazyModals', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@/app/modals/lazyModals')>();
+	const loaders = Object.fromEntries(
+		Object.keys(actual.lazyModalLoaders).map((key) => [key, vi.fn(async () => ({}))]),
+	);
+	return { ...actual, lazyModalLoaders: loaders };
+});
 
 vi.mock('@/experiments/mcpJsonNudge/composables/useMcpJsonNudgeTrigger', () => ({
 	useMcpJsonNudgeTrigger: () => ({ gate: mockMcpJsonNudgeGate }),
@@ -1024,6 +1042,67 @@ describe('NodeView', () => {
 
 			await findByTestId('canvas-stub-copy');
 			expect(queryByTestId('n8n-logo')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('Modal prefetch', () => {
+		const CANVAS_MODALS: LazyModalKey[] = [
+			WORKFLOW_PUBLISH_MODAL_KEY,
+			CREDENTIAL_EDIT_MODAL_KEY,
+			WORKFLOW_SETTINGS_MODAL_KEY,
+			WORKFLOW_SHARE_MODAL_KEY,
+			DUPLICATE_MODAL_KEY,
+		];
+		let idleCallbacks: IdleRequestCallback[];
+
+		/** Renders the canvas, then runs idle callbacks until no prefetch is pending. */
+		async function renderAndRunIdle() {
+			const view = renderNodeView();
+			await view.findByTestId('canvas-stub-copy');
+			for (let callback = idleCallbacks.shift(); callback; callback = idleCallbacks.shift()) {
+				callback({ didTimeout: false, timeRemaining: () => 50 });
+				await flushPromises();
+			}
+			return view;
+		}
+
+		function loadedModals() {
+			return Object.entries(lazyModalLoaders)
+				.filter(([, load]) => vi.mocked(load).mock.calls.length > 0)
+				.map(([key]) => key);
+		}
+
+		beforeEach(() => {
+			idleCallbacks = [];
+			vi.stubGlobal(
+				'requestIdleCallback',
+				vi.fn((callback: IdleRequestCallback) => idleCallbacks.push(callback)),
+			);
+			vi.stubGlobal('cancelIdleCallback', vi.fn());
+		});
+
+		afterEach(() => {
+			cleanup();
+			vi.unstubAllGlobals();
+		});
+
+		it('prefetches the canvas modals in order, and no other modal', async () => {
+			await renderAndRunIdle();
+
+			expect(loadedModals()).toEqual(expect.arrayContaining(CANVAS_MODALS));
+			expect(loadedModals()).toHaveLength(CANVAS_MODALS.length);
+			const firstCalls = CANVAS_MODALS.map(
+				(key) => vi.mocked(lazyModalLoaders[key]).mock.invocationCallOrder[0],
+			);
+			expect(firstCalls).toEqual([...firstCalls].sort((a, b) => a - b));
+		});
+
+		it('prefetches no modal in a workflow preview', async () => {
+			routeMock.name = VIEWS.DEMO;
+
+			await renderAndRunIdle();
+
+			expect(loadedModals()).toEqual([]);
 		});
 	});
 

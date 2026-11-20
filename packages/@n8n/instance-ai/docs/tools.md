@@ -50,7 +50,11 @@ the probe tracks is sent only when the card shows. `approval-judge.ts`
 describes what the judge reads and how it cuts long input.
 
 The judge sees the user's messages, the user's answers in question cards, and
-the Assistant's text.
+the Assistant's text. In a long thread it sees the newest messages. From the
+part before them it sees only what the user wrote, up to a budget of messages
+and characters. A limit that the user set there stays in view while it fits
+the budget. A note tells the judge when older messages are left out. Of a long
+message it sees only the end.
 
 ### Approval copy
 
@@ -1408,27 +1412,24 @@ Tools are dynamically created from the MCP server's advertised capabilities.
 
 ## Knowledge Base (sandbox workspace)
 
-Best-practices guides and curated workflow templates are materialized under
+Best-practices guides and SDK reference material are materialized under
 `<workspace_root>/knowledge-base/` when a builder sandbox is available. Agents
-read them with workspace tools — there is no dedicated `get-best-practices` or
-template-search tool.
+read them with workspace tools — there is no dedicated `get-best-practices`
+tool.
 
 | Path | Description |
 |------|-------------|
-| `knowledge-base/index.json` | Root catalog advertising all three sections |
+| `knowledge-base/index.json` | Root catalog advertising both sections |
 | `knowledge-base/best-practices/index.json` | Catalog of workflow technique guides |
 | `knowledge-base/best-practices/*.md` | Best-practices documentation per technique |
-| `knowledge-base/templates/index.json` | Catalog of curated SDK workflow examples |
-| `knowledge-base/templates/*.ts` | Template workflow source files |
 | `knowledge-base/reference/index.json` | Catalog of SDK reference material |
 | `knowledge-base/reference/*.md` | SDK language and output-shape reference |
 
 The tree is written by `src/knowledge-base/materialize-knowledge-base.ts`, which
 sources best practices and some reference material from
-`@n8n/workflow-sdk/prompts/*`, additional reference documents from the local
-`knowledge-base/reference/` directory, and templates from the host's
-`BuilderTemplatesService`. It also writes a workspace manifest alongside the
-root index.
+`@n8n/workflow-sdk/prompts/*` and additional reference documents from the local
+`knowledge-base/reference/` directory. It also writes a workspace manifest
+alongside the root index.
 
 Use `workspace_read_file` and `workspace_grep` (or shell equivalents in the
 sandbox) to consult these before planning or building non-trivial workflows.
@@ -1519,6 +1520,14 @@ The `type` field selects one lookup. Supported values are `agents`, `config-sche
 `capabilities`, `integrations`, and `attachable-workflows`. Detailed lookups
 return one body at a time. Session lookup supports status, origin, date, and
 cursor filters.
+
+By default, a `session` lookup returns a compact transcript. Long values are
+cut and the oldest turns of a long session are left out. Set
+`maxToolValueLength` to get every turn with complete text, in pages. Each tool
+input and output is cut at that length, and `0` leaves them out. While
+`nextCursor` is not `null`, pass it back as `cursor` with the same `threadId`,
+`executionId`, and `maxToolValueLength`. A cursor that does not match the
+transcript returns an error.
 
 The Agent id is optional when the conversation has a bound Agent target. Use
 `type: "agents"` to resolve the id in other conversations. The tool labels the

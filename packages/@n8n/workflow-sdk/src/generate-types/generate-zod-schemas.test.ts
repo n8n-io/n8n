@@ -537,6 +537,63 @@ describe('duplicate property declarations with mutually-exclusive displayOptions
 		const result = schema.safeParse({ parameters });
 		expect(result.success).toBe(true);
 	});
+
+	describe('root-path show condition', () => {
+		// Mirrors the OpenAI Chat Model node: `builtInTools` is shown by
+		// `/responsesApiEnabled`, which defaults to true.
+		const rootPathNode: NodeTypeDescription = {
+			...baseNode,
+			name: 'n8n-nodes-base.rootPathShow',
+			displayName: 'Root Path Show',
+			version: 1,
+			properties: [
+				{
+					displayName: 'Use Responses API',
+					name: 'responsesApiEnabled',
+					type: 'boolean',
+					default: true,
+				},
+				{
+					displayName: 'Built-in Tools',
+					name: 'builtInTools',
+					type: 'collection',
+					default: {},
+					options: [
+						{
+							displayName: 'Code Interpreter',
+							name: 'codeInterpreter',
+							type: 'boolean',
+							default: true,
+						} as NodeProperty,
+					],
+					displayOptions: { show: { '/responsesApiEnabled': [true] } },
+				},
+			],
+		};
+
+		function parse(parameters: Record<string, unknown>): boolean {
+			const factory = loadFactory(generateSingleVersionSchemaFile(rootPathNode, 1));
+			const schema = factory({
+				...schemaHelpers,
+				parameters,
+				resolveSchema: (cfg: Parameters<typeof schemaHelpers.resolveSchema>[0]) =>
+					schemaHelpers.resolveSchema(cfg),
+				resolveOneOfSchemas: (cfg: Parameters<typeof schemaHelpers.resolveOneOfSchemas>[0]) =>
+					schemaHelpers.resolveOneOfSchemas(cfg),
+			});
+			return schema.safeParse({ parameters }).success;
+		}
+
+		it('accepts the field when the root-path property is unset and its default shows it', () => {
+			expect(parse({ builtInTools: { codeInterpreter: true } })).toBe(true);
+		});
+
+		it('rejects the field when the root-path property is set to a value that hides it', () => {
+			expect(parse({ responsesApiEnabled: false, builtInTools: { codeInterpreter: true } })).toBe(
+				false,
+			);
+		});
+	});
 });
 
 describe('extractDefaultsForDisplayOptions', () => {
@@ -644,7 +701,7 @@ describe('extractDefaultsForDisplayOptions', () => {
 		expect(defaults).not.toHaveProperty('@version');
 	});
 
-	it('skips root path references (/ prefix)', () => {
+	it('extracts defaults for root path references (/ prefix) without the prefix', () => {
 		const displayOptions = { show: { '/globalSetting': ['enabled'], mode: ['advanced'] } };
 		const allProperties: NodeProperty[] = [
 			{
@@ -663,8 +720,7 @@ describe('extractDefaultsForDisplayOptions', () => {
 
 		const defaults = extractDefaultsForDisplayOptions(displayOptions, allProperties);
 
-		// Should only include mode, not globalSetting (since it was referenced with /)
-		expect(defaults).toEqual({ mode: 'simple' });
+		expect(defaults).toEqual({ mode: 'simple', globalSetting: 'enabled' });
 	});
 
 	it('handles nested property paths by extracting base property', () => {

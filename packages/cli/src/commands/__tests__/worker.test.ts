@@ -271,6 +271,7 @@ describe('Worker', () => {
 				mock<ExecutionsConfig>({ mode: 'queue' }),
 				mock<InstanceSettings>({ instanceType: 'worker', isWorker: true }),
 				mock<UnsavedManualExecutionService>(),
+				mock(),
 			);
 
 			const drainLoopInterval = 500;

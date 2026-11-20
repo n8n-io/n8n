@@ -2,12 +2,32 @@ import {
 	AcceptSkillSourceUpdatesDto,
 	ConnectSkillSourceDto,
 	DiscoverSkillSourceDto,
+	DeleteSkillSourceQueryDto,
 	SKILL_SOURCE_MAX_SKILLS,
 } from '../skill-sources.schema';
 
 const target = { url: 'https://github.com/acme/skills', scope: 'instance' };
 
 const keys = (count: number) => Array.from({ length: count }, (_, index) => `key-${index}`);
+
+describe('DeleteSkillSourceQueryDto', () => {
+	it.each([
+		[undefined, undefined],
+		['false', false],
+		['true', true],
+	])('parses keepSkills=%s', (input, expected) => {
+		expect(DeleteSkillSourceQueryDto.parse({ keepSkills: input }).keepSkills).toBe(expected);
+	});
+
+	it.each(['yes', '0', '', ['true'], {}])('rejects invalid keepSkills=%j', (keepSkills) => {
+		expect(DeleteSkillSourceQueryDto.safeParse({ keepSkills }).success).toBe(false);
+	});
+
+	it('accepts a skill ID and rejects an empty ID for last-skill removal', () => {
+		expect(DeleteSkillSourceQueryDto.parse({ onlySkillId: 'skill-1' }).onlySkillId).toBe('skill-1');
+		expect(DeleteSkillSourceQueryDto.safeParse({ onlySkillId: '' }).success).toBe(false);
+	});
+});
 
 describe('ConnectSkillSourceDto', () => {
 	it.each([
