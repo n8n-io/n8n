@@ -199,4 +199,33 @@ describe('the reason of a read of a paired item that is not compiled', () => {
 			expect(reason).not.toMatch(/Secret|Source/);
 		}
 	});
+
+	it('names a reader after the done output of a Loop Over Items node', () => {
+		// The loop output of the node gives the items of its first input; its done output gives
+		// the items that came back from the body, which have no pairs of that input.
+		const result = convertWorkflow({
+			name: 'Pairing reason',
+			nodes: [
+				webhookNode(),
+				SOURCE,
+				node('Loop', 'splitInBatches', 3, [400, 0], { batchSize: 1, options: {} }),
+				set('Inside'),
+				reader('Source'),
+			],
+			connections: connect([
+				['Webhook', 0, 'Source', 0],
+				['Source', 0, 'Loop', 0],
+				['Loop', 1, 'Inside', 0],
+				['Inside', 0, 'Loop', 0],
+				['Loop', 0, 'Secret Reader', 0],
+			]),
+			settings: { executionOrder: 'v1' },
+		});
+		const refusal = result.diagnostics.find((d) => d.code === 'code-node-reference');
+		expect(
+			refusal?.message.endsWith(
+				'[pairing: engine form of the workflow: reader after the done output of n8n-nodes-base.splitInBatches@3]',
+			),
+		).toBe(true);
+	});
 });

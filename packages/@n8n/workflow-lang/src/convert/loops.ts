@@ -46,6 +46,20 @@ export function lowerSplitInBatches(c: NodeContext): void {
 			: version === 2
 				? [c.output(0, 'Loop'), c.output(1, 'Done')]
 				: [c.output(0)];
+	// The items of the loop output keep the index of their item in the list of the first run
+	// of the node, over all runs: v1 pairs them with that input (see `loopEntryOf` in the
+	// generator). A fractional or reset batch size has no such indexes.
+	const batch = p.batchSize === undefined ? 1 : p.batchSize;
+	const step = typeof batch === 'number' && Number.isInteger(batch) && batch > 0 ? batch : null;
+	const pairsOfLoop =
+		version === 3 &&
+		c.engine &&
+		step !== null &&
+		(opts.reset === undefined || opts.reset === false) &&
+		c.pairsWanted === true &&
+		c.setPairs !== undefined
+			? outs[1]
+			: null;
 	const result = c.local('Outputs');
 	w.line(`let ${result}: Json[][] | null = null;`);
 	// v1 reads the parameters for the first item.
@@ -84,4 +98,12 @@ export function lowerSplitInBatches(c: NodeContext): void {
 		w.line(`if (${c.input}.length > 0 && ${result} === null) return null;`);
 	}
 	outs.forEach((o, k) => w.line(`const ${o}: Json[] = ${result}?.[${k}] ?? [];`));
+	if (pairsOfLoop !== null) {
+		const pairs = `${pairsOfLoop}Pairs`;
+		w.line(`const ${pairs}: Json = { items: ${pairsOfLoop}, paired: [] };`);
+		w.line(
+			`for (let k = 0; k < ${pairsOfLoop}.length; k++) ${pairs}.paired.push(${state}.currentRunIndex * ${String(step)} + k);`,
+		);
+		c.setPairs?.(pairs, 1, true);
+	}
 }

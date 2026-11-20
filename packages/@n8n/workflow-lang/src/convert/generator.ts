@@ -722,6 +722,16 @@ export class ModuleGenerator {
 					(e) => e.input === 0 && b.scope.has(e.from) && this.known(b, e.from),
 				);
 				path.push(cur);
+				// A Loop Over Items node has two connections into input 0: the entry of the loop and
+				// the edge back from its body. v1 pairs the items of its loop output with the items
+				// of its first input, one run after another, so the walk continues through the entry
+				// only (see `loopEntryOf`).
+				if (b.engine && isLoopNode(b.graph.nodes.get(cur))) {
+					const entry = this.loopEntryOf(b, cur);
+					if (typeof entry === 'string') return { reason: entry };
+					edge = entry;
+					continue;
+				}
 				// v1 runs a node with several connections into input 0 once for each of them, and
 				// gives that run the items of that connection.
 				if (
@@ -794,6 +804,12 @@ export class ModuleGenerator {
 			);
 			if (mergeWalk !== null) return mergeWalk;
 			const pairs = b.pairs.get(`${edge.from}|${edge.output}`);
+			// The loop output of a Loop Over Items node keeps the items of the input of the node;
+			// its done output keeps the items that came back from the body, which have no pairs
+			// of that input.
+			if (b.engine && isLoopNode(parent) && edge.output !== 1) {
+				return { reason: `reader after the done output of ${this.typeOf(b, edge.from)}` };
+			}
 			if (!parent.executeOnce && (ONE_TO_ONE.has(parent.type) || parent.disabled)) {
 				cur = edge.from;
 				edge = null;
@@ -865,6 +881,39 @@ export class ModuleGenerator {
 		}
 		if (alternatives.length === 0) return { reason: `no connection into ${at}` };
 		return { hops, merge: { node: node.name, run: pairs.run, alternatives } };
+	}
+
+	/**
+	 * The entry connection of a Loop Over Items node: the one connection into input 0 whose
+	 * source is not in the body of the loop. The other one comes back from the body. v1 gives
+	 * the loop its items from the entry, and the nodes of the body from the loop output.
+	 */
+	private loopEntryOf(b: Body, name: string): Edge | string {
+		const body = this.loopBody(b, name);
+		const into = b.graph
+			.incoming(name)
+			.filter((e) => e.input === 0 && b.scope.has(e.from) && this.known(b, e.from));
+		const entries = into.filter((e) => !body.has(e.from));
+		if (entries.length !== 1) return 'loop with no single entry';
+		return entries[0];
+	}
+
+	/** The nodes that a run of output 1 of a Loop Over Items node reaches: the body. */
+	private loopBody(b: Body, name: string): Set<string> {
+		const queue = b.graph
+			.outgoing(name)
+			.filter((e) => e.output === 1)
+			.map((e) => e.to);
+		const seen = new Set<string>(queue);
+		while (queue.length > 0) {
+			const at = queue.shift() ?? '';
+			for (const e of b.graph.outgoing(at)) {
+				if (seen.has(e.to)) continue;
+				seen.add(e.to);
+				queue.push(e.to);
+			}
+		}
+		return seen;
 	}
 
 	/**
@@ -1211,6 +1260,12 @@ export class ModuleGenerator {
 							// and the nodes behind each connection keep their paired items. The walk of a
 							// read tries each connection, so it adds the nodes that reach the target.
 							if (b.engine && inc.length > 1 && inc.length === all.length) {
+								// A Loop Over Items node keeps the pairs of its loop output, for the walk of a
+								// read inside the loop. Its nodes on the way keep them too.
+								if (isLoopNode(b.graph.nodes.get(cur))) {
+									for (const name of path) wanted.add(name);
+									wanted.add(cur);
+								}
 								const below = b.graph.reachable(cur);
 								for (const e of inc) {
 									// A connection from below the fork is a loop back: v1's latest run of the
@@ -2895,6 +2950,16 @@ const AT_MOST_ONE = new Set([`${BASE}if`, `${BASE}filter`, `${BASE}switch`]);
 
 /** Node types that run code of the user, which can give any paired item. */
 const USER_CODE = /\.(code|function|functionItem|aiTransform)$/;
+
+/**
+ * A Loop Over Items node of version 3 or later: output 0 is "done", output 1 is the loop.
+ * Its input 0 has two connections, the entry of the loop and the edge back from its body.
+ */
+function isLoopNode(node: N8nNode | undefined): boolean {
+	return (
+		node !== undefined && node.type === `${BASE}splitInBatches` && (node.typeVersion ?? 1) >= 3
+	);
+}
 
 /** `requiredInputs` of the v1 node description: `all` when every input must have items. */
 function requiredInputs(node: N8nNode | undefined): 'all' | number | undefined {
