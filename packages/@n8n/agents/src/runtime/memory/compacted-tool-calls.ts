@@ -7,6 +7,8 @@ const MAX_INDEX_CHARS = 1_024;
 const HEADER =
 	'<compacted-tool-calls>\nRecent calls in compacted history. Use the reference in the toolCallRef field of read_history to inspect a result. A returned result does not imply success.';
 const FOOTER = '</compacted-tool-calls>';
+const OMISSION_NOTICE =
+	'Older compacted calls were omitted. Use read_history text search before repeating a check.';
 
 // Only identifiers enter prompt metadata. Inputs, outputs and free text stay in history.
 const IDENTIFIER = /^[a-zA-Z0-9_.:-]{1,128}$/;
@@ -28,10 +30,19 @@ export function collectCompactedToolCalls(
 	const lines: string[] = [];
 	let remaining = MAX_INDEX_CHARS - HEADER.length - FOOTER.length - 1;
 	const add = (line: string) => {
-		remaining -= line.length + 1;
-		if (remaining < 0) return false;
+		const cost = line.length + 1;
+		if (cost > remaining) return false;
+		remaining -= cost;
 		lines.push(line);
 		return true;
+	};
+	const markOmitted = () => {
+		const cost = OMISSION_NOTICE.length + 1;
+		for (let i = lines.length - 1; remaining < cost && i >= 0; i--) {
+			remaining += lines[i].length + 1;
+			lines.pop();
+		}
+		return [...lines, OMISSION_NOTICE];
 	};
 
 	for (let i = messages.length - 1; i >= 0; i--) {
@@ -50,11 +61,12 @@ export function collectCompactedToolCalls(
 			const line = [name, historyToolCallRef(message.id, j), state, timestamp]
 				.filter(Boolean)
 				.join(' ');
-			if (!add(line)) return lines;
+			if (!add(line)) return markOmitted();
 		}
 	}
+	// Carry forward omissions as well as references when the index is restored or extended.
 	for (const line of earlier) {
-		if (!add(line)) break;
+		if (line === OMISSION_NOTICE || !add(line)) return markOmitted();
 	}
 	return lines;
 }
