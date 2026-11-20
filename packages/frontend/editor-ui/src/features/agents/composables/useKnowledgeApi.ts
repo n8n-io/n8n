@@ -1,4 +1,8 @@
-import type { AgentFileDto } from '@n8n/api-types';
+import type {
+	AgentFileDto,
+	ResolveAgentLiveSourceLinkDto,
+	ResolveAgentLiveSourceLinkResult,
+} from '@n8n/api-types';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 
@@ -55,5 +59,20 @@ export const warmAgentKnowledgeSandbox = async (
 		context,
 		'POST',
 		`/projects/${projectId}/agents/v2/${agentId}/sandbox/knowledge/warmup`,
+	);
+};
+
+/** Resolves a pasted link of a live knowledge source into an item the agent can pick. Experimental. */
+export const resolveAgentLiveSourceLink = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	payload: ResolveAgentLiveSourceLinkDto,
+): Promise<ResolveAgentLiveSourceLinkResult> => {
+	return await makeRestApiRequest<ResolveAgentLiveSourceLinkResult>(
+		context,
+		'POST',
+		`/projects/${projectId}/agents/v2/${agentId}/knowledge/live-sources/resolve-link`,
+		payload,
 	);
 };

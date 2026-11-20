@@ -136,9 +136,16 @@ packages/cli/src/modules/agents/
   json-config/from-json-config.ts          + options.buildLiveKnowledgeTools after the vector-store block
   agent-runtime-reconstruction.service.ts  implements the hook in buildConfiguredRuntime, gated by the flag
   agent-turn-execution.service.ts          + liveRetrievalService.endRun(runId) next to sendRunUsage
-  agent-knowledge-live.controller.ts       POST .../:agentId/knowledge/live-sources/:sourceId/index
+  agent-knowledge-live.controller.ts       POST .../:agentId/knowledge/live-sources/resolve-link; GET and POST .../live-sources/:sourceId/index
   BUILT_IN_TOOLS.md                        + the three tools and their attach condition
 packages/@n8n/api-types/src/agents/agent-json-config.schema.ts   + knowledge.liveSources
+packages/@n8n/api-types/src/agents/dto.ts                        + ResolveAgentLiveSourceLinkDto, ResolveAgentLiveSourceLinkResult
+packages/frontend/editor-ui/src/features/
+  shared/knowledge/useIsLiveSourcesEnabled.ts   mirrors isLiveSourcesEnabled() from moduleSettings.knowledge
+  agents/live-sources.ts                   the provider list of the panel and the pure config edits (add, remove, retrieval)
+  agents/components/AgentLiveSourcesPanel.vue   the stub panel: paste a link, pick a credential, list and remove the picked items
+  agents/components/AgentBuilderEditorColumn.vue   + the panel on the Knowledge tab, behind the flag
+  agents/composables/useKnowledgeApi.ts    + resolveAgentLiveSourceLink
 scripts/knowledge-live-harness/            AGENTS.md, run.mjs, seed-sources.mjs, fixtures/content.mjs, fixtures/items.json (generated), results/ (generated)
 ```
 
@@ -254,6 +261,29 @@ searched with the existing `rg` and `awk` commands) is dropped from the PoC:
 no sandbox is available locally. If one becomes available, it is a day-4
 optional again.
 
+## Stub panel
+
+"Live sources" on the Knowledge tab of the builder, for manual tests. It
+shows only with `N8N_KNOWLEDGE_LIVE_SOURCES_ENABLED=true` and on a saved
+agent. No browse picker: the user pastes a link.
+
+- Source (Notion or Slack), a credential of that provider from the project,
+  and a link. "Add" calls `POST .../knowledge/live-sources/resolve-link` with
+  `{ provider, credential, url }`; the route runs `provider.resolveLink` with
+  the credential and answers `{ item }` in config shape, or `item: null` for
+  a link the provider does not know. A source error comes back as a 400 with
+  the sanitised message, shown under the form.
+- The item goes into the source with the same provider and credential, or
+  creates one: id `<provider>`, `<provider>-2`, …; name = the credential name.
+  A source lists its items with their urls. Removing the last item removes
+  the source.
+- A select per source writes `retrieval` (`native`, `index`, or the provider
+  default, which leaves the key out). No index status or rebuild button: the
+  first search builds the index, and `list_knowledge()` shows its status.
+- No "create credential" flow: credentials come from the Credentials page.
+  The provider list and the credential types are a frontend constant that
+  mirrors the registry until a picker fetches them.
+
 ## Provider mapping
 
 | | Notion v3 (`n8n-nodes-base.notion`, version 3) | Slack v2.7 (`n8n-nodes-base.slack`, version 2.7) |
@@ -352,7 +382,8 @@ Setup decisions of 2026-11-19:
 11. The test agents use one Anthropic model snapshot through a direct
     credential.
 12. `mirror` is dropped: no sandbox is available locally.
-13. The stub "Live sources" panel stays the last optional item.
+13. The stub "Live sources" panel stays the last optional item. (Built after
+    the write-up, as a paste-a-link form; see "Stub panel".)
 14. KNO-338 stays as it is until the results exist.
 
 Day-2 decision of 2026-11-19:
@@ -655,5 +686,5 @@ place; `pnpm knowledge:harness report run-2026-11-19T22-15-06-911Z.json@kb-mcp-c
 - [x] ~~`mirror` strategy and `kb-mirror`, if time allows~~ Dropped: no sandbox available locally
 - [ ] `notionOAuth2Api` credential and a re-run of the Notion questions, if time allows
 - [ ] Slack C0 through a tunnel (fixed client id, HTTPS redirect), if time allows
-- [x] ~~Stub "Live sources" panel, if time allows~~ Not done: no time left in the box; the config is written through the API and the harness
+- [x] Stub "Live sources" panel (2026-11-20, after the write-up; see "Stub panel"): paste a link, pick a credential, retrieval select, remove items and sources. The harness keeps writing the config through the API
 - [x] Write-up on the Notion page: per-source correctness, tokens per correct answer, wall time, turns, tool calls, scope violations, effort actuals, recommendation (section 13, 2026-11-20)

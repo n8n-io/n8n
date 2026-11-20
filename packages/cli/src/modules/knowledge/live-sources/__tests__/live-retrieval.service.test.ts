@@ -294,4 +294,47 @@ describe('LiveRetrievalService', () => {
 			});
 		});
 	});
+
+	describe('resolveLink', () => {
+		const PASTED = { id: 'notion', provider: 'fake', credential: 'cred-1' };
+
+		it('resolves a pasted link with the credential and returns the item in config shape', async () => {
+			const { service, provider, credentialResolver } = makeService();
+			provider.resolveLink.mockResolvedValue({
+				...PICKED_CONTAINER,
+				hasChildren: true,
+				icon: '📘',
+				updatedAt: '2026-11-20T10:00:00.000Z',
+			});
+
+			const item = await service.resolveLink(SCOPE, PASTED, PICKED_CONTAINER.url!);
+
+			expect(credentialResolver.resolve).toHaveBeenCalledWith(
+				SCOPE.projectId,
+				SCOPE.principal,
+				'notion',
+				'cred-1',
+				expect.anything(),
+			);
+			expect(provider.resolveLink).toHaveBeenCalledWith(
+				expect.objectContaining({ credential: { id: 'cred-1', type: 'fakeApi' } }),
+				PICKED_CONTAINER.url,
+			);
+			expect(item).toEqual({
+				id: PICKED_CONTAINER.id,
+				kind: 'container',
+				containerType: 'page',
+				title: PICKED_CONTAINER.title,
+				url: PICKED_CONTAINER.url,
+				parentId: undefined,
+			});
+		});
+
+		it('returns null when the provider does not know the link', async () => {
+			const { service, provider } = makeService();
+			provider.resolveLink.mockResolvedValue(null);
+
+			await expect(service.resolveLink(SCOPE, PASTED, 'https://example.com/x')).resolves.toBeNull();
+		});
+	});
 });

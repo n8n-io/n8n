@@ -21,6 +21,7 @@ import {
 	AgentVectorStoreConfigSchema,
 	AgentJsonConfigSchema,
 	type AgentJsonConfig,
+	type AgentJsonLiveSourceItem,
 } from './agent-json-config.schema';
 import type { AgentPersonalisation } from './agent-personalisation';
 import {
@@ -1041,6 +1042,18 @@ export interface VectorStoreTestResult {
 	success: boolean;
 	message?: string;
 	warning?: string;
+}
+
+/** A pasted link of a live knowledge source, to resolve into a picked item. Experimental. */
+export class ResolveAgentLiveSourceLinkDto extends Z.class({
+	provider: z.string().trim().min(1),
+	credential: z.string().trim().min(1),
+	url: z.string().trim().min(1).max(2048),
+}) {}
+
+/** `item` is `null` when the link is not a link of this provider. */
+export interface ResolveAgentLiveSourceLinkResult {
+	item: AgentJsonLiveSourceItem | null;
 }
 
 export class AgentChatCancelDto extends Z.class({

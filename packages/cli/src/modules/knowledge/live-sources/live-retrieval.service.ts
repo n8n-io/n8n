@@ -45,6 +45,7 @@ import type {
 	LivePrincipal,
 	LiveRunContext,
 	LiveSourceConfig,
+	LiveSourceItem,
 } from './live-source-provider';
 import { LiveSourceProviderRegistry } from './live-source-provider-registry';
 import { IndexRetrievalStrategy, liveIndexKey } from './strategies/index.strategy';
@@ -189,6 +190,30 @@ export class LiveRetrievalService {
 			source,
 			provider,
 		});
+	}
+
+	/**
+	 * Resolves a pasted link into an item in config shape, ready to be picked.
+	 * The source needs no saved config yet: a provider and a credential are
+	 * enough. `null` means the link is not a link of this provider.
+	 */
+	async resolveLink(
+		scope: LiveKnowledgeScope,
+		source: Pick<LiveSourceConfig, 'id' | 'provider' | 'credential'>,
+		url: string,
+	): Promise<LiveSourceItem | null> {
+		const provider = this.registry.get(source.provider);
+		const state: SourceRunState = {
+			canon: (id) => provider.normalizeItemId?.(id) ?? id,
+			allow: new Map(),
+			docs: new Map(),
+		};
+		const ctx = await this.runContext(scope, { runId: 'resolve-link' }, state, source, provider);
+		const entry = await provider.resolveLink(ctx, url);
+		if (!entry) return null;
+		// The config schema is strict: only the item fields may be stored.
+		const { id, kind, containerType, title, url: entryUrl, parentId } = entry;
+		return { id, kind, containerType, title, url: entryUrl, parentId };
 	}
 
 	async list(
@@ -445,7 +470,7 @@ export class LiveRetrievalService {
 		scope: LiveKnowledgeScope,
 		call: LiveCallContext,
 		state: SourceRunState,
-		source: LiveSourceConfig,
+		source: Pick<LiveSourceConfig, 'id' | 'credential'>,
 		provider: KnowledgeLiveSourceProvider,
 	): Promise<LiveRunContext> {
 		state.credential ??= await this.credentialResolver.resolve(

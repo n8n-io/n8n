@@ -10,6 +10,7 @@ import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 import type { SetupTask } from './AgentSetupTasks/agentSetupTasks.registry';
 import type {
 	AgentJsonConfig,
+	AgentJsonLiveSourceConfig,
 	AgentJsonVectorStoreConfig,
 	AgentResource,
 	AgentSkill,
@@ -17,6 +18,7 @@ import type {
 import type { ToolOpenTarget, ToolPickerMode } from './AgentCapabilitiesSection.types';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useTypeAvailability } from '@n8n/frontend-module-type-availability-policies';
+import { useIsLiveSourcesEnabled } from '@/features/shared/knowledge/useIsLiveSourcesEnabled';
 import AgentSessionsListView from '../views/AgentSessionsListView.vue';
 import AgentAdvancedPanel from './AgentAdvancedPanel.vue';
 import AgentBudgetPanel from './AgentBudgetPanel.vue';
@@ -26,6 +28,7 @@ import { provideAgentPersonalisation } from '../channels/agentPersonalisation';
 import AgentIdentityHeader from './AgentIdentityHeader.vue';
 import AgentInfoPanel from './AgentInfoPanel.vue';
 import AgentFilesPanel from './AgentFilesPanel.vue';
+import AgentLiveSourcesPanel from './AgentLiveSourcesPanel.vue';
 import AgentMemoryEntriesPanel from './AgentMemoryEntriesPanel.vue';
 import AgentVectorStoresPanel from './AgentVectorStoresPanel.vue';
 import AgentMcpPanel from './AgentMcpPanel.vue';
@@ -86,6 +89,14 @@ const settingsStore = useSettingsStore();
 const isMcpAvailable = computed(
 	() => settingsStore.isModuleActive('mcp') && !!settingsStore.moduleSettings.mcp?.mcpAccessEnabled,
 );
+const isLiveSourcesEnabled = useIsLiveSourcesEnabled();
+
+function onUpdateLiveSources(liveSources: AgentJsonLiveSourceConfig[]) {
+	emit('update:config', {
+		knowledge:
+			liveSources.length > 0 ? { ...props.localConfig?.knowledge, liveSources } : undefined,
+	});
+}
 
 // The full memory list replaces the Knowledge cards, so leaving the tab must close it.
 watch(
@@ -358,6 +369,20 @@ defineExpose({ onSetupTaskAction });
 						:agent-id="agentId"
 						:disabled="childrenDisabled"
 					/>
+					<AgentPanel
+						v-if="isLiveSourcesEnabled && !agentUnsaved && !isMemoryViewAll"
+						:header="i18n.baseText('agents.builder.liveSources.panel.title')"
+						:description="i18n.baseText('agents.builder.liveSources.panel.description')"
+					>
+						<AgentLiveSourcesPanel
+							:live-sources="localConfig?.knowledge?.liveSources ?? []"
+							:project-id="projectId"
+							:agent-id="agentId"
+							:disabled="childrenDisabled"
+							data-testid="agent-live-sources-card"
+							@update:live-sources="onUpdateLiveSources"
+						/>
+					</AgentPanel>
 					<AgentPanel
 						v-if="!isMemoryViewAll"
 						:header="i18n.baseText('agents.builder.knowledge.advanced.title')"
