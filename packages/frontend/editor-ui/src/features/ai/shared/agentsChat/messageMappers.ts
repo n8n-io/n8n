@@ -2,6 +2,7 @@ import {
 	APPROVAL_TOOL_NAME,
 	N8N_CHAT_ACTION_TOOL_NAME,
 	WAIT_TOOL_NAME,
+	instanceAiApprovalAskReasonSchema,
 	type AgentBuilderOpenSuspension,
 	type AgentPersistedMessageDto,
 } from '@n8n/api-types';
@@ -144,6 +145,7 @@ export function parseApprovalInput(value: unknown): ApprovalInput | undefined {
 	if (!isRecord(value)) return undefined;
 	if (value.type !== 'approval') return undefined;
 	if (typeof value.toolName !== 'string' || value.toolName.length === 0) return undefined;
+	const askReason = instanceAiApprovalAskReasonSchema.safeParse(value.askReason);
 	return {
 		type: 'approval',
 		toolName: value.toolName,
@@ -151,6 +153,7 @@ export function parseApprovalInput(value: unknown): ApprovalInput | undefined {
 		...(typeof value.displayName === 'string' &&
 			value.displayName.length > 0 && { displayName: value.displayName }),
 		args: value.args,
+		...(askReason.success && { askReason: askReason.data }),
 	};
 }
 

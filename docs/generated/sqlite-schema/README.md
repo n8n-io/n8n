@@ -82,6 +82,9 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [execution_data](execution_data.md) | 4 |  | table |
 | [execution_entity](execution_entity.md) | 20 |  | table |
 | [execution_ledger](execution_ledger.md) | 16 |  | table |
+| [execution_limit_audit](execution_limit_audit.md) | 8 |  | table |
+| [execution_limit_instance_usage](execution_limit_instance_usage.md) | 5 |  | table |
+| [execution_limit_usage](execution_limit_usage.md) | 6 |  | table |
 | [execution_metadata](execution_metadata.md) | 4 |  | table |
 | [folder](folder.md) | 7 |  | table |
 | [folder_tag](folder_tag.md) | 2 |  | table |
@@ -285,9 +288,9 @@ erDiagram
 "agents_tags" |o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "ai_builder_temporary_workflow" }o--|| "instance_ai_threads" : "FOREIGN KEY (threadId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "ai_builder_temporary_workflow" |o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"ai_preference" }o--o| "user" : "FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
-"ai_preference" }o--o| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "ai_preference" }o--o| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"ai_preference" }o--o| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"ai_preference" }o--o| "user" : "FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "app" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "app" }o--o| "app_version" : "FOREIGN KEY (draftVersionId) REFERENCES app_version (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "app" }o--o| "app_version" : "FOREIGN KEY (publishedVersionId) REFERENCES app_version (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
@@ -1304,6 +1307,31 @@ erDiagram
   INTEGER runtimeMs
   varchar_32_ source
   INTEGER timeSavedMin
+}
+"execution_limit_audit" {
+  datetime_3_ createdAt
+  varchar_32_ field
+  INTEGER id
+  varchar_255_ loginId
+  TEXT newValue
+  TEXT oldValue
+  varchar_36_ projectId
+  varchar updatedBy
+}
+"execution_limit_instance_usage" {
+  INTEGER blockedCount
+  date day PK
+  varchar_16_ entityType PK
+  INTEGER startedCount
+  datetime_3_ updatedAt
+}
+"execution_limit_usage" {
+  INTEGER blockedCount
+  date day PK
+  varchar_16_ entityType PK
+  varchar_36_ projectId PK
+  INTEGER startedCount
+  datetime_3_ updatedAt
 }
 "execution_metadata" {
   INTEGER executionId FK

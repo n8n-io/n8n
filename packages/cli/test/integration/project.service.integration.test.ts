@@ -69,7 +69,7 @@ describe('ProjectService', () => {
 	describe('createTeamProject', () => {
 		it('gives the new project the default execution limit', async () => {
 			const executionLimitsService = Container.get(ExecutionLimitsService);
-			await executionLimitsService.updateSettings({ defaultProjectMaxExecutions: 50 });
+			await executionLimitsService.updateSettings({ defaultProjectMaxExecutions: 50 }, null);
 
 			const project = await projectService.createTeamProject(await createOwner(), {
 				name: 'Team',

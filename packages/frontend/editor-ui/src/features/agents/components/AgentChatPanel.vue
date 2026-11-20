@@ -1720,16 +1720,11 @@ function removeComposerAttachment(id: string) {
 	composerAttachments.value = composerAttachments.value.filter((item) => item.chip.id !== id);
 }
 
-// Session files: the preview chat and n8n Chat have the list route.
-const sessionFilesChannel = computed(() =>
-	props.channel === 'chat' || props.channel === 'n8n-chat' ? props.channel : undefined,
-);
+// Session files: every channel has the list route.
 const posthog = usePostHog();
 const showSessionFilesToggle = computed(
 	() =>
-		posthog.isFeatureEnabled(AGENT_SANDBOX_FILES_FLAG) === true &&
-		sessionFilesChannel.value !== undefined &&
-		Boolean(props.continueSessionId),
+		posthog.isFeatureEnabled(AGENT_SANDBOX_FILES_FLAG) === true && Boolean(props.continueSessionId),
 );
 const sessionFilesOpen = ref(false);
 const sessionFiles = ref<AgentSessionFile[]>([]);
@@ -1749,8 +1744,8 @@ function sessionFileHref(fileId: string) {
 
 async function loadSessionFiles() {
 	const threadId = props.continueSessionId;
-	const channel = sessionFilesChannel.value;
-	if (!threadId || !channel) return;
+	const { channel } = props;
+	if (!threadId) return;
 	sessionFilesLoading.value = true;
 	sessionFilesError.value = false;
 	try {
@@ -2115,6 +2110,8 @@ onBeforeUnmount(() => {
 									@click.stop="chatInput?.openFilePicker()"
 								/>
 							</N8nTooltip>
+							<!-- Before the files toggle: a host menu such as the Assistant "+" menu replaces the attach button. -->
+							<slot name="footer-start" :disabled="isComposerBlocked" />
 							<N8nTooltip
 								v-if="showSessionFilesToggle"
 								:content="locale.baseText('agents.chat.sessionFiles.title')"
@@ -2130,7 +2127,6 @@ onBeforeUnmount(() => {
 									@click.stop="toggleSessionFiles"
 								/>
 							</N8nTooltip>
-							<slot name="footer-start" :disabled="isComposerBlocked" />
 						</template>
 						<template v-if="$slots['composer-actions']" #right-actions>
 							<slot name="composer-actions" />

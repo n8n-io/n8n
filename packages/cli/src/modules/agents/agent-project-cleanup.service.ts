@@ -76,6 +76,7 @@ export class AgentProjectCleanupService {
 					await agentExecutionService.deleteMemoryThreadsForAgent(agent.id);
 					await agentChatAttachmentService.deleteByAgent(agent.id);
 				},
+				{ source: 'project-deletion' },
 			);
 		}
 		await agentExecutionService.deleteExecutionLogsForProject(projectId);

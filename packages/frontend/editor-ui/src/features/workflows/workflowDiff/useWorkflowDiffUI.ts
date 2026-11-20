@@ -1,10 +1,11 @@
 import type { IWorkflowDb, INodeUi } from '@/Interface';
 import type { IWorkflowSettings } from 'n8n-workflow';
-import { NodeDiffStatus } from 'n8n-workflow';
+import { NodeDiffStatus, omitVersionedSettings } from 'n8n-workflow';
 import { computed, ref, type Ref, type ComputedRef } from 'vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useI18n } from '@n8n/i18n';
 import { STICKY_NODE_TYPE } from '@/app/constants';
+import { useVersionedSettingsDiff } from './useVersionedSettingsDiff';
 
 export type SettingsChange = {
 	name: string;
@@ -35,11 +36,13 @@ export function useWorkflowDiffUI(options: UseWorkflowDiffUIOptions) {
 
 	const nodeTypesStore = useNodeTypesStore();
 	const i18n = useI18n();
+	const versionedSettingsDiff = useVersionedSettingsDiff();
 
 	// Settings diff calculation
 	const settingsDiff = computed<SettingsChange[]>(() => {
-		const sourceSettings: IWorkflowSettings = sourceWorkflow.value?.settings ?? {};
-		const targetSettings: IWorkflowSettings = targetWorkflow.value?.settings ?? {};
+		// The version-scoped settings have their own comparison below.
+		const sourceSettings = omitVersionedSettings(sourceWorkflow.value?.settings);
+		const targetSettings = omitVersionedSettings(targetWorkflow.value?.settings);
 
 		const allKeys = new Set<keyof IWorkflowSettings>(
 			[...Object.keys(sourceSettings), ...Object.keys(targetSettings)].filter(
@@ -60,6 +63,13 @@ export function useWorkflowDiffUI(options: UseWorkflowDiffUIOptions) {
 			}
 			return acc;
 		}, []);
+
+		// A missing workflow has no engine, so the default must not show as its engine.
+		if (sourceWorkflow.value && targetWorkflow.value) {
+			settings.push(
+				...versionedSettingsDiff(sourceWorkflow.value.settings, targetWorkflow.value.settings),
+			);
+		}
 
 		const sourceName = sourceWorkflow.value?.name;
 		const targetName = targetWorkflow.value?.name;
