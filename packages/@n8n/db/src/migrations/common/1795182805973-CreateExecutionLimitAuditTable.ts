@@ -2,7 +2,7 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
 const TABLE = 'execution_limit_audit';
 
-export class CreateExecutionLimitAuditTable1795103803888 implements ReversibleMigration {
+export class CreateExecutionLimitAuditTable1795182805973 implements ReversibleMigration {
 	async up({ schemaBuilder: { createTable, column }, escape, tablePrefix }: MigrationContext) {
 		const projectId = escape.columnName('projectId');
 		const field = escape.columnName('field');

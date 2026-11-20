@@ -10,7 +10,7 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
-const MIGRATION_NAME = 'CreateExecutionLimitAuditTable1795103803888';
+const MIGRATION_NAME = 'CreateExecutionLimitAuditTable1795182805973';
 const TABLE = 'execution_limit_audit';
 
 type AuditRow = {
