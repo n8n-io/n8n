@@ -95,7 +95,8 @@ vague skill.
   description does not mention the field. Call \`agent-context({ type: "skill", skillId: "<id>" })\` for
   every attached id. Its default response includes reference paths and sizes
   but omits reference content; pass every listed path in \`referencePaths\` so
-  you can search all attached skill content.
+  you can search all attached skill content. When the result has
+  \`omittedReferencePaths\`, read the skill again with those paths.
 - Call \`agent-context({ type: "skill", skillId: "<id>" })\` only for the relevant attached skill for
   other skill work. Follow its reference paths and sizes; request reference
   content when the change needs it.

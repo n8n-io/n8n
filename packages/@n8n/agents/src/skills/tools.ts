@@ -27,6 +27,9 @@ const LINKED_FILE_GROUPS: Array<keyof RuntimeSkillLinkedFiles> = [
 	'other',
 ];
 
+/** The header of a loaded skill is outside the output cap, so it names only the first files. */
+const LISTED_LINKED_FILES_MAX = 50;
+
 export const RUNTIME_SKILL_TOOL_NAMES = new Set([SKILL_LOAD_TOOL_NAME]);
 
 const linkedFileSchema: z.ZodType<RuntimeSkillLinkedFile> = z.object({
@@ -280,7 +283,11 @@ export function formatLoadedSkill(
 			: []),
 		...(linkedFilePaths.length > 0
 			? [
-					`[Linked files — load via load_skill with filePath: ${linkedFilePaths.map(envelopeValue).join(', ')}]`,
+					`[Linked files — load via load_skill with filePath: ${linkedFilePaths.slice(0, LISTED_LINKED_FILES_MAX).map(envelopeValue).join(', ')}${
+						linkedFilePaths.length > LISTED_LINKED_FILES_MAX
+							? `, and ${linkedFilePaths.length - LISTED_LINKED_FILES_MAX} more files. To load one of them, pass the relative path that the instructions give.`
+							: ''
+					}]`,
 				]
 			: []),
 	];
