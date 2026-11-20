@@ -2,7 +2,9 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
+	GATE_MS,
 	SOURCES,
+	applyGate,
 	compareScans,
 	evaluateSource,
 	readPin,
@@ -136,6 +138,64 @@ describe('evaluateSource', () => {
 	});
 });
 
+describe('applyGate', () => {
+	const now = Date.parse('2026-11-19T12:00:00Z');
+	const candidate = (addedPackages = []) => ({
+		source: 'DHI_REF',
+		status: 'candidate',
+		platforms: [{ platform: 'linux/amd64', removed: [], added: [], addedPackages }],
+	});
+	const publisher = (publishedAt, verified = true) => ({ publisher: 'dhi', verified, publishedAt });
+	const hoursAgo = (hours) => new Date(now - hours * 60 * 60 * 1000).toISOString();
+
+	it('keeps a digest with a failed publisher check out', () => {
+		const result = applyGate(candidate(), publisher(hoursAgo(48), false), { now, skipGate: true });
+		assert.equal(result.status, 'unverified');
+	});
+
+	it('keeps a digest younger than 24 hours in the gate', () => {
+		const result = applyGate(candidate(), publisher(hoursAgo(23)), { now, skipGate: false });
+		assert.equal(result.status, 'in-24h-gate');
+	});
+
+	it('releases a digest at exactly 24 hours', () => {
+		const publishedAt = new Date(now - GATE_MS).toISOString();
+		const result = applyGate(candidate(), publisher(publishedAt), { now, skipGate: false });
+		assert.equal(result.status, 'ready');
+		assert.equal(result.autoMerge, true);
+	});
+
+	it('keeps a digest without a publication time out', () => {
+		const result = applyGate(candidate(), publisher(null), { now, skipGate: false });
+		assert.equal(result.status, 'no-publish-time');
+	});
+
+	it('skips the gate on a manual run, without auto-merge', () => {
+		const young = applyGate(candidate(), publisher(hoursAgo(1)), { now, skipGate: true });
+		const unknown = applyGate(candidate(), publisher(null), { now, skipGate: true });
+		for (const result of [young, unknown]) {
+			assert.equal(result.status, 'ready');
+			assert.equal(result.autoMerge, false);
+			assert.equal(result.gateSkipped, true);
+		}
+	});
+
+	it('keeps auto-merge on a manual run for a digest older than 24 hours', () => {
+		const result = applyGate(candidate(), publisher(hoursAgo(48)), { now, skipGate: true });
+		assert.equal(result.autoMerge, true);
+		assert.equal(result.gateSkipped, false);
+	});
+
+	it('turns auto-merge off for a digest that adds a package', () => {
+		const result = applyGate(candidate(['curl']), publisher(hoursAgo(48)), {
+			now,
+			skipGate: false,
+		});
+		assert.equal(result.status, 'ready');
+		assert.equal(result.autoMerge, false);
+	});
+});
+
 describe('renderSummary', () => {
 	it('renders one row for each platform', () => {
 		const result = evaluateSource(pin, digest('c'), [
@@ -150,15 +210,29 @@ describe('renderSummary', () => {
 				newest: summarizeReport(report([])),
 			},
 		]);
-		const summary = renderSummary([result, evaluateSource(pin, digest('a'), [])]);
+		const ready = applyGate(
+			result,
+			{ publisher: 'dhi', verified: true, publishedAt: '2026-11-17T00:00:00.000Z' },
+			{ now: Date.parse('2026-11-19T00:00:00Z'), skipGate: false },
+		);
+		const summary = renderSummary([ready, evaluateSource(pin, digest('a'), [])]);
 		assert.match(
 			summary,
-			/\| `DHI_REF` \| candidate \| linux\/amd64 \| 1 C \/ 0 H \/ 0 M \| 0 C \/ 0 H \/ 0 M \| curl \|/,
+			/\| `DHI_REF` \| ready \| 2026-11-17T00:00:00.000Z \| no \| linux\/amd64 \| 1 C \/ 0 H \/ 0 M \| 0 C \/ 0 H \/ 0 M \| curl \|/,
 		);
 		assert.match(
 			summary,
-			/\| `DHI_REF` \| candidate \| linux\/arm64 \| 0 C \/ 1 H \/ 0 M \| 0 C \/ 0 H \/ 0 M \| - \|/,
+			/\| `DHI_REF` \| ready \| 2026-11-17T00:00:00.000Z \| no \| linux\/arm64 \| 0 C \/ 1 H \/ 0 M \| 0 C \/ 0 H \/ 0 M \| - \|/,
 		);
-		assert.match(summary, /\| `DHI_REF` \| current \| - \| - \| - \| - \|/);
+		assert.match(summary, /\| `DHI_REF` \| current \| - \| - \| - \| - \| - \| - \|/);
+	});
+
+	it('lists the publisher errors', () => {
+		const unverified = applyGate(
+			evaluateSource(pin, digest('c'), []),
+			{ publisher: 'dhi', verified: false, publishedAt: null, error: 'no signatures found' },
+			{ now: 0, skipGate: false },
+		);
+		assert.match(renderSummary([unverified]), /- `DHI_REF`: no signatures found/);
 	});
 });
