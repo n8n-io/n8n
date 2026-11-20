@@ -116,6 +116,7 @@ export class SimulationSessionService {
 		} else {
 			try {
 				world = await backend.openWorld({
+					...(backend.id === 'shared-simulation-layer' ? { ownerId: input.user.id } : {}),
 					testChatId: input.testChatId,
 					// Tools n8n blocks (SSE MCP servers, custom code) stay out of the world too.
 					agent: {
@@ -332,7 +333,7 @@ interface DescribedAgent {
 
 /** A session belongs to one chat of one agent and user, so a reused chat ID never shares a world. */
 function sessionKey({ user, projectId, agentId, testChatId }: OpenSimulationInput): string {
-	return `${user.id}:${projectId}:${agentId}:${testChatId}`;
+	return JSON.stringify([user.id, projectId, agentId, testChatId]);
 }
 
 function urlOrigin(url: string): string | undefined {

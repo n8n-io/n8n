@@ -18,6 +18,7 @@ export interface SimulationBackend {
 export type SimulationBackendId = 'llm-mock' | 'shared-simulation-layer';
 
 export interface OpenWorldInput {
+	ownerId?: string;
 	testChatId: string;
 	agent: SimulatedAgent;
 	/** Can seed the world. */
