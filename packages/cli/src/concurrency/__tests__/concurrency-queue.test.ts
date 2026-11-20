@@ -51,18 +51,14 @@ describe('ConcurrencyQueue', () => {
 
 		// Removing the queued fourth execution frees no running slot, so the fifth stays queued
 		queue.remove('4');
-		// Just before the third execution finishes, the fifth is still queued
-		await vi.advanceTimersByTimeAsync(498);
+
+		// At T+1.499 seconds the third execution is still running, so the fifth is still queued
+		await vi.advanceTimersByTimeAsync(499);
 		expect(sleepSpy).toHaveBeenCalledTimes(3);
 		expect(state).toEqual({ 1: 'finished', 2: 'finished', 3: 'started' });
 
-		// At T+1.5 seconds the third promise has resolved, and the fifth one has started
+		// At T+1.5 seconds the third execution has finished, and the fifth one has started
 		await vi.advanceTimersByTimeAsync(1);
-		expect(sleepSpy).toHaveBeenCalledTimes(4);
-		expect(state).toEqual({ 1: 'finished', 2: 'finished', 3: 'started' });
-
-		// At T+1.5 seconds the third promise has resolved, and the fifth one has started
-		await vi.advanceTimersByTimeAsync(499);
 		expect(sleepSpy).toHaveBeenCalledTimes(4);
 		expect(state).toEqual({ 1: 'finished', 2: 'finished', 3: 'finished', 5: 'started' });
 
