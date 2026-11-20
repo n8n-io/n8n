@@ -69,7 +69,7 @@ export class QuestDb implements ICredentialType {
 				},
 			},
 			description:
-				'PEM-encoded CA certificate used to verify the server. Leave empty to use the system CAs.',
+				'PEM-encoded CA certificate used to verify the server. This replaces the system certificate authorities rather than adding to them, so include every authority in the server chain. Leave empty to use the system CAs.',
 		},
 		{
 			displayName: 'Ignore SSL Issues (Insecure)',
@@ -82,7 +82,7 @@ export class QuestDb implements ICredentialType {
 				},
 			},
 			description:
-				'Whether to keep the connection encrypted but skip certificate verification, for example against a self-signed or hostname-mismatched certificate',
+				'Whether to keep the connection encrypted but skip certificate verification, for example against a self-signed or hostname-mismatched certificate. Cannot be combined with a CA Certificate, which it would make unreachable.',
 		},
 		{
 			displayName: 'Port',

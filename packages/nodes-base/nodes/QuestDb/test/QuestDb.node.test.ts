@@ -54,11 +54,28 @@ describe('QuestDb connection config', () => {
 		});
 	});
 
-	it('carries a CA and skipped verification together', () => {
-		expect(
-			configFor({ ssl: 'require', caCertificate: CA, allowUnauthorizedCerts: true }).ssl,
-		).toEqual({ ca: CA, rejectUnauthorized: false });
+	it('refuses a CA together with skipped verification, which would ignore it', () => {
+		expect(() =>
+			configFor({ ssl: 'require', caCertificate: CA, allowUnauthorizedCerts: true }),
+		).toThrow('Set a CA Certificate or Ignore SSL Issues, not both');
 	});
+
+	it.each([
+		['blank', ''],
+		['only whitespace', '   '],
+	])('treats a %s CA as unset', (_case, caCertificate) => {
+		expect(configFor({ ssl: 'require', caCertificate }).ssl).toBe(true);
+	});
+
+	it.each([
+		['a fingerprint', 'AA:BB:CC:DD'],
+		['a truncated paste', '-----BEGIN CERTIFICATE-----\nMIIBkTCB'],
+	])(
+		'refuses a CA that is %s, instead of failing later in the handshake',
+		(_case, caCertificate) => {
+			expect(() => configFor({ ssl: 'require', caCertificate })).toThrow('not a valid PEM block');
+		},
+	);
 
 	// pg only reads sslmode when it builds a libpq connection string, never from a
 	// config object, so sending it told the server nothing.

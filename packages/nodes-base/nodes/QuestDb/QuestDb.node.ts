@@ -1,4 +1,3 @@
-import { formatPemBlock } from '@n8n/utils/format-pem-block';
 import type {
 	ICredentialDataDecryptedObject,
 	IExecuteFunctions,
@@ -8,6 +7,10 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import pgPromise from 'pg-promise';
+
+import { UserError } from '@n8n/errors';
+
+import { formatAndValidatePem } from '../../utils/pem';
 
 import { getDateAsStringTypeParsers } from '@utils/postgres';
 
@@ -27,19 +30,23 @@ type QuestDbConfig = {
 function buildSsl(credentials: ICredentialDataDecryptedObject): QuestDbSsl {
 	if (['disable', undefined].includes(credentials.ssl as string | undefined)) return false;
 
-	const ssl: { ca?: string; rejectUnauthorized?: false } = {};
+	// Skipping verification makes a CA unreachable, so refuse the pair rather than
+	// letting the user believe the CA they supplied is being checked.
+	const skipVerification = credentials.allowUnauthorizedCerts === true;
+	const ca = (credentials.caCertificate as string | undefined)?.trim();
 
-	if (credentials.caCertificate) {
-		ssl.ca = formatPemBlock(credentials.caCertificate as string);
+	if (ca && skipVerification) {
+		throw new UserError('Set a CA Certificate or Ignore SSL Issues, not both', {
+			level: 'warning',
+			description:
+				'Ignoring SSL issues skips certificate verification entirely, so the CA Certificate would never be used.',
+		});
 	}
 
-	if (credentials.allowUnauthorizedCerts === true) {
-		ssl.rejectUnauthorized = false;
-	}
+	if (skipVerification) return { rejectUnauthorized: false };
+	if (ca) return { ca: formatAndValidatePem(ca, 'QuestDB', 'CA certificate') };
 
-	// `true` is what a credential carrying neither field produced before these
-	// fields existed, and pg reads it the same way as an empty options object.
-	return Object.keys(ssl).length > 0 ? ssl : true;
+	return true;
 }
 
 export function getQuestDbConfig(credentials: ICredentialDataDecryptedObject): QuestDbConfig {
