@@ -1,6 +1,6 @@
 import { Container } from '@n8n/di';
 import type { EvalLlmMockHandler } from 'n8n-core';
-import type { IDataObject, IHttpRequestOptions } from 'n8n-workflow';
+import type { IHttpRequestOptions } from 'n8n-workflow';
 
 import type { HydrationModel } from './hydration-llm';
 import type { CapturedRequest } from './network';
@@ -29,7 +29,7 @@ function toUrl(options: IHttpRequestOptions): URL {
 
 function toHeaders(options: IHttpRequestOptions): Record<string, string> {
 	const headers: Record<string, string> = {};
-	for (const [name, value] of Object.entries((options.headers ?? {}) as IDataObject)) {
+	for (const [name, value] of Object.entries(options.headers ?? {})) {
 		if (value !== undefined && value !== null) headers[name.toLowerCase()] = String(value);
 	}
 	const auth = options.auth;

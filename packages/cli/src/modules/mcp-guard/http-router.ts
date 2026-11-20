@@ -79,6 +79,10 @@ export class HttpGuardRouter {
 		if (!gymOnly) {
 			try {
 				const real = await upstream.callTool(name, args);
+				if (real.isError)
+					this.warn(args, `real read failed with status ${String(real._meta?.status)}`);
+				// An expired token: the node refreshes its credential and sends the request again.
+				if (real._meta?.status === 401) return toResponse(real);
 				// A failed real read (an id that only the gym knows, a bad token) leaves the gym to answer.
 				if (!real.isError && profile.hydrateRead?.(args, safeJson(textOf(real))) !== false) {
 					await hydrator.hydrate(name, args, real).catch(() => {
@@ -91,6 +95,12 @@ export class HttpGuardRouter {
 		}
 		const res = await this.callGym(name, args);
 		return res instanceof Response ? res : toResponse(res);
+	}
+
+	// Method, host and path only. Never the query, the headers or the body.
+	private warn(args: HttpToolArgs, text: string): void {
+		const host = new URL(this.deps.context.origin).host;
+		Container.get(Logger).warn(`mcp-guard http ${args.method} ${host}${args.path}: ${text}`);
 	}
 
 	// Method, host and path only. Never the query, the headers or the body.
