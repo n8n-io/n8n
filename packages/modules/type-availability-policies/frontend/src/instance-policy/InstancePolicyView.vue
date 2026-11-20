@@ -70,11 +70,17 @@ function closeDetails() {
 	void router.replace({ query: queryWithoutDetails() });
 }
 
-// The server lists every type of a kind, so the dialog of a name that it does not list closes.
+// The server lists every type of a kind, so the dialog of a name that it does not list closes. The
+// access from an earlier visit can miss types installed since, so only a read of this visit decides.
+const accessBeforeVisit = { ...instancePolicy.typeAccess };
 const detailsTypeUnknown = computed(() => {
 	if (!details.value) return false;
 	const access = instancePolicy.typeAccess[details.value.kind];
-	return !!access && !access.types.has(details.value.name);
+	return (
+		!!access &&
+		access !== accessBeforeVisit[details.value.kind] &&
+		!access.types.has(details.value.name)
+	);
 });
 
 watch(
