@@ -54,6 +54,10 @@ export class ExportPackageRequestDto extends Z.class(
 			.boolean()
 			.default(false)
 			.openapi(exportPackageRequestFieldDocs.includeArchived),
+		includeUserReferences: z
+			.boolean()
+			.default(false)
+			.openapi(exportPackageRequestFieldDocs.includeUserReferences),
 	},
 	{ strict: true },
 ) {}

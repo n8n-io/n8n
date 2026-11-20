@@ -5,6 +5,7 @@ import { UnexpectedError } from '@n8n/errors';
 import { AgentDefinitionService } from '@/modules/agents/agent-definition.service';
 import { type Agent, isProjectAgent } from '@/modules/agents/entities/agent.entity';
 import type { AgentDefinition } from '@/modules/agents/utils/agent-definition';
+import { ResourceOwnerService } from '@/services/resource-owner.service';
 
 import type { PreparedAgentExport } from './agent-export.types';
 import { AgentSerializer } from './agent.serializer';
@@ -24,11 +25,13 @@ export class AgentExporter {
 	constructor(
 		private readonly definitionService: AgentDefinitionService,
 		private readonly serializer: AgentSerializer,
+		private readonly resourceOwnerService: ResourceOwnerService,
 	) {}
 
 	async prepare(
 		agent: Agent,
 		policy: ExportVersionPolicy = ExportVersionPolicy.Latest,
+		includeUserReferences?: boolean,
 	): Promise<PreparedAgentExport | undefined> {
 		// The export queries return only project agents. An instance agent has no project to export from.
 		if (!isProjectAgent(agent)) {
@@ -69,13 +72,16 @@ export class AgentExporter {
 		}
 
 		const content = this.serializer.serialize(agent, definition, integrations);
+		const ownerEmails = includeUserReferences
+			? await this.resourceOwnerService.findOwnerEmails([agent])
+			: undefined;
 		return {
 			projectId: agent.projectId,
 			content,
-			metadata: this.serializer.serializeMetadata({
-				versionId,
-				activeVersionId: agent.activeVersionId,
-			}),
+			metadata: this.serializer.serializeMetadata(
+				{ versionId, activeVersionId: agent.activeVersionId },
+				ownerEmails?.get(agent.id),
+			),
 		};
 	}
 

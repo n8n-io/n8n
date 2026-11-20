@@ -6,13 +6,14 @@ import {
 	createActiveWorkflow,
 	createTeamProject,
 	createWorkflow,
+	linkUserToProject,
 	mockInstance,
 	randomCredentialPayload,
 	testDb,
 	testModules,
 } from '@n8n/backend-test-utils';
 import { WorkflowsConfig } from '@n8n/config';
-import type { Folder, OperationContext, Project } from '@n8n/db';
+import type { Folder, OperationContext, Person, Project } from '@n8n/db';
 import type { SecurityContext } from '@n8n/permissions';
 import {
 	ProjectRepository,
@@ -384,6 +385,65 @@ describe('Package import routing matrix', () => {
 			relations: ['parentFolder'],
 		});
 		expect(workflow.parentFolder?.id).toBe(folder.id);
+	});
+});
+
+describe('Package import owner', () => {
+	let importer: Person;
+	let member: Person;
+	let project: Project;
+
+	beforeEach(async () => {
+		importer = await createOwner();
+		member = await createMember();
+		project = await createTeamProject('Team Project', importer);
+		await linkUserToProject(member, project, 'project:editor');
+	});
+
+	const importWithOwnerEmail = async (ownerEmail?: string) =>
+		await importPackage({
+			user: importer,
+			projectId: project.id,
+			packageBuffer: await buildImportPackageBuffer([
+				serializedWorkflow({ id: 'OWNED', ...(ownerEmail !== undefined ? { ownerEmail } : {}) }),
+			]),
+			conflictPolicy: ImportConflictPolicy.NewVersion,
+			idPolicy: WorkflowIdPolicy.Source,
+		});
+
+	const storedOwner = async () =>
+		(await Container.get(WorkflowRepository).findOneByOrFail({ id: 'OWNED' })).ownerUserId;
+
+	it('gives a new workflow to the project member with the exported email', async () => {
+		const result = await importWithOwnerEmail(member.email);
+
+		expect(await storedOwner()).toBe(member.id);
+		expect(result.workflows[0]).not.toHaveProperty('ownerUnmatched');
+	});
+
+	it('gives a new workflow to the importing user and reports an owner email without a match', async () => {
+		const result = await importWithOwnerEmail('unknown@example.com');
+
+		expect(await storedOwner()).toBe(importer.id);
+		expect(result.workflows[0].ownerUnmatched).toBe(true);
+	});
+
+	it('keeps a valid owner on update, and fills a missing owner with one audit event', async () => {
+		await importWithOwnerEmail();
+		const emit = vi.spyOn(Container.get(EventService), 'emit');
+
+		await importWithOwnerEmail(member.email);
+		expect(await storedOwner()).toBe(importer.id);
+
+		await Container.get(WorkflowRepository).update('OWNED', { ownerUserId: null });
+		await importWithOwnerEmail(member.email);
+		expect(await storedOwner()).toBe(member.id);
+		expect(emit.mock.calls.filter(([event]) => event === 'workflow-owner-changed')).toEqual([
+			[
+				'workflow-owner-changed',
+				expect.objectContaining({ newOwnerUserId: member.id, reason: 'import' }),
+			],
+		]);
 	});
 });
 

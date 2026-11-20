@@ -1,6 +1,7 @@
 import type { User, WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 
+import { ResourceOwnerService } from '@/services/resource-owner.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { WorkflowSerializer } from './workflow.serializer';
@@ -27,6 +28,7 @@ export interface WorkflowExportRequest {
 	writer: PackageWriter;
 	includeTags: boolean;
 	versionPolicy: ExportVersionPolicy;
+	includeUserReferences?: boolean;
 
 	/**
 	 * Target of the folder or project holding the workflows, which are written
@@ -49,6 +51,7 @@ export class WorkflowExporter {
 		private readonly dataTableRequirementsExtractor: DataTableRequirementsExtractor,
 		private readonly variableRequirementsExtractor: VariableRequirementsExtractor,
 		private readonly tagRequirementsExtractor: TagRequirementsExtractor,
+		private readonly resourceOwnerService: ResourceOwnerService,
 	) {}
 
 	async export(request: WorkflowExportRequest): Promise<WorkflowExportResult> {
@@ -82,6 +85,9 @@ export class WorkflowExporter {
 		const tags: WorkflowTagUsage[] = [];
 		const nodeTypes: NodeTypeSource[] = [];
 		const workflowsDir = packageDirectory('workflows', request.basePrefix);
+		const ownerEmails = request.includeUserReferences
+			? await this.resourceOwnerService.findOwnerEmails(workflowsForExport)
+			: undefined;
 
 		for (const workflow of workflowsForExport) {
 			entries.push(
@@ -90,7 +96,7 @@ export class WorkflowExporter {
 					workflowsDir,
 					workflow,
 					this.workflowSerializer.serialize(workflow, { includeTags: request.includeTags }),
-					this.workflowSerializer.serializeMetadata(workflow),
+					this.workflowSerializer.serializeMetadata(workflow, ownerEmails?.get(workflow.id)),
 				),
 			);
 

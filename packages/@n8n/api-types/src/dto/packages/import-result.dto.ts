@@ -80,6 +80,14 @@ const importedWorkflowSummarySchema = z.object({
 	status: z.enum(['created', 'updated', 'skipped']).openapi({
 		description: 'Import outcome for this package workflow.',
 	}),
+	ownerUnmatched: z
+		.literal(true)
+		.optional()
+		.openapi({
+			description:
+				'Present when the package names an owner by email and no person with that email can own ' +
+				'the workflow in the target project. The import then used the default owner.',
+		}),
 });
 
 const importedAgentChannelSchema = z.discriminatedUnion('status', [
@@ -130,6 +138,14 @@ const importedAgentSummarySchema = z.object({
 			'Channel outcome for each external channel in the imported definition. A credential from the ' +
 			'package never connects a channel. Empty for skipped Agents.',
 	}),
+	ownerUnmatched: z
+		.literal(true)
+		.optional()
+		.openapi({
+			description:
+				'Present when the package names an owner by email and no person with that email can own ' +
+				'the Agent in the target project. The import then used the default owner.',
+		}),
 });
 
 const removedWorkflowSummarySchema = z.object({

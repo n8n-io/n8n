@@ -35,6 +35,8 @@ export type PersistedAgentOutcome =
 			publishingAction: PublishingAction;
 			blockedFromPublish?: PublishingBlockedReason;
 			channels: ImportedAgentChannel[];
+			/** Set when no valid owner in the target project has the email of the source owner. */
+			ownerUnmatched?: boolean;
 	  };
 
 export interface AgentImportOutcome {
@@ -43,6 +45,7 @@ export interface AgentImportOutcome {
 	sourceAgentId: string;
 	publishing: PublishingOutcome;
 	channels: ImportedAgentChannel[];
+	ownerUnmatched?: boolean;
 }
 
 export type AgentImportIssue = Extract<ImportBlockingIssue, { type: `agent-${string}` }>;

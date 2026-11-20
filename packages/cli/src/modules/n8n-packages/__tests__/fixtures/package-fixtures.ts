@@ -34,9 +34,16 @@ function workflowFiles(workflow: PackageWorkflow): {
 	content: SerializedWorkflow;
 	metadata: SerializedWorkflowMetadata;
 } {
-	const { versionId, publishedVersionId, ...content } = workflow;
+	const { versionId, publishedVersionId, ownerEmail, ...content } = workflow;
 
-	return { content, metadata: { versionId, publishedVersionId: publishedVersionId ?? null } };
+	return {
+		content,
+		metadata: {
+			versionId,
+			publishedVersionId: publishedVersionId ?? null,
+			...(ownerEmail !== undefined ? { ownerEmail } : {}),
+		},
+	};
 }
 
 /** Credential type used in package import integration tests (matches `randomCredentialPayload` default). */

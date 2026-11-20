@@ -7,6 +7,7 @@ import type { AgentDefinitionService } from '@/modules/agents/agent-definition.s
 import type { AgentHistory } from '@/modules/agents/entities/agent-history.entity';
 import { Agent } from '@/modules/agents/entities/agent.entity';
 import type { AgentDefinition } from '@/modules/agents/utils/agent-definition';
+import type { ResourceOwnerService } from '@/services/resource-owner.service';
 
 import { looseAgentsFixture } from '../../../__tests__/fixtures/agent-package-fixtures';
 import { CapturingWriter } from '../../../io/__tests__/utils/capturing-writer';
@@ -72,7 +73,13 @@ function setup() {
 		draft,
 		published,
 		definitions,
-		exporter: new AgentExporter(definitions, new AgentSerializer()),
+		exporter: new AgentExporter(
+			definitions,
+			new AgentSerializer(),
+			mock<ResourceOwnerService>({
+				findOwnerEmails: async () => new Map([['support_source', 'owner@example.com']]),
+			}),
+		),
 	};
 }
 
