@@ -13,7 +13,7 @@ import {
 	pipedriveGetCustomProperties,
 } from '../../transport';
 import { resolveCustomFieldsV2 } from '../../helpers';
-import { rawCustomFieldOutputOption } from '../common.description';
+import { organizationIncludeFieldsOption, rawCustomFieldOutputOption } from '../common.description';
 
 const properties: INodeProperties[] = [
 	{
@@ -39,6 +39,7 @@ const properties: INodeProperties[] = [
 		default: 100,
 		description: 'Max number of results to return',
 	},
+	organizationIncludeFieldsOption,
 	rawCustomFieldOutputOption,
 	{
 		displayName: 'Filters',
@@ -102,6 +103,11 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 
 			if (filters.filter_id) {
 				qs.filter_id = filters.filter_id;
+			}
+
+			const includeFields = this.getNodeParameter('includeFields', i, []) as string[];
+			if (includeFields.length) {
+				qs.include_fields = includeFields.join(',');
 			}
 
 			if (filters.first_char) {

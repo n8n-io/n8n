@@ -9,7 +9,7 @@ import { requestPath } from 'n8n-workflow';
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 import { pipedriveApiRequest, pipedriveGetCustomProperties } from '../../transport';
 import { resolveCustomFieldsV2 } from '../../helpers';
-import { rawCustomFieldOutputOption } from '../common.description';
+import { personIncludeFieldsOption, rawCustomFieldOutputOption } from '../common.description';
 
 const properties: INodeProperties[] = [
 	{
@@ -20,6 +20,7 @@ const properties: INodeProperties[] = [
 		required: true,
 		description: 'ID of the person to get',
 	},
+	personIncludeFieldsOption,
 	rawCustomFieldOutputOption,
 ];
 
@@ -46,11 +47,18 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 		try {
 			const personId = this.getNodeParameter('personId', i) as number;
 
+			const includeFields = this.getNodeParameter('includeFields', i, []) as string[];
+			const qs: IDataObject = {};
+			if (includeFields.length) {
+				qs.include_fields = includeFields.join(',');
+			}
+
 			const responseData = await pipedriveApiRequest.call(
 				this,
 				'GET',
 				requestPath`/persons/${personId}`,
 				{},
+				qs,
 			);
 
 			const executionData = this.helpers.constructExecutionMetaData(
