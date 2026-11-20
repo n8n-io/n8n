@@ -28,6 +28,7 @@ export interface WorkflowExportRequest {
 	writer: PackageWriter;
 	includeTags: boolean;
 	versionPolicy: ExportVersionPolicy;
+	includeUserReferences?: boolean;
 
 	/**
 	 * Target of the folder or project holding the workflows, which are written
@@ -84,7 +85,9 @@ export class WorkflowExporter {
 		const tags: WorkflowTagUsage[] = [];
 		const nodeTypes: NodeTypeSource[] = [];
 		const workflowsDir = packageDirectory('workflows', request.basePrefix);
-		const ownerEmails = await this.resourceOwnerService.findOwnerEmails(workflowsForExport);
+		const ownerEmails = request.includeUserReferences
+			? await this.resourceOwnerService.findOwnerEmails(workflowsForExport)
+			: undefined;
 
 		for (const workflow of workflowsForExport) {
 			entries.push(
@@ -93,7 +96,7 @@ export class WorkflowExporter {
 					workflowsDir,
 					workflow,
 					this.workflowSerializer.serialize(workflow, { includeTags: request.includeTags }),
-					this.workflowSerializer.serializeMetadata(workflow, ownerEmails.get(workflow.id) ?? null),
+					this.workflowSerializer.serializeMetadata(workflow, ownerEmails?.get(workflow.id)),
 				),
 			);
 

@@ -445,3 +445,17 @@ it.each([undefined, true, false])(
 		);
 	},
 );
+
+it('writes the Agent owner email when the request includes user references', async () => {
+	const member = await createMember();
+	await repository.save({ id: parent.id, ownerUserId: member.id });
+	const writer = new CapturingWriter();
+
+	await Container.get(N8nPackagesService).exportPackageToWriter(
+		{ user: owner, agentIds: [parent.id], includeUserReferences: true },
+		writer,
+	);
+
+	const metadata = writer.files.find(({ path }) => path.endsWith('/agent-metadata.json'));
+	expect(JSON.parse(metadata!.content)).toMatchObject({ ownerEmail: member.email });
+});

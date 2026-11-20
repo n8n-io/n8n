@@ -299,6 +299,7 @@ export class N8nPackagesService {
 				existingFolderEntries: allFoldersBeforeAutoInclude,
 				existingProjectEntries: allProjectsBeforeAutoInclude,
 				includeTags,
+				includeUserReferences: request.includeUserReferences,
 				projectTargetsById: projectTargetsBeforeAutoInclude,
 			});
 		}
@@ -465,6 +466,7 @@ export class N8nPackagesService {
 						includeTags,
 						versionPolicy,
 						includeArchived,
+						includeUserReferences: request.includeUserReferences,
 					})
 				: undefined;
 
@@ -481,6 +483,7 @@ export class N8nPackagesService {
 						writer,
 						includeTags,
 						versionPolicy,
+						includeUserReferences: request.includeUserReferences,
 					})
 				: undefined;
 
@@ -495,6 +498,7 @@ export class N8nPackagesService {
 						includeTags,
 						versionPolicy,
 						includeArchived,
+						includeUserReferences: request.includeUserReferences,
 					})
 				: undefined;
 
@@ -510,6 +514,7 @@ export class N8nPackagesService {
 						versionPolicy,
 						dependencyPolicy,
 						includeArchived,
+						includeUserReferences: request.includeUserReferences,
 						projectTargetsById: projectExportResult?.projectTargetsById,
 					});
 

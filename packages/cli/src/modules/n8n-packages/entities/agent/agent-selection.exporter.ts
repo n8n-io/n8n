@@ -140,7 +140,7 @@ export class AgentSelectionExporter {
 			for (const id of ids) {
 				const agent = agentsById.get(id);
 				if (!agent) continue;
-				const snapshot = await exporter.prepare(agent, policy);
+				const snapshot = await exporter.prepare(agent, policy, request.includeUserReferences);
 				if (!snapshot) continue;
 				const requirements = this.requirementsExtractor.extract(
 					snapshot,

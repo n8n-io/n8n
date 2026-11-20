@@ -25,6 +25,7 @@ export interface ProjectExportRequest {
 	includeTags: boolean;
 	versionPolicy: ExportVersionPolicy;
 	includeArchived: boolean;
+	includeUserReferences?: boolean;
 	/**
 	 * Export only these workflows from the projects, with the folders on the
 	 * path to them. Omit to export whole projects. An empty array writes the
@@ -158,6 +159,7 @@ export class ProjectExporter {
 			includeTags: request.includeTags,
 			versionPolicy: request.versionPolicy,
 			includeArchived: request.includeArchived,
+			includeUserReferences: request.includeUserReferences,
 			basePrefix: target,
 			selectedWorkflowIds,
 			selectedFolderIds: request.folderIds ? new Set(request.folderIds) : undefined,
@@ -188,6 +190,7 @@ export class ProjectExporter {
 			writer: request.writer,
 			includeTags: request.includeTags,
 			versionPolicy: request.versionPolicy,
+			includeUserReferences: request.includeUserReferences,
 			basePrefix: target,
 		});
 	}

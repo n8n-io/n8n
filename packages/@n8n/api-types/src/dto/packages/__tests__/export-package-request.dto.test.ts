@@ -232,4 +232,10 @@ describe('ExportPackageRequestDto', () => {
 			expect(result.success).toBe(false);
 		});
 	});
+
+	describe('includeUserReferences', () => {
+		it('defaults to false', () => {
+			expect(ExportPackageRequestDto.parse({}).includeUserReferences).toBe(false);
+		});
+	});
 });
