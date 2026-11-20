@@ -120,6 +120,7 @@ async function submit(action: SubmitAction = 'submit') {
 		:open="open"
 		:title="title"
 		:busy="submitting"
+		:show-cancel="!canTalkToAgent"
 		size="large"
 		data-testid="agent-version-metadata-modal"
 		@update:open="!$event && close()"
@@ -148,6 +149,17 @@ async function submit(action: SubmitAction = 'submit') {
 			@submit="submit"
 		/>
 		<N8nText v-if="error" color="danger" role="alert">{{ error }}</N8nText>
+		<!-- Three actions crowd the right side, so Cancel moves to the left. -->
+		<template v-if="canTalkToAgent" #footerLeft>
+			<N8nButton
+				variant="outline"
+				:disabled="submitting"
+				data-testid="agent-version-metadata-cancel"
+				@click="close"
+			>
+				{{ i18n.baseText('generic.cancel') }}
+			</N8nButton>
+		</template>
 		<template #footerActions>
 			<N8nButton
 				:variant="canTalkToAgent ? 'outline' : 'solid'"

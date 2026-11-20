@@ -109,6 +109,32 @@ describe('AgentVersionMetadataModal', () => {
 
 		afterEach(() => vi.restoreAllMocks());
 
+		it('moves Cancel to the left of the footer', async () => {
+			const { wrapper, onClose } = render({ mode: 'publish', n8nChat }, false);
+			await flushPromises();
+
+			const footerActions = document.querySelector('[data-testid="agent-modal-footer-actions"]');
+			const cancel = document.querySelector<HTMLButtonElement>(
+				'[data-testid="agent-version-metadata-cancel"]',
+			);
+			expect(cancel).not.toBeNull();
+			expect(footerActions?.contains(cancel)).toBe(false);
+			expect(document.querySelector('[data-testid="agent-modal-cancel"]')).toBeNull();
+
+			cancel?.click();
+			await flushPromises();
+			expect(onClose).toHaveBeenCalledWith(false);
+			wrapper.unmount();
+		});
+
+		it('keeps Cancel on the right without n8n Chat', async () => {
+			render({ mode: 'publish' }, false);
+			await flushPromises();
+
+			expect(document.querySelector('[data-testid="agent-version-metadata-cancel"]')).toBeNull();
+			expect(document.querySelector('[data-testid="agent-modal-cancel"]')).not.toBeNull();
+		});
+
 		it('demotes Publish to a secondary button', () => {
 			const { wrapper } = render({ mode: 'publish', n8nChat });
 
