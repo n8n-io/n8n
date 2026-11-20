@@ -13,11 +13,21 @@ async function acceptance() {
 		upstream = process.env.LINEAR_UPSTREAM_URL;
 	for (const url of [base, upstream]) assert.equal(new URL(url).hostname, '127.0.0.1');
 	const network = globalThis.fetch,
-		ledger = [];
+		ledger = [],
+		discovery = [];
 	let outage = false;
 	globalThis.fetch = async (url, init) => {
 		const endpoint = new URL(url);
 		assert.ok([base, new URL(upstream).origin].includes(endpoint.origin));
+		// The capability read of the backend is not part of a turn. It has its own record.
+		if (endpoint.pathname === '/_sim/v1/manifest') {
+			assert.equal(endpoint.origin, base);
+			assert.equal(endpoint.search, '?service=linear');
+			assert.equal(init?.method ?? 'GET', 'GET');
+			const response = await network(url, { ...init, redirect: 'error' });
+			discovery.push(response.status);
+			return response;
+		}
 		const body = init?.body ? JSON.parse(init.body) : {};
 		const op = {
 			target: endpoint.origin === base ? 'gym' : 'upstream',
@@ -322,6 +332,10 @@ async function acceptance() {
 	assert.notEqual(replaced.world, first.world);
 	assert.match(replaced.body, /Renew Initech/);
 	assert.equal(ledger.filter((op) => op.target === 'upstream').length, 7);
+	// One good answer of the Gym served every turn within the cache time.
+	assert.ok(discovery.length >= 1);
+	assert.ok(discovery.every((status) => status === 200));
+	console.log(`capability reads of the Gym manifest: ${discovery.length}`);
 	console.log('PASS draft turns, cache, owner, isolation, selector and fail-closed decisions');
 }
 acceptance().catch((error) => {
