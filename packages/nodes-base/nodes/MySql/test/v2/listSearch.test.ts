@@ -158,6 +158,7 @@ describe('MySQL v2 / listSearch / searchDatabases', () => {
 		(createPool as Mock).mockResolvedValue(pool);
 
 		await expect(searchDatabases.call(mockLoadOptionsFunctions())).rejects.toThrow('DB error');
+		expect(mockConnection.query).toHaveBeenCalledWith('SHOW DATABASES');
 		expect(mockEnd).toHaveBeenCalled();
 	});
 });

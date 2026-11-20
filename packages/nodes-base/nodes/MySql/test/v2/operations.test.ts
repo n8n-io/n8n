@@ -1548,7 +1548,7 @@ describe('Test MySql V2, operations', () => {
 
 		const createDatabaseExpressionContext = (
 			nodeParameters: IDataObject,
-			databases: string[],
+			databases: Array<string | undefined>,
 			continueBool = false,
 		) =>
 			createPerItemContext(
@@ -1645,7 +1645,7 @@ describe('Test MySql V2, operations', () => {
 				const runQueries = vi.fn(async () => []);
 
 				const result = await insert.execute.call(
-					createDatabaseExpressionContext(nodeParameters, ['a', '', 'c'], true),
+					createDatabaseExpressionContext(nodeParameters, ['a', undefined, 'c'], true),
 					items,
 					runQueries,
 					nodeParameters.options as IDataObject,
@@ -1683,7 +1683,7 @@ describe('Test MySql V2, operations', () => {
 
 				expect(error).toBeInstanceOf(NodeOperationError);
 				expect((error as NodeOperationError).message).toBe(
-					'The Database value is not the same for all items',
+					'The Database or Table value is not the same for all items',
 				);
 				expect((error as NodeOperationError).context.itemIndex).toBe(1);
 				expect(runQueries).not.toHaveBeenCalled();

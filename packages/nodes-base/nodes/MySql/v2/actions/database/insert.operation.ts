@@ -141,11 +141,11 @@ export async function execute(
 				if (getTableName(this, i) !== table) {
 					throw new NodeOperationError(
 						this.getNode(),
-						'The Database value is not the same for all items',
+						'The Database or Table value is not the same for all items',
 						{
 							itemIndex: i,
 							description:
-								'Set Options > Query Batching to Independent or Transaction to insert each item into its own database',
+								'Set Options > Query Batching to Independent or Transaction to insert each item into its own table',
 						},
 					);
 				}
