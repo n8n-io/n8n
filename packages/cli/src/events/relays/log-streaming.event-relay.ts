@@ -1051,7 +1051,7 @@ export class LogStreamingEventRelay extends EventRelay {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.execution-limit.updated',
 			payload: {
-				...(event.updatedBy !== null && { updatedBy: event.updatedBy }),
+				updatedBy: event.updatedBy,
 				projectId: event.projectId,
 				field: event.field,
 				oldValue: event.oldValue,

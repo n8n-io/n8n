@@ -4734,11 +4734,13 @@ describe('LogStreamingEventRelay', () => {
 				});
 			});
 
-			it('should omit the user of a limit that n8n changed', () => {
+			it('should send no user for a limit that n8n changed', () => {
 				eventService.emit('execution-limit-updated', { ...payload, updatedBy: null });
 
-				const [{ payload: sent }] = eventBus.sendAuditEvent.mock.calls[0];
-				expect(sent).not.toHaveProperty('updatedBy');
+				expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+					eventName: 'n8n.audit.execution-limit.updated',
+					payload: { ...payload, updatedBy: null },
+				});
 			});
 		});
 
