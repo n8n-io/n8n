@@ -97,6 +97,8 @@ export const useInstancePolicyStore = defineStore(INSTANCE_POLICY_STORE_ID, () =
 		node: false,
 		credential: false,
 	});
+	// A failed read can leave a snapshot of the current version that misses the types installed since.
+	const accessReadFailed: Record<RestrictedTypeKind, boolean> = { node: false, credential: false };
 
 	/**
 	 * Reads the access of the types. Only the latest read of a kind stores its answer or returns its
@@ -107,10 +109,15 @@ export const useInstancePolicyStore = defineStore(INSTANCE_POLICY_STORE_ID, () =
 		accessLoading[kind] = true;
 		try {
 			const access = toTypeAccess(await fetchInstanceAccess(rootStore.restApiContext, kind));
-			if (isLatest()) typeAccess[kind] = access;
+			if (isLatest()) {
+				typeAccess[kind] = access;
+				accessReadFailed[kind] = false;
+			}
 			return null;
 		} catch (error) {
-			return isLatest() ? error : null;
+			if (!isLatest()) return null;
+			accessReadFailed[kind] = true;
+			return error;
 		} finally {
 			if (isLatest()) accessLoading[kind] = false;
 		}
@@ -131,11 +138,12 @@ export const useInstancePolicyStore = defineStore(INSTANCE_POLICY_STORE_ID, () =
 
 	/**
 	 * Reads the access of the types again when it is older than the policy, because the server
-	 * evaluates the rules. Returns the read error, or `null`.
+	 * evaluates the rules, or when the last read failed. Returns the read error, or `null`.
 	 */
 	async function syncTypeAccess(kind: RestrictedTypeKind): Promise<unknown> {
 		const current = policies[kind];
-		if (!current || typeAccess[kind]?.version === current.version) return null;
+		if (!current) return null;
+		if (typeAccess[kind]?.version === current.version && !accessReadFailed[kind]) return null;
 		return await loadTypeAccess(kind);
 	}
 
@@ -174,7 +182,7 @@ export const useInstancePolicyStore = defineStore(INSTANCE_POLICY_STORE_ID, () =
 		};
 	}
 
-	/** Reads the access of each kind again when it is missing or older than the policy. Returns the read errors. */
+	/** Reads the access of each kind again when it is missing, older than the policy, or its last read failed. Returns the read errors. */
 	async function loadAccess(kinds: readonly RestrictedTypeKind[]): Promise<unknown[]> {
 		const errors = await Promise.all(kinds.map(async (kind) => await syncTypeAccess(kind)));
 		return errors.filter((error) => error !== null);

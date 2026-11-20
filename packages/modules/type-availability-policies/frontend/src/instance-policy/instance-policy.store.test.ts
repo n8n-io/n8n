@@ -284,6 +284,20 @@ describe('useInstancePolicyStore', () => {
 			expect(store.typeAccess.node?.version).toBe(3);
 		});
 
+		it('reads the access again on request when a read of the current version failed', async () => {
+			const store = useInstancePolicyStore();
+			await store.load(['node']);
+			mocks.fetchInstanceAccess.mockRejectedValueOnce(new Error('offline'));
+			await store.load(['node']);
+			mocks.fetchInstanceAccess.mockResolvedValue(accessWithInstalledAcme());
+
+			const errors = await store.loadAccess(['node']);
+
+			expect(errors).toEqual([]);
+			expect(mocks.fetchInstanceAccess).toHaveBeenCalledTimes(3);
+			expect(store.typeAccess.node?.types.get('n8n-nodes-acme.acme')?.access).toBe('deny');
+		});
+
 		it('does not read the access again when it matches the policy', async () => {
 			const store = useInstancePolicyStore();
 			await store.load(['node']);
