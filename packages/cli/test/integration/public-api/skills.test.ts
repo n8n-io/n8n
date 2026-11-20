@@ -4,6 +4,8 @@ import type { Project, User } from '@n8n/db';
 import { ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
+import { SkillService } from '@/modules/skills';
+
 import {
 	createSkill,
 	deleteAllSkills,
@@ -24,22 +26,6 @@ const skillContent = {
 	description: 'How we write',
 	instructions: 'Be brief.',
 };
-
-const uiOnlyFields = [
-	'canEdit',
-	'canDelete',
-	'canStopSyncing',
-	'createdBy',
-	'usedBy',
-	'usedByAgents',
-	'projectName',
-	'projectType',
-	'projectIcon',
-	'syncState',
-	'syncedFrom',
-	'sourceId',
-	'source',
-];
 
 let owner: User;
 let member: User;
@@ -215,7 +201,7 @@ describe('GET /skills', () => {
 		expect(pagedIds).toEqual(ids.sort());
 	});
 
-	test.each(['limit=-1', 'projectId='])('answers 400 for %s', async (query) => {
+	test.each(['limit=-1', 'projectId=', 'cursor=invalid'])('answers 400 for %s', async (query) => {
 		await api(owner).get(`/skills?${query}`).expect(400);
 	});
 });
@@ -244,7 +230,6 @@ describe('GET /skills/:skillId', () => {
 			createdAt: expect.any(String),
 			updatedAt: expect.any(String),
 		});
-		for (const field of uiOnlyFields) expect(response.body).not.toHaveProperty(field);
 	});
 
 	test.each([
@@ -273,7 +258,7 @@ describe('POST /skills', () => {
 	test('creates an instance skill as the owner', async () => {
 		const response = await api(owner)
 			.post('/skills')
-			.send({ scope: 'instance', skill: skillContent, availableToMCP: true })
+			.send({ ...skillContent, scope: 'instance', projectId: null, availableToMCP: true })
 			.expect(201);
 
 		expect(response.body).toMatchObject({
@@ -296,30 +281,38 @@ describe('POST /skills', () => {
 	])('answers %s with %d for a project skill', async (_role, status, user, projectId) => {
 		await api(user())
 			.post('/skills')
-			.send({ scope: 'project', projectId: projectId(), skill: skillContent })
+			.send({ ...skillContent, scope: 'project', projectId: projectId() })
 			.expect(status);
 	});
 
 	test('answers 403 when a member creates an instance skill', async () => {
-		await api(member).post('/skills').send({ scope: 'instance', skill: skillContent }).expect(403);
+		await api(member)
+			.post('/skills')
+			.send({ ...skillContent, scope: 'instance' })
+			.expect(403);
 	});
 
 	test('answers 409 when the name is taken in the scope', async () => {
 		await createSkill({ content: { name: skillContent.name } });
 
-		await api(owner).post('/skills').send({ scope: 'instance', skill: skillContent }).expect(409);
+		await api(owner)
+			.post('/skills')
+			.send({ ...skillContent, scope: 'instance' })
+			.expect(409);
 	});
 
 	test.each([
-		['without instructions', { scope: 'instance', skill: { name: 'n', description: 'd' } }],
-		['with an unknown field', { scope: 'instance', skill: skillContent, method: 'upload' }],
-		['with an unknown scope', { scope: 'global', skill: skillContent }],
-		['for a project skill without a project', { scope: 'project', skill: skillContent }],
+		['without instructions', { scope: 'instance', name: 'n', description: 'd' }],
+		['with an unknown field', { ...skillContent, scope: 'instance', method: 'upload' }],
+		['with an unknown scope', { ...skillContent, scope: 'global' }],
+		['for a project skill without a project', { ...skillContent, scope: 'project' }],
+		['with an empty project ID', { ...skillContent, scope: 'instance', projectId: '' }],
 		[
 			'with a reference outside references/',
 			{
+				...skillContent,
 				scope: 'instance',
-				skill: { ...skillContent, references: [{ path: '../secret.md', content: 'x' }] },
+				references: [{ path: '../secret.md', content: 'x' }],
 			},
 		],
 	])('answers 400 %s', async (_case, body) => {
@@ -360,6 +353,38 @@ describe('PUT /skills/:skillId', () => {
 		const response = await api(owner).put(`/skills/${id}`).send(skill).expect(200);
 
 		expect(response.body).toEqual(skill);
+	});
+
+	test('ignores the server-managed fields in the body', async () => {
+		const { id } = await createSkill();
+		const skill = await readSkill(id);
+
+		const response = await api(owner)
+			.put(`/skills/${id}`)
+			.send({
+				...skill,
+				id: 'other-id',
+				latestVersion: 7,
+				createdAt: '2000-01-01T00:00:00.000Z',
+				updatedAt: '2000-01-01T00:00:00.000Z',
+			})
+			.expect(200);
+
+		expect(response.body).toEqual(skill);
+	});
+
+	test('reports the public API as the source of the update', async () => {
+		const update = vi.spyOn(Container.get(SkillService), 'update');
+		const { id } = await createSkill();
+		const skill = await readSkill(id);
+
+		await api(owner)
+			.put(`/skills/${id}`)
+			.send({ ...skill, instructions: 'Changed.' })
+			.expect(200);
+
+		expect(update).toHaveBeenCalledWith(expect.anything(), id, expect.anything(), 'api');
+		update.mockRestore();
 	});
 
 	test('replaces the references with the ones in the body', async () => {
@@ -419,6 +444,36 @@ describe('PUT /skills/:skillId', () => {
 		expect(response.body).toMatchObject({ id, scope: 'project', projectId: otherProject.id });
 	});
 
+	describe('with an API key without skill:create and skill:delete', () => {
+		let updateOnlyOwner: User;
+
+		beforeAll(async () => {
+			updateOnlyOwner = await createOwnerWithApiKey({ scopes: ['skill:read', 'skill:update'] });
+		});
+
+		test('answers 403 for a move', async () => {
+			const { id } = await createSkill({ projectId: teamProject.id });
+			const skill = await readSkill(id);
+
+			await api(updateOnlyOwner)
+				.put(`/skills/${id}`)
+				.send({ ...skill, scope: 'instance', projectId: null })
+				.expect(403);
+
+			expect(await findSkill(id)).toMatchObject({ projectId: teamProject.id });
+		});
+
+		test('saves an update in place', async () => {
+			const { id } = await createSkill({ projectId: teamProject.id });
+			const skill = await readSkill(id);
+
+			await api(updateOnlyOwner)
+				.put(`/skills/${id}`)
+				.send({ ...skill, instructions: 'Changed.' })
+				.expect(200);
+		});
+	});
+
 	test.each([
 		['viewer', 403, () => viewer],
 		['member outside the project', 404, () => outsider],
@@ -470,6 +525,10 @@ describe('PUT /skills/:skillId', () => {
 				allowedTools: ['x'],
 			}),
 		],
+		[
+			'with an empty project ID',
+			(skill: Record<string, unknown>) => ({ ...skill, scope: 'instance', projectId: '' }),
+		],
 	])('answers 400 %s', async (_case, toBody) => {
 		const { id } = await createSkill();
 		const skill = await readSkill(id);
@@ -499,6 +558,16 @@ describe('DELETE /skills/:skillId', () => {
 		await api(user()).delete(`/skills/${id}`).expect(status);
 
 		expect(await findSkill(id)).toEqual(status === 204 ? null : expect.anything());
+	});
+
+	test('reports the public API as the source of the delete', async () => {
+		const deleteSkill = vi.spyOn(Container.get(SkillService), 'delete');
+		const { id } = await createSkill();
+
+		await api(owner).delete(`/skills/${id}`).expect(204);
+
+		expect(deleteSkill).toHaveBeenCalledWith(expect.anything(), id, 'api');
+		deleteSkill.mockRestore();
 	});
 
 	test('answers 403 when a member deletes an instance skill', async () => {

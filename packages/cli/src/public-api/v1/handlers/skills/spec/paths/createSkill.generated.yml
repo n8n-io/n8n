@@ -16,6 +16,35 @@ requestBody:
       schema:
         type: object
         properties:
+          name:
+            type: string
+            minLength: 1
+            maxLength: 128
+          description:
+            type: string
+            minLength: 1
+            maxLength: 1024
+          instructions:
+            type: string
+            maxLength: 65536
+          references:
+            type: array
+            items:
+              type: object
+              properties:
+                path:
+                  type: string
+                  minLength: 1
+                  maxLength: 512
+                content:
+                  type: string
+                  minLength: 1
+                  maxLength: 65536
+              required:
+                - path
+                - content
+              additionalProperties: false
+            maxItems: 20
           scope:
             type: string
             enum:
@@ -23,51 +52,18 @@ requestBody:
               - instance
           projectId:
             type: string
+            nullable: true
+            minLength: 1
             maxLength: 36
-          skill:
-            type: object
-            properties:
-              description:
-                type: string
-                minLength: 1
-                maxLength: 1024
-              instructions:
-                type: string
-                maxLength: 65536
-              references:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    path:
-                      type: string
-                      minLength: 1
-                      maxLength: 512
-                    content:
-                      type: string
-                      minLength: 1
-                      maxLength: 65536
-                  required:
-                    - path
-                    - content
-                  additionalProperties: false
-                maxItems: 20
-              name:
-                type: string
-                minLength: 1
-                maxLength: 128
-            required:
-              - description
-              - instructions
-              - name
-            additionalProperties: false
           availableToAssistant:
             type: boolean
           availableToMCP:
             type: boolean
         required:
+          - name
+          - description
+          - instructions
           - scope
-          - skill
         additionalProperties: false
 responses:
   '201':

@@ -302,11 +302,12 @@ export class SaveSkillDto extends Z.class({
 
 export class CreateSkillPublicDto extends Z.class(
 	{
+		name: skillNameSchema,
+		description: agentSkillShape.description,
+		instructions: agentSkillShape.instructions,
+		references: agentSkillShape.references,
 		scope: skillScopeSchema,
-		projectId: z.string().max(36).optional(),
-		skill: agentSkillSchema
-			.pick({ description: true, instructions: true, references: true })
-			.extend({ name: skillNameSchema }),
+		projectId: z.string().min(1).max(36).nullable().optional(),
 		availableToAssistant: z.boolean().optional(),
 		availableToMCP: z.boolean().optional(),
 	},
@@ -320,7 +321,7 @@ export class UpdateSkillPublicDto extends Z.class(
 		instructions: agentSkillShape.instructions,
 		references: agentSkillShape.references.unwrap(),
 		scope: skillScopeSchema,
-		projectId: z.string().max(36).nullable(),
+		projectId: z.string().min(1).max(36).nullable(),
 		availableToAssistant: z.boolean(),
 		availableToMCP: z.boolean(),
 		skillHash: z.string().min(1),

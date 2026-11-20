@@ -701,6 +701,15 @@ describe('SkillService user actions', () => {
 			expect(createTrusted).not.toHaveBeenCalled();
 		});
 
+		it('accepts an Assistant availability of false when the Assistant flag is off', async () => {
+			vi.mocked(hasGlobalScope).mockReturnValue(true);
+			rollout.isEnabled.mockResolvedValue(false);
+
+			await service.create(user, payload({ availableToAssistant: false }));
+
+			expect(createTrusted).toHaveBeenCalled();
+		});
+
 		it('stores the source the caller passed', async () => {
 			vi.mocked(hasGlobalScope).mockReturnValue(true);
 

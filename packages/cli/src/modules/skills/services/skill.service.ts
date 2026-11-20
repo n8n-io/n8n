@@ -382,10 +382,7 @@ export class SkillService {
 		payload: CreateSkillDto,
 		source: SkillTelemetrySource = 'ui',
 	): Promise<SkillDetail> {
-		if (
-			payload.availableToAssistant !== undefined &&
-			!(await this.assistantSkillsFlagGate.isEnabled())
-		) {
+		if (payload.availableToAssistant && !(await this.assistantSkillsFlagGate.isEnabled())) {
 			throw new UserError("The n8n Assistant can't use skills on this instance.");
 		}
 		const target = await this.skillAccess.resolveCreateTarget(user, payload);

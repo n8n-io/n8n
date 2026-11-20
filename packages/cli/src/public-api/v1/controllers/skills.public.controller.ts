@@ -26,6 +26,7 @@ import {
 	Put,
 	Query,
 } from '@n8n/decorators';
+import { ForbiddenError } from '@n8n/errors';
 import type { NextFunction, Request, Response } from 'express';
 
 import { SkillService, SkillsGate } from '@/modules/skills';
@@ -111,7 +112,17 @@ export class SkillsPublicController {
 		_res: Response,
 		@Body body: CreateSkillPublicDto,
 	): Promise<SkillPublicDto> {
-		return toSkillPublicDto(await this.skillService.create(req.user, body, 'api'));
+		const { name, description, instructions, references, projectId, ...placement } = body;
+		const created = await this.skillService.create(
+			req.user,
+			{
+				...placement,
+				projectId: projectId ?? undefined,
+				skill: { name, description, instructions, references },
+			},
+			'api',
+		);
+		return toSkillPublicDto(created);
 	}
 
 	@Put('/:skillId')
@@ -121,7 +132,8 @@ export class SkillsPublicController {
 		'Replace the skill and save it as the next version. Send the whole skill: ' +
 			'the body of the retrieve endpoint is a valid body. Keep the skillHash you read: ' +
 			'a save based on an older version fails with 409. The server ignores id, latestVersion, ' +
-			'createdAt and updatedAt. Change scope and projectId to move the skill.',
+			'createdAt and updatedAt. Change scope and projectId to move the skill: ' +
+			'a move needs the skill:create and skill:delete scopes too.',
 	)
 	@ApiTags(['Skill'])
 	@ApiResponse(200, SkillPublicDto)
@@ -135,6 +147,10 @@ export class SkillsPublicController {
 	): Promise<SkillPublicDto> {
 		const current = await this.skillService.get(req.user, skillId);
 		const moves = body.scope !== current.scope || body.projectId !== current.projectId;
+		const keyScopes = req.tokenGrant?.apiKeyScopes ?? [];
+		if (moves && !(keyScopes.includes('skill:create') && keyScopes.includes('skill:delete'))) {
+			throw new ForbiddenError('Moving a skill needs the skill:create and skill:delete scopes');
+		}
 		await this.skillService.update(
 			req.user,
 			skillId,
