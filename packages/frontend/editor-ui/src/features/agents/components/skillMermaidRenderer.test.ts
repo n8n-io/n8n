@@ -1,6 +1,128 @@
-import { renderSkillMermaid } from './skillMermaidRenderer';
+import { MAX_DIAGRAM_LENGTH, renderSkillMermaid } from './skillMermaidRenderer';
+
+const CODE = 'flowchart LR\n  A --> B';
+
+function sandboxOf(frame: HTMLIFrameElement | null) {
+	const sandbox = new DOMParser().parseFromString(frame?.srcdoc ?? '', 'text/html');
+	return {
+		scriptNonces: [...sandbox.querySelectorAll<HTMLScriptElement>('script[src]')].map(
+			(script) => script.nonce,
+		),
+		policy: sandbox.querySelector<HTMLMetaElement>('meta[http-equiv="Content-Security-Policy"]')
+			?.content,
+	};
+}
+
+/** Starts a render, and answers the request of the viewer with `reply`, as the sandbox does. */
+async function renderWithReply(reply: unknown) {
+	const render = renderSkillMermaid(CODE, 'dark', 800, new AbortController().signal);
+	const frame = document.body.querySelector('iframe');
+	if (!frame?.contentWindow) throw new Error('The render appended no frame');
+	const postMessage = vi
+		.spyOn(frame.contentWindow, 'postMessage')
+		.mockImplementation((_message: unknown, _target: unknown, transfer?: Transferable[]) => {
+			const [port] = transfer ?? [];
+			if (port instanceof MessagePort) port.postMessage(reply);
+		});
+	// jsdom loads the frame and fires `load` after this function returns the spy.
+	const result = await render;
+	return { result, postMessage };
+}
 
 describe('renderSkillMermaid', () => {
+	afterEach(() => {
+		vi.useRealTimers();
+		document.head.querySelector('meta[property="csp-nonce"]')?.remove();
+	});
+
+	it('appends no frame for a signal that is already aborted', async () => {
+		const controller = new AbortController();
+		controller.abort();
+
+		await expect(renderSkillMermaid(CODE, 'default', 800, controller.signal)).resolves.toEqual({
+			outcome: 'aborted',
+		});
+		expect(document.body.querySelector('iframe')).toBeNull();
+	});
+
+	it('sends the source to the loaded frame and returns the diagram of the reply', async () => {
+		const { result, postMessage } = await renderWithReply('<svg/>');
+
+		expect(postMessage).toHaveBeenCalledTimes(1);
+		expect(postMessage).toHaveBeenCalledWith(
+			{ code: CODE, theme: 'dark', maxTextSize: MAX_DIAGRAM_LENGTH },
+			'*',
+			[expect.any(MessagePort)],
+		);
+		expect(result).toEqual({ outcome: 'rendered', svg: '<svg/>' });
+		expect(document.body.querySelector('iframe')).toBeNull();
+	});
+
+	it.each([
+		{ reply: null, outcome: 'invalid' },
+		{ reply: false, outcome: 'failed' },
+		{ reply: { svg: '<svg/>' }, outcome: 'failed' },
+	])('returns "$outcome" for the reply $reply', async ({ reply, outcome }) => {
+		const { result } = await renderWithReply(reply);
+
+		expect(result).toEqual({ outcome });
+		expect(document.body.querySelector('iframe')).toBeNull();
+	});
+
+	it('stops a render with no reply after 10 seconds', async () => {
+		vi.useFakeTimers();
+		const settled = vi.fn();
+		void renderSkillMermaid(CODE, 'default', 800, new AbortController().signal).then(settled);
+
+		await vi.advanceTimersByTimeAsync(9_999);
+		expect(settled).not.toHaveBeenCalled();
+		expect(document.body.querySelector('iframe')).not.toBeNull();
+
+		await vi.advanceTimersByTimeAsync(1);
+		expect(settled).toHaveBeenCalledWith({ outcome: 'timeout' });
+		expect(document.body.querySelector('iframe')).toBeNull();
+	});
+
+	it('generates one nonce for both scripts and the policy when the editor has none', async () => {
+		const controller = new AbortController();
+		const render = renderSkillMermaid(CODE, 'default', 800, controller.signal);
+
+		try {
+			const { scriptNonces, policy } = sandboxOf(document.body.querySelector('iframe'));
+			expect(scriptNonces).toHaveLength(2);
+			expect(scriptNonces[0]).toMatch(/^[A-Za-z0-9+/]{22}==$/);
+			expect(scriptNonces[1]).toBe(scriptNonces[0]);
+			expect(policy).toBe(
+				`default-src 'none'; script-src 'nonce-${scriptNonces[0]}'; style-src 'unsafe-inline'; img-src data:`,
+			);
+		} finally {
+			controller.abort();
+			await render;
+		}
+	});
+
+	it('does not use an editor nonce that has other characters than a nonce can have', async () => {
+		const nonce = document.createElement('meta');
+		nonce.setAttribute('property', 'csp-nonce');
+		nonce.nonce = "x' 'unsafe-inline";
+		document.head.append(nonce);
+		const controller = new AbortController();
+		const render = renderSkillMermaid(CODE, 'default', 800, controller.signal);
+
+		try {
+			const { scriptNonces, policy } = sandboxOf(document.body.querySelector('iframe'));
+			expect(scriptNonces[0]).toMatch(/^[A-Za-z0-9+/]{22}==$/);
+			expect(scriptNonces[1]).toBe(scriptNonces[0]);
+			expect(policy).toBe(
+				`default-src 'none'; script-src 'nonce-${scriptNonces[0]}'; style-src 'unsafe-inline'; img-src data:`,
+			);
+			expect(document.body.querySelector('iframe')?.srcdoc).not.toContain("x'");
+		} finally {
+			controller.abort();
+			await render;
+		}
+	});
+
 	it('loads both sandbox scripts as external assets with the editor response nonce', async () => {
 		const nonce = document.createElement('meta');
 		nonce.setAttribute('property', 'csp-nonce');

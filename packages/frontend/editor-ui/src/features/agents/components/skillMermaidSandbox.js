@@ -5,8 +5,8 @@ async function onMessage(event) {
 	window.removeEventListener('message', onMessage);
 	const { code, theme, maxTextSize } = event.data;
 	// A string is the diagram. `null` says that Mermaid rejects the source.
-	// `undefined` says that the render failed for another reason.
-	let reply;
+	// `false` says that the render failed for another reason.
+	let reply = false;
 	try {
 		const { mermaid } = window;
 		mermaid.initialize({
