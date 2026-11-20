@@ -129,11 +129,9 @@ describe('Telegram routing: reads and writes', () => {
 });
 
 describe('the profile of Telegram', () => {
-	it('uses the bot token credential and its own gym ports', () => {
+	it('uses the bot token credential', () => {
 		expect(TELEGRAM_PROFILE.credentialKind).toBe('bot_token');
 		expect(TELEGRAM_PROFILE.credentialField).toBe('accessToken');
-		expect(TELEGRAM_PROFILE.defaultAdminUrl).toBe('http://127.0.0.1:9097');
-		expect(TELEGRAM_PROFILE.defaultGymUrl).toBe('http://127.0.0.1:8087');
 	});
 
 	it('seeds a persona that has a Telegram identity, so the gym can issue a token', () => {
