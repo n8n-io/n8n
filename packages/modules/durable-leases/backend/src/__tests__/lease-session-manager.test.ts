@@ -1,5 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
 import type { LeaseKindRepository, LeaseSessionRepository, NewLeaseSession } from '@n8n/db';
+import { OperationalError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import type { SessionClock } from '../lease-session-manager';
@@ -72,7 +73,9 @@ describe('LeaseSessionManager', () => {
 	});
 
 	afterEach(async () => {
-		await session.stop();
+		const stopping = session.stop().catch(() => {});
+		await vi.advanceTimersByTimeAsync(LEASE_SECONDS * 1000);
+		await stopping;
 		vi.restoreAllMocks();
 		vi.clearAllTimers();
 		vi.useRealTimers();
@@ -344,6 +347,109 @@ describe('LeaseSessionManager', () => {
 		expect(sessions.deleteSession).not.toHaveBeenCalled();
 	});
 
+	it('stops after the lease length when an insert never finishes', async () => {
+		sessions.insertSession.mockImplementationOnce(async () => await new Promise<void>(() => {}));
+		void session.start().catch(() => {});
+		await vi.advanceTimersByTimeAsync(0);
+		let stopped = false;
+		void session.stop().then(() => {
+			stopped = true;
+		});
+
+		await vi.advanceTimersByTimeAsync(LEASE_SECONDS * 1000 - 1);
+		expect(stopped).toBe(false);
+		await vi.advanceTimersByTimeAsync(1);
+
+		expect(stopped).toBe(true);
+	});
+
+	it('deletes the row of an insert that finishes after stop stopped waiting', async () => {
+		let finishInsert: () => void = () => {};
+		sessions.insertSession.mockImplementationOnce(
+			async () =>
+				await new Promise<void>((resolve) => {
+					finishInsert = resolve;
+				}),
+		);
+		const starting = expect(session.start()).rejects.toThrow(OperationalError);
+		await vi.advanceTimersByTimeAsync(0);
+		const stopping = session.stop();
+		await vi.advanceTimersByTimeAsync(LEASE_SECONDS * 1000);
+		await stopping;
+
+		finishInsert();
+		await starting;
+		await vi.advanceTimersByTimeAsync(0);
+
+		const [first] = insertedSessions();
+		expect(sessions.deleteSession).toHaveBeenCalledWith(first.id, expect.anything());
+	});
+
+	it('inserts a new session on a later beat when an insert never finishes', async () => {
+		vi.spyOn(Math, 'random').mockReturnValue(0.5);
+		sessions.insertSession.mockImplementationOnce(async () => await new Promise<void>(() => {}));
+		void session.start().catch(() => {});
+		await vi.advanceTimersByTimeAsync(0);
+
+		now.mono += LEASE_SECONDS * 1000;
+		await vi.advanceTimersByTimeAsync(RENEW_SECONDS * 1000);
+
+		const [first, second] = insertedSessions();
+		expect(second.id).not.toBe(first.id);
+		await expectHeld(second.id);
+	});
+
+	it('deletes the row of an abandoned insert that finishes later', async () => {
+		vi.spyOn(Math, 'random').mockReturnValue(0.5);
+		let finishInsert: () => void = () => {};
+		sessions.insertSession.mockImplementationOnce(
+			async () =>
+				await new Promise<void>((resolve) => {
+					finishInsert = resolve;
+				}),
+		);
+		void session.start().catch(() => {});
+		await vi.advanceTimersByTimeAsync(0);
+		now.mono += LEASE_SECONDS * 1000;
+		await vi.advanceTimersByTimeAsync(RENEW_SECONDS * 1000);
+		const [first, second] = insertedSessions();
+
+		finishInsert();
+		await vi.advanceTimersByTimeAsync(0);
+
+		expect(sessions.deleteSession).toHaveBeenCalledWith(first.id, expect.anything());
+		await expectHeld(second.id);
+	});
+
+	it('waits on stop for an abandoned insert and deletes its row', async () => {
+		vi.spyOn(Math, 'random').mockReturnValue(0.5);
+		let finishInsert: () => void = () => {};
+		sessions.insertSession.mockImplementationOnce(
+			async () =>
+				await new Promise<void>((resolve) => {
+					finishInsert = resolve;
+				}),
+		);
+		void session.start().catch(() => {});
+		await vi.advanceTimersByTimeAsync(0);
+		now.mono += LEASE_SECONDS * 1000;
+		await vi.advanceTimersByTimeAsync(RENEW_SECONDS * 1000);
+		const [first, second] = insertedSessions();
+		let stopped = false;
+
+		const stopping = session.stop().then(() => {
+			stopped = true;
+		});
+		await vi.advanceTimersByTimeAsync(0);
+		expect(stopped).toBe(false);
+
+		finishInsert();
+		await stopping;
+
+		expect(sessions.deleteSession).toHaveBeenCalledWith(first.id, expect.anything());
+		expect(sessions.deleteSession).toHaveBeenCalledWith(second.id, expect.anything());
+	});
+
 	it('resolves a second stop only after the first has deleted the row', async () => {
 		await session.start();
 		let finishDelete: () => void = () => {};
@@ -557,5 +663,22 @@ describe('LeaseSessionManager', () => {
 		const [, second] = insertedSessions();
 		expect(sessions.insertSession).toHaveBeenCalledTimes(2);
 		await expectHeld(second.id);
+	});
+
+	it('rejects start when the insert does not finish within the lease length and inserts again after abandoning it', async () => {
+		vi.spyOn(Math, 'random').mockReturnValue(0.5);
+		sessions.insertSession.mockImplementationOnce(async () => await new Promise<void>(() => {}));
+		const starting = expect(session.start()).rejects.toThrow(OperationalError);
+
+		await vi.advanceTimersByTimeAsync(LEASE_SECONDS * 1000);
+		await starting;
+		expect(sessions.insertSession).toHaveBeenCalledTimes(1);
+
+		now.mono += LEASE_SECONDS * 1000;
+		await vi.advanceTimersByTimeAsync(RENEW_SECONDS * 1000);
+
+		const [first, second] = insertedSessions();
+		expect(sessions.insertSession).toHaveBeenCalledTimes(2);
+		expect(second.id).not.toBe(first.id);
 	});
 });

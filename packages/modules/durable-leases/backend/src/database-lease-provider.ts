@@ -26,6 +26,8 @@ export class DatabaseLeaseProvider implements LeaseProvider<LeaseTransaction> {
 
 	private readonly managers = new Map<string, LeaseSessionManager>();
 
+	private readonly stoppingManagers = new Set<Promise<void>>();
+
 	private stopped = false;
 
 	constructor(private readonly deps: DatabaseLeaseProviderDeps) {}
@@ -65,8 +67,10 @@ export class DatabaseLeaseProvider implements LeaseProvider<LeaseTransaction> {
 			await manager.start();
 		} catch (error) {
 			// The kind stays unregistered, so its manager must stop beating; a retry starts a new manager.
+			// Stop can wait one lease length for an insert that hangs, so the registration does not wait for it.
 			this.managers.delete(kind);
-			await manager.stop();
+			const stopping = manager.stop().finally(() => this.stoppingManagers.delete(stopping));
+			this.stoppingManagers.add(stopping);
 			throw error;
 		}
 	}
@@ -85,8 +89,9 @@ export class DatabaseLeaseProvider implements LeaseProvider<LeaseTransaction> {
 
 	async stop(): Promise<void> {
 		this.stopped = true;
-		await Promise.allSettled(
-			[...this.managers.values()].map(async (manager) => await manager.stop()),
-		);
+		await Promise.allSettled([
+			...[...this.managers.values()].map(async (manager) => await manager.stop()),
+			...this.stoppingManagers,
+		]);
 	}
 }
