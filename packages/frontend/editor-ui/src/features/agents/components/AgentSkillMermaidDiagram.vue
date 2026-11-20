@@ -58,6 +58,7 @@ watch(
 	<div ref="viewport" :class="$style.diagram">
 		<img
 			v-if="diagram"
+			:class="$style.image"
 			:src="diagram.src"
 			:width="diagram.width"
 			:alt="diagram.description || i18n.baseText('agents.builder.skills.mermaid.diagram')"
@@ -78,11 +79,14 @@ watch(
 
 .diagram {
 	overflow-x: auto;
+}
 
-	img {
-		display: block;
-		height: auto;
-	}
+// Two classes, so that the rule wins over the image rule of the Markdown styles.
+.diagram .image {
+	display: block;
+	// Keep the rendered width. A wide diagram scrolls inside its box.
+	max-width: none;
+	height: auto;
 }
 
 .sourceLabel {
