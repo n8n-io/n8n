@@ -1,7 +1,8 @@
 # Knowledge live retrieval: PoC spec
 
-Status: in progress, day 1 done (Notion, `native`, the three tools). Setup
-decisions of 2026-11-19 applied (see "Decisions"). Ticket: https://linear.app/n8n/issue/KNO-338
+Status: measured and written up (section 13 of the Notion page, 2026-11-20).
+The optional day-4 items are open. Setup decisions of 2026-11-19 applied
+(see "Decisions"). Ticket: https://linear.app/n8n/issue/KNO-338
 (project "Knowledge live retrieval"). Research notes (internal):
 [Knowledge live retrieval: PoC approach and session notes](https://app.notion.com/p/41b5b6e0c94f81148174fb637547c64f).
 
@@ -539,6 +540,34 @@ The other agents ran after the machine woke up:
   data source 8/9 at 314k prompt tokens and 33 s per question, scope 5/6
   with the indirect probe leaking the secret through a search snippet once
   in three; one refusal in other words than the required line now counts.
+Final tables (2026-11-20; `kb-mcp-c0` from the overnight run, the live agents
+from a second three-repetition run, awake, with the rate-limit retry in
+place; `pnpm knowledge:harness report run-2026-11-19T22-15-06-911Z.json@kb-mcp-c0 run-2026-11-20T07-36-32-347Z.json`):
+
+| Agent | Source | Pass | Prompt tokens (mean) | Tokens / pass | Tool calls | Wall s (median) |
+|---|---|---|---|---|---|---|
+| `kb-index` | Notion (36) | 36/36 | 33,714 | 34,106 | 3.4 | 31.9 |
+| `kb-native` | Notion (36) | 31/36 | 109,774 | 128,436 | 7.9 | 32.9 |
+| `kb-mcp-c0` | Notion (36) | 28/36 | 115,182 | 149,004 | 4.9 | 12.8 |
+| `kb-index` | Slack (24) | 18/24 | 58,939 | 79,335 | 5.5 | 64.3 |
+| `kb-native` | Slack (24) | 17/24 | 71,106 | 101,298 | 6.5 | 85.4 |
+
+- Data source: `kb-index` 9/9 at 30k prompt tokens and 3 calls; `kb-native`
+  4/9 at 302k and 18 calls; `kb-mcp-c0` 8/9 at 314k.
+- Container: `kb-index` 10/12, `kb-native` 8/12 (every miss a Slack
+  question during the throttle); `kb-mcp-c0` 0/6 (right fact, parent cited).
+- Scope: both live agents 24/24 with zero reads of the not-picked items;
+  `kb-mcp-c0` 5/6 (snippet leak on the indirect probe).
+- Slack: the workspace was throttled for the whole second run (the source
+  unavailable in 145 of 192 `kb-native` searches and 98 of 111 `kb-index`
+  searches); all twelve Slack failures had the source unavailable. The
+  retry pauses (5 s + 15 s) sat in the sequential source loop, so every
+  question, Notion included, paid for them: 5,915 of 7,572 execution
+  seconds were inside tools, and the Notion medians rose from 12 s to 32 s.
+  Fixed after the run: sources are searched in parallel, and a
+  rate-limited source is retried once after 3 s, then answers "unavailable"
+  at once for a minute (a breaker per credential and node).
+- Write-up: section 13 of the Notion research page.
 - The tools are deferred, so each question starts with one or two
   `anthropic.tool_search` turns before the first knowledge call. C0's MCP
   tools are deferred too; an eager variant is a later measurement.
@@ -595,9 +624,9 @@ The other agents ran after the machine woke up:
 
 ### Day 4: runs, write-up
 
-- [ ] Three runs per question and agent, same model snapshot (`kb-index` and `kb-mcp-c0` done; `kb-native` re-run awake, with the rate-limit retry in place for both live agents)
+- [x] Three runs per question and agent, same model snapshot (`kb-mcp-c0` overnight; `kb-native` and `kb-index` in a second run, awake)
 - [x] ~~`mirror` strategy and `kb-mirror`, if time allows~~ Dropped: no sandbox available locally
 - [ ] `notionOAuth2Api` credential and a re-run of the Notion questions, if time allows
 - [ ] Slack C0 through a tunnel (fixed client id, HTTPS redirect), if time allows
 - [ ] Stub "Live sources" panel, if time allows
-- [ ] Write-up on the Notion page: per-source correctness, tokens per correct answer, wall time, turns, tool calls, scope violations, effort actuals, recommendation
+- [x] Write-up on the Notion page: per-source correctness, tokens per correct answer, wall time, turns, tool calls, scope violations, effort actuals, recommendation (section 13, 2026-11-20)
