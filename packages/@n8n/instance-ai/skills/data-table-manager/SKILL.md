@@ -105,7 +105,11 @@ can target rows with narrow filters.
 
 ## File Imports
 
-Use `parse-file` for attached CSV, TSV, JSON, and XLSX files.
+Use `parse-file` for attached CSV, TSV, JSON, and XLSX files. When you have
+no `parse-file` tool, read the file in the sandbox: copy it to `inputs/` with
+`import-files`, print the header and the first 20 rows for the preview, and
+use a script that prints each page of at most 100 rows as JSON objects for
+`insert-rows`.
 
 1. Preview first with `maxRows=20`, unless the user named the structure
    exactly.

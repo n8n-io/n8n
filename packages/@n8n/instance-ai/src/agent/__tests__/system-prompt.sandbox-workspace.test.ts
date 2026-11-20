@@ -26,6 +26,16 @@ describe('getSystemPrompt — sandbox workspace', () => {
 		expect(withImport).toContain('copy it to `inputs/` with `import-files`');
 	});
 
+	it('tells the model to read files in the workspace, because the turn has no parse-file', () => {
+		const withImport = getSystemPrompt({
+			workspaceRoot: '/home/user/workspace',
+			fileImportEnabled: true,
+		});
+
+		expect(withImport).toContain('Then read it with commands or scripts in the workspace.');
+		expect(withImport).not.toContain('parse-file');
+	});
+
 	it('names share-files and outputs/ only when the tool is wired', () => {
 		const without = getSystemPrompt({ workspaceRoot: '/home/user/workspace' });
 		const withSharing = getSystemPrompt({

@@ -21,7 +21,8 @@ then use IDs and narrow filters. Every write is a change in a
   its seed rows -> one call with all `create` and `insert-rows` changes.
 - **Seed rows**: `list_data_tables` -> `get_data_table_schema` ->
   `insert-rows` changes of at most 100 rows each.
-- **Import attachment**: `parse-file` preview -> see Tool Recipes.
+- **Import attachment**: `parse-file` preview, or without `parse-file`,
+  `import-files` and a preview in the sandbox -> see Tool Recipes.
 - **Rename a column**: `list_data_tables` -> `get_data_table_schema` ->
   `rename-column`.
 - **Change or delete rows**: `list_data_tables` -> `get_data_table_schema` ->
@@ -163,6 +164,15 @@ Import a CSV into a new table:
 2. list_data_tables
 3. change_data_tables with a create change and the first insert-rows (max 100 rows)
 4. parse-file next page with startRow=nextStartRow; insert-rows for each page, up to the safety limit
+```
+
+Without `parse-file`, use the sandbox for the same steps:
+
+```text
+1. import-files with the fileId; then print the header and the first 20 rows in the workspace
+2. list_data_tables
+3. change_data_tables with a create change and the first insert-rows (max 100 rows)
+4. a script prints the next page of 100 rows as JSON objects; insert-rows for each page, up to the safety limit
 ```
 
 Import into an existing table:
