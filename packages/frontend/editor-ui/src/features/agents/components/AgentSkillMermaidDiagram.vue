@@ -74,6 +74,8 @@ watch(
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/focus';
+
 .diagram {
 	overflow-x: auto;
 
@@ -87,5 +89,9 @@ watch(
 	margin-block: var(--spacing--2xs);
 	width: fit-content;
 	cursor: pointer;
+	border-radius: var(--radius--3xs);
+
+	// The global reset removes the outline of summary elements.
+	@include focus.focus-visible-ring-offset;
 }
 </style>
