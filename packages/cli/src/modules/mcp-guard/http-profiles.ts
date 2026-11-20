@@ -237,8 +237,6 @@ export function withYoutubeOwner(overlay: Record<string, unknown>): Record<strin
 export const YOUTUBE_PROFILE: HttpVendorProfile = {
 	name: 'youtube',
 	opaqueIds: true,
-	defaultAdminUrl: 'http://127.0.0.1:9098',
-	defaultGymUrl: 'http://127.0.0.1:8088',
 	credentialKind: 'google_oauth',
 	credentialField: 'oauthTokenData.access_token',
 	placeholderSeed: {
