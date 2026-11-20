@@ -9850,6 +9850,7 @@
 	"agents.revertToPublished.modal.button.revert": "Revert changes",
 	"agents.versionHistory.metadata.editTitle": "Name version",
 	"agents.versionHistory.metadata.publishTitle": "Publish agent",
+	"agents.versionHistory.metadata.publishAndTalkToAgent": "Publish and talk to agent",
 	"agents.versionHistory.metadata.n8nChatCallout": "This agent will be available in n8n Chat to everyone in the {projectName} project.",
 	"agents.versionHistory.metadata.tooLong": "Use up to {nameMax} characters for the name and {descriptionMax} for the description",
 	"agents.versionHistory.metadata.error": "Couldn't save version details. Try again.",

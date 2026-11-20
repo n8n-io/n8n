@@ -77,7 +77,8 @@ export function useAgentPublish() {
 				description: version.description,
 				// The version being published decides n8n Chat reachability, not the draft:
 				// a republish from version history can differ from it.
-				n8nChatProjectId: isN8nChatEnabled.value && version.includesN8nChat ? projectId : undefined,
+				n8nChat:
+					isN8nChatEnabled.value && version.includesN8nChat ? { projectId, agentId } : undefined,
 				onSubmit: async (metadata) => {
 					try {
 						updated = await publishAgent(

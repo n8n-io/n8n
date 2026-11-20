@@ -6,6 +6,9 @@ import { mockedStore } from '@/__tests__/utils';
 import { createTestProject } from '@/features/collaboration/projects/__tests__/utils';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
+import { defineComponent } from 'vue';
+import { createMemoryHistory, createRouter } from 'vue-router';
+import { AGENT_N8N_CHAT_VIEW } from '../constants';
 import AgentVersionMetadataModal, {
 	type AgentVersionMetadataModalData,
 } from '../components/AgentVersionMetadataModal.vue';
@@ -18,6 +21,23 @@ vi.mock('@/app/stores/ui.store', () => ({
 }));
 
 enableAutoUnmount(afterEach);
+
+function createTestRouter() {
+	const page = defineComponent({ template: '<div />' });
+	return createRouter({
+		history: createMemoryHistory(),
+		routes: [
+			{ path: '/', component: page },
+			{
+				name: AGENT_N8N_CHAT_VIEW,
+				path: '/assistant/agents/:agentId/:agentThreadId?',
+				component: page,
+			},
+		],
+	});
+}
+
+const n8nChat = { projectId: 'team-1', agentId: 'agent-1' };
 
 function render(data: Partial<AgentVersionMetadataModalData> = {}, stubModal = true) {
 	const onSubmit = vi.fn().mockResolvedValue(true);
@@ -44,7 +64,7 @@ function render(data: Partial<AgentVersionMetadataModalData> = {}, stubModal = t
 			},
 		},
 		global: {
-			plugins: [pinia, i18nInstance],
+			plugins: [pinia, i18nInstance, createTestRouter()],
 			stubs: { AgentModal: stubModal ? AgentModalTestStub : false },
 		},
 	});
@@ -56,9 +76,11 @@ beforeEach(() => vi.clearAllMocks());
 
 describe('AgentVersionMetadataModal', () => {
 	const N8N_CHAT_CALLOUT = '[data-testid="agent-version-metadata-n8n-chat"]';
+	const PUBLISH_AND_TALK = '[data-testid="agent-version-metadata-publish-and-talk"]';
+	const SUBMIT = '[data-testid="agent-version-metadata-submit"]';
 
 	it('tells the user that publishing adds the agent to n8n Chat for the project', () => {
-		const { wrapper } = render({ mode: 'publish', n8nChatProjectId: 'team-1' });
+		const { wrapper } = render({ mode: 'publish', n8nChat });
 
 		expect(wrapper.get(N8N_CHAT_CALLOUT).text()).toBe(
 			'This agent will be available in n8n Chat to everyone in the Marketing project.',
@@ -66,16 +88,73 @@ describe('AgentVersionMetadataModal', () => {
 	});
 
 	it.each([
-		{ mode: 'publish' as const, n8nChatProjectId: undefined },
-		{ mode: 'edit' as const, n8nChatProjectId: 'team-1' },
+		{ mode: 'publish' as const, n8nChat: undefined },
+		{ mode: 'edit' as const, n8nChat },
 	])(
-		'shows no n8n Chat callout in $mode mode with n8nChatProjectId $n8nChatProjectId',
-		({ mode, n8nChatProjectId }) => {
-			const { wrapper } = render({ mode, n8nChatProjectId });
+		'shows no n8n Chat callout or "Publish and talk to agent" in $mode mode with n8nChat $n8nChat',
+		({ mode, n8nChat: chat }) => {
+			const { wrapper } = render({ mode, n8nChat: chat });
 
 			expect(wrapper.find(N8N_CHAT_CALLOUT).exists()).toBe(false);
+			expect(wrapper.find(PUBLISH_AND_TALK).exists()).toBe(false);
 		},
 	);
+
+	describe('"Publish and talk to agent"', () => {
+		function stubWindowOpen() {
+			const tab = { opener: {}, location: { href: '' }, close: vi.fn() };
+			const open = vi.spyOn(window, 'open').mockReturnValue(tab as unknown as Window);
+			return { tab, open };
+		}
+
+		afterEach(() => vi.restoreAllMocks());
+
+		it('demotes Publish to a secondary button', () => {
+			const { wrapper } = render({ mode: 'publish', n8nChat });
+
+			expect(wrapper.get(PUBLISH_AND_TALK).text()).toBe('Publish and talk to agent');
+			expect(wrapper.get(SUBMIT).attributes('class')).toContain('outline');
+		});
+
+		it('publishes, then opens the agent in n8n Chat in a new tab', async () => {
+			const { tab, open } = stubWindowOpen();
+			const { wrapper, onSubmit, onClose } = render({ mode: 'publish', n8nChat });
+
+			await wrapper.get(PUBLISH_AND_TALK).trigger('click');
+			await flushPromises();
+
+			expect(open).toHaveBeenCalledWith('', '_blank');
+			expect(tab.opener).toBeNull();
+			expect(onSubmit).toHaveBeenCalledOnce();
+			expect(onClose).toHaveBeenCalledWith(true);
+			expect(tab.location.href).toBe('/assistant/agents/agent-1');
+			expect(tab.close).not.toHaveBeenCalled();
+		});
+
+		it('closes the new tab when the publish fails', async () => {
+			const { tab } = stubWindowOpen();
+			const { wrapper, onSubmit, onClose } = render({ mode: 'publish', n8nChat });
+			onSubmit.mockResolvedValueOnce(false);
+
+			await wrapper.get(PUBLISH_AND_TALK).trigger('click');
+			await flushPromises();
+
+			expect(onClose).not.toHaveBeenCalled();
+			expect(tab.location.href).toBe('');
+			expect(tab.close).toHaveBeenCalledOnce();
+		});
+
+		it('opens no tab when Publish is used', async () => {
+			const { open } = stubWindowOpen();
+			const { wrapper, onSubmit } = render({ mode: 'publish', n8nChat });
+
+			await wrapper.get(SUBMIT).trigger('click');
+			await flushPromises();
+
+			expect(onSubmit).toHaveBeenCalledOnce();
+			expect(open).not.toHaveBeenCalled();
+		});
+	});
 
 	it('requires the workflow name field and keeps the character limits', () => {
 		const { wrapper } = render({ name: 'Release', description: 'First line\nSecond line' });

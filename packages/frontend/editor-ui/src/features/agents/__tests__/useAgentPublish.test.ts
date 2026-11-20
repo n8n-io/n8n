@@ -112,12 +112,12 @@ describe('useAgentPublish', () => {
 	});
 
 	it.each([
-		{ flag: true, includesN8nChat: true, projectId: 'p1' },
-		{ flag: false, includesN8nChat: true, projectId: undefined },
-		{ flag: true, includesN8nChat: false, projectId: undefined },
+		{ flag: true, includesN8nChat: true, n8nChat: { projectId: 'p1', agentId: 'a1' } },
+		{ flag: false, includesN8nChat: true, n8nChat: undefined },
+		{ flag: true, includesN8nChat: false, n8nChat: undefined },
 	])(
-		'passes n8nChatProjectId $projectId when the flag is $flag and the version includes n8n Chat is $includesN8nChat',
-		async ({ flag, includesN8nChat, projectId }) => {
+		'passes n8nChat $n8nChat when the flag is $flag and the version includes n8n Chat is $includesN8nChat',
+		async ({ flag, includesN8nChat, n8nChat }) => {
 			n8nChatFlag.value = flag;
 			getAgentVersionMock.mockResolvedValueOnce({
 				versionId: 'v2',
@@ -131,7 +131,7 @@ describe('useAgentPublish', () => {
 			await publish('p1', 'a1');
 
 			expect(openVersionMetadataMock).toHaveBeenCalledWith(
-				expect.objectContaining({ mode: 'publish', n8nChatProjectId: projectId }),
+				expect.objectContaining({ mode: 'publish', n8nChat }),
 			);
 		},
 	);
