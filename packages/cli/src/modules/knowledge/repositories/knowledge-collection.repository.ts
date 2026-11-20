@@ -86,6 +86,35 @@ export class KnowledgeCollectionRepository {
 	}
 
 	/**
+	 * Returns the shared collections that the projects can use, newest first.
+	 * It reads through the share rows, so a collection shared with a project
+	 * shows up for it too, once.
+	 */
+	async findSharedSummaries(
+		projectIds: string[] | 'all',
+		ctx: OperationContext,
+	): Promise<KnowledgeCollectionSummary[]> {
+		if (projectIds !== 'all' && projectIds.length === 0) {
+			return [];
+		}
+
+		const manager = this.table.managerFor(ctx);
+		const query = manager
+			.createQueryBuilder(KnowledgeCollection, 'collection')
+			.innerJoin(SharedKnowledgeCollection, 'share', 'share.knowledgeCollectionId = collection.id')
+			.where('collection.kind = :kind', { kind: 'shared' })
+			.orderBy('collection.createdAt', 'DESC')
+			.addOrderBy('collection.id', 'DESC');
+
+		if (projectIds !== 'all') {
+			query.andWhere('share.projectId IN (:...projectIds)', { projectIds });
+		}
+
+		const collections = await query.getMany();
+		return await this.summarize(collections, manager);
+	}
+
+	/**
 	 * Adds the home project and the totals to each collection. A collection
 	 * without a home project is left out: only shared collections have one.
 	 */

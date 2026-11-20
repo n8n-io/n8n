@@ -1,7 +1,18 @@
-import type { CreateKnowledgeCollectionDto, KnowledgeCollectionDto } from '@n8n/api-types';
-import { isUniqueConstraintError, ProjectRepository, type User } from '@n8n/db';
+import type {
+	CreateKnowledgeCollectionDto,
+	KnowledgeCollectionDto,
+	KnowledgeCollectionListResponse,
+} from '@n8n/api-types';
+import { RoleService } from '@n8n/backend-services';
+import {
+	isUniqueConstraintError,
+	ProjectRelationRepository,
+	ProjectRepository,
+	type User,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ConflictError, ForbiddenError, NotFoundError, UnexpectedError } from '@n8n/errors';
+import { hasGlobalScope } from '@n8n/permissions';
 import { customAlphabet } from 'nanoid';
 
 import { userHasScopes } from '@/permissions.ee/check-access';
@@ -18,8 +29,8 @@ const MAX_INSERT_ATTEMPTS = 2;
 const randomSlugSuffix = customAlphabet('abcdefghijklmnopqrstuvwxyz0123456789', SLUG_SUFFIX_LENGTH);
 
 /**
- * Creates shared knowledge collections and returns them as the collection
- * list shows them.
+ * Creates and lists shared knowledge collections, in the shape that the
+ * collection list shows.
  */
 @Service()
 export class KnowledgeCollectionCatalogService {
@@ -27,6 +38,8 @@ export class KnowledgeCollectionCatalogService {
 		private readonly collectionRepository: KnowledgeCollectionRepository,
 		private readonly availabilityService: KnowledgeAvailabilityService,
 		private readonly projectRepository: ProjectRepository,
+		private readonly projectRelationRepository: ProjectRelationRepository,
+		private readonly roleService: RoleService,
 	) {}
 
 	async create(
@@ -85,6 +98,32 @@ export class KnowledgeCollectionCatalogService {
 				}
 			}
 		}
+	}
+
+	async listForUser(user: User): Promise<KnowledgeCollectionListResponse> {
+		if (!(await this.availabilityService.isCollectionsEnabled())) {
+			throw new NotFoundError('Knowledge collections are not enabled');
+		}
+
+		const projectIds = await this.findReadableProjectIds(user);
+		const summaries = await this.collectionRepository.findSharedSummaries(projectIds, {});
+		const data = summaries.map(toDto);
+
+		return { count: data.length, data };
+	}
+
+	/**
+	 * Collections have no scopes of their own yet (TBD), so the list shows the
+	 * collections of the projects where the user has `agent:read`. A global
+	 * `agent:read` scope covers every project.
+	 */
+	private async findReadableProjectIds(user: User): Promise<string[] | 'all'> {
+		if (hasGlobalScope(user, 'agent:read')) {
+			return 'all';
+		}
+
+		const roles = await this.roleService.rolesWithScope('project', ['agent:read']);
+		return await this.projectRelationRepository.getAccessibleProjectsByRoles(user.id, roles);
 	}
 
 	private async findFreeSlug(name: string): Promise<string> {

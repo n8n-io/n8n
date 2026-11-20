@@ -1,4 +1,11 @@
-import type { ProjectRepository, User } from '@n8n/db';
+import type { RoleService } from '@n8n/backend-services';
+import {
+	GLOBAL_MEMBER_ROLE,
+	GLOBAL_OWNER_ROLE,
+	type ProjectRelationRepository,
+	type ProjectRepository,
+	type User,
+} from '@n8n/db';
 import { ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import type { Scope } from '@n8n/permissions';
 import { QueryFailedError } from '@n8n/typeorm';
@@ -48,18 +55,38 @@ function makeService({ collectionsFlag = true }: { collectionsFlag?: boolean } =
 		mock<KnowledgeCollection>({ id: 'collection-1' }),
 	);
 	collectionRepository.findSharedSummaryById.mockResolvedValue(summary);
+	collectionRepository.findSharedSummaries.mockResolvedValue([summary]);
+
 	const projectRepository = mock<ProjectRepository>();
 	projectRepository.existsBy.mockResolvedValue(true);
+
+	const projectRelationRepository = mock<ProjectRelationRepository>();
+	projectRelationRepository.getAccessibleProjectsByRoles.mockResolvedValue([
+		'project-1',
+		'personal-1',
+	]);
+
+	const roleService = mock<RoleService>();
+	roleService.rolesWithScope.mockResolvedValue(['project:personalOwner', 'project:viewer']);
 
 	return {
 		service: new KnowledgeCollectionCatalogService(
 			collectionRepository,
 			makeKnowledgeAvailabilityService({ collectionsFlag }),
 			projectRepository,
+			projectRelationRepository,
+			roleService,
 		),
 		collectionRepository,
 		projectRepository,
+		projectRelationRepository,
+		roleService,
 	};
+}
+
+// Assign the role onto an empty mock: mock(overrides) wraps the shared role constant in proxies.
+function userWithRole(id: string, role: User['role']) {
+	return Object.assign(mock<User>(), { id, role });
 }
 
 function uniqueConstraintError() {
@@ -190,6 +217,71 @@ describe('KnowledgeCollectionCatalogService', () => {
 
 			await expect(service.create(user, projectId, input)).rejects.toThrow(QueryFailedError);
 			expect(collectionRepository.insertShared).toHaveBeenCalledTimes(2);
+		});
+	});
+
+	describe('listForUser', () => {
+		const member = userWithRole('member-1', GLOBAL_MEMBER_ROLE);
+		const instanceOwner = userWithRole('owner-1', GLOBAL_OWNER_ROLE);
+
+		it('lists the collections of the projects where the member can read agents', async () => {
+			const { service, collectionRepository, projectRelationRepository, roleService } =
+				makeService();
+
+			const result = await service.listForUser(member);
+
+			expect(roleService.rolesWithScope).toHaveBeenCalledWith('project', ['agent:read']);
+
+			expect(projectRelationRepository.getAccessibleProjectsByRoles).toHaveBeenCalledWith(
+				'member-1',
+				['project:personalOwner', 'project:viewer'],
+			);
+
+			expect(collectionRepository.findSharedSummaries).toHaveBeenCalledWith(
+				['project-1', 'personal-1'],
+				{},
+			);
+
+			expect(result).toEqual({
+				count: 1,
+				data: [
+					{
+						id: 'collection-1',
+						name: input.name,
+						description: input.description,
+						slug: 'returns_playbook',
+						homeProject: { id: 'project-1', name: 'Docs', type: 'team' },
+						fileCount: 2,
+						totalFileSizeBytes: 300,
+						agentCount: 1,
+						createdAt: '2026-11-20T10:00:00.000Z',
+						updatedAt: '2026-11-20T11:00:00.000Z',
+					},
+				],
+			});
+		});
+
+		it('lists the collections of every project for a global agent:read scope', async () => {
+			const { service, collectionRepository, projectRelationRepository } = makeService();
+
+			await service.listForUser(instanceOwner);
+
+			expect(collectionRepository.findSharedSummaries).toHaveBeenCalledWith('all', {});
+			expect(projectRelationRepository.getAccessibleProjectsByRoles).not.toHaveBeenCalled();
+		});
+
+		it('answers an empty list when no collection matches', async () => {
+			const { service, collectionRepository } = makeService();
+			collectionRepository.findSharedSummaries.mockResolvedValue([]);
+
+			await expect(service.listForUser(member)).resolves.toEqual({ count: 0, data: [] });
+		});
+
+		it('answers not found and reads nothing when collections are off', async () => {
+			const { service, collectionRepository } = makeService({ collectionsFlag: false });
+
+			await expect(service.listForUser(member)).rejects.toThrow(NotFoundError);
+			expect(collectionRepository.findSharedSummaries).not.toHaveBeenCalled();
 		});
 	});
 });
