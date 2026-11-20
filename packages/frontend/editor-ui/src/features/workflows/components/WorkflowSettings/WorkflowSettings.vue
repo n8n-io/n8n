@@ -283,6 +283,11 @@ const isEngineTypeChangePendingPublish = computed(() => {
 	return pickVersionedSettings(activeVersion.settings).engineType !== engineType.value;
 });
 
+// Engine v2 ignores the execution order and the binary mode. The stored values stay.
+const isExecutionLogicSettingVisible = computed(
+	() => !(isEngineTypeSettingVisible.value && engineType.value === 'v2'),
+);
+
 const isProductionRedactionLockedByFloor = computed(
 	() => instanceRedactionFloor.value === 'production' || instanceRedactionFloor.value === 'all',
 );
@@ -1109,7 +1114,7 @@ onBeforeUnmount(() => {
 						</N8nSelect>
 					</ElCol>
 				</ElRow>
-				<ElRow>
+				<ElRow v-if="isExecutionLogicSettingVisible">
 					<ElCol :span="10" :class="$style['setting-name']">
 						{{ i18n.baseText('workflowSettings.executionLogic') }}
 					</ElCol>
