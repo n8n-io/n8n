@@ -1,9 +1,7 @@
 <script lang="ts" setup>
-import type { KnowledgeCollectionDto } from '@n8n/api-types';
 import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
-import { useToast } from '@n8n/composables/useToast';
 import { N8nButton, N8nSettingsLayout, N8nSettingsPageHeader } from '@n8n/design-system';
 
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
@@ -13,7 +11,6 @@ import CollectionModal from '@/features/settings/context/components/CollectionMo
 const i18n = useI18n();
 const router = useRouter();
 const documentTitle = useDocumentTitle();
-const { showMessage } = useToast();
 
 const modalOpen = ref(false);
 
@@ -21,14 +18,8 @@ function openCreateModal() {
 	modalOpen.value = true;
 }
 
-function onCreated(collection: KnowledgeCollectionDto) {
+function onCreated() {
 	modalOpen.value = false;
-	showMessage({
-		title: i18n.baseText('settings.context.collections.create.success', {
-			interpolate: { name: collection.name },
-		}),
-		type: 'success',
-	});
 }
 
 async function goBack() {

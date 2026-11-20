@@ -40,7 +40,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
-const { showError } = useToast();
+const { showError, showMessage } = useToast();
 const projectsStore = useProjectsStore();
 const collectionsStore = useCollectionsStore();
 
@@ -157,12 +157,17 @@ async function handleSubmit() {
 		if (token === openToken) {
 			emit('created', collection);
 		}
-	} catch (error) {
-		if (token !== openToken) {
-			return;
-		}
 
-		if (isNameTakenError(error)) {
+		// Every save shows the toast, also one from an earlier opening that no longer reports back.
+		showMessage({
+			title: i18n.baseText('settings.context.collections.create.success', {
+				interpolate: { name: collection.name },
+			}),
+			type: 'success',
+		});
+	} catch (error) {
+		// An earlier opening has no form to show the taken name under, so it gets the toast.
+		if (token === openToken && isNameTakenError(error)) {
 			serverNameError.value = i18n.baseText('settings.context.collections.modal.name.taken');
 			return;
 		}

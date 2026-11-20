@@ -10,6 +10,7 @@ import {
 	type KnowledgeCollectionDto,
 } from '@n8n/api-types';
 import { ResponseError } from '@n8n/rest-api-client';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useCollectionsStore } from '@/features/settings/context/collections.store';
@@ -17,9 +18,10 @@ import { useCollectionsStore } from '@/features/settings/context/collections.sto
 import CollectionModal from './CollectionModal.vue';
 
 const showError = vi.fn();
+const showMessage = vi.fn();
 
 vi.mock('@n8n/composables/useToast', () => ({
-	useToast: () => ({ showError, showMessage: vi.fn() }),
+	useToast: () => ({ showError, showMessage }),
 }));
 
 // N8nDialog teleports out of the tree (Reka UI's DialogPortal), so replace it
@@ -105,6 +107,7 @@ describe('CollectionModal', () => {
 		collectionsStore = mockedStore(useCollectionsStore);
 		collectionsStore.createCollection.mockResolvedValue(created);
 		showError.mockReset();
+		showMessage.mockReset();
 	});
 
 	it('shows the form with its labels and help texts', () => {
@@ -175,6 +178,10 @@ describe('CollectionModal', () => {
 			description: 'Refunds and pricing',
 		});
 		await waitFor(() => expect(emitted('created')).toEqual([[created]]));
+		expect(showMessage).toHaveBeenCalledWith({
+			title: 'Collection “Customer support” created.',
+			type: 'success',
+		});
 	});
 
 	it('creates the collection in the team project that the user picks', async () => {
@@ -242,6 +249,51 @@ describe('CollectionModal', () => {
 
 		await fillForm(getByTestId, 'Customer support', 'Refunds and pricing');
 		await userEvent.click(getByTestId('collection-modal-submit'));
+
+		await waitFor(() =>
+			expect(showError).toHaveBeenCalledWith(failure, 'Could not create collection'),
+		);
+		expect(queryByTestId('collection-name-error')).toBeNull();
+		expect(emitted('created')).toBeUndefined();
+	});
+
+	it('confirms a create that ends after the dialog opens again, without closing the new dialog', async () => {
+		const pending = createDeferredPromise<KnowledgeCollectionDto>();
+		collectionsStore.createCollection.mockReturnValue(pending.promise);
+		const { getByTestId, rerender, emitted } = renderModal({ props: { open: true }, pinia });
+
+		await fillForm(getByTestId, 'Customer support', 'Refunds and pricing');
+		await userEvent.click(getByTestId('collection-modal-submit'));
+		await rerender({ open: false });
+		await rerender({ open: true });
+		pending.resolve(created);
+
+		await waitFor(() =>
+			expect(showMessage).toHaveBeenCalledWith({
+				title: 'Collection “Customer support” created.',
+				type: 'success',
+			}),
+		);
+		expect(emitted('created')).toBeUndefined();
+	});
+
+	it('reports a taken name in a toast when the create ends after the dialog opens again', async () => {
+		const pending = createDeferredPromise<KnowledgeCollectionDto>();
+		collectionsStore.createCollection.mockReturnValue(pending.promise);
+		const failure = new ResponseError(
+			'A collection with this name already exists in this project.',
+			{ httpStatusCode: 409 },
+		);
+		const { getByTestId, queryByTestId, rerender, emitted } = renderModal({
+			props: { open: true },
+			pinia,
+		});
+
+		await fillForm(getByTestId, 'Customer support', 'Refunds and pricing');
+		await userEvent.click(getByTestId('collection-modal-submit'));
+		await rerender({ open: false });
+		await rerender({ open: true });
+		pending.reject(failure);
 
 		await waitFor(() =>
 			expect(showError).toHaveBeenCalledWith(failure, 'Could not create collection'),

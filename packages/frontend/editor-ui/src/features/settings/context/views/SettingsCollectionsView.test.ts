@@ -5,11 +5,6 @@ import userEvent from '@testing-library/user-event';
 import SettingsCollectionsView from './SettingsCollectionsView.vue';
 
 const push = vi.fn();
-const showMessage = vi.fn();
-
-vi.mock('@n8n/composables/useToast', () => ({
-	useToast: () => ({ showError: vi.fn(), showMessage }),
-}));
 
 vi.mock('vue-router', () => ({
 	useRouter: () => ({ push }),
@@ -43,7 +38,6 @@ describe('SettingsCollectionsView', () => {
 	beforeEach(() => {
 		createTestingPinia();
 		push.mockClear();
-		showMessage.mockClear();
 	});
 
 	it('shows the page header and the create button', () => {
@@ -74,27 +68,22 @@ describe('SettingsCollectionsView', () => {
 		expect(getByTestId('collection-modal-stub')).toHaveAttribute('data-open', 'true');
 	});
 
-	it('closes the dialog and confirms the new collection after a create', async () => {
+	it('closes the dialog after a create', async () => {
 		const { getByTestId } = renderView();
 		await userEvent.click(getByTestId('collections-create-button'));
 
 		await userEvent.click(getByTestId('collection-modal-stub-created'));
 
 		expect(getByTestId('collection-modal-stub')).toHaveAttribute('data-open', 'false');
-		expect(showMessage).toHaveBeenCalledWith({
-			title: 'Collection “Customer support” created.',
-			type: 'success',
-		});
 		expect(push).not.toHaveBeenCalled();
 	});
 
-	it('closes the dialog on cancel without a message', async () => {
+	it('closes the dialog on cancel', async () => {
 		const { getByTestId } = renderView();
 		await userEvent.click(getByTestId('collections-create-button'));
 
 		await userEvent.click(getByTestId('collection-modal-stub-close'));
 
 		expect(getByTestId('collection-modal-stub')).toHaveAttribute('data-open', 'false');
-		expect(showMessage).not.toHaveBeenCalled();
 	});
 });
