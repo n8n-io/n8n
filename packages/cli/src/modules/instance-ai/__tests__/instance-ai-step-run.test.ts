@@ -113,7 +113,7 @@ describe('buildMockedStepRunData', () => {
 			nodes,
 			connections,
 			targetName: 'Target',
-			mockItems: toExecutionItems([{ id: 7 }]),
+			mockItems: toExecutionItems([{ json: { id: 7 } }]),
 		});
 
 		expect(itemsOn(runData, 'Transform')).toEqual([{ json: { id: 7 } }]);
@@ -134,7 +134,7 @@ describe('buildMockedStepRunData', () => {
 			nodes,
 			connections,
 			targetName: 'Target',
-			mockItems: toExecutionItems([{ ok: true }]),
+			mockItems: toExecutionItems([{ json: { ok: true } }]),
 		});
 
 		expect(itemsOn(runData, 'IF', 0)).toEqual([]);
@@ -149,7 +149,7 @@ describe('buildMockedStepRunData', () => {
 			nodes,
 			connections,
 			targetName: 'Target',
-			mockItems: toExecutionItems([{ a: 1 }]),
+			mockItems: toExecutionItems([{ json: { a: 1 } }]),
 		});
 
 		// The disabled node is removed from the engine's graph, so writing run
@@ -174,7 +174,7 @@ describe('buildMockedStepRunData', () => {
 			nodes,
 			connections,
 			targetName: 'Merge',
-			mockItems: toExecutionItems([{ v: 1 }]),
+			mockItems: toExecutionItems([{ json: { v: 1 } }]),
 		});
 
 		expect(itemsOn(runData, 'A')).toEqual([{ json: { v: 1 } }]);
@@ -189,7 +189,7 @@ describe('buildMockedStepRunData', () => {
 			nodes,
 			connections,
 			targetName: 'Work',
-			mockItems: toExecutionItems([{}]),
+			mockItems: toExecutionItems([{ json: {} }]),
 		});
 
 		expect(mockedNodeNames).toEqual(['Loop']);
@@ -200,11 +200,24 @@ describe('buildMockedStepRunData', () => {
 			nodes: [node('Alone')],
 			connections: {},
 			targetName: 'Alone',
-			mockItems: toExecutionItems([{ a: 1 }]),
+			mockItems: toExecutionItems([{ json: { a: 1 } }]),
 		});
 
 		expect(runData).toEqual({});
 		expect(mockedNodeNames).toEqual([]);
+	});
+});
+
+describe('toExecutionItems', () => {
+	it('keeps the binary data of an item', () => {
+		const binary = {
+			data: { id: 'filesystem-v2:a', data: 'filesystem-v2', mimeType: 'image/png' },
+		};
+
+		expect(toExecutionItems([{ json: { n: 1 } }, { json: { n: 2 }, binary }])).toEqual([
+			{ json: { n: 1 } },
+			{ json: { n: 2 }, binary },
+		]);
 	});
 });
 
@@ -243,7 +256,7 @@ describe('planStepRun', () => {
 			nodes,
 			connections,
 			targetName: 'Target',
-			mockItems: toExecutionItems([{ id: 1 }]),
+			mockItems: toExecutionItems([{ json: { id: 1 } }]),
 		});
 
 		expect(plan.inputMode).toBe('mocked');
@@ -256,7 +269,7 @@ describe('planStepRun', () => {
 			nodes: [node('Alone')],
 			connections: {},
 			targetName: 'Alone',
-			mockItems: toExecutionItems([{ id: 1 }]),
+			mockItems: toExecutionItems([{ json: { id: 1 } }]),
 		});
 
 		expect(plan.inputMode).toBe('chain');
@@ -510,7 +523,7 @@ describe('planStepRun', () => {
 			});
 			const plan = (connections: IConnections, input: Partial<Parameters<typeof planStepRun>[0]>) =>
 				planStepRun({ nodes: loopNodes, connections, targetName: 'Target', ...input });
-			const mockItems = toExecutionItems([{ id: 1 }]);
+			const mockItems = toExecutionItems([{ json: { id: 1 } }]);
 
 			it('refuses a replay that starts at an unfinished loop with no input', () => {
 				// Loop "loop" -> Target, and nothing feeds the Loop node. With no
@@ -662,7 +675,7 @@ describe('planStepRun', () => {
 			nodes,
 			connections,
 			targetName: 'Target',
-			mockItems: toExecutionItems([{ id: 2 }]),
+			mockItems: toExecutionItems([{ json: { id: 2 } }]),
 			priorRunData,
 		});
 
@@ -697,7 +710,7 @@ describe('a mocked request without a loop never goes unhonoured', () => {
 			nodes,
 			connections,
 			targetName: 'Target',
-			mockItems: toExecutionItems([{ id: 1 }]),
+			mockItems: toExecutionItems([{ json: { id: 1 } }]),
 		});
 
 		expect(plan.unhonoredInput).toBeUndefined();
@@ -798,7 +811,7 @@ describe('sub-node targets', () => {
 			nodes,
 			connections,
 			targetName: 'Calculator',
-			mockItems: toExecutionItems([{ id: 1 }]),
+			mockItems: toExecutionItems([{ json: { id: 1 } }]),
 		});
 
 		// Without this the plan finds no main parent of the tool, degrades to a
@@ -880,7 +893,7 @@ describe('sub-node targets', () => {
 			nodes: orphan,
 			connections: {},
 			targetName: 'Calculator',
-			mockItems: toExecutionItems([{ id: 1 }]),
+			mockItems: toExecutionItems([{ json: { id: 1 } }]),
 		});
 
 		// Nothing above it to keep from running, so the plan has nothing to say.
@@ -937,7 +950,7 @@ describe('the plan against the engine rules', () => {
 			nodes,
 			connections,
 			targetName: 'Calculator',
-			mockItems: toExecutionItems([{ id: 1 }]),
+			mockItems: toExecutionItems([{ json: { id: 1 } }]),
 		});
 
 		expect(startNodesFor(plan.runData!)).toEqual([TOOL_EXECUTOR_NODE_NAME]);
@@ -987,7 +1000,7 @@ describe('the plan against the engine rules', () => {
 			nodes: withDownstream,
 			connections: connectionsWithDownstream,
 			targetName: 'Calculator',
-			mockItems: toExecutionItems([{ id: 1 }]),
+			mockItems: toExecutionItems([{ json: { id: 1 } }]),
 		});
 
 		const graph = new DirectedGraph()
@@ -1049,7 +1062,7 @@ describe('the plan against the engine rules', () => {
 				nodes: stacked,
 				connections: stackedConnections,
 				targetName: 'Calculator',
-				mockItems: toExecutionItems([{ id: 1 }]),
+				mockItems: toExecutionItems([{ json: { id: 1 } }]),
 			});
 
 			const graph = new DirectedGraph()
