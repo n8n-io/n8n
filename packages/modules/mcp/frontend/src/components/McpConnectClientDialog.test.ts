@@ -201,11 +201,13 @@ describe('McpConnectClientDialog', () => {
 
 			const prompt = await body().findByTestId('mcp-connect-preferences-prompt');
 			expect(prompt).toHaveTextContent('Teach Claude.ai how you build');
-			expect(prompt).toHaveTextContent('Ask me 3 short questions about how I like to build in n8n');
+			expect(prompt).toHaveTextContent('Interview me about how I like to build in n8n');
 
 			await userEvent.click(within(prompt).getByTestId('mcp-config-snippet-copy'));
 
-			expect(copySpy).toHaveBeenCalledWith(expect.stringContaining('Ask me 3 short questions'));
+			expect(copySpy).toHaveBeenCalledWith(
+				expect.stringContaining('Interview me about how I like to build in n8n'),
+			);
 			expect(entryPoints.trackPromptCopied).toHaveBeenCalledWith('claude-ai');
 		});
 

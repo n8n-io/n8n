@@ -4600,7 +4600,7 @@
 	"settings.mcp.connectDialog.preferences.title": "Teach {client} how you build",
 	"settings.mcp.connectDialog.preferences.optional": "Optional",
 	"settings.mcp.connectDialog.preferences.description": "After you connect, paste this prompt into {client}. It saves your answers as preferences in n8n, and each connected client then applies them.",
-	"settings.mcp.connectDialog.preferences.prompt": "Ask me 3 short questions about how I like to build in n8n, for example the nodes and credentials I prefer, and how I name things. Save each answer as an n8n preference.",
+	"settings.mcp.connectDialog.preferences.prompt": "Interview me about how I like to build in n8n. Ask one short question at a time, up to 5, about what would most change how you build workflows for me. Save each answer as an n8n preference.",
 	"settings.mcp.connectDialog.preferences.settingsHint": "You can also write preferences in",
 	"settings.mcp.connectDialog.preferences.settingsLink": "Settings › Context › Preferences",
 	"settings.mcp.connectDialog.method.oauth": "OAuth (recommended)",
