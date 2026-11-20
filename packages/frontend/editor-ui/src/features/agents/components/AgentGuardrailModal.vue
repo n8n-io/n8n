@@ -277,261 +277,271 @@ function onRemove() {
 		@update:title="name = $event"
 	>
 		<div :class="$style.content">
-			<div :class="$style.field">
-				<N8nText size="small" bold>
-					{{ i18n.baseText('agents.builder.guardrails.type.label') }}
-				</N8nText>
-				<N8nSelect
-					:model-value="selectedKind"
-					:disabled="disabled"
-					data-testid="agent-guardrail-type"
-					@update:model-value="selectedKind = $event"
-				>
-					<N8nOption
-						v-for="option in kindOptions"
-						:key="option.value"
-						:value="option.value"
-						:label="option.label"
-					/>
-				</N8nSelect>
-			</div>
-
-			<div :class="$style.kindOptions" data-testid="agent-guardrail-kind-options">
-				<template v-if="selectedKind === 'keywords'">
-					<div :class="$style.field">
-						<N8nText size="small" bold>
-							{{ i18n.baseText('agents.builder.guardrails.keywords.label') }}
-							<N8nText color="primary" bold size="small">*</N8nText>
-						</N8nText>
-						<AgentTagInput
-							v-model="keywords"
-							:placeholder="i18n.baseText('agents.builder.guardrails.keywords.placeholder')"
-							:disabled="disabled"
-							test-id="agent-guardrail-keywords"
-						/>
-						<N8nText v-if="keywords.length === 0" size="small" :class="$style.hint">
-							{{ i18n.baseText('agents.builder.guardrails.keywords.hint') }}
-						</N8nText>
-					</div>
-				</template>
-
-				<template v-else-if="selectedKind === 'pii'">
-					<div :class="$style.field">
-						<div :class="$style.switchRow">
-							<N8nText size="small" bold>
-								{{ i18n.baseText('agents.builder.guardrails.pii.label') }}
-							</N8nText>
-							<!-- On, every entity is covered. Off narrows to the picked list below. -->
-							<div :class="$style.allToggle">
-								<N8nText size="small">
-									{{ i18n.baseText('agents.builder.guardrails.pii.all') }}
-								</N8nText>
-								<N8nSwitch2
-									:model-value="piiType === 'all'"
-									:disabled="disabled"
-									size="small"
-									:aria-label="i18n.baseText('agents.builder.guardrails.pii.all')"
-									data-testid="agent-guardrail-pii-all"
-									@update:model-value="piiType = $event ? 'all' : 'selected'"
-								/>
-							</div>
-						</div>
-					</div>
-					<div v-if="piiType === 'selected'" :class="$style.field">
-						<N8nText size="small" bold>
-							{{ i18n.baseText('agents.builder.guardrails.pii.entities') }}
-							<N8nText color="primary" bold size="small">*</N8nText>
-						</N8nText>
-						<N8nSelect
-							:model-value="piiEntities"
-							multiple
-							:disabled="disabled"
-							:class="$style.tagSelect"
-							data-testid="agent-guardrail-pii-entities"
-							@update:model-value="piiEntities = $event"
-						>
-							<N8nOption
-								v-for="option in piiEntityOptions"
-								:key="option.value"
-								:value="option.value"
-								:label="option.label"
-							/>
-						</N8nSelect>
-					</div>
-				</template>
-
-				<template v-else-if="selectedKind === 'secretKeys'">
-					<div :class="$style.field">
-						<N8nText size="small" bold>
-							{{ i18n.baseText('agents.builder.guardrails.secretKeys.label') }}
-						</N8nText>
-						<N8nSegmentControl
-							:model-value="permissiveness"
-							:options="permissivenessOptions"
-							:disabled="disabled"
-							data-testid="agent-guardrail-permissiveness"
-							@update:model-value="permissiveness = $event"
-						/>
-					</div>
-				</template>
-
-				<template v-else-if="selectedKind === 'urls'">
-					<div :class="$style.field">
-						<N8nText size="small" bold>
-							{{ i18n.baseText('agents.builder.guardrails.urls.allowedUrls.label') }}
-						</N8nText>
-						<AgentTagInput
-							v-model="allowedUrls"
-							:placeholder="i18n.baseText('agents.builder.guardrails.urls.allowedUrls.placeholder')"
-							:disabled="disabled"
-							test-id="agent-guardrail-allowed-urls"
-						/>
-					</div>
-					<div :class="$style.field">
-						<N8nText size="small" bold>
-							{{ i18n.baseText('agents.builder.guardrails.urls.allowedSchemes.label') }}
-						</N8nText>
-						<AgentTagInput
-							v-model="allowedSchemes"
-							:placeholder="
-								i18n.baseText('agents.builder.guardrails.urls.allowedSchemes.placeholder')
-							"
-							:disabled="disabled"
-							test-id="agent-guardrail-allowed-schemes"
-						/>
-					</div>
-					<div :class="$style.switchRow">
-						<N8nText size="small">
-							{{ i18n.baseText('agents.builder.guardrails.urls.blockUserinfo.label') }}
-						</N8nText>
-						<N8nSwitch2
-							:model-value="blockUserinfo"
-							:disabled="disabled"
-							size="small"
-							:aria-label="i18n.baseText('agents.builder.guardrails.urls.blockUserinfo.label')"
-							data-testid="agent-guardrail-block-userinfo"
-							@update:model-value="blockUserinfo = $event"
-						/>
-					</div>
-					<div :class="$style.switchRow">
-						<N8nText size="small">
-							{{ i18n.baseText('agents.builder.guardrails.urls.allowSubdomains.label') }}
-						</N8nText>
-						<N8nSwitch2
-							:model-value="allowSubdomains"
-							:disabled="disabled"
-							size="small"
-							:aria-label="i18n.baseText('agents.builder.guardrails.urls.allowSubdomains.label')"
-							data-testid="agent-guardrail-allow-subdomains"
-							@update:model-value="allowSubdomains = $event"
-						/>
-					</div>
-				</template>
-
-				<template v-else>
-					<div :class="$style.field">
-						<N8nText size="small" bold>
-							{{ i18n.baseText('agents.builder.guardrails.model.prompt.label') }}
-						</N8nText>
-						<N8nInput
-							:model-value="prompt"
-							type="textarea"
-							:rows="3"
-							:placeholder="i18n.baseText('agents.builder.guardrails.model.prompt.placeholder')"
-							:disabled="disabled"
-							data-testid="agent-guardrail-prompt"
-							@update:model-value="prompt = $event"
-						/>
-						<N8nText size="small" :class="$style.hint">
-							{{ i18n.baseText('agents.builder.guardrails.model.prompt.hint') }}
-						</N8nText>
-					</div>
-					<div :class="$style.field">
-						<N8nText size="small" bold>
-							{{ i18n.baseText('agents.builder.guardrails.model.threshold.label') }}
-						</N8nText>
-						<N8nInputNumber
-							:model-value="threshold"
-							:min="0"
-							:max="1"
-							:step="0.05"
-							:precision="2"
-							:controls="false"
-							:disabled="disabled"
-							:class="$style.thresholdInput"
-							:placeholder="i18n.baseText('agents.builder.guardrails.model.threshold.placeholder')"
-							data-testid="agent-guardrail-threshold"
-							@update:model-value="threshold = $event ?? undefined"
-						/>
-						<N8nText size="small" :class="$style.hint">
-							{{ i18n.baseText('agents.builder.guardrails.model.threshold.hint') }}
-						</N8nText>
-					</div>
-				</template>
-			</div>
-
-			<div :class="$style.field">
-				<N8nText size="small" bold>
-					{{ i18n.baseText('agents.builder.guardrails.trigger.label') }}
-					<N8nText color="primary" bold size="small">*</N8nText>
-				</N8nText>
-				<N8nSelect
-					:model-value="stage"
-					:disabled="disabled"
-					data-testid="agent-guardrail-trigger"
-					@update:model-value="stage = $event"
-				>
-					<N8nOption
-						v-for="option in stageOptions"
-						:key="option.value"
-						:value="option.value"
-						:label="option.label"
-					/>
-				</N8nSelect>
-			</div>
-
-			<div :class="$style.field">
-				<N8nText size="small" bold>
-					{{ i18n.baseText('agents.builder.guardrails.tools.label') }}
-					<N8nText color="primary" bold size="small">*</N8nText>
-				</N8nText>
-				<N8nRadioGroup
-					:model-value="toolScope"
-					:class="$style.radioGroup"
-					@update:model-value="toolScope = $event as 'all' | 'selected'"
-				>
-					<N8nRadioGroupItem
-						value="all"
-						:label="i18n.baseText('agents.builder.guardrails.tools.all')"
-						data-testid="agent-guardrail-tools-all"
-					/>
-					<N8nRadioGroupItem
-						value="selected"
-						:label="i18n.baseText('agents.builder.guardrails.tools.selected')"
-						data-testid="agent-guardrail-tools-selected"
-					/>
-				</N8nRadioGroup>
-				<template v-if="toolScope === 'selected'">
+			<div :class="$style.group" data-testid="agent-guardrail-config-group">
+				<div :class="$style.field">
+					<N8nText size="small" bold>
+						{{ i18n.baseText('agents.builder.guardrails.type.label') }}
+					</N8nText>
 					<N8nSelect
-						v-if="toolOptions.length > 0"
-						:model-value="selectedToolKeys"
-						multiple
+						:model-value="selectedKind"
 						:disabled="disabled"
-						:class="[$style.tagSelect, $style.toolSelect]"
-						data-testid="agent-guardrail-tools-picker"
-						@update:model-value="selectedToolKeys = $event"
+						data-testid="agent-guardrail-type"
+						@update:model-value="selectedKind = $event"
 					>
 						<N8nOption
-							v-for="option in toolOptions"
-							:key="option.key"
-							:value="option.key"
+							v-for="option in kindOptions"
+							:key="option.value"
+							:value="option.value"
 							:label="option.label"
 						/>
 					</N8nSelect>
-					<N8nText v-else size="small" :class="$style.hint">
-						{{ i18n.baseText('agents.builder.guardrails.tools.none') }}
+				</div>
+
+				<div :class="$style.divider" aria-hidden="true" />
+
+				<div :class="$style.kindOptions" data-testid="agent-guardrail-kind-options">
+					<template v-if="selectedKind === 'keywords'">
+						<div :class="$style.field">
+							<N8nText size="small" bold>
+								{{ i18n.baseText('agents.builder.guardrails.keywords.label') }}
+								<N8nText color="primary" bold size="small">*</N8nText>
+							</N8nText>
+							<AgentTagInput
+								v-model="keywords"
+								:placeholder="i18n.baseText('agents.builder.guardrails.keywords.placeholder')"
+								:disabled="disabled"
+								test-id="agent-guardrail-keywords"
+							/>
+							<N8nText v-if="keywords.length === 0" size="small" :class="$style.hint">
+								{{ i18n.baseText('agents.builder.guardrails.keywords.hint') }}
+							</N8nText>
+						</div>
+					</template>
+
+					<template v-else-if="selectedKind === 'pii'">
+						<div :class="$style.field">
+							<div :class="$style.switchRow">
+								<N8nText size="small" bold>
+									{{ i18n.baseText('agents.builder.guardrails.pii.label') }}
+								</N8nText>
+								<!-- On, every entity is covered. Off narrows to the picked list below. -->
+								<div :class="$style.allToggle">
+									<N8nText size="small">
+										{{ i18n.baseText('agents.builder.guardrails.pii.all') }}
+									</N8nText>
+									<N8nSwitch2
+										:model-value="piiType === 'all'"
+										:disabled="disabled"
+										size="small"
+										:aria-label="i18n.baseText('agents.builder.guardrails.pii.all')"
+										data-testid="agent-guardrail-pii-all"
+										@update:model-value="piiType = $event ? 'all' : 'selected'"
+									/>
+								</div>
+							</div>
+						</div>
+						<div v-if="piiType === 'selected'" :class="$style.field">
+							<N8nText size="small" bold>
+								{{ i18n.baseText('agents.builder.guardrails.pii.entities') }}
+								<N8nText color="primary" bold size="small">*</N8nText>
+							</N8nText>
+							<N8nSelect
+								:model-value="piiEntities"
+								multiple
+								:disabled="disabled"
+								:class="$style.tagSelect"
+								data-testid="agent-guardrail-pii-entities"
+								@update:model-value="piiEntities = $event"
+							>
+								<N8nOption
+									v-for="option in piiEntityOptions"
+									:key="option.value"
+									:value="option.value"
+									:label="option.label"
+								/>
+							</N8nSelect>
+						</div>
+					</template>
+
+					<template v-else-if="selectedKind === 'secretKeys'">
+						<div :class="$style.field">
+							<N8nText size="small" bold>
+								{{ i18n.baseText('agents.builder.guardrails.secretKeys.label') }}
+							</N8nText>
+							<N8nSegmentControl
+								:model-value="permissiveness"
+								:options="permissivenessOptions"
+								:disabled="disabled"
+								data-testid="agent-guardrail-permissiveness"
+								@update:model-value="permissiveness = $event"
+							/>
+						</div>
+					</template>
+
+					<template v-else-if="selectedKind === 'urls'">
+						<div :class="$style.field">
+							<N8nText size="small" bold>
+								{{ i18n.baseText('agents.builder.guardrails.urls.allowedUrls.label') }}
+							</N8nText>
+							<AgentTagInput
+								v-model="allowedUrls"
+								:placeholder="
+									i18n.baseText('agents.builder.guardrails.urls.allowedUrls.placeholder')
+								"
+								:disabled="disabled"
+								test-id="agent-guardrail-allowed-urls"
+							/>
+						</div>
+						<div :class="$style.field">
+							<N8nText size="small" bold>
+								{{ i18n.baseText('agents.builder.guardrails.urls.allowedSchemes.label') }}
+							</N8nText>
+							<AgentTagInput
+								v-model="allowedSchemes"
+								:placeholder="
+									i18n.baseText('agents.builder.guardrails.urls.allowedSchemes.placeholder')
+								"
+								:disabled="disabled"
+								test-id="agent-guardrail-allowed-schemes"
+							/>
+						</div>
+						<div :class="$style.switchRow">
+							<N8nText size="small">
+								{{ i18n.baseText('agents.builder.guardrails.urls.blockUserinfo.label') }}
+							</N8nText>
+							<N8nSwitch2
+								:model-value="blockUserinfo"
+								:disabled="disabled"
+								size="small"
+								:aria-label="i18n.baseText('agents.builder.guardrails.urls.blockUserinfo.label')"
+								data-testid="agent-guardrail-block-userinfo"
+								@update:model-value="blockUserinfo = $event"
+							/>
+						</div>
+						<div :class="$style.switchRow">
+							<N8nText size="small">
+								{{ i18n.baseText('agents.builder.guardrails.urls.allowSubdomains.label') }}
+							</N8nText>
+							<N8nSwitch2
+								:model-value="allowSubdomains"
+								:disabled="disabled"
+								size="small"
+								:aria-label="i18n.baseText('agents.builder.guardrails.urls.allowSubdomains.label')"
+								data-testid="agent-guardrail-allow-subdomains"
+								@update:model-value="allowSubdomains = $event"
+							/>
+						</div>
+					</template>
+
+					<template v-else>
+						<div :class="$style.field">
+							<N8nText size="small" bold>
+								{{ i18n.baseText('agents.builder.guardrails.model.prompt.label') }}
+							</N8nText>
+							<N8nInput
+								:model-value="prompt"
+								type="textarea"
+								:rows="3"
+								:placeholder="i18n.baseText('agents.builder.guardrails.model.prompt.placeholder')"
+								:disabled="disabled"
+								data-testid="agent-guardrail-prompt"
+								@update:model-value="prompt = $event"
+							/>
+							<N8nText size="small" :class="$style.hint">
+								{{ i18n.baseText('agents.builder.guardrails.model.prompt.hint') }}
+							</N8nText>
+						</div>
+						<div :class="$style.field">
+							<N8nText size="small" bold>
+								{{ i18n.baseText('agents.builder.guardrails.model.threshold.label') }}
+							</N8nText>
+							<N8nInputNumber
+								:model-value="threshold"
+								:min="0"
+								:max="1"
+								:step="0.05"
+								:precision="2"
+								:controls="false"
+								:disabled="disabled"
+								:class="$style.thresholdInput"
+								:placeholder="
+									i18n.baseText('agents.builder.guardrails.model.threshold.placeholder')
+								"
+								data-testid="agent-guardrail-threshold"
+								@update:model-value="threshold = $event ?? undefined"
+							/>
+							<N8nText size="small" :class="$style.hint">
+								{{ i18n.baseText('agents.builder.guardrails.model.threshold.hint') }}
+							</N8nText>
+						</div>
+					</template>
+				</div>
+			</div>
+
+			<div :class="$style.group" data-testid="agent-guardrail-trigger-group">
+				<div :class="$style.field">
+					<N8nText size="small" bold>
+						{{ i18n.baseText('agents.builder.guardrails.trigger.label') }}
+						<N8nText color="primary" bold size="small">*</N8nText>
 					</N8nText>
-				</template>
+					<N8nSelect
+						:model-value="stage"
+						:disabled="disabled"
+						data-testid="agent-guardrail-trigger"
+						@update:model-value="stage = $event"
+					>
+						<N8nOption
+							v-for="option in stageOptions"
+							:key="option.value"
+							:value="option.value"
+							:label="option.label"
+						/>
+					</N8nSelect>
+				</div>
+
+				<div :class="$style.field">
+					<N8nText size="small" bold>
+						{{ i18n.baseText('agents.builder.guardrails.tools.label') }}
+						<N8nText color="primary" bold size="small">*</N8nText>
+					</N8nText>
+					<N8nRadioGroup
+						:model-value="toolScope"
+						:class="$style.radioGroup"
+						@update:model-value="toolScope = $event as 'all' | 'selected'"
+					>
+						<N8nRadioGroupItem
+							value="all"
+							:label="i18n.baseText('agents.builder.guardrails.tools.all')"
+							data-testid="agent-guardrail-tools-all"
+						/>
+						<N8nRadioGroupItem
+							value="selected"
+							:label="i18n.baseText('agents.builder.guardrails.tools.selected')"
+							data-testid="agent-guardrail-tools-selected"
+						/>
+					</N8nRadioGroup>
+					<template v-if="toolScope === 'selected'">
+						<N8nSelect
+							v-if="toolOptions.length > 0"
+							:model-value="selectedToolKeys"
+							multiple
+							:disabled="disabled"
+							:class="[$style.tagSelect, $style.toolSelect]"
+							data-testid="agent-guardrail-tools-picker"
+							@update:model-value="selectedToolKeys = $event"
+						>
+							<N8nOption
+								v-for="option in toolOptions"
+								:key="option.key"
+								:value="option.key"
+								:label="option.label"
+							/>
+						</N8nSelect>
+						<N8nText v-else size="small" :class="$style.hint">
+							{{ i18n.baseText('agents.builder.guardrails.tools.none') }}
+						</N8nText>
+					</template>
+				</div>
 			</div>
 		</div>
 
@@ -574,15 +584,48 @@ function onRemove() {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--2xs);
+
+	/* The DS radio's checked state is the brand pink, which clashes with the
+	   neutral checked state of the segment control in the same modal. Match
+	   the segment control's neutral treatment here. */
+	:global([role='radio'][data-state='checked']:not([data-disabled])) {
+		background-color: var(--color--foreground--tint-2);
+		border-color: var(--color--foreground--tint-1);
+	}
+}
+
+/* Element Plus natively selects a focused select's label, so the app-wide
+   brand-tinted ::selection reads as a pink highlight on the chosen value.
+   Keep the selection invisible on selects; the prompt textarea keeps its
+   normal selection tint. */
+.content :global(.el-select *)::selection {
+	background-color: transparent;
+}
+
+/* An outlined group of related fields, per the modal wireframe: the guardrail
+   type groups with its kind options, the trigger stage groups with the tool
+   scope. */
+.group {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--2xs);
+	border: var(--border);
+	border-radius: var(--radius--md);
+}
+
+/* Spans the group's full inner width, like the capabilities divider. */
+.divider {
+	flex: initial;
+	height: 1px;
+	background-color: var(--border-color--subtle);
+	margin-inline: calc(var(--spacing--2xs) * -1);
 }
 
 .kindOptions {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--2xs);
-	padding: var(--spacing--2xs);
-	border-radius: var(--radius--md);
-	background-color: var(--background--subtle);
 }
 
 .radioGroup {
