@@ -213,6 +213,7 @@ describe('PUT /workflows/:workflowId/transfer', () => {
 			.expect(200);
 
 		expect(response.body.data).toEqual({ error: { name: 'Error', message: 'outbox is down' } });
+		expect(deactivatedEvents).toEqual([]);
 	});
 
 	test('unpublishes the workflow and reports the error when the destination cannot use its credential', async () => {
