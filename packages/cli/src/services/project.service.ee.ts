@@ -1,6 +1,6 @@
 import type { CreateProjectDto, ProjectType, UpdateProjectDto } from '@n8n/api-types';
 import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
-import { EventService, ProjectNotFoundError, RoleService } from '@n8n/backend-services';
+import { EventService, loginIdOf, ProjectNotFoundError, RoleService } from '@n8n/backend-services';
 import {
 	type User,
 	FolderRepository,
@@ -138,6 +138,12 @@ export class ProjectService {
 	private get dataTableService() {
 		return import('@n8n/backend-module-data-table').then(({ DataTableService }) =>
 			Container.get(DataTableService),
+		);
+	}
+
+	private get executionLimitsService() {
+		return import('@n8n/backend-module-execution-limits').then(({ ExecutionLimitsService }) =>
+			Container.get(ExecutionLimitsService),
 		);
 	}
 
@@ -297,12 +303,24 @@ export class ProjectService {
 		const memberUserIds = projectMembers.map((pr) => pr.userId);
 
 		// 9. Delete the project and its deletion marker in one transaction.
-		await this.txRunner.run({}, async (ctx) => {
+		const loginId = loginIdOf(ctx);
+		const executionLimits = this.moduleRegistry.isActive('execution-limits')
+			? await this.executionLimitsService
+			: undefined;
+		const announceLimitRemoval = await this.txRunner.run({}, async (ctx) => {
+			const announce = await executionLimits?.removeLimitOfDeletedProject(
+				project.id,
+				user.id,
+				loginId,
+				ctx,
+			);
 			await this.projectRepository.removeProjectForDeletion(project, ctx);
 			if (this.moduleRegistry.isActive('agents')) {
 				await (await this.agentProjectCleanupService).completeProjectDeletion(projectId, ctx);
 			}
+			return announce;
 		});
+		await announceLimitRemoval?.();
 
 		if (targetProject) {
 			// The cascade removes the source owner rows. Invalidate after the transaction commits.
