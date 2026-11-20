@@ -1,8 +1,8 @@
 diff --git a/dist/index.js b/dist/index.js
-index 5278d648103068f1f3875c27e42c775ab02238ed..c0f0a7302a731e79951a972f6e18e91b90b066c9 100644
+index b038395..286d55e 100644
 --- a/dist/index.js
 +++ b/dist/index.js
-@@ -1622,6 +1622,9 @@ var MESSAGEID_STRIP_PATTERN2 = /;messageid=\d+/;
+@@ -1633,6 +1633,9 @@ var MESSAGEID_STRIP_PATTERN2 = /;messageid=\d+/;
  var CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1e3;
  var USER_INFO_CACHE_TTL_MS = 60 * 60 * 1e3;
  var USER_INFO_NEGATIVE_CACHE_TTL_MS = 5 * 60 * 1e3;
@@ -12,7 +12,7 @@ index 5278d648103068f1f3875c27e42c775ab02238ed..c0f0a7302a731e79951a972f6e18e91b
  var USER_INFO_NEGATIVE_SENTINEL = "unresolvable";
  var DEFAULT_DIALOG_OPEN_TIMEOUT_MS = 5e3;
  var TEAMS_REACTION_ALIASES = {
-@@ -2417,6 +2420,7 @@ var TeamsAdapter = class {
+@@ -2459,6 +2462,7 @@ var TeamsAdapter = class {
        });
        try {
          const sent = await this.app.send(conversationId, activity2);
@@ -20,7 +20,7 @@ index 5278d648103068f1f3875c27e42c775ab02238ed..c0f0a7302a731e79951a972f6e18e91b
          return {
            id: sent.id || "",
            threadId,
-@@ -2449,6 +2453,7 @@ var TeamsAdapter = class {
+@@ -2491,6 +2495,7 @@ var TeamsAdapter = class {
      });
      try {
        const sent = await this.app.send(conversationId, activity);
@@ -28,7 +28,7 @@ index 5278d648103068f1f3875c27e42c775ab02238ed..c0f0a7302a731e79951a972f6e18e91b
        this.logger.debug("Teams API: targeted send response", {
          messageId: sent.id
        });
-@@ -2467,6 +2472,61 @@ var TeamsAdapter = class {
+@@ -2509,6 +2514,61 @@ var TeamsAdapter = class {
        handleTeamsError(error, "postEphemeral");
      }
    }
@@ -90,7 +90,7 @@ index 5278d648103068f1f3875c27e42c775ab02238ed..c0f0a7302a731e79951a972f6e18e91b
    createTargetedRecipient(userId) {
      return {
        id: userId,
-@@ -2511,7 +2571,8 @@ var TeamsAdapter = class {
+@@ -2553,7 +2613,8 @@ var TeamsAdapter = class {
          messageId
        });
        try {
@@ -100,7 +100,7 @@ index 5278d648103068f1f3875c27e42c775ab02238ed..c0f0a7302a731e79951a972f6e18e91b
        } catch (error) {
          this.logger.error("Teams API: updateActivity failed", {
            conversationId,
-@@ -2534,7 +2595,8 @@ var TeamsAdapter = class {
+@@ -2576,7 +2637,8 @@ var TeamsAdapter = class {
        textLength: text.length
      });
      try {
@@ -110,7 +110,7 @@ index 5278d648103068f1f3875c27e42c775ab02238ed..c0f0a7302a731e79951a972f6e18e91b
      } catch (error) {
        this.logger.error("Teams API: updateActivity failed", {
          conversationId,
-@@ -2553,7 +2615,8 @@ var TeamsAdapter = class {
+@@ -2595,7 +2657,8 @@ var TeamsAdapter = class {
        messageId
      });
      try {
@@ -120,7 +120,7 @@ index 5278d648103068f1f3875c27e42c775ab02238ed..c0f0a7302a731e79951a972f6e18e91b
      } catch (error) {
        this.logger.error("Teams API: deleteActivity failed", {
          conversationId,
-@@ -2562,6 +2625,7 @@ var TeamsAdapter = class {
+@@ -2604,6 +2667,7 @@ var TeamsAdapter = class {
        });
        handleTeamsError(error, "deleteMessage");
      }
