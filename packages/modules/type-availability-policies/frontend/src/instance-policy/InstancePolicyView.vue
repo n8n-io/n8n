@@ -120,7 +120,7 @@ onMounted(() => {
 				<ReuseTabs />
 			</template>
 		</CredentialTypesTab>
-		<NodeTypesTab v-else-if="activeTab === 'node'">
+		<NodeTypesTab v-else-if="activeTab === 'node'" @open="openDetails">
 			<template #toolbar-start>
 				<ReuseTabs />
 			</template>

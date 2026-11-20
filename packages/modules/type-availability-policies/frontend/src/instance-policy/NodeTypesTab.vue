@@ -10,6 +10,8 @@ import { useInstanceTypeAccess } from './useInstanceTypeAccess';
 import { useAppliedTheme } from '../composables/useAppliedTheme';
 import { fetchNodeTypeSummaries, type NodeTypeSummary } from '../type-availability-policies.api';
 
+const emit = defineEmits<{ open: [name: string] }>();
+
 const i18n = useI18n();
 const rootStore = useRootStore();
 const theme = useAppliedTheme();
@@ -86,6 +88,7 @@ onMounted(async () => {
 		:search-placeholder="i18n.baseText('typeAvailabilityPolicies.instancePolicy.table.search.node')"
 		data-test-id="node-types-tab"
 		@change="changeAccess"
+		@open="(name) => emit('open', name)"
 	>
 		<template #toolbar-start>
 			<slot name="toolbar-start" />

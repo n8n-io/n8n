@@ -279,6 +279,22 @@ describe('InstancePolicyView', () => {
 		expect(replace).toHaveBeenCalledWith({ query: { tab: 'credential', details: 'bitlyApi' } });
 	});
 
+	it('opens the node dialog when the admin clicks a row of the Nodes tab', async () => {
+		fetchInstanceAccess.mockResolvedValue({
+			scopeId: null,
+			version: 0,
+			defaultAction: 'allow',
+			types: [{ name: 'n8n-nodes-base.notion', access: 'allow', matchedRuleId: null }],
+		});
+		const { findByText } = setup(BOTH_SCOPES, { tab: 'node' });
+
+		await fireEvent.click(await findByText('Notion'));
+
+		expect(replace).toHaveBeenCalledWith({
+			query: { tab: 'node', details: 'n8n-nodes-base.notion' },
+		});
+	});
+
 	it('closes the dialog when the admin changes the tab', async () => {
 		const { getByText } = setup(BOTH_SCOPES, { tab: 'credential', details: 'airtableApi' });
 
