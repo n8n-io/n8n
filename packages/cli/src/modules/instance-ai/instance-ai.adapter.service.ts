@@ -1750,7 +1750,12 @@ export class InstanceAiAdapterService {
 				if (!wf) throw new WorkflowNotFoundError(workflowId);
 				if (!versionId) return toWorkflowJSON(wf, { redactParameters });
 				const version = await workflowHistoryService.getVersion(user, workflowId, versionId);
-				return toWorkflowJSON(wf, { redactParameters, graph: version });
+				// The version stores its own engine, so its source must not show the draft's engine.
+				const settings = Container.get(WorkflowVersionedSettingsService).forVersionRun(
+					wf.settings,
+					version,
+				);
+				return toWorkflowJSON({ ...wf, settings }, { redactParameters, graph: version });
 			},
 
 			async getPinnedDataSummary(workflowId: string) {
