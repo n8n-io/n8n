@@ -426,7 +426,6 @@ interface ValidationFailureArgs {
 	withEscalation: (errors: string[], options?: { trackingErrors?: string[] }) => string[];
 	stage?: BuildTelemetryStage;
 	grouping?: GroupingOutcome;
-	/** The engine the build was validated for. */
 	targetEngine?: TargetEngine;
 }
 
@@ -564,7 +563,6 @@ const buildWorkflowOutputSchema = z.object({
 	hasUnresolvedPlaceholders: z.boolean().optional(),
 	...savedWorkflowStateSchema.shape,
 	grouping: groupingOutcomeSchema.optional(),
-	/** The engine the build was validated for, e.g. `{ engine: 'v2', source: 'instance-default' }`. */
 	targetEngine: targetEngineSchema.optional(),
 	denied: z.boolean().optional(),
 	reason: z.string().optional(),
