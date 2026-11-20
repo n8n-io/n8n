@@ -129,8 +129,8 @@ describe('EvalInsightsService', () => {
 
 	describe('LLM path', () => {
 		const resolvedModel = {
-			modelConfig: { id: 'anthropic/claude-sonnet-4-5', apiKey: 'sk-test' },
-			modelId: 'anthropic/claude-sonnet-4-5',
+			modelConfig: { id: 'anthropic/claude-sonnet-5-5', apiKey: 'sk-test' },
+			modelId: 'anthropic/claude-sonnet-5-5',
 		};
 
 		function seedTwoScoredRuns() {
@@ -175,7 +175,7 @@ describe('EvalInsightsService', () => {
 			const result = await service.generateInsights(user, 'wf-1', 'col-1');
 
 			expect(result.status).toBe('ok');
-			expect(result.modelUsed).toBe('anthropic/claude-sonnet-4-5');
+			expect(result.modelUsed).toBe('anthropic/claude-sonnet-5-5');
 			expect(result.insights.winner).toEqual(validPayload.winner);
 			expect(result.insights.suggestedNext).toEqual(validPayload.suggestedNext);
 			// Regression kept, but `delta` overwritten from context (40 − 100 = −60).
@@ -423,8 +423,8 @@ describe('EvalInsightsService', () => {
 				},
 			};
 			modelResolver.resolve.mockResolvedValueOnce({
-				modelConfig: { id: 'anthropic/claude-sonnet-4-5', apiKey: 'sk-test' },
-				modelId: 'anthropic/claude-sonnet-4-5',
+				modelConfig: { id: 'anthropic/claude-sonnet-5-5', apiKey: 'sk-test' },
+				modelId: 'anthropic/claude-sonnet-5-5',
 			});
 			contextBuilder.build.mockResolvedValue({
 				collectionName: 'My collection',

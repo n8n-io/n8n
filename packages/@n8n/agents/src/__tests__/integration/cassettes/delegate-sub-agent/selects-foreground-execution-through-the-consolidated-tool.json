@@ -4,8 +4,8 @@
 		"method": "POST",
 		"path": "/v1/messages",
 		"body": {
-			"model": "claude-sonnet-4-5",
-			"max_tokens": 64000,
+			"model": "claude-sonnet-5-5",
+			"max_tokens": 128000,
 			"system": [
 				{
 					"type": "text",
@@ -98,31 +98,31 @@
 			}
 		},
 		"status": 200,
-		"response": "{\"model\":\"claude-sonnet-4-5-20250929\",\"id\":\"msg_011CgSfb7gtUAUgFyP5KFDeW\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"I'll delegate this short review to an inline child agent and then summarize the result.\"},{\"type\":\"tool_use\",\"id\":\"toolu_01LQ7Y97PJb16zeBPggwupBa\",\"name\":\"delegate_subagent\",\"input\":{\"subAgentId\":\"inline\",\"taskName\":\"review_api_auth_notes\",\"goal\":\"Review the authentication methods used by two APIs and provide a concise analysis.\",\"context\":\"You are reviewing authentication notes for two APIs:\\n- API A uses OAuth\\n- API B uses API keys\\n\\nPlease provide a short review that covers:\\n1. A brief comparison of these two authentication methods\\n2. Key differences between OAuth and API keys\\n3. Any relevant considerations for each approach (security, complexity, use cases)\\n\\nKeep the review concise and focused on these specific authentication methods.\",\"expectedOutput\":\"A short review comparing OAuth vs API key authentication, highlighting key differences and considerations.\",\"difficulty\":\"low\"},\"caller\":{\"type\":\"direct\"}}],\"container\":null,\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":1927,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":278,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\",\"speed\":\"standard\"},\"diagnostics\":null}",
+		"response": "{\"model\":\"claude-sonnet-5-5\",\"id\":\"msg_011ChDvf2nkWAJNaRLsNXriL\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"tool_use\",\"id\":\"toolu_01Je4W1kdhMhUDp4eqvbWMmh\",\"name\":\"delegate_subagent\",\"input\":{\"subAgentId\":\"inline\",\"taskName\":\"review_api_auth_notes\",\"goal\":\"Briefly review these notes for an API comparison and report key observations: \\\"API A uses OAuth, and API B uses API keys.\\\"\",\"context\":\"This is one small step in a larger API comparison. The notes are only: \\\"API A uses OAuth, and API B uses API keys.\\\" Give a short review covering: (1) what each auth approach implies for security, (2) implications for developer integration effort, (3) any gaps or ambiguities in the notes worth clarifying (e.g., OAuth grant type, key scoping/rotation). Do not do external research; rely on general knowledge. Keep it concise.\",\"expectedOutput\":\"A concise summary (under 150 words) with brief bullets for security, integration effort, and gaps/clarifications.\",\"difficulty\":\"low\",\"mode\":\"foreground\"},\"caller\":{\"type\":\"direct\"}}],\"container\":null,\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":2501,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":418,\"output_tokens_details\":{\"thinking_tokens\":0},\"service_tier\":\"standard\",\"inference_geo\":\"global\",\"speed\":\"standard\"},\"diagnostics\":null}",
 		"rawHeaders": {
-			"anthropic-ratelimit-input-tokens-limit": "22500000",
-			"anthropic-ratelimit-input-tokens-remaining": "22499000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-10-27T11:30:46Z",
-			"anthropic-ratelimit-output-tokens-limit": "4500000",
-			"anthropic-ratelimit-output-tokens-remaining": "4500000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-10-27T11:30:51Z",
-			"anthropic-ratelimit-requests-limit": "20000",
-			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-10-27T11:30:46Z",
-			"anthropic-ratelimit-tokens-limit": "27000000",
-			"anthropic-ratelimit-tokens-remaining": "26999000",
-			"anthropic-ratelimit-tokens-reset": "2026-10-27T11:30:46Z",
+			"anthropic-ratelimit-input-tokens-limit": "15000000",
+			"anthropic-ratelimit-input-tokens-remaining": "14999000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-11-20T09:15:06Z",
+			"anthropic-ratelimit-output-tokens-limit": "3000000",
+			"anthropic-ratelimit-output-tokens-remaining": "3000000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-11-20T09:15:09Z",
+			"anthropic-ratelimit-requests-limit": "45000",
+			"anthropic-ratelimit-requests-remaining": "44999",
+			"anthropic-ratelimit-requests-reset": "2026-11-20T09:15:05Z",
+			"anthropic-ratelimit-tokens-limit": "18000000",
+			"anthropic-ratelimit-tokens-remaining": "17999000",
+			"anthropic-ratelimit-tokens-reset": "2026-11-20T09:15:06Z",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a5115ede59fd889c-TXL",
+			"cf-ray": "a5d659214fd789cd-TXL",
 			"connection": "keep-alive",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "application/json",
-			"date": "Tue, 27 Oct 2026 11:30:51 GMT",
-			"request-id": "req_011CgSfb7LKPVZWQE7teXjbz",
+			"date": "Fri, 20 Nov 2026 09:15:09 GMT",
+			"request-id": "req_011ChDvf2foUM8GsNupeHa6x",
 			"server": "cloudflare",
-			"server-timing": "x-originResponse;dur=5420",
+			"server-timing": "x-originResponse;dur=3597",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-71df64addd3887ed15336a51548cd792-ef5635933feabff6-01",
+			"traceresponse": "00-9ec364ca514c8566f50f418f19bae360-50d36e0ec0df891a-01",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
 		},
@@ -133,8 +133,8 @@
 		"method": "POST",
 		"path": "/v1/messages",
 		"body": {
-			"model": "claude-sonnet-4-5",
-			"max_tokens": 64000,
+			"model": "claude-sonnet-5-5",
+			"max_tokens": 128000,
 			"system": [
 				{
 					"type": "text",
@@ -155,20 +155,17 @@
 					"role": "assistant",
 					"content": [
 						{
-							"type": "text",
-							"text": "I'll delegate this short review to an inline child agent and then summarize the result."
-						},
-						{
 							"type": "tool_use",
-							"id": "toolu_01LQ7Y97PJb16zeBPggwupBa",
+							"id": "toolu_01Je4W1kdhMhUDp4eqvbWMmh",
 							"name": "delegate_subagent",
 							"input": {
 								"subAgentId": "inline",
 								"taskName": "review_api_auth_notes",
-								"goal": "Review the authentication methods used by two APIs and provide a concise analysis.",
-								"context": "You are reviewing authentication notes for two APIs:\n- API A uses OAuth\n- API B uses API keys\n\nPlease provide a short review that covers:\n1. A brief comparison of these two authentication methods\n2. Key differences between OAuth and API keys\n3. Any relevant considerations for each approach (security, complexity, use cases)\n\nKeep the review concise and focused on these specific authentication methods.",
-								"expectedOutput": "A short review comparing OAuth vs API key authentication, highlighting key differences and considerations.",
-								"difficulty": "low"
+								"goal": "Briefly review these notes for an API comparison and report key observations: \"API A uses OAuth, and API B uses API keys.\"",
+								"context": "This is one small step in a larger API comparison. The notes are only: \"API A uses OAuth, and API B uses API keys.\" Give a short review covering: (1) what each auth approach implies for security, (2) implications for developer integration effort, (3) any gaps or ambiguities in the notes worth clarifying (e.g., OAuth grant type, key scoping/rotation). Do not do external research; rely on general knowledge. Keep it concise.",
+								"expectedOutput": "A concise summary (under 150 words) with brief bullets for security, integration effort, and gaps/clarifications.",
+								"difficulty": "low",
+								"mode": "foreground"
 							},
 							"caller": {
 								"type": "direct"
@@ -181,7 +178,7 @@
 					"content": [
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_01LQ7Y97PJb16zeBPggwupBa",
+							"tool_use_id": "toolu_01Je4W1kdhMhUDp4eqvbWMmh",
 							"content": "{\"status\":\"completed\",\"answer\":\"API A uses OAuth; API B uses API keys.\"}"
 						}
 					]
@@ -262,31 +259,31 @@
 			}
 		},
 		"status": 200,
-		"response": "{\"model\":\"claude-sonnet-4-5-20250929\",\"id\":\"msg_011CgSfbXfnYc7WMsfqZPcs6\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"## Summary\\n\\nThe inline child agent completed the review and confirmed the authentication methods:\\n\\n**Result:** API A uses OAuth while API B uses API keys.\\n\\n**Key Takeaway for Your API Comparison:**\\n- **API A (OAuth)**: More complex but offers better security with delegated authorization, token-based access, scopes, and refresh mechanisms. Best for user-facing applications where third-party access control is needed.\\n- **API B (API Keys)**: Simpler to implement with straightforward key-based authentication. Easier for developers to get started but requires careful key management and rotation practices.\\n\\nThe authentication difference is a significant factor in your larger API comparison, as it impacts implementation complexity, security posture, and suitable use cases for each API.\"}],\"container\":null,\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":2235,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":164,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\",\"speed\":\"standard\"},\"diagnostics\":null}",
+		"response": "{\"model\":\"claude-sonnet-5-5\",\"id\":\"msg_011ChDvfK2JpFPv1KKiFnbJo\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"The child agent finished, but its answer only repeated your notes: \\\"API A uses OAuth; API B uses API keys.\\\" It gave no review of security, integration effort, or gaps in the notes.\\n\\nI can't offer anything beyond the notes from this result. If you want a real review, I can delegate again with a narrower prompt. It would cover the security tradeoffs, the integration effort, and open questions such as the OAuth grant type and how API keys are scoped and rotated.\"}],\"container\":null,\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":2954,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":148,\"output_tokens_details\":{\"thinking_tokens\":0},\"service_tier\":\"standard\",\"inference_geo\":\"global\",\"speed\":\"standard\"},\"diagnostics\":null}",
 		"rawHeaders": {
-			"anthropic-ratelimit-input-tokens-limit": "22500000",
-			"anthropic-ratelimit-input-tokens-remaining": "22499000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-10-27T11:30:52Z",
-			"anthropic-ratelimit-output-tokens-limit": "4500000",
-			"anthropic-ratelimit-output-tokens-remaining": "4500000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-10-27T11:30:56Z",
-			"anthropic-ratelimit-requests-limit": "20000",
-			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-10-27T11:30:51Z",
-			"anthropic-ratelimit-tokens-limit": "27000000",
-			"anthropic-ratelimit-tokens-remaining": "26999000",
-			"anthropic-ratelimit-tokens-reset": "2026-10-27T11:30:52Z",
+			"anthropic-ratelimit-input-tokens-limit": "15000000",
+			"anthropic-ratelimit-input-tokens-remaining": "14999000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-11-20T09:15:11Z",
+			"anthropic-ratelimit-output-tokens-limit": "3000000",
+			"anthropic-ratelimit-output-tokens-remaining": "3000000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-11-20T09:15:11Z",
+			"anthropic-ratelimit-requests-limit": "45000",
+			"anthropic-ratelimit-requests-remaining": "44999",
+			"anthropic-ratelimit-requests-reset": "2026-11-20T09:15:09Z",
+			"anthropic-ratelimit-tokens-limit": "18000000",
+			"anthropic-ratelimit-tokens-remaining": "17999000",
+			"anthropic-ratelimit-tokens-reset": "2026-11-20T09:15:11Z",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a5115f01b8b8889c-TXL",
+			"cf-ray": "a5d659391e8289cd-TXL",
 			"connection": "keep-alive",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "application/json",
-			"date": "Tue, 27 Oct 2026 11:30:56 GMT",
-			"request-id": "req_011CgSfbXX7a6cZtbLaqK3B9",
+			"date": "Fri, 20 Nov 2026 09:15:11 GMT",
+			"request-id": "req_011ChDvfJtcS5HxPZPoocVWB",
 			"server": "cloudflare",
-			"server-timing": "x-originResponse;dur=4984",
+			"server-timing": "x-originResponse;dur=2036",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-96d302d83da7e2082d823d3c0dd9eaf3-f3042ec3a18cdde9-01",
+			"traceresponse": "00-7175eb3db170d37518615d76249e276d-b7ac9e8d650030dd-01",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
 		},

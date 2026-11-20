@@ -1,5 +1,6 @@
 import type { AppEventMap } from '@n8n/backend-module-apps';
 import type { DataTableEventMap } from '@n8n/backend-module-data-table';
+import type { ExecutionLimitsEventMap } from '@n8n/backend-module-execution-limits';
 import type {
 	AuthenticationMethod,
 	BreakingChangeLightReportResult,
@@ -25,6 +26,7 @@ import type {
 	IWorkflowExecutionDataProcess,
 	IWorkflowSettings,
 	JsonValue,
+	RelatedAgentRun,
 	WorkflowExecuteMode,
 	WorkflowSettings,
 } from 'n8n-workflow';
@@ -101,7 +103,7 @@ export type ProjectSummary = {
 	name: string;
 };
 
-type ModuleEventMap = DataTableEventMap & AppEventMap;
+type ModuleEventMap = DataTableEventMap & AppEventMap & ExecutionLimitsEventMap;
 
 export type RelayEventMap = ModuleEventMap & {
 	// #region Lifecycle
@@ -289,6 +291,8 @@ export type RelayEventMap = ModuleEventMap & {
 		mode: WorkflowExecuteMode;
 		projectId?: string;
 		projectName?: string;
+		/** The agent tool call that started this execution. Relays read ids from it and never send it whole. */
+		parentAgentRun?: RelatedAgentRun;
 	};
 
 	'workflow-post-execute': {
@@ -300,6 +304,8 @@ export type RelayEventMap = ModuleEventMap & {
 		projectName?: string;
 		source?: IWorkflowExecutionDataProcess['source'];
 		telemetryMetadata?: IWorkflowExecutionDataProcess['telemetryMetadata'];
+		/** The agent tool call that started this execution. Relays read ids from it and never send it whole. */
+		parentAgentRun?: RelatedAgentRun;
 	};
 
 	'workflow-sharing-updated': {

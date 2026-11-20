@@ -27,7 +27,7 @@ export const AgentModelSchema = z.string().min(1).regex(
 	 * `@` allows gateway model IDs after the provider (e.g. "openai/@OpenAI/gpt-5-mini")
 	 */
 	AGENT_MODEL_STRING_REGEX,
-	'Model must be "provider/model-name" format (e.g. "anthropic/claude-sonnet-4-5" or "openrouter/amazon/nova-micro-v1")',
+	'Model must be "provider/model-name" format (e.g. "anthropic/claude-sonnet-5-5" or "openrouter/amazon/nova-micro-v1")',
 );
 
 const CredentialIdSchema = z.string().trim();

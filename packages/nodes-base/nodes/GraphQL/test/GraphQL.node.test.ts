@@ -3,7 +3,7 @@ import { mockDeep } from 'vitest-mock-extended';
 import get from 'lodash/get';
 import { constructExecutionMetaData, returnJsonArray } from 'n8n-core';
 import type { IDataObject, IExecuteFunctions, IRequestOptions } from 'n8n-workflow';
-import { ExpressionError, NodeApiError } from 'n8n-workflow';
+import { ExpressionError, NodeApiError, NodeHelpers } from 'n8n-workflow';
 import nock from 'nock';
 
 import { GraphQL } from '../GraphQL.node';
@@ -70,6 +70,112 @@ describe('GraphQL Node', () => {
 		new NodeTestHarness().setupTests({
 			workflowFiles: ['workflow.error_invalid_expression.json'],
 		});
+	});
+
+	describe('multiple headers authentication', () => {
+		it.each([1, 1.1])(
+			'offers Multiple Headers Auth with its credential selector in version %s',
+			(typeVersion) => {
+				const { description } = new GraphQL();
+				const authentication = description.properties.find((p) => p.name === 'authentication');
+				expect(authentication?.options).toContainEqual({
+					name: 'Multiple Headers Auth',
+					value: 'multipleHeadersAuth',
+				});
+
+				const visibleCredentials = description.credentials?.filter((credential) =>
+					NodeHelpers.displayParameter(
+						{ authentication: 'multipleHeadersAuth' },
+						credential,
+						{ typeVersion },
+						description,
+					),
+				);
+				expect(visibleCredentials).toEqual([
+					expect.objectContaining({ name: 'httpMultipleHeadersAuth', required: true }),
+				]);
+			},
+		);
+
+		const harness = new NodeTestHarness();
+		const baseUrl = 'https://api.example.com';
+		const headers = {
+			'X-Service-Token': 'first-test-value',
+			'X-Account-Key': 'second-test-value',
+		};
+
+		for (const typeVersion of [1, 1.1]) {
+			for (const authentication of ['multipleHeadersAuth', 'predefinedCredentialType']) {
+				harness.setupTest({
+					description: `sends both credential headers with ${authentication} in version ${typeVersion}`,
+					input: {
+						workflowData: {
+							nodes: [
+								{
+									id: 'trigger',
+									name: 'Trigger',
+									type: 'n8n-nodes-base.manualTrigger',
+									typeVersion: 1,
+									position: [0, 0],
+									parameters: {},
+								},
+								{
+									id: 'graphql',
+									name: 'GraphQL',
+									type: 'n8n-nodes-base.graphql',
+									typeVersion,
+									position: [200, 0],
+									credentials: {
+										httpMultipleHeadersAuth: { id: 'credential', name: 'API headers' },
+									},
+									parameters: {
+										authentication,
+										...(authentication === 'predefinedCredentialType'
+											? { nodeCredentialType: 'httpMultipleHeadersAuth' }
+											: {}),
+										endpoint: `${baseUrl}/graphql`,
+										requestFormat: 'json',
+										query: '{ ok }',
+										headerParametersUi: {
+											parameter: [
+												{ name: 'X-Request-ID', value: 'request-id' },
+												{ name: 'X-Service-Token', value: 'overridden-value' },
+											],
+										},
+									},
+								},
+							],
+							connections: {
+								Trigger: { main: [[{ node: 'GraphQL', type: 'main', index: 0 }]] },
+							},
+						},
+					},
+					credentials: {
+						httpMultipleHeadersAuth: {
+							headers: {
+								values: Object.entries(headers).map(([name, value]) => ({ name, value })),
+							},
+							allowedHttpRequestDomains: 'domains',
+							allowedDomains: 'api.example.com',
+						},
+					},
+					nock: {
+						baseUrl,
+						mocks: [
+							{
+								method: 'post',
+								path: '/graphql',
+								requestHeaders: { ...headers, 'X-Request-ID': 'request-id' },
+								requestBody: { query: '{ ok }', variables: {}, operationName: null },
+								statusCode: 200,
+								responseBody: { data: { ok: true } },
+							},
+						],
+					},
+					output: { nodeData: { GraphQL: [[{ json: { data: { ok: true } } }]] } },
+				});
+			}
+		}
 	});
 
 	describe('oauth2 refresh token', () => {
@@ -574,31 +680,36 @@ describe('GraphQL Node', () => {
 			).toBeUndefined();
 		});
 
-		it("throws when a predefined credential's domain restriction is 'none'", async () => {
-			const mockExecuteFunctions = createMockExecuteFunctions(
-				{
-					authentication: 'predefinedCredentialType',
-					nodeCredentialType: 'githubApi',
-					requestMethod: 'POST',
-					endpoint: 'https://api.github.com/graphql',
-					requestFormat: 'json',
-					responseFormat: 'json',
-					query: '{ok}',
-				},
-				{
-					githubApi: {
-						accessToken: 'token123',
-						allowedHttpRequestDomains: 'none',
+		it.each([
+			{ authentication: 'predefinedCredentialType', credentialType: 'githubApi' },
+			{ authentication: 'multipleHeadersAuth', credentialType: 'httpMultipleHeadersAuth' },
+		])(
+			'throws when $authentication credentials disable HTTP requests',
+			async ({ authentication, credentialType }) => {
+				const mockExecuteFunctions = createMockExecuteFunctions(
+					{
+						authentication,
+						nodeCredentialType: credentialType,
+						requestMethod: 'POST',
+						endpoint: 'https://api.github.com/graphql',
+						requestFormat: 'json',
+						responseFormat: 'json',
+						query: '{ok}',
 					},
-				},
-			);
+					{
+						[credentialType]: {
+							allowedHttpRequestDomains: 'none',
+						},
+					},
+				);
 
-			const node = new GraphQL();
-			await expect(node.execute.call(mockExecuteFunctions)).rejects.toThrow(
-				'configured to prevent use within an HTTP Request or GraphQL node',
-			);
-			expect(mockExecuteFunctions.helpers.requestWithAuthentication).not.toHaveBeenCalled();
-		});
+				const node = new GraphQL();
+				await expect(node.execute.call(mockExecuteFunctions)).rejects.toThrow(
+					'configured to prevent use within an HTTP Request or GraphQL node',
+				);
+				expect(mockExecuteFunctions.helpers.requestWithAuthentication).not.toHaveBeenCalled();
+			},
+		);
 
 		it("throws when a predefined credential's domain restriction is 'domains' but none are configured", async () => {
 			const mockExecuteFunctions = createMockExecuteFunctions(

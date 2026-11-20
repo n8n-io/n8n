@@ -708,6 +708,7 @@ export class WorkflowRunner {
 
 		additionalData.executionId = executionId;
 		additionalData.evaluationRunId = data.evaluationRunId;
+		additionalData.rootExecutionMode = data.executionData?.rootExecutionMode;
 
 		const storedAt = existingExecution?.storedAt ?? this.storageConfig.modeTag;
 
