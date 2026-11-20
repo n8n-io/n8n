@@ -1,4 +1,10 @@
-import type { JsonObject, StepExecutionRequest, StepSlots, WorkflowGraph } from '@n8n/engine';
+import type {
+	JsonObject,
+	StepExecutionRequest,
+	StepInputSources,
+	StepSlots,
+	WorkflowGraph,
+} from '@n8n/engine';
 import { noopResponseEmitter } from '@n8n/engine';
 import type { ExecuteContext } from 'n8n-core';
 import { UnrecognizedNodeTypeError } from 'n8n-core';
@@ -530,13 +536,31 @@ export const v1Workflow = (
 		connections,
 	}) as unknown as IWorkflowBase;
 
+/**
+ * A request for one step. Unless given, `inputSources` reports one source per
+ * slot, the first graph edge into it, with the slot's item count.
+ */
 export const stepRequest = (
 	graph: WorkflowGraph,
 	nodeId: string,
 	inputs: StepSlots,
+	inputSources: StepInputSources = inputs.map((slot, inputIndex) => {
+		const edge = graph.edges.find((e) => e.to === nodeId && e.inputIndex === inputIndex);
+		if (!edge || slot === null) return [];
+		return [
+			{
+				nodeId: edge.from,
+				outputIndex: edge.outputIndex,
+				iteration: 0,
+				offset: 0,
+				itemCount: Array.isArray(slot) ? slot.length : 1,
+			},
+		];
+	}),
 ): StepExecutionRequest => ({
 	node: graph.nodes.find((n) => n.id === nodeId)!,
 	inputs,
+	inputSources,
 	context: {
 		executionId: 'exec-1',
 		stepId: nodeId,
