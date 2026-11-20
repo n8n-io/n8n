@@ -138,19 +138,13 @@ describe('InstancePolicyTable', () => {
 			row('asanaApi', 'Asana API', 'allow', false, usage(2)),
 		];
 
-		const sortByWorkflows = async (
-			getByRole: (role: string, options?: object) => HTMLElement,
-			clicks: number,
-		) => {
-			for (let click = 0; click < clicks; click++) {
-				await userEvent.click(getByRole('columnheader', { name: /^Workflows/ }));
-			}
-		};
+		const clickWorkflows = async (getByRole: (role: string, options?: object) => HTMLElement) =>
+			await userEvent.click(getByRole('columnheader', { name: /^Workflows/ }));
 
 		it('sorts the counts from low to high, with names A to Z for equal counts and unknown usage last', async () => {
 			const { getByTestId, getByRole } = setup(USAGE_ROWS);
 
-			await sortByWorkflows(getByRole, 1);
+			await clickWorkflows(getByRole);
 
 			await waitFor(() =>
 				expect(rowNames(getByTestId('instance-policy-table'))).toEqual([
@@ -170,7 +164,7 @@ describe('InstancePolicyTable', () => {
 				row('bitlyApi', 'Bitly API', 'allow', false, usage(2)),
 			]);
 
-			await sortByWorkflows(getByRole, 1);
+			await clickWorkflows(getByRole);
 
 			await waitFor(() =>
 				expect(rowNames(getByTestId('instance-policy-table'))).toEqual(['Bitly API', 'Asana API']),
@@ -180,7 +174,8 @@ describe('InstancePolicyTable', () => {
 		it('sorts the counts from high to low, with names A to Z for equal counts and unknown usage last', async () => {
 			const { getByTestId, getByRole } = setup(USAGE_ROWS);
 
-			await sortByWorkflows(getByRole, 2);
+			await clickWorkflows(getByRole);
+			await clickWorkflows(getByRole);
 
 			await waitFor(() =>
 				expect(rowNames(getByTestId('instance-policy-table'))).toEqual([

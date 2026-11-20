@@ -118,10 +118,11 @@ function compareRows(id: string | undefined, direction: number): CompareRows {
 			const aCount = a.usage?.[id];
 			const bCount = b.usage?.[id];
 			// Rows with no known usage stay last in both directions.
-			if (aCount === undefined || bCount === undefined) {
-				return Number(aCount === undefined) - Number(bCount === undefined) || byName(a, b);
-			}
-			return direction * (aCount - bCount) || byName(a, b);
+			return (
+				Number(aCount === undefined) - Number(bCount === undefined) ||
+				direction * ((aCount ?? 0) - (bCount ?? 0)) ||
+				byName(a, b)
+			);
 		};
 	}
 	return (a, b) => direction * byName(a, b);
