@@ -41,8 +41,15 @@ const skillMarkdown = (text: string) => {
 const content = (skill: AgentSkill, projectId: string | null = null): McpSkillContent => ({
 	id: 'skill_a1',
 	projectId,
+	// A version never changes, so other content means another version.
+	versionId: createHash('sha256').update(JSON.stringify(skill)).digest('hex'),
 	skill,
 });
+
+const listItem = (skill: AgentSkill) => {
+	const item = content(skill);
+	return { id: item.id, versionId: item.versionId, content: item };
+};
 
 type RpcResponse = {
 	result: { contents: Array<{ text: string }> } & Record<string, unknown>;
@@ -174,15 +181,28 @@ describe('McpSkillExtensionService', () => {
 		skillService.readForMcp.mockImplementation(async (_user, skillId) =>
 			skillId === 'skill_a1' ? content(releaseNotes) : null,
 		);
+		// One file of the skill that `readForMcp` gives, as the service reads it.
+		skillService.readFileForMcp.mockImplementation(async (user, skillId, path) => {
+			const found = await skillService.readForMcp(user, skillId);
+			const file = found?.skill.references?.find((reference) => reference.path === path);
+			if (!found || !file) return null;
+			const { id, projectId, origin, skill } = found;
+			return { id, projectId, name: skill.name, file, ...(origin ? { origin } : {}) };
+		});
 	});
 
 	describe('skills/list', () => {
 		it('lists the skills of the page', async () => {
-			skillService.listForMcp.mockResolvedValue({ count: 1, skills: [content(releaseNotes)] });
+			skillService.listForMcp.mockResolvedValue({ count: 1, skills: [listItem(releaseNotes)] });
 
 			const { result } = await client.request('skills/list', {});
 
-			expect(skillService.listForMcp).toHaveBeenCalledWith(expect.anything(), 0, 100);
+			expect(skillService.listForMcp).toHaveBeenCalledWith(
+				expect.anything(),
+				0,
+				100,
+				expect.any(Function),
+			);
 			expect(result.skills).toEqual([toSkillEntry('skill_a1', releaseNotes)]);
 			expect(telemetry.track).toHaveBeenCalledWith(TELEMETRY_EVENT.CONTEXT.MCP_LISTED_SKILLS, {
 				user_id: 'user-1',
@@ -198,12 +218,40 @@ describe('McpSkillExtensionService', () => {
 		});
 
 		it('pages with an offset cursor', async () => {
-			skillService.listForMcp.mockResolvedValue({ count: 250, skills: [content(releaseNotes)] });
+			skillService.listForMcp.mockResolvedValue({ count: 250, skills: [listItem(releaseNotes)] });
 
 			const { result } = await client.request('skills/list', { cursor: '100' });
 
-			expect(skillService.listForMcp).toHaveBeenCalledWith(expect.anything(), 100, 100);
+			expect(skillService.listForMcp).toHaveBeenCalledWith(
+				expect.anything(),
+				100,
+				100,
+				expect.any(Function),
+			);
 			expect(result.nextCursor).toBe('200');
+		});
+
+		it('lists a version that it listed before without its content', async () => {
+			const skill: AgentSkill = { ...releaseNotes, instructions: 'Listed two times.' };
+			const { id, versionId, content: listed } = listItem(skill);
+			skillService.listForMcp.mockResolvedValueOnce({
+				count: 1,
+				skills: [{ id, versionId, content: listed }],
+			});
+			await client.request('skills/list', {});
+
+			skillService.listForMcp.mockImplementationOnce(async (_user, _skip, _take, isKnown) => ({
+				count: 2,
+				skills: [
+					// The service reads no content for a version that the caller knows.
+					{ id, versionId, ...(isKnown?.(versionId) ? {} : { content: listed }) },
+					{ id: 'skill_gone', versionId: 'unknown-version' },
+				],
+			}));
+			const { result } = await client.request('skills/list', {});
+
+			expect(skillService.listForMcp.mock.results).toHaveLength(2);
+			expect(result.skills).toEqual([toSkillEntry('skill_a1', skill)]);
 		});
 
 		it('refuses a cursor that is not a safe integer', async () => {

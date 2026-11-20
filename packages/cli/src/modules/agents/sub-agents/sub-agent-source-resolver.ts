@@ -100,7 +100,11 @@ export class SubAgentSourceResolver {
 				);
 			}
 
-			const { skillRefs, skills } = await this.agentSkillRefs.readVersion(version, {});
+			const { skillRefs, skills } = await this.agentSkillRefs.readVersion(
+				version,
+				{},
+				{ textOnly: true },
+			);
 			return {
 				source: {
 					sourceId: source.agentId,
@@ -119,7 +123,11 @@ export class SubAgentSourceResolver {
 				);
 			}
 
-			const { skillRefs, skills } = await this.agentSkillRefs.readVersion(activeVersion, {});
+			const { skillRefs, skills } = await this.agentSkillRefs.readVersion(
+				activeVersion,
+				{},
+				{ textOnly: true },
+			);
 			return {
 				source: {
 					sourceId: source.agentId,
@@ -134,7 +142,11 @@ export class SubAgentSourceResolver {
 			throw new UserError(`Sub-agent "${source.agentId}" has no config`);
 		}
 
-		const { skillRefs, skills } = await this.agentSkillRefs.readDraft(agent, {});
+		const { skillRefs, skills } = await this.agentSkillRefs.readDraft(
+			agent,
+			{},
+			{ textOnly: true },
+		);
 		return {
 			source: {
 				sourceId: source.agentId,

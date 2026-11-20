@@ -28,6 +28,12 @@ export type ResolvedSkillRow = {
 	files: SkillFile[];
 };
 
+/**
+ * Which files a read loads. An agent run cannot use a binary file, so it sets `textOnly` and
+ * the query leaves the Base64 in the database.
+ */
+export type SkillFileReadOptions = { textOnly?: boolean };
+
 /** A skill ref in an agent config. A ref with `versionId` runs that version. */
 /** The version a skill ref runs, whether a pin decides it, and the latest version. */
 export type RuntimeVersion = { version: number; pinned: boolean; latest: number };
@@ -120,9 +126,20 @@ export interface AssistantSkillFileContent {
 export type McpSkillContent = {
 	id: string;
 	projectId: string | null;
+	/** The version that `skill` holds. A version never changes, so a client can cache by it. */
+	versionId: string;
 	skill: AgentSkill;
 	/** Set for a synced skill. */
 	origin?: { provider: SkillSourceType; access: 'public' | 'credential' };
+};
+
+/** One skill of an MCP list page. `content` is absent for a version that the caller knows. */
+export type McpSkillListItem = { id: string; versionId: string; content?: McpSkillContent };
+
+/** One file of the latest version of a skill, with the name of that version. */
+export type McpSkillFile = Pick<McpSkillContent, 'id' | 'projectId' | 'origin'> & {
+	name: string;
+	file: NonNullable<AgentSkill['references']>[number];
 };
 
 /**

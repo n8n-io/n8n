@@ -12,6 +12,7 @@ import {
 	versionRow,
 	resetSkillMocks,
 } from './test-utils/skill-services';
+import type { SkillFile } from '../database/entities/skill-file.entity';
 import type { SkillSourceLink } from '../database/entities/skill-source-link.entity';
 import type { Skill } from '../database/entities/skill.entity';
 import { SkillSyncedError } from '../errors/skill-synced.error';
@@ -1014,7 +1015,31 @@ describe('SkillService', () => {
 						rows.filter((row) => ids.includes(row.skill.id)).map((row) => [row.skill.id, row]),
 					),
 			);
+			skills.findLatestVersionIds.mockImplementation(
+				async (ids) =>
+					new Map(
+						rows
+							.filter((row) => ids.includes(row.skill.id))
+							.map((row) => [row.skill.id, row.version.id]),
+					),
+			);
+			skills.findVersionsByIds.mockImplementation(
+				async (ids) =>
+					new Map(
+						rows.filter((row) => ids.includes(row.version.id)).map((row) => [row.version.id, row]),
+					),
+			);
+			skills.findByIds.mockImplementation(async (ids) =>
+				rows.filter((row) => ids.includes(row.skill.id)).map((row) => row.skill),
+			);
 			projectScope.hasScopes.mockResolvedValue(true);
+		});
+
+		const mcpContent = (row: typeof instanceSkill) => ({
+			id: row.skill.id,
+			projectId: row.skill.projectId,
+			versionId: row.version.id,
+			skill: toAgentSkill(row),
 		});
 
 		it('lists one page of the project and instance skills that the user can list and that are available to MCP', async () => {
@@ -1032,10 +1057,90 @@ describe('SkillService', () => {
 			);
 			expect(result).toEqual({
 				count: 7,
-				skills: [
-					{ id: 'skill-1', projectId: null, skill: toAgentSkill(instanceSkill) },
-					{ id: 'skill-2', projectId: 'project-1', skill: toAgentSkill(projectSkill) },
-				],
+				skills: [instanceSkill, projectSkill].map((row) => ({
+					id: row.skill.id,
+					versionId: row.version.id,
+					content: mcpContent(row),
+				})),
+			});
+		});
+
+		it('reads no content for a version that the caller knows', async () => {
+			projectScope.getProjectIds.mockResolvedValue(['project-1']);
+			skills.findVisiblePage.mockResolvedValue({
+				skills: [instanceSkill.skill, projectSkill.skill],
+				count: 2,
+			});
+
+			const result = await service.listForMcp(
+				user,
+				0,
+				100,
+				(versionId) => versionId === instanceSkill.version.id,
+			);
+
+			expect(skills.findVersionsByIds).toHaveBeenCalledWith([projectSkill.version.id]);
+			expect(skills.findLatestSaved).not.toHaveBeenCalled();
+			expect(result.skills).toEqual([
+				{ id: 'skill-1', versionId: instanceSkill.version.id },
+				{ id: 'skill-2', versionId: projectSkill.version.id, content: mcpContent(projectSkill) },
+			]);
+		});
+
+		describe('one file', () => {
+			const file = { path: 'references/style.md', content: 'Be brief.' };
+
+			beforeEach(() => {
+				skills.findLatestFile.mockImplementation(async (skillId, path) =>
+					skillId === 'skill-1' && path === file.path
+						? {
+								name: instanceSkill.version.name,
+								file: mock<SkillFile>({ ...file, isBinary: false }),
+							}
+						: null,
+				);
+			});
+
+			it('reads one file of the latest version without the other files', async () => {
+				expect(await service.readFileForMcp(user, 'skill-1', file.path)).toEqual({
+					id: 'skill-1',
+					projectId: null,
+					name: instanceSkill.version.name,
+					file,
+				});
+				expect(skills.findLatestSaved).not.toHaveBeenCalled();
+				expect(skills.findVersionsByIds).not.toHaveBeenCalled();
+			});
+
+			it('marks a binary file', async () => {
+				skills.findLatestFile.mockResolvedValue({
+					name: 'Logo',
+					file: mock<SkillFile>({ path: 'assets/logo.png', content: 'AP8=', isBinary: true }),
+				});
+
+				expect((await service.readFileForMcp(user, 'skill-1', 'assets/logo.png'))?.file).toEqual({
+					path: 'assets/logo.png',
+					content: 'AP8=',
+					isBinary: true,
+				});
+			});
+
+			it('does not read a file of a skill the user cannot read', async () => {
+				projectScope.hasScopes.mockResolvedValue(false);
+
+				expect(await service.readFileForMcp(user, 'skill-2', file.path)).toBeNull();
+				expect(skills.findLatestFile).not.toHaveBeenCalled();
+			});
+
+			it('does not read a file of a skill that is not available to MCP', async () => {
+				instanceSkill.skill.availableToMCP = false;
+
+				expect(await service.readFileForMcp(user, 'skill-1', file.path)).toBeNull();
+				expect(skills.findLatestFile).not.toHaveBeenCalled();
+			});
+
+			it('does not read a missing file', async () => {
+				expect(await service.readFileForMcp(user, 'skill-1', 'references/none.md')).toBeNull();
 			});
 		});
 
@@ -1055,6 +1160,7 @@ describe('SkillService', () => {
 			expect(await service.readForMcp(user, 'skill-2')).toEqual({
 				id: 'skill-2',
 				projectId: 'project-1',
+				versionId: projectSkill.version.id,
 				skill: toAgentSkill(projectSkill),
 			});
 		});
@@ -1098,6 +1204,7 @@ describe('SkillService', () => {
 				expect(await service.readForMcp(user, 'skill-2')).toEqual({
 					id: 'skill-2',
 					projectId: 'project-1',
+					versionId: projectSkill.version.id,
 					skill: toAgentSkill(projectSkill),
 					origin: { provider: 'github', access: 'public' },
 				});
@@ -1119,6 +1226,7 @@ describe('SkillService', () => {
 				expect(result).toEqual({
 					id: 'skill-2',
 					projectId: 'project-1',
+					versionId: projectSkill.version.id,
 					skill: toAgentSkill(projectSkill),
 				});
 				expect(logger.warn).toHaveBeenCalledWith('Could not find the source of a synced skill', {

@@ -131,6 +131,19 @@ describe('SkillRepository', () => {
 		expect((await skills.findLatestSaved([scoped])).get(scoped)?.files).toContainEqual(
 			expect.objectContaining({ path: 'assets/logo.png', content: 'AP8=', isBinary: true }),
 		);
+		// An agent run reads the text files only, for the latest version and for a pinned one.
+		const runFiles = [{ path: 'reference/degraded/style.md', content: 'Style guide.' }];
+		expect(
+			(await skillRuntime.resolveForAgentDraft([{ id: scoped }], {}, { textOnly: true }))[scoped]
+				.references,
+		).toEqual(runFiles);
+		expect(
+			(await skillRuntime.resolveVersions([versionId], {}, { textOnly: true })).get(versionId)
+				?.skill.references,
+		).toEqual(runFiles);
+		expect(
+			(await skillRuntime.resolveForAgentDraft([{ id: scoped }]))[scoped].references,
+		).toHaveLength(2);
 		expect((await skillRuntime.listForAssistant({ user: owner })).map(({ id }) => id)).toEqual([
 			instance,
 		]);
