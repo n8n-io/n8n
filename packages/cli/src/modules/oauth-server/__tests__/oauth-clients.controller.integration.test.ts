@@ -10,6 +10,7 @@ import { setupTestServer } from '@test-integration/utils';
 import { OAuthClient } from '../database/entities/oauth-client.entity';
 import { UserConsentRepository } from '../database/repositories/oauth-user-consent.repository';
 
+// The integration runner uses a migrated SQLite template in CI.
 const testServer = setupTestServer({ endpointGroups: ['mcp'], modules: ['oauth-server', 'mcp'] });
 
 let owner: User;

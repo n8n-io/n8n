@@ -184,8 +184,8 @@ describe('CredentialTypesTab', () => {
 				defaultAction: 'allow',
 				version: 1,
 				rules: [
-					{ id: expect.any(String), action: 'deny', selector: { kind: 'name', value: 'bitlyApi' } },
 					...EXISTING_RULES,
+					{ id: expect.any(String), action: 'deny', selector: { kind: 'name', value: 'bitlyApi' } },
 				],
 			}),
 		);
