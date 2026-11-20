@@ -226,6 +226,16 @@ export class GithubTrigger implements INodeType {
 						description: 'Any time any event is triggered (Wildcard Event)',
 					},
 					{
+						name: 'Branch Protection Configuration',
+						value: 'branch_protection_configuration',
+						description: 'Triggered when branch protection is enabled or disabled for a repository',
+					},
+					{
+						name: 'Branch Protection Rule',
+						value: 'branch_protection_rule',
+						description: 'Triggered when a branch protection rule is created, edited, or deleted',
+					},
+					{
 						name: 'Check Run',
 						value: 'check_run',
 						description:
@@ -235,6 +245,12 @@ export class GithubTrigger implements INodeType {
 						name: 'Check Suite',
 						value: 'check_suite',
 						description: 'Triggered when a check suite is completed, requested, or rerequested',
+					},
+					{
+						name: 'Code Scanning Alert',
+						value: 'code_scanning_alert',
+						description:
+							'Triggered when a code scanning alert is created, fixed, reopened, closed, or changes branch or assignee',
 					},
 					{
 						name: 'Commit Comment',
@@ -247,9 +263,20 @@ export class GithubTrigger implements INodeType {
 						description: 'Represents a created repository, branch, or tag',
 					},
 					{
+						name: 'Custom Property Values',
+						value: 'custom_property_values',
+						description: 'Triggered when the custom property values of a repository change',
+					},
+					{
 						name: 'Delete',
 						value: 'delete',
 						description: 'Represents a deleted branch or tag',
+					},
+					{
+						name: 'Dependabot Alert',
+						value: 'dependabot_alert',
+						description:
+							'Triggered when a Dependabot alert is created, dismissed, fixed, reopened, reintroduced, or withdrawn',
 					},
 					{
 						name: 'Deploy Key',
@@ -265,6 +292,17 @@ export class GithubTrigger implements INodeType {
 						name: 'Deployment Status',
 						value: 'deployment_status',
 						description: 'Represents a deployment status',
+					},
+					{
+						name: 'Discussion',
+						value: 'discussion',
+						description:
+							'Triggered when a discussion is created, edited, answered, closed, reopened, labeled, locked, pinned, transferred, or deleted',
+					},
+					{
+						name: 'Discussion Comment',
+						value: 'discussion_comment',
+						description: 'Triggered when a discussion comment is created, edited, or deleted',
 					},
 					{
 						name: 'Fork',
@@ -296,6 +334,18 @@ export class GithubTrigger implements INodeType {
 						name: 'Issue Comment',
 						value: 'issue_comment',
 						description: 'Triggered when an issue comment is created, edited, or deleted',
+					},
+					{
+						name: 'Issue Dependencies',
+						value: 'issue_dependencies',
+						description:
+							'Triggered when a "blocked by" or "blocking" relationship between issues is added or removed',
+					},
+					{
+						name: 'Issue Relates To',
+						value: 'issue_relates_to',
+						description:
+							'Triggered when a "relates to" relationship between issues is added or removed',
 					},
 					{
 						name: 'Issues',
@@ -350,6 +400,11 @@ export class GithubTrigger implements INodeType {
 							'Triggered when an organization is deleted and renamed, and when a user is added, removed, or invited to an organization. Organization hooks only.',
 					},
 					{
+						name: 'Package',
+						value: 'package',
+						description: 'Triggered when a GitHub Packages package is published or updated',
+					},
+					{
 						name: 'Page Build',
 						value: 'page_build',
 						description:
@@ -396,10 +451,21 @@ export class GithubTrigger implements INodeType {
 							"Triggered when a comment on a pull request's unified diff is created, edited, or deleted (in the Files Changed tab)",
 					},
 					{
+						name: 'Pull Request Review Thread',
+						value: 'pull_request_review_thread',
+						description: 'Triggered when a pull request review thread is resolved or unresolved',
+					},
+					{
 						name: 'Push',
 						value: 'push',
 						description:
 							'Triggered on a push to a repository branch. Branch pushes and repository tag pushes also trigger webhook push events. This is the default event.',
+					},
+					{
+						name: 'Registry Package',
+						value: 'registry_package',
+						description:
+							'Triggered when a GitHub Packages registry package is published or updated',
 					},
 					{
 						name: 'Release',
@@ -414,10 +480,20 @@ export class GithubTrigger implements INodeType {
 							'Triggered when a repository is created, archived, unarchived, renamed, edited, transferred, made public, or made private. Organization hooks are also triggered when a repository is deleted.',
 					},
 					{
+						name: 'Repository Advisory',
+						value: 'repository_advisory',
+						description: 'Triggered when a repository security advisory is reported or published',
+					},
+					{
 						name: 'Repository Import',
 						value: 'repository_import',
 						description:
 							'Triggered when a successful, cancelled, or failed repository import finishes for a GitHub organization or a personal repository',
+					},
+					{
+						name: 'Repository Ruleset',
+						value: 'repository_ruleset',
+						description: 'Triggered when a repository ruleset is created, edited, or deleted',
 					},
 					{
 						name: 'Repository Vulnerability Alert',
@@ -425,10 +501,33 @@ export class GithubTrigger implements INodeType {
 						description: 'Triggered when a security alert is created, dismissed, or resolved',
 					},
 					{
+						name: 'Secret Scanning Alert',
+						value: 'secret_scanning_alert',
+						description:
+							'Triggered when a secret scanning alert is created, resolved, reopened, validated, assigned, or publicly leaked',
+					},
+					{
+						name: 'Secret Scanning Alert Location',
+						value: 'secret_scanning_alert_location',
+						description:
+							'Triggered when a new location is found for a secret in a secret scanning alert',
+					},
+					{
+						name: 'Secret Scanning Scan',
+						value: 'secret_scanning_scan',
+						description: 'Triggered when secret scanning completes certain scans on a repository',
+					},
+					{
 						name: 'Security Advisory',
 						value: 'security_advisory',
 						description:
 							'Triggered when a new security advisory is published, updated, or withdrawn',
+					},
+					{
+						name: 'Security And Analysis',
+						value: 'security_and_analysis',
+						description:
+							'Triggered when code security and analysis features are enabled or disabled for a repository',
 					},
 					{
 						name: 'Star',
@@ -439,6 +538,11 @@ export class GithubTrigger implements INodeType {
 						name: 'Status',
 						value: 'status',
 						description: 'Triggered when the status of a Git commit changes',
+					},
+					{
+						name: 'Sub Issues',
+						value: 'sub_issues',
+						description: 'Triggered when a sub-issue is added to or removed from an issue',
 					},
 					{
 						name: 'Team',
@@ -455,6 +559,18 @@ export class GithubTrigger implements INodeType {
 						name: 'Watch',
 						value: 'watch',
 						description: 'Triggered when someone stars a repository',
+					},
+					{
+						name: 'Workflow Job',
+						value: 'workflow_job',
+						description:
+							'Triggered when a GitHub Actions job is queued, waiting, in progress, or completed',
+					},
+					{
+						name: 'Workflow Run',
+						value: 'workflow_run',
+						description:
+							'Triggered when a GitHub Actions workflow run is requested, in progress, or completed',
 					},
 				],
 				required: true,
