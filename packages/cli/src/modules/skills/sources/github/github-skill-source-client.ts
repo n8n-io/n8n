@@ -6,6 +6,8 @@ import {
 import {
 	AGENT_SKILL_BINARY_MAX_BYTES,
 	AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH,
+	AGENT_SKILL_REFERENCE_MAX_COUNT,
+	AGENT_SKILL_REFERENCES_TOTAL_MAX_LENGTH,
 	GITHUB_SKILL_SOURCE_CREDENTIAL_TYPES,
 	isGitHubSkillSourceCredentialType,
 	type GitHubSkillSourceCredentialType,
@@ -326,13 +328,31 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 				if (tooLarge) oversized.push(file.path);
 				return !tooLarge;
 			});
+			// A skill over the limits of one skill keeps the files that fit, in path order. The
+			// review lists the rest, so the user can still import the skill.
+			const overLimit: string[] = [];
+			let length = 0;
+			let count = 0;
+			content.files = content.files.filter((file) => {
+				const fits =
+					count < AGENT_SKILL_REFERENCE_MAX_COUNT &&
+					length + file.content.length <= AGENT_SKILL_REFERENCES_TOTAL_MAX_LENGTH;
+				if (fits) {
+					count += 1;
+					length += file.content.length;
+				} else {
+					overLimit.push(file.path);
+				}
+				return fits;
+			});
 			return {
 				content,
 				revision: sha,
 				fidelity: [],
-				skippedFiles: [...skippedFiles, ...oversized],
+				skippedFiles: [...skippedFiles, ...oversized, ...overLimit],
 				unstorableFiles: skippedFiles,
 				oversizedFiles: oversized,
+				overLimitFiles: overLimit,
 			};
 		} catch (error) {
 			if (error instanceof SkillParseError) {

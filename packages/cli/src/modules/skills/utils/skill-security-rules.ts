@@ -1,4 +1,6 @@
 import {
+	AGENT_SKILL_REFERENCE_MAX_COUNT,
+	AGENT_SKILL_REFERENCES_TOTAL_MAX_LENGTH,
 	agentSkillSchema,
 	type SkillLinkReviewReason,
 	type SkillScanFinding,
@@ -28,6 +30,8 @@ export type SkillScanInput = {
 	/** The skipped files that n8n cannot store. */
 	unstorableFiles?: string[];
 	oversizedFiles?: string[];
+	/** The skipped files that fit alone, but not within the limits of one skill. */
+	overLimitFiles?: string[];
 	fidelity: SkillSourceFidelityWarning[];
 	/** The content of the latest version. Null at import. */
 	previous: SkillContent | null;
@@ -66,9 +70,11 @@ export function listSkippedFiles({
 	skippedFiles,
 	unstorableFiles = [],
 	oversizedFiles = [],
+	overLimitFiles = [],
 }: SkillScanInput): SkillScanFinding[] {
 	const unstorable = new Set(unstorableFiles);
 	const oversized = new Set(oversizedFiles);
+	const overLimit = new Set(overLimitFiles);
 	return skippedFiles.map((file) => {
 		const severity = isScriptFile(file) ? 'needs_review' : 'info';
 		if (unstorable.has(file)) {
@@ -84,7 +90,15 @@ export function listSkippedFiles({
 				rule: 'file_too_large',
 				severity,
 				file,
-				detail: 'The file exceeds the download size limit.',
+				detail: 'The file is over the size limit of 1 MiB for one file.',
+			};
+		}
+		if (overLimit.has(file)) {
+			return {
+				rule: 'file_over_skill_limit',
+				severity,
+				file,
+				detail: `n8n left this file out. A skill keeps at most ${AGENT_SKILL_REFERENCE_MAX_COUNT} files and ${AGENT_SKILL_REFERENCES_TOTAL_MAX_LENGTH / (1024 * 1024)} MiB of file content.`,
 			};
 		}
 		return { rule: 'file_skipped', severity, file, detail: 'n8n left this file out.' };

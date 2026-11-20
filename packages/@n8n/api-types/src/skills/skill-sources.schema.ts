@@ -152,6 +152,7 @@ export const SKILL_SCAN_RULES = [
 	'file_skipped',
 	'file_unstorable',
 	'file_too_large',
+	'file_over_skill_limit',
 	'script_file',
 	'binary_file',
 	'hidden_unicode',

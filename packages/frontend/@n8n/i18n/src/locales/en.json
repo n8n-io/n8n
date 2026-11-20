@@ -4170,6 +4170,7 @@
 	"settings.context.skills.connect.check.rule.fileSkipped": "A file that n8n leaves out",
 	"settings.context.skills.connect.check.rule.fileUnstorable": "Unsupported file path",
 	"settings.context.skills.connect.check.rule.fileTooLarge": "File exceeds the import size limit",
+	"settings.context.skills.connect.check.rule.fileOverSkillLimit": "Skill exceeds the limit of 500 files or 2 MB",
 	"settings.context.skills.connect.check.rule.scriptFile": "Review this script before you use the skill",
 	"settings.context.skills.connect.check.rule.binaryFile": "Binary file that n8n did not check. Agents cannot read it",
 	"settings.context.skills.connect.check.rule.hiddenUnicode": "Hidden Unicode characters",

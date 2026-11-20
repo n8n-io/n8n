@@ -5,7 +5,10 @@ import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { N8nIcon, N8nLink, N8nText } from '@n8n/design-system';
 import NodeDiff from '@/features/workflows/workflowDiff/NodeDiff.vue';
 
-import { useSkillSourceReasons } from '@/features/settings/context/skills.utils';
+import {
+	SKIPPED_FILE_RULES,
+	useSkillSourceReasons,
+} from '@/features/settings/context/skills.utils';
 
 const props = defineProps<{ skill: DiscoveredSkill; diffFiles?: SkillUpdateFile[] }>();
 
@@ -50,9 +53,7 @@ function fileUrl(path: string): string {
 const skippedFiles = computed(() =>
 	props.skill.skippedFiles.map((path) => {
 		const finding = findings.value.find(
-			({ file, rule }) =>
-				file === path &&
-				(rule === 'file_unstorable' || rule === 'file_too_large' || rule === 'file_skipped'),
+			({ file, rule }) => file === path && SKIPPED_FILE_RULES.has(rule),
 		);
 		const reason = ruleText(finding?.rule ?? 'file_skipped');
 		return `${pathInSource(path)} · ${reason}`;

@@ -1,5 +1,9 @@
 import { OutboundHttp } from '@n8n/backend-network';
-import { AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH } from '@n8n/api-types';
+import {
+	AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH,
+	AGENT_SKILL_REFERENCE_MAX_COUNT,
+	AGENT_SKILL_REFERENCES_TOTAL_MAX_LENGTH,
+} from '@n8n/api-types';
 import { Container } from '@n8n/di';
 import { sha256 } from '@n8n/utils/sha256';
 import nock from 'nock';
@@ -451,6 +455,67 @@ describe('GitHubSkillSourceClient', () => {
 			expect(fetched.oversizedFiles).toEqual(['assets/too-large.bin', 'reference/too-long.md']);
 		},
 	);
+
+	describe('a skill over the limits of one skill', () => {
+		it('keeps the first 500 files in path order and lists the rest', async () => {
+			const files: Record<string, string> = { 'big/SKILL.md': skillMd('big') };
+			for (let index = 0; index < 501; index += 1) {
+				files[`big/reference/${String(index).padStart(3, '0')}.md`] = 'x';
+			}
+			github.push('acme/skills', files);
+			const locator = await client.parseLocator('https://github.com/acme/skills');
+
+			const fetched = await client.fetchLatest(locator, { path: 'big' });
+
+			expect(fetched.content.files).toHaveLength(AGENT_SKILL_REFERENCE_MAX_COUNT);
+			expect(fetched.overLimitFiles).toEqual(['reference/500.md']);
+			expect(fetched.skippedFiles).toEqual(['reference/500.md']);
+		});
+
+		it('keeps the files that fit the total size and lists the rest', async () => {
+			const third = 'x'.repeat(AGENT_SKILL_REFERENCES_TOTAL_MAX_LENGTH / 2 - 10);
+			github.push('acme/skills', {
+				'big/SKILL.md': skillMd('big'),
+				'big/assets/a.txt': third,
+				'big/assets/b.txt': third,
+				'big/assets/c.txt': third,
+				'big/reference/small.md': 'Small.',
+			});
+			const locator = await client.parseLocator('https://github.com/acme/skills');
+
+			const fetched = await client.fetchLatest(locator, { path: 'big' });
+
+			// The third large file does not fit. A small file after it still does.
+			expect(fetched.content.files.map((file) => file.path)).toEqual([
+				'assets/a.txt',
+				'assets/b.txt',
+				'reference/small.md',
+			]);
+			expect(fetched.overLimitFiles).toEqual(['assets/c.txt']);
+			expect(fetched.oversizedFiles).toEqual([]);
+		});
+
+		it('reads a SKILL.md at the repository root with the folders below it, nested skills included', async () => {
+			github.push('acme/one-skill', {
+				'SKILL.md': skillMd('root'),
+				'README.md': '# Root\n',
+				'examples/nested/SKILL.md': skillMd('nested'),
+				'examples/nested/guide.md': 'Guide.\n',
+			});
+			const locator = await client.parseLocator('https://github.com/acme/one-skill');
+
+			const { items } = await client.discover(locator);
+			const fetched = await client.fetchLatest(locator, items[0]);
+
+			expect(items).toEqual([{ path: '' }]);
+			expect(fetched.content.files.map((file) => file.path)).toEqual([
+				'README.md',
+				'examples/nested/SKILL.md',
+				'examples/nested/guide.md',
+			]);
+			expect(fetched.skippedFiles).toEqual([]);
+		});
+	});
 
 	it('reads a SKILL.md of exactly 1 MB and refuses a larger one', async () => {
 		github.push('acme/skills', {

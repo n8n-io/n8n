@@ -69,6 +69,8 @@ export type FetchedSkill = {
 	unstorableFiles?: string[];
 	/** The skipped files that exceed the source's per-file download limit. */
 	oversizedFiles?: string[];
+	/** The skipped files that fit alone, but not within the limits of one skill. */
+	overLimitFiles?: string[];
 };
 
 /**

@@ -180,6 +180,28 @@ describe('SkillSecurityScanner', () => {
 		});
 	});
 
+	describe('rule file_over_skill_limit: files that do not fit the limits of one skill', () => {
+		it('names the limit for each file that the skill leaves out, and still passes', () => {
+			const result = scanner.scan({
+				...fetched(skill(), { skippedFiles: ['assets/c.txt'] }),
+				overLimitFiles: ['assets/c.txt'],
+			});
+
+			expect(result).toEqual({
+				verdict: 'pass',
+				findings: [
+					{
+						rule: 'file_over_skill_limit',
+						severity: 'info',
+						file: 'assets/c.txt',
+						detail:
+							'n8n left this file out. A skill keeps at most 500 files and 2 MiB of file content.',
+					},
+				],
+			});
+		});
+	});
+
 	describe('rule script_file: scripts that the skill keeps', () => {
 		const withFiles = (files: SkillContent['files']) => skill({ files });
 		const scriptFinding = (file: string) =>

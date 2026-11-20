@@ -39,7 +39,12 @@ export class SkillSecurityScanner {
 	scan(
 		fetched: Pick<
 			FetchedSkill,
-			'content' | 'skippedFiles' | 'unstorableFiles' | 'oversizedFiles' | 'fidelity'
+			| 'content'
+			| 'skippedFiles'
+			| 'unstorableFiles'
+			| 'oversizedFiles'
+			| 'overLimitFiles'
+			| 'fidelity'
 		>,
 		previous: SkillContent | null = null,
 	): SkillScanResult {
