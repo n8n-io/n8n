@@ -2989,6 +2989,8 @@
 	"typeAvailabilityPolicies.landing.title": "Node and credential policies",
 	"typeAvailabilityPolicies.landing.description": "Choose which nodes and credentials people can use, across the instance and per project.",
 	"typeAvailabilityPolicies.landing.global": "Global",
+	"typeAvailabilityPolicies.landing.nodeCount": "{restricted} of {total} node restricted | {restricted} of {total} nodes restricted",
+	"typeAvailabilityPolicies.landing.credentialCount": "{restricted} of {total} credential restricted | {restricted} of {total} credentials restricted",
 	"typeAvailabilityPolicies.instancePolicy.tabs.node": "Nodes",
 	"typeAvailabilityPolicies.instancePolicy.tabs.credential": "Credentials",
 	"typeAvailabilityPolicies.instancePolicy.table.name": "Name",
