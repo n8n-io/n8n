@@ -1,4 +1,5 @@
 import {
+	AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
 	SKILL_SYNC_FLAG,
 	type SkillListItem,
 	type SkillSourceUpdates,
@@ -748,6 +749,43 @@ describe('Skill source checks', () => {
 			expect(reviewed.updates[0].check.verdict).toBe('needs_review');
 			expect((await accept(sourceId, reviewed, 422)).body.meta.reason).toBe('review_required');
 			await accept(sourceId, reviewed, 200, true);
+			const longInstructions = 'a'.repeat(AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH + 1);
+			pushChange({ 'skills/docx/SKILL.md': skillMd('docx', longInstructions) });
+			await sync().checkAll();
+			await db().update(
+				SkillSourceLink,
+				{ skillId: docx },
+				{
+					pendingScan: {
+						verdict: 'blocked',
+						findings: [
+							{
+								rule: 'over_limit',
+								severity: 'blocked',
+								file: 'SKILL.md',
+								detail: 'Instructions are too long.',
+							},
+						],
+					},
+				},
+			);
+			const oversized = await review(sourceId);
+			expect(oversized.updates[0].check.verdict).toBe('blocked');
+			expect(oversized.updates[0].check.findings[0].detail).toContain(
+				`Current: ${longInstructions.length} characters.`,
+			);
+			expect(oversized.updates[0].changes.added).toBeGreaterThan(0);
+			const preview = await editor
+				.get(`/skill-sources/${sourceId}/updates/${docx}`)
+				.query({
+					contentHash: oversized.updates[0].contentHash,
+					baseVersionId: oversized.updates[0].baseVersionId,
+				})
+				.expect(200);
+			expect(preview.body.data.files[0].after).toContain(longInstructions);
+			expect((await accept(sourceId, oversized, 422, true)).body.meta.reason).toBe(
+				'blocked_by_check',
+			);
 			pushChange({ 'skills/docx/SKILL.md': '---\ninvalid: [yaml\n---' });
 			await sync().checkAll();
 			const blocked = await review(sourceId);

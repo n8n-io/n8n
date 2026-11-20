@@ -43,6 +43,7 @@ const selected = ref<string[]>([]);
 const reviewed = ref(false);
 const loading = ref(true);
 const saving = ref(false);
+const hiding = ref(false);
 const error = ref('');
 /** Why the new skills did not load. The stored updates still show. */
 const newSkillsError = ref('');
@@ -204,7 +205,6 @@ async function loadPreview() {
 	detailError.value = '';
 	detailLoading.value = false;
 	if (!update) return;
-	if (update.check.verdict === 'blocked') return;
 	if (update.newSkill) {
 		detail.value = {
 			files: update.newSkill.previewFiles.map(({ path, text }) => ({
@@ -334,6 +334,7 @@ async function hideNewSkill() {
 	const update = focused.value;
 	if (!update?.newSkill || saving.value) return;
 	saving.value = true;
+	hiding.value = true;
 	error.value = '';
 	try {
 		await store.acceptSourceUpdates(props.source.id, {
@@ -342,14 +343,20 @@ async function hideNewSkill() {
 			skippedNewSkills: [{ key: update.newSkill.key, contentHash: update.contentHash }],
 			reviewedWarnings: false,
 		});
-		selected.value = selected.value.filter((id) => id !== update.skillId);
+		update.newSkill.skipped = true;
+		if (selected.value.includes(update.skillId))
+			selected.value = selected.value.filter((id) => id !== update.skillId);
+		showMessage({
+			type: 'success',
+			title: i18n.baseText('settings.context.skills.updates.hiddenNew'),
+		});
 		emit('changed');
-		await load();
 	} catch (cause) {
 		error.value = errorText(cause);
 		if (cause instanceof ResponseError && cause.httpStatusCode === 409) await load();
 	} finally {
 		saving.value = false;
+		hiding.value = false;
 	}
 }
 void load();
@@ -449,7 +456,7 @@ void load();
 					<SkillSourceFilesView v-else :skill="skill" :diff-files="detail?.files ?? []">
 						<template #footer>
 							<N8nText
-								v-if="detail && !focused?.newSkill"
+								v-if="detail && !focused?.newSkill && skill.check?.verdict !== 'blocked'"
 								size="small"
 								color="text-light"
 								data-test-id="skill-update-impact"
@@ -472,6 +479,7 @@ void load();
 								}}</N8nText>
 								<N8nButton
 									variant="ghost"
+									:loading="hiding"
 									:disabled="saving || focused.newSkill.skipped"
 									:label="
 										i18n.baseText(
@@ -517,7 +525,7 @@ void load();
 				@click="close"
 			/>
 			<N8nButton
-				:loading="saving"
+				:loading="saving && !hiding"
 				:disabled="loading || saving || selectedUpdates.length === 0 || (needsReview && !reviewed)"
 				:label="
 					i18n.baseText(

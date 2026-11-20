@@ -24,9 +24,15 @@ function fileId(path: string): string {
 	return `${fileIdPrefix}-${encodeURIComponent(path)}`;
 }
 
-function goToFile(path: string) {
+function goToFile(path: string, line?: number) {
 	const section = fileSections.value?.find((element) => element.id === fileId(path));
-	section?.scrollIntoView({ block: 'start', inline: 'nearest' });
+	const row = line
+		? (section?.querySelector(`[data-line="${line}"]`) ??
+			Array.from(section?.querySelectorAll('tr') ?? []).find(
+				(element) => Number(element.children[1]?.textContent) === line,
+			))
+		: undefined;
+	(row ?? section)?.scrollIntoView({ block: row ? 'center' : 'start', inline: 'nearest' });
 	section?.focus({ preventScroll: true });
 }
 
@@ -48,9 +54,12 @@ const skippedFiles = computed(() =>
 		const unstorable = findings.value.some(
 			(finding) => finding.rule === 'file_unstorable' && finding.file === path,
 		);
-		return unstorable
-			? `${pathInSource(path)} · ${ruleText('file_unstorable')}`
-			: pathInSource(path);
+		return {
+			path,
+			label: unstorable
+				? `${pathInSource(path)} · ${ruleText('file_unstorable')}`
+				: pathInSource(path),
+		};
 	}),
 );
 
@@ -175,6 +184,14 @@ const files = computed(() =>
 const reviewFindings = computed(() =>
 	findings.value.filter((finding) => finding.severity !== 'info'),
 );
+
+function hasPreview(finding: SkillScanFinding): boolean {
+	return reviewFiles.value.some(
+		(file) =>
+			file.path === finding.file &&
+			(!finding.location || finding.location.line <= file.after.split('\n').length),
+	);
+}
 </script>
 
 <template>
@@ -197,7 +214,26 @@ const reviewFindings = computed(() =>
 						:key="index"
 						data-test-id="skill-source-finding"
 					>
-						{{ findingText(finding) }}
+						<N8nLink
+							v-if="finding.file && hasPreview(finding)"
+							:href="`#${encodeURIComponent(fileId(finding.file))}`"
+							target="_self"
+							theme="text"
+							size="small"
+							@click.prevent="goToFile(finding.file, finding.location?.line)"
+							>{{ findingText(finding) }}</N8nLink
+						>
+						<N8nLink
+							v-else-if="finding.file"
+							:href="fileUrl(finding.file)"
+							new-window
+							theme="text"
+							size="small"
+							>{{ findingText(finding) }} ·
+							{{ i18n.baseText('settings.context.skills.synced.openInGithub') }}</N8nLink
+						>
+						<template v-else>{{ findingText(finding) }}</template>
+						<div v-if="finding.severity === 'blocked' && finding.detail">{{ finding.detail }}</div>
 					</li>
 				</ul>
 			</N8nCallout>
@@ -260,6 +296,7 @@ const reviewFindings = computed(() =>
 				<pre v-if="!diffFiles" :class="$style.text"><code><span
 				v-for="line in file.lines"
 				:key="line.number"
+				:data-line="line.number"
 				:class="$style.line"
 			><span :class="$style.number" :aria-hidden="!diffFiles">{{ line.number }}</span><span><template
 				v-for="(segment, index) in line.segments"
@@ -295,12 +332,14 @@ const reviewFindings = computed(() =>
 				</N8nText>
 				<ul>
 					<li
-						v-for="line in skippedFiles"
-						:key="line"
+						v-for="file in skippedFiles"
+						:key="file.path"
 						:class="$style.skippedFile"
 						data-test-id="skill-source-skipped-file"
 					>
-						{{ line }}
+						<N8nLink :href="fileUrl(file.path)" new-window theme="text" size="small">{{
+							file.label
+						}}</N8nLink>
 					</li>
 				</ul>
 			</section>

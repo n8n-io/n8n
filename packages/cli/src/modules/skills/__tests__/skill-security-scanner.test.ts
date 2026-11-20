@@ -76,9 +76,11 @@ describe('SkillSecurityScanner', () => {
 				case: 'instructions over the limit',
 				content: skill({ instructions: 'a'.repeat(AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH + 1) }),
 				file: 'SKILL.md',
+				current: `${AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH + 1} characters`,
 			},
 			{
 				case: 'too many reference files',
+				current: `${AGENT_SKILL_REFERENCE_MAX_COUNT + 1} files`,
 				content: skill({
 					files: Array.from({ length: AGENT_SKILL_REFERENCE_MAX_COUNT + 1 }, (_, index) => ({
 						path: `references/${index}.md`,
@@ -89,6 +91,7 @@ describe('SkillSecurityScanner', () => {
 			},
 			{
 				case: 'a reference file over the limit',
+				current: `${AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH + 1} characters`,
 				content: skill({
 					files: [
 						{
@@ -101,6 +104,7 @@ describe('SkillSecurityScanner', () => {
 			},
 			{
 				case: 'reference files over the total limit',
+				current: `${(AGENT_SKILL_REFERENCES_TOTAL_MAX_LENGTH / 4) * 5} characters`,
 				content: skill({
 					files: Array.from({ length: 5 }, (_, index) => ({
 						path: `references/${index}.md`,
@@ -111,15 +115,21 @@ describe('SkillSecurityScanner', () => {
 			},
 			{
 				case: 'frontmatter over the limit',
+				current: `${JSON.stringify({ notes: 'a'.repeat(16_384) }).length} characters`,
 				content: skill({ frontmatter: { notes: 'a'.repeat(16_384) } }),
 				file: 'SKILL.md',
 			},
-		])('blocks $case', ({ content, file }) => {
+		])('blocks $case', ({ content, file, current }) => {
 			const result = scanner.scan(fetched(content));
 
 			expect(result.verdict).toBe('blocked');
 			expect(result.findings).toEqual([
-				expect.objectContaining({ rule: 'over_limit', severity: 'blocked', file }),
+				expect.objectContaining({
+					rule: 'over_limit',
+					severity: 'blocked',
+					file,
+					detail: expect.stringContaining(`Current: ${current}.`),
+				}),
 			]);
 		});
 	});

@@ -1,5 +1,6 @@
 import { agentSkillSchema, type SkillScanFinding, type SkillScanLocation } from '@n8n/api-types';
 import { kebabCase } from 'change-case';
+import get from 'lodash/get';
 import { isDeepStrictEqual } from 'node:util';
 import type { ZodIssue } from 'zod';
 
@@ -27,28 +28,48 @@ export type SkillScanInput = {
 };
 
 /** The skill must fit the shape that `createTrusted` and `saveTrusted` store. */
-export function checkShape({ content }: SkillScanInput): SkillScanFinding[] {
-	const parsed = agentSkillSchema.safeParse({
+export function checkShape({ content }: Pick<SkillScanInput, 'content'>): SkillScanFinding[] {
+	const input = {
 		// The service trims these, so a value of only spaces is empty.
 		name: content.name.trim(),
 		description: content.description.trim(),
 		instructions: content.instructions.trim(),
 		...(content.files.length ? { references: content.files } : {}),
-	});
+	};
+	const parsed = agentSkillSchema.safeParse(input);
 	const findings: SkillScanFinding[] = parsed.success
 		? []
-		: parsed.error.issues.map((issue) => ({
-				rule: isSizeIssue(issue) ? 'over_limit' : 'invalid_skill',
-				severity: 'blocked',
-				file: fileOfIssue(content, issue.path),
-				detail: issue.message,
-			}));
-	if (content.frontmatter && JSON.stringify(content.frontmatter).length > FRONTMATTER_MAX_LENGTH) {
+		: parsed.error.issues.map<SkillScanFinding>((issue) => {
+				const overLimit = isSizeIssue(issue);
+				const value: unknown = get(input, issue.path);
+				const size =
+					issue.code === 'custom' && overLimit
+						? content.files.reduce((total, file) => total + file.content.length, 0)
+						: typeof value === 'string' || Array.isArray(value)
+							? value.length
+							: undefined;
+				const unit = Array.isArray(value) && issue.code !== 'custom' ? 'files' : 'characters';
+				const message =
+					issue.code === 'too_big' && issue.type === 'array'
+						? `A skill can have at most ${issue.maximum} reference files`
+						: issue.message;
+				return {
+					rule: overLimit ? 'over_limit' : 'invalid_skill',
+					severity: 'blocked',
+					file: fileOfIssue(content, issue.path),
+					detail:
+						overLimit && size !== undefined
+							? `${issue.path[0] === 'name' ? 'Name: ' : ''}${message}. Current: ${size} ${unit}.`
+							: issue.message,
+				};
+			});
+	const frontmatterLength = content.frontmatter ? JSON.stringify(content.frontmatter).length : 0;
+	if (frontmatterLength > FRONTMATTER_MAX_LENGTH) {
 		findings.push({
 			rule: 'over_limit',
 			severity: 'blocked',
 			file: SKILL_MD,
-			detail: `The frontmatter must be ${FRONTMATTER_MAX_LENGTH} characters or fewer as JSON.`,
+			detail: `The frontmatter must be ${FRONTMATTER_MAX_LENGTH} characters or fewer as JSON. Current: ${frontmatterLength} characters.`,
 		});
 	}
 	return findings;

@@ -1,5 +1,5 @@
 import { createTestingPinia } from '@pinia/testing';
-import { within } from '@testing-library/vue';
+import { fireEvent, within } from '@testing-library/vue';
 import type { DiscoveredSkill } from '@n8n/api-types';
 import { createComponentRenderer } from '@/__tests__/render';
 import SkillSourceFilesView from './SkillSourceFilesView.vue';
@@ -70,6 +70,10 @@ it('marks incoming diff lines, renders markup as text, and clears stale findings
 	expect(mark).toHaveTextContent('https://example.com');
 	expect(mark).toHaveAttribute('title', 'Links to a new domain');
 	expect(mark.closest('tr')?.children[1]).toHaveTextContent('2');
+	const scroll = vi.fn();
+	mark.closest('tr')!.scrollIntoView = scroll;
+	await fireEvent.click(view.getByRole('link', { name: 'Links to a new domain in SKILL.md:2' }));
+	expect(scroll).toHaveBeenCalled();
 	expect(mark.closest('.blob-code')).toHaveTextContent('See <img src=x> and https://example.com.');
 	expect(view.container.querySelector('pre')).not.toBeInTheDocument();
 	expect(view.container.querySelector('img')).not.toBeInTheDocument();
@@ -97,6 +101,37 @@ it('shows import previews without a diff', () => {
 	});
 	expect(view.getByText('Use plain text.')).toBeVisible();
 	expect(view.queryByTestId('skill-source-file-diff')).not.toBeInTheDocument();
+});
+
+it('explains blocked content and links files without a preview to their source', () => {
+	const view = render({
+		props: {
+			skill: {
+				...skill,
+				skippedFiles: ['scripts/run.sh'],
+				check: {
+					verdict: 'blocked',
+					findings: [
+						{
+							rule: 'invalid_skill',
+							severity: 'blocked',
+							file: 'SKILL.md',
+							detail: 'The description is missing.',
+						},
+					],
+				},
+			},
+		},
+	});
+	expect(view.getByText('The description is missing.')).toBeVisible();
+	expect(view.getByRole('link', { name: /Not a valid skill in SKILL.md/ })).toHaveAttribute(
+		'href',
+		'https://github.com/acme/skills/blob/abc/skills/release-notes/SKILL.md',
+	);
+	expect(view.getByRole('link', { name: 'skills/release-notes/scripts/run.sh' })).toHaveAttribute(
+		'href',
+		'https://github.com/acme/skills/blob/abc/skills/release-notes/scripts/run.sh',
+	);
 });
 
 it('preserves word changes when a finding crosses diff spans', () => {

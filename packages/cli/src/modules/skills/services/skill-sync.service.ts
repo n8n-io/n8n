@@ -56,6 +56,7 @@ import {
 import { skillContentHash, type SkillContent } from '../utils/skill-content-hash';
 import { skillSourceBackoffSeconds } from '../utils/skill-source-backoff';
 import { skillSourceHealth } from '../utils/skill-source-health';
+import { checkShape } from '../utils/skill-security-rules';
 import { getSkillHash } from '../utils/skill-hash';
 import {
 	pendingContent,
@@ -141,7 +142,16 @@ export class SkillSyncService {
 			const row = latest.get(link.skillId);
 			if (!row || !link.pendingContentHash || !link.pendingRevision) continue;
 			const check = pendingScan(link);
-			const content = check.verdict === 'blocked' ? null : pendingContent(link);
+			const content = pendingContent(link);
+			if (content && check.findings.some(({ rule }) => rule === 'over_limit')) {
+				// Refresh size explanations for stored reviews. Keep the stored verdict.
+				const limits = checkShape({ content }).filter(({ rule }) => rule === 'over_limit');
+				if (limits.length)
+					check.findings = [
+						...limits,
+						...check.findings.filter(({ rule }) => rule !== 'over_limit'),
+					];
+			}
 			updates.push({
 				skillId: link.skillId,
 				name: content?.name ?? row.version.name,
@@ -187,7 +197,7 @@ export class SkillSyncService {
 	): Promise<SkillUpdateReview> {
 		await this.requireReview(user, sourceId);
 		const { link, row } = await this.reviewedUpdate(sourceId, skillId, reviewed);
-		const content = pendingScan(link).verdict === 'blocked' ? null : pendingContent(link);
+		const content = pendingContent(link);
 		const followers = await this.skillUsage.findFollowingAgentIds(skillId);
 		return {
 			files: content ? updateFiles(rowContent(row), content) : [],

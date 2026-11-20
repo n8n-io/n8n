@@ -230,23 +230,37 @@ it('keeps new skills reviewable without import permission', async () => {
 });
 
 it.each([true, false])('hides a new skill from the count with canImport=%s', async (canImport) => {
-	const skill = newSkill();
-	vi.mocked(store.fetchSourceUpdates)
-		.mockResolvedValueOnce({ updates: [], newSkills: [skill], commit: null })
-		.mockResolvedValue({ updates: [], newSkills: [{ ...skill, skipped: true }], commit: null });
+	const skill = newSkill({ check: { verdict: 'blocked', findings: [] } });
+	const save = createDeferredPromise<Awaited<ReturnType<typeof store.acceptSourceUpdates>>>();
+	vi.mocked(store.acceptSourceUpdates).mockReturnValue(save.promise);
+	vi.mocked(store.fetchSourceUpdates).mockResolvedValue({
+		updates: [update('docx')],
+		newSkills: [skill],
+		commit: null,
+	});
 	const view = renderDialog({ props: { source: { ...source, canImport } }, pinia });
-	await view.findByRole('checkbox', { name: 'pdf' });
+	await userEvent.click(await view.findByRole('tab', { name: 'Blocked (1)' }));
+	await userEvent.click(view.getByRole('button', { name: 'Search skills' }));
+	await userEvent.type(view.getByRole('textbox', { name: 'Search skills' }), 'pdf');
+	const review = view.getByTestId('skill-source-review');
 	await userEvent.click(view.getByTestId('skill-new-hide'));
-	await waitFor(() => expect(view.getByTestId('skill-new-hide')).toBeDisabled());
+	expect(view.getByTestId('skill-new-hide')).toBeDisabled();
+	save.resolve({ updatedCount: 0, agents: [], hiddenAgentCount: 0 });
+	await flushPromises();
+	expect(view.getByTestId('skill-source-review')).toBe(review);
+	expect(view.getByRole('tab', { name: 'Blocked (1)' })).toHaveAttribute('aria-selected', 'true');
+	expect(view.getByRole('textbox', { name: 'Search skills' })).toHaveValue('pdf');
+	expect(view.getByTestId('skill-new-hide')).toBeDisabled();
+	expect(store.fetchSourceUpdates).toHaveBeenCalledTimes(1);
 	expect(store.acceptSourceUpdates).toHaveBeenCalledWith(source.id, {
 		updates: [],
 		newSkills: [],
 		skippedNewSkills: [{ key: skill.key, contentHash: skill.contentHash }],
 		reviewedWarnings: false,
 	});
-	if (canImport) expect(view.getByRole('checkbox', { name: 'pdf' })).toBeEnabled();
-	else expect(view.getByRole('checkbox', { name: 'pdf' })).toBeDisabled();
+	expect(view.getByRole('checkbox', { name: 'pdf' })).toBeDisabled();
 	expect(view.getByRole('checkbox', { name: 'pdf' })).not.toBeChecked();
+	expect(view.getByTestId('skill-source-file')).toHaveTextContent('Read PDF files.');
 	expect(view.emitted().close).toBeUndefined();
 });
 
@@ -441,7 +455,6 @@ it('keeps review usable when commit metadata fails', async () => {
 });
 
 it('does not select blocked updates or name clashes', async () => {
-	vi.mocked(store.fetchSourceUpdate).mockRejectedValue(new Error('Unavailable'));
 	vi.mocked(store.fetchSourceUpdates).mockResolvedValue({
 		updates: [
 			update('blocked', 'blocked'),
@@ -456,7 +469,7 @@ it('does not select blocked updates or name clashes', async () => {
 	const view = render();
 	await view.findByTestId('skill-update-blocked');
 	await flushPromises();
-	expect(store.fetchSourceUpdate).not.toHaveBeenCalled();
+	expect(view.getByTestId('skill-source-file-diff')).toBeVisible();
 	expect(view.queryByRole('button', { name: 'Retry' })).not.toBeInTheDocument();
 	expect(view.getByTestId('skill-updates-accept')).toBeDisabled();
 	for (const checkbox of view.getAllByRole('checkbox')) expect(checkbox).toBeDisabled();
