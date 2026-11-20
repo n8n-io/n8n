@@ -5,6 +5,7 @@ import { createGymSender, createHttpToolCaller, isReadToolName } from './http-to
 import { createPlanLlm, type HydrationModel } from './hydration-llm';
 import { PLAN_INSTRUCTIONS } from './hydration-prompts';
 import { sendToNetwork } from './network';
+import { fillPathSecret } from './path-secret';
 import { PlanHydrator } from './plan-hydrator';
 import { isReadShaped } from './request-classifier';
 import { matchesVendor, type VendorKnowledge } from './vendor-knowledge';
@@ -19,7 +20,7 @@ export interface HttpRunConfig {
 	profile: HttpVendorProfile;
 	vendor: VendorKnowledge;
 	admin: GymAdmin;
-	// Address of the gym that serves the vendor over HTTP.
+	// Address of the gym that serves the vendors over HTTP.
 	gymUrl: string;
 }
 
@@ -54,22 +55,27 @@ export class HttpRunRegistry {
 	private async create(runId: string, model: HydrationModel): Promise<HttpRun> {
 		const { admin, profile, vendor, gymUrl } = this.cfg;
 		await this.deleteIdle();
-		const tenant = `guard-${runId}`.toLowerCase().replace(/[^a-z0-9-]/g, '-');
+		// One gym serves all vendors. A tenant for each vendor keeps a vendor from starting the tenant of another.
+		const tenant = `guard-${runId}-${profile.name}`.toLowerCase().replace(/[^a-z0-9-]/g, '-');
 		await admin.createTenant(tenant);
 		// The gym issues a credential only for a tenant with an account. Seed one placeholder account.
 		await admin.seed(tenant, profile.placeholderSeed);
 		const token = await admin.issueMcpCredential(
 			tenant,
-			profile.name,
+			profile.gymService ?? profile.name,
 			profile.credentialKind,
 			profile.credentialField,
 		);
 
-		const context: { authorization?: string; origin: string } = { origin: '' };
+		const context: { authorization?: string; origin: string; pathSecret?: string } = {
+			origin: '',
+		};
 		// The real reads use the credential of the node, read at call time so a refreshed token is used.
 		const upstream = createHttpToolCaller({
 			origin: () => context.origin,
-			send: sendToNetwork,
+			// The path has a placeholder where the API wants a secret. Fill it only on the way out.
+			send: async (req) =>
+				await sendToNetwork(fillPathSecret(req, profile.pathSecret, context.pathSecret)),
 			headers: () => ({
 				accept: 'application/json',
 				...(context.authorization && { authorization: context.authorization }),
@@ -82,9 +88,11 @@ export class HttpRunRegistry {
 				isReadShaped(req, vendor.readPaths) &&
 				matchesVendor(vendor, req.url.hostname, req.url.pathname),
 		});
+		const sendToGym = createGymSender({ gymUrl, bearer: () => token });
 		const gym = createHttpToolCaller({
 			origin: () => context.origin,
-			send: createGymSender({ gymUrl, bearer: () => token }),
+			// An API with a secret in the path finds the tenant by it. Use the token of the tenant there.
+			send: async (req) => await sendToGym(fillPathSecret(req, profile.pathSecret, token)),
 			headers: () => ({ accept: 'application/json' }),
 		});
 		const hydrator = new PlanHydrator({
@@ -97,6 +105,7 @@ export class HttpRunRegistry {
 			llm: createPlanLlm(model),
 			lookups: profile.lookups,
 			finalize: profile.finalize,
+			opaqueIds: profile.opaqueIds,
 		});
 		const router = new HttpGuardRouter({
 			upstream,

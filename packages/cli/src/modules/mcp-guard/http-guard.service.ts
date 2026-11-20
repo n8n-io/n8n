@@ -4,7 +4,7 @@ import { Service } from '@n8n/di';
 import { GymAdmin } from './gym-admin';
 import { HttpRunRegistry } from './http-runs';
 import type { CapturedRequest } from './network';
-import { HTTP_PROFILES, type HttpVendorProfile } from './http-profiles';
+import { HTTP_PROFILES } from './http-profiles';
 import type { NodeRequestGuardScope } from './node-request-guard';
 import {
 	canonicalHost,
@@ -13,30 +13,31 @@ import {
 	vendorForRequest,
 } from './vendor-knowledge';
 
-// Env per vendor: AI_GYM_<NAME>_URL is the admin address, GYM_<NAME>_URL the HTTP address of the gym.
-function runConfig(profile: HttpVendorProfile) {
-	const key = profile.name.toUpperCase();
-	return {
-		profile,
-		vendor: loadVendorKnowledge(profile.name),
-		admin: new GymAdmin(process.env[`AI_GYM_${key}_URL`] ?? profile.defaultAdminUrl),
-		gymUrl: process.env[`GYM_${key}_URL`] ?? profile.defaultGymUrl,
-	};
-}
+// One gym serves every vendor and tells them apart by the host and the path of the request.
+// AI_GYM_NODES_URL is its admin address. GYM_NODES_URL is its HTTP address.
+const DEFAULT_ADMIN_URL = 'http://127.0.0.1:9093';
+const DEFAULT_GYM_URL = 'http://127.0.0.1:8083';
 
 const refusal = (status: number, text: string): Response => new Response(text, { status });
 
 /** Answers the network calls of a guarded node tool: a read from the gym, a write only from the gym. */
 @Service()
 export class HttpGuardService {
-	// One registry for each vendor. Each vendor can use its own gym process.
-	private readonly registries = new Map<string, HttpRunRegistry>(
-		HTTP_PROFILES.map((profile) => [profile.name, new HttpRunRegistry(runConfig(profile))]),
-	);
+	// One registry for each vendor. All of them use the same gym.
+	private readonly registries = new Map<string, HttpRunRegistry>(this.createRegistries());
 
 	constructor(private readonly logger: Logger) {}
 
 	/** Answers a request of a node tool, or returns `undefined` to let the node send it as usual. */
+	private createRegistries(): Array<[string, HttpRunRegistry]> {
+		const admin = new GymAdmin(process.env.AI_GYM_NODES_URL ?? DEFAULT_ADMIN_URL);
+		const gymUrl = process.env.GYM_NODES_URL ?? DEFAULT_GYM_URL;
+		return HTTP_PROFILES.map((profile) => [
+			profile.name,
+			new HttpRunRegistry({ profile, vendor: loadVendorKnowledge(profile.name), admin, gymUrl }),
+		]);
+	}
+
 	async handle(req: CapturedRequest, scope: NodeRequestGuardScope): Promise<Response | undefined> {
 		if (!scope.chatId) return refusal(403, 'mcp-guard: no chat for this node tool');
 		const host = canonicalHost(req.url.hostname);

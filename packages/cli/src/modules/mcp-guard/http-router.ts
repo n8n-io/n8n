@@ -6,6 +6,7 @@ import type { HttpVendorProfile } from './http-profiles';
 import { looksLikeId, toToolCall, type HttpToolArgs } from './http-tool-caller';
 import type { McpCaller } from './mcp-upstream';
 import type { CapturedRequest } from './network';
+import { redactPathSecret } from './path-secret';
 import { isReadShaped } from './request-classifier';
 import type { Hydrator } from './router';
 import { canonicalHost, vendorForRequest } from './vendor-knowledge';
@@ -17,7 +18,8 @@ export interface HttpGuardRouterDeps {
 	hydrator: Hydrator;
 	profile: HttpVendorProfile;
 	// The credential and the host of the latest request. The real reads of the hydration use them.
-	context: { authorization?: string; origin: string };
+	// `pathSecret` is the secret that the profile took out of the path of the latest request.
+	context: { authorization?: string; origin: string; pathSecret?: string };
 }
 
 const refusal = (status: number, text: string): Response => new Response(text, { status });
@@ -32,7 +34,17 @@ function toResponse(res: CallToolResult): Response {
 	return new Response(textOf(res), { status, headers: { 'content-type': type } });
 }
 
-const ID_FIELD = /"(?:id|threadId)"\s*:\s*"([^"]+)"/g;
+// `parentFolderId` names a folder that the gym made, when a message of the gym is read.
+const ID_FIELD = /"(?:id|threadId|spreadsheetId|parentFolderId)"\s*:\s*"([^"]+)"/g;
+
+// A path can hold an id with `%2B` or `%3D`. The gym answer holds it as plain text.
+const decodeSegment = (segment: string): string => {
+	try {
+		return decodeURIComponent(segment);
+	} catch {
+		return segment;
+	}
+};
 
 /**
  * Routes the HTTP requests of one chat. A read-shaped request reads the real service, then the gym
@@ -45,7 +57,11 @@ export class HttpGuardRouter {
 
 	constructor(private readonly deps: HttpGuardRouterDeps) {}
 
-	async handle(req: CapturedRequest): Promise<Response> {
+	async handle(incoming: CapturedRequest): Promise<Response> {
+		// Take a secret out of the path first. Nothing below, not a log, an error or the gym, sees it.
+		const { url, secret } = redactPathSecret(incoming.url, this.deps.profile.pathSecret);
+		const req = secret === undefined ? incoming : { ...incoming, url };
+		if (secret !== undefined) this.deps.context.pathSecret = secret;
 		const host = canonicalHost(req.url.hostname);
 		const vendor = vendorForRequest(host, req.url.pathname);
 		if (!vendor) return refusal(403, 'mcp-guard: this host is not available in a preview chat');
@@ -64,7 +80,8 @@ export class HttpGuardRouter {
 			// A failed parent read must not block the write. The gym then answers with its own error.
 			await hydrator.hydrateWrite?.(name, args).catch(() => undefined);
 		}
-		const res = await this.callGym(name, args);
+		// An id in the answer of a write names an object that the gym made, also for a vendor with real ids.
+		const res = await this.callGym(name, args, true);
 		if (res instanceof Response) return res;
 		if (!res.isError) hydrator.noteWrite?.(name, res);
 		return toResponse(res);
@@ -72,9 +89,12 @@ export class HttpGuardRouter {
 
 	private async read(name: string, args: HttpToolArgs): Promise<Response> {
 		const { upstream, hydrator, profile } = this.deps;
-		// An id that the gym made names nothing in the real service.
-		const ids = args.path.split('/').filter(looksLikeId);
-		const gymOnly = ids.length > 0 && ids.every((id) => this.gymIds.has(id));
+		// An id that the gym made names nothing in the real service. A path can hold other ids too,
+		// such as a range ("Sheet1!A1:C10"), so one id of the gym is enough.
+		const gymOnly = args.path
+			.split('/')
+			.map(decodeSegment)
+			.some((segment) => looksLikeId(segment) && this.gymIds.has(segment));
 		this.log(args, gymOnly ? 'gym (an id of the gym)' : 'real read, then gym');
 		if (!gymOnly) {
 			try {
@@ -93,7 +113,8 @@ export class HttpGuardRouter {
 				Container.get(Logger).warn(`mcp-guard http real read failed for ${name}`);
 			}
 		}
-		const res = await this.callGym(name, args);
+		// A read of a vendor with real ids shows real ids. Only a write makes an id that the gym alone knows.
+		const res = await this.callGym(name, args, !profile.opaqueIds);
 		return res instanceof Response ? res : toResponse(res);
 	}
 
@@ -109,10 +130,16 @@ export class HttpGuardRouter {
 		Container.get(Logger).info(`mcp-guard http ${args.method} ${host}${args.path} -> ${route}`);
 	}
 
-	private async callGym(name: string, args: HttpToolArgs): Promise<CallToolResult | Response> {
+	private async callGym(
+		name: string,
+		args: HttpToolArgs,
+		remember: boolean,
+	): Promise<CallToolResult | Response> {
 		try {
 			const res = await this.deps.gym.callTool(name, args);
-			for (const match of textOf(res).matchAll(ID_FIELD)) this.gymIds.add(match[1]);
+			if (remember) {
+				for (const match of textOf(res).matchAll(ID_FIELD)) this.gymIds.add(match[1]);
+			}
 			return res;
 		} catch {
 			return refusal(502, 'mcp-guard: the gym could not be reached');
