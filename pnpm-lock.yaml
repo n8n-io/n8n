@@ -7333,6 +7333,9 @@ importers:
       markdown-it-footnote:
         specifier: ^4.0.0
         version: 4.0.0
+      mermaid:
+        specifier: 'catalog:'
+        version: 11.17.2
       miragejs:
         specifier: ^0.1.48
         version: 0.1.48
