@@ -1,5 +1,12 @@
 import { mock } from 'vitest-mock-extended';
-import type { IExecuteFunctions, IWorkflowDataProxyData, INode } from 'n8n-workflow';
+import {
+	createRunExecutionData,
+	type IExecuteFunctions,
+	type IWorkflowDataProxyData,
+	type INode,
+	type INodeExecutionData,
+	type ITaskData,
+} from 'n8n-workflow';
 
 import { ExecuteWorkflow } from './ExecuteWorkflow.node';
 import { getWorkflowInfo } from './GenericFunctions';
@@ -139,6 +146,58 @@ describe('ExecuteWorkflow', () => {
 				},
 			},
 		);
+	});
+
+	test('should resolve all paired items before it writes them, when the items are part of the run data', async () => {
+		executeFunctions.getNodeParameter
+			.mockReturnValueOnce('database') // source
+			.mockReturnValueOnce('once') // mode
+			.mockReturnValueOnce({}) // workflowInputs.value
+			.mockReturnValueOnce([]) // workflowInputs.schema
+			.mockReturnValueOnce(true); // waitForSubWorkflow
+		(getWorkflowInfo as Mock).mockResolvedValue({ id: 'subWorkflowId' });
+
+		// Sub-workflow with a loop: Trigger -> If -> Loop -> If. The If node is the last node.
+		const task = (source: ITaskData['source'], main: INodeExecutionData[][]): ITaskData => ({
+			source,
+			data: { main },
+			executionTime: 0,
+			executionStatus: 'success',
+			executionIndex: 0,
+			startTime: 0,
+		});
+		const itemOfFirstRun: INodeExecutionData = { json: { run: 0 }, pairedItem: { item: 0 } };
+		const itemOfLastRun: INodeExecutionData = { json: { run: 1 }, pairedItem: { item: 0 } };
+		const runExecutionData = createRunExecutionData({
+			resultData: {
+				lastNodeExecuted: 'If',
+				runData: {
+					Trigger: [task([], [[{ json: {}, pairedItem: { item: 7 } }]])],
+					If: [
+						task([{ previousNode: 'Trigger' }], [[itemOfFirstRun], []]),
+						task([{ previousNode: 'Loop' }], [[], [itemOfLastRun]]),
+					],
+					Loop: [
+						task(
+							[{ previousNode: 'If', previousNodeRun: 0 }],
+							[[{ json: {}, pairedItem: { item: 0 } }]],
+						),
+					],
+				},
+			},
+		});
+		executeFunctions.executeWorkflow.mockResolvedValue({
+			executionId: 'subExecutionId',
+			data: [[itemOfFirstRun], [itemOfLastRun]],
+		});
+		executeFunctions.getExecutionDataById.mockResolvedValue(runExecutionData);
+
+		const result = await executeWorkflow.execute.call(executeFunctions);
+
+		expect(result).toEqual([
+			[{ json: { run: 0 }, pairedItem: { item: 7 } }],
+			[{ json: { run: 1 }, pairedItem: { item: 7 } }],
+		]);
 	});
 
 	test('should handle errors and continue on fail, no items, < 1.3 version', async () => {

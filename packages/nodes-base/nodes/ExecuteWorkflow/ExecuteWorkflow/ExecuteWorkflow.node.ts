@@ -518,30 +518,27 @@ workflowInputs: {
 
 				const fallbackPairedItemData = generatePairedItemData(items.length);
 
-				for (const output of workflowResult) {
+				// The items can be part of the run data that the walk reads.
+				// So we find all paired items before we write the first one.
+				const pairedItemsByOutput = workflowResult.map((output) => {
 					const sameLength = output.length === items.length;
 
-					for (const [itemIndex, item] of output.entries()) {
+					return output.map((item, itemIndex) => {
 						if (item.pairedItem) {
 							// If the item already has a paired item, we need to follow these to the start of the child workflow
-							if (workflowRunData !== undefined) {
-								const pairedItem = findPairedItemThroughWorkflowData(
-									workflowRunData,
-									item,
-									itemIndex,
-								);
-								if (pairedItem !== undefined) {
-									item.pairedItem = pairedItem;
-								}
-							}
-							continue;
+							return workflowRunData === undefined
+								? item.pairedItem
+								: (findPairedItemThroughWorkflowData(workflowRunData, item, itemIndex) ??
+										item.pairedItem);
 						}
 
-						if (sameLength) {
-							item.pairedItem = { item: itemIndex };
-						} else {
-							item.pairedItem = fallbackPairedItemData;
-						}
+						return sameLength ? { item: itemIndex } : fallbackPairedItemData;
+					});
+				});
+
+				for (const [outputIndex, output] of workflowResult.entries()) {
+					for (const [itemIndex, item] of output.entries()) {
+						item.pairedItem = pairedItemsByOutput[outputIndex][itemIndex];
 					}
 				}
 
