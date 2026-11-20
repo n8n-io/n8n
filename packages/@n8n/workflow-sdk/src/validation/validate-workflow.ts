@@ -172,8 +172,9 @@ export interface ValidationOptions {
 	/** Optional node types provider for dynamic input index validation */
 	nodeTypesProvider?: INodeTypes;
 	/**
-	 * The engine that runs the workflow. On `v2`, each node or setting that engine v2
-	 * cannot run is an error. Default: the workflow's `settings.engineType`, else `v1`.
+	 * The engine that runs a workflow without `settings.engineType`. The workflow's own
+	 * `engineType` always wins. On `v2`, each node or setting that engine v2 cannot run
+	 * is an error. Default: `v1`.
 	 */
 	engine?: WorkflowEngineType;
 }

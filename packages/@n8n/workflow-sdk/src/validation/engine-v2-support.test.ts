@@ -1,5 +1,4 @@
 import type { EngineV2Reason } from '@n8n/workflow-engine-check';
-import escapeRegExp from 'lodash/escapeRegExp';
 
 import { formatEngineV2Message } from './engine-v2-support';
 import { validateWorkflow, type ValidationError } from './validate-workflow';
@@ -48,7 +47,7 @@ function engineErrors(errors: ValidationError[]): ValidationError[] {
 	return errors.filter((error) => error.code.startsWith('ENGINE_V2_'));
 }
 
-const V1_FALLBACK = "set `engineType: 'v1'` in the `workflow()` settings.";
+const V1_FALLBACK = "set `engineType: 'v1'` in the workflow settings.";
 
 describe('engine v2 support validation', () => {
 	describe('engine selection', () => {
@@ -85,12 +84,17 @@ describe('engine v2 support validation', () => {
 			]);
 		});
 
-		it('lets the engine option override settings.engineType', () => {
+		it('uses the engine option for a workflow without engineType', () => {
+			expect(engineErrors(validateWorkflow(json, { engine: 'v2' }).errors)).toHaveLength(1);
+		});
+
+		it('lets settings.engineType win over the engine option', () => {
 			const v2Workflow = workflowJson(node({ retryOnFail: true }), { engineType: 'v2' });
 			const v1Workflow = workflowJson(node({ retryOnFail: true }), { engineType: 'v1' });
 
-			expect(engineErrors(validateWorkflow(v2Workflow, { engine: 'v1' }).errors)).toEqual([]);
-			expect(engineErrors(validateWorkflow(v1Workflow, { engine: 'v2' }).errors)).toHaveLength(1);
+			// The messages tell the builder to set engineType v1, so doing that must clear them.
+			expect(engineErrors(validateWorkflow(v1Workflow, { engine: 'v2' }).errors)).toEqual([]);
+			expect(engineErrors(validateWorkflow(v2Workflow, { engine: 'v1' }).errors)).toHaveLength(1);
 		});
 
 		it('passes the engine option through validateWorkflowBuilder', () => {
@@ -126,7 +130,8 @@ describe('engine v2 support validation', () => {
 				'EXECUTE_ONCE',
 				{ executeOnce: true },
 				'`Fetch Orders`: engine v2 does not support Execute Once yet. Remove `executeOnce`. ' +
-					'Add a Limit node (1 item) or an Aggregate node before this node, so that it gets only one item. ' +
+					'To use only the first item, add a Limit node (1 item) before this node. ' +
+					'To use all items in one run, add an Aggregate node before this node. The Aggregate node combines the items into one item, so update the expressions of this node. ' +
 					`If the workflow must use Execute Once, ${V1_FALLBACK}`,
 			],
 			[
@@ -179,11 +184,12 @@ describe('engine v2 support validation', () => {
 
 			expect(error.code).toBe('ENGINE_V2_FORM_NODE');
 			expect(error.nodeName).toBe('Form');
-			expect(error.message).toMatch(/^`Form`: /);
-			expect(error.message).toMatch(new RegExp(`To do this, ${escapeRegExp(V1_FALLBACK)}$`));
+			expect(error.message).toBe(
+				`Engine v2 does not run the "Form" node yet. Run this workflow on engine v1 for now. To do this, ${V1_FALLBACK}`,
+			);
 		});
 
-		it('tells the builder to restructure the workflow for a permanent reason', () => {
+		it('gives the reason text alone for a permanent reason', () => {
 			const merge = node({
 				name: 'Merge',
 				type: 'n8n-nodes-base.merge',
@@ -194,14 +200,12 @@ describe('engine v2 support validation', () => {
 			const errors = engineErrors(validateWorkflow(workflowJson(merge), { engine: 'v2' }).errors);
 			const error = errors.find((e) => e.code === 'ENGINE_V2_MERGE_MODE_EXPRESSION');
 
-			expect(error?.message).toMatch(/^`Merge`: The "Merge" node sets its Merge mode/);
-			expect(error?.message).toMatch(
-				/Engine v2 will not support this\. Change the structure of the workflow\.$/,
+			expect(error?.message).toBe(
+				'The "Merge" node sets its Merge mode with an expression. Engine v2 needs the mode before the workflow runs. Use a fixed mode.',
 			);
-			expect(error?.message).not.toContain('engineType');
 		});
 
-		it('tells the builder to fix the workflow for an invalid reason', () => {
+		it('says that engine v1 does not help for an invalid reason', () => {
 			const loop = node({
 				name: 'Loop',
 				type: 'n8n-nodes-base.splitInBatches',
@@ -233,8 +237,9 @@ describe('engine v2 support validation', () => {
 			);
 			const error = errors.find((e) => e.code === 'ENGINE_V2_SPLIT_IN_BATCHES_BATCH_SIZE');
 
-			expect(error?.message).toMatch(/^`Loop`: /);
-			expect(error?.message).toMatch(/No engine can run this workflow\. Fix the workflow\.$/);
+			expect(error?.message).toBe(
+				'The "Loop" node needs a batch size that is a whole number of at least 1. Engine v1 cannot run this workflow either.',
+			);
 		});
 
 		it('leaves out the node name for a workflow-level reason', () => {
@@ -253,8 +258,8 @@ describe('engine v2 support validation', () => {
 
 		it.each([
 			['temporary', 'Run this workflow on engine v1 for now.', `To do this, ${V1_FALLBACK}`],
-			['permanent', 'Use a fixed mode.', 'Change the structure of the workflow.'],
-			['invalid', 'Use a whole number.', 'Fix the workflow.'],
+			['permanent', 'Use a fixed mode.', 'Use a fixed mode.'],
+			['invalid', 'Use a whole number.', 'Engine v1 cannot run this workflow either.'],
 		] as const)('formats a %s reason', (kind, problem, ending) => {
 			const reason: EngineV2Reason = {
 				code: 'NESTED_LOOP',
@@ -269,6 +274,29 @@ describe('engine v2 support validation', () => {
 			expect(message.startsWith(`\`Node\`: ${problem}`)).toBe(true);
 			expect(message.endsWith(ending)).toBe(true);
 		});
+
+		it('does not repeat a node name that the reason text already gives', () => {
+			const message = formatEngineV2Message({
+				code: 'NESTED_LOOP',
+				kind: 'permanent',
+				severity: 'blocking',
+				nodeName: 'Node',
+				message: 'The "Node" node is nested.',
+			});
+
+			expect(message).toBe('The "Node" node is nested.');
+		});
+	});
+
+	it('passes every workflow setting to the check', () => {
+		const result = validateWorkflow(
+			workflowJson(node({}), { credentialResolverId: 'resolver-id' }),
+			{ engine: 'v2' },
+		);
+
+		expect(engineErrors(result.errors).map((error) => error.code)).toEqual([
+			'ENGINE_V2_END_USER_CREDENTIALS',
+		]);
 	});
 
 	it('does not report nodes that no trigger reaches', () => {

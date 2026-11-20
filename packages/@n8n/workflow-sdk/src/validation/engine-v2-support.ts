@@ -12,7 +12,7 @@ import {
 	type WorkflowEngineType,
 } from 'n8n-workflow';
 
-import type { WorkflowJSON } from '../types/base';
+import type { NodeJSON, WorkflowJSON } from '../types/base';
 import { toEngineConnections } from '../utils/workflow-json-engine-helpers';
 
 /** Validation code for each blocking reason of engine v2, e.g. `ENGINE_V2_RETRY_ON_FAIL`. */
@@ -24,7 +24,7 @@ export interface EngineV2SupportIssue {
 	nodeName?: string;
 }
 
-const V1_FALLBACK = "set `engineType: 'v1'` in the `workflow()` settings";
+const V1_FALLBACK = "set `engineType: 'v1'` in the workflow settings";
 
 /**
  * Text for reasons that have a v2 way to get the same result. Each text says what
@@ -41,7 +41,8 @@ const V2_ALTERNATIVES: Partial<Record<EngineV2ReasonCode, string>> = {
 		`If the workflow must have a separate error output, ${V1_FALLBACK}.`,
 	EXECUTE_ONCE:
 		'engine v2 does not support Execute Once yet. Remove `executeOnce`. ' +
-		'Add a Limit node (1 item) or an Aggregate node before this node, so that it gets only one item. ' +
+		'To use only the first item, add a Limit node (1 item) before this node. ' +
+		'To use all items in one run, add an Aggregate node before this node. The Aggregate node combines the items into one item, so update the expressions of this node. ' +
 		`If the workflow must use Execute Once, ${V1_FALLBACK}.`,
 	ALWAYS_OUTPUT_DATA:
 		'engine v2 does not support Always Output Data yet. Remove `alwaysOutputData`. ' +
@@ -49,13 +50,18 @@ const V2_ALTERNATIVES: Partial<Record<EngineV2ReasonCode, string>> = {
 		`If the next nodes must run when this node returns no items, ${V1_FALLBACK}.`,
 };
 
-/** Selects the engine to validate for. A workflow without `engineType` runs on engine v1. */
+/**
+ * Selects the engine to validate for. The workflow's `settings.engineType` wins, because
+ * it selects the engine that runs the workflow. `engine` applies only to a workflow
+ * without one, and v1 applies when both are missing.
+ */
 export function resolveValidationEngine(
 	json: WorkflowJSON,
 	engine: WorkflowEngineType | undefined,
 ): WorkflowEngineType {
-	if (engine) return engine;
-	return json.settings?.engineType === 'v2' ? 'v2' : 'v1';
+	const engineType = json.settings?.engineType;
+	if (engineType === 'v1' || engineType === 'v2') return engineType;
+	return engine ?? 'v1';
 }
 
 /**
@@ -75,24 +81,31 @@ export function findEngineV2SupportIssues(json: WorkflowJSON): EngineV2SupportIs
 
 /**
  * Writes the message in this order: the node name, what engine v2 cannot do, the
- * v2 way, then the v1 fallback.
+ * v2 way, then the v1 fallback. Permanent and invalid reasons already name the fix.
  */
 export function formatEngineV2Message(reason: EngineV2Reason): string {
-	const prefix = reason.nodeName ? `\`${reason.nodeName}\`: ` : '';
 	const alternative = V2_ALTERNATIVES[reason.code];
 	if (alternative) {
-		return `${prefix}${alternative}`;
+		return `${nodePrefix(reason, alternative)}${alternative}`;
 	}
 
+	const message = `${nodePrefix(reason, reason.message)}${reason.message}`;
 	switch (reason.kind) {
 		case 'temporary':
 			// The reason text already says to use engine v1 for now.
-			return `${prefix}${reason.message} To do this, ${V1_FALLBACK}.`;
+			return `${message} To do this, ${V1_FALLBACK}.`;
 		case 'permanent':
-			return `${prefix}${reason.message} Engine v2 will not support this. Change the structure of the workflow.`;
+			return message;
 		case 'invalid':
-			return `${prefix}${reason.message} No engine can run this workflow. Fix the workflow.`;
+			return `${message} Engine v1 cannot run this workflow either.`;
 	}
+}
+
+/** Names the node only when the text does not name it already. */
+function nodePrefix(reason: EngineV2Reason, text: string): string {
+	return reason.nodeName && !text.includes(`"${reason.nodeName}"`)
+		? `\`${reason.nodeName}\`: `
+		: '';
 }
 
 function toEligibilityWorkflow(json: WorkflowJSON): EngineV2EligibilityWorkflow {
@@ -103,35 +116,24 @@ function toEligibilityWorkflow(json: WorkflowJSON): EngineV2EligibilityWorkflow 
 	};
 }
 
-function toEngineNode(node: WorkflowJSON['nodes'][number]): INode {
+/**
+ * Copies every node field, so a new field that a rule reads reaches the check. The
+ * check does not read credentials, and their SDK type does not match the engine type.
+ */
+function toEngineNode({ name, parameters, credentials: _credentials, ...node }: NodeJSON): INode {
 	return {
-		id: node.id,
-		name: node.name ?? '',
-		type: node.type,
-		typeVersion: node.typeVersion,
-		position: node.position,
+		...node,
+		name: name ?? '',
 		// The SDK and the engine type parameters differently. Workflow JSON parameters are
-		// plain JSON, so a JSON round trip gives the engine type without a cast.
-		parameters: jsonParse<INodeParameters>(JSON.stringify(node.parameters ?? {})),
-		disabled: node.disabled,
-		retryOnFail: node.retryOnFail,
-		alwaysOutputData: node.alwaysOutputData,
-		executeOnce: node.executeOnce,
-		onError: node.onError,
+		// plain JSON, so the round trip keeps every value. `jsonParse` does not check the type.
+		parameters: jsonParse<INodeParameters>(JSON.stringify(parameters ?? {})),
 	};
 }
 
 /**
- * Copies only the settings that can block an engine v2 run. The SDK settings allow
- * any key, so each value is checked before it is copied.
+ * Copies every setting, so a new setting that a rule reads reaches the check. The SDK
+ * does not type every key, so the values of the other keys are not checked here.
  */
 function toEngineSettings(settings: WorkflowJSON['settings']): IWorkflowSettings {
-	const engineSettings: IWorkflowSettings = {};
-	if (typeof settings?.errorWorkflow === 'string') {
-		engineSettings.errorWorkflow = settings.errorWorkflow;
-	}
-	if (typeof settings?.credentialResolverId === 'string') {
-		engineSettings.credentialResolverId = settings.credentialResolverId;
-	}
-	return engineSettings;
+	return { ...settings };
 }

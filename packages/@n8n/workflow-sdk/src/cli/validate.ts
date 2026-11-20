@@ -16,7 +16,7 @@ import {
 export interface ValidateCliOptions {
 	json?: boolean;
 	nodeTypes?: string[];
-	/** The engine to validate for. Default: the workflow's `settings.engineType`. */
+	/** The engine for a workflow without `settings.engineType`. The workflow's own setting wins. */
 	engine?: WorkflowEngineType;
 }
 
@@ -55,8 +55,9 @@ function usageAndExit(): never {
 	console.error('resolved from the workflow file and cwd; override with --node-types');
 	console.error(`(repeatable) or ${NODE_DEFINITION_DIRS_ENV_VAR} (${path.delimiter}-separated).`);
 	console.error('');
-	console.error('--engine v2 also reports each node and setting that engine v2 cannot run.');
-	console.error("The default is the workflow's settings.engineType, or v1 when it has none.");
+	console.error('--engine sets the engine for a workflow without settings.engineType.');
+	console.error("The workflow's settings.engineType wins. The default is v1.");
+	console.error('On engine v2, validate reports each node and setting that v2 cannot run.');
 	process.exit(1);
 }
 
