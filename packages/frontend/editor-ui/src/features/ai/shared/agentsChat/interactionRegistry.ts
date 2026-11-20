@@ -32,7 +32,7 @@ export interface AgentsChatInteractionRenderer {
  * An extension can also render only the output of a finished tool call
  * (`matchToolOutput` and `toolOutputComponent`). The chat keeps the default
  * tool step, and shows the host component in place of the default output
- * block when the step opens.
+ * section when the step opens.
  *
  * An extension can also render host events (`matchHostEvent`,
  * `hostEventComponent` and `hostEventPlacement`). The placement sets where the
@@ -74,7 +74,11 @@ export interface AgentsChatInteractionExtension<TInput = unknown> {
 	 * without an error or a cancel.
 	 */
 	matchToolOutput?(toolCall: ToolCall): boolean;
-	/** Renders a matched tool output. It gets the finished call as the `toolCall` prop. */
+	/**
+	 * Renders a matched tool output, with its label. It gets the finished call as
+	 * the `toolCall` prop and the label as the `label` prop. Use `ToolDataSection`
+	 * or `ToolDataViews` so the label row looks like the default one.
+	 */
 	toolOutputComponent?: Component;
 	/** True when this extension handles the host event. Usually a check on `event.name`. */
 	matchHostEvent?(event: AgentsChatHostEvent): boolean;

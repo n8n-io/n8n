@@ -439,7 +439,11 @@ describe('AgentChatToolSteps', () => {
 		await wrapper.get('button').trigger('click');
 
 		const output = wrapper.get('[data-testid="test-tool-output"]');
-		expect(output.text()).toBe('{"rows":[{"id":1}]}');
+		expect(output.text()).toContain('{"rows":[{"id":1}]}');
+		// The host renders the output label, so the chat does not add a second one.
+		const label = wrapper.get('[data-testid="test-tool-output-label"]').text();
+		expect(label).not.toBe('');
+		expect(wrapper.text().split(label)).toHaveLength(2);
 		const blocks = wrapper.findAll('pre');
 		expect(blocks).toHaveLength(1);
 		expect(blocks[0].text()).toContain('"limit": 2');
