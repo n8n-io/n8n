@@ -1,7 +1,7 @@
 import { DEFAULT_EXECUTION_LIMIT_SETTINGS } from '@n8n/api-types';
 import { EventService } from '@n8n/backend-services';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
-import { ProjectRepository } from '@n8n/db';
+import { ProjectRepository, TransactionRunner } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { BadRequestError } from '@n8n/errors';
@@ -37,6 +37,13 @@ describe('ExecutionLimitsService', () => {
 			select: { projectId: true, field: true, oldValue: true, newValue: true, updatedBy: true },
 			order: { id: 'ASC' },
 		});
+	}
+
+	async function removeLimitInTransaction(projectId: string) {
+		return await Container.get(TransactionRunner).run(
+			{},
+			async (ctx) => await service.removeLimitOfDeletedProject(projectId, USER_ID, undefined, ctx),
+		);
 	}
 
 	afterAll(async () => {
@@ -305,9 +312,50 @@ describe('ExecutionLimitsService', () => {
 			await service.updateSettings({ instanceMaxExecutions: 1000 }, USER_ID);
 			await service.setProjectLimits([{ projectId: project.id, maxExecutions: 10 }], USER_ID);
 			await service.removeProjectLimits(['project-with-no-limit'], USER_ID);
+			await (await removeLimitInTransaction('project-with-no-limit'))();
 
 			expect(events).toEqual([]);
 			expect(await readAuditRows()).toEqual(rowsBefore);
+		});
+
+		it('records the removed limit in the transaction that deletes the project and emits after it commits', async () => {
+			const project = await createTeamProject();
+			await service.setProjectLimits([{ projectId: project.id, maxExecutions: 10 }], USER_ID);
+			events.length = 0;
+
+			const announce = await removeLimitInTransaction(project.id);
+			expect(events).toEqual([]);
+			await announce();
+
+			const removal = {
+				projectId: project.id,
+				field: 'projectMaxExecutions',
+				oldValue: 10,
+				newValue: null,
+				updatedBy: USER_ID,
+			};
+			expect(events).toEqual([removal]);
+			expect((await readAuditRows()).at(-1)).toEqual(removal);
+		});
+
+		it('keeps the limit and records nothing when the transaction that deletes the project fails', async () => {
+			const project = await createTeamProject();
+			await service.setProjectLimits([{ projectId: project.id, maxExecutions: 10 }], USER_ID);
+			events.length = 0;
+			const rowsBefore = await readAuditRows();
+
+			await expect(
+				Container.get(TransactionRunner).run({}, async (ctx) => {
+					await service.removeLimitOfDeletedProject(project.id, USER_ID, undefined, ctx);
+					throw new Error('The project delete failed');
+				}),
+			).rejects.toThrow('The project delete failed');
+
+			expect(await service.getProjectLimits([project.id])).toEqual([
+				{ projectId: project.id, maxExecutions: 10 },
+			]);
+			expect(await readAuditRows()).toEqual(rowsBefore);
+			expect(events).toEqual([]);
 		});
 
 		it('keeps the limit and emits nothing when the row cannot be recorded', async () => {
