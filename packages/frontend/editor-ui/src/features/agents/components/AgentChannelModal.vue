@@ -389,7 +389,7 @@ const headerText = computed(() => {
 	if (channel && !isListMode) {
 		return currentIntegration.value?.label ?? channel;
 	}
-	return i18n.baseText('agents.channels.modal.title');
+	return i18n.baseText('agents.builder.addTrigger.modal.title');
 });
 const currentStep = computed(() => (currentView.value === 'list' ? 'list' : 'configure'));
 
