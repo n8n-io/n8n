@@ -16,10 +16,6 @@ process.chdir(root);
 const baseRef = process.argv[2] ?? 'origin/master';
 const mergeBase = git('merge-base', baseRef, 'HEAD');
 const configDir = path.join(root, 'packages/@n8n/oxlint-config');
-if (!existsSync(path.join(configDir, 'dist/anti-slop/index.js'))) {
-	console.error('anti-slop: build the rules first: pnpm --filter @n8n/oxlint-config build');
-	process.exit(2);
-}
 
 /** Map of file -> Set of added line numbers. Compares against the working tree, so uncommitted edits count. */
 function addedLines() {
@@ -70,6 +66,10 @@ const files = [...added.keys()].filter((f) => added.get(f).size > 0 && isOxlintP
 if (files.length === 0) {
 	console.log('anti-slop: no changed files in Oxlint packages.');
 	process.exit(0);
+}
+if (!existsSync(path.join(configDir, 'dist/anti-slop/index.js'))) {
+	console.error('anti-slop: build the rules first: pnpm --filter @n8n/oxlint-config build');
+	process.exit(2);
 }
 
 const result = spawnSync(
