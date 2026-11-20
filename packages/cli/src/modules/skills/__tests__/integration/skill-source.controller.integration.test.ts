@@ -23,6 +23,7 @@ import { createSkill, deleteAllSkills, findLatestSkillVersion, findSkill } from 
 import { SkillSourceConnection } from '../../database/entities/skill-source-connection.entity';
 import { SkillSourceNotFoundError } from '../../errors/skill-source-not-found.error';
 import { SkillSourceReadError } from '../../errors/skill-source-read.error';
+import { SkillSourceBackoff } from '../../services/skill-source-backoff';
 import { SkillSourceService } from '../../services/skill-source.service';
 import { SkillSourceToolBudget } from '../../services/skill-source-tool-budget';
 import { SkillsTelemetry } from '../../services/skills-telemetry.service';
@@ -902,6 +903,57 @@ describe('SkillSourceController', () => {
 			// The connect dialog has a person behind each request, so the budget leaves it alone.
 			await discover(server.authAgentFor(adminUser), target);
 			// Another user has a budget of their own.
+			await expect(service.discoverPublic(ownerUser, target, 'mcp')).resolves.toBeDefined();
+		});
+	});
+
+	describe('a rate limit wait of the public access', () => {
+		const target = { url: REPO, scope: 'instance' } as const;
+		const waits = () =>
+			Reflect.get(Container.get(SkillSourceBackoff), 'waits') as Map<
+				string,
+				{ until: number; attempts: number }
+			>;
+
+		afterEach(() => waits().clear());
+
+		it('refuses the public source tools with no read of the source, and leaves the connect dialog alone', async () => {
+			const service = Container.get(SkillSourceService);
+			const preview = await service.discoverPublic(ownerUser, target, 'mcp');
+			const selection = connectPublicSkillSourceSchema.parse({
+				...target,
+				revision: preview.revision,
+				skillKeys: preview.skills.filter(({ name }) => name === 'docx').map(({ key }) => key),
+			});
+			const connectedSource = vi.spyOn(Container.get(SkillsTelemetry), 'connectedSource');
+			const parseLocator = vi.spyOn(Container.get(GitHubSkillSourceClient), 'parseLocator');
+			waits().set('public:github', { until: Date.now() + 3_600_000, attempts: 1 });
+
+			await expect(service.discoverPublic(ownerUser, target, 'mcp')).rejects.toMatchObject({
+				reason: 'rate_limited',
+			});
+			await expect(
+				service.checkPublicImport(ownerUser, selection, 'assistant'),
+			).rejects.toMatchObject({ reason: 'rate_limited' });
+			await expect(service.connectPublic(ownerUser, selection, 'mcp')).rejects.toMatchObject({
+				reason: 'rate_limited',
+			});
+
+			expect(parseLocator).not.toHaveBeenCalled();
+			expect(await countSources()).toBe(0);
+			expect(connectedSource).toHaveBeenCalledTimes(3);
+			expect(connectedSource).toHaveBeenCalledWith(
+				expect.objectContaining({ surface: 'mcp', status: 'failure', reason: 'rate_limited' }),
+				ownerUser.id,
+			);
+			connectedSource.mockRestore();
+			// A person in the connect dialog still reads the source.
+			await discover(owner, target);
+			expect(parseLocator).toHaveBeenCalledTimes(1);
+			parseLocator.mockRestore();
+
+			// The wait is over: the tools read the source again.
+			waits().set('public:github', { until: Date.now() - 1, attempts: 1 });
 			await expect(service.discoverPublic(ownerUser, target, 'mcp')).resolves.toBeDefined();
 		});
 	});

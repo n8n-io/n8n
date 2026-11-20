@@ -11,6 +11,7 @@ import type { SkillRepository } from '../database/repositories/skill.repository'
 import { SkillSourceReadError } from '../errors/skill-source-read.error';
 import type { SkillAccessService } from '../services/skill-access.service';
 import type { SkillSyncFlagGate } from '../services/skill-sync-flag-gate';
+import { SkillSourceBackoff } from '../services/skill-source-backoff';
 import { SkillSyncService } from '../services/skill-sync.service';
 import type { SkillsTelemetry } from '../services/skills-telemetry.service';
 import type { SkillSourceClient } from '../sources/skill-source-client';
@@ -39,6 +40,7 @@ describe('SkillSyncService', () => {
 		mock(),
 		txRunner,
 		mock(),
+		new SkillSourceBackoff(),
 	);
 	const user = mock<User>({ id: 'user-1' });
 	const source = mock<SkillSourceConnection>({
@@ -148,6 +150,7 @@ describe('SkillSyncService', () => {
 				mock(),
 				txRunner,
 				mock(),
+				new SkillSourceBackoff(),
 			);
 			const firstId = 'a6c11527-f2f8-4dc9-a0e2-d2804c5b219a';
 			const secondId = '4795c2a1-f46c-4b7d-a657-a435cedb7181';

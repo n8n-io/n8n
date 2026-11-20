@@ -82,6 +82,7 @@ import type { ResolvedSkillSourceCredential } from './skill-source-credentials.c
 import { findLosingAgents, isNameTaken, nextFreeName } from './skill.policy';
 import { SkillSecurityScanner } from './skill-security-scanner.service';
 import { SkillService } from './skill.service';
+import { publicAccessKey, SkillSourceBackoff } from './skill-source-backoff';
 import { SkillSourceToolBudget } from './skill-source-tool-budget';
 import { SkillSyncFlagGate } from './skill-sync-flag-gate';
 import { SkillUsageProxy } from './skill-usage-proxy.service';
@@ -166,6 +167,7 @@ export class SkillSourceService {
 		private readonly skillUsage: SkillUsageProxy,
 		private readonly projectScopeService: ProjectScopeService,
 		private readonly toolBudget: SkillSourceToolBudget,
+		private readonly backoff: SkillSourceBackoff,
 	) {}
 
 	/**
@@ -226,7 +228,7 @@ export class SkillSourceService {
 		const report = connectReport(scopeType, payload.credentialId, surface);
 		try {
 			if (surface) this.toolBudget.take(user.id);
-			const source = await this.parse(payload, user, target.projectId);
+			const source = await this.parse(payload, user, target.projectId, surface !== undefined);
 			report.provider = source.type;
 			const duplicate = await this.duplicateOf(user, source.identityKey, target.projectId);
 			report.duplicate_result = duplicate.kind;
@@ -309,7 +311,7 @@ export class SkillSourceService {
 		const report = connectReport(scopeType, undefined, surface);
 		try {
 			this.toolBudget.take(user.id);
-			const source = await this.parse(payload, user, target.projectId);
+			const source = await this.parse(payload, user, target.projectId, true);
 			report.provider = source.type;
 			const duplicate = await this.duplicateOf(user, source.identityKey, target.projectId);
 			report.duplicate_result = duplicate.kind;
@@ -358,7 +360,7 @@ export class SkillSourceService {
 		const report = connectReport(scopeType, payload.credentialId, preview?.surface);
 		try {
 			if (preview) this.toolBudget.take(user.id);
-			const source = await this.parse(payload, user, target.projectId);
+			const source = await this.parse(payload, user, target.projectId, preview !== undefined);
 			report.provider = source.type;
 			const duplicate = await this.duplicateOf(user, source.identityKey, target.projectId);
 			report.duplicate_result = duplicate.kind;
@@ -1137,6 +1139,7 @@ export class SkillSourceService {
 		payload: { url: string; credentialId?: string },
 		user: User,
 		projectId: string | null,
+		fromTool = false,
 	): Promise<ParsedSource> {
 		const { url, credentialId } = payload;
 		const client = this.allClients().find((candidate) => candidate.handles(url));
@@ -1150,6 +1153,14 @@ export class SkillSourceService {
 			throw new SkillSourceRequestError(
 				'invalid_url',
 				'This is not a GitHub repository link. Use https://github.com/owner/repo.',
+			);
+		}
+		// An AI tool reads with the public access. While the checks wait after a rate limit of
+		// that access, a tool request would spend the budget that the checks need.
+		if (fromTool && this.backoff.isWaiting(publicAccessKey(client.type))) {
+			throw new SkillSourceRequestError(
+				'rate_limited',
+				'The source limits how often n8n can read it. Try again later.',
 			);
 		}
 		const credential = credentialId

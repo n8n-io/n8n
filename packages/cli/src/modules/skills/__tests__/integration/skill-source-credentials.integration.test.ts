@@ -28,6 +28,7 @@ import { SkillSourceConnection } from '../../database/entities/skill-source-conn
 import { deleteAllSkills } from '../../testing';
 import { FakeGitHub } from '../test-utils/fake-github';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { SkillSourceBackoff } from '../../services/skill-source-backoff';
 import { SkillSyncService } from '../../services/skill-sync.service';
 import { SkillsTelemetry } from '../../services/skills-telemetry.service';
 import { SkillSourceLink } from '../../database/entities/skill-source-link.entity';
@@ -794,7 +795,7 @@ describe('Skill Sync with credentials', () => {
 		it('keeps a deleted credential visible while public access waits after a rate limit', async () => {
 			const { sourceId } = await importPrivate();
 			await db().update(SkillSourceConnection, { id: sourceId }, { credentialId: null });
-			const backoff = Reflect.get(Container.get(SkillSyncService), 'backoff') as Map<
+			const backoff = Reflect.get(Container.get(SkillSourceBackoff), 'waits') as Map<
 				string,
 				{ until: number; attempts: number }
 			>;
@@ -914,7 +915,7 @@ describe('Skill Sync with credentials', () => {
 
 		describe('the wait after a rate limit, for each access', () => {
 			const backoff = () =>
-				Reflect.get(Container.get(SkillSyncService), 'backoff') as Map<
+				Reflect.get(Container.get(SkillSourceBackoff), 'waits') as Map<
 					string,
 					{ until: number; attempts: number }
 				>;

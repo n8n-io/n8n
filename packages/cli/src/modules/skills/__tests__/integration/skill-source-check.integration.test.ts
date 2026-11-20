@@ -33,6 +33,7 @@ import { SkillSourceLink } from '../../database/entities/skill-source-link.entit
 import { SkillSourceCheckTask } from '../../services/skill-source-check.task';
 import { SkillUsageProxy } from '../../services/skill-usage-proxy.service';
 import type { SkillUsage } from '../../services/skill-usage.contracts';
+import { SkillSourceBackoff } from '../../services/skill-source-backoff';
 import { SkillSyncService } from '../../services/skill-sync.service';
 import { SkillService } from '../../services/skill.service';
 import { SkillsTelemetry } from '../../services/skills-telemetry.service';
@@ -98,7 +99,7 @@ describe('Skill source checks', () => {
 		await db().delete(SkillSourceConnection, {});
 		postHog.getFeatureFlags.mockResolvedValue({ [SKILL_SYNC_FLAG]: true });
 		// The rate limit budget lives in memory on the service, so one test's limit stays there.
-		(Reflect.get(sync(), 'backoff') as Map<string, unknown>).clear();
+		(Reflect.get(Container.get(SkillSourceBackoff), 'waits') as Map<string, unknown>).clear();
 		Reflect.get(sync(), 'commits').clear();
 		github.start();
 		github.push('acme/skills', FILES);
@@ -1389,7 +1390,10 @@ describe('Skill source checks', () => {
 			await importAll();
 			github.failWith = { status: 429, headers: { 'retry-after': '600' } };
 			await sync().checkAll();
-			const backoff = Reflect.get(sync(), 'backoff') as Map<string, unknown>;
+			const backoff = Reflect.get(Container.get(SkillSourceBackoff), 'waits') as Map<
+				string,
+				unknown
+			>;
 			const until = backoff.get('public:github');
 
 			await sync().checkAll();
