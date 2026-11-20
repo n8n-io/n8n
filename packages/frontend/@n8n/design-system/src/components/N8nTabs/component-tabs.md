@@ -79,7 +79,7 @@ interface TabsProps<Value extends string | number = string | number> {
   :orientation="orientation"  
   @update:model-value="emit('update:modelValue', $event)"
 >
-  <div :class="['n8n-tabs', $style.tabsContainer]">
+  <div :class="['n8n-tabs', $style.container]">
     <!-- scroll buttons + TabsList + TabsTriggers -->
   </div>
 

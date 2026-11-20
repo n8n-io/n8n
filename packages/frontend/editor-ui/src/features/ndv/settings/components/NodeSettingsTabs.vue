@@ -171,6 +171,7 @@ function onTooltipClick(tab: NodeSettingsTab, event: MouseEvent) {
 					:underline="false"
 					theme="text"
 					:class="$style.docsLink"
+					:aria-label="compact ? i18n.baseText('nodeSettings.docs') : undefined"
 					data-test-id="tab-docs"
 					@click="onDocsClick"
 				>

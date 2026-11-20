@@ -14,7 +14,6 @@ import { TabsContent, TabsIndicator, TabsList, TabsRoot, TabsTrigger } from './r
 import type { TabsProps } from './Tabs.types';
 
 const props = withDefaults(defineProps<TabsProps<Value>>(), {
-	modelValue: undefined,
 	options: () => [],
 	size: 'medium',
 	justified: false,
@@ -40,6 +39,7 @@ const scrollPosition = ref(0);
 const canScrollRight = ref(false);
 const hasOverflow = ref(false);
 const root = ref<HTMLDivElement>();
+const suffix = ref<HTMLDivElement>();
 const tabsList = ref<InstanceType<typeof TabsList>>();
 let resizeObserver: ResizeObserver | null = null;
 
@@ -64,11 +64,13 @@ function updateScrollState() {
 
 	scrollPosition.value = container.scrollLeft;
 	canScrollRight.value = container.scrollWidth - container.clientWidth - container.scrollLeft > 1;
-	/** Compare against the full row to keep reserved controls stable at both ends. */
+	/**
+	 * Compare against the row minus the suffix. The arrows do not count, so the
+	 * reserved controls stay stable when they appear.
+	 */
+	const available = (root.value?.clientWidth ?? 0) - (suffix.value?.offsetWidth ?? 0);
 	hasOverflow.value =
-		!props.justified &&
-		props.orientation === 'horizontal' &&
-		container.scrollWidth > (root.value?.clientWidth ?? 0);
+		!props.justified && props.orientation === 'horizontal' && container.scrollWidth > available;
 }
 
 /** Keep the tab that receives roving focus inside the visible area. */
@@ -242,7 +244,7 @@ function scroll(direction: 'left' | 'right') {
 			>
 				<N8nIcon icon="chevron-right" size="small" />
 			</button>
-			<div v-if="$slots.suffix" :class="$style.suffix">
+			<div v-if="$slots.suffix" ref="suffix" :class="$style.suffix">
 				<slot name="suffix" />
 			</div>
 		</div>
