@@ -196,17 +196,15 @@ export class DbConnectionMonitor {
 				this.errorReporter.error(error);
 			}
 
-			// A rebuild only helps when a pooled connection is the broken part. A ping that never
-			// got one says nothing about the pooled connections: the pool is busy or cannot grow.
-			// A ping whose pooled connection went unanswered while the database is unreachable
-			// says nothing either: no pool would answer.
+			// A rebuild only helps when the pooled connections are the broken part, which a fresh
+			// connection outside the pool tells us. If the database does not answer there either,
+			// no pool would answer: the failure is not counted, however the pooled ping failed.
+			// If it does answer, the failure counts, including a ping that never got a pooled
+			// connection: a pool whose every slot is stuck on a dead connection (e.g. after a
+			// restart behind a proxy) looks exactly like a busy one, and never recovers unless
+			// those pings count. The consecutive-failure threshold keeps a briefly busy pool
+			// from being rebuilt.
 			const threshold = `${this.consecutiveFailures}/${this.databaseConfig.pingMaxFailuresBeforeRecovery}`;
-			if (this.recoveryEnabled && error instanceof PooledConnectionUnavailableError) {
-				this.logger.warn(
-					`Database ping failed (not counted, no pooled connection free, ${threshold}): ${message}`,
-				);
-				return;
-			}
 			if (this.recoveryEnabled && !(await this.probeOutsidePool())) {
 				this.logger.warn(
 					`Database ping failed (not counted, database unreachable, ${threshold}): ${message}`,

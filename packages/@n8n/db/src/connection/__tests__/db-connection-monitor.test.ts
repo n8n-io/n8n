@@ -475,12 +475,13 @@ describe('DbConnectionMonitor', () => {
 			expect(probeClient.end).toHaveBeenCalledTimes(4);
 		});
 
-		it('should not count a ping that got no pooled connection and should not probe', async () => {
-			// Every pooled connection is busy with other queries, so the ping waits for a free one
-			// and times out. The database may be healthy, and a rebuild would abort those queries.
+		it('should not count a ping that got no pooled connection when a connection outside the pool fails too', async () => {
+			// Every pooled connection is busy and the database is unreachable: no pool would answer,
+			// so a rebuild cannot help and must not happen.
 			// @ts-expect-error readonly property
 			dataSource.isInitialized = true;
 			pool.connect.mockReturnValue(new Promise(() => {}));
+			probeClient.connect.mockRejectedValue(new Error('connect ECONNREFUSED'));
 			mockedSetTimeoutP.mockResolvedValue(undefined);
 			const recoverSpy = vi
 				// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -495,13 +496,36 @@ describe('DbConnectionMonitor', () => {
 			expect(recoverSpy).not.toHaveBeenCalled();
 			// @ts-expect-error private property
 			expect(monitor.consecutiveFailures).toBe(0);
-			expect(postgres.Client).not.toHaveBeenCalled();
+			expect(postgres.Client).toHaveBeenCalledTimes(4);
 			expect(onConnectedChange).toHaveBeenLastCalledWith(false);
 			expect(logger.warn).toHaveBeenLastCalledWith(
-				expect.stringContaining(
-					'Database ping failed (not counted, no pooled connection free, 0/3): No pooled connection available for the ping: Database connection timed out',
-				),
+				expect.stringContaining('Database ping failed (not counted, database unreachable, 0/3)'),
 			);
+			expect(errorReporter.error).not.toHaveBeenCalled();
+		});
+
+		it('should count a ping that got no pooled connection towards recovery when the database answers outside the pool', async () => {
+			// Regression for #44265: every pool slot is stuck on a dead connection (primary restart
+			// behind PgBouncer), so pings never get a pooled connection. The database itself is
+			// reachable, so these must count and trigger a rebuild instead of waiting forever.
+			// @ts-expect-error readonly property
+			dataSource.isInitialized = true;
+			pool.connect.mockReturnValue(new Promise(() => {}));
+			mockedSetTimeoutP.mockResolvedValue(undefined);
+			const recoverSpy = vi
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				.spyOn(monitor as any, 'recoverDataSource')
+				.mockResolvedValue(undefined);
+
+			for (let i = 0; i < 3; i++) {
+				// @ts-expect-error private property
+				await monitor.ping();
+			}
+
+			expect(postgres.Client).toHaveBeenCalledTimes(3);
+			// @ts-expect-error private property
+			expect(monitor.consecutiveFailures).toBe(3);
+			expect(recoverSpy).toHaveBeenCalledTimes(1);
 			expect(errorReporter.error).not.toHaveBeenCalled();
 		});
 
