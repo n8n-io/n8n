@@ -115,7 +115,6 @@ describe('AgentExporter', () => {
 				metadata: {
 					versionId: `${testCase.selected}-version`,
 					publishedVersionId: testCase.published ? 'published-version' : null,
-					ownerEmail: 'owner@example.com',
 				},
 			});
 		},

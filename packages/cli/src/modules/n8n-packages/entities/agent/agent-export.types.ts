@@ -30,6 +30,7 @@ export interface AgentSelectionExportRequest {
 	dependencyPolicy?: ExportDependencyPolicy;
 	/** Whether project exports include archived Agents. Agents given by id always export. */
 	includeArchived?: boolean;
+	includeUserReferences?: boolean;
 	projectTargetsById?: Map<string, string>;
 }
 

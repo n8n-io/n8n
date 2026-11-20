@@ -787,6 +787,7 @@ export class N8nClient {
 		// Only sent when set, so an older server without this field in its schema never sees it.
 		if (fields.credentialExportPolicy) body.credentialExportPolicy = fields.credentialExportPolicy;
 		if (fields.includeArchived) body.includeArchived = true;
+		if (fields.includeUserReferences) body.includeUserReferences = true;
 
 		let counts: ExportPackageCounts | undefined;
 		const archive = await this.request<Buffer>('POST', '/n8n-packages/export', {

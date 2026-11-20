@@ -45,6 +45,7 @@ const DEFAULT_SERVICE_OPTIONS = {
 	versionPolicy: 'latest',
 	credentialExportPolicy: 'expression-values-only',
 	includeArchived: false,
+	includeUserReferences: false,
 };
 
 describe('N8nPackagesPublicController', () => {

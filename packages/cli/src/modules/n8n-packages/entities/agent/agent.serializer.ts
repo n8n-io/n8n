@@ -119,13 +119,13 @@ export class AgentSerializer {
 
 	serializeMetadata(
 		source: Pick<Agent, 'versionId' | 'activeVersionId'>,
-		ownerEmail: string | null,
+		ownerEmail?: string | null,
 	): SerializedAgentMetadata {
 		return serializedAgentMetadataSchema.parse(
 			serializeMetadataPayload({
 				versionId: source.versionId,
 				publishedVersionId: source.activeVersionId,
-				ownerEmail,
+				...(ownerEmail !== undefined ? { ownerEmail } : {}),
 			}),
 		);
 	}

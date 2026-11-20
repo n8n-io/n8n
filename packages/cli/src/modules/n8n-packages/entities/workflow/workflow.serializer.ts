@@ -113,13 +113,13 @@ export class WorkflowSerializer {
 
 	serializeMetadata(
 		workflow: WorkflowEntity,
-		ownerEmail: string | null,
+		ownerEmail?: string | null,
 	): SerializedWorkflowMetadata {
 		return serializedWorkflowMetadataSchema.parse(
 			serializeMetadataPayload({
 				versionId: workflow.versionId,
 				publishedVersionId: workflow.activeVersionId,
-				ownerEmail,
+				...(ownerEmail !== undefined ? { ownerEmail } : {}),
 			}),
 		);
 	}

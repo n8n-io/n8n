@@ -31,6 +31,7 @@ export class AgentExporter {
 	async prepare(
 		agent: Agent,
 		policy: ExportVersionPolicy = ExportVersionPolicy.Latest,
+		includeUserReferences?: boolean,
 	): Promise<PreparedAgentExport | undefined> {
 		// The export queries return only project agents. An instance agent has no project to export from.
 		if (!isProjectAgent(agent)) {
@@ -71,13 +72,15 @@ export class AgentExporter {
 		}
 
 		const content = this.serializer.serialize(agent, definition, integrations);
-		const ownerEmails = await this.resourceOwnerService.findOwnerEmails([agent]);
+		const ownerEmails = includeUserReferences
+			? await this.resourceOwnerService.findOwnerEmails([agent])
+			: undefined;
 		return {
 			projectId: agent.projectId,
 			content,
 			metadata: this.serializer.serializeMetadata(
 				{ versionId, activeVersionId: agent.activeVersionId },
-				ownerEmails.get(agent.id) ?? null,
+				ownerEmails?.get(agent.id),
 			),
 		};
 	}

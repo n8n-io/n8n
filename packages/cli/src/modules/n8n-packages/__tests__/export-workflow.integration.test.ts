@@ -68,11 +68,9 @@ function workflowJson(entries: UnpackedEntry[], target: string) {
 function workflowMetadataJson(entries: UnpackedEntry[], target: string) {
 	const file = entries.find((entry) => entry.name === `${target}/workflow-metadata.json`);
 	if (!file) throw new Error(`missing ${target}/workflow-metadata.json`);
-	return jsonParse<{
-		versionId: string;
-		publishedVersionId: string | null;
-		ownerEmail: string | null;
-	}>(file.content.toString());
+	return jsonParse<{ versionId: string; publishedVersionId: string | null }>(
+		file.content.toString(),
+	);
 }
 
 const nodeNames = (workflow: Record<string, unknown>) =>
@@ -85,8 +83,16 @@ describe('workflow package export', () => {
 		service = Container.get(N8nPackagesService);
 	});
 
-	async function exportSingleWorkflow(user: User, workflowId: string) {
-		const { stream } = await service.exportPackage({ user, workflowIds: [workflowId] });
+	async function exportSingleWorkflow(
+		user: User,
+		workflowId: string,
+		includeUserReferences?: boolean,
+	) {
+		const { stream } = await service.exportPackage({
+			user,
+			workflowIds: [workflowId],
+			includeUserReferences,
+		});
 		return await readExport(stream);
 	}
 
@@ -148,7 +154,6 @@ describe('workflow package export', () => {
 			expect(workflowMetadataJson(entries, target)).toEqual({
 				versionId: workflow.versionId,
 				publishedVersionId: null,
-				ownerEmail: null,
 			});
 		});
 
@@ -167,21 +172,21 @@ describe('workflow package export', () => {
 			expect(workflowMetadataJson(after.entries, target)).toEqual({
 				versionId: workflow.versionId,
 				publishedVersionId: workflow.versionId,
-				ownerEmail: null,
 			});
 		});
 
-		it('writes the owner email beside the workflow, so a new owner does not change workflow.json', async () => {
+		it('writes the owner email beside the workflow when asked, so a new owner does not change workflow.json', async () => {
 			const owner = await createOwner();
 			const project = await createTeamProject('Project A', owner);
 			const workflow = await createWorkflow({ name: 'My Workflow' }, project);
-			const before = await exportSingleWorkflow(owner, workflow.id);
+			const before = await exportSingleWorkflow(owner, workflow.id, true);
 			const target = before.manifest.workflows![0].target;
 
 			await Container.get(WorkflowRepository).update(workflow.id, { ownerUserId: owner.id });
-			const after = await exportSingleWorkflow(owner, workflow.id);
+			const after = await exportSingleWorkflow(owner, workflow.id, true);
 
-			expect(workflowMetadataJson(after.entries, target).ownerEmail).toBe(owner.email);
+			expect(workflowMetadataJson(before.entries, target)).toHaveProperty('ownerEmail', null);
+			expect(workflowMetadataJson(after.entries, target)).toHaveProperty('ownerEmail', owner.email);
 			expect(workflowFile(after.entries, target)).toBe(workflowFile(before.entries, target));
 		});
 
@@ -1049,7 +1054,6 @@ describe('workflow package export', () => {
 			expect(workflowMetadataJson(entries, target)).toEqual({
 				versionId: versionIds[2],
 				publishedVersionId: versionIds[1],
-				ownerEmail: null,
 			});
 		});
 
@@ -1077,7 +1081,6 @@ describe('workflow package export', () => {
 			expect(workflowMetadataJson(entries, target)).toEqual({
 				versionId: versionIds[0],
 				publishedVersionId: versionIds[0],
-				ownerEmail: null,
 			});
 			// Workflow history carries no settings, so they always come from the draft.
 			expect(exported.settings).toEqual({ executionOrder: 'v1', timezone: 'Europe/Berlin' });
