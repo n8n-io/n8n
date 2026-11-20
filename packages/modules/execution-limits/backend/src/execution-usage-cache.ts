@@ -129,7 +129,8 @@ export class ExecutionUsageCache {
 		const period = periodRange(limits.periodUnit, now);
 		const today = toUtcDay(now);
 		const previous = this.loaded;
-		// The snapshot makes a new object at each load, so this also reloads after a limit change.
+		// The snapshot loads the limits about each minute and makes a new object each time,
+		// so the closed days are read again then. That picks up a new limit and late rows.
 		const closed =
 			previous?.limits === limits && previous.today === today
 				? previous.closed
