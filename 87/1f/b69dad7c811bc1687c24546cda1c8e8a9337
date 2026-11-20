@@ -1,0 +1,21 @@
+packages/frontend/@n8n/design-system/src/v2/components/Form/component-form.md
+  s_4e2ab31bf08251::t_72ffdd84683656 69,71-72,76-79,83-89
+  s_4e2ab31bf08251::t_8af35876342002 1-68,70,73-75,80-82,90-114,117-124,126-127,156-185,198-223,225-228,231-238,247-253,256
+  s_4e2ab31bf08251::t_c149e4c55827cf 115-116,125,128-155,186-197,224,229-230,239-246,254-255
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "871fb69dad7c811bc1687c24546cda1c8e8a9337",
+  "prompts": {},
+  "sessions": {
+    "s_4e2ab31bf08251": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1f8be-781b-72de-9e34-93507097d8bf",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}
