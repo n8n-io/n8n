@@ -22,6 +22,7 @@ import { Container } from '@n8n/di';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { mock } from 'vitest-mock-extended';
 
+import * as proxyTransport from '@/utils/ai-proxy-fetch';
 import type { ActiveExecutions } from '@/active-executions';
 import type { CredentialsFinderService } from '@n8n/backend-services';
 import type { EphemeralNodeExecutor } from '@/node-execution';
@@ -271,6 +272,44 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — MCP w
 
 			const deps = buildMcpClientForServerMock.mock.calls[0][1] as { nonInterrupting?: boolean };
 			expect(deps.nonInterrupting).toBe(nonInterrupting);
+		},
+	);
+
+	it.each(['default', 'eval'] as const)(
+		'selects the %s MCP fetch during reconstruction',
+		async (mode) => {
+			const { service, credentialProvider } = setup();
+			const liveFetch = vi.fn();
+			const evalFetch = vi.fn();
+			const mcpFetch = vi.fn(() => evalFetch);
+			const factory = vi.spyOn(proxyTransport, 'createAiMcpFetch').mockReturnValue(liveFetch);
+			try {
+				const entity = makeAgentEntity(undefined, {
+					mcpServers: [
+						{
+							name: 'fixture',
+							url: 'https://fixture.invalid/mcp',
+							transport: 'streamableHttp',
+							authentication: 'none',
+						},
+					],
+				});
+				await service.reconstructFromAgentEntity(
+					storedRunSource(entity),
+					credentialProvider,
+					'production',
+					undefined,
+					undefined,
+					mode === 'eval' ? { mcpFetch } : undefined,
+				);
+				expect(buildMcpClientForServerMock).toHaveBeenCalledWith(
+					expect.objectContaining({ name: 'fixture' }),
+					expect.objectContaining({ proxyFetch: mode === 'eval' ? evalFetch : liveFetch }),
+				);
+				if (mode === 'eval') expect(mcpFetch).toHaveBeenCalledWith('fixture');
+			} finally {
+				factory.mockRestore();
+			}
 		},
 	);
 
