@@ -1,4 +1,4 @@
-import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
+import { CliParser, LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { CodeSandboxModule } from '@n8n/backend-module-code-sandbox';
 import { PostHogClient } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
@@ -11,6 +11,7 @@ import {
 	BinaryDataRepository,
 	DeploymentKeyRepository,
 } from '@n8n/db';
+import { CommandMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
 import type { INode, IRun } from 'n8n-workflow';
@@ -92,6 +93,26 @@ beforeEach(() => {
 			generic: { gracefulShutdownTimeout: 30 },
 		}),
 	);
+});
+
+test.each([
+	{ args: ['--file', 'workflow.json'] },
+	{ args: ['--file=workflow.json', '--id', '123'] },
+	{ args: ['--file=', '--id', '123'] },
+])('should explain how to replace the retired flag in $args', async ({ args }) => {
+	workflowRepository.findOneBy.mockClear();
+	const cmd = new Execute();
+	const { flags } = new CliParser(logger).parse({
+		argv: ['node', 'n8n', 'execute', ...args],
+		flagsSchema: Container.get(CommandMetadata).get('execute')?.flagsSchema,
+	});
+	// @ts-expect-error Read-only property
+	cmd.flags = flags;
+
+	await expect(cmd.run()).rejects.toThrow(
+		'first import the workflow and then execute it using the --id flag',
+	);
+	expect(workflowRepository.findOneBy).not.toHaveBeenCalled();
 });
 
 test('should start a task runner and the policy modules', async () => {

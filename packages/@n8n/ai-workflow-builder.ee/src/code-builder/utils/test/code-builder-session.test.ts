@@ -89,7 +89,7 @@ describe('code-builder-session', () => {
 			expect(session).toEqual({ conversationEntries: [] });
 		});
 
-		it('should migrate legacy userMessages format on load', async () => {
+		it('should migrate legacy userMessages on load and skip non-string entries', async () => {
 			const checkpointer = new MemorySaver();
 			const threadId = 'legacy-thread';
 
@@ -102,7 +102,7 @@ describe('code-builder-session', () => {
 					ts: new Date().toISOString(),
 					channel_values: {
 						codeBuilderSession: {
-							userMessages: ['old msg 1', 'old msg 2'],
+							userMessages: ['old msg 1', null, 'old msg 2'],
 							previousSummary: 'Old summary',
 						},
 					},
@@ -119,6 +119,17 @@ describe('code-builder-session', () => {
 				{ type: 'build-request', message: 'old msg 2' },
 			]);
 			expect(session.previousSummary).toBe('Old summary');
+
+			await saveCodeBuilderSession(checkpointer, threadId, session);
+			const saved = await checkpointer.getTuple(config);
+			expect(saved?.checkpoint.channel_values?.codeBuilderSession).toEqual({
+				conversationEntries: [
+					{ type: 'build-request', message: 'old msg 1' },
+					{ type: 'build-request', message: 'old msg 2' },
+				],
+				previousSummary: 'Old summary',
+				sdkSessionId: undefined,
+			});
 		});
 
 		it('should preserve sdkSessionId on load', async () => {
