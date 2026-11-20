@@ -18,7 +18,10 @@ export type ApplicableLimits = {
 };
 
 export type ExecutionLimitField =
-	| keyof ExecutionLimitSettings
+	| keyof Pick<
+			ExecutionLimitSettings,
+			'periodUnit' | 'instanceMaxExecutions' | 'defaultProjectMaxExecutions'
+	  >
 	| keyof Pick<ApplicableLimits, 'projectMaxExecutions'>;
 
 export type ExecutionLimitChange = {
