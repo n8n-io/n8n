@@ -66,7 +66,7 @@ export const CHAIN = {
 /** The titles of the refresh PRs. Only their merge commits continue a chain. */
 export const REFRESH_TITLES = [
 	'build: Update base image digests with fewer OS findings',
-	'build: Update base image digests that add packages',
+	'build: Update base image digests that need a review',
 	CHAIN['build-base-image.yml'].title,
 ];
 

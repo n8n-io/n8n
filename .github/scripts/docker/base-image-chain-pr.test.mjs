@@ -10,6 +10,7 @@ const hcl = readFileSync(new URL('../../../docker/docker-bake.hcl', import.meta.
 describe('isRefreshCommit', () => {
 	it('accepts the squash merge of a refresh PR', () => {
 		assert.ok(isRefreshCommit('build: Update base image digests with fewer OS findings (#45000)'));
+		assert.ok(isRefreshCommit('build: Update base image digests that need a review (#45003)'));
 		assert.ok(isRefreshCommit('build: Pin the base images that master published (#45001)'));
 	});
 
