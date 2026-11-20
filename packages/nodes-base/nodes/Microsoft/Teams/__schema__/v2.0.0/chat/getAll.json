@@ -1,0 +1,61 @@
+{
+	"properties": {
+		"chatType": {
+			"type": "string"
+		},
+		"createdDateTime": {
+			"type": "string"
+		},
+		"id": {
+			"type": "string"
+		},
+		"isHiddenForAllMembers": {
+			"type": "boolean"
+		},
+		"lastUpdatedDateTime": {
+			"type": "string"
+		},
+		"onlineMeetingInfo": {
+			"properties": {
+				"calendarEventId": {},
+				"joinWebUrl": {
+					"type": "string"
+				},
+				"organizer": {
+					"properties": {
+						"displayName": {},
+						"id": {
+							"type": "string"
+						},
+						"userIdentityType": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				}
+			},
+			"type": ["null", "object"]
+		},
+		"tenantId": {
+			"type": "string"
+		},
+		"topic": {
+			"type": ["null", "string"]
+		},
+		"viewpoint": {
+			"properties": {
+				"isHidden": {
+					"type": "boolean"
+				},
+				"lastMessageReadDateTime": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"webUrl": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

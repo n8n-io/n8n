@@ -25,6 +25,7 @@ import type {
 	IWorkflowExecutionDataProcess,
 	IWorkflowSettings,
 	JsonValue,
+	RelatedAgentRun,
 	WorkflowExecuteMode,
 	WorkflowSettings,
 } from 'n8n-workflow';
@@ -289,6 +290,8 @@ export type RelayEventMap = ModuleEventMap & {
 		mode: WorkflowExecuteMode;
 		projectId?: string;
 		projectName?: string;
+		/** The agent tool call that started this execution. Relays read ids from it and never send it whole. */
+		parentAgentRun?: RelatedAgentRun;
 	};
 
 	'workflow-post-execute': {
@@ -300,6 +303,8 @@ export type RelayEventMap = ModuleEventMap & {
 		projectName?: string;
 		source?: IWorkflowExecutionDataProcess['source'];
 		telemetryMetadata?: IWorkflowExecutionDataProcess['telemetryMetadata'];
+		/** The agent tool call that started this execution. Relays read ids from it and never send it whole. */
+		parentAgentRun?: RelatedAgentRun;
 	};
 
 	'workflow-sharing-updated': {
@@ -1104,6 +1109,24 @@ export type RelayEventMap = ModuleEventMap & {
 	};
 
 	/**
+	 * An admin saved the SSO user role provisioning settings. Reports the
+	 * state after the save, not what changed. The settings page saves the
+	 * settings before the rules, so the counts are those at the time of the
+	 * save. Rule changes emit the `role-mapping-rule-*` events.
+	 */
+	'provisioning-settings-updated': {
+		user: UserLike;
+		/** The sign-in method that is active at the time of the save. */
+		authenticationMethod: AuthProviderType;
+		/** Which roles SSO provisions. With rules in n8n, project roles count when project rules exist. */
+		assignmentMethod: 'disabled' | 'instance_role' | 'instance_and_project_roles';
+		/** `idp_rule_mapping`: the claims carry the roles. `n8n_rule_mapping`: rules in n8n map claims to roles. */
+		roleMappingMethod: 'idp_rule_mapping' | 'n8n_rule_mapping';
+		instanceRuleCount: number;
+		projectRuleCount: number;
+	};
+
+	/**
 	 * SCIM provisioning turned on or off, or its token changed. Emitted only
 	 * when the saved state changes.
 	 */
@@ -1489,6 +1512,7 @@ export type RelayEventMap = ModuleEventMap & {
 					| 'workflow_publishing'
 					| 'workflow_sharing'
 					| 'workflow_reviews'
+					| 'workflow_reviews_approval_required'
 					| 'public_api_rate_limit';
 				value: boolean;
 		  }

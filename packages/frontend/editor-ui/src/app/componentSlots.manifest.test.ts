@@ -24,6 +24,8 @@ describe('registerComponentSlots', () => {
 		'project-header',
 		'insights-summary',
 		'resources-list-layout',
+		'node-type-icon',
+		'credential-type-icon',
 	] as const)('registers the %s slot lazily', (slot) => {
 		registerComponentSlots();
 

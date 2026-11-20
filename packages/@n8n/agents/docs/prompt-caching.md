@@ -10,11 +10,11 @@ explicitly (via `.instructions(text, { providerOptions })`, call-level
 ```typescript
 // Defaults tuned for agent workloads: Anthropic gets a 1h instruction
 // breakpoint, OpenAI gets 24h retention plus an auto-generated cache key.
-new Agent('assistant').model('anthropic/claude-sonnet-4-5').promptCaching().instructions(LONG_SYSTEM_PROMPT);
+new Agent('assistant').model('anthropic/claude-sonnet-5-5').promptCaching().instructions(LONG_SYSTEM_PROMPT);
 
 // Override a field, or disable a provider entirely.
 new Agent('assistant')
-  .model('anthropic/claude-sonnet-4-5')
+  .model('anthropic/claude-sonnet-5-5')
   .promptCaching({ anthropic: { ttl: '5m' } })
   .instructions(LONG_SYSTEM_PROMPT);
 

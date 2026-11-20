@@ -4,8 +4,9 @@ import { Container } from '@n8n/di';
 import { DataSource, type Repository } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
+import { createAgent } from '@test-integration/db/agents';
+
 import { AgentChatAttachment } from '@/modules/agents/entities/agent-chat-attachment.entity';
-import { Agent } from '@/modules/agents/entities/agent.entity';
 import { AgentChatAttachmentRepository } from '@/modules/agents/repositories/agent-chat-attachment.repository';
 
 describe('AgentChatAttachmentRepository', () => {
@@ -23,7 +24,7 @@ describe('AgentChatAttachmentRepository', () => {
 		transactionRunner = Container.get(TransactionRunner);
 		projectId = (await createTeamProject()).id;
 		agentId = (
-			await Container.get(DataSource).getRepository(Agent).save({
+			await createAgent({
 				id: randomUUID(),
 				name: 'Attachment agent',
 				projectId,

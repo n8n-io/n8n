@@ -1,0 +1,620 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"changelog": {
+			"properties": {
+				"id": {
+					"type": "string"
+				},
+				"items": {
+					"items": {
+						"additionalProperties": true,
+						"properties": {
+							"field": {
+								"type": "string"
+							},
+							"fieldId": {
+								"type": "string"
+							},
+							"fieldtype": {
+								"type": "string"
+							},
+							"from": {
+								"type": ["null", "string"]
+							},
+							"fromString": {
+								"type": ["null", "string"]
+							},
+							"to": {
+								"type": ["null", "string"]
+							},
+							"toString": {
+								"type": "string"
+							}
+						},
+						"type": "object"
+					},
+					"type": "array"
+				}
+			},
+			"type": "object"
+		},
+		"issue": {
+			"properties": {
+				"fields": {
+					"additionalProperties": true,
+					"properties": {
+						"aggregateprogress": {
+							"properties": {
+								"progress": {
+									"type": "number"
+								},
+								"total": {
+									"type": "number"
+								}
+							},
+							"type": "object"
+						},
+						"aggregatetimeestimate": {},
+						"aggregatetimeoriginalestimate": {},
+						"aggregatetimespent": {},
+						"assignee": {
+							"properties": {
+								"accountId": {
+									"type": "string"
+								},
+								"accountType": {
+									"type": "string"
+								},
+								"active": {
+									"type": "boolean"
+								},
+								"avatarUrls": {
+									"properties": {
+										"16x16": {
+											"type": "string"
+										},
+										"24x24": {
+											"type": "string"
+										},
+										"32x32": {
+											"type": "string"
+										},
+										"48x48": {
+											"type": "string"
+										}
+									},
+									"type": "object"
+								},
+								"displayName": {
+									"type": "string"
+								},
+								"self": {
+									"type": "string"
+								},
+								"timeZone": {
+									"type": "string"
+								}
+							},
+							"type": ["null", "object"]
+						},
+						"attachment": {
+							"items": {
+								"properties": {
+									"author": {
+										"properties": {
+											"accountId": {
+												"type": "string"
+											},
+											"accountType": {
+												"type": "string"
+											},
+											"active": {
+												"type": "boolean"
+											},
+											"avatarUrls": {
+												"properties": {
+													"16x16": {
+														"type": "string"
+													},
+													"24x24": {
+														"type": "string"
+													},
+													"32x32": {
+														"type": "string"
+													},
+													"48x48": {
+														"type": "string"
+													}
+												},
+												"type": "object"
+											},
+											"displayName": {
+												"type": "string"
+											},
+											"self": {
+												"type": "string"
+											},
+											"timeZone": {
+												"type": "string"
+											}
+										},
+										"type": "object"
+									},
+									"content": {
+										"type": "string"
+									},
+									"created": {
+										"type": "string"
+									},
+									"filename": {
+										"type": "string"
+									},
+									"id": {
+										"type": "string"
+									},
+									"mimeType": {
+										"type": "string"
+									},
+									"self": {
+										"type": "string"
+									},
+									"size": {
+										"type": "number"
+									},
+									"thumbnail": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						},
+						"components": {
+							"items": {
+								"properties": {
+									"ari": {
+										"type": "string"
+									},
+									"id": {
+										"type": "string"
+									},
+									"metadata": {
+										"type": "object"
+									},
+									"name": {
+										"type": "string"
+									},
+									"self": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						},
+						"created": {
+							"type": "string"
+						},
+						"creator": {
+							"properties": {
+								"accountId": {
+									"type": "string"
+								},
+								"accountType": {
+									"type": "string"
+								},
+								"active": {
+									"type": "boolean"
+								},
+								"avatarUrls": {
+									"properties": {
+										"16x16": {
+											"type": "string"
+										},
+										"24x24": {
+											"type": "string"
+										},
+										"32x32": {
+											"type": "string"
+										},
+										"48x48": {
+											"type": "string"
+										}
+									},
+									"type": "object"
+								},
+								"displayName": {
+									"type": "string"
+								},
+								"self": {
+									"type": "string"
+								},
+								"timeZone": {
+									"type": "string"
+								}
+							},
+							"type": "object"
+						},
+						"customfield_10001": {},
+						"customfield_10015": {},
+						"customfield_10019": {
+							"type": ["null", "string"]
+						},
+						"customfield_10021": {},
+						"description": {
+							"type": ["null", "string"]
+						},
+						"duedate": {
+							"type": ["null", "string"]
+						},
+						"environment": {},
+						"fixVersions": {
+							"items": {
+								"properties": {
+									"archived": {
+										"type": "boolean"
+									},
+									"description": {
+										"type": "string"
+									},
+									"id": {
+										"type": "string"
+									},
+									"name": {
+										"type": "string"
+									},
+									"released": {
+										"type": "boolean"
+									},
+									"releaseDate": {
+										"type": "string"
+									},
+									"self": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						},
+						"issuelinks": {
+							"items": {},
+							"type": "array"
+						},
+						"issuetype": {
+							"additionalProperties": true,
+							"properties": {
+								"avatarId": {
+									"type": "number"
+								},
+								"description": {
+									"type": "string"
+								},
+								"hierarchyLevel": {
+									"type": "number"
+								},
+								"iconUrl": {
+									"type": "string"
+								},
+								"id": {
+									"type": "string"
+								},
+								"name": {
+									"type": "string"
+								},
+								"self": {
+									"type": "string"
+								},
+								"subtask": {
+									"type": "boolean"
+								}
+							},
+							"type": "object"
+						},
+						"labels": {
+							"items": {
+								"type": "string"
+							},
+							"type": "array"
+						},
+						"lastViewed": {
+							"type": ["null", "string"]
+						},
+						"priority": {
+							"additionalProperties": true,
+							"properties": {
+								"iconUrl": {
+									"type": "string"
+								},
+								"id": {
+									"type": "string"
+								},
+								"name": {
+									"type": "string"
+								},
+								"self": {
+									"type": "string"
+								}
+							},
+							"type": ["null", "object"]
+						},
+						"progress": {
+							"properties": {
+								"progress": {
+									"type": "number"
+								},
+								"total": {
+									"type": "number"
+								}
+							},
+							"type": "object"
+						},
+						"project": {
+							"additionalProperties": true,
+							"properties": {
+								"avatarUrls": {
+									"properties": {
+										"16x16": {
+											"type": "string"
+										},
+										"24x24": {
+											"type": "string"
+										},
+										"32x32": {
+											"type": "string"
+										},
+										"48x48": {
+											"type": "string"
+										}
+									},
+									"type": "object"
+								},
+								"id": {
+									"type": "string"
+								},
+								"key": {
+									"type": "string"
+								},
+								"name": {
+									"type": "string"
+								},
+								"projectTypeKey": {
+									"type": "string"
+								},
+								"self": {
+									"type": "string"
+								},
+								"simplified": {
+									"type": "boolean"
+								}
+							},
+							"type": "object"
+						},
+						"reporter": {
+							"properties": {
+								"accountId": {
+									"type": "string"
+								},
+								"accountType": {
+									"type": "string"
+								},
+								"active": {
+									"type": "boolean"
+								},
+								"avatarUrls": {
+									"properties": {
+										"16x16": {
+											"type": "string"
+										},
+										"24x24": {
+											"type": "string"
+										},
+										"32x32": {
+											"type": "string"
+										},
+										"48x48": {
+											"type": "string"
+										}
+									},
+									"type": "object"
+								},
+								"displayName": {
+									"type": "string"
+								},
+								"self": {
+									"type": "string"
+								},
+								"timeZone": {
+									"type": "string"
+								}
+							},
+							"type": "object"
+						},
+						"resolution": {},
+						"resolutiondate": {},
+						"security": {},
+						"status": {
+							"properties": {
+								"description": {
+									"type": "string"
+								},
+								"iconUrl": {
+									"type": "string"
+								},
+								"id": {
+									"type": "string"
+								},
+								"name": {
+									"type": "string"
+								},
+								"self": {
+									"type": "string"
+								},
+								"statusCategory": {
+									"properties": {
+										"colorName": {
+											"type": "string"
+										},
+										"id": {
+											"type": "number"
+										},
+										"key": {
+											"type": "string"
+										},
+										"name": {
+											"type": "string"
+										},
+										"self": {
+											"type": "string"
+										}
+									},
+									"type": "object"
+								}
+							},
+							"type": "object"
+						},
+						"statusCategory": {
+							"properties": {
+								"colorName": {
+									"type": "string"
+								},
+								"id": {
+									"type": "number"
+								},
+								"key": {
+									"type": "string"
+								},
+								"name": {
+									"type": "string"
+								},
+								"self": {
+									"type": "string"
+								}
+							},
+							"type": "object"
+						},
+						"statuscategorychangedate": {
+							"type": "string"
+						},
+						"subtasks": {
+							"items": {},
+							"type": "array"
+						},
+						"summary": {
+							"type": "string"
+						},
+						"timeestimate": {},
+						"timeoriginalestimate": {},
+						"timespent": {},
+						"timetracking": {
+							"type": "object"
+						},
+						"updated": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {},
+							"type": "array"
+						},
+						"votes": {
+							"properties": {
+								"hasVoted": {
+									"type": "boolean"
+								},
+								"self": {
+									"type": "string"
+								},
+								"votes": {
+									"type": "number"
+								}
+							},
+							"type": "object"
+						},
+						"watches": {
+							"properties": {
+								"isWatching": {
+									"type": "boolean"
+								},
+								"self": {
+									"type": "string"
+								},
+								"watchCount": {
+									"type": "number"
+								}
+							},
+							"type": "object"
+						},
+						"workratio": {
+							"type": "number"
+						}
+					},
+					"type": "object"
+				},
+				"id": {
+					"type": "string"
+				},
+				"key": {
+					"type": "string"
+				},
+				"self": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"issue_event_type_name": {
+			"type": "string"
+		},
+		"timestamp": {
+			"type": "number"
+		},
+		"triggeredByUser": {
+			"type": "string"
+		},
+		"user": {
+			"properties": {
+				"accountId": {
+					"type": "string"
+				},
+				"accountType": {
+					"type": "string"
+				},
+				"active": {
+					"type": "boolean"
+				},
+				"avatarUrls": {
+					"properties": {
+						"16x16": {
+							"type": "string"
+						},
+						"24x24": {
+							"type": "string"
+						},
+						"32x32": {
+							"type": "string"
+						},
+						"48x48": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				},
+				"displayName": {
+					"type": "string"
+				},
+				"self": {
+					"type": "string"
+				},
+				"timeZone": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"webhookEvent": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

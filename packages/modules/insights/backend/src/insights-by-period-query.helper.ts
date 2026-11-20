@@ -94,3 +94,59 @@ export function getDateRangesSelectQuery({
 			'${endStr}' AS end_date
 	`;
 }
+
+/** A stretch of time with one UTC offset. `fromUtc` is absent on the first segment. */
+export type UtcOffsetSegment = { fromUtc?: string; offsetMinutes: number };
+
+/**
+ * Lists the UTC offsets that apply to `timeZone` between `startDate` and `endDate`, so that a
+ * database without a timezone database (SQLite) can still bucket rows into local days across
+ * DST transitions. The scan extends a day past both ends to cover the range widening that
+ * `getDateRangesCommonTableExpressionQuery` applies.
+ *
+ * @returns Segments in ascending order. `fromUtc` is the first UTC instant of the segment, in the
+ * same SQL format that SQLite stores `periodStart` in, so it compares as a string.
+ */
+export function getUtcOffsetSegments({
+	startDate,
+	endDate,
+	timeZone,
+}: {
+	startDate: Date;
+	endDate: Date;
+	timeZone: string;
+}): UtcOffsetSegment[] {
+	const offsetAt = (epochMinutes: number) =>
+		DateTime.fromMillis(epochMinutes * 60_000, { zone: timeZone }).offset;
+
+	const minutesPerDay = 24 * 60;
+	const scanEnd = Math.ceil(endDate.getTime() / 60_000) + 2 * minutesPerDay;
+	let cursor = Math.floor(startDate.getTime() / 60_000) - minutesPerDay;
+
+	const segments: UtcOffsetSegment[] = [{ offsetMinutes: offsetAt(cursor) }];
+
+	// Zones change offset at most a few times a year, so step a day at a time and binary-search
+	// the minute of each change.
+	while (cursor < scanEnd) {
+		const next = cursor + minutesPerDay;
+		const currentOffset = segments[segments.length - 1].offsetMinutes;
+		if (offsetAt(next) !== currentOffset) {
+			let low = cursor;
+			let high = next;
+			while (high - low > 1) {
+				const middle = Math.floor((low + high) / 2);
+				if (offsetAt(middle) === currentOffset) low = middle;
+				else high = middle;
+			}
+			segments.push({
+				fromUtc: DateTime.fromMillis(high * 60_000, { zone: 'utc' }).toSQL({
+					includeOffset: false,
+				}),
+				offsetMinutes: offsetAt(high),
+			});
+		}
+		cursor = next;
+	}
+
+	return segments;
+}

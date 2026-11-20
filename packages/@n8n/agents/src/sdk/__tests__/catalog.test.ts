@@ -45,9 +45,9 @@ describe('fetchProviderCatalog', () => {
 						id: 'amazon-bedrock',
 						name: 'Amazon Bedrock',
 						models: {
-							'anthropic.claude-sonnet-4-5-v1:0': {
-								id: 'anthropic.claude-sonnet-4-5-v1:0',
-								name: 'Claude Sonnet 4.5',
+							'anthropic.claude-sonnet-5-5': {
+								id: 'anthropic.claude-sonnet-5-5',
+								name: 'Claude Sonnet 5.5',
 							},
 						},
 					},
@@ -93,8 +93,8 @@ describe('fetchProviderCatalog', () => {
 		expect(catalog.openai.models['gpt-4.1-mini'].reasoning).toBe(false);
 		expect(catalog.openai.models['gpt-4.1-mini'].toolCall).toBe(false);
 		expect(catalog.openai.models['gpt-4.1-mini'].toolCallKnown).toBe(false);
-		expect(catalog['aws-bedrock'].models['anthropic.claude-sonnet-4-5-v1:0'].name).toBe(
-			'Claude Sonnet 4.5',
+		expect(catalog['aws-bedrock'].models['anthropic.claude-sonnet-5-5'].name).toBe(
+			'Claude Sonnet 5.5',
 		);
 		expect(catalog['azure-openai'].models['gpt-4o'].name).toBe('GPT-4o');
 		expect(catalog['azure-openai'].models['cohere-command-a'].name).toBe('Command A');

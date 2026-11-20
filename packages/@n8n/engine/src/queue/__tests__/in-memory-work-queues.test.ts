@@ -11,7 +11,7 @@ const silentLogger: EngineLogger = {
 	error: () => {},
 };
 
-/** Publishes `orchestration` and `step` messages to handlers that wait until `release` is called. */
+/** Publishes to both queues, whose handlers block until `stop()`. */
 async function startBlocked(
 	queues: EngineWorkQueues,
 	published: { orchestration: number; step: number },
@@ -68,5 +68,18 @@ describe('createInMemoryWorkQueues', () => {
 		} finally {
 			await stop();
 		}
+	});
+
+	it('logs a failed handler through the given logger', async () => {
+		const logger = { ...silentLogger, error: vi.fn() };
+		const queues = createInMemoryWorkQueues({ logger });
+		queues.orchestration.start(async () => await Promise.reject(new Error('failed')));
+		queues.step.start(async () => await Promise.reject(new Error('failed')));
+
+		await queues.orchestration.publish({ type: 'execution:enqueued', executionId: 'exec-1' });
+		await queues.step.publish({ type: 'step:ready', executionId: 'exec-1', stepId: 'step-1' });
+		await Promise.all([queues.orchestration.stop(), queues.step.stop()]);
+
+		expect(logger.error).toHaveBeenCalledTimes(2);
 	});
 });

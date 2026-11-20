@@ -223,7 +223,7 @@ export type SideCallTask = 'title' | 'observer' | 'reflector' | 'episodic';
  */
 export interface SideCallUsageReport {
 	task: SideCallTask;
-	/** Stable model id string (e.g. 'anthropic/claude-sonnet-4-5'). */
+	/** Stable model id string (e.g. 'anthropic/claude-sonnet-5-5'). */
 	model: string;
 	usage: TokenUsage;
 	/**
