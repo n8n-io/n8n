@@ -45,7 +45,7 @@ const meta = {
 		docs: {
 			description: {
 				component:
-					'A resizable sidebar with its own background. Place it inside a modal or any other layout. The parent sets the height. The slot supplies the content. Put a listbox in the slot when the rows are selectable. Arrow keys then move the highlight. Each story saves its width under its own key. Drag the inner edge, then reload the canvas. The sidebar opens at the saved width.',
+					'A resizable sidebar with its own background. Place it inside a modal or any other layout. The parent sets the height. The slot supplies the content. Put a listbox in the slot when the rows are selectable. Arrow keys then move the highlight. Bind v-model:width and the parent stores the width. Omit width and the sidebar stores the width. A story with a storage key saves its width. Drag the inner edge, then reload the canvas. That sidebar opens at the saved width.',
 			},
 		},
 	},
@@ -66,6 +66,23 @@ const hairline = '1px solid var(--border-color--subtle)';
 // The sidebar border is translucent and sits on the sidebar fill.
 // This solid pair is that same line, so the frame matches it on the page.
 const frameBorder = '1px solid light-dark(var(--color--neutral-200), var(--color--neutral-700))';
+
+const widthModesStyle = ['display: flex', 'flex-direction: column', 'gap: var(--spacing--xl)'].join(
+	'; ',
+);
+
+const widthModeSectionStyle = [
+	'display: flex',
+	'flex-direction: column',
+	'gap: var(--spacing--sm)',
+].join('; ');
+
+const widthModeActionsStyle = [
+	'display: flex',
+	'gap: var(--spacing--2xs)',
+	'flex-wrap: wrap',
+	'align-items: center',
+].join('; ');
 
 const frameStyle = [
 	'display: flex',
@@ -758,9 +775,25 @@ const PluginFilesEditor = defineComponent({
 		minWidth: { type: Number, default: 180 },
 		maxWidth: { type: Number, default: 360 },
 		widthStorageId: { type: String, default: undefined },
+		width: { type: Number, default: undefined },
+		uncontrolled: { type: Boolean, default: false },
 	},
-	setup() {
-		const width = ref(240);
+	emits: ['update:width'],
+	setup(props, { emit }) {
+		const width = ref(props.width ?? 240);
+		watch(
+			() => props.width,
+			function applyExternalWidth(value) {
+				if (value !== undefined) width.value = value;
+			},
+		);
+		function setWidth(value: number) {
+			width.value = value;
+			emit('update:width', value);
+		}
+		const sidebarWidthAttrs = computed(() =>
+			props.uncontrolled ? {} : { width: width.value, 'onUpdate:width': setWidth },
+		);
 		const activeId = ref(readme.id);
 		const sections = ref(
 			fileSections.map((section) => ({
@@ -874,7 +907,7 @@ const PluginFilesEditor = defineComponent({
 		});
 
 		return {
-			width,
+			sidebarWidthAttrs,
 			activeId,
 			sections,
 			addOpen,
@@ -897,7 +930,7 @@ const PluginFilesEditor = defineComponent({
 		<div class="plugin-files-editor" style="${editorLayoutStyle}">
 			<div style="${sidebarColumnStyle}">
 			<N8nSidebar
-				v-model:width="width"
+				v-bind="sidebarWidthAttrs"
 				:side="side"
 				:resizable="resizable"
 				:min-width="minWidth"
@@ -1076,7 +1109,7 @@ export const WithHeaderAndFooter: Story = {
 		docs: {
 			description: {
 				story:
-					'The search stays at the top. The footer stays at the bottom. The list between them scrolls. The list fades when it overflows.',
+					'The search stays at the top. The footer stays at the bottom. The list between them scrolls. The list fades at the top and the bottom.',
 			},
 		},
 	},
@@ -1227,4 +1260,52 @@ export const InDialog: Story = {
 		maxWidth: 480,
 		widthStorageId: 'n8n-sidebar-dialog-width',
 	},
+};
+
+export const ControlledUncontrolled: Story = {
+	name: 'Controlled/Uncontrolled',
+	parameters: {
+		docs: {
+			description: {
+				story:
+					'Both editors use the plugin file list. Set the controlled width with a button. A drag updates that same value. The uncontrolled sidebar omits width and keeps the size itself.',
+			},
+		},
+	},
+	render: () => ({
+		components: { PluginFilesEditor, N8nText, N8nButton },
+		setup() {
+			const controlledWidth = ref(240);
+			const widthPresets = [160, 240, 400];
+			return { controlledWidth, widthPresets };
+		},
+		template: `
+			<div style="${widthModesStyle}">
+				<section style="${widthModeSectionStyle}">
+					<N8nText bold size="medium">Controlled</N8nText>
+					<div style="${widthModeActionsStyle}">
+						<N8nText size="small" color="text-base">{{ controlledWidth }} px</N8nText>
+						<N8nButton
+							v-for="preset in widthPresets"
+							:key="preset"
+							size="small"
+							variant="outline"
+							:label="String(preset)"
+							@click="controlledWidth = preset"
+						/>
+					</div>
+					<div style="${editorFrameStyle}">
+						<PluginFilesEditor v-model:width="controlledWidth" :min-width="160" :max-width="480" />
+					</div>
+				</section>
+				<section style="${widthModeSectionStyle}">
+					<N8nText bold size="medium">Uncontrolled</N8nText>
+					<N8nText size="small" color="text-base">This sidebar stores its own width.</N8nText>
+					<div style="${editorFrameStyle}">
+						<PluginFilesEditor uncontrolled :min-width="160" :max-width="480" />
+					</div>
+				</section>
+			</div>
+		`,
+	}),
 };
