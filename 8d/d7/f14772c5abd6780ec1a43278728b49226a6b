@@ -1,0 +1,30 @@
+packages/cli/src/commands/export/__tests__/entities.test.ts
+  s_fa4157c6078c9b::t_911f92e294fecd 10
+packages/cli/src/services/export.service.ts
+  s_fa4157c6078c9b::t_b09ff16ecdb453 15-20
+  s_fa4157c6078c9b::t_777b4b1ae6e607 158,387
+packages/cli/src/services/entity-archive-binary.ts
+  s_fa4157c6078c9b::t_aad55d58bdc329 1-46
+packages/cli/src/services/entity-archive-writer.ts
+  s_fa4157c6078c9b::t_0defe5a7207786 1-74
+packages/cli/src/services/import.service.ts
+  s_fa4157c6078c9b::t_1256469764bcd4 56
+packages/cli/src/commands/export/entities.ts
+  s_fa4157c6078c9b::t_87d1bc54e5b3d1 6-7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8dd7f14772c5abd6780ec1a43278728b49226a6b",
+  "prompts": {},
+  "sessions": {
+    "s_fa4157c6078c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6b40ffc9-a4f4-4c7a-8bc6-797ab5344f03",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}
