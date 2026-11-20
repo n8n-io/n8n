@@ -24,7 +24,9 @@ sequenceDiagram
 
 ## Lookup
 
-When your call arrives, the main looks up which workflow has a webhook with the path `hello` and the method `POST`. Then it loads the published version of that workflow. Edits to its nodes and connections do not change production until you publish them. With the `engine-v2` module enabled, production uses the engine of the published version. Settings that do not belong to a version still take effect when you save them.
+When your call arrives, the main looks up which workflow has a webhook with the path `hello` and the method `POST`. Then it loads the published version of that workflow. Edits to its nodes and connections do not change production until you publish them. With the `engine-v2` module enabled, production uses the engine of the published version.
+
+n8n stores live settings on the workflow itself. Changes to live settings alone do not create a new version. Production triggers that use cached settings can still use the previous values until n8n refreshes the cache.
 
 ## Start
 
