@@ -99,10 +99,13 @@ export class AgentChatAttachmentRepository {
 	 */
 	async findByIdForSystemAgent(
 		id: string,
-		scope: { agentId: string; resourceId: string; source: string },
+		scope: { agentId: string; resourceId: string; sources: readonly string[] },
 		ctx: OperationContext,
 	): Promise<AgentChatAttachment | null> {
-		return await this.table.managerFor(ctx).findOneBy(AgentChatAttachment, { id, ...scope });
+		const { agentId, resourceId, sources } = scope;
+		return await this.table
+			.managerFor(ctx)
+			.findOneBy(AgentChatAttachment, { id, agentId, resourceId, source: In([...sources]) });
 	}
 
 	/**

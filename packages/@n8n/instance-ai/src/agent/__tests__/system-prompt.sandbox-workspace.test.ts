@@ -26,6 +26,18 @@ describe('getSystemPrompt — sandbox workspace', () => {
 		expect(withImport).toContain('copy it to `inputs/` with `import-files`');
 	});
 
+	it('names share-files and outputs/ only when the tool is wired', () => {
+		const without = getSystemPrompt({ workspaceRoot: '/home/user/workspace' });
+		const withSharing = getSystemPrompt({
+			workspaceRoot: '/home/user/workspace',
+			fileSharingEnabled: true,
+		});
+
+		expect(without).not.toContain('share-files');
+		expect(withSharing).toContain('call `share-files` with its path');
+		expect(withSharing).toContain('Keep scratch files out of `outputs/`');
+	});
+
 	it('leaves out the import guidance without a workspace', () => {
 		expect(getSystemPrompt({ fileImportEnabled: true })).not.toContain('import-files');
 	});

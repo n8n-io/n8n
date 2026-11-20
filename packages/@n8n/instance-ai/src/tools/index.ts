@@ -28,6 +28,10 @@ const loadImportFilesTool = lazyMod(
 	() =>
 		require('./attachments/import-files.tool') as typeof import('./attachments/import-files.tool'),
 );
+const loadShareFilesTool = lazyMod(
+	() =>
+		require('./attachments/share-files.tool') as typeof import('./attachments/share-files.tool'),
+);
 const loadCredentialsTool = lazyMod(
 	() => require('./credentials.tool') as typeof import('./credentials.tool'),
 );
@@ -285,6 +289,12 @@ function getOrchestratorDomainToolFactories(
 		tools.push([
 			DOMAIN_TOOL_IDS.IMPORT_FILES,
 			() => loadImportFilesTool().createImportFilesTool(context, storedFiles, sandboxFiles),
+		]);
+	}
+	if (workspace && sandboxFiles) {
+		tools.push([
+			DOMAIN_TOOL_IDS.SHARE_FILES,
+			() => loadShareFilesTool().createShareFilesTool(context, sandboxFiles),
 		]);
 	}
 

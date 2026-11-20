@@ -531,6 +531,7 @@ describe('AssistantAgentThreadView', () => {
 			expect.objectContaining({ key: 'assistant_status' }),
 			expect.objectContaining({ key: 'assistant_tool_result_table' }),
 			expect.objectContaining({ key: 'assistant_tool_result_code' }),
+			expect.objectContaining({ key: 'assistant_shared_files' }),
 		]);
 		expect(sendMessageFromOutside).not.toHaveBeenCalled();
 	});

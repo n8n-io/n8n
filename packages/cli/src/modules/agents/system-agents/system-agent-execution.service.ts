@@ -43,7 +43,7 @@ import type { AgentExecutionAdmission } from '../types/agent-queued-message';
 import type { FormattedTurnError } from '../types/agent-turn-outcome';
 import { systemChatMemoryResourceId } from '../utils/agent-memory-scope';
 import { buildInboundUserMessage } from '../utils/inbound-attachments';
-import { SYSTEM_CHAT_SOURCE } from '../utils/agent-thread-access';
+import { SYSTEM_CHAT_FILE_SOURCES, SYSTEM_CHAT_SOURCE } from '../utils/agent-thread-access';
 import { canUseSystemAgent } from './system-agent-access';
 import { SystemAgentHostEventChannel } from './system-agent-host-events';
 import { SystemAgentRegistry } from './system-agent-registry';
@@ -714,6 +714,7 @@ export class SystemAgentExecutionService {
 				: text;
 		await this.runTurn({
 			thread,
+			resourceId,
 			handle,
 			workspace,
 			hostEvents,
@@ -816,6 +817,7 @@ export class SystemAgentExecutionService {
 		};
 		const done = this.runTurn({
 			thread,
+			resourceId,
 			handle,
 			workspace,
 			hostEvents,
@@ -986,6 +988,37 @@ export class SystemAgentExecutionService {
 							});
 							throw new UserError('The files could not be copied to inputs/', { cause: error });
 						}),
+				storeOutput: async (workspace, path, abortSignal) => {
+					const file = await this.sandboxFiles
+						.store(
+							workspace,
+							path,
+							{
+								agentId: thread.agentId,
+								projectId: thread.projectId,
+								threadId: thread.id,
+								// The reads and the downloads of the system chat find its files by resource.
+								resourceId,
+							},
+							abortSignal,
+						)
+						.catch((error: unknown) => {
+							// A cap or path error is for the model. A raw sandbox error, such as a missing file, is not.
+							if (error instanceof UserError || abortSignal?.aborted) throw error;
+							this.logger.warn('Failed to store a sandbox file of a system agent', {
+								threadId: thread.id,
+								path,
+								error: error instanceof Error ? error.message : String(error),
+							});
+							throw new UserError(`"${path}" could not be read from outputs/`, { cause: error });
+						});
+					return {
+						fileId: file.id,
+						fileName: file.fileName,
+						mimeType: file.mimeType,
+						sizeBytes: file.fileSizeBytes,
+					};
+				},
 			},
 		};
 	}
@@ -999,7 +1032,7 @@ export class SystemAgentExecutionService {
 		const attachment = await this.attachmentService.getForSystemAgent(fileId, {
 			agentId: thread.agentId,
 			resourceId,
-			source: SYSTEM_CHAT_SOURCE,
+			sources: SYSTEM_CHAT_FILE_SOURCES,
 		});
 		return attachment?.threadId === thread.id ? attachment : null;
 	}
@@ -1161,6 +1194,7 @@ export class SystemAgentExecutionService {
 	 */
 	private async runTurn({
 		thread,
+		resourceId,
 		handle,
 		workspace,
 		hostEvents,
@@ -1171,6 +1205,8 @@ export class SystemAgentExecutionService {
 		prepare,
 	}: {
 		thread: AgentExecutionThread;
+		/** The system chat memory resource of the thread owner. */
+		resourceId: string;
 		handle: SystemAgentTurnHandle;
 		workspace?: TurnWorkspace;
 		hostEvents: SystemAgentHostEventChannel;
@@ -1208,6 +1244,8 @@ export class SystemAgentExecutionService {
 				toolRegistry: handle.toolRegistry ?? new Map(),
 				mcpServerAttributions: new Map(),
 				context: { projectId: thread.projectId, agentId: thread.agentId, threadId: thread.id },
+				// The reads of the system chat find the sandbox files of the turn by this resource.
+				fileResourceId: resourceId,
 				chatSurface: 'system',
 				chatController: controller,
 				...(handle.onCompletingBoundary

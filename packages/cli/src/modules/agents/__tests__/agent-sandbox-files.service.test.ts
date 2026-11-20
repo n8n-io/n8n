@@ -438,6 +438,16 @@ describe('AgentSandboxFilesService', () => {
 			});
 		});
 
+		it('stores the file under the memory resource of the scope, for a system chat', async () => {
+			fileOf('a,b\n');
+
+			await service.store(workspace, 'q1.csv', { ...scope, resourceId: 'system-chat:user-1' });
+
+			expect(attachmentService.storeInbound).toHaveBeenCalledWith(
+				expect.objectContaining({ resourceId: 'system-chat:user-1', source: 'sandbox' }),
+			);
+		});
+
 		it('returns a readable file with the same name and bytes instead of a new one', async () => {
 			fileOf('same');
 			const existing = mock<AgentChatAttachment>({ id: 'old', fileName: 'a.txt' });

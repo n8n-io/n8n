@@ -1712,6 +1712,9 @@ export interface InstanceAiStoredFile {
 	readContent(): Promise<Buffer | undefined>;
 }
 
+/** A conversation file, as the chat shows it. */
+export type InstanceAiConversationFile = AgentToolOutputFile;
+
 /** The sandbox files feature of the host: conversation files in and out of the sandbox. */
 export interface InstanceAiSandboxFiles {
 	/** Most bytes that one `import-files` call copies, for all files together. */
@@ -1727,6 +1730,12 @@ export interface InstanceAiSandboxFiles {
 		files: Record<string, string>,
 		abortSignal?: AbortSignal,
 	): Promise<InstanceAiImportedFile[]>;
+	/**
+	 * Store one file of `outputs/` as a conversation file, or give the stored
+	 * file when its name and bytes did not change. `path` is relative to `outputs/`.
+	 * Throws when the file is missing or over a storage cap. The message is for the model.
+	 */
+	storeOutput(path: string, abortSignal?: AbortSignal): Promise<InstanceAiConversationFile>;
 }
 
 /** A conversation file that the host copied into the sandbox. */

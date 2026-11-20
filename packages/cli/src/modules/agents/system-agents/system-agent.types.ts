@@ -11,6 +11,7 @@ import type {
 	TokenUsage,
 	Workspace,
 } from '@n8n/agents';
+import type { AgentToolOutputFile } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 
 import type { ImportedSandboxFile } from '../agent-sandbox-files.service';
@@ -104,7 +105,21 @@ export interface SystemAgentSandboxFiles {
 		files: Record<string, string>,
 		abortSignal?: AbortSignal,
 	): Promise<ImportedSandboxFile[]>;
+	/**
+	 * Store a file of `outputs/` of the workspace as a file of the thread, in
+	 * the system chat of the user. The chat and `readFile` can then find it.
+	 * @throws {UserError} with a message for the model, when the file is not
+	 * in `outputs/`, is too large or cannot be read.
+	 */
+	storeOutput(
+		workspace: Workspace,
+		path: string,
+		abortSignal?: AbortSignal,
+	): Promise<SystemAgentStoredFile>;
 }
+
+/** A file that a system-agent turn stored in its thread. */
+export type SystemAgentStoredFile = AgentToolOutputFile;
 
 /** A stored file of a system-agent thread. */
 export interface SystemAgentFile {

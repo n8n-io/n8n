@@ -17,6 +17,10 @@ vi.mock('../attachments/import-files.tool', () => ({
 	createImportFilesTool: vi.fn(() => ({ id: 'import-files' })),
 }));
 
+vi.mock('../attachments/share-files.tool', () => ({
+	createShareFilesTool: vi.fn(() => ({ id: 'share-files' })),
+}));
+
 vi.mock('../credentials.tool', () => ({
 	createListCredentialsTool: vi.fn(() => ({ id: 'list_credentials' })),
 	createUpdateCredentialDescriptionTool: vi.fn(() => ({ id: 'update_credential_description' })),
@@ -316,7 +320,7 @@ describe('domain tool construction', () => {
 	describe('import-files registration', () => {
 		const storedFiles = { read: vi.fn() };
 		const workspace = {} as InstanceAiContext['workspace'];
-		const sandboxFiles = { maxImportBytes: 1024, importFiles: vi.fn() };
+		const sandboxFiles = { maxImportBytes: 1024, importFiles: vi.fn(), storeOutput: vi.fn() };
 
 		it.each([
 			['nothing', {}],
@@ -335,6 +339,28 @@ describe('domain tool construction', () => {
 				id: 'import-files',
 			});
 			expect(ALWAYS_LOADED_TOOL_NAMES.has('import-files')).toBe(true);
+		});
+	});
+
+	describe('share-files registration', () => {
+		const workspace = {} as InstanceAiContext['workspace'];
+		const sandboxFiles = { maxImportBytes: 1024, importFiles: vi.fn(), storeOutput: vi.fn() };
+
+		it.each([
+			['nothing', {}],
+			['the feature off', { workspace }],
+			['no workspace', { sandboxFiles }],
+		])('leaves the tool out with %s', (_label, overrides) => {
+			expect(createOrchestratorDomainTools(makeContext(overrides)).has('share-files')).toBe(false);
+		});
+
+		it('registers the tool with a workspace and the feature on', () => {
+			const context = makeContext({ workspace, sandboxFiles });
+
+			expect(createOrchestratorDomainTools(context).get('share-files')).toEqual({
+				id: 'share-files',
+			});
+			expect(ALWAYS_LOADED_TOOL_NAMES.has('share-files')).toBe(true);
 		});
 	});
 
