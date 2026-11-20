@@ -1,4 +1,4 @@
-import type { ToolTestCapability, ToolTestKind } from '@n8n/api-types';
+import type { ToolCallEvidence, ToolTestCapability, ToolTestKind } from '@n8n/api-types';
 
 /**
  * Contract between n8n and a simulation backend. Each test chat gets one world; every request a
@@ -69,6 +69,8 @@ export type SimulatedReply =
 			outcome: 'served';
 			/** `world_state`: from seeded or earlier state. `made_up`: invented by an LLM. */
 			source: 'world_state' | 'made_up';
+			/** What this request did. Optional: a backend that cannot tell leaves it out. */
+			evidence?: ToolCallEvidence[];
 			status: number;
 			headers?: Record<string, string>;
 			body: unknown;
