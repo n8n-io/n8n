@@ -7,6 +7,10 @@ import {
 	type Repository,
 } from '@n8n/typeorm';
 
+import {
+	ACKNOWLEDGE_SETTLED_STEP_SQL,
+	ACKNOWLEDGED_CTE_ALIAS,
+} from './acknowledge-settled-step-sql';
 import { WorkflowStepExecution } from './entities';
 import { generateId } from './generate-id';
 import { UnexpectedError } from '../common';
@@ -117,8 +121,14 @@ export class TypeOrmStepStore implements StepStore {
 	async createSteps(
 		executionId: string,
 		records: NewStepRecord[],
+		acknowledgeStepId?: string,
 	): Promise<Array<{ id: string } & StepKey>> {
-		if (records.length === 0) return [];
+		if (records.length === 0) {
+			if (acknowledgeStepId !== undefined) {
+				await this.acknowledgeStepOf(this.repo.manager, executionId, acknowledgeStepId);
+			}
+			return [];
+		}
 
 		for (const record of records) assertCreatableRecord(record);
 
@@ -135,7 +145,14 @@ export class TypeOrmStepStore implements StepStore {
 				 LIMIT 1`,
 				[executionId],
 			);
-			if (failed) return [];
+			if (failed) {
+				// A rare path, so an extra statement. It still commits with this
+				// transaction.
+				if (acknowledgeStepId !== undefined) {
+					await this.acknowledgeStepOf(manager, executionId, acknowledgeStepId);
+				}
+				return [];
+			}
 
 			// Ids are assigned here because the entity's insert hook only runs on class
 			// instances, and these are plain values. `stale_after` is computed after
@@ -150,14 +167,22 @@ export class TypeOrmStepStore implements StepStore {
 			// `orIgnore` is the unique key doing its job: a node another planner already
 			// queued is skipped, leaving the rest of the batch to land. RETURNING emits
 			// exactly the rows that were inserted, keyed by database column name.
-			const result = await manager
+			const insert = manager
 				.createQueryBuilder()
 				.insert()
 				.into(WorkflowStepExecution)
 				.values(rows)
 				.orIgnore()
-				.returning(['id', 'nodeId', 'iteration'])
-				.execute();
+				.returning(['id', 'nodeId', 'iteration']);
+			// The acknowledgement is a CTE of the insert, so it commits with the
+			// insert and adds no round trip. It applies also when the insert
+			// creates no row.
+			if (acknowledgeStepId !== undefined) {
+				insert
+					.addCommonTableExpression(ACKNOWLEDGE_SETTLED_STEP_SQL, ACKNOWLEDGED_CTE_ALIAS)
+					.setParameters({ acknowledgeStepId, acknowledgeExecutionId: executionId });
+			}
+			const result = await insert.execute();
 
 			return (result.raw as InsertedStepRow[]).map(({ id, node_id: nodeId, iteration }) => ({
 				id,
@@ -389,6 +414,19 @@ export class TypeOrmStepStore implements StepStore {
 		// The test on `stale_after` makes a second call write no row version.
 		await this.repo.update(
 			{ id, status: In([...ANNOUNCED_STEP_STATUSES]), staleAfter: Not(IsNull()) },
+			{ staleAfter: null, ...KEEP_UPDATED_AT },
+		);
+	}
+
+	/** As `acknowledgeSettledStep`, for a step of one execution, through `manager`. */
+	private async acknowledgeStepOf(
+		manager: EntityManager,
+		executionId: string,
+		id: string,
+	): Promise<void> {
+		await manager.update(
+			WorkflowStepExecution,
+			{ id, executionId, status: In([...ANNOUNCED_STEP_STATUSES]), staleAfter: Not(IsNull()) },
 			{ staleAfter: null, ...KEEP_UPDATED_AT },
 		);
 	}

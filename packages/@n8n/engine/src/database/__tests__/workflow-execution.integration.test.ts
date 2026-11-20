@@ -299,6 +299,99 @@ describe('workflow_execution table (integration)', () => {
 		},
 	);
 
+	describe('TypeOrmExecutionStore.finishExecution with a step to acknowledge', () => {
+		const past = new Date('2020-01-01T00:01:00.000Z');
+		const settledAt = new Date('2020-01-01T00:00:30.000Z');
+
+		/** A settled step with a time, whose `updated_at` is `settledAt`. */
+		async function settledStep(executionId: string, status: StepStatus = 'completed') {
+			const stepRepo = dataSource.getRepository(WorkflowStepExecution);
+			const step = await stepRepo.save(
+				stepRepo.create({
+					id: generateId(),
+					executionId,
+					nodeId: 'last',
+					iteration: 0,
+					status,
+					staleAfter: past,
+				}),
+			);
+			await stepRepo.update({ id: step.id }, { updatedAt: settledAt });
+			return step.id;
+		}
+
+		async function loadStep(id: string) {
+			return await dataSource.getRepository(WorkflowStepExecution).findOneOrFail({
+				where: { id },
+			});
+		}
+
+		it('ends the execution and clears the time of the step in the same write', async () => {
+			const repo = dataSource.getRepository(WorkflowExecution);
+			const { id } = await saveExecution(repo, { status: 'running', finishedAt: null });
+			const stepId = await settledStep(id);
+
+			const finished = await new TypeOrmExecutionStore(repo).finishExecution(
+				id,
+				'completed',
+				stepId,
+			);
+
+			const row = await repo.findOneOrFail({ where: { id } });
+			expect(row.status).toBe('completed');
+			expect(finished).toEqual({ finishedAt: row.finishedAt });
+			const step = await loadStep(stepId);
+			expect(step.staleAfter).toBeNull();
+			expect(step.updatedAt).toEqual(settledAt);
+		});
+
+		it('clears the time also when the compare-and-set loses', async () => {
+			const repo = dataSource.getRepository(WorkflowExecution);
+			const finishedAt = new Date('2099-01-01T00:00:00.000Z');
+			const { id } = await saveExecution(repo, { status: 'completed', finishedAt });
+			const stepId = await settledStep(id);
+
+			const finished = await new TypeOrmExecutionStore(repo).finishExecution(
+				id,
+				'completed',
+				stepId,
+			);
+
+			expect(finished).toBeNull();
+			expect((await repo.findOneOrFail({ where: { id } })).finishedAt).toEqual(finishedAt);
+			expect((await loadStep(stepId)).staleAfter).toBeNull();
+		});
+
+		it('keeps the time when the write fails, because both roll back together', async () => {
+			const repo = dataSource.getRepository(WorkflowExecution);
+			const { id } = await saveExecution(repo, { status: 'running', finishedAt: null });
+			const stepId = await settledStep(id);
+
+			// The status CHECK rejects the update.
+			await expect(
+				new TypeOrmExecutionStore(repo).finishExecution(id, 'bogus' as 'completed', stepId),
+			).rejects.toThrow();
+
+			expect((await repo.findOneOrFail({ where: { id } })).status).toBe('running');
+			expect((await loadStep(stepId)).staleAfter).toEqual(past);
+		});
+
+		it('keeps the time of a step of another execution, and of a step that is not settled', async () => {
+			const repo = dataSource.getRepository(WorkflowExecution);
+			const { id } = await saveExecution(repo, { status: 'running', finishedAt: null });
+			const { id: otherId } = await saveExecution(repo, { status: 'running', finishedAt: null });
+			const otherStepId = await settledStep(otherId);
+			const queuedStepId = await settledStep(id, 'queued');
+			const store = new TypeOrmExecutionStore(repo);
+
+			await store.finishExecution(id, 'completed', otherStepId);
+			await store.finishExecution(id, 'completed', queuedStepId);
+
+			expect((await loadStep(otherStepId)).staleAfter).toEqual(past);
+			expect((await loadStep(queuedStepId)).staleAfter).toEqual(past);
+		});
+	});
+
 	it.each<ExecutionStatus>(['queued', 'running', 'waiting'])(
 		'TypeOrmExecutionStore.cancelExecution ends a %j execution',
 		async (status) => {

@@ -1693,6 +1693,137 @@ describe('workflow_step_execution table (integration)', () => {
 					expect(await loadStaleAfter(id)).toEqual(past);
 				},
 			);
+
+			describe('createSteps with a step to acknowledge', () => {
+				const settledAt = new Date('2020-01-01T00:00:30.000Z');
+
+				/** A settled step with a time, whose `updated_at` is `settledAt`. */
+				async function settledStep(executionId: string, nodeId = 'settled') {
+					const repo = dataSource.getRepository(WorkflowStepExecution);
+					const { id } = await seedStep({
+						executionId,
+						nodeId,
+						status: 'completed',
+						staleAfter: past,
+					});
+					await repo.update({ id }, { updatedAt: settledAt });
+					return id;
+				}
+
+				async function loadRow(id: string) {
+					return await dataSource.getRepository(WorkflowStepExecution).findOneOrFail({
+						where: { id },
+					});
+				}
+
+				it('clears the time of the settled step with the insert, and keeps the time it settled', async () => {
+					const executionId = await createExecution();
+					const store = stalenessStore();
+					const settled = await settledStep(executionId);
+
+					const created = await store.createSteps(
+						executionId,
+						[{ nodeId: 'next', iteration: 0, status: 'queued' }],
+						settled,
+					);
+
+					expect(created).toEqual([{ id: expect.any(String), nodeId: 'next', iteration: 0 }]);
+					const row = await loadRow(settled);
+					expect(row.staleAfter).toBeNull();
+					expect(row.updatedAt).toEqual(settledAt);
+					// the created step still gets its own time
+					expect(await loadStaleAfter(created[0].id)).not.toBeNull();
+				});
+
+				it('clears the time also when the insert creates no row', async () => {
+					const executionId = await createExecution();
+					const store = stalenessStore();
+					await store.createSteps(executionId, [
+						{ nodeId: 'next', iteration: 0, status: 'queued' },
+					]);
+					const settled = await settledStep(executionId);
+
+					const created = await store.createSteps(
+						executionId,
+						[{ nodeId: 'next', iteration: 0, status: 'queued' }],
+						settled,
+					);
+
+					expect(created).toEqual([]);
+					const row = await loadRow(settled);
+					expect(row.staleAfter).toBeNull();
+					expect(row.updatedAt).toEqual(settledAt);
+				});
+
+				it('clears the time when a failed step stops the insert', async () => {
+					const executionId = await createExecution();
+					const store = stalenessStore();
+					await seedStep({ executionId, nodeId: 'failed', status: 'failed' });
+					const settled = await settledStep(executionId);
+
+					const created = await store.createSteps(
+						executionId,
+						[{ nodeId: 'next', iteration: 0, status: 'queued' }],
+						settled,
+					);
+
+					expect(created).toEqual([]);
+					expect(await loadStaleAfter(settled)).toBeNull();
+				});
+
+				it('clears the time for an empty batch', async () => {
+					const executionId = await createExecution();
+					const settled = await settledStep(executionId);
+
+					expect(await stalenessStore().createSteps(executionId, [], settled)).toEqual([]);
+
+					expect(await loadStaleAfter(settled)).toBeNull();
+				});
+
+				it('keeps the time when the insert fails, because both roll back together', async () => {
+					const executionId = await createExecution();
+					const store = stalenessStore();
+					const settled = await settledStep(executionId);
+
+					// Past the range of the integer column, so PostgreSQL rejects the insert.
+					await expect(
+						store.createSteps(
+							executionId,
+							[{ nodeId: 'next', iteration: 2 ** 31, status: 'queued' }],
+							settled,
+						),
+					).rejects.toThrow();
+
+					expect(await loadStaleAfter(settled)).toEqual(past);
+				});
+
+				it('keeps the time of a step of another execution, and of a step that is not settled', async () => {
+					const executionId = await createExecution();
+					const otherExecutionId = await createExecution();
+					const store = stalenessStore();
+					const otherSettled = await settledStep(otherExecutionId);
+					const { id: queued } = await seedStep({
+						executionId,
+						nodeId: 'queued',
+						status: 'queued',
+						staleAfter: past,
+					});
+
+					await store.createSteps(
+						executionId,
+						[{ nodeId: 'next', iteration: 0, status: 'queued' }],
+						otherSettled,
+					);
+					await store.createSteps(
+						executionId,
+						[{ nodeId: 'next-2', iteration: 0, status: 'queued' }],
+						queued,
+					);
+
+					expect(await loadStaleAfter(otherSettled)).toEqual(past);
+					expect(await loadStaleAfter(queued)).toEqual(past);
+				});
+			});
 		});
 
 		it('renewQueuedStep changes nothing once the step left queued', async () => {

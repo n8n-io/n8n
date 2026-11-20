@@ -61,50 +61,65 @@ export class StepSettledHandler {
 		]);
 		const node = validateStepContext(step, execution);
 
-		await this.advanceExecution(execution, step, node);
+		const acknowledged = await this.advanceExecution(execution, step, node);
 
 		// Last, so an error before this line leaves the `stale_after` time on the
 		// step. The reconciliation sweeper then publishes `step:settled` to the
-		// orchestration queue again.
-		await this.stepStore.acknowledgeSettledStep(step.id);
+		// orchestration queue again. The common paths acknowledge the step in the
+		// write that plans its successors or finishes the execution, so the
+		// acknowledgement adds no commit. Only the rare paths get here.
+		if (!acknowledged) await this.stepStore.acknowledgeSettledStep(step.id);
 	}
 
-	/** Applies the consequences of the settled step to its execution. */
+	/**
+	 * Applies the consequences of the settled step to its execution. Returns
+	 * `true` when a write of this call also acknowledged the step.
+	 *
+	 * The writes after the acknowledgement need no new `step:settled` message:
+	 * a step that the planning write created has its own `stale_after` time, and
+	 * a message for an ended execution changes nothing.
+	 */
 	private async advanceExecution(
 		execution: ExecutionRecord,
 		step: StepRecord,
 		node: GraphNode,
-	): Promise<void> {
+	): Promise<boolean> {
 		// v1 parity: an error that escapes a node ends the whole execution, not
-		// just its branch.
+		// just its branch. Not acknowledged in `finishExecution`: a new message
+		// must run the cancellation after it again.
 		if (step.status === 'failed') {
 			await this.failExecution(execution, step, node);
-			return;
+			return false;
 		}
 
 		// A `waiting` execution is live, and this settlement may be what lets it
 		// move on, so only an ended one stops here.
-		if (!isLiveExecutionStatus(execution.status)) return;
+		if (!isLiveExecutionStatus(execution.status)) return false;
 
 		let queued = 0;
+		let acknowledged = false;
 		if (step.status === 'completed' || step.status === 'skipped') {
 			// a failure elsewhere may still have its settled event queued behind
 			// this one, so it must end the execution here, before planning
 			if (await this.stepStore.hasFailedSteps(execution.id)) {
 				await this.failExecution(execution, step, node);
-				return;
+				return false;
 			}
 
-			queued = await this.planSuccessors(execution, step);
+			({ queued, acknowledged } = await this.planSuccessors(execution, step));
 		}
 
 		// If we've queued steps, we know the execution isn't done yet, so we
 		// definitely don't need to mark it finished.
-		if (queued === 0) await this.finishExecutionIfDone(execution, step, node);
+		if (queued === 0) {
+			const finished = await this.finishExecutionIfDone(execution, step, node, !acknowledged);
+			acknowledged ||= finished;
+		}
 
 		// If this call just finished the execution, it is no longer live, and the
 		// refresh leaves it alone.
 		await this.executionStore.refreshLiveStatus(execution.id);
+		return acknowledged;
 	}
 
 	private async failExecution(
@@ -143,8 +158,14 @@ export class StepSettledHandler {
 		return failed?.error ?? { name: 'Error', message: `Execution ${execution.id} failed` };
 	}
 
-	/** Plans the settled step's direct successors, returning how many were queued. */
-	private async planSuccessors(execution: ExecutionRecord, step: StepRecord): Promise<number> {
+	/**
+	 * Plans the settled step's direct successors, returning how many were queued
+	 * and whether the planning write also acknowledged the step.
+	 */
+	private async planSuccessors(
+		execution: ExecutionRecord,
+		step: StepRecord,
+	): Promise<{ queued: number; acknowledged: boolean }> {
 		const loops = deriveLoops(execution.graph);
 		// Only the candidates' own edges are resolved, so only the loops those
 		// edges leave need their latest row read.
@@ -165,7 +186,9 @@ export class StepSettledHandler {
 			steps,
 			terminalIterations,
 		);
-		if (toQueue.length === 0 && toSeed.length === 0 && toSkip.length === 0) return 0;
+		if (toQueue.length === 0 && toSeed.length === 0 && toSkip.length === 0) {
+			return { queued: 0, acknowledged: false };
+		}
 
 		// Seeded steps had their outputs passed in at execution start, so we just
 		// write them to the step store and announce completion rather than
@@ -179,17 +202,28 @@ export class StepSettledHandler {
 		// new rows. The reconciliation sweeper publishes them again: `step:ready`
 		// to the step queue for a row that is still `queued`, and `step:settled`
 		// to the orchestration queue for a row that was created settled.
-		const created = await this.stepStore.createSteps(execution.id, [
-			...toQueue.map((key) => ({ ...key, status: 'queued' as const })),
-			...toSeed.map((key) => ({
-				...key,
-				status: 'completed' as const,
-				outputs: seededOutputsFor(execution.id, key, seededOutputs),
-			})),
-			...toSkip.map((key) => ({ ...key, status: 'skipped' as const })),
-		]);
+		// The insert also acknowledges the settled step, also when another planner
+		// created every row first.
+		const created = await this.stepStore.createSteps(
+			execution.id,
+			[
+				...toQueue.map((key) => ({ ...key, status: 'queued' as const })),
+				...toSeed.map((key) => ({
+					...key,
+					status: 'completed' as const,
+					outputs: seededOutputsFor(execution.id, key, seededOutputs),
+				})),
+				...toSkip.map((key) => ({ ...key, status: 'skipped' as const })),
+			],
+			step.id,
+		);
 
-		return await this.announceCreatedSteps(execution.id, created, new Set(toQueue.map(stepKeyId)));
+		const queued = await this.announceCreatedSteps(
+			execution.id,
+			created,
+			new Set(toQueue.map(stepKeyId)),
+		);
+		return { queued, acknowledged: true };
 	}
 
 	/**
@@ -221,12 +255,16 @@ export class StepSettledHandler {
 	 * `(node, iteration)`, only exist for reachable nodes, and never unsettle, so
 	 * the count comparison cannot pass early — in-flight events and unplanned
 	 * successors both leave steps outstanding.
+	 *
+	 * With `acknowledge`, the write that finishes the execution also
+	 * acknowledges the step. Returns `true` when that write ran.
 	 */
 	private async finishExecutionIfDone(
 		execution: ExecutionRecord,
 		step: StepRecord,
 		node: GraphNode,
-	): Promise<void> {
+		acknowledge: boolean,
+	): Promise<boolean> {
 		const reachable = this.reachableNodeIds(execution);
 		const loops = deriveLoops(execution.graph);
 		const terminalIterations = await loadTerminalIterations(
@@ -241,15 +279,16 @@ export class StepSettledHandler {
 		const expected = countExpectedSettledSteps(loops, reachable, terminalIterations);
 		// A loop still running owes an unknown number of steps, so there is nothing
 		// to compare against yet.
-		if (expected === undefined) return;
+		if (expected === undefined) return false;
 
 		const settled = await this.stepStore.countSettledSteps(execution.id);
-		if (settled < expected) return;
+		if (settled < expected) return false;
 
 		const failed = await this.stepStore.hasFailedSteps(execution.id);
 		const finished = await this.executionStore.finishExecution(
 			execution.id,
 			failed ? 'failed' : 'completed',
+			acknowledge ? step.id : undefined,
 		);
 		if (finished) {
 			this.lifecycleEventPublisherFactory.create(execution).publish({
@@ -280,6 +319,7 @@ export class StepSettledHandler {
 			}
 			if (failed) await this.cancelExecution.cancelSubExecutions(execution.id);
 		}
+		return acknowledge;
 	}
 
 	/**

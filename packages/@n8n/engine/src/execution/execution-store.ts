@@ -121,8 +121,17 @@ export interface ExecutionStore {
 	 * together, as a compare-and-set on the live statuses, so they can't be
 	 * observed apart. Returns the finish time it wrote, so the caller reports the
 	 * time the row records, or `null` when the compare-and-set lost.
+	 *
+	 * With `acknowledgeStepId`, the same write also does what
+	 * `StepStore.acknowledgeSettledStep` does for that step of this execution,
+	 * also when the compare-and-set lost. The acknowledgement adds no commit and
+	 * takes effect only if this write does.
 	 */
-	finishExecution(id: string, status: 'completed' | 'failed'): Promise<{ finishedAt: Date } | null>;
+	finishExecution(
+		id: string,
+		status: 'completed' | 'failed',
+		acknowledgeStepId?: string,
+	): Promise<{ finishedAt: Date } | null>;
 
 	/**
 	 * End an execution on request, from any status that has not ended. Returns

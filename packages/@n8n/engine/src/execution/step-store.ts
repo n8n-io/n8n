@@ -121,10 +121,16 @@ export interface StepStore {
 	 * Creates nothing once any step in the execution has failed (serialized with
 	 * `failStep`), so a planning insert cannot land after the failure's
 	 * cancellation sweep and strand rows `queued` forever.
+	 *
+	 * With `acknowledgeStepId`, the same write also does what
+	 * `acknowledgeSettledStep` does for that step of this execution. It applies
+	 * whenever this call returns, also when it creates no row. The
+	 * acknowledgement adds no commit and takes effect only if the insert does.
 	 */
 	createSteps(
 		executionId: string,
 		records: NewStepRecord[],
+		acknowledgeStepId?: string,
 	): Promise<Array<{ id: string } & StepKey>>;
 
 	/** Load a single step by id. Throws `StepNotFoundError` if absent. */

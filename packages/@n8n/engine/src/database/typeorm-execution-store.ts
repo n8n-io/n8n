@@ -1,5 +1,9 @@
 import { In, LessThanOrEqual, type EntityManager, type Repository } from '@n8n/typeorm';
 
+import {
+	ACKNOWLEDGE_SETTLED_STEP_SQL,
+	ACKNOWLEDGED_CTE_ALIAS,
+} from './acknowledge-settled-step-sql';
 import { WorkflowSeededStep, type WorkflowExecution } from './entities';
 import { parentLinkSql, toParentColumns } from './parent-link-columns';
 import {
@@ -137,13 +141,24 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 	async finishExecution(
 		id: string,
 		status: 'completed' | 'failed',
+		acknowledgeStepId?: string,
 	): Promise<{ finishedAt: Date } | null> {
 		// A waiting execution can end too: a failure elsewhere cancels its waits.
 		const finishedAt = new Date();
-		const result = await this.repo.update(
-			{ id, status: In([...LIVE_EXECUTION_STATUSES]) },
-			{ status, finishedAt },
-		);
+		const update = this.repo.manager
+			.createQueryBuilder()
+			.update(this.repo.target)
+			.set({ status, finishedAt })
+			.where({ id, status: In([...LIVE_EXECUTION_STATUSES]) });
+		// The acknowledgement is a CTE of the update, so it commits with the
+		// update and adds no round trip. It applies also when the update loses
+		// its compare-and-set.
+		if (acknowledgeStepId !== undefined) {
+			update
+				.addCommonTableExpression(ACKNOWLEDGE_SETTLED_STEP_SQL, ACKNOWLEDGED_CTE_ALIAS)
+				.setParameters({ acknowledgeStepId, acknowledgeExecutionId: id });
+		}
+		const result = await update.execute();
 		return result.affected === 1 ? { finishedAt } : null;
 	}
 

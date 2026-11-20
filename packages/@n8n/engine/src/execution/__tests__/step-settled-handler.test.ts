@@ -210,10 +210,14 @@ describe('StepSettledHandler', () => {
 
 		await handler.handle(event);
 
-		expect(stepStore.createSteps).toHaveBeenCalledExactlyOnceWith('exec-1', [
-			{ nodeId: 'b', iteration: 0, status: 'queued' },
-			{ nodeId: 'c', iteration: 0, status: 'queued' },
-		]);
+		expect(stepStore.createSteps).toHaveBeenCalledExactlyOnceWith(
+			'exec-1',
+			[
+				{ nodeId: 'b', iteration: 0, status: 'queued' },
+				{ nodeId: 'c', iteration: 0, status: 'queued' },
+			],
+			'step-a',
+		);
 		expect(stepQueue.publish).toHaveBeenCalledTimes(2);
 		expect(stepQueue.publish).toHaveBeenCalledWith({
 			type: 'step:ready',
@@ -258,10 +262,14 @@ describe('StepSettledHandler', () => {
 			expect(store.loadSeededOutputs).toHaveBeenCalledExactlyOnceWith('exec-1', [
 				{ nodeId: 'b', iteration: 0 },
 			]);
-			expect(stepStore.createSteps).toHaveBeenCalledExactlyOnceWith('exec-1', [
-				{ nodeId: 'c', iteration: 0, status: 'queued' },
-				{ nodeId: 'b', iteration: 0, status: 'completed', outputs: seededOutputs },
-			]);
+			expect(stepStore.createSteps).toHaveBeenCalledExactlyOnceWith(
+				'exec-1',
+				[
+					{ nodeId: 'c', iteration: 0, status: 'queued' },
+					{ nodeId: 'b', iteration: 0, status: 'completed', outputs: seededOutputs },
+				],
+				'step-a',
+			);
 			expect(stepQueue.publish).toHaveBeenCalledExactlyOnceWith({
 				type: 'step:ready',
 				executionId: 'exec-1',
@@ -287,10 +295,14 @@ describe('StepSettledHandler', () => {
 			await handler.handle(event);
 
 			expect(store.loadSeededOutputs).toHaveBeenCalledExactlyOnceWith('exec-1', []);
-			expect(stepStore.createSteps).toHaveBeenCalledExactlyOnceWith('exec-1', [
-				{ nodeId: 'c', iteration: 0, status: 'queued' },
-				{ nodeId: 'b', iteration: 0, status: 'skipped' },
-			]);
+			expect(stepStore.createSteps).toHaveBeenCalledExactlyOnceWith(
+				'exec-1',
+				[
+					{ nodeId: 'c', iteration: 0, status: 'queued' },
+					{ nodeId: 'b', iteration: 0, status: 'skipped' },
+				],
+				'step-a',
+			);
 		});
 
 		it('fails loudly when the marked node has no stored outputs', async () => {
@@ -314,9 +326,11 @@ describe('StepSettledHandler', () => {
 
 		await handler.handle({ ...event, stepId: 'step-trigger' });
 
-		expect(stepStore.createSteps).toHaveBeenCalledExactlyOnceWith('exec-1', [
-			{ nodeId: 'a', iteration: 0, status: 'queued' },
-		]);
+		expect(stepStore.createSteps).toHaveBeenCalledExactlyOnceWith(
+			'exec-1',
+			[{ nodeId: 'a', iteration: 0, status: 'queued' }],
+			'step-trigger',
+		);
 		expect(stepQueue.publish).toHaveBeenCalledExactlyOnceWith({
 			type: 'step:ready',
 			executionId: 'exec-1',
@@ -372,10 +386,14 @@ describe('StepSettledHandler', () => {
 
 		await handler.handle(event);
 
-		expect(stepStore.createSteps).toHaveBeenCalledExactlyOnceWith('exec-1', [
-			{ nodeId: 'b', iteration: 0, status: 'queued' },
-			{ nodeId: 'c', iteration: 0, status: 'skipped' },
-		]);
+		expect(stepStore.createSteps).toHaveBeenCalledExactlyOnceWith(
+			'exec-1',
+			[
+				{ nodeId: 'b', iteration: 0, status: 'queued' },
+				{ nodeId: 'c', iteration: 0, status: 'skipped' },
+			],
+			'step-a',
+		);
 		expect(stepQueue.publish).toHaveBeenCalledExactlyOnceWith({
 			type: 'step:ready',
 			executionId: 'exec-1',
@@ -401,9 +419,11 @@ describe('StepSettledHandler', () => {
 
 		await handler.handle({ ...event, stepId: 'step-c' });
 
-		expect(stepStore.createSteps).toHaveBeenCalledExactlyOnceWith('exec-1', [
-			{ nodeId: 'm', iteration: 0, status: 'queued' },
-		]);
+		expect(stepStore.createSteps).toHaveBeenCalledExactlyOnceWith(
+			'exec-1',
+			[{ nodeId: 'm', iteration: 0, status: 'queued' }],
+			'step-c',
+		);
 		expect(stepQueue.publish).toHaveBeenCalledExactlyOnceWith({
 			type: 'step:ready',
 			executionId: 'exec-1',
@@ -515,7 +535,7 @@ describe('StepSettledHandler', () => {
 		await handler.handle({ ...event, stepId: 'step-m' });
 
 		expect(stepStore.countSettledSteps).toHaveBeenCalledExactlyOnceWith('exec-1');
-		expect(executionStore.finishExecution).toHaveBeenCalledWith('exec-1', 'completed');
+		expect(executionStore.finishExecution).toHaveBeenCalledWith('exec-1', 'completed', 'step-m');
 	});
 
 	it('finishes the execution as failed when any step failed', async () => {
@@ -595,24 +615,145 @@ describe('StepSettledHandler', () => {
 	});
 
 	describe('acknowledgement of the settled step', () => {
-		it('acknowledges the step after the last write of the settlement', async () => {
+		it('acknowledges the step in the write that plans its successors', async () => {
 			const stepStore = makeStepStore();
+			const { handler } = makeHandler(stepStore);
+
+			await handler.handle(event);
+
+			expect(stepStore.createSteps).toHaveBeenCalledExactlyOnceWith(
+				'exec-1',
+				expect.any(Array),
+				'step-a',
+			);
+			expect(stepStore.acknowledgeSettledStep).not.toHaveBeenCalled();
+		});
+
+		it('acknowledges the step in the planning write when another planner created every row', async () => {
+			const stepStore = makeStepStore({}, { createSteps: vi.fn().mockResolvedValue([]) });
 			const { handler, executionStore } = makeHandler(stepStore);
 
 			await handler.handle(event);
 
-			expect(stepStore.acknowledgeSettledStep).toHaveBeenCalledExactlyOnceWith('step-a');
+			expect(stepStore.createSteps).toHaveBeenCalledExactlyOnceWith(
+				'exec-1',
+				expect.any(Array),
+				'step-a',
+			);
+			expect(executionStore.finishExecution).not.toHaveBeenCalled();
+			expect(stepStore.acknowledgeSettledStep).not.toHaveBeenCalled();
+		});
+
+		it('does not acknowledge the step again when the planning write already did and the execution finishes', async () => {
+			// a fired no slot: b and c are skipped at birth, so nothing is queued.
+			const stepStore = makeStepStore({}, { countSettledSteps: vi.fn().mockResolvedValue(5) }, [
+				summary('trigger', 'completed', [true]),
+				summary('a', 'completed', [false, false]),
+			]);
+			const { handler, executionStore } = makeHandler(stepStore);
+
+			await handler.handle(event);
+
+			expect(stepStore.createSteps).toHaveBeenCalledExactlyOnceWith(
+				'exec-1',
+				expect.any(Array),
+				'step-a',
+			);
+			expect(executionStore.finishExecution).toHaveBeenCalledExactlyOnceWith(
+				'exec-1',
+				'completed',
+				undefined,
+			);
+			expect(stepStore.acknowledgeSettledStep).not.toHaveBeenCalled();
+		});
+
+		it('acknowledges the last step in the write that finishes the execution', async () => {
+			const stepStore = makeStepStore(
+				{ id: 'step-m', nodeId: 'm' },
+				{ countSettledSteps: vi.fn().mockResolvedValue(5) },
+			);
+			const { handler, executionStore } = makeHandler(stepStore);
+
+			await handler.handle({ ...event, stepId: 'step-m' });
+
+			expect(stepStore.createSteps).not.toHaveBeenCalled();
+			expect(executionStore.finishExecution).toHaveBeenCalledExactlyOnceWith(
+				'exec-1',
+				'completed',
+				'step-m',
+			);
+			expect(stepStore.acknowledgeSettledStep).not.toHaveBeenCalled();
+		});
+
+		it('relies on the finishing write also when it loses the compare-and-set', async () => {
+			const stepStore = makeStepStore(
+				{ id: 'step-m', nodeId: 'm' },
+				{ countSettledSteps: vi.fn().mockResolvedValue(5) },
+			);
+			const executionStore = makeExecutionStore(
+				{},
+				{ finishExecution: vi.fn().mockResolvedValue(null) },
+			);
+			const { handler } = makeHandler(stepStore, { executionStore });
+
+			await handler.handle({ ...event, stepId: 'step-m' });
+
+			expect(executionStore.finishExecution).toHaveBeenCalledExactlyOnceWith(
+				'exec-1',
+				'completed',
+				'step-m',
+			);
+			expect(stepStore.acknowledgeSettledStep).not.toHaveBeenCalled();
+		});
+
+		it('acknowledges the step separately after the last write when it plans nothing and the execution is not done', async () => {
+			const stepStore = makeStepStore(
+				{ id: 'step-m', nodeId: 'm' },
+				{ countSettledSteps: vi.fn().mockResolvedValue(4) },
+			);
+			const { handler, executionStore } = makeHandler(stepStore);
+
+			await handler.handle({ ...event, stepId: 'step-m' });
+
+			expect(executionStore.finishExecution).not.toHaveBeenCalled();
+			expect(stepStore.acknowledgeSettledStep).toHaveBeenCalledExactlyOnceWith('step-m');
 			expect(vi.mocked(executionStore.refreshLiveStatus).mock.invocationCallOrder[0]).toBeLessThan(
 				vi.mocked(stepStore.acknowledgeSettledStep).mock.invocationCallOrder[0],
 			);
 		});
 
-		it('acknowledges a failed step after it failed the execution', async () => {
-			const stepStore = makeStepStore({ status: 'failed' });
+		it('acknowledges the step separately when a successor waits for another predecessor', async () => {
+			const stepStore = makeStepStore({ id: 'step-b', nodeId: 'b' }, {}, [
+				...defaultSummaries,
+				summary('b', 'completed', [true]),
+				summary('c', 'running'),
+			]);
 			const { handler } = makeHandler(stepStore);
+
+			await handler.handle({ ...event, stepId: 'step-b' });
+
+			expect(stepStore.createSteps).not.toHaveBeenCalled();
+			expect(stepStore.acknowledgeSettledStep).toHaveBeenCalledExactlyOnceWith('step-b');
+		});
+
+		it('acknowledges the step separately when a failure elsewhere ends the execution', async () => {
+			const stepStore = makeStepStore({}, { hasFailedSteps: vi.fn().mockResolvedValue(true) });
+			const { handler, executionStore } = makeHandler(stepStore);
 
 			await handler.handle(event);
 
+			expect(executionStore.finishExecution).toHaveBeenCalledExactlyOnceWith('exec-1', 'failed');
+			expect(stepStore.acknowledgeSettledStep).toHaveBeenCalledExactlyOnceWith('step-a');
+		});
+
+		it('acknowledges a failed step separately after it failed the execution', async () => {
+			const stepStore = makeStepStore({ status: 'failed' });
+			const { handler, executionStore } = makeHandler(stepStore);
+
+			await handler.handle(event);
+
+			// Not in the finishing write: a new message must run the cancellation again.
+			expect(executionStore.finishExecution).toHaveBeenCalledExactlyOnceWith('exec-1', 'failed');
 			expect(stepStore.acknowledgeSettledStep).toHaveBeenCalledExactlyOnceWith('step-a');
 			expect(vi.mocked(stepStore.cancelPendingSteps).mock.invocationCallOrder[0]).toBeLessThan(
 				vi.mocked(stepStore.acknowledgeSettledStep).mock.invocationCallOrder[0],
@@ -661,10 +802,14 @@ describe('StepSettledHandler', () => {
 
 		await handler.handle(event);
 
-		expect(stepStore.createSteps).toHaveBeenCalledExactlyOnceWith('exec-1', [
-			{ nodeId: 'b', iteration: 0, status: 'queued' },
-			{ nodeId: 'c', iteration: 0, status: 'queued' },
-		]);
+		expect(stepStore.createSteps).toHaveBeenCalledExactlyOnceWith(
+			'exec-1',
+			[
+				{ nodeId: 'b', iteration: 0, status: 'queued' },
+				{ nodeId: 'c', iteration: 0, status: 'queued' },
+			],
+			'step-a',
+		);
 		expect(stepQueue.publish).toHaveBeenCalledTimes(2);
 	});
 
@@ -1017,7 +1162,11 @@ describe('StepSettledHandler lifecycle events', () => {
 
 				expect(lifecycleEventPublisher.publish).not.toHaveBeenCalled();
 				// The run still ends, and the response channel is not affected.
-				expect(executionStore.finishExecution).toHaveBeenCalledWith('exec-1', 'completed');
+				expect(executionStore.finishExecution).toHaveBeenCalledWith(
+					'exec-1',
+					'completed',
+					'step-m',
+				);
 				expect(responseSender.send).toHaveBeenCalledOnce();
 			},
 		);
