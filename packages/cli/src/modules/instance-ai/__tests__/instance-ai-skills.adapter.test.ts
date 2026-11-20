@@ -65,10 +65,10 @@ describe('InstanceAiSkillsAdapterService', () => {
 		const sources = adapter.createService(user, true, true).sources!;
 		const selection = {
 			url: 'https://github.com/acme/skills',
-			scope: 'instance',
+			scope: 'instance' as const,
 			skillKeys: ['brand-voice'],
 			revision: 'commit',
-		} as const;
+		};
 		const stale = new SkillSourceRequestError(
 			'stale',
 			'The source changed. Preview it again before importing.',

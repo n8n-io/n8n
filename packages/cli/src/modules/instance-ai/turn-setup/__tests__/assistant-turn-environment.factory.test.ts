@@ -53,6 +53,7 @@ function createSetupFactory() {
 				instanceContextEnabled: false,
 				nodeUsageEnabled: false,
 				preferencesNoteVariant: undefined as string | undefined,
+				skillSourcesEnabled: undefined as boolean | undefined,
 			})),
 		},
 		settingsService: {
