@@ -103,4 +103,20 @@ describe('NodeTypeUsageService', () => {
 		);
 		expect(result).toEqual({ [SLACK]: usage(1), [SLACK_TOOL]: usage(1) });
 	});
+
+	it('groups a variant whose base name is an Object.prototype key', async () => {
+		repository.countNodeTypeUsage.mockResolvedValue({
+			toStringTool: usage(1),
+			constructorTool: usage(1),
+		});
+		repository.countNodeTypeUsageByGroup.mockResolvedValue({});
+
+		await service.getUsage(null);
+
+		expect(repository.countNodeTypeUsageByGroup).toHaveBeenCalledWith(
+			null,
+			{ toString: ['toString', 'toStringTool'], constructor: ['constructor', 'constructorTool'] },
+			ctx,
+		);
+	});
 });

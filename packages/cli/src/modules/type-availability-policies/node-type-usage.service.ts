@@ -56,13 +56,15 @@ export class NodeTypeUsageService {
 			this.nodeTypes,
 			this.loadNodesAndCredentials,
 		);
-		const groups: Record<string, string[]> = {};
+		// A Map, because a type name from a stored workflow can be an `Object.prototype` key.
+		const groups = new Map<string, string[]>();
 		for (const type of types) {
 			const { baseName } = policedType(type);
 			if (baseName === type) continue;
-			groups[baseName] ??= [baseName];
-			groups[baseName].push(type);
+			const group = groups.get(baseName) ?? [baseName];
+			group.push(type);
+			groups.set(baseName, group);
 		}
-		return groups;
+		return Object.fromEntries(groups);
 	}
 }
