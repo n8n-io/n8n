@@ -340,6 +340,19 @@ const getChatResponseMode = (
 	return undefined;
 };
 
+export function shouldUseLastNodeForChatHistory(
+	nodeType: string,
+	body: unknown,
+	responseMode: WebhookResponseMode,
+): boolean {
+	return (
+		nodeType === CHAT_TRIGGER_NODE_TYPE &&
+		isRecord(body) &&
+		body.action === 'loadPreviousSession' &&
+		(responseMode === 'streaming' || responseMode === 'hostedChat')
+	);
+}
+
 /** Returns whether the node is an enabled Form node or form-resuming Wait node. */
 function isEnabledFormPageNode(node: INode): boolean {
 	if (node.disabled) return false;
@@ -1146,12 +1159,7 @@ export async function executeWebhook(
 		);
 
 		// The widget loads history from one JSON response.
-		if (
-			workflowStartNode.type === CHAT_TRIGGER_NODE_TYPE &&
-			isRecord(req.body) &&
-			req.body.action === 'loadPreviousSession' &&
-			(responseMode === 'streaming' || responseMode === 'hostedChat')
-		) {
+		if (shouldUseLastNodeForChatHistory(workflowStartNode.type, req.body, responseMode)) {
 			responseMode = 'lastNode';
 		}
 

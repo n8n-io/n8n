@@ -111,6 +111,7 @@ import { EXECUTION_ENDED_WITHOUT_RESPONSE } from '../constants';
 import { LiveWebhooks } from '../live-webhooks';
 import {
 	autoDetectResponseMode,
+	shouldUseLastNodeForChatHistory,
 	handleFormRedirectionCase,
 	setupResponseNodePromise,
 	prepareExecutionData,
@@ -237,6 +238,31 @@ describe('autoDetectResponseMode', () => {
 		const workflowStartNode = mock<INode>({ type: 'someOtherNodeType', parameters: {} });
 		const result = autoDetectResponseMode(workflowStartNode, workflow, 'GET');
 		expect(result).toBeUndefined();
+	});
+});
+
+describe('shouldUseLastNodeForChatHistory', () => {
+	const historyRequest = { action: 'loadPreviousSession', sessionId: 's1' };
+
+	test.each<[WebhookResponseMode, boolean]>([
+		['streaming', true],
+		['hostedChat', true],
+		['lastNode', false],
+		['responseNode', false],
+	])('overrides %s for chat history: %s', (responseMode, shouldOverride) => {
+		expect(
+			shouldUseLastNodeForChatHistory(CHAT_TRIGGER_NODE_TYPE, historyRequest, responseMode),
+		).toBe(shouldOverride);
+	});
+
+	test.each([
+		{ label: 'no body', body: undefined },
+		{ label: 'a null body', body: null },
+		{ label: 'a text body', body: JSON.stringify(historyRequest) },
+		{ label: 'an array body', body: [historyRequest] },
+		{ label: 'an array action', body: { action: [historyRequest.action] } },
+	])('keeps the mode for $label', ({ body }) => {
+		expect(shouldUseLastNodeForChatHistory(CHAT_TRIGGER_NODE_TYPE, body, 'streaming')).toBe(false);
 	});
 });
 
