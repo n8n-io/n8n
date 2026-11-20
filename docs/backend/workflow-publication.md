@@ -1,6 +1,6 @@
 ---
 title: Workflow publication
-last_reviewed: 2026-11-05
+last_reviewed: 2026-11-20
 contact: tomi
 ---
 
@@ -27,13 +27,13 @@ sequenceDiagram
 
 ## Versions
 
-A workflow has a **draft**, which is the last saved version, and a **published version**, which runs in production. Publishing makes the draft the published version. n8n keeps each saved version in the workflow history, so a user can publish an older version again.
+A workflow has a **draft**, which is the last saved version, and a **published version**, which runs in production. Publishing makes the draft the published version. n8n keeps each saved version in the workflow history, so a user can publish an older version again. With the `engine-v2` module enabled, saving a change to the engine creates a draft version. The published version keeps its engine until you publish the change.
 
 ## Checks
 
 First, the main checks that the user may publish the workflow and that the version can run (e.g. that its webhook path is free). A policy or an open review request can also refuse the publication.
 
-The main runs all checks before it changes anything, so a refused publication leaves the previous version live. Every way to publish (e.g. editor, public API, or source control) runs the same checks.
+The main runs all checks before it changes anything, so a refused publication leaves the previous version live. An instance setting can require an approved review for the version in a team project. A source control pull skips that requirement, but an open review still blocks it. See [Workflow reviews](governance.md#workflow-reviews).
 
 ## Outbox
 
@@ -45,14 +45,14 @@ A 200 therefore means that the version is published, not that the triggers are l
 
 ## Trigger start
 
-The leader starts the triggers. In regular mode, the main is also the leader. If the leader stops before it finishes, another main picks up the task. When a main becomes the leader (e.g. at startup), it starts the triggers of every published workflow in the same way.
+The leader registers the triggers. In regular mode, the main is also the leader. If the leader stops before it finishes, another main picks up the task. When a main becomes the leader (e.g. at startup), it registers the triggers of every published workflow in the same way.
 
 The leader compares the old and new versions: it stops removed triggers, starts new ones, and leaves the rest running. Each kind of trigger runs in its own way:
 
 | Trigger | How it runs |
 |---|---|
 | Webhook | Instance sends each call for its path and method to the workflow. No two workflows can share a path and method |
-| Poller | Leader polls the source |
+| Poller | By default, any main can claim a due poll job from the database |
 | Trigger that holds a connection (e.g. to a message queue) | Leader keeps the connection open |
 | Schedule | Any main starts each due run, from a job in the database |
 

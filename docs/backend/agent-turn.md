@@ -1,6 +1,6 @@
 ---
 title: Agent turn
-last_reviewed: 2026-11-05
+last_reviewed: 2026-11-20
 contact: bjorger
 ---
 
@@ -62,7 +62,8 @@ In queue mode, a workflow tool runs on a worker, and the turn waits for it on th
 Your message took the simplest path. Other turns differ from it in these common ways:
 
 - **Other sources:** A published agent can also take messages from a chat platform (e.g. Slack), or run on a schedule. These messages go into the same queue.
-- **Second message:** A second message to the same conversation waits in the queue until the turn ends. It can also **steer** the running turn, i.e. join it before the next call to the model. Only messages from the test chat and the n8n chat can steer.
+- **API channel:** An HTTP request starts a turn on the main that receives it, without the chat queue. The main sends the result in one response. If the turn needs approval, the response gives the caller a URL for the decision.
+- **Second message:** In the test chat, a second message to the same conversation waits in the queue until the turn ends. It can also **steer** the running turn, i.e. join it before the next call to the model. Only messages from the test chat and the n8n chat can steer. The API channel rejects a second request while a turn runs in the same conversation.
 - **Approval:** A tool can ask a person for approval. The turn then saves a checkpoint and pauses, and the approval resumes it from the checkpoint on any main.
 - **Multi-main:** Mains relay the stream over pubsub, so a second tab or the Stop button works on any main.
 
@@ -82,7 +83,7 @@ The **AI Agent** node is not part of this runtime. It is a node inside a workflo
    - B. Only in multi-main.
    - C. No. Redis keeps the message.
    - D. No. The database keeps the message.
-2. Two messages for the same conversation arrive on two different mains. How do they run?
+2. Two test chat messages for the same conversation arrive on different mains. How do they run if neither message steers the turn?
    - A. At the same time, one on each main.
    - B. The second message cancels the first turn.
    - C. In order, one at a time.

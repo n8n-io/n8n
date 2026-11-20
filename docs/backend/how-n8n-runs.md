@@ -1,6 +1,6 @@
 ---
 title: How n8n runs
-last_reviewed: 2026-11-05
+last_reviewed: 2026-11-20
 contact: ivov
 ---
 
@@ -21,7 +21,7 @@ Week 1 follows your three steps from the previous page through this setup: the [
 
 The inside of a main looks somewhat like most [Express](https://expressjs.com) applications. Controllers take requests and call services. Services call repositories, and repositories use [TypeORM](https://typeorm.io). A small dependency injection container, `@n8n/di`, creates the services, and decorators register the routes.
 
-Each workflow execution goes to the **execution engine**, a library in `n8n-core` that runs the nodes of a workflow. The engine knows nothing about HTTP or the database. (This is the v1 engine. Engine v2 is in development, and [its docs](../../packages/@n8n/engine/AGENTS.md) state the current design.)
+By default, n8n runs workflows on the v1 **execution engine**, a library in `n8n-core`. This engine knows nothing about HTTP or the database. [Engine v2](../../packages/@n8n/engine/README.md) is in development. It runs only workflows that opt in.
 
 Agent turns run on another library, the agent runtime in `@n8n/agents`. Workflow executions and agent turns share the same nodes, credentials, permissions, and database.
 
@@ -40,7 +40,7 @@ flowchart LR
 
 ## Workers
 
-In **regular mode**, one process serves the editor and runs executions, so heavy executions can slow the editor down. In **queue mode** (also called **scaling mode**), a main sets up the execution and adds a job to a [Bull](https://github.com/OptimalBits/bull) queue backed by Redis.
+This section follows the v1 engine. In **regular mode**, one process serves the editor and runs executions, so heavy executions can slow the editor down. In **queue mode** (also called **scaling mode**), a main sets up the execution and adds a job to a [Bull](https://github.com/OptimalBits/bull) queue backed by Redis.
 
 Alongside the main, processes that run the CLI command `n8n worker` are called **workers**. A worker takes the job from the queue and runs the execution. The job carries only the ID of the execution. The worker reads the workflow and the input from the database. When the execution ends, the worker saves the results to the database and reports completion to the main through the queue.
 
@@ -60,9 +60,9 @@ In queue mode, workers run only workflow executions, and agent turns still run o
 
 With one main, a stopped main takes down the editor, the APIs, the schedules and polling triggers, and the agent turns. **Multi-main** runs several mains behind a load balancer for higher availability.
 
-Several mains cause a new problem: some work must happen exactly once. If two mains ran the same poller, each new record would start two executions. Therefore one main is the **leader**, and only the leader runs pollers. Schedules need no leader, because any main starts each due run from a job in the database. The leader holds a key in Redis that expires after a few seconds and renews it while it runs. If the leader dies, another main takes the key.
+Several mains cause a new problem: some work must happen exactly once. Only one main, the **leader**, keeps workflow trigger connections open. For example, the leader keeps the connection to a message queue open. By default, any main can claim a due job for a schedule or poll trigger from the database. If n8n uses in-process timers for poll triggers, only the leader runs them. The leader holds a key in Redis that expires after a few seconds. It renews the key while it runs. If the leader dies, another main takes the key.
 
-Mains and workers broadcast changes over [Redis pubsub](https://redis.io/docs/latest/develop/pubsub/). For example, you publish a workflow through a main that is not the leader. That main broadcasts a command, and the leader starts the triggers.
+Mains and workers broadcast changes over [Redis pubsub](https://redis.io/docs/latest/develop/pubsub/). For example, you publish a workflow through a main that is not the leader. That main broadcasts a command, and the leader registers the triggers.
 
 In queue mode with multi-main, all the processes connect like this:
 
@@ -124,9 +124,10 @@ Upgrading an n8n instance must not change what a saved workflow does. Common way
 
 | Package | Holds |
 |---|---|
-| `packages/cli/` | CLI commands, HTTP server, controllers, and most services and modules. Examples: auth and SSO, credentials, executions, triggers and webhooks, queue mode and pubsub, push, task runners, licensing, events and telemetry, and the public API |
+| `packages/cli/` | CLI commands, HTTP server, controllers, and most services and modules. Examples: auth and SSO, credentials, executions, triggers and webhooks, queue mode, push, task runners, licensing, events and telemetry, and the public API |
 | `packages/core/` | Execution engine, node execution contexts (the helpers that nodes call), trigger and poller runtime, node and credential loading, binary data storage, encryption, and instance settings |
 | `packages/workflow/` | Workflow model, expression evaluator, and shared types, used by both backend and frontend |
+| `packages/@n8n/backend-services/` | Shared backend services, including the pubsub publisher and subscriber |
 | `packages/@n8n/db/` | Entities, repositories, and migrations |
 | `packages/@n8n/agents/` | Agent runtime |
 | `packages/@n8n/instance-ai/` | Backend of the n8n Assistant, the agent that builds and fixes workflows for the user |
@@ -147,7 +148,7 @@ Upgrading an n8n instance must not change what a saved workflow does. Common way
    - B. It writes the result only into the job in Redis.
    - C. It sends the result to the editor over websocket.
    - D. It saves the result to the database, and tells the main through the queue.
-3. In multi-main, the leader dies. What happens to pollers?
+3. In multi-main, the leader dies. What happens to workflow triggers that hold a connection open?
    - A. They stop until an admin picks a new leader.
    - B. Every main starts running them.
    - C. Another main becomes the leader and runs them.

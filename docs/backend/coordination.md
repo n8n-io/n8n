@@ -1,6 +1,6 @@
 ---
 title: Coordination
-last_reviewed: 2026-11-06
+last_reviewed: 2026-11-20
 contact: ivov
 ---
 
@@ -12,7 +12,7 @@ contact: ivov
 
 In queue mode, the processes talk to each other over Redis pubsub, through two separate systems:
 
-- **Bull pubsub:** A worker reports on a job, e.g. a webhook response. Only the process that holds the open request acts on the report.
+- **Bull pubsub:** A worker reports the outcome of a job. The process that waits for the job can be a main, a webhook process, or another worker. For a webhook response, the process that holds the request sends the response.
 - **n8n pubsub:** A main publishes a command to every process, e.g. "reload the license". Workers answer on a channel of their own. A service handles a command with a method that has `@OnPubSubEvent`.
 
 With worker pools, the jobs of a project go to a named queue, and only the workers of that pool dequeue them.
@@ -23,7 +23,7 @@ n8n pubsub also relays push messages to the main that holds the browser tab. [Li
 
 [How n8n runs](how-n8n-runs.md) explained how the mains pick a leader. The leader raises three questions for your code:
 
-- **Where does my work run?** Work that must run only once in the cluster runs on the leader, e.g. polling triggers and the resume of waiting executions. For new periodic work, write a [system task](#system-tasks) instead, and n8n picks where the task runs.
+- **Where does my work run?** The leader resumes waiting v1 executions. With the durable scheduler, any main can claim a poll job. For new periodic work, write a [system task](#system-tasks), and n8n picks where the task runs.
 - **When does the role change?** At any time. Check the role at each action, and react to a change with `@OnLeaderTakeover` and `@OnLeaderStepdown`.
 - **Can two leaders coexist?** Yes. If the leader loses Redis, the leader keeps its role until Redis is back, but another main takes the key after 10 seconds. Leader code must stay correct when two mains run it at once.
 

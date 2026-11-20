@@ -1,6 +1,6 @@
 ---
 title: Agent publication
-last_reviewed: 2026-11-06
+last_reviewed: 2026-11-20
 contact: bjorger
 ---
 
@@ -25,7 +25,7 @@ sequenceDiagram
 
 ## Versions
 
-Like a workflow, an agent has a **draft**, which is the last saved version, and a **published version**, which answers messages in production. Publishing makes a saved version the published version. A user can also republish an older version.
+Like a workflow, an agent has a **draft** and a **published version**. The published version answers messages in production. When you publish the draft, n8n saves a new version if any skill that the draft follows has changed. A user can also republish an older version with its original skill versions. Archiving a published agent unpublishes it. To run it in production again, unarchive it and publish it again.
 
 ## Checks
 
@@ -45,13 +45,14 @@ Each main keeps the agents that it ran recently in a cache, ready to answer. The
 
 ## Agent triggers
 
-Besides messages from the editor, two kinds of **triggers** can start an agent: chat integrations and schedules. A chat integration starts the agent when a user of the chat app sends a message. A schedule starts the agent at set times.
+Besides messages from the editor, chat integrations, the API channel, and schedules can start an agent. A chat integration starts the agent when a user of the chat app sends a message. The API channel starts the published agent when an external caller sends an HTTP request. A schedule starts the agent at set times.
 
-The main starts the triggers of the published version, and asks the other mains to start their chat integrations. Then the main answers the editor.
+The main starts the schedules and chat integrations of the published version. It asks the other mains to start their chat integrations, then answers the editor. The API channel serves requests without a separate connection to start.
 
 | Trigger | Where it runs |
 |---|---|
 | Chat integration | On every main, or only on the leader if the integration polls or keeps a connection open |
+| API channel | On the main that receives the HTTP request |
 | Schedule | On the leader |
 
 In your session from [Start here](README.md), your agent had no triggers, so the main started nothing.
@@ -85,6 +86,6 @@ Each main regularly compares the chat integrations that run on the main with the
 
 1. B. The main detects the second publication, so the second request fails.
 2. B. A failed chat integration does not make the publication fail. Each main starts the missing chat integrations later.
-3. A. Agent publication does not go through an outbox. The main starts the triggers, and then answers.
+3. A. Agent publication does not go through an outbox. The main starts the schedules and chat integrations, and then answers.
 
 </details>
