@@ -27,7 +27,7 @@ import {
 	type WorkflowRepository,
 	type WorkflowPublishedVersionRepository,
 } from '@n8n/db';
-import { In } from '@n8n/typeorm';
+import { In, QueryFailedError } from '@n8n/typeorm';
 import type { EntityManager } from '@n8n/typeorm';
 import * as fastGlob from 'fast-glob';
 import { type InstanceSettings } from 'n8n-core';
@@ -3251,6 +3251,30 @@ describe('SourceControlImportService', () => {
 			const result = await service.getRemoteVariablesFromFile();
 
 			expect(result).toHaveLength(0);
+		});
+	});
+
+	describe('importVariablesFromWorkFolder', () => {
+		it('keeps the local value when adopting a same-key variable with a different id', async () => {
+			// The local instance created VAR1 independently (id local1, real value set);
+			// Git tracks it under the upstream id remote1 with the sync placeholder value ''.
+			variablesRepository.find.mockResolvedValue([mock<Variables>({ id: 'local1', key: 'VAR1' })]);
+			variablesRepository.upsert.mockRejectedValue(
+				new QueryFailedError('insert', [], Object.assign(new Error('duplicate key'), { code: '23505' })),
+			);
+			fsReadFile.mockResolvedValue(
+				JSON.stringify([{ id: 'remote1', key: 'VAR1', value: '', type: 'string' }]),
+			);
+
+			await service.importVariablesFromWorkFolder(
+				mock<SourceControlledFile>({ file: '/mock/n8n/git/variable_stubs.json' }),
+			);
+
+			const updateCall = variablesRepository.update.mock.calls.at(-1);
+			expect(updateCall?.[0]).toEqual({ key: 'VAR1' });
+			expect(updateCall?.[1]).toMatchObject({ id: 'remote1' });
+			// The remote '' is the sync placeholder for an instance-local value: keep the local one.
+			expect(updateCall?.[1]?.value).toBeUndefined();
 		});
 	});
 
