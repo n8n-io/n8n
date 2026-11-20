@@ -70,10 +70,13 @@ describe('QuestDb connection config', () => {
 	it.each([
 		['a fingerprint', 'AA:BB:CC:DD'],
 		['a truncated paste', '-----BEGIN CERTIFICATE-----\nMIIBkTCB'],
+		['a private key', '-----BEGIN PRIVATE KEY-----\nMIIBkTCB\n-----END PRIVATE KEY-----'],
 	])(
 		'refuses a CA that is %s, instead of failing later in the handshake',
 		(_case, caCertificate) => {
-			expect(() => configFor({ ssl: 'require', caCertificate })).toThrow('not a valid PEM block');
+			expect(() => configFor({ ssl: 'require', caCertificate })).toThrow(
+				'not a valid PEM certificate',
+			);
 		},
 	);
 
