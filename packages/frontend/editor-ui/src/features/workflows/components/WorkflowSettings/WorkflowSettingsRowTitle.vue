@@ -37,7 +37,7 @@ const i18n = useI18n();
 			<button
 				type="button"
 				:class="$style.help"
-				:aria-label="i18n.baseText('generic.moreInfo')"
+				:aria-label="i18n.baseText('workflowSettings.helpIcon.label', { interpolate: { title } })"
 				data-test-id="workflow-settings-help-icon"
 			>
 				<N8nIcon icon="circle-help" />

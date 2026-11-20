@@ -34,7 +34,7 @@ describe('WorkflowSettingsRowTitle', () => {
 			props: { title: 'Timezone', tooltip: 'The timezone of the workflow' },
 		});
 
-		const helpButton = getByRole('button', { name: 'More info' });
+		const helpButton = getByRole('button', { name: 'More info about Timezone' });
 		await userEvent.tab();
 
 		expect(helpButton).toHaveFocus();
