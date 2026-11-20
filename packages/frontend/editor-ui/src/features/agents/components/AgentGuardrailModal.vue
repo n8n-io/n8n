@@ -640,12 +640,11 @@ function onRemove() {
 	border-radius: var(--radius--md);
 }
 
-/* Spans the group's full inner width, like the capabilities divider. */
 .divider {
 	flex: initial;
 	height: 1px;
 	background-color: var(--border-color--subtle);
-	margin-inline: calc(var(--spacing--2xs) * -1);
+	margin-inline: calc(var(--spacing--sm) * -1);
 }
 
 .kindOptions {
