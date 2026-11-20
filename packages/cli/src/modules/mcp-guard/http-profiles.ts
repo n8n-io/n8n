@@ -1,6 +1,6 @@
 import { isRecord } from '@n8n/utils/is-record';
 import { looksLikeId, type HttpToolArgs } from './http-tool-caller';
-import type { PathSecretPattern } from './path-secret';
+import { REDACTED_SECRET, type PathSecretPattern } from './path-secret';
 
 /** What the guard needs to run one HTTP vendor on a gym. The instructions are in `vendors/<name>.md`. */
 export interface HttpVendorProfile {
@@ -180,4 +180,61 @@ export const GMAIL_PROFILE: HttpVendorProfile = {
 	},
 };
 
-export const HTTP_PROFILES: readonly HttpVendorProfile[] = [GMAIL_PROFILE];
+// `/bot<token>/<method>` and `/file/bot<token>/<path>`. Group 1 is `/bot`, group 2 is the token.
+const TELEGRAM_PATH_SECRET: PathSecretPattern = /^(\/(?:file\/)?bot)([^/]+)/;
+const TELEGRAM_BASE = `/bot${REDACTED_SECRET}`;
+const MAX_CHAT_ID = 128;
+
+// A chat id is a number or text such as `@name`. It sits in the body, or in the query of a GET.
+// It can be short, so `looksLikeId` is no help: look at the field itself.
+function chatIdOf(args: Record<string, unknown>): string | undefined {
+	const raw = isRecord(args.body) ? args.body.chat_id : undefined;
+	const fromQuery = isRecord(args.query) ? args.query.chat_id : undefined;
+	return idText(raw ?? fromQuery);
+}
+
+function idText(raw: unknown): string | undefined {
+	const id = typeof raw === 'number' ? String(raw) : raw;
+	return typeof id === 'string' && id !== '' && id.length <= MAX_CHAT_ID ? id : undefined;
+}
+
+const methodOf = (path: string): string => path.split('/').pop() ?? '';
+
+export const TELEGRAM_PROFILE: HttpVendorProfile = {
+	name: 'telegram',
+	defaultAdminUrl: 'http://127.0.0.1:9097',
+	defaultGymUrl: 'http://127.0.0.1:8087',
+	credentialKind: 'bot_token',
+	credentialField: 'accessToken',
+	placeholderSeed: {
+		world_version: 1,
+		persona: {
+			ref: 'person:me',
+			name: 'Guard',
+			email: 'guard@unknown.invalid',
+			telegram: { username: 'guard_user', first_name: 'Guard', started: true },
+		},
+	},
+	pathSecret: TELEGRAM_PATH_SECRET,
+	lookups: (tool, args) => {
+		// A write on a chat needs that chat in the gym. The real chat gives its type, title and name.
+		const chat = tool.startsWith('write_') ? chatIdOf(args) : undefined;
+		return chat === undefined
+			? []
+			: [
+					{
+						tool: 'read_getChat',
+						args: { method: 'POST', path: `${TELEGRAM_BASE}/getChat`, body: { chat_id: chat } },
+					},
+				];
+	},
+	hydrateRead: (args) => {
+		// The gym has its own bot. A file has no content in a copy.
+		if (args.path.startsWith('/file/')) return false;
+		return !['getMe', 'getFile'].includes(methodOf(args.path));
+	},
+	// The gym makes its own chat ids, so an id of the gym never equals a real chat id. Check the field.
+	hydrateWrite: (args) => chatIdOf(args) !== undefined,
+};
+
+export const HTTP_PROFILES: readonly HttpVendorProfile[] = [GMAIL_PROFILE, TELEGRAM_PROFILE];
