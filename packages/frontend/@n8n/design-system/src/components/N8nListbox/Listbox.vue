@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { reactivePick } from '@vueuse/core';
-import { computed, getCurrentInstance, ref } from 'vue';
+import { computed, getCurrentInstance, onBeforeUnmount, onMounted, ref } from 'vue';
 
 import type { ListboxProps, ListboxSlots, ListboxValue } from './Listbox.types';
 import { ListboxContent, ListboxRoot, useForwardProps, type AcceptableValue } from './reka-ui';
@@ -174,6 +174,36 @@ function isTabStop(element: HTMLElement) {
 		element.closest('[hidden]') === null
 	);
 }
+
+const contentRef = ref<unknown>(null);
+
+function contentElement(): HTMLElement | null {
+	const target = contentRef.value;
+	const root =
+		target instanceof HTMLElement
+			? target
+			: target && typeof target === 'object' && '$el' in target && target.$el instanceof HTMLElement
+				? target.$el
+				: null;
+	if (!root) return null;
+	return root.getAttribute('role') === 'listbox' ? root : root.querySelector('[role="listbox"]');
+}
+
+// Hover focuses the row under the pointer. That focus closes a menu opened from a row.
+function onPointerMove(event: Event) {
+	const listbox = event.currentTarget;
+	if (!(listbox instanceof HTMLElement)) return;
+	if (!listbox.querySelector('[aria-expanded="true"][aria-haspopup="menu"]')) return;
+	event.stopPropagation();
+}
+
+onMounted(() => {
+	contentElement()?.addEventListener('pointermove', onPointerMove, true);
+});
+
+onBeforeUnmount(() => {
+	contentElement()?.removeEventListener('pointermove', onPointerMove, true);
+});
 </script>
 
 <template>
@@ -183,7 +213,12 @@ function isTabStop(element: HTMLElement) {
 		:model-value="rootModelValue"
 		@update:model-value="onModelUpdate"
 	>
-		<ListboxContent :class="$style.content" :aria-label="label" @keydown="onKeydown">
+		<ListboxContent
+			ref="contentRef"
+			:class="$style.content"
+			:aria-label="label"
+			@keydown="onKeydown"
+		>
 			<slot />
 		</ListboxContent>
 	</ListboxRoot>

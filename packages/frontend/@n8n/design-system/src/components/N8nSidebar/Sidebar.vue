@@ -23,8 +23,12 @@ const emit = defineEmits<{
 }>();
 
 defineSlots<{
+	/** Content above the scrolling body. This region stays in place. */
+	header?: () => unknown;
 	/** Sidebar body. The caller supplies the content. This region scrolls. */
 	default?: () => unknown;
+	/** Content below the scrolling body. This region stays in place. */
+	footer?: () => unknown;
 }>();
 
 const startingWidth = width.value;
@@ -105,9 +109,15 @@ function onResize(data: ResizeData) {
 			@resize="onResize"
 		>
 			<aside :class="[$style.sidebar, $style[side]]" :aria-label="label" data-test-id="sidebar">
+				<div v-if="$slots.header">
+					<slot name="header" />
+				</div>
 				<N8nScrollArea :class="$style.scroller" edge-fade="y">
 					<slot />
 				</N8nScrollArea>
+				<div v-if="$slots.footer">
+					<slot name="footer" />
+				</div>
 			</aside>
 		</N8nResizeWrapper>
 	</div>
@@ -124,6 +134,7 @@ function onResize(data: ResizeData) {
 }
 
 .scroller {
+	flex: 1;
 	padding: var(--n8n-sidebar--padding, var(--spacing--2xs));
 }
 

@@ -12,8 +12,10 @@ A layout that needs a resize handle and its own markup uses `N8nResizeWrapper` i
 
 ```
 N8nSidebar
+├── header slot (when set)
 ├── scroll area
 │   └── default slot
+├── footer slot (when set)
 └── resize handle (when resizable)
 ```
 
@@ -37,7 +39,9 @@ N8nSidebar
 
 **Slots**
 
+- `header` Content above the scrolling body. This region stays in place. Omit the slot and the region is absent.
 - `default` Sidebar body. This region scrolls. The caller supplies the content and the behaviour. A selectable list is an `N8nListbox` in this slot. A form is inputs in this slot. A control’s click handler lives on that control.
+- `footer` Content below the scrolling body. This region stays in place. Omit the slot and the region is absent.
 
 **Tokens**
 
@@ -48,7 +52,7 @@ Set a token on the sidebar. The sidebar uses the token. When the token is unset,
 
 A list uses the default padding. A form sets a larger padding on the sidebar.
 
-The sidebar fills the height of its parent. The default slot scrolls in an `N8nScrollArea`. The area fades at the top and the bottom when the content overflows. Content beside the sidebar scrolls on its own when that content has its own overflow.
+The sidebar fills the height of its parent. The default slot scrolls in an `N8nScrollArea`. The area fades at the top and the bottom when the content overflows. The header and the footer stay in place. Content beside the sidebar scrolls on its own when that content has its own overflow.
 
 **Types**
 
@@ -180,6 +184,22 @@ const name = ref('Weekly digest');
 		<N8nInput id="sidebar-name" v-model="name" size="small" />
 	</N8nSidebar>
 </template>
+```
+
+**Pinned header and footer**
+
+The search stays at the top. The action stays at the bottom. The list between them scrolls.
+
+```vue
+<N8nSidebar v-model:width="width" label="Files" style="--n8n-sidebar--padding: 0">
+	<template #header>
+		<!-- Search or a title. -->
+	</template>
+	<!-- The list. This region scrolls. -->
+	<template #footer>
+		<!-- An action that stays at the bottom. -->
+	</template>
+</N8nSidebar>
 ```
 
 **Inside a dialog**

@@ -20,13 +20,18 @@ import N8nTooltip from '../N8nTooltip';
 import N8nListbox from '../N8nListbox/Listbox.vue';
 import N8nListboxItem from '../N8nListbox/ListboxItem.vue';
 import N8nSidebar from './Sidebar.vue';
-import type { IMenuItem } from '../../types';
 
-function menuIcon(item: IMenuItem) {
-	return typeof item.icon === 'string' ? item.icon : undefined;
+type SidebarFile = {
+	id: string;
+	label: string;
+	icon?: string;
+};
+
+function menuIcon(item: SidebarFile) {
+	return item.icon;
 }
 
-const links: IMenuItem[] = [
+const links: SidebarFile[] = [
 	{ id: 'overview', label: 'Overview', icon: 'house' },
 	{ id: 'workflows', label: 'Workflows', icon: 'workflow' },
 	{ id: 'executions', label: 'Executions', icon: 'clock' },
@@ -56,15 +61,20 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+const hairline = '1px solid var(--border-color--subtle)';
+
+// The sidebar border is translucent and sits on the sidebar fill.
+// This solid pair is that same line, so the frame matches it on the page.
+const frameBorder = '1px solid light-dark(var(--color--neutral-200), var(--color--neutral-700))';
+
 const frameStyle = [
 	'display: flex',
 	'height: 28rem',
 	'width: 48rem',
 	'max-width: 100%',
-	'border: var(--border)',
+	`border: ${frameBorder}`,
 	'border-radius: var(--radius--lg)',
 	'overflow: hidden',
-	'background: var(--background--surface)',
 ].join('; ');
 
 const editorFrameStyle = frameStyle.replace('height: 28rem', 'height: 36rem');
@@ -76,7 +86,7 @@ const mainStyle = [
 	'flex: 1',
 	'min-width: 0',
 	'padding: var(--spacing--md)',
-	'color: var(--color--text)',
+	'color: var(--text-color)',
 ].join('; ');
 
 const editorLayoutStyle = [
@@ -88,6 +98,19 @@ const editorLayoutStyle = [
 	'overflow: hidden',
 ].join('; ');
 
+const sidebarColumnStyle = ['display: flex', 'height: 100%', 'min-height: 0', 'min-width: 0'].join(
+	'; ',
+);
+
+const dialogSidebarFill = 'var(--background--subtle)';
+
+const dialogBodyStyle = [
+	'padding: 0',
+	'overflow: hidden',
+	`border-block-start: ${hairline}`,
+	`--n8n-sidebar--color--background: ${dialogSidebarFill}`,
+].join('; ');
+
 const dialogMainStyle = [
 	'display: flex',
 	'flex-direction: column',
@@ -97,15 +120,28 @@ const dialogMainStyle = [
 	'min-height: 0',
 	'overflow: auto',
 	'padding: var(--spacing--md)',
-	'color: var(--color--text)',
+	'color: var(--text-color)',
 ].join('; ');
 
 const contentStyle = ['display: flex', 'flex-direction: column', 'gap: var(--spacing--sm)'].join(
 	'; ',
 );
 
-// Start padding matches the list row, so the label lines up with the row icon.
-// End padding is 0 so the add button sits on the content edge.
+const pinnedBarStyle = [
+	'display: flex',
+	'flex: none',
+	'align-items: center',
+	'min-width: 0',
+	'padding-block: var(--spacing--xs)',
+	'padding-inline: var(--spacing--sm)',
+].join('; ');
+
+const pinnedHeaderStyle = `${pinnedBarStyle}; border-block-end: ${hairline}`;
+
+const pinnedFooterStyle = `${pinnedBarStyle}; border-block-start: ${hairline}`;
+
+const pinnedListStyle = ['padding: var(--spacing--2xs)'].join('; ');
+
 const sectionHeaderStyle = [
 	'display: flex',
 	'align-items: center',
@@ -116,7 +152,6 @@ const sectionHeaderStyle = [
 	'padding-inline: var(--spacing--xs) 0',
 ].join('; ');
 
-// A label beside a control stays on one line when the sidebar is narrow.
 const singleLineStyle = [
 	'min-width: 0',
 	'overflow: hidden',
@@ -124,8 +159,6 @@ const singleLineStyle = [
 	'white-space: nowrap',
 ].join('; ');
 
-// A story template drops a <style> tag, so the reset lives on the element.
-// Hover, padding, and radius live in the injected sheet so they can match a ghost button.
 const sectionToggleStyle = [
 	'appearance: none',
 	'border: 0',
@@ -162,7 +195,7 @@ export const WithLinks: Story = {
 		docs: {
 			description: {
 				story:
-					'Each row has a delete button and an actions menu. The delete button has a tooltip. The menu can rename, duplicate, or delete the row. A click on either control does not change the selection.',
+					'Each row shows a delete button and an actions menu. The menu opens. Choosing an item does not change the list.',
 			},
 		},
 	},
@@ -179,78 +212,16 @@ export const WithLinks: Story = {
 		},
 		setup() {
 			const width = ref(240);
-			const items = ref(links.map((item) => ({ ...item })));
-			const activeId = ref(items.value[0]?.id ?? '');
-			let copyCount = 0;
+			const activeId = ref(links[0]?.id ?? '');
 
-			function selectNext(id: string, index: number) {
-				if (activeId.value !== id) {
-					return;
-				}
-
-				const next = items.value[index] ?? items.value[index - 1];
-				activeId.value = next?.id ?? '';
-			}
-
-			function deleteItem(id: string) {
-				const index = items.value.findIndex((item) => item.id === id);
-				items.value = items.value.filter((item) => item.id !== id);
-				selectNext(id, index);
-			}
-
-			function duplicateItem(id: string) {
-				const index = items.value.findIndex((item) => item.id === id);
-				const source = items.value[index];
-				if (!source) {
-					return;
-				}
-
-				copyCount += 1;
-				const copy = {
-					...source,
-					id: `${source.id}-copy-${copyCount}`,
-					label: `${source.label} copy`,
-				};
-				items.value = [...items.value.slice(0, index + 1), copy, ...items.value.slice(index + 1)];
-			}
-
-			function renameItem(id: string) {
-				items.value = items.value.map((item) =>
-					item.id === id ? { ...item, label: `${item.label} renamed` } : item,
-				);
-			}
-
-			function onRowAction(id: string, actionId: 'rename' | 'duplicate' | 'delete') {
-				if (actionId === 'delete') {
-					deleteItem(id);
-					return;
-				}
-
-				if (actionId === 'duplicate') {
-					duplicateItem(id);
-					return;
-				}
-
-				renameItem(id);
-			}
-
-			return {
-				args,
-				width,
-				items,
-				activeId,
-				deleteItem,
-				onRowAction,
-				rowActions,
-				menuIcon,
-			};
+			return { args, width, activeId, links, rowActions, menuIcon };
 		},
 		template: `
 			<div style="${frameStyle}">
 				<N8nSidebar v-model:width="width" v-bind="args" label="Links">
 					<N8nListbox v-model="activeId" label="Links" style="width: 100%">
 						<N8nListboxItem
-							v-for="item in items"
+							v-for="item in links"
 							:key="item.id"
 							:value="item.id"
 						>
@@ -259,40 +230,44 @@ export const WithLinks: Story = {
 							</template>
 							{{ item.label }}
 							<template #trailing>
-								<N8nTooltip content="Delete" placement="top" as-child>
-									<N8nIconButton
-										icon="trash-2"
-										variant="ghost"
-										size="xsmall"
-										:aria-label="'Delete ' + item.label"
-										@click.stop="deleteItem(item.id)"
-									/>
-								</N8nTooltip>
-								<N8nDropdownMenu
-									:items="rowActions"
-									placement="bottom-end"
-									width="12rem"
-									:modal="false"
-									@select="(actionId) => onRowAction(item.id, actionId)"
+								<span
+									style="display: inline-flex; align-items: center"
+									@click.stop
+									@keydown.enter.stop
+									@keydown.space.stop
 								>
-									<template #trigger>
-										<N8nTooltip content="Actions" placement="top" as-child>
-											<N8nIconButton
-												icon="ellipsis-vertical"
-												variant="ghost"
-												size="xsmall"
-												:aria-label="'Actions for ' + item.label"
-												@click.stop
-											/>
-										</N8nTooltip>
-									</template>
-								</N8nDropdownMenu>
+									<N8nTooltip content="Delete" placement="top" as-child>
+										<N8nIconButton
+											icon="trash-2"
+											variant="ghost"
+											size="xsmall"
+											:aria-label="'Delete ' + item.label"
+										/>
+									</N8nTooltip>
+									<N8nDropdownMenu
+										:items="rowActions"
+										placement="bottom-end"
+										width="12rem"
+										:modal="false"
+									>
+										<template #trigger>
+											<N8nTooltip content="Actions" placement="top" as-child>
+												<N8nIconButton
+													icon="ellipsis-vertical"
+													variant="ghost"
+													size="xsmall"
+													:aria-label="'Actions for ' + item.label"
+												/>
+											</N8nTooltip>
+										</template>
+									</N8nDropdownMenu>
+								</span>
 							</template>
 						</N8nListboxItem>
 					</N8nListbox>
 				</N8nSidebar>
 				<div style="${mainStyle}">
-					<N8nText bold size="medium">{{ items.find((item) => item.id === activeId)?.label || 'No links' }}</N8nText>
+					<N8nText bold size="medium">{{ links.find((item) => item.id === activeId)?.label }}</N8nText>
 				</div>
 			</div>
 		`,
@@ -310,12 +285,11 @@ type FileSection = {
 	id: string;
 	label: string;
 	addLabel: string;
-	/** A collapsible section hides its files. A fixed section stays open. */
 	collapsible: boolean;
-	items: IMenuItem[];
+	items: SidebarFile[];
 };
 
-const readme: IMenuItem = { id: 'readme', label: 'README.md', icon: 'file-text' };
+const readme: SidebarFile = { id: 'readme', label: 'README.md', icon: 'file-text' };
 
 const fileSections: FileSection[] = [
 	{
@@ -762,7 +736,6 @@ function blocksFor(id: string): FileBlock[] {
 	return [{ text: lead }, ...(sectionNotes[sectionId] ?? newFileNotes)];
 }
 
-// Shared by With Sections and In Dialog. The add dialog stacks so it can open on top of In Dialog.
 const PluginFilesEditor = defineComponent({
 	name: 'PluginFilesEditor',
 	components: {
@@ -851,7 +824,7 @@ const PluginFilesEditor = defineComponent({
 
 			addedCount += 1;
 			const icon = section.items[0]?.icon;
-			const item: IMenuItem = {
+			const item: SidebarFile = {
 				id: `${section.id}-new-${addedCount}`,
 				label,
 				icon: typeof icon === 'string' ? icon : 'file',
@@ -893,6 +866,10 @@ const PluginFilesEditor = defineComponent({
 				'outline: var(--focus--border-width) solid var(--focus--outline-color);',
 				'outline-offset: calc(var(--focus--border-width) * -1);',
 				'}',
+				// The dialog does not clip. Round the sidebar corner that sits on the frame.
+				'.sidebar-dialog [data-test-id="sidebar"] {',
+				'border-end-start-radius: var(--radius--lg);',
+				'}',
 			].join(' ');
 		});
 
@@ -918,6 +895,7 @@ const PluginFilesEditor = defineComponent({
 	},
 	template: `
 		<div class="plugin-files-editor" style="${editorLayoutStyle}">
+			<div style="${sidebarColumnStyle}">
 			<N8nSidebar
 				v-model:width="width"
 				:side="side"
@@ -926,6 +904,7 @@ const PluginFilesEditor = defineComponent({
 				:max-width="maxWidth"
 				:width-storage-id="widthStorageId"
 				label="Plugin files"
+				style="height: 100%"
 			>
 				<N8nListbox v-model="activeId" label="Plugin files" style="width: 100%">
 					<N8nListboxItem :value="readme.id">
@@ -973,6 +952,7 @@ const PluginFilesEditor = defineComponent({
 					</template>
 				</N8nListbox>
 			</N8nSidebar>
+			</div>
 			<div ref="filePane" style="${dialogMainStyle}">
 				<N8nText bold size="large" tag="h2" style="margin: 0;">{{ activeFile?.label }}</N8nText>
 				<template v-for="(block, index) in activeBlocks" :key="index">
@@ -1072,6 +1052,100 @@ export const WithCustomContent: Story = {
 	},
 };
 
+const pinnedFiles = [
+	'README.md',
+	'package.json',
+	'workflow.ts',
+	'credentials.ts',
+	'trigger.ts',
+	'actions.ts',
+	'schema.json',
+	'icon.svg',
+	'locales/en.json',
+	'locales/de.json',
+	'locales/fr.json',
+	'tests/run.spec.ts',
+	'tests/auth.spec.ts',
+	'docs/setup.md',
+	'docs/api.md',
+	'CHANGELOG.md',
+];
+
+export const WithHeaderAndFooter: Story = {
+	parameters: {
+		docs: {
+			description: {
+				story:
+					'The search stays at the top. The footer stays at the bottom. The list between them scrolls. The list fades when it overflows.',
+			},
+		},
+	},
+	render: (args) => ({
+		components: {
+			N8nSidebar,
+			N8nListbox,
+			N8nListboxItem,
+			N8nIcon,
+			N8nInput,
+			N8nText,
+			N8nButton,
+		},
+		setup() {
+			const width = ref(240);
+			const query = ref('');
+			const activeId = ref(pinnedFiles[0] ?? '');
+			const visibleFiles = computed(() => {
+				const term = query.value.trim().toLowerCase();
+				if (term === '') return pinnedFiles;
+				return pinnedFiles.filter((file) => file.toLowerCase().includes(term));
+			});
+			return { args, width, query, activeId, visibleFiles };
+		},
+		template: `
+			<div style="${frameStyle}">
+				<N8nSidebar v-model:width="width" v-bind="args" label="Files" style="--n8n-sidebar--padding: 0">
+					<template #header>
+						<div style="${pinnedHeaderStyle}">
+							<N8nInput v-model="query" size="small" placeholder="Search files" aria-label="Search files" style="width: 100%">
+								<template #prefix>
+									<N8nIcon icon="search" size="small" />
+								</template>
+							</N8nInput>
+						</div>
+					</template>
+					<div style="${pinnedListStyle}">
+						<N8nListbox v-if="visibleFiles.length > 0" v-model="activeId" label="Files" style="width: 100%">
+							<N8nListboxItem v-for="file in visibleFiles" :key="file" :value="file">
+								<template #leading>
+									<N8nIcon icon="file-text" />
+								</template>
+								{{ file }}
+							</N8nListboxItem>
+						</N8nListbox>
+						<N8nText v-else size="small" color="text-base">No matching files</N8nText>
+					</div>
+					<template #footer>
+						<div style="${pinnedFooterStyle}">
+							<N8nButton variant="outline" size="small" label="Add file" style="width: 100%" />
+						</div>
+					</template>
+				</N8nSidebar>
+				<div style="${mainStyle}">
+					<N8nText bold size="medium">{{ activeId }}</N8nText>
+					<N8nText size="small" color="text-base">Scroll the file list. The search and the footer stay in place.</N8nText>
+				</div>
+			</div>
+		`,
+	}),
+	args: {
+		side: 'left',
+		resizable: true,
+		minWidth: 180,
+		maxWidth: 360,
+		widthStorageId: 'n8n-sidebar-header-footer-width',
+	},
+};
+
 export const RightSide: Story = {
 	render: (args) => ({
 		components: { N8nSidebar, N8nListbox, N8nListboxItem, N8nIcon, N8nText },
@@ -1135,11 +1209,11 @@ export const InDialog: Story = {
 		template: `
 			<div>
 				<N8nButton variant="solid" label="Open dialog" @click="isOpen = true" />
-				<N8nDialog v-model:open="isOpen" size="cover" aria-label="Research plugin">
+				<N8nDialog class="sidebar-dialog" v-model:open="isOpen" size="cover" aria-label="Research plugin">
 					<N8nDialogHeader>
 						<N8nDialogTitle>Research plugin</N8nDialogTitle>
 					</N8nDialogHeader>
-					<N8nDialogBody style="padding: 0; overflow: hidden; border-block: var(--border);">
+					<N8nDialogBody style="${dialogBodyStyle}">
 						<PluginFilesEditor v-bind="args" />
 					</N8nDialogBody>
 				</N8nDialog>

@@ -120,6 +120,22 @@ const DisabledList = defineComponent({
 	`,
 });
 
+const OpenMenuHarness = defineComponent({
+	components: { N8nListbox, N8nListboxItem },
+	template: `
+		<div>
+			<div role="menu" tabindex="-1">Rename</div>
+			<N8nListbox label="Versions">
+				<N8nListboxItem value="v2">
+					v2
+					<button type="button" aria-expanded="true" aria-haspopup="menu">Actions</button>
+				</N8nListboxItem>
+				<N8nListboxItem value="v1">v1</N8nListboxItem>
+			</N8nListbox>
+		</div>
+	`,
+});
+
 const HoverHarness = defineComponent({
 	components: { N8nListbox, N8nListboxItem },
 	setup() {
@@ -473,6 +489,18 @@ describe('N8nListbox', () => {
 
 		expect(getByRole('option', { name: 'v1' })).toHaveAttribute('data-highlighted');
 		expect(getByRole('option', { name: 'v2' })).not.toHaveAttribute('data-highlighted');
+	});
+
+	it('keeps an open row menu focused when the pointer leaves the row', async () => {
+		const { getByRole } = render(OpenMenuHarness);
+		await nextTick();
+		const menu = getByRole('menu');
+		menu.focus();
+
+		await userEvent.hover(getByRole('option', { name: 'v1' }));
+
+		expect(menu).toHaveFocus();
+		expect(getByRole('option', { name: 'v1' })).not.toHaveAttribute('data-highlighted');
 	});
 
 	it('moves Tab from a control inside an item to the next item', async () => {
