@@ -1,4 +1,6 @@
 import { isRecord } from '@n8n/utils/is-record';
+import { GOOGLE_SHEETS_PROFILE } from './google-sheets-profile';
+import { isRecord } from '@n8n/utils/is-record';
 import { looksLikeId, type HttpToolArgs } from './http-tool-caller';
 import type { PathSecretPattern } from './path-secret';
 
@@ -180,4 +182,4 @@ export const GMAIL_PROFILE: HttpVendorProfile = {
 	},
 };
 
-export const HTTP_PROFILES: readonly HttpVendorProfile[] = [GMAIL_PROFILE];
+export const HTTP_PROFILES: readonly HttpVendorProfile[] = [GMAIL_PROFILE, GOOGLE_SHEETS_PROFILE];
