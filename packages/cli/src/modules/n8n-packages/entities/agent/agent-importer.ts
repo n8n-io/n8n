@@ -189,6 +189,7 @@ export class AgentImporter {
 					definition,
 					user: context.user,
 					actor: { kind: 'user', user: context.user },
+					ctx: context.ctx,
 				});
 			} else {
 				agent = await this.configService.replaceDefinition(

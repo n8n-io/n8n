@@ -1359,6 +1359,139 @@ describe('LogStreamingEventRelay', () => {
 			});
 		});
 
+		it('should log on `agent-service-account-created` event', () => {
+			const event: RelayEventMap['agent-service-account-created'] = {
+				user: {
+					id: '123',
+					email: 'john@n8n.io',
+					firstName: 'John',
+					lastName: 'Doe',
+					role: { slug: 'some-role' },
+				},
+				serviceAccountId: 'sa-1',
+				agentId: 'agent-1',
+				projectId: 'proj-1',
+			};
+
+			eventService.emit('agent-service-account-created', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.agent.service-account.created',
+				payload: {
+					userId: '123',
+					_email: 'john@n8n.io',
+					_firstName: 'John',
+					_lastName: 'Doe',
+					globalRole: 'some-role',
+					serviceAccountId: 'sa-1',
+					agentId: 'agent-1',
+					projectId: 'proj-1',
+				},
+			});
+		});
+
+		it('includes the login on an `agent-service-account-created` event of a service account', () => {
+			eventService.emit('agent-service-account-created', {
+				user: { id: 'user-1' },
+				loginId: 'login-1',
+				serviceAccountId: 'sa-1',
+				agentId: 'agent-1',
+				projectId: 'proj-1',
+			});
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.agent.service-account.created',
+				payload: expect.objectContaining({
+					userId: 'user-1',
+					loginId: 'login-1',
+					serviceAccountId: 'sa-1',
+				}),
+			});
+		});
+
+		it('names the system on an `agent-service-account-created` event without a user', () => {
+			eventService.emit('agent-service-account-created', {
+				user: null,
+				source: 'startup',
+				serviceAccountId: 'sa-1',
+				agentId: 'agent-1',
+				projectId: null,
+			});
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.agent.service-account.created',
+				payload: {
+					userId: null,
+					source: 'startup',
+					serviceAccountId: 'sa-1',
+					agentId: 'agent-1',
+					projectId: null,
+				},
+			});
+		});
+
+		it('keeps the user and the source on an `agent-service-account-deleted` event of a project deletion', () => {
+			eventService.emit('agent-service-account-deleted', {
+				user: { id: 'user-1' },
+				source: 'project-deletion',
+				serviceAccountId: 'sa-1',
+				agentId: 'agent-1',
+				projectId: 'proj-1',
+			});
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.agent.service-account.deleted',
+				payload: expect.objectContaining({
+					userId: 'user-1',
+					source: 'project-deletion',
+					serviceAccountId: 'sa-1',
+					agentId: 'agent-1',
+					projectId: 'proj-1',
+				}),
+			});
+		});
+
+		it('includes the execution on an `agent-service-account-created` event of a run', () => {
+			eventService.emit('agent-service-account-created', {
+				user: null,
+				source: 'execution',
+				executionId: 'exec-1',
+				serviceAccountId: 'sa-1',
+				agentId: 'agent-1',
+				projectId: 'proj-1',
+			});
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.agent.service-account.created',
+				payload: expect.objectContaining({
+					userId: null,
+					source: 'execution',
+					executionId: 'exec-1',
+				}),
+			});
+		});
+
+		it('names the system on an `agent-service-account-deleted` event without a user', () => {
+			eventService.emit('agent-service-account-deleted', {
+				user: null,
+				source: 'scim',
+				serviceAccountId: 'sa-1',
+				agentId: 'agent-1',
+				projectId: 'proj-1',
+			});
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.agent.service-account.deleted',
+				payload: {
+					userId: null,
+					source: 'scim',
+					serviceAccountId: 'sa-1',
+					agentId: 'agent-1',
+					projectId: 'proj-1',
+				},
+			});
+		});
+
 		it('should log on `user-invited` event', () => {
 			const event: RelayEventMap['user-invited'] = {
 				user: {
@@ -5034,6 +5167,11 @@ describe('LogStreamingEventRelay', () => {
 					event: 'agent-unarchived',
 					auditName: 'n8n.audit.agent.unarchived',
 					payload: { user, agentId: 'agent-1', projectId: 'proj-1' },
+				},
+				{
+					event: 'agent-service-account-deleted',
+					auditName: 'n8n.audit.agent.service-account.deleted',
+					payload: { user, serviceAccountId: 'sa-1', agentId: 'agent-1', projectId: 'proj-1' },
 				},
 			]);
 		});

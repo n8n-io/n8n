@@ -121,6 +121,8 @@ export class LogStreamingEventRelay extends EventRelay {
 			'workflow-unarchived': (event) => this.workflowUnarchived(event),
 			'agent-archived': (event) => this.agentArchived(event),
 			'agent-unarchived': (event) => this.agentUnarchived(event),
+			'agent-service-account-created': (event) => this.agentServiceAccountCreated(event),
+			'agent-service-account-deleted': (event) => this.agentServiceAccountDeleted(event),
 			'workflow-activated': (event) => this.workflowActivated(event),
 			'workflow-deactivated': (event) => this.workflowDeactivated(event),
 			'workflow-deactivated-by-system': (event) => this.workflowDeactivatedBySystem(event),
@@ -373,6 +375,42 @@ export class LogStreamingEventRelay extends EventRelay {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.agent.unarchived',
 			payload: { ...user, agentId, projectId, ...(loginId !== undefined && { loginId }) },
+		});
+	}
+
+	@Redactable()
+	private agentServiceAccountCreated({
+		user,
+		source,
+		loginId,
+		...target
+	}: RelayEventMap['agent-service-account-created']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.agent.service-account.created',
+			// Without a user, name the system as the actor.
+			payload: user
+				? { ...user, ...target, ...(loginId !== undefined && { loginId }) }
+				: { userId: null, source, ...target },
+		});
+	}
+
+	@Redactable()
+	private agentServiceAccountDeleted({
+		user,
+		source,
+		loginId,
+		...target
+	}: RelayEventMap['agent-service-account-deleted']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.agent.service-account.deleted',
+			payload: user
+				? {
+						...user,
+						...target,
+						...(source && { source }),
+						...(loginId !== undefined && { loginId }),
+					}
+				: { userId: null, source, ...target },
 		});
 	}
 
