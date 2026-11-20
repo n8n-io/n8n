@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
+import { N8nDropdownMenu } from '@n8n/design-system';
 import type { AgentToolGuardrailConfig } from '@n8n/api-types';
 
 import AgentGuardrailModal from '../components/AgentGuardrailModal.vue';
@@ -45,7 +46,7 @@ vi.mock('../components/modals/AgentModal.vue', () => ({
 }));
 
 vi.mock('@n8n/design-system', async (importOriginal) => {
-	const { defineComponent, h, inject, provide } = await import('vue');
+	const { defineComponent } = await import('vue');
 	const actual = await importOriginal<typeof import('@n8n/design-system')>();
 	return {
 		...actual,
@@ -97,34 +98,6 @@ vi.mock('@n8n/design-system', async (importOriginal) => {
 			props: ['value', 'label'],
 			template: '<option :value="value">{{ label }}</option>',
 		},
-		N8nRadioGroup: defineComponent({
-			name: 'N8nRadioGroup',
-			props: ['modelValue'],
-			emits: ['update:modelValue'],
-			setup(_props, { emit, slots }) {
-				provide('agentGuardrailsTestRadioSelect', (value: string) =>
-					emit('update:modelValue', value),
-				);
-				return () => h('div', slots.default?.());
-			},
-		}),
-		N8nRadioGroupItem: defineComponent({
-			name: 'N8nRadioGroupItem',
-			props: ['value', 'label'],
-			setup(props, { attrs }) {
-				const select = inject<(value: string) => void>('agentGuardrailsTestRadioSelect', () => {});
-				return () =>
-					h(
-						'button',
-						{
-							type: 'button',
-							...attrs,
-							onClick: () => select(props.value),
-						},
-						props.label,
-					);
-			},
-		}),
 		N8nInputNumber: defineComponent({
 			name: 'N8nInputNumber',
 			props: [
@@ -207,6 +180,14 @@ function saveButton(wrapper: ReturnType<typeof mountModal>) {
 
 function selectSingle(wrapper: ReturnType<typeof mountModal>, testId: string, value: string) {
 	return wrapper.find(`[data-testid="${testId}"]`).setValue(value);
+}
+
+/** Picks a guardrail kind from the type dropdown menu, as a menu select does. */
+async function pickKind(wrapper: ReturnType<typeof mountModal>, kind: string) {
+	const menu = wrapper.findComponent(N8nDropdownMenu);
+	expect(menu.exists()).toBe(true);
+	menu.vm.$emit('select', kind);
+	await wrapper.vm.$nextTick();
 }
 
 function selectMultiple(wrapper: ReturnType<typeof mountModal>, testId: string, values: string[]) {
@@ -299,7 +280,8 @@ describe('AgentGuardrailModal', () => {
 		await keywordInput.setValue('secret');
 		await keywordInput.trigger('keydown.enter');
 
-		await wrapper.find('[data-testid="agent-guardrail-tools-selected"]').trigger('click');
+		// The "All tools" switch starts on; toggling it off narrows the scope.
+		await wrapper.get('[data-testid="agent-guardrail-tools-all"]').trigger('click');
 		expect(saveButton(wrapper).attributes('disabled')).toBeDefined();
 
 		// The picker lists node and workflow tools with a stable id; the legacy
@@ -358,7 +340,7 @@ describe('AgentGuardrailModal', () => {
 	it('writes prompt and threshold for model kinds after a kind switch', async () => {
 		const wrapper = mountModal();
 
-		await selectSingle(wrapper, 'agent-guardrail-type', 'jailbreak');
+		await pickKind(wrapper, 'jailbreak');
 		await wrapper
 			.find('[data-testid="agent-guardrail-prompt"]')
 			.setValue('Detect prompt injection');
@@ -391,7 +373,7 @@ describe('AgentGuardrailModal', () => {
 
 		await wrapper.find('[data-testid="agent-guardrail-block-userinfo"]').trigger('click');
 		await selectSingle(wrapper, 'agent-guardrail-trigger', 'after');
-		await selectSingle(wrapper, 'agent-guardrail-type', 'secretKeys');
+		await pickKind(wrapper, 'secretKeys');
 		// The permissiveness picker is a segment control; its options carry
 		// radio-button-<value> ids.
 		await wrapper.get('[data-test-id="radio-button-strict"]').trigger('click');
@@ -468,5 +450,19 @@ describe('AgentGuardrailModal', () => {
 
 		await saveButton(wrapper).trigger('click');
 		expect(wrapper.emitted('save')).toBeUndefined();
+	});
+
+	it('always shows the native-tools callout below the tool selection', () => {
+		const wrapper = mountModal();
+
+		const callout = wrapper.find('[data-testid="agent-guardrail-tools-callout"]');
+		expect(callout.exists()).toBe(true);
+		expect(callout.text()).toContain('agents.builder.guardrails.tools.callout');
+		// Below the tool selection, inside the trigger group.
+		const toolsRadio = wrapper.get('[data-testid="agent-guardrail-tools-all"]');
+		expect(
+			toolsRadio.element.compareDocumentPosition(callout.element) &
+				Node.DOCUMENT_POSITION_FOLLOWING,
+		).toBeTruthy();
 	});
 });

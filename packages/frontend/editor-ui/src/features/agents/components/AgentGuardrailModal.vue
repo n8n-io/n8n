@@ -7,12 +7,12 @@ import type {
 } from '@n8n/api-types';
 import {
 	N8nButton,
+	N8nCallout,
+	N8nDropdownMenu,
 	N8nIcon,
 	N8nInput,
 	N8nInputNumber,
 	N8nOption,
-	N8nRadioGroup,
-	N8nRadioGroupItem,
 	N8nSegmentControl,
 	N8nSelect,
 	N8nSwitch2,
@@ -181,6 +181,24 @@ const kindOptions = computed(() =>
 	})),
 );
 
+/** Dropdown-menu items for the guardrail type, with the current kind checked. */
+const kindMenuItems = computed(() =>
+	kindOptions.value.map(({ value, label }) => ({
+		id: value,
+		label,
+		checked: value === selectedKind.value,
+		testId: `agent-guardrail-type-option-${value}`,
+	})),
+);
+
+const selectedKindLabel = computed(
+	() => kindOptions.value.find((option) => option.value === selectedKind.value)?.label ?? '',
+);
+
+function onKindMenuSelect(kind: string) {
+	selectedKind.value = kind as AgentToolGuardrailKind;
+}
+
 const permissivenessOptions = computed(() =>
 	(['strict', 'balanced', 'permissive'] as const).map((value) => ({
 		value,
@@ -278,23 +296,32 @@ function onRemove() {
 	>
 		<div :class="$style.content">
 			<div :class="$style.group" data-testid="agent-guardrail-config-group">
-				<div :class="$style.field">
-					<N8nText size="small" bold>
-						{{ i18n.baseText('agents.builder.guardrails.type.label') }}
-					</N8nText>
-					<N8nSelect
-						:model-value="selectedKind"
-						:disabled="disabled"
-						data-testid="agent-guardrail-type"
-						@update:model-value="selectedKind = $event"
-					>
-						<N8nOption
-							v-for="option in kindOptions"
-							:key="option.value"
-							:value="option.value"
-							:label="option.label"
-						/>
-					</N8nSelect>
+				<div :class="$style.field" data-testid="agent-guardrail-type-field">
+					<div :class="$style.inlineRow">
+						<N8nText size="medium" bold>
+							{{ i18n.baseText('agents.builder.guardrails.type.label') }}
+						</N8nText>
+						<N8nDropdownMenu
+							:items="kindMenuItems"
+							:disabled="disabled"
+							placement="bottom-end"
+							data-testid="agent-guardrail-type-menu"
+							@select="onKindMenuSelect"
+						>
+							<template #trigger>
+								<N8nButton
+									variant="outline"
+									size="small"
+									:disabled="disabled"
+									:class="$style.typeTrigger"
+									data-testid="agent-guardrail-type"
+								>
+									<span :class="$style.typeTriggerLabel">{{ selectedKindLabel }}</span>
+									<N8nIcon icon="chevron-down" size="small" color="text-light" />
+								</N8nButton>
+							</template>
+						</N8nDropdownMenu>
+					</div>
 				</div>
 
 				<div :class="$style.divider" aria-hidden="true" />
@@ -302,7 +329,7 @@ function onRemove() {
 				<div :class="$style.kindOptions" data-testid="agent-guardrail-kind-options">
 					<template v-if="selectedKind === 'keywords'">
 						<div :class="$style.field">
-							<N8nText size="small" bold>
+							<N8nText size="medium" bold>
 								{{ i18n.baseText('agents.builder.guardrails.keywords.label') }}
 								<N8nText color="primary" bold size="small">*</N8nText>
 							</N8nText>
@@ -321,7 +348,7 @@ function onRemove() {
 					<template v-else-if="selectedKind === 'pii'">
 						<div :class="$style.field">
 							<div :class="$style.switchRow">
-								<N8nText size="small" bold>
+								<N8nText size="medium" bold>
 									{{ i18n.baseText('agents.builder.guardrails.pii.label') }}
 								</N8nText>
 								<!-- On, every entity is covered. Off narrows to the picked list below. -->
@@ -341,13 +368,14 @@ function onRemove() {
 							</div>
 						</div>
 						<div v-if="piiType === 'selected'" :class="$style.field">
-							<N8nText size="small" bold>
+							<N8nText size="medium" bold>
 								{{ i18n.baseText('agents.builder.guardrails.pii.entities') }}
 								<N8nText color="primary" bold size="small">*</N8nText>
 							</N8nText>
 							<N8nSelect
 								:model-value="piiEntities"
 								multiple
+								size="small"
 								:disabled="disabled"
 								:class="$style.tagSelect"
 								data-testid="agent-guardrail-pii-entities"
@@ -365,7 +393,7 @@ function onRemove() {
 
 					<template v-else-if="selectedKind === 'secretKeys'">
 						<div :class="$style.field">
-							<N8nText size="small" bold>
+							<N8nText size="medium" bold>
 								{{ i18n.baseText('agents.builder.guardrails.secretKeys.label') }}
 							</N8nText>
 							<N8nSegmentControl
@@ -380,7 +408,7 @@ function onRemove() {
 
 					<template v-else-if="selectedKind === 'urls'">
 						<div :class="$style.field">
-							<N8nText size="small" bold>
+							<N8nText size="medium" bold>
 								{{ i18n.baseText('agents.builder.guardrails.urls.allowedUrls.label') }}
 							</N8nText>
 							<AgentTagInput
@@ -393,7 +421,7 @@ function onRemove() {
 							/>
 						</div>
 						<div :class="$style.field">
-							<N8nText size="small" bold>
+							<N8nText size="medium" bold>
 								{{ i18n.baseText('agents.builder.guardrails.urls.allowedSchemes.label') }}
 							</N8nText>
 							<AgentTagInput
@@ -406,7 +434,7 @@ function onRemove() {
 							/>
 						</div>
 						<div :class="$style.switchRow">
-							<N8nText size="small">
+							<N8nText size="medium">
 								{{ i18n.baseText('agents.builder.guardrails.urls.blockUserinfo.label') }}
 							</N8nText>
 							<N8nSwitch2
@@ -419,7 +447,7 @@ function onRemove() {
 							/>
 						</div>
 						<div :class="$style.switchRow">
-							<N8nText size="small">
+							<N8nText size="medium">
 								{{ i18n.baseText('agents.builder.guardrails.urls.allowSubdomains.label') }}
 							</N8nText>
 							<N8nSwitch2
@@ -435,7 +463,7 @@ function onRemove() {
 
 					<template v-else>
 						<div :class="$style.field">
-							<N8nText size="small" bold>
+							<N8nText size="medium" bold>
 								{{ i18n.baseText('agents.builder.guardrails.model.prompt.label') }}
 							</N8nText>
 							<N8nInput
@@ -452,7 +480,7 @@ function onRemove() {
 							</N8nText>
 						</div>
 						<div :class="$style.field">
-							<N8nText size="small" bold>
+							<N8nText size="medium" bold>
 								{{ i18n.baseText('agents.builder.guardrails.model.threshold.label') }}
 							</N8nText>
 							<N8nInputNumber
@@ -480,12 +508,13 @@ function onRemove() {
 
 			<div :class="$style.group" data-testid="agent-guardrail-trigger-group">
 				<div :class="$style.field">
-					<N8nText size="small" bold>
+					<N8nText size="medium" bold>
 						{{ i18n.baseText('agents.builder.guardrails.trigger.label') }}
 						<N8nText color="primary" bold size="small">*</N8nText>
 					</N8nText>
 					<N8nSelect
 						:model-value="stage"
+						size="small"
 						:disabled="disabled"
 						data-testid="agent-guardrail-trigger"
 						@update:model-value="stage = $event"
@@ -500,33 +529,34 @@ function onRemove() {
 				</div>
 
 				<div :class="$style.field">
-					<N8nText size="small" bold>
-						{{ i18n.baseText('agents.builder.guardrails.tools.label') }}
-						<N8nText color="primary" bold size="small">*</N8nText>
-					</N8nText>
-					<N8nRadioGroup
-						:model-value="toolScope"
-						:class="$style.radioGroup"
-						@update:model-value="toolScope = $event as 'all' | 'selected'"
-					>
-						<N8nRadioGroupItem
-							value="all"
-							:label="i18n.baseText('agents.builder.guardrails.tools.all')"
+					<div :class="$style.switchRow">
+						<div :class="$style.switchLabel">
+							<N8nText size="medium" bold>
+								{{ i18n.baseText('agents.builder.guardrails.tools.all') }}
+								<N8nText color="primary" bold size="small">*</N8nText>
+							</N8nText>
+							<N8nText size="small" :class="$style.hint">
+								{{ i18n.baseText('agents.builder.guardrails.tools.toggleHint') }}
+							</N8nText>
+						</div>
+						<!-- On, the guardrail covers every tool. Off narrows to the picked list below. -->
+						<N8nSwitch2
+							:model-value="toolScope === 'all'"
+							:disabled="disabled"
+							size="small"
+							:aria-label="i18n.baseText('agents.builder.guardrails.tools.all')"
 							data-testid="agent-guardrail-tools-all"
+							@update:model-value="toolScope = $event ? 'all' : 'selected'"
 						/>
-						<N8nRadioGroupItem
-							value="selected"
-							:label="i18n.baseText('agents.builder.guardrails.tools.selected')"
-							data-testid="agent-guardrail-tools-selected"
-						/>
-					</N8nRadioGroup>
+					</div>
 					<template v-if="toolScope === 'selected'">
 						<N8nSelect
 							v-if="toolOptions.length > 0"
 							:model-value="selectedToolKeys"
 							multiple
+							size="small"
 							:disabled="disabled"
-							:class="[$style.tagSelect, $style.toolSelect]"
+							:class="$style.toolSelect"
 							data-testid="agent-guardrail-tools-picker"
 							@update:model-value="selectedToolKeys = $event"
 						>
@@ -542,6 +572,10 @@ function onRemove() {
 						</N8nText>
 					</template>
 				</div>
+
+				<N8nCallout theme="info" slim data-testid="agent-guardrail-tools-callout">
+					{{ i18n.baseText('agents.builder.guardrails.tools.callout') }}
+				</N8nCallout>
 			</div>
 		</div>
 
@@ -584,14 +618,6 @@ function onRemove() {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--2xs);
-
-	/* The DS radio's checked state is the brand pink, which clashes with the
-	   neutral checked state of the segment control in the same modal. Match
-	   the segment control's neutral treatment here. */
-	:global([role='radio'][data-state='checked']:not([data-disabled])) {
-		background-color: var(--color--foreground--tint-2);
-		border-color: var(--color--foreground--tint-1);
-	}
 }
 
 /* Element Plus natively selects a focused select's label, so the app-wide
@@ -608,8 +634,8 @@ function onRemove() {
 .group {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--2xs);
-	padding: var(--spacing--2xs);
+	gap: var(--spacing--sm);
+	padding: var(--spacing--sm);
 	border: var(--border);
 	border-radius: var(--radius--md);
 }
@@ -628,9 +654,23 @@ function onRemove() {
 	gap: var(--spacing--2xs);
 }
 
-.radioGroup {
+/* Label left, control right: the type field is one row, per the wireframe. */
+.inlineRow {
 	display: flex;
-	gap: var(--spacing--lg);
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--sm);
+}
+
+.typeTrigger {
+	width: fit-content;
+	max-width: 60%;
+}
+
+.typeTriggerLabel {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .switchRow {
@@ -638,6 +678,13 @@ function onRemove() {
 	align-items: center;
 	justify-content: space-between;
 	gap: var(--spacing--sm);
+}
+
+/* The switch row's label block: bold label with its helper text below. */
+.switchLabel {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
 }
 
 /* The "All entities" switch sits at the row's right end, label beside it. */

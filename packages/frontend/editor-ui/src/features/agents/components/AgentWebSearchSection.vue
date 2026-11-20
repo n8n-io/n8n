@@ -2,9 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import {
 	N8nButton,
-	N8nCallout,
 	N8nDropdownMenu,
-	N8nIconButton,
 	N8nInputNumber,
 	N8nSegmentControl,
 	N8nSwitch2,
@@ -22,7 +20,6 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import type { AgentJsonConfig } from '../types';
-import { useWebSearchGuardrailsCalloutDismissal } from '../composables/useWebSearchGuardrailsCalloutDismissal';
 import { AGENT_MODEL_PROVIDER_DEFINITIONS, isAgentModelProvider } from '../model-providers';
 import { PROVIDER_CAPABILITIES } from '../provider-capabilities';
 import { parseProvider } from '../utils/model-string';
@@ -130,17 +127,6 @@ const selectedWebSearchLabel = computed(
 const webSearchEnabled = ref(props.config?.config?.webSearch?.enabled === true);
 const webSearchMethod = ref<WebSearchSelectValue>(
 	webSearchEnabled.value ? getWebSearchMethod(props.config, hasNativeWebSearch.value) : 'off',
-);
-
-// Native web search runs inside the model provider, so tool guardrails cannot
-// check it. The notice stays until the builder dismisses it for the session.
-const { dismissed: guardrailsNoticeDismissed, dismiss: dismissGuardrailsNotice } =
-	useWebSearchGuardrailsCalloutDismissal();
-const showGuardrailsNotice = computed(
-	() =>
-		webSearchEnabled.value &&
-		webSearchMethod.value === 'native' &&
-		!guardrailsNoticeDismissed.value,
 );
 const webSearchArgs = ref<NativeWebSearchArgs>(
 	getNativeWebSearchArgs(props.config, capabilities.value.webSearch),
@@ -390,25 +376,6 @@ function onCreateFallbackCredential() {
 					</N8nDropdownMenu>
 				</div>
 			</div>
-
-			<N8nCallout
-				v-if="showGuardrailsNotice"
-				theme="info"
-				slim
-				data-testid="agent-web-search-guardrails-notice"
-			>
-				{{ i18n.baseText('agents.builder.advanced.webSearch.guardrailsNotice') }}
-				<template #trailingContent>
-					<N8nIconButton
-						icon="x"
-						variant="ghost"
-						size="xsmall"
-						:aria-label="i18n.baseText('generic.dismiss')"
-						data-testid="agent-web-search-guardrails-dismiss"
-						@click="dismissGuardrailsNotice"
-					/>
-				</template>
-			</N8nCallout>
 
 			<div
 				v-if="webSearchEnabled"
