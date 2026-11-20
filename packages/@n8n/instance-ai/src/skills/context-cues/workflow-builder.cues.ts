@@ -1,4 +1,7 @@
 import { type ContextCueSet, whileSkillLoaded } from '@n8n/agents';
+import { ENGINE_V2_NODE_SETTING_RULES } from '@n8n/workflow-sdk/prompts/sdk-reference';
+
+import type { InstanceAiEngineSetup } from '../../types';
 
 /**
  * Context cues for the `workflow-builder` skill. They are not in
@@ -293,3 +296,48 @@ export const WORKFLOW_BUILDER_CUES: ContextCueSet = {
 		},
 	],
 };
+
+type WorkflowBuilderCue = ContextCueSet['cues'][number];
+
+const v2Rule = (code: keyof typeof ENGINE_V2_NODE_SETTING_RULES) =>
+	`On engine v2: ${ENGINE_V2_NODE_SETTING_RULES[code].text}`;
+
+/**
+ * Cue text for instances with the `engine-v2` module. A cue can apply to a v1 or a v2
+ * workflow, so each text names both engines. The v2 part is the text of the build check.
+ */
+const ENGINE_AWARE_CUE_TEXT: Record<string, string> = {
+	'on-error-one-handler': `\`.onError()\` takes one handler, not an array. Call it once for each handler. ${v2Rule('CONTINUE_ERROR_OUTPUT')}`,
+	'zero-items-end-branch':
+		'Zero items end a branch. Do not add `alwaysOutputData: true` or empty-check IF gates, unless a digest or alert must still send when upstream is empty. Engine v2 does not support `alwaysOutputData` yet.',
+	'always-output-data-empty-json': `On engine v1: when a digest or alert must send on empty input, set \`alwaysOutputData: true\` on every node that can emit zero items before it; the result is one item with empty json (\`{}\`), so the formatter must filter out empty-json items before counting rows. ${v2Rule('ALWAYS_OUTPUT_DATA')}`,
+	'execute-once': `On engine v1: set \`executeOnce: true\` on a node that receives many items but must run once (summary notification, report, shared-context fetch). ${v2Rule('EXECUTE_ONCE')} Duplicate notifications mean that this is missing.`,
+};
+
+const RETRY_ON_FAIL_CUE: WorkflowBuilderCue = {
+	id: 'engine-v2-retry-on-fail',
+	text: v2Rule('RETRY_ON_FAIL'),
+	appliesWhen:
+		'A node calls an unreliable API and the workflow should retry it or continue after a failure.',
+};
+
+const ENGINE_AWARE_WORKFLOW_BUILDER_CUES: ContextCueSet = {
+	...WORKFLOW_BUILDER_CUES,
+	cues: [
+		...WORKFLOW_BUILDER_CUES.cues.map((cue) => {
+			const text = ENGINE_AWARE_CUE_TEXT[cue.id];
+			return text ? { ...cue, text } : cue;
+		}),
+		RETRY_ON_FAIL_CUE,
+	],
+};
+
+/**
+ * The workflow builder cues for the engines of the instance. Without the `engine-v2`
+ * module every workflow runs on v1, so the cues stay the same.
+ */
+export function getWorkflowBuilderCues(engineSetup?: InstanceAiEngineSetup): ContextCueSet {
+	return engineSetup?.engineV2Available === true
+		? ENGINE_AWARE_WORKFLOW_BUILDER_CUES
+		: WORKFLOW_BUILDER_CUES;
+}

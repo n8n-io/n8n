@@ -26,29 +26,63 @@ export interface EngineV2SupportIssue {
 
 const V1_FALLBACK = "set `engineType: 'v1'` in the workflow settings";
 
+/** Node settings that engine v2 does not support yet, but that have a v2 way. */
+export type EngineV2NodeSettingCode =
+	| 'RETRY_ON_FAIL'
+	| 'CONTINUE_ERROR_OUTPUT'
+	| 'EXECUTE_ONCE'
+	| 'ALWAYS_OUTPUT_DATA';
+
+export interface EngineV2NodeSettingRule {
+	/** The node setting in workflow SDK code. */
+	setting: string;
+	/** What engine v2 cannot do, the v2 way, and then the v1 fallback. */
+	text: string;
+}
+
 /**
- * Text for reasons that have a v2 way to get the same result. Each text says what
- * engine v2 cannot do, the v2 way, and then the v1 fallback.
+ * The v2 way for each node setting that engine v2 does not support yet. Validation
+ * errors and the builder prompts use the same text, so the model reads one wording.
+ * Remove an entry when engine v2 supports the setting.
  */
-const V2_ALTERNATIVES: Partial<Record<EngineV2ReasonCode, string>> = {
-	RETRY_ON_FAIL:
-		'engine v2 does not support Retry On Fail yet. Remove `retryOnFail`. ' +
-		"To continue after a failure, set `onError: 'continueRegularOutput'` and check the result with an IF node. " +
-		`If the workflow must retry, ${V1_FALLBACK}.`,
-	CONTINUE_ERROR_OUTPUT:
-		"engine v2 does not support the error output (`onError: 'continueErrorOutput'`) yet. " +
-		"Set `onError: 'continueRegularOutput'` and connect an IF node that checks for the `error` field in the output. " +
-		`If the workflow must have a separate error output, ${V1_FALLBACK}.`,
-	EXECUTE_ONCE:
-		'engine v2 does not support Execute Once yet. Remove `executeOnce`. ' +
-		'To use only the first item, add a Limit node (1 item) before this node. ' +
-		'To use all items in one run, add an Aggregate node before this node. The Aggregate node combines the items into one item, so update the expressions of this node. ' +
-		`If the workflow must use Execute Once, ${V1_FALLBACK}.`,
-	ALWAYS_OUTPUT_DATA:
-		'engine v2 does not support Always Output Data yet. Remove `alwaysOutputData`. ' +
-		'Make sure that the workflow can stop at this node when the node returns no items. ' +
-		`If the next nodes must run when this node returns no items, ${V1_FALLBACK}.`,
+export const ENGINE_V2_NODE_SETTING_RULES: Record<
+	EngineV2NodeSettingCode,
+	EngineV2NodeSettingRule
+> = {
+	RETRY_ON_FAIL: {
+		setting: '`retryOnFail: true`',
+		text:
+			'engine v2 does not support Retry On Fail yet. Remove `retryOnFail`. ' +
+			"To continue after a failure, set `onError: 'continueRegularOutput'` and check the result with an IF node. " +
+			`If the workflow must retry, ${V1_FALLBACK}.`,
+	},
+	CONTINUE_ERROR_OUTPUT: {
+		setting: "`onError: 'continueErrorOutput'`",
+		text:
+			"engine v2 does not support the error output (`onError: 'continueErrorOutput'`) yet. " +
+			"Set `onError: 'continueRegularOutput'` and connect an IF node that checks for the `error` field in the output. " +
+			`If the workflow must have a separate error output, ${V1_FALLBACK}.`,
+	},
+	EXECUTE_ONCE: {
+		setting: '`executeOnce: true`',
+		text:
+			'engine v2 does not support Execute Once yet. Remove `executeOnce`. ' +
+			'To use only the first item, add a Limit node (1 item) before this node. ' +
+			'To use all items in one run, add an Aggregate node before this node. The Aggregate node combines the items into one item, so update the expressions of this node. ' +
+			`If the workflow must use Execute Once, ${V1_FALLBACK}.`,
+	},
+	ALWAYS_OUTPUT_DATA: {
+		setting: '`alwaysOutputData: true`',
+		text:
+			'engine v2 does not support Always Output Data yet. Remove `alwaysOutputData`. ' +
+			'Make sure that the workflow can stop at this node when the node returns no items. ' +
+			`If the next nodes must run when this node returns no items, ${V1_FALLBACK}.`,
+	},
 };
+
+function isNodeSettingCode(code: EngineV2ReasonCode): code is EngineV2NodeSettingCode {
+	return code in ENGINE_V2_NODE_SETTING_RULES;
+}
 
 /**
  * Selects the engine to validate for. The workflow's `settings.engineType` wins, because
@@ -84,8 +118,8 @@ export function findEngineV2SupportIssues(json: WorkflowJSON): EngineV2SupportIs
  * v2 way, then the v1 fallback. Permanent and invalid reasons already name the fix.
  */
 export function formatEngineV2Message(reason: EngineV2Reason): string {
-	const alternative = V2_ALTERNATIVES[reason.code];
-	if (alternative) {
+	if (isNodeSettingCode(reason.code)) {
+		const alternative = ENGINE_V2_NODE_SETTING_RULES[reason.code].text;
 		return `${nodePrefix(reason, alternative)}${alternative}`;
 	}
 

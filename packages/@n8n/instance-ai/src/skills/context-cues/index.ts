@@ -7,8 +7,9 @@ import {
 
 import { INTENT_RECOGNITION_CUES } from './intent-recognition.cues';
 import { POST_BUILD_FLOW_CUES } from './post-build-flow.cues';
-import { WORKFLOW_BUILDER_CUES } from './workflow-builder.cues';
+import { getWorkflowBuilderCues, WORKFLOW_BUILDER_CUES } from './workflow-builder.cues';
 import { DOMAIN_TOOL_IDS, ORCHESTRATION_TOOL_IDS } from '../../tools/tool-ids';
+import type { InstanceAiEngineSetup } from '../../types';
 
 export const INSTANCE_AI_CONTEXT_CUE_SETS = [
 	WORKFLOW_BUILDER_CUES,
@@ -99,11 +100,14 @@ function detectInstanceAiCuePhases(messages: readonly AgentMessage[]): Set<Insta
  * `N8N_INSTANCE_AI_CONTEXT_CUE_THRESHOLD` sets the score threshold, and
  * `N8N_INSTANCE_AI_CONTEXT_CUE_ABLATE=<id>[,<id>…]` (or `*`) leaves out
  * cues. If the pass rate does not drop without a cue, delete it.
+ * With the `engine-v2` module, the workflow builder cues also give the engine v2 way.
  */
-export function createInstanceAiContextCueProvider(): ContextCueProvider {
+export function createInstanceAiContextCueProvider(
+	engineSetup?: InstanceAiEngineSetup,
+): ContextCueProvider {
 	const threshold = Number(process.env.N8N_INSTANCE_AI_CONTEXT_CUE_THRESHOLD);
 	return createContextCueProvider({
-		sets: INSTANCE_AI_CONTEXT_CUE_SETS,
+		sets: [getWorkflowBuilderCues(engineSetup), INTENT_RECOGNITION_CUES, POST_BUILD_FLOW_CUES],
 		detectPhases: detectInstanceAiCuePhases,
 		threshold: Number.isFinite(threshold) && threshold > 0 ? threshold : undefined,
 		ablate: parseAblatedContextCues(process.env.N8N_INSTANCE_AI_CONTEXT_CUE_ABLATE),
