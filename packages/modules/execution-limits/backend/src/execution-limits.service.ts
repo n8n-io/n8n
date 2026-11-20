@@ -31,6 +31,11 @@ import type {
 } from './execution-limits.types';
 import { ProjectExecutionLimitRepository } from './project-execution-limit.repository';
 
+type LimitWrite<T> = (
+	ctx: OperationContext,
+	settings: ExecutionLimitSettings,
+) => Promise<{ result: T; changes: ExecutionLimitChange[] }>;
+
 function rejectIfAny(
 	projectIds: string[],
 	message: string,
@@ -168,41 +173,76 @@ export class ExecutionLimitsService {
 		updatedBy: string | null,
 		loginId?: string,
 	): Promise<void> {
-		await this.commit(updatedBy, loginId, async (ctx) => {
-			const before = await this.projectLimitRepository.findByProjectIds(projectIds, ctx);
-			await this.projectLimitRepository.deleteByProjectIds(projectIds, ctx);
-
-			return { result: undefined, changes: diffProjectLimits(before, []) };
-		});
+		await this.commit(
+			updatedBy,
+			loginId,
+			async (ctx) => await this.deleteProjectLimits(projectIds, ctx),
+		);
 	}
 
-	/** Every write goes through here, so the limits in memory reload after each commit. */
+	async removeLimitOfDeletedProject(
+		projectId: string,
+		updatedBy: string | null,
+		loginId: string | undefined,
+		ctx: OperationContext,
+	): Promise<() => Promise<void>> {
+		const { recorded } = await this.recordIn(
+			ctx,
+			updatedBy,
+			loginId,
+			async (trxCtx) => await this.deleteProjectLimits([projectId], trxCtx),
+		);
+
+		return async () => await this.announce(recorded);
+	}
+
+	private async deleteProjectLimits(
+		projectIds: string[],
+		ctx: OperationContext,
+	): Promise<{ result: undefined; changes: ExecutionLimitChange[] }> {
+		const before = await this.projectLimitRepository.findByProjectIds(projectIds, ctx);
+		await this.projectLimitRepository.deleteByProjectIds(projectIds, ctx);
+
+		return { result: undefined, changes: diffProjectLimits(before, []) };
+	}
+
 	private async commit<T>(
 		updatedBy: string | null,
 		loginId: string | undefined,
-		write: (
-			ctx: OperationContext,
-			settings: ExecutionLimitSettings,
-		) => Promise<{ result: T; changes: ExecutionLimitChange[] }>,
+		write: LimitWrite<T>,
 	): Promise<T> {
-		const { result, recorded } = await this.transactionRunner.run({}, async (ctx) => {
-			const settings = await this.settingsStore.lockAndRead(ctx);
-			const { result, changes } = await write(ctx, settings);
-			const recorded: RecordedExecutionLimitChange[] = changes.map((change) => ({
-				...change,
-				updatedBy,
-				loginId,
-			}));
-			await this.auditRepository.append(recorded, ctx);
+		const { result, recorded } = await this.transactionRunner.run(
+			{},
+			async (ctx) => await this.recordIn(ctx, updatedBy, loginId, write),
+		);
+		await this.announce(recorded);
 
-			return { result, recorded };
-		});
+		return result;
+	}
 
+	private async recordIn<T>(
+		ctx: OperationContext,
+		updatedBy: string | null,
+		loginId: string | undefined,
+		write: LimitWrite<T>,
+	): Promise<{ result: T; recorded: RecordedExecutionLimitChange[] }> {
+		const settings = await this.settingsStore.lockAndRead(ctx);
+		const { result, changes } = await write(ctx, settings);
+		const recorded: RecordedExecutionLimitChange[] = changes.map((change) => ({
+			...change,
+			updatedBy,
+			loginId,
+		}));
+		await this.auditRepository.append(recorded, ctx);
+
+		return { result, recorded };
+	}
+
+	/** Every write ends here after its transaction commits, so the limits in memory reload. */
+	private async announce(recorded: RecordedExecutionLimitChange[]): Promise<void> {
 		for (const change of recorded) {
 			this.eventService.emit('execution-limit-updated', change);
 		}
 		await this.snapshot.refreshAfterWrite();
-
-		return result;
 	}
 }
