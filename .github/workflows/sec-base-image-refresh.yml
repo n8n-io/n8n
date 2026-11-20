@@ -144,8 +144,8 @@ jobs:
         with:
           token: ${{ steps.app-token.outputs.token }}
           add-paths: docker/docker-bake.hcl
-          commit-message: 'build: Update base image digests that add packages'
-          title: 'build: Update base image digests that add packages'
+          commit-message: 'build: Update base image digests that need a review'
+          title: 'build: Update base image digests that need a review'
           body-path: review-pr.md
           branch: base-image-refresh/review
           base: master

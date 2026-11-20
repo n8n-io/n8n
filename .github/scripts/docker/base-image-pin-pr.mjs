@@ -3,8 +3,9 @@
  * Prepares a pin PR from the result of base-image-candidates.mjs.
  *
  * The daily PR takes the ready candidates with auto-merge. The review PR takes
- * the ready candidates that add a package, so a person reviews them. The
- * script updates their pins in docker/docker-bake.hcl and writes the PR body.
+ * the ready candidates without auto-merge (they add a package, or a manual run
+ * skipped the 24-hour gate), so a person reviews them. The script updates their
+ * pins in docker/docker-bake.hcl and writes the PR body.
  *
  * Usage: node base-image-pin-pr.mjs --candidates <json> --group daily|review
  *   --body <file>
@@ -67,7 +68,7 @@ export function renderBody(results, { group, runUrl }) {
 	];
 	if (group === 'review') {
 		lines.push(
-			'The new digests add packages to the image, so this PR has no auto-merge. Review the new packages before you merge.',
+			'This PR has no auto-merge. Review each pin below before you merge: it adds packages to the image, or a manual run skipped the 24-hour gate.',
 			'',
 		);
 	}
@@ -80,6 +81,11 @@ export function renderBody(results, { group, runUrl }) {
 			`Publisher: ${result.publisher.publisher}, verified. Published: ${result.publisher.publishedAt ?? 'unknown'}.`,
 			'',
 		);
+		if (result.gateSkipped)
+			lines.push(
+				'A manual run skipped the 24-hour gate: this digest is less than 24 hours old.',
+				'',
+			);
 		const added = [...new Set(result.platforms.flatMap((platform) => platform.addedPackages))];
 		if (added.length > 0)
 			lines.push(`New packages: ${added.map((name) => `\`${name}\``).join(', ')}.`, '');
