@@ -42,6 +42,7 @@ import {
 	takeAttachedDynamicCredentialsUsage,
 	escalateSubWorkflowRedaction,
 	takeAttachedSubWorkflowRedaction,
+	takeAttachedSubExecutionRunData,
 	isExecutionOutputRedacted,
 	CONSOLE_OUTPUT_REDACTED_MESSAGE,
 	AI_EVENT_REDACTED_MESSAGE,
@@ -54,6 +55,7 @@ import { PLACEHOLDER_EMPTY_EXECUTION_ID } from '@/constants';
 import { deepMerge } from '@/utils/deep-merge';
 
 import { NodeExecutionContext } from './node-execution-context';
+import { LastSubExecutionRunData } from './utils/last-sub-execution-run-data';
 
 /** The parts of an Agent error that the node shows. Node context stores only JSON. */
 interface StoredAgentError {
@@ -93,6 +95,8 @@ function restoreAgentError(node: INode, stored: StoredAgentError): Error {
 }
 
 export class BaseExecuteContext extends NodeExecutionContext {
+	private readonly lastSubExecutionRunData = new LastSubExecutionRunData();
+
 	constructor(
 		workflow: Workflow,
 		node: INode,
@@ -254,6 +258,8 @@ export class BaseExecuteContext extends NodeExecutionContext {
 			this.runExecutionData.executionData?.runtimeData,
 			result.subWorkflowRedaction,
 		);
+		// A sub-execution that is not saved has no run data in the database.
+		this.lastSubExecutionRunData.keep(result.executionId, takeAttachedSubExecutionRunData(result));
 
 		// If a sub-workflow execution goes into the waiting state
 		if (result.waitTill) {
@@ -445,7 +451,10 @@ export class BaseExecuteContext extends NodeExecutionContext {
 	}
 
 	async getExecutionDataById(executionId: string): Promise<IRunExecutionData | undefined> {
-		return await this.additionalData.getRunExecutionData(executionId);
+		return (
+			this.lastSubExecutionRunData.take(executionId) ??
+			(await this.additionalData.getRunExecutionData(executionId))
+		);
 	}
 
 	protected getInputItems(inputIndex: number, connectionType: NodeConnectionType) {

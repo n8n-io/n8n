@@ -16,7 +16,12 @@ import type {
 	IExecutionContext,
 	IRun,
 } from 'n8n-workflow';
-import { NodeHelpers, WAIT_FOR_SUB_EXECUTION } from 'n8n-workflow';
+import {
+	NodeHelpers,
+	WAIT_FOR_SUB_EXECUTION,
+	attachSubExecutionRunData,
+	createRunExecutionData,
+} from 'n8n-workflow';
 import { UnexpectedError } from '@n8n/errors';
 import { captor, mock, type MockProxy } from 'vitest-mock-extended';
 
@@ -379,6 +384,39 @@ export const describeCommonTests = (
 
 			expect(result.data).toEqual(data);
 			expect(result).toBe(executeWorkflowData);
+		});
+
+		describe('run data of the sub-execution', () => {
+			const subExecutionRunData = createRunExecutionData();
+			const savedRunData = createRunExecutionData();
+
+			beforeEach(() => {
+				additionalData.getRunExecutionData.mockReset();
+				additionalData.getRunExecutionData.mockResolvedValue(savedRunData);
+				additionalData.executeWorkflow.mockResolvedValue(
+					attachSubExecutionRunData({ executionId: 'sub_execution_id', data }, subExecutionRunData),
+				);
+			});
+
+			it('should return the run data that the sub-execution reported, without a database read', async () => {
+				await context.executeWorkflow(workflowInfo);
+
+				expect(await context.getExecutionDataById('sub_execution_id')).toBe(subExecutionRunData);
+				expect(additionalData.getRunExecutionData).not.toHaveBeenCalled();
+			});
+
+			it('should not give the run data to the node in the result', async () => {
+				const result = await context.executeWorkflow(workflowInfo);
+
+				expect('subExecutionRunData' in result).toBe(false);
+			});
+
+			it('should read the database for a different execution', async () => {
+				await context.executeWorkflow(workflowInfo);
+
+				expect(await context.getExecutionDataById('other_execution_id')).toBe(savedRunData);
+				expect(additionalData.getRunExecutionData).toHaveBeenCalledWith('other_execution_id');
+			});
 		});
 
 		it('should put execution to wait if waitTill is returned', async () => {
