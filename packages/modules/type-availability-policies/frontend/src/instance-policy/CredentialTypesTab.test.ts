@@ -16,6 +16,7 @@ import CredentialTypesTab from './CredentialTypesTab.vue';
 import { useInstancePolicyStore } from './instance-policy.store';
 import type { InstancePolicy } from '../type-availability-policies.api';
 import { findPopupItem, MENU_ITEM } from '../__tests__/popups';
+import { policyTableCells } from '../__tests__/table';
 import { useTypeAvailabilityPoliciesStore } from '../type-availability-policies.store';
 
 const mocks = vi.hoisted(() => ({
@@ -64,15 +65,7 @@ const setup = async (arrangeAccessReads?: () => void) => {
 	return renderTab({ pinia });
 };
 
-const accessCell = (getByTestId: (id: string) => HTMLElement, name = 'bitlyApi') =>
-	getByTestId(`instance-policy-access-${name}`);
-
-// Projects, Uses, Workflows and Active workflows. The cells before them are Name and Access.
-const usageCells = (getByTestId: (id: string) => HTMLElement, name = 'bitlyApi') =>
-	within(accessCell(getByTestId, name).closest('tr') as HTMLElement)
-		.getAllByRole('cell')
-		.slice(2)
-		.map((cell) => cell.textContent?.trim());
+const { accessCell, usageCells } = policyTableCells('bitlyApi');
 
 const restrictBitly = async (getByTestId: (id: string) => HTMLElement) => {
 	await userEvent.click(accessCell(getByTestId));

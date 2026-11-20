@@ -19,31 +19,24 @@ import { CALLABLE_METHODS, ITERATOR_METHODS } from '../src/expressions/native-ev
 import { EXTENSION_METHODS } from '../src/expressions/native-evaluation/grammar';
 import { Workflow } from '../src/workflow';
 
-// Three pre-existing, flag-independent quickjs bridge behaviours are kept out
-// of the comparison: a string is truncated at its first NUL character on the
-// way across, a lone surrogate (which indexing an astral character yields)
-// comes back as U+FFFD replacement characters, and -0 inside an object or
-// array result comes back as 0 (vm keeps it; native sides with vm). Data
-// strings stay NUL-free and inside the Basic Multilingual Plane; the -0 case
-// is skipped below. quickjs and V8 also use different shortest-digit
+// One pre-existing, flag-independent quickjs bridge behaviour is kept out of
+// the comparison: -0 inside an object or array result comes back as 0 (vm
+// keeps it; native sides with vm). That case is skipped below. quickjs and V8
+// also use different shortest-digit
 // algorithms for Number.prototype.toString with a radix other than 10, which
 // the spec permits; expressions that pass a radix are skipped under quickjs.
-const noNul = (s: string) => !s.includes('\0');
 const hasNestedNegativeZero = (value: unknown): boolean =>
 	typeof value === 'object' &&
 	value !== null &&
 	Object.values(value).some((v) => Object.is(v, -0) || hasNestedNegativeZero(v));
-const bmpString = (maxLength: number) =>
-	fc
-		.string({ unit: 'binary', maxLength })
-		.filter((s) => noNul(s) && [...s].every((c) => (c.codePointAt(0) ?? 0) < 0x10000));
+const binaryString = (maxLength: number) => fc.string({ unit: 'binary', maxLength });
 
 const KEYS = ['a', 'b', 'c', 'd'] as const;
 const INNER_KEYS = ['x', 'y'] as const;
 
 const primitive = fc.oneof(
-	fc.string({ maxLength: 6 }).filter(noNul),
-	bmpString(4),
+	fc.string({ maxLength: 6 }),
+	binaryString(4),
 	fc.integer({ min: -100, max: 100 }),
 	fc.double({ noNaN: true, noDefaultInfinity: true }),
 	fc.boolean(),
@@ -67,11 +60,8 @@ const jsonValue = fc.oneof(
 const data = fc.record({ a: jsonValue, b: jsonValue, c: jsonValue, d: jsonValue });
 
 const literal = fc.oneof(
-	fc
-		.string({ maxLength: 6 })
-		.filter(noNul)
-		.map((s) => JSON.stringify(s)),
-	bmpString(3).map((s) => JSON.stringify(s)),
+	fc.string({ maxLength: 6 }).map((s) => JSON.stringify(s)),
+	binaryString(3).map((s) => JSON.stringify(s)),
 	fc.integer({ min: 0, max: 200 }).map(String),
 	fc.double({ min: 0, noNaN: true, noDefaultInfinity: true }).map(String),
 	fc.constantFrom('true', 'false', 'null', 'undefined'),

@@ -121,6 +121,8 @@ export class LogStreamingEventRelay extends EventRelay {
 			'workflow-unarchived': (event) => this.workflowUnarchived(event),
 			'agent-archived': (event) => this.agentArchived(event),
 			'agent-unarchived': (event) => this.agentUnarchived(event),
+			'agent-service-account-created': (event) => this.agentServiceAccountCreated(event),
+			'agent-service-account-deleted': (event) => this.agentServiceAccountDeleted(event),
 			'workflow-activated': (event) => this.workflowActivated(event),
 			'workflow-deactivated': (event) => this.workflowDeactivated(event),
 			'workflow-deactivated-by-system': (event) => this.workflowDeactivatedBySystem(event),
@@ -170,6 +172,7 @@ export class LogStreamingEventRelay extends EventRelay {
 			'node-type-policy-attachments-updated': (event) =>
 				this.nodeTypePolicyAttachmentsUpdated(event),
 			'policy-decision-blocked': (event) => this.policyDecisionBlocked(event),
+			'execution-limit-updated': (event) => this.executionLimitUpdated(event),
 			'external-secrets-provider-settings-saved': (event) =>
 				this.externalSecretsProviderSettingsSaved(event),
 			'external-secrets-provider-reloaded': (event) => this.externalSecretsProviderReloaded(event),
@@ -372,6 +375,42 @@ export class LogStreamingEventRelay extends EventRelay {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.agent.unarchived',
 			payload: { ...user, agentId, projectId, ...(loginId !== undefined && { loginId }) },
+		});
+	}
+
+	@Redactable()
+	private agentServiceAccountCreated({
+		user,
+		source,
+		loginId,
+		...target
+	}: RelayEventMap['agent-service-account-created']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.agent.service-account.created',
+			// Without a user, name the system as the actor.
+			payload: user
+				? { ...user, ...target, ...(loginId !== undefined && { loginId }) }
+				: { userId: null, source, ...target },
+		});
+	}
+
+	@Redactable()
+	private agentServiceAccountDeleted({
+		user,
+		source,
+		loginId,
+		...target
+	}: RelayEventMap['agent-service-account-deleted']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.agent.service-account.deleted',
+			payload: user
+				? {
+						...user,
+						...target,
+						...(source && { source }),
+						...(loginId !== undefined && { loginId }),
+					}
+				: { userId: null, source, ...target },
 		});
 	}
 
@@ -1066,6 +1105,20 @@ export class LogStreamingEventRelay extends EventRelay {
 				scopeId: event.scopeId,
 				before: event.before ? { ...event.before } : null,
 				after: { ...event.after },
+				...(event.loginId !== undefined && { loginId: event.loginId }),
+			},
+		});
+	}
+
+	private executionLimitUpdated(event: RelayEventMap['execution-limit-updated']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.execution-limit.updated',
+			payload: {
+				updatedBy: event.updatedBy,
+				projectId: event.projectId,
+				field: event.field,
+				oldValue: event.oldValue,
+				newValue: event.newValue,
 				...(event.loginId !== undefined && { loginId: event.loginId }),
 			},
 		});

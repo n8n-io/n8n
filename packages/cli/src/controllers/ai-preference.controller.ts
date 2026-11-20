@@ -33,7 +33,8 @@ export class AiPreferenceController {
 		_res: Response,
 		@Query query: AiPreferenceListQueryDto,
 	) {
-		return await this.aiPreferenceService.list(req.user, query);
+		const { skip, take, ...filters } = query;
+		return await this.aiPreferenceService.list(req.user, { ...filters, offset: skip, limit: take });
 	}
 
 	@Get('/count')

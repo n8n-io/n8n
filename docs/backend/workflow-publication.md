@@ -52,7 +52,7 @@ The leader compares the old and new versions: it stops removed triggers, starts 
 | Trigger | How it runs |
 |---|---|
 | Webhook | Instance sends each call for its path and method to the workflow. No two workflows can share a path and method |
-| Poller | By default, any main can claim a due poll from the database and poll the source |
+| Poller | Any main polls the source at each due time, from a job in the database. A poll can run more than once. With `N8N_SCHEDULER_POLL_TRIGGERS_ENABLED=false`, the leader polls on in-memory timers |
 | Trigger that holds a connection (e.g. to a message queue) | Leader keeps the connection open |
 | Schedule | Any main starts each due run, from a job in the database |
 

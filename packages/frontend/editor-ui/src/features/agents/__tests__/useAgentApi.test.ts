@@ -397,6 +397,18 @@ describe('useAgentApi', () => {
 				'/projects/p1/agents/v2/a1/n8n-chat/th-1/files',
 			);
 		});
+
+		it('lists the files of a system agent session on the system route, without a project', async () => {
+			vi.mocked(makeRestApiRequest).mockResolvedValueOnce({ files: [] });
+
+			await getSessionFiles(restApiContext, 'p1', 'assistant', 'th-1', 'system');
+
+			expect(makeRestApiRequest).toHaveBeenCalledWith(
+				restApiContext,
+				'GET',
+				'/agents/system/assistant/chat/th-1/files',
+			);
+		});
 	});
 
 	describe('getChatMessages', () => {

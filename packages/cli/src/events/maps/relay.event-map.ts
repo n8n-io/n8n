@@ -1,5 +1,6 @@
 import type { AppEventMap } from '@n8n/backend-module-apps';
 import type { DataTableEventMap } from '@n8n/backend-module-data-table';
+import type { ExecutionLimitsEventMap } from '@n8n/backend-module-execution-limits';
 import type {
 	AuthenticationMethod,
 	BreakingChangeLightReportResult,
@@ -58,6 +59,7 @@ import type {
 } from '@/modules/type-availability-policies/policy-rule.types';
 import type { TracingContext } from '@/modules/otel/tracing-context';
 import type { McpCallerAuth } from '@n8n/backend-services/auth';
+import type { PolicySystemReason } from '@/policy/policy-enforcement-backend';
 import type { UserLike } from '@/types/user-like.types';
 import type { PublicApiCaller, PublicApiClient } from '@/public-api/public-api-client';
 import type { PublicApiResult } from '@/public-api/types';
@@ -102,7 +104,7 @@ export type ProjectSummary = {
 	name: string;
 };
 
-type ModuleEventMap = DataTableEventMap & AppEventMap;
+type ModuleEventMap = DataTableEventMap & AppEventMap & ExecutionLimitsEventMap;
 
 export type RelayEventMap = ModuleEventMap & {
 	// #region Lifecycle
@@ -1495,6 +1497,42 @@ export type RelayEventMap = ModuleEventMap & {
 		user: UserLike;
 		agentId: string;
 		projectId: string;
+		/** Login of the service account that acted. Absent for people and outside a request. */
+		loginId?: string;
+	};
+
+	/** n8n created the service account of an agent. Sent after the transaction commits. */
+	'agent-service-account-created': {
+		/** The user who created the agent. `null` when n8n created the account. */
+		user: UserLike | null;
+		/** Why n8n created the account without a user. */
+		source?: PolicySystemReason | 'startup';
+		/** The run that created the agent, when `source` is `execution`. */
+		executionId?: string;
+		serviceAccountId: string;
+		agentId: string;
+		/** `null` for an instance agent. */
+		projectId: string | null;
+		/** Login of the service account that acted. Absent for people and outside a request. */
+		loginId?: string;
+	};
+
+	/** n8n deleted the service account of an agent. Sent after the transaction commits. */
+	'agent-service-account-deleted': {
+		/**
+		 * The user who deleted the agent, its project or the user who owns it.
+		 * `null` when n8n deleted the account.
+		 */
+		user: UserLike | null;
+		/**
+		 * `scim`: the identity provider deleted the user who owns the agent.
+		 * `project-deletion`: the agent went with its project, or with the user who owns it.
+		 */
+		source?: 'scim' | 'project-deletion';
+		serviceAccountId: string;
+		agentId: string;
+		/** `null` for an instance agent. */
+		projectId: string | null;
 		/** Login of the service account that acted. Absent for people and outside a request. */
 		loginId?: string;
 	};
