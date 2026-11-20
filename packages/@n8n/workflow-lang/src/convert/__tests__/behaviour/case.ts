@@ -55,6 +55,11 @@ export interface BehaviourCase {
 	 */
 	runDetails?: boolean;
 	/**
+	 * The time that the v1 run may take, for a case whose workflow runs until the execution
+	 * times out (a loop with the "reset" option). The oracle gives the run this time.
+	 */
+	runTimeoutMs?: number;
+	/**
 	 * True for a case whose compared nodes run more than once in the engine form: the
 	 * converted run then gives the items of all their runs, as the recording has them.
 	 */

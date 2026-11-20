@@ -125,6 +125,7 @@ async function runCase(dir: string, port: number, captured: Captured): Promise<u
 		item,
 		mode,
 		...(spec.runDetails ? { withRunDetails: true } : {}),
+		...(spec.runTimeoutMs === undefined ? {} : { timeoutMs: spec.runTimeoutMs }),
 		...(spec.services ? { deduplication } : {}),
 		...(spec.credentials
 			? { additionalData: { credentialsHelper: credentialsHelper(spec.credentials) } }

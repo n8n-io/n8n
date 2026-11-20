@@ -1,0 +1,515 @@
+{
+	"pairedItems": {
+		"Webhook": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"A": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 0
+				}
+			]
+		],
+		"Outer": [
+			[
+				{
+					"sourceOverwrite": {
+						"previousNode": "Inner",
+						"previousNodeOutput": 0,
+						"previousNodeRun": 3
+					},
+					"item": 0
+				},
+				{
+					"sourceOverwrite": {
+						"previousNode": "Inner",
+						"previousNodeOutput": 0,
+						"previousNodeRun": 3
+					},
+					"item": 1
+				},
+				{
+					"sourceOverwrite": {
+						"previousNode": "Inner",
+						"previousNodeOutput": 0,
+						"previousNodeRun": 3
+					},
+					"item": 2
+				},
+				{
+					"sourceOverwrite": {
+						"previousNode": "Inner",
+						"previousNodeOutput": 0,
+						"previousNodeRun": 4
+					},
+					"item": 0
+				},
+				{
+					"sourceOverwrite": {
+						"previousNode": "Inner",
+						"previousNodeOutput": 0,
+						"previousNodeRun": 4
+					},
+					"item": 1
+				},
+				{
+					"sourceOverwrite": {
+						"previousNode": "Inner",
+						"previousNodeOutput": 0,
+						"previousNodeRun": 4
+					},
+					"item": 2
+				},
+				{
+					"sourceOverwrite": {
+						"previousNode": "Inner",
+						"previousNodeOutput": 0,
+						"previousNodeRun": 4
+					},
+					"item": 3
+				},
+				{
+					"sourceOverwrite": {
+						"previousNode": "Inner",
+						"previousNodeOutput": 0,
+						"previousNodeRun": 4
+					},
+					"item": 4
+				},
+				{
+					"sourceOverwrite": {
+						"previousNode": "Inner",
+						"previousNodeOutput": 0,
+						"previousNodeRun": 4
+					},
+					"item": 5
+				}
+			],
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1,
+					"sourceOverwrite": {
+						"previousNode": "A",
+						"previousNodeOutput": 0,
+						"previousNodeRun": 0
+					}
+				}
+			]
+		],
+		"Make": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 0
+				},
+				{
+					"item": 0
+				},
+				{
+					"item": 0
+				},
+				{
+					"item": 0
+				},
+				{
+					"item": 0
+				}
+			]
+		],
+		"Inner": [
+			[
+				{
+					"sourceOverwrite": {
+						"previousNode": "Read All",
+						"previousNodeOutput": 0,
+						"previousNodeRun": 0
+					},
+					"item": 0
+				},
+				{
+					"sourceOverwrite": {
+						"previousNode": "Read All",
+						"previousNodeOutput": 0,
+						"previousNodeRun": 1
+					},
+					"item": 0
+				},
+				{
+					"sourceOverwrite": {
+						"previousNode": "Read All",
+						"previousNodeOutput": 0,
+						"previousNodeRun": 2
+					},
+					"item": 0
+				},
+				{
+					"sourceOverwrite": {
+						"previousNode": "Read All",
+						"previousNodeOutput": 0,
+						"previousNodeRun": 0
+					},
+					"item": 0
+				},
+				{
+					"sourceOverwrite": {
+						"previousNode": "Read All",
+						"previousNodeOutput": 0,
+						"previousNodeRun": 1
+					},
+					"item": 0
+				},
+				{
+					"sourceOverwrite": {
+						"previousNode": "Read All",
+						"previousNodeOutput": 0,
+						"previousNodeRun": 2
+					},
+					"item": 0
+				},
+				{
+					"sourceOverwrite": {
+						"previousNode": "Make",
+						"previousNodeOutput": 0,
+						"previousNodeRun": 1
+					},
+					"item": 0
+				},
+				{
+					"sourceOverwrite": {
+						"previousNode": "Make",
+						"previousNodeOutput": 0,
+						"previousNodeRun": 1
+					},
+					"item": 1
+				},
+				{
+					"sourceOverwrite": {
+						"previousNode": "Make",
+						"previousNodeOutput": 0,
+						"previousNodeRun": 1
+					},
+					"item": 2
+				}
+			],
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1,
+					"sourceOverwrite": {
+						"previousNode": "Make",
+						"previousNodeOutput": 0,
+						"previousNodeRun": 0
+					}
+				},
+				{
+					"item": 2,
+					"sourceOverwrite": {
+						"previousNode": "Make",
+						"previousNodeOutput": 0,
+						"previousNodeRun": 0
+					}
+				}
+			]
+		],
+		"Tag": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 0
+				},
+				{
+					"item": 0
+				}
+			]
+		],
+		"Read Each": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 0
+				},
+				{
+					"item": 0
+				}
+			]
+		],
+		"Read Expr": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 0
+				},
+				{
+					"item": 0
+				}
+			]
+		],
+		"Read All": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 0
+				},
+				{
+					"item": 0
+				}
+			]
+		]
+	},
+	"runSizes": {
+		"Webhook": [[1]],
+		"A": [[2]],
+		"Outer": [[0, 1], [0, 1], [9, 0]],
+		"Make": [[3], [3]],
+		"Inner": [[0, 1], [0, 1], [0, 1], [3, 0], [6, 0]],
+		"Tag": [[1], [1], [1]],
+		"Read Each": [[1], [1], [1]],
+		"Read Expr": [[1], [1], [1]],
+		"Read All": [[1], [1], [1]]
+	},
+	"runs": {
+		"Webhook": [[1]],
+		"A": [[2]],
+		"Outer": [[0, 1], [0, 1], [9, 0]],
+		"Make": [[3], [3]],
+		"Inner": [[0, 1], [0, 1], [0, 1], [3, 0], [6, 0]],
+		"Tag": [[1], [1], [1]],
+		"Read Each": [[1], [1], [1]],
+		"Read Expr": [[1], [1], [1]],
+		"Read All": [[1], [1], [1]]
+	},
+	"generatedBy": "oracle.ts: n8n-core WorkflowExecute with n8n-nodes-base, executionOrder v1",
+	"error": null,
+	"order": [
+		"Webhook",
+		"A",
+		"Outer",
+		"Make",
+		"Inner",
+		"Tag",
+		"Read Each",
+		"Read Expr",
+		"Read All",
+		"Inner",
+		"Tag",
+		"Read Each",
+		"Read Expr",
+		"Read All",
+		"Inner",
+		"Tag",
+		"Read Each",
+		"Read Expr",
+		"Read All",
+		"Inner",
+		"Outer",
+		"Make",
+		"Inner",
+		"Outer"
+	],
+	"nodes": {
+		"Webhook": [
+			[
+				{
+					"headers": {},
+					"params": {},
+					"query": {},
+					"body": {
+						"ids": ["o0", "o1"]
+					}
+				}
+			]
+		],
+		"A": [
+			[
+				{
+					"id": "o0"
+				},
+				{
+					"id": "o1"
+				}
+			]
+		],
+		"Outer": [
+			[
+				{
+					"from": "o0-0"
+				},
+				{
+					"from": "o0-1"
+				},
+				{
+					"from": "o0-2"
+				},
+				{
+					"from": "o0-0"
+				},
+				{
+					"from": "o0-1"
+				},
+				{
+					"from": "o0-2"
+				},
+				{
+					"id": "o1-0"
+				},
+				{
+					"id": "o1-1"
+				},
+				{
+					"id": "o1-2"
+				}
+			],
+			[
+				{
+					"id": "o0"
+				},
+				{
+					"id": "o1"
+				}
+			]
+		],
+		"Make": [
+			[
+				{
+					"id": "o0-0"
+				},
+				{
+					"id": "o0-1"
+				},
+				{
+					"id": "o0-2"
+				},
+				{
+					"id": "o1-0"
+				},
+				{
+					"id": "o1-1"
+				},
+				{
+					"id": "o1-2"
+				}
+			]
+		],
+		"Inner": [
+			[
+				{
+					"from": "o0-0"
+				},
+				{
+					"from": "o0-1"
+				},
+				{
+					"from": "o0-2"
+				},
+				{
+					"from": "o0-0"
+				},
+				{
+					"from": "o0-1"
+				},
+				{
+					"from": "o0-2"
+				},
+				{
+					"id": "o1-0"
+				},
+				{
+					"id": "o1-1"
+				},
+				{
+					"id": "o1-2"
+				}
+			],
+			[
+				{
+					"id": "o0-0"
+				},
+				{
+					"id": "o0-1"
+				},
+				{
+					"id": "o0-2"
+				}
+			]
+		],
+		"Tag": [
+			[
+				{
+					"id": "o0-0",
+					"tag": "o0-0-tag"
+				},
+				{
+					"id": "o0-1",
+					"tag": "o0-1-tag"
+				},
+				{
+					"id": "o0-2",
+					"tag": "o0-2-tag"
+				}
+			]
+		],
+		"Read Each": [
+			[
+				{
+					"from": "o0-0"
+				},
+				{
+					"from": "o0-1"
+				},
+				{
+					"from": "o0-2"
+				}
+			]
+		],
+		"Read Expr": [
+			[
+				{
+					"from": "o0-0"
+				},
+				{
+					"from": "o0-1"
+				},
+				{
+					"from": "o0-2"
+				}
+			]
+		],
+		"Read All": [
+			[
+				{
+					"from": "o0-0"
+				},
+				{
+					"from": "o0-1"
+				},
+				{
+					"from": "o0-2"
+				}
+			]
+		]
+	},
+	"requests": [],
+	"responses": []
+}

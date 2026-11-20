@@ -1,0 +1,13 @@
+{
+	"description": "A Loop Over Items node with batch size 1 on 4 items of A, with the \"reset\" option on, and the readers inside the loop: each run of the node starts the batch again, so v1 loops until the execution times out. The run is cut at 250 ms.",
+	"trigger": {
+		"body": {
+			"ids": ["a0", "a1", "a2", "a3"]
+		}
+	},
+	"compare": ["Read Each", "Read All", "Read Expr"],
+	"expectRefusal": true,
+	"runData": true,
+	"runDetails": true,
+	"runTimeoutMs": 250
+}

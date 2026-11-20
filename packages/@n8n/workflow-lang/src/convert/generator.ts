@@ -907,7 +907,11 @@ export class ModuleGenerator {
 		const seen = new Set<string>(queue);
 		while (queue.length > 0) {
 			const at = queue.shift() ?? '';
+			const loop = isLoopNode(b.graph.nodes.get(at));
 			for (const e of b.graph.outgoing(at)) {
+				// A new list of an enclosing loop comes from its loop output, not from its done
+				// output: the walk of the body does not leave a loop through its done output.
+				if (loop && e.output !== 1) continue;
 				if (seen.has(e.to)) continue;
 				seen.add(e.to);
 				queue.push(e.to);

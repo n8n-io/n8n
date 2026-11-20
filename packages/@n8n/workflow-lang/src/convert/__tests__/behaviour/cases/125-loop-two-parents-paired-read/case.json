@@ -1,0 +1,12 @@
+{
+	"description": "An If node after A sends both of its outputs into the same Loop Over Items node (batch 1), so the node gets its input list in two runs. The readers are inside the loop and read $('A').item.",
+	"trigger": {
+		"body": {
+			"ids": ["a0", "a1", "a2", "a3"]
+		}
+	},
+	"compare": ["Read Each", "Read All", "Read Expr"],
+	"expectRefusal": true,
+	"runData": true,
+	"runDetails": true
+}

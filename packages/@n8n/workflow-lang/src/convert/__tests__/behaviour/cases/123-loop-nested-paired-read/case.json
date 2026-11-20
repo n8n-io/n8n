@@ -1,0 +1,12 @@
+{
+	"description": "An outer Loop Over Items node (batch 1) over 2 items of A. Inside it a Code node makes 3 items for the current item, and an inner Loop Over Items node (batch 1) loops over those. The readers are inside the inner loop and read $('Make').item, so the inner loop gets a new input list in each outer iteration.",
+	"trigger": {
+		"body": {
+			"ids": ["o0", "o1"]
+		}
+	},
+	"compare": ["Read Each", "Read All", "Read Expr"],
+	"expectRefusal": true,
+	"runData": true,
+	"runDetails": true
+}

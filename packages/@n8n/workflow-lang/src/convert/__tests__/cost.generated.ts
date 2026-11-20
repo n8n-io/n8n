@@ -32,6 +32,8 @@ export const CONVERT_COST: Record<string, [ops: number, allocations: number]> = 
 	"convert/119-code-all-loop-push": [4051, 230],
 	"convert/12-loop-over-items": [2806, 184],
 	"convert/120-code-all-map-same-json": [4021, 224],
+	"convert/126-loop-batch-2-five-items": [9318, 528],
+	"convert/127-loop-reads-tag-inside": [9609, 524],
 	"convert/13-sub-workflow": [752, 61],
 	"convert/14-cycle-if": [1810, 124],
 	"convert/15-merge-waiting": [148, 21],

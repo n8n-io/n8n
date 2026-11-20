@@ -1,0 +1,184 @@
+{
+	"name": "Loop paired read - batch 2 over 5 items",
+	"nodes": [
+		{
+			"id": "webhook",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [0, 0],
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "loop-batch-2-five",
+				"options": {}
+			},
+			"webhookId": "0d1b0a3c-0000-4000-8000-000000000126"
+		},
+		{
+			"id": "a",
+			"name": "A",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [200, 0],
+			"parameters": {
+				"jsCode": "return $input.first().json.body.ids.map((id) => ({ json: { id } }));"
+			}
+		},
+		{
+			"id": "loop",
+			"name": "Loop Over Items",
+			"type": "n8n-nodes-base.splitInBatches",
+			"typeVersion": 3,
+			"position": [400, 0],
+			"parameters": {
+				"batchSize": 2,
+				"options": {}
+			}
+		},
+		{
+			"id": "tag",
+			"name": "Tag",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [600, 100],
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "tag-f",
+							"name": "tag",
+							"value": "={{ $json.id }}-tag",
+							"type": "string"
+						}
+					]
+				},
+				"includeOtherFields": true,
+				"options": {}
+			}
+		},
+		{
+			"id": "read-each",
+			"name": "Read Each",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [900, 900],
+			"parameters": {
+				"mode": "runOnceForEachItem",
+				"jsCode": "return { json: { from: $('A').item.json.id } };"
+			}
+		},
+		{
+			"id": "read-all",
+			"name": "Read All",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [900, 1000],
+			"parameters": {
+				"jsCode": "return [{ json: { from: $('A').item.json.id } }];"
+			}
+		},
+		{
+			"id": "read-expr",
+			"name": "Read Expr",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [900, 1100],
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "rx-f",
+							"name": "from",
+							"value": "={{ $('A').item.json.id }}",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			}
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "A",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"A": {
+			"main": [
+				[
+					{
+						"node": "Loop Over Items",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Loop Over Items": {
+			"main": [
+				[],
+				[
+					{
+						"node": "Tag",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Tag": {
+			"main": [
+				[
+					{
+						"node": "Read Each",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Read Each": {
+			"main": [
+				[
+					{
+						"node": "Read Expr",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Read Expr": {
+			"main": [
+				[
+					{
+						"node": "Read All",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Read All": {
+			"main": [
+				[
+					{
+						"node": "Loop Over Items",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

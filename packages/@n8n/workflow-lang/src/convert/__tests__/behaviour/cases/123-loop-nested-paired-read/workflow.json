@@ -1,0 +1,234 @@
+{
+	"name": "Loop paired read - nested loops",
+	"nodes": [
+		{
+			"id": "webhook",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [0, 0],
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "loop-nested",
+				"options": {}
+			},
+			"webhookId": "0d1b0a3c-0000-4000-8000-000000000123"
+		},
+		{
+			"id": "a",
+			"name": "A",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [200, 0],
+			"parameters": {
+				"jsCode": "return $input.first().json.body.ids.map((id) => ({ json: { id } }));"
+			}
+		},
+		{
+			"id": "outer",
+			"name": "Outer",
+			"type": "n8n-nodes-base.splitInBatches",
+			"typeVersion": 3,
+			"position": [400, 0],
+			"parameters": {
+				"batchSize": 1,
+				"options": {}
+			}
+		},
+		{
+			"id": "make",
+			"name": "Make",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [700, 100],
+			"parameters": {
+				"jsCode": "const id = $input.first().json.id;\nreturn [0, 1, 2].map((k) => ({ json: { id: `${id}-${k}` } }));"
+			}
+		},
+		{
+			"id": "inner",
+			"name": "Inner",
+			"type": "n8n-nodes-base.splitInBatches",
+			"typeVersion": 3,
+			"position": [400, 0],
+			"parameters": {
+				"batchSize": 1,
+				"options": {}
+			}
+		},
+		{
+			"id": "tag",
+			"name": "Tag",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [1000, 100],
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "tag-f",
+							"name": "tag",
+							"value": "={{ $json.id }}-tag",
+							"type": "string"
+						}
+					]
+				},
+				"includeOtherFields": true,
+				"options": {}
+			}
+		},
+		{
+			"id": "read-each",
+			"name": "Read Each",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [900, 900],
+			"parameters": {
+				"mode": "runOnceForEachItem",
+				"jsCode": "return { json: { from: $('Make').item.json.id } };"
+			}
+		},
+		{
+			"id": "read-all",
+			"name": "Read All",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [900, 1000],
+			"parameters": {
+				"jsCode": "return [{ json: { from: $('Make').item.json.id } }];"
+			}
+		},
+		{
+			"id": "read-expr",
+			"name": "Read Expr",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [900, 1100],
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "rx-f",
+							"name": "from",
+							"value": "={{ $('Make').item.json.id }}",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			}
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "A",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"A": {
+			"main": [
+				[
+					{
+						"node": "Outer",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Outer": {
+			"main": [
+				[],
+				[
+					{
+						"node": "Make",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Make": {
+			"main": [
+				[
+					{
+						"node": "Inner",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Inner": {
+			"main": [
+				[
+					{
+						"node": "Outer",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Tag",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Tag": {
+			"main": [
+				[
+					{
+						"node": "Read Each",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Read Each": {
+			"main": [
+				[
+					{
+						"node": "Read Expr",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Read Expr": {
+			"main": [
+				[
+					{
+						"node": "Read All",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Read All": {
+			"main": [
+				[
+					{
+						"node": "Inner",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	}
+}
