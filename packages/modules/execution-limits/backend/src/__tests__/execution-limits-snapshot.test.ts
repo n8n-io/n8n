@@ -96,6 +96,46 @@ describe('ExecutionLimitsSnapshot', () => {
 		});
 	});
 
+	describe('readLimitedScopes', () => {
+		it('is null before a load', () => {
+			expect(snapshot.readLimitedScopes()).toBeNull();
+		});
+
+		it('reflects the period unit and which scopes have a limit', async () => {
+			await snapshot.reload();
+
+			expect(snapshot.readLimitedScopes()).toEqual({
+				periodUnit: 'week',
+				hasInstanceLimit: true,
+				hasProjectLimits: true,
+				generation: 1,
+			});
+
+			settingsStore.read.mockResolvedValue(DEFAULT_EXECUTION_LIMIT_SETTINGS);
+			projectLimitRepository.findAll.mockResolvedValue([]);
+			await snapshot.reload();
+
+			expect(snapshot.readLimitedScopes()).toMatchObject({
+				periodUnit: 'month',
+				hasInstanceLimit: false,
+				hasProjectLimits: false,
+			});
+		});
+
+		it('raises the generation at each successful load only', async () => {
+			await snapshot.reload();
+			await snapshot.reload();
+			expect(snapshot.readLimitedScopes()?.generation).toBe(2);
+
+			settingsStore.read.mockRejectedValueOnce(new Error('database is down'));
+			await snapshot.reload();
+			expect(snapshot.readLimitedScopes()?.generation).toBe(2);
+
+			await snapshot.reload();
+			expect(snapshot.readLimitedScopes()?.generation).toBe(3);
+		});
+	});
+
 	describe('refreshAfterWrite', () => {
 		it('reloads this process and tells the other processes to reload', async () => {
 			await snapshot.refreshAfterWrite();

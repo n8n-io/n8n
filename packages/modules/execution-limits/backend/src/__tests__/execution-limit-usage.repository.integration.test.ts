@@ -1,12 +1,16 @@
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
-import { TransactionRunner } from '@n8n/db';
+import { type ExecutionLedgerRow, TransactionRunner } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource, type Repository } from '@n8n/typeorm';
 
 import { ExecutionLimitInstanceUsage } from '../execution-limit-instance-usage.entity';
 import { ExecutionLimitUsage } from '../execution-limit-usage.entity';
+import { ExecutionLimitUsageFoldStep } from '../execution-limit-usage.fold-step';
 import { ExecutionLimitUsageRepository } from '../execution-limit-usage.repository';
 import { ExecutionLimitsService } from '../execution-limits.service';
+import { ExecutionUsageCache } from '../execution-usage-cache';
+import { ExecutionUsageService } from '../execution-usage.service';
+import { ledgerRow } from './ledger-rows';
 
 const FIRST_DAY = '2026-11-16';
 const LAST_DAY = '2026-11-22';
@@ -207,5 +211,50 @@ describe('ExecutionLimitUsageRepository reads', () => {
 		);
 
 		expect(totals.startedCount).toBe(4);
+	});
+
+	describe('after a fold', () => {
+		const fold = async (...rows: ExecutionLedgerRow[]) =>
+			await Container.get(TransactionRunner).run(
+				{},
+				async (ctx) => await Container.get(ExecutionLimitUsageFoldStep).fold(rows, ctx),
+			);
+
+		it('gives the same count from memory and from the database', async () => {
+			const limits = Container.get(ExecutionLimitsService);
+			const projectId = await limitProject();
+			await limits.updateSettings({ periodUnit: 'week', instanceMaxExecutions: 1000 }, null);
+			const cache = Container.get(ExecutionUsageCache);
+			const service = Container.get(ExecutionUsageService);
+
+			const occurredAt = new Date();
+			const blocked = ledgerRow({ projectId, occurredAt });
+			await fold(
+				ledgerRow({ projectId, occurredAt }),
+				ledgerRow({ projectId, occurredAt }),
+				blocked,
+				ledgerRow({
+					projectId,
+					occurredAt,
+					executionId: blocked.executionId,
+					event: 'ended',
+					outcome: 'blocked',
+				}),
+				ledgerRow({ projectId: 'not-limited', occurredAt }),
+			);
+			await cache.refresh();
+
+			for (const [scope, executions] of [
+				[{ type: 'project', projectId }, 2],
+				[{ type: 'instance' }, 3],
+			] as const) {
+				const cached = service.getCachedUsage(scope);
+				const stored = await service.getUsage({ scope, period: 'week' });
+
+				expect(cached).toEqual(stored);
+				expect(cached?.executions).toBe(executions);
+				expect(cached?.lastFoldAt).toBeInstanceOf(Date);
+			}
+		});
 	});
 });

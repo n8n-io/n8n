@@ -4,6 +4,9 @@ import type { RecordedExecutionLimitChange } from './execution-limits.types';
 
 export interface ExecutionLimitsEventMap {
 	'execution-limit-updated': RecordedExecutionLimitChange;
+	/** The usage held in memory was read again from the database. */
+	'execution-limit-usage-refreshed': { durationMs: number };
+	'execution-limit-usage-refresh-failed': Record<string, never>;
 }
 
 declare module '@n8n/backend-services' {
