@@ -2,6 +2,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
+import { WORKFLOW_ENGINE_TYPES, type WorkflowEngineType } from 'n8n-workflow';
+
 import { resolveNodeDefinitionDirs, NODE_DEFINITION_DIRS_ENV_VAR } from './node-definition-dirs';
 import type { WorkflowJSON } from '../types/base';
 import {
@@ -14,6 +16,8 @@ import {
 export interface ValidateCliOptions {
 	json?: boolean;
 	nodeTypes?: string[];
+	/** The engine to validate for. Default: the workflow's `settings.engineType`. */
+	engine?: WorkflowEngineType;
 }
 
 interface WorkflowBuilderLike {
@@ -39,7 +43,9 @@ function buildTrailer(unchecked: string[]): string {
 }
 
 function usageAndExit(): never {
-	console.error('Usage: workflow-sdk validate <file-path> [--json] [--node-types <dir>]');
+	console.error(
+		'Usage: workflow-sdk validate <file-path> [--json] [--node-types <dir>] [--engine <v1|v2>]',
+	);
 	console.error('');
 	console.error('Load a workflow SDK TypeScript file via dynamic import, run graph');
 	console.error('validators (wf.validate), schema validateWorkflow, and source lint.');
@@ -48,18 +54,38 @@ function usageAndExit(): never {
 	console.error('Node parameter validation needs generated node definitions. They are');
 	console.error('resolved from the workflow file and cwd; override with --node-types');
 	console.error(`(repeatable) or ${NODE_DEFINITION_DIRS_ENV_VAR} (${path.delimiter}-separated).`);
+	console.error('');
+	console.error('--engine v2 also reports each node and setting that engine v2 cannot run.');
+	console.error("The default is the workflow's settings.engineType, or v1 when it has none.");
 	process.exit(1);
 }
 
-function parseArgs(argv: string[]): { filePath: string; options: ValidateCliOptions } {
+function isWorkflowEngineType(value: string | undefined): value is WorkflowEngineType {
+	return WORKFLOW_ENGINE_TYPES.some((engine) => engine === value);
+}
+
+function parseEngine(value: string | undefined): WorkflowEngineType {
+	if (!isWorkflowEngineType(value)) {
+		console.error(`--engine requires one of: ${WORKFLOW_ENGINE_TYPES.join(', ')}`);
+		usageAndExit();
+	}
+	return value;
+}
+
+export function parseArgs(argv: string[]): { filePath: string; options: ValidateCliOptions } {
 	let filePath: string | undefined;
 	let json = false;
 	const nodeTypes: string[] = [];
+	let engine: WorkflowEngineType | undefined;
 
 	for (let i = 0; i < argv.length; i++) {
 		const arg = argv[i];
 		if (arg === '--json') {
 			json = true;
+		} else if (arg.startsWith('--engine=')) {
+			engine = parseEngine(arg.slice('--engine='.length));
+		} else if (arg === '--engine') {
+			engine = parseEngine(argv[++i]);
 		} else if (arg.startsWith('--node-types=')) {
 			nodeTypes.push(arg.slice('--node-types='.length));
 		} else if (arg === '--node-types') {
@@ -84,7 +110,7 @@ function parseArgs(argv: string[]): { filePath: string; options: ValidateCliOpti
 		usageAndExit();
 	}
 
-	return { filePath, options: { json, nodeTypes } };
+	return { filePath, options: { json, nodeTypes, ...(engine && { engine }) } };
 }
 
 function toReportEntry(
@@ -274,6 +300,7 @@ export async function validateCommand(argv: string[] = process.argv.slice(3)): P
 		lint: true,
 		source,
 		nodeDefinitionDirs,
+		engine: options.engine,
 	});
 
 	if (options.json) {
