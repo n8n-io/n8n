@@ -126,12 +126,10 @@ function wrapIntegrationWithRedaction(
 }
 
 function isOpenTelemetryTracer(value: unknown): value is Tracer {
+	// Plain reads, not `in`: a Proxy tracer can expose methods without a `has` trap.
 	return (
-		value !== null &&
-		typeof value === 'object' &&
-		'startSpan' in value &&
+		isRecord(value) &&
 		typeof value.startSpan === 'function' &&
-		'startActiveSpan' in value &&
 		typeof value.startActiveSpan === 'function'
 	);
 }
