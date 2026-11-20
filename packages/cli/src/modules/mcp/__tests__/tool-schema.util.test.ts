@@ -121,4 +121,30 @@ describe('shapeToStandardSchema', () => {
 			},
 		});
 	});
+
+	// The MCP server is rebuilt on every request. Tool shapes are module-level
+	// constants, so the conversion must run once for each shape, not once for each request.
+	describe('caching', () => {
+		it('returns the same bridged schema for the same shape object', () => {
+			const shape = { query: z.string().optional() };
+
+			expect(shapeToStandardSchema(shape)).toBe(shapeToStandardSchema(shape));
+		});
+
+		it('does not share a cached schema between different shape objects', () => {
+			const first = shapeToStandardSchema({ query: z.string() });
+			const second = shapeToStandardSchema({ query: z.string() });
+
+			expect(second).not.toBe(first);
+		});
+
+		it('keeps validating through the cached schema', async () => {
+			const shape = { limit: z.number().int().min(1) };
+			shapeToStandardSchema(shape);
+			const cached = shapeToStandardSchema(shape);
+
+			expect(await cached['~standard'].validate({ limit: 2 })).toEqual({ value: { limit: 2 } });
+			expect(await cached['~standard'].validate({ limit: 0 })).toHaveProperty('issues');
+		});
+	});
 });
