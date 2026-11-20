@@ -7107,7 +7107,7 @@
 	"settings.security.workflowReviews.success.disabled": "Workflow reviews disabled",
 	"settings.security.workflowReviews.error": "Failed to update workflow reviews settings",
 	"settings.security.workflowReviews.confirmDisable.headline": "Disable publish reviews",
-	"settings.security.workflowReviews.confirmDisable.message": "Publish reviews will no longer be available on this instance. Existing project-level review settings will be removed.",
+	"settings.security.workflowReviews.confirmDisable.message": "Publish reviews will no longer be available on this instance. Existing project-level review settings will no longer apply.",
 	"workflowReviews.sidebar.section.waiting.title": "Waiting for your review",
 	"workflowReviews.sidebar.section.waiting.titleAdmin": "Waiting for review",
 	"workflowReviews.sidebar.section.authored.title": "Authored by you",

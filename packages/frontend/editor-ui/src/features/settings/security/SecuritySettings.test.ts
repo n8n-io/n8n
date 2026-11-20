@@ -1167,7 +1167,7 @@ describe('SecuritySettings', () => {
 
 			expect(getByRole('dialog')).toHaveTextContent('Disable publish reviews');
 			expect(getByRole('dialog')).toHaveTextContent(
-				'Publish reviews will no longer be available on this instance. Existing project-level review settings will be removed.',
+				'Publish reviews will no longer be available on this instance. Existing project-level review settings will no longer apply.',
 			);
 
 			await userEvent.click(getByRole('button', { name: 'Confirm' }));
