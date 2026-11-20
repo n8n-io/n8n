@@ -261,7 +261,11 @@ defineExpose({ onSetupTaskAction });
 					</template>
 
 					<AgentPanel
-						:header="i18n.baseText('agents.builder.triggers.title')"
+						:header="
+							isTriggerRedesignEnabled
+								? i18n.baseText('agents.builder.channel.title')
+								: i18n.baseText('agents.builder.triggers.title')
+						"
 						:description="i18n.baseText('agents.builder.triggers.description')"
 						data-testid="agent-triggers-panel"
 					>
