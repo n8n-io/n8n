@@ -1,0 +1,21 @@
+{
+	"properties": {
+		"active": {
+			"type": "boolean"
+		},
+		"email": {
+			"type": "string"
+		},
+		"id": {
+			"type": "number"
+		},
+		"ips": {
+			"items": {},
+			"type": "array"
+		},
+		"name": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

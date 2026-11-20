@@ -39,7 +39,10 @@ import type { ToolConnectionStatus } from '@/features/shared/toolsConnection/typ
 import { deriveInstanceAiConfiguration } from './instanceAiConfiguration';
 import { isBrowserUseSupportedOnDevice } from './utils/browserUseSupport';
 import { useInstanceAiSetupPanelExperiment } from '@/experiments/instanceAiSetupPanel/useInstanceAiSetupPanelExperiment';
-import { INSTANCE_AI_ASSISTANT_AGENT_EXPERIMENT } from '@/app/constants/experiments';
+import {
+	INSTANCE_AI_ASSISTANT_AGENT_EXPERIMENT,
+	MODEL_TRAINING_OPT_OUT_EXPERIMENT,
+} from '@/app/constants/experiments';
 import { usePostHog } from '@/app/stores/posthog.store';
 
 export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () => {
@@ -100,6 +103,11 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		() =>
 			isAssistantAgentEnabled.value &&
 			posthogStore.isFeatureEnabled(INSTANCE_AI_ASSISTANT_AGENT_EXPERIMENT.name),
+	);
+	/** Assistant traces reach n8n through the proxy, so the instance can opt out of model training. */
+	const isModelTrainingOptOutAvailable = computed(
+		() =>
+			isProxyEnabled.value && posthogStore.isFeatureEnabled(MODEL_TRAINING_OPT_OUT_EXPERIMENT.name),
 	);
 	const isWorkflowBuilderAvailable = computed(
 		() => settingsStore.moduleSettings?.['instance-ai']?.workflowBuilderAvailable ?? true,
@@ -507,6 +515,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		isBrowserUseAvailable,
 		isBrowserUseEnabledByAdmin,
 		isProxyEnabled,
+		isModelTrainingOptOutAvailable,
 		isSandboxEnabled,
 		isWorkflowBuilderAvailable,
 		isAssistantAgentEnabled,

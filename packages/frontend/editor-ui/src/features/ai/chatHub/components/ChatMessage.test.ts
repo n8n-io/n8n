@@ -102,7 +102,16 @@ describe('ChatMessage', () => {
 
 	it('should allow to copy code block contents', async () => {
 		const user = userEvent.setup();
-		const mockCopy = vi.spyOn(navigator.clipboard, 'writeText');
+		// jsdom grants no clipboard permission, so the code block copies through the
+		// legacy `execCommand` fallback. Read the text from its hidden textarea.
+		const mockCopy = vi.fn();
+		Object.defineProperty(document, 'execCommand', {
+			configurable: true,
+			value: vi.fn(() => {
+				mockCopy(document.querySelector('textarea')?.value);
+				return true;
+			}),
+		});
 
 		const codeContent = 'const foo = "bar";\nfunction test() {\n  return true;\n}';
 		const message: ChatMessageType = createMockMessage({

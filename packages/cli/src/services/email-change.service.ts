@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { PasswordUtility } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type { AuthIdentity, Person } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -6,7 +7,6 @@ import { Service } from '@n8n/di';
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import { InvalidMfaCodeError } from '@/errors/response-errors/invalid-mfa-code.error';
 import { MfaService } from '@/mfa/mfa.service';
-import { PasswordUtility } from '@/services/password.utility';
 import { UserService } from '@/services/user.service';
 import { getCurrentAuthenticationMethod, isSamlLicensedAndEnabled } from '@/sso.ee/sso-helpers';
 

@@ -12,8 +12,12 @@ export const DEFAULT_MEMORY_POLICY = {
 		observeNew: 0.1,
 		midRunAt: 0.6,
 		waitAt: 0.9,
-		reflectAt: 0.6,
+		// The log goes with every request, so keep it small.
+		reflectAt: 0.15,
+		// Below `reflectAt`, so the log grows for a while before the next rewrite.
+		reflectTo: 0.09,
 		batchAt: 0.6,
+		workingSetAt: 0.01,
 	},
 	/** Memory starts early on very large windows. */
 	maxContextWindowTokens: 200_000,
@@ -47,6 +51,10 @@ export interface ObservationThresholds {
 	observerBatch: number | undefined;
 	/** Active observation-log tokens that trigger the Reflector. */
 	reflect: number | undefined;
+	/** Log size the Reflector rewrites to. Below `reflect`. */
+	reflectTo: number | undefined;
+	/** Largest working set the Observer can keep. Any size when undefined. */
+	workingSet: number | undefined;
 }
 
 /**
@@ -115,16 +123,33 @@ function shareThresholds(
 	const defaults = DEFAULT_MEMORY_POLICY.windowShares;
 	const at = (share: number | undefined, fallback: number) =>
 		Math.max(1, Math.floor(window * (share ?? fallback)));
+	const fixedReflect = config.reflectorThresholdTokens;
+	const reflect = config.reflect
+		? (fixedReflect ?? at(shares.reflectAt, defaults.reflectAt))
+		: undefined;
+	let reflectTo: number | undefined;
+	if (reflect !== undefined) {
+		reflectTo =
+			fixedReflect === undefined
+				? Math.min(reflect, at(shares.reflectTo, defaults.reflectTo))
+				: reflectTarget(reflect);
+	}
 	return {
 		observeFirst: at(shares.observeAt, defaults.observeAt),
 		observeNew: at(shares.observeNew, defaults.observeNew),
 		midRunSoft: at(shares.midRunAt, defaults.midRunAt),
 		midRunHard: at(shares.waitAt, defaults.waitAt),
 		observerBatch: at(shares.batchAt, defaults.batchAt),
-		reflect: config.reflect
-			? (config.reflectorThresholdTokens ?? at(shares.reflectAt, defaults.reflectAt))
-			: undefined,
+		reflect,
+		reflectTo,
+		workingSet: at(shares.workingSetAt, defaults.workingSetAt),
 	};
+}
+
+/** The rewrite target for a fixed trigger: the same ratio as the default shares. */
+function reflectTarget(reflect: number): number {
+	const { reflectAt, reflectTo } = DEFAULT_MEMORY_POLICY.windowShares;
+	return Math.max(1, Math.floor((reflect * reflectTo) / reflectAt));
 }
 
 function fixedThresholds(
@@ -133,16 +158,19 @@ function fixedThresholds(
 ): ObservationThresholds | undefined {
 	const observer = config.observerThresholdTokens;
 	if (observer === undefined) return undefined;
+	const { batchAt, workingSetAt } = DEFAULT_MEMORY_POLICY.windowShares;
+	// Shares can leave the threshold unset, so an unknown window needs a fixed fallback.
+	const reflect =
+		config.reflectorThresholdTokens ?? DEFAULT_OBSERVATION_LOG_REFLECTOR_THRESHOLD_TOKENS;
 	return {
 		observeFirst: observer,
 		observeNew: observer,
 		midRunSoft: Math.max(1, Math.floor(observer * DEFAULT_MEMORY_POLICY.fixedMidRunShare)),
 		midRunHard: observer,
-		observerBatch: window
-			? Math.max(1, Math.floor(window * DEFAULT_MEMORY_POLICY.windowShares.batchAt))
-			: undefined,
-		// Shares can leave the threshold unset, so an unknown window needs a fixed fallback.
-		reflect: config.reflectorThresholdTokens ?? DEFAULT_OBSERVATION_LOG_REFLECTOR_THRESHOLD_TOKENS,
+		observerBatch: window ? Math.max(1, Math.floor(window * batchAt)) : undefined,
+		reflect,
+		reflectTo: reflectTarget(reflect),
+		workingSet: window ? Math.max(1, Math.floor(window * workingSetAt)) : undefined,
 	};
 }
 

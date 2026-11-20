@@ -85,6 +85,34 @@ export function getBuildFailureTrackingKey({
 	return buildContext?.workItemId ?? buildContext?.taskId ?? workflowId ?? workflowName ?? filePath;
 }
 
+type WorkflowBuildContext = NonNullable<InstanceAiContext['workflowBuildContext']>;
+
+/** Work item ids per source file, for each run's build context. */
+const sourceFileWorkItemIds = new WeakMap<WorkflowBuildContext, Map<string, string>>();
+
+/**
+ * The first source file built in a run uses the run's work item. Each other
+ * file gets its own, so one workflow's build outcome does not replace another's.
+ * An explicit id is recorded for its file, so a later build that omits it keeps the same loop.
+ */
+function workItemIdForSourceFile(
+	buildContext: WorkflowBuildContext,
+	filePath: string,
+	explicitWorkItemId: string | undefined,
+): string {
+	let ids = sourceFileWorkItemIds.get(buildContext);
+	if (!ids) {
+		ids = new Map();
+		sourceFileWorkItemIds.set(buildContext, ids);
+	}
+	const workItemId =
+		explicitWorkItemId ??
+		ids.get(filePath) ??
+		(ids.size === 0 ? buildContext.workItemId : `wi_${nanoid(8)}`);
+	ids.set(filePath, workItemId);
+	return workItemId;
+}
+
 export function resolveBuildIdentifiers(input: {
 	context: InstanceAiContext;
 	filePath: string;
@@ -99,10 +127,11 @@ export function resolveBuildIdentifiers(input: {
 	const buildContext = context.workflowBuildContext;
 	const isAuxiliarySupportingWorkflow = isSupportingWorkflow;
 	// A blank id counts as omitted: OpenAI strict tool calls send "" for optional fields.
+	const explicitWorkItemId = inputWorkItemId?.trim() ? inputWorkItemId : undefined;
 	const resolvedWorkItemId =
-		(inputWorkItemId?.trim() ? inputWorkItemId : undefined) ??
-		(isAuxiliarySupportingWorkflow ? undefined : buildContext?.workItemId) ??
-		filePath;
+		(isAuxiliarySupportingWorkflow || !buildContext
+			? explicitWorkItemId
+			: workItemIdForSourceFile(buildContext, filePath, explicitWorkItemId)) ?? filePath;
 	const resolvedTaskId = isAuxiliarySupportingWorkflow
 		? `${buildContext?.taskId ?? (context.runId ? `build-${context.runId}` : 'build')}:supporting-${nanoid(6)}`
 		: (buildContext?.taskId ?? (context.runId ? `build-${context.runId}` : `build-${nanoid(8)}`));

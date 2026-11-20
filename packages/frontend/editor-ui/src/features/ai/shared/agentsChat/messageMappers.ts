@@ -26,6 +26,7 @@ import type { AgentsChatInteractionExtension } from './interactionRegistry';
 import { summariseToolCall } from './interactiveSummary';
 import { addReplyAttachments, newReplyAttachments } from './replyFiles';
 import { isPolicyRefusedToolOutput } from './toolPolicyRefusal';
+import { resolveToolCatalogCall } from './toolCatalogCall';
 import type {
 	AgentsChatHostEvent,
 	ApprovalInput,
@@ -300,11 +301,25 @@ export function convertDbMessages(
 		if (failed) status = CHAT_MESSAGE_STATUS.ERROR;
 		else if (msg.executionStatus === 'running') status = CHAT_MESSAGE_STATUS.STREAMING;
 
+		// True while the parts after the last text part are only host events.
+		let continuesText = false;
 		for (const [partIndex, part] of msg.content.entries()) {
 			if (part.type === 'text' && part.text) {
 				text += part.text;
-				renderParts.push({ type: 'text', text: part.text });
-			} else if (part.type === 'file' && part.fileId) {
+				const previous = renderParts.at(-1);
+				// The live stream joins the text deltas around a host event into one
+				// text, so history keeps them as one text too, without a break.
+				if (continuesText && previous?.type === 'text') {
+					previous.text += part.text;
+				} else {
+					renderParts.push({ type: 'text', text: part.text });
+				}
+				continuesText = true;
+				continue;
+			}
+			if (part.type !== 'host-event') continuesText = false;
+
+			if (part.type === 'file' && part.fileId) {
 				attachments.push({
 					fileId: part.fileId,
 					fileName: part.fileName ?? 'attachment',
@@ -360,10 +375,11 @@ export function convertDbMessages(
 					output = undefined;
 				}
 
+				const call = resolveToolCatalogCall(part.toolName, part.input);
 				const toolCall: ToolCall = {
-					tool: part.toolName,
+					tool: call.tool,
 					toolCallId: part.toolCallId ?? '',
-					input: part.input,
+					input: call.input,
 					...(output !== undefined && { output }),
 					...(canceled && { canceled }),
 					state,
@@ -371,7 +387,7 @@ export function convertDbMessages(
 					...(part.endTime !== undefined && { endTime: part.endTime }),
 					...(part.suspendPayload !== undefined && { suspendPayload: part.suspendPayload }),
 					...(part.childTrace && { childProgress: part.childTrace }),
-					displaySummary: summariseToolCall(part.toolName, output, part.input),
+					displaySummary: summariseToolCall(call.tool, output, call.input),
 				};
 				toolCalls.push(toolCall);
 				attachments.push(...newReplyAttachments(attachments, toolCall));

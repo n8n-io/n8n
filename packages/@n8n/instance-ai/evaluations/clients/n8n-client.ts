@@ -176,6 +176,7 @@ export interface WorkflowResponse {
 	connections: Record<string, unknown>;
 	nodeGroups?: WorkflowNodeGroupResponse[];
 	pinData?: Record<string, unknown>;
+	settings?: Record<string, unknown> | null;
 }
 
 interface WorkflowListItem {

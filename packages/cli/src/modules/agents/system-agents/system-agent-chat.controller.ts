@@ -193,6 +193,13 @@ export class SystemAgentChatController {
 			surface: 'system',
 			...(payload.scope ? { scope: payload.scope } : {}),
 		});
+		if (cancelRequested) {
+			await this.systemAgents.reportUserStoppedTurn({
+				agentId,
+				threadId: thread.id,
+				userId: req.user.id,
+			});
+		}
 		return { cancelRequested };
 	}
 
@@ -206,12 +213,16 @@ export class SystemAgentChatController {
 		@Query payload: AgentChatCancelDto = {},
 	) {
 		this.systemAgents.assertRegistered(agentId);
+		const threadId = await this.systemAgents.findThreadIdOfRun(agentId, req.user, runId);
 		const cancelled = await this.orchestrator.cancelChatRun({
 			agentId,
 			runId,
 			resourceId: this.systemAgents.resourceIdFor(req.user),
 			...(payload.scope === 'foreground' ? { cancelBackgroundJobs: false } : {}),
 		});
+		if (cancelled && threadId) {
+			await this.systemAgents.reportUserStoppedTurn({ agentId, threadId, userId: req.user.id });
+		}
 		return { cancelled };
 	}
 

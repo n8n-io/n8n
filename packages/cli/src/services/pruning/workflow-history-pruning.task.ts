@@ -21,6 +21,7 @@ export class WorkflowHistoryPruningTask implements SystemTask {
 				5 * Time.minutes.toSeconds,
 			),
 		},
+		// oxlint-disable-next-line typescript/no-deprecated -- Keep timer scheduling while the durable scheduler is disabled.
 		leaderTimer: {
 			// Only the leader prunes, so a new leader runs once at takeover instead of waiting an hour.
 			runOnTakeover: true,

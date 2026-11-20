@@ -174,7 +174,8 @@ export class AgentUsageTelemetryService {
 			message_count: 0,
 			token_count: 0,
 			tool_call_count: 0,
-			counts_by_source: {},
+			// No prototype, so every source is an own key.
+			counts_by_source: Object.create(null),
 		};
 
 		const agentExecutionCounts = this.agentExecutionCountsBuffer[bufferKey];
@@ -207,13 +208,15 @@ export class AgentUsageTelemetryService {
 			run_type: properties.run_type,
 			turn_status: properties.turn_status,
 			configuration: properties.configuration,
-			sessions: {},
-			sessions_by_source: {},
+			// These maps have no prototype, so every thread id and source is an own key.
+			sessions: Object.create(null),
+			sessions_by_source: Object.create(null),
 		};
 
 		const bucket = this.agentSessionMetricsBuffer[bufferKey];
 		const source = properties.source || 'unknown';
-		const sourceSessions = (bucket.sessions_by_source[source] ??= {});
+		bucket.sessions_by_source[source] ??= Object.create(null);
+		const sourceSessions = bucket.sessions_by_source[source];
 		// A session can contain turns from several sources. Keep the total deduplicated.
 		for (const sessions of [bucket.sessions, sourceSessions]) {
 			const session = sessions[properties.thread_id] ?? {

@@ -4,10 +4,12 @@ import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
 import {
+	CredentialRestrictionsProviderProxy,
 	InstalledTypeRestrictionsProxy,
 	RestrictedNodeTypesProviderProxy,
 } from '@n8n/backend-services';
 
+import { CredentialTypePolicyRestrictionsProvider } from '../credential-restrictions.provider';
 import { NodeTypePolicyInstalledTypeRestrictionsProvider } from '../installed-type-restrictions.provider';
 import { NodeTypePolicyRestrictedTypesProvider } from '../restricted-node-types.provider';
 import { TypeAvailabilityPolicySnapshot } from '../type-availability-policy-snapshot';
@@ -18,12 +20,14 @@ describe('TypeAvailabilityPoliciesModule', () => {
 	const provider = mock<NodeTypePolicyRestrictedTypesProvider>();
 	const snapshot = mock<TypeAvailabilityPolicySnapshot>();
 	const installedTypesProvider = mock<NodeTypePolicyInstalledTypeRestrictionsProvider>();
+	const credentialRestrictionsProvider = mock<CredentialTypePolicyRestrictionsProvider>();
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 		Container.set(NodeTypePolicyRestrictedTypesProvider, provider);
 		Container.set(TypeAvailabilityPolicySnapshot, snapshot);
 		Container.set(NodeTypePolicyInstalledTypeRestrictionsProvider, installedTypesProvider);
+		Container.set(CredentialTypePolicyRestrictionsProvider, credentialRestrictionsProvider);
 	});
 
 	it('registers itself under the correct module name', () => {
@@ -101,6 +105,25 @@ describe('TypeAvailabilityPoliciesModule', () => {
 		await expect(
 			Container.get(RestrictedNodeTypesProviderProxy).findRestrictedWorkflowIds(),
 		).resolves.toEqual(restricted);
+	}, 30_000);
+
+	it('answers the credentials list proxy from its credential restrictions provider on init', async () => {
+		const restrictions = [
+			{
+				reason: 'typeRestricted' as const,
+				restriction: { name: 'slackApi', available: false, scope: 'instance' as const },
+			},
+		];
+		credentialRestrictionsProvider.findRestrictions.mockResolvedValue(restrictions);
+		const module = new TypeAvailabilityPoliciesModule();
+
+		await module.init();
+
+		await expect(
+			Container.get(CredentialRestrictionsProviderProxy).findRestrictions([
+				{ type: 'slackApi', projectId: 'project-1' },
+			]),
+		).resolves.toEqual(restrictions);
 	}, 30_000);
 
 	it('loads the policy snapshot on init, before the process takes work', async () => {

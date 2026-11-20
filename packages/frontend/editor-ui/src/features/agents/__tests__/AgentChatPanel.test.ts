@@ -229,6 +229,11 @@ vi.mock('@n8n/design-system', async (importOriginal) => ({
 		template: '<button v-bind="$attrs" @click="$emit(\'click\')" />',
 	},
 	N8nScrollArea: { template: '<div><slot /></div>' },
+	N8nChatScrollArea: {
+		name: 'N8nChatScrollArea',
+		template: '<div data-test-id="chat-scroll-area"><slot /><slot name="input" /></div>',
+		methods: { scrollToBottom: vi.fn() },
+	},
 	N8nText: { template: '<span><slot /></span>' },
 	N8nTooltip: { template: '<div><slot /></div>' },
 	TOOLTIP_DELAY_MS: 500,
@@ -474,6 +479,7 @@ describe('AgentChatPanel', () => {
 			placeholderPreview: Readonly<Ref<string | undefined>>;
 			showAttachButton: boolean;
 			interactionExtensions: readonly AgentsChatInteractionExtension[];
+			disabled: boolean;
 		}> = {},
 		attachTo?: HTMLElement,
 		slots?: Record<string, string | ((props: Record<string, unknown>) => unknown)>,
@@ -1754,6 +1760,25 @@ describe('AgentChatPanel', () => {
 		expect(wrapper.get('[aria-label="generic.edit"]').attributes('disabled')).toBeDefined();
 		expect(composer.props('modelValue')).toBe('next draft');
 		expect(removeQueuedMessageMock).not.toHaveBeenCalled();
+		wrapper.unmount();
+	});
+
+	it('keeps queued messages queued while the host disables the composer', async () => {
+		queuedMessagesMock.value = [
+			{
+				id: '1',
+				steeringExecutionId: null,
+				message: 'original',
+				createdAt: new Date().toISOString(),
+			},
+		];
+		const wrapper = mountPanel({ disabled: true });
+		const editButton = wrapper.get('[aria-label="generic.edit"]');
+		expect(editButton.attributes('disabled')).toBeDefined();
+		wrapper.findComponent({ name: 'ChatMessageQueue' }).vm.$emit('edit', '1');
+		await flushPromises();
+		expect(removeQueuedMessageMock).not.toHaveBeenCalled();
+		expect(wrapper.findComponent({ name: 'ChatInputBase' }).props('modelValue')).toBe('');
 		wrapper.unmount();
 	});
 
@@ -4872,6 +4897,28 @@ describe('AgentChatPanel', () => {
 
 				expect(wrapper.find('[data-test-id="chat-input-attach-button"]').exists()).toBe(false);
 			});
+
+			it('disables the composer, its send and its footer controls while the host disables it', async () => {
+				const wrapper = mountPanel({ disabled: true }, undefined, {
+					'footer-start': (props) =>
+						h('button', { 'data-testid': 'host-menu', disabled: props.disabled }),
+				});
+				hostVm(wrapper).setDraft('hello');
+				await nextTick();
+				const input = composer(wrapper);
+				const hostMenu = () => wrapper.get('[data-testid="host-menu"]').element;
+
+				expect(input.props('disabled')).toBe(true);
+				expect(input.props('canSubmit')).toBe(false);
+				expect(hostMenu()).toHaveProperty('disabled', true);
+
+				await wrapper.setProps({ disabled: false });
+
+				expect(input.props('disabled')).toBe(false);
+				expect(input.props('canSubmit')).toBe(true);
+				expect(hostMenu()).toHaveProperty('disabled', false);
+				wrapper.unmount();
+			});
 		});
 
 		describe('message-accepted', () => {
@@ -4953,6 +5000,24 @@ describe('AgentChatPanel', () => {
 				expect(wrapper.emitted('message-sending')).toEqual([
 					[{ text: 'go another direction', files: [], isFirstMessage: false }],
 				]);
+			});
+
+			it('sends nothing, emits nothing and keeps the draft when beforeSend refuses the send', async () => {
+				const beforeSend = vi.fn(() => {
+					throw new Error('refused');
+				});
+				const wrapper = mountPanel({ beforeSend });
+				hostVm(wrapper).setDraft('hello');
+				await nextTick();
+
+				composer(wrapper).vm.$emit('submit');
+				await flushPromises();
+
+				expect(beforeSend).toHaveBeenCalledOnce();
+				expect(sendMessageMock).not.toHaveBeenCalled();
+				expect(wrapper.emitted('message-sending')).toBeUndefined();
+				expect(wrapper.emitted('draft-cleared')).toBeUndefined();
+				expect(composer(wrapper).props('modelValue')).toBe('hello');
 			});
 
 			it('marks a message as not the first once the thread has a user message', async () => {

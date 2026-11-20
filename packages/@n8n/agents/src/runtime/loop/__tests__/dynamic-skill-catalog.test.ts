@@ -1,5 +1,5 @@
 import { Agent } from '../../../sdk/agent';
-import { isRuntimeSkillCatalog, isRuntimeSkillUpdate } from '../../../sdk/message';
+import { isRuntimeSkillCatalog } from '../../../sdk/message';
 import {
 	createRuntimeSkillSource,
 	extendRuntimeSkillSource,
@@ -8,7 +8,6 @@ import {
 import type { RuntimeSkillSource } from '../../../skills/types';
 import type { AgentRuntimeConfig } from '../../../types/runtime/agent-runtime';
 import { AgentMessageList } from '../../model/message-list';
-import { ActiveSkills } from '../../skills/active-skills';
 import { RuntimeContextBuilder } from '../runtime-context';
 
 const builtIn = {
@@ -52,18 +51,13 @@ function input(list = new AgentMessageList()) {
 	return list;
 }
 
-async function prompt(
-	runtime: AgentRuntimeConfig,
-	list: AgentMessageList,
-	activeSkills?: ActiveSkills,
-) {
+async function prompt(runtime: AgentRuntimeConfig, list: AgentMessageList) {
 	const builder = new RuntimeContextBuilder(runtime, undefined);
 	return builder.buildModelPrompt({
 		list,
 		tools: await builder.buildToolLoopContext({}),
 		instructionProviderOptions: builder.buildInstructionProviderOptions(),
 		hostVolatileInstructions: undefined,
-		activeSkills,
 	});
 }
 
@@ -327,19 +321,12 @@ describe('dynamic skill catalogues', () => {
 	it('clears a removed catalogue even when no listed skill was loaded', async () => {
 		const list = input();
 		await prompt(await config(source()), list);
-		const removed = createRuntimeSkillSource([builtIn]);
-		const activeSkills = new ActiveSkills(removed, 'catalog-test');
-		await activeSkills.restore(list);
+		const runtime = await config(createRuntimeSkillSource([builtIn]));
+		const result = await prompt(runtime, list);
 
-		const runtime = await config(removed);
-		const result = await prompt(runtime, list, activeSkills);
-
-		expect(list.activeSkillIds).toEqual([]);
-		expect(activeSkills.takeUpdates()).toEqual([]);
-		expect(list.messages().some(isRuntimeSkillUpdate)).toBe(false);
 		expect(list.messages().filter(isRuntimeSkillCatalog)).toHaveLength(2);
 		expect(JSON.stringify(result.messages.at(-1))).toContain('No dynamic skills are available.');
-		await prompt(runtime, list, activeSkills);
+		await prompt(runtime, list);
 		expect(list.messages().filter(isRuntimeSkillCatalog)).toHaveLength(2);
 	});
 
@@ -365,25 +352,6 @@ describe('dynamic skill catalogues', () => {
 		const result = await prompt(await config(filtered), input());
 		expect(JSON.stringify(result.messages)).not.toContain(custom.description);
 		await expect(filtered.loadSkill(custom.id)).resolves.toBeNull();
-	});
-
-	it('revokes a previously loaded skill when the current catalogue removes it', async () => {
-		const list = input();
-		await prompt(await config(source()), list);
-		list.activeSkillIds = [custom.id];
-		list.activeSkillVersions = { [custom.id]: 'previous-version' };
-		const removed = createRuntimeSkillSource([builtIn]);
-		removed.dynamicCatalog = { skillIds: [] };
-		const activeSkills = new ActiveSkills(removed, 'catalog-test');
-		await activeSkills.restore(list);
-
-		const result = await prompt(await config(removed), list, activeSkills);
-
-		expect(list.activeSkillIds).toEqual([]);
-		expect(list.activeSkillVersions).toEqual({ [custom.id]: null });
-		expect(JSON.stringify(result.messages)).toContain('No dynamic skills are available.');
-		expect(JSON.stringify(result.messages)).toContain('Do not use its earlier instructions');
-		expect(JSON.stringify(result.system)).not.toContain(custom.instructions);
 	});
 
 	it('includes loading instructions when all skills are dynamic', async () => {
