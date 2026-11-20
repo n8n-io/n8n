@@ -23,6 +23,17 @@ const digest = (value: string) => createHash('sha256').update(value).digest('hex
 const tokenOf = (ownerId: string) => `synthetic-upstream-${digest(ownerId).slice(0, 24)}`;
 const scopeOf = (binding: ReadCapabilityBinding) =>
 	digest(JSON.stringify([binding.ownerId, binding.projectId, binding.agentId, binding.testChatId]));
+/** The scope that the loopback fixture caller must derive from a binding. Written out here. */
+const fixtureScopeOf = (binding: ReadCapabilityBinding) =>
+	digest(
+		JSON.stringify([
+			binding.ownerId,
+			binding.projectId,
+			binding.agentId,
+			binding.testChatId,
+			'linear',
+		]),
+	);
 
 // Two owners, the same agent and the same chat ID.
 function inputOf(ownerId: string): OpenWorldInput {
@@ -48,6 +59,8 @@ const bindingOf = (ownerId: string): ReadCapabilityBinding => ({
 
 interface Sent {
 	target: 'gym' | 'upstream';
+	/** Method, path and query. */
+	request: string;
 	headers: Record<string, string>;
 	/** Headers and body as one text, for a search of a credential in any position. */
 	text: string;
@@ -87,9 +100,11 @@ function fakeServices(owners: string[]) {
 
 	vi.stubGlobal('fetch', async (url: string, init: RequestInit) => {
 		const headers = Object.fromEntries(new Headers(init.headers));
+		const target = new URL(url);
+		const request = `${init.method ?? 'GET'} ${target.pathname}${target.search}`;
 		// The backend asks the Gym what it serves before it opens a world.
 		if (url === `${GYM_BASE}/_sim/v1/manifest?service=linear`) {
-			sent.push({ target: 'gym', headers, text: JSON.stringify(headers) });
+			sent.push({ target: 'gym', request, headers, text: JSON.stringify(headers) });
 			return reply({
 				contract: 'sim-service/v1',
 				service: 'linear',
@@ -99,17 +114,18 @@ function fakeServices(owners: string[]) {
 		const text = JSON.stringify(headers) + String(init.body);
 		const body = JSON.parse(String(init.body));
 		if (url === UPSTREAM_URL) {
-			sent.push({ target: 'upstream', headers, text });
+			sent.push({ target: 'upstream', request, headers, text });
 			const owner = owners.find(
 				(o) =>
 					headers.authorization === `Bearer ${tokenOf(o)}` ||
-					headers['x-fixture-scope'] === scopeOf(bindingOf(o)),
+					headers['x-fixture-scope'] === scopeOf(bindingOf(o)) ||
+					headers['x-fixture-scope'] === fixtureScopeOf(bindingOf(o)),
 			);
 			return toolResult(issue(`Issue of ${owner}`));
 		}
 		const { origin, pathname } = new URL(url);
 		if (origin !== GYM_BASE) throw new Error(`Unexpected request to ${url}`);
-		sent.push({ target: 'gym', headers, text });
+		sent.push({ target: 'gym', request, headers, text });
 		const tenant = /^\/_sim\/v1\/tenants\/([^/]+)(\/seed)?$/.exec(pathname);
 		if (tenant) {
 			if (headers.authorization !== `Bearer ${HARNESS_TOKEN}`) throw new Error('Not the harness');
@@ -371,55 +387,189 @@ describe('LinearGymBackend read capability', () => {
 		// A request never makes the backend ask the factory for a caller.
 		expect(capability.bindings).toEqual([bindingOf(B), bindingOf(A)]);
 	});
-
-	it('serves nothing when the factory gives no caller', async () => {
-		fakeServices([A]);
-		const backend = new LinearGymBackend(async () => {
-			throw new Error('No credential for this owner');
-		});
-		await expect(backend.openWorld(inputOf(A))).rejects.toThrow('unavailable');
-	});
 });
 
 describe('loopbackFixtureReadCapability', () => {
-	it('sends one scope for each owner and no credential', async () => {
-		const services = fakeServices([]);
-		const backend = new LinearGymBackend();
-		const worldA = await backend.openWorld(inputOf('owner-a'));
-		const worldB = await backend.openWorld(inputOf('owner-b'));
+	const A = 'owner-a';
+	const B = 'owner-b';
 
-		await Promise.all([call(worldA, 'get_issue', args), call(worldB, 'get_issue', args)]);
+	it('sends the scope that it derives from the binding of each owner, and no credential', async () => {
+		const services = fakeServices([A, B]);
+		const backend = new LinearGymBackend();
+		const worldA = await backend.openWorld(inputOf(A));
+		const worldB = await backend.openWorld(inputOf(B));
+
+		// The fake Linear names the owner of the scope. Each world gets the issue of its owner.
+		const first = await Promise.all([
+			call(worldA, 'get_issue', args),
+			call(worldB, 'get_issue', args),
+		]);
+		expect(first.map(titleOf)).toEqual([`Issue of ${A}`, `Issue of ${B}`]);
 		await Promise.all([call(worldB, 'get_issue', args), call(worldA, 'get_issue', args)]);
+		// Requests that do not overlap have a known order.
+		await call(worldA, 'get_issue', args);
+		await call(worldB, 'get_issue', args);
 
 		const requests = services.upstream();
-		expect(requests).toHaveLength(4);
+		expect(requests).toHaveLength(6);
 		for (const request of requests) {
 			expect(Object.keys(request.headers).sort()).toEqual([
 				'accept',
 				'content-type',
 				'x-fixture-scope',
 			]);
-			expect(request.headers['x-fixture-scope']).toMatch(/^[a-f0-9]{64}$/);
 			for (const token of services.gymTokens) expect(request.text).not.toContain(token);
 		}
-		const scopes = requests.map((request) => request.headers['x-fixture-scope']);
-		expect(new Set(scopes).size).toBe(2);
-		expect(scopes[0]).not.toBe(scopes[1]);
-		expect([scopes[2], scopes[3]].sort()).toEqual([scopes[0], scopes[1]].sort());
+		// The complete scope of each request is the digest of the binding of one owner. A value
+		// that only differs for each world (a random value, the world ID) is not accepted.
+		const expected = { [fixtureScopeOf(bindingOf(A))]: A, [fixtureScopeOf(bindingOf(B))]: B };
+		const owners = requests.map((request) => expected[request.headers['x-fixture-scope']]);
+		expect(owners.slice(0, 4).sort()).toEqual([A, A, B, B]);
+		expect(owners.slice(4)).toEqual([A, B]);
+		for (const world of [worldA, worldB])
+			for (const request of requests) expect(request.text).not.toContain(world.worldId);
+	});
+
+	it('derives the same scope for a second world of the same binding', async () => {
+		const services = fakeServices([A]);
+		const backend = new LinearGymBackend();
+		const first = await backend.openWorld(inputOf(A));
+		const second = await backend.openWorld(inputOf(A));
+		expect(second.worldId).not.toBe(first.worldId);
+
+		expect(titleOf(await call(first, 'get_issue', args))).toBe(`Issue of ${A}`);
+		expect(titleOf(await call(second, 'get_issue', args))).toBe(`Issue of ${A}`);
+
+		expect(services.upstream().map((request) => request.headers['x-fixture-scope'])).toEqual([
+			fixtureScopeOf(bindingOf(A)),
+			fixtureScopeOf(bindingOf(A)),
+		]);
+	});
+
+	it.each<[string, Partial<ReadCapabilityBinding>]>([
+		['owner', { ownerId: 'owner-c' }],
+		['project', { projectId: 'project-2' }],
+		['agent', { agentId: 'agent-2' }],
+		['test chat', { testChatId: 'chat-2' }],
+	])('derives another scope when the %s of the binding changes', async (_, change) => {
+		const services = fakeServices([A]);
+		const binding = { ...bindingOf(A), ...change };
+		const caller = await loopbackFixtureReadCapability(binding, new Set(['get_issue']));
+		await caller.read('get_issue', args);
+
+		const [request] = services.upstream();
+		expect(request.headers['x-fixture-scope']).toBe(fixtureScopeOf(binding));
+		expect(request.headers['x-fixture-scope']).not.toBe(fixtureScopeOf(bindingOf(A)));
 	});
 
 	it('refuses a tool outside its allowlist and a destination that is not on loopback', async () => {
 		const services = fakeServices([]);
-		const caller = await loopbackFixtureReadCapability(
-			bindingOf('owner-a'),
-			new Set(['get_issue']),
-		);
+		const caller = await loopbackFixtureReadCapability(bindingOf(A), new Set(['get_issue']));
 		await expect(caller.read('save_issue', { ...args, title: 'x' })).rejects.toThrow('unavailable');
 		expect(services.sent).toEqual([]);
 
 		vi.stubEnv('LINEAR_UPSTREAM_URL', 'https://mcp.linear.app/mcp');
 		await expect(
-			loopbackFixtureReadCapability(bindingOf('owner-a'), new Set(['get_issue'])),
+			loopbackFixtureReadCapability(bindingOf(A), new Set(['get_issue'])),
 		).rejects.toThrow('unavailable');
 	});
+
+	it('refuses a destination on the origin of the Gym', async () => {
+		fakeServices([]);
+		vi.stubEnv('LINEAR_UPSTREAM_URL', `${GYM_BASE}/mcp`);
+		await expect(
+			loopbackFixtureReadCapability(bindingOf(A), new Set(['get_issue'])),
+		).rejects.toThrow('unavailable');
+	});
+});
+
+describe('LinearGymBackend world open order', () => {
+	const A = 'owner-a';
+	const tenantRequests = (services: ReturnType<typeof fakeServices>) =>
+		services.sent.filter(({ request }) => request.includes('/_sim/v1/tenants/'));
+
+	it('creates no Gym tenant when the factory gives no caller', async () => {
+		const services = fakeServices([A]);
+		const factory = vi.fn<ReadCapabilityFactory>(async () => {
+			throw new Error('No credential for this owner');
+		});
+		const backend = new LinearGymBackend(factory);
+
+		await expect(backend.openWorld(inputOf(A))).rejects.toThrow('unavailable');
+
+		expect(factory).toHaveBeenCalledTimes(1);
+		// The only request is the capability read. No tenant, no seed, no tool call.
+		expect(services.sent.map(({ request }) => request)).toEqual([
+			'GET /_sim/v1/manifest?service=linear',
+		]);
+	});
+
+	it('asks the factory before it creates the Gym tenant', async () => {
+		const services = fakeServices([A]);
+		const capability = recordingCapability();
+		let tenantsAtFactory = -1;
+		const backend = new LinearGymBackend(async (binding, readTools) => {
+			tenantsAtFactory = tenantRequests(services).length;
+			return await capability.factory(binding, readTools);
+		});
+
+		const world = await backend.openWorld(inputOf(A));
+
+		expect(tenantsAtFactory).toBe(0);
+		expect(tenantRequests(services).map(({ request }) => request)).toEqual([
+			`PUT /_sim/v1/tenants/${world.worldId}`,
+		]);
+	});
+
+	it.each([
+		['is not set', ''],
+		['is not on loopback', 'https://mcp.linear.app/mcp'],
+		['is on the origin of the Gym', `${GYM_BASE}/mcp`],
+	])('opens a world with a custom factory when LINEAR_UPSTREAM_URL %s', async (_, upstreamUrl) => {
+		const services = fakeServices([A]);
+		vi.stubEnv('LINEAR_UPSTREAM_URL', upstreamUrl);
+		const reached: string[] = [];
+		const backend = new LinearGymBackend(async (binding) => ({
+			read: async (toolName) => {
+				reached.push(toolName);
+				return {
+					content: [
+						{
+							type: 'text',
+							text: JSON.stringify({
+								id: 'FIN-412',
+								uuid: '33333333-3333-4333-8333-333333333333',
+								title: `Issue of ${binding.ownerId}`,
+								team: 'Finance',
+								teamId: '11111111-1111-4111-8111-111111111111',
+							}),
+						},
+					],
+				};
+			},
+		}));
+
+		const world = await backend.openWorld(inputOf(A));
+
+		expect(titleOf(await call(world, 'get_issue', args))).toBe(`Issue of ${A}`);
+		expect(reached).toEqual(['get_issue']);
+		expect(services.upstream()).toEqual([]);
+	});
+
+	it.each([
+		['is not set', ''],
+		['is not on loopback', 'https://mcp.linear.app/mcp'],
+		['is on the origin of the Gym', `${GYM_BASE}/mcp`],
+	])(
+		'creates no Gym tenant with the loopback factory when LINEAR_UPSTREAM_URL %s',
+		async (_, upstreamUrl) => {
+			const services = fakeServices([A]);
+			vi.stubEnv('LINEAR_UPSTREAM_URL', upstreamUrl);
+
+			await expect(new LinearGymBackend().openWorld(inputOf(A))).rejects.toThrow('unavailable');
+
+			expect(tenantRequests(services)).toEqual([]);
+			expect(services.upstream()).toEqual([]);
+		},
+	);
 });

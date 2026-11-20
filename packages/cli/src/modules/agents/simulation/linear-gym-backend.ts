@@ -75,10 +75,15 @@ const rpc = (name: string, args: unknown) => ({
 const upstreamResult = content.extend({ isError: z.boolean().optional() });
 /**
  * The only read caller in this package: the loopback Linear fixture. It sends no credential. The
- * fixture tells the worlds apart by a digest of the binding.
+ * fixture tells the worlds apart by a digest of the binding. Only this factory reads
+ * `LINEAR_UPSTREAM_URL`, so another factory does not need that variable.
  */
 export const loopbackFixtureReadCapability: ReadCapabilityFactory = async (binding, readTools) => {
 	const upstream = endpoint(process.env.LINEAR_UPSTREAM_URL, '/mcp');
+	// The fixture and the Gym must be two services. A read must never go to the Gym.
+	const gym = process.env.GYM_BASE_URL;
+	if (gym && URL.canParse(gym) && new URL(gym).origin === new URL(upstream).origin)
+		throw unavailable();
 	const scope = createHash('sha256')
 		.update(
 			JSON.stringify([
@@ -171,10 +176,21 @@ export class LinearGymBackend implements SimulationBackend {
 			const server = await this.servedServer(agent);
 			if (!server) throw unavailable();
 			const base = endpoint(process.env.GYM_BASE_URL, '/');
-			const upstream = endpoint(process.env.LINEAR_UPSTREAM_URL, '/mcp');
 			const token = process.env.GYM_HARNESS_TOKEN;
-			if (token !== harnessToken || new URL(upstream).origin === new URL(base).origin)
-				throw unavailable();
+			if (token !== harnessToken) throw unavailable();
+			const readTools = new Set(['get_issue']);
+			// One read caller for each world. Only this closure holds it, so a later world cannot
+			// replace it. It gets the binding and a copy of the allowlist, and nothing of the Gym.
+			// The Gym gets a tenant only after the factory gave a caller.
+			const reader = await this.readCapability(
+				Object.freeze({
+					ownerId,
+					projectId: agent.projectId,
+					agentId: agent.agentId,
+					testChatId,
+				}),
+				new Set(readTools),
+			);
 			const worldId = randomUUID();
 			const world = {
 				world_version: 1,
@@ -192,7 +208,6 @@ export class LinearGymBackend implements SimulationBackend {
 					n8n_credentials: z.object({ linearApi: z.object({ apiKey: z.string().min(1) }) }),
 				})
 				.parse(tenant).n8n_credentials.linearApi.apiKey;
-			const readTools = new Set(['get_issue']);
 			// Overlapping requests of one world each get their own record.
 			const requests = new AsyncLocalStorage<RequestTrace>();
 			const response = z.object({
@@ -200,17 +215,6 @@ export class LinearGymBackend implements SimulationBackend {
 				id: z.literal(1),
 				result: content.extend({ isError: z.boolean().optional() }),
 			});
-			// One read caller for each world. Only this closure holds it, so a later world cannot
-			// replace it. It gets the binding and a copy of the allowlist, and nothing of the Gym.
-			const reader = await this.readCapability(
-				Object.freeze({
-					ownerId,
-					projectId: agent.projectId,
-					agentId: agent.agentId,
-					testChatId,
-				}),
-				new Set(readTools),
-			);
 			const fixture: McpCaller = {
 				listTools: async () => [],
 				callTool: async (name, args) => {
