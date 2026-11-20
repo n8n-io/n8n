@@ -11,9 +11,6 @@ export interface HttpVendorProfile {
 	// True when the real ids are no UUIDs (Google ids). The hydration then keeps an id that the real
 	// data shows word for word, so the agent can use the real id in the gym.
 	opaqueIds?: boolean;
-	// Local gym addresses. Env vars override them, see http-guard.service.ts.
-	defaultAdminUrl: string;
-	defaultGymUrl: string;
 	// How the gym issues a bearer, and where the bearer sits in its answer.
 	credentialKind: string;
 	credentialField: string;
@@ -141,8 +138,6 @@ export function withMailbox(overlay: Record<string, unknown>): Record<string, un
 
 export const GMAIL_PROFILE: HttpVendorProfile = {
 	name: 'gmail',
-	defaultAdminUrl: 'http://127.0.0.1:9093',
-	defaultGymUrl: 'http://127.0.0.1:8083',
 	credentialKind: 'google_oauth',
 	credentialField: 'oauthTokenData.access_token',
 	placeholderSeed: {

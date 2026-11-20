@@ -6,7 +6,7 @@ import { GymAdmin } from './gym-admin';
 import { HttpRunRegistry, REQUEST_TIMEOUT_MS } from './http-runs';
 import { GUARDED_CALL_TIMEOUT_MS } from './mcp-guard-fetch';
 import { sendToNetwork, type CapturedRequest } from './network';
-import { HTTP_PROFILES, type HttpVendorProfile } from './http-profiles';
+import { HTTP_PROFILES } from './http-profiles';
 import type { NodeRequestGuardScope } from './node-request-guard';
 import {
 	canonicalHost,
@@ -15,23 +15,17 @@ import {
 	vendorForRequest,
 } from './vendor-knowledge';
 
-// Env per vendor: AI_GYM_<NAME>_URL is the admin address, GYM_<NAME>_URL the HTTP address of the gym.
-function runConfig(profile: HttpVendorProfile) {
-	const key = profile.name.toUpperCase();
-	return {
-		profile,
-		vendor: loadVendorKnowledge(profile.name),
-		admin: new GymAdmin(process.env[`AI_GYM_${key}_URL`] ?? profile.defaultAdminUrl),
-		gymUrl: process.env[`GYM_${key}_URL`] ?? profile.defaultGymUrl,
-	};
-}
+// One gym serves every vendor and tells them apart by the host and the path of the request.
+// AI_GYM_NODES_URL is its admin address. GYM_NODES_URL is its HTTP address.
+const DEFAULT_ADMIN_URL = 'http://127.0.0.1:9093';
+const DEFAULT_GYM_URL = 'http://127.0.0.1:8083';
 
 const refusal = (status: number, text: string): Response => new Response(text, { status });
 
 /** Answers the network calls of a guarded node tool: a read from the gym, a write only from the gym. */
 @Service()
 export class HttpGuardService {
-	// One registry for each vendor. Each vendor can use its own gym process.
+	// One registry for each vendor. All of them use the same gym.
 	private readonly registries: Map<string, HttpRunRegistry>;
 
 	constructor(
@@ -42,10 +36,18 @@ export class HttpGuardService {
 		const fetchViaInstance = outboundHttp.transport({ proxy: 'env' }).asCustomFetch();
 		const send = async (req: CapturedRequest) =>
 			await sendToNetwork(req, { fetch: fetchViaInstance, timeoutMs: REQUEST_TIMEOUT_MS });
+		const admin = new GymAdmin(process.env.AI_GYM_NODES_URL ?? DEFAULT_ADMIN_URL);
+		const gymUrl = process.env.GYM_NODES_URL ?? DEFAULT_GYM_URL;
 		this.registries = new Map(
 			HTTP_PROFILES.map((profile) => [
 				profile.name,
-				new HttpRunRegistry({ ...runConfig(profile), send }),
+				new HttpRunRegistry({
+					profile,
+					vendor: loadVendorKnowledge(profile.name),
+					admin,
+					gymUrl,
+					send,
+				}),
 			]),
 		);
 	}
