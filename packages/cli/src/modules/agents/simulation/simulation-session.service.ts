@@ -1,5 +1,5 @@
 import type { AgentJsonConfig, ToolTestCapability } from '@n8n/api-types';
-import { isCredentialAgentIntegration } from '@n8n/api-types';
+import { AI_GATEWAY_MANAGED_TAG, isCredentialAgentIntegration } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { WorkflowRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -21,6 +21,8 @@ import { ChatIntegrationRegistry } from '../integrations/agent-chat-integration'
 import { getIntegrationToolConnectionDescriptors } from '../integrations/integration-tool-factory';
 import { instrumentedRunGap } from '../tools/instrumented-run-guard';
 import { findWorkflowToolWorkflows } from '../tools/workflow-tool-workflow-resolver';
+import { getAgentConfigHash } from '../utils/agent-config-hash';
+import { LinearGymBackend } from './linear-gym-backend';
 import { nodeSimulationGap } from './non-http-node-types';
 import { SafeTestingFlagGate } from './safe-testing-flag-gate';
 import { SimulationBackendRegistry } from './simulation-backend-registry';
@@ -45,9 +47,10 @@ export interface OpenSimulationInput {
 /** Decides whether a draft run is a test run. A marked test chat stays one, also with the flag off. */
 @Service()
 export class SimulationSessionService {
-	private readonly sessions = new TtlMap<string, SimulationSession>(
-		30 * Time.minutes.toMilliseconds,
-	);
+	private readonly sessions = new TtlMap<
+		string,
+		{ session: SimulationSession; fixtureBinding?: string; fixture: boolean }
+	>(30 * Time.minutes.toMilliseconds);
 
 	private readonly opening = new Map<string, Promise<SimulationSession | undefined>>();
 
@@ -66,30 +69,54 @@ export class SimulationSessionService {
 	async openForDraftRun(input: OpenSimulationInput): Promise<SimulationSession | undefined> {
 		const key = sessionKey(input);
 		const cached = this.sessions.get(key);
-		if (cached) {
+		if (cached && !cached.fixture && !(this.registry.get() instanceof LinearGymBackend)) {
 			this.sessions.touch(key);
-			// Keep the same session, so its cached runtime stays valid, but use the current tools.
-			cached.updateCapabilities(
+			cached.session.updateCapabilities(
 				await this.capabilitiesFor(await this.describeAgent(input.agentId, input.projectId)),
 			);
-			return cached;
+			return cached.session;
 		}
-		// Overlapping turns of a new chat share one open, so the chat gets one world.
+		// Serialize fixture turns. Each waiter must check the saved binding again.
 		const opening = this.opening.get(key);
 		if (opening) {
 			const shared = await opening;
 			// A shared open that came back live never answers a caller that asked for a test run.
-			if (shared || !input.testRunRequested) return shared;
+			if (!(this.registry.get() instanceof LinearGymBackend) && (shared || !input.testRunRequested))
+				return shared;
 			return await this.openForDraftRun(input);
 		}
-		const open = this.openNew(input).finally(() => this.opening.delete(key));
+		const open = this.openOrReuse(input, key).finally(() => this.opening.delete(key));
 		this.opening.set(key, open);
 		return await open;
 	}
 
-	private async openNew(input: OpenSimulationInput): Promise<SimulationSession | undefined> {
-		// A test chat stays one, also with the flag off. A new chat is a test run only when asked for.
+	private async openOrReuse(
+		input: OpenSimulationInput,
+		key: string,
+	): Promise<SimulationSession | undefined> {
+		const cached = this.sessions.get(key);
+		const backend = this.registry.get();
+		const fixture = backend instanceof LinearGymBackend;
 		const thread = await this.threadRepository.findTestChatState(input.testChatId);
+		// A reset can remove the thread marker before the cache expires.
+		if (cached && !thread?.testChat) {
+			this.sessions.delete(key);
+		} else if (cached) {
+			const described = await this.describeAgent(input.agentId, input.projectId);
+			const binding = fixture ? fixtureBinding(described.config) : undefined;
+			const capabilities = await this.capabilitiesFor(described);
+			if (
+				cached.fixture === fixture &&
+				(!fixture || (binding && binding === cached.fixtureBinding)) &&
+				this.sessions.touch(key)
+			) {
+				cached.session.updateCapabilities(capabilities);
+				return cached.session;
+			}
+			this.sessions.delete(key);
+			return await this.createSession(input, described, capabilities, backend, binding);
+		}
+		// A test chat stays one, also with the flag off. A new chat is a test run only when asked for.
 		if (!thread?.testChat) {
 			if (!input.testRunRequested) return undefined;
 			// A message that asked for a test run must never run live, so it fails instead.
@@ -107,12 +134,29 @@ export class SimulationSessionService {
 		// After a restart or an expired cache, a test chat gets a new world.
 		const described = await this.describeAgent(input.agentId, input.projectId);
 		const capabilities = await this.capabilitiesFor(described);
+		return await this.createSession(
+			input,
+			described,
+			capabilities,
+			backend,
+			fixture ? fixtureBinding(described.config) : undefined,
+		);
+	}
+
+	private async createSession(
+		input: OpenSimulationInput,
+		described: DescribedAgent,
+		capabilities: ToolTestCapability[],
+		backend: ReturnType<SimulationBackendRegistry['get']>,
+		binding?: string,
+	) {
 		const { agent } = described;
-		const backend = this.registry.get();
 		let world: SimulationWorld | undefined;
 		let unavailableDetail: string | undefined;
 		if (!backend) {
 			unavailableDetail = 'No simulator is set up on this instance.';
+		} else if (backend instanceof LinearGymBackend && !binding) {
+			unavailableDetail = 'The Linear fixture needs one configured MCP credential reference.';
 		} else {
 			try {
 				world = await backend.openWorld({
@@ -145,7 +189,11 @@ export class SimulationSessionService {
 				}
 			},
 		});
-		this.sessions.set(sessionKey(input), session);
+		this.sessions.set(sessionKey(input), {
+			session,
+			fixture: backend instanceof LinearGymBackend,
+			fixtureBinding: binding,
+		});
 		return session;
 	}
 
@@ -225,6 +273,7 @@ export class SimulationSessionService {
 		}
 
 		return {
+			config,
 			agent: {
 				agentId,
 				projectId,
@@ -325,7 +374,23 @@ export class SimulationSessionService {
 	}
 }
 
+function fixtureBinding(config: AgentJsonConfig): string | undefined {
+	const servers = config.mcpServers?.filter((server) => server.name === 'linear');
+	const server = servers?.[0];
+	if (
+		servers?.length !== 1 ||
+		!server?.authentication ||
+		server.authentication === 'none' ||
+		!server.credential?.trim() ||
+		server.credential === AI_GATEWAY_MANAGED_TAG
+	)
+		return undefined;
+	// The saved credential reference is part of the config hash. Never resolve it for a fixture.
+	return getAgentConfigHash(config);
+}
+
 interface DescribedAgent {
+	config: AgentJsonConfig;
 	agent: SimulatedAgent;
 	/** Tools that n8n blocks before any backend sees them, with the reason. */
 	hostGaps: Map<string, string>;
