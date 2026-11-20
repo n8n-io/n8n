@@ -80,7 +80,7 @@ describe('MessageEventBus.initialize', () => {
 		mockedWriter.getLogFileName.mockReturnValue('mocked.log');
 		mockedWriter.isRecoveryProcessRunning.mockReturnValue(false);
 		executionRepository.findUnfinishedIds.mockResolvedValue([]);
-		executionRepository.findStatusesByIds.mockResolvedValue([]);
+		executionRepository.findRunningIds.mockResolvedValue([]);
 		workflowRepository.getWorkflowInfo.mockResolvedValue([]);
 	});
 
@@ -167,17 +167,12 @@ describe('MessageEventBus.initialize', () => {
 					d: [started()],
 				},
 			});
-			executionRepository.findStatusesByIds.mockResolvedValue([
-				{ id: 'a', status: 'running' },
-				{ id: 'b', status: 'waiting' },
-				{ id: 'c', status: 'crashed' },
-				{ id: 'd', status: 'running' },
-			]);
+			executionRepository.findRunningIds.mockResolvedValue(['a', 'd']);
 			const bus = buildBus(buildGlobalConfig({ crashRecoveryMode: 'simple' }));
 
 			await bus.initialize({});
 
-			expect(executionRepository.findStatusesByIds).toHaveBeenCalledWith(['a', 'b', 'c', 'd']);
+			expect(executionRepository.findRunningIds).toHaveBeenCalledWith(['a', 'b', 'c', 'd']);
 			expect(workflowCrashJournal.noteUnfinishedExecutions).toHaveBeenCalledWith(new Set(['wf-1']));
 		});
 
@@ -192,10 +187,7 @@ describe('MessageEventBus.initialize', () => {
 				unsentMessages: [],
 				unfinishedExecutions: { a: [started('wf-1', true)], b: [started('wf-2', false)] },
 			});
-			executionRepository.findStatusesByIds.mockResolvedValue([
-				{ id: 'a', status: 'running' },
-				{ id: 'b', status: 'running' },
-			]);
+			executionRepository.findRunningIds.mockResolvedValue(['a', 'b']);
 			const bus = buildBus(
 				buildGlobalConfig({ crashRecoveryMode: 'simple', executionsMode: 'queue' }),
 			);
@@ -218,7 +210,7 @@ describe('MessageEventBus.initialize', () => {
 					],
 				},
 			});
-			executionRepository.findStatusesByIds.mockResolvedValue([{ id: 'a', status: 'running' }]);
+			executionRepository.findRunningIds.mockResolvedValue(['a']);
 			const bus = buildBus(
 				buildGlobalConfig({ crashRecoveryMode: 'simple', executionsMode: 'queue' }),
 			);

@@ -325,6 +325,20 @@ describe('ExecutionRepository', () => {
 		});
 	});
 
+	describe('findRunningIds', () => {
+		test('should select the ids among the given ones of running executions', async () => {
+			entityManager.find.mockResolvedValueOnce([{ id: '1' }]);
+
+			const result = await executionRepository.findRunningIds(['1', '2']);
+
+			expect(entityManager.find).toHaveBeenCalledWith(ExecutionEntity, {
+				select: ['id'],
+				where: { id: In(['1', '2']), status: 'running' },
+			});
+			expect(result).toEqual(['1']);
+		});
+	});
+
 	const crashedStartedAt = new Date('2025-01-01T00:00:00.000Z');
 
 	const crashableRow = (id: string, overrides: Partial<ExecutionEntity> = {}) =>

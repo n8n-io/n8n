@@ -352,17 +352,14 @@ export class MessageEventBus extends EventEmitter {
 	private async noteRunningExecutions(
 		unfinishedExecutions: Record<string, EventMessageTypes[] | undefined>,
 	) {
-		const statuses = await this.executionRepository.findStatusesByIds(
+		const runningIds = await this.executionRepository.findRunningIds(
 			Object.keys(unfinishedExecutions),
 		);
 		const runsHere = (messages: EventMessageTypes[] | undefined) =>
 			this.globalConfig.executions.mode !== 'queue' ||
 			(process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS !== 'true' &&
 				(messages ?? []).some(({ payload }) => payload?.isManual === true));
-		const running = statuses
-			.filter(({ status }) => status === 'running')
-			.map(({ id }) => unfinishedExecutions[id])
-			.filter(runsHere);
+		const running = runningIds.map((id) => unfinishedExecutions[id]).filter(runsHere);
 		this.workflowCrashJournal.noteUnfinishedExecutions(collectWorkflowIds(running));
 	}
 

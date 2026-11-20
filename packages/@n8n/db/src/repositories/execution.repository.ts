@@ -1594,6 +1594,20 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		return rows.map(({ id }) => id);
 	}
 
+	/** IDs among `ids` of executions with `running` status. */
+	async findRunningIds(ids: string[]): Promise<string[]> {
+		const running: string[] = [];
+		for (const chunk of chunkIds(ids)) {
+			const rows = await this.find({
+				select: ['id'],
+				where: { id: In(chunk), status: 'running' },
+			});
+			running.push(...rows.map(({ id }) => id));
+		}
+
+		return running;
+	}
+
 	async findStatusesByIds(ids: string[]): Promise<Array<Pick<ExecutionEntity, 'id' | 'status'>>> {
 		const rows: Array<Pick<ExecutionEntity, 'id' | 'status'>> = [];
 		for (const chunk of chunkIds(ids)) {
