@@ -37,6 +37,7 @@ import { randomUUID } from 'node:crypto';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { AuthHandlerRegistry } from '@/auth/auth-handler.registry';
 import { ControllerRegistry } from '@/controller.registry';
+import { License } from '@/license';
 import { UserService } from '@/services/user.service';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 import { createFolder } from '@test-integration/db/folders';
@@ -492,14 +493,16 @@ it('reports whether a configuration sends results to the current user', async ()
 });
 
 it.each([
-	{ setting: false, type: 'cloud', flag: true, expected: false },
-	{ setting: true, type: 'default', flag: false, expected: true },
-	{ setting: true, type: 'cloud', flag: true, expected: true },
-	{ setting: true, type: 'cloud', flag: false, expected: false },
-	{ setting: true, type: 'cloud', flag: undefined, expected: false },
+	{ setting: false, type: 'cloud', flag: true, enterprise: false, expected: false },
+	{ setting: true, type: 'default', flag: false, enterprise: false, expected: true },
+	{ setting: true, type: 'default', flag: false, enterprise: true, expected: false },
+	{ setting: true, type: 'cloud', flag: true, enterprise: false, expected: true },
+	{ setting: true, type: 'cloud', flag: true, enterprise: true, expected: false },
+	{ setting: true, type: 'cloud', flag: false, enterprise: false, expected: false },
+	{ setting: true, type: 'cloud', flag: undefined, enterprise: false, expected: false },
 ] as const)(
-	'reports enabled $expected for setting $setting, deployment $type, flag $flag',
-	async ({ setting, type, flag, expected }) => {
+	'reports enabled $expected for setting $setting, deployment $type, flag $flag, Enterprise $enterprise',
+	async ({ setting, type, flag, enterprise, expected }) => {
 		const user = await createUser();
 		const personalProjectId = (await getPersonalProject(user)).id;
 		const globalConfig = Container.get(GlobalConfig);
@@ -512,6 +515,7 @@ it.each([
 		const postHog = vi
 			.spyOn(Container.get(PostHogClient), 'getFeatureFlagForInstance')
 			.mockResolvedValue(flag);
+		const plan = vi.spyOn(Container.get(License), 'isEnterprisePlan').mockReturnValue(enterprise);
 
 		try {
 			expect(await configurations.getStatus(user)).toMatchObject({
@@ -520,6 +524,7 @@ it.each([
 			});
 		} finally {
 			postHog.mockRestore();
+			plan.mockRestore();
 			globalConfig.instanceAi.workflowSuggestionsEnabled = previous.setting;
 			globalConfig.deployment.type = previous.type;
 		}

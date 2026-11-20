@@ -23,6 +23,7 @@ import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { PROJECT_OWNER_ROLE_SLUG, type Scope } from '@n8n/permissions';
 import { TELEMETRY_EVENT, type InferTelemetryProps } from '@n8n/telemetry';
 
+import { License } from '@/license';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -58,11 +59,14 @@ export class SelfHealingConfigurationService {
 		private readonly telemetry: TelemetryProxy,
 		private readonly globalConfig: GlobalConfig,
 		private readonly postHogClient: PostHogClient,
+		private readonly license: License,
 	) {}
 
 	/** Tells whether new self-healing work can start now. */
 	async isEnabled(): Promise<boolean> {
 		if (!this.globalConfig.instanceAi.workflowSuggestionsEnabled) return false;
+		// Self-healing is not available on the Enterprise plan yet.
+		if (this.license.isEnterprisePlan()) return false;
 		// Self-hosted instances have no flag. They use the environment variable only.
 		if (this.globalConfig.deployment.type !== 'cloud') return true;
 

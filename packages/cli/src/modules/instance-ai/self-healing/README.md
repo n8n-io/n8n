@@ -444,12 +444,13 @@ The `instance-ai` module must be loaded. Entities and migrations do not depend o
 Saved review services do not require Assistant model availability. Recovery of existing
 investigations remains available when the flag is off.
 
+Self-healing is off on the Enterprise plan, on Cloud and on self-hosted instances.
 On Cloud, the PostHog instance flag `150_self_healing` must also be on.
 `SelfHealingConfigurationService.isEnabled()` gives the combined decision.
 The editor gets the PostHog flag with its other feature flags and applies the same rule.
 The editor reads the PostHog flag at page load only.
-Self-hosted instances use the environment variable only.
-When the PostHog flag is off, or PostHog gives no answer, no new investigation starts and the editor
+Self-hosted instances have no PostHog flag.
+When the plan is Enterprise, the PostHog flag is off, or PostHog gives no answer, no new investigation starts and the editor
 hides the self-healing setup. `GET /self-healing/status` then returns `enabled: false` and no
 `setupProjectId`, so the Inbox does not offer the setup. Investigations in progress finish, and results stay available for review.
 PostHog decisions are cached for 10 minutes. A change needs no restart.

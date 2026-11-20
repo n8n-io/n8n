@@ -106,8 +106,11 @@ export const enum ResourceType {
 
 /** Tells whether users can set up self-healing now. */
 export function isSelfHealingEnabled(): boolean {
-	const settings = useSettingsStore().moduleSettings['instance-ai'];
+	const settingsStore = useSettingsStore();
+	const settings = settingsStore.moduleSettings['instance-ai'];
 	if (!settings?.workflowSuggestionsEnabled) return false;
+	// Self-healing is not available on the Enterprise plan yet.
+	if (settingsStore.isEnterprisePlan) return false;
 	// On Cloud, an instance flag can turn self-healing off. Self-hosted instances have no flag.
 	return !settings.cloudManaged || usePostHog().isFeatureEnabled(SELF_HEALING_FLAG);
 }
