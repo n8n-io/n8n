@@ -8,10 +8,9 @@ describe('CreateKnowledgeCollectionDto', () => {
 	const valid = {
 		name: 'Returns playbook',
 		description: 'How we handle returns and refunds',
-		projectId: 'project-1',
 	};
 
-	it('accepts a name, a description and a project', () => {
+	it('accepts a name and a description', () => {
 		expect(CreateKnowledgeCollectionDto.safeParse(valid).success).toBe(true);
 	});
 
@@ -33,7 +32,6 @@ describe('CreateKnowledgeCollectionDto', () => {
 		['a name of spaces', { name: '   ' }],
 		['an empty description', { description: '' }],
 		['a description of spaces', { description: '   ' }],
-		['a missing project', { projectId: '' }],
 		['a name that is too long', { name: 'a'.repeat(KNOWLEDGE_COLLECTION_NAME_MAX_LENGTH + 1) }],
 		[
 			'a description that is too long',

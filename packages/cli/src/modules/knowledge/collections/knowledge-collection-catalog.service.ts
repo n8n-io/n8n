@@ -1,10 +1,8 @@
 import type { CreateKnowledgeCollectionDto, KnowledgeCollectionDto } from '@n8n/api-types';
 import { isUniqueConstraintError, ProjectRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { ConflictError, ForbiddenError, NotFoundError, UnexpectedError } from '@n8n/errors';
+import { ConflictError, NotFoundError, UnexpectedError } from '@n8n/errors';
 import { customAlphabet } from 'nanoid';
-
-import { userHasScopes } from '@/permissions.ee/check-access';
 
 import { KnowledgeAvailabilityService } from '../knowledge-availability.service';
 import {
@@ -29,25 +27,17 @@ export class KnowledgeCollectionCatalogService {
 		private readonly projectRepository: ProjectRepository,
 	) {}
 
-	/**
-	 * Collections have no scopes of their own yet, so a create needs
-	 * `agent:update` on the home project.
-	 */
+	/** The route checks the scope of the user on the home project before this call. */
 	async create(
 		user: User,
-		{ name, description, projectId }: CreateKnowledgeCollectionDto,
+		projectId: string,
+		{ name, description }: CreateKnowledgeCollectionDto,
 	): Promise<KnowledgeCollectionDto> {
 		if (!(await this.availabilityService.isCollectionsEnabled())) {
 			throw new NotFoundError('Knowledge collections are not enabled');
 		}
 
-		if (!(await userHasScopes(user, ['agent:update'], false, { projectId }))) {
-			throw new ForbiddenError(
-				'You do not have permission to create a knowledge collection in this project.',
-			);
-		}
-
-		// A global scope passes the check above for any id, so make sure the project exists.
+		// A global scope passes the route check for any id, so make sure the project exists.
 		if (!(await this.projectRepository.existsBy({ id: projectId }))) {
 			throw new NotFoundError('Project not found');
 		}

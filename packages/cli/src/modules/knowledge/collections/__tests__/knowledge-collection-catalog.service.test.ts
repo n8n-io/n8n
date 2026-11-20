@@ -1,10 +1,7 @@
 import type { ProjectRepository, User } from '@n8n/db';
-import { ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
-import type { Scope } from '@n8n/permissions';
+import { ConflictError, NotFoundError } from '@n8n/errors';
 import { QueryFailedError } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
-
-import { userHasScopes } from '@/permissions.ee/check-access';
 
 import { makeKnowledgeAvailabilityService } from '../../__tests__/test-utils/knowledge-availability.service';
 import type { KnowledgeCollection } from '../../entities';
@@ -14,13 +11,11 @@ import type {
 } from '../../repositories/knowledge-collection.repository';
 import { KnowledgeCollectionCatalogService } from '../knowledge-collection-catalog.service';
 
-vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes: vi.fn() }));
-
 const user = mock<User>({ id: 'user-1' });
+const projectId = 'project-1';
 const input = {
 	name: 'Returns playbook',
 	description: 'How we handle returns and refunds',
-	projectId: 'project-1',
 };
 
 const createdAt = new Date('2026-11-20T10:00:00.000Z');
@@ -69,25 +64,12 @@ function uniqueConstraintError() {
 	);
 }
 
-/** The user has exactly these scopes in project-1. */
-function grantScopes(...granted: Scope[]) {
-	vi.mocked(userHasScopes).mockImplementation(
-		async (_user, scopes, _globalOnly, { projectId }) =>
-			projectId === 'project-1' && scopes.every((scope) => granted.includes(scope)),
-	);
-}
-
 describe('KnowledgeCollectionCatalogService', () => {
-	beforeEach(() => {
-		vi.mocked(userHasScopes).mockReset();
-		grantScopes('agent:read', 'agent:update');
-	});
-
 	describe('create', () => {
 		it('creates a shared collection with a slug from its name and returns it', async () => {
 			const { service, collectionRepository } = makeService();
 
-			const result = await service.create(user, input);
+			const result = await service.create(user, projectId, input);
 
 			expect(collectionRepository.insertShared).toHaveBeenCalledWith(
 				{
@@ -118,7 +100,7 @@ describe('KnowledgeCollectionCatalogService', () => {
 				async (slug) => slug === 'returns_playbook',
 			);
 
-			await service.create(user, input);
+			await service.create(user, projectId, input);
 
 			const [{ slug }] = collectionRepository.insertShared.mock.calls[0];
 			expect(slug).toMatch(/^returns_playbook_[a-z0-9]{6}$/);
@@ -127,15 +109,7 @@ describe('KnowledgeCollectionCatalogService', () => {
 		it('answers not found and writes nothing when collections are off', async () => {
 			const { service, collectionRepository } = makeService({ collectionsFlag: false });
 
-			await expect(service.create(user, input)).rejects.toThrow(NotFoundError);
-			expect(collectionRepository.insertShared).not.toHaveBeenCalled();
-		});
-
-		it('answers forbidden to a user who cannot update agents in the project', async () => {
-			grantScopes('agent:read');
-			const { service, collectionRepository } = makeService();
-
-			await expect(service.create(user, input)).rejects.toThrow(ForbiddenError);
+			await expect(service.create(user, projectId, input)).rejects.toThrow(NotFoundError);
 			expect(collectionRepository.insertShared).not.toHaveBeenCalled();
 		});
 
@@ -143,7 +117,7 @@ describe('KnowledgeCollectionCatalogService', () => {
 			const { service, collectionRepository, projectRepository } = makeService();
 			projectRepository.existsBy.mockResolvedValue(false);
 
-			await expect(service.create(user, input)).rejects.toThrow(NotFoundError);
+			await expect(service.create(user, projectId, input)).rejects.toThrow(NotFoundError);
 			expect(projectRepository.existsBy).toHaveBeenCalledWith({ id: 'project-1' });
 			expect(collectionRepository.insertShared).not.toHaveBeenCalled();
 		});
@@ -152,7 +126,7 @@ describe('KnowledgeCollectionCatalogService', () => {
 			const { service, collectionRepository } = makeService();
 			collectionRepository.existsByProjectIdAndName.mockResolvedValue(true);
 
-			await expect(service.create(user, input)).rejects.toThrow(ConflictError);
+			await expect(service.create(user, projectId, input)).rejects.toThrow(ConflictError);
 			expect(collectionRepository.insertShared).not.toHaveBeenCalled();
 		});
 
@@ -163,7 +137,7 @@ describe('KnowledgeCollectionCatalogService', () => {
 				.mockResolvedValueOnce(true);
 			collectionRepository.insertShared.mockRejectedValue(uniqueConstraintError());
 
-			await expect(service.create(user, input)).rejects.toThrow(ConflictError);
+			await expect(service.create(user, projectId, input)).rejects.toThrow(ConflictError);
 		});
 
 		it('tries a new slug when another create takes the slug first', async () => {
@@ -173,7 +147,7 @@ describe('KnowledgeCollectionCatalogService', () => {
 				.mockImplementation(async (slug) => slug === 'returns_playbook');
 			collectionRepository.insertShared.mockRejectedValueOnce(uniqueConstraintError());
 
-			const result = await service.create(user, input);
+			const result = await service.create(user, projectId, input);
 
 			expect(collectionRepository.insertShared).toHaveBeenCalledTimes(2);
 			const [[first], [second]] = collectionRepository.insertShared.mock.calls;
@@ -186,7 +160,7 @@ describe('KnowledgeCollectionCatalogService', () => {
 			const { service, collectionRepository } = makeService();
 			collectionRepository.insertShared.mockRejectedValue(uniqueConstraintError());
 
-			await expect(service.create(user, input)).rejects.toThrow(QueryFailedError);
+			await expect(service.create(user, projectId, input)).rejects.toThrow(QueryFailedError);
 			expect(collectionRepository.insertShared).toHaveBeenCalledTimes(2);
 		});
 	});

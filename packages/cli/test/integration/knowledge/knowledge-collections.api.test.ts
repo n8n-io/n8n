@@ -31,12 +31,14 @@ describe('knowledge collection routes', () => {
 	const input = (override: Record<string, unknown> = {}) => ({
 		name: 'Returns playbook',
 		description: 'How we handle returns and refunds',
-		projectId: project.id,
 		...override,
 	});
 
-	async function create(user: User, body: Record<string, unknown>) {
-		return await server.authAgentFor(user).post('/knowledge/collections').send(body);
+	async function create(user: User, body: Record<string, unknown>, projectId = project.id) {
+		return await server
+			.authAgentFor(user)
+			.post(`/projects/${projectId}/knowledge/collections`)
+			.send(body);
 	}
 
 	beforeEach(async () => {
@@ -51,7 +53,7 @@ describe('knowledge collection routes', () => {
 		await linkUserToProject(viewer, project, 'project:viewer');
 	});
 
-	describe('POST /knowledge/collections', () => {
+	describe('POST /projects/:projectId/knowledge/collections', () => {
 		it('creates a shared collection with its owner row and returns it', async () => {
 			const response = await create(editor, input());
 
@@ -90,7 +92,7 @@ describe('knowledge collection routes', () => {
 		it('creates a collection in the personal project of the user', async () => {
 			const personalProject = await getPersonalProject(editor);
 
-			const response = await create(editor, input({ projectId: personalProject.id }));
+			const response = await create(editor, input(), personalProject.id);
 
 			expect(response.status).toBe(200);
 			expect(response.body.data.homeProject).toMatchObject({
@@ -123,7 +125,7 @@ describe('knowledge collection routes', () => {
 		it('accepts a name that a collection of another project uses, with another slug', async () => {
 			const otherProject = await getPersonalProject(editor);
 			const first = await create(editor, input());
-			const second = await create(editor, input({ projectId: otherProject.id }));
+			const second = await create(editor, input(), otherProject.id);
 
 			expect(first.status).toBe(200);
 			expect(second.status).toBe(200);
@@ -134,7 +136,7 @@ describe('knowledge collection routes', () => {
 		});
 
 		it('answers 404 to the instance owner for a project that does not exist', async () => {
-			const response = await create(owner, input({ projectId: 'missing-project' }));
+			const response = await create(owner, input(), 'missing-project');
 
 			expect(response.status).toBe(404);
 			expect(response.body.message).toBe('Project not found');
