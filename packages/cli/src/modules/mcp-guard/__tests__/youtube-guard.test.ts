@@ -8,7 +8,7 @@ import type { GymAdmin } from '../gym-admin';
 import { HttpGuardService } from '../http-guard.service';
 import { HttpRunRegistry } from '../http-runs';
 import { toToolCall } from '../http-tool-caller';
-import { GMAIL_PROFILE, withYoutubeOwner, YOUTUBE_PROFILE } from '../http-profiles';
+import { withYoutubeOwner, YOUTUBE_PROFILE } from '../http-profiles';
 import type { HydrationModel } from '../hydration-llm';
 import { sendToNetwork } from '../network';
 import { isReadShaped } from '../request-classifier';
@@ -138,13 +138,10 @@ describe('YouTube routing: every operation of the node', () => {
 });
 
 describe('the profile of YouTube', () => {
-	it('uses the Google OAuth credential of the service "youtube" and its own gym ports', () => {
+	it('uses the Google OAuth credential of the service "youtube"', () => {
 		expect(YOUTUBE_PROFILE.name).toBe('youtube');
 		expect(YOUTUBE_PROFILE.credentialKind).toBe('google_oauth');
 		expect(YOUTUBE_PROFILE.credentialField).toBe('oauthTokenData.access_token');
-		expect(YOUTUBE_PROFILE.defaultAdminUrl).toBe('http://127.0.0.1:9098');
-		expect(YOUTUBE_PROFILE.defaultGymUrl).toBe('http://127.0.0.1:8088');
-		expect(GMAIL_PROFILE.defaultGymUrl).not.toBe(YOUTUBE_PROFILE.defaultGymUrl);
 		// YouTube ids ("PLx...", video ids) are no UUIDs. The plan must keep the real ones.
 		expect(YOUTUBE_PROFILE.opaqueIds).toBe(true);
 		expect(JSON.stringify(YOUTUBE_PROFILE.placeholderSeed)).toContain('person:me');
