@@ -63,6 +63,11 @@ export const warmAgentKnowledgeSandbox = async (
 	);
 };
 
+interface CollectionParams {
+	projectId: string;
+	collectionId: string;
+}
+
 /** The collection fields that the collection page shows. */
 export interface KnowledgeCollectionSummary {
 	id: string;
@@ -72,30 +77,29 @@ export interface KnowledgeCollectionSummary {
 
 export const getCollection = async (
 	context: IRestApiContext,
-	collectionId: string,
+	{ projectId, collectionId }: CollectionParams,
 ): Promise<KnowledgeCollectionSummary> => {
 	return await makeRestApiRequest<KnowledgeCollectionSummary>(
 		context,
 		'GET',
-		`/knowledge/collections/${collectionId}`,
+		`/projects/${projectId}/knowledge/collections/${collectionId}`,
 	);
 };
 
 export const listCollectionFiles = async (
 	context: IRestApiContext,
-	collectionId: string,
+	{ projectId, collectionId }: CollectionParams,
 ): Promise<KnowledgeCollectionFileListResponse> => {
 	return await makeRestApiRequest<KnowledgeCollectionFileListResponse>(
 		context,
 		'GET',
-		`/knowledge/collections/${collectionId}/files`,
+		`/projects/${projectId}/knowledge/collections/${collectionId}/files`,
 	);
 };
 
 export const uploadCollectionFiles = async (
 	context: IRestApiContext,
-	collectionId: string,
-	files: File[],
+	{ projectId, collectionId, files }: CollectionParams & { files: File[] },
 ): Promise<KnowledgeCollectionFileDto[]> => {
 	const formData = new FormData();
 	for (const file of files) {
@@ -105,30 +109,29 @@ export const uploadCollectionFiles = async (
 	return await makeRestApiRequest<KnowledgeCollectionFileDto[]>(
 		context,
 		'POST',
-		`/knowledge/collections/${collectionId}/files`,
+		`/projects/${projectId}/knowledge/collections/${collectionId}/files`,
 		formData,
 	);
 };
 
 export const deleteCollectionFile = async (
 	context: IRestApiContext,
-	collectionId: string,
-	fileId: string,
+	{ projectId, collectionId, fileId }: CollectionParams & { fileId: string },
 ): Promise<void> => {
 	await makeRestApiRequest(
 		context,
 		'DELETE',
-		`/knowledge/collections/${collectionId}/files/${fileId}`,
+		`/projects/${projectId}/knowledge/collections/${collectionId}/files/${fileId}`,
 	);
 };
 
 export const listCollectionAgents = async (
 	context: IRestApiContext,
-	collectionId: string,
+	{ projectId, collectionId }: CollectionParams,
 ): Promise<KnowledgeCollectionAgentDto[]> => {
 	return await makeRestApiRequest<KnowledgeCollectionAgentDto[]>(
 		context,
 		'GET',
-		`/knowledge/collections/${collectionId}/agents`,
+		`/projects/${projectId}/knowledge/collections/${collectionId}/agents`,
 	);
 };

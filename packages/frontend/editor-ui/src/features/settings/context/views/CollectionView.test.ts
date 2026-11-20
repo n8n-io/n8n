@@ -42,9 +42,9 @@ function file(id: string, fileName: string): KnowledgeCollectionFileDto {
 	};
 }
 
-const renderComponent = createComponentRenderer(CollectionView, {
-	props: { projectId: 'p1', collectionId: 'c1' },
-});
+const collection = { projectId: 'p1', collectionId: 'c1' };
+
+const renderComponent = createComponentRenderer(CollectionView, { props: collection });
 
 const setup = async ({
 	files = [],
@@ -89,8 +89,8 @@ describe('CollectionView', () => {
 	it('loads the files and the agents of the collection in the route', async () => {
 		await setup();
 
-		expect(listCollectionFiles).toHaveBeenCalledWith(expect.anything(), 'c1');
-		expect(listCollectionAgents).toHaveBeenCalledWith(expect.anything(), 'c1');
+		expect(listCollectionFiles).toHaveBeenCalledWith(expect.anything(), collection);
+		expect(listCollectionAgents).toHaveBeenCalledWith(expect.anything(), collection);
 	});
 
 	it('shows the project and the collections crumbs', async () => {
@@ -104,7 +104,7 @@ describe('CollectionView', () => {
 	it('shows the name and the description of the collection', async () => {
 		await setup();
 
-		expect(getCollection).toHaveBeenCalledWith(expect.anything(), 'c1');
+		expect(getCollection).toHaveBeenCalledWith(expect.anything(), collection);
 		expect(screen.getByRole('heading', { level: 1, name: 'Customer support' })).toBeInTheDocument();
 		expect(screen.getByTestId('collection-description')).toHaveTextContent(
 			'Customer support: refunds and pricing',
@@ -143,8 +143,38 @@ describe('CollectionView', () => {
 
 		await selectFiles(selected);
 
-		expect(uploadCollectionFiles).toHaveBeenCalledWith(expect.anything(), 'c1', selected);
+		expect(uploadCollectionFiles).toHaveBeenCalledWith(expect.anything(), {
+			...collection,
+			files: selected,
+		});
 		await waitFor(() => expect(pillNames()).toEqual(['Refund policy.pdf', 'Shipping policy.pdf']));
+	});
+
+	it('does not add the files of an upload that ends after the page opens a different collection', async () => {
+		const rendered = await setup({ files: [file('f1', 'Refund policy.pdf')] });
+		await waitFor(() => expect(filePills()).toHaveLength(1));
+		let finishUpload: (files: KnowledgeCollectionFileDto[]) => void = () => {};
+		vi.mocked(uploadCollectionFiles).mockReturnValue(
+			new Promise((resolve) => {
+				finishUpload = resolve;
+			}),
+		);
+		await selectFiles([new File(['a'], 'Late upload.pdf')]);
+
+		vi.mocked(getCollection).mockResolvedValue({ id: 'c2', name: 'Legal', description: null });
+		vi.mocked(listCollectionFiles).mockResolvedValue({
+			count: 1,
+			totalSizeBytes: 0,
+			data: [file('f9', 'NDA template.pdf')],
+		});
+		await rendered.rerender({ collectionId: 'c2' });
+		await waitFor(() => expect(pillNames()).toEqual(['NDA template.pdf']));
+		finishUpload([file('f2', 'Late upload.pdf')]);
+		await new Promise((resolve) => setTimeout(resolve));
+
+		expect(pillNames()).toEqual(['NDA template.pdf']);
+		// The row is usable again when the old upload ends.
+		expect(screen.getByRole('button', { name: 'Upload file' })).toBeEnabled();
 	});
 
 	it('shows the server error and adds no pill when the upload fails', async () => {
@@ -165,7 +195,10 @@ describe('CollectionView', () => {
 		await fireEvent.contextMenu(screen.getByRole('button', { name: 'Refund policy.pdf' }));
 		await userEvent.click(await screen.findByRole('menuitem', { name: 'Remove from collection' }));
 
-		expect(deleteCollectionFile).toHaveBeenCalledWith(expect.anything(), 'c1', 'f1');
+		expect(deleteCollectionFile).toHaveBeenCalledWith(expect.anything(), {
+			...collection,
+			fileId: 'f1',
+		});
 		await waitFor(() => expect(pillNames()).toEqual(['Price list.pdf']));
 	});
 
@@ -199,7 +232,8 @@ describe('CollectionView', () => {
 
 	it('shows the error when the collection does not load', async () => {
 		const error = new Error('Knowledge collection not found');
-		vi.mocked(listCollectionFiles).mockRejectedValue(error);
+		vi.mocked(getCollection).mockRejectedValue(error);
+		vi.mocked(listCollectionFiles).mockResolvedValue({ count: 0, totalSizeBytes: 0, data: [] });
 		vi.mocked(listCollectionAgents).mockResolvedValue([]);
 
 		renderComponent({ pinia: createTestingPinia() });

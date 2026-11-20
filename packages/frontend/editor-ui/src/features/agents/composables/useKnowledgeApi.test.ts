@@ -18,6 +18,7 @@ vi.mock('@n8n/rest-api-client', () => ({
 }));
 
 const restApiContext = { baseUrl: '/rest', pushRef: 'push-ref' };
+const collection = { projectId: 'p1', collectionId: 'c1' };
 
 describe('useKnowledgeApi', () => {
 	beforeEach(() => {
@@ -79,15 +80,15 @@ describe('useKnowledgeApi', () => {
 	});
 
 	it('gets one collection', async () => {
-		const collection = { id: 'c1', name: 'Customer support', description: null };
-		vi.mocked(makeRestApiRequest).mockResolvedValueOnce(collection);
+		const summary = { id: 'c1', name: 'Customer support', description: null };
+		vi.mocked(makeRestApiRequest).mockResolvedValueOnce(summary);
 
-		await expect(getCollection(restApiContext, 'c1')).resolves.toEqual(collection);
+		await expect(getCollection(restApiContext, collection)).resolves.toEqual(summary);
 
 		expect(makeRestApiRequest).toHaveBeenCalledWith(
 			restApiContext,
 			'GET',
-			'/knowledge/collections/c1',
+			'/projects/p1/knowledge/collections/c1',
 		);
 	});
 
@@ -95,12 +96,12 @@ describe('useKnowledgeApi', () => {
 		const list = { count: 0, totalSizeBytes: 0, data: [] };
 		vi.mocked(makeRestApiRequest).mockResolvedValueOnce(list);
 
-		await expect(listCollectionFiles(restApiContext, 'c1')).resolves.toEqual(list);
+		await expect(listCollectionFiles(restApiContext, collection)).resolves.toEqual(list);
 
 		expect(makeRestApiRequest).toHaveBeenCalledWith(
 			restApiContext,
 			'GET',
-			'/knowledge/collections/c1/files',
+			'/projects/p1/knowledge/collections/c1/files',
 		);
 	});
 
@@ -108,12 +109,12 @@ describe('useKnowledgeApi', () => {
 		vi.mocked(makeRestApiRequest).mockResolvedValueOnce([]);
 		const files = [new File(['a'], 'a.txt'), new File(['b'], 'b.txt')];
 
-		await uploadCollectionFiles(restApiContext, 'c1', files);
+		await uploadCollectionFiles(restApiContext, { ...collection, files });
 
 		expect(makeRestApiRequest).toHaveBeenCalledWith(
 			restApiContext,
 			'POST',
-			'/knowledge/collections/c1/files',
+			'/projects/p1/knowledge/collections/c1/files',
 			expect.any(FormData),
 		);
 		const formData = vi.mocked(makeRestApiRequest).mock.calls[0][3] as FormData;
@@ -123,24 +124,24 @@ describe('useKnowledgeApi', () => {
 	it('deletes one file of a collection', async () => {
 		vi.mocked(makeRestApiRequest).mockResolvedValueOnce({ success: true });
 
-		await deleteCollectionFile(restApiContext, 'c1', 'f1');
+		await deleteCollectionFile(restApiContext, { ...collection, fileId: 'f1' });
 
 		expect(makeRestApiRequest).toHaveBeenCalledWith(
 			restApiContext,
 			'DELETE',
-			'/knowledge/collections/c1/files/f1',
+			'/projects/p1/knowledge/collections/c1/files/f1',
 		);
 	});
 
 	it('lists the agents that use a collection', async () => {
 		vi.mocked(makeRestApiRequest).mockResolvedValueOnce([]);
 
-		await expect(listCollectionAgents(restApiContext, 'c1')).resolves.toEqual([]);
+		await expect(listCollectionAgents(restApiContext, collection)).resolves.toEqual([]);
 
 		expect(makeRestApiRequest).toHaveBeenCalledWith(
 			restApiContext,
 			'GET',
-			'/knowledge/collections/c1/agents',
+			'/projects/p1/knowledge/collections/c1/agents',
 		);
 	});
 });

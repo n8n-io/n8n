@@ -94,17 +94,18 @@ function projectNameOf(projectId: string) {
 }
 
 watch(
-	() => props.collectionId,
-	async (collectionId) => {
+	() => [props.projectId, props.collectionId],
+	async ([projectId, collectionId]) => {
 		collection.value = null;
 		try {
+			const params = { projectId, collectionId };
 			const [loadedCollection, fileList, agentList] = await Promise.all([
-				getCollection(rootStore.restApiContext, collectionId),
-				listCollectionFiles(rootStore.restApiContext, collectionId),
-				listCollectionAgents(rootStore.restApiContext, collectionId),
+				getCollection(rootStore.restApiContext, params),
+				listCollectionFiles(rootStore.restApiContext, params),
+				listCollectionAgents(rootStore.restApiContext, params),
 			]);
 			// The route can change to a different collection while this read is in flight.
-			if (collectionId !== props.collectionId) {
+			if (projectId !== props.projectId || collectionId !== props.collectionId) {
 				return;
 			}
 			files.value = fileList.data;
@@ -129,14 +130,18 @@ async function onFilesSelected(event: Event) {
 		return;
 	}
 
+	const { projectId, collectionId } = props;
 	uploading.value = true;
 	try {
-		const uploaded = await uploadCollectionFiles(
-			rootStore.restApiContext,
-			props.collectionId,
-			selectedFiles,
-		);
-		files.value = [...files.value, ...uploaded];
+		const uploaded = await uploadCollectionFiles(rootStore.restApiContext, {
+			projectId,
+			collectionId,
+			files: selectedFiles,
+		});
+		// The route can change to a different collection while the upload is in flight.
+		if (projectId === props.projectId && collectionId === props.collectionId) {
+			files.value = [...files.value, ...uploaded];
+		}
 	} catch (error) {
 		toast.showError(error, i18n.baseText('agents.builder.files.uploadError'));
 	} finally {
@@ -146,7 +151,11 @@ async function onFilesSelected(event: Event) {
 
 async function removeFile(fileId: string) {
 	try {
-		await deleteCollectionFile(rootStore.restApiContext, props.collectionId, fileId);
+		await deleteCollectionFile(rootStore.restApiContext, {
+			projectId: props.projectId,
+			collectionId: props.collectionId,
+			fileId,
+		});
 		files.value = files.value.filter((file) => file.id !== fileId);
 	} catch (error) {
 		toast.showError(error, i18n.baseText('agents.builder.files.deleteError'));

@@ -69,9 +69,13 @@ export const ContextModule: FrontendModuleDescription = {
 				middleware: ['authenticated'],
 			},
 			// PostHog loads flags after the first paint, so a page reload waits for them.
+			// The operator setting needs no flag, so it skips the wait.
 			beforeEnter: async () => {
-				await waitForFeatureFlagsWithTimeout(usePostHog(), 3000);
-				return useIsCollectionsEnabled().value || { name: VIEWS.HOMEPAGE };
+				const collectionsEnabled = useIsCollectionsEnabled();
+				if (!collectionsEnabled.value) {
+					await waitForFeatureFlagsWithTimeout(usePostHog(), 3000);
+				}
+				return collectionsEnabled.value || { name: VIEWS.HOMEPAGE };
 			},
 		},
 	],

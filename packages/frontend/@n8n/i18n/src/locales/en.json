@@ -4027,7 +4027,7 @@
 	"settings.context.collections.title": "Collections",
 	"settings.context.collections.error.load": "Could not load collection",
 	"settings.context.collections.contents.title": "Contents",
-	"settings.context.collections.contents.description": "Files and vector stores every agent with this collection can search.",
+	"settings.context.collections.contents.description": "Files every agent with this collection can search.",
 	"settings.context.collections.files.label": "Files",
 	"settings.context.collections.files.upload": "Upload file",
 	"settings.context.collections.files.remove": "Remove from collection",
