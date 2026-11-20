@@ -29,7 +29,11 @@ export class SkillSyncFlagGate {
 		return flags?.[SKILL_SYNC_FLAG] === true && this.isAvailable;
 	}
 
-	private get isAvailable(): boolean {
+	/**
+	 * The instance part of the gate: skills and the Skill Sync switch, without the flag of a
+	 * user. For a caller that has no user, such as the MCP consent screen.
+	 */
+	get isAvailable(): boolean {
 		return this.skillsGate.isEnabled && this.skillSyncSettings.isEnabled();
 	}
 

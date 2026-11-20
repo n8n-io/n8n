@@ -247,6 +247,13 @@ export const SKILL_TOOLS: ReadonlySet<string> = new Set([
 	...TOOLS_BY_SCOPE['skill:write'],
 ]);
 
+/** Registered only while Skill Sync is on. */
+export const SKILL_SOURCE_TOOLS: ReadonlySet<string> = new Set([
+	'list_skill_sources',
+	'discover_skill_source',
+	'import_skills_from_source',
+]);
+
 function isMcpScope(scope: string): scope is McpScope {
 	return (MCP_INSTANCE_SCOPES as readonly string[]).includes(scope);
 }

@@ -13,7 +13,7 @@ import {
 } from '@/modules/skills';
 import { SkillSourceRequestError, SkillSyncedError } from '@/modules/skills/testing';
 
-import { SKILL_TOOLS } from '../mcp-scopes';
+import { SKILL_SOURCE_TOOLS, SKILL_TOOLS } from '../mcp-scopes';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import type { RegisterToolFn } from '../mcp.types';
 import { McpSkillToolsService } from '../tools/skills/skill-tools.service';
@@ -100,6 +100,10 @@ describe('McpSkillToolsService', () => {
 			'update_skill',
 			'delete_skill',
 		]);
+		// The consent screen hides the same tools with this set.
+		expect(new Set(registered)).toEqual(
+			new Set([...SKILL_TOOLS].filter((tool) => !SKILL_SOURCE_TOOLS.has(tool))),
+		);
 	});
 
 	it('reports the result of a source import without tracking its URL or selection', async () => {
