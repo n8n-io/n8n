@@ -3,6 +3,7 @@ import {
 	BaseRepository,
 	dbNowLiteral,
 	type OperationContext,
+	parseDbTime,
 	toDialectQuery,
 	TransactionRunner,
 } from '@n8n/db';
@@ -13,7 +14,7 @@ import { DataSource, type ObjectLiteral } from '@n8n/typeorm';
 import { ExecutionLimitInstanceUsage } from './execution-limit-instance-usage.entity';
 import type { InstanceUsageDelta, UsageDeltas } from './execution-limit-usage.deltas';
 import { ExecutionLimitUsage } from './execution-limit-usage.entity';
-import { NO_USAGE, type UsageTotals } from './execution-usage.types';
+import { NO_USAGE, type UsageTotals } from './execution-usage';
 import { ProjectExecutionLimit } from './project-execution-limit.entity';
 
 class UsageTable<Entity extends ObjectLiteral> extends BaseRepository<Entity> {}
@@ -27,34 +28,23 @@ const ROWS_PER_STATEMENT = 1000;
 /** Agent runs have rows too, but only workflow runs count toward a limit. */
 const COUNTED_ENTITY_TYPE = 'workflow';
 
+const COUNTED_DAYS = 'u."day" >= $1 AND u."day" <= $2 AND u."entityType" = $3';
+
 const TOTALS =
 	'COALESCE(SUM(u."startedCount"), 0) AS "startedCount", COALESCE(SUM(u."blockedCount"), 0) AS "blockedCount", MAX(u."updatedAt") AS "lastFoldAt"';
 
-type TotalsRow = { startedCount: unknown; blockedCount: unknown; lastFoldAt: unknown };
+type TotalsRow = {
+	startedCount: number | string;
+	blockedCount: number | string;
+	lastFoldAt: Date | string | null;
+};
 
-function isTotalsRow(row: unknown): row is TotalsRow {
-	return (
-		typeof row === 'object' &&
-		row !== null &&
-		'startedCount' in row &&
-		'blockedCount' in row &&
-		'lastFoldAt' in row
-	);
-}
-
-// Postgres returns a `Date`. SQLite returns its UTC text form, `YYYY-MM-DD HH:MM:SS.SSS`.
-function toDate(value: unknown): Date | null {
-	if (value instanceof Date) return value;
-	if (typeof value !== 'string') return null;
-	return new Date(value.includes('T') ? value : `${value.replace(' ', 'T')}Z`);
-}
-
-function toTotals(row: unknown): UsageTotals {
-	if (!isTotalsRow(row)) throw new UnexpectedError('Unexpected row from a usage sum');
+// Postgres returns a sum as a string.
+function toTotals(row: TotalsRow): UsageTotals {
 	return {
 		startedCount: Number(row.startedCount),
 		blockedCount: Number(row.blockedCount),
-		lastFoldAt: toDate(row.lastFoldAt),
+		lastFoldAt: row.lastFoldAt === null ? null : parseDbTime(row.lastFoldAt),
 	};
 }
 
@@ -99,14 +89,12 @@ export class ExecutionLimitUsageRepository {
 		lastDay: string,
 		ctx: OperationContext,
 	): Promise<UsageTotals> {
-		if (firstDay > lastDay) return NO_USAGE;
-
-		const [row] = await this.queryRows(
-			`SELECT ${TOTALS} FROM ${this.escapedName(ExecutionLimitUsage)} u WHERE u."projectId" = $1 AND u."entityType" = $2 AND u."day" >= $3 AND u."day" <= $4`,
-			[projectId, COUNTED_ENTITY_TYPE, firstDay, lastDay],
+		const [totals] = await this.sumRows<TotalsRow>(
+			`SELECT ${TOTALS} FROM ${this.escapedName(ExecutionLimitUsage)} u WHERE ${COUNTED_DAYS} AND u."projectId" = $4`,
+			[firstDay, lastDay, projectId],
 			ctx,
 		);
-		return toTotals(row);
+		return totals ? toTotals(totals) : NO_USAGE;
 	}
 
 	/**
@@ -118,14 +106,12 @@ export class ExecutionLimitUsageRepository {
 		lastDay: string,
 		ctx: OperationContext,
 	): Promise<UsageTotals> {
-		if (firstDay > lastDay) return NO_USAGE;
-
-		const [row] = await this.queryRows(
-			`SELECT ${TOTALS} FROM ${this.escapedName(ExecutionLimitInstanceUsage)} u WHERE u."entityType" = $1 AND u."day" >= $2 AND u."day" <= $3`,
-			[COUNTED_ENTITY_TYPE, firstDay, lastDay],
+		const [totals] = await this.sumRows<TotalsRow>(
+			`SELECT ${TOTALS} FROM ${this.escapedName(ExecutionLimitInstanceUsage)} u WHERE ${COUNTED_DAYS}`,
+			[firstDay, lastDay],
 			ctx,
 		);
-		return toTotals(row);
+		return totals ? toTotals(totals) : NO_USAGE;
 	}
 
 	/**
@@ -137,20 +123,12 @@ export class ExecutionLimitUsageRepository {
 		lastDay: string,
 		ctx: OperationContext,
 	): Promise<Map<string, UsageTotals>> {
-		const totals = new Map<string, UsageTotals>();
-		if (firstDay > lastDay) return totals;
-
-		const rows = await this.queryRows(
-			`SELECT u."projectId" AS "projectId", ${TOTALS} FROM ${this.escapedName(ExecutionLimitUsage)} u INNER JOIN ${this.escapedName(ProjectExecutionLimit)} l ON l."projectId" = u."projectId" WHERE u."entityType" = $1 AND u."day" >= $2 AND u."day" <= $3 GROUP BY u."projectId"`,
-			[COUNTED_ENTITY_TYPE, firstDay, lastDay],
+		const rows = await this.sumRows<TotalsRow & { projectId: string }>(
+			`SELECT u."projectId" AS "projectId", ${TOTALS} FROM ${this.escapedName(ExecutionLimitUsage)} u INNER JOIN ${this.escapedName(ProjectExecutionLimit)} l ON l."projectId" = u."projectId" WHERE ${COUNTED_DAYS} GROUP BY u."projectId"`,
+			[firstDay, lastDay],
 			ctx,
 		);
-
-		for (const row of rows) {
-			if (typeof row !== 'object' || row === null || !('projectId' in row)) continue;
-			if (typeof row.projectId === 'string') totals.set(row.projectId, toTotals(row));
-		}
-		return totals;
+		return new Map(rows.map((row) => [row.projectId, toTotals(row)]));
 	}
 
 	private escapedName(entity: new () => ObjectLiteral): string {
@@ -158,14 +136,23 @@ export class ExecutionLimitUsageRepository {
 		return connection.driver.escape(connection.getMetadata(entity).tableName);
 	}
 
-	private async queryRows(
+	/** `params` starts with the first and the last day. A range with no day reads nothing. */
+	private async sumRows<Row>(
 		sql: string,
-		params: readonly unknown[],
+		params: readonly [firstDay: string, lastDay: string, ...rest: string[]],
 		ctx: OperationContext,
-	): Promise<unknown[]> {
-		const query = toDialectQuery(this.isPostgres, sql, params);
-		const rows: unknown = await this.projectTable.managerFor(ctx).query(query.sql, query.params);
-		return Array.isArray(rows) ? rows : [];
+	): Promise<Row[]> {
+		const [firstDay, lastDay, ...rest] = params;
+		if (firstDay > lastDay) return [];
+
+		const query = toDialectQuery(this.isPostgres, sql, [
+			firstDay,
+			lastDay,
+			COUNTED_ENTITY_TYPE,
+			...rest,
+		]);
+		const rows: Row[] = await this.projectTable.managerFor(ctx).query(query.sql, query.params);
+		return rows;
 	}
 
 	private async addCounts<K extends string, T extends InstanceUsageDelta & Record<K, string>>(
