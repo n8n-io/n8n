@@ -5,7 +5,7 @@ import { mock } from 'vitest-mock-extended';
 import type { ExecutionLimitUsageRepository } from '../execution-limit-usage.repository';
 import { ExecutionUsageCache, USAGE_REFRESH_INTERVAL_MS } from '../execution-usage-cache';
 import type { ExecutionLimitsSnapshot, LimitedScopes } from '../execution-limits-snapshot';
-import type { UsageScope, UsageTotals } from '../execution-usage.types';
+import type { UsageScope, UsageTotals } from '../execution-usage';
 
 const NOW = new Date('2026-11-20T10:00:00.000Z');
 const TODAY = '2026-11-20';
@@ -15,8 +15,7 @@ const YESTERDAY = '2026-11-19';
 const LIMITS: LimitedScopes = {
 	periodUnit: 'month',
 	hasInstanceLimit: true,
-	hasProjectLimits: true,
-	generation: 1,
+	limitedProjectIds: new Set(['p1', 'p2']),
 };
 
 const totals = (startedCount: number, blockedCount = 0, lastFoldAt: Date | null = null) =>
@@ -42,11 +41,6 @@ describe('ExecutionUsageCache', () => {
 		vi.setSystemTime(NOW);
 
 		snapshot.readLimitedScopes.mockReturnValue(LIMITS);
-		snapshot.read.mockImplementation((projectId) => ({
-			periodUnit: 'month',
-			instanceMaxExecutions: 1000,
-			projectMaxExecutions: projectId === 'unlimited' ? null : 50,
-		}));
 		// Closed days end yesterday. Today is a range of one day that ends today.
 		repository.sumInstanceUsage.mockImplementation(async (_first, last) =>
 			last === TODAY ? totals(3, 1, new Date('2026-11-20T09:00:00.000Z')) : totals(100, 10),
@@ -144,8 +138,8 @@ describe('ExecutionUsageCache', () => {
 			expect(repository.sumInstanceUsage).toHaveBeenCalledWith('2026-11-21', '2026-11-21', {});
 		});
 
-		it('reads them again when the limits generation changes', async () => {
-			snapshot.readLimitedScopes.mockReturnValue({ ...LIMITS, generation: 2 });
+		it('reads them again when the limits were loaded again', async () => {
+			snapshot.readLimitedScopes.mockReturnValue({ ...LIMITS });
 
 			await cache.refresh();
 
@@ -155,7 +149,10 @@ describe('ExecutionUsageCache', () => {
 
 	describe('scopes without a limit', () => {
 		it.each([
-			['no limit at all', { ...LIMITS, hasInstanceLimit: false, hasProjectLimits: false }],
+			[
+				'no limit at all',
+				{ ...LIMITS, hasInstanceLimit: false, limitedProjectIds: new Set<string>() },
+			],
 			['limits not loaded', null],
 		])('reads nothing and emits nothing with %s', async (_name, limits) => {
 			snapshot.readLimitedScopes.mockReturnValue(limits);
@@ -173,7 +170,7 @@ describe('ExecutionUsageCache', () => {
 			snapshot.readLimitedScopes.mockReturnValue({
 				...LIMITS,
 				hasInstanceLimit: false,
-				hasProjectLimits: false,
+				limitedProjectIds: new Set<string>(),
 			});
 
 			await cache.refresh();
@@ -182,7 +179,10 @@ describe('ExecutionUsageCache', () => {
 		});
 
 		it('does not read project usage with only an instance limit', async () => {
-			snapshot.readLimitedScopes.mockReturnValue({ ...LIMITS, hasProjectLimits: false });
+			snapshot.readLimitedScopes.mockReturnValue({
+				...LIMITS,
+				limitedProjectIds: new Set<string>(),
+			});
 
 			await cache.refresh();
 
@@ -278,14 +278,17 @@ describe('ExecutionUsageCache', () => {
 			expect(usage?.lastFoldAt).toBeNull();
 		});
 
-		it('returns null for a limited project without rows after the limits changed', () => {
-			snapshot.readLimitedScopes.mockReturnValue({ ...LIMITS, generation: 2 });
+		it('returns null for a project that got its limit after the load', () => {
+			snapshot.readLimitedScopes.mockReturnValue({
+				...LIMITS,
+				limitedProjectIds: new Set(['p1', 'p2', 'p3']),
+			});
 
-			expect(cache.read({ type: 'project', projectId: 'p2' }, NOW)).toBeNull();
+			expect(cache.read({ type: 'project', projectId: 'p3' }, NOW)).toBeNull();
 		});
 
-		it('still returns the usage of a project that has rows after the limits changed', () => {
-			snapshot.readLimitedScopes.mockReturnValue({ ...LIMITS, generation: 2 });
+		it('still returns the usage of a limited project after the limits were loaded again', () => {
+			snapshot.readLimitedScopes.mockReturnValue({ ...LIMITS });
 
 			expect(cache.read(PROJECT, NOW)?.executions).toBe(17);
 		});

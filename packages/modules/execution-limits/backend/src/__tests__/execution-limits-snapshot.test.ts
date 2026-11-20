@@ -107,32 +107,32 @@ describe('ExecutionLimitsSnapshot', () => {
 			expect(snapshot.readLimitedScopes()).toEqual({
 				periodUnit: 'week',
 				hasInstanceLimit: true,
-				hasProjectLimits: true,
-				generation: 1,
+				limitedProjectIds: new Set(['limited']),
 			});
 
 			settingsStore.read.mockResolvedValue(DEFAULT_EXECUTION_LIMIT_SETTINGS);
 			projectLimitRepository.findAll.mockResolvedValue([]);
 			await snapshot.reload();
 
-			expect(snapshot.readLimitedScopes()).toMatchObject({
+			expect(snapshot.readLimitedScopes()).toEqual({
 				periodUnit: 'month',
 				hasInstanceLimit: false,
-				hasProjectLimits: false,
+				limitedProjectIds: new Set(),
 			});
 		});
 
-		it('raises the generation at each successful load only', async () => {
+		it('gives a new object at each successful load only', async () => {
 			await snapshot.reload();
-			await snapshot.reload();
-			expect(snapshot.readLimitedScopes()?.generation).toBe(2);
+			const first = snapshot.readLimitedScopes();
+			expect(snapshot.readLimitedScopes()).toBe(first);
 
 			settingsStore.read.mockRejectedValueOnce(new Error('database is down'));
 			await snapshot.reload();
-			expect(snapshot.readLimitedScopes()?.generation).toBe(2);
+			expect(snapshot.readLimitedScopes()).toBe(first);
 
 			await snapshot.reload();
-			expect(snapshot.readLimitedScopes()?.generation).toBe(3);
+			expect(snapshot.readLimitedScopes()).not.toBe(first);
+			expect(snapshot.readLimitedScopes()).toEqual(first);
 		});
 	});
 
