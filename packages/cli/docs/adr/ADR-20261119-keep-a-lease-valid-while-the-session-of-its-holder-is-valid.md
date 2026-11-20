@@ -17,7 +17,8 @@ of truth for which instance holds a lease, and its clock decides when a lease ex
 ## Decision
 
 A lease is valid while the session of its holder is valid. An instance keeps one session for each
-lease kind that it registers. Only session rows are renewed. A lease row does not have its own expiry.
+lease kind that it registers. Only session rows are renewed. A lease row does not have its own
+expiry.
 
 The main reason is performance. A session is a batched renewal: one write renews every lease that
 the instance holds for the kind.
