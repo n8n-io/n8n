@@ -3,6 +3,7 @@ import type {
 	IHookFunctions,
 	IWebhookFunctions,
 	IDataObject,
+	INodeProperties,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
@@ -25,6 +26,74 @@ function describeGithubRejection(error: unknown): string {
 	return reason ? `Github said: ${reason}. ${advice}` : advice;
 }
 
+/** The owner field has a different label for each resource. Both write the same `owner` parameter. */
+function getOwnerProperty(
+	resource: 'repository' | 'organization',
+	displayName: string,
+	placeholder: string,
+): INodeProperties {
+	return {
+		displayName,
+		name: 'owner',
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
+		required: true,
+		displayOptions: {
+			show: {
+				resource: [resource],
+			},
+		},
+		modes: [
+			{
+				displayName,
+				name: 'list',
+				type: 'list',
+				placeholder,
+				typeOptions: {
+					searchListMethod: 'getUsers',
+					searchable: true,
+					searchFilterRequired: true,
+				},
+			},
+			{
+				displayName: 'Link',
+				name: 'url',
+				type: 'string',
+				placeholder: 'e.g. https://github.com/n8n-io',
+				extractValue: {
+					type: 'regex',
+					regex: 'https:\\/\\/(?:[^/]+)\\/([-_0-9a-zA-Z]+)',
+				},
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: 'https:\\/\\/([^/]+)\\/([-_0-9a-zA-Z]+)(?:.*)',
+							errorMessage: 'Not a valid Github URL',
+						},
+					},
+				],
+			},
+			{
+				displayName: 'By Name',
+				name: 'name',
+				type: 'string',
+				placeholder: 'e.g. n8n-io',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '[-_a-zA-Z0-9]+',
+							errorMessage: 'Not a valid Github Owner Name',
+						},
+					},
+				],
+				url: '=https://github.com/{{$value}}',
+			},
+		],
+	};
+}
+
 export class GithubTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Github Trigger',
@@ -34,7 +103,7 @@ export class GithubTrigger implements INodeType {
 		group: ['trigger'],
 		version: 1,
 		subtitle:
-			'={{$parameter["owner"] + "/" + $parameter["repository"] + ": " + $parameter["events"].join(", ")}}',
+			'={{$parameter["resource"] === "organization" ? $parameter["owner"] : $parameter["owner"] + "/" + $parameter["repository"]}}: {{$parameter["events"].join(", ")}}',
 		description: 'Starts the workflow when Github events occur',
 		defaults: {
 			name: 'Github Trigger',
@@ -124,61 +193,8 @@ export class GithubTrigger implements INodeType {
 				],
 				default: 'repository',
 			},
-			{
-				displayName: 'Repository Owner',
-				name: 'owner',
-				type: 'resourceLocator',
-				default: { mode: 'list', value: '' },
-				required: true,
-				modes: [
-					{
-						displayName: 'Repository Owner',
-						name: 'list',
-						type: 'list',
-						placeholder: 'Select an owner...',
-						typeOptions: {
-							searchListMethod: 'getUsers',
-							searchable: true,
-							searchFilterRequired: true,
-						},
-					},
-					{
-						displayName: 'Link',
-						name: 'url',
-						type: 'string',
-						placeholder: 'e.g. https://github.com/n8n-io',
-						extractValue: {
-							type: 'regex',
-							regex: 'https:\\/\\/(?:[^/]+)\\/([-_0-9a-zA-Z]+)',
-						},
-						validation: [
-							{
-								type: 'regex',
-								properties: {
-									regex: 'https:\\/\\/([^/]+)\\/([-_0-9a-zA-Z]+)(?:.*)',
-									errorMessage: 'Not a valid Github URL',
-								},
-							},
-						],
-					},
-					{
-						displayName: 'By Name',
-						name: 'name',
-						type: 'string',
-						placeholder: 'e.g. n8n-io',
-						validation: [
-							{
-								type: 'regex',
-								properties: {
-									regex: '[-_a-zA-Z0-9]+',
-									errorMessage: 'Not a valid Github Owner Name',
-								},
-							},
-						],
-						url: '=https://github.com/{{$value}}',
-					},
-				],
-			},
+			getOwnerProperty('repository', 'Repository Owner', 'Select an owner...'),
+			getOwnerProperty('organization', 'Organization', 'Select an organization...'),
 			{
 				displayName: 'Repository Name',
 				name: 'repository',
