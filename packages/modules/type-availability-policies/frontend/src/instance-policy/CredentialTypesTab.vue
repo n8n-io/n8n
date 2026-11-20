@@ -14,6 +14,8 @@ import {
 	type CredentialTypeSummary,
 } from '../type-availability-policies.api';
 
+const emit = defineEmits<{ open: [name: string] }>();
+
 const i18n = useI18n();
 const rootStore = useRootStore();
 const theme = useAppliedTheme();
@@ -68,6 +70,7 @@ onMounted(async () => {
 		"
 		data-test-id="credential-types-tab"
 		@change="changeAccess"
+		@open="(name) => emit('open', name)"
 	>
 		<template #toolbar-start>
 			<slot name="toolbar-start" />
