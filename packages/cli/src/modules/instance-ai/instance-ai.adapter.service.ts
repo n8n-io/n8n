@@ -185,11 +185,16 @@ import {
 import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
 import { EvaluationConfigService } from '@/evaluation.ee/evaluation-config.service';
 import { LlmJudgeProviderRegistry } from '@/evaluation.ee/llm-judge-provider-registry';
+import { EngineV2ExecutionReader } from '@/executions/engine-v2-execution-reader.service';
+import { type ExecutionIdV2, isExecutionIdV2 } from '@/executions/execution-id';
+import { ExecutionListService } from '@/executions/execution-list.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import {
+	findEngineV2ExecutionForViewer,
 	findUnsavedManualExecutionForViewer,
 	getExecutionRedaction,
 	loadExecutionForViewer,
+	loadLatestEngineV2ExecutionForViewer,
 } from '@/executions/execution-viewer-reader';
 import {
 	type CredentialRefusal,
@@ -232,6 +237,7 @@ import { checkAiGatewayEligibility } from '@/services/ai-gateway-eligibility';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import { AiPreferenceSettingsService } from '@/services/ai-preference-settings.service';
 import { writeAssistantPreference } from '@/services/ai-preference-write';
+import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
 import { FolderService } from '@/services/folder.service';
 import {
 	getParameterOptionsCredentialReferences,
@@ -256,7 +262,12 @@ import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
 import { isAgentsAccessEnabled } from './agents-access';
 import { extractResolvedNodeParameters } from './extract-resolved-node-parameters';
-import { waitForInstanceAiExecution } from './instance-ai-execution-wait';
+import {
+	isEngineV2ExecutionUnsettled,
+	pollEngineV2Execution,
+	waitForEngineV2Execution,
+	waitForInstanceAiExecution,
+} from './instance-ai-execution-wait';
 import {
 	FOLDER_SCAN_LIMIT,
 	FOLDER_SCAN_PROJECT_LIMIT,
@@ -1804,12 +1815,28 @@ export class InstanceAiAdapterService {
 				]);
 				if (!accessible) return null;
 
-				const [latest] = await executionRepository.find({
-					select: ['id'],
-					where: { workflowId },
-					order: { startedAt: 'DESC' },
-					take: 1,
-				});
+				// A workflow can have runs on both engines, for example after a switch
+				// of its engine. The newer run wins.
+				const [[latest], latestV2] = await Promise.all([
+					executionRepository.find({
+						select: ['id', 'startedAt'],
+						where: { workflowId },
+						order: { startedAt: 'DESC' },
+						take: 1,
+					}),
+					// A data plane failure must not break validation, which reads this
+					// for each node.
+					loadLatestEngineV2ExecutionForViewer(workflowId, user).catch((error: unknown) => {
+						logger.warn('Failed to read the latest engine v2 execution', {
+							workflowId,
+							error: error instanceof Error ? error.message : String(error),
+						});
+						return undefined;
+					}),
+				]);
+				if (latestV2 && !isOlderRun(latestV2.startedAt, latest?.startedAt)) {
+					return latestV2.data?.resultData?.runData ?? null;
+				}
 				if (!latest) return null;
 
 				const execution = await loadExecutionForViewer(latest.id, user);
@@ -2238,6 +2265,15 @@ export class InstanceAiAdapterService {
 			executionId: string,
 			scopes: Scope[] = ['workflow:read', 'execution:read'],
 		) => {
+			// An engine v2 execution has a UUID id and lives only on the data plane.
+			if (isExecutionIdV2(executionId)) {
+				const execution = await findEngineV2ExecutionForViewer(executionId, user, scopes);
+				if (!execution) {
+					throw new Error(`Execution ${executionId} not found`);
+				}
+				return execution;
+			}
+
 			// A manual execution that n8n did not save stays readable only for the user who
 			// started it, until pruning hard-deletes it.
 			const execution =
@@ -2283,6 +2319,73 @@ export class InstanceAiAdapterService {
 			);
 		};
 
+		/**
+		 * The v1 status of an engine v2 execution of `workflowId`. Only call it after
+		 * an access check on that workflow.
+		 */
+		const readEngineV2Status = async (executionId: ExecutionIdV2, workflowId: string) => {
+			const execution = await Container.get(EngineV2ExecutionReader).findOne(
+				executionId,
+				[workflowId],
+				{ includeData: false },
+			);
+			return execution?.status;
+		};
+
+		/**
+		 * Waits for a run this adapter started, and stops it on a timeout or an
+		 * abort. An engine v2 run never registers in `ActiveExecutions`, so the
+		 * wait polls the data plane for it.
+		 */
+		const waitForRun = async (args: {
+			executionId: string;
+			workflowId: string;
+			timeoutMs: number;
+			abortSignal?: AbortSignal;
+		}) => {
+			const { executionId, workflowId, timeoutMs, abortSignal } = args;
+			if (!isExecutionIdV2(executionId)) {
+				return await waitForInstanceAiExecution({
+					activeExecutions,
+					executionId,
+					timeoutMs,
+					abortSignal,
+				});
+			}
+
+			return await waitForEngineV2Execution({
+				readStatus: async () => await readEngineV2Status(executionId, workflowId),
+				stop: async () => {
+					await Container.get(EngineDataPlaneProxyService).cancelExecution(executionId);
+				},
+				timeoutMs,
+				abortSignal,
+			});
+		};
+
+		/**
+		 * Stops an engine v2 execution. The engine decides the race against the end
+		 * of the run, so its answer wins over `status`.
+		 */
+		const stopEngineV2Execution = async (executionId: ExecutionIdV2, status: string) => {
+			const notRunning = {
+				success: false,
+				message: `Execution ${executionId} is not currently running`,
+			};
+			if (!isEngineV2ExecutionUnsettled(status)) return notRunning;
+
+			try {
+				const outcome = await Container.get(EngineDataPlaneProxyService).cancelExecution(
+					executionId,
+				);
+				return outcome?.cancelled
+					? { success: true, message: `Execution ${executionId} cancelled` }
+					: notRunning;
+			} catch {
+				return { success: false, message: `Failed to cancel execution ${executionId}` };
+			}
+		};
+
 		return {
 			async list(options) {
 				const scope: Scope = 'execution:read';
@@ -2320,7 +2423,11 @@ export class InstanceAiAdapterService {
 						: {}),
 				};
 
-				const executions = await executionRepository.findManyByRangeQuery(query);
+				// With the engine-v2 module on, the executions of both engines merge into
+				// one list, as on the executions page.
+				const executions = Container.get(EngineDataPlaneProxyService).isAvailable()
+					? (await Container.get(ExecutionListService).findPageWithCount(query)).results
+					: await executionRepository.findManyByRangeQuery(query);
 
 				return executions.map(
 					(e): InstanceAiExecutionSummary => ({
@@ -2379,8 +2486,13 @@ export class InstanceAiAdapterService {
 				// instance-wide or per-workflow save settings. Manual mode is gated by
 				// `saveManualExecutions`; trigger modes (webhook, chat, trigger) are
 				// gated by the success/error settings — override all three.
+				// Engine v2 drops pin data outside manual mode and cannot start a run at a
+				// pinned node. So a v2 run is always manual and names its trigger, and
+				// the engine takes the trigger's pin data as the trigger output.
+				const runsOnEngineV2 = workflow.settings?.engineType === 'v2';
 				const runData: IWorkflowExecutionDataProcess = {
-					executionMode: triggerNode ? getExecutionModeForTrigger(triggerNode) : 'manual',
+					executionMode:
+						triggerNode && !runsOnEngineV2 ? getExecutionModeForTrigger(triggerNode) : 'manual',
 					workflowData: {
 						...workflow,
 						nodes: waits.nodes,
@@ -2418,7 +2530,7 @@ export class InstanceAiAdapterService {
 					inputData,
 					triggerNode,
 				});
-				if (pinDataPlan.startNodeName) {
+				if (pinDataPlan.startNodeName && !runsOnEngineV2) {
 					runData.startNodes = [{ name: pinDataPlan.startNodeName, sourceData: null }];
 				} else if (triggerNode) {
 					// No inputData but we have a trigger node (e.g. test-trigger from
@@ -2429,9 +2541,10 @@ export class InstanceAiAdapterService {
 				if (pinDataPlan.runPinData) {
 					runData.pinData = pinDataPlan.runPinData;
 				}
-				if (pinDataPlan.triggerExecutionData) {
+				if (pinDataPlan.triggerExecutionData && !runsOnEngineV2) {
 					// Persist pin data in executionData so queued workers can hydrate
 					// verification fixtures while starting from the trigger node.
+					// Engine v2 reads the trigger output from the pin data instead.
 					runData.executionData = pinDataPlan.triggerExecutionData;
 				}
 
@@ -2524,9 +2637,9 @@ export class InstanceAiAdapterService {
 					};
 
 					// Wait for completion with timeout / abort protection
-					const waitOutcome = await waitForInstanceAiExecution({
-						activeExecutions,
+					const waitOutcome = await waitForRun({
 						executionId,
+						workflowId,
 						timeoutMs,
 						abortSignal: options?.abortSignal,
 					});
@@ -2889,11 +3002,13 @@ export class InstanceAiAdapterService {
 				}
 
 				try {
+					// Engine v2 cannot run a tool on its own yet. Its dispatcher refuses
+					// such a step run, and the error reaches the caller unchanged.
 					const executionId = await workflowRunner.run(runData);
 
-					const waitOutcome = await waitForInstanceAiExecution({
-						activeExecutions,
+					const waitOutcome = await waitForRun({
 						executionId,
+						workflowId,
 						timeoutMs,
 						abortSignal: options?.abortSignal,
 					});
@@ -2925,8 +3040,10 @@ export class InstanceAiAdapterService {
 			},
 
 			async getStatus(executionId: string) {
-				await assertExecutionAccess(executionId);
-				const isRunning = activeExecutions.has(executionId);
+				const execution = await assertExecutionAccess(executionId);
+				const isRunning = isExecutionIdV2(executionId)
+					? isEngineV2ExecutionUnsettled(execution.status)
+					: activeExecutions.has(executionId);
 				if (isRunning) {
 					return { executionId, status: 'running' } satisfies ExecutionResult;
 				}
@@ -2934,9 +3051,18 @@ export class InstanceAiAdapterService {
 			},
 
 			async getResult(executionId: string) {
-				await assertExecutionAccess(executionId);
+				const execution = await assertExecutionAccess(executionId);
 				// If still running, wait for it to complete
-				if (activeExecutions.has(executionId)) {
+				if (isExecutionIdV2(executionId)) {
+					// The poll has a bound, because it cannot wait on a promise as v1
+					// does. A run that is still going reads as running.
+					if (isEngineV2ExecutionUnsettled(execution.status)) {
+						await pollEngineV2Execution({
+							readStatus: async () => await readEngineV2Status(executionId, execution.workflowId),
+							timeoutMs: DEFAULT_TIMEOUT_MS,
+						});
+					}
+				} else if (activeExecutions.has(executionId)) {
 					await activeExecutions.getPostExecutePromise(executionId);
 				}
 				return (await readOutcome(executionId)).result;
@@ -2946,6 +3072,9 @@ export class InstanceAiAdapterService {
 				assertNotReadOnly();
 				const execution = await assertExecutionAccess(executionId, ['workflow:execute']);
 				await assertWorkflowInBoundProject(execution.workflowId);
+				if (isExecutionIdV2(executionId)) {
+					return await stopEngineV2Execution(executionId, execution.status);
+				}
 				if (!activeExecutions.has(executionId)) {
 					return {
 						success: false,
@@ -6051,6 +6180,12 @@ function toWorkflowDetail(
 		connections: workflow.connections,
 		settings: workflow.settings as Record<string, unknown> | undefined,
 	};
+}
+
+/** Whether a run that started at `startedAt` started before `otherStartedAt`. */
+function isOlderRun(startedAt: Date, otherStartedAt: Date | null | undefined): boolean {
+	if (!otherStartedAt) return false;
+	return new Date(startedAt).getTime() < new Date(otherStartedAt).getTime();
 }
 
 async function toWorkflowDetailWithChecksum(

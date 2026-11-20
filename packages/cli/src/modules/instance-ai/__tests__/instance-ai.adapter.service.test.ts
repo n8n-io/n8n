@@ -82,7 +82,10 @@ import {
 	INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
 } from '@n8n/api-types';
 
+import { EngineV2ExecutionReader } from '@/executions/engine-v2-execution-reader.service';
+import { ExecutionListService } from '@/executions/execution-list.service';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
+import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import type { NodeCatalogService } from '@/node-catalog';
 import { pairAiGatewayServers } from '@/modules/mcp-registry/registry/mcp-registry-ai-gateway';
@@ -1970,6 +1973,7 @@ import {
 	InternalServerError,
 	LockedError,
 	NotFoundError,
+	NotImplementedError,
 	UserError,
 	UnexpectedError,
 } from '@n8n/errors';
@@ -7810,6 +7814,295 @@ describe('createExecutionAdapter runStep()', () => {
 			'applies only to a tool node',
 		);
 		expect(harness.mockWorkflowRunner.run).not.toHaveBeenCalled();
+	});
+});
+
+describe('createExecutionAdapter on engine v2', () => {
+	const V2_ID = '01a038ae-c4a8-7799-8a3e-e3c2ca055cfa';
+	const V2_PAST_ID = '01a038ae-c4a8-7799-8a3e-e3c2ca055cfb';
+
+	const v2Workflow = {
+		id: 'wf-1',
+		versionId: 'v-current',
+		settings: { engineType: 'v2' },
+		nodes: [
+			{ name: 'Trigger', type: 'n8n-nodes-base.webhook', typeVersion: 2, position: [0, 0] },
+			{ name: 'Fetch', type: 'n8n-nodes-base.httpRequest', typeVersion: 1, position: [1, 0] },
+			{ name: 'Send', type: 'n8n-nodes-base.slack', typeVersion: 1, position: [2, 0] },
+		],
+		connections: {
+			Trigger: { main: [[{ node: 'Fetch', type: 'main', index: 0 }]] },
+			Fetch: { main: [[{ node: 'Send', type: 'main', index: 0 }]] },
+		},
+	};
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	/**
+	 * A harness whose runner starts a v2 run. `statuses` are what the data plane
+	 * reports on each status read, the last one repeating.
+	 */
+	function createV2Harness(options?: {
+		statuses?: string[];
+		execution?: ReturnType<typeof makeExecution>;
+		readable?: boolean;
+	}) {
+		const harness = createRunAdapterForTests(v2Workflow, {
+			execution: makeExecution({ status: 'success' }),
+		});
+		harness.mockWorkflowRunner.run.mockResolvedValue(V2_ID);
+
+		const statuses = [...(options?.statuses ?? ['success'])];
+		const nextStatus = () => (statuses.length > 1 ? statuses.shift() : statuses[0]);
+		const reader = mock<EngineV2ExecutionReader>();
+		reader.findOne.mockImplementation(
+			async (id: string) => ({ id, workflowId: 'wf-1', status: nextStatus() }) as never,
+		);
+		reader.findOneIfReadable.mockImplementation((async (
+			id: string,
+			_canRead: unknown,
+			readOptions?: { includeData?: boolean },
+		) => {
+			if (options?.readable === false) return undefined;
+			if (readOptions?.includeData === false) {
+				return { id, workflowId: 'wf-1', status: nextStatus() };
+			}
+			return { ...(options?.execution ?? makeExecution({ status: 'success' })), id };
+		}) as never);
+
+		const dataPlane = mock<EngineDataPlaneProxyService>();
+		dataPlane.isAvailable.mockReturnValue(true);
+		dataPlane.cancelExecution.mockResolvedValue({ cancelled: true, finishedAt: new Date() });
+		const executionList = mock<ExecutionListService>();
+
+		vi.mocked(Container.get).mockImplementation(((token: unknown) => {
+			if (token === EngineV2ExecutionReader) return reader;
+			if (token === EngineDataPlaneProxyService) return dataPlane;
+			if (token === ExecutionListService) return executionList;
+			return harness.mockExecutionPersistence;
+		}) as typeof Container.get);
+
+		const runStep = harness.adapter.runStep as NonNullable<typeof harness.adapter.runStep>;
+		return { ...harness, runStep, reader, dataPlane, executionList };
+	}
+
+	describe('run()', () => {
+		it('runs in manual mode and names the trigger, so the engine keeps the pin data', async () => {
+			const { adapter, mockWorkflowRunner } = createV2Harness();
+
+			await adapter.run('wf-1', { body: { name: 'Ada' } });
+
+			const runData = mockWorkflowRunner.run.mock.calls[0][0];
+			expect(runData.executionMode).toBe('manual');
+			expect(runData.triggerToStartFrom).toEqual({ name: 'Trigger' });
+			expect(runData.startNodes).toBeUndefined();
+			expect(runData.executionData).toBeUndefined();
+			expect(runData.pinData.Trigger).toBeDefined();
+		});
+
+		it('waits on the data plane and reads the result from it', async () => {
+			const { adapter, reader, mockActiveExecutions, mockExecutionPersistence } = createV2Harness({
+				statuses: ['running', 'success'],
+				execution: makeExecution({
+					status: 'success',
+					runData: { Trigger: [makeTaskData([{}])], Fetch: [makeTaskData([{ id: 1 }])] },
+				}),
+			});
+
+			const result = await adapter.run('wf-1', undefined, {
+				verificationPinData: { Fetch: [{ id: 1 }] },
+			});
+
+			expect(result).toMatchObject({ executionId: V2_ID, status: 'success' });
+			expect(reader.findOne).toHaveBeenCalledTimes(2);
+			expect(reader.findOne).toHaveBeenCalledWith(V2_ID, ['wf-1'], { includeData: false });
+			expect(reader.findOneIfReadable).toHaveBeenCalledWith(V2_ID, expect.any(Function));
+			expect(mockActiveExecutions.has).not.toHaveBeenCalled();
+			// No control-plane row exists, so no verification pins are pruned from one.
+			expect(mockExecutionPersistence.findSingleExecution).not.toHaveBeenCalled();
+			expect(mockExecutionPersistence.updateExistingExecution).not.toHaveBeenCalled();
+		});
+
+		it('stops the run on the data plane when the time runs out', async () => {
+			const { adapter, dataPlane } = createV2Harness({ statuses: ['running'] });
+
+			const result = await adapter.run('wf-1', undefined, { timeout: 300 });
+
+			expect(result).toMatchObject({
+				executionId: V2_ID,
+				status: 'error',
+				error: 'Execution timed out after 300ms and was cancelled',
+			});
+			expect(dataPlane.cancelExecution).toHaveBeenCalledWith(V2_ID);
+		});
+
+		it('stops the run on the data plane when the caller aborts', async () => {
+			const { adapter, dataPlane } = createV2Harness({ statuses: ['running'] });
+			const controller = new AbortController();
+			controller.abort();
+
+			const result = await adapter.run('wf-1', undefined, { abortSignal: controller.signal });
+
+			expect(result).toMatchObject({ status: 'error', error: 'Execution was cancelled' });
+			expect(dataPlane.cancelExecution).toHaveBeenCalledWith(V2_ID);
+		});
+	});
+
+	describe('runStep()', () => {
+		it('waits on the data plane for a step run', async () => {
+			const { runStep, reader, mockActiveExecutions } = createV2Harness({
+				statuses: ['running', 'success'],
+			});
+
+			const result = await runStep('wf-1', 'Send', { mockInput: [{ text: 'hello' }] });
+
+			expect(result).toMatchObject({ executionId: V2_ID, status: 'success', inputMode: 'mocked' });
+			expect(reader.findOne).toHaveBeenCalledWith(V2_ID, ['wf-1'], { includeData: false });
+			expect(mockActiveExecutions.has).not.toHaveBeenCalled();
+		});
+
+		it('replays the run data of a past engine v2 execution', async () => {
+			const priorRunData = { Trigger: [makeTaskData([{}])], Fetch: [makeTaskData([{ id: 9 }])] };
+			const { runStep, mockWorkflowRunner, mockExecutionPersistence } = createV2Harness({
+				execution: makeExecution({ status: 'success', runData: priorRunData }),
+			});
+
+			const result = await runStep('wf-1', 'Send', { reuseExecutionId: V2_PAST_ID });
+
+			const runData = mockWorkflowRunner.run.mock.calls[0][0];
+			expect(runData.runData).toEqual(priorRunData);
+			expect(result.reusedFromExecutionId).toBe(V2_PAST_ID);
+			expect(mockExecutionPersistence.findSingleExecution).not.toHaveBeenCalled();
+		});
+
+		it('refuses a past engine v2 execution the user cannot read', async () => {
+			const { runStep, mockWorkflowRunner } = createV2Harness({ readable: false });
+
+			await expect(runStep('wf-1', 'Send', { reuseExecutionId: V2_PAST_ID })).rejects.toThrow(
+				`Execution ${V2_PAST_ID} not found`,
+			);
+			expect(mockWorkflowRunner.run).not.toHaveBeenCalled();
+		});
+
+		it('passes on the engine error for a step run that the engine cannot do', async () => {
+			const { runStep, mockWorkflowRunner } = createV2Harness();
+			mockWorkflowRunner.run.mockRejectedValue(
+				new NotImplementedError('Engine v2 cannot run a workflow as an AI tool yet.'),
+			);
+
+			await expect(runStep('wf-1', 'Send', undefined)).rejects.toThrow(
+				'Engine v2 cannot run a workflow as an AI tool yet.',
+			);
+		});
+	});
+
+	describe('execution actions', () => {
+		it('reports a running execution as running', async () => {
+			const { adapter, mockActiveExecutions } = createV2Harness({ statuses: ['running'] });
+
+			await expect(adapter.getStatus(V2_ID)).resolves.toEqual({
+				executionId: V2_ID,
+				status: 'running',
+			});
+			expect(mockActiveExecutions.has).not.toHaveBeenCalled();
+		});
+
+		it('reports the outcome of a settled execution', async () => {
+			const { adapter } = createV2Harness({ statuses: ['success'] });
+
+			await expect(adapter.getStatus(V2_ID)).resolves.toMatchObject({
+				executionId: V2_ID,
+				status: 'success',
+			});
+		});
+
+		it('hides an execution the user cannot read', async () => {
+			const { adapter } = createV2Harness({ readable: false });
+
+			await expect(adapter.getStatus(V2_ID)).rejects.toThrow(`Execution ${V2_ID} not found`);
+			await expect(adapter.getResult(V2_ID)).rejects.toThrow(`Execution ${V2_ID} not found`);
+			await expect(adapter.stop(V2_ID)).rejects.toThrow(`Execution ${V2_ID} not found`);
+		});
+
+		it('waits for the result of a running execution', async () => {
+			const { adapter, reader } = createV2Harness({ statuses: ['running', 'running', 'success'] });
+
+			await expect(adapter.getResult(V2_ID)).resolves.toMatchObject({ status: 'success' });
+			expect(reader.findOne).toHaveBeenCalledWith(V2_ID, ['wf-1'], { includeData: false });
+		});
+
+		it('stops a running execution on the data plane', async () => {
+			const { adapter, dataPlane, reader } = createV2Harness({ statuses: ['running'] });
+
+			await expect(adapter.stop(V2_ID)).resolves.toEqual({
+				success: true,
+				message: `Execution ${V2_ID} cancelled`,
+			});
+			expect(dataPlane.cancelExecution).toHaveBeenCalledWith(V2_ID);
+			expect(reader.findOneIfReadable).toHaveBeenCalledWith(V2_ID, expect.any(Function), {
+				includeData: false,
+			});
+		});
+
+		it('does not stop an execution that already settled', async () => {
+			const { adapter, dataPlane } = createV2Harness({ statuses: ['success'] });
+
+			await expect(adapter.stop(V2_ID)).resolves.toEqual({
+				success: false,
+				message: `Execution ${V2_ID} is not currently running`,
+			});
+			expect(dataPlane.cancelExecution).not.toHaveBeenCalled();
+		});
+
+		it('reports no stop when the run ends before the engine can cancel it', async () => {
+			const { adapter, dataPlane } = createV2Harness({ statuses: ['running'] });
+			dataPlane.cancelExecution.mockResolvedValue({ cancelled: false, status: 'completed' });
+
+			await expect(adapter.stop(V2_ID)).resolves.toMatchObject({ success: false });
+		});
+
+		it('lists the executions of both engines when the engine-v2 module is on', async () => {
+			const { adapter, mockExecutionRepository } = createExecutionAdapterForTests();
+			const dataPlane = mock<EngineDataPlaneProxyService>();
+			dataPlane.isAvailable.mockReturnValue(true);
+			const executionList = mock<ExecutionListService>();
+			const containerGet = vi
+				.spyOn(Container, 'get')
+				.mockImplementation(((token: unknown) =>
+					token === EngineDataPlaneProxyService
+						? dataPlane
+						: executionList) as typeof Container.get);
+			onTestFinished(() => containerGet.mockRestore());
+			executionList.findPageWithCount.mockResolvedValue({
+				results: [
+					{
+						id: V2_ID,
+						workflowId: 'wf-1',
+						workflowName: 'My workflow',
+						status: 'success',
+						mode: 'manual',
+						finished: true,
+						createdAt: new Date('2026-01-01T00:00:00Z'),
+						startedAt: new Date('2026-01-01T00:00:00Z'),
+					},
+				],
+				nextCursor: null,
+				count: 1,
+				estimated: false,
+			});
+
+			const executions = await adapter.list({ workflowId: 'wf-1', limit: 5 });
+
+			expect(executionList.findPageWithCount).toHaveBeenCalledWith(
+				expect.objectContaining({ workflowId: 'wf-1', range: { limit: 5 } }),
+			);
+			expect(executions).toEqual([
+				expect.objectContaining({ id: V2_ID, workflowName: 'My workflow', status: 'success' }),
+			]);
+			expect(mockExecutionRepository.findManyByRangeQuery).not.toHaveBeenCalled();
+		});
 	});
 });
 

@@ -1,3 +1,4 @@
+import { sleep } from '@n8n/utils/sleep';
 import { ManualExecutionCancelledError, TimeoutExecutionCancelledError } from 'n8n-workflow';
 
 import type { ActiveExecutions } from '@/active-executions';
@@ -89,4 +90,73 @@ export async function waitForInstanceAiExecution(args: {
 		clearTimeout(timeoutId);
 		if (onAbort) abortSignal?.removeEventListener('abort', onAbort);
 	}
+}
+
+export const ENGINE_V2_POLL_INTERVAL_MS = 250;
+
+/**
+ * Whether an engine v2 execution can still change, by its v1 status. A waiting
+ * run counts as settled, as in v1: it leaves `ActiveExecutions` when it waits.
+ */
+export const isEngineV2ExecutionUnsettled = (status: string | undefined) =>
+	status === 'new' || status === 'running';
+
+/**
+ * Polls an engine v2 execution until it settles, the time runs out, or the
+ * signal aborts. A v2 run never registers in `ActiveExecutions`, and the engine
+ * sends the control plane no end-of-run signal, so polling is the only option.
+ *
+ * `readStatus` returns `undefined` when the execution is not (yet) readable.
+ * The poll continues until the timeout in that case.
+ */
+export async function pollEngineV2Execution(args: {
+	readStatus: () => Promise<string | undefined>;
+	timeoutMs: number;
+	abortSignal?: AbortSignal;
+}): Promise<'settled' | 'timeout' | 'abort'> {
+	const { readStatus, timeoutMs, abortSignal } = args;
+	const deadline = Date.now() + timeoutMs;
+
+	while (true) {
+		const status = await readStatus();
+		if (status !== undefined && !isEngineV2ExecutionUnsettled(status)) return 'settled';
+		if (abortSignal?.aborted) return 'abort';
+		if (Date.now() >= deadline) return 'timeout';
+
+		try {
+			await sleep(Math.min(ENGINE_V2_POLL_INTERVAL_MS, deadline - Date.now()), abortSignal);
+		} catch {
+			// An abort ends the sleep early. The next pass reports it.
+		}
+	}
+}
+
+/**
+ * Waits for an engine v2 execution that the adapter started. It stops the run
+ * on a timeout or an abort, as {@link waitForInstanceAiExecution} does for v1.
+ */
+export async function waitForEngineV2Execution(args: {
+	readStatus: () => Promise<string | undefined>;
+	stop: () => Promise<void>;
+	timeoutMs: number;
+	abortSignal?: AbortSignal;
+}): Promise<ExecutionWaitOutcome> {
+	const { stop, timeoutMs } = args;
+	const outcome = await pollEngineV2Execution(args);
+	if (outcome === 'settled') return { kind: 'completed' };
+
+	try {
+		await stop();
+	} catch {
+		// The run can settle between the last read and the stop.
+	}
+
+	return {
+		kind: 'cancelled',
+		reason: outcome,
+		message:
+			outcome === 'abort'
+				? 'Execution was cancelled'
+				: `Execution timed out after ${timeoutMs}ms and was cancelled`,
+	};
 }

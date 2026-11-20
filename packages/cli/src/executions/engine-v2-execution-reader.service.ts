@@ -215,6 +215,39 @@ export class EngineV2ExecutionReader {
 	async findOne(
 		executionId: ExecutionIdV2,
 		sharedWorkflowIds: string[],
+		options: { includeData?: boolean } = {},
+	): Promise<IExecutionResponse | IExecutionBase | undefined> {
+		// The `workflow:read` check.
+		return await this.findOneIfReadable(
+			executionId,
+			async (workflowId) => sharedWorkflowIds.includes(workflowId),
+			options,
+		);
+	}
+
+	/**
+	 * As {@link findOne}, but `canRead` checks access to the workflow of the
+	 * execution. Use it when a list of every shared workflow id costs more than
+	 * one check for one workflow.
+	 */
+	async findOneIfReadable(
+		executionId: ExecutionIdV2,
+		canRead: (workflowId: string) => Promise<boolean>,
+		options?: { includeData?: true },
+	): Promise<IExecutionResponse | undefined>;
+	async findOneIfReadable(
+		executionId: ExecutionIdV2,
+		canRead: (workflowId: string) => Promise<boolean>,
+		options: { includeData: false },
+	): Promise<IExecutionBase | undefined>;
+	async findOneIfReadable(
+		executionId: ExecutionIdV2,
+		canRead: (workflowId: string) => Promise<boolean>,
+		options?: { includeData?: boolean },
+	): Promise<IExecutionResponse | IExecutionBase | undefined>;
+	async findOneIfReadable(
+		executionId: ExecutionIdV2,
+		canRead: (workflowId: string) => Promise<boolean>,
 		{ includeData = true }: { includeData?: boolean } = {},
 	): Promise<IExecutionResponse | IExecutionBase | undefined> {
 		// TODO(CAT-4235): mirror this metadata on the control plane, so we can
@@ -224,8 +257,7 @@ export class EngineV2ExecutionReader {
 		});
 		if (!snapshot) return undefined;
 
-		// The `workflow:read` check.
-		if (!sharedWorkflowIds.includes(snapshot.workflowId)) return undefined;
+		if (!(await canRead(snapshot.workflowId))) return undefined;
 
 		if (includeData) return await this.fromSnapshot(snapshot);
 
