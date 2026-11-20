@@ -537,13 +537,13 @@ export class WorkflowsController {
 
 		const n8nAuthCookie = this.authService.getCookieToken(req);
 
-		const result = await this.workflowExecutionService.executeManually(
-			dbWorkflow,
-			body,
-			req.user,
-			req.headers['push-ref'],
+		const result = await this.workflowExecutionService.executeManually({
+			workflowData: dbWorkflow,
+			payload: body,
+			user: req.user,
+			pushRef: req.headers['push-ref'],
 			n8nAuthCookie,
-		);
+		});
 
 		if ('executionId' in result) {
 			await this.workflowService.emitWorkflowExecuted(req.user, dbWorkflow, result.executionId);

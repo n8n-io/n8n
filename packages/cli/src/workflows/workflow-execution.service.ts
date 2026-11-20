@@ -365,14 +365,21 @@ export class WorkflowExecutionService {
 		}
 	}
 
-	async executeManually(
-		workflowData: IWorkflowBase,
-		payload: WorkflowRequest.ManualRunPayload,
-		user: User,
-		pushRef?: string,
-		n8nAuthCookie?: string,
+	async executeManually({
+		workflowData,
+		payload,
+		user,
+		pushRef,
+		n8nAuthCookie,
 		waitForWebhook = true,
-	): Promise<ManualRunResponse> {
+	}: {
+		workflowData: IWorkflowBase;
+		payload: WorkflowRequest.ManualRunPayload;
+		user: User;
+		pushRef?: string;
+		n8nAuthCookie?: string;
+		waitForWebhook?: boolean;
+	}): Promise<ManualRunResponse> {
 		this.assertManualExecutionAllowed();
 
 		// Check whether this workflow is active.

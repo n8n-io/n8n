@@ -988,14 +988,12 @@ export class WorkflowsPublicController {
 			destinationNode: body.destinationNode,
 			dirtyNodeNames: body.dirtyNodeNames,
 		};
-		const result = await this.workflowExecutionService.executeManually(
-			workflow,
-			runPayload,
-			req.user,
-			undefined,
-			undefined,
-			false,
-		);
+		const result = await this.workflowExecutionService.executeManually({
+			workflowData: workflow,
+			payload: runPayload,
+			user: req.user,
+			waitForWebhook: false,
+		});
 
 		// `waitForWebhook: false` makes the service throw instead of waiting, so this cannot happen.
 		if (!('executionId' in result)) {
