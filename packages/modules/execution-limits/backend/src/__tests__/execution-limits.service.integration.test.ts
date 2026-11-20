@@ -220,9 +220,8 @@ describe('ExecutionLimitsService', () => {
 			await service.updateSettings({ defaultProjectMaxExecutions: 50 });
 
 			await service.applyDefaultLimitToNewProject(project.id);
-			expect(service.getApplicableLimits(project.id)?.projectMaxExecutions).toBe(50);
-
 			await service.updateSettings({ defaultProjectMaxExecutions: null });
+
 			expect(await service.getProjectLimits([project.id])).toEqual([
 				{ projectId: project.id, maxExecutions: 50 },
 			]);

@@ -1,6 +1,11 @@
 import type { CreateProjectDto, ProjectType, UpdateProjectDto } from '@n8n/api-types';
 import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
-import { EventService, ProjectNotFoundError, RoleService } from '@n8n/backend-services';
+import {
+	EventService,
+	ProjectMutationHooksProxy,
+	ProjectNotFoundError,
+	RoleService,
+} from '@n8n/backend-services';
 import {
 	type User,
 	FolderRepository,
@@ -109,6 +114,7 @@ export class ProjectService {
 		private readonly txRunner: TransactionRunner,
 		private readonly agentsConfig: AgentsConfig,
 		private readonly serviceAccountProjects: ServiceAccountProjects,
+		private readonly projectMutationHooks: ProjectMutationHooksProxy,
 	) {}
 
 	private get workflowService() {
@@ -138,12 +144,6 @@ export class ProjectService {
 	private get dataTableService() {
 		return import('@n8n/backend-module-data-table').then(({ DataTableService }) =>
 			Container.get(DataTableService),
-		);
-	}
-
-	private get executionLimitsService() {
-		return import('@n8n/backend-module-execution-limits').then(({ ExecutionLimitsService }) =>
-			Container.get(ExecutionLimitsService),
 		);
 	}
 
@@ -567,16 +567,7 @@ export class ProjectService {
 		}
 		if (!project) throw new TeamProjectOverQuotaError(limit);
 
-		if (this.moduleRegistry.isActive('execution-limits')) {
-			try {
-				await (await this.executionLimitsService).applyDefaultLimitToNewProject(project.id);
-			} catch (error) {
-				this.logger.error('Failed to apply the default execution limit to a new project', {
-					projectId: project.id,
-					error: error instanceof Error ? error.message : error,
-				});
-			}
-		}
+		await this.projectMutationHooks.afterTeamProjectCreated(project.id);
 
 		this.eventService.emit('team-project-created', {
 			userId: adminUser.id,
