@@ -1,4 +1,4 @@
-import type { ExecutionLimitPeriodUnit } from '@n8n/api-types';
+import type { ExecutionLimitPeriodUnit, ExecutionLimitSettings } from '@n8n/api-types';
 
 /** The execution limit of one project, as stored. */
 export type ProjectLimit = {
@@ -18,10 +18,8 @@ export type ApplicableLimits = {
 };
 
 export type ExecutionLimitField =
-	| 'periodUnit'
-	| 'instanceMaxExecutions'
-	| 'defaultProjectMaxExecutions'
-	| 'projectMaxExecutions';
+	| keyof ExecutionLimitSettings
+	| keyof Pick<ApplicableLimits, 'projectMaxExecutions'>;
 
 export type ExecutionLimitChange = {
 	projectId: string | null;
