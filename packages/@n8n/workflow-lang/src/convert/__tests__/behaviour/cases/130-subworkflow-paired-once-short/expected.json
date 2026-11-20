@@ -36,67 +36,49 @@
 		],
 		"Call": [
 			[
-				[
-					{
-						"item": 0
-					},
-					{
-						"item": 1
-					},
-					{
-						"item": 2
-					},
-					{
-						"item": 3
-					}
-				],
-				[
-					{
-						"item": 0
-					},
-					{
-						"item": 1
-					},
-					{
-						"item": 2
-					},
-					{
-						"item": 3
-					}
-				]
+				{
+					"item": 1
+				},
+				{
+					"item": 3
+				}
 			],
 			[
-				[
-					{
-						"item": 0
-					},
-					{
-						"item": 1
-					},
-					{
-						"item": 2
-					},
-					{
-						"item": 3
-					}
-				],
-				[
-					{
-						"item": 0
-					},
-					{
-						"item": 1
-					},
-					{
-						"item": 2
-					},
-					{
-						"item": 3
-					}
-				]
+				{
+					"item": 0
+				},
+				{
+					"item": 2
+				}
 			]
 		],
-		"Read Each": []
+		"Read Each": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				}
+			]
+		],
+		"Read All": [
+			[
+				{
+					"item": 0
+				}
+			]
+		],
+		"Read Expr": [
+			[
+				{
+					"item": 0
+				},
+				{
+					"item": 1
+				}
+			]
+		]
 	},
 	"runSizes": {
 		"Webhook": [
@@ -116,7 +98,19 @@
 			]
 		],
 		"Read Each": [
-			[]
+			[
+				2
+			]
+		],
+		"Read All": [
+			[
+				1
+			]
+		],
+		"Read Expr": [
+			[
+				2
+			]
 		]
 	},
 	"runs": {
@@ -137,16 +131,30 @@
 			]
 		],
 		"Read Each": [
-			[]
+			[
+				2
+			]
+		],
+		"Read All": [
+			[
+				1
+			]
+		],
+		"Read Expr": [
+			[
+				2
+			]
 		]
 	},
 	"generatedBy": "oracle.ts: n8n-core WorkflowExecute with n8n-nodes-base, executionOrder v1",
-	"error": "Multiple matches",
+	"error": null,
 	"order": [
 		"Webhook",
 		"A",
 		"Call",
-		"Read Each"
+		"Read Each",
+		"Read All",
+		"Read Expr"
 	],
 	"nodes": {
 		"Webhook": [
@@ -208,7 +216,33 @@
 				}
 			]
 		],
-		"Read Each": []
+		"Read Each": [
+			[
+				{
+					"from": "a1"
+				},
+				{
+					"from": "a3"
+				}
+			]
+		],
+		"Read All": [
+			[
+				{
+					"from": "a1"
+				}
+			]
+		],
+		"Read Expr": [
+			[
+				{
+					"from": "a1"
+				},
+				{
+					"from": "a3"
+				}
+			]
+		]
 	},
 	"requests": [],
 	"responses": []

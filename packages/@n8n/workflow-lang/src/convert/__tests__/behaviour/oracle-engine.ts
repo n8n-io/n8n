@@ -405,10 +405,17 @@ async function execute(
 			(trigger?.typeVersion ?? 1) >= 1.2 ||
 			(trigger?.parameters as { returnOutput?: string } | undefined)?.returnOutput === 'allRuns';
 		const picked = allRuns ? runs : runs.slice(-1);
-		const data: Array<Array<{ json: unknown }>> = [];
+		// The items keep the paired item that the sub-workflow gave them: the Execute Workflow node
+		// keeps it on its output items (`if (item.pairedItem)`), and a case records what that gives.
+		const data: Array<Array<{ json: unknown; pairedItem?: unknown }>> = [];
 		for (const r of picked) {
 			(r.data?.main ?? []).forEach((list, k) => {
-				data[k] = [...(data[k] ?? []), ...(list ?? []).map((i) => ({ json: i.json }))];
+				data[k] = [
+					...(data[k] ?? []),
+					...(list ?? []).map((i) =>
+						i.pairedItem === undefined ? { json: i.json } : { json: i.json, pairedItem: i.pairedItem },
+					),
+				];
 			});
 		}
 		return { executionId: `sub-${executions}`, data: data.length > 0 ? data : [null] };
