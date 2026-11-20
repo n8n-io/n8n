@@ -24,7 +24,7 @@ N8nSidebar
 **Props**
 
 - `side?: 'left' | 'right'` Edge of the parent, and the resize direction. `left` places the handle on the right edge, so a drag grows the column to the right. `right` places the handle on the left edge, so a drag grows the column to the left. Place the sidebar on that side of the parent. The component stays where the parent puts it. | `default: 'left'`
-- `width?: number` Current width in pixels. Bind with `v-model:width`. The sidebar clamps this value to `minWidth` and `maxWidth`. It emits the clamped width. | `default: 240`
+- `width?: number` Current width in pixels. Bind with `v-model:width` and the parent stores the width. Omit this prop and the sidebar stores the width. The sidebar clamps a bound value to `minWidth` and `maxWidth`. It emits the clamped width. Pass `width` without `v-model:width` and the value is the start width. A later render from the parent sets the width back to that value. | `default: 240`
 - `widthStorageId?: string` Local storage key for the width. Set this key and the sidebar reads it on mount. A saved width inside `minWidth` and `maxWidth` becomes the current width. The sidebar emits `update:width`. The sidebar writes the width after each later change. Give each sidebar its own key. Omit this prop and the sidebar does not read or write storage.
 - `defaultWidth?: number` Width restored on double-click. Defaults to the `width` value at mount, before a saved width is applied. The sidebar clamps this value to `minWidth` and `maxWidth`. The sidebar saves that restored width when `widthStorageId` is set.
 - `minWidth?: number` Minimum width in pixels. The width stays at or above this value. | `default: 160`
@@ -52,7 +52,7 @@ Set a token on the sidebar. The sidebar uses the token. When the token is unset,
 
 A list uses the default padding. A form sets a larger padding on the sidebar.
 
-The sidebar fills the height of its parent. The default slot scrolls in an `N8nScrollArea`. The area fades at the top and the bottom when the content overflows. The header and the footer stay in place. Content beside the sidebar scrolls on its own when that content has its own overflow.
+The sidebar fills the height of its parent. The default slot scrolls in an `N8nScrollArea`. The area fades at the top and the bottom. The header and the footer stay in place. Content beside the sidebar scrolls on its own when that content has its own overflow.
 
 **Types**
 
@@ -68,9 +68,12 @@ type SidebarProps = {
 	side?: SidebarSide;
 	/**
 	 * Current width in pixels.
-	 * Bind with v-model:width.
+	 * Bind with v-model:width and the parent stores the width.
+	 * Omit this prop and the sidebar stores the width.
 	 * The sidebar clamps this value to minWidth and maxWidth.
 	 * It emits the clamped width.
+	 * Pass width without v-model:width and the value is the start width.
+	 * A later render from the parent sets the width back to that value.
 	 * @default 240
 	 */
 	width?: number;
@@ -188,6 +191,24 @@ const name = ref('Weekly digest');
 		<N8nInputLabel label="Name" input-name="sidebar-name" />
 		<N8nInput id="sidebar-name" v-model="name" size="small" />
 	</N8nSidebar>
+</template>
+```
+
+**Controlled and uncontrolled width**
+
+Bind `v-model:width` and the parent stores the width. Omit `width` and the sidebar stores the width.
+
+```vue
+<script setup lang="ts">
+import { ref } from 'vue';
+import { N8nSidebar } from '@n8n/design-system';
+
+const width = ref(240);
+</script>
+
+<template>
+	<N8nSidebar v-model:width="width" label="Controlled" />
+	<N8nSidebar label="Uncontrolled" />
 </template>
 ```
 
