@@ -9560,7 +9560,7 @@ describe('createContext — skill service wiring', () => {
 
 			service.createContext(mockUser, { threadId: 'thread-1', assistantSkillsEnabled });
 
-			expect(createService).toHaveBeenCalledWith(mockUser, assistantSkillsEnabled);
+			expect(createService).toHaveBeenCalledWith(mockUser, assistantSkillsEnabled, undefined);
 		},
 	);
 });

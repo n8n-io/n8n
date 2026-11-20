@@ -432,6 +432,8 @@ const approvalTitleKeys = new Map<string, BaseTextKey>(
 			'instanceAi.tools.skills.update.imperativeWithResource',
 			'instanceAi.tools.skills.delete.imperative',
 			'instanceAi.tools.skills.delete.imperativeWithResource',
+			'instanceAi.tools.skills.import-from-source.imperative',
+			'instanceAi.tools.skills.import-from-source.imperativeWithResource',
 			'instanceAi.tools.workspace.tag-workflow.imperative',
 			'instanceAi.tools.workspace.cleanup-test-executions.imperative',
 			'instanceAi.tools.workspace.create-folder.imperative',

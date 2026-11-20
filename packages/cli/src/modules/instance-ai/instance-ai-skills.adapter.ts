@@ -1,21 +1,53 @@
-import { CreateSkillDto, ListSkillsQueryDto, SaveSkillDto } from '@n8n/api-types';
+import {
+	connectPublicSkillSourceSchema,
+	CreateSkillDto,
+	discoverPublicSkillSourceSchema,
+	ListSkillsQueryDto,
+	SaveSkillDto,
+} from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { InstanceAiSkillService } from '@n8n/instance-ai';
 import { UserError } from '@n8n/errors';
 
-import { SkillService, toSkillToolRefusal } from '@/modules/skills';
+import { SkillService, SkillSourceService, toSkillToolRefusal } from '@/modules/skills';
 
 const STALE_SKILL_TOOL_MESSAGE =
 	'The skill changed since you read it, so nothing was saved. Read it again with the get action and retry with its new skillHash.';
 
 @Service()
 export class InstanceAiSkillsAdapterService {
-	constructor(private readonly skillService: SkillService) {}
+	constructor(
+		private readonly skillService: SkillService,
+		private readonly skillSourceService: SkillSourceService,
+	) {}
 
-	createService(user: User, assistantSkillsEnabled: boolean): InstanceAiSkillService {
+	createService(
+		user: User,
+		assistantSkillsEnabled: boolean,
+		skillSourcesEnabled = false,
+	): InstanceAiSkillService {
 		return {
 			assistantSkillsEnabled,
+			...(skillSourcesEnabled
+				? {
+						sources: {
+							list: async () => await this.skillSourceService.list(user),
+							discover: async (input) =>
+								await this.skillSourceService.discoverPublic(
+									user,
+									discoverPublicSkillSourceSchema.parse(input),
+									'assistant',
+								),
+							connect: async (input) =>
+								await this.skillSourceService.connectPublic(
+									user,
+									connectPublicSkillSourceSchema.parse(input),
+									'assistant',
+								),
+						},
+					}
+				: {}),
 			list: async ({ query, scope, projectId, attachableToAgentId, limit, skip }) =>
 				await this.skillService.list(
 					user,

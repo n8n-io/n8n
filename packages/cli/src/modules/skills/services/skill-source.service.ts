@@ -1,6 +1,8 @@
 import {
 	type AgentSkill,
+	type ConnectPublicSkillSource,
 	type ConnectSkillSourceDto,
+	type DiscoverPublicSkillSource,
 	type DiscoverSkillSourceDto,
 	type DeleteSkillSourceQueryDto,
 	type DiscoveredSkill,
@@ -15,6 +17,7 @@ import {
 	type SkillSourceRepositoryList,
 	type SkillSourceListItem,
 	type MoveSkillSourceDto,
+	type PublicSkillSourceDiscovery,
 	type SkillSourceMovePreview,
 	type SkillSourceDeleteBlock,
 	skillNameKey,
@@ -91,6 +94,8 @@ import {
 const FETCH_CONCURRENCY = 8;
 
 type ScopeType = 'global' | 'team' | 'personal';
+type SourceToolSurface = 'assistant' | 'mcp';
+type SourceToolPreview = { revision: string; surface: SourceToolSurface };
 
 type MoveAccess = {
 	canReadSource: boolean;
@@ -125,6 +130,7 @@ type ConnectReport = {
 	access: 'public' | 'credential';
 	scope_type: ScopeType;
 	duplicate_result: SkillSourceDuplicate['kind'];
+	surface?: SourceToolSurface;
 };
 
 /** One skill of the source, read and checked against the rules of n8n skills. */
@@ -165,9 +171,56 @@ export class SkillSourceService {
 	 * a failed connect. A discover that succeeds reports nothing: the connect reports it.
 	 */
 	async discover(user: User, payload: DiscoverSkillSourceDto): Promise<SkillSourceDiscovery> {
+		const { revision: _revision, ...result } = await this.discoverWith(
+			user,
+			payload,
+			(read, row) => {
+				const preview = read.fetched
+					? skillPreview(read.fetched.content)
+					: { files: [], truncated: false };
+				return {
+					...row,
+					description: read.skill?.description ?? read.fetched?.content.description ?? null,
+					skippedFiles: read.fetched?.skippedFiles ?? [],
+					previewFiles: preview.files,
+					previewTruncated: preview.truncated,
+					error: read.error ? { reason: read.error.reason, message: read.error.message } : null,
+					check: read.check ?? null,
+				};
+			},
+		);
+		return result;
+	}
+
+	async discoverPublic(
+		user: User,
+		{ url, scope, projectId }: DiscoverPublicSkillSource,
+		surface: SourceToolSurface,
+	): Promise<PublicSkillSourceDiscovery> {
+		return await this.discoverWith(
+			user,
+			{ url, scope, projectId },
+			(read, row) => ({
+				...row,
+				verdict: read.check?.verdict ?? null,
+				reason: read.error?.reason ?? null,
+			}),
+			surface,
+		);
+	}
+
+	private async discoverWith<T>(
+		user: User,
+		payload: DiscoverSkillSourceDto,
+		format: (
+			read: ReadSkill,
+			row: Pick<DiscoveredSkill, 'key' | 'location' | 'name' | 'nameTaken' | 'webUrl'>,
+		) => T,
+		surface?: SourceToolSurface,
+	) {
 		await this.flagGate.assertEnabled(user);
 		const { target, scopeType } = await this.resolveScope(user, payload);
-		const report = connectReport(scopeType, payload.credentialId);
+		const report = connectReport(scopeType, payload.credentialId, surface);
 		try {
 			const source = await this.parse(payload, user, target.projectId);
 			report.provider = source.type;
@@ -192,24 +245,16 @@ export class SkillSourceService {
 			return {
 				source: { type: source.type, ...client.describe(locator), webUrl: client.webUrl(locator) },
 				duplicate,
-				skills: skills.map((read): DiscoveredSkill => {
-					const preview = read.fetched
-						? skillPreview(read.fetched.content)
-						: { files: [], truncated: false };
-					return {
+				revision: discovered.revision ?? null,
+				skills: skills.map((read) =>
+					format(read, {
 						key: read.key,
 						location: client.location(read.ref),
 						name: read.skill?.name ?? read.fetched?.content.name ?? null,
-						description: read.skill?.description ?? read.fetched?.content.description ?? null,
-						skippedFiles: read.fetched?.skippedFiles ?? [],
-						previewFiles: preview.files,
-						previewTruncated: preview.truncated,
 						nameTaken: nameTaken(read),
-						error: read.error ? { reason: read.error.reason, message: read.error.message } : null,
-						check: read.check ?? null,
-						webUrl: client.webUrl(locator, read.ref),
-					};
-				}),
+						webUrl: client.webUrl(locator, read.ref, surface ? discovered.revision : undefined),
+					}),
+				),
 				truncated: discovered.truncated,
 				tooDeep: discovered.tooDeep,
 			};
@@ -228,9 +273,29 @@ export class SkillSourceService {
 	 * others come in. If none comes in, nothing is stored. Telemetry reports every attempt.
 	 */
 	async connect(user: User, payload: ConnectSkillSourceDto): Promise<SkillSourceConnectResponse> {
+		return await this.connectSelected(user, payload);
+	}
+
+	async connectPublic(
+		user: User,
+		{ url, scope, projectId, skillKeys, revision }: ConnectPublicSkillSource,
+		surface: SourceToolSurface,
+	): Promise<SkillSourceConnectResponse> {
+		return await this.connectSelected(
+			user,
+			{ url, scope, projectId, skillKeys },
+			{ revision, surface },
+		);
+	}
+
+	private async connectSelected(
+		user: User,
+		payload: ConnectSkillSourceDto,
+		preview?: SourceToolPreview,
+	): Promise<SkillSourceConnectResponse> {
 		await this.flagGate.assertEnabled(user);
 		const { target, scopeType } = await this.resolveScope(user, payload);
-		const report = connectReport(scopeType, payload.credentialId);
+		const report = connectReport(scopeType, payload.credentialId, preview?.surface);
 		try {
 			const source = await this.parse(payload, user, target.projectId);
 			report.provider = source.type;
@@ -240,6 +305,7 @@ export class SkillSourceService {
 			const { response, warning } = await this.importSkills(user, source, target, scopeType, {
 				skillKeys: payload.skillKeys,
 				reviewedSkillKeys: payload.reviewedSkillKeys ?? [],
+				preview,
 			});
 			await this.skillsTelemetry.connectedSource(
 				{ ...report, status: 'success', ...(warning ? { reason: warning } : {}) },
@@ -719,7 +785,11 @@ export class SkillSourceService {
 		source: ParsedSource,
 		target: SkillTarget,
 		scopeType: ScopeType,
-		{ skillKeys, reviewedSkillKeys }: { skillKeys: string[]; reviewedSkillKeys: string[] },
+		{
+			skillKeys,
+			reviewedSkillKeys,
+			preview,
+		}: { skillKeys: string[]; reviewedSkillKeys: string[]; preview?: SourceToolPreview },
 	): Promise<{ response: SkillSourceConnectResponse; warning?: SkillSourceReason }> {
 		const keys = [...new Set(skillKeys)];
 		const reviewed = new Set(reviewedSkillKeys);
@@ -733,6 +803,7 @@ export class SkillSourceService {
 			await this.skillsTelemetry.importedFromSource(
 				{
 					provider: source.type,
+					...(preview ? { surface: preview.surface } : {}),
 					access,
 					scope_type: scopeType,
 					first_or_more: 'first',
@@ -755,6 +826,12 @@ export class SkillSourceService {
 		let discovered: Discovered;
 		try {
 			discovered = await this.discoverAll(source);
+			if (preview && discovered.revision !== preview.revision) {
+				throw new SkillSourceRequestError(
+					'stale',
+					'The source changed. Preview it again before importing.',
+				);
+			}
 			const byKey = new Map(discovered.refs.map((ref) => [refKey(ref), ref]));
 			const picked: RemoteSkillRef[] = [];
 			for (const key of keys) {
@@ -1197,9 +1274,14 @@ export class SkillSourceService {
 	}
 }
 
-function connectReport(scopeType: ScopeType, credentialId?: string): ConnectReport {
+function connectReport(
+	scopeType: ScopeType,
+	credentialId?: string,
+	surface?: SourceToolSurface,
+): ConnectReport {
 	return {
 		provider: 'github',
+		...(surface ? { surface } : {}),
 		access: credentialId ? 'credential' : 'public',
 		scope_type: scopeType,
 		duplicate_result: 'none',

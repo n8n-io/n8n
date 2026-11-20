@@ -33,6 +33,11 @@ import type {
 	SkillListResponse,
 	SkillSaveResponse,
 	SkillScope,
+	ConnectPublicSkillSource,
+	DiscoverPublicSkillSource,
+	PublicSkillSourceDiscovery,
+	SkillSourceConnectResponse,
+	SkillSourceListItem,
 	EvaluationMetric,
 	TaskList,
 	InstanceAiApprovalMode,
@@ -1243,6 +1248,11 @@ export interface InstanceAiPreferenceService {
 
 export interface InstanceAiSkillService {
 	assistantSkillsEnabled: boolean;
+	sources?: {
+		list(): Promise<SkillSourceListItem[]>;
+		discover(input: DiscoverPublicSkillSource): Promise<PublicSkillSourceDiscovery>;
+		connect(input: ConnectPublicSkillSource): Promise<SkillSourceConnectResponse>;
+	};
 	list(options: {
 		query?: string;
 		scope?: SkillScope;

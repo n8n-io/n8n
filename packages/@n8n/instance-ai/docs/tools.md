@@ -108,7 +108,7 @@ keep their explicit pattern. `like` matches case; `ilike` ignores case.
 | `eval-config` | 6 |
 | `n8n-docs` | 3 |
 | `agent-context` | 13 lookup types |
-| `skills` | 5 |
+| `skills` | 5 (8 when Skill Sync is on) |
 | `apps` | 6 |
 | `workflow_builder_build_workflow`, `ask_user`, `parse-file`, `import-files`, `search_models`, `search_nodes`, `get_node_types`, `get_node_parameter_options`, `execute_node` | single-purpose |
 
@@ -1666,6 +1666,13 @@ a `delete` that the user has no permission for, before it asks for approval.
 For `update`, pass the `skillHash` that `get` returns as `baseSkillHash`. The
 tool marks its output as untrusted data, because other users can write skill
 content. The tool does not attach a skill to an Agent.
+
+When Skill Sync is on, `list-sources` lists visible sources and their update
+counts. `discover-source` previews a public GitHub link and reports the check
+verdict for each skill. `import-from-source` connects the source and imports the
+selected skills that pass. It asks the user to confirm the import and checks the
+source revision again before writing. Use **Settings > Context > Skills** for
+private repositories, warning review, and update acceptance.
 
 ## MCP Registry Tool
 

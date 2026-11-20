@@ -4,13 +4,15 @@ import { ConflictError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import { InstanceAiSkillsAdapterService } from '../instance-ai-skills.adapter';
-import { SkillNameTakenError, type SkillService } from '@/modules/skills';
+import { SkillNameTakenError, type SkillService, type SkillSourceService } from '@/modules/skills';
 import { SkillSyncedError } from '@/modules/skills/testing';
 
 describe('InstanceAiSkillsAdapterService', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
 	const skillService = mock<SkillService>();
-	const service = new InstanceAiSkillsAdapterService(skillService).createService(user, true);
+	const skillSources = mock<SkillSourceService>();
+	const adapter = new InstanceAiSkillsAdapterService(skillService, skillSources);
+	const service = adapter.createService(user, true);
 	const skill = { name: 'Brand voice', description: 'd', instructions: 'Be kind.' };
 
 	beforeEach(() => {
@@ -44,6 +46,14 @@ describe('InstanceAiSkillsAdapterService', () => {
 
 	it('exposes whether the n8n Assistant can use skills', () => {
 		expect(service.assistantSkillsEnabled).toBe(true);
+	});
+
+	it('binds source actions to the current user when Skill Sync is enabled', async () => {
+		expect(service.sources).toBeUndefined();
+		const sources = adapter.createService(user, true, true).sources!;
+		const input = { url: 'https://github.com/acme/skills', scope: 'instance' } as const;
+		await sources.discover(input);
+		expect(skillSources.discoverPublic).toHaveBeenCalledWith(user, input, 'assistant');
 	});
 
 	it('creates the skill with the Assistant availability the tool sent', async () => {

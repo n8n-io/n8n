@@ -71,6 +71,24 @@ export class ConnectSkillSourceDto extends Z.class({
 	reviewedSkillKeys: z.array(z.string().min(1).max(2048)).max(SKILL_SOURCE_MAX_SKILLS).optional(),
 }) {}
 
+export const discoverPublicSkillSourceSchema = DiscoverSkillSourceDto.schema
+	.omit({ credentialId: true })
+	.extend({
+		url: skillSourceTarget.url.describe('A public GitHub repository, folder, or SKILL.md URL'),
+		scope: skillSourceScopeSchema.describe('Global (instance) or one project (project)'),
+		projectId: skillSourceScope.projectId.describe('Required when scope is project'),
+	});
+
+export const connectPublicSkillSourceSchema = discoverPublicSkillSourceSchema.extend({
+	skillKeys: ConnectSkillSourceDto.schema.shape.skillKeys.describe(
+		'The keys of the selected skills that passed the check',
+	),
+	revision: z.string().min(1).max(128).describe('The revision returned by discovery'),
+});
+
+export type DiscoverPublicSkillSource = z.infer<typeof discoverPublicSkillSourceSchema>;
+export type ConnectPublicSkillSource = z.infer<typeof connectPublicSkillSourceSchema>;
+
 /** Checks or moves a source without reading its remote repository. */
 export class MoveSkillSourceDto extends Z.class({
 	...skillSourceScope,
@@ -249,6 +267,16 @@ export type SkillSourceDiscovery = {
 	truncated: boolean;
 	/** Skills that n8n did not list, as they are deeper in the source than n8n looks (`too_deep`). */
 	tooDeep?: number;
+};
+
+export type PublicSkillSourceDiscovery = Omit<SkillSourceDiscovery, 'skills'> & {
+	revision: string | null;
+	skills: Array<
+		Pick<DiscoveredSkill, 'key' | 'location' | 'name' | 'nameTaken' | 'webUrl'> & {
+			verdict: SkillScanVerdict | null;
+			reason: SkillSourceReason | null;
+		}
+	>;
 };
 
 export type SkillSourceConnectResponse = {

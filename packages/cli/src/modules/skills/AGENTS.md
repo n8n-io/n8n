@@ -96,6 +96,20 @@ and scans it again. New skills start unchecked. Unchecked skills stay pending.
 flag. The source menu always offers "Review skills", including skipped entries.
 Closing review changes nothing. Imports use the source scope and create a link.
 
+## Skill sources in n8n Assistant and MCP
+
+Both surfaces use `SkillSourceService` and the same Skill Sync gate as the UI.
+They list visible sources and show sync status on skill reads. They can preview
+public GitHub sources and import selected skills from the previewed revision.
+The service checks access and scans the skills again before it writes. Only
+skills that pass can come in. Use the Skills UI to review warnings, accept
+updates, or connect private repositories.
+
+The MCP tools are `list_skill_sources` (`skill:read` or `skill:write`),
+`discover_skill_source`, and `import_skills_from_source` (both `skill:write`).
+n8n Assistant asks for approval for each import. Connect and import use the
+existing telemetry events with `surface: 'assistant'` or `surface: 'mcp'`.
+
 ## Gates
 
 - `SkillsGate.isEnabled` decides if skills are on. Skills have no admin toggle of their own. Every entry point (REST, MCP, n8n Assistant) checks this gate. Do not check `isActive('agents')`, the proxy or the consumer settings in other code. The gate needs two facts:

@@ -40,8 +40,8 @@ const detail: SkillDetail = {
 const skill = { name: 'Brand voice', description: 'd', instructions: 'Be kind.' };
 
 type SkillServiceMock = {
-	[K in Exclude<keyof InstanceAiSkillService, 'assistantSkillsEnabled'>]: Mock;
-} & Pick<InstanceAiSkillService, 'assistantSkillsEnabled'>;
+	[K in Exclude<keyof InstanceAiSkillService, 'assistantSkillsEnabled' | 'sources'>]: Mock;
+} & Pick<InstanceAiSkillService, 'assistantSkillsEnabled' | 'sources'>;
 
 function createSkillService(assistantSkillsEnabled = true): SkillServiceMock {
 	return {
@@ -142,6 +142,83 @@ describe('skills tool', () => {
 
 		expect(service.get).toHaveBeenCalledWith('skill_a');
 		expect(result).toMatchObject({ id: 'skill_a', skill: detail.skill, skillHash: 'hash-2' });
+	});
+
+	describe('skill sources', () => {
+		const target = { url: 'https://github.com/acme/skills', scope: 'instance' };
+		const input = {
+			...target,
+			action: 'import-from-source',
+			skillKeys: ['brand-voice'],
+			revision: 'commit',
+		};
+		const preview = {
+			source: { label: 'acme/skills' },
+			duplicate: { kind: 'none' },
+			revision: 'commit',
+			skills: [{ key: 'brand-voice', name: 'Brand voice', verdict: 'pass' }],
+		};
+		const discover = vi.fn();
+		const connect = vi.fn();
+
+		beforeEach(() => {
+			discover.mockReset().mockResolvedValue(preview);
+			connect.mockReset().mockResolvedValue({ sourceId: 'source-1', imported: [], failed: [] });
+		});
+
+		it('hides source actions when Skill Sync is off', () => {
+			const tool = createSkillsTool(createContext(service));
+			expect((tool.inputSchema as z.ZodType).safeParse({ action: 'list-sources' }).success).toBe(
+				false,
+			);
+		});
+
+		it('always asks before connecting the source, even when other skill creation is always allowed', async () => {
+			const tool = createSkillsTool(
+				createContext(
+					{ ...service, sources: { list: vi.fn(), discover, connect } },
+					{
+						permissions: { createSkill: 'always_allow' },
+					},
+				),
+			);
+			const suspend = vi.fn();
+			await executeTool(tool, input, suspendCtx(suspend));
+			expect(suspend).toHaveBeenCalledWith(
+				expect.objectContaining({
+					resourceName: 'acme/skills',
+					message: expect.stringContaining('Brand voice'),
+				}),
+			);
+			await executeTool(tool, input, resumeCtx(false));
+			expect(connect).not.toHaveBeenCalled();
+			await expect(executeTool(tool, input, resumeCtx(true))).resolves.toMatchObject({
+				success: true,
+				sourceId: 'source-1',
+			});
+			expect(connect).toHaveBeenCalledWith({
+				...target,
+				revision: 'commit',
+				skillKeys: ['brand-voice'],
+			});
+		});
+
+		it('refuses a selection that needs review before asking for approval', async () => {
+			discover.mockResolvedValue({
+				...preview,
+				skills: [{ ...preview.skills[0], verdict: 'needs_review' }],
+			});
+			const tool = createSkillsTool(
+				createContext({ ...service, sources: { list: vi.fn(), discover, connect } }),
+			);
+			const suspend = vi.fn();
+			await expect(executeTool(tool, input, suspendCtx(suspend))).resolves.toMatchObject({
+				success: false,
+				reason: expect.stringContaining('Review warnings'),
+			});
+			expect(suspend).not.toHaveBeenCalled();
+			expect(connect).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('Assistant availability', () => {

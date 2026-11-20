@@ -8,6 +8,8 @@ import {
 	type AssistantSkillsFlagGate,
 	SkillNameTakenError,
 	type SkillService,
+	type SkillSourceService,
+	type SkillSyncFlagGate,
 } from '@/modules/skills';
 import { SkillSyncedError } from '@/modules/skills/testing';
 
@@ -55,7 +57,15 @@ describe('McpSkillToolsService', () => {
 	const telemetry = mock<TelemetryProxy>();
 	const skillService = mock<SkillService>();
 	const rollout = mock<AssistantSkillsFlagGate>();
-	const service = new McpSkillToolsService(telemetry, skillService, rollout);
+	const skillSources = mock<SkillSourceService>();
+	const skillSyncGate = mock<SkillSyncFlagGate>();
+	const service = new McpSkillToolsService(
+		telemetry,
+		skillService,
+		rollout,
+		skillSources,
+		skillSyncGate,
+	);
 	let tools: Map<string, Handler>;
 
 	const callTool = async (name: string, input: Record<string, unknown>) => {
@@ -67,6 +77,7 @@ describe('McpSkillToolsService', () => {
 	beforeEach(async () => {
 		vi.clearAllMocks();
 		rollout.isEnabled.mockResolvedValue(true);
+		skillSyncGate.isEnabled.mockResolvedValue(true);
 		tools = new Map();
 		const registerTool: RegisterToolFn = (tool) => {
 			tools.set(tool.name, tool.handler as unknown as Handler);
@@ -76,6 +87,45 @@ describe('McpSkillToolsService', () => {
 
 	it('registers exactly the skill tools of the scope map (drift guard)', () => {
 		expect(new Set(tools.keys())).toEqual(SKILL_TOOLS);
+	});
+
+	it('hides source tools when Skill Sync is off', async () => {
+		skillSyncGate.isEnabled.mockResolvedValue(false);
+		const registered: string[] = [];
+		await service.registerTools((tool) => registered.push(tool.name), user, true);
+		expect(registered).toEqual([
+			'search_n8n_skills',
+			'get_skill',
+			'create_skill',
+			'update_skill',
+			'delete_skill',
+		]);
+	});
+
+	it('reports the result of a source import without tracking its URL or selection', async () => {
+		const input = {
+			url: 'https://github.com/acme/skills',
+			scope: 'instance',
+			skillKeys: ['brand-voice'],
+			revision: 'commit',
+		};
+		const imported = {
+			sourceId: 'source-1',
+			imported: [{ key: 'brand-voice', skillId: 'skill_a', name: 'brand-voice' }],
+			failed: [],
+		};
+		skillSources.connectPublic.mockResolvedValue(imported);
+
+		const result = await callTool('import_skills_from_source', input);
+
+		expect(result.structuredContent).toEqual(imported);
+		expect(skillSources.connectPublic).toHaveBeenCalledWith(user, input, 'mcp');
+		expect(telemetry.track).toHaveBeenCalledWith(USER_CALLED_MCP_TOOL_EVENT, {
+			user_id: user.id,
+			tool_name: 'import_skills_from_source',
+			parameters: { scope: 'instance' },
+			results: { success: true },
+		});
 	});
 
 	it('hides Assistant availability from MCP when its flag is off', async () => {
