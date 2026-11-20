@@ -66,6 +66,15 @@ const gatewayErrorSchema = z.object({
 	}),
 });
 
+/** The details of a failed gateway request that are safe to log. */
+export type GatewayErrorDetails = {
+	statusCode: number;
+	/** The gateway's own error type, for example "ai_gateway_request_error". */
+	gatewayErrorType?: string;
+	/** The gateway's own message. The gateway writes these itself, so they hold no upstream data. */
+	gatewayErrorMessage?: string;
+};
+
 /** A browser session. `connectUrl` carries a signing key, so it must never be logged. */
 export type AiGatewayBrowserSession = z.infer<typeof createdSessionSchema>;
 
@@ -326,8 +335,16 @@ export function toGatewayError(response: AiGatewayErrorResponse): UserError | Op
 	const message = gatewayError.success
 		? gatewayError.data.error.message
 		: `Failed to complete the browser session request (HTTP ${response.statusCode}).`;
+	// For the logs. The rest of the body is not kept, because an upstream body can contain IDs.
+	const details: GatewayErrorDetails = {
+		statusCode: response.statusCode,
+		...(gatewayError.success && {
+			gatewayErrorType: gatewayError.data.error.type,
+			gatewayErrorMessage: gatewayError.data.error.message,
+		}),
+	};
 
 	return response.statusCode >= 400 && response.statusCode < 500
-		? new UserError(message)
-		: new OperationalError(message);
+		? new UserError(message, { extra: details })
+		: new OperationalError(message, { extra: details });
 }

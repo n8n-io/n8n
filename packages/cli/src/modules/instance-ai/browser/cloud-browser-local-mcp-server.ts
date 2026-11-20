@@ -18,6 +18,7 @@ import type {
 	ToolContext,
 	ToolDefinition,
 } from '@n8n/mcp-browser';
+import { BaseError } from '@n8n/errors';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { createDeferredPromise, type IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { isIP } from 'node:net';
@@ -715,6 +716,13 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 				loginProfileId: loginProfile?.id,
 			});
 		} catch (error) {
+			logger.warn('Failed to create a cloud browser session', {
+				taskId: scope.taskId,
+				usesSavedLogin: !!loginProfile?.savedAt,
+				regionId: locationToOpen.regionId,
+				proxyCountry: locationToOpen.proxyCountry,
+				...safeErrorDetails(error),
+			});
 			// Session creation failed, so the login profile is not used and can be deleted.
 			// Unless it is an existing saved login, in which case we do nothing.
 			if (!loginProfile?.savedAt) await this.deleteLoginProfile(loginProfile);
@@ -733,6 +741,12 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 			toolkit = createToolkit(connectUrl);
 			await toolkit.connection.connect();
 		} catch (error) {
+			logger.warn('Failed to connect to a cloud browser session', {
+				taskId: scope.taskId,
+				sessionId: id,
+				usesSavedLogin: !!loginProfile?.savedAt,
+				...safeErrorDetails(error),
+			});
 			await this.releaseSessionById(id);
 			// The tools could not connect, so the login profile is not used and can be deleted.
 			// Unless it is an existing saved login, in which case we do nothing.
@@ -789,7 +803,7 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 		} catch (error) {
 			logger.warn('Failed to find a saved cloud browser login, opening the session without one', {
 				taskId: scope.taskId,
-				error: ensureError(error).message,
+				...safeErrorDetails(error),
 			});
 			return undefined;
 		}
@@ -806,7 +820,7 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 				'Failed to create a login profile, opening the cloud browser session without one',
 				{
 					taskId: scope.taskId,
-					error: ensureError(error).message,
+					...safeErrorDetails(error),
 				},
 			);
 			return undefined;
@@ -871,7 +885,7 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 			logger.warn('Failed to release cloud browser session', {
 				taskId: scope.taskId,
 				sessionId,
-				error: ensureError(error).message,
+				...safeErrorDetails(error),
 			});
 		}
 	}
@@ -905,7 +919,7 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 		} catch (error) {
 			logger.warn('Failed to clear other sites from a cloud browser login', {
 				taskId: scope.taskId,
-				error: ensureError(error).message,
+				...safeErrorDetails(error),
 			});
 			return false;
 		}
@@ -940,7 +954,7 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 		} catch (error) {
 			logger.warn('Failed to save a cloud browser login', {
 				taskId: scope.taskId,
-				error: ensureError(error).message,
+				...safeErrorDetails(error),
 			});
 			return false;
 		}
@@ -959,7 +973,7 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 			logger.warn('Failed to delete a cloud browser login profile', {
 				taskId: scope.taskId,
 				isSaved: !!loginProfile.savedAt,
-				error: ensureError(error).message,
+				...safeErrorDetails(error),
 			});
 		}
 	}
@@ -1129,4 +1143,29 @@ async function registrableDomainOf(host: string | undefined): Promise<string | u
 	if (!host || isIP(host)) return undefined;
 	const { get: getRegistrableDomain } = await import('psl');
 	return getRegistrableDomain(host) ?? undefined;
+}
+
+/**
+ * The details of an error that are safe to log: its class, and for a failed gateway request the
+ * status code and the gateway's own error type and message. Any other message is never logged: a
+ * browser error can contain the session's connect URL, which holds a signing key, or the sites
+ * the user visited, and an upstream message can contain IDs.
+ */
+function safeErrorDetails(error: unknown): {
+	errorName: string;
+	statusCode?: number;
+	gatewayErrorType?: string;
+	gatewayErrorMessage?: string;
+} {
+	const { extra } = error instanceof BaseError ? error : {};
+	return {
+		errorName: ensureError(error).name,
+		...(typeof extra?.statusCode === 'number' && { statusCode: extra.statusCode }),
+		...(typeof extra?.gatewayErrorType === 'string' && {
+			gatewayErrorType: extra.gatewayErrorType,
+		}),
+		...(typeof extra?.gatewayErrorMessage === 'string' && {
+			gatewayErrorMessage: extra.gatewayErrorMessage,
+		}),
+	};
 }

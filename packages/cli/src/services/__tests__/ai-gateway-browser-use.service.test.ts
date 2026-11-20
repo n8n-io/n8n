@@ -482,6 +482,24 @@ describe('toGatewayError()', () => {
 		expect(error.message).toBe('Failed to complete the browser session request (HTTP 402).');
 	});
 
+	it("keeps only the status code and the gateway's own error for the logs", () => {
+		const gatewayError = toGatewayError({
+			statusCode: 402,
+			body: { error: { message: 'Top up your credits.', type: 'ai_gateway_request_error' } },
+		});
+		const upstreamError = toGatewayError({
+			statusCode: 500,
+			body: { error: { message: 'Invalid project id proj_123', type: 'upstream_error' } },
+		});
+
+		expect(gatewayError.extra).toEqual({
+			statusCode: 402,
+			gatewayErrorType: 'ai_gateway_request_error',
+			gatewayErrorMessage: 'Top up your credits.',
+		});
+		expect(upstreamError.extra).toEqual({ statusCode: 500 });
+	});
+
 	it('gives an OperationalError when the gateway fails', () => {
 		const error = toGatewayError({ statusCode: 502, body: {} });
 
