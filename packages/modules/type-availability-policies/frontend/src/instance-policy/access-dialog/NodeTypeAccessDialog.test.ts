@@ -182,12 +182,12 @@ describe('NodeTypeAccessDialog', () => {
 			within(getByTestId('node-type-access-node')).getByTestId('type-access-select'),
 		).toHaveAttribute('data-value', 'allow');
 
-		const nodes = getByTestId('node-type-access-related-node');
-		expect(
-			within(nodes)
-				.getAllByTestId('type-access-select')
-				.map((el) => el.textContent),
-		).toEqual(['Notion Trigger']);
+		const nodes = within(getByTestId('node-type-access-related-node')).getAllByTestId(
+			'type-access-select',
+		);
+		expect(nodes.map((el) => [el.textContent, el.dataset.value])).toEqual([
+			['Notion Trigger', 'allow'],
+		]);
 
 		const credentials = within(getByTestId('node-type-access-related-credential')).getAllByTestId(
 			'type-access-select',

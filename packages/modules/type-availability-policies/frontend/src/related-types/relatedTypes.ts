@@ -107,21 +107,24 @@ function isRelatableNodeType(name: string, index: CredentialTypeIndex): boolean 
  */
 export function getRelatedTypes(nodeType: string, index: CredentialTypeIndex): RelatedTypes {
 	const { nodeTypesByCredentialType, credentialTypesByNodeType } = index;
-	const isRelatable = (name: string) => name !== nodeType && isRelatableNodeType(name, index);
+	const isRelatable = (name: string) =>
+		name !== nodeType &&
+		!RELATION_EXCLUDED_NODE_TYPES.has(name) &&
+		isRelatableNodeType(name, index);
 
 	const credentialTypes = [...(credentialTypesByNodeType.get(nodeType) ?? [])].filter(
 		(name) => !GENERIC_CREDENTIAL_TYPES.has(name),
 	);
 
+	if (RELATION_EXCLUDED_NODE_TYPES.has(nodeType)) return { nodeTypes: [], credentialTypes };
+
 	const nodeTypes = new Set<string>();
 
-	if (!RELATION_EXCLUDED_NODE_TYPES.has(nodeType)) {
-		for (const credentialType of credentialTypes) {
-			if (SHARED_CREDENTIAL_TYPES.has(credentialType)) continue;
+	for (const credentialType of credentialTypes) {
+		if (SHARED_CREDENTIAL_TYPES.has(credentialType)) continue;
 
-			for (const other of nodeTypesByCredentialType.get(credentialType) ?? []) {
-				if (!RELATION_EXCLUDED_NODE_TYPES.has(other) && isRelatable(other)) nodeTypes.add(other);
-			}
+		for (const other of nodeTypesByCredentialType.get(credentialType) ?? []) {
+			if (isRelatable(other)) nodeTypes.add(other);
 		}
 	}
 

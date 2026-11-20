@@ -175,6 +175,16 @@ describe('getRelatedTypes', () => {
 		expect(relatedTo('n8n-nodes-base.postgres', descriptions).nodeTypes).toEqual([]);
 	});
 
+	it('does not relate the excluded node types to their trigger by name', () => {
+		const descriptions = [
+			nodeType('n8n-nodes-base.evaluation'),
+			nodeType('n8n-nodes-base.evaluationTrigger'),
+		];
+
+		expect(relatedTo('n8n-nodes-base.evaluation', descriptions).nodeTypes).toEqual([]);
+		expect(relatedTo('n8n-nodes-base.evaluationTrigger', descriptions).nodeTypes).toEqual([]);
+	});
+
 	it('leaves out hidden node types and generated tool variants', () => {
 		const descriptions = [
 			nodeType('n8n-nodes-base.gmail', ['gmailOAuth2'], { usableAsTool: true }),
