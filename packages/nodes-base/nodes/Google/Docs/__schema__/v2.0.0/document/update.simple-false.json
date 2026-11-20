@@ -1,0 +1,41 @@
+{
+	"properties": {
+		"commentUpdateState": {
+			"type": "string"
+		},
+		"documentId": {
+			"type": "string"
+		},
+		"replies": {
+			"items": {
+				"properties": {
+					"replaceAllText": {
+						"properties": {
+							"occurrencesChanged": {
+								"type": "number"
+							}
+						},
+						"type": "object"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"suggestionResponses": {
+			"items": {
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"writeControl": {
+			"properties": {
+				"requiredRevisionId": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		}
+	},
+	"type": "object"
+}

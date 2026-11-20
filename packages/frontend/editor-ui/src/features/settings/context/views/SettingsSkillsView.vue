@@ -10,8 +10,9 @@ import {
 	useTemplateRef,
 	watch,
 } from 'vue';
-import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
+import { useRBACStore } from '@n8n/stores/rbac.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRoute, useRouter } from 'vue-router';
 import { useDebounceFn, useLocalStorage } from '@vueuse/core';
 import { saveAs } from 'file-saver';
@@ -40,15 +41,19 @@ import {
 	N8nActionDropdown,
 	N8nButton,
 	N8nCheckbox,
+	N8nEnterpriseReadinessBadge,
 	N8nHeading,
 	N8nIcon,
 	N8nInput,
 	N8nInputLabel,
 	N8nOption,
+	N8nPopover,
 	N8nSelect,
 	N8nSettingsLayout,
 	N8nSettingsPageHeader,
+	N8nSwitch,
 	N8nText,
+	N8nTooltip,
 } from '@n8n/design-system';
 import type { ActionDropdownItem, TableOptions } from '@n8n/design-system';
 
@@ -89,7 +94,7 @@ import SkillSourceConnectDialog, {
 import SkillsTable from '../components/SkillsTable.vue';
 import SkillSourceDeleteDialog from '../components/SkillSourceDeleteDialog.vue';
 import SkillSourceCredentialDialog from '../components/SkillSourceCredentialDialog.vue';
-import { useSkillSyncFlag } from '../composables/useSkillSyncFlag';
+import { useSkillSyncEnabled, useSkillSyncFlag } from '../composables/useSkillSyncFlag';
 import {
 	CONTEXT_DEFAULT_SORT_BY,
 	PREFERENCES_PAGE_SIZES,
@@ -149,7 +154,32 @@ const telemetry = useTelemetry();
 const { showError, showMessage } = useToast();
 const { scopeDisplay } = useSkillScopeDisplay();
 const { failedSkillReason, reasonText } = useSkillSourceReasons();
-const skillSyncEnabled = useSkillSyncFlag();
+const skillSyncFlagEnabled = useSkillSyncFlag();
+const skillSyncEnabled = useSkillSyncEnabled();
+const rbacStore = useRBACStore();
+const canManageSkillSync = computed(
+	() => skillSyncFlagEnabled.value && rbacStore.hasScope('skill:manage'),
+);
+const skillSyncManagedByEnv = computed(
+	() => settingsStore.moduleSettings.skills?.skillSyncManagedByEnv === true,
+);
+const skillSyncSaving = ref(false);
+
+async function isSkillSyncTurnedOff() {
+	await settingsStore.getModuleSettings().catch(() => undefined);
+	return !skillSyncEnabled.value;
+}
+
+async function onSkillSyncEnabledChange(enabled: boolean) {
+	skillSyncSaving.value = true;
+	try {
+		await skillsStore.setSkillSyncEnabled(enabled);
+	} catch (error) {
+		showError(error, i18n.baseText('settings.context.skills.skillSync.saveError'));
+	} finally {
+		skillSyncSaving.value = false;
+	}
+}
 const {
 	showRecommendedSkills,
 	hasVariant: hasRecommendedSkillsVariant,
@@ -356,6 +386,8 @@ async function load(focusSourceId?: string) {
 		loadFailed.value = false;
 		loadedFiltered.value = filtered;
 	} catch (error) {
+		if (!isLatest()) return;
+		if (query.groupBy === 'source' && (await isSkillSyncTurnedOff())) return;
 		if (!isLatest()) return;
 		loadFailed.value = true;
 		showError(error, i18n.baseText('settings.context.skills.error.load'));
@@ -1012,6 +1044,7 @@ async function loadSources() {
 		const kept = collapsedSourceIds.value.filter((id) => known.has(id));
 		if (kept.length !== collapsedSourceIds.value.length) collapsedSourceIds.value = kept;
 	} catch (error) {
+		if (await isSkillSyncTurnedOff()) return;
 		showError(error, i18n.baseText('settings.context.skills.sources.error.load'));
 	}
 }
@@ -1155,40 +1188,18 @@ onMounted(async () => {
 			:title="i18n.baseText('settings.context.skills.title')"
 			:description="i18n.baseText('settings.context.skills.description')"
 			:show-docs-link="false"
-		/>
-
-		<div
-			v-if="showRecommendedEmptyState"
-			:class="$style.empty"
-			data-test-id="skills-recommended-empty-state"
 		>
-			<N8nHeading tag="h2" size="medium" bold>
-				{{ i18n.baseText('experiments.recommendedSkills.empty.title') }}
-			</N8nHeading>
-			<N8nText color="text-light">
-				{{ i18n.baseText('experiments.recommendedSkills.description') }}
-			</N8nText>
-			<RecommendedSkillCards
-				:class="$style.recommended"
-				entry-point="empty_state"
-				@select="onRecommendedSkillSelect('empty_state', $event)"
-			/>
-			<N8nActionDropdown
-				:items="emptyStateCreateMenuItems"
-				placement="bottom"
-				data-test-id="skills-empty-create-menu"
-				@select="onCreateMenuSelect"
-			>
-				<template #activator>
-					<N8nButton data-test-id="skills-empty-create-button">
-						{{ i18n.baseText('settings.context.skills.actions.createMenu') }}
-						<N8nIcon icon="chevron-down" size="small" />
-					</N8nButton>
-				</template>
-			</N8nActionDropdown>
-		</div>
-		<div v-if="!showRecommendedEmptyState" :class="$style.toolbar">
+			<template v-if="settingsStore.isEnterprisePlan" #titleTrailing>
+				<N8nEnterpriseReadinessBadge
+					size="xsmall"
+					data-test-id="skills-enterprise-readiness-badge"
+				/>
+			</template>
+		</N8nSettingsPageHeader>
+
+		<div v-if="!showRecommendedEmptyState || canManageSkillSync" :class="$style.toolbar">
 			<N8nInput
+				v-if="!showRecommendedEmptyState"
 				v-model="search"
 				:class="$style.search"
 				:placeholder="
@@ -1207,6 +1218,7 @@ onMounted(async () => {
 				</template>
 			</N8nInput>
 			<ResourceFiltersDropdown
+				v-if="!showRecommendedEmptyState"
 				:model-value="filters"
 				:keys="FILTER_KEYS"
 				:reset="resetFilters"
@@ -1316,8 +1328,55 @@ onMounted(async () => {
 				</div>
 			</ResourceFiltersDropdown>
 			<span :class="$style.spacer" />
+			<N8nPopover
+				v-if="canManageSkillSync"
+				align="end"
+				width="calc(var(--spacing--5xl) + var(--spacing--3xl))"
+			>
+				<template #trigger>
+					<span>
+						<N8nTooltip>
+							<template #content>
+								{{ i18n.baseText('settings.context.skills.settings') }}
+							</template>
+							<N8nButton
+								variant="outline"
+								icon="settings"
+								icon-only
+								size="medium"
+								:aria-label="i18n.baseText('settings.context.skills.settings')"
+								data-test-id="skill-sync-settings-button"
+							/>
+						</N8nTooltip>
+					</span>
+				</template>
+				<template #content>
+					<div :class="$style.skillSync" data-test-id="skill-sync-settings">
+						<div :class="$style.skillSyncHeader">
+							<N8nText bold size="medium" color="text-dark">
+								{{ i18n.baseText('settings.context.skills.skillSync.label') }}
+							</N8nText>
+							<N8nSwitch
+								size="small"
+								:model-value="skillSyncEnabled"
+								:disabled="skillSyncSaving || skillSyncManagedByEnv"
+								:aria-label="i18n.baseText('settings.context.skills.skillSync.label')"
+								data-test-id="skill-sync-enable-toggle"
+								@update:model-value="onSkillSyncEnabledChange"
+							/>
+						</div>
+						<N8nText size="small" color="text-light">
+							{{
+								skillSyncManagedByEnv
+									? i18n.baseText('settings.context.skills.skillSync.managedByEnv')
+									: i18n.baseText('settings.context.skills.skillSync.description')
+							}}
+						</N8nText>
+					</div>
+				</template>
+			</N8nPopover>
 			<N8nActionDropdown
-				v-if="scopeOptions.length > 0"
+				v-if="!showRecommendedEmptyState && scopeOptions.length > 0"
 				:items="createMenuItems"
 				placement="bottom-end"
 				data-test-id="skills-create-menu"
@@ -1325,6 +1384,36 @@ onMounted(async () => {
 			>
 				<template #activator>
 					<N8nButton data-test-id="skills-create-menu-button">
+						{{ i18n.baseText('settings.context.skills.actions.createMenu') }}
+						<N8nIcon icon="chevron-down" size="small" />
+					</N8nButton>
+				</template>
+			</N8nActionDropdown>
+		</div>
+		<div
+			v-if="showRecommendedEmptyState"
+			:class="$style.empty"
+			data-test-id="skills-recommended-empty-state"
+		>
+			<N8nHeading tag="h2" size="medium" bold>
+				{{ i18n.baseText('experiments.recommendedSkills.empty.title') }}
+			</N8nHeading>
+			<N8nText color="text-light">
+				{{ i18n.baseText('experiments.recommendedSkills.description') }}
+			</N8nText>
+			<RecommendedSkillCards
+				:class="$style.recommended"
+				entry-point="empty_state"
+				@select="onRecommendedSkillSelect('empty_state', $event)"
+			/>
+			<N8nActionDropdown
+				:items="emptyStateCreateMenuItems"
+				placement="bottom"
+				data-test-id="skills-empty-create-menu"
+				@select="onCreateMenuSelect"
+			>
+				<template #activator>
+					<N8nButton data-test-id="skills-empty-create-button">
 						{{ i18n.baseText('settings.context.skills.actions.createMenu') }}
 						<N8nIcon icon="chevron-down" size="small" />
 					</N8nButton>
@@ -1485,6 +1574,20 @@ onMounted(async () => {
 
 .search {
 	max-width: 20rem;
+}
+
+.skillSync {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
+	padding: var(--spacing--sm);
+}
+
+.skillSyncHeader {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--xs);
 }
 
 .filter {

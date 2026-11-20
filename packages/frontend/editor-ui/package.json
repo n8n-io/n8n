@@ -144,6 +144,7 @@
     "luxon": "catalog:",
     "markdown-it": "catalog:",
     "markdown-it-footnote": "^4.0.0",
+    "mermaid": "catalog:",
     "miragejs": "^0.1.48",
     "n8n-workflow": "workspace:*",
     "nanoid": "catalog:",

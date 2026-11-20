@@ -1,0 +1,144 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"attachments": {
+			"items": {
+				"properties": {
+					"attachment_url": {
+						"type": "string"
+					},
+					"content_type": {
+						"type": "string"
+					},
+					"created_at": {
+						"type": "string"
+					},
+					"id": {
+						"type": "number"
+					},
+					"name": {
+						"type": "string"
+					},
+					"size": {
+						"type": "number"
+					},
+					"updated_at": {
+						"type": "string"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"cc_emails": {
+			"items": {
+				"type": "string"
+			},
+			"type": "array"
+		},
+		"company_id": {
+			"type": ["null", "number"]
+		},
+		"created_at": {
+			"type": "string"
+		},
+		"custom_fields": {
+			"type": "object"
+		},
+		"description": {
+			"type": "string"
+		},
+		"description_text": {
+			"type": "string"
+		},
+		"due_by": {
+			"type": ["null", "string"]
+		},
+		"email_config_id": {
+			"type": ["null", "number"]
+		},
+		"fr_due_by": {
+			"type": ["null", "string"]
+		},
+		"fr_escalated": {
+			"type": "boolean"
+		},
+		"fwd_emails": {
+			"items": {},
+			"type": "array"
+		},
+		"group_id": {
+			"type": ["null", "number"]
+		},
+		"id": {
+			"type": "number"
+		},
+		"is_escalated": {
+			"type": "boolean"
+		},
+		"priority": {
+			"type": "number"
+		},
+		"product_id": {
+			"type": ["null", "number"]
+		},
+		"reply_cc_emails": {
+			"items": {
+				"type": "string"
+			},
+			"type": "array"
+		},
+		"requester_id": {
+			"type": "number"
+		},
+		"responder_id": {
+			"type": ["null", "number"]
+		},
+		"source": {
+			"type": "number"
+		},
+		"source_info": {},
+		"spam": {
+			"type": "boolean"
+		},
+		"status": {
+			"type": "number"
+		},
+		"structured_description": {},
+		"subject": {
+			"type": "string"
+		},
+		"support_email": {
+			"type": ["null", "string"]
+		},
+		"tags": {
+			"items": {
+				"type": "string"
+			},
+			"type": "array"
+		},
+		"ticket_bcc_emails": {
+			"items": {},
+			"type": "array"
+		},
+		"ticket_cc_emails": {
+			"items": {
+				"type": "string"
+			},
+			"type": "array"
+		},
+		"to_emails": {
+			"items": {
+				"type": "string"
+			},
+			"type": ["array", "null"]
+		},
+		"type": {
+			"type": ["null", "string"]
+		},
+		"updated_at": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

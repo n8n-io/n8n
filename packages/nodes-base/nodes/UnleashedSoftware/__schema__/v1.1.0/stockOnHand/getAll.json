@@ -1,0 +1,56 @@
+{
+	"properties": {
+		"AllocatedQty": {
+			"type": "number"
+		},
+		"AvailableQty": {
+			"type": "number"
+		},
+		"AvgCost": {
+			"type": "number"
+		},
+		"DaysSinceLastSale": {
+			"type": ["null", "number"]
+		},
+		"Guid": {
+			"type": "string"
+		},
+		"LastModifiedOn": {
+			"type": "string"
+		},
+		"OnPurchase": {
+			"type": "number"
+		},
+		"ProductCode": {
+			"type": "string"
+		},
+		"ProductDescription": {
+			"type": "string"
+		},
+		"ProductGroupName": {
+			"type": "string"
+		},
+		"ProductGuid": {
+			"type": "string"
+		},
+		"ProductSourceId": {
+			"type": ["null", "string"]
+		},
+		"QtyOnHand": {
+			"type": "number"
+		},
+		"TotalCost": {
+			"type": "number"
+		},
+		"Warehouse": {
+			"type": "string"
+		},
+		"WarehouseCode": {
+			"type": "string"
+		},
+		"WarehouseId": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

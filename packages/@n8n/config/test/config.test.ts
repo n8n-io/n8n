@@ -769,6 +769,8 @@ describe('GlobalConfig', () => {
 			logStreamingDestinations: '',
 			mcpManagedByEnv: false,
 			mcpAccessEnabled: false,
+			skillSyncManagedByEnv: false,
+			skillSyncEnabled: false,
 			preferencesManagedByEnv: false,
 			preferencesEnabled: false,
 			communityPackagesManagedByEnv: false,
