@@ -1,6 +1,6 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 
-import type { SerializableAgentState } from '@n8n/agents';
+import type { SerializableAgentState, Workspace } from '@n8n/agents';
 import type { AgentSseEvent } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { TransactionRunner, User } from '@n8n/db';
@@ -16,6 +16,7 @@ import type { AgentChatExecutionService } from '../../agent-chat-execution.servi
 import { AgentConversationStateService } from '../../agent-conversation-state.service';
 import { AgentFormattedTurnError } from '../../agent-formatted-turn.error';
 import type { AgentExecutionService } from '../../agent-execution.service';
+import type { AgentSandboxFilesService } from '../../agent-sandbox-files.service';
 import { toChatErrorEvent } from '../../agent-sse-stream';
 import { AgentTurnAlreadyRunningError } from '../../agent-turn-already-running.error';
 import type {
@@ -116,6 +117,8 @@ function setup(
 	const agentCheckpointStore = mock<ReturnType<N8NCheckpointStorage['getStorage']>>();
 	checkpointStorage.getStorage.mockReturnValue(agentCheckpointStore);
 	const threadGrants = mock<AgentThreadGrantRepository>();
+	const sandboxFiles = mock<AgentSandboxFilesService>({ maxImportBytes: 200 * 1024 * 1024 });
+	sandboxFiles.isEnabled.mockResolvedValue(false);
 
 	const onChunk = vi.fn();
 	const onSettled = vi.fn(async () => {});
@@ -171,6 +174,7 @@ function setup(
 		new AgentConversationStateService(executionRepository, checkpointStorage),
 		n8nMemory,
 		threadGrants,
+		sandboxFiles,
 	);
 
 	return {
@@ -195,6 +199,7 @@ function setup(
 		agentMemory,
 		agentCheckpointStore,
 		threadGrants,
+		sandboxFiles,
 	};
 }
 
@@ -710,6 +715,106 @@ describe('SystemAgentExecutionService', () => {
 			expect(threadGrants.findKeys).toHaveBeenCalledWith('thread-1');
 			expect(threadGrants.grant).toHaveBeenCalledWith('thread-1', 'tool:write');
 			expect(threadGrants.revoke).toHaveBeenCalledWith('thread-1', 'tool:run');
+		});
+
+		it('gives the turn the sandbox files of project agents only when their flag is on', async () => {
+			const off = setup([textChunk]);
+			await off.service.consume(claimFor(), user, new AbortController().signal, vi.fn());
+			expect(off.provider.prepareTurn.mock.calls[0][0].sandboxFiles).toBeUndefined();
+
+			const on = setup([textChunk]);
+			on.sandboxFiles.isEnabled.mockResolvedValue(true);
+			await on.service.consume(claimFor(), user, new AbortController().signal, vi.fn());
+			// The import cap of project agents, N8N_AGENTS_FILES_MAX_IMPORT_MB.
+			expect(on.provider.prepareTurn.mock.calls[0][0].sandboxFiles).toEqual({
+				maxImportBytes: 200 * 1024 * 1024,
+				importFiles: expect.any(Function),
+			});
+		});
+
+		describe('sandbox imports', () => {
+			const workspace = mock<Workspace>();
+
+			async function importFilesOfTurn() {
+				const context = setup([textChunk]);
+				context.sandboxFiles.isEnabled.mockResolvedValue(true);
+				await context.service.consume(claimFor(), user, new AbortController().signal, vi.fn());
+				const { sandboxFiles } = context.provider.prepareTurn.mock.calls[0][0];
+				if (!sandboxFiles) throw new Error('expected sandbox files');
+				return { ...context, importFiles: sandboxFiles.importFiles };
+			}
+
+			it('copies only the files of the thread, from the system chat of its owner', async () => {
+				const { importFiles, sandboxFiles, attachmentService } = await importFilesOfTurn();
+				const imported = [
+					{
+						fileId: 'f1',
+						fileName: 'a.csv',
+						mimeType: 'text/csv',
+						sizeBytes: 1,
+						path: 'inputs/a.csv',
+					},
+				];
+				sandboxFiles.importFilesFrom.mockResolvedValue(imported);
+
+				const abortSignal = new AbortController().signal;
+				await expect(importFiles(workspace, { 'a.csv': 'f1' }, abortSignal)).resolves.toEqual(
+					imported,
+				);
+
+				const [, files, findFile, signal] = sandboxFiles.importFilesFrom.mock.calls[0];
+				expect(files).toEqual({ 'a.csv': 'f1' });
+				expect(signal).toBe(abortSignal);
+				attachmentService.getForSystemAgent.mockResolvedValueOnce({
+					id: 'f1',
+					threadId: 'thread-1',
+				} as never);
+				await expect(findFile('f1')).resolves.toMatchObject({ id: 'f1' });
+				expect(attachmentService.getForSystemAgent).toHaveBeenCalledWith('f1', {
+					agentId: AGENT_ID,
+					resourceId: 'system-chat:user-1',
+					source: 'system_chat',
+				});
+				attachmentService.getForSystemAgent.mockResolvedValueOnce({
+					id: 'f2',
+					threadId: 'thread-2',
+				} as never);
+				await expect(findFile('f2')).resolves.toBeNull();
+			});
+
+			it('keeps a check error for the model and hides a raw error', async () => {
+				const { importFiles, sandboxFiles, logger } = await importFilesOfTurn();
+
+				sandboxFiles.importFilesFrom.mockRejectedValueOnce(
+					new UserError('File "x" not found in this conversation'),
+				);
+				await expect(importFiles(workspace, { 'a.csv': 'x' })).rejects.toThrow(
+					'File "x" not found in this conversation',
+				);
+				expect(logger.warn).not.toHaveBeenCalled();
+
+				sandboxFiles.importFilesFrom.mockRejectedValueOnce(new Error('ECONNRESET 10.0.0.3'));
+				await expect(importFiles(workspace, { 'a.csv': 'x' })).rejects.toThrow(
+					'The files could not be copied to inputs/',
+				);
+				// The model does not get the raw error, so the operator gets it in the log.
+				expect(logger.warn).toHaveBeenCalledWith(
+					'Failed to import files into the sandbox of a system agent',
+					{ threadId: 'thread-1', error: 'ECONNRESET 10.0.0.3' },
+				);
+			});
+
+			it('keeps the error of a cancelled import', async () => {
+				const { importFiles, sandboxFiles } = await importFilesOfTurn();
+				const controller = new AbortController();
+				controller.abort();
+				const abortError = new DOMException('aborted', 'AbortError');
+				sandboxFiles.importFilesFrom.mockRejectedValueOnce(abortError);
+
+				await expect(importFiles(workspace, { 'a.csv': 'x' }, controller.signal)).rejects.toBe(
+					abortError,
+				);
+			});
 		});
 
 		describe('attachment reads', () => {

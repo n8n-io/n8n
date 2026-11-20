@@ -13,6 +13,10 @@ vi.mock('../attachments/parse-file.tool', () => ({
 	createParseStoredFileTool: vi.fn(() => ({ id: 'parse-file', storedFiles: true })),
 }));
 
+vi.mock('../attachments/import-files.tool', () => ({
+	createImportFilesTool: vi.fn(() => ({ id: 'import-files' })),
+}));
+
 vi.mock('../credentials.tool', () => ({
 	createListCredentialsTool: vi.fn(() => ({ id: 'list_credentials' })),
 	createUpdateCredentialDescriptionTool: vi.fn(() => ({ id: 'update_credential_description' })),
@@ -306,6 +310,31 @@ describe('domain tool construction', () => {
 
 		expect(createOrchestratorDomainTools(context).get('parse-file')).toMatchObject({
 			storedFiles: true,
+		});
+	});
+
+	describe('import-files registration', () => {
+		const storedFiles = { read: vi.fn() };
+		const workspace = {} as InstanceAiContext['workspace'];
+		const sandboxFiles = { maxImportBytes: 1024, importFiles: vi.fn() };
+
+		it.each([
+			['nothing', {}],
+			['only a file reader', { storedFiles }],
+			['no workspace', { storedFiles, sandboxFiles }],
+			['the feature off', { storedFiles, workspace }],
+			['no file reader', { workspace, sandboxFiles }],
+		])('leaves the tool out with %s', (_label, overrides) => {
+			expect(createOrchestratorDomainTools(makeContext(overrides)).has('import-files')).toBe(false);
+		});
+
+		it('registers the tool with a file reader, a workspace and the feature on', () => {
+			const context = makeContext({ storedFiles, workspace, sandboxFiles });
+
+			expect(createOrchestratorDomainTools(context).get('import-files')).toEqual({
+				id: 'import-files',
+			});
+			expect(ALWAYS_LOADED_TOOL_NAMES.has('import-files')).toBe(true);
 		});
 	});
 

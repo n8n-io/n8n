@@ -477,6 +477,48 @@ describe('AssistantAgentProvider', () => {
 			expect(handle.input).toBe('Build a digest');
 		});
 
+		it('lets the Assistant import files into its sandbox only when the turn has sandbox files', async () => {
+			const off = setup();
+			await off.provider.prepareTurn(startTurn());
+			expect(off.environment.context.sandboxFiles).toBeUndefined();
+
+			const on = setup();
+			const sandboxWorkspace = { id: 'workspace-1' };
+			on.environment.context.workspace = sandboxWorkspace as never;
+			const imported = [
+				{
+					fileId: 'f1',
+					fileName: 'a.csv',
+					mimeType: 'text/csv',
+					sizeBytes: 1,
+					path: 'inputs/a.csv',
+				},
+			];
+			const importFiles = vi.fn(async () => imported);
+			await on.provider.prepareTurn(
+				startTurn({ sandboxFiles: { maxImportBytes: 200 * 1024 * 1024, importFiles } }),
+			);
+			const { sandboxFiles } = on.environment.context;
+			expect(sandboxFiles?.maxImportBytes).toBe(200 * 1024 * 1024);
+			// The Assistant gives the files only. The host adds the sandbox of the turn.
+			const abortSignal = new AbortController().signal;
+			await expect(sandboxFiles?.importFiles({ 'a.csv': 'f1' }, abortSignal)).resolves.toEqual(
+				imported,
+			);
+			expect(importFiles).toHaveBeenCalledWith(sandboxWorkspace, { 'a.csv': 'f1' }, abortSignal);
+		});
+
+		it('tells the model that a conversation without a sandbox cannot import files', async () => {
+			const { provider, environment } = setup();
+			const importFiles = vi.fn();
+			await provider.prepareTurn(startTurn({ sandboxFiles: { maxImportBytes: 1, importFiles } }));
+
+			await expect(
+				environment.context.sandboxFiles?.importFiles({ 'a.csv': 'f1' }),
+			).rejects.toThrow('This conversation has no sandbox');
+			expect(importFiles).not.toHaveBeenCalled();
+		});
+
 		it('asks the model to inspect the files of a message without text', async () => {
 			const { provider, turnInput } = setup();
 			const ref = { id: 'att-1', fileName: 'notes.csv', mimeType: 'text/csv', sizeBytes: 3 };
