@@ -2288,6 +2288,36 @@ export class InstanceAiAdapterService {
 			);
 		};
 
+		/**
+		 * Waits for a run this adapter started, and stops it on a timeout or an abort.
+		 * SPIKE (AST-1677): a v2 run never registers in `ActiveExecutions`, so it is polled.
+		 */
+		const waitForRun = async (args: {
+			executionId: string;
+			workflowId: string;
+			timeoutMs: number;
+			abortSignal?: AbortSignal;
+		}) => {
+			const { executionId, workflowId, timeoutMs, abortSignal } = args;
+			if (!isExecutionIdV2(executionId)) {
+				return await waitForInstanceAiExecution({
+					activeExecutions,
+					executionId,
+					timeoutMs,
+					abortSignal,
+				});
+			}
+			return await waitForEngineV2Execution({
+				readStatus: async () =>
+					(await loadEngineV2ExecutionForViewer(executionId, user, { includeData: false }))?.status,
+				stop: async () => {
+					await Container.get(ExecutionService).stop(executionId, [workflowId]);
+				},
+				timeoutMs,
+				abortSignal,
+			});
+		};
+
 		return {
 			async list(options) {
 				const scope: Scope = 'execution:read';
@@ -2539,26 +2569,12 @@ export class InstanceAiAdapterService {
 					};
 
 					// Wait for completion with timeout / abort protection
-					const waitOutcome = isExecutionIdV2(executionId)
-						? await waitForEngineV2Execution({
-								readStatus: async () =>
-									(
-										await loadEngineV2ExecutionForViewer(executionId, user, {
-											includeData: false,
-										})
-									)?.status,
-								stop: async () => {
-									await Container.get(ExecutionService).stop(executionId, [workflowId]);
-								},
-								timeoutMs,
-								abortSignal: options?.abortSignal,
-							})
-						: await waitForInstanceAiExecution({
-								activeExecutions,
-								executionId,
-								timeoutMs,
-								abortSignal: options?.abortSignal,
-							});
+					const waitOutcome = await waitForRun({
+						executionId,
+						workflowId,
+						timeoutMs,
+						abortSignal: options?.abortSignal,
+					});
 
 					if (waitOutcome.kind === 'cancelled') {
 						const result = {
@@ -2920,9 +2936,9 @@ export class InstanceAiAdapterService {
 				try {
 					const executionId = await workflowRunner.run(runData);
 
-					const waitOutcome = await waitForInstanceAiExecution({
-						activeExecutions,
+					const waitOutcome = await waitForRun({
 						executionId,
+						workflowId,
 						timeoutMs,
 						abortSignal: options?.abortSignal,
 					});
