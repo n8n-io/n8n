@@ -12,6 +12,8 @@ import {
 	ListWorkflowsQueryDto,
 	PublishWorkflowPublicDto,
 	RetrievedWorkflowPublicDto,
+	RunWorkflowPublicDto,
+	StartedWorkflowRunPublicDto,
 	TagIdsPublicDto,
 	TransferWorkflowPublicDto,
 	UpdatedWorkflowPublicDto,
@@ -61,7 +63,7 @@ import type { Response } from 'express';
 import { PROJECT_ROOT } from 'n8n-workflow';
 
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
-import { ResponseError, BadRequestError, NotFoundError } from '@n8n/errors';
+import { ResponseError, BadRequestError, NotFoundError, UnexpectedError } from '@n8n/errors';
 import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error';
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
 import { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
@@ -77,11 +79,16 @@ import {
 import { TagService } from '@/services/tag.service';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { createWorkflowEntityFromPayload } from '@/workflows/workflow-entity-mapper';
+import {
+	TRIGGER_EVENT_REQUIRED_MESSAGE,
+	WorkflowExecutionService,
+} from '@/workflows/workflow-execution.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 import type { PublicApiRequest } from '@/public-api/public-api-client';
+import type { WorkflowRequest } from '@/workflows/workflow.request';
 
 const ACTIVATE_DEACTIVATE_DEPRECATED_SINCE = new Date('2026-07-23T00:00:00Z');
 const OLD_VERSION_PATH_DEPRECATED_SINCE = new Date('2026-08-26T00:00:00Z');
@@ -230,6 +237,7 @@ export class WorkflowsPublicController {
 		private readonly tagService: TagService,
 		private readonly redactionEnforcementService: RedactionEnforcementService,
 		private readonly workflowDependencyQueryService: WorkflowDependencyQueryService,
+		private readonly workflowExecutionService: WorkflowExecutionService,
 	) {}
 
 	private get workflowTagsEnabled(): boolean {
@@ -928,6 +936,75 @@ export class WorkflowsPublicController {
 		);
 
 		return toDependencyListPublicDto(result[workflowId], pagination);
+	}
+
+	@Post('/:workflowId/run')
+	@ApiKeyScope('workflow:execute')
+	@ProjectScope('workflow:execute')
+	@ApiSummary('Run a workflow with existing run data')
+	@ApiDescription(
+		'Start a manual execution of the latest saved version of a workflow. n8n reuses the given ' +
+			'run data and runs the nodes up to the destination node. The call returns when the ' +
+			'execution starts. It does not wait for the execution to finish. The user must also ' +
+			'have the `workflow:execute` project scope.',
+	)
+	@ApiTags(['Workflow'])
+	@ApiResponse(200, StartedWorkflowRunPublicDto)
+	@ApiErrorResponse(400, {
+		description:
+			'The request body is invalid, or `destinationNode.nodeName` is not a node in the workflow.',
+	})
+	@ApiErrorResponse(403, {
+		description:
+			'The API key or the user does not have the required permission, or the instance is in read-only mode.',
+	})
+	@ApiErrorResponse(404)
+	@ApiErrorResponse(409, { description: TRIGGER_EVENT_REQUIRED_MESSAGE })
+	async runWorkflow(
+		req: PublicApiRequest,
+		_res: Response,
+		@Param('workflowId', workflowIdParamSchema) workflowId: string,
+		@Body body: RunWorkflowPublicDto,
+	): Promise<StartedWorkflowRunPublicDto> {
+		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, req.user, [
+			'workflow:execute',
+		]);
+
+		if (!workflow) {
+			throw new NotFoundError('Not Found');
+		}
+
+		const destinationNodeExists = workflow.nodes.some(
+			(node) => node.name === body.destinationNode.nodeName,
+		);
+		if (!destinationNodeExists) {
+			throw new BadRequestError(
+				`The workflow has no node named "${body.destinationNode.nodeName}"`,
+			);
+		}
+
+		const runPayload: WorkflowRequest.ManualRunPayload = {
+			runData: body.runData,
+			destinationNode: body.destinationNode,
+			dirtyNodeNames: body.dirtyNodeNames,
+		};
+		const result = await this.workflowExecutionService.executeManually(
+			workflow,
+			runPayload,
+			req.user,
+			undefined,
+			undefined,
+			false,
+		);
+
+		// `waitForWebhook: false` makes the service throw instead of waiting, so this cannot happen.
+		if (!('executionId' in result)) {
+			throw new UnexpectedError('Manual run waited for a webhook although waiting was turned off');
+		}
+
+		await this.workflowService.emitWorkflowExecuted(req.user, workflow, result.executionId);
+
+		return { executionId: result.executionId };
 	}
 
 	/**

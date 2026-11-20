@@ -50,7 +50,10 @@ import type { TestWebhooks } from '@/webhooks/test-webhooks';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import type { WorkflowRunner } from '@/workflow-runner';
 import type { PollCursorService } from '@/workflows/triggers/poll-cursor.service';
-import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
+import {
+	TRIGGER_EVENT_REQUIRED_MESSAGE,
+	WorkflowExecutionService,
+} from '@/workflows/workflow-execution.service';
 
 const webhookNode: INode = {
 	name: 'Webhook',
@@ -151,6 +154,8 @@ describe('WorkflowExecutionService', () => {
 		vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
 		defaultTestWebhooks.registerWebhooks.mockReset();
 		defaultTestWebhooks.registerWebhooks.mockResolvedValue({ nodeNames: [], formTestUrls: [] });
+		defaultTestWebhooks.needsTriggerEvent.mockReset();
+		defaultTestWebhooks.needsTriggerEvent.mockResolvedValue(false);
 	});
 
 	describe('runWorkflow()', () => {
@@ -1146,6 +1151,83 @@ describe('WorkflowExecutionService', () => {
 					}),
 				);
 				expect(result).toEqual({ executionId: 'fake-execution-id' });
+			});
+
+			describe('when waitForWebhook is false', () => {
+				test('throws a 409 conflict and registers no webhook when the run needs a trigger event', async () => {
+					const workflowData = toWorkflowData([formTriggerNode]);
+					const runPayload: WorkflowRequest.FullManualExecutionFromUnknownTriggerPayload = {
+						destinationNode: { nodeName: hackerNewsNode.name, mode: 'inclusive' },
+					};
+					defaultTestWebhooks.needsTriggerEvent.mockResolvedValue(true);
+
+					await expect(
+						workflowExecutionService.executeManually(
+							workflowData,
+							runPayload,
+							user,
+							undefined,
+							undefined,
+							false,
+						),
+					).rejects.toMatchObject({
+						httpStatusCode: 409,
+						message: TRIGGER_EVENT_REQUIRED_MESSAGE,
+					});
+
+					expect(defaultTestWebhooks.needsTriggerEvent).toHaveBeenCalledWith(
+						expect.objectContaining({ destinationNode: runPayload.destinationNode }),
+					);
+					expect(defaultTestWebhooks.registerWebhooks).not.toHaveBeenCalled();
+					expect(workflowRunner.run).not.toHaveBeenCalled();
+				});
+
+				test('starts the run without registering a webhook when no trigger event is needed', async () => {
+					const workflowData = toWorkflowData([formTriggerNode]);
+					const runPayload: WorkflowRequest.FullManualExecutionFromUnknownTriggerPayload = {
+						destinationNode: { nodeName: hackerNewsNode.name, mode: 'inclusive' },
+					};
+					defaultTestWebhooks.needsTriggerEvent.mockResolvedValue(false);
+					workflowRunner.run.mockResolvedValue('fake-execution-id');
+
+					const result = await workflowExecutionService.executeManually(
+						workflowData,
+						runPayload,
+						user,
+						undefined,
+						undefined,
+						false,
+					);
+
+					expect(defaultTestWebhooks.registerWebhooks).not.toHaveBeenCalled();
+					expect(workflowRunner.run).toHaveBeenCalledTimes(1);
+					expect(result).toEqual({ executionId: 'fake-execution-id' });
+				});
+
+				test('throws a 409 conflict for a run from a known trigger and registers no webhook', async () => {
+					const workflowData = toWorkflowData([formTriggerNode]);
+					const runPayload: WorkflowRequest.FullManualExecutionFromKnownTriggerPayload = {
+						triggerToStartFrom: { name: formTriggerNode.name },
+					};
+					defaultTestWebhooks.needsTriggerEvent.mockResolvedValue(true);
+
+					await expect(
+						workflowExecutionService.executeManually(
+							workflowData,
+							runPayload,
+							user,
+							undefined,
+							undefined,
+							false,
+						),
+					).rejects.toMatchObject({
+						httpStatusCode: 409,
+						message: TRIGGER_EVENT_REQUIRED_MESSAGE,
+					});
+
+					expect(defaultTestWebhooks.registerWebhooks).not.toHaveBeenCalled();
+					expect(workflowRunner.run).not.toHaveBeenCalled();
+				});
 			});
 		});
 
