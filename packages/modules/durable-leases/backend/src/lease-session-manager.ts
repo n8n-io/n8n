@@ -2,23 +2,39 @@ import type { Logger } from '@n8n/backend-common';
 import type { LeaseKindRepository, LeaseSessionRepository } from '@n8n/db';
 import { randomUUID } from 'node:crypto';
 
-import { track } from './promises';
+export interface SessionClock {
+	monotonicMs(): number;
+	wallMs(): number;
+}
+
+export const systemClock: SessionClock = {
+	monotonicMs: () => performance.now(),
+	wallMs: () => Date.now(),
+};
 
 export interface LeaseSessionManagerDeps {
 	kind: string;
 	leaseSeconds: number;
 	renewSeconds: number;
+	marginSeconds: number;
 	hostId: string;
 	bootId: string;
 	kinds: LeaseKindRepository;
 	sessions: LeaseSessionRepository;
+	clock: SessionClock;
 	logger: Logger;
 }
+
+const WATCHDOG_INTERVAL_MS = 100;
 
 const BEAT_JITTER = 0.1;
 
 export class LeaseSessionManager {
 	private currentId: string | undefined;
+
+	private deadlineMono = 0;
+
+	private deadlineWall = 0;
 
 	private started = false;
 
@@ -28,7 +44,9 @@ export class LeaseSessionManager {
 
 	private beatTimer: NodeJS.Timeout | undefined;
 
-	private inFlightRenewal: Promise<void> | undefined;
+	private watchdogTimer: NodeJS.Timeout | undefined;
+
+	private inFlightRenewal: { id: string; done: Promise<void> } | undefined;
 
 	private inFlightInsert: Promise<void> | undefined;
 
@@ -40,6 +58,7 @@ export class LeaseSessionManager {
 		if (this.stopped) return;
 		if (!this.started) {
 			this.started = true;
+			this.watchdogTimer = setInterval(() => this.checkDeadlines(), WATCHDOG_INTERVAL_MS);
 			this.scheduleBeat();
 		}
 		await this.ensureSession();
@@ -61,7 +80,9 @@ export class LeaseSessionManager {
 	private async shutDown(): Promise<void> {
 		this.stopped = true;
 		clearTimeout(this.beatTimer);
+		clearInterval(this.watchdogTimer);
 		this.beatTimer = undefined;
+		this.watchdogTimer = undefined;
 
 		await this.inFlightInsert?.catch(() => {});
 
@@ -73,16 +94,21 @@ export class LeaseSessionManager {
 	}
 
 	private async insertSession(id: string): Promise<void> {
-		const { kind, hostId, bootId, leaseSeconds, kinds, sessions } = this.deps;
+		const { kind, hostId, bootId, kinds, sessions, clock } = this.deps;
+		const { leaseSeconds } = this.deps;
 
 		await kinds.insertIfMissing(kind, {});
 
+		// Deadlines count from before the request, so a slow response never extends them.
+		const sentMono = clock.monotonicMs();
+		const sentWall = clock.wallMs();
 		await sessions.insertSession(
 			{ id, leaseKind: kind, hostId, bootId, leaseDurationSeconds: leaseSeconds },
 			{},
 		);
 
 		this.currentId = id;
+		this.moveDeadlines(sentMono, sentWall);
 	}
 
 	private scheduleBeat(): void {
@@ -109,24 +135,62 @@ export class LeaseSessionManager {
 			return;
 		}
 
-		if (this.inFlightRenewal !== undefined) return;
-		this.inFlightRenewal = this.renew(id).finally(() => {
-			this.inFlightRenewal = undefined;
-		});
+		if (this.inFlightRenewal?.id === id) return;
+		const renewal = {
+			id,
+			done: this.renew(id).finally(() => {
+				if (this.inFlightRenewal === renewal) this.inFlightRenewal = undefined;
+			}),
+		};
+		this.inFlightRenewal = renewal;
 	}
 
 	private async renew(id: string): Promise<void> {
-		const { sessions, leaseSeconds } = this.deps;
+		const { clock, sessions, leaseSeconds } = this.deps;
+		const sentMono = clock.monotonicMs();
+		const sentWall = clock.wallMs();
 
 		let renewed: boolean;
 		try {
 			renewed = await sessions.renewLive(id, leaseSeconds, {});
 		} catch (error) {
-			this.warn('Failed to renew lease session', { sessionId: id, error });
+			this.deps.logger.warn('Failed to renew lease session', {
+				kind: this.deps.kind,
+				sessionId: id,
+				error,
+			});
+			// The session stays; the watchdog loses it when the deadline passes.
 			return;
 		}
 
-		if (!renewed) this.lose('renewal found the lease session expired');
+		// Stop has already deleted the current row and waited for the deletes of lost sessions.
+		if (this.stopped) return;
+
+		if (renewed) {
+			if (this.currentId === id) {
+				this.moveDeadlines(sentMono, sentWall);
+			} else {
+				this.deleteRow(id);
+			}
+			return;
+		}
+
+		if (this.currentId === id) this.lose('renewal found the lease session expired');
+	}
+
+	private checkDeadlines(): void {
+		if (this.currentId === undefined) return;
+		const { clock } = this.deps;
+		// Either clock past its deadline loses the session, so a clock jump or a suspended process cannot extend it.
+		if (clock.monotonicMs() > this.deadlineMono || clock.wallMs() > this.deadlineWall) {
+			this.lose('lease session deadline passed');
+		}
+	}
+
+	private moveDeadlines(sentMono: number, sentWall: number): void {
+		const validMs = (this.deps.leaseSeconds - this.deps.marginSeconds) * 1000;
+		this.deadlineMono = sentMono + validMs;
+		this.deadlineWall = sentWall + validMs;
 	}
 
 	private lose(reason: string): void {
