@@ -283,7 +283,6 @@ const isEngineTypeChangePendingPublish = computed(() => {
 	return pickVersionedSettings(activeVersion.settings).engineType !== engineType.value;
 });
 
-// Engine v2 ignores the execution order and the binary mode. The stored values stay.
 const isExecutionLogicSettingVisible = computed(
 	() => !(isEngineTypeSettingVisible.value && engineType.value === 'v2'),
 );
