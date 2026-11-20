@@ -47,7 +47,6 @@ erDiagram
   varchar_36_ id
   boolean isGlobal
   boolean isManaged
-  boolean isPlaceholder
   boolean isResolvable
   varchar_128_ name
   timestamp_3__with_time_zone pendingAuthorizationExpiresAt

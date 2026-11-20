@@ -96,8 +96,8 @@ export type PromotionGapState = z.infer<typeof promotionGapStateSchema>;
 
 /** More about a gap, for the message. A client can ignore a value that it does not know. */
 export const promotionGapDetailSchema = z.enum([
-	/** Promote: the target is a placeholder on the source. A placeholder is never content. */
-	'placeholder-on-source',
+	/** Promote: the credential has no values on the source. An empty credential is never content. */
+	'empty-on-source',
 	/** Apply: the instance has no sharing licence, so nobody can grant the access. */
 	'sharing-not-licensed',
 	/** Apply: a Promote with gaps left the target out. */
@@ -131,8 +131,8 @@ export const promotionGapSchema = z
 		include: z.object({ projectId: sourceId, resourceKey: z.string() }).optional(),
 		/** The user already sent an "Ask the owner" request for this target. */
 		ownerRequestSent: z.boolean().optional(),
-		/** Apply: the Apply creates a placeholder credential for this gap. */
-		placeholder: z.boolean().optional(),
+		/** Apply: the Apply creates an empty credential for this gap. */
+		createsEmptyCredential: z.boolean().optional(),
 		detail: promotionGapDetailSchema.optional(),
 	})
 	.openapi('PromotionGap');
@@ -206,8 +206,8 @@ export const promotionCredentialMoveSchema = z.object({
 	toProject: promotionDependencyProjectSchema,
 	/** The owner on the destination now. Set only when the user can access it. */
 	fromProject: promotionDependencyProjectSchema.optional(),
-	/** The credential is a placeholder, so the move needs rights in `toProject` only. */
-	placeholder: z.boolean(),
+	/** The credential has no values, so the move needs rights in `toProject` only. */
+	empty: z.boolean(),
 	/** False when the user may not move the credential. Apply then leaves it as it is. */
 	allowed: z.boolean(),
 	/** Why `allowed` is false. A managed and an end-user credential never move. */
@@ -273,7 +273,7 @@ export const promotionHardBlockCodeSchema = z.enum([
 	'ambiguous-credential-owner',
 	'instance-credential-missing',
 	'incompatible-usage-scope',
-	'placeholder-create-forbidden',
+	'credential-create-forbidden',
 	'credential-move-forbidden',
 ]);
 export type PromotionHardBlockCode = z.infer<typeof promotionHardBlockCodeSchema>;
@@ -383,39 +383,41 @@ export const promotionApplyConfirmationShape = {
 	}),
 };
 
-/** A created placeholder credential, in the result of an Apply with gaps. */
-export const promotionPlaceholderResultSchema = z.object({
+/** A created empty credential, in the result of an Apply with gaps. */
+export const promotionCreatedEmptyCredentialSchema = z.object({
 	id: sourceId,
 	name: z.string(),
 	type: z.string(),
 	projectId: sourceId,
 });
-export type PromotionPlaceholderResult = z.infer<typeof promotionPlaceholderResultSchema>;
+export type PromotionCreatedEmptyCredential = z.infer<typeof promotionCreatedEmptyCredentialSchema>;
 
-/** A placeholder of an Apply and the published workflows that reference its id. */
-export const promotionLivePlaceholderWorkflowsSchema = z.object({
+/** An empty credential of an Apply and the published workflows that reference its id. */
+export const promotionLiveWorkflowsWithEmptyCredentialSchema = z.object({
 	credential: namedRefSchema,
 	/** Only the workflows that the user can access. */
 	workflows: z.array(namedRefSchema),
 	/** How many such workflows the user cannot access. */
 	hiddenWorkflowCount: z.number().int().nonnegative(),
 });
-export type PromotionLivePlaceholderWorkflows = z.infer<
-	typeof promotionLivePlaceholderWorkflowsSchema
+export type PromotionLiveWorkflowsWithEmptyCredential = z.infer<
+	typeof promotionLiveWorkflowsWithEmptyCredentialSchema
 >;
 
 /** What an Apply did for its dependencies. Each list holds only what the user may see. */
 export const promotionApplyDependencyResultShape = {
-	placeholders: z.array(promotionPlaceholderResultSchema).optional(),
+	createdEmptyCredentials: z.array(promotionCreatedEmptyCredentialSchema).optional(),
 	grants: z.array(promotionCredentialGrantSchema).optional(),
 	credentialMoves: z.array(promotionCredentialMoveSchema).optional(),
 	keptWorkflows: z.array(promotionKeptWorkflowSchema).optional(),
 	keptProjects: z.array(promotionKeptProjectSchema).optional(),
 	/**
-	 * Workflows whose published version now uses a placeholder that this Apply created. The
+	 * Workflows whose published version now uses an empty credential that this Apply created. The
 	 * published version fails until a person adds the values of the credential.
 	 */
-	livePlaceholderWorkflows: z.array(promotionLivePlaceholderWorkflowsSchema).optional(),
+	liveWorkflowsWithEmptyCredential: z
+		.array(promotionLiveWorkflowsWithEmptyCredentialSchema)
+		.optional(),
 	/** Sentences for a client without its own texts, such as the CLI. One for each fact. */
 	dependencyMessages: z.array(z.string()).optional(),
 };

@@ -41,7 +41,7 @@ export type CredentialOwnerTransferCheck =
 	| {
 			status: 'allowed' | 'not-allowed';
 			fromProjectId: string;
-			isPlaceholder: boolean;
+			isEmpty: boolean;
 			type: string;
 			name: string;
 	  }
@@ -56,7 +56,7 @@ export type CredentialOwnerTransferCheck =
 	| { status: 'not-found' };
 
 export type CredentialOwnerTransferResult =
-	| { status: 'moved'; fromProjectId: string; isPlaceholder: boolean }
+	| { status: 'moved'; fromProjectId: string; isEmpty: boolean }
 	| { status: 'not-allowed' | 'excluded' | 'not-needed' | 'not-found' };
 
 /**
@@ -336,12 +336,12 @@ export class EnterpriseCredentialsService {
 	}
 
 	/**
-	 * Creates the empty, marked credential that stands in for a credential that an incomplete
-	 * promotion Apply could not bring. Needs `credential:create` in `projectId`. Sharing the new
-	 * placeholder with the other projects of the same Apply is part of its creation and needs no
-	 * other right: the placeholder holds no values.
+	 * Creates the stub credential that stands in for a credential that a promotion Apply could
+	 * not bring, with the id of the source. Needs `credential:create` in `projectId`. Sharing the
+	 * new stub with the other projects of the same Apply is part of its creation and needs no
+	 * other right: the stub has no values.
 	 */
-	async createPlaceholderCredential(
+	async createSharedStubCredential(
 		opts: {
 			id: string;
 			name: string;
@@ -351,13 +351,12 @@ export class EnterpriseCredentialsService {
 		},
 		user: User,
 	): Promise<CredentialsEntity> {
-		const placeholder = await this.credentialsService.createStubCredential(
+		const stub = await this.credentialsService.createStubCredential(
 			{
 				id: opts.id,
 				name: opts.name,
 				type: opts.type,
 				projectId: opts.projectId,
-				placeholder: true,
 			},
 			user,
 		);
@@ -373,7 +372,7 @@ export class EnterpriseCredentialsService {
 			await this.sharedCredentialsRepository.save(
 				projects.map((project) =>
 					this.sharedCredentialsRepository.create({
-						credentialsId: placeholder.id,
+						credentialsId: stub.id,
 						projectId: project.id,
 						role: 'credential:user',
 					}),
@@ -381,14 +380,14 @@ export class EnterpriseCredentialsService {
 			);
 		}
 
-		return placeholder;
+		return stub;
 	}
 
 	/**
 	 * Whether {@link transferKeepingShares} would move the credential. Writes nothing.
 	 *
-	 * A placeholder holds no secret of its owner, so it moves with `credential:create` in the
-	 * destination only. Any other credential also needs `credential:move` on the credential:
+	 * A credential with no values holds no secret of its owner, so it moves with
+	 * `credential:create` in the destination only. Any other credential also needs `credential:move` on the credential:
 	 * the move takes the edit, share and delete rights from the old owner.
 	 *
 	 * @param options.destinationPendingCreation The caller creates the destination project and
@@ -405,7 +404,7 @@ export class EnterpriseCredentialsService {
 		});
 		if (!credential) return { status: 'not-found' };
 
-		const { type, name, isPlaceholder } = credential;
+		const { type, name } = credential;
 		const fromProjectId = credential.shared?.find(
 			(sharing) => sharing.role === 'credential:owner',
 		)?.projectId;
@@ -415,10 +414,11 @@ export class EnterpriseCredentialsService {
 		if (exclusion) return { status: 'excluded', reason: exclusion, fromProjectId, type, name };
 		if (fromProjectId === undefined) return { status: 'not-found' };
 
+		const isEmpty = await this.credentialsService.hasNoValues(credential);
 		const outcome = (status: 'allowed' | 'not-allowed'): CredentialOwnerTransferCheck => ({
 			status,
 			fromProjectId,
-			isPlaceholder,
+			isEmpty,
 			type,
 			name,
 		});
@@ -432,7 +432,7 @@ export class EnterpriseCredentialsService {
 			if (!destination || destination.type !== 'team') return outcome('not-allowed');
 		}
 
-		if (!isPlaceholder) {
+		if (!isEmpty) {
 			const movable = await this.credentialsFinderService.findCredentialForUser(
 				credentialId,
 				user,
@@ -479,7 +479,7 @@ export class EnterpriseCredentialsService {
 		const check = await this.checkTransferKeepingShares(user, credentialId, destinationProjectId);
 		if (check.status !== 'allowed') return { status: check.status };
 
-		const { fromProjectId, isPlaceholder } = check;
+		const { fromProjectId, isEmpty } = check;
 		await this.sharedCredentialsRepository.manager.transaction(async (trx) => {
 			// The key of a sharing is the credential and the project, so each save replaces the
 			// role of one project and touches no other share.
@@ -499,7 +499,7 @@ export class EnterpriseCredentialsService {
 			);
 		});
 
-		return { status: 'moved', fromProjectId, isPlaceholder };
+		return { status: 'moved', fromProjectId, isEmpty };
 	}
 
 	/** Whether the user may update the credentials that a project owns. */

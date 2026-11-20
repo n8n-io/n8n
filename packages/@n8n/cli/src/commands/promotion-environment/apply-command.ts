@@ -37,7 +37,7 @@ export abstract class PromotionApplyCommand extends BaseCommand {
 			const warningCount = result.warnings.length + unpublished.length;
 			const warnings = warningCount > 0 ? ` with ${warningCount} warning(s)` : '';
 			const moved = moves.length > 0 ? ` Moved ${moves.length} item(s) between projects.` : '';
-			// What the Apply did for its dependencies: placeholders, moves, kept items, open gaps.
+			// What the Apply did for its dependencies: empty credentials, moves, kept items, open gaps.
 			if (!flags.quiet) {
 				const notes = [
 					...(result.dependencyMessages ?? []),

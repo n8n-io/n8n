@@ -5,8 +5,8 @@ import type {
 	PromotionDependencyReport,
 	PromotionKeptProject,
 	PromotionKeptWorkflow,
-	PromotionLivePlaceholderWorkflows,
-	PromotionPlaceholderResult,
+	PromotionLiveWorkflowsWithEmptyCredential,
+	PromotionCreatedEmptyCredential,
 	PromotionReferenceUsage,
 	PromotionResource,
 	PromotionResourceWarning,
@@ -24,6 +24,7 @@ import {
 import { Container, Service } from '@n8n/di';
 import { ConflictError } from '@n8n/errors';
 
+import { CredentialsService } from '@/credentials/credentials.service';
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
 import type { PackageImportPlan } from '@/modules/n8n-packages/engine/project-package-importer';
 import {
@@ -122,12 +123,12 @@ export type ApplyDependencyDecision =
 
 /** The dependency part of an `applied` result. */
 export type ApplyDependencyResult = {
-	placeholders?: PromotionPlaceholderResult[];
+	createdEmptyCredentials?: PromotionCreatedEmptyCredential[];
 	grants?: PromotionCredentialGrant[];
 	credentialMoves?: PromotionCredentialMove[];
 	keptWorkflows?: PromotionKeptWorkflow[];
 	keptProjects?: PromotionKeptProject[];
-	livePlaceholderWorkflows?: PromotionLivePlaceholderWorkflows[];
+	liveWorkflowsWithEmptyCredential?: PromotionLiveWorkflowsWithEmptyCredential[];
 	dependencyMessages?: string[];
 };
 
@@ -166,6 +167,7 @@ export class PromotionDependencyGate {
 		private readonly packageImportConfig: PackageImportConfig,
 		private readonly access: PromotionAccessService,
 		private readonly credentialsService: EnterpriseCredentialsService,
+		private readonly plainCredentialsService: CredentialsService,
 		private readonly credentialsRepository: CredentialsRepository,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
@@ -271,9 +273,11 @@ export class PromotionDependencyGate {
 				projectId,
 				workflowIds,
 				// The export of a whole project writes each project credential that the user can read.
-				credentialIds: credentials
-					.filter(({ usageScope, isPlaceholder }) => usageScope === 'project' && !isPlaceholder)
-					.map(({ id }) => id),
+				credentialIds: (
+					await this.plainCredentialsService.keepWithValues(
+						credentials.filter(({ usageScope }) => usageScope === 'project'),
+					)
+				).map(({ id }) => id),
 			});
 		}
 		return selection;
@@ -472,20 +476,20 @@ export class PromotionDependencyGate {
 		const pendingGrants = report.grants.filter(({ id }) => confirmedGrantIds.has(id));
 
 		const homes = await this.acceptedHomes(report, confirmations.credentialHomes);
-		const placeholderIds = actions.placeholders.map(({ credential }) => credential.id);
-		const placeholders = new Set(placeholderIds);
+		const stubIds = actions.emptyCredentials.map(({ credential }) => credential.id);
+		const stubs = new Set(stubIds);
 		const credentialDependencies: ImportCredentialDependencies = {
 			credentialOwnerPolicy: CredentialOwnerPolicy.FollowPackage,
-			placeholderCredentialIds: placeholderIds,
-			// The check selected the home of each placeholder. The import must use the same one.
-			placeholderHomes: Object.fromEntries(
-				actions.placeholders.map(({ credential, projectId }) => [credential.id, projectId]),
+			stubCredentialIds: stubIds,
+			// The check selected the home of each empty credential. The import must use the same one.
+			stubHomes: Object.fromEntries(
+				actions.emptyCredentials.map(({ credential, projectId }) => [credential.id, projectId]),
 			),
-			// A confirmed gap without a placeholder, and a reference that is broken on the source:
+			// A confirmed gap without an empty credential, and a reference that is broken on the source:
 			// the import writes the reference unchanged.
 			allowedUnresolvedCredentialIds: unique(
 				[...report.gaps, ...report.warnings]
-					.filter(({ target }) => target.kind === 'credential' && !placeholders.has(target.id))
+					.filter(({ target }) => target.kind === 'credential' && !stubs.has(target.id))
 					.map(({ target }) => target.id),
 			),
 			credentialGrants: pendingGrants.map(({ credential, project }) => ({
@@ -579,26 +583,26 @@ export class PromotionDependencyGate {
 	}
 
 	/**
-	 * The import plan is the second opinion on the placeholders: it uses its own order of the
-	 * projects. A placeholder that it may not create becomes a hard block, so the Apply stops.
+	 * The import plan is the second opinion on the empty credentials: it uses its own order of the
+	 * projects. An empty credential that it may not create becomes a hard block, so the Apply stops.
 	 * Returns true when it added a block.
 	 */
 	addPlanBlocks(report: PromotionDependencyReport, plan: PackageImportPlan): boolean {
 		const known = new Set(
 			report.hardBlocks
-				.filter(({ code }) => code === 'placeholder-create-forbidden')
+				.filter(({ code }) => code === 'credential-create-forbidden')
 				.map(({ target }) => target.id),
 		);
 		let added = false;
 		for (const { plan: scope } of plan.scopes) {
-			for (const id of scope.credentialPlan.placeholderForbidden ?? []) {
+			for (const id of scope.credentialPlan.stubForbidden ?? []) {
 				if (known.has(id)) continue;
 				known.add(id);
 				const gap = report.gaps.find(
 					({ target }) => target.kind === 'credential' && target.id === id,
 				);
 				report.hardBlocks.push({
-					code: 'placeholder-create-forbidden',
+					code: 'credential-create-forbidden',
 					target: gap?.target ?? { kind: 'credential', id },
 					...(gap ? { consumer: gap.consumer } : {}),
 					detail: { missingPermission: 'credential:create' },
@@ -620,12 +624,12 @@ export class PromotionDependencyGate {
 		const { report, grants } = decision;
 		const messages: string[] = [];
 
-		const placeholders = (result.credentials.placeholders ?? []).map(
+		const createdEmptyCredentials = (result.credentials.createdStubs ?? []).map(
 			({ id, name, type, projectId }) => ({ id, name, type, projectId }),
 		);
-		for (const { name } of placeholders) {
+		for (const { name } of createdEmptyCredentials) {
 			messages.push(
-				`Created the empty placeholder credential "${name}". Add its values before you publish a workflow that uses it.`,
+				`Created the empty credential "${name}". Add its values before you publish a workflow that uses it.`,
 			);
 		}
 
@@ -656,10 +660,13 @@ export class PromotionDependencyGate {
 			);
 		}
 
-		// A published version that references the id of a new placeholder now reads an empty
+		// A published version that references the id of a new empty credential now reads an empty
 		// credential. The Apply does not unpublish, so the result says which workflows to check.
-		const livePlaceholderWorkflows = await this.livePlaceholderWorkflows(user, placeholders);
-		for (const { credential, workflows, hiddenWorkflowCount } of livePlaceholderWorkflows) {
+		const liveWorkflowsWithEmptyCredential = await this.liveWorkflowsWithEmptyCredential(
+			user,
+			createdEmptyCredentials,
+		);
+		for (const { credential, workflows, hiddenWorkflowCount } of liveWorkflowsWithEmptyCredential) {
 			const names = workflows.map(({ name }) => `"${name}"`);
 			if (hiddenWorkflowCount > 0) {
 				names.push(
@@ -667,7 +674,7 @@ export class PromotionDependencyGate {
 				);
 			}
 			messages.push(
-				`The published version of ${names.join(', ')} uses the empty placeholder "${credential.name}". It fails until the credential has values.`,
+				`The published version of ${names.join(', ')} uses the empty credential "${credential.name}". It fails until the credential has values.`,
 			);
 		}
 
@@ -700,29 +707,29 @@ export class PromotionDependencyGate {
 		}
 
 		return {
-			...(placeholders.length > 0 ? { placeholders } : {}),
+			...(createdEmptyCredentials.length > 0 ? { createdEmptyCredentials } : {}),
 			...(grants.length > 0 ? { grants } : {}),
 			...(credentialMoves.length > 0 ? { credentialMoves } : {}),
 			...(report.keptWorkflows.length > 0 ? { keptWorkflows: report.keptWorkflows } : {}),
 			...(keptProjects.length > 0 ? { keptProjects } : {}),
-			...(livePlaceholderWorkflows.length > 0 ? { livePlaceholderWorkflows } : {}),
+			...(liveWorkflowsWithEmptyCredential.length > 0 ? { liveWorkflowsWithEmptyCredential } : {}),
 			...(messages.length > 0 ? { dependencyMessages: messages } : {}),
 		};
 	}
 
 	/**
-	 * The workflows whose published version references the id of a placeholder that the Apply
+	 * The workflows whose published version references the id of an empty credential that the Apply
 	 * created. The workflow index holds the references of each published version. A workflow is
 	 * named only when the user can read its project. Never throws: the Apply is done.
 	 */
-	private async livePlaceholderWorkflows(
+	private async liveWorkflowsWithEmptyCredential(
 		user: User,
-		placeholders: PromotionPlaceholderResult[],
-	): Promise<PromotionLivePlaceholderWorkflows[]> {
-		if (placeholders.length === 0) return [];
+		createdEmptyCredentials: PromotionCreatedEmptyCredential[],
+	): Promise<PromotionLiveWorkflowsWithEmptyCredential[]> {
+		if (createdEmptyCredentials.length === 0) return [];
 		try {
 			const rows = await this.workflowDependencyRepository.findDependenciesForResources(
-				placeholders.map(({ id }) => id),
+				createdEmptyCredentials.map(({ id }) => id),
 				['credentialId'],
 				false,
 			);
@@ -738,28 +745,30 @@ export class PromotionDependencyGate {
 				user,
 				unique([...owners.values()].map(({ id }) => id)),
 			);
-			return placeholders.flatMap(({ id, name }): PromotionLivePlaceholderWorkflows[] => {
-				const ids = unique(
-					live.filter(({ dependencyKey }) => dependencyKey === id).map((row) => row.workflowId),
-				);
-				if (ids.length === 0) return [];
-				const visible = ids.filter((workflowId) => {
-					const owner = owners.get(workflowId);
-					return owner !== undefined && readable.has(owner.id);
-				});
-				return [
-					{
-						credential: { id, name },
-						workflows: visible.map((workflowId) => ({
-							id: workflowId,
-							name: nameOf.get(workflowId) ?? workflowId,
-						})),
-						hiddenWorkflowCount: ids.length - visible.length,
-					},
-				];
-			});
+			return createdEmptyCredentials.flatMap(
+				({ id, name }): PromotionLiveWorkflowsWithEmptyCredential[] => {
+					const ids = unique(
+						live.filter(({ dependencyKey }) => dependencyKey === id).map((row) => row.workflowId),
+					);
+					if (ids.length === 0) return [];
+					const visible = ids.filter((workflowId) => {
+						const owner = owners.get(workflowId);
+						return owner !== undefined && readable.has(owner.id);
+					});
+					return [
+						{
+							credential: { id, name },
+							workflows: visible.map((workflowId) => ({
+								id: workflowId,
+								name: nameOf.get(workflowId) ?? workflowId,
+							})),
+							hiddenWorkflowCount: ids.length - visible.length,
+						},
+					];
+				},
+			);
 		} catch (error) {
-			this.logger.warn('Could not read the published workflows that use a new placeholder', {
+			this.logger.warn('Could not read the published workflows that use a new empty credential', {
 				error,
 			});
 			return [];

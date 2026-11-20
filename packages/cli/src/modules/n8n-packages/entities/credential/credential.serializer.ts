@@ -21,8 +21,6 @@ type CredentialPackageKeyHandling = {
 	isGlobal: 'exclude';
 	isResolvable: 'exclude';
 	resolvableAllowFallback: 'exclude';
-	// A placeholder is never content, so the marker does not travel.
-	isPlaceholder: 'exclude';
 	resolverId: 'exclude';
 	usageScope: 'exclude';
 	pendingAuthorizationExpiresAt: 'exclude';

@@ -1362,7 +1362,7 @@ export class WorkflowService {
 		await this._validateDynamicCredentials(workflowId, versionToActivate.nodes, workflow.settings);
 		if (versionIdToActivate !== previousActiveVersionId) {
 			await this._validatePublisherCredentialAccess(workflowId, user, versionToActivate.nodes);
-			await this._validateNoPlaceholderCredentials(workflowId, versionToActivate.nodes);
+			await this._validateNoEmptyCredentials(workflowId, versionToActivate.nodes);
 		}
 		await this._validateSubWorkflowReferences(workflowId, versionToActivate.nodes);
 		if (this.globalConfig.workflows.useWorkflowPublicationService) {
@@ -2271,18 +2271,16 @@ export class WorkflowService {
 		}
 	}
 
-	/** A new version cannot go live while one of its credentials is a promotion placeholder. */
-	private async _validateNoPlaceholderCredentials(workflowId: string, nodes: INode[]) {
-		const validation = await this.workflowValidationService.validateNoPlaceholderCredentials(nodes);
+	/** A new version cannot go live while one of its credentials has no values. */
+	private async _validateNoEmptyCredentials(workflowId: string, nodes: INode[]) {
+		const validation = await this.workflowValidationService.validateNoEmptyCredentials(nodes);
 
 		if (!validation.isValid) {
-			this.logger.warn('Workflow activation failed placeholder credential validation', {
+			this.logger.warn('Workflow activation failed empty credential validation', {
 				workflowId,
 				error: validation.error,
 			});
-			throw new WorkflowValidationError(
-				validation.error ?? 'Placeholder credential validation failed',
-			);
+			throw new WorkflowValidationError(validation.error ?? 'Empty credential validation failed');
 		}
 	}
 

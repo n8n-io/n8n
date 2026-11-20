@@ -66,7 +66,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [chat_hub_sessions](chat_hub_sessions.md) | 13 |  | table |
 | [chat_hub_tools](chat_hub_tools.md) | 9 |  | table |
 | [credential_dependency](credential_dependency.md) | 5 |  | table |
-| [credentials_entity](credentials_entity.md) | 15 |  | table |
+| [credentials_entity](credentials_entity.md) | 14 |  | table |
 | [data_table](data_table.md) | 5 |  | table |
 | [data_table_column](data_table_column.md) | 7 |  | table |
 | [deployment_key](deployment_key.md) | 7 |  | table |
@@ -1138,7 +1138,6 @@ erDiagram
   varchar_36_ id PK
   boolean isGlobal
   boolean isManaged
-  boolean isPlaceholder
   boolean isResolvable
   varchar_128_ name
   DATETIME pendingAuthorizationExpiresAt

@@ -1,6 +1,7 @@
 import { SharedCredentialsRepository, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
+import { CredentialsService } from '@/credentials/credentials.service';
 import { HashingPackageWriter } from '@/modules/n8n-packages/io/hashing-package-writer';
 import type { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
 import {
@@ -55,17 +56,18 @@ export function instancePromotionExportRequest({
 }
 
 /**
- * The credentials that the projects own and that a package can hold. A placeholder is never
- * content, and an instance credential is not promoted.
+ * The credentials that the projects own and that a package can hold. A credential with no
+ * values is never content, and an instance credential is not promoted.
  */
 async function ownedProjectCredentialIds(projectIds: readonly string[]): Promise<string[]> {
 	if (projectIds.length === 0) return [];
 	const owned = await Container.get(SharedCredentialsRepository).findOwnedCredentialsByProjects([
 		...projectIds,
 	]);
-	return owned
-		.filter(({ usageScope, isPlaceholder }) => usageScope !== 'instance' && !isPlaceholder)
-		.map(({ id }) => id);
+	const promotable = await Container.get(CredentialsService).keepWithValues(
+		owned.filter(({ usageScope }) => usageScope !== 'instance'),
+	);
+	return promotable.map(({ id }) => id);
 }
 
 /**

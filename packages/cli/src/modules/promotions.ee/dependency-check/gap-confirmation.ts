@@ -97,8 +97,8 @@ const GROUP_FIXES: Partial<Record<PromotionGap['group'], string>> = {
 /** One line for each gap, with its id and the fix. For an error message of a route. */
 export function describeGapWithFix(gap: PromotionGap): string {
 	const fix =
-		gap.detail === 'placeholder-on-source'
-			? 'It is an empty placeholder on this instance. Add its values, then promote again.'
+		gap.detail === 'empty-on-source'
+			? 'It has no values on this instance. Add its values, then promote again.'
 			: (GROUP_FIXES[gap.group] ?? '');
 	return [`${describeGap(gap)}.`, fix, `(gap id: ${gap.id})`].filter(Boolean).join(' ');
 }
@@ -109,8 +109,8 @@ const HARD_BLOCK_LABELS: Record<PromotionHardBlock['code'], string> = {
 		'the branch holds this credential under more than one project. Keep the file of one project',
 	'instance-credential-missing': 'create the instance credential on the destination',
 	'incompatible-usage-scope': 'the usage scope on the destination is not compatible',
-	'placeholder-create-forbidden':
-		'you cannot create a credential in the project that needs the placeholder',
+	'credential-create-forbidden':
+		'you cannot create a credential in the project that needs the empty credential',
 	'credential-move-forbidden': 'you cannot create a credential in the project that owns it',
 };
 

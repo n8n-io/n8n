@@ -693,9 +693,9 @@ flags:
 | `--confirm-deletion-callers` | Accept that the Apply deletes workflows that other workflows on this instance call. |
 | `--credential-home` | Project that gets a credential that the branch holds without an owner, as `<credentialId>:<projectId>`. |
 
-An Apply with gaps creates an empty placeholder credential for a credential
-that this instance does not hold. A workflow that uses a placeholder cannot be
-published until a person saves values in the credential. Apply never publishes
+An Apply with gaps creates an empty credential for a credential that this
+instance does not hold. A workflow that uses a credential with no values cannot
+be published until a person saves values in the credential. Apply never publishes
 and never unpublishes a workflow.
 
 ## `promotion-environment list-missing-projects` / `create-missing-projects`

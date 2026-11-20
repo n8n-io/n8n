@@ -31,6 +31,7 @@ import type {
 
 import { STARTING_NODES } from '@/constants';
 import { CredentialTypes } from '@/credential-types';
+import { CredentialsService } from '@/credentials/credentials.service';
 import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks/credentials-permission-checker';
 import { withExpressionIsolate } from '@/utils';
@@ -67,6 +68,7 @@ export class WorkflowValidationService {
 		private readonly dynamicCredentialsProxy: DynamicCredentialsProxy,
 		private readonly credentialTypes: CredentialTypes,
 		private readonly credentialsPermissionChecker: CredentialsPermissionChecker,
+		private readonly credentialsService: CredentialsService,
 	) {}
 
 	/**
@@ -522,11 +524,10 @@ export class WorkflowValidationService {
 	}
 
 	/**
-	 * A placeholder credential holds no values, so a workflow that uses it must not go live.
-	 * The check reads the marker, not the data: a placeholder with a name from a later Apply
-	 * and no saved values is still a placeholder.
+	 * A credential with no values cannot authenticate, so a workflow that uses it must not go
+	 * live. The rule is the rule of "Needs first setup" in the editor.
 	 */
-	async validateNoPlaceholderCredentials(nodes: INode[]): Promise<WorkflowValidationResult> {
+	async validateNoEmptyCredentials(nodes: INode[]): Promise<WorkflowValidationResult> {
 		const credentialIds = new Set<string>();
 		for (const node of nodes) {
 			if (node.disabled) continue;
@@ -535,11 +536,11 @@ export class WorkflowValidationService {
 			}
 		}
 
-		const placeholders = await this.credentialsRepository.findPlaceholdersByIds([...credentialIds]);
-		if (placeholders.length === 0) return { isValid: true };
+		const empty = await this.credentialsService.findWithNoValues([...credentialIds]);
+		if (empty.length === 0) return { isValid: true };
 
-		const plural = placeholders.length > 1;
-		const names = formatCredentialNames(placeholders);
+		const plural = empty.length > 1;
+		const names = formatCredentialNames(empty);
 		return {
 			isValid: false,
 			error: `${names} ${plural ? 'have' : 'has'} no values. Add the values of the credential${plural ? 's' : ''} before you publish.`,

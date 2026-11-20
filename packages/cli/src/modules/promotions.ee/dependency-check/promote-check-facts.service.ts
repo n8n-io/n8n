@@ -147,7 +147,7 @@ export class PromoteCheckFactsService {
 				credentialType: credential.type,
 				...(credential.owner ? { project: credential.owner } : {}),
 				usageScope: credential.usageScope,
-				isPlaceholder: credential.isPlaceholder,
+				isEmpty: credential.isEmpty,
 				canRead: readableCredentials.has(id),
 				usableBy,
 			};

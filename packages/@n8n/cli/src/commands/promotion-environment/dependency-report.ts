@@ -122,8 +122,8 @@ const HARD_BLOCKS: Record<string, string> = {
 		'the branch holds this credential under more than one project. Keep the file of one project',
 	'instance-credential-missing': 'create the instance credential on the destination',
 	'incompatible-usage-scope': 'the usage scope on the destination is not compatible',
-	'placeholder-create-forbidden':
-		'you cannot create a credential in the project that needs the placeholder',
+	'credential-create-forbidden':
+		'you cannot create a credential in the project that needs the empty credential',
 	'credential-move-forbidden': 'you cannot create a credential in the project that owns it',
 };
 
@@ -167,8 +167,8 @@ export function formatDependencyReport(report: PromotionDependencyReport): strin
 				`  ${gap.id}`,
 				`    "${gap.consumer.name}" needs the ${targetLabel(gap)}: ${known ? GROUPS[gap.group] : `unknown gap "${gap.group}". Treat it as a blocker and update the CLI`}.`,
 				...(exits ? [`    You can: ${exits}.`] : []),
-				...(gap.placeholder
-					? ['    The Apply creates an empty placeholder credential for it.']
+				...(gap.createsEmptyCredential
+					? ['    The Apply creates an empty credential for it.']
 					: []),
 				...(gap.ownerRequestSent ? ['    Request sent to the owner.'] : []),
 			);

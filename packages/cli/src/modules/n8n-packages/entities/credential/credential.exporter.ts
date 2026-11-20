@@ -9,6 +9,7 @@ import { CredentialsFinderService } from '@n8n/backend-services';
 
 import { CredentialTypes } from '@/credential-types';
 import { CredentialDescriptionsService } from '@/credentials/credential-descriptions.service';
+import { CredentialsService } from '@/credentials/credentials.service';
 
 import {
 	findDisplayControllers,
@@ -56,6 +57,7 @@ export class CredentialExporter {
 		private readonly credentialSerializer: CredentialSerializer,
 		private readonly credentialTypes: CredentialTypes,
 		private readonly credentialDescriptions: CredentialDescriptionsService,
+		private readonly credentialsService: CredentialsService,
 	) {}
 
 	async export(request: CredentialExportRequest): Promise<CredentialExportResult> {
@@ -81,9 +83,9 @@ export class CredentialExporter {
 				type: group?.fallback.credentialType,
 			};
 
-			// A placeholder is never content. Without a file, the reference stays a requirement
-			// row, so the missing credential is still visible on the next instance.
-			if (credential && !credential.isPlaceholder) {
+			// A credential with no values is never content. Without a file, the reference stays a
+			// requirement row, so the missing credential is still visible on the next instance.
+			if (credential && !(await this.credentialsService.hasNoValues(credential))) {
 				let decryptedData: ICredentialDataDecryptedObject | undefined;
 				const expressionData = await selectCredentialDataForExport(
 					request.credentialExportPolicy,

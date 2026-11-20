@@ -46,7 +46,7 @@ import type {
 	ImportContext,
 	ImportedCredentialGrant,
 	ImportedCredentialMove,
-	ImportedCredentialPlaceholder,
+	ImportedCredentialStub,
 } from '../../n8n-packages.types';
 import { mergeRequirementConsumers } from '../../spec/requirement-consumers';
 
@@ -176,8 +176,8 @@ export class CredentialImporter {
 				toProjectId: context.projectId,
 				...(check.fromProjectId !== undefined ? { fromProjectId: check.fromProjectId } : {}),
 				...(check.status === 'excluded'
-					? { status: 'excluded', reason: check.reason, isPlaceholder: false }
-					: { status: check.status, isPlaceholder: check.isPlaceholder }),
+					? { status: 'excluded', reason: check.reason, isEmpty: false }
+					: { status: check.status, isEmpty: check.isEmpty }),
 			});
 		}
 
@@ -195,17 +195,17 @@ export class CredentialImporter {
 		resolution: CredentialResolution,
 		moves: PlannedCredentialMove[],
 	): Promise<CredentialDependencyPlan & { failures: CredentialResolutionFailure[] }> {
-		const matchedPlaceholderIds = await this.credentialsService.findPlaceholderIds([
+		const matchedEmptyIds = await this.credentialsService.findIdsWithNoValues([
 			...new Set(resolution.successes.values()),
 		]);
-		const plan: Required<Omit<CredentialDependencyPlan, 'placeholderForbidden'>> = {
-			placeholders: [],
-			placeholderBindings: [],
+		const plan: Required<Omit<CredentialDependencyPlan, 'stubForbidden'>> = {
+			dependencyStubs: [],
+			stubBindings: [],
 			pendingGrants: [],
 			pendingMoves: [],
 			unresolvedAllowed: [],
-			matchedPlaceholders: [...resolution.successes]
-				.filter(([, targetId]) => matchedPlaceholderIds.has(targetId))
+			matchedEmpty: [...resolution.successes]
+				.filter(([, targetId]) => matchedEmptyIds.has(targetId))
 				.map(([sourceId]) => sourceId),
 			moves,
 		};
@@ -231,7 +231,7 @@ export class CredentialImporter {
 				continue;
 			}
 			const named =
-				dependencies.placeholderIds.has(sourceId) ||
+				dependencies.stubSourceIds.has(sourceId) ||
 				dependencies.allowedUnresolvedIds.has(sourceId) ||
 				dependencies.grantIds.has(sourceId) ||
 				movedIntoScope.has(sourceId);
@@ -243,8 +243,8 @@ export class CredentialImporter {
 
 			const destination = await this.credentialsFinder.findById(sourceId);
 			if (destination === null) {
-				if (dependencies.placeholderIds.has(sourceId) && failure.type !== undefined) {
-					plan.placeholders.push({
+				if (dependencies.stubSourceIds.has(sourceId) && failure.type !== undefined) {
+					plan.dependencyStubs.push({
 						sourceId,
 						name: failure.name ?? sourceId,
 						type: failure.type,
@@ -258,7 +258,7 @@ export class CredentialImporter {
 				continue;
 			}
 
-			// The id is taken: the destination credential never gets a placeholder.
+			// The id is taken: the destination credential never gets a stub.
 			if (failure.type !== undefined && destination.type !== failure.type) {
 				failures.push({
 					...failure,
@@ -299,30 +299,30 @@ export class CredentialImporter {
 	}
 
 	/**
-	 * One id gets one placeholder: the first scope that needs it creates it, and each later
+	 * One id gets one stub: the first scope that needs it creates it, and each later
 	 * scope binds to it and gets use access. Without `credential:create` in the project of the
-	 * first scope, nobody gets the placeholder: the reference is a `not_found` failure again in
+	 * first scope, nobody gets the stub: the reference is a `not_found` failure again in
 	 * each scope. Changes the plans in place. Returns the failures that it put back, so the
 	 * caller can report them as blocking issues.
 	 */
-	async settlePlaceholders(
+	async settleDependencyStubs(
 		scopes: Array<{
 			context: ImportContext;
 			plan: CredentialImportPlan;
 			projectPendingCreation: boolean;
-			/** The project that creates each placeholder, when the caller decided it. */
-			placeholderHomes?: ReadonlyMap<string, string>;
+			/** The project that creates each stub, when the caller decided it. */
+			stubHomes?: ReadonlyMap<string, string>;
 		}>,
 	): Promise<Array<{ plan: CredentialImportPlan; failures: CredentialResolutionFailure[] }>> {
-		type Placeholder = NonNullable<CredentialImportPlan['placeholders']>[number];
-		const creators = new Map<string, Placeholder | 'forbidden'>();
+		type DependencyStub = NonNullable<CredentialImportPlan['dependencyStubs']>[number];
+		const creators = new Map<string, DependencyStub | 'forbidden'>();
 		const mayCreate = new Map<string, boolean>();
 		const restored: Array<{ plan: CredentialImportPlan; failures: CredentialResolutionFailure[] }> =
 			[];
 		const creatorIn = async (
 			context: ImportContext,
 			projectPendingCreation: boolean,
-			placeholder: Placeholder,
+			stub: DependencyStub,
 		) => {
 			if (!mayCreate.has(context.projectId)) {
 				mayCreate.set(
@@ -330,49 +330,49 @@ export class CredentialImporter {
 					projectPendingCreation || (await this.canCreateIn(context)),
 				);
 			}
-			return mayCreate.get(context.projectId) ? placeholder : ('forbidden' as const);
+			return mayCreate.get(context.projectId) ? stub : ('forbidden' as const);
 		};
 
-		// The caller named the home: that scope creates the placeholder, whatever the order of
+		// The caller named the home: that scope creates the stub, whatever the order of
 		// the scopes. So the caller and the import agree on the project.
-		for (const { context, plan, projectPendingCreation, placeholderHomes } of scopes) {
-			for (const placeholder of plan.placeholders ?? []) {
-				const { sourceId } = placeholder;
-				if (placeholderHomes?.get(sourceId) !== context.projectId || creators.has(sourceId)) {
+		for (const { context, plan, projectPendingCreation, stubHomes } of scopes) {
+			for (const stub of plan.dependencyStubs ?? []) {
+				const { sourceId } = stub;
+				if (stubHomes?.get(sourceId) !== context.projectId || creators.has(sourceId)) {
 					continue;
 				}
-				creators.set(sourceId, await creatorIn(context, projectPendingCreation, placeholder));
+				creators.set(sourceId, await creatorIn(context, projectPendingCreation, stub));
 			}
 		}
 
 		for (const { context, plan, projectPendingCreation } of scopes) {
-			const own: NonNullable<CredentialImportPlan['placeholders']> = [];
+			const own: NonNullable<CredentialImportPlan['dependencyStubs']> = [];
 			const failures: CredentialResolutionFailure[] = [];
 
-			for (const placeholder of plan.placeholders ?? []) {
-				const { sourceId, name, type } = placeholder;
+			for (const stub of plan.dependencyStubs ?? []) {
+				const { sourceId, name, type } = stub;
 				let creator = creators.get(sourceId);
 				if (creator === undefined) {
-					creator = await creatorIn(context, projectPendingCreation, placeholder);
+					creator = await creatorIn(context, projectPendingCreation, stub);
 					creators.set(sourceId, creator);
 				}
-				if (creator === placeholder) {
-					own.push(placeholder);
+				if (creator === stub) {
+					own.push(stub);
 					continue;
 				}
 
 				if (creator === 'forbidden') {
 					failures.push({ kind: 'not_found', sourceId, name, type });
-					plan.placeholderForbidden = [...(plan.placeholderForbidden ?? []), sourceId];
+					plan.stubForbidden = [...(plan.stubForbidden ?? []), sourceId];
 				} else {
 					if (!creator.shareWithProjectIds.includes(context.projectId)) {
 						creator.shareWithProjectIds.push(context.projectId);
 					}
-					plan.placeholderBindings = [...(plan.placeholderBindings ?? []), sourceId];
+					plan.stubBindings = [...(plan.stubBindings ?? []), sourceId];
 				}
 			}
 
-			plan.placeholders = own;
+			plan.dependencyStubs = own;
 			if (failures.length > 0) {
 				plan.failures.push(...failures);
 				restored.push({ plan, failures });
@@ -665,7 +665,7 @@ export class CredentialImporter {
 
 	/**
 	 * Writes what the plan settled for `credentialDependencies`, before the workflows of the
-	 * scope: the confirmed grants, the placeholders and the owner changes. Each write checks the
+	 * scope: the confirmed grants, the stubs and the owner changes. Each write checks the
 	 * rights of the user again. A grant or a move that the plan allowed and that the destination
 	 * now refuses stops the import: the destination changed after the plan.
 	 */
@@ -674,10 +674,7 @@ export class CredentialImporter {
 		plan: CredentialImportPlan,
 		bindings: ImportBindingMap,
 	): Promise<
-		Pick<
-			CredentialBindResult,
-			'placeholders' | 'placeholderBound' | 'grants' | 'unresolved' | 'moves'
-		>
+		Pick<CredentialBindResult, 'createdStubs' | 'emptyBound' | 'grants' | 'unresolved' | 'moves'>
 	> {
 		const { user, projectId } = context;
 
@@ -698,22 +695,22 @@ export class CredentialImporter {
 			bindings.set(credentialId, credentialId);
 		}
 
-		const placeholders: ImportedCredentialPlaceholder[] = [];
-		for (const { sourceId, name, type, shareWithProjectIds } of plan.placeholders ?? []) {
-			const placeholder = await this.enterpriseCredentialsService.createPlaceholderCredential(
+		const createdStubs: ImportedCredentialStub[] = [];
+		for (const { sourceId, name, type, shareWithProjectIds } of plan.dependencyStubs ?? []) {
+			const stub = await this.enterpriseCredentialsService.createSharedStubCredential(
 				{ id: sourceId, name, type, projectId, shareWithProjectIds },
 				user,
 			);
-			bindings.set(sourceId, placeholder.id);
-			placeholders.push({
-				id: placeholder.id,
+			bindings.set(sourceId, stub.id);
+			createdStubs.push({
+				id: stub.id,
 				name,
 				type,
 				projectId,
 				sharedWithProjectIds: shareWithProjectIds,
 			});
 		}
-		for (const sourceId of plan.placeholderBindings ?? []) bindings.set(sourceId, sourceId);
+		for (const sourceId of plan.stubBindings ?? []) bindings.set(sourceId, sourceId);
 
 		const moves: ImportedCredentialMove[] = [];
 		for (const { status, ...move } of plan.moves ?? []) {
@@ -741,11 +738,11 @@ export class CredentialImporter {
 		for (const sourceId of plan.unresolvedAllowed ?? []) bindings.set(sourceId, sourceId);
 
 		return {
-			placeholders,
-			placeholderBound: [
-				...placeholders.map(({ id }) => id),
-				...(plan.placeholderBindings ?? []),
-				...(plan.matchedPlaceholders ?? []),
+			createdStubs,
+			emptyBound: [
+				...createdStubs.map(({ id }) => id),
+				...(plan.stubBindings ?? []),
+				...(plan.matchedEmpty ?? []),
 			],
 			grants,
 			unresolved: [...(plan.unresolvedAllowed ?? [])],

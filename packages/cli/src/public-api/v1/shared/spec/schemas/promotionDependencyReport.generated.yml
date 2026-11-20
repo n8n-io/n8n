@@ -251,7 +251,7 @@ properties:
           required:
             - id
             - name
-        placeholder:
+        empty:
           type: boolean
         allowed:
           type: boolean
@@ -265,7 +265,7 @@ properties:
       required:
         - credential
         - toProject
-        - placeholder
+        - empty
         - allowed
   deletionCallers:
     type: array
@@ -433,7 +433,7 @@ properties:
             - ambiguous-credential-owner
             - instance-credential-missing
             - incompatible-usage-scope
-            - placeholder-create-forbidden
+            - credential-create-forbidden
             - credential-move-forbidden
         target:
           type: object

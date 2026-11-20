@@ -29,7 +29,7 @@ import {
 	type ApplyCheckInput,
 	type ApplyCheckOutcome,
 	type DestinationTargetFact,
-	type PlaceholderCandidate,
+	type EmptyCredentialCandidate,
 	type ReferenceFact,
 } from './dependency-check.types';
 
@@ -51,7 +51,7 @@ export function computeApplyReport(input: ApplyCheckInput): PromotionDependencyR
  *    without a reason is a warning for a workflow and a gap for a credential.
  *
  * The result also holds what the operation must do: the workflows and the projects to keep,
- * and the placeholders of the credential gaps.
+ * and the empty credentials of the credential gaps.
  */
 export function computeApplyOutcome(input: ApplyCheckInput): ApplyCheckOutcome {
 	const { branch, plan, access, destinationTargets } = input;
@@ -115,20 +115,20 @@ export function computeApplyOutcome(input: ApplyCheckInput): ApplyCheckOutcome {
 		const toProject = projectRef(toProjectId);
 		if (!toProject) continue;
 
-		const placeholder = destination.isPlaceholder === true;
+		const empty = destination.isEmpty === true;
 		const canCreate = canCreateIn.has(toProjectId);
 		let blockedReason: PromotionCredentialMove['blockedReason'];
 		if (destination.isManaged) blockedReason = 'managed';
 		else if (destination.isResolvable) blockedReason = 'end-user';
 		else if (!canCreate) blockedReason = 'missing-create-right';
-		else if (!placeholder && !access.credentials[id]?.canMove) blockedReason = 'no-move-right';
+		else if (!empty && !access.credentials[id]?.canMove) blockedReason = 'no-move-right';
 
-		// A placeholder must get its home. Without the right to create there, the Apply stops.
-		if (placeholder && blockedReason === 'missing-create-right') {
+		// An empty credential must get its home. Without the right to create there, the Apply stops.
+		if (empty && blockedReason === 'missing-create-right') {
 			report.addHardBlock({
 				code: 'credential-move-forbidden',
 				target,
-				// The cause is for a client: a placeholder needs only the right to create a credential
+				// The cause is for a client: an empty credential needs only the right to create a credential
 				// in the project of the branch. A credential with values that the user may not move
 				// is not a block: its move has `blockedReason: 'no-move-right'`.
 				detail: {
@@ -145,7 +145,7 @@ export function computeApplyOutcome(input: ApplyCheckInput): ApplyCheckOutcome {
 			credential: { id, name: file.name, type: file.type },
 			toProject: { id: toProject.id, name: toProject.name },
 			...(fromProject ? { fromProject } : {}),
-			placeholder,
+			empty,
 			allowed: !blockedReason,
 			...(blockedReason ? { blockedReason } : {}),
 		});
@@ -153,8 +153,8 @@ export function computeApplyOutcome(input: ApplyCheckInput): ApplyCheckOutcome {
 
 	const grants = new Map<string, PromotionCredentialGrant>();
 	const homeChoices = new Map<string, PromotionCredentialHomeChoice>();
-	/** The consumer projects of each credential that the Apply gives a placeholder. */
-	const placeholderGaps = new Map<string, { reference: ReferenceFact; gapIds: string[] }[]>();
+	/** The consumer projects of each credential that the Apply gives an empty credential. */
+	const emptyCredentialGaps = new Map<string, { reference: ReferenceFact; gapIds: string[] }[]>();
 
 	const canUse = (destination: DestinationTargetFact, id: string, projectId: string) =>
 		destination.usableByAllProjects === true ||
@@ -211,13 +211,13 @@ export function computeApplyOutcome(input: ApplyCheckInput): ApplyCheckOutcome {
 		/** A gap for a target that the user may not see: only what the node holds. */
 		const hiddenGap = () => gap('no-access', ['ask-owner'], undefined);
 
-		/** A credential gap that the Apply satisfies with a placeholder. */
-		const placeholderExtra = (): Partial<PromotionGap> => {
+		/** A credential gap that the Apply satisfies with an empty credential. */
+		const emptyCredentialExtra = (): Partial<PromotionGap> => {
 			if (target.kind !== 'credential' || destination) return {};
-			const entries = placeholderGaps.get(target.id) ?? [];
+			const entries = emptyCredentialGaps.get(target.id) ?? [];
 			entries.push({ reference, gapIds: [id] });
-			placeholderGaps.set(target.id, entries);
-			return { placeholder: true };
+			emptyCredentialGaps.set(target.id, entries);
+			return { createsEmptyCredential: true };
 		};
 
 		/** The target is on the branch and not on the destination: include it or ask the owner. */
@@ -225,10 +225,10 @@ export function computeApplyOutcome(input: ApplyCheckInput): ApplyCheckOutcome {
 			const project = projectRef(projectId);
 			const known: KnownTarget = { name, credentialType, project, canRead: true };
 			const visible = visibility.canReadProject(projectId);
-			const placeholder = placeholderExtra();
+			const emptyExtra = emptyCredentialExtra();
 			const extra: Partial<PromotionGap> = {
 				...(visible ? { state: 'missing-on-destination' as const } : {}),
-				...placeholder,
+				...emptyExtra,
 			};
 			if (!visibility.environmentCovers(projectId)) {
 				gap('outside-environment', ['add-project'], known, extra);
@@ -242,7 +242,7 @@ export function computeApplyOutcome(input: ApplyCheckInput): ApplyCheckOutcome {
 			} else if (visible) {
 				gap('read-only-project', ['ask-owner'], known, extra);
 			} else {
-				gap('no-access', ['ask-owner'], undefined, placeholder);
+				gap('no-access', ['ask-owner'], undefined, emptyExtra);
 			}
 		};
 
@@ -352,7 +352,7 @@ export function computeApplyOutcome(input: ApplyCheckInput): ApplyCheckOutcome {
 				addGrant(reference, destination);
 				return;
 			}
-			// The id is taken, so no placeholder. The binding waits for a grant.
+			// The id is taken, so no empty credential. The binding waits for a grant.
 			const group: PromotionGapGroup = visibility.canReadProject(destination.project?.id)
 				? 'access-not-grantable'
 				: 'no-access';
@@ -396,12 +396,12 @@ export function computeApplyOutcome(input: ApplyCheckInput): ApplyCheckOutcome {
 
 		// 5. Not on the branch. A confirmed gap, or a branch of an earlier version.
 		// A row without a reason can be an instance credential: an earlier version did not record
-		// that. An instance credential never gets a placeholder, so such a row gets none. The
+		// that. An instance credential never gets an empty credential, so such a row gets none. The
 		// reference stays unresolved until a Promote of this version writes the reason.
 		const confirmedGap = requirement?.reason === 'confirmed-gap';
 		gap('not-on-branch', [], undefined, {
 			detail: confirmedGap ? 'confirmed-gap' : 'legacy-reference',
-			...(confirmedGap ? placeholderExtra() : {}),
+			...(confirmedGap ? emptyCredentialExtra() : {}),
 		});
 	};
 
@@ -499,13 +499,13 @@ export function computeApplyOutcome(input: ApplyCheckInput): ApplyCheckOutcome {
 		});
 	}
 
-	// --- Placeholders: one for each credential id that the destination does not hold.
-	const placeholders: PlaceholderCandidate[] = [];
+	// --- Empty credentials: one for each credential id that the destination does not hold.
+	const emptyCredentials: EmptyCredentialCandidate[] = [];
 	const rank = (projectId: string) => {
 		const index = plan.projectOrder.indexOf(projectId);
 		return index === -1 ? plan.projectOrder.length : index;
 	};
-	for (const [credentialId, entries] of placeholderGaps) {
+	for (const [credentialId, entries] of emptyCredentialGaps) {
 		const projectIds = [...new Set(entries.map(({ reference }) => reference.consumer.projectId))];
 		projectIds.sort((a, b) => rank(a) - rank(b));
 		const [homeProjectId, ...shareWithProjectIds] = projectIds;
@@ -527,14 +527,14 @@ export function computeApplyOutcome(input: ApplyCheckInput): ApplyCheckOutcome {
 		// The confirmation of the gaps never gives the right to create a credential.
 		if (!canCreateIn.has(homeProjectId) || name === undefined || type === undefined) {
 			report.addHardBlock({
-				code: 'placeholder-create-forbidden',
+				code: 'credential-create-forbidden',
 				target: visibility.target(first.reference),
 				consumer: toConsumer(consumer),
 				detail: { missingPermission: 'credential:create' },
 			});
 			continue;
 		}
-		placeholders.push({
+		emptyCredentials.push({
 			credential: { id: credentialId, name, type },
 			projectId: homeProjectId,
 			shareWithProjectIds,
@@ -547,7 +547,7 @@ export function computeApplyOutcome(input: ApplyCheckInput): ApplyCheckOutcome {
 	const actions: ApplyCheckActions = {
 		keptWorkflowIds: [...keptBy.keys()],
 		keptProjects: keptProjects(input, live),
-		placeholders,
+		emptyCredentials,
 	};
 
 	return {

@@ -128,7 +128,7 @@ export class ApplyCheckFactsService {
 				credentialType: credential.type,
 				...(credential.owner ? { project: credential.owner } : {}),
 				usageScope: credential.usageScope,
-				isPlaceholder: credential.isPlaceholder,
+				isEmpty: credential.isEmpty,
 				isManaged: credential.isManaged,
 				isResolvable: credential.isResolvable,
 				canRead: readableCredentials.has(id),

@@ -79,8 +79,7 @@ type CredentialPublicDtoSource = Pick<
 	| 'resolverId'
 	| 'createdAt'
 	| 'updatedAt'
-> &
-	Partial<Pick<CredentialsEntity, 'isPlaceholder'>>;
+>;
 
 function toCredentialPublicDto(
 	credential: CredentialPublicDtoSource,
@@ -95,7 +94,6 @@ function toCredentialPublicDto(
 		isGlobal: credential.isGlobal,
 		isResolvable: credential.isResolvable,
 		resolvableAllowFallback: credential.resolvableAllowFallback ?? false,
-		isPlaceholder: credential.isPlaceholder ?? false,
 		resolverId: credential.resolverId ?? null,
 		createdAt: credential.createdAt.toISOString(),
 		updatedAt: credential.updatedAt.toISOString(),
@@ -343,7 +341,6 @@ export class CredentialsPublicController {
 			updatePayload,
 			{ kind: 'user', user: req.user },
 			decryptedDataForDeps,
-			{ clearPlaceholder: existingCredential.isPlaceholder && body.data !== undefined },
 		);
 
 		if (!updatedCredential) {

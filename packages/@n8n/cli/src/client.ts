@@ -231,12 +231,12 @@ export type ApplyPackageResult =
 			dependencyReport?: PromotionDependencyReport;
 			/** One sentence for each thing that the Apply did, or did not do, for a dependency. */
 			dependencyMessages?: string[];
-			placeholders?: Array<Record<string, unknown>>;
+			createdEmptyCredentials?: Array<Record<string, unknown>>;
 			grants?: Array<Record<string, unknown>>;
 			credentialMoves?: Array<Record<string, unknown>>;
 			keptWorkflows?: Array<Record<string, unknown>>;
 			keptProjects?: Array<Record<string, unknown>>;
-			livePlaceholderWorkflows?: Array<Record<string, unknown>>;
+			liveWorkflowsWithEmptyCredential?: Array<Record<string, unknown>>;
 	  })
 	| (ApplyPackageIdentity & {
 			status: 'blocked';

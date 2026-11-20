@@ -251,7 +251,7 @@ export class ImportOrchestrator {
 		if (
 			plans.some(
 				({ credentialPlan }) =>
-					credentialPlan.stubIds.size > 0 || (credentialPlan.placeholders?.length ?? 0) > 0,
+					credentialPlan.stubIds.size > 0 || (credentialPlan.dependencyStubs?.length ?? 0) > 0,
 			)
 		) {
 			assertPackageImportApiKeyScopes(options.apiKeyScopes, ['credential:create']);
@@ -389,7 +389,7 @@ export class ImportOrchestrator {
 	): Promise<ImportPlan[]> {
 		const plans: ImportPlan[] = [];
 		for (const input of inputs) plans.push(await this.planScope(input, mode));
-		await this.settleCredentialPlaceholders(plans);
+		await this.settleCredentialStubs(plans);
 		if (!plans.some((plan) => plan.agentPlan)) return plans;
 		this.reconcileSkillWrites(plans);
 
@@ -403,14 +403,14 @@ export class ImportOrchestrator {
 		return plans;
 	}
 
-	/** One credential gets one placeholder, also when several scopes of the import use it. */
-	private async settleCredentialPlaceholders(plans: ImportPlan[]): Promise<void> {
-		const restored = await this.credentialImporter.settlePlaceholders(
+	/** One credential gets one stub, also when several scopes of the import use it. */
+	private async settleCredentialStubs(plans: ImportPlan[]): Promise<void> {
+		const restored = await this.credentialImporter.settleDependencyStubs(
 			plans.map(({ input, credentialPlan }) => ({
 				context: input.context,
 				plan: credentialPlan,
 				projectPendingCreation: input.projectPendingCreation ?? false,
-				placeholderHomes: input.credentialRequest.dependencies?.placeholderHomes,
+				stubHomes: input.credentialRequest.dependencies?.stubHomes,
 			})),
 		);
 		for (const { plan: credentialPlan, failures } of restored) {
@@ -845,8 +845,8 @@ function publishingBlockers(
 	const blocked = new Map<string, PublishingBlockedReason>();
 	const credentialBlockers = [
 		['incomplete-credential', credentials.incomplete],
-		// A placeholder holds no values, like a stub: created now, or already on the destination.
-		['stub-credential', [...credentials.stubbed, ...(credentials.placeholderBound ?? [])]],
+		// An empty credential blocks like a stub: created now, or already on the destination.
+		['stub-credential', [...credentials.stubbed, ...(credentials.emptyBound ?? [])]],
 	] as const;
 	for (const [reason, sourceIds] of credentialBlockers) {
 		for (const id of consumersBlockedByCredentials(

@@ -9,7 +9,7 @@ import type {
 	CredentialMissingMode,
 	ImportedCredentialGrant,
 	ImportedCredentialMove,
-	ImportedCredentialPlaceholder,
+	ImportedCredentialStub,
 } from '../../n8n-packages.types';
 import type {
 	PackageCredentialRequirement,
@@ -112,8 +112,8 @@ export interface CredentialImportPlan extends CredentialResolution, CredentialDe
 	forbidden: CredentialMatch[];
 }
 
-/** An empty placeholder that one scope of the import creates for a missing credential. */
-export interface PlannedCredentialPlaceholder {
+/** A stub credential that one scope of the import creates for a missing credential. */
+export interface PlannedCredentialStub {
 	sourceId: string;
 	name: string;
 	type: string;
@@ -135,7 +135,7 @@ export interface PlannedCredentialMove {
 	toProjectId: string;
 	/** The owner on the destination. The caller decides who may see it. */
 	fromProjectId?: string;
-	isPlaceholder: boolean;
+	isEmpty: boolean;
 	/**
 	 * - `allowed`: the import moves the credential, then updates it.
 	 * - `not-allowed`: the user may not move it. The import does not move and does not update it.
@@ -149,26 +149,26 @@ export interface PlannedCredentialMove {
 /**
  * What the plan decided for the references that `credentialDependencies` names. A reference in
  * one of these lists is not in `failures` and does not block. All lists are absent or empty
- * without `credentialDependencies`, except `matchedPlaceholders`.
+ * without `credentialDependencies`, except `matchedEmpty`.
  */
 export interface CredentialDependencyPlan {
-	/** Placeholders that this scope creates. */
-	placeholders?: PlannedCredentialPlaceholder[];
-	/** Source ids that bind to a placeholder that an earlier scope of the same import creates. */
-	placeholderBindings?: string[];
+	/** Stubs that this scope creates. */
+	dependencyStubs?: PlannedCredentialStub[];
+	/** Source ids that bind to a stub that an earlier scope of the same import creates. */
+	stubBindings?: string[];
 	/**
-	 * Source ids named for a placeholder that the user may not create. They are back in
+	 * Source ids named for a stub that the user may not create. They are back in
 	 * `failures` as `not_found`, so they block.
 	 */
-	placeholderForbidden?: string[];
+	stubForbidden?: string[];
 	/** Source ids that the project can use after the confirmed grant, which `apply` gives. */
 	pendingGrants?: string[];
 	/** Source ids that the project can use after the planned move, which makes it the owner. */
 	pendingMoves?: string[];
 	/** Source ids whose reference stays unchanged: the consumer project cannot use the credential. */
 	unresolvedAllowed?: string[];
-	/** Source ids matched to a destination credential that is a placeholder. They block publishing. */
-	matchedPlaceholders?: string[];
+	/** Source ids matched to a destination credential that has no values. They block publishing. */
+	matchedEmpty?: string[];
 	/** Owner changes for the package credentials that this scope owns. */
 	moves?: PlannedCredentialMove[];
 }
@@ -207,10 +207,10 @@ export interface CredentialBindResult {
 	stubbed: string[];
 	seeded: string[];
 	incomplete: string[];
-	/** Placeholders that this scope created. */
-	placeholders?: ImportedCredentialPlaceholder[];
-	/** Source ids that bind to a placeholder: created by this import, or matched on the destination. */
-	placeholderBound?: string[];
+	/** Stubs that this scope created. */
+	createdStubs?: ImportedCredentialStub[];
+	/** Source ids that bind to a credential with no values: a stub of this import, or a match. */
+	emptyBound?: string[];
 	/** Use access that this scope gave, or found in place. */
 	grants?: ImportedCredentialGrant[];
 	/** Source ids whose reference this scope wrote unchanged. */
@@ -229,9 +229,9 @@ export interface CredentialApplyResult extends CredentialBindResult {
  * request. The sets hold credential ids of the package.
  */
 export interface CredentialDependencyRequest {
-	placeholderIds: ReadonlySet<string>;
-	/** The project that creates each placeholder, when the caller decided it. */
-	placeholderHomes?: ReadonlyMap<string, string>;
+	stubSourceIds: ReadonlySet<string>;
+	/** The project that creates each stub, when the caller decided it. */
+	stubHomes?: ReadonlyMap<string, string>;
 	allowedUnresolvedIds: ReadonlySet<string>;
 	/** Credentials with a confirmed grant for the project of this scope. */
 	grantIds: ReadonlySet<string>;

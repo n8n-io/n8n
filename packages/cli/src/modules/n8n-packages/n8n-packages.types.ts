@@ -523,17 +523,17 @@ export type CredentialOwnerPolicy =
  */
 export interface ImportCredentialDependencies {
 	/**
-	 * Source ids that get an empty placeholder credential when no credential on the destination
-	 * has the id. The first project of the import that uses the credential gets the placeholder,
+	 * Source ids that get a stub credential when no credential on the destination
+	 * has the id. The first project of the import that uses the credential gets the stub,
 	 * and the other projects of the import that use it get use access.
 	 */
-	placeholderCredentialIds?: string[];
+	stubCredentialIds?: string[];
 	/**
-	 * The project that creates each placeholder, by source id, when the caller already decided
+	 * The project that creates each stub, by source id, when the caller already decided
 	 * it. The import then does not use its own order of the projects. The project still needs
 	 * the right to create a credential.
 	 */
-	placeholderHomes?: Record<string, string>;
+	stubHomes?: Record<string, string>;
 	/**
 	 * Source ids whose reference the import writes unchanged when the consumer project cannot
 	 * use the credential. Without an entry here, such a reference blocks the import.
@@ -1011,8 +1011,8 @@ export interface ImportCredentialSummary {
 	incomplete: string[];
 	/** Source ids whose matched credential this import wrote under `credentialConflictPolicy=overwrite`. */
 	updated: string[];
-	/** Empty placeholder credentials that this import created. Set only with `credentialDependencies`. */
-	placeholders?: ImportedCredentialPlaceholder[];
+	/** Stub credentials that this import created. Set only with `credentialDependencies`. */
+	createdStubs?: ImportedCredentialStub[];
 	/** Use access that this import gave, or found in place. Set only with `credentialDependencies`. */
 	grants?: ImportedCredentialGrant[];
 	/** Credentials whose owner differs from the package, moved or not. Set only with `credentialDependencies`. */
@@ -1021,11 +1021,11 @@ export interface ImportCredentialSummary {
 	unresolved?: string[];
 }
 
-export interface ImportedCredentialPlaceholder {
+export interface ImportedCredentialStub {
 	id: string;
 	name: string;
 	type: string;
-	/** The project that owns the placeholder. */
+	/** The project that owns the stub. */
 	projectId: string;
 	/** The other projects of the import that got use access. */
 	sharedWithProjectIds: string[];
@@ -1052,7 +1052,7 @@ export interface ImportedCredentialMove {
 	toProjectId: string;
 	/** The owner on the destination before the import. The caller decides who may see it. */
 	fromProjectId?: string;
-	isPlaceholder: boolean;
+	isEmpty: boolean;
 	/** For `excluded`. */
 	reason?: 'managed' | 'resolvable' | 'instance';
 }

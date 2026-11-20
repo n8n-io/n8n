@@ -176,11 +176,6 @@ type UpdateOptions = {
 	instanceCredential?: Pick<CredentialsEntity, 'id' | 'type'>;
 	/** When provided, the returned entity is enriched with `connectedByMe` for this user. */
 	user?: User;
-	/**
-	 * A person saved values in the credential, so it is not a promotion placeholder any more.
-	 * An import update does not set this: it writes only the name and the expression values.
-	 */
-	clearPlaceholder?: boolean;
 };
 
 type CreateCredentialOptions = CreateCredentialDto & {
@@ -240,7 +235,6 @@ type WorkflowCredentialResult = {
 	isManaged: boolean;
 	isGlobal: boolean;
 	isResolvable: boolean;
-	isPlaceholder: boolean;
 	homeProject: SlimProject | null;
 	sharedWithProjects: SlimProject[];
 	currentUserHasAccess: boolean;
@@ -629,10 +623,87 @@ export class CredentialsService {
 		);
 	}
 
-	/** The ids in `ids` that are promotion placeholders. Does not check access. */
-	async findPlaceholderIds(ids: string[]): Promise<Set<string>> {
-		const placeholders = await this.credentialsRepository.findPlaceholdersByIds(ids);
-		return new Set(placeholders.map(({ id }) => id));
+	/**
+	 * Whether the credential has no values. The rule is the rule of "Needs first setup" in the
+	 * editor: the data has no keys, or each value is empty.
+	 *
+	 * A resolvable credential keeps its values for each user and a managed credential gets its
+	 * values from n8n, so they are never empty. A type that has no field to fill is never empty.
+	 * Data that cannot be read is not known to be empty.
+	 */
+	async hasNoValues(
+		credential: Pick<
+			CredentialsEntity,
+			'id' | 'name' | 'type' | 'data' | 'isManaged' | 'isResolvable'
+		>,
+	): Promise<boolean> {
+		if (credential.isResolvable || credential.isManaged) return false;
+		if (!this.typeHasFieldsToFill(credential.type)) return false;
+
+		try {
+			const data = await new Credentials(
+				{ id: credential.id, name: credential.name },
+				credential.type,
+				credential.data,
+			).getData();
+			return Object.values(data).every(isEmptyCredentialValue);
+		} catch (error) {
+			if (error instanceof CredentialDataError) return false;
+			throw error;
+		}
+	}
+
+	/**
+	 * The credentials in `ids` that have no values, see {@link hasNoValues}. Does not check
+	 * access. Each credential is decrypted, so pass only the ids that matter.
+	 */
+	async findWithNoValues(
+		ids: string[],
+	): Promise<Array<Pick<CredentialsEntity, 'id' | 'name' | 'type'>>> {
+		const uniqueIds = [...new Set(ids)];
+		if (uniqueIds.length === 0) return [];
+
+		const credentials = await this.credentialsRepository.find({
+			where: { id: In(uniqueIds) },
+			select: ['id', 'name', 'type', 'data', 'isManaged', 'isResolvable'],
+		});
+		const empty: Array<Pick<CredentialsEntity, 'id' | 'name' | 'type'>> = [];
+		for (const credential of credentials) {
+			if (await this.hasNoValues(credential)) {
+				empty.push({ id: credential.id, name: credential.name, type: credential.type });
+			}
+		}
+		return empty;
+	}
+
+	/** The credentials in `credentials` that have values, see {@link hasNoValues}. */
+	async keepWithValues<
+		T extends Pick<
+			CredentialsEntity,
+			'id' | 'name' | 'type' | 'data' | 'isManaged' | 'isResolvable'
+		>,
+	>(credentials: T[]): Promise<T[]> {
+		const kept: T[] = [];
+		for (const credential of credentials) {
+			if (!(await this.hasNoValues(credential))) kept.push(credential);
+		}
+		return kept;
+	}
+
+	/** The ids in `ids` whose credential has no values, see {@link hasNoValues}. */
+	async findIdsWithNoValues(ids: string[]): Promise<Set<string>> {
+		return new Set((await this.findWithNoValues(ids)).map(({ id }) => id));
+	}
+
+	private typeHasFieldsToFill(type: string): boolean {
+		try {
+			return this.credentialsHelper
+				.getCredentialsProperties(type)
+				.some((property) => property.type !== 'notice');
+		} catch {
+			// An unknown type: the data alone decides.
+			return true;
+		}
 	}
 
 	/** The usage scope of each credential in `ids` that exists. Does not check access. */
@@ -730,7 +801,6 @@ export class CredentialsService {
 			isManaged: c.isManaged,
 			isGlobal: c.isGlobal,
 			isResolvable: c.isResolvable,
-			isPlaceholder: c.isPlaceholder ?? false,
 			homeProject: c.homeProject,
 			sharedWithProjects: c.sharedWithProjects,
 			currentUserHasAccess: true,
@@ -1244,15 +1314,7 @@ export class CredentialsService {
 		if (cleared === null) return null;
 
 		const persist = async (transactionManager: EntityManager, ctx: OperationContext) => {
-			await this.credentialsRepository.updateContent(
-				credentialId,
-				// A placeholder stays a placeholder until the saved data holds a value. An empty
-				// `data` object does not make the credential usable.
-				options?.clearPlaceholder && holdsCredentialValue(decryptedCredentialData)
-					? { ...newCredentialData, isPlaceholder: false }
-					: newCredentialData,
-				ctx,
-			);
+			await this.credentialsRepository.updateContent(credentialId, newCredentialData, ctx);
 
 			if (options?.deleteUserEntries) {
 				await this.connectionStatusProxy.deleteAllUserEntries(credentialId, transactionManager);
@@ -2212,8 +2274,6 @@ export class CredentialsService {
 			projectId: string;
 			data?: ICredentialDataDecryptedObject;
 			description?: string | null;
-			/** Marks the stub as a placeholder of an incomplete promotion Apply. */
-			placeholder?: boolean;
 		},
 		user: User,
 	): Promise<CredentialsEntity> {
@@ -2233,7 +2293,6 @@ export class CredentialsService {
 			...encryptedCredential,
 			isManaged: false,
 			isResolvable: false,
-			isPlaceholder: opts.placeholder === true,
 		});
 
 		try {
@@ -2687,17 +2746,8 @@ export class CredentialsService {
 	}
 }
 
-/**
- * True when the data of a credential holds at least one value that a person entered: a text
- * that is not blank, a number, or a list or an object that holds such a value. A switch alone
- * (true or false) is not a value: every credential form has defaults for those.
- */
-export function holdsCredentialValue(data: unknown): boolean {
-	if (typeof data === 'string') return data.trim() !== '';
-	if (typeof data === 'number') return true;
-	if (Array.isArray(data)) return data.some(holdsCredentialValue);
-	if (typeof data === 'object' && data !== null) {
-		return Object.values(data).some(holdsCredentialValue);
-	}
-	return false;
+/** The editor rule for one value of a credential: nothing, a blank text, or the empty marker. */
+function isEmptyCredentialValue(value: unknown): boolean {
+	if (typeof value === 'string') return value.trim() === '' || value === CREDENTIAL_EMPTY_VALUE;
+	return !value;
 }

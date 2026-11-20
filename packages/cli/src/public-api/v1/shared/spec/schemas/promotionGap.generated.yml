@@ -116,12 +116,12 @@ properties:
       - resourceKey
   ownerRequestSent:
     type: boolean
-  placeholder:
+  createsEmptyCredential:
     type: boolean
   detail:
     type: string
     enum:
-      - placeholder-on-source
+      - empty-on-source
       - sharing-not-licensed
       - confirmed-gap
       - legacy-reference

@@ -62,7 +62,7 @@ export type SourceTargetFact = {
 	/** The project that owns the target. */
 	project?: FactProject;
 	usageScope?: 'project' | 'instance';
-	isPlaceholder?: boolean;
+	isEmpty?: boolean;
 	/** Whether the user can read the target itself. */
 	canRead: boolean;
 	/**
@@ -146,7 +146,7 @@ export type DestinationTargetFact = {
 	archived?: boolean;
 	project?: FactProject;
 	usageScope?: 'project' | 'instance';
-	isPlaceholder?: boolean;
+	isEmpty?: boolean;
 	isManaged?: boolean;
 	isResolvable?: boolean;
 	/** Whether the user can read the target itself. */
@@ -192,12 +192,12 @@ export type ApplyCheckInput = {
 	credentialHomes?: Record<string, string>;
 };
 
-/** A placeholder credential that the Apply must create for a credential gap. */
-export type PlaceholderCandidate = {
+/** An empty credential that the Apply must create for a credential gap. */
+export type EmptyCredentialCandidate = {
 	credential: { id: string; name: string; type: string };
 	/** The first consumer project in the order of the changes view. */
 	projectId: string;
-	/** The other consumer projects of the same Apply. The Apply shares the placeholder with them. */
+	/** The other consumer projects of the same Apply. The Apply shares the empty credential with them. */
 	shareWithProjectIds: string[];
 	gapIds: string[];
 };
@@ -212,7 +212,7 @@ export type ApplyCheckActions = {
 	/** Reconciliation must not delete these projects: a written workflow uses their credential. */
 	keptProjects: Array<{ projectId: string; credentialIds: string[] }>;
 	/** Created only after the user confirmed the gaps. */
-	placeholders: PlaceholderCandidate[];
+	emptyCredentials: EmptyCredentialCandidate[];
 };
 
 export type ApplyCheckOutcome = { report: PromotionDependencyReport; actions: ApplyCheckActions };

@@ -48,6 +48,7 @@ import {
 	PackageDirectoryInventoryReader,
 	type PackageDirectoryInventory,
 } from '@/modules/n8n-packages/io/directory/package-directory-inventory-reader';
+import { CredentialsService } from '@/credentials/credentials.service';
 import { PackageImportConfig } from '@/modules/n8n-packages/n8n-packages.config';
 import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
 import { MANIFEST_FILE } from '@/modules/n8n-packages/spec/constants';
@@ -198,6 +199,7 @@ export class PromotionsService {
 		private readonly dependencyGate: PromotionDependencyGate,
 		private readonly localEntities: LocalPackageEntities,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
+		private readonly credentialsService: CredentialsService,
 		private readonly movesService: PromotionMovesService,
 	) {
 		this.logger = this.logger.scoped('promotions');
@@ -846,12 +848,13 @@ export class PromotionsService {
 			const owned = await this.sharedCredentialsRepository.findOwnedCredentialsByProjects([
 				projectId,
 			]);
-			// A placeholder is never content, and an instance credential is not promoted.
-			const selectable = new Set(
-				owned
-					.filter(({ usageScope, isPlaceholder }) => usageScope !== 'instance' && !isPlaceholder)
-					.map(({ id }) => id),
+			// A credential with no values is never content, and an instance credential is not
+			// promoted. Only the selected credentials are decrypted.
+			const selected = new Set(credentialIds);
+			const promotable = await this.credentialsService.keepWithValues(
+				owned.filter(({ id, usageScope }) => usageScope !== 'instance' && selected.has(id)),
 			);
+			const selectable = new Set(promotable.map(({ id }) => id));
 			const refused = credentialIds.filter((id) => !selectable.has(id));
 			if (refused.length > 0) {
 				throw new BadRequestError(
@@ -1924,7 +1927,7 @@ export class PromotionsService {
 		const inventory = await this.inventoryReader.read(reader);
 		const moves = await this.applyPreviewService.findCrossProjectMoves(inventory, projectId);
 		// The Apply of a project also writes the credentials that the project owns on the branch:
-		// the owner on this instance follows the branch, and a placeholder gets its home.
+		// the owner on this instance follows the branch, and an empty credential gets its home.
 		const credentialIds =
 			requested.credentialIds ?? (await this.heldProjectCredentialIds(inventory, projectId));
 		const credentials = await this.classifySelectedCredentials(inventory, projectId, credentialIds);

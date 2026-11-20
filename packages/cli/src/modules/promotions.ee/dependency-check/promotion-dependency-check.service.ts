@@ -37,7 +37,7 @@ export class PromotionDependencyCheckService {
 
 	/**
 	 * The report of an Apply, with what the operation must do: the workflows and the projects
-	 * that reconciliation keeps, and the placeholders of the credential gaps. The actions can
+	 * that reconciliation keeps, and the empty credentials of the credential gaps. The actions can
 	 * name items that the user cannot access, so only the report goes to a client.
 	 */
 	async checkApplyWithActions(args: ApplyCheckArgs): Promise<ApplyCheckOutcome> {

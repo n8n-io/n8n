@@ -11,6 +11,7 @@ import { Service } from '@n8n/di';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
 import type { INode, IWorkflowSettings } from 'n8n-workflow';
 
+import { CredentialsService } from '@/credentials/credentials.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { ProjectService } from '@/services/project.service.ee';
 
@@ -25,7 +26,7 @@ export type CredentialLookup = {
 	type: string;
 	usageScope: 'project' | 'instance';
 	isGlobal: boolean;
-	isPlaceholder: boolean;
+	isEmpty: boolean;
 	isManaged: boolean;
 	isResolvable: boolean;
 	owner?: FactProject;
@@ -62,6 +63,7 @@ export class TargetLookupService {
 		private readonly projectRepository: ProjectRepository,
 		private readonly projectService: ProjectService,
 		private readonly access: PromotionAccessService,
+		private readonly credentialsService: CredentialsService,
 	) {}
 
 	async credentials(ids: string[]): Promise<Map<string, CredentialLookup>> {
@@ -71,6 +73,10 @@ export class TargetLookupService {
 			this.credentialsRepository.getManyByIds(ids, { withSharings: true }),
 			this.credentialsRepository.findNonProjectCredentialsByIds(ids),
 		]);
+		// One decrypt for each project credential that the operation references or writes.
+		const withValues = new Set(
+			(await this.credentialsService.keepWithValues(projectScoped)).map(({ id }) => id),
+		);
 		for (const credential of projectScoped) {
 			const shared = credential.shared ?? [];
 			const owner = shared.find(({ role }) => role === 'credential:owner')?.project;
@@ -80,7 +86,7 @@ export class TargetLookupService {
 				type: credential.type,
 				usageScope: 'project',
 				isGlobal: credential.isGlobal,
-				isPlaceholder: credential.isPlaceholder,
+				isEmpty: !withValues.has(credential.id),
 				isManaged: credential.isManaged,
 				isResolvable: credential.isResolvable,
 				...(owner ? { owner: toFactProject(owner) } : {}),
@@ -94,7 +100,7 @@ export class TargetLookupService {
 				type: credential.type,
 				usageScope: 'instance',
 				isGlobal: false,
-				isPlaceholder: false,
+				isEmpty: false,
 				isManaged: credential.isManaged,
 				isResolvable: credential.isResolvable,
 				projectIds: [],

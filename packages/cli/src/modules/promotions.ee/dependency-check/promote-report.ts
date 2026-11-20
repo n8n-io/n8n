@@ -37,9 +37,8 @@ export function computePromoteReport(input: PromoteCheckInput): PromotionDepende
 	const deleted = new Set(plan.deletedWorkflows.map(({ id }) => id));
 
 	const isWrittenCredential = (id: string) =>
-		// A placeholder is never content, so a Promote never writes it.
-		id in plan.writtenCredentials &&
-		sourceTargets[targetKey('credential', id)]?.isPlaceholder !== true;
+		// An empty credential is never content, so a Promote never writes it.
+		id in plan.writtenCredentials && sourceTargets[targetKey('credential', id)]?.isEmpty !== true;
 
 	/** The project folders that hold the credential after the Promote. A write moves the file. */
 	const foldersAfter = (id: string): string[] =>
@@ -147,8 +146,8 @@ export function computePromoteReport(input: PromoteCheckInput): PromotionDepende
 			gap('outside-environment', ['add-project'], state);
 		} else if (visibility.canOperateProject(project.id) && source?.canRead) {
 			const group = project.id === consumer.projectId ? 'same-project' : 'other-project';
-			if (source.isPlaceholder) {
-				gap(group, [], { ...state, detail: 'placeholder-on-source' });
+			if (source.isEmpty) {
+				gap(group, [], { ...state, detail: 'empty-on-source' });
 			} else {
 				gap(group, ['include', ...reviewExit], {
 					...state,
