@@ -115,6 +115,9 @@ packages/@n8n/db/package.json
   s_ee09121db36145::t_0d1df4274ccfdc 485-507
   s_ee09121db36145::t_0561ed5bbac80e 184,484
   s_ee09121db36145::t_62f5684a76e667 185-194
+  s_ee09121db36145::t_85b75f90af29d8 454
+  s_ee09121db36145::t_50ec0b87ac8937 468,471
+  s_ee09121db36145::t_ef7c0dc72549af 450-453,455-467,469-470,472-483,508-535
 ---
 {
   "schema_version": "authorship/3.0.0",
