@@ -39,10 +39,17 @@ const startingWidth = clampWidth(width.value);
 const resetWidth = computed(() => clampWidth(props.defaultWidth ?? startingWidth));
 const displayedWidth = ref(startingWidth);
 
+let clampedSource: string | undefined;
+
 function assignWidth(value: number): number {
 	const next = clampWidth(value);
 	if (displayedWidth.value !== next) displayedWidth.value = next;
-	if (width.value !== next) width.value = next;
+	const source = `${value}:${props.minWidth}:${props.maxWidth}`;
+	if (value !== next && clampedSource !== source) {
+		clampedSource = source;
+		width.value = next;
+	}
+	if (value === next) clampedSource = undefined;
 	return next;
 }
 
