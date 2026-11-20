@@ -20,6 +20,18 @@ The module has no licence flag. Its `init` registers the fold step that counts r
 `execution_limit_usage`, and that step must run on every instance. Gate each licensed part
 (a controller, the limit check) with `@Licensed` or `LicenseState`.
 
+## Usage reads
+
+Read usage through `ExecutionUsageService` only, so each reader sees the same count.
+
+- `getCachedUsage(scope)` reads memory. Use it at an execution start. `null` means that
+  the usage is not known, for example for a scope that has no limit.
+- `getUsage({ scope, period, at })` reads the database. Use it for a report.
+
+A period is a sum of UTC days. A week starts on Monday. Main and webhook processes hold
+the usage in memory, and a timer reloads it every 5 seconds. The count can be up to
+about 10 seconds old.
+
 ## Import rules
 
 - Do not import from `packages/cli` or from the `n8n` package.
