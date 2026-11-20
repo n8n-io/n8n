@@ -1667,7 +1667,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			const reviewItem = await findByRole('menuitemcheckbox', { name: /Review required/ });
 			expect(reviewItem).toHaveAttribute('aria-checked', 'true');
 			expect(reviewItem).toHaveAttribute('aria-disabled', 'true');
-			expect(getByText('Required by this project (project opt-in).')).toBeInTheDocument();
+			expect(getByText('Required by this project.')).toBeInTheDocument();
 		});
 
 		it('refetches the requirement on Publish and opens the submit dialog when the project now requires approval', async () => {
@@ -1691,6 +1691,28 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 
 			expect(await findByRole('dialog', { name: 'Submit for review' })).toBeInTheDocument();
 			expect(openModalSpy).not.toHaveBeenCalled();
+		});
+
+		it('ignores a second Publish click while the review status loads', async () => {
+			setWorkflowReviewGates({ alwaysRequired: false });
+			setHomeProjectType('team');
+			setupEnabledPublishButton();
+
+			const { getByTestId, findByRole } = renderComponent();
+			const publishButton = getByTestId('workflow-open-publish-modal-button');
+			await vi.waitFor(() => expect(fetchWorkflowReviewRequests).toHaveBeenCalled());
+			vi.mocked(fetchWorkflowReviewRequests).mockClear();
+
+			let resolveFetch!: (value: Awaited<ReturnType<typeof fetchWorkflowReviewRequests>>) => void;
+			vi.mocked(fetchWorkflowReviewRequests).mockReturnValue(
+				new Promise((resolve) => (resolveFetch = resolve)),
+			);
+			await userEvent.click(publishButton);
+			await userEvent.click(publishButton);
+			resolveFetch({ count: 0, data: [], reviewRequiredBy: 'project' });
+
+			expect(await findByRole('dialog', { name: 'Submit for review' })).toBeInTheDocument();
+			expect(fetchWorkflowReviewRequests).toHaveBeenCalledTimes(1);
 		});
 
 		it.each([

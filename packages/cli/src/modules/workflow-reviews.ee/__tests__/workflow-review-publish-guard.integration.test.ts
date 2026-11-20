@@ -317,6 +317,26 @@ describe.each(['instance', 'project'] as const)(
 			expect(await publishedVersionOf(workflow.id)).toBe(liveVersionId);
 		});
 
+		test('rejects a version approved in another project', async () => {
+			const { workflow, liveVersionId, newVersionId } = await createLiveTeamWorkflow();
+			const otherProject = await createTeamProject('Other project', member);
+			await seedReview({
+				projectId: otherProject.id,
+				workflowId: workflow.id,
+				versionId: newVersionId,
+				author: member,
+				state: 'closed',
+				decision: 'approved',
+			});
+			await requireApprovalAtLevel();
+
+			await ownerAgent
+				.post(`/workflows/${workflow.id}/activate`)
+				.send({ versionId: newVersionId })
+				.expect(409);
+			expect(await publishedVersionOf(workflow.id)).toBe(liveVersionId);
+		});
+
 		test('publishes a version when its review is approved', async () => {
 			const { workflow, newVersionId } = await createLiveTeamWorkflow();
 			await requireApprovalAtLevel();

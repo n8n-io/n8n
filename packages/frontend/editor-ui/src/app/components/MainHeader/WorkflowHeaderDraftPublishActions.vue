@@ -178,6 +178,7 @@ const isReviewUpdateBlocked = computed(
 );
 
 const autoSaveForPublish = ref(false);
+const isCheckingReviewStatus = ref(false);
 const isSaving = ref(false);
 const showPublishChoiceDialog = ref(false);
 const showSubmitForReviewDialog = ref(false);
@@ -434,10 +435,16 @@ const onPublishButtonClick = async () => {
 		return;
 	}
 
+	if (isCheckingReviewStatus.value) return;
 	if (!(await ensureWorkflowSaved())) return;
 	// Saving a new workflow changes the ID, so capture it after the save.
 	const workflowId = props.id;
-	await refetchReviewStatus();
+	isCheckingReviewStatus.value = true;
+	try {
+		await refetchReviewStatus();
+	} finally {
+		isCheckingReviewStatus.value = false;
+	}
 	// The user may have opened another workflow while the requests ran.
 	if (props.id !== workflowId) return;
 
@@ -923,7 +930,7 @@ onBeforeUnmount(() => {
 					</template>
 					<N8nButton
 						:class="$style.groupButtonLeft"
-						:loading="autoSaveForPublish"
+						:loading="autoSaveForPublish || isCheckingReviewStatus"
 						:disabled="!publishButtonConfig.enabled || shouldDisablePublishButton"
 						variant="ghost"
 						data-test-id="workflow-open-publish-modal-button"
