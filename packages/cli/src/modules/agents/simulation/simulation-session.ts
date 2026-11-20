@@ -85,6 +85,7 @@ interface ActiveToolCall {
 	toolCallId: string;
 	toolName: string;
 	sources: ReplySource[];
+	evidence: NonNullable<ToolCallSimulation['evidence']>;
 	blocked?: ToolCallSimulation;
 }
 
@@ -177,6 +178,7 @@ export class SimulationSession {
 			toolCallId,
 			toolName: tool.name,
 			sources: [],
+			evidence: [],
 		};
 		let output: unknown;
 		try {
@@ -190,7 +192,7 @@ export class SimulationSession {
 				this.decisions.set(toolCallId, active.blocked);
 				throw new SimulationBlockedError(active.blocked);
 			}
-			const decision = foldSources(active.sources);
+			const decision = foldSources(active.sources, active.evidence);
 			if (decision) this.decisions.set(toolCallId, decision);
 			throw error;
 		}
@@ -199,7 +201,7 @@ export class SimulationSession {
 			this.decisions.set(toolCallId, active.blocked);
 			throw new SimulationBlockedError(active.blocked);
 		}
-		const decision = foldSources(active.sources);
+		const decision = foldSources(active.sources, active.evidence);
 		if (decision) this.decisions.set(toolCallId, decision);
 		return output;
 	};
@@ -267,6 +269,15 @@ export class SimulationSession {
 		}
 		if (reply.outcome === 'served') {
 			active?.sources.push(reply.source);
+			for (const label of ['fixture_seed', 'gym_read', 'gym_only_write'] as const) {
+				if (
+					active &&
+					Array.isArray(reply.evidence) &&
+					reply.evidence.includes(label) &&
+					!active.evidence.includes(label)
+				)
+					active.evidence.push(label);
+			}
 			return reply;
 		}
 		const decision =
@@ -352,10 +363,17 @@ function classifyTool(tool: BuiltTool): ToolClassification {
 	return { type: 'simulated', key: `unknown:${tool.name}`, kind: 'other' };
 }
 
-export function foldSources(sources: ReplySource[]): ToolCallSimulation | undefined {
+export function foldSources(
+	sources: ReplySource[],
+	evidence: ToolCallSimulation['evidence'] = [],
+): ToolCallSimulation | undefined {
 	if (sources.length === 0) return undefined;
 	if (sources.includes('made_up')) return { route: 'simulated_made_up', reason: 'invented_by_llm' };
-	return { route: 'simulated', reason: 'served_from_world' };
+	return {
+		route: 'simulated',
+		reason: 'served_from_world',
+		...(evidence.length ? { evidence } : {}),
+	};
 }
 
 function blocked(reason: ToolCallReason, detail?: string): ToolCallSimulation {

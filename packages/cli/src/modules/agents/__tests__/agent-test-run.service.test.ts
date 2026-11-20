@@ -7,16 +7,20 @@ import { APPROVAL_RESUME_SCHEMA } from '@n8n/agents/tool';
 import { zodToJsonSchema } from '@n8n/ai-utilities/json-schema';
 import type { User } from '@n8n/db';
 import { ForbiddenError } from '@n8n/errors';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { mock } from 'vitest-mock-extended';
 
 import { userHasScopes } from '@/permissions.ee/check-access';
 
 import type { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
 import type { AgentExecutionService } from '../agent-execution.service';
+import { emitChunkEvents } from '../agent-sse-stream';
 import { AgentTestRunService } from '../agent-test-run.service';
 import type { AgentValidationService } from '../agent-validation.service';
 import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
-import type { SimulationSession } from '../simulation/simulation-session';
+import { SimulationSession } from '../simulation/simulation-session';
 import type { SimulationSessionService } from '../simulation/simulation-session.service';
 
 vi.mock('@/permissions.ee/check-access', () => ({
@@ -668,6 +672,78 @@ describe('AgentTestRunService', () => {
 					],
 				},
 			});
+		});
+
+		it('keeps the same fixture evidence in the stream and draft result', async () => {
+			const { service, agentExecutionOrchestratorService, simulationSessions } = makeService();
+			const session = new SimulationSession({
+				testChatId: 'chat',
+				capabilities: [{ toolName: 'linear', kind: 'mcp', testability: 'simulated' }],
+				world: {
+					worldId: 'world',
+					backend: 'shared-simulation-layer',
+					handleRequest: async () => ({
+						outcome: 'served',
+						source: 'world_state',
+						status: 200,
+						evidence: ['fixture_seed', 'gym_only_write'],
+						body: { title: 'fixture-body-canary' },
+					}),
+				},
+			});
+			const decision = {
+				route: 'simulated',
+				reason: 'served_from_world',
+				evidence: ['fixture_seed', 'gym_only_write'],
+			};
+			const tool = {
+				name: 'save_issue',
+				description: '',
+				mcpTool: true,
+				mcpServerName: 'linear',
+				handler: vi.fn(),
+			};
+			await session.interceptor({ tool, toolCallId: 'tc-1', input: {} }, async () => {
+				await session.instrumentation().mcpFetch!('linear')('https://fixture.invalid/path-canary', {
+					method: 'POST',
+				});
+			});
+			simulationSessions.openForDraftRun.mockResolvedValue(session);
+			const onChunk = vi.fn();
+			const result = await runWithStream(
+				service,
+				agentExecutionOrchestratorService,
+				[{ ...toolResult('tc-1'), toolName: tool.name } as StreamChunk],
+				onChunk,
+			);
+			expect(onChunk).toHaveBeenCalledWith({
+				...toolResult('tc-1'),
+				toolName: tool.name,
+				simulation: decision,
+			});
+			const send = vi.fn();
+			emitChunkEvents(onChunk.mock.calls[0][0], send);
+			expect(send).toHaveBeenCalledWith(
+				expect.objectContaining({ type: 'tool-result', simulation: decision }),
+			);
+			expect(result.simulation?.toolCalls).toEqual([
+				{ toolCallId: 'tc-1', toolName: tool.name, ...decision },
+			]);
+			const dir = await mkdtemp(join(tmpdir(), 'draft-result-'));
+			try {
+				const path = join(dir, 'result.json');
+				await writeFile(path, JSON.stringify(result));
+				const stored = await readFile(path, 'utf8');
+				expect(JSON.parse(stored).simulation.toolCalls[0]).toEqual({
+					toolCallId: 'tc-1',
+					toolName: tool.name,
+					...send.mock.calls[0][0].simulation,
+				});
+				expect(stored).not.toContain('canary');
+				expect(JSON.stringify(send.mock.calls)).not.toContain('canary');
+			} finally {
+				await rm(dir, { recursive: true, force: true });
+			}
 		});
 
 		it('resolves the session for a resumed draft run too', async () => {

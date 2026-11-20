@@ -78,11 +78,12 @@ it.skipIf(!process.env.GYM_BASE_URL)('updates only the issue in this fixture wor
 		);
 	const args = { id: 'FIN-412' };
 	const before = await call(first, 'get_issue', args);
-	expect(before.outcome).toBe('served');
+	expect(before).toMatchObject({ outcome: 'served', evidence: ['fixture_seed', 'gym_read'] });
 	expect(JSON.stringify(before)).toContain('33333333-3333-4333-8333-333333333333');
-	expect((await call(first, 'save_issue', { ...args, title: 'Updated locally' })).outcome).toBe(
-		'served',
-	);
+	expect(await call(first, 'save_issue', { ...args, title: 'Updated locally' })).toMatchObject({
+		outcome: 'served',
+		evidence: ['fixture_seed', 'gym_only_write'],
+	});
 	expect(JSON.stringify(await call(first, 'get_issue', args))).toContain('Updated locally');
 	for (const overrides of [{ testChatId: 'fresh' }, { ownerId: 'other' }, {}]) {
 		const next = await backend.openWorld({ ...input, ...overrides });

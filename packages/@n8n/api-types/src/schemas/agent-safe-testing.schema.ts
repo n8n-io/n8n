@@ -52,9 +52,14 @@ const REASONS_BY_ROUTE: Record<ToolCallRoute, readonly ToolCallReason[]> = {
 export const toolCallSimulationSchema = z
 	.object({
 		route: toolCallRouteSchema,
+		evidence: z.array(z.enum(['fixture_seed', 'gym_read', 'gym_only_write'])).optional(),
 		reason: toolCallReasonSchema,
 		/** Short detail that is safe to show to the user. */
 		detail: z.string().optional(),
+	})
+	.refine(({ route, evidence }) => !evidence || route === 'simulated', {
+		message: 'Fixture evidence requires a simulated route',
+		path: ['evidence'],
 	})
 	.refine(({ route, reason }) => REASONS_BY_ROUTE[route].includes(reason), {
 		message: 'The reason does not fit the route',

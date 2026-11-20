@@ -68,9 +68,11 @@ const rpc = (name: string, args: unknown) => ({
 	method: 'tools/call',
 	params: { name, arguments: args },
 });
-const served = (body: unknown, status = 200): SimulatedReply => ({
+type ServedReply = Extract<SimulatedReply, { outcome: 'served' }>;
+const served = (body: unknown, status = 200, evidence?: ServedReply['evidence']): ServedReply => ({
 	outcome: 'served',
 	source: 'world_state',
+	...(evidence && { evidence }),
 	status,
 	body,
 });
@@ -147,7 +149,8 @@ export class LinearGymBackend implements SimulationBackend {
 					const { method, id: callId, params } = req.body;
 					if (method === 'notifications/initialized') return served(null, 204);
 					if (typeof callId !== 'string' && typeof callId !== 'number') return unsupported;
-					const answer = (value: unknown) => served({ jsonrpc: '2.0', id: callId, result: value });
+					const answer = (value: unknown, evidence?: ServedReply['evidence']) =>
+						served({ jsonrpc: '2.0', id: callId, result: value }, 200, evidence);
 					if (method === 'initialize')
 						return answer({
 							protocolVersion: '2025-06-18',
@@ -192,7 +195,10 @@ export class LinearGymBackend implements SimulationBackend {
 								result: content.extend({ isError: z.literal(false).optional() }),
 							})
 							.parse(response);
-						return answer(parsed.result);
+						return answer(parsed.result, [
+							'fixture_seed',
+							params.name === 'get_issue' ? 'gym_read' : 'gym_only_write',
+						]);
 					} catch {
 						return { outcome: 'unavailable' };
 					}

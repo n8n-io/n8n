@@ -131,6 +131,29 @@ describe('SimulationSession', () => {
 		});
 	});
 
+	it('copies only known evidence labels into the decision', async () => {
+		const session = new SimulationSession({
+			testChatId: 't',
+			world: makeWorld({
+				outcome: 'served',
+				source: 'world_state',
+				status: 200,
+				body: { title: 'body-canary' },
+				evidence: ['fixture_seed', 'evidence-canary', 'gym_read'] as unknown as [
+					'fixture_seed',
+					'gym_read',
+				],
+			}),
+			capabilities: [slackCapability],
+		});
+		await runTool(session, slackTool(session).tool);
+		expect(session.takeDecision('tc-1')).toEqual({
+			route: 'simulated',
+			reason: 'served_from_world',
+			evidence: ['fixture_seed', 'gym_read'],
+		});
+	});
+
 	it('blocks the call when the simulator does not support the request, even if the tool swallows the error', async () => {
 		const world = makeWorld({
 			outcome: 'unsupported',

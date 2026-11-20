@@ -3,6 +3,7 @@ import { toolCallSimulationSchema, toolTestCapabilitySchema } from '../agent-saf
 describe('toolCallSimulationSchema', () => {
 	it.each([
 		{ route: 'simulated', reason: 'served_from_world' },
+		{ route: 'simulated', reason: 'served_from_world', evidence: ['fixture_seed', 'gym_read'] },
 		{ route: 'simulated_made_up', reason: 'invented_by_llm' },
 		{ route: 'blocked', reason: 'not_simulatable', detail: 'Custom code' },
 	])('accepts $route with $reason', (simulation) => {
@@ -14,6 +15,8 @@ describe('toolCallSimulationSchema', () => {
 		{ route: 'simulated', reason: 'not_simulatable' },
 		{ route: 'simulated_made_up', reason: 'served_from_world' },
 		{ route: 'real_read', reason: 'real_read_allowed' },
+		{ route: 'simulated', reason: 'served_from_world', evidence: ['real_read'] },
+		{ route: 'blocked', reason: 'not_simulatable', evidence: ['gym_read'] },
 	])('rejects $route with $reason', (simulation) => {
 		expect(toolCallSimulationSchema.safeParse(simulation).success).toBe(false);
 	});
