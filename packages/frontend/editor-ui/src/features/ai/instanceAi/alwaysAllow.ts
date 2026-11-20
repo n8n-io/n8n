@@ -19,7 +19,7 @@ import {
 } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 
-/** Workflow tool actions whose approval the backend stores as a per-workflow grant. */
+/** Workflow tool actions whose approval the backend stores as a thread grant. */
 const WORKFLOW_GRANT_ACTIONS = new Set([
 	'delete',
 	'unarchive',
@@ -104,7 +104,8 @@ export function buildAlwaysAllowKey(
 		return buildUpdateWorkflowSessionGrantKey(workflowId);
 	}
 	// Other gated workflow actions, such as publish, are per-workflow too, matching the
-	// backend `workflows:<action>:<id>` thread grant. Without an ID, fail closed.
+	// backend `workflows:<action>:<id>` thread grant. Archive and unpublish cover every
+	// workflow of the thread. Without an ID, fail closed.
 	const grantAction = workflowGrantAction(toolName, action);
 	if (grantAction) {
 		if (!workflowId) return null;
