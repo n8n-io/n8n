@@ -32,6 +32,12 @@ const CHAT_TIMEOUT_MS = Number(process.env.CHAT_TIMEOUT_MS ?? 600_000);
 /** Reuse the indexes that an earlier run built; they live in the instance until it restarts. */
 const SKIP_INDEX_REBUILD =
 	(process.env.HARNESS_SKIP_INDEX_REBUILD ?? 'false').toLowerCase() === 'true';
+/**
+ * Ask the questions without their "Cite the page." sentence. The citation column
+ * then measures whether the agent cites unprompted, as it should in the product.
+ */
+const PLAIN_QUESTIONS = (process.env.HARNESS_PLAIN_QUESTIONS ?? 'false').toLowerCase() === 'true';
+const CITE_SENTENCE = /\s*Cite the [a-z]+\.$/;
 
 function fail(message) {
 	console.error(message);
@@ -630,9 +636,13 @@ async function run(client, scaffold, items, { agentKeys, repeat }) {
 	if (!Number.isInteger(repeat) || repeat < 1) fail(`repeat must be a whole number, got ${repeat}`);
 	const allQuestions = await readJson(path.join(FIXTURES, 'questions.json'));
 	const onlyIds = process.env.HARNESS_QUESTIONS?.split(',').filter(Boolean);
-	const questions = onlyIds
-		? allQuestions.filter((question) => onlyIds.includes(question.id))
-		: allQuestions;
+	const questions = (
+		onlyIds ? allQuestions.filter((question) => onlyIds.includes(question.id)) : allQuestions
+	).map((question) =>
+		PLAIN_QUESTIONS
+			? { ...question, question: question.question.replace(CITE_SENTENCE, ''), plain: true }
+			: question,
+	);
 	const seedIds = collectSeedIds(items);
 	const forbiddenIds = forbiddenIdsOf(items);
 	const runs = [];
@@ -643,7 +653,11 @@ async function run(client, scaffold, items, { agentKeys, repeat }) {
 	const save = async (partial) =>
 		await writeFile(
 			`${base}.json`,
-			JSON.stringify({ model: MODEL, agentKeys, repeat, partial, runs }, null, '\t'),
+			JSON.stringify(
+				{ model: MODEL, agentKeys, repeat, plainQuestions: PLAIN_QUESTIONS, partial, runs },
+				null,
+				'\t',
+			),
 		);
 	for (const agentKey of agentKeys) {
 		const config = buildAgentConfig(agentKey, scaffold, items);
