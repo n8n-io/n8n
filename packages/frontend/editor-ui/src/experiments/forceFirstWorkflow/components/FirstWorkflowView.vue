@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { N8nButton, N8nHeading, N8nText } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
@@ -12,11 +12,14 @@ import {
 	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useCredentialOAuth } from '@/features/credentials/composables/useCredentialOAuth';
+import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
 import type { ForceFirstWorkflowStep } from '../constants';
 import {
-	DESTINATION_OPTIONS,
 	FORMAT_OPTIONS,
 	PROVIDER_OPTIONS,
 	QUESTION_IDS,
@@ -29,14 +32,17 @@ import {
 	buildDailyInboxDigestWorkflow,
 	DEFAULT_DIGEST_OPTIONS,
 	type DailyInboxDigestOptions,
+	MAILBOX_CREDENTIAL_TYPE,
+	MAILBOX_NODE_TYPE,
 	type DigestNodeNames,
 } from '../workflows/dailyInboxDigest';
 import FirstWorkflowCanvas from './FirstWorkflowCanvas.vue';
+import FirstWorkflowConnectCard from './FirstWorkflowConnectCard.vue';
 import FirstWorkflowMessage from './FirstWorkflowMessage.vue';
 import FirstWorkflowQuestionCard from './FirstWorkflowQuestionCard.vue';
 import FirstWorkflowTopBar from './FirstWorkflowTopBar.vue';
 
-type FlowStage = 'questions' | 'test' | 'live';
+type FlowStage = 'questions' | 'connect' | 'test' | 'live';
 
 interface ChatMessage {
 	id: number;
@@ -49,7 +55,6 @@ const TELEMETRY_STEP_BY_QUESTION: Record<QuestionId, ForceFirstWorkflowStep> = {
 	format: 'summary',
 	schedule: 'schedule',
 	provider: 'email',
-	destination: 'destination',
 };
 
 const i18n = useI18n();
@@ -57,6 +62,9 @@ const router = useRouter();
 const toast = useToast();
 const usersStore = useUsersStore();
 const workflowsStore = useWorkflowsStore();
+const uiStore = useUIStore();
+const credentialsStore = useCredentialsStore();
+const credentialOAuth = useCredentialOAuth();
 const forceFirstWorkflowStore = useForceFirstWorkflowStore();
 
 const stage = ref<FlowStage>('questions');
@@ -84,11 +92,7 @@ const nodeNames = computed<DigestNodeNames>(() => {
 		),
 		read: i18n.baseText('experiments.forceFirstWorkflow.node.read'),
 		build: i18n.baseText(`experiments.forceFirstWorkflow.node.build.${options.format}`),
-		send: i18n.baseText(
-			options.destination === 'slack'
-				? 'experiments.forceFirstWorkflow.node.send.slack'
-				: 'experiments.forceFirstWorkflow.node.send.email',
-		),
+		send: i18n.baseText('experiments.forceFirstWorkflow.node.send.email'),
 	};
 });
 
@@ -154,14 +158,16 @@ async function createWorkflow() {
 // The telemetry step names what the user was doing, so a skip after a good test counts as `publish`.
 const telemetryStep = computed<ForceFirstWorkflowStep>(() => {
 	if (stage.value === 'questions') return TELEMETRY_STEP_BY_QUESTION[currentQuestion.value];
+	if (stage.value === 'connect') return 'connect';
 	if (stage.value === 'test') return isTestSuccessful.value ? 'publish' : 'test';
 	return 'publish';
 });
 
 const stepIndex = computed(() => {
 	if (stage.value === 'questions') return 0;
-	if (stage.value === 'test') return isTestSuccessful.value ? 2 : 1;
-	return 3;
+	if (stage.value === 'connect') return 1;
+	if (stage.value === 'test') return isTestSuccessful.value ? 3 : 2;
+	return 4;
 });
 
 async function leave() {
@@ -226,9 +232,6 @@ function applyAnswer(answer: QuestionAnswer) {
 		case 'provider':
 			digestOptions.value.provider = answer.value;
 			return;
-		case 'destination':
-			digestOptions.value.destination = answer.value;
-			return;
 	}
 }
 
@@ -286,17 +289,6 @@ function transcriptFor(answer: QuestionAnswer): Array<Pick<ChatMessage, 'role' |
 				},
 			];
 		}
-		case 'destination':
-			return [
-				{
-					role: 'user',
-					text: i18n.baseText(
-						answer.value === 'slack'
-							? 'experiments.forceFirstWorkflow.destination.answerSlack'
-							: 'experiments.forceFirstWorkflow.destination.answerEmail',
-					),
-				},
-			];
 	}
 }
 
@@ -344,9 +336,94 @@ async function onAnswer(answer: QuestionAnswer) {
 	if (!isLastQuestion) return;
 
 	say('assistant', i18n.baseText('experiments.forceFirstWorkflow.chat.built'));
+	say(
+		'assistant',
+		i18n.baseText('experiments.forceFirstWorkflow.connect.prompt', {
+			interpolate: { provider: providerLabel() },
+		}),
+	);
+	stage.value = 'connect';
+}
+
+const providerLabel = () => labelOf(PROVIDER_OPTIONS, digestOptions.value.provider);
+
+function startTesting() {
 	say('assistant', i18n.baseText('experiments.forceFirstWorkflow.chat.ready'));
 	stage.value = 'test';
 }
+
+const isConnecting = ref(false);
+const hasConnectFailed = ref(false);
+let stopWatchingCredentials: (() => void) | undefined;
+
+async function onConnected(credential: Pick<ICredentialsResponse, 'id' | 'name'>) {
+	digestOptions.value.mailboxCredential = { id: credential.id, name: credential.name };
+	forceFirstWorkflowStore.trackStepCompleted('connect', true);
+	say(
+		'assistant',
+		i18n.baseText('experiments.forceFirstWorkflow.connect.connected', {
+			interpolate: { provider: providerLabel() },
+		}),
+	);
+	await syncCanvas();
+	startTesting();
+}
+
+/** The sign-in popup has to open from the click, so nothing awaits before the OAuth flow starts. */
+async function connectMailbox() {
+	const provider = digestOptions.value.provider;
+	const credentialType = MAILBOX_CREDENTIAL_TYPE[provider];
+	hasConnectFailed.value = false;
+	stopWatchingCredentials?.();
+
+	// Without a managed OAuth app the user sets one up in the standard credential dialog. The
+	// credential they save there is the one the workflow gets.
+	if (!credentialOAuth.canOAuthCredentialQuickConnect(credentialType)) {
+		const knownIds = new Set(
+			credentialsStore.getCredentialsByType(credentialType).map((credential) => credential.id),
+		);
+		stopWatchingCredentials = watch(
+			() => credentialsStore.getCredentialsByType(credentialType),
+			async (credentials) => {
+				const created = credentials.find((credential) => !knownIds.has(credential.id));
+				if (!created) return;
+
+				stopWatchingCredentials?.();
+				await onConnected(created);
+			},
+		);
+		uiStore.openNewCredential(credentialType);
+		return;
+	}
+
+	isConnecting.value = true;
+	const credential = await credentialOAuth.createAndAuthorize(
+		credentialType,
+		MAILBOX_NODE_TYPE[provider],
+		{ workflowId: workflowId.value },
+	);
+	isConnecting.value = false;
+
+	if (!credential) {
+		hasConnectFailed.value = true;
+		return;
+	}
+	await onConnected(credential);
+}
+
+function skipConnect() {
+	stopWatchingCredentials?.();
+	forceFirstWorkflowStore.trackStepCompleted('connect', false);
+	say(
+		'assistant',
+		i18n.baseText('experiments.forceFirstWorkflow.connect.skipped', {
+			interpolate: { provider: providerLabel() },
+		}),
+	);
+	startTesting();
+}
+
+onBeforeUnmount(() => stopWatchingCredentials?.());
 
 function runTest() {
 	isTesting.value = true;
@@ -422,6 +499,14 @@ async function onPublished() {
 							@answer="onAnswer"
 							@back="goBack"
 							@forward="goForward"
+						/>
+						<FirstWorkflowConnectCard
+							v-else-if="stage === 'connect'"
+							:provider="digestOptions.provider"
+							:is-connecting="isConnecting"
+							:has-failed="hasConnectFailed"
+							@connect="connectMailbox"
+							@skip="skipConnect"
 						/>
 						<N8nButton
 							v-else-if="stage === 'test'"

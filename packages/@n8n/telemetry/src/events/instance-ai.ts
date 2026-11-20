@@ -75,7 +75,7 @@ const forceFirstWorkflowStep = z.enum([
 	'summary',
 	'schedule',
 	'email',
-	'destination',
+	'connect',
 	'test',
 	'publish',
 ]);
@@ -357,7 +357,7 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 	FORCE_FIRST_WORKFLOW_STEP_COMPLETED: {
 		name: 'Force first workflow step completed',
 		description:
-			'The user finished a step of the guided first-workflow flow. The test step reports whether the test run succeeded.',
+			'The user finished a step of the guided first-workflow flow. The connect step reports whether the mailbox got connected, and the test step whether the test run succeeded.',
 		properties: z.object({
 			variant: forceFirstWorkflowVariant,
 			// eslint-disable-next-line @typescript-eslint/naming-convention -- PostHog feature property
@@ -366,7 +366,9 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 			succeeded: z
 				.boolean()
 				.optional()
-				.describe('Only on the test step: whether the test run succeeded'),
+				.describe(
+					'Only on the connect and test steps: whether the mailbox got connected, or the test run succeeded',
+				),
 		}),
 	},
 	FORCE_FIRST_WORKFLOW_SKIPPED: {

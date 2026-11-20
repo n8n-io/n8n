@@ -21,6 +21,7 @@ const breadcrumbs = computed(() => [
 
 const steps = computed(() => [
 	i18n.baseText('experiments.forceFirstWorkflow.steps.questions'),
+	i18n.baseText('experiments.forceFirstWorkflow.steps.connect'),
 	i18n.baseText('experiments.forceFirstWorkflow.steps.test'),
 	i18n.baseText('experiments.forceFirstWorkflow.steps.publish'),
 ]);

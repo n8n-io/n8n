@@ -2,7 +2,22 @@ import type { WorkflowDataCreate } from '@n8n/rest-api-client';
 
 export type DigestFormat = 'priority' | 'bullets' | 'briefing' | 'decide';
 export type DigestProvider = 'gmail' | 'outlook';
-export type DigestDestination = 'email' | 'slack';
+
+/** Credential type that each mailbox node uses to read the inbox. */
+export const MAILBOX_CREDENTIAL_TYPE: Record<DigestProvider, string> = {
+	gmail: 'gmailOAuth2',
+	outlook: 'microsoftOutlookOAuth2Api',
+};
+
+export const MAILBOX_NODE_TYPE: Record<DigestProvider, string> = {
+	gmail: 'n8n-nodes-base.gmail',
+	outlook: 'n8n-nodes-base.microsoftOutlook',
+};
+
+export interface DigestCredential {
+	id: string;
+	name: string;
+}
 
 export interface DailyInboxDigestOptions {
 	format: DigestFormat;
@@ -11,9 +26,10 @@ export interface DailyInboxDigestOptions {
 	minute: number;
 	weekdaysOnly: boolean;
 	provider: DigestProvider;
-	destination: DigestDestination;
-	/** Where the digest goes when the destination is email. */
+	/** The address the digest goes to. */
 	recipientEmail: string;
+	/** The connected mailbox. It reads the inbox, and it also sends the digest by email. */
+	mailboxCredential?: DigestCredential;
 }
 
 /** Names of the nodes. They are shown on the canvas, so the caller translates them. */
@@ -30,7 +46,6 @@ export const DEFAULT_DIGEST_OPTIONS: DailyInboxDigestOptions = {
 	minute: 0,
 	weekdaysOnly: false,
 	provider: 'gmail',
-	destination: 'email',
 	recipientEmail: '',
 };
 
@@ -83,27 +98,21 @@ function buildReadNode(provider: DigestProvider, name: string): WorkflowNode {
 	};
 }
 
+/** Gives a mailbox node the connected credential, when there is one. */
+function withMailboxCredential(
+	node: WorkflowNode,
+	{ provider, mailboxCredential }: DailyInboxDigestOptions,
+): WorkflowNode {
+	if (!mailboxCredential) return node;
+
+	return { ...node, credentials: { [MAILBOX_CREDENTIAL_TYPE[provider]]: mailboxCredential } };
+}
+
 function buildSendNode(
-	{ provider, destination, recipientEmail }: DailyInboxDigestOptions,
+	{ provider, recipientEmail }: DailyInboxDigestOptions,
 	name: string,
 ): WorkflowNode {
 	const base = { id: NODE_IDS.send, name, position: [720, 0] as [number, number] };
-
-	if (destination === 'slack') {
-		return {
-			...base,
-			type: 'n8n-nodes-base.slack',
-			typeVersion: 2.3,
-			parameters: {
-				resource: 'message',
-				operation: 'post',
-				select: 'user',
-				user: { __rl: true, mode: 'id', value: '' },
-				text: '={{ $json.digest }}',
-				otherOptions: {},
-			},
-		};
-	}
 
 	if (provider === 'outlook') {
 		return {
@@ -137,8 +146,8 @@ function buildSendNode(
 
 /**
  * The first workflow of the force-the-first-workflow experiment: every day, read the unread
- * emails of the user's mailbox, build a digest and send it. The four answers of the flow set
- * the digest format, the run time and cadence, the mailbox and where the digest goes.
+ * emails of the user's mailbox, build a digest and send it. The answers of the flow set the
+ * digest format, the run time and cadence, and the mailbox.
  */
 export function buildDailyInboxDigestWorkflow(
 	options: DailyInboxDigestOptions,
@@ -171,7 +180,7 @@ export function buildDailyInboxDigestWorkflow(
 					},
 				},
 			},
-			buildReadNode(provider, names.read),
+			withMailboxCredential(buildReadNode(provider, names.read), options),
 			{
 				id: NODE_IDS.build,
 				name: names.build,
@@ -193,7 +202,7 @@ export function buildDailyInboxDigestWorkflow(
 					options: {},
 				},
 			},
-			buildSendNode(options, names.send),
+			withMailboxCredential(buildSendNode(options, names.send), options),
 		],
 		connections: {
 			[names.trigger]: { main: [[{ node: names.read, type: 'main', index: 0 }]] },

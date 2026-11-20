@@ -15,7 +15,7 @@ describe('FirstWorkflowQuestionCard', () => {
 	it('shows the progress of the question', () => {
 		const { getByText } = renderCard({ props: { questionId: 'provider' } });
 
-		expect(getByText('Question 3 of 4')).toBeInTheDocument();
+		expect(getByText('Question 3 of 3')).toBeInTheDocument();
 	});
 
 	it('answers with the recommended choice when the user does not change it', async () => {
@@ -27,16 +27,16 @@ describe('FirstWorkflowQuestionCard', () => {
 	});
 
 	it('answers with the chosen option', async () => {
-		const { getByTestId, emitted } = renderCard({ props: { questionId: 'destination' } });
+		const { getByTestId, emitted } = renderCard({ props: { questionId: 'provider' } });
 
-		await fireEvent.click(getByTestId('first-workflow-option-slack'));
+		await fireEvent.click(getByTestId('first-workflow-option-outlook'));
 		await fireEvent.click(getByTestId('first-workflow-next'));
 
-		expect(emitted('answer')).toEqual([[{ id: 'destination', value: 'slack' }]]);
+		expect(emitted('answer')).toEqual([[{ id: 'provider', value: 'outlook' }]]);
 	});
 
 	it('offers Continue instead of Next on the last question', () => {
-		const { getByTestId } = renderCard({ props: { questionId: 'destination' } });
+		const { getByTestId } = renderCard({ props: { questionId: 'provider' } });
 
 		expect(getByTestId('first-workflow-next')).toHaveTextContent('Continue');
 	});

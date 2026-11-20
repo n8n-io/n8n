@@ -7,7 +7,6 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import FirstWorkflowFormatPreview from './FirstWorkflowFormatPreview.vue';
 import {
 	DEFAULT_SCHEDULE_TIME,
-	DESTINATION_OPTIONS,
 	FORMAT_OPTIONS,
 	PROVIDER_OPTIONS,
 	QUESTION_IDS,
@@ -43,9 +42,6 @@ const isLast = computed(() => index.value === QUESTION_IDS.length - 1);
 const previous = props.answer;
 const format = ref(previous?.id === 'format' ? previous.value : FORMAT_OPTIONS[0].value);
 const provider = ref(previous?.id === 'provider' ? previous.value : PROVIDER_OPTIONS[0].value);
-const destination = ref(
-	previous?.id === 'destination' ? previous.value : DESTINATION_OPTIONS[0].value,
-);
 
 const previousTime = previous?.id === 'schedule' ? previous : undefined;
 const isPresetTime = (hour: number, minute: number) =>
@@ -74,8 +70,6 @@ const title = computed(() => {
 			return i18n.baseText('experiments.forceFirstWorkflow.schedule.title');
 		case 'provider':
 			return i18n.baseText('experiments.forceFirstWorkflow.provider.title');
-		case 'destination':
-			return i18n.baseText('experiments.forceFirstWorkflow.destination.title');
 	}
 });
 
@@ -85,8 +79,6 @@ const options = computed<ReadonlyArray<ChoiceOption<string>> | undefined>(() => 
 			return FORMAT_OPTIONS;
 		case 'provider':
 			return PROVIDER_OPTIONS;
-		case 'destination':
-			return DESTINATION_OPTIONS;
 		default:
 			return undefined;
 	}
@@ -98,8 +90,6 @@ const selectedValue = computed(() => {
 			return format.value;
 		case 'provider':
 			return provider.value;
-		case 'destination':
-			return destination.value;
 		default:
 			return undefined;
 	}
@@ -134,10 +124,6 @@ function select(value: string) {
 			provider.value =
 				PROVIDER_OPTIONS.find((option) => option.value === value)?.value ?? provider.value;
 			return;
-		case 'destination':
-			destination.value =
-				DESTINATION_OPTIONS.find((option) => option.value === value)?.value ?? destination.value;
-			return;
 	}
 }
 
@@ -159,9 +145,6 @@ function next() {
 		}
 		case 'provider':
 			emit('answer', { id: 'provider', value: provider.value });
-			return;
-		case 'destination':
-			emit('answer', { id: 'destination', value: destination.value });
 			return;
 	}
 }
@@ -228,20 +211,11 @@ function next() {
 				<span v-else-if="option.nodeTypeName" :class="$style.iconTile" aria-hidden="true">
 					<NodeIcon :node-type="nodeTypesStore.getNodeType(option.nodeTypeName)" :size="28" />
 				</span>
-				<span v-else-if="option.icon" :class="$style.iconTile" aria-hidden="true">
-					<N8nIcon :icon="option.icon" size="large" />
-				</span>
 				<span :class="$style.rowText">
 					<span :class="$style.rowLabel">
 						<N8nText bold>{{ i18n.baseText(option.labelKey) }}</N8nText>
 						<span v-if="option.badge" :class="$style.badge">
-							{{
-								i18n.baseText(
-									option.badge === 'popular'
-										? 'experiments.forceFirstWorkflow.badge.popular'
-										: 'experiments.forceFirstWorkflow.badge.recommended',
-								)
-							}}
+							{{ i18n.baseText('experiments.forceFirstWorkflow.badge.popular') }}
 						</span>
 					</span>
 					<N8nText size="small" color="text-light">

@@ -1,26 +1,22 @@
-import type { IconName } from '@n8n/design-system';
 import type { BaseTextKey } from '@n8n/i18n';
 
-import type { DigestDestination, DigestFormat, DigestProvider } from './workflows/dailyInboxDigest';
+import type { DigestFormat, DigestProvider } from './workflows/dailyInboxDigest';
 
-export const QUESTION_IDS = ['format', 'schedule', 'provider', 'destination'] as const;
+export const QUESTION_IDS = ['format', 'schedule', 'provider'] as const;
 export type QuestionId = (typeof QUESTION_IDS)[number];
 
 export type QuestionAnswer =
 	| { id: 'format'; value: DigestFormat }
 	| { id: 'schedule'; hour: number; minute: number; weekdaysOnly: boolean }
-	| { id: 'provider'; value: DigestProvider }
-	| { id: 'destination'; value: DigestDestination };
+	| { id: 'provider'; value: DigestProvider };
 
 export interface ChoiceOption<TValue extends string> {
 	value: TValue;
 	labelKey: BaseTextKey;
 	descriptionKey: BaseTextKey;
-	badge?: 'popular' | 'recommended';
+	badge?: 'popular';
 	/** Node whose icon stands for the option. */
 	nodeTypeName?: string;
-	/** Icon for an option that has no node, such as email. */
-	icon?: IconName;
 }
 
 export const FORMAT_OPTIONS: Array<ChoiceOption<DigestFormat>> = [
@@ -61,22 +57,6 @@ export const PROVIDER_OPTIONS: Array<ChoiceOption<DigestProvider>> = [
 		nodeTypeName: 'n8n-nodes-base.microsoftOutlook',
 		labelKey: 'experiments.forceFirstWorkflow.provider.outlook',
 		descriptionKey: 'experiments.forceFirstWorkflow.provider.outlook.description',
-	},
-];
-
-export const DESTINATION_OPTIONS: Array<ChoiceOption<DigestDestination>> = [
-	{
-		value: 'email',
-		icon: 'mail',
-		labelKey: 'experiments.forceFirstWorkflow.destination.email',
-		descriptionKey: 'experiments.forceFirstWorkflow.destination.email.description',
-		badge: 'recommended',
-	},
-	{
-		value: 'slack',
-		nodeTypeName: 'n8n-nodes-base.slack',
-		labelKey: 'experiments.forceFirstWorkflow.destination.slack',
-		descriptionKey: 'experiments.forceFirstWorkflow.destination.slack.description',
 	},
 ];
 

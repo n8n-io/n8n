@@ -64,7 +64,6 @@ describe('buildDailyInboxDigestWorkflow', () => {
 	it.each([
 		{
 			provider: 'gmail' as const,
-			destination: 'email' as const,
 			types: [
 				'n8n-nodes-base.scheduleTrigger',
 				'n8n-nodes-base.gmail',
@@ -74,7 +73,6 @@ describe('buildDailyInboxDigestWorkflow', () => {
 		},
 		{
 			provider: 'outlook' as const,
-			destination: 'email' as const,
 			types: [
 				'n8n-nodes-base.scheduleTrigger',
 				'n8n-nodes-base.microsoftOutlook',
@@ -82,18 +80,8 @@ describe('buildDailyInboxDigestWorkflow', () => {
 				'n8n-nodes-base.microsoftOutlook',
 			],
 		},
-		{
-			provider: 'gmail' as const,
-			destination: 'slack' as const,
-			types: [
-				'n8n-nodes-base.scheduleTrigger',
-				'n8n-nodes-base.gmail',
-				'n8n-nodes-base.set',
-				'n8n-nodes-base.slack',
-			],
-		},
-	])('uses $provider to read and $destination to deliver', ({ provider, destination, types }) => {
-		expect(nodeTypes(build({ provider, destination }))).toEqual(types);
+	])('reads and sends the digest with $provider', ({ provider, types }) => {
+		expect(nodeTypes(build({ provider }))).toEqual(types);
 	});
 
 	it('sends an email digest to the recipient', () => {
@@ -122,6 +110,29 @@ describe('buildDailyInboxDigestWorkflow', () => {
 
 		expect(read?.parameters).toMatchObject({ resource: 'message', operation: 'getAll' });
 		expect(digest?.parameters).toMatchObject({ mode: 'manual' });
+	});
+
+	describe('with a connected mailbox', () => {
+		const mailboxCredential = { id: 'cred-1', name: 'Gmail account' };
+
+		it('gives the nodes that use the mailbox its credential', () => {
+			const [, read, , send] = build({ mailboxCredential }).nodes ?? [];
+
+			expect(read?.credentials).toEqual({ gmailOAuth2: mailboxCredential });
+			expect(send?.credentials).toEqual({ gmailOAuth2: mailboxCredential });
+		});
+
+		it('uses the credential type of the chosen provider', () => {
+			const [, read] = build({ provider: 'outlook', mailboxCredential }).nodes ?? [];
+
+			expect(read?.credentials).toEqual({ microsoftOutlookOAuth2Api: mailboxCredential });
+		});
+
+		it('sets no credential before the mailbox is connected', () => {
+			const nodes = build().nodes ?? [];
+
+			expect(nodes.every((node) => node.credentials === undefined)).toBe(true);
+		});
 	});
 
 	it('gives every node a distinct id', () => {

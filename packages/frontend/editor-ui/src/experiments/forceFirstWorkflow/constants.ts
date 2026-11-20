@@ -17,7 +17,7 @@ export const FORCE_FIRST_WORKFLOW_STEPS = [
 	'summary',
 	'schedule',
 	'email',
-	'destination',
+	'connect',
 	'test',
 	'publish',
 ] as const;
