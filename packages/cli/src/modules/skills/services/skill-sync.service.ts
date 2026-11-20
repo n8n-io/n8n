@@ -157,9 +157,15 @@ export class SkillSyncService {
 						...check.findings.filter(({ rule }) => rule !== 'over_limit'),
 					];
 			}
+			const blocked = check.verdict === 'blocked';
+			// A blocked update cannot be saved, so the row keeps the saved name and has no clash.
+			const incoming = blocked ? null : content;
+			// Blocked content can be as large as the archive limit. The review then shows a cut
+			// preview and no diff, so the row has no counts.
+			const compared = content && !(blocked && skillPreview(content).truncated);
 			updates.push({
 				skillId: link.skillId,
-				name: content?.name ?? row.version.name,
+				name: incoming?.name ?? row.version.name,
 				location: client.location(link.remoteRef),
 				webUrl: client.webUrl(source.locator, link.remoteRef, link.pendingRevision),
 				contentHash: link.pendingContentHash,
@@ -167,8 +173,8 @@ export class SkillSyncService {
 				revision: link.pendingRevision,
 				revisionUrl: client.revisionUrl?.(source.locator, link.pendingRevision) ?? null,
 				check,
-				nameClash: content ? await this.nameClash(row, content.name) : null,
-				changes: content
+				nameClash: incoming ? await this.nameClash(row, incoming.name) : null,
+				changes: compared
 					? updateCounts(updateFiles(rowContent(row), content))
 					: { added: 0, removed: 0 },
 				nextVersion: row.version.version + 1,

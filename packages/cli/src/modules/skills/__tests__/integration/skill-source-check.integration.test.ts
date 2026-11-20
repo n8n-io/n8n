@@ -824,7 +824,8 @@ describe('Skill source checks', () => {
 				expect(oversized.updates[0].check.findings[0].detail).toContain(
 					`Current: ${longInstructions.length} characters.`,
 				);
-				expect(oversized.updates[0].changes.added).toBeGreaterThan(0);
+				// The review shows a cut preview and no diff, so the row has no counts.
+				expect(oversized.updates[0].changes).toEqual({ added: 0, removed: 0 });
 				const preview = await editor
 					.get(`/skill-sources/${sourceId}/updates/${docx}`)
 					.query({
@@ -856,6 +857,37 @@ describe('Skill source checks', () => {
 				expect(detail.body.data.files).toEqual([]);
 			},
 		);
+
+		it.each([
+			{ case: 'a name over the limit', name: 'a'.repeat(129), body: 'Updated docx.' },
+			{
+				case: 'a taken name',
+				name: 'xlsx',
+				body: 'a'.repeat(AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH + 1),
+			},
+		])('keeps the saved name on a blocked update with $case', async ({ name, body }) => {
+			const { sourceId } = await importAll();
+			pushChange({ 'skills/docx/SKILL.md': skillMd(name, body, 'docx description') });
+			await sync().checkAll();
+
+			const [update] = (await review(sourceId)).updates;
+
+			expect(update.check.verdict).toBe('blocked');
+			expect(update).toMatchObject({ name: 'docx', nameClash: null });
+		});
+
+		it('counts the changed lines of a blocked update that fits the review', async () => {
+			const { sourceId } = await importAll(['docx']);
+			pushChange({
+				'skills/docx/SKILL.md': skillMd('a'.repeat(129), 'Updated docx.', 'docx description'),
+			});
+			await sync().checkAll();
+
+			const [update] = (await review(sourceId)).updates;
+
+			expect(update.check.verdict).toBe('blocked');
+			expect(update.changes.added).toBeGreaterThan(0);
+		});
 
 		it('reviews and saves all stored content and its revision without another remote request', async () => {
 			github.push('acme/skills', {
