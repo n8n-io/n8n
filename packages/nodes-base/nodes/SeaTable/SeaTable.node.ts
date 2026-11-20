@@ -13,13 +13,14 @@ export class SeaTable extends VersionedNodeType {
 			group: ['output'],
 			subtitle: '={{$parameter["resource"] + ": " + $parameter["operation"]}}',
 			description: 'Read, update, write and delete data from SeaTable',
-			defaultVersion: 2,
+			defaultVersion: 2.1,
 			usableAsTool: true,
 		};
 
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {
 			1: new SeaTableV1(baseDescription),
 			2: new SeaTableV2(baseDescription),
+			2.1: new SeaTableV2(baseDescription),
 		};
 
 		super(nodeVersions, baseDescription);

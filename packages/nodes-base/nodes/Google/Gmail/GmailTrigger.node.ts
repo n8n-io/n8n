@@ -8,7 +8,7 @@ import type {
 	INodeTypeDescription,
 	IPollFunctions,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import {
 	googleApiRequest,
@@ -52,6 +52,7 @@ export class GmailTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Gmail Trigger',
 		name: 'gmailTrigger',
+		schemaPath: 'Google/Gmail',
 		icon: 'file:gmail.svg',
 		group: ['trigger'],
 		version: [1, 1.1, 1.2, 1.3, 1.4],
@@ -298,7 +299,7 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 					this,
 					'labels',
 					'GET',
-					'/gmail/v1/users/me/labels',
+					requestPath`/gmail/v1/users/me/labels`,
 				)) as Label[];
 
 				for (const label of labels) {
@@ -412,7 +413,7 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 			const fullMessage = (await googleApiRequest.call(
 				this,
 				'GET',
-				`/gmail/v1/users/me/messages/${messageId}`,
+				requestPath`/gmail/v1/users/me/messages/${messageId}`,
 				{},
 				fetchQs,
 			)) as Message;
@@ -646,7 +647,7 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 				const messagesResponse: MessageListResponse = await googleApiRequest.call(
 					this,
 					'GET',
-					'/gmail/v1/users/me/messages',
+					requestPath`/gmail/v1/users/me/messages`,
 					{},
 					pageToken ? { ...qs, pageToken } : qs,
 				);

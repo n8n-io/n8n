@@ -2,15 +2,15 @@ import { BaseRepository, TransactionRunner, type OperationContext } from '@n8n/d
 import { Service } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 
-import { KnowledgeFile } from '../entities/knowledge-file.entity';
+import { AgentFile } from '../entities';
 
-class KnowledgeFileTable extends BaseRepository<KnowledgeFile> {
+class KnowledgeFileTable extends BaseRepository<AgentFile> {
 	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
-		super(KnowledgeFile, dataSource.manager, transactionRunner);
+		super(AgentFile, dataSource.manager, transactionRunner);
 	}
 }
 
-export interface AgentKnowledgeTotals {
+export interface KnowledgeFileTotals {
 	fileCount: number;
 	/** Sum of the original upload sizes, not of the stored text. */
 	totalBytes: number;
@@ -24,8 +24,8 @@ export class KnowledgeFileRepository {
 		this.table = new KnowledgeFileTable(dataSource, transactionRunner);
 	}
 
-	async findByAgentId(agentId: string, ctx: OperationContext): Promise<KnowledgeFile[]> {
-		return await this.table.managerFor(ctx).find(KnowledgeFile, {
+	async findByAgentId(agentId: string, ctx: OperationContext): Promise<AgentFile[]> {
+		return await this.table.managerFor(ctx).find(AgentFile, {
 			where: { agentId },
 			// Secondary id sort keeps pagination stable when batch uploads
 			// share the same createdAt timestamp.
@@ -34,27 +34,27 @@ export class KnowledgeFileRepository {
 	}
 
 	async hasFilesForAgent(agentId: string, ctx: OperationContext): Promise<boolean> {
-		return await this.table.managerFor(ctx).existsBy(KnowledgeFile, { agentId });
+		return await this.table.managerFor(ctx).existsBy(AgentFile, { agentId });
 	}
 
 	async findByIdAndAgentId(
 		fileId: string,
 		agentId: string,
 		ctx: OperationContext,
-	): Promise<KnowledgeFile | null> {
-		return await this.table.managerFor(ctx).findOneBy(KnowledgeFile, { id: fileId, agentId });
+	): Promise<AgentFile | null> {
+		return await this.table.managerFor(ctx).findOneBy(AgentFile, { id: fileId, agentId });
 	}
 
 	async saveUploadedFile(
 		file: Pick<
-			KnowledgeFile,
+			AgentFile,
 			'id' | 'agentId' | 'storedAt' | 'storageKey' | 'fileName' | 'mimeType' | 'fileSizeBytes'
 		>,
 		ctx: OperationContext,
-	): Promise<KnowledgeFile> {
+	): Promise<AgentFile> {
 		const manager = this.table.managerFor(ctx);
-		const agentFile = manager.create(KnowledgeFile, file);
-		return await manager.save(KnowledgeFile, agentFile);
+		const knowledgeFile = manager.create(AgentFile, file);
+		return await manager.save(AgentFile, knowledgeFile);
 	}
 
 	async deleteByIdAndAgentId(
@@ -62,14 +62,14 @@ export class KnowledgeFileRepository {
 		agentId: string,
 		ctx: OperationContext,
 	): Promise<void> {
-		await this.table.managerFor(ctx).delete(KnowledgeFile, { id: fileId, agentId });
+		await this.table.managerFor(ctx).delete(AgentFile, { id: fileId, agentId });
 	}
 
 	async deleteByAgentId(agentId: string, ctx: OperationContext): Promise<void> {
-		await this.table.managerFor(ctx).delete(KnowledgeFile, { agentId });
+		await this.table.managerFor(ctx).delete(AgentFile, { agentId });
 	}
 
-	async getKnowledgeTotals(agentId: string, ctx: OperationContext): Promise<AgentKnowledgeTotals> {
+	async getKnowledgeTotals(agentId: string, ctx: OperationContext): Promise<KnowledgeFileTotals> {
 		const totalsByAgentId = await this.getKnowledgeTotalsByAgentIds([agentId], ctx);
 		return totalsByAgentId.get(agentId) ?? { fileCount: 0, totalBytes: 0 };
 	}
@@ -78,15 +78,15 @@ export class KnowledgeFileRepository {
 	async getKnowledgeTotalsByAgentIds(
 		agentIds: string[],
 		ctx: OperationContext,
-	): Promise<Map<string, AgentKnowledgeTotals>> {
-		const totalsByAgentId = new Map<string, AgentKnowledgeTotals>();
+	): Promise<Map<string, KnowledgeFileTotals>> {
+		const totalsByAgentId = new Map<string, KnowledgeFileTotals>();
 		if (agentIds.length === 0) {
 			return totalsByAgentId;
 		}
 
 		const rows = await this.table
 			.managerFor(ctx)
-			.createQueryBuilder(KnowledgeFile, 'file')
+			.createQueryBuilder(AgentFile, 'file')
 			.select('file.agentId', 'agentId')
 			.addSelect('COUNT(file.id)', 'fileCount')
 			.addSelect('SUM(file.fileSizeBytes)', 'totalBytes')

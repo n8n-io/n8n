@@ -72,6 +72,8 @@ export interface AgentsChatInteractionExtension<TInput = unknown> {
 	hostEventComponent?: Component;
 	/** Where the assistant message shows a matched host event. The default is `start`. */
 	hostEventPlacement?: AgentsChatHostEventPlacement;
+	/** The call that a matched host event belongs to. The `tool-call` placement uses it. */
+	hostEventToolCallId?(event: AgentsChatHostEvent): string | undefined;
 }
 
 /** Where an assistant message shows a host event. See `HOST_EVENT_PLACEMENT`. */
@@ -96,6 +98,16 @@ export interface AgentsChatHostEventItems {
 	end: AgentsChatHostEventItem[];
 	/** `thinking` events, when the message has a thinking block. */
 	thinking: AgentsChatHostEventItem[];
+	/** `tool-call` events, by the call whose step shows them. */
+	toolCalls: ReadonlyMap<string, AgentsChatHostEventItem[]>;
+}
+
+/** The host component of a host event, and where the assistant message shows it. */
+export interface AgentsChatHostEventRenderer {
+	component: Component;
+	placement: AgentsChatHostEventPlacement;
+	/** The call of a `tool-call` event, when the extension names one. */
+	toolCallId?: string;
 }
 
 /** A host component that renders the result of one finished tool call. */
@@ -153,12 +165,18 @@ export function findToolResultRenderer(
 export function findHostEventRenderer(
 	event: AgentsChatHostEvent,
 	extensions: readonly AgentsChatInteractionExtension[],
-): { component: Component; placement: AgentsChatHostEventPlacement } | undefined {
+): AgentsChatHostEventRenderer | undefined {
 	const extension = extensions.find((ext) => ext.hostEventComponent && ext.matchHostEvent?.(event));
 	if (!extension?.hostEventComponent) return undefined;
+	const placement = extension.hostEventPlacement ?? HOST_EVENT_PLACEMENT.START;
+	const toolCallId =
+		placement === HOST_EVENT_PLACEMENT.TOOL_CALL
+			? extension.hostEventToolCallId?.(event)
+			: undefined;
 	return {
 		component: extension.hostEventComponent,
-		placement: extension.hostEventPlacement ?? HOST_EVENT_PLACEMENT.START,
+		placement,
+		...(toolCallId ? { toolCallId } : {}),
 	};
 }
 
@@ -203,31 +221,48 @@ export function appendHostEventSources(
  * Sorts host events into the slots of an assistant message, in arrival order.
  * `transient` events are kept only when `options.showTransient` is true.
  * `thinking` events go to `start` when the message has no thinking block, so
- * they still show. Unhandled events are dropped.
+ * they still show. `tool-call` events go to `start` when their call is not in
+ * `options.stepToolCallIds`, the calls that the message shows as steps.
+ * Unhandled events are dropped.
  */
 export function getHostEventItems(
 	sources: readonly AgentsChatHostEventSource[],
 	extensions: readonly AgentsChatInteractionExtension[],
-	options: { showTransient: boolean; hasThinkingBlock: boolean },
+	options: {
+		showTransient: boolean;
+		hasThinkingBlock: boolean;
+		stepToolCallIds?: ReadonlySet<string>;
+	},
 ): AgentsChatHostEventItems {
-	const items: Record<AgentsChatHostEventPlacement, AgentsChatHostEventItem[]> = {
-		start: [],
-		end: [],
-		transient: [],
-		thinking: [],
-	};
+	const items: Record<
+		Exclude<AgentsChatHostEventPlacement, typeof HOST_EVENT_PLACEMENT.TOOL_CALL>,
+		AgentsChatHostEventItem[]
+	> = { start: [], end: [], transient: [], thinking: [] };
+	const toolCalls = new Map<string, AgentsChatHostEventItem[]>();
 	for (const source of sources) {
 		const renderer = findHostEventRenderer(source.event, extensions);
 		if (!renderer) continue;
-		const placement =
-			renderer.placement === HOST_EVENT_PLACEMENT.THINKING && !options.hasThinkingBlock
-				? HOST_EVENT_PLACEMENT.START
-				: renderer.placement;
-		items[placement].push({ ...source, ...renderer, placement });
+		const { component, toolCallId } = renderer;
+		let placement = renderer.placement;
+		if (toolCallId !== undefined && options.stepToolCallIds?.has(toolCallId)) {
+			toolCalls.set(toolCallId, [
+				...(toolCalls.get(toolCallId) ?? []),
+				{ ...source, component, placement },
+			]);
+			continue;
+		}
+		if (
+			placement === HOST_EVENT_PLACEMENT.TOOL_CALL ||
+			(placement === HOST_EVENT_PLACEMENT.THINKING && !options.hasThinkingBlock)
+		) {
+			placement = HOST_EVENT_PLACEMENT.START;
+		}
+		items[placement].push({ ...source, component, placement });
 	}
 	return {
 		start: items.start,
 		end: options.showTransient ? [...items.end, ...items.transient] : items.end,
 		thinking: items.thinking,
+		toolCalls,
 	};
 }

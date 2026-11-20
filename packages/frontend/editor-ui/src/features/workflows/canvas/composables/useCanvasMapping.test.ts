@@ -23,7 +23,7 @@ import { createTestNode } from '@/__tests__/mocks';
 import type { INodeUi } from '@/Interface';
 import { CanvasNodeRenderType, type CanvasNodeData } from '../canvas.types';
 import { MarkerType } from '@vue-flow/core';
-import { AGENT_NODE_SIZE } from '@/features/agents/utils/agentNode';
+import { DEFAULT_AGENT_HEIGHT, DEFAULT_AGENT_WIDTH } from '@/features/agents/utils/agentNode';
 import { NO_OP_NODE_TYPE, STICKY_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { FREE_STICKY_Z_INDEX_OFFSET } from '../stores/canvasNodeGroups.constants';
 
@@ -336,16 +336,100 @@ describe('useCanvasMapping — node display sizes', () => {
 		});
 
 		expect(nodeDisplaySizeById.value[agent.id]).toEqual({
-			width: AGENT_NODE_SIZE[0],
-			height: AGENT_NODE_SIZE[1],
+			width: DEFAULT_AGENT_WIDTH,
+			height: DEFAULT_AGENT_HEIGHT,
 		});
 
 		measuredHeight.value = 224;
 
 		expect(nodeDisplaySizeById.value[agent.id]).toEqual({
-			width: AGENT_NODE_SIZE[0],
+			width: DEFAULT_AGENT_WIDTH,
 			height: 224,
 		});
+	});
+
+	it('does not count the output of an AI Agent Tool as a port', () => {
+		const agentTool = createTestNode({
+			id: 'agent-tool',
+			name: 'AI Agent Tool',
+			type: '@n8n/n8n-nodes-langchain.agentTool',
+		}) as INodeUi;
+		const rd = createEmptyCanvasRenderData();
+		const render: CanvasNodeData['render'] = {
+			type: CanvasNodeRenderType.Default,
+			options: { configurable: true, configuration: true },
+		};
+		rd.renderTypeByNodeId.set(
+			agentTool.id,
+			computed(() => render),
+		);
+		rd.nodeInputsByNodeId.set(
+			agentTool.id,
+			computed(() => [
+				{ type: NodeConnectionTypes.AiLanguageModel, index: 0 },
+				{ type: NodeConnectionTypes.AiMemory, index: 0 },
+				{ type: NodeConnectionTypes.AiTool, index: 0 },
+				{ type: NodeConnectionTypes.AiOutputParser, index: 0 },
+			]),
+		);
+		rd.nodeOutputsByNodeId.set(
+			agentTool.id,
+			computed(() => [{ type: NodeConnectionTypes.AiTool, index: 0 }]),
+		);
+
+		const { nodeDisplaySizeById } = useCanvasMapping({
+			nodes: ref([agentTool]),
+			connections: ref({}),
+			renderData: shallowRef(rd),
+		});
+
+		expect(nodeDisplaySizeById.value[agentTool.id]).toEqual({ width: 240, height: 80 });
+	});
+
+	it('makes a node wider for each non-main output at the top above four', () => {
+		const codeNode = createTestNode({
+			id: 'code',
+			name: 'LangChain Code',
+			type: '@n8n/n8n-nodes-langchain.code',
+		}) as INodeUi;
+		const rd = createEmptyCanvasRenderData();
+		const render: CanvasNodeData['render'] = {
+			type: CanvasNodeRenderType.Default,
+			options: { configurable: true, configuration: true },
+		};
+		rd.renderTypeByNodeId.set(
+			codeNode.id,
+			computed(() => render),
+		);
+		rd.nodeInputsByNodeId.set(
+			codeNode.id,
+			computed(() => [
+				{ type: NodeConnectionTypes.Main, index: 0 },
+				{ type: NodeConnectionTypes.AiLanguageModel, index: 0 },
+			]),
+		);
+		rd.nodeOutputsByNodeId.set(
+			codeNode.id,
+			computed(() =>
+				[
+					NodeConnectionTypes.AiLanguageModel,
+					NodeConnectionTypes.AiMemory,
+					NodeConnectionTypes.AiTool,
+					NodeConnectionTypes.AiRetriever,
+					NodeConnectionTypes.AiOutputParser,
+					NodeConnectionTypes.AiTool,
+				].map((type, index) => ({ type, index })),
+			),
+		);
+
+		const { nodeDisplaySizeById } = useCanvasMapping({
+			nodes: ref([codeNode]),
+			connections: ref({}),
+			renderData: shallowRef(rd),
+		});
+
+		// One port slot for each of the six outputs, as the canvas renders it
+		expect(nodeDisplaySizeById.value[codeNode.id]).toEqual({ width: 336, height: 80 });
 	});
 });
 
@@ -386,6 +470,57 @@ describe('useCanvasMapping — getNodeExecutionSnapshot', () => {
 		const snapshot = getNodeExecutionSnapshot('a');
 		expect(snapshot.hasValidationError).toBe(true);
 		expect(snapshot.hasExecutionError).toBe(false);
+	});
+
+	describe('needsCredentialSetup', () => {
+		function mapWith({
+			validationErrors,
+			setupRequired,
+		}: {
+			validationErrors: string[];
+			setupRequired: boolean;
+		}) {
+			const node = createTestNode({ id: 'a', name: 'Alpha' }) as INodeUi;
+			const rd = createEmptyCanvasRenderData();
+			rd.validationErrorsByNodeId.set(
+				'a',
+				computed(() => validationErrors),
+			);
+			const isNodeSetupRequired = vi.fn(() => setupRequired);
+			const mapping = useCanvasMapping({
+				nodes: ref([node]),
+				connections: ref({}),
+				renderData: shallowRef(rd),
+				isNodeSetupRequired,
+			});
+			return { ...mapping, isNodeSetupRequired };
+		}
+
+		it('flags a node with validation errors that the host reports as setup required', () => {
+			const { getNodeExecutionSnapshot, nodes } = mapWith({
+				validationErrors: ['Credentials for Notion are not set.'],
+				setupRequired: true,
+			});
+			expect(getNodeExecutionSnapshot('a').needsCredentialSetup).toBe(true);
+			expect(nodes.value[0].data?.issues.setupRequired).toBe(true);
+		});
+
+		it('is false when the host does not report setup required', () => {
+			const { getNodeExecutionSnapshot } = mapWith({
+				validationErrors: ['Credentials for Notion are not set.'],
+				setupRequired: false,
+			});
+			expect(getNodeExecutionSnapshot('a').needsCredentialSetup).toBe(false);
+		});
+
+		it('skips the host check for a node without validation errors', () => {
+			const { getNodeExecutionSnapshot, isNodeSetupRequired } = mapWith({
+				validationErrors: [],
+				setupRequired: true,
+			});
+			expect(getNodeExecutionSnapshot('a').needsCredentialSetup).toBe(false);
+			expect(isNodeSetupRequired).not.toHaveBeenCalled();
+		});
 	});
 
 	it.each(['error', 'crashed'] as const)(
@@ -549,11 +684,10 @@ describe('useCanvasMapping — mapped connections', () => {
 		const { allNodes, connections } = makeWorkflow({
 			Alpha: { main: [[{ node: 'Beta', type: 'main', index: 0 }]] },
 		});
-		const rd = createEmptyCanvasRenderData({ isExecutionDataDisplayed: true });
-		rd.executionPinDataByNodeId.set(
-			'a',
-			computed(() => [{ json: { ok: true } }]),
-		);
+		const executionPinData = [{ json: { ok: true } }];
+		const rd = createEmptyCanvasRenderData({
+			getDisplayedExecutionPinData: (nodeId) => (nodeId === 'a' ? executionPinData : undefined),
+		});
 		setRunData(rd, 'a', [{ executionStatus: 'success' } as ITaskData]);
 
 		const { connections: mapped } = useCanvasMapping({
@@ -563,26 +697,6 @@ describe('useCanvasMapping — mapped connections', () => {
 		});
 
 		expect(mapped.value[0].data?.status).toBe('pinned');
-	});
-
-	it('does not mark a connection as pinned from workflow pin data while displaying an execution', () => {
-		const { allNodes, connections } = makeWorkflow({
-			Alpha: { main: [[{ node: 'Beta', type: 'main', index: 0 }]] },
-		});
-		const rd = createEmptyCanvasRenderData({ isExecutionDataDisplayed: true });
-		rd.pinnedDataByNodeId.set(
-			'a',
-			computed(() => [{ json: { stale: true } }]),
-		);
-		setRunData(rd, 'a', [{ executionStatus: 'success' } as ITaskData]);
-
-		const { connections: mapped } = useCanvasMapping({
-			nodes: ref(allNodes),
-			connections: ref(connections),
-			renderData: shallowRef(rd),
-		});
-
-		expect(mapped.value[0].data?.status).not.toBe('pinned');
 	});
 
 	it('marks the connection as "success" when source produced run data and target has run data too', () => {
@@ -854,25 +968,6 @@ describe('useCanvasMapping — mapped connections', () => {
 			});
 
 			expect(mapped.value[0].label).toBe('2 items');
-		});
-
-		it('does not show item-count label from workflow pin data while displaying an execution', () => {
-			const { allNodes, connections } = makeWorkflow({
-				Alpha: { main: [[{ node: 'Beta', type: 'main', index: 0 }]] },
-			});
-			const rd = createEmptyCanvasRenderData({ isExecutionDataDisplayed: true });
-			rd.pinnedDataByNodeId.set(
-				'a',
-				computed(() => [{ json: { x: 1 } }, { json: { x: 2 } }]),
-			);
-
-			const { connections: mapped } = useCanvasMapping({
-				nodes: ref(allNodes),
-				connections: ref(connections),
-				renderData: shallowRef(rd),
-			});
-
-			expect(mapped.value[0].label).toBe('');
 		});
 	});
 });

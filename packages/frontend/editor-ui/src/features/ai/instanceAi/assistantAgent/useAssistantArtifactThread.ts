@@ -1,5 +1,6 @@
 import type {
 	AssistantAgentTargetsState,
+	InstanceAiAppTarget,
 	InstanceAiHandoffContext,
 	InstanceAiWorkflowAttachment,
 } from '@n8n/api-types';
@@ -11,6 +12,7 @@ import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 
 import { createArtifactPreviewMemory } from '../artifactPreviewMemory';
 import type { ArtifactSendMessageOptions, ArtifactThread } from '../artifactThread';
+import type { InstanceAiMessageAuthorship } from '../prefills';
 import { useResourceRegistry } from '../useResourceRegistry';
 import {
 	findArchivedAssistantWorkflowIds,
@@ -28,11 +30,17 @@ interface UseAssistantArtifactThreadOptions {
 	 * Sends a message to the chat, for the previews that ask the Assistant
 	 * something. The hand-off context goes with the message.
 	 */
-	sendMessage: (text: string, handoffContext?: InstanceAiHandoffContext) => void;
+	sendMessage: (
+		text: string,
+		authorship: InstanceAiMessageAuthorship,
+		handoffContext?: InstanceAiHandoffContext,
+	) => void;
 	/** A workflow handed off to a new thread. Its preview opens before the first message. */
 	pendingWorkflowAttachment?: InstanceAiWorkflowAttachment;
 	/** The agents that the thread metadata binds. */
 	agentTargets?: () => DeepReadonly<AssistantAgentTargetsState> | null;
+	/** The apps that the thread metadata binds. */
+	appTargets?: () => readonly InstanceAiAppTarget[];
 	/** The artifact of the active preview tab. */
 	activeArtifactId?: () => string | undefined;
 }
@@ -63,6 +71,7 @@ export function useAssistantArtifactThread(options: UseAssistantArtifactThreadOp
 			return pending ? { ...pending, name: i18n.baseText('agents.new.defaultName') } : undefined;
 		},
 		agentBuilderTargets: () => [...(options.agentTargets?.()?.targets ?? [])],
+		appTargets: options.appTargets,
 	});
 
 	const thread: ArtifactThread = reactive({
@@ -82,7 +91,7 @@ export function useAssistantArtifactThread(options: UseAssistantArtifactThreadOp
 		// The editor snapshot seeds only current-runtime threads. The preview fetches the workflow.
 		consumePendingHandoff: () => undefined,
 		sendMessage: async (text: string, opts: ArtifactSendMessageOptions) => {
-			options.sendMessage(text, opts.handoffContext);
+			options.sendMessage(text, opts.authorship, opts.handoffContext);
 			return true;
 		},
 		...createArtifactPreviewMemory(),

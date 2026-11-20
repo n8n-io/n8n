@@ -8,6 +8,7 @@ import { AI_PREFERENCES_CLEARED_BLOCK, renderAiPreferencesBlock } from '@n8n/bac
 import type { Mock } from 'vitest';
 
 import {
+	APPROVAL_MODE_OPEN_TAG,
 	buildAppTargetsBlock,
 	buildThreadArtifactsBlock,
 	buildThreadContextBlock,
@@ -69,7 +70,7 @@ async function loadHistory(memory: ThreadMemoryMock): Promise<AgentDbMessage[]> 
 
 describe('AssistantTurnInputBuilder — resolveThreadArtifactsTurn', () => {
 	type Context = {
-		artifacts: Array<{ type: 'workflow'; id: string; name?: string }>;
+		artifacts: Array<{ type: 'workflow'; id: string; name?: string; executionId?: string }>;
 		activeId?: string;
 	};
 	type Internals = {
@@ -141,6 +142,21 @@ describe('AssistantTurnInputBuilder — resolveThreadArtifactsTurn', () => {
 		expect(await resolve(service, { artifacts: [digest, report], activeId: 'wf-2' })).toContain(
 			'(id: `wf-2`) [current]',
 		);
+	});
+
+	it('sends the tabs when the preview of a tab shows a new run', async () => {
+		const service = createService();
+		const firstRun = { artifacts: [{ ...digest, executionId: 'exec-1' }], activeId: 'wf-1' };
+		const earlier = buildThreadArtifactsBlock(firstRun);
+		service.agentMemory.getMessages.mockResolvedValue([storedUserTurn(earlier)]);
+
+		expect(await resolve(service, firstRun)).toBe('');
+		expect(
+			await resolve(service, {
+				artifacts: [{ ...digest, executionId: 'exec-2' }],
+				activeId: 'wf-1',
+			}),
+		).toContain('currently viewing its execution `exec-2`');
 	});
 
 	it('says no tabs are open once, then not again while nothing changes', async () => {
@@ -265,6 +281,7 @@ describe('AssistantTurnInputBuilder — resolveAiPreferencesTurn', () => {
 			loadHistory: () => Promise<unknown[]>,
 		) => Promise<{ block: string | undefined; payload: AiPreferencesAppliedPayload }>;
 		aiPreferenceService: { getApplicable: Mock };
+		aiPreferenceSettingsService: { isEnabled: boolean };
 		agentMemory: ThreadMemoryMock;
 		logger: { warn: Mock };
 	};
@@ -272,6 +289,7 @@ describe('AssistantTurnInputBuilder — resolveAiPreferencesTurn', () => {
 	function createService(): Internals {
 		const service = Object.create(AssistantTurnInputBuilder.prototype) as unknown as Internals;
 		service.aiPreferenceService = { getApplicable: vi.fn() };
+		service.aiPreferenceSettingsService = { isEnabled: true };
 		service.agentMemory = createThreadMemory();
 		service.logger = { warn: vi.fn() };
 		return service;
@@ -349,6 +367,31 @@ describe('AssistantTurnInputBuilder — resolveAiPreferencesTurn', () => {
 			renderedLength: AI_PREFERENCES_CLEARED_BLOCK.length,
 			injectedThisTurn: true,
 		});
+	});
+
+	it('reads no preferences while they are off and sends nothing to a new thread', async () => {
+		const service = createService();
+		service.aiPreferenceSettingsService.isEnabled = false;
+		service.agentMemory.getMessages.mockResolvedValue([storedUserTurn(undefined)]);
+
+		const turn = await resolvePreferences(service, boundProject);
+
+		expect(service.aiPreferenceService.getApplicable).not.toHaveBeenCalled();
+		expect(turn.block).toBeUndefined();
+		expect(turn.payload).toEqual({ preferences: [], renderedLength: 0, injectedThisTurn: false });
+	});
+
+	it('clears the preferences a thread carried once they are turned off', async () => {
+		const service = createService();
+		service.aiPreferenceSettingsService.isEnabled = false;
+		service.agentMemory.getMessages.mockResolvedValue([
+			storedUserTurn(renderAiPreferencesBlock(applicable)),
+		]);
+
+		const turn = await resolvePreferences(service, boundProject);
+
+		expect(service.aiPreferenceService.getApplicable).not.toHaveBeenCalled();
+		expect(turn.block).toBe(AI_PREFERENCES_CLEARED_BLOCK);
 	});
 
 	it.each([
@@ -626,55 +669,58 @@ describe('AssistantTurnInputBuilder — applyTurnScope', () => {
 	});
 });
 
-describe('AssistantTurnInputBuilder — opening-turn title', () => {
-	function createMemory(thread: { title?: string; metadata?: Record<string, unknown> }) {
-		return {
-			getThread: vi.fn(async () => ({ id: 'thread-1', resourceId: 'user-1', ...thread })),
-			patchThread: vi.fn(
-				async (args: {
-					update: (current: { title?: string; metadata?: Record<string, unknown> }) => unknown;
-				}) => args.update({ metadata: {}, ...thread }),
-			),
-			getMessages: vi.fn(async () => []),
-		};
-	}
+function createMemory(thread: { title?: string; metadata?: Record<string, unknown> }) {
+	return {
+		getThread: vi.fn(async () => ({ id: 'thread-1', resourceId: 'user-1', ...thread })),
+		patchThread: vi.fn(
+			async (args: {
+				update: (current: { title?: string; metadata?: Record<string, unknown> }) => unknown;
+			}) => args.update({ metadata: {}, ...thread }),
+		),
+		getMessages: vi.fn(async () => []),
+	};
+}
 
-	function createBuilder() {
-		return Object.assign(Object.create(AssistantTurnInputBuilder.prototype) as object, {
-			defaultTimeZone: 'UTC',
-			webhookBaseUrl: 'https://acme.example.com/webhook',
-			formBaseUrl: 'https://acme.example.com/form',
-			logger: { warn: vi.fn(), debug: vi.fn() },
-			buildWorkflowSetupStateBlock: vi.fn(async () => ''),
-			instanceContext: {
-				buildBlock: vi.fn(async () => ({ state: 'absent', reason: 'disabled' })),
-			},
-			resolveBoundProject: vi.fn(async () => undefined),
-			skillsService: { loadSkill: vi.fn(async () => ({ instructions: '' })) },
-		}) as unknown as AssistantTurnInputBuilder;
-	}
+function createTurnBuilder() {
+	return Object.assign(Object.create(AssistantTurnInputBuilder.prototype) as object, {
+		defaultTimeZone: 'UTC',
+		webhookBaseUrl: 'https://acme.example.com/webhook',
+		formBaseUrl: 'https://acme.example.com/form',
+		logger: { warn: vi.fn(), debug: vi.fn() },
+		buildWorkflowSetupStateBlock: vi.fn(async () => ''),
+		instanceContext: {
+			buildBlock: vi.fn(async () => ({ state: 'absent', reason: 'disabled' })),
+		},
+		resolveBoundProject: vi.fn(async () => undefined),
+		skillsService: { loadSkill: vi.fn(async () => ({ instructions: '' })) },
+	}) as unknown as AssistantTurnInputBuilder;
+}
 
-	async function buildOpeningTurn(
-		memory: ReturnType<typeof createMemory>,
-		params: {
-			titledByRuntime?: boolean;
-			contextAttachments?: unknown[];
-			message?: string;
-			fileAttachments?: unknown[];
-		} = {},
-	) {
-		const conversationHistory = {
-			getPastConversationsSection: vi.fn(async () => undefined),
-		};
-		const environment = {
-			context: {},
-			memory,
-			taskStorage: { get: vi.fn(async () => undefined) },
-			conversationHistory,
-			instanceContextEnabled: false,
-			skillScope: {},
-		} as unknown as AssistantTurnEnvironment;
-		await createBuilder().buildInput(environment, { eventBus: { publish: vi.fn() } } as never, {
+async function buildOpeningTurn(
+	memory: ReturnType<typeof createMemory>,
+	params: {
+		titledByRuntime?: boolean;
+		contextAttachments?: unknown[];
+		message?: string;
+		fileAttachments?: unknown[];
+		context?: Record<string, unknown>;
+	} = {},
+) {
+	const conversationHistory = {
+		getPastConversationsSection: vi.fn(async () => undefined),
+	};
+	const environment = {
+		context: params.context ?? {},
+		memory,
+		taskStorage: { get: vi.fn(async () => undefined) },
+		conversationHistory,
+		instanceContextEnabled: false,
+		skillScope: {},
+	} as unknown as AssistantTurnEnvironment;
+	const { fullMessage } = await createTurnBuilder().buildInput(
+		environment,
+		{ eventBus: { publish: vi.fn() } } as never,
+		{
 			user: { id: 'user-1' } as never,
 			threadId: 'thread-1',
 			runId: 'run-1',
@@ -682,15 +728,18 @@ describe('AssistantTurnInputBuilder — opening-turn title', () => {
 			fileAttachments: (params.fileAttachments ?? []) as never,
 			contextAttachments: (params.contextAttachments ?? []) as never,
 			...(params.titledByRuntime !== undefined ? { titledByRuntime: params.titledByRuntime } : {}),
-		});
-		const update = memory.patchThread.mock.results[0]?.value as Promise<unknown> | undefined;
-		return {
-			patch: update ? await update : undefined,
-			pastConversationsRequested:
-				conversationHistory.getPastConversationsSection.mock.calls.length > 0,
-		};
-	}
+		},
+	);
+	const update = memory.patchThread.mock.results[0]?.value as Promise<unknown> | undefined;
+	return {
+		fullMessage,
+		patch: update ? await update : undefined,
+		pastConversationsRequested:
+			conversationHistory.getPastConversationsSection.mock.calls.length > 0,
+	};
+}
 
+describe('AssistantTurnInputBuilder — opening-turn title', () => {
 	it('titles an untitled thread from the first message and marks it opened', async () => {
 		const memory = createMemory({});
 
@@ -797,5 +846,21 @@ describe('AssistantTurnInputBuilder — opening-turn title', () => {
 		});
 
 		expect(patch).toEqual({ title: '', metadata: { [OPENED_METADATA_KEY]: true } });
+	});
+});
+
+describe('AssistantTurnInputBuilder — approval mode', () => {
+	const openedThread = { title: 'Test rows', metadata: { [OPENED_METADATA_KEY]: true } };
+
+	it('tells the agent in Auto mode that an approval may run without a card', async () => {
+		const { fullMessage } = await buildOpeningTurn(createMemory(openedThread), {
+			context: { approvalReviewer: {} },
+		});
+		expect(fullMessage).toContain(APPROVAL_MODE_OPEN_TAG);
+	});
+
+	it('adds nothing about approvals in Manual mode', async () => {
+		const { fullMessage } = await buildOpeningTurn(createMemory(openedThread));
+		expect(fullMessage).not.toContain(APPROVAL_MODE_OPEN_TAG);
 	});
 });

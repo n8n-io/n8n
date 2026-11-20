@@ -24,14 +24,16 @@ import { useAgentConfirmationModal } from '../composables/useAgentConfirmationMo
 import { useAgentPermissions } from '../composables/useAgentPermissions';
 import { useAgentPublish } from '../composables/useAgentPublish';
 import { removeProjectAgentFromListCache } from '../composables/useProjectAgentsList';
+import type { AgentListItem } from '../agent.types';
 import type { AgentResource } from '../types';
 import { hasAgentUnpublishedChanges } from '../utils/agentPublication';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import type { ActionToggleItem } from '@n8n/design-system/components/N8nActionToggle/ActionToggle.types';
 
 const props = defineProps<{
-	agent: AgentResource;
+	agent: AgentListItem;
 	projectId: string;
+	showFolderPath?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -43,6 +45,7 @@ const emit = defineEmits<{
 	unarchived: [agent: AgentResource];
 	'new-chat': [agentId: string, projectId: string];
 	duplicate: [agentId: string];
+	move: [agentId: string];
 }>();
 
 const locale = useI18n();
@@ -116,6 +119,10 @@ const actions = computed(() => {
 
 	const items: ActionToggleItem[] = [];
 
+	if (canUpdate.value && settingsStore.isFoldersFeatureEnabled) {
+		items.push({ value: 'move', label: locale.baseText('agents.folders.move') });
+	}
+
 	items.push({
 		...favoriteAction.value,
 		divided: !isPublished.value ? !canPublish.value : !canUnpublish.value,
@@ -186,6 +193,12 @@ async function deleteArchivedAgent() {
 }
 
 async function onAction(action: string) {
+	if (action === 'move') {
+		emit('move', props.agent.id);
+
+		return;
+	}
+
 	if (action === 'archive') {
 		const updated = await archive(props.agent);
 		if (updated) emit('archived', updated);
@@ -250,13 +263,21 @@ async function toggleMCPAccess(enabled: boolean) {
 				</N8nBadge>
 			</N8nText>
 		</template>
+		<N8nText
+			v-if="showFolderPath && agent.folderPath?.length"
+			:class="$style.folderPath"
+			size="small"
+			color="text-light"
+			>{{ agent.folderPath.join(' / ') }}</N8nText
+		>
 		<div :class="$style.cardDescription">
 			<span>
 				{{ locale.baseText('agents.list.updated') }}
-				<TimeAgo :date="String(agent.updatedAt)" /> |
+				<TimeAgo :date="String(agent.updatedAt)" />
 			</span>
-			<span> {{ locale.baseText('agents.list.created') }} {{ formattedCreatedAtDate }} </span>
-			<span v-if="showMcpIndicator">|</span>
+			<span :class="$style.divider">|</span>
+			<span>{{ locale.baseText('agents.list.created') }} {{ formattedCreatedAtDate }}</span>
+			<span v-if="showMcpIndicator" :class="$style.divider">|</span>
 			<span v-if="showMcpIndicator" :class="$style.mcpIndicator" data-test-id="agent-card-mcp">
 				<N8nTooltip placement="right" :content="locale.baseText('agents.list.availableInMCP')">
 					<N8nIcon icon="mcp" size="medium" />
@@ -354,11 +375,21 @@ async function toggleMCPAccess(enabled: boolean) {
 	font-size: var(--font-size--2xs);
 	color: var(--color--text--tint-1);
 	gap: var(--spacing--2xs);
+	flex-wrap: wrap;
+}
+
+.folderPath {
+	padding: 0 var(--spacing--sm);
+	overflow-wrap: anywhere;
 }
 
 .mcpIndicator {
 	display: inline-flex;
 	align-items: center;
+}
+
+.divider {
+	user-select: none;
 }
 
 .cardActions {

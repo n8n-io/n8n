@@ -9,24 +9,30 @@ import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 
 import { useSkillsStore } from './skills.store';
 
 const list = vi.fn();
 const sources = vi.fn();
 const checkSource = vi.fn();
+const deleteSource = vi.fn();
 const creators = vi.fn();
 const agents = vi.fn();
 const discoverSource = vi.fn();
 const connectSource = vi.fn();
 const sourceCredentials = vi.fn();
 const sourceRepositories = vi.fn();
+const replacementCredentials = vi.fn();
+const replaceCredential = vi.fn();
 const getSkill = vi.fn();
 const saveSkill = vi.fn();
+const updateSkillSyncSettings = vi.fn();
 
 vi.mock('./skills.api', () => ({
 	listSkillSources: async (...args: unknown[]) => await sources(...args),
 	checkSkillSource: async (...args: unknown[]) => await checkSource(...args),
+	deleteSkillSource: async (...args: unknown[]) => await deleteSource(...args),
 	getSkill: async (...args: unknown[]) => await getSkill(...args),
 	saveSkill: async (...args: unknown[]) => await saveSkill(...args),
 	getSkills: async (...args: unknown[]) => await list(...args),
@@ -36,6 +42,10 @@ vi.mock('./skills.api', () => ({
 	connectSkillSource: async (...args: unknown[]) => await connectSource(...args),
 	getSkillSourceCredentials: async (...args: unknown[]) => await sourceCredentials(...args),
 	getSkillSourceRepositories: async (...args: unknown[]) => await sourceRepositories(...args),
+	getSkillSourceReplacementCredentials: async (...args: unknown[]) =>
+		await replacementCredentials(...args),
+	replaceSkillSourceCredential: async (...args: unknown[]) => await replaceCredential(...args),
+	updateSkillSyncSettings: async (...args: unknown[]) => await updateSkillSyncSettings(...args),
 }));
 
 function deferred<T>() {
@@ -80,6 +90,46 @@ describe('useSkillsStore', () => {
 		expect(checkSource).toHaveBeenCalledWith(useRootStore().restApiContext, 'source-1');
 	});
 
+	it('lists and replaces a source credential with the REST context', async () => {
+		const row = { id: 'source-1', projectId: 'project-1' } as SkillSourceListItem;
+		const options = [{ id: 'c1', name: 'GitHub', type: 'githubApi' }];
+		replacementCredentials.mockResolvedValue(options);
+		const store = useSkillsStore();
+
+		expect(await store.fetchReplacementCredentials(row)).toBe(options);
+		await store.replaceSourceCredential(row, 'c1');
+
+		const { restApiContext } = useRootStore();
+		expect(replacementCredentials).toHaveBeenCalledWith(restApiContext, row);
+		expect(replaceCredential).toHaveBeenCalledWith(restApiContext, row, 'c1');
+	});
+
+	it('passes a failed credential replacement to the caller', async () => {
+		replaceCredential.mockRejectedValue(new Error('credential_invalid'));
+		const store = useSkillsStore();
+
+		await expect(
+			store.replaceSourceCredential({ id: 'source-1' } as SkillSourceListItem, 'c1'),
+		).rejects.toThrow('credential_invalid');
+	});
+
+	it('deletes a source with the REST context', async () => {
+		const store = useSkillsStore();
+
+		await store.deleteSource('source-1');
+
+		expect(deleteSource).toHaveBeenCalledWith(useRootStore().restApiContext, 'source-1', undefined);
+	});
+
+	it.each([{ keepSkills: true }, { onlySkillId: 'skill-1' }])(
+		'forwards source removal choices: %j',
+		async (query) => {
+			const store = useSkillsStore();
+			await store.deleteSource('source-1', query);
+			expect(deleteSource).toHaveBeenCalledWith(useRootStore().restApiContext, 'source-1', query);
+		},
+	);
+
 	it('keeps the previous sources when a read fails', async () => {
 		const store = useSkillsStore();
 		store.sources = [{ id: 'current' }] as SkillSourceListItem[];
@@ -90,13 +140,22 @@ describe('useSkillsStore', () => {
 
 	it('stores grouped page metadata and clears it for an ungrouped list', async () => {
 		const store = useSkillsStore();
-		list.mockResolvedValueOnce({ ...page('a'), page: 2, pageCount: 3, collapsedSources: [] });
+		const sourceRanges = [{ sourceId: 'source-1', start: 20, end: 26, total: 26 }];
+		list.mockResolvedValueOnce({
+			...page('a'),
+			page: 2,
+			pageCount: 3,
+			collapsedSources: [],
+			sourceRanges,
+		});
 		await store.fetchSkills({ groupBy: 'source' });
 		expect(store.page).toBe(2);
 		expect(store.pageCount).toBe(3);
+		expect(store.sourceRanges).toEqual(sourceRanges);
 		list.mockResolvedValueOnce(page('a'));
 		await store.fetchSkills();
 		expect(store.pageCount).toBeUndefined();
+		expect(store.sourceRanges).toEqual([]);
 	});
 
 	it('keeps the newest list when an older request answers last', async () => {
@@ -281,6 +340,24 @@ describe('useSkillsStore', () => {
 			await first;
 
 			expect(store.skillNames.get('skill-1')).toBe('brand-tone');
+		});
+	});
+
+	describe('setSkillSyncEnabled', () => {
+		it('saves the switch and applies the saved value to the module settings', async () => {
+			const settingsStore = useSettingsStore();
+			settingsStore.moduleSettings = {
+				skills: { skillSyncEnabled: true, skillSyncManagedByEnv: false },
+			};
+			updateSkillSyncSettings.mockResolvedValue({ enabled: false });
+			const store = useSkillsStore();
+
+			await store.setSkillSyncEnabled(true);
+
+			expect(updateSkillSyncSettings).toHaveBeenCalledWith(useRootStore().restApiContext, {
+				enabled: true,
+			});
+			expect(settingsStore.moduleSettings.skills?.skillSyncEnabled).toBe(false);
 		});
 	});
 });

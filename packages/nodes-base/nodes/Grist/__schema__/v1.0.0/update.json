@@ -1,0 +1,9 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"id": {
+			"type": ["number", "string"]
+		}
+	},
+	"type": "object"
+}

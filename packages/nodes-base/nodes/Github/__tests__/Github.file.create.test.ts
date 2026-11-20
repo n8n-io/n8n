@@ -88,7 +88,7 @@ describe('Github Node - File Create/Edit Operations', () => {
 
 			expect(GenericFunctions.githubApiRequest).toHaveBeenCalledWith(
 				'PUT',
-				'/repos/test-owner/test-repo/contents/test%2Ffile.txt',
+				expect.objectContaining({ value: '/repos/test-owner/test-repo/contents/test%2Ffile.txt' }),
 				expect.objectContaining({
 					content: expectedBuffer.toString('base64'),
 					message: 'Add test file',
@@ -133,7 +133,7 @@ describe('Github Node - File Create/Edit Operations', () => {
 
 			expect(GenericFunctions.githubApiRequest).toHaveBeenCalledWith(
 				'PUT',
-				'/repos/test-owner/test-repo/contents/test%2Ffile.txt',
+				expect.objectContaining({ value: '/repos/test-owner/test-repo/contents/test%2Ffile.txt' }),
 				expect.objectContaining({
 					content: base64Content,
 					message: 'Add test file',
@@ -178,7 +178,7 @@ describe('Github Node - File Create/Edit Operations', () => {
 
 			expect(GenericFunctions.githubApiRequest).toHaveBeenCalledWith(
 				'PUT',
-				'/repos/test-owner/test-repo/contents/test%2Ffile.txt',
+				expect.objectContaining({ value: '/repos/test-owner/test-repo/contents/test%2Ffile.txt' }),
 				expect.objectContaining({
 					content: expectedBase64,
 					message: 'Add test file',
@@ -243,7 +243,7 @@ describe('Github Node - File Create/Edit Operations', () => {
 
 			expect(GenericFunctions.githubApiRequest).toHaveBeenCalledWith(
 				'PUT',
-				'/repos/test-owner/test-repo/contents/test%2Ffile.txt',
+				expect.objectContaining({ value: '/repos/test-owner/test-repo/contents/test%2Ffile.txt' }),
 				expect.objectContaining({
 					content: expectedBuffer.toString('base64'),
 					message: 'Update test file',

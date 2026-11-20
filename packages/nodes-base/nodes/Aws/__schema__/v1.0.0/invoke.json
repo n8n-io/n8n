@@ -1,0 +1,14 @@
+{
+	"properties": {
+		"result": {
+			"additionalProperties": true,
+			"properties": {
+				"statusCode": {
+					"type": "number"
+				}
+			},
+			"type": ["number", "object"]
+		}
+	},
+	"type": "object"
+}

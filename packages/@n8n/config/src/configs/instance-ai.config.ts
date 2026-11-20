@@ -89,16 +89,24 @@ export class InstanceAiConfig {
 	observerMessageTokens: number = 30_000;
 
 	/**
-	 * Model for the background tasks that summarize n8n Assistant conversations into memory, in the same `provider/model` format as `N8N_INSTANCE_AI_MODEL`, for example `anthropic/claude-haiku-4-5`.
+	 * Smaller model for n8n Assistant background tasks, such as conversation memory, thread titles, and the test data for workflow verification. Use the same `provider/model` format as `N8N_INSTANCE_AI_MODEL`, for example `anthropic/claude-haiku-5-5`.
 	 * It uses the same provider and credentials as the main model, so set a model that provider offers.
-	 * When unset, or when the main model can't switch models, n8n uses the main model.
+	 * When unset, n8n uses `claude-haiku-5-5` for Anthropic and `gpt-6-luna` for OpenAI. With other providers, or with a custom base URL, it uses the main model.
 	 */
-	@Env('N8N_INSTANCE_AI_MEMORY_MODEL')
-	memoryModel: string = '';
+	@Env('N8N_INSTANCE_AI_UTILITY_MODEL')
+	utilityModel: string = '';
+
+	/**
+	 * Model that checks actions in the n8n Assistant's Auto approval mode, in the same `provider/model` format as `N8N_INSTANCE_AI_MODEL`, for example `anthropic/claude-haiku-5-5`.
+	 * It uses the same provider and credentials as the main model, so set a fast model that provider offers.
+	 * When unset, or when n8n can't use this model, Auto mode uses the same model as `N8N_INSTANCE_AI_UTILITY_MODEL`.
+	 */
+	@Env('N8N_INSTANCE_AI_APPROVAL_JUDGE_MODEL')
+	approvalJudgeModel: string = '';
 
 	/**
 	 * Token threshold for the Reflector to condense observations.
-	 * When unset, the threshold is a share of the model's window or of the max window, whichever is smaller.
+	 * When unset, the threshold is 15% of the model's window or of the max window, whichever is smaller.
 	 * When set, this fixed value replaces that share.
 	 */
 	@Env('N8N_INSTANCE_AI_REFLECTOR_OBSERVATION_TOKENS')
@@ -152,6 +160,13 @@ export class InstanceAiConfig {
 
 	@Env('N8N_INSTANCE_AI_BROWSER_USE_ENABLED')
 	browserUseEnabled: boolean = true;
+
+	/**
+	 * Whether n8n Assistant can run browser tasks in a cloud browser. Admins can disable this in
+	 * the n8n Assistant settings.
+	 */
+	@Env('N8N_INSTANCE_AI_CLOUD_BROWSER_ENABLED')
+	cloudBrowserEnabled: boolean = true;
 
 	/** Enable sandbox for code execution. When true, the agent can run shell commands and code. */
 	@Env('N8N_INSTANCE_AI_SANDBOX_ENABLED')
@@ -299,10 +314,8 @@ export class InstanceAiConfig {
 	 * prompt cache within one instance. A request-level `promptVersion` and a
 	 * value already selected for the thread both still win, so an eval keeps the
 	 * profile it pinned. Checkpoints do not store this pin, so a suspended run
-	 * that resumes after you change it uses the new value. Profiles are keyed by
-	 * build mode, so pinning a `default`-mode profile also overrides a
-	 * progressive building assignment. An unknown version fails the run, and n8n
-	 * keeps serving everything else.
+	 * that resumes after you change it uses the new value. An unknown version
+	 * fails the run, and n8n keeps serving everything else.
 	 */
 	@Env('N8N_INSTANCE_AI_PROMPT_VERSION')
 	promptVersion: string = '';

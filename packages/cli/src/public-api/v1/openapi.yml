@@ -24,6 +24,10 @@ servers:
         default: https://example.com
 tags:
   # Child tags (alphabetically sorted)
+  - name: Agent
+    x-displayName: Agents
+    x-parent: BuildAndRun
+    description: Operations about agents
   - name: Audit
     x-displayName: Audit
     x-parent: InstanceOperations

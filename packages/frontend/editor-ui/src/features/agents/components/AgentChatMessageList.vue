@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, inject, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue';
+import { computed, inject, ref } from 'vue';
 import {
 	N8nButton,
 	N8nCallout,
@@ -7,12 +7,13 @@ import {
 	N8nIcon,
 	N8nIconButton,
 	N8nLink,
+	N8nSpinner,
 	N8nText,
 } from '@n8n/design-system';
 import { APPROVAL_TOOL_NAME, N8N_CHAT_ACTION_TOOL_NAME } from '@n8n/api-types';
 import { isAwaitingCard } from '@/features/ai/shared/agentsChat/n8nChatInteraction';
 import { useI18n } from '@n8n/i18n';
-import { useResizeObserver, useSessionStorage } from '@vueuse/core';
+import { useSessionStorage } from '@vueuse/core';
 import { TIME } from '@/app/constants/durations';
 import type { RouteLocationRaw } from 'vue-router';
 import {
@@ -85,6 +86,12 @@ const props = defineProps<{
 	preparingSummary?: boolean;
 	/** The results were not summarized in time. */
 	summaryMissing?: boolean;
+	/** The thread has turns older than `messages`. */
+	hasOlderMessages?: boolean;
+	/** An older page is loading. */
+	loadingOlderMessages?: boolean;
+	/** The last older page failed to load. */
+	loadOlderMessagesFailed?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -97,6 +104,8 @@ const emit = defineEmits<{
 	];
 	sendToAssistant: [event?: AgentSendToAssistantEvent];
 	'increase-budget': [payload: { field: 'monthlyBudgetUsd' | 'sessionCostCapUsd'; amount: number }];
+	/** The user asks to load the older page again after a failure. */
+	'retry-load-older': [];
 }>();
 
 defineSlots<{
@@ -209,9 +218,6 @@ function getMessageRenderItems(message: ChatMessage): MessageRenderItem[] {
 
 const interactionExtensions = inject(AGENTS_CHAT_INTERACTION_EXTENSIONS, undefined);
 
-const scrollRef = useTemplateRef<HTMLDivElement>('scrollRef');
-const statusRef = useTemplateRef<HTMLDivElement>('statusRef');
-
 /** True when the bubble of `message` shows something besides host events. */
 function hasBubbleContent(message: ChatMessage): boolean {
 	return !!(
@@ -321,11 +327,22 @@ const retryErrorMessageId = computed(() => {
 	return props.retryMessageId && isRetryableChatError(message) ? message?.id : undefined;
 });
 
-const EMPTY_HOST_EVENT_ITEMS: AgentsChatHostEventItems = { start: [], end: [], thinking: [] };
+const EMPTY_HOST_EVENT_ITEMS: AgentsChatHostEventItems = {
+	start: [],
+	end: [],
+	thinking: [],
+	toolCalls: new Map(),
+};
+
+/** The calls that a group shows as tool steps, for host events that show next to their call. */
+function getStepToolCallIds(groupId: string): Set<string> {
+	return new Set(getGroupToolCalls(groupId).steps.map((toolCall) => toolCall.toolCallId));
+}
 
 /**
  * Host event components of each assistant group. `transient` events show only
  * before text. `thinking` events need the thinking block of the group.
+ * `tool-call` events need the tool step of their call.
  */
 const hostEventItems = computed(() => {
 	const itemsByGroupId = new Map<string, AgentsChatHostEventItems>();
@@ -339,6 +356,7 @@ const hostEventItems = computed(() => {
 					getHostEventItems(group.hostEvents, extensions, {
 						showTransient: !group.finalMessage?.content.trim(),
 						hasThinkingBlock: group.thinkingSegments.length > 0,
+						stepToolCallIds: getStepToolCallIds(group.id),
 					}),
 				);
 				break;
@@ -352,6 +370,7 @@ const hostEventItems = computed(() => {
 					getHostEventItems(sources, extensions, {
 						showTransient: !message.content.trim(),
 						hasThinkingBlock: group.thinkingSegments.length > 0,
+						stepToolCallIds: getStepToolCallIds(group.id),
 					}),
 				);
 				break;
@@ -387,7 +406,8 @@ const formatChatDividerTimestamp = useChatDividerTimestamp();
  * Divider label by group id: the first user message gets one, and so does any
  * later user message whose gap since the previous one exceeds the window above.
  * Messages without a `createdAt` (older history) are skipped and never become
- * the "previous" reference.
+ * the "previous" reference. While older pages are not loaded, the first message
+ * gets no divider: the gap to the message before it is not known yet.
  */
 const dividerLabels = computed(() => {
 	const labels = new Map<string, string>();
@@ -400,8 +420,9 @@ const dividerLabels = computed(() => {
 		// A new local day always earns a divider, even inside the window: without
 		// it a chat that crosses midnight files today's messages under a
 		// "Yesterday at ..." heading.
-		if (
-			previousUserCreatedAt === undefined ||
+		if (previousUserCreatedAt === undefined) {
+			if (!props.hasOlderMessages) labels.set(group.id, formatChatDividerTimestamp(createdAt));
+		} else if (
 			createdAt - previousUserCreatedAt > TIME.HOUR ||
 			!isSameLocalDay(new Date(createdAt), new Date(previousUserCreatedAt))
 		) {
@@ -607,108 +628,32 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 			? null
 			: openMemoryFooterGroupId.value;
 }
-
-// How close to the bottom the user has to be for incoming chunks to keep
-// following them. Small enough that a deliberate scroll-up breaks the lock,
-// large enough that sub-pixel DOM growth during markdown rendering doesn't
-// falsely count as "scrolled up".
-const SCROLL_STICK_THRESHOLD_PX = 80;
-
-/**
- * True when the user is (or was last) near the bottom of the chat and wants
- * incoming stream chunks to keep scrolling into view. Flipped to false when
- * the user scrolls up away from the bottom, and back to true when they
- * scroll back down or send a new message.
- */
-const isStickToBottom = ref(true);
-
-function isNearBottom(): boolean {
-	const el = scrollRef.value;
-	if (!el) return true;
-	return el.scrollHeight - el.scrollTop - el.clientHeight <= SCROLL_STICK_THRESHOLD_PX;
-}
-
-function onScroll(): void {
-	isStickToBottom.value = isNearBottom();
-}
-
-function scrollToBottom(): void {
-	void nextTick(() => {
-		// Double rAF — async children (markdown, highlighters) can grow content
-		// after the first frame, so we measure on the second one.
-		requestAnimationFrame(() => {
-			requestAnimationFrame(() => {
-				if (scrollRef.value) {
-					scrollRef.value.scrollTop = scrollRef.value.scrollHeight;
-					isStickToBottom.value = true;
-				}
-			});
-		});
-	});
-}
-
-function autoScrollIfSticky(): void {
-	if (isStickToBottom.value) scrollToBottom();
-}
-
-// Snap to the bottom on initial render with a preloaded history. Two hooks on
-// purpose: the watcher with `immediate: true` fires after setup / initial
-// render, and `onMounted` covers cases where the post-flush scroll measured an
-// incomplete height because async content (markdown, highlighters) was still
-// expanding.
-onMounted(() => {
-	if (props.messages.length > 0) scrollToBottom();
-});
-
-// New message appended. If it's the user's own message we always follow to
-// the bottom (they just sent — they want to see the response). For
-// assistant messages and state transitions, follow only if the user is
-// sticking to the bottom.
-watch(
-	() => props.messages.length,
-	(newLen, oldLen) => {
-		if ((oldLen ?? 0) < newLen) {
-			const last = props.messages[newLen - 1];
-			if (last?.role === CHAT_MESSAGE_ROLE.USER) {
-				scrollToBottom();
-				return;
-			}
-		}
-		autoScrollIfSticky();
-	},
-	{ flush: 'post' },
-);
-
-watch(() => props.messagingState, autoScrollIfSticky, { flush: 'post' });
-
-watch(() => props.preparingSummary, autoScrollIfSticky, { flush: 'post' });
-
-useResizeObserver(statusRef, autoScrollIfSticky);
-
-// Content within the last message grew (streaming text, tool calls, thinking,
-// host events). Only follow the stream down if the user is still near the
-// bottom — otherwise we yank them away from whatever they scrolled up to read.
-watch(
-	[
-		() => {
-			const last = props.messages[props.messages.length - 1];
-			if (!last) return '';
-			const thinking = getMessageThinkingSegments(last)
-				.map((segment) => segment.content)
-				.join('');
-			return `${last.content}|${last.toolCalls?.length ?? 0}|${getMessageInteractives(last).length}|${thinking}`;
-		},
-		// A new host event, or a keyed update of one, sets a new `hostEvents`
-		// array, so the reference changes even when the text does not.
-		() => props.messages.at(-1)?.hostEvents,
-	],
-	autoScrollIfSticky,
-	{ flush: 'post' },
-);
 </script>
 
 <template>
-	<div ref="scrollRef" :class="$style.messages" @scroll.passive="onScroll">
+	<div :class="$style.messages">
+		<!-- Takes no space, so the messages do not move when it shows or hides. -->
+		<div
+			v-if="loadingOlderMessages || loadOlderMessagesFailed"
+			:class="$style.olderMessagesStatus"
+			data-older-messages-status
+		>
+			<N8nSpinner v-if="loadingOlderMessages" data-testid="agent-chat-older-messages-loading" />
+			<!-- A thread too short to scroll cannot leave the top, so it needs a button to try again. -->
+			<div
+				v-else
+				:class="$style.olderMessagesError"
+				role="alert"
+				data-testid="agent-chat-older-messages-error"
+			>
+				<N8nText size="small" color="text-light">
+					{{ i18n.baseText('agents.chat.loadOlder.error') }}
+				</N8nText>
+				<N8nButton variant="ghost" size="xsmall" @click="emit('retry-load-older')">
+					{{ i18n.baseText('generic.retry') }}
+				</N8nButton>
+			</div>
+		</div>
 		<template v-for="group in displayGroups" :key="group.id">
 			<div
 				v-if="dividerLabels.has(group.id)"
@@ -744,6 +689,7 @@ watch(
 						:can-fix-with-assistant="canSendToAssistant"
 						:dismissed-tool-call-ids="dismissedFixToolCallIds"
 						:execution-id="group.executionId"
+						:host-events="getGroupHostEventItems(group.id).toolCalls"
 						@fix-with-assistant="onFixWithAssistant(group, $event)"
 					/>
 					<div
@@ -904,6 +850,7 @@ watch(
 						:can-fix-with-assistant="canSendToAssistant"
 						:dismissed-tool-call-ids="dismissedFixToolCallIds"
 						:execution-id="group.message.executionId"
+						:host-events="getGroupHostEventItems(group.id).toolCalls"
 						@fix-with-assistant="onFixWithAssistant(group, $event)"
 					/>
 					<div
@@ -1126,7 +1073,7 @@ watch(
 				<AgentTypingIndicator :class="$style.typingIndicator" />
 			</div>
 		</div>
-		<div v-if="$slots.status" ref="statusRef" :class="$style.message">
+		<div v-if="$slots.status" :class="$style.message">
 			<slot name="status" />
 		</div>
 	</div>
@@ -1134,10 +1081,7 @@ watch(
 
 <style lang="scss" module>
 .messages {
-	flex: 1;
 	width: 100%;
-	min-height: 0;
-	overflow-y: auto;
 	padding: var(--spacing--lg) var(--spacing--md) var(--spacing--sm);
 	padding-bottom: var(--spacing--xl);
 	display: flex;
@@ -1145,15 +1089,31 @@ watch(
 	gap: var(--spacing--sm);
 	max-width: var(--agent-chat-max-width, 800px);
 	margin: 0 auto;
+}
 
-	// AGENT: use mixin instead
-	mask-image: linear-gradient(to bottom, black 0%, black 95%, transparent 100%);
+// Sticks to the top of the view. The zero height and the negative margin
+// cancel the flex gap, so the status takes no space.
+.olderMessagesStatus {
+	position: sticky;
+	top: 0;
+	z-index: 1;
+	display: flex;
+	justify-content: center;
+	align-items: flex-start;
+	height: 0;
+	margin-bottom: calc(-1 * var(--spacing--sm));
+	overflow: visible;
+}
 
-	// AGENT: Use mixin insteasd
-	scrollbar-width: none;
-	&::-webkit-scrollbar {
-		display: none;
-	}
+.olderMessagesError {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--4xs) var(--spacing--4xs) var(--spacing--4xs) var(--spacing--sm);
+	background-color: var(--background--surface);
+	border: var(--border);
+	border-radius: var(--radius--full);
+	box-shadow: var(--shadow--xs);
 }
 
 .message {

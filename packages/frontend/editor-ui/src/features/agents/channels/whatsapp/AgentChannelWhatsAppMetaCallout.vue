@@ -1,17 +1,30 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { WhatsAppMetaStatus } from '@n8n/api-types';
-import { N8nCallout, N8nLink, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nCallout, N8nLink, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
 import { metaTitleKey, presentWhatsAppMetaState } from './metaStatus';
 
-const props = defineProps<{ status: WhatsAppMetaStatus | null }>();
+const props = withDefaults(
+	defineProps<{ status: WhatsAppMetaStatus | null; canSetup?: boolean }>(),
+	{
+		canSetup: true,
+	},
+);
+const emit = defineEmits<{ setup: [] }>();
 
 const i18n = useI18n();
 
 const presentation = computed(() =>
 	props.status ? presentWhatsAppMetaState(props.status.state) : null,
+);
+
+// Setting up again creates a credential, so read-only users do not get the button.
+const setupAction = computed(() => (props.canSetup ? presentation.value?.setupAction : undefined));
+// A setup state has no link, so a read-only user sees no action at all.
+const linkAction = computed(() =>
+	presentation.value?.setupAction ? undefined : presentation.value?.action,
 );
 
 // The design shows a circled cross for an error and a triangle for a warning.
@@ -45,9 +58,19 @@ const interpolate = computed(() => ({
 				{{ i18n.baseText(presentation.descriptionKey) }}
 			</N8nText>
 		</div>
-		<template v-if="presentation.action" #actions>
+		<template v-if="setupAction || linkAction" #actions>
+			<N8nButton
+				v-if="setupAction"
+				variant="solid"
+				size="small"
+				:class="$style.action"
+				:label="i18n.baseText(setupAction.labelKey)"
+				data-testid="whatsapp-meta-callout-setup"
+				@click="emit('setup')"
+			/>
 			<N8nLink
-				:href="presentation.action.url"
+				v-else-if="linkAction"
+				:href="linkAction.url"
 				theme="text"
 				size="small"
 				:underline="false"
@@ -56,7 +79,7 @@ const interpolate = computed(() => ({
 				rel="noopener noreferrer"
 				data-testid="whatsapp-meta-callout-action"
 			>
-				{{ i18n.baseText(presentation.action.labelKey) }}
+				{{ i18n.baseText(linkAction.labelKey) }}
 			</N8nLink>
 		</template>
 	</N8nCallout>

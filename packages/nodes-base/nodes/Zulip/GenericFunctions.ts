@@ -7,8 +7,10 @@ import type {
 	JsonObject,
 	IHttpRequestMethods,
 	IRequestOptions,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestUrl } from 'n8n-workflow';
 
 import type { IMessage } from './MessageInterface';
 import type { IStream } from './StreamInterface';
@@ -17,18 +19,17 @@ import type { IUser } from './UserInterface';
 export async function zulipApiRequest(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 
 	body: IMessage | IStream | IUser = {},
 	query: IDataObject = {},
-	uri?: string,
-	option: IDataObject = {},
+	option: Pick<IRequestOptions, 'formData'> & { uri?: never; url?: never; baseURL?: never } = {},
 ) {
 	const credentials = await this.getCredentials('zulipApi');
 
 	const endpoint = `${credentials.url.toString().replace(new RegExp('/$'), '')}/api/v1`;
 
-	let options: IRequestOptions = {
+	let options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		auth: {
 			user: credentials.email as string,
 			password: credentials.apiKey as string,
@@ -39,7 +40,7 @@ export async function zulipApiRequest(
 		method,
 		form: body as IDataObject,
 		qs: query,
-		uri: uri || `${endpoint}${resource}`,
+		uri: requestUrl`${endpoint}${resource}`,
 		json: true,
 	};
 	if (!Object.keys(body).length) {

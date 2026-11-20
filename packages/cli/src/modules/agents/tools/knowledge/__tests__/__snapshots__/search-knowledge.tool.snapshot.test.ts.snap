@@ -1,0 +1,435 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`knowledge retrieval tools contract > exposes the same tools, in the same order, with the same definitions 1`] = `
+[
+  {
+    "approval": undefined,
+    "description": "Find uploaded knowledge files by filename pattern, such as \`*knowledge*\`, \`*agent*tool*\`, or \`*sandbox*\`. Use \`*\` to list every uploaded file, an extension pattern like \`*.pdf\` to filter by type, or a name fragment when the user gives title or filename clues. Use first for knowledge lookup to discover plausible candidate files; call until enough candidates are found, then copy returned file values into search_text path or read_file. Results are paged: page through the full list with \`limit\` and \`offset\` while \`hasMore\` is true. Returns file, fileId, mimeType, and fileSizeBytes metadata; does not read file contents.",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "caseSensitive": {
+          "description": "Optional. Defaults to false for case-insensitive filename matching. Set true only when filename capitalization is part of the exact evidence you need.",
+          "type": "boolean",
+        },
+        "limit": {
+          "description": "Optional maximum number of candidate files to return. Use a small value such as 5-20 and make the pattern more specific if hasMore is true.",
+          "maximum": 100,
+          "minimum": 1,
+          "type": "integer",
+        },
+        "offset": {
+          "description": "Optional number of matching files to skip, for paging. When hasMore is true, call again with offset = previous offset + number of returned files.",
+          "minimum": 0,
+          "type": "integer",
+        },
+        "pattern": {
+          "description": "Filename pattern matched against uploaded knowledge file names, not file contents. Supports * and ? wildcards and is case-insensitive by default. Use \`*\` to list every uploaded file, \`*.pdf\` to filter by extension, or name fragments like \`*bert*\` when the user gives title or filename clues.",
+          "maxLength": 255,
+          "minLength": 1,
+          "type": "string",
+        },
+      },
+      "required": [
+        "pattern",
+      ],
+      "type": "object",
+    },
+    "legacyNames": undefined,
+    "name": "find_file",
+    "outputTrust": undefined,
+    "requiresWorkspace": undefined,
+    "systemInstruction": undefined,
+  },
+  {
+    "approval": undefined,
+    "description": "Search uploaded knowledge file contents with a ripgrep regex \`pattern\`. Omit \`path\` to search across every uploaded knowledge file. Pass \`path\` — one exact file value or an array of exact file values returned by find_file, search_text, or read_file — to scope the search to specific files. Does not accept empty path, \`*\`, fileId, absolute paths, guessed paths, arrays of non-strings, offsets, or semantic questions. Searching more than 20 files with an explicit \`path\` requires batching arrays across multiple calls (max 20 paths per call). \`output_mode\` defaults to content for snippets; use files_with_matches for matching files only or count for per-file match counts. Use \`head_limit\` to bound results and small \`-C\` values for nearby context. Answer from snippets when enough; use read_file only for quotes, citations, exact wording, source text, or larger missing context.",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "-C": {
+          "description": "Optional symmetric context lines around each content match, equivalent to ripgrep -C. Use 0 or omit for no surrounding context.",
+          "maximum": 10,
+          "minimum": 0,
+          "type": "integer",
+        },
+        "-i": {
+          "description": "Optional case-insensitive search flag. Defaults to true for uploaded knowledge search; set false only when capitalization matters.",
+          "type": "boolean",
+        },
+        "head_limit": {
+          "description": "Optional maximum number of results to return. Use a small value such as 5-20, then narrow the pattern if results have hasMore or truncated.",
+          "maximum": 100,
+          "minimum": 1,
+          "type": "integer",
+        },
+        "output_mode": {
+          "description": "Optional output mode. Defaults to content. Use files_with_matches to identify matching uploaded files without snippets, or count to compare match frequency by file.",
+          "enum": [
+            "content",
+            "files_with_matches",
+            "count",
+          ],
+          "type": "string",
+        },
+        "path": {
+          "description": "Optional uploaded knowledge file path or paths to search within. Pass one exact file value or an array of exact file values copied from previous knowledge tool results to scope the search. Omit to search across every uploaded knowledge file.",
+          "items": {
+            "maxLength": 512,
+            "minLength": 1,
+            "type": "string",
+          },
+          "maxItems": 20,
+          "minItems": 1,
+          "type": "array",
+        },
+        "pattern": {
+          "description": "Ripgrep regex pattern to search for in uploaded knowledge file contents. This is line-based regex search, not semantic search. Simple words and phrases usually work as-is; escape punctuation-heavy literals when needed.",
+          "maxLength": 500,
+          "minLength": 1,
+          "type": "string",
+        },
+      },
+      "required": [
+        "pattern",
+      ],
+      "type": "object",
+    },
+    "legacyNames": undefined,
+    "name": "search_text",
+    "outputTrust": undefined,
+    "requiresWorkspace": undefined,
+    "systemInstruction": undefined,
+  },
+  {
+    "approval": undefined,
+    "description": "Read one uploaded knowledge file using an exact \`file\` or \`fileId\` returned by a knowledge tool. Use only for exact quotes, citations, source text, or extra surrounding context not covered by search_text snippets or small -C context. Prefer bounded line ranges; each call supports up to 10 ranges and output is truncated when too large. Read all needed ranges from the same file in one call when practical, and do not use read_file for broad manual scanning. If using fileId without an exact matching file value, omit file.",
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "file": {
+          "description": "Uploaded knowledge file path to read. Use only an exact \`file\` value copied from a previous knowledge tool result. Required unless \`fileId\` is provided.",
+          "maxLength": 512,
+          "minLength": 1,
+          "type": "string",
+        },
+        "fileId": {
+          "description": "Uploaded knowledge file ID to read. Use only an exact \`fileId\` copied from a previous knowledge tool result. Required unless \`file\` is provided.",
+          "maxLength": 64,
+          "minLength": 1,
+          "type": "string",
+        },
+        "ranges": {
+          "description": "Optional line ranges to read from the selected file. Prefer bounded ranges from search_text matches; omit only when full-file context is genuinely needed and output truncation is acceptable.",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "endLine": {
+                "description": "Last 1-based line number to read. Must be greater than or equal to startLine. Prefer short ranges around the evidence.",
+                "minimum": 1,
+                "type": "integer",
+              },
+              "startLine": {
+                "description": "First 1-based line number to read, usually near a search_text match. Keep ranges narrow enough for citation-ready evidence.",
+                "minimum": 1,
+                "type": "integer",
+              },
+            },
+            "required": [
+              "startLine",
+              "endLine",
+            ],
+            "type": "object",
+          },
+          "maxItems": 10,
+          "minItems": 1,
+          "type": "array",
+        },
+      },
+      "type": "object",
+    },
+    "legacyNames": undefined,
+    "name": "read_file",
+    "outputTrust": undefined,
+    "requiresWorkspace": undefined,
+    "systemInstruction": undefined,
+  },
+]
+`;
+
+exports[`knowledge retrieval tools contract > returns the same find_file error output when the retrieval fails 1`] = `
+{
+  "modelOutput": {
+    "error": "sandbox unavailable",
+    "errorType": "Error",
+  },
+  "output": {
+    "error": "sandbox unavailable",
+    "errorType": "Error",
+  },
+}
+`;
+
+exports[`knowledge retrieval tools contract > returns the same find_file output and model output 1`] = `
+{
+  "modelOutput": {
+    "files": [
+      {
+        "displayName": "notes.txt",
+        "file": "knowledge/notes.txt",
+        "fileId": "file-1",
+        "fileSizeBytes": 1234,
+        "mimeType": "text/plain",
+      },
+    ],
+    "hasMore": true,
+    "offset": 0,
+    "returnedFiles": 1,
+  },
+  "output": {
+    "files": [
+      {
+        "createdAt": "2026-10-01T00:00:00.000Z",
+        "displayName": "notes.txt",
+        "file": "knowledge/notes.txt",
+        "fileId": "file-1",
+        "fileSizeBytes": 1234,
+        "mimeType": "text/plain",
+        "storageKey": "agents/agent-1/knowledge/file-1",
+        "storedAt": "db",
+      },
+    ],
+    "hasMore": true,
+    "limit": 20,
+    "offset": 0,
+  },
+}
+`;
+
+exports[`knowledge retrieval tools contract > returns the same read_file error output when the retrieval fails 1`] = `
+{
+  "modelOutput": {
+    "error": "sandbox unavailable",
+    "errorType": "Error",
+  },
+  "output": {
+    "error": "sandbox unavailable",
+    "errorType": "Error",
+  },
+}
+`;
+
+exports[`knowledge retrieval tools contract > returns the same read_file output and model output 1`] = `
+{
+  "modelOutput": {
+    "displayName": "notes.txt",
+    "file": "knowledge/notes.txt",
+    "fileId": "file-1",
+    "ranges": [
+      {
+        "citation": {
+          "displayName": "notes.txt",
+          "endLine": 3,
+          "file": "knowledge/notes.txt",
+          "fileId": "file-1",
+          "startLine": 1,
+        },
+        "endLine": 3,
+        "startLine": 1,
+        "text": "Returns policy
+refund within 30 days
+Exchanges within 60 days",
+        "textTruncated": false,
+      },
+    ],
+    "returnedRanges": 1,
+    "shownRanges": 1,
+    "truncated": true,
+  },
+  "output": {
+    "createdAt": "2026-10-01T00:00:00.000Z",
+    "displayName": "notes.txt",
+    "file": "knowledge/notes.txt",
+    "fileId": "file-1",
+    "ranges": [
+      {
+        "citation": {
+          "displayName": "notes.txt",
+          "endLine": 3,
+          "file": "knowledge/notes.txt",
+          "fileId": "file-1",
+          "startLine": 1,
+        },
+        "endLine": 3,
+        "startLine": 1,
+        "text": "Returns policy
+refund within 30 days
+Exchanges within 60 days",
+      },
+    ],
+    "truncated": true,
+  },
+}
+`;
+
+exports[`knowledge retrieval tools contract > returns the same search_text error output when the retrieval fails 1`] = `
+{
+  "modelOutput": {
+    "error": "sandbox unavailable",
+    "errorType": "Error",
+  },
+  "output": {
+    "error": "sandbox unavailable",
+    "errorType": "Error",
+  },
+}
+`;
+
+exports[`knowledge retrieval tools contract > returns the same search_text output and model output in content mode 1`] = `
+{
+  "modelOutput": {
+    "hasMore": false,
+    "limit": 10,
+    "matches": [
+      {
+        "context": [
+          {
+            "lineNumber": 1,
+            "matched": false,
+            "text": "Returns policy",
+          },
+          {
+            "lineNumber": 2,
+            "matched": true,
+            "text": "refund within 30 days",
+          },
+          {
+            "lineNumber": 3,
+            "matched": false,
+            "text": "Exchanges within 60 days",
+          },
+        ],
+        "displayName": "notes.txt",
+        "file": "knowledge/notes.txt",
+        "fileId": "file-1",
+        "lineNumber": 2,
+        "text": "refund within 30 days",
+        "textTruncated": false,
+      },
+    ],
+    "outputMode": "content",
+    "returnedMatches": 1,
+    "shownMatches": 1,
+    "truncated": false,
+  },
+  "output": {
+    "hasMore": false,
+    "limit": 10,
+    "matches": [
+      {
+        "context": [
+          {
+            "lineNumber": 1,
+            "matched": false,
+            "text": "Returns policy",
+          },
+          {
+            "lineNumber": 2,
+            "matched": true,
+            "text": "refund within 30 days",
+          },
+          {
+            "lineNumber": 3,
+            "matched": false,
+            "text": "Exchanges within 60 days",
+          },
+        ],
+        "displayName": "notes.txt",
+        "file": "knowledge/notes.txt",
+        "fileId": "file-1",
+        "lineNumber": 2,
+        "text": "refund within 30 days",
+        "textTruncated": false,
+      },
+    ],
+    "outputMode": "content",
+    "truncated": false,
+  },
+}
+`;
+
+exports[`knowledge retrieval tools contract > returns the same search_text output and model output in count mode 1`] = `
+{
+  "modelOutput": {
+    "counts": [
+      {
+        "count": 3,
+        "displayName": "notes.txt",
+        "file": "knowledge/notes.txt",
+        "fileId": "file-1",
+      },
+    ],
+    "hasMore": false,
+    "limit": 10,
+    "outputMode": "count",
+    "returnedCounts": 1,
+    "shownCounts": 1,
+    "truncated": false,
+  },
+  "output": {
+    "counts": [
+      {
+        "count": 3,
+        "displayName": "notes.txt",
+        "file": "knowledge/notes.txt",
+        "fileId": "file-1",
+      },
+    ],
+    "hasMore": false,
+    "limit": 10,
+    "outputMode": "count",
+    "truncated": false,
+  },
+}
+`;
+
+exports[`knowledge retrieval tools contract > returns the same search_text output and model output in files_with_matches mode 1`] = `
+{
+  "modelOutput": {
+    "files": [
+      {
+        "displayName": "notes.txt",
+        "file": "knowledge/notes.txt",
+        "fileId": "file-1",
+      },
+    ],
+    "hasMore": false,
+    "limit": 10,
+    "outputMode": "files_with_matches",
+    "returnedFiles": 1,
+    "shownFiles": 1,
+    "truncated": false,
+  },
+  "output": {
+    "files": [
+      {
+        "createdAt": "2026-10-01T00:00:00.000Z",
+        "displayName": "notes.txt",
+        "file": "knowledge/notes.txt",
+        "fileId": "file-1",
+        "fileSizeBytes": 1234,
+        "mimeType": "text/plain",
+        "storageKey": "agents/agent-1/knowledge/file-1",
+        "storedAt": "db",
+      },
+    ],
+    "hasMore": false,
+    "limit": 10,
+    "outputMode": "files_with_matches",
+    "truncated": false,
+  },
+}
+`;

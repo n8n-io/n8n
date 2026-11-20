@@ -1,6 +1,7 @@
 import type { Mock } from 'vitest';
 import type { MockProxy } from 'vitest-mock-extended';
 import type { IExecuteFunctions, INodePropertyRegexValidation } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { createExecuteContext, meetingHeaders, setParams as setContextParams } from '../helpers';
 import { versionDescription } from '../../../../v2/actions/versionDescription';
@@ -50,7 +51,7 @@ describe('Microsoft Teams V2 — onlineMeeting:get', () => {
 
 			expect(transport.microsoftApiRequest).toHaveBeenCalledWith(
 				'GET',
-				'/v1.0/me/onlineMeetings',
+				requestPath`/v1.0/me/onlineMeetings`,
 				{},
 				{ $filter: `JoinWebUrl eq '${joinWebUrl}'` },
 				undefined,
@@ -72,7 +73,7 @@ describe('Microsoft Teams V2 — onlineMeeting:get', () => {
 
 		expect(transport.microsoftApiRequest).toHaveBeenCalledWith(
 			'GET',
-			'/v1.0/me/onlineMeetings',
+			requestPath`/v1.0/me/onlineMeetings`,
 			{},
 			{ $filter: "JoinWebUrl eq 'https://teams.microsoft.com/l/meetup-join/o''brien'" },
 			undefined,
@@ -128,7 +129,7 @@ describe('Microsoft Teams V2 — onlineMeeting:get', () => {
 
 		expect(transport.microsoftApiRequest).toHaveBeenCalledWith(
 			'GET',
-			'/v1.0/me/onlineMeetings/MSpkYzE3Njc0Yy04MWQ5LTRhZGItYmZi',
+			requestPath`/v1.0/me/onlineMeetings/MSpkYzE3Njc0Yy04MWQ5LTRhZGItYmZi`,
 			{},
 			{},
 			undefined,

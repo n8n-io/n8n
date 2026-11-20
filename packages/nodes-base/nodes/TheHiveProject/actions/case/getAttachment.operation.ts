@@ -4,6 +4,7 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
@@ -74,7 +75,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const response = await theHiveApiRequest.call(
 		this,
 		'GET',
-		`/v1/case/${caseId}/attachment/${attachmentId}/download`,
+		requestPath`/v1/case/${caseId}/attachment/${attachmentId}/download`,
 		undefined,
 		undefined,
 		undefined,

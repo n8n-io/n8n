@@ -70,7 +70,7 @@ describe('ToolSearXng', () => {
 
 			expect(httpRequest).toHaveBeenCalledWith({
 				method: 'POST',
-				url: 'https://searx.example.com/search',
+				url: expect.anything(),
 				qs: {
 					q: 'current events',
 					format: 'json',
@@ -81,6 +81,7 @@ describe('ToolSearXng', () => {
 				json: true,
 				timeout: 15_000,
 			});
+			expect(String(httpRequest.mock.calls[0][0].url)).toBe('https://searx.example.com/search');
 		});
 
 		it('should apply configured options as query parameters', async () => {
@@ -127,9 +128,7 @@ describe('ToolSearXng', () => {
 			);
 			await (supplyDataResult.response as DynamicTool).invoke('test');
 
-			expect(httpRequest).toHaveBeenCalledWith(
-				expect.objectContaining({ url: 'https://searx.example.com/search' }),
-			);
+			expect(String(httpRequest.mock.calls[0][0].url)).toBe('https://searx.example.com/search');
 		});
 
 		it('should map results to comma-joined JSON strings', async () => {

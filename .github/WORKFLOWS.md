@@ -25,7 +25,7 @@ Complete reference for n8n's `.github/` folder.
 │   ├── update-changelog.mjs              # Generate CHANGELOG
 │   ├── trim-fe-packageJson.js            # Strip frontend devDeps
 │   ├── ensure-provenance-fields.mjs      # Add license/author fields
-│   ├── validate-docs-links.js            # Check documentation URLs
+│   ├── link-check/                       # Weekly link check config and report
 │   ├── check-inflight.mjs                # Reject inflight in checked-in pnpm lockfiles
 │   ├── send-build-stats.mjs              # Turbo build telemetry → webhook
 │   └── docker/
@@ -179,8 +179,9 @@ These only run if specific files changed:
 | `packages/@n8n/task-runner-python/**`                                  | `ci-python.yml`             | any        |
 | `packages/cli/src/databases/**`, `*.entity.ts`, `*.repository.ts`      | `test-db.yml`               | any        |
 | `packages/frontend/@n8n/storybook/**`, design-system, chat             | `release-storybook.yml` | master     |
+| `docs/backend/**`, `packages/@n8n/backend-docs-site/**`                | `release-docs-backend.yml` (PR preview, master deploys to n8n-backend-docs.pages.dev) | master     |
 | `docker/docker-bake.hcl`, `docker/images/n8n-base/Dockerfile`, `docker/images/n8n-base/Dockerfile.debian`, `.github/scripts/docker/base-debian-smoke-check.mjs`, `.github/scripts/docker/bake-inputs-changed.mjs` | `build-base-image.yml` (builds only the bases whose inputs changed; publishes on master only) | any        |
-| `docker/docker-bake.hcl`, `docker/images/node-pc/Dockerfile`, `.github/scripts/docker/bake-inputs-changed.mjs` | `build-node-pc-image.yml` (builds only when its inputs changed; publishes on master only) | any        |
+| `docker/docker-bake.hcl`, `docker/images/node-pc/**`, `.github/scripts/docker/bake-inputs-changed.mjs` | `build-node-pc-image.yml` (builds pointer-compressed Node 26 as `n8nio/node-pc` and stock-configured Node 24 and 26 as `n8nio/node-patched` only when their own inputs changed; publishes from master only; a `workflow_dispatch` on master with `push: true` always builds and publishes all three variants) | any        |
 | `**/package.json`, `**/turbo.json`                                     | `build-windows.yml`         | master     |
 | `packages/@n8n/ai-workflow-builder.ee/evaluations/programmatic/python/**` | `test-evals-python.yml`  | any        |
 | `packages/quality/efficiency/scale/benchmark/**`                       | `build-benchmark-image.yml` | master     |
@@ -446,17 +447,12 @@ ci-master.yml
     └──────────────────────────▶  test-single-instance-npm.yml
 
 release-publish.yml
-    ├──────────────────────────▶  release-setup-trusted-publishing.yml  (minor releases)
-    │                                 └──────────▶  release-publish-new-package.yml
     ├──────────────────────────▶  docker-build-push.yml
     │                                 └──────────▶  security-trivy-scan-callable.yml
     └──────────────────────────▶  sbom-generation-callable.yml
 
 release-publish-post-release.yml
     └──────────────────────────▶  util-publish-api-schema.yml  (when the stable tag moves)
-
-release-setup-trusted-publishing.yml
-    └──────────────────────────▶  release-publish-new-package.yml  (once per unpublished package)
 
 test-sbom-nightly.yml
     └──────────────────────────▶  sbom-validation-callable.yml
@@ -498,7 +494,6 @@ test-workflows-nightly.yml  (manual dispatch only — nightly schedule disabled,
 │  STAGE 3: Publish                                                          │
 │  ───────────────                                                           │
 │  release-publish.yml (triggered on merge to release/*)                     │
-│  ├─ setup-trusted-publishing (minor releases only)                          │
 │  ├─ publish-to-npm                                                         │
 │  │   ├─ trim-fe-packageJson.js ───▶ Strip devDeps                          │
 │  │   ├─ ensure-provenance-fields.mjs ───▶ Add license fields               │
@@ -605,7 +600,6 @@ out: `npm deprecate n8n@X.Y.Z "Failed release, use X.Y.(Z+1)"`.
 | `release-standalone-package.yml`           | Manual dispatch | Release individual packages (@n8n/codemirror-lang, @n8n/create-node, etc.) |
 | `release-create-patch-pr.yml`              | Manual dispatch | Open a patch release PR for one track          |
 | `release-recreate-failed-release.yml`      | Manual dispatch | Re-release a version whose publish failed after it reached npm |
-| `release-setup-trusted-publishing.yml`     | Manual dispatch or workflow call | Publish and configure new public packages for trusted publishing |
 
 ---
 
@@ -652,10 +646,10 @@ Push to master
 | Daily 00:00               | `test-db.yml`                     | Database compatibility   |
 | Daily 00:00               | `test-e2e-performance-reusable.yml`| Browser performance and idle memory baselines |
 | Daily 00:00               | `release-storybook.yml`       | Storybook deploy         |
-| Daily 00:00               | `util-check-docs-urls.yml`        | Doc link validation      |
 | Daily 01:30, 02:30, 03:30 | `test-benchmark-nightly.yml`      | Performance benchmarks   |
 | Daily 02:00               | `test-get-n8n.yml`                | get.n8n.io installer health |
 | Daily 02:00               | `test-e2e-pc-nightly.yml`         | E2E on the `-pc` image   |
+| Daily 03:00               | `test-e2e-helm.yml`               | n8n build on the public Helm chart |
 | Daily 04:00               | `test-sbom-nightly.yml`           | Release and image SBOM license validation |
 | Daily 04:30               | `test-image-efficiency.yml`       | Image size and layer waste with Dive |
 | Daily 05:00               | `test-benchmark-destroy-nightly.yml`| Cleanup benchmark env  |
@@ -663,6 +657,8 @@ Push to master
 | Daily 08:00               | `build-v3-nightly.yml`            | Nightly v3 Docker images |
 | Monday 00:00              | `util-update-node-popularity.yml` | Node usage stats         |
 | Monday 02:00              | `test-e2e-coverage-weekly.yml`    | Weekly E2E coverage      |
+| Monday 06:00              | `test-link-check-weekly.yml`      | Broken links in `packages/` |
+| Monday 08:00              | `ci-detect-new-packages.yml`      | Report unpublished npm packages to Developer Platform |
 | Wednesday 04:00           | `util-update-get-n8n-versions.yml` | get-n8n stable versions |
 | Saturday 22:00            | `test-evals-ai.yml`               | AI workflow evals        |
 | 1st of month 04:00        | `util-refresh-cubic-schema.yml`   | Refresh vendored cubic schema |
@@ -811,8 +807,6 @@ Workflows with `workflow_call` trigger:
 | `sbom-generation-callable.yml`     | `n8n_version`, `release_tag_ref`              | SBOM generation       |
 | `sbom-validation-callable.yml`     | `sha`                                         | Read-only SBOM validation |
 | `test-single-instance-npm.yml`     | `scope`, `base-ref`, `base-branch`, `blocking`, `timeout-minutes` | Dependency duplication |
-| `release-setup-trusted-publishing.yml` | none                                       | Find and configure unpublished workspace packages |
-| `release-publish-new-package.yml`  | `package-path`                                | Publish and configure one package |
 
 ---
 
@@ -829,7 +823,7 @@ Scripts in `.github/scripts/`:
 | `prepare-rerelease.mjs`       | Bump root + cli for a re-release | `release-recreate-failed-release.yml` |
 | `trim-fe-packageJson.js`      | Strip frontend devDeps     | `release-publish.yml`   |
 | `ensure-provenance-fields.mjs`| Add license/author fields  | `release-publish.yml`   |
-| `detect-new-packages.mjs`     | Find unpublished workspace packages | `release-publish.yml`, `release-setup-trusted-publishing.yml` |
+| `detect-new-packages.mjs`     | Find unpublished workspace packages | `ci-detect-new-packages.yml` |
 
 ### Docker Scripts
 
@@ -850,7 +844,7 @@ Scripts in `.github/scripts/`:
 
 | Script                  | Purpose           | Called By                 |
 |-------------------------|-------------------|---------------------------|
-| `validate-docs-links.js`| Check doc URLs    | `util-check-docs-urls.yml`|
+| `link-check/check-report.mjs` | Decide which lychee failures are broken links | `test-link-check-weekly.yml` |
 | `send-build-stats.mjs`  | Build telemetry   | `setup-nodejs` action     |
 | `resolve-pnpm-version.mjs` | Publish the pinned pnpm version and its executable cache key | `setup-nodejs` action |
 | `nightly-sbom-context.mjs` | Resolve the source SHA and image tag for nightly SBOM validation | `test-sbom-nightly.yml` |
@@ -911,8 +905,9 @@ See **[CI-TELEMETRY.md](CI-TELEMETRY.md)** for:
 
 ## OWNERS
 
-Team ownership lives in the top-level `OWNERS` file. The scripts that consume
-it live in `.github/scripts/owners/`. Line format:
+Team ownership lives in the top-level `OWNERS` file. The scripts that validate
+it and assign reviewers live in `.github/scripts/owners/`. DevHub evaluates
+required reviews and writes the review overview comment. Line format:
 
 ```
 <pattern> <@org/team> [required]
@@ -937,68 +932,85 @@ The file drives four workflows:
 | Workflow                          | Purpose                                                                  |
 |-----------------------------------|--------------------------------------------------------------------------|
 | `ci-owners-validation.yml`        | Validates OWNERS (syntax, dead paths) via `owners.mjs --check` |
-| `ci-owners-review-recommendations.yml` | Advisory PR comment: reviewer teams, line stats, required reviews    |
+| `ci-owners-review-recommendations.yml` | Calls DevHub: advisory PR comment with owning teams, line stats, required teams |
 | `ci-owners-assign-reviewers.yml`  | Opt-in reviewer auto-assignment (label-triggered)                        |
-| `ci-owners-required-reviews.yml`  | Enforces `required` entries via the "Required Reviews" commit status     |
+| `ci-owners-required-reviews.yml`  | Calls DevHub: enforces `required` entries through the "Required Reviews" commit status |
+
+### Auto-assign reviewers
+
+On an eligible PR into `master`, apply `Auto-assign reviewers` to request all
+owning teams. Apply `Auto-assign required reviewers` to request only teams whose
+`required` OWNERS entries match changed non-test files. If both labels are
+present, the workflow requests all owning teams.
+
+After it requests reviews, the workflow replaces the trigger labels with
+`Reviewers auto-assigned` to prevent repeat requests. While that marker is
+present, the workflow removes any trigger labels without requesting reviews
+again. If no teams match, it leaves the trigger label in place so a later
+update can try again.
 
 ### Required reviews
 
 An entry with the `required` option makes team approval mandatory: when a PR
 changes a non-test file whose winning entry carries `required`, a member of each
-listed team must approve the PR. Test files match the shared patterns in
-`test-files.mjs` and do not trigger required reviews.
-`ci-owners-required-reviews.yml` evaluates this on
-PR changes and review events, and reports a commit status
-named **Required Reviews** on the head SHA. A missing approval reports
-`pending` ("Waiting for approval from: …"), not `failure`, so an unreviewed PR
-does not show red CI; any non-success state blocks the merge equally. The
-ruleset for a branch must list that status as a required check for the block
-to take effect. Merge-queue runs report success on the queue head without
-re-evaluating: a PR cannot enter the queue unless the status is green on its
-head, and the queue does not change approvals.
+listed team must approve the PR. Test files do not trigger required reviews.
+
+DevHub evaluates this rule. `ci-owners-required-reviews.yml` calls the shared
+`ownership-checks` workflow in `n8n-io/github-actions`, which sends the PR
+number to DevHub. The workflow authenticates with its GitHub Actions OIDC
+token. It uses no secret and checks out no code. DevHub reads OWNERS from
+`master`, checks the approvals and the team membership, and writes a commit
+status named **Required Reviews** on the head SHA as its own GitHub App. See
+the `ownership-checks/README.md` file in `n8n-io/github-actions` and the
+DevHub README.
+
+A missing approval reports `pending` ("Waiting for approval from: …"), not
+`failure`, so an unreviewed PR does not show red CI. Any state other than
+`success` blocks the merge. The ruleset for a branch must require that status
+from DevHub's GitHub App, or the block has no effect. In the merge queue,
+DevHub writes `success` on the queue head and does not evaluate again: a PR
+cannot enter the queue unless the status is green on its head, and the queue
+does not change approvals.
 
 The status is evaluated for a PR into any base branch, from a same-repo head
-or a fork. Both matter because the ruleset that gates a PR is not always the
-one on its base branch: GitHub applies the ruleset of a stack's target branch
-to every PR in the stack, so a stacked PR into a feature branch is gated by
-the `master` ruleset. A required status that no run ever writes leaves the PR
-blocked on "Expected". Routes that skip the evaluation are listed in
-`REQUIRED_REVIEW_EXEMPTIONS` in
-`required-reviews.mjs`. An entry is `<head> -> <base>` or just `<base>`
-(any head); `*` matches any run of characters. An exempt PR reports
-`success` with the route in the description. Only heads in this repository
-can match, so a fork branch with a matching name is still evaluated. Add a
-route only when every commit it carries was already reviewed elsewhere, as
-with `sync/master-to-3x -> 3.x`: its commits landed on `master` first.
+or a fork. Both are necessary because the ruleset that gates a PR is not always
+the ruleset of its base branch: GitHub applies the ruleset of a stack's target
+branch to every PR in the stack, so the `master` ruleset gates a stacked PR into
+a feature branch. When no run writes a required status, the PR stays blocked
+on "Expected". The routes that skip the evaluation are in DevHub, in
+`REQUIRED_REVIEW_EXEMPTIONS` in `server/services/required-reviews.ts`. An
+exempt PR reports `success`. Only heads in this repository can match a route,
+so DevHub still evaluates a fork branch with a matching name. Add a route only
+when somebody already reviewed every commit that it carries, as with
+`sync/master-to-3x -> 3.x`: its commits landed on `master` first.
 
-The workflow reads OWNERS, its scripts and the exemption routes from `master`
-only, never from the base branch or the PR: any writable branch can be a base,
-so only `master` is trusted input. A PR cannot lift its own review
-requirement. A retarget re-evaluates the PR, so a verdict computed against the
-old base does not carry over.
+DevHub reads OWNERS from `master` only, never from the base branch or the PR,
+so a PR cannot lift its own review requirement. A retarget evaluates the PR
+again, so a verdict for the old base does not stay.
 
 Members of the `large-scale-changes` GitHub team can make the **Required
 Reviews** status succeed without required OWNERS team approvals. A team member
-must apply the `large-scale-change` label. The gate checks the actor from the
-label event and verifies their current team membership. The label alone is not
-sufficient. Label changes re-evaluate the status. Removing the label removes
-the exemption.
+must apply the `large-scale-change` label. DevHub checks the actor of the
+label event and their current team membership. The label alone is not
+sufficient. Label changes evaluate the status again. When you remove the
+label, the exemption stops.
 
 An approval from the n8n Release Helper makes the **Required Reviews** status
-succeed without required OWNERS team approvals. The gate uses the latest review
-state from `n8n-release-helper[bot]`. Dismissing its approval removes the skip.
+succeed without required OWNERS team approvals. DevHub uses the latest review
+state from `n8n-release-helper[bot]`. When you dismiss its approval, the skip
+stops.
 
-Every path that writes the status runs in the base repository context, because
-a fork-context run has no secrets and a read-only token. PR changes arrive
-through `pull_request_target`, which is safe here because no step checks out
-or runs PR code. Review events on a same-repo PR arrive through
-`pull_request_review`. Review events on a fork PR arrive through the
-`workflow_run` of `util-notify-pr-status.yml`, which receives every submitted
-or dismissed review; the owners workflow looks the PR up from that run's head
-and skips same-repo heads, which the direct event already covers. A first
-contribution whose runs still wait for approval gets no review-event
-re-evaluation until a maintainer approves the runs; `workflow_dispatch` with
-the PR number is the manual fallback.
+PR changes arrive through `pull_request_target`, which is safe here because
+the workflow checks out and runs no PR code. Review events on a same-repo PR
+arrive through `pull_request_review`. A review event on a fork PR gets no
+OIDC token, so it arrives through the `workflow_run` of
+`util-notify-pr-status.yml`, which receives every submitted or dismissed
+review. The shared workflow finds the PR from the head of that run and skips
+same-repo heads, which the direct event already covers. A first contribution
+whose runs still wait for approval gets no evaluation on review events until a
+maintainer approves the runs. To evaluate a PR again, for example after a team
+membership change, run `ci-owners-required-reviews.yml` with
+`workflow_dispatch` and the PR number.
 
 ---
 

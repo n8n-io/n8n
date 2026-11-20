@@ -419,4 +419,18 @@ describe('threadMessagesResponse', () => {
 			activeExecutionId: null,
 		});
 	});
+
+	it('returns the cursor of a page', () => {
+		expect(
+			threadMessagesResponse(
+				{ messages: persisted, activeExecutionId: null, nextCursor: 'cursor-1' },
+				null,
+			),
+		).toEqual({
+			messages: persisted,
+			openSuspensions: [],
+			activeExecutionId: null,
+			nextCursor: 'cursor-1',
+		});
+	});
 });

@@ -18,7 +18,12 @@ import { DataSource, EntityManager, In, type EntityMetadata } from '@n8n/typeorm
 import { readdir, readFile } from 'fs/promises';
 import { Cipher } from 'n8n-core';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import { type INode, type INodeCredentialsDetails, type IWorkflowBase } from 'n8n-workflow';
+import {
+	pickVersionedSettings,
+	type INode,
+	type INodeCredentialsDetails,
+	type IWorkflowBase,
+} from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import { z } from 'zod';
 
@@ -46,19 +51,6 @@ import { sortSubWorkflowsFirst } from '@/workflows/sub-workflow-order';
 import { WorkflowService } from '@/workflows/workflow.service';
 
 import { DATA_TABLE_ROWS_FILE_PREFIX } from './data-table-export.constants';
-
-/**
- * Archive file names of entity classes that were renamed while their table kept
- * its name. The exporter names each file after the entity class, so an archive
- * written before a rename still carries the old name, and an importer that only
- * knows the new class would skip it silently. Keyed by the old lowercase name,
- * the value is the current one. An entry applies only while no entity carries
- * the old name itself.
- */
-const LEGACY_ENTITY_FILE_NAMES: Readonly<Record<string, string>> = {
-	// `AgentFile` became `KnowledgeFile` when it moved into the knowledge module.
-	agentfile: 'knowledgefile',
-};
 
 /** The entity name an archive file was written for: `user.2.jsonl` is `user`. */
 function toArchiveBaseName(file: string): string {
@@ -317,6 +309,7 @@ export class ImportService {
 					connections: workflow.connections,
 					nodeGroups: workflow.nodeGroups,
 					authors: 'import',
+					settings: pickVersionedSettings(workflow.settings),
 					name: versionMetadata?.name ?? null,
 					description: versionMetadata?.description ?? null,
 				});
@@ -464,9 +457,6 @@ export class ImportService {
 		const entityTableNamesMap: Record<string, string> = {};
 		const entityFiles: Record<string, string[]> = {};
 		const dataTableFiles: Record<string, string[]> = {};
-		const presentBaseNames = new Set(
-			files.filter((file) => file.endsWith('.jsonl')).map(toArchiveBaseName),
-		);
 
 		for (const file of files) {
 			if (!file.endsWith('.jsonl')) continue;
@@ -486,8 +476,7 @@ export class ImportService {
 				continue;
 			}
 
-			const entityName = this.resolveArchiveEntityName(file, baseName, presentBaseNames);
-			if (entityName === null) continue;
+			const entityName = baseName;
 
 			// Build table names map (only need to do this once per entity)
 			if (!entityTableNamesMap[entityName]) {
@@ -515,37 +504,6 @@ export class ImportService {
 			entityFiles,
 			dataTableFiles,
 		};
-	}
-
-	/**
-	 * The entity an archive file belongs to. A file written under the old name of a
-	 * renamed entity maps to the current name, unless an entity carries the old name
-	 * again. It is skipped (null) when the directory also holds files under the
-	 * current name: one export never writes both, so the old files are leftovers of
-	 * an earlier run in the same directory.
-	 */
-	private resolveArchiveEntityName(
-		file: string,
-		baseName: string,
-		presentBaseNames: Set<string>,
-	): string | null {
-		const currentName = LEGACY_ENTITY_FILE_NAMES[baseName];
-		if (!currentName) return baseName;
-
-		const hasEntityWithOldName = this.dataSource.entityMetadatas.some(
-			(meta) => meta.name.toLowerCase() === baseName,
-		);
-		if (hasEntityWithOldName) return baseName;
-
-		if (presentBaseNames.has(currentName)) {
-			this.logger.warn(
-				`⚠️  Skipping ${file}: the directory also holds ${currentName} files, so it is a leftover of an earlier export`,
-			);
-			return null;
-		}
-
-		this.logger.info(`   ℹ️  Reading ${file} as ${currentName} (entity renamed since the export)`);
-		return currentName;
 	}
 
 	/**

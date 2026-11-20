@@ -1,4 +1,4 @@
-import { discoverOutputSchemaForNode } from '@n8n/workflow-sdk';
+import { discoverOutputSchemaForNode, type JsonSchema } from '@n8n/workflow-sdk';
 
 import type { WorkflowNodeResponse, WorkflowResponse } from '../../clients/n8n-client';
 import type { BinaryCheck } from '../types';
@@ -22,8 +22,8 @@ const NAMED_NODE_FIELD_BRACKET =
 	/\$\(\s*(['"`])((?:\\.|(?!\1)[^\\])*)\1\s*\)(?:\.first\(\)|\.\w+)*\.json\[['"]([^'"]+)['"]\]/g;
 
 interface FieldReference {
-	/** The field name being accessed */
-	field: string;
+	/** The field path being read, e.g. `['body', 'email']` for `$json.body.email` */
+	path: string[];
 	/** The node name providing the data, or undefined for $json (upstream) */
 	sourceNode: string | undefined;
 	/** Where the reference starts in the expression */
@@ -35,9 +35,22 @@ interface FieldReference {
 }
 
 /** Property access, optional chaining or calls that follow a matched reference. */
-const ACCESS_TAIL = /^(?:\?\.\w+|\.\w+|\[[^\]]*\]|\(\))*/;
+const ACCESS_TAIL = /^(?:\??\.\w+|(?:\?\.)?\[[^\]]*\]|(?:\?\.)?\(\))*/;
 /** The text between two operands of one `??` / `||` chain. */
 const FALLBACK_LINK = /^\s*\)*\s*(?:\?\?|\|\|)\s*\(*\s*$/;
+/** One `.prop` / `?.prop` read in an access tail. A method name before `(` is not a field. */
+const PATH_SEGMENT = /^\??\.(\w+)(?![\w(])/;
+
+/** The nested field names read with dot access right after a field reference. */
+function nestedPath(tail: string): string[] {
+	const path: string[] = [];
+	let rest = tail;
+	for (let m = PATH_SEGMENT.exec(rest); m; m = PATH_SEGMENT.exec(rest)) {
+		path.push(m[1]);
+		rest = rest.slice(m[0].length);
+	}
+	return path;
+}
 
 function unescapeNodeName(raw: string): string {
 	return raw.replace(/\\(.)/g, '$1');
@@ -51,7 +64,7 @@ function extractFieldReferences(expression: string): FieldReference[] {
 		const matchEnd = start + m[0].length;
 		const tail = ACCESS_TAIL.exec(expression.slice(matchEnd))?.[0] ?? '';
 		refs.push({
-			field,
+			path: [field, ...nestedPath(tail)],
 			sourceNode,
 			start,
 			end: matchEnd + tail.length,
@@ -139,8 +152,13 @@ const DYNAMIC_OUTPUT_TYPES = new Set([
 	'n8n-nodes-base.httpRequest',
 ]);
 
-/** Extract the known output field names for a node, or undefined if unknown. */
-function getKnownOutputFields(node: WorkflowNodeResponse): Set<string> | undefined {
+/** A closed object schema with the given top-level fields, whose values are not checked. */
+function schemaWithFields(fields: string[]): JsonSchema {
+	return { type: 'object', properties: Object.fromEntries(fields.map((f) => [f, {}])) };
+}
+
+/** Extract the known output schema for a node, or undefined if unknown. */
+function getKnownOutputSchema(node: WorkflowNodeResponse): JsonSchema | undefined {
 	// Set nodes: output fields are only known when the node doesn't pass through
 	// input fields. The include parameter (default 'all') or includeOtherFields
 	// boolean (v3.3+) controls this. We can only infer exact output when neither
@@ -162,11 +180,11 @@ function getKnownOutputFields(node: WorkflowNodeResponse): Set<string> | undefin
 			| { assignments?: Array<{ name?: string }> }
 			| undefined;
 		if (Array.isArray(assignments?.assignments)) {
-			return new Set(
+			return schemaWithFields(
 				assignments.assignments.filter((a) => typeof a.name === 'string').map((a) => a.name!),
 			);
 		}
-		return new Set();
+		return schemaWithFields([]);
 	}
 
 	// DataTable row operations: output includes user-defined columns + system columns
@@ -178,7 +196,7 @@ function getKnownOutputFields(node: WorkflowNodeResponse): Set<string> | undefin
 		if (['insert', 'upsert', 'update'].includes(operation)) {
 			const columns = params.columns as { value?: Record<string, unknown> } | undefined;
 			const userFields = columns?.value ? Object.keys(columns.value) : [];
-			return new Set([...userFields, ...DATA_TABLE_SYSTEM_FIELDS]);
+			return schemaWithFields([...userFields, ...DATA_TABLE_SYSTEM_FIELDS]);
 		}
 
 		// Row get/delete returns all table columns — can't know them statically
@@ -187,7 +205,7 @@ function getKnownOutputFields(node: WorkflowNodeResponse): Set<string> | undefin
 
 	// AI Agent nodes always output { output: string }
 	if (AI_AGENT_TYPES.has(node.type)) {
-		return new Set(['output']);
+		return schemaWithFields(['output']);
 	}
 
 	// Dynamic output nodes — can't check statically
@@ -206,13 +224,39 @@ function getKnownOutputFields(node: WorkflowNodeResponse): Set<string> | undefin
 			operation,
 		});
 
-		if (schema?.properties) {
-			return new Set(Object.keys(schema.properties));
-		}
+		if (schema?.properties) return schema;
 	}
 
 	// No schema available — can't validate
 	return undefined;
+}
+
+type SchemaStep = { next: JsonSchema } | 'missing' | 'unknown';
+
+/** Read one key of an object schema. Open objects accept keys they do not list. */
+function stepInto(schema: JsonSchema, key: string): SchemaStep {
+	const { properties, additionalProperties } = schema;
+	if (properties && Object.hasOwn(properties, key)) return { next: properties[key] };
+	if (typeof additionalProperties === 'object') return { next: additionalProperties };
+	if (additionalProperties === true || !properties) return 'unknown';
+	return 'missing';
+}
+
+type FieldState = 'present' | 'missing' | 'unknown';
+
+/**
+ * Only a missing top-level key is `missing`. Schema files list nested fields from
+ * one sample response, so a missing nested key is `unknown`, not an error.
+ */
+function fieldState(schema: JsonSchema, path: string[]): FieldState {
+	let current = schema;
+	for (const [i, key] of path.entries()) {
+		const step = stepInto(current, key);
+		if (step === 'unknown') return 'present';
+		if (step === 'missing') return i === 0 ? 'missing' : 'unknown';
+		current = step.next;
+	}
+	return 'present';
 }
 
 /** The node a reference reads from: the named node, or the single upstream node for `$json`. */
@@ -253,15 +297,15 @@ export const validFieldReferences: BinaryCheck = {
 				const refs = extractFieldReferences(expr);
 				if (refs.length > 0) sawAnyFieldRef = true;
 
-				// present: a known schema has the field; missing: a known schema lacks it;
-				// unknown: no source or no schema to check against.
+				// present: the schema has the field or accepts unlisted keys;
+				// missing: a known schema lacks the top-level key; unknown: no source or schema,
+				// or a nested key that the schema does not list.
 				const status = refs.map((ref) => {
 					const sourceNode = resolveSourceNode(ref, node.name, nodeByName, upstreamMap);
-					const knownFields = sourceNode ? getKnownOutputFields(sourceNode) : undefined;
-					if (!sourceNode || !knownFields) return { state: 'unknown' as const };
-					return knownFields.has(ref.field)
-						? { state: 'present' as const }
-						: { state: 'missing' as const, sourceNode };
+					const schema = sourceNode ? getKnownOutputSchema(sourceNode) : undefined;
+					if (!sourceNode || !schema) return { state: 'unknown' as const };
+					const state = fieldState(schema, ref.path);
+					return state === 'missing' ? { state, sourceNode } : { state };
 				});
 				const chain = fallbackChains(expr, refs);
 
@@ -274,7 +318,7 @@ export const validFieldReferences: BinaryCheck = {
 						refs.some((_, j) => j !== i && chain[j] === chain[i] && status[j].state === 'present');
 					if (covered) return;
 					invalid.push(
-						`"${ref.field}" not in output of "${result.sourceNode.name}" (in node "${node.name}")`,
+						`"${ref.path[0]}" not in output of "${result.sourceNode.name}" (in node "${node.name}")`,
 					);
 				});
 			}

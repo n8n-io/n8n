@@ -30,16 +30,7 @@ vi.mock('@n8n/instance-ai', async () => {
 			const safeContent = content.replace(/<\/untrusted_data/gi, '&lt;/untrusted_data');
 			return `<untrusted_data source="${esc(source)}"${safeLabel}>\n${safeContent}\n</untrusted_data>`;
 		},
-		builderTemplatesOptionsFromEnv: () => ({}),
 		deriveCredentialHosts: vi.fn().mockReturnValue([]),
-		BuilderTemplatesService: class {
-			async getBundle() {
-				return { files: [], indexTxt: '', version: null };
-			}
-			getVersion() {
-				return null;
-			}
-		},
 	};
 });
 
@@ -77,14 +68,13 @@ import {
 	CANVAS_NODE_CONTEXT_FLAG,
 	CONFIG_EVALUATIONS_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_FLAG,
+	INSTANCE_AI_APPROVAL_MODES_FLAG,
 	INSTANCE_AI_NODE_USAGE_FLAG,
 	INSTANCE_ACTIVITY_CONTEXT_FLAG,
 	ASSISTANT_SKILLS_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
-	INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG,
 	INSTANCE_AI_SETUP_PANEL_FLAG,
 	INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT,
-	INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
 	INSTANCE_AI_CONCISE_STYLE_FLAG,
 	INSTANCE_AI_CONCISE_STYLE_ENABLED_VARIANT,
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
@@ -1961,10 +1951,11 @@ import {
 	type RoleService,
 	AiPreferenceScopeFullError,
 	type AiPreferenceService,
+	WorkflowVersionedSettingsService,
 } from '@n8n/backend-services';
 import { type DataTableRepository, type DataTableService } from '@n8n/backend-module-data-table';
 
-import type { WorkflowJSON } from '@n8n/workflow-sdk';
+import type { NodeJSON, WorkflowJSON } from '@n8n/workflow-sdk';
 import {
 	AppNamespaceTakenError,
 	WorkflowEditorLockedError,
@@ -1997,6 +1988,8 @@ import { InstanceAiAdapterService } from '../instance-ai.adapter.service';
 import { InstanceAiBuilderDelegateAdapterService } from '../instance-ai-builder-delegate.adapter';
 import { InstanceAiSkillsAdapterService } from '../instance-ai-skills.adapter';
 import { SkillsGate } from '@/modules/skills';
+import { mockInstance } from '@n8n/backend-test-utils';
+import { AiPreferenceSettingsService } from '@/services/ai-preference-settings.service';
 import type { TemporaryWorkflowMarkers } from '../temporary-workflow-markers';
 import { AgentsBuilderService } from '@/modules/agents/builder/agents-builder.service';
 import type { AgentCredentialProvider } from '@/modules/agents/agent-credential-provider.contracts';
@@ -2119,6 +2112,29 @@ function createNodeAdapterServiceForTests(
 		nodeCatalogService,
 	};
 }
+
+describe('createContext models', () => {
+	it('keeps the main and utility models on the context', () => {
+		const { service, mockUser } = createNodeAdapterServiceForTests([]);
+		const utilityModelId = 'anthropic/claude-haiku-5-5';
+
+		const context = service.createContext(mockUser, {
+			modelId: 'anthropic/claude-opus-5-5',
+			utilityModelId,
+		});
+
+		expect(context.modelId).toBe('anthropic/claude-opus-5-5');
+		expect(context.utilityModelId).toBe(utilityModelId);
+	});
+
+	it('leaves the utility model unset when none is resolved', () => {
+		const { service, mockUser } = createNodeAdapterServiceForTests([]);
+
+		const context = service.createContext(mockUser, { modelId: 'openai/gpt-6.1-sol' });
+
+		expect(context).not.toHaveProperty('utilityModelId');
+	});
+});
 
 describe('executeNodeService adapter', () => {
 	const executeRequest = {
@@ -2694,6 +2710,13 @@ describe('createDataTableAdapter', () => {
 			const { adapter } = createDataTableAdapterForTests();
 
 			await expect(adapter.getSchema('dt-1')).rejects.toThrow('Data table "dt-1" not found');
+		});
+
+		it('rejects a table it cannot find with a user error', async () => {
+			mockedUserHasScopes.mockResolvedValue(false);
+			const { adapter } = createDataTableAdapterForTests();
+
+			await expect(adapter.resolveTableReference?.('dt-1')).rejects.toThrow(UserError);
 		});
 
 		it('resolves table references with the requested permission scope', async () => {
@@ -3822,6 +3845,7 @@ describe('createWorkflowAdapter', () => {
 			expect(mockFolderRepository.findOneOrFailFolderInProject).toHaveBeenCalledWith(
 				'deep',
 				'team-project-id',
+				'workflow',
 			);
 		});
 
@@ -5188,6 +5212,27 @@ describe('createWorkflowAdapter', () => {
 			);
 		});
 
+		it('restores the version-scoped settings of the version', async () => {
+			const { adapter, mockWorkflowService, mockWorkflowHistoryService } =
+				createWorkflowAdapterForTests();
+			mockWorkflowHistoryService.getVersion.mockResolvedValue({
+				versionId: 'v-1',
+				nodes: [],
+				connections: {},
+				nodeGroups: [],
+				settings: { engineType: 'v1' },
+			});
+
+			await adapter.restoreVersion?.('wf-1', 'v-1');
+
+			expect(mockWorkflowService.update).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.anything(),
+				'wf-1',
+				expect.objectContaining({ restoredVersionSettings: { engineType: 'v1' } }),
+			);
+		});
+
 		it('keeps a committed update when notifying open editors fails', async () => {
 			const { adapter, mockCollaborationService, mockLogger } = createWorkflowAdapterForTests();
 			mockCollaborationService.broadcastWorkflowUpdate.mockRejectedValue(new Error('push is down'));
@@ -6393,6 +6438,83 @@ describe('createExecutionAdapter run()', () => {
 		expect(runData.executionData?.manualData?.suppressErrorWorkflow).toBe(true);
 	});
 
+	describe('time-based Wait nodes', () => {
+		const workflowWithWaits = () => ({
+			id: 'wf-1',
+			nodes: [
+				{
+					id: 'node-1',
+					name: 'Schedule Trigger',
+					type: 'n8n-nodes-base.scheduleTrigger',
+					typeVersion: 1,
+					parameters: {},
+					position: [0, 0],
+				},
+				{
+					id: 'node-2',
+					name: 'Wait Before Retry',
+					type: 'n8n-nodes-base.wait',
+					typeVersion: 1.1,
+					parameters: { resume: 'timeInterval', amount: 15, unit: 'seconds' },
+					position: [200, 0],
+				},
+				{
+					id: 'node-3',
+					name: 'Wait For Approval',
+					type: 'n8n-nodes-base.wait',
+					typeVersion: 1.1,
+					parameters: { resume: 'webhook' },
+					position: [400, 0],
+				},
+				{
+					id: 'node-4',
+					name: 'Wait On Other Branch',
+					type: 'n8n-nodes-base.wait',
+					typeVersion: 1.1,
+					parameters: { resume: 'timeInterval', amount: 30, unit: 'seconds' },
+					position: [400, 200],
+				},
+			],
+		});
+
+		const waitParameters = (nodes: INode[], name: string) =>
+			nodes.find((node) => node.name === name)?.parameters;
+
+		it('runs time-based waits without the delay in a verification run and reports them', async () => {
+			const { adapter, mockWorkflowRunner } = createRunAdapterForTests(workflowWithWaits(), {
+				execution: makeExecution({
+					status: 'success',
+					runData: {
+						'Schedule Trigger': [makeTaskData([{ ok: true }])],
+						'Wait Before Retry': [makeTaskData([{ ok: true }])],
+					},
+				}),
+			});
+
+			const result = await adapter.run('wf-1', undefined, { isVerificationRun: true });
+
+			const { nodes } = mockWorkflowRunner.run.mock.calls[0][0].workflowData;
+			expect(waitParameters(nodes, 'Wait Before Retry')).toMatchObject({ amount: 0 });
+			expect(waitParameters(nodes, 'Wait For Approval')).toEqual({ resume: 'webhook' });
+			// The wait on the unreached branch is rewritten too, but the run did not reach it.
+			expect(waitParameters(nodes, 'Wait On Other Branch')).toMatchObject({ amount: 0 });
+			expect(result.executedNodeNames).toContain('Wait Before Retry');
+			expect(result.skippedWaitNodeNames).toEqual(['Wait Before Retry']);
+		});
+
+		it('keeps the real wait duration in a run the user asked for', async () => {
+			const { adapter, mockWorkflowRunner } = createRunAdapterForTests(workflowWithWaits(), {
+				execution: makeExecution({ status: 'success' }),
+			});
+
+			const result = await adapter.run('wf-1');
+
+			const { nodes } = mockWorkflowRunner.run.mock.calls[0][0].workflowData;
+			expect(waitParameters(nodes, 'Wait Before Retry')).toMatchObject({ amount: 15 });
+			expect(result).not.toHaveProperty('skippedWaitNodeNames');
+		});
+	});
+
 	it('leaves the error workflow enabled for a run the user asked for', async () => {
 		const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
 			id: 'wf-1',
@@ -6823,6 +6945,54 @@ describe('createExecutionAdapter runStep()', () => {
 			'Trigger',
 			'Send',
 		]);
+	});
+
+	it('runs a past version on the engine that the version stores, and records that version', async () => {
+		const harness = createRunAdapterForTests({
+			...chainWorkflow,
+			versionId: 'v-draft',
+			settings: { engineType: 'v1', timezone: 'Europe/Berlin' },
+		});
+		harness.mockWorkflowHistoryService.getVersion.mockResolvedValue({
+			versionId: 'v-old',
+			nodes: chainWorkflow.nodes,
+			connections: chainWorkflow.connections,
+			settings: { engineType: 'v2' },
+		});
+		const versionedSettings = mock<WorkflowVersionedSettingsService>();
+		versionedSettings.forVersionRun.mockImplementation((settings, version) => ({
+			...settings,
+			...version.settings,
+		}));
+		vi.mocked(Container.get).mockImplementation(((token: unknown) =>
+			token === WorkflowVersionedSettingsService
+				? versionedSettings
+				: harness.mockExecutionPersistence) as typeof Container.get);
+		const runStep = harness.adapter.runStep as NonNullable<typeof harness.adapter.runStep>;
+
+		await runStep('wf-1', 'Send', { versionId: 'v-old' });
+
+		const runData = harness.mockWorkflowRunner.run.mock.calls[0][0];
+		expect(runData.workflowData.versionId).toBe('v-old');
+		expect(runData.workflowData.settings).toMatchObject({
+			engineType: 'v2',
+			timezone: 'Europe/Berlin',
+		});
+	});
+
+	it('runs the draft on the draft engine when no version is named', async () => {
+		const harness = createRunAdapterForTests({
+			...chainWorkflow,
+			versionId: 'v-draft',
+			settings: { engineType: 'v1' },
+		});
+		const runStep = harness.adapter.runStep as NonNullable<typeof harness.adapter.runStep>;
+
+		await runStep('wf-1', 'Send', undefined);
+
+		const runData = harness.mockWorkflowRunner.run.mock.calls[0][0];
+		expect(runData.workflowData.versionId).toBe('v-draft');
+		expect(runData.workflowData.settings.engineType).toBe('v1');
 	});
 
 	it('reads the draft without touching history when no version is named', async () => {
@@ -7648,6 +7818,49 @@ describe('getGatewayConfigOrNull', () => {
 	});
 });
 
+describe('createCredentialAdapter — getAiGatewayNodeRejection', () => {
+	const geminiType = '@n8n/n8n-nodes-langchain.googleGemini';
+
+	async function getRejection(parameters: NodeJSON['parameters'], options?: { enabled?: boolean }) {
+		const adapter = createAdapterWithGatewayMock(
+			vi.fn().mockResolvedValue({
+				nodes: [geminiType],
+				credentialTypes: ['googlePalmApi'],
+				providerConfig: {},
+				supportedActions: { [geminiType]: { text: ['message'] } },
+			}),
+			{ enabled: options?.enabled },
+		);
+		const description = {
+			properties: [
+				{ displayName: 'Resource', name: 'resource', type: 'options', default: 'text' },
+				{ displayName: 'Operation', name: 'operation', type: 'options', default: 'message' },
+			],
+		};
+		(adapter as unknown as { nodeTypes: Pick<NodeTypesProxy, 'getByNameAndVersion'> }).nodeTypes = {
+			getByNameAndVersion: vi.fn(
+				() => ({ description }) as unknown as ReturnType<NodeTypesProxy['getByNameAndVersion']>,
+			),
+		};
+		const mockUser = { id: 'user-1', role: { slug: 'global:member' } } as unknown as User;
+		return await adapter.createContext(mockUser).credentialService.getAiGatewayNodeRejection!(
+			{ type: geminiType, typeVersion: 1, parameters },
+			'googlePalmApi',
+		);
+	}
+
+	it.each([
+		[{}, undefined],
+		[{ resource: 'image' }, 'image.message not supported'],
+	])('judges %j by the action it runs with node defaults', async (parameters, expected) => {
+		await expect(getRejection(parameters)).resolves.toBe(expected);
+	});
+
+	it('returns nothing when Gateway credits are off', async () => {
+		await expect(getRejection({ resource: 'image' }, { enabled: false })).resolves.toBeUndefined();
+	});
+});
+
 describe('trackGatewayAvailability', () => {
 	async function callTrack(adapter: InstanceAiAdapterService) {
 		await (
@@ -7879,12 +8092,12 @@ describe('resolveExperimentGates', () => {
 	const allEnabled = {
 		[CONFIG_EVALUATIONS_FLAG]: CONFIG_EVALUATIONS_ENABLED_VARIANT,
 		[INSTANCE_AI_CONVERSATION_HISTORY_FLAG]: INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
-		[INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG]: INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
 		[INSTANCE_AI_CONCISE_STYLE_FLAG]: INSTANCE_AI_CONCISE_STYLE_ENABLED_VARIANT,
 		[INSTANCE_AI_SETUP_PANEL_FLAG]: INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT,
 		[INSTANCE_AI_NODE_USAGE_FLAG]: true,
 		[AI_ASSISTANT_AT_MENTIONS_FLAG]: true,
 		[INSTANCE_AI_FOLDER_EXPLORATION_FLAG]: INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
+		[INSTANCE_AI_APPROVAL_MODES_FLAG]: true,
 	};
 
 	it('resolves per-user gates with one user flag fetch', async () => {
@@ -7894,13 +8107,13 @@ describe('resolveExperimentGates', () => {
 			credentialDescriptionsEnabled: false,
 			configEvalsEnabled: true,
 			conversationHistoryEnabled: true,
-			progressiveBuildingEnabled: true,
 			conciseStyleEnabled: true,
 			setupPanelEnabled: true,
 			setupPanelVariant: 'variant',
 			nodeUsageEnabled: true,
 			nodeContextEnabled: true,
 			folderExplorationEnabled: true,
+			approvalModesEnabled: true,
 			instanceContextEnabled: false,
 			assistantSkillsEnabled: false,
 		});
@@ -7989,7 +8202,6 @@ describe('resolveExperimentGates', () => {
 		stubContainer({
 			[CONFIG_EVALUATIONS_FLAG]: 'control',
 			[INSTANCE_AI_CONVERSATION_HISTORY_FLAG]: 'control',
-			[INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG]: 'control',
 			[INSTANCE_AI_CONCISE_STYLE_FLAG]: 'control',
 			[INSTANCE_AI_SETUP_PANEL_FLAG]: 'control',
 			[INSTANCE_AI_NODE_USAGE_FLAG]: false,
@@ -8002,13 +8214,13 @@ describe('resolveExperimentGates', () => {
 			credentialDescriptionsEnabled: false,
 			configEvalsEnabled: false,
 			conversationHistoryEnabled: false,
-			progressiveBuildingEnabled: false,
 			conciseStyleEnabled: false,
 			setupPanelEnabled: false,
 			setupPanelVariant: 'control',
 			nodeUsageEnabled: false,
 			nodeContextEnabled: false,
 			folderExplorationEnabled: false,
+			approvalModesEnabled: false,
 			instanceContextEnabled: false,
 			assistantSkillsEnabled: false,
 		});
@@ -8045,6 +8257,14 @@ describe('resolveExperimentGates', () => {
 		});
 	});
 
+	it('opens the approval modes gate only on a boolean true', async () => {
+		stubContainer({ ...allEnabled, [INSTANCE_AI_APPROVAL_MODES_FLAG]: 'variant' });
+
+		await expect(createAdapter().resolveExperimentGates(user)).resolves.toMatchObject({
+			approvalModesEnabled: false,
+		});
+	});
+
 	it('fails experiment gates closed when no flags resolve', async () => {
 		stubContainer({});
 
@@ -8052,12 +8272,12 @@ describe('resolveExperimentGates', () => {
 			credentialDescriptionsEnabled: false,
 			configEvalsEnabled: false,
 			conversationHistoryEnabled: false,
-			progressiveBuildingEnabled: false,
 			conciseStyleEnabled: false,
 			setupPanelEnabled: false,
 			nodeUsageEnabled: false,
 			nodeContextEnabled: false,
 			folderExplorationEnabled: false,
+			approvalModesEnabled: false,
 			instanceContextEnabled: false,
 			assistantSkillsEnabled: false,
 		});
@@ -8071,12 +8291,12 @@ describe('resolveExperimentGates', () => {
 			credentialDescriptionsEnabled: false,
 			configEvalsEnabled: false,
 			conversationHistoryEnabled: false,
-			progressiveBuildingEnabled: false,
 			conciseStyleEnabled: false,
 			setupPanelEnabled: false,
 			nodeUsageEnabled: false,
 			nodeContextEnabled: false,
 			folderExplorationEnabled: false,
+			approvalModesEnabled: false,
 			instanceContextEnabled: false,
 			assistantSkillsEnabled: false,
 		});
@@ -8627,10 +8847,23 @@ describe('createContext: aiPreferenceService', () => {
 		return { service, aiPreferenceService, logger, telemetry };
 	}
 
-	it('is always present', () => {
+	const preferenceSettings = mockInstance(AiPreferenceSettingsService, { isEnabled: true });
+
+	afterEach(() => {
+		Object.assign(preferenceSettings, { isEnabled: true });
+	});
+
+	it('is present while preferences are on', () => {
 		const { service } = buildService();
 		const context = service.createContext(user, { threadId: 't1' });
 		expect(context.aiPreferenceService).toBeDefined();
+	});
+
+	it('is absent while preferences are off', () => {
+		Object.assign(preferenceSettings, { isEnabled: false });
+		const { service } = buildService();
+		const context = service.createContext(user, { threadId: 't1' });
+		expect(context.aiPreferenceService).toBeUndefined();
 	});
 
 	it('writes with source aia and returns the saved row', async () => {

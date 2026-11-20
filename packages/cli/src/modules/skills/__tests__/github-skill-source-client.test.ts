@@ -1,5 +1,6 @@
 import { OutboundHttp } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
+import { sha256 } from '@n8n/utils/sha256';
 import nock from 'nock';
 
 import { FakeGitHub } from './test-utils/fake-github';
@@ -115,6 +116,52 @@ describe('GitHubSkillSourceClient', () => {
 
 	describeSkillSourceClientContract(() => contractSubject(false));
 
+	describe('commit details', () => {
+		it.each([undefined, tokenAuth])(
+			'reads the stored revision with optional access %j',
+			async (auth) => {
+				github.push('acme/review', { 'docx/SKILL.md': skillMd('docx') });
+				const locator = await client.parseLocator('https://github.com/acme/review');
+				const revision = 'a'.repeat(40);
+				const request = nock('https://api.github.com', {
+					reqheaders: auth ? { authorization: `Bearer ${TOKEN}` } : undefined,
+				})
+					.get(`/repos/acme/review/git/commits/${revision}`)
+					.reply(200, {
+						message: 'Update document instructions',
+						author: { name: 'Alex', date: '2026-11-11T10:00:00Z' },
+					});
+
+				expect(await client.describeRevision(locator, revision, auth)).toEqual({
+					message: 'Update document instructions',
+					author: 'Alex',
+					date: '2026-11-11T10:00:00Z',
+				});
+				expect(client.revisionUrl(locator, revision)).toBe(
+					`https://github.com/acme/review/commit/${revision}`,
+				);
+				expect(client.webUrl(locator, { path: 'docx' }, revision)).toBe(
+					`https://github.com/acme/review/tree/${revision}/docx`,
+				);
+				expect(request.isDone()).toBe(true);
+			},
+		);
+
+		it('keeps missing commit fields empty', async () => {
+			github.push('acme/review', { 'docx/SKILL.md': skillMd('docx') });
+			const locator = await client.parseLocator('https://github.com/acme/review');
+			nock('https://api.github.com')
+				.get('/repos/acme/review/git/commits/abc')
+				.reply(200, { author: null });
+
+			expect(await client.describeRevision(locator, 'abc')).toEqual({
+				message: null,
+				author: null,
+				date: null,
+			});
+		});
+	});
+
 	describe('on private repositories with a token', () => {
 		beforeEach(() => github.grant(TOKEN, []));
 
@@ -142,16 +189,24 @@ describe('GitHubSkillSourceClient', () => {
 			).rejects.toThrow('The credential cannot read this repository');
 		});
 
-		it('never serves an archive that one token read to another token', async () => {
-			const locator = await client.parseLocator('https://github.com/acme/private', tokenAuth);
-			const { items, revision } = await client.discover(locator, tokenAuth);
-			github.grant('ghp_other', []);
-			const other = { token: 'ghp_other', credentialType: 'githubApi' };
+		it.each(['', '/tree/main/pdf'])(
+			'keeps private content separate for each token (%s)',
+			async (suffix) => {
+				const locator = await client.parseLocator(
+					`https://github.com/acme/private${suffix}`,
+					tokenAuth,
+				);
+				const { items, revision } = await client.discover(locator, tokenAuth);
+				const fetched = await client.fetchLatest(locator, items[0], tokenAuth, revision);
+				expect(fetched.content.name).toBe('pdf');
+				github.grant('ghp_other', []);
+				const other = { token: 'ghp_other', credentialType: 'githubApi' };
 
-			await expect(client.fetchLatest(locator, items[0], other, revision)).rejects.toThrow(
-				SkillSourceNotFoundError,
-			);
-		});
+				await expect(client.fetchLatest(locator, items[0], other, revision)).rejects.toThrow(
+					SkillSourceNotFoundError,
+				);
+			},
+		);
 
 		it('reports a token that GitHub refuses as credential_invalid', async () => {
 			const bad = { token: 'ghp_unknown', credentialType: 'githubApi' };
@@ -333,11 +388,16 @@ describe('GitHubSkillSourceClient', () => {
 			});
 		});
 
-		it('fails with SkillSourceNotFoundError for a folder that is not on the branch', async () => {
-			const locator = await client.parseLocator('https://github.com/acme/skills/tree/main/nope');
+		it.each(['nope', 'skills/pdf/SKILL.md'])(
+			'fails with SkillSourceNotFoundError when %s is not a folder',
+			async (path) => {
+				const locator = await client.parseLocator(
+					`https://github.com/acme/skills/tree/main/${path}`,
+				);
 
-			await expect(client.discover(locator)).rejects.toThrow(SkillSourceNotFoundError);
-		});
+				await expect(client.discover(locator)).rejects.toThrow(SkillSourceNotFoundError);
+			},
+		);
 
 		it('keeps references and lists the files that a skill cannot hold', async () => {
 			const locator = await client.parseLocator('https://github.com/acme/skills');
@@ -397,6 +457,102 @@ describe('GitHubSkillSourceClient', () => {
 		expect(client.capabilities.importFidelity).toBe('lossy');
 	});
 
+	describe('folder reads', () => {
+		it('reads only the linked folder at the selected commit when the repository archive is too large', async () => {
+			const files = {
+				'.agents/skill set/pdf/SKILL.md': skillMd('pdf'),
+				'.agents/skill set/pdf/references/page #1.md': '# Page\n',
+				'.agents/skill set/pdf/references/large.md': 'x'.repeat(201),
+				'.agents/skill set/pdf/scripts/split.py': 'print(1)\n',
+				'.agents/skill set-other/SKILL.md': skillMd('other'),
+				'src/large.txt': 'unrelated\n'.repeat(1024),
+			};
+			const original = github.push('acme/monorepo', files);
+			const limits = {
+				maxDownloadBytes: 100,
+				maxUncompressedBytes: 500,
+				maxTextFileBytes: 200,
+			};
+			const small = clientWithLimits(limits);
+			const folder = await small.parseLocator(
+				'https://github.com/acme/monorepo/tree/main/.agents/skill%20set',
+			);
+
+			const { items, revision } = await small.discover(folder);
+			github.push('acme/monorepo', {
+				...files,
+				'.agents/skill set/pdf/SKILL.md': skillMd('pdf', 'Changed.'),
+			});
+			const fetched = await small.fetchLatest(folder, items[0], undefined, revision);
+
+			expect(items).toEqual([{ path: '.agents/skill set/pdf' }]);
+			expect(fetched.revision).toBe(original);
+			expect(fetched.content.instructions).toBe('Follow pdf.');
+			expect(fetched.content.files).toEqual([
+				{ path: 'references/page #1.md', content: '# Page\n' },
+			]);
+			expect(fetched.skippedFiles).toEqual(['scripts/split.py', 'references/large.md']);
+			expect(github.requests).toEqual({ refs: 2, archives: 0, trees: 3, files: 2 });
+
+			// A cold cache must also read the selected revision, even after the branch changes.
+			const fresh = clientWithLimits(limits);
+			expect(await fresh.fetchLatest(folder, items[0], undefined, revision)).toEqual(fetched);
+			expect(github.requests).toEqual({ refs: 2, archives: 0, trees: 6, files: 4 });
+		});
+
+		it.each([false, true])('hashes an oversized SKILL.md (private: %s)', async (privately) => {
+			const content = 'é'.repeat(101);
+			github.push('acme/skills', { 'pdf/SKILL.md': content }, 'main', { private: privately });
+			if (privately) github.grant(TOKEN, ['acme/skills']);
+			const auth = privately ? tokenAuth : undefined;
+			const small = clientWithLimits({ maxTextFileBytes: 200, maxTextBytes: 200 });
+			const locator = await small.parseLocator(
+				'https://github.com/acme/skills/tree/main/pdf',
+				auth,
+			);
+
+			await expect(small.fetchLatest(locator, { path: 'pdf' }, auth)).rejects.toMatchObject({
+				constructor: SkillParseError,
+				contentHash: await sha256(content),
+			});
+			expect(github.requests).toEqual({ refs: 2, archives: 0, trees: 2, files: 1 });
+		});
+
+		it.each([{ maxEntries: 1 }, { maxUncompressedBytes: 1 }, { maxTextBytes: 1 }])(
+			'rejects a folder over its limit (%j) before reading files',
+			async (limits) => {
+				github.push('acme/skills', { 'pdf/SKILL.md': skillMd('pdf'), 'pdf/README.md': 'Read me' });
+				const small = clientWithLimits(limits);
+				const locator = await small.parseLocator('https://github.com/acme/skills/tree/main/pdf');
+
+				await expect(small.discover(locator)).rejects.toMatchObject({
+					reason: 'archive_too_large',
+				});
+				expect(github.requests.files).toBe(0);
+			},
+		);
+
+		it('reports a truncated tree instead of importing an incomplete folder', async () => {
+			github.push('acme/skills', { 'pdf/SKILL.md': skillMd('pdf') });
+			github.truncateTree = true;
+			const locator = await client.parseLocator('https://github.com/acme/skills/tree/main/pdf');
+
+			await expect(client.discover(locator)).rejects.toMatchObject({ reason: 'archive_too_large' });
+			expect(github.requests.files).toBe(0);
+		});
+
+		it('reports a rate limit from the GitHub tree API', async () => {
+			const revision = github.push('acme/skills', { 'pdf/SKILL.md': skillMd('pdf') });
+			const locator = await client.parseLocator('https://github.com/acme/skills/tree/main/pdf');
+			github.failWith = { status: 403, headers: { 'retry-after': '120' } };
+
+			await expect(client.discover(locator, undefined, undefined, revision)).rejects.toMatchObject({
+				reason: 'rate_limited',
+				retryAfterSeconds: 120,
+			});
+		});
+	});
+
 	describe('archives', () => {
 		const monorepo = () => {
 			const files: Record<string, string> = {
@@ -425,7 +581,7 @@ describe('GitHubSkillSourceClient', () => {
 			});
 		});
 
-		it('keeps only the files under the folder, and caches each folder apart', async () => {
+		it('caches folder reads separately from repository archives', async () => {
 			monorepo();
 			const folder = await client.parseLocator(
 				'https://github.com/acme/monorepo/tree/main/.agents/skills',
@@ -437,7 +593,7 @@ describe('GitHubSkillSourceClient', () => {
 
 			expect(fromFolder.items).toEqual([{ path: '.agents/skills/pdf' }]);
 			expect(fromRepository.items).toEqual([{ path: '.agents/skills/pdf' }, { path: 'docs' }]);
-			expect(github.requests.archives).toBe(2);
+			expect(github.requests.archives).toBe(1);
 		});
 
 		it('fails with archive_too_large when the download is over the size limit', async () => {

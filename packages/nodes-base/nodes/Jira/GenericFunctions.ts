@@ -1,3 +1,4 @@
+import { UnexpectedError } from '@n8n/errors';
 import type {
 	IAdditionalCredentialOptions,
 	IDataObject,
@@ -10,8 +11,10 @@ import type {
 	IRequestOptions,
 	IWebhookFunctions,
 	JsonObject,
+	LegacyRequestOptions,
+	RequestPath,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, requestPath, requestUrl } from 'n8n-workflow';
 
 import {
 	getAtlassianApiBaseUrl,
@@ -24,12 +27,15 @@ import type { JiraServerInfo, JiraWebhook } from './types';
 
 export async function jiraSoftwareCloudApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
-	endpoint: string,
+	endpoint: RequestPath,
 	method: IHttpRequestMethods,
 	body: any = {},
 	query?: IDataObject,
 	uri?: string,
-	option: IDataObject = {},
+	option: Pick<
+		IRequestOptions,
+		'formData' | 'json' | 'encoding' | 'useStream' | 'sendCredentialsOnCrossOriginRedirect'
+	> = {},
 ): Promise<any> {
 	const jiraVersion = this.getNodeParameter('jiraVersion', 0) as string;
 
@@ -70,7 +76,7 @@ export async function jiraSoftwareCloudApiRequest(
 	// Strip trailing slashes from domain to prevent double slashes in URL construction
 	domain = domain.replace(/\/+$/, '');
 
-	const options: IRequestOptions = {
+	const options: LegacyRequestOptions = {
 		headers: {
 			Accept: 'application/json',
 			'Content-Type': 'application/json',
@@ -78,7 +84,7 @@ export async function jiraSoftwareCloudApiRequest(
 		},
 		method,
 		qs: query,
-		uri: uri || `${domain}/rest${endpoint}`,
+		...(uri ? { uri } : { uri: requestUrl`${domain}/rest${endpoint}` }),
 		body,
 		json: true,
 	};
@@ -178,7 +184,7 @@ export function handlePagination(
 export async function jiraSoftwareCloudApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
-	endpoint: string,
+	endpoint: RequestPath,
 	method: IHttpRequestMethods,
 	body: any = {},
 	query: IDataObject = {},
@@ -329,10 +335,10 @@ export async function getUsers(this: ILoadOptionsFunctions): Promise<INodeProper
 	const jiraVersion = this.getCurrentNodeParameter('jiraVersion') as string;
 	const maxResults = 1000;
 	const query: IDataObject = { maxResults };
-	let endpoint = '/api/2/users/search';
+	let endpoint = requestPath`/api/2/users/search`;
 
 	if (jiraVersion === 'server' || jiraVersion === 'serverPat') {
-		endpoint = '/api/2/user/search';
+		endpoint = requestPath`/api/2/user/search`;
 		query.username = "'";
 	}
 
@@ -365,26 +371,38 @@ export async function getUsers(this: ILoadOptionsFunctions): Promise<INodeProper
 export async function getServerInfo(this: IHookFunctions) {
 	return await (jiraSoftwareCloudApiRequest.call(
 		this,
-		'/api/2/serverInfo',
+		requestPath`/api/2/serverInfo`,
 		'GET',
 	) as Promise<JiraServerInfo>);
 }
+
+const dynamicWebhookEndpoint = requestPath`/api/3/webhook`;
+const legacyWebhookEndpoint = requestPath`/webhooks/1.0/webhook`;
+const webhookEndpoint = requestPath`/jira-webhook/1.0/webhooks`;
 
 export async function getWebhookEndpoint(this: IHookFunctions) {
 	const jiraVersion = this.getNodeParameter('jiraVersion', 0) as string;
 
 	// OAuth2 Cloud must use the Dynamic Webhooks API — the classic admin endpoint
 	// (/webhooks/1.0/webhook) rejects OAuth2 tokens with "scope does not match".
-	if (jiraVersion === 'cloudOAuth2') return '/api/3/webhook';
+	if (jiraVersion === 'cloudOAuth2') return dynamicWebhookEndpoint;
 
 	const serverInfo = await getServerInfo.call(this).catch(() => null);
 
-	if (!serverInfo || serverInfo.deploymentType === 'Cloud') return '/webhooks/1.0/webhook';
+	if (!serverInfo || serverInfo.deploymentType === 'Cloud') return legacyWebhookEndpoint;
 
 	// Assume old version when versionNumbers is not set
 	const majorVersion = serverInfo.versionNumbers?.[0] ?? 1;
 
-	return majorVersion >= 10 ? '/jira-webhook/1.0/webhooks' : '/webhooks/1.0/webhook';
+	return majorVersion >= 10 ? webhookEndpoint : legacyWebhookEndpoint;
+}
+
+export function toWebhookEndpoint(endpoint: string): RequestPath {
+	const path = [dynamicWebhookEndpoint, legacyWebhookEndpoint, webhookEndpoint].find(
+		(candidate) => candidate.toString() === endpoint,
+	);
+	if (!path) throw new UnexpectedError(`Unknown Jira webhook endpoint "${endpoint}"`);
+	return path;
 }
 
 export const OAUTH2_WEBHOOK_REFRESH_INTERVAL_MS = 20 * 24 * 60 * 60 * 1000; // 20 days
@@ -418,10 +436,10 @@ export const OAUTH2_SUPPORTED_WEBHOOK_EVENTS = new Set([
 
 export async function refreshJiraWebhook(
 	this: IHookFunctions | IWebhookFunctions,
-	endpoint: string,
+	endpoint: RequestPath,
 	webhookId: string,
 ): Promise<void> {
-	await jiraSoftwareCloudApiRequest.call(this, `${endpoint}/refresh`, 'PUT', {
+	await jiraSoftwareCloudApiRequest.call(this, requestPath`${endpoint}/refresh`, 'PUT', {
 		webhookIds: [parseInt(webhookId, 10)],
 	});
 }

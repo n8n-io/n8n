@@ -1,6 +1,5 @@
+import type { ExecutionRef } from '@n8n/backend-services';
 import { UnexpectedError } from '@n8n/errors';
-
-import type { ExecutionRef } from './types';
 
 /**
  * Thrown when a merge needs the stored run data but the bundle read back does not

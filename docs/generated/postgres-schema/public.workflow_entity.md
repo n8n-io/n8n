@@ -127,6 +127,7 @@ erDiagram
   varchar_128_ name
   json nodeGroups
   json nodes
+  json settings
   timestamp_3__with_time_zone updatedAt
   varchar_36_ versionId
   varchar_36_ workflowId FK
@@ -424,6 +425,7 @@ erDiagram
   varchar_128_ name
   varchar_36_ parentFolderId FK
   varchar_36_ projectId FK
+  varchar_16_ resourceType
   timestamp_3__with_time_zone updatedAt
 }
 ```

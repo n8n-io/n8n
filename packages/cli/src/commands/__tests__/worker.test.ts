@@ -110,6 +110,7 @@ describe('Worker', () => {
 			sentry: { backendDsn: '' },
 			cache: { backend: 'memory' },
 			taskRunners: {},
+			codeExecution: { backend: 'task-runners' },
 			outboundProxy: { mode: 'main-only' },
 			expressionEngine: { engine: 'legacy', poolSize: 1, maxCodeCacheSize: 1024 },
 			queue: { bull: { gracefulShutdownTimeout: 20 }, workerPool: { enabled: false, name: '' } },
@@ -266,6 +267,7 @@ describe('Worker', () => {
 				mock<ExecutionsConfig>({ mode: 'queue' }),
 				mock<InstanceSettings>({ instanceType: 'worker', isWorker: true }),
 				mock<UnsavedManualExecutionService>(),
+				mock(),
 			);
 
 			const drainLoopInterval = 500;

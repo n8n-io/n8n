@@ -1,0 +1,11 @@
+{
+	"properties": {
+		"taskId": {
+			"type": "string"
+		},
+		"videoUrl": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

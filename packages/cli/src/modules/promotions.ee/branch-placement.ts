@@ -5,7 +5,10 @@ import type { PackageManifest } from '@/modules/n8n-packages/spec/manifest.schem
  * entity files on disk (not manifest.json).
  * Credentials and variables are excluded: they are derived from workflow files on import.
  */
-export type BranchLayout = Pick<PackageManifest, 'projects' | 'folders' | 'workflows'>;
+export type BranchLayout = Pick<
+	PackageManifest,
+	'projects' | 'folders' | 'workflows' | 'agents' | 'skills'
+>;
 
 /** Entry kinds whose target is a directory that holds other entries. */
 const CONTAINER_KINDS = ['projects', 'folders'] as const;

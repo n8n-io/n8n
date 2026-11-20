@@ -1,10 +1,12 @@
+import { TelemetryProxy } from '@n8n/backend-services';
 import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { smartDecimal } from '@n8n/utils/number/smart-decimal';
 
-import type { AgentRunTelemetryType } from '@/interfaces';
-import { Telemetry } from '@/telemetry';
+import type { KnowledgePreparationWait } from '@/modules/knowledge/knowledge-retriever';
+
+import type { AgentRunTelemetryType } from './agent-telemetry.types';
 
 export type KnowledgeToolCall = 'file_find' | 'file_search' | 'file_read' | 'vector_store_search';
 
@@ -12,6 +14,7 @@ export type KnowledgeToolCall = 'file_find' | 'file_search' | 'file_read' | 'vec
  * A failed call sends no knowledge content, so it has no characters to count.
  * `readFile` is the file that a successful read used, with its upload time.
  * `searchDurationMs`, `emptySearch` and `errorType` describe search calls only.
+ * `preparationWait` is set when a file call reached the sandbox, also when it failed.
  */
 export type KnowledgeToolCallResult =
 	| {
@@ -20,8 +23,14 @@ export type KnowledgeToolCallResult =
 			readFile?: { fileId: string; uploadedAt: string };
 			searchDurationMs?: number;
 			emptySearch?: boolean;
+			preparationWait?: KnowledgePreparationWait;
 	  }
-	| { failed: true; searchDurationMs?: number; errorType?: string };
+	| {
+			failed: true;
+			searchDurationMs?: number;
+			errorType?: string;
+			preparationWait?: KnowledgePreparationWait;
+	  };
 
 type SearchKind = 'file' | 'vector_store';
 
@@ -87,6 +96,8 @@ interface TrackedRun {
 	/** Each file that the run read, by file id, with its upload time and the place of its first read call. */
 	readFiles: Map<string, { uploadedAt: number; toolCallOrder: number }>;
 	searches: Partial<Record<SearchKind, SearchStats>>;
+	/** The sandbox and mirror wait of each file call that reached the sandbox, with the place of the call. */
+	preparationWaits: Array<{ sandboxWaitMs: number; mirrorWaitMs: number; toolCallOrder: number }>;
 }
 
 /**
@@ -98,7 +109,7 @@ interface TrackedRun {
 export class AgentKnowledgeUsageTracker {
 	private readonly runs = new Map<string, TrackedRun>();
 
-	constructor(private readonly telemetry: Telemetry) {}
+	constructor(private readonly telemetry: TelemetryProxy) {}
 
 	sendRunUsage(
 		runId: string,
@@ -117,6 +128,7 @@ export class AgentKnowledgeUsageTracker {
 			...trackedRun.usage,
 			...fileAges(trackedRun, Date.now()),
 			...searchProperties(trackedRun),
+			...preparationWaitProperties(trackedRun),
 		});
 	}
 
@@ -138,6 +150,7 @@ export class AgentKnowledgeUsageTracker {
 			startedToolCalls: 0,
 			readFiles: new Map(),
 			searches: {},
+			preparationWaits: [],
 		};
 		const toolCallOrder = run.startedToolCalls++;
 		run.usage[usageKeyByCall[call]]++;
@@ -162,6 +175,10 @@ export class AgentKnowledgeUsageTracker {
 			const searchKind = searchKindByCall[call];
 			if (searchKind && result.searchDurationMs !== undefined) {
 				recordSearch(run, searchKind, result);
+			}
+
+			if (result.preparationWait) {
+				run.preparationWaits.push({ ...result.preparationWait, toolCallOrder });
 			}
 
 			run.lastToolCallAt = Date.now();
@@ -283,6 +300,22 @@ function searchProperties({ searches: { file, vector_store: vectorStore } }: Tra
 			vector_store_empty_search_count: vectorStore.emptyCount,
 			vector_store_error_types: [...vectorStore.errorTypes].sort(),
 		}),
+	};
+}
+
+/** The waits of the first 25 file calls that reached the sandbox, in the order they started. Empty when none did. */
+function preparationWaitProperties({ preparationWaits }: TrackedRun) {
+	if (preparationWaits.length === 0) {
+		return {};
+	}
+
+	const firstWaits = [...preparationWaits]
+		.sort((a, b) => a.toolCallOrder - b.toolCallOrder)
+		.slice(0, 25);
+
+	return {
+		file_sandbox_wait_ms_first_25: firstWaits.map(({ sandboxWaitMs }) => sandboxWaitMs),
+		file_mirror_wait_ms_first_25: firstWaits.map(({ mirrorWaitMs }) => mirrorWaitMs),
 	};
 }
 
