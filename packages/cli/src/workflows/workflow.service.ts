@@ -4,6 +4,7 @@ import type {
 	ListCallableSubworkflowsQueryDto,
 	WorkflowExecutionBlockCause,
 	WorkflowListPublicationStatus,
+	WorkflowTransferResult,
 } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
 import {
@@ -128,6 +129,8 @@ class SystemPublishSupersededError extends Error {}
 
 /** The API-key scope a caller needs to put a version live, whether directly or by saving. */
 const PUBLISH_API_KEY_SCOPE: ApiKeyScope = 'workflow:activate';
+
+type PublishedWorkflow = WorkflowEntity & { activeVersion: WorkflowHistory };
 
 /** What `getMany` should enrich or scope beyond the plain list query. */
 export type GetManyOptions = {
@@ -1702,6 +1705,158 @@ export class WorkflowService {
 			deactivatedVersionId,
 			reason,
 		});
+	}
+
+	/** Returns only the workflows that the transfer could not republish in the destination. */
+	async republishAroundTransfer(
+		user: User,
+		workflowIds: string[],
+		destinationProjectId: string,
+		transfer: () => Promise<void>,
+		{ publicApi }: { publicApi: PublicApiCaller },
+	): Promise<Map<string, WorkflowTransferResult>> {
+		try {
+			await transfer();
+		} catch (error) {
+			const movedIds = await this._ownedByProject(workflowIds, destinationProjectId);
+			await this._finishTransfer(user, movedIds, publicApi);
+			throw error;
+		}
+
+		return await this._finishTransfer(user, workflowIds, publicApi);
+	}
+
+	/** Never throws, and counts every workflow as moved if the owners cannot be read. */
+	private async _ownedByProject(workflowIds: string[], projectId: string): Promise<string[]> {
+		let owned = workflowIds;
+		try {
+			const owners =
+				await this.sharedWorkflowRepository.findOwnerProjectsByWorkflowIds(workflowIds);
+			owned = workflowIds.filter((workflowId) => owners.get(workflowId)?.id === projectId);
+		} catch (error) {
+			this.logger.error('Failed to read which workflows a failed transfer moved', {
+				workflowIds,
+				error,
+			});
+		}
+		return owned;
+	}
+
+	/** Never throws, so a transfer that failed half-way still reports its original error. */
+	private async _finishTransfer(
+		user: User,
+		workflowIds: string[],
+		publicApi: PublicApiCaller,
+	): Promise<Map<string, WorkflowTransferResult>> {
+		const workflows = await this._publishedWorkflows(workflowIds);
+		const failures = new Map<string, Error>();
+		for (const workflow of workflows) {
+			const refusal = await this._triggerCredentialRefusal(workflow);
+			if (refusal) failures.set(workflow.id, refusal);
+		}
+
+		const republishIds = workflowIds.filter((workflowId) => !failures.has(workflowId));
+		if (republishIds.length > 0) {
+			try {
+				await this.outboxRepository.enqueueByWorkflowIds(
+					republishIds,
+					WorkflowPublicationReason.Transfer,
+				);
+				this.workflowPublicationNotifier.requestDrain();
+			} catch (error) {
+				this.logger.error('Failed to republish the transferred workflows', {
+					workflowIds: republishIds,
+					error,
+				});
+				for (const workflowId of republishIds) failures.set(workflowId, ensureError(error));
+			}
+		}
+
+		const results = new Map<string, WorkflowTransferResult>();
+		for (const workflow of workflows) {
+			const failure = failures.get(workflow.id);
+			if (failure) {
+				const unpublished = await this._unpublishAfterTransfer(user, workflow, publicApi);
+				if (unpublished) {
+					results.set(workflow.id, { error: { name: failure.name, message: failure.message } });
+				}
+			}
+		}
+
+		return results;
+	}
+
+	/** Never throws: if the read fails, only the leader checks the credentials. */
+	private async _publishedWorkflows(workflowIds: string[]): Promise<PublishedWorkflow[]> {
+		let published: PublishedWorkflow[] = [];
+		try {
+			const workflows = await this.workflowRepository.findWithActiveVersionByIds(workflowIds);
+			published = workflows.filter(
+				(workflow): workflow is PublishedWorkflow => workflow.activeVersion !== null,
+			);
+		} catch (error) {
+			this.logger.error('Failed to read the transferred workflows', { workflowIds, error });
+		}
+		return published;
+	}
+
+	/** Never throws: after any other error, the leader checks the credentials again. */
+	private async _triggerCredentialRefusal(
+		workflow: PublishedWorkflow,
+	): Promise<TriggerCredentialAccessError | null> {
+		let refusal: TriggerCredentialAccessError | null = null;
+		try {
+			await this.activeWorkflowManager.checkTriggerCredentialAccess(
+				workflow.id,
+				workflow.activeVersion,
+				undefined,
+			);
+		} catch (error) {
+			if (error instanceof TriggerCredentialAccessError) {
+				refusal = error;
+			} else {
+				this.logger.warn(`Failed to check the credentials of workflow "${workflow.id}"`, {
+					workflowId: workflow.id,
+					error,
+				});
+			}
+		}
+		return refusal;
+	}
+
+	/** Returns false if the workflow stays published. */
+	private async _unpublishAfterTransfer(
+		user: User,
+		workflow: PublishedWorkflow,
+		publicApi: PublicApiCaller,
+	): Promise<boolean> {
+		const deactivatedVersionId = workflow.activeVersion.versionId;
+		let unpublished = false;
+		try {
+			await this._forceUnpublish(workflow, deactivatedVersionId, user);
+			unpublished = true;
+
+			this.eventService.emit('workflow-deactivated', {
+				user,
+				workflowId: workflow.id,
+				workflow: this.workflowRepository.create({
+					...workflow,
+					// oxlint-disable-next-line typescript/no-deprecated -- Preserve the active field for existing event consumers.
+					active: false,
+					activeVersionId: null,
+					activeVersion: null,
+				}),
+				publicApi,
+				deactivatedVersionId,
+				source: publicApi ? 'api' : 'ui',
+			});
+		} catch (error) {
+			this.logger.error(`Failed to unpublish workflow "${workflow.id}" after a transfer`, {
+				workflowId: workflow.id,
+				error,
+			});
+		}
+		return unpublished;
 	}
 
 	/** Unpublishes in a way the `workflow.deactivate` hook cannot block: a hook failure is a warning. */
