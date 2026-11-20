@@ -40,7 +40,17 @@ function toResponse(res: CallToolResult): Response {
 	return new Response(body, { status, headers: { 'content-type': type } });
 }
 
-const ID_FIELD = /"(?:id|threadId|spreadsheetId)"\s*:\s*"([^"]+)"/g;
+// `parentFolderId` names a folder that the gym made, when a message of the gym is read.
+const ID_FIELD = /"(?:id|threadId|spreadsheetId|parentFolderId)"\s*:\s*"([^"]+)"/g;
+
+// A path can hold an id with `%2B` or `%3D`. The gym answer holds it as plain text.
+const decodeSegment = (segment: string): string => {
+	try {
+		return decodeURIComponent(segment);
+	} catch {
+		return segment;
+	}
+};
 
 /**
  * Routes the HTTP requests of one chat. A read-shaped request reads the real service, then the gym
@@ -92,6 +102,7 @@ export class HttpGuardRouter {
 		// such as a range ("Sheet1!A1:C10"), so one id of the gym is enough.
 		const gymOnly = args.path
 			.split('/')
+			.map(decodeSegment)
 			.some((segment) => looksLikeId(segment) && this.gymIds.has(segment));
 		this.log(args, gymOnly ? 'gym (an id of the gym)' : 'real read, then gym');
 		if (!gymOnly) {

@@ -339,3 +339,34 @@ describe('HttpGuardRouter with real ids', () => {
 		expect(hydrator.hydrate).not.toHaveBeenCalled();
 	});
 });
+
+describe('HttpGuardRouter ids with encoded characters', () => {
+	it('answers a read of an id of the gym from the gym only, also when the path encodes the id', async () => {
+		const { router, upstream, gym } = setup();
+		const gymId = 'AAMkAGym+Id/with+chars0123456789012345678901234567890';
+		gym.callTool.mockResolvedValueOnce(result({ id: gymId, parentFolderId: 'folderid0123456789' }));
+		await router.handle(request('POST', '/gmail/v1/users/me/drafts', {}));
+
+		await router.handle(request('GET', `/gmail/v1/users/me/messages/${encodeURIComponent(gymId)}`));
+
+		expect(upstream.callTool).not.toHaveBeenCalled();
+	});
+
+	it('records the parent folder id of an answer of the gym as an id of the gym', async () => {
+		const { router, upstream, gym } = setup();
+		gym.callTool.mockResolvedValueOnce(result({ id: 'a', parentFolderId: 'folderid0123456789' }));
+		await router.handle(request('POST', '/gmail/v1/users/me/drafts', {}));
+
+		await router.handle(request('GET', '/gmail/v1/users/me/labels/folderid0123456789'));
+
+		expect(upstream.callTool).not.toHaveBeenCalled();
+	});
+
+	it('keeps a path with a broken escape as it is', async () => {
+		const { router, upstream } = setup();
+
+		await router.handle(request('GET', '/gmail/v1/users/me/messages/1a1f32cf%ZZ'));
+
+		expect(upstream.callTool).toHaveBeenCalledTimes(1);
+	});
+});
