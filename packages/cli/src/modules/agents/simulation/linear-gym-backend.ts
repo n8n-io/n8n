@@ -63,8 +63,8 @@ async function json(
 	return await r.json();
 }
 const harnessToken = 'synthetic-loopback-harness';
-const mcpServers = (agent: SimulatedAgent) =>
-	agent.tools.filter((tool) => tool.kind === 'mcp' && tool.origin !== undefined);
+/** Every MCP server of the agent. A server without an origin stays, so an outage blocks it too. */
+const mcpServers = (agent: SimulatedAgent) => agent.tools.filter((tool) => tool.kind === 'mcp');
 const rpc = (name: string, args: unknown) => ({
 	jsonrpc: '2.0',
 	id: 1,
@@ -101,15 +101,16 @@ export class LinearGymBackend implements SimulationBackend {
 
 	/**
 	 * The name of the one MCP server of the agent that the Gym serves. A world holds one Linear
-	 * workspace, so two servers on a served host give no name. Rejects when the Gym cannot tell.
+	 * workspace, so two servers on a served origin give no name. Rejects when the Gym cannot tell.
 	 */
 	private async servedServer(agent: SimulatedAgent): Promise<string | undefined> {
 		const base = endpoint(process.env.GYM_BASE_URL, '/');
 		const token = process.env.GYM_HARNESS_TOKEN;
 		if (token !== harnessToken) throw unavailable();
-		const hosts = await this.manifest.mcpHosts(base, token);
+		const origins = await this.manifest.mcpOrigins(base, token);
+		// Scheme, host and port must all match. A server without an origin matches nothing.
 		const served = mcpServers(agent).filter(
-			({ origin }) => origin && URL.canParse(origin) && hosts.has(new URL(origin).host),
+			({ origin }) => origin && URL.canParse(origin) && origins.has(new URL(origin).origin),
 		);
 		return served.length === 1 ? served[0].toolName : undefined;
 	}

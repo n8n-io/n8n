@@ -77,7 +77,7 @@ afterEach(() => {
 });
 
 describe('LinearGymBackend capability discovery', () => {
-	it('marks the MCP server as simulated when the Gym serves its host', async () => {
+	it('marks the MCP server as simulated when the Gym serves its origin', async () => {
 		const { requests } = fakeGym();
 		const backend = new LinearGymBackend();
 		expect(await backend.describeTools(inputFor(linear).agent)).toEqual([simulated]);
@@ -109,6 +109,18 @@ describe('LinearGymBackend capability discovery', () => {
 	it.each<[string, unknown, SimulatedTool[]]>([
 		['another host', manifest(), [{ ...linear, origin: 'https://mcp.other.example' }]],
 		['another port', manifest(), [{ ...linear, origin: 'https://mcp.linear.app:8443' }]],
+		['another scheme', manifest(), [{ ...linear, origin: 'http://mcp.linear.app' }]],
+		[
+			'a served scheme on another port',
+			manifest([{ url: 'http://mcp.linear.app:443/mcp', status: 'implemented' }]),
+			[linear],
+		],
+		[
+			'an MCP URL without an origin',
+			manifest([{ url: 'mailto:mcp@linear.app', status: 'implemented' }]),
+			[{ ...linear, origin: 'mailto:mcp@linear.app' }],
+		],
+		['an MCP server without an origin', manifest(), [{ kind: 'mcp', toolName: 'linear' }]],
 		[
 			'a host that only an API interface has',
 			manifest(),
@@ -126,7 +138,7 @@ describe('LinearGymBackend capability discovery', () => {
 			[linear],
 		],
 		['an origin that is not a URL', manifest(), [{ ...linear, origin: 'mcp.linear.app' }]],
-		['two servers on the served host', manifest(), [linear, { ...linear, toolName: 'second' }]],
+		['two servers on the served origin', manifest(), [linear, { ...linear, toolName: 'second' }]],
 	])('leaves out %s and opens no world', async (_, document, tools) => {
 		const { requests } = fakeGym(() => json(document));
 		const backend = new LinearGymBackend();
@@ -134,6 +146,52 @@ describe('LinearGymBackend capability discovery', () => {
 		expect(await backend.describeTools(input.agent)).toEqual([]);
 		await expect(backend.openWorld(input)).rejects.toThrow('unavailable');
 		expect(requests).toEqual([`GET ${MANIFEST_URL}`]);
+	});
+
+	it.each<[string, unknown, SimulatedTool]>([
+		[
+			'the default port written out',
+			manifest(),
+			{ ...linear, origin: 'https://mcp.linear.app:443' },
+		],
+		[
+			'another served port',
+			manifest([{ url: 'https://mcp.linear.app:8443/mcp', status: 'implemented' }]),
+			{ ...linear, origin: 'https://mcp.linear.app:8443' },
+		],
+		[
+			'another served scheme',
+			manifest([{ url: 'http://mcp.linear.app/mcp', status: 'implemented' }]),
+			{ ...linear, origin: 'http://mcp.linear.app' },
+		],
+	])('matches the same origin with %s', async (_, document, tool) => {
+		fakeGym(() => json(document));
+		expect(await new LinearGymBackend().describeTools(inputFor(tool).agent)).toEqual([simulated]);
+	});
+
+	it('leaves an MCP server without an origin unserved beside the served server', async () => {
+		const { requests } = fakeGym();
+		const backend = new LinearGymBackend();
+		const input = inputFor(linear, { kind: 'mcp', toolName: 'no-origin' });
+		expect(await backend.describeTools(input.agent)).toEqual([simulated]);
+		expect(requests).toEqual([`GET ${MANIFEST_URL}`]);
+	});
+
+	it('blocks an MCP server without an origin as unavailable when the Gym is down', async () => {
+		const { requests } = fakeGym(() => {
+			throw new TypeError('fetch failed');
+		});
+		const backend = new LinearGymBackend();
+		const withoutOrigin: SimulatedTool = { kind: 'mcp', toolName: 'no-origin' };
+		// Alone, and beside a server with an origin.
+		expect(await backend.describeTools(inputFor(withoutOrigin).agent)).toEqual([
+			unavailable('no-origin'),
+		]);
+		expect(await backend.describeTools(inputFor(linear, withoutOrigin).agent)).toEqual([
+			unavailable(),
+			unavailable('no-origin'),
+		]);
+		expect(requests).toEqual([`GET ${MANIFEST_URL}`, `GET ${MANIFEST_URL}`]);
 	});
 
 	it('does not ask the Gym for an agent without MCP servers', async () => {
@@ -217,7 +275,7 @@ describe('LinearGymBackend capability discovery', () => {
 		await Promise.all([backend.describeTools(input.agent), backend.describeTools(input.agent)]);
 		await backend.openWorld(input);
 		vi.advanceTimersByTime(29_000);
-		// The other host is answered from the same cached document.
+		// The other origin is answered from the same cached document.
 		expect(
 			await backend.describeTools(inputFor({ ...linear, origin: 'https://x.example' }).agent),
 		).toEqual([]);
@@ -248,37 +306,5 @@ describe('LinearGymBackend capability discovery', () => {
 	});
 });
 
-// Runs only under the Gym launcher (`deploy/e2e/linear-spike.mjs`), which sets these variables.
-describe.skipIf(!process.env.GYM_BASE_URL)('capability discovery against a real Gym', () => {
-	it('gets a sim-service/v1 document with an implemented MCP interface', async () => {
-		const response = await fetch(`${process.env.GYM_BASE_URL}/_sim/v1/manifest?service=linear`);
-		const document = await response.json();
-		expect(document).toMatchObject({ contract: 'sim-service/v1', service: 'linear' });
-		expect(document.interfaces.mcp).toEqual([
-			expect.objectContaining({ url: 'https://mcp.linear.app/mcp', status: 'implemented' }),
-		]);
-	});
-
-	it('describes only the MCP server that the Gym serves', async () => {
-		const backend = new LinearGymBackend();
-		const fetchSpy = vi.spyOn(globalThis, 'fetch');
-		try {
-			expect(await backend.describeTools(inputFor(linear).agent)).toEqual([simulated]);
-			for (const origin of ['https://api.linear.app', 'https://mcp.notion.com'])
-				expect(await backend.describeTools(inputFor({ ...linear, origin }).agent)).toEqual([]);
-			expect(fetchSpy.mock.calls.map(([url]) => url)).toEqual([
-				`${process.env.GYM_BASE_URL}/_sim/v1/manifest?service=linear`,
-			]);
-		} finally {
-			fetchSpy.mockRestore();
-		}
-	});
-
-	it('blocks the server when no Gym listens on the configured port', async () => {
-		// Port 1 on loopback refuses the connection.
-		vi.stubEnv('GYM_BASE_URL', 'http://127.0.0.1:1');
-		expect(await new LinearGymBackend().describeTools(inputFor(linear).agent)).toEqual([
-			unavailable(),
-		]);
-	});
-});
+// The checks against a real Gym are in `test/linear-consumer/turns.mjs`. The documented command
+// (`node test/linear-consumer/run.mjs <Gym checkout>`) always runs them.

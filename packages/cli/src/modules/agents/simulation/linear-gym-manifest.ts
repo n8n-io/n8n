@@ -13,7 +13,7 @@ const manifestSchema = z.object({
 	}),
 });
 
-async function readMcpHosts(base: string, token: string): Promise<Set<string>> {
+async function readMcpOrigins(base: string, token: string): Promise<Set<string>> {
 	// With `service`, the answer has the same shape when the Gym serves more than one vendor.
 	const response = await fetch(`${base}/_sim/v1/manifest?service=linear`, {
 		redirect: 'error',
@@ -22,27 +22,31 @@ async function readMcpHosts(base: string, token: string): Promise<Set<string>> {
 	});
 	if (!response.ok) throw new OperationalError('The Gym did not report what it serves.');
 	const { interfaces } = manifestSchema.parse(await response.json());
-	const hosts = (interfaces.mcp ?? [])
+	const origins = (interfaces.mcp ?? [])
 		.filter(({ status }) => status === 'implemented')
-		.map(({ url }) => new URL(url).host);
-	return new Set(hosts.filter((host) => host !== ''));
+		.map(({ url }) => new URL(url).origin);
+	// A URL without a scheme, host and port tuple (`mailto:`, `data:`) has the origin `null`.
+	return new Set(origins.filter((origin) => origin !== 'null'));
 }
 
-/** Asks the Gym which MCP hosts it serves for Linear. Keeps a good answer for a short time. */
+/**
+ * Asks the Gym which MCP origins (scheme, host and port) it serves for Linear. Keeps a good answer
+ * for a short time.
+ */
 export class LinearGymManifest {
-	private cached?: { base: string; expires: number; hosts: Promise<Set<string>> };
+	private cached?: { base: string; expires: number; origins: Promise<Set<string>> };
 
 	/** Rejects when the Gym is down, is slow or sends a document that is not valid. */
-	async mcpHosts(base: string, token: string): Promise<Set<string>> {
+	async mcpOrigins(base: string, token: string): Promise<Set<string>> {
 		const now = Date.now();
 		if (this.cached?.base !== base || this.cached.expires <= now) {
-			const entry = { base, expires: now + TTL_MS, hosts: readMcpHosts(base, token) };
+			const entry = { base, expires: now + TTL_MS, origins: readMcpOrigins(base, token) };
 			this.cached = entry;
 			// A failure is not kept. The next call asks the Gym again.
-			entry.hosts.catch(() => {
+			entry.origins.catch(() => {
 				if (this.cached === entry) this.cached = undefined;
 			});
 		}
-		return await this.cached.hosts;
+		return await this.cached.origins;
 	}
 }
