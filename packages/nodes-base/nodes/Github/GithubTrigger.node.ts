@@ -11,7 +11,7 @@ import type {
 import { NodeConnectionTypes, NodeApiError, NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { githubApiRequest } from './GenericFunctions';
-import { verifySignature } from './GithubTriggerHelpers';
+import { getHooksPath, verifySignature } from './GithubTriggerHelpers';
 import { getRepositories, getUsers } from './SearchFunctions';
 
 const CANNOT_CREATE_MESSAGE = 'Github refused to create the webhook for this workflow';
@@ -20,7 +20,7 @@ const CANNOT_CREATE_MESSAGE = 'Github refused to create the webhook for this wor
 function describeGithubRejection(error: unknown): string {
 	const reason = (error as { description?: string } | undefined)?.description;
 	const advice =
-		'If a webhook for this URL already exists on the repository, delete it there and activate the workflow again.';
+		'If a webhook for this URL already exists on the repository or organization, delete it there and activate the workflow again.';
 
 	return reason ? `Github said: ${reason}. ${advice}` : advice;
 }
@@ -107,6 +107,24 @@ export class GithubTrigger implements INodeType {
 				default: 'accessToken',
 			},
 			{
+				displayName: 'Resource',
+				name: 'resource',
+				type: 'options',
+				noDataExpression: true,
+				options: [
+					{
+						name: 'Organization',
+						value: 'organization',
+						description: 'Receive events from every repository of an organization',
+					},
+					{
+						name: 'Repository',
+						value: 'repository',
+					},
+				],
+				default: 'repository',
+			},
+			{
 				displayName: 'Repository Owner',
 				name: 'owner',
 				type: 'resourceLocator',
@@ -167,6 +185,11 @@ export class GithubTrigger implements INodeType {
 				type: 'resourceLocator',
 				default: { mode: 'list', value: '' },
 				required: true,
+				displayOptions: {
+					show: {
+						resource: ['repository'],
+					},
+				},
 				modes: [
 					{
 						displayName: 'Repository Name',
@@ -614,11 +637,7 @@ export class GithubTrigger implements INodeType {
 				}
 
 				// Webhook got created before so check if it still exists
-				const owner = this.getNodeParameter('owner', '', { extractValue: true }) as string;
-				const repository = this.getNodeParameter('repository', '', {
-					extractValue: true,
-				}) as string;
-				const endpoint = requestPath`/repos/${owner}/${repository}/hooks/${webhookData.webhookId}`;
+				const endpoint = requestPath`${getHooksPath.call(this)}/${webhookData.webhookId}`;
 
 				try {
 					await githubApiRequest.call(this, 'GET', endpoint, {});
@@ -648,13 +667,9 @@ export class GithubTrigger implements INodeType {
 					);
 				}
 
-				const owner = this.getNodeParameter('owner', '', { extractValue: true }) as string;
-				const repository = this.getNodeParameter('repository', '', {
-					extractValue: true,
-				}) as string;
 				const events = this.getNodeParameter('events', []);
 
-				const endpoint = requestPath`/repos/${owner}/${repository}/hooks`;
+				const endpoint = getHooksPath.call(this);
 				const options = this.getNodeParameter('options') as { insecureSSL: boolean };
 
 				// Generate a secure random secret for webhook signature verification
@@ -767,7 +782,7 @@ export class GithubTrigger implements INodeType {
 					if (error.httpCode === '404') {
 						throw new NodeOperationError(
 							this.getNode(),
-							'Check that the repository exists and that you have permission to create the webhooks this node requires',
+							'Check that the repository or organization exists and that you have permission to create the webhooks this node requires',
 							{ level: 'warning' },
 						);
 					}
@@ -801,14 +816,10 @@ export class GithubTrigger implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 
 				if (webhookData.webhookId !== undefined) {
-					const owner = this.getNodeParameter('owner', '', { extractValue: true }) as string;
-					const repository = this.getNodeParameter('repository', '', {
-						extractValue: true,
-					}) as string;
 					const body = {};
 
 					try {
-						const endpoint = requestPath`/repos/${owner}/${repository}/hooks/${webhookData.webhookId}`;
+						const endpoint = requestPath`${getHooksPath.call(this)}/${webhookData.webhookId}`;
 						await githubApiRequest.call(this, 'DELETE', endpoint, body);
 					} catch (error) {
 						return false;
