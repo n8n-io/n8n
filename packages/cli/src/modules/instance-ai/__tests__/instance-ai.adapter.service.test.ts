@@ -9628,6 +9628,7 @@ describe('createContext — skill service wiring', () => {
 			if (token === SkillsGate) return { isEnabled: true };
 			if (token === InstanceAiSkillsAdapterService) return { createService };
 			if (token === InstanceAiBuilderDelegateAdapterService) return { createDelegate: vi.fn() };
+			if (token === WorkflowEngineDefaults) return { getSetup: () => engineV1Setup };
 			throw new Error(`Unexpected Container.get call in test: ${String(token)}`);
 		});
 		const service = createAdapterWithGatewayMock(vi.fn());
