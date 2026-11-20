@@ -24,6 +24,7 @@ import { SkillSourceConnection } from '../../database/entities/skill-source-conn
 import { SkillSourceNotFoundError } from '../../errors/skill-source-not-found.error';
 import { SkillSourceReadError } from '../../errors/skill-source-read.error';
 import { SkillSourceService } from '../../services/skill-source.service';
+import { SkillSourceToolBudget } from '../../services/skill-source-tool-budget';
 import { SkillsTelemetry } from '../../services/skills-telemetry.service';
 import { GitHubSkillSourceClient } from '../../sources/github/github-skill-source-client';
 import type { RemoteSkillRef } from '../../sources/skill-source-client';
@@ -72,6 +73,7 @@ describe('SkillSourceController', () => {
 	let team: Project;
 	let otherTeam: Project;
 	let personal: Project;
+	let toolBudget: MockInstance<SkillSourceToolBudget['take']>;
 
 	beforeAll(async () => {
 		ownerUser = await createOwner();
@@ -96,11 +98,14 @@ describe('SkillSourceController', () => {
 		// Deleting a skill deletes its link. A source stays until it is deleted.
 		await Container.get(DataSource).manager.delete(SkillSourceConnection, {});
 		postHog.getFeatureFlags.mockResolvedValue({ [SKILL_SYNC_FLAG]: true });
+		// The budget counts in memory for the whole file, so only its own tests let it count.
+		toolBudget = vi.spyOn(Container.get(SkillSourceToolBudget), 'take').mockReturnValue();
 		github.start();
 		github.push('acme/skills', FILES);
 	});
 
 	afterEach(() => {
+		toolBudget.mockRestore();
 		github.stop();
 	});
 
@@ -816,6 +821,48 @@ describe('SkillSourceController', () => {
 
 			expect(result.imported.map(({ name }) => name)).toEqual(['docx']);
 			expect(await findSkill(result.imported[0].skillId)).toMatchObject({ projectId: team.id });
+		});
+	});
+
+	describe('the request budget of the public source tools', () => {
+		const target = { url: REPO, scope: 'instance' } as const;
+
+		it('refuses the requests of a user over the budget, and reports each as a failed connect', async () => {
+			toolBudget.mockRestore();
+			const service = Container.get(SkillSourceService);
+			const adminUser = await createAdmin();
+			const connectedSource = vi.spyOn(Container.get(SkillsTelemetry), 'connectedSource');
+			let preview = await service.discoverPublic(adminUser, target, 'mcp');
+			for (let request = 1; request < 15; request++) {
+				preview = await service.discoverPublic(adminUser, target, 'mcp');
+			}
+			const selection = connectPublicSkillSourceSchema.parse({
+				...target,
+				revision: preview.revision,
+				skillKeys: preview.skills.filter(({ name }) => name === 'docx').map(({ key }) => key),
+			});
+
+			await expect(service.discoverPublic(adminUser, target, 'mcp')).rejects.toMatchObject({
+				reason: 'rate_limited',
+			});
+			await expect(
+				service.checkPublicImport(adminUser, selection, 'assistant'),
+			).rejects.toMatchObject({ reason: 'rate_limited' });
+			await expect(service.connectPublic(adminUser, selection, 'mcp')).rejects.toMatchObject({
+				reason: 'rate_limited',
+			});
+
+			expect(await countSources()).toBe(0);
+			expect(connectedSource).toHaveBeenCalledTimes(3);
+			expect(connectedSource).toHaveBeenCalledWith(
+				expect.objectContaining({ surface: 'mcp', status: 'failure', reason: 'rate_limited' }),
+				adminUser.id,
+			);
+			connectedSource.mockRestore();
+			// The connect dialog has a person behind each request, so the budget leaves it alone.
+			await discover(server.authAgentFor(adminUser), target);
+			// Another user has a budget of their own.
+			await expect(service.discoverPublic(ownerUser, target, 'mcp')).resolves.toBeDefined();
 		});
 	});
 

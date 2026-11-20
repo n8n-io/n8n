@@ -113,6 +113,12 @@ as `connectPublic` does. A check does not report flagged skills, because the
 preview reported them. Use the Skills UI to review warnings, accept
 updates, or connect private repositories.
 
+A model can start a source request on each tool call, and each request reads the
+source. So `SkillSourceToolBudget` allows 15 preview, check, and import requests
+for each user in 5 minutes, on both surfaces together. The next request fails
+with `rate_limited`. The budget is in memory on each main. The connect dialog
+does not use it.
+
 The MCP tools are `list_skill_sources` (`skill:read` or `skill:write`),
 `discover_skill_source`, and `import_skills_from_source` (both `skill:write`).
 n8n Assistant asks for approval for each import. Connect and import use the

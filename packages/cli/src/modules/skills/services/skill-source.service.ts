@@ -82,6 +82,7 @@ import type { ResolvedSkillSourceCredential } from './skill-source-credentials.c
 import { findLosingAgents, isNameTaken, nextFreeName } from './skill.policy';
 import { SkillSecurityScanner } from './skill-security-scanner.service';
 import { SkillService } from './skill.service';
+import { SkillSourceToolBudget } from './skill-source-tool-budget';
 import { SkillSyncFlagGate } from './skill-sync-flag-gate';
 import { SkillUsageProxy } from './skill-usage-proxy.service';
 import {
@@ -164,6 +165,7 @@ export class SkillSourceService {
 		private readonly credentials: SkillSourceCredentialsProxy,
 		private readonly skillUsage: SkillUsageProxy,
 		private readonly projectScopeService: ProjectScopeService,
+		private readonly toolBudget: SkillSourceToolBudget,
 	) {}
 
 	/**
@@ -223,6 +225,7 @@ export class SkillSourceService {
 		const { target, scopeType } = await this.resolveScope(user, payload);
 		const report = connectReport(scopeType, payload.credentialId, surface);
 		try {
+			if (surface) this.toolBudget.take(user.id);
 			const source = await this.parse(payload, user, target.projectId);
 			report.provider = source.type;
 			const duplicate = await this.duplicateOf(user, source.identityKey, target.projectId);
@@ -305,6 +308,7 @@ export class SkillSourceService {
 		const { target, scopeType } = await this.resolveScope(user, payload);
 		const report = connectReport(scopeType, undefined, surface);
 		try {
+			this.toolBudget.take(user.id);
 			const source = await this.parse(payload, user, target.projectId);
 			report.provider = source.type;
 			const duplicate = await this.duplicateOf(user, source.identityKey, target.projectId);
@@ -353,6 +357,7 @@ export class SkillSourceService {
 		const { target, scopeType } = await this.resolveScope(user, payload);
 		const report = connectReport(scopeType, payload.credentialId, preview?.surface);
 		try {
+			if (preview) this.toolBudget.take(user.id);
 			const source = await this.parse(payload, user, target.projectId);
 			report.provider = source.type;
 			const duplicate = await this.duplicateOf(user, source.identityKey, target.projectId);
