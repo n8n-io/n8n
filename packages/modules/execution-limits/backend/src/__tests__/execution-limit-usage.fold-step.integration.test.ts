@@ -26,15 +26,6 @@ describe('ExecutionLimitUsageFoldStep', () => {
 	const fold = async (...rows: ExecutionLedgerRow[]) =>
 		await Container.get(TransactionRunner).run({}, async (ctx) => await step.fold(rows, ctx));
 
-	const countsOf = async (projectId: string) => {
-		const found = await usage.find({ where: { projectId }, order: { day: 'ASC' } });
-		return found.map((r) => ({
-			day: r.day,
-			started: r.startedCount,
-			blocked: r.blockedCount,
-		}));
-	};
-
 	const total = (found: Array<{ startedCount: number; blockedCount: number }>) => ({
 		started: found.reduce((sum, r) => sum + r.startedCount, 0),
 		blocked: found.reduce((sum, r) => sum + r.blockedCount, 0),
@@ -90,9 +81,7 @@ describe('ExecutionLimitUsageFoldStep', () => {
 		])('counts %s as %i started runs', async (source, expected) => {
 			await fold(ledgerRow({ mode: 'webhook', source }));
 
-			expect(await totalOf('project-1')).toEqual({ started: expected, blocked: 0 });
-			expect(await usage.count()).toBe(expected);
-			expect(await instanceUsage.count()).toBe(expected);
+			await expectProjectAndInstanceTotal({ started: expected, blocked: 0 });
 		});
 	});
 
@@ -165,9 +154,9 @@ describe('ExecutionLimitUsageFoldStep', () => {
 			}),
 		);
 
-		expect(await countsOf('project-1')).toEqual([
-			{ day: '2026-11-19', started: 1, blocked: 0 },
-			{ day: '2026-11-20', started: 0, blocked: 1 },
+		expect(await usage.find({ order: { day: 'ASC' } })).toEqual([
+			expect.objectContaining({ day: '2026-11-19', startedCount: 1, blockedCount: 0 }),
+			expect.objectContaining({ day: '2026-11-20', startedCount: 0, blockedCount: 1 }),
 		]);
 	});
 

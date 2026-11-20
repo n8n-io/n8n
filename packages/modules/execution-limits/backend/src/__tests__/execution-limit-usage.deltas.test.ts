@@ -27,13 +27,11 @@ describe('toUsageDeltas', () => {
 	it('merges rows with the same key into one delta', () => {
 		const deltas = toUsageDeltas([ledgerRow(), ledgerRow(), ledgerRow()]);
 
-		expect(deltas.projects).toHaveLength(1);
-		expect(deltas.instance).toHaveLength(1);
-		expect(
-			[...deltas.projects, ...deltas.instance].every(
-				(d) => d.startedCount === 3 && d.blockedCount === 0,
-			),
-		).toBe(true);
+		const counts = { day: '2026-10-28', entityType: 'workflow', startedCount: 3, blockedCount: 0 };
+		expect(deltas).toEqual({
+			projects: [{ projectId: 'project-1', ...counts }],
+			instance: [counts],
+		});
 	});
 
 	it('sorts the deltas by key and keeps keys unique', () => {
@@ -59,9 +57,19 @@ describe('toUsageDeltas', () => {
 	it('gives an agent entity its own key', () => {
 		const deltas = toUsageDeltas([ledgerRow(), ledgerRow({ entityType: 'agent' })]);
 
-		expect(deltas.projects.map((d) => d.entityType)).toEqual(['agent', 'workflow']);
-		expect(deltas.instance.map((d) => d.entityType)).toEqual(['agent', 'workflow']);
-		expect([...deltas.projects, ...deltas.instance].every((d) => d.startedCount === 1)).toBe(true);
+		const counts = (entityType: string) => ({
+			day: '2026-10-28',
+			entityType,
+			startedCount: 1,
+			blockedCount: 0,
+		});
+		expect(deltas).toEqual({
+			projects: [
+				{ projectId: 'project-1', ...counts('agent') },
+				{ projectId: 'project-1', ...counts('workflow') },
+			],
+			instance: [counts('agent'), counts('workflow')],
+		});
 	});
 
 	it('uses the UTC day when the local day is already the next one', () => {

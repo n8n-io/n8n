@@ -35,11 +35,12 @@ export function toUsageDeltas(rows: readonly ExecutionLedgerRow[]): UsageDeltas 
 		const column = delta === 1 ? 'startedCount' : 'blockedCount';
 		const { projectId, entityType } = row;
 		const day = row.occurredAt.toISOString().slice(0, 10);
-		const zero = { day, entityType, startedCount: 0, blockedCount: 0 };
+		const zero = () => ({ day, entityType, startedCount: 0, blockedCount: 0 });
 
 		// A run of a workflow with no owner project counts for the instance only.
 		if (projectId) {
-			addOne(projects, `${projectId}|${day}|${entityType}`, { projectId, ...zero }, column);
+			const key = `${projectId}|${day}|${entityType}`;
+			addOne(projects, key, () => ({ projectId, ...zero() }), column);
 		}
 		addOne(instance, `${day}|${entityType}`, zero, column);
 	}
@@ -50,12 +51,15 @@ export function toUsageDeltas(rows: readonly ExecutionLedgerRow[]): UsageDeltas 
 function addOne<T extends InstanceUsageDelta>(
 	deltas: Map<string, T>,
 	key: string,
-	zero: T,
+	zero: () => T,
 	column: 'startedCount' | 'blockedCount',
 ): void {
-	const delta = deltas.get(key) ?? zero;
+	let delta = deltas.get(key);
+	if (!delta) {
+		delta = zero();
+		deltas.set(key, delta);
+	}
 	delta[column] += 1;
-	deltas.set(key, delta);
 }
 
 // Concurrent writers that lock rows in the same order cannot deadlock.

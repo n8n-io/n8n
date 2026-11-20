@@ -17,7 +17,6 @@ describe('ExecutionLimitsModule', () => {
 
 	beforeEach(() => {
 		licenseState = mockInstance(LicenseState);
-		licenseState.isExecutionLimitsLicensed.mockReturnValue(true);
 		registry = new FoldStepRegistry();
 		Container.set(FoldStepRegistry, registry);
 		// The repository of the step reads the manager when it is built.
@@ -34,14 +33,6 @@ describe('ExecutionLimitsModule', () => {
 		expect(Container.get(ModuleMetadata).get('execution-limits')?.licenseFlag).toBeUndefined();
 	});
 
-	it('init registers the usage fold step', async () => {
-		mockInstance(ExecutionLimitsSnapshot);
-
-		await new ExecutionLimitsModule().init();
-
-		expect(registry.getAll().map((step) => step.name)).toEqual(['execution_limit_usage']);
-	});
-
 	it('registers the fold step but does not load the limits when unlicensed', async () => {
 		licenseState.isExecutionLimitsLicensed.mockReturnValue(false);
 		const snapshot = mockInstance(ExecutionLimitsSnapshot);
@@ -53,6 +44,7 @@ describe('ExecutionLimitsModule', () => {
 	});
 
 	it('loads the limits on init, before the process takes work', async () => {
+		licenseState.isExecutionLimitsLicensed.mockReturnValue(true);
 		const snapshot = mockInstance(ExecutionLimitsSnapshot);
 		let finishStart = () => {};
 		snapshot.start.mockReturnValue(new Promise<void>((resolve) => (finishStart = resolve)));

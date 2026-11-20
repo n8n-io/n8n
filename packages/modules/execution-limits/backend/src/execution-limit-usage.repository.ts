@@ -67,10 +67,11 @@ export class ExecutionLimitUsageRepository {
 
 		for (let start = 0; start < deltas.length; start += ROWS_PER_STATEMENT) {
 			const chunk = deltas.slice(start, start + ROWS_PER_STATEMENT);
-			let param = 0;
-			const values = chunk.map(
-				() => `(${Array.from({ length: paramsPerRow }, () => `$${++param}`).join(', ')}, ${now})`,
-			);
+			const values = chunk.map((_, row) => {
+				const first = row * paramsPerRow + 1;
+				const placeholders = Array.from({ length: paramsPerRow }, (__, i) => `$${first + i}`);
+				return `(${placeholders.join(', ')}, ${now})`;
+			});
 			const { sql, params } = toDialectQuery(
 				this.isPostgres,
 				`INSERT INTO ${tableName} AS u (${key}, "startedCount", "blockedCount", "updatedAt") VALUES ${values.join(', ')} ON CONFLICT (${key}) DO UPDATE SET "startedCount" = u."startedCount" + EXCLUDED."startedCount", "blockedCount" = u."blockedCount" + EXCLUDED."blockedCount", "updatedAt" = EXCLUDED."updatedAt"`,
