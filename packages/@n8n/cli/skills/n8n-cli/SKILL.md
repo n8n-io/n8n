@@ -355,10 +355,16 @@ Key points:
   with `promote-selection`, `apply`, `apply-continue`, `apply-selection`, and
   `apply-selection-continue`. Take it from `list-apply-changes` for a whole-instance
   Apply and from `list-changes <projectId> <promote|apply>` for a selection.
-- API key scopes for this group are named `promotions:*`. Setup commands need
-  `manageProviders`, `readProviders`, `manageEnvironments` or `readEnvironments`.
-  Preview and promote need only `promote`. Preview, apply and continue need
-  only `apply`.
+- API key scopes for this group are named `promotions:*`:
+  - `promotion-provider create`, `update`, `delete`, `list-repositories` and
+    `list-branches` need `manageProviders`. `promotion-provider list` and `get`
+    need `readProviders`.
+  - `promotion-environment create`, `update`, `delete`, `connect`,
+    `disconnect`, `add-project` and `remove-project` need `manageEnvironments`.
+    `promotion-environment list`, `get`, `list-projects` and
+    `list-missing-projects` need `readEnvironments`.
+  - Preview and promote commands need only `promote`. Preview, apply and
+    continue commands need only `apply`.
 
 ## Other
 

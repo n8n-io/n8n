@@ -114,12 +114,16 @@ describe('PromotionsModule settings route', () => {
 });
 
 describe('PromotionsModule preview routes', () => {
-	it('opens the whole-instance Apply preview with only the apply scope', async () => {
+	it('opens the whole-instance Apply preview with the apply and environment read scopes', async () => {
 		setup({ scopes: ['promotions:apply'] });
 		const router = createTestRouter();
 
+		// The page lists the instance environments, so the apply scope alone leads home.
 		await router.push('/promotions/apply');
+		expect(router.currentRoute.value.name).toBe(VIEWS.HOMEPAGE);
 
+		useRBACStore().setGlobalScopes(['promotions:apply', 'promotions:readEnvironments']);
+		await router.push('/promotions/apply');
 		expect(router.currentRoute.value.name).toBe(PROMOTION_INSTANCE_APPLY_VIEW);
 	});
 
