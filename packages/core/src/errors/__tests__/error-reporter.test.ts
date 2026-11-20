@@ -448,6 +448,13 @@ describe('ErrorReporter', () => {
 			expect(logger.error).toHaveBeenNthCalledWith(2, `root cause\n${cause.stack}\n`, undefined);
 		});
 
+		it('should stop walking a cause chain when the cause is not an Error', () => {
+			const outer = new Error('outer', { cause: 'non-error cause' });
+			errorReporter.error(outer);
+			expect(logger.error).toHaveBeenCalledTimes(1);
+			expect(logger.error).toHaveBeenCalledWith(`outer\n${outer.stack}\n`, undefined);
+		});
+
 		it('should stop walking a cause chain that loops back on itself', () => {
 			const outer = new Error('outer');
 			const inner = new Error('inner', { cause: outer });
