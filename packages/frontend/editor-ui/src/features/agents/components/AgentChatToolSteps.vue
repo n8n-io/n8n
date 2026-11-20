@@ -17,6 +17,7 @@ import { computed, toRef } from 'vue';
 import type { AgentsChatHostEventItem } from '@/features/ai/shared/agentsChat/interactionRegistry';
 import type { ToolCall } from '@/features/ai/shared/agentsChat/types';
 import AiReasoningBlock from '@/features/ai/shared/components/AiReasoningBlock.vue';
+import ToolDataBlock from '@/features/ai/shared/components/ToolDataBlock/ToolDataBlock.vue';
 import type { AgentFixWithAssistantFailure } from '../types';
 import { useSubAgentNames } from '../composables/useSubAgentNames';
 import { isCompactToolName, resolveToolNameForDisplay } from '../utils/toolDisplayName';
@@ -345,13 +346,13 @@ function hasActiveToolCall(): boolean {
 								<span :class="$style.toolDataLabel">
 									{{ i18n.baseText('agentSessions.timeline.input') }}
 								</span>
-								<pre :class="$style.toolDataContent">{{ formatToolData(tc.input) }}</pre>
+								<ToolDataBlock :value="tc.input" />
 							</div>
 							<div v-if="showToolOutput(tc)" :class="$style.toolDataSection">
 								<span :class="$style.toolDataLabel">
 									{{ i18n.baseText('agentSessions.timeline.output') }}
 								</span>
-								<pre :class="$style.toolDataContent">{{ formatToolData(tc.output) }}</pre>
+								<ToolDataBlock :value="tc.output" />
 							</div>
 						</div>
 					</N8nAiActivityStep>
@@ -424,13 +425,13 @@ function hasActiveToolCall(): boolean {
 								<span :class="$style.toolDataLabel">
 									{{ i18n.baseText('agentSessions.timeline.input') }}
 								</span>
-								<pre :class="$style.toolDataContent">{{ formatToolData(tc.input) }}</pre>
+								<ToolDataBlock :value="tc.input" />
 							</div>
 							<div v-if="showToolOutput(tc)" :class="$style.toolDataSection">
 								<span :class="$style.toolDataLabel">
 									{{ i18n.baseText('agentSessions.timeline.output') }}
 								</span>
-								<pre :class="$style.toolDataContent">{{ formatToolData(tc.output) }}</pre>
+								<ToolDataBlock :value="tc.output" />
 							</div>
 						</div>
 					</template>
@@ -545,10 +546,7 @@ function hasActiveToolCall(): boolean {
 }
 
 .toolDataSection {
-	border: var(--border-width) var(--border-style) var(--border-color);
-	border-radius: var(--radius--xs);
-	background-color: var(--background--base);
-	padding: var(--spacing--2xs);
+	min-width: 0;
 	user-select: text;
 }
 
@@ -558,17 +556,6 @@ function hasActiveToolCall(): boolean {
 	line-height: var(--line-height--sm);
 	color: var(--text-color--subtle);
 	margin-bottom: var(--spacing--5xs);
-}
-
-.toolDataContent {
-	margin: 0;
-	font-family: monospace;
-	font-size: var(--font-size--xs);
-	line-height: var(--line-height--sm);
-	color: var(--text-color);
-	white-space: pre-wrap;
-	overflow-wrap: anywhere;
-	user-select: text;
 }
 </style>
 

@@ -14,6 +14,8 @@ export const MCP_AGENT_SCOPES = ['agent:read', 'agent:write', 'agent:execute'] a
 
 export const MCP_SKILL_SCOPES = ['skill:read', 'skill:write'] as const;
 
+export const MCP_PREFERENCE_SCOPES = ['aiPreference:read', 'aiPreference:write'] as const;
+
 /**
  * OAuth scopes a user can grant to an MCP client on the consent screen for
  * the instance-level MCP server. Each scope gates a set of MCP tools; the
@@ -35,8 +37,7 @@ export const MCP_INSTANCE_SCOPES = [
 	'project:write',
 	'tag:read',
 	'communityPackage:install',
-	'aiPreference:read',
-	'aiPreference:write',
+	...MCP_PREFERENCE_SCOPES,
 	'breakingChanges:list',
 	'breakingChanges:migrate',
 ] as const;

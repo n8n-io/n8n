@@ -61,6 +61,7 @@ vi.mock('@n8n/agents', async () => {
 
 	let spanCounter = 0;
 	let buildError: Error | undefined;
+	let lastTransformExportedSpan: ((span: unknown) => unknown) | undefined;
 	let startSpanError: Error | undefined;
 	const contextStorage = new AsyncLocalStorage<Context>();
 	const contextManager: ContextManager = {
@@ -154,6 +155,10 @@ vi.mock('@n8n/agents', async () => {
 	};
 
 	class MockLangSmithTelemetry {
+		constructor(config?: { transformExportedSpan?: (span: unknown) => unknown }) {
+			lastTransformExportedSpan = config?.transformExportedSpan;
+		}
+
 		private functionIdValue?: string;
 		private metadataValue?: Record<string, unknown>;
 		private recordInputsValue = true;
@@ -225,6 +230,7 @@ vi.mock('@n8n/agents', async () => {
 			},
 			getSpans: () => spans,
 			getProvider: () => provider,
+			getLastTransformExportedSpan: () => lastTransformExportedSpan,
 		},
 	};
 });
@@ -318,6 +324,7 @@ type AgentsMockModule = {
 			forceFlush: Mock<(...args: []) => Promise<void>>;
 			shutdown: Mock<(...args: []) => Promise<void>>;
 		};
+		getLastTransformExportedSpan: () => ((span: unknown) => unknown) | undefined;
 	};
 };
 
@@ -2331,6 +2338,38 @@ describe('createInstanceAiTraceContext', () => {
 		expect(tracing).toBeDefined();
 		expect(tracing?.messageRun).toBeDefined();
 		expect(tracing?.orchestratorRun).toBeDefined();
+	});
+
+	it.each([
+		[undefined, 'instance-ai'],
+		[['model-training-opt-out'], 'instance-ai, model-training-opt-out'],
+	])('adds proxy trace tags %j to every exported span', async (traceTags, expectedTags) => {
+		await createInstanceAiTraceContext({
+			threadId: 'thread-tags',
+			messageId: 'message-tags',
+			runId: 'run-tags',
+			userId: 'user-tags',
+			input: { message: 'tag test' },
+			proxyConfig: {
+				apiUrl: 'https://proxy.example.com/langsmith',
+				getAuthHeaders: async () => ({ Authorization: 'Bearer proxy-token' }),
+				traceTags,
+			},
+		});
+		const transform = agentsMock.getLastTransformExportedSpan();
+
+		const productSpan = transform?.({
+			name: 'turn',
+			attributes: { 'langsmith.span.tags': 'instance-ai' },
+		}) as { attributes: Record<string, unknown> };
+		expect(productSpan.attributes['langsmith.span.tags']).toBe(expectedTags);
+
+		const llmSpan = transform?.({ name: 'llm', attributes: {} }) as {
+			attributes: Record<string, unknown>;
+		};
+		expect(llmSpan.attributes['langsmith.span.tags']).toBe(
+			traceTags ? 'model-training-opt-out' : undefined,
+		);
 	});
 
 	it('respects diagnostics opt-out before proxy auto-enable', async () => {

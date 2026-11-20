@@ -77,10 +77,11 @@ export const optionsCollection: INodeProperties = {
 	options: [
 		{
 			displayName: 'Connection Timeout',
-			name: 'connectionTimeoutMillis',
+			name: 'connectionTimeout',
 			type: 'number',
 			default: 30,
-			description: 'Number of milliseconds reserved for connecting to the database',
+			description:
+				'Number of seconds reserved for connecting to the database. Overrides the Connect Timeout of the credential.',
 			typeOptions: {
 				minValue: 1,
 			},

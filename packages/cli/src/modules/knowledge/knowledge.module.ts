@@ -48,8 +48,22 @@ export class KnowledgeModule implements ModuleInterface {
 	}
 
 	async entities(): Promise<EntityClass[]> {
-		const { KnowledgeFile } = await import('./entities/knowledge-file.entity.js');
+		const {
+			AgentFile,
+			KnowledgeCollection,
+			SharedKnowledgeCollection,
+			KnowledgeFile,
+			KnowledgeVectorStore,
+			AgentKnowledgeDependency,
+		} = await import('./entities/index.js');
 
-		return [KnowledgeFile];
+		return [
+			AgentFile,
+			KnowledgeCollection,
+			SharedKnowledgeCollection,
+			KnowledgeFile,
+			KnowledgeVectorStore,
+			AgentKnowledgeDependency,
+		];
 	}
 }

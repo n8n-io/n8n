@@ -193,8 +193,44 @@ describe('credentials.store', () => {
 				includeScopes: true,
 				onlySharedWithMe: false,
 				includeGlobal: true,
+				includeRestrictions: false,
 				externalSecretsStore: undefined,
 			});
+		});
+
+		it('asks the API for restrictions when requested', async () => {
+			const store = useCredentialsStore();
+			vi.spyOn(credentialsApi, 'getAllCredentials').mockResolvedValue([]);
+
+			await store.fetchAllCredentials({ includeRestrictions: true });
+
+			expect(credentialsApi.getAllCredentials).toHaveBeenCalledWith(
+				mockRootStore.restApiContext,
+				expect.objectContaining({ includeRestrictions: true }),
+			);
+		});
+
+		it('keeps the restrictions of the last fetch that asked for them', async () => {
+			const store = useCredentialsStore();
+			const restriction = {
+				reason: 'typeRestricted' as const,
+				restriction: { name: 'slackApi', available: false, scope: 'instance' as const },
+			};
+			const credential = (id: string, extra = {}) =>
+				({ id, name: id, type: 'slackApi', ...extra }) as ICredentialsResponse;
+			const getAll = vi.spyOn(credentialsApi, 'getAllCredentials');
+
+			getAll.mockResolvedValueOnce([credential('cred-1', { restriction }), credential('cred-2')]);
+			await store.fetchAllCredentials({ includeRestrictions: true });
+			expect(store.restrictionsById).toEqual({ 'cred-1': restriction });
+
+			getAll.mockResolvedValueOnce([credential('cred-1')]);
+			await store.fetchAllCredentials();
+			expect(store.restrictionsById).toEqual({ 'cred-1': restriction });
+
+			getAll.mockResolvedValueOnce([credential('cred-1')]);
+			await store.fetchAllCredentials({ includeRestrictions: true });
+			expect(store.restrictionsById).toEqual({});
 		});
 
 		it('should pass includeGlobal as true when not provided', async () => {
@@ -218,6 +254,7 @@ describe('credentials.store', () => {
 				includeScopes: true,
 				onlySharedWithMe: false,
 				includeGlobal: true,
+				includeRestrictions: false,
 				externalSecretsStore: undefined,
 			});
 		});
