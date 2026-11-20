@@ -24,6 +24,18 @@ describe('LeasesConfig', () => {
 		expect(leases.marginSeconds).toBe(4);
 	});
 
+	it('accepts the largest lease timing value', () => {
+		vi.stubEnv('N8N_LEASES_LEASE_SECONDS', '2147483');
+		vi.stubEnv('N8N_LEASES_RENEW_SECONDS', '2147483');
+		vi.stubEnv('N8N_LEASES_MARGIN_SECONDS', '2147483');
+
+		const { leases } = Container.get(GlobalConfig);
+
+		expect(leases.leaseSeconds).toBe(2147483);
+		expect(leases.renewSeconds).toBe(2147483);
+		expect(leases.marginSeconds).toBe(2147483);
+	});
+
 	it.each(['0', '-5', '2.5', 'abc', '2147484'])(
 		'warns and falls back to the defaults for %s',
 		(value) => {
