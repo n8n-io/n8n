@@ -275,43 +275,51 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — MCP w
 		},
 	);
 
-	it.each(['default', 'eval'] as const)(
-		'selects the %s MCP fetch during reconstruction',
-		async (mode) => {
-			const { service, credentialProvider } = setup();
-			const liveFetch = vi.fn();
-			const evalFetch = vi.fn();
-			const mcpFetch = vi.fn(() => evalFetch);
-			const factory = vi.spyOn(proxyTransport, 'createAiMcpFetch').mockReturnValue(liveFetch);
-			try {
-				const entity = makeAgentEntity(undefined, {
-					mcpServers: [
-						{
-							name: 'fixture',
-							url: 'https://fixture.invalid/mcp',
-							transport: 'streamableHttp',
-							authentication: 'none',
-						},
-					],
-				});
-				await service.reconstructFromAgentEntity(
-					storedRunSource(entity),
-					credentialProvider,
-					'production',
-					undefined,
-					undefined,
-					mode === 'eval' ? { mcpFetch } : undefined,
-				);
-				expect(buildMcpClientForServerMock).toHaveBeenCalledWith(
-					expect.objectContaining({ name: 'fixture' }),
-					expect.objectContaining({ proxyFetch: mode === 'eval' ? evalFetch : liveFetch }),
-				);
-				if (mode === 'eval') expect(mcpFetch).toHaveBeenCalledWith('fixture');
-			} finally {
-				factory.mockRestore();
-			}
-		},
-	);
+	it.each([
+		['the default fetch without instrumentation', 'none'],
+		['the default fetch for instrumentation without an MCP override', 'no-override'],
+		['the override of the instrumentation', 'override'],
+	] as const)('selects %s as the MCP fetch during reconstruction', async (_label, mode) => {
+		const { service, credentialProvider } = setup();
+		const liveFetch = vi.fn();
+		const evalFetch = vi.fn();
+		const mcpFetch = vi.fn(() => evalFetch);
+		const instrumentation = {
+			none: undefined,
+			// An evaluation run that only observes MCP tool calls keeps the default fetch.
+			'no-override': { onMcpToolCallSettled: vi.fn() },
+			override: { mcpFetch },
+		};
+		const factory = vi.spyOn(proxyTransport, 'createAiMcpFetch').mockReturnValue(liveFetch);
+		try {
+			const entity = makeAgentEntity(undefined, {
+				mcpServers: [
+					{
+						name: 'fixture',
+						url: 'https://fixture.invalid/mcp',
+						transport: 'streamableHttp',
+						authentication: 'none',
+					},
+				],
+			});
+			await service.reconstructFromAgentEntity(
+				storedRunSource(entity),
+				credentialProvider,
+				'production',
+				undefined,
+				undefined,
+				instrumentation[mode],
+			);
+			expect(buildMcpClientForServerMock).toHaveBeenCalledWith(
+				expect.objectContaining({ name: 'fixture' }),
+				expect.objectContaining({ proxyFetch: mode === 'override' ? evalFetch : liveFetch }),
+			);
+			if (mode === 'override') expect(mcpFetch).toHaveBeenCalledWith('fixture');
+			else expect(mcpFetch).not.toHaveBeenCalled();
+		} finally {
+			factory.mockRestore();
+		}
+	});
 
 	it('forwards resolved MCP tool names through eval instrumentation', async () => {
 		const { service, credentialProvider } = setup();
