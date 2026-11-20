@@ -10,6 +10,7 @@ import AgentSkillViewer from '@/features/agents/components/AgentSkillViewer.vue'
 import {
 	MAX_DIAGRAM_LENGTH,
 	renderSkillMermaid,
+	type SkillMermaidResult,
 } from '@/features/agents/components/skillMermaidRenderer';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
@@ -285,6 +286,97 @@ describe('AgentSkillViewer', () => {
 		expect(instructions.find('details').exists()).toBe(false);
 	});
 
+	it('cancels the render of a file when the user selects another file', async () => {
+		const first = deferredRender();
+		const second = deferredRender();
+		vi.mocked(renderSkillMermaid)
+			.mockClear()
+			.mockReturnValueOnce(first.promise)
+			.mockReturnValueOnce(second.promise);
+		const wrapper = mountViewer({
+			readOnly: true,
+			skill: {
+				name: 'Triage',
+				description: 'Use for triage',
+				instructions: '```mermaid\nflowchart LR\n  A --> B\n```',
+				references: [
+					{ path: 'references/steps.md', content: '```mermaid\nflowchart TD\n  C --> D\n```' },
+				],
+			},
+		});
+		await flushPromises();
+		const signalOf = (call: number) => vi.mocked(renderSkillMermaid).mock.calls[call][3];
+		expect(signalOf(0).aborted).toBe(false);
+
+		await wrapper.setProps({ selectedPath: 'references/steps.md' });
+		await flushPromises();
+
+		expect(renderSkillMermaid).toHaveBeenCalledTimes(2);
+		expect(signalOf(0).aborted).toBe(true);
+		expect(signalOf(1).aborted).toBe(false);
+
+		second.resolve(renderedDiagram('Reference steps'));
+		await flushPromises();
+		first.resolve(renderedDiagram('Skill steps'));
+		await flushPromises();
+
+		const images = wrapper.findAll('img');
+		expect(images).toHaveLength(1);
+		expect(images[0].attributes('alt')).toBe('Reference steps');
+	});
+
+	it('does not show the late result of a cancelled render', async () => {
+		const first = deferredRender();
+		const second = deferredRender();
+		vi.mocked(renderSkillMermaid)
+			.mockClear()
+			.mockReturnValueOnce(first.promise)
+			.mockReturnValueOnce(second.promise);
+		const wrapper = mountViewer({
+			readOnly: true,
+			skill: {
+				name: 'Triage',
+				description: 'Use for triage',
+				instructions: '```mermaid\nflowchart LR\n  A --> B\n```',
+				references: [
+					{ path: 'references/steps.md', content: '```mermaid\nflowchart TD\n  C --> D\n```' },
+				],
+			},
+		});
+		await flushPromises();
+		await wrapper.setProps({ selectedPath: 'references/steps.md' });
+		await flushPromises();
+
+		// The first render ends while the second render is still open.
+		first.resolve(renderedDiagram('Skill steps'));
+		await flushPromises();
+
+		expect(wrapper.find('img').exists()).toBe(false);
+		expect(wrapper.get('pre code').element.textContent).toBe('flowchart TD\n  C --> D\n');
+		second.resolve({ outcome: 'aborted' });
+	});
+
+	it('cancels the render when the view closes', async () => {
+		const render = deferredRender();
+		vi.mocked(renderSkillMermaid).mockClear().mockReturnValueOnce(render.promise);
+		const wrapper = mountViewer({
+			readOnly: true,
+			skill: {
+				name: 'Triage',
+				description: 'Use for triage',
+				instructions: '```mermaid\nflowchart LR\n  A --> B\n```',
+			},
+		});
+		await flushPromises();
+		const [, , , signal] = vi.mocked(renderSkillMermaid).mock.calls[0];
+		expect(signal.aborted).toBe(false);
+
+		wrapper.unmount();
+
+		expect(signal.aborted).toBe(true);
+		render.resolve({ outcome: 'aborted' });
+	});
+
 	it('keeps the source visible when the diagram image cannot load', async () => {
 		vi.mocked(renderSkillMermaid).mockResolvedValueOnce(renderedDiagram());
 		const code = 'flowchart LR\n  A --> B\n';
@@ -446,11 +538,20 @@ function mermaidSourceOfLength(length: number) {
 	return `${start}${'x'.repeat(length - start.length - 1)}\n`;
 }
 
-function renderedDiagram() {
+function renderedDiagram(title?: string) {
 	return {
 		outcome: 'rendered' as const,
-		svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 50"/>',
+		svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 50">${title ? `<title>${title}</title>` : ''}</svg>`,
 	};
+}
+
+/** A render that the test ends by hand. */
+function deferredRender() {
+	let resolve: (result: SkillMermaidResult) => void = () => {};
+	const promise = new Promise<SkillMermaidResult>((resolvePromise) => {
+		resolve = resolvePromise;
+	});
+	return { promise, resolve };
 }
 
 function mountViewer(props: Partial<InstanceType<typeof AgentSkillViewer>['$props']> = {}) {
