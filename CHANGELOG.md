@@ -1,3 +1,12 @@
+## [2.48.7](https://github.com/n8n-io/n8n/compare/n8n@2.48.6...n8n@2.48.7) (2026-11-20)
+
+
+### Bug Fixes
+
+* **core:** End memory guard hold when hold-limit stop frees no memory ([#44463](https://github.com/n8n-io/n8n/issues/44463)) ([22643e1](https://github.com/n8n-io/n8n/commit/22643e170e5ae7ddc86bb61b7d1d5d9e1aab1486))
+* **core:** Store plain input data in the error output of scripting nodes ([#44530](https://github.com/n8n-io/n8n/issues/44530)) ([c26c923](https://github.com/n8n-io/n8n/commit/c26c923b248d33e80aad51a7abc80aa07eb6c595))
+
+
 ## [2.48.6](https://github.com/n8n-io/n8n/compare/n8n@2.48.5...n8n@2.48.6) (2026-11-19)
 
 
