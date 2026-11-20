@@ -24,11 +24,11 @@ N8nSidebar
 **Props**
 
 - `side?: 'left' | 'right'` Edge of the parent, and the resize direction. `left` places the handle on the right edge, so a drag grows the column to the right. `right` places the handle on the left edge, so a drag grows the column to the left. Place the sidebar on that side of the parent. The component stays where the parent puts it. | `default: 'left'`
-- `width?: number` Current width in pixels. Bind with `v-model:width`. | `default: 240`
+- `width?: number` Current width in pixels. Bind with `v-model:width`. The sidebar clamps this value to `minWidth` and `maxWidth`. It emits the clamped width. | `default: 240`
 - `widthStorageId?: string` Local storage key for the width. Set this key and the sidebar reads it on mount. A saved width inside `minWidth` and `maxWidth` becomes the current width. The sidebar emits `update:width`. The sidebar writes the width after each later change. Give each sidebar its own key. Omit this prop and the sidebar does not read or write storage.
-- `defaultWidth?: number` Width restored on double-click. Defaults to the `width` value at mount, before a saved width is applied. The sidebar saves that restored width when `widthStorageId` is set.
-- `minWidth?: number` Minimum width in pixels. A drag stops at this width. | `default: 160`
-- `maxWidth?: number` Maximum width in pixels. A drag stops at this width. | `default: 480`
+- `defaultWidth?: number` Width restored on double-click. Defaults to the `width` value at mount, before a saved width is applied. The sidebar clamps this value to `minWidth` and `maxWidth`. The sidebar saves that restored width when `widthStorageId` is set.
+- `minWidth?: number` Minimum width in pixels. The width stays at or above this value. | `default: 160`
+- `maxWidth?: number` Maximum width in pixels. The width stays at or below this value. | `default: 480`
 - `resizable?: boolean` Show the drag handle. | `default: true`
 - `label?: string` Accessible name for the sidebar.
 
@@ -69,6 +69,8 @@ type SidebarProps = {
 	/**
 	 * Current width in pixels.
 	 * Bind with v-model:width.
+	 * The sidebar clamps this value to minWidth and maxWidth.
+	 * It emits the clamped width.
 	 * @default 240
 	 */
 	width?: number;
@@ -84,16 +86,19 @@ type SidebarProps = {
 	/**
 	 * Width restored on double-click.
 	 * Defaults to the width at mount, before a saved width is applied.
+	 * The sidebar clamps this value to minWidth and maxWidth.
 	 * The sidebar saves that restored width when widthStorageId is set.
 	 */
 	defaultWidth?: number;
 	/**
 	 * Minimum width in pixels.
+	 * The width stays at or above this value.
 	 * @default 160
 	 */
 	minWidth?: number;
 	/**
 	 * Maximum width in pixels.
+	 * The width stays at or below this value.
 	 * @default 480
 	 */
 	maxWidth?: number;
