@@ -37,7 +37,10 @@ export function toUsageDeltas(rows: readonly ExecutionLedgerRow[]): UsageDeltas 
 		const day = row.occurredAt.toISOString().slice(0, 10);
 		const zero = { day, entityType, startedCount: 0, blockedCount: 0 };
 
-		addOne(projects, `${projectId}|${day}|${entityType}`, { projectId, ...zero }, column);
+		// A run of a workflow with no owner project counts for the instance only.
+		if (projectId) {
+			addOne(projects, `${projectId}|${day}|${entityType}`, { projectId, ...zero }, column);
+		}
 		addOne(instance, `${day}|${entityType}`, zero, column);
 	}
 

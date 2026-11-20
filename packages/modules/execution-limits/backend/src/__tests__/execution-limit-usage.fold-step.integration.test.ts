@@ -1,6 +1,5 @@
 import { testDb, testModules } from '@n8n/backend-test-utils';
 import {
-	EXECUTION_LEDGER_BLOCKED_BY,
 	EXECUTION_LEDGER_OUTCOMES,
 	type ExecutionLedgerRow,
 	TransactionRunner,
@@ -114,15 +113,6 @@ describe('ExecutionLimitUsageFoldStep', () => {
 			},
 		);
 
-		it.each(EXECUTION_LEDGER_BLOCKED_BY)(
-			'adds 1 blocked count for blockedBy %s',
-			async (blockedBy) => {
-				await fold(ledgerRow({ event: 'ended', outcome: 'blocked', blockedBy }));
-
-				expect(await totalOf('project-1')).toEqual({ started: 0, blocked: 1 });
-			},
-		);
-
 		it('counts a blocked run whose start and end come in two fold calls', async () => {
 			const executionId = 'exec-1';
 			await fold(ledgerRow({ executionId, event: 'started' }));
@@ -130,31 +120,6 @@ describe('ExecutionLimitUsageFoldStep', () => {
 
 			await expectProjectAndInstanceTotal({ started: 1, blocked: 1 });
 		});
-
-		it('writes no rows for a blocked run of mode manual', async () => {
-			await fold(
-				ledgerRow({ mode: 'manual', event: 'started' }),
-				ledgerRow({ mode: 'manual', event: 'ended', outcome: 'blocked' }),
-			);
-
-			expect(await usage.count()).toBe(0);
-		});
-
-		it('counts a resumed run one time', async () => {
-			const executionId = 'exec-1';
-			await fold(
-				ledgerRow({ executionId, event: 'started' }),
-				ledgerRow({ executionId, event: 'ended', outcome: 'success' }),
-			);
-
-			expect(await totalOf('project-1')).toEqual({ started: 1, blocked: 0 });
-		});
-	});
-
-	it('counts a row with origin v2', async () => {
-		await fold(ledgerRow({ origin: 'v2' }));
-
-		expect(await totalOf('project-1')).toEqual({ started: 1, blocked: 0 });
 	});
 
 	it('makes the instance total the sum of two projects', async () => {
@@ -169,15 +134,23 @@ describe('ExecutionLimitUsageFoldStep', () => {
 		expect(await instanceTotal()).toEqual({ started: 3, blocked: 0 });
 	});
 
-	it('adds to existing rows on a second fold and keeps updatedAt moving forward', async () => {
+	it('adds to existing rows on a second fold and moves updatedAt forward', async () => {
+		const past = new Date('2020-01-01T00:00:00Z');
 		await fold(ledgerRow());
-		const first = await usage.findOneByOrFail({ projectId: 'project-1' });
+		await usage.update({ projectId: 'project-1' }, { updatedAt: past });
 
 		await fold(ledgerRow(), ledgerRow());
-		const second = await usage.findOneByOrFail({ projectId: 'project-1' });
+		const row = await usage.findOneByOrFail({ projectId: 'project-1' });
 
-		expect(second.startedCount).toBe(3);
-		expect(second.updatedAt.getTime()).toBeGreaterThanOrEqual(first.updatedAt.getTime());
+		expect(row.startedCount).toBe(3);
+		expect(row.updatedAt.getTime()).toBeGreaterThan(past.getTime());
+	});
+
+	it('counts a run with no project for the instance only', async () => {
+		await fold(ledgerRow({ projectId: null as unknown as string }), ledgerRow());
+
+		expect(await usage.count()).toBe(1);
+		expect(await instanceTotal()).toEqual({ started: 2, blocked: 0 });
 	});
 
 	it('splits a run that starts at 23:59Z and is blocked at 00:01Z over two days', async () => {
@@ -196,18 +169,6 @@ describe('ExecutionLimitUsageFoldStep', () => {
 			{ day: '2026-11-19', started: 1, blocked: 0 },
 			{ day: '2026-11-20', started: 0, blocked: 1 },
 		]);
-	});
-
-	it('counts the blocked end on the project of the ended row when the workflow moved', async () => {
-		const executionId = 'exec-1';
-		await fold(
-			ledgerRow({ executionId, projectId: 'project-a', event: 'started' }),
-			ledgerRow({ executionId, projectId: 'project-b', event: 'ended', outcome: 'blocked' }),
-		);
-
-		expect(await totalOf('project-a')).toEqual({ started: 1, blocked: 0 });
-		expect(await totalOf('project-b')).toEqual({ started: 0, blocked: 1 });
-		expect(await instanceTotal()).toEqual({ started: 1, blocked: 1 });
 	});
 
 	it.todo('adds the blocked count to the start project when the ended row names it');

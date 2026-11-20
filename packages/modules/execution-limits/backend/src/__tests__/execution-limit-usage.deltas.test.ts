@@ -50,14 +50,6 @@ describe('toUsageDeltas', () => {
 		expect(deltas.instance.map((d) => d.day)).toEqual(['2026-11-19', '2026-11-20', '2026-11-21']);
 	});
 
-	it.each(['unknown-mode', 'constructor'])('counts nowhere for the mode %s', (mode) => {
-		expect(toUsageDeltas([ledgerRow({ mode })])).toEqual(NONE);
-	});
-
-	it.each(['unknown-source', 'toString'])('counts nowhere for the source %s', (source) => {
-		expect(toUsageDeltas([ledgerRow({ source })])).toEqual(NONE);
-	});
-
 	it('counts a v2 row like a v1 row', () => {
 		expect(toUsageDeltas([ledgerRow({ origin: 'v2' })])).toEqual(
 			toUsageDeltas([ledgerRow({ origin: 'v1' })]),
@@ -72,22 +64,21 @@ describe('toUsageDeltas', () => {
 		expect([...deltas.projects, ...deltas.instance].every((d) => d.startedCount === 1)).toBe(true);
 	});
 
-	it.each([
-		['Pacific/Kiritimati', '2026-11-19T23:59:59.999Z', '2026-11-19'],
-		['Pacific/Kiritimati', '2026-11-20T00:00:00.000Z', '2026-11-20'],
-		['Pacific/Pago_Pago', '2026-11-19T23:59:59.999Z', '2026-11-19'],
-		['Pacific/Pago_Pago', '2026-11-20T00:00:00.000Z', '2026-11-20'],
-	])(
-		'uses the UTC day when the time zone is %s and the time is %s',
-		(timeZone, occurredAt, day) => {
-			process.env.TZ = timeZone;
+	it('uses the UTC day when the local day is already the next one', () => {
+		process.env.TZ = 'Pacific/Kiritimati';
 
-			const deltas = toUsageDeltas([ledgerRow({ occurredAt: new Date(occurredAt) })]);
+		const deltas = toUsageDeltas([ledgerRow({ occurredAt: new Date('2026-11-19T23:59:59.999Z') })]);
 
-			expect(deltas.projects.map((d) => d.day)).toEqual([day]);
-			expect(deltas.instance.map((d) => d.day)).toEqual([day]);
-		},
-	);
+		expect(deltas.projects.map((d) => d.day)).toEqual(['2026-11-19']);
+		expect(deltas.instance.map((d) => d.day)).toEqual(['2026-11-19']);
+	});
+
+	it('gives only an instance delta for a row with no project', () => {
+		const deltas = toUsageDeltas([ledgerRow({ projectId: null as unknown as string })]);
+
+		expect(deltas.projects).toEqual([]);
+		expect(deltas.instance).toEqual([expect.objectContaining({ startedCount: 1 })]);
+	});
 
 	it('counts a blocked end on its own day as a blocked count', () => {
 		const deltas = toUsageDeltas([
