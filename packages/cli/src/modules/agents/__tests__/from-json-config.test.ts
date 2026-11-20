@@ -408,6 +408,7 @@ describe('buildFromJson()', () => {
 								path: 'reference/degraded/guide.md',
 								content: '# Guide',
 							},
+							{ path: 'assets/logo.png', content: 'AP8=', isBinary: true },
 						],
 					},
 					unused_skill: {
@@ -448,6 +449,15 @@ describe('buildFromJson()', () => {
 			bytes: 7,
 			sha256: expect.stringMatching(/^[a-f0-9]{64}$/),
 		});
+
+		// An agent never gets a binary file: it is not a linked file of the skill.
+		expect(loadedText).not.toContain('assets/logo.png');
+		const binary = await loadSkill!.handler?.(
+			{ skillId: 'summarize_notes', filePath: 'assets/logo.png' },
+			{},
+		);
+		expect(binary).toMatchObject({ success: false, errorCode: 'invalid_reference' });
+		expect(JSON.stringify(binary)).not.toContain('AP8=');
 
 		await expect(loadSkill!.handler?.({ skillId: 'unused_skill' }, {})).resolves.toMatchObject({
 			ok: false,
