@@ -452,7 +452,10 @@ describe('GitHubSkillSourceClient', () => {
 				{ path: 'assets/example.bin', content: 'AP8=', isBinary: true },
 				{ path: 'reference/guide.md', content: guide },
 			]);
-			expect(fetched.oversizedFiles).toEqual(['assets/too-large.bin', 'reference/too-long.md']);
+			expect(fetched.oversizedFiles?.toSorted()).toEqual([
+				'assets/too-large.bin',
+				'reference/too-long.md',
+			]);
 		},
 	);
 

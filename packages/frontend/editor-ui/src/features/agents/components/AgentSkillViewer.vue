@@ -64,17 +64,15 @@ const emit = defineEmits<{
 const i18n = useI18n();
 
 // A relative link in SKILL.md or in a Markdown file opens the linked file in this view.
-const readOnlyMarkdownPlugins = [
-	skillFileLinkPlugin((href) =>
-		resolveSkillFileLink(
-			href,
-			props.selectedPath,
-			(props.skill.references ?? []).map((reference) => reference.path),
-		),
-	),
-];
+const readOnlyMarkdownPlugins = computed(() => {
+	const fromPath = props.selectedPath;
+	const paths = (props.skill.references ?? []).map((reference) => reference.path);
+	return [skillFileLinkPlugin((href) => resolveSkillFileLink(href, fromPath, paths))];
+});
 
 function onReadOnlyLinkClick(link: HTMLAnchorElement, event: MouseEvent) {
+	if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)
+		return;
 	const { handled, path } = readSkillFileLink(link.getAttribute('href'));
 	if (!handled) return;
 	event.preventDefault();

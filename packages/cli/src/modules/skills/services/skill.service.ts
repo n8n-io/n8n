@@ -1,12 +1,12 @@
 import {
 	hasSkillInstructions,
+	SaveSkillDto,
 	SKILL_INSTRUCTIONS_REQUIRED_MESSAGE,
 	skillNameKey,
 	type AgentSkill,
 	type CreateSkillDto,
 	type ListSkillAgentsQueryDto,
 	type ListSkillsQueryDto,
-	type SaveSkillDto,
 	type SkillAgentOption,
 	type SkillDetail,
 	type SkillListCollapsedSource,
@@ -500,7 +500,12 @@ export class SkillService {
 		const skill = await this.skillAccess.requireAccess(user, skillId, 'update');
 		const { scope, projectId, availableToAssistant, availableToMCP, ...update } = payload;
 		if (options.keepUnnamedBinaryFiles && update.references) {
-			update.references = await this.withStoredBinaryFiles(skillId, update.references);
+			const references = await this.withStoredBinaryFiles(skillId, update.references);
+			const result = SaveSkillDto.schema.shape.references.safeParse(references);
+			if (!result.success) {
+				throw new UserError(`Invalid skill files: ${result.error.issues[0].message}`);
+			}
+			update.references = references;
 		}
 		const target = scope
 			? await this.skillAccess.resolveCreateTarget(user, { scope, projectId })

@@ -211,10 +211,63 @@ describe('McpSkillToolsService', () => {
 				...detail.skill,
 				references: [
 					{ path: 'assets/logo.png', isBinary: true, characterCount: 4 },
-					{ path: 'references/tone.md', content: 'Warm.' },
+					{ path: 'references/tone.md', content: 'Warm.', characterCount: 5 },
 				],
 			});
 			expect(JSON.stringify(result)).not.toContain('AP8=');
+		});
+
+		it('bounds reference content and reads omitted paths and the remaining parts on request', async () => {
+			const referencePath = 'reference/long.md';
+			const first = 'x'.repeat(72 * 1024);
+			skillService.get.mockResolvedValue({
+				...detail,
+				skill: {
+					...detail.skill,
+					references: [
+						{ path: referencePath, content: `${first}Last part` },
+						{ path: 'reference/other.md', content: 'Another guide' },
+					],
+				},
+			});
+
+			const initial = await callTool('get_skill', { skillId: 'skill_a' });
+			expect(initial.structuredContent).toMatchObject({
+				skill: {
+					references: [
+						{ content: first, nextOffset: first.length },
+						{ path: 'reference/other.md' },
+					],
+				},
+				omittedReferencePaths: ['reference/other.md'],
+			});
+			expect(JSON.stringify(initial.structuredContent)).not.toContain('Another guide');
+
+			const next = await callTool('get_skill', {
+				skillId: 'skill_a',
+				referencePath,
+				referenceOffset: first.length,
+			});
+			expect(next.structuredContent).toMatchObject({
+				skill: {
+					references: [
+						{ path: referencePath, content: 'Last part' },
+						{ path: 'reference/other.md' },
+					],
+				},
+			});
+			const omitted = await callTool('get_skill', {
+				skillId: 'skill_a',
+				referencePath: 'reference/other.md',
+			});
+			expect(omitted.structuredContent).toMatchObject({
+				skill: {
+					references: [
+						{ path: referencePath },
+						{ path: 'reference/other.md', content: 'Another guide' },
+					],
+				},
+			});
 		});
 
 		it('reports a skill the user cannot read as an error', async () => {

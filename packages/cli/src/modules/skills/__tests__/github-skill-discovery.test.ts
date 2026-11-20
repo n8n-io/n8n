@@ -1,7 +1,7 @@
 import { SkillSourceUrlError } from '../errors/skill-source-url.error';
 import { lsRefsRequestBody, parseLsRefsResponse, pktLine } from '../sources/github/git-refs';
 import { parseGitHubLink, splitBranchAndPath } from '../sources/github/github-link';
-import { filesOfSkill, findSkillFolders } from '../sources/github/skill-discovery';
+import { filesOfSkill, findSkillFolders, isInSkillFolder } from '../sources/github/skill-discovery';
 
 describe('findSkillFolders', () => {
 	it.each([
@@ -109,6 +109,18 @@ describe('filesOfSkill', () => {
 			'references/x.md',
 			'other/SKILL.md',
 		]);
+	});
+});
+
+describe('isInSkillFolder', () => {
+	it.each([
+		{ path: 'guide.md', folders: [''], expected: true },
+		{ path: 'a/guide.md', folders: ['a'], expected: true },
+		{ path: 'a/reference/nested/guide.md', folders: ['a'], expected: true },
+		{ path: 'ab/guide.md', folders: ['a'], expected: false },
+		{ path: 'guide.md', folders: ['a'], expected: false },
+	])('matches $path against $folders: $expected', ({ path, folders, expected }) => {
+		expect(isInSkillFolder(path, new Set(folders))).toBe(expected);
 	});
 });
 

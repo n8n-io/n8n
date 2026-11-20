@@ -164,6 +164,25 @@ describe('skills tool', () => {
 		]);
 	});
 
+	it('reads the next part of a reference on request', async () => {
+		const referencePath = 'reference/guide.md';
+		const first = 'x'.repeat(72 * 1024);
+		service.get.mockResolvedValue({
+			...detail,
+			skill: { ...detail.skill, references: [{ path: referencePath, content: `${first}End` }] },
+		});
+		const tool = createSkillsTool(createContext(service));
+		const input = { action: 'get', skillId: 'skill_a', referencePath };
+
+		const start = await executeTool(tool, input);
+		expect(start).toMatchObject({
+			skill: { references: [{ content: first, nextOffset: first.length }] },
+		});
+		const end = await executeTool(tool, { ...input, referenceOffset: first.length });
+		expect(end).toMatchObject({ skill: { references: [{ content: 'End' }] } });
+		expect(end).not.toHaveProperty('skill.references.0.nextOffset');
+	});
+
 	describe('Assistant availability', () => {
 		const parseInput = (skillService: InstanceAiSkillService, input: Record<string, unknown>) =>
 			(createSkillsTool(createContext(skillService)).inputSchema as z.ZodType).parse(input);

@@ -2,12 +2,14 @@ import {
 	agentSkillShape,
 	instanceAiApprovalResumeSchema,
 	instanceAiConfirmationSeveritySchema,
+	projectSkillDetailsForModel,
 	SKILLS_MAX_PAGE_SIZE,
+	skillReferenceReadShape,
 	skillScopeSchema,
 	type InstanceAiPermissionMode,
 	type SkillDetail,
 	type SkillListItem,
-	withoutBinaryFileContent,
+	type SkillReferenceRead,
 } from '@n8n/api-types';
 import { Tool } from '@n8n/agents';
 import { nanoid } from 'nanoid';
@@ -83,9 +85,10 @@ const getAction = z.object({
 	action: z
 		.literal('get')
 		.describe(
-			'Read a skill with its instructions, references, skillHash and the agents that use it',
+			'Read a skill with its instructions, reference paths, bounded text content, skillHash and the agents that use it. Read omitted paths separately with referencePath.',
 		),
 	skillId: skillIdField,
+	...skillReferenceReadShape,
 });
 
 const createAction = z.object({
@@ -107,7 +110,9 @@ const updateAction = z.object({
 	name: skillContentShape.name.optional(),
 	description: skillContentShape.description.optional(),
 	instructions: skillContentShape.instructions.optional(),
-	references: skillContentShape.references,
+	references: skillContentShape.references.describe(
+		'Replace the text files. Read all parts of the files you want to keep before replacing them. Binary files you do not name stay in the skill.',
+	),
 	scope: scopeField.optional(),
 	projectId: projectIdField,
 	availableToAssistant: availableToAssistantField,
@@ -159,10 +164,14 @@ function summary(item: SkillListItem, assistantSkillsEnabled: boolean) {
 	};
 }
 
-function details(detail: SkillDetail, assistantSkillsEnabled: boolean) {
+function details(
+	detail: SkillDetail,
+	assistantSkillsEnabled: boolean,
+	reference?: SkillReferenceRead,
+) {
 	return {
 		...summary(detail, assistantSkillsEnabled),
-		skill: withoutBinaryFileContent(detail.skill),
+		...projectSkillDetailsForModel(detail.skill, reference),
 		skillHash: detail.skillHash,
 		usedBy: detail.usedBy,
 	};
@@ -397,7 +406,7 @@ export function createSkillsTool(context: InstanceAiContext) {
 					};
 				}
 				case 'get':
-					return details(await service.get(input.skillId), service.assistantSkillsEnabled);
+					return details(await service.get(input.skillId), service.assistantSkillsEnabled, input);
 				case 'create':
 					return await handleCreate(context, service, input, ctx);
 				case 'update':

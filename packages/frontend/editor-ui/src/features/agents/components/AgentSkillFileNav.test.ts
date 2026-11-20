@@ -81,7 +81,6 @@ describe('AgentSkillFileNav', () => {
 
 		const item = view.getByRole('button', { name: 'assets/logo.png, Modified file' });
 		expect(byTestId(item, 'agent-skill-reference-nav-item-assets-logo-png-modified')).toBeVisible();
-		expect(item).not.toHaveTextContent('+0');
-		expect(item).not.toHaveTextContent('−0');
+		expect(byTestId(item, 'skill-diff-count')).toBeNull();
 	});
 });

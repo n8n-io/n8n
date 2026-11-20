@@ -1,3 +1,4 @@
+import { projectSkillForModel } from '@n8n/api-types';
 import { UserError } from '@n8n/errors';
 
 import type { AgentSkillsService } from './agent-skills.service';
@@ -17,43 +18,25 @@ export async function readAgentSkill(
 	projectId: string,
 	skillId: string,
 	referencePaths: string[] = [],
+	referenceOffset?: number,
 ) {
-	const skill = await agentSkillsService.getSkill(agentId, projectId, skillId);
-	const requestedPaths = new Set(referencePaths);
-	const knownPaths = new Set(skill.references?.map((reference) => reference.path) ?? []);
-	const missingPaths = [...requestedPaths].filter((path) => !knownPaths.has(path));
-	if (missingPaths.length > 0) {
-		throw new UserError(`Skill reference not found: ${missingPaths.join(', ')}`);
+	if (referenceOffset !== undefined && referencePaths.length !== 1) {
+		throw new UserError('Pass one reference path with referenceOffset.');
 	}
-	const { references, ...body } = skill;
-	let remaining = AGENT_SKILL_READ_MAX_LENGTH;
-	const omittedReferencePaths: string[] = [];
-	const visibleReferences = references?.map((reference) => {
-		const listed = { path: reference.path, characterCount: reference.content.length };
-		if (reference.isBinary) return { ...listed, isBinary: true };
-		if (!requestedPaths.has(reference.path)) return listed;
-		if (reference.content.length <= remaining) {
-			remaining -= reference.content.length;
-			return { ...listed, content: reference.content };
-		}
-		// A file over the whole budget gives its start, so a read of that file alone makes progress.
-		if (remaining === AGENT_SKILL_READ_MAX_LENGTH) {
-			remaining = 0;
-			return {
-				...listed,
-				content: reference.content.slice(0, AGENT_SKILL_READ_MAX_LENGTH),
-				contentTruncated: true,
-			};
-		}
-		omittedReferencePaths.push(reference.path);
-		return listed;
+	const skill = await agentSkillsService.getSkill(agentId, projectId, skillId);
+	const { missingReferencePaths, ...projection } = projectSkillForModel(skill, {
+		paths: referencePaths,
+		offset: referenceOffset,
+		maxLength: AGENT_SKILL_READ_MAX_LENGTH,
 	});
+	if (missingReferencePaths) {
+		throw new UserError(`Skill reference not found: ${missingReferencePaths.join(', ')}`);
+	}
 
 	return {
 		id: skillId,
 		skillHash: getAgentSkillHash(skill),
-		skill: { ...body, ...(visibleReferences ? { references: visibleReferences } : {}) },
-		...(omittedReferencePaths.length > 0 ? { truncated: true, omittedReferencePaths } : {}),
+		...projection,
 	};
 }
 

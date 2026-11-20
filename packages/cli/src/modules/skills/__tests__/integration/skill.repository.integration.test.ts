@@ -181,6 +181,33 @@ describe('SkillRepository', () => {
 		expect(await skills.findAssistantSkill('skill_missing', project.id)).toBeNull();
 	});
 
+	it('reads a file and name from the latest version without falling back to older files', async () => {
+		const id = await createSkill(
+			{},
+			content({
+				files: [
+					{ path: 'assets/logo.png', content: 'AP4=', isBinary: true },
+					{ path: 'reference/old.md', content: 'Only in the first version.' },
+				],
+			}),
+		);
+		await skills.insertSavedVersion(
+			id,
+			2,
+			content({
+				name: 'New name',
+				files: [{ path: 'assets/logo.png', content: 'AP8=', isBinary: true }],
+			}),
+			null,
+		);
+
+		expect(await skills.findLatestFile(id, 'assets/logo.png')).toMatchObject({
+			name: 'New name',
+			file: { path: 'assets/logo.png', content: 'AP8=', isBinary: true },
+		});
+		expect(await skills.findLatestFile(id, 'reference/old.md')).toBeNull();
+	});
+
 	it('reads a selected saved version with current availability and scope checks', async () => {
 		const id = await createSkill(
 			{ projectId: project.id },

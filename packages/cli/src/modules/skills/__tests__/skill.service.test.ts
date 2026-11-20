@@ -1,4 +1,9 @@
-import type { ListSkillsQueryDto } from '@n8n/api-types';
+import {
+	AGENT_SKILL_REFERENCE_MAX_COUNT,
+	AGENT_SKILL_REFERENCES_TOTAL_MAX_LENGTH,
+	SaveSkillDto,
+	type ListSkillsQueryDto,
+} from '@n8n/api-types';
 import { Person, type User } from '@n8n/db';
 import { ConflictError, NotFoundError, UserError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
@@ -1043,6 +1048,35 @@ describe('SkillService', () => {
 				instructions: 'New.',
 			});
 		});
+
+		it.each([
+			{
+				limit: 'file count',
+				references: Array.from({ length: AGENT_SKILL_REFERENCE_MAX_COUNT }, (_, i) => ({
+					path: `guide-${i}.md`,
+					content: 'Guide',
+				})),
+			},
+			{
+				limit: 'total size',
+				references: ['a.md', 'b.md'].map((path) => ({
+					path,
+					content: 'x'.repeat(AGENT_SKILL_REFERENCES_TOTAL_MAX_LENGTH / 2),
+				})),
+			},
+		])(
+			'refuses a valid update if the preserved binaries put it over the $limit limit',
+			async ({ references }) => {
+				const update = SaveSkillDto.parse({
+					baseSkillHash: getSkillHash(toAgentSkill(stored)),
+					references,
+				});
+				await expect(
+					service.update(user, 'skill_a', update, 'mcp', { keepUnnamedBinaryFiles: true }),
+				).rejects.toThrow('Invalid skill files:');
+				expect(saveTrusted).not.toHaveBeenCalled();
+			},
+		);
 
 		it('replaces every file for the skill editor, which sends the binary files', async () => {
 			await service.update(user, 'skill_a', { baseSkillHash: 'hash-2', references: [] });

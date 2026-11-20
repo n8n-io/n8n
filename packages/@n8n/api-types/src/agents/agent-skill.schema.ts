@@ -69,26 +69,74 @@ export const agentSkillReferenceSchema = z
 
 export type AgentSkillReference = z.infer<typeof agentSkillReferenceSchema>;
 
-/**
- * A skill as a model reads it. A model cannot use Base64, so a binary file keeps its path
- * and the length of its Base64, without the content.
- */
-export function withoutBinaryFileContent<T extends { references?: AgentSkillReference[] }>(
+export const skillReferenceReadShape = {
+	referencePath: agentSkillReferencePathSchema
+		.optional()
+		.describe('Return text only for this reference path'),
+	referenceOffset: z
+		.number()
+		.int()
+		.nonnegative()
+		.optional()
+		.describe('Pass nextOffset from the previous result with the same referencePath'),
+};
+
+export type SkillReferenceRead = z.infer<z.ZodObject<typeof skillReferenceReadShape>>;
+
+export function projectSkillDetailsForModel<T extends { references?: AgentSkillReference[] }>(
 	skill: T,
+	{ referencePath, referenceOffset }: SkillReferenceRead = {},
+) {
+	if (referenceOffset !== undefined && referencePath === undefined) {
+		return { error: 'Pass referencePath with referenceOffset.' };
+	}
+	return projectSkillForModel(skill, {
+		paths: referencePath === undefined ? undefined : [referencePath],
+		offset: referenceOffset,
+		maxLength: 72 * 1024,
+	});
+}
+
+/** List paths and limit the reference text by UTF-16 code units. Do not return binary content. */
+export function projectSkillForModel<T extends { references?: AgentSkillReference[] }>(
+	skill: T,
+	{ paths, offset = 0, maxLength }: { paths?: string[]; offset?: number; maxLength: number },
 ) {
 	const { references, ...body } = skill;
-	if (!references) return body;
+	const requested = paths && new Set(paths);
+	const omittedReferencePaths: string[] = [];
+	let remaining = maxLength;
+	const visibleReferences = references?.map(({ path, content, isBinary }) => {
+		const included = requested?.delete(path) ?? true;
+		const listed = { path, characterCount: content.length };
+		if (isBinary) return { ...listed, isBinary };
+		if (!included) return listed;
+		const start = Math.min(offset, content.length);
+		const length = content.length - start;
+		if (length <= remaining) {
+			remaining -= length;
+			return { ...listed, content: content.slice(start) };
+		}
+		if (remaining === maxLength) {
+			let end = start + remaining;
+			// Keep the two code units of a character in the same part.
+			if ((content.codePointAt(end - 1) ?? 0) > 0xffff) end--;
+			remaining = 0;
+			return {
+				...listed,
+				content: content.slice(start, end),
+				contentTruncated: true,
+				nextOffset: end,
+			};
+		}
+		omittedReferencePaths.push(path);
+		return listed;
+	});
+
 	return {
-		...body,
-		references: references.map((reference) =>
-			reference.isBinary
-				? {
-						path: reference.path,
-						isBinary: true as const,
-						characterCount: reference.content.length,
-					}
-				: reference,
-		),
+		skill: { ...body, ...(visibleReferences ? { references: visibleReferences } : {}) },
+		...(omittedReferencePaths.length ? { truncated: true, omittedReferencePaths } : {}),
+		...(requested?.size ? { missingReferencePaths: [...requested] } : {}),
 	};
 }
 

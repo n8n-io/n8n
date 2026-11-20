@@ -671,13 +671,16 @@ describe('AgentSkillViewer relative links', () => {
 		],
 	};
 
-	async function clickLink(selectedPath: string, text: string) {
-		const wrapper = mountViewer({ readOnly: true, skill, selectedPath });
+	async function clickLink(
+		wrapper: ReturnType<typeof mountViewer>,
+		text: string,
+		init?: MouseEventInit,
+	) {
 		const link = wrapper.findAll('a').find((anchor) => anchor.text() === text);
-		const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+		const event = new MouseEvent('click', { bubbles: true, cancelable: true, ...init });
 		link?.element.dispatchEvent(event);
 		await wrapper.vm.$nextTick();
-		return { wrapper, link, event };
+		return { link, event };
 	}
 
 	it.each([
@@ -686,7 +689,8 @@ describe('AgentSkillViewer relative links', () => {
 		['a ../ link from a nested file', 'reference/degraded/fallback.md', 'Up', 'reference/guide.md'],
 		['a link back to SKILL.md', 'reference/degraded/fallback.md', 'Main', 'SKILL.md'],
 	])('selects the linked file for %s and stays on the page', async (_case, from, text, path) => {
-		const { wrapper, link, event } = await clickLink(from, text);
+		const wrapper = mountViewer({ readOnly: true, skill, selectedPath: from });
+		const { link, event } = await clickLink(wrapper, text);
 
 		expect(link?.exists()).toBe(true);
 		expect(wrapper.emitted('select:path')).toEqual([[path]]);
@@ -697,7 +701,8 @@ describe('AgentSkillViewer relative links', () => {
 		['a file outside the skill', 'Outside'],
 		['a file that the skill does not have', 'Missing'],
 	])('selects nothing and stays on the page for a link to %s', async (_case, text) => {
-		const { wrapper, link, event } = await clickLink('SKILL.md', text);
+		const wrapper = mountViewer({ readOnly: true, skill });
+		const { link, event } = await clickLink(wrapper, text);
 
 		expect(link?.exists()).toBe(true);
 		expect(wrapper.emitted('select:path')).toBeUndefined();
@@ -705,11 +710,47 @@ describe('AgentSkillViewer relative links', () => {
 	});
 
 	it('leaves a web link to the browser', async () => {
-		const { wrapper, link, event } = await clickLink('SKILL.md', 'Web');
+		const wrapper = mountViewer({ readOnly: true, skill });
+		const { link, event } = await clickLink(wrapper, 'Web');
 
 		expect(link?.attributes('href')).toBe('https://example.com/docs');
 		expect(wrapper.emitted('select:path')).toBeUndefined();
 		expect(event.defaultPrevented).toBe(false);
+	});
+
+	it.each(['metaKey', 'ctrlKey', 'shiftKey', 'altKey'])(
+		'leaves a file link to the browser when clicked with %s',
+		async (modifier) => {
+			const wrapper = mountViewer({ readOnly: true, skill });
+			const { link, event } = await clickLink(wrapper, 'Bare', { [modifier]: true });
+
+			expect(link?.exists()).toBe(true);
+			expect(wrapper.emitted('select:path')).toBeUndefined();
+			expect(event.defaultPrevented).toBe(false);
+		},
+	);
+
+	it('resolves relative links again when two selected files have the same Markdown', async () => {
+		const content = '[Guide](guide.md)';
+		const wrapper = mountViewer({
+			readOnly: true,
+			selectedPath: 'a/index.md',
+			skill: {
+				...skill,
+				references: [
+					{ path: 'a/index.md', content },
+					{ path: 'b/index.md', content },
+					{ path: 'a/guide.md', content: 'First guide' },
+					{ path: 'b/guide.md', content: 'Second guide' },
+				],
+			},
+		});
+
+		await clickLink(wrapper, 'Guide');
+		await wrapper.setProps({ selectedPath: 'b/index.md' });
+		await clickLink(wrapper, 'Guide');
+
+		expect(wrapper.emitted('select:path')).toEqual([['a/guide.md'], ['b/guide.md']]);
 	});
 });
 

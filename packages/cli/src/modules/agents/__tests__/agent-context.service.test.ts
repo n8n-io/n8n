@@ -310,34 +310,47 @@ describe('AgentContextService', () => {
 		expect(second).not.toHaveProperty('truncated');
 	});
 
-	it('returns the start of a reference that is larger than the whole budget', async () => {
+	it('reads a reference that is larger than the whole budget without splitting a character', async () => {
 		const { service, agentsService, agentSkillsService } = makeService();
 		agentsService.findById.mockResolvedValue(agent);
+		const firstPart = 'x'.repeat(AGENT_SKILL_READ_MAX_LENGTH - 1);
+		const lastPart = '😀 end';
 		agentSkillsService.getSkill.mockResolvedValue({
 			name: 'Support',
 			description: 'Handle support requests',
 			instructions: 'Read the support guide.',
-			references: [{ path: 'a.md', content: 'x'.repeat(AGENT_SKILL_READ_MAX_LENGTH + 1) }],
+			references: [{ path: 'a.md', content: firstPart + lastPart }],
 		});
 
-		const result = await service.createReader(user, 'project-1').lookup({
-			type: 'skill',
-			agentId: 'agent-1',
-			skillId: 'support',
-			referencePaths: ['a.md'],
-		});
+		const reader = service.createReader(user, 'project-1');
+		const read = async (referenceOffset?: number) =>
+			await reader.lookup({
+				type: 'skill',
+				agentId: 'agent-1',
+				skillId: 'support',
+				referencePaths: ['a.md'],
+				referenceOffset,
+			});
 
-		expect(result).toMatchObject({
+		const first = await read();
+		expect(first).toMatchObject({
 			skill: {
 				references: [
 					{
-						characterCount: AGENT_SKILL_READ_MAX_LENGTH + 1,
-						content: 'x'.repeat(AGENT_SKILL_READ_MAX_LENGTH),
+						characterCount: firstPart.length + lastPart.length,
+						content: firstPart,
 						contentTruncated: true,
+						nextOffset: firstPart.length,
 					},
 				],
 			},
 		});
+		const last = await read(firstPart.length);
+		expect(last).toMatchObject({
+			skillHash: first.skillHash,
+			skill: { references: [{ path: 'a.md', content: lastPart }] },
+		});
+		expect(last).not.toHaveProperty('skill.references.0.nextOffset');
 	});
 
 	it.each([
