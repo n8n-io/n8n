@@ -136,8 +136,8 @@ describe('knowledge collection routes', () => {
 			expect(secondRow.slug).toMatch(/^returns_playbook_[a-z0-9]{6}$/);
 		});
 
-		it('gives a nano id slug to a name without Latin letters or digits', async () => {
-			const response = await create(editor, input({ name: '日本語' }));
+		it.each(['日本語', 'Продажи'])('gives a nano id slug to the name %j', async (name) => {
+			const response = await create(editor, input({ name }));
 
 			expect(response.status).toBe(200);
 			expect(response.body.data.slug).toMatch(/^[0-9A-Za-z]{16}$/);
