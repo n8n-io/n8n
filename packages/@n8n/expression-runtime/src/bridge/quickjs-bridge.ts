@@ -451,7 +451,7 @@ function loadRuntimeBundle(): string {
  * into QuickJS via evalCode. Handles undefined (not valid JSON) by returning
  * the string "undefined".
  *
- * Only objects/arrays and strings with NUL reach this — other primitives
+ * Only objects/arrays and strings with NUL or a lone surrogate reach this — other primitives
  * (including top-level NaN via newNumber) and Date are handled directly by
  * the caller. Everything else (lazy-proxy metadata, Intl outputs, typed-RPC results, error-sentinel
  * extras) is sentinel-wrapped first so nested Date/NaN/Map/Set survive the
