@@ -1,6 +1,37 @@
 import { fireEvent, render } from '@testing-library/vue';
+import { defineComponent, ref, watch } from 'vue';
 
 import N8nSidebar from './Sidebar.vue';
+
+const BoundWidth = defineComponent({
+	components: { N8nSidebar },
+	props: {
+		start: { type: Number, required: true },
+		minWidth: { type: Number, required: true },
+		maxWidth: { type: Number, required: true },
+	},
+	setup(props) {
+		const width = ref(props.start);
+		watch(
+			() => props.start,
+			function applyStart(value) {
+				width.value = value;
+			},
+		);
+		return { width };
+	},
+	template: `
+		<div>
+			<output data-testid="bound-width">{{ width }}</output>
+			<N8nSidebar
+				v-model:width="width"
+				:min-width="minWidth"
+				:max-width="maxWidth"
+				label="Files"
+			/>
+		</div>
+	`,
+});
 
 function renderSidebar(props: Record<string, unknown> = {}, slot = 'Notes') {
 	return render(N8nSidebar, {
@@ -91,6 +122,40 @@ describe('N8nSidebar', () => {
 
 		expect(emitted('update:width')).toBeUndefined();
 		expect(window.localStorage.getItem(storageKey)).toBe('900');
+	});
+
+	it('clamps a bound width to the configured limits', async () => {
+		const { getByTestId, rerender } = render(BoundWidth, {
+			props: { start: 40, minWidth: 160, maxWidth: 480 },
+		});
+		const root = () => getByTestId('sidebar').parentElement?.parentElement;
+
+		expect(getByTestId('bound-width')).toHaveTextContent('160');
+		expect(root()).toHaveStyle({ width: '160px' });
+
+		await rerender({ start: 900, minWidth: 160, maxWidth: 480 });
+
+		expect(getByTestId('bound-width')).toHaveTextContent('480');
+		expect(root()).toHaveStyle({ width: '480px' });
+
+		await rerender({ start: 480, minWidth: 200, maxWidth: 360 });
+
+		expect(getByTestId('bound-width')).toHaveTextContent('360');
+		expect(root()).toHaveStyle({ width: '360px' });
+	});
+
+	it('restores a clamped default width on double-click', async () => {
+		const { container, emitted } = renderSidebar({
+			width: 240,
+			defaultWidth: 40,
+			minWidth: 160,
+			maxWidth: 480,
+		});
+		const handle = container.querySelector('[data-test-id="resize-handle"]');
+
+		await fireEvent.dblClick(handle as Element, { clientX: 100, clientY: 20 });
+
+		expect(emitted('update:width')?.at(-1)).toEqual([160]);
 	});
 
 	it('restores the starting width on double-click and saves that width', async () => {
