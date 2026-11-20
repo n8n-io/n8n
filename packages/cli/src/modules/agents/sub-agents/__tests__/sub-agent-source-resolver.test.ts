@@ -386,7 +386,7 @@ describe('SubAgentSourceResolver', () => {
 		});
 
 		it('returns no service account for an agent without one', async () => {
-			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ identityId: null }));
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ identityId: undefined }));
 
 			const result = await resolver.resolveForRuntime({ agentId }, { projectId });
 
