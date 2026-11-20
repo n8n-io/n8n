@@ -1,11 +1,11 @@
 import type { SkillDetail } from '@n8n/api-types';
 import { User } from '@n8n/db';
-import { ConflictError } from '@n8n/errors';
+import { ConflictError, UserError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import { InstanceAiSkillsAdapterService } from '../instance-ai-skills.adapter';
 import { SkillNameTakenError, type SkillService, type SkillSourceService } from '@/modules/skills';
-import { SkillSyncedError } from '@/modules/skills/testing';
+import { SkillSourceRequestError, SkillSyncedError } from '@/modules/skills/testing';
 
 describe('InstanceAiSkillsAdapterService', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
@@ -59,6 +59,50 @@ describe('InstanceAiSkillsAdapterService', () => {
 		expect(skillSources.checkPublicImport).toHaveBeenCalledWith(user, selection, 'assistant');
 		await sources.connect(selection);
 		expect(skillSources.connectPublic).toHaveBeenCalledWith(user, selection, 'assistant');
+	});
+
+	describe('a source request that fails', () => {
+		const sources = adapter.createService(user, true, true).sources!;
+		const selection = {
+			url: 'https://github.com/acme/skills',
+			scope: 'instance',
+			skillKeys: ['brand-voice'],
+			revision: 'commit',
+		} as const;
+		const stale = new SkillSourceRequestError(
+			'stale',
+			'The source changed. Preview it again before importing.',
+		);
+
+		it.each([
+			[
+				'discover',
+				async () => await sources.discover(selection),
+				() => skillSources.discoverPublic,
+			],
+			[
+				'checkImport',
+				async () => await sources.checkImport(selection),
+				() => skillSources.checkPublicImport,
+			],
+			['connect', async () => await sources.connect(selection), () => skillSources.connectPublic],
+		])('gives the model the reason of a refused %s', async (_name, call, method) => {
+			method().mockRejectedValue(stale);
+
+			const error = await call().catch((caught: unknown) => caught);
+
+			expect(error).toBeInstanceOf(UserError);
+			expect(error).toMatchObject({
+				message: 'The source changed. Preview it again before importing.',
+			});
+		});
+
+		it('passes an error with no reason on as it is', async () => {
+			const bug = new Error('connection lost');
+			skillSources.connectPublic.mockRejectedValue(bug);
+
+			await expect(sources.connect(selection)).rejects.toBe(bug);
+		});
 	});
 
 	it('creates the skill with the Assistant availability the tool sent', async () => {

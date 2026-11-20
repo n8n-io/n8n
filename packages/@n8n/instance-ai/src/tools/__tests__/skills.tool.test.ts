@@ -228,6 +228,43 @@ describe('skills tool', () => {
 			);
 		});
 
+		it('tells the model why the import failed after the approval, and reports no skill', async () => {
+			connect.mockRejectedValue(
+				new Error('The source changed. Preview it again before importing.'),
+			);
+			const onArtifactChanged = vi.fn();
+
+			await expect(
+				executeTool(sourceTool({ onArtifactChanged }), input, resumeCtx(true)),
+			).rejects.toThrow('The source changed. Preview it again before importing.');
+
+			expect(onArtifactChanged).not.toHaveBeenCalled();
+		});
+
+		it('reports each imported skill and returns the skills that did not come in', async () => {
+			const failed = [{ key: 'warning', name: 'warning', reason: 'review_required' }];
+			connect.mockResolvedValue({
+				sourceId: 'source-1',
+				imported: [{ key: 'brand-voice', skillId: 'skill_a', name: 'Brand voice' }],
+				failed,
+			});
+			const onArtifactChanged = vi.fn();
+
+			const result = await executeTool(
+				sourceTool({ onArtifactChanged }),
+				{ ...input, skillKeys: ['brand-voice', 'warning'] },
+				resumeCtx(true),
+			);
+
+			expect(result).toMatchObject({ success: true, sourceId: 'source-1', failed });
+			expect(onArtifactChanged).toHaveBeenCalledTimes(1);
+			expect(onArtifactChanged).toHaveBeenCalledWith({
+				type: 'skill',
+				id: 'skill_a',
+				name: 'Brand voice',
+			});
+		});
+
 		// The service owns the import rules. Its integration tests cover each refusal.
 		it.each([
 			[
