@@ -4,7 +4,7 @@ import type { HttpVendorProfile } from './http-profiles';
 import { createGymSender, createHttpToolCaller, isReadToolName } from './http-tool-caller';
 import { createPlanLlm, type HydrationModel } from './hydration-llm';
 import { PLAN_INSTRUCTIONS } from './hydration-prompts';
-import { sendToNetwork } from './net-interceptor';
+import { sendToNetwork } from './network';
 import { PlanHydrator } from './plan-hydrator';
 import { isReadShaped } from './request-classifier';
 import { matchesVendor, type VendorKnowledge } from './vendor-knowledge';
@@ -102,7 +102,6 @@ export class HttpRunRegistry {
 			upstream,
 			gym,
 			hydrator,
-			realSend: sendToNetwork,
 			profile,
 			context,
 		});

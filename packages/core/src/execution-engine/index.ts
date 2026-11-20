@@ -59,6 +59,13 @@ declare module 'n8n-workflow' {
 		 * Only set by the eval execution service — never present in normal executions.
 		 */
 		evalLlmMockHandler?: EvalLlmMockHandler;
+		/**
+		 * Guard for the requests of the node tools of an agent test chat.
+		 * The request helpers ask it just before they send a request, after the credential has signed it.
+		 * Return a response to answer the request, or `undefined` to send the request as usual.
+		 * It is set for one node execution only, so it never touches other executions.
+		 */
+		nodeRequestGuard?: EvalLlmMockHandler;
 		/** Eval only: answers for non-HTTP nodes at run time. Never present in normal executions. */
 		evalNodeMockHandler?: EvalNodeMockHandler;
 		/**

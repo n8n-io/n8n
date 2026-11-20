@@ -2,10 +2,10 @@ import { HttpRunRegistry } from '../http-runs';
 import { GMAIL_PROFILE } from '../http-profiles';
 import type { GymAdmin } from '../gym-admin';
 import type { HydrationModel } from '../hydration-llm';
-import { sendToNetwork } from '../net-interceptor';
+import { sendToNetwork } from '../network';
 import { loadVendorKnowledge } from '../vendor-knowledge';
 
-vi.mock('../net-interceptor', () => ({
+vi.mock('../network', () => ({
 	sendToNetwork: vi.fn(async () => new Response('{}')),
 }));
 

@@ -1,12 +1,6 @@
 import { Container } from '@n8n/di';
 
-import {
-	currentAgentId,
-	currentChatId,
-	currentNodeGuard,
-	withChatScope,
-	withNodeGuard,
-} from '../chat-scope';
+import { currentAgentId, currentChatId, withChatScope } from '../chat-scope';
 import { McpGuardService } from '../mcp-guard.service';
 import { GUARDED_CALL_TIMEOUT_MS, isGuardedUrl, withMcpGuard } from '../mcp-guard-fetch';
 
@@ -76,11 +70,5 @@ describe('chat scope agent id', () => {
 describe('chat scope without a chat', () => {
 	it('runs the function without a scope when there is no chat id', () => {
 		expect(withChatScope(undefined, () => currentChatId())).toBeUndefined();
-	});
-
-	it('does not guard a node tool that has no chat scope', () => {
-		expect(
-			withNodeGuard({ resolve: async () => ({}) as never }, () => currentNodeGuard()),
-		).toBeUndefined();
 	});
 });

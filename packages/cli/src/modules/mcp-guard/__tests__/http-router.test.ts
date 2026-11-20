@@ -3,7 +3,7 @@ import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { HttpGuardRouter, type HttpGuardRouterDeps } from '../http-router';
 import { GMAIL_PROFILE } from '../http-profiles';
 import type { McpCaller } from '../mcp-upstream';
-import type { CapturedRequest } from '../net-interceptor';
+import type { CapturedRequest } from '../network';
 
 const result = (body: unknown, status = 200): CallToolResult => ({
 	isError: status >= 400,
@@ -36,30 +36,27 @@ function setup(over: Partial<HttpGuardRouterDeps> = {}) {
 		hydrateWrite: vi.fn(async (..._a: unknown[]) => {}),
 		noteWrite: vi.fn(),
 	};
-	const realSend = vi.fn(async (_r: CapturedRequest) => new Response('real-passthrough'));
 	const context = { origin: '' } as { authorization?: string; origin: string };
 	const router = new HttpGuardRouter({
 		upstream: upstream as unknown as McpCaller,
 		gym: gym as unknown as McpCaller,
 		hydrator,
-		realSend,
 		profile: GMAIL_PROFILE,
 		context,
 		...over,
 	});
-	return { router, upstream, gym, hydrator, realSend, context };
+	return { router, upstream, gym, hydrator, context };
 }
 
 describe('HttpGuardRouter', () => {
 	it('refuses a host that has no vendor file, and calls nothing', async () => {
-		const { router, upstream, gym, realSend } = setup();
+		const { router, upstream, gym } = setup();
 
 		const res = await router.handle(request('GET', '/x', undefined, 'example.com'));
 
 		expect(res.status).toBe(403);
 		expect(upstream.callTool).not.toHaveBeenCalled();
 		expect(gym.callTool).not.toHaveBeenCalled();
-		expect(realSend).not.toHaveBeenCalled();
 	});
 
 	it('refuses another Google API on the same host', async () => {
@@ -72,28 +69,8 @@ describe('HttpGuardRouter', () => {
 		expect(gym.callTool).not.toHaveBeenCalled();
 	});
 
-	it('refuses a request on the sign-in host that is no token exchange', async () => {
-		const { router, gym, realSend } = setup();
-
-		const res = await router.handle(request('POST', '/revoke', {}, 'oauth2.googleapis.com'));
-
-		expect(res.status).toBe(403);
-		expect(realSend).not.toHaveBeenCalled();
-		expect(gym.callTool).not.toHaveBeenCalled();
-	});
-
-	it('sends the sign-in host to the real network as it is', async () => {
-		const { router, gym, realSend } = setup();
-
-		const res = await router.handle(request('POST', '/token', {}, 'oauth2.googleapis.com'));
-
-		expect(await res.text()).toBe('real-passthrough');
-		expect(realSend).toHaveBeenCalledTimes(1);
-		expect(gym.callTool).not.toHaveBeenCalled();
-	});
-
 	it('sends a write only to the gym and never to the real service', async () => {
-		const { router, upstream, gym, hydrator, realSend } = setup();
+		const { router, upstream, gym, hydrator } = setup();
 		gym.callTool.mockResolvedValueOnce(result({ id: 'gym-sent', threadId: 'gym-sent' }));
 
 		const res = await router.handle(request('POST', `${LIST}/send`, { raw: 'abc' }));
@@ -101,7 +78,6 @@ describe('HttpGuardRouter', () => {
 		expect(res.status).toBe(200);
 		expect(await res.json()).toEqual({ id: 'gym-sent', threadId: 'gym-sent' });
 		expect(upstream.callTool).toHaveBeenCalledTimes(0);
-		expect(realSend).toHaveBeenCalledTimes(0);
 		expect(gym.callTool).toHaveBeenCalledTimes(1);
 		expect(gym.callTool.mock.calls[0][0]).toBe('write_post_messages_send');
 		expect(hydrator.hydrateWrite).not.toHaveBeenCalled();
@@ -111,12 +87,11 @@ describe('HttpGuardRouter', () => {
 	it.each(['PUT', 'PATCH', 'DELETE', 'POST'])(
 		'never lets a %s reach the real service',
 		async (method) => {
-			const { router, upstream, realSend } = setup();
+			const { router, upstream } = setup();
 
 			await router.handle(request(method, `${LIST}/${ID}`, method === 'DELETE' ? undefined : {}));
 
 			expect(upstream.callTool).not.toHaveBeenCalled();
-			expect(realSend).not.toHaveBeenCalled();
 		},
 	);
 
