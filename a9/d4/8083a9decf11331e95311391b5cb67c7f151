@@ -1,0 +1,27 @@
+packages/cli/src/workflows/publication/workflow-publication-applier.ts
+  s_2c2a2b8e39f447::t_0a3ac53f0fe2ec 77-82
+  s_2c2a2b8e39f447::t_ffcbabf05c12ca 283-288
+  s_2c2a2b8e39f447::t_6791f8a8f832d5 83-84,289-290,671-672
+packages/cli/src/workflows/triggers/webhook-trigger-registrar.ts
+  s_2c2a2b8e39f447::t_d3534ea0d536b7 264-265
+packages/cli/src/workflows/publication/__tests__/workflow-publication-applier.test.ts
+  s_2c2a2b8e39f447::t_af81e8c6cf2cdc 788-826
+packages/cli/src/workflows/triggers/__tests__/webhook-trigger-registrar.test.ts
+  s_2c2a2b8e39f447::t_28e8e29714afef 191-228
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a9d48083a9decf11331e95311391b5cb67c7f151",
+  "prompts": {},
+  "sessions": {
+    "s_2c2a2b8e39f447": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ba6efd54-460b-4c2c-8de3-111def0407a8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}
