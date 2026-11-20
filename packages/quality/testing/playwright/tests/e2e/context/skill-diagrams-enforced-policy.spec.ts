@@ -38,8 +38,9 @@ test.describe(
 			});
 
 			// Make sure that the instance enforces the policy, so this test cannot pass without it.
-			const response = await api.request.get('/healthz');
-			expect(response.headers()['content-security-policy']).toContain("'strict-dynamic'");
+			expect(await api.securitySettings.getEnforcedContentSecurityPolicy()).toContain(
+				"'strict-dynamic'",
+			);
 
 			await n8n.start.fromHome();
 

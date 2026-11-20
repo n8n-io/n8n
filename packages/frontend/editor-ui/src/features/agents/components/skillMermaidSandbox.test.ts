@@ -18,6 +18,7 @@ function send(source: unknown, data: unknown = REQUEST) {
 describe('skillMermaidSandbox', () => {
 	beforeEach(async () => {
 		vi.resetModules();
+		// @ts-expect-error The sandbox script is a classic script, so TypeScript sees no module.
 		await import('./skillMermaidSandbox.js');
 	});
 
