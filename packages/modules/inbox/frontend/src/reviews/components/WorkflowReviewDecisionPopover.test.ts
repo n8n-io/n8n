@@ -310,10 +310,7 @@ describe('WorkflowReviewDecisionPopover', () => {
 
 		await userEvent.click(getByTestId('open-popover'));
 		const close = getByTestId('workflow-review-decision-close-button');
-		expect(tooltipOf(close)).toHaveAttribute(
-			'data-content',
-			'Discards the changes and closes the review.',
-		);
+		expect(tooltipOf(close)).toHaveAttribute('data-content', 'Closes the review.');
 		await userEvent.click(close);
 
 		expect(emitted('close')).toHaveLength(1);

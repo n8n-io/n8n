@@ -7182,7 +7182,7 @@
 	"workflowReviews.detail.decision.approveAndPublish": "Approve and publish",
 	"workflowReviews.detail.decision.requestChanges": "Request changes",
 	"workflowReviews.detail.decision.closeReview": "Close review",
-	"workflowReviews.detail.decision.closeReview.tooltip": "Discards the changes and closes the review.",
+	"workflowReviews.detail.decision.closeReview.tooltip": "Closes the review.",
 	"workflowReviews.detail.decision.ineligible.author": "You contributed a version to this review.",
 	"workflowReviews.error.load": "Could not load workflow reviews",
 	"workflowReviews.decision.error.title": "Could not submit review decision",
