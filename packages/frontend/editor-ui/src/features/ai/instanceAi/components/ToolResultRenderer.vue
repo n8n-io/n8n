@@ -15,6 +15,7 @@ import ToolResultCode from './ToolResultCode.vue';
 import ToolResultImage from './ToolResultImage.vue';
 import ToolResultFile from './ToolResultFile.vue';
 import ToolResultText from './ToolResultText.vue';
+import { extractTableRows, isTableToolCall } from '../toolResultTable';
 
 const props = defineProps<{
 	result: unknown;
@@ -110,20 +111,6 @@ function isCodeTool(): boolean {
 	);
 }
 
-function isTableTool(): boolean {
-	return (
-		resolvedToolName() === SHARED_BUILDER_TOOL_NAMES.QUERY_DATA_TABLE ||
-		resolvedToolName() === WORKFLOW_BUILDER_TOOL_NAMES.LIST_WORKFLOWS ||
-		resolvedToolName() === WORKFLOW_BUILDER_TOOL_NAMES.LIST_EXECUTIONS ||
-		resolveBuilderToolName(props.toolName, props.toolArgs?.action) ===
-			SHARED_BUILDER_TOOL_NAMES.LIST_CREDENTIALS ||
-		isAction(WORKFLOW_BUILDER_TOOL_NAMES.NODES, 'search') ||
-		isAction(WORKFLOW_BUILDER_TOOL_NAMES.NODES, 'list') ||
-		resolveBuilderToolName(props.toolName) === SHARED_BUILDER_TOOL_NAMES.SEARCH_NODES ||
-		resolvedToolName() === SHARED_BUILDER_TOOL_NAMES.LIST_DATA_TABLES
-	);
-}
-
 function extractMcpContent(result: unknown): McpToolCallResult['content'] | null {
 	if (Array.isArray(result)) return normalizeContentItems(result);
 	if (
@@ -143,7 +130,8 @@ function extractMcpContent(result: unknown): McpToolCallResult['content'] | null
 function detectType(result: unknown): ResultType {
 	if (extractMcpContent(result) !== null) return 'content';
 	if (isCodeTool()) return 'code';
-	if (isTableTool() && result && typeof result === 'object') return 'table';
+	if (isTableToolCall(props.toolName, props.toolArgs) && result && typeof result === 'object')
+		return 'table';
 	return 'json';
 }
 
@@ -167,26 +155,6 @@ function extractCode(result: unknown): string | null {
 			.filter((d) => typeof d.content === 'string')
 			.map((d) => d.content as string)
 			.join('\n\n');
-	}
-	return null;
-}
-
-function extractTableRows(result: unknown): Array<Record<string, unknown>> | null {
-	if (!result || typeof result !== 'object') return null;
-	const obj = result as Record<string, unknown>;
-
-	for (const key of [
-		'data',
-		'workflows',
-		'executions',
-		'credentials',
-		'results',
-		'nodes',
-		'tables',
-	]) {
-		if (Array.isArray(obj[key]) && obj[key].length > 0 && typeof obj[key][0] === 'object') {
-			return obj[key] as Array<Record<string, unknown>>;
-		}
 	}
 	return null;
 }
