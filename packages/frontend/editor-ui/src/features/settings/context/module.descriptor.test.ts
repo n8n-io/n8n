@@ -3,8 +3,10 @@ import type { FrontendModuleSettings, FrontendSettings } from '@n8n/api-types';
 import { createMemoryHistory, createRouter, type RouteRecordRaw } from 'vue-router';
 
 import { VIEWS } from '@/app/constants';
+import { waitForFeatureFlagsWithTimeout } from '@/app/stores/posthog.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 
+import { KNOWLEDGE_COLLECTION_VIEW } from './context.constants';
 import { ContextModule } from './module.descriptor';
 
 const stub = { render: () => null };
@@ -15,17 +17,32 @@ vi.mock('@/app/utils/rbac/permissions', () => ({
 	hasPermission: () => permissions.managePreferences,
 }));
 
+vi.mock('@/app/stores/posthog.store', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@/app/stores/posthog.store')>()),
+	waitForFeatureFlagsWithTimeout: vi.fn(async () => {}),
+}));
+
 // Avoid loading the views during route tests.
 const moduleRoutes = (ContextModule.routes ?? []).map(
 	(route) => ({ ...route, component: stub }) as RouteRecordRaw,
 );
 
+// Mirrors `registerModuleRoutes`: a project route is a child of the project, not of settings.
 const createTestRouter = () =>
 	createRouter({
 		history: createMemoryHistory(),
 		routes: [
 			{ path: '/home', name: VIEWS.HOMEPAGE, component: stub },
-			{ path: '/settings', component: stub, children: moduleRoutes },
+			{
+				path: '/settings',
+				component: stub,
+				children: moduleRoutes.filter((route) => !route.meta?.projectRoute),
+			},
+			{
+				path: '/projects/:projectId',
+				component: stub,
+				children: moduleRoutes.filter((route) => route.meta?.projectRoute),
+			},
 		],
 	});
 
@@ -136,9 +153,54 @@ describe('ContextModule routes', () => {
 		);
 	});
 
+	describe('collection', () => {
+		const openCollection = async (collectionsEnabled: boolean) => {
+			setup(false, {
+				knowledge: {
+					limits: { maxFileSizeBytes: 1, maxFilesPerUpload: 1, maxTotalSizeBytes: 1 },
+					collectionsEnabled,
+				},
+			});
+			useSettingsStore().settings.activeModules = ['knowledge'];
+			const router = createTestRouter();
+
+			await router.push('/projects/project-1/collections/c1');
+
+			return router.currentRoute.value;
+		};
+
+		beforeEach(() => {
+			vi.mocked(waitForFeatureFlagsWithTimeout).mockClear();
+		});
+
+		test('opens the collection page of a project while collections are on', async () => {
+			const route = await openCollection(true);
+
+			expect(route.name).toBe(KNOWLEDGE_COLLECTION_VIEW);
+			expect(route.params).toEqual({ projectId: 'project-1', collectionId: 'c1' });
+			// The operator setting needs no feature flag.
+			expect(waitForFeatureFlagsWithTimeout).not.toHaveBeenCalled();
+		});
+
+		test('waits for the feature flags, then redirects to the homepage while collections are off', async () => {
+			const route = await openCollection(false);
+
+			expect(waitForFeatureFlagsWithTimeout).toHaveBeenCalledTimes(1);
+			expect(route.name).toBe(VIEWS.HOMEPAGE);
+		});
+	});
+
 	it('lists no custom middleware, so the initializer does not gate it on a backend module', () => {
 		for (const route of ContextModule.routes ?? []) {
 			expect(route.meta?.middleware).toEqual(['authenticated']);
+		}
+	});
+
+	it('mounts every page under settings, except the project pages', () => {
+		for (const route of ContextModule.routes ?? []) {
+			if (route.meta?.projectRoute) {
+				continue;
+			}
 			expect(route.meta?.telemetry?.pageCategory).toBe('settings');
 		}
 	});

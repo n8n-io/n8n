@@ -1,12 +1,17 @@
 import { type FrontendModuleDescription } from '@n8n/frontend-module-sdk';
 
 import { VIEWS } from '@/app/constants';
+import { usePostHog, waitForFeatureFlagsWithTimeout } from '@/app/stores/posthog.store';
+import { useIsCollectionsEnabled } from '@/features/shared/knowledge/useIsCollectionsEnabled';
 
+import { KNOWLEDGE_COLLECTION_VIEW } from './context.constants';
 import {
 	canManageContextPreferences,
 	isContextPreferencesEnabled,
 	isContextSkillsEnabled,
 } from './context.utils';
+
+const FLAG_WAIT_TIMEOUT_MS = 3000;
 
 /**
  * No `custom` middleware: the initializer would gate the routes on a backend module,
@@ -55,6 +60,25 @@ export const ContextModule: FrontendModuleDescription = {
 				},
 			},
 			beforeEnter: () => isContextSkillsEnabled() || { name: VIEWS.HOMEPAGE },
+		},
+		{
+			path: 'collections/:collectionId',
+			name: KNOWLEDGE_COLLECTION_VIEW,
+			props: true,
+			component: async () => await import('./views/CollectionView.vue'),
+			meta: {
+				projectRoute: true,
+				middleware: ['authenticated'],
+			},
+			// PostHog loads flags after the first paint, so a page reload waits for them.
+			// The operator setting needs no flag, so it skips the wait.
+			beforeEnter: async () => {
+				const collectionsEnabled = useIsCollectionsEnabled();
+				if (!collectionsEnabled.value) {
+					await waitForFeatureFlagsWithTimeout(usePostHog(), FLAG_WAIT_TIMEOUT_MS);
+				}
+				return collectionsEnabled.value || { name: VIEWS.HOMEPAGE };
+			},
 		},
 	],
 };
