@@ -30,7 +30,8 @@ Read usage through `ExecutionUsageService` only, so each reader sees the same co
 
 A period is a sum of UTC days. A week starts on Monday. Main and webhook processes hold
 the usage in memory, and a timer reloads it every 5 seconds. The count can be up to
-about 10 seconds old.
+about 10 seconds old. If a reload fails, the last count stays in use until a reload
+succeeds or the period ends, so it can be older.
 
 ## Import rules
 
