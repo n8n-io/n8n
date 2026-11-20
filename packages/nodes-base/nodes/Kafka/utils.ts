@@ -116,9 +116,9 @@ interface SchemaRegistryCredentials {
 	key?: string;
 }
 
-interface SchemaRegistryOptions {
-	host: string;
-	auth?: { username: string; password: string };
+/** What the registry connection needs: `client` goes to the constructor, `tls` to the agent. */
+interface ResolvedRegistryConnection {
+	client: { host: string; auth?: { username: string; password: string } };
 	tls?: TlsMaterial;
 }
 
@@ -138,6 +138,21 @@ type ResolveOffsetMode = 'immediately' | 'onCompletion' | 'onSuccess' | 'onStatu
  * @param value - The raw PEM string from the credential
  * @param fieldName - Human-readable field name used in the error message
  */
+export function formatAndValidatePem(value: string, fieldName: string): string {
+	const formatted = formatPemBlock(value);
+	// Require a matching BEGIN/END pair with the same label — a lone BEGIN header
+	// (e.g. a truncated paste) would otherwise pass and only fail later as an
+	// opaque TLS handshake error.
+	if (!/-----BEGIN ([A-Z0-9 ]+)-----[\s\S]+-----END \1-----/.test(formatted)) {
+		throw new UserError(`The Kafka ${fieldName} is not a valid PEM block`, {
+			level: 'warning',
+			description:
+				'Paste the full PEM, including the "-----BEGIN ...-----" and "-----END ...-----" lines.',
+		});
+	}
+	return formatted;
+}
+
 /**
  * Reads the three PEM credential fields, rejecting a client certificate that
  * arrives without its private key. Shared by the broker and the Schema Registry
@@ -165,21 +180,6 @@ export function readTlsMaterial(credentials: TlsMaterial, subject: string): TlsM
 	return { ca, cert, key };
 }
 
-export function formatAndValidatePem(value: string, fieldName: string): string {
-	const formatted = formatPemBlock(value);
-	// Require a matching BEGIN/END pair with the same label — a lone BEGIN header
-	// (e.g. a truncated paste) would otherwise pass and only fail later as an
-	// opaque TLS handshake error.
-	if (!/-----BEGIN ([A-Z0-9 ]+)-----[\s\S]+-----END \1-----/.test(formatted)) {
-		throw new UserError(`The Kafka ${fieldName} is not a valid PEM block`, {
-			level: 'warning',
-			description:
-				'Paste the full PEM, including the "-----BEGIN ...-----" and "-----END ...-----" lines.',
-		});
-	}
-	return formatted;
-}
-
 /** kafkajs's `tls.ConnectionOptions` fields take Buffers, the v2 library takes strings. */
 function toPemBuffer(value: string, fieldName: string): Buffer {
 	return Buffer.from(formatAndValidatePem(value, fieldName));
@@ -197,19 +197,8 @@ function toPemBuffer(value: string, fieldName: string): Buffer {
 export function resolveKafkaSsl(credentials: KafkaCredentials): ConnectionOptions | boolean {
 	if (!credentials.ssl) return false;
 
-	const cert = credentials.cert?.trim() ? credentials.cert : undefined;
-	const key = credentials.key?.trim() ? credentials.key : undefined;
-	const ca = credentials.ca?.trim() ? credentials.ca : undefined;
+	const { ca, cert, key } = readTlsMaterial(credentials, 'Kafka');
 	const allowUnauthorized = credentials.allowUnauthorizedCerts === true;
-
-	// A client certificate and its private key are only meaningful together.
-	if (Boolean(cert) !== Boolean(key)) {
-		throw new UserError('Kafka mTLS needs both a client certificate and a client private key', {
-			level: 'warning',
-			description:
-				'Set both the "Client Certificate" and "Client Private Key" credential fields, or clear both.',
-		});
-	}
 
 	// Nothing beyond plain server-side TLS configured: keep the boolean form so
 	// existing SSL-only and SASL credentials are completely unaffected.
@@ -526,12 +515,12 @@ export function sanitizeRegistryError(error: unknown) {
  * selected `schemaRegistryApi` credential over the legacy URL node parameter
  * @param ctx - The execution context (node or trigger)
  * @param fallbackUrl - The `schemaRegistryUrl` node parameter, used when no credential is selected
- * @returns Options for the `SchemaRegistry` constructor
+ * @returns The constructor options and, separately, any TLS material for the agent
  */
 export async function getSchemaRegistryOptions(
 	ctx: Pick<FunctionsBase, 'getNode' | 'getCredentials'>,
 	fallbackUrl: string,
-): Promise<SchemaRegistryOptions> {
+): Promise<ResolvedRegistryConnection> {
 	const emptyConfigError = () =>
 		new NodeOperationError(
 			ctx.getNode(),
@@ -543,7 +532,7 @@ export async function getSchemaRegistryOptions(
 		if (!host) {
 			throw emptyConfigError();
 		}
-		return { host };
+		return { client: { host } };
 	}
 
 	const credentials = await ctx.getCredentials<SchemaRegistryCredentials>('schemaRegistryApi');
@@ -553,11 +542,11 @@ export async function getSchemaRegistryOptions(
 		throw emptyConfigError();
 	}
 
-	const options: SchemaRegistryOptions = { host };
+	const connection: ResolvedRegistryConnection = { client: { host } };
 
 	const { ca, cert, key } = readTlsMaterial(credentials, 'Schema Registry');
 	if (ca ?? cert) {
-		options.tls = {
+		connection.tls = {
 			...(ca ? { ca: formatAndValidatePem(ca, 'Schema Registry CA certificate') } : {}),
 			...(cert ? { cert: formatAndValidatePem(cert, 'Schema Registry client certificate') } : {}),
 			...(key ? { key: formatAndValidatePem(key, 'Schema Registry client private key') } : {}),
@@ -571,10 +560,10 @@ export async function getSchemaRegistryOptions(
 				'Username and password are required for Schema Registry Basic Auth',
 			);
 		}
-		options.auth = { username: credentials.username, password: credentials.password };
+		connection.client.auth = { username: credentials.username, password: credentials.password };
 	}
 
-	return options;
+	return connection;
 }
 
 /**
@@ -591,7 +580,7 @@ export async function createSchemaRegistry(
 	},
 	fallbackUrl: string,
 ): Promise<SchemaRegistry> {
-	const options = await getSchemaRegistryOptions(ctx, fallbackUrl);
+	const { client, tls } = await getSchemaRegistryOptions(ctx, fallbackUrl);
 
 	const filter = ctx.helpers.getSecureEgressFilter();
 
@@ -600,7 +589,7 @@ export async function createSchemaRegistry(
 	// the validated target always matches the target the client connects to.
 	let parsed: URL;
 	try {
-		parsed = new URL(options.host);
+		parsed = new URL(client.host);
 	} catch {
 		throw new NodeOperationError(ctx.getNode(), 'Verify your Schema Registry configuration', {
 			description: 'The Schema Registry URL is not a valid URL',
@@ -624,14 +613,18 @@ export async function createSchemaRegistry(
 	// Connect using the canonical href so the client re-parses the exact
 	// authority we validated, and validate the resolved addresses at connect
 	// time via the secure lookup.
-	// `tls` is ours, not the client's, so it reaches the agent and never the
-	// SchemaRegistry constructor.
-	const { tls, ...clientOptions } = options;
+	if (tls && parsed.protocol !== 'https:') {
+		throw new NodeOperationError(ctx.getNode(), 'Verify your Schema Registry configuration', {
+			description:
+				'The credential carries TLS material, which only applies to an https Schema Registry URL',
+		});
+	}
+
 	const agent =
 		parsed.protocol === 'https:'
 			? new https.Agent({ lookup: filter.createSecureLookup(), ...tls })
 			: new http.Agent({ lookup: filter.createSecureLookup() });
-	return new SchemaRegistry({ ...clientOptions, host: parsed.href, agent });
+	return new SchemaRegistry({ ...client, host: parsed.href, agent });
 }
 
 /**

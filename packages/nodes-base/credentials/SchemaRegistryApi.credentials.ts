@@ -79,7 +79,7 @@ export class SchemaRegistryApi implements ICredentialType {
 			},
 			default: '',
 			description:
-				'PEM-encoded CA certificate(s) used to verify the registry. This replaces the system CAs rather than adding to them, so include every CA the registry chain needs. Leave empty to use the system CAs. Applies to an https registry URL only.',
+				'PEM-encoded CA certificate(s) used to verify the registry. This replaces the system CAs rather than adding to them, so include every CA the registry chain needs. Leave empty to use the system CAs. Applies to an https registry URL only, and not to the credential test below.',
 		},
 		{
 			displayName: 'Client Certificate',
@@ -90,7 +90,7 @@ export class SchemaRegistryApi implements ICredentialType {
 			},
 			default: '',
 			description:
-				'PEM-encoded client certificate for mutual TLS (mTLS). Provide together with the client private key.',
+				'PEM-encoded client certificate for mutual TLS (mTLS). Provide together with the client private key. Applies to an https registry URL only, and not to the credential test below.',
 		},
 		{
 			displayName: 'Client Private Key',
@@ -101,7 +101,7 @@ export class SchemaRegistryApi implements ICredentialType {
 			},
 			default: '',
 			description:
-				'PEM-encoded client private key for mutual TLS (mTLS). Provide together with the client certificate.',
+				'PEM-encoded client private key for mutual TLS (mTLS). Provide together with the client certificate. Applies to an https registry URL only, and not to the credential test below.',
 		},
 	];
 
@@ -130,6 +130,9 @@ export class SchemaRegistryApi implements ICredentialType {
 		return requestOptions;
 	}
 
+	// This goes through n8n's HTTP helper, which carries no TLS material, so the test
+	// uses the system CAs and sends no client certificate. A registry that needs either
+	// fails here and still works on the node. See ENT-842.
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: '={{$credentials.url}}',

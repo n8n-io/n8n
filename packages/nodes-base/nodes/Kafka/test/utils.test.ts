@@ -1064,7 +1064,7 @@ describe('Kafka Utils', () => {
 
 				const result = await getSchemaRegistryOptions(ctx, 'https://fallback-registry.local');
 
-				expect(result).toEqual({ host: 'https://fallback-registry.local' });
+				expect(result).toEqual({ client: { host: 'https://fallback-registry.local' } });
 				expect(ctx.getCredentials).not.toHaveBeenCalled();
 			});
 
@@ -1073,7 +1073,7 @@ describe('Kafka Utils', () => {
 
 				const result = await getSchemaRegistryOptions(ctx, '  https://fallback-registry.local  ');
 
-				expect(result).toEqual({ host: 'https://fallback-registry.local' });
+				expect(result).toEqual({ client: { host: 'https://fallback-registry.local' } });
 			});
 
 			it('should trim the credential URL', async () => {
@@ -1087,7 +1087,7 @@ describe('Kafka Utils', () => {
 
 				const result = await getSchemaRegistryOptions(ctx, '');
 
-				expect(result).toEqual({ host: 'https://schema-registry.local:8081' });
+				expect(result).toEqual({ client: { host: 'https://schema-registry.local:8081' } });
 			});
 
 			it('should return host and auth for a basicAuth credential', async () => {
@@ -1105,8 +1105,10 @@ describe('Kafka Utils', () => {
 
 				expect(ctx.getCredentials).toHaveBeenCalledWith('schemaRegistryApi');
 				expect(result).toEqual({
-					host: 'https://schema-registry.local:8081',
-					auth: { username: 'registry-user', password: 'registry-password' },
+					client: {
+						host: 'https://schema-registry.local:8081',
+						auth: { username: 'registry-user', password: 'registry-password' },
+					},
 				});
 			});
 
@@ -1121,8 +1123,8 @@ describe('Kafka Utils', () => {
 
 				const result = await getSchemaRegistryOptions(ctx, '');
 
-				expect(result).toEqual({ host: 'https://schema-registry.local:8081' });
-				expect(result).not.toHaveProperty('auth');
+				expect(result).toEqual({ client: { host: 'https://schema-registry.local:8081' } });
+				expect(result.client).not.toHaveProperty('auth');
 			});
 
 			it('should throw when basicAuth credential is missing the password', async () => {
@@ -1232,10 +1234,14 @@ describe('Kafka Utils', () => {
 				expect(agentOptions(arg.agent)).toMatchObject({ ca: CA, cert: CERT, key: KEY });
 			});
 
-			it('leaves an http registry agent without TLS material', async () => {
-				await createSchemaRegistry(contextFor({ ca: CA }, 'http'), '');
-
-				expect(agentOptions(lastRegistryArg().agent)).not.toHaveProperty('ca');
+			it.each<[string, Record<string, string>]>([
+				['a CA', { ca: CA }],
+				['a client pair', { cert: CERT, key: KEY }],
+			])('refuses TLS material on an http registry, given %s', async (_case, tls) => {
+				await expect(createSchemaRegistry(contextFor(tls, 'http'), '')).rejects.toThrow(
+					NodeOperationError,
+				);
+				expect(SchemaRegistry).not.toHaveBeenCalled();
 			});
 		});
 
