@@ -1,0 +1,47 @@
+packages/@n8n/nodes-langchain/utils/agent-execution/types.ts
+  s_126e90b504d18d::t_56eec27b045d9a 211-212
+  s_126e90b504d18d::t_e53b918e818de9 2
+packages/workflow/src/schemas.ts
+  s_126e90b504d18d::t_fa6aa8a85f7d3e 333
+packages/@n8n/nodes-langchain/nodes/agents/Agent/utils.ts
+  s_126e90b504d18d::t_56eec27b045d9a 15,80-83,93-94
+packages/frontend/editor-ui/src/app/utils/aiUtils.ts
+  s_126e90b504d18d::t_23e8da2273192c 109
+packages/workflow/src/interfaces.ts
+  s_126e90b504d18d::t_8ecaff6b0268c2 1320-1321
+  s_126e90b504d18d::t_fa6aa8a85f7d3e 3161-3162
+packages/@n8n/nodes-langchain/utils/helpers.ts
+  s_126e90b504d18d::t_343b38b301b676 6
+  s_126e90b504d18d::t_fa6aa8a85f7d3e 237,239,243-244,253,267,276
+packages/@n8n/nodes-langchain/nodes/agents/Agent/V3/AgentV3.node.ts
+  s_126e90b504d18d::t_56eec27b045d9a 37,39-40,49,130-144
+packages/@n8n/nodes-langchain/nodes/tools/ToolSkill/ToolSkill.node.ts
+  s_126e90b504d18d::t_8ecaff6b0268c2 113-119,184-186
+  s_126e90b504d18d::t_56eec27b045d9a 151-152
+packages/@n8n/nodes-langchain/utils/agent-execution/createEngineRequests.ts
+  s_126e90b504d18d::t_60e3a4a7b1d14e 333
+packages/cli/src/modules/skills/services/skill-workflow-proxy.service.ts
+  s_126e90b504d18d::t_8ecaff6b0268c2 67,70-76
+packages/@n8n/nodes-langchain/nodes/agents/Agent/agents/ToolsAgent/common.ts
+  s_126e90b504d18d::t_8ecaff6b0268c2 560-571,575-585,598
+  s_126e90b504d18d::t_56eec27b045d9a 591-597,599
+  s_126e90b504d18d::t_ea4576f4f7bcda 572-574
+packages/frontend/editor-ui/src/app/stores/nodeTypes.store.ts
+  s_126e90b504d18d::t_23e8da2273192c 259
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4694d7d4b6bfbffac74beeab1151d5e9ff99f43d",
+  "prompts": {},
+  "sessions": {
+    "s_126e90b504d18d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "53d0ed1b-1ddd-4373-8a47-d0ff0bb754c7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/app/constants/experiments.ts
+  s_95bfe39bb3e379::t_2592ac2226cb10 159
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2064243d2349663710200ca340c86220fc5e79ca",
+  "prompts": {},
+  "sessions": {
+    "s_95bfe39bb3e379": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ef9b81f8-ba5a-4f3b-b102-ea87734cbdb4",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}
