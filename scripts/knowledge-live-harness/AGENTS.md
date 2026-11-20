@@ -101,11 +101,12 @@ violation: in a seed-only workspace it is a row or a reply inside a picked
 container that `items.json` does not list.
 
 `run` writes `results/run-<time>.json` after every answer (`partial: true`
-until the run ends, so a crash keeps what was measured) and `.md` with two
-tables: per agent and class (pass rate, answers, citations, refusals,
-violations, average prompt tokens, total tokens per pass, tool calls, median
-wall time), and per question and agent with one mark per repetition (`P`
-pass, `F` fail, `V` fail with a scope violation, `T` timeout). A timeout
+until the run ends, so a crash keeps what was measured) and `.md` with three
+tables: per agent (pass rate per source and combined, average prompt tokens,
+total tokens per pass, tool calls, median wall time), per agent and class
+(the same figures plus answers, citations, refusals and violations), and per
+question and agent with one mark per repetition (`P` pass, `F` fail, `V`
+fail with a scope violation, `T` timeout). A timeout
 counts as a fail but not in the token, call and wall-time figures.
 `report file@agent,agent#prefix,prefix` keeps only those agents, and only the
 questions whose id starts with one of the prefixes, of a file, so a clean

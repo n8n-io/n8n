@@ -577,6 +577,35 @@ const median = (values) => {
 };
 const fmt = (value, digits = 0) => (value === null ? '-' : value.toFixed(digits));
 
+const passRate = (group) => {
+	if (group.length === 0) return '-';
+	const passes = group.filter((run) => run.score.pass).length;
+	return `${passes}/${group.length} (${Math.round((100 * passes) / group.length)}%)`;
+};
+
+/** One line per agent: pass rates per source and combined, and the cost figures. */
+function summarizeAgents(runs, agentKeys) {
+	const sources = [...new Set(runs.map((run) => run.question.source))].sort();
+	const lines = [
+		`| Agent | ${sources.map((source) => `${source} pass rate`).join(' | ')} | Combined pass rate | Prompt tokens (mean) | Tokens per pass | Tool calls | Wall s (median) |`,
+		`| --- | ${sources.map(() => '---').join(' | ')} | --- | --- | --- | --- | --- |`,
+	];
+	for (const agentKey of agentKeys) {
+		const group = runs.filter((run) => run.agentKey === agentKey);
+		if (group.length === 0) continue;
+		const answered = group.filter((run) => !run.metrics.timeout);
+		const passes = group.filter((run) => run.score.pass).length;
+		const totalTokens = group.reduce((sum, run) => sum + (run.metrics.totalTokens ?? 0), 0);
+		const perSource = sources.map((source) =>
+			passRate(group.filter((run) => run.question.source === source)),
+		);
+		lines.push(
+			`| ${agentKey} | ${perSource.join(' | ')} | ${passRate(group)} | ${fmt(average(answered.map((run) => run.metrics.promptTokens)))} | ${passes > 0 ? fmt(totalTokens / passes) : '-'} | ${fmt(average(answered.map((run) => run.metrics.toolCalls)), 1)} | ${fmt(median(answered.map((run) => run.metrics.wallMs / 1000)), 1)} |`,
+		);
+	}
+	return lines.join('\n');
+}
+
 /** One line per agent and class, plus a total line, as a markdown table. */
 function summarize(runs) {
 	const lines = [
@@ -682,7 +711,7 @@ async function run(client, scaffold, items, { agentKeys, repeat }) {
 			}
 		}
 	}
-	const summary = summarize(runs);
+	const summary = `${summarizeAgents(runs, agentKeys)}\n\n${summarize(runs)}`;
 	const comparison = compare(runs, agentKeys);
 	console.log(`\n${summary}\n\n${comparison}`);
 	await save(false);
@@ -735,7 +764,9 @@ async function report(files) {
 		);
 	}
 	const present = agentKeys.filter((agentKey) => runs.some((run) => run.agentKey === agentKey));
-	console.log(`\n${summarize(runs)}\n\n${compare(runs, present)}`);
+	console.log(
+		`\n${summarizeAgents(runs, present)}\n\n${summarize(runs)}\n\n${compare(runs, present)}`,
+	);
 }
 
 async function main() {
