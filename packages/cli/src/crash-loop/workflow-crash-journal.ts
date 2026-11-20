@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { ExecutionsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
@@ -57,7 +58,10 @@ export class WorkflowCrashJournal {
 	/** Workflows of the executions that did not finish, until the session starts. */
 	private readonly unfinishedWorkflowIds = new Set<string>();
 
-	constructor(private readonly logger: Logger) {
+	constructor(
+		private readonly logger: Logger,
+		private readonly executionsConfig: ExecutionsConfig,
+	) {
 		const state = this.read() ?? { streak: null, inFlight: {} };
 		this.streak = state.streak;
 		this.inFlight = new Map(Object.entries(state.inFlight));
@@ -97,6 +101,7 @@ export class WorkflowCrashJournal {
 	/** Returns the callback that marks the attempt as no longer in flight. */
 	recordStart(attempt: JobAttempt): () => void {
 		const { payload } = attempt;
+		if (!this.executionsConfig.recovery.workflowDeactivationEnabled) return () => {};
 		if (!isWorkflowNodeTaskPayload(payload)) return () => {};
 		const key = attemptKey(attempt);
 		this.inFlight.set(key, payload.workflowId);

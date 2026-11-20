@@ -1,4 +1,6 @@
 import { mockLogger } from '@n8n/backend-test-utils';
+import type { ExecutionsConfig } from '@n8n/config';
+import { mock } from 'vitest-mock-extended';
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -42,7 +44,9 @@ describe('WorkflowCrashJournal', () => {
 
 	const journalPath = () => `${crashJournal.file}.workflows`;
 	const readJournal = (): unknown => JSON.parse(readFileSync(journalPath(), 'utf8'));
-	const newSession = () => new WorkflowCrashJournal(mockLogger());
+	const executionsConfig = (workflowDeactivationEnabled = true) =>
+		mock<ExecutionsConfig>({ recovery: { workflowDeactivationEnabled } });
+	const newSession = () => new WorkflowCrashJournal(mockLogger(), executionsConfig());
 
 	/** One session that starts the attempts and then crashes with them in flight. */
 	const crashWith = (...attempts: Array<ReturnType<typeof attempt>>) => {
@@ -206,7 +210,7 @@ describe('WorkflowCrashJournal', () => {
 
 		it('does not throw when the write and the cleanup both fail', () => {
 			const logger = mockLogger();
-			const journal = new WorkflowCrashJournal(logger);
+			const journal = new WorkflowCrashJournal(logger, executionsConfig());
 			journal.startSession(false, t0);
 			const settle = journal.recordStart(attempt('1', 'wf-a'));
 			crashJournal.failWrites = true;
@@ -273,6 +277,16 @@ describe('WorkflowCrashJournal', () => {
 			journal.recordStart({ id: '1', leaseEpoch: 1, payload: { kind: 'system' } });
 
 			expect(readJournal()).toEqual({ streak: null, inFlight: {} });
+		});
+
+		it('writes nothing when workflow deactivation is disabled', () => {
+			const journal = new WorkflowCrashJournal(mockLogger(), executionsConfig(false));
+			journal.startSession(false, t0);
+			rmSync(journalPath());
+
+			journal.recordStart(attempt('1', 'wf-a'))();
+
+			expect(existsSync(journalPath())).toBe(false);
 		});
 	});
 
