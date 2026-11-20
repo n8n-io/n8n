@@ -286,6 +286,34 @@ describe('AssistantTurnEnvironmentFactory', () => {
 			},
 		);
 
+		it("passes the admin's saved login rules to the cloud browser task", async () => {
+			const { factory, fields } = createSetupFactory();
+			fields.settingsService.getAdminSettings.mockResolvedValue({
+				browserUseEnabled: false,
+				cloudBrowserEnabled: true,
+				cloudBrowserSavedLoginsMode: 'except',
+				cloudBrowserSavedLoginSites: ['github.com'],
+				// The default mock only lists the fields the other tests use.
+			} as never);
+			const cloudBrowser = {
+				isAvailable: vi.fn(async () => true),
+				startTask: vi.fn(async () => ({ status: 'started' as const, taskId: 'task-1' })),
+			};
+
+			const { orchestrationContext } = await factory.create(
+				params,
+				createRuntime({ cloudBrowser }),
+			);
+			await orchestrationContext.startCloudBrowserTask?.({ title: 'Sign in', goal: 'Sign in' });
+
+			expect(cloudBrowser.startTask).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({
+					savedLoginPolicy: { mode: 'except', sites: ['github.com'] },
+				}),
+			);
+		});
+
 		it('leaves out the optional hooks that a runtime does not supply', async () => {
 			const { factory } = createSetupFactory();
 

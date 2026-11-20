@@ -129,6 +129,68 @@ describe('SavedLoginsSettingsSection', () => {
 		});
 	});
 
+	describe('when the admin turned saved logins off', () => {
+		const savedLogin = {
+			id: 'login-1',
+			domain: 'github.com',
+			savedAt: '2026-11-01T10:00:00.000Z',
+			lastUsedAt: '2026-11-02T10:00:00.000Z',
+		};
+
+		beforeEach(() => {
+			setAvailability({ instanceAi: { cloudBrowserSavedLoginsEnabled: false } });
+		});
+
+		it('hides when the user has no saved logins', async () => {
+			await render();
+
+			expect(fetchSavedLogins).toHaveBeenCalledOnce();
+			expect(screen.queryByTestId('saved-logins-section')).not.toBeInTheDocument();
+		});
+
+		it('shows with a warning when the user has saved logins', async () => {
+			vi.mocked(fetchSavedLogins).mockResolvedValue({ savedLogins: [savedLogin] });
+			await render();
+
+			expect(screen.getByTestId('saved-logins-section')).toBeInTheDocument();
+			expect(screen.getByTestId('saved-logins-turned-off-notice')).toHaveTextContent(
+				'Saved logins are turned off on this instance',
+			);
+		});
+
+		it('hides when the saved logins cannot be loaded', async () => {
+			vi.mocked(fetchSavedLogins).mockRejectedValue(new Error('HTTP 502'));
+			await render();
+
+			expect(screen.queryByTestId('saved-logins-section')).not.toBeInTheDocument();
+		});
+
+		it('hides after the user deletes the last saved login and closes the dialog', async () => {
+			vi.mocked(fetchSavedLogins)
+				.mockResolvedValueOnce({ savedLogins: [savedLogin] })
+				.mockResolvedValueOnce({ savedLogins: [savedLogin] })
+				.mockResolvedValue({ savedLogins: [] });
+			await render();
+			await userEvent.click(screen.getByTestId('saved-logins-open'));
+			await screen.findByRole('dialog', { name: 'Saved browser logins' });
+
+			await userEvent.keyboard('{Escape}');
+			await flushPromises();
+
+			expect(fetchSavedLogins).toHaveBeenCalledTimes(3);
+			expect(screen.queryByTestId('saved-logins-section')).not.toBeInTheDocument();
+		});
+	});
+
+	it('does not load the saved logins or show a warning when saved logins are on', async () => {
+		setAvailability({ instanceAi: { cloudBrowserSavedLoginsEnabled: true } });
+		await render();
+
+		expect(fetchSavedLogins).not.toHaveBeenCalled();
+		expect(screen.getByTestId('saved-logins-section')).toBeInTheDocument();
+		expect(screen.queryByTestId('saved-logins-turned-off-notice')).not.toBeInTheDocument();
+	});
+
 	describe('dialog', () => {
 		it('starts closed and does not load the saved logins', async () => {
 			await render();

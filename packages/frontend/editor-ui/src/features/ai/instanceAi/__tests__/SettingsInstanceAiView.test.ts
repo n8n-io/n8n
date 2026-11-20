@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ref } from 'vue';
 import { fireEvent, waitFor } from '@testing-library/vue';
+import { flushPromises } from '@vue/test-utils';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -972,6 +973,119 @@ describe('SettingsInstanceAiView', () => {
 
 			expect(setField).toHaveBeenCalledWith('cloudBrowserEnabled', false);
 			expect(save).toHaveBeenCalled();
+		});
+
+		describe('saved logins', () => {
+			const setSavedLogins = (
+				settings: Partial<{
+					cloudBrowserEnabled: boolean;
+					cloudBrowserSavedLoginsMode: 'off' | 'all' | 'only' | 'except';
+					cloudBrowserSavedLoginSites: string[];
+				}>,
+			) => {
+				store.$patch({ settings: { ...store.settings, ...settings } });
+				// The view loads the settings when it mounts, so the load returns the same ones.
+				vi.mocked(fetchSettings).mockResolvedValue(store.settings as never);
+			};
+
+			beforeEach(() => {
+				enableGatewayCredits();
+			});
+
+			it('saves the mode the admin picks', async () => {
+				const setField = vi.spyOn(store, 'setField');
+				const save = vi.spyOn(store, 'save').mockResolvedValue(true);
+				const { getByTestId } = renderComponent();
+
+				await selectOption(
+					getByTestId('n8n-agent-saved-logins-mode'),
+					'settings.n8nAgent.savedLogins.mode.off',
+				);
+
+				expect(setField).toHaveBeenCalledWith('cloudBrowserSavedLoginsMode', 'off');
+				expect(save).toHaveBeenCalled();
+			});
+
+			it('locks the mode when the virtual browser is off', () => {
+				setSavedLogins({ cloudBrowserEnabled: false });
+
+				const { getByTestId } = renderComponent();
+
+				expect(getByTestId('n8n-agent-saved-logins-mode').querySelector('input')).toBeDisabled();
+			});
+
+			it.each(['off', 'all'] as const)('hides the site list in the %s mode', (mode) => {
+				setSavedLogins({ cloudBrowserSavedLoginsMode: mode });
+
+				const { queryByTestId } = renderComponent();
+
+				expect(queryByTestId('n8n-agent-saved-login-sites')).toBeNull();
+			});
+
+			it.each([
+				{ mode: 'only' as const, label: 'settings.n8nAgent.savedLogins.sites.allowedLabel' },
+				{ mode: 'except' as const, label: 'settings.n8nAgent.savedLogins.sites.blockedLabel' },
+			])('shows the site list with the $mode label', ({ mode, label }) => {
+				setSavedLogins({
+					cloudBrowserSavedLoginsMode: mode,
+					cloudBrowserSavedLoginSites: ['github.com', 'linkedin.com'],
+				});
+
+				const { getByLabelText } = renderComponent();
+
+				expect(getByLabelText(label)).toHaveValue('github.com\nlinkedin.com');
+			});
+
+			it('saves the sites from lines, commas and spaces when the list loses focus', async () => {
+				setSavedLogins({ cloudBrowserSavedLoginsMode: 'only' });
+				const setField = vi.spyOn(store, 'setField');
+				const save = vi.spyOn(store, 'save').mockResolvedValue(true);
+				const { getByTestId } = renderComponent();
+				await flushPromises();
+				const sites = getByTestId('n8n-agent-saved-login-sites');
+
+				await fireEvent.update(sites, 'github.com\nlinkedin.com, example.com  gitlab.com');
+				await fireEvent.blur(sites);
+
+				expect(setField).toHaveBeenCalledWith('cloudBrowserSavedLoginSites', [
+					'github.com',
+					'linkedin.com',
+					'example.com',
+					'gitlab.com',
+				]);
+				expect(save).toHaveBeenCalled();
+			});
+
+			it('does not save an unchanged list', async () => {
+				setSavedLogins({
+					cloudBrowserSavedLoginsMode: 'only',
+					cloudBrowserSavedLoginSites: ['github.com'],
+				});
+				const save = vi.spyOn(store, 'save').mockResolvedValue(true);
+				const { getByTestId } = renderComponent();
+				await flushPromises();
+
+				await fireEvent.blur(getByTestId('n8n-agent-saved-login-sites'));
+
+				expect(save).not.toHaveBeenCalled();
+			});
+
+			it('shows the stored list again when the server rejects a site', async () => {
+				setSavedLogins({
+					cloudBrowserSavedLoginsMode: 'only',
+					cloudBrowserSavedLoginSites: ['github.com'],
+				});
+				vi.spyOn(store, 'save').mockResolvedValue(false);
+				const { getByTestId } = renderComponent();
+				await flushPromises();
+				const sites = getByTestId('n8n-agent-saved-login-sites');
+
+				await fireEvent.update(sites, 'github.com\nlocalhost');
+				await fireEvent.blur(sites);
+				await flushPromises();
+
+				expect(sites).toHaveValue('github.com');
+			});
 		});
 	});
 

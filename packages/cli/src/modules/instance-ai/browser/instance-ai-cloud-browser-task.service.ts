@@ -29,6 +29,7 @@ import { nanoid } from 'nanoid';
 import { N8N_VERSION, WORKFLOW_SDK_VERSION } from '@/constants';
 
 import type { BrowserDomainGate } from './browser.helpers';
+import type { SavedLoginPolicy } from './cloud-browser-saved-login-policy';
 import type { InstanceAiCloudBrowserService } from './instance-ai-cloud-browser.service';
 import type { InstanceAiCreditService } from '../instance-ai-credit.service';
 import type { SuspendedThreadPersistenceService } from '../suspended-thread-persistence.service';
@@ -113,6 +114,8 @@ export interface CloudBrowserRunOptions {
 	tracing?: InstanceAiTraceContext;
 	/** The run's site approvals and permissions. */
 	domainGate: BrowserDomainGate;
+	/** The admin's rules for saved logins when the run started. */
+	savedLoginPolicy: SavedLoginPolicy;
 	/**
 	 * The run's credential type lookup, for the credentials the task creates. Empty for an
 	 * unknown type. Absent when the host cannot look up credential types.
@@ -335,6 +338,7 @@ export class InstanceAiCloudBrowserTaskService {
 				threadId,
 				taskId,
 				run.domainGate,
+				run.savedLoginPolicy,
 			);
 			mcpServer.setCurrentWindowListener(() =>
 				eventBus.publish(threadId, {

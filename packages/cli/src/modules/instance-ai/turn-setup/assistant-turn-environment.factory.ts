@@ -624,6 +624,10 @@ export class AssistantTurnEnvironmentFactory {
 						permissionMode: context.permissions?.fetchUrl,
 						createCredentialPermissionMode: context.permissions?.createCredential,
 					},
+					savedLoginPolicy: {
+						mode: adminSettings.cloudBrowserSavedLoginsMode,
+						sites: adminSettings.cloudBrowserSavedLoginSites,
+					},
 					getCredentialFields: context.credentialService.getCredentialFields,
 				});
 		}

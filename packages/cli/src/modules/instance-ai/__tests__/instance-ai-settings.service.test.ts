@@ -1992,6 +1992,80 @@ describe('InstanceAiSettingsService', () => {
 		});
 	});
 
+	describe('cloud browser saved logins setting', () => {
+		const admin = mock<User>({ id: 'admin-1' });
+
+		beforeEach(() => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+		});
+
+		it('allows saved logins on all sites by default', async () => {
+			const settings = await service.getAdminSettings();
+
+			expect(settings.cloudBrowserSavedLoginsMode).toBe('all');
+			expect(settings.cloudBrowserSavedLoginSites).toEqual([]);
+			expect(service.isCloudBrowserSavedLoginsEnabled()).toBe(true);
+		});
+
+		it.each([
+			{ mode: 'off' as const, enabled: false },
+			{ mode: 'all' as const, enabled: true },
+			{ mode: 'only' as const, enabled: true },
+			{ mode: 'except' as const, enabled: true },
+		])('saves the $mode mode', async ({ mode, enabled }) => {
+			const result = await service.updateAdminSettings(
+				{ cloudBrowserSavedLoginsMode: mode },
+				admin,
+			);
+
+			expect(result.cloudBrowserSavedLoginsMode).toBe(mode);
+			expect(persistedSettingsValue).toContain(`"cloudBrowserSavedLoginsMode":"${mode}"`);
+			expect(service.isCloudBrowserSavedLoginsEnabled()).toBe(enabled);
+		});
+
+		it('saves the registrable domain of each site once', async () => {
+			const result = await service.updateAdminSettings(
+				{
+					cloudBrowserSavedLoginSites: [
+						'https://www.github.com/login',
+						'GitHub.com',
+						'accounts.linkedin.com',
+					],
+				},
+				admin,
+			);
+
+			expect(result.cloudBrowserSavedLoginSites).toEqual(['github.com', 'linkedin.com']);
+			expect(jsonParse<Record<string, unknown>>(persistedSettingsValue ?? '{}')).toMatchObject({
+				cloudBrowserSavedLoginSites: ['github.com', 'linkedin.com'],
+			});
+		});
+
+		it('rejects a site without a registrable domain, and saves nothing', async () => {
+			await expect(
+				service.updateAdminSettings(
+					{ cloudBrowserSavedLoginSites: ['github.com', 'localhost'] },
+					admin,
+				),
+			).rejects.toThrow(new UnprocessableRequestError('"localhost" is not a valid site'));
+			expect(settingsRepository.upsertByKey).not.toHaveBeenCalled();
+			expect((await service.getAdminSettings()).cloudBrowserSavedLoginSites).toEqual([]);
+		});
+
+		it('loads the saved mode and sites from the database', async () => {
+			persistedSettingsValue = JSON.stringify({
+				cloudBrowserSavedLoginsMode: 'except',
+				cloudBrowserSavedLoginSites: ['github.com'],
+			});
+
+			await service.loadFromDb();
+
+			const settings = await service.getAdminSettings();
+			expect(settings.cloudBrowserSavedLoginsMode).toBe('except');
+			expect(settings.cloudBrowserSavedLoginSites).toEqual(['github.com']);
+		});
+	});
+
 	describe('getAdminSettings env-configured flags', () => {
 		beforeEach(() => {
 			aiService.isProxyEnabled.mockReturnValue(false);

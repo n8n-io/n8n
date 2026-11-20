@@ -556,6 +556,7 @@ export {
 	InstanceAiCloudBrowserReturnControlRequest,
 	type InstanceAiCloudBrowserReturnControlResponse,
 	type InstanceAiSavedLogin,
+	type InstanceAiSavedLoginsMode,
 	type InstanceAiSavedLoginsResponse,
 	InstanceAiEnsureThreadRequest,
 	InstanceAiPersistPendingAgentRequest,
@@ -606,6 +607,7 @@ export {
 	INSTANCE_AI_PREFILL_TYPE_FALLBACK,
 	instanceAiPromptConfigurationSchema,
 	INSTANCE_AI_RUN_LIMIT_REASONS,
+	instanceAiSavedLoginsModeSchema,
 } from './schemas/instance-ai.schema';
 
 export type {
