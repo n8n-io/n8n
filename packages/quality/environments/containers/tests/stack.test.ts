@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
@@ -9,6 +9,7 @@ import {
 } from 'testcontainers';
 import { afterEach, beforeEach, expect, onTestFinished, test, vi } from 'vitest';
 
+import { ENGINE_SHARED_STORAGE_PATH } from '../services/engine';
 import { createN8NStack, type N8NConfig, type N8NStack } from '../stack';
 
 const projectName = 'test-stack';
@@ -18,11 +19,14 @@ const queueNames = [main, `${projectName}-n8n-worker-1`, `${projectName}-n8n-web
 const serviceFile = { target: '/tmp/service-ca.pem', content: 'service certificate' };
 const keyFile = { target: '/tmp/encryption-key', content: 'key-from-file' };
 
+type BindMounts = Parameters<GenericContainer['withBindMounts']>[0];
+
 const built = new Map<
 	string,
 	{
 		environment: Record<string, string>;
 		files: Parameters<GenericContainer['withCopyContentToContainer']>[0];
+		bindMounts: BindMounts;
 		reuse: boolean;
 	}
 >();
@@ -40,11 +44,19 @@ function startedContainer(name: string): StartedTestContainer {
 vi.mock('testcontainers', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('testcontainers')>();
 	class GenericContainer extends actual.GenericContainer {
+		private bindMounts: BindMounts = [];
+
+		override withBindMounts(bindMounts: BindMounts): this {
+			this.bindMounts = bindMounts;
+			return super.withBindMounts(bindMounts);
+		}
+
 		override async start(): Promise<StartedTestContainer> {
 			const name = this.createOpts.name!;
 			built.set(name, {
 				environment: this.environment,
 				files: this.contentsToCopy,
+				bindMounts: this.bindMounts,
 				reuse: this.reuse,
 			});
 			return startedContainer(name);
@@ -131,12 +143,51 @@ test('keeps the default env and service files when the new options are absent', 
 	await startStack(queue);
 
 	for (const name of queueNames) {
-		const { environment, files, reuse } = built.get(name)!;
+		const { environment, files, bindMounts, reuse } = built.get(name)!;
 		expect(Object.hasOwn(environment, 'N8N_ENCRYPTION_KEY')).toBe(true);
+		expect(environment.N8N_STORAGE_PATH).toBeUndefined();
+		expect(environment.N8N_DEFAULT_BINARY_DATA_MODE).toBeUndefined();
 		expect(files).toEqual([serviceFile]);
+		expect(bindMounts).toEqual([]);
 		expect(reuse).toBe(true);
 	}
 });
+
+test.each([
+	{ configuredMode: undefined, expectedMode: 'filesystem' },
+	{ configuredMode: 'database', expectedMode: 'database' },
+])(
+	'shares one storage mount across all queue roles in $expectedMode mode',
+	async ({ configuredMode, expectedMode }) => {
+		const { stop } = await startStack({
+			...queue,
+			sharedStorage: true,
+			env: {
+				N8N_STORAGE_PATH: '/custom/storage',
+				N8N_BINARY_DATA_STORAGE_PATH: '/custom/binary',
+				...(configuredMode ? { N8N_DEFAULT_BINARY_DATA_MODE: configuredMode } : {}),
+			},
+		});
+		const mainMounts = built.get(main)!.bindMounts;
+		expect(mainMounts).toHaveLength(1);
+		const [{ source }] = mainMounts;
+
+		for (const name of queueNames) {
+			const { environment, bindMounts, reuse } = built.get(name)!;
+			expect(environment).toMatchObject({
+				N8N_STORAGE_PATH: ENGINE_SHARED_STORAGE_PATH,
+				N8N_DEFAULT_BINARY_DATA_MODE: expectedMode,
+			});
+			expect(environment.N8N_BINARY_DATA_STORAGE_PATH).toBeUndefined();
+			expect(bindMounts).toEqual([{ source, target: ENGINE_SHARED_STORAGE_PATH, mode: 'rw' }]);
+			expect(reuse).toBe(false);
+		}
+
+		expect((await stat(source)).isDirectory()).toBe(true);
+		await stop();
+		await expect(stat(source)).rejects.toMatchObject({ code: 'ENOENT' });
+	},
+);
 
 test.each([
 	{
