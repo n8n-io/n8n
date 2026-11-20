@@ -7,6 +7,7 @@ import {
 	LeaseSession,
 	LeaseSessionRepository,
 	parseDbTime,
+	TransactionRunner,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
@@ -80,6 +81,23 @@ describe('LeaseSessionRepository', () => {
 		expect(row!.expiresAt.getTime()).toBeLessThanOrEqual(dbAfter + 20_000);
 	});
 
+	it('renews a live session for the lease length it is given', async () => {
+		const session = newSession(20);
+		await repository.insertSession(session, {});
+
+		const dbBefore = await readDbNow();
+		await repository.renewLive(session.id, 45, {});
+		const dbAfter = await readDbNow();
+
+		const row = await findRow(session.id);
+		expect(row!.expiresAt.getTime()).toBeGreaterThanOrEqual(dbBefore + 45_000);
+		expect(row!.expiresAt.getTime()).toBeLessThanOrEqual(dbAfter + 45_000);
+	});
+
+	it('reports failure when the session does not exist', async () => {
+		await expect(repository.renewLive(randomUUID(), 20, {})).resolves.toBe(false);
+	});
+
 	it('leaves an expired session unchanged and reports failure', async () => {
 		const session = newSession(20);
 		await repository.insertSession(session, {});
@@ -95,11 +113,27 @@ describe('LeaseSessionRepository', () => {
 		expect(after!.expiresAt).toEqual(before!.expiresAt);
 	});
 
-	it('deletes a session', async () => {
+	it('deletes only the given session', async () => {
 		const session = newSession(20);
+		const other = newSession(20);
 		await repository.insertSession(session, {});
+		await repository.insertSession(other, {});
 
 		await repository.deleteSession(session.id, {});
+
+		expect(await findRow(session.id)).toBeNull();
+		expect(await findRow(other.id)).not.toBeNull();
+	});
+
+	it('writes inside the transaction of the context it is given', async () => {
+		const session = newSession(20);
+
+		await expect(
+			Container.get(TransactionRunner).run({}, async (ctx) => {
+				await repository.insertSession(session, ctx);
+				throw new Error('roll back');
+			}),
+		).rejects.toThrow('roll back');
 
 		expect(await findRow(session.id)).toBeNull();
 	});
