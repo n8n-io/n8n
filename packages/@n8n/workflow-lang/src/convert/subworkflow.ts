@@ -213,8 +213,33 @@ export function lowerExecuteWorkflow(c: NodeContext): void {
 	);
 	w.line(`const ${out}: Json[] = [];`);
 	if (errors) w.line(`const ${errors}: Json[] = [];`);
+	// v1 sets one paired item on each output item in two of the forms: the item of its call in
+	// mode "each", and the item at the same index when the node does not wait. In the third form
+	// (mode "once" with a wait) v1 keeps the paired items of the sub-workflow, which the converted
+	// code does not see, so a reader through the node is not paired.
+	const tracked = c.pairsWanted === true && c.setPairs !== undefined;
+	const pairVar =
+		tracked && onError === 'stopWorkflow' && (mode === 'each' || !wait) ? `${out}PairData` : null;
+	if (tracked && pairVar === null) {
+		c.noPairs?.(
+			onError !== 'stopWorkflow'
+				? 'sub-workflow with a continue setting'
+				: 'sub-workflow that the node waits for, which gives its own paired items',
+		);
+	}
+	if (pairVar !== null) {
+		w.line(`const ${pairVar}: Json = { items: ${out}, paired: [] };`);
+		c.setPairs?.(pairVar, 0, true);
+	}
 	w.open(`if (${c.input}.length > 0) {`);
-	const run = (list: string, target: string) => {
+	/** The line that copies `list` into `target`, with the pair of each item when it is known. */
+	const copy = (list: string, target: string, pair: 'call' | 'position' | null): string => {
+		if (pairVar === null || pair === null) return `for (const r of ${list}) ${target}.push(r);`;
+		if (pair === 'call')
+			return `for (const r of ${list}) { ${target}.push(r); ${pairVar}.paired.push(${INDEX}); }`;
+		return `for (let ${INDEX} = 0; ${INDEX} < ${list}.length; ${INDEX}++) { ${target}.push(${list}[${INDEX}]); ${pairVar}.paired.push(${INDEX}); }`;
+	};
+	const run = (list: string, target: string, pair: 'call' | 'position' | null) => {
 		if (!wait) {
 			w.open('try {');
 			w.line(`await ${call.fn}(${list});`);
@@ -222,11 +247,18 @@ export function lowerExecuteWorkflow(c: NodeContext): void {
 			w.depth++;
 			w.comment('v1 does not wait for the sub-workflow, so its errors do not stop this workflow.');
 			w.close();
-			w.line(`for (const r of ${list}) ${target}.push(r);`);
+			w.line(copy(list, target, pair));
 			return;
 		}
 		if (onError === 'stopWorkflow') {
-			w.line(`for (const r of (await ${call.fn}(${list}))[0] ?? []) ${target}.push(r);`);
+			const source = `(await ${call.fn}(${list}))[0] ?? []`;
+			// Only mode "each" reaches this line with pairs: each item of a call pairs with the
+			// input item of that call.
+			w.line(
+				pairVar === null
+					? `for (const r of ${source}) ${target}.push(r);`
+					: `for (const r of ${source}) { ${target}.push(r); ${pairVar}.paired.push(${INDEX}); }`,
+			);
 			return;
 		}
 		w.open('try {');
@@ -238,11 +270,17 @@ export function lowerExecuteWorkflow(c: NodeContext): void {
 		w.close();
 	};
 	if (mode === 'each') {
-		w.open(`for (const item of ${items}) {`);
-		run('[item]', out);
+		if (pairVar === null) {
+			w.open(`for (const item of ${items}) {`);
+			run('[item]', out, null);
+		} else {
+			w.open(`for (let ${INDEX} = 0; ${INDEX} < ${items}.length; ${INDEX}++) {`);
+			w.line(`const item = ${items}[${INDEX}];`);
+			run('[item]', out, 'call');
+		}
 		w.close();
 	} else {
-		run(items, out);
+		run(items, out, pairVar === null ? null : 'position');
 	}
 	w.close();
 }

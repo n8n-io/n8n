@@ -24,6 +24,5 @@
 		"Read Expr"
 	],
 	"runDetails": true,
-	"skipNodeMetadata": true,
-	"expectRefusal": true
+	"skipNodeMetadata": true
 }
