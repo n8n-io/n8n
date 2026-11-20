@@ -197,7 +197,7 @@ export class SourceControlExportService {
 				files.push(
 					...workflows.map((workflow) => ({
 						id: workflow.id,
-						name: this.getWorkflowPath(workflow.name),
+						name: this.getWorkflowPath(workflow.id),
 					})),
 				);
 			}
@@ -543,7 +543,7 @@ export class SourceControlExportService {
 					foundCredentialIds.add(sharing.credentialsId);
 					files.push({
 						id: sharing.credentials.id,
-						name: path.join(this.credentialExportFolder, `${sharing.credentials.name}.json`),
+						name: this.getCredentialsPath(sharing.credentials.id),
 					});
 				}
 			}
