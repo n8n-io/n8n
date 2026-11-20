@@ -256,7 +256,6 @@ describe('McpService scope enforcement', () => {
 					rest: 'rest',
 					mcpBuilderEnabled: builderEnabled,
 				},
-				tags: { disabled: false },
 				diagnostics: { enabled: false, frontendConfig: '' },
 			}),
 			mockInstance(TelemetryProxy),

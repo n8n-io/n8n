@@ -2,6 +2,7 @@
 import '@/zod-alias-support';
 
 import { uninstallGlobalProxyAgent } from '@n8n/backend-network/testing';
+import { CodeSandboxModule } from '@n8n/backend-module-code-sandbox';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { AuthRolesService, DbConnection, DeploymentKeyRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -9,6 +10,7 @@ import { InstanceSettings, BinaryDataConfig, ErrorReporter } from 'n8n-core';
 import http from 'node:http';
 import https from 'node:https';
 
+import { EncryptionBootstrapService } from '@/encryption/encryption-bootstrap.service';
 import { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
 import { Start } from '../start';
 import { WaitTracker } from '@/wait-tracker';
@@ -55,6 +57,9 @@ const deploymentKeyRepository = mockInstance(DeploymentKeyRepository);
 deploymentKeyRepository.findActiveIdentifier.mockResolvedValue(null);
 deploymentKeyRepository.seedActiveIdentifier.mockResolvedValue(undefined);
 
+const encryptionBootstrapService = mockInstance(EncryptionBootstrapService);
+encryptionBootstrapService.run.mockResolvedValue(undefined);
+
 const loadNodesAndCredentials = mockInstance(LoadNodesAndCredentials);
 loadNodesAndCredentials.init.mockResolvedValue(undefined);
 loadNodesAndCredentials.postProcessLoaders.mockResolvedValue(undefined);
@@ -91,6 +96,7 @@ const communityPackagesService = mockInstance(CommunityPackagesService);
 communityPackagesService.init.mockResolvedValue(undefined);
 const taskRunnerModule = mockInstance(TaskRunnerModule);
 taskRunnerModule.start.mockResolvedValue(undefined);
+const codeSandboxModule = mockInstance(CodeSandboxModule);
 const pollJobProvider = mockInstance(PollJobProvider);
 
 const instanceSettings = Container.get(InstanceSettings);
@@ -175,7 +181,9 @@ describe('Start - AuthRolesService initialization', () => {
 		Container.set(CommunityPackagesConfig, mockInstance(CommunityPackagesConfig));
 		Container.set(CommunityPackagesService, communityPackagesService);
 		Container.set(TaskRunnerModule, taskRunnerModule);
+		Container.set(CodeSandboxModule, codeSandboxModule);
 		Container.set(DeploymentKeyRepository, deploymentKeyRepository);
+		Container.set(EncryptionBootstrapService, encryptionBootstrapService);
 		Container.set(
 			JwtService,
 			mockInstance(JwtService, { initialize: vi.fn().mockResolvedValue(undefined) }),
@@ -351,6 +359,37 @@ describe('Start - AuthRolesService initialization', () => {
 			await start.init();
 
 			expect(authRolesService.init).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe.each(['task-runners', 'sandbox'] as const)('init - %s code execution', (backend) => {
+		beforeEach(() => {
+			setupInstanceSettings('main', false, false);
+			start['globalConfig'].codeExecution.backend = backend;
+		});
+
+		afterEach(() => {
+			vi.unstubAllEnvs();
+		});
+
+		it.each([undefined, 'false', 'true'])(
+			'should skip code execution on queue mains when the legacy offload flag is %s',
+			async (offloadFlag) => {
+				start['globalConfig'].executions.mode = 'queue';
+				vi.stubEnv('OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS', offloadFlag);
+
+				await start.init();
+
+				expect(taskRunnerModule.start).not.toHaveBeenCalled();
+				expect(codeSandboxModule.start).not.toHaveBeenCalled();
+			},
+		);
+
+		it('should start only the selected code backend in regular mode', async () => {
+			await start.init();
+
+			expect(taskRunnerModule.start).toHaveBeenCalledTimes(backend === 'task-runners' ? 1 : 0);
+			expect(codeSandboxModule.start).toHaveBeenCalledTimes(backend === 'sandbox' ? 1 : 0);
 		});
 	});
 

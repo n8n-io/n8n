@@ -12,7 +12,6 @@ import {
 	AI_CATEGORY_ROOT_NODES,
 	AI_CATEGORY_TOOLS,
 	AI_CATEGORY_VECTOR_STORES,
-	AI_CODE_NODE_TYPE,
 	AI_MCP_TOOL_NODE_TYPE,
 	AI_NODE_CREATOR_VIEW,
 	AI_OTHERS_NODE_CREATOR_VIEW,
@@ -63,9 +62,8 @@ import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useKeyboardNavigation } from './useKeyboardNavigation';
 
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { AI_TRANSFORM_NODE_TYPE, NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import type { NodeConnectionType, INodeFilter } from 'n8n-workflow';
-import { useSettingsStore } from '@n8n/stores/settings.store';
 
 export type CommunityNodeDetails = {
 	key: string;
@@ -129,7 +127,6 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const { getActiveItemIndex } = useKeyboardNavigation();
 	const i18n = useI18n();
-	const settingsStore = useSettingsStore();
 
 	const viewStacks = ref<ViewStack[]>([]);
 
@@ -515,9 +512,6 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 				panelClass: relatedAIView?.properties.panelClass,
 				connectionType,
 				baseFilter: (i: INodeCreateElement) => {
-					// AI Code node could have any connection type so we don't want to display it
-					// in the compatible connection view as it would be displayed in all of them
-					if (i.key === AI_CODE_NODE_TYPE) return false;
 					const displayNode = nodesByConnectionType[connectionType].includes(i.key);
 
 					// TODO: Filtering works currently fine for displaying compatible node when dropping
@@ -656,9 +650,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 	}
 
 	function subcategoryItems(stack: ViewStack): INodeCreateElement[] {
-		const items = (itemsBySubcategory.value[stack.subcategory ?? DEFAULT_SUBCATEGORY] ?? []).filter(
-			(item) => settingsStore.isAskAiEnabled || item.key !== AI_TRANSFORM_NODE_TYPE,
-		);
+		const items = itemsBySubcategory.value[stack.subcategory ?? DEFAULT_SUBCATEGORY] ?? [];
 		return stack.sections ? groupItemsInSections(items, stack.sections) : items;
 	}
 

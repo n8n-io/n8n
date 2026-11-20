@@ -48,7 +48,7 @@ describe('Image Edit Operation', () => {
 		mockNode = mock<INode>({
 			id: 'test-node',
 			name: 'OpenAI Image Edit',
-			type: 'n8n-nodes-base.openAi',
+			type: '@n8n/n8n-nodes-langchain.openAi',
 			typeVersion: 2,
 			position: [0, 0],
 			parameters: {},
@@ -463,7 +463,7 @@ describe('Image Edit Operation', () => {
 			mockNode = mock<INode>({
 				id: 'test-node',
 				name: 'OpenAI Image Edit',
-				type: 'n8n-nodes-base.openAi',
+				type: '@n8n/n8n-nodes-langchain.openAi',
 				typeVersion: 2.3,
 				position: [0, 0],
 				parameters: {},

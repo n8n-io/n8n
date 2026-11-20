@@ -22,7 +22,11 @@ type ChatHubFixtures = {
 
 export const chatHubTestConfig = {
 	timezoneId: 'America/New_York',
-	capability: PROXY_WITHOUT_COMMUNITY_PACKAGES,
+	// Chat hub is deprecated and no longer a default module, so opt in for these tests.
+	capability: {
+		...PROXY_WITHOUT_COMMUNITY_PACKAGES,
+		env: { ...PROXY_WITHOUT_COMMUNITY_PACKAGES.env, N8N_ENABLED_MODULES: 'chat-hub' },
+	},
 } as const;
 
 export const test = base.extend<ChatHubFixtures>({

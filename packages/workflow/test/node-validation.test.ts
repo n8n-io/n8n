@@ -416,12 +416,10 @@ describe('node-validation', () => {
 			).toThrow('boom');
 		});
 
-		// An expression that evaluates to a non-list is the normal state of an
-		// unconfigured node: the LangChain Code node maps over its `Inputs`
-		// collection, which is empty by default, and the engine swallows the
-		// resulting TypeError into `null`. The engine then reads that as "no
-		// inputs" and runs, so neither caller may treat it as an error — doing
-		// so blocks publishing a workflow the runtime is happy with.
+		// An expression that evaluates to a non-list can be the normal state of
+		// an unconfigured node. The engine reads that as "no inputs" and runs.
+		// Callers must not treat this result as an error. Doing so could block a
+		// workflow that the runtime can run.
 		describe('when the expression resolves to no list at all', () => {
 			const unresolved = {
 				expression: { getSimpleParameterValue: () => null },

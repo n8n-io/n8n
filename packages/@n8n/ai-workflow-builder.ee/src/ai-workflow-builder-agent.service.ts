@@ -162,11 +162,7 @@ export class AiWorkflowBuilderService {
 
 	private filterNodeTypes(nodeTypes: INodeTypeDescription[]): INodeTypeDescription[] {
 		// These types are ignored because they tend to cause issues when generating workflows
-		const ignoredTypes = new Set([
-			'@n8n/n8n-nodes-langchain.toolVectorStore',
-			'@n8n/n8n-nodes-langchain.documentGithubLoader',
-			'@n8n/n8n-nodes-langchain.code',
-		]);
+		const ignoredTypes = new Set(['@n8n/n8n-nodes-langchain.toolVectorStore']);
 
 		const isBuiltInNode = (name: string) =>
 			name.startsWith('n8n-nodes-base.') || name.startsWith('@n8n/');

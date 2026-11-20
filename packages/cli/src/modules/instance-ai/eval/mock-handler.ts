@@ -11,13 +11,13 @@
 import { Tool } from '@n8n/agents/tool';
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
+import { OperationalError } from '@n8n/errors';
 import { createEvalAgent, extractText } from '@n8n/instance-ai';
 import { isRecord } from '@n8n/utils/is-record';
 import { sleep } from '@n8n/utils/sleep';
 import type { EvalLlmMockHandler, EvalMockHttpResponse, FixtureSizeHint } from 'n8n-core';
 import { buildPdfWithText, synthesizeBinaryFixture } from 'n8n-core';
-import { HTTP_REQUEST_NODE_TYPE, HTTP_REQUEST_TOOL_LANGCHAIN_NODE_TYPE } from 'n8n-workflow';
-import { OperationalError } from '@n8n/errors';
+import { HTTP_REQUEST_AS_TOOL_NODE_TYPE, HTTP_REQUEST_NODE_TYPE } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { buildDateAnchors } from './date-anchors';
@@ -113,8 +113,7 @@ const PLACEHOLDER_API_NOTE =
  */
 const GENERIC_HTTP_CLIENT_NODE_TYPES = new Set([
 	HTTP_REQUEST_NODE_TYPE,
-	'n8n-nodes-base.httpRequestTool',
-	HTTP_REQUEST_TOOL_LANGCHAIN_NODE_TYPE,
+	HTTP_REQUEST_AS_TOOL_NODE_TYPE,
 	'n8n-nodes-base.graphql',
 ]);
 
@@ -528,7 +527,7 @@ async function generateMockResponse(
 	// A request without a URL is un-mockable and never comes from a correctly
 	// configured node. Declarative (routing) nodes emit one when the selected
 	// resource/operation doesn't exist on the node type — routing then
-	// contributes neither URL nor method (observed: n8n-nodes-base.openAi
+	// contributes neither URL nor method (observed: @n8n/n8n-nodes-langchain.openAi
 	// configured with audio/transcribe, which only the LangChain OpenAI node
 	// supports). Answer with a descriptive 400 so the node fails with a real
 	// API-shaped error the verifier can trace to the node's configuration.
@@ -1154,7 +1153,7 @@ const BASE64_BODY_RE = /^[A-Za-z0-9+/=\s]+$/;
  * CONTENT but cannot author valid binary: a PDF part's body (plaintext per the
  * quirk guidance, or a garbage base64 stub) becomes a real PDF carrying that
  * text; image parts get the standard decodable fixture. Downstream parsers
- * (Extract PDF Text via pdfjs, Edit Image via GraphicsMagick) then run on
+ * (Extract PDF Text via pdfjs and Edit Image) then run on
  * structurally valid bytes instead of crashing.
  */
 export function substituteBinaryMimeParts(rfc822: string): string {

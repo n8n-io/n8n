@@ -120,7 +120,7 @@ export interface FrontendSettings {
 	authCookie: {
 		secure: boolean;
 	};
-	binaryDataMode: 'default' | 'filesystem' | 's3' | 'azure' | 'database';
+	binaryDataMode: 'filesystem' | 's3' | 'azure' | 'database';
 	releaseChannel: 'stable' | 'beta' | 'nightly' | 'dev' | 'rc';
 	n8nMetadata?: {
 		userId?: string;
@@ -179,7 +179,6 @@ export interface FrontendSettings {
 			enabled: boolean;
 		};
 	};
-	workflowTagsDisabled: boolean;
 	workflowsAutosaveDisabled: boolean;
 	workflowsGroupsWithTriggersEnabled: boolean;
 	workflowsGroupsWithManyBoundariesEnabled: boolean;
@@ -202,13 +201,6 @@ export interface FrontendSettings {
 		enabled: boolean;
 		setup: boolean;
 		cloudUbbEnabled: boolean;
-	};
-	/**
-	 * @deprecated Gates the AI Transform node's code generation. No longer gates
-	 * the Code node's "Ask AI" tab, which is hidden. Removed in v3.
-	 */
-	askAi: {
-		enabled: boolean;
 	};
 	aiBuilder: {
 		enabled: boolean;
@@ -443,8 +435,6 @@ export type FrontendModuleSettings = {
 		forProjects: boolean;
 		/** Whether role-based access control for external secrets is enabled. */
 		roleBasedAccess: boolean;
-		/** Whether system roles (admin, editor) have external secrets scopes. */
-		systemRolesEnabled: boolean;
 	};
 
 	/**

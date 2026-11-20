@@ -2,7 +2,6 @@ import type { FolderService } from '@/services/folder.service';
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import type { AgentIntegrationConfig, AgentJsonConfig } from '@n8n/api-types';
 import { createTeamProject, mockLogger, testDb, testModules } from '@n8n/backend-test-utils';
-import type { GlobalConfig } from '@n8n/config';
 import {
 	Person,
 	TransactionRunner,
@@ -224,7 +223,6 @@ describe('AgentRepository', () => {
 				mock<AgentSetupCompletionService>(),
 				mock(),
 				definitionService,
-				mock<GlobalConfig>({ tags: { disabled: false } }),
 				mock<TagService>(),
 				mock<FolderService>(),
 				mock(),

@@ -185,7 +185,6 @@ export type PreparedWorkflowUpdate = {
 	updatePayload: QueryDeepPartialEntity<WorkflowEntity>;
 	cleared: PolicyCleared<'workflowSave'>;
 	saveNewVersion: boolean;
-	tagsDisabled: boolean;
 	versionIdToPublish: string | null;
 	settingsChanged: boolean;
 	/** The caller's context, for the audit events after the save. */
@@ -875,7 +874,6 @@ export class WorkflowService {
 			updatePayload,
 			cleared,
 			saveNewVersion,
-			tagsDisabled: this.globalConfig.tags.disabled,
 			versionIdToPublish,
 			settingsChanged: settingsChange.live,
 			ctx,
@@ -1002,7 +1000,7 @@ export class WorkflowService {
 		ctx: OperationContext = {},
 		{ propagateVersionHistoryErrors = false }: { propagateVersionHistoryErrors?: boolean } = {},
 	) {
-		const { user, updatePayload, cleared, saveNewVersion, tagsDisabled } = prepared;
+		const { user, updatePayload, cleared, saveNewVersion } = prepared;
 		const workflowId = prepared.workflow.id;
 		const { tagIds, autosaved, source, versionName, versionDescription } = prepared.options;
 		if (saveNewVersion) {
@@ -1026,12 +1024,12 @@ export class WorkflowService {
 			...ctx,
 			policyCleared: cleared,
 		});
-		if (tagIds && !tagsDisabled) {
+		if (tagIds) {
 			await this.workflowTagMappingRepository.overwriteTaggings(workflowId, tagIds, ctx);
 		}
 		const savedWorkflow = await this.workflowRepository.get(
 			{ id: workflowId },
-			{ relations: tagsDisabled ? ['activeVersion'] : ['tags', 'activeVersion'] },
+			{ relations: ['tags', 'activeVersion'] },
 			ctx,
 		);
 		if (!savedWorkflow) {

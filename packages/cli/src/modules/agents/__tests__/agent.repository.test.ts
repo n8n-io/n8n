@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests intentionally reference unbound methods */
 import type { AgentIntegrationConfig } from '@n8n/api-types';
-import type { GlobalConfig } from '@n8n/config';
 import {
 	AgentTagMapping,
 	LIKE_ESCAPE_CLAUSE,
@@ -18,7 +17,6 @@ import { AgentRepository } from '../repositories/agent.repository';
 
 const entityManager = mockEntityManager(Agent);
 const mockDataSource = { manager: entityManager };
-const globalConfig = mock<GlobalConfig>({ tags: { disabled: false } });
 
 describe('AgentRepository', () => {
 	let repository: AgentRepository;
@@ -26,11 +24,9 @@ describe('AgentRepository', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		globalConfig.tags.disabled = false;
 		repository = new AgentRepository(
 			mockDataSource as never,
 			mock<TransactionRunner>(),
-			globalConfig,
 			folderRepository,
 			mock<ServiceAccountRepository>(),
 		);
@@ -56,19 +52,6 @@ describe('AgentRepository', () => {
 			const result = await repository.findByIdAndProjectId('agent-1', 'project-1');
 
 			expect(result).toBeNull();
-		});
-
-		it('omits the tags relation when tags are disabled', async () => {
-			globalConfig.tags.disabled = true;
-			const agent = mock<Agent>({ id: 'agent-1', projectId: 'project-1' });
-			vi.spyOn(repository, 'findOne').mockResolvedValue(agent);
-
-			await repository.findByIdAndProjectId('agent-1', 'project-1');
-
-			expect(repository.findOne).toHaveBeenCalledWith({
-				where: { id: 'agent-1', projectId: 'project-1', scope: 'project' },
-				relations: { activeVersion: true },
-			});
 		});
 	});
 
@@ -307,23 +290,13 @@ describe('AgentRepository', () => {
 			});
 		});
 
-		it('joins the tags relation when tags are enabled', async () => {
+		it('always joins the tags relation', async () => {
 			const mockQb = makePaginationQb();
 			vi.spyOn(repository, 'createQueryBuilder').mockReturnValue(mockQb as never);
 
 			await repository.findByProjectIdsPaginated(['p1'], { offset: 0, limit: 10 });
 
 			expect(mockQb.leftJoinAndSelect).toHaveBeenCalledWith('agent.tags', 'tags');
-		});
-
-		it('skips the tags join when tags are disabled', async () => {
-			globalConfig.tags.disabled = true;
-			const mockQb = makePaginationQb();
-			vi.spyOn(repository, 'createQueryBuilder').mockReturnValue(mockQb as never);
-
-			await repository.findByProjectIdsPaginated(['p1'], { offset: 0, limit: 10 });
-
-			expect(mockQb.leftJoinAndSelect).not.toHaveBeenCalledWith('agent.tags', 'tags');
 		});
 
 		it('filters agents that carry all the requested tag ids', async () => {
@@ -529,7 +502,6 @@ describe('AgentRepository', () => {
 			const repository = new AgentRepository(
 				mockDataSource as never,
 				transactionRunner,
-				globalConfig,
 				folderRepository,
 				mock<ServiceAccountRepository>(),
 			);
@@ -551,7 +523,6 @@ describe('AgentRepository', () => {
 			const repository = new AgentRepository(
 				mockDataSource as never,
 				makeTransactionRunner(),
-				globalConfig,
 				folderRepository,
 				mock<ServiceAccountRepository>(),
 			);

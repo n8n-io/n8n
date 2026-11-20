@@ -11,7 +11,6 @@
  */
 const TRIGGER_NODE_TYPES = new Set([
 	'n8n-nodes-base.webhook',
-	'n8n-nodes-base.cron', // Legacy schedule trigger
 	'n8n-nodes-base.emailReadImap', // Email polling trigger
 	'n8n-nodes-base.telegramBot', // Can act as webhook trigger
 	'n8n-nodes-base.start', // Legacy trigger

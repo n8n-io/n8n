@@ -20,9 +20,9 @@ export class AiTransformDeprecatedRule implements IBreakingChangeWorkflowRule {
 	getMetadata(): BreakingChangeRuleMetadata {
 		return {
 			version: 'v3',
-			title: 'AI Transform node is deprecated',
+			title: 'AI Transform node removed',
 			description:
-				'The AI Transform node is deprecated, and workflows that use it fail after the update.',
+				'The AI Transform node is no longer supported. Migrate it to a Code node, which runs its generated code unchanged.',
 			category: BreakingChangeCategory.workflow,
 			impact: 'executionsFail',
 			assistant: 'fix',
@@ -37,7 +37,7 @@ export class AiTransformDeprecatedRule implements IBreakingChangeWorkflowRule {
 			{
 				action: 'Replace AI Transform with a Code node',
 				description:
-					'Give the Code node the same name and connections as the AI Transform node. Set Language to JavaScript and Mode to Run Once for All Items, then copy in the generated code and node settings such as Always Output Data. If the AI Transform node has no generated code, generate it first.',
+					'Give the Code node the same name and connections as the AI Transform node. Set Language to JavaScript. Set Mode to Run Once for All Items. Copy the generated code and node settings such as Always Output Data. If the AI Transform node has no generated code, write the equivalent JavaScript in the Code node.',
 			},
 		];
 	}
@@ -50,10 +50,10 @@ export class AiTransformDeprecatedRule implements IBreakingChangeWorkflowRule {
 		const affectedNodes = nodesGroupedByType.get(AI_TRANSFORM_NODE_TYPE) ?? [];
 
 		return reportAffectedNodes(affectedNodes, (node) => ({
-			title: `Node '${node.name}' uses the deprecated AI Transform node`,
+			title: `AI Transform node '${node.name}' is no longer supported`,
 			description:
-				'The AI Transform node is deprecated. Migrate it to a Code node to keep it working.',
-			level: 'warning',
+				'The AI Transform node is no longer supported. Migrate it to a Code node to keep its generated code running.',
+			level: 'error',
 		}));
 	}
 }

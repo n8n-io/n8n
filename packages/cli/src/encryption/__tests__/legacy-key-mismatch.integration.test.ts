@@ -29,7 +29,12 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
+	process.env.N8N_ENV_FEAT_ENCRYPTION_KEY_ROTATION = 'false';
 	await testDb.resetDeploymentKeys();
+});
+
+afterEach(() => {
+	delete process.env.N8N_ENV_FEAT_ENCRYPTION_KEY_ROTATION;
 });
 
 afterAll(async () => {

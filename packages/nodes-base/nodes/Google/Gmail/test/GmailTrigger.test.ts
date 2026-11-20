@@ -1,5 +1,6 @@
 import { retryabilityFromError } from '@n8n/backend-network';
 import * as mailparser from 'mailparser';
+import type { IDataObject } from 'n8n-workflow';
 import nock from 'nock';
 
 import { testPollingTriggerNode } from '@test/nodes/TriggerHelpers';
@@ -16,6 +17,12 @@ vi.mock('mailparser');
 
 describe('GmailTrigger', () => {
 	const baseUrl = 'https://www.googleapis.com';
+
+	// The duplicate pre-filter skips fetches for already-seen messages, so not every
+	// registered interceptor is consumed — clean up to avoid bleed into the next test.
+	afterEach(() => {
+		nock.cleanAll();
+	});
 
 	function createMessage(message: Partial<Message> = {}): Message {
 		const content = Buffer.from('test');
@@ -159,9 +166,7 @@ describe('GmailTrigger', () => {
 			.get(new RegExp('/gmail/v1/users/me/messages/2?.*'))
 			.reply(200, createMessage({ id: '2' }));
 
-		const { response } = await testPollingTriggerNode(GmailTrigger, {
-			node: { typeVersion: 1.3 },
-		});
+		const { response } = await testPollingTriggerNode(GmailTrigger, {});
 
 		expect(response).toEqual([
 			[
@@ -228,7 +233,7 @@ describe('GmailTrigger', () => {
 			.reply(200, createMessage({ id: '2' }));
 
 		const { response } = await testPollingTriggerNode(GmailTrigger, {
-			node: { typeVersion: 1.3, parameters: { simple: true } },
+			node: { parameters: { simple: true } },
 		});
 
 		expect(response).toEqual([
@@ -288,13 +293,126 @@ describe('GmailTrigger', () => {
 		nock(baseUrl).get(new RegExp('/gmail/v1/users/me/messages?.*')).reply(200, messageListResponse);
 
 		const { response } = await testPollingTriggerNode(GmailTrigger, {
-			node: { typeVersion: 1.3, parameters: { simple: true } },
+			node: { parameters: { simple: true } },
 			workflowStaticData: {
 				'Gmail Trigger': { lastTimeChecked: new Date('2024-10-31').getTime() / 1000 },
 			},
 		});
 
 		expect(response).toEqual(null);
+	});
+
+	it('should migrate v1 root-level static data under the node name', async () => {
+		const messageListResponse: MessageListResponse = {
+			messages: [createListMessage({ id: '1' }), createListMessage({ id: '2' })],
+			resultSizeEstimate: 2,
+		};
+		nock(baseUrl)
+			.get('/gmail/v1/users/me/labels')
+			.reply(200, { labels: [{ id: 'testLabelId', name: 'Test Label Name' }] });
+		nock(baseUrl).get(new RegExp('/gmail/v1/users/me/messages?.*')).reply(200, messageListResponse);
+		// Message 1 is a known duplicate from the migrated state and is filtered before fetching
+		nock(baseUrl)
+			.get(new RegExp('/gmail/v1/users/me/messages/2?.*'))
+			.reply(200, createMessage({ id: '2', internalDate: '2000000000000' }));
+
+		// v1 stored state flat at the root instead of keyed by node name
+		const workflowStaticData: IDataObject = {
+			lastTimeChecked: 1000000,
+			possibleDuplicates: ['1'],
+		};
+
+		const { response } = await testPollingTriggerNode(GmailTrigger, {
+			node: { typeVersion: 1, parameters: { simple: true } },
+			workflowStaticData,
+		});
+
+		expect(response?.[0]).toHaveLength(1);
+		expect(response?.[0]?.[0]?.json?.id).toBe('2');
+		expect(workflowStaticData.lastTimeChecked).toBeUndefined();
+		expect(workflowStaticData.possibleDuplicates).toBeUndefined();
+		expect(workflowStaticData['Gmail Trigger']).toEqual({
+			lastTimeChecked: 2000000000,
+			lastTimeCheckedIsBounded: true,
+			noProgressTicks: 0,
+			possibleDuplicates: ['1', '2'],
+			pendingMessageIds: [],
+		});
+	});
+
+	it.each([false, true])(
+		'should migrate the v1 cursor with its bounded marker set to %s',
+		async (lastTimeCheckedIsBounded) => {
+			const pollTime = Date.parse('2026-10-26T12:00:00.000Z');
+			vi.setSystemTime(pollTime);
+			const lastTimeChecked = pollTime / 1000 + 600;
+			const expectedCursor = lastTimeCheckedIsBounded ? lastTimeChecked : pollTime / 1000;
+			const workflowStaticData: IDataObject = {
+				lastTimeChecked,
+				lastTimeCheckedIsBounded,
+				possibleDuplicates: ['handled'],
+			};
+			const api = nock(baseUrl)
+				.get('/gmail/v1/users/me/messages')
+				.query((query) => String(query.q).split(' ').includes(`after:${expectedCursor}`))
+				.reply(200, { messages: [], resultSizeEstimate: 0 } satisfies MessageListResponse);
+
+			const { response } = await testPollingTriggerNode(GmailTrigger, {
+				node: { typeVersion: 1, parameters: { simple: true } },
+				workflowStaticData,
+			});
+
+			api.done();
+			expect(response).toBeNull();
+			expect(workflowStaticData).toEqual({
+				'Gmail Trigger': {
+					lastTimeChecked: expectedCursor,
+					lastTimeCheckedIsBounded: true,
+					possibleDuplicates: ['handled'],
+				},
+			});
+		},
+	);
+
+	it('should reject node names that clash with built-in object properties', async () => {
+		await expect(
+			testPollingTriggerNode(GmailTrigger, {
+				node: { name: '__proto__', parameters: { simple: true } },
+			}),
+		).rejects.toThrow("The node name '__proto__' is reserved, please rename the node");
+	});
+
+	it('should migrate and store state as an own property for a node name inherited from Object.prototype', async () => {
+		const messageListResponse: MessageListResponse = {
+			messages: [createListMessage({ id: '1' })],
+			resultSizeEstimate: 1,
+		};
+		nock(baseUrl)
+			.get('/gmail/v1/users/me/labels')
+			.reply(200, { labels: [{ id: 'testLabelId', name: 'Test Label Name' }] });
+		nock(baseUrl).get(new RegExp('/gmail/v1/users/me/messages?.*')).reply(200, messageListResponse);
+		nock(baseUrl)
+			.get(new RegExp('/gmail/v1/users/me/messages/1?.*'))
+			.reply(200, createMessage({ id: '1', internalDate: '2000000000000' }));
+
+		const workflowStaticData: IDataObject = { lastTimeChecked: 1000000 };
+
+		const { response } = await testPollingTriggerNode(GmailTrigger, {
+			node: { name: 'toString', parameters: { simple: true } },
+			workflowStaticData,
+		});
+
+		expect(response?.[0]).toHaveLength(1);
+		expect(workflowStaticData.lastTimeChecked).toBeUndefined();
+		expect(Object.hasOwn(workflowStaticData, 'toString')).toBe(true);
+		expect(Object.getOwnPropertyDescriptor(workflowStaticData, 'toString')?.value).toEqual({
+			lastTimeChecked: 2000000000,
+			lastTimeCheckedIsBounded: true,
+			noProgressTicks: 0,
+			possibleDuplicates: ['1'],
+			pendingMessageIds: [],
+		});
+		expect(Object.prototype.toString).not.toHaveProperty('lastTimeChecked');
 	});
 
 	it('should handle duplicates and different date fields', async () => {
@@ -313,9 +431,7 @@ describe('GmailTrigger', () => {
 			.get('/gmail/v1/users/me/labels')
 			.reply(200, { labels: [{ id: 'testLabelId', name: 'Test Label Name' }] });
 		nock(baseUrl).get(new RegExp('/gmail/v1/users/me/messages?.*')).reply(200, messageListResponse);
-		nock(baseUrl)
-			.get(new RegExp('/gmail/v1/users/me/messages/1?.*'))
-			.reply(200, createMessage({ id: '1', internalDate: '1727777957863', date: undefined }));
+		// Message 1 is a known duplicate and is filtered before fetching
 		nock(baseUrl)
 			.get(new RegExp('/gmail/v1/users/me/messages/2?.*'))
 			.reply(200, createMessage({ id: '2', internalDate: undefined, date: '1727777957863' }));
@@ -344,7 +460,7 @@ describe('GmailTrigger', () => {
 		nock(baseUrl).get(new RegExp('/gmail/v1/users/me/messages/5?.*')).reply(200, {});
 
 		const { response } = await testPollingTriggerNode(GmailTrigger, {
-			node: { typeVersion: 1.3, parameters: { simple: true } },
+			node: { parameters: { simple: true } },
 			workflowStaticData: {
 				'Gmail Trigger': {
 					lastTimeChecked: new Date('2024-10-31').getTime() / 1000,
@@ -378,7 +494,7 @@ describe('GmailTrigger', () => {
 			.reply(200, createMessage({ id: '2', labelIds: ['INBOX'] }));
 
 		const { response } = await testPollingTriggerNode(GmailTrigger, {
-			node: { typeVersion: 1.3, parameters: { filters: { includeDrafts: false } } },
+			node: { parameters: { filters: { includeDrafts: false } } },
 		});
 
 		expect(response).toEqual([
@@ -432,9 +548,7 @@ describe('GmailTrigger', () => {
 			.get(new RegExp('/gmail/v1/users/me/messages/2?.*'))
 			.reply(200, createMessage({ id: '2', labelIds: ['SENT'] }));
 
-		const { response } = await testPollingTriggerNode(GmailTrigger, {
-			node: { typeVersion: 1.3 },
-		});
+		const { response } = await testPollingTriggerNode(GmailTrigger, {});
 
 		expect(response).toEqual([
 			[
@@ -487,9 +601,7 @@ describe('GmailTrigger', () => {
 			.get(new RegExp('/gmail/v1/users/me/messages/2?.*'))
 			.reply(200, createMessage({ id: '2', labelIds: ['SENT'] }));
 
-		const { response } = await testPollingTriggerNode(GmailTrigger, {
-			node: { typeVersion: 1.3 },
-		});
+		const { response } = await testPollingTriggerNode(GmailTrigger, {});
 		expect(response).toEqual([
 			[
 				{
@@ -520,7 +632,7 @@ describe('GmailTrigger', () => {
 		]);
 	});
 
-	it('should exclude scheduled emails from query on v1.4', async () => {
+	it('should exclude scheduled emails from query', async () => {
 		const messageListResponse: MessageListResponse = {
 			messages: [createListMessage({ id: '1' })],
 			resultSizeEstimate: 1,
@@ -542,32 +654,7 @@ describe('GmailTrigger', () => {
 			.reply(200, createMessage({ id: '1', labelIds: ['INBOX'] }));
 
 		const { response } = await testPollingTriggerNode(GmailTrigger, {
-			node: { typeVersion: 1.4, parameters: { simple: true } },
-		});
-
-		expect(response).toEqual([[{ json: expect.objectContaining({ id: '1' }) }]]);
-	});
-
-	it('should not add -in:scheduled filter on v1.3', async () => {
-		const messageListResponse: MessageListResponse = {
-			messages: [createListMessage({ id: '1' })],
-			resultSizeEstimate: 1,
-		};
-		nock(baseUrl)
-			.get('/gmail/v1/users/me/labels')
-			.reply(200, {
-				labels: [{ id: 'INBOX', name: 'INBOX' }],
-			});
-		nock(baseUrl)
-			.get('/gmail/v1/users/me/messages')
-			.query((q) => !(q.q as string).includes('-in:scheduled'))
-			.reply(200, messageListResponse);
-		nock(baseUrl)
-			.get(new RegExp('/gmail/v1/users/me/messages/1?.*'))
-			.reply(200, createMessage({ id: '1', labelIds: ['INBOX'] }));
-
-		const { response } = await testPollingTriggerNode(GmailTrigger, {
-			node: { typeVersion: 1.3, parameters: { simple: true } },
+			node: { parameters: { simple: true } },
 		});
 
 		expect(response).toEqual([[{ json: expect.objectContaining({ id: '1' }) }]]);
@@ -587,18 +674,13 @@ describe('GmailTrigger', () => {
 			.get('/gmail/v1/users/me/labels')
 			.reply(200, { labels: [{ id: 'testLabelId', name: 'Test Label Name' }] });
 		nock(baseUrl).get(new RegExp('/gmail/v1/users/me/messages?.*')).reply(200, messageListResponse);
-		nock(baseUrl)
-			.get(new RegExp('/gmail/v1/users/me/messages/1?.*'))
-			.reply(200, createMessage({ id: '1', internalDate: timestamp }));
-		nock(baseUrl)
-			.get(new RegExp('/gmail/v1/users/me/messages/2?.*'))
-			.reply(200, createMessage({ id: '2', internalDate: timestamp }));
+		// Messages 1 and 2 are known duplicates and are filtered before fetching
 		nock(baseUrl)
 			.get(new RegExp('/gmail/v1/users/me/messages/3?.*'))
 			.reply(200, createMessage({ id: '3', internalDate: timestamp }));
 
 		const { response } = await testPollingTriggerNode(GmailTrigger, {
-			node: { typeVersion: 1.3, parameters: { simple: true } },
+			node: { parameters: { simple: true } },
 			workflowStaticData: {
 				'Gmail Trigger': {
 					lastTimeChecked: Number(timestamp) / 1000,
@@ -626,7 +708,7 @@ describe('GmailTrigger', () => {
 			.reply(200, createMessage({ id: '1', internalDate: emailTimestamp }));
 
 		const { response } = await testPollingTriggerNode(GmailTrigger, {
-			node: { typeVersion: 1.3, parameters: { simple: true } },
+			node: { parameters: { simple: true } },
 			workflowStaticData: {
 				'Gmail Trigger': { lastTimeChecked: initialTimestamp },
 			},
@@ -659,7 +741,7 @@ describe('GmailTrigger', () => {
 			);
 
 		const { response } = await testPollingTriggerNode(GmailTrigger, {
-			node: { typeVersion: 1.3, parameters: { filters: { includeDrafts: false } } },
+			node: { parameters: { filters: { includeDrafts: false } } },
 			workflowStaticData: {
 				'Gmail Trigger': { lastTimeChecked: initialTimestamp },
 			},
@@ -684,7 +766,7 @@ describe('GmailTrigger', () => {
 			.reply(200, createMessage({ id: '1', internalDate: undefined }));
 
 		const { response } = await testPollingTriggerNode(GmailTrigger, {
-			node: { typeVersion: 1.3, parameters: { simple: true } },
+			node: { parameters: { simple: true } },
 			workflowStaticData: {
 				'Gmail Trigger': { lastTimeChecked: initialTimestamp },
 			},
@@ -725,7 +807,7 @@ describe('GmailTrigger', () => {
 			.reply(200, createMessage({ id: '3', internalDate: timestamp, labelIds: ['INBOX'] }));
 
 		const { response } = await testPollingTriggerNode(GmailTrigger, {
-			node: { typeVersion: 1.3, parameters: { filters: { includeDrafts: false } } },
+			node: { parameters: { filters: { includeDrafts: false } } },
 			workflowStaticData: {
 				'Gmail Trigger': {
 					lastTimeChecked: Number(timestamp) / 1000 - 1,
@@ -740,7 +822,7 @@ describe('GmailTrigger', () => {
 		expect(response?.[0]?.[1]?.json?.id).toBe('3');
 	});
 
-	describe('v1.4 - cursor across polls', () => {
+	describe.each([1, 1.4])('v%s - cursor across polls', (typeVersion) => {
 		afterEach(() => {
 			nock.cleanAll();
 		});
@@ -807,7 +889,7 @@ describe('GmailTrigger', () => {
 				for (const pollTime of pollTimes) {
 					vi.setSystemTime(pollTime);
 					const { response } = await testPollingTriggerNode(GmailTrigger, {
-						node: { typeVersion: 1.4, parameters: { simple: true } },
+						node: { typeVersion, parameters: { simple: true } },
 						workflowStaticData,
 					});
 					emittedIdsByPoll.push(response?.[0].map(({ json }) => json.id) ?? []);
@@ -892,7 +974,7 @@ describe('GmailTrigger', () => {
 				for (pollIndex = 0; pollIndex < scannedPagesByPoll.length; pollIndex++) {
 					vi.setSystemTime(firstPollTime + pollIndex * 60_000);
 					const { response } = await testPollingTriggerNode(GmailTrigger, {
-						node: { typeVersion: 1.4, parameters: { simple: true, maxResults: 50 } },
+						node: { typeVersion, parameters: { simple: true, maxResults: 50 } },
 						workflowStaticData,
 						// Stop after page one only on the three no-progress polls.
 						pollBudgetMs: pollIndex >= 3 && pollIndex <= 5 ? 0 : undefined,
@@ -1140,7 +1222,7 @@ describe('GmailTrigger', () => {
 		});
 	});
 
-	describe('v1.4 - maxResults limit', () => {
+	describe('maxResults limit', () => {
 		it('should fetch only maxResults messages from a larger list', async () => {
 			// Gmail list returns 3 IDs, but maxResults=2 so only 2 full messages are fetched
 			const messageListResponse: MessageListResponse = {
@@ -1167,7 +1249,7 @@ describe('GmailTrigger', () => {
 				.reply(200, createMessage({ id: '2', internalDate: '2000000000000' }));
 
 			const { response } = await testPollingTriggerNode(GmailTrigger, {
-				node: { typeVersion: 1.4, parameters: { simple: true, maxResults: 2 } },
+				node: { parameters: { simple: true, maxResults: 2 } },
 			});
 
 			expect(response).toHaveLength(1);
@@ -1205,7 +1287,7 @@ describe('GmailTrigger', () => {
 			};
 
 			await testPollingTriggerNode(GmailTrigger, {
-				node: { typeVersion: 1.4, parameters: { simple: true, maxResults: 2 } },
+				node: { parameters: { simple: true, maxResults: 2 } },
 				workflowStaticData,
 			});
 
@@ -1243,7 +1325,7 @@ describe('GmailTrigger', () => {
 			};
 
 			const { response } = await testPollingTriggerNode(GmailTrigger, {
-				node: { typeVersion: 1.4, parameters: { simple: true, maxResults: 2 } },
+				node: { parameters: { simple: true, maxResults: 2 } },
 				workflowStaticData,
 			});
 
@@ -1286,7 +1368,7 @@ describe('GmailTrigger', () => {
 			};
 
 			const { response } = await testPollingTriggerNode(GmailTrigger, {
-				node: { typeVersion: 1.4, parameters: { simple: true, maxResults: 5 } },
+				node: { parameters: { simple: true, maxResults: 5 } },
 				workflowStaticData,
 			});
 
@@ -1321,7 +1403,7 @@ describe('GmailTrigger', () => {
 			};
 
 			await testPollingTriggerNode(GmailTrigger, {
-				node: { typeVersion: 1.4, parameters: { simple: true, maxResults: 5 } },
+				node: { parameters: { simple: true, maxResults: 5 } },
 				workflowStaticData,
 			});
 
@@ -1357,7 +1439,7 @@ describe('GmailTrigger', () => {
 				.reply(200, createMessage({ id: '2', internalDate: '2000000000000' }));
 
 			const poll1 = await testPollingTriggerNode(GmailTrigger, {
-				node: { typeVersion: 1.4, parameters: { simple: true, maxResults: 2 } },
+				node: { parameters: { simple: true, maxResults: 2 } },
 				workflowStaticData,
 			});
 
@@ -1378,7 +1460,7 @@ describe('GmailTrigger', () => {
 				.reply(200, { messages: [], resultSizeEstimate: 0 } satisfies MessageListResponse);
 
 			const poll2 = await testPollingTriggerNode(GmailTrigger, {
-				node: { typeVersion: 1.4, parameters: { simple: true, maxResults: 2 } },
+				node: { parameters: { simple: true, maxResults: 2 } },
 				workflowStaticData,
 			});
 
@@ -1399,7 +1481,7 @@ describe('GmailTrigger', () => {
 			// No fetch mock for msg 3 — it's filtered at ID level by possibleDuplicates
 
 			const poll3 = await testPollingTriggerNode(GmailTrigger, {
-				node: { typeVersion: 1.4, parameters: { simple: true, maxResults: 2 } },
+				node: { parameters: { simple: true, maxResults: 2 } },
 				workflowStaticData,
 			});
 
@@ -1436,7 +1518,7 @@ describe('GmailTrigger', () => {
 				.reply(200, createMessage({ id: '2', internalDate: '2000000000000' }));
 
 			await testPollingTriggerNode(GmailTrigger, {
-				node: { typeVersion: 1.4, parameters: { simple: true, maxResults: 2 } },
+				node: { parameters: { simple: true, maxResults: 2 } },
 				workflowStaticData,
 			});
 
@@ -1452,7 +1534,7 @@ describe('GmailTrigger', () => {
 				.reply(200, { messages: [], resultSizeEstimate: 0 } satisfies MessageListResponse);
 
 			await testPollingTriggerNode(GmailTrigger, {
-				node: { typeVersion: 1.4, parameters: { simple: true, maxResults: 2 } },
+				node: { parameters: { simple: true, maxResults: 2 } },
 				workflowStaticData,
 			});
 
@@ -1476,7 +1558,7 @@ describe('GmailTrigger', () => {
 				.reply(200, createMessage({ id: '4', internalDate: '5000000000000' }));
 
 			const poll3 = await testPollingTriggerNode(GmailTrigger, {
-				node: { typeVersion: 1.4, parameters: { simple: true, maxResults: 2 } },
+				node: { parameters: { simple: true, maxResults: 2 } },
 				workflowStaticData,
 			});
 
@@ -1519,7 +1601,7 @@ describe('GmailTrigger', () => {
 				.reply(200, createMessage({ id: '2', internalDate: '2000000000000' }));
 
 			const poll1 = await testPollingTriggerNode(GmailTrigger, {
-				node: { typeVersion: 1.4, parameters: { simple: true, maxResults: 2 } },
+				node: { parameters: { simple: true, maxResults: 2 } },
 				workflowStaticData,
 			});
 
@@ -1547,7 +1629,7 @@ describe('GmailTrigger', () => {
 				.reply(200, createMessage({ id: '4', internalDate: '4000000000000' }));
 
 			const poll2 = await testPollingTriggerNode(GmailTrigger, {
-				node: { typeVersion: 1.4, parameters: { simple: true, maxResults: 2 } },
+				node: { parameters: { simple: true, maxResults: 2 } },
 				workflowStaticData,
 			});
 
@@ -1571,7 +1653,7 @@ describe('GmailTrigger', () => {
 				} satisfies MessageListResponse);
 
 			const poll3 = await testPollingTriggerNode(GmailTrigger, {
-				node: { typeVersion: 1.4, parameters: { simple: true, maxResults: 2 } },
+				node: { parameters: { simple: true, maxResults: 2 } },
 				workflowStaticData,
 			});
 
@@ -1609,7 +1691,7 @@ describe('GmailTrigger', () => {
 				.reply(200, createMessage({ id: '2', internalDate: '2000000000000' }));
 
 			const poll1 = await testPollingTriggerNode(GmailTrigger, {
-				node: { typeVersion: 1.4, parameters: { simple: false, maxResults: 2 } },
+				node: { parameters: { simple: false, maxResults: 2 } },
 				workflowStaticData,
 			});
 
@@ -1637,7 +1719,7 @@ describe('GmailTrigger', () => {
 				.reply(200, createMessage({ id: '4', internalDate: '4000000000000' }));
 
 			const poll2 = await testPollingTriggerNode(GmailTrigger, {
-				node: { typeVersion: 1.4, parameters: { simple: false, maxResults: 2 } },
+				node: { parameters: { simple: false, maxResults: 2 } },
 				workflowStaticData,
 			});
 
@@ -1659,7 +1741,7 @@ describe('GmailTrigger', () => {
 				} satisfies MessageListResponse);
 
 			const poll3 = await testPollingTriggerNode(GmailTrigger, {
-				node: { typeVersion: 1.4, parameters: { simple: false, maxResults: 2 } },
+				node: { parameters: { simple: false, maxResults: 2 } },
 				workflowStaticData,
 			});
 
@@ -1697,7 +1779,7 @@ describe('GmailTrigger', () => {
 				.reply(200, createMessage({ id: 'B', internalDate: ts }));
 
 			await testPollingTriggerNode(GmailTrigger, {
-				node: { typeVersion: 1.4, parameters: { simple: true, maxResults: 2 } },
+				node: { parameters: { simple: true, maxResults: 2 } },
 				workflowStaticData,
 			});
 
@@ -1717,7 +1799,7 @@ describe('GmailTrigger', () => {
 				.reply(200, { messages: [], resultSizeEstimate: 0 } satisfies MessageListResponse);
 
 			const poll2 = await testPollingTriggerNode(GmailTrigger, {
-				node: { typeVersion: 1.4, parameters: { simple: true, maxResults: 2 } },
+				node: { parameters: { simple: true, maxResults: 2 } },
 				workflowStaticData,
 			});
 
@@ -1754,7 +1836,6 @@ describe('GmailTrigger', () => {
 
 			const { response } = await testPollingTriggerNode(GmailTrigger, {
 				node: {
-					typeVersion: 1.4,
 					parameters: { simple: true, maxResults: 5, filters: { includeDrafts: false } },
 				},
 				workflowStaticData,
@@ -1798,7 +1879,7 @@ describe('GmailTrigger', () => {
 				.reply(200, createMessage({ id: '4', internalDate: '4000000000000' }));
 
 			await testPollingTriggerNode(GmailTrigger, {
-				node: { typeVersion: 1.4, parameters: { simple: true, maxResults: 2 } },
+				node: { parameters: { simple: true, maxResults: 2 } },
 				workflowStaticData,
 			});
 
@@ -1816,7 +1897,7 @@ describe('GmailTrigger', () => {
 				.reply(200, createMessage({ id: '2', internalDate: '2000000000000' }));
 
 			const poll2 = await testPollingTriggerNode(GmailTrigger, {
-				node: { typeVersion: 1.4, parameters: { simple: true, maxResults: 2 } },
+				node: { parameters: { simple: true, maxResults: 2 } },
 				workflowStaticData,
 			});
 
@@ -1841,7 +1922,7 @@ describe('GmailTrigger', () => {
 				.reply(200, createMessage({ id: '6', internalDate: '6000000000000' }));
 
 			const poll3 = await testPollingTriggerNode(GmailTrigger, {
-				node: { typeVersion: 1.4, parameters: { simple: true, maxResults: 2 } },
+				node: { parameters: { simple: true, maxResults: 2 } },
 				workflowStaticData,
 			});
 
@@ -1875,7 +1956,7 @@ describe('GmailTrigger', () => {
 			};
 
 			const { response } = await testPollingTriggerNode(GmailTrigger, {
-				node: { typeVersion: 1.4, parameters: { simple: true, maxResults: 2 } },
+				node: { parameters: { simple: true, maxResults: 2 } },
 				workflowStaticData,
 			});
 
@@ -1937,7 +2018,7 @@ describe('GmailTrigger', () => {
 				.reply(200, createMessage({ id: '2', internalDate: '3000000000100' }));
 
 			const poll1 = await testPollingTriggerNode(GmailTrigger, {
-				node: { typeVersion: 1.4, parameters: { simple: true, maxResults: 2 } },
+				node: { parameters: { simple: true, maxResults: 2 } },
 				workflowStaticData,
 			});
 			expect(poll1.response?.[0]).toHaveLength(2);
@@ -1969,7 +2050,7 @@ describe('GmailTrigger', () => {
 				.reply(200, createMessage({ id: '4', internalDate: '4000000000000' }));
 
 			const poll2 = await testPollingTriggerNode(GmailTrigger, {
-				node: { typeVersion: 1.4, parameters: { simple: true, maxResults: 2 } },
+				node: { parameters: { simple: true, maxResults: 2 } },
 				workflowStaticData,
 			});
 
@@ -2012,7 +2093,7 @@ describe('GmailTrigger', () => {
 				.reply(200, createMessage({ id: '3', internalDate: '3000000000500' }));
 
 			const poll1 = await testPollingTriggerNode(GmailTrigger, {
-				node: { typeVersion: 1.4, parameters: { simple: true, maxResults: 1 } },
+				node: { parameters: { simple: true, maxResults: 1 } },
 				workflowStaticData,
 			});
 			expect(poll1.response?.[0]).toHaveLength(1);
@@ -2028,7 +2109,7 @@ describe('GmailTrigger', () => {
 				.reply(200, createMessage({ id: '2', internalDate: '3000000000100' }));
 
 			const poll2 = await testPollingTriggerNode(GmailTrigger, {
-				node: { typeVersion: 1.4, parameters: { simple: true, maxResults: 1 } },
+				node: { parameters: { simple: true, maxResults: 1 } },
 				workflowStaticData,
 			});
 			expect(poll2.response?.[0]).toHaveLength(1);
@@ -2057,7 +2138,7 @@ describe('GmailTrigger', () => {
 				} satisfies MessageListResponse);
 
 			const poll3 = await testPollingTriggerNode(GmailTrigger, {
-				node: { typeVersion: 1.4, parameters: { simple: true, maxResults: 1 } },
+				node: { parameters: { simple: true, maxResults: 1 } },
 				workflowStaticData,
 			});
 			expect(poll3.response?.[0]).toHaveLength(1);
@@ -2097,7 +2178,7 @@ describe('GmailTrigger', () => {
 
 			const { response } = await testPollingTriggerNode(GmailTrigger, {
 				mode: 'manual',
-				node: { typeVersion: 1.4, parameters: { simple: true, maxResults: 1 } },
+				node: { parameters: { simple: true, maxResults: 1 } },
 				workflowStaticData,
 				pollBudgetMs: 0,
 			});
@@ -2891,35 +2972,6 @@ describe('GmailTrigger', () => {
 			);
 			// Handled IDs can still be in the query if their dates are in the future.
 			expect(workflowStaticData['Gmail Trigger'].possibleDuplicates).toEqual(handledIds);
-		});
-
-		it('should ignore the page token and the poll budget on versions before 1.4', async () => {
-			// Both are scoped to v1.4+: older versions have no pendingMessageIds
-			// machinery. Following the token there would change their behavior, and a
-			// stop on the budget would drop the messages the poll did not fetch while
-			// the cursor advances past them.
-			// Only one page is mocked, so a second page request fails the poll,
-			// and the assertions below catch the resulting empty response.
-			const workflowStaticData: Record<string, Record<string, unknown>> = {
-				'Gmail Trigger': { lastTimeChecked: 1000000 },
-			};
-
-			mockLabels();
-			mockList(listPage(['1', '2'], 'token-1'));
-			mockGet('1', 2_000_000_000_000);
-			mockGet('2', 3_000_000_000_000);
-
-			const { response } = await testPollingTriggerNode(GmailTrigger, {
-				node: { typeVersion: 1.3, parameters: { simple: true } },
-				workflowStaticData,
-				pollBudgetMs: 0,
-			});
-
-			expect(response?.[0]?.map((item) => item.json.id)).toEqual(['1', '2']);
-			// The queue belongs to v1.4+; older versions must not persist one their
-			// own drain path would ignore. The same holds for the no-progress count.
-			expect(workflowStaticData['Gmail Trigger'].pendingMessageIds).toBeUndefined();
-			expect(workflowStaticData['Gmail Trigger']).not.toHaveProperty('noProgressTicks');
 		});
 
 		it('should keep the beyond-budget remainder when a drain exactly consumed the budget', async () => {

@@ -59,13 +59,11 @@ const EXPECTED_NPM_DUPLICATES: Record<string, ExpectedNpmDuplicate> = {
 		],
 	},
 	zod: {
-		reason: 'Microsoft Agents pins Zod 3.25.75 and MCP v2 requires Zod 4.',
+		reason: 'Microsoft Agents pins Zod 3.25.75.',
 		copies: [
 			{ requiredBy: null, range: null, section: null },
 			{ requiredBy: '@microsoft/agents-activity', range: '3.25.75', section: 'dependencies' },
 			{ requiredBy: '@microsoft/agents-hosting', range: '3.25.75', section: 'dependencies' },
-			{ requiredBy: '@modelcontextprotocol/core', range: '^4.2.0', section: 'dependencies' },
-			{ requiredBy: '@modelcontextprotocol/server', range: '^4.2.0', section: 'dependencies' },
 		],
 	},
 };

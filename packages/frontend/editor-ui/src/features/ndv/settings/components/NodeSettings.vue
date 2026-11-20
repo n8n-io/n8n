@@ -751,7 +751,6 @@ function handleSelectAction(params: INodeParameters) {
 			:push-ref="pushRef"
 			@execute="onNodeExecute"
 			@stop-execution="onStopExecution"
-			@value-changed="valueChanged"
 			@tab-changed="onTabSelect"
 		/>
 
