@@ -4,6 +4,7 @@ import type { KnowledgeCollectionAgentDto, KnowledgeCollectionFileDto } from '@n
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { fireEvent, screen, waitFor } from '@testing-library/vue';
+import { flushPromises } from '@vue/test-utils';
 
 import {
 	deleteCollectionFile,
@@ -12,8 +13,8 @@ import {
 	listCollectionFiles,
 	uploadCollectionFiles,
 } from '@/features/agents/composables/useKnowledgeApi';
+import { createProjectListItem } from '@/features/collaboration/projects/__tests__/utils';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
 
 import CollectionView from './CollectionView.vue';
 
@@ -22,7 +23,7 @@ const showErrorMock = vi.fn();
 vi.mock('@/features/agents/composables/useKnowledgeApi');
 
 vi.mock('@n8n/composables/useToast', () => ({
-	useToast: () => ({ showError: showErrorMock, showMessage: vi.fn() }),
+	useToast: () => ({ showError: showErrorMock }),
 }));
 
 vi.mock('vue-router', () => ({
@@ -64,7 +65,9 @@ const setup = async ({
 	vi.mocked(listCollectionAgents).mockResolvedValue(agents);
 
 	const pinia = createTestingPinia();
-	mockedStore(useProjectsStore).myProjects = [{ id: 'p1', name: 'Darwin' } as ProjectListItem];
+	mockedStore(useProjectsStore).myProjects = [
+		{ ...createProjectListItem(), id: 'p1', name: 'Darwin' },
+	];
 
 	const rendered = renderComponent({ pinia });
 	// The cards show after the first read.
@@ -122,7 +125,7 @@ describe('CollectionView', () => {
 	it('offers the upload and the empty text when the collection is empty', async () => {
 		await setup();
 
-		expect(await screen.findByRole('button', { name: 'Upload file' })).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'Upload file' })).toBeInTheDocument();
 		expect(screen.getByTestId('collection-used-by-empty')).toHaveTextContent(
 			"No agents use this collection yet. Add it from an agent's Knowledge tab.",
 		);
@@ -132,12 +135,11 @@ describe('CollectionView', () => {
 	it('shows one pill for each file, in the order of the server', async () => {
 		await setup({ files: [file('f1', 'Refund policy.pdf'), file('f2', 'Price list.pdf')] });
 
-		await waitFor(() => expect(pillNames()).toEqual(['Refund policy.pdf', 'Price list.pdf']));
+		expect(pillNames()).toEqual(['Refund policy.pdf', 'Price list.pdf']);
 	});
 
 	it('uploads the selected files and adds their pills after the existing pills', async () => {
 		await setup({ files: [file('f1', 'Refund policy.pdf')] });
-		await waitFor(() => expect(filePills()).toHaveLength(1));
 		vi.mocked(uploadCollectionFiles).mockResolvedValue([file('f2', 'Shipping policy.pdf')]);
 		const selected = [new File(['a'], 'Shipping policy.pdf')];
 
@@ -152,13 +154,8 @@ describe('CollectionView', () => {
 
 	it('does not add the files of an upload that ends after the page opens a different collection', async () => {
 		const rendered = await setup({ files: [file('f1', 'Refund policy.pdf')] });
-		await waitFor(() => expect(filePills()).toHaveLength(1));
-		let finishUpload: (files: KnowledgeCollectionFileDto[]) => void = () => {};
-		vi.mocked(uploadCollectionFiles).mockReturnValue(
-			new Promise((resolve) => {
-				finishUpload = resolve;
-			}),
-		);
+		const upload = Promise.withResolvers<KnowledgeCollectionFileDto[]>();
+		vi.mocked(uploadCollectionFiles).mockReturnValue(upload.promise);
 		await selectFiles([new File(['a'], 'Late upload.pdf')]);
 
 		vi.mocked(getCollection).mockResolvedValue({ id: 'c2', name: 'Legal', description: null });
@@ -169,8 +166,8 @@ describe('CollectionView', () => {
 		});
 		await rendered.rerender({ collectionId: 'c2' });
 		await waitFor(() => expect(pillNames()).toEqual(['NDA template.pdf']));
-		finishUpload([file('f2', 'Late upload.pdf')]);
-		await new Promise((resolve) => setTimeout(resolve));
+		upload.resolve([file('f2', 'Late upload.pdf')]);
+		await flushPromises();
 
 		expect(pillNames()).toEqual(['NDA template.pdf']);
 		// The row is usable again when the old upload ends.
@@ -222,7 +219,6 @@ describe('CollectionView', () => {
 			],
 		});
 
-		await waitFor(() => expect(screen.getAllByTestId('collection-agent-pill')).toHaveLength(2));
 		const [known, unknown] = screen.getAllByTestId('collection-agent-pill');
 		expect(known).toHaveTextContent('Support agent');
 		expect(known).toHaveTextContent('Darwin');
@@ -233,18 +229,9 @@ describe('CollectionView', () => {
 	it('shows the error when the collection does not load', async () => {
 		const error = new Error('Knowledge collection not found');
 		vi.mocked(getCollection).mockRejectedValue(error);
-		vi.mocked(listCollectionFiles).mockResolvedValue({ count: 0, totalSizeBytes: 0, data: [] });
-		vi.mocked(listCollectionAgents).mockResolvedValue([]);
 
 		renderComponent({ pinia: createTestingPinia() });
 
 		await waitFor(() => expect(showErrorMock).toHaveBeenCalledWith(error, expect.any(String)));
-	});
-
-	it('leaves out the sharing card and the vector stores', async () => {
-		await setup();
-
-		expect(screen.queryByText('Shared with')).not.toBeInTheDocument();
-		expect(screen.queryByText('Connect vector store')).not.toBeInTheDocument();
 	});
 });

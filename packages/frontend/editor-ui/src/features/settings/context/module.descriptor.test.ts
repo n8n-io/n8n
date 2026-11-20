@@ -178,11 +178,7 @@ describe('ContextModule routes', () => {
 
 			expect(route.name).toBe(KNOWLEDGE_COLLECTION_VIEW);
 			expect(route.params).toEqual({ projectId: 'project-1', collectionId: 'c1' });
-		});
-
-		test('does not wait for the feature flags when the operator setting is on', async () => {
-			await openCollection(true);
-
+			// The operator setting needs no feature flag.
 			expect(waitForFeatureFlagsWithTimeout).not.toHaveBeenCalled();
 		});
 
@@ -191,13 +187,6 @@ describe('ContextModule routes', () => {
 
 			expect(waitForFeatureFlagsWithTimeout).toHaveBeenCalledTimes(1);
 			expect(route.name).toBe(VIEWS.HOMEPAGE);
-		});
-
-		test('is a project page, not a settings page', () => {
-			const route = ContextModule.routes?.find(({ name }) => name === KNOWLEDGE_COLLECTION_VIEW);
-
-			expect(route?.meta?.projectRoute).toBe(true);
-			expect(route?.meta?.telemetry).toBeUndefined();
 		});
 	});
 

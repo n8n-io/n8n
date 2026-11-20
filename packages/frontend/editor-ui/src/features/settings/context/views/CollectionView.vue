@@ -93,6 +93,10 @@ function projectNameOf(projectId: string) {
 	return projectsStore.myProjects.find((project) => project.id === projectId)?.name;
 }
 
+// The route can change to a different collection while a request is in flight.
+const isCurrent = (projectId: string, collectionId: string) =>
+	projectId === props.projectId && collectionId === props.collectionId;
+
 watch(
 	() => [props.projectId, props.collectionId],
 	async ([projectId, collectionId]) => {
@@ -104,8 +108,7 @@ watch(
 				listCollectionFiles(rootStore.restApiContext, params),
 				listCollectionAgents(rootStore.restApiContext, params),
 			]);
-			// The route can change to a different collection while this read is in flight.
-			if (projectId !== props.projectId || collectionId !== props.collectionId) {
+			if (!isCurrent(projectId, collectionId)) {
 				return;
 			}
 			files.value = fileList.data;
@@ -138,8 +141,7 @@ async function onFilesSelected(event: Event) {
 			collectionId,
 			files: selectedFiles,
 		});
-		// The route can change to a different collection while the upload is in flight.
-		if (projectId === props.projectId && collectionId === props.collectionId) {
+		if (isCurrent(projectId, collectionId)) {
 			files.value = [...files.value, ...uploaded];
 		}
 	} catch (error) {
@@ -193,7 +195,7 @@ async function removeFile(fileId: string) {
 					<AgentChipRow
 						:label="i18n.baseText('settings.context.collections.files.label')"
 						:item-count="files.length"
-						:add-label="i18n.baseText('settings.context.collections.files.upload')"
+						:add-label="i18n.baseText('agents.builder.files.upload')"
 						:disabled="uploading"
 						@add="fileInput?.click()"
 					>

@@ -11,6 +11,8 @@ import {
 	isContextSkillsEnabled,
 } from './context.utils';
 
+const FLAG_WAIT_TIMEOUT_MS = 3000;
+
 /**
  * No `custom` middleware: the initializer would gate the routes on a backend module,
  * which preferences do not have. The preferences and skills checks run in `beforeEnter`. The sidebar
@@ -73,7 +75,7 @@ export const ContextModule: FrontendModuleDescription = {
 			beforeEnter: async () => {
 				const collectionsEnabled = useIsCollectionsEnabled();
 				if (!collectionsEnabled.value) {
-					await waitForFeatureFlagsWithTimeout(usePostHog(), 3000);
+					await waitForFeatureFlagsWithTimeout(usePostHog(), FLAG_WAIT_TIMEOUT_MS);
 				}
 				return collectionsEnabled.value || { name: VIEWS.HOMEPAGE };
 			},

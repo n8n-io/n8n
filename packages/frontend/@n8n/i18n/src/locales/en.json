@@ -4029,7 +4029,6 @@
 	"settings.context.collections.contents.title": "Contents",
 	"settings.context.collections.contents.description": "Files every agent with this collection can search.",
 	"settings.context.collections.files.label": "Files",
-	"settings.context.collections.files.upload": "Upload file",
 	"settings.context.collections.files.remove": "Remove from collection",
 	"settings.context.collections.usedBy.title": "Used by",
 	"settings.context.collections.usedBy.description": "Every agent here searches this collection. A change reaches them on their next run.",
