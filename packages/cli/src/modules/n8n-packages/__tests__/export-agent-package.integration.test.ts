@@ -272,7 +272,6 @@ it.each([
 				metadata: {
 					versionId: selected === 'draft' ? source.agent.versionId : source.agent.activeVersionId,
 					publishedVersionId: source.agent.activeVersionId,
-					ownerEmail: null,
 				},
 			});
 		}

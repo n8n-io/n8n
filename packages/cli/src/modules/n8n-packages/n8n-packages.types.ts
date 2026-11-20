@@ -284,6 +284,7 @@ export interface ExportPackageRequest {
 	includeTags?: boolean;
 	/** Whether folder exports include archived workflows and project exports include archived workflows and agents. Explicit ids always export. */
 	includeArchived?: boolean;
+	includeUserReferences?: boolean;
 	dependencyPolicy?: ExportDependencyPolicy;
 	versionPolicy?: ExportVersionPolicy;
 	credentialExportPolicy?: CredentialExportPolicy;

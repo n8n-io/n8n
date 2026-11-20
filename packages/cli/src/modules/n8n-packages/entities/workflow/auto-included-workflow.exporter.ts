@@ -36,6 +36,7 @@ export interface AutoIncludedWorkflowExportRequest {
 	existingFolderEntries: ManifestEntry[];
 	existingProjectEntries: ManifestEntry[];
 	includeTags: boolean;
+	includeUserReferences?: boolean;
 	projectTargetsById?: Map<string, string>;
 }
 
@@ -98,9 +99,11 @@ export class AutoIncludedWorkflowExporter {
 		const variables: WorkflowVariableRequirement[] = [];
 		const tags: WorkflowTagUsage[] = [];
 		const nodeTypes: NodeTypeSource[] = [];
-		const ownerEmails = await this.resourceOwnerService.findOwnerEmails(
-			request.workflows.map(({ workflow }) => workflow),
-		);
+		const ownerEmails = request.includeUserReferences
+			? await this.resourceOwnerService.findOwnerEmails(
+					request.workflows.map(({ workflow }) => workflow),
+				)
+			: undefined;
 
 		for (const included of request.workflows) {
 			if (workflowEntriesById.has(included.workflow.id)) continue;
@@ -112,7 +115,7 @@ export class AutoIncludedWorkflowExporter {
 				this.workflowSerializer.serialize(included.workflow, { includeTags: request.includeTags }),
 				this.workflowSerializer.serializeMetadata(
 					included.workflow,
-					ownerEmails.get(included.workflow.id) ?? null,
+					ownerEmails?.get(included.workflow.id),
 				),
 			);
 			workflowEntries.push(entry);
