@@ -436,6 +436,9 @@ Archive a workflow (soft delete, deactivates if needed). Reverse it with
 |-------|------|----------|-------------|
 | `workflowId` | string | yes | Workflow to archive |
 
+"Always allow" on the approval card saves one thread grant for the action. The
+Assistant then archives other workflows in the thread without a card.
+
 **Returns**: `{ success: boolean }`
 
 ### `unarchive_workflow`
@@ -519,6 +522,9 @@ Stop a workflow from running in production. The draft is preserved.
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `workflowId` | string | yes | Workflow ID |
+
+"Always allow" on the approval card saves one thread grant for the action, as
+it does for `archive_workflow`.
 
 **Returns**: `{ success: boolean }`
 
