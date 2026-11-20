@@ -60,9 +60,9 @@
 | Name | Definition |
 | ---- | ---------- |
 | IDX_93d62baabe9858816b5adafb44 | CREATE INDEX "IDX_93d62baabe9858816b5adafb44" ON public.agent_background_job USING btree ("parentThreadId", status) |
+| IDX_agent_approval_parent_run | CREATE INDEX "IDX_agent_approval_parent_run" ON public.agent_background_job USING btree ("parentAgentId", "parentRunId") WHERE (((kind)::text = 'approval'::text) AND ("notifiedAt" IS NULL)) |
 | IDX_agent_background_job_callerExecutionId | CREATE INDEX "IDX_agent_background_job_callerExecutionId" ON public.agent_background_job USING btree ("callerExecutionId") |
 | IDX_agent_background_job_childExecutionId | CREATE UNIQUE INDEX "IDX_agent_background_job_childExecutionId" ON public.agent_background_job USING btree ("childExecutionId") WHERE ("childExecutionId" IS NOT NULL) |
-| IDX_agent_background_job_parentAgentId_parentRunId | CREATE INDEX "IDX_agent_background_job_parentAgentId_parentRunId" ON public.agent_background_job USING btree ("parentAgentId", "parentRunId") WHERE (((kind)::text = 'approval'::text) AND ("notifiedAt" IS NULL)) |
 | IDX_agent_background_job_parentThreadId | CREATE INDEX "IDX_agent_background_job_parentThreadId" ON public.agent_background_job USING btree ("parentThreadId") WHERE (((status)::text <> 'running'::text) AND ("notifiedAt" IS NULL)) |
 | IDX_agent_background_job_planId_planTaskId | CREATE INDEX "IDX_agent_background_job_planId_planTaskId" ON public.agent_background_job USING btree ("planId", "planTaskId") |
 | IDX_agent_background_job_sourceExecutionId | CREATE INDEX "IDX_agent_background_job_sourceExecutionId" ON public.agent_background_job USING btree ("sourceExecutionId") |

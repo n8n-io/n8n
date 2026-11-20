@@ -62,9 +62,9 @@ CREATE TABLE "agent_background_job" ("id" varchar(36) PRIMARY KEY NOT NULL, "kin
 | Name | Definition |
 | ---- | ---------- |
 | IDX_93d62baabe9858816b5adafb44 | CREATE INDEX "IDX_93d62baabe9858816b5adafb44" ON "agent_background_job" ("parentThreadId", "status")  |
+| IDX_agent_approval_parent_run | CREATE INDEX "IDX_agent_approval_parent_run" ON "agent_background_job" ("parentAgentId", "parentRunId") WHERE "kind" = 'approval' AND "notifiedAt" IS NULL |
 | IDX_agent_background_job_callerExecutionId | CREATE INDEX "IDX_agent_background_job_callerExecutionId" ON "agent_background_job" ("callerExecutionId")  |
 | IDX_agent_background_job_childExecutionId | CREATE UNIQUE INDEX "IDX_agent_background_job_childExecutionId" ON "agent_background_job" ("childExecutionId") WHERE "childExecutionId" IS NOT NULL |
-| IDX_agent_background_job_parentAgentId_parentRunId | CREATE INDEX "IDX_agent_background_job_parentAgentId_parentRunId" ON "agent_background_job" ("parentAgentId", "parentRunId") WHERE "kind" = 'approval' AND "notifiedAt" IS NULL |
 | IDX_agent_background_job_parentThreadId | CREATE INDEX "IDX_agent_background_job_parentThreadId" ON "agent_background_job" ("parentThreadId") WHERE "status" <> 'running' AND "notifiedAt" IS NULL |
 | IDX_agent_background_job_planId_planTaskId | CREATE INDEX "IDX_agent_background_job_planId_planTaskId" ON "agent_background_job" ("planId", "planTaskId")  |
 | IDX_agent_background_job_sourceExecutionId | CREATE INDEX "IDX_agent_background_job_sourceExecutionId" ON "agent_background_job" ("sourceExecutionId")  |

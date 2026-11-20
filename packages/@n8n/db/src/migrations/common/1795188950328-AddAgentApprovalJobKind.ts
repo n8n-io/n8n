@@ -33,7 +33,7 @@ export class AddAgentApprovalJobKind1795188950328 implements ReversibleMigration
 			'agent_background_job',
 			['parentAgentId', 'parentRunId'],
 			false,
-			undefined,
+			'IDX_agent_approval_parent_run',
 			'"kind" = \'approval\' AND "notifiedAt" IS NULL',
 		);
 		if (isPostgres)
@@ -48,7 +48,9 @@ export class AddAgentApprovalJobKind1795188950328 implements ReversibleMigration
 		runQuery,
 		isPostgres,
 	}: MigrationContext) {
-		await dropIndex('agent_background_job', ['parentAgentId', 'parentRunId']);
+		await dropIndex('agent_background_job', ['parentAgentId', 'parentRunId'], {
+			customIndexName: 'IDX_agent_approval_parent_run',
+		});
 		await dropIndex('agent_background_job', ['callerExecutionId']);
 		await dropForeignKey(
 			'agent_background_job',
