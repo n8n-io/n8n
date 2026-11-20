@@ -2,8 +2,10 @@ import type { ToolCallEvidence, ToolTestCapability, ToolTestKind } from '@n8n/ap
 
 /**
  * Contract between n8n and a simulation backend. Each test chat gets one world; every request a
- * tool would send goes to it instead. A backend never sends anything real. When it cannot answer,
- * n8n blocks the call and never falls back to the real service.
+ * tool would send goes to it instead. A backend never writes to a real service. A backend reads
+ * a real service only through an explicit read caller with a fixed scope, and reports each such
+ * request as `real_read`. When it cannot answer, n8n blocks the call and never falls back to the
+ * real service.
  */
 export interface SimulationBackend {
 	readonly id: SimulationBackendId;
