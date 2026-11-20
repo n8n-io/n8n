@@ -65,11 +65,12 @@ class PooledConnectionUnavailableError extends OperationalError {
  * - After `databaseConfig.pingMaxFailuresBeforeRecovery` consecutive failures, destroys
  *   and reinitializes the DataSource with exponential backoff
  *   (`databaseConfig.minRecoveryBackoffMs` .. `databaseConfig.maxRecoveryBackoffMs`).
- *   A failure only counts when a pooled connection was checked out and did not answer,
- *   while a connection opened outside the pool still does: that proves the pooled
- *   connections are the broken part, so a rebuilt pool helps. A ping that got no pooled
- *   connection (busy pool) or whose probe fails too (unreachable or stalled server) is
- *   not counted: tearing the pool down would only abort every in-flight query for nothing.
+ *   A failure only counts when a connection opened outside the pool still answers: that
+ *   proves the pooled connections are the broken part, so a rebuilt pool helps. This
+ *   includes a ping that got no pooled connection, since a pool whose every slot is stuck
+ *   on a dead connection looks the same as a busy one. A ping whose probe fails too
+ *   (unreachable or stalled server) is not counted: tearing the pool down would only
+ *   abort every in-flight query for nothing.
  *   Postgres-only: for sqlite the database is a local file, so a failed ping means a
  *   saturated pool rather than a lost connection, and destroying the pool would abort
  *   every pending acquisition (failing in-flight executions) with nothing to re-establish.
