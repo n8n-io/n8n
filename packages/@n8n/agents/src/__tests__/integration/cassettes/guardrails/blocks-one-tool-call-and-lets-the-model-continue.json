@@ -125,7 +125,7 @@
 						{
 							"type": "tool_result",
 							"tool_use_id": "toolu_01AvHg8o8w8rvyMtUJqa9Zxy",
-							"content": "Error: Tool call stopped by guardrail: tool.blocked",
+							"content": "GuardrailStopError: Tool call stopped by guardrail: tool.blocked",
 							"is_error": true
 						}
 					]

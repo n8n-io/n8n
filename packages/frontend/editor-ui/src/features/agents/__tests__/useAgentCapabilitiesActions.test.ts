@@ -5,11 +5,16 @@ import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 
 import { useUIStore } from '@/app/stores/ui.store';
-import { AGENT_TOOLS_MODAL_KEY, AGENT_SKILL_MODAL_KEY } from '../constants';
+import {
+	AGENT_TOOLS_MODAL_KEY,
+	AGENT_SKILL_MODAL_KEY,
+	AGENT_TOOL_CONFIG_MODAL_KEY,
+} from '../constants';
 import { useAgentCapabilitiesActions } from '../composables/useAgentCapabilitiesActions';
 import { createAgentSkill, getSkillDetail, getNewSkillName } from '../composables/useAgentApi';
 import {
 	SKILL_NAME_TAKEN_MESSAGE,
+	type AgentToolGuardrailConfig,
 	type SkillDetail,
 	type SkillListItem,
 	type SkillVersionDetail,
@@ -18,6 +23,8 @@ import { ResponseError } from '@n8n/rest-api-client';
 import type {
 	AgentJsonConfig,
 	AgentJsonMcpServerConfig,
+	AgentJsonToolConfig,
+	AgentJsonToolRef,
 	AgentResource,
 	AgentSkill,
 } from '../types';
@@ -170,6 +177,270 @@ describe('useAgentCapabilitiesActions — tools modal host seam', () => {
 		modalData.onConfirm({ tools: [], mcpServers: [] });
 
 		expect(scheduleConfigUpdate).not.toHaveBeenCalled();
+	});
+
+	it('wires tool guardrails into the tools modal with live reads and a config-level commit', () => {
+		const { uiStore, actions, scheduleConfigUpdate, localConfig } = setup();
+		const savedGuardrail = {
+			kind: 'keywords',
+			id: 'g1',
+			stage: 'before',
+			keywords: ['secret'],
+			tools: [{ type: 'node', name: 'HTTP Request' }],
+		} satisfies AgentToolGuardrailConfig;
+		localConfig.value = makeConfig({
+			config: {
+				guardrails: {
+					budget: { enabled: true, monthlyBudgetUsd: 10 },
+					tools: [savedGuardrail],
+				},
+			},
+		});
+
+		actions.onOpenAddToolModal();
+
+		const modalData = uiStore.modalsById[AGENT_TOOLS_MODAL_KEY]
+			.data as unknown as ToolsModalData & {
+			guardrails?: {
+				getGuardrails: () => unknown[];
+				getTools: () => unknown[];
+				onUpdateGuardrails: (tools: unknown[]) => void;
+			};
+		};
+		expect(modalData.guardrails?.getGuardrails()).toEqual([savedGuardrail]);
+		expect(modalData.guardrails?.getTools()).toEqual(localConfig.value?.tools);
+
+		const next = [{ ...savedGuardrail, id: 'g2' }];
+		modalData.guardrails?.onUpdateGuardrails(next);
+		// The commit keeps the rest of the guardrails config (e.g. the budget).
+		expect(scheduleConfigUpdate).toHaveBeenCalledWith({
+			config: {
+				guardrails: {
+					budget: { enabled: true, monthlyBudgetUsd: 10 },
+					tools: next,
+				},
+			},
+		});
+	});
+
+	it('drops a late guardrail update when the host identity changed', () => {
+		const hostId = ref('inline:node-1');
+		setActivePinia(createTestingPinia({ stubActions: false }));
+		const uiStore = useUIStore();
+		const scheduleConfigUpdate = vi.fn();
+
+		const actions = useAgentCapabilitiesActions({
+			localConfig: ref<AgentJsonConfig | null>(makeConfig()),
+			agent: ref<AgentResource | null>(null),
+			projectId: computed(() => 'project-1'),
+			agentId: computed(() => hostId.value),
+			connectedTriggers: ref([]),
+			scheduleConfigUpdate,
+			scheduleSkillSave: vi.fn(),
+		});
+
+		actions.onOpenAddToolModal();
+		hostId.value = 'inline:node-2';
+
+		const modalData = uiStore.modalsById[AGENT_TOOLS_MODAL_KEY]
+			.data as unknown as ToolsModalData & {
+			guardrails?: { onUpdateGuardrails: (tools: unknown[]) => void };
+		};
+		modalData.guardrails?.onUpdateGuardrails([]);
+
+		expect(scheduleConfigUpdate).not.toHaveBeenCalled();
+	});
+
+	it('wires tool guardrails into the edit-tool modal for a node tool', () => {
+		const { uiStore, actions, localConfig } = setup();
+		const nodeTool = {
+			type: 'node',
+			name: 'HTTP Request',
+			node: {
+				nodeType: 'n8n-nodes-base.httpRequest',
+				nodeTypeVersion: 4.2,
+				nodeParameters: { url: 'https://api.example.com' },
+			},
+		} as AgentJsonToolConfig;
+		localConfig.value = makeConfig({ tools: [nodeTool] });
+
+		actions.onOpenToolFromList({ kind: 'tool', toolType: 'node', id: 'HTTP Request' });
+
+		const data = uiStore.modalsById[AGENT_TOOL_CONFIG_MODAL_KEY].data as unknown as {
+			guardrails?: unknown;
+		};
+		expect(data.guardrails).toBeDefined();
+	});
+
+	it('gives inline agents no guardrails wiring: their config carries no guardrails', () => {
+		setActivePinia(createTestingPinia({ stubActions: false }));
+		const uiStore = useUIStore();
+
+		const actions = useAgentCapabilitiesActions({
+			localConfig: ref<AgentJsonConfig | null>(makeConfig()),
+			agent: ref<AgentResource | null>(null),
+			projectId: computed(() => 'project-1'),
+			agentId: computed(() => 'inline:node-1'),
+			connectedTriggers: ref([]),
+			scheduleConfigUpdate: vi.fn(),
+			scheduleSkillSave: vi.fn(),
+			// The inline seam: its presence marks the host as an inline agent.
+			localSkills: {
+				bodies: computed(() => ({})),
+				createSkill: vi.fn(),
+				updateSkill: vi.fn(),
+			},
+		});
+
+		actions.onOpenAddToolModal();
+
+		const modalData = uiStore.modalsById[AGENT_TOOLS_MODAL_KEY].data as unknown as {
+			guardrails?: unknown;
+		};
+		expect(modalData.guardrails).toBeUndefined();
+	});
+
+	it('follows a node-tool rename from the edit-tool modal into its guardrail refs', () => {
+		const { uiStore, actions, scheduleConfigUpdate, localConfig } = setup();
+		const nodeTool = {
+			type: 'node',
+			name: 'HTTP Request',
+			node: {
+				nodeType: 'n8n-nodes-base.httpRequest',
+				nodeTypeVersion: 4.2,
+				nodeParameters: { url: 'https://api.example.com' },
+			},
+		} as Extract<AgentJsonToolRef, { type: 'node' }>;
+		localConfig.value = makeConfig({
+			tools: [nodeTool],
+			config: {
+				guardrails: {
+					tools: [
+						{
+							kind: 'keywords',
+							id: 'g1',
+							stage: 'before',
+							keywords: ['secret'],
+							tools: [{ type: 'node', name: 'HTTP Request' }],
+						},
+					],
+				},
+			},
+		});
+
+		actions.onOpenToolFromList({ kind: 'tool', toolType: 'node', id: 'HTTP Request' });
+		const modalData = uiStore.modalsById[AGENT_TOOL_CONFIG_MODAL_KEY].data as unknown as {
+			onConfirm: (tool: AgentJsonToolRef) => void;
+		};
+		modalData.onConfirm({ ...nodeTool, name: 'Fetch data' });
+
+		const renameCall = scheduleConfigUpdate.mock.calls.find(
+			([update]) => 'config' in (update as object),
+		);
+		expect(renameCall?.[0]).toEqual({
+			config: {
+				guardrails: {
+					tools: [
+						expect.objectContaining({ id: 'g1', tools: [{ type: 'node', name: 'Fetch data' }] }),
+					],
+				},
+			},
+		});
+	});
+
+	it('follows a node-tool rename from the tools-modal confirm into its guardrail refs', () => {
+		const { uiStore, actions, scheduleConfigUpdate, localConfig } = setup();
+		const nodeTool = {
+			type: 'node',
+			name: 'HTTP Request',
+			node: {
+				nodeType: 'n8n-nodes-base.httpRequest',
+				nodeTypeVersion: 4.2,
+				nodeParameters: { url: 'https://api.example.com' },
+			},
+		} as Extract<AgentJsonToolRef, { type: 'node' }>;
+		localConfig.value = makeConfig({
+			tools: [nodeTool],
+			config: {
+				guardrails: {
+					tools: [
+						{
+							kind: 'keywords',
+							id: 'g1',
+							stage: 'before',
+							keywords: ['secret'],
+							tools: [{ type: 'node', name: 'HTTP Request' }],
+						},
+					],
+				},
+			},
+		});
+
+		actions.onOpenAddToolModal();
+		const modalData = uiStore.modalsById[AGENT_TOOLS_MODAL_KEY].data as unknown as ToolsModalData;
+		modalData.onConfirm({ tools: [{ ...nodeTool, name: 'Fetch data' }] });
+
+		expect(scheduleConfigUpdate).toHaveBeenCalledWith({
+			tools: [{ ...nodeTool, name: 'Fetch data' }],
+		});
+		expect(scheduleConfigUpdate).toHaveBeenCalledWith({
+			config: {
+				guardrails: {
+					tools: [
+						expect.objectContaining({ id: 'g1', tools: [{ type: 'node', name: 'Fetch data' }] }),
+					],
+				},
+			},
+		});
+	});
+
+	it('does not retarget guardrails when the tools-modal confirm removes a leading node tool', () => {
+		const { uiStore, actions, scheduleConfigUpdate, localConfig } = setup();
+		const httpRequestTool = {
+			type: 'node',
+			name: 'HTTP Request',
+			node: {
+				nodeType: 'n8n-nodes-base.httpRequest',
+				nodeTypeVersion: 4.2,
+				nodeParameters: { url: 'https://api.example.com' },
+			},
+		} as Extract<AgentJsonToolRef, { type: 'node' }>;
+		const slackTool = {
+			type: 'node',
+			name: 'Slack',
+			node: {
+				nodeType: 'n8n-nodes-base.slack',
+				nodeTypeVersion: 2.1,
+				nodeParameters: { channel: '#alerts' },
+			},
+		} as Extract<AgentJsonToolRef, { type: 'node' }>;
+		localConfig.value = makeConfig({
+			tools: [httpRequestTool, slackTool],
+			config: {
+				guardrails: {
+					tools: [
+						{
+							kind: 'keywords',
+							id: 'g1',
+							stage: 'before',
+							keywords: ['secret'],
+							tools: [{ type: 'node', name: 'HTTP Request' }],
+						},
+					],
+				},
+			},
+		});
+
+		actions.onOpenAddToolModal();
+		const modalData = uiStore.modalsById[AGENT_TOOLS_MODAL_KEY].data as unknown as ToolsModalData;
+		// Removing the first tool shifts Slack into its slot; that is not a rename.
+		modalData.onConfirm({ tools: [slackTool] });
+
+		expect(scheduleConfigUpdate).toHaveBeenCalledTimes(1);
+		expect(scheduleConfigUpdate).toHaveBeenCalledWith({ tools: [slackTool] });
+		expect(scheduleConfigUpdate.mock.calls.some(([update]) => 'config' in (update as object))).toBe(
+			false,
+		);
 	});
 });
 

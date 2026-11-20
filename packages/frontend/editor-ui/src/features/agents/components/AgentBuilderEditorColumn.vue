@@ -19,7 +19,6 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useTypeAvailability } from '@n8n/frontend-module-type-availability-policies';
 import AgentSessionsListView from '../views/AgentSessionsListView.vue';
 import AgentAdvancedPanel from './AgentAdvancedPanel.vue';
-import AgentBudgetPanel from './AgentBudgetPanel.vue';
 import AgentCapabilitiesSection from './AgentCapabilitiesSection.vue';
 import AgentTriggersSection from './AgentTriggersSection.vue';
 import { provideAgentPersonalisation } from '../channels/agentPersonalisation';
@@ -30,6 +29,7 @@ import AgentMemoryEntriesPanel from './AgentMemoryEntriesPanel.vue';
 import AgentVectorStoresPanel from './AgentVectorStoresPanel.vue';
 import AgentMcpPanel from './AgentMcpPanel.vue';
 import AgentMemoryPanel from './AgentMemoryPanel.vue';
+import AgentGuardrailsSection from './AgentGuardrailsSection.vue';
 import AgentSubAgentsPanel from './AgentSubAgentsPanel.vue';
 import AgentBuilderTabPanel from './AgentBuilderTabPanel.vue';
 import AgentPanel from './AgentPanel.vue';
@@ -321,6 +321,23 @@ defineExpose({ onSetupTaskAction });
 						/>
 					</AgentPanel>
 
+					<AgentPanel
+						:header="i18n.baseText('agents.builder.guardrails.title')"
+						:description="i18n.baseText('agents.builder.guardrails.description')"
+						data-testid="agent-guardrails-panel"
+					>
+						<AgentGuardrailsSection
+							:config="localConfig"
+							:tools="localConfig?.tools ?? []"
+							:project-id="projectId"
+							:agent-id="agentId"
+							:disabled="childrenDisabled"
+							:validation-issues="configValidationIssues ?? []"
+							@update:config="emit('update:config', $event)"
+							@update:budget-config="emit('update:budget-config', $event)"
+						/>
+					</AgentPanel>
+
 					<AgentMemoryPanel
 						v-if="canEditAgent"
 						:config="localConfig"
@@ -418,13 +435,6 @@ defineExpose({ onSetupTaskAction });
 					data-testid="agent-settings-tab-content"
 				>
 					<div :class="$style.settingsCards">
-						<AgentBudgetPanel
-							:config="localConfig"
-							:project-id="projectId"
-							:agent-id="agentId"
-							:disabled="childrenDisabled"
-							@update:config="emit('update:budget-config', $event)"
-						/>
 						<AgentSubAgentsPanel
 							:config="localConfig"
 							:disabled="childrenDisabled"
