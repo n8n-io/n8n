@@ -111,5 +111,19 @@ describe('renderBody', () => {
 		const body = renderBody([result], { group: 'review', runUrl });
 		assert.match(body, /has no auto-merge/);
 		assert.match(body, /New packages: `tzdata-legacy`\./);
+		assert.doesNotMatch(body, /less than 24 hours old/);
+	});
+
+	it('explains a digest that skipped the 24-hour gate', () => {
+		const result = {
+			...ready('DHI_REF', false, [platform('linux/amd64', [finding('CVE-1', 'zlib')])]),
+			gateSkipped: true,
+		};
+		const body = renderBody([result], { group: 'review', runUrl });
+		assert.match(
+			body,
+			/A manual run skipped the 24-hour gate: this digest is less than 24 hours old\./,
+		);
+		assert.doesNotMatch(body, /New packages/);
 	});
 });
