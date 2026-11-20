@@ -915,7 +915,7 @@ describe('DELETE /ai-preferences/:id', () => {
 });
 
 describe('a custom project role', () => {
-	let customMember: User;
+	let customMember: Person;
 	let customMemberAgent: SuperAgentTest;
 	let creatorProject: Project;
 	let unrelatedProject: Project;
