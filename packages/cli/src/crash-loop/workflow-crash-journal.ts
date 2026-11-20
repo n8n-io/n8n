@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { isRecord } from '@n8n/utils/is-record';
@@ -33,7 +34,7 @@ interface JournalState {
 }
 
 /** Crashes older than this no longer count. */
-export const CRASH_WINDOW_MS = 6 * 60 * 60 * 1000;
+export const CRASH_WINDOW_MS = 6 * Time.hours.toMilliseconds;
 
 const attemptKey = ({ id, leaseEpoch }: JobAttempt) => `${id}:${leaseEpoch}`;
 
