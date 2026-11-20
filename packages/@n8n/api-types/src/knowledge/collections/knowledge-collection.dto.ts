@@ -5,6 +5,8 @@ export interface KnowledgeCollectionDto {
 	id: string;
 	name: string;
 	description: string;
+	/** Unique on the instance. The agent tool names of the collection contain it. */
+	slug: string;
 	/** Same shape as on credentials and workflows. */
 	homeProject: { id: string; name: string; type: ProjectType };
 	fileCount: number;

@@ -98,16 +98,53 @@ export class KnowledgeCollectionRepository {
 			...new Set(collections.flatMap((collection) => collection.projectId ?? [])),
 		];
 
-		if (collectionIds.length === 0 || projectIds.length === 0) {
+		if (projectIds.length === 0) {
 			return [];
 		}
 
+		const homeProjects = await this.findHomeProjects(projectIds, manager);
+		const fileTotals = await this.findFileTotals(collectionIds, manager);
+		const agentCounts = await this.findAgentCounts(collectionIds, manager);
+
+		return collections.flatMap((collection) => {
+			const homeProject = collection.projectId ? homeProjects.get(collection.projectId) : undefined;
+
+			if (!homeProject) {
+				return [];
+			}
+
+			const files = fileTotals.get(collection.id);
+
+			return [
+				{
+					collection,
+					homeProject,
+					fileCount: files?.fileCount ?? 0,
+					totalFileSizeBytes: files?.totalFileSizeBytes ?? 0,
+					agentCount: agentCounts.get(collection.id) ?? 0,
+				},
+			];
+		});
+	}
+
+	private async findHomeProjects(
+		projectIds: string[],
+		manager: EntityManager,
+	): Promise<Map<string, KnowledgeCollectionSummary['homeProject']>> {
 		const projects = await manager.find(Project, {
 			select: { id: true, name: true, type: true },
 			where: { id: In(projectIds) },
 		});
 
-		const fileTotals = await manager
+		return new Map(projects.map(({ id, name, type }) => [id, { id, name, type }]));
+	}
+
+	/** PostgreSQL returns COUNT and SUM as strings, so both go through `Number`. */
+	private async findFileTotals(
+		collectionIds: string[],
+		manager: EntityManager,
+	): Promise<Map<string, { fileCount: number; totalFileSizeBytes: number }>> {
+		const rows = await manager
 			.createQueryBuilder(KnowledgeFile, 'file')
 			.select('file.knowledgeCollectionId', 'collectionId')
 			.addSelect('COUNT(*)', 'fileCount')
@@ -120,7 +157,20 @@ export class KnowledgeCollectionRepository {
 				totalFileSizeBytes: number | string;
 			}>();
 
-		const agentCounts = await manager
+		return new Map(
+			rows.map((row) => [
+				row.collectionId,
+				{ fileCount: Number(row.fileCount), totalFileSizeBytes: Number(row.totalFileSizeBytes) },
+			]),
+		);
+	}
+
+	/** PostgreSQL returns COUNT as a string, so it goes through `Number`. */
+	private async findAgentCounts(
+		collectionIds: string[],
+		manager: EntityManager,
+	): Promise<Map<string, number>> {
+		const rows = await manager
 			.createQueryBuilder(AgentKnowledgeDependency, 'dependency')
 			.select('dependency.knowledgeCollectionId', 'collectionId')
 			.addSelect('COUNT(*)', 'agentCount')
@@ -128,31 +178,6 @@ export class KnowledgeCollectionRepository {
 			.groupBy('dependency.knowledgeCollectionId')
 			.getRawMany<{ collectionId: string; agentCount: number | string }>();
 
-		const projectById = new Map(projects.map((project) => [project.id, project]));
-		// PostgreSQL returns COUNT and SUM as strings.
-		const fileTotalsById = new Map(fileTotals.map((row) => [row.collectionId, row]));
-		const agentCountById = new Map(
-			agentCounts.map((row) => [row.collectionId, Number(row.agentCount)]),
-		);
-
-		return collections.flatMap((collection) => {
-			const homeProject = collection.projectId ? projectById.get(collection.projectId) : undefined;
-
-			if (!homeProject) {
-				return [];
-			}
-
-			const files = fileTotalsById.get(collection.id);
-
-			return [
-				{
-					collection,
-					homeProject: { id: homeProject.id, name: homeProject.name, type: homeProject.type },
-					fileCount: Number(files?.fileCount ?? 0),
-					totalFileSizeBytes: Number(files?.totalFileSizeBytes ?? 0),
-					agentCount: agentCountById.get(collection.id) ?? 0,
-				},
-			];
-		});
+		return new Map(rows.map((row) => [row.collectionId, Number(row.agentCount)]));
 	}
 }

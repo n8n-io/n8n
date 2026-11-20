@@ -29,11 +29,6 @@ export class KnowledgeCollectionCatalogService {
 		private readonly projectRepository: ProjectRepository,
 	) {}
 
-	/**
-	 * Collections have no scopes of their own yet, so a create needs
-	 * `agent:update` on the home project. The route checks it, and this method
-	 * checks it again for callers that do not go through the route.
-	 */
 	async create(
 		user: User,
 		projectId: string,
@@ -43,6 +38,11 @@ export class KnowledgeCollectionCatalogService {
 			throw new NotFoundError('Knowledge collections are not enabled');
 		}
 
+		/**
+		 * Collections have no scopes of their own yet (TBD), so a create needs
+		 * `agent:update` on the home project. The route checks it, and this method
+		 * checks it again for callers that do not go through the route.
+		 */
 		if (!(await userHasScopes(user, ['agent:update'], false, { projectId }))) {
 			throw new ForbiddenError(
 				'You do not have permission to create a knowledge collection in this project.',
@@ -132,6 +132,7 @@ function toDto({
 		name: collection.name,
 		// Only a private collection of an agent has no description.
 		description: collection.description ?? '',
+		slug: collection.slug,
 		homeProject,
 		fileCount,
 		totalFileSizeBytes,

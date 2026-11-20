@@ -63,6 +63,7 @@ describe('knowledge collection routes', () => {
 				id: expect.any(String),
 				name: 'Returns playbook',
 				description: 'How we handle returns and refunds',
+				slug: 'returns_playbook',
 				homeProject: { id: project.id, name: 'Docs', type: 'team' },
 				fileCount: 0,
 				totalFileSizeBytes: 0,
@@ -133,6 +134,13 @@ describe('knowledge collection routes', () => {
 				.getRepository(KnowledgeCollection)
 				.findOneByOrFail({ id: second.body.data.id });
 			expect(secondRow.slug).toMatch(/^returns_playbook_[a-z0-9]{6}$/);
+		});
+
+		it('gives a nano id slug to a name without Latin letters or digits', async () => {
+			const response = await create(editor, input({ name: '日本語' }));
+
+			expect(response.status).toBe(200);
+			expect(response.body.data.slug).toMatch(/^[0-9A-Za-z]{16}$/);
 		});
 
 		it('answers 404 to the instance owner for a project that does not exist', async () => {

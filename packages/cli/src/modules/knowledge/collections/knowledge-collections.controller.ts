@@ -7,7 +7,7 @@ import { KnowledgeCollectionCatalogService } from './knowledge-collection-catalo
 
 /**
  * Collections have no scopes of their own yet, so the agent scopes of the
- * project in the URL decide.
+ * project in the URL decide. To be changed when collections have their own scopes.
  */
 @RestController('/projects/:projectId/knowledge/collections')
 export class KnowledgeCollectionsController {

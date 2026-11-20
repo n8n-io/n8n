@@ -4,7 +4,10 @@ import { Z } from '../../zod-class';
 
 export const KNOWLEDGE_COLLECTION_NAME_MAX_LENGTH = 128;
 
-/** The agent reads the description on every run to pick a collection. */
+/**
+ * If you change this limit, keep in mind that the agent reads the description
+ * on every run to pick a collection, and it must match the database column size.
+ */
 export const KNOWLEDGE_COLLECTION_DESCRIPTION_MAX_LENGTH = 512;
 
 export class CreateKnowledgeCollectionDto extends Z.class({
