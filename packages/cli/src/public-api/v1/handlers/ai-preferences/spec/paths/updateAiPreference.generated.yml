@@ -3,7 +3,7 @@ tags:
   - AiPreference
 summary: Update an AI preference
 description: |-
-  Replace an AI preference with the full body: content, scope, and the userId or projectId of the scope. A user preference names its user in userId, and a project preference names its project in projectId. A new scope moves the preference: a move needs the delete permission on the old scope and the create permission on the new one.
+  Replace an AI preference with the full body: content, scope, and the userId or projectId of the scope. A user preference names its user in userId, and a project preference names its project in projectId. A new scope moves the preference: a move needs the delete permission on the old scope and the create permission on the new one. A move also needs the aiPreference:create and aiPreference:delete API key scopes.
 
   Requires the `aiPreference:update` API key scope.
 x-required-scope: aiPreference:update

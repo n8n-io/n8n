@@ -29,6 +29,7 @@ import {
 } from '@n8n/decorators';
 import type { NextFunction, Request, Response } from 'express';
 
+import { apiKeyScopesSatisfy } from '@/public-api/public-api-route-resolver';
 import {
 	encodeNextCursor,
 	resolveOffsetPagination,
@@ -146,7 +147,8 @@ export class AiPreferencesPublicController {
 		'Replace an AI preference with the full body: content, scope, and the userId or projectId of the scope. ' +
 			'A user preference names its user in userId, and a project preference names its project in projectId. ' +
 			'A new scope moves the preference: a move needs the delete permission on the old scope ' +
-			'and the create permission on the new one.',
+			'and the create permission on the new one. A move also needs the aiPreference:create ' +
+			'and aiPreference:delete API key scopes.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, AiPreferencePublicDto)
@@ -158,8 +160,11 @@ export class AiPreferencesPublicController {
 		@Param('aiPreferenceId', aiPreferenceIdParamSchema) aiPreferenceId: string,
 		@Body body: UpdateAiPreferencePublicDto,
 	): Promise<AiPreferencePublicDto> {
+		const allowMove = apiKeyScopesSatisfy(req.tokenGrant?.apiKeyScopes, {
+			allOf: ['aiPreference:create', 'aiPreference:delete'],
+		});
 		return toAiPreferencePublicDto(
-			await this.aiPreferenceService.update(req.user, aiPreferenceId, body),
+			await this.aiPreferenceService.update(req.user, aiPreferenceId, body, { allowMove }),
 		);
 	}
 

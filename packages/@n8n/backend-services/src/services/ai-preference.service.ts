@@ -265,6 +265,7 @@ export class AiPreferenceService {
 		user: User,
 		id: string,
 		request: AiPreferenceUpdateRequest,
+		options: { allowMove?: boolean } = {},
 	): Promise<AiPreferenceDto> {
 		const access = this.projectAccess(user);
 		const row = await this.requireVisible(user, id, access);
@@ -274,6 +275,11 @@ export class AiPreferenceService {
 				: { ...request, scope: request.scope };
 		this.assertEditNamesOwner(resolved);
 		const moved = this.isMove(user, row, resolved);
+		if (moved && options.allowMove === false) {
+			throw new ForbiddenError(
+				'Moving a preference to another scope needs the aiPreference:create and aiPreference:delete API key scopes',
+			);
+		}
 		await this.assertCanWrite(user, row, moved ? 'delete' : 'update', access);
 		const target = await this.resolveTarget(user, resolved, moved ? 'create' : 'update', access);
 		// A move adds a row to the scope it lands in. An edit in place adds nothing.

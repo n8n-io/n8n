@@ -9,6 +9,7 @@ import {
 import type { Project, User } from '@n8n/db';
 import { AiPreferenceRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import type { ApiKeyScope } from '@n8n/permissions';
 
 import { AiPreferenceSettingsService } from '@/services/ai-preference-settings.service';
 
@@ -672,6 +673,41 @@ describe('Public API /ai-preferences', () => {
 				.send({ content: 'taken', scope: 'user', userId: member.id });
 
 			expect(response.statusCode).toBe(409);
+		});
+
+		test.each<ApiKeyScope[]>([
+			['aiPreference:update'],
+			['aiPreference:update', 'aiPreference:create'],
+			['aiPreference:update', 'aiPreference:delete'],
+		])('refuses a move with an API key that has only %j', async (...scopes) => {
+			const caller = await createMemberWithApiKey({ scopes });
+			await linkUserToProject(caller, editorProject, 'project:editor');
+			const row = await seed({ content: 'stay', userId: caller.id });
+
+			const response = await testServer
+				.publicApiAgentFor(caller)
+				.put(`/ai-preferences/${row.id}`)
+				.send({ content: 'stay', scope: 'project', projectId: editorProject.id });
+
+			expect(response.statusCode).toBe(403);
+			expect(response.body.message).toContain('aiPreference:create and aiPreference:delete');
+			expect(await repository().findOneByOrFail({ id: row.id })).toMatchObject({
+				userId: caller.id,
+				projectId: null,
+			});
+		});
+
+		test('lets an API key with only aiPreference:update edit in place', async () => {
+			const caller = await createMemberWithApiKey({ scopes: ['aiPreference:update'] });
+			const row = await seed({ content: 'old', userId: caller.id });
+
+			const response = await testServer
+				.publicApiAgentFor(caller)
+				.put(`/ai-preferences/${row.id}`)
+				.send({ content: 'new', scope: 'user', userId: caller.id });
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body).toMatchObject({ content: 'new', userId: caller.id });
 		});
 
 		test('refuses an API key without the aiPreference:update scope', async () => {
