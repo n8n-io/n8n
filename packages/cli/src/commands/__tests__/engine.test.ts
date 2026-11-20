@@ -8,6 +8,7 @@ import { DbConnection } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { WorkQueuePublisherClient } from '@n8n/engine';
 import { BinaryDataConfig, BinaryDataService, ErrorReporter } from 'n8n-core';
+import { Expression } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import * as CrashJournal from '@/crash-journal';
@@ -358,6 +359,7 @@ describe('Engine', () => {
 		it('shuts the data plane down before exiting, without touching the crash journal', async () => {
 			const engine = createEngine();
 			await engine.init();
+			const dispose = vi.spyOn(Expression, 'disposeExpressionEngine');
 			const exit = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
 			try {
 				// @ts-expect-error - Accessing protected method for testing
@@ -372,13 +374,18 @@ describe('Engine', () => {
 				expect(workQueueConsumer.disconnect.mock.invocationCallOrder[1]).toBeLessThan(
 					publisher.disconnect.mock.invocationCallOrder[0],
 				);
-				expect(exit).toHaveBeenCalledWith();
+				expect(exit).toHaveBeenCalledExactlyOnceWith();
 				expect(vi.mocked(runtime.shutdown).mock.invocationCallOrder[0]).toBeLessThan(
 					exit.mock.invocationCallOrder[0],
 				);
 				expect(CrashJournal.cleanup).not.toHaveBeenCalled();
 				expect(dbConnection.close).not.toHaveBeenCalled();
+				// In-flight steps still evaluate expressions until the engine has stopped.
+				expect(vi.mocked(runtime.shutdown).mock.invocationCallOrder[0]).toBeLessThan(
+					dispose.mock.invocationCallOrder[0],
+				);
 			} finally {
+				dispose.mockRestore();
 				exit.mockRestore();
 			}
 		});
@@ -404,6 +411,27 @@ describe('Engine', () => {
 				expect(exitWithCrash).toHaveBeenCalledWith(
 					'There was an error shutting down the engine.',
 					expect.objectContaining({ errors: [shutdownError, disconnectError] }),
+				);
+			} finally {
+				exit.mockRestore();
+			}
+		});
+
+		it('reports a single release error through the crash path', async () => {
+			const engine = createEngine();
+			await engine.init();
+			const shutdownError = new Error('shutdown failed');
+			runtime.shutdown.mockRejectedValueOnce(shutdownError);
+			// @ts-expect-error - Accessing protected method for testing
+			const exitWithCrash = vi.spyOn(engine, 'exitWithCrash').mockResolvedValue(undefined);
+			const exit = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+			try {
+				// @ts-expect-error - Accessing protected method for testing
+				await engine.stopProcess();
+
+				expect(exitWithCrash).toHaveBeenCalledWith(
+					'There was an error shutting down the engine.',
+					expect.objectContaining({ errors: [shutdownError] }),
 				);
 			} finally {
 				exit.mockRestore();

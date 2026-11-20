@@ -1,0 +1,154 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"created_at": {
+			"type": "string"
+		},
+		"currency": {
+			"type": "string"
+		},
+		"customer": {
+			"additionalProperties": true,
+			"properties": {
+				"email": {
+					"type": "string"
+				},
+				"first_name": {
+					"type": "string"
+				},
+				"id": {
+					"type": "number"
+				},
+				"last_name": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"financial_status": {
+			"type": "string"
+		},
+		"id": {
+			"type": ["number", "string"]
+		},
+		"line_items": {
+			"items": {
+				"additionalProperties": true,
+				"properties": {
+					"gift_card": {
+						"type": "boolean"
+					},
+					"grams": {
+						"type": "number"
+					},
+					"id": {
+						"type": "number"
+					},
+					"name": {
+						"type": "string"
+					},
+					"price": {
+						"type": "string"
+					},
+					"price_set": {
+						"properties": {
+							"presentment_money": {
+								"properties": {
+									"amount": {
+										"type": "string"
+									},
+									"currency_code": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"shop_money": {
+								"properties": {
+									"amount": {
+										"type": "string"
+									},
+									"currency_code": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							}
+						},
+						"type": "object"
+					},
+					"product_id": {
+						"type": "number"
+					},
+					"properties": {
+						"items": {},
+						"type": ["array", "null"]
+					},
+					"quantity": {
+						"type": "number"
+					},
+					"sku": {
+						"type": ["null", "string"]
+					},
+					"taxable": {
+						"type": "boolean"
+					},
+					"title": {
+						"type": "string"
+					},
+					"total_discount": {
+						"type": "string"
+					},
+					"total_discount_set": {
+						"properties": {
+							"presentment_money": {
+								"properties": {
+									"amount": {
+										"type": "string"
+									},
+									"currency_code": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"shop_money": {
+								"properties": {
+									"amount": {
+										"type": "string"
+									},
+									"currency_code": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							}
+						},
+						"type": "object"
+					},
+					"variant_id": {
+						"type": "number"
+					},
+					"variant_title": {
+						"type": ["null", "string"]
+					},
+					"vendor": {
+						"type": "string"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"name": {
+			"type": "string"
+		},
+		"order_number": {
+			"type": "number"
+		},
+		"total_price": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

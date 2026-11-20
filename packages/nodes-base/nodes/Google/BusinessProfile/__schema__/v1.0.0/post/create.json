@@ -1,0 +1,30 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"createTime": {
+			"type": "string"
+		},
+		"languageCode": {
+			"type": "string"
+		},
+		"name": {
+			"type": "string"
+		},
+		"searchUrl": {
+			"type": "string"
+		},
+		"state": {
+			"type": "string"
+		},
+		"summary": {
+			"type": "string"
+		},
+		"topicType": {
+			"type": "string"
+		},
+		"updateTime": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

@@ -10,6 +10,7 @@ import { AgentExecutionRepository } from '@/modules/agents/repositories/agent-ex
 import { AgentMessageRepository } from '@/modules/agents/repositories/agent-message.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 
+import { createAgent } from '../shared/db/agents';
 import { createMember } from '../shared/db/users';
 
 describe('Agent chat history pages', () => {
@@ -32,16 +33,14 @@ describe('Agent chat history pages', () => {
 
 	beforeEach(async () => {
 		const projectId = (await createTeamProject()).id;
-		const agent = await agentRepo.save(
-			agentRepo.create({
-				id: uuid(),
-				name: 'Agent',
-				projectId,
-				integrations: [],
-				tools: {},
-				skills: {},
-			}),
-		);
+		const agent = await createAgent({
+			id: uuid(),
+			name: 'Agent',
+			projectId,
+			integrations: [],
+			tools: {},
+			skills: {},
+		});
 		const thread = await threadRepo.save(
 			threadRepo.create({
 				id: uuid(),

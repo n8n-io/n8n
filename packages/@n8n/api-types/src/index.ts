@@ -24,6 +24,7 @@ export * from './node-type-availability';
 export type * from './sub-workflow-policy-check';
 export type * from './credential-type-availability';
 export type * from './instance-type-access';
+export type * from './type-usage';
 export type * from './transfer-preview';
 export type * from './transfer-result';
 export * from './redaction-enforcement';
@@ -163,6 +164,7 @@ export { passwordSchema, createPasswordSchema } from './schemas/password.schema'
 export { n8nIdSchema } from './schemas/id.schema';
 export {
 	agentIdParamSchema,
+	aiPreferenceIdParamSchema,
 	columnIdParamSchema,
 	communityPackageNameParamSchema,
 	credentialIdParamSchema,
@@ -504,6 +506,7 @@ export {
 	INSTANCE_AI_CONCISE_STYLE_ENABLED_VARIANT,
 	INSTANCE_AI_NODE_USAGE_FLAG,
 	INSTANCE_AI_APPROVAL_MODES_FLAG,
+	INSTANCE_AI_EMPTY_PREFERENCES_NOTE_FLAG,
 	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
 	INSTANCE_ACTIVITY_CONTEXT_FLAG,
 	INSTANCE_AI_CLOUD_BROWSER_FLAG,
@@ -878,6 +881,7 @@ export {
 	MCP_APPS_VARIANT_ENABLED,
 	MCP_AGENT_SCOPES,
 	MCP_SKILL_SCOPES,
+	MCP_PREFERENCE_SCOPES,
 	MCP_INSTANCE_SCOPES,
 	MCP_CLIENT_BRAND_MATCHERS,
 	MCP_CLIENT_TYPE_FILTERS,
@@ -1042,12 +1046,14 @@ export { SSO_LOGIN_REQUIRED_ERROR_CODE } from './constants/auth';
 export { N8N_CLIENT_HEADER, N8N_CLIENT_EDITOR_UI, N8N_CLIENT_N8N_NODE } from './constants/client';
 
 export {
+	instanceAiApprovalAskReasonSchema,
 	instanceAiApprovalDetailsSchema,
 	instanceAiApprovalModeSchema,
 	instanceAiAutoApprovalDeciderSchema,
 	autoApprovalPayloadSchema,
 	DATA_TABLE_CHANGE_SEVERITY,
 	isSessionGrantableDataTableAction,
+	type InstanceAiApprovalAskReason,
 	type InstanceAiApprovalDetails,
 	type InstanceAiDataTableChangeDetails,
 	type InstanceAiApprovalMode,

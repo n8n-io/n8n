@@ -143,7 +143,7 @@ const fatalErrorMock = ref<{ missing: string[] } | null>(null);
 
 const defaultAgentConfig: AgentJsonConfig = {
 	name: 'Agent',
-	model: 'anthropic/claude-sonnet-4-5',
+	model: 'anthropic/claude-sonnet-5-5',
 	instructions: 'Help.',
 };
 
@@ -479,6 +479,7 @@ describe('AgentChatPanel', () => {
 			placeholderPreview: Readonly<Ref<string | undefined>>;
 			showAttachButton: boolean;
 			interactionExtensions: readonly AgentsChatInteractionExtension[];
+			disabled: boolean;
 		}> = {},
 		attachTo?: HTMLElement,
 		slots?: Record<string, string | ((props: Record<string, unknown>) => unknown)>,
@@ -1485,14 +1486,42 @@ describe('AgentChatPanel', () => {
 			getSessionFilesMock.mockResolvedValue({ files: [file] });
 		});
 
-		it('shows the toggle only for a preview or n8n Chat session', () => {
+		it('shows the toggle for a session on every channel', () => {
 			expect(mountPanel({ continueSessionId: 't1' }).find(toggle).exists()).toBe(true);
 			expect(
 				mountPanel({ continueSessionId: 't1', channel: 'n8n-chat' }).find(toggle).exists(),
 			).toBe(true);
-			expect(mountPanel().find(toggle).exists()).toBe(false);
 			expect(mountPanel({ continueSessionId: 't1', channel: 'system' }).find(toggle).exists()).toBe(
-				false,
+				true,
+			);
+			expect(mountPanel().find(toggle).exists()).toBe(false);
+		});
+
+		it('shows the toggle after the host controls of the footer', () => {
+			const wrapper = mountPanel({ continueSessionId: 't1', channel: 'system' }, undefined, {
+				'footer-start': '<button data-testid="host-menu" />',
+			});
+
+			const html = wrapper.html();
+			expect(html.indexOf('data-testid="host-menu"')).toBeLessThan(
+				html.indexOf('data-test-id="agent-session-files-toggle"'),
+			);
+		});
+
+		it('lists system agent files with links to the system download route', async () => {
+			const wrapper = mountPanel({ continueSessionId: 't1', channel: 'system' });
+
+			await open(wrapper);
+
+			expect(getSessionFilesMock).toHaveBeenCalledWith(
+				{ baseUrl: '/rest' },
+				'p1',
+				'a1',
+				't1',
+				'system',
+			);
+			expect(wrapper.find('[data-test-id="session-file-link"]').attributes('href')).toContain(
+				'/agents/system/a1/chat/attachments/f-1',
 			);
 		});
 
@@ -1759,6 +1788,25 @@ describe('AgentChatPanel', () => {
 		expect(wrapper.get('[aria-label="generic.edit"]').attributes('disabled')).toBeDefined();
 		expect(composer.props('modelValue')).toBe('next draft');
 		expect(removeQueuedMessageMock).not.toHaveBeenCalled();
+		wrapper.unmount();
+	});
+
+	it('keeps queued messages queued while the host disables the composer', async () => {
+		queuedMessagesMock.value = [
+			{
+				id: '1',
+				steeringExecutionId: null,
+				message: 'original',
+				createdAt: new Date().toISOString(),
+			},
+		];
+		const wrapper = mountPanel({ disabled: true });
+		const editButton = wrapper.get('[aria-label="generic.edit"]');
+		expect(editButton.attributes('disabled')).toBeDefined();
+		wrapper.findComponent({ name: 'ChatMessageQueue' }).vm.$emit('edit', '1');
+		await flushPromises();
+		expect(removeQueuedMessageMock).not.toHaveBeenCalled();
+		expect(wrapper.findComponent({ name: 'ChatInputBase' }).props('modelValue')).toBe('');
 		wrapper.unmount();
 	});
 
@@ -4877,6 +4925,28 @@ describe('AgentChatPanel', () => {
 
 				expect(wrapper.find('[data-test-id="chat-input-attach-button"]').exists()).toBe(false);
 			});
+
+			it('disables the composer, its send and its footer controls while the host disables it', async () => {
+				const wrapper = mountPanel({ disabled: true }, undefined, {
+					'footer-start': (props) =>
+						h('button', { 'data-testid': 'host-menu', disabled: props.disabled }),
+				});
+				hostVm(wrapper).setDraft('hello');
+				await nextTick();
+				const input = composer(wrapper);
+				const hostMenu = () => wrapper.get('[data-testid="host-menu"]').element;
+
+				expect(input.props('disabled')).toBe(true);
+				expect(input.props('canSubmit')).toBe(false);
+				expect(hostMenu()).toHaveProperty('disabled', true);
+
+				await wrapper.setProps({ disabled: false });
+
+				expect(input.props('disabled')).toBe(false);
+				expect(input.props('canSubmit')).toBe(true);
+				expect(hostMenu()).toHaveProperty('disabled', false);
+				wrapper.unmount();
+			});
 		});
 
 		describe('message-accepted', () => {
@@ -4958,6 +5028,24 @@ describe('AgentChatPanel', () => {
 				expect(wrapper.emitted('message-sending')).toEqual([
 					[{ text: 'go another direction', files: [], isFirstMessage: false }],
 				]);
+			});
+
+			it('sends nothing, emits nothing and keeps the draft when beforeSend refuses the send', async () => {
+				const beforeSend = vi.fn(() => {
+					throw new Error('refused');
+				});
+				const wrapper = mountPanel({ beforeSend });
+				hostVm(wrapper).setDraft('hello');
+				await nextTick();
+
+				composer(wrapper).vm.$emit('submit');
+				await flushPromises();
+
+				expect(beforeSend).toHaveBeenCalledOnce();
+				expect(sendMessageMock).not.toHaveBeenCalled();
+				expect(wrapper.emitted('message-sending')).toBeUndefined();
+				expect(wrapper.emitted('draft-cleared')).toBeUndefined();
+				expect(composer(wrapper).props('modelValue')).toBe('hello');
 			});
 
 			it('marks a message as not the first once the thread has a user message', async () => {

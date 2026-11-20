@@ -21,6 +21,7 @@ import type { ArtifactAgentTargets } from '../../artifactAgentTargets';
 import type { ArtifactThread } from '../../artifactThread';
 import type { WorkflowFailuresReport } from '../../components/InstanceAiWorkflowPreview.vue';
 import { INSTANCE_AI_VIEW } from '../../constants';
+import { useAssistantCreditsStore } from '../../assistantCredits.store';
 import { useInstanceAiStore } from '../../instanceAi.store';
 import { USER_TYPED_MESSAGE } from '../../prefills';
 
@@ -162,6 +163,7 @@ vi.mock('@/features/agents/components/AgentChatPanel.vue', () => ({
 				panelSlots.current = Object.keys(slots);
 				return h('div', { 'data-test-id': 'agent-chat-panel-stub' }, [
 					slots['inline-offers']?.(),
+					slots['above-input']?.(),
 					slots['composer-attachments']?.(),
 					slots['footer-start']?.({ disabled: composerBlocked.current }),
 				]);
@@ -320,6 +322,41 @@ vi.mock('../../components/InstanceAiInputMenu.vue', () => ({
 vi.mock('../../components/ApprovalModeSelector.vue', () => ({
 	default: defineComponent({
 		setup: () => () => h('div', { 'data-test-id': 'approval-mode-selector-stub' }),
+	}),
+}));
+
+// The real notice reads the settings and users stores, and has its own tests.
+vi.mock('../../components/LimitedModeNotice.vue', () => ({
+	default: defineComponent({
+		setup: () => () => h('div', { 'data-test-id': 'limited-mode-notice-stub' }),
+	}),
+}));
+
+// The real banner reads the cloud plan stores, and has its own tests. Like the real
+// banner, the stub shows the dismiss button only when the banner is dismissible.
+vi.mock('@/features/ai/assistant/components/Agent/CreditWarningBanner.vue', () => ({
+	default: defineComponent({
+		props: {
+			message: { type: String, default: undefined },
+			dismissible: { type: Boolean, default: true },
+		},
+		emits: ['dismiss', 'upgrade-click'],
+		setup:
+			(props, { emit }) =>
+			() =>
+				h(
+					'div',
+					{ 'data-test-id': 'credit-warning-banner-stub', 'data-dismissible': props.dismissible },
+					[
+						props.message,
+						props.dismissible
+							? h('button', {
+									'data-test-id': 'credit-warning-banner-dismiss',
+									onClick: () => emit('dismiss'),
+								})
+							: null,
+					],
+				),
 	}),
 }));
 
@@ -492,6 +529,9 @@ describe('AssistantAgentThreadView', () => {
 			expect.objectContaining({ key: 'assistant_auto_approval' }),
 			expect.objectContaining({ key: 'assistant_instance_context' }),
 			expect.objectContaining({ key: 'assistant_status' }),
+			expect.objectContaining({ key: 'assistant_tool_result_table' }),
+			expect.objectContaining({ key: 'assistant_tool_result_code' }),
+			expect.objectContaining({ key: 'assistant_shared_files' }),
 		]);
 		expect(sendMessageFromOutside).not.toHaveBeenCalled();
 	});
@@ -743,6 +783,84 @@ describe('AssistantAgentThreadView', () => {
 		await flushPromises();
 
 		expect(appPreviewProps.current?.['refresh-key']).toBe(Number(firstKey) + 1);
+	});
+
+	describe('credits and limited mode', () => {
+		function setCredits(quota: number, claimed: number): void {
+			const creditsStore = useAssistantCreditsStore();
+			creditsStore.creditsQuota = quota;
+			creditsStore.creditsClaimed = claimed;
+		}
+
+		async function beforeSend(): Promise<void> {
+			const hook = panelProps.current['before-send'];
+			if (typeof hook !== 'function') throw new Error('The panel has no before-send hook');
+			await hook();
+		}
+
+		it('shows the limited mode notice above the composer', async () => {
+			const { getByTestId } = renderView({
+				props: { threadId: 'thread-1', projectId: 'project-1' },
+			});
+			await flushPromises();
+
+			expect(getByTestId('limited-mode-notice-stub')).toBeInTheDocument();
+		});
+
+		it('shows no credit banner while enough credits are left', async () => {
+			setCredits(100, 50);
+			const { queryByTestId } = renderView({
+				props: { threadId: 'thread-1', projectId: 'project-1' },
+			});
+			await flushPromises();
+
+			expect(queryByTestId('credit-warning-banner-stub')).not.toBeInTheDocument();
+			expect(panelProps.current.disabled).toBe(false);
+			await expect(beforeSend()).resolves.toBeUndefined();
+		});
+
+		it('shows a dismissible warning when credits are low, and still sends', async () => {
+			setCredits(100, 95);
+			const { getByTestId, queryByTestId } = renderView({
+				props: { threadId: 'thread-1', projectId: 'project-1' },
+			});
+			await flushPromises();
+
+			expect(getByTestId('credit-warning-banner-stub')).toHaveAttribute('data-dismissible', 'true');
+			await expect(beforeSend()).resolves.toBeUndefined();
+
+			await userEvent.click(getByTestId('credit-warning-banner-dismiss'));
+
+			expect(queryByTestId('credit-warning-banner-stub')).not.toBeInTheDocument();
+		});
+
+		it('disables the composer, refuses host sends and shows a banner that cannot be dismissed when no credits are left', async () => {
+			setCredits(100, 100);
+			const { getByTestId, queryByTestId } = renderView({
+				props: { threadId: 'thread-1', projectId: 'project-1' },
+			});
+			await flushPromises();
+
+			const banner = getByTestId('credit-warning-banner-stub');
+			expect(banner).toHaveAttribute('data-dismissible', 'false');
+			expect(queryByTestId('credit-warning-banner-dismiss')).not.toBeInTheDocument();
+			expect(banner).toHaveTextContent("You've run out of Assistant credits");
+			expect(panelProps.current.disabled).toBe(true);
+			await expect(beforeSend()).rejects.toThrow();
+		});
+
+		it('sends again once credits come back', async () => {
+			setCredits(100, 100);
+			renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
+			await flushPromises();
+			await expect(beforeSend()).rejects.toThrow();
+
+			setCredits(200, 100);
+			await flushPromises();
+
+			expect(panelProps.current.disabled).toBe(false);
+			await expect(beforeSend()).resolves.toBeUndefined();
+		});
 	});
 
 	describe('skill artifacts', () => {
@@ -1082,6 +1200,20 @@ describe('AssistantAgentThreadView', () => {
 			expect(queryByTestId('instance-ai-fix-with-ai-panel')).not.toBeInTheDocument();
 		});
 
+		it('hides the offer while no credits are left, and offers it again once they come back', async () => {
+			const { queryByTestId } = await renderWithFailedRun();
+			const creditsStore = useAssistantCreditsStore();
+
+			creditsStore.creditsQuota = 100;
+			creditsStore.creditsClaimed = 100;
+			await flushPromises();
+			expect(queryByTestId('instance-ai-fix-with-ai-panel')).not.toBeInTheDocument();
+
+			creditsStore.creditsQuota = 200;
+			await flushPromises();
+			expect(queryByTestId('instance-ai-fix-with-ai-panel')).toBeInTheDocument();
+		});
+
 		it('clears the offer when a later run of the same workflow succeeds', async () => {
 			const { queryByTestId } = await renderWithFailedRun();
 
@@ -1224,6 +1356,25 @@ describe('AssistantAgentThreadView', () => {
 			const clientContext = panelProps.current['client-context'] as () => Record<string, unknown>;
 			expect(clientContext().threadArtifacts).toEqual({
 				artifacts: [{ type: 'workflow', id: 'wf-9', name: 'Opened by hand' }],
+				activeId: 'wf-9',
+			});
+		});
+
+		it('names the run that the user started in the preview of a tab', async () => {
+			fetchTabs.mockResolvedValue({ state: storedState });
+			renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
+			await flushPromises();
+			isLoadingHistory.value = false;
+			await flushPromises();
+
+			// The preview remembers the run on the thread when the run starts.
+			previewThread.current?.rememberManualExecution('wf-9', 'exec-1', undefined);
+
+			const clientContext = panelProps.current['client-context'] as () => Record<string, unknown>;
+			expect(clientContext().threadArtifacts).toEqual({
+				artifacts: [
+					{ type: 'workflow', id: 'wf-9', name: 'Opened by hand', executionId: 'exec-1' },
+				],
 				activeId: 'wf-9',
 			});
 		});
@@ -1694,6 +1845,82 @@ describe('AssistantAgentThreadView', () => {
 			onSessionCreated();
 
 			expect(getAssistantAgentLaunch('thread-new')).toBeUndefined();
+		});
+	});
+
+	describe('agent subject of a new thread', () => {
+		function launchWith(subject: Record<string, unknown>) {
+			stashAssistantAgentLaunch('thread-new', {
+				projectId: 'project-1',
+				source: 'agent_builder_page',
+				origin: 'internal',
+				subject: { type: 'agent', id: 'agent-1', projectId: 'project-1', ...subject } as never,
+			});
+		}
+
+		async function renderNewThread() {
+			const view = renderView({ props: { threadId: 'thread-new', projectId: 'project-1' } });
+			await flushPromises();
+			isLoadingHistory.value = false;
+			await flushPromises();
+			return view;
+		}
+
+		function clientContext(): Record<string, unknown> {
+			return (panelProps.current['client-context'] as () => Record<string, unknown>)();
+		}
+
+		it('opens a saved agent before the first message and binds it with that message', async () => {
+			launchWith({ name: 'Triage' });
+
+			const { getByTestId } = await renderNewThread();
+
+			expect(getByTestId('agent-preview-stub')).toBeInTheDocument();
+			expect(agentPreview.props).toMatchObject({
+				'agent-id': 'agent-1',
+				'project-id': 'project-1',
+			});
+			expect(fetchTargets).not.toHaveBeenCalled();
+			expect(clientContext()).toMatchObject({
+				subject: { type: 'agent', id: 'agent-1', projectId: 'project-1', name: 'Triage' },
+			});
+		});
+
+		it('binds a change from the preview once the server accepts the first message', async () => {
+			launchWith({ name: 'Triage' });
+			await renderNewThread();
+			const renamed = { agentId: 'agent-1', projectId: 'project-1', name: 'Refund triage' };
+
+			expect(agentPreview.targets).toBeDefined();
+			await agentPreview.targets?.bind(renamed);
+			expect(bindTarget).not.toHaveBeenCalled();
+
+			// The first turn bound the subject under its old name.
+			fetchTargets.mockResolvedValue({
+				targets: {
+					bound: { agentId: 'agent-1', projectId: 'project-1', name: 'Triage' },
+					pending: null,
+					targets: [],
+					previewSession: null,
+				},
+			});
+			bindTarget.mockResolvedValue({ targets: noTargets() });
+			const onSessionCreated = panelProps.current.onSessionCreated as () => void;
+			onSessionCreated();
+			await flushPromises();
+
+			expect(bindTarget).toHaveBeenCalledExactlyOnceWith(expect.anything(), 'thread-new', renamed);
+		});
+
+		it('sends a pending agent without a preview before the first message', async () => {
+			launchWith({ pending: true });
+
+			const { queryByTestId } = await renderNewThread();
+
+			expect(queryByTestId('agent-preview-stub')).not.toBeInTheDocument();
+			expect(clientContext()).toMatchObject({
+				subject: { type: 'agent', id: 'agent-1', projectId: 'project-1', pending: true },
+			});
 		});
 	});
 

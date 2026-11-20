@@ -42,6 +42,8 @@ if (!inE2ETests) {
 }
 
 const tablesToTruncate = [
+	// Before `user`: an agent's identity is a user that it must not lose.
+	'agents',
 	'auth_identity',
 	'auth_provider_sync_history',
 	'credentials_entity',

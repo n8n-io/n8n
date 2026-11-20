@@ -21,6 +21,7 @@ import {
 	INSTANCE_AI_SETUP_PANEL_FLAG,
 	INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT,
 	INSTANCE_AI_APPROVAL_MODES_FLAG,
+	INSTANCE_AI_EMPTY_PREFERENCES_NOTE_FLAG,
 	INSTANCE_AI_CONCISE_STYLE_FLAG,
 	INSTANCE_AI_CONCISE_STYLE_ENABLED_VARIANT,
 	ASSISTANT_SKILLS_FLAG,
@@ -38,6 +39,7 @@ import {
 	NodeTypesProxy,
 	PostHogClient,
 	TelemetryProxy,
+	WorkflowVersionedSettingsService,
 } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { Time, TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
@@ -116,8 +118,6 @@ import type {
 	FolderResolutionFailure,
 } from '@n8n/instance-ai';
 import {
-	BuilderTemplatesService,
-	builderTemplatesOptionsFromEnv,
 	wrapUntrustedData,
 	deriveCredentialHosts,
 	AppNamespaceTakenError,
@@ -241,7 +241,7 @@ import {
 import { ProjectService } from '@/services/project.service.ee';
 
 import { TagService } from '@/services/tag.service';
-import { createAiProxyFetch, createWebSearchFetch } from '@/utils/ai-proxy-fetch';
+import { createWebSearchFetch } from '@/utils/ai-proxy-fetch';
 import { resolveBuiltinNodeDefinitionDirs } from '@/utils/node-definition-dirs';
 import { WorkflowRunner } from '@/workflow-runner';
 import {
@@ -291,8 +291,6 @@ import { fetchAndExtract, fetchCachedPage, LRUCache } from './web-research';
 import { toWorkflowJSON } from './workflow-json';
 import { WorkflowTemplatesService } from './workflow-templates.service';
 import { toUserLike } from '@/utils/to-user-like';
-
-type BuilderTemplatesServiceInstance = InstanceType<typeof BuilderTemplatesService>;
 
 /**
  * Fill in defaults for properties whose visibility depends on sibling values
@@ -443,6 +441,7 @@ export interface InstanceAiFeatureFlags {
 	/** Shared activity recording and retrieval use the same instance gate. */
 	instanceContextEnabled: boolean;
 	assistantSkillsEnabled: boolean;
+	preferencesNoteVariant?: string;
 }
 
 @Service()
@@ -463,8 +462,6 @@ export class InstanceAiAdapterService {
 	} | null = null;
 
 	private readonly NODES_CACHE_TTL_MS = 5 * 60 * 1000;
-
-	private templatesService: BuilderTemplatesServiceInstance | undefined;
 
 	private async getNodesFromCache(): Promise<INodeTypeDescription[]> {
 		if (this.nodesCache && Date.now() < this.nodesCache.expiresAt) {
@@ -717,7 +714,6 @@ export class InstanceAiAdapterService {
 			appService: this.createAppAdapter(user, projectId, threadId),
 			webResearchService: this.createWebResearchAdapter(user, searchProxyConfig),
 			workspaceService: this.createWorkspaceAdapter(user, projectId),
-			templatesService: this.getTemplatesService(),
 			workflowTemplateService: this.createWorkflowTemplateAdapter(),
 			licenseHints: this.buildLicenseHints(),
 			logger: this.logger,
@@ -845,6 +841,7 @@ export class InstanceAiAdapterService {
 			// Leave unreadable flags unassigned.
 		}
 		const setupPanelVariant = flags[INSTANCE_AI_SETUP_PANEL_FLAG];
+		const preferencesNoteVariant = flags[INSTANCE_AI_EMPTY_PREFERENCES_NOTE_FLAG];
 		return {
 			credentialDescriptionsEnabled: flags[CREDENTIAL_DESCRIPTIONS_FLAG] === true,
 			configEvalsEnabled: flags[CONFIG_EVALUATIONS_FLAG] === CONFIG_EVALUATIONS_ENABLED_VARIANT,
@@ -866,6 +863,7 @@ export class InstanceAiAdapterService {
 			approvalModesEnabled: flags[INSTANCE_AI_APPROVAL_MODES_FLAG] === true,
 			instanceContextEnabled,
 			assistantSkillsEnabled,
+			...(typeof preferencesNoteVariant === 'string' ? { preferencesNoteVariant } : {}),
 		};
 	}
 
@@ -1041,18 +1039,6 @@ export class InstanceAiAdapterService {
 		const hiddenProperties = config.hiddenNodeProperties?.[nodeName];
 		if (hiddenProperties && hiddenProperties.length > 0) meta.hiddenProperties = hiddenProperties;
 		return meta;
-	}
-
-	getTemplatesService(): BuilderTemplatesServiceInstance {
-		if (!this.templatesService) {
-			this.templatesService = new BuilderTemplatesService({
-				...builderTemplatesOptionsFromEnv({ logger: this.logger }),
-				cacheDir: path.join(this.instanceSettings.n8nFolder, 'n8n-sdk-templates'),
-				logger: this.logger,
-				fetch: createAiProxyFetch(this.outboundHttp),
-			});
-		}
-		return this.templatesService;
 	}
 
 	private createWorkflowTemplateAdapter(): InstanceAiWorkflowTemplateService {
@@ -2609,11 +2595,18 @@ export class InstanceAiAdapterService {
 				// while the execution still belongs to the workflow.
 				let nodes: INode[] = workflow.nodes ?? [];
 				let connections: IConnections = workflow.connections ?? {};
+				let settings = workflow.settings;
+				let ranVersionId = workflow.versionId;
 				const versionId = options?.versionId;
 				if (versionId !== undefined && versionId !== workflow.versionId) {
 					const version = await workflowHistoryService.getVersion(user, workflowId, versionId);
 					nodes = version.nodes ?? [];
 					connections = version.connections ?? {};
+					settings = Container.get(WorkflowVersionedSettingsService).forVersionRun(
+						workflow.settings,
+						version,
+					);
+					ranVersionId = version.versionId;
 				}
 
 				const target = nodes.find((node) => node.name === nodeName);
@@ -2771,8 +2764,9 @@ export class InstanceAiAdapterService {
 						...workflow,
 						nodes,
 						connections,
+						versionId: ranVersionId,
 						settings: {
-							...workflow.settings,
+							...settings,
 							saveManualExecutions: true,
 							saveDataSuccessExecution: 'all',
 							saveDataErrorExecution: 'all',

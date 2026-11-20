@@ -43,7 +43,7 @@ This approach is more readable and maintainable than complex cron patterns.
 ## Time Zone Handling
 
 When building scheduled workflows:
-- If user specifies a timezone, set it in the Schedule Trigger node's timezone parameter
+- If user specifies a timezone, set it as the workflow timezone setting. The Schedule Trigger has no timezone parameter; it fires in the workflow timezone
 - If user mentions times without timezone, use the schedule as specified (instance default will apply)
 - For Wait nodes, be aware they use server system time, not workflow timezone
 

@@ -1011,6 +1011,26 @@ describe('FrontendService', () => {
 		});
 	});
 
+	describe('ai.allowModelTraining setting', () => {
+		it('should use the value from AiUsageService', async () => {
+			const { service } = createMockService();
+			aiUsageService.isModelTrainingAllowed.mockResolvedValueOnce(false);
+
+			const settings = await service.getSettings();
+
+			expect(settings.ai.allowModelTraining).toBe(false);
+		});
+
+		it('should report opted out when the stored value cannot be read', async () => {
+			const { service } = createMockService();
+			aiUsageService.isModelTrainingAllowed.mockRejectedValueOnce(new Error('DB error'));
+
+			const settings = await service.getSettings();
+
+			expect(settings.ai.allowModelTraining).toBe(false);
+		});
+	});
+
 	describe('aiPreferences setting', () => {
 		afterEach(() => {
 			Object.assign(aiPreferenceSettingsService, { isSwitchOn: true, isManagedByEnv: false });

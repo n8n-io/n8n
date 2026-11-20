@@ -60,7 +60,7 @@ const userId = 'user-1';
 
 const schema: AgentJsonConfig = {
 	name: 'Support Agent',
-	model: 'anthropic/claude-sonnet-4-5',
+	model: 'anthropic/claude-sonnet-5-5',
 	instructions: 'Help users',
 };
 
@@ -349,7 +349,7 @@ describe('AgentWorkflowExecutionService', () => {
 				telemetry: expect.objectContaining({
 					runType: 'production',
 					configuration: expect.objectContaining({
-						model: 'anthropic/claude-sonnet-4-5',
+						model: 'anthropic/claude-sonnet-5-5',
 					}),
 				}),
 			}),
@@ -625,7 +625,7 @@ describe('AgentWorkflowExecutionService', () => {
 		const hook = options.guardrails?.hooks[0];
 		if (!hook?.after) throw new Error('Expected a budget guardrail hook');
 		await hook.after(
-			{ callId: 'call-1', model: 'anthropic/claude-sonnet-4-5', source: 'turn' },
+			{ callId: 'call-1', model: 'anthropic/claude-sonnet-5-5', source: 'turn' },
 			{ promptTokens: 1, completionTokens: 1, totalTokens: 2, cost: 17 },
 		);
 
@@ -922,7 +922,7 @@ describe('AgentWorkflowExecutionService', () => {
 		const inlinePayload = {
 			config: {
 				name: 'Inline Agent',
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 				credential: 'cred-1',
 				instructions: 'Help users',
 			},
@@ -1070,7 +1070,7 @@ describe('AgentWorkflowExecutionService', () => {
 					run_type: 'production',
 					source: 'workflow',
 					turn_status: 'succeeded',
-					configuration: expect.objectContaining({ model: 'anthropic/claude-sonnet-4-5' }),
+					configuration: expect.objectContaining({ model: 'anthropic/claude-sonnet-5-5' }),
 				}),
 			);
 			// Inline workflow-invoked runs get the same 'workflow' tracing as
@@ -1103,7 +1103,7 @@ describe('AgentWorkflowExecutionService', () => {
 			const payloadWithForgedMarker = {
 				config: {
 					name: 'Inline Agent',
-					model: 'anthropic/claude-sonnet-4-5',
+					model: 'anthropic/claude-sonnet-5-5',
 					credential: 'cred-1',
 					instructions: 'Help users',
 					tools: [
@@ -1699,7 +1699,7 @@ describe('AgentWorkflowExecutionService', () => {
 		const inlinePayload = {
 			config: {
 				name: 'Inline Agent',
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 				credential: 'cred-1',
 				instructions: 'Help users',
 			},

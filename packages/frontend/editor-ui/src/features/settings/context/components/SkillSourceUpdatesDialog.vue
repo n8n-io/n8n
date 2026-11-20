@@ -453,7 +453,11 @@ void load();
 						>{{ detailError }}
 						<N8nButton variant="ghost" :label="i18n.baseText('generic.retry')" @click="loadPreview"
 					/></N8nCallout>
-					<SkillSourceFilesView v-else :skill="skill" :diff-files="detail?.files ?? []">
+					<SkillSourceFilesView
+						v-else
+						:skill="{ ...skill, ...detail?.preview }"
+						:diff-files="detail?.preview ? undefined : (detail?.files ?? [])"
+					>
 						<template #footer>
 							<N8nText
 								v-if="detail && !focused?.newSkill && skill.check?.verdict !== 'blocked'"

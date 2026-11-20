@@ -30,16 +30,7 @@ vi.mock('@n8n/instance-ai', async () => {
 			const safeContent = content.replace(/<\/untrusted_data/gi, '&lt;/untrusted_data');
 			return `<untrusted_data source="${esc(source)}"${safeLabel}>\n${safeContent}\n</untrusted_data>`;
 		},
-		builderTemplatesOptionsFromEnv: () => ({}),
 		deriveCredentialHosts: vi.fn().mockReturnValue([]),
-		BuilderTemplatesService: class {
-			async getBundle() {
-				return { files: [], indexTxt: '', version: null };
-			}
-			getVersion() {
-				return null;
-			}
-		},
 	};
 });
 
@@ -78,6 +69,7 @@ import {
 	CONFIG_EVALUATIONS_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_FLAG,
 	INSTANCE_AI_APPROVAL_MODES_FLAG,
+	INSTANCE_AI_EMPTY_PREFERENCES_NOTE_FLAG,
 	INSTANCE_AI_NODE_USAGE_FLAG,
 	INSTANCE_ACTIVITY_CONTEXT_FLAG,
 	ASSISTANT_SKILLS_FLAG,
@@ -1960,6 +1952,7 @@ import {
 	type RoleService,
 	AiPreferenceScopeFullError,
 	type AiPreferenceService,
+	WorkflowVersionedSettingsService,
 } from '@n8n/backend-services';
 import { type DataTableRepository, type DataTableService } from '@n8n/backend-module-data-table';
 
@@ -6955,6 +6948,54 @@ describe('createExecutionAdapter runStep()', () => {
 		]);
 	});
 
+	it('runs a past version on the engine that the version stores, and records that version', async () => {
+		const harness = createRunAdapterForTests({
+			...chainWorkflow,
+			versionId: 'v-draft',
+			settings: { engineType: 'v1', timezone: 'Europe/Berlin' },
+		});
+		harness.mockWorkflowHistoryService.getVersion.mockResolvedValue({
+			versionId: 'v-old',
+			nodes: chainWorkflow.nodes,
+			connections: chainWorkflow.connections,
+			settings: { engineType: 'v2' },
+		});
+		const versionedSettings = mock<WorkflowVersionedSettingsService>();
+		versionedSettings.forVersionRun.mockImplementation((settings, version) => ({
+			...settings,
+			...version.settings,
+		}));
+		vi.mocked(Container.get).mockImplementation(((token: unknown) =>
+			token === WorkflowVersionedSettingsService
+				? versionedSettings
+				: harness.mockExecutionPersistence) as typeof Container.get);
+		const runStep = harness.adapter.runStep as NonNullable<typeof harness.adapter.runStep>;
+
+		await runStep('wf-1', 'Send', { versionId: 'v-old' });
+
+		const runData = harness.mockWorkflowRunner.run.mock.calls[0][0];
+		expect(runData.workflowData.versionId).toBe('v-old');
+		expect(runData.workflowData.settings).toMatchObject({
+			engineType: 'v2',
+			timezone: 'Europe/Berlin',
+		});
+	});
+
+	it('runs the draft on the draft engine when no version is named', async () => {
+		const harness = createRunAdapterForTests({
+			...chainWorkflow,
+			versionId: 'v-draft',
+			settings: { engineType: 'v1' },
+		});
+		const runStep = harness.adapter.runStep as NonNullable<typeof harness.adapter.runStep>;
+
+		await runStep('wf-1', 'Send', undefined);
+
+		const runData = harness.mockWorkflowRunner.run.mock.calls[0][0];
+		expect(runData.workflowData.versionId).toBe('v-draft');
+		expect(runData.workflowData.settings.engineType).toBe('v1');
+	});
+
 	it('reads the draft without touching history when no version is named', async () => {
 		const harness = createRunAdapterForTests(chainWorkflow);
 		const runStep = harness.adapter.runStep as NonNullable<typeof harness.adapter.runStep>;
@@ -8144,6 +8185,14 @@ describe('resolveExperimentGates', () => {
 			instanceContextEnabled: true,
 			nodeUsageEnabled: false,
 			nodeContextEnabled: false,
+		});
+	});
+
+	it.each(['control', 'variant'])('passes the preferences note variant %s', async (variant) => {
+		stubContainer({ [INSTANCE_AI_EMPTY_PREFERENCES_NOTE_FLAG]: variant });
+
+		await expect(createAdapter().resolveExperimentGates(user)).resolves.toMatchObject({
+			preferencesNoteVariant: variant,
 		});
 	});
 

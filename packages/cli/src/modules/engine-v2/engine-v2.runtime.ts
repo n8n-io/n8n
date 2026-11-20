@@ -42,7 +42,7 @@ export interface EngineV2RuntimeOptions {
 	responseSender: ExecutionResponseSender;
 	/** Without it, the engine publishes no lifecycle events. */
 	lifecycleEventSender?: { send: LifecycleEventCallback };
-	/** The queues the engine runs on. The host closes their connections. */
+	/** The queues the engine runs on. The caller closes their connections. */
 	queues: EngineWorkQueues;
 }
 

@@ -58,6 +58,7 @@ import { skillSourceBackoffSeconds } from '../utils/skill-source-backoff';
 import { skillSourceHealth } from '../utils/skill-source-health';
 import { checkShape } from '../utils/skill-security-rules';
 import { getSkillHash } from '../utils/skill-hash';
+import { skillPreview } from '../utils/skill-preview';
 import {
 	pendingContent,
 	pendingScan,
@@ -74,7 +75,11 @@ import { SkillAccessService } from './skill-access.service';
 import { SkillSecurityScanner } from './skill-security-scanner.service';
 import { SkillSourceCredentialsProxy } from './skill-source-credentials-proxy.service';
 import { SkillSyncFlagGate } from './skill-sync-flag-gate';
-import { SkillsTelemetry, type SkillSourceTelemetryReason } from './skills-telemetry.service';
+import {
+	flaggedCodes,
+	SkillsTelemetry,
+	type SkillSourceTelemetryReason,
+} from './skills-telemetry.service';
 
 /** Check now checks a source at most this often. */
 const CHECK_NOW_INTERVAL_MS = 60_000;
@@ -198,9 +203,13 @@ export class SkillSyncService {
 		await this.requireReview(user, sourceId);
 		const { link, row } = await this.reviewedUpdate(sourceId, skillId, reviewed);
 		const content = pendingContent(link);
+		const preview =
+			content && pendingScan(link).verdict === 'blocked' ? skillPreview(content) : null;
 		const followers = await this.skillUsage.findFollowingAgentIds(skillId);
 		return {
-			files: content ? updateFiles(rowContent(row), content) : [],
+			...(preview?.truncated
+				? { files: [], preview: { previewFiles: preview.files, previewTruncated: true } }
+				: { files: content ? updateFiles(rowContent(row), content) : [] }),
 			...(await this.visibleAgents(user, followers)),
 		};
 	}
@@ -921,13 +930,7 @@ export class SkillSyncService {
 				provider,
 				stage: 'update',
 				verdict: scan.verdict,
-				rule_codes: [
-					...new Set(
-						scan.findings
-							.filter((finding) => finding.severity !== 'info')
-							.map((finding) => finding.rule),
-					),
-				],
+				...flaggedCodes(scan.findings),
 			});
 		}
 		return scan.verdict;

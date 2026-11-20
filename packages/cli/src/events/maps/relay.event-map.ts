@@ -1,5 +1,6 @@
 import type { AppEventMap } from '@n8n/backend-module-apps';
 import type { DataTableEventMap } from '@n8n/backend-module-data-table';
+import type { ExecutionLimitsEventMap } from '@n8n/backend-module-execution-limits';
 import type {
 	AuthenticationMethod,
 	BreakingChangeLightReportResult,
@@ -25,6 +26,7 @@ import type {
 	IWorkflowExecutionDataProcess,
 	IWorkflowSettings,
 	JsonValue,
+	RelatedAgentRun,
 	WorkflowExecuteMode,
 	WorkflowSettings,
 } from 'n8n-workflow';
@@ -57,6 +59,7 @@ import type {
 } from '@/modules/type-availability-policies/policy-rule.types';
 import type { TracingContext } from '@/modules/otel/tracing-context';
 import type { McpCallerAuth } from '@n8n/backend-services/auth';
+import type { PolicySystemReason } from '@/policy/policy-enforcement-backend';
 import type { UserLike } from '@/types/user-like.types';
 import type { PublicApiCaller, PublicApiClient } from '@/public-api/public-api-client';
 import type { PublicApiResult } from '@/public-api/types';
@@ -101,7 +104,7 @@ export type ProjectSummary = {
 	name: string;
 };
 
-type ModuleEventMap = DataTableEventMap & AppEventMap;
+type ModuleEventMap = DataTableEventMap & AppEventMap & ExecutionLimitsEventMap;
 
 export type RelayEventMap = ModuleEventMap & {
 	// #region Lifecycle
@@ -289,6 +292,8 @@ export type RelayEventMap = ModuleEventMap & {
 		mode: WorkflowExecuteMode;
 		projectId?: string;
 		projectName?: string;
+		/** The agent tool call that started this execution. Relays read ids from it and never send it whole. */
+		parentAgentRun?: RelatedAgentRun;
 	};
 
 	'workflow-post-execute': {
@@ -300,6 +305,8 @@ export type RelayEventMap = ModuleEventMap & {
 		projectName?: string;
 		source?: IWorkflowExecutionDataProcess['source'];
 		telemetryMetadata?: IWorkflowExecutionDataProcess['telemetryMetadata'];
+		/** The agent tool call that started this execution. Relays read ids from it and never send it whole. */
+		parentAgentRun?: RelatedAgentRun;
 	};
 
 	'workflow-sharing-updated': {
@@ -1094,6 +1101,33 @@ export type RelayEventMap = ModuleEventMap & {
 		userId: string;
 	};
 
+	'sso-settings-updated': {
+		user: UserLike;
+		protocol: 'saml' | 'oidc';
+		loginEnabled: boolean;
+		/** Settings keys whose stored value changed. Names only, never values. */
+		fieldsChanged: string[];
+		publicApi: boolean;
+	};
+
+	/**
+	 * An admin saved the SSO user role provisioning settings. Reports the
+	 * state after the save, not what changed. The settings page saves the
+	 * settings before the rules, so the counts are those at the time of the
+	 * save. Rule changes emit the `role-mapping-rule-*` events.
+	 */
+	'provisioning-settings-updated': {
+		user: UserLike;
+		/** The sign-in method that is active at the time of the save. */
+		authenticationMethod: AuthProviderType;
+		/** Which roles SSO provisions. With rules in n8n, project roles count when project rules exist. */
+		assignmentMethod: 'disabled' | 'instance_role' | 'instance_and_project_roles';
+		/** `idp_rule_mapping`: the claims carry the roles. `n8n_rule_mapping`: rules in n8n map claims to roles. */
+		roleMappingMethod: 'idp_rule_mapping' | 'n8n_rule_mapping';
+		instanceRuleCount: number;
+		projectRuleCount: number;
+	};
+
 	/**
 	 * SCIM provisioning turned on or off, or its token changed. Emitted only
 	 * when the saved state changes.
@@ -1467,6 +1501,42 @@ export type RelayEventMap = ModuleEventMap & {
 		loginId?: string;
 	};
 
+	/** n8n created the service account of an agent. Sent after the transaction commits. */
+	'agent-service-account-created': {
+		/** The user who created the agent. `null` when n8n created the account. */
+		user: UserLike | null;
+		/** Why n8n created the account without a user. */
+		source?: PolicySystemReason | 'startup';
+		/** The run that created the agent, when `source` is `execution`. */
+		executionId?: string;
+		serviceAccountId: string;
+		agentId: string;
+		/** `null` for an instance agent. */
+		projectId: string | null;
+		/** Login of the service account that acted. Absent for people and outside a request. */
+		loginId?: string;
+	};
+
+	/** n8n deleted the service account of an agent. Sent after the transaction commits. */
+	'agent-service-account-deleted': {
+		/**
+		 * The user who deleted the agent, its project or the user who owns it.
+		 * `null` when n8n deleted the account.
+		 */
+		user: UserLike | null;
+		/**
+		 * `scim`: the identity provider deleted the user who owns the agent.
+		 * `project-deletion`: the agent went with its project, or with the user who owns it.
+		 */
+		source?: 'scim' | 'project-deletion';
+		serviceAccountId: string;
+		agentId: string;
+		/** `null` for an instance agent. */
+		projectId: string | null;
+		/** Login of the service account that acted. Absent for people and outside a request. */
+		loginId?: string;
+	};
+
 	// #region Instance Policies
 
 	'instance-policies-updated': {
@@ -1480,6 +1550,7 @@ export type RelayEventMap = ModuleEventMap & {
 					| 'workflow_publishing'
 					| 'workflow_sharing'
 					| 'workflow_reviews'
+					| 'workflow_reviews_approval_required'
 					| 'public_api_rate_limit';
 				value: boolean;
 		  }

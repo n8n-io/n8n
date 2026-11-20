@@ -604,6 +604,31 @@ it.each([
 	});
 });
 
+it('shows a bounded preview and source link for an oversized blocked update', async () => {
+	vi.mocked(store.fetchSourceUpdates).mockResolvedValue({
+		updates: [update('docx', 'blocked')],
+		commit: null,
+	});
+	vi.mocked(store.fetchSourceUpdate).mockResolvedValue({
+		files: [],
+		preview: {
+			previewFiles: [{ path: 'SKILL.md', text: 'Read this line.' }],
+			previewTruncated: true,
+		},
+		agents: [],
+		hiddenAgentCount: 0,
+	});
+	const view = render();
+	expect(await view.findByTestId('skill-source-file')).toHaveTextContent('Read this line.');
+	expect(view.getByTestId('skill-source-preview-truncated')).toBeVisible();
+	expect(view.queryByTestId('skill-source-file-diff')).not.toBeInTheDocument();
+	expect(view.getByRole('link', { name: 'Open in GitHub' })).toHaveAttribute(
+		'href',
+		'https://github.com/acme/skills/blob/abc/skills/docx/SKILL.md',
+	);
+	expect(view.getByTestId('skill-updates-accept')).toBeDisabled();
+});
+
 it('requires a new acknowledgment when another warning skill is selected', async () => {
 	vi.mocked(store.fetchSourceUpdates).mockResolvedValue({
 		updates: [update('first', 'needs_review'), update('second', 'needs_review')],
