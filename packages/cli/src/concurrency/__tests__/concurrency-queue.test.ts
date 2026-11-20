@@ -49,16 +49,47 @@ describe('ConcurrencyQueue', () => {
 		expect(sleepSpy).toHaveBeenCalledTimes(3);
 		expect(state).toEqual({ 1: 'finished', 2: 'finished', 3: 'started' });
 
-		// If the fourth promise is removed, the fifth one is started in the next tick
+		// Removing the queued fourth execution frees no running slot, so the fifth stays queued
 		queue.remove('4');
+		// Just before the third execution finishes, the fifth is still queued
+		await vi.advanceTimersByTimeAsync(498);
+		expect(sleepSpy).toHaveBeenCalledTimes(3);
+		expect(state).toEqual({ 1: 'finished', 2: 'finished', 3: 'started' });
+
+		// At T+1.5 seconds the third promise has resolved, and the fifth one has started
 		await vi.advanceTimersByTimeAsync(1);
 		expect(sleepSpy).toHaveBeenCalledTimes(4);
-		expect(state).toEqual({ 1: 'finished', 2: 'finished', 3: 'started', 5: 'started' });
+		expect(state).toEqual({ 1: 'finished', 2: 'finished', 3: 'started' });
+
+		// At T+1.5 seconds the third promise has resolved, and the fifth one has started
+		await vi.advanceTimersByTimeAsync(499);
+		expect(sleepSpy).toHaveBeenCalledTimes(4);
+		expect(state).toEqual({ 1: 'finished', 2: 'finished', 3: 'finished', 5: 'started' });
 
 		// at T+5 seconds, all but the fourth promise should be resolved
-		await vi.advanceTimersByTimeAsync(4000);
+		await vi.advanceTimersByTimeAsync(3500);
 		expect(sleepSpy).toHaveBeenCalledTimes(4);
 		expect(state).toEqual({ 1: 'finished', 2: 'finished', 3: 'finished', 5: 'finished' });
+	});
+
+	it('should not release a queued execution when another queued execution is removed', async () => {
+		const queue = new ConcurrencyQueue(1);
+		const started: string[] = [];
+
+		void queue.enqueue('1').then(() => started.push('1'));
+		void queue.enqueue('2').then(() => started.push('2'));
+		void queue.enqueue('3').then(() => started.push('3'));
+		await vi.advanceTimersByTimeAsync(1);
+		expect(started).toEqual(['1']);
+
+		queue.remove('2');
+		await vi.advanceTimersByTimeAsync(1);
+		expect(started).toEqual(['1']);
+		expect(queue.currentCapacity).toBe(-1);
+
+		queue.dequeue();
+		await vi.advanceTimersByTimeAsync(1);
+		expect(started).toEqual(['1', '3']);
 	});
 
 	it('should debounce emitting of the `concurrency-check` event', async () => {
