@@ -15,7 +15,6 @@ import path from 'path';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { CommunityPackagesModule } from '@/modules/community-packages/community-packages.module';
 import { CommunityPackagesService } from '@/modules/community-packages/community-packages.service';
-import type { InstalledNodes } from '@/modules/community-packages/installed-nodes.entity';
 import type { InstalledPackages } from '@/modules/community-packages/installed-packages.entity';
 import { executeNpmCommand } from '@/modules/community-packages/npm-utils';
 
@@ -116,10 +115,7 @@ describe('GET /community-packages', () => {
 
 		expect(data).toHaveLength(2);
 
-		const allNodes = data.reduce(
-			(acc: InstalledNodes[], cur: InstalledPackages) => acc.concat(cur.installedNodes),
-			[],
-		);
+		const allNodes = data.flatMap((cur: InstalledPackages) => cur.installedNodes);
 
 		expect(allNodes).toHaveLength(3);
 	});

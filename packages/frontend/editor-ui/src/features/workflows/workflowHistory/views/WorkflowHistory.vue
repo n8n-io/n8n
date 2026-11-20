@@ -58,10 +58,9 @@ const workflowHistoryActionTypes: WorkflowHistoryActionTypes = [
 	'open',
 	'download',
 ];
-const WORKFLOW_HISTORY_ACTIONS = workflowHistoryActionTypes.reduce(
-	(record, key) => ({ ...record, [key.toUpperCase()]: key }),
-	{} as WorkflowHistoryActionRecord,
-);
+const WORKFLOW_HISTORY_ACTIONS = Object.fromEntries(
+	workflowHistoryActionTypes.map((key) => [key.toUpperCase(), key]),
+) as WorkflowHistoryActionRecord;
 
 const route = useRoute();
 const router = useRouter();

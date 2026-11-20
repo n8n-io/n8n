@@ -278,12 +278,11 @@ export class FacebookLeadAdsTrigger implements INodeType {
 					if (simplifyOutput) {
 						return {
 							id: lead.id,
-							data: lead.field_data.reduce(
-								(acc, field) => ({
-									...acc,
-									[field.name]: field.values && field.values.length > 0 ? field.values[0] : null,
-								}),
-								{},
+							data: Object.fromEntries(
+								lead.field_data.map((field) => [
+									field.name,
+									field.values && field.values.length > 0 ? field.values[0] : null,
+								]),
 							),
 							form: {
 								id: form.id,

@@ -331,7 +331,8 @@ export const extensions = ({
 		(acc, [fnName, fn]) => {
 			// Extension method docs do not have more info than info box, do not show
 			delete fn.doc?.docURL;
-			return { ...acc, [fnName]: { doc: fn.doc } };
+			acc[fnName] = { doc: fn.doc };
+			return acc;
 		},
 		{},
 	);

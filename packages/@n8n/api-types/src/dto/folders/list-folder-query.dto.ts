@@ -100,7 +100,10 @@ export const selectValidator = z
 				if (selectFields.length === 0) return undefined;
 				type SelectField = (typeof VALID_SELECT_FIELDS)[number];
 				return selectFields.reduce<Record<SelectField, true>>(
-					(acc, field) => ({ ...acc, [field]: true }),
+					(acc, field) => {
+						acc[field] = true;
+						return acc;
+					},
 					{} as Record<SelectField, true>,
 				);
 			} catch (e) {

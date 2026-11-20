@@ -14,7 +14,10 @@ export function getMetadataFiltersValues(
 			}>;
 		};
 		if (metadata.length > 0) {
-			return metadata.reduce((acc, { name, value }) => ({ ...acc, [name]: value }), {});
+			return Object.fromEntries(metadata.map(({ name, value }) => [name, value])) as Record<
+				string,
+				never
+			>;
 		}
 	}
 

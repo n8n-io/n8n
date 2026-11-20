@@ -162,7 +162,7 @@ const actions = useSetupPanelActions({
 function getNodeByName(name: string, includePendingParameters = true): INodeUi | undefined {
 	const node = getSavedNodeByName(name);
 	if (!node) return undefined;
-	let credentials = node.credentials;
+	const pendingCredentials: Array<[string, NonNullable<INodeUi['credentials']>[string]]> = [];
 	for (const { item } of rows.value) {
 		if (
 			item.kind !== 'credential' ||
@@ -170,8 +170,11 @@ function getNodeByName(name: string, includePendingParameters = true): INodeUi |
 		)
 			continue;
 		const pending = actions.getPendingCredential(item.id, name);
-		if (pending) credentials = { ...credentials, [item.credentialType]: pending };
+		if (pending) pendingCredentials.push([item.credentialType, pending]);
 	}
+	const credentials = pendingCredentials.length
+		? { ...node.credentials, ...Object.fromEntries(pendingCredentials) }
+		: node.credentials;
 	const changes = includePendingParameters ? actions.getPendingParameterChanges(name) : [];
 	if (credentials === node.credentials && changes.length === 0) return node;
 	return {

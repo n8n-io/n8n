@@ -214,7 +214,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 	const containers: StartedTestContainer[] = [];
 	const serviceResults: Record<string, ServiceResult> = {};
 	const hostedServiceEnv: Partial<Record<ServiceName, Record<string, string>>> = {};
-	let environment: Record<string, string> = {};
+	const environment: Record<string, string> = {};
 
 	log(`Starting: ${uniqueProjectName}`);
 
@@ -267,7 +267,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			usePostgres,
 			needsLoadBalancer,
 			external,
-			environment,
+			environment: { ...environment },
 			serviceResults,
 			allocatedPorts: {
 				main: allocatedMainPort,
@@ -307,12 +307,12 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 				throw error;
 			}
 			if (!hostedEnv) continue;
-			environment = { ...environment, ...hostedEnv };
+			Object.assign(environment, hostedEnv);
 			hostedServiceEnv[name] = hostedEnv;
 		}
 		const hostedServices = Object.keys(hostedServiceEnv) as ServiceName[];
 		if (hostedServices.length > 0) {
-			ctx.environment = environment;
+			ctx.environment = { ...environment };
 			log(`Using hosted: ${hostedServices.map((n) => SERVICE_REGISTRY[n].description).join(', ')}`);
 		}
 
@@ -362,14 +362,14 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 				serviceResults[name] = result;
 
 				if (service.env) {
-					environment = { ...environment, ...service.env(result) };
+					Object.assign(environment, service.env(result));
 				}
 				if (service.extraEnv) {
-					environment = { ...environment, ...service.extraEnv(result) };
+					Object.assign(environment, service.extraEnv(result));
 				}
 			}
 
-			ctx.environment = environment;
+			ctx.environment = { ...environment };
 			ctx.serviceResults = serviceResults;
 
 			log(`Services ready: ${levelNames}`);

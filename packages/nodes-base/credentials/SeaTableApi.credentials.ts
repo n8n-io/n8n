@@ -13,7 +13,8 @@ const timezones: INodePropertyOptions[] = moment.tz
 		const zonesForCountry = moment.tz
 			.zonesForCountry(country)
 			.map((zone) => ({ value: zone, name: zone }));
-		return tz.concat(zonesForCountry);
+		tz.push(...zonesForCountry);
+		return tz;
 	}, []);
 
 export class SeaTableApi implements ICredentialType {

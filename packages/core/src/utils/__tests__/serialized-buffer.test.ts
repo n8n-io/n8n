@@ -42,14 +42,14 @@ describe('serializeBuffer', () => {
 
 describe('toBuffer with mixed representations', () => {
 	it('should decode the byte array when base64 is not the only payload', () => {
-		const candidate: unknown = { type: 'Buffer', data: [65], base64: 'QkJC' };
+		const candidate = { type: 'Buffer', data: [65], base64: 'QkJC' };
 
 		expect(isSerializedBuffer(candidate)).toBe(true);
 		expect(toBuffer(candidate as SerializedBuffer).toString()).toBe('A');
 	});
 
 	it('should decode the byte array when base64 is not a string', () => {
-		const candidate: unknown = { type: 'Buffer', data: [65], base64: null };
+		const candidate = { type: 'Buffer', data: [65], base64: null };
 
 		expect(isSerializedBuffer(candidate)).toBe(true);
 		expect(toBuffer(candidate as SerializedBuffer).toString()).toBe('A');

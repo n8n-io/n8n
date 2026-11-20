@@ -19,10 +19,7 @@ const metricsChart = useMetricsChart();
 const locale = useI18n();
 
 const availableMetrics = computed(() => {
-	return props.runs.reduce((acc, run) => {
-		const metricKeys = Object.keys(run.metrics ?? {});
-		return [...new Set([...acc, ...metricKeys])];
-	}, [] as string[]);
+	return [...new Set(props.runs.flatMap((run) => Object.keys(run.metrics ?? {})))];
 });
 
 const filteredRuns = computed(() =>

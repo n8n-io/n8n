@@ -118,11 +118,11 @@ export function parseDefinedFields(fieldsToSendProperties: GristDefinedFields) {
 }
 
 export function parseAutoMappedInputs(incomingKeys: string[], inputsToIgnore: string[], item: any) {
-	return incomingKeys.reduce<{ [key: string]: any }>((acc, curKey) => {
-		if (inputsToIgnore.includes(curKey)) return acc;
-		acc = { ...acc, [curKey]: item[curKey] };
-		return acc;
-	}, {});
+	return Object.fromEntries<any>(
+		incomingKeys.flatMap((curKey) =>
+			inputsToIgnore.includes(curKey) ? [] : [[curKey, item[curKey]]],
+		),
+	);
 }
 
 export function throwOnZeroDefinedFields(this: IExecuteFunctions, fields: GristDefinedFields) {

@@ -267,11 +267,11 @@ describe('AgentChatController queue mutations', () => {
 				queueId: '1',
 			};
 
-			await Reflect.apply(controller[handler], controller, [
-				{ params, user: { id: 'user-1' } },
+			await controller[handler](
+				{ params, user: { id: 'user-1' } } as never,
 				makeSseResponse([]),
-				payload,
-			]);
+				payload as never,
+			);
 
 			expect(messageQueue[operation]).toHaveBeenCalledWith({
 				...params,

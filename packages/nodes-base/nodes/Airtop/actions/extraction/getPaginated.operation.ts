@@ -107,9 +107,8 @@ export async function execute(
 	const additionalFields = this.getNodeParameter('additionalFields', index);
 
 	const configFields = ['paginationMode', 'interactionMode', 'outputSchema'];
-	const configuration = configFields.reduce(
-		(config, key) => (additionalFields[key] ? { ...config, [key]: additionalFields[key] } : config),
-		{},
+	const configuration = Object.fromEntries(
+		configFields.flatMap((key) => (additionalFields[key] ? [[key, additionalFields[key]]] : [])),
 	);
 
 	const result = await executeRequestWithSessionManagement.call(this, index, {

@@ -555,25 +555,24 @@ export const useFlattenSchema = () => {
 				return acc;
 			}
 
-			acc = acc.concat(
-				flattenSchema({
-					isDataEmpty: item.isDataEmpty,
-					schema: item.schema,
-					depth: item.depth,
-					nodeType: item.node.type,
+			const flattened = flattenSchema({
+				isDataEmpty: item.isDataEmpty,
+				schema: item.schema,
+				depth: item.depth,
+				nodeType: item.node.type,
+				nodeName: item.node.name,
+				preview: item.preview,
+				lastSuccessfulPreview: item.lastSuccessfulPreview,
+				truncateLimit,
+				expressionPrefix: getNodeParentExpression({
 					nodeName: item.node.name,
-					preview: item.preview,
-					lastSuccessfulPreview: item.lastSuccessfulPreview,
-					truncateLimit,
-					expressionPrefix: getNodeParentExpression({
-						nodeName: item.node.name,
-						distanceFromActive: item.depth,
-						binaryMode:
-							workflowDocumentStore.value.getSettingsSnapshot().binaryMode ??
-							DEFAULT_SETTINGS.binaryMode,
-					}),
+					distanceFromActive: item.depth,
+					binaryMode:
+						workflowDocumentStore.value.getSettingsSnapshot().binaryMode ??
+						DEFAULT_SETTINGS.binaryMode,
 				}),
-			);
+			});
+			for (const entry of flattened) acc.push(entry);
 
 			if (item.preview && !item.lastSuccessfulPreview) {
 				acc.push(moreFieldsItem());

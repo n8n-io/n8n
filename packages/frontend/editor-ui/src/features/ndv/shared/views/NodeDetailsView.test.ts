@@ -50,7 +50,7 @@ const setupStore = (nodes: Array<ReturnType<typeof createTestNode>>) => {
 	const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id));
 	workflowDocumentStore.hydrate(workflow);
 	workflowDocumentStore.setAllNodeMetadata(
-		nodes.reduce((acc, node) => ({ ...acc, [node.name]: { pristine: true } }), {}),
+		Object.fromEntries(nodes.map((node) => [node.name, { pristine: true }])),
 	);
 
 	const workflowDocumentStoreRef = shallowRef(workflowDocumentStore);

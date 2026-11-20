@@ -371,7 +371,7 @@ export class MySqlV1 implements INodeType {
 							{ itemData: { item: index } },
 						);
 
-						collection = collection.concat(executionData);
+						for (const entry of executionData) collection.push(entry);
 
 						return collection;
 					},
@@ -405,11 +405,10 @@ export class MySqlV1 implements INodeType {
 				} INTO ${escapeSqlIdentifier(table)}(${columns.map(escapeSqlIdentifier).join(',')}) VALUES ${items
 					.map((_item) => insertPlaceholder)
 					.join(',')};`;
-				const queryItems = insertItems.reduce(
-					(collection: IDataObject[], item) =>
-						collection.concat(Object.values(item) as IDataObject[]),
-					[],
-				);
+				const queryItems = insertItems.reduce((collection: IDataObject[], item) => {
+					collection.push(...(Object.values(item) as IDataObject[]));
+					return collection;
+				}, []);
 
 				const queryResult = await connection.query(insertSQL, queryItems);
 

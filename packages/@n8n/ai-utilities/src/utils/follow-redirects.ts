@@ -28,7 +28,7 @@ export async function fetchFollowingRedirects(
 ): Promise<Response> {
 	const maxRedirects = options?.maxRedirects ?? DEFAULT_MAX_REDIRECTS;
 	let currentInput: string | URL = url;
-	let currentInit: RequestInit = { ...init };
+	const currentInit: RequestInit = { ...init };
 	let hops = 0;
 	let crossedOrigin = false;
 
@@ -65,7 +65,7 @@ export async function fetchFollowingRedirects(
 			crossedOrigin = true;
 			const headers = new Headers(currentInit.headers);
 			for (const header of CREDENTIAL_HEADERS) headers.delete(header);
-			currentInit = { ...currentInit, headers };
+			currentInit.headers = headers;
 		}
 
 		const method = (currentInit.method ?? 'GET').toUpperCase();
@@ -74,7 +74,8 @@ export async function fetchFollowingRedirects(
 			response.status === 303 ||
 			((response.status === 301 || response.status === 302) && isUnsafe)
 		) {
-			currentInit = { ...currentInit, method: 'GET', body: undefined };
+			currentInit.method = 'GET';
+			currentInit.body = undefined;
 		}
 	}
 }

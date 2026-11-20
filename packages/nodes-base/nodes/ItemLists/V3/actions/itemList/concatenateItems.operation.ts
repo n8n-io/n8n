@@ -375,7 +375,8 @@ export async function execute(
 				}
 
 				pairedItem.push({ item: index });
-				return acc.concat([newItem]);
+				acc.push(newItem);
+				return acc;
 			}, [] as IDataObject[]);
 		} else {
 			pairedItem = Array.from({ length: newItems.length }, (_, item) => ({

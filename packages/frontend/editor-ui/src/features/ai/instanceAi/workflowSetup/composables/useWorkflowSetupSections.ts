@@ -100,9 +100,9 @@ function dropStaleResourceLocatorCache(
 	parameters: INodeParameters,
 	parameterNames: string[],
 ): INodeParameters {
-	let result = parameters;
+	let result: INodeParameters | undefined;
 	for (const name of parameterNames) {
-		const parameter = result[name];
+		const parameter = (result ?? parameters)[name];
 		if (!isResourceLocatorValue(parameter)) continue;
 		const isEmpty =
 			parameter.value === '' || parameter.value === null || parameter.value === undefined;
@@ -111,9 +111,10 @@ function dropStaleResourceLocatorCache(
 			continue;
 		}
 		const { cachedResultName, cachedResultUrl, ...rest } = parameter;
-		result = { ...result, [name]: rest };
+		result ??= { ...parameters };
+		result[name] = rest;
 	}
-	return result;
+	return result ?? parameters;
 }
 
 /**
