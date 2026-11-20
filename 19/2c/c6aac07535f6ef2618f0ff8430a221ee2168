@@ -1,0 +1,23 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_8725b63cabf6ee::t_ca72aa5b40c243 9530-9533
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentAssistantTestRunCard.test.ts
+  s_8725b63cabf6ee::t_79f825d7ae5404 1-122
+packages/frontend/editor-ui/src/features/agents/components/AgentAssistantTestRunCard.vue
+  s_8725b63cabf6ee::t_8733e7cb7e0e4b 1-121
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "192cc6aac07535f6ef2618f0ff8430a221ee2168",
+  "prompts": {},
+  "sessions": {
+    "s_8725b63cabf6ee": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1f4a7-8f54-7475-a1c1-6d99e1b698fb",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

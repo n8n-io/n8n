@@ -1,0 +1,28 @@
+packages/cli/src/services/__tests__/export-file-writer.test.ts
+  s_20d5502a9befe7::t_576dd316798899 1-78
+  s_20d5502a9befe7::t_5ad1be6d0ef957 79-84
+packages/cli/src/services/export.service.ts
+  s_20d5502a9befe7::t_b13c4c3596463a 47
+  s_20d5502a9befe7::t_a1af66a825c02e 13,21
+  s_20d5502a9befe7::t_93dab009d6bdb5 116,142,161,163,272,300,318,320
+packages/cli/src/services/export-file-writer.ts
+  s_20d5502a9befe7::t_20edbad9a13e71 1-80
+packages/cli/src/services/__tests__/export.service.test.ts
+  s_20d5502a9befe7::t_f3377aea806caf 9,100-105
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9ac32bcd173205079f80d1890e48afae1cd1b0d7",
+  "prompts": {},
+  "sessions": {
+    "s_20d5502a9befe7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e52f90d5-e146-4b89-984c-31c3d137b2cd",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}
