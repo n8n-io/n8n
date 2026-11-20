@@ -5,7 +5,6 @@ import { computed, onMounted, shallowRef } from 'vue';
 
 import { credentialTypeIcon, FALLBACK_TYPE_ICON } from './credentialTypeIcon';
 import InstancePolicyTable, { type InstancePolicyTableRow } from './InstancePolicyTable.vue';
-import { setTypeAccess } from './setTypeAccess';
 import { useInstanceTypeAccess } from './useInstanceTypeAccess';
 import { useTypeUsage } from './useTypeUsage';
 import { useAppliedTheme } from '../composables/useAppliedTheme';
@@ -21,7 +20,7 @@ const theme = useAppliedTheme();
 const typeUsage = useTypeUsage(
 	async () => await fetchCredentialTypeUsage(rootStore.restApiContext),
 );
-const { types, loading, changeAccess } = useInstanceTypeAccess('credential', setTypeAccess);
+const { types, loading, changeAccess } = useInstanceTypeAccess('credential');
 
 const typeSummaries = shallowRef(new Map<string, CredentialTypeSummary>());
 

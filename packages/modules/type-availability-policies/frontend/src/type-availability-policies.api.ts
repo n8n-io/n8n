@@ -178,7 +178,8 @@ export type NodeTypeSummary = {
 	iconColor?: string;
 };
 
-function latestVersion(version: unknown): number {
+/** The highest version of a node type description, which can list several. */
+export function latestVersion(version: unknown): number {
 	if (typeof version === 'number') return version;
 	if (!Array.isArray(version)) return 0;
 	return Math.max(0, ...version.filter((value): value is number => typeof value === 'number'));

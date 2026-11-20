@@ -54,7 +54,7 @@ export const providerTools = {
 	 * @example
 	 * ```typescript
 	 * const agent = new Agent('researcher')
-	 *   .model('anthropic/claude-sonnet-4-5')
+	 *   .model('anthropic/claude-sonnet-5-5')
 	 *   .instructions('Research topics using web search.')
 	 *   .providerTool(providerTools.anthropicWebSearch())
 	 *   .build();

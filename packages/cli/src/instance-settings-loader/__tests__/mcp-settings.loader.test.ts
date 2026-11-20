@@ -54,5 +54,21 @@ describe('McpSettingsLoader', () => {
 			expect(result).toBe('created');
 			expect(mcpSettingsService.setEnabled).toHaveBeenCalledWith(false);
 		});
+
+		it('applies the preferences switch when it is set', async () => {
+			const loader = createLoader({ mcpManagedByEnv: true, mcpPreferencesEnabled: false });
+
+			await loader.run();
+
+			expect(mcpSettingsService.setPreferencesEnabled).toHaveBeenCalledWith(false);
+		});
+
+		it('keeps the preferences switch when it is unset', async () => {
+			const loader = createLoader({ mcpManagedByEnv: true });
+
+			await loader.run();
+
+			expect(mcpSettingsService.setPreferencesEnabled).not.toHaveBeenCalled();
+		});
 	});
 });

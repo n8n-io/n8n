@@ -66,15 +66,13 @@ const access = (
 
 const renderTab = createComponentRenderer(NodeTypesTab);
 
-const setup = async (arrangeTabReads?: () => void) => {
+const setup = async (arrangeAccessReads?: () => void) => {
 	const pinia = createTestingPinia({ stubActions: false });
 	useSettingsStore().isModuleActive = vi.fn(() => true);
 	useRBACStore().setGlobalScopes(['nodeTypePolicy:manage']);
 	vi.spyOn(useTypeAvailabilityPoliciesStore(), 'reload').mockResolvedValue();
+	arrangeAccessReads?.();
 	await useInstancePolicyStore().load(['node']);
-	// The store reads the access list on load too. The tests arrange and count only the reads of the tab.
-	mocks.fetchInstanceAccess.mockClear();
-	arrangeTabReads?.();
 	return renderTab({ pinia });
 };
 
@@ -163,6 +161,7 @@ describe('NodeTypesTab', () => {
 		await userEvent.click(accessCell(getByTestId, HIDDEN));
 		await userEvent.click(await findPopupItem(MENU_ITEM, 'Allowed'));
 
+		// After the save, the store reads the access list again.
 		await waitFor(() => expect(mocks.fetchInstanceAccess).toHaveBeenCalledTimes(2));
 		expect(queryByText('Internal thing')).toBeInTheDocument();
 	});

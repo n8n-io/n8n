@@ -1,9 +1,10 @@
 import { EventService, EventRelay } from '@n8n/backend-services';
+import { AgentsConfig } from '@n8n/config';
 import { UserRepository } from '@n8n/db';
 import { Redactable } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
-import type { JsonValue } from 'n8n-workflow';
+import type { JsonValue, RelatedAgentRun, WorkflowExecuteMode } from 'n8n-workflow';
 import {
 	ERROR_MESSAGE_REDACTED_MESSAGE,
 	isExecutionOutputRedacted,
@@ -37,13 +38,14 @@ function hasUser(event: WorkflowExecutedEvent): event is WorkflowExecutedEventWi
 
 function withoutExecutionMetadata(
 	event: RelayEventMap['workflow-post-execute'],
-): Omit<RelayEventMap['workflow-post-execute'], 'source' | 'telemetryMetadata'> {
+): Omit<RelayEventMap['workflow-post-execute'], 'source' | 'telemetryMetadata' | 'parentAgentRun'> {
 	const trimmed = { ...event };
 
-	// Execution metadata (provenance + telemetry) is internal and not part of
-	// the log-streaming payload contract.
+	// Execution metadata (provenance, telemetry, the agent tool call) is internal
+	// and not part of the log-streaming payload contract.
 	delete trimmed.source;
 	delete trimmed.telemetryMetadata;
+	delete trimmed.parentAgentRun;
 
 	return trimmed;
 }
@@ -83,8 +85,28 @@ export class LogStreamingEventRelay extends EventRelay {
 		private readonly eventBus: MessageEventBus,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly userRepository: UserRepository,
+		private readonly agentsConfig: AgentsConfig,
 	) {
 		super(eventService);
+	}
+
+	/** Agent fields of a workflow log event. Empty unless an agent with a service account started the run. */
+	private agentFieldsOf(
+		parentAgentRun: RelatedAgentRun | undefined,
+		mode: WorkflowExecuteMode | undefined,
+	) {
+		// The tool stamps the marker only with the flag on, but a stored marker can come back
+		// after the flag goes off, for example when a waiting execution resumes.
+		if (!this.agentsConfig.serviceAccountsEnabled) return {};
+		// A retry copies the run data of the original execution, but its caller starts it.
+		if (mode === 'retry' || !parentAgentRun?.agentServiceAccountId) return {};
+		const { agentId, agentServiceAccountId, userId, delegatingAgentId } = parentAgentRun;
+		return {
+			agentId,
+			agentServiceAccountId,
+			...(userId !== undefined ? { agentRunUserId: userId } : {}),
+			...(delegatingAgentId !== undefined ? { delegatingAgentId } : {}),
+		};
 	}
 
 	init() {
@@ -458,6 +480,7 @@ export class LogStreamingEventRelay extends EventRelay {
 		mode,
 		projectId,
 		projectName,
+		parentAgentRun,
 	}: RelayEventMap['workflow-pre-execute']) {
 		const payload = {
 			executionId,
@@ -468,6 +491,7 @@ export class LogStreamingEventRelay extends EventRelay {
 			workflowName: data.name,
 			projectId,
 			projectName,
+			...this.agentFieldsOf(parentAgentRun, mode),
 		};
 
 		void this.eventBus.sendWorkflowEvent({
@@ -491,6 +515,7 @@ export class LogStreamingEventRelay extends EventRelay {
 			workflowName: workflow.name,
 			projectId,
 			projectName,
+			...this.agentFieldsOf(event.parentAgentRun, runData?.mode),
 		};
 
 		if (payload.success) {

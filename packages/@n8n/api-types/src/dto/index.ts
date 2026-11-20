@@ -19,6 +19,7 @@ export { AiApplySuggestionRequestDto } from './ai/ai-apply-suggestion-request.dt
 export { AiFreeCreditsRequestDto } from './ai/ai-free-credits-request.dto';
 export { AiSessionRetrievalRequestDto } from './ai/ai-session-retrieval-request.dto';
 export { AiUsageSettingsRequestDto } from './ai/ai-usage-settings-request.dto';
+export { AiModelTrainingSettingsRequestDto } from './ai/ai-model-training-settings-request.dto';
 export { AiTruncateMessagesRequestDto } from './ai/ai-truncate-messages-request.dto';
 export { AiClearSessionRequestDto } from './ai/ai-clear-session-request.dto';
 export {
@@ -256,6 +257,10 @@ export {
 export { ImportWorkflowFromUrlDto } from './workflows/import-workflow-from-url.dto';
 export { TransferWorkflowBodyDto } from './workflows/transfer.dto';
 export { TransferWorkflowPublicDto } from './workflows/transfer-workflow-public.dto';
+export {
+	RunWorkflowPublicDto,
+	StartedWorkflowRunPublicDto,
+} from './workflows/run-workflow-public.dto';
 export { ActivateWorkflowDto } from './workflows/activate-workflow.dto';
 export { DeactivateWorkflowDto } from './workflows/deactivate-workflow.dto';
 export { ArchiveWorkflowDto } from './workflows/archive-workflow.dto';
