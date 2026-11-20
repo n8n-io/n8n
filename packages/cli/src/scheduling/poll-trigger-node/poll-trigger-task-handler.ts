@@ -22,6 +22,7 @@ import type { Failure, IWorkflowBase } from 'n8n-workflow';
 import { OperationalError, UnexpectedError } from '@n8n/errors';
 import { aborted } from 'node:util';
 
+import { WorkflowCrashJournal } from '@/crash-loop/workflow-crash-journal';
 import { PollBackoffService } from '@/workflows/triggers/poll-backoff.service';
 import { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
 
@@ -58,6 +59,7 @@ export class PollTriggerTaskHandler implements TaskHandler {
 		private readonly errorReporter: ErrorReporter,
 		private readonly pollBackoffService: PollBackoffService,
 		private readonly eventService: EventService,
+		private readonly crashJournal: WorkflowCrashJournal,
 	) {
 		this.logger = this.logger.scoped('scheduler');
 	}
@@ -149,7 +151,10 @@ export class PollTriggerTaskHandler implements TaskHandler {
 				// it settles on its own, and its outcome is discarded. The cursor never moves
 				// on that path (it only moves through the staged commit or __emit below), so
 				// an abandoned tick leaves the poll window untouched for the next occurrence.
+				// The poll stays in flight in the crash journal until it settles, even after a timeout abandons it.
+				const settle = this.crashJournal.recordStart(task);
 				const poll = this.triggersAndPollers.runPollFunction(workflow, node, pollFunctions);
+				void poll.then(settle, settle);
 				await Promise.race([poll, aborted(leaseSignal, pollFunctions)]);
 				if (leaseSignal.reason instanceof TaskTimeoutError) {
 					await this.recordPollTimeout(logContext, node.type, state);

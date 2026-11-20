@@ -7,13 +7,19 @@ import InstancePolicyTable, { type InstancePolicyTableRow } from './InstancePoli
 import { FALLBACK_NODE_TYPE_ICON, nodeTypeIcon } from './nodeTypeIcon';
 import { useInstancePolicy } from './useInstancePolicy';
 import { useInstanceTypeAccess } from './useInstanceTypeAccess';
+import { useTypeUsage } from './useTypeUsage';
 import { useAppliedTheme } from '../composables/useAppliedTheme';
-import { fetchNodeTypeSummaries, type NodeTypeSummary } from '../type-availability-policies.api';
+import {
+	fetchNodeTypeSummaries,
+	fetchNodeTypeUsage,
+	type NodeTypeSummary,
+} from '../type-availability-policies.api';
 
 const i18n = useI18n();
 const rootStore = useRootStore();
 const theme = useAppliedTheme();
 const instancePolicy = useInstancePolicy();
+const typeUsage = useTypeUsage(async () => await fetchNodeTypeUsage(rootStore.restApiContext));
 const { types, loading, changeAccess } = useInstanceTypeAccess('node');
 
 // `null` until the summaries load. Until then the tab cannot tell hidden node types from rows.
@@ -62,13 +68,12 @@ const rows = computed<InstancePolicyTableRow[]>(() => {
 					displayName: type.name,
 					icon: FALLBACK_NODE_TYPE_ICON,
 				}),
-				// No route counts the node type usage yet, so the usage cells show no value.
-				usage: null,
+				usage: typeUsage.usageOf(type.name),
 			}))
 	);
 });
 
-onMounted(async () => {
+async function loadSummaries() {
 	try {
 		typeSummaries.value = await fetchNodeTypeSummaries(rootStore.baseUrl);
 	} catch {
@@ -76,6 +81,10 @@ onMounted(async () => {
 		// cannot tell which types are hidden, so it shows them too.
 		typeSummaries.value = new Map();
 	}
+}
+
+onMounted(async () => {
+	await Promise.all([loadSummaries(), typeUsage.load()]);
 });
 </script>
 

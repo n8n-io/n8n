@@ -82,15 +82,6 @@ const floorOptions = computed<Array<SelectOptionBase<EnforcedFloor>>>(() =>
 	})),
 );
 
-const affectedScopeText = computed(() => {
-	if (floor.value === 'off') {
-		return i18n.baseText('settings.security.dataRedaction.affectedScope.none');
-	}
-	return i18n.baseText(
-		`settings.security.dataRedaction.affectedScope.${FLOOR_TO_LEGACY_KEY[floor.value]}` as BaseTextKey,
-	);
-});
-
 async function persist(
 	nextFloor: RedactionFloor,
 	successKey: BaseTextKey,
@@ -253,17 +244,6 @@ function goToUpgrade() {
 							</N8nTooltip>
 						</template>
 					</EnterpriseEdition>
-				</template>
-			</N8nSettingsRow>
-
-			<N8nSettingsRow
-				:title="i18n.baseText('settings.security.dataRedaction.affectedScope.label')"
-				data-test-id="redaction-enforcement-summary"
-			>
-				<template #action>
-					<N8nText size="small" color="text-light">
-						{{ affectedScopeText }}
-					</N8nText>
 				</template>
 			</N8nSettingsRow>
 		</N8nSettingsRowGroup>
