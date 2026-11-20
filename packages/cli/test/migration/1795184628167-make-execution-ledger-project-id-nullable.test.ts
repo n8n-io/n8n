@@ -11,7 +11,7 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { v7 as uuidv7 } from 'uuid';
 
-const MIGRATION_NAME = 'MakeExecutionLedgerProjectIdNullable1795118539412';
+const MIGRATION_NAME = 'MakeExecutionLedgerProjectIdNullable1795184628167';
 const isSqlite = (process.env.DB_TYPE ?? 'sqlite') === 'sqlite';
 
 type RowOverrides = { executionId?: string; projectId?: string | null; event?: string };
