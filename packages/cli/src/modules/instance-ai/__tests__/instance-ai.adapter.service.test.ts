@@ -69,6 +69,7 @@ import {
 	CONFIG_EVALUATIONS_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_FLAG,
 	INSTANCE_AI_APPROVAL_MODES_FLAG,
+	INSTANCE_AI_EMPTY_PREFERENCES_NOTE_FLAG,
 	INSTANCE_AI_NODE_USAGE_FLAG,
 	INSTANCE_ACTIVITY_CONTEXT_FLAG,
 	ASSISTANT_SKILLS_FLAG,
@@ -8184,6 +8185,14 @@ describe('resolveExperimentGates', () => {
 			instanceContextEnabled: true,
 			nodeUsageEnabled: false,
 			nodeContextEnabled: false,
+		});
+	});
+
+	it.each(['control', 'variant'])('passes the preferences note variant %s', async (variant) => {
+		stubContainer({ [INSTANCE_AI_EMPTY_PREFERENCES_NOTE_FLAG]: variant });
+
+		await expect(createAdapter().resolveExperimentGates(user)).resolves.toMatchObject({
+			preferencesNoteVariant: variant,
 		});
 	});
 
