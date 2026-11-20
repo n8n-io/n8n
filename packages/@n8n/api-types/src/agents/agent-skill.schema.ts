@@ -1,11 +1,17 @@
 import { z } from 'zod';
 
 export const AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH = 65_536;
+// The Agent Skills format sets no file limits, so these three are n8n limits. They bound what
+// one skill version stores, because each version holds a full copy of every file.
+// For scale: a popular public skill has 45 files and about 460 KB of text.
 export const AGENT_SKILL_REFERENCE_MAX_COUNT = 500;
+// The GitHub import already left out a file over 1 MiB. `load_skill` returns a longer file in
+// parts of `RUNTIME_SKILL_MAX_OUTPUT_BYTES`.
 export const AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH = 1024 * 1024;
 export const AGENT_SKILL_BINARY_MAX_BYTES = 1024 * 1024;
 export const AGENT_SKILL_BINARY_CONTENT_MAX_LENGTH =
 	4 * Math.ceil(AGENT_SKILL_BINARY_MAX_BYTES / 3);
+// Two files of the largest size. Binary files count with their Base64 length.
 export const AGENT_SKILL_REFERENCES_TOTAL_MAX_LENGTH = 2 * 1024 * 1024;
 
 const agentSkillStringArraySchema = z.array(z.string().trim().min(1));

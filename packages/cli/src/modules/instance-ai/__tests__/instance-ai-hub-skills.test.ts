@@ -368,8 +368,12 @@ describe('Assistant Hub runtime skills', () => {
 			success: true,
 			filePath: path,
 			bytes: RUNTIME_SKILL_MAX_OUTPUT_BYTES + 1,
-			content: `${body.slice(0, -1)}\n\n[... output truncated to ${RUNTIME_SKILL_MAX_OUTPUT_BYTES / 1024} KB ...]`,
+			content: `${body.slice(0, -1)}\n\n[... output truncated to ${RUNTIME_SKILL_MAX_OUTPUT_BYTES / 1024} KB. To read the next part, call load_skill with the same filePath and offset ${RUNTIME_SKILL_MAX_OUTPUT_BYTES} ...]`,
 		});
+		// The offset from the note returns the rest of the file.
+		expect(
+			await tool.handler?.({ skillId, filePath: path, offset: RUNTIME_SKILL_MAX_OUTPUT_BYTES }, {}),
+		).toMatchObject({ success: true, content: 'a' });
 	});
 
 	it('reads only registered Hub paths and delegates built-in references', async () => {
