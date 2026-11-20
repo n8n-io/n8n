@@ -7,7 +7,9 @@ import type {
 	AppDataTableBinding,
 	AppDescribedAgentBinding,
 	AppDescribedDataTableBinding,
+	AppDescribedNodeOperationBinding,
 	AppDescribedWorkflowBinding,
+	AppNodeOperationBinding,
 	AppRuntimeRowInput,
 	AppWorkflowBinding,
 	AppWorkflowRunResult,
@@ -136,6 +138,7 @@ export abstract class AppBindingAdapters {
 		dataTables: AppDataTablePort;
 		workflows: AppWorkflowPort;
 		agents: AppAgentPort;
+		nodeOperations: AppNodeOperationPort;
 	};
 }
 
@@ -177,4 +180,22 @@ export abstract class AppAgentPort implements AppPublishPort<AppAgentBinding> {
 		agentId: string,
 		sessionId: string,
 	): Promise<AgentChatMessagesResponse>;
+}
+
+export abstract class AppNodeOperationPort {
+	/**
+	 * Throws a `UserError` subclass when `user` cannot grant this node operation to the app.
+	 * Every visitor then runs it with the bound credentials.
+	 */
+	abstract assertCanBind(
+		user: User,
+		projectId: string,
+		binding: AppNodeOperationBinding,
+	): Promise<void>;
+
+	/** Returns `null` when the node type is not available or a credential is not usable in the project. */
+	abstract describe(
+		projectId: string,
+		binding: AppNodeOperationBinding,
+	): Promise<AppDescribedNodeOperationBinding | null>;
 }

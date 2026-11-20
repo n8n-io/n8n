@@ -14,6 +14,11 @@ describe('appBindingsSchema', () => {
 			table,
 			{ key: 'submitLead', kind: 'workflow', workflowId: 'w1' },
 			{ key: 'support', kind: 'agent', agentId: 'a1', permissions: ['chat', 'history'] },
+			{
+				key: 'availability',
+				kind: 'nodeOperation',
+				node: { nodeType: 'n8n-nodes-base.googleCalendar', nodeTypeVersion: 1, nodeParameters: {} },
+			},
 		]);
 		expect(result.success).toBe(true);
 	});

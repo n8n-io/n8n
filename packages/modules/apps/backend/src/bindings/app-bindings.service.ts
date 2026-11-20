@@ -19,6 +19,7 @@ import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import {
 	AppAgentPort,
 	AppDataTablePort,
+	AppNodeOperationPort,
 	AppWorkflowPort,
 	type AppPublishPort,
 	type AppPublishState,
@@ -60,12 +61,21 @@ function compareByKindAndName(a: PublishEntry, b: PublishEntry) {
 	);
 }
 
+function isPublishBinding(binding: AppBinding): binding is AppPublishBinding {
+	return binding.kind === 'workflow' || binding.kind === 'agent';
+}
+
+/** Leaves out the node configuration, because it names credentials and fixed parameters. */
 export function toRuntimeBinding(binding: AppBinding): AppRuntimeBinding {
-	if (binding.kind === 'workflow') return { key: binding.key, kind: binding.kind };
-	if (binding.kind === 'dataTable') {
-		return { key: binding.key, kind: binding.kind, permissions: binding.permissions };
+	switch (binding.kind) {
+		case 'workflow':
+		case 'nodeOperation':
+			return { key: binding.key, kind: binding.kind };
+		case 'dataTable':
+			return { key: binding.key, kind: binding.kind, permissions: binding.permissions };
+		case 'agent':
+			return { key: binding.key, kind: binding.kind, permissions: binding.permissions };
 	}
-	return { key: binding.key, kind: binding.kind, permissions: binding.permissions };
 }
 
 /**
@@ -82,6 +92,7 @@ export class AppBindingsService {
 		private readonly dataTables: AppDataTablePort,
 		private readonly workflows: AppWorkflowPort,
 		private readonly agents: AppAgentPort,
+		private readonly nodeOperations: AppNodeOperationPort,
 		private readonly logger: Logger,
 		private readonly events: EventService,
 	) {}
@@ -256,6 +267,8 @@ export class AppBindingsService {
 				return await this.dataTables.describe(projectId, binding);
 			case 'agent':
 				return await this.agents.describe(projectId, binding);
+			case 'nodeOperation':
+				return await this.nodeOperations.describe(projectId, binding);
 		}
 	}
 
@@ -269,7 +282,8 @@ export class AppBindingsService {
 		const version = await this.requireVersion(appId, versionId);
 		const entries: PublishEntry[] = [];
 		for (const binding of version.bindings) {
-			if (binding.kind === 'dataTable') continue;
+			// Data tables and node operations have nothing to publish.
+			if (!isPublishBinding(binding)) continue;
 			const target = this.publishTarget(binding);
 			const state = await target.getPublishState(projectId);
 			if (!state) continue;
@@ -312,6 +326,8 @@ export class AppBindingsService {
 				return await this.dataTables.assertCanBind(user, projectId, binding);
 			case 'agent':
 				return await this.agents.assertCanBind(user, projectId, binding);
+			case 'nodeOperation':
+				return await this.nodeOperations.assertCanBind(user, projectId, binding);
 		}
 	}
 

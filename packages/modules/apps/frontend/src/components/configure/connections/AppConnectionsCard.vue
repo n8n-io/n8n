@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import type { AppBinding, AppBindingKind, AppResponse } from '@n8n/api-types';
+import type { AppBinding, AppResponse } from '@n8n/api-types';
 import { N8nHeading, N8nSettingsRowGroup, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, onMounted } from 'vue';
 
-import type { BindableResource } from '../../../apps.api';
+import type { BindableResource, BindableResourceKind } from '../../../apps.api';
 import { getAppPermissions } from '../../../apps.permissions';
 import { useAppBindings } from '../../../composables/useAppBindings';
 import type { AppVersions } from '../../../composables/useAppVersions';
@@ -15,6 +15,7 @@ import {
 	BINDING_KIND_ORDER,
 	BINDING_KINDS,
 	createBinding,
+	isResourceBinding,
 	resourceIdOf,
 	withPermissions,
 	type BindingPermission,
@@ -32,7 +33,10 @@ const canUpdate = computed(
 );
 const rows = computed(() =>
 	BINDING_KIND_ORDER.map((kind) => {
-		const ofKind = bindings.value.filter((binding) => binding.kind === kind);
+		// Node operation bindings are not resources, so this card does not list them yet.
+		const ofKind = bindings.value
+			.filter(isResourceBinding)
+			.filter((binding) => binding.kind === kind);
 		return {
 			kind,
 			label: BINDING_KINDS[kind].label,
@@ -50,7 +54,7 @@ async function persist(update: (current: AppBinding[]) => AppBinding[]) {
 }
 
 async function add(
-	kind: AppBindingKind,
+	kind: BindableResourceKind,
 	resource: BindableResource,
 	permissions: BindingPermission[],
 ) {
@@ -72,7 +76,9 @@ async function add(
 async function update(key: string, permissions: BindingPermission[]) {
 	await persist((current) =>
 		current.map((binding) =>
-			binding.key === key ? withPermissions(binding, permissions) : binding,
+			binding.key === key && isResourceBinding(binding)
+				? withPermissions(binding, permissions)
+				: binding,
 		),
 	);
 }
