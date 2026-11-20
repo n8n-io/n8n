@@ -5,6 +5,7 @@ import { createMemoryHistory, createRouter, type RouteRecordRaw } from 'vue-rout
 import { VIEWS } from '@/app/constants';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 
+import { KNOWLEDGE_COLLECTION_VIEW } from './context.constants';
 import { ContextModule } from './module.descriptor';
 
 const stub = { render: () => null };
@@ -136,9 +137,54 @@ describe('ContextModule routes', () => {
 		);
 	});
 
+	describe('collection', () => {
+		const openCollection = async (collectionsEnabled: boolean) => {
+			setup(false, {
+				knowledge: {
+					limits: { maxFileSizeBytes: 1, maxFilesPerUpload: 1, maxTotalSizeBytes: 1 },
+					collectionsEnabled,
+				},
+			});
+			useSettingsStore().settings.activeModules = ['knowledge'];
+			const router = createTestRouter();
+
+			await router.push('/settings/collections/c1');
+
+			return router.currentRoute.value;
+		};
+
+		test('opens the collection page while collections are on', async () => {
+			const route = await openCollection(true);
+
+			expect(route.name).toBe(KNOWLEDGE_COLLECTION_VIEW);
+			expect(route.params.collectionId).toBe('c1');
+		});
+
+		test('redirects to the homepage while collections are off', async () => {
+			const route = await openCollection(false);
+
+			expect(route.name).toBe(VIEWS.HOMEPAGE);
+		});
+
+		test('is a project page, not a settings page', () => {
+			const route = ContextModule.routes?.find(({ name }) => name === KNOWLEDGE_COLLECTION_VIEW);
+
+			expect(route?.meta?.projectRoute).toBe(true);
+			expect(route?.meta?.telemetry).toBeUndefined();
+		});
+	});
+
 	it('lists no custom middleware, so the initializer does not gate it on a backend module', () => {
 		for (const route of ContextModule.routes ?? []) {
 			expect(route.meta?.middleware).toEqual(['authenticated']);
+		}
+	});
+
+	it('mounts every page under settings, except the project pages', () => {
+		for (const route of ContextModule.routes ?? []) {
+			if (route.meta?.projectRoute) {
+				continue;
+			}
 			expect(route.meta?.telemetry?.pageCategory).toBe('settings');
 		}
 	});

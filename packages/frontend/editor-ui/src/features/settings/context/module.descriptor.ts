@@ -1,7 +1,10 @@
 import { type FrontendModuleDescription } from '@n8n/frontend-module-sdk';
 
 import { VIEWS } from '@/app/constants';
+import { usePostHog, waitForFeatureFlagsWithTimeout } from '@/app/stores/posthog.store';
+import { useIsCollectionsEnabled } from '@/features/shared/knowledge/useIsCollectionsEnabled';
 
+import { KNOWLEDGE_COLLECTION_VIEW } from './context.constants';
 import {
 	canManageContextPreferences,
 	isContextPreferencesEnabled,
@@ -55,6 +58,21 @@ export const ContextModule: FrontendModuleDescription = {
 				},
 			},
 			beforeEnter: () => isContextSkillsEnabled() || { name: VIEWS.HOMEPAGE },
+		},
+		{
+			path: 'collections/:collectionId',
+			name: KNOWLEDGE_COLLECTION_VIEW,
+			props: true,
+			component: async () => await import('./views/CollectionView.vue'),
+			meta: {
+				projectRoute: true,
+				middleware: ['authenticated'],
+			},
+			// PostHog loads flags after the first paint, so a page reload waits for them.
+			beforeEnter: async () => {
+				await waitForFeatureFlagsWithTimeout(usePostHog(), 3000);
+				return useIsCollectionsEnabled().value || { name: VIEWS.HOMEPAGE };
+			},
 		},
 	],
 };

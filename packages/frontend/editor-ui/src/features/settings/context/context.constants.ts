@@ -10,3 +10,5 @@ export const PREFERENCES_DEFAULT_PAGE_SIZE = AI_PREFERENCES_DEFAULT_PAGE_SIZE;
 export const SKILLS_DEFAULT_PAGE_SIZE = 10;
 /** The preferences and skills lists show the most recently changed rows first. */
 export const CONTEXT_DEFAULT_SORT_BY: TableOptions['sortBy'] = [{ id: 'updatedAt', desc: true }];
+
+export const KNOWLEDGE_COLLECTION_VIEW = 'knowledge-collection';

@@ -3,8 +3,13 @@ import { makeRestApiRequest } from '@n8n/rest-api-client';
 
 import {
 	deleteAgentFile,
+	deleteCollectionFile,
+	getCollection,
 	listAgentFiles,
+	listCollectionAgents,
+	listCollectionFiles,
 	uploadAgentFiles,
+	uploadCollectionFiles,
 	warmAgentKnowledgeSandbox,
 } from './useKnowledgeApi';
 
@@ -70,6 +75,72 @@ describe('useKnowledgeApi', () => {
 			restApiContext,
 			'POST',
 			'/projects/p1/agents/v2/a1/sandbox/knowledge/warmup',
+		);
+	});
+
+	it('gets one collection', async () => {
+		const collection = { id: 'c1', name: 'Customer support', description: null };
+		vi.mocked(makeRestApiRequest).mockResolvedValueOnce(collection);
+
+		await expect(getCollection(restApiContext, 'c1')).resolves.toEqual(collection);
+
+		expect(makeRestApiRequest).toHaveBeenCalledWith(
+			restApiContext,
+			'GET',
+			'/knowledge/collections/c1',
+		);
+	});
+
+	it('lists the files of a collection', async () => {
+		const list = { count: 0, totalSizeBytes: 0, data: [] };
+		vi.mocked(makeRestApiRequest).mockResolvedValueOnce(list);
+
+		await expect(listCollectionFiles(restApiContext, 'c1')).resolves.toEqual(list);
+
+		expect(makeRestApiRequest).toHaveBeenCalledWith(
+			restApiContext,
+			'GET',
+			'/knowledge/collections/c1/files',
+		);
+	});
+
+	it('uploads the files of a collection as the "files" parts of one multipart request', async () => {
+		vi.mocked(makeRestApiRequest).mockResolvedValueOnce([]);
+		const files = [new File(['a'], 'a.txt'), new File(['b'], 'b.txt')];
+
+		await uploadCollectionFiles(restApiContext, 'c1', files);
+
+		expect(makeRestApiRequest).toHaveBeenCalledWith(
+			restApiContext,
+			'POST',
+			'/knowledge/collections/c1/files',
+			expect.any(FormData),
+		);
+		const formData = vi.mocked(makeRestApiRequest).mock.calls[0][3] as FormData;
+		expect(formData.getAll('files')).toEqual(files);
+	});
+
+	it('deletes one file of a collection', async () => {
+		vi.mocked(makeRestApiRequest).mockResolvedValueOnce({ success: true });
+
+		await deleteCollectionFile(restApiContext, 'c1', 'f1');
+
+		expect(makeRestApiRequest).toHaveBeenCalledWith(
+			restApiContext,
+			'DELETE',
+			'/knowledge/collections/c1/files/f1',
+		);
+	});
+
+	it('lists the agents that use a collection', async () => {
+		vi.mocked(makeRestApiRequest).mockResolvedValueOnce([]);
+
+		await expect(listCollectionAgents(restApiContext, 'c1')).resolves.toEqual([]);
+
+		expect(makeRestApiRequest).toHaveBeenCalledWith(
+			restApiContext,
+			'GET',
+			'/knowledge/collections/c1/agents',
 		);
 	});
 });

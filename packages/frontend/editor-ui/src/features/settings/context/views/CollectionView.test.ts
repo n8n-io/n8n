@@ -1,0 +1,216 @@
+import { createComponentRenderer } from '@/__tests__/render';
+import { mockedStore } from '@/__tests__/utils';
+import type { KnowledgeCollectionAgentDto, KnowledgeCollectionFileDto } from '@n8n/api-types';
+import { createTestingPinia } from '@pinia/testing';
+import userEvent from '@testing-library/user-event';
+import { fireEvent, screen, waitFor } from '@testing-library/vue';
+
+import {
+	deleteCollectionFile,
+	getCollection,
+	listCollectionAgents,
+	listCollectionFiles,
+	uploadCollectionFiles,
+} from '@/features/agents/composables/useKnowledgeApi';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
+
+import CollectionView from './CollectionView.vue';
+
+const showErrorMock = vi.fn();
+
+vi.mock('@/features/agents/composables/useKnowledgeApi');
+
+vi.mock('@n8n/composables/useToast', () => ({
+	useToast: () => ({ showError: showErrorMock, showMessage: vi.fn() }),
+}));
+
+vi.mock('vue-router', () => ({
+	useRouter: () => ({ push: vi.fn(), resolve: () => ({ href: '/somewhere' }) }),
+	useRoute: () => ({ params: {}, query: {} }),
+	RouterLink: vi.fn(),
+}));
+
+function file(id: string, fileName: string): KnowledgeCollectionFileDto {
+	return {
+		id,
+		collectionId: 'c1',
+		fileName,
+		mimeType: 'application/pdf',
+		fileSizeBytes: 1,
+		createdAt: '2026-10-14T09:00:00.000Z',
+	};
+}
+
+const renderComponent = createComponentRenderer(CollectionView, {
+	props: { projectId: 'p1', collectionId: 'c1' },
+});
+
+const setup = async ({
+	files = [],
+	agents = [],
+	description = 'Customer support: refunds and pricing',
+}: {
+	files?: KnowledgeCollectionFileDto[];
+	agents?: KnowledgeCollectionAgentDto[];
+	description?: string | null;
+} = {}) => {
+	vi.mocked(getCollection).mockResolvedValue({ id: 'c1', name: 'Customer support', description });
+	vi.mocked(listCollectionFiles).mockResolvedValue({
+		count: files.length,
+		totalSizeBytes: 0,
+		data: files,
+	});
+	vi.mocked(listCollectionAgents).mockResolvedValue(agents);
+
+	const pinia = createTestingPinia();
+	mockedStore(useProjectsStore).myProjects = [{ id: 'p1', name: 'Darwin' } as ProjectListItem];
+
+	const rendered = renderComponent({ pinia });
+	// The cards show after the first read.
+	await screen.findByTestId('collection-files-upload-input');
+	return rendered;
+};
+
+const filePills = () => screen.queryAllByTestId('collection-file-pill');
+const pillNames = () => filePills().map((pill) => pill.textContent?.trim());
+
+const selectFiles = async (files: File[]) => {
+	await fireEvent.change(screen.getByTestId('collection-files-upload-input'), {
+		target: { files },
+	});
+};
+
+describe('CollectionView', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it('loads the files and the agents of the collection in the route', async () => {
+		await setup();
+
+		expect(listCollectionFiles).toHaveBeenCalledWith(expect.anything(), 'c1');
+		expect(listCollectionAgents).toHaveBeenCalledWith(expect.anything(), 'c1');
+	});
+
+	it('shows the project and the collections crumbs', async () => {
+		await setup();
+
+		// The router link is a mock, so the crumbs render their title and no text.
+		expect(screen.getByTitle('Darwin')).toBeInTheDocument();
+		expect(screen.getByTitle('Collections')).toBeInTheDocument();
+	});
+
+	it('shows the name and the description of the collection', async () => {
+		await setup();
+
+		expect(getCollection).toHaveBeenCalledWith(expect.anything(), 'c1');
+		expect(screen.getByRole('heading', { level: 1, name: 'Customer support' })).toBeInTheDocument();
+		expect(screen.getByTestId('collection-description')).toHaveTextContent(
+			'Customer support: refunds and pricing',
+		);
+		expect(screen.getByTitle('Customer support')).toBeInTheDocument();
+		expect(document.title).toContain('Customer support');
+	});
+
+	it('shows no description when the collection has none', async () => {
+		await setup({ description: null });
+
+		expect(screen.queryByTestId('collection-description')).not.toBeInTheDocument();
+	});
+
+	it('offers the upload and the empty text when the collection is empty', async () => {
+		await setup();
+
+		expect(await screen.findByRole('button', { name: 'Upload file' })).toBeInTheDocument();
+		expect(screen.getByTestId('collection-used-by-empty')).toHaveTextContent(
+			"No agents use this collection yet. Add it from an agent's Knowledge tab.",
+		);
+		expect(filePills()).toHaveLength(0);
+	});
+
+	it('shows one pill for each file, in the order of the server', async () => {
+		await setup({ files: [file('f1', 'Refund policy.pdf'), file('f2', 'Price list.pdf')] });
+
+		await waitFor(() => expect(pillNames()).toEqual(['Refund policy.pdf', 'Price list.pdf']));
+	});
+
+	it('uploads the selected files and adds their pills after the existing pills', async () => {
+		await setup({ files: [file('f1', 'Refund policy.pdf')] });
+		await waitFor(() => expect(filePills()).toHaveLength(1));
+		vi.mocked(uploadCollectionFiles).mockResolvedValue([file('f2', 'Shipping policy.pdf')]);
+		const selected = [new File(['a'], 'Shipping policy.pdf')];
+
+		await selectFiles(selected);
+
+		expect(uploadCollectionFiles).toHaveBeenCalledWith(expect.anything(), 'c1', selected);
+		await waitFor(() => expect(pillNames()).toEqual(['Refund policy.pdf', 'Shipping policy.pdf']));
+	});
+
+	it('shows the server error and adds no pill when the upload fails', async () => {
+		await setup();
+		const error = new Error('Only CSV, PDF, Markdown, and TXT files are allowed');
+		vi.mocked(uploadCollectionFiles).mockRejectedValue(error);
+
+		await selectFiles([new File(['a'], 'a.exe')]);
+
+		await waitFor(() => expect(showErrorMock).toHaveBeenCalledWith(error, expect.any(String)));
+		expect(filePills()).toHaveLength(0);
+	});
+
+	it('removes a file from the right-click menu of its pill', async () => {
+		await setup({ files: [file('f1', 'Refund policy.pdf'), file('f2', 'Price list.pdf')] });
+		vi.mocked(deleteCollectionFile).mockResolvedValue();
+
+		await fireEvent.contextMenu(screen.getByRole('button', { name: 'Refund policy.pdf' }));
+		await userEvent.click(await screen.findByRole('menuitem', { name: 'Remove from collection' }));
+
+		expect(deleteCollectionFile).toHaveBeenCalledWith(expect.anything(), 'c1', 'f1');
+		await waitFor(() => expect(pillNames()).toEqual(['Price list.pdf']));
+	});
+
+	it('keeps the pill and shows the error when the removal fails', async () => {
+		await setup({ files: [file('f1', 'Refund policy.pdf')] });
+		const error = new Error('You do not have permission to change this knowledge collection.');
+		vi.mocked(deleteCollectionFile).mockRejectedValue(error);
+
+		await fireEvent.contextMenu(screen.getByRole('button', { name: 'Refund policy.pdf' }));
+		await userEvent.click(await screen.findByRole('menuitem', { name: 'Remove from collection' }));
+
+		await waitFor(() => expect(showErrorMock).toHaveBeenCalledWith(error, expect.any(String)));
+		expect(pillNames()).toEqual(['Refund policy.pdf']);
+	});
+
+	it('shows each agent with the name of its project', async () => {
+		await setup({
+			agents: [
+				{ id: 'a1', name: 'Support agent', projectId: 'p1' },
+				{ id: 'a2', name: 'Other agent', projectId: 'unknown' },
+			],
+		});
+
+		await waitFor(() => expect(screen.getAllByTestId('collection-agent-pill')).toHaveLength(2));
+		const [known, unknown] = screen.getAllByTestId('collection-agent-pill');
+		expect(known).toHaveTextContent('Support agent');
+		expect(known).toHaveTextContent('Darwin');
+		expect(unknown.textContent?.trim()).toBe('Other agent');
+		expect(screen.queryByTestId('collection-used-by-empty')).not.toBeInTheDocument();
+	});
+
+	it('shows the error when the collection does not load', async () => {
+		const error = new Error('Knowledge collection not found');
+		vi.mocked(listCollectionFiles).mockRejectedValue(error);
+		vi.mocked(listCollectionAgents).mockResolvedValue([]);
+
+		renderComponent({ pinia: createTestingPinia() });
+
+		await waitFor(() => expect(showErrorMock).toHaveBeenCalledWith(error, expect.any(String)));
+	});
+
+	it('leaves out the sharing card and the vector stores', async () => {
+		await setup();
+
+		expect(screen.queryByText('Shared with')).not.toBeInTheDocument();
+		expect(screen.queryByText('Connect vector store')).not.toBeInTheDocument();
+	});
+});
