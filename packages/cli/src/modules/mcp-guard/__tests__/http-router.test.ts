@@ -310,3 +310,32 @@ describe('HttpGuardRouter', () => {
 		expect(await res.text()).toBe('');
 	});
 });
+
+describe('HttpGuardRouter with real ids', () => {
+	const REAL = '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms';
+	const MADE = '1gymMade0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2xyz';
+	const withRealIds = { ...GMAIL_PROFILE, opaqueIds: true };
+
+	it('does not take an id of a read answer as an id of the gym', async () => {
+		const { router, upstream, gym } = setup({ profile: withRealIds });
+		gym.callTool.mockResolvedValue(result({ id: REAL }));
+		await router.handle(request('GET', LIST));
+		upstream.callTool.mockClear();
+
+		await router.handle(request('GET', `${LIST}/${REAL}`));
+
+		expect(upstream.callTool).toHaveBeenCalledTimes(1);
+	});
+
+	it('takes an id of a write answer as an id of the gym, also in a path with a range', async () => {
+		const { router, upstream, gym, hydrator } = setup({ profile: withRealIds });
+		gym.callTool.mockResolvedValue(result({ spreadsheetId: MADE }));
+		await router.handle(request('POST', `${LIST}/send`, { raw: 'abc' }));
+		upstream.callTool.mockClear();
+
+		await router.handle(request('GET', `${LIST}/${MADE}/Sheet1!A1:C10`));
+
+		expect(upstream.callTool).not.toHaveBeenCalled();
+		expect(hydrator.hydrate).not.toHaveBeenCalled();
+	});
+});

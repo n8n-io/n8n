@@ -39,7 +39,7 @@ function toResponse(res: CallToolResult): Response {
 	return new Response(body, { status, headers: { 'content-type': type } });
 }
 
-const ID_FIELD = /"(?:id|threadId)"\s*:\s*"([^"]+)"/g;
+const ID_FIELD = /"(?:id|threadId|spreadsheetId)"\s*:\s*"([^"]+)"/g;
 
 /**
  * Routes the HTTP requests of one chat. A read-shaped request reads the real service, then the gym
@@ -74,7 +74,8 @@ export class HttpGuardRouter {
 			// A failed parent read must not block the write. The gym then answers with its own error.
 			await hydrator.hydrateWrite?.(name, args).catch(() => undefined);
 		}
-		const res = await this.callGym(name, args);
+		// An id in the answer of a write names an object that the gym made, also for a vendor with real ids.
+		const res = await this.callGym(name, args, true);
 		if (res instanceof Response) return res;
 		if (!res.isError) hydrator.noteWrite?.(name, res);
 		return toResponse(res);
@@ -82,9 +83,11 @@ export class HttpGuardRouter {
 
 	private async read(name: string, args: HttpToolArgs): Promise<Response> {
 		const { upstream, hydrator, profile } = this.deps;
-		// An id that the gym made names nothing in the real service.
-		const ids = args.path.split('/').filter(looksLikeId);
-		const gymOnly = ids.length > 0 && ids.every((id) => this.gymIds.has(id));
+		// An id that the gym made names nothing in the real service. A path can hold other ids too,
+		// such as a range ("Sheet1!A1:C10"), so one id of the gym is enough.
+		const gymOnly = args.path
+			.split('/')
+			.some((segment) => looksLikeId(segment) && this.gymIds.has(segment));
 		this.log(args, gymOnly ? 'gym (an id of the gym)' : 'real read, then gym');
 		if (!gymOnly) {
 			try {
@@ -103,7 +106,8 @@ export class HttpGuardRouter {
 				Container.get(Logger).warn(`mcp-guard http real read failed for ${name}`);
 			}
 		}
-		const res = await this.callGym(name, args);
+		// A read of a vendor with real ids shows real ids. Only a write makes an id that the gym alone knows.
+		const res = await this.callGym(name, args, !profile.opaqueIds);
 		return res instanceof Response ? res : toResponse(res);
 	}
 
@@ -119,10 +123,16 @@ export class HttpGuardRouter {
 		Container.get(Logger).info(`mcp-guard http ${args.method} ${host}${args.path} -> ${route}`);
 	}
 
-	private async callGym(name: string, args: HttpToolArgs): Promise<CallToolResult | Response> {
+	private async callGym(
+		name: string,
+		args: HttpToolArgs,
+		remember: boolean,
+	): Promise<CallToolResult | Response> {
 		try {
 			const res = await this.deps.gym.callTool(name, args);
-			for (const match of textOf(res).matchAll(ID_FIELD)) this.gymIds.add(match[1]);
+			if (remember) {
+				for (const match of textOf(res).matchAll(ID_FIELD)) this.gymIds.add(match[1]);
+			}
 			return res;
 		} catch {
 			return refusal(502, 'mcp-guard: the gym could not be reached');
