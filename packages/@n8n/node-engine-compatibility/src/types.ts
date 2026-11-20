@@ -148,7 +148,7 @@ export interface CreateExecuteContextParams {
 	source: Array<ISourceData | null>;
 	additionalData: IWorkflowExecuteAdditionalData;
 	itemsByConnection: INodeExecutionData[][];
-	/** The link of every item in `itemsByConnection`, from `itemLinks`. */
+	/** The links `itemLinks` made for `itemsByConnection`. */
 	itemLinks: ItemLinks;
 	stepContext: StepExecutionContext;
 	resumeToken?: string;

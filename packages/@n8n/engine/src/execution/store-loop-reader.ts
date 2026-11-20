@@ -18,9 +18,8 @@ export function createStoreLoopReader(
 	loop: WorkflowLoop,
 	terminalIterations: Map<string, number>,
 ): LoopReader {
-	// Ordinary nodes concatenate several edges into one slot; a batch node does
-	// not yet, so `validateLoops` rejects several entries or returns. Reaching
-	// this means the graph was not validated.
+	// A batch node does not concatenate several entries or returns yet.
+	// `validateLoops` rejects them.
 	if (loop.entryEdges.length > 1 || loop.backEdges.length > 1) {
 		throw new UnexpectedError(
 			`batch node ${loop.batchNodeId} has ${loop.entryEdges.length} entry edges and ${loop.backEdges.length} back-edges; validated loops have at most one of each`,

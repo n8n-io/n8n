@@ -88,7 +88,7 @@ describe('linkInputItems', () => {
 });
 
 describe('relinkOutputItems', () => {
-	// slot 0: item 0 from A, item 1 from B; slot 1: item 0 from B
+	// slot 0: item 0 has no source, item 1 from B; slot 1: item 0 from B
 	const links: ItemLinks = [
 		[{ item: 0 }, { item: 0, sourceOverwrite: fromB }],
 		[{ item: 0, sourceOverwrite: fromB }],

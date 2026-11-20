@@ -322,7 +322,7 @@ function randomDag(rand: () => number): WorkflowGraph {
 		const to = `n${i}`;
 		const candidates = ['trigger', ...Array.from({ length: i }, (_, j) => `n${j}`)];
 		const predecessorCount = Math.min(candidates.length, 1 + randomInt(rand, 2));
-		// distinct predecessors, one edge per input slot (the validated shape)
+		// distinct predecessors, one edge per input slot
 		const shuffled = [...candidates].sort(() => rand() - 0.5);
 		for (let slot = 0; slot < predecessorCount; slot++) {
 			edges.push({

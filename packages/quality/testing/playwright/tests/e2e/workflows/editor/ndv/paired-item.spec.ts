@@ -120,7 +120,7 @@ test.describe(
 			await expect(n8n.ndv.getParameterExpressionPreviewValue()).toContainText('1111');
 		});
 
-		// Engine v2 runs a node that two branches feed once, so the node shows one run, not one for each branch.
+		// Engine v2 runs Set2 once, though two branches feed it. So Set3 shows one run, not two.
 		test('maps paired input and output items based on selected run @engine:v1-only', async ({
 			n8n,
 		}) => {

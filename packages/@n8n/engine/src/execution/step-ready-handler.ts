@@ -373,13 +373,10 @@ export class StepReadyHandler {
 	}
 
 	/**
-	 * Inputs for `node`, each slot taken from the rows its edges read, with
-	 * where the items of each slot came from.
-	 *
-	 * Several live edges into one slot concatenate their items, in the order
-	 * their source nodes appear in the graph, then by output index. Dead edges
-	 * contribute nothing. A slot with one live edge passes its value through as
-	 * is.
+	 * The step's inputs, and where the items of each slot came from. Several
+	 * live edges into one slot concatenate in `compareByConcatenationOrder`.
+	 * Dead edges add nothing. A slot with one live edge passes its value through
+	 * as is.
 	 */
 	private async gatherInputs(
 		execution: ExecutionRecord,
@@ -411,8 +408,6 @@ export class StepReadyHandler {
 			...new Map(reads.map(({ key }) => [stepKeyId(key), key])).values(),
 		]);
 
-		// One entry per slot up to the highest one an edge feeds. A slot stays
-		// `null` until a live edge fills it.
 		const slotCount = Math.max(...reads.map(({ edge }) => edge.inputIndex)) + 1;
 		const inputs: StepSlots = Array.from({ length: slotCount }, () => null);
 		const inputSources: StepInputSources = Array.from({ length: slotCount }, () => []);
@@ -459,12 +454,8 @@ export class StepReadyHandler {
 }
 
 /**
- * Which row each incoming edge reads for this step.
- *
- * An edge that connects nothing at this iteration is dropped, which is what lets
- * a batch node carry both an entry edge and a return edge on slot 0: they never
- * apply at the same iteration. Several edges that do apply to one slot
- * concatenate their values in `gatherInputs`.
+ * Which row each incoming edge reads for this step. An edge that connects
+ * nothing at this iteration is dropped.
  */
 export function resolveInputReads(
 	incomingEdges: GraphEdge[],
@@ -497,12 +488,6 @@ export function resolveInputReads(
 	return reads;
 }
 
-/**
- * The slot's value once `value` joins it: `value` alone when the slot was
- * empty, else the two lists concatenated. Only lists concatenate, so anything
- * else from a second live edge breaks the contract of the executor that
- * produced it.
- */
 function concatenateSlotValue(
 	current: JsonValue,
 	value: JsonValue,

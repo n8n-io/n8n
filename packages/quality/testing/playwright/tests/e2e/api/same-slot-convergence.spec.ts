@@ -5,7 +5,6 @@ import type { ApiHelpers } from '../../../services/api-helper';
 
 // Seed -> Split Out -> If (number == 1) -> A | B, then A and B both feed C's only
 // input, and C feeds D. C and D both read the Split Out item behind each of theirs.
-// A sits above B on the canvas, but the workflow declares B's connection first.
 const TRIGGER_NAME = 'When clicking ‘Execute workflow’';
 
 type Run = { data: { main: Array<Array<{ json: Record<string, unknown> }>> } };
@@ -38,7 +37,8 @@ test.describe(
 			const itemsOf = await runAndRead(api, 'Same_slot_convergence.json');
 
 			// One run of C with A's item first, then B's, because A is higher on the
-			// canvas. Inside C, each item leads back to its own Split Out item.
+			// canvas. B's connection comes first in the workflow. Inside C, each item
+			// leads back to its own Split Out item.
 			expect(itemsOf('C')).toEqual([
 				[
 					{ via: 'A', origin: 1 },

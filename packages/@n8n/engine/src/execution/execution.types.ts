@@ -101,8 +101,8 @@ export function isSettledStatus(status: StepStatus): status is SettledStepStatus
 /**
  * A step's data on one side of a connection, indexed by slot: outputs by
  * output slot, inputs by input slot. An edge copies one output slot into one
- * input slot; the engine understands the slot structure and nothing below it —
- * a slot's contents are opaque and step-type-specific.
+ * input slot. A slot's contents are step-type-specific. Several live edges
+ * into one input slot must each deliver a list: the engine concatenates them.
  *
  * `null` marks a slot without data: on outputs, the step didn't fire the slot
  * (a branch not taken); on inputs, nothing arrived (a dead edge). `[]` is not
@@ -115,12 +115,15 @@ export type StepSlots = JsonValue[];
  * read from `offset`. The v1 shim translates this into paired items.
  */
 export interface ItemSource {
+	/** The node of the source step. */
 	nodeId: string;
+	/** The output slot of the source step. */
 	outputIndex: number;
 	/** The iteration of the source step. */
 	iteration: number;
 	/** The index of the first item in the source slot. */
 	offset: number;
+	/** How many consecutive items come from this source; 1 for a value that is not a list. */
 	itemCount: number;
 }
 

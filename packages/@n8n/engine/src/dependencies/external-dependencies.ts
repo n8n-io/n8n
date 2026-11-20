@@ -22,9 +22,8 @@ import type { ResponseEmitter, ResponseExpectation } from '../response-channel';
  * the interfaces below.
  *
  * `inputs` and `outputs` are `StepSlots` (`JsonValue[]`), not `unknown`: the
- * engine routes data slot to slot and persists it to a `jsonb` column, so it
- * owns exactly one level of structure — the slot list — and anything crossing
- * this seam must survive a JSON round-trip. A slot's contents are
+ * engine routes data slot to slot and persists it to a `jsonb` column, so
+ * anything crossing this seam must survive a JSON round-trip. A slot's contents are
  * step-type-specific (for `v1-node`, the items of one v1 connection, i.e. one
  * element of `INodeExecutionData[][]`); keeping them opaque is what keeps this
  * package free of `n8n-workflow` / `n8n-core`.
