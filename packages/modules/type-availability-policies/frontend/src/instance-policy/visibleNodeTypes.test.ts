@@ -1,3 +1,4 @@
+import type { PolicyRule } from '@n8n/api-types';
 import { describe, expect, it } from 'vitest';
 
 import { visibleNodeTypes } from './visibleNodeTypes';
@@ -23,14 +24,18 @@ describe('visibleNodeTypes', () => {
 
 	it('keeps a hidden type that a name rule decides', () => {
 		const types = [{ name: 'hidden', matchedRuleId: 'rule-1' }];
-		const rules = [{ id: 'rule-1', selector: { kind: 'name' } }];
+		const rules: Array<Pick<PolicyRule, 'id' | 'selector'>> = [
+			{ id: 'rule-1', selector: { kind: 'name', value: 'hidden' } },
+		];
 
 		expect(visibleNodeTypes(types, SUMMARIES, rules)).toEqual(types);
 	});
 
 	it('leaves out a hidden type that a broader rule decides', () => {
 		const types = [{ name: 'hidden', matchedRuleId: 'rule-1' }];
-		const rules = [{ id: 'rule-1', selector: { kind: 'package' } }];
+		const rules: Array<Pick<PolicyRule, 'id' | 'selector'>> = [
+			{ id: 'rule-1', selector: { kind: 'package', value: 'n8n-nodes-base' } },
+		];
 
 		expect(visibleNodeTypes(types, SUMMARIES, rules)).toEqual([]);
 	});
