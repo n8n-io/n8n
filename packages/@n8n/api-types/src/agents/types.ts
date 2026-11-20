@@ -442,7 +442,7 @@ export interface AgentPublishHistoryItemDto {
 export interface AgentCapabilityModel {
 	/** Provider prefix of the model id, e.g. 'anthropic'. Empty when the id has no prefix. */
 	provider: string;
-	/** Model name, e.g. 'claude-sonnet-4-5'. */
+	/** Model name, e.g. 'claude-sonnet-5-5'. */
 	model: string;
 }
 

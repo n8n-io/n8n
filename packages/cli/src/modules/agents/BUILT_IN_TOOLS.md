@@ -105,7 +105,7 @@ Source: [`packages/@n8n/agents/src/workspace/tools/`](../../../../@n8n/agents/sr
 
 ### `import_files`
 
-- Purpose: Copies conversation files by fileId into `inputs/` of the workspace. The tool checks that the thread can read each file. Paths must stay in `inputs/`. One call copies up to `N8N_AGENTS_FILES_MAX_IMPORT_MB`.
+- Purpose: Copies conversation files by fileId into `inputs/` of the workspace. The tool checks that the thread can read each file. Paths must stay in `inputs/`. One call copies up to `N8N_AGENTS_FILES_MAX_IMPORT_MB`. The result lists each copy under `imported`, with `fileId`, `fileName`, `mimeType`, `sizeBytes` and `path`. The list is not named `files`, because the chat shows the `files` of a tool result as new files.
 - Attach condition: The same as the workspace tools, and the instance flag `137_agent_sandbox_files` is on. The runtime attaches it next to them, and adds the instructions about `outputs/`, `sandbox:<path>` references and `import_files` to the workspace instructions.
 - Source: [`tools/import-files.tool.ts`](./tools/import-files.tool.ts).
 

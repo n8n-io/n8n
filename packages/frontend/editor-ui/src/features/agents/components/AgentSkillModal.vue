@@ -1740,7 +1740,7 @@ function onRemove() {
 						:skill="displayedSkill"
 						:selected-path="selectedPath"
 						:disabled="editorLocked"
-						:read-only="(cannotEdit && !isPinned) || !!viewedVersion"
+						:read-only="cannotEdit || skillAccessFailed || !!viewedVersion"
 						:errors="visibleErrors"
 						:show-validation-warnings="submitted || openedWithMissingContent"
 						@select:path="selectedPath = $event"

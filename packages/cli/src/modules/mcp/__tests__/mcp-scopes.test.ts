@@ -296,7 +296,9 @@ describe('McpService scope enforcement', () => {
 							(agentsActive && name === 'agents') ||
 							(breakingChangesActive && name === 'breaking-changes'),
 					),
-				settings: { get: () => undefined } as unknown as ModuleRegistry['settings'],
+				settings: {
+					get: (name: string) => (name === 'mcp' ? { preferencesEnabled: true } : undefined),
+				} as unknown as ModuleRegistry['settings'],
 			}),
 			mockInstance(EventService),
 			mockInstance(FolderService),

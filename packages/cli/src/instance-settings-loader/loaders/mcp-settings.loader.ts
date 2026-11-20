@@ -15,7 +15,8 @@ export class McpSettingsLoader {
 	}
 
 	async run(): Promise<'created' | 'skipped'> {
-		const { mcpManagedByEnv, mcpAccessEnabled } = this.instanceSettingsLoaderConfig;
+		const { mcpManagedByEnv, mcpAccessEnabled, mcpPreferencesEnabled } =
+			this.instanceSettingsLoaderConfig;
 		if (!mcpManagedByEnv) {
 			this.logger.debug('mcpManagedByEnv is disabled — skipping MCP env vars');
 			return 'skipped';
@@ -24,6 +25,10 @@ export class McpSettingsLoader {
 		this.logger.info('mcpManagedByEnv is enabled — applying MCP env vars');
 
 		await this.mcpSettingsService.setEnabled(mcpAccessEnabled);
+
+		if (mcpPreferencesEnabled !== undefined) {
+			await this.mcpSettingsService.setPreferencesEnabled(mcpPreferencesEnabled);
+		}
 
 		return 'created';
 	}

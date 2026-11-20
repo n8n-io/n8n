@@ -25,9 +25,13 @@ import {
 	resolveSkillFileLink,
 	skillFileLinkPlugin,
 } from '@/features/agents/utils/skillFileLinks';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 import type { Rule, RuleGroup } from '@/Interface';
 import type { AgentSkill, AgentSkillReference } from '../types';
+import AgentSkillMermaidDiagram from './AgentSkillMermaidDiagram.vue';
+import type { SkillMermaidResult } from './skillMermaidRenderer';
 
 const SKILL_FILE = 'SKILL.md';
 const READ_ONLY_MARKDOWN_OPTIONS = {
@@ -76,6 +80,7 @@ function onReadOnlyLinkClick(link: HTMLAnchorElement, event: MouseEvent) {
 	event.preventDefault();
 	if (path !== undefined) emit('select:path', path);
 }
+const telemetry = useTelemetry();
 const description = ref(props.skill.description);
 const referenceFileName = ref('');
 const formValidation = reactive({
@@ -318,6 +323,41 @@ watch(
 );
 
 watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
+
+// Count the diagram renders of one file view, and report them together when the last one ends.
+const openDiagramRenders = ref(0);
+const newDiagramCounts = () => ({ rendered: 0, invalid: 0, failed: 0, timeout: 0 });
+let diagramCounts = newDiagramCounts();
+// The file of the open renders. The selected file can change before the last render ends.
+let diagramFile: 'skill' | 'reference' = 'skill';
+
+function onDiagramRenderStart() {
+	if (openDiagramRenders.value === 0) {
+		diagramFile = isSkillFileSelected.value ? 'skill' : 'reference';
+	}
+	openDiagramRenders.value++;
+}
+
+function onDiagramRenderEnd(outcome: SkillMermaidResult['outcome']) {
+	openDiagramRenders.value--;
+	if (outcome !== 'aborted') diagramCounts[outcome]++;
+	if (openDiagramRenders.value > 0) return;
+
+	const { rendered, invalid, failed, timeout } = diagramCounts;
+	diagramCounts = newDiagramCounts();
+	if (rendered + invalid + failed + timeout === 0) return;
+	try {
+		telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_VIEWED_SKILL_DIAGRAMS, {
+			file: diagramFile,
+			rendered,
+			invalid,
+			failed,
+			timed_out: timeout,
+		});
+	} catch {
+		// Telemetry must not break the skill view.
+	}
+}
 </script>
 
 <template>
@@ -350,7 +390,19 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 					:content="props.skill.instructions"
 					data-testid="agent-skill-instructions-text"
 					@markdown-click="onReadOnlyLinkClick"
-				/>
+				>
+					<template #code-block="{ code, language }">
+						<AgentSkillMermaidDiagram
+							v-if="language.toLowerCase() === 'mermaid'"
+							:code="code"
+							@render-start="onDiagramRenderStart"
+							@render-end="onDiagramRenderEnd"
+						>
+							<pre :class="$style.codeBlock"><code>{{ code }}</code></pre>
+						</AgentSkillMermaidDiagram>
+						<pre v-else :class="$style.codeBlock"><code>{{ code }}</code></pre>
+					</template>
+				</N8nMarkdown>
 			</N8nInputLabel>
 		</template>
 		<N8nInputLabel
@@ -380,7 +432,19 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 				:content="selectedReference.content"
 				data-testid="agent-skill-reference-text"
 				@markdown-click="onReadOnlyLinkClick"
-			/>
+			>
+				<template #code-block="{ code, language }">
+					<AgentSkillMermaidDiagram
+						v-if="language.toLowerCase() === 'mermaid'"
+						:code="code"
+						@render-start="onDiagramRenderStart"
+						@render-end="onDiagramRenderEnd"
+					>
+						<pre :class="$style.codeBlock"><code>{{ code }}</code></pre>
+					</AgentSkillMermaidDiagram>
+					<pre v-else :class="$style.codeBlock"><code>{{ code }}</code></pre>
+				</template>
+			</N8nMarkdown>
 			<pre v-else :class="$style.readOnlyText" data-testid="agent-skill-reference-text">{{
 				selectedReference.content
 			}}</pre>
@@ -561,6 +625,21 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 		display: inline;
 		line-height: inherit;
 	}
+}
+
+.codeBlock {
+	margin: 0;
+	padding: calc(var(--n8n-markdown--spacing) * 2);
+	overflow-x: auto;
+	white-space: pre-wrap;
+	font-family: var(--font-family--monospace);
+	font-size: calc(var(--n8n-markdown--font-size--base) * 0.875);
+	line-height: var(--line-height--xl);
+	color: var(--color--text--shade-1);
+	background: var(--background--subtle);
+	border: var(--border);
+	border-radius: var(--n8n-markdown--radius);
+	tab-size: 4;
 }
 
 .field {

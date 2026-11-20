@@ -8,7 +8,9 @@ import type {
 	WorkflowRepository,
 } from '@n8n/db';
 import { type DataSource, type EntityManager } from '@n8n/typeorm';
+import { createReadStream, type ReadStream } from 'fs';
 import { readdir, readFile } from 'fs/promises';
+import { Readable } from 'stream';
 import { mock } from 'vitest-mock-extended';
 import type { Cipher } from 'n8n-core';
 
@@ -28,7 +30,25 @@ vi.mock('@/utils/compression.util');
 vi.mock('fs', async (importOriginal) => ({
 	...(await importOriginal<typeof import('fs')>()),
 	existsSync: vi.fn(),
+	createReadStream: vi.fn(),
 }));
+
+function mockArchiveFile(content: string): void {
+	vi.mocked(createReadStream).mockImplementation(
+		() => Readable.from([content]) as unknown as ReadStream,
+	);
+}
+
+function mockArchiveFileError(error: Error): void {
+	vi.mocked(createReadStream).mockImplementation(
+		() =>
+			new Readable({
+				read() {
+					this.destroy(error);
+				},
+			}) as unknown as ReadStream,
+	);
+}
 
 vi.mock('@n8n/backend-common', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@n8n/backend-common')>()),
@@ -423,7 +443,7 @@ describe('ImportService', () => {
 	describe('readEntityFile', () => {
 		it('should parse valid JSONL file', async () => {
 			const mockContent = '{"id":1,"name":"Test"}\n{"id":2,"name":"Test2"}';
-			vi.mocked(readFile).mockResolvedValue(mockContent);
+			mockArchiveFile(mockContent);
 
 			const result = await importService.readEntityFile('/test/data.jsonl');
 
@@ -437,7 +457,7 @@ describe('ImportService', () => {
 
 		it('should handle empty lines in JSONL file', async () => {
 			const mockContent = '{"id":1,"name":"Test"}\n\n{"id":2,"name":"Test2"}\n';
-			vi.mocked(readFile).mockResolvedValue(mockContent);
+			mockArchiveFile(mockContent);
 
 			const result = await importService.readEntityFile('/test/data.jsonl');
 
@@ -449,7 +469,7 @@ describe('ImportService', () => {
 
 		it('should handle Windows line endings', async () => {
 			const mockContent = '{"id":1,"name":"Test"}\r\n{"id":2,"name":"Test2"}';
-			vi.mocked(readFile).mockResolvedValue(mockContent);
+			mockArchiveFile(mockContent);
 
 			const result = await importService.readEntityFile('/test/data.jsonl');
 
@@ -461,7 +481,7 @@ describe('ImportService', () => {
 
 		it('should handle empty file', async () => {
 			const mockContent = '';
-			vi.mocked(readFile).mockResolvedValue(mockContent);
+			mockArchiveFile(mockContent);
 
 			const result = await importService.readEntityFile('/test/data.jsonl');
 
@@ -470,7 +490,7 @@ describe('ImportService', () => {
 
 		it('should throw error for invalid JSON', async () => {
 			const mockContent = '{"id":1,"name":"Test"}\n{invalid json}';
-			vi.mocked(readFile).mockResolvedValue(mockContent);
+			mockArchiveFile(mockContent);
 
 			await expect(importService.readEntityFile('/test/invalid.jsonl')).rejects.toThrow(
 				'Invalid JSON on line 1 in file /test/invalid.jsonl. JSONL format requires one complete JSON object per line.',
@@ -478,7 +498,7 @@ describe('ImportService', () => {
 		});
 
 		it('should handle file read errors', async () => {
-			vi.mocked(readFile).mockRejectedValue(new Error('File not found'));
+			mockArchiveFileError(new Error('File not found'));
 
 			await expect(importService.readEntityFile('/test/missing.jsonl')).rejects.toThrow(
 				'File not found',
@@ -501,7 +521,7 @@ describe('ImportService', () => {
 
 			const mockEntities = [{ id: 1, name: 'Test User' }];
 			const mockContent = JSON.stringify(mockEntities[0]);
-			vi.mocked(readFile).mockResolvedValue(mockContent);
+			mockArchiveFile(mockContent);
 
 			await importService.importEntitiesFromFiles(
 				'/test/input',
@@ -510,7 +530,11 @@ describe('ImportService', () => {
 				importMetadata.entityFiles,
 			);
 
-			expect(readFile).toHaveBeenCalledWith('/test/input/user.jsonl', 'utf8');
+			expect(mockDataSource.driver.escapeQueryWithParameters).toHaveBeenCalledWith(
+				expect.any(String),
+				{ id: 1, name: 'Test User' },
+				{},
+			);
 			expect(mockEntityManager.query).toHaveBeenCalledWith('INSERT COMMAND', { data: 'data' });
 		});
 
@@ -527,7 +551,7 @@ describe('ImportService', () => {
 				importMetadata.entityFiles,
 			);
 
-			expect(readFile).not.toHaveBeenCalled();
+			expect(mockEntityManager.query).not.toHaveBeenCalled();
 			expect(mockEntityManager.insert).not.toHaveBeenCalled();
 		});
 
@@ -544,7 +568,7 @@ describe('ImportService', () => {
 				importMetadata.entityFiles,
 			);
 
-			expect(readFile).not.toHaveBeenCalled();
+			expect(mockEntityManager.query).not.toHaveBeenCalled();
 			expect(mockEntityManager.insert).not.toHaveBeenCalled();
 		});
 
@@ -557,7 +581,7 @@ describe('ImportService', () => {
 			};
 
 			const mockContent = '';
-			vi.mocked(readFile).mockResolvedValue(mockContent);
+			mockArchiveFile(mockContent);
 
 			await importService.importEntitiesFromFiles(
 				'/test/input',
@@ -566,7 +590,7 @@ describe('ImportService', () => {
 				importMetadata.entityFiles,
 			);
 
-			expect(readFile).toHaveBeenCalledWith('/test/input/user.jsonl', 'utf8');
+			expect(mockEntityManager.query).not.toHaveBeenCalled();
 			expect(mockEntityManager.insert).not.toHaveBeenCalled();
 		});
 
@@ -584,7 +608,7 @@ describe('ImportService', () => {
 
 			const mockEntities = [{ id: 1, name: 'Test User' }];
 			const mockContent = JSON.stringify(mockEntities[0]);
-			vi.mocked(readFile).mockResolvedValue(mockContent);
+			mockArchiveFile(mockContent);
 
 			await importService.importEntitiesFromFiles(
 				'/test/input',
@@ -598,7 +622,11 @@ describe('ImportService', () => {
 				'{"id":1,"name":"Test User"}',
 				'custom-encryption-key',
 			);
-			expect(readFile).toHaveBeenCalledWith('/test/input/user.jsonl', 'utf8');
+			expect(mockDataSource.driver.escapeQueryWithParameters).toHaveBeenCalledWith(
+				expect.any(String),
+				{ id: 1, name: 'Test User' },
+				{},
+			);
 			expect(mockEntityManager.query).toHaveBeenCalledWith('INSERT COMMAND', { data: 'data' });
 		});
 	});
@@ -989,7 +1017,7 @@ describe('ImportService', () => {
 
 			// SQLite-origin: nodes is a serialised string, not an object
 			const sqliteEntity = { id: '1', nodes: '[{"id":"abc"}]' };
-			vi.mocked(readFile).mockResolvedValue(JSON.stringify(sqliteEntity));
+			mockArchiveFile(JSON.stringify(sqliteEntity));
 
 			const capturedParams: Array<Record<string, unknown>> = [];
 			mockDataSource.driver.escapeQueryWithParameters = vi
@@ -1026,7 +1054,7 @@ describe('ImportService', () => {
 
 			// Postgres-origin: nodes is a parsed object in the JSONL
 			const postgresEntity = { id: '1', nodes: [{ id: 'abc' }] };
-			vi.mocked(readFile).mockResolvedValue(JSON.stringify(postgresEntity));
+			mockArchiveFile(JSON.stringify(postgresEntity));
 
 			const capturedParams: Array<Record<string, unknown>> = [];
 			mockDataSource.driver.escapeQueryWithParameters = vi
@@ -1206,7 +1234,7 @@ describe('ImportService', () => {
 					updatedAt: '2024-01-01 12:00:00',
 					flag: 0,
 				};
-				vi.mocked(readFile).mockResolvedValue(JSON.stringify(row));
+				mockArchiveFile(JSON.stringify(row));
 
 				await importService.recreateDataTableUserTablesFromRegistry(mockEntityManager, {
 					abc: ['/test/input/data_table_user_abc.jsonl'],
@@ -1253,7 +1281,7 @@ describe('ImportService', () => {
 					.mockResolvedValueOnce([{ column_name: 'id' }]) // information_schema lookup
 					.mockResolvedValue(undefined);
 
-				vi.mocked(readFile).mockResolvedValue(
+				mockArchiveFile(
 					JSON.stringify({
 						id: 5,
 						createdAt: '2024-01-01T00:00:00.000Z',

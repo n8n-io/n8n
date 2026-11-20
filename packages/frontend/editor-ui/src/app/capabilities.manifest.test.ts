@@ -399,5 +399,25 @@ describe('registerShellCapabilities', () => {
 
 			expect(loaded).toBe(true);
 		});
+
+		it('shares a failed load with a retry until both stores answer', async () => {
+			registerShellCapabilities();
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			const credentialsStore = mockedStore(useCredentialsStore);
+			const credentialTypes = createDeferredPromise();
+			nodeTypesStore.loadNodeTypesIfNotLoaded.mockRejectedValue(new Error('offline'));
+			credentialsStore.fetchCredentialTypes.mockReturnValue(credentialTypes.promise);
+			const types = capabilityRegistry.use(capabilities.typeDescriptions);
+
+			const first = types.load();
+			await flushPromises();
+			const retry = types.load();
+			credentialTypes.resolve();
+
+			await expect(first).rejects.toThrow('offline');
+			await expect(retry).rejects.toThrow('offline');
+			expect(nodeTypesStore.loadNodeTypesIfNotLoaded).toHaveBeenCalledTimes(1);
+			expect(credentialsStore.fetchCredentialTypes).toHaveBeenCalledTimes(1);
+		});
 	});
 });

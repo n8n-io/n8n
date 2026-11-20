@@ -20,6 +20,21 @@
 		"PUT /agents/{agentId}": {
 			"status": "gap"
 		},
+		"DELETE /ai-preferences/{aiPreferenceId}": {
+			"status": "gap"
+		},
+		"GET /ai-preferences": {
+			"status": "gap"
+		},
+		"GET /ai-preferences/{aiPreferenceId}": {
+			"status": "gap"
+		},
+		"PUT /ai-preferences/{aiPreferenceId}": {
+			"status": "gap"
+		},
+		"POST /ai-preferences": {
+			"status": "gap"
+		},
 		"GET /roles": {
 			"status": "gap"
 		},
@@ -209,6 +224,9 @@
 			"status": "gap"
 		},
 		"GET /workflows/{workflowId}/dependencies": {
+			"status": "gap"
+		},
+		"POST /workflows/{workflowId}/run": {
 			"status": "gap"
 		},
 		"GET /workflows/{workflowId}/test-runs": {
