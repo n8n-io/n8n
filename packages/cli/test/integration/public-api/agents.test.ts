@@ -4,6 +4,8 @@ import { ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 
+import { createAgent as createTestAgent, ensureInstanceAgent } from '@test-integration/db/agents';
+
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 
 import { createFolder } from '../shared/db/folders';
@@ -45,7 +47,7 @@ describe('DELETE /agents/:agentId', () => {
 	});
 
 	const createAgent = async (projectId: string, id: string) =>
-		await agentRepository.save({
+		await createTestAgent({
 			id,
 			name: 'My Agent',
 			projectId,
@@ -373,7 +375,7 @@ describe('GET /agents/:agentId', () => {
 	});
 
 	const createAgent = async (projectId: string, id: string) =>
-		await agentRepository.save({
+		await createTestAgent({
 			id,
 			name: 'My Agent',
 			projectId,
@@ -427,17 +429,7 @@ describe('GET /agents/:agentId', () => {
 
 	test('should return 404 for an instance agent', async () => {
 		const owner = await createOwnerWithApiKey();
-		await agentRepository.save({
-			id: 'instance-agent',
-			name: 'Instance Agent',
-			projectId: null,
-			scope: 'instance',
-			schema: null,
-			integrations: [],
-			tools: {},
-			skills: {},
-			versionId: 'draft-version',
-		});
+		await ensureInstanceAgent('instance-agent', 'Instance Agent');
 
 		const response = await testServer.publicApiAgentFor(owner).get('/agents/instance-agent');
 
@@ -541,7 +533,7 @@ describe('GET /agents', () => {
 	});
 
 	const createAgent = async (projectId: string, id: string) =>
-		await agentRepository.save({
+		await createTestAgent({
 			id,
 			name: `Agent ${id}`,
 			projectId,
@@ -694,7 +686,7 @@ describe('GET /agents', () => {
 			ProjectRepository,
 		).getPersonalProjectForUserOrFail(member.id);
 		await createAgent(personalProject.id, 'agent-live');
-		await agentRepository.save({
+		await createTestAgent({
 			id: 'agent-archived',
 			name: 'Archived Agent',
 			projectId: personalProject.id,
@@ -854,7 +846,7 @@ describe('PUT /agents/:agentId', () => {
 		const personalProject: Project = await Container.get(
 			ProjectRepository,
 		).getPersonalProjectForUserOrFail(member.id);
-		await agentRepository.save({
+		await createTestAgent({
 			id: 'agent-empty',
 			name: 'Empty Agent',
 			projectId: personalProject.id,
@@ -946,7 +938,7 @@ describe('PUT /agents/:agentId', () => {
 		const personalProject: Project = await Container.get(
 			ProjectRepository,
 		).getPersonalProjectForUserOrFail(member.id);
-		await agentRepository.save({
+		await createTestAgent({
 			id: 'agent-kept',
 			name: 'My Agent',
 			projectId: personalProject.id,
@@ -977,7 +969,7 @@ describe('PUT /agents/:agentId', () => {
 
 		const teamProject = await createTeamProject('Test Project', owner);
 		await linkUserToProject(member, teamProject, customRole.slug);
-		const agent = await agentRepository.save({
+		const agent = await createTestAgent({
 			id: 'agent-kept',
 			name: 'My Agent',
 			projectId: teamProject.id,

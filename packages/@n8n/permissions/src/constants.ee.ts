@@ -17,7 +17,7 @@ export const RESOURCES = {
 	projectAiPreference: [...DEFAULT_OPERATIONS] as const,
 	// Skills. `skill`: instance skills. `projectSkill`: the skills of a project and of
 	// its agents.
-	skill: [...DEFAULT_OPERATIONS] as const,
+	skill: [...DEFAULT_OPERATIONS, 'manage'] as const,
 	projectSkill: [...DEFAULT_OPERATIONS] as const,
 	annotationTag: [...DEFAULT_OPERATIONS] as const,
 	app: [...DEFAULT_OPERATIONS] as const,

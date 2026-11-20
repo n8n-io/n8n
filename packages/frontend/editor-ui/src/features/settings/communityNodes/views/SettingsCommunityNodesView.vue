@@ -6,6 +6,7 @@ import {
 import CommunityPackageCard from '../components/CommunityPackageCard.vue';
 import { useToast } from '@n8n/composables/useToast';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { usePrefetchModals } from '@/app/composables/usePrefetchModals';
 import type { PublicInstalledPackage } from 'n8n-workflow';
 
 import { useCommunityNodesStore } from '../communityNodes.store';
@@ -47,6 +48,8 @@ const isManagedByEnv = computed((): boolean => {
 const canInstall = computed((): boolean => {
 	return settingsStore.isUnverifiedPackagesEnabled && !isManagedByEnv.value;
 });
+
+usePrefetchModals([COMMUNITY_PACKAGE_INSTALL_MODAL_KEY], { enabled: () => canInstall.value });
 
 const getEmptyStateTitle = computed(() => {
 	if (!settingsStore.isUnverifiedPackagesEnabled) {

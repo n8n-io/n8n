@@ -1,0 +1,151 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"breadcrumbs": {
+			"items": {},
+			"type": "array"
+		},
+		"content": {
+			"additionalProperties": true,
+			"properties": {
+				"_expandable": {
+					"additionalProperties": true,
+					"properties": {
+						"ancestors": {
+							"type": "string"
+						},
+						"body": {
+							"type": "string"
+						},
+						"children": {
+							"type": "string"
+						},
+						"childTypes": {
+							"type": "string"
+						},
+						"container": {
+							"type": "string"
+						},
+						"descendants": {
+							"type": "string"
+						},
+						"draftVersion": {
+							"type": "string"
+						},
+						"history": {
+							"type": "string"
+						},
+						"metadata": {
+							"type": "string"
+						},
+						"operations": {
+							"type": "string"
+						},
+						"restrictions": {
+							"type": "string"
+						},
+						"schedulePublishDate": {
+							"type": "string"
+						},
+						"schedulePublishInfo": {
+							"type": "string"
+						},
+						"space": {
+							"type": "string"
+						},
+						"version": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				},
+				"_links": {
+					"properties": {
+						"editui": {
+							"type": "string"
+						},
+						"edituiv2": {
+							"type": "string"
+						},
+						"self": {
+							"type": "string"
+						},
+						"tinyui": {
+							"type": "string"
+						},
+						"webui": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				},
+				"ari": {
+					"type": "string"
+				},
+				"base64EncodedAri": {
+					"type": "string"
+				},
+				"extensions": {
+					"properties": {
+						"position": {
+							"type": "number"
+						}
+					},
+					"type": "object"
+				},
+				"id": {
+					"type": "string"
+				},
+				"macroRenderedOutput": {
+					"type": "object"
+				},
+				"status": {
+					"type": "string"
+				},
+				"title": {
+					"type": "string"
+				},
+				"type": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"entityType": {
+			"type": "string"
+		},
+		"excerpt": {
+			"type": "string"
+		},
+		"friendlyLastModified": {
+			"type": "string"
+		},
+		"iconCssClass": {
+			"type": "string"
+		},
+		"lastModified": {
+			"type": "string"
+		},
+		"resultGlobalContainer": {
+			"properties": {
+				"displayUrl": {
+					"type": "string"
+				},
+				"title": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"score": {
+			"type": "number"
+		},
+		"title": {
+			"type": "string"
+		},
+		"url": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

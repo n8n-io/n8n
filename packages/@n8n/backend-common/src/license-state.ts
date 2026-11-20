@@ -50,6 +50,12 @@ export class LicenseState {
 		return this.licenseProvider.getValue(feature);
 	}
 
+	isEnterprisePlan() {
+		this.assertProvider();
+
+		return this.licenseProvider.isEnterprisePlan();
+	}
+
 	// --------------------
 	//      booleans
 	// --------------------

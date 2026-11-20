@@ -11,6 +11,7 @@ import {
 	PackageEntityAccessDeniedError,
 	PackageEntityNotFoundError,
 	PackageExportBlockedError,
+	PackageWorkflowInvalidError,
 } from './entities/package-export.errors';
 import type { PackageFailureReason } from './n8n-packages.types';
 
@@ -22,6 +23,7 @@ export function classifyPackageFailure(error: unknown): PackageFailureReason {
 	if (error instanceof PackageEntityAccessDeniedError) return 'access-denied';
 	if (error instanceof PackageEntityNotFoundError) return 'entity-not-found';
 	if (error instanceof PackageExportBlockedError) return 'blocked';
+	if (error instanceof PackageWorkflowInvalidError) return 'validation';
 	if (error instanceof ForbiddenError) return 'access-denied';
 	if (error instanceof NotFoundError) return 'entity-not-found';
 	if (error instanceof ConflictError || error instanceof UnprocessableRequestError) {

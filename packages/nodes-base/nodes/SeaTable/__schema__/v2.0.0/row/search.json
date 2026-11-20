@@ -1,0 +1,48 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"_archived": {
+			"type": "boolean"
+		},
+		"_creator": {
+			"properties": {
+				"contact_email": {
+					"type": "string"
+				},
+				"email": {
+					"type": "string"
+				},
+				"name": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"_ctime": {
+			"type": "string"
+		},
+		"_id": {
+			"type": "string"
+		},
+		"_last_modifier": {
+			"properties": {
+				"contact_email": {
+					"type": "string"
+				},
+				"email": {
+					"type": "string"
+				},
+				"name": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"_locked": {},
+		"_locked_by": {},
+		"_mtime": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

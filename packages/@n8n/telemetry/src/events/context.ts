@@ -1,4 +1,9 @@
-import { SKILL_SCAN_RULES, SKILL_SOURCE_REASONS, skillScopeSchema } from '@n8n/api-types';
+import {
+	SKILL_LINK_REVIEW_REASONS,
+	SKILL_SCAN_RULES,
+	SKILL_SOURCE_REASONS,
+	skillScopeSchema,
+} from '@n8n/api-types';
 import { z } from 'zod/v4';
 
 import { defineTelemetryEvents } from '../define';
@@ -401,6 +406,28 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 			read_only: z.boolean().describe('Whether the user may only read the skill'),
 		}),
 	},
+	USER_VIEWED_SKILL_DIAGRAMS: {
+		name: 'User viewed skill diagrams',
+		description:
+			'The read-only skill view finished the Mermaid diagrams of one skill file, on the Skills settings page or in the agent builder. Fires once for each file view that has a Mermaid block, when the last diagram ends, and again when the theme changes. A diagram that does not render shows its source as code with no error, so `failed` and `timed_out` are the only signal that valid diagrams stay as code.',
+		properties: z.object({
+			file: z
+				.enum(['skill', 'reference'])
+				.describe('`skill` is SKILL.md. `reference` is a reference file'),
+			rendered: z.number().describe('Diagrams that show as an image'),
+			invalid: z.number().describe('Blocks that Mermaid rejects. The view shows them as code'),
+			failed: z
+				.number()
+				.describe(
+					'Blocks where the render sandbox answered without a diagram, or sent one the view cannot show',
+				),
+			timed_out: z
+				.number()
+				.describe(
+					'Blocks where the render sandbox did not answer in 10 seconds, for example because a content security policy blocks its scripts',
+				),
+		}),
+	},
 	USER_DOWNLOADED_SKILL: {
 		name: 'User downloaded skill',
 		description:
@@ -591,6 +618,12 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 			rule_codes: z
 				.array(z.enum(SKILL_SCAN_RULES))
 				.describe('The rules that gave a `needs_review` or `blocked` finding, each one time'),
+			link_reason_codes: z
+				.array(z.enum(SKILL_LINK_REVIEW_REASONS))
+				.optional()
+				.describe(
+					'Why each `risky_url` finding needs review, each reason one time. Absent when no link needs review',
+				),
 		}),
 	},
 	SKILL_SOURCE_UPDATE_FOUND: {

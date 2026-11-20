@@ -1,3 +1,6 @@
+import { OutboundHttp } from '@n8n/backend-network';
+import type { HttpRequestClient } from '@n8n/backend-network';
+import { Container } from '@n8n/di';
 import type {
 	IAllExecuteFunctions,
 	IHttpRequestOptions,
@@ -180,5 +183,29 @@ describe('request helpers under the eval mock', () => {
 
 			expect(mockedUrl()).toBe('');
 		});
+	});
+});
+
+describe('request helpers in a simulated-services eval run', () => {
+	test('httpRequest sends the request through the run egress proxy', async () => {
+		const request = vi.fn().mockResolvedValue({ ok: true });
+		Container.set(
+			OutboundHttp,
+			mock<OutboundHttp>({ requests: () => mock<HttpRequestClient>({ request }) }),
+		);
+		const additionalData = mockDeep<IWorkflowExecuteAdditionalData>();
+		additionalData.evalLlmMockHandler = undefined;
+		additionalData.evalEgressProxy = 'http://127.0.0.1:4567';
+		additionalData.otel = undefined;
+		const helpers = getRequestHelperFunctions(mock<Workflow>(), mock<INode>(), additionalData);
+
+		await helpers.httpRequest({ url: 'https://api.example.test/x', method: 'GET' });
+
+		expect(request).toHaveBeenCalledWith(
+			expect.objectContaining({
+				url: 'https://api.example.test/x',
+				proxy: { host: '127.0.0.1', port: 4567, protocol: 'http' },
+			}),
+		);
 	});
 });

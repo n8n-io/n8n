@@ -1,0 +1,101 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"attachments": {
+			"items": {},
+			"type": "array"
+		},
+		"category": {},
+		"cc_emails": {
+			"items": {},
+			"type": "array"
+		},
+		"created_at": {
+			"type": "string"
+		},
+		"custom_fields": {
+			"type": "object"
+		},
+		"department_id": {
+			"type": ["null", "number"]
+		},
+		"description": {
+			"type": "string"
+		},
+		"description_text": {
+			"type": "string"
+		},
+		"due_by": {
+			"type": "string"
+		},
+		"email_config_id": {},
+		"fr_due_by": {
+			"type": "string"
+		},
+		"fr_escalated": {
+			"type": "boolean"
+		},
+		"fwd_emails": {
+			"items": {},
+			"type": "array"
+		},
+		"group_id": {},
+		"id": {
+			"type": "number"
+		},
+		"is_escalated": {
+			"type": "boolean"
+		},
+		"item_category": {},
+		"planned_effort": {},
+		"planned_end_date": {},
+		"planned_start_date": {},
+		"priority": {
+			"type": "number"
+		},
+		"reply_cc_emails": {
+			"items": {},
+			"type": "array"
+		},
+		"requested_for_id": {
+			"type": "number"
+		},
+		"requester_id": {
+			"type": "number"
+		},
+		"resolution_notes": {},
+		"resolution_notes_html": {},
+		"responder_id": {},
+		"source": {
+			"type": "number"
+		},
+		"spam": {
+			"type": "boolean"
+		},
+		"status": {
+			"type": "number"
+		},
+		"sub_category": {},
+		"subject": {
+			"type": "string"
+		},
+		"tags": {
+			"items": {},
+			"type": "array"
+		},
+		"tasks_dependency_type": {
+			"type": "number"
+		},
+		"to_emails": {},
+		"type": {
+			"type": "string"
+		},
+		"updated_at": {
+			"type": "string"
+		},
+		"workspace_id": {
+			"type": "number"
+		}
+	},
+	"type": "object"
+}
