@@ -19,6 +19,7 @@ describe('Knowledge collection repositories', () => {
 	let fileRepo: KnowledgeCollectionFileRepository;
 	let collectionTable: Repository<KnowledgeCollection>;
 	let fileTable: Repository<KnowledgeFile>;
+	let dependencyTable: Repository<AgentKnowledgeDependency>;
 	let projectId: string;
 
 	beforeAll(async () => {
@@ -29,6 +30,7 @@ describe('Knowledge collection repositories', () => {
 		const dataSource = Container.get(DataSource);
 		collectionTable = dataSource.getRepository(KnowledgeCollection);
 		fileTable = dataSource.getRepository(KnowledgeFile);
+		dependencyTable = dataSource.getRepository(AgentKnowledgeDependency);
 	});
 
 	beforeEach(async () => {
@@ -59,7 +61,7 @@ describe('Knowledge collection repositories', () => {
 		return id;
 	}
 
-	function fileParams(collectionId: string, name: string, fileSizeBytes = 10) {
+	function fileParams(collectionId: string, name: string) {
 		const fileId = generateNanoId();
 		return {
 			id: fileId,
@@ -68,7 +70,7 @@ describe('Knowledge collection repositories', () => {
 			storedAt: 'db' as const,
 			storageKey: `knowledge-collections/${collectionId}/files/${fileId}/content`,
 			mimeType: 'text/plain',
-			fileSizeBytes,
+			fileSizeBytes: 10,
 			createdById: null,
 		};
 	}
@@ -96,13 +98,11 @@ describe('Knowledge collection repositories', () => {
 			const firstAgentId = await createAgentId();
 			const secondAgentId = await createAgentId();
 			const otherAgentId = await createAgentId();
-			await Container.get(DataSource)
-				.getRepository(AgentKnowledgeDependency)
-				.insert([
-					{ agentId: firstAgentId, knowledgeCollectionId: collectionId },
-					{ agentId: secondAgentId, knowledgeCollectionId: collectionId },
-					{ agentId: otherAgentId, knowledgeCollectionId: otherCollectionId },
-				]);
+			await dependencyTable.insert([
+				{ agentId: firstAgentId, knowledgeCollectionId: collectionId },
+				{ agentId: secondAgentId, knowledgeCollectionId: collectionId },
+				{ agentId: otherAgentId, knowledgeCollectionId: otherCollectionId },
+			]);
 
 			const agentIds = await collectionRepo.findAgentIds(collectionId, {});
 

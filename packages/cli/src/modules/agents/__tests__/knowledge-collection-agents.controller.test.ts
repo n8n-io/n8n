@@ -38,7 +38,7 @@ describe('KnowledgeCollectionAgentsController', () => {
 		expect(agentRepository.findSummariesByIds).toHaveBeenCalledWith(['agent-1', 'agent-2']);
 	});
 
-	it('reads no agent of a collection the user cannot see', async () => {
+	it('reads no agent when the collection is not in the project', async () => {
 		const { controller, collectionService, agentRepository } = makeController();
 		collectionService.listAgentIds.mockRejectedValue(
 			new NotFoundError('Knowledge collection not found'),

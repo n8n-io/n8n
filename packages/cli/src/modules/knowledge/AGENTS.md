@@ -54,7 +54,7 @@ knowledge-consumer-scope.ts              the boundary: the scope
 knowledge-retriever.ts                   the boundary: what the module offers
 knowledge-sandbox-provider.ts            the boundary: what the module needs
 knowledge-sandbox-provider-proxy.ts      runtime binding of the provider
-collections/                             collection access check, collection files, collection routes
+collections/                             collection project check, collection files, collection routes
 entities/                                entity classes
 repositories/                            repositories
 files/                                   upload, storage and file service code

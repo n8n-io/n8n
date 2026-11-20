@@ -6,15 +6,12 @@ import type { KnowledgeCollection } from '../../entities';
 import type { KnowledgeCollectionRepository } from '../../repositories/knowledge-collection.repository';
 import { KnowledgeCollectionService } from '../knowledge-collection.service';
 
+const ref = { projectId: 'project-1', collectionId: 'collection-1' };
 const collection = mock<KnowledgeCollection>({ id: 'collection-1', projectId: 'project-1' });
 
 function makeService({ collectionsFlag = true }: { collectionsFlag?: boolean } = {}) {
 	const collectionRepository = mock<KnowledgeCollectionRepository>();
-	// The repository returns a collection only for its home project.
-	collectionRepository.findByIdAndProjectId.mockImplementation(
-		async ({ collectionId, projectId }) =>
-			collectionId === collection.id && projectId === collection.projectId ? collection : null,
-	);
+	collectionRepository.findByIdAndProjectId.mockResolvedValue(collection);
 
 	return {
 		service: new KnowledgeCollectionService(
@@ -27,37 +24,26 @@ function makeService({ collectionsFlag = true }: { collectionsFlag?: boolean } =
 
 describe('KnowledgeCollectionService', () => {
 	describe('getInProject', () => {
-		it('returns the collection of its home project', async () => {
-			const { service } = makeService();
+		it('returns the collection that the repository finds in the project', async () => {
+			const { service, collectionRepository } = makeService();
 
-			await expect(
-				service.getInProject({ projectId: 'project-1', collectionId: 'collection-1' }),
-			).resolves.toBe(collection);
+			await expect(service.getInProject(ref)).resolves.toBe(collection);
+			expect(collectionRepository.findByIdAndProjectId).toHaveBeenCalledWith(ref, {});
 		});
 
 		it('answers not found and reads nothing when collections are off', async () => {
 			const { service, collectionRepository } = makeService({ collectionsFlag: false });
 
-			await expect(
-				service.getInProject({ projectId: 'project-1', collectionId: 'collection-1' }),
-			).rejects.toThrow(NotFoundError);
+			await expect(service.getInProject(ref)).rejects.toThrow(NotFoundError);
 			expect(collectionRepository.findByIdAndProjectId).not.toHaveBeenCalled();
 		});
 
-		it('answers not found for a missing collection', async () => {
-			const { service } = makeService();
+		// The repository finds a collection only in its home project.
+		it('answers not found when the repository finds no collection in the project', async () => {
+			const { service, collectionRepository } = makeService();
+			collectionRepository.findByIdAndProjectId.mockResolvedValue(null);
 
-			await expect(
-				service.getInProject({ projectId: 'project-1', collectionId: 'missing' }),
-			).rejects.toThrow(NotFoundError);
-		});
-
-		it('answers not found for a collection of another project', async () => {
-			const { service } = makeService();
-
-			await expect(
-				service.getInProject({ projectId: 'project-2', collectionId: 'collection-1' }),
-			).rejects.toThrow(NotFoundError);
+			await expect(service.getInProject(ref)).rejects.toThrow(NotFoundError);
 		});
 	});
 
@@ -66,18 +52,15 @@ describe('KnowledgeCollectionService', () => {
 			const { service, collectionRepository } = makeService();
 			collectionRepository.findAgentIds.mockResolvedValue(['agent-1', 'agent-2']);
 
-			await expect(
-				service.listAgentIds({ projectId: 'project-1', collectionId: 'collection-1' }),
-			).resolves.toEqual(['agent-1', 'agent-2']);
+			await expect(service.listAgentIds(ref)).resolves.toEqual(['agent-1', 'agent-2']);
 			expect(collectionRepository.findAgentIds).toHaveBeenCalledWith('collection-1', {});
 		});
 
-		it('reads no agents of a collection of another project', async () => {
+		it('reads no agents when the collection is not in the project', async () => {
 			const { service, collectionRepository } = makeService();
+			collectionRepository.findByIdAndProjectId.mockResolvedValue(null);
 
-			await expect(
-				service.listAgentIds({ projectId: 'project-2', collectionId: 'collection-1' }),
-			).rejects.toThrow(NotFoundError);
+			await expect(service.listAgentIds(ref)).rejects.toThrow(NotFoundError);
 			expect(collectionRepository.findAgentIds).not.toHaveBeenCalled();
 		});
 	});

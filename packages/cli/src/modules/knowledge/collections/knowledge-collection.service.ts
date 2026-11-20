@@ -25,12 +25,9 @@ export class KnowledgeCollectionService {
 	 *
 	 * A collection of another project answers the same as a missing one.
 	 */
-	async getInProject({
-		projectId,
-		collectionId,
-	}: KnowledgeCollectionRef): Promise<KnowledgeCollection> {
+	async getInProject(ref: KnowledgeCollectionRef): Promise<KnowledgeCollection> {
 		const collection = (await this.availabilityService.isCollectionsEnabled())
-			? await this.collectionRepository.findByIdAndProjectId({ collectionId, projectId }, {})
+			? await this.collectionRepository.findByIdAndProjectId(ref, {})
 			: null;
 
 		if (!collection) {
@@ -41,8 +38,8 @@ export class KnowledgeCollectionService {
 	}
 
 	/** The ids of the agents that use the collection. */
-	async listAgentIds({ projectId, collectionId }: KnowledgeCollectionRef): Promise<string[]> {
-		await this.getInProject({ projectId, collectionId });
-		return await this.collectionRepository.findAgentIds(collectionId, {});
+	async listAgentIds(ref: KnowledgeCollectionRef): Promise<string[]> {
+		await this.getInProject(ref);
+		return await this.collectionRepository.findAgentIds(ref.collectionId, {});
 	}
 }

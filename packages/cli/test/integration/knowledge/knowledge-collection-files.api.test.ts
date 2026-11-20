@@ -55,10 +55,10 @@ describe('knowledge collection file routes', () => {
 		`/projects/${projectId}/knowledge/collections/${collectionId}`;
 	const filesPath = () => `${collectionPath()}/files`;
 
-	async function upload(user: User, filename: string, content = 'hello') {
+	async function upload(user: User, filename: string, content = 'hello', url = filesPath()) {
 		return await server
 			.authAgentFor(user)
-			.post(filesPath())
+			.post(url)
 			.attach('files', Buffer.from(content), { filename, contentType: 'text/plain' });
 	}
 
@@ -122,11 +122,7 @@ describe('knowledge collection file routes', () => {
 		await server.authAgentFor(editor).get(`${otherPath}/files`).expect(404);
 		await server.authAgentFor(editor).delete(`${otherPath}/files/any-file`).expect(404);
 		await server.authAgentFor(editor).get(`${otherPath}/agents`).expect(404);
-		await server
-			.authAgentFor(editor)
-			.post(`${otherPath}/files`)
-			.attach('files', Buffer.from('hello'), 'guide.txt')
-			.expect(404);
+		expect((await upload(editor, 'guide.txt', 'hello', `${otherPath}/files`)).status).toBe(404);
 	});
 
 	it('leaves no temp file of a refused upload', async () => {

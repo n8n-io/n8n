@@ -1,6 +1,7 @@
-import type {
-	KnowledgeCollectionFileDto,
-	KnowledgeCollectionFileListResponse,
+import {
+	MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES,
+	type KnowledgeCollectionFileDto,
+	type KnowledgeCollectionFileListResponse,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { isUniqueConstraintError, type User } from '@n8n/db';
@@ -21,8 +22,11 @@ import {
 	type KnowledgeCollectionRef,
 } from './knowledge-collection.service';
 
-/** The largest value of the `int` column `knowledge_file.fileSizeBytes`. */
-const MAX_FILE_SIZE_BYTES = 2_147_483_647;
+/**
+ * The largest file of a collection: the size limit of a knowledge base today.
+ * It also keeps the size in the range of the `int` column `knowledge_file.fileSizeBytes`.
+ */
+const MAX_FILE_SIZE_BYTES = MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES;
 
 /** Upload, listing and deletion of the files of a knowledge collection. */
 @Service()
@@ -110,12 +114,12 @@ export class KnowledgeCollectionFileService {
 			});
 	}
 
-	/** Rejects a file that is too large for the size column. The configured limit has no upper bound. */
+	/** Rejects a file above the fixed limit. The configured file size limit has no upper bound. */
 	private validateFileSizes(files: Express.Multer.File[]) {
 		for (const file of files) {
 			if (file.size > MAX_FILE_SIZE_BYTES) {
 				throw new KnowledgeUploadError(
-					`"${file.originalname}" is too large. Files must be smaller than ${formatMbOrGb(MAX_FILE_SIZE_BYTES)}.`,
+					`"${file.originalname}" is too large. A file can't be larger than ${formatMbOrGb(MAX_FILE_SIZE_BYTES)}.`,
 					'file_size',
 				);
 			}

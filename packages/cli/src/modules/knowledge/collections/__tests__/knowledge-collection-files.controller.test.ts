@@ -34,7 +34,7 @@ function makeController() {
 }
 
 describe('KnowledgeCollectionFilesController', () => {
-	it('lists the files of a collection for the user', async () => {
+	it('lists the files of a collection', async () => {
 		const { controller, fileService } = makeController();
 		const list = { count: 0, totalSizeBytes: 0, data: [] };
 		fileService.listFiles.mockResolvedValue(list);

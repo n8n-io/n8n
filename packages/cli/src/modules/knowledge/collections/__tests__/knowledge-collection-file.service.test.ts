@@ -1,3 +1,4 @@
+import { MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { NotFoundError } from '@n8n/errors';
@@ -123,7 +124,7 @@ describe('KnowledgeCollectionFileService', () => {
 			expect(collectionService.getInProject).toHaveBeenCalledWith({ projectId, collectionId });
 		});
 
-		it('reads no files of a collection the user cannot see', async () => {
+		it('reads no files when the collection is not in the project', async () => {
 			const { service, collectionService, fileRepository } = makeService();
 			collectionService.getInProject.mockRejectedValue(new NotFoundError('not found'));
 
@@ -165,7 +166,7 @@ describe('KnowledgeCollectionFileService', () => {
 			]);
 		});
 
-		it('stores nothing in a collection the user cannot change', async () => {
+		it('stores nothing when the collection is not in the project', async () => {
 			const { service, collectionService, fileStore } = makeService();
 			collectionService.getInProject.mockRejectedValue(new NotFoundError('not found'));
 
@@ -175,18 +176,21 @@ describe('KnowledgeCollectionFileService', () => {
 			expect(fileStore.write).not.toHaveBeenCalled();
 		});
 
-		it('refuses a file that is too large for the size column, before it stores anything', async () => {
+		it('refuses a file above the knowledge base size limit, before it stores anything', async () => {
 			const { service, fileRepository, fileStore } = makeService();
 
 			const upload = service.uploadFiles({
 				user,
 				projectId,
 				collectionId,
-				files: [makeMulterFile({ size: 2_147_483_648 })],
+				files: [makeMulterFile({ size: MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES + 1 })],
 			});
 
 			await expect(upload).rejects.toThrow(KnowledgeUploadError);
-			await expect(upload).rejects.toMatchObject({ reason: 'file_size' });
+			await expect(upload).rejects.toMatchObject({
+				reason: 'file_size',
+				message: expect.stringContaining('1.5 GB'),
+			});
 			expect(fileStore.write).not.toHaveBeenCalled();
 			expect(fileRepository.saveUploadedFile).not.toHaveBeenCalled();
 		});
@@ -348,7 +352,7 @@ describe('KnowledgeCollectionFileService', () => {
 			expect(logger.warn).toHaveBeenCalled();
 		});
 
-		it('deletes nothing in a collection the user cannot change', async () => {
+		it('deletes nothing when the collection is not in the project', async () => {
 			const { service, collectionService, fileRepository } = makeService();
 			collectionService.getInProject.mockRejectedValue(new NotFoundError('not found'));
 
