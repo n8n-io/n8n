@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
 	addResolvedLiveSourceItem,
+	effectiveLiveSourceRetrieval,
 	nextLiveSourceId,
 	removeLiveSource,
 	removeLiveSourceItem,
@@ -113,13 +114,37 @@ describe('live-sources helpers', () => {
 		]);
 	});
 
-	describe('setLiveSourceRetrieval', () => {
-		it('sets a strategy and leaves the key out for the provider default', () => {
-			const withIndex = setLiveSourceRetrieval([notion], 'notion', 'index');
-			expect(withIndex[0].retrieval).toBe('index');
+	describe('effectiveLiveSourceRetrieval', () => {
+		it('is the configured strategy, else the provider default, else native', () => {
+			expect(effectiveLiveSourceRetrieval({ provider: 'notion', retrieval: 'index' })).toBe(
+				'index',
+			);
+			expect(effectiveLiveSourceRetrieval({ provider: 'notion' })).toBe('native');
+			expect(effectiveLiveSourceRetrieval({ provider: 'unknown' })).toBe('native');
+		});
+	});
 
-			const reset = setLiveSourceRetrieval(withIndex, 'notion', undefined);
+	describe('setLiveSourceRetrieval', () => {
+		it('writes a strategy that differs from the provider default', () => {
+			const withIndex = setLiveSourceRetrieval([notion], 'notion', 'index');
+
+			expect(withIndex[0].retrieval).toBe('index');
+		});
+
+		it('leaves the key out for the provider default, so the backend decides', () => {
+			const withIndex = setLiveSourceRetrieval([notion], 'notion', 'index');
+
+			const reset = setLiveSourceRetrieval(withIndex, 'notion', 'native');
+
 			expect('retrieval' in reset[0]).toBe(false);
+		});
+
+		it('writes the strategy as it is for a provider it does not know', () => {
+			const other = { ...notion, id: 'other', provider: 'confluence' };
+
+			const next = setLiveSourceRetrieval([other], 'other', 'native');
+
+			expect(next[0].retrieval).toBe('native');
 		});
 	});
 });

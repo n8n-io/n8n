@@ -172,12 +172,42 @@ describe('AgentLiveSourcesPanel', () => {
 		expect(wrapper.emitted('update:liveSources')).toEqual([[[]]]);
 	});
 
-	it('writes the retrieval strategy of a source', async () => {
-		const wrapper = mountPanel([source]);
-		await flushPromises();
+	describe('the retrieval strategy select', () => {
+		it('offers the two strategies, marks the provider default, and shows the effective one', async () => {
+			const wrapper = mountPanel([source]);
+			await flushPromises();
 
-		await wrapper.find('[data-testid="agent-live-source-retrieval"]').setValue('index');
+			const select = wrapper.find<HTMLSelectElement>('[data-testid="agent-live-source-retrieval"]');
+			expect(select.findAll('option').map((option) => option.text())).toEqual([
+				'agents.builder.liveSources.retrieval.defaultOption:agents.builder.liveSources.retrieval.native',
+				'agents.builder.liveSources.retrieval.index',
+			]);
+			expect(select.element.value).toBe('native');
+			expect(wrapper.find(`label[for="${select.attributes('id')}"]`).text()).toBe(
+				'agents.builder.liveSources.retrieval.label',
+			);
+		});
 
-		expect(wrapper.emitted('update:liveSources')).toEqual([[[{ ...source, retrieval: 'index' }]]]);
+		it('writes a strategy that differs from the provider default', async () => {
+			const wrapper = mountPanel([source]);
+			await flushPromises();
+
+			await wrapper.find('[data-testid="agent-live-source-retrieval"]').setValue('index');
+
+			expect(wrapper.emitted('update:liveSources')).toEqual([
+				[[{ ...source, retrieval: 'index' }]],
+			]);
+		});
+
+		it('leaves the key out when the provider default is picked again', async () => {
+			const wrapper = mountPanel([{ ...source, retrieval: 'index' }]);
+			await flushPromises();
+			const select = wrapper.find<HTMLSelectElement>('[data-testid="agent-live-source-retrieval"]');
+			expect(select.element.value).toBe('index');
+
+			await select.setValue('native');
+
+			expect(wrapper.emitted('update:liveSources')).toEqual([[[source]]]);
+		});
 	});
 });

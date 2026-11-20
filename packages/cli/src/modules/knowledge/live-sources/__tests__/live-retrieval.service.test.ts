@@ -295,6 +295,28 @@ describe('LiveRetrievalService', () => {
 		});
 	});
 
+	describe('the retrieval strategy', () => {
+		it('uses the provider default when the config names no strategy', async () => {
+			const { service, provider } = makeService();
+			provider.defaultRetrieval = 'index';
+			const unset: LiveSourceConfig = { ...SOURCE, items: [PICKED_PAGE] };
+			expect(unset.retrieval).toBeUndefined();
+
+			expect(service.describe(SCOPE, [unset]).sources[0]).toMatchObject({ retrieval: 'index' });
+			const result = await service.search(SCOPE, [unset], { runId: 'run-1' }, { query: 'refund' });
+			expect(result.searched).toEqual([expect.objectContaining({ retrieval: 'index' })]);
+		});
+
+		it('keeps an explicit strategy over the provider default', () => {
+			const { service, provider } = makeService();
+			provider.defaultRetrieval = 'index';
+
+			expect(
+				service.describe(SCOPE, [{ ...SOURCE, retrieval: 'native' }]).sources[0],
+			).toMatchObject({ retrieval: 'native', index: undefined });
+		});
+	});
+
 	describe('resolveLink', () => {
 		const PASTED = { id: 'notion', provider: 'fake', credential: 'cred-1' };
 

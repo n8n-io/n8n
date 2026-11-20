@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref, useId, watch } from 'vue';
 import type {
 	AgentJsonLiveSourceConfig,
 	AgentJsonLiveSourceItem,
@@ -28,6 +28,7 @@ import { resolveAgentLiveSourceLink } from '../composables/useKnowledgeApi';
 import {
 	AGENT_LIVE_SOURCE_PROVIDERS,
 	addResolvedLiveSourceItem,
+	effectiveLiveSourceRetrieval,
 	getLiveSourceProvider,
 	removeLiveSource,
 	removeLiveSourceItem,
@@ -52,9 +53,6 @@ const emit = defineEmits<{
 	'update:liveSources': [liveSources: AgentJsonLiveSourceConfig[]];
 }>();
 
-/** The select value that stands for "no override": `retrieval` is left out of the config. */
-const RETRIEVAL_DEFAULT = 'default';
-
 const PROVIDER_LABEL_KEYS: Record<AgentLiveSourceProviderId, BaseTextKey> = {
 	notion: 'agents.builder.liveSources.provider.notion',
 	slack: 'agents.builder.liveSources.provider.slack',
@@ -74,6 +72,7 @@ const i18n = useI18n();
 const rootStore = useRootStore();
 const credentialsStore = useCredentialsStore();
 const projectsStore = useProjectsStore();
+const retrievalSelectId = useId();
 
 const provider = ref<AgentLiveSourceProviderId>('notion');
 const credential = ref('');
@@ -113,8 +112,17 @@ function providerLabel(providerId: string): string {
 	return definition ? i18n.baseText(PROVIDER_LABEL_KEYS[definition.id]) : providerId;
 }
 
-function retrievalLabel(strategy: AgentLiveSourceRetrievalStrategy): string {
-	return i18n.baseText(RETRIEVAL_LABEL_KEYS[strategy]);
+/** The option label of a strategy; the provider default is marked, so the select needs no "default" option. */
+function retrievalOptionLabel(
+	source: AgentJsonLiveSourceConfig,
+	strategy: AgentLiveSourceRetrievalStrategy,
+): string {
+	const label = i18n.baseText(RETRIEVAL_LABEL_KEYS[strategy]);
+	return getLiveSourceProvider(source.provider)?.defaultRetrieval === strategy
+		? i18n.baseText('agents.builder.liveSources.retrieval.defaultOption', {
+				interpolate: { strategy: label },
+			})
+		: label;
 }
 
 function onProviderChange(value: unknown) {
@@ -210,8 +218,9 @@ async function onAdd() {
 	}
 }
 
-function onRetrievalChange(source: AgentJsonLiveSourceConfig, value: string) {
+function onRetrievalChange(source: AgentJsonLiveSourceConfig, value: unknown) {
 	const retrieval = LIVE_SOURCE_RETRIEVAL_STRATEGIES.find((strategy) => strategy === value);
+	if (!retrieval) return;
 	emit('update:liveSources', setLiveSourceRetrieval(props.liveSources, source.id, retrieval));
 }
 
@@ -330,27 +339,6 @@ function onRemoveItem(source: AgentJsonLiveSourceConfig, item: AgentJsonLiveSour
 					>
 						{{ source.name }}
 					</span>
-					<N8nText size="xsmall" color="text-light">{{ providerLabel(source.provider) }}</N8nText>
-					<N8nSelect
-						:model-value="source.retrieval ?? RETRIEVAL_DEFAULT"
-						size="small"
-						:disabled="props.disabled"
-						:class="$style.retrievalSelect"
-						:aria-label="i18n.baseText('agents.builder.liveSources.retrieval.label')"
-						data-testid="agent-live-source-retrieval"
-						@update:model-value="onRetrievalChange(source, $event)"
-					>
-						<N8nOption
-							:value="RETRIEVAL_DEFAULT"
-							:label="i18n.baseText('agents.builder.liveSources.retrieval.default')"
-						/>
-						<N8nOption
-							v-for="strategy in LIVE_SOURCE_RETRIEVAL_STRATEGIES"
-							:key="strategy"
-							:value="strategy"
-							:label="retrievalLabel(strategy)"
-						/>
-					</N8nSelect>
 					<N8nIconButton
 						icon="trash-2"
 						variant="ghost"
@@ -360,6 +348,27 @@ function onRemoveItem(source: AgentJsonLiveSourceConfig, item: AgentJsonLiveSour
 						data-testid="agent-live-source-remove"
 						@click="onRemoveSource(source)"
 					/>
+				</div>
+				<div :class="$style.settingRow">
+					<label :for="`${retrievalSelectId}-${source.id}`" :class="$style.settingLabel">
+						{{ i18n.baseText('agents.builder.liveSources.retrieval.label') }}
+					</label>
+					<N8nSelect
+						:id="`${retrievalSelectId}-${source.id}`"
+						:model-value="effectiveLiveSourceRetrieval(source)"
+						size="small"
+						:disabled="props.disabled"
+						:class="$style.retrievalSelect"
+						data-testid="agent-live-source-retrieval"
+						@update:model-value="onRetrievalChange(source, $event)"
+					>
+						<N8nOption
+							v-for="strategy in LIVE_SOURCE_RETRIEVAL_STRATEGIES"
+							:key="strategy"
+							:value="strategy"
+							:label="retrievalOptionLabel(source, strategy)"
+						/>
+					</N8nSelect>
 				</div>
 				<ul :class="$style.items">
 					<li
@@ -486,9 +495,26 @@ function onRemoveItem(source: AgentJsonLiveSourceConfig, item: AgentJsonLiveSour
 	white-space: nowrap;
 }
 
+.settingRow {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--2xs) var(--spacing--xs);
+	border-bottom: var(--border);
+}
+
+.settingLabel {
+	color: var(--text-color--subtler);
+	font-size: var(--font-size--sm);
+}
+
 .retrievalSelect {
-	flex: 0 0 auto;
-	width: 160px;
+	flex: 0 1 auto;
+	/* Fits the longest option label, "Native search (default)", without a wrap. */
+	width: 200px;
+	max-width: 100%;
 }
 
 .items {

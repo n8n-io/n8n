@@ -10,17 +10,33 @@ export interface AgentLiveSourceProviderDefinition {
 	id: AgentLiveSourceProviderId;
 	/** The credential types the backend provider accepts, its preferred one first. */
 	credentialTypes: readonly string[];
+	/** The strategy the backend uses when the config names none. */
+	defaultRetrieval: AgentLiveSourceRetrievalStrategy;
 }
 
 /**
  * The live source providers the paste-a-link panel offers. The backend
  * registry (`LiveSourceProviderRegistry`) is the source of truth; this list
- * mirrors its ids and credential types until a picker fetches them.
+ * mirrors its ids, credential types and default strategies until a picker
+ * fetches them.
  */
 export const AGENT_LIVE_SOURCE_PROVIDERS: readonly AgentLiveSourceProviderDefinition[] = [
-	{ id: 'notion', credentialTypes: ['notionOAuth2Api', 'notionApi'] },
-	{ id: 'slack', credentialTypes: ['slackOAuth2Api', 'slackApi'] },
+	{ id: 'notion', credentialTypes: ['notionOAuth2Api', 'notionApi'], defaultRetrieval: 'native' },
+	{ id: 'slack', credentialTypes: ['slackOAuth2Api', 'slackApi'], defaultRetrieval: 'native' },
 ];
+
+const FALLBACK_RETRIEVAL: AgentLiveSourceRetrievalStrategy = 'native';
+
+/** The strategy a source runs with: the configured one, else its provider's default. */
+export function effectiveLiveSourceRetrieval(
+	source: Pick<AgentJsonLiveSourceConfig, 'provider' | 'retrieval'>,
+): AgentLiveSourceRetrievalStrategy {
+	return (
+		source.retrieval ??
+		getLiveSourceProvider(source.provider)?.defaultRetrieval ??
+		FALLBACK_RETRIEVAL
+	);
+}
 
 export function getLiveSourceProvider(id: string): AgentLiveSourceProviderDefinition | undefined {
 	return AGENT_LIVE_SOURCE_PROVIDERS.find((provider) => provider.id === id);
@@ -101,15 +117,21 @@ export function removeLiveSource(
 	return liveSources.filter((source) => source.id !== sourceId);
 }
 
-/** `undefined` restores the provider default. */
+/**
+ * Writes the strategy of a source. The provider default is left out of the
+ * config, so the backend keeps deciding it; a provider this list does not
+ * know gets the strategy written as it is.
+ */
 export function setLiveSourceRetrieval(
 	liveSources: readonly AgentJsonLiveSourceConfig[],
 	sourceId: string,
-	retrieval: AgentLiveSourceRetrievalStrategy | undefined,
+	retrieval: AgentLiveSourceRetrievalStrategy,
 ): AgentJsonLiveSourceConfig[] {
 	return liveSources.map((source) => {
 		if (source.id !== sourceId) return source;
 		const { retrieval: _previous, ...rest } = source;
-		return retrieval ? { ...rest, retrieval } : rest;
+		const isProviderDefault =
+			getLiveSourceProvider(source.provider)?.defaultRetrieval === retrieval;
+		return isProviderDefault ? rest : { ...rest, retrieval };
 	});
 }

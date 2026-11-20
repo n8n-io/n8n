@@ -277,9 +277,12 @@ agent. No browse picker: the user pastes a link.
   creates one: id `<provider>`, `<provider>-2`, …; name = the credential name.
   A source lists its items with their urls. Removing the last item removes
   the source.
-- A select per source writes `retrieval` (`native`, `index`, or the provider
-  default, which leaves the key out). No index status or rebuild button: the
-  first search builds the index, and `list_knowledge()` shows its status.
+- A "Retrieval strategy" select per source offers `native` and `index`, with
+  the provider default marked "(default)". It shows the effective strategy;
+  picking the default leaves `retrieval` out of the config, so the backend
+  keeps deciding it (`resolveStrategy` falls back to the registry). No index
+  status or rebuild button: the first search builds the index, and
+  `list_knowledge()` shows its status.
 - No "create credential" flow: credentials come from the Credentials page.
   The provider list and the credential types are a frontend constant that
   mirrors the registry until a picker fetches them.
