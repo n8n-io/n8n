@@ -30,3 +30,8 @@ export type ExecutionLimitChange = {
 	oldValue: ExecutionLimitPeriodUnit | number | null;
 	newValue: ExecutionLimitPeriodUnit | number | null;
 };
+
+export type RecordedExecutionLimitChange = ExecutionLimitChange & {
+	updatedBy: string | null;
+	loginId?: string;
+};

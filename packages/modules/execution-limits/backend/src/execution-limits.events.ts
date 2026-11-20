@@ -1,12 +1,9 @@
 import '@n8n/backend-services';
 
-import type { ExecutionLimitChange } from './execution-limits.types';
+import type { RecordedExecutionLimitChange } from './execution-limits.types';
 
 export interface ExecutionLimitsEventMap {
-	'execution-limit-updated': ExecutionLimitChange & {
-		updatedBy: string | null;
-		loginId?: string;
-	};
+	'execution-limit-updated': RecordedExecutionLimitChange;
 }
 
 declare module '@n8n/backend-services' {
