@@ -44,4 +44,4 @@ RFC: https://app.notion.com/p/4055b6e0c94f81bd8f96c22c386c778c
 
 Documentation: https://app.notion.com/p/4165b6e0c94f81b1a074da1a750f16d3
 
-Related ADRs: ADR-20261119-run-leases-as-an-opt-in-backend-module
+Related ADRs: ADR-20261120-run-durable-leases-as-a-packaged-backend-module
