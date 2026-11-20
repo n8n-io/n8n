@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
 
 type WorkflowSettingsRowTitleProps = {
 	title: string;
@@ -17,6 +18,8 @@ defineSlots<{
 	default?: () => unknown;
 	tooltip?: () => unknown;
 }>();
+
+const i18n = useI18n();
 </script>
 
 <template>
@@ -26,11 +29,19 @@ defineSlots<{
 			<template v-else>{{ title }}</template>
 		</N8nText>
 		<slot />
-		<N8nTooltip v-if="tooltip || $slots.tooltip" placement="top" :enterable="true">
+		<N8nTooltip v-if="tooltip || $slots.tooltip" as-child placement="top" :enterable="true">
 			<template #content>
 				<slot name="tooltip">{{ tooltip }}</slot>
 			</template>
-			<N8nIcon :class="$style.icon" icon="circle-help" data-test-id="workflow-settings-help-icon" />
+			<!-- A button, so that keyboard focus opens the tooltip. -->
+			<button
+				type="button"
+				:class="$style.help"
+				:aria-label="i18n.baseText('generic.moreInfo')"
+				data-test-id="workflow-settings-help-icon"
+			>
+				<N8nIcon icon="circle-help" />
+			</button>
 		</N8nTooltip>
 	</div>
 </template>
@@ -52,14 +63,27 @@ defineSlots<{
 	overflow-wrap: anywhere;
 }
 
-// The help icon shows only when the pointer is on the title area, to keep the list quiet.
-.icon {
+// To keep the list quiet, the help icon is hidden until the pointer is on the title area,
+// the icon has keyboard focus, or its tooltip is open.
+.help {
+	display: inline-flex;
 	flex-shrink: 0;
+	padding: 0;
+	border: 0;
+	background: none;
+	color: inherit;
+	cursor: default;
 	opacity: 0;
 	transition: opacity 0.3s ease;
 
 	.title:hover &,
-	&:focus-visible {
+	&:focus-visible,
+	&[data-state$='open'] {
+		opacity: 1;
+	}
+
+	// A touch device has no pointer to reveal the icon.
+	@media (hover: none) {
 		opacity: 1;
 	}
 }

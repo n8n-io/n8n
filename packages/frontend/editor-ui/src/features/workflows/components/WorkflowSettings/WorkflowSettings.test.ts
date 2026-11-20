@@ -220,7 +220,12 @@ describe('WorkflowSettingsVue', () => {
 
 	const enableMcpAccess = () => {
 		settingsStore.moduleSettings = {
-			mcp: { mcpAccessEnabled: true, mcpManagedByEnv: false, autoExposeNewWorkflows: false },
+			mcp: {
+				mcpAccessEnabled: true,
+				mcpManagedByEnv: false,
+				autoExposeNewWorkflows: false,
+				preferencesEnabled: false,
+			},
 		};
 	};
 
@@ -647,9 +652,7 @@ describe('WorkflowSettingsVue', () => {
 
 		it('shows the Access section when only MCP access is on', async () => {
 			settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing] = false;
-			settingsStore.moduleSettings = {
-				mcp: { mcpAccessEnabled: true, mcpManagedByEnv: false, autoExposeNewWorkflows: false },
-			};
+			enableMcpAccess();
 			const { getByTestId } = createComponent({ pinia });
 			await flushPromises();
 

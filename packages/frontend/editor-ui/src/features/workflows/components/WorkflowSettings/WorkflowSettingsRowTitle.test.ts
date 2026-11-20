@@ -1,4 +1,5 @@
 import { createComponentRenderer } from '@/__tests__/render';
+import userEvent from '@testing-library/user-event';
 import WorkflowSettingsRowTitle from './WorkflowSettingsRowTitle.vue';
 
 const renderComponent = createComponentRenderer(WorkflowSettingsRowTitle);
@@ -26,6 +27,18 @@ describe('WorkflowSettingsRowTitle', () => {
 		});
 
 		expect(getByTestId('workflow-settings-help-icon')).toBeInTheDocument();
+	});
+
+	it('opens the tooltip when the help icon gets keyboard focus', async () => {
+		const { getByRole, findAllByText } = renderComponent({
+			props: { title: 'Timezone', tooltip: 'The timezone of the workflow' },
+		});
+
+		const helpButton = getByRole('button', { name: 'More info' });
+		await userEvent.tab();
+
+		expect(helpButton).toHaveFocus();
+		expect((await findAllByText('The timezone of the workflow')).length).toBeGreaterThan(0);
 	});
 
 	it('renders the title in a label for the control when labelFor is set', () => {
