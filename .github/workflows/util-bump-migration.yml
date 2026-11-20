@@ -33,7 +33,7 @@ jobs:
           permission-contents: write # push the bump commit
           permission-issues: write # reply and react to the comment
           permission-members: read # check the r-d team
-          permission-pull-requests: write # restore the approval
+          permission-pull-requests: read # read the PR head and base
 
       # Always master: only trusted code runs with the App token. The handler
       # fetches the PR branch into a separate worktree and runs nothing from it.

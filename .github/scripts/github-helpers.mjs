@@ -448,64 +448,6 @@ export async function getChangedFiles(pullRequestNumber) {
 }
 
 /**
- * Returns all reviews submitted on a PR, in submission order.
- *
- * @param { number } pullRequestNumber
- * @returns { Promise<Array<{ id: number, user: { login: string } | null, state: string, commit_id?: string, submitted_at?: string }>> }
- * */
-export async function getPrReviews(pullRequestNumber) {
-	const { octokit, owner, repo } = initGithub();
-
-	return await octokit.paginate(octokit.rest.pulls.listReviews, {
-		owner,
-		repo,
-		pull_number: pullRequestNumber,
-		per_page: 100,
-	});
-}
-
-/**
- * Returns all events for a PR, including review dismissals.
- *
- * @param { number } pullRequestNumber
- * @returns { Promise<Array<{ event: string, actor: { login: string } | null, dismissed_review?: { review_id: number, state: string, dismissal_commit_id?: string | null } }>> }
- * */
-export async function getPrEvents(pullRequestNumber) {
-	const { octokit, owner, repo } = initGithub();
-
-	return await octokit.paginate(octokit.rest.issues.listEvents, {
-		owner,
-		repo,
-		issue_number: pullRequestNumber,
-		per_page: 100,
-	});
-}
-
-/**
- * Returns the commits and changed files from `baseSha` to `headSha`, or null
- * when GitHub cannot compare them (a force-push removed `baseSha`).
- *
- * @param { string } baseSha
- * @param { string } headSha
- * @returns { Promise<import('./migration-bump/is-migration-bump.mjs').Changes | null> }
- * */
-export async function getChangesBetween(baseSha, headSha) {
-	const { octokit, owner, repo } = initGithub();
-
-	try {
-		const { data } = await octokit.rest.repos.compareCommitsWithBasehead({
-			owner,
-			repo,
-			basehead: `${baseSha}...${headSha}`,
-		});
-		return { commits: data.commits, files: data.files ?? [] };
-	} catch (ex) {
-		if (ex?.status === 404) return null;
-		throw ex;
-	}
-}
-
-/**
  * Test whether a user is an active member of an org team.
  *
  * Team slugs are the part after the org, e.g. `catalysts` for

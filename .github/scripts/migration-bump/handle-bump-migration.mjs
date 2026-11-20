@@ -16,8 +16,6 @@ import {
 	isTeamMember,
 	workflowRunUrl,
 } from '../github-helpers.mjs';
-import { errorSummary } from '../error-summary.mjs';
-import { hasRestorableApproval } from './restorable-approval.mjs';
 
 export const COMMAND_TEAM = 'r-d';
 
@@ -28,6 +26,18 @@ const COMMIT_MESSAGE = 'chore: Move migrations after the base branch head (no-ch
 
 // Child stderr is captured, never streamed, so git and script output cannot reach the run log.
 const CAPTURE_OUTPUT = /** @type {const} */ (['ignore', 'pipe', 'pipe']);
+
+/**
+ * The error type and status code only: messages, stacks and command output can carry repository or token data.
+ *
+ * @param {unknown} error
+ * @returns {string}
+ */
+function errorSummary(error) {
+	const name = error instanceof Error ? error.name : 'Error';
+	const status = /** @type {{ status?: unknown }} */ (error)?.status;
+	return typeof status === 'number' ? `${name} with status ${status}` : name;
+}
 
 /**
  * Logs the error summary to the workflow run and returns the reply sentence that links to the run.
@@ -64,31 +74,6 @@ async function refusalReason(pullRequest, commenter, repository) {
 		[pullRequest.head.repo?.full_name !== repository, 'The bot cannot push to a PR from a fork.'],
 	]);
 	return reasons.find(([applies]) => applies)?.[1];
-}
-
-/**
- * Approves `newHead` when the PR had an approval before the bump and no open change request, and returns the reply line for it.
- *
- * @param {{ octokit: any, owner: string, repo: string, prNumber: number, newHead: string }} params
- * @returns {Promise<string>}
- */
-async function approvalLine({ octokit, owner, repo, prNumber, newHead }) {
-	try {
-		const restorable = await hasRestorableApproval(prNumber, newHead);
-		if (restorable) {
-			await octokit.rest.pulls.createReview({
-				owner,
-				repo,
-				pull_number: prNumber,
-				commit_id: newHead,
-				event: 'APPROVE',
-				body: 'Restores the approval that the migration bump dismissed. The only change since is the bump commit.',
-			});
-		}
-		return restorable ? 'Approval restored.' : 'No approval to restore.';
-	} catch (error) {
-		return `The approval was not restored. ${errorInRunLog(error)}`;
-	}
 }
 
 /**
@@ -131,7 +116,7 @@ async function createSignedCommit({ octokit, owner, repo, worktree }) {
 }
 
 /**
- * @param {{ octokit: any, owner: string, repo: string, prNumber: number, pullRequest: any, repoDir: string, react: (content: string) => Promise<unknown> }} params
+ * @param {{ octokit: any, owner: string, repo: string, pullRequest: any, repoDir: string, react: (content: string) => Promise<unknown> }} params
  * @returns {Promise<string>} The reply for the PR.
  */
 async function bumpPullRequest(params) {
@@ -157,10 +142,10 @@ async function bumpPullRequest(params) {
 }
 
 /**
- * @param {{ octokit: any, owner: string, repo: string, prNumber: number, worktree: string, head: string, base: string, react: (content: string) => Promise<unknown> }} params
+ * @param {{ octokit: any, owner: string, repo: string, worktree: string, head: string, base: string, react: (content: string) => Promise<unknown> }} params
  * @returns {Promise<string>} The reply for the PR.
  */
-async function bumpInWorktree({ octokit, owner, repo, prNumber, worktree, head, base, react }) {
+async function bumpInWorktree({ octokit, owner, repo, worktree, head, base, react }) {
 	const moves = execFileSync(
 		process.execPath,
 		[BUMP_SCRIPT, `--base=refs/remotes/origin/${base}`],
@@ -187,13 +172,8 @@ async function bumpInWorktree({ octokit, owner, repo, prNumber, worktree, head, 
 		return `The bump push failed. Pull the branch and run \`/bump-migration\` again. ${errorInRunLog(pushError)}`;
 	}
 
-	const approval = await approvalLine({ octokit, owner, repo, prNumber, newHead });
 	await react('rocket');
-	return [
-		`Moved the migrations after the head of \`${base}\`:`,
-		`\`\`\`\n${moves}\n\`\`\``,
-		approval,
-	].join('\n\n');
+	return `Moved the migrations after the head of \`${base}\`:\n\n\`\`\`\n${moves}\n\`\`\``;
 }
 
 /**
@@ -210,15 +190,7 @@ export async function run({ prNumber, commenter, commentId, repoDir }) {
 	if (reply === undefined) {
 		await react('eyes');
 		try {
-			reply = await bumpPullRequest({
-				octokit,
-				owner,
-				repo,
-				prNumber,
-				pullRequest,
-				repoDir,
-				react,
-			});
+			reply = await bumpPullRequest({ octokit, owner, repo, pullRequest, repoDir, react });
 		} catch (error) {
 			failure = error;
 			reply = `\`/bump-migration\` failed. ${errorInRunLog(error)}`;

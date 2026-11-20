@@ -24,15 +24,13 @@ const OTHER_BASE_HEAD = 8_000_000_000_300;
 const ABOVE_BASE_HEAD = 8_000_000_000_250;
 
 let pullRequest = {};
-let reviews = [];
 let isMember = true;
 let comments = [];
 let reactions = [];
-let createdReviews = [];
 let createdTrees = [];
 let createdCommits = [];
 let refUpdates = [];
-/** @type {'createReview' | 'createTree' | 'updateRef' | null} */
+/** @type {'createTree' | 'updateRef' | null} */
 let failingCall = null;
 
 const BUMP_SHA = 'bump-commit-sha';
@@ -53,12 +51,6 @@ const octokit = {
 		reactions: {
 			createForIssueComment: async ({ content }) => {
 				reactions.push(content);
-			},
-		},
-		pulls: {
-			createReview: async (review) => {
-				failIf('createReview');
-				createdReviews.push(review);
 			},
 		},
 		git: {
@@ -84,9 +76,6 @@ mock.module('../github-helpers.mjs', {
 		initGithub: () => ({ octokit, owner: OWNER, repo: REPO }),
 		getEventFromGithubEventPath: () => ({}),
 		getPullRequestById: async () => pullRequest,
-		getPrReviews: async () => reviews,
-		getPrEvents: async () => [],
-		getChangesBetween: async () => null,
 		isTeamMember: async () => isMember,
 		workflowRunUrl: () => RUN_URL,
 	},
@@ -170,11 +159,9 @@ describe('handle-bump-migration', () => {
 		workspace = join(root, 'workspace');
 		git(root, 'init', '--quiet', '--bare', '-b', 'master', origin);
 		git(root, 'clone', '--quiet', origin, seed);
-		reviews = [];
 		isMember = true;
 		comments = [];
 		reactions = [];
-		createdReviews = [];
 		createdTrees = [];
 		createdCommits = [];
 		refUpdates = [];
@@ -185,11 +172,8 @@ describe('handle-bump-migration', () => {
 		rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 	});
 
-	it('pushes the bump and approves when the PR was approved', async () => {
+	it('pushes the bump and replies with the moves', async () => {
 		seedRepos();
-		reviews = [
-			{ id: 1, user: { login: 'poly' }, state: 'APPROVED', commit_id: pullRequest.head.sha },
-		];
 
 		await runCommand();
 
@@ -197,12 +181,16 @@ describe('handle-bump-migration', () => {
 			{
 				moved: treeEntry(`${MIGRATIONS}/common/${BASE_HEAD + 1}-New.ts`)?.content,
 				removed: treeEntry(`${MIGRATIONS}/common/${ADDED}-New.ts`)?.sha,
-				approvals: createdReviews.map(({ event, commit_id }) => ({ event, commit_id })),
+				reactions,
+				comments,
 			},
 			{
 				moved: `export class New${BASE_HEAD + 1} {}\n`,
 				removed: null,
-				approvals: [{ event: 'APPROVE', commit_id: BUMP_SHA }],
+				reactions: ['eyes', 'rocket'],
+				comments: [
+					`Moved the migrations after the head of \`master\`:\n\n\`\`\`\nNew: ${ADDED} -> ${BASE_HEAD + 1}\n\`\`\``,
+				],
 			},
 		);
 	});
@@ -237,29 +225,6 @@ describe('handle-bump-migration', () => {
 		assert.equal(
 			treeEntry(`${MIGRATIONS}/common/${BASE_HEAD + 1}-New.ts`)?.content,
 			`export class New${BASE_HEAD + 1} {}\n`,
-		);
-	});
-
-	it('replies with the moves when the approval cannot be restored', async () => {
-		seedRepos();
-		reviews = [
-			{ id: 1, user: { login: 'poly' }, state: 'APPROVED', commit_id: pullRequest.head.sha },
-		];
-		failingCall = 'createReview';
-
-		await runCommand().catch(() => {});
-
-		assert.deepEqual(
-			{
-				pushed: refUpdates.length,
-				movesInReply: comments[0]?.includes(`New: ${ADDED} -> ${BASE_HEAD + 1}`),
-				approvalLine: comments[0]?.split('\n').at(-1),
-			},
-			{
-				pushed: 1,
-				movesInReply: true,
-				approvalLine: `The approval was not restored. The error is in the workflow run: ${RUN_URL}`,
-			},
 		);
 	});
 
@@ -321,17 +286,6 @@ describe('handle-bump-migration', () => {
 		assert.deepEqual(
 			{ worktrees: git(workspace, 'worktree', 'list').split('\n').length, tempDirs: leftovers() },
 			{ worktrees: 1, tempDirs: before },
-		);
-	});
-
-	it('pushes the bump and does not approve when the PR had no approval', async () => {
-		seedRepos();
-
-		await runCommand();
-
-		assert.deepEqual(
-			{ pushed: refUpdates.length, approvals: createdReviews.length },
-			{ pushed: 1, approvals: 0 },
 		);
 	});
 
