@@ -144,8 +144,6 @@ export const GOOGLE_DRIVE_PROFILE: HttpVendorProfile = {
 	name: 'googledrive',
 	gymService: 'google-drive',
 	opaqueIds: true,
-	defaultAdminUrl: 'http://127.0.0.1:9096',
-	defaultGymUrl: 'http://127.0.0.1:8086',
 	credentialKind: 'google_oauth',
 	credentialField: 'oauthTokenData.access_token',
 	placeholderSeed: {
