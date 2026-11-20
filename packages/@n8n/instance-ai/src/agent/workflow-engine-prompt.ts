@@ -3,6 +3,16 @@ import { getEngineV2BuildRules } from '@n8n/workflow-sdk/prompts/sdk-reference';
 import type { InstanceAiEngineSetup } from '../types';
 import { newWorkflowEngine } from '../tools/workflows/target-engine';
 
+function v2PatternsWinOver(sources: string): string {
+	return `They win over ${sources} that recommends \`executeOnce\`, \`alwaysOutputData\`, \`retryOnFail\` or the error output.`;
+}
+
+function engineV2Limits(): string {
+	return `What engine v2 cannot do yet:
+
+${getEngineV2BuildRules()}`;
+}
+
 /**
  * Tells the model which engine runs the workflows it builds, and what engine v2 cannot
  * do yet. Without the `engine-v2` module every workflow runs on v1, so the section is
@@ -28,13 +38,32 @@ This instance has two workflow engines, v1 and v2. New workflows run on engine $
 - The engine of a saved workflow is \`engineType\` in its \`workflow()\` settings. A workflow without \`engineType\` runs on engine v1.
 - Keep an existing workflow on its engine. Change its \`engineType\` only when the user asks for a different engine or approves the change.
 - The \`targetEngine\` field of the build result names the engine and where it comes from, for example \`{ engine: 'v2', source: 'instance-default' }\`.
-- When you build for engine v2, use the v2-safe patterns below. They win over skill, cue and reference text that recommends \`executeOnce\`, \`alwaysOutputData\`, \`retryOnFail\` or the error output.
+- When you build for engine v2, use the v2-safe patterns below. ${v2PatternsWinOver('skill, cue and reference text')}
 ${newWorkflowRules}
 
-What engine v2 cannot do yet:
-
-${getEngineV2BuildRules()}
+${engineV2Limits()}
 
 For a v2 workflow, do not offer a skill step that needs an item of this list, for example an error workflow while engine v2 does not support error workflows.
 `;
+}
+
+/**
+ * The engine section for the self-healing agent. It repairs saved workflows without
+ * user interaction, so it keeps each workflow on its engine and reports a repair that
+ * needs engine v1 instead of moving the workflow. Empty without the `engine-v2` module.
+ */
+export function getSelfHealingWorkflowEngineSection(engineSetup?: InstanceAiEngineSetup): string {
+	if (engineSetup?.engineV2Available !== true) return '';
+
+	return `## Workflow Engine
+
+This instance has two workflow engines, v1 and v2.
+
+- The engine of a workflow is \`engineType\` in its \`workflow()\` settings. A workflow without \`engineType\` runs on engine v1.
+- Keep each workflow on its engine. Do not add, change or remove \`engineType\`.
+- When you change a v2 workflow, use the v2-safe patterns below. ${v2PatternsWinOver('reference text')}
+- For you, \`verify_candidate\` is the build check. For a v2 workflow, it returns each engine v2 problem with its fix.
+- When the repair needs a behaviour that engine v2 cannot give, do not move the workflow to engine v1. Use \`needs_you\`, and say in the report that the repair needs engine v1.
+
+${engineV2Limits()}`;
 }
