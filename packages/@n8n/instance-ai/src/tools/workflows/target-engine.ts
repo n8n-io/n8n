@@ -1,5 +1,6 @@
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
-import type { WorkflowEngineType } from 'n8n-workflow';
+import { WORKFLOW_ENGINE_TYPES, type WorkflowEngineType } from 'n8n-workflow';
+import { z } from 'zod';
 
 import type { InstanceAiEngineSetup } from '../../types';
 
@@ -11,23 +12,25 @@ import type { InstanceAiEngineSetup } from '../../types';
  * - `saved-workflow-unreadable`: an edit whose saved workflow cannot be read, so its
  *   engine is not known.
  */
-export type TargetEngineSource =
-	| 'workflow-settings'
-	| 'saved-workflow'
-	| 'instance-default'
-	| 'saved-workflow-unreadable';
+export const targetEngineSourceSchema = z.enum([
+	'workflow-settings',
+	'saved-workflow',
+	'instance-default',
+	'saved-workflow-unreadable',
+]);
+
+export type TargetEngineSource = z.infer<typeof targetEngineSourceSchema>;
+
+/** The engine that a build was validated for, and where that engine comes from. */
+export const targetEngineSchema = z.object({
+	engine: z.enum(WORKFLOW_ENGINE_TYPES),
+	source: targetEngineSourceSchema,
+});
 
 export interface TargetEngine {
 	engine: WorkflowEngineType;
 	source: TargetEngineSource;
 }
-
-const SOURCE_LABELS: Record<TargetEngineSource, string> = {
-	'workflow-settings': 'set in the workflow settings',
-	'saved-workflow': 'engine of the saved workflow',
-	'instance-default': 'instance default',
-	'saved-workflow-unreadable': 'saved workflow could not be read',
-};
 
 function toEngineType(value: unknown): WorkflowEngineType | undefined {
 	return value === 'v1' || value === 'v2' ? value : undefined;
@@ -77,11 +80,6 @@ export function resolveFallbackEngine(input: {
 export function resolveTargetEngine(workflow: WorkflowJSON, fallback: TargetEngine): TargetEngine {
 	const engine = toEngineType(workflow.settings?.engineType);
 	return engine ? { engine, source: 'workflow-settings' } : fallback;
-}
-
-/** Text for the build result, for example "target engine: v2 (instance default)". */
-export function formatTargetEngine(target: TargetEngine): string {
-	return `target engine: ${target.engine} (${SOURCE_LABELS[target.source]})`;
 }
 
 /**

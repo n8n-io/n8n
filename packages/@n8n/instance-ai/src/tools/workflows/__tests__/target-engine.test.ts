@@ -2,11 +2,11 @@ import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
 import type { InstanceAiEngineSetup } from '../../../types';
 import {
-	formatTargetEngine,
 	newWorkflowEngine,
 	resolveFallbackEngine,
 	resolveTargetEngine,
 	shouldReportTargetEngine,
+	targetEngineSchema,
 } from '../target-engine';
 
 const v2Default: InstanceAiEngineSetup = { engineV2Available: true, newWorkflowEngine: 'v2' };
@@ -112,23 +112,31 @@ describe('resolveTargetEngine', () => {
 	});
 });
 
-describe('formatTargetEngine', () => {
-	it.each([
-		[{ engine: 'v2', source: 'instance-default' }, 'target engine: v2 (instance default)'],
-		[
-			{ engine: 'v1', source: 'saved-workflow' },
-			'target engine: v1 (engine of the saved workflow)',
-		],
-		[
-			{ engine: 'v2', source: 'workflow-settings' },
-			'target engine: v2 (set in the workflow settings)',
-		],
-		[
-			{ engine: 'v2', source: 'saved-workflow-unreadable' },
-			'target engine: v2 (saved workflow could not be read)',
-		],
-	] as const)('formats %o', (target, text) => {
-		expect(formatTargetEngine(target)).toBe(text);
+describe('targetEngineSchema', () => {
+	it('accepts each resolved target engine', () => {
+		const targets = [
+			resolveFallbackEngine({ engineSetup: v2Default, isEdit: false }),
+			resolveFallbackEngine({ engineSetup: v2Default, isEdit: true }),
+			resolveFallbackEngine({
+				engineSetup: v2Default,
+				isEdit: true,
+				savedWorkflow: workflowWith(),
+			}),
+			resolveTargetEngine(workflowWith({ engineType: 'v2' }), {
+				engine: 'v1',
+				source: 'saved-workflow',
+			}),
+		];
+
+		for (const target of targets) {
+			expect(targetEngineSchema.parse(target)).toEqual(target);
+		}
+	});
+
+	it('rejects an unknown engine', () => {
+		expect(targetEngineSchema.safeParse({ engine: 'v3', source: 'instance-default' }).success).toBe(
+			false,
+		);
 	});
 });
 

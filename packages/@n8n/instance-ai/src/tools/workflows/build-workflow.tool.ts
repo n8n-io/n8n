@@ -53,10 +53,11 @@ import {
 	reportWorkflowBuildOutcome,
 } from './workflow-build-reporting';
 import {
-	formatTargetEngine,
 	resolveFallbackEngine,
 	resolveTargetEngine,
 	shouldReportTargetEngine,
+	targetEngineSchema,
+	type TargetEngine,
 } from './target-engine';
 import { withDeterministicRouting } from './workflow-build-routing';
 import {
@@ -425,8 +426,8 @@ interface ValidationFailureArgs {
 	withEscalation: (errors: string[], options?: { trackingErrors?: string[] }) => string[];
 	stage?: BuildTelemetryStage;
 	grouping?: GroupingOutcome;
-	/** Text that names the engine the build was validated for. */
-	targetEngine?: string;
+	/** The engine the build was validated for. */
+	targetEngine?: TargetEngine;
 }
 
 /**
@@ -563,8 +564,8 @@ const buildWorkflowOutputSchema = z.object({
 	hasUnresolvedPlaceholders: z.boolean().optional(),
 	...savedWorkflowStateSchema.shape,
 	grouping: groupingOutcomeSchema.optional(),
-	/** The engine the build was validated for, e.g. "target engine: v2 (instance default)". */
-	targetEngine: z.string().optional(),
+	/** The engine the build was validated for, e.g. `{ engine: 'v2', source: 'instance-default' }`. */
+	targetEngine: targetEngineSchema.optional(),
 	denied: z.boolean().optional(),
 	reason: z.string().optional(),
 	remediation: remediationMetadataSchema.optional(),
@@ -1159,7 +1160,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 
 			const resolvedEngine = resolveTargetEngine(compiled.workflow, fallbackEngine);
 			const targetEngine = shouldReportTargetEngine(context.engineSetup, resolvedEngine)
-				? formatTargetEngine(resolvedEngine)
+				? resolvedEngine
 				: undefined;
 
 			const partitionedWarnings = partitionWarnings(

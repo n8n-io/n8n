@@ -311,7 +311,9 @@ describe('createBuildWorkflowTool', () => {
 	});
 
 	describe('target engine', () => {
-		type EngineOutput = BuildToolOutput & { targetEngine?: string };
+		type EngineOutput = BuildToolOutput & {
+			targetEngine?: { engine: 'v1' | 'v2'; source: string };
+		};
 		const v2Default = { engineV2Available: true, newWorkflowEngine: 'v2' } as const;
 		const v1Default = { engineV2Available: true, newWorkflowEngine: 'v1' } as const;
 
@@ -334,7 +336,7 @@ describe('createBuildWorkflowTool', () => {
 
 			expect(result.success).toBe(true);
 			expect(compiledEngine()).toBe('v2');
-			expect(result.targetEngine).toBe('target engine: v2 (instance default)');
+			expect(result.targetEngine).toEqual({ engine: 'v2', source: 'instance-default' });
 		});
 
 		it('validates a new workflow against the v1 instance default', async () => {
@@ -345,7 +347,7 @@ describe('createBuildWorkflowTool', () => {
 			});
 
 			expect(compiledEngine()).toBe('v1');
-			expect(result.targetEngine).toBe('target engine: v1 (instance default)');
+			expect(result.targetEngine).toEqual({ engine: 'v1', source: 'instance-default' });
 		});
 
 		it('keeps the engine of a saved v1 workflow on an instance with v2 as default', async () => {
@@ -364,7 +366,7 @@ describe('createBuildWorkflowTool', () => {
 
 			expect(result.success).toBe(true);
 			expect(compiledEngine()).toBe('v1');
-			expect(result.targetEngine).toBe('target engine: v1 (engine of the saved workflow)');
+			expect(result.targetEngine).toEqual({ engine: 'v1', source: 'saved-workflow' });
 		});
 
 		it('keeps the engine of a saved v2 workflow', async () => {
@@ -382,7 +384,7 @@ describe('createBuildWorkflowTool', () => {
 			});
 
 			expect(compiledEngine()).toBe('v2');
-			expect(result.targetEngine).toBe('target engine: v2 (engine of the saved workflow)');
+			expect(result.targetEngine).toEqual({ engine: 'v2', source: 'saved-workflow' });
 		});
 
 		it('checks an edit for v2 when the saved workflow cannot be read', async () => {
@@ -397,7 +399,10 @@ describe('createBuildWorkflowTool', () => {
 			});
 
 			expect(compiledEngine()).toBe('v2');
-			expect(result.targetEngine).toBe('target engine: v2 (saved workflow could not be read)');
+			expect(result.targetEngine).toEqual({
+				engine: 'v2',
+				source: 'saved-workflow-unreadable',
+			});
 		});
 
 		it('names the engine when a new workflow has no name', async () => {
@@ -415,7 +420,7 @@ describe('createBuildWorkflowTool', () => {
 
 			expect(result.success).toBe(false);
 			expect(result.remediation?.reason).toBe('workflow_name_missing');
-			expect(result.targetEngine).toBe('target engine: v2 (instance default)');
+			expect(result.targetEngine).toEqual({ engine: 'v2', source: 'instance-default' });
 		});
 
 		it('names the engine that the code sets', async () => {
@@ -426,7 +431,7 @@ describe('createBuildWorkflowTool', () => {
 				filePath,
 			});
 
-			expect(result.targetEngine).toBe('target engine: v2 (set in the workflow settings)');
+			expect(result.targetEngine).toEqual({ engine: 'v2', source: 'workflow-settings' });
 		});
 
 		it('names the engine when an engine v2 issue fails the build', async () => {
@@ -453,7 +458,7 @@ describe('createBuildWorkflowTool', () => {
 
 			expect(result.success).toBe(false);
 			expect(result.errors?.join('\n')).toContain('[ENGINE_V2_RETRY_ON_FAIL] (Webhook)');
-			expect(result.targetEngine).toBe('target engine: v2 (instance default)');
+			expect(result.targetEngine).toEqual({ engine: 'v2', source: 'instance-default' });
 			expect(context.workflowService.createFromWorkflowJSON).not.toHaveBeenCalled();
 		});
 
@@ -488,7 +493,7 @@ describe('createBuildWorkflowTool', () => {
 				});
 
 				expect(compiledEngine()).toBe('v2');
-				expect(result.targetEngine).toBe('target engine: v2 (engine of the saved workflow)');
+				expect(result.targetEngine).toEqual({ engine: 'v2', source: 'saved-workflow' });
 			});
 
 			it('names the engine when the code sets v2', async () => {
@@ -499,7 +504,7 @@ describe('createBuildWorkflowTool', () => {
 					filePath,
 				});
 
-				expect(result.targetEngine).toBe('target engine: v2 (set in the workflow settings)');
+				expect(result.targetEngine).toEqual({ engine: 'v2', source: 'workflow-settings' });
 			});
 
 			it('checks an edit for v1 when the saved workflow cannot be read', async () => {
