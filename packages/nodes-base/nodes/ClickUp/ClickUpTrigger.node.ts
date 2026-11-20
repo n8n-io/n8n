@@ -17,6 +17,7 @@ export class ClickUpTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'ClickUp Trigger',
 		name: 'clickUpTrigger',
+		schemaPath: 'ClickUp',
 		icon: 'file:clickup.svg',
 		group: ['trigger'],
 		version: 1,

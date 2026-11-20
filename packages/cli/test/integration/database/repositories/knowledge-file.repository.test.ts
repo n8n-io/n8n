@@ -5,14 +5,16 @@ import { DataSource, type Repository } from '@n8n/typeorm';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { v4 as uuid } from 'uuid';
 
+import { createAgent as createTestAgent } from '@test-integration/db/agents';
+
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
-import { KnowledgeFile } from '@/modules/knowledge/entities/knowledge-file.entity';
+import { AgentFile } from '@/modules/knowledge/entities';
 import { KnowledgeFileRepository } from '@/modules/knowledge/repositories/knowledge-file.repository';
 
 describe('KnowledgeFileRepository', () => {
 	let agentRepo: AgentRepository;
 	let fileRepo: KnowledgeFileRepository;
-	let fileTable: Repository<KnowledgeFile>;
+	let fileTable: Repository<AgentFile>;
 	let transactionRunner: TransactionRunner;
 	let projectId: string;
 
@@ -21,7 +23,7 @@ describe('KnowledgeFileRepository', () => {
 		await testDb.init();
 		agentRepo = Container.get(AgentRepository);
 		fileRepo = Container.get(KnowledgeFileRepository);
-		fileTable = Container.get(DataSource).getRepository(KnowledgeFile);
+		fileTable = Container.get(DataSource).getRepository(AgentFile);
 		transactionRunner = Container.get(TransactionRunner);
 	});
 
@@ -40,7 +42,7 @@ describe('KnowledgeFileRepository', () => {
 
 	async function createAgent(): Promise<string> {
 		const agentId = uuid();
-		await agentRepo.insert({
+		await createTestAgent({
 			id: agentId,
 			name: 'Knowledge agent',
 			projectId,
@@ -71,14 +73,14 @@ describe('KnowledgeFileRepository', () => {
 		const agentId = await createAgent();
 		const params = fileParams(agentId, 'original.txt', 100);
 		const original = await fileRepo.saveUploadedFile(params, {});
-		expect(original).toBeInstanceOf(KnowledgeFile);
+		expect(original).toBeInstanceOf(AgentFile);
 		expect(original).toMatchObject(params);
 		const oldUpdatedAt = new Date('2020-01-01T00:00:00.000Z');
 		await fileTable.update(original.id, { updatedAt: oldUpdatedAt });
 
 		const saved = await fileRepo.saveUploadedFile({ ...params, fileName: 'updated.txt' }, {});
 
-		expect(saved).toBeInstanceOf(KnowledgeFile);
+		expect(saved).toBeInstanceOf(AgentFile);
 		expect(saved).toMatchObject({ id: params.id, fileName: 'updated.txt' });
 		expect(saved.updatedAt.getTime()).toBeGreaterThan(oldUpdatedAt.getTime());
 		expect(await fileTable.countBy({ agentId })).toBe(1);

@@ -31,6 +31,7 @@ import { SkillService } from '../../services/skill.service';
 import type { AssistantSkillContext } from '../../utils/skill-content';
 import * as fixtures from '../../testing';
 
+import { createAgentIdentity } from '@test-integration/db/agents';
 import { createOwner, createUser } from '@test-integration/db/users';
 
 /** More ids than SQLite binds in one query (32,766). */
@@ -293,6 +294,7 @@ describe('SkillRepository', () => {
 				id: randomUUID(),
 				name,
 				projectId: options.projectId === undefined ? project.id : options.projectId,
+				identityId: await createAgentIdentity(),
 				scope: options.scope ?? 'project',
 				integrations: [],
 				tools: {},

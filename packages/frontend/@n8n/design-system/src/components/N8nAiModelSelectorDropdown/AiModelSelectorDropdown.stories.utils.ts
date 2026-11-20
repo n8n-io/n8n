@@ -194,10 +194,10 @@ export const items: AiModelSelectorMenuItem[] = [
 				},
 			},
 			{
-				id: 'openrouter::anthropic/claude-sonnet-4.5',
-				label: 'Claude Sonnet 4.5 (latest)',
+				id: 'openrouter::anthropic/claude-sonnet-5.5',
+				label: 'Claude Sonnet 5.5 (latest)',
 				data: {
-					fullName: 'Claude Sonnet 4.5 (latest)',
+					fullName: 'Claude Sonnet 5.5 (latest)',
 					description: 'Context window: 1,000,000 tokens; supports attachments; reasoning model.',
 				},
 			},
@@ -286,10 +286,10 @@ export const items: AiModelSelectorMenuItem[] = [
 				},
 			},
 			{
-				id: 'vercel::anthropic/claude-sonnet-4.5',
-				label: 'Claude Sonnet 4.5',
+				id: 'vercel::anthropic/claude-sonnet-5.5',
+				label: 'Claude Sonnet 5.5',
 				data: {
-					fullName: 'Claude Sonnet 4.5',
+					fullName: 'Claude Sonnet 5.5',
 					description: 'Context window: 200,000 tokens; supports attachments; reasoning model.',
 				},
 			},

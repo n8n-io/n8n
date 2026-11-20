@@ -281,5 +281,5 @@ export function splitWorkflowRelations(
 		delete joined.shared;
 	}
 
-	return { relations: joined as WorkflowRelations, collections };
+	return { relations: joined, collections };
 }

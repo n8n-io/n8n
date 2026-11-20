@@ -2,7 +2,12 @@ import type { HttpRequestClient } from '@n8n/backend-network';
 import { Logger } from '@n8n/backend-common';
 import { EngineConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import type { EngineRuntime, ExecutionResponseSender, LifecycleEventCallback } from '@n8n/engine';
+import type {
+	EngineRuntime,
+	EngineWorkQueues,
+	ExecutionResponseSender,
+	LifecycleEventCallback,
+} from '@n8n/engine';
 import {
 	AllowAllAdmittance,
 	createDataSource,
@@ -10,7 +15,6 @@ import {
 	mintApprovalCallback,
 	mintResumeToken,
 	mintStepBoundResumeToken,
-	noopExecutionResponseSender,
 	SharedSecretIdentityVerifier,
 } from '@n8n/engine';
 import type { AdditionalDataContext, V1StepExecutorDeps } from '@n8n/node-engine-compatibility';
@@ -33,11 +37,13 @@ import { EngineMtls } from './engine-mtls';
 import { RemoteCredentialsHelper } from './remote-credentials-helper';
 import { RemoteDataTableProxyProvider } from './remote-data-table-proxy-provider';
 
-/** The data plane ends of the execution channel. */
-export interface EngineV2ChannelSenders {
+export interface EngineV2RuntimeOptions {
+	/** The data plane end of the execution channel for responses. */
 	responseSender: ExecutionResponseSender;
 	/** Without it, the engine publishes no lifecycle events. */
 	lifecycleEventSender?: { send: LifecycleEventCallback };
+	/** The queues the engine runs on. The caller closes their connections. */
+	queues: EngineWorkQueues;
 }
 
 /**
@@ -45,8 +51,9 @@ export interface EngineV2ChannelSenders {
  *
  * This is the integrated-mode composition root. It chooses the adapters the
  * engine needs — the data plane `DataSource`, the admittance policy, the v1 step
- * executor — and owns the connection and the HTTP listener. The engine owns its
- * own wiring, so this host never sees the workers or the queues.
+ * executor — and owns the connection and the HTTP listener. Its caller chooses
+ * the work queues. The engine owns its own wiring, so this host never sees the
+ * workers.
  */
 @Service()
 export class EngineV2Runtime {
@@ -83,13 +90,11 @@ export class EngineV2Runtime {
 		this.dataTablesHttp = transport.forScope('data-tables:use');
 	}
 
-	async init(
-		senders: EngineV2ChannelSenders = { responseSender: noopExecutionResponseSender },
-	): Promise<void> {
+	async init(options: EngineV2RuntimeOptions): Promise<void> {
 		try {
 			await this.initDb();
 
-			this.initEngine(senders);
+			this.initEngine(options);
 
 			await this.initServer();
 		} catch (error) {
@@ -121,7 +126,11 @@ export class EngineV2Runtime {
 		await this.dataSource.runMigrations();
 	}
 
-	private initEngine({ responseSender, lifecycleEventSender }: EngineV2ChannelSenders): void {
+	private initEngine({
+		responseSender,
+		lifecycleEventSender,
+		queues,
+	}: EngineV2RuntimeOptions): void {
 		assert(this.dataSource, 'Engine v2 cannot start without a data source');
 
 		const stopping = new AbortController();
@@ -136,10 +145,7 @@ export class EngineV2Runtime {
 			logger: this.logger,
 			responseSender,
 			resumeSecret: this.engineConfig.resumeSecret,
-			concurrency: {
-				step: this.engineConfig.stepConcurrency,
-				orchestration: this.engineConfig.orchestrationConcurrency,
-			},
+			queues,
 			externalDependencies: ({ executionStore, stepStore }) => ({
 				lifecycleEventCallback: lifecycleEventSender
 					? async (events, signal) => await lifecycleEventSender.send(events, signal)

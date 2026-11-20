@@ -372,11 +372,28 @@ describe('workflow_step_execution table (integration)', () => {
 		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
 		const { id } = await seedStep({ executionId, nodeId: 'a', iteration: 0, status: 'running' });
 
-		expect(await store.completeStep(id, [[{ json: { ok: true } }]])).toBe(true);
+		expect(await store.completeStep(id, [[{ json: { ok: true } }]], null)).toBe(true);
 
 		const step = await store.loadStep(id);
 		expect(step.status).toBe('completed');
 		expect(step.outputs).toEqual([[{ json: { ok: true } }]]);
+		expect(step.outputSources).toBeNull();
+	});
+
+	it('TypeOrmStepStore.completeStep persists where the outputs came from, and the view reports it', async () => {
+		const executionId = await createExecution();
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const { id } = await seedStep({ executionId, nodeId: 'loop', iteration: 0, status: 'running' });
+		const outputSources = [
+			null,
+			[{ nodeId: 'trigger', outputIndex: 0, iteration: 0, offset: 2, itemCount: 1 }],
+		];
+
+		expect(await store.completeStep(id, [null, [{ json: { n: 3 } }]], outputSources)).toBe(true);
+
+		expect((await store.loadStep(id)).outputSources).toEqual(outputSources);
+		const { steps } = await viewStore().loadExecutionWithStepsView(executionId);
+		expect(steps.map((step) => step.outputSources)).toEqual([outputSources]);
 	});
 
 	it('TypeOrmStepStore.completeStep and failStep only record a step that is running', async () => {
@@ -388,7 +405,7 @@ describe('workflow_step_execution table (integration)', () => {
 			status: 'queued',
 		});
 
-		expect(await store.completeStep(id, [[{ json: { ok: true } }]])).toBe(false);
+		expect(await store.completeStep(id, [[{ json: { ok: true } }]], null)).toBe(false);
 		expect(await store.failStep(id, { name: 'Error', message: 'node blew up' })).toBe(false);
 
 		// neither the status nor the result columns moved
@@ -991,7 +1008,7 @@ describe('workflow_step_execution table (integration)', () => {
 			status: 'running',
 		});
 		// a multi-slot output with a dead slot round-trips as stored
-		await store.completeStep(aId, [[{ json: { from: 'a' } }], null]);
+		await store.completeStep(aId, [[{ json: { from: 'a' } }], null], null);
 		const { id: bId } = await createStep(store, executionId, {
 			nodeId: 'b',
 			iteration: 0,
@@ -1030,7 +1047,7 @@ describe('workflow_step_execution table (integration)', () => {
 		});
 		// slot 0 has data, slot 1 was never fired, slot 2 ran but produced zero
 		// items — [] is live, only JSON null marks a dead slot
-		await store.completeStep(aId, [[{ json: { big: 'payload' } }], null, []]);
+		await store.completeStep(aId, [[{ json: { big: 'payload' } }], null, []], null);
 		const { id: bId } = await createStep(store, executionId, {
 			nodeId: 'b',
 			iteration: 0,
@@ -1346,7 +1363,7 @@ describe('workflow_step_execution table (integration)', () => {
 		});
 
 		it.each<[string, (store: TypeOrmStepStore, id: string) => Promise<boolean>]>([
-			['completeStep', async (store, id) => await store.completeStep(id, [])],
+			['completeStep', async (store, id) => await store.completeStep(id, [], null)],
 			[
 				'suspendStep',
 				async (store, id) =>
@@ -1507,7 +1524,7 @@ describe('workflow_step_execution table (integration)', () => {
 			it('changes nothing when the step completed after the read', async () => {
 				const store = stalenessStore();
 				const { id, observed } = await claimedStep(store);
-				await store.completeStep(id, [[]]);
+				await store.completeStep(id, [[]], null);
 
 				expect(await store.failStaleRunningStep(id, observed, error)).toBe(false);
 
@@ -1531,7 +1548,7 @@ describe('workflow_step_execution table (integration)', () => {
 				const { id, observed } = await claimedStep(store);
 				await store.failStaleRunningStep(id, observed, error);
 
-				expect(await store.completeStep(id, [[]])).toBe(false);
+				expect(await store.completeStep(id, [[]], null)).toBe(false);
 				expect(await store.failStep(id, { name: 'Error', message: 'late' })).toBe(false);
 
 				expect(await store.loadStep(id)).toMatchObject({ status: 'failed', error });

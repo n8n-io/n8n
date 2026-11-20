@@ -11,6 +11,7 @@ import {
 	AiBuilderChatRequestDto,
 	AiSessionRetrievalRequestDto,
 	AiUsageSettingsRequestDto,
+	AiModelTrainingSettingsRequestDto,
 	AiTruncateMessagesRequestDto,
 	AiClearSessionRequestDto,
 	AiGatewayUsageQueryDto,
@@ -372,5 +373,15 @@ export class AiController {
 		} catch (e) {
 			throw this.toResponseError(e);
 		}
+	}
+
+	@Post('/model-training-settings')
+	@GlobalScope('aiAssistant:manage')
+	async updateModelTrainingSettings(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Body payload: AiModelTrainingSettingsRequestDto,
+	): Promise<void> {
+		await this.aiUsageService.updateModelTrainingSetting(payload.allowModelTraining);
 	}
 }

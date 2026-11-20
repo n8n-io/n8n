@@ -37,6 +37,7 @@ export class HubspotTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'HubSpot Trigger',
 		name: 'hubspotTrigger',
+		schemaPath: 'Hubspot',
 		icon: 'file:hubspot.svg',
 		group: ['trigger'],
 		version: 1,

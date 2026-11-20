@@ -34,6 +34,7 @@ import { useAssistantAwayTelemetry } from './composables/useAssistantAwayTelemet
 import { getCurrentTurn } from './assistantTurn';
 import { CloudBrowserTasksKey, useCloudBrowserTasks } from './composables/useCloudBrowserTasks';
 import {
+	CloudBrowserLiveViewRefreshKey,
 	CloudBrowserLiveViewsKey,
 	useCloudBrowserLiveViews,
 } from './composables/useCloudBrowserLiveViews';
@@ -71,6 +72,7 @@ import { isAgentWorthTesting, testAgentOfferKey } from './testAgentOffer';
 import InstanceAiDataTablePreview from './components/InstanceAiDataTablePreview.vue';
 import InstanceAiAgentPreview from './components/InstanceAiAgentPreview.vue';
 import InstanceAiBrowserPreview from './components/InstanceAiBrowserPreview.vue';
+import InstanceAiCloudBrowserUserActionPanel from './components/InstanceAiCloudBrowserUserActionPanel.vue';
 import InstanceAiSkillPreview from './components/InstanceAiSkillPreview.vue';
 import InstanceAiAppPreview from './components/InstanceAiAppPreview.vue';
 import { useAgentEvalsFlag } from '@/features/ai/evaluation.ee/composables/useAgentEvalsFlag';
@@ -376,10 +378,12 @@ provide(CloudBrowserTasksKey, preview.cloudBrowserTasks);
 const runningCloudBrowserTasks = computed(() =>
 	preview.cloudBrowserTasks.value.filter((task) => task.state === 'running'),
 );
-provide(
-	CloudBrowserLiveViewsKey,
-	useCloudBrowserLiveViews(runningCloudBrowserTasks, () => props.threadId),
+const cloudBrowserLiveViews = useCloudBrowserLiveViews(
+	runningCloudBrowserTasks,
+	() => props.threadId,
 );
+provide(CloudBrowserLiveViewsKey, cloudBrowserLiveViews.views);
+provide(CloudBrowserLiveViewRefreshKey, cloudBrowserLiveViews.refresh);
 provide('openAgentChatPreview', openAgentChatPreview);
 provide('openSkillPreview', preview.openSkillPreview);
 provide('openAppPreview', preview.openAppPreview);
@@ -927,6 +931,7 @@ function handleNewThreadClick() {
 						<ApprovalModeSelector :thread-id="props.threadId" />
 					</template>
 					<template #above-input>
+						<InstanceAiCloudBrowserUserActionPanel />
 						<InstanceAiSetupPanel
 							v-if="setupPanelWorkflowId"
 							ref="setupPanel"
@@ -1095,6 +1100,7 @@ function handleNewThreadClick() {
 								:key="browserTab.id"
 								:class="$style.previewSlot"
 								:task-id="browserTab.taskId"
+								:user-action="browserTab.userAction"
 							/>
 							<!-- Retain each open skill's draft while another artifact is visible. -->
 							<KeepAlive v-for="tab in openSkillTabs" :key="tab.id">

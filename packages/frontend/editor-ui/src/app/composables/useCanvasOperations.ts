@@ -95,6 +95,7 @@ import {
 	mapLegacyConnectionsToCanvasConnections,
 	mapLegacyConnectionToCanvasConnection,
 	parseCanvasConnectionHandleString,
+	getMainHandleOffset,
 } from '@/features/workflows/canvas/canvas.utils';
 import * as NodeViewUtils from '@/app/utils/nodeViewUtils';
 import {
@@ -103,11 +104,10 @@ import {
 	CONFIGURATION_NODE_SIZE,
 	DEFAULT_NODE_SIZE,
 	DEFAULT_VIEWPORT_BOUNDARIES,
-	generateOffsets,
 	getNodesGroupSize,
 	PUSH_NODES_OFFSET,
 	HORIZONTAL_NODE_STEP,
-	NODE_X_SPACING,
+	type NextNodeSlotFan,
 	getNodeSizeFromPorts,
 	isPositionBlocked,
 	snapToGrid,
@@ -219,6 +219,19 @@ type AddNodeOptions = AddNodesBaseOptions & {
 	openNDV?: boolean;
 	isAutoAdd?: boolean;
 	actionName?: string;
+	/** Places a node without a position in the next-node slot of this node, moved by `offset` */
+	placeAfter?: { node: INodeUi; offset?: XYPosition };
+};
+
+type NextNodeSlotAfterOptions = {
+	/** The node that the new node comes after */
+	source: INodeUi;
+	/** Read from the node types store when not given */
+	sourceTypeDescription?: INodeTypeDescription;
+	/** The node to place */
+	node: INodeUi;
+	nodeTypeDescription: INodeTypeDescription;
+	fan?: NextNodeSlotFan;
 };
 
 export function useCanvasOperations() {
@@ -1174,7 +1187,6 @@ export function useCanvasOperations() {
 		nodes: AddedNodesAndConnections['nodes'],
 		{ viewport, ...options }: AddNodesOptions = {},
 	) {
-		let insertPosition = options.position;
 		let lastAddedNode: INodeUi | undefined;
 		const addedNodes: INodeUi[] = [];
 
@@ -1203,7 +1215,13 @@ export function useCanvasOperations() {
 				...node
 			} = nodeAddData;
 
-			const rawPosition = node.position ?? insertPosition;
+			// When we're adding multiple nodes, place each next one without a position in
+			// the next-node slot of the node before it
+			const placeAfter =
+				!node.position && lastAddedNode
+					? { node: lastAddedNode, offset: positionOffset }
+					: undefined;
+			const rawPosition = placeAfter ? undefined : (node.position ?? options.position);
 			const position: XYPosition | undefined =
 				rawPosition && positionOffset
 					? [rawPosition[0] + positionOffset[0], rawPosition[1] + positionOffset[1]]
@@ -1223,6 +1241,7 @@ export function useCanvasOperations() {
 						openNDV,
 						isAutoAdd,
 						actionName,
+						placeAfter,
 					},
 				);
 				lastAddedNode = newNode;
@@ -1234,18 +1253,7 @@ export function useCanvasOperations() {
 			} catch (error) {
 				toast.showError(error, i18n.baseText('error'));
 				console.error(error);
-				continue;
 			}
-
-			// When we're adding multiple nodes, place the next one a constant
-			// NODE_X_SPACING gap past this node's right edge — using its rendered width
-			// so the gap stays 128 even next to a wide agent/configurable node.
-			insertPosition = [
-				lastAddedNode.position[0] +
-					getNodePlacementSize(lastAddedNode, nodeTypeDescription)[0] +
-					NODE_X_SPACING,
-				lastAddedNode.position[1],
-			];
 		}
 
 		if (lastAddedNode) {
@@ -1316,6 +1324,7 @@ export function useCanvasOperations() {
 
 		const { nodeData, isAnchored } = resolveNodeData(node, nodeTypeDescription, {
 			viewport: options.viewport,
+			placeAfter: options.placeAfter,
 		});
 		if (!nodeData) {
 			throw new Error(i18n.baseText('nodeViewV2.showError.failedToCreateNode'));
@@ -1587,7 +1596,7 @@ export function useCanvasOperations() {
 	function resolveNodeData(
 		node: AddNodeDataWithTypeVersion,
 		nodeTypeDescription: INodeTypeDescription,
-		options: { viewport?: ViewportBoundaries } = {},
+		options: Pick<AddNodeOptions, 'viewport' | 'placeAfter'> = {},
 	) {
 		const id = node.id ?? nodeHelpers.assignNodeId(node as INodeUi);
 		const name =
@@ -1620,8 +1629,18 @@ export function useCanvasOperations() {
 		}
 
 		// The size of the node can depend on its parameters, so resolve them first
+		let initialPosition = node.position;
+		if (!initialPosition && options.placeAfter) {
+			const { node: previousNode, offset = [0, 0] } = options.placeAfter;
+			const [x, y] = getNextNodeSlotAfter({
+				source: previousNode,
+				node: nodeData,
+				nodeTypeDescription,
+			});
+			initialPosition = [x + offset[0], y + offset[1]];
+		}
 		const { position, isAnchored } = resolveNodePlacement(
-			{ ...nodeData, position: node.position },
+			{ ...nodeData, position: initialPosition },
 			nodeTypeDescription,
 			{ viewport: options.viewport },
 		);
@@ -1832,7 +1851,6 @@ export function useCanvasOperations() {
 					(output) => output === NodeConnectionTypes.Main,
 				);
 
-				let yOffset = 0;
 				if (lastInteractedWithNodeConnection) {
 					// When clicking the plus button of a node edge / connection
 					// Compute the y offset for the new node based on the number of main outputs of the source node
@@ -1866,16 +1884,6 @@ export function useCanvasOperations() {
 						trackHistory: true,
 						nodeSize: newNodeSize,
 					});
-				}
-
-				if (lastInteractedWithNodeMainOutputs.length > 1) {
-					const yOffsetValues = generateOffsets(
-						lastInteractedWithNodeMainOutputs.length,
-						DEFAULT_NODE_SIZE[1],
-						GRID_SIZE,
-					);
-
-					yOffset = yOffsetValues[connectionIndex];
 				}
 
 				let outputs: Array<NodeConnectionType | INodeOutputConfiguration> = [];
@@ -1931,39 +1939,17 @@ export function useCanvasOperations() {
 					// When the node has only main outputs, mixed outputs, or no outputs at all
 					// We want to place the new node directly to the right of the last interacted with node.
 
-					let pushOffset = HORIZONTAL_NODE_STEP;
-					if (isAgentNodeV2(lastInteractedWithNodeObject)) {
-						// The agent card is wider than a default node, so offset by its width
-						// to keep the standard gap to its right edge
-						pushOffset += DEFAULT_AGENT_WIDTH - DEFAULT_NODE_SIZE[0];
-					} else if (
-						lastInteractedWithNodeInputTypes.find((input) => input !== NodeConnectionTypes.Main)
-					) {
-						// If the node has scoped inputs, push it down a bit more
-						pushOffset += 140;
-					}
-					// Line up the main handles of the two nodes
-					const sourceHandleY = isAgentNodeV2(lastInteractedWithNodeObject)
-						? getAgentNodeHandleOffset(
-								agentNodeCanvasGeometryStore.getNodeHeight(
-									workflowDocumentStore.value.workflowId,
-									lastInteractedWithNodeObject.id,
-								) ?? DEFAULT_AGENT_HEIGHT,
-							)
-						: DEFAULT_NODE_SIZE[1] / 2;
-					const targetHandleY = isAgentNodeV2(node)
-						? getAgentNodeHandleOffset(DEFAULT_AGENT_HEIGHT)
-						: nodeSize[1] / 2;
-					const centeredY =
-						lastInteractedWithNode.value.position[1] + sourceHandleY - targetHandleY;
-
-					// If a node is active then add the new node directly after the current one
-					position = [lastInteractedWithNode.value.position[0] + pushOffset, centeredY + yOffset];
-
-					// When inserting via edge plus button, keep Y aligned to preserve vertical line
-					if (lastInteractedWithNodeConnection) {
-						position = [position[0], centeredY];
-					}
+					// If a node is active then add the new node directly after the current one.
+					// When inserting via edge plus button, keep Y aligned to preserve vertical line.
+					position = getNextNodeSlotAfter({
+						source: lastInteractedWithNodeObject,
+						sourceTypeDescription: lastInteractedWithNodeTypeDescription,
+						node: { ...node, position: lastInteractedWithNodeObject.position },
+						nodeTypeDescription,
+						fan: lastInteractedWithNodeConnection
+							? undefined
+							: { index: connectionIndex, count: lastInteractedWithNodeMainOutputs.length },
+					});
 				}
 			}
 		}
@@ -1983,6 +1969,31 @@ export function useCanvasOperations() {
 		}
 
 		return { position: getNewNodePosition(position), isAnchored };
+	}
+
+	/**
+	 * Gets the next-node slot after the source node, from the rendered size and
+	 * the main handle line of both nodes
+	 */
+	function getNextNodeSlotAfter({
+		source,
+		sourceTypeDescription,
+		node,
+		nodeTypeDescription,
+		fan,
+	}: NextNodeSlotAfterOptions): XYPosition {
+		const [sourceWidth, sourceHeight] = getNodePlacementSize(source, sourceTypeDescription);
+		const [, height] = getNodePlacementSize(node, nodeTypeDescription);
+
+		return NodeViewUtils.getNextNodeSlot({
+			source: {
+				position: source.position,
+				width: sourceWidth,
+				handleOffset: getMainHandleOffset(sourceHeight, isAgentNodeV2(source)),
+			},
+			target: { height, handleOffset: getMainHandleOffset(height, isAgentNodeV2(node)) },
+			fan,
+		});
 	}
 
 	function resolveNodeName(node: INodeUi) {
@@ -2392,8 +2403,8 @@ export function useCanvasOperations() {
 		if (!sourceNode) return;
 
 		// Calculate insertion position (to the right of source node)
-		// Use HORIZONTAL_NODE_STEP to match the actual position where nodes are placed,
-		// including the wider agent card offset applied in resolveNodePosition
+		// HORIZONTAL_NODE_STEP matches the next-node slot only after a default-width
+		// node, so widen it for the agent card
 		let insertOffset = HORIZONTAL_NODE_STEP;
 		if (isAgentNodeV2(sourceNode)) {
 			insertOffset += DEFAULT_AGENT_WIDTH - DEFAULT_NODE_SIZE[0];

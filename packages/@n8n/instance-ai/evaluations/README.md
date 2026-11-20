@@ -797,7 +797,7 @@ N8N_AI_ANTHROPIC_KEY=sk-ant-... # or ANTHROPIC_API_KEY for the judge LLM
 | `--dataset` | `instance-ai-builder-from-plans` | LangSmith dataset name |
 | `--examples-jsonl` | — | Load examples from a previous `results.jsonl` instead of LangSmith |
 | `--judges` | `3` | Number of judges in the LLM panel |
-| `--judge-model` | `claude-sonnet-4-5-20250929` | LangChain model id for the judge LLM |
+| `--judge-model` | `claude-sonnet-4-6` | LangChain model id for the judge LLM |
 | `--iterations` | `1` | Run each example N times — for measuring judge / build variance |
 | `--concurrency` | `5` | Parallel example workers (`p-limit`) |
 | `--max-examples` | — | Cap dataset to first N examples |
