@@ -104,7 +104,12 @@ describe('LinearGymBackend selection', () => {
 		vi.stubEnv('N8N_SAFE_TESTING_BACKEND', 'other');
 		expect(registry.get()).toBe(registered);
 		vi.stubEnv('N8N_SAFE_TESTING_BACKEND', 'linear-gym');
-		expect(registry.get()).toBeInstanceOf(LinearGymBackend);
+		// The registry gives a stand-in that loads the backend on first use.
+		const selected = registry.get();
+		expect(selected).not.toBe(registered);
+		expect(selected?.id).toBe(backend.id);
+		expect(selected?.worldDependsOnDraftConnections).toBe(backend.worldDependsOnDraftConnections);
+		expect(registry.get()).toBe(selected);
 	});
 });
 
