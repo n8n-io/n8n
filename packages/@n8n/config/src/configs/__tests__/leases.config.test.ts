@@ -23,4 +23,17 @@ describe('LeasesConfig', () => {
 		expect(leases.renewSeconds).toBe(6);
 		expect(leases.marginSeconds).toBe(4);
 	});
+
+	it.each(['0', '-5', '2.5', 'abc'])('falls back to the defaults for %s', (value) => {
+		vi.spyOn(console, 'warn').mockImplementation(() => {});
+		vi.stubEnv('N8N_LEASES_LEASE_SECONDS', value);
+		vi.stubEnv('N8N_LEASES_RENEW_SECONDS', value);
+		vi.stubEnv('N8N_LEASES_MARGIN_SECONDS', value);
+
+		const { leases } = Container.get(GlobalConfig);
+
+		expect(leases.leaseSeconds).toBe(20);
+		expect(leases.renewSeconds).toBe(5);
+		expect(leases.marginSeconds).toBe(5);
+	});
 });
