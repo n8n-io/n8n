@@ -14,6 +14,7 @@ export class ExampleChatModel implements INodeType {
 		icon: { light: 'file:../../icons/example.svg', dark: 'file:../../icons/example.dark.svg' },
 		group: ['transform'],
 		version: [1],
+		subtitle: '={{$parameter["model"]}}',
 		description: 'Custom Chat Model Node',
 		defaults: {
 			name: 'Example Chat Model',
@@ -79,6 +80,7 @@ export class ExampleChatModel implements INodeType {
 			{
 				httpRequest: async () => {
 					// make a request to the API using this.helpers.httpRequestWithAuthentication.call
+					// and pass the abortSignal argument on in its options
 					return {
 						body: {
 							response: 'Hello World!',
@@ -92,6 +94,7 @@ export class ExampleChatModel implements INodeType {
 				},
 				openStream: async () => {
 					// make a request to the API using this.helpers.httpRequestWithAuthentication.call
+					// and pass the abortSignal argument on in its options
 					const mockStream = (async function* () {
 						yield 'Hello ';
 						yield 'World';

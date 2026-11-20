@@ -1,0 +1,151 @@
+import { tool } from 'langchain';
+import { z } from 'zod';
+
+export const weatherTool = tool(
+	({ city }) => {
+		return `It's always sunny in ${city}!`;
+	},
+	{
+		name: 'get_weather',
+		description: 'Get weather for a given city.',
+		schema: z.object({
+			city: z.string(),
+		}),
+	},
+);
+
+export const mockToolCallResponse = {
+	id: 'resp_02a127c1e73b5fe4016989e989cb188195a27d4911084e4223',
+	object: 'response',
+	created_at: 1770645897,
+	status: 'completed',
+	background: false,
+	billing: { payer: 'developer' },
+	completed_at: 1770645898,
+	error: null,
+	frequency_penalty: 0,
+	incomplete_details: null,
+	instructions: null,
+	max_output_tokens: null,
+	max_tool_calls: null,
+	model: 'gpt-4o-2024-08-06',
+	output: [
+		{
+			id: 'fc_02a127c1e73b5fe4016989e98a70b881959fb6cf1d58b5db8b',
+			type: 'function_call',
+			status: 'completed',
+			arguments: '{"city":"Tokyo"}',
+			call_id: 'call_YONsRdkCKu8Sh8WGkUiXqlYW',
+			name: 'get_weather',
+		},
+	],
+	parallel_tool_calls: true,
+	presence_penalty: 0,
+	previous_response_id: null,
+	prompt_cache_key: null,
+	prompt_cache_retention: null,
+	reasoning: { effort: null, summary: null },
+	safety_identifier: null,
+	service_tier: 'default',
+	store: false,
+	temperature: 1,
+	text: { format: { type: 'text' }, verbosity: 'medium' },
+	tool_choice: 'auto',
+	tools: [
+		{
+			type: 'function',
+			description: 'Get weather for a given city.',
+			name: 'get_weather',
+			parameters: {
+				type: 'object',
+				properties: { city: { type: 'string' } },
+				required: ['city'],
+				additionalProperties: false,
+			},
+			strict: true,
+		},
+	],
+	top_logprobs: 0,
+	top_p: 1,
+	truncation: 'disabled',
+	usage: {
+		input_tokens: 46,
+		input_tokens_details: { cached_tokens: 0 },
+		output_tokens: 15,
+		output_tokens_details: { reasoning_tokens: 0 },
+		total_tokens: 61,
+	},
+	user: null,
+	metadata: {},
+};
+
+export const mockFinalResponse = {
+	id: 'resp_00a8729c01103919016989e98b13888190bca486b9676ce0cd',
+	object: 'response',
+	created_at: 1770645899,
+	status: 'completed',
+	background: false,
+	billing: { payer: 'developer' },
+	completed_at: 1770645899,
+	error: null,
+	frequency_penalty: 0,
+	incomplete_details: null,
+	instructions: null,
+	max_output_tokens: null,
+	max_tool_calls: null,
+	model: 'gpt-4o-2024-08-06',
+	output: [
+		{
+			id: 'msg_00a8729c01103919016989e98bb58c81909a9eb194728f1db0',
+			type: 'message',
+			status: 'completed',
+			content: [
+				{
+					type: 'output_text',
+					annotations: [],
+					logprobs: [],
+					text: "It's always sunny in Tokyo!",
+				},
+			],
+			role: 'assistant',
+		},
+	],
+	parallel_tool_calls: true,
+	presence_penalty: 0,
+	previous_response_id: null,
+	prompt_cache_key: null,
+	prompt_cache_retention: null,
+	reasoning: { effort: null, summary: null },
+	safety_identifier: null,
+	service_tier: 'default',
+	store: false,
+	temperature: 1,
+	text: { format: { type: 'text' }, verbosity: 'medium' },
+	tool_choice: 'auto',
+	tools: [
+		{
+			type: 'function',
+			description: 'Get weather for a given city.',
+			name: 'get_weather',
+			parameters: {
+				type: 'object',
+				properties: { city: { type: 'string' } },
+				required: ['city'],
+				additionalProperties: false,
+			},
+			strict: true,
+		},
+	],
+	top_logprobs: 0,
+	top_p: 1,
+	truncation: 'disabled',
+	usage: {
+		input_tokens: 76,
+		input_tokens_details: { cached_tokens: 0 },
+		output_tokens: 8,
+		output_tokens_details: { reasoning_tokens: 0 },
+		total_tokens: 84,
+	},
+	user: null,
+	metadata: {},
+};

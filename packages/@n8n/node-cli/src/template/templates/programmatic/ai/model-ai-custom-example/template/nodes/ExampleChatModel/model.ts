@@ -2,384 +2,77 @@ import type { IHttpRequestMethods, RequestUrl } from 'n8n-workflow';
 import { requestUrl } from 'n8n-workflow';
 import {
 	BaseChatModel,
-	getParametersJsonSchema,
-	parseSSEStream,
-	type TokenUsage,
-	type Tool,
-	type ToolCall,
 	type ChatModelConfig,
 	type GenerateResult,
 	type Message,
-	type MessageContent,
 	type ProviderTool,
 	type StreamChunk,
 } from '@n8n/ai-node-sdk';
 
-// Types
-type OpenAITool =
-	| {
-			type: 'function';
-			name: string;
-			description?: string;
-			parameters: unknown;
-			strict?: boolean;
-	  }
-	| {
-			type: 'web_search';
-	  };
+import {
+	definedHeaders,
+	genericMessagesToResponsesInput,
+	genericToolToResponsesTool,
+	isReasoningInput,
+} from './request';
+import {
+	isReasoningItem,
+	isResponsesResponse,
+	parseResponsesOutput,
+	parseTokenUsage,
+	responseFailedError,
+	toFinishReason,
+	toReasoningContent,
+} from './response';
+import { toStreamChunks } from './stream';
+import type { OpenAIResponsesRequest, OpenAIResponsesResponse, OpenAIToolChoice } from './types';
 
-type OpenAIToolChoice = 'auto' | 'required' | 'none' | { type: 'function'; name: string };
-
-type ResponsesInputItem =
-	| { role: 'user'; content: string }
-	| { role: 'user'; content: Array<{ type: 'input_text'; text: string }> }
-	| {
-			type: 'message';
-			role: 'assistant';
-			content: Array<{ type: 'output_text'; text: string }>;
-	  }
-	| {
-			type: 'function_call';
-			call_id: string;
-			name: string;
-			arguments: string;
-	  }
-	| { type: 'function_call_output'; call_id: string; output: string };
-
-interface OpenAIResponsesRequest {
-	model: string;
-	input: string | ResponsesInputItem[];
-	instructions?: string;
-	max_output_tokens?: number;
-	temperature?: number;
-	top_p?: number;
-	tools?: OpenAITool[];
-	tool_choice?: OpenAIToolChoice;
-	parallel_tool_calls?: boolean;
-	store?: boolean;
-	stream?: boolean;
-	metadata?: Record<string, unknown>;
-}
-
-interface OpenAIResponsesResponse {
-	id: string;
-	object: string;
-	created_at: string;
-	model: string;
-	output: ResponsesOutputItem[];
-	status: string;
-	usage?: {
-		input_tokens: number;
-		output_tokens: number;
-		total_tokens: number;
-		input_tokens_details?: {
-			cached_tokens?: number;
-		};
-		output_tokens_details?: {
-			reasoning_tokens?: number;
-		};
-	};
-	incomplete_details?: Record<string, unknown>;
-	metadata?: Record<string, unknown>;
-	user?: string;
-	service_tier?: string;
-}
-
-type ResponsesOutputItem =
-	| {
-			type: 'message';
-			role: 'assistant';
-			id?: string;
-			content: Array<{
-				type: 'output_text';
-				text: string;
-			}>;
-	  }
-	| {
-			type: 'function_call';
-			id?: string;
-			call_id: string;
-			name: string;
-			arguments: string;
-	  }
-	| {
-			type: 'reasoning';
-			id?: string;
-			summary: Array<{
-				type: string;
-				text: string;
-			}>;
-	  };
-
-interface OpenAIStreamEvent {
-	type: string;
-	delta?: string;
-	output_index?: number;
-	item?: Record<string, unknown>;
-	response?: Record<string, unknown>;
-}
-
-// Helpers
-
-async function* parseOpenAIStreamEvents(
-	body: AsyncIterableIterator<Buffer | Uint8Array>,
-): AsyncIterable<OpenAIStreamEvent> {
-	for await (const message of parseSSEStream(body)) {
-		if (!message.data) continue;
-		if (message.data === '[DONE]') continue;
-
-		try {
-			const event = JSON.parse(message.data);
-			yield event as OpenAIStreamEvent;
-			// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		} catch (e) {
-			// ignore error
-		}
-	}
-}
-
-function genericMessagesToResponsesInput(messages: Message[]): {
-	instructions?: string;
-	input: string | ResponsesInputItem[];
-} {
-	const instructionsParts: string[] = [];
-	const inputItems: ResponsesInputItem[] = [];
-
-	for (const msg of messages) {
-		if (msg.role === 'system') {
-			for (const contentPart of msg.content) {
-				if (contentPart.type === 'text') {
-					instructionsParts.push(contentPart.text);
-				}
-			}
-		}
-
-		if (msg.role === 'user') {
-			for (const contentPart of msg.content) {
-				if (contentPart.type === 'text') {
-					inputItems.push({
-						role: 'user',
-						content: contentPart.text,
-					});
-				}
-			}
-			continue;
-		}
-
-		if (msg.role === 'assistant') {
-			for (const contentPart of msg.content) {
-				if (contentPart.type === 'text') {
-					inputItems.push({
-						type: 'message',
-						role: 'assistant',
-						content: [
-							{
-								type: 'output_text',
-								text: contentPart.text,
-							},
-						],
-					});
-				} else if (contentPart.type === 'tool-call') {
-					if (!contentPart.toolCallId) {
-						throw new Error('Tool call ID is required');
-					}
-					inputItems.push({
-						type: 'function_call',
-						call_id: contentPart.toolCallId,
-						name: contentPart.toolName,
-						arguments: contentPart.input,
-					});
-				} else if (contentPart.type === 'reasoning') {
-					inputItems.push({
-						type: 'message',
-						role: 'assistant',
-						content: [
-							{
-								type: 'output_text',
-								text: contentPart.text,
-							},
-						],
-					});
-				}
-			}
-		}
-
-		if (msg.role === 'tool') {
-			for (const contentPart of msg.content) {
-				if (contentPart.type === 'tool-result') {
-					const output =
-						typeof contentPart.result === 'string'
-							? contentPart.result
-							: JSON.stringify(contentPart.result);
-					inputItems.push({
-						type: 'function_call_output',
-						call_id: contentPart.toolCallId,
-						output,
-					});
-				}
-			}
-		}
-	}
-
-	const instructions = instructionsParts.length > 0 ? instructionsParts.join('\n\n') : undefined;
-
-	const single = inputItems[0];
-	if (
-		inputItems.length === 1 &&
-		single &&
-		'role' in single &&
-		single.role === 'user' &&
-		typeof single.content === 'string'
-	) {
-		return { instructions, input: single.content };
-	}
-	return { instructions, input: inputItems };
-}
-
-function genericToolToResponsesTool(tool: Tool): OpenAITool {
-	if (tool.type === 'provider') {
-		if (tool.name === 'web_search') {
-			return {
-				type: 'web_search',
-				...tool.args,
-			};
-		}
-		throw new Error(`Unsupported provider tool: ${tool.name}`);
-	}
-	const parameters = getParametersJsonSchema(tool);
-	return {
-		type: 'function',
-		name: tool.name,
-		description: tool.description,
-		parameters,
-		strict: tool.strict,
-	};
-}
-
-function parseResponsesOutput(output: ResponsesOutputItem[]): {
-	text: string;
-	toolCalls: ToolCall[];
-} {
-	let text = '';
-	const toolCalls: ToolCall[] = [];
-
-	for (const item of output) {
-		if (item.type === 'message' && item.role === 'assistant') {
-			for (const block of item.content) {
-				if (block.type === 'output_text') {
-					text += block.text;
-				}
-			}
-		}
-		if (item.type === 'function_call') {
-			try {
-				toolCalls.push({
-					id: item.call_id,
-					name: item.name,
-					arguments: JSON.parse(item.arguments) as Record<string, unknown>,
-					argumentsRaw: item.arguments,
-				});
-				// eslint-disable-next-line @typescript-eslint/no-unused-vars
-			} catch (e) {
-				throw new Error(`Failed to parse function call arguments: ${item.arguments}`);
-			}
-		}
-	}
-
-	return { text, toolCalls };
-}
-
-function parseTokenUsage(
-	usage: OpenAIResponsesResponse['usage'] | undefined,
-): TokenUsage | undefined {
-	return usage
-		? {
-				promptTokens: usage.input_tokens ?? 0,
-				completionTokens: usage.output_tokens ?? 0,
-				totalTokens: usage.total_tokens ?? 0,
-				inputTokenDetails: {
-					...(!!usage.input_tokens_details?.cached_tokens && {
-						cacheRead: usage.input_tokens_details.cached_tokens,
-					}),
-				},
-				outputTokenDetails: {
-					...(!!usage.output_tokens_details?.reasoning_tokens && {
-						reasoning: usage.output_tokens_details.reasoning_tokens,
-					}),
-				},
-			}
-		: undefined;
-}
-
-interface OpenAIChatModelConfig extends ChatModelConfig {
+type OpenAIChatModelConfig = ChatModelConfig & {
 	apiKey?: string;
 	baseURL?: string;
+	toolChoice?: OpenAIToolChoice;
 
 	providerTools?: ProviderTool[];
-}
+};
 
-interface RequestConfig {
+type RequestConfig = {
 	httpRequest: (
 		method: IHttpRequestMethods,
 		url: RequestUrl,
 		body?: object,
 		headers?: Record<string, string>,
+		abortSignal?: ChatModelConfig['abortSignal'],
 	) => Promise<{ body: unknown }>;
 	openStream: (
 		method: IHttpRequestMethods,
 		url: RequestUrl,
 		body?: object,
 		headers?: Record<string, string>,
+		abortSignal?: ChatModelConfig['abortSignal'],
 	) => Promise<{ body: AsyncIterableIterator<Buffer | Uint8Array> }>;
-}
+};
 
-export class OpenAIChatModel extends BaseChatModel<OpenAIChatModelConfig> {
-	private baseURL: string;
-
-	constructor(
-		modelId: string = 'gpt-4o',
-		private requests: RequestConfig,
-		config?: OpenAIChatModelConfig,
-	) {
-		super('openai', modelId, config);
-		this.baseURL = config?.baseURL ?? 'https://api.openai.com/v1';
+function toGenerateResult(body: OpenAIResponsesResponse): GenerateResult {
+	const { text, toolCalls } = parseResponsesOutput(body.output);
+	const reasoningItems = body.output.filter(isReasoningItem);
+	const content = reasoningItems.map(toReasoningContent);
+	for (const toolCall of toolCalls) {
+		content.push({
+			type: 'tool-call',
+			toolCallId: toolCall.id,
+			toolName: toolCall.name,
+			input: JSON.stringify(toolCall.arguments),
+		});
 	}
+	content.push({ type: 'text', text });
 
-	private getTools(config?: OpenAIChatModelConfig) {
-		const ownTools = this.tools;
-		const providerTools = config?.providerTools ?? this.defaultConfig?.providerTools ?? [];
-		return [...ownTools, ...providerTools].map(genericToolToResponsesTool);
-	}
-
-	async generate(messages: Message[], config?: OpenAIChatModelConfig): Promise<GenerateResult> {
-		const merged = this.mergeConfig(config);
-		const { instructions, input } = genericMessagesToResponsesInput(messages);
-		const tools = this.getTools(config);
-		const requestBody: OpenAIResponsesRequest = {
-			model: this.modelId,
-			input,
-			instructions,
-			max_output_tokens: merged.maxTokens,
-			temperature: merged.temperature,
-			top_p: merged.topP,
-			tools,
-			parallel_tool_calls: true,
-			store: false,
-			stream: false,
-		};
-
-		const response = await this.requests.httpRequest(
-			'POST',
-			requestUrl`${this.baseURL}/responses`,
-			requestBody,
-		);
-		const body = response.body as OpenAIResponsesResponse;
-
-		const { text, toolCalls } = parseResponsesOutput(body.output);
-
-		const usage = parseTokenUsage(body.usage);
-
-		const responseMetadata: Record<string, unknown> = {
+	return {
+		id: body.id,
+		finishReason: toFinishReason(body, toolCalls.length > 0),
+		usage: parseTokenUsage(body.usage),
+		message: { role: 'assistant', content, id: body.id },
+		rawResponse: body,
+		providerMetadata: {
 			model_provider: 'openai',
 			model: body.model,
 			created_at: body.created_at,
@@ -392,144 +85,108 @@ export class OpenAIChatModel extends BaseChatModel<OpenAIChatModelConfig> {
 			service_tier: body.service_tier,
 			model_name: body.model,
 			output: body.output,
-		};
+			...(reasoningItems.length > 0 && { reasoning: reasoningItems[reasoningItems.length - 1] }),
+		},
+	};
+}
 
-		for (const item of body.output as unknown[]) {
-			const o = item as Record<string, unknown>;
-			if (o.type === 'reasoning') {
-				responseMetadata.reasoning = o;
-			}
-		}
+export class OpenAIChatModel extends BaseChatModel<OpenAIChatModelConfig> {
+	private readonly baseURL: string;
 
-		const content: MessageContent[] = [];
-		if (toolCalls.length) {
-			for (const toolCall of toolCalls) {
-				content.push({
-					type: 'tool-call',
-					toolCallId: toolCall.id,
-					toolName: toolCall.name,
-					input: JSON.stringify(toolCall.arguments),
-				});
-			}
-		}
-		content.push({ type: 'text', text });
+	private readonly requests: RequestConfig;
 
-		const message: Message = {
-			role: 'assistant',
-			content,
-			id: body.id,
-		};
-
-		return {
-			id: body.id,
-			finishReason: body.status === 'completed' ? 'stop' : 'other',
-			usage,
-			message,
-			rawResponse: body,
-			providerMetadata: responseMetadata,
-		};
+	constructor(modelId: string = 'gpt-4o', requests: RequestConfig, config?: OpenAIChatModelConfig) {
+		super('openai', modelId, config);
+		this.baseURL = config?.baseURL ?? 'https://api.openai.com/v1';
+		this.requests = requests;
 	}
 
-	async *stream(messages: Message[], config?: OpenAIChatModelConfig): AsyncIterable<StreamChunk> {
-		const merged = this.mergeConfig(config) as OpenAIChatModelConfig;
+	private buildRequestBody(
+		messages: Message[],
+		config: OpenAIChatModelConfig,
+		stream: boolean,
+	): OpenAIResponsesRequest {
 		const { instructions, input } = genericMessagesToResponsesInput(messages);
-
-		const tools = this.getTools(config);
-
-		const requestBody: OpenAIResponsesRequest = {
+		const providerTools = config.providerTools ?? this.defaultConfig?.providerTools ?? [];
+		const tools = [...this.tools, ...providerTools];
+		// The Responses API has no parameter for stop sequences, a seed or top-k
+		// sampling, so those options are not sent.
+		return {
 			model: this.modelId,
 			input,
 			instructions,
-			max_output_tokens: merged.maxTokens,
-			temperature: merged.temperature,
-			top_p: merged.topP,
-			tools,
+			max_output_tokens: config.maxTokens,
+			temperature: config.temperature,
+			top_p: config.topP,
+			presence_penalty: config.presencePenalty,
+			frequency_penalty: config.frequencyPenalty,
+			tools: tools.map(genericToolToResponsesTool),
+			tool_choice: config.toolChoice,
 			parallel_tool_calls: true,
 			store: false,
-			stream: true,
+			stream,
+			include: ['reasoning.encrypted_content'],
 		};
+	}
 
-		const streamResponse = await this.requests.openStream(
-			'POST',
-			requestUrl`${this.baseURL}/responses`,
-			requestBody,
-		);
-		const streamBody = streamResponse.body;
-
-		const toolCallBuffers: Record<number, { name: string; arguments: string }> = {};
-
-		for await (const event of parseOpenAIStreamEvents(streamBody)) {
-			const type = event.type;
-
-			if (type === 'response.output_text.delta') {
-				const delta = event.delta;
-				if (delta) {
-					yield { type: 'text-delta', delta };
-				}
-			}
-
-			if (type === 'response.output_item.added') {
-				const item = event.item;
-				if (item?.type === 'function_call') {
-					const idx = event.output_index ?? 0;
-					toolCallBuffers[idx] = {
-						name: (item.name as string) ?? '',
-						arguments: (item.arguments as string) ?? '',
-					};
-				}
-				if (item?.type === 'reasoning') {
-					const summary = (item.summary as Array<Record<string, unknown>>) ?? [];
-					const reasoningText = summary
-						.map((s) => s.text)
-						.filter(Boolean)
-						.join('');
-					if (reasoningText) {
-						yield { type: 'reasoning-delta', delta: reasoningText };
-					}
-				}
-			}
-
-			if (type === 'response.reasoning_summary_text.delta') {
-				const delta = event.delta;
-				if (delta) {
-					yield { type: 'reasoning-delta', delta };
-				}
-			}
-
-			if (type === 'response.function_call_arguments.delta') {
-				const idx = event.output_index ?? 0;
-				const delta = event.delta;
-				if (toolCallBuffers[idx] && delta) {
-					toolCallBuffers[idx].arguments += delta;
-				}
-			}
-
-			if (type === 'response.output_item.done') {
-				const item = event.item;
-				if (item?.type === 'function_call') {
-					const idx = event.output_index ?? 0;
-					const buf = toolCallBuffers[idx];
-					if (buf) {
-						yield {
-							type: 'tool-call-delta',
-							id: (item.call_id as string) ?? (item.id as string),
-							name: buf.name,
-							argumentsDelta: buf.arguments,
-						};
-					}
-				}
-			}
-
-			if (type === 'response.done' || type === 'response.completed') {
-				const responseData =
-					(event.response as unknown as OpenAIResponsesResponse) ??
-					(event as unknown as OpenAIResponsesResponse);
-				yield {
-					type: 'finish',
-					finishReason: 'stop',
-					usage: parseTokenUsage(responseData.usage),
-				};
-			}
+	private async sendWithReasoningFallback<T>(
+		body: OpenAIResponsesRequest,
+		abortSignal: ChatModelConfig['abortSignal'],
+		send: (body: OpenAIResponsesRequest) => Promise<T>,
+	): Promise<T> {
+		const input = typeof body.input === 'string' ? [] : body.input;
+		const replaysReasoning = input.some(isReasoningInput);
+		if (!replaysReasoning) return await send(body);
+		try {
+			return await send(body);
+		} catch {
+			abortSignal?.throwIfAborted();
+			// OpenAI only decrypts reasoning for the organization that created it, so
+			// after an API key change it rejects every later turn. Send it once without.
+			return await send({ ...body, input: input.filter((item) => !isReasoningInput(item)) });
 		}
+	}
+
+	async generate(messages: Message[], config?: OpenAIChatModelConfig): Promise<GenerateResult> {
+		const merged: OpenAIChatModelConfig = { ...this.defaultConfig, ...config };
+		const response = await this.sendWithReasoningFallback(
+			this.buildRequestBody(messages, merged, false),
+			merged.abortSignal,
+			async (body) =>
+				await this.requests.httpRequest(
+					'POST',
+					requestUrl`${this.baseURL}/responses`,
+					body,
+					definedHeaders(merged.headers),
+					merged.abortSignal,
+				),
+		);
+		const body = response.body;
+		if (!isResponsesResponse(body)) {
+			throw new Error(
+				'Unexpected response from the Responses API: the output is missing or malformed',
+			);
+		}
+		if (body.status === 'failed') {
+			throw responseFailedError(body);
+		}
+		return toGenerateResult(body);
+	}
+
+	async *stream(messages: Message[], config?: OpenAIChatModelConfig): AsyncIterable<StreamChunk> {
+		const merged: OpenAIChatModelConfig = { ...this.defaultConfig, ...config };
+		const response = await this.sendWithReasoningFallback(
+			this.buildRequestBody(messages, merged, true),
+			merged.abortSignal,
+			async (body) =>
+				await this.requests.openStream(
+					'POST',
+					requestUrl`${this.baseURL}/responses`,
+					body,
+					definedHeaders(merged.headers),
+					merged.abortSignal,
+				),
+		);
+		yield* toStreamChunks(response.body);
 	}
 }

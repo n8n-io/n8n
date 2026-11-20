@@ -12,6 +12,8 @@ export class ExampleApi implements ICredentialType {
 
 	displayName = 'Example API';
 
+	documentationUrl = 'https://github.com/org/repo?tab=readme-ov-file#credentials';
+
 	icon: Icon = { light: 'file:../icons/example.svg', dark: 'file:../icons/example.dark.svg' };
 
 	properties: INodeProperties[] = [
