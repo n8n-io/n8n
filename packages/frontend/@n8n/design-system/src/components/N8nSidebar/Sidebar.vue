@@ -117,7 +117,7 @@ function onResize(data: ResizeData) {
 </script>
 
 <template>
-	<div :style="rootStyle">
+	<div :class="$style.root" :style="rootStyle">
 		<N8nResizeWrapper
 			:width="displayedWidth"
 			:default-width="resetWidth"
@@ -144,6 +144,11 @@ function onResize(data: ResizeData) {
 </template>
 
 <style lang="scss" module>
+.root {
+	height: 100%;
+	min-height: 0;
+}
+
 .sidebar {
 	display: flex;
 	flex-direction: column;
