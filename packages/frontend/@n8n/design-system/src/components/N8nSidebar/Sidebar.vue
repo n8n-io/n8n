@@ -8,7 +8,6 @@ import N8nScrollArea from '../N8nScrollArea/N8nScrollArea.vue';
 
 defineOptions({ name: 'N8nSidebar' });
 
-// `width` is the v-model. `defineModel` declares that prop.
 const props = withDefaults(defineProps<Omit<SidebarProps, 'width'>>(), {
 	side: 'left',
 	minWidth: 160,
