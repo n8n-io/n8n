@@ -229,6 +229,14 @@ describe('AgentTriggersList', () => {
 	});
 
 	describe('add trigger button', () => {
+		it('uses the Add trigger label', () => {
+			const wrapper = mountList();
+
+			expect(wrapper.get('[data-testid="agent-triggers-add-trigger"]').text()).toContain(
+				'agents.builder.triggers.add',
+			);
+		});
+
 		it('emits add-channel on click', async () => {
 			const wrapper = mountList();
 

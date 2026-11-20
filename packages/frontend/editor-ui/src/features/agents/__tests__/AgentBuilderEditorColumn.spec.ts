@@ -9,8 +9,15 @@ import type { AgentBuilderMainTab } from '../composables/useAgentBuilderMainTabs
 import type { AgentResource } from '../types';
 
 const track = vi.fn();
+const triggerRedesignEnabled = vi.hoisted(() => ({ value: false }));
 vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track }),
+}));
+vi.mock('@/app/stores/posthog.store', () => ({
+	usePostHog: () => ({
+		isFeatureEnabled: () => triggerRedesignEnabled.value,
+		isVariantEnabled: () => false,
+	}),
 }));
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({ pushRef: 'session-xyz' }),
@@ -255,6 +262,7 @@ async function mountColumn(
 describe('AgentBuilderEditorColumn', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		triggerRedesignEnabled.value = false;
 	});
 
 	it.each([
@@ -538,21 +546,34 @@ describe('AgentBuilderEditorColumn', () => {
 		expect(tabsRule.find('[data-testid="agent-header-tabs"]').exists()).toBe(true);
 	});
 
-	it('renders named Agent tab cards', async function rendersNamedCards() {
-		const wrapper = await mountColumn({ knowledgeBaseEnabled: false });
-		const panels = wrapper.findAllComponents({ name: 'AgentPanel' });
+	it.each([false, true])(
+		'renders named Agent tab cards with trigger redesign %s',
+		async (enabled) => {
+			triggerRedesignEnabled.value = enabled;
+			const wrapper = await mountColumn({ knowledgeBaseEnabled: false });
+			const panels = wrapper.findAllComponents({ name: 'AgentPanel' });
 
-		expect(
-			panels.map(function getPanelHeader(panel) {
-				return panel.props('header');
-			}),
-		).toEqual([
-			'agents.builder.skills.title',
-			'agents.builder.triggers.title',
-			'agents.builder.capabilities.title',
-			'agents.builder.memory.title',
-		]);
-	});
+			expect(
+				panels.map(function getPanelHeader(panel) {
+					return panel.props('header');
+				}),
+			).toEqual(
+				enabled
+					? [
+							'agents.builder.triggers.title',
+							'agents.builder.skills.title',
+							'agents.builder.capabilities.title',
+							'agents.builder.memory.title',
+						]
+					: [
+							'agents.builder.skills.title',
+							'agents.builder.triggers.title',
+							'agents.builder.capabilities.title',
+							'agents.builder.memory.title',
+						],
+			);
+		},
+	);
 
 	it.each([true, false])(
 		'handles preview clicks from the Triggers card when runnable is %s',
