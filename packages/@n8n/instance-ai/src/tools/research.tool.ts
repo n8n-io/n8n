@@ -98,6 +98,8 @@ type DomainGatingSuspendPayload = z.infer<typeof domainGatingSuspendSchema>;
 interface DomainGatingToolContext {
 	resumeData: DomainGatingResumeData | undefined;
 	suspend?: (payload: DomainGatingSuspendPayload) => Promise<never>;
+	/** The payload this tool suspended with, restored by the runtime on resume. */
+	suspendPayload?: DomainGatingSuspendPayload;
 	abortSignal?: AbortSignal;
 }
 
@@ -159,17 +161,6 @@ async function handleWebSearch(
 	return result;
 }
 
-/**
- * Redirect targets we suspended on, per context and run. On resume the tool is
- * re-invoked with the original input, so this tells us the user's decision was
- * about the redirect target's host rather than the original URL's host.
- */
-const pendingRedirectTargets = new WeakMap<InstanceAiContext, Map<string, string>>();
-
-function pendingRedirectKey(context: InstanceAiContext, url: string) {
-	return `${context.runId ?? ''}|${url}`;
-}
-
 async function handleFetchUrl(
 	context: InstanceAiContext,
 	input: Extract<Input, { action: 'fetch-url' }>,
@@ -190,15 +181,14 @@ async function handleFetchUrl(
 
 	// ── Resume path: apply user's domain decision ──────────────────
 	if (resumeData !== undefined && resumeData !== null) {
-		const pendingKey = pendingRedirectKey(context, input.url);
-		const pendingTarget = pendingRedirectTargets.get(context)?.get(pendingKey);
-		pendingRedirectTargets.get(context)?.delete(pendingKey);
-		let host: string;
-		try {
-			// If we suspended on a cross-domain redirect, the decision is for its host.
-			host = new URL(pendingTarget ?? input.url).hostname;
-		} catch {
-			host = input.url;
+		// The card may be for a redirect target, so take the host from the card.
+		let host = ctx.suspendPayload?.domainAccess?.host;
+		if (!host) {
+			try {
+				host = new URL(input.url).hostname;
+			} catch {
+				host = input.url;
+			}
 		}
 		const { proceed } = await applyDomainAccessResume({
 			resumeData,
@@ -269,7 +259,8 @@ async function handleFetchUrl(
 		// its domain. Redirects to plain HTTP stay rejected.
 		if (new URL(targetUrl).protocol === 'https:') blockedRedirectUrl = targetUrl;
 		throw new Error(
-			`Redirect from ${new URL(input.url).hostname} to ${new URL(targetUrl).hostname} is not allowed.`,
+			`Redirect from ${new URL(input.url).hostname} to ${new URL(targetUrl).hostname} is not allowed. ` +
+				'Skip this URL and try a different research strategy — retrying the same URL will not help.',
 		);
 	};
 
@@ -289,25 +280,8 @@ async function handleFetchUrl(
 			runId: context.runId,
 		});
 		// Ask the user to approve the redirect target, then the fetch re-runs on resume.
-		if (ctx.suspend && redirectCheck.suspendPayload) {
-			let pending = pendingRedirectTargets.get(context);
-			if (!pending) {
-				pending = new Map();
-				pendingRedirectTargets.set(context, pending);
-			}
-			pending.set(pendingRedirectKey(context, input.url), blockedRedirectUrl);
-			return await ctx.suspend(redirectCheck.suspendPayload);
-		}
-		return {
-			url: input.url,
-			finalUrl: blockedRedirectUrl,
-			title: '',
-			content:
-				`${new URL(input.url).hostname} redirects to a different domain: ${blockedRedirectUrl}. ` +
-				'It was not followed automatically. To read it, call fetch-url again with that URL.',
-			truncated: false,
-			contentLength: 0,
-		};
+		if (!ctx.suspend || !redirectCheck.suspendPayload) throw error;
+		return await ctx.suspend(redirectCheck.suspendPayload);
 	}
 	const content = sanitizeWebContent(page.content);
 	const saveResult = input.saveTo

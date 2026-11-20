@@ -31,10 +31,13 @@ function createMockContext(
 	} as unknown as InstanceAiContext;
 }
 
-function createAgentCtx(opts: { resumeData?: unknown; suspend?: Mock } = {}) {
+function createAgentCtx(
+	opts: { resumeData?: unknown; suspend?: Mock; suspendPayload?: unknown } = {},
+) {
 	const suspend = opts.suspend ?? vi.fn();
 	return {
 		resumeData: opts.resumeData,
+		suspendPayload: opts.suspendPayload,
 		suspend,
 	};
 }
@@ -933,6 +936,18 @@ describe('research tool', () => {
 				await expect(authorize('https://evil.example/x')).rejects.toThrow(/redirect.*not allowed/i);
 			});
 
+			it('rejection error does not echo the blocked URL as a retry hint (TRUST-73)', async () => {
+				// Pre-fix wording was "Retry with the direct URL: <blocked>" — that
+				// caused the LLM to retry the same blocked host forever. Lock in
+				// the new clearer phrasing so the message can't regress.
+				const authorize = await captureAuthorizeUrl('https://developers.linear.app/docs/graphql');
+				const caught = await authorize('https://evil.example/x').catch((e: unknown) => e);
+				expect(caught).toBeInstanceOf(Error);
+				const message = (caught as Error).message;
+				expect(message).toMatch(/skip this URL/i);
+				expect(message).not.toMatch(/retry with the direct URL/i);
+			});
+
 			it('asks the user to approve a cross-domain redirect target, then follows it on resume', async () => {
 				// directus.io/docs/... redirects to directus.com/docs/... — a different
 				// registrable domain. The tool suspends for approval of the *target*
@@ -980,11 +995,34 @@ describe('research tool', () => {
 					{ action: 'fetch-url' as const, url: inputUrl },
 					createAgentCtx({
 						resumeData: { approved: true, domainAccessAction: 'allow_once' },
+						suspendPayload: suspend.mock.calls[0][0],
 					}) as never,
 				)) as { content: string; finalUrl: string };
 				expect(approveOnce).toHaveBeenCalledWith('run-1', 'directus.com');
 				expect(result.finalUrl).toBe(target);
 				expect(result.content).toContain('relations guide');
+			});
+
+			it('rethrows the redirect error when the tool cannot ask the user', async () => {
+				const context = createMockContext({
+					domainAccessTracker: {
+						isHostAllowed: vi.fn((h: string) => h === 'directus.io'),
+					} as never,
+					permissions: {},
+				});
+				context.webResearchService!.fetchUrl = vi.fn(
+					async (_url: string, options?: { authorizeUrl?: (u: string) => Promise<void> }) => {
+						await options!.authorizeUrl!('https://directus.com/docs');
+						throw new Error('unreachable');
+					},
+				) as never;
+				const ctx = { ...createAgentCtx(), suspend: undefined };
+				await expect(
+					createResearchTool(context).handler!(
+						{ action: 'fetch-url' as const, url: 'https://directus.io/docs' },
+						ctx as never,
+					),
+				).rejects.toThrow(/skip this URL/i);
 			});
 
 			it('does not prompt for redirects to plain HTTP', async () => {
