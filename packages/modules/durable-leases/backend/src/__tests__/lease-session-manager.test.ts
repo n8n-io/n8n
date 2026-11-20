@@ -2,12 +2,18 @@ import type { Logger } from '@n8n/backend-common';
 import type { LeaseKindRepository, LeaseSessionRepository, NewLeaseSession } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
+import type { SessionClock } from '../lease-session-manager';
 import { LeaseSessionManager } from '../lease-session-manager';
 
 describe('LeaseSessionManager', () => {
+	const START_WALL_MS = 1_800_000_000_000;
 	const LEASE_SECONDS = 20;
 	const RENEW_SECONDS = 5;
+	const MARGIN_SECONDS = 5;
+	const DEADLINE_MS = (LEASE_SECONDS - MARGIN_SECONDS) * 1000;
 
+	let now: { mono: number; wall: number };
+	let clock: SessionClock;
 	let kinds: ReturnType<typeof mock<LeaseKindRepository>>;
 	let sessions: ReturnType<typeof mock<LeaseSessionRepository>>;
 	let session: LeaseSessionManager;
@@ -15,6 +21,10 @@ describe('LeaseSessionManager', () => {
 
 	const insertedSessions = () =>
 		sessions.insertSession.mock.calls.map(([inserted]: [NewLeaseSession, unknown]) => inserted);
+
+	const setClock = (elapsedMs: number) => {
+		now = { mono: elapsedMs, wall: START_WALL_MS + elapsedMs };
+	};
 
 	const nextBeat = async () => await vi.advanceTimersByTimeAsync(RENEW_SECONDS * 1000 * 1.1);
 
@@ -36,6 +46,8 @@ describe('LeaseSessionManager', () => {
 
 	beforeEach(() => {
 		vi.useFakeTimers();
+		now = { mono: 0, wall: START_WALL_MS };
+		clock = { monotonicMs: () => now.mono, wallMs: () => now.wall };
 		kinds = mock<LeaseKindRepository>();
 		kinds.insertIfMissing.mockResolvedValue();
 		sessions = mock<LeaseSessionRepository>();
@@ -47,10 +59,12 @@ describe('LeaseSessionManager', () => {
 			kind: 'test-kind',
 			leaseSeconds: LEASE_SECONDS,
 			renewSeconds: RENEW_SECONDS,
+			marginSeconds: MARGIN_SECONDS,
 			hostId: 'host-1',
 			bootId: 'boot-1',
 			kinds,
 			sessions,
+			clock,
 			logger,
 		});
 	});
@@ -60,6 +74,39 @@ describe('LeaseSessionManager', () => {
 		vi.restoreAllMocks();
 		vi.clearAllTimers();
 		vi.useRealTimers();
+	});
+
+	it('loses the session and deletes its row when the monotonic clock passes the deadline', async () => {
+		await session.start();
+		const [first] = insertedSessions();
+
+		now.mono += DEADLINE_MS + 1;
+		await vi.advanceTimersByTimeAsync(100);
+
+		await expectLost(first.id);
+	});
+
+	it('loses the session and deletes its row when the wall clock passes the deadline', async () => {
+		await session.start();
+		const [first] = insertedSessions();
+
+		now.wall += DEADLINE_MS + 1;
+		await vi.advanceTimersByTimeAsync(100);
+
+		await expectLost(first.id);
+	});
+
+	it('inserts a session with a new id on the next beat after a loss', async () => {
+		await session.start();
+		const [first] = insertedSessions();
+		now.mono += DEADLINE_MS + 1;
+		await vi.advanceTimersByTimeAsync(100);
+
+		await vi.advanceTimersByTimeAsync(RENEW_SECONDS * 1000 * 1.1);
+
+		const [, second] = insertedSessions();
+		expect(second.id).not.toBe(first.id);
+		await expectHeld(second.id);
 	});
 
 	it('inserts a session on the next beat when the first insert fails', async () => {
@@ -123,6 +170,54 @@ describe('LeaseSessionManager', () => {
 		expect(sessions.deleteSession).not.toHaveBeenCalled();
 	});
 
+	it('moves the deadline forward when a renewal succeeds', async () => {
+		vi.spyOn(Math, 'random').mockReturnValue(0.5);
+		await session.start();
+		const [first] = insertedSessions();
+
+		now.mono = 10_000;
+		await vi.advanceTimersByTimeAsync(RENEW_SECONDS * 1000);
+		expect(sessions.renewLive).toHaveBeenCalledTimes(1);
+
+		now.mono = DEADLINE_MS + 1_000;
+		await vi.advanceTimersByTimeAsync(100);
+
+		await expectHeld(first.id);
+	});
+
+	it('measures the deadline of a new session from the clock before the insert was sent', async () => {
+		sessions.insertSession.mockImplementationOnce(async () => {
+			setClock(4_000);
+		});
+		await session.start();
+		const [first] = insertedSessions();
+
+		setClock(DEADLINE_MS + 1);
+		await vi.advanceTimersByTimeAsync(100);
+
+		await expectLost(first.id);
+	});
+
+	it('measures a renewed deadline from the clock before the renewal was sent', async () => {
+		vi.spyOn(Math, 'random').mockReturnValue(0.5);
+		sessions.renewLive.mockImplementationOnce(async () => {
+			setClock(14_000);
+			return true;
+		});
+		await session.start();
+		const [first] = insertedSessions();
+
+		setClock(10_000);
+		await vi.advanceTimersByTimeAsync(RENEW_SECONDS * 1000);
+		expect(sessions.renewLive).toHaveBeenCalledTimes(1);
+		expect(sessions.deleteSession).not.toHaveBeenCalled();
+
+		setClock(10_000 + DEADLINE_MS + 1);
+		await vi.advanceTimersByTimeAsync(100);
+
+		await expectLost(first.id);
+	});
+
 	it('deletes the row and keeps no session when stopped during the first insert', async () => {
 		let finishInsert: () => void = () => {};
 		sessions.insertSession.mockImplementationOnce(
@@ -140,6 +235,96 @@ describe('LeaseSessionManager', () => {
 
 		const [first] = insertedSessions();
 		expect(sessions.deleteSession).toHaveBeenCalledWith(first.id, expect.anything());
+	});
+
+	it('keeps a newer session when a renewal of a lost session finds it expired', async () => {
+		vi.spyOn(Math, 'random').mockReturnValue(0.5);
+		let finishRenewal: (renewed: boolean) => void = () => {};
+		sessions.renewLive.mockImplementationOnce(
+			async () =>
+				await new Promise<boolean>((resolve) => {
+					finishRenewal = resolve;
+				}),
+		);
+		await session.start();
+		const [first] = insertedSessions();
+		await vi.advanceTimersByTimeAsync(RENEW_SECONDS * 1000);
+		now.mono += DEADLINE_MS + 1;
+		await vi.advanceTimersByTimeAsync(100);
+		expect(sessions.deleteSession).toHaveBeenCalledWith(first.id, expect.anything());
+		await session.ensureSession();
+		const [, second] = insertedSessions();
+
+		finishRenewal(false);
+		await vi.advanceTimersByTimeAsync(0);
+
+		await expectHeld(second.id);
+	});
+
+	it('deletes the old row and keeps the newer session when a renewal of a lost session succeeds', async () => {
+		vi.spyOn(Math, 'random').mockReturnValue(0.5);
+		let finishRenewal: (renewed: boolean) => void = () => {};
+		sessions.renewLive.mockImplementationOnce(
+			async () =>
+				await new Promise<boolean>((resolve) => {
+					finishRenewal = resolve;
+				}),
+		);
+		await session.start();
+		const [first] = insertedSessions();
+		await vi.advanceTimersByTimeAsync(RENEW_SECONDS * 1000);
+		now.mono += DEADLINE_MS + 1;
+		await vi.advanceTimersByTimeAsync(100);
+		await session.ensureSession();
+		const [, second] = insertedSessions();
+		sessions.deleteSession.mockClear();
+
+		finishRenewal(true);
+		await vi.advanceTimersByTimeAsync(0);
+
+		expect(sessions.deleteSession).toHaveBeenCalledTimes(1);
+		expect(sessions.deleteSession).toHaveBeenCalledWith(first.id, expect.anything());
+		await expectHeld(second.id);
+	});
+
+	it('inserts a new session on the next beat and stops when a renewal never finishes', async () => {
+		vi.spyOn(Math, 'random').mockReturnValue(0.5);
+		sessions.renewLive.mockImplementation(async () => await new Promise<boolean>(() => {}));
+		await session.start();
+		const [first] = insertedSessions();
+		await vi.advanceTimersByTimeAsync(RENEW_SECONDS * 1000);
+		expect(sessions.renewLive).toHaveBeenCalledTimes(1);
+
+		now.mono += DEADLINE_MS + 1;
+		await vi.advanceTimersByTimeAsync(100);
+		expect(sessions.deleteSession).toHaveBeenCalledWith(first.id, expect.anything());
+
+		await vi.advanceTimersByTimeAsync(RENEW_SECONDS * 1000);
+
+		const [, second] = insertedSessions();
+		expect(second.id).not.toBe(first.id);
+		await expectHeld(second.id);
+		await expect(session.stop()).resolves.toBeUndefined();
+	});
+
+	it('renews a newer session while a renewal of a lost session never finishes', async () => {
+		vi.spyOn(Math, 'random').mockReturnValue(0.5);
+		sessions.renewLive.mockImplementationOnce(async () => await new Promise<boolean>(() => {}));
+		await session.start();
+		await vi.advanceTimersByTimeAsync(RENEW_SECONDS * 1000);
+		now.mono += DEADLINE_MS + 1;
+		await vi.advanceTimersByTimeAsync(100);
+		await session.ensureSession();
+		const [, second] = insertedSessions();
+
+		await vi.advanceTimersByTimeAsync(RENEW_SECONDS * 1000);
+
+		expect(sessions.renewLive).toHaveBeenLastCalledWith(
+			second.id,
+			LEASE_SECONDS,
+			expect.anything(),
+		);
+		expect(sessions.deleteSession).not.toHaveBeenCalledWith(second.id, expect.anything());
 	});
 
 	it('leaves the row alone when a renewal finishes after stop', async () => {
@@ -215,14 +400,7 @@ describe('LeaseSessionManager', () => {
 		expect(sessions.deleteSession).toHaveBeenCalledWith(first.id, expect.anything());
 	});
 
-	it('waits for the delete of the row of an insert that finishes during stop', async () => {
-		let finishInsert: () => void = () => {};
-		sessions.insertSession.mockImplementationOnce(
-			async () =>
-				await new Promise<void>((resolve) => {
-					finishInsert = resolve;
-				}),
-		);
+	it('waits for the delete of a lost session row when stopped', async () => {
 		let finishDelete: () => void = () => {};
 		sessions.deleteSession.mockImplementationOnce(
 			async () =>
@@ -230,17 +408,16 @@ describe('LeaseSessionManager', () => {
 					finishDelete = resolve;
 				}),
 		);
-		const starting = session.start();
-		await vi.advanceTimersByTimeAsync(0);
+		await session.start();
+		now.mono += DEADLINE_MS + 1;
+		await vi.advanceTimersByTimeAsync(100);
+		expect(sessions.deleteSession).toHaveBeenCalled();
 
 		let stopped = false;
 		const stopping = session.stop().then(() => {
 			stopped = true;
 		});
-		finishInsert();
-		await starting;
 		await vi.advanceTimersByTimeAsync(0);
-		expect(sessions.deleteSession).toHaveBeenCalled();
 		expect(stopped).toBe(false);
 
 		finishDelete();
@@ -258,6 +435,34 @@ describe('LeaseSessionManager', () => {
 			'Failed to delete lease session',
 			expect.objectContaining({ kind: 'test-kind' }),
 		);
+	});
+
+	it('moves the wall-clock deadline forward when a renewal succeeds', async () => {
+		vi.spyOn(Math, 'random').mockReturnValue(0.5);
+		await session.start();
+		const [first] = insertedSessions();
+		setClock(10_000);
+		await vi.advanceTimersByTimeAsync(RENEW_SECONDS * 1000);
+		expect(sessions.renewLive).toHaveBeenCalledTimes(1);
+
+		now.wall = START_WALL_MS + DEADLINE_MS + 1_000;
+		await vi.advanceTimersByTimeAsync(100);
+
+		await expectHeld(first.id);
+	});
+
+	it('loses the session when the wall clock passes the deadline of a successful renewal', async () => {
+		vi.spyOn(Math, 'random').mockReturnValue(0.5);
+		await session.start();
+		const [first] = insertedSessions();
+		setClock(10_000);
+		await vi.advanceTimersByTimeAsync(RENEW_SECONDS * 1000);
+		expect(sessions.renewLive).toHaveBeenCalledTimes(1);
+
+		now.wall = START_WALL_MS + 10_000 + DEADLINE_MS + 1;
+		await vi.advanceTimersByTimeAsync(100);
+
+		await expectLost(first.id);
 	});
 
 	it('starts no second renewal on a beat while a renewal of the same session is in flight', async () => {
@@ -288,6 +493,20 @@ describe('LeaseSessionManager', () => {
 
 		await expect(Promise.all([firstCall, secondCall])).resolves.toEqual([undefined, undefined]);
 		expect(sessions.insertSession).toHaveBeenCalledTimes(1);
+	});
+
+	it('keeps the session at the deadline and loses it one millisecond past', async () => {
+		await session.start();
+		const [first] = insertedSessions();
+
+		setClock(DEADLINE_MS);
+		await vi.advanceTimersByTimeAsync(100);
+		expect(sessions.deleteSession).not.toHaveBeenCalled();
+
+		setClock(DEADLINE_MS + 1);
+		await vi.advanceTimersByTimeAsync(100);
+
+		await expectLost(first.id);
 	});
 
 	it('rejects start, inserts no session and retries on the next beat when the kind insert fails', async () => {
