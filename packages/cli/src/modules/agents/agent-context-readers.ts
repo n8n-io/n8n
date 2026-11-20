@@ -23,7 +23,11 @@ export async function readAgentSkill(
 	const visibleReferences = references?.map((reference) => ({
 		path: reference.path,
 		characterCount: reference.content.length,
-		...(requestedPaths.has(reference.path) ? { content: reference.content } : {}),
+		...(reference.isBinary
+			? { isBinary: true }
+			: requestedPaths.has(reference.path)
+				? { content: reference.content }
+				: {}),
 	}));
 
 	return {

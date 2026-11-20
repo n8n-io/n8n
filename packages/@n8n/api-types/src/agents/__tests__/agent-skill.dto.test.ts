@@ -33,6 +33,10 @@ describe('agent skill DTOs', () => {
 					path: 'references/guide.md',
 					content: '# Guide',
 				},
+				{ path: 'reference/degraded/guide.md', content: '' },
+				{ path: 'scripts/example.py', content: 'print(1)' },
+				{ path: 'assets/logo.png', content: 'AP8=', isBinary: true },
+				{ path: 'LICENSE', content: 'MIT' },
 			],
 		});
 
@@ -80,6 +84,18 @@ describe('agent skill DTOs', () => {
 		}
 		expect(agentSkillReferencePathSchema.safeParse('references/a b.md').success).toBe(true);
 	});
+
+	it.each([
+		'../guide.md',
+		'docs/../guide.md',
+		'/guide.md',
+		'C:/guide.md',
+		'a\\b.md',
+		'a//b',
+		'SKILL.md',
+	])('rejects noncanonical or reserved path %s', (path) =>
+		expect(agentSkillReferencePathSchema.safeParse(path).success).toBe(false),
+	);
 
 	// The Agent Skills format allows descriptions of up to 1024 characters, so skills from
 	// GitHub fit without cuts.

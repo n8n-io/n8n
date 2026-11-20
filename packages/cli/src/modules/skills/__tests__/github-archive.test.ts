@@ -48,7 +48,7 @@ describe('readRepositoryArchive', () => {
 		expect(paths).toEqual(['file-0.txt', 'file-1.txt']);
 	});
 
-	it('keeps the text of SKILL.md files and references only', async () => {
+	it('keeps file bytes regardless of the path or extension', async () => {
 		const archive = await readRepositoryArchive(
 			streamOf(
 				archiveOf({
@@ -59,16 +59,18 @@ describe('readRepositoryArchive', () => {
 			),
 		);
 
-		expect([...archive.text]).toEqual([
-			['a/SKILL.md', 'skill'],
-			['a/references/x.md', 'reference'],
+		expect([...archive.files]).toEqual([
+			['a/SKILL.md', Buffer.from('skill')],
+			['a/references/x.md', Buffer.from('reference')],
+			['a/scripts/run.sh', Buffer.from('script')],
 		]);
 		expect(archiveSize(archive)).toBe(
 			'a/SKILL.md'.length +
 				'a/references/x.md'.length +
 				'a/scripts/run.sh'.length +
 				'skill'.length +
-				'reference'.length,
+				'reference'.length +
+				'script'.length,
 		);
 	});
 
@@ -124,7 +126,7 @@ describe('readRepositoryArchive', () => {
 		);
 
 		expect(archive.paths).toEqual(['a/SKILL.md', 'b/SKILL.md']);
-		expect([...archive.text.keys()]).toEqual(['a/SKILL.md']);
+		expect([...archive.files.keys()]).toEqual(['a/SKILL.md']);
 		expect([...archive.oversized]).toEqual([['b/SKILL.md', await sha256('x'.repeat(11))]]);
 	});
 
@@ -142,7 +144,7 @@ describe('readRepositoryArchive', () => {
 			);
 
 			expect(archive.paths).toEqual(['skills/a/SKILL.md']);
-			expect([...archive.text.keys()]).toEqual(['skills/a/SKILL.md']);
+			expect([...archive.files.keys()]).toEqual(['skills/a/SKILL.md']);
 		});
 
 		it('counts only the files under the folder toward the limits', async () => {

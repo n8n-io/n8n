@@ -13,7 +13,9 @@ const contentSchema = z.object({
 	description: z.string(),
 	instructions: z.string(),
 	frontmatter: z.record(z.unknown()).nullable(),
-	files: z.array(z.object({ path: z.string(), content: z.string() })),
+	files: z.array(
+		z.object({ path: z.string(), content: z.string(), isBinary: z.literal(true).optional() }),
+	),
 });
 
 const scanSchema = z.object({
@@ -45,10 +47,15 @@ export function pendingContent(link: SkillSourceLink): SkillContent | null {
 }
 
 /** Uses the scanner's file representation so findings retain their line and column offsets. */
-function filesOf(content: SkillContent): Map<string, string> {
+function filesOf(content: SkillContent): Map<string, { text: string; isBinary?: boolean }> {
 	return new Map([
-		[SKILL_MD, showHidden(skillMdText(content).text)],
-		...content.files.map(({ path, content: text }): [string, string] => [path, showHidden(text)]),
+		[SKILL_MD, { text: showHidden(skillMdText(content).text) }],
+		...content.files.map(
+			({ path, content: text, isBinary }): [string, { text: string; isBinary?: boolean }] => [
+				path,
+				isBinary ? { text: '', isBinary } : { text: showHidden(text) },
+			],
+		),
 	]);
 }
 
@@ -57,8 +64,9 @@ export function updateFiles(before: SkillContent, after: SkillContent): SkillUpd
 	const to = filesOf(after);
 	return [...new Set([...from.keys(), ...to.keys()])].map((path) => ({
 		path,
-		before: from.get(path) ?? '',
-		after: to.get(path) ?? '',
+		before: from.get(path)?.text ?? '',
+		after: to.get(path)?.text ?? '',
+		...(from.get(path)?.isBinary || to.get(path)?.isBinary ? { isBinary: true } : {}),
 		...(!from.has(path)
 			? { status: 'added' as const }
 			: !to.has(path)

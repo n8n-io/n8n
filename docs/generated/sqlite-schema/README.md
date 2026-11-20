@@ -155,7 +155,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [shared_knowledge_collection](shared_knowledge_collection.md) | 5 |  | table |
 | [shared_workflow](shared_workflow.md) | 5 |  | table |
 | [skill](skill.md) | 8 |  | table |
-| [skill_file](skill_file.md) | 5 |  | table |
+| [skill_file](skill_file.md) | 6 |  | table |
 | [skill_source](skill_source.md) | 15 |  | table |
 | [skill_source_link](skill_source_link.md) | 14 |  | table |
 | [skill_version](skill_version.md) | 12 |  | table |
@@ -2002,6 +2002,7 @@ erDiagram
 "skill_file" {
   TEXT content
   datetime_3_ createdAt
+  boolean isBinary
   varchar_512_ path PK
   varchar skillVersionId PK
   datetime_3_ updatedAt

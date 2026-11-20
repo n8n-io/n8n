@@ -343,7 +343,7 @@ export class SkillRepository {
 			availableToAssistant: Boolean(scope.assistantAvailableToAssistant),
 		};
 		const files = await this.table.manager.find(SkillFile, {
-			where: { skillVersionId: version.id },
+			where: { skillVersionId: version.id, isBinary: false },
 			select: { path: true },
 		});
 		files.sort((left, right) => compareSkillFilePaths(left.path, right.path));
@@ -365,6 +365,7 @@ export class SkillRepository {
 			.innerJoin(Skill, 'skill', 'skill.id = version.skillId')
 			.where('version.id = :versionId AND skill.id = :skillId', { versionId, skillId })
 			.andWhere('file.path = :path', { path })
+			.andWhere('file.isBinary = :isBinary', { isBinary: false })
 			.andWhere('skill.availableToAssistant = :enabled', { enabled: true })
 			.andWhere('(skill.projectId IS NULL OR skill.projectId = :projectId)', { projectId })
 			.addSelect('skill.projectId', 'assistantProjectId')
@@ -818,6 +819,7 @@ async function insertFiles(
 			skillVersionId,
 			path: file.path,
 			content: file.content,
+			isBinary: file.isBinary ?? false,
 		})),
 	);
 }

@@ -5,7 +5,7 @@ import {
 	ResourceNotFoundError,
 	ResourceTemplate,
 } from '@modelcontextprotocol/server';
-import { type AgentSkill, SKILLS_MAX_PAGE_SIZE } from '@n8n/api-types';
+import { type AgentSkill, type AgentSkillReference, SKILLS_MAX_PAGE_SIZE } from '@n8n/api-types';
 import { TelemetryProxy } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -63,16 +63,17 @@ function referenceList(references: AgentSkill['references'] = []): string {
 	return `\n\n## References\n\n${links.join('\n')}`;
 }
 
-function skillFiles(skill: AgentSkill, name: string) {
+function skillFiles(skill: AgentSkill, name: string): AgentSkillReference[] {
 	const skillMd = `---\nname: ${JSON.stringify(name)}\ndescription: ${JSON.stringify(skill.description)}\n---\n\n${skill.instructions}${referenceList(skill.references)}\n`;
 	return [{ path: SKILL_MD_PATH, content: skillMd }, ...(skill.references ?? [])];
 }
 
-function fileResource(uri: string, content: string) {
+function fileResource(uri: string, file: AgentSkillReference) {
+	const content = Buffer.from(file.content, file.isBinary ? 'base64' : 'utf8');
 	return {
 		uri,
-		digest: `sha256:${createHash('sha256').update(content, 'utf8').digest('hex')}`,
-		size: Buffer.byteLength(content, 'utf8'),
+		digest: `sha256:${createHash('sha256').update(content).digest('hex')}`,
+		size: content.length,
 	};
 }
 
@@ -80,7 +81,7 @@ export function toSkillEntry(skillId: string, skill: AgentSkill) {
 	const name = toSkillName(skill.name, skillId);
 	const root = `skill://${skillId}/${name}`;
 	const resources = skillFiles(skill, name).map((file) =>
-		fileResource(`${root}/${toUriPath(file.path)}`, file.content),
+		fileResource(`${root}/${toUriPath(file.path)}`, file),
 	);
 	const [skillMd] = resources;
 	return {
@@ -146,7 +147,15 @@ export class McpSkillExtensionService {
 						: {}),
 				});
 				return {
-					contents: [{ uri: uri.href, mimeType: 'text/markdown', text: file.content }],
+					contents: [
+						file.isBinary
+							? { uri: uri.href, mimeType: 'application/octet-stream', blob: file.content }
+							: {
+									uri: uri.href,
+									mimeType: /\.(md|markdown)$/i.test(file.path) ? 'text/markdown' : 'text/plain',
+									text: file.content,
+								},
+					],
 				};
 			},
 		);

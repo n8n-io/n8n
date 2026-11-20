@@ -12,6 +12,8 @@ export type DiffSection = DiffCount & {
 	/** `name`, `description`, `instructions`, or the path of a reference file. */
 	key: string;
 	lines: DiffLine[];
+	isFile?: true;
+	isBinary?: boolean;
 	/** Set for a reference file that only one version has. */
 	status?: FileStatus;
 };
@@ -25,17 +27,25 @@ function section(key: string, from: string, to: string): DiffSection {
 
 /** The fields of SKILL.md and every reference file that either version has. */
 export function diffSkills(from: AgentSkill, to: AgentSkill): DiffSection[] {
-	const fromFiles = new Map((from.references ?? []).map((file) => [file.path, file.content]));
-	const toFiles = new Map((to.references ?? []).map((file) => [file.path, file.content]));
+	const fromFiles = new Map((from.references ?? []).map((file) => [file.path, file]));
+	const toFiles = new Map((to.references ?? []).map((file) => [file.path, file]));
 	const paths = [...new Set([...fromFiles.keys(), ...toFiles.keys()])].sort();
 	return [
 		section('name', from.name, to.name),
 		section('description', from.description, to.description),
 		section('instructions', from.instructions, to.instructions),
-		...paths.map((path) => ({
-			...section(path, fromFiles.get(path) ?? '', toFiles.get(path) ?? ''),
-			...fileStatus(fromFiles.has(path), toFiles.has(path)),
-		})),
+		...paths.map((path): DiffSection => {
+			const before = fromFiles.get(path);
+			const after = toFiles.get(path);
+			const isBinary = before?.isBinary || after?.isBinary;
+			return {
+				...(isBinary
+					? { key: path, lines: [], added: 0, removed: 0, isBinary }
+					: section(path, before?.content ?? '', after?.content ?? '')),
+				...fileStatus(!!before, !!after),
+				isFile: true,
+			};
+		}),
 	];
 }
 
@@ -47,16 +57,15 @@ function fileStatus(inFrom: boolean, inTo: boolean): { status?: FileStatus } {
 
 /** Lines added and removed in each file, keyed by path, for the file list. */
 export function countsByFile(sections: DiffSection[]): Record<string, FileChange> {
-	const counts: Record<string, FileChange> = { [SKILL_FILE]: { added: 0, removed: 0 } };
-	for (const { key, added, removed, status } of sections) {
-		const path =
-			key === 'name' || key === 'description' || key === 'instructions' ? SKILL_FILE : key;
-		const count = counts[path] ?? { added: 0, removed: 0 };
-		counts[path] = {
+	const counts = new Map<string, FileChange>([[SKILL_FILE, { added: 0, removed: 0 }]]);
+	for (const { key, added, removed, status, isFile } of sections) {
+		const path = isFile ? key : SKILL_FILE;
+		const count = counts.get(path) ?? { added: 0, removed: 0 };
+		counts.set(path, {
 			added: count.added + added,
 			removed: count.removed + removed,
 			...(status ? { status } : {}),
-		};
+		});
 	}
-	return counts;
+	return Object.fromEntries(counts);
 }

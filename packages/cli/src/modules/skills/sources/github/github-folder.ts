@@ -2,12 +2,7 @@ import { createHash } from 'node:crypto';
 import type { Readable } from 'node:stream';
 import { z } from 'zod';
 
-import {
-	archiveTooLarge,
-	keepsText,
-	type ArchiveLimits,
-	type RepositoryArchive,
-} from './github-archive';
+import { archiveTooLarge, type ArchiveLimits, type RepositoryArchive } from './github-archive';
 import { SKILL_FILE } from './skill-discovery';
 import { SkillSourceReadError } from '../../errors/skill-source-read.error';
 
@@ -41,7 +36,7 @@ export async function readRepositoryFolder(
 	getFile: (path: string, sha: string) => Promise<Buffer>,
 	streamFile: (path: string, sha: string) => Promise<Readable>,
 ): Promise<RepositoryArchive> {
-	const result: RepositoryArchive = { paths: [], text: new Map(), oversized: new Map() };
+	const result: RepositoryArchive = { paths: [], files: new Map(), oversized: new Map() };
 	if (!objectId.safeParse(revision).success) throw unreadable();
 
 	const tree = async (sha: string, recursive = false) => {
@@ -66,6 +61,7 @@ export async function readRepositoryFolder(
 	let bytes = 0;
 	let textBytes = 0;
 	const reads: Array<{ path: string; sha: string; size: number; oversized: boolean }> = [];
+	const blobs = new Map<string, { sha: string; size: number }>();
 	for (const entry of entries) {
 		// Git stores symlinks as blobs too. Read only regular files.
 		if (entry.type !== 'blob' || (entry.mode !== '100644' && entry.mode !== '100755')) continue;
@@ -76,7 +72,11 @@ export async function readRepositoryFolder(
 
 		const path = `${root}/${entry.path}`;
 		result.paths.push(path);
-		if (!keepsText(path)) continue;
+		blobs.set(path, { sha: entry.sha, size });
+	}
+	// Only fetch files owned by a skill. The tree can also contain unrelated repository data.
+	for (const [path, { sha, size }] of blobs) {
+		if (!insideSkill(path, root, blobs)) continue;
 		const oversized = size > limits.maxTextFileBytes;
 		if (oversized && !path.endsWith(`/${SKILL_FILE}`)) {
 			result.oversized.set(path, null);
@@ -84,7 +84,7 @@ export async function readRepositoryFolder(
 		}
 		if (!oversized) textBytes += size;
 		if (textBytes > limits.maxTextBytes) throw archiveTooLarge(root);
-		reads.push({ path, sha: entry.sha, size, oversized });
+		reads.push({ path, sha, size, oversized });
 	}
 
 	for (let i = 0; i < reads.length; i += FILE_BATCH_SIZE) {
@@ -97,11 +97,22 @@ export async function readRepositoryFolder(
 				}
 				const content = await getFile(path, sha);
 				if (content.length !== size) throw unreadable();
-				result.text.set(path, content.toString('utf8'));
+				result.files.set(path, content);
 			}),
 		);
 	}
 	return result;
+}
+
+function insideSkill(path: string, root: string, blobs: ReadonlyMap<string, unknown>): boolean {
+	for (
+		let slash = path.lastIndexOf('/');
+		slash >= root.length;
+		slash = path.lastIndexOf('/', slash - 1)
+	) {
+		if (blobs.has(`${path.slice(0, slash)}/${SKILL_FILE}`)) return true;
+	}
+	return false;
 }
 
 async function hashSkill(source: Readable, size: number): Promise<string> {

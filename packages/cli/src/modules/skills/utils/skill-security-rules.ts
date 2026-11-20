@@ -25,8 +25,9 @@ const FRONTMATTER_MAX_LENGTH = 16_384;
 export type SkillScanInput = {
 	content: SkillContent;
 	skippedFiles: string[];
-	/** The skipped files that n8n cannot store, such as a reference with a NUL character. */
+	/** The skipped files that n8n cannot store. */
 	unstorableFiles?: string[];
+	oversizedFiles?: string[];
 	fidelity: SkillSourceFidelityWarning[];
 	/** The content of the latest version. Null at import. */
 	previous: SkillContent | null;
@@ -60,38 +61,34 @@ export function checkShape({ content }: SkillScanInput): SkillScanFinding[] {
 	return findings;
 }
 
-/**
- * A skill keeps only SKILL.md and `references/*.md`. The SKILL.md reader leaves out every other
- * file, scripts and binaries included, so n8n never stores or runs them. The user sees the list,
- * and a left-out script or code file needs review.
- */
+/** The user sees why a file was left out. A missing script or code file needs review. */
 export function listSkippedFiles({
 	skippedFiles,
 	unstorableFiles = [],
+	oversizedFiles = [],
 }: SkillScanInput): SkillScanFinding[] {
-	return skippedFiles.map((file) =>
-		unstorableFiles.includes(file)
-			? {
-					rule: 'file_unstorable',
-					severity: 'info',
-					file,
-					detail: 'n8n leaves this file out. It has a NUL character, which n8n cannot store.',
-				}
-			: isScriptFile(file)
-				? {
-						rule: 'file_skipped',
-						severity: 'needs_review',
-						file,
-						detail:
-							'n8n leaves this script out. A skill that runs it can stop working. A skill keeps only SKILL.md and references/*.md.',
-					}
-				: {
-						rule: 'file_skipped',
-						severity: 'info',
-						file,
-						detail: 'n8n leaves this file out. A skill keeps only SKILL.md and references/*.md.',
-					},
-	);
+	const unstorable = new Set(unstorableFiles);
+	const oversized = new Set(oversizedFiles);
+	return skippedFiles.map((file) => {
+		const severity = isScriptFile(file) ? 'needs_review' : 'info';
+		if (unstorable.has(file)) {
+			return {
+				rule: 'file_unstorable',
+				severity,
+				file,
+				detail: 'n8n cannot store this file path.',
+			};
+		}
+		if (oversized.has(file)) {
+			return {
+				rule: 'file_too_large',
+				severity,
+				file,
+				detail: 'The file exceeds the download size limit.',
+			};
+		}
+		return { rule: 'file_skipped', severity, file, detail: 'n8n left this file out.' };
+	});
 }
 
 export function findHiddenUnicode(input: SkillScanInput): SkillScanFinding[] {
@@ -107,6 +104,23 @@ export function findHiddenUnicode(input: SkillScanInput): SkillScanFinding[] {
 				file,
 				detail: `${found.length} invisible or control characters. The first is ${codePointOf(found[0])}.`,
 				...(first ? { location: first.locate(index, index + found[0].length) } : {}),
+			},
+		];
+	});
+}
+
+export function findScriptChanges({ content, previous }: SkillScanInput): SkillScanFinding[] {
+	const before = new Map(previous?.files.map((file) => [file.path, file]));
+	return content.files.flatMap(({ path, content: text, isBinary }) => {
+		if (!isScriptFile(path) && !path.startsWith('scripts/')) return [];
+		const old = before.get(path);
+		if (old?.content === text && old.isBinary === isBinary) return [];
+		return [
+			{
+				rule: 'script_file',
+				severity: 'needs_review',
+				file: path,
+				detail: 'Review this script before you use the skill.',
 			},
 		];
 	});
@@ -286,15 +300,17 @@ function textsByFile(content: SkillContent): Array<{ file: string; texts: ScanTe
 				inSkillMd(content.instructions, md.instructions),
 			],
 		},
-		...content.files.map((file) => ({
-			file: file.path,
-			texts: [
-				{
-					text: file.content,
-					locate: (start: number, end: number) => locate(file.content, start, end),
-				},
-			],
-		})),
+		...content.files
+			.filter((file) => !file.isBinary)
+			.map((file) => ({
+				file: file.path,
+				texts: [
+					{
+						text: file.content,
+						locate: (start: number, end: number) => locate(file.content, start, end),
+					},
+				],
+			})),
 	];
 }
 

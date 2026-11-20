@@ -55,12 +55,14 @@ describe('SkillSecurityScanner', () => {
 		it.each([
 			{ case: 'a name of only spaces', content: skill({ name: '   ' }) },
 			{
-				case: 'an empty reference file',
-				content: skill({ files: [{ path: 'references/a.md', content: '' }] }),
+				case: 'a noncanonical file path',
+				content: skill({ files: [{ path: '../a.md', content: '' }] }),
 			},
 			{
-				case: 'a reference outside references/',
-				content: skill({ files: [{ path: 'docs/a.md', content: 'a' }] }),
+				case: 'invalid binary file data',
+				content: skill({
+					files: [{ path: 'assets/logo.png', content: 'not base64', isBinary: true }],
+				}),
 			},
 		])('blocks $case', ({ content }) => {
 			const result = scanner.scan(fetched(content));
@@ -205,10 +207,10 @@ describe('SkillSecurityScanner', () => {
 				codePoint: 'U+001B',
 			},
 			{
-				case: 'binary content in a reference',
-				content: skill({ files: [{ path: 'references/a.md', content: 'PNG\u0000\u0001' }] }),
+				case: 'a control character in a text file',
+				content: skill({ files: [{ path: 'references/a.md', content: 'A\u0001' }] }),
 				file: 'references/a.md',
-				codePoint: 'U+0000',
+				codePoint: 'U+0001',
 			},
 			{
 				case: 'an invisible musical format character in a reference',

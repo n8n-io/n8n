@@ -8,6 +8,9 @@ import {
 } from '@n8n/api-types';
 
 import AgentSkillViewer from '../components/AgentSkillViewer.vue';
+import { saveAs } from 'file-saver';
+
+vi.mock('file-saver', () => ({ saveAs: vi.fn() }));
 
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
@@ -47,6 +50,31 @@ const N8nFormInputStub = defineComponent({
 });
 
 describe('AgentSkillViewer', () => {
+	it('shows script files as plain text and offers binary assets for download', async () => {
+		const wrapper = mountViewer({
+			readOnly: true,
+			skill: {
+				name: 'Research',
+				description: 'Use for research',
+				instructions: 'Main body',
+				references: [
+					{ path: 'scripts/example.js', content: 'const label = "<b>Example</b>";' },
+					{ path: 'assets/logo.png', content: 'AP8K', isBinary: true },
+				],
+			},
+			selectedPath: 'scripts/example.js',
+		});
+
+		expect(wrapper.get('pre').text()).toBe('const label = "<b>Example</b>";');
+		await wrapper.setProps({ selectedPath: 'assets/logo.png' });
+		expect(wrapper.text()).not.toContain('AP8K');
+		await wrapper.get('button').trigger('click');
+		expect(saveAs).toHaveBeenCalledWith(
+			expect.objectContaining({ name: 'logo.png', size: 3 }),
+			'logo.png',
+		);
+	});
+
 	it('renames the selected reference without changing its directory', async () => {
 		const wrapper = mountViewer({
 			skill: {

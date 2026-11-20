@@ -164,7 +164,7 @@ async function loadSkill(
 
 	const loadMainSkill = isMainSkillFilePath(filePath);
 	if (!loadMainSkill) {
-		const linkedFilePath = filePath ?? '';
+		const linkedFilePath = (filePath ?? '').replace(/^(\.\/)+/, '');
 		const linkedFile = findRegisteredLinkedFile(skillEntry.linkedFiles, linkedFilePath);
 		if (!linkedFile) {
 			return {

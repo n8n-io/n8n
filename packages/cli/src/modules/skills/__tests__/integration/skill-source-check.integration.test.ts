@@ -468,6 +468,26 @@ describe('Skill source checks', () => {
 			expect((await sourceOf(sourceId)).unlinkedSkills).toEqual([]);
 		});
 
+		it('preserves binary files when accepting a synced update', async () => {
+			const { sourceId, docx } = await importAll();
+			const path = 'assets/logo.png';
+			const bytes = 'PNG\0data';
+			pushChange({ [`skills/docx/${path}`]: bytes });
+			await sync().checkAll();
+			const { skillId, contentHash, baseVersionId } = (await review(sourceId)).updates[0];
+			await editor
+				.post(`/skill-sources/${sourceId}/updates/accept`)
+				.send({ updates: [{ skillId, contentHash, baseVersionId }] })
+				.expect(200);
+
+			const detail = await Container.get(SkillService).get(memberUser, docx);
+			expect(detail.skill.references).toContainEqual({
+				path,
+				content: Buffer.from(bytes).toString('base64'),
+				isBinary: true,
+			});
+		});
+
 		describe.each(['success', 'failure'] as const)('review telemetry on %s', (status) => {
 			it.each([
 				['one update', true, false, false, false],

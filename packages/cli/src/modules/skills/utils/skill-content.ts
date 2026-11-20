@@ -135,7 +135,7 @@ export function toSkillContent(skill: AgentSkill, frontmatter: SkillFrontmatter 
 		description: skill.description,
 		instructions: skill.instructions,
 		frontmatter: frontmatter && Object.keys(frontmatter).length > 0 ? { ...frontmatter } : null,
-		files: (skill.references ?? []).map(({ path, content: text }) => ({ path, content: text })),
+		files: skill.references ?? [],
 	};
 	return content;
 }
@@ -171,7 +171,9 @@ export function rowContent(row: ResolvedSkillRow): SkillContent {
 		description: row.version.description,
 		instructions: row.version.instructions,
 		frontmatter: row.version.frontmatter,
-		files: row.files.map(({ path, content }) => ({ path, content })),
+		files: row.files.map(({ path, content, isBinary }) =>
+			isBinary ? { path, content, isBinary: true } : { path, content },
+		),
 	};
 }
 
@@ -181,9 +183,7 @@ export function contentToAgentSkill(content: SkillContent): AgentSkill {
 		name: content.name,
 		description: content.description,
 		instructions: content.instructions,
-		...(content.files.length
-			? { references: content.files.map(({ path, content: text }) => ({ path, content: text })) }
-			: {}),
+		...(content.files.length ? { references: content.files } : {}),
 	};
 }
 

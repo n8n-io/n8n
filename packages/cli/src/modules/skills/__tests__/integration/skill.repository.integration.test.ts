@@ -121,7 +121,10 @@ describe('SkillRepository', () => {
 			content({
 				name: 'Updated',
 				instructions: 'Updated instructions.',
-				files: [{ path: 'references/style.md', content: 'Style guide.' }],
+				files: [
+					{ path: 'assets/logo.png', content: 'AP8=', isBinary: true },
+					{ path: 'reference/degraded/style.md', content: 'Style guide.' },
+				],
 			}),
 			null,
 		);
@@ -141,7 +144,16 @@ describe('SkillRepository', () => {
 		expect(await skills.findAssistantSkill(scoped, project.id)).toMatchObject({
 			skill: { id: scoped, projectId: project.id },
 			version: { id: versionId, version: 2, instructions: 'Updated instructions.' },
-			files: [{ path: 'references/style.md' }],
+			files: [{ path: 'reference/degraded/style.md' }],
+		});
+		const context = { user: owner, projectId: project.id };
+		expect(
+			await assistantSkills.readFile(context, scoped, versionId, 'assets/logo.png'),
+		).toBeNull();
+		expect(
+			await assistantSkills.readFile(context, scoped, versionId, 'reference/degraded/style.md'),
+		).toMatchObject({
+			content: 'Style guide.',
 		});
 		expect(await skills.findAssistantSkill(instance, null)).toMatchObject({
 			skill: { id: instance, projectId: null },

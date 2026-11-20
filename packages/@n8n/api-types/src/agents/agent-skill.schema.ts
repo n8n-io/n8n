@@ -1,42 +1,60 @@
 import { z } from 'zod';
 
 export const AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH = 65_536;
-export const AGENT_SKILL_REFERENCE_MAX_COUNT = 20;
-export const AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH = 65_536;
-export const AGENT_SKILL_REFERENCES_TOTAL_MAX_LENGTH = 262_144;
+export const AGENT_SKILL_REFERENCE_MAX_COUNT = 500;
+export const AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH = 1024 * 1024;
+export const AGENT_SKILL_BINARY_CONTENT_MAX_LENGTH =
+	4 * Math.ceil(AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH / 3);
+export const AGENT_SKILL_REFERENCES_TOTAL_MAX_LENGTH = 2 * 1024 * 1024;
 
 const agentSkillStringArraySchema = z.array(z.string().trim().min(1));
 
-const agentSkillReferenceSchema = z
-	.object({
-		path: z
-			.string()
-			.min(1)
-			.max(512)
-			.refine((path) => {
-				const normalized = path.replaceAll('\\', '/');
-				const segments = normalized.split('/');
-				return (
-					path === normalized &&
-					// No control characters, such as NUL, which Postgres cannot store.
-					// eslint-disable-next-line no-control-regex
-					!/[\u0000-\u001f\u007f]/.test(path) &&
-					normalized.startsWith('references/') &&
-					(normalized.endsWith('.md') || normalized.endsWith('.markdown')) &&
-					segments.every((segment) => segment !== '' && segment !== '.' && segment !== '..')
-				);
-			}, 'Reference path must be a markdown file under references/'),
-		content: z
-			.string()
-			.min(1)
-			.max(
-				AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH,
-				`Reference content must be ${AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH} characters or fewer`,
-			),
-	})
-	.strict();
+export const agentSkillReferencePathSchema = z
+	.string()
+	.min(1)
+	.max(512)
+	.refine((path) => {
+		const normalized = path.replaceAll('\\', '/');
+		const segments = normalized.split('/');
+		return (
+			path === normalized &&
+			// No control characters, such as NUL, which Postgres cannot store.
+			// eslint-disable-next-line no-control-regex
+			!/[\u0000-\u001f\u007f]/.test(path) &&
+			path !== 'SKILL.md' &&
+			!/^[A-Za-z]:/.test(path) &&
+			segments.every((segment) => segment !== '' && segment !== '.' && segment !== '..')
+		);
+	}, 'Use a relative file path within the skill folder');
 
-export const agentSkillReferencePathSchema = agentSkillReferenceSchema.shape.path;
+const base64Schema = z.string().base64();
+
+export const agentSkillReferenceSchema = z
+	.object({
+		path: agentSkillReferencePathSchema,
+		content: z.string(),
+		/** When set, content holds the file bytes as Base64. Otherwise, content is UTF-8 text. */
+		isBinary: z.literal(true).optional(),
+	})
+	.strict()
+	.superRefine(({ content, isBinary }, ctx) => {
+		const maximum = isBinary
+			? AGENT_SKILL_BINARY_CONTENT_MAX_LENGTH
+			: AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH;
+		if (content.length > maximum) {
+			ctx.addIssue({
+				code: 'too_big',
+				type: 'string',
+				maximum,
+				inclusive: true,
+				path: ['content'],
+			});
+		} else if (isBinary ? !base64Schema.safeParse(content).success : content.includes('\0')) {
+			ctx.addIssue({ code: 'custom', message: 'Invalid file contents', path: ['content'] });
+		}
+	});
+
+export type AgentSkillReference = z.infer<typeof agentSkillReferenceSchema>;
 
 const agentSkillReferencesSchema = z
 	.array(agentSkillReferenceSchema)

@@ -399,14 +399,15 @@ describe('GitHubSkillSourceClient', () => {
 			},
 		);
 
-		it('keeps references and lists the files that a skill cannot hold', async () => {
+		it('keeps references and scripts at their original paths', async () => {
 			const locator = await client.parseLocator('https://github.com/acme/skills');
 			const fetched = await client.fetchLatest(locator, { path: 'skills/pdf' });
 
 			expect(fetched.content.files).toEqual([
 				{ path: 'references/pages.md', content: '# Pages\n' },
+				{ path: 'scripts/split.py', content: 'print(1)\n' },
 			]);
-			expect(fetched.skippedFiles).toEqual(['scripts/split.py']);
+			expect(fetched.skippedFiles).toEqual([]);
 			expect(client.webUrl(locator, { path: 'skills/pdf' })).toBe(
 				'https://github.com/acme/skills/tree/main/skills/pdf',
 			);
@@ -461,6 +462,7 @@ describe('GitHubSkillSourceClient', () => {
 		it('reads only the linked folder at the selected commit when the repository archive is too large', async () => {
 			const files = {
 				'.agents/skill set/pdf/SKILL.md': skillMd('pdf'),
+				'.agents/skill set/pdf/assets/form.pdf': '%PDF\0data',
 				'.agents/skill set/pdf/references/page #1.md': '# Page\n',
 				'.agents/skill set/pdf/references/large.md': 'x'.repeat(201),
 				'.agents/skill set/pdf/scripts/split.py': 'print(1)\n',
@@ -489,15 +491,21 @@ describe('GitHubSkillSourceClient', () => {
 			expect(fetched.revision).toBe(original);
 			expect(fetched.content.instructions).toBe('Follow pdf.');
 			expect(fetched.content.files).toEqual([
+				{
+					path: 'assets/form.pdf',
+					content: Buffer.from('%PDF\0data').toString('base64'),
+					isBinary: true,
+				},
 				{ path: 'references/page #1.md', content: '# Page\n' },
+				{ path: 'scripts/split.py', content: 'print(1)\n' },
 			]);
-			expect(fetched.skippedFiles).toEqual(['scripts/split.py', 'references/large.md']);
-			expect(github.requests).toEqual({ refs: 2, archives: 0, trees: 3, files: 2 });
+			expect(fetched.skippedFiles).toEqual(['references/large.md']);
+			expect(github.requests).toEqual({ refs: 2, archives: 0, trees: 3, files: 4 });
 
 			// A cold cache must also read the selected revision, even after the branch changes.
 			const fresh = clientWithLimits(limits);
 			expect(await fresh.fetchLatest(folder, items[0], undefined, revision)).toEqual(fetched);
-			expect(github.requests).toEqual({ refs: 2, archives: 0, trees: 6, files: 4 });
+			expect(github.requests).toEqual({ refs: 2, archives: 0, trees: 6, files: 8 });
 		});
 
 		it.each([false, true])('hashes an oversized SKILL.md (private: %s)', async (privately) => {

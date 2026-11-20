@@ -2,6 +2,7 @@
 import { computed, reactive, ref, watch } from 'vue';
 import {
 	AGENT_SKILL_DESCRIPTION_MAX_LENGTH,
+	AGENT_SKILL_BINARY_CONTENT_MAX_LENGTH,
 	AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
 	AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH,
 	AGENT_SKILL_REFERENCE_MAX_COUNT,
@@ -9,6 +10,7 @@ import {
 } from '@n8n/api-types';
 import {
 	N8nFormInput,
+	N8nButton,
 	N8nInputLabel,
 	N8nMarkdown,
 	N8nMarkdownEditor,
@@ -16,6 +18,8 @@ import {
 } from '@n8n/design-system';
 import type { IValidator, Validatable } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import { saveAs } from 'file-saver';
+import { base64ToFile } from '@/app/utils/fileUtils';
 
 import type { Rule, RuleGroup } from '@/Interface';
 import type { AgentSkill, AgentSkillReference } from '../types';
@@ -82,11 +86,13 @@ const instructionsValid = computed(
 	() => Boolean((props.skill.instructions ?? '').trim()) && !instructionsError.value,
 );
 const referenceLength = (reference: AgentSkillReference) => reference.content.length;
+const referenceLimit = (reference: AgentSkillReference) =>
+	reference.isBinary
+		? AGENT_SKILL_BINARY_CONTENT_MAX_LENGTH
+		: AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH;
 const invalidReferences = computed(() =>
 	(props.skill.references ?? []).filter(
-		(reference) =>
-			!reference.content.trim() ||
-			referenceLength(reference) > AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH,
+		(reference) => referenceLength(reference) > referenceLimit(reference),
 	),
 );
 const totalReferenceLength = computed(() =>
@@ -130,6 +136,24 @@ const isSkillFileSelected = computed(() => props.selectedPath === SKILL_FILE);
 const selectedReference = computed(() =>
 	(props.skill.references ?? []).find((reference) => reference.path === props.selectedPath),
 );
+const selectedReferenceCanRename = computed(
+	() =>
+		!!selectedReference.value &&
+		!selectedReference.value.isBinary &&
+		/^references\/[A-Za-z0-9 _-]+\.md$/.test(selectedReference.value.path),
+);
+const selectedReferenceIsMarkdown = computed(() => /\.(md|markdown)$/i.test(props.selectedPath));
+const selectedReferenceIsEditable = computed(
+	() => selectedReferenceIsMarkdown.value && !selectedReference.value?.isBinary,
+);
+
+function downloadBinaryFile() {
+	const file = selectedReference.value;
+	if (!file?.isBinary) return;
+	const name = file.path.split('/').at(-1) ?? file.path;
+	saveAs(base64ToFile(file.content, name, 'application/octet-stream'), name);
+}
+
 const selectedReferenceCharacterCount = computed(() =>
 	i18n.baseText('agents.builder.skills.references.characterCount' as BaseTextKey, {
 		interpolate: {
@@ -144,9 +168,7 @@ const selectedReferenceCharacterCount = computed(() =>
 const selectedReferenceError = computed(() => {
 	const reference = selectedReference.value;
 	if (!reference) return '';
-	if (!reference.content.trim())
-		return i18n.baseText('agents.builder.skills.references.contentRequired');
-	if (referenceLength(reference) > AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH) {
+	if (referenceLength(reference) > referenceLimit(reference)) {
 		return i18n.baseText('agents.builder.skills.references.contentMaxLength', {
 			interpolate: { max: AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH.toLocaleString() },
 		});
@@ -160,15 +182,10 @@ const referencesError = computed(() => {
 	// Name the file, so the user knows which reference blocks the save.
 	const [first] = invalidReferences.value;
 	if (!first) return i18n.baseText('agents.builder.skills.references.invalidSummary');
-	if (!first.content.trim()) {
-		return i18n.baseText('agents.builder.skills.references.emptyFile', {
-			interpolate: { path: first.path },
-		});
-	}
 	return i18n.baseText('agents.builder.skills.references.tooLongFile', {
 		interpolate: {
 			path: first.path,
-			max: AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH.toLocaleString(),
+			max: referenceLimit(first).toLocaleString(),
 		},
 	});
 });
@@ -282,53 +299,67 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 
 <template>
 	<div :class="$style.panel" data-testid="agent-skill-viewer">
-		<template v-if="props.readOnly">
-			<template v-if="isSkillFileSelected">
-				<N8nInputLabel
-					:class="$style.readOnlyField"
-					:label="i18n.baseText('agents.builder.skills.description.label')"
-					size="medium"
-					color="text-light"
-				>
-					<N8nText
-						tag="p"
-						color="text-base"
-						:class="$style.readOnlyText"
-						data-testid="agent-skill-description-text"
-						>{{ props.skill.description }}</N8nText
-					>
-				</N8nInputLabel>
-				<N8nInputLabel
-					:class="$style.readOnlyField"
-					:label="i18n.baseText('agents.builder.skills.instructions.label')"
-					size="medium"
-					color="text-light"
-				>
-					<N8nMarkdown
-						:class="$style.readOnlyMarkdown"
-						:options="READ_ONLY_MARKDOWN_OPTIONS"
-						:content="props.skill.instructions"
-						data-testid="agent-skill-instructions-text"
-					/>
-				</N8nInputLabel>
-			</template>
+		<template v-if="props.readOnly && isSkillFileSelected">
 			<N8nInputLabel
-				v-else-if="selectedReference"
 				:class="$style.readOnlyField"
-				:label="selectedReference.path"
+				:label="i18n.baseText('agents.builder.skills.description.label')"
+				size="medium"
+				color="text-light"
+			>
+				<N8nText
+					tag="p"
+					color="text-base"
+					:class="$style.readOnlyText"
+					data-testid="agent-skill-description-text"
+					>{{ props.skill.description }}</N8nText
+				>
+			</N8nInputLabel>
+			<N8nInputLabel
+				:class="$style.readOnlyField"
+				:label="i18n.baseText('agents.builder.skills.instructions.label')"
 				size="medium"
 				color="text-light"
 			>
 				<N8nMarkdown
 					:class="$style.readOnlyMarkdown"
 					:options="READ_ONLY_MARKDOWN_OPTIONS"
-					:content="selectedReference.content"
-					data-testid="agent-skill-reference-text"
+					:content="props.skill.instructions"
+					data-testid="agent-skill-instructions-text"
 				/>
 			</N8nInputLabel>
 		</template>
+		<N8nInputLabel
+			v-else-if="selectedReference && (props.readOnly || !selectedReferenceIsEditable)"
+			:class="$style.readOnlyField"
+			:label="selectedReference.path"
+			size="medium"
+			color="text-light"
+		>
+			<template v-if="selectedReference.isBinary">
+				<N8nText size="small">{{ i18n.baseText('agents.builder.skills.files.binary') }}</N8nText>
+				<N8nButton
+					variant="outline"
+					size="small"
+					icon="download"
+					:class="$style.download"
+					@click="downloadBinaryFile"
+				>
+					{{ i18n.baseText('agents.builder.skills.files.download') }}
+				</N8nButton>
+			</template>
+			<N8nMarkdown
+				v-else-if="selectedReferenceIsMarkdown"
+				:class="$style.readOnlyMarkdown"
+				:options="READ_ONLY_MARKDOWN_OPTIONS"
+				:content="selectedReference.content"
+				data-testid="agent-skill-reference-text"
+			/>
+			<pre v-else :class="$style.readOnlyText" data-testid="agent-skill-reference-text">{{
+				selectedReference.content
+			}}</pre>
+		</N8nInputLabel>
 
-		<template v-else-if="isSkillFileSelected">
+		<template v-else-if="!props.readOnly && isSkillFileSelected">
 			<!-- A form-level notice, above the fields, so it does not read as an error of the first one. -->
 			<N8nText
 				v-if="referencesError"
@@ -392,8 +423,8 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 			</div>
 		</template>
 
-		<template v-else-if="selectedReference">
-			<div :class="$style.field">
+		<template v-else-if="!props.readOnly && selectedReference">
+			<div v-if="selectedReferenceCanRename" :class="$style.field">
 				<N8nFormInput
 					:model-value="referenceFileName"
 					:label="i18n.baseText('agents.builder.skills.references.name.label')"
@@ -411,10 +442,10 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 					@validate="onReferenceNameValidate"
 				/>
 			</div>
+			<N8nText v-else size="small" color="text-light">{{ selectedReference.path }}</N8nText>
 			<N8nInputLabel
 				:class="$style.editorLabel"
 				:label="i18n.baseText('agents.builder.skills.references.content.label')"
-				:required="true"
 				size="small"
 			>
 				<N8nMarkdownEditor
@@ -463,6 +494,11 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 	margin: 0;
 	line-height: var(--line-height--xl);
 	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+}
+
+.download {
+	align-self: flex-start;
 }
 
 .panel .readOnlyMarkdown {

@@ -89,7 +89,7 @@ describe('findSkillFolders', () => {
 });
 
 describe('filesOfSkill', () => {
-	it('lists the files of the folder without the skills nested in it', () => {
+	it('lists all files in the selected folder', () => {
 		const paths = [
 			'a/SKILL.md',
 			'a/references/x.md',
@@ -100,13 +100,14 @@ describe('filesOfSkill', () => {
 			'ab/SKILL.md',
 		];
 
-		expect(filesOfSkill(paths, 'a')).toEqual(['SKILL.md', 'references/x.md', 'scripts/run.sh']);
+		expect(filesOfSkill(paths, 'a')).toEqual(paths.slice(0, -1).map((path) => path.slice(2)));
 	});
 
 	it('lists the files of a skill at the root', () => {
 		expect(filesOfSkill(['SKILL.md', 'references/x.md', 'other/SKILL.md'], '')).toEqual([
 			'SKILL.md',
 			'references/x.md',
+			'other/SKILL.md',
 		]);
 	});
 });

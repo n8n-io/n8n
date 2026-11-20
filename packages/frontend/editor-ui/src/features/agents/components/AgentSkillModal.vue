@@ -8,6 +8,7 @@ import {
 	AGENT_SKILL_DESCRIPTION_MAX_LENGTH,
 	AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
 	AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH,
+	AGENT_SKILL_BINARY_CONTENT_MAX_LENGTH,
 	AGENT_SKILL_REFERENCE_MAX_COUNT,
 	skillNameKey,
 	type AgentSkillAvailability,
@@ -854,20 +855,19 @@ const validationErrors = computed<Partial<Record<keyof AgentSkill, string>>>(() 
 			interpolate: { max: AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH.toLocaleString() },
 		});
 	}
-	if (skill.value.references?.some((reference) => !reference.content.trim())) {
-		errors.references = i18n.baseText('agents.builder.skills.references.invalidSummary');
-	}
 
 	return errors;
 });
 
-/** Reference files that block a save: empty, or longer than the limit. */
+/** Files that block a save because their content is over the limit. */
 const invalidReferencePaths = computed(() =>
 	(skill.value.references ?? [])
 		.filter(
 			(reference) =>
-				!reference.content.trim() ||
-				reference.content.length > AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH,
+				reference.content.length >
+				(reference.isBinary
+					? AGENT_SKILL_BINARY_CONTENT_MAX_LENGTH
+					: AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH),
 		)
 		.map((reference) => reference.path),
 );

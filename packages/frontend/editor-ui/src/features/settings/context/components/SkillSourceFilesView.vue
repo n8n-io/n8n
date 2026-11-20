@@ -44,10 +44,12 @@ function fileUrl(path: string): string {
 /** The skipped files, each with why n8n leaves it out. */
 const skippedFiles = computed(() =>
 	props.skill.skippedFiles.map((path) => {
-		const unstorable = findings.value.some(
-			(finding) => finding.rule === 'file_unstorable' && finding.file === path,
+		const finding = findings.value.find(
+			({ file, rule }) =>
+				file === path &&
+				(rule === 'file_unstorable' || rule === 'file_too_large' || rule === 'file_skipped'),
 		);
-		const reason = ruleText(unstorable ? 'file_unstorable' : 'file_skipped');
+		const reason = ruleText(finding?.rule ?? 'file_skipped');
 		return `${pathInSource(path)} · ${reason}`;
 	}),
 );
@@ -94,6 +96,7 @@ const reviewFiles = computed<SkillUpdateFile[]>(
 			path: file.path,
 			before: file.text,
 			after: file.text,
+			isBinary: file.isBinary,
 		})),
 );
 
@@ -103,13 +106,15 @@ const files = computed(() =>
 			(finding) => finding.file === file.path && finding.location,
 		);
 
-		const lines: Line[] = file.after.split('\n').map((text, index) => ({
-			number: index + 1,
-			segments: segmentsOf(
-				text,
-				marks.filter((finding) => finding.location?.line === index + 1),
-			),
-		}));
+		const lines: Line[] = file.isBinary
+			? []
+			: file.after.split('\n').map((text, index) => ({
+					number: index + 1,
+					segments: segmentsOf(
+						text,
+						marks.filter((finding) => finding.location?.line === index + 1),
+					),
+				}));
 		return {
 			...file,
 			lines: props.diffFiles
@@ -218,6 +223,9 @@ const unplacedFindings = computed(() => {
 						{{ i18n.baseText('settings.context.skills.synced.openInGithub') }}
 					</N8nLink>
 				</header>
+				<N8nText v-if="file.isBinary" size="small" :class="$style.findingsTitle">
+					{{ i18n.baseText('agents.builder.skills.files.binary') }}
+				</N8nText>
 				<N8nText v-if="diffFiles && file.lines.length" size="small" :class="$style.findingsTitle">
 					{{ i18n.baseText('settings.context.skills.updates.flaggedLines') }}
 				</N8nText>
@@ -235,7 +243,7 @@ const unplacedFindings = computed(() => {
 				data-test-id="skill-source-finding-mark"
 			>{{ segment.text }}</mark><template v-else>{{ segment.text }}</template></template></span></span></code></pre>
 				<NodeDiff
-					v-if="diffFiles"
+					v-if="diffFiles && !file.isBinary"
 					:old-string="file.before"
 					:new-string="file.after"
 					language="plaintext"

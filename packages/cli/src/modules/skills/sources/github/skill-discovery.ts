@@ -62,30 +62,13 @@ export function findSkillFolders(
 }
 
 /**
- * The files of one skill folder, with paths relative to the folder. Files in skipped
- * folders and in skill folders nested inside it are not part of the skill.
+ * The files of one skill folder, with paths relative to the folder. Discovery chooses
+ * the skill root. Nested directories are part of that skill.
  */
 export function filesOfSkill(paths: Iterable<string>, folder: string): string[] {
-	const inside = [...paths].filter((path) => folder === '' || path.startsWith(`${folder}/`));
-	const nested = new Set(
-		inside
-			.filter((path) => path.endsWith(`/${SKILL_FILE}`))
-			.map((path) => path.slice(0, -(SKILL_FILE.length + 1)))
-			.filter((dir) => dir !== folder),
+	return [...paths].flatMap((path) =>
+		folder === '' ? [path] : path.startsWith(`${folder}/`) ? [path.slice(folder.length + 1)] : [],
 	);
-	return inside
-		.filter((path) => {
-			const below = relativeSegments(path.split('/').slice(0, -1).join('/'), folder);
-			if (below.some((segment) => SKIPPED_FOLDERS.has(segment))) return false;
-			// One set lookup for each folder above the file, so a large repository stays linear.
-			let dir = folder;
-			for (const segment of below) {
-				dir = dir ? `${dir}/${segment}` : segment;
-				if (nested.has(dir)) return false;
-			}
-			return true;
-		})
-		.map((path) => (folder === '' ? path : path.slice(folder.length + 1)));
 }
 
 /** Whether `path` is `folder` or below it. The empty folder is the root. */

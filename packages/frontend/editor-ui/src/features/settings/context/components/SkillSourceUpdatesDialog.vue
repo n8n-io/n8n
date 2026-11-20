@@ -84,7 +84,10 @@ const discovery = computed(() => ({
 			webUrl: update.webUrl,
 			check: update.check,
 			skippedFiles: update.check.findings.flatMap((finding) =>
-				(finding.rule === 'file_skipped' || finding.rule === 'file_unstorable') && finding.file
+				(finding.rule === 'file_skipped' ||
+					finding.rule === 'file_unstorable' ||
+					finding.rule === 'file_too_large') &&
+				finding.file
 					? [finding.file]
 					: [],
 			),

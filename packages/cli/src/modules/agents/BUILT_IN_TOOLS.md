@@ -32,7 +32,7 @@ These local tools stay eager when they are attached:
 - `workspace_str_replace_file`
 - `workspace_edit_files`
 - `workspace_execute_command`
-- `load_skill`
+- `load_skill`: loads attached skill instructions or a text file by its path relative to the skill folder.
 - `mark_session_failed`
 - `create_plan`
 - `read_plan`
