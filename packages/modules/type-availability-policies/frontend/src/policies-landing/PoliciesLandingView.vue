@@ -31,18 +31,17 @@ const { entryRouteName } = usePolicyAdminAccess();
 const { counts, load: loadCounts } = useInstancePolicyCounts();
 
 const countsText = computed(() => {
-	if (!counts.value) return null;
-	const { node, credential } = counts.value;
-	return [
-		i18n.baseText('typeAvailabilityPolicies.landing.nodeCount', {
-			adjustToNumber: node.total,
-			interpolate: { restricted: node.restricted, total: node.total },
-		}),
-		i18n.baseText('typeAvailabilityPolicies.landing.credentialCount', {
-			adjustToNumber: credential.total,
-			interpolate: { restricted: credential.restricted, total: credential.total },
-		}),
-	].join(' · ');
+	const loaded = counts.value;
+	if (!loaded) return null;
+	return (['node', 'credential'] as const)
+		.map((kind) => {
+			const { restricted, total } = loaded[kind];
+			return i18n.baseText(`typeAvailabilityPolicies.landing.${kind}Count`, {
+				adjustToNumber: total,
+				interpolate: { restricted, total },
+			});
+		})
+		.join(' · ');
 });
 
 function onBack() {
@@ -86,8 +85,10 @@ onMounted(() => {
 			data-test-id="policies-landing-global-section"
 		>
 			<N8nSettingsRowGroup>
+				<!-- The row takes its aria-label from `title`. The `#info` slot replaces only the visible text. -->
 				<N8nSettingsRow
 					clickable
+					:title="i18n.baseText('typeAvailabilityPolicies.instancePolicy.title')"
 					data-test-id="policies-landing-instance-row"
 					data-attr="policies-landing-instance-row"
 					@click="openInstancePolicy"

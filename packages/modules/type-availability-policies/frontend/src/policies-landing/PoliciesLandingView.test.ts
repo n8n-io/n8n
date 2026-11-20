@@ -51,6 +51,8 @@ const CREDENTIAL_ACCESS = access([
 
 const renderView = createComponentRenderer(PoliciesLandingView);
 
+const renderDefault = () => renderView({ pinia: createTestingPinia() });
+
 function renderForAdmin() {
 	const pinia = createTestingPinia({ stubActions: false });
 	useSettingsStore().isModuleActive = vi.fn(() => true);
@@ -80,7 +82,7 @@ describe('PoliciesLandingView', () => {
 	});
 
 	it('renders the page frame with the Global section', () => {
-		const { getByText, getByTestId } = renderView({ pinia: createTestingPinia() });
+		const { getByText, getByTestId } = renderDefault();
 
 		expect(getByText('Node and credential policies')).toBeInTheDocument();
 		expect(getByTestId('policies-landing-global-section')).toHaveTextContent('Global');
@@ -90,8 +92,14 @@ describe('PoliciesLandingView', () => {
 		expect(getByTestId('policies-landing-instance-row')).toHaveTextContent('Configure');
 	});
 
+	it('names the Global instance policy row by its title', () => {
+		const { getByRole } = renderDefault();
+
+		expect(getByRole('button', { name: 'Global instance policy' })).toBeInTheDocument();
+	});
+
 	it('links the page description to the documentation', () => {
-		const { getByRole } = renderView({ pinia: createTestingPinia() });
+		const { getByRole } = renderDefault();
 
 		expect(getByRole('link', { name: /documentation/ })).toHaveAttribute(
 			'href',
@@ -100,13 +108,13 @@ describe('PoliciesLandingView', () => {
 	});
 
 	it('marks the page as a preview', () => {
-		const { getByTestId } = renderView({ pinia: createTestingPinia() });
+		const { getByTestId } = renderDefault();
 
 		expect(getByTestId('policies-landing-preview-badge')).toBeInTheDocument();
 	});
 
 	it('shows an icon on the Global instance policy row', () => {
-		const { getByTestId } = renderView({ pinia: createTestingPinia() });
+		const { getByTestId } = renderDefault();
 
 		expect(
 			getByTestId('policies-landing-instance-row').querySelector(
@@ -138,7 +146,7 @@ describe('PoliciesLandingView', () => {
 	);
 
 	it('opens the instance policy page from the Global instance policy row', async () => {
-		const { getByTestId } = renderView({ pinia: createTestingPinia() });
+		const { getByTestId } = renderDefault();
 
 		await fireEvent.click(getByTestId('policies-landing-instance-row'));
 
@@ -146,7 +154,7 @@ describe('PoliciesLandingView', () => {
 	});
 
 	it('goes back to the Policies page', async () => {
-		const { getByText } = renderView({ pinia: createTestingPinia() });
+		const { getByText } = renderDefault();
 
 		await fireEvent.click(getByText('Policies'));
 

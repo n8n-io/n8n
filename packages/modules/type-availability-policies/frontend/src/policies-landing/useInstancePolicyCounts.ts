@@ -9,9 +9,9 @@ import {
 	fetchNodeTypeSummaries,
 } from '../type-availability-policies.api';
 
-export type TypeCount = { restricted: number; total: number };
+type TypeCount = { restricted: number; total: number };
 
-export type InstancePolicyCounts = { node: TypeCount; credential: TypeCount };
+type InstancePolicyCounts = { node: TypeCount; credential: TypeCount };
 
 function countRestricted(types: readonly InstanceTypeAccess[]): TypeCount {
 	return {
@@ -23,7 +23,6 @@ function countRestricted(types: readonly InstanceTypeAccess[]): TypeCount {
 /** How many types the instance policy restricts, counted as the instance policy page lists them. */
 export function useInstancePolicyCounts() {
 	const rootStore = useRootStore();
-	// Stays `null` when a request fails, so the page shows no counts instead of wrong ones.
 	const counts = shallowRef<InstancePolicyCounts | null>(null);
 
 	async function load(): Promise<void> {
@@ -39,7 +38,7 @@ export function useInstancePolicyCounts() {
 				credential: countRestricted(credentialAccess.types),
 			};
 		} catch {
-			counts.value = null;
+			// `counts` stays `null`, so the page shows no counts instead of wrong ones.
 		}
 	}
 
