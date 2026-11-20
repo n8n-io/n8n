@@ -6,6 +6,7 @@ import type {
 import { mockInstance } from '@n8n/backend-test-utils';
 import { LOGSTREAMING_DEFAULT_SOCKET_TIMEOUT_MS } from '@n8n/constants';
 import { mock } from 'vitest-mock-extended';
+import { HttpMultipleHeadersAuth } from 'n8n-nodes-base/dist/credentials/HttpMultipleHeadersAuth.credentials';
 import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 import type { IHttpRequestOptions, MessageEventBusDestinationWebhookOptions } from 'n8n-workflow';
 
@@ -125,6 +126,66 @@ describe('MessageEventBusDestinationWebhook', () => {
 				returnFullResponse: true,
 				json: true,
 			});
+		});
+
+		it('should send both Multiple Headers Auth headers and keep other headers', async () => {
+			const { outboundHttp, request } = mockOutboundHttp();
+			const credentialDetails = { id: 'credential-id', name: 'API headers' };
+			const destination = new MessageEventBusDestinationWebhook(
+				mockEventBus,
+				{
+					__type: MessageEventBusDestinationTypeNames.webhook,
+					url: 'https://example.com/webhook',
+					authentication: 'genericCredentialType',
+					genericAuthType: 'httpMultipleHeadersAuth',
+					credentials: { httpMultipleHeadersAuth: credentialDetails },
+					sendHeaders: true,
+					specifyHeaders: 'keypair',
+					headerParameters: { parameters: [{ name: 'X-Request-Id', value: 'request-id' }] },
+				},
+				outboundHttp,
+			);
+			const credentialType = new HttpMultipleHeadersAuth();
+			const credentialsHelper = mock<CredentialsHelper>();
+			credentialsHelper.getDecrypted.mockResolvedValue({
+				headers: {
+					values: [
+						{ name: 'X-Service-Token', value: 'first-test-value' },
+						{ name: 'X-Account-Key', value: 'second-test-value' },
+					],
+				},
+			});
+			credentialsHelper.authenticate.mockImplementation(async (credentials, type, options) => {
+				expect(type).toBe('httpMultipleHeadersAuth');
+				if (typeof credentialType.authenticate !== 'function') {
+					throw new Error('Expected a credential authenticator');
+				}
+				return await credentialType.authenticate(credentials, options as IHttpRequestOptions);
+			});
+			destination.credentialsHelper = credentialsHelper;
+
+			await destination.receiveFromEventBus({ msg: createMessage(), confirmCallback: vi.fn() });
+
+			expect(credentialsHelper.getDecrypted).toHaveBeenCalledWith(
+				expect.anything(),
+				credentialDetails,
+				'httpMultipleHeadersAuth',
+				'internal',
+				undefined,
+				false,
+				undefined,
+				{ actor: { kind: 'system', reason: 'log-streaming' } },
+			);
+			expect(request).toHaveBeenCalledWith(
+				expect.objectContaining({
+					headers: {
+						'Content-Type': 'application/json',
+						'X-Request-Id': 'request-id',
+						'X-Service-Token': 'first-test-value',
+						'X-Account-Key': 'second-test-value',
+					},
+				}),
+			);
 		});
 
 		it('should apply Simplified Custom Auth credentials', async () => {
@@ -317,6 +378,7 @@ describe('MessageEventBusDestinationWebhook', () => {
 			['Basic Auth', 'httpBasicAuth'],
 			['Digest Auth', 'httpDigestAuth'],
 			['Header Auth', 'httpHeaderAuth'],
+			['Multiple Headers Auth', 'httpMultipleHeadersAuth'],
 			['Query Auth', 'httpQueryAuth'],
 		] as const)(
 			'should not send when %s credentials cannot be resolved',
