@@ -239,11 +239,10 @@ export function withPlainDocuments(overlay: Record<string, unknown>): Record<str
 
 // `/v1/documents/<id>` and `/v1/documents/<id>:batchUpdate`. A Google id is letters, digits, `-` and `_`.
 const DOC_PATH = /^\/v1\/documents\/([A-Za-z0-9_-]{1,128})(?::[A-Za-z]+)?$/;
-const DRIVE_LISTS = /^\/drive\/v3\/(files|drives)$/;
 
 const docIdOf = (path: string): string | undefined => DOC_PATH.exec(path)?.[1];
 
-// The Docs gym is the Drive gym of ai-gym (service "google-drive"). It shares www.googleapis.com.
+// The Docs gym is the Drive gym of ai-gym (service "google-drive"). The Drive vendor owns the Drive paths of the node.
 export const GOOGLE_DOCS_PROFILE: HttpVendorProfile = {
 	name: 'googledocs',
 	gymService: 'google-drive',
@@ -265,8 +264,6 @@ export const GOOGLE_DOCS_PROFILE: HttpVendorProfile = {
 			? []
 			: [{ tool: 'read_get_documents', args: { method: 'GET', path: `/v1/documents/${id}` } }];
 	},
-	// The folder lists fill pickers of the node. The gym has its own lists.
-	hydrateRead: (args) => !DRIVE_LISTS.test(args.path),
 	// A document that the gym made (a new one) is in the gym already.
 	hydrateWrite: (args, gymIds) => {
 		const id = docIdOf(args.path);
