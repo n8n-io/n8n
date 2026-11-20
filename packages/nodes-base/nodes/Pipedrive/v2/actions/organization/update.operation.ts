@@ -8,9 +8,15 @@ import { requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 import { pipedriveApiRequest, pipedriveGetCustomProperties } from '../../transport';
-import { encodeCustomFieldsV2, resolveCustomFieldsV2, addFieldsToBody } from '../../helpers';
+import {
+	encodeCustomFieldsV2,
+	resolveCustomFieldsV2,
+	addFieldsToBody,
+	wrapOrganizationAddress,
+} from '../../helpers';
 import {
 	customFieldsCollection,
+	organizationStandardFields,
 	rawCustomFieldKeysOption,
 	visibleToOption,
 } from '../common.description';
@@ -61,6 +67,7 @@ const properties: INodeProperties[] = [
 					'ID of the user who will be marked as the owner of this organization. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			visibleToOption,
+			...organizationStandardFields,
 			customFieldsCollection,
 		],
 	},
@@ -93,6 +100,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 
 			const updateFields = this.getNodeParameter('updateFields', i);
 			addFieldsToBody(body, updateFields);
+			wrapOrganizationAddress(body);
 
 			// Clear label when set to 'null' string
 			if (body.label === 'null') {
