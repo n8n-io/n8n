@@ -1,5 +1,5 @@
 {
-	"description": "As 129, but a Code node in the sub-workflow gives two items for each call, so the node gives eight items.",
+	"description": "As 138, but the node does not wait for the sub-workflow (waitForSubWorkflow off).",
 	"trigger": {
 		"body": {
 			"ids": [

@@ -1,5 +1,5 @@
 {
-	"description": "As 128, but the node does not wait for the sub-workflow (waitForSubWorkflow off).",
+	"description": "As 138, but the Execute Workflow node runs once for each item (mode \"each\").",
 	"trigger": {
 		"body": {
 			"ids": [

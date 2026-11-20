@@ -1,5 +1,5 @@
 {
-	"description": "As 128, but a Filter in the sub-workflow keeps items 1 and 3 of the four, so the sub-workflow gives two items.",
+	"description": "As 138, but a Filter in the sub-workflow keeps items 1 and 3 of the four, so the sub-workflow gives two items.",
 	"trigger": {
 		"body": {
 			"ids": [
