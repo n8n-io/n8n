@@ -24,6 +24,14 @@ const uiStore = useUIStore();
 const viewport = useTemplateRef<HTMLDivElement>('viewport');
 const diagram = ref<{ src: string; width: number; description?: string }>();
 
+// Ends the open render. The image ends it, because only the image knows if the diagram shows.
+let endRender: (outcome: SkillMermaidResult['outcome']) => void = () => {};
+
+function onImageError() {
+	diagram.value = undefined;
+	endRender('failed');
+}
+
 watch(
 	[viewport, () => props.code, () => uiStore.appliedTheme],
 	async ([element, code, theme], _, onCleanup) => {
@@ -35,6 +43,7 @@ watch(
 			if (open) emit('renderEnd', outcome);
 			open = false;
 		};
+		endRender = end;
 		emit('renderStart');
 		onCleanup(() => {
 			controller.abort();
@@ -72,7 +81,6 @@ watch(
 				width: Math.ceil(width),
 				description: description || title,
 			};
-			end('rendered');
 		} catch {
 			// Keep the source visible if the diagram cannot render.
 			end('failed');
@@ -90,7 +98,8 @@ watch(
 			:src="diagram.src"
 			:width="diagram.width"
 			:alt="diagram.description || i18n.baseText('agents.builder.skills.mermaid.diagram')"
-			@error="diagram = undefined"
+			@load="endRender('rendered')"
+			@error="onImageError"
 		/>
 		<details v-if="diagram">
 			<summary :class="$style.sourceLabel">

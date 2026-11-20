@@ -410,7 +410,7 @@ describe('AgentSkillViewer', () => {
 				outcome: 'rendered',
 				svg: '<svg xmlns="http://www.w3.org/2000/svg"/>',
 			});
-		mountViewer({
+		const wrapper = mountViewer({
 			readOnly: true,
 			selectedPath: 'references/steps.md',
 			skill: {
@@ -430,6 +430,10 @@ describe('AgentSkillViewer', () => {
 		});
 		await flushPromises();
 
+		// The first diagram is still open, until its image loads.
+		expect(track).not.toHaveBeenCalled();
+		await wrapper.get('img').trigger('load');
+
 		expect(track).toHaveBeenCalledTimes(1);
 		expect(track).toHaveBeenCalledWith(TELEMETRY_EVENT.CONTEXT.USER_VIEWED_SKILL_DIAGRAMS, {
 			file: 'reference',
@@ -438,6 +442,57 @@ describe('AgentSkillViewer', () => {
 			failed: 2,
 			timed_out: 1,
 		});
+	});
+
+	it('reports a diagram as failed when its image cannot load', async () => {
+		track.mockClear();
+		vi.mocked(renderSkillMermaid).mockResolvedValueOnce(renderedDiagram());
+		const wrapper = mountViewer({
+			readOnly: true,
+			skill: {
+				name: 'Triage',
+				description: 'Use for triage',
+				instructions: '```mermaid\nflowchart LR\n  A --> B\n```',
+			},
+		});
+		await flushPromises();
+		await wrapper.get('img').trigger('error');
+
+		expect(track).toHaveBeenCalledTimes(1);
+		expect(track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.CONTEXT.USER_VIEWED_SKILL_DIAGRAMS,
+			expect.objectContaining({ file: 'skill', rendered: 0, failed: 1 }),
+		);
+	});
+
+	it('reports the diagrams of the file that the user left, not of the file that opens', async () => {
+		track.mockClear();
+		const open = deferredRender();
+		vi.mocked(renderSkillMermaid)
+			.mockResolvedValueOnce({ outcome: 'invalid' })
+			.mockReturnValueOnce(open.promise);
+		const wrapper = mountViewer({
+			readOnly: true,
+			skill: {
+				name: 'Triage',
+				description: 'Use for triage',
+				instructions:
+					'```mermaid\nflowchart LR\n  A -->\n```\n\n```mermaid\nflowchart LR\n  A --> B\n```',
+				references: [{ path: 'references/labels.md', content: 'Use needs-repro.' }],
+			},
+		});
+		await flushPromises();
+		expect(track).not.toHaveBeenCalled();
+
+		await wrapper.setProps({ selectedPath: 'references/labels.md' });
+		await flushPromises();
+
+		expect(track).toHaveBeenCalledTimes(1);
+		expect(track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.CONTEXT.USER_VIEWED_SKILL_DIAGRAMS,
+			expect.objectContaining({ file: 'skill', rendered: 0, invalid: 1 }),
+		);
+		open.resolve({ outcome: 'aborted' });
 	});
 
 	it('reports nothing for a file with no Mermaid block', async () => {

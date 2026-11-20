@@ -288,6 +288,15 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 const openDiagramRenders = ref(0);
 const newDiagramCounts = () => ({ rendered: 0, invalid: 0, failed: 0, timeout: 0 });
 let diagramCounts = newDiagramCounts();
+// The file of the open renders. The selected file can change before the last render ends.
+let diagramFile: 'skill' | 'reference' = 'skill';
+
+function onDiagramRenderStart() {
+	if (openDiagramRenders.value === 0) {
+		diagramFile = isSkillFileSelected.value ? 'skill' : 'reference';
+	}
+	openDiagramRenders.value++;
+}
 
 function onDiagramRenderEnd(outcome: SkillMermaidResult['outcome']) {
 	openDiagramRenders.value--;
@@ -299,7 +308,7 @@ function onDiagramRenderEnd(outcome: SkillMermaidResult['outcome']) {
 	if (rendered + invalid + failed + timeout === 0) return;
 	try {
 		telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_VIEWED_SKILL_DIAGRAMS, {
-			file: isSkillFileSelected.value ? 'skill' : 'reference',
+			file: diagramFile,
 			rendered,
 			invalid,
 			failed,
@@ -352,7 +361,7 @@ function onDiagramRenderEnd(outcome: SkillMermaidResult['outcome']) {
 						<AgentSkillMermaidDiagram
 							v-if="language.toLowerCase() === 'mermaid'"
 							:code="code"
-							@render-start="openDiagramRenders++"
+							@render-start="onDiagramRenderStart"
 							@render-end="onDiagramRenderEnd"
 						>
 							<pre :class="$style.codeBlock"><code>{{ code }}</code></pre>
