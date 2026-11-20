@@ -187,17 +187,18 @@ describe('MessageEventBus.initialize', () => {
 				unsentMessages: [],
 				unfinishedExecutions: { a: [started('wf-1', true)], b: [started('wf-2', false)] },
 			});
-			executionRepository.findRunningIds.mockResolvedValue(['a', 'b']);
+			executionRepository.findRunningIds.mockResolvedValue(['a']);
 			const bus = buildBus(
 				buildGlobalConfig({ crashRecoveryMode: 'simple', executionsMode: 'queue' }),
 			);
 
 			await bus.initialize({});
 
+			expect(executionRepository.findRunningIds).toHaveBeenCalledWith(['a']);
 			expect(workflowCrashJournal.noteUnfinishedExecutions).toHaveBeenCalledWith(new Set(['wf-1']));
 		});
 
-		it('notes no execution in queue mode when manual executions are offloaded', async () => {
+		it('skips the query in queue mode when manual executions are offloaded', async () => {
 			vi.stubEnv('OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS', 'true');
 			mockedWriter.getUnsentAndUnfinishedExecutions.mockResolvedValue({
 				unsentMessages: [],
@@ -210,14 +211,14 @@ describe('MessageEventBus.initialize', () => {
 					],
 				},
 			});
-			executionRepository.findRunningIds.mockResolvedValue(['a']);
 			const bus = buildBus(
 				buildGlobalConfig({ crashRecoveryMode: 'simple', executionsMode: 'queue' }),
 			);
 
 			await bus.initialize({});
 
-			expect(workflowCrashJournal.noteUnfinishedExecutions).toHaveBeenCalledWith(new Set());
+			expect(executionRepository.findRunningIds).not.toHaveBeenCalled();
+			expect(workflowCrashJournal.noteUnfinishedExecutions).not.toHaveBeenCalled();
 		});
 
 		it('does not read unfinished executions from the database in queue mode', async () => {
@@ -232,7 +233,7 @@ describe('MessageEventBus.initialize', () => {
 			await bus.initialize({});
 
 			expect(executionRepository.findUnfinishedIds).not.toHaveBeenCalled();
-			expect(workflowCrashJournal.noteUnfinishedExecutions).toHaveBeenCalledWith(new Set());
+			expect(executionRepository.findRunningIds).not.toHaveBeenCalled();
 			expect(executionCrashService.markAsCrashed).toHaveBeenCalledWith(
 				['b', 'c'],
 				'startup-recovery',
