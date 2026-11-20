@@ -12,7 +12,7 @@ import { unlink } from 'node:fs/promises';
 import path from 'node:path';
 import type { Readable } from 'node:stream';
 
-import type { KnowledgeFile } from '../entities/knowledge-file.entity';
+import type { AgentFile } from '../entities';
 import { KnowledgeConfig } from '../knowledge.config';
 import type { KnowledgeConsumerScope } from '../knowledge-consumer-scope';
 import { KnowledgeSandboxProviderProxy } from '../knowledge-sandbox-provider-proxy';
@@ -76,7 +76,7 @@ export class KnowledgeFileService {
 			this.validateUploadMetadata(files);
 			await this.validateUploadBatch(scope, files);
 
-			const uploadedFiles: KnowledgeFile[] = [];
+			const uploadedFiles: AgentFile[] = [];
 			const results: KnowledgeFileUploadResult[] = [];
 			try {
 				for (const file of files) {
@@ -191,7 +191,7 @@ export class KnowledgeFileService {
 		scope: KnowledgeConsumerScope,
 		file: Express.Multer.File,
 		writeFence: KnowledgeWriteRunner,
-	): Promise<KnowledgeFile> {
+	): Promise<AgentFile> {
 		const fileId = generateNanoId();
 		const contentFileName = toKnowledgeContentFileName(file.originalname);
 		const content = await this.prepareUploadContent(file);
@@ -224,7 +224,7 @@ export class KnowledgeFileService {
 		file: Express.Multer.File,
 		storageReference: KnowledgeFileStorageReference,
 		ctx: OperationContext,
-	): Promise<KnowledgeFile> {
+	): Promise<AgentFile> {
 		return await this.fileRepository.saveUploadedFile(
 			{
 				id: fileId,
@@ -260,7 +260,7 @@ export class KnowledgeFileService {
 		return createReadStream(file.path);
 	}
 
-	private async cleanupFailedUploadBatch(files: KnowledgeFile[]): Promise<void> {
+	private async cleanupFailedUploadBatch(files: AgentFile[]): Promise<void> {
 		for (const file of files) {
 			await this.fileStore
 				.delete([{ storedAt: file.storedAt, storageKey: file.storageKey }])

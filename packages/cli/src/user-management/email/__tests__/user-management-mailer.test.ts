@@ -212,6 +212,11 @@ describe('UserManagementMailer', () => {
 				'Please review its recent executions',
 			],
 			[
+				'process-crashes' as const,
+				'because n8n repeatedly crashed while it was running',
+				'Reduce how much data the workflow handles at once',
+			],
+			[
 				'memory-pressure' as const,
 				'because n8n repeatedly stopped its executions to keep the instance from running out of memory',
 				'Memory can also run high because of other work.',

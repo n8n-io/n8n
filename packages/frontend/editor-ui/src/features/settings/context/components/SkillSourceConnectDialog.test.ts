@@ -3,6 +3,7 @@ import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
 import type {
 	DiscoveredSkill,
+	SkillScanFinding,
 	SkillSourceConnectResponse,
 	SkillSourceCredentialOption,
 	SkillSourceDiscovery,
@@ -591,6 +592,46 @@ describe('SkillSourceConnectDialog', () => {
 			warningIcon.focus();
 			expect(await view.findByTestId('tooltip-content')).toHaveTextContent(
 				'Hidden Unicode characters in SKILL.md',
+			);
+		});
+
+		it('shows the domain that needs review and keeps ordinary domains listed', async () => {
+			const docsLink: SkillScanFinding = {
+				rule: 'new_url',
+				severity: 'info',
+				file: 'SKILL.md',
+				detail: 'The skill links to docs.example.com.',
+				domain: 'docs.example.com',
+			};
+			const linked = discovered({
+				...warning,
+				check: {
+					verdict: 'needs_review',
+					findings: [
+						docsLink,
+						{
+							rule: 'risky_url',
+							severity: 'needs_review',
+							file: 'SKILL.md',
+							detail: 'The link uses a webhook catcher.',
+							domain: 'webhook.site',
+							linkReason: 'webhook_catcher',
+						},
+					],
+				},
+			});
+			const docs = discovered({ ...passed, check: { verdict: 'pass', findings: [docsLink] } });
+			skillsStore.discoverSource.mockResolvedValue(discovery({ skills: [linked, docs] }));
+			const view = render();
+			await review(view);
+
+			view.getByRole('button', { name: '1 warning' }).focus();
+			const tooltip = await view.findByTestId('tooltip-content');
+			expect(tooltip).toHaveTextContent('Link to a webhook catcher (webhook.site) in SKILL.md');
+			expect(tooltip).toHaveTextContent('Links to docs.example.com, webhook.site');
+			await userEvent.click(tab(view, 'Passed'));
+			expect(view.getByTestId('skill-source-skill-findings')).toHaveTextContent(
+				'Links to docs.example.com',
 			);
 		});
 

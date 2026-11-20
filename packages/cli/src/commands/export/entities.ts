@@ -3,6 +3,7 @@ import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { z } from 'zod';
 
+import { BINARY_ENCODINGS } from '@/services/entity-archive-binary';
 import { ExportService } from '@/services/export.service';
 
 import { BaseCommand } from '../base-command';
@@ -24,6 +25,12 @@ const flagsSchema = z.object({
 			'Include user-data table row contents. When false, only the data-table schemas (registry rows) are exported.',
 		)
 		.default(true),
+	binaryEncoding: z
+		.enum(BINARY_ENCODINGS)
+		.describe(
+			'Encoding of binary columns. base64 makes smaller archives and exports values of up to 200 MiB instead of 64 MiB.',
+		)
+		.default('buffer'),
 	keyFile: z
 		.string()
 		.describe('Optional path to a file containing a custom encryption key')
@@ -39,6 +46,7 @@ const flagsSchema = z.object({
 		'--outputDir=/path/to/backup',
 		'--includeExecutionHistoryDataTables=true',
 		'--includeDataTableRows=false',
+		'--binaryEncoding=base64',
 		'--keyFile=/path/to/key.txt',
 		'--outputDir=./exports --keyFile=/path/to/key.txt',
 	],
@@ -60,6 +68,7 @@ export class ExportEntitiesCommand extends BaseCommand<z.infer<typeof flagsSchem
 
 		await Container.get(ExportService).exportEntities(outputDir, excludedDataTables, keyFilePath, {
 			includeDataTableRows: this.flags.includeDataTableRows,
+			binaryEncoding: this.flags.binaryEncoding,
 		});
 	}
 

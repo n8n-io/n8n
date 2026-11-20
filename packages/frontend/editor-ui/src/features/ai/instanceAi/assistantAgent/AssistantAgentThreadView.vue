@@ -28,8 +28,10 @@ import { useElementSize } from '@vueuse/core';
 import { computed, onBeforeUnmount, provide, ref, useTemplateRef, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
+import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { isString } from '@/app/utils/typeGuards';
 import AgentChatPanel from '@/features/agents/components/AgentChatPanel.vue';
+import CreditWarningBanner from '@/features/ai/assistant/components/Agent/CreditWarningBanner.vue';
 import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
 import { useN8nAssistantIdentity } from '@/features/agents/n8nChatPage/composables/useN8nAssistantIdentity';
 import AssistantAtMentionPicker from '@/features/ai/assistant-at-mentions/AssistantAtMentionPicker.vue';
@@ -37,6 +39,7 @@ import type { WorkflowArtifactReference } from '@/features/ai/assistant-at-menti
 
 import { provideArtifactAgentTargets } from '../artifactAgentTargets';
 import { provideArtifactThread } from '../artifactThread';
+import { useAssistantCreditsStore } from '../assistantCredits.store';
 import ApprovalModeSelector from '../components/ApprovalModeSelector.vue';
 import AttachmentPreview from '../components/AttachmentPreview.vue';
 import InstanceAiAgentPreview from '../components/InstanceAiAgentPreview.vue';
@@ -50,6 +53,7 @@ import InstanceAiResourceChip from '../components/InstanceAiResourceChip.vue';
 import InstanceAiResourcePicker from '../components/InstanceAiResourcePicker.vue';
 import InstanceAiSkillPreview from '../components/InstanceAiSkillPreview.vue';
 import InstanceAiViewHeader from '../components/InstanceAiViewHeader.vue';
+import LimitedModeNotice from '../components/LimitedModeNotice.vue';
 import InstanceAiWorkflowPreview, {
 	type WorkflowFailuresReport,
 } from '../components/InstanceAiWorkflowPreview.vue';
@@ -60,6 +64,7 @@ import {
 	usePreviewPanelWidth,
 	usePreviewToggle,
 } from '../composables/useArtifactsLayout';
+import { useCreditWarningBanner } from '../composables/useCreditWarningBanner';
 import type { AgentTestHandoffParams } from '../composables/useInstanceAiAgentTestHandoff';
 import {
 	buildInstanceAiAgentPreviewHandoffContext,
@@ -103,6 +108,9 @@ import {
 import { assistantAutoApprovalExtension } from './assistantAutoApproval';
 import { assistantConfirmationExtension } from './assistantConfirmation';
 import { assistantHostEventExtensions } from './assistantHostEvents';
+import { assistantCodeToolResultExtension } from './assistantCodeToolResults';
+import { assistantSharedFilesExtension } from './assistantSharedFiles';
+import { assistantToolResultTableExtension } from './assistantToolResultTables';
 import { useAssistantAgentThreadsStore } from './assistantAgentThreads.store';
 import { stagedElementAppId, toElementComposerAttachment } from './assistantElementAttachments';
 import { readMessageReferences } from './assistantMentionAttachments';
@@ -277,9 +285,26 @@ const interactionExtensions = [
 	assistantConfirmationExtension,
 	assistantAutoApprovalExtension,
 	...assistantHostEventExtensions,
+	assistantToolResultTableExtension,
+	assistantCodeToolResultExtension,
+	assistantSharedFilesExtension,
 ];
 
 const panel = useTemplateRef<InstanceType<typeof AgentChatPanel>>('panel');
+
+// --- Credits ---
+// The InstanceAiView parent loads the balance, and a push event keeps it current.
+const creditsStore = useAssistantCreditsStore();
+const creditBanner = useCreditWarningBanner(() => creditsStore.isLowCredits);
+const { goToUpgrade } = usePageRedirectionHelper();
+
+/**
+ * The server refuses a turn when no credits are left. The composer is disabled
+ * then, and this also refuses host sends, such as a hand-off or Fix with AI.
+ */
+function assertCreditsAvailable(): void {
+	if (creditsStore.isOutOfCredits) throw new Error('No Assistant credits are left');
+}
 
 const trace = useAssistantAgentTrace({
 	threadId: props.threadId,
@@ -512,6 +537,8 @@ const activeFixWithAiOffer = computed(() => {
 	const run = failedRun.value;
 	if (!run || run.executionId === dismissedExecutionId.value) return null;
 	if (panel.value?.isBusy) return null;
+	// The send would be refused, so the offer comes back once credits do.
+	if (creditsStore.isOutOfCredits) return null;
 	return { ...run, workflowName: thread.producedArtifacts.get(run.workflowId)?.name };
 });
 
@@ -893,6 +920,8 @@ function updateStagedNodes(attachment: InstanceAiNodesAttachment): void {
 						:input-draft="mentions.draft.value"
 						:interaction-extensions="interactionExtensions"
 						:show-attach-button="false"
+						:disabled="creditsStore.isOutOfCredits"
+						:before-send="assertCreditsAvailable"
 						@stream-event="onStreamEvent"
 						@session-created="onSessionCreated"
 						@message-sending="onMessageSending"
@@ -909,6 +938,22 @@ function updateStagedNodes(attachment: InstanceAiNodesAttachment): void {
 								:failed-count="activeFixWithAiOffer.errors.length"
 								@fix-with-ai="handleFixWithAiFromOffer"
 								@dismiss="dismissFixWithAiOffer"
+							/>
+						</template>
+						<template #above-input>
+							<LimitedModeNotice />
+							<CreditWarningBanner
+								v-if="creditsStore.isOutOfCredits || creditBanner.visible.value"
+								:credits-remaining="creditsStore.creditsRemaining"
+								:credits-quota="creditsStore.creditsQuota"
+								:message="
+									creditsStore.isOutOfCredits
+										? i18n.baseText('instanceAi.error.outOfCredits.title')
+										: undefined
+								"
+								:dismissible="!creditsStore.isOutOfCredits"
+								@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
+								@dismiss="creditBanner.dismiss()"
 							/>
 						</template>
 						<!-- Nodes chips can drop single nodes. The other chips look as the panel draws them. -->
