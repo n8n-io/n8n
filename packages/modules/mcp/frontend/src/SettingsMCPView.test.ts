@@ -1,9 +1,10 @@
-import { nextTick } from 'vue';
+import { nextTick, ref } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
 import type { McpExposeAllOffer, McpPreferencesEntryPoints } from '@n8n/frontend-module-sdk';
+import { mock, type MockProxy } from 'vitest-mock-extended';
 import type { Mock } from 'vitest';
 import {
 	createComponentRenderer,
@@ -928,33 +929,16 @@ describe('SettingsMCPView', () => {
 	});
 
 	describe('preferences entry points experiment', () => {
-		let entryPoints: {
-			entryPoint: Mock<McpPreferencesEntryPoints['entryPoint']>;
-			trackExposure: Mock<McpPreferencesEntryPoints['trackExposure']>;
-			preferenceCount: Mock<McpPreferencesEntryPoints['preferenceCount']>;
-			loadPreferenceCount: Mock<McpPreferencesEntryPoints['loadPreferenceCount']>;
-			isBannerDismissed: Mock<McpPreferencesEntryPoints['isBannerDismissed']>;
-			dismissBanner: Mock<McpPreferencesEntryPoints['dismissBanner']>;
-			preferencesRoute: McpPreferencesEntryPoints['preferencesRoute'];
-			trackEntryPointClicked: Mock<McpPreferencesEntryPoints['trackEntryPointClicked']>;
-			trackPromptCopied: Mock<McpPreferencesEntryPoints['trackPromptCopied']>;
-		};
+		let entryPoints: MockProxy<McpPreferencesEntryPoints>;
 
 		const provideEntryPoints = (
 			entryPoint: ReturnType<McpPreferencesEntryPoints['entryPoint']>,
-			preferenceCount: number | undefined,
+			preferenceCount = 0,
 		) => {
-			entryPoints = {
-				entryPoint: vi.fn(() => entryPoint),
-				trackExposure: vi.fn(),
-				preferenceCount: vi.fn(() => preferenceCount),
-				loadPreferenceCount: vi.fn(async () => {}),
-				isBannerDismissed: vi.fn(() => false),
-				dismissBanner: vi.fn(),
-				preferencesRoute: { name: 'SettingsContextPreferences' },
-				trackEntryPointClicked: vi.fn(),
-				trackPromptCopied: vi.fn(),
-			};
+			entryPoints = mock<McpPreferencesEntryPoints>();
+			entryPoints.entryPoint.mockReturnValue(entryPoint);
+			entryPoints.isBannerDismissed.mockReturnValue(false);
+			entryPoints.fetchPreferenceCount.mockResolvedValue(preferenceCount);
 			capabilityRegistry.provide(capabilities.mcpPreferencesEntryPoints, entryPoints);
 		};
 
@@ -964,25 +948,30 @@ describe('SettingsMCPView', () => {
 		});
 
 		it('tracks exposure and shows no entry point for control', async () => {
-			provideEntryPoints(undefined, undefined);
+			provideEntryPoints(undefined);
 
 			const { queryByTestId } = createComponent({ pinia });
 			await waitAllPromises();
 
 			expect(entryPoints.trackExposure).toHaveBeenCalled();
-			expect(entryPoints.loadPreferenceCount).not.toHaveBeenCalled();
+			expect(entryPoints.fetchPreferenceCount).not.toHaveBeenCalled();
 			expect(queryByTestId('mcp-preferences-banner')).toBeNull();
 			expect(queryByTestId('mcp-preferences-connection-row')).toBeNull();
 		});
 
-		it('tracks no exposure while MCP is off', async () => {
-			settingsStore.moduleSettings = {};
-			provideEntryPoints('banner', 0);
+		it('tracks exposure again when the assigned variant arrives after mount', async () => {
+			const variant = ref<string>();
+			provideEntryPoints(undefined);
+			entryPoints.trackExposure.mockImplementation(() => {
+				void variant.value;
+			});
 
 			createComponent({ pinia });
 			await waitAllPromises();
+			variant.value = 'control';
+			await nextTick();
 
-			expect(entryPoints.trackExposure).not.toHaveBeenCalled();
+			expect(entryPoints.trackExposure).toHaveBeenCalledTimes(2);
 		});
 
 		it('shows the banner to a user without preferences and opens the preferences page', async () => {
@@ -991,7 +980,7 @@ describe('SettingsMCPView', () => {
 			const { getByTestId } = createComponent({ pinia });
 			await waitAllPromises();
 
-			expect(entryPoints.loadPreferenceCount).toHaveBeenCalled();
+			expect(entryPoints.fetchPreferenceCount).toHaveBeenCalled();
 			await userEvent.click(getByTestId('mcp-preferences-banner-button'));
 
 			expect(entryPoints.trackEntryPointClicked).toHaveBeenCalledWith('banner');
@@ -1008,16 +997,23 @@ describe('SettingsMCPView', () => {
 			expect(entryPoints.dismissBanner).toHaveBeenCalled();
 		});
 
-		it.each([
-			['has preferences', 2, false],
-			['dismissed the banner', 0, true],
-		])('hides the banner when the user %s', async (_, count, dismissed) => {
-			provideEntryPoints('banner', count);
-			entryPoints.isBannerDismissed.mockReturnValue(dismissed);
+		it('hides the banner from a user with preferences', async () => {
+			provideEntryPoints('banner', 2);
 
 			const { queryByTestId } = createComponent({ pinia });
 			await waitAllPromises();
 
+			expect(queryByTestId('mcp-preferences-banner')).toBeNull();
+		});
+
+		it('does not load the count after the user dismissed the banner', async () => {
+			provideEntryPoints('banner', 0);
+			entryPoints.isBannerDismissed.mockReturnValue(true);
+
+			const { queryByTestId } = createComponent({ pinia });
+			await waitAllPromises();
+
+			expect(entryPoints.fetchPreferenceCount).not.toHaveBeenCalled();
 			expect(queryByTestId('mcp-preferences-banner')).toBeNull();
 		});
 
@@ -1038,9 +1034,9 @@ describe('SettingsMCPView', () => {
 			expect(routerPush).toHaveBeenCalledWith({ name: 'SettingsContextPreferences' });
 		});
 
-		it('shows a toast error when the count does not load', async () => {
-			provideEntryPoints('banner', undefined);
-			entryPoints.loadPreferenceCount.mockRejectedValueOnce(new Error('nope'));
+		it('hides the connection row and shows a toast error when the count does not load', async () => {
+			provideEntryPoints('connection_row');
+			entryPoints.fetchPreferenceCount.mockRejectedValueOnce(new Error('nope'));
 
 			const { queryByTestId } = createComponent({ pinia });
 			await waitAllPromises();
@@ -1049,7 +1045,7 @@ describe('SettingsMCPView', () => {
 				expect.anything(),
 				'Could not load preferences',
 			);
-			expect(queryByTestId('mcp-preferences-banner')).toBeNull();
+			expect(queryByTestId('mcp-preferences-connection-row')).toBeNull();
 		});
 	});
 });

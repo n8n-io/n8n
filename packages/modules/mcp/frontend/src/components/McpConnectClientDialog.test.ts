@@ -7,6 +7,7 @@ import { useMCPStore } from '../mcp.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
 import type { McpPreferencesEntryPoints } from '@n8n/frontend-module-sdk';
+import { mock } from 'vitest-mock-extended';
 import { ref } from 'vue';
 
 const { copySpy } = vi.hoisted(() => ({ copySpy: vi.fn() }));
@@ -25,7 +26,8 @@ const renderComponent = createComponentRenderer(McpConnectClientDialog, {
 				template: '<div data-test-id="token-tab-stub" />',
 			},
 			RouterLink: {
-				template: '<a><slot /></a>',
+				props: ['to'],
+				template: '<a :data-to="JSON.stringify(to)"><slot /></a>',
 			},
 		},
 	},
@@ -173,17 +175,8 @@ describe('McpConnectClientDialog', () => {
 		const provideEntryPoints = (
 			entryPoint: ReturnType<McpPreferencesEntryPoints['entryPoint']>,
 		) => {
-			const entryPoints = {
-				entryPoint: vi.fn(() => entryPoint),
-				trackExposure: vi.fn(),
-				preferenceCount: vi.fn(() => 0),
-				loadPreferenceCount: vi.fn(async () => {}),
-				isBannerDismissed: vi.fn(() => false),
-				dismissBanner: vi.fn(),
-				preferencesRoute: { name: 'SettingsContextPreferences' },
-				trackEntryPointClicked: vi.fn(),
-				trackPromptCopied: vi.fn(),
-			};
+			const entryPoints = mock<McpPreferencesEntryPoints>();
+			entryPoints.entryPoint.mockReturnValue(entryPoint);
 			capabilityRegistry.provide(capabilities.mcpPreferencesEntryPoints, entryPoints);
 			return entryPoints;
 		};
@@ -220,10 +213,16 @@ describe('McpConnectClientDialog', () => {
 			const entryPoints = provideEntryPoints('banner');
 			renderComponent({ pinia });
 
-			await userEvent.click(await body().findByTestId('mcp-connect-preferences-link'));
+			const link = await body().findByTestId('mcp-connect-preferences-link');
+			expect(link).toHaveAttribute(
+				'data-to',
+				JSON.stringify({ name: 'SettingsContextPreferences' }),
+			);
+			await userEvent.click(link);
 
 			expect(entryPoints.trackEntryPointClicked).toHaveBeenCalledWith('connect_dialog');
 			expect(mcpStore.closeConnectPopover).toHaveBeenCalled();
+			expect(mcpStore.resetCurrentUserMCPKey).toHaveBeenCalled();
 		});
 	});
 });

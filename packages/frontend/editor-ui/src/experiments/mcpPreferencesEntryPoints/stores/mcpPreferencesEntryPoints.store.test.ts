@@ -8,14 +8,11 @@ import { MCP_PREFERENCES_ENTRY_POINTS_EXPERIMENT } from '@/app/constants/experim
 
 import { useMcpPreferencesEntryPointsStore } from './mcpPreferencesEntryPoints.store';
 
-const { mockTrack, mockGetVariant, mockTrackExposure, mockFetchPreferenceCount } = vi.hoisted(
-	() => ({
-		mockTrack: vi.fn(),
-		mockGetVariant: vi.fn(),
-		mockTrackExposure: vi.fn(),
-		mockFetchPreferenceCount: vi.fn(),
-	}),
-);
+const { mockTrack, mockGetVariant, mockTrackExposure } = vi.hoisted(() => ({
+	mockTrack: vi.fn(),
+	mockGetVariant: vi.fn(),
+	mockTrackExposure: vi.fn(),
+}));
 
 vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: mockTrack }),
@@ -26,10 +23,6 @@ vi.mock('@/app/stores/posthog.store', () => ({
 		getVariant: mockGetVariant,
 		trackExposure: mockTrackExposure,
 	}),
-}));
-
-vi.mock('@/features/settings/context/context.store', () => ({
-	useContextStore: () => ({ fetchPreferenceCount: mockFetchPreferenceCount }),
 }));
 
 const featureFlagProperty = `$feature/${MCP_PREFERENCES_ENTRY_POINTS_EXPERIMENT.name}`;
@@ -102,16 +95,6 @@ describe('mcpPreferencesEntryPoints store', () => {
 		expect(mockTrackExposure).toHaveBeenCalledWith(MCP_PREFERENCES_ENTRY_POINTS_EXPERIMENT.name);
 	});
 
-	it('loads the preference count', async () => {
-		mockFetchPreferenceCount.mockResolvedValue(4);
-		const store = useMcpPreferencesEntryPointsStore();
-
-		expect(store.preferenceCount).toBeUndefined();
-		await store.loadPreferenceCount();
-
-		expect(store.preferenceCount).toBe(4);
-	});
-
 	it('keeps the banner dismissed and tracks the dismissal', async () => {
 		mockGetVariant.mockReturnValue(MCP_PREFERENCES_ENTRY_POINTS_EXPERIMENT.banner);
 		const store = useMcpPreferencesEntryPointsStore();
@@ -157,5 +140,6 @@ describe('mcpPreferencesEntryPoints store', () => {
 		store.dismissBanner();
 
 		expect(mockTrack).not.toHaveBeenCalled();
+		expect(store.isBannerDismissed).toBe(false);
 	});
 });

@@ -5,23 +5,13 @@ import { STORES } from '@n8n/stores';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { defineStore } from 'pinia';
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 
 import { MCP_PREFERENCES_ENTRY_POINTS_EXPERIMENT } from '@/app/constants/experiments';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { getExperimentTelemetryPayload } from '@/experiments/utils';
-import { useContextStore } from '@/features/settings/context/context.store';
 
 const BANNER_DISMISSED_KEY = 'N8N_MCP_PREFERENCES_BANNER_DISMISSED';
-
-const ENTRY_POINTS: readonly McpPreferencesEntryPoint[] = [
-	MCP_PREFERENCES_ENTRY_POINTS_EXPERIMENT.banner,
-	MCP_PREFERENCES_ENTRY_POINTS_EXPERIMENT.connectionRow,
-];
-
-function isEntryPoint(value: unknown): value is McpPreferencesEntryPoint {
-	return ENTRY_POINTS.some((entryPoint) => entryPoint === value);
-}
 
 export const useMcpPreferencesEntryPointsStore = defineStore(
 	STORES.EXPERIMENT_MCP_PREFERENCES_ENTRY_POINTS,
@@ -30,8 +20,6 @@ export const useMcpPreferencesEntryPointsStore = defineStore(
 		const settingsStore = useSettingsStore();
 		const telemetry = useTelemetry();
 		const bannerDismissedStorage = useStorage(BANNER_DISMISSED_KEY);
-
-		const preferenceCount = ref<number>();
 
 		const canUsePreferencesOverMcp = computed(
 			() =>
@@ -43,7 +31,10 @@ export const useMcpPreferencesEntryPointsStore = defineStore(
 		const entryPoint = computed<McpPreferencesEntryPoint | undefined>(() => {
 			if (!canUsePreferencesOverMcp.value) return undefined;
 			const variant = posthogStore.getVariant(MCP_PREFERENCES_ENTRY_POINTS_EXPERIMENT.name);
-			return isEntryPoint(variant) ? variant : undefined;
+			return variant === MCP_PREFERENCES_ENTRY_POINTS_EXPERIMENT.banner ||
+				variant === MCP_PREFERENCES_ENTRY_POINTS_EXPERIMENT.connectionRow
+				? variant
+				: undefined;
 		});
 
 		const isBannerDismissed = computed(() => bannerDismissedStorage.value === 'true');
@@ -53,13 +44,9 @@ export const useMcpPreferencesEntryPointsStore = defineStore(
 			posthogStore.trackExposure(MCP_PREFERENCES_ENTRY_POINTS_EXPERIMENT.name);
 		}
 
-		async function loadPreferenceCount() {
-			preferenceCount.value = await useContextStore().fetchPreferenceCount();
-		}
-
 		function dismissBanner() {
-			bannerDismissedStorage.value = 'true';
 			if (entryPoint.value !== MCP_PREFERENCES_ENTRY_POINTS_EXPERIMENT.banner) return;
+			bannerDismissedStorage.value = 'true';
 			telemetry.track(
 				TELEMETRY_EVENT.MCP.PREFERENCES_BANNER_DISMISSED,
 				getExperimentTelemetryPayload(MCP_PREFERENCES_ENTRY_POINTS_EXPERIMENT, entryPoint.value),
@@ -88,10 +75,8 @@ export const useMcpPreferencesEntryPointsStore = defineStore(
 
 		return {
 			entryPoint,
-			preferenceCount,
 			isBannerDismissed,
 			trackExposure,
-			loadPreferenceCount,
 			dismissBanner,
 			trackEntryPointClicked,
 			trackPromptCopied,

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch, watchEffect } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import {
@@ -27,6 +27,7 @@ import {
 } from '@n8n/design-system';
 
 import { useDocumentTitle } from '@n8n/composables/useDocumentTitle';
+import { VIEWS } from '@n8n/frontend-constants/views';
 import { useToast } from '@n8n/composables/useToast';
 import MCPEmptyState from './components/MCPEmptyState.vue';
 import McpAllowedCallbackUrlsDialog from './components/McpAllowedCallbackUrlsDialog.vue';
@@ -89,22 +90,32 @@ const globalPreferencesEnabled = computed(
 
 const preferencesEntryPoints = capabilityRegistry.tryUse(capabilities.mcpPreferencesEntryPoints);
 const preferencesEntryPoint = computed(() => preferencesEntryPoints?.entryPoint());
-const preferenceCount = computed(() => preferencesEntryPoints?.preferenceCount());
+const isPreferencesBannerDismissed = computed(
+	() => preferencesEntryPoints?.isBannerDismissed() ?? false,
+);
+const preferenceCount = ref<number>();
+
+const isBannerArmActive = computed(
+	() => preferencesEntryPoint.value === 'banner' && !isPreferencesBannerDismissed.value,
+);
+
+const needsPreferenceCount = computed(
+	() => preferencesEntryPoint.value === 'connection_row' || isBannerArmActive.value,
+);
 
 const showPreferencesBanner = computed(
-	() =>
-		preferencesEntryPoint.value === 'banner' &&
-		preferenceCount.value === 0 &&
-		!preferencesEntryPoints?.isBannerDismissed(),
+	() => isBannerArmActive.value && preferenceCount.value === 0,
+);
+
+const showPreferencesConnectionRow = computed(
+	() => preferencesEntryPoint.value === 'connection_row' && preferenceCount.value !== undefined,
 );
 
 const connectionRowDescription = computed(() =>
-	preferenceCount.value
-		? i18n.baseText('settings.mcp.preferencesEntry.connectionRow.description', {
-				adjustToNumber: preferenceCount.value,
-				interpolate: { count: String(preferenceCount.value) },
-			})
-		: i18n.baseText('settings.mcp.preferencesEntry.connectionRow.description.empty'),
+	i18n.baseText('settings.mcp.preferencesEntry.connectionRow.description', {
+		adjustToNumber: preferenceCount.value,
+		interpolate: { count: String(preferenceCount.value) },
+	}),
 );
 
 const connectionRowButtonLabel = computed(() =>
@@ -116,23 +127,23 @@ const connectionRowButtonLabel = computed(() =>
 const openPreferences = (source: McpPreferencesEntryPoint) => {
 	if (!preferencesEntryPoints) return;
 	preferencesEntryPoints.trackEntryPointClicked(source);
-	void router.push(preferencesEntryPoints.preferencesRoute);
+	void router.push({ name: VIEWS.SETTINGS_CONTEXT_PREFERENCES });
 };
 
 const loadPreferenceCount = async () => {
 	try {
-		await preferencesEntryPoints?.loadPreferenceCount();
+		preferenceCount.value = await preferencesEntryPoints?.fetchPreferenceCount();
 	} catch (error) {
-		toast.showError(error, i18n.baseText('settings.mcp.preferencesEntry.error.loading'));
+		toast.showError(error, i18n.baseText('settings.context.preferences.error.load'));
 	}
 };
 
+watchEffect(() => preferencesEntryPoints?.trackExposure());
+
 watch(
-	() => [mcpStore.mcpAccessEnabled, mcpStore.preferencesEnabled, preferencesEntryPoint.value],
-	([accessEnabled, , entryPoint]) => {
-		if (!accessEnabled) return;
-		preferencesEntryPoints?.trackExposure();
-		if (entryPoint) void loadPreferenceCount();
+	needsPreferenceCount,
+	(needed) => {
+		if (needed) void loadPreferenceCount();
 	},
 	{ immediate: true },
 );
@@ -447,7 +458,7 @@ onBeforeUnmount(() => {
 						</template>
 					</N8nSettingsRow>
 					<N8nSettingsRow
-						v-if="preferencesEntryPoint === 'connection_row'"
+						v-if="showPreferencesConnectionRow"
 						:title="i18n.baseText('settings.mcp.preferencesEntry.connectionRow.title')"
 						:description="connectionRowDescription"
 						data-test-id="mcp-preferences-connection-row"

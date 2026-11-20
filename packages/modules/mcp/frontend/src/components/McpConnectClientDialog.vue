@@ -20,6 +20,7 @@ import {
 import type { DropdownMenuItemProps, TabOptions } from '@n8n/design-system';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
+import { VIEWS } from '@n8n/frontend-constants/views';
 import { useMCPStore } from '../mcp.store';
 import { getMcpClientCatalog } from '../mcp.clients.catalog';
 import type { McpClientSetup } from '../mcp.clients.catalog';
@@ -158,14 +159,15 @@ const serverUrlDescription = computed(() =>
 
 const preferencesEntryPoints = capabilityRegistry.tryUse(capabilities.mcpPreferencesEntryPoints);
 const showPreferencesPrompt = computed(() => !!preferencesEntryPoints?.entryPoint());
+const activeClientName = computed(() => activeClient.value?.name ?? '');
 const preferencesPromptTitle = computed(() =>
 	i18n.baseText('settings.mcp.connectDialog.preferences.title', {
-		interpolate: { client: activeClient.value?.name ?? '' },
+		interpolate: { client: activeClientName.value },
 	}),
 );
 const preferencesPromptDescription = computed(() =>
 	i18n.baseText('settings.mcp.connectDialog.preferences.description', {
-		interpolate: { client: activeClient.value?.name ?? '' },
+		interpolate: { client: activeClientName.value },
 	}),
 );
 
@@ -175,7 +177,7 @@ const onPreferencesPromptCopy = () => {
 
 const onPreferencesLinkClick = () => {
 	preferencesEntryPoints?.trackEntryPointClicked('connect_dialog');
-	mcpStore.closeConnectPopover();
+	onOpenChange(false);
 };
 </script>
 
@@ -435,7 +437,7 @@ const onPreferencesLinkClick = () => {
 					<template #action>
 						<div :class="$style['copy-field']">
 							<McpConfigSnippet
-								:class="$style['prompt-snippet']"
+								wrap
 								:value="i18n.baseText('settings.mcp.connectDialog.preferences.prompt')"
 								language="text"
 								@copy="onPreferencesPromptCopy"
@@ -443,8 +445,7 @@ const onPreferencesLinkClick = () => {
 							<N8nText tag="p" size="small" color="text-base" :class="$style['prompt-hint']">
 								{{ i18n.baseText('settings.mcp.connectDialog.preferences.settingsHint') }}
 								<N8nLink
-									v-if="preferencesEntryPoints"
-									:to="preferencesEntryPoints.preferencesRoute"
+									:to="{ name: VIEWS.SETTINGS_CONTEXT_PREFERENCES }"
 									size="small"
 									underline
 									data-test-id="mcp-connect-preferences-link"
@@ -543,11 +544,6 @@ const onPreferencesLinkClick = () => {
 	display: inline-flex;
 	align-items: baseline;
 	gap: var(--spacing--2xs);
-}
-
-.prompt-snippet code {
-	white-space: pre-wrap;
-	padding-right: var(--spacing--xl) !important;
 }
 
 .prompt-hint {
