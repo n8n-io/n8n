@@ -755,6 +755,17 @@ describe('createDeepLazyProxy batched reads', () => {
 			expect(callbacks.readBatch).toHaveBeenCalledTimes(1);
 		});
 
+		it('asks for the next object items with no field while the expression reads no field', () => {
+			const callbacks = createCallbacks();
+			callbacks.getArrayElement.mockReturnValue(objectOf(['id']));
+			callbacks.readBatch.mockReturnValue(hostData([{}, {}]));
+			const rows = arrayProxy(callbacks, 10);
+
+			expect([rows[0], rows[1], rows[2]].map(isLazyProxy)).toEqual([true, true, true]);
+			expect(callbacks.readBatch.mock.calls).toEqual([[['$json', 'rows'], 1, 0, []]]);
+			expect(callbacks.getValueAtPath).not.toHaveBeenCalled();
+		});
+
 		it('asks for whole items again after the expression read a lazy item whole', () => {
 			const callbacks = createCallbacks();
 			callbacks.getArrayElement.mockReturnValue(0);
@@ -799,6 +810,89 @@ describe('createDeepLazyProxy batched reads', () => {
 				[['$json', 'rows', '0'], 0, 0, SMALL_VALUES],
 				[['$json', 'rows'], 1, 0, WHOLE_VALUES],
 			]);
+		});
+
+		it('asks for the fields that the expression read by name on the item before', () => {
+			const callbacks = createCallbacks();
+			callbacks.getArrayElement.mockReturnValue(objectOf(['id', 'name', 'other']));
+			callbacks.getValueAtPath.mockImplementation((path: string[]) => `${path[2]}.${path[3]}`);
+			callbacks.readBatch.mockReturnValue(
+				hostData([
+					{ id: '1.id', name: '1.name' },
+					{ id: '2.id', name: '2.name' },
+				]),
+			);
+			const rows = arrayProxy(callbacks, 10);
+
+			expect([0, 1, 2].map((index) => `${rows[index].id} ${rows[index].name}`)).toEqual([
+				'0.id 0.name',
+				'1.id 1.name',
+				'2.id 2.name',
+			]);
+			expect(callbacks.readBatch.mock.calls).toEqual([[['$json', 'rows'], 1, 0, ['id', 'name']]]);
+			// Only the first item read its fields from the host.
+			expect(callbacks.getValueAtPath).toHaveBeenCalledTimes(2);
+		});
+
+		it('keeps the key order of the host for an item with some fields after a write', () => {
+			const callbacks = createCallbacks();
+			callbacks.getArrayElement.mockReturnValue(objectOf(['other', 'id']));
+			callbacks.getValueAtPath.mockImplementation((path: string[]) =>
+				path.length === 3 ? objectOf(['other', 'id']) : path.join('.'),
+			);
+			callbacks.readBatch.mockReturnValue(hostData([{ id: 'known' }]));
+			const rows = arrayProxy(callbacks, 10);
+			void rows[0].id;
+			rows[1].x = 1;
+
+			expect(Object.entries(rows[1])).toEqual([
+				['other', '$json.rows.1.other'],
+				['id', 'known'],
+				['x', 1],
+			]);
+		});
+
+		it('reads any other field of an item with some fields from the host', () => {
+			const callbacks = createCallbacks();
+			callbacks.getArrayElement.mockReturnValue(objectOf(['id', 'other']));
+			callbacks.getValueAtPath.mockImplementation((path: string[]) =>
+				path.length === 3 ? objectOf(['id', 'other']) : path.join('.'),
+			);
+			callbacks.readBatch.mockReturnValue(hostData([{ id: 'known' }]));
+			const rows = arrayProxy(callbacks, 10);
+			void rows[0].id;
+
+			expect(isLazyProxy(rows[1])).toBe(true);
+			expect(rows[1].id).toBe('known');
+			expect(rows[1].other).toBe('$json.rows.1.other');
+			expect(Object.keys(rows[1])).toEqual(['id', 'other']);
+			expect('other' in rows[1]).toBe(true);
+		});
+
+		it('asks for small items after a read of a named key of an array item', () => {
+			const callbacks = createCallbacks();
+			callbacks.getArrayElement.mockReturnValue({ __isArray: true, __length: 2 });
+			callbacks.getValueAtPath.mockReturnValue(undefined);
+			callbacks.readBatch.mockReturnValue(hostData([1, 2]));
+			const rows = arrayProxy(callbacks, 10);
+
+			void rows[0].label;
+			void rows[1];
+
+			expect(callbacks.readBatch.mock.calls[0]).toEqual([['$json', 'rows'], 1, 0, SMALL_VALUES]);
+		});
+
+		it('keeps at most 8 field names', () => {
+			const names = Array.from({ length: 10 }, (_, index) => `f${index}`);
+			const callbacks = createCallbacks();
+			callbacks.getArrayElement.mockReturnValue(objectOf(names));
+			callbacks.getValueAtPath.mockReturnValue(1);
+			callbacks.readBatch.mockReturnValue(hostData([{}]));
+			const rows = arrayProxy(callbacks, 10);
+			names.forEach((name) => void rows[0][name]);
+			void rows[1];
+
+			expect(callbacks.readBatch.mock.calls[0][3]).toEqual(names.slice(0, 8));
 		});
 
 		it('throws the error that the host gives', () => {
