@@ -1591,7 +1591,7 @@ describe('LoadNodesAndCredentials', () => {
 		});
 
 		describe('loadPackage', () => {
-			let runDirectoryLoader: ReturnType<typeof vi.spyOn>;
+			let runDirectoryLoader: Mock;
 
 			beforeEach(() => {
 				instance = new LoadNodesAndCredentials(
@@ -1602,9 +1602,8 @@ describe('LoadNodesAndCredentials', () => {
 					mock(),
 					mock(),
 				);
-				runDirectoryLoader = vi
-					.spyOn(instance as never, 'runDirectoryLoader')
-					.mockResolvedValue(mock() as never);
+				runDirectoryLoader = vi.fn().mockResolvedValue(mock());
+				instance['runDirectoryLoader'] = runDirectoryLoader;
 			});
 
 			it('should only warn on conflicts by default, so installed packages keep loading', async () => {
