@@ -336,11 +336,32 @@ export class InstanceAiCloudBrowserTaskService {
 				taskId,
 				run.domainGate,
 			);
+			mcpServer.setCurrentWindowListener(() =>
+				eventBus.publish(threadId, {
+					type: 'cloud-browser-window-changed',
+					runId,
+					agentId,
+					detachedFromTurn: true,
+					payload: {},
+				}),
+			);
+			// The timeout check skips the task while the user has control, but its idle time still
+			// grows. It starts again from zero when the user gives control back.
+			mcpServer.setControlReturnedListener(() => backgroundTaskManager.touchTask(threadId, taskId));
+			// A stopped task can wait for the user inside a tool call. Releasing the browser ends the wait.
+			signal.addEventListener(
+				'abort',
+				() => {
+					void cloudBrowserService.release(taskId);
+				},
+				{ once: true },
+			);
 			try {
 				const result = await runCloudBrowserAgent({
 					agentId,
 					brief,
 					mcpServer,
+					userActionHost: mcpServer,
 					modelId: run.modelId,
 					threadId,
 					runId,

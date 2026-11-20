@@ -159,6 +159,27 @@ describe('N8nClient on the Agents runtime', () => {
 		]);
 	});
 
+	it('sends an attached Agent as the subject that binds the thread', async () => {
+		const calls = mockN8n([
+			[
+				'POST',
+				/^\/rest\/agents\/system\/assistant\/chat\?/,
+				{ sse: sse({ type: 'message-queued', queueId: 'q-1' }) },
+			],
+		]);
+		const client = await agentsClient();
+		await client.ensureThread('t-1', 'p-1');
+		const agent = { type: 'agent' as const, id: 'agent-1', name: 'Triage', projectId: 'p-1' };
+
+		await client.sendMessage('t-1', 'Change it', [agent]);
+
+		expect(afterLogin(calls).at(-1)?.body).toEqual({
+			message: 'Change it',
+			sessionId: 't-1',
+			clientContext: { attachments: [agent], subject: agent },
+		});
+	});
+
 	it('throws when the chat stream starts with an error event', async () => {
 		mockN8n([
 			[

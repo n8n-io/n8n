@@ -18,8 +18,13 @@ describe('workflow publication blocker in OpenAPI', () => {
 			];
 
 			expect(schema.required).toEqual(['message']);
-			expect(schema.properties.reason.enum).toEqual(['review_pending', 'changes_requested']);
+			expect(schema.properties.reason.enum).toEqual([
+				'review_pending',
+				'changes_requested',
+				'review_required',
+			]);
 			expect(schema.properties.workflowReviewRequestId.type).toBe('string');
+			expect(schema.properties.versionId.type).toBe('string');
 		},
 	);
 

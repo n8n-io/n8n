@@ -8,7 +8,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 import { useInstancePolicyStore } from './instance-policy.store';
 import { useInstanceTypeAccess } from './useInstanceTypeAccess';
-import type { InstancePolicy, InstancePolicyContent } from '../type-availability-policies.api';
+import type { InstancePolicy } from '../type-availability-policies.api';
 import { useTypeAvailabilityPoliciesStore } from '../type-availability-policies.store';
 
 const mocks = vi.hoisted(() => ({
@@ -47,56 +47,67 @@ describe('useInstanceTypeAccess', () => {
 		mocks.fetchInstanceAccess.mockResolvedValue(nodeAccess(1));
 	});
 
-	it('reads and writes the policy of the kind it is given', async () => {
+	it('shows the access that the store read and saves a change through it', async () => {
 		await setup();
 		mocks.saveInstancePolicy.mockResolvedValue({ ...nodePolicy(2), warnings: [] });
-		const setTypeAccess = vi.fn((policy: InstancePolicyContent<'node'>, typeName: string) => ({
-			defaultAction: policy.defaultAction,
-			rules: [
-				{
-					id: 'new',
-					action: 'deny' as const,
-					selector: { kind: 'name' as const, value: typeName },
-				},
-			],
-		}));
 
-		const { types, changeAccess } = useInstanceTypeAccess('node', setTypeAccess);
-		await waitFor(() => expect(types.value).toHaveLength(1));
-		expect(mocks.fetchInstanceAccess).toHaveBeenCalledWith(expect.anything(), 'node');
+		const { types, changeAccess } = useInstanceTypeAccess('node');
+
+		expect(types.value).toEqual([
+			{ name: 'n8n-nodes-base.slack', access: 'allow', matchedRuleId: null, editable: true },
+		]);
+		expect(mocks.fetchInstanceAccess).toHaveBeenCalledTimes(1);
 
 		await changeAccess('n8n-nodes-base.slack', 'deny');
 
-		expect(setTypeAccess).toHaveBeenCalledWith(
-			expect.objectContaining({ version: 1 }),
-			'n8n-nodes-base.slack',
-			'deny',
-		);
 		expect(mocks.saveInstancePolicy).toHaveBeenCalledWith(expect.anything(), 'node', {
 			defaultAction: 'allow',
 			version: 1,
 			rules: [
-				{ id: 'new', action: 'deny', selector: { kind: 'name', value: 'n8n-nodes-base.slack' } },
+				{
+					id: expect.any(String),
+					action: 'deny',
+					selector: { kind: 'name', value: 'n8n-nodes-base.slack' },
+				},
 			],
 		});
+		// The store reads the access of the saved version once, and the composable does not read it.
+		expect(mocks.fetchInstanceAccess).toHaveBeenCalledTimes(2);
+	});
+
+	it('is loading while the store reads the access after a save', async () => {
+		await setup();
+		mocks.saveInstancePolicy.mockResolvedValue({ ...nodePolicy(2), warnings: [] });
+		const read = createDeferredPromise<InstanceTypeAccessResponse>();
+		mocks.fetchInstanceAccess.mockReturnValue(read.promise);
+		const { loading, changeAccess } = useInstanceTypeAccess('node');
+		expect(loading.value).toBe(false);
+
+		const change = changeAccess('n8n-nodes-base.slack', 'deny');
+		await waitFor(() => expect(loading.value).toBe(true));
+
+		read.resolve(nodeAccess(2));
+		await change;
+		expect(loading.value).toBe(false);
 	});
 
 	it('shows the new access until the access list of the saved version arrives', async () => {
 		await setup();
 		mocks.saveInstancePolicy.mockResolvedValue({ ...nodePolicy(2), warnings: [] });
-		const { types, changeAccess } = useInstanceTypeAccess('node', (policy) => policy);
+		const { types, changeAccess } = useInstanceTypeAccess('node');
 		await waitFor(() => expect(types.value).toHaveLength(1));
 
 		const change = changeAccess('n8n-nodes-base.slack', 'deny');
 		expect(types.value[0].access).toBe('deny');
 		await change;
 
-		// The reload after the save still answers with version 1, so the pick must stay.
+		// The read after the save still answers with version 1, so the pick must stay.
 		expect(types.value[0].access).toBe('deny');
 
 		// Another admin allows it again. The list of that version replaces the pick.
-		mocks.fetchInstanceAccess.mockResolvedValue({ ...nodeAccess(3) });
-		useInstancePolicyStore().policies.node = nodePolicy(3);
+		mocks.fetchInstancePolicy.mockResolvedValue(nodePolicy(3));
+		mocks.fetchInstanceAccess.mockResolvedValue(nodeAccess(3));
+		await useInstancePolicyStore().load(['node']);
 		await waitFor(() => expect(types.value[0].access).toBe('allow'));
 	});
 
@@ -106,7 +117,7 @@ describe('useInstanceTypeAccess', () => {
 		mocks.saveInstancePolicy
 			.mockReturnValueOnce(firstSave.promise)
 			.mockResolvedValue({ ...nodePolicy(3), warnings: [] });
-		const { types, changeAccess } = useInstanceTypeAccess('node', (policy) => policy);
+		const { types, changeAccess } = useInstanceTypeAccess('node');
 		await waitFor(() => expect(types.value).toHaveLength(1));
 
 		// A failed save drops its pick, but only its own, not the one made after it.
@@ -124,7 +135,7 @@ describe('useInstanceTypeAccess', () => {
 		mocks.saveInstancePolicy.mockRejectedValue(
 			new ResponseError('several documents', { httpStatusCode: 409 }),
 		);
-		const { types, changeAccess } = useInstanceTypeAccess('node', (policy) => policy);
+		const { types, changeAccess } = useInstanceTypeAccess('node');
 		await waitFor(() => expect(types.value).toHaveLength(1));
 
 		await changeAccess('n8n-nodes-base.slack', 'deny');

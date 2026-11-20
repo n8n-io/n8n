@@ -7,12 +7,12 @@ import { mock } from 'vitest-mock-extended';
 
 import { AiService } from '@/services/ai.service';
 import { FolderContentService } from '@/services/folder-content.service';
-import { ExecutionDataJsonStore } from '@/executions/execution-data/execution-data-json-store';
 import {
 	AgentProjectLookupProxy,
 	ExecutionRetentionService,
 	FavoriteResourceResolverRegistry,
 	WorkflowProjectService,
+	ExecutionDataJsonStore,
 } from '@n8n/backend-services';
 import { SandboxSettingsService } from '@/services/sandbox-settings.service';
 import { ServiceAccountProjects } from '@/services/service-account-projects';

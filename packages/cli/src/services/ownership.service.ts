@@ -1,6 +1,11 @@
 import { OwnerSetupRequestDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { CacheService, EventService, WorkflowProjectService } from '@n8n/backend-services';
+import {
+	CacheService,
+	EventService,
+	WorkflowProjectService,
+	PasswordUtility,
+} from '@n8n/backend-services';
 import type { ListQueryDb, UserKind } from '@n8n/db';
 import {
 	GLOBAL_OWNER_ROLE,
@@ -23,7 +28,6 @@ import { Service } from '@n8n/di';
 import config from '@/config';
 import { BadRequestError } from '@n8n/errors';
 
-import { PasswordUtility } from './password.utility';
 import { type AccountProject, ServiceAccountProjects } from './service-account-projects';
 
 @Service()

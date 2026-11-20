@@ -1,0 +1,8 @@
+{
+	"properties": {
+		"html": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

@@ -5,12 +5,11 @@ import { VIEWS } from '@n8n/frontend-constants/views';
 import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
 import { useI18n } from '@n8n/i18n';
 import { ProjectTypes } from '@n8n/rest-api-client';
-import { computed, onBeforeUnmount, onMounted, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted } from 'vue';
 import { RouterLink, useRouter } from 'vue-router';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useUsersStore } from '@n8n/stores/users.store';
 
-import { useInstancePromotionConnection } from '../composables/useInstancePromotionConnection';
 import { usePromotionChangeCount } from '../composables/usePromotionChangeCount';
 import { promotionEventBus, type PromotionEventBusEvents } from '../promotions.eventBus';
 import { PROMOTION_PREVIEW_VIEWS } from '../promotions.constants';
@@ -33,42 +32,18 @@ const promotionsPermissions = computed(
 	() => getResourcePermissions(usersStore.currentUser?.globalScopes).promotions,
 );
 
-// Each direction needs its configuration on the instance connection, so a source never
-// asks for incoming changes and a destination never asks for outgoing ones.
-const {
-	environments,
-	hasPromoteConfig,
-	hasApplyConfig,
-	load: loadConnection,
-} = useInstancePromotionConnection();
-
 const canPreviewChanges = computed(
-	() =>
-		isTeamProject.value &&
-		isPromotionsEnabled.value &&
-		!!projectPermissions.value.export &&
-		// `list` loads the connection. `read` loads the preview, as on the preview page.
-		!!promotionsPermissions.value.list &&
-		!!promotionsPermissions.value.read &&
-		(!!promotionsPermissions.value.promote || !!promotionsPermissions.value.apply),
+	() => isTeamProject.value && isPromotionsEnabled.value && !!projectPermissions.value.export,
 );
-const showPromote = computed(
-	() => canPreviewChanges.value && hasPromoteConfig.value && !!promotionsPermissions.value.promote,
+const canPreviewPromote = computed(
+	() => canPreviewChanges.value && !!promotionsPermissions.value.promote,
 );
-const showApply = computed(
-	() => canPreviewChanges.value && hasApplyConfig.value && !!promotionsPermissions.value.apply,
+const canPreviewApply = computed(
+	() => canPreviewChanges.value && !!promotionsPermissions.value.apply,
 );
 
-watch(
-	[canPreviewChanges, currentProjectId],
-	async ([canPreview]) => {
-		if (canPreview) await loadConnection();
-	},
-	{ immediate: true },
-);
-
-const promote = usePromotionChangeCount(currentProjectId, 'promote', showPromote);
-const apply = usePromotionChangeCount(currentProjectId, 'apply', showApply);
+const promote = usePromotionChangeCount(currentProjectId, 'promote', canPreviewPromote);
+const apply = usePromotionChangeCount(currentProjectId, 'apply', canPreviewApply);
 
 // The store's project id follows the route at once, the current project only once it loaded,
 // so a result for a project the user already left is dropped here.
@@ -112,11 +87,11 @@ const badges = computed(() => {
 	const projectId = currentProjectId.value;
 	if (!projectId) return [];
 	const entries = [
-		{ direction: 'apply' as const, show: showApply.value, changes: apply },
-		{ direction: 'promote' as const, show: showPromote.value, changes: promote },
+		{ direction: 'apply' as const, enabled: canPreviewApply.value, changes: apply },
+		{ direction: 'promote' as const, enabled: canPreviewPromote.value, changes: promote },
 	];
 	return entries
-		.filter(({ show }) => show)
+		.filter(({ enabled, changes }) => enabled && changes.visible.value)
 		.map(({ direction, changes }) => {
 			const blocked = !!changes.blocker.value;
 			const disabled =
@@ -151,10 +126,7 @@ const badges = computed(() => {
 										adjustToNumber: changes.changeCount.value,
 										interpolate: {
 											count: String(changes.changeCount.value),
-											environment:
-												environments.value.find(
-													(environment) => environment.direction === direction,
-												)?.name ?? '',
+											environment: changes.environmentName.value ?? '',
 										},
 									}),
 				to: { name: PROMOTION_PREVIEW_VIEWS[direction], params: { projectId } },
@@ -168,10 +140,13 @@ const badges = computed(() => {
 		<N8nTooltip
 			v-for="badge in badges"
 			:key="`${badge.direction}-${badge.anchor}`"
-			:content="badge.label"
 			:disabled="badge.loading"
 			as-child
 		>
+			<!-- Text, not HTML: the label can hold an environment name. -->
+			<template #content
+				><span>{{ badge.label }}</span></template
+			>
 			<span
 				v-if="badge.blocked"
 				role="button"

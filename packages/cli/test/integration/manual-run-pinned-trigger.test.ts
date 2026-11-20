@@ -90,11 +90,11 @@ describe('Manual run of a pinned trigger node', () => {
 				owner,
 			);
 
-			const result = await workflowExecutionService.executeManually(
-				workflow,
-				{ destinationNode: { nodeName: 'Trigger', mode: 'inclusive' } },
-				owner,
-			);
+			const result = await workflowExecutionService.executeManually({
+				workflowData: workflow,
+				payload: { destinationNode: { nodeName: 'Trigger', mode: 'inclusive' } },
+				user: owner,
+			});
 
 			expect(result).toEqual({ executionId: expect.any(String) });
 			if (!('executionId' in result)) return;

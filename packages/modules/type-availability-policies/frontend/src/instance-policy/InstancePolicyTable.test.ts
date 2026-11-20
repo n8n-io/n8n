@@ -12,12 +12,15 @@ const row = (
 	displayName: string,
 	access: InstancePolicyTableRow['access'] = 'allow',
 	editable = true,
+	usage: InstancePolicyTableRow['usage'] = null,
 ): InstancePolicyTableRow => ({
 	name,
 	displayName,
 	access,
+	matchedRuleId: null,
 	editable,
 	icon: { type: 'icon', name: 'key-round' },
+	usage,
 });
 
 const ROWS = [
@@ -25,6 +28,12 @@ const ROWS = [
 	row('airtableApi', 'Airtable API'),
 	row('notionApi', 'Notion API'),
 ];
+
+// Use read-only rows so pagination tests do not mount an access menu for each row.
+const paginationRows = (count: number) =>
+	Array.from({ length: count }, (_, index) =>
+		row(`type${index}`, `Type ${String(index).padStart(2, '0')}`, 'delegate', false),
+	);
 
 const renderTable = createComponentRenderer(InstancePolicyTable);
 
@@ -41,10 +50,9 @@ const openFilter = async (getByRole: (role: string, options?: object) => HTMLEle
 	await userEvent.click(getByRole('combobox', { name: 'Filter by access' }));
 
 const rowNames = (container: HTMLElement) =>
-	within(container)
-		.getAllByRole('row')
-		.slice(1)
-		.map((tableRow) => tableRow.querySelector('td')?.textContent?.trim());
+	Array.from(container.querySelectorAll<HTMLTableRowElement>('tbody tr'), (tableRow) =>
+		tableRow.cells[0]?.textContent?.trim(),
+	);
 
 describe('InstancePolicyTable', () => {
 	it('lists the rows sorted by name', () => {
@@ -119,6 +127,69 @@ describe('InstancePolicyTable', () => {
 		);
 	});
 
+	describe('usage sort', () => {
+		const usage = (workflows: number) => ({ uses: 0, workflows, activeWorkflows: 0, projects: 0 });
+		const USAGE_ROWS = [
+			row('bitlyApi', 'Bitly API', 'allow', false, usage(2)),
+			row('notionApi', 'Notion API', 'allow', false, usage(5)),
+			row('airtableApi', 'Airtable API', 'allow', false),
+			row('zoomApi', 'Zoom API', 'allow', false, usage(2)),
+			row('boxApi', 'Box API', 'allow', false),
+			row('asanaApi', 'Asana API', 'allow', false, usage(2)),
+		];
+
+		const clickWorkflows = async (getByRole: (role: string, options?: object) => HTMLElement) =>
+			await userEvent.click(getByRole('columnheader', { name: /^Workflows/ }));
+
+		it('sorts the counts from low to high, with names A to Z for equal counts and unknown usage last', async () => {
+			const { getByTestId, getByRole } = setup(USAGE_ROWS);
+
+			await clickWorkflows(getByRole);
+
+			await waitFor(() =>
+				expect(rowNames(getByTestId('instance-policy-table'))).toEqual([
+					'Asana API',
+					'Bitly API',
+					'Zoom API',
+					'Notion API',
+					'Airtable API',
+					'Box API',
+				]),
+			);
+		});
+
+		it('sorts from low to high on the first click when the first row has a count', async () => {
+			const { getByTestId, getByRole } = setup([
+				row('asanaApi', 'Asana API', 'allow', false, usage(5)),
+				row('bitlyApi', 'Bitly API', 'allow', false, usage(2)),
+			]);
+
+			await clickWorkflows(getByRole);
+
+			await waitFor(() =>
+				expect(rowNames(getByTestId('instance-policy-table'))).toEqual(['Bitly API', 'Asana API']),
+			);
+		});
+
+		it('sorts the counts from high to low, with names A to Z for equal counts and unknown usage last', async () => {
+			const { getByTestId, getByRole } = setup(USAGE_ROWS);
+
+			await clickWorkflows(getByRole);
+			await clickWorkflows(getByRole);
+
+			await waitFor(() =>
+				expect(rowNames(getByTestId('instance-policy-table'))).toEqual([
+					'Notion API',
+					'Asana API',
+					'Bitly API',
+					'Zoom API',
+					'Airtable API',
+					'Box API',
+				]),
+			);
+		});
+	});
+
 	it('does not emit a change when the admin picks the current access', async () => {
 		const { getByTestId, emitted } = setup();
 
@@ -128,15 +199,33 @@ describe('InstancePolicyTable', () => {
 		expect(emitted('change')).toBeUndefined();
 	});
 
-	it('shows the usage columns with no value yet', () => {
-		const { getByRole, getByTestId } = setup();
+	it('shows the usage of each row, and no value for an unknown usage', () => {
+		const { getByRole, getByTestId } = setup([
+			row('bitlyApi', 'Bitly API', 'allow', true, {
+				uses: 3,
+				workflows: 2,
+				activeWorkflows: 1,
+				projects: 1,
+			}),
+			row('notionApi', 'Notion API'),
+		]);
 
 		for (const title of ['Projects', 'Uses', 'Workflows', 'Active workflows']) {
 			expect(getByRole('columnheader', { name: title })).toBeInTheDocument();
 		}
-		const [firstRow] = within(getByTestId('instance-policy-table')).getAllByRole('row').slice(1);
-		const cells = within(firstRow).getAllByRole('cell');
-		expect(cells.slice(2).map((cell) => cell.textContent?.trim())).toEqual(['—', '—', '—', '—']);
+		const usageCells = within(getByTestId('instance-policy-table'))
+			.getAllByRole('row')
+			.slice(1)
+			.map((tableRow) =>
+				within(tableRow)
+					.getAllByRole('cell')
+					.slice(2)
+					.map((cell) => cell.textContent?.trim()),
+			);
+		expect(usageCells).toEqual([
+			['1', '3', '2', '1'],
+			['—', '—', '—', '—'],
+		]);
 	});
 
 	it('names each Access dropdown after its row', () => {
@@ -174,54 +263,43 @@ describe('InstancePolicyTable', () => {
 	});
 
 	it('goes back to the first page when the search changes', async () => {
-		const many = Array.from({ length: 26 }, (_, index) =>
-			row(`type${index}`, `Type ${String(index).padStart(2, '0')}`),
-		);
-		const { getByTestId, getByPlaceholderText, getByRole } = setup(many);
+		const rows = paginationRows(26);
+		const { getByTestId, getByPlaceholderText } = setup(rows);
+		const table = getByTestId('instance-policy-table');
 
-		await userEvent.click(getByRole('button', { name: /next/i }));
-		await waitFor(() =>
-			expect(rowNames(getByTestId('instance-policy-table'))).toEqual(['Type 25']),
-		);
+		await fireEvent.click(getByTestId('pagination-next'));
+		expect(rowNames(table)).toEqual(['Type 25']);
 
-		// Update once to avoid a table render for each key.
 		// Match all rows so page clamping cannot reset the page.
 		await fireEvent.update(getByPlaceholderText('Search credentials'), 'Type');
 
-		await waitFor(() =>
-			expect(rowNames(getByTestId('instance-policy-table'))).toEqual(
-				many.slice(0, 25).map(({ displayName }) => displayName),
-			),
-		);
+		expect(rowNames(table)).toEqual(rows.slice(0, 25).map(({ displayName }) => displayName));
 	});
 
 	it('shows the chosen number of rows from the Page size control', async () => {
-		const many = Array.from({ length: 30 }, (_, index) =>
-			row(`type${index}`, `Type ${String(index).padStart(2, '0')}`),
-		);
-		const { getByTestId, getByRole } = setup(many);
-		expect(rowNames(getByTestId('instance-policy-table'))).toHaveLength(25);
+		const { getByTestId } = setup(paginationRows(30));
+		const table = getByTestId('instance-policy-table');
+		const pagination = within(getByTestId('pagination'));
+		expect(rowNames(table)).toHaveLength(25);
 
-		await userEvent.click(getByRole('combobox', { name: 'Page size' }));
+		await userEvent.click(pagination.getByRole('combobox', { name: 'Page size' }));
 		await userEvent.click(await findPopupItem(OPTION, '10/page'));
 
-		await waitFor(() => expect(rowNames(getByTestId('instance-policy-table'))).toHaveLength(10));
+		expect(rowNames(table)).toHaveLength(10);
 	});
 
 	it('moves to the last page when its rows leave the filter', async () => {
-		const many = Array.from({ length: 26 }, (_, index) =>
-			row(`type${index}`, `Type ${String(index).padStart(2, '0')}`),
-		);
-		const { getByTestId, getByRole, rerender } = setup(many);
+		const rows = paginationRows(26);
+		const { getByTestId, rerender } = setup(rows);
+		const table = getByTestId('instance-policy-table');
 
-		await userEvent.click(getByRole('button', { name: /next/i }));
-		await waitFor(() =>
-			expect(rowNames(getByTestId('instance-policy-table'))).toEqual(['Type 25']),
-		);
+		await fireEvent.click(getByTestId('pagination-next'));
+		expect(rowNames(table)).toEqual(['Type 25']);
 
-		await rerender({ rows: many.slice(0, 25) });
+		const remainingRows = rows.slice(0, 25);
+		await rerender({ rows: remainingRows });
 
-		await waitFor(() => expect(rowNames(getByTestId('instance-policy-table'))[0]).toBe('Type 00'));
+		expect(rowNames(table)).toEqual(remainingRows.map(({ displayName }) => displayName));
 	});
 
 	it('shows a type that a rule leaves open to project opt-in as read-only', () => {
@@ -230,5 +308,44 @@ describe('InstancePolicyTable', () => {
 		const cell = getByTestId('instance-policy-access-slackApi');
 		expect(cell).toHaveTextContent('Open to project opt-in');
 		expect(within(cell).queryByRole('button')).not.toBeInTheDocument();
+	});
+
+	it('asks for the details of a row when the admin clicks the row', async () => {
+		const { getByTestId, emitted } = setup();
+		const airtableRow = within(getByTestId('instance-policy-table'))
+			.getAllByRole('row')
+			.find((tableRow) => tableRow.textContent?.includes('Airtable API'));
+
+		// A usage cell, which has no control of its own.
+		await userEvent.click(airtableRow!.querySelectorAll('td')[2]);
+
+		expect(emitted('open')).toEqual([['airtableApi']]);
+	});
+
+	it('asks for the details of a row from the keyboard, with its name', async () => {
+		const { getByTestId, emitted } = setup();
+
+		getByTestId('instance-policy-open-airtableApi').focus();
+		await userEvent.keyboard('{Enter}');
+
+		expect(emitted('open')).toEqual([['airtableApi']]);
+	});
+
+	it('does not ask for the details when the admin changes the access', async () => {
+		const { getByTestId, emitted } = setup();
+
+		await userEvent.click(accessTrigger(getByTestId, 'airtableApi'));
+		await userEvent.click(await findPopupItem(MENU_ITEM, 'Restricted'));
+
+		expect(emitted('change')).toEqual([['airtableApi', 'deny']]);
+		expect(emitted('open')).toBeUndefined();
+	});
+
+	it('asks for the details of a read-only row when the admin clicks its access', async () => {
+		const { getByTestId, emitted } = setup([row('slackApi', 'Slack API', 'delegate', false)]);
+
+		await userEvent.click(getByTestId('instance-policy-access-slackApi'));
+
+		expect(emitted('open')).toEqual([['slackApi']]);
 	});
 });

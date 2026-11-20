@@ -54,6 +54,7 @@ import { AgentRepository } from '@/modules/agents/repositories/agent.repository'
 import { CallableWorkflowLoader } from '@/workflows/callable/callable-workflow-loader.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
+import { createAgent } from '../shared/db/agents';
 import { createSuccessfulExecution } from '../shared/db/executions';
 import { createOwner } from '../shared/db/users';
 import * as utils from '../shared/utils';
@@ -217,16 +218,7 @@ describe('Durable channel approval lifecycle', () => {
 			const sequence = 'sequence' in scenario;
 			const project = await createTeamProject();
 			const agents = Container.get(AgentRepository);
-			const agent = await agents.save(
-				agents.create({
-					id: generateNanoId(),
-					name: 'Reviewer',
-					projectId: project.id,
-					integrations: [],
-					tools: {},
-					skills: {},
-				}),
-			);
+			const agent = await createAgent({ name: 'Reviewer', projectId: project.id });
 			const caller = await createWorkflowWithHistory({ name: 'Approval caller' }, project);
 			const callerExecution = await createSuccessfulExecution(caller);
 			const threadId = generateNanoId();

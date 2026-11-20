@@ -1,0 +1,14 @@
+{
+	"properties": {
+		"image": {
+			"type": "string"
+		},
+		"sessionId": {
+			"type": "string"
+		},
+		"windowId": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

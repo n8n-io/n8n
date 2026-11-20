@@ -58,24 +58,30 @@ export class AgentProjectCleanupService {
 		// Check every agent first, so a blocked approval stops deletion before any account is removed.
 		for (const agent of agents) await this.approvalCleanup.assertCanCleanupAgent(agent.id);
 		for (const agent of agents) {
-			await this.approvalCleanup.cleanupAgent(agent.id, projectId, agent.approvalWorkflowId);
-			try {
-				await agentKnowledgeService.deleteAllFilesForAgent(projectId, agent.id);
-			} catch (error) {
-				this.logger.warn('Failed to delete knowledge files on project delete', {
-					agentId: agent.id,
-					projectId,
-					error: error instanceof Error ? error.message : error,
-				});
-			}
-
-			await agentKnowledgeService.destroyKnowledgeSandbox(projectId, agent.id);
-			await agentTestChatService.clearAllTestChatMessages(agent.id);
 			await this.agentServiceAccount.deleteForAgent(
 				agent,
 				deletion.actor,
 				deletion.transferId,
-				deletion.ctx,
+				deletion.ctx ?? {},
+				async () => {
+					await this.approvalCleanup.cleanupAgent(agent.id, projectId, agent.approvalWorkflowId);
+					try {
+						await agentKnowledgeService.deleteAllFilesForAgent(projectId, agent.id);
+					} catch (error) {
+						this.logger.warn('Failed to delete knowledge files on project delete', {
+							agentId: agent.id,
+							projectId,
+							error: error instanceof Error ? error.message : error,
+						});
+					}
+
+					await agentKnowledgeService.destroyKnowledgeSandbox(projectId, agent.id);
+					await agentTestChatService.clearAllTestChatMessages(agent.id);
+					await agentExecutionService.deleteExecutionLogsForAgent(agent.id);
+					await agentExecutionService.deleteMemoryThreadsForAgent(agent.id);
+					await agentChatAttachmentService.deleteByAgent(agent.id);
+				},
+				{ source: 'project-deletion' },
 			);
 		}
 		await agentExecutionService.deleteExecutionLogsForProject(projectId);

@@ -5,7 +5,7 @@ summary: 'Beta: Preview the Apply of the whole instance'
 description: |-
   **Beta** — breaking changes may still occur without major version bump.
 
-  Shows what applying the branch tip of an instance Apply environment changes on this instance, for every project of the package. `resources` and `dependencies` have the same shape as the project change preview. Resources are not selectable: Apply applies the whole package. A team project that the package does not hold is listed as `deleted`, with the folders, workflows, credentials, data tables and variables that it owns. Workflows and folders that a kept project no longer holds are listed as `deleted` too. `check` lists what blocks the Apply. A `project-deletion` conflict needs `confirmDestructiveChanges` on Continue. Send `revision` as expectedPreviewRevision and `commitSha` in expectedSource to apply only what this preview shows. Requires a connected Apply environment with instance scope.
+  Shows what applying the branch tip of an instance Apply environment changes on this instance, for every project of the package. `resources` and `dependencies` have the same shape as the project change preview. Resources are not selectable: Apply applies the whole package. A team project that the package does not hold is listed as `deleted`, with the folders, workflows, credentials, data tables and variables that it owns. Workflows and folders that a kept project no longer holds are listed as `deleted` too. `check` lists what blocks the Apply. A `project-deletion` conflict needs `confirmDestructiveChanges` on Continue. Send `revision` as expectedPreviewRevision and `commitSha` in expectedSource to apply only what this preview shows. Requires an Apply environment with instance scope.
 
   Requires the `promotions:apply` API key scope.
 x-required-scope: promotions:apply
@@ -39,6 +39,22 @@ responses:
               required:
                 - environmentId
                 - branchName
+            environment:
+              type: object
+              properties:
+                name:
+                  type: string
+                providerType:
+                  type: string
+                  enum:
+                    - git
+                    - gitlab
+                createBranchOnPromotion:
+                  type: boolean
+                  description: Promote only. When true, Promote pushes to a new branch created from `source.branchName`. When false, it pushes to `source.branchName` directly.
+              required:
+                - name
+                - providerType
             resources:
               type: array
               items:
@@ -149,6 +165,7 @@ responses:
           required:
             - commitSha
             - source
+            - environment
             - resources
             - dependencies
             - check
@@ -161,6 +178,8 @@ responses:
     $ref: ../../../../shared/spec/responses/forbidden.yml
   '404':
     $ref: ../../../../shared/spec/responses/notFound.yml
+  '423':
+    $ref: ../../../../shared/spec/responses/locked.yml
   '429':
     $ref: ../../../../shared/spec/responses/tooManyRequests.yml
   '503':

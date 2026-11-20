@@ -63,6 +63,51 @@ describe('AiGatewayBrowserUseService', () => {
 			});
 		});
 
+		it('asks for a residential proxy in the given country', async () => {
+			aiGatewayService.sendProviderRequest.mockResolvedValue({
+				id: 'sess-1',
+				connectUrl: 'wss://connect.example.com',
+			});
+
+			await service.createSession({ userId: 'user-1', attribution, proxyCountry: 'DE' });
+
+			expect(aiGatewayService.sendProviderRequest).toHaveBeenCalledWith(
+				expect.objectContaining({
+					body: expect.objectContaining({
+						proxies: [{ type: 'browserbase', geolocation: { country: 'DE' } }],
+					}),
+				}),
+			);
+		});
+
+		it('sends no proxies without a country', async () => {
+			aiGatewayService.sendProviderRequest.mockResolvedValue({
+				id: 'sess-1',
+				connectUrl: 'wss://connect.example.com',
+			});
+
+			await service.createSession({ userId: 'user-1', attribution, proxyCountry: undefined });
+
+			const [{ body }] = aiGatewayService.sendProviderRequest.mock.calls[0];
+			expect(body).not.toHaveProperty('proxies');
+		});
+
+		it("returns the session's region when the gateway sends it", async () => {
+			aiGatewayService.sendProviderRequest.mockResolvedValue({
+				id: 'sess-1',
+				connectUrl: 'wss://connect.example.com',
+				region: 'eu-central-1',
+			});
+
+			const session = await service.createSession({ userId: 'user-1', attribution });
+
+			expect(session).toEqual({
+				id: 'sess-1',
+				connectUrl: 'wss://connect.example.com',
+				region: 'eu-central-1',
+			});
+		});
+
 		it('throws when the response has no connect URL', async () => {
 			aiGatewayService.sendProviderRequest.mockResolvedValue({ id: 'sess-1' });
 
@@ -85,12 +130,60 @@ describe('AiGatewayBrowserUseService', () => {
 				sessionId: 'sess/1',
 			});
 
-			expect(view).toEqual({ debuggerFullscreenUrl: 'https://live.example.com/1' });
+			expect(view).toEqual({ debuggerFullscreenUrl: 'https://live.example.com/1', pages: [] });
 			expect(aiGatewayService.sendProviderRequest).toHaveBeenCalledWith({
 				...sessionRequest,
 				method: 'GET',
 				path: '/v1/sessions/sess%2F1/debug',
 			});
+		});
+
+		it('reads the live view link of each tab', async () => {
+			const pages = [
+				{ id: 'TARGET-1', debuggerFullscreenUrl: 'https://live.example.com/1' },
+				{ id: 'TARGET-2', debuggerFullscreenUrl: 'https://live.example.com/2' },
+			];
+			aiGatewayService.sendProviderRequest.mockResolvedValue({
+				debuggerFullscreenUrl: 'https://live.example.com/1',
+				pages,
+			});
+
+			const view = await service.getLiveView({
+				userId: 'user-1',
+				attribution,
+				sessionId: 'sess-1',
+			});
+
+			expect(view).toEqual({ debuggerFullscreenUrl: 'https://live.example.com/1', pages });
+		});
+
+		it('reads a response with no tab list as no tabs', async () => {
+			aiGatewayService.sendProviderRequest.mockResolvedValue({
+				debuggerFullscreenUrl: 'https://live.example.com/1',
+			});
+
+			const view = await service.getLiveView({
+				userId: 'user-1',
+				attribution,
+				sessionId: 'sess-1',
+			});
+
+			expect(view).toEqual({ debuggerFullscreenUrl: 'https://live.example.com/1', pages: [] });
+		});
+
+		it('reads a tab list it cannot read as no tabs, and keeps the first tab link', async () => {
+			aiGatewayService.sendProviderRequest.mockResolvedValue({
+				debuggerFullscreenUrl: 'https://live.example.com/1',
+				pages: [{ id: 'target-1' }],
+			});
+
+			const view = await service.getLiveView({
+				userId: 'user-1',
+				attribution,
+				sessionId: 'sess-1',
+			});
+
+			expect(view).toEqual({ debuggerFullscreenUrl: 'https://live.example.com/1', pages: [] });
 		});
 
 		it('throws when the response has no live view link', async () => {

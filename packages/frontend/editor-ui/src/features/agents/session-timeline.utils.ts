@@ -7,6 +7,7 @@ import type { BadgeVariant } from '@n8n/design-system';
 import type { BaseTextKey, useI18n } from '@n8n/i18n';
 import { isRecord } from '@n8n/utils/is-record';
 import { convertDbMessages } from '@/features/ai/shared/agentsChat/messageMappers';
+import { resolveToolCatalogCall } from '@/features/ai/shared/agentsChat/toolCatalogCall';
 import type { ThinkingSegment } from '@/features/ai/shared/agentsChat/types';
 import type {
 	EventKind,
@@ -822,15 +823,18 @@ export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): 
 				const isWorkflow = event.kind === 'workflow';
 				const isNode = event.kind === 'node';
 				const kind = toolCallKind(event);
-				if (event.toolCallId) initialToolCalls.set(event.toolCallId, event);
+				const call = resolveToolCatalogCall(event.name, event.input);
+				if (event.toolCallId) {
+					initialToolCalls.set(event.toolCallId, { ...event, name: call.tool, input: call.input });
+				}
 				const item: TimelineItem = {
 					kind,
 					executionId: exec.id,
-					toolName: event.name,
+					toolName: call.tool,
 					skillName: kind === 'skill' ? skillNameFromEvent(event) : undefined,
 					memoryAction: kind === 'memory' ? memoryActionOf(event) : undefined,
 					toolCallId: event.toolCallId,
-					toolInput: event.input,
+					toolInput: call.input,
 					toolOutput: event.output,
 					toolOutcome: toolCallOutcome(event),
 					toolSuccess: event.endTime === 0 ? undefined : event.success,
@@ -850,8 +854,15 @@ export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): 
 				if (event.toolCallId) initialToolItems.set(event.toolCallId, item);
 			} else if (event.type === 'suspension') {
 				const toolCall = initialToolCalls.get(event.toolCallId);
-				const requestType = inferHitlRequestType(event, toolCall, legacyApprovalToolCallIds);
-				const request = hitlRequestPayload(event, toolCall, requestType);
+				// A suspended tool catalog call is recorded as `call_tool`. Show the tool it runs.
+				const suspendedCall = resolveToolCatalogCall(event.toolName, event.input);
+				const suspension = {
+					...event,
+					toolName: suspendedCall.tool,
+					...(event.input !== undefined && { input: suspendedCall.input }),
+				};
+				const requestType = inferHitlRequestType(suspension, toolCall, legacyApprovalToolCallIds);
+				const request = hitlRequestPayload(suspension, toolCall, requestType);
 				const toolDisplayName = approvalDisplayName(request);
 				if (event.toolCallId) {
 					const toolItem = initialToolItems.get(event.toolCallId);
@@ -865,7 +876,7 @@ export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): 
 					}
 					hitlContexts.set(event.toolCallId, {
 						requestType,
-						toolName: event.toolName || toolCall?.name || '',
+						toolName: suspension.toolName || toolCall?.name || '',
 						toolCallId: event.toolCallId,
 						toolCall,
 						toolItem: initialToolItems.get(event.toolCallId),
@@ -876,7 +887,7 @@ export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): 
 				items.push({
 					kind: 'suspension',
 					executionId: exec.id,
-					toolName: event.toolName,
+					toolName: suspension.toolName,
 					toolCallId: event.toolCallId,
 					timestamp: event.timestamp ?? 0,
 					hitlRequestType: requestType,
