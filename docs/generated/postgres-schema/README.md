@@ -158,7 +158,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.shared_knowledge_collection](public.shared_knowledge_collection.md) | 5 |  | BASE TABLE |
 | [public.shared_workflow](public.shared_workflow.md) | 5 |  | BASE TABLE |
 | [public.skill](public.skill.md) | 8 |  | BASE TABLE |
-| [public.skill_file](public.skill_file.md) | 5 |  | BASE TABLE |
+| [public.skill_file](public.skill_file.md) | 6 |  | BASE TABLE |
 | [public.skill_source](public.skill_source.md) | 15 |  | BASE TABLE |
 | [public.skill_source_link](public.skill_source_link.md) | 14 |  | BASE TABLE |
 | [public.skill_version](public.skill_version.md) | 12 |  | BASE TABLE |
@@ -2044,6 +2044,7 @@ erDiagram
 "public.skill_file" {
   text content
   timestamp_3__with_time_zone createdAt
+  boolean isBinary
   varchar_512_ path
   uuid skillVersionId FK
   timestamp_3__with_time_zone updatedAt

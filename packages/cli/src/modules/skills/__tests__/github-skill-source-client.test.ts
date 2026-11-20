@@ -1,4 +1,9 @@
 import { OutboundHttp } from '@n8n/backend-network';
+import {
+	AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH,
+	AGENT_SKILL_REFERENCE_MAX_COUNT,
+	AGENT_SKILL_REFERENCES_TOTAL_MAX_LENGTH,
+} from '@n8n/api-types';
 import { Container } from '@n8n/di';
 import { sha256 } from '@n8n/utils/sha256';
 import nock from 'nock';
@@ -25,8 +30,8 @@ import { writeSkillFolder } from '../utils/skill-md';
 /** The folder of a skill in a fake repository: its name as a slug. */
 const folderOf = (name: string) => `skills/${name.toLowerCase().replace(/\W+/g, '-')}`;
 
-function filesOf(skills: SkillContent[]): Record<string, string> {
-	const files: Record<string, string> = { 'README.md': '# Skills\n' };
+function filesOf(skills: SkillContent[]): Record<string, string | Buffer> {
+	const files: Record<string, string | Buffer> = { 'README.md': '# Skills\n' };
 	for (const skill of skills) {
 		for (const file of writeSkillFolder(skill)) {
 			files[`${folderOf(skill.name)}/${file.path}`] = file.content;
@@ -399,14 +404,15 @@ describe('GitHubSkillSourceClient', () => {
 			},
 		);
 
-		it('keeps references and lists the files that a skill cannot hold', async () => {
+		it('keeps references and scripts at their original paths', async () => {
 			const locator = await client.parseLocator('https://github.com/acme/skills');
 			const fetched = await client.fetchLatest(locator, { path: 'skills/pdf' });
 
 			expect(fetched.content.files).toEqual([
 				{ path: 'references/pages.md', content: '# Pages\n' },
+				{ path: 'scripts/split.py', content: 'print(1)\n' },
 			]);
-			expect(fetched.skippedFiles).toEqual(['scripts/split.py']);
+			expect(fetched.skippedFiles).toEqual([]);
 			expect(client.webUrl(locator, { path: 'skills/pdf' })).toBe(
 				'https://github.com/acme/skills/tree/main/skills/pdf',
 			);
@@ -425,6 +431,93 @@ describe('GitHubSkillSourceClient', () => {
 
 		expect(fetched.content.files).toEqual([{ path: 'references/small.md', content: '# Small\n' }]);
 		expect(fetched.skippedFiles).toEqual(['references/huge.md']);
+	});
+
+	it.each(['', '/tree/main/pdf'])(
+		'checks text and binary size separately for link suffix %j',
+		async (suffix) => {
+			const guide = '字'.repeat(AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH);
+			github.push('acme/skills', {
+				'pdf/SKILL.md': skillMd('pdf'),
+				'pdf/reference/guide.md': guide,
+				'pdf/reference/too-long.md': 'é'.repeat(AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH + 1),
+				'pdf/assets/too-large.bin': Buffer.alloc(1024 * 1024 + 1, 255),
+				'pdf/assets/example.bin': Buffer.from([0, 255]),
+			});
+			const locator = await client.parseLocator(`https://github.com/acme/skills${suffix}`);
+
+			const fetched = await client.fetchLatest(locator, { path: 'pdf' });
+
+			expect(fetched.content.files).toEqual([
+				{ path: 'assets/example.bin', content: 'AP8=', isBinary: true },
+				{ path: 'reference/guide.md', content: guide },
+			]);
+			expect(fetched.oversizedFiles?.toSorted()).toEqual([
+				'assets/too-large.bin',
+				'reference/too-long.md',
+			]);
+		},
+	);
+
+	describe('a skill over the limits of one skill', () => {
+		it('keeps the first 500 files in path order and lists the rest', async () => {
+			const files: Record<string, string> = { 'big/SKILL.md': skillMd('big') };
+			for (let index = 0; index < 501; index += 1) {
+				files[`big/reference/${String(index).padStart(3, '0')}.md`] = 'x';
+			}
+			github.push('acme/skills', files);
+			const locator = await client.parseLocator('https://github.com/acme/skills');
+
+			const fetched = await client.fetchLatest(locator, { path: 'big' });
+
+			expect(fetched.content.files).toHaveLength(AGENT_SKILL_REFERENCE_MAX_COUNT);
+			expect(fetched.overLimitFiles).toEqual(['reference/500.md']);
+			expect(fetched.skippedFiles).toEqual(['reference/500.md']);
+		});
+
+		it('keeps the files that fit the total size and lists the rest', async () => {
+			const third = 'x'.repeat(AGENT_SKILL_REFERENCES_TOTAL_MAX_LENGTH / 2 - 10);
+			github.push('acme/skills', {
+				'big/SKILL.md': skillMd('big'),
+				'big/assets/a.txt': third,
+				'big/assets/b.txt': third,
+				'big/assets/c.txt': third,
+				'big/reference/small.md': 'Small.',
+			});
+			const locator = await client.parseLocator('https://github.com/acme/skills');
+
+			const fetched = await client.fetchLatest(locator, { path: 'big' });
+
+			// The third large file does not fit. A small file after it still does.
+			expect(fetched.content.files.map((file) => file.path)).toEqual([
+				'assets/a.txt',
+				'assets/b.txt',
+				'reference/small.md',
+			]);
+			expect(fetched.overLimitFiles).toEqual(['assets/c.txt']);
+			expect(fetched.oversizedFiles).toEqual([]);
+		});
+
+		it('reads a SKILL.md at the repository root with the folders below it, nested skills included', async () => {
+			github.push('acme/one-skill', {
+				'SKILL.md': skillMd('root'),
+				'README.md': '# Root\n',
+				'examples/nested/SKILL.md': skillMd('nested'),
+				'examples/nested/guide.md': 'Guide.\n',
+			});
+			const locator = await client.parseLocator('https://github.com/acme/one-skill');
+
+			const { items } = await client.discover(locator);
+			const fetched = await client.fetchLatest(locator, items[0]);
+
+			expect(items).toEqual([{ path: '' }]);
+			expect(fetched.content.files.map((file) => file.path)).toEqual([
+				'README.md',
+				'examples/nested/SKILL.md',
+				'examples/nested/guide.md',
+			]);
+			expect(fetched.skippedFiles).toEqual([]);
+		});
 	});
 
 	it('reads a SKILL.md of exactly 1 MB and refuses a larger one', async () => {
@@ -458,9 +551,44 @@ describe('GitHubSkillSourceClient', () => {
 	});
 
 	describe('folder reads', () => {
+		it('counts only files owned by discovered skills toward the download budget', async () => {
+			const instructions = skillMd('pdf');
+			const guide = 'A nested guide';
+			const small = clientWithLimits({ maxRetainedBytes: instructions.length + guide.length });
+			github.push('acme/skills', {
+				'skills/pdf/SKILL.md': instructions,
+				'skills/pdf/vendor/guide.txt': guide,
+				'skills/vendor/pkg/SKILL.md': skillMd('pkg'),
+				'skills/1/2/3/4/5/6/7/8/9/SKILL.md': skillMd('deep'),
+			});
+			const locator = await small.parseLocator('https://github.com/acme/skills/tree/main/skills');
+
+			const { items, revision, tooDeep } = await small.discover(locator);
+			const fetched = await small.fetchLatest(locator, items[0], undefined, revision);
+
+			expect(items).toEqual([{ path: 'skills/pdf' }]);
+			expect(tooDeep).toBe(1);
+			expect(fetched.content.files).toEqual([{ path: 'vendor/guide.txt', content: guide }]);
+			expect(github.requests.files).toBe(2);
+		});
+
+		it('fetches a known skill path outside the discovery depth on demand', async () => {
+			const path = 'skills/1/2/3/4/5/6/7/8/9';
+			github.push('acme/skills', { [`${path}/SKILL.md`]: skillMd('linked') });
+			const locator = await client.parseLocator('https://github.com/acme/skills/tree/main/skills');
+			const { items, revision } = await client.discover(locator);
+			expect(items).toEqual([]);
+			expect(github.requests.files).toBe(0);
+
+			const fetched = await client.fetchLatest(locator, { path }, undefined, revision);
+
+			expect(fetched.content.name).toBe('linked');
+		});
+
 		it('reads only the linked folder at the selected commit when the repository archive is too large', async () => {
 			const files = {
 				'.agents/skill set/pdf/SKILL.md': skillMd('pdf'),
+				'.agents/skill set/pdf/assets/form.pdf': '%PDF\0data',
 				'.agents/skill set/pdf/references/page #1.md': '# Page\n',
 				'.agents/skill set/pdf/references/large.md': 'x'.repeat(201),
 				'.agents/skill set/pdf/scripts/split.py': 'print(1)\n',
@@ -471,7 +599,7 @@ describe('GitHubSkillSourceClient', () => {
 			const limits = {
 				maxDownloadBytes: 100,
 				maxUncompressedBytes: 500,
-				maxTextFileBytes: 200,
+				maxFileBytes: 200,
 			};
 			const small = clientWithLimits(limits);
 			const folder = await small.parseLocator(
@@ -489,15 +617,21 @@ describe('GitHubSkillSourceClient', () => {
 			expect(fetched.revision).toBe(original);
 			expect(fetched.content.instructions).toBe('Follow pdf.');
 			expect(fetched.content.files).toEqual([
+				{
+					path: 'assets/form.pdf',
+					content: Buffer.from('%PDF\0data').toString('base64'),
+					isBinary: true,
+				},
 				{ path: 'references/page #1.md', content: '# Page\n' },
+				{ path: 'scripts/split.py', content: 'print(1)\n' },
 			]);
-			expect(fetched.skippedFiles).toEqual(['scripts/split.py', 'references/large.md']);
-			expect(github.requests).toEqual({ refs: 2, archives: 0, trees: 3, files: 2 });
+			expect(fetched.skippedFiles).toEqual(['references/large.md']);
+			expect(github.requests).toEqual({ refs: 2, archives: 0, trees: 3, files: 4 });
 
 			// A cold cache must also read the selected revision, even after the branch changes.
 			const fresh = clientWithLimits(limits);
 			expect(await fresh.fetchLatest(folder, items[0], undefined, revision)).toEqual(fetched);
-			expect(github.requests).toEqual({ refs: 2, archives: 0, trees: 6, files: 4 });
+			expect(github.requests).toEqual({ refs: 2, archives: 0, trees: 6, files: 8 });
 		});
 
 		it.each([false, true])('hashes an oversized SKILL.md (private: %s)', async (privately) => {
@@ -505,7 +639,7 @@ describe('GitHubSkillSourceClient', () => {
 			github.push('acme/skills', { 'pdf/SKILL.md': content }, 'main', { private: privately });
 			if (privately) github.grant(TOKEN, ['acme/skills']);
 			const auth = privately ? tokenAuth : undefined;
-			const small = clientWithLimits({ maxTextFileBytes: 200, maxTextBytes: 200 });
+			const small = clientWithLimits({ maxFileBytes: 200, maxRetainedBytes: 200 });
 			const locator = await small.parseLocator(
 				'https://github.com/acme/skills/tree/main/pdf',
 				auth,
@@ -518,7 +652,7 @@ describe('GitHubSkillSourceClient', () => {
 			expect(github.requests).toEqual({ refs: 2, archives: 0, trees: 2, files: 1 });
 		});
 
-		it.each([{ maxEntries: 1 }, { maxUncompressedBytes: 1 }, { maxTextBytes: 1 }])(
+		it.each([{ maxEntries: 1 }, { maxUncompressedBytes: 1 }, { maxRetainedBytes: 1 }])(
 			'rejects a folder over its limit (%j) before reading files',
 			async (limits) => {
 				github.push('acme/skills', { 'pdf/SKILL.md': skillMd('pdf'), 'pdf/README.md': 'Read me' });
@@ -607,12 +741,36 @@ describe('GitHubSkillSourceClient', () => {
 			});
 		});
 
-		it('fails with archive_too_large when an archive keeps too much text', async () => {
+		it('fails with archive_too_large when an archive keeps too many file bytes', async () => {
 			github.push('acme/skills', { 'a/SKILL.md': skillMd('a'), 'b/SKILL.md': skillMd('b') });
-			const small = clientWithLimits({ maxTextBytes: skillMd('a').length + 1 });
+			const small = clientWithLimits({ maxRetainedBytes: skillMd('a').length + 1 });
 			const locator = await small.parseLocator('https://github.com/acme/skills');
 
 			await expect(small.discover(locator)).rejects.toMatchObject({ reason: 'archive_too_large' });
+		});
+
+		it('imports from a repository link when the files outside the skills are over the budget', async () => {
+			const reference = '# Forms\n';
+			const files: Record<string, string> = {
+				'.claude/skills/pdf/SKILL.md': skillMd('pdf'),
+				'.claude/skills/pdf/reference/forms.md': reference,
+			};
+			for (let index = 0; index < 30; index += 1) files[`data/file-${index}.csv`] = 'a,b\n';
+			github.push('acme/monorepo', files);
+			// Room for the skill, but not for the data files of the repository.
+			const small = clientWithLimits({
+				maxRetainedBytes: skillMd('pdf').length + reference.length + 10,
+			});
+			const locator = await small.parseLocator('https://github.com/acme/monorepo');
+
+			const { items } = await small.discover(locator);
+			const fetched = await small.fetchLatest(locator, items[0]);
+
+			expect(items).toEqual([{ path: '.claude/skills/pdf' }]);
+			expect(fetched.content.files).toEqual([{ path: 'reference/forms.md', content: reference }]);
+			// One read for the paths, and one that keeps the files of the skills.
+			expect(github.requests.archives).toBe(2);
+			expect(github.requests.trees).toBe(0);
 		});
 
 		it('counts the paths and text of a cached archive in the cache size', async () => {

@@ -21,6 +21,7 @@ import type { AgentsToolsService } from '../agents-tools.service';
 import type { AgentsService } from '../agents.service';
 import type { AttachableWorkflowsService } from '../attachable-workflows.service';
 import type { ProjectAgent } from '../entities/agent.entity';
+import { AGENT_SKILL_READ_MAX_LENGTH } from '../agent-context-readers';
 import { AgentContextService } from '../agent-context.service';
 import { createAgentSkillRefsService, storedAgentConfig } from './test-utils/stored-agent-config';
 
@@ -246,6 +247,110 @@ describe('AgentContextService', () => {
 				],
 			},
 		});
+	});
+
+	it('lists a binary reference without its content', async () => {
+		const { service, agentsService, agentSkillsService } = makeService();
+		agentsService.findById.mockResolvedValue(agent);
+		agentSkillsService.getSkill.mockResolvedValue({
+			name: 'Support',
+			description: 'Handle support requests',
+			instructions: 'Read the support guide.',
+			references: [{ path: 'assets/logo.png', content: 'AP8=', isBinary: true }],
+		});
+
+		const result = (await service.createReader(user, 'project-1').lookup({
+			type: 'skill',
+			agentId: 'agent-1',
+			skillId: 'support',
+			referencePaths: ['assets/logo.png'],
+		})) as { skill: { references: unknown[] } };
+
+		expect(result.skill.references).toEqual([
+			{ path: 'assets/logo.png', characterCount: 4, isBinary: true },
+		]);
+	});
+
+	it('keeps one skill read within the content budget and names the omitted paths', async () => {
+		const { service, agentsService, agentSkillsService } = makeService();
+		agentsService.findById.mockResolvedValue(agent);
+		const large = 'x'.repeat(AGENT_SKILL_READ_MAX_LENGTH - 5);
+		agentSkillsService.getSkill.mockResolvedValue({
+			name: 'Support',
+			description: 'Handle support requests',
+			instructions: 'Read the support guide.',
+			references: [
+				{ path: 'a.md', content: large },
+				{ path: 'b.md', content: 'Too long' },
+				{ path: 'c.md', content: 'Fits!' },
+			],
+		});
+		const reader = service.createReader(user, 'project-1');
+		const read = async (referencePaths: string[]) =>
+			await reader.lookup({
+				type: 'skill',
+				agentId: 'agent-1',
+				skillId: 'support',
+				referencePaths,
+			});
+
+		expect(await read(['a.md', 'b.md', 'c.md'])).toMatchObject({
+			truncated: true,
+			omittedReferencePaths: ['b.md'],
+			skill: {
+				references: [
+					{ path: 'a.md', content: large },
+					{ path: 'b.md', characterCount: 8 },
+					{ path: 'c.md', content: 'Fits!' },
+				],
+			},
+		});
+		const second = await read(['b.md']);
+		expect(second).toMatchObject({ skill: { references: [{}, { content: 'Too long' }, {}] } });
+		expect(second).not.toHaveProperty('truncated');
+	});
+
+	it('reads a reference that is larger than the whole budget without splitting a character', async () => {
+		const { service, agentsService, agentSkillsService } = makeService();
+		agentsService.findById.mockResolvedValue(agent);
+		const firstPart = 'x'.repeat(AGENT_SKILL_READ_MAX_LENGTH - 1);
+		const lastPart = '😀 end';
+		agentSkillsService.getSkill.mockResolvedValue({
+			name: 'Support',
+			description: 'Handle support requests',
+			instructions: 'Read the support guide.',
+			references: [{ path: 'a.md', content: firstPart + lastPart }],
+		});
+
+		const reader = service.createReader(user, 'project-1');
+		const read = async (referenceOffset?: number) =>
+			await reader.lookup({
+				type: 'skill',
+				agentId: 'agent-1',
+				skillId: 'support',
+				referencePaths: ['a.md'],
+				referenceOffset,
+			});
+
+		const first = await read();
+		expect(first).toMatchObject({
+			skill: {
+				references: [
+					{
+						characterCount: firstPart.length + lastPart.length,
+						content: firstPart,
+						contentTruncated: true,
+						nextOffset: firstPart.length,
+					},
+				],
+			},
+		});
+		const last = await read(firstPart.length);
+		expect(last).toMatchObject({
+			skillHash: first.skillHash,
+			skill: { references: [{ path: 'a.md', content: lastPart }] },
+		});
+		expect(last).not.toHaveProperty('skill.references.0.nextOffset');
 	});
 
 	it.each([

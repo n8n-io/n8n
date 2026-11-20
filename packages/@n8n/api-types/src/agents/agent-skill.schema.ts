@@ -1,42 +1,144 @@
 import { z } from 'zod';
 
 export const AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH = 65_536;
-export const AGENT_SKILL_REFERENCE_MAX_COUNT = 20;
-export const AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH = 65_536;
-export const AGENT_SKILL_REFERENCES_TOTAL_MAX_LENGTH = 262_144;
+// The Agent Skills format sets no file limits, so these three are n8n limits. They bound what
+// one skill version stores, because each version holds a full copy of every file.
+// For scale: a popular public skill has 45 files and about 460 KB of text.
+export const AGENT_SKILL_REFERENCE_MAX_COUNT = 500;
+// The GitHub import already left out a file over 1 MiB. `load_skill` returns a longer file in
+// parts of `RUNTIME_SKILL_MAX_OUTPUT_BYTES`.
+export const AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH = 1024 * 1024;
+export const AGENT_SKILL_BINARY_MAX_BYTES = 1024 * 1024;
+export const AGENT_SKILL_BINARY_CONTENT_MAX_LENGTH =
+	4 * Math.ceil(AGENT_SKILL_BINARY_MAX_BYTES / 3);
+// Two files of the largest size. Binary files count with their Base64 length.
+export const AGENT_SKILL_REFERENCES_TOTAL_MAX_LENGTH = 2 * 1024 * 1024;
 
 const agentSkillStringArraySchema = z.array(z.string().trim().min(1));
 
-const agentSkillReferenceSchema = z
-	.object({
-		path: z
-			.string()
-			.min(1)
-			.max(512)
-			.refine((path) => {
-				const normalized = path.replaceAll('\\', '/');
-				const segments = normalized.split('/');
-				return (
-					path === normalized &&
-					// No control characters, such as NUL, which Postgres cannot store.
-					// eslint-disable-next-line no-control-regex
-					!/[\u0000-\u001f\u007f]/.test(path) &&
-					normalized.startsWith('references/') &&
-					(normalized.endsWith('.md') || normalized.endsWith('.markdown')) &&
-					segments.every((segment) => segment !== '' && segment !== '.' && segment !== '..')
-				);
-			}, 'Reference path must be a markdown file under references/'),
-		content: z
-			.string()
-			.min(1)
-			.max(
-				AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH,
-				`Reference content must be ${AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH} characters or fewer`,
-			),
-	})
-	.strict();
+// Zero-width and bidirectional characters. They make a file list show a name that differs
+// from the stored path.
+const HIDDEN_PATH_CHARACTERS = /[\u200b-\u200f\u202a-\u202e\u2060-\u2064\u2066-\u2069\ufeff]/;
 
-export const agentSkillReferencePathSchema = agentSkillReferenceSchema.shape.path;
+export const agentSkillReferencePathSchema = z
+	.string()
+	.min(1)
+	.max(512)
+	.refine((path) => {
+		const normalized = path.replaceAll('\\', '/');
+		const segments = normalized.split('/');
+		return (
+			path === normalized &&
+			// No control characters, such as NUL, which Postgres cannot store.
+			// eslint-disable-next-line no-control-regex
+			!/[\u0000-\u001f\u007f]/.test(path) &&
+			!HIDDEN_PATH_CHARACTERS.test(path) &&
+			// A file system that ignores case stores `skill.md` and `SKILL.md` as one file.
+			segments[0].toLowerCase() !== 'skill.md' &&
+			!/^[A-Za-z]:/.test(path) &&
+			segments.every((segment) => segment !== '' && segment !== '.' && segment !== '..')
+		);
+	}, 'Use a relative file path within the skill folder');
+
+const base64Schema = z.string().base64();
+
+export const agentSkillReferenceSchema = z
+	.object({
+		path: agentSkillReferencePathSchema,
+		content: z.string(),
+		/** When set, content holds the file bytes as Base64. Otherwise, content is UTF-8 text. */
+		isBinary: z.literal(true).optional(),
+	})
+	.strict()
+	.superRefine(({ content, isBinary }, ctx) => {
+		const maximum = isBinary
+			? AGENT_SKILL_BINARY_CONTENT_MAX_LENGTH
+			: AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH;
+		if (content.length > maximum) {
+			ctx.addIssue({
+				code: 'too_big',
+				type: 'string',
+				maximum,
+				inclusive: true,
+				path: ['content'],
+			});
+		} else if (isBinary ? !base64Schema.safeParse(content).success : content.includes('\0')) {
+			ctx.addIssue({ code: 'custom', message: 'Invalid file contents', path: ['content'] });
+		}
+	});
+
+export type AgentSkillReference = z.infer<typeof agentSkillReferenceSchema>;
+
+export const skillReferenceReadShape = {
+	referencePath: agentSkillReferencePathSchema
+		.optional()
+		.describe('Return text only for this reference path'),
+	referenceOffset: z
+		.number()
+		.int()
+		.nonnegative()
+		.optional()
+		.describe('Pass nextOffset from the previous result with the same referencePath'),
+};
+
+export type SkillReferenceRead = z.infer<z.ZodObject<typeof skillReferenceReadShape>>;
+
+export function projectSkillDetailsForModel<T extends { references?: AgentSkillReference[] }>(
+	skill: T,
+	{ referencePath, referenceOffset }: SkillReferenceRead = {},
+) {
+	if (referenceOffset !== undefined && referencePath === undefined) {
+		return { error: 'Pass referencePath with referenceOffset.' };
+	}
+	return projectSkillForModel(skill, {
+		paths: referencePath === undefined ? undefined : [referencePath],
+		offset: referenceOffset,
+		maxLength: 72 * 1024,
+	});
+}
+
+/** List paths and limit the reference text by UTF-16 code units. Do not return binary content. */
+export function projectSkillForModel<T extends { references?: AgentSkillReference[] }>(
+	skill: T,
+	{ paths, offset = 0, maxLength }: { paths?: string[]; offset?: number; maxLength: number },
+) {
+	const { references, ...body } = skill;
+	const requested = paths && new Set(paths);
+	const omittedReferencePaths: string[] = [];
+	let remaining = maxLength;
+	const visibleReferences = references?.map(({ path, content, isBinary }) => {
+		const included = requested?.delete(path) ?? true;
+		const listed = { path, characterCount: content.length };
+		if (isBinary) return { ...listed, isBinary };
+		if (!included) return listed;
+		const start = Math.min(offset, content.length);
+		const length = content.length - start;
+		if (length <= remaining) {
+			remaining -= length;
+			return { ...listed, content: content.slice(start) };
+		}
+		if (remaining === maxLength) {
+			let end = start + remaining;
+			// Keep the two code units of a character in the same part.
+			if ((content.codePointAt(end - 1) ?? 0) > 0xffff) end--;
+			remaining = 0;
+			return {
+				...listed,
+				content: content.slice(start, end),
+				contentTruncated: true,
+				nextOffset: end,
+			};
+		}
+		omittedReferencePaths.push(path);
+		return listed;
+	});
+
+	return {
+		skill: { ...body, ...(visibleReferences ? { references: visibleReferences } : {}) },
+		...(omittedReferencePaths.length ? { truncated: true, omittedReferencePaths } : {}),
+		...(requested?.size ? { missingReferencePaths: [...requested] } : {}),
+	};
+}
 
 const agentSkillReferencesSchema = z
 	.array(agentSkillReferenceSchema)

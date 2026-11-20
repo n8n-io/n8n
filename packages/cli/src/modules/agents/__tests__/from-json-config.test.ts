@@ -405,9 +405,10 @@ describe('buildFromJson()', () => {
 						allowedTools: ['load_workflow'],
 						references: [
 							{
-								path: 'references/guide.md',
+								path: 'reference/degraded/guide.md',
 								content: '# Guide',
 							},
+							{ path: 'assets/logo.png', content: 'AP8=', isBinary: true },
 						],
 					},
 					unused_skill: {
@@ -432,19 +433,31 @@ describe('buildFromJson()', () => {
 		const loadedText = (loaded.value ?? []).map((part) => part.text).join('\n');
 		expect(loadedText).toContain('[Skill: "Summarize notes"]');
 		expect(loadedText).toContain('Extract decisions and action items.');
-		expect(loadedText).toContain('filePath: "references/guide.md"');
+		expect(loadedText).toContain('filePath: "reference/degraded/guide.md"');
 
 		await expect(
-			loadSkill!.handler?.({ skillId: 'summarize_notes', filePath: 'references/guide.md' }, {}),
+			loadSkill!.handler?.(
+				{ skillId: 'summarize_notes', filePath: './reference/degraded/guide.md' },
+				{},
+			),
 		).resolves.toMatchObject({
 			ok: true,
 			success: true,
 			skillId: 'summarize_notes',
-			filePath: 'references/guide.md',
+			filePath: 'reference/degraded/guide.md',
 			content: '# Guide',
 			bytes: 7,
 			sha256: expect.stringMatching(/^[a-f0-9]{64}$/),
 		});
+
+		// An agent never gets a binary file: it is not a linked file of the skill.
+		expect(loadedText).not.toContain('assets/logo.png');
+		const binary = await loadSkill!.handler?.(
+			{ skillId: 'summarize_notes', filePath: 'assets/logo.png' },
+			{},
+		);
+		expect(binary).toMatchObject({ success: false, errorCode: 'invalid_reference' });
+		expect(JSON.stringify(binary)).not.toContain('AP8=');
 
 		await expect(loadSkill!.handler?.({ skillId: 'unused_skill' }, {})).resolves.toMatchObject({
 			ok: false,

@@ -1,8 +1,9 @@
+import { AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH } from '@n8n/api-types';
 import type { Readable } from 'node:stream';
 import { createHash } from 'node:crypto';
 import { Parser, type ReadEntry } from 'tar';
 
-import { isInside } from './skill-discovery';
+import { isInside, SKILL_FILE } from './skill-discovery';
 import { SkillSourceReadError } from '../../errors/skill-source-read.error';
 
 export type ArchiveLimits = {
@@ -12,29 +13,29 @@ export type ArchiveLimits = {
 	maxEntries: number;
 	/** Uncompressed bytes under the folder of the link. */
 	maxUncompressedBytes: number;
-	/** Text that one archive keeps, over all its files. */
-	maxTextBytes: number;
-	/** A larger file keeps its path, without its text. */
-	maxTextFileBytes: number;
+	/** File bytes that one archive keeps. */
+	maxRetainedBytes: number;
+	/** Raw byte limit before decoding a file. Larger files keep only their paths. */
+	maxFileBytes: number;
 };
 
 export const DEFAULT_ARCHIVE_LIMITS: ArchiveLimits = {
 	maxDownloadBytes: 512 * 1024 * 1024,
 	maxEntries: 50_000,
 	maxUncompressedBytes: 200 * 1024 * 1024,
-	maxTextBytes: 20 * 1024 * 1024,
-	maxTextFileBytes: 1024 * 1024,
+	maxRetainedBytes: 20 * 1024 * 1024,
+	// One UTF-16 code unit can use up to three bytes in UTF-8.
+	maxFileBytes: 3 * AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH,
 };
 
 /**
  * The files of a repository folder at one commit. Every file keeps its path, so the picker can
- * list the files that an import skips. Only the files that can become skill content keep their
- * text: SKILL.md files and markdown under a `references` folder.
+ * list the files that an import skips. Read the file bytes before deciding how to store them.
  */
 export type RepositoryArchive = {
 	paths: string[];
-	text: Map<string, string>;
-	/** SHA-256 hashes for files over the size limit. Null means the reader did not fetch the file. */
+	files: Map<string, Buffer>;
+	/** Oversized files. Keep a SHA-256 hash only for SKILL.md. */
 	oversized: Map<string, string | null>;
 };
 
@@ -42,7 +43,7 @@ export type RepositoryArchive = {
 export function archiveSize(archive: RepositoryArchive): number {
 	let bytes = 0;
 	for (const path of archive.paths) bytes += path.length;
-	for (const text of archive.text.values()) bytes += text.length;
+	for (const file of archive.files.values()) bytes += file.length;
 	for (const hash of archive.oversized.values()) bytes += hash?.length ?? 0;
 	return bytes;
 }
@@ -64,16 +65,34 @@ export function archiveTooLarge(root: string): SkillSourceReadError {
  */
 export async function readRepositoryArchive(
 	source: Readable,
-	options: { root?: string; signal?: AbortSignal; limits?: ArchiveLimits } = {},
-): Promise<RepositoryArchive> {
-	const { root = '', signal, limits = DEFAULT_ARCHIVE_LIMITS } = options;
+	options: {
+		root?: string;
+		signal?: AbortSignal;
+		limits?: ArchiveLimits;
+		/** The files whose bytes the archive keeps. Every other file keeps its path only. */
+		keep?: (path: string) => boolean;
+		/**
+		 * What happens when the kept files pass `maxRetainedBytes`. `fail` rejects. `paths`
+		 * drops every file, reads on for the paths, and sets `overflowed`.
+		 */
+		onRetainedOverflow?: 'fail' | 'paths';
+	} = {},
+): Promise<RepositoryArchive & { overflowed: boolean }> {
+	const {
+		root = '',
+		signal,
+		limits = DEFAULT_ARCHIVE_LIMITS,
+		keep = () => true,
+		onRetainedOverflow = 'fail',
+	} = options;
+	let overflowed = false;
 	const paths: string[] = [];
-	const text = new Map<string, string>();
-	const oversized = new Map<string, string>();
+	const files = new Map<string, Buffer>();
+	const oversized = new Map<string, string | null>();
 	let downloaded = 0;
 	let entries = 0;
 	let bytes = 0;
-	let textBytes = 0;
+	let retainedBytes = 0;
 
 	return await new Promise((resolve, reject) => {
 		let settled = false;
@@ -113,24 +132,37 @@ export async function readRepositoryArchive(
 				return;
 			}
 			paths.push(path);
-			if (!keepsText(path)) {
+			if (overflowed || !keep(path)) {
 				entry.resume();
 				return;
 			}
-			if (entry.size > limits.maxTextFileBytes) {
+			if (entry.size > limits.maxFileBytes) {
+				if (path.split('/').at(-1) !== SKILL_FILE) {
+					oversized.set(path, null);
+					entry.resume();
+					return;
+				}
 				const hash = createHash('sha256');
 				entry.on('data', (chunk: Buffer) => hash.update(chunk));
-				entry.on('end', () => oversized.set(path, hash.digest('hex')));
+				entry.on('end', () => {
+					if (!overflowed) oversized.set(path, hash.digest('hex'));
+				});
 				return;
 			}
-			textBytes += entry.size;
-			if (textBytes > limits.maxTextBytes) {
+			retainedBytes += entry.size;
+			if (retainedBytes > limits.maxRetainedBytes) {
 				entry.resume();
-				return fail(archiveTooLarge(root));
+				if (onRetainedOverflow === 'fail') return fail(archiveTooLarge(root));
+				overflowed = true;
+				files.clear();
+				oversized.clear();
+				return;
 			}
 			const chunks: Buffer[] = [];
 			entry.on('data', (chunk: Buffer) => chunks.push(chunk));
-			entry.on('end', () => text.set(path, Buffer.concat(chunks).toString('utf8')));
+			entry.on('end', () => {
+				if (!overflowed) files.set(path, Buffer.concat(chunks));
+			});
 		});
 		parser.on('error', (error: Error) =>
 			fail(
@@ -142,7 +174,7 @@ export async function readRepositoryArchive(
 		parser.on('end', () => {
 			if (settled) return;
 			settle();
-			resolve({ paths, text, oversized });
+			resolve({ paths, files, oversized, overflowed });
 		});
 
 		source.on('data', (chunk: Buffer) => {
@@ -177,11 +209,4 @@ function withoutTopFolder(path: string): string | undefined {
 	// A tarball names a folder with a slash at the end.
 	const rest = slash === -1 ? '' : path.slice(slash + 1).replace(/\/$/, '');
 	return rest === '' ? undefined : rest;
-}
-
-export function keepsText(path: string): boolean {
-	const segments = path.split('/');
-	const name = segments.at(-1) ?? '';
-	if (name === 'SKILL.md') return true;
-	return segments.includes('references') && /\.(md|markdown)$/i.test(name);
 }

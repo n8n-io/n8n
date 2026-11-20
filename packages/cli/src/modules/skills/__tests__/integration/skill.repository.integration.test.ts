@@ -121,10 +121,29 @@ describe('SkillRepository', () => {
 			content({
 				name: 'Updated',
 				instructions: 'Updated instructions.',
-				files: [{ path: 'references/style.md', content: 'Style guide.' }],
+				files: [
+					{ path: 'assets/logo.png', content: 'AP8=', isBinary: true },
+					{ path: 'reference/degraded/style.md', content: 'Style guide.' },
+				],
 			}),
 			null,
 		);
+		expect((await skills.findLatestSaved([scoped])).get(scoped)?.files).toContainEqual(
+			expect.objectContaining({ path: 'assets/logo.png', content: 'AP8=', isBinary: true }),
+		);
+		// An agent run reads the text files only, for the latest version and for a pinned one.
+		const runFiles = [{ path: 'reference/degraded/style.md', content: 'Style guide.' }];
+		expect(
+			(await skillRuntime.resolveForAgentDraft([{ id: scoped }], {}, { textOnly: true }))[scoped]
+				.references,
+		).toEqual(runFiles);
+		expect(
+			(await skillRuntime.resolveVersions([versionId], {}, { textOnly: true })).get(versionId)
+				?.skill.references,
+		).toEqual(runFiles);
+		expect(
+			(await skillRuntime.resolveForAgentDraft([{ id: scoped }]))[scoped].references,
+		).toHaveLength(2);
 		expect((await skillRuntime.listForAssistant({ user: owner })).map(({ id }) => id)).toEqual([
 			instance,
 		]);
@@ -141,7 +160,16 @@ describe('SkillRepository', () => {
 		expect(await skills.findAssistantSkill(scoped, project.id)).toMatchObject({
 			skill: { id: scoped, projectId: project.id },
 			version: { id: versionId, version: 2, instructions: 'Updated instructions.' },
-			files: [{ path: 'references/style.md' }],
+			files: [{ path: 'reference/degraded/style.md' }],
+		});
+		const context = { user: owner, projectId: project.id };
+		expect(
+			await assistantSkills.readFile(context, scoped, versionId, 'assets/logo.png'),
+		).toBeNull();
+		expect(
+			await assistantSkills.readFile(context, scoped, versionId, 'reference/degraded/style.md'),
+		).toMatchObject({
+			content: 'Style guide.',
 		});
 		expect(await skills.findAssistantSkill(instance, null)).toMatchObject({
 			skill: { id: instance, projectId: null },
@@ -151,6 +179,33 @@ describe('SkillRepository', () => {
 		expect(await skills.findAssistantSkill(other, project.id)).toBeNull();
 		expect(await skills.findAssistantSkill(disabled, project.id)).toBeNull();
 		expect(await skills.findAssistantSkill('skill_missing', project.id)).toBeNull();
+	});
+
+	it('reads a file and name from the latest version without falling back to older files', async () => {
+		const id = await createSkill(
+			{},
+			content({
+				files: [
+					{ path: 'assets/logo.png', content: 'AP4=', isBinary: true },
+					{ path: 'reference/old.md', content: 'Only in the first version.' },
+				],
+			}),
+		);
+		await skills.insertSavedVersion(
+			id,
+			2,
+			content({
+				name: 'New name',
+				files: [{ path: 'assets/logo.png', content: 'AP8=', isBinary: true }],
+			}),
+			null,
+		);
+
+		expect(await skills.findLatestFile(id, 'assets/logo.png')).toMatchObject({
+			name: 'New name',
+			file: { path: 'assets/logo.png', content: 'AP8=', isBinary: true },
+		});
+		expect(await skills.findLatestFile(id, 'reference/old.md')).toBeNull();
 	});
 
 	it('reads a selected saved version with current availability and scope checks', async () => {
