@@ -583,7 +583,7 @@ describe('SettingsApiView', () => {
 
 			renderComponent(SettingsApiView);
 
-			await fireEvent.click(screen.getByText('All'));
+			await fireEvent.mouseDown(screen.getByText('All'));
 
 			expect(apiKeysStore.setOwnership).toHaveBeenCalledWith('all');
 		});
@@ -600,7 +600,7 @@ describe('SettingsApiView', () => {
 
 			const { track } = useTelemetry();
 
-			await fireEvent.click(screen.getByText('All'));
+			await fireEvent.mouseDown(screen.getByText('All'));
 
 			expect(track).toHaveBeenCalledWith('User viewed all API keys');
 		});

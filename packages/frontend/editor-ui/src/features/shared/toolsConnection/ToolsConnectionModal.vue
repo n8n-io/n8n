@@ -512,7 +512,6 @@ function handleOpenChange(value: boolean) {
 						:model-value="activeCategory"
 						:options="tabOptions"
 						size="small"
-						variant="modern"
 						justified
 						:class="$style.tabs"
 						data-test-id="tools-connection-tabs"
