@@ -36,7 +36,8 @@ the instance holds for the kind.
 3. A renewal extends only a session that has not expired, so an expired session never becomes
    valid again. The next session of the instance has a new id.
 4. The expiry of a session row uses database time. An instance also ends a session on its own clocks
-   when the renewal deadline passes, so a session can end before its row expires.
+   when the validity deadline passes (the lease length minus the margin after the last confirmed
+   renewal), so a session can end before its row expires.
 
 ## Links
 

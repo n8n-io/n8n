@@ -18,9 +18,10 @@ packaged backend module is a workspace package that the cli loads only when the 
 ## Decision
 
 The `durable-leases` backend module, in the `@n8n/backend-module-durable-leases` package, holds the
-whole feature: `DurableLeaseService`, the database lease provider and the session manager. The
-module is not in the default modules, and `N8N_ENABLED_MODULES=durable-leases` turns it on.
-Consumers check `ModuleRegistry.isActive('durable-leases')` before they use `DurableLeaseService`.
+lease logic: `DurableLeaseService`, the database lease provider and the session manager. The lease
+tables and their repositories stay in `@n8n/db`. The module is not in the default modules, and
+`N8N_ENABLED_MODULES=durable-leases` turns it on. Consumers check
+`ModuleRegistry.isActive('durable-leases')` before they use `DurableLeaseService`.
 
 The main reason is that the package acts as the implementation of the `@n8n/leases` lease service
 contract on database storage.
@@ -38,8 +39,9 @@ contract on database storage.
 ## Consequences
 
 1. Operators turn durable leases on with `N8N_ENABLED_MODULES=durable-leases`.
-2. `ModuleRegistry.isActive('durable-leases')` is true only after the module initialises. A consumer
-   that runs before that point finds leases off.
+2. The module initialises on main instances only. `ModuleRegistry.isActive('durable-leases')` is
+   true only after it initialises, so it stays false on workers and webhook instances, and a
+   consumer that runs before that point finds leases off.
 3. The lease timing settings keep the `N8N_LEASES_*` names, because they apply to any lease backend.
 
 ## Links
