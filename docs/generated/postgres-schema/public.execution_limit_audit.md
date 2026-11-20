@@ -17,6 +17,7 @@
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
 | CHK_execution_limit_audit_field | CHECK | CHECK (((field)::text = ANY ((ARRAY['periodUnit'::character varying, 'instanceMaxExecutions'::character varying, 'defaultProjectMaxExecutions'::character varying, 'projectMaxExecutions'::character varying])::text[]))) |
+| CHK_execution_limit_audit_project_field | CHECK | CHECK (((((field)::text = 'projectMaxExecutions'::text) AND ("projectId" IS NOT NULL)) OR (((field)::text <> 'projectMaxExecutions'::text) AND ("projectId" IS NULL)))) |
 | PK_eaff1c6bc11b40a5e2310811cc6 | PRIMARY KEY | PRIMARY KEY (id) |
 | execution_limit_audit_createdAt_not_null | n | NOT NULL "createdAt" |
 | execution_limit_audit_field_not_null | n | NOT NULL field |

@@ -80,12 +80,14 @@ describe('CreateExecutionLimitAuditTable migration', () => {
 	});
 
 	it.each([
-		['a missing field', null],
-		['an unknown field', 'maxExecutions'],
-	])('rejects %s', async (_, field) => {
+		['a missing field', { field: null }],
+		['an unknown field', { field: 'maxExecutions' }],
+		['a project limit with no project', { field: 'projectMaxExecutions' }],
+		['an instance setting with a project', { projectId: randomUUID() }],
+	])('rejects %s', async (_, row) => {
 		const context = createTestMigrationContext(dataSource);
 
-		await expect(insertRow(context, { field })).rejects.toThrow();
+		await expect(insertRow(context, row)).rejects.toThrow();
 		await context.queryRunner.release();
 	});
 
