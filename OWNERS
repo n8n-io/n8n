@@ -325,7 +325,6 @@ packages/cli/src/modules/mcp-registry/                  @n8n-io/nodes required
 packages/cli/src/modules/agents/integrations/           @n8n-io/nodes
 packages/@n8n/api-types/src/schemas/mcp-registry.schema.ts @n8n-io/nodes required
 packages/cli/templates/send-and-wait-no-action-required.handlebars @n8n-io/nodes required
-packages/@n8n/ai-node-sdk/                              @n8n-io/nodes required
 
 # Relay (AI gateway & credits)
 packages/cli/src/services/ai-gateway.service.ts         @n8n-io/relay required
@@ -408,6 +407,7 @@ packages/@n8n/scan-community-package/                   @n8n-io/community-engine
 packages/@n8n/eslint-plugin-community-nodes/            @n8n-io/community-engineering
 packages/@n8n/node-cli/                                 @n8n-io/community-engineering
 packages/@n8n/create-node/                              @n8n-io/community-engineering
+packages/@n8n/ai-node-sdk/                              @n8n-io/community-engineering required
 
 # IAM
 
