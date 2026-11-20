@@ -217,15 +217,63 @@ const width = ref(240);
 The search stays at the top. The action stays at the bottom. The list between them scrolls.
 
 ```vue
-<N8nSidebar v-model:width="width" label="Files" style="--n8n-sidebar--padding: 0">
-	<template #header>
-		<!-- Search or a title. -->
-	</template>
-	<!-- The list. This region scrolls. -->
-	<template #footer>
-		<!-- An action that stays at the bottom. -->
-	</template>
-</N8nSidebar>
+<script setup lang="ts">
+import { computed, ref } from 'vue';
+import {
+	N8nButton,
+	N8nIcon,
+	N8nInput,
+	N8nListbox,
+	N8nListboxItem,
+	N8nSidebar,
+} from '@n8n/design-system';
+
+const width = ref(240);
+const query = ref('');
+const selectedId = ref('readme');
+
+const files = [
+	{ id: 'readme', label: 'README.md' },
+	{ id: 'workflow', label: 'workflow.ts' },
+	{ id: 'schema', label: 'schema.json' },
+];
+
+const visibleFiles = computed(() => {
+	const term = query.value.trim().toLowerCase();
+	if (term === '') return files;
+	return files.filter((file) => file.label.toLowerCase().includes(term));
+});
+</script>
+
+<template>
+	<N8nSidebar v-model:width="width" label="Files" style="--n8n-sidebar--padding: 0">
+		<template #header>
+			<div style="padding: var(--spacing--xs) var(--spacing--sm)">
+				<N8nInput
+					v-model="query"
+					size="small"
+					placeholder="Search files"
+					aria-label="Search files"
+				/>
+			</div>
+		</template>
+		<div style="padding: var(--spacing--2xs)">
+			<N8nListbox v-model="selectedId" label="Files">
+				<N8nListboxItem v-for="file in visibleFiles" :key="file.id" :value="file.id">
+					<template #leading>
+						<N8nIcon icon="file-text" />
+					</template>
+					{{ file.label }}
+				</N8nListboxItem>
+			</N8nListbox>
+		</div>
+		<template #footer>
+			<div style="padding: var(--spacing--xs) var(--spacing--sm)">
+				<N8nButton variant="outline" size="small" label="Add file" style="width: 100%" />
+			</div>
+		</template>
+	</N8nSidebar>
+</template>
 ```
 
 **Inside a dialog**
