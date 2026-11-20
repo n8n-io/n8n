@@ -89,15 +89,17 @@ const getMockedExecuteFunctions = ({
 						? { candidates: 'invalid' }
 						: invalidApiResponse
 							? { invalid: 'response' }
-						: {
-								candidates: [
-									{
-										content: {
-											parts: [{ inlineData: { data: outputBuffer.toString('base64'), mimeType } }],
+							: {
+									candidates: [
+										{
+											content: {
+												parts: [
+													{ inlineData: { data: outputBuffer.toString('base64'), mimeType } },
+												],
+											},
 										},
-									},
-								],
-							},
+									],
+								},
 		);
 
 	executeFunctions.helpers.httpRequest
@@ -190,7 +192,7 @@ describe('Gemini Node image edit', () => {
 		);
 	});
 
-	it('should throw error for invalid API response format', async () => {
+	it('should report an object without candidates or block reason as an empty response', async () => {
 		const executeFunctions = getMockedExecuteFunctions({
 			prompt: 'test prompt',
 			outputProperty: 'edited',
@@ -199,7 +201,7 @@ describe('Gemini Node image edit', () => {
 		});
 
 		await expect(execute.call(executeFunctions, 0)).rejects.toThrow(
-			'Invalid response format from Gemini API',
+			'Gemini returned an empty response',
 		);
 	});
 

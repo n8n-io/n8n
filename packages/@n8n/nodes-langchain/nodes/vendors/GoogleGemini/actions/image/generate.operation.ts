@@ -1,10 +1,12 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { NodeOperationError, requestPath, updateDisplayOptions } from 'n8n-workflow';
 
-import { assertResponseHasCandidates } from '../../helpers/candidates';
+import {
+	assertGenerateContentResponse,
+	assertResponseHasCandidates,
+} from '../../helpers/candidates';
 import {
 	type GenerateContentRequest,
-	type GenerateContentResponse,
 	type ImagenResponse,
 	Modality,
 } from '../../helpers/interfaces';
@@ -103,15 +105,16 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			generationConfig,
 		};
 
-		const response = (await apiRequest.call(
+		const response: unknown = await apiRequest.call(
 			this,
 			'POST',
 			requestPath`/v1beta${modelPath.call(this, model)}:generateContent`,
 			{
 				body,
 			},
-		)) as GenerateContentResponse;
+		);
 
+		assertGenerateContentResponse(response);
 		assertResponseHasCandidates(response);
 
 		const promises = response.candidates.map(async (candidate) => {

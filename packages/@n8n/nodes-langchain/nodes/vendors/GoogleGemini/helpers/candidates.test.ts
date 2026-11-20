@@ -1,6 +1,51 @@
 import { OperationalError, UserError } from '@n8n/errors';
 
-import { assertResponseHasCandidates } from './candidates';
+import { assertGenerateContentResponse, assertResponseHasCandidates } from './candidates';
+import type { GenerateContentResponse } from './interfaces';
+
+describe('assertGenerateContentResponse', () => {
+	it.each([
+		['an empty object', {}],
+		[
+			'a prompt feedback with a block reason, a message and other fields',
+			{
+				promptFeedback: {
+					blockReason: 'SAFETY',
+					blockReasonMessage: 'The prompt is not allowed',
+					safetyRatings: [],
+				},
+			},
+		],
+		['a candidate without a role', { candidates: [{ content: { parts: [] } }] }],
+		[
+			'unknown fields',
+			{ usageMetadata: {}, candidates: [{ finishReason: 'STOP', content: { parts: [{ a: 1 }] } }] },
+		],
+	])('accepts %s', (_name, response) => {
+		expect(() => assertGenerateContentResponse(response)).not.toThrow();
+	});
+
+	it.each([
+		['a non-object', 'response'],
+		['null', null],
+		['candidates that are not an array', { candidates: 'invalid' }],
+		['null candidates', { candidates: null }],
+		['a candidate that is not an object', { candidates: ['invalid'] }],
+		['a candidate without content', { candidates: [{ finishReason: 'SAFETY' }] }],
+		['content without parts', { candidates: [{ content: { role: 'model' } }] }],
+		['parts that are not an array', { candidates: [{ content: { parts: 'invalid' } }] }],
+		['a prompt feedback that is not an object', { promptFeedback: 'invalid' }],
+		['a block reason that is not a string', { promptFeedback: { blockReason: 1 } }],
+		[
+			'a block reason message that is not a string',
+			{ promptFeedback: { blockReasonMessage: null } },
+		],
+	])('rejects %s', (_name, response) => {
+		expect(() => assertGenerateContentResponse(response)).toThrow(
+			'Invalid response format from Gemini API',
+		);
+	});
+});
 
 describe('assertResponseHasCandidates', () => {
 	it('returns when the response has candidates', () => {
@@ -40,5 +85,11 @@ describe('assertResponseHasCandidates', () => {
 
 	it('throws an OperationalError for an empty response without a block reason', () => {
 		expect(() => assertResponseHasCandidates({})).toThrow(OperationalError);
+	});
+
+	it('does not accept candidates that are not an array', () => {
+		const response = { candidates: 'invalid' } as unknown as GenerateContentResponse;
+
+		expect(() => assertResponseHasCandidates(response)).toThrow(OperationalError);
 	});
 });

@@ -1,8 +1,10 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { NodeOperationError, requestPath, updateDisplayOptions } from 'n8n-workflow';
 
-import { assertResponseHasCandidates } from '../../helpers/candidates';
-import type { GenerateContentResponse } from '../../helpers/interfaces';
+import {
+	assertGenerateContentResponse,
+	assertResponseHasCandidates,
+} from '../../helpers/candidates';
 import { getFilenameFromMimeType, uploadFile } from '../../helpers/utils';
 import { apiRequest, modelPath } from '../../transport';
 import { modelRLC } from '../descriptions';
@@ -40,48 +42,6 @@ function isImagesParameter(param: unknown): param is ImagesParameter {
 		return (
 			typeof itemObj.binaryPropertyName === 'string' || itemObj.binaryPropertyName === undefined
 		);
-	});
-}
-
-function isGenerateContentResponse(response: unknown): response is GenerateContentResponse {
-	if (typeof response !== 'object' || response === null) {
-		return false;
-	}
-
-	const responseObj = response as Record<string, unknown>;
-
-	if (!('candidates' in responseObj) || responseObj.candidates === undefined) {
-		const promptFeedback = responseObj.promptFeedback;
-		return (
-			Object.keys(responseObj).length === 0 ||
-			(typeof promptFeedback === 'object' &&
-				promptFeedback !== null &&
-				'blockReason' in promptFeedback)
-		);
-	}
-
-	if (!Array.isArray(responseObj.candidates)) {
-		return false;
-	}
-
-	return responseObj.candidates.every((candidate: unknown) => {
-		if (typeof candidate !== 'object' || candidate === null) {
-			return false;
-		}
-
-		const candidateObj = candidate as Record<string, unknown>;
-
-		if (
-			!('content' in candidateObj) ||
-			typeof candidateObj.content !== 'object' ||
-			candidateObj.content === null
-		) {
-			return false;
-		}
-
-		const contentObj = candidateObj.content as Record<string, unknown>;
-
-		return 'parts' in contentObj && Array.isArray(contentObj.parts);
 	});
 }
 
@@ -214,10 +174,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		},
 	);
 
-	if (!isGenerateContentResponse(response)) {
-		throw new Error('Invalid response format from Gemini API');
-	}
-
+	assertGenerateContentResponse(response);
 	assertResponseHasCandidates(response);
 
 	const promises = response.candidates.map(async (candidate) => {
