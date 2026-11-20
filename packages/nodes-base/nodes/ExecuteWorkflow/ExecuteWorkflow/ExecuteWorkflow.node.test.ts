@@ -200,6 +200,59 @@ describe('ExecuteWorkflow', () => {
 		]);
 	});
 
+	test('should keep all paired items of an item that the sub-workflow aggregates', async () => {
+		executeFunctions.getNodeParameter
+			.mockReturnValueOnce('database') // source
+			.mockReturnValueOnce('once') // mode
+			.mockReturnValueOnce({}) // workflowInputs.value (item 0)
+			.mockReturnValueOnce({}) // workflowInputs.value (item 1)
+			.mockReturnValueOnce([]) // workflowInputs.schema
+			.mockReturnValueOnce(true); // waitForSubWorkflow
+		executeFunctions.getInputData.mockReturnValue([{ json: { key: 'A' } }, { json: { key: 'B' } }]);
+		(getWorkflowInfo as Mock).mockResolvedValue({ id: 'subWorkflowId' });
+
+		const task = (source: ITaskData['source'], items: INodeExecutionData[]): ITaskData => ({
+			source,
+			data: { main: [items] },
+			executionTime: 0,
+			executionStatus: 'success',
+			executionIndex: 0,
+			startTime: 0,
+		});
+		const aggregatedItem: INodeExecutionData = {
+			json: { keys: ['A', 'B'] },
+			pairedItem: [{ item: 0 }, { item: 1 }],
+		};
+		const runExecutionData = createRunExecutionData({
+			resultData: {
+				lastNodeExecuted: 'Aggregate',
+				runData: {
+					Trigger: [
+						task(
+							[],
+							[
+								{ json: { key: 'A' }, pairedItem: { item: 0 } },
+								{ json: { key: 'B' }, pairedItem: { item: 1 } },
+							],
+						),
+					],
+					Aggregate: [task([{ previousNode: 'Trigger' }], [aggregatedItem])],
+				},
+			},
+		});
+		executeFunctions.executeWorkflow.mockResolvedValue({
+			executionId: 'subExecutionId',
+			data: [[aggregatedItem]],
+		});
+		executeFunctions.getExecutionDataById.mockResolvedValue(runExecutionData);
+
+		const result = await executeWorkflow.execute.call(executeFunctions);
+
+		expect(result).toEqual([
+			[{ json: { keys: ['A', 'B'] }, pairedItem: [{ item: 0 }, { item: 1 }] }],
+		]);
+	});
+
 	test('should handle errors and continue on fail, no items, < 1.3 version', async () => {
 		executeFunctions.getNodeParameter
 			.mockReturnValueOnce('database') // source
