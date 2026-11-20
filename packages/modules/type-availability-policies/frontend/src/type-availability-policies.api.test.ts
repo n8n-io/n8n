@@ -7,6 +7,7 @@ import {
 	fetchInstanceAccess,
 	fetchInstancePolicy,
 	fetchNodeTypeSummaries,
+	fetchNodeTypeUsage,
 	saveInstancePolicy,
 } from './type-availability-policies.api';
 
@@ -78,6 +79,12 @@ describe('instance access requests', () => {
 			'GET',
 			'/credential-type-policies/usage',
 		);
+	});
+
+	it('reads the node type usage from the usage route', async () => {
+		await fetchNodeTypeUsage(context);
+
+		expect(makeRestApiRequest).toHaveBeenCalledWith(context, 'GET', '/node-type-policies/usage');
 	});
 
 	it('reads the name, icon and parents of each credential type and skips malformed entries', async () => {

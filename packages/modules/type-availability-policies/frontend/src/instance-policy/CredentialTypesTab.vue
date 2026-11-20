@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { CredentialTypeUsageResponse, TypeUsage } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, onMounted, shallowRef } from 'vue';
@@ -7,6 +6,7 @@ import { computed, onMounted, shallowRef } from 'vue';
 import { credentialTypeIcon, FALLBACK_TYPE_ICON } from './credentialTypeIcon';
 import InstancePolicyTable, { type InstancePolicyTableRow } from './InstancePolicyTable.vue';
 import { useInstanceTypeAccess } from './useInstanceTypeAccess';
+import { useTypeUsage } from './useTypeUsage';
 import { useAppliedTheme } from '../composables/useAppliedTheme';
 import {
 	fetchCredentialTypeSummaries,
@@ -14,15 +14,15 @@ import {
 	type CredentialTypeSummary,
 } from '../type-availability-policies.api';
 
-const NO_USAGE: TypeUsage = { uses: 0, workflows: 0, activeWorkflows: 0, projects: 0 };
-
 const i18n = useI18n();
 const rootStore = useRootStore();
 const theme = useAppliedTheme();
+const typeUsage = useTypeUsage(
+	async () => await fetchCredentialTypeUsage(rootStore.restApiContext),
+);
 const { types, loading, changeAccess } = useInstanceTypeAccess('credential');
 
 const typeSummaries = shallowRef(new Map<string, CredentialTypeSummary>());
-const usage = shallowRef<CredentialTypeUsageResponse | null>(null);
 
 // Kept apart from the rows, so that a change of access does not resolve every icon again.
 const decorations = computed(() => {
@@ -42,7 +42,7 @@ const rows = computed<InstancePolicyTableRow[]>(() =>
 	types.value.map((type) => ({
 		...type,
 		...(decorations.value.get(type.name) ?? { displayName: type.name, icon: FALLBACK_TYPE_ICON }),
-		usage: usage.value === null ? null : (usage.value[type.name] ?? NO_USAGE),
+		usage: typeUsage.usageOf(type.name),
 	})),
 );
 
@@ -54,16 +54,8 @@ async function loadSummaries() {
 	}
 }
 
-async function loadUsage() {
-	try {
-		usage.value = await fetchCredentialTypeUsage(rootStore.restApiContext);
-	} catch {
-		// The usage cells show no value instead.
-	}
-}
-
 onMounted(async () => {
-	await Promise.all([loadSummaries(), loadUsage()]);
+	await Promise.all([loadSummaries(), typeUsage.load()]);
 });
 </script>
 
