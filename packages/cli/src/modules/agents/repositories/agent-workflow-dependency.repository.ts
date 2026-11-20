@@ -10,7 +10,10 @@ import { DataSource, In, type EntityManager } from '@n8n/typeorm';
 import { AgentHistory } from '../entities/agent-history.entity';
 import { AgentWorkflowDependency } from '../entities/agent-workflow-dependency.entity';
 import { Agent, isProjectAgent } from '../entities/agent.entity';
-import { extractAgentWorkflowRefs } from '../utils/extract-agent-workflow-refs';
+import {
+	extractAgentWorkflowRefs,
+	extractGuardrailCheckWorkflowIds,
+} from '../utils/extract-agent-workflow-refs';
 
 export type AgentWorkflowDependencyReference = Pick<
 	AgentWorkflowDependency,
@@ -60,7 +63,11 @@ export class AgentWorkflowDependencyRepository extends BaseRepository<AgentWorkf
 				...extractAgentWorkflowRefs(publishedVersion?.schema),
 			];
 			const workflowIds = [
-				...new Set(refs.flatMap((ref) => (ref.workflowId === undefined ? [] : [ref.workflowId]))),
+				...new Set([
+					...refs.flatMap((ref) => (ref.workflowId === undefined ? [] : [ref.workflowId])),
+					...extractGuardrailCheckWorkflowIds(agent.schema),
+					...extractGuardrailCheckWorkflowIds(publishedVersion?.schema),
+				]),
 			];
 			const legacyWorkflowNames = [
 				...new Set(refs.flatMap((ref) => (ref.workflowId === undefined ? [ref.workflow] : []))),

@@ -116,7 +116,7 @@ import {
 	createReadBinaryDataTool,
 	READ_BINARY_DATA_TOOL_NAME,
 } from './tools/read-binary-data.tool';
-import type { WorkflowToolExecutionMode } from './tools/workflow-tool-factory';
+import type { WorkflowToolContext, WorkflowToolExecutionMode } from './tools/workflow-tool-factory';
 import { findWorkflowToolWorkflow } from './tools/workflow-tool-workflow-resolver';
 import type { AgentRunSource } from './utils/agent-published-snapshot';
 import { getAgentRuntimeAssets, type AgentRuntimeAssets } from './utils/agent-runtime-assets';
@@ -154,6 +154,11 @@ export interface ReconstructedAgentRuntime {
 	 * same way the run's model is. Absent when no model kind is configured.
 	 */
 	guardrailModel?: LanguageModel;
+	/**
+	 * The callable-workflow machinery that `workflow`-kind guardrail checks
+	 * run with. Absent when no workflow guardrail is configured.
+	 */
+	guardrailWorkflowContext?: WorkflowToolContext;
 }
 
 export interface SubAgentDelegationConfig {
@@ -390,6 +395,13 @@ const MODEL_BASED_KINDS = new Set<AgentToolGuardrailKind>([
 
 function isModelBasedKind(guardrail: AgentToolGuardrailConfig): boolean {
 	return MODEL_BASED_KINDS.has(guardrail.kind);
+}
+
+/** A `workflow`-kind guardrail needs the callable-workflow machinery on the runtime. */
+function hasWorkflowGuardrail(config: AgentJsonConfig): boolean {
+	return (
+		config.config?.guardrails?.tools?.some((guardrail) => guardrail.kind === 'workflow') === true
+	);
 }
 
 @Service()
@@ -789,6 +801,12 @@ export class AgentRuntimeReconstructionService {
 			if (options.abortSignal?.aborted) void this.closeCancelledRuntime(runtime.agent);
 			throw error;
 		}
+		const guardrailWorkflowContext = hasWorkflowGuardrail(options.config)
+			? await this.buildWorkflowToolContext(
+					this.toolRunIdentity(options, backgroundTasksEnabled),
+					options.instrumentation?.configureToolAdditionalData,
+				)
+			: undefined;
 		return {
 			agent: runtime.agent,
 			toolRegistry: buildToolRegistry(runtime.resolvedTools),
@@ -803,6 +821,7 @@ export class AgentRuntimeReconstructionService {
 				? { toolGuardrails: options.config.config.guardrails.tools }
 				: {}),
 			...(runtime.guardrailModel !== undefined ? { guardrailModel: runtime.guardrailModel } : {}),
+			...(guardrailWorkflowContext !== undefined ? { guardrailWorkflowContext } : {}),
 		};
 	}
 
@@ -927,6 +946,17 @@ export class AgentRuntimeReconstructionService {
 		backgroundTasksEnabled: boolean,
 		unavailable: UnavailableTool[],
 	): ToolResolver {
+		return this.makeToolResolver(
+			this.toolRunIdentity(options, backgroundTasksEnabled),
+			options.instrumentation,
+			unavailable,
+		);
+	}
+
+	private toolRunIdentity(
+		options: RuntimeReconstructionOptions,
+		backgroundTasksEnabled: boolean,
+	): ToolRunIdentity {
 		const {
 			projectId,
 			workflowToolExecutionMode = 'manual',
@@ -938,38 +968,33 @@ export class AgentRuntimeReconstructionService {
 			previewChat,
 			supportsHitl,
 			runtimeProfile,
-			instrumentation,
 		} = options;
 		const canResume = supportsHitl ?? runtimeProfile === 'top-level';
-		return this.makeToolResolver(
-			{
-				projectId,
-				workflowToolExecutionMode,
-				// Production runs execute published workflow versions, test runs the drafts.
-				usePublishedWorkflowVersion: runType === 'production',
-				agentId: memoryOwnerAgentId,
-				integrationType,
-				userId: attributionUserId ?? user?.id,
-				previewChat,
-				publishedN8nChat:
-					runType === 'production' &&
-					integrationType === N8N_CHAT_INTEGRATION_TYPE &&
-					attributionUserId !== undefined,
-				...workflowToolAttribution(options),
-				// Sub-agent checkpoints are rejected on resume and inline agents have no
-				// checkpoint storage, so neither can be woken again.
-				supportsHitl: canResume,
-				// Only an interactive top-level agent backgrounds waiting workflows: a
-				// child's job would nest under its own thread, where no check/cancel
-				// tools exist; a top-level agent invoked as a workflow step
-				// (supportsHitl false) or by a task (allowBackgroundTasks false) has no
-				// interactive turn to hand a receipt to. Everyone else handles waits
-				// the legacy way.
-				backgroundTasksEnabled: backgroundTasksEnabled && canResume,
-			},
-			instrumentation,
-			unavailable,
-		);
+		return {
+			projectId,
+			workflowToolExecutionMode,
+			// Production runs execute published workflow versions, test runs the drafts.
+			usePublishedWorkflowVersion: runType === 'production',
+			agentId: memoryOwnerAgentId,
+			integrationType,
+			userId: attributionUserId ?? user?.id,
+			previewChat,
+			publishedN8nChat:
+				runType === 'production' &&
+				integrationType === N8N_CHAT_INTEGRATION_TYPE &&
+				attributionUserId !== undefined,
+			...workflowToolAttribution(options),
+			// Sub-agent checkpoints are rejected on resume and inline agents have no
+			// checkpoint storage, so neither can be woken again.
+			supportsHitl: canResume,
+			// Only an interactive top-level agent backgrounds waiting workflows: a
+			// child's job would nest under its own thread, where no check/cancel
+			// tools exist; a top-level agent invoked as a workflow step
+			// (supportsHitl false) or by a task (allowBackgroundTasks false) has no
+			// interactive turn to hand a receipt to. Everyone else handles waits
+			// the legacy way.
+			backgroundTasksEnabled: backgroundTasksEnabled && canResume,
+		};
 	}
 
 	private makeMcpClientFactory(
@@ -1121,6 +1146,31 @@ export class AgentRuntimeReconstructionService {
 		instrumentToolAdditionalData: AgentRuntimeInstrumentation['configureToolAdditionalData'],
 		unavailable: UnavailableTool[],
 	) {
+		const { resolveWorkflowTool, buildUnavailableWorkflowTool } = await import(
+			'./tools/workflow-tool-factory.js'
+		);
+		const context = await this.buildWorkflowToolContext(runIdentity, instrumentToolAdditionalData);
+		try {
+			return await resolveWorkflowTool(ref, context);
+		} catch (error) {
+			// A missing or incompatible workflow costs the agent one tool call, not
+			// the whole run: the stub keeps the tool listed and reports the reason.
+			if (!(error instanceof CallableWorkflowUnavailableError)) throw error;
+			unavailable.push({
+				toolName: toolRefName(ref),
+				toolType: 'workflow',
+				reason: error.reason,
+				message: error.message,
+			});
+			return buildUnavailableWorkflowTool(ref, context);
+		}
+	}
+
+	/** The callable-workflow machinery a workflow tool or guardrail check runs with. */
+	private async buildWorkflowToolContext(
+		runIdentity: ToolRunIdentity,
+		instrumentToolAdditionalData?: AgentRuntimeInstrumentation['configureToolAdditionalData'],
+	): Promise<WorkflowToolContext> {
 		const {
 			projectId,
 			workflowToolExecutionMode,
@@ -1135,10 +1185,7 @@ export class AgentRuntimeReconstructionService {
 			supportsHitl,
 			backgroundTasksEnabled,
 		} = runIdentity;
-		const { resolveWorkflowTool, buildUnavailableWorkflowTool } = await import(
-			'./tools/workflow-tool-factory.js'
-		);
-		const context = {
+		return {
 			workflowLoader: Container.get(CallableWorkflowLoader),
 			executor: this.ephemeralNodeExecutor,
 			workflowRunner: await getWorkflowRunner(),
@@ -1158,20 +1205,6 @@ export class AgentRuntimeReconstructionService {
 			supportsHitl,
 			backgroundTasksEnabled,
 		};
-		try {
-			return await resolveWorkflowTool(ref, context);
-		} catch (error) {
-			// A missing or incompatible workflow costs the agent one tool call, not
-			// the whole run: the stub keeps the tool listed and reports the reason.
-			if (!(error instanceof CallableWorkflowUnavailableError)) throw error;
-			unavailable.push({
-				toolName: toolRefName(ref),
-				toolType: 'workflow',
-				reason: error.reason,
-				message: error.message,
-			});
-			return buildUnavailableWorkflowTool(ref, context);
-		}
 	}
 
 	private async injectRuntimeDependencies(params: RuntimeDependencies): Promise<void> {
