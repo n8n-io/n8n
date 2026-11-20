@@ -39,7 +39,7 @@ type MongoDbChatCredentials = {
 function createContext(credentials: MongoDbChatCredentials, databaseName: string) {
 	return {
 		getCredentials: vi.fn().mockResolvedValue(credentials),
-		getNode: vi.fn(() => ({ name: 'MongoDB Chat Memory' })),
+		getNode: vi.fn(() => ({ name: 'MongoDB Chat Memory', typeVersion: 1.1 })),
 		getNodeParameter: vi.fn((name: string, _itemIndex: number, defaultValue?: unknown) => {
 			if (name === 'collectionName') return 'messages';
 			if (name === 'databaseName') return databaseName;
@@ -101,5 +101,30 @@ describe('MemoryMongoDbChat', () => {
 			expect.any(Object),
 		);
 		expect(mongoClient.db).toHaveBeenCalledWith('node-db');
+	});
+
+	it('sets n8n driver metadata on the MongoClient', async () => {
+		const context = createContext(
+			{
+				configurationType: 'connectionString',
+				connectionString: 'mongodb://localhost:27017',
+				database: 'credential-db',
+				host: '',
+				user: '',
+				port: 27017,
+				password: '',
+				tls: false,
+			},
+			'',
+		);
+
+		await new MemoryMongoDbChat().supplyData.call(context, 0);
+
+		expect(mongoClientConstructor).toHaveBeenCalledWith(
+			'mongodb://localhost:27017',
+			expect.objectContaining({
+				driverInfo: { name: 'n8n_memory', version: '1.1' },
+			}),
+		);
 	});
 });
