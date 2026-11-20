@@ -14,6 +14,7 @@ import {
 } from '@n8n/backend-test-utils';
 import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { ForbiddenError, NotFoundError } from '@n8n/errors';
 import { DataSource } from '@n8n/typeorm';
 import nock from 'nock';
 import type { MockInstance } from 'vitest';
@@ -734,6 +735,87 @@ describe('SkillSourceController', () => {
 				),
 			).rejects.toMatchObject({ reason: 'stale' });
 			expect(await countSources()).toBe(0);
+		});
+	});
+
+	// MCP and n8n Assistant have no route, so the service call is their only access check.
+	describe('access of the public source tools', () => {
+		const service = () => Container.get(SkillSourceService);
+		const calls = (user: User, scope: { scope: 'instance' | 'project'; projectId?: string }) => {
+			const selection = connectPublicSkillSourceSchema.parse({
+				url: REPO,
+				...scope,
+				skillKeys: ['x'],
+				revision: 'commit',
+			});
+			return [
+				async () => await service().discoverPublic(user, { url: REPO, ...scope }, 'mcp'),
+				async () => await service().checkPublicImport(user, selection, 'assistant'),
+				async () => await service().connectPublic(user, selection, 'mcp'),
+			];
+		};
+		let viewerUser: User;
+
+		beforeAll(async () => {
+			viewerUser = await createMember();
+			await linkUserToProject(viewerUser, team, 'project:viewer');
+		});
+
+		it.each([
+			['a member in Global', () => memberUser, () => ({ scope: 'instance' as const })],
+			[
+				'a viewer in the project',
+				() => viewerUser,
+				() => ({ scope: 'project' as const, projectId: team.id }),
+			],
+			[
+				'a member in a project that is not theirs',
+				() => memberUser,
+				() => ({ scope: 'project' as const, projectId: team.id }),
+			],
+		])('refuses %s', async (_name, user, scope) => {
+			for (const call of calls(user(), scope())) {
+				await expect(call()).rejects.toBeInstanceOf(ForbiddenError);
+			}
+			expect(await countSources()).toBe(0);
+		});
+
+		it('answers not found for a project that does not exist', async () => {
+			for (const call of calls(ownerUser, { scope: 'project', projectId: 'no-such-project' })) {
+				await expect(call()).rejects.toBeInstanceOf(NotFoundError);
+			}
+			expect(await countSources()).toBe(0);
+		});
+
+		it('answers not found when the Skill Sync flag is off for the user', async () => {
+			postHog.getFeatureFlags.mockResolvedValue({});
+
+			for (const call of calls(ownerUser, { scope: 'instance' })) {
+				await expect(call()).rejects.toBeInstanceOf(NotFoundError);
+			}
+			await expect(service().list(ownerUser)).rejects.toBeInstanceOf(NotFoundError);
+			expect(await countSources()).toBe(0);
+		});
+
+		it('lets a project editor preview and import into the project', async () => {
+			const editorUser = await createMember();
+			await linkUserToProject(editorUser, team, 'project:editor');
+			const scope = { scope: 'project' as const, projectId: team.id };
+
+			const preview = await service().discoverPublic(editorUser, { url: REPO, ...scope }, 'mcp');
+			const result = await service().connectPublic(
+				editorUser,
+				connectPublicSkillSourceSchema.parse({
+					url: REPO,
+					...scope,
+					revision: preview.revision,
+					skillKeys: preview.skills.filter(({ name }) => name === 'docx').map(({ key }) => key),
+				}),
+				'mcp',
+			);
+
+			expect(result.imported.map(({ name }) => name)).toEqual(['docx']);
+			expect(await findSkill(result.imported[0].skillId)).toMatchObject({ projectId: team.id });
 		});
 	});
 
