@@ -280,8 +280,8 @@ describe('WorkflowReviewDetailTabs', () => {
 			});
 		});
 
-		it('does not render the composer on closed reviews', () => {
-			const { getByTestId, queryByTestId } = renderComponent({
+		it('still takes comments on a closed review', () => {
+			const { getByTestId } = renderComponent({
 				props: {
 					review: makeDetail({ state: 'closed', decision: 'approved' }),
 					tab: 'activity',
@@ -289,8 +289,7 @@ describe('WorkflowReviewDetailTabs', () => {
 				},
 			});
 
-			expect(getByTestId('workflow-review-activity-feed')).toBeInTheDocument();
-			expect(queryByTestId('workflow-review-comment-composer')).not.toBeInTheDocument();
+			expect(getByTestId('workflow-review-comment-composer')).toBeInTheDocument();
 		});
 	});
 

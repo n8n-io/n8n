@@ -197,8 +197,7 @@ const tabOptions = computed(() => [
 							</div>
 						</N8nCallout>
 					</template>
-					<!-- Closed reviews take no new comments (the backend 409s) -->
-					<template v-if="review.state === 'open'" #composer>
+					<template #composer>
 						<WorkflowReviewCommentComposer :can-comment="viewerCanComment" />
 					</template>
 				</WorkflowReviewActivityFeed>

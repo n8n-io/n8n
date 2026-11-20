@@ -227,33 +227,20 @@ describe('Commenting on a review', () => {
 			.expect(404);
 	});
 
-	// Whatever closed the review — an approval or a lifecycle close — the outcome is the
-	// same: the feed stays readable, new comments are refused with a conflict.
 	test.each([
 		['approved', { state: 'closed', decision: 'approved' }],
-		['lifecycle-closed', { state: 'closed' }],
-	] as const)(
-		'keeps existing comments visible but refuses new ones on a %s review',
-		async (_close, update) => {
-			const { request } = await seedReviewInTeamProject(owner);
-			await ownerAgent
-				.post(`/workflow-review-requests/${request.id}/comments`)
-				.send({ body: 'Before it closed' })
-				.expect(201);
-			await requestRepository.update(request.id, update);
+		['closed', { state: 'closed' }],
+	] as const)('takes new comments on a %s review', async (_close, update) => {
+		const { request } = await seedReviewInTeamProject(owner);
+		await requestRepository.update(request.id, update);
 
-			const feed = await getActivity(ownerAgent, request.id);
-			expect(feed.data).toHaveLength(1);
+		await ownerAgent
+			.post(`/workflow-review-requests/${request.id}/comments`)
+			.send({ body: 'After it closed' })
+			.expect(201);
 
-			await ownerAgent
-				.post(`/workflow-review-requests/${request.id}/comments`)
-				.send({ body: 'After it closed' })
-				.expect(409);
-
-			// Nothing was written: the refusal happened before the comment, not after.
-			expect((await getActivity(ownerAgent, request.id)).data).toHaveLength(1);
-		},
-	);
+		expect((await getActivity(ownerAgent, request.id)).data).toHaveLength(1);
+	});
 
 	test('leaves no empty comment behind when the write fails halfway', async () => {
 		const { request } = await seedReviewInTeamProject(owner);
