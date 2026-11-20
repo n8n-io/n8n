@@ -559,6 +559,7 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 			'A user connected a source, such as a GitHub repository, to sync skills into one scope. Fires once per connect request, also when it fails, with the reason code. Also fires as a failure when reading the link for the picker fails or finds the source already connected (`duplicate_result: blocked`). The skills it imported are reported by `User imported skills from source`.',
 		properties: z.object({
 			user_id: userId,
+			surface: z.enum(['assistant', 'mcp']).optional().describe('Absent for the Skills UI'),
 			provider: skillSourceProvider,
 			access: skillSourceAccess,
 			scope_type: skillSourceScopeType,
@@ -577,6 +578,7 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 			'A user imported skills from a source. Fires once the import commits, also when it imported nothing, with the reason code. Counts and file extensions only, never names, paths or content.',
 		properties: z.object({
 			user_id: userId,
+			surface: z.enum(['assistant', 'mcp']).optional().describe('Absent for the Skills UI'),
 			provider: skillSourceProvider,
 			access: skillSourceAccess,
 			scope_type: skillSourceScopeType,

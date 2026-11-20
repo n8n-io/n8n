@@ -53,6 +53,7 @@ function createSetupFactory() {
 				instanceContextEnabled: false,
 				nodeUsageEnabled: false,
 				preferencesNoteVariant: undefined as string | undefined,
+				skillSourcesEnabled: undefined as boolean | undefined,
 			})),
 		},
 		settingsService: {
@@ -393,6 +394,21 @@ describe('AssistantTurnEnvironmentFactory', () => {
 				expect(environment.preferencesNoteVariant).toBe(variant);
 			},
 		);
+
+		it('passes the skill sources gate of the turn to the tool context', async () => {
+			const { factory, fields } = createSetupFactory();
+			fields.adapterService.resolveExperimentGates.mockResolvedValue({
+				...(await fields.adapterService.resolveExperimentGates()),
+				skillSourcesEnabled: true,
+			});
+
+			await factory.create(params, createRuntime());
+
+			expect(fields.adapterService.createContext).toHaveBeenCalledWith(
+				user,
+				expect.objectContaining({ skillSourcesEnabled: true }),
+			);
+		});
 
 		it('keeps the MCP settings of a user who picked Manual', async () => {
 			const { factory, fields } = createSetupFactory();

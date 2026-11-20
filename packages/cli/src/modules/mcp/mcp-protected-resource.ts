@@ -13,13 +13,14 @@ import { Container, Service } from '@n8n/di';
 
 import type { ProtectedResource, ResourcePrincipal, ResourceUser } from '@n8n/inbound-auth';
 import { UrlService, PostHogClient } from '@n8n/backend-services';
-import { SkillsGate } from '@/modules/skills';
+import { SkillsGate, SkillSyncFlagGate } from '@/modules/skills';
 
 import {
 	ACTIVITY_LOG_TOOLS,
 	BUILDER_TOOLS,
 	FOLDER_FEATURE_TOOLS,
 	INSTANCE_CONTEXT_TOOLS,
+	SKILL_SOURCE_TOOLS,
 	TOOLS_BY_SCOPE,
 } from './mcp-scopes';
 import {
@@ -122,6 +123,10 @@ export class McpProtectedResource implements ProtectedResource {
 				.getFeatureFlagForInstance(CREDENTIAL_DESCRIPTIONS_FLAG)
 				.catch(() => false)) === true;
 
+		// Consent has no user, so it reads only the instance part of the Skill Sync gate. A user
+		// without the Skill Sync flag still sees the source tools here and gets none of them.
+		const skillSourcesAvailable = Container.get(SkillSyncFlagGate).isAvailable;
+
 		return Object.fromEntries(
 			Object.entries(TOOLS_BY_SCOPE)
 				.filter(([scope]) => supportedScopes.has(scope))
@@ -133,6 +138,7 @@ export class McpProtectedResource implements ProtectedResource {
 							(!tagsDisabled || tool !== 'list_workflow_tags') &&
 							(foldersLicensed || !FOLDER_FEATURE_TOOLS.has(tool)) &&
 							(instanceContextAvailable || !ACTIVITY_LOG_TOOLS.has(tool)) &&
+							(skillSourcesAvailable || !SKILL_SOURCE_TOOLS.has(tool)) &&
 							(instanceContextEnabled || !INSTANCE_CONTEXT_TOOLS.has(tool)) &&
 							(credentialDescriptionsEnabled || tool !== 'update_credential_description'),
 					),

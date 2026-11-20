@@ -210,7 +210,7 @@ import { InstanceAiSkillsAdapterService } from './instance-ai-skills.adapter';
 import type { AssistantCredentialTestTarget } from './turn-setup/assistant-turn-overrides';
 import { DataTableRepository, DataTableService } from '@n8n/backend-module-data-table';
 
-import { SkillsGate } from '@/modules/skills';
+import { SkillsGate, SkillSyncFlagGate } from '@/modules/skills';
 import {
 	MCP_REGISTRY_PACKAGE_NAME,
 	getMcpRegistryCredentialOptions,
@@ -441,6 +441,7 @@ export interface InstanceAiFeatureFlags {
 	/** Shared activity recording and retrieval use the same instance gate. */
 	instanceContextEnabled: boolean;
 	assistantSkillsEnabled: boolean;
+	skillSourcesEnabled?: boolean;
 	preferencesNoteVariant?: string;
 }
 
@@ -591,6 +592,7 @@ export class InstanceAiAdapterService {
 			onboardingThread?: boolean;
 			credentialDescriptionsEnabled?: boolean;
 			assistantSkillsEnabled?: boolean;
+			skillSourcesEnabled?: boolean;
 			/** Host-resolved main model for the run. */
 			modelId?: ModelConfig;
 			/** Host-resolved utility model. Absent → utility calls use `modelId`. */
@@ -622,6 +624,7 @@ export class InstanceAiAdapterService {
 			onboardingThread,
 			credentialDescriptionsEnabled,
 			assistantSkillsEnabled,
+			skillSourcesEnabled,
 			modelId,
 			utilityModelId,
 			onHelperUsage,
@@ -710,7 +713,11 @@ export class InstanceAiAdapterService {
 			...(this.aiPreferenceService && Container.get(AiPreferenceSettingsService).isEnabled
 				? { aiPreferenceService: this.createPreferenceAdapter(user) }
 				: {}),
-			skillService: this.getSkillService(user, assistantSkillsEnabled === true),
+			skillService: this.getSkillService(
+				user,
+				assistantSkillsEnabled === true,
+				skillSourcesEnabled,
+			),
 			appService: this.createAppAdapter(user, projectId, threadId),
 			webResearchService: this.createWebResearchAdapter(user, searchProxyConfig),
 			workspaceService: this.createWorkspaceAdapter(user, projectId),
@@ -770,12 +777,14 @@ export class InstanceAiAdapterService {
 	private getSkillService(
 		user: User,
 		assistantSkillsEnabled: boolean,
+		skillSourcesEnabled?: boolean,
 	): InstanceAiSkillService | undefined {
 		try {
 			if (!Container.get(SkillsGate).isEnabled) return undefined;
 			return Container.get(InstanceAiSkillsAdapterService).createService(
 				user,
 				assistantSkillsEnabled,
+				skillSourcesEnabled,
 			);
 		} catch (error) {
 			this.logger.warn('Failed to resolve the skills adapter; skill tools disabled', {
@@ -826,6 +835,7 @@ export class InstanceAiAdapterService {
 		let flags: Awaited<ReturnType<PostHogClient['getFeatureFlags']>> = {};
 		let instanceContextEnabled = false;
 		let assistantSkillsEnabled = false;
+		let skillSourcesEnabled = false;
 		try {
 			const postHog = Container.get(PostHogClient);
 			const [userFlags, instanceFlag, assistantSkillsFlag] = await Promise.allSettled([
@@ -837,6 +847,8 @@ export class InstanceAiAdapterService {
 			instanceContextEnabled = instanceFlag.status === 'fulfilled' && instanceFlag.value === true;
 			assistantSkillsEnabled =
 				assistantSkillsFlag.status === 'fulfilled' && assistantSkillsFlag.value === true;
+			// Reuse the assignments already fetched for this turn.
+			skillSourcesEnabled = Container.get(SkillSyncFlagGate).isEnabledForFlags(flags);
 		} catch {
 			// Leave unreadable flags unassigned.
 		}
@@ -863,6 +875,7 @@ export class InstanceAiAdapterService {
 			approvalModesEnabled: flags[INSTANCE_AI_APPROVAL_MODES_FLAG] === true,
 			instanceContextEnabled,
 			assistantSkillsEnabled,
+			...(skillSourcesEnabled ? { skillSourcesEnabled } : {}),
 			...(typeof preferencesNoteVariant === 'string' ? { preferencesNoteVariant } : {}),
 		};
 	}

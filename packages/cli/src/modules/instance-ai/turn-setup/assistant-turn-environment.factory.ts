@@ -300,6 +300,7 @@ export class AssistantTurnEnvironmentFactory {
 			folderExplorationEnabled,
 			credentialDescriptionsEnabled,
 			assistantSkillsEnabled,
+			skillSourcesEnabled,
 			preferencesNoteVariant,
 		} = gates;
 		runtime.turnState.setSetupPanelEnabled(setupPanelEnabled);
@@ -344,6 +345,7 @@ export class AssistantTurnEnvironmentFactory {
 			onboardingThread,
 			credentialDescriptionsEnabled,
 			assistantSkillsEnabled,
+			skillSourcesEnabled,
 			modelId,
 			utilityModelId,
 			onHelperUsage: this.creditService.helperUsageClaimer(user, threadId, runId),
