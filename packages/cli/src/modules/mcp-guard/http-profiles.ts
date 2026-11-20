@@ -236,6 +236,7 @@ export function withYoutubeOwner(overlay: Record<string, unknown>): Record<strin
 // Needs the gym of `google-wildcard` (service "youtube"). It shares www.googleapis.com with Gmail.
 export const YOUTUBE_PROFILE: HttpVendorProfile = {
 	name: 'youtube',
+	opaqueIds: true,
 	defaultAdminUrl: 'http://127.0.0.1:9098',
 	defaultGymUrl: 'http://127.0.0.1:8088',
 	credentialKind: 'google_oauth',

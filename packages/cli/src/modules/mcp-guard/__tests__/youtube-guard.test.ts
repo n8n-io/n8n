@@ -145,6 +145,8 @@ describe('the profile of YouTube', () => {
 		expect(YOUTUBE_PROFILE.defaultAdminUrl).toBe('http://127.0.0.1:9098');
 		expect(YOUTUBE_PROFILE.defaultGymUrl).toBe('http://127.0.0.1:8088');
 		expect(GMAIL_PROFILE.defaultGymUrl).not.toBe(YOUTUBE_PROFILE.defaultGymUrl);
+		// YouTube ids ("PLx...", video ids) are no UUIDs. The plan must keep the real ones.
+		expect(YOUTUBE_PROFILE.opaqueIds).toBe(true);
 		expect(JSON.stringify(YOUTUBE_PROFILE.placeholderSeed)).toContain('person:me');
 	});
 
