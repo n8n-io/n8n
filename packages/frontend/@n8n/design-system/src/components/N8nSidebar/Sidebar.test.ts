@@ -125,6 +125,29 @@ describe('N8nSidebar', () => {
 		expect(window.localStorage.getItem(storageKey)).toBe('900');
 	});
 
+	it('keeps a resized width when the parent rerenders the same width', async () => {
+		const { container, rerender } = renderSidebar({ width: 240, minWidth: 160, maxWidth: 480 });
+		const root = () =>
+			container.querySelector('[data-test-id="sidebar"]')?.parentElement?.parentElement;
+		const handle = container.querySelector('[data-test-id="resize-handle"]');
+
+		await fireEvent.mouseDown(handle as Element, { clientX: 100, clientY: 20 });
+		await fireEvent.mouseMove(window, { clientX: 400, clientY: 20 });
+		await fireEvent.mouseUp(window, { clientX: 400, clientY: 20 });
+
+		const resizedWidth = root()?.style.width;
+		expect(resizedWidth).toBeTruthy();
+		expect(resizedWidth).not.toBe('240px');
+
+		await rerender({ label: 'Files', width: 240, minWidth: 160, maxWidth: 480 });
+
+		expect(root()?.style.width).toBe(resizedWidth);
+
+		await rerender({ label: 'Files', width: 200, minWidth: 160, maxWidth: 480 });
+
+		expect(root()).toHaveStyle({ width: '200px' });
+	});
+
 	it('emits the clamped width when the parent keeps the original value', async () => {
 		const { emitted } = renderSidebar({ width: 40, minWidth: 160, maxWidth: 480 });
 
