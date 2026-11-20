@@ -98,14 +98,21 @@ export function provenIds(...sources: unknown[]): Set<string> {
  * invents an id when the real result has none, and the gym refuses a bad id. Without an id the
  * gym makes one. Ids of the real data stay, so the objects keep their real ids.
  */
-export function dropUnprovenIds(value: unknown, proven: ReadonlySet<string>): unknown {
-	if (Array.isArray(value)) return value.map((v) => dropUnprovenIds(v, proven));
+export function dropUnprovenIds(
+	value: unknown,
+	proven: ReadonlySet<string>,
+	// Text of the real data, for a vendor whose ids are no UUIDs. An `id` that it shows stays.
+	opaqueSource?: string,
+): unknown {
+	if (Array.isArray(value)) return value.map((v) => dropUnprovenIds(v, proven, opaqueSource));
 	if (value === null || typeof value !== 'object') return value;
 	const out: Record<string, unknown> = {};
 	for (const [k, v] of Object.entries(value)) {
 		const isId = ID_KEYS.has(k) && typeof v === 'string';
-		if (isId && !(WHOLE_UUID.test(v) && proven.has(squash(v)))) continue;
-		out[k] = dropUnprovenIds(v, proven);
+		const realOpaque =
+			k === 'id' && typeof v === 'string' && v.length >= 5 && opaqueSource?.includes(v) === true;
+		if (isId && !realOpaque && !(WHOLE_UUID.test(v) && proven.has(squash(v)))) continue;
+		out[k] = dropUnprovenIds(v, proven, opaqueSource);
 	}
 	return out;
 }
