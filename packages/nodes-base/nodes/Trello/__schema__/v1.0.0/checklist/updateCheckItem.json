@@ -1,0 +1,34 @@
+{
+	"properties": {
+		"creationMethod": {},
+		"due": {},
+		"dueReminder": {},
+		"id": {
+			"type": "string"
+		},
+		"idChecklist": {
+			"type": "string"
+		},
+		"idMember": {
+			"type": ["null", "string"]
+		},
+		"name": {
+			"type": "string"
+		},
+		"nameData": {
+			"properties": {
+				"emoji": {
+					"type": "object"
+				}
+			},
+			"type": "object"
+		},
+		"pos": {
+			"type": "number"
+		},
+		"state": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

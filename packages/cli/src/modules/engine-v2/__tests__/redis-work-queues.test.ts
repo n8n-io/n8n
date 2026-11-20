@@ -9,7 +9,7 @@ vi.mock('@n8n/engine', { spy: true });
 
 const publisher = { lpush: vi.fn(), rpush: vi.fn() };
 
-mockInstance(GlobalConfig, { redis: { prefix: 'n8n' } });
+mockInstance(GlobalConfig, { redis: { prefix: 'acme' } });
 const redisClientService = mockInstance(RedisClientService);
 
 describe('createInstanceRedisWorkQueues', () => {
@@ -18,17 +18,17 @@ describe('createInstanceRedisWorkQueues', () => {
 	});
 
 	it('gives the engine the publisher, the limits and the key prefix that RedisClientService makes valid', async () => {
-		redisClientService.toValidPrefix.mockReturnValue('{n8n}');
+		redisClientService.toValidPrefix.mockReturnValue('{acme}');
 		const logger = mockLogger();
 		const concurrency = { orchestration: 2, step: 3 };
 
 		await createInstanceRedisWorkQueues(publisher, logger, concurrency);
 
-		expect(redisClientService.toValidPrefix).toHaveBeenCalledWith('n8n');
+		expect(redisClientService.toValidPrefix).toHaveBeenCalledWith('acme');
 		expect(createRedisWorkQueues).toHaveBeenCalledExactlyOnceWith({
 			publisher,
 			createConsumer: expect.any(Function),
-			keyPrefix: '{n8n}',
+			keyPrefix: '{acme}',
 			concurrency,
 			logger,
 		});

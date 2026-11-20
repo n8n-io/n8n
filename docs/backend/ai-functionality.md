@@ -1,6 +1,6 @@
 ---
 title: AI functionality
-last_reviewed: 2026-11-06
+last_reviewed: 2026-11-20
 contact: Cadiac
 ---
 

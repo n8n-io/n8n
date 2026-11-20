@@ -6,8 +6,10 @@ import { SsrfProtectionService } from '@n8n/backend-network';
 import {
 	CodeExecutionBackend,
 	EventService,
+	ExecutionLedger,
 	UrlService,
 	RuntimeCredentialProxyService,
+	toEndedFactsFromRun,
 	WorkflowPublishedDataService,
 	toCodeTaskRequest,
 	WorkflowVersionedSettingsService,
@@ -359,6 +361,8 @@ export async function executeWorkflow(
 			workflowData.nodes,
 			options.returnLastRunOnly ?? false,
 		);
+		runData.executionData.rootExecutionMode ??=
+			additionalData.rootExecutionMode ?? options.executionMode;
 	}
 
 	try {
@@ -755,6 +759,8 @@ async function startExecution(
 			additionalData.rootExecutionMode ?? options.executionMode;
 		// Propagate the eval run id so sub-workflows of an eval run expose `$evaluation.runId`
 		additionalDataIntegrated.evaluationRunId = additionalData.evaluationRunId;
+		// A simulated-services eval run sends its sub-workflows' requests to the sim server too
+		additionalDataIntegrated.evalEgressProxy = additionalData.evalEgressProxy;
 		if (additionalData.httpResponse) {
 			additionalDataIntegrated.httpResponse = additionalData.httpResponse;
 		}
@@ -816,6 +822,19 @@ async function startExecution(
 
 		activeExecutions.finalizeExecution(executionId, fullRunData);
 
+		// The engine's own save may have finished the run already. Only the write that did records `ended`.
+		const saveFailure = async () => {
+			const { ended } = await Container.get(ExecutionPersistence).saveExecutionOutcome(
+				executionId,
+				fullExecutionData,
+			);
+			const executionLedger = Container.get(ExecutionLedger);
+			if (!ended || !executionLedger.isEnabled) return;
+
+			const facts = toEndedFactsFromRun({ executionId, workflow: workflowData, run: fullRunData });
+			if (facts) void executionLedger.recordEnded(facts);
+		};
+
 		// Nothing else records this failure, and a detached caller never sees the error.
 		const logUnrecordedFailure = (recordError: unknown) =>
 			Container.get(Logger).error('Failed to record a failed sub-workflow execution', {
@@ -847,16 +866,10 @@ async function startExecution(
 							workflowId: workflowData.id,
 							error: hookError,
 						});
-						await Container.get(ExecutionPersistence).updateExistingExecution(
-							executionId,
-							fullExecutionData,
-						);
+						await saveFailure();
 					});
 			} else {
-				await Container.get(ExecutionPersistence).updateExistingExecution(
-					executionId,
-					fullExecutionData,
-				);
+				await saveFailure();
 			}
 		} catch (recordError) {
 			logUnrecordedFailure(recordError);

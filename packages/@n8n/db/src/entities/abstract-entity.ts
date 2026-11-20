@@ -25,7 +25,7 @@ const binaryColumnTypeMap = {
 	sqlite: 'blob',
 	postgresdb: 'bytea',
 } as const;
-const binaryColumnType = binaryColumnTypeMap[dbType];
+export const binaryColumnType = binaryColumnTypeMap[dbType];
 
 export function JsonColumn(options?: Omit<ColumnOptions, 'type'>) {
 	return Column({

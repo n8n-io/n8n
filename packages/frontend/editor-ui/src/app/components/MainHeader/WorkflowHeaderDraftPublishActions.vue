@@ -104,22 +104,58 @@ const toast = useToast();
 const saveStore = useWorkflowSaveStore();
 const { saveCurrentWorkflow, cancelAutoSave } = useWorkflowSaving({ router });
 const workflowActivate = useWorkflowActivate();
-const { isWorkflowReviewsEnabled } = useWorkflowReviewsFeature();
+const { isWorkflowReviewsEnabled, isReviewRequiredFor } = useWorkflowReviewsFeature();
 const reviewRequiredStore = useReviewRequiredStore();
 const reviewStatusStore = useWorkflowReviewStatusStore();
 const { publishChoiceDismissed, submittedDialogDismissed } = useWorkflowReviewDialogPreferences();
 
-const effectiveReviewRequired = computed(
-	() => reviewStatusStore.hasOpenReview(props.id) || reviewRequiredStore.isReviewRequired(props.id),
+const homeProject = computed(() => workflowDocumentStore.value.homeProject);
+const isPersonalWorkflow = computed(() => homeProject.value?.type === ProjectTypes.Personal);
+const hasOpenReview = computed(() => reviewStatusStore.hasOpenReview(props.id));
+
+/** A legacy open review on a personal workflow keeps its controls until it closes. */
+const reviewsApply = computed(
+	() => isWorkflowReviewsEnabled.value && (!isPersonalWorkflow.value || hasOpenReview.value),
+);
+
+const isApprovalAlwaysRequired = computed(() => isReviewRequiredFor(homeProject.value));
+
+/** Whether the editor holds anything beyond the live version. */
+const hasUnpublishedChanges = computed(
+	() =>
+		workflowDocumentStore.value.versionId !== activeVersion.value?.versionId ||
+		uiStore.hasUnsavedWorkflowChanges,
+);
+
+/** Re-applying the live version needs no review, e.g. to retry a failed publication. */
+const savedVersionIsLive = computed(() => !!activeVersion.value && !hasUnpublishedChanges.value);
+
+/** An approved version needs no new review, e.g. when the publish after the approval failed. */
+const savedVersionIsApproved = computed(() => {
+	const review = reviewStatusStore.latestReviewRequest(props.id);
+	return (
+		review?.decision === 'approved' &&
+		review.workflowVersionId === workflowDocumentStore.value.versionId &&
+		!uiStore.hasUnsavedWorkflowChanges
+	);
+});
+
+const mustSubmitForReview = computed(
+	() =>
+		isApprovalAlwaysRequired.value && !savedVersionIsLive.value && !savedVersionIsApproved.value,
+);
+
+const effectiveReviewRequired = computed(() =>
+	isApprovalAlwaysRequired.value
+		? hasOpenReview.value || mustSubmitForReview.value
+		: hasOpenReview.value || reviewRequiredStore.isReviewRequired(props.id),
 );
 
 const isNamedVersionsEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.NamedVersions],
 );
 
-const showWorkflowReviewControls = computed(
-	() => isWorkflowReviewsEnabled.value && !props.isNewWorkflow,
-);
+const showWorkflowReviewControls = computed(() => reviewsApply.value && !props.isNewWorkflow);
 
 const latestReviewRequest = computed(() => reviewStatusStore.latestReviewRequest(props.id));
 
@@ -234,9 +270,6 @@ const workflowPublishState = computed((): WorkflowPublishState => {
 	}
 
 	const hasBeenPublished = !!activeVersion.value;
-	const hasChanges =
-		workflowDocumentStore.value.versionId !== activeVersion.value?.versionId ||
-		uiStore.hasUnsavedWorkflowChanges;
 
 	// Not published states
 	if (!hasBeenPublished) {
@@ -252,7 +285,7 @@ const workflowPublishState = computed((): WorkflowPublishState => {
 		return 'published-node-issues';
 	}
 
-	return hasChanges ? 'published-with-changes' : 'published-no-changes';
+	return hasUnpublishedChanges.value ? 'published-with-changes' : 'published-no-changes';
 });
 
 const collaborationReadOnly = computed(() => collaborationStore.shouldBeReadOnly);
@@ -401,11 +434,9 @@ const onPublishButtonClick = async () => {
 
 	if (!(await ensureWorkflowSaved())) return;
 
-	if (isWorkflowReviewsEnabled.value) {
-		// TODO(LIGO-604): backend publish enforcement. Until then this gate is
-		// best-effort: a not-yet-fetched status (e.g. Publish clicked before the
-		// on-mount fetch resolves) reads as "no open review" — accepted, since
-		// only backend enforcement can close that hole.
+	if (reviewsApply.value) {
+		// Best effort: a status that is not fetched yet reads as "no open review".
+		// The server rejects the publish in that case.
 		if (reviewStatusStore.hasOpenReview(props.id)) {
 			if (reviewContainsSavedVersion.value) return;
 			showUpdateReviewDialog.value = true;
@@ -418,7 +449,7 @@ const onPublishButtonClick = async () => {
 		}
 
 		// TODO(LIGO-784): once the designed secondary affordance exists, revisit this gate
-		if (!publishChoiceDismissed.value) {
+		if (!isApprovalAlwaysRequired.value && !publishChoiceDismissed.value) {
 			showPublishChoiceDialog.value = true;
 			return;
 		}
@@ -579,9 +610,19 @@ const shouldDisablePublishButton = computed(() => {
 		collaborationReadOnly.value ||
 		!publishButtonConfig.value.enabled ||
 		!hasPublishPermission.value ||
-		(isWorkflowReviewsEnabled.value && isReviewUpdateBlocked.value)
+		(reviewsApply.value && isReviewUpdateBlocked.value)
 	);
 });
+
+const showSubmitForReview = computed(
+	() => mustSubmitForReview.value && !shouldDisablePublishButton.value,
+);
+
+const publishButtonText = computed(() =>
+	showSubmitForReview.value
+		? i18n.baseText('workflows.submitForReview')
+		: publishButtonConfig.value.text,
+);
 
 /**
  * A workflow that is ready to publish has nothing to explain, so the tooltip
@@ -642,7 +683,9 @@ const versionMenuActions = computed<Array<ActionDropdownItem<VERSION_ACTIONS>>>(
 	const actions: Array<ActionDropdownItem<VERSION_ACTIONS>> = [
 		{
 			id: VERSION_ACTIONS.PUBLISH,
-			label: i18n.baseText('workflows.publish'),
+			label: showSubmitForReview.value
+				? i18n.baseText('workflows.submitForReview')
+				: i18n.baseText('workflows.publish'),
 			shortcut: { shiftKey: true, keys: ['P'] },
 			disabled: shouldDisablePublishButton.value,
 		},
@@ -902,7 +945,7 @@ onBeforeUnmount(() => {
 									workflowPublishState === 'published-no-changes' && $style.indicatorPublishedText,
 								]"
 							>
-								{{ publishButtonConfig.text }}
+								{{ publishButtonText }}
 							</span>
 						</div>
 					</N8nButton>
@@ -925,7 +968,10 @@ onBeforeUnmount(() => {
 						/>
 					</template>
 					<template v-if="showWorkflowReviewControls" #footer>
-						<WorkflowReviewRequiredToggle :workflow-id="props.id" />
+						<WorkflowReviewRequiredToggle
+							:workflow-id="props.id"
+							:locked-by-instance="isApprovalAlwaysRequired"
+						/>
 					</template>
 				</N8nActionDropdown>
 			</div>
