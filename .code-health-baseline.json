@@ -562,12 +562,6 @@
 			},
 			{
 				"rule": "lint-config-layering",
-				"line": 114,
-				"message": "packages/cli turns 'import/no-cycle' down to 'warn' for the whole package.",
-				"hash": "d1a323605d82"
-			},
-			{
-				"rule": "lint-config-layering",
 				"line": 115,
 				"message": "packages/cli turns 'no-ex-assign' down to 'warn' for the whole package.",
 				"hash": "8e06c3185fea"
