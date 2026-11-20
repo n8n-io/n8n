@@ -1,4 +1,4 @@
-import type { SkillDetail, SkillListItem } from '@n8n/api-types';
+import type { PublicSkillSourceDiscovery, SkillDetail, SkillListItem } from '@n8n/api-types';
 import type { TelemetryProxy } from '@n8n/backend-services';
 import { User } from '@n8n/db';
 import { ConflictError } from '@n8n/errors';
@@ -11,7 +11,7 @@ import {
 	type SkillSourceService,
 	type SkillSyncFlagGate,
 } from '@/modules/skills';
-import { SkillSyncedError } from '@/modules/skills/testing';
+import { SkillSourceRequestError, SkillSyncedError } from '@/modules/skills/testing';
 
 import { SKILL_TOOLS } from '../mcp-scopes';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
@@ -442,6 +442,73 @@ describe('McpSkillToolsService', () => {
 				message: expect.stringContaining('Do not retry.'),
 			});
 			expect(skillService.get).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('discover_skill_source', () => {
+		const input = {
+			url: 'https://github.com/acme/skills',
+			scope: 'instance',
+		};
+
+		it('returns the preview result without tracking its URL', async () => {
+			const preview: PublicSkillSourceDiscovery = {
+				source: {
+					type: 'github',
+					label: 'acme/skills',
+					ref: 'main',
+					path: '',
+					webUrl: 'https://github.com/acme/skills',
+				},
+				duplicate: { kind: 'none' },
+				revision: 'commit-1',
+				skills: [
+					{
+						key: 'brand-voice',
+						location: 'brand-voice',
+						name: 'Brand voice',
+						nameTaken: false,
+						webUrl: 'https://github.com/acme/skills/tree/main/brand-voice',
+						verdict: 'pass',
+						reason: null,
+					},
+				],
+				truncated: false,
+			};
+			skillSources.discoverPublic.mockResolvedValue(preview);
+
+			const result = await callTool('discover_skill_source', input);
+
+			expect(result.isError).toBeFalsy();
+			expect(result.structuredContent).toEqual(preview);
+			expect(skillSources.discoverPublic).toHaveBeenCalledWith(user, input, 'mcp');
+			expect(telemetry.track).toHaveBeenCalledWith(USER_CALLED_MCP_TOOL_EVENT, {
+				user_id: user.id,
+				tool_name: 'discover_skill_source',
+				parameters: { scope: 'instance' },
+				results: { success: true },
+			});
+		});
+
+		it('maps a source error to its reason code in the response and telemetry', async () => {
+			skillSources.discoverPublic.mockRejectedValue(
+				new SkillSourceRequestError('not_found', 'Repository not found'),
+			);
+
+			const result = await callTool('discover_skill_source', input);
+
+			expect(result.isError).toBe(true);
+			expect(result.structuredContent).toEqual({
+				ok: false,
+				code: 'not_found',
+				error: 'Repository not found',
+			});
+			expect(telemetry.track).toHaveBeenCalledWith(USER_CALLED_MCP_TOOL_EVENT, {
+				user_id: user.id,
+				tool_name: 'discover_skill_source',
+				parameters: { scope: 'instance' },
+				results: { success: false, data: { reason: 'not_found' } },
+			});
 		});
 	});
 
