@@ -104,6 +104,11 @@ async function persistAlwaysRequired(selected: SelectValue | undefined): Promise
 			alwaysRequired.value = response.workflowReviews.alwaysRequired === true;
 			settingsStore.setWorkflowReviewsPolicy(response.workflowReviews);
 		}
+		showToast({
+			type: 'success',
+			title: i18n.baseText('settings.security.workflowReviews.requireApproval.success'),
+			message: '',
+		});
 	} catch (error) {
 		alwaysRequired.value = previousValue;
 		showError(error, i18n.baseText('settings.security.workflowReviews.error'));

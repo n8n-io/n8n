@@ -1096,6 +1096,9 @@ describe('SecuritySettings', () => {
 					enabled: true,
 					alwaysRequired: true,
 				});
+				expect(showToast).toHaveBeenCalledWith(
+					expect.objectContaining({ type: 'success', title: 'Approval setting updated' }),
+				);
 			});
 		});
 
