@@ -1,7 +1,6 @@
-import type { IrreversibleMigration, MigrationContext } from '../migration-types';
+import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
-// Dropping the encoding flag would make stored binary files indistinguishable from text.
-export class AddSkillFileEncoding1795160890331 implements IrreversibleMigration {
+export class AddSkillFileEncoding1795160890331 implements ReversibleMigration {
 	async up({ schemaBuilder: { addColumns, column } }: MigrationContext) {
 		await addColumns(
 			'skill_file',
@@ -12,5 +11,13 @@ export class AddSkillFileEncoding1795160890331 implements IrreversibleMigration 
 			],
 			{ recreatesOnSqlite: true },
 		);
+	}
+
+	async down({ escape, runQuery, schemaBuilder: { dropColumns } }: MigrationContext) {
+		// Without the flag, n8n reads Base64 as text. The binary files go, so no agent gets them.
+		await runQuery(
+			`DELETE FROM ${escape.tableName('skill_file')} WHERE ${escape.columnName('isBinary')} = true`,
+		);
+		await dropColumns('skill_file', ['isBinary'], { recreatesOnSqlite: true });
 	}
 }
