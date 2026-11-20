@@ -22,9 +22,13 @@ export interface HttpToolArgs extends Record<string, unknown> {
 
 // Parts of a path that carry no meaning for a tool name.
 const NOISE_SEGMENTS: ReadonlySet<string> = new Set(['users', 'me', 'gmail', 'api']);
-const VERSION_SEGMENT = /^v\d+$/;
-// An id has a digit and is not a short word.
-export const looksLikeId = (segment: string): boolean => segment.length >= 8 && /\d/.test(segment);
+// `v1`, `v2`, and `v1.0` (Microsoft Graph).
+const VERSION_SEGMENT = /^v\d+(?:\.\d+)*$/;
+// An id has a digit and is not a short word. A very long segment is an id too: no path word is that
+// long, and a long id (Microsoft Graph) can hold no digit.
+const LONG_ID_LENGTH = 40;
+export const looksLikeId = (segment: string): boolean =>
+	segment.length >= LONG_ID_LENGTH || (segment.length >= 8 && /\d/.test(segment));
 
 function describePath(method: string, pathname: string): string {
 	const segments = pathname.split('/').filter((s) => s !== '');
@@ -33,7 +37,8 @@ function describePath(method: string, pathname: string): string {
 			!looksLikeId(s) &&
 			!VERSION_SEGMENT.test(s) &&
 			!NOISE_SEGMENTS.has(s) &&
-			!s.includes(REDACTED_SECRET),
+			!s.includes(REDACTED_SECRET) &&
+			!s.includes('@'),
 	);
 	if (method === 'GET' || method === 'HEAD') {
 		const last = segments[segments.length - 1];

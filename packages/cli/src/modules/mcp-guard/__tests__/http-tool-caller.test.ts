@@ -351,3 +351,28 @@ describe('http tool caller edge cases', () => {
 		}
 	});
 });
+
+describe('Microsoft Graph paths', () => {
+	it('drops the v1.0 and the mailbox address from the tool name', () => {
+		const call = toToolCall(
+			req('GET', 'https://graph.microsoft.com/v1.0/users/bob@x.test/messages'),
+			true,
+		);
+
+		expect(call.name).toBe('read_list_messages');
+	});
+
+	it('treats a long text without a digit as an id', () => {
+		const text = 'AAMkAGVmMDEzMTMLTZmYWUtNdkNChMDZiLTUGYOTZhYmYOABGAAAAAAAiQAbcdefghij'.replace(
+			/\d/g,
+			'x',
+		);
+		expect(/\d/.test(text)).toBe(false);
+		const call = toToolCall(
+			req('GET', `https://graph.microsoft.com/v1.0/me/messages/${text}`),
+			true,
+		);
+
+		expect(call.name).toBe('read_get_messages');
+	});
+});
