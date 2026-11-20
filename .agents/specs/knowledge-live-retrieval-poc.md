@@ -567,14 +567,23 @@ place; `pnpm knowledge:harness report run-2026-11-19T22-15-06-911Z.json@kb-mcp-c
   Fixed after the run: sources are searched in parallel, and a
   rate-limited source is retried once after 3 s, then answers "unavailable"
   at once for a minute (a breaker per credential and node).
-- Expected on a Slack re-run with a recovered quota: both live agents around
-  22 to 24 of 24 on Slack (the healthy repetitions before the throttle gave
-  `kb-native` 8/8 and 6/8 with two sleep timeouts), at 3 to 4 tool calls and
-  12 to 15 s per question, `kb-index` equal to `kb-native` there (no Slack
-  index), and the Notion medians back to about 12 s whatever Slack does. The
-  fix does not raise the quota: staying inside it (cached searches, fewer
-  searches per question, channel history for small channels) is P1 provider
-  work.
+- Slack re-run after the fix (2026-11-20 10:11, Slack questions only, both
+  live agents, three repetitions; the quota had recovered: a probe answered
+  in 11.5 s with 3 calls): the search API tripped at the fourth question,
+  after about six calls in forty seconds, and stayed tripped for the hour
+  under the breaker's once-a-minute probe. The breaker behaved (3 s once,
+  then fail-fast, status in every result). The model routed around it: 28 of
+  41 passes had the search unavailable, 21 of them after `list_knowledge` on
+  the channel (`conversations.history`, never throttled) and reads of the
+  threads, at 8 tool calls and 60 to 80 s per question. `kb-native` 22/24,
+  `kb-index` 19/24 (three rota answers from the Notion on-call page, two
+  honest refusals), 12/12 refusals, zero violations. On Slack both agents
+  run the same code, so the gap is noise. Conclusion: the history path is
+  the primary Slack path; the search API an optional, budgeted accelerator.
+- Final merged table (`report overnight@kb-mcp-c0 morning#n- slack-run#s-`):
+  `kb-index` 36/36 Notion, 19/24 Slack, 55/60 (92%), 60k prompt tokens,
+  66k per pass, 5.5 calls; `kb-native` 31/36, 22/24, 53/60 (88%), 104k,
+  119k, 8.1 calls; `kb-mcp-c0` 28/36 (78%) Notion only, 115k, 149k, 4.9.
 - Write-up: section 13 of the Notion research page.
 - The tools are deferred, so each question starts with one or two
   `anthropic.tool_search` turns before the first knowledge call. C0's MCP
