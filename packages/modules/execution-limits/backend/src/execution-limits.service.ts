@@ -146,11 +146,12 @@ export class ExecutionLimitsService {
 	}
 
 	async applyDefaultLimitToNewProject(projectId: string): Promise<void> {
-		const { defaultProjectMaxExecutions } = await this.settingsStore.read({});
-		if (defaultProjectMaxExecutions === null) return;
+		if ((await this.settingsStore.read({})).defaultProjectMaxExecutions === null) return;
 
-		const limits = [{ projectId, maxExecutions: defaultProjectMaxExecutions }];
-		await this.commit(null, undefined, async (ctx) => {
+		await this.commit(null, undefined, async (ctx, { defaultProjectMaxExecutions }) => {
+			if (defaultProjectMaxExecutions === null) return { result: undefined, changes: [] };
+
+			const limits = [{ projectId, maxExecutions: defaultProjectMaxExecutions }];
 			const before = await this.projectLimitRepository.findByProjectIds([projectId], ctx);
 			await this.projectLimitRepository.upsertMany(limits, ctx);
 

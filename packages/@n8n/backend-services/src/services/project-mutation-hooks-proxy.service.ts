@@ -24,7 +24,7 @@ export class ProjectMutationHooksProxy implements ProjectMutationHooks {
 				this.logger.error('Project mutation hook failed', {
 					hook: 'afterTeamProjectCreated',
 					projectId,
-					error: ensureError(error).message,
+					error: ensureError(error),
 				});
 			}
 		}

@@ -17,7 +17,8 @@ describe('ProjectMutationHooksProxy', () => {
 		const logger = mock<Logger>();
 		const proxy = new ProjectMutationHooksProxy(logger);
 		const failing = mock<ProjectMutationHooks>();
-		failing.afterTeamProjectCreated.mockRejectedValue(new Error('limits are down'));
+		const failure = new Error('limits are down');
+		failing.afterTeamProjectCreated.mockRejectedValue(failure);
 		const next = mock<ProjectMutationHooks>();
 		proxy.registerProvider(failing);
 		proxy.registerProvider(next);
@@ -28,7 +29,7 @@ describe('ProjectMutationHooksProxy', () => {
 		expect(logger.error).toHaveBeenCalledWith('Project mutation hook failed', {
 			hook: 'afterTeamProjectCreated',
 			projectId: 'project-1',
-			error: 'limits are down',
+			error: failure,
 		});
 	});
 });
