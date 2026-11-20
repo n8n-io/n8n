@@ -45,6 +45,7 @@ export function useCanvasNode() {
 	const validationErrors = computed(() => data.value.issues.validation ?? []);
 	const hasIssues = computed(() => data.value.issues.visible);
 	const hasValidationErrors = computed(() => data.value.issues.validation.length > 0);
+	const isSetupRequired = computed(() => data.value.issues.setupRequired === true);
 
 	const executionStatus = computed(() => data.value.execution.status);
 	const executionWaiting = computed(() => data.value.execution.waiting);
@@ -97,6 +98,7 @@ export function useCanvasNode() {
 		validationErrors,
 		hasIssues,
 		hasValidationErrors,
+		isSetupRequired,
 		executionStatus,
 		executionWaiting,
 		executionWaitingForNext,

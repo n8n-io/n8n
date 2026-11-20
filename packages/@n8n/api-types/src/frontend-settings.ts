@@ -361,6 +361,11 @@ export type FrontendModuleSettings = {
 		autoExposeNewWorkflows: boolean;
 	};
 
+	skills?: {
+		skillSyncEnabled: boolean;
+		skillSyncManagedByEnv: boolean;
+	};
+
 	/**
 	 * Client settings for the instance-reporting module. Present only when the
 	 * module is enabled on this instance.

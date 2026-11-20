@@ -204,6 +204,10 @@ describe('executionLimitDelta', () => {
 		expect(executionLimitDelta(fact({ event: 'ended', outcome: 'success' }))).toBe(0);
 	});
 
+	test('is 0 when a run ends canceled, so a canceled run keeps its slot', () => {
+		expect(executionLimitDelta(fact({ event: 'ended', outcome: 'canceled' }))).toBe(0);
+	});
+
 	test('is 0 when a sub-workflow run ends blocked', () => {
 		const end = fact({ mode: 'integrated', event: 'ended', outcome: 'blocked' });
 		expect(executionLimitDelta(end)).toBe(0);

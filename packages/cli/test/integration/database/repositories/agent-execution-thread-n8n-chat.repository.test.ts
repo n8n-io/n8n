@@ -3,7 +3,8 @@ import { Container } from '@n8n/di';
 import { DataSource, type Repository } from '@n8n/typeorm';
 import { v4 as uuid } from 'uuid';
 
-import type { Agent } from '@/modules/agents/entities/agent.entity';
+import { createAgent } from '@test-integration/db/agents';
+
 import type { AgentExecutionThread } from '@/modules/agents/entities/agent-execution-thread.entity';
 import { AgentHistory } from '@/modules/agents/entities/agent-history.entity';
 import { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
@@ -36,15 +37,13 @@ describe('AgentExecutionThreadRepository n8n Chat queries', () => {
 	beforeEach(async () => {
 		const project = await createTeamProject();
 		projectId = project.id;
-		const agent = await agentRepo.save(
-			agentRepo.create({
-				id: uuid(),
-				name: 'Test Agent',
-				projectId,
-				integrations: [],
-				tools: {},
-			} as Partial<Agent>),
-		);
+		const agent = await createAgent({
+			id: uuid(),
+			name: 'Test Agent',
+			projectId,
+			integrations: [],
+			tools: {},
+		});
 		agentId = agent.id;
 	});
 
@@ -138,15 +137,13 @@ describe('AgentExecutionThreadRepository n8n Chat queries', () => {
 
 		it('excludes a thread whose agent is outside the given agent ids', async () => {
 			const owner = await createMember();
-			const otherAgent = await agentRepo.save(
-				agentRepo.create({
-					id: uuid(),
-					name: 'Other Agent',
-					projectId,
-					integrations: {},
-					tools: {},
-				} as Partial<Agent>),
-			);
+			const otherAgent = await createAgent({
+				id: uuid(),
+				name: 'Other Agent',
+				projectId,
+				integrations: [],
+				tools: {},
+			});
 			const inScope = await createThread({ ownerId: owner.id });
 			await createExecution(inScope.id, N8N_CHAT_PRODUCTION_SOURCE);
 			const outOfScope = await createThread({ ownerId: owner.id, agentId: otherAgent.id });
@@ -276,15 +273,13 @@ describe('AgentExecutionThreadRepository n8n Chat queries', () => {
 
 		it('returns null when the thread is outside the given agent ids', async () => {
 			const owner = await createMember();
-			const otherAgent = await agentRepo.save(
-				agentRepo.create({
-					id: uuid(),
-					name: 'Other Agent',
-					projectId,
-					integrations: {},
-					tools: {},
-				} as Partial<Agent>),
-			);
+			const otherAgent = await createAgent({
+				id: uuid(),
+				name: 'Other Agent',
+				projectId,
+				integrations: [],
+				tools: {},
+			});
 			const thread = await createThread({ ownerId: owner.id, agentId: otherAgent.id });
 			await createExecution(thread.id, N8N_CHAT_PRODUCTION_SOURCE);
 
@@ -315,15 +310,13 @@ describe('AgentExecutionThreadRepository n8n Chat queries', () => {
 	describe('countN8nChatThreadsByAgent', () => {
 		it("counts each agent's n8n Chat threads, grouped by agent", async () => {
 			const owner = await createMember();
-			const secondAgent = await agentRepo.save(
-				agentRepo.create({
-					id: uuid(),
-					name: 'Second Agent',
-					projectId,
-					integrations: [],
-					tools: {},
-				} as Partial<Agent>),
-			);
+			const secondAgent = await createAgent({
+				id: uuid(),
+				name: 'Second Agent',
+				projectId,
+				integrations: [],
+				tools: {},
+			});
 			const lightThread = await createThread({ ownerId: owner.id });
 			await createExecution(lightThread.id, N8N_CHAT_PRODUCTION_SOURCE);
 			for (let i = 0; i < 2; i++) {
@@ -377,15 +370,13 @@ describe('AgentExecutionThreadRepository n8n Chat queries', () => {
 		it('ignores a thread from a project outside the given scope', async () => {
 			const owner = await createMember();
 			const otherProject = await createTeamProject();
-			const otherAgent = await agentRepo.save(
-				agentRepo.create({
-					id: uuid(),
-					name: 'Other Agent',
-					projectId: otherProject.id,
-					integrations: {},
-					tools: {},
-				} as Partial<Agent>),
-			);
+			const otherAgent = await createAgent({
+				id: uuid(),
+				name: 'Other Agent',
+				projectId: otherProject.id,
+				integrations: [],
+				tools: {},
+			});
 			const inScope = await createThread({ ownerId: owner.id });
 			await createExecution(inScope.id, N8N_CHAT_PRODUCTION_SOURCE);
 			const outOfScope = await createThread({

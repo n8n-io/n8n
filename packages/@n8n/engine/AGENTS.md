@@ -45,17 +45,17 @@ a deployable engine worker) without touching core logic.
   in-memory queues. `createRedisWorkQueues` builds the pair of Redis queues:
   the engine sets the list names and the message schemas. The host gives the
   Redis connections, the key prefix and the concurrency limits.
-  `RedisWorkQueue` never closes a connection. The factory closes only the
-  consumer connections that it opened through the host; the host closes the
-  publisher. The engine has no runtime dependency on `ioredis`; the adapter
-  declares the client commands it needs as interfaces.
+  `RedisWorkQueue` never closes a connection. The factory's `close()` closes
+  only the consumer connections; the host closes the publisher. The engine has
+  no runtime dependency on `ioredis`; the adapter declares the client commands
+  it needs as interfaces.
 - **Serving infra** — `server/` (express), `serve.ts` (standalone entrypoint),
   Dockerfile. First candidate to be extracted later.
 - **Runtime factory** — `runtime/` (`createEngineRuntime`). Owns the engine's
   internal topology: the stores, the handlers, the workers, the HTTP app and the
   start/stop order. It takes the adapters a host chooses and returns a running
-  engine, so no host repeats the wiring. The host always gives it the pair of
-  queues. It starts and stops the queues, but never closes their connections.
+  engine, so no host repeats the wiring. The host gives it the queues. It
+  starts and stops them, but never closes their connections.
   A data plane database is not optional — the factory's type requires one, and
   each composition root refuses to start without it rather than serving
   `/healthz` while unable to run a workflow.
@@ -87,6 +87,18 @@ a deployable engine worker) without touching core logic.
 - When serving infra is extracted, add a `dependency-purity.test.ts` (as
   `@n8n/scheduler` does) to enforce the allowlist. Until then, this doc is the
   intent.
+
+## Migrations are additive
+
+Change the schema only with a new migration, for example one that adds a
+column. Never edit a migration that is already on master. Engine databases
+persist, and a database that ran a migration does not run it again, so an edit
+never reaches it.
+
+A new migration gets a timestamp later than the last one and its entry in
+`src/database/migrations/index.ts`. Add its file name to the
+`unicorn/filename-case` exemptions in `oxlint.config.mts` and
+`eslint.config.mjs`. Mirror a new column or index in the entity decorators.
 
 ## Crash recovery: reconciliation, not transactions
 

@@ -16,6 +16,7 @@ export class TrelloTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Trello Trigger',
 		name: 'trelloTrigger',
+		schemaPath: 'Trello',
 		icon: 'file:trello.svg',
 		group: ['trigger'],
 		version: 1,

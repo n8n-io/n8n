@@ -50,6 +50,7 @@ import {
 	isKnownAssistantAgentThread,
 	knownAssistantThreadRuntime,
 	lookUpAssistantThreadRuntime,
+	markAssistantAgentLaunch,
 	rememberAssistantAgentThread,
 } from '../assistantAgent/assistantAgentThreads';
 import { useAssistantAgentThreadsStore } from '../assistantAgent/assistantAgentThreads.store';
@@ -654,6 +655,14 @@ async function openFullAssistant() {
 	}
 	if (!mounted || props.subject.id !== subjectIdAtStart || activeThreadId.value !== threadId) {
 		return;
+	}
+	// The server does not know a thread before its first message. The full view then
+	// opens it as new, shows the agent, and its first message binds it.
+	if (panelAgentThreads.get(threadId) === true && props.subject.type !== 'workflow') {
+		markAssistantAgentLaunch(threadId, {
+			projectId: props.subject.projectId,
+			subject: props.subject,
+		});
 	}
 	handedOffThreadId = threadId;
 	void router.push({ name: INSTANCE_AI_THREAD_VIEW, params: { threadId } });

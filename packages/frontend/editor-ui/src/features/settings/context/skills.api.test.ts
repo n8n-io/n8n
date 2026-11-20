@@ -9,6 +9,7 @@ import {
 	getSkillSourceReplacementCredentials,
 	getSkillSourceRepositories,
 	replaceSkillSourceCredential,
+	updateSkillSyncSettings,
 } from './skills.api';
 
 vi.mock('@n8n/rest-api-client', () => ({
@@ -85,6 +86,14 @@ describe('skills.api', () => {
 		expect(makeRestApiRequest).toHaveBeenNthCalledWith(1, context, 'GET', `${path}/credentials`);
 		expect(makeRestApiRequest).toHaveBeenNthCalledWith(2, context, 'POST', `${path}/credential`, {
 			credentialId: 'c1',
+		});
+	});
+
+	it('saves the Skill Sync switch', async () => {
+		await updateSkillSyncSettings(context, { enabled: false });
+
+		expect(makeRestApiRequest).toHaveBeenCalledWith(context, 'PUT', '/skill-sync/settings', {
+			enabled: false,
 		});
 	});
 });

@@ -552,6 +552,8 @@ export interface BuildWorkflowConfig {
 	 *  after a successful build, before any scenario runs. */
 	executionScenarios?: ExecutionScenario[];
 	timeoutMs?: number;
+	/** Thread id for the build. Must be a UUID that no other build uses. Defaults to a random UUID. */
+	threadId?: string;
 	preRunWorkflowIds: Set<string>;
 	/** Data tables present before any build on this lane — the only ones the
 	 *  scenario-table eviction may delete. Omitted = no eviction. */
@@ -599,17 +601,23 @@ export function workflowExpectedForCase(
 	);
 }
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 /**
  * Build a workflow via Instance AI. Returns the workflow ID for use with
  * executeScenario(). Call cleanupBuild() when done.
  */
 export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildResult> {
 	const { client, logger } = config;
+	// A caller bug, not a build result: fail before any setup runs.
+	if (config.threadId !== undefined && !UUID_PATTERN.test(config.threadId)) {
+		throw new Error(`threadId must be a UUID, got "${config.threadId}"`);
+	}
 	const promptVersion = resolveEvalPromptVersion(config);
 	const observerThresholdTokens = config.requiresMemoryCompaction
 		? COMPACTION_OBSERVER_THRESHOLD_TOKENS
 		: undefined;
-	const threadId = crypto.randomUUID();
+	const threadId = config.threadId ?? crypto.randomUUID();
 	// Restarted when the opening message goes out: seed restore, prior-run
 	// staging and table creation are the harness's time, not the agent's.
 	let startTime = Date.now();
