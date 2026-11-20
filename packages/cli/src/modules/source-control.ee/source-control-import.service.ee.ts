@@ -1886,9 +1886,6 @@ export class SourceControlImportService {
 		pullingUserId: string,
 	) {
 		const importResults = [];
-		const existingProjectVariables = (await this.variablesService.getAllCached()).filter(
-			(v) => v.project,
-		);
 
 		for (const candidate of candidates) {
 			try {
@@ -1945,10 +1942,16 @@ export class SourceControlImportService {
 					project.variableStubs?.map((v) => ({ ...v, projectId: project.id })) ?? [],
 				);
 
-				// Delete variables that existed before but are no longer present in the imported project
-				const deletedVariables = existingProjectVariables.filter(
-					(v) =>
-						v.project!.id === project.id && !project.variableStubs?.some((vs) => vs.id === v.id),
+				// Delete this project's variables that are no longer present in the imported project.
+				// Read them fresh per project instead of a loop-wide snapshot: an earlier candidate
+				// may have moved a variable into another project, and a stale snapshot would
+				// delete it there too.
+				const currentProjectVariables = await this.variablesRepository.find({
+					where: { project: { id: project.id } },
+					relations: ['project'],
+				});
+				const deletedVariables = currentProjectVariables.filter(
+					(v) => !project.variableStubs?.some((vs) => vs.id === v.id),
 				);
 				await this.variablesService.deleteByIds(deletedVariables.map((v) => v.id));
 
