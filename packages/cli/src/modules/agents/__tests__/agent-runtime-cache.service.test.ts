@@ -140,11 +140,13 @@ describe('AgentRuntimeCacheService', () => {
 		reconstructionService.reconstructFromAgentEntity.mockResolvedValue({
 			...makeRuntime(),
 			guardrailModel,
+			guardrailModelId: 'openai/gpt-4o-mini',
 		});
 
 		const runtime = await service.getRuntime({ agentId, projectId });
 
 		expect(runtime.guardrailModel).toBe(guardrailModel);
+		expect(runtime.guardrailModelId).toBe('openai/gpt-4o-mini');
 	});
 
 	it('keeps task runtimes separate and disables their background tools', async () => {

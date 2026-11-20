@@ -1,4 +1,6 @@
 import type { GuardrailDecision, ModelGuardrail, TokenUsage } from '../../types';
+import { computeSideCallCost } from '../loop/side-call-cost';
+import { toTokenUsage } from '../streaming/stream';
 
 export interface SpendEntry {
 	key: string;
@@ -52,13 +54,9 @@ function positiveUsd(value: number | undefined): number | undefined {
  * spent. The crossing call is recorded. A missing `usage.cost` adds nothing.
  */
 export function createBudgetGuardrail(options: BudgetGuardrailOptions): ModelGuardrail {
-	const { ledger, sessionId, agentId, alertThresholdPercent, onNotice } = options;
+	const { ledger, sessionId, agentId } = options;
 	const sessionCostCapUsd = positiveUsd(options.sessionCostCapUsd);
 	const monthlyBudgetUsd = positiveUsd(options.monthlyBudgetUsd);
-	const alertLine =
-		monthlyBudgetUsd !== undefined && alertThresholdPercent !== undefined
-			? (monthlyBudgetUsd * alertThresholdPercent) / 100
-			: undefined;
 
 	return {
 		async before(): Promise<GuardrailDecision> {
@@ -77,26 +75,70 @@ export function createBudgetGuardrail(options: BudgetGuardrailOptions): ModelGua
 		},
 
 		async after(ctx, usage: TokenUsage | undefined): Promise<void> {
-			const cost = usage?.cost;
-			if (cost === undefined) return;
-
-			const entries: SpendEntry[] = [];
-			if (sessionCostCapUsd !== undefined && hasId(sessionId)) {
-				entries.push({ key: sessionId, usd: cost });
-			}
-			const month = hasId(agentId) ? budgetMonthKey(agentId) : undefined;
-			if (monthlyBudgetUsd !== undefined && month !== undefined) {
-				entries.push({ key: month, usd: cost });
-			}
-			if (entries.length === 0) return;
-
-			const totals = await ledger.add(ctx.callId, entries);
-			if (alertLine === undefined || month === undefined) return;
-			const monthTotal = totals.find((total) => total.key === month);
-			if (!monthTotal) return;
-			if (monthTotal.previousUsd < alertLine && monthTotal.totalUsd >= alertLine) {
-				onNotice?.({ code: 'budget.alert' });
-			}
+			await recordBudgetSpend(options, ctx.callId, usage?.cost);
 		},
 	};
+}
+
+/**
+ * Writes one priced call to the session key and the month key. Fires the
+ * alert once, when the month total crosses the line. A missing cost adds
+ * nothing. A repeated `callId` does not add the cost twice.
+ */
+async function recordBudgetSpend(
+	options: BudgetGuardrailOptions,
+	callId: string,
+	cost: number | undefined,
+): Promise<void> {
+	if (cost === undefined) return;
+
+	const { ledger, sessionId, agentId, alertThresholdPercent, onNotice } = options;
+	const sessionCostCapUsd = positiveUsd(options.sessionCostCapUsd);
+	const monthlyBudgetUsd = positiveUsd(options.monthlyBudgetUsd);
+	const alertLine =
+		monthlyBudgetUsd !== undefined && alertThresholdPercent !== undefined
+			? (monthlyBudgetUsd * alertThresholdPercent) / 100
+			: undefined;
+
+	const entries: SpendEntry[] = [];
+	if (sessionCostCapUsd !== undefined && hasId(sessionId)) {
+		entries.push({ key: sessionId, usd: cost });
+	}
+	const month = hasId(agentId) ? budgetMonthKey(agentId) : undefined;
+	if (monthlyBudgetUsd !== undefined && month !== undefined) {
+		entries.push({ key: month, usd: cost });
+	}
+	if (entries.length === 0) return;
+
+	const totals = await ledger.add(callId, entries);
+	if (alertLine === undefined || month === undefined) return;
+	const monthTotal = totals.find((total) => total.key === month);
+	if (!monthTotal) return;
+	if (monthTotal.previousUsd < alertLine && monthTotal.totalUsd >= alertLine) {
+		onNotice?.({ code: 'budget.alert' });
+	}
+}
+
+/**
+ * Prices one side model call and writes it to the budget ledger. A missing
+ * price, or a catalog failure, adds nothing and does not throw: the tool
+ * call still finishes.
+ */
+export async function chargeModelSpend(input: {
+	modelId: string;
+	usage: Parameters<typeof toTokenUsage>[0];
+	providerMetadata?: Parameters<typeof toTokenUsage>[1];
+	callId: string;
+	budget: BudgetGuardrailOptions;
+}): Promise<void> {
+	let cost: number | undefined;
+	try {
+		const usage = toTokenUsage(input.usage, input.providerMetadata);
+		if (!usage) return;
+		cost = await computeSideCallCost(input.modelId, usage);
+	} catch {
+		// The catalog can fail. This call adds no spend.
+		return;
+	}
+	await recordBudgetSpend(input.budget, input.callId, cost);
 }

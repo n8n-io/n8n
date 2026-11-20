@@ -1960,6 +1960,7 @@ import {
 	type RoleService,
 	AiPreferenceScopeFullError,
 	type AiPreferenceService,
+	WorkflowVersionedSettingsService,
 } from '@n8n/backend-services';
 import { type DataTableRepository, type DataTableService } from '@n8n/backend-module-data-table';
 
@@ -6953,6 +6954,54 @@ describe('createExecutionAdapter runStep()', () => {
 			'Trigger',
 			'Send',
 		]);
+	});
+
+	it('runs a past version on the engine that the version stores, and records that version', async () => {
+		const harness = createRunAdapterForTests({
+			...chainWorkflow,
+			versionId: 'v-draft',
+			settings: { engineType: 'v1', timezone: 'Europe/Berlin' },
+		});
+		harness.mockWorkflowHistoryService.getVersion.mockResolvedValue({
+			versionId: 'v-old',
+			nodes: chainWorkflow.nodes,
+			connections: chainWorkflow.connections,
+			settings: { engineType: 'v2' },
+		});
+		const versionedSettings = mock<WorkflowVersionedSettingsService>();
+		versionedSettings.forVersionRun.mockImplementation((settings, version) => ({
+			...settings,
+			...version.settings,
+		}));
+		vi.mocked(Container.get).mockImplementation(((token: unknown) =>
+			token === WorkflowVersionedSettingsService
+				? versionedSettings
+				: harness.mockExecutionPersistence) as typeof Container.get);
+		const runStep = harness.adapter.runStep as NonNullable<typeof harness.adapter.runStep>;
+
+		await runStep('wf-1', 'Send', { versionId: 'v-old' });
+
+		const runData = harness.mockWorkflowRunner.run.mock.calls[0][0];
+		expect(runData.workflowData.versionId).toBe('v-old');
+		expect(runData.workflowData.settings).toMatchObject({
+			engineType: 'v2',
+			timezone: 'Europe/Berlin',
+		});
+	});
+
+	it('runs the draft on the draft engine when no version is named', async () => {
+		const harness = createRunAdapterForTests({
+			...chainWorkflow,
+			versionId: 'v-draft',
+			settings: { engineType: 'v1' },
+		});
+		const runStep = harness.adapter.runStep as NonNullable<typeof harness.adapter.runStep>;
+
+		await runStep('wf-1', 'Send', undefined);
+
+		const runData = harness.mockWorkflowRunner.run.mock.calls[0][0];
+		expect(runData.workflowData.versionId).toBe('v-draft');
+		expect(runData.workflowData.settings.engineType).toBe('v1');
 	});
 
 	it('reads the draft without touching history when no version is named', async () => {

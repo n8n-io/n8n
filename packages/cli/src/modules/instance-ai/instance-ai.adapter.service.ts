@@ -38,6 +38,7 @@ import {
 	NodeTypesProxy,
 	PostHogClient,
 	TelemetryProxy,
+	WorkflowVersionedSettingsService,
 } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { Time, TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
@@ -2609,11 +2610,18 @@ export class InstanceAiAdapterService {
 				// while the execution still belongs to the workflow.
 				let nodes: INode[] = workflow.nodes ?? [];
 				let connections: IConnections = workflow.connections ?? {};
+				let settings = workflow.settings;
+				let ranVersionId = workflow.versionId;
 				const versionId = options?.versionId;
 				if (versionId !== undefined && versionId !== workflow.versionId) {
 					const version = await workflowHistoryService.getVersion(user, workflowId, versionId);
 					nodes = version.nodes ?? [];
 					connections = version.connections ?? {};
+					settings = Container.get(WorkflowVersionedSettingsService).forVersionRun(
+						workflow.settings,
+						version,
+					);
+					ranVersionId = version.versionId;
 				}
 
 				const target = nodes.find((node) => node.name === nodeName);
@@ -2771,8 +2779,9 @@ export class InstanceAiAdapterService {
 						...workflow,
 						nodes,
 						connections,
+						versionId: ranVersionId,
 						settings: {
-							...workflow.settings,
+							...settings,
 							saveManualExecutions: true,
 							saveDataSuccessExecution: 'all',
 							saveDataErrorExecution: 'all',

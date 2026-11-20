@@ -1239,6 +1239,36 @@ describe('SubAgentRunner', () => {
 		expect(onBudgetNotice).toHaveBeenCalledTimes(3);
 	});
 
+	it('attaches the child tool guardrails on the root session run', async () => {
+		Container.set(AgentSpendLedger, mock<AgentSpendLedger>());
+		reconstructionService.reconstructFromResolvedSource.mockResolvedValue({
+			agent: childAgent as never,
+			toolRegistry: new Map(),
+			mcpServerAttributions: new Map(),
+			toolGuardrails: [{ kind: 'keywords', id: 'g1', stage: 'before', keywords: ['secret'] }],
+		});
+
+		await runner.run(spawnRequest, {
+			parentAgentId,
+			projectId,
+			credentialProvider,
+			runType: 'production',
+			rootSessionId: parentThreadId,
+			rootSessionCapUsd: 5,
+		});
+
+		const options = childAgent.stream.mock.calls[0]?.[1];
+		const toolHook = options?.guardrails?.hooks?.find((hook) => hook.beforeTool !== undefined);
+		await expect(
+			toolHook?.beforeTool?.({
+				toolCallId: 'tc-1',
+				toolName: 'read_file',
+				input: { note: 'a secret' },
+				runId: 'run-1',
+			}),
+		).resolves.toEqual({ action: 'stop', code: 'guardrail.keywords.g1' });
+	});
+
 	it('installs the notice ferry even when the child has no budget bucket', async () => {
 		Container.set(AgentSpendLedger, mock<AgentSpendLedger>());
 		const onBudgetNotice = vi.fn();

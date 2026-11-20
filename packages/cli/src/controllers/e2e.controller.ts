@@ -28,10 +28,9 @@ import { MfaService } from '@/mfa/mfa.service';
 import { LogStreamingDestinationService } from '@/modules/log-streaming.ee/log-streaming-destination.service';
 import { Push } from '@/push';
 import { WorkflowScheduledJobOwner } from '@/scheduling/workflow-scheduled-job-owner';
-import { CacheService } from '@n8n/backend-services';
+import { CacheService, PasswordUtility } from '@n8n/backend-services';
 import { FrontendService } from '@/services/frontend.service';
 import { HeapDiagnosticsService } from '@/services/heap-diagnostics.service';
-import { PasswordUtility } from '@/services/password.utility';
 import { ProcessInternalsService } from '@/services/process-internals.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 

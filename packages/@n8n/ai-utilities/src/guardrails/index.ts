@@ -1,6 +1,8 @@
 export type {
 	GuardrailResult,
+	GuardrailModelRun,
 	GuardrailModelRunner,
+	GuardrailModelUsage,
 	LlmGuardrailConfig,
 	CheckFn,
 	CreateCheckFn,

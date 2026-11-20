@@ -6,6 +6,8 @@ import {
 	type IWorkflowSettings,
 } from 'n8n-workflow';
 
+type VersionWithSettings = { settings?: IWorkflowSettings };
+
 /**
  * Version-scoped workflow settings, such as the engine, are saved with each
  * version and go live when the version is published. Only the `engine-v2`
@@ -29,13 +31,22 @@ export class WorkflowVersionedSettingsService {
 	 */
 	forPublishedRun(
 		workflowSettings: IWorkflowSettings | undefined,
-		publishedVersion: { settings?: IWorkflowSettings },
+		publishedVersion: VersionWithSettings,
+	): IWorkflowSettings | undefined {
+		return this.forVersionRun(workflowSettings, publishedVersion);
+	}
+
+	/**
+	 * The settings of a run of one saved version: the live settings of the
+	 * workflow, and the version-scoped settings of that version. A manual run of
+	 * a past version uses this, so the run uses the engine that the version stores.
+	 */
+	forVersionRun(
+		workflowSettings: IWorkflowSettings | undefined,
+		version: VersionWithSettings,
 	): IWorkflowSettings | undefined {
 		if (!this.isEnabled()) return workflowSettings;
 
-		return applyVersionedSettings(
-			workflowSettings,
-			pickVersionedSettings(publishedVersion.settings),
-		);
+		return applyVersionedSettings(workflowSettings, pickVersionedSettings(version.settings));
 	}
 }

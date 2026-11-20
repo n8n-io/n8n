@@ -792,6 +792,177 @@ describe('runObservationLogObserver', () => {
 		});
 	});
 
+	it('counts observations in the output tokens the provider reports', async () => {
+		const store = new InMemoryMemory();
+		await store.saveThread({ id: 'thread-1', resourceId: 'user-1' });
+		await store.saveMessages({
+			threadId: 'thread-1',
+			resourceId: 'user-1',
+			messages: [message('m1', 'user', 'Remember this.', new Date(1))],
+		});
+		const first = 'The user deploys on Fridays.';
+		const second = 'Staging uses Postgres.';
+		const text = [`* IMPORTANT (14:31) ${first}`, `* INFO (14:31) ${second}`].join('\n');
+		// Two tokens for each output character; reasoning tokens are not part of the text.
+		const usage = {
+			promptTokens: 100,
+			completionTokens: text.length * 2 + 40,
+			totalTokens: 100 + text.length * 2 + 40,
+			outputTokenDetails: { reasoning: 40 },
+		};
+
+		await runObservationLogObserver({
+			memory: store,
+			observationScopeId: 'thread-1',
+			observationLogTailLimit: 0,
+			tokenCounter: () => 1,
+			observe: async () => ({ text, model: 'test/model', usage }),
+		});
+
+		expect(await store.getActiveObservationLog({ observationScopeId: 'thread-1' })).toMatchObject([
+			{ text: first, tokenCount: first.length * 2 },
+			{ text: second, tokenCount: second.length * 2 },
+		]);
+	});
+
+	it('estimates observation tokens when the provider reports no output tokens', async () => {
+		const store = new InMemoryMemory();
+		await store.saveThread({ id: 'thread-1', resourceId: 'user-1' });
+		await store.saveMessages({
+			threadId: 'thread-1',
+			resourceId: 'user-1',
+			messages: [message('m1', 'user', 'Remember this.', new Date(1))],
+		});
+
+		await runObservationLogObserver({
+			memory: store,
+			observationScopeId: 'thread-1',
+			observationLogTailLimit: 0,
+			tokenCounter: () => 3,
+			observe: async () => ({
+				text: '* IMPORTANT (14:31) A fact.',
+				model: 'test/model',
+				usage: { promptTokens: 10, completionTokens: 0, totalTokens: 10 },
+			}),
+		});
+
+		expect(await store.getActiveObservationLog({ observationScopeId: 'thread-1' })).toMatchObject([
+			{ text: 'A fact.', tokenCount: 3 },
+		]);
+	});
+
+	describe('working set', () => {
+		async function storeWithMessage(id: string, at: number) {
+			const store = new InMemoryMemory();
+			await store.saveThread({ id: 'thread-1', resourceId: 'user-1' });
+			await store.saveMessages({
+				threadId: 'thread-1',
+				resourceId: 'user-1',
+				messages: [message(id, 'user', 'Work on the plan.', new Date(at))],
+			});
+			return store;
+		}
+
+		async function observe(store: InMemoryMemory, text: string, maxWorkingSetTokens?: number) {
+			const inputs: ObservationLogObserverInput[] = [];
+			await runObservationLogObserver({
+				memory: store,
+				observationScopeId: 'thread-1',
+				observationLogTailLimit: 0,
+				tokenCounter: (value) => value.length,
+				maxWorkingSetTokens,
+				observe: async (input) => {
+					inputs.push(input);
+					return text;
+				},
+			});
+			return inputs[0];
+		}
+
+		it('stores the working set apart from the observations', async () => {
+			const store = await storeWithMessage('m1', 1);
+
+			await observe(
+				store,
+				'* IMPORTANT (14:31) A fact.\n<working-set>\nPlan\n- [ ] Ship it\n</working-set>',
+			);
+
+			expect(await store.getActiveObservationLog({ observationScopeId: 'thread-1' })).toMatchObject(
+				[{ text: 'A fact.' }],
+			);
+			expect((await store.getCursor('thread-1'))?.workingSet).toBe('Plan\n- [ ] Ship it');
+		});
+
+		it('keeps an observation that mentions the tag inside a line', async () => {
+			const store = await storeWithMessage('m1', 1);
+
+			await observe(
+				store,
+				'* INFO (14:31) The Observer writes a <working-set> block.\n* INFO (14:32) A later fact.\n<working-set>\nPlan A\n</working-set>',
+			);
+
+			expect(await store.getActiveObservationLog({ observationScopeId: 'thread-1' })).toMatchObject(
+				[{ text: 'The Observer writes a <working-set> block.' }, { text: 'A later fact.' }],
+			);
+			expect((await store.getCursor('thread-1'))?.workingSet).toBe('Plan A');
+		});
+
+		it('stores no working set when the tag is only inside a line', async () => {
+			const store = await storeWithMessage('m1', 1);
+
+			await observe(
+				store,
+				'* INFO (14:31) Run `echo "<working-set>"` to print the tag.\n* INFO (14:32) A later fact.',
+			);
+
+			expect(await store.getActiveObservationLog({ observationScopeId: 'thread-1' })).toHaveLength(
+				2,
+			);
+			expect((await store.getCursor('thread-1'))?.workingSet).toBeNull();
+		});
+
+		it('reads an unclosed block to the end of the output', async () => {
+			const store = await storeWithMessage('m1', 1);
+
+			await observe(store, '* INFO (14:31) A fact.\n<working-set>\nPlan A\n- [ ] Ship it');
+
+			expect((await store.getCursor('thread-1'))?.workingSet).toBe('Plan A\n- [ ] Ship it');
+		});
+
+		it('keeps the previous working set when the Observer writes none', async () => {
+			const store = await storeWithMessage('m1', 1);
+			await observe(store, '* INFO (14:31) First.\n<working-set>\nPlan A\n</working-set>');
+			await store.saveMessages({
+				threadId: 'thread-1',
+				resourceId: 'user-1',
+				messages: [message('m2', 'user', 'Next.', new Date(2))],
+			});
+
+			const input = await observe(store, '* INFO (14:32) Second.');
+
+			expect(input.workingSet).toBe('Plan A');
+			expect((await store.getCursor('thread-1'))?.workingSet).toBe('Plan A');
+		});
+
+		it('keeps the previous working set when the new one is over the limit', async () => {
+			const store = await storeWithMessage('m1', 1);
+			await observe(store, '* INFO (14:31) First.\n<working-set>\nPlan A\n</working-set>', 100);
+			await store.saveMessages({
+				threadId: 'thread-1',
+				resourceId: 'user-1',
+				messages: [message('m2', 'user', 'Next.', new Date(2))],
+			});
+
+			await observe(
+				store,
+				`* INFO (14:32) Second.\n<working-set>\n${'x'.repeat(500)}\n</working-set>`,
+				100,
+			);
+
+			expect((await store.getCursor('thread-1'))?.workingSet).toBe('Plan A');
+		});
+	});
+
 	it('reports usage even when the atomic commit fails', async () => {
 		const store = new InMemoryMemory();
 		await store.saveThread({ id: 'thread-1', resourceId: 'user-1' });
