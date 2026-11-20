@@ -1,4 +1,9 @@
-import { SKILL_SCAN_RULES, type SkillUpdateFile, type SkillScanResult } from '@n8n/api-types';
+import {
+	SKILL_SCAN_LIMIT_FIELDS,
+	SKILL_SCAN_RULES,
+	type SkillUpdateFile,
+	type SkillScanResult,
+} from '@n8n/api-types';
 import { UnexpectedError } from '@n8n/errors';
 import { diffText } from '@n8n/utils/diff-text';
 import isEqual from 'lodash/isEqual';
@@ -24,6 +29,9 @@ const scanSchema = z.object({
 			rule: z.enum(SKILL_SCAN_RULES),
 			severity: z.enum(['info', 'needs_review', 'blocked']),
 			detail: z.string(),
+			limit: z
+				.object({ field: z.enum(SKILL_SCAN_LIMIT_FIELDS), max: z.number(), current: z.number() })
+				.optional(),
 			file: z.string().optional(),
 			domain: z.string().optional(),
 			location: z.object({ line: z.number(), start: z.number(), end: z.number() }).optional(),

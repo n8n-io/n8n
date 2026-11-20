@@ -189,13 +189,32 @@ export type SkillScanLocation = {
 	end: number;
 };
 
+/** The part of a skill that a size limit applies to. */
+export const SKILL_SCAN_LIMIT_FIELDS = [
+	'name',
+	'description',
+	'instructions',
+	'frontmatter',
+	'referenceCount',
+	'referencePath',
+	'referenceContent',
+	'referencesTotal',
+] as const;
+
+export type SkillScanLimitField = (typeof SKILL_SCAN_LIMIT_FIELDS)[number];
+
+/** A size limit and the size that the skill has. `referenceCount` counts files, each other field counts characters. */
+export type SkillScanLimit = { field: SkillScanLimitField; max: number; current: number };
+
 export type SkillScanFinding = {
 	rule: SkillScanRule;
 	severity: SkillScanSeverity;
 	/** `SKILL.md`, or the path of a file in the skill folder. */
 	file?: string;
-	/** English text for logs and for a reviewer. Telemetry sends only the rule. */
+	/** English text for logs. The UI shows it only where no field of the finding gives the reason. */
 	detail: string;
+	/** Set for an `over_limit` finding, so the UI can write the reason in its language. */
+	limit?: SkillScanLimit;
 	/** The linked domain of a `new_url` or `risky_url` finding. */
 	domain?: string;
 	/** Set for a `risky_url` finding. */

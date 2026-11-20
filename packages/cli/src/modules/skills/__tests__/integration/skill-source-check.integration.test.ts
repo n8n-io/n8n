@@ -821,9 +821,11 @@ describe('Skill source checks', () => {
 				);
 				const oversized = await review(sourceId);
 				expect(oversized.updates[0].check.verdict).toBe('blocked');
-				expect(oversized.updates[0].check.findings[0].detail).toContain(
-					`Current: ${longInstructions.length} characters.`,
-				);
+				expect(oversized.updates[0].check.findings[0].limit).toEqual({
+					field: 'instructions',
+					max: AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
+					current: longInstructions.length,
+				});
 				// The review shows a cut preview and no diff, so the row has no counts.
 				expect(oversized.updates[0].changes).toEqual({ added: 0, removed: 0 });
 				const preview = await editor
