@@ -5,6 +5,7 @@ import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { generateMigrationIndexes } from './generate-migration-index.mjs';
+import { pickTimestamp } from './migration-timestamps.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PKG_ROOT = join(__dirname, '..');
@@ -38,16 +39,6 @@ function listExistingTimestamps() {
 		}
 	}
 	return timestamps;
-}
-
-function pickTimestamp(existing) {
-	const max = existing.length === 0 ? 0 : Math.max(...existing);
-	const now = Date.now();
-	if (now > max) return { timestamp: now, source: 'Date.now()' };
-	return {
-		timestamp: max + 1,
-		source: `max + 1 (existing head ${max} is in the future — see AGENTS.md)`,
-	};
 }
 
 function migrationTemplate(className) {

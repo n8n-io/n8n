@@ -17,6 +17,7 @@
     "test:unit": "pnpm gen:migration-index && vitest run",
     "test:dev": "pnpm gen:migration-index && vitest --silent=false",
     "migration:new": "node scripts/new-migration.mjs",
+    "migration:bump": "node scripts/bump-migrations.mjs",
     "schema:docs:sqlite": "node scripts/schema-docs.mjs doc --db=sqlite",
     "schema:docs:postgres": "node scripts/schema-docs.mjs doc --db=postgres",
     "schema:docs": "pnpm schema:docs:sqlite && pnpm schema:docs:postgres",

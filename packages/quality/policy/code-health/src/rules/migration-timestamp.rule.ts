@@ -123,7 +123,7 @@ export class MigrationTimestampRule extends BaseRule<CodeHealthContext> {
 						1,
 						1,
 						`${fileName} (${timestamp}) is at or below the highest existing migration timestamp (${floor}). New migrations must be strictly ordered — pick a timestamp greater than ${floor}.`,
-						`Rename the file using a timestamp greater than ${floor} (e.g. ${floor + 1}).`,
+						`Rename the file using a timestamp greater than ${floor} (e.g. ${floor + 1}). Or comment \`/bump-migration\` on the PR.`,
 					),
 				);
 				continue;

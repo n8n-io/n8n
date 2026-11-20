@@ -118,6 +118,15 @@ describe('MigrationTimestampRule', () => {
 			expect(ordering!.message).toContain('1784000000000');
 		});
 
+		it('tells the author to comment /bump-migration', async () => {
+			writeMigration(tmpDir, COMMON_DIR, '1777000000000-Head.ts');
+			const newlyAdded = writeMigration(tmpDir, COMMON_DIR, '1750000000000-NewBelowFloor.ts');
+
+			const [violation] = await rule.analyze(context([newlyAdded]));
+
+			expect(violation?.suggestion).toContain('/bump-migration');
+		});
+
 		it('does NOT flag a historical sub-max file even when other files are added', async () => {
 			writeMigration(tmpDir, COMMON_DIR, '1700000000000-Old.ts');
 			writeMigration(tmpDir, COMMON_DIR, '1750000000000-AlsoOld.ts');

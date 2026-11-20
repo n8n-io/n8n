@@ -241,6 +241,23 @@ parallelism). See the `--build-via-mcp` section in
 | PR merged to `release/*`           | `release-publish.yml`          |
 | PR closed with `codespace-preview` | `util-codespace-preview.yml`   |
 
+### Comment Commands
+
+| Comment           | Workflow                  | Effect                                                                  |
+|-------------------|---------------------------|-------------------------------------------------------------------------|
+| `/bump-migration` | `util-bump-migration.yml` | Moves the PR's added migrations after the head of its base branch       |
+
+**Why:** When another PR merges a newer migration first, the `migration-timestamp`
+rule fails this PR, and the rename push dismisses its approvals. Only members of
+the `r-d` team (nested teams count) can run the command, on an open PR from this
+repository. The bot creates one commit through the Git Data API with no custom
+author or committer, so GitHub signs it as `n8n-assistant[bot]`. If the PR had an
+approval before the bump and no open change request, the bot approves the new
+head. An approval that a bump dismissed counts only if every commit after it is
+a signed bump commit by the App. The bot approval does not count for a required
+OWNERS team, so **Required Reviews** still needs a new approval from that team.
+The workflow checks out `master` and runs nothing from the PR.
+
 ### Label Triggers
 
 | Label                 | Workflow                     | Effect                                             |
@@ -867,6 +884,16 @@ In `--json` mode stdout carries one line for each phase and then the report obje
 and all human progress goes to stderr. So a workflow can follow a run that also
 streams an in-box build log. The reader tells the two apart by the `url` field: the
 report has one, a phase line never does.
+
+### Migration Bump Scripts
+
+| Script                                      | Purpose                                                                 | Called By                           |
+|---------------------------------------------|-------------------------------------------------------------------------|-------------------------------------|
+| `migration-bump/handle-bump-migration.mjs`  | Handle a `/bump-migration` comment: check the team, bump in a worktree, commit through the API as the App, restore an approval | `util-bump-migration.yml` |
+| `migration-bump/restorable-approval.mjs`    | Decide whether the PR had an approval before the bump and no open change request | `handle-bump-migration.mjs` |
+| `migration-bump/is-migration-bump.mjs`      | Decide whether a range of commits is only a migration bump by the App   | `restorable-approval.mjs` |
+| `error-summary.mjs`                         | Reduce an error to its type and status code, for public replies and logs | `handle-bump-migration.mjs`, `restorable-approval.mjs` |
+| `../../packages/@n8n/db/scripts/bump-migrations.mjs` | Move the branch's added migrations after the head of a base ref | `handle-bump-migration.mjs`, developers (`pnpm --filter=@n8n/db migration:bump`) |
 
 ### Branch Replay Scripts
 

@@ -1,0 +1,50 @@
+name: 'Util: Bump Migrations'
+run-name: Bump migrations for PR ${{ github.event.issue.number }}
+
+# A `/bump-migration` PR comment from an n8n R&D member moves the PR's added
+# migrations after the head of its base branch and pushes the commit as the App.
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions: {}
+
+concurrency:
+  group: bump-migration-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  bump-migration:
+    name: Bump migrations
+    if: >-
+      github.repository == 'n8n-io/n8n' &&
+      github.event.issue.pull_request &&
+      startsWith(github.event.comment.body, '/bump-migration')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Generate App Token
+        id: app-token
+        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
+        with:
+          app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
+          private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
+          permission-contents: write # push the bump commit
+          permission-issues: write # reply and react to the comment
+          permission-members: read # check the r-d team
+          permission-pull-requests: write # restore the approval
+
+      # Always master: only trusted code runs with the App token. The handler
+      # fetches the PR branch into a separate worktree and runs nothing from it.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: master
+          token: ${{ steps.app-token.outputs.token }}
+          fetch-depth: 0
+
+      - name: Bump migrations
+        uses: ./.github/actions/run-workflow-script
+        with:
+          script: .github/scripts/migration-bump/handle-bump-migration.mjs
+          github-token: ${{ steps.app-token.outputs.token }}
