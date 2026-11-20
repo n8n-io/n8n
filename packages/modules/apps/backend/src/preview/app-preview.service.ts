@@ -1,5 +1,5 @@
 import { appSchema, appVersionSchema, type AppPreviewResponse } from '@n8n/api-types';
-import { CacheService } from '@n8n/backend-services';
+import { CacheService, JwtService } from '@n8n/backend-services';
 import { OAuth2FlowProxy } from '@n8n/backend-services/auth';
 import { Service } from '@n8n/di';
 import { AuthError, BadRequestError, NotFoundError } from '@n8n/errors';
@@ -10,18 +10,24 @@ import { z } from 'zod';
 
 import type { App } from '../app.entity';
 import { AppRepository } from '../app.repository';
-import { appCookieName, embeddedAppCookieOptions } from '../auth/app-cookies';
+import { appCookieName, embeddedAppCookieOptions, readCookie } from '../auth/app-cookies';
 import { AppAuthService, type AppRequest } from '../auth/app-auth.service';
 import { AppHostService } from '../serving/app-host.service';
 import { AppVersionRepository } from '../versions/app-version.repository';
 import { assertBuiltVersion } from '../versions/assert-built-version';
 
 const CODE_PREFIX = 'apps-preview:';
-const SESSION_PREFIX = 'apps-preview-session:';
 const CODE_TTL_MS = 60_000;
 
 const grantSchema = z.object({ userId: z.string(), appId: z.string(), versionId: z.string() });
 type PreviewGrant = z.infer<typeof grantSchema>;
+
+const versionClaimsSchema = z.object({
+	appId: z.string(),
+	versionId: z.string(),
+	tokenHash: z.string(),
+});
+type PreviewVersionClaims = z.infer<typeof versionClaimsSchema>;
 
 export interface AppPreviewAdmission {
 	app: App;
@@ -33,8 +39,8 @@ export interface AppPreviewAdmission {
 
 /**
  * The editor opens a preview with a one-time code. The code exchange signs the editor in to
- * the preview host with an n8n OAuth token, and the server keeps the previewed version for
- * that token.
+ * the preview host with an n8n OAuth token. A second signed cookie holds the previewed
+ * version and is bound to that token, so the session does not depend on server-side state.
  */
 @Service()
 export class AppPreviewService {
@@ -45,6 +51,7 @@ export class AppPreviewService {
 		private readonly auth: AppAuthService,
 		private readonly flow: OAuth2FlowProxy,
 		private readonly cache: CacheService,
+		private readonly jwt: JwtService,
 	) {}
 
 	async createGrant(
@@ -67,7 +74,7 @@ export class AppPreviewService {
 
 		const code = randomBytes(32).toString('hex');
 		const grant: PreviewGrant = { userId, appId, versionId };
-		await this.cache.set(this.key(CODE_PREFIX, code), JSON.stringify(grant), CODE_TTL_MS);
+		await this.cache.set(this.codeKey(code), JSON.stringify(grant), CODE_TTL_MS);
 		const url = new URL('/_n8n/preview', origin);
 		url.searchParams.set('code', code);
 		return { url: url.toString() };
@@ -78,9 +85,7 @@ export class AppPreviewService {
 		const namespace = this.hosts.previewNamespace(req);
 		if (!namespace) throw new NotFoundError('App not found.');
 		const code = typeof req.query.code === 'string' ? req.query.code : '';
-		const grant = code
-			? this.parseGrant(await this.cache.take(this.key(CODE_PREFIX, code)))
-			: undefined;
+		const grant = code ? this.parseGrant(await this.cache.take(this.codeKey(code))) : undefined;
 		const app = grant ? await this.apps.findByNamespace(namespace) : null;
 		if (!grant || !app || app.id !== grant.appId) throw this.invalidLink();
 
@@ -88,12 +93,18 @@ export class AppPreviewService {
 		const issued = await this.flow.issue(this.hosts.callbackUrl(app, 'preview'), grant.userId);
 		if (!issued.valid) throw this.invalidLink();
 
-		const ttlMs = issued.expiresIn * 1000;
-		await this.cache.set(this.key(SESSION_PREFIX, issued.token), grant.versionId, ttlMs);
-		res.cookie(this.cookieName(), issued.token, {
+		const cookieOptions = {
 			...embeddedAppCookieOptions(this.hosts.baseUrl),
-			maxAge: ttlMs,
-		});
+			maxAge: issued.expiresIn * 1000,
+		};
+		const claims: PreviewVersionClaims = {
+			appId: app.id,
+			versionId: grant.versionId,
+			tokenHash: this.hash(issued.token),
+		};
+		const versionToken = this.jwt.sign('appPreview', claims, { expiresIn: issued.expiresIn });
+		res.cookie(this.sessionCookieName(), issued.token, cookieOptions);
+		res.cookie(this.versionCookieName(), versionToken, cookieOptions);
 		res.redirect('/');
 	}
 
@@ -118,9 +129,20 @@ export class AppPreviewService {
 	async admit(req: Request): Promise<AppPreviewAdmission | null> {
 		const admitted = await this.auth.admit(req, 'preview');
 		if (!admitted.ok) return null;
-		const versionId = await this.cache.get<string>(this.key(SESSION_PREFIX, admitted.token));
-		if (typeof versionId !== 'string') return null;
-		return { app: admitted.app, versionId, security: admitted.security, token: admitted.token };
+		const claims = this.verifyVersion(readCookie(req, this.versionCookieName()));
+		if (
+			!claims ||
+			claims.appId !== admitted.app.id ||
+			claims.tokenHash !== this.hash(admitted.token)
+		) {
+			return null;
+		}
+		return {
+			app: admitted.app,
+			versionId: claims.versionId,
+			security: admitted.security,
+			token: admitted.token,
+		};
 	}
 
 	private invalidLink() {
@@ -136,11 +158,28 @@ export class AppPreviewService {
 		}
 	}
 
-	private cookieName(): string {
+	private verifyVersion(token: string | undefined): PreviewVersionClaims | undefined {
+		if (!token) return undefined;
+		try {
+			return versionClaimsSchema.parse(this.jwt.verify<unknown>('appPreview', token));
+		} catch {
+			return undefined;
+		}
+	}
+
+	private sessionCookieName(): string {
 		return appCookieName(this.hosts.baseUrl, 'session');
 	}
 
-	private key(prefix: string, value: string): string {
-		return prefix + createHash('sha256').update(value).digest('hex');
+	private versionCookieName(): string {
+		return appCookieName(this.hosts.baseUrl, 'preview');
+	}
+
+	private codeKey(code: string): string {
+		return CODE_PREFIX + this.hash(code);
+	}
+
+	private hash(value: string): string {
+		return createHash('sha256').update(value).digest('hex');
 	}
 }
