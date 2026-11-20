@@ -53,10 +53,21 @@ export class SecurityPolicyInstanceSettingsLoader {
 			personalSpaceSharingEnabled,
 		);
 
-		await this.workflowReviewPolicyService.update({
+		const { before, after } = await this.workflowReviewPolicyService.update({
 			enabled: workflowReviewsEnabled,
 			alwaysRequired: workflowReviewsAlwaysRequired,
 		});
+
+		if (before.enabled && !after.enabled) {
+			this.logger.warn(
+				'Workflow reviews were turned off because N8N_WORKFLOW_REVIEWS_ENABLED is not true',
+			);
+		}
+		if (before.alwaysRequired && !after.alwaysRequired) {
+			this.logger.warn(
+				'Required workflow reviews were turned off because N8N_WORKFLOW_REVIEWS_ALWAYS_REQUIRED is not true',
+			);
+		}
 
 		return 'created';
 	}
