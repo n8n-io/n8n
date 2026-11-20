@@ -1,7 +1,12 @@
 <script lang="ts" setup>
-import type { DiscoveredSkill, SkillScanFinding, SkillUpdateFile } from '@n8n/api-types';
+import type {
+	DiscoveredSkill,
+	SkillScanFinding,
+	SkillScanLimitField,
+	SkillUpdateFile,
+} from '@n8n/api-types';
 import { computed, useCssModule, useId, useTemplateRef, type Directive } from 'vue';
-import { useI18n } from '@n8n/i18n';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { N8nCallout, N8nIcon, N8nLink, N8nText } from '@n8n/design-system';
 import NodeDiff from '@/features/workflows/workflowDiff/NodeDiff.vue';
 
@@ -181,9 +186,44 @@ const files = computed(() =>
 	}),
 );
 
+const isSkippedScript = (finding: SkillScanFinding) =>
+	finding.rule === 'file_skipped' && finding.severity !== 'info';
+
+/** The skipped section lists each left-out script, so the notice has one line for all of them. */
 const reviewFindings = computed(() =>
-	findings.value.filter((finding) => finding.severity !== 'info'),
+	findings.value.filter((finding) => finding.severity !== 'info' && !isSkippedScript(finding)),
 );
+const skippedScriptCount = computed(() => findings.value.filter(isSkippedScript).length);
+const issueCount = computed(() => reviewFindings.value.length + (skippedScriptCount.value ? 1 : 0));
+const skippedSection = useTemplateRef<HTMLElement>('skippedSection');
+
+function goToSkipped() {
+	skippedSection.value?.scrollIntoView({ block: 'start', inline: 'nearest' });
+	skippedSection.value?.focus({ preventScroll: true });
+}
+
+const LIMIT_KEYS: Record<SkillScanLimitField, BaseTextKey> = {
+	name: 'settings.context.skills.connect.check.limit.name',
+	description: 'settings.context.skills.connect.check.limit.description',
+	instructions: 'settings.context.skills.connect.check.limit.instructions',
+	frontmatter: 'settings.context.skills.connect.check.limit.frontmatter',
+	referenceCount: 'settings.context.skills.connect.check.limit.referenceCount',
+	referencePath: 'settings.context.skills.connect.check.limit.referencePath',
+	referenceContent: 'settings.context.skills.connect.check.limit.referenceContent',
+	referencesTotal: 'settings.context.skills.connect.check.limit.referencesTotal',
+};
+
+/** Why a finding blocks the skill, in more words than the name of its rule. */
+function blockedReason(finding: SkillScanFinding): string {
+	if (finding.severity !== 'blocked') return '';
+	if (finding.limit) {
+		return i18n.baseText(LIMIT_KEYS[finding.limit.field], {
+			interpolate: { max: finding.limit.max, current: finding.limit.current },
+		});
+	}
+	// The server names what is wrong in one file. No other field of the finding has that reason.
+	return finding.rule === 'invalid_skill' ? finding.detail : '';
+}
 
 function hasPreview(finding: SkillScanFinding): boolean {
 	return reviewFiles.value.some(
@@ -198,14 +238,14 @@ function hasPreview(finding: SkillScanFinding): boolean {
 	<div :class="$style.pane" data-test-id="skill-source-preview">
 		<div :class="$style.content" data-test-id="skill-source-file-content">
 			<N8nCallout
-				v-if="reviewFindings.length"
+				v-if="issueCount"
 				:theme="skill.check?.verdict === 'blocked' ? 'danger' : 'warning'"
 				data-test-id="skill-source-findings"
 			>
 				<N8nText size="small" bold>{{
 					i18n.baseText('settings.context.skills.connect.review.issues', {
-						interpolate: { count: reviewFindings.length },
-						adjustToNumber: reviewFindings.length,
+						interpolate: { count: issueCount },
+						adjustToNumber: issueCount,
 					})
 				}}</N8nText>
 				<ul :class="$style.findings">
@@ -233,7 +273,24 @@ function hasPreview(finding: SkillScanFinding): boolean {
 							{{ i18n.baseText('settings.context.skills.synced.openInGithub') }}</N8nLink
 						>
 						<template v-else>{{ findingText(finding) }}</template>
-						<div v-if="finding.severity === 'blocked' && finding.detail">{{ finding.detail }}</div>
+						<div v-if="blockedReason(finding)" data-test-id="skill-source-finding-reason">
+							{{ blockedReason(finding) }}
+						</div>
+					</li>
+					<li v-if="skippedScriptCount" data-test-id="skill-source-skipped-scripts">
+						<N8nLink
+							:href="`#${encodeURIComponent(fileId('skipped'))}`"
+							target="_self"
+							theme="text"
+							size="small"
+							@click.prevent="goToSkipped"
+							>{{
+								i18n.baseText('settings.context.skills.connect.review.skippedScripts', {
+									interpolate: { count: skippedScriptCount },
+									adjustToNumber: skippedScriptCount,
+								})
+							}}</N8nLink
+						>
 					</li>
 				</ul>
 			</N8nCallout>
@@ -326,7 +383,14 @@ function hasPreview(finding: SkillScanFinding): boolean {
 			>
 				{{ i18n.baseText('settings.context.skills.connect.review.truncated') }}
 			</N8nText>
-			<section v-if="skippedFiles.length > 0" :class="$style.skipped">
+			<section
+				v-if="skippedFiles.length > 0"
+				:id="fileId('skipped')"
+				ref="skippedSection"
+				:class="$style.skipped"
+				:aria-label="i18n.baseText('settings.context.skills.connect.review.skippedFiles')"
+				tabindex="-1"
+			>
 				<N8nText size="small" bold>
 					{{ i18n.baseText('settings.context.skills.connect.review.skippedFiles') }}
 				</N8nText>

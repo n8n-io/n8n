@@ -542,7 +542,7 @@ describe('SkillSourceConnectDialog', () => {
 						detail: 'raw detail',
 						location: { line: 6, start: 9, end: 17 },
 					},
-					{ rule: 'file_skipped', severity: 'info', file: 'scripts/run.sh', detail: 'raw' },
+					{ rule: 'file_skipped', severity: 'needs_review', file: 'scripts/run.sh', detail: 'raw' },
 					{ rule: 'file_unstorable', severity: 'info', file: 'references/data.md', detail: 'raw' },
 				],
 			},
@@ -602,8 +602,8 @@ describe('SkillSourceConnectDialog', () => {
 			expect(view.getByTestId('skill-source-back').parentElement?.firstElementChild).toBe(
 				view.getByTestId('skill-source-back'),
 			);
-			const warningIcon = view.getByRole('button', { name: '1 warning' });
-			expect(warningIcon.textContent).toBe('');
+			const warningIcon = view.getByRole('button', { name: '2 warnings' });
+			expect(warningIcon).toHaveTextContent('2');
 			expect(view.getByTestId('skill-source-skills')).not.toHaveTextContent('Hidden Unicode');
 			warningIcon.focus();
 			expect(await view.findByTestId('tooltip-content')).toHaveTextContent(
@@ -753,8 +753,10 @@ describe('SkillSourceConnectDialog', () => {
 			expect(mark).toHaveTextContent('⟦U+200B⟧');
 			expect(mark).toHaveAttribute('title', 'Hidden Unicode characters');
 			const notice = within(pane).getByTestId('skill-source-findings');
-			expect(notice).toHaveTextContent('1 issue to review');
+			expect(notice).toHaveTextContent('2 issues to review');
 			expect(notice).toHaveTextContent('Hidden Unicode characters in SKILL.md:6');
+			expect(notice).toHaveTextContent('1 script that n8n leaves out');
+			expect(notice).not.toHaveTextContent('scripts/run.sh');
 			expect(
 				notice.compareDocumentPosition(files[0]) & Node.DOCUMENT_POSITION_FOLLOWING,
 			).toBeTruthy();

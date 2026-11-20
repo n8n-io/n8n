@@ -134,6 +134,102 @@ it('explains blocked content and links files without a preview to their source',
 	);
 });
 
+it('shows one line for all skipped scripts, which goes to the list of skipped files', async () => {
+	const scripts = ['a', 'b', 'c', 'd', 'e'].map((name) => `scripts/${name}.sh`);
+	const view = render({
+		props: {
+			skill: {
+				...skill,
+				skippedFiles: [...scripts, 'assets/logo.png'],
+				check: {
+					verdict: 'needs_review',
+					findings: [
+						...scripts.map((file) => ({
+							rule: 'file_skipped' as const,
+							severity: 'needs_review' as const,
+							file,
+							detail: '',
+						})),
+						{ rule: 'file_skipped', severity: 'info', file: 'assets/logo.png', detail: '' },
+					],
+				},
+			},
+		},
+	});
+	const notice = view.getByTestId('skill-source-findings');
+	expect(notice).toHaveTextContent('1 issue to review');
+	expect(within(notice).getAllByRole('listitem')).toHaveLength(1);
+	expect(view.getAllByTestId('skill-source-skipped-file')).toHaveLength(6);
+	const skipped = view.getByRole('region', { name: 'Files that n8n leaves out' });
+	const scrollIntoView = vi.fn();
+	skipped.scrollIntoView = scrollIntoView;
+
+	await fireEvent.click(
+		within(notice).getByRole('link', { name: '5 scripts that n8n leaves out' }),
+	);
+
+	expect(scrollIntoView).toHaveBeenCalledWith({ block: 'start', inline: 'nearest' });
+	expect(skipped).toHaveFocus();
+});
+
+it('counts one skipped script as one issue next to the other findings', () => {
+	const view = render({
+		props: {
+			skill: {
+				...skill,
+				skippedFiles: ['scripts/run.sh'],
+				check: {
+					verdict: 'needs_review',
+					findings: [
+						{ rule: 'hidden_unicode', severity: 'needs_review', file: 'SKILL.md', detail: '' },
+						{ rule: 'file_skipped', severity: 'needs_review', file: 'scripts/run.sh', detail: '' },
+					],
+				},
+			},
+		},
+	});
+	const notice = view.getByTestId('skill-source-findings');
+	expect(notice).toHaveTextContent('2 issues to review');
+	expect(notice).toHaveTextContent('1 script that n8n leaves out');
+});
+
+it('writes the reason of a size finding from its limit, not from the server text', () => {
+	const view = render({
+		props: {
+			skill: {
+				...skill,
+				check: {
+					verdict: 'blocked',
+					findings: [
+						{
+							rule: 'over_limit',
+							severity: 'blocked',
+							file: 'SKILL.md',
+							detail: 'server text',
+							limit: { field: 'name', max: 128, current: 200 },
+						},
+						{
+							rule: 'over_limit',
+							severity: 'blocked',
+							file: 'SKILL.md',
+							detail: 'server text',
+							limit: { field: 'referenceCount', max: 20, current: 21 },
+						},
+						{ rule: 'over_limit', severity: 'blocked', file: 'SKILL.md', detail: 'server text' },
+					],
+				},
+			},
+		},
+	});
+	expect(
+		view.getAllByTestId('skill-source-finding-reason').map((reason) => reason.textContent?.trim()),
+	).toEqual([
+		'The name can have at most 128 characters. It has 200.',
+		'A skill can have at most 20 reference files. It has 21.',
+	]);
+	expect(view.queryByText('server text')).not.toBeInTheDocument();
+});
+
 it('preserves word changes when a finding crosses diff spans', () => {
 	const view = render({
 		props: {
