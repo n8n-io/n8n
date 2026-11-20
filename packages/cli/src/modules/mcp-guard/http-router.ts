@@ -6,6 +6,7 @@ import type { HttpVendorProfile } from './http-profiles';
 import { looksLikeId, toToolCall, type HttpToolArgs } from './http-tool-caller';
 import type { McpCaller } from './mcp-upstream';
 import type { CapturedRequest } from './network';
+import { redactPathSecret } from './path-secret';
 import { isReadShaped } from './request-classifier';
 import type { Hydrator } from './router';
 import { canonicalHost, vendorForRequest } from './vendor-knowledge';
@@ -17,7 +18,8 @@ export interface HttpGuardRouterDeps {
 	hydrator: Hydrator;
 	profile: HttpVendorProfile;
 	// The credential and the host of the latest request. The real reads of the hydration use them.
-	context: { authorization?: string; origin: string };
+	// `pathSecret` is the secret that the profile took out of the path of the latest request.
+	context: { authorization?: string; origin: string; pathSecret?: string };
 }
 
 const refusal = (status: number, text: string): Response => new Response(text, { status });
@@ -45,7 +47,11 @@ export class HttpGuardRouter {
 
 	constructor(private readonly deps: HttpGuardRouterDeps) {}
 
-	async handle(req: CapturedRequest): Promise<Response> {
+	async handle(incoming: CapturedRequest): Promise<Response> {
+		// Take a secret out of the path first. Nothing below, not a log, an error or the gym, sees it.
+		const { url, secret } = redactPathSecret(incoming.url, this.deps.profile.pathSecret);
+		const req = secret === undefined ? incoming : { ...incoming, url };
+		if (secret !== undefined) this.deps.context.pathSecret = secret;
 		const host = canonicalHost(req.url.hostname);
 		const vendor = vendorForRequest(host, req.url.pathname);
 		if (!vendor) return refusal(403, 'mcp-guard: this host is not available in a preview chat');
