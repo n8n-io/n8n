@@ -105,6 +105,19 @@ describe('LiveIndexService', () => {
 		expect(matches.map((match) => match.entry.id)).not.toContain('row-3');
 	});
 
+	it('returns no hit for a query that shares only one word with a card', async () => {
+		const indexService = makeIndexService();
+		const key = liveIndexKey('agent-1', SOURCE.id);
+		await indexService.rebuild({ key, ctx, source: SOURCE, provider: makeProvider() });
+
+		// "link" is in the reset row, nothing else of the query is: not a hit.
+		expect(indexService.search(key, tokenizeQuery('code name of the launch link'), 5)).toEqual([]);
+		// A one-term query still matches on that term alone.
+		expect(indexService.search(key, tokenizeQuery('link'), 5).map((m) => m.entry.id)).toEqual([
+			'row-3',
+		]);
+	});
+
 	it('keeps the old cards while a rebuild runs and reports a build that stopped failing reads', async () => {
 		const indexService = makeIndexService();
 		const provider = makeProvider();

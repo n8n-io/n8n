@@ -580,10 +580,20 @@ place; `pnpm knowledge:harness report run-2026-11-19T22-15-06-911Z.json@kb-mcp-c
   honest refusals), 12/12 refusals, zero violations. On Slack both agents
   run the same code, so the gap is noise. Conclusion: the history path is
   the primary Slack path; the search API an optional, budgeted accelerator.
-- Final merged table (`report overnight@kb-mcp-c0 morning#n- slack-run#s-`):
-  `kb-index` 36/36 Notion, 19/24 Slack, 55/60 (92%), 60k prompt tokens,
-  66k per pass, 5.5 calls; `kb-native` 31/36, 22/24, 53/60 (88%), 104k,
-  119k, 8.1 calls; `kb-mcp-c0` 28/36 (78%) Notion only, 115k, 149k, 4.9.
+- Notion-only run with the parallel source search (2026-11-20 11:18, both
+  live agents, three repetitions, Slack throttled in 176 of 184 searches):
+  the Notion medians are back from 32 s to 11.6 s (`kb-index`) and 12.2 s
+  (`kb-native`); `kb-index` 36/36 again, `kb-native` 30/36 (data source
+  3/9 at 362k tokens against 9/9 at 28k). On the indirect scope probe
+  `kb-index` dug through 23 to 30 tool calls and up to 413k tokens before
+  it refused: BM25 ranks any card that shares one word, and one-word matches
+  read as "something" to the model. Fixed after the run: a card is a hit
+  only with at least two distinct query terms (`MIN_MATCHED_TERMS`).
+- Final merged table (`report overnight@kb-mcp-c0 notion-run#n- slack-run#s-`):
+  `kb-index` 36/36 Notion, 19/24 Slack, 55/60 (92%), 71k prompt tokens,
+  79k per pass, 6.2 calls, 12.3 s; `kb-native` 30/36, 22/24, 52/60 (87%),
+  115k, 133k, 8.5 calls, 16.3 s; `kb-mcp-c0` 28/36 (78%) Notion only, 115k,
+  149k, 4.9 calls, 12.5 s.
 - Write-up: section 13 of the Notion research page.
 - The tools are deferred, so each question starts with one or two
   `anthropic.tool_search` turns before the first knowledge call. C0's MCP
@@ -645,5 +655,5 @@ place; `pnpm knowledge:harness report run-2026-11-19T22-15-06-911Z.json@kb-mcp-c
 - [x] ~~`mirror` strategy and `kb-mirror`, if time allows~~ Dropped: no sandbox available locally
 - [ ] `notionOAuth2Api` credential and a re-run of the Notion questions, if time allows
 - [ ] Slack C0 through a tunnel (fixed client id, HTTPS redirect), if time allows
-- [ ] Stub "Live sources" panel, if time allows
+- [x] ~~Stub "Live sources" panel, if time allows~~ Not done: no time left in the box; the config is written through the API and the harness
 - [x] Write-up on the Notion page: per-source correctness, tokens per correct answer, wall time, turns, tool calls, scope violations, effort actuals, recommendation (section 13, 2026-11-20)

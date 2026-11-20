@@ -26,6 +26,13 @@ const BM25_K1 = 1.2;
 const BM25_B = 0.75;
 /** Title tokens count this many times, so a title match outranks a mention in the head. */
 const TITLE_WEIGHT = 2;
+/**
+ * A card is a hit only when it holds this many distinct query terms (or every
+ * term of a shorter query). BM25 ranks any card that shares one word, and a
+ * list of one-word matches reads as "there is something" to the model, which
+ * then digs through them. No hit is the better answer.
+ */
+const MIN_MATCHED_TERMS = 2;
 
 export interface LiveIndexStatus {
 	/** Cards with content. */
@@ -144,12 +151,15 @@ export class LiveIndexService {
 		const index = this.indexes.get(key);
 		if (!index || queryTerms.length === 0) return [];
 		const total = index.cards.length;
+		const requiredTerms = Math.min(MIN_MATCHED_TERMS, queryTerms.length);
 		const scored: ScoredCard[] = [];
 		for (const card of index.cards) {
 			let score = 0;
+			let matchedTerms = 0;
 			for (const term of queryTerms) {
 				const frequency = card.terms.get(term);
 				if (!frequency) continue;
+				matchedTerms += 1;
 				const matching = index.documentFrequency.get(term) ?? 0;
 				const idf = Math.log(1 + (total - matching + 0.5) / (matching + 0.5));
 				const normalized =
@@ -157,7 +167,7 @@ export class LiveIndexService {
 					(frequency + BM25_K1 * (1 - BM25_B + (BM25_B * card.length) / index.averageLength));
 				score += idf * normalized;
 			}
-			if (score > 0) scored.push({ card, score });
+			if (matchedTerms >= requiredTerms && score > 0) scored.push({ card, score });
 		}
 		scored.sort((a, b) => b.score - a.score);
 		return scored.slice(0, limit).map(({ card, score }) => {
