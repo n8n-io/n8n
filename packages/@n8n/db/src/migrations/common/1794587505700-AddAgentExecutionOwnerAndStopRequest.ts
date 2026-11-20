@@ -14,6 +14,8 @@ export class AddAgentExecutionOwnerAndStopRequest1794587505700 implements Revers
 		isSqlite,
 		escape,
 		runQuery,
+		queryRunner,
+		tablePrefix,
 		schemaBuilder: { addColumns, column },
 	}: MigrationContext) {
 		// `agent_execution` has incoming foreign keys. Add the nullable columns in
@@ -27,6 +29,10 @@ export class AddAgentExecutionOwnerAndStopRequest1794587505700 implements Revers
 			await runQuery(
 				`ALTER TABLE ${tableName} ADD COLUMN ${stopRequest} varchar(16) CHECK (${stopRequest} IN (${allowed}))`,
 			);
+			// TypeORM does not see the raw `ADD COLUMN`, so its cached table is stale.
+			// A later migration that rebuilds the table from that cache would drop
+			// the columns. Reload the table to refresh the cache.
+			await queryRunner.getTable(`${tablePrefix}${table}`);
 			return;
 		}
 
@@ -49,11 +55,19 @@ export class AddAgentExecutionOwnerAndStopRequest1794587505700 implements Revers
 		);
 	}
 
-	async down({ isSqlite, escape, runQuery, schemaBuilder: { dropColumns } }: MigrationContext) {
+	async down({
+		isSqlite,
+		escape,
+		runQuery,
+		queryRunner,
+		tablePrefix,
+		schemaBuilder: { dropColumns },
+	}: MigrationContext) {
 		if (isSqlite) {
 			const tableName = escape.tableName(table);
 			await runQuery(`ALTER TABLE ${tableName} DROP COLUMN ${escape.columnName('stopRequest')}`);
 			await runQuery(`ALTER TABLE ${tableName} DROP COLUMN ${escape.columnName('ownerKey')}`);
+			await queryRunner.getTable(`${tablePrefix}${table}`);
 			return;
 		}
 

@@ -837,6 +837,35 @@ describe('processError', () => {
 });
 
 describe('run', () => {
+	it('runs in this process in queue mode when runInCurrentProcess is set', async () => {
+		globalConfig.executions.mode = 'queue';
+		try {
+			vi.spyOn(runner, 'establishContextForPersistence').mockResolvedValue(undefined);
+			vi.spyOn(runner, 'prepareNewExecution').mockResolvedValue(mock<Workflow>());
+			vi.spyOn(Container.get(CredentialsPermissionChecker), 'check').mockResolvedValueOnce({
+				personalCredentialsCount: 0,
+			});
+			vi.spyOn(Container.get(ActiveExecutions), 'add').mockResolvedValue('1');
+			const enqueueExecution = vi.spyOn(runner, 'enqueueExecution').mockResolvedValue();
+			const runMainProcess = vi.spyOn(runner, 'runMainProcess').mockResolvedValue();
+
+			await runner.run({
+				executionMode: 'integrated',
+				runInCurrentProcess: true,
+				workflowData: mock<IWorkflowExecutionDataProcess['workflowData']>({
+					id: 'workflow-id',
+					nodes: [],
+					staticData: {},
+				}),
+			});
+
+			expect(enqueueExecution).not.toHaveBeenCalled();
+			expect(runMainProcess).toHaveBeenCalledOnce();
+		} finally {
+			globalConfig.executions.mode = 'regular';
+		}
+	});
+
 	it('reloads static data for a new queued execution', async () => {
 		globalConfig.executions.mode = 'queue';
 		try {

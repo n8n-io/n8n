@@ -845,6 +845,43 @@ export class CredentialsService {
 		return await this.credentialsRepository.findAllCredentialsForProject(projectId);
 	}
 
+	/**
+	 * Find one credential that an agent in this project can use, without loading
+	 * every credential. The credential must belong to the project or be global,
+	 * and must not need an end-user identity. When a user is given, the user must
+	 * also be able to read it. For one ID, this gives the same result as the
+	 * intersection of `getCredentialsAUserCanUseInAWorkflow` (with
+	 * `excludePersonalRoute` and `excludeResolvable`) and the project and global
+	 * credential lists.
+	 */
+	async findCredentialAnAgentCanUse(
+		credentialId: string,
+		projectId: string,
+		user?: User,
+	): Promise<Pick<CredentialsEntity, 'id' | 'name' | 'type'> | null> {
+		const personalOwner = await this.userRepository.findPersonalOwnerForProject(projectId);
+		const credential = await this.credentialsRepository.findCredentialUsableInProject(
+			credentialId,
+			projectId,
+			{
+				anyPersonalCredential:
+					personalOwner !== null && hasGlobalScope(personalOwner, 'credential:use'),
+			},
+		);
+		if (!credential || credential.isResolvable) return null;
+
+		if (user) {
+			const readable = await this.credentialsFinderService.findCredentialForUser(
+				credentialId,
+				user,
+				['credential:read'],
+			);
+			if (!readable) return null;
+		}
+
+		return { id: credential.id, name: credential.name, type: credential.type };
+	}
+
 	private applyDataMerge(
 		incomingData: ICredentialDataDecryptedObject,
 		decryptedData: ICredentialDataDecryptedObject,

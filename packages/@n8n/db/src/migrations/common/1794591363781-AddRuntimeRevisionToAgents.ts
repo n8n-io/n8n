@@ -14,6 +14,8 @@ export class AddRuntimeRevisionToAgents1794591363781 implements ReversibleMigrat
 		isSqlite,
 		escape,
 		runQuery,
+		queryRunner,
+		tablePrefix,
 		schemaBuilder: { addColumns, column },
 	}: MigrationContext) {
 		// `agents` has incoming foreign keys. Add the column in place on SQLite so
@@ -22,6 +24,10 @@ export class AddRuntimeRevisionToAgents1794591363781 implements ReversibleMigrat
 			await runQuery(
 				`ALTER TABLE ${escape.tableName(table)} ADD COLUMN ${escape.columnName(columnName)} integer NOT NULL DEFAULT 0`,
 			);
+			// TypeORM does not see the raw `ADD COLUMN`, so its cached table is stale.
+			// A later migration that rebuilds `agents` from that cache would drop the
+			// column. Reload the table to refresh the cache.
+			await queryRunner.getTable(`${tablePrefix}${table}`);
 			return;
 		}
 
@@ -36,11 +42,19 @@ export class AddRuntimeRevisionToAgents1794591363781 implements ReversibleMigrat
 		);
 	}
 
-	async down({ isSqlite, escape, runQuery, schemaBuilder: { dropColumns } }: MigrationContext) {
+	async down({
+		isSqlite,
+		escape,
+		runQuery,
+		queryRunner,
+		tablePrefix,
+		schemaBuilder: { dropColumns },
+	}: MigrationContext) {
 		if (isSqlite) {
 			await runQuery(
 				`ALTER TABLE ${escape.tableName(table)} DROP COLUMN ${escape.columnName(columnName)}`,
 			);
+			await queryRunner.getTable(`${tablePrefix}${table}`);
 			return;
 		}
 

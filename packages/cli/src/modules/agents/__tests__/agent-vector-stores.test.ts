@@ -42,10 +42,6 @@ vi.mock('@/workflow-execute-additional-data', () => ({ getBase }));
 vi.mock('ai', () => ({ embed: vi.fn().mockResolvedValue({ embedding: [0, 0] }) }));
 vi.mock('@n8n/agents/catalog', () => ({ getCachedCatalog: vi.fn() }));
 
-type AccessibleCredential = Awaited<
-	ReturnType<CredentialsService['getCredentialsAUserCanUseInAWorkflow']>
->[number];
-
 const credentials = [
 	mock<CredentialsEntity>({
 		id: 'postgres-cred',
@@ -60,7 +56,13 @@ const credentials = [
 		isResolvable: false,
 	}),
 ];
-const accessibleCredentials = credentials.map(({ id }) => mock<AccessibleCredential>({ id }));
+/** Mock the single-credential lookup, leaving out the given IDs. */
+function allowCredentials(except: string[] = []) {
+	credentialsService.findCredentialAnAgentCanUse.mockImplementation(async (credentialId) => {
+		if (except.includes(credentialId)) return null;
+		return credentials.find(({ id }) => id === credentialId) ?? null;
+	});
+}
 const user = mock<User>({ id: 'user-1' });
 const request = mock<AuthenticatedRequest<{ projectId: string }>>({
 	params: { projectId: 'project-1' },
@@ -84,9 +86,7 @@ beforeEach(() => {
 	vi.clearAllMocks();
 	// No Knowledge module init or entities: external vector stores must remain usable.
 	moduleRegistry.isActive.mockImplementation((name) => name !== 'knowledge');
-	credentialsService.findAllCredentialIdsForProject.mockResolvedValue(credentials);
-	credentialsService.findAllGlobalCredentialIds.mockResolvedValue([]);
-	credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue(accessibleCredentials);
+	allowCredentials();
 	credentialsHelper.getDecrypted.mockResolvedValue({ apiKey: 'test-key' });
 	getBase.mockResolvedValue(mock<IWorkflowExecuteAdditionalData>());
 	backend.query.mockResolvedValue([]);
@@ -101,12 +101,16 @@ describe('Agent vector-store connection tests', () => {
 			success: true,
 		});
 
-		expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(user, {
-			projectId: 'project-1',
-			excludePersonalRoute: true,
-			excludeResolvable: true,
-		});
-		expect(credentialsService.findAllCredentialIdsForProject).toHaveBeenCalledWith('project-1');
+		expect(credentialsService.findCredentialAnAgentCanUse).toHaveBeenCalledWith(
+			'postgres-cred',
+			'project-1',
+			user,
+		);
+		expect(credentialsService.findCredentialAnAgentCanUse).toHaveBeenCalledWith(
+			'embed-cred',
+			'project-1',
+			user,
+		);
 		expect(getBase).toHaveBeenCalledWith({ projectId: 'project-1', userId: 'user-1' });
 		expect(credentialsHelper.getDecrypted).toHaveBeenCalledTimes(2);
 		expect(backend.query).toHaveBeenCalledWith([0, 0], { topK: 1 });
@@ -114,40 +118,33 @@ describe('Agent vector-store connection tests', () => {
 	});
 
 	it.each([
-		['postgres-cred', 'user', 'credential'],
-		['postgres-cred', 'project', 'credential'],
-		['embed-cred', 'user', 'embedding credential'],
-		['embed-cred', 'project', 'embedding credential'],
-	])('rejects %s outside the %s scope before decrypting it', async (credentialId, scope, role) => {
-		if (scope === 'user') {
-			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue(
-				accessibleCredentials.filter(({ id }) => id !== credentialId),
-			);
-		} else {
-			credentialsService.findAllCredentialIdsForProject.mockResolvedValue(
-				credentials.filter(({ id }) => id !== credentialId),
-			);
-		}
-		const controller = Container.get(AgentVectorStoresController);
+		['postgres-cred', 'credential'],
+		['embed-cred', 'embedding credential'],
+	])(
+		'rejects %s outside the user or project scope before decrypting it',
+		async (credentialId, role) => {
+			allowCredentials([credentialId]);
+			const controller = Container.get(AgentVectorStoresController);
 
-		await expect(controller.testConnection(request, response, { vectorStore })).resolves.toEqual({
-			success: false,
-			message: `Could not resolve the ${role} of vector store "product_docs"`,
-		});
+			await expect(controller.testConnection(request, response, { vectorStore })).resolves.toEqual({
+				success: false,
+				message: `Could not resolve the ${role} of vector store "product_docs"`,
+			});
 
-		expect(credentialsHelper.getDecrypted).not.toHaveBeenCalledWith(
-			expect.anything(),
-			expect.objectContaining({ id: credentialId }),
-			expect.anything(),
-			expect.anything(),
-		);
-		expect(backend.query).not.toHaveBeenCalled();
-		if (credentialId === 'postgres-cred') {
-			expect(PgVectorStore).not.toHaveBeenCalled();
-		} else {
-			expect(backend.close).toHaveBeenCalledTimes(1);
-		}
-	});
+			expect(credentialsHelper.getDecrypted).not.toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ id: credentialId }),
+				expect.anything(),
+				expect.anything(),
+			);
+			expect(backend.query).not.toHaveBeenCalled();
+			if (credentialId === 'postgres-cred') {
+				expect(PgVectorStore).not.toHaveBeenCalled();
+			} else {
+				expect(backend.close).toHaveBeenCalledTimes(1);
+			}
+		},
+	);
 });
 
 it('builds the existing search tool through Knowledge code while the module is inactive', async () => {

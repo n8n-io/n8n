@@ -1844,8 +1844,10 @@ describe('AgentExecutionService', () => {
 						startedAt: new Date(0),
 						updatedAt: new Date(0),
 						timeline: null,
+						ownerKey: null,
+						source: null,
 					},
-					new Date(),
+					{ staleBefore: new Date() },
 				);
 
 				expect(finalized).toBe(true);
