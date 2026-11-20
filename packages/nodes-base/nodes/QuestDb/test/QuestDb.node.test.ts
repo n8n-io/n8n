@@ -1,6 +1,25 @@
-import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
+import type { ICredentialDataDecryptedObject, IExecuteFunctions, INode } from 'n8n-workflow';
 
-import { getQuestDbConfig } from '../QuestDb.node';
+const { pgpMock, capturedConfig } = vi.hoisted(() => {
+	const capturedConfig: Array<Record<string, unknown>> = [];
+	const pgp = Object.assign(
+		vi.fn((config: Record<string, unknown>) => {
+			capturedConfig.push(config);
+			return { $pool: { end: vi.fn() } };
+		}),
+		{ pg: { types: { builtins: { DATE: 1082, TIMESTAMP: 1114, TIMESTAMPTZ: 1184 } } } },
+	);
+	return { pgpMock: vi.fn(() => pgp), capturedConfig };
+});
+
+vi.mock('pg-promise', () => ({ default: pgpMock }));
+vi.mock('../../Postgres/v1/genericFunctions', () => ({
+	pgInsert: vi.fn(),
+	pgQueryV2: vi.fn().mockResolvedValue([]),
+	pgUpdate: vi.fn(),
+}));
+
+import { getQuestDbConfig, QuestDb } from '../QuestDb.node';
 
 const CA = `-----BEGIN CERTIFICATE-----
 MIIBkTCB+wIJAJ3kO1xVQ1ZiMA0GCSqGSIb3DQEBCwUAMBExDzANBgNVBAMMBnRl
@@ -84,5 +103,34 @@ describe('QuestDb connection config', () => {
 	// config object, so sending it told the server nothing.
 	it('sends no sslmode', () => {
 		expect(configFor({ ssl: 'require' })).not.toHaveProperty('sslmode');
+	});
+
+	describe('through the node', () => {
+		const run = async (credentialOverrides: ICredentialDataDecryptedObject) => {
+			capturedConfig.length = 0;
+			const ctx = {
+				getCredentials: vi.fn().mockResolvedValue({ ...credentials, ...credentialOverrides }),
+				getNode: vi.fn().mockReturnValue({ typeVersion: 1 } as INode),
+				getInputData: vi.fn().mockReturnValue([]),
+				getNodeParameter: vi.fn().mockReturnValue('executeQuery'),
+				continueOnFail: vi.fn().mockReturnValue(false),
+				helpers: { returnJsonArray: vi.fn().mockReturnValue([]) },
+			} as unknown as IExecuteFunctions;
+
+			await new QuestDb().execute.call(ctx);
+			return capturedConfig.at(-1) as Record<string, unknown>;
+		};
+
+		// The helper is only half the contract: what pg-promise receives is what connects.
+		it.each<[string, ICredentialDataDecryptedObject, unknown]>([
+			['a CA on Require', { ssl: 'require', caCertificate: CA }, { ca: CA }],
+			['Disable', { ssl: 'disable' }, false],
+			['neither field', { ssl: 'allow' }, true],
+		])('hands pg-promise the ssl for %s', async (_case, overrides, expected) => {
+			const config = await run(overrides);
+
+			expect(config.ssl).toEqual(expected);
+			expect(config).not.toHaveProperty('sslmode');
+		});
 	});
 });
