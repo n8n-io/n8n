@@ -310,6 +310,7 @@ describe('GlobalConfig', () => {
 				includeMcpPostSaveMetrics: false,
 				workflowPublicationMetricInterval: 60,
 				includeExecutionLedgerMetrics: false,
+				includeExecutionLimitsMetrics: false,
 			},
 			additionalNonUIRoutes: '',
 			agentWebhook: 'agent-webhook',
