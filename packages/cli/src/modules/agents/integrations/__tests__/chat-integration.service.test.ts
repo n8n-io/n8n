@@ -16,6 +16,7 @@ import { testCluster } from '../../__tests__/test-utils/cluster';
 import { AgentExecutionOrchestratorService } from '../../agent-execution-orchestrator.service';
 import type { ProjectAgent } from '../../entities/agent.entity';
 import type { AgentChannelStatusReporter } from '../agent-channel-status-reporter';
+import type { AgentMessageQueueRepository } from '../../repositories/agent-message-queue.repository';
 import type { AgentRepository } from '../../repositories/agent.repository';
 import { AgentChatBridge } from '../agent-chat-bridge';
 import {
@@ -146,6 +147,8 @@ function buildServiceWith(
 		chatSubscriptionStateService?: ReturnType<typeof mock<AgentChatSubscriptionStateService>>;
 		statusReporter?: ReturnType<typeof mock<AgentChannelStatusReporter>>;
 		leaderChannelRelay?: ReturnType<typeof mock<LeaderChannelRelayService>>;
+		messageQueueRepository?: ReturnType<typeof mock<AgentMessageQueueRepository>>;
+		isWorker?: boolean;
 	} = {},
 ) {
 	const registry = opts.registry ?? new ChatIntegrationRegistry();
@@ -172,10 +175,12 @@ function buildServiceWith(
 			queue: opts.multiMainEnabled,
 			multipleMains: opts.multiMainEnabled,
 			isLeader: opts.isLeader,
+			instanceType: opts.isWorker ? 'worker' : 'main',
 		}),
 		chatSubscriptionStateService,
 		statusReporter,
 		leaderChannelRelay,
+		opts.messageQueueRepository ?? mock<AgentMessageQueueRepository>(),
 	);
 
 	return {
@@ -192,6 +197,73 @@ function buildServiceWith(
 		logger,
 	};
 }
+
+describe('ChatIntegrationService — bridge leases', () => {
+	const connection = mock<AgentIntegrationConfig>({ type: 'slack', credentialId: 'cred-1' });
+	const lease = { bridge: mock<AgentChatBridge>(), release: vi.fn() };
+
+	it('leases the ingress bridge for a queued turn on a main', async () => {
+		const { service } = buildServiceWith();
+		const acquire = vi.spyOn(service, 'acquireQueueBridge').mockReturnValue(lease);
+
+		await expect(service.leaseBridge('agent-1', 'project-1', connection)).resolves.toBe(lease);
+		expect(acquire).toHaveBeenCalledWith('agent-1', 'slack', 'cred-1');
+	});
+
+	it('leases a send-only bridge for a queued turn on a worker', async () => {
+		const { service } = buildServiceWith({ isWorker: true });
+		const acquire = vi.spyOn(service, 'acquireSendOnlyBridge').mockResolvedValue(lease);
+
+		await expect(service.leaseBridge('agent-1', 'project-1', connection)).resolves.toBe(lease);
+		expect(acquire).toHaveBeenCalledWith('agent-1', 'project-1', connection);
+	});
+
+	it('replies over the live bridge on a main without a database lookup', async () => {
+		const messageQueueRepository = mock<AgentMessageQueueRepository>();
+		const { service } = buildServiceWith({ messageQueueRepository });
+		const bridge = mock<AgentChatBridge>();
+		const getBridge = vi.spyOn(service, 'getBridge').mockReturnValue(bridge);
+
+		const result = await service.leaseReplyBridge('agent-1', 'project-1', 'slack', undefined);
+
+		expect(result?.bridge).toBe(bridge);
+		expect(getBridge).toHaveBeenCalledWith('agent-1', 'slack', undefined);
+		expect(messageQueueRepository.findPublishedConnection).not.toHaveBeenCalled();
+	});
+
+	it('replies over a send-only bridge for the published connection on a worker', async () => {
+		const messageQueueRepository = mock<AgentMessageQueueRepository>();
+		messageQueueRepository.findPublishedConnection.mockResolvedValue(connection);
+		const { service } = buildServiceWith({ isWorker: true, messageQueueRepository });
+		const acquire = vi.spyOn(service, 'acquireSendOnlyBridge').mockResolvedValue(lease);
+
+		await expect(service.leaseReplyBridge('agent-1', 'project-1', 'slack', 'cred-1')).resolves.toBe(
+			lease,
+		);
+		expect(messageQueueRepository.findPublishedConnection).toHaveBeenCalledWith(
+			'agent-1',
+			'project-1',
+			'slack',
+			'cred-1',
+		);
+		expect(acquire).toHaveBeenCalledWith('agent-1', 'project-1', connection);
+	});
+
+	it.each([
+		['no credential is known', undefined, connection],
+		['the connection is not published', 'cred-1', undefined],
+	])('has no reply bridge on a worker when %s', async (_case, credentialId, published) => {
+		const messageQueueRepository = mock<AgentMessageQueueRepository>();
+		messageQueueRepository.findPublishedConnection.mockResolvedValue(published);
+		const { service } = buildServiceWith({ isWorker: true, messageQueueRepository });
+		const acquire = vi.spyOn(service, 'acquireSendOnlyBridge');
+
+		await expect(
+			service.leaseReplyBridge('agent-1', 'project-1', 'slack', credentialId),
+		).resolves.toBeUndefined();
+		expect(acquire).not.toHaveBeenCalled();
+	});
+});
 
 describe('ChatIntegrationService.syncToConfig — publish gate', () => {
 	let service: ChatIntegrationService;
@@ -320,6 +392,7 @@ describe('ChatIntegrationService', () => {
 			mock<AgentChatSubscriptionStateService>(),
 			mock<AgentChannelStatusReporter>(),
 			mock<LeaderChannelRelayService>(),
+			mock(),
 		);
 
 	it('disconnects subscription state when setup fails before chat initialization starts', async () => {

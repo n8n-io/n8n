@@ -2,6 +2,7 @@ import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Container, Service } from '@n8n/di';
 
+import { replyRouteOf } from './integration-message-context';
 import { IntegrationMessageContextService } from './integration-message-context.service';
 import { AgentExecutionService, type InterruptedExecution } from '../agent-execution.service';
 
@@ -37,20 +38,16 @@ export class AgentInterruptedReplyNotifier {
 		if (local || !source || source === N8N_CHAT_INTEGRATION_TYPE) return;
 		try {
 			const context = await this.messageContextService.getLatest(threadId);
-			const target = context?.replyTarget ?? context?.target;
-			const [platform, credentialId] = context?.integrationConnectionId.split(':') ?? [];
-			if (
-				context?.platform !== source ||
-				platform !== source ||
-				!credentialId ||
-				!target?.threadId
-			) {
-				return;
-			}
+			const route = replyRouteOf(context, source);
+			if (!route) return;
 
 			// Lazy import: the chat SDK stack is heavy and imports this module's services.
 			const { ChatIntegrationService } = await import('./chat-integration.service.js');
-			const bridge = Container.get(ChatIntegrationService).getBridge(agentId, source, credentialId);
+			const bridge = Container.get(ChatIntegrationService).getBridge(
+				agentId,
+				source,
+				route.credentialId,
+			);
 			if (!bridge) {
 				this.logger.debug('No chat connection in this process for an interrupted agent turn', {
 					executionId,
@@ -59,7 +56,7 @@ export class AgentInterruptedReplyNotifier {
 				});
 				return;
 			}
-			await bridge.deliverInterruptedNotice(target.threadId);
+			await bridge.deliverInterruptedNotice(route.threadId);
 		} catch (error) {
 			this.logger.warn('Failed to tell the chat platform that an agent turn was interrupted', {
 				executionId,

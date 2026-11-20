@@ -6,6 +6,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { AgentAppTurnService } from '../agent-app-turn.service';
 import type { AgentChatResumeService } from '../agent-chat-resume.service';
+import type { AgentClusterService } from '../agent-cluster.service';
 import type { AgentMessageQueueConsumer } from '../agent-message-queue-consumer.service';
 import type { AgentWorkflowToolResumeService } from '../agent-workflow-tool-resume.service';
 import type { WebhookChannelService } from '../integrations/platforms/webhook/webhook-channel.service';
@@ -26,9 +27,10 @@ describe('AgentQueueLifecycle', () => {
 	let registry: InstanceRegistryProxyService;
 	const refreshRegistration = vi.fn(async () => {});
 
-	function setup(placement: Partial<AgentTurnPlacement>) {
+	function setup(placement: Partial<AgentTurnPlacement>, isLeader = true) {
 		return new AgentQueueLifecycle(
 			mock<AgentTurnPlacement>(placement),
+			mock<AgentClusterService>({ isLeader }),
 			turnQueue,
 			consumer,
 			remoteTurns,
@@ -70,6 +72,19 @@ describe('AgentQueueLifecycle', () => {
 		expect(turnQueue.init).toHaveBeenCalledOnce();
 		expect(registry.localCapabilities()).toEqual([AGENT_QUEUE_DISPATCH_CAPABILITY]);
 		expect(refreshRegistration).toHaveBeenCalledOnce();
+	});
+
+	it('removes stale turn requests only on the leader', async () => {
+		const leader = setup({ dispatchEnabled: true }, true);
+		await leader.startOnMain();
+		expect(remoteTurns.removeStaleRequests).toHaveBeenCalledOnce();
+		await leader.stop();
+
+		remoteTurns.removeStaleRequests.mockClear();
+		const follower = setup({ dispatchEnabled: true }, false);
+		await follower.startOnMain();
+		expect(remoteTurns.removeStaleRequests).not.toHaveBeenCalled();
+		await follower.stop();
 	});
 
 	it('does nothing on a worker without the worker flag', async () => {

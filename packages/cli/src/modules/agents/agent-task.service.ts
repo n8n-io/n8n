@@ -540,25 +540,16 @@ export class AgentTaskService {
 		fallback: () => Promise<void>,
 	): Promise<boolean> {
 		if (!this.placement.dispatchEnabled) return false;
-		try {
-			return await this.remoteTurns.detached(
-				{
-					kind: 'task-run',
-					agentId: lock.agentId,
-					taskId: lock.taskId,
-					holderId: lock.holderId,
-					heldUntil: lock.heldUntil.toISOString(),
-				},
-				fallback,
-			);
-		} catch (error) {
-			this.logger.warn('[AgentTaskService] Failed to send a task run to an agent worker', {
-				taskId: lock.taskId,
+		return await this.remoteTurns.detached(
+			{
+				kind: 'task-run',
 				agentId: lock.agentId,
-				error,
-			});
-			return false;
-		}
+				taskId: lock.taskId,
+				holderId: lock.holderId,
+				heldUntil: lock.heldUntil.toISOString(),
+			},
+			fallback,
+		);
 	}
 
 	/** Run a task run that a main locked and sent to this worker. */

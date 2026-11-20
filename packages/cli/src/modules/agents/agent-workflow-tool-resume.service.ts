@@ -23,12 +23,14 @@ import {
 	settlementStatusForExecution,
 } from './background/agent-background-job.service';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
-import { readIntegrationMessageContext } from './integrations/integration-message-context';
+import {
+	parseIntegrationConnectionId,
+	readIntegrationMessageContext,
+} from './integrations/integration-message-context';
 import { IntegrationMessageContextService } from './integrations/integration-message-context.service';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { AgentRemoteTurnService } from './queue/agent-remote-turn.service';
 import { AgentTurnPlacement } from './queue/agent-turn-placement.service';
-import { AgentMessageQueueRepository } from './repositories/agent-message-queue.repository';
 
 /**
  * Wakes the agent tool call a finished sub-execution belongs to, from the
@@ -54,7 +56,6 @@ export class AgentWorkflowToolResumeService {
 		private readonly cluster: AgentClusterService,
 		private readonly placement: AgentTurnPlacement,
 		private readonly remoteTurns: AgentRemoteTurnService,
-		private readonly messageQueueRepository: AgentMessageQueueRepository,
 	) {
 		this.logger = this.logger.scoped('agents');
 		this.remoteTurns.handle('workflow-tool-resume', {
@@ -127,20 +128,12 @@ export class AgentWorkflowToolResumeService {
 		status: string,
 		runHere: () => Promise<void>,
 	): Promise<boolean> {
-		if (!this.placement.sendsJobs || !this.canRunOnWorker(agentRun)) return false;
-		try {
-			return await this.remoteTurns.detached(
-				{ kind: 'workflow-tool-resume', agentRun, status },
-				runHere,
-			);
-		} catch (error) {
-			this.logger.warn('Failed to send an agent workflow tool resume to a worker', {
-				agentId: agentRun.agentId,
-				runId: agentRun.runId,
-				error,
-			});
-			return false;
-		}
+		// `detached` reads the worker registry only on processes that send jobs.
+		if (!this.canRunOnWorker(agentRun)) return false;
+		return await this.remoteTurns.detached(
+			{ kind: 'workflow-tool-resume', agentRun, status },
+			runHere,
+		);
 	}
 
 	/** Chat platforms that need a live ingress connection stay on mains. */
@@ -235,7 +228,12 @@ export class AgentWorkflowToolResumeService {
 		);
 		if (!route) return;
 		const { integrationType, credentialId, messageContext, allowLegacyThreadId } = route;
-		const lease = await this.leaseBridge(agentRun, integrationType, credentialId);
+		const lease = await this.chatIntegrationService.leaseReplyBridge(
+			agentRun.agentId,
+			agentRun.projectId,
+			integrationType,
+			credentialId,
+		);
 		if (!lease) {
 			// The checkpoint stays suspended and the suspension card stays clickable,
 			// so the run is recoverable once the integration reconnects.
@@ -259,35 +257,6 @@ export class AgentWorkflowToolResumeService {
 		} finally {
 			lease.release();
 		}
-	}
-
-	/** A worker has no ingress connection, so it builds a send-only one. */
-	private async leaseBridge(
-		agentRun: RelatedAgentRun,
-		integrationType: string,
-		credentialId: string | undefined,
-	) {
-		if (!this.cluster.isWorker) {
-			const bridge = this.chatIntegrationService.getBridge(
-				agentRun.agentId,
-				integrationType,
-				credentialId,
-			);
-			return bridge ? { bridge, release: () => {} } : undefined;
-		}
-		if (!credentialId) return undefined;
-		const connection = await this.messageQueueRepository.findPublishedConnection(
-			agentRun.agentId,
-			agentRun.projectId,
-			integrationType,
-			credentialId,
-		);
-		if (!connection) return undefined;
-		return await this.chatIntegrationService.acquireSendOnlyBridge(
-			agentRun.agentId,
-			agentRun.projectId,
-			connection,
-		);
 	}
 
 	private async resumeInProductionChat(
@@ -394,7 +363,9 @@ export class AgentWorkflowToolResumeService {
 		if (messageContext === undefined) {
 			messageContext = await this.loadLegacyMessageContext(persistence.threadId, agentRun.runId);
 		}
-		const [platform, credentialId] = messageContext?.integrationConnectionId.split(':') ?? [];
+		const { platform, credentialId } = parseIntegrationConnectionId(
+			messageContext?.integrationConnectionId,
+		);
 		if (allowLegacyThreadId) {
 			if (messageContext?.platform === integrationType && platform === integrationType) {
 				return { integrationType, credentialId, messageContext, allowLegacyThreadId };

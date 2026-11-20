@@ -27,7 +27,6 @@ import type {
 	AgentRemoteTurnService,
 } from '../queue/agent-remote-turn.service';
 import { AgentTurnPlacement } from '../queue/agent-turn-placement.service';
-import type { AgentMessageQueueRepository } from '../repositories/agent-message-queue.repository';
 import { testCluster, type TestClusterOptions } from './test-utils/cluster';
 
 const agentRun: RelatedAgentRun = {
@@ -55,6 +54,13 @@ function setup(options: SetupOptions = {}) {
 	(logger.scoped as Mock).mockReturnValue(logger);
 	const bridge = mock<AgentChatBridge>();
 	const chatIntegrationService = mock<ChatIntegrationService>();
+	// Like the real service on a main: the reply uses the live bridge.
+	chatIntegrationService.leaseReplyBridge.mockImplementation(
+		async (agentId, _projectId, integrationType, credentialId) => {
+			const live = chatIntegrationService.getBridge(agentId, integrationType, credentialId);
+			return live ? { bridge: live, release: () => {} } : undefined;
+		},
+	);
 	const userRepository = mock<UserRepository>();
 	const agentTestRunService = mock<AgentTestRunService>();
 	const broadcaster = mock<AgentExecutionUpdateBroadcaster>();
@@ -86,8 +92,8 @@ function setup(options: SetupOptions = {}) {
 		AgentTurnPlacement.prototype.isWorkerKind.call(placement, kind, platform),
 	);
 	const remoteTurns = mock<AgentRemoteTurnService>();
-	remoteTurns.detached.mockResolvedValue(true);
-	const messageQueueRepository = mock<AgentMessageQueueRepository>();
+	// Like the real service: only a process that sends jobs hands a turn to a worker.
+	remoteTurns.detached.mockImplementation(async () => placement.sendsJobs);
 	const service = new AgentWorkflowToolResumeService(
 		logger,
 		userRepository,
@@ -104,12 +110,10 @@ function setup(options: SetupOptions = {}) {
 		cluster,
 		placement,
 		remoteTurns,
-		messageQueueRepository,
 	);
 	const [kind, handler] = remoteTurns.handle.mock.calls[0] ?? [];
 	return {
 		remoteTurns,
-		messageQueueRepository,
 		registeredKind: kind,
 		detachedHandler: handler as AgentDetachedTurnHandler<'workflow-tool-resume'> | undefined,
 		service,
@@ -351,14 +355,8 @@ describe('AgentWorkflowToolResumeService → agent queue mode', () => {
 		expect(follower.chatIntegrationService.getBridge).not.toHaveBeenCalled();
 	});
 
-	it('resumes a chat platform turn on a worker over a send-only bridge', async () => {
-		const {
-			detachedHandler,
-			chatIntegrationService,
-			messageContextService,
-			messageQueueRepository,
-			bridge,
-		} = setup({
+	it('resumes a chat platform turn on a worker over a leased bridge', async () => {
+		const { detachedHandler, chatIntegrationService, messageContextService, bridge } = setup({
 			cluster: { queue: true, instanceType: 'worker' },
 			placement: { runsTurnsOnWorker: true },
 		});
@@ -366,28 +364,20 @@ describe('AgentWorkflowToolResumeService → agent queue mode', () => {
 			integrationConnectionId: 'slack:cred-2',
 			platform: 'slack',
 		} as never);
-		const connection = { type: 'slack', credentialId: 'cred-2' };
-		messageQueueRepository.findPublishedConnection.mockResolvedValue(connection as never);
 		const release = vi.fn();
-		chatIntegrationService.acquireSendOnlyBridge.mockResolvedValue({ bridge, release });
+		chatIntegrationService.leaseReplyBridge.mockResolvedValue({ bridge, release });
 
 		await detachedHandler?.run(
 			{ kind: 'workflow-tool-resume', agentRun, status: 'success' },
 			{ requestId: 'request-1', abortSignal: new AbortController().signal },
 		);
 
-		expect(messageQueueRepository.findPublishedConnection).toHaveBeenCalledWith(
+		expect(chatIntegrationService.leaseReplyBridge).toHaveBeenCalledWith(
 			'agent-1',
 			'project-1',
 			'slack',
 			'cred-2',
 		);
-		expect(chatIntegrationService.acquireSendOnlyBridge).toHaveBeenCalledWith(
-			'agent-1',
-			'project-1',
-			connection,
-		);
-		expect(chatIntegrationService.getBridge).not.toHaveBeenCalled();
 		expect(bridge.resumeInAgentThread).toHaveBeenCalled();
 		expect(release).toHaveBeenCalled();
 	});

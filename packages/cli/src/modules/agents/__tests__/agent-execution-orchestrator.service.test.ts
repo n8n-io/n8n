@@ -272,6 +272,13 @@ function makeService(sandboxEnabled = false) {
 	const bridge = mock<AgentChatBridge>();
 	Container.set(ChatIntegrationService, chatIntegrationService);
 	chatIntegrationService.getBridge.mockReturnValue(bridge);
+	// Like the real service on a main: the reply uses the live bridge.
+	chatIntegrationService.leaseReplyBridge.mockImplementation(
+		async (id, _projectId, integrationType, credentialId) => {
+			const live = chatIntegrationService.getBridge(id, integrationType, credentialId);
+			return live ? { bridge: live, release: () => {} } : undefined;
+		},
+	);
 	integrationMessageContextService.getLatest.mockResolvedValue({
 		integrationConnectionId: 'slack:credential-1',
 		platform: 'slack',

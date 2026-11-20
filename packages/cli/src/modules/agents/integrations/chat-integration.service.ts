@@ -49,6 +49,7 @@ import {
 	type AgentChannelRef,
 	type IntegrationRef,
 } from '../utils/agent-channel';
+import { AgentMessageQueueRepository } from '../repositories/agent-message-queue.repository';
 import { AgentRepository } from '../repositories/agent.repository';
 import { AgentChannelStatusReporter } from './agent-channel-status-reporter';
 import { SLACK_STREAMING_OPTIONS } from './platforms/slack/slack-bridge-behavior';
@@ -207,6 +208,7 @@ export class ChatIntegrationService {
 		private readonly chatSubscriptionStateService: AgentChatSubscriptionStateService,
 		private readonly statusReporter: AgentChannelStatusReporter,
 		private readonly leaderChannelRelay: LeaderChannelRelayService,
+		private readonly messageQueueRepository: AgentMessageQueueRepository,
 	) {}
 
 	/**
@@ -705,6 +707,50 @@ export class ChatIntegrationService {
 				done.resolve();
 			},
 		};
+	}
+
+	/**
+	 * Get a bridge to reply in a chat outside of a queued turn, such as a resume
+	 * or a background job wake. A main uses its live bridge, as `getBridge` does.
+	 * A worker has none, so it leases a send-only one for the published
+	 * connection. Call `release` when the reply is sent.
+	 */
+	async leaseReplyBridge(
+		agentId: string,
+		projectId: string,
+		integrationType: string,
+		credentialId: string | undefined,
+	): Promise<ReturnType<ChatIntegrationService['acquireQueueBridge']>> {
+		if (!this.cluster.isWorker) {
+			const bridge = this.getBridge(agentId, integrationType, credentialId);
+			return bridge ? { bridge, release: () => {} } : undefined;
+		}
+		if (!credentialId) return undefined;
+		const connection = await this.messageQueueRepository.findPublishedConnection(
+			agentId,
+			projectId,
+			integrationType,
+			credentialId,
+		);
+		return connection
+			? await this.acquireSendOnlyBridge(agentId, projectId, connection)
+			: undefined;
+	}
+
+	/**
+	 * Keep a bridge for a queued turn alive from admission through response
+	 * delivery. A main leases its ingress connection. A worker has none, so it
+	 * builds a send-only one. Returns `undefined` when no bridge is ready.
+	 */
+	async leaseBridge(
+		agentId: string,
+		projectId: string,
+		connection: AgentIntegrationConfig,
+	): Promise<ReturnType<ChatIntegrationService['acquireQueueBridge']>> {
+		if (this.cluster.isWorker) {
+			return await this.acquireSendOnlyBridge(agentId, projectId, connection);
+		}
+		return this.acquireQueueBridge(agentId, connection.type, connection.credentialId);
 	}
 
 	/**

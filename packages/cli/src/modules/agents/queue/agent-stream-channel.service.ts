@@ -38,9 +38,10 @@ export interface AgentStreamBatch {
 export class AgentStreamChannel {
 	private publisher?: Redis | Cluster;
 
-	private subscriber?: Redis | Cluster;
+	/** Set on the first publish, so concurrent publishes share one client. */
+	private publisherPromise?: Promise<Redis | Cluster>;
 
-	private handler?: (batch: AgentStreamBatch) => void;
+	private subscriber?: Redis | Cluster;
 
 	private readonly channel: string;
 
@@ -70,7 +71,6 @@ export class AgentStreamChannel {
 		wants: (queueId: string) => boolean,
 	): Promise<void> {
 		if (!this.enabled || !this.cluster.isMain || this.subscriber) return;
-		this.handler = handler;
 		const client = await this.createClient();
 		this.subscriber = client;
 		client.on('message', (channel: string, message: string) => {
@@ -81,15 +81,15 @@ export class AgentStreamChannel {
 				fallbackValue: null,
 			});
 			if (!batch || typeof batch.queueId !== 'string' || !Array.isArray(batch.entries)) return;
-			this.handler?.(batch);
+			handler(batch);
 		});
 		// ioredis replays SUBSCRIBE on reconnect.
 		await client.subscribe(this.channel);
 	}
 
 	async publish(batch: AgentStreamBatch): Promise<void> {
-		this.publisher ??= await this.createClient();
-		await this.publisher.publish(this.channel, `${batch.queueId}\n${JSON.stringify(batch)}`);
+		const publisher = await this.ensurePublisher();
+		await publisher.publish(this.channel, `${batch.queueId}\n${JSON.stringify(batch)}`);
 	}
 
 	/** False when the publish connection is down, so a stream should not start. */
@@ -116,11 +116,22 @@ export class AgentStreamChannel {
 		}
 		this.subscriber = undefined;
 		this.publisher = undefined;
+		this.publisherPromise = undefined;
 	}
 
 	private async ensurePublisher(): Promise<Redis | Cluster> {
-		this.publisher ??= await this.createClient();
-		return this.publisher;
+		this.publisherPromise ??= this.createClient().then(
+			(client) => {
+				this.publisher = client;
+				return client;
+			},
+			(error: unknown) => {
+				// Let the next publish try again.
+				this.publisherPromise = undefined;
+				throw error;
+			},
+		);
+		return await this.publisherPromise;
 	}
 
 	private async createClient(): Promise<Redis | Cluster> {

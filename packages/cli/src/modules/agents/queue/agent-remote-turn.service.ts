@@ -173,18 +173,15 @@ export class AgentRemoteTurnService {
 				}
 				if (claimedSeenAt === undefined) {
 					if (await this.requests.isPending(requestId)) {
-						if (!(await this.placement.mayFallBack(sentAt, 'request'))) continue;
-						if (await this.claimHere(requestId)) return false;
+						if (await this.takeOverIfDue(requestId, sentAt)) return false;
+						continue;
 					}
 					claimedSeenAt = Date.now();
 					continue;
 				}
 				const lastSign = Math.max(subscription.lastEventAt(), claimedSeenAt);
 				if (Date.now() - lastSign >= AgentRemoteTurnService.RELAY_TIMEOUT_MS) {
-					this.logger.warn('Lost the worker that runs an agent turn', {
-						requestId,
-						kind: payload.kind,
-					});
+					this.lost(requestId, payload.kind);
 					delivery.send({
 						type: 'error',
 						message: 'The agent stopped responding. Reload the chat to see its latest state.',
@@ -195,7 +192,7 @@ export class AgentRemoteTurnService {
 			return true;
 		} finally {
 			subscription.close();
-			if (!keepRow) await this.requests.remove(requestId).catch(() => {});
+			if (!keepRow) await this.removeQuietly(requestId);
 		}
 	}
 
@@ -212,7 +209,9 @@ export class AgentRemoteTurnService {
 		const requestId = await this.create(payload);
 		try {
 			if (!(await this.send(requestId))) {
-				return (await this.claimHere(requestId)) ? { outcome: 'local' } : this.lost(requestId);
+				return (await this.claimHere(requestId))
+					? { outcome: 'local' }
+					: this.lost(requestId, payload.kind);
 			}
 
 			const sentAt = Date.now();
@@ -221,45 +220,48 @@ export class AgentRemoteTurnService {
 				await sleep(AgentRemoteTurnService.POLL_INTERVAL_MS);
 				if (abortSignal.aborted) break;
 				const state = await this.requests.findState(requestId);
-				if (!state) return this.lost(requestId);
+				if (!state) return this.lost(requestId, payload.kind);
 				if (state.result) return { outcome: 'done', result: state.result };
 				if (state.claimedBy === null) {
-					if (!(await this.placement.mayFallBack(sentAt, 'request'))) continue;
-					if (await this.claimHere(requestId)) return { outcome: 'local' };
+					if (await this.takeOverIfDue(requestId, sentAt)) return { outcome: 'local' };
 					continue;
 				}
 				if (Date.now() - ownerCheckedAt < AgentRemoteTurnService.OWNER_CHECK_INTERVAL_MS) continue;
 				ownerCheckedAt = Date.now();
 				const alive = await this.cluster.activeInstanceKeys();
 				// A failed registry read is not a sign of a lost worker.
-				if (alive && !alive.has(state.claimedBy)) return this.lost(requestId);
+				if (alive && !alive.has(state.claimedBy)) return this.lost(requestId, payload.kind);
 			}
 			return { outcome: 'left' };
 		} finally {
-			await this.requests.remove(requestId).catch(() => {});
+			await this.removeQuietly(requestId);
 		}
 	}
 
 	/**
 	 * Send a turn that no caller waits for to a worker. Returns `false` when
-	 * this process must run it in its own way: no worker is up, or the job
-	 * could not be sent. When no worker claims the request in time, this
-	 * process claims it and calls `fallback`. A process that stops before then
-	 * leaves the job to the workers.
+	 * this process must run it in its own way: no worker is up, or the request
+	 * could not be stored or sent. Never throws. When no worker claims the
+	 * request in time, this process claims it and calls `fallback`. A process
+	 * that stops before then leaves the job to the workers.
 	 */
 	async detached(
 		payload: AgentTurnRequestPayload,
 		fallback: () => Promise<void>,
 	): Promise<boolean> {
-		if (!(await this.placement.workersAvailable())) return false;
-
-		const requestId = await this.create(payload);
-		if (!(await this.send(requestId))) {
-			await this.requests.remove(requestId).catch(() => {});
+		try {
+			if (!(await this.placement.workersAvailable())) return false;
+			const requestId = await this.create(payload);
+			if (!(await this.send(requestId))) {
+				await this.removeQuietly(requestId);
+				return false;
+			}
+			void this.fallBackWhenUnclaimed(requestId, payload.kind, fallback);
+			return true;
+		} catch (error) {
+			this.logger.warn('Failed to send an agent turn to a worker', { kind: payload.kind, error });
 			return false;
 		}
-		void this.fallBackWhenUnclaimed(requestId, payload.kind, fallback);
-		return true;
 	}
 
 	/** Wait until a worker claims the request, or this process may take it over. */
@@ -277,7 +279,7 @@ export class AgentRemoteTurnService {
 				await sleep(AgentRemoteTurnService.DETACHED_RECHECK_MS, undefined, { ref: false });
 			}
 			if (!(await this.claimHere(requestId))) return;
-			await this.requests.remove(requestId).catch(() => {});
+			await this.removeQuietly(requestId);
 			await fallback();
 		} catch (error) {
 			this.logger.warn('Failed to run an agent turn that no worker took', {
@@ -300,36 +302,23 @@ export class AgentRemoteTurnService {
 				requestId,
 				kind: payload.kind,
 			});
-			await this.requests.remove(requestId).catch(() => {});
+			await this.removeQuietly(requestId);
 			return;
 		}
 
 		const abort = new AbortController();
 		const stopWatch = this.watchWanted(requestId, abort);
 		const context = { requestId, abortSignal: abort.signal };
+		// The main removes the row of a result turn once it reads the result.
+		let resultStored = false;
 		try {
-			if (handler.mode === 'detached') {
-				try {
-					await handler.run(payload, context);
-				} finally {
-					await this.requests.remove(requestId).catch(() => {});
-				}
-				return;
-			}
 			if (handler.mode === 'result') {
-				const result = await handler.run(payload, context);
-				// The main removes the row once it reads the result.
-				await this.requests.complete(requestId, result);
-				return;
-			}
-			const sender = this.streams.createSender(requestStreamKey(requestId));
-			try {
-				await handler.run(payload, { ...context, send: sender.send });
-			} catch (error) {
-				handler.onError(error, sender.send);
-			} finally {
-				await sender.close();
-				await this.requests.remove(requestId).catch(() => {});
+				await this.requests.complete(requestId, await handler.run(payload, context));
+				resultStored = true;
+			} else if (handler.mode === 'detached') {
+				await handler.run(payload, context);
+			} else {
+				await this.runStream(requestId, handler, payload, context);
 			}
 		} catch (error) {
 			// A result turn reports its own errors. This is a failure to store the
@@ -341,6 +330,24 @@ export class AgentRemoteTurnService {
 			});
 		} finally {
 			stopWatch();
+			// Without a stored result, a removed row tells the main that the turn is lost.
+			if (!resultStored) await this.removeQuietly(requestId);
+		}
+	}
+
+	private async runStream(
+		requestId: string,
+		handler: AgentStreamTurnHandler<Kind>,
+		payload: AgentTurnRequestPayload,
+		context: AgentRemoteTurnContext,
+	): Promise<void> {
+		const sender = this.streams.createSender(requestStreamKey(requestId));
+		try {
+			await handler.run(payload, { ...context, send: sender.send });
+		} catch (error) {
+			handler.onError(error, sender.send);
+		} finally {
+			await sender.close();
 		}
 	}
 
@@ -361,7 +368,6 @@ export class AgentRemoteTurnService {
 	}
 
 	private async create(payload: AgentTurnRequestPayload): Promise<string> {
-		this.removeStaleRequests();
 		const requestId = randomUUID();
 		await this.requests.createPending(requestId, payload);
 		return requestId;
@@ -377,9 +383,21 @@ export class AgentRemoteTurnService {
 		}
 	}
 
-	private lost(requestId: string): AgentRemoteResult {
-		this.logger.warn('Lost the worker that runs an agent turn', { requestId });
+	private lost(requestId: string, kind: Kind): AgentRemoteResult {
+		this.logger.warn('Lost the worker that runs an agent turn', { requestId, kind });
 		return { outcome: 'lost' };
+	}
+
+	/** Claim an unclaimed request for this process once it may stop waiting for a worker. */
+	private async takeOverIfDue(requestId: string, sentAt: number): Promise<boolean> {
+		if (!(await this.placement.mayFallBack(sentAt, 'request'))) return false;
+		return await this.claimHere(requestId);
+	}
+
+	private async removeQuietly(requestId: string): Promise<void> {
+		await this.requests.remove(requestId).catch((error: unknown) => {
+			this.logger.debug('Failed to remove an agent turn request', { requestId, error });
+		});
 	}
 
 	private async claimHere(requestId: string): Promise<boolean> {
@@ -387,7 +405,10 @@ export class AgentRemoteTurnService {
 		return (await this.requests.claim(requestId, claimant)) !== null;
 	}
 
-	/** Remove the rows that a crashed main left behind. No caller waits for them. */
+	/**
+	 * Remove the rows that a crashed process left behind. No caller waits for
+	 * them. The leader runs this on a timer, see `AgentQueueLifecycle`.
+	 */
 	removeStaleRequests(): void {
 		const cutoff = new Date(Date.now() - AgentRemoteTurnService.STALE_REQUEST_MS);
 		this.requests.removeOlderThan(cutoff).catch((error: unknown) => {

@@ -171,7 +171,45 @@ describe('AgentRemoteTurnService', () => {
 		});
 	});
 
+	describe('detached', () => {
+		it('returns false instead of throwing when the request cannot be stored', async () => {
+			const service = setup();
+			requests.createPending.mockRejectedValue(new Error('database unavailable'));
+
+			await expect(service.detached(payload, vi.fn())).resolves.toBe(false);
+		});
+
+		it('removes the row and returns false when the job cannot be sent', async () => {
+			const service = setup();
+			turnQueue.enqueueRequest.mockRejectedValue(new Error('Redis unavailable'));
+
+			await expect(service.detached(payload, vi.fn())).resolves.toBe(false);
+			expect(rows.size).toBe(0);
+		});
+	});
+
 	describe('runRequest', () => {
+		it('removes the row when it cannot store the result, so the main sees a lost turn', async () => {
+			const service = setup({ instanceKey: 'worker-a' });
+			service.handle('webhook-respond', { mode: 'result', run: async () => ({ ok: true }) });
+			requests.complete.mockRejectedValue(new Error('database unavailable'));
+			await requests.createPending('request-1', payload);
+
+			await service.runRequest('request-1');
+
+			expect(rows.size).toBe(0);
+		});
+
+		it('keeps the row of a stored result for the main to read', async () => {
+			const service = setup({ instanceKey: 'worker-a' });
+			service.handle('webhook-respond', { mode: 'result', run: async () => ({ ok: true }) });
+			await requests.createPending('request-1', payload);
+
+			await service.runRequest('request-1');
+
+			expect(rows.get('request-1')?.result).toEqual({ ok: true });
+		});
+
 		it('does nothing when another process claimed the request', async () => {
 			const service = setup({ instanceKey: 'worker-a' });
 			const run = vi.fn();

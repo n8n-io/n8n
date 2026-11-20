@@ -182,28 +182,27 @@ export class AgentWakeService {
 	 * a second wake when two processes try.
 	 */
 	private async startWake(threadId: string): Promise<void> {
-		if (this.placement.dispatchEnabled) {
-			try {
-				if (!(await this.canWakeOnWorker(threadId))) {
-					// Discord and WhatsApp replies need the connection of a main.
-				} else if (!this.cluster.isLeader) {
-					if (await this.placement.workersAvailable()) return;
-				} else if (
-					await this.remoteTurns.detached(
-						{ kind: 'wake', threadId },
-						async () => await this.attemptWake(threadId),
-					)
-				) {
-					return;
-				}
-			} catch (error) {
-				this.logger.warn('Failed to send a background job wake to an agent worker', {
-					threadId,
-					error,
-				});
-			}
-		}
+		if (this.placement.dispatchEnabled && (await this.leftToWorker(threadId))) return;
 		await this.attemptWake(threadId);
+	}
+
+	/** Whether an agent worker, or the leader that sends it the job, delivers this wake. */
+	private async leftToWorker(threadId: string): Promise<boolean> {
+		try {
+			// Discord and WhatsApp replies need the connection of a main.
+			if (!(await this.canWakeOnWorker(threadId))) return false;
+			if (!this.cluster.isLeader) return await this.placement.workersAvailable();
+		} catch (error) {
+			this.logger.warn('Failed to check whether an agent worker can take a wake', {
+				threadId,
+				error,
+			});
+			return false;
+		}
+		return await this.remoteTurns.detached(
+			{ kind: 'wake', threadId },
+			async () => await this.attemptWake(threadId),
+		);
 	}
 
 	/** Whether a worker can deliver the next wake of this thread. */

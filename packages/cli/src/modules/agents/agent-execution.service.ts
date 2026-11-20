@@ -13,6 +13,7 @@ import { AgentsConfig } from '@n8n/config';
 import type { StorageLocation } from '@n8n/blob-storage';
 import { TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { isRecord } from '@n8n/utils/is-record';
 import chunk from 'lodash/chunk';
 import groupBy from 'lodash/groupBy';
@@ -203,6 +204,15 @@ export interface InterruptedExecution {
 	local: boolean;
 }
 
+interface LocalTurn {
+	agentId: string;
+	threadId: string;
+	controller: AbortController;
+	heartbeat: NodeJS.Timeout;
+	/** Stops the turn after `N8N_AGENTS_TURN_TIMEOUT`. */
+	timeout?: NodeJS.Timeout;
+}
+
 /** A stop request that the heartbeat found on the row of a local turn. */
 export interface DurableStopRequest {
 	executionId: string;
@@ -225,10 +235,8 @@ export class AgentExecutionService {
 	 */
 	static readonly heartbeatFailureLimitMs = 90_000;
 
-	private readonly heartbeatTimers = new Map<string, NodeJS.Timeout>();
-
-	/** Thread of each turn that runs in this process, for durable stop requests. */
-	private readonly activeExecutions = new Map<string, { agentId: string; threadId: string }>();
+	/** Turns that run in this process, by execution id. */
+	private readonly localTurns = new Map<string, LocalTurn>();
 
 	private stopRequestHandler?: (request: DurableStopRequest) => void;
 
@@ -239,8 +247,6 @@ export class AgentExecutionService {
 
 	/** Set when this process shuts down. It refuses new turns from then on. */
 	private shuttingDown = false;
-
-	private readonly executionControllers = new Map<string, AbortController>();
 
 	private readonly pendingTimelineSnapshots = new Map<
 		string,
@@ -290,11 +296,8 @@ export class AgentExecutionService {
 		private readonly agentsConfig: AgentsConfig,
 		private readonly queueMetrics: AgentQueueMetrics,
 	) {
-		this.queueMetrics.registerGauges({ localTurns: () => this.heartbeatTimers.size });
+		this.queueMetrics.registerGauges({ localTurns: () => this.localTurns.size });
 	}
-
-	/** Timers that stop turns which run longer than `N8N_AGENTS_TURN_TIMEOUT`. */
-	private readonly turnTimeouts = new Map<string, NodeJS.Timeout>();
 
 	private get turnLocation(): AgentTurnLocation {
 		return this.cluster.isWorker ? 'worker' : 'main';
@@ -506,14 +509,14 @@ export class AgentExecutionService {
 		{ execution, needsTitleSync }: AgentExecutionReservation,
 		params: StartExecutionParams,
 	): void {
-		this.executionControllers.set(execution.id, new AbortController());
-		this.activeExecutions.set(execution.id, {
+		this.localTurns.set(execution.id, {
 			agentId: params.agentId,
 			threadId: params.threadId,
+			controller: new AbortController(),
+			heartbeat: this.startHeartbeat(execution.id),
+			timeout: this.startTurnTimeout(execution.id),
 		});
-		this.startHeartbeat(execution.id);
 		this.metrics.started(execution.id, metricsSubjectOf(params));
-		this.startTurnTimeout(execution.id);
 		this.queueMetrics.record({ type: 'turn-started', location: this.turnLocation });
 		if (needsTitleSync) this.executionsNeedingTitleSync.add(execution.id);
 		this.executionUpdateBroadcaster.notify({
@@ -525,13 +528,13 @@ export class AgentExecutionService {
 	}
 
 	getAbortSignal(executionId: string): AbortSignal {
-		return this.executionControllers.get(executionId)?.signal ?? AbortSignal.abort();
+		return this.localTurns.get(executionId)?.controller.signal ?? AbortSignal.abort();
 	}
 
 	stopExecution(executionId: string): boolean {
-		const controller = this.executionControllers.get(executionId);
-		if (!controller) return false;
-		controller.abort(SESSION_STOPPED_REASON);
+		const turn = this.localTurns.get(executionId);
+		if (!turn) return false;
+		turn.controller.abort(SESSION_STOPPED_REASON);
 		return true;
 	}
 
@@ -556,7 +559,7 @@ export class AgentExecutionService {
 	}
 
 	recordTimelineSnapshot({ executionId, ...snapshot }: TimelineSnapshotParams): void {
-		if (!this.heartbeatTimers.has(executionId)) return;
+		if (!this.localTurns.has(executionId)) return;
 		this.pendingTimelineSnapshots.set(executionId, snapshot);
 		this.ensureTimelineSnapshotWrite(executionId);
 	}
@@ -577,8 +580,8 @@ export class AgentExecutionService {
 	}
 
 	async finalizeExecution(executionId: string, params: RecordMessageParams): Promise<string> {
-		const abortReason: unknown = this.executionControllers.get(executionId)?.signal.reason;
-		this.stopHeartbeat(executionId);
+		const abortReason: unknown = this.localTurns.get(executionId)?.controller.signal.reason;
+		this.releaseLocalTurn(executionId);
 		this.pendingTimelineSnapshots.delete(executionId);
 		const record = applyFatalSessionOutcome(withTimeoutOutcome(params.record, abortReason));
 		const settled = record === params.record ? params : { ...params, record };
@@ -670,7 +673,7 @@ export class AgentExecutionService {
 			);
 		});
 		if (finalized) {
-			const local = this.heartbeatTimers.has(execution.id);
+			const local = this.localTurns.has(execution.id);
 			const notice = this.notifyInterruptedExecution(execution, local).finally(() =>
 				this.interruptNotices.delete(notice),
 			);
@@ -703,14 +706,14 @@ export class AgentExecutionService {
 				} catch (error) {
 					this.logger.warn('Failed to mark an agent execution as interrupted on shutdown', {
 						executionId: execution.id,
-						error: error instanceof Error ? error.message : String(error),
+						error: getErrorMessage(error),
 					});
 				}
 			}
 		} catch (error) {
 			// The sweeper on another process interrupts these rows when this owner is gone.
 			this.logger.warn('Failed to read running agent executions on shutdown', {
-				error: error instanceof Error ? error.message : String(error),
+				error: getErrorMessage(error),
 			});
 		}
 		for (const executionId of executionIds) {
@@ -752,7 +755,7 @@ export class AgentExecutionService {
 		}
 	}
 
-	private startHeartbeat(executionId: string): void {
+	private startHeartbeat(executionId: string): NodeJS.Timeout {
 		const ownerKey = this.cluster.instanceKey;
 		let lastSuccess = Date.now();
 		let stopApplied = false;
@@ -775,7 +778,7 @@ export class AgentExecutionService {
 					this.logger.warn('Failed to heartbeat a running agent execution', {
 						executionId,
 						failingForMs,
-						error: error instanceof Error ? error.message : String(error),
+						error: getErrorMessage(error),
 					});
 					// Fail closed: the sweeper will soon treat this turn as abandoned.
 					if (failingForMs >= AgentExecutionService.heartbeatFailureLimitMs) {
@@ -787,19 +790,24 @@ export class AgentExecutionService {
 				});
 		}, AgentExecutionService.heartbeatIntervalMs);
 		timer.unref();
-		this.heartbeatTimers.set(executionId, timer);
+		return timer;
 	}
 
 	private applyDurableStop(executionId: string, stopRequest: AgentExecutionStopRequest): void {
-		const active = this.activeExecutions.get(executionId);
-		if (!active) return;
+		const turn = this.localTurns.get(executionId);
+		if (!turn) return;
 		this.logger.info('Applying a durable stop request to a running agent execution', {
 			executionId,
 			stopRequest,
 		});
 		try {
 			if (this.stopRequestHandler) {
-				this.stopRequestHandler({ executionId, stopRequest, ...active });
+				this.stopRequestHandler({
+					executionId,
+					stopRequest,
+					agentId: turn.agentId,
+					threadId: turn.threadId,
+				});
 			} else {
 				this.stopExecution(executionId);
 			}
@@ -809,8 +817,8 @@ export class AgentExecutionService {
 	}
 
 	private abortLostExecution(executionId: string, reason: string): void {
-		this.executionControllers.get(executionId)?.abort(new AgentExecutionInterruptedError(reason));
-		this.stopHeartbeat(executionId);
+		this.localTurns.get(executionId)?.controller.abort(new AgentExecutionInterruptedError(reason));
+		this.releaseLocalTurn(executionId);
 	}
 
 	/** A metrics failure must not fail an execution that is already stored. */
@@ -833,12 +841,11 @@ export class AgentExecutionService {
 	 * Stop a turn that runs longer than the configured cap. A turn that parks
 	 * on an approval finishes its execution, so the wait does not count.
 	 */
-	private startTurnTimeout(executionId: string): void {
+	private startTurnTimeout(executionId: string): NodeJS.Timeout | undefined {
 		const timeoutSeconds = this.agentsConfig.turnTimeoutSeconds;
-		if (!timeoutSeconds || timeoutSeconds <= 0) return;
+		if (timeoutSeconds <= 0) return undefined;
 		const timer = setTimeout(() => {
-			this.turnTimeouts.delete(executionId);
-			const controller = this.executionControllers.get(executionId);
+			const controller = this.localTurns.get(executionId)?.controller;
 			if (!controller || controller.signal.aborted) return;
 			this.logger.warn('Stopping an agent execution that ran longer than the time limit', {
 				executionId,
@@ -848,24 +855,23 @@ export class AgentExecutionService {
 			controller.abort(new AgentTurnTimeoutError(timeoutSeconds));
 		}, timeoutSeconds * 1_000);
 		timer.unref();
-		this.turnTimeouts.set(executionId, timer);
+		return timer;
 	}
 
-	private stopHeartbeat(executionId: string): void {
-		const timer = this.heartbeatTimers.get(executionId);
-		if (timer) clearInterval(timer);
-		this.heartbeatTimers.delete(executionId);
-		const timeout = this.turnTimeouts.get(executionId);
-		if (timeout) clearTimeout(timeout);
-		this.turnTimeouts.delete(executionId);
-		this.executionControllers.delete(executionId);
+	/** Stop the timers of a local turn and forget it. */
+	private releaseLocalTurn(executionId: string): void {
+		const turn = this.localTurns.get(executionId);
+		if (turn) {
+			clearInterval(turn.heartbeat);
+			clearTimeout(turn.timeout);
+			this.localTurns.delete(executionId);
+		}
 		this.metrics.stopped(executionId);
-		this.activeExecutions.delete(executionId);
 	}
 
 	/** Ids of the turns that run in this process. */
 	localExecutionIds(): string[] {
-		return [...this.heartbeatTimers.keys()];
+		return [...this.localTurns.keys()];
 	}
 
 	private ensureTimelineSnapshotWrite(executionId: string): void {
@@ -1638,7 +1644,7 @@ export class AgentExecutionService {
 				executionId,
 			});
 		} catch (error) {
-			if (!this.heartbeatTimers.has(executionId)) return false;
+			if (!this.localTurns.has(executionId)) return false;
 			if (!this.pendingTimelineSnapshots.has(executionId)) {
 				this.pendingTimelineSnapshots.set(executionId, snapshot);
 			}

@@ -250,8 +250,7 @@ describe('AgentMessageQueueConsumer', () => {
 			expect(turnQueue.enqueueDrain).toHaveBeenCalledWith('session');
 		});
 
-		it('runs an integration turn on a worker over a send-only bridge', async () => {
-			Object.assign(cluster, { isWorker: true });
+		it('runs an integration turn on a worker over a leased bridge', async () => {
 			const item = claim('session', true);
 			const bridge = mock<AgentChatBridge>();
 			const release = vi.fn();
@@ -260,7 +259,7 @@ describe('AgentMessageQueueConsumer', () => {
 				credentialId: 'credential',
 			});
 			repository.findPublishedConnection.mockResolvedValue(connection);
-			integrations.acquireSendOnlyBridge.mockResolvedValue({ bridge, release });
+			integrations.leaseBridge.mockResolvedValue({ bridge, release });
 			queue.claimNext
 				.mockImplementationOnce(async (_threadId, canConsume) => {
 					expect(await canConsume(item.item, item.thread, {})).toBe(true);
@@ -272,12 +271,7 @@ describe('AgentMessageQueueConsumer', () => {
 			await consumer.drainForJob('session');
 
 			expect(placement.mayClaim).toHaveBeenCalledWith('integration', expect.anything(), 'slack');
-			expect(integrations.acquireSendOnlyBridge).toHaveBeenCalledWith(
-				'agent',
-				'project',
-				connection,
-			);
-			expect(integrations.acquireQueueBridge).not.toHaveBeenCalled();
+			expect(integrations.leaseBridge).toHaveBeenCalledWith('agent', 'project', connection);
 			await vi.waitFor(() => expect(release).toHaveBeenCalledOnce());
 			expect(bridge.consumeQueuedMessage).toHaveBeenCalledWith(
 				item.payload,
@@ -721,9 +715,13 @@ describe('AgentMessageQueueConsumer', () => {
 			expect(repository.findPublishedConnection).not.toHaveBeenCalled();
 			item.item.message.origin = { source: 'slack' };
 			expect(await canConsume(item.item, item.thread, {})).toBe(false);
-			integrations.acquireQueueBridge.mockReturnValue({ bridge: mock<AgentChatBridge>(), release });
+			integrations.leaseBridge.mockResolvedValue({ bridge: mock<AgentChatBridge>(), release });
 			expect(await canConsume(item.item, item.thread, {})).toBe(true);
-			expect(integrations.acquireQueueBridge).toHaveBeenCalledWith('agent', 'slack', 'credential');
+			expect(integrations.leaseBridge).toHaveBeenCalledWith(
+				'agent',
+				'project',
+				expect.objectContaining({ type: 'slack', credentialId: 'credential' }),
+			);
 			checked.resolve();
 			await resume.promise;
 			expect(await canConsume(item.item, item.thread, {})).toBe(false);
@@ -751,14 +749,13 @@ describe('AgentMessageQueueConsumer', () => {
 			repository.findPublishedConnection.mockResolvedValue(
 				mock<AgentIntegrationConfig>({ type: 'slack', credentialId: 'credential' }),
 			);
-			integrations.acquireQueueBridge.mockReturnValue({ bridge, release });
+			integrations.leaseBridge.mockResolvedValue({ bridge, release });
 			bridge.consumeQueuedMessage.mockReturnValue(running.promise);
 			queue.claimNext
 				.mockImplementationOnce(async (_threadId, canConsume) => {
 					expect(await canConsume(item.item, item.thread, {})).toBe(true);
 					// Teardown now refuses new consumers. The admitted consumer keeps its bridge.
-					integrations.acquireQueueBridge.mockReturnValue(undefined);
-					integrations.getBridge.mockReturnValue(undefined);
+					integrations.leaseBridge.mockResolvedValue(undefined);
 					if (outcome === 'claim fails') throw new Error('Commit failed');
 					return item;
 				})

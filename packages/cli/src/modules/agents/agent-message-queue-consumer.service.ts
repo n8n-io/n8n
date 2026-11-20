@@ -210,19 +210,9 @@ export class AgentMessageQueueConsumer {
 					// Removed connections fail the item. A missing or closing bridge leaves it pending.
 					if (!connection) return true;
 
-					// A worker has no ingress connection. It builds a send-only one the
-					// first time, which can take a platform call while the claim waits.
-					lease = this.cluster.isWorker
-						? await this.integrations.acquireSendOnlyBridge(
-								thread.agentId,
-								thread.projectId,
-								connection,
-							)
-						: this.integrations.acquireQueueBridge(
-								thread.agentId,
-								source,
-								item.payload.credentialId,
-							);
+					// On a worker the first lease builds a send-only connection, which
+					// can take a platform call while the claim waits.
+					lease = await this.integrations.leaseBridge(thread.agentId, thread.projectId, connection);
 
 					return lease !== undefined;
 				});

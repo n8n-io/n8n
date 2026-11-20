@@ -52,6 +52,31 @@ export function inheritIntegrationMessageContext(
 	};
 }
 
+/** Reverse `buildIntegrationConnectionId`. A connection without a credential has only a platform. */
+export function parseIntegrationConnectionId(connectionId: string | undefined): {
+	platform?: string;
+	credentialId?: string;
+} {
+	const [platform, credentialId] = connectionId?.split(':') ?? [];
+	return { platform, credentialId };
+}
+
+/**
+ * Where a reply to a stored message goes: the credential of the connection and
+ * the platform thread. Returns `undefined` when the context does not belong to
+ * `integrationType` or has no thread to reply in.
+ */
+export function replyRouteOf(
+	context: IntegrationMessageContext | null | undefined,
+	integrationType: string,
+): { credentialId: string; threadId: string } | undefined {
+	const { platform, credentialId } = parseIntegrationConnectionId(context?.integrationConnectionId);
+	const threadId = (context?.replyTarget ?? context?.target)?.threadId;
+	if (context?.platform !== integrationType || platform !== integrationType) return undefined;
+	if (!credentialId || !threadId) return undefined;
+	return { credentialId, threadId };
+}
+
 export function isIntegrationMessageContext(value: unknown): value is IntegrationMessageContext {
 	if (!isRecord(value)) return false;
 	const context = value;

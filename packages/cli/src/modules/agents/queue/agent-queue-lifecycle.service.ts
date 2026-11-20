@@ -6,6 +6,7 @@ import { HIGHEST_SHUTDOWN_PRIORITY, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 
 import { AgentAppTurnService } from '../agent-app-turn.service';
+import { AgentClusterService } from '../agent-cluster.service';
 import { AgentChatResumeService } from '../agent-chat-resume.service';
 import { AgentMessageQueueConsumer } from '../agent-message-queue-consumer.service';
 import { AgentTaskService } from '../agent-task.service';
@@ -30,10 +31,16 @@ import { AgentTurnQueue } from './agent-turn-queue.service';
  */
 @Service()
 export class AgentQueueLifecycle {
+	/** How often the leader removes turn requests that a crashed process left behind. */
+	static readonly STALE_REQUEST_SWEEP_MS = 10 * 60 * 1_000;
+
 	private advertised?: string;
+
+	private staleRequestSweep?: NodeJS.Timeout;
 
 	constructor(
 		private readonly placement: AgentTurnPlacement,
+		private readonly cluster: AgentClusterService,
 		private readonly turnQueue: AgentTurnQueue,
 		private readonly consumer: AgentMessageQueueConsumer,
 		private readonly remoteTurns: AgentRemoteTurnService,
@@ -62,7 +69,7 @@ export class AgentQueueLifecycle {
 	async startOnMain(): Promise<void> {
 		if (!this.placement.dispatchEnabled) return;
 		await this.turnQueue.init();
-		this.remoteTurns.removeStaleRequests();
+		this.startStaleRequestSweep();
 		await this.advertise(AGENT_QUEUE_DISPATCH_CAPABILITY);
 		this.logger.info('Agent queue mode is on. This main sends agent turns to agent workers.');
 	}
@@ -93,6 +100,8 @@ export class AgentQueueLifecycle {
 	/** Leave the registry first, so that no new turns come here during the drain. */
 	@OnShutdown(HIGHEST_SHUTDOWN_PRIORITY)
 	async stop(): Promise<void> {
+		clearInterval(this.staleRequestSweep);
+		this.staleRequestSweep = undefined;
 		if (!this.advertised) return;
 		const capability = this.advertised;
 		this.advertised = undefined;
@@ -101,6 +110,16 @@ export class AgentQueueLifecycle {
 		} catch (error) {
 			this.logger.warn('Failed to withdraw an agent queue capability', { capability, error });
 		}
+	}
+
+	/** One sweep per cluster is enough, so only the leader deletes. */
+	private startStaleRequestSweep(): void {
+		const sweep = () => {
+			if (this.cluster.isLeader) this.remoteTurns.removeStaleRequests();
+		};
+		sweep();
+		this.staleRequestSweep = setInterval(sweep, AgentQueueLifecycle.STALE_REQUEST_SWEEP_MS);
+		this.staleRequestSweep.unref();
 	}
 
 	private async counted(run: () => Promise<void>): Promise<void> {

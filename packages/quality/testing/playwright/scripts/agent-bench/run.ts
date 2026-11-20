@@ -514,6 +514,8 @@ async function measure(
 	const load = topologyLoad(topology, config);
 	let measuring = false;
 	let nextId = 0;
+	// Keyed by the result object: webhook and workflow turns have no execution ID until `attachDbTimings`.
+	const finishedAt = new Map<TurnResult, number>();
 
 	// Warmup turns show as in flight, but only measured turns go to the history.
 	const observe = (kind: TurnKind): TurnObserver => {
@@ -529,7 +531,11 @@ async function measure(
 			},
 			done: (result) => {
 				live.inflight = live.inflight.filter((t) => t !== turn);
-				if (counted) live.turns.push({ ...result, finishedAt: Date.now() });
+				if (counted) {
+					const at = Date.now();
+					finishedAt.set(result, at);
+					live.turns.push({ ...result, finishedAt: at });
+				}
 				cockpit?.changed();
 			},
 		};
@@ -560,12 +566,8 @@ async function measure(
 	const wallMs = performance.now() - started;
 	await attachDbTimings(stack, client, turns);
 	if (live) {
-		// Same objects order as `turns`; swap in the copies with server timings.
-		const finishedAt = new Map(live.turns.map((t) => [t.executionId, t.finishedAt]));
-		live.turns = turns.map((t) => ({
-			...t,
-			finishedAt: finishedAt.get(t.executionId) ?? Date.now(),
-		}));
+		// Swap in the copies with server timings.
+		live.turns = turns.map((t) => ({ ...t, finishedAt: finishedAt.get(t) ?? Date.now() }));
 	}
 
 	const detached = turns.filter((t) => t.detached).length;
