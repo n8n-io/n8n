@@ -88,7 +88,7 @@ const properties: INodeProperties[] = [
 							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/" target="_blank">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getColumns',
-							loadOptionsDependsOn: ['table.value'],
+							loadOptionsDependsOn: ['database.value', 'table.value'],
 						},
 						default: [],
 					},

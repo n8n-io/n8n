@@ -63,7 +63,7 @@ const properties: INodeProperties[] = [
 			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/" target="_blank">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getColumns',
-			loadOptionsDependsOn: ['schema.value', 'table.value'],
+			loadOptionsDependsOn: ['database.value', 'table.value'],
 		},
 		default: '',
 		hint: "Used to find the correct row to update. Doesn't get changed.",
@@ -111,7 +111,7 @@ const properties: INodeProperties[] = [
 							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/" target="_blank">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getColumnsWithoutColumnToMatchOn',
-							loadOptionsDependsOn: ['schema.value', 'table.value'],
+							loadOptionsDependsOn: ['database.value', 'table.value'],
 						},
 						default: [],
 					},
