@@ -82,6 +82,8 @@ describe('ExecutionLimitUsageFoldStep', () => {
 			await fold(ledgerRow({ mode: 'webhook', source }));
 
 			await expectProjectAndInstanceTotal({ started: expected, blocked: 0 });
+			expect(await usage.count()).toBe(expected);
+			expect(await instanceUsage.count()).toBe(expected);
 		});
 	});
 
@@ -154,7 +156,7 @@ describe('ExecutionLimitUsageFoldStep', () => {
 			}),
 		);
 
-		expect(await usage.find({ order: { day: 'ASC' } })).toEqual([
+		expect(await usage.find({ where: { projectId: 'project-1' }, order: { day: 'ASC' } })).toEqual([
 			expect.objectContaining({ day: '2026-11-19', startedCount: 1, blockedCount: 0 }),
 			expect.objectContaining({ day: '2026-11-20', startedCount: 0, blockedCount: 1 }),
 		]);
