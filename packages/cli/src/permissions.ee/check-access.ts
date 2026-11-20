@@ -96,7 +96,8 @@ export async function userHasScopes(
 	// This is done by finding the projects where the user has a role with at least the required scopes.
 	const userProjectIdsCache = new Map<string, Promise<string[]>>();
 	const getUserProjectIds = async (requiredScopes: Scope[]): Promise<string[]> => {
-		const cacheKey = requiredScopes.join(',');
+		const uniqueScopes = [...new Set(requiredScopes)];
+		const cacheKey = uniqueScopes.join(',');
 		const cached = userProjectIdsCache.get(cacheKey);
 		if (cached) return await cached;
 
@@ -109,10 +110,10 @@ export async function userHasScopes(
 			.innerJoin('relation.role', 'role')
 			.innerJoin('role.scopes', 'scope')
 			.where('relation.userId = :userId', { userId: user.id })
-			.andWhere('scope.slug IN (:...scopes)', { scopes: requiredScopes })
+			.andWhere('scope.slug IN (:...scopes)', { scopes: uniqueScopes })
 			.groupBy('project.id')
 			.having('COUNT(DISTINCT scope.slug) = :scopeCount', {
-				scopeCount: requiredScopes.length,
+				scopeCount: uniqueScopes.length,
 			})
 			.select(['project.id AS id'])
 			.getRawMany()
@@ -246,6 +247,8 @@ export async function userHasScopes(
 		{ prefix: 'project:', type: 'project' },
 	];
 
+	const hasAnyResourceId = Object.values(resourceIds).some(Boolean);
+
 	// A known namespace keeps its resource identity even when the ID is
 	// missing. It must not fall back to an unrelated legacy ID.
 	const resolveScopeResource = (scope: Scope): { type: ResourceType; id?: string } | undefined => {
@@ -271,6 +274,12 @@ export async function userHasScopes(
 		}
 	};
 
+	const throwMissingResourceId = (): never => {
+		throw new UnexpectedError(
+			"`@ProjectScope` decorator was used but does not have a `credentialId`, `workflowId`, `dataTableId`, `agentId`, or `projectId` in its URL parameters. This is likely an implementation error. If you're a developer, please check your URL is correct or that this should be using `@GlobalScope`.",
+		);
+	};
+
 	// Keeps the established behaviour for scopes without a concrete resource
 	// namespace, including empty scope lists.
 	const checkLegacyResource = async (legacyScopes: Scope[]): Promise<boolean> => {
@@ -280,9 +289,7 @@ export async function userHasScopes(
 		if (agentId) return await checkAgent(agentId, legacyScopes);
 		if (projectId) return await checkProject(projectId, legacyScopes);
 
-		throw new UnexpectedError(
-			"`@ProjectScope` decorator was used but does not have a `credentialId`, `workflowId`, `dataTableId`, `agentId`, or `projectId` in its URL parameters. This is likely an implementation error. If you're a developer, please check your URL is correct or that this should be using `@GlobalScope`.",
-		);
+		return throwMissingResourceId();
 	};
 
 	if (scopes.length === 0) {
@@ -300,15 +307,18 @@ export async function userHasScopes(
 		}
 
 		// A known namespace without its own ID is a project-level operation
-		// when the route carries a project ID. Otherwise there is no resource
-		// to authorize, so reject it rather than use an unrelated resource.
+		// when the route carries a project ID. With an unrelated ID present,
+		// reject it rather than use that resource. With no ID at all, keep the
+		// misconfiguration guard.
 		let resource: ResourceCheck;
 		if (resolved.id) {
 			resource = { type: resolved.type, id: resolved.id };
 		} else if (projectId) {
 			resource = { type: 'project', id: projectId };
-		} else {
+		} else if (hasAnyResourceId) {
 			return false;
+		} else {
+			return throwMissingResourceId();
 		}
 		const key = `${resource.type}:${resource.id}`;
 		const group = resourceScopes.get(key);

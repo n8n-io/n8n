@@ -21,7 +21,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { CredentialsFinderService, RoleService } from '@n8n/backend-services';
 import { ModuleRegistry } from '@n8n/backend-common';
-import { NotFoundError } from '@n8n/errors';
+import { NotFoundError, UnexpectedError } from '@n8n/errors';
 
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 
@@ -366,6 +366,30 @@ describe('userHasScopes', () => {
 				expect(agentFindByIdMock).not.toHaveBeenCalled();
 			},
 		);
+
+		it('deduplicates scopes before checking project roles', async () => {
+			mockQueryBuilder.andWhere.mockClear();
+			mockQueryBuilder.having.mockClear();
+
+			const result = await userHasScopes(user, ['credential:read', 'credential:read'], false, {
+				projectId: 'projectId',
+			});
+
+			expect(result).toBe(true);
+			expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith('scope.slug IN (:...scopes)', {
+				scopes: ['credential:read'],
+			});
+			expect(mockQueryBuilder.having).toHaveBeenCalledWith(
+				'COUNT(DISTINCT scope.slug) = :scopeCount',
+				{ scopeCount: 1 },
+			);
+		});
+
+		it('throws the decorator misconfiguration error when no resource IDs are present', async () => {
+			await expect(userHasScopes(user, ['credential:read'], false, {})).rejects.toThrow(
+				UnexpectedError,
+			);
+		});
 
 		it('allows a credential scope on a composite route with valid credential access', async () => {
 			agentFindByIdMock.mockResolvedValue(agent);
