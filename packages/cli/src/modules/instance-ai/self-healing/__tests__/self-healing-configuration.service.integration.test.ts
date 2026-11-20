@@ -21,6 +21,7 @@ import {
 	sqliteMigrations,
 	wrapMigration,
 } from '@n8n/db';
+import { SELF_HEALING_FLAG } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
@@ -514,7 +515,8 @@ it.each([
 		globalConfig.deployment.type = type;
 		const postHog = vi
 			.spyOn(Container.get(PostHogClient), 'getFeatureFlagForInstance')
-			.mockResolvedValue(flag);
+			// Only the self-healing flag has an answer.
+			.mockImplementation(async (name) => (name === SELF_HEALING_FLAG ? flag : undefined));
 		const plan = vi.spyOn(Container.get(License), 'isEnterprisePlan').mockReturnValue(enterprise);
 
 		try {

@@ -170,6 +170,7 @@ describe('isSelfHealingEnabled', () => {
 		{ setting: true, cloudManaged: false, flag: false, plan: 'Community', expected: true },
 		{ setting: true, cloudManaged: false, flag: false, plan: 'Enterprise', expected: false },
 		{ setting: true, cloudManaged: true, flag: false, plan: 'Community', expected: false },
+		{ setting: true, cloudManaged: true, flag: undefined, plan: 'Community', expected: false },
 		{ setting: true, cloudManaged: true, flag: true, plan: 'Community', expected: true },
 		{ setting: true, cloudManaged: true, flag: true, plan: 'Enterprise', expected: false },
 	])(
@@ -180,7 +181,8 @@ describe('isSelfHealingEnabled', () => {
 				'instance-ai': { workflowSuggestionsEnabled: setting, cloudManaged },
 			} as typeof settingsStore.moduleSettings;
 			settingsStore.settings.license = { planName: plan } as typeof settingsStore.settings.license;
-			usePostHog().overrides[SELF_HEALING_FLAG] = { value: flag };
+			// An undefined flag means that PostHog gave no answer.
+			if (flag !== undefined) usePostHog().overrides[SELF_HEALING_FLAG] = { value: flag };
 
 			expect(isSelfHealingEnabled()).toBe(expected);
 		},
