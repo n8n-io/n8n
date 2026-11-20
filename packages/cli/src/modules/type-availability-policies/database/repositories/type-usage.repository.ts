@@ -82,28 +82,31 @@ export class TypeUsageRepository {
 	 */
 	async countNodeTypeUsageByGroup(
 		projectId: string | null,
-		groups: Record<string, string[]>,
+		groups: ReadonlyMap<string, string[]>,
 		ctx: OperationContext,
 	): Promise<NodeTypeUsageResponse> {
-		const members = Object.entries(groups).flatMap(([group, types]) =>
-			types.map((type) => ({ type, group })),
+		if (groups.size === 0) return {};
+
+		const entries = [...groups];
+		const cases = entries.map(
+			(_, index) => `WHEN dependency.dependencyKey IN (:...members${index}) THEN :group${index}`,
 		);
-		const parameters: Record<string, string> = {};
-		const cases = members.map(({ type, group }, index) => {
-			parameters[`member${index}`] = type;
-			parameters[`group${index}`] = group;
-			return `WHEN :member${index} THEN :group${index}`;
-		});
+		const parameters = Object.fromEntries(
+			entries.flatMap(([group, members], index) => [
+				[`members${index}`, members],
+				[`group${index}`, group],
+			]),
+		);
 
 		// The inner query maps each row to its group. The outer query groups by that plain column,
 		// because drivers differ on a GROUP BY over an expression with bound parameters.
 		const rows = this.runningDependencies('nodeType', projectId, ctx)
-			.select(`CASE dependency.dependencyKey ${cases.join(' ')} END`, 'type')
+			.select(`CASE ${cases.join(' ')} END`, 'type')
 			.addSelect('dependency.workflowId', 'workflow_id')
 			.addSelect('workflow.activeVersionId', 'active_version_id')
 			.addSelect('owner.projectId', 'project_id')
 			.andWhere('dependency.dependencyKey IN (:...members)', {
-				members: members.map(({ type }) => type),
+				members: entries.flatMap(([, members]) => members),
 			})
 			.setParameters(parameters);
 

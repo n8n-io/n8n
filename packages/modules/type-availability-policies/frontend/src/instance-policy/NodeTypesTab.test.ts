@@ -12,6 +12,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useInstancePolicyStore } from './instance-policy.store';
 import NodeTypesTab from './NodeTypesTab.vue';
 import { findPopupItem, MENU_ITEM } from '../__tests__/popups';
+import { policyTableCells } from '../__tests__/table';
 import type { InstancePolicy, NodeTypeSummary } from '../type-availability-policies.api';
 import { useTypeAvailabilityPoliciesStore } from '../type-availability-policies.store';
 
@@ -77,15 +78,7 @@ const setup = async (arrangeTabReads?: () => void) => {
 	return renderTab({ pinia });
 };
 
-const accessCell = (getByTestId: (id: string) => HTMLElement, name = SLACK) =>
-	getByTestId(`instance-policy-access-${name}`);
-
-// Projects, Uses, Workflows and Active workflows. The cells before them are Name and Access.
-const usageCells = (getByTestId: (id: string) => HTMLElement, name = SLACK) =>
-	within(accessCell(getByTestId, name).closest('tr') as HTMLElement)
-		.getAllByRole('cell')
-		.slice(2)
-		.map((cell) => cell.textContent?.trim());
+const { accessCell, usageCells } = policyTableCells(SLACK);
 
 const restrict = async (getByTestId: (id: string) => HTMLElement, name = SLACK) => {
 	await userEvent.click(accessCell(getByTestId, name));
@@ -103,42 +96,14 @@ describe('NodeTypesTab', () => {
 		} satisfies NodeTypeUsageResponse);
 	});
 
-	it('shows the usage of each node type', async () => {
-		const { findByText, getByTestId } = await setup();
-
-		await findByText('Slack');
-		await waitFor(() => expect(usageCells(getByTestId)).toEqual(['1', '3', '2', '1']));
-		expect(mocks.fetchNodeTypeUsage).toHaveBeenCalledTimes(1);
-	});
-
-	it('shows 0 usage for a node type that no workflow uses', async () => {
+	// `useTypeUsage.test.ts` covers the loading and failure states.
+	it('shows the usage of each node type, and 0 for a node type that no workflow uses', async () => {
 		const { findByText, getByTestId } = await setup();
 
 		await findByText('Slack Trigger');
-		await waitFor(() =>
-			expect(usageCells(getByTestId, SLACK_TRIGGER)).toEqual(['0', '0', '0', '0']),
-		);
-	});
-
-	it('shows no usage value while the usage loads', async () => {
-		const usage = createDeferredPromise<NodeTypeUsageResponse>();
-		mocks.fetchNodeTypeUsage.mockReturnValue(usage.promise);
-		const { findByText, getByTestId } = await setup();
-
-		await findByText('Slack');
-		expect(usageCells(getByTestId)).toEqual(['—', '—', '—', '—']);
-
-		usage.resolve({});
-		await waitFor(() => expect(usageCells(getByTestId)).toEqual(['0', '0', '0', '0']));
-	});
-
-	it('shows the rows with no usage value when the usage does not load', async () => {
-		mocks.fetchNodeTypeUsage.mockRejectedValue(new Error('offline'));
-		const { findByText, getByTestId } = await setup();
-
-		await findByText('Slack');
-		await waitFor(() => expect(mocks.fetchNodeTypeUsage).toHaveBeenCalled());
-		expect(usageCells(getByTestId)).toEqual(['—', '—', '—', '—']);
+		await waitFor(() => expect(usageCells(getByTestId)).toEqual(['1', '3', '2', '1']));
+		expect(usageCells(getByTestId, SLACK_TRIGGER)).toEqual(['0', '0', '0', '0']);
+		expect(mocks.fetchNodeTypeUsage).toHaveBeenCalledTimes(1);
 	});
 
 	it('gives a node type and its trigger a row each, with their access', async () => {

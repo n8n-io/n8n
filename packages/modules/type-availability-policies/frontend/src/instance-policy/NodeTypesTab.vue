@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { NodeTypeUsageResponse, TypeUsage } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, onMounted, shallowRef } from 'vue';
@@ -9,6 +8,7 @@ import { FALLBACK_NODE_TYPE_ICON, nodeTypeIcon } from './nodeTypeIcon';
 import { setTypeAccess } from './setTypeAccess';
 import { useInstancePolicy } from './useInstancePolicy';
 import { useInstanceTypeAccess } from './useInstanceTypeAccess';
+import { useTypeUsage } from './useTypeUsage';
 import { useAppliedTheme } from '../composables/useAppliedTheme';
 import {
 	fetchNodeTypeSummaries,
@@ -16,18 +16,15 @@ import {
 	type NodeTypeSummary,
 } from '../type-availability-policies.api';
 
-const NO_USAGE: TypeUsage = { uses: 0, workflows: 0, activeWorkflows: 0, projects: 0 };
-
 const i18n = useI18n();
 const rootStore = useRootStore();
 const theme = useAppliedTheme();
 const instancePolicy = useInstancePolicy();
+const typeUsage = useTypeUsage(async () => await fetchNodeTypeUsage(rootStore.restApiContext));
 const { types, loading, changeAccess } = useInstanceTypeAccess('node', setTypeAccess);
 
 // `null` until the summaries load. Until then the tab cannot tell hidden node types from rows.
 const typeSummaries = shallowRef<ReadonlyMap<string, NodeTypeSummary> | null>(null);
-// `null` until the usage loads, or when it does not load. Then the usage cells show no value.
-const usage = shallowRef<NodeTypeUsageResponse | null>(null);
 
 // Kept apart from the rows, so that a change of access does not resolve every icon again.
 const decorations = computed(() => {
@@ -72,7 +69,7 @@ const rows = computed<InstancePolicyTableRow[]>(() => {
 					displayName: type.name,
 					icon: FALLBACK_NODE_TYPE_ICON,
 				}),
-				usage: usage.value === null ? null : (usage.value[type.name] ?? NO_USAGE),
+				usage: typeUsage.usageOf(type.name),
 			}))
 	);
 });
@@ -87,16 +84,8 @@ async function loadSummaries() {
 	}
 }
 
-async function loadUsage() {
-	try {
-		usage.value = await fetchNodeTypeUsage(rootStore.restApiContext);
-	} catch {
-		// The usage cells show no value instead.
-	}
-}
-
 onMounted(async () => {
-	await Promise.all([loadSummaries(), loadUsage()]);
+	await Promise.all([loadSummaries(), typeUsage.load()]);
 });
 </script>
 

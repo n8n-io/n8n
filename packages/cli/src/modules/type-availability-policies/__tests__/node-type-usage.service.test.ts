@@ -43,16 +43,17 @@ describe('NodeTypeUsageService', () => {
 				: { baseName: name, isSyntheticTool: false },
 		);
 		transactionRunner.run.mockImplementation(async (_context, fn) => await fn(ctx));
+		repository.countNodeTypeUsageByGroup.mockResolvedValue({});
 	});
 
-	it('returns the literal counts and skips the grouped query when no tool variant is in use', async () => {
+	it('returns the literal counts and groups nothing when no tool variant is in use', async () => {
 		const literal = { [GMAIL]: usage(2), [REAL_TOOL]: usage(1) };
 		repository.countNodeTypeUsage.mockResolvedValue(literal);
 
 		await expect(service.getUsage(null)).resolves.toEqual(literal);
 
 		expect(repository.countNodeTypeUsage).toHaveBeenCalledWith(null, ctx);
-		expect(repository.countNodeTypeUsageByGroup).not.toHaveBeenCalled();
+		expect(repository.countNodeTypeUsageByGroup).toHaveBeenCalledWith(null, new Map(), ctx);
 	});
 
 	it('reads in one read-only transaction', async () => {
@@ -62,7 +63,6 @@ describe('NodeTypeUsageService', () => {
 
 		expect(transactionRunner.run).toHaveBeenCalledWith({}, expect.any(Function), {
 			readOnly: true,
-			isolationLevel: 'SERIALIZABLE',
 		});
 	});
 
@@ -79,7 +79,7 @@ describe('NodeTypeUsageService', () => {
 
 		expect(repository.countNodeTypeUsageByGroup).toHaveBeenCalledWith(
 			'project-id',
-			{ [GMAIL]: [GMAIL, GMAIL_TOOL, GMAIL_HITL_TOOL] },
+			new Map([[GMAIL, [GMAIL, GMAIL_TOOL, GMAIL_HITL_TOOL]]]),
 			ctx,
 		);
 		expect(result).toEqual({
@@ -98,7 +98,7 @@ describe('NodeTypeUsageService', () => {
 
 		expect(repository.countNodeTypeUsageByGroup).toHaveBeenCalledWith(
 			null,
-			{ [SLACK]: [SLACK, SLACK_TOOL] },
+			new Map([[SLACK, [SLACK, SLACK_TOOL]]]),
 			ctx,
 		);
 		expect(result).toEqual({ [SLACK]: usage(1), [SLACK_TOOL]: usage(1) });
@@ -109,13 +109,15 @@ describe('NodeTypeUsageService', () => {
 			toStringTool: usage(1),
 			constructorTool: usage(1),
 		});
-		repository.countNodeTypeUsageByGroup.mockResolvedValue({});
 
 		await service.getUsage(null);
 
 		expect(repository.countNodeTypeUsageByGroup).toHaveBeenCalledWith(
 			null,
-			{ toString: ['toString', 'toStringTool'], constructor: ['constructor', 'constructorTool'] },
+			new Map([
+				['toString', ['toString', 'toStringTool']],
+				['constructor', ['constructor', 'constructorTool']],
+			]),
 			ctx,
 		);
 	});

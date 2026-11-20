@@ -24,39 +24,35 @@ export class NodeTypeUsageService {
 	) {}
 
 	async getUsage(projectId: string | null): Promise<NodeTypeUsageResponse> {
-		// Both reads see one snapshot, so the entry of a base type and the entries of its variants
-		// agree. SQLite supports only `SERIALIZABLE`, and on Postgres it gives the one snapshot too.
+		// On SQLite, both reads see one snapshot. Postgres can serve a read-only transaction from a
+		// replica, which rejects `SERIALIZABLE`, so there each read sees its own snapshot.
 		return await this.transactionRunner.run(
 			{},
 			async (ctx) => {
 				const usage = await this.typeUsageRepository.countNodeTypeUsage(projectId, ctx);
-
-				const groups = this.groupVariantsByBaseType(Object.keys(usage));
-				if (Object.keys(groups).length === 0) return usage;
-
 				const grouped = await this.typeUsageRepository.countNodeTypeUsageByGroup(
 					projectId,
-					groups,
+					this.groupVariantsByBaseType(Object.keys(usage)),
 					ctx,
 				);
 
 				return { ...usage, ...grouped };
 			},
-			{ readOnly: true, isolationLevel: 'SERIALIZABLE' },
+			{ readOnly: true },
 		);
 	}
 
 	/**
 	 * Maps each base type that has a variant in use to the base type and its variants. A variant
-	 * goes with the base type that a `name` rule matches it by.
+	 * goes with the base type that a `name` rule matches it by. A Map, because a type name from a
+	 * stored workflow can be an `Object.prototype` key.
 	 */
-	private groupVariantsByBaseType(types: string[]): Record<string, string[]> {
+	private groupVariantsByBaseType(types: string[]): Map<string, string[]> {
 		const policedType = policedTypeFor(
 			NODE_TYPES_KIND,
 			this.nodeTypes,
 			this.loadNodesAndCredentials,
 		);
-		// A Map, because a type name from a stored workflow can be an `Object.prototype` key.
 		const groups = new Map<string, string[]>();
 		for (const type of types) {
 			const { baseName } = policedType(type);
@@ -65,6 +61,6 @@ export class NodeTypeUsageService {
 			group.push(type);
 			groups.set(baseName, group);
 		}
-		return Object.fromEntries(groups);
+		return groups;
 	}
 }
