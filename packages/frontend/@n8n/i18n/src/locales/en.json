@@ -11179,7 +11179,6 @@
 	"promotions.preview.state.disconnected.admin": "Set it up in the promotion settings.",
 	"promotions.preview.state.disconnected.member": "Ask an admin to set it up.",
 	"promotions.preview.state.disconnected.action": "Open promotion settings",
-	"promotions.preview.state.connectionFailed": "Couldn't check the instance connection",
 	"promotions.preview.state.error": "Couldn't load the changes",
 	"promotions.preview.state.retry": "Try again",
 	"promotions.preview.change.added": "New",

@@ -2324,6 +2324,7 @@ describe('Promotions in Public API', () => {
 			const preview = {
 				commitSha: 'a'.repeat(40),
 				source: { environmentId: 'env1', branchName: 'main' },
+				environment: { name: 'Production', providerType: 'git' as const },
 				resources: [],
 				dependencies: [],
 				revision: 'b'.repeat(64),
