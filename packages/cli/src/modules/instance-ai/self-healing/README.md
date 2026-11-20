@@ -74,6 +74,9 @@ It checks current access before it reads and compiles the candidate against the 
 The workflow ID selects the baseline. The run tries to admit a workflow that is not a target yet.
 A workflow that the run cannot admit fails validation. The error gives the reason.
 The file must declare the same workflow ID. Otherwise, validation fails with `candidate_workflow_mismatch`.
+The candidate keeps the settings of the baseline, so it runs on the engine of the baseline.
+Validation checks the candidate for that engine. When the file sets another `engineType`,
+validation fails with `candidate_engine_changed`.
 With `validationOnly: true`, it returns structural checks without execution.
 For execution checks, the agent selects the failed trigger and supplies its test input.
 The tool passes these options to the existing verification runner. Each call tests one trigger.
