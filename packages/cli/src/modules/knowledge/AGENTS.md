@@ -7,7 +7,7 @@ Guidance for the knowledge module (`packages/cli/src/modules/knowledge`). See th
 The module owns knowledge for Agents: uploaded files and their retrieval, and external vector-store connections. The implementation moved here from `packages/cli/src/modules/agents/` in P0 of the plan, with no user-facing change. The agents module is the only consumer today. Background and decisions: [Knowledge module plan](https://app.notion.com/p/3f85b6e0c94f8147b598e8bb4508ac86) (internal).
 
 - `files/` holds uploaded-file knowledge: the file store (`init()` wires it to the configured blob backends), `KnowledgeFileService` (upload, list, delete; scope-based), the upload middleware, the storage naming helpers and the upload error.
-- `entities/` holds `KnowledgeFile` (table `agent_files`); `repositories/` holds its repository.
+- `entities/` holds `AgentFile` (table `agent_files`) and the collection entities: `KnowledgeCollection`, `SharedKnowledgeCollection`, `KnowledgeFile` (table `knowledge_file`), `KnowledgeVectorStore` and `AgentKnowledgeDependency`. Code in this module imports them from `entities/index.ts`, and a new entity goes there too. No code reads or writes the collection tables yet. `repositories/` holds the repository of `AgentFile`.
 - `retrieval/` holds the sandbox mirror (`KnowledgeMirrorService`), the shell commands and their parsers, the request and result schemas, and `KnowledgeRetrievalService`, the entry point for consumers.
 - `vector-stores/` holds vector-store construction, embedding credential resolution, the connection test and the error sanitiser. Agents calls them and supplies the credential provider.
 - `telemetry/` holds the helpers that the knowledge telemetry events share.
@@ -28,7 +28,7 @@ Vector-store operations use a caller-supplied `CredentialProvider` from `@n8n/ag
 
 ### What a consumer imports
 
-There is no barrel. A consumer imports by path (`@/modules/knowledge/...`) and never re-exports a symbol of this module. The agents module uses this surface today:
+There is no barrel for the module. A consumer imports by path (`@/modules/knowledge/...`) and never re-exports a symbol of this module. The agents module uses this surface today:
 
 - Availability: `knowledge-availability.service.ts`, before every knowledge call.
 - The boundary: `knowledge-consumer-scope.ts`, `knowledge-retriever.ts`, `knowledge-sandbox-provider.ts` and `knowledge-sandbox-provider-proxy.ts` (to register its adapter).
@@ -68,10 +68,11 @@ vector-stores/                           external vector-store connections, conn
 - Add an `@Env` property only in the PR that reads it: its JSDoc is exported to the public environment variable reference, so a variable must not appear there before it does something. Follow the `n8n:env-var-docs` skill.
 - The upload limits live in `knowledge.config.ts` (`KnowledgeConfig`, the `N8N_KNOWLEDGE_*` variables; the size limits are integer megabytes, the file count is a plain number). The upload middleware and the file service read them, and `settings()` exposes them to the editor as `moduleSettings.knowledge.limits` in bytes and counts, so the editor rejects an upload with the same limits before the request. A limit shows in a message as whole megabytes below one gigabyte and as gigabytes from there on (`formatMbOrGb` in `@n8n/utils`), on both sides. The defaults equal the constants in `@n8n/api-types`, which the editor falls back to while the module is off. A new limit goes into the same class with the same prefix; never rename a variable, because operators configure it.
 - Log with `logger.scoped('knowledge')`.
+- A database cascade removes `knowledge_file` rows, but never their stored bytes. Three paths do this: a project delete, an agent delete (through its private collection) and a collection delete. A project delete covers the collections that it owns and the private collections of its agents. The cascade also runs while the module or the collections flag is off: extend the cleanup of #44256 to `knowledge_file`. The code that writes the first `knowledge_file` row deletes the bytes before each path, and runs collection writes inside the project-deletion fence, as `AgentKnowledgeService` does for `agent_files`. The `down()` of `CreateKnowledgeCollectionTables` drops the tables and leaves the bytes in storage, because no module code runs before a migration revert.
 
 ## Disabled module
 
-`N8N_DISABLED_MODULES=knowledge` skips the module's `init()` and `entities()`. `KnowledgeFile` is then not registered with TypeORM while the `agent_files` table still exists, and an unguarded `KnowledgeFileRepository` call fails with a metadata error. The guards below keep every caller away from the repository while the module is off.
+`N8N_DISABLED_MODULES=knowledge` skips the module's `init()` and `entities()`. `AgentFile` is then not registered with TypeORM while the `agent_files` table still exists, and an unguarded `KnowledgeFileRepository` call fails with a metadata error. The guards below keep every caller away from the repository while the module is off.
 
 `knowledge-availability.service.ts` (`KnowledgeAvailabilityService`) is the one place that answers whether knowledge is available: `isModuleActive()` and `isFileKnowledgeEnabled()` (module active and sandbox on). Every consumer asks it before a knowledge call, derives its own flags from it, and raises the error that fits its own surface. The check runs at two levels on purpose: the controllers answer the user with the same 404 as the sandbox gate, and the facade protects the callers that bypass the controllers, today the deletion cascades. With the module off:
 

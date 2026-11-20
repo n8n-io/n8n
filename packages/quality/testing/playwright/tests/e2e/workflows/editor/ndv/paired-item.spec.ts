@@ -6,6 +6,7 @@ test.describe(
 		annotation: [{ type: 'owner', description: 'NODES' }],
 	},
 	() => {
+		// TODO(CET-315): two branches feed one input, which engine v2 refuses until edge concatenation lands.
 		test('maps paired input and output items @engine:v2-pending', async ({ n8n }) => {
 			await n8n.start.fromImportedWorkflow('multi-branch-data-transform.json');
 			await n8n.canvas.clickZoomToFitButton();
@@ -78,6 +79,7 @@ test.describe(
 			);
 		});
 
+		// TODO(CET-315): two branches feed one input, which engine v2 refuses until edge concatenation lands.
 		test('maps paired input and output items based on selected input node @engine:v2-pending', async ({
 			n8n,
 		}) => {
@@ -118,6 +120,7 @@ test.describe(
 			await expect(n8n.ndv.getParameterExpressionPreviewValue()).toContainText('1111');
 		});
 
+		// TODO(CET-315): two branches feed one input, which engine v2 refuses until edge concatenation lands.
 		test('maps paired input and output items based on selected run @engine:v2-pending', async ({
 			n8n,
 		}) => {
@@ -181,6 +184,7 @@ test.describe(
 			);
 		});
 
+		// TODO(CET-315): two branches feed one input, which engine v2 refuses until edge concatenation lands.
 		test('can pair items between input and output across branches and runs @engine:v2-pending', async ({
 			n8n,
 		}) => {
@@ -249,6 +253,7 @@ test.describe(
 			await expect(n8n.ndv.outputPanel.getHoveringItems()).toContainText('8888');
 		});
 
+		// TODO(CET-1206): engine v2 does not add the links that a Code node leaves out of its output.
 		test('should auto-fix pairedItem when multiple inputs create single output @engine:v2-pending', async ({
 			n8n,
 		}) => {
@@ -260,6 +265,7 @@ test.describe(
 			await expect(n8n.ndv.outputPanel.get()).toContainText('Jay Gatsby');
 		});
 
+		// TODO(CET-315): two branches feed one input, which engine v2 refuses until edge concatenation lands.
 		test('can resolve expression with paired item in multi-input node @engine:v2-pending', async ({
 			n8n,
 		}) => {

@@ -6,6 +6,7 @@ import { ResourceAdmission } from '@n8n/inbound-auth';
 import type { SecurityContext } from '@n8n/permissions';
 import type { NextFunction, Request, Response } from 'express';
 import { LRUCache } from 'lru-cache';
+import { ExecutionContextService } from 'n8n-core';
 import { createHash, randomBytes } from 'node:crypto';
 
 import { appCookieName, appCookieOptions, readCookie } from './app-cookies';
@@ -25,7 +26,7 @@ export interface AppRequest extends Request {
 }
 
 export type AppAdmission =
-	| { ok: true; app: App; security: SecurityContext }
+	| { ok: true; app: App; security: SecurityContext; token: string }
 	| { ok: false; app: App; reason: 'unauthenticated' | 'insufficient_scope' };
 
 type CachedAdmission = { app: App; security: SecurityContext };
@@ -48,6 +49,7 @@ export class AppAuthService {
 		private readonly admission: ResourceAdmission,
 		private readonly urls: UrlService,
 		private readonly jwt: JwtService,
+		private readonly executionContext: ExecutionContextService,
 	) {}
 
 	async requireApp(req: Request, appId?: string): Promise<App> {
@@ -64,7 +66,7 @@ export class AppAuthService {
 		const token = readCookie(req, appCookieName(this.hosts.baseUrl, 'session')) ?? '';
 		const cacheKey = `${this.hosts.namespace(req)}:${this.hash(token)}`;
 		const cached = token ? this.admitted.get(cacheKey) : undefined;
-		if (cached) return { ok: true, ...cached };
+		if (cached) return { ok: true, ...cached, token };
 
 		const app = await this.requireApp(req);
 		if (!token) return { ok: false, app, reason: 'unauthenticated' };
@@ -78,13 +80,23 @@ export class AppAuthService {
 		if (result.ok) {
 			const admitted = { app, security: result.context };
 			this.admitted.set(cacheKey, admitted, { ttl: this.admissionTtl(token) });
-			return { ok: true, ...admitted };
+			return { ok: true, ...admitted, token };
 		}
 		return {
 			ok: false,
 			app,
 			reason: result.reason === 'insufficient_scope' ? 'insufficient_scope' : 'unauthenticated',
 		};
+	}
+
+	/** Seals the user ID too, so the run resolves credentials after the session token expires. */
+	async sealVisitor(app: App, token: string, userId: string): Promise<string> {
+		return await this.executionContext.buildTriggerIdentityCredentials(
+			token,
+			this.hosts.callbackUrl(app),
+			this.resources.grantFor(app),
+			userId,
+		);
 	}
 
 	async authenticate(req: AppRequest, res: Response, next: NextFunction): Promise<void> {

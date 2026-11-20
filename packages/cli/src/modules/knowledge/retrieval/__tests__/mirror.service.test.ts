@@ -8,7 +8,7 @@ import type { Logger } from '@n8n/backend-common';
 import type { AgentsConfig } from '@n8n/config';
 import { mock } from 'vitest-mock-extended';
 
-import type { KnowledgeFile } from '../../entities/knowledge-file.entity';
+import type { AgentFile } from '../../entities';
 import type { KnowledgeFileStore } from '../../files/knowledge-file-store';
 import { getKnowledgeMirrorPaths } from '../../files/storage-naming';
 import type { KnowledgeConsumerScope } from '../../knowledge-consumer-scope';
@@ -27,7 +27,7 @@ type TestWorkspaceSandbox = WorkspaceSandbox & { provider: SandboxProvider } & R
 		Pick<WorkspaceSandbox, 'executeCommand'>
 	>;
 
-function makeKnowledgeFile(overrides: Partial<KnowledgeFile> = {}): KnowledgeFile {
+function makeAgentFile(overrides: Partial<AgentFile> = {}): AgentFile {
 	const id = overrides.id ?? 'file-id';
 	const fileName = overrides.fileName ?? 'file.txt';
 	return {
@@ -41,7 +41,7 @@ function makeKnowledgeFile(overrides: Partial<KnowledgeFile> = {}): KnowledgeFil
 		createdAt: new Date('2024-01-01T00:00:00.000Z'),
 		updatedAt: new Date('2024-01-01T00:00:00.000Z'),
 		...overrides,
-	} as KnowledgeFile;
+	} as AgentFile;
 }
 
 function makeKnowledgeFileStore(): ReturnType<typeof mock<KnowledgeFileStore>> {
@@ -151,7 +151,7 @@ describe('KnowledgeMirrorService', () => {
 			.mockResolvedValueOnce(undefined)
 			.mockRejectedValueOnce(new Error('project is being deleted'));
 		const fileRepository = mock<KnowledgeFileRepository>();
-		fileRepository.findByAgentId.mockResolvedValue([makeKnowledgeFile()]);
+		fileRepository.findByAgentId.mockResolvedValue([makeAgentFile()]);
 		const service = makeService({ sandboxProviderProxy, fileRepository });
 		service.syncMirrorInBackground(scope, assertWritable);
 		await vi.waitFor(() => expect(sandboxProviderProxy.destroy).toHaveBeenCalledWith(scope));
@@ -167,13 +167,13 @@ describe('KnowledgeMirrorService', () => {
 
 	describe('findFiles', () => {
 		const fixtureFiles = [
-			makeKnowledgeFile({ id: 'file-alpha', fileName: 'alpha.pdf' }),
-			makeKnowledgeFile({ id: 'file-bravo', fileName: 'bravo.pdf' }),
-			makeKnowledgeFile({ id: 'file-charlie', fileName: 'charlie.txt' }),
-			makeKnowledgeFile({ id: 'file-delta', fileName: 'delta.md' }),
+			makeAgentFile({ id: 'file-alpha', fileName: 'alpha.pdf' }),
+			makeAgentFile({ id: 'file-bravo', fileName: 'bravo.pdf' }),
+			makeAgentFile({ id: 'file-charlie', fileName: 'charlie.txt' }),
+			makeAgentFile({ id: 'file-delta', fileName: 'delta.md' }),
 		];
 
-		function makeGlobService(files: KnowledgeFile[] = fixtureFiles): KnowledgeMirrorService {
+		function makeGlobService(files: AgentFile[] = fixtureFiles): KnowledgeMirrorService {
 			const fileRepository = mock<KnowledgeFileRepository>();
 			fileRepository.findByAgentId.mockResolvedValue(files);
 			return makeService({ sandboxProviderProxy, fileRepository });
@@ -225,8 +225,8 @@ describe('KnowledgeMirrorService', () => {
 
 		it('matches regex metacharacters in the pattern literally', async () => {
 			const service = makeGlobService([
-				makeKnowledgeFile({ id: 'file-grouped', fileName: 'report(v1).pdf' }),
-				makeKnowledgeFile({ id: 'file-plain', fileName: 'reportv1-pdf' }),
+				makeAgentFile({ id: 'file-grouped', fileName: 'report(v1).pdf' }),
+				makeAgentFile({ id: 'file-plain', fileName: 'reportv1-pdf' }),
 			]);
 
 			const result = await service.findFiles(scope, {
@@ -247,7 +247,7 @@ describe('KnowledgeMirrorService', () => {
 		it('propagates glob matching timeouts', async () => {
 			const service = makeGlobService(
 				Array.from({ length: 200 }, (_, index) =>
-					makeKnowledgeFile({
+					makeAgentFile({
 						id: `file-quarterly-${index}`,
 						fileName: `quarterly-knowledge-${index}.pdf`,
 					}),
@@ -276,8 +276,8 @@ describe('KnowledgeMirrorService', () => {
 			return command.startsWith('cat ') && command.includes('/manifest');
 		}
 
-		function makeMirrorFile(id: string, fileName: string): KnowledgeFile {
-			return makeKnowledgeFile({ id, fileName });
+		function makeMirrorFile(id: string, fileName: string): AgentFile {
+			return makeAgentFile({ id, fileName });
 		}
 
 		function makeMirrorService({
@@ -368,7 +368,7 @@ describe('KnowledgeMirrorService', () => {
 				makeCommandResult(isManifestReadCommand(command) ? 'file-id\tfile.txt\n' : '0\t1\thello\n'),
 			);
 			const fileRepository = mock<KnowledgeFileRepository>();
-			fileRepository.findByAgentId.mockResolvedValue([makeKnowledgeFile()]);
+			fileRepository.findByAgentId.mockResolvedValue([makeAgentFile()]);
 			const service = makeMirrorService({ fileRepository });
 
 			const result = await service.readFile(scope, { file: 'file.txt' });

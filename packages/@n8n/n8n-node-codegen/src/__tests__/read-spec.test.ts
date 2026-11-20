@@ -133,6 +133,7 @@ describe('readSpec', () => {
 					tag: workflow,
 					deprecated: false,
 					paginated: false,
+					emptyResponse: false,
 					parameters: [
 						{
 							name: 'name',
@@ -160,6 +161,7 @@ describe('readSpec', () => {
 					tag: executions,
 					deprecated: false,
 					paginated: false,
+					emptyResponse: true,
 					parameters: [
 						{
 							name: 'id',
@@ -179,6 +181,7 @@ describe('readSpec', () => {
 					tag: workflow,
 					deprecated: false,
 					paginated: true,
+					emptyResponse: false,
 					parameters: [
 						{
 							name: 'name',
@@ -187,6 +190,13 @@ describe('readSpec', () => {
 							deprecated: false,
 							schema: { type: 'string' },
 							description: 'Only workflows with this name.',
+						},
+						{
+							name: 'limit',
+							location: 'query',
+							required: false,
+							deprecated: false,
+							schema: { type: 'number' },
 						},
 					],
 					blockers: [],
@@ -234,6 +244,15 @@ describe('readSpec', () => {
 		});
 
 		expect(operation.parameters.map((parameter) => parameter.schema)).toEqual([schema, schema]);
+	});
+
+	it('should mark only an operation with a successful response and no body as an empty response', () => {
+		expect(readOperation({ responses: { '204': { description: 'Deleted' } } }).emptyResponse).toBe(
+			true,
+		);
+		expect(
+			readOperation({ responses: { '404': { description: 'Not found' } } }).emptyResponse,
+		).toBe(false);
 	});
 
 	it('should keep a limit parameter when the operation has no cursor', () => {

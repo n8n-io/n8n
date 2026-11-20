@@ -1,4 +1,5 @@
 import { isSensitiveKey } from '@n8n/utils/redaction/sensitive-key';
+import { escapeXmlAttribute } from '@n8n/utils/string/escape-xml';
 
 import { renderObservationLog } from './observation-log-renderer';
 import { reportSideCallUsage } from './forward-usage';
@@ -587,14 +588,6 @@ function safeJsonStringify(value: unknown): string {
 	} catch {
 		return JSON.stringify('[unserializable]');
 	}
-}
-
-function escapeXmlAttribute(value: string): string {
-	return value
-		.replace(/&/g, '&amp;')
-		.replace(/"/g, '&quot;')
-		.replace(/</g, '&lt;')
-		.replace(/>/g, '&gt;');
 }
 
 export function wrapUntrustedObserverData(content: string, source: string): string {

@@ -1174,7 +1174,7 @@ describe('AgentExecutionService', () => {
 			const thread = makeThread({ parentThreadId: 'parent-thread-1' });
 			const record: MessageRecord = {
 				assistantResponse: 'Done',
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 				finishReason: 'stop',
 				usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15 },
 				totalCost: 0.01,
@@ -1360,7 +1360,7 @@ describe('AgentExecutionService', () => {
 				telemetry: {
 					runType: 'test',
 					configuration: {
-						model: 'anthropic/claude-sonnet-4-5',
+						model: 'anthropic/claude-sonnet-5-5',
 						channels: [],
 						tool_types: ['custom'],
 						tool_count: 1,
@@ -1377,7 +1377,7 @@ describe('AgentExecutionService', () => {
 				source: 'instance-ai',
 				turn_status: 'succeeded',
 				configuration: {
-					model: 'anthropic/claude-sonnet-4-5',
+					model: 'anthropic/claude-sonnet-5-5',
 					channels: [],
 					tool_types: ['custom'],
 					tool_count: 1,

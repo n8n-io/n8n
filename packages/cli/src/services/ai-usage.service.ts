@@ -3,9 +3,13 @@ import { SettingsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 
 import config from '@/config';
+import { License } from '@/license';
 import { CacheService } from '@n8n/backend-services';
 
 const KEY = 'ai.allowSendingParameterValues';
+const MODEL_TRAINING_KEY = 'ai.allowModelTraining';
+/** Cached when no admin choice is stored, so the plan default is resolved on each read. */
+const NO_CHOICE = 'unset';
 
 @Service()
 export class AiUsageService {
@@ -13,6 +17,7 @@ export class AiUsageService {
 		private readonly settingsRepository: SettingsRepository,
 		private readonly cacheService: CacheService,
 		private readonly globalConfig: GlobalConfig,
+		private readonly license: License,
 	) {}
 
 	/**
@@ -50,5 +55,28 @@ export class AiUsageService {
 		);
 		await this.cacheService.set(KEY, allowSendingActualData.toString());
 		config.set(KEY, allowSendingActualData);
+	}
+
+	/**
+	 * Whether n8n may use this instance's Assistant traces to train models.
+	 * Without an admin choice, Enterprise plans are opted out and all other plans are opted in.
+	 */
+	async isModelTrainingAllowed(): Promise<boolean> {
+		let choice = await this.cacheService.get<string>(MODEL_TRAINING_KEY);
+		if (choice === undefined) {
+			const row = await this.settingsRepository.findByKey(MODEL_TRAINING_KEY);
+			choice = row?.value ?? NO_CHOICE;
+			await this.cacheService.set(MODEL_TRAINING_KEY, choice);
+		}
+		if (choice === NO_CHOICE) return !this.license.isEnterprisePlan();
+		return choice === 'true';
+	}
+
+	async updateModelTrainingSetting(allowModelTraining: boolean): Promise<void> {
+		await this.settingsRepository.upsert(
+			{ key: MODEL_TRAINING_KEY, value: allowModelTraining.toString(), loadOnStartup: false },
+			['key'],
+		);
+		await this.cacheService.set(MODEL_TRAINING_KEY, allowModelTraining.toString());
 	}
 }
