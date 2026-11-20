@@ -1,10 +1,9 @@
 import { fireEvent, render } from '@testing-library/vue';
-import { defineComponent, ref, watch } from 'vue';
+import { defineComponent, h, nextTick, ref, watch } from 'vue';
 
 import N8nSidebar from './Sidebar.vue';
 
 const BoundWidth = defineComponent({
-	components: { N8nSidebar },
 	props: {
 		start: { type: Number, required: true },
 		minWidth: { type: Number, required: true },
@@ -18,19 +17,21 @@ const BoundWidth = defineComponent({
 				width.value = value;
 			},
 		);
-		return { width };
+		return function renderBoundWidth() {
+			return h('div', [
+				h('output', { 'data-test-id': 'bound-width' }, String(width.value)),
+				h(N8nSidebar, {
+					width: width.value,
+					minWidth: props.minWidth,
+					maxWidth: props.maxWidth,
+					label: 'Files',
+					'onUpdate:width': function setWidth(value: number) {
+						width.value = value;
+					},
+				}),
+			]);
+		};
 	},
-	template: `
-		<div>
-			<output data-testid="bound-width">{{ width }}</output>
-			<N8nSidebar
-				v-model:width="width"
-				:min-width="minWidth"
-				:max-width="maxWidth"
-				label="Files"
-			/>
-		</div>
-	`,
 });
 
 function renderSidebar(props: Record<string, unknown> = {}, slot = 'Notes') {
@@ -124,12 +125,21 @@ describe('N8nSidebar', () => {
 		expect(window.localStorage.getItem(storageKey)).toBe('900');
 	});
 
+	it('emits the clamped width when the parent keeps the original value', async () => {
+		const { emitted } = renderSidebar({ width: 40, minWidth: 160, maxWidth: 480 });
+
+		await nextTick();
+
+		expect(emitted('update:width')).toEqual([[160]]);
+	});
+
 	it('clamps a bound width to the configured limits', async () => {
 		const { getByTestId, rerender } = render(BoundWidth, {
 			props: { start: 40, minWidth: 160, maxWidth: 480 },
 		});
 		const root = () => getByTestId('sidebar').parentElement?.parentElement;
 
+		await nextTick();
 		expect(getByTestId('bound-width')).toHaveTextContent('160');
 		expect(root()).toHaveStyle({ width: '160px' });
 
