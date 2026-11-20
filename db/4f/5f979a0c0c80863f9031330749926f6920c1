@@ -1,0 +1,30 @@
+packages/quality/environments/rig/src/commands/lifecycle.ts
+  h_8fb27e0cdf6d1e 27,29,309-312,314-323,325-331
+packages/quality/environments/rig/src/commands/running.ts
+  h_8fb27e0cdf6d1e 82,141-146,178
+packages/quality/environments/rig/src/environment.ts
+  h_8fb27e0cdf6d1e 126-127,132,138,158-166,175
+packages/quality/environments/rig/src/runtime/health.ts
+  h_8fb27e0cdf6d1e 8-15,17-21,25-32,34-36,38,52
+packages/quality/environments/rig/src/runtime/session.ts
+  h_8fb27e0cdf6d1e 15,39-40,485-486,489-490,609-617,620-623
+packages/quality/environments/rig/src/runtime/state.ts
+  h_8fb27e0cdf6d1e 2-10,105-114
+packages/quality/environments/rig/src/runtime/supervisor.ts
+  h_8fb27e0cdf6d1e 45-59,117,184,263,285,295,303-315,328,334,336,344,405
+packages/quality/environments/rig/test/runners.test.ts
+  h_8fb27e0cdf6d1e 80-96,133-145
+packages/quality/environments/rig/test/state.test.ts
+  h_8fb27e0cdf6d1e 1-61
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "db4f5f979a0c0c80863f9031330749926f6920c1",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

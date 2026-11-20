@@ -1,0 +1,21 @@
+packages/@n8n/nodes-langchain/nodes/tools/ToolSkill/ToolSkill.node.ts
+  s_126e90b504d18d::t_f6be902cbc3274 182
+packages/frontend/editor-ui/src/features/ai/skills/useSkillDependencies.ts
+  s_126e90b504d18d::t_f6be902cbc3274 98
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6843f00d6b0c0095282d5cb209d7f39e50cebb28",
+  "prompts": {},
+  "sessions": {
+    "s_126e90b504d18d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "53d0ed1b-1ddd-4373-8a47-d0ff0bb754c7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

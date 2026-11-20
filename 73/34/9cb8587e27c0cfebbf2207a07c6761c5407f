@@ -1,0 +1,27 @@
+packages/cli/src/modules/source-control.ee/__tests__/source-control.service.test.ts
+  s_37ef7547c3b88e::t_aa82430acdca46 81-82,90-93,799,805-807,835-894,960,983
+packages/cli/src/modules/source-control.ee/__tests__/source-control-preferences.service.ee.test.ts
+  s_37ef7547c3b88e::t_3ddb81a0b00e30 64-90,582-657
+packages/cli/src/modules/source-control.ee/types/source-control-preferences.ts
+  s_37ef7547c3b88e::t_1bb59fc85e4b0c 64-66
+packages/cli/src/modules/source-control.ee/source-control.service.ee.ts
+  s_37ef7547c3b88e::t_1bb59fc85e4b0c 413,534-537,766-768,774-792
+packages/cli/src/modules/source-control.ee/source-control-preferences.service.ee.ts
+  s_37ef7547c3b88e::t_1bb59fc85e4b0c 308,313-337
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "73349cb8587e27c0cfebbf2207a07c6761c5407f",
+  "prompts": {},
+  "sessions": {
+    "s_37ef7547c3b88e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b495f5fc-a42e-4c56-a429-2c7612c8a238",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

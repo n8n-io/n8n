@@ -1,0 +1,46 @@
+packages/modules/promotions/frontend/src/views/PromotionPreviewView.vue
+  s_3dd47ea0104342::t_41961f3e6f26e6 43,60,278-301,1035,1177,1207
+packages/modules/promotions/frontend/src/components/preview/PromotionResourceTree.vue
+  s_3dd47ea0104342::t_41961f3e6f26e6 8,43-44,46-51,79-81,85,95-98,103-104,238
+packages/modules/promotions/frontend/src/composables/usePromotionDependencyLabels.ts
+  s_3dd47ea0104342::t_8666ee43eefecb 73-78
+packages/modules/promotions/frontend/src/components/dependencies/PromotionDependencyReport.vue
+  s_3dd47ea0104342::t_41961f3e6f26e6 44-45,70,75-83
+packages/modules/promotions/frontend/src/components/dependencies/PromotionApplyResultDialog.vue
+  s_3dd47ea0104342::t_41961f3e6f26e6 21,45-51
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_3dd47ea0104342::t_8666ee43eefecb 11243,11382-11383
+  s_3dd47ea0104342::t_efd6c6285e3227 119
+  s_3dd47ea0104342::t_41961f3e6f26e6 11200,11466
+packages/modules/promotions/frontend/src/components/preview/PromotionChangeCard.vue
+  s_3dd47ea0104342::t_efd6c6285e3227 17,70,125-136
+  s_3dd47ea0104342::t_106623dc440cea 303
+  s_3dd47ea0104342::t_41961f3e6f26e6 19,53-54,56,192-195,234-241
+  s_3dd47ea0104342::t_b0a40b467dfa35 242
+packages/modules/promotions/frontend/src/promotionApplyOutcome.ts
+  s_3dd47ea0104342::t_41961f3e6f26e6 39-41,46-55
+packages/modules/inbox/frontend/src/promotions/PromotionOwnerRequestDetail.vue
+  s_3dd47ea0104342::t_efd6c6285e3227 19,22,43-55,245
+packages/modules/promotions/frontend/src/promotionMoves.ts
+  s_3dd47ea0104342::t_41961f3e6f26e6 49-51
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.vue
+  s_3dd47ea0104342::t_efd6c6285e3227 1821,1938-1942
+packages/modules/promotions/frontend/src/components/preview/PromotionChangeCards.vue
+  s_3dd47ea0104342::t_41961f3e6f26e6 7,41-42,44-49,135
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "213a2b38339d2b25dd98bebb1c2c73038e4c6b3f",
+  "prompts": {},
+  "sessions": {
+    "s_3dd47ea0104342": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c1a45d57-85a1-465a-839a-d3b98e3073fc",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

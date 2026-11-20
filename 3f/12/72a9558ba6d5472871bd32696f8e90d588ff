@@ -1,0 +1,45 @@
+packages/frontend/editor-ui/src/features/pages/components/ErrorRunbook.test.ts
+  s_f27bda1bd0c713::t_e5dd49a67a109f 127-133
+packages/frontend/editor-ui/src/features/pages/components/ExecutionRunbookHint.vue
+  ai_agent 1-80
+packages/frontend/editor-ui/src/features/ndv/runData/components/error/NodeErrorView.vue
+  s_f27bda1bd0c713::t_e13d1250998c8e 32,540-550,759-763
+packages/frontend/editor-ui/src/features/pages/composables/useErrorRunbookPages.test.ts
+  ai_agent 1-159
+packages/frontend/editor-ui/src/features/ndv/runData/components/error/NodeErrorView.test.ts
+  s_f27bda1bd0c713::t_90f280fc362934 121-145
+packages/frontend/editor-ui/src/features/pages/composables/useErrorRunbookPages.ts
+  s_f27bda1bd0c713::t_4f5036f66ca1ce 55-57
+  s_f27bda1bd0c713::t_baea125d014b8c 41-44
+  s_f27bda1bd0c713::t_3019084c4b84fd 1-40,45-54,58-64
+packages/frontend/editor-ui/src/features/pages/components/ErrorRunbook.vue
+  s_f27bda1bd0c713::t_0efe3ecc661d65 1-169
+packages/frontend/editor-ui/src/features/pages/components/ExecutionRunbookHint.test.ts
+  ai_agent 1-88
+packages/frontend/@n8n/i18n/src/locales/en.json
+  ai_agent 3346-3355
+packages/frontend/editor-ui/src/features/pages/composables/useAskAssistantAboutError.ts
+  s_f27bda1bd0c713::t_baea125d014b8c 1-129
+packages/frontend/editor-ui/src/features/execution/executions/components/workflow/WorkflowExecutionsPreview.vue
+  ai_agent 38,417
+packages/frontend/editor-ui/src/features/pages/composables/usePagePeekLink.ts
+  ai_agent 1-28
+packages/frontend/editor-ui/src/features/pages/composables/useAskAssistantAboutError.test.ts
+  ai_agent 1-176
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3f1272a9558ba6d5472871bd32696f8e90d588ff",
+  "prompts": {},
+  "sessions": {
+    "s_f27bda1bd0c713": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e884d7e-3c84-4428-98db-a0c5cff39be6",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

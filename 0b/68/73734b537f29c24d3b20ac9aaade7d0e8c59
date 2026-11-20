@@ -1,0 +1,37 @@
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_3dd47ea0104342::t_e0d590793e5be3 408-409,412-461,525-526,913-956
+packages/cli/src/modules/n8n-packages/entities/credential/credential-dependencies.ts
+  s_3dd47ea0104342::t_5ea530f10e7796 1-77
+packages/cli/src/modules/n8n-packages/engine/package-layout.ts
+  s_3dd47ea0104342::t_7c328635ab8ebd 79-83,87,90-93
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_3dd47ea0104342::t_7c328635ab8ebd 248-253,389,403-421,834-835
+packages/cli/src/modules/n8n-packages/engine/import-result.ts
+  s_3dd47ea0104342::t_98bfbea18984d5 149-165
+packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
+  s_3dd47ea0104342::t_2baa44ea54de99 10-14,57,60,160-161,165-168,199,277,295,322-336,368,412-421
+packages/cli/src/modules/n8n-packages/entities/credential/credential-importer.ts
+  s_3dd47ea0104342::t_a0c93d944f9cee 13,34-35,42,44-50,62,75,83-94,103-110,115,117,121-359,366,369-370,372-373,390-391,420-458,469-479,582,629-716,809-813,898-922
+packages/cli/src/modules/n8n-packages/entities/credential/credential.types.ts
+  s_3dd47ea0104342::t_6d1d3a0c27194b 6,10-12,105,115-175,210-219,227-248,260-261
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_3dd47ea0104342::t_ffe80448d86170 751-753
+spike/ligo-1159/poc/decisions.md
+  s_3dd47ea0104342::t_3a55568bb2b583 112-186
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0b6873734b537f29c24d3b20ac9aaade7d0e8c59",
+  "prompts": {},
+  "sessions": {
+    "s_3dd47ea0104342": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c1a45d57-85a1-465a-839a-d3b98e3073fc",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

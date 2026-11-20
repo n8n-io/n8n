@@ -1,0 +1,16 @@
+packages/quality/environments/AGENTS.md
+  h_8fb27e0cdf6d1e 6
+packages/quality/environments/rig/src/config/env-yaml.ts
+  h_8fb27e0cdf6d1e 128
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d87c1cd7071eeaa66cbbf9b1eebb7b4567b3d1c8",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}
