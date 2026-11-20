@@ -1,0 +1,19 @@
+packages/@n8n/expression-runtime/ARCHITECTURE.md
+  s_ba17ba4d77580e::t_5c03b96a5e3d84 166
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b83ef780ab335ae40e3a4f564edd3aec5d085cfe",
+  "prompts": {},
+  "sessions": {
+    "s_ba17ba4d77580e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b1e2bc5d-a5c3-4904-ac3b-63070d26ca33",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
