@@ -101,6 +101,24 @@ describe('SavedLoginsDialog', () => {
 			expect(fetchSavedLogins).toHaveBeenCalledTimes(2);
 		});
 
+		it('does not load again when it opens while a load still runs', async () => {
+			let finishLoad = (_: { savedLogins: InstanceAiSavedLogin[] }) => {};
+			vi.mocked(fetchSavedLogins).mockReturnValue(
+				new Promise((resolve) => {
+					finishLoad = resolve;
+				}),
+			);
+			const { rerender } = await render();
+
+			await rerender({ open: false });
+			await rerender({ open: true });
+			finishLoad({ savedLogins: [github] });
+			await flushPromises();
+
+			expect(fetchSavedLogins).toHaveBeenCalledTimes(1);
+			expect(rowDomains()).toEqual(['github.com']);
+		});
+
 		it('shows a loading message while it loads', async () => {
 			vi.mocked(fetchSavedLogins).mockReturnValue(new Promise(() => {}));
 			renderComponent({ props: { open: true } });
@@ -110,13 +128,14 @@ describe('SavedLoginsDialog', () => {
 			expect(screen.queryByTestId('saved-logins-empty')).not.toBeInTheDocument();
 		});
 
-		it('shows the date each login was saved', async () => {
+		it('shows the date each login was last used', async () => {
 			vi.mocked(fetchSavedLogins).mockResolvedValue({ savedLogins: [github] });
 			await render();
 
 			const row = screen.getByTestId('saved-logins-row');
 			expect(row).toHaveTextContent('github.com');
-			expect(row).toHaveTextContent('1 Oct 2026');
+			expect(row).toHaveTextContent('30 Oct 2026');
+			expect(row).not.toHaveTextContent('1 Oct 2026');
 		});
 
 		it('shows the empty state when there are no saved logins', async () => {
@@ -133,6 +152,22 @@ describe('SavedLoginsDialog', () => {
 			await render();
 
 			expect(showError).toHaveBeenCalledWith(error, 'Could not load your saved logins');
+		});
+
+		it('shows no error when loading fails after the dialog closed', async () => {
+			let failLoad = (_: Error) => {};
+			vi.mocked(fetchSavedLogins).mockReturnValue(
+				new Promise((_, reject) => {
+					failLoad = reject;
+				}),
+			);
+			const { rerender } = await render();
+
+			await rerender({ open: false });
+			failLoad(new Error('Request failed'));
+			await flushPromises();
+
+			expect(showError).not.toHaveBeenCalled();
 		});
 	});
 
@@ -167,18 +202,18 @@ describe('SavedLoginsDialog', () => {
 	});
 
 	describe('sort', () => {
-		it('sorts by saved date, newest first, by default', async () => {
+		it('sorts by last used, newest first, by default', async () => {
 			await render();
-
-			expect(rowDomains()).toEqual(['linkedin.com', 'amazon.com', 'github.com']);
-		});
-
-		it('sorts by last used, newest first', async () => {
-			await render();
-
-			await chooseSort('Sort by last used');
 
 			expect(rowDomains()).toEqual(['github.com', 'amazon.com', 'linkedin.com']);
+		});
+
+		it('sorts by last updated, newest first', async () => {
+			await render();
+
+			await chooseSort('Sort by last updated');
+
+			expect(rowDomains()).toEqual(['linkedin.com', 'amazon.com', 'github.com']);
 		});
 
 		it('sorts by site name', async () => {
@@ -219,7 +254,7 @@ describe('SavedLoginsDialog', () => {
 			await flushPromises();
 
 			expect(deleteSavedLogin).toHaveBeenCalledExactlyOnceWith({}, 'login-1');
-			expect(rowDomains()).toEqual(['linkedin.com', 'amazon.com']);
+			expect(rowDomains()).toEqual(['amazon.com', 'linkedin.com']);
 			await waitFor(() =>
 				expect(
 					screen.queryByRole('dialog', { name: 'Delete the login for github.com?' }),

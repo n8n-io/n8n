@@ -33,6 +33,7 @@ const isCloudBrowserAvailable = computed(() => {
 		isCloudBrowserExperimentEnabled.value &&
 		settingsStore.isAiGatewayEnabled &&
 		settingsStore.isAiGatewayCloudUbbEnabled &&
+		!settingsStore.isMultiMain &&
 		(instanceAiSettings?.enabled ?? false) &&
 		(instanceAiSettings?.cloudBrowserEnabled ?? false)
 	);

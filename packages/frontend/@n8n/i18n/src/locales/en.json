@@ -8704,7 +8704,7 @@
 	"instanceAi.cloudBrowser.savedLogins.sort.lastUsedAt": "Sort by last used",
 	"instanceAi.cloudBrowser.savedLogins.sort.domain": "Sort by site",
 	"instanceAi.cloudBrowser.savedLogins.column.site": "Site",
-	"instanceAi.cloudBrowser.savedLogins.column.savedAt": "Updated",
+	"instanceAi.cloudBrowser.savedLogins.column.lastUsedAt": "Last used",
 	"instanceAi.cloudBrowser.savedLogins.column.actions": "Actions",
 	"instanceAi.cloudBrowser.savedLogins.loading": "Loading saved logins…",
 	"instanceAi.cloudBrowser.savedLogins.empty": "No saved logins yet. When n8n Assistant asks you to sign in to a site, you can save the login.",

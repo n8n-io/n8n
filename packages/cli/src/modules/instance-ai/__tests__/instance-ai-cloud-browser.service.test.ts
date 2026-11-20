@@ -664,5 +664,28 @@ describe('InstanceAiCloudBrowserService', () => {
 				userId: 'user-1',
 			});
 		});
+
+		it("finds the user's saved login profile for a domain", async () => {
+			const olderContext = { ...savedContext, id: 'ctx-2' };
+			aiGatewayBrowserUseService.listSavedContexts.mockResolvedValue([savedContext, olderContext]);
+			const { sessionProvider, scope } = await getSessionProvider();
+
+			await expect(
+				sessionProvider.findSavedLoginProfileForDomain(scope, 'example.com'),
+			).resolves.toEqual(savedLoginProfile);
+			expect(aiGatewayBrowserUseService.listSavedContexts).toHaveBeenCalledWith({
+				userId: 'user-1',
+				domain: 'example.com',
+			});
+		});
+
+		it('finds no saved login profile when the user has none for the domain', async () => {
+			aiGatewayBrowserUseService.listSavedContexts.mockResolvedValue([]);
+			const { sessionProvider, scope } = await getSessionProvider();
+
+			await expect(
+				sessionProvider.findSavedLoginProfileForDomain(scope, 'example.com'),
+			).resolves.toBeUndefined();
+		});
 	});
 });

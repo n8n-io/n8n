@@ -34,17 +34,17 @@ const rootStore = useRootStore();
 const savedLogins = ref<InstanceAiSavedLogin[]>([]);
 const isLoading = ref(false);
 const search = ref('');
-const sortBy = ref<SortBy>('savedAt');
+const sortBy = ref<SortBy>('lastUsedAt');
 const loginToDelete = ref<InstanceAiSavedLogin>();
 const isDeleting = ref(false);
 
 const sortItems = computed(
 	(): Array<SelectOptionBase<SortBy>> => [
-		{ value: 'savedAt', label: i18n.baseText('instanceAi.cloudBrowser.savedLogins.sort.savedAt') },
 		{
 			value: 'lastUsedAt',
 			label: i18n.baseText('instanceAi.cloudBrowser.savedLogins.sort.lastUsedAt'),
 		},
+		{ value: 'savedAt', label: i18n.baseText('instanceAi.cloudBrowser.savedLogins.sort.savedAt') },
 		{ value: 'domain', label: i18n.baseText('instanceAi.cloudBrowser.savedLogins.sort.domain') },
 	],
 );
@@ -62,6 +62,8 @@ const shownLogins = computed(() => {
 	return matching.sort((a, b) => b[key].localeCompare(a[key]));
 });
 
+let pendingSavedLoginsLoad: Promise<void> | undefined;
+
 watch(
 	open,
 	(isOpen) => {
@@ -70,12 +72,23 @@ watch(
 	{ immediate: true },
 );
 
+// Reuses a load that still runs, so an older response cannot replace a newer one.
 async function loadSavedLogins() {
+	pendingSavedLoginsLoad ??= fetchAndShowSavedLogins().finally(() => {
+		pendingSavedLoginsLoad = undefined;
+	});
+	await pendingSavedLoginsLoad;
+}
+
+async function fetchAndShowSavedLogins() {
 	isLoading.value = true;
 	try {
 		({ savedLogins: savedLogins.value } = await fetchSavedLogins(rootStore.restApiContext));
 	} catch (error) {
-		toast.showError(error, i18n.baseText('instanceAi.cloudBrowser.savedLogins.loadFailed'));
+		// The user closed the dialog meanwhile, so the error is no longer relevant.
+		if (open.value) {
+			toast.showError(error, i18n.baseText('instanceAi.cloudBrowser.savedLogins.loadFailed'));
+		}
 	} finally {
 		isLoading.value = false;
 	}
@@ -102,7 +115,7 @@ async function confirmDelete() {
 }
 
 function onDeleteDialogOpenChange(isOpen: boolean) {
-	if (!isOpen) loginToDelete.value = undefined;
+	if (!isOpen && !isDeleting.value) loginToDelete.value = undefined;
 }
 
 function formatDate(isoDate: string) {
@@ -177,7 +190,7 @@ function formatDate(isoDate: string) {
 						</th>
 						<th :class="$style.heading">
 							<N8nText size="xsmall" color="text-light" bold>
-								{{ i18n.baseText('instanceAi.cloudBrowser.savedLogins.column.savedAt') }}
+								{{ i18n.baseText('instanceAi.cloudBrowser.savedLogins.column.lastUsedAt') }}
 							</N8nText>
 						</th>
 						<th :class="$style.actionsHeading">
@@ -199,7 +212,7 @@ function formatDate(isoDate: string) {
 							<N8nText bold>{{ login.domain }}</N8nText>
 						</td>
 						<td>
-							<N8nText size="small" color="text-light">{{ formatDate(login.savedAt) }}</N8nText>
+							<N8nText size="small" color="text-light">{{ formatDate(login.lastUsedAt) }}</N8nText>
 						</td>
 						<td :class="$style.actions">
 							<N8nIconButton

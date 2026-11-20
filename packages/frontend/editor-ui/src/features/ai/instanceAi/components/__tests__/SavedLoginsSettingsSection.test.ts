@@ -100,6 +100,13 @@ describe('SavedLoginsSettingsSection', () => {
 			expect(screen.getByTestId('saved-logins-open')).toBeInTheDocument();
 		});
 
+		it('hides on a multi-main instance', async () => {
+			settingsStore.settings.isMultiMain = true;
+			await render();
+
+			expect(screen.queryByTestId('saved-logins-section')).not.toBeInTheDocument();
+		});
+
 		it('hides when the cloud browser rollout flag is off', async () => {
 			isCloudBrowserExperimentEnabled.value = false;
 			await render();
