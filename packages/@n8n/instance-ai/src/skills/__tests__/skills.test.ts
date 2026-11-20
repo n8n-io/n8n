@@ -2,13 +2,18 @@ import { createSkillLoadTool } from '@n8n/agents';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { resolvePromptProfile } from '../../prompts/prompt-profiles';
 import { ALWAYS_LOADED_TOOL_NAMES } from '../../tools/tool-ids';
+<<<<<<< HEAD
 import {
 	INSTANCE_AI_SKILLS_DIR,
 	loadInstanceAiPromptSkills,
 	loadInstanceAiSkills,
 } from '../skills';
+=======
+import { POST_BUILD_FLOW_CUES } from '../context-cues/post-build-flow.cues';
+import { WORKFLOW_BUILDER_CUES } from '../context-cues/workflow-builder.cues';
+import { INSTANCE_AI_SKILLS_DIR, loadInstanceAiSkills } from '../skills';
+>>>>>>> 249ba522 (refactor(ai-builder): Remove active skill tracking from the agent runtime (#43569))
 
 const ORIGINAL_ENABLED_MODULES = process.env.N8N_ENABLED_MODULES;
 const AGENT_BUILDING_SKILL_IDS = ['agent-builder', 'intent-recognition'];
@@ -121,6 +126,7 @@ describe('Instance AI skills', () => {
 		expect(postBuildFlow).toMatch(/load the\s+`credential-recipe-research` reference/);
 	});
 
+<<<<<<< HEAD
 	// Routing needs intent-recognition once per request; carrying its body for the
 	// rest of the thread costs every later call ~7K tokens.
 	it('expires intent-recognition when the next user turn starts', async () => {
@@ -132,6 +138,8 @@ describe('Instance AI skills', () => {
 		}
 	});
 
+=======
+>>>>>>> 249ba522 (refactor(ai-builder): Remove active skill tracking from the agent runtime (#43569))
 	it('lists only top-level skills in the catalog', () => {
 		const source = loadInstanceAiSkills();
 		const topLevel = source.registry.skills.filter((skill) => !skill.parents).map(({ id }) => id);

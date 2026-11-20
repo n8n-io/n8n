@@ -35,6 +35,40 @@ export interface VolatileInstructionsContext {
 	persistence?: AgentPersistenceOptions;
 }
 
+<<<<<<< HEAD
+=======
+/** A context cue that a provider wants the model to see now. */
+export interface ContextCueEntry {
+	/**
+	 * Stable id. The runtime skips a cue whose id is already in the visible
+	 * conversation. Observation masking can hide a sent cue, so it can be sent again.
+	 */
+	id: string;
+	content: string;
+}
+
+export interface ContextCueRequest {
+	/** Messages the model sees, oldest first, before this model call. */
+	messages: readonly AgentMessage[];
+	/**
+	 * Skills that `load_skill` loaded anywhere in the thread, also in messages
+	 * that compaction hides. Without it, only `messages` count.
+	 */
+	loadedSkillIds?: ReadonlySet<string>;
+	/** Ids of the cues that the conversation already contains. */
+	sentCueIds: ReadonlySet<string>;
+	persistence?: AgentPersistenceOptions;
+	abortSignal?: AbortSignal;
+}
+
+/**
+ * Supplies context cues before each model call. The runtime saves the cues in the
+ * conversation as a `<system-reminder>`, after the earlier messages, so the
+ * prompt cache stays valid. A provider failure skips its cues for that call.
+ */
+export type ContextCueProvider = (request: ContextCueRequest) => Promise<ContextCueEntry[]>;
+
+>>>>>>> 249ba522 (refactor(ai-builder): Remove active skill tracking from the agent runtime (#43569))
 export type VolatileInstructionsProvider = (
 	context: VolatileInstructionsContext,
 ) => Promise<string | undefined>;

@@ -235,7 +235,6 @@ describe('native tool catalog', () => {
 				tools,
 				instructionProviderOptions: undefined,
 				hostVolatileInstructions: undefined,
-				activeSkills: undefined,
 			});
 			const results = prompt.messages.flatMap((message) =>
 				message.role === 'assistant' && Array.isArray(message.content)
@@ -300,7 +299,6 @@ describe('native tool catalog', () => {
 			tools,
 			instructionProviderOptions: undefined,
 			hostVolatileInstructions: undefined,
-			activeSkills: undefined,
 		});
 		expect(prompt.messages.filter((message) => message.role === 'assistant')).toMatchObject([
 			{

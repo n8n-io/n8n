@@ -55,7 +55,7 @@ function createMockContext(overrides: Partial<InstanceAiContext> = {}): Instance
 		nodeService: {
 			listAvailable: vi.fn(),
 			getDescription: vi.fn(),
-			listSearchable: vi.fn(),
+			listSearchable: vi.fn().mockResolvedValue([]),
 			exploreResources: vi.fn(),
 		},
 		dataTableService: {
@@ -447,7 +447,6 @@ describe('nodes tools', () => {
 					outputs: ['ai_languageModel'],
 				},
 			]);
-			const loadSkill = vi.fn().mockResolvedValue(null);
 			const tool = createGetNodeTypesTool(context);
 			for (const nodeType of [
 				'@n8n/n8n-nodes-langchain.lmChatOpenRouter',
@@ -455,12 +454,11 @@ describe('nodes tools', () => {
 				'@n8n/n8n-nodes-langchain.googleGemini',
 				'@n8n/n8n-nodes-langchain.anthropic',
 			]) {
-				loadSkill.mockClear();
-				const result = await executeTool(tool, { nodeTypes: [nodeType] }, { loadSkill });
+				const result = await executeTool(tool, { nodeTypes: [nodeType] });
 				expect(result.definitions).toEqual([
 					expect.objectContaining({ nodeType, content: expect.stringContaining('modelId') }),
 				]);
-				expect(loadSkill).toHaveBeenCalledExactlyOnceWith('model-selection');
+				expect(result.hint).toContain('model-selection');
 			}
 		});
 
@@ -471,16 +469,11 @@ describe('nodes tools', () => {
 				.mockResolvedValueOnce({ content: 'export type Params = { fileId: string };' })
 				.mockResolvedValueOnce({ error: 'Unknown node type' });
 			vi.mocked(context.nodeService.listSearchable).mockResolvedValue([]);
-			const loadSkill = vi.fn();
 			const tool = createGetNodeTypesTool(context);
-			await executeTool(
-				tool,
-				{
-					nodeTypes: ['@n8n/n8n-nodes-langchain.openAi', 'missing.node'],
-				},
-				{ loadSkill },
-			);
-			expect(loadSkill).not.toHaveBeenCalled();
+			const result = await executeTool(tool, {
+				nodeTypes: ['@n8n/n8n-nodes-langchain.openAi', 'missing.node'],
+			});
+			expect(result).not.toHaveProperty('hint');
 		});
 
 		it('should require a non-empty nodeTypes list', () => {
@@ -500,7 +493,7 @@ describe('nodes tools', () => {
 				nodeService: {
 					listAvailable: vi.fn(),
 					getDescription: vi.fn(),
-					listSearchable: vi.fn(),
+					listSearchable: vi.fn().mockResolvedValue([]),
 					exploreResources: vi.fn(),
 					getNodeTypeDefinition: vi.fn().mockResolvedValue({
 						content: 'export type IfNode = unknown;',
@@ -534,7 +527,7 @@ describe('nodes tools', () => {
 				nodeService: {
 					listAvailable: vi.fn(),
 					getDescription: vi.fn(),
-					listSearchable: vi.fn(),
+					listSearchable: vi.fn().mockResolvedValue([]),
 					exploreResources: vi.fn(),
 					getNodeTypeDefinition: vi.fn().mockResolvedValue({
 						content: '/**\n * @deprecated This node type is retired.\n */',
@@ -576,7 +569,7 @@ describe('nodes tools', () => {
 				nodeService: {
 					listAvailable: vi.fn(),
 					getDescription: vi.fn(),
-					listSearchable: vi.fn(),
+					listSearchable: vi.fn().mockResolvedValue([]),
 					exploreResources: vi.fn(),
 					getNodeTypeDefinition: vi.fn().mockResolvedValue({
 						content: 'export type MessageAnAgentNode = unknown;',
