@@ -178,7 +178,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	assertResponseHasCandidates(response);
 
 	const promises = response.candidates.map(async (candidate) => {
-		const imagePart = candidate.content.parts.find((part) => 'inlineData' in part);
+		const imagePart = candidate.content?.parts.find((part) => 'inlineData' in part);
 
 		// Check if imagePart exists and has inlineData with actual data
 		if (!imagePart?.inlineData?.data) {

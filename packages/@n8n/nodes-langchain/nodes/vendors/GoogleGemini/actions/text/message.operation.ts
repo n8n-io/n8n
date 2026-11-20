@@ -586,7 +586,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 		contents.push.apply(
 			contents,
-			response.candidates.map((c) => c.content),
+			response.candidates.flatMap((c) => c.content ?? []),
 		);
 
 		for (const { functionCall } of toolCalls) {

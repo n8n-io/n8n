@@ -13,6 +13,7 @@ const getMockedExecuteFunctions = ({
 	malformedCandidates = false,
 	blockedApiResponse = false,
 	emptyApiResponse = false,
+	filteredCandidate = false,
 }: {
 	prompt?: string;
 	outputProperty?: string;
@@ -23,6 +24,7 @@ const getMockedExecuteFunctions = ({
 	malformedCandidates?: boolean;
 	blockedApiResponse?: boolean;
 	emptyApiResponse?: boolean;
+	filteredCandidate?: boolean;
 } = {}): IExecuteFunctions => {
 	const executeFunctions = mockDeep<IExecuteFunctions>();
 
@@ -83,23 +85,33 @@ const getMockedExecuteFunctions = ({
 							blockReasonMessage: 'The prompt is not allowed',
 						},
 					}
-				: emptyApiResponse
-					? {}
-					: malformedCandidates
-						? { candidates: 'invalid' }
-						: invalidApiResponse
-							? { invalid: 'response' }
-							: {
-									candidates: [
-										{
-											content: {
-												parts: [
-													{ inlineData: { data: outputBuffer.toString('base64'), mimeType } },
-												],
-											},
-										},
-									],
+				: filteredCandidate
+					? {
+							candidates: [
+								{
+									finishReason: 'PROHIBITED_CONTENT',
+									index: 0,
+									finishMessage: 'Unable to show the generated image.',
 								},
+							],
+						}
+					: emptyApiResponse
+						? {}
+						: malformedCandidates
+							? { candidates: 'invalid' }
+							: invalidApiResponse
+								? { invalid: 'response' }
+								: {
+										candidates: [
+											{
+												content: {
+													parts: [
+														{ inlineData: { data: outputBuffer.toString('base64'), mimeType } },
+													],
+												},
+											},
+										],
+									},
 		);
 
 	executeFunctions.helpers.httpRequest
@@ -218,6 +230,14 @@ describe('Gemini Node image edit', () => {
 
 		await expect(execute.call(executeFunctions, 0)).rejects.toThrow(
 			'Gemini blocked the prompt (reason: PROHIBITED_CONTENT)',
+		);
+	});
+
+	it('should report the finish reason when Gemini filters the generated image', async () => {
+		const executeFunctions = getMockedExecuteFunctions({ filteredCandidate: true });
+
+		await expect(execute.call(executeFunctions, 0)).rejects.toThrow(
+			'Gemini returned no content (finish reason: PROHIBITED_CONTENT)',
 		);
 	});
 

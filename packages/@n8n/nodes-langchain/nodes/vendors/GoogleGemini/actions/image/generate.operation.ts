@@ -118,7 +118,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		assertResponseHasCandidates(response);
 
 		const promises = response.candidates.map(async (candidate) => {
-			const imagePart = candidate.content.parts.find((part) => 'inlineData' in part);
+			const imagePart = candidate.content?.parts.find((part) => 'inlineData' in part);
 			const mimeType = imagePart?.inlineData.mimeType;
 			const fileName = getFilenameFromMimeType(mimeType, 'image', 'png');
 			const buffer = Buffer.from(imagePart?.inlineData.data ?? '', 'base64');

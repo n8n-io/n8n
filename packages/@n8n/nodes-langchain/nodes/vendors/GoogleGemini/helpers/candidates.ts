@@ -15,7 +15,14 @@ const generateContentResponseSchema = z
 		candidates: z
 			.array(
 				z
-					.object({ content: z.object({ parts: z.array(z.unknown()) }).passthrough() })
+					.object({
+						content: z
+							.object({ parts: z.array(z.unknown()) })
+							.passthrough()
+							.optional(),
+						finishReason: z.string().optional(),
+						finishMessage: z.string().optional(),
+					})
 					.passthrough(),
 			)
 			.optional(),
@@ -33,7 +40,19 @@ export function assertGenerateContentResponse(
 export function assertResponseHasCandidates(
 	response: GenerateContentResponse,
 ): asserts response is GenerateContentResponse & { candidates: Candidates } {
-	if (Array.isArray(response.candidates) && response.candidates.length) return;
+	const { candidates } = response;
+
+	if (Array.isArray(candidates) && candidates.length) {
+		if (candidates.some((candidate) => candidate.content)) return;
+
+		const [{ finishReason, finishMessage }] = candidates;
+		throw new UserError(
+			`Gemini returned no content (finish reason: ${finishReason ?? 'unknown'})`,
+			{
+				description: finishMessage,
+			},
+		);
+	}
 
 	const feedback: unknown = response.promptFeedback;
 	const blockReason = isRecord(feedback) ? feedback.blockReason : undefined;

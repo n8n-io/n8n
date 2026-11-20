@@ -18,6 +18,10 @@ describe('assertGenerateContentResponse', () => {
 		],
 		['a candidate without a role', { candidates: [{ content: { parts: [] } }] }],
 		[
+			'a candidate without content',
+			{ candidates: [{ index: 0, finishReason: 'PROHIBITED_CONTENT', finishMessage: 'Filtered' }] },
+		],
+		[
 			'unknown fields',
 			{ usageMetadata: {}, candidates: [{ finishReason: 'STOP', content: { parts: [{ a: 1 }] } }] },
 		],
@@ -31,7 +35,7 @@ describe('assertGenerateContentResponse', () => {
 		['candidates that are not an array', { candidates: 'invalid' }],
 		['null candidates', { candidates: null }],
 		['a candidate that is not an object', { candidates: ['invalid'] }],
-		['a candidate without content', { candidates: [{ finishReason: 'SAFETY' }] }],
+		['a finish reason that is not a string', { candidates: [{ finishReason: 1 }] }],
 		['content without parts', { candidates: [{ content: { role: 'model' } }] }],
 		['parts that are not an array', { candidates: [{ content: { parts: 'invalid' } }] }],
 		['a prompt feedback that is not an object', { promptFeedback: 'invalid' }],
@@ -72,6 +76,34 @@ describe('assertResponseHasCandidates', () => {
 			);
 			expect((error as UserError).description).toBe('The prompt is not allowed');
 		}
+	});
+
+	it('throws a UserError with the finish reason when no candidate has content', () => {
+		try {
+			assertResponseHasCandidates({
+				candidates: [
+					{ finishReason: 'PROHIBITED_CONTENT', finishMessage: 'The image was filtered' },
+				],
+			});
+			expect.unreachable('Expected the guard to throw');
+		} catch (error) {
+			expect(error).toBeInstanceOf(UserError);
+			expect((error as UserError).message).toBe(
+				'Gemini returned no content (finish reason: PROHIBITED_CONTENT)',
+			);
+			expect((error as UserError).description).toBe('The image was filtered');
+		}
+	});
+
+	it('returns when at least one candidate has content', () => {
+		expect(() =>
+			assertResponseHasCandidates({
+				candidates: [
+					{ finishReason: 'SAFETY' },
+					{ content: { parts: [{ text: 'hello' }], role: 'model' } },
+				],
+			}),
+		).not.toThrow();
 	});
 
 	it('throws the block reason when the candidates array is empty', () => {

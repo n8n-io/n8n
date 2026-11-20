@@ -47,7 +47,9 @@ export interface GenerateContentResponse {
 		blockReasonMessage?: string;
 	};
 	candidates?: Array<{
-		content: Content;
+		content?: Content;
+		finishReason?: string;
+		finishMessage?: string;
 	}>;
 }
 
