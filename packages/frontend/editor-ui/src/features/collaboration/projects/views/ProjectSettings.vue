@@ -32,6 +32,7 @@ import ProjectExternalSecrets from '../components/ProjectExternalSecrets.vue';
 import ProjectSettingsCustomTelemetryTags from '../components/ProjectSettingsCustomTelemetryTags.vue';
 import ProjectWorkerPoolsSection from '../components/ProjectWorkerPoolsSection.vue';
 import { getResourcePermissions } from '@n8n/permissions';
+import { isSelfHealingEnabled } from '@/features/collaboration/projects/projects.utils';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 
 import {
@@ -796,10 +797,7 @@ onMounted(async () => {
 					/>
 				</fieldset>
 				<ProjectSelfHealingSection
-					v-if="
-						settingsStore.moduleSettings['instance-ai']?.workflowSuggestionsEnabled &&
-						projectsStore.currentProject
-					"
+					v-if="isSelfHealingEnabled() && projectsStore.currentProject"
 					:project-id="projectsStore.currentProject.id"
 				/>
 			</template>

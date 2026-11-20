@@ -1,11 +1,13 @@
-import type {
-	SaveSelfHealingConfigurationDto,
-	SelfHealingConfigurationOptions,
-	SelfHealingStatusDto,
-	UpdateSelfHealingConfigurationDto,
+import {
+	SELF_HEALING_FLAG,
+	type SaveSelfHealingConfigurationDto,
+	type SelfHealingConfigurationOptions,
+	type SelfHealingStatusDto,
+	type UpdateSelfHealingConfigurationDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { RoleService, type RoleLoader, TelemetryProxy } from '@n8n/backend-services';
+import { PostHogClient, RoleService, type RoleLoader, TelemetryProxy } from '@n8n/backend-services';
+import { GlobalConfig } from '@n8n/config';
 import {
 	ProjectRelationRepository,
 	ProjectRepository,
@@ -54,7 +56,19 @@ export class SelfHealingConfigurationService {
 		private readonly investigations: SelfHealingInvestigationRepository,
 		private readonly logger: Logger,
 		private readonly telemetry: TelemetryProxy,
+		private readonly globalConfig: GlobalConfig,
+		private readonly postHogClient: PostHogClient,
 	) {}
+
+	/** Tells whether new self-healing work can start now. */
+	async isEnabled(): Promise<boolean> {
+		if (!this.globalConfig.instanceAi.workflowSuggestionsEnabled) return false;
+		// Self-hosted instances have no flag. They use the environment variable only.
+		if (this.globalConfig.deployment.type !== 'cloud') return true;
+
+		// No answer from PostHog means off.
+		return (await this.postHogClient.getFeatureFlagForInstance(SELF_HEALING_FLAG)) === true;
+	}
 
 	private trackChange(
 		configuration: SelfHealingConfiguration,
@@ -99,10 +113,11 @@ export class SelfHealingConfigurationService {
 	}
 
 	async getStatus(user: User): Promise<SelfHealingStatusDto> {
-		const [projectRoles, workflowRoles, personalProject] = await Promise.all([
+		const [projectRoles, workflowRoles, personalProject, enabled] = await Promise.all([
 			this.roles.rolesWithScope('project', REVIEWER_SCOPES),
 			this.roles.rolesWithScope('workflow', REVIEWER_SCOPES),
 			this.projects.getPersonalProjectForUser(user.id),
+			this.isEnabled(),
 		]);
 		// The same access rule as the result Inbox, so the status agrees with the list.
 		const isReviewer = await this.configurations.canReceiveResults({
@@ -111,7 +126,9 @@ export class SelfHealingConfigurationService {
 			projectRoles,
 			workflowRoles,
 		});
-		return { isReviewer, setupProjectId: personalProject?.id ?? null };
+		// An editor from before the `enabled` field offers setup when it gets a project ID.
+		const setupProjectId = enabled ? (personalProject?.id ?? null) : null;
+		return { enabled, isReviewer, setupProjectId };
 	}
 
 	async list(projectId: string) {

@@ -1,6 +1,10 @@
+import { SELF_HEALING_FLAG } from '@n8n/api-types';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { createPinia, setActivePinia } from 'pinia';
+import { usePostHog } from '@/app/stores/posthog.store';
 import {
 	compareSharingEntries,
+	isSelfHealingEnabled,
 	splitName,
 	useRemoteProjectSearch,
 	DEFAULT_PROJECT_SEARCH_PAGE_SIZE,
@@ -153,4 +157,29 @@ describe('useRemoteProjectSearch', () => {
 			includeServiceAccounts: true,
 		});
 	});
+});
+
+describe('isSelfHealingEnabled', () => {
+	beforeEach(() => {
+		setActivePinia(createPinia());
+	});
+
+	it.each([
+		{ setting: false, cloudManaged: false, flag: true, expected: false },
+		{ setting: false, cloudManaged: true, flag: true, expected: false },
+		{ setting: true, cloudManaged: false, flag: false, expected: true },
+		{ setting: true, cloudManaged: true, flag: false, expected: false },
+		{ setting: true, cloudManaged: true, flag: true, expected: true },
+	])(
+		'returns $expected for setting $setting, Cloud $cloudManaged, flag $flag',
+		({ setting, cloudManaged, flag, expected }) => {
+			const settingsStore = useSettingsStore();
+			settingsStore.moduleSettings = {
+				'instance-ai': { workflowSuggestionsEnabled: setting, cloudManaged },
+			} as typeof settingsStore.moduleSettings;
+			usePostHog().overrides[SELF_HEALING_FLAG] = { value: flag };
+
+			expect(isSelfHealingEnabled()).toBe(expected);
+		},
+	);
 });

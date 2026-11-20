@@ -36,6 +36,7 @@ Supply `projectId`, `workflowId`, and the original failed `executionId`.
 The producer selects the project configuration and checks the enabling user’s current access.
 A selected-workflow configuration takes precedence over all-workflow coverage, even when paused.
 The call returns `null` when no enabled configuration authorizes the investigation.
+On Cloud, it returns `null` when the PostHog instance flag is off. See [Availability](#availability).
 It also returns `null` for a new failure during a Could not fix cooldown. See [Investigate again](#investigate-again).
 It captures the baseline with `WorkflowSuggestionService.captureBaseline()`.
 The run keeps the captured baseline in memory. The investigation stores only the published version
@@ -442,6 +443,16 @@ and load review routes. The flag defaults to `false`. Restart n8n after changing
 The `instance-ai` module must be loaded. Entities and migrations do not depend on this rollout flag.
 Saved review services do not require Assistant model availability. Recovery of existing
 investigations remains available when the flag is off.
+
+On Cloud, the PostHog instance flag `150_self_healing` must also be on.
+`SelfHealingConfigurationService.isEnabled()` gives the combined decision.
+The editor gets the PostHog flag with its other feature flags and applies the same rule.
+The editor reads the PostHog flag at page load only.
+Self-hosted instances use the environment variable only.
+When the PostHog flag is off, or PostHog gives no answer, no new investigation starts and the editor
+hides the self-healing setup. `GET /self-healing/status` then returns `enabled: false` and no
+`setupProjectId`, so the Inbox does not offer the setup. Investigations in progress finish, and results stay available for review.
+PostHog decisions are cached for 10 minutes. A change needs no restart.
 
 The shared Inbox reads result rows through `SelfHealingResultService.listForInbox()`.
 It reads counts through `countForInbox()`. Both use current reviewer membership, editor access, and original-project ownership of every
