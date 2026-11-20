@@ -3015,6 +3015,8 @@ export const INSTANCE_AI_CONCISE_STYLE_ENABLED_VARIANT = 'variant';
  */
 export const INSTANCE_AI_APPROVAL_MODES_FLAG = '144_instance_ai_approval_modes';
 
+export const INSTANCE_AI_EMPTY_PREFERENCES_NOTE_FLAG = '147_assistant_empty_preferences_note';
+
 export const INSTANCE_AI_SETUP_PANEL_FLAG = '118_instance_ai_setup_overhaul';
 export const INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT = 'variant';
 

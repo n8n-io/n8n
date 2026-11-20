@@ -506,6 +506,7 @@ defineExpose({ handleExternalKeydown, getOpenMetrics, flushEmptySearch });
 					variant="ghost"
 					size="medium"
 					:disabled="disabled"
+					focusable-when-disabled
 					:title="buttonLabel"
 					:aria-label="buttonLabel"
 					data-test-id="instance-ai-mention-button"

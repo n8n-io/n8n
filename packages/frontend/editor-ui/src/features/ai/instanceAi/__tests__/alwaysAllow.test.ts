@@ -124,6 +124,10 @@ describe('buildAlwaysAllowKeys', () => {
 		expect(buildAlwaysAllowKeys('skills', { action: 'create' })).toEqual(['skills:create']);
 	});
 
+	it('does not offer a session grant for skill source imports', () => {
+		expect(buildAlwaysAllowKeys('skills', { action: 'import-from-source' })).toEqual([]);
+	});
+
 	it.each(['unarchive', 'publish', 'restore-version', 'update-version'])(
 		'matches the backend per-workflow grant for the workflows %s action',
 		(action) => {

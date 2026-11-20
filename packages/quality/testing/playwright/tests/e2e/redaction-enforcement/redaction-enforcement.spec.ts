@@ -184,9 +184,7 @@ test.describe(
 					'This execution data is redacted',
 				);
 
-				// The disabled button sits inside the debug route's link. A click on it must
-				// not reach the link: the route change is synchronous, so the URL would
-				// already be the debug one here, before the pin path could redirect back.
+				// A disabled action must keep the current execution open.
 				await memberN8n.executions.getDebugButton().click({ force: true });
 				await expect(memberN8n.executions.getPreview()).toBeVisible();
 				await expect(memberN8n.page).toHaveURL(
