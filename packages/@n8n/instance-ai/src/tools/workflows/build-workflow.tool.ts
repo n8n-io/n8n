@@ -1231,6 +1231,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						'Workflow name is required for new workflows. Provide a name parameter or set it in the SDK code.',
 					],
 					remediation,
+					...(targetEngine ? { targetEngine } : {}),
 				};
 			}
 
@@ -1776,6 +1777,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						workItemId: resolvedWorkItemId,
 						errors: [failureText],
 						remediation,
+						...(targetEngine ? { targetEngine } : {}),
 					};
 				}
 
@@ -1811,6 +1813,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						workItemId: resolvedWorkItemId,
 						errors: [message],
 						remediation,
+						...(targetEngine ? { targetEngine } : {}),
 					};
 				}
 
@@ -1845,6 +1848,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					workItemId: resolvedWorkItemId,
 					errors: [`Workflow save failed: ${message}`],
 					remediation,
+					...(targetEngine ? { targetEngine } : {}),
 				};
 			}
 		})

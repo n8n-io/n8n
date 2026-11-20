@@ -385,6 +385,39 @@ describe('createBuildWorkflowTool', () => {
 			expect(result.targetEngine).toBe('target engine: v2 (engine of the saved workflow)');
 		});
 
+		it('checks an edit for v2 when the saved workflow cannot be read', async () => {
+			const { context, filePath } = makeContext({ overrides: { engineSetup: v1Default } });
+			vi.mocked(context.workflowService.getAsWorkflowJSON).mockRejectedValue(
+				new Error('read failed'),
+			);
+
+			const result = await executeTool<EngineOutput>(createBuildWorkflowTool(context), {
+				filePath,
+				workflowId: 'wf-1',
+			});
+
+			expect(compiledEngine()).toBe('v2');
+			expect(result.targetEngine).toBe('target engine: v2 (saved workflow could not be read)');
+		});
+
+		it('names the engine when a new workflow has no name', async () => {
+			const { context, filePath } = makeContext({ overrides: { engineSetup: v2Default } });
+			vi.mocked(compileWorkflowSource).mockResolvedValue({
+				success: true,
+				workflow: { ...structuredClone(generatedWorkflow), name: '' },
+				warnings: [],
+				compiler: 'sandbox-tsx',
+			});
+
+			const result = await executeTool<EngineOutput>(createBuildWorkflowTool(context), {
+				filePath,
+			});
+
+			expect(result.success).toBe(false);
+			expect(result.remediation?.reason).toBe('workflow_name_missing');
+			expect(result.targetEngine).toBe('target engine: v2 (instance default)');
+		});
+
 		it('names the engine that the code sets', async () => {
 			const { context, filePath } = makeContext({ overrides: { engineSetup: v1Default } });
 			compileWithSettings({ engineType: 'v2' });

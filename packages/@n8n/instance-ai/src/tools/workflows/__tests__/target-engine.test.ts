@@ -81,10 +81,17 @@ describe('resolveFallbackEngine', () => {
 		).toEqual({ engine: 'v1', source: 'saved-workflow' });
 	});
 
-	it('uses v1 when the saved workflow cannot be read', () => {
-		expect(resolveFallbackEngine({ engineSetup: v2Default, isEdit: true })).toEqual({
+	it('checks for v2 when the saved workflow cannot be read and the module is active', () => {
+		expect(resolveFallbackEngine({ engineSetup: v1Default, isEdit: true })).toEqual({
+			engine: 'v2',
+			source: 'saved-workflow-unreadable',
+		});
+	});
+
+	it('uses v1 when the saved workflow cannot be read and the module is not active', () => {
+		expect(resolveFallbackEngine({ engineSetup: noModule, isEdit: true })).toEqual({
 			engine: 'v1',
-			source: 'no-engine',
+			source: 'saved-workflow-unreadable',
 		});
 	});
 });
@@ -116,7 +123,10 @@ describe('formatTargetEngine', () => {
 			{ engine: 'v2', source: 'workflow-settings' },
 			'target engine: v2 (set in the workflow settings)',
 		],
-		[{ engine: 'v1', source: 'no-engine' }, 'target engine: v1 (no engine set)'],
+		[
+			{ engine: 'v2', source: 'saved-workflow-unreadable' },
+			'target engine: v2 (saved workflow could not be read)',
+		],
 	] as const)('formats %o', (target, text) => {
 		expect(formatTargetEngine(target)).toBe(text);
 	});

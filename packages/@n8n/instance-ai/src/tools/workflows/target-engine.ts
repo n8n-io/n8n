@@ -8,13 +8,14 @@ import type { InstanceAiEngineSetup } from '../../types';
  * - `workflow-settings`: the code sets `settings.engineType`.
  * - `saved-workflow`: an edit without `engineType` keeps the engine of the saved workflow.
  * - `instance-default`: a new workflow without `engineType` gets the instance default.
- * - `no-engine`: the engine is not known. A workflow without an engine runs on v1.
+ * - `saved-workflow-unreadable`: an edit whose saved workflow cannot be read, so its
+ *   engine is not known.
  */
 export type TargetEngineSource =
 	| 'workflow-settings'
 	| 'saved-workflow'
 	| 'instance-default'
-	| 'no-engine';
+	| 'saved-workflow-unreadable';
 
 export interface TargetEngine {
 	engine: WorkflowEngineType;
@@ -25,7 +26,7 @@ const SOURCE_LABELS: Record<TargetEngineSource, string> = {
 	'workflow-settings': 'set in the workflow settings',
 	'saved-workflow': 'engine of the saved workflow',
 	'instance-default': 'instance default',
-	'no-engine': 'no engine set',
+	'saved-workflow-unreadable': 'saved workflow could not be read',
 };
 
 function toEngineType(value: unknown): WorkflowEngineType | undefined {
@@ -55,7 +56,14 @@ export function resolveFallbackEngine(input: {
 	if (!input.isEdit) {
 		return { engine: newWorkflowEngine(input.engineSetup), source: 'instance-default' };
 	}
-	if (!input.savedWorkflow) return { engine: 'v1', source: 'no-engine' };
+	if (!input.savedWorkflow) {
+		// The update can still run on v2. Engine v2 checks add errors to the v1 checks, so
+		// a v2 check cannot pass a workflow that v2 cannot run.
+		return {
+			engine: input.engineSetup?.engineV2Available === true ? 'v2' : 'v1',
+			source: 'saved-workflow-unreadable',
+		};
+	}
 	return {
 		engine: toEngineType(input.savedWorkflow.settings?.engineType) ?? 'v1',
 		source: 'saved-workflow',
