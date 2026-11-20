@@ -138,6 +138,7 @@ describe('PromotionsService', () => {
 		over: Partial<PromotionOperationInput> = {},
 	): PromotionOperationInput => ({
 		environmentId: ENVIRONMENT_ID,
+		environmentName: 'Production',
 		scope: 'instance',
 		providerId: 'prov1',
 		providerType: 'git',

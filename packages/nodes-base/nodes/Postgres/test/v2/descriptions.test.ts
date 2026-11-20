@@ -1,4 +1,4 @@
-import type { INodeProperties } from 'n8n-workflow';
+import type { INodeParameters, INodeProperties } from 'n8n-workflow';
 import { NodeHelpers, READ_ONLY_ANNOTATIONS, resolveNodeAnnotations } from 'n8n-workflow';
 
 import { optionsCollection } from '../../v2/actions/common.descriptions';
@@ -90,4 +90,41 @@ describe('PostgresV2, Start After', () => {
 			).toBe(shown);
 		},
 	);
+});
+
+describe('PostgresV2, Load Rows With COPY option', () => {
+	const visibleOptions = (operation: string, options: INodeParameters) =>
+		(optionsCollection.options as INodeProperties[])
+			.filter((option) =>
+				NodeHelpers.displayParameter(options, option, { typeVersion: 2.8 }, versionDescription, {
+					operation,
+					options,
+				}),
+			)
+			.map((option) => option.name);
+
+	const optionsHiddenByCopy = ['queryBatching', 'outputColumns', 'skipOnConflict'];
+
+	it('should show only for Insert', () => {
+		expect(visibleOptions('insert', {})).toContain('useCopy');
+		['select', 'update', 'upsert', 'executeQuery', 'deleteTable'].forEach((operation) => {
+			expect(visibleOptions(operation, {})).not.toContain('useCopy');
+		});
+	});
+
+	it.each([{}, { useCopy: false }])(
+		'should keep the other Insert options when it is off (%o)',
+		(options) => {
+			expect(visibleOptions('insert', options)).toEqual(
+				expect.arrayContaining(optionsHiddenByCopy),
+			);
+		},
+	);
+
+	it('should hide Query Batching, Output Columns and Skip on Conflict when it is on', () => {
+		const visible = visibleOptions('insert', { useCopy: true });
+
+		expect(visible).toContain('useCopy');
+		optionsHiddenByCopy.forEach((name) => expect(visible).not.toContain(name));
+	});
 });

@@ -295,7 +295,7 @@ describe('AgentRepository', () => {
 		it('rolls back a config save when task cleanup fails and can retry the complete write', async () => {
 			const schema: AgentJsonConfig = {
 				name: 'Agent',
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 				instructions: 'Help users',
 				tasks: [{ type: 'task', id: 'task-remove', enabled: false }],
 			};
@@ -856,7 +856,7 @@ describe('AgentRepository', () => {
 		it('writes channel state and revision without changing the definition', async () => {
 			const agent = await createAgent({
 				name: 'Original name',
-				schema: { name: 'Original name', model: 'anthropic/claude-sonnet-4-5', instructions: 'Hi' },
+				schema: { name: 'Original name', model: 'anthropic/claude-sonnet-5-5', instructions: 'Hi' },
 				versionId: 'version-1',
 			});
 

@@ -75,7 +75,7 @@ vi.mock('../composables/useModelCatalog', async () => {
 			getModelsForPicker: (credentials?: Record<string, string | null> | null) => ({
 				anthropic: {
 					models: [
-						anthropicModel('claude-sonnet-4-5', 'Claude Sonnet 4.5'),
+						anthropicModel('claude-sonnet-5-5', 'Claude Sonnet 5.5'),
 						// n8n Connect serves an allowlist; a user's own credential sees the
 						// provider's full catalog.
 						...(credentials?.anthropic === managedTag
@@ -160,7 +160,7 @@ vi.mock('@n8n/design-system', async (importOriginal) => ({
 
 const defaultConfig: AgentJsonConfig = {
 	name: 'Agent',
-	model: 'anthropic/claude-sonnet-4-5',
+	model: 'anthropic/claude-sonnet-5-5',
 	instructions: 'Help the user.',
 };
 
@@ -242,7 +242,7 @@ describe('AgentSubAgentsPanel', () => {
 			...defaultConfig,
 			subAgents: {
 				modelsByDifficulty: {
-					low: { model: 'anthropic/claude-sonnet-4-5', credential: AI_GATEWAY_MANAGED_TAG },
+					low: { model: 'anthropic/claude-sonnet-5-5', credential: AI_GATEWAY_MANAGED_TAG },
 				},
 			},
 		} as AgentJsonConfig);
@@ -264,8 +264,8 @@ describe('AgentSubAgentsPanel', () => {
 			...defaultConfig,
 			subAgents: {
 				modelsByDifficulty: {
-					low: { model: 'anthropic/claude-sonnet-4-5', credential: AI_GATEWAY_MANAGED_TAG },
-					high: { model: 'anthropic/claude-sonnet-4-5', credential: 'anthropic-cred' },
+					low: { model: 'anthropic/claude-sonnet-5-5', credential: AI_GATEWAY_MANAGED_TAG },
+					high: { model: 'anthropic/claude-sonnet-5-5', credential: 'anthropic-cred' },
 				},
 			},
 		} as AgentJsonConfig);
@@ -300,7 +300,7 @@ describe('AgentSubAgentsPanel', () => {
 		// A model picked for a different difficulty still gets the global credential.
 		emitDifficultyModelChange('agent-sub-agents-difficulty-medium-model', {
 			provider: 'anthropic',
-			model: 'claude-sonnet-4-5',
+			model: 'claude-sonnet-5-5',
 		});
 
 		const updates = wrapper.emitted('update:config') as
@@ -319,7 +319,7 @@ describe('AgentSubAgentsPanel', () => {
 
 		emitDifficultyModelChange('agent-sub-agents-difficulty-low-model', {
 			provider: 'anthropic',
-			model: 'claude-sonnet-4-5',
+			model: 'claude-sonnet-5-5',
 		});
 
 		const updates = wrapper.emitted('update:config') as
@@ -344,7 +344,7 @@ describe('AgentSubAgentsPanel', () => {
 		);
 		emitDifficultyModelChange('agent-sub-agents-difficulty-low-model', {
 			provider: 'anthropic',
-			model: 'claude-sonnet-4-5',
+			model: 'claude-sonnet-5-5',
 		});
 
 		const updates = wrapper.emitted('update:config') as
@@ -376,7 +376,7 @@ describe('AgentSubAgentsPanel', () => {
 		// 3. Pick a model — the stale own credential must not shadow the managed tag.
 		emitDifficultyModelChange('agent-sub-agents-difficulty-low-model', {
 			provider: 'anthropic',
-			model: 'claude-sonnet-4-5',
+			model: 'claude-sonnet-5-5',
 		});
 
 		const updates = wrapper.emitted('update:config') as
@@ -411,7 +411,7 @@ describe('AgentSubAgentsPanel', () => {
 			...defaultConfig,
 			subAgents: {
 				modelsByDifficulty: {
-					high: { model: 'anthropic/claude-sonnet-4-5', credential: 'anthropic-cred' },
+					high: { model: 'anthropic/claude-sonnet-5-5', credential: 'anthropic-cred' },
 				},
 			},
 		});
@@ -432,7 +432,7 @@ describe('AgentSubAgentsPanel', () => {
 			...defaultConfig,
 			subAgents: {
 				modelsByDifficulty: {
-					high: { model: 'anthropic/claude-sonnet-4-5', credential: 'anthropic-cred' },
+					high: { model: 'anthropic/claude-sonnet-5-5', credential: 'anthropic-cred' },
 				},
 			},
 		});
@@ -563,7 +563,7 @@ describe('AgentSubAgentsPanel', () => {
 				agents: [{ agentId: 'agent-2', useWhen: 'Use for billing escalations.' }],
 				modelsByDifficulty: {
 					low: { model: 'openai/gpt-4o-mini', credential: 'openai-cred' },
-					high: { model: 'anthropic/claude-sonnet-4-5', credential: 'anthropic-cred' },
+					high: { model: 'anthropic/claude-sonnet-5-5', credential: 'anthropic-cred' },
 				},
 			},
 		});
@@ -587,7 +587,7 @@ describe('AgentSubAgentsPanel', () => {
 			subAgents: {
 				modelsByDifficulty: {
 					low: { model: 'openai/gpt-4o-mini', credential: 'openai-cred' },
-					high: { model: 'anthropic/claude-sonnet-4-5', credential: 'anthropic-cred' },
+					high: { model: 'anthropic/claude-sonnet-5-5', credential: 'anthropic-cred' },
 				},
 			},
 		});
@@ -606,7 +606,7 @@ describe('AgentSubAgentsPanel', () => {
 				subAgents: {
 					modelsByDifficulty: {
 						low: { model: 'openai/gpt-4o-mini', credential: 'openai-cred' },
-						high: { model: 'anthropic/claude-sonnet-4-5', credential: 'anthropic-cred-2' },
+						high: { model: 'anthropic/claude-sonnet-5-5', credential: 'anthropic-cred-2' },
 					},
 				},
 			},
@@ -618,7 +618,7 @@ describe('AgentSubAgentsPanel', () => {
 			...defaultConfig,
 			subAgents: {
 				modelsByDifficulty: {
-					high: { model: 'anthropic/claude-sonnet-4-5', credential: 'anthropic-cred' },
+					high: { model: 'anthropic/claude-sonnet-5-5', credential: 'anthropic-cred' },
 				},
 			},
 		});

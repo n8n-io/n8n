@@ -746,7 +746,7 @@ describe('AgentsService', () => {
 			actor,
 			schema: {
 				name: 'Support Agent',
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 				instructions: 'Triage tickets.',
 				integrations,
 			},
@@ -787,7 +787,7 @@ describe('AgentsService', () => {
 			actor,
 			schema: {
 				name: 'Support Agent',
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 				instructions: 'Triage refunds.',
 				tools: [{ type: 'custom', id: 'refund_tool' }],
 			},
@@ -816,7 +816,7 @@ describe('AgentsService', () => {
 			skillCreator,
 			schema: {
 				name: 'Support Agent',
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 				instructions: 'Triage tickets.',
 				skills: [{ type: 'skill', id: 'skill_abc' }],
 			},
@@ -851,7 +851,7 @@ describe('AgentsService', () => {
 			actor,
 			schema: {
 				name: 'Support Agent',
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 				instructions: 'Triage tickets.',
 				skills: skillRefs,
 			},
@@ -881,7 +881,7 @@ describe('AgentsService', () => {
 				actor,
 				schema: {
 					name: 'Support Agent',
-					model: 'anthropic/claude-sonnet-4-5',
+					model: 'anthropic/claude-sonnet-5-5',
 					instructions: 'Triage tickets.',
 					integrations: [
 						{ type: 'telegram', credentialId: 'cred-telegram-1' },
@@ -995,7 +995,7 @@ describe('AgentsService', () => {
 				actor,
 				schema: {
 					name: 'Support Agent',
-					model: 'anthropic/claude-sonnet-4-5',
+					model: 'anthropic/claude-sonnet-5-5',
 					instructions: 'Triage tickets.',
 				},
 				user,
@@ -1005,7 +1005,7 @@ describe('AgentsService', () => {
 			expect(eventService.emit).toHaveBeenCalledWith('agent-saved', { agentId: saved.id });
 			expect(telemetry.track).toHaveBeenCalledExactlyOnceWith(
 				TELEMETRY_EVENT.AGENTS.USER_CREATED_AGENT,
-				expect.objectContaining({ event_version: '3', model: 'anthropic/claude-sonnet-4-5' }),
+				expect.objectContaining({ event_version: '3', model: 'anthropic/claude-sonnet-5-5' }),
 			);
 		});
 
@@ -1028,7 +1028,7 @@ describe('AgentsService', () => {
 				actor,
 				schema: {
 					name: 'Support Agent',
-					model: 'anthropic/claude-sonnet-4-5',
+					model: 'anthropic/claude-sonnet-5-5',
 					instructions: 'Triage tickets.',
 					integrations: [{ type: 'slack', credentialId: 'cred-slack-1' }],
 				},
@@ -1153,7 +1153,7 @@ describe('AgentsService', () => {
 				name: 'Support Triage',
 				schema: {
 					name: 'Support Triage',
-					model: 'anthropic/claude-sonnet-4-5',
+					model: 'anthropic/claude-sonnet-5-5',
 					instructions: 'Hi',
 				},
 				integrations: [],
@@ -1637,7 +1637,7 @@ describe('AgentsService', () => {
 				activeVersion: {
 					schema: {
 						name: 'Support',
-						model: 'anthropic/claude-sonnet-4-5',
+						model: 'anthropic/claude-sonnet-5-5',
 						instructions: 'published instructions',
 						personalisation: { icon: 'bot', gradient: { from: '#000000', to: '#FFFFFF' } },
 						description: 'Answers billing questions.',
@@ -1912,7 +1912,7 @@ describe('AgentsService', () => {
 					name: 'Support Agent',
 					schema: {
 						name: 'Support Agent',
-						model: 'anthropic/claude-sonnet-4-5',
+						model: 'anthropic/claude-sonnet-5-5',
 						instructions: 'Help the user.',
 						tools: [
 							{ type: 'custom', id: 'c1' },
@@ -1950,7 +1950,7 @@ describe('AgentsService', () => {
 			expect(summary).toEqual({
 				id: agentId,
 				name: 'Support Agent',
-				model: { provider: 'anthropic', model: 'claude-sonnet-4-5' },
+				model: { provider: 'anthropic', model: 'claude-sonnet-5-5' },
 				channels: [{ type: 'slack' }, { type: 'telegram' }],
 				tools: [
 					{ type: 'custom', name: 'Refund tool' },
@@ -1997,7 +1997,7 @@ describe('AgentsService', () => {
 					name: 'Partial Agent',
 					schema: {
 						name: 'Partial Agent',
-						model: 'claude-sonnet-4-5',
+						model: 'claude-sonnet-5-5',
 						instructions: 'Help the user.',
 						tools: [
 							{ type: 'custom', id: 'c-missing' },
@@ -2012,7 +2012,7 @@ describe('AgentsService', () => {
 
 			const summary = await service.getCapabilitySummary(agentId, projectId);
 
-			expect(summary.model).toEqual({ provider: '', model: 'claude-sonnet-4-5' });
+			expect(summary.model).toEqual({ provider: '', model: 'claude-sonnet-5-5' });
 			expect(summary.tools).toEqual([
 				{ type: 'custom', name: 'c-missing' },
 				{ type: 'workflow', name: 'wf-2' },

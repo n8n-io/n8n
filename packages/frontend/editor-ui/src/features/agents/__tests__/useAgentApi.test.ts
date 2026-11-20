@@ -613,7 +613,7 @@ describe('useAgentApi', () => {
 		it('posts the initial config and reserved agent id', async () => {
 			const config: AgentJsonConfig = {
 				name: 'Support Agent',
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 				instructions: 'Triage tickets.',
 			};
 
@@ -635,7 +635,7 @@ describe('useAgentApi', () => {
 		it('fetches the source agent, then creates a clone with the new name', async () => {
 			const sourceConfig = {
 				name: 'Support Agent',
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 				instructions: 'Triage tickets.',
 			} as unknown as AgentJsonConfig;
 			const sourceAgent = {
@@ -683,7 +683,7 @@ describe('useAgentApi', () => {
 		it('copies channels without their credential so the clone opens as drafts', async () => {
 			const sourceConfig = {
 				name: 'Support Agent',
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 				instructions: 'Triage tickets.',
 				integrations: [
 					{ type: 'telegram', credentialId: 'cred-telegram-1' },
