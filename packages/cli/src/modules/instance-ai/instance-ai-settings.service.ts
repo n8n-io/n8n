@@ -60,7 +60,10 @@ import {
 export { INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY, INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY };
 
 import { InstanceAiCloudBrowserService } from './browser/instance-ai-cloud-browser.service';
-import { toSavedLoginSite } from './browser/cloud-browser-saved-login-policy';
+import {
+	type SavedLoginPolicy,
+	toSavedLoginSite,
+} from './browser/cloud-browser-saved-login-policy';
 import { withModelName } from './model-config-name';
 import { InstanceAiThreadRepository } from './repositories/instance-ai-thread.repository';
 import {
@@ -1278,9 +1281,19 @@ export class InstanceAiSettingsService {
 		return this.config.cloudBrowserEnabled;
 	}
 
-	/** Whether the admin lets users save cloud browser logins on at least some sites. */
+	/** Whether the admin lets users save cloud browser logins on at least one site. */
 	isCloudBrowserSavedLoginsEnabled(): boolean {
-		return this.cloudBrowserSavedLoginsMode !== 'off';
+		const mode = this.cloudBrowserSavedLoginsMode;
+		// "Listed sites only" with no sites allows no site.
+		return mode !== 'off' && !(mode === 'only' && this.cloudBrowserSavedLoginSites.length === 0);
+	}
+
+	/** The admin's current rules for saved cloud browser logins. */
+	getCloudBrowserSavedLoginPolicy(): SavedLoginPolicy {
+		return {
+			mode: this.cloudBrowserSavedLoginsMode,
+			sites: [...this.cloudBrowserSavedLoginSites],
+		};
 	}
 
 	/** Whether workflow building can use the required sandbox workspace. */

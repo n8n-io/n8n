@@ -165,7 +165,7 @@ describe('SavedLoginsSettingsSection', () => {
 			expect(screen.queryByTestId('saved-logins-section')).not.toBeInTheDocument();
 		});
 
-		it('hides after the user deletes the last saved login and closes the dialog', async () => {
+		it('hides after the dialog closes and the refetched saved logins are empty', async () => {
 			vi.mocked(fetchSavedLogins)
 				.mockResolvedValueOnce({ savedLogins: [savedLogin] })
 				.mockResolvedValueOnce({ savedLogins: [savedLogin] })

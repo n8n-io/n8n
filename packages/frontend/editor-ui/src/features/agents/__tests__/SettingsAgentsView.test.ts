@@ -68,6 +68,8 @@ function sharedSettings(
 		},
 		browserUseEnabled: false,
 		cloudBrowserEnabled: false,
+		cloudBrowserSavedLoginsMode: 'all',
+		cloudBrowserSavedLoginSites: [],
 		...overrides,
 	};
 }

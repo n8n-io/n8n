@@ -2010,7 +2010,8 @@ describe('InstanceAiSettingsService', () => {
 		it.each([
 			{ mode: 'off' as const, enabled: false },
 			{ mode: 'all' as const, enabled: true },
-			{ mode: 'only' as const, enabled: true },
+			// No sites are listed, so no site is allowed.
+			{ mode: 'only' as const, enabled: false },
 			{ mode: 'except' as const, enabled: true },
 		])('saves the $mode mode', async ({ mode, enabled }) => {
 			const result = await service.updateAdminSettings(
@@ -2021,6 +2022,19 @@ describe('InstanceAiSettingsService', () => {
 			expect(result.cloudBrowserSavedLoginsMode).toBe(mode);
 			expect(persistedSettingsValue).toContain(`"cloudBrowserSavedLoginsMode":"${mode}"`);
 			expect(service.isCloudBrowserSavedLoginsEnabled()).toBe(enabled);
+		});
+
+		it('allows saved logins in the "only" mode when a site is listed', async () => {
+			await service.updateAdminSettings(
+				{ cloudBrowserSavedLoginsMode: 'only', cloudBrowserSavedLoginSites: ['github.com'] },
+				admin,
+			);
+
+			expect(service.isCloudBrowserSavedLoginsEnabled()).toBe(true);
+			expect(service.getCloudBrowserSavedLoginPolicy()).toEqual({
+				mode: 'only',
+				sites: ['github.com'],
+			});
 		});
 
 		it('saves the registrable domain of each site once', async () => {
@@ -2042,12 +2056,13 @@ describe('InstanceAiSettingsService', () => {
 		});
 
 		it('rejects a site without a registrable domain, and saves nothing', async () => {
-			await expect(
-				service.updateAdminSettings(
-					{ cloudBrowserSavedLoginSites: ['github.com', 'localhost'] },
-					admin,
-				),
-			).rejects.toThrow(new UnprocessableRequestError('"localhost" is not a valid site'));
+			const update = service.updateAdminSettings(
+				{ cloudBrowserSavedLoginSites: ['github.com', 'localhost'] },
+				admin,
+			);
+
+			await expect(update).rejects.toThrow(UnprocessableRequestError);
+			await expect(update).rejects.toThrow('"localhost" is not a valid site');
 			expect(settingsRepository.upsertByKey).not.toHaveBeenCalled();
 			expect((await service.getAdminSettings()).cloudBrowserSavedLoginSites).toEqual([]);
 		});

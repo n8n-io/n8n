@@ -624,10 +624,8 @@ export class AssistantTurnEnvironmentFactory {
 						permissionMode: context.permissions?.fetchUrl,
 						createCredentialPermissionMode: context.permissions?.createCredential,
 					},
-					savedLoginPolicy: {
-						mode: adminSettings.cloudBrowserSavedLoginsMode,
-						sites: adminSettings.cloudBrowserSavedLoginSites,
-					},
+					// Read when the task starts, so an admin change applies to the next task.
+					savedLoginPolicy: this.settingsService.getCloudBrowserSavedLoginPolicy(),
 					getCredentialFields: context.credentialService.getCredentialFields,
 				});
 		}
