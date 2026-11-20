@@ -73,7 +73,7 @@ const defaultRuleSettings: RuleSettingsMap = {
 	'workflow-pr-target-safety': {
 		enabled: true,
 		severity: 'error',
-		// ci-owners-required-reviews.yml only calls DevHub and checks out no code.
+		// ci-owners-required-reviews.yml checks out master only, never PR code.
 		options: { allowedWorkflows: ['ci-cla-check.yml', 'ci-owners-required-reviews.yml'] },
 	},
 	'migration-timestamp': {
