@@ -1,0 +1,23 @@
+packages/quality/testing/playwright/pages/WorkflowReviewsPage.ts
+  s_419bed5e9fbd75::t_a6ce554c1e3e9c 55,57-63,67-71,78,80-83
+packages/quality/testing/playwright/tests/e2e/workflow-reviews/required-approval.spec.ts
+  s_419bed5e9fbd75::t_a6ce554c1e3e9c 67
+packages/quality/testing/playwright/tests/e2e/workflow-reviews/review-round-trip.spec.ts
+  s_419bed5e9fbd75::t_a6ce554c1e3e9c 89
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "97533a2cb760691b8ab68b1396ca41aa4dcedceb",
+  "prompts": {},
+  "sessions": {
+    "s_419bed5e9fbd75": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "152a2e1a-fb2a-4e99-b693-ebe21d600421",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}
