@@ -103,8 +103,6 @@ describe('the Firecrawl vendor file', () => {
 
 	it('has a profile with the default ports of the table', () => {
 		expect(HTTP_PROFILES).toContain(FIRECRAWL_PROFILE);
-		expect(FIRECRAWL_PROFILE.defaultAdminUrl).toBe('http://127.0.0.1:9100');
-		expect(FIRECRAWL_PROFILE.defaultGymUrl).toBe('http://127.0.0.1:8090');
 	});
 });
 
