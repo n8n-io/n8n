@@ -1,0 +1,29 @@
+packages/cli/src/public-api/v1/controllers/promotions.public.controller.ts
+  s_bcc45857b1b330::t_b48b2c2cb004be 102
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/applyEnvironmentSelection.generated.yml
+  s_bcc45857b1b330::t_9d2fa990681284 8
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/applyPackage.generated.yml
+  s_bcc45857b1b330::t_7db291635003cb 8
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/applyProjectSelection.generated.yml
+  s_bcc45857b1b330::t_cee4b8c9a15e6d 8
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/continueApplyPackage.generated.yml
+  s_bcc45857b1b330::t_3a8cbacfca47bf 8
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/continueApplyProjectSelection.generated.yml
+  s_bcc45857b1b330::t_c79a658cfd981e 8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6d7a5169a72aa23bbe0463381a88ee03992f1e05",
+  "prompts": {},
+  "sessions": {
+    "s_bcc45857b1b330": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8fb1f169-81cf-4955-88ee-d3bcb82e897e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}
