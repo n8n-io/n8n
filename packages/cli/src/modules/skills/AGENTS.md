@@ -124,6 +124,17 @@ The MCP tools are `list_skill_sources` (`skill:read` or `skill:write`),
 n8n Assistant asks for approval for each import. Connect and import use the
 existing telemetry events with `surface: 'assistant'` or `surface: 'mcp'`.
 
+The user decision for an MCP import is the `skill:write` grant plus the pass
+verdict. `import_skills_from_source` has no confirmation step of its own, as
+`create_skill` has none. The revision check guards against a changed source,
+not against a missing user decision. An imported skill starts with
+`availableToAssistant` and `availableToMCP` off, and no agent uses it. Do not
+add an MCP source action that takes a skill with a warning or accepts an update:
+those need a review by a person, in the Skills UI.
+
+The three surfaces (Skills UI, MCP, n8n Assistant) have one switch, the Skill
+Sync gate. They go on and off together.
+
 ## Gates
 
 - `SkillsGate.isEnabled` decides if skills are on. Skills have no admin toggle of their own. Every entry point (REST, MCP, n8n Assistant) checks this gate. Do not check `isActive('agents')`, the proxy or the consumer settings in other code. The gate needs two facts:
