@@ -764,6 +764,27 @@ describe('SkillSourceConnectDialog', () => {
 			).toBeTruthy();
 		});
 
+		it('goes to the line of a finding from the notice, and marks its text on that line', async () => {
+			skillsStore.discoverSource.mockResolvedValue(discovery({ skills }));
+			const view = render();
+			await review(view);
+
+			const file = view.getByRole('region', { name: 'skills/hidden/SKILL.md' });
+			const line = file.querySelector<HTMLElement>('[data-line="6"]')!;
+			expect(line).toContainElement(within(file).getByTestId('skill-source-finding-mark'));
+			const scrollIntoView = vi.fn();
+			line.scrollIntoView = scrollIntoView;
+
+			await userEvent.click(
+				within(view.getByTestId('skill-source-findings')).getByRole('link', {
+					name: 'Hidden Unicode characters in SKILL.md:6',
+				}),
+			);
+
+			expect(scrollIntoView).toHaveBeenCalledWith({ block: 'center', inline: 'nearest' });
+			expect(file).toHaveFocus();
+		});
+
 		it('marks the most severe finding where two findings mark the same text', async () => {
 			const location = { line: 4, start: 0, end: 4 };
 			const skill = discovered({
