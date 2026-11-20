@@ -99,7 +99,7 @@ catalog:
   '@codemirror/state': 6.5.3
   '@codemirror/view': 6.39.8
   '@confluentinc/kafka-javascript': 1.9.1
-  '@daytona/sdk': 0.205.1
+  '@daytona/sdk': 0.214.0
   '@e965/xlsx': 0.20.3
   '@iconify-json/lucide': ^1.2.112
   '@iconify-json/mdi': ^1.1.63
@@ -383,7 +383,7 @@ catalogs:
   undici-v6:
     undici: ^6.29.1
   undici-v7:
-    undici: ^7.30.1
+    undici: ^7.30.2
   # knip needs zod 4 while the default catalog pins zod 3.
   zod-v4:
     zod: ^4.4.3
@@ -400,9 +400,11 @@ overrides:
   '@mistralai/mistralai': ^2.2.1
   '@n8n/typeorm>@sentry/node': catalog:sentry
   'mssql@12.7.0>tedious': 20.0.5
+  '@microsoft/opentelemetry>@opentelemetry/instrumentation-http': 0.222.0
   '@opentelemetry/api': 'catalog:'
   '@opentelemetry/core': 2.10.0
   '@opentelemetry/propagator-jaeger': 2.10.0
+  '@opentelemetry/resources@>=2 <2.12.1': 2.12.1
   '@types/node': ^20.17.50
   chokidar: 4.0.3
   esbuild: 'catalog:'
