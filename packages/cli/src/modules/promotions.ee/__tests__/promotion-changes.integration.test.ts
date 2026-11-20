@@ -998,7 +998,23 @@ describe('resources in the preview', () => {
 		expect(await promoteShown(beforePromotion)).toEqual(stopped);
 		expect(await remoteHead()).toBe(promotedHead);
 
-		expect(await promoteShown(await loadPreview())).toMatchObject({ status: 'promoted' });
+		// An admin turns on a new branch for each Promote during the review. The confirmation
+		// named the base branch as the target, so the Promote stops.
+		const environmentRepository = Container.get(PromotionEnvironmentRepository);
+		const { id, providerId } = environments.promote;
+		const promoteSettings = (createBranchOnPromotion: boolean) => ({
+			settings: { schemaVersion: 1 as const, baseBranchName: 'main', createBranchOnPromotion },
+		});
+		const beforeSetting = await loadPreview();
+		await environmentRepository.updateEnvironment(id, providerId, promoteSettings(true), {});
+		expect(await promoteShown(beforeSetting)).toEqual(stopped);
+		expect(await remoteHead()).toBe(promotedHead);
+		await environmentRepository.updateEnvironment(id, providerId, promoteSettings(false), {});
+
+		// A rename only labels the preview, so the Promote goes ahead.
+		const beforeRename = await loadPreview();
+		await environmentRepository.updateEnvironment(id, providerId, { name: 'Production' }, {});
+		expect(await promoteShown(beforeRename)).toMatchObject({ status: 'promoted' });
 		expect(changedResources(await loadPreview())).toEqual([]);
 	}, 60_000);
 
