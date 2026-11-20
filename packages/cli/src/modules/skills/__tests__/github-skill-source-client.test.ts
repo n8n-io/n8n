@@ -681,6 +681,30 @@ describe('GitHubSkillSourceClient', () => {
 			await expect(small.discover(locator)).rejects.toMatchObject({ reason: 'archive_too_large' });
 		});
 
+		it('imports from a repository link when the files outside the skills are over the budget', async () => {
+			const reference = '# Forms\n';
+			const files: Record<string, string> = {
+				'.claude/skills/pdf/SKILL.md': skillMd('pdf'),
+				'.claude/skills/pdf/reference/forms.md': reference,
+			};
+			for (let index = 0; index < 30; index += 1) files[`data/file-${index}.csv`] = 'a,b\n';
+			github.push('acme/monorepo', files);
+			// Room for the skill, but not for the data files of the repository.
+			const small = clientWithLimits({
+				maxRetainedBytes: skillMd('pdf').length + reference.length + 10,
+			});
+			const locator = await small.parseLocator('https://github.com/acme/monorepo');
+
+			const { items } = await small.discover(locator);
+			const fetched = await small.fetchLatest(locator, items[0]);
+
+			expect(items).toEqual([{ path: '.claude/skills/pdf' }]);
+			expect(fetched.content.files).toEqual([{ path: 'reference/forms.md', content: reference }]);
+			// One read for the paths, and one that keeps the files of the skills.
+			expect(github.requests.archives).toBe(2);
+			expect(github.requests.trees).toBe(0);
+		});
+
 		it('counts the paths and text of a cached archive in the cache size', async () => {
 			github.push('acme/skills', {
 				'a/SKILL.md': skillMd('a'),

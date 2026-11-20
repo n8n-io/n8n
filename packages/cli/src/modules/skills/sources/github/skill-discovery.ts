@@ -71,6 +71,15 @@ export function filesOfSkill(paths: Iterable<string>, folder: string): string[] 
 	);
 }
 
+/** Whether a file is in one of the skill folders, at any depth. */
+export function isInSkillFolder(path: string, folders: ReadonlySet<string>): boolean {
+	if (folders.has('')) return true;
+	for (let slash = path.lastIndexOf('/'); slash > 0; slash = path.lastIndexOf('/', slash - 1)) {
+		if (folders.has(path.slice(0, slash))) return true;
+	}
+	return false;
+}
+
 /** Whether `path` is `folder` or below it. The empty folder is the root. */
 export function isInside(path: string, folder: string): boolean {
 	return folder === '' || path === folder || path.startsWith(`${folder}/`);

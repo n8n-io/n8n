@@ -65,9 +65,27 @@ export function archiveTooLarge(root: string): SkillSourceReadError {
  */
 export async function readRepositoryArchive(
 	source: Readable,
-	options: { root?: string; signal?: AbortSignal; limits?: ArchiveLimits } = {},
-): Promise<RepositoryArchive> {
-	const { root = '', signal, limits = DEFAULT_ARCHIVE_LIMITS } = options;
+	options: {
+		root?: string;
+		signal?: AbortSignal;
+		limits?: ArchiveLimits;
+		/** The files whose bytes the archive keeps. Every other file keeps its path only. */
+		keep?: (path: string) => boolean;
+		/**
+		 * What happens when the kept files pass `maxRetainedBytes`. `fail` rejects. `paths`
+		 * drops every file, reads on for the paths, and sets `overflowed`.
+		 */
+		onRetainedOverflow?: 'fail' | 'paths';
+	} = {},
+): Promise<RepositoryArchive & { overflowed: boolean }> {
+	const {
+		root = '',
+		signal,
+		limits = DEFAULT_ARCHIVE_LIMITS,
+		keep = () => true,
+		onRetainedOverflow = 'fail',
+	} = options;
+	let overflowed = false;
 	const paths: string[] = [];
 	const files = new Map<string, Buffer>();
 	const oversized = new Map<string, string | null>();
@@ -114,6 +132,10 @@ export async function readRepositoryArchive(
 				return;
 			}
 			paths.push(path);
+			if (overflowed || !keep(path)) {
+				entry.resume();
+				return;
+			}
 			if (entry.size > limits.maxFileBytes) {
 				if (path.split('/').at(-1) !== SKILL_FILE) {
 					oversized.set(path, null);
@@ -122,17 +144,25 @@ export async function readRepositoryArchive(
 				}
 				const hash = createHash('sha256');
 				entry.on('data', (chunk: Buffer) => hash.update(chunk));
-				entry.on('end', () => oversized.set(path, hash.digest('hex')));
+				entry.on('end', () => {
+					if (!overflowed) oversized.set(path, hash.digest('hex'));
+				});
 				return;
 			}
 			retainedBytes += entry.size;
 			if (retainedBytes > limits.maxRetainedBytes) {
 				entry.resume();
-				return fail(archiveTooLarge(root));
+				if (onRetainedOverflow === 'fail') return fail(archiveTooLarge(root));
+				overflowed = true;
+				files.clear();
+				oversized.clear();
+				return;
 			}
 			const chunks: Buffer[] = [];
 			entry.on('data', (chunk: Buffer) => chunks.push(chunk));
-			entry.on('end', () => files.set(path, Buffer.concat(chunks)));
+			entry.on('end', () => {
+				if (!overflowed) files.set(path, Buffer.concat(chunks));
+			});
 		});
 		parser.on('error', (error: Error) =>
 			fail(
@@ -144,7 +174,7 @@ export async function readRepositoryArchive(
 		parser.on('end', () => {
 			if (settled) return;
 			settle();
-			resolve({ paths, files, oversized });
+			resolve({ paths, files, oversized, overflowed });
 		});
 
 		source.on('data', (chunk: Buffer) => {

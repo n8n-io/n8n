@@ -48,6 +48,53 @@ describe('readRepositoryArchive', () => {
 		expect(paths).toEqual(['file-0.txt', 'file-1.txt']);
 	});
 
+	it('leaves out a file over the file limit, keeps its path, and reads the files after it', async () => {
+		const archive = await readRepositoryArchive(
+			streamOf(
+				archiveOf({
+					'a/SKILL.md': 'skill',
+					'a/assets/big.bin': 'x'.repeat(11),
+					'a/references/x.md': 'reference',
+				}),
+			),
+			{ limits: { ...DEFAULT_ARCHIVE_LIMITS, maxFileBytes: 10 } },
+		);
+
+		expect(archive.paths).toEqual(['a/SKILL.md', 'a/assets/big.bin', 'a/references/x.md']);
+		expect([...archive.oversized]).toEqual([['a/assets/big.bin', null]]);
+		expect([...archive.files.keys()]).toEqual(['a/SKILL.md', 'a/references/x.md']);
+	});
+
+	it('keeps the bytes of the files that `keep` accepts, and the path of every file', async () => {
+		const archive = await readRepositoryArchive(
+			streamOf(archiveOf({ 'a/SKILL.md': 'skill', 'src/big.ts': 'x'.repeat(100) })),
+			{
+				keep: (path) => path.startsWith('a/'),
+				limits: { ...DEFAULT_ARCHIVE_LIMITS, maxRetainedBytes: 10 },
+			},
+		);
+
+		expect(archive.paths).toEqual(['a/SKILL.md', 'src/big.ts']);
+		expect([...archive.files.keys()]).toEqual(['a/SKILL.md']);
+		expect(archive.overflowed).toBe(false);
+	});
+
+	it('reads on for the paths when the kept files pass the budget and the caller asks for it', async () => {
+		const archive = await readRepositoryArchive(
+			streamOf(
+				archiveOf({ 'a/SKILL.md': 'skill', 'src/big.ts': 'x'.repeat(100), 'b/SKILL.md': 'skill' }),
+			),
+			{
+				onRetainedOverflow: 'paths',
+				limits: { ...DEFAULT_ARCHIVE_LIMITS, maxRetainedBytes: 10 },
+			},
+		);
+
+		expect(archive.paths).toEqual(['a/SKILL.md', 'src/big.ts', 'b/SKILL.md']);
+		expect(archive.files.size).toBe(0);
+		expect(archive.overflowed).toBe(true);
+	});
+
 	it('keeps file bytes regardless of the path or extension', async () => {
 		const archive = await readRepositoryArchive(
 			streamOf(

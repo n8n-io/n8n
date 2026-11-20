@@ -35,7 +35,13 @@ import {
 	splitBranchAndPath,
 } from './github-link';
 import { lsRefsRequestBody, parseLsRefsResponse, type GitRefs } from './git-refs';
-import { SKILL_FILE, filesOfSkill, findSkillFolders, isInside } from './skill-discovery';
+import {
+	SKILL_FILE,
+	filesOfSkill,
+	findSkillFolders,
+	isInSkillFolder,
+	isInside,
+} from './skill-discovery';
 import { SkillParseError } from '../../errors/skill-parse.error';
 import { SkillSourceNotFoundError } from '../../errors/skill-source-not-found.error';
 import { SkillSourceReadError } from '../../errors/skill-source-read.error';
@@ -282,7 +288,6 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 		const skillFile = inRepository(SKILL_FILE);
 		// A linked skill can fall out of the picker, for example when new skills fill it.
 		if (
-			parsed.path &&
 			path !== parsed.path &&
 			archive.paths.includes(skillFile) &&
 			!archive.files.has(skillFile) &&
@@ -537,12 +542,19 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 			: { url: `https://codeload.${GITHUB_HOST}/${o}/${r}/tar.gz/${s}` };
 		const deadline = new AbortController();
 		const timer = setTimeout(() => deadline.abort(), DOWNLOAD_MS);
-		try {
-			const body = await this.sendStream(target, auth, deadline.signal);
-			return await readRepositoryArchive(body, {
+		const read = async (options: Parameters<typeof readRepositoryArchive>[1]) =>
+			await readRepositoryArchive(await this.sendStream(target, auth, deadline.signal), {
+				...options,
 				signal: deadline.signal,
 				limits: this.archiveLimits,
 			});
+		try {
+			const whole = await read({ onRetainedOverflow: 'paths' });
+			if (!whole.overflowed) return whole;
+			// The repository holds more than n8n keeps, but a skill needs only its own folder.
+			// The first read gave every path, so a second read keeps the files of the skills.
+			const folders = new Set(findSkillFolders(whole.paths, '').folders);
+			return await read({ keep: (path) => isInSkillFolder(path, folders) });
 		} finally {
 			clearTimeout(timer);
 			// Frees the connection when the read stopped early.
