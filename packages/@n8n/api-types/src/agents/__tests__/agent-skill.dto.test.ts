@@ -1,7 +1,9 @@
 import {
+	AGENT_SKILL_BINARY_CONTENT_MAX_LENGTH,
 	AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
 	AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH,
 	AGENT_SKILL_REFERENCE_MAX_COUNT,
+	AGENT_SKILL_REFERENCES_TOTAL_MAX_LENGTH,
 	agentSkillReferencePathSchema,
 	agentSkillSchema,
 } from '../agent-skill.schema';
@@ -168,6 +170,50 @@ describe('agent skill DTOs', () => {
 				})),
 			}).success,
 		).toBe(false);
+	});
+
+	describe('file content rules', () => {
+		const accepts = (references: unknown[]) =>
+			agentSkillSchema.safeParse({ ...validSkill, references }).success;
+		const half = AGENT_SKILL_REFERENCES_TOTAL_MAX_LENGTH / 2;
+
+		it('rejects text with a NUL character', () => {
+			expect(accepts([{ path: 'a.txt', content: 'a\0b' }])).toBe(false);
+		});
+
+		it('rejects binary content that is not Base64', () => {
+			expect(accepts([{ path: 'a.bin', content: 'not base64', isBinary: true }])).toBe(false);
+		});
+
+		it('rejects isBinary false, so text has one stored form', () => {
+			expect(accepts([{ path: 'a.txt', content: 'a', isBinary: false }])).toBe(false);
+		});
+
+		it('accepts binary content at the limit and rejects one Base64 group more', () => {
+			const atLimit = 'A'.repeat(AGENT_SKILL_BINARY_CONTENT_MAX_LENGTH);
+			expect(accepts([{ path: 'a.bin', content: atLimit, isBinary: true }])).toBe(true);
+			expect(accepts([{ path: 'a.bin', content: `${atLimit}AAAA`, isBinary: true }])).toBe(false);
+		});
+
+		it('accepts two text files at the total limit and rejects one character more', () => {
+			const first = { path: 'a.txt', content: 'x'.repeat(half) };
+			expect(accepts([first, { path: 'b.txt', content: 'x'.repeat(half) }])).toBe(true);
+			expect(accepts([first, { path: 'b.txt', content: 'x'.repeat(half + 1) }])).toBe(false);
+		});
+
+		it('counts the Base64 length of a binary file toward the total', () => {
+			const binary = { path: 'a.bin', content: 'A'.repeat(half), isBinary: true };
+			expect(accepts([binary, { path: 'b.txt', content: 'x'.repeat(half) }])).toBe(true);
+			expect(accepts([binary, { path: 'b.txt', content: 'x'.repeat(half + 1) }])).toBe(false);
+		});
+
+		it('accepts the maximum number of files', () => {
+			const references = Array.from({ length: AGENT_SKILL_REFERENCE_MAX_COUNT }, (_, index) => ({
+				path: `files/${index}.md`,
+				content: '',
+			}));
+			expect(accepts(references)).toBe(true);
+		});
 	});
 
 	it.each(['', '   ', '\n\t'])('rejects instructions %j without text', (instructions) => {
