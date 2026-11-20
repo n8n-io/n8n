@@ -19,6 +19,7 @@ type AuditRow = {
 	oldValue: string | null;
 	newValue: string | null;
 	updatedBy: string | null;
+	loginId: string | null;
 };
 
 describe('CreateExecutionLimitAuditTable migration', () => {
@@ -41,14 +42,15 @@ describe('CreateExecutionLimitAuditTable migration', () => {
 
 	async function insertRow(context: TestMigrationContext, row: Partial<AuditRow>) {
 		await context.runQuery(
-			`INSERT INTO ${context.escape.tableName(TABLE)} ("projectId", "field", "oldValue", "newValue", "updatedBy")
-			 VALUES (:projectId, :field, :oldValue, :newValue, :updatedBy)`,
+			`INSERT INTO ${context.escape.tableName(TABLE)} ("projectId", "field", "oldValue", "newValue", "updatedBy", "loginId")
+			 VALUES (:projectId, :field, :oldValue, :newValue, :updatedBy, :loginId)`,
 			{
 				projectId: null,
 				field: 'instanceMaxExecutions',
 				oldValue: null,
 				newValue: null,
 				updatedBy: null,
+				loginId: null,
 				...row,
 			},
 		);
@@ -57,7 +59,12 @@ describe('CreateExecutionLimitAuditTable migration', () => {
 	it('stores many changes of one limit, with the time of each change', async () => {
 		const context = createTestMigrationContext(dataSource);
 		const projectId = randomUUID();
-		const change = { projectId, field: 'projectMaxExecutions', updatedBy: randomUUID() };
+		const change = {
+			projectId,
+			field: 'projectMaxExecutions',
+			updatedBy: randomUUID(),
+			loginId: 'login-1',
+		};
 
 		await insertRow(context, { ...change, newValue: '100' });
 		await insertRow(context, { ...change, oldValue: '100', newValue: '200' });

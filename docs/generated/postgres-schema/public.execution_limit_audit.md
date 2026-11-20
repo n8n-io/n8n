@@ -7,6 +7,7 @@
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | field | varchar(32) |  | false |  |  | What changed. periodUnit, instanceMaxExecutions and defaultProjectMaxExecutions are the instance settings in features.executionLimits. projectMaxExecutions is the limit of the project in projectId |
 | id | integer |  | false |  |  |  |
+| loginId | varchar(255) |  | true |  |  | Login that a service account used to make the change. NULL for a person and for a change that n8n made. No foreign key, so the row stays when the login is deleted |
 | newValue | json |  | true |  |  | Value after the change: a period unit or a maximum number of executions. NULL for no limit |
 | oldValue | json |  | true |  |  | Value before the change: a period unit or a maximum number of executions. NULL for no limit |
 | projectId | varchar(36) |  | true |  |  | Project whose execution limit changed. NULL for a change to the instance settings. No foreign key, so the row stays when the project is deleted |
@@ -39,6 +40,7 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   varchar_32_ field
   integer id
+  varchar_255_ loginId
   json newValue
   json oldValue
   varchar_36_ projectId

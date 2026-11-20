@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "execution_limit_audit" ("id" integer PRIMARY KEY NOT NULL, "projectId" varchar(36), "field" varchar(32) NOT NULL, "oldValue" text, "newValue" text, "updatedBy" varchar, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_execution_limit_audit_project_field" CHECK (("field" = 'projectMaxExecutions' AND "projectId" IS NOT NULL) OR ("field" <> 'projectMaxExecutions' AND "projectId" IS NULL)), CONSTRAINT "CHK_execution_limit_audit_field" CHECK ("field" IN ('periodUnit', 'instanceMaxExecutions', 'defaultProjectMaxExecutions', 'projectMaxExecutions')))
+CREATE TABLE "execution_limit_audit" ("id" integer PRIMARY KEY NOT NULL, "projectId" varchar(36), "field" varchar(32) NOT NULL, "oldValue" text, "newValue" text, "updatedBy" varchar, "loginId" varchar(255), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_execution_limit_audit_project_field" CHECK (("field" = 'projectMaxExecutions' AND "projectId" IS NOT NULL) OR ("field" <> 'projectMaxExecutions' AND "projectId" IS NULL)), CONSTRAINT "CHK_execution_limit_audit_field" CHECK ("field" IN ('periodUnit', 'instanceMaxExecutions', 'defaultProjectMaxExecutions', 'projectMaxExecutions')))
 ```
 
 </details>
@@ -18,6 +18,7 @@ CREATE TABLE "execution_limit_audit" ("id" integer PRIMARY KEY NOT NULL, "projec
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | field | varchar(32) |  | false |  |  |  |
 | id | INTEGER |  | false |  |  |  |
+| loginId | varchar(255) |  | true |  |  |  |
 | newValue | TEXT |  | true |  |  |  |
 | oldValue | TEXT |  | true |  |  |  |
 | projectId | varchar(36) |  | true |  |  |  |
@@ -41,6 +42,7 @@ erDiagram
   datetime_3_ createdAt
   varchar_32_ field
   INTEGER id
+  varchar_255_ loginId
   TEXT newValue
   TEXT oldValue
   varchar_36_ projectId

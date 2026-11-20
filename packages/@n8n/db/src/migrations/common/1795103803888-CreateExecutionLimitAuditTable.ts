@@ -39,6 +39,12 @@ export class CreateExecutionLimitAuditTable1795103803888 implements ReversibleMi
 					'User who made the change. NULL for a change that n8n made. ' +
 						'No foreign key, so the row stays when the user is deleted',
 				),
+				column('loginId')
+					.varchar(255)
+					.comment(
+						'Login that a service account used to make the change. NULL for a person and ' +
+							'for a change that n8n made. No foreign key, so the row stays when the login is deleted',
+					),
 			)
 			.withCreatedAt.withCheck(
 				`CHK_${tablePrefix}${TABLE}_project_field`,
