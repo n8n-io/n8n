@@ -37,8 +37,8 @@ describe('Agent approval job migration', () => {
 		const now = new Date();
 		await context(async ({ escape, runQuery }) => {
 			await runQuery(
-				`INSERT INTO ${escape.tableName('user')} (${['id', 'kind', 'roleSlug'].map(escape.columnName).join(', ')}) VALUES (:identityId, 'service', 'global:agent')`,
-				{ identityId },
+				`INSERT INTO ${escape.tableName('user')} (${['id', 'kind', 'roleSlug'].map(escape.columnName).join(', ')}) VALUES (:identityId, 'service', :roleSlug)`,
+				{ identityId, roleSlug: 'global:agent' },
 			);
 			await runQuery(
 				`INSERT INTO ${escape.tableName('project')} (${['id', 'name', 'type', 'createdAt', 'updatedAt'].map(escape.columnName).join(', ')}) VALUES (:projectId, 'Project', 'personal', :now, :now)`,
