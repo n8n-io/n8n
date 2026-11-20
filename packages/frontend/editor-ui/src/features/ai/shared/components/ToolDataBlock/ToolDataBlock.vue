@@ -55,10 +55,7 @@ function downloadFile(data: string, mimeType: string) {
 	<div v-if="contentItems" :class="$style.toolData" data-test-id="ai-tool-data-content">
 		<template v-for="(item, index) in contentItems" :key="index">
 			<ToolDataBlock v-if="item.type === 'text'" :value="item.text" />
-			<div
-				v-else-if="item.type === 'image' && !failedImages.has(index)"
-				:class="$style.binaryPart"
-			>
+			<div v-else-if="item.type === 'image' && !failedImages.has(index)" :class="$style.binaryPart">
 				<img
 					:src="`data:${item.mimeType};base64,${item.data}`"
 					:alt="i18n.baseText('binaryDataDisplay.imagePreview')"
