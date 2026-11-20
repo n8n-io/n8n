@@ -1,6 +1,6 @@
 import { NODE_TYPE_DENYLIST } from '@n8n/workflow-engine-check';
 
-import { getEngineV2BuildRules } from './engine-v2-rules';
+import { getBlockedEngineV2NodeSettingRules, getEngineV2BuildRules } from './engine-v2-rules';
 import { ENGINE_V2_NODE_SETTING_RULES } from '../../validation/engine-v2-support';
 
 describe('getEngineV2BuildRules', () => {
@@ -22,6 +22,13 @@ describe('getEngineV2BuildRules', () => {
 		expect(rules).toContain('community and custom nodes');
 		expect(rules).toContain('error workflows');
 		expect(rules).toContain('the Merge mode "Choose Branch"');
+	});
+
+	it('keeps a node setting rule only while the engine check blocks the setting', () => {
+		// Every setting is blocked today. A rule leaves this list when engine v2 supports it.
+		expect(Object.keys(getBlockedEngineV2NodeSettingRules()).sort()).toEqual(
+			Object.keys(ENGINE_V2_NODE_SETTING_RULES).sort(),
+		);
 	});
 
 	it('uses the validation text for each node setting', () => {

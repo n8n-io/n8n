@@ -22,9 +22,15 @@ describe('getWorkflowBuilderCues', () => {
 		(newWorkflowEngine) => {
 			const cues = getWorkflowBuilderCues({ engineV2Available: true, newWorkflowEngine });
 
-			expect(cueText(cues, 'execute-once')).toContain('On engine v1: set `executeOnce: true`');
+			// The duplicate-notifications hint belongs to the v1 advice, so it comes before v2.
+			expect(cueText(cues, 'execute-once')).toMatch(
+				/^On engine v1: set `executeOnce: true`.*Duplicate notifications mean that it is missing\. On engine v2: /,
+			);
 			expect(cueText(cues, 'execute-once')).toContain(
 				`On engine v2: ${ENGINE_V2_NODE_SETTING_RULES.EXECUTE_ONCE.text}`,
+			);
+			expect(cueText(cues, 'zero-items-end-branch')).toContain(
+				`On engine v2: ${ENGINE_V2_NODE_SETTING_RULES.ALWAYS_OUTPUT_DATA.text}`,
 			);
 			expect(cueText(cues, 'always-output-data-empty-json')).toContain(
 				`On engine v2: ${ENGINE_V2_NODE_SETTING_RULES.ALWAYS_OUTPUT_DATA.text}`,
@@ -49,5 +55,33 @@ describe('getWorkflowBuilderCues', () => {
 		]);
 		expect(cueText(cues, 'tool-names')).toBe(cueText(WORKFLOW_BUILDER_CUES, 'tool-names'));
 		expect(cues.isActive).toBe(WORKFLOW_BUILDER_CUES.isActive);
+	});
+
+	it('keeps the v1 text for a setting that the engine check no longer blocks', async () => {
+		vi.resetModules();
+		vi.doMock('@n8n/workflow-sdk/prompts/sdk-reference', async (importOriginal) => {
+			const actual =
+				await importOriginal<typeof import('@n8n/workflow-sdk/prompts/sdk-reference')>();
+			return {
+				...actual,
+				// Engine v2 supports everything but Execute Once.
+				getBlockedEngineV2NodeSettingRules: () => ({
+					EXECUTE_ONCE: actual.ENGINE_V2_NODE_SETTING_RULES.EXECUTE_ONCE,
+				}),
+			};
+		});
+		const fresh = await import('../context-cues/workflow-builder.cues.js');
+		const cues = fresh.getWorkflowBuilderCues({ engineV2Available: true, newWorkflowEngine: 'v2' });
+
+		expect(cueText(cues, 'execute-once')).toContain('On engine v2:');
+		for (const id of [
+			'zero-items-end-branch',
+			'always-output-data-empty-json',
+			'on-error-one-handler',
+		]) {
+			expect(cueText(cues, id)).toBe(cueText(fresh.WORKFLOW_BUILDER_CUES, id));
+		}
+		expect(cueText(cues, 'engine-v2-retry-on-fail')).toBeUndefined();
+		vi.doUnmock('@n8n/workflow-sdk/prompts/sdk-reference');
 	});
 });

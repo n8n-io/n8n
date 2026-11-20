@@ -3,8 +3,33 @@ import {
 	NODE_TYPE_DENYLIST,
 	type EngineV2EligibilityWorkflow,
 } from '@n8n/workflow-engine-check';
+import type { INode } from 'n8n-workflow';
 
-import { ENGINE_V2_NODE_SETTING_RULES } from '../../validation/engine-v2-support';
+import {
+	ENGINE_V2_NODE_SETTING_RULES,
+	isEngineV2NodeSettingCode,
+	type EngineV2NodeSettingCode,
+	type EngineV2NodeSettingRule,
+} from '../../validation/engine-v2-support';
+
+type NodeSettings = Partial<
+	Pick<INode, 'executeOnce' | 'alwaysOutputData' | 'retryOnFail' | 'onError'>
+>;
+
+type ProbeNode = Pick<INode, 'type'> &
+	Partial<Pick<INode, 'typeVersion' | 'parameters'>> &
+	NodeSettings;
+
+/**
+ * One probe node for each node setting rule. A rule goes into the prompt only while the
+ * engine check blocks its probe, so the text drops a rule when engine v2 supports the setting.
+ */
+const NODE_SETTING_PROBES: Record<EngineV2NodeSettingCode, NodeSettings> = {
+	RETRY_ON_FAIL: { retryOnFail: true },
+	CONTINUE_ERROR_OUTPUT: { onError: 'continueErrorOutput' },
+	EXECUTE_ONCE: { executeOnce: true },
+	ALWAYS_OUTPUT_DATA: { alwaysOutputData: true },
+};
 
 /**
  * Workflow-level limits that the node lists do not show. Each probe is a small workflow
@@ -31,10 +56,9 @@ const LIMIT_PROBES: Array<{ text: string; workflow: EngineV2EligibilityWorkflow 
 ];
 
 function probeWorkflow(
-	node: { type: string; typeVersion?: number; parameters?: Record<string, string> } = {
-		type: 'n8n-nodes-base.noOp',
-	},
+	node: ProbeNode = { type: 'n8n-nodes-base.noOp' },
 ): EngineV2EligibilityWorkflow {
+	const { typeVersion, parameters, ...rest } = node;
 	return {
 		nodes: [
 			{
@@ -46,12 +70,12 @@ function probeWorkflow(
 				parameters: {},
 			},
 			{
+				...rest,
 				id: 'probe-node',
 				name: 'Probe',
-				type: node.type,
-				typeVersion: node.typeVersion ?? 1,
+				typeVersion: typeVersion ?? 1,
 				position: [200, 0],
-				parameters: node.parameters ?? {},
+				parameters: parameters ?? {},
 			},
 		],
 		connections: { Trigger: { main: [[{ node: 'Probe', type: 'main', index: 0 }]] } },
@@ -88,12 +112,34 @@ function joinList(items: string[]): string {
 	return `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`;
 }
 
+let cachedSettingRules:
+	| Partial<Record<EngineV2NodeSettingCode, EngineV2NodeSettingRule>>
+	| undefined;
+
+/**
+ * The node setting rules that the engine check still blocks. Callers that give the v2
+ * way for a setting use this, so the advice stops when engine v2 supports the setting.
+ */
+export function getBlockedEngineV2NodeSettingRules(): Partial<
+	Record<EngineV2NodeSettingCode, EngineV2NodeSettingRule>
+> {
+	cachedSettingRules ??= Object.fromEntries(
+		Object.entries(ENGINE_V2_NODE_SETTING_RULES).filter(
+			([code]) =>
+				isEngineV2NodeSettingCode(code) &&
+				isBlocked(probeWorkflow({ type: 'n8n-nodes-base.noOp', ...NODE_SETTING_PROBES[code] })),
+		),
+	);
+	return cachedSettingRules;
+}
+
 let cachedRules: string | undefined;
 
 /**
- * Rules for workflow code that runs on engine v2. The lists come from
- * `@n8n/workflow-engine-check`, and the node setting lines use the same text as the
- * `ENGINE_V2_*` validation errors, so the rules change when engine v2 gets a feature.
+ * Rules for workflow code that runs on engine v2. Each line comes from
+ * `@n8n/workflow-engine-check` (its denylist or a probe), and the node setting lines use
+ * the same text as the `ENGINE_V2_*` validation errors. So the rules change when engine
+ * v2 gets a feature.
  */
 export function getEngineV2BuildRules(): string {
 	cachedRules ??= buildEngineV2BuildRules();
@@ -115,7 +161,7 @@ function buildEngineV2BuildRules(): string {
 		lines.push(`- Engine v2 does not support ${joinList(limits)} yet.`);
 	}
 
-	const settingLines = Object.values(ENGINE_V2_NODE_SETTING_RULES).map(
+	const settingLines = Object.values(getBlockedEngineV2NodeSettingRules()).map(
 		(rule) => `  - ${rule.setting}: ${rule.text}`,
 	);
 	if (settingLines.length > 0) {

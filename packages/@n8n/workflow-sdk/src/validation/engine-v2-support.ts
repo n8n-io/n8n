@@ -27,11 +27,10 @@ export interface EngineV2SupportIssue {
 const V1_FALLBACK = "set `engineType: 'v1'` in the workflow settings";
 
 /** Node settings that engine v2 does not support yet, but that have a v2 way. */
-export type EngineV2NodeSettingCode =
-	| 'RETRY_ON_FAIL'
-	| 'CONTINUE_ERROR_OUTPUT'
-	| 'EXECUTE_ONCE'
-	| 'ALWAYS_OUTPUT_DATA';
+export type EngineV2NodeSettingCode = Extract<
+	EngineV2ReasonCode,
+	'RETRY_ON_FAIL' | 'CONTINUE_ERROR_OUTPUT' | 'EXECUTE_ONCE' | 'ALWAYS_OUTPUT_DATA'
+>;
 
 export interface EngineV2NodeSettingRule {
 	/** The node setting in workflow SDK code. */
@@ -80,7 +79,7 @@ export const ENGINE_V2_NODE_SETTING_RULES: Record<
 	},
 };
 
-function isNodeSettingCode(code: EngineV2ReasonCode): code is EngineV2NodeSettingCode {
+export function isEngineV2NodeSettingCode(code: string): code is EngineV2NodeSettingCode {
 	return code in ENGINE_V2_NODE_SETTING_RULES;
 }
 
@@ -118,7 +117,7 @@ export function findEngineV2SupportIssues(json: WorkflowJSON): EngineV2SupportIs
  * v2 way, then the v1 fallback. Permanent and invalid reasons already name the fix.
  */
 export function formatEngineV2Message(reason: EngineV2Reason): string {
-	if (isNodeSettingCode(reason.code)) {
+	if (isEngineV2NodeSettingCode(reason.code)) {
 		const alternative = ENGINE_V2_NODE_SETTING_RULES[reason.code].text;
 		return `${nodePrefix(reason, alternative)}${alternative}`;
 	}
