@@ -1,0 +1,31 @@
+packages/cli/test/linear-consumer/tsconfig.json
+  s_8fd5a62d253fcd::t_c45b35454a8e08 1-9
+packages/cli/test/linear-consumer/run.mjs
+  s_8fd5a62d253fcd::t_7ccb512f6b3de8 45-46,49
+  s_8fd5a62d253fcd::t_29b4b4a367e601 47-48,51-52
+  s_8fd5a62d253fcd::t_2c43fe2f295d57 1-25,44,57-68,72-77
+  s_8fd5a62d253fcd::t_46e9680b46fd19 26-30,32-36,38-39,41-43,50,53
+  s_8fd5a62d253fcd::t_428c71bb14cdd8 31,37,40,54-56,69-71
+packages/cli/test/linear-consumer/turns.mjs
+  s_8fd5a62d253fcd::t_29b4b4a367e601 18,22
+  s_8fd5a62d253fcd::t_a951cb14933880 96,142-146
+  s_8fd5a62d253fcd::t_afdde364811e8b 8-10,90-93,95,104-113,115-117,121-127,129-131,133,135-136
+  s_8fd5a62d253fcd::t_3e4ee6eb7a7454 1-7,11-17,19-21,23-27,29-37,40-42,44-48,50-67,69-81,84,86-89,98-99,101-103,137-141,185,187-189
+  s_8fd5a62d253fcd::t_188ed5ad340f3d 28,38-39,43,49,68,82-83,85,94,97,100,114,118-120,128,132,134,147-184,186
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "eebc8d142a9c10bf6e95085e62602ce47c63491a",
+  "prompts": {},
+  "sessions": {
+    "s_8fd5a62d253fcd": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1f985-67db-71e6-9514-556f1d78f305",
+        "model": "gpt-6.2-astra"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}
