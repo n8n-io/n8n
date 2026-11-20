@@ -227,6 +227,57 @@ describe('skills tool', () => {
 				}),
 			);
 		});
+
+		// The service owns the import rules. Its integration tests cover each refusal.
+		it.each([
+			[
+				'the source is at another revision',
+				'The source changed. Preview it again before importing.',
+			],
+			['the names are taken', 'Every picked skill has a name that this scope already has.'],
+		])('asks for no approval and connects nothing when %s', async (_name, message) => {
+			checkImport.mockRejectedValue(new Error(message));
+			const suspend = vi.fn();
+
+			await expect(executeTool(sourceTool(), input, suspendCtx(suspend))).rejects.toThrow(message);
+
+			expect(suspend).not.toHaveBeenCalled();
+			expect(connect).not.toHaveBeenCalled();
+		});
+
+		it('checks and connects nothing when the admin blocks skill creation', async () => {
+			const suspend = vi.fn();
+
+			const result = await executeTool(
+				sourceTool({ permissions: { createSkill: 'blocked' } }),
+				input,
+				suspendCtx(suspend),
+			);
+
+			expect(result).toEqual({ success: false, denied: true, reason: 'Action blocked by admin' });
+			expect(checkImport).not.toHaveBeenCalled();
+			expect(suspend).not.toHaveBeenCalled();
+			expect(connect).not.toHaveBeenCalled();
+		});
+
+		it('refuses a project import without a project before it checks the source', async () => {
+			const suspend = vi.fn();
+
+			const result = await executeTool(
+				sourceTool(),
+				{ ...input, scope: 'project' },
+				suspendCtx(suspend),
+			);
+
+			expect(result).toEqual({
+				success: false,
+				refused: true,
+				reason: 'A project skill needs a projectId.',
+			});
+			expect(checkImport).not.toHaveBeenCalled();
+			expect(suspend).not.toHaveBeenCalled();
+			expect(connect).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('Assistant availability', () => {
