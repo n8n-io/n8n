@@ -33,7 +33,6 @@ import { useRouter } from 'vue-router';
 
 import { useLatestFetch } from '@n8n/composables/useLatestFetch';
 import PromotionEnvironmentCard from '../components/PromotionEnvironmentCard.vue';
-import { invalidateInstancePromotionConnection } from '../composables/useInstancePromotionConnection';
 import { useInstanceProtection } from '../composables/useInstanceProtection';
 import { usePromotionCheckout } from '../composables/usePromotionCheckout';
 import {
@@ -152,7 +151,6 @@ async function remove(environment: PromotionEnvironment) {
 		toast.showError(error, i18n.baseText('settings.promotions.provider.toast.error.delete'));
 	}
 	connectErrors.delete(environment.id);
-	invalidateInstancePromotionConnection();
 	await load();
 	busy.delete(environment.id);
 	toast.showMessage({

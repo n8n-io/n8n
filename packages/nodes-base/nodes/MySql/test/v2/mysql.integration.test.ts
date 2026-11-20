@@ -107,7 +107,7 @@ describe('MySQL Integration - NODE-4174', () => {
 			resource: 'database',
 			operation: 'executeQuery',
 			query: 'SELECT 1',
-			options: { queryBatching: 'single', nodeVersion: 2.5, connectTimeout: 1000 },
+			options: { queryBatching: 'single', nodeVersion: 2.5 },
 		};
 
 		const result = await router.call(mockExecuteFunctions(params, badCreds, true));
@@ -120,7 +120,7 @@ describe('MySQL Integration - NODE-4174', () => {
 			resource: 'database',
 			operation: 'executeQuery',
 			query: 'SELECT 1',
-			options: { queryBatching: 'single', nodeVersion: 2.5, connectTimeout: 1000 },
+			options: { queryBatching: 'single', nodeVersion: 2.5 },
 		};
 
 		await expect(router.call(mockExecuteFunctions(params, badCreds, false))).rejects.toThrow();

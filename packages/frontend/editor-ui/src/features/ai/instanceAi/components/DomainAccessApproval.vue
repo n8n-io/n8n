@@ -1,13 +1,17 @@
 <script lang="ts" setup>
 import { N8nApprovalCard, type ApprovalOption } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import type { InstanceAiConfirmRequest } from '@n8n/api-types';
+import type { InstanceAiApprovalAskReason, InstanceAiConfirmRequest } from '@n8n/api-types';
 import { computed, ref } from 'vue';
+
+import ApprovalAskReason from '@/features/ai/shared/components/ApprovalAskReason.vue';
 
 type DomainAction = 'allow_once' | 'allow_domain' | 'allow_all';
 
 interface DomainProps {
 	severity?: string;
+	/** Why the "Approve for me" mode showed the card. */
+	askReason?: InstanceAiApprovalAskReason;
 	url: string;
 	host: string;
 	query?: never;
@@ -15,6 +19,7 @@ interface DomainProps {
 
 interface WebSearchProps {
 	severity?: string;
+	askReason?: InstanceAiApprovalAskReason;
 	query: string;
 	url?: never;
 	host?: never;
@@ -109,5 +114,9 @@ function onSelect(key: string) {
 		:description="previewText"
 		:options="options"
 		@select="onSelect"
-	/>
+	>
+		<template v-if="askReason" #description>
+			<ApprovalAskReason :description="previewText" :reason="askReason" />
+		</template>
+	</N8nApprovalCard>
 </template>
