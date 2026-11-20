@@ -840,6 +840,19 @@ describe('SecuritySettings', () => {
 			expect(getAllByText('Upgrade').length).toBeGreaterThanOrEqual(2);
 		});
 
+		it('should not render a scope summary that repeats the scope dropdown', async () => {
+			settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.DataRedaction] = false;
+
+			const { getByTestId, queryByText } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('redaction-enforcement-scope-select')).toBeInTheDocument();
+			});
+
+			expect(queryByText('Affected scope')).not.toBeInTheDocument();
+			expect(queryByText('No executions')).not.toBeInTheDocument();
+		});
+
 		it('should not call updateSecuritySettings when clicking disabled scope dropdown', async () => {
 			settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.DataRedaction] = false;
 			getSecuritySettings.mockResolvedValue({
