@@ -38,6 +38,7 @@ export class Magento2 implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Magento 2',
 		name: 'magento2',
+		schemaPath: 'Magento',
 		icon: 'file:magento.svg',
 		group: ['input'],
 		version: [1, 1.1],

@@ -155,6 +155,9 @@ export const ASSISTANT_SKILLS_EXPERIMENT = createExperiment(ASSISTANT_SKILLS_FLA
 /** Boolean flag. New threads of the user run on the Assistant agent, if the instance runs it. */
 export const INSTANCE_AI_ASSISTANT_AGENT_EXPERIMENT = createExperiment('141_assistant_agent');
 
+/** Boolean flag. Shows the model training opt-out until the announcement goes out. */
+export const MODEL_TRAINING_OPT_OUT_EXPERIMENT = createExperiment('149_model_training_opt_out');
+
 // Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 export const MCP_DISCOVERY_EXPERIMENT = createExperiment('123_surface_mcp_to_claude_trial_users');
 // EOF Experiment cleanup

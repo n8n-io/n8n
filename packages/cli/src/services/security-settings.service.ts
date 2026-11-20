@@ -19,8 +19,8 @@ import { InstanceRedactionEnforcementService } from '@/modules/redaction/instanc
 
 /**
  * The writable subset of the security policy shared by the internal controller
- * and the public API. Workflow reviews are handled separately by the caller as
- * they are gated behind a dedicated license + dev flag.
+ * and the public API. The caller handles workflow reviews separately, because
+ * they have their own license.
  */
 export interface SecurityPolicyUpdate {
 	personalSpacePublishing?: boolean;

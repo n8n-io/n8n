@@ -1,0 +1,3573 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"associations": {
+			"properties": {
+				"associatedCompanyIds": {
+					"items": {
+						"type": "number"
+					},
+					"type": "array"
+				},
+				"associatedDealIds": {
+					"items": {},
+					"type": "array"
+				},
+				"associatedTicketIds": {
+					"items": {
+						"type": "number"
+					},
+					"type": "array"
+				},
+				"associatedVids": {
+					"items": {
+						"type": "number"
+					},
+					"type": "array"
+				}
+			},
+			"type": "object"
+		},
+		"dealId": {
+			"type": ["number", "string"]
+		},
+		"isDeleted": {
+			"type": "boolean"
+		},
+		"portalId": {
+			"type": "number"
+		},
+		"properties": {
+			"additionalProperties": true,
+			"properties": {
+				"createdate": {
+					"properties": {
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": ["null", "string"]
+						},
+						"timestamp": {
+							"type": "number"
+						},
+						"updatedByUserId": {
+							"type": ["null", "number"]
+						},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"additionalProperties": true,
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"requestId": {
+										"type": "string"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "number"
+									},
+									"useTimestampAsPersistenceTimestamp": {
+										"type": "boolean"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": ["object", "string"]
+				},
+				"days_to_close": {
+					"properties": {
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": "string"
+						},
+						"timestamp": {
+							"type": "number"
+						},
+						"updatedByUserId": {
+							"type": ["null", "number"]
+						},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"additionalProperties": true,
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"requestId": {
+										"type": "string"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "number"
+									},
+									"useTimestampAsPersistenceTimestamp": {
+										"type": "boolean"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"dealname": {
+					"properties": {
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": ["null", "string"]
+						},
+						"timestamp": {
+							"type": "number"
+						},
+						"updatedByUserId": {
+							"type": ["null", "number"]
+						},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"additionalProperties": true,
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"requestId": {
+										"type": "string"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "number"
+									},
+									"useTimestampAsPersistenceTimestamp": {
+										"type": "boolean"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"dealstage": {
+					"properties": {
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": ["null", "string"]
+						},
+						"timestamp": {
+							"type": "number"
+						},
+						"updatedByUserId": {
+							"type": ["null", "number"]
+						},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"additionalProperties": true,
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"requestId": {
+										"type": "string"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "number"
+									},
+									"updatedByUserId": {
+										"type": "number"
+									},
+									"useTimestampAsPersistenceTimestamp": {
+										"type": "boolean"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": ["object", "string"]
+				},
+				"hs_all_owner_ids": {
+					"properties": {
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": "string"
+						},
+						"timestamp": {
+							"type": "number"
+						},
+						"updatedByUserId": {
+							"type": ["null", "number"]
+						},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"additionalProperties": true,
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"requestId": {
+										"type": "string"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "number"
+									},
+									"useTimestampAsPersistenceTimestamp": {
+										"type": "boolean"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"hs_analytics_latest_source": {
+					"properties": {
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": "string"
+						},
+						"timestamp": {
+							"type": "number"
+						},
+						"updatedByUserId": {},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"additionalProperties": true,
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"persistenceTimestamp": {
+										"type": "number"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "number"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"hs_analytics_latest_source_contact": {
+					"properties": {
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": "string"
+						},
+						"timestamp": {
+							"type": "number"
+						},
+						"updatedByUserId": {},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"additionalProperties": true,
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"persistenceTimestamp": {
+										"type": "number"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "number"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"hs_analytics_latest_source_data_1": {
+					"properties": {
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": "string"
+						},
+						"timestamp": {
+							"type": "number"
+						},
+						"updatedByUserId": {},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"additionalProperties": true,
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"persistenceTimestamp": {
+										"type": "number"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "number"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"hs_analytics_latest_source_data_1_contact": {
+					"properties": {
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": "string"
+						},
+						"timestamp": {
+							"type": "number"
+						},
+						"updatedByUserId": {},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"additionalProperties": true,
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"persistenceTimestamp": {
+										"type": "number"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "number"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"hs_analytics_latest_source_data_2": {
+					"properties": {
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": "string"
+						},
+						"timestamp": {
+							"type": "number"
+						},
+						"updatedByUserId": {},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"additionalProperties": true,
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"persistenceTimestamp": {
+										"type": "number"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "number"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"hs_analytics_latest_source_data_2_contact": {
+					"properties": {
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": "string"
+						},
+						"timestamp": {
+							"type": "number"
+						},
+						"updatedByUserId": {},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"additionalProperties": true,
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"persistenceTimestamp": {
+										"type": "number"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "number"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"hs_analytics_latest_source_timestamp": {
+					"properties": {
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": "string"
+						},
+						"timestamp": {
+							"type": "number"
+						},
+						"updatedByUserId": {},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"additionalProperties": true,
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"persistenceTimestamp": {
+										"type": "number"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "number"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"hs_analytics_latest_source_timestamp_contact": {
+					"properties": {
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": "string"
+						},
+						"timestamp": {
+							"type": "number"
+						},
+						"updatedByUserId": {},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"additionalProperties": true,
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"persistenceTimestamp": {
+										"type": "number"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "number"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"hs_analytics_source": {
+					"properties": {
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": "string"
+						},
+						"timestamp": {
+							"type": "number"
+						},
+						"updatedByUserId": {},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"additionalProperties": true,
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"persistenceTimestamp": {
+										"type": "number"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "number"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"hs_analytics_source_data_1": {
+					"properties": {
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": "string"
+						},
+						"timestamp": {
+							"type": "number"
+						},
+						"updatedByUserId": {},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"additionalProperties": true,
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"persistenceTimestamp": {
+										"type": "number"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "number"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"hs_analytics_source_data_2": {
+					"properties": {
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": "string"
+						},
+						"timestamp": {
+							"type": "number"
+						},
+						"updatedByUserId": {},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"additionalProperties": true,
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"persistenceTimestamp": {
+										"type": "number"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "number"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"hs_closed_amount": {
+					"properties": {
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": "string"
+						},
+						"timestamp": {
+							"type": "number"
+						},
+						"updatedByUserId": {
+							"type": ["null", "number"]
+						},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"additionalProperties": true,
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"requestId": {
+										"type": "string"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "number"
+									},
+									"useTimestampAsPersistenceTimestamp": {
+										"type": "boolean"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"hs_closed_amount_in_home_currency": {
+					"properties": {
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": "string"
+						},
+						"timestamp": {
+							"type": "number"
+						},
+						"updatedByUserId": {
+							"type": ["null", "number"]
+						},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"additionalProperties": true,
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"requestId": {
+										"type": "string"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "number"
+									},
+									"useTimestampAsPersistenceTimestamp": {
+										"type": "boolean"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"hs_closed_deal_close_date": {
+					"properties": {
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": "string"
+						},
+						"timestamp": {
+							"type": "number"
+						},
+						"updatedByUserId": {
+							"type": ["null", "number"]
+						},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"additionalProperties": true,
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"requestId": {
+										"type": "string"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "number"
+									},
+									"useTimestampAsPersistenceTimestamp": {
+										"type": "boolean"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"hs_closed_deal_create_date": {
+					"properties": {
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": "string"
+						},
+						"timestamp": {
+							"type": "number"
+						},
+						"updatedByUserId": {
+							"type": ["null", "number"]
+						},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"additionalProperties": true,
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"requestId": {
+										"type": "string"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "number"
+									},
+									"useTimestampAsPersistenceTimestamp": {
+										"type": "boolean"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"hs_closed_won_count": {
+					"properties": {
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": "string"
+						},
+						"timestamp": {
+							"type": "number"
+						},
+						"updatedByUserId": {
+							"type": ["null", "number"]
+						},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"additionalProperties": true,
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"requestId": {
+										"type": "string"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "number"
+									},
+									"useTimestampAsPersistenceTimestamp": {
+										"type": "boolean"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"hs_createdate": {
+					"properties": {
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": "string"
+						},
+						"timestamp": {
+							"type": "number"
+						},
+						"updatedByUserId": {
+							"type": ["null", "number"]
+						},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"additionalProperties": true,
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"requestId": {
+										"type": "string"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "number"
+									},
+									"useTimestampAsPersistenceTimestamp": {
+										"type": "boolean"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"hs_days_to_close_raw": {
+					"properties": {
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": "string"
+						},
+						"timestamp": {
+							"type": "number"
+						},
+						"updatedByUserId": {
+							"type": ["null", "number"]
+						},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"additionalProperties": true,
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"requestId": {
+										"type": "string"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "number"
+									},
+									"useTimestampAsPersistenceTimestamp": {
+										"type": "boolean"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"hs_deal_stage_probability": {
+					"properties": {
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": "string"
+						},
+						"timestamp": {
+							"type": "number"
+						},
+						"updatedByUserId": {},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"requestId": {
+										"type": "string"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "number"
+									},
+									"useTimestampAsPersistenceTimestamp": {
+										"type": "boolean"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"hs_deal_stage_probability_shadow": {
+					"properties": {
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": "string"
+						},
+						"timestamp": {
+							"type": "number"
+						},
+						"updatedByUserId": {
+							"type": ["null", "number"]
+						},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"requestId": {
+										"type": "string"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "number"
+									},
+									"updatedByUserId": {
+										"type": "number"
+									},
+									"useTimestampAsPersistenceTimestamp": {
+										"type": "boolean"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"hs_has_last_conversation_follow_ups": {
+					"properties": {
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": "string"
+						},
+						"timestamp": {
+							"type": "number"
+						},
+						"updatedByUserId": {
+							"type": ["null", "number"]
+						},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"additionalProperties": true,
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"requestId": {
+										"type": "string"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "number"
+									},
+									"useTimestampAsPersistenceTimestamp": {
+										"type": "boolean"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"hs_has_last_meeting_followups": {
+					"properties": {
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": "string"
+						},
+						"timestamp": {
+							"type": "number"
+						},
+						"updatedByUserId": {
+							"type": ["null", "number"]
+						},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"additionalProperties": true,
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"requestId": {
+										"type": "string"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "number"
+									},
+									"useTimestampAsPersistenceTimestamp": {
+										"type": "boolean"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"hs_is_closed": {
+					"properties": {
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": "string"
+						},
+						"timestamp": {
+							"type": "number"
+						},
+						"updatedByUserId": {
+							"type": ["null", "number"]
+						},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"additionalProperties": true,
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"requestId": {
+										"type": "string"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "number"
+									},
+									"useTimestampAsPersistenceTimestamp": {
+										"type": "boolean"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"hs_is_closed_count": {
+					"properties": {
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": "string"
+						},
+						"timestamp": {
+							"type": "number"
+						},
+						"updatedByUserId": {
+							"type": ["null", "number"]
+						},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"additionalProperties": true,
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"requestId": {
+										"type": "string"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "number"
+									},
+									"useTimestampAsPersistenceTimestamp": {
+										"type": "boolean"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"hs_is_closed_lost": {
+					"properties": {
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": "string"
+						},
+						"timestamp": {
+							"type": "number"
+						},
+						"updatedByUserId": {
+							"type": ["null", "number"]
+						},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"additionalProperties": true,
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"requestId": {
+										"type": "string"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "number"
+									},
+									"useTimestampAsPersistenceTimestamp": {
+										"type": "boolean"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"hs_is_closed_won": {
+					"properties": {
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": "string"
+						},
+						"timestamp": {
+							"type": "number"
+						},
+						"updatedByUserId": {
+							"type": ["null", "number"]
+						},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"additionalProperties": true,
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"requestId": {
+										"type": "string"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "number"
+									},
+									"useTimestampAsPersistenceTimestamp": {
+										"type": "boolean"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"hs_is_deal_split": {
+					"properties": {
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": "string"
+						},
+						"timestamp": {
+							"type": "number"
+						},
+						"updatedByUserId": {
+							"type": ["null", "number"]
+						},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"additionalProperties": true,
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"requestId": {
+										"type": "string"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "number"
+									},
+									"useTimestampAsPersistenceTimestamp": {
+										"type": "boolean"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"hs_is_in_first_deal_stage": {
+					"properties": {
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": ["null", "string"]
+						},
+						"timestamp": {
+							"type": "number"
+						},
+						"updatedByUserId": {},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"additionalProperties": true,
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"persistenceTimestamp": {
+										"type": "number"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "number"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"hs_is_open_count": {
+					"properties": {
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": "string"
+						},
+						"timestamp": {
+							"type": "number"
+						},
+						"updatedByUserId": {
+							"type": ["null", "number"]
+						},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"additionalProperties": true,
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"requestId": {
+										"type": "string"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "number"
+									},
+									"useTimestampAsPersistenceTimestamp": {
+										"type": "boolean"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"hs_is_stalled": {
+					"properties": {
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": ["null", "string"]
+						},
+						"timestamp": {
+							"type": "number"
+						},
+						"updatedByUserId": {
+							"type": ["null", "number"]
+						},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"additionalProperties": true,
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"requestId": {
+										"type": "string"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "number"
+									},
+									"useTimestampAsPersistenceTimestamp": {
+										"type": "boolean"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"hs_lastmodifieddate": {
+					"properties": {
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": ["null", "string"]
+						},
+						"timestamp": {
+							"type": "number"
+						},
+						"updatedByUserId": {
+							"type": ["null", "number"]
+						},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"additionalProperties": true,
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"requestId": {
+										"type": "string"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "number"
+									},
+									"useTimestampAsPersistenceTimestamp": {
+										"type": "boolean"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": ["object", "string"]
+				},
+				"hs_num_associated_active_deal_registrations": {
+					"properties": {
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": "string"
+						},
+						"timestamp": {
+							"type": "number"
+						},
+						"updatedByUserId": {
+							"type": ["null", "number"]
+						},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"additionalProperties": true,
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"requestId": {
+										"type": "string"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "number"
+									},
+									"useTimestampAsPersistenceTimestamp": {
+										"type": "boolean"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"hs_num_associated_deal_registrations": {
+					"properties": {
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": "string"
+						},
+						"timestamp": {
+							"type": "number"
+						},
+						"updatedByUserId": {
+							"type": ["null", "number"]
+						},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"additionalProperties": true,
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"requestId": {
+										"type": "string"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "number"
+									},
+									"useTimestampAsPersistenceTimestamp": {
+										"type": "boolean"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"hs_num_associated_deal_splits": {
+					"properties": {
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": "string"
+						},
+						"timestamp": {
+							"type": "number"
+						},
+						"updatedByUserId": {
+							"type": ["null", "number"]
+						},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"additionalProperties": true,
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"requestId": {
+										"type": "string"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "number"
+									},
+									"useTimestampAsPersistenceTimestamp": {
+										"type": "boolean"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"hs_num_of_associated_line_items": {
+					"properties": {
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": "string"
+						},
+						"timestamp": {
+							"type": "number"
+						},
+						"updatedByUserId": {
+							"type": ["null", "number"]
+						},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"additionalProperties": true,
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"requestId": {
+										"type": "string"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "number"
+									},
+									"useTimestampAsPersistenceTimestamp": {
+										"type": "boolean"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"hs_num_target_accounts": {
+					"properties": {
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": "string"
+						},
+						"timestamp": {
+							"type": "number"
+						},
+						"updatedByUserId": {
+							"type": ["null", "number"]
+						},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"additionalProperties": true,
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"requestId": {
+										"type": "string"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "number"
+									},
+									"useTimestampAsPersistenceTimestamp": {
+										"type": "boolean"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"hs_number_of_call_engagements": {
+					"properties": {
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": "string"
+						},
+						"timestamp": {
+							"type": "number"
+						},
+						"updatedByUserId": {
+							"type": ["null", "number"]
+						},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"additionalProperties": true,
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"requestId": {
+										"type": "string"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "number"
+									},
+									"useTimestampAsPersistenceTimestamp": {
+										"type": "boolean"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"hs_number_of_inbound_calls": {
+					"properties": {
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": "string"
+						},
+						"timestamp": {
+							"type": "number"
+						},
+						"updatedByUserId": {
+							"type": ["null", "number"]
+						},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"additionalProperties": true,
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"requestId": {
+										"type": "string"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "number"
+									},
+									"useTimestampAsPersistenceTimestamp": {
+										"type": "boolean"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"hs_number_of_outbound_calls": {
+					"properties": {
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": "string"
+						},
+						"timestamp": {
+							"type": "number"
+						},
+						"updatedByUserId": {
+							"type": ["null", "number"]
+						},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"additionalProperties": true,
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"requestId": {
+										"type": "string"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "number"
+									},
+									"useTimestampAsPersistenceTimestamp": {
+										"type": "boolean"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"hs_number_of_overdue_tasks": {
+					"properties": {
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": "string"
+						},
+						"timestamp": {
+							"type": "number"
+						},
+						"updatedByUserId": {
+							"type": ["null", "number"]
+						},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"additionalProperties": true,
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"requestId": {
+										"type": "string"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "number"
+									},
+									"useTimestampAsPersistenceTimestamp": {
+										"type": "boolean"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"hs_object_id": {
+					"properties": {
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": "string"
+						},
+						"timestamp": {
+							"type": "number"
+						},
+						"updatedByUserId": {
+							"type": ["null", "number"]
+						},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"additionalProperties": true,
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"requestId": {
+										"type": "string"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "number"
+									},
+									"useTimestampAsPersistenceTimestamp": {
+										"type": "boolean"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"hs_object_source": {
+					"properties": {
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": "string"
+						},
+						"timestamp": {
+							"type": "number"
+						},
+						"updatedByUserId": {
+							"type": ["null", "number"]
+						},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"additionalProperties": true,
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"requestId": {
+										"type": "string"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "number"
+									},
+									"useTimestampAsPersistenceTimestamp": {
+										"type": "boolean"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"hs_object_source_detail_1": {
+					"properties": {
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": "string"
+						},
+						"timestamp": {
+							"type": "number"
+						},
+						"updatedByUserId": {},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"additionalProperties": true,
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"persistenceTimestamp": {
+										"type": "number"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "number"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"hs_object_source_id": {
+					"properties": {
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": "string"
+						},
+						"timestamp": {
+							"type": "number"
+						},
+						"updatedByUserId": {
+							"type": ["null", "number"]
+						},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"additionalProperties": true,
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"requestId": {
+										"type": "string"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "number"
+									},
+									"useTimestampAsPersistenceTimestamp": {
+										"type": "boolean"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"hs_object_source_label": {
+					"properties": {
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": "string"
+						},
+						"timestamp": {
+							"type": "number"
+						},
+						"updatedByUserId": {
+							"type": ["null", "number"]
+						},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"additionalProperties": true,
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"requestId": {
+										"type": "string"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "number"
+									},
+									"useTimestampAsPersistenceTimestamp": {
+										"type": "boolean"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"hs_open_deal_create_date": {
+					"properties": {
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": "string"
+						},
+						"timestamp": {
+							"type": "number"
+						},
+						"updatedByUserId": {
+							"type": ["null", "number"]
+						},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"additionalProperties": true,
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"requestId": {
+										"type": "string"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "number"
+									},
+									"useTimestampAsPersistenceTimestamp": {
+										"type": "boolean"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"hs_projected_amount": {
+					"properties": {
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": "string"
+						},
+						"timestamp": {
+							"type": "number"
+						},
+						"updatedByUserId": {},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"requestId": {
+										"type": "string"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "number"
+									},
+									"useTimestampAsPersistenceTimestamp": {
+										"type": "boolean"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"hs_projected_amount_in_home_currency": {
+					"properties": {
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": "string"
+						},
+						"timestamp": {
+							"type": "number"
+						},
+						"updatedByUserId": {},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"requestId": {
+										"type": "string"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "number"
+									},
+									"useTimestampAsPersistenceTimestamp": {
+										"type": "boolean"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"hs_updated_by_user_id": {
+					"properties": {
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": "string"
+						},
+						"timestamp": {
+							"type": "number"
+						},
+						"updatedByUserId": {
+							"type": "number"
+						},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"additionalProperties": true,
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"requestId": {
+										"type": "string"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "number"
+									},
+									"updatedByUserId": {
+										"type": "number"
+									},
+									"useTimestampAsPersistenceTimestamp": {
+										"type": "boolean"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"hs_user_ids_of_all_notification_recipients": {
+					"properties": {
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": "string"
+						},
+						"timestamp": {
+							"type": "number"
+						},
+						"updatedByUserId": {},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"additionalProperties": true,
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"persistenceTimestamp": {
+										"type": "number"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "number"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"hs_user_ids_of_all_owners": {
+					"properties": {
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": "string"
+						},
+						"timestamp": {
+							"type": "number"
+						},
+						"updatedByUserId": {
+							"type": ["null", "number"]
+						},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"additionalProperties": true,
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"requestId": {
+										"type": "string"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "number"
+									},
+									"useTimestampAsPersistenceTimestamp": {
+										"type": "boolean"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"hs_v2_date_entered_current_stage": {
+					"properties": {
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": "string"
+						},
+						"timestamp": {
+							"type": "number"
+						},
+						"updatedByUserId": {
+							"type": ["null", "number"]
+						},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"requestId": {
+										"type": "string"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "number"
+									},
+									"updatedByUserId": {
+										"type": "number"
+									},
+									"useTimestampAsPersistenceTimestamp": {
+										"type": "boolean"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"hs_v2_time_in_current_stage": {
+					"properties": {
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": "string"
+						},
+						"timestamp": {
+							"type": "number"
+						},
+						"updatedByUserId": {
+							"type": ["null", "number"]
+						},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"requestId": {
+										"type": "string"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "number"
+									},
+									"updatedByUserId": {
+										"type": "number"
+									},
+									"useTimestampAsPersistenceTimestamp": {
+										"type": "boolean"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"hubspot_owner_assigneddate": {
+					"properties": {
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": "string"
+						},
+						"timestamp": {
+							"type": "number"
+						},
+						"updatedByUserId": {
+							"type": ["null", "number"]
+						},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"additionalProperties": true,
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"requestId": {
+										"type": "string"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "number"
+									},
+									"updatedByUserId": {
+										"type": "number"
+									},
+									"useTimestampAsPersistenceTimestamp": {
+										"type": "boolean"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"hubspot_owner_id": {
+					"properties": {
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": "string"
+						},
+						"timestamp": {
+							"type": "number"
+						},
+						"updatedByUserId": {
+							"type": ["null", "number"]
+						},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"additionalProperties": true,
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"requestId": {
+										"type": "string"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "number"
+									},
+									"updatedByUserId": {
+										"type": "number"
+									},
+									"useTimestampAsPersistenceTimestamp": {
+										"type": "boolean"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"num_associated_contacts": {
+					"properties": {
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": "string"
+						},
+						"timestamp": {
+							"type": "number"
+						},
+						"updatedByUserId": {
+							"type": ["null", "number"]
+						},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"additionalProperties": true,
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"persistenceTimestamp": {
+										"type": "number"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "number"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"num_notes": {
+					"properties": {
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": "string"
+						},
+						"timestamp": {
+							"type": "number"
+						},
+						"updatedByUserId": {
+							"type": ["null", "number"]
+						},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"additionalProperties": true,
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"requestId": {
+										"type": "string"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "number"
+									},
+									"useTimestampAsPersistenceTimestamp": {
+										"type": "boolean"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"pipeline": {
+					"properties": {
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": "string"
+						},
+						"timestamp": {
+							"type": "number"
+						},
+						"updatedByUserId": {
+							"type": ["null", "number"]
+						},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"additionalProperties": true,
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"requestId": {
+										"type": "string"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "number"
+									},
+									"useTimestampAsPersistenceTimestamp": {
+										"type": "boolean"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				}
+			},
+			"type": "object"
+		},
+		"stateChanges": {
+			"items": {},
+			"type": "array"
+		}
+	},
+	"type": "object"
+}

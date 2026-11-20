@@ -625,7 +625,13 @@ export function buildThreadArtifactsBlock(
 			: '';
 	}
 
+	// The execution that each workflow tab shows. A handed-off execution replaces it.
 	const executionByWorkflowId = new Map<string, string>();
+	for (const artifact of previewArtifacts) {
+		if (artifact.type === 'workflow' && artifact.executionId) {
+			executionByWorkflowId.set(artifact.id, artifact.executionId);
+		}
+	}
 	for (const attachment of resourceAttachments) {
 		if (attachment.type === 'workflow' && attachment.executionId) {
 			executionByWorkflowId.set(attachment.id, attachment.executionId);

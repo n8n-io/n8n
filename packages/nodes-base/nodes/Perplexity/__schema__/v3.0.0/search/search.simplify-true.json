@@ -1,0 +1,31 @@
+{
+	"properties": {
+		"id": {
+			"type": "string"
+		},
+		"results": {
+			"items": {
+				"properties": {
+					"date": {
+						"type": "string"
+					},
+					"last_updated": {
+						"type": "string"
+					},
+					"snippet": {
+						"type": "string"
+					},
+					"title": {
+						"type": "string"
+					},
+					"url": {
+						"type": "string"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		}
+	},
+	"type": "object"
+}

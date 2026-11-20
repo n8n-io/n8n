@@ -1671,9 +1671,10 @@ export const instanceAiAgentSubjectSchema = instanceAiAgentAttachmentSchema;
 export type InstanceAiAgentSubject = z.infer<typeof instanceAiAgentSubjectSchema>;
 
 /**
- * The resource that a thread starts on: the agent or the app of the page that
- * opened the thread. The Assistant agent binds it in the thread metadata, so
- * its tools work on that resource and the page finds the thread again. Add a
+ * The resource of the page that opened a thread: an agent or an app. The
+ * Assistant agent binds it in the thread metadata, so its tools work on that
+ * resource and the page finds the thread again. Only the subject binds a thread:
+ * an attached or mentioned resource is a reference for one turn. Add a
  * variant here, with its binding in `withThreadSubject`, for a new kind of page.
  */
 export const instanceAiThreadSubjectSchema = z.discriminatedUnion('type', [
@@ -1842,6 +1843,8 @@ export const instanceAiThreadArtifactSchema = z.object({
 	projectId: z.string().min(1).max(64).optional(),
 	pending: z.literal(true).optional(),
 	archived: z.literal(true).optional(),
+	/** Execution that the preview of a workflow tab shows. */
+	executionId: z.string().min(1).max(64).optional(),
 });
 export type InstanceAiThreadArtifact = z.infer<typeof instanceAiThreadArtifactSchema>;
 
@@ -1887,8 +1890,10 @@ export class InstanceAiSendMessageRequest extends Z.class({
 	 *  The backend still applies the admin switch, so this can only narrow. */
 	browserUseAvailable: z.boolean().optional(),
 	/**
-	 * The resource that a new thread starts on. The current runtime binds it
-	 * before the thread opens, so only the Assistant agent reads it.
+	 * The resource of the page that opened the thread. The Assistant agent binds
+	 * the thread to it. Sending it again changes nothing, so a page can send it
+	 * with each message. The current runtime binds before the thread opens and
+	 * does not read it.
 	 */
 	subject: instanceAiThreadSubjectSchema.optional(),
 	/** Pin a published prompt profile. Omit to use the backend experiment assignment. */

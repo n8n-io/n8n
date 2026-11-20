@@ -488,6 +488,20 @@ describe('formatAgentSessionTranscriptPage', () => {
 		).toEqual({ ok: false, reason: 'invalid_cursor' });
 	});
 
+	it('rejects a cursor from another maxToolValueLength when the text before it is the same', () => {
+		const executions = [
+			makeExecution({ id: 'exec-1', userMessage: 'a'.repeat(300) }),
+			makeExecution({ id: 'exec-2', userMessage: 'b'.repeat(300) }),
+		];
+		const first = formatAgentSessionTranscriptPage(makeThread(), executions, { pageSize: 700 });
+		if (!first.ok || first.nextCursor === null) throw new Error('expected a next page');
+		const cursor = first.nextCursor;
+
+		expect(
+			formatAgentSessionTranscriptPage(makeThread(), executions, { cursor, maxToolValueLength: 0 }),
+		).toEqual({ ok: false, reason: 'invalid_cursor' });
+	});
+
 	it('reports an unknown executionId', () => {
 		expect(
 			formatAgentSessionTranscriptPage(makeThread(), [makeExecution()], { executionId: 'missing' }),

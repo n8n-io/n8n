@@ -98,6 +98,7 @@ function makeStepStore(
 		iteration: 0,
 		status: 'completed',
 		outputs: null,
+		outputSources: null,
 		waitDeclaration: null,
 		resumeCause: null,
 		...step,
@@ -634,6 +635,7 @@ describe('StepSettledHandler sub-executions', () => {
 			iteration,
 			status,
 			outputs,
+			outputSources: null,
 			waitDeclaration: null,
 			resumeCause: null,
 		};

@@ -28,6 +28,13 @@ describe('WorkflowVersionedSettingsService', () => {
 		it('runs on v1 when the published version stores no settings', () => {
 			expect(service.forPublishedRun(draftSettings, { settings: {} })?.engineType).toBe('v1');
 		});
+
+		it('runs a saved version with the engine of that version and the live workflow settings', () => {
+			expect(service.forVersionRun(draftSettings, { settings: { engineType: 'v1' } })).toEqual({
+				engineType: 'v1',
+				timezone: 'Europe/Berlin',
+			});
+		});
 	});
 
 	describe('without the engine-v2 module', () => {

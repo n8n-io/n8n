@@ -153,11 +153,24 @@ export const SKILL_SCAN_RULES = [
 	'file_unstorable',
 	'hidden_unicode',
 	'new_url',
+	'risky_url',
 	'permission_change',
 	'lossy_conversion',
 ] as const;
 
 export type SkillScanRule = (typeof SKILL_SCAN_RULES)[number];
+
+/** Why a `risky_url` finding needs review. `unreadable`: n8n cannot read the address of the link. */
+export const SKILL_LINK_REVIEW_REASONS = [
+	'ip_address',
+	'not_https',
+	'paste_site',
+	'webhook_catcher',
+	'url_shortener',
+	'unreadable',
+] as const;
+
+export type SkillLinkReviewReason = (typeof SKILL_LINK_REVIEW_REASONS)[number];
 
 /** `info` only tells the user something. It does not change the verdict. */
 export type SkillScanSeverity = 'blocked' | 'needs_review' | 'info';
@@ -183,8 +196,10 @@ export type SkillScanFinding = {
 	file?: string;
 	/** English text for logs and for a reviewer. Telemetry sends only the rule. */
 	detail: string;
-	/** The linked domain of a `new_url` finding. */
+	/** The linked domain of a `new_url` or `risky_url` finding. */
 	domain?: string;
+	/** Set for a `risky_url` finding. */
+	linkReason?: SkillLinkReviewReason;
 	/** Set for a rule that finds text. A frontmatter finding marks its top-level key. */
 	location?: SkillScanLocation;
 };
@@ -492,3 +507,7 @@ export const skillSourceDeleteBlockSchema = z.object({
 });
 
 export type SkillSourceDeleteBlock = z.infer<typeof skillSourceDeleteBlockSchema>;
+
+export class SkillSyncSettingsDto extends Z.class({
+	enabled: z.boolean(),
+}) {}

@@ -1,12 +1,6 @@
 {
     "type": "object",
     "properties": {
-        "@odata.context": {
-            "type": "string"
-        },
-        "@odata.etag": {
-            "type": "string"
-        },
         "body": {
             "type": "object",
             "properties": {
@@ -36,6 +30,9 @@
         "id": {
             "type": "string"
         },
+        "isDraft": {
+            "type": "boolean"
+        },
         "subject": {
             "type": "string"
         },
@@ -59,5 +56,5 @@
             }
         }
     },
-    "version": 3
+    "version": 4
 }
