@@ -33,7 +33,7 @@ A workflow has a **draft**, which is the last saved version, and a **published v
 
 First, the main checks that the user may publish the workflow and that the version can run (e.g. that its webhook path is free). A policy or an open review request can also refuse the publication.
 
-The main runs these checks before it changes the published version, so a refused publication leaves the previous version live. An instance can require an approved review for a team project's workflow version. A source control pull checks for open reviews, but skips the check for an approved review.
+The main runs these checks before it changes the published version, so a refused publication leaves the previous version live. An instance can require an approved review for a team project's workflow version. An open review can block publication during a source control pull. The pull never requires an approved review.
 
 ## Outbox
 
