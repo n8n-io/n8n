@@ -19,6 +19,7 @@ vi.unmock('node:fs');
 vi.unmock('node:fs/promises');
 
 const user = mock<User>({ id: 'user-1' });
+const projectId = 'project-1';
 const collectionId = 'collection-1';
 
 function makeMulterFile(overrides: Partial<Express.Multer.File> = {}): Express.Multer.File {
@@ -104,7 +105,7 @@ describe('KnowledgeCollectionFileService', () => {
 				makeFile({ id: 'file-2', name: 'second.pdf', fileSizeBytes: 6 }),
 			]);
 
-			await expect(service.listFiles(user, collectionId)).resolves.toEqual({
+			await expect(service.listFiles({ projectId, collectionId })).resolves.toEqual({
 				count: 2,
 				totalSizeBytes: 10,
 				data: [
@@ -119,14 +120,14 @@ describe('KnowledgeCollectionFileService', () => {
 					expect.objectContaining({ id: 'file-2', fileName: 'second.pdf' }),
 				],
 			});
-			expect(collectionService.getForUser).toHaveBeenCalledWith(user, collectionId, 'agent:read');
+			expect(collectionService.getInProject).toHaveBeenCalledWith({ projectId, collectionId });
 		});
 
 		it('reads no files of a collection the user cannot see', async () => {
 			const { service, collectionService, fileRepository } = makeService();
-			collectionService.getForUser.mockRejectedValue(new NotFoundError('not found'));
+			collectionService.getInProject.mockRejectedValue(new NotFoundError('not found'));
 
-			await expect(service.listFiles(user, collectionId)).rejects.toThrow(NotFoundError);
+			await expect(service.listFiles({ projectId, collectionId })).rejects.toThrow(NotFoundError);
 			expect(fileRepository.findByCollectionId).not.toHaveBeenCalled();
 		});
 	});
@@ -137,9 +138,9 @@ describe('KnowledgeCollectionFileService', () => {
 				makeService();
 			const file = makeMulterFile({ originalname: 'report.pdf', mimetype: 'application/pdf' });
 
-			const uploaded = await service.uploadFiles(user, collectionId, [file]);
+			const uploaded = await service.uploadFiles({ user, projectId, collectionId, files: [file] });
 
-			expect(collectionService.getForUser).toHaveBeenCalledWith(user, collectionId, 'agent:update');
+			expect(collectionService.getInProject).toHaveBeenCalledWith({ projectId, collectionId });
 			expect(knowledgeFileService.validateUploadMetadata).toHaveBeenCalledWith([file]);
 			const [ref, content, metadata] = fileStore.write.mock.calls[0];
 			expect(ref).toEqual({ collectionId, fileId: expect.any(String) });
@@ -166,12 +167,28 @@ describe('KnowledgeCollectionFileService', () => {
 
 		it('stores nothing in a collection the user cannot change', async () => {
 			const { service, collectionService, fileStore } = makeService();
-			collectionService.getForUser.mockRejectedValue(new NotFoundError('not found'));
+			collectionService.getInProject.mockRejectedValue(new NotFoundError('not found'));
 
-			await expect(service.uploadFiles(user, collectionId, [makeMulterFile()])).rejects.toThrow(
-				NotFoundError,
-			);
+			await expect(
+				service.uploadFiles({ user, projectId, collectionId, files: [makeMulterFile()] }),
+			).rejects.toThrow(NotFoundError);
 			expect(fileStore.write).not.toHaveBeenCalled();
+		});
+
+		it('refuses a file that is too large for the size column, before it stores anything', async () => {
+			const { service, fileRepository, fileStore } = makeService();
+
+			const upload = service.uploadFiles({
+				user,
+				projectId,
+				collectionId,
+				files: [makeMulterFile({ size: 2_147_483_648 })],
+			});
+
+			await expect(upload).rejects.toThrow(KnowledgeUploadError);
+			await expect(upload).rejects.toMatchObject({ reason: 'file_size' });
+			expect(fileStore.write).not.toHaveBeenCalled();
+			expect(fileRepository.saveUploadedFile).not.toHaveBeenCalled();
 		});
 
 		it.each([
@@ -184,11 +201,12 @@ describe('KnowledgeCollectionFileService', () => {
 			const { service, fileRepository, fileStore } = makeService();
 			fileRepository.findByCollectionId.mockResolvedValue([makeFile({ name: 'first.txt' })]);
 
-			const upload = service.uploadFiles(
+			const upload = service.uploadFiles({
 				user,
+				projectId,
 				collectionId,
-				uploadNames.map((originalname) => makeMulterFile({ originalname })),
-			);
+				files: uploadNames.map((originalname) => makeMulterFile({ originalname })),
+			});
 
 			await expect(upload).rejects.toThrow(KnowledgeUploadError);
 			await expect(upload).rejects.toMatchObject({
@@ -202,7 +220,12 @@ describe('KnowledgeCollectionFileService', () => {
 			const { service, fileRepository, fileStore } = makeService();
 			fileRepository.saveUploadedFile.mockRejectedValue(makeUniqueViolation());
 
-			const upload = service.uploadFiles(user, collectionId, [makeMulterFile()]);
+			const upload = service.uploadFiles({
+				user,
+				projectId,
+				collectionId,
+				files: [makeMulterFile()],
+			});
 
 			await expect(upload).rejects.toMatchObject({ reason: 'duplicate_name' });
 			const { fileId } = fileStore.write.mock.calls[0][0];
@@ -219,10 +242,15 @@ describe('KnowledgeCollectionFileService', () => {
 				.mockRejectedValueOnce(failure);
 
 			await expect(
-				service.uploadFiles(user, collectionId, [
-					makeMulterFile({ originalname: 'first.txt' }),
-					makeMulterFile({ originalname: 'second.txt' }),
-				]),
+				service.uploadFiles({
+					user,
+					projectId,
+					collectionId,
+					files: [
+						makeMulterFile({ originalname: 'first.txt' }),
+						makeMulterFile({ originalname: 'second.txt' }),
+					],
+				}),
 			).rejects.toThrow(failure);
 
 			const firstFileId = fileStore.write.mock.calls[0][0].fileId;
@@ -257,19 +285,19 @@ describe('KnowledgeCollectionFileService', () => {
 				const { service } = makeService();
 				const file = await makeTempUpload();
 
-				await service.uploadFiles(user, collectionId, [file]);
+				await service.uploadFiles({ user, projectId, collectionId, files: [file] });
 
 				await expect(access(file.path)).rejects.toThrow();
 			});
 
 			it('removes the temp files when the upload is refused', async () => {
 				const { service, collectionService } = makeService();
-				collectionService.getForUser.mockRejectedValue(new NotFoundError('not found'));
+				collectionService.getInProject.mockRejectedValue(new NotFoundError('not found'));
 				const file = await makeTempUpload();
 
-				await expect(service.uploadFiles(user, collectionId, [file])).rejects.toThrow(
-					NotFoundError,
-				);
+				await expect(
+					service.uploadFiles({ user, projectId, collectionId, files: [file] }),
+				).rejects.toThrow(NotFoundError);
 
 				await expect(access(file.path)).rejects.toThrow();
 			});
@@ -282,9 +310,11 @@ describe('KnowledgeCollectionFileService', () => {
 			const file = makeFile({ id: 'file-1' });
 			fileRepository.findByIdAndCollectionId.mockResolvedValue(file);
 
-			await expect(service.deleteFile(user, collectionId, 'file-1')).resolves.toBeUndefined();
+			await expect(
+				service.deleteFile({ projectId, collectionId, fileId: 'file-1' }),
+			).resolves.toBeUndefined();
 
-			expect(collectionService.getForUser).toHaveBeenCalledWith(user, collectionId, 'agent:update');
+			expect(collectionService.getInProject).toHaveBeenCalledWith({ projectId, collectionId });
 			expect(fileRepository.deleteByIdAndCollectionId).toHaveBeenCalledWith(
 				'file-1',
 				collectionId,
@@ -299,7 +329,9 @@ describe('KnowledgeCollectionFileService', () => {
 			const { service, fileRepository, fileStore } = makeService();
 			fileRepository.findByIdAndCollectionId.mockResolvedValue(null);
 
-			await expect(service.deleteFile(user, collectionId, 'missing')).resolves.toBeUndefined();
+			await expect(
+				service.deleteFile({ projectId, collectionId, fileId: 'missing' }),
+			).resolves.toBeUndefined();
 
 			expect(fileRepository.deleteByIdAndCollectionId).not.toHaveBeenCalled();
 			expect(fileStore.delete).not.toHaveBeenCalled();
@@ -310,7 +342,9 @@ describe('KnowledgeCollectionFileService', () => {
 			fileRepository.findByIdAndCollectionId.mockResolvedValue(makeFile());
 			fileStore.delete.mockRejectedValue(new Error('storage is down'));
 
-			await expect(service.deleteFile(user, collectionId, 'file-1')).resolves.toBeUndefined();
+			await expect(
+				service.deleteFile({ projectId, collectionId, fileId: 'file-1' }),
+			).resolves.toBeUndefined();
 
 			expect(fileRepository.deleteByIdAndCollectionId).toHaveBeenCalled();
 			expect(logger.warn).toHaveBeenCalled();
@@ -318,9 +352,11 @@ describe('KnowledgeCollectionFileService', () => {
 
 		it('deletes nothing in a collection the user cannot change', async () => {
 			const { service, collectionService, fileRepository } = makeService();
-			collectionService.getForUser.mockRejectedValue(new NotFoundError('not found'));
+			collectionService.getInProject.mockRejectedValue(new NotFoundError('not found'));
 
-			await expect(service.deleteFile(user, collectionId, 'file-1')).rejects.toThrow(NotFoundError);
+			await expect(
+				service.deleteFile({ projectId, collectionId, fileId: 'file-1' }),
+			).rejects.toThrow(NotFoundError);
 			expect(fileRepository.findByIdAndCollectionId).not.toHaveBeenCalled();
 		});
 	});
