@@ -109,8 +109,9 @@ reason of the first one.
 The import rules are in `SkillSourceService` only. `checkPublicImport` applies
 them and stores nothing. n8n Assistant calls it before the approval, so the
 card names the skills that come in. A check that fails reports a failed connect,
-as `connectPublic` does. A check does not report flagged skills, because the
-preview reported them. Use the Skills UI to review warnings, accept
+as `connectPublic` does. A flagged skill in the selection comes back in `failed`.
+The check sends no flagged-skill telemetry event for it, because the preview
+sent one. Use the Skills UI to review warnings, accept
 updates, or connect private repositories.
 
 A model can start a source request on each tool call, and each request reads the

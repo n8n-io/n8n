@@ -326,12 +326,16 @@ export class SkillSourceService {
 			);
 			const names = await this.skillRepository.findLatestNamesInTarget(target);
 			const importable: PublicSkillSourceImportCheck['importable'] = [];
+			// The names that the import gives: a name that this selection took gets a number.
+			const takenKeys = new Set(names.map((taken) => skillNameKey(taken.name)));
 			for (const { key, skill } of passed) {
 				if (!skill) continue;
 				if (isNameTaken(skill.name, names)) {
 					failed.push({ key, name: skill.name, reason: 'name_taken' });
 				} else {
-					importable.push({ key, name: skill.name });
+					const name = nextFreeName(skill.name, takenKeys);
+					takenKeys.add(skillNameKey(name));
+					importable.push({ key, name });
 				}
 			}
 			if (importable.length === 0) throw noImportError(failed);

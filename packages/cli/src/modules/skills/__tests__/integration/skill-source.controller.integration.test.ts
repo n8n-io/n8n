@@ -1019,6 +1019,26 @@ describe('SkillSourceController', () => {
 			expect(flaggedSkill).not.toHaveBeenCalled();
 		});
 
+		it('names two selected skills with the same name as the import names them', async () => {
+			github.push('acme/twins', {
+				'one/SKILL.md': skillMd('twin', 'The first'),
+				'two/SKILL.md': skillMd('twin', 'The second'),
+			});
+			const twins = { url: 'https://github.com/acme/twins', scope: 'instance' } as const;
+			const preview = await service().discoverPublic(ownerUser, twins, 'assistant');
+			const selection = connectPublicSkillSourceSchema.parse({
+				...twins,
+				revision: preview.revision,
+				skillKeys: preview.skills.map(({ key }) => key),
+			});
+
+			const checked = await service().checkPublicImport(ownerUser, selection, 'assistant');
+			const imported = await service().connectPublic(ownerUser, selection, 'assistant');
+
+			expect(checked.importable.map(({ name }) => name)).toEqual(['twin', 'twin 2']);
+			expect(imported.imported.map(({ key, name }) => ({ key, name }))).toEqual(checked.importable);
+		});
+
 		it('gives the same split as the import of the same selection', async () => {
 			const { keyOf, check } = await previewed();
 			const skillKeys = [keyOf('docx'), keyOf('warning'), keyOf('broken')];
