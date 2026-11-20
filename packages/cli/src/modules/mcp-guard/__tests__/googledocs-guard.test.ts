@@ -50,10 +50,10 @@ const document = (content: unknown[]) => ({
 });
 
 describe('the Google Docs vendor file', () => {
-	it('loads, names both hosts and the three path prefixes, and has no read path', () => {
+	it('loads, names the Docs host and path prefix, and has no read path', () => {
 		expect(docs.name).toBe('googledocs');
-		expect(docs.hosts).toEqual(['docs.googleapis.com', 'www.googleapis.com']);
-		expect(docs.pathPrefixes).toEqual(['/v1/documents', '/drive/v3/files', '/drive/v3/drives']);
+		expect(docs.hosts).toEqual(['docs.googleapis.com']);
+		expect(docs.pathPrefixes).toEqual(['/v1/documents']);
 		expect(docs.passthroughHosts).toEqual(['oauth2.googleapis.com']);
 		expect(docs.readPaths).toEqual([]);
 		expect(docs.instructions).toContain('plainText');
@@ -61,11 +61,12 @@ describe('the Google Docs vendor file', () => {
 		expect(docs.instructions).toContain('Known gaps');
 	});
 
-	it('routes the Docs and Drive paths of the node here, and Gmail and other APIs elsewhere', () => {
+	it('routes the Docs paths of the node here, and the Drive paths and other APIs elsewhere', () => {
 		expect(vendorForRequest(DOCS, `/v1/documents/${DOC_ID}`)?.name).toBe('googledocs');
 		expect(vendorForRequest(DOCS, `/v1/documents/${DOC_ID}:batchUpdate`)?.name).toBe('googledocs');
-		expect(vendorForRequest(DRIVE, '/drive/v3/files')?.name).toBe('googledocs');
-		expect(vendorForRequest(DRIVE, '/drive/v3/drives')?.name).toBe('googledocs');
+		// The Drive vendor owns the Drive paths. This vendor must not claim them.
+		expect(vendorForRequest(DRIVE, '/drive/v3/files')?.name).not.toBe('googledocs');
+		expect(vendorForRequest(DRIVE, '/drive/v3/drives')?.name).not.toBe('googledocs');
 		expect(vendorForRequest(DRIVE, '/gmail/v1/users/me/messages')?.name).toBe('gmail');
 		expect(vendorForRequest(DRIVE, '/drive/v2/files')).toBeUndefined();
 		expect(vendorForRequest(DRIVE, '/upload/drive/v3/files')).toBeUndefined();
@@ -87,13 +88,8 @@ describe('the Google Docs vendor file', () => {
 describe('Google Docs routing: every operation of the node', () => {
 	it.each([
 		['document: get', 'GET', DOCS, `/v1/documents/${DOC_ID}`, true],
-		['load options: drives', 'GET', DRIVE, '/drive/v3/drives', true],
-		['load options: folders', 'GET', DRIVE, '/drive/v3/files', true],
-		['document: create (a Drive file)', 'POST', DRIVE, '/drive/v3/files', false],
 		['document: update', 'POST', DOCS, `/v1/documents/${DOC_ID}:batchUpdate`, false],
 		['document create of the Docs API (the node lacks it)', 'POST', DOCS, '/v1/documents', false],
-		['a Drive change (the node lacks it)', 'PATCH', DRIVE, `/drive/v3/files/${DOC_ID}`, false],
-		['a Drive delete (the node lacks it)', 'DELETE', DRIVE, `/drive/v3/files/${DOC_ID}`, false],
 	])('%s: %s is read-shaped = %s', (_label, method, host, path, read) => {
 		expect(isReadShaped(call(method, host, path, {}), docs.readPaths)).toBe(read);
 		expect(vendorForRequest(host, path)?.name).toBe('googledocs');
@@ -243,9 +239,6 @@ describe('the profile of Google Docs', () => {
 			expect(
 				lookups('read_get_documents', { method: 'GET', path: `/v1/documents/${DOC_ID}` }),
 			).toEqual([]);
-			expect(
-				lookups('write_post_drive_files', { method: 'POST', path: '/drive/v3/files' }),
-			).toEqual([]);
 			expect(lookups('write_post_documents', { method: 'POST', path: '/v1/documents' })).toEqual(
 				[],
 			);
@@ -272,12 +265,10 @@ describe('the profile of Google Docs', () => {
 		});
 	});
 
-	it('does not copy the folder lists to the gym, and copies a document', () => {
-		const hydrateRead = GOOGLE_DOCS_PROFILE.hydrateRead!;
+	it('copies a document to the gym', () => {
+		const hydrateRead = GOOGLE_DOCS_PROFILE.hydrateRead;
 
-		expect(hydrateRead({ method: 'GET', path: '/drive/v3/files' }, {})).toBe(false);
-		expect(hydrateRead({ method: 'GET', path: '/drive/v3/drives' }, {})).toBe(false);
-		expect(hydrateRead({ method: 'GET', path: `/v1/documents/${DOC_ID}` }, {})).toBe(true);
+		expect(hydrateRead).toBeUndefined();
 	});
 
 	it('hydrates a write on a document that the gym did not make', () => {
@@ -286,7 +277,7 @@ describe('the profile of Google Docs', () => {
 
 		expect(hydrateWrite(args, new Set())).toBe(true);
 		expect(hydrateWrite(args, new Set([DOC_ID]))).toBe(false);
-		expect(hydrateWrite({ method: 'POST', path: '/drive/v3/files' }, new Set())).toBe(false);
+		expect(hydrateWrite({ method: 'POST', path: '/v1/documents' }, new Set())).toBe(false);
 	});
 });
 
@@ -394,19 +385,14 @@ describe('the credential of the node never leaves the guard', () => {
 				requests: [{ insertText: { text: 'x', endOfSegmentLocation: {} } }],
 			}),
 		);
-		await created.router.handle(
-			call('POST', DRIVE, '/drive/v3/files', {
-				name: 'New',
-				mimeType: 'application/vnd.google-apps.document',
-			}),
-		);
+		await created.router.handle(call('POST', DOCS, '/v1/documents', { title: 'New' }));
 
 		const real = vi.mocked(sendToNetwork).mock.calls.map(([req]) => req);
 		// Only the lookup of the document that the batchUpdate names is a real request. It is a GET.
 		expect(real.every((req) => req.method === 'GET')).toBe(true);
 		expect(real.every((req) => req.url.pathname.startsWith('/v1/documents/'))).toBe(true);
 		expect(gymRequests.map((r) => r.url)).toEqual(
-			expect.arrayContaining([`/v1/documents/${DOC_ID}:batchUpdate`, '/drive/v3/files']),
+			expect.arrayContaining([`/v1/documents/${DOC_ID}:batchUpdate`, '/v1/documents']),
 		);
 		expect(gymRequests.every((r) => r.headers.authorization === `Bearer ${TENANT_TOKEN}`)).toBe(
 			true,
@@ -418,9 +404,7 @@ describe('the credential of the node never leaves the guard', () => {
 	it('answers a read of a document that only the gym knows, and the real read stays a GET', async () => {
 		const { created } = await setup();
 
-		await created.router.handle(
-			call('POST', DRIVE, '/drive/v3/files', { name: 'New', mimeType: 'x' }),
-		);
+		await created.router.handle(call('POST', DOCS, '/v1/documents', { title: 'New' }));
 		vi.mocked(sendToNetwork).mockClear();
 		// The id of a gym document in a path is not known as an id of the gym here, so the read goes to the
 		// real service first and then to the gym. This is safe: the real read is a GET.

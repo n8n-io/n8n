@@ -61,7 +61,7 @@ describe('HttpGuardRouter', () => {
 	it('refuses another Google API on the same host', async () => {
 		const { router, upstream, gym } = setup();
 
-		const res = await router.handle(request('GET', '/tasks/v1/users/@me/lists'));
+		const res = await router.handle(request('GET', '/drive/v3/files'));
 
 		expect(res.status).toBe(403);
 		expect(upstream.callTool).not.toHaveBeenCalled();
