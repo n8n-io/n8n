@@ -26,6 +26,8 @@ import { SystemAgentRegistry } from '../system-agents/system-agent-registry';
 import type { SystemAgentProvider } from '../system-agents/system-agent.types';
 import type { AgentQueueDispatch, QueuedIntegrationMessage } from '../types/agent-queued-message';
 import type { AgentClusterService } from '../agent-cluster.service';
+import { TURN_PRIORITY } from '../queue/agent-turn-gate.service';
+import type { AgentTurnGate } from '../queue/agent-turn-gate.service';
 import type { AgentTurnPlacement } from '../queue/agent-turn-placement.service';
 import type { AgentTurnQueue } from '../queue/agent-turn-queue.service';
 
@@ -44,6 +46,7 @@ describe('AgentMessageQueueConsumer', () => {
 	const sender = { send: vi.fn(), close: vi.fn(async () => {}) };
 	const systemAgentExecution = mock<SystemAgentExecutionService>();
 	let placement: ReturnType<typeof mock<AgentTurnPlacement>>;
+	let gate: ReturnType<typeof mock<AgentTurnGate>>;
 	const turnQueue = mock<AgentTurnQueue>();
 	let cluster: ReturnType<typeof mock<AgentClusterService>>;
 	let systemAgents: SystemAgentRegistry;
@@ -120,11 +123,12 @@ describe('AgentMessageQueueConsumer', () => {
 			response: '',
 			executionId: 'execution-session',
 		});
-		placement = mock<AgentTurnPlacement>({ dispatchEnabled: false, hasHeldTurns: false });
+		placement = mock<AgentTurnPlacement>({ dispatchEnabled: false });
+		gate = mock<AgentTurnGate>({ hasHeldTurns: false });
 		placement.mayClaim.mockResolvedValue(true);
 		placement.workersAvailable.mockResolvedValue(false);
 		turnQueue.enqueueDrain.mockResolvedValue();
-		cluster = mock<AgentClusterService>({ isLeader: true, isWorker: false });
+		cluster = mock<AgentClusterService>({ isLeader: true, isWorker: false, isMain: true });
 		consumer = new AgentMessageQueueConsumer(
 			queue,
 			repository,
@@ -142,6 +146,7 @@ describe('AgentMessageQueueConsumer', () => {
 			placement,
 			turnQueue,
 			cluster,
+			gate,
 		);
 	});
 
@@ -174,14 +179,14 @@ describe('AgentMessageQueueConsumer', () => {
 			});
 			consumer.start();
 			await vi.waitFor(() => expect(attempts).toBe(1));
-			expect(placement.claimSettled).not.toHaveBeenCalled();
+			expect(gate.claimSettled).not.toHaveBeenCalled();
 
 			consumer.handleQueueAvailable({ threadId: 'session' });
-			await vi.waitFor(() => expect(placement.claimSettled).toHaveBeenCalledOnce());
+			await vi.waitFor(() => expect(gate.claimSettled).toHaveBeenCalledOnce());
 		});
 
 		it('scans the queue when a turn ends on a main that holds turns', async () => {
-			Object.assign(placement, { hasHeldTurns: true });
+			Object.assign(gate, { hasHeldTurns: true });
 			const item = claim('session');
 			repository.findThreadIds.mockResolvedValue([]);
 			queue.claimNext.mockResolvedValueOnce(item).mockResolvedValue(null);
@@ -193,7 +198,7 @@ describe('AgentMessageQueueConsumer', () => {
 		});
 
 		it('sends a drain job for new work when workers are registered', async () => {
-			placement = mock<AgentTurnPlacement>({ dispatchEnabled: true, hasHeldTurns: false });
+			placement = mock<AgentTurnPlacement>({ dispatchEnabled: true });
 			placement.workersAvailable.mockResolvedValue(true);
 			placement.mayClaim.mockResolvedValue(false);
 			consumer = new AgentMessageQueueConsumer(
@@ -213,6 +218,7 @@ describe('AgentMessageQueueConsumer', () => {
 				placement,
 				turnQueue,
 				cluster,
+				gate,
 			);
 			queue.claimNext.mockResolvedValue(null);
 			repository.findDispatchableThreadIds.mockResolvedValue(['missed']);
@@ -220,9 +226,9 @@ describe('AgentMessageQueueConsumer', () => {
 			queue.onAvailable?.('session');
 
 			await vi.waitFor(() => {
-				expect(turnQueue.enqueueDrain).toHaveBeenCalledWith('session');
+				expect(turnQueue.enqueueDrain).toHaveBeenCalledWith('session', TURN_PRIORITY.chat);
 				// The leader scan also sends jobs for missed notifications.
-				expect(turnQueue.enqueueDrain).toHaveBeenCalledWith('missed');
+				expect(turnQueue.enqueueDrain).toHaveBeenCalledWith('missed', TURN_PRIORITY.chat);
 			});
 		});
 
@@ -247,7 +253,7 @@ describe('AgentMessageQueueConsumer', () => {
 		it('puts work accepted on a worker back on the agent queue', () => {
 			consumer.startOnWorker();
 			queue.onAvailable?.('session');
-			expect(turnQueue.enqueueDrain).toHaveBeenCalledWith('session');
+			expect(turnQueue.enqueueDrain).toHaveBeenCalledWith('session', TURN_PRIORITY.chat);
 		});
 
 		it('runs an integration turn on a worker over a leased bridge', async () => {

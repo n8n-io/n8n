@@ -25,6 +25,7 @@ import { AgentTestRunService } from './agent-test-run.service';
 import type { AgentExecutionThread } from './entities/agent-execution-thread.entity';
 import type { AgentChatBridge } from './integrations/agent-chat-bridge';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
+import { AgentTurnGate, TURN_PRIORITY } from './queue/agent-turn-gate.service';
 import { AgentTurnPlacement } from './queue/agent-turn-placement.service';
 import { AgentTurnQueue } from './queue/agent-turn-queue.service';
 import { AgentMessageQueueRepository } from './repositories/agent-message-queue.repository';
@@ -32,6 +33,12 @@ import { canUseSystemAgent } from './system-agents/system-agent-access';
 import { SystemAgentExecutionService } from './system-agents/system-agent-execution.service';
 import { SystemAgentRegistry } from './system-agents/system-agent-registry';
 import { chatSurfaceForKind, type AgentChatSurface } from './utils/agent-thread-access';
+
+/**
+ * A drain job runs the queued messages of one thread: chat messages, chat
+ * platform messages and stop reports. Most of them have a person who waits.
+ */
+const DRAIN_PRIORITY = TURN_PRIORITY.chat;
 
 @Service()
 export class AgentMessageQueueConsumer {
@@ -57,6 +64,7 @@ export class AgentMessageQueueConsumer {
 		private readonly placement: AgentTurnPlacement,
 		private readonly turnQueue: AgentTurnQueue,
 		private readonly cluster: AgentClusterService,
+		private readonly gate: AgentTurnGate,
 	) {}
 
 	/** Start on a main: scan the queue, claim local work, and send worker turns to workers. */
@@ -79,7 +87,7 @@ export class AgentMessageQueueConsumer {
 		this.stopped = false;
 		// Work accepted here, for example a steer or a stop report, goes back on the agent queue.
 		this.queue.onAvailable = (threadId) => {
-			this.turnQueue.enqueueDrain(threadId).catch((error: unknown) => {
+			this.turnQueue.enqueueDrain(threadId, DRAIN_PRIORITY).catch((error: unknown) => {
 				this.logger.warn('Failed to send an agent turn to the agent queue', { threadId, error });
 			});
 		};
@@ -140,7 +148,7 @@ export class AgentMessageQueueConsumer {
 	private async dispatch(threadId: string): Promise<void> {
 		if (!this.placement.dispatchEnabled || !(await this.placement.workersAvailable())) return;
 		try {
-			await this.turnQueue.enqueueDrain(threadId);
+			await this.turnQueue.enqueueDrain(threadId, DRAIN_PRIORITY);
 		} catch (error) {
 			// The leader scan sends it again, and after the fallback wait a main runs it.
 			this.logger.warn('Failed to send an agent turn to a worker', { threadId, error });
@@ -168,7 +176,7 @@ export class AgentMessageQueueConsumer {
 		while (!this.stopped) {
 			if (!(await this.consumeNext(threadId))) return;
 			// A turn ended here, so a turn that this main held may have room now. Workers do not scan.
-			if (this.timer && this.placement.hasHeldTurns) void this.scan();
+			if (this.timer && this.gate.hasHeldTurns) void this.scan();
 		}
 	}
 
@@ -218,7 +226,7 @@ export class AgentMessageQueueConsumer {
 				});
 				// A claimed turn shows as a running turn from here on. Stop counting the claim itself.
 				const claimed = await claimNext.finally(() => {
-					if (admitted) this.placement.claimSettled();
+					if (admitted && this.cluster.isMain) this.gate.claimSettled();
 				});
 
 				if (!claimed) return null;

@@ -10,6 +10,7 @@ import type { AgentMessageQueueService } from '../agent-message-queue.service';
 import type { AgentQueuedTestStreamService } from '../agent-queued-test-stream.service';
 import type { FlushableResponse } from '../agent-sse-stream';
 import type { AgentChatAttachment } from '../entities/agent-chat-attachment.entity';
+import type { AgentTurnGate } from '../queue/agent-turn-gate.service';
 import type { AgentTurnPlacement } from '../queue/agent-turn-placement.service';
 
 import { sendStreamToResponse } from '@/response-helper';
@@ -56,6 +57,7 @@ describe('AgentChatRelayService', () => {
 		mock<AgentQueuedTestStreamService>(),
 		attachmentService,
 		mock<AgentTurnPlacement>(),
+		mock<AgentTurnGate>(),
 	);
 
 	describe('relayQueuedMessage', () => {
@@ -68,7 +70,7 @@ describe('AgentChatRelayService', () => {
 			payload: { kind: 'preview' as const, message: 'hi', userId: 'user', resourceId: 'r' },
 		};
 
-		function setup(mayOpenStream: boolean, intakeFree = true) {
+		function setup(mayOpenStream: boolean, intakeFree = true, queueFull = false) {
 			const closeStream = vi.fn();
 			const leaveIntake = vi.fn();
 			const streams = mock<AgentQueuedTestStreamService>();
@@ -91,6 +93,11 @@ describe('AgentChatRelayService', () => {
 				streams,
 				mock<AgentChatAttachmentService>(),
 				mock<AgentTurnPlacement>({
+					goesToWorker: async () => true,
+					queueFull: async () => queueFull,
+					retryAfterSeconds: async () => 42,
+				}),
+				mock<AgentTurnGate>({
 					enterIntake: async () => (intakeFree ? leaveIntake : undefined),
 					openStream: () => (mayOpenStream ? closeStream : undefined),
 				}),
@@ -120,9 +127,21 @@ describe('AgentChatRelayService', () => {
 			expect(accept).not.toHaveBeenCalled();
 			expect(messageQueue.enqueue).not.toHaveBeenCalled();
 			expect(sentEvents(writes)).toEqual([
-				expect.objectContaining({ type: 'error', errorCode: 'main_busy' }),
+				expect.objectContaining({ type: 'error', errorCode: 'main_busy', retryAfterSeconds: 42 }),
 			]);
 			expect(res.end).toHaveBeenCalledOnce();
+		});
+
+		it('rejects the message with queue_full when too many turns wait', async () => {
+			const { service, messageQueue } = setup(true, true, true);
+			const writes: string[] = [];
+			const res = makeSseResponse(writes);
+			await service.relayQueuedMessage(res as unknown as FlushableResponse, async () => input);
+
+			expect(messageQueue.enqueue).not.toHaveBeenCalled();
+			expect(sentEvents(writes)).toEqual([
+				expect.objectContaining({ type: 'error', errorCode: 'queue_full', retryAfterSeconds: 42 }),
+			]);
 		});
 
 		it('frees the intake place when accept fails', async () => {
@@ -167,6 +186,7 @@ describe('AgentChatRelayService', () => {
 				streams,
 				mock<AgentChatAttachmentService>(),
 				mock<AgentTurnPlacement>(),
+				mock<AgentTurnGate>(),
 			);
 			const writes: string[] = [];
 			const res = makeSseResponse(writes);

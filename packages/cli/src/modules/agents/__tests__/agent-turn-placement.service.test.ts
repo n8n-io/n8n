@@ -4,6 +4,7 @@ import type { AgentsConfig } from '@n8n/config';
 
 import type { AgentMainMemory } from '../queue/agent-main-memory.service';
 import type { AgentQueueMetricEvent } from '../queue/agent-queue-metrics';
+import { AgentTurnGate } from '../queue/agent-turn-gate.service';
 import { AgentTurnPlacement } from '../queue/agent-turn-placement.service';
 import type { AgentTurnQueue } from '../queue/agent-turn-queue.service';
 import { testCluster, type TestClusterOptions } from './test-utils/cluster';
@@ -19,8 +20,8 @@ function setup({
 	memoryHigh = false,
 	localTurns = 0,
 	lastProgressAt,
-	mainMaxIntake = 0,
-	mainMaxStreams = 0,
+	queueMaxWaiting = 0,
+	waitingInQueue = 0,
 }: {
 	cluster?: TestClusterOptions;
 	queueModeEnabled?: boolean;
@@ -33,8 +34,9 @@ function setup({
 	localTurns?: number;
 	/** When an agent job last started or ended anywhere. Omit for never. */
 	lastProgressAt?: number;
-	mainMaxIntake?: number;
-	mainMaxStreams?: number;
+	queueMaxWaiting?: number;
+	/** Jobs that wait in the shared agent queue. */
+	waitingInQueue?: number;
 } = {}) {
 	const registry = new InstanceRegistryProxyService();
 	const getAllInstances = vi.fn(async () => {
@@ -47,17 +49,24 @@ function setup({
 		workerEnabled,
 		mainFallbackTurns,
 		mainMaxTurns,
-		mainMaxIntake,
-		mainMaxStreams,
+		mainMaxIntake: 0,
+		mainMaxStreams: 0,
+		queueMaxWaiting,
+		queueMaxWaitSeconds: 60,
 	} as AgentsConfig;
 	const agentCluster = testCluster(cluster);
 	agentCluster.metrics.registerGauges({ localTurns: () => localTurns });
 	const events: AgentQueueMetricEvent[] = [];
 	agentCluster.metrics.onEvent((event) => events.push(event));
-	const turnQueue = { lastProgressAt } as AgentTurnQueue;
+	const turnQueue = {
+		lastProgressAt,
+		waitingCount: async () => waitingInQueue,
+	} as AgentTurnQueue;
 	const memory = { isHigh: () => memoryHigh } as AgentMainMemory;
+	const gate = new AgentTurnGate(config, agentCluster.metrics, memory);
 	return {
-		placement: new AgentTurnPlacement(config, agentCluster, registry, turnQueue, memory),
+		placement: new AgentTurnPlacement(config, agentCluster, registry, turnQueue, gate),
+		gate,
 		getAllInstances,
 		events,
 	};
@@ -117,6 +126,41 @@ describe('AgentTurnPlacement', () => {
 		expect(await placement.mayClaim('preview', recent())).toBe(true);
 	});
 
+	describe('goesToWorker', () => {
+		it('sends worker kinds to workers only when a worker is up', async () => {
+			expect(await setup({ instances: [agentWorker] }).placement.goesToWorker('preview')).toBe(
+				true,
+			);
+			expect(await setup().placement.goesToWorker('preview')).toBe(false);
+			expect(await setup({ instances: [agentWorker] }).placement.goesToWorker('system')).toBe(
+				false,
+			);
+		});
+
+		it('keeps every kind on the main without agent queue mode', async () => {
+			const { placement } = setup({ queueModeEnabled: false, instances: [agentWorker] });
+			expect(await placement.goesToWorker('preview')).toBe(false);
+		});
+	});
+
+	describe('queueFull', () => {
+		it('counts the shared agent queue for turns that go to workers', async () => {
+			const { placement, events } = setup({ queueMaxWaiting: 3, waitingInQueue: 3 });
+			expect(await placement.queueFull(true)).toBe(true);
+			expect(events).toEqual([{ type: 'turn-rejected', reason: 'queue-full' }]);
+		});
+
+		it('counts the turns that wait on this main for turns that run here', async () => {
+			const { placement } = setup({ queueMaxWaiting: 3, waitingInQueue: 10 });
+			expect(await placement.queueFull(false)).toBe(false);
+		});
+
+		it('never reports a full queue with a limit of 0', async () => {
+			const { placement } = setup({ queueMaxWaiting: 0, waitingInQueue: 1_000 });
+			expect(await placement.queueFull(true)).toBe(false);
+		});
+	});
+
 	describe('mayClaim on a main', () => {
 		it('leaves a recent worker turn for a worker', async () => {
 			const { placement } = setup({ instances: [agentWorker] });
@@ -150,6 +194,12 @@ describe('AgentTurnPlacement', () => {
 			expect(await placement.mayClaim('preview', old())).toBe(true);
 		});
 
+		it('never takes over from a running worker with the default fallback limit of 0', async () => {
+			const { placement, events } = setup({ instances: [agentWorker], mainFallbackTurns: 0 });
+			expect(await placement.mayClaim('preview', old())).toBe(false);
+			expect(events).toEqual([{ type: 'turn-held', reason: 'main-at-limit' }]);
+		});
+
 		it('holds an overdue turn when this main is at its fallback limit', async () => {
 			const { placement, events } = setup({
 				instances: [agentWorker],
@@ -178,7 +228,7 @@ describe('AgentTurnPlacement', () => {
 				[1, 2, 3].map(async () => await placement.mayClaim('preview', old())),
 			);
 			expect(checks).toEqual([true, true, false]);
-			vi.advanceTimersByTime(AgentTurnPlacement.CLAIM_START_MS);
+			vi.advanceTimersByTime(AgentTurnGate.CLAIM_START_MS);
 			expect(await placement.mayClaim('preview', old())).toBe(true);
 		});
 
@@ -200,152 +250,12 @@ describe('AgentTurnPlacement', () => {
 			expect(await placement.mayClaim('preview', recent())).toBe(false);
 		});
 
-		it('counts turns that have not started yet toward the turn limit', async () => {
-			vi.useFakeTimers();
-			const { placement } = setup({ mainMaxTurns: 2 });
-			const queuedAt = recent();
-			const checks = await Promise.all(
-				[1, 2, 3].map(async () => await placement.mayClaim('preview', queuedAt)),
-			);
-			expect(checks).toEqual([true, true, false]);
-			vi.advanceTimersByTime(AgentTurnPlacement.CLAIM_START_MS);
-			expect(await placement.mayClaim('preview', queuedAt)).toBe(true);
-		});
-
-		it('stops counting a claim once the caller reports that it settled', async () => {
-			const { placement } = setup({ mainMaxTurns: 1 });
-			expect(await placement.mayClaim('preview', recent())).toBe(true);
-			expect(await placement.mayClaim('preview', recent())).toBe(false);
-			placement.claimSettled();
-			expect(await placement.mayClaim('preview', recent())).toBe(true);
-		});
-
-		it('lets a held turn go before a newer turn when room frees up', async () => {
-			vi.useFakeTimers();
-			const { placement } = setup({ mainMaxTurns: 1 });
-			const older = new Date(Date.now() - 2_000);
-			const newer = new Date(Date.now() - 1_000);
-			expect(await placement.mayClaim('preview', recent())).toBe(true);
-			expect(await placement.mayClaim('preview', older)).toBe(false);
-			expect(placement.hasHeldTurns).toBe(true);
-
-			placement.claimSettled();
-			expect(await placement.mayClaim('preview', newer)).toBe(false);
-			expect(await placement.mayClaim('preview', older)).toBe(true);
-
-			// A held turn that nobody checks again, for example a cancelled one, loses its place.
-			placement.claimSettled();
-			vi.advanceTimersByTime(AgentTurnPlacement.HELD_TTL_MS);
-			expect(placement.hasHeldTurns).toBe(false);
-			expect(await placement.mayClaim('preview', new Date())).toBe(true);
-		});
-
-		it('holds a turn while memory is high, but always runs one turn', async () => {
-			const busy = setup({ memoryHigh: true, localTurns: 1 });
-			expect(await busy.placement.mayClaim('system', recent())).toBe(false);
-			expect(busy.events).toEqual([{ type: 'turn-held', reason: 'main-memory-high' }]);
-
-			const idle = setup({ memoryHigh: true });
-			expect(await idle.placement.mayClaim('system', recent())).toBe(true);
-			expect(await idle.placement.mayClaim('system', recent())).toBe(false);
-		});
-
-		it('applies no limit without agent queue mode', async () => {
+		it('applies the turn limit in regular mode too', async () => {
 			for (const options of [{ queueModeEnabled: false }, { cluster: { queue: false } }]) {
-				const { placement, events } = setup({
-					...options,
-					mainMaxTurns: 1,
-					localTurns: 50,
-					memoryHigh: true,
-				});
-				expect(await placement.mayClaim('preview', recent())).toBe(true);
-				expect(placement.openStream()).toBeDefined();
-				expect(events).toEqual([]);
+				const { placement, events } = setup({ ...options, mainMaxTurns: 1, localTurns: 1 });
+				expect(await placement.mayClaim('preview', recent())).toBe(false);
+				expect(events).toEqual([{ type: 'turn-held', reason: 'main-at-limit' }]);
 			}
-		});
-
-		it('opens no live stream while memory is high', () => {
-			expect(setup().placement.openStream()).toBeDefined();
-			const { placement, events } = setup({ memoryHigh: true });
-			expect(placement.openStream()).toBeUndefined();
-			expect(events).toEqual([{ type: 'stream-skipped', reason: 'main-memory-high' }]);
-		});
-
-		it('opens no more live streams than the limit, and frees a place when one closes', () => {
-			const { placement, events } = setup({ mainMaxStreams: 2 });
-			const first = placement.openStream();
-			expect(placement.openStream()).toBeDefined();
-			expect(placement.openStream()).toBeUndefined();
-			expect(events).toEqual([{ type: 'stream-skipped', reason: 'main-at-stream-limit' }]);
-
-			first?.();
-			first?.();
-			expect(placement.openStream()).toBeDefined();
-			expect(placement.openStream()).toBeUndefined();
-		});
-	});
-
-	describe('enterIntake', () => {
-		const signal = () => new AbortController().signal;
-
-		it('applies no limit without agent queue mode or with a limit of 0', async () => {
-			for (const options of [{ queueModeEnabled: false, mainMaxIntake: 1 }, { mainMaxIntake: 0 }]) {
-				const { placement } = setup(options);
-				expect(await placement.enterIntake(signal())).toBeDefined();
-				expect(await placement.enterIntake(signal())).toBeDefined();
-			}
-		});
-
-		it('lets a waiting message in, in order, when a place is freed', async () => {
-			const { placement } = setup({ mainMaxIntake: 1 });
-			const leave = await placement.enterIntake(signal());
-			const order: string[] = [];
-			const second = placement.enterIntake(signal()).then((r) => {
-				order.push('second');
-				return r;
-			});
-			const third = placement.enterIntake(signal()).then((r) => {
-				order.push('third');
-				return r;
-			});
-
-			leave?.();
-			leave?.();
-			const leaveSecond = await second;
-			expect(leaveSecond).toBeDefined();
-			expect(order).toEqual(['second']);
-
-			leaveSecond?.();
-			expect(await third).toBeDefined();
-			expect(order).toEqual(['second', 'third']);
-		});
-
-		it('rejects a message that waits too long', async () => {
-			vi.useFakeTimers();
-			const { placement, events } = setup({ mainMaxIntake: 1 });
-			const leave = await placement.enterIntake(signal());
-			const waiting = placement.enterIntake(signal());
-			vi.advanceTimersByTime(AgentTurnPlacement.INTAKE_WAIT_MS);
-			expect(await waiting).toBeUndefined();
-			expect(events).toEqual([{ type: 'intake-rejected' }]);
-
-			// The rejected message does not keep a place.
-			leave?.();
-			expect(await placement.enterIntake(signal())).toBeDefined();
-		});
-
-		it('drops a waiting message when its request is aborted', async () => {
-			const { placement, events } = setup({ mainMaxIntake: 1 });
-			const leave = await placement.enterIntake(signal());
-			const controller = new AbortController();
-			const waiting = placement.enterIntake(controller.signal);
-			controller.abort();
-			expect(await waiting).toBeUndefined();
-			expect(events).toEqual([]);
-
-			leave?.();
-			expect(await placement.enterIntake(signal())).toBeDefined();
-			expect(await placement.enterIntake(controller.signal)).toBeUndefined();
 		});
 	});
 

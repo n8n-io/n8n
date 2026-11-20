@@ -14,6 +14,7 @@ import type { FlushableResponse } from '../agent-sse-stream';
 import type { AgentStreamChannel } from '../queue/agent-stream-channel.service';
 import type { AgentTestRunService } from '../agent-test-run.service';
 import { AgentRemoteTurnService } from '../queue/agent-remote-turn.service';
+import type { AgentTurnGate } from '../queue/agent-turn-gate.service';
 import { AgentTurnPlacement } from '../queue/agent-turn-placement.service';
 import type { AgentTurnQueue } from '../queue/agent-turn-queue.service';
 import type {
@@ -87,8 +88,8 @@ describe('AgentChatResumeService', () => {
 	function setup({ workers }: { workers: boolean }) {
 		placement = mock<AgentTurnPlacement>({
 			dispatchEnabled: true,
-			mayRunHere: () => true,
 			queueFull: async () => false,
+			retryAfterSeconds: async () => 15,
 			workersAvailable: async () => workers,
 			mayFallBack: async (sentAt) => Date.now() - sentAt >= AgentTurnPlacement.FALLBACK_WAIT_MS,
 		});
@@ -119,6 +120,7 @@ describe('AgentChatResumeService', () => {
 			mock<AgentsConfig>({ queueMaxWaitSeconds: 0 }),
 			testCluster({ instanceKey: 'instance-a' }),
 			placement,
+			mock<AgentTurnGate>({ waitForRoom: async () => ({ admitted: true }) }),
 			turnQueue,
 			requests,
 			streams,

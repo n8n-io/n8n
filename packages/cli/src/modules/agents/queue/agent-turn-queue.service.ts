@@ -103,14 +103,18 @@ export class AgentTurnQueue {
 		this.queue = queue;
 	}
 
-	/** Ask a worker to run the queued messages of a thread. */
-	async enqueueDrain(threadId: string): Promise<void> {
+	/**
+	 * Ask a worker to run the queued messages of a thread. `priority` is the
+	 * Bull job priority, where 1 starts first. See `TURN_PRIORITY`.
+	 */
+	async enqueueDrain(threadId: string, priority: number): Promise<void> {
 		if (!this.queue) return;
 		await this.queue.add(
 			DRAIN_JOB,
 			{ threadId },
 			{
 				jobId: `drain:${threadId}`,
+				priority,
 				attempts: 1,
 				removeOnComplete: true,
 				removeOnFail: true,
@@ -119,13 +123,14 @@ export class AgentTurnQueue {
 	}
 
 	/** Ask a worker to run the turn stored in an `agent_turn_request` row. */
-	async enqueueRequest(requestId: string): Promise<void> {
+	async enqueueRequest(requestId: string, priority: number): Promise<void> {
 		if (!this.queue) return;
 		await this.queue.add(
 			REQUEST_JOB,
 			{ requestId },
 			{
 				jobId: `request:${requestId}`,
+				priority,
 				attempts: 1,
 				removeOnComplete: true,
 				removeOnFail: true,

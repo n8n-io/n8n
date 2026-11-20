@@ -51,6 +51,8 @@ import type { ToolRegistry } from '../tool-registry';
 import type { WorkflowAgentStreamObserver } from '../workflow-agent-stream';
 import { createAgentSkillRefsService } from './test-utils/stored-agent-config';
 import type { AgentSandboxFilesService } from '../agent-sandbox-files.service';
+import type { AgentClusterService } from '../agent-cluster.service';
+import type { AgentTurnGate } from '../queue/agent-turn-gate.service';
 
 const aiConfigMock = mock<AiConfig>();
 
@@ -193,6 +195,8 @@ function makeService() {
 		integrationMessageContextService,
 		settingsService,
 		skillRefs,
+		mock<AgentClusterService>({ isWorker: false }),
+		mock<AgentTurnGate>({ waitForRoom: vi.fn().mockResolvedValue({ admitted: true }) }),
 	);
 
 	return {

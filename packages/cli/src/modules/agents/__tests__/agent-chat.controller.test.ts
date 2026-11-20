@@ -37,6 +37,7 @@ import type { AgentTestChatService } from '../agent-test-chat.service';
 import { AgentTestRunService } from '../agent-test-run.service';
 import { AgentChatRelayService } from '../agent-chat-relay.service';
 import { AgentChatResumeService } from '../agent-chat-resume.service';
+import type { AgentTurnGate } from '../queue/agent-turn-gate.service';
 import type { AgentTurnPlacement } from '../queue/agent-turn-placement.service';
 import { AgentRemoteTurnService } from '../queue/agent-remote-turn.service';
 import type { AgentTurnQueue } from '../queue/agent-turn-queue.service';
@@ -133,7 +134,8 @@ function makeController() {
 			messageQueue,
 			previewStreams,
 			agentChatAttachmentService,
-			mock<AgentTurnPlacement>({
+			mock<AgentTurnPlacement>({ queueFull: async () => false }),
+			mock<AgentTurnGate>({
 				enterIntake: async () => () => {},
 				openStream: () => () => {},
 			}),
@@ -147,7 +149,8 @@ function makeController() {
 				mockLogger(),
 				agentsConfig,
 				testCluster(),
-				mock<AgentTurnPlacement>({ dispatchEnabled: false, mayRunHere: () => true }),
+				mock<AgentTurnPlacement>({ dispatchEnabled: false }),
+				mock<AgentTurnGate>({ waitForRoom: async () => ({ admitted: true }) }),
 				mock<AgentTurnQueue>(),
 				mock<AgentTurnRequestRepository>(),
 				previewStreams,

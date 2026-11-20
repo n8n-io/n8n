@@ -1,5 +1,4 @@
 import {
-	AGENT_CHAT_ERROR_CODES,
 	type AgentChatAttachmentPayload,
 	type AgentSseEvent,
 	MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES,
@@ -21,6 +20,7 @@ import { AgentQueuedTestStreamService } from './agent-queued-test-stream.service
 import { type FlushableResponse, initSseStream, toChatErrorEvent } from './agent-sse-stream';
 import type { AgentChatAttachment } from './entities/agent-chat-attachment.entity';
 import { busyEvent } from './queue/agent-remote-turn.service';
+import { AgentTurnGate } from './queue/agent-turn-gate.service';
 import { AgentTurnPlacement } from './queue/agent-turn-placement.service';
 import type { StoredAttachmentRef } from './types/agent-chat-attachment';
 import { resolveInboundMimeType } from './utils/inbound-attachments';
@@ -39,6 +39,7 @@ export class AgentChatRelayService {
 		private readonly queuedPreviewStreams: AgentQueuedTestStreamService,
 		private readonly agentChatAttachmentService: AgentChatAttachmentService,
 		private readonly placement: AgentTurnPlacement,
+		private readonly gate: AgentTurnGate,
 	) {}
 
 	createChatStream(res: FlushableResponse) {
@@ -131,8 +132,9 @@ export class AgentChatRelayService {
 	 * the same time. Other messages wait for a place, and get a `main_busy`
 	 * error when no place is free in time. The message is then not saved.
 	 *
-	 * A message for an agent worker gets a `queue_full` error when
-	 * `N8N_AGENTS_QUEUE_MAX_WAITING` turns already wait. It is not saved either.
+	 * A message gets a `queue_full` error when `N8N_AGENTS_QUEUE_MAX_WAITING`
+	 * turns already wait: in the agent queue for a message that goes to an
+	 * agent worker, else on this main. It is not saved either.
 	 *
 	 * When the memory of this main is high, or it has `N8N_AGENTS_MAIN_MAX_STREAMS`
 	 * live streams, the message is accepted but the stream closes right after
@@ -154,20 +156,23 @@ export class AgentChatRelayService {
 		let leaveIntake: (() => void) | undefined;
 		let closeStream: (() => void) | undefined;
 		try {
-			leaveIntake = await this.placement.enterIntake(abortSignal);
+			leaveIntake = await this.gate.enterIntake(abortSignal);
 			if (!leaveIntake) {
-				if (!abortSignal.aborted) send(busyEvent(AGENT_CHAT_ERROR_CODES.mainBusy));
+				if (!abortSignal.aborted) {
+					send(busyEvent('main-at-limit', await this.placement.retryAfterSeconds()));
+				}
 				return;
 			}
 			const input = await accept(send, abortSignal);
 			if (!input) return;
 			attachments = input.payload.attachments;
 			abortSignal.throwIfAborted();
-			if (this.placement.isWorkerKind(input.payload.kind) && (await this.placement.queueFull())) {
-				send(busyEvent(AGENT_CHAT_ERROR_CODES.queueFull));
+			const toWorker = await this.placement.goesToWorker(input.payload.kind);
+			if (await this.placement.queueFull(toWorker)) {
+				send(busyEvent('queue-full', await this.placement.retryAfterSeconds()));
 				return;
 			}
-			closeStream = this.placement.openStream();
+			closeStream = this.gate.openStream();
 			const result = await this.messageQueue.enqueue(input, (queueId) => {
 				if (closeStream) subscription = this.queuedPreviewStreams.subscribe(queueId, delivery);
 			});

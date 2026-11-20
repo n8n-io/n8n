@@ -26,6 +26,7 @@ import type {
 import type { AgentTaskSnapshotRepository } from '../repositories/agent-task-snapshot.repository';
 import type { AgentTaskRepository } from '../repositories/agent-task.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
+import type { AgentRemoteTurnService } from '../queue/agent-remote-turn.service';
 import type { AgentTaskJobRegistrar } from '../scheduling/agent-task-job-registrar';
 import { getAgentConfigHash } from '../utils/agent-config-hash';
 import {
@@ -173,7 +174,9 @@ describe('AgentTaskService', () => {
 			createAgentSkillRefsService(),
 			mock<AgentDefinitionService>(),
 			mock({ dispatchEnabled: false }),
-			mock(),
+			mock<AgentRemoteTurnService>({
+				admitHere: vi.fn().mockResolvedValue({ admitted: true }),
+			}),
 		);
 	}
 

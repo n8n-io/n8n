@@ -29,7 +29,10 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { ExecutionLevelTracer } from '@/modules/otel/execution-level-tracer';
 
 import type { StartExecutionParams } from './agent-execution.service';
+import { AgentClusterService } from './agent-cluster.service';
 import { AgentRunTracingService } from './agent-run-tracing.service';
+import { AgentTurnGate } from './queue/agent-turn-gate.service';
+import { MAX_TURN_DEPTH, turnDepth } from './queue/agent-turn-nesting';
 import type { AgentRunTelemetryType } from './agent-telemetry.types';
 import { AgentUsageTelemetryService } from './agent-usage-telemetry.service';
 import type {
@@ -192,7 +195,31 @@ export class AgentWorkflowExecutionService {
 		private readonly integrationMessageContextService: IntegrationMessageContextService,
 		private readonly settingsService: AgentsSettingsService,
 		private readonly agentSkillRefs: AgentSkillRefsService,
+		private readonly cluster: AgentClusterService,
+		private readonly gate: AgentTurnGate,
 	) {}
+
+	/**
+	 * Wait for room for an agent turn that a workflow starts. A turn inside
+	 * another agent turn, such as a Message an Agent node in a workflow tool,
+	 * never waits: its parent already holds a place. A worker runs workflows
+	 * within its own job limit, so the gate applies only on mains.
+	 */
+	private async admitWorkflowTurn(): Promise<void> {
+		const depth = turnDepth();
+		if (depth >= MAX_TURN_DEPTH) {
+			throw new UserError(
+				`Agents call each other more than ${MAX_TURN_DEPTH} levels deep. Remove the loop between the agent and its workflow tools.`,
+			);
+		}
+		if (this.cluster.isWorker) return;
+		const admission = await this.gate.waitForRoom(depth > 0 ? 'nested' : 'background');
+		if (!admission.admitted) {
+			throw new OperationalError('n8n is busy running other agents. Try again in a moment.', {
+				extra: { reason: admission.reason, retryAfterSeconds: admission.retryAfterSeconds },
+			});
+		}
+	}
 
 	private normalizeWorkflowStreamError(error: unknown, outputSchema?: JSONSchema7): Error {
 		const normalizedError = error instanceof Error ? error : new Error(String(error));
@@ -672,6 +699,7 @@ export class AgentWorkflowExecutionService {
 		sandboxScope?: WorkflowSandboxScope,
 		{ streamObserver, prepareForEval }: WorkflowAgentRunOptions = {},
 	): Promise<ExecuteAgentData> {
+		await this.admitWorkflowTurn();
 		return await this.executeForWorkflowInternal({
 			agentId,
 			message,
@@ -914,6 +942,7 @@ export class AgentWorkflowExecutionService {
 		{ streamObserver, prepareForEval }: WorkflowAgentRunOptions = {},
 	): Promise<ExecuteAgentData> {
 		await this.settingsService.assertEnabled();
+		await this.admitWorkflowTurn();
 		const { runtimeConfig, skills, credentialProvider } = await this.prepareInlineRuntime(
 			inlineAgent,
 			projectId,

@@ -526,7 +526,7 @@ export class AgentTaskService {
 		) {
 			return 'started';
 		}
-		void this.runScheduledTask(agent, snapshot, lock);
+		void this.runScheduledTask(agent, snapshot, lock, { admit: true });
 		return 'started';
 	}
 
@@ -811,11 +811,21 @@ export class AgentTaskService {
 		agent: ProjectAgent,
 		snapshot: AgentTaskSnapshot,
 		lock: AgentTaskRunLockHandle,
+		{ admit = false }: { admit?: boolean } = {},
 	): Promise<void> {
 		const agentId = agent.id;
 		const taskId = snapshot.taskId;
 		const renewInterval = this.startTaskRunLockRenewal(lock);
 		try {
+			// A run that starts in this process waits for room like any other agent turn.
+			const admission = admit ? await this.remoteTurns.admitHere('task-run') : { admitted: true };
+			if (!admission.admitted) {
+				this.logger.warn('[AgentTaskService] Skipped a scheduled task run, because n8n is busy', {
+					taskId,
+					agentId,
+				});
+				return;
+			}
 			await this.runTask(agent, snapshot);
 		} catch (error) {
 			this.logger.error('[AgentTaskService] Scheduled task run failed', {

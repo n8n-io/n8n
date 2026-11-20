@@ -1,0 +1,18 @@
+{
+	"topologies": [{ "name": "regular", "mains": 1, "workers": 0 }],
+	"phases": [
+		{ "concurrency": 10, "seconds": 60 },
+		{ "concurrency": 20, "seconds": 90 },
+		{ "concurrency": 40, "seconds": 90 },
+		{ "concurrency": 80, "seconds": 90 },
+		{ "concurrency": 160, "seconds": 60 },
+		{ "concurrency": 10, "seconds": 60 }
+	],
+	"workload": "real",
+	"model": "anthropic/claude-haiku-4-5",
+	"warmup": 4,
+	"probeMs": 1000,
+	"scheduleEverySec": 30,
+	"resourceQuota": { "memory": 1, "cpu": 1 },
+	"workerResourceQuota": { "memory": 1, "cpu": 1 }
+}

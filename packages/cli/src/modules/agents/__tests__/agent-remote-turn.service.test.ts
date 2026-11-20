@@ -4,6 +4,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { AgentQueuedTestStreamService } from '../agent-queued-test-stream.service';
 import { AgentRemoteTurnService } from '../queue/agent-remote-turn.service';
+import type { AgentTurnGate } from '../queue/agent-turn-gate.service';
 import { AgentTurnPlacement } from '../queue/agent-turn-placement.service';
 import type { AgentTurnQueue } from '../queue/agent-turn-queue.service';
 import type {
@@ -24,6 +25,8 @@ vi.mock('node:timers/promises', () => ({
 		await new Promise((resolve) => setImmediate(resolve));
 	}),
 }));
+
+const RETRY_AFTER = 17;
 
 const payload: AgentWebhookRespondRequest = {
 	kind: 'webhook-respond',
@@ -88,10 +91,16 @@ describe('AgentRemoteTurnService', () => {
 			testCluster({ instanceKey, activeInstanceKeys }),
 			mock<AgentTurnPlacement>({
 				dispatchEnabled: true,
-				mayRunHere: () => roomHere,
 				queueFull: async () => queueFull,
+				retryAfterSeconds: async () => RETRY_AFTER,
 				workersAvailable: async () => workers,
 				mayFallBack: async (sentAt) => Date.now() - sentAt >= AgentTurnPlacement.FALLBACK_WAIT_MS,
+			}),
+			mock<AgentTurnGate>({
+				waitForRoom: async () =>
+					roomHere
+						? { admitted: true }
+						: { admitted: false, reason: 'main-at-limit', retryAfterSeconds: RETRY_AFTER },
 			}),
 			turnQueue,
 			requests,
@@ -125,7 +134,7 @@ describe('AgentRemoteTurnService', () => {
 
 			await expect(service.result(payload, new AbortController().signal)).resolves.toEqual({
 				outcome: 'busy',
-				retryAfterSeconds: AgentTurnPlacement.BUSY_RETRY_AFTER_SECONDS,
+				retryAfterSeconds: RETRY_AFTER,
 			});
 			expect(requests.createPending).not.toHaveBeenCalled();
 		});
@@ -135,7 +144,7 @@ describe('AgentRemoteTurnService', () => {
 
 			await expect(service.result(payload, new AbortController().signal)).resolves.toEqual({
 				outcome: 'busy',
-				retryAfterSeconds: AgentTurnPlacement.BUSY_RETRY_AFTER_SECONDS,
+				retryAfterSeconds: RETRY_AFTER,
 			});
 			expect(requests.createPending).not.toHaveBeenCalled();
 			expect(turnQueue.enqueueRequest).not.toHaveBeenCalled();
@@ -179,7 +188,7 @@ describe('AgentRemoteTurnService', () => {
 
 			expect(outcome).toEqual({
 				outcome: 'busy',
-				retryAfterSeconds: AgentTurnPlacement.BUSY_RETRY_AFTER_SECONDS,
+				retryAfterSeconds: RETRY_AFTER,
 			});
 			expect(now - 1_000_000).toBeGreaterThanOrEqual(10_000);
 			expect(now - 1_000_000).toBeLessThan(AgentTurnPlacement.FALLBACK_WAIT_MS);

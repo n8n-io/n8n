@@ -801,7 +801,7 @@ describe('GlobalConfig', () => {
 			queueModeEnabled: false,
 			workerEnabled: false,
 			workerConcurrency: 30,
-			mainFallbackTurns: 5,
+			mainFallbackTurns: 0,
 			mainMaxTurns: 20,
 			mainMemoryHoldLevel: 0.8,
 			mainMaxIntake: 20,

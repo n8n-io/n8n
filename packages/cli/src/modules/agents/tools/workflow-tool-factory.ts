@@ -49,6 +49,8 @@ import type { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks
 import type { EphemeralNodeExecutor } from '@/node-execution/ephemeral-node-executor';
 import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
 import type { WorkflowRunner } from '@/workflow-runner';
+
+import { runNested } from '../queue/agent-turn-nesting';
 import {
 	detectTriggerNode,
 	inferInputSchema,
@@ -389,12 +391,9 @@ export async function executeWorkflow(
 		})
 		.catch(() => {});
 
-	const executionId = await workflowRunner.run(
-		runData,
-		undefined,
-		undefined,
-		undefined,
-		responsePromise,
+	// A Message an Agent node in the sub-workflow starts a nested turn. See `AgentTurnGate`.
+	const executionId = await runNested(
+		async () => await workflowRunner.run(runData, undefined, undefined, undefined, responsePromise),
 	);
 
 	return await withWorkflowCancellation(executionId, workflow.id, context.abortSignal, async () => {

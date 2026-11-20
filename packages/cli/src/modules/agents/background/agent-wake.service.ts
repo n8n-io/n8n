@@ -183,6 +183,8 @@ export class AgentWakeService {
 	 */
 	private async startWake(threadId: string): Promise<void> {
 		if (this.placement.dispatchEnabled && (await this.leftToWorker(threadId))) return;
+		// A wake is never rejected. It waits until this process has room.
+		await this.remoteTurns.admitHere('wake');
 		await this.attemptWake(threadId);
 	}
 

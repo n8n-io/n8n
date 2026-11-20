@@ -119,6 +119,8 @@ export class AgentWorkflowToolResumeService {
 			const runHere = async () => await this.resumeSafely(agentRun, status);
 			if (await this.sendToWorker(agentRun, status, runHere)) return;
 		}
+		// A resume is never rejected: the turn already started. It waits until this process has room.
+		await this.remoteTurns.admitHere('workflow-tool-resume');
 		await this.resumeSafely(agentRun, status);
 	}
 

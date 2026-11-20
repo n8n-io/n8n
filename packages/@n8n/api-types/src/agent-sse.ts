@@ -210,6 +210,8 @@ export type AgentSseEvent =
 			errorCode?: string;
 			/** Backend-emitted ids of the missing config slots; only set when `errorCode` is `agent_misconfigured`. */
 			missing?: string[];
+			/** Seconds to wait before a new try. Only set when `errorCode` is `main_busy`, `queue_full` or `low_memory`. */
+			retryAfterSeconds?: number;
 	  }
 	| { type: 'done'; sessionId?: string; executionId?: string };
 
@@ -221,10 +223,12 @@ export const AGENT_CHAT_ERROR_CODES = {
 	agentUnavailable: 'agent_unavailable',
 	/** The agent misses required config. `missing` lists the config slots. */
 	agentMisconfigured: 'agent_misconfigured',
-	/** The main instance accepts too many messages now. The message was not saved. */
+	/** The server has no room for the turn now. The message was not saved. */
 	mainBusy: 'main_busy',
-	/** Too many agent turns wait for a worker. The message was not saved. */
+	/** Too many agent turns wait. The message was not saved. */
 	queueFull: 'queue_full',
+	/** The server is low on memory, so it starts no new agent turn now. The message was not saved. */
+	lowMemory: 'low_memory',
 } as const;
 
 export type AgentChatErrorCode =

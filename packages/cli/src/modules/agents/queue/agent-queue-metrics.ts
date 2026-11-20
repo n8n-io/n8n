@@ -23,9 +23,16 @@ export type AgentStreamSkipReason = 'main-memory-high' | 'main-at-stream-limit';
  * Why a main rejected an agent turn with a busy error:
  * - `queue-full`: `N8N_AGENTS_QUEUE_MAX_WAITING` turns already wait for a worker.
  * - `wait-too-long`: no process started the turn within `N8N_AGENTS_QUEUE_MAX_WAIT`.
- * - `main-at-limit`: no agent worker is up, and this main has no room for the turn.
+ * - `main-at-limit`: this process has no room for the turn.
+ * - `main-memory-high`: the turn waited too long while the memory of this
+ *   process was above `N8N_AGENTS_MAIN_MEMORY_HOLD_LEVEL`. Low memory on the
+ *   server, not agent load alone, can cause this.
  */
-export type AgentTurnRejectReason = 'queue-full' | 'wait-too-long' | 'main-at-limit';
+export type AgentTurnRejectReason =
+	| 'queue-full'
+	| 'wait-too-long'
+	| 'main-at-limit'
+	| 'main-memory-high';
 
 export type AgentQueueMetricEvent =
 	| { type: 'turn-started'; location: AgentTurnLocation }
