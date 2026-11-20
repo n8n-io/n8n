@@ -44,7 +44,6 @@ function onSelect(event: Event) {
 
 	gap: var(--n8n-listbox-item--gap, var(--spacing--2xs));
 	min-height: var(--n8n-listbox-item--min-height, var(--spacing--xl));
-	// 4px on the block axis. An xsmall control is 24px and fits in the 32px minimum height.
 	padding: var(--n8n-listbox-item--padding, var(--spacing--4xs) var(--spacing--xs));
 	border-radius: var(--n8n-listbox-item--radius, var(--radius));
 
@@ -84,11 +83,9 @@ function onSelect(event: Event) {
 	flex: 1;
 	min-width: 0;
 	overflow: hidden;
-	// A text-only slot stays on one line. Direct children stack, and each line clips.
 	@include utils.utils-ellipsis;
 }
 
-// :where keeps this weaker than a child's own display, so a custom row can stay a flex column.
 :where(.content) > * {
 	display: block;
 	min-width: 0;
