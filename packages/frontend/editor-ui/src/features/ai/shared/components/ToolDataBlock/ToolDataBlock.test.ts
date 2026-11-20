@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import userEvent from '@testing-library/user-event';
+import { fireEvent } from '@testing-library/vue';
 import { saveAs } from 'file-saver';
 import { createComponentRenderer } from '@/__tests__/render';
 import ToolDataBlock from './ToolDataBlock.vue';
@@ -90,6 +91,23 @@ describe('ToolDataBlock', () => {
 		const [file, fileName] = vi.mocked(saveAs).mock.calls.at(-1)!;
 		expect(fileName).toBe('tool-file.csv');
 		expect((file as Blob).type).toBe('application/octet-stream');
+		expect(await readBlob(file as Blob)).toBe('hello');
+	});
+
+	it('shows an image that does not decode as a file to download', async () => {
+		const { getByTestId, queryByTestId } = renderComponent({
+			props: {
+				value: { content: [{ type: 'image', data: 'aGVsbG8=', mimeType: 'image/png' }] },
+			},
+		});
+
+		await fireEvent.error(getByTestId('ai-tool-data-image'));
+
+		expect(queryByTestId('ai-tool-data-image')).not.toBeInTheDocument();
+		await userEvent.click(getByTestId('ai-tool-data-file').querySelector('button')!);
+
+		const [file, fileName] = vi.mocked(saveAs).mock.calls.at(-1)!;
+		expect(fileName).toBe('tool-file.png');
 		expect(await readBlob(file as Blob)).toBe('hello');
 	});
 

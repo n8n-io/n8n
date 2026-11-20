@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { saveAs } from 'file-saver';
 import { N8nButton, N8nCodeBlock, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -18,6 +18,15 @@ const props = defineProps<{
 const i18n = useI18n();
 
 const contentItems = computed(() => extractToolContent(props.value));
+// Images that do not decode show as a file row, so people can still download the data.
+const failedImages = ref(new Set<number>());
+watch(contentItems, () => {
+	failedImages.value = new Set();
+});
+
+function onImageError(index: number) {
+	failedImages.value = new Set(failedImages.value).add(index);
+}
 const formatted = computed(() => formatToolData(props.value));
 const isTruncated = computed(() => formatted.value.text.length > MAX_TOOL_DATA_DISPLAY_LENGTH);
 const displayText = computed(() =>
@@ -46,12 +55,16 @@ function downloadFile(data: string, mimeType: string) {
 	<div v-if="contentItems" :class="$style.toolData" data-test-id="ai-tool-data-content">
 		<template v-for="(item, index) in contentItems" :key="index">
 			<ToolDataBlock v-if="item.type === 'text'" :value="item.text" />
-			<div v-else-if="item.type === 'image'" :class="$style.binaryPart">
+			<div
+				v-else-if="item.type === 'image' && !failedImages.has(index)"
+				:class="$style.binaryPart"
+			>
 				<img
 					:src="`data:${item.mimeType};base64,${item.data}`"
 					:alt="i18n.baseText('binaryDataDisplay.imagePreview')"
 					:class="$style.image"
 					data-test-id="ai-tool-data-image"
+					@error="onImageError(index)"
 				/>
 			</div>
 			<div v-else :class="[$style.binaryPart, $style.file]" data-test-id="ai-tool-data-file">
