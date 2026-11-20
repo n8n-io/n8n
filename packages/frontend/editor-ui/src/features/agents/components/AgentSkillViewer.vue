@@ -20,6 +20,11 @@ import type { IValidator, Validatable } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { saveAs } from 'file-saver';
 import { base64ToFile } from '@/app/utils/fileUtils';
+import {
+	readSkillFileLink,
+	resolveSkillFileLink,
+	skillFileLinkPlugin,
+} from '@/features/agents/utils/skillFileLinks';
 
 import type { Rule, RuleGroup } from '@/Interface';
 import type { AgentSkill, AgentSkillReference } from '../types';
@@ -53,6 +58,24 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+
+// A relative link in SKILL.md or in a Markdown file opens the linked file in this view.
+const readOnlyMarkdownPlugins = [
+	skillFileLinkPlugin((href) =>
+		resolveSkillFileLink(
+			href,
+			props.selectedPath,
+			(props.skill.references ?? []).map((reference) => reference.path),
+		),
+	),
+];
+
+function onReadOnlyLinkClick(link: HTMLAnchorElement, event: MouseEvent) {
+	const { handled, path } = readSkillFileLink(link.getAttribute('href'));
+	if (!handled) return;
+	event.preventDefault();
+	if (path !== undefined) emit('select:path', path);
+}
 const description = ref(props.skill.description);
 const referenceFileName = ref('');
 const formValidation = reactive({
@@ -323,8 +346,10 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 				<N8nMarkdown
 					:class="$style.readOnlyMarkdown"
 					:options="READ_ONLY_MARKDOWN_OPTIONS"
+					:plugins="readOnlyMarkdownPlugins"
 					:content="props.skill.instructions"
 					data-testid="agent-skill-instructions-text"
+					@markdown-click="onReadOnlyLinkClick"
 				/>
 			</N8nInputLabel>
 		</template>
@@ -351,8 +376,10 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 				v-else-if="selectedReferenceIsMarkdown"
 				:class="$style.readOnlyMarkdown"
 				:options="READ_ONLY_MARKDOWN_OPTIONS"
+				:plugins="readOnlyMarkdownPlugins"
 				:content="selectedReference.content"
 				data-testid="agent-skill-reference-text"
+				@markdown-click="onReadOnlyLinkClick"
 			/>
 			<pre v-else :class="$style.readOnlyText" data-testid="agent-skill-reference-text">{{
 				selectedReference.content

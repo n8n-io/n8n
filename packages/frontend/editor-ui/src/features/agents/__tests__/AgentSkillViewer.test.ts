@@ -252,6 +252,68 @@ describe('AgentSkillViewer', () => {
 	});
 });
 
+describe('AgentSkillViewer relative links', () => {
+	const skill = {
+		name: 'Research',
+		description: 'Use for research',
+		instructions: [
+			'[Bare](reference/guide.md)',
+			'[Dot](./reference/degraded/fallback.md)',
+			'[Outside](../other/SKILL.md)',
+			'[Missing](reference/none.md)',
+			'[Web](https://example.com/docs)',
+		].join('\n\n'),
+		references: [
+			{
+				path: 'reference/degraded/fallback.md',
+				content: '[Up](../guide.md) [Main](../../SKILL.md)',
+			},
+			{ path: 'reference/guide.md', content: '# Guide' },
+		],
+	};
+
+	async function clickLink(selectedPath: string, text: string) {
+		const wrapper = mountViewer({ readOnly: true, skill, selectedPath });
+		const link = wrapper.findAll('a').find((anchor) => anchor.text() === text);
+		const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+		link?.element.dispatchEvent(event);
+		await wrapper.vm.$nextTick();
+		return { wrapper, link, event };
+	}
+
+	it.each([
+		['a bare link', 'SKILL.md', 'Bare', 'reference/guide.md'],
+		['a ./ link', 'SKILL.md', 'Dot', 'reference/degraded/fallback.md'],
+		['a ../ link from a nested file', 'reference/degraded/fallback.md', 'Up', 'reference/guide.md'],
+		['a link back to SKILL.md', 'reference/degraded/fallback.md', 'Main', 'SKILL.md'],
+	])('selects the linked file for %s and stays on the page', async (_case, from, text, path) => {
+		const { wrapper, link, event } = await clickLink(from, text);
+
+		expect(link?.exists()).toBe(true);
+		expect(wrapper.emitted('select:path')).toEqual([[path]]);
+		expect(event.defaultPrevented).toBe(true);
+	});
+
+	it.each([
+		['a file outside the skill', 'Outside'],
+		['a file that the skill does not have', 'Missing'],
+	])('selects nothing and stays on the page for a link to %s', async (_case, text) => {
+		const { wrapper, link, event } = await clickLink('SKILL.md', text);
+
+		expect(link?.exists()).toBe(true);
+		expect(wrapper.emitted('select:path')).toBeUndefined();
+		expect(event.defaultPrevented).toBe(true);
+	});
+
+	it('leaves a web link to the browser', async () => {
+		const { wrapper, link, event } = await clickLink('SKILL.md', 'Web');
+
+		expect(link?.attributes('href')).toBe('https://example.com/docs');
+		expect(wrapper.emitted('select:path')).toBeUndefined();
+		expect(event.defaultPrevented).toBe(false);
+	});
+});
+
 function mountViewer(props: Partial<InstanceType<typeof AgentSkillViewer>['$props']> = {}) {
 	return mount(AgentSkillViewer, {
 		props: {
