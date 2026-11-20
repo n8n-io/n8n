@@ -1,10 +1,5 @@
 import { getN8nVersion, ModuleRegistry } from '@n8n/backend-common';
-<<<<<<< HEAD
-import { EventService } from '@n8n/backend-services';
-=======
 import { EventService, loginIdOf } from '@n8n/backend-services';
-import { GlobalConfig } from '@n8n/config';
->>>>>>> 273d130277573ee02d204e8c9b8882d1375f3db7
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 

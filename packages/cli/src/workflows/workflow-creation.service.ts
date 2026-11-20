@@ -1,11 +1,6 @@
 import { isSafeObjectKey, type RedactionFloor } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
-<<<<<<< HEAD
-import { EventService, CredentialsFinderService } from '@n8n/backend-services';
-=======
 import { EventService, CredentialsFinderService, loginIdOf } from '@n8n/backend-services';
-import { GlobalConfig } from '@n8n/config';
->>>>>>> 273d130277573ee02d204e8c9b8882d1375f3db7
 import type { EntityManager, User, Project, Folder, OperationContext } from '@n8n/db';
 import {
 	ProjectRepository,

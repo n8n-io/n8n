@@ -111,20 +111,9 @@ const SecretsProviderConnectionModal = defineAsyncComponent(
 const DeleteSecretsProviderModal = defineAsyncComponent(
 	lazyModalLoaders[DELETE_SECRETS_PROVIDER_MODAL_KEY],
 );
-<<<<<<< HEAD
-const InviteUsersModal = defineAsyncComponent(
-	async () => await import('@/features/settings/users/components/InviteUsersModal.vue'),
-);
-const PersonalizationModal = defineAsyncComponent(
-	async () => await import('@/features/settings/users/components/PersonalizationModal.vue'),
-=======
 const FromAiParametersModal = defineAsyncComponent(lazyModalLoaders[FROM_AI_PARAMETERS_MODAL_KEY]);
 const ImportCurlModal = defineAsyncComponent(lazyModalLoaders[IMPORT_CURL_MODAL_KEY]);
 const BinaryDataViewModal = defineAsyncComponent(lazyModalLoaders[BINARY_DATA_VIEW_MODAL_KEY]);
-const ImportWorkflowUrlModal = defineAsyncComponent(
-	lazyModalLoaders[IMPORT_WORKFLOW_URL_MODAL_KEY],
->>>>>>> 273d130277573ee02d204e8c9b8882d1375f3db7
-);
 const InviteUsersModal = defineAsyncComponent(lazyModalLoaders[INVITE_USER_MODAL_KEY]);
 const PersonalizationModal = defineAsyncComponent(lazyModalLoaders[PERSONALIZATION_MODAL_KEY]);
 const ProjectMoveResourceModal = defineAsyncComponent(

@@ -5,11 +5,8 @@ import * as Helpers from './helpers';
 import type * as NativeEvaluation from '../src/expressions/native-evaluation';
 import { canVerifyNatively, nativeSkeleton } from '../src/expressions/native-evaluation/verify';
 import type { IDataObject } from '../src/interfaces';
-<<<<<<< HEAD
-=======
 import { createRunExecutionData } from '../src/run-execution-data-factory';
 import type { Workflow } from '../src/workflow';
->>>>>>> 273d130277573ee02d204e8c9b8882d1375f3db7
 
 const engine = process.env.N8N_EXPRESSION_ENGINE;
 
