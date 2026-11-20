@@ -10,9 +10,12 @@ export interface SidebarProps {
 	side?: SidebarSide;
 	/**
 	 * Current width in pixels.
-	 * Bind with v-model:width.
+	 * Bind with v-model:width and the parent stores the width.
+	 * Omit this prop and the sidebar stores the width.
 	 * The sidebar clamps this value to minWidth and maxWidth.
 	 * It emits the clamped width.
+	 * Pass width without v-model:width and the value is the start width.
+	 * A later render from the parent sets the width back to that value.
 	 * @default 240
 	 */
 	width?: number;
