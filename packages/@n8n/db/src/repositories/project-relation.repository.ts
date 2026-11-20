@@ -1,14 +1,16 @@
 import { Service } from '@n8n/di';
 import {
+	IMPLICIT_TEAM_PROJECT_MEMBER_ROLE_SLUGS,
 	PROJECT_ADMIN_ROLE_SLUG,
 	PROJECT_OWNER_ROLE_SLUG,
 	type ProjectRole,
+	type Scope,
 } from '@n8n/permissions';
-import { DataSource, In } from '@n8n/typeorm';
+import { DataSource, type FindOptionsWhere, In, Not } from '@n8n/typeorm';
 
 import { BaseRepository } from './base-repository';
-import { ProjectRelation, Role } from '../entities';
-import { TransactionRunner } from '../services/transaction';
+import { Project, ProjectRelation, Role, User } from '../entities';
+import { type OperationContext, TransactionRunner } from '../services/transaction';
 import { chunkIds } from '../utils/chunk-ids';
 
 @Service()
@@ -99,6 +101,42 @@ export class ProjectRelationRepository extends BaseRepository<ProjectRelation> {
 	): Promise<boolean> {
 		if (roleSlugs.length === 0) return false;
 		return await this.existsBy({ userId, projectId, role: { slug: In(roleSlugs) } });
+	}
+
+	async findPersonMemberIds(projectId: string, userIds: string[], ctx: OperationContext) {
+		if (userIds.length === 0) return [];
+		const manager = this.managerFor(ctx);
+		const person = { id: In(userIds), kind: 'person' as const };
+		const where: Array<FindOptionsWhere<User>> = [{ ...person, projectRelations: { projectId } }];
+		if (await manager.existsBy(Project, { id: projectId, type: 'team' })) {
+			where.push({ ...person, role: { slug: In(IMPLICIT_TEAM_PROJECT_MEMBER_ROLE_SLUGS) } });
+		}
+		const members = await manager.find(User, { select: { id: true }, where });
+		return members.map(({ id }) => id);
+	}
+
+	async findPersonIdsWithRole(
+		projectId: string,
+		roleSlug: string,
+		ctx: OperationContext,
+		exceptUserId?: string,
+	) {
+		const relations = await this.managerFor(ctx).find(ProjectRelation, {
+			select: { userId: true },
+			where: {
+				projectId,
+				userId: exceptUserId && Not(exceptUserId),
+				role: { slug: roleSlug },
+				user: { kind: 'person' },
+			},
+		});
+		return relations.map(({ userId }) => userId);
+	}
+
+	async hasScopeInProject(userId: string, projectId: string, scope: Scope, ctx: OperationContext) {
+		return await this.managerFor(ctx).exists(ProjectRelation, {
+			where: { userId, projectId, role: { scopes: { slug: scope } } },
+		});
 	}
 
 	/**

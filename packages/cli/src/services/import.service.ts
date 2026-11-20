@@ -51,6 +51,7 @@ import { sortSubWorkflowsFirst } from '@/workflows/sub-workflow-order';
 import { WorkflowService } from '@/workflows/workflow.service';
 
 import { DATA_TABLE_ROWS_FILE_PREFIX } from './data-table-export.constants';
+import { ResourceOwnerService } from './resource-owner.service';
 
 /**
  * Archive file names of entity classes that were renamed while their table kept
@@ -117,6 +118,7 @@ export class ImportService {
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly deprecatedNodesValidationService: DeprecatedNodesValidationService,
+		private readonly resourceOwnerService: ResourceOwnerService,
 	) {}
 
 	async initRecords() {
@@ -254,6 +256,13 @@ export class ImportService {
 		const insertedWorkflows: IWorkflowWithVersionMetadata[] = [];
 		const workflowsToActivate: Array<{ workflowId: string; versionId: string }> = [];
 		await this.workflowRepository.runInTransaction({}, async (tx, ctx) => {
+			const newWorkflowOwnerId = await this.resourceOwnerService.ownerForNewResource(
+				user,
+				projectId,
+				'workflow',
+				ctx,
+			);
+
 			// Upsert all workflows
 			for (const { workflow, cleared } of admitted) {
 				// Always generate a new versionId on import to ensure proper history ordering
@@ -297,6 +306,7 @@ export class ImportService {
 						{ workflowId, projectId: personalProject.id, role: 'workflow:owner' },
 						['workflowId', 'projectId'],
 					);
+					await this.workflowRepository.setOwnerUserId([workflowId], newWorkflowOwnerId, ctx);
 				}
 
 				if (!workflow.tags?.length) continue;

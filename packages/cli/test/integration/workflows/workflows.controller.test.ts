@@ -175,6 +175,13 @@ describe('POST /workflows', () => {
 		return (response.body.data as { pinData: IPinData }).pinData;
 	};
 
+	test('should make the creating user the owner', async () => {
+		const response = await authOwnerAgent.post('/workflows').send(makeWorkflow());
+
+		const stored = await workflowRepository.findOneByOrFail({ id: response.body.data.id });
+		expect(stored.ownerUserId).toBe(owner.id);
+	});
+
 	test('should store pin data for node in workflow', async () => {
 		const pinData = await testWithPinData(true);
 		expect(pinData).toMatchObject(MOCK_PINDATA);
@@ -321,6 +328,7 @@ describe('POST /workflows', () => {
 				'workflow:execute',
 				'workflow:execute-chat',
 				'workflow:export',
+				'workflow:manageOwner',
 				'workflow:move',
 				'workflow:publish',
 				'workflow:read',
@@ -1539,6 +1547,7 @@ describe('GET /workflows', () => {
 					'workflow:execute',
 					'workflow:execute-chat',
 					'workflow:export',
+					'workflow:manageOwner',
 					'workflow:move',
 					'workflow:publish',
 					'workflow:read',
@@ -1605,6 +1614,7 @@ describe('GET /workflows', () => {
 					'workflow:execute',
 					'workflow:execute-chat',
 					'workflow:export',
+					'workflow:manageOwner',
 					'workflow:move',
 					'workflow:publish',
 					'workflow:read',
@@ -1639,6 +1649,7 @@ describe('GET /workflows', () => {
 					'workflow:export',
 					'workflow:import',
 					'workflow:list',
+					'workflow:manageOwner',
 					'workflow:move',
 					'workflow:publish',
 					'workflow:unpublish',
@@ -1662,6 +1673,7 @@ describe('GET /workflows', () => {
 					'workflow:export',
 					'workflow:import',
 					'workflow:list',
+					'workflow:manageOwner',
 					'workflow:move',
 					'workflow:publish',
 					'workflow:unpublish',
@@ -2792,6 +2804,7 @@ describe('GET /workflows?includeFolders=true', () => {
 					'workflow:execute',
 					'workflow:execute-chat',
 					'workflow:export',
+					'workflow:manageOwner',
 					'workflow:move',
 					'workflow:publish',
 					'workflow:read',
@@ -2863,6 +2876,7 @@ describe('GET /workflows?includeFolders=true', () => {
 					'workflow:execute',
 					'workflow:execute-chat',
 					'workflow:export',
+					'workflow:manageOwner',
 					'workflow:move',
 					'workflow:publish',
 					'workflow:read',
@@ -2902,6 +2916,7 @@ describe('GET /workflows?includeFolders=true', () => {
 					'workflow:export',
 					'workflow:import',
 					'workflow:list',
+					'workflow:manageOwner',
 					'workflow:move',
 					'workflow:publish',
 					'workflow:unpublish',
@@ -2925,6 +2940,7 @@ describe('GET /workflows?includeFolders=true', () => {
 					'workflow:export',
 					'workflow:import',
 					'workflow:list',
+					'workflow:manageOwner',
 					'workflow:move',
 					'workflow:publish',
 					'workflow:unpublish',

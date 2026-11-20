@@ -45,6 +45,7 @@ import type { PublicApiCaller } from '@/public-api/public-api-client';
 import { UserManagementMailer } from '@/user-management/email';
 
 import { OwnershipService } from './ownership.service';
+import { ResourceOwnerService } from './resource-owner.service';
 import { type AccountProject, ServiceAccountProjects } from './service-account-projects';
 
 /** Pickers ask for service accounts only where a share to one has an effect. */
@@ -107,6 +108,7 @@ export class ProjectService {
 		private readonly txRunner: TransactionRunner,
 		private readonly agentsConfig: AgentsConfig,
 		private readonly serviceAccountProjects: ServiceAccountProjects,
+		private readonly resourceOwnerService: ResourceOwnerService,
 	) {}
 
 	private get workflowService() {
@@ -234,6 +236,7 @@ export class ProjectService {
 
 		if (targetProject) {
 			await this.sharedWorkflowRepository.makeOwner(workflowIds, targetProject.id);
+			await this.resourceOwnerService.reconcileAfterMove(user, workflowIds, targetProject.id, {});
 		} else {
 			for (const sharedWorkflow of ownedSharedWorkflows) {
 				await workflowService.delete(user, sharedWorkflow.workflowId, true, { publicApi }, ctx);
@@ -640,12 +643,19 @@ export class ProjectService {
 
 		const proxy = await this.connectionStatusProxy;
 
-		await this.projectRelationRepository.manager.transaction(async (em) => {
+		await this.projectRelationRepository.runInTransaction({}, async (em, ctx) => {
 			await this.pruneRelations(em, project);
 			await this.addManyRelations(em, project, relations);
 
 			if (affectedUserIds.length > 0) {
 				await proxy.cleanupOrphanedEntriesForUsers(affectedUserIds, em);
+			}
+
+			for (const userId of removedUserIds) {
+				await this.resourceOwnerService.reassignOwnedBy(
+					{ userId, projectId, actor: undefined, reason: 'member-removed' },
+					ctx,
+				);
 			}
 		});
 
@@ -879,9 +889,13 @@ export class ProjectService {
 
 		const proxy = await this.connectionStatusProxy;
 
-		await this.projectRelationRepository.manager.transaction(async (em) => {
+		await this.projectRelationRepository.runInTransaction({}, async (em, ctx) => {
 			await em.delete(ProjectRelation, { projectId: project.id, userId });
 			await proxy.cleanupOrphanedEntriesForUsers([userId], em);
+			await this.resourceOwnerService.reassignOwnedBy(
+				{ userId, projectId, actor: user, reason: 'member-removed' },
+				ctx,
+			);
 		});
 
 		await this.emitProjectMembersUpdated(user, projectId);

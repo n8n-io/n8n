@@ -87,6 +87,10 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 		displayName: 'Publish Agent',
 		description: 'Allows publishing agents.',
 	},
+	'agent:manageOwner': {
+		displayName: 'Manage Agent Owner',
+		description: 'Allows changing and clearing the owner of an agent.',
+	},
 	'agent:unpublish': {
 		displayName: 'Unpublish Agent',
 		description: 'Allows unpublishing agents.',
@@ -153,6 +157,10 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 	'workflow:unshare': {
 		displayName: 'Unshare Workflow',
 		description: 'Allows removing workflow shares.',
+	},
+	'workflow:manageOwner': {
+		displayName: 'Manage Workflow Owner',
+		description: 'Allows changing and clearing the owner of a workflow.',
 	},
 	'workflow:export': {
 		displayName: 'Export Workflow',

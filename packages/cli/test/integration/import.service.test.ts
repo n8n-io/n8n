@@ -32,6 +32,7 @@ import type { NodeTypes } from '@/node-types';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
 import { ImportService } from '@/services/import.service';
+import { ResourceOwnerService } from '@/services/resource-owner.service';
 import { DeprecatedNodesValidationService } from '@/workflows/deprecated-nodes-validation.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
 
@@ -90,6 +91,7 @@ describe('ImportService', () => {
 			sharedWorkflowRepository,
 			Container.get(WorkflowRepository),
 			mock(),
+			Container.get(ResourceOwnerService),
 		);
 	});
 
@@ -155,13 +157,13 @@ describe('ImportService', () => {
 		]);
 	});
 
-	test('should not take the owner user from the import file', async () => {
+	test('should make the importing user the owner of a new workflow', async () => {
 		const workflowToImport = Object.assign(newWorkflow(), { ownerUserId: uuid() });
 
 		await importService.importWorkflows([workflowToImport], ownerPersonalProject.id, owner.id, {});
 
 		const dbWorkflow = await workflowRepository.findOneByOrFail({ id: workflowToImport.id });
-		expect(dbWorkflow.ownerUserId).toBeNull();
+		expect(dbWorkflow.ownerUserId).toBe(owner.id);
 	});
 
 	test('should keep the stored owner user on re-import', async () => {
@@ -734,6 +736,7 @@ describe('ImportService', () => {
 					mock<NodesConfig>({ blockDeprecated: true }),
 					nodeTypes,
 				),
+				Container.get(ResourceOwnerService),
 			);
 		});
 

@@ -24,7 +24,14 @@ import {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { UnexpectedError } from '@n8n/errors';
-import { DataSource, In, IsNull, Not, type SelectQueryBuilder } from '@n8n/typeorm';
+import {
+	DataSource,
+	In,
+	IsNull,
+	Not,
+	type FindOptionsWhere,
+	type SelectQueryBuilder,
+} from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 
@@ -1215,6 +1222,32 @@ export class AgentRepository extends BaseRepository<Agent> {
 				(vectorStore) => vectorStore.provider,
 			),
 		}));
+	}
+
+	async findOwners(agentIds: string[], ctx: OperationContext) {
+		return await this.findOwnership({ id: In(agentIds) }, ctx);
+	}
+
+	async findOwnedBy(ownerUserId: string, ctx: OperationContext, projectId?: string) {
+		return await this.findOwnership({ ownerUserId, projectId }, ctx);
+	}
+
+	async setOwnerUserId(agentIds: string[], ownerUserId: string | null, ctx: OperationContext) {
+		for (const ids of chunkIds(agentIds)) {
+			await this.managerFor(ctx).update(
+				Agent,
+				{ id: In(ids) },
+				{ ownerUserId, updatedAt: () => '"updatedAt"' },
+			);
+		}
+	}
+
+	private async findOwnership(where: FindOptionsWhere<Agent>, ctx: OperationContext) {
+		const agents = await this.managerFor(ctx).find(Agent, {
+			select: { id: true, projectId: true, ownerUserId: true },
+			where: { ...where, scope: 'project' },
+		});
+		return agents.filter(isProjectAgent);
 	}
 }
 

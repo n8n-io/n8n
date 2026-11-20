@@ -23,6 +23,7 @@ export const PROJECT_CUSTOM_ROLE_OPERATIONS = {
 		'delete',
 		'enableRedaction',
 		'disableRedaction',
+		'manageOwner',
 	],
 	agent: [
 		'read',
@@ -35,6 +36,7 @@ export const PROJECT_CUSTOM_ROLE_OPERATIONS = {
 		'unpublish',
 		'export',
 		'import',
+		'manageOwner',
 	],
 	credential: [
 		'read',
