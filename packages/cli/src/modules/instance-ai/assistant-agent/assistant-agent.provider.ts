@@ -10,6 +10,7 @@ import {
 	type InstanceAiResourceAttachment,
 	type InstanceAiThreadSubject,
 	type InstanceAiWorkflowAttachment,
+	isAttachmentMediaTypeSupported,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig, type AiConfig } from '@n8n/config';
@@ -342,11 +343,18 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 			// and parse-file reads them by id through `storedFiles`.
 			fileAttachments: [],
 		});
-		environment.context.storedFiles = {
-			read: async (fileId) => await turn.readFile(fileId),
-		};
 		// The turn has the sandbox files of project agents only when their flag is on.
 		const { sandboxFiles } = turn;
+		// Set when the agent is built, before any tool runs. The tools are built
+		// with the agent, so `canView` must exist before then.
+		const model: { provider?: string } = {};
+		environment.context.storedFiles = {
+			read: async (fileId) => await turn.readFile(fileId),
+			// The files list of the chat has the same flag.
+			...(sandboxFiles ? { list: async () => await sandboxFiles.listFiles() } : {}),
+			// The same check as the file store, which loads only these types for the model.
+			canView: (mimeType) => isAttachmentMediaTypeSupported(model.provider, mimeType),
+		};
 		if (sandboxFiles) {
 			const { context } = environment;
 			// Read the sandbox when a tool runs: it belongs to the turn, not to this setup.
@@ -406,6 +414,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 			generateTitle: true,
 			...(trace ? { tracing: trace.context } : {}),
 		});
+		model.provider = agent.snapshot.model.provider ?? undefined;
 		if (turn.type === 'start') await this.snapshotAttachedAgents(environment, contextAttachments);
 
 		let usage: { model: string; usage: TokenUsage } | undefined;

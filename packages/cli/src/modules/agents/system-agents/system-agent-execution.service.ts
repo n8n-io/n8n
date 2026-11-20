@@ -43,13 +43,18 @@ import type { AgentExecutionAdmission } from '../types/agent-queued-message';
 import type { FormattedTurnError } from '../types/agent-turn-outcome';
 import { systemChatMemoryResourceId } from '../utils/agent-memory-scope';
 import { buildInboundUserMessage } from '../utils/inbound-attachments';
-import { SYSTEM_CHAT_FILE_SOURCES, SYSTEM_CHAT_SOURCE } from '../utils/agent-thread-access';
+import {
+	SANDBOX_FILE_SOURCE,
+	SYSTEM_CHAT_SOURCE,
+	systemChatFileScope,
+} from '../utils/agent-thread-access';
 import { canUseSystemAgent } from './system-agent-access';
 import { SystemAgentHostEventChannel } from './system-agent-host-events';
 import { SystemAgentRegistry } from './system-agent-registry';
 import type {
 	SystemAgentAfterThreadDeletion,
 	SystemAgentFile,
+	SystemAgentListedFile,
 	SystemAgentProvider,
 	SystemAgentStartTurn,
 	SystemAgentTurnHandle,
@@ -1019,6 +1024,7 @@ export class SystemAgentExecutionService {
 						sizeBytes: file.fileSizeBytes,
 					};
 				},
+				listFiles: async () => await this.listThreadFiles(thread, resourceId),
 			},
 		};
 	}
@@ -1029,11 +1035,10 @@ export class SystemAgentExecutionService {
 		resourceId: string,
 		fileId: string,
 	): Promise<AgentChatAttachment | null> {
-		const attachment = await this.attachmentService.getForSystemAgent(fileId, {
-			agentId: thread.agentId,
-			resourceId,
-			sources: SYSTEM_CHAT_FILE_SOURCES,
-		});
+		const attachment = await this.attachmentService.getForSystemAgent(
+			fileId,
+			systemChatFileScope(thread.agentId, resourceId),
+		);
 		return attachment?.threadId === thread.id ? attachment : null;
 	}
 
@@ -1048,6 +1053,25 @@ export class SystemAgentExecutionService {
 		return await (await this.readThreadFile(thread, resourceId, ref.id))?.readContent();
 	}
 
+	/** The files of the thread, in the scope that `readThreadFile` reads them. */
+	private async listThreadFiles(
+		thread: AgentExecutionThread,
+		resourceId: string,
+	): Promise<SystemAgentListedFile[]> {
+		const files = await this.attachmentService.listForSystemAgentThread(
+			thread.id,
+			systemChatFileScope(thread.agentId, resourceId),
+		);
+		return files.map((file) => ({
+			fileId: file.fileId,
+			fileName: file.fileName,
+			mimeType: file.mimeType,
+			sizeBytes: file.sizeBytes,
+			origin: file.source === SANDBOX_FILE_SOURCE ? 'sandbox' : 'upload',
+			createdAt: file.createdAt,
+		}));
+	}
+
 	private async readThreadFile(
 		thread: AgentExecutionThread,
 		resourceId: string,
@@ -1060,6 +1084,7 @@ export class SystemAgentExecutionService {
 			fileName: attachment.fileName,
 			mimeType: attachment.mimeType,
 			sizeBytes: attachment.fileSizeBytes,
+			hasContent: async () => await this.attachmentService.hasStoredData(attachment),
 			readContent: async () => {
 				try {
 					return await streamToBuffer(await this.attachmentService.getStream(attachment));

@@ -226,7 +226,9 @@ export async function createInstanceAgent(
 			setupPanelEnabled: isSetupPanelEnabled(context),
 			// After the skill filter, so a disabled tool is not named in the prompt.
 			fileImportEnabled: allOrchestratorTools.has(DOMAIN_TOOL_IDS.IMPORT_FILES),
+			fileListingEnabled: allOrchestratorTools.has(DOMAIN_TOOL_IDS.LIST_FILES),
 			fileSharingEnabled: allOrchestratorTools.has(DOMAIN_TOOL_IDS.SHARE_FILES),
+			fileViewingEnabled: allOrchestratorTools.has(DOMAIN_TOOL_IDS.VIEW_FILE),
 			workspaceRoot:
 				orchestrationContext?.workspace && orchestrationContext.workspaceRoot
 					? orchestrationContext.workspaceRoot

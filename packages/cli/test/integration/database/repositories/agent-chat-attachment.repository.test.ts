@@ -133,6 +133,36 @@ describe('AgentChatAttachmentRepository', () => {
 		expect(await table.findOneByOrFail({ id: original.id })).toEqual(original);
 	});
 
+	it('lists the files of a system thread for one resource and its sources, newest first', async () => {
+		const save = async (
+			overrides: Partial<ReturnType<typeof attachmentParams>>,
+			createdAt: Date,
+		) => {
+			const saved = await repository.saveInboundAttachment(
+				{ ...attachmentParams(), source: 'system_chat', ...overrides },
+				{},
+			);
+			await table.update(saved.id, { createdAt });
+			return saved.id;
+		};
+		const upload = await save({ fileName: 'upload.txt' }, new Date('2026-01-01T00:00:00.000Z'));
+		const output = await save(
+			{ fileName: 'report.csv', source: 'sandbox' },
+			new Date('2026-01-02T00:00:00.000Z'),
+		);
+		await save({ fileName: 'other-user.txt', resourceId: 'resource-2' }, new Date());
+		await save({ fileName: 'other-thread.txt', threadId: 'thread-2' }, new Date());
+		await save({ fileName: 'preview.txt', source: 'chat' }, new Date());
+
+		const files = await repository.findInSystemThreadNewestFirst(
+			'thread-1',
+			{ agentId, resourceId: 'resource-1', sources: ['system_chat', 'sandbox'] },
+			{},
+		);
+
+		expect(files.map(({ id }) => id)).toEqual([output, upload]);
+	});
+
 	it('returns null for a missing row and accepts deletion of a missing ID', async () => {
 		const ctx: OperationContext = {};
 		expect(

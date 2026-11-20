@@ -62,7 +62,9 @@ export const DOMAIN_TOOL_IDS = {
 	BUILD_WORKFLOW: WORKFLOW_BUILDER_TOOL_NAMES.BUILD_WORKFLOW,
 	PARSE_FILE: 'parse-file',
 	IMPORT_FILES: 'import-files',
+	LIST_FILES: 'list-files',
 	SHARE_FILES: 'share-files',
+	VIEW_FILE: 'view-file',
 	AGENT_CONTEXT: 'agent-context',
 	MCP_SERVERS: 'mcp-servers',
 	CONVERSATION_HISTORY: 'conversation-history',
@@ -131,7 +133,10 @@ export const ALWAYS_LOADED_TOOL_NAMES = new Set<string>([
 	DOMAIN_TOOL_IDS.PARSE_FILE,
 	// Registered only with stored files and a sandbox. The sandbox prompt section names it.
 	DOMAIN_TOOL_IDS.IMPORT_FILES,
+	// Registered only with the sandbox files feature. The sandbox prompt section names it.
+	DOMAIN_TOOL_IDS.LIST_FILES,
 	DOMAIN_TOOL_IDS.SHARE_FILES,
+	DOMAIN_TOOL_IDS.VIEW_FILE,
 	DOMAIN_TOOL_IDS.RESEARCH,
 	// Paired with RESEARCH on purpose: the research tool tells the agent to prefer
 	// n8n's own docs for n8n questions, but deferring n8n-docs put that route behind

@@ -1708,6 +1708,8 @@ export interface InstanceAiStoredFile {
 	fileName: string;
 	mimeType: string;
 	sizeBytes: number;
+	/** Checks that storage still has the bytes, without loading them. */
+	hasContent(): Promise<boolean>;
 	/** Loads the bytes. Gives `undefined` when storage no longer has them. */
 	readContent(): Promise<Buffer | undefined>;
 }
@@ -1744,9 +1746,27 @@ export type InstanceAiImportedFile = AgentToolOutputFile & {
 	path: string;
 };
 
+/** A file in the list of the thread's files. */
+export interface InstanceAiListedFile extends InstanceAiConversationFile {
+	/** `upload`: the user attached it. `sandbox`: it came from `outputs/` of the sandbox. */
+	origin: 'upload' | 'sandbox';
+	/** ISO date and time when n8n stored the file. */
+	createdAt: string;
+}
+
 export interface InstanceAiStoredFileReader {
 	/** Gives `undefined` when the thread has no such file. */
 	read(fileId: string): Promise<InstanceAiStoredFile | undefined>;
+	/**
+	 * The files of the thread, newest first. `read` finds each listed file.
+	 * The host sets it only when the sandbox files feature is on.
+	 */
+	list?(): Promise<InstanceAiListedFile[]>;
+	/**
+	 * Whether the model of the turn can see a file of this type. The runtime
+	 * attaches only these types to the model input. `view-file` needs it.
+	 */
+	canView?(mimeType: string): boolean;
 }
 
 // ── Context bundle ───────────────────────────────────────────────────────────
