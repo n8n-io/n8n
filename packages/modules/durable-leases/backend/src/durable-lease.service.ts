@@ -1,0 +1,44 @@
+import { LeasesConfig } from '@n8n/config';
+import type { OperationContext } from '@n8n/db';
+import { Service } from '@n8n/di';
+import { LeaseService } from '@n8n/leases';
+import type { LeaseKind, LeaseStatus } from '@n8n/leases';
+
+import { DatabaseLeaseProvider } from './database-lease-provider';
+import { assertLeaseTimings } from './lease-timings';
+
+export type LeaseTransaction = OperationContext;
+
+/** The database-backed {@link LeaseService}. */
+@Service()
+export class DurableLeaseService {
+	private readonly provider: DatabaseLeaseProvider;
+
+	private readonly leaseService: LeaseService<LeaseTransaction>;
+
+	constructor(config: LeasesConfig) {
+		assertLeaseTimings(config, 'N8N_LEASES_*');
+		this.provider = new DatabaseLeaseProvider();
+		this.leaseService = new LeaseService(this.provider);
+	}
+
+	async registerKind(kind: LeaseKind<LeaseTransaction>): Promise<void> {
+		await this.leaseService.registerKind(kind);
+	}
+
+	async changed(kind: string, keys?: readonly string[]): Promise<void> {
+		await this.leaseService.changed(kind, keys);
+	}
+
+	async syncAll(): Promise<void> {
+		await this.leaseService.syncAll();
+	}
+
+	async status(kind: string, keys: readonly string[]): Promise<LeaseStatus[]> {
+		return await this.leaseService.status(kind, keys);
+	}
+
+	async stop(): Promise<void> {
+		await this.provider.stop();
+	}
+}
