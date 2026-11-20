@@ -11,6 +11,7 @@ import {
 	PackageEntityAccessDeniedError,
 	PackageEntityNotFoundError,
 	PackageExportBlockedError,
+	PackageWorkflowInvalidError,
 } from '../entities/package-export.errors';
 import { classifyPackageFailure } from '../package-failure-classifier';
 
@@ -19,6 +20,11 @@ describe('classifyPackageFailure', () => {
 		['PackageEntityAccessDeniedError', new PackageEntityAccessDeniedError('x'), 'access-denied'],
 		['PackageEntityNotFoundError', new PackageEntityNotFoundError('x'), 'entity-not-found'],
 		['PackageExportBlockedError', new PackageExportBlockedError('x'), 'blocked'],
+		[
+			'PackageWorkflowInvalidError',
+			new PackageWorkflowInvalidError('x', new Error()),
+			'validation',
+		],
 		['ForbiddenError', new ForbiddenError('x'), 'access-denied'],
 		['NotFoundError', new NotFoundError('x'), 'entity-not-found'],
 		['ConflictError', new ConflictError('x'), 'blocked'],

@@ -1,0 +1,48 @@
+{
+	"properties": {
+		"output": {
+			"items": {
+				"additionalProperties": true,
+				"properties": {
+					"content": {
+						"items": {
+							"properties": {
+								"annotations": {
+									"items": {},
+									"type": "array"
+								},
+								"logprobs": {
+									"items": {},
+									"type": "array"
+								},
+								"text": {
+									"type": ["object", "string"]
+								},
+								"type": {
+									"type": "string"
+								}
+							},
+							"type": "object"
+						},
+						"type": "array"
+					},
+					"id": {
+						"type": "string"
+					},
+					"role": {
+						"type": "string"
+					},
+					"status": {
+						"type": "string"
+					},
+					"type": {
+						"type": "string"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		}
+	},
+	"type": "object"
+}

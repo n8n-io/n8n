@@ -6,6 +6,7 @@ import {
 	RoleService,
 	JwtService,
 	PostHogClient,
+	loginIdOf,
 } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type { AuthIdentity, OperationContext, Person, PublicUser } from '@n8n/db';
@@ -51,7 +52,6 @@ import {
 	NotFoundError,
 	UserError,
 } from '@n8n/errors';
-import { loginIdOf } from '@/events/login-id';
 import { ExternalHooks } from '@/external-hooks';
 import type { Invitation } from '@/interfaces';
 import { License } from '@/license';
@@ -75,6 +75,16 @@ export const INVITE_ROLE_MANAGED_MESSAGE =
 
 /** The system as the actor of a user deletion that no user asked for. */
 export type SystemDeletionActor = Extract<PolicyActor, { kind: 'system' }> & { reason: 'scim' };
+
+/**
+ * Removes what acts as a service account, such as an agent, when the account goes.
+ * `cleanUp` runs after the work of the account moved. `deleteInTransaction` runs in
+ * the transaction that deletes the account, before the account row goes.
+ */
+export type ServiceAccountOwnerRemoval = {
+	cleanUp: () => Promise<void>;
+	deleteInTransaction: (ctx: OperationContext) => Promise<void>;
+};
 
 @Service()
 export class UserService {
@@ -657,15 +667,22 @@ export class UserService {
 	 * Deletes the service account of an agent that is being deleted, so it skips
 	 * the check that an agent acts as the account. Only
 	 * `ServiceAccountService.remove` calls this.
+	 *
+	 * `owner` is the agent that acts as the account. Its cleanup runs after the
+	 * work of the account moved or was deleted. Its row goes in the transaction
+	 * that deletes the account, because the account cannot go while the agent
+	 * exists, and both rows must go together.
 	 */
 	async deleteServiceAccount(
 		actor: User | SystemDeletionActor,
 		idToDelete: string,
-		transferId?: string,
-		ctx: OperationContext = {},
+		transferId: string | undefined,
+		ctx: OperationContext,
+		owner: ServiceAccountOwnerRemoval,
 	) {
 		return await this.deleteAccount(actor, idToDelete, transferId, false, ctx, {
 			allowAgentAccount: true,
+			owner,
 		});
 	}
 
@@ -675,7 +692,10 @@ export class UserService {
 		transferId: string | undefined,
 		publicApi: PublicApiCaller,
 		ctx: OperationContext,
-		{ allowAgentAccount }: { allowAgentAccount: boolean },
+		{
+			allowAgentAccount,
+			owner,
+		}: { allowAgentAccount: boolean; owner?: ServiceAccountOwnerRemoval },
 	) {
 		// A user also has a `kind` (person or service), so test the value.
 		const systemActor = actor.kind === 'system' ? actor : null;
@@ -789,7 +809,10 @@ export class UserService {
 			ctx,
 		});
 
+		await owner?.cleanUp();
+
 		await this.txRunner.run({}, async (ctx) => {
+			await owner?.deleteInTransaction(ctx);
 			await ownershipTransferService.finalizeUserDeletion(
 				userToDelete.id,
 				personalProjectToDelete.id,

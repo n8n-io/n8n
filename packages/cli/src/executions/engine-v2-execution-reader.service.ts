@@ -1,3 +1,4 @@
+import { toWorkflowSnapshot, type WorkflowRunDocument } from '@n8n/backend-services';
 import type { IExecutionBase, IExecutionResponse } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type {
@@ -20,7 +21,6 @@ import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.
 
 import { resolveV2Statuses, toModeFilter, toV1Mode, toV1Status } from './engine-v2-mapping';
 import type { ExecutionPosition } from './execution-cursor';
-import { toWorkflowSnapshot, type WorkflowRunDocument } from './execution-data/types';
 import type { ExecutionIdV2 } from './execution-id';
 
 /**

@@ -17,6 +17,7 @@ export class PayPalTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'PayPal Trigger',
 		name: 'payPalTrigger',
+		schemaPath: 'PayPal',
 		icon: 'file:paypal.svg',
 		group: ['trigger'],
 		version: 1,

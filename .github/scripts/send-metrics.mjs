@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Shared metrics sender for CI scripts.
- * See .github/CI-TELEMETRY.md for payload shape and BigQuery schema.
+ * See .github/CI-TELEMETRY.md for payload shape and ClickHouse schema.
  *
  * Usage (fire-and-forget — best-effort, never blocks CI):
  *   import { sendMetrics, metric } from './send-metrics.mjs';
@@ -23,7 +23,7 @@ export function buildContext(benchmarkName = null) {
 	// Use `||` (not `??`) when falling back across GitHub env vars: on `push` and
 	// `merge_group` events GITHUB_HEAD_REF is set to '' (empty string, not undefined),
 	// so `??` would never fall through to GITHUB_REF_NAME and every non-PR row would
-	// land in BigQuery with git_branch = ''. The same applies to any other GITHUB_*
+	// be stored with git_branch = ''. The same applies to any other GITHUB_*
 	// var whose intended fallback is null — preserve null, not ''.
 	const ref = process.env.GITHUB_REF || '';
 	const prMatch = ref.match(/refs\/pull\/(\d+)/);

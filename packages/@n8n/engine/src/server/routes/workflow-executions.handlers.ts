@@ -145,6 +145,7 @@ function toStepDetail(record: StepView): StepDetail {
 		iteration: record.iteration,
 		status: record.status,
 		outputs: record.outputs,
+		outputSources: record.outputSources,
 		error: record.error,
 		createdAt: record.createdAt,
 		updatedAt: record.updatedAt,

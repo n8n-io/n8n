@@ -362,6 +362,9 @@ catalogs:
     '@qdrant/js-client-rest':
       specifier: ^1.19.0
       version: 1.19.0
+    '@redocly/cli':
+      specifier: ^2.76.0
+      version: 2.76.0
     '@rudderstack/rudder-sdk-node':
       specifier: 3.1.1
       version: 3.1.1
@@ -482,6 +485,9 @@ catalogs:
     '@types/oracledb':
       specifier: 6.10.3
       version: 6.10.3
+    '@types/pluralize':
+      specifier: ^0.0.33
+      version: 0.0.33
     '@types/proxy-from-env':
       specifier: ^1.0.4
       version: 1.0.4
@@ -728,12 +734,18 @@ catalogs:
     p-limit:
       specifier: ^3.1.0
       version: 3.1.0
+    pg-copy-streams:
+      specifier: 7.0.0
+      version: 7.0.0
     picocolors:
       specifier: 1.0.1
       version: 1.0.1
     playwright-core:
       specifier: 1.62.1
       version: 1.62.1
+    pluralize:
+      specifier: ^8.0.0
+      version: 8.0.0
     posthog-node:
       specifier: 5.49.1
       version: 5.49.1
@@ -1440,7 +1452,7 @@ importers:
         version: 1.0.27(@aws-sdk/credential-provider-node@3.972.80)(@langchain/core@1.2.8(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.221.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))(openai@6.46.0(@aws-sdk/credential-provider-node@3.972.80)(@smithy/signature-v4@5.7.2)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)))(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.221.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))(@smithy/signature-v4@5.7.2)(cheerio@1.1.0)(openai@6.46.0(@aws-sdk/credential-provider-node@3.972.80)(@smithy/signature-v4@5.7.2)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))
       '@langchain/community':
         specifier: 'catalog:'
-        version: 1.1.27(acb39ef5edc933ce61e8780417815eb3)
+        version: 1.1.27(4e59d8369963e09853e77d65cd00623b)
       '@langchain/core':
         specifier: 'catalog:'
         version: 1.2.8(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.221.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))(openai@6.46.0(@aws-sdk/credential-provider-node@3.972.80)(@smithy/signature-v4@5.7.2)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))
@@ -1968,6 +1980,9 @@ importers:
       '@n8n/backend-network':
         specifier: workspace:*
         version: link:../backend-network
+      '@n8n/blob-storage':
+        specifier: workspace:*
+        version: link:../blob-storage
       '@n8n/config':
         specifier: workspace:*
         version: link:../config
@@ -2001,6 +2016,9 @@ importers:
       '@types/express':
         specifier: 'catalog:'
         version: 5.0.1
+      bcryptjs:
+        specifier: 2.4.3
+        version: 2.4.3
       cache-manager:
         specifier: 'catalog:'
         version: 5.2.3
@@ -2041,6 +2059,9 @@ importers:
       '@n8n/vitest-config':
         specifier: workspace:*
         version: link:../vitest-config
+      '@types/bcryptjs':
+        specifier: ^2.4.2
+        version: 2.4.2
       '@types/jsonwebtoken':
         specifier: 'catalog:'
         version: 9.0.10
@@ -3099,7 +3120,7 @@ importers:
         specifier: 'catalog:'
         version: 1.0.16
       pluralize:
-        specifier: ^8.0.0
+        specifier: 'catalog:'
         version: 8.0.0
       postcss:
         specifier: 8.5.23
@@ -3121,7 +3142,7 @@ importers:
         specifier: ^20.17.50
         version: 20.19.41
       '@types/pluralize':
-        specifier: ^0.0.33
+        specifier: 'catalog:'
         version: 0.0.33
       '@typescript-eslint/rule-tester':
         specifier: 'catalog:'
@@ -3787,6 +3808,58 @@ importers:
         specifier: 'catalog:'
         version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@5.5.0)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
 
+  packages/@n8n/n8n-node-codegen:
+    dependencies:
+      pluralize:
+        specifier: 'catalog:'
+        version: 8.0.0
+      yaml:
+        specifier: 'catalog:'
+        version: 2.8.3
+    devDependencies:
+      '@n8n/oxlint-config':
+        specifier: workspace:*
+        version: link:../oxlint-config
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+      '@n8n/vitest-config':
+        specifier: workspace:*
+        version: link:../vitest-config
+      '@redocly/cli':
+        specifier: 'catalog:'
+        version: 2.76.0
+      '@types/node':
+        specifier: ^20.17.50
+        version: 20.19.41
+      '@types/pluralize':
+        specifier: 'catalog:'
+        version: 0.0.33
+      n8n-workflow:
+        specifier: workspace:*
+        version: link:../../workflow
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 7.0.2007
+      tsx:
+        specifier: 'catalog:'
+        version: 4.19.3
+      typescript:
+        specifier: catalog:typescript
+        version: 7.0.2
+      vite:
+        specifier: 'catalog:'
+        version: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+      vitest:
+        specifier: 'catalog:'
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+      zod:
+        specifier: 3.25.76
+        version: 3.25.76
+
   packages/@n8n/node-cli:
     dependencies:
       '@clack/prompts':
@@ -3979,7 +4052,7 @@ importers:
         version: 1.0.1(@langchain/core@1.2.8(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.221.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))(openai@6.46.0(@aws-sdk/credential-provider-node@3.972.80)(@smithy/signature-v4@5.7.2)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)))(encoding@0.1.13)
       '@langchain/community':
         specifier: 'catalog:'
-        version: 1.1.27(2f16435e402989316af8b4a6b830c1b8)
+        version: 1.1.27(168af507f59c082fb90bea3c42c8c231)
       '@langchain/core':
         specifier: 'catalog:'
         version: 1.2.8(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.221.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))(openai@6.46.0(@aws-sdk/credential-provider-node@3.972.80)(@smithy/signature-v4@5.7.2)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))
@@ -5514,7 +5587,7 @@ importers:
         specifier: workspace:*
         version: link:../@n8n/vitest-config
       '@redocly/cli':
-        specifier: ^2.76.0
+        specifier: 'catalog:'
         version: 2.76.0
       '@types/bcryptjs':
         specifier: ^2.4.2
@@ -7266,6 +7339,9 @@ importers:
       markdown-it-footnote:
         specifier: ^4.0.0
         version: 4.0.0
+      mermaid:
+        specifier: 'catalog:'
+        version: 11.17.2
       miragejs:
         specifier: ^0.1.48
         version: 0.1.48
@@ -7850,6 +7926,9 @@ importers:
       n8n-containers:
         specifier: workspace:*
         version: link:../../../quality/environments/containers
+      n8n-workflow:
+        specifier: workspace:*
+        version: link:../../../workflow
       oxlint:
         specifier: 'catalog:'
         version: 1.93.0(oxlint-tsgolint@7.0.2007)
@@ -7874,6 +7953,12 @@ importers:
       '@n8n/api-types':
         specifier: workspace:*
         version: link:../../../@n8n/api-types
+      '@n8n/backend-common':
+        specifier: workspace:*
+        version: link:../../../@n8n/backend-common
+      '@n8n/backend-services':
+        specifier: workspace:*
+        version: link:../../../@n8n/backend-services
       '@n8n/constants':
         specifier: workspace:*
         version: link:../../../@n8n/constants
@@ -7883,13 +7968,22 @@ importers:
       '@n8n/decorators':
         specifier: workspace:*
         version: link:../../../@n8n/decorators
-      '@n8n/typeorm':
-        specifier: workspace:*
-        version: link:../../../@n8n/typeorm
-    devDependencies:
       '@n8n/di':
         specifier: workspace:*
         version: link:../../../@n8n/di
+      '@n8n/errors':
+        specifier: workspace:*
+        version: link:../../../@n8n/errors
+      '@n8n/typeorm':
+        specifier: workspace:*
+        version: link:../../../@n8n/typeorm
+      '@n8n/utils':
+        specifier: workspace:*
+        version: link:../../../@n8n/utils
+    devDependencies:
+      '@n8n/backend-test-utils':
+        specifier: workspace:*
+        version: link:../../../@n8n/backend-test-utils
       '@n8n/oxlint-config':
         specifier: workspace:*
         version: link:../../../@n8n/oxlint-config
@@ -7914,6 +8008,9 @@ importers:
       vitest:
         specifier: 'catalog:'
         version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+      vitest-mock-extended:
+        specifier: 'catalog:'
+        version: 3.1.0(typescript@7.0.2)(vitest@5.0.1)
 
   packages/modules/inbox/frontend:
     dependencies:
@@ -9336,6 +9433,9 @@ importers:
       pg:
         specifier: 8.21.0
         version: 8.21.0(pg-native@3.8.0)
+      pg-copy-streams:
+        specifier: 'catalog:'
+        version: 7.0.0
       pg-promise:
         specifier: 11.9.1
         version: 11.9.1(pg-native@3.8.0)
@@ -9469,6 +9569,9 @@ importers:
       '@types/oracledb':
         specifier: 'catalog:'
         version: 6.10.3
+      '@types/pg-copy-streams':
+        specifier: 'catalog:'
+        version: 1.2.5
       '@types/promise-ftp':
         specifier: ^1.3.4
         version: 1.3.4
@@ -16964,6 +17067,9 @@ packages:
   '@types/oracledb@6.10.3':
     resolution: {integrity: sha512-8SCGQF/VSiXnifVFTajmRNtjHUDTNxkd9SrBrvG2A/80uwLVee5xmv/juH4hnDNTfU9qxfd6HR4Mfmg2nC3RVw==}
 
+  '@types/pg-copy-streams@1.2.5':
+    resolution: {integrity: sha512-7D6/GYW2uHIaVU6S/5omI+6RZnwlZBpLQDZAH83xX1rjxAOK0f6/deKyyUTewxqts145VIGn6XWYz1YGf50G5g==}
+
   '@types/pg-pool@2.0.7':
     resolution: {integrity: sha512-U4CwmGVQcbEuqpyju8/ptOKg6gEC+Tqsvj2xS9o1g71bUh8twxnC6ZL5rZKCsGN0iyH0CwgUyc9VR5owNQF9Ng==}
 
@@ -23989,6 +24095,9 @@ packages:
 
   pg-connection-string@2.14.0:
     resolution: {integrity: sha512-XwWDGcLRGCXAR8F/AM5bG7Q+A3Wm2s6QeEjlOKZLlH3UYcguiqCWKyWXVag5TLTIjR7oOJUY8kcADaZgWPyLeg==}
+
+  pg-copy-streams@7.0.0:
+    resolution: {integrity: sha512-zBvnY6wtaBRE2ae2xXWOOGMaNVPkXh1vhypAkNSKgMdciJeTyIQAHZaEeRAxUjs/p1El5jgzYmwG5u871Zj3dQ==}
 
   pg-cursor@2.21.0:
     resolution: {integrity: sha512-IYvk/j+Suhtbo/C3uOf4JLsLK/gWxOTUOmYbDsbKnLaVJDq+KwhwK6ngpRfiCk8eDMS3AmGQABZCv0cREEzHQw==}
@@ -31309,7 +31418,7 @@ snapshots:
       - aws-crt
       - encoding
 
-  '@langchain/community@1.1.27(2f16435e402989316af8b4a6b830c1b8)':
+  '@langchain/community@1.1.27(168af507f59c082fb90bea3c42c8c231)':
     dependencies:
       '@browserbasehq/stagehand': empty-npm-package@1.0.0
       '@ibm-cloud/watsonx-ai': 1.1.2(supports-color@8.1.1)
@@ -31367,6 +31476,7 @@ snapshots:
       mysql2: 3.23.1(@types/node@20.19.41)
       pdf-parse: 2.4.5(patch_hash=3827ce0d19ea8a667a03b05afe753b3d8a7a5a837ccfc4b8f5516e738e6cea82)
       pg: 8.21.0(pg-native@3.8.0)
+      pg-copy-streams: 7.0.0
       playwright: 1.62.1
       puppeteer: 24.41.0(@typescript/typescript6@6.0.2)(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10)
       redis: 4.6.14
@@ -31379,7 +31489,7 @@ snapshots:
       - '@smithy/hash-node'
       - peggy
 
-  '@langchain/community@1.1.27(acb39ef5edc933ce61e8780417815eb3)':
+  '@langchain/community@1.1.27(4e59d8369963e09853e77d65cd00623b)':
     dependencies:
       '@browserbasehq/stagehand': empty-npm-package@1.0.0
       '@ibm-cloud/watsonx-ai': 1.1.2(supports-color@8.1.1)
@@ -31433,6 +31543,7 @@ snapshots:
       mysql2: 3.23.1(@types/node@20.19.41)
       pdf-parse: 2.4.5(patch_hash=3827ce0d19ea8a667a03b05afe753b3d8a7a5a837ccfc4b8f5516e738e6cea82)
       pg: 8.21.0(pg-native@3.8.0)
+      pg-copy-streams: 7.0.0
       playwright: 1.62.1
       puppeteer: 24.41.0(bufferutil@4.0.9)(supports-color@8.1.1)(typescript@7.0.2)(utf-8-validate@5.0.10)
       redis: 4.6.14
@@ -35617,6 +35728,11 @@ snapshots:
   '@types/oracledb@6.10.3':
     dependencies:
       '@types/node': 20.19.41
+
+  '@types/pg-copy-streams@1.2.5':
+    dependencies:
+      '@types/node': 20.19.41
+      '@types/pg': 8.20.0
 
   '@types/pg-pool@2.0.7':
     dependencies:
@@ -44312,6 +44428,8 @@ snapshots:
     optional: true
 
   pg-connection-string@2.14.0: {}
+
+  pg-copy-streams@7.0.0: {}
 
   pg-cursor@2.21.0(pg@8.21.0(pg-native@3.8.0)):
     dependencies:

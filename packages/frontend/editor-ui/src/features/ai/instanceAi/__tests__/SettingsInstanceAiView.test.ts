@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ref } from 'vue';
 import { fireEvent, waitFor } from '@testing-library/vue';
+import { flushPromises } from '@vue/test-utils';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -15,6 +16,8 @@ import { fetchSettings } from '../instanceAi.settings.api';
 import type { FrontendModuleSettings } from '@n8n/api-types';
 import type { ICredentialType } from 'n8n-workflow';
 import { defaultModuleSettings } from './createThreadComponentRenderer';
+import { usePostHog } from '@/app/stores/posthog.store';
+import { MODEL_TRAINING_OPT_OUT_EXPERIMENT } from '@/app/constants/experiments';
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -54,12 +57,16 @@ const {
 	contextSkillsEnabledMock,
 	confirmMock,
 	testSavedCredentialMock,
+	toastMock,
 } = vi.hoisted(() => ({
 	cloudBrowserExperimentMock: vi.fn(),
 	contextSkillsEnabledMock: vi.fn(() => true),
 	confirmMock: vi.fn(),
 	testSavedCredentialMock: vi.fn(),
+	toastMock: { showMessage: vi.fn(), showError: vi.fn() },
 }));
+
+vi.mock('@n8n/composables/useToast', () => ({ useToast: () => toastMock }));
 
 vi.mock('@/experiments/instanceAiCloudBrowser', () => ({
 	useInstanceAiCloudBrowserExperiment: cloudBrowserExperimentMock,
@@ -844,7 +851,7 @@ describe('SettingsInstanceAiView', () => {
 
 	describe('data sharing', () => {
 		const setDataSharing = (allowSendingParameterValues: boolean) => {
-			settingsStore.settings.ai = { allowSendingParameterValues };
+			settingsStore.settings.ai = { allowSendingParameterValues, allowModelTraining: true };
 		};
 
 		it('shows the AI usage controls inline with a docs link', () => {
@@ -893,6 +900,32 @@ describe('SettingsInstanceAiView', () => {
 			await fireEvent.click(valuesToggle);
 
 			expect(updateSpy).toHaveBeenCalledWith(true);
+
+			await waitFor(() =>
+				expect(toastMock.showMessage).toHaveBeenCalledWith({
+					title: 'settings.ai.updated.success',
+					type: 'success',
+				}),
+			);
+		});
+
+		it('keeps the values switch off and shows an error toast when the save fails', async () => {
+			setDataSharing(false);
+			const error = new Error('boom');
+			vi.spyOn(settingsStore, 'updateAiDataSharingSettings').mockRejectedValue(error);
+
+			const { getByTestId } = renderComponent();
+			const valuesToggle = getByTestId('n8n-agent-data-sharing-values-toggle');
+			await fireEvent.click(valuesToggle);
+
+			await flushPromises();
+
+			expect(toastMock.showError).toHaveBeenCalledWith(error, 'settings.ai.updated.error');
+			expect(toastMock.showMessage).not.toHaveBeenCalled();
+			// The view re-renders after it loads, so query the switch again.
+			const valuesToggleAfter = getByTestId('n8n-agent-data-sharing-values-toggle');
+			expect(valuesToggleAfter).toHaveAttribute('aria-checked', 'false');
+			expect(valuesToggleAfter).not.toBeDisabled();
 		});
 
 		it('locks the values switch without permission to manage AI usage', () => {
@@ -904,6 +937,93 @@ describe('SettingsInstanceAiView', () => {
 			const { getByTestId } = renderComponent();
 
 			expect(getByTestId('n8n-agent-data-sharing-values-toggle')).toBeDisabled();
+		});
+	});
+
+	describe('model training', () => {
+		const enableOptOut = () => {
+			setModuleSettings(settingsStore, { ...defaultModuleSettings, proxyEnabled: true });
+			usePostHog().overrides[MODEL_TRAINING_OPT_OUT_EXPERIMENT.name] = { value: true };
+			settingsStore.settings.ai = { allowSendingParameterValues: true, allowModelTraining: true };
+		};
+
+		it('keeps the old section copy and hides the switch while the flag is off', () => {
+			setModuleSettings(settingsStore, { ...defaultModuleSettings, proxyEnabled: true });
+
+			const { getByText, queryByTestId } = renderComponent();
+
+			expect(getByText('settings.n8nAgent.dataSharing.title')).toBeVisible();
+			expect(getByText(/settings\.n8nAgent\.dataSharing\.description$/)).toBeVisible();
+			expect(queryByTestId('n8n-agent-model-training-section')).toBeNull();
+		});
+
+		it('shows the switch in its own section, apart from the data sent to the model', () => {
+			enableOptOut();
+
+			const { getByText, getByTestId, queryByText } = renderComponent();
+
+			expect(getByText('settings.n8nAgent.dataSharing.title')).toBeVisible();
+			expect(
+				getByText(/settings\.n8nAgent\.dataSharing\.description\.withModelTraining/),
+			).toBeVisible();
+			expect(queryByText(/settings\.n8nAgent\.dataSharing\.description$/)).toBeNull();
+
+			const section = getByTestId('n8n-agent-model-training-section');
+			expect(section).toHaveTextContent('settings.n8nAgent.modelTraining.title');
+			expect(section).not.toContainElement(getByTestId('n8n-agent-data-sharing-values-row'));
+			expect(getByTestId('n8n-agent-model-training-toggle')).toHaveAttribute(
+				'aria-checked',
+				'true',
+			);
+		});
+
+		it('turns model training off from the switch', async () => {
+			enableOptOut();
+			const updateSpy = vi
+				.spyOn(settingsStore, 'updateModelTrainingSettings')
+				.mockResolvedValue(undefined);
+
+			const { getByTestId } = renderComponent();
+			await fireEvent.click(getByTestId('n8n-agent-model-training-toggle'));
+
+			expect(updateSpy).toHaveBeenCalledWith(false);
+
+			await waitFor(() =>
+				expect(toastMock.showMessage).toHaveBeenCalledWith({
+					title: 'settings.ai.updated.success',
+					type: 'success',
+				}),
+			);
+		});
+
+		it('keeps the switch on and shows an error toast when the save fails', async () => {
+			enableOptOut();
+			const error = new Error('boom');
+			vi.spyOn(settingsStore, 'updateModelTrainingSettings').mockRejectedValue(error);
+
+			const { getByTestId } = renderComponent();
+			const toggle = getByTestId('n8n-agent-model-training-toggle');
+			await fireEvent.click(toggle);
+
+			await flushPromises();
+
+			expect(toastMock.showError).toHaveBeenCalledWith(error, 'settings.ai.updated.error');
+			expect(toastMock.showMessage).not.toHaveBeenCalled();
+			// The view re-renders after it loads, so query the switch again.
+			const toggleAfter = getByTestId('n8n-agent-model-training-toggle');
+			expect(toggleAfter).toHaveAttribute('aria-checked', 'true');
+			expect(toggleAfter).not.toBeDisabled();
+		});
+
+		it('locks the switch without permission to manage AI usage', () => {
+			enableOptOut();
+			vi.mocked(hasPermission).mockImplementation(
+				(_permissionNames, options) => options?.rbac?.scope !== 'aiAssistant:manage',
+			);
+
+			const { getByTestId } = renderComponent();
+
+			expect(getByTestId('n8n-agent-model-training-toggle')).toBeDisabled();
 		});
 	});
 

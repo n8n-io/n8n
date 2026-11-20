@@ -16,15 +16,15 @@ import { useInstanceAiCredentialHelp } from '@/features/ai/instanceAi/composable
 import {
 	ContactAdminModal,
 	getCredentialTypeRestriction,
-	SCOPE_LABEL_KEY,
 	useTypeAvailabilityPoliciesStore,
-	type RestrictedTypeKind,
-	type TypeRestriction,
 } from '@n8n/frontend-module-type-availability-policies';
 import type { ICredentialType } from 'n8n-workflow';
 import CredentialTypeRestrictedMarker from './CredentialTypeRestrictedMarker.vue';
 import { useContactAdminDialog } from '../composables/useContactAdminDialog';
-import { useCredentialTypeUsability } from '../composables/useCredentialTypeUsability';
+import {
+	useCredentialTypeUsability,
+	type CredentialTypeRestrictionCopy,
+} from '../composables/useCredentialTypeUsability';
 const externalHooks = useExternalHooks();
 const telemetry = useTelemetry();
 const i18n = useI18n();
@@ -39,7 +39,8 @@ const uiStore = useUIStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const instanceAiCredentialHelp = useInstanceAiCredentialHelp();
 const typeAvailabilityPoliciesStore = useTypeAvailabilityPoliciesStore();
-const { getCredentialTypeUsability } = useCredentialTypeUsability();
+const { getCredentialTypeUsability, describeCredentialTypeUsability } =
+	useCredentialTypeUsability();
 
 const {
 	isOpen: isContactAdminOpen,
@@ -85,57 +86,16 @@ const allSelectableCredentialTypes = computed(() =>
 	),
 );
 
-type RestrictedRow = {
-	/** A blocked type cannot be selected. A type whose nodes are blocked still can. */
-	blocked: boolean;
-	kind: RestrictedTypeKind;
-	restriction: TypeRestriction;
-	scopeLabel: string;
-	/** The popover derives its own copy for a blocked type. */
-	popoverScopeLabel?: string;
-	description?: string;
-	contactSubject: string;
+type CredentialTypeOption = {
+	type: ICredentialType;
+	restricted: CredentialTypeRestrictionCopy | null;
 };
-
-type CredentialTypeOption = { type: ICredentialType; restricted: RestrictedRow | null };
 
 function toOption(type: ICredentialType): CredentialTypeOption {
 	const usability = getCredentialTypeUsability(type.name);
-	if (!usability) return { type, restricted: null };
-
-	if (usability.reason === 'typeRestricted') {
-		const { scope } = usability.restriction;
-		return {
-			type,
-			restricted: {
-				blocked: true,
-				kind: 'credential',
-				restriction: usability.restriction,
-				scopeLabel: i18n.baseText(
-					scope ? SCOPE_LABEL_KEY[scope] : 'typeAvailabilityPolicies.restrictedNodes.scope.generic',
-				),
-				contactSubject: type.displayName,
-			},
-		};
-	}
-
-	const scopeLabel = i18n.baseText(
-		'typeAvailabilityPolicies.restrictedCredentialType.nodesRestricted.scope',
-	);
 	return {
 		type,
-		restricted: {
-			blocked: false,
-			kind: 'node',
-			restriction: usability.restriction,
-			scopeLabel,
-			popoverScopeLabel: scopeLabel,
-			description: i18n.baseText(
-				'typeAvailabilityPolicies.restrictedCredentialType.nodesRestricted.description',
-				{ interpolate: { nodeTypes: usability.nodeTypeNames.join(', ') } },
-			),
-			contactSubject: usability.nodeTypeNames.join(', '),
-		},
+		restricted: usability ? describeCredentialTypeUsability(usability, type.displayName) : null,
 	};
 }
 

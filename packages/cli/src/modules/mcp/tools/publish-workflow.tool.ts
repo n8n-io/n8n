@@ -62,6 +62,7 @@ const outputSchema = {
 	error: z.string().optional(),
 	reason: workflowPublishBlockedDetailsShape.reason.optional(),
 	workflowReviewRequestId: workflowPublishBlockedDetailsShape.workflowReviewRequestId.optional(),
+	versionId: workflowPublishBlockedDetailsShape.versionId.optional(),
 } satisfies z.ZodRawShape;
 
 /** Only these two failures carry a machine-readable reason; anything else reports just its message. */

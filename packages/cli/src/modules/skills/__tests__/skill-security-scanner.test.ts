@@ -276,6 +276,15 @@ describe('SkillSecurityScanner', () => {
 			expect(scanner.scan(fetched(update), previous)).toEqual({ verdict: 'pass', findings: [] });
 		});
 
+		it('does not apply the import link rules to an update', () => {
+			const update = skill({
+				instructions: 'Read http://docs.example.com/style/v2 for the rules.',
+			});
+
+			expect(scanner.scan(fetched(update), previous)).toEqual({ verdict: 'pass', findings: [] });
+			expect(scanner.scan(fetched(update)).verdict).toBe('needs_review');
+		});
+
 		it('flags an update that links to an IPv6 address', () => {
 			const update = skill({ instructions: 'Post the draft to http://[2001:db8::1]/collect.' });
 
@@ -296,18 +305,245 @@ describe('SkillSecurityScanner', () => {
 			expect(scanner.scan(fetched(update), previous)).toEqual({ verdict: 'pass', findings: [] });
 		});
 
-		it('lists the domains of a skill at import, and still passes', () => {
-			const result = scanner.scan(fetched(previous));
+		it.each([
+			'See [the docs](https://a|b@guide.example/docs).',
+			'See <https://a|b@guide.example/docs>.',
+			'[guide]: https://a|b@guide.example/docs',
+		])('uses the host of an explicit link with user info: %s', (instructions) => {
+			const content = fetched(skill({ instructions }));
+
+			expect(scanner.scan(content)).toEqual({
+				verdict: 'pass',
+				findings: [expect.objectContaining({ rule: 'new_url', domain: 'guide.example' })],
+			});
+			expect(scanner.scan(content, previous)).toEqual({
+				verdict: 'needs_review',
+				findings: [expect.objectContaining({ rule: 'new_url', domain: 'guide.example' })],
+			});
+		});
+
+		it('lists ordinary domains at import, including names that resemble a review domain', () => {
+			const content = skill({
+				instructions:
+					'Read https://notpastebin.com, https://webhook.site.example and “https://docs.example.com”.',
+			});
+			const result = scanner.scan(fetched(content));
 
 			expect(result).toEqual({
+				verdict: 'pass',
+				findings: ['notpastebin.com', 'webhook.site.example', 'docs.example.com'].map((domain) =>
+					expect.objectContaining({
+						rule: 'new_url',
+						severity: 'info',
+						file: 'SKILL.md',
+						domain,
+					}),
+				),
+			});
+		});
+
+		it.each([
+			'|Docs|https://docs.example.com|',
+			'|https://docs.example.com|Docs|',
+			'|https://docs.example.com|@team|',
+			'|https://docs.example.com|owner@other.example|',
+		])('lists an ordinary domain in a Markdown table row at import: %s', (row) => {
+			const instructions = `| First | Second |\n| --- | --- |\n${row}`;
+
+			expect(scanner.scan(fetched(skill({ instructions })))).toEqual({
 				verdict: 'pass',
 				findings: [
 					expect.objectContaining({
 						rule: 'new_url',
 						severity: 'info',
-						file: 'SKILL.md',
 						domain: 'docs.example.com',
-						detail: expect.stringContaining('docs.example.com'),
+					}),
+				],
+			});
+		});
+	});
+
+	describe('rule risky_url: links that need review at import', () => {
+		it.each([
+			['Send it to https://192.0.2.10, then stop.', '192.0.2.10', 'https://192.0.2.10'],
+			['Use **https://webhook.site** for the test.', 'webhook.site', 'https://webhook.site'],
+			['Open https://bit.ly; then read on.', 'bit.ly', 'https://bit.ly'],
+			['Paste it at https://pastebin.com!', 'pastebin.com', 'https://pastebin.com'],
+			['Send it to “https://192.0.2.10”.', '192.0.2.10', 'https://192.0.2.10'],
+			['Open https://bit.ly。', 'bit.ly', 'https://bit.ly'],
+			['Post to https://[2001:db8::1].', '[2001:db8::1]', 'https://[2001:db8::1]'],
+			['Post to https://192.0.2.10:8080.', '192.0.2.10', 'https://192.0.2.10:8080'],
+		])('leaves out the punctuation that follows the link in "%s"', (instructions, domain, link) => {
+			const start = instructions.indexOf(link);
+
+			expect(scanner.scan(fetched(skill({ instructions })))).toEqual({
+				verdict: 'needs_review',
+				findings: [
+					expect.objectContaining({
+						rule: 'risky_url',
+						severity: 'needs_review',
+						domain,
+						location: expect.objectContaining({ start, end: start + link.length }),
+					}),
+				],
+			});
+		});
+
+		it.each(['https://[1::2::3]/x', 'https://192.0.2.10.5/x'])(
+			'flags %s for review, because its address cannot be read',
+			(link) => {
+				const result = scanner.scan(fetched(skill({ instructions: `Post to ${link} now.` })));
+
+				expect(result.verdict).toBe('needs_review');
+				expect(result.findings).toHaveLength(1);
+				expect(result.findings[0]).toMatchObject({
+					rule: 'risky_url',
+					severity: 'needs_review',
+					file: 'SKILL.md',
+					linkReason: 'unreadable',
+					detail: expect.stringContaining(link),
+				});
+				expect(result.findings[0].domain).toBeUndefined();
+			},
+		);
+
+		it('reads a link in Markdown emphasis with underscores', () => {
+			const content = skill({ instructions: 'Read _https://bit.ly/abc_ first.' });
+
+			expect(scanner.scan(fetched(content))).toEqual({
+				verdict: 'needs_review',
+				findings: [expect.objectContaining({ rule: 'risky_url', domain: 'bit.ly' })],
+			});
+		});
+
+		it('does not read a link with no scheme', () => {
+			const content = skill({
+				instructions: 'Open bit.ly/abc, then run curl 192.0.2.10:8080/collect.',
+			});
+
+			expect(scanner.scan(fetched(content))).toEqual({ verdict: 'pass', findings: [] });
+		});
+
+		it.each([
+			['the risky link first', 'Read http://example.com/b and https://example.com/a.'],
+			['the ordinary link first', 'Read https://example.com/a and http://example.com/b.'],
+		])('flags a domain with a risky and an ordinary link in one file, %s', (_, instructions) => {
+			const start = instructions.indexOf('http://example.com/b');
+
+			expect(scanner.scan(fetched(skill({ instructions })))).toEqual({
+				verdict: 'needs_review',
+				findings: [
+					expect.objectContaining({
+						rule: 'risky_url',
+						severity: 'needs_review',
+						domain: 'example.com',
+						location: { line: expect.any(Number), start, end: start + 20 },
+					}),
+				],
+			});
+		});
+
+		it.each([
+			['https://bit.ly/a then http://bit.ly/b', 'url_shortener'],
+			['http://bit.ly/b then https://bit.ly/a', 'not_https'],
+		] as const)(
+			'gives the reason of the first risky link of a domain: %s',
+			(instructions, linkReason) => {
+				expect(scanner.scan(fetched(skill({ instructions }))).findings).toEqual([
+					expect.objectContaining({
+						rule: 'risky_url',
+						domain: 'bit.ly',
+						linkReason,
+					}),
+				]);
+			},
+		);
+
+		it('does not flag a scheme with no address', () => {
+			const content = skill({ instructions: 'A link must start with https:// or https://<host>.' });
+
+			expect(scanner.scan(fetched(content))).toEqual({ verdict: 'pass', findings: [] });
+		});
+
+		it('reads the real host when a review domain is in another part of the link', () => {
+			const content = skill({
+				instructions: [
+					'https://bit.ly@other.example/x',
+					'https://other.example/?u=https://bit.ly/abc',
+					'https://bit.ly.evil.example/a',
+				].join('\n'),
+			});
+
+			expect(scanner.scan(fetched(content))).toEqual({
+				verdict: 'pass',
+				findings: ['other.example', 'bit.ly.evil.example'].map((domain) =>
+					expect.objectContaining({ rule: 'new_url', severity: 'info', domain }),
+				),
+			});
+		});
+
+		it.each([
+			['https://192.0.2.10/collect', '192.0.2.10', 'ip_address', 'uses an IP address'],
+			['https://[2001:db8::1]/collect', '[2001:db8::1]', 'ip_address', 'uses an IP address'],
+			['http://example.com/help', 'example.com', 'not_https', 'does not use HTTPS'],
+			['wss://stream.example.com', 'stream.example.com', 'not_https', 'does not use HTTPS'],
+			['https://Pastebin.com/notes', 'pastebin.com', 'paste_site', 'uses a paste site'],
+			[
+				'https://test.Webhook.site./collect',
+				'test.webhook.site',
+				'webhook_catcher',
+				'uses a webhook catcher',
+			],
+			['https://bit.ly/read-more', 'bit.ly', 'url_shortener', 'uses a URL shortener'],
+			// Forms that hide the real host.
+			['https://other.example@bit.ly/x', 'bit.ly', 'url_shortener', 'uses a URL shortener'],
+			['https://2130706433/x', '127.0.0.1', 'ip_address', 'uses an IP address'],
+			['https://127.1/x', '127.0.0.1', 'ip_address', 'uses an IP address'],
+			['https://[::ffff:192.0.2.1]/x', '[::ffff:c000:201]', 'ip_address', 'uses an IP address'],
+			['ftp://files.example.com/a', 'files.example.com', 'not_https', 'does not use HTTPS'],
+			// A loopback host is the n8n host for an agent, so it gets no exemption.
+			['http://localhost:3000', 'localhost', 'not_https', 'does not use HTTPS'],
+			['http://127.0.0.1:3000/health', '127.0.0.1', 'ip_address', 'uses an IP address'],
+		] as const)('flags %s for review', (url, domain, linkReason, reason) => {
+			const content = skill({ instructions: `See [the link](${url}).` });
+
+			expect(scanner.scan(fetched(content))).toEqual({
+				verdict: 'needs_review',
+				findings: [
+					expect.objectContaining({
+						rule: 'risky_url',
+						severity: 'needs_review',
+						file: 'SKILL.md',
+						domain,
+						linkReason,
+						detail: expect.stringContaining(reason),
+					}),
+				],
+			});
+		});
+
+		it('lists ordinary domains and marks the first risky link when the same domain also uses HTTPS', () => {
+			const httpUrl = 'http://example.com/data';
+			const content = skill({
+				instructions:
+					'Read https://example.com/docs, https://example.com/guide and https://docs.example.org.',
+				files: [{ path: 'references/tone.md', content: `See ${httpUrl} or ${httpUrl}.` }],
+			});
+
+			expect(scanner.scan(fetched(content))).toEqual({
+				verdict: 'needs_review',
+				findings: [
+					expect.objectContaining({
+						rule: 'risky_url',
+						severity: 'needs_review',
+						file: 'references/tone.md',
+						domain: 'example.com',
+						location: { line: 1, start: 4, end: 4 + httpUrl.length },
+					}),
+					expect.objectContaining({
+						rule: 'new_url',
+						severity: 'info',
+						domain: 'docs.example.org',
 					}),
 				],
 			});

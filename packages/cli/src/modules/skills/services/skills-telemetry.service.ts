@@ -1,3 +1,4 @@
+import type { SkillScanFinding } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { TelemetryProxy } from '@n8n/backend-services';
 import { Service } from '@n8n/di';
@@ -31,6 +32,20 @@ type ImportedFromSourceProps = InferTelemetryProps<
 
 /** A Skill Sync reason code, or `unexpected` for a failure with no known reason. */
 export type SkillSourceTelemetryReason = NonNullable<ConnectedSourceProps['reason']>;
+
+/** The codes that a flagged-skill event sends for the findings of one check. */
+export function flaggedCodes(
+	findings: SkillScanFinding[],
+): Pick<FlaggedSkillProps, 'rule_codes' | 'link_reason_codes'> {
+	const flagged = findings.filter(({ severity }) => severity !== 'info');
+	const linkReasons = new Set(
+		flagged.flatMap(({ linkReason }) => (linkReason ? [linkReason] : [])),
+	);
+	return {
+		rule_codes: [...new Set(flagged.map(({ rule }) => rule))],
+		...(linkReasons.size ? { link_reason_codes: [...linkReasons] } : {}),
+	};
+}
 
 type FlaggedSkillProps = InferTelemetryProps<
 	typeof TELEMETRY_EVENT.CONTEXT.SKILL_SOURCE_CHECK_FLAGGED_SKILL

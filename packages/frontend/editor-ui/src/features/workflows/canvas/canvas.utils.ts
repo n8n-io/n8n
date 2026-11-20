@@ -20,6 +20,7 @@ import { isValidCanvasConnectionMode, isValidNodeConnectionType } from '@/app/ut
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { NODE_MIN_INPUT_ITEMS_COUNT } from '@/app/constants';
 import { calculateNodeSize } from '@/app/utils/nodeViewUtils';
+import { getAgentNodeHandleOffset } from '@/features/agents/utils/agentNode';
 import { CanvasRenderDataKey } from '@/app/constants/injectionKeys';
 import { injectStrict } from '@/app/utils/injectStrict';
 import type { useWorkflowDocumentRenderData } from '@/app/stores/workflowDocument/useWorkflowDocumentRenderData';
@@ -29,6 +30,26 @@ import type { useWorkflowDocumentRenderData } from '@/app/stores/workflowDocumen
  * `useWorkflowDocumentRenderData` and consumed by canvas components.
  */
 export type CanvasRenderData = ReturnType<typeof useWorkflowDocumentRenderData>;
+
+/**
+ * Returns true when the only issues of a node are credentials that are not set.
+ * Hosts with a setup panel show these nodes as "setup required", not as errors.
+ */
+export function nodeNeedsCredentialSetup(node: INodeUi | undefined): boolean {
+	const issues = node?.issues;
+	const credentialTypes = Object.keys(issues?.credentials ?? {});
+	if (!node || !credentialTypes.length) return false;
+	const hasOtherIssues = Object.entries(issues ?? {}).some(
+		([kind, issue]) =>
+			kind !== 'credentials' &&
+			(typeof issue === 'boolean' ? issue : Object.keys(issue ?? {}).length > 0),
+	);
+	if (hasOtherIssues) return false;
+	return credentialTypes.every((type) => {
+		const credential = node.credentials?.[type];
+		return !credential?.id && !credential?.__aiGatewayManaged;
+	});
+}
 
 /**
  * Adds an `{ x, y }` offset to a position (a `{ x, y }` or a `[x, y]` tuple),
@@ -71,6 +92,15 @@ export function computeNodeDisplaySize(
 		nonMainOutputCount,
 		isExperimentalNdvActive,
 	);
+}
+
+/**
+ * Offset of a node's main handles from its top. The handles sit at half the
+ * node height. On the agent card they sit on the grid line nearest its center.
+ * Tidy-up and the next-node slot both use this, so they put a node on one line.
+ */
+export function getMainHandleOffset(height: number, isAgentCard: boolean): number {
+	return isAgentCard ? getAgentNodeHandleOffset(height) : height / 2;
 }
 
 /**
