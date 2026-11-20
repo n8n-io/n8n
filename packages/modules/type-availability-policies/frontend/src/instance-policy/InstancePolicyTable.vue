@@ -89,29 +89,48 @@ const headers = computed<Array<TableHeader<InstancePolicyTableRow>>>(() => [
 	...USAGE_COLUMNS.map((column) => ({
 		title: i18n.baseText(column.title),
 		key: column.key,
+		// A string value makes the first click sort low to high. With a number, the table starts high
+		// to low, but only when the first visible row has a count.
 		value: (row: InstancePolicyTableRow) =>
-			row.usage?.[column.key] ??
+			row.usage?.[column.key].toString() ??
 			i18n.baseText('typeAvailabilityPolicies.instancePolicy.table.noValue'),
-		disableSort: true,
 		width: 92,
 	})),
 ]);
 
+function isUsageKey(id: string | undefined): id is keyof TypeUsage {
+	return USAGE_COLUMNS.some((column) => column.key === id);
+}
+
+type CompareRows = (a: InstancePolicyTableRow, b: InstancePolicyTableRow) => number;
+
 const collator = new Intl.Collator();
+const byName: CompareRows = (a, b) => collator.compare(a.displayName, b.displayName);
+
+// The direction flips only the sorted column. Rows with the same value keep A to Z.
+function compareRows(id: string | undefined, direction: number): CompareRows {
+	if (id === 'access') {
+		return (a, b) =>
+			direction * (ACCESS_ORDER.indexOf(a.access) - ACCESS_ORDER.indexOf(b.access)) || byName(a, b);
+	}
+	if (isUsageKey(id)) {
+		return (a, b) => {
+			const aCount = a.usage?.[id];
+			const bCount = b.usage?.[id];
+			// Rows with no known usage stay last in both directions.
+			if (aCount === undefined || bCount === undefined) {
+				return Number(aCount === undefined) - Number(bCount === undefined) || byName(a, b);
+			}
+			return direction * (aCount - bCount) || byName(a, b);
+		};
+	}
+	return (a, b) => direction * byName(a, b);
+}
+
 // Sorting first means a search or a filter only removes rows from a list that is already in order.
 const sortedRows = computed(() => {
 	const [sort] = sortBy.value;
-	const direction = sort?.desc ? -1 : 1;
-	const byName = (a: InstancePolicyTableRow, b: InstancePolicyTableRow) =>
-		collator.compare(a.displayName, b.displayName);
-	// The direction flips only the sorted column. Rows with the same access keep A to Z.
-	const compare =
-		sort?.id === 'access'
-			? (a: InstancePolicyTableRow, b: InstancePolicyTableRow) =>
-					direction * (ACCESS_ORDER.indexOf(a.access) - ACCESS_ORDER.indexOf(b.access)) ||
-					byName(a, b)
-			: (a: InstancePolicyTableRow, b: InstancePolicyTableRow) => direction * byName(a, b);
-	return [...props.rows].sort(compare);
+	return [...props.rows].sort(compareRows(sort?.id, sort?.desc ? -1 : 1));
 });
 
 const searchedRows = computed(() => {
