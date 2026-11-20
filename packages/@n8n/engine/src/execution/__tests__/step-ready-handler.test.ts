@@ -542,24 +542,35 @@ describe('StepReadyHandler', () => {
 		);
 	});
 
-	it('throws, running nothing, when two live values into one slot are not both lists', async () => {
-		const stepStore = makeStepStore(
-			{ id: 'step-m', nodeId: 'm' },
-			{
-				loadStepsByKeys: vi.fn().mockResolvedValue({
-					[at('a')]: stepRow('a', 'completed', [{ scalar: true }]),
-					[at('b')]: stepRow('b', 'completed', [[{ json: { from: 'b' } }]]),
-				}),
-			},
-		);
-		const executor = makeExecutor();
-		const handler = makeHandler(makeExecutionStore({ graph: converging }), stepStore, makeQueue(), {
-			v1StepExecutor: executor,
-		});
+	it.each([
+		{ order: 'the first', a: { scalar: true }, b: [{ json: { from: 'b' } }] },
+		{ order: 'the second', a: [{ json: { from: 'a' } }], b: { scalar: true } },
+	])(
+		'throws, running nothing, when $order of two live values into one slot is not a list',
+		async ({ a, b }) => {
+			const stepStore = makeStepStore(
+				{ id: 'step-m', nodeId: 'm' },
+				{
+					loadStepsByKeys: vi.fn().mockResolvedValue({
+						[at('a')]: stepRow('a', 'completed', [a]),
+						[at('b')]: stepRow('b', 'completed', [b]),
+					}),
+				},
+			);
+			const executor = makeExecutor();
+			const handler = makeHandler(
+				makeExecutionStore({ graph: converging }),
+				stepStore,
+				makeQueue(),
+				{
+					v1StepExecutor: executor,
+				},
+			);
 
-		await expect(handler.handle({ ...event, stepId: 'step-m' })).rejects.toThrow(/not all lists/);
-		expect(executor.execute).not.toHaveBeenCalled();
-	});
+			await expect(handler.handle({ ...event, stepId: 'step-m' })).rejects.toThrow(/not all lists/);
+			expect(executor.execute).not.toHaveBeenCalled();
+		},
+	);
 
 	it('leaves an input slot no edge feeds null', async () => {
 		const gapped: WorkflowGraph = {
@@ -1996,7 +2007,10 @@ describe('StepReadyHandler over loop iterations', () => {
 			{ nodeId: 'B', iteration: 4 },
 		]);
 		expect(executor.execute).toHaveBeenCalledWith(
-			expect.objectContaining({ inputs: [[{ json: { done: true } }]] }),
+			expect.objectContaining({
+				inputs: [[{ json: { done: true } }]],
+				inputSources: [[expect.objectContaining({ nodeId: 'B', iteration: 4 })]],
+			}),
 		);
 	});
 

@@ -128,7 +128,7 @@ describe('relinkOutputItems', () => {
 	});
 
 	it('leaves a link that already carries a source overwrite alone', () => {
-		const outputs = [[{ json: {}, pairedItem: { item: 5, sourceOverwrite: fromA } }]];
+		const outputs = [[{ json: {}, pairedItem: { item: 1, sourceOverwrite: fromA } }]];
 
 		expect(relinkOutputItems(outputs, links)).toEqual(outputs);
 	});

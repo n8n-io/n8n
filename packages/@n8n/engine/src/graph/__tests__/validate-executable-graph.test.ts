@@ -134,6 +134,28 @@ describe('validateExecutableGraph', () => {
 		);
 	});
 
+	it('accepts two outputs of one node into the same input slot', () => {
+		const graph: WorkflowGraph = {
+			nodes: [...validGraph.nodes, { id: 'b', name: 'B', type: 'v1-node' }],
+			edges: [
+				...validGraph.edges,
+				{ from: 'a', to: 'b', outputIndex: 0, inputIndex: 0 },
+				{ from: 'a', to: 'b', outputIndex: 1, inputIndex: 0 },
+			],
+		};
+
+		expect(() => validateExecutableGraph(graph)).not.toThrow();
+	});
+
+	it('accepts one output into two input slots of one node', () => {
+		const graph: WorkflowGraph = {
+			...validGraph,
+			edges: [...validGraph.edges, { from: 'trigger', to: 'a', outputIndex: 0, inputIndex: 1 }],
+		};
+
+		expect(() => validateExecutableGraph(graph)).not.toThrow();
+	});
+
 	it('accepts two edges into the same input slot of one node', () => {
 		const graph: WorkflowGraph = {
 			nodes: [...validGraph.nodes, { id: 'b', name: 'B', type: 'v1-node' }],

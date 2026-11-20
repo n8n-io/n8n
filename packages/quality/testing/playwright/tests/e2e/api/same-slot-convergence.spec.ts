@@ -55,7 +55,7 @@ test.describe(
 			]);
 		});
 
-		test('should run a node on the items of the live edge when the first edge sends nothing @engine:v2-only', async ({
+		test('should run a node on the items of the live edge when the first edge sends nothing @engine:v2', async ({
 			api,
 		}) => {
 			const itemsOf = await runAndRead(api, 'Same_slot_convergence_one_branch.json');
