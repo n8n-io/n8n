@@ -76,6 +76,7 @@ describe('InstancePolicyView', () => {
 			defaultAction: 'allow',
 			types: [
 				{ name: 'bitlyApi', access: 'allow', matchedRuleId: null },
+				{ name: 'airtableApi', access: 'allow', matchedRuleId: null },
 				{ name: 'n8n-nodes-base.notion', access: 'allow', matchedRuleId: null },
 			],
 		});
@@ -225,6 +226,36 @@ describe('InstancePolicyView', () => {
 			'data-credential-type',
 			'airtableApi',
 		);
+	});
+
+	it('closes the dialog of a type that the server does not list', async () => {
+		setup(BOTH_SCOPES, { tab: 'credential', details: 'unknownApi' });
+
+		await waitFor(() => expect(replace).toHaveBeenCalledWith({ query: { tab: 'credential' } }));
+	});
+
+	it('keeps the dialog of a listed type open after the access loads', async () => {
+		const { getByTestId } = setup(BOTH_SCOPES, { tab: 'credential', details: 'airtableApi' });
+
+		await waitFor(() =>
+			expect(fetchInstanceAccess).toHaveBeenCalledWith(expect.anything(), 'credential'),
+		);
+		await new Promise((resolve) => setTimeout(resolve));
+
+		expect(replace).not.toHaveBeenCalled();
+		expect(getByTestId('credential-type-access-dialog')).toBeInTheDocument();
+	});
+
+	it('keeps the dialog open when the access does not load', async () => {
+		fetchInstanceAccess.mockRejectedValue(new Error('offline'));
+		setup(BOTH_SCOPES, { tab: 'credential', details: 'unknownApi' });
+
+		await waitFor(() =>
+			expect(fetchInstanceAccess).toHaveBeenCalledWith(expect.anything(), 'credential'),
+		);
+		await new Promise((resolve) => setTimeout(resolve));
+
+		expect(replace).not.toHaveBeenCalled();
 	});
 
 	it('opens the credential dialog for a user who can manage only credential types', () => {

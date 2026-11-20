@@ -4,7 +4,7 @@ import { N8nSegmentControl, N8nSettingsLayout, N8nSettingsPageHeader } from '@n8
 import { VIEWS } from '@n8n/frontend-constants/views';
 import { useI18n } from '@n8n/i18n';
 import { createReusableTemplate } from '@vueuse/core';
-import { computed, onMounted } from 'vue';
+import { computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import CredentialTypesTab from './CredentialTypesTab.vue';
@@ -69,6 +69,21 @@ function queryWithoutDetails() {
 function closeDetails() {
 	void router.replace({ query: queryWithoutDetails() });
 }
+
+// The server lists every type of a kind, so the dialog of a name that it does not list closes.
+const detailsTypeUnknown = computed(() => {
+	if (!details.value) return false;
+	const access = instancePolicy.typeAccess[details.value.kind];
+	return !!access && !access.types.has(details.value.name);
+});
+
+watch(
+	detailsTypeUnknown,
+	(unknown) => {
+		if (unknown) closeDetails();
+	},
+	{ immediate: true },
+);
 
 // A user who skips the landing page on the way in goes back to Policies.
 const back = computed(() =>
