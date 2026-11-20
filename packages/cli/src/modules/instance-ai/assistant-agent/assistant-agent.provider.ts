@@ -76,6 +76,11 @@ import type {
 	AssistantTurnRuntime,
 	AssistantTurnState,
 } from '../turn-setup/assistant-turn-runtime';
+import {
+	AssistantContextTurnTelemetry,
+	readSuspendedContextTurn,
+	writeSuspendedContextTurn,
+} from './assistant-context-turn-telemetry';
 import { AssistantEventSink } from './assistant-event-sink';
 import {
 	createSnapshotTemporaryWorkflowMarkers,
@@ -339,6 +344,8 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 		environment.context.storedFiles = {
 			read: async (fileId) => await turn.readFile(fileId),
 		};
+		const contextTurn = await this.createContextTurnTelemetry(turn, runId);
+		contextTurn.bind(environment.orchestrationContext.skills);
 
 		let turnInput: AssistantTurnInput | undefined;
 		if (turn.type === 'start') {
@@ -357,6 +364,12 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 					timeZone: request.timeZone,
 					threadArtifacts: request.threadArtifacts,
 					titledByRuntime: true,
+					onInstanceContextInjection: (injection) =>
+						contextTurn.setContext({
+							injection,
+							instanceContextEnabled: environment.instanceContextEnabled,
+							nodeUsageEnabled: environment.nodeUsageEnabled,
+						}),
 				});
 			turnInput = trace
 				? await trace.tracePromptBuild(
@@ -423,6 +436,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 			},
 			onChunk: (chunk) => {
 				trace?.observeChunk(chunk);
+				contextTurn.observeChunk(chunk);
 				if (chunk.type === 'error') streamErrors.add(chunk.error);
 				if (chunk.type === 'tool-call-suspended') {
 					setupRoute.observeSuspension(chunk.toolName, chunk.suspendPayload);
@@ -457,6 +471,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 					// Finish before the host events close and the next queued turn reads the cursor.
 					await inputAccepted;
 					await this.claimTurnUsage(user, thread.id, runId, outcome, usage);
+					await this.settleContextTurn(turn, runId, outcome, contextTurn, usage?.usage);
 					// Before the card resumes, so that the resumed turn does not route setup again.
 					await setupRoute.markSuspendedSetupsRouted();
 					// A suspended turn can still be building the workflows it marked.
@@ -489,6 +504,63 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 				await this.claimSideCallUsage(user, thread.id, runId, report),
 			formatError: async (error) => toFormattedTurnError(await shownErrorOf(error)),
 		};
+	}
+
+	/** A resume continues the Hub skill use and the instance context of its suspended segment. */
+	private async createContextTurnTelemetry(
+		turn: SystemAgentTurn<AssistantSandboxLease>,
+		runId: string,
+	): Promise<AssistantContextTurnTelemetry> {
+		const scope = { userId: turn.user.id, threadId: turn.thread.id, runId };
+		if (turn.type === 'start') {
+			return new AssistantContextTurnTelemetry(this.telemetry, { ...scope, resumed: false });
+		}
+		let saved: Awaited<ReturnType<typeof readSuspendedContextTurn>>;
+		try {
+			saved = await readSuspendedContextTurn(turn.memory, turn.thread.id, runId);
+		} catch (error) {
+			this.logger.warn('Failed to read the instance context of a suspended Assistant turn', {
+				threadId: turn.thread.id,
+				runId,
+				error: getErrorMessage(error),
+			});
+		}
+		return new AssistantContextTurnTelemetry(
+			this.telemetry,
+			{
+				...scope,
+				resumed: true,
+				openToolCallIds: new Set(turn.openSuspensions.map(({ toolCallId }) => toolCallId)),
+			},
+			saved,
+		);
+	}
+
+	/**
+	 * Reports the segment. A suspended turn keeps its instance context for the
+	 * resume, and a resumed turn that ends drops it. Best effort.
+	 */
+	private async settleContextTurn(
+		turn: SystemAgentTurn<AssistantSandboxLease>,
+		runId: string,
+		outcome: SystemAgentTurnOutcome,
+		contextTurn: AssistantContextTurnTelemetry,
+		usage: TokenUsage | undefined,
+	): Promise<void> {
+		try {
+			// Report first: the report counts a Hub skill snapshot, and the saved state keeps the count.
+			contextTurn.report(outcome.status, usage);
+			const context = outcome.status === 'suspended' ? contextTurn.save() : undefined;
+			// Only a resume can end a run that stored a context.
+			if (!context && turn.type === 'start') return;
+			await writeSuspendedContextTurn(turn.memory, turn.thread.id, runId, context);
+		} catch (error) {
+			this.logger.warn('Failed to store the instance context of an Assistant turn', {
+				threadId: turn.thread.id,
+				runId,
+				error: getErrorMessage(error),
+			});
+		}
 	}
 
 	/** Sends "Builder asked for input" once for each new Assistant card. */

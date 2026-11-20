@@ -64,6 +64,12 @@ export interface ClientOAuth2Options {
 	 * qualify as well as the full bridge.
 	 */
 	ssrfBridge?: Pick<SsrfBridge, 'validateUrl' | 'validateRedirectSync' | 'createSecureLookup'>;
+	/**
+	 * Proxy URL for token endpoint requests, used instead of the environment's proxy
+	 * settings. n8n's simulated-services eval runs set it so token requests reach the
+	 * sim server, like the run's other requests.
+	 */
+	proxy?: string;
 }
 
 export class ResponseError extends Error {
@@ -147,7 +153,7 @@ export class ClientOAuth2 {
 			};
 		}
 
-		const proxyUrl = resolveProxyUrl(url);
+		const proxyUrl = this.options.proxy ?? resolveProxyUrl(url);
 
 		// Resolution is re-checked on the agent, so a hostname that resolves to a
 		// different address between validation and connect is still caught. Only for
@@ -162,14 +168,14 @@ export class ClientOAuth2 {
 		// agents a process lacking the global env-proxy agents connects directly and
 		// bypasses the proxy.
 		if (options.ignoreSSLIssues || lookup || proxyUrl) {
-			requestConfig.httpsAgent = createHttpsProxyAgent(url, undefined, {
+			requestConfig.httpsAgent = createHttpsProxyAgent(url, this.options.proxy, {
 				...(options.ignoreSSLIssues ? { rejectUnauthorized: false } : {}),
 				...(lookup ? { lookup } : {}),
 			});
 		}
 
 		if (lookup || proxyUrl) {
-			requestConfig.httpAgent = createHttpProxyAgent(url, undefined, {
+			requestConfig.httpAgent = createHttpProxyAgent(url, this.options.proxy, {
 				...(lookup ? { lookup } : {}),
 			});
 		}

@@ -38,6 +38,8 @@ import {
 	type SideIndex,
 	parseBranchJson,
 	parsePackageManifest,
+	previewEnvironment,
+	previewSource,
 	scopeManifestToProject,
 } from './promotion-preview';
 import { PromotionEnvironmentResolver } from './promotion-environment.resolver';
@@ -106,7 +108,8 @@ export class PromotionChangeService {
 		const preview = await this.applyPreviewService.build({ user, projectId, files, instance });
 		return {
 			commitSha: branch.commitSha,
-			source: { environmentId: branch.environmentId, branchName: branch.branchName },
+			source: previewSource(branch.input),
+			environment: previewEnvironment(branch.input),
 			...preview,
 		};
 	}
@@ -119,10 +122,10 @@ export class PromotionChangeService {
 		user: User,
 		environmentId: string,
 	): Promise<PromotionInstanceApplyPreview> {
-		const { commitSha, source, files } =
+		const { commitSha, source, environment, files } =
 			await this.promotionsService.readInstanceApplyPackage(environmentId);
 		const preview = await this.applyPreviewService.buildInstance({ user, files });
-		return { commitSha, source, ...preview };
+		return { commitSha, source, environment, ...preview };
 	}
 
 	/**

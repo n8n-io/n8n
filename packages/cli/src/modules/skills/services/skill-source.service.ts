@@ -81,6 +81,7 @@ import { SkillService } from './skill.service';
 import { SkillSyncFlagGate } from './skill-sync-flag-gate';
 import { SkillUsageProxy } from './skill-usage-proxy.service';
 import {
+	flaggedCodes,
 	SkillsTelemetry,
 	type SkillSourceTelemetryReason,
 	type SkillTelemetryRef,
@@ -911,15 +912,12 @@ export class SkillSourceService {
 		await Promise.all(
 			reads.map(async ({ check }) => {
 				if (!check || check.verdict === 'pass') return;
-				const ruleCodes = check.findings
-					.filter((finding) => finding.severity !== 'info')
-					.map((finding) => finding.rule);
 				await this.skillsTelemetry.flaggedSkill(
 					{
 						provider,
 						stage: 'import',
 						verdict: check.verdict,
-						rule_codes: [...new Set(ruleCodes)],
+						...flaggedCodes(check.findings),
 					},
 					user.id,
 				);
