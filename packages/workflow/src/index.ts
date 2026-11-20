@@ -58,6 +58,7 @@ export * from './highlighted-data';
 export * from './workflow';
 export * from './workflow-checksum';
 export * from './workflow-data-proxy';
+export { pairedItemStateKey } from './workflow-data-proxy-paired-item-memo';
 export * from './workflow-data-proxy-env-provider';
 export * from './workflow-validation';
 export * from './workflow-structure-validation';
