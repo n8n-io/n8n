@@ -5,6 +5,7 @@ import {
 	JsonColumn,
 	Project,
 	TagEntity,
+	WorkflowEntity,
 	User,
 	WithTimestampsAndStringId,
 } from '@n8n/db';
@@ -44,6 +45,7 @@ export function isProjectAgent<T extends Pick<Agent, 'projectId'>>(
 
 @Entity({ name: 'agents' })
 @Index('IDX_agents_project_folder', ['projectId', 'parentFolderId'])
+@Index(['approvalWorkflowId'])
 export class Agent extends WithTimestampsAndStringId {
 	@Column({ type: 'varchar', length: 36, nullable: true })
 	parentFolderId: string | null;
@@ -66,6 +68,17 @@ export class Agent extends WithTimestampsAndStringId {
 	 */
 	@Column({ type: 'varchar', length: 16, default: 'project' })
 	scope: AgentScope;
+
+	/** Private backing workflow for channel approval executions. It has no user shares. */
+	@Column({ type: 'varchar', length: 36, nullable: true })
+	approvalWorkflowId: string | null;
+
+	@ManyToOne(() => WorkflowEntity, { onDelete: 'RESTRICT', nullable: true })
+	@JoinColumn({
+		name: 'approvalWorkflowId',
+		foreignKeyConstraintName: 'FK_agent_approval_execution_owner',
+	})
+	approvalWorkflow?: Relation<WorkflowEntity> | null;
 
 	@JsonColumn({ nullable: true, default: null })
 	schema: StoredAgentConfig | null;

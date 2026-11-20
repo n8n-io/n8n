@@ -82,6 +82,7 @@ export interface N8NInstancesOptions {
 	network: StartedNetwork;
 	serviceEnvironment: Record<string, string>;
 	userEnvironment?: Record<string, string>;
+	unsetEnv?: string[];
 	usePostgres: boolean;
 	engine?: EngineMode;
 	engineAuthSecret?: string;
@@ -99,6 +100,7 @@ export interface N8NInstancesOptions {
 	/** Resource quota for webhook procs. Falls back to `resourceQuota` if omitted. */
 	webhookResourceQuota?: { memory?: number; cpu?: number };
 	filesToMount?: FileToMount[];
+	stackFiles?: FileToMount[];
 	coverageHostDir?: string;
 	registerContainer?: (container: StartedTestContainer) => void;
 	startupDeadline: StartupDeadline;
@@ -152,6 +154,7 @@ function computeEnvironment(options: N8NInstancesOptions): ComputedEnvironment {
 		projectName,
 		serviceEnvironment,
 		userEnvironment = {},
+		unsetEnv = [],
 	} = options;
 
 	const isQueueMode = mains > 1 || workers > 0 || webhooks > 0;
@@ -197,6 +200,11 @@ function computeEnvironment(options: N8NInstancesOptions): ComputedEnvironment {
 		engineEnvironment.WEBHOOK_URL = env.WEBHOOK_URL;
 	}
 
+	for (const key of unsetEnv) {
+		delete env[key];
+		if (engineEnvironment) delete engineEnvironment[key];
+	}
+
 	return { environment: env, engineEnvironment };
 }
 
@@ -216,6 +224,7 @@ interface SharedConfig {
 	network: StartedNetwork;
 	resourceQuota?: { memory?: number; cpu?: number };
 	filesToMount?: FileToMount[];
+	stackFiles?: FileToMount[];
 	coverageHostDir?: string;
 	registerContainer?: (container: StartedTestContainer) => void;
 	startupDeadline: StartupDeadline;
@@ -250,7 +259,8 @@ async function createContainer(
 		environment,
 		network,
 		resourceQuota,
-		filesToMount,
+		filesToMount = [],
+		stackFiles = [],
 		coverageHostDir,
 		registerContainer,
 		startupDeadline,
@@ -280,13 +290,9 @@ async function createContainer(
 		},
 	);
 
-	const containerEnvironment = coverageHostDir
-		? { ...environment, NODE_V8_COVERAGE: CONTAINER_COVERAGE_DIR }
-		: environment;
-
 	const containerImage = image ?? N8N_IMAGE;
 	let container = new GenericContainer(containerImage)
-		.withEnvironment(containerEnvironment)
+		.withEnvironment(environment)
 		.withLabels({
 			'com.docker.compose.project': projectName,
 			'com.docker.compose.service': SERVICE_LABEL[role],
@@ -343,12 +349,13 @@ async function createContainer(
 	// Reuse stays off for a container with a host dir mounted: the process must
 	// exit to flush coverage, cycle data belongs to the cycle, and a reused
 	// container would keep the binary data dir of an earlier stack.
-	if (!coverageHostDir && !userHomeHostDir && !binaryDataHostDir) {
+	// Reuse also stays off for stack files because Testcontainers does not hash their contents.
+	if (!coverageHostDir && !userHomeHostDir && !binaryDataHostDir && stackFiles.length === 0) {
 		container = container.withReuse();
 	}
 
-	if (filesToMount?.length) {
-		container = container.withCopyContentToContainer(filesToMount);
+	if (stackFiles.length || filesToMount.length) {
+		container = container.withCopyContentToContainer([...stackFiles, ...filesToMount]);
 	}
 
 	if (resourceQuota) {
@@ -404,6 +411,7 @@ export async function createN8NInstances(
 		mains,
 		workers,
 		webhooks = 0,
+		unsetEnv,
 		projectName,
 		network,
 		allocatedPort,
@@ -411,6 +419,7 @@ export async function createN8NInstances(
 		workerResourceQuota,
 		webhookResourceQuota,
 		filesToMount,
+		stackFiles,
 		coverageHostDir,
 		registerContainer,
 		startupDeadline,
@@ -428,13 +437,19 @@ export async function createN8NInstances(
 	const { environment, engineEnvironment } = computeEnvironment(options);
 	const containers: StartedTestContainer[] = [];
 	const diagnostics: N8NStartupDiagnostics = { attemptId, logs: {}, readinessPayloads: {} };
+	const withCoverageEnv = (env: Record<string, string>) =>
+		coverageHostDir && !unsetEnv?.includes('NODE_V8_COVERAGE')
+			? { ...env, NODE_V8_COVERAGE: CONTAINER_COVERAGE_DIR }
+			: env;
+	const environmentWithCoverage = withCoverageEnv(environment);
 
 	const mainShared: SharedConfig = {
 		projectName,
-		environment,
+		environment: environmentWithCoverage,
 		network,
 		resourceQuota,
 		filesToMount: [...(filesToMount ?? []), ...(engineTlsFiles?.main ?? [])],
+		stackFiles,
 		coverageHostDir,
 		registerContainer,
 		startupDeadline,
@@ -447,10 +462,11 @@ export async function createN8NInstances(
 
 	const workerShared: SharedConfig = {
 		projectName,
-		environment,
+		environment: environmentWithCoverage,
 		network,
 		resourceQuota: workerResourceQuota ?? resourceQuota,
 		filesToMount,
+		stackFiles,
 		coverageHostDir,
 		registerContainer,
 		startupDeadline,
@@ -465,6 +481,7 @@ export async function createN8NInstances(
 		network,
 		resourceQuota: webhookResourceQuota ?? resourceQuota,
 		filesToMount,
+		stackFiles,
 		registerContainer,
 		startupDeadline,
 		image,
@@ -474,7 +491,7 @@ export async function createN8NInstances(
 
 	const engineShared: SharedConfig = {
 		projectName,
-		environment: engineEnvironment ?? {},
+		environment: withCoverageEnv(engineEnvironment ?? {}),
 		network,
 		resourceQuota,
 		filesToMount: [...(filesToMount ?? []), ...(engineTlsFiles?.engine ?? [])],

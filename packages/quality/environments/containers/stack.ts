@@ -157,6 +157,8 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		postgres: usePostgresConfig = false,
 		engine,
 		env = {},
+		unsetEnv,
+		files: stackFiles,
 		projectName,
 		resourceQuota,
 		workerResourceQuota,
@@ -408,6 +410,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 				network,
 				serviceEnvironment: environment,
 				userEnvironment: env,
+				unsetEnv,
 				usePostgres,
 				engine,
 				engineAuthSecret,
@@ -418,6 +421,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 				workerResourceQuota,
 				webhookResourceQuota,
 				filesToMount,
+				stackFiles,
 				coverageHostDir,
 				registerContainer: (container) => {
 					resources.trackContainer(container);
@@ -655,6 +659,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 						network,
 						serviceEnvironment: environment,
 						userEnvironment: { ...env, ...options.env },
+						unsetEnv,
 						usePostgres,
 						// Without this the replacement main drops the engine-v2 module, and a
 						// workflow that still asks for engine v2 fails far from the cause.
@@ -669,6 +674,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 						allocatedPort: allocatedMainPort,
 						resourceQuota,
 						filesToMount,
+						stackFiles,
 						coverageHostDir,
 						registerContainer: (container) => {
 							resources.trackContainer(container);

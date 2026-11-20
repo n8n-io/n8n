@@ -45,7 +45,7 @@ export class AgentBuilderPage extends BasePage {
 	}
 
 	async hoverTestButtonWarning(button: Locator): Promise<void> {
-		await button.locator('..').hover();
+		await button.hover();
 	}
 
 	getPreviewWorkingWarning(): Locator {
