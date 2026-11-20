@@ -18,6 +18,7 @@ import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
 
 export const MANIFEST_PATH = '.github/scaffold-manifest.json';
@@ -49,7 +50,7 @@ export const PROTECTED = new Set([
 	'package-lock.json',
 ]);
 
-const TRIGGER_GROUP = /group:\s*\[\s*['"]trigger['"]\s*\]/;
+const TRIGGER_GROUP = /group:\s*\[[^\]]*['"]trigger['"][^\]]*\]/;
 
 const toPosix = (p) => p.split(path.sep).join('/');
 
@@ -359,7 +360,7 @@ export function main(argv = process.argv.slice(2)) {
 }
 
 // Only run when executed directly, not when imported by tests.
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
 	try {
 		main();
 	} catch (error) {

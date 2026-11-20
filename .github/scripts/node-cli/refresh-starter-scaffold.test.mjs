@@ -174,9 +174,11 @@ describe('applySync', () => {
 		});
 
 		const second = planSync({ generated: [gen], previousFiles: readManifest(root).files });
+		applySync(root, second);
 
 		assert.deepEqual([...second.writes.keys()], [...first.writes.keys()]);
 		assert.deepEqual(second.deletes, []);
+		assert.equal(fs.readFileSync(path.join(root, 'nodes/Example/Example.node.ts'), 'utf8'), 'new');
 	});
 });
 
@@ -279,11 +281,16 @@ describe('findTriggerNodes', () => {
 			'nodes/A/A.node.ts': "group: ['trigger'],",
 			'nodes/B/B.node.ts': 'group: [ "trigger" ],',
 			'nodes/C/C.node.ts': "group: ['transform'],",
+			'nodes/E/E.node.ts': "group: ['trigger', 'schedule'],",
 			'nodes/D/D.node.json': "group: ['trigger']",
 			'credentials/X.credentials.ts': "group: ['trigger']",
 		});
 
-		assert.deepEqual(findTriggerNodes(root), ['nodes/A/A.node.ts', 'nodes/B/B.node.ts']);
+		assert.deepEqual(findTriggerNodes(root), [
+			'nodes/A/A.node.ts',
+			'nodes/B/B.node.ts',
+			'nodes/E/E.node.ts',
+		]);
 	});
 
 	it('returns nothing without a nodes directory', () => {
