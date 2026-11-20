@@ -1,5 +1,5 @@
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
-import type { ToolCallEvidence } from '@n8n/api-types';
+import type { ToolCallEvidence, ToolTestCapability } from '@n8n/api-types';
 import { OperationalError } from '@n8n/errors';
 import { isRecord } from '@n8n/utils/is-record';
 import { AsyncLocalStorage } from 'node:async_hooks';
@@ -10,6 +10,7 @@ import type { McpCaller } from '../../mcp-guard/mcp-upstream';
 import { GuardRouter } from '../../mcp-guard/router';
 import { PlanHydrator } from '../../mcp-guard/plan-hydrator';
 
+import { LinearGymManifest } from './linear-gym-manifest';
 import type {
 	OpenWorldInput,
 	SimulatedAgent,
@@ -61,14 +62,9 @@ async function json(
 	if (!r.ok) throw unavailable();
 	return await r.json();
 }
-function known(agent: SimulatedAgent) {
-	const matches = agent.tools.filter((t) => t.toolName === 'linear');
-	return (
-		matches.length === 1 &&
-		matches[0].kind === 'mcp' &&
-		matches[0].origin === 'https://mcp.linear.app'
-	);
-}
+const harnessToken = 'synthetic-loopback-harness';
+/** Every MCP server of the agent. A server without an origin stays, so an outage blocks it too. */
+const mcpServers = (agent: SimulatedAgent) => agent.tools.filter((tool) => tool.kind === 'mcp');
 const rpc = (name: string, args: unknown) => ({
 	jsonrpc: '2.0',
 	id: 1,
@@ -101,22 +97,50 @@ export class LinearGymBackend implements SimulationBackend {
 	/** The world copies data that the Linear connection of the draft can read. */
 	readonly worldDependsOnDraftConnections = true;
 
-	async describeTools(agent: SimulatedAgent) {
-		return known(agent)
-			? [{ toolName: 'linear', kind: 'mcp' as const, testability: 'simulated' as const }]
-			: [];
+	private readonly manifest = new LinearGymManifest();
+
+	/**
+	 * The name of the one MCP server of the agent that the Gym serves. A world holds one Linear
+	 * workspace, so two servers on a served origin give no name. Rejects when the Gym cannot tell.
+	 */
+	private async servedServer(agent: SimulatedAgent): Promise<string | undefined> {
+		const base = endpoint(process.env.GYM_BASE_URL, '/');
+		const token = process.env.GYM_HARNESS_TOKEN;
+		if (token !== harnessToken) throw unavailable();
+		const origins = await this.manifest.mcpOrigins(base, token);
+		// Scheme, host and port must all match. A server without an origin matches nothing.
+		const served = mcpServers(agent).filter(
+			({ origin }) => origin && URL.canParse(origin) && origins.has(new URL(origin).origin),
+		);
+		return served.length === 1 ? served[0].toolName : undefined;
+	}
+
+	async describeTools(agent: SimulatedAgent): Promise<ToolTestCapability[]> {
+		const servers = mcpServers(agent);
+		if (servers.length === 0) return [];
+		try {
+			const toolName = await this.servedServer(agent);
+			return toolName ? [{ toolName, kind: 'mcp', testability: 'simulated' }] : [];
+		} catch {
+			// Without an answer of the Gym, no MCP server is served. There is no fallback.
+			return servers.map(({ toolName }) => ({
+				toolName,
+				kind: 'mcp',
+				testability: 'blocked',
+				reason: 'simulator_unavailable',
+				detail: 'The simulator did not report what it serves.',
+			}));
+		}
 	}
 	async openWorld({ agent, ownerId, testChatId }: OpenWorldInput): Promise<SimulationWorld> {
-		if (!known(agent) || !ownerId || !testChatId || !agent.projectId || !agent.agentId)
-			throw unavailable();
+		if (!ownerId || !testChatId || !agent.projectId || !agent.agentId) throw unavailable();
 		try {
+			const server = await this.servedServer(agent);
+			if (!server) throw unavailable();
 			const base = endpoint(process.env.GYM_BASE_URL, '/');
 			const upstream = endpoint(process.env.LINEAR_UPSTREAM_URL, '/mcp');
 			const token = process.env.GYM_HARNESS_TOKEN;
-			if (
-				token !== 'synthetic-loopback-harness' ||
-				new URL(upstream).origin === new URL(base).origin
-			)
+			if (token !== harnessToken || new URL(upstream).origin === new URL(base).origin)
 				throw unavailable();
 			const scope = createHash('sha256')
 				.update(JSON.stringify([ownerId, agent.projectId, agent.agentId, testChatId, 'linear']))
@@ -259,7 +283,7 @@ export class LinearGymBackend implements SimulationBackend {
 					const unsupported = { outcome: 'unsupported' } as const;
 					if (
 						req.protocol !== 'mcp' ||
-						req.server !== 'linear' ||
+						req.server !== server ||
 						req.method !== 'POST' ||
 						!isRecord(req.body) ||
 						req.body.jsonrpc !== '2.0'

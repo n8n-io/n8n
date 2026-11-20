@@ -8,16 +8,109 @@ import { SimulationBlockedError } from '../../src/modules/agents/simulation/simu
 import { AgentMessageQueueConsumer } from '../../src/modules/agents/agent-message-queue-consumer.service';
 import { AgentsBuilderToolsService } from '../../src/modules/agents/builder/agents-builder-tools.service';
 
+/**
+ * Capability discovery against the real Gym. These checks are part of the documented command, so
+ * they cannot skip. The backend comes from the registry, as in the product.
+ */
+async function capabilities() {
+	const base = process.env.GYM_BASE_URL;
+	assert.equal(new URL(base).hostname, '127.0.0.1');
+	const manifestUrl = `${base}/_sim/v1/manifest?service=linear`;
+	const network = globalThis.fetch;
+	const requests = [];
+	globalThis.fetch = async (url, init) => {
+		// Only a manifest read on loopback is expected here.
+		const endpoint = new URL(url);
+		assert.equal(endpoint.hostname, '127.0.0.1');
+		assert.equal(endpoint.pathname + endpoint.search, '/_sim/v1/manifest?service=linear');
+		assert.equal(init?.method ?? 'GET', 'GET');
+		requests.push(String(url));
+		return await network(url, { ...init, redirect: 'error' });
+	};
+	try {
+		const document = await (await network(manifestUrl)).json();
+		assert.equal(document.contract, 'sim-service/v1');
+		assert.equal(document.service, 'linear');
+		assert.deepEqual(
+			document.interfaces.mcp.map(({ url, status }) => ({ url, status })),
+			[{ url: 'https://mcp.linear.app/mcp', status: 'implemented' }],
+		);
+
+		const agent = (...tools) => ({
+			agentId: 'agent',
+			projectId: 'project',
+			name: 'agent',
+			instructions: '',
+			tools,
+		});
+		const linear = { kind: 'mcp', toolName: 'linear', origin: 'https://mcp.linear.app' };
+		const withoutOrigin = { kind: 'mcp', toolName: 'no-origin' };
+		const simulated = { toolName: 'linear', kind: 'mcp', testability: 'simulated' };
+		const unavailable = (toolName) => ({
+			toolName,
+			kind: 'mcp',
+			testability: 'blocked',
+			reason: 'simulator_unavailable',
+			detail: 'The simulator did not report what it serves.',
+		});
+
+		const backend = new SimulationBackendRegistry().get();
+		assert.ok(backend);
+		assert.deepEqual(await backend.describeTools(agent(linear)), [simulated]);
+		// Another host, another scheme and another port of the served host are not served.
+		for (const origin of [
+			'https://api.linear.app',
+			'https://mcp.notion.com',
+			'http://mcp.linear.app',
+			'https://mcp.linear.app:8443',
+		])
+			assert.deepEqual(await backend.describeTools(agent({ ...linear, origin })), [], origin);
+		// A healthy Gym leaves a server without an origin unserved.
+		assert.deepEqual(await backend.describeTools(agent(withoutOrigin)), []);
+		assert.deepEqual(await backend.describeTools(agent(linear, withoutOrigin)), [simulated]);
+		// One good answer served every call.
+		assert.deepEqual(requests, [manifestUrl]);
+
+		// Port 1 on loopback refuses the connection: no Gym listens there.
+		process.env.GYM_BASE_URL = 'http://127.0.0.1:1';
+		try {
+			assert.deepEqual(await backend.describeTools(agent(linear, withoutOrigin)), [
+				unavailable('linear'),
+				unavailable('no-origin'),
+			]);
+		} finally {
+			process.env.GYM_BASE_URL = base;
+		}
+		assert.deepEqual(requests, [manifestUrl, 'http://127.0.0.1:1/_sim/v1/manifest?service=linear']);
+		// A failure is not kept. The Gym is asked again.
+		assert.deepEqual(await backend.describeTools(agent(linear)), [simulated]);
+		assert.equal(requests.length, 3);
+	} finally {
+		globalThis.fetch = network;
+	}
+	console.log('PASS capability discovery against the Gym: origins, no origin, outage');
+}
+
 async function acceptance() {
 	const base = process.env.GYM_BASE_URL,
 		upstream = process.env.LINEAR_UPSTREAM_URL;
 	for (const url of [base, upstream]) assert.equal(new URL(url).hostname, '127.0.0.1');
 	const network = globalThis.fetch,
-		ledger = [];
+		ledger = [],
+		discovery = [];
 	let outage = false;
 	globalThis.fetch = async (url, init) => {
 		const endpoint = new URL(url);
 		assert.ok([base, new URL(upstream).origin].includes(endpoint.origin));
+		// The capability read of the backend is not part of a turn. It has its own record.
+		if (endpoint.pathname === '/_sim/v1/manifest') {
+			assert.equal(endpoint.origin, base);
+			assert.equal(endpoint.search, '?service=linear');
+			assert.equal(init?.method ?? 'GET', 'GET');
+			const response = await network(url, { ...init, redirect: 'error' });
+			discovery.push(response.status);
+			return response;
+		}
 		const body = init?.body ? JSON.parse(init.body) : {};
 		const op = {
 			target: endpoint.origin === base ? 'gym' : 'upstream',
@@ -322,9 +415,15 @@ async function acceptance() {
 	assert.notEqual(replaced.world, first.world);
 	assert.match(replaced.body, /Renew Initech/);
 	assert.equal(ledger.filter((op) => op.target === 'upstream').length, 7);
+	// One good answer of the Gym served every turn within the cache time.
+	assert.ok(discovery.length >= 1);
+	assert.ok(discovery.every((status) => status === 200));
+	console.log(`capability reads of the Gym manifest: ${discovery.length}`);
 	console.log('PASS draft turns, cache, owner, isolation, selector and fail-closed decisions');
 }
-acceptance().catch((error) => {
-	console.error(error);
-	process.exitCode = 1;
-});
+capabilities()
+	.then(acceptance)
+	.catch((error) => {
+		console.error(error);
+		process.exitCode = 1;
+	});

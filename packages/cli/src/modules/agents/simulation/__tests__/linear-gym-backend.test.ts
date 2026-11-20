@@ -71,6 +71,7 @@ describe('LinearGymBackend selection', () => {
 	});
 
 	it('requires the configured server and an owner', async () => {
+		fakeServices();
 		expect(
 			await backend.describeTools({
 				...input.agent,
@@ -149,6 +150,12 @@ function fakeServices() {
 		});
 
 	vi.stubGlobal('fetch', async (url: string, init: RequestInit) => {
+		if (url === `${gymBase}/_sim/v1/manifest?service=linear`)
+			return reply({
+				contract: 'sim-service/v1',
+				service: 'linear',
+				interfaces: { mcp: [{ url: 'https://mcp.linear.app/mcp', status: 'implemented' }] },
+			});
 		const body = JSON.parse(String(init.body));
 		const headers = new Headers(init.headers);
 		if (url === upstreamUrl) {
@@ -328,6 +335,8 @@ it.skipIf(!process.env.GYM_BASE_URL)(
 	'updates only the issue of its own world in a real Gym',
 	async () => {
 		const backend = new LinearGymBackend();
+		// The answer of the Gym about what it serves is now in the cache.
+		expect(await backend.describeTools(input.agent)).toHaveLength(1);
 		const observe = vi.spyOn(globalThis, 'fetch');
 		const first = await backend.openWorld(input);
 		expect(observe.mock.calls.map(([url]) => url)).toEqual([
