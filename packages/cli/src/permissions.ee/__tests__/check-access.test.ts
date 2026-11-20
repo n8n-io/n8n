@@ -179,22 +179,29 @@ describe('userHasScopes', () => {
 	});
 
 	describe('resource not found scenarios', () => {
-		it.each<{ type: 'workflow' | 'credential'; id: string }>([
-			{ type: 'workflow', id: 'workflowId' },
-			{ type: 'credential', id: 'credentialId' },
-		])('should throw NotFoundError if $type is not found', async ({ type, id }) => {
+		it.each<{
+			type: 'workflow' | 'credential';
+			id: string;
+			scopes: Scope[];
+			params: { credentialId?: string; workflowId?: string };
+		}>([
+			{
+				type: 'workflow',
+				id: 'workflowId',
+				scopes: ['workflow:read'],
+				params: { workflowId: 'workflowId' },
+			},
+			{
+				type: 'credential',
+				id: 'credentialId',
+				scopes: ['credential:read'],
+				params: { credentialId: 'credentialId' },
+			},
+		])('should throw NotFoundError if $type is not found', async ({ scopes, params }) => {
 			findByWorkflowMock.mockResolvedValue([]);
 			findByCredentialMock.mockResolvedValue([]);
 
 			const user = { id: 'userId', scopes: [], role: GLOBAL_MEMBER_ROLE } as unknown as User;
-			const scopes = ['workflow:read', 'credential:read'] as Scope[];
-
-			const params: { credentialId?: string; workflowId?: string; projectId?: string } = {};
-			if (type === 'credential') {
-				params.credentialId = id;
-			} else {
-				params.workflowId = id;
-			}
 
 			await expect(userHasScopes(user, scopes, false, params)).rejects.toThrow(NotFoundError);
 		});
@@ -316,6 +323,34 @@ describe('userHasScopes', () => {
 			const result = await userHasScopes(user, ['agent:update'], false, { credentialId });
 
 			expect(result).toBe(false);
+		});
+
+		it('does not let agent access satisfy a credential scope when the credential ID is missing', async () => {
+			agentFindByIdMock.mockResolvedValue(agent);
+			findByCredentialMock.mockResolvedValue([credentialShare]);
+			roleServiceMock.mockImplementation(resolveRolesWithScope);
+			denyGlobalCredentialAccess();
+
+			const result = await userHasScopes(user, ['credential:read'], false, { agentId });
+
+			expect(result).toBe(false);
+			expect(findByCredentialMock).not.toHaveBeenCalled();
+			expect(agentFindByIdMock).not.toHaveBeenCalled();
+		});
+
+		it('rejects a recognized scope with no matching ID even when another resource ID is present', async () => {
+			agentFindByIdMock.mockResolvedValue(agent);
+			roleServiceMock.mockImplementation(resolveRolesWithScope);
+			denyGlobalCredentialAccess();
+
+			const result = await userHasScopes(user, ['workflow:read'], false, {
+				agentId,
+				credentialId,
+			});
+
+			expect(result).toBe(false);
+			expect(findByWorkflowMock).not.toHaveBeenCalled();
+			expect(findByCredentialMock).not.toHaveBeenCalled();
 		});
 
 		it('allows a credential scope on a composite route with valid credential access', async () => {

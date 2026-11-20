@@ -246,11 +246,12 @@ export async function userHasScopes(
 		{ prefix: 'project:', type: 'project' },
 	];
 
-	const resolveScopeResource = (scope: Scope): ResourceCheck | undefined => {
+	// A known namespace keeps its resource identity even when the ID is
+	// missing. It must not fall back to an unrelated legacy ID.
+	const resolveScopeResource = (scope: Scope): { type: ResourceType; id?: string } | undefined => {
 		for (const { prefix, type } of scopeResourcePrefixes) {
 			if (!scope.startsWith(prefix)) continue;
-			const id = resourceIds[type];
-			return id ? { type, id } : undefined;
+			return { type, id: resourceIds[type] };
 		}
 		return undefined;
 	};
@@ -292,12 +293,19 @@ export async function userHasScopes(
 	const legacyScopes: Scope[] = [];
 
 	for (const scope of scopes) {
-		const resource = resolveScopeResource(scope);
-		if (!resource) {
+		const resolved = resolveScopeResource(scope);
+		if (!resolved) {
 			legacyScopes.push(scope);
 			continue;
 		}
 
+		// Reject a recognized scope without its own resource ID. Checking it
+		// against another resource's project could grant unintended access.
+		if (!resolved.id) {
+			return false;
+		}
+
+		const resource: ResourceCheck = { type: resolved.type, id: resolved.id };
 		const key = `${resource.type}:${resource.id}`;
 		const group = resourceScopes.get(key);
 		if (group) {
