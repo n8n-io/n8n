@@ -3882,6 +3882,57 @@ describe('SourceControlImportService', () => {
 				]);
 			});
 
+			it('does not prune a variable that an earlier project import moved to another project', async () => {
+				// Upstream moved var1 from project1 to project2; both project files arrive in one pull.
+				variableService.getAllCached.mockResolvedValue([
+					mock<Variables>({ id: 'var1', key: 'VAR1', project: mock<Project>({ id: 'project1' }) }),
+				]);
+				// Fresh per-project read: by the time project1 is pruned, var1 belongs to project2.
+				variablesRepository.find.mockImplementation(async (options?: unknown) => {
+					const projectId = (
+						options as { where?: { project?: { id?: string } } } | undefined
+					)?.where?.project?.id;
+					if (projectId === 'project2') {
+						return [
+							mock<Variables>({
+								id: 'var1',
+								key: 'VAR1',
+								project: mock<Project>({ id: 'project2' }),
+							}),
+						];
+					}
+					return [];
+				});
+
+				const projectData1 = {
+					id: 'project1',
+					name: 'Team Project 1',
+					type: 'team',
+					owner: { type: 'team', teamId: 'project1' },
+				};
+				const projectData2 = {
+					id: 'project2',
+					name: 'Team Project 2',
+					type: 'team',
+					owner: { type: 'team', teamId: 'project2' },
+					variableStubs: [{ id: 'var1', key: 'VAR1', value: '', type: 'string' }],
+				};
+				const candidates = [
+					mock<SourceControlledFile>({ file: '/mock/team-project2.json', id: 'project2' }),
+					mock<SourceControlledFile>({ file: '/mock/team-project1.json', id: 'project1' }),
+				];
+				fsReadFile
+					.mockResolvedValueOnce(JSON.stringify(projectData2))
+					.mockResolvedValueOnce(JSON.stringify(projectData1));
+				projectRepository.findOne.mockResolvedValue(null);
+				projectRelationRepository.findOne.mockResolvedValue(null);
+
+				await service.importTeamProjectsFromWorkFolder(candidates, mockPullingUserId);
+
+				// The move to project2 wins over project1's stub-less file: var1 must survive.
+				expect(variableService.deleteByIds).not.toHaveBeenCalledWith(['var1']);
+			});
+
 			it('should NOT assign pulling user as project admin for existing projects with an admin', async () => {
 				// Arrange
 				const mockProjectFile = '/mock/team-project.json';
@@ -4065,7 +4116,7 @@ describe('SourceControlImportService', () => {
 
 				fsReadFile.mockResolvedValueOnce(JSON.stringify(mockProjectData));
 
-				variableService.getAllCached.mockResolvedValue([
+				variablesRepository.find.mockResolvedValue([
 					{
 						id: 'var2',
 						key: 'VAR2',
