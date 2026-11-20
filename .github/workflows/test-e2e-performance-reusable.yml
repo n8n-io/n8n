@@ -33,7 +33,9 @@ jobs:
       # prefix would not parse; `env` sets PERF_ITERATIONS for a dispatched run.
       test-command: ${{ inputs.page-load-iterations && format('pnpm --filter=n8n-playwright exec env PERF_ITERATIONS={0} playwright test --project=performance', inputs.page-load-iterations) || 'pnpm --filter=n8n-playwright test:performance' }}
       workers: '1'
-      timeout-minutes: ${{ inputs.timeout-minutes || 30 }}
+      # fromJSON: a dispatch from the CLI delivers the number as a string, and the
+      # called workflow rejects a string for a number input.
+      timeout-minutes: ${{ fromJSON(inputs.timeout-minutes || 30) }}
       pre-generated-matrix: '[{"shard":1,"images":""},{"shard":2,"images":""}]'
       currents-project-id: 'O9BJaN'
       artifact-prefix: performance
