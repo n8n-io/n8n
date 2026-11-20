@@ -17,11 +17,18 @@ export type ApplicableLimits = {
 	projectMaxExecutions: number | null;
 };
 
-export type ExecutionLimitField = keyof ExecutionLimitSettings | 'projectMaxExecutions';
+type ExecutionLimitSettingValue = ExecutionLimitSettings[keyof ExecutionLimitSettings];
 
-export type ExecutionLimitChange = {
-	projectId: string | null;
-	field: ExecutionLimitField;
-	oldValue: ExecutionLimitPeriodUnit | number | null;
-	newValue: ExecutionLimitPeriodUnit | number | null;
-};
+export type ExecutionLimitChange =
+	| {
+			projectId: null;
+			field: keyof ExecutionLimitSettings;
+			oldValue: ExecutionLimitSettingValue;
+			newValue: ExecutionLimitSettingValue;
+	  }
+	| {
+			projectId: string;
+			field: 'projectMaxExecutions';
+			oldValue: number | null;
+			newValue: number | null;
+	  };

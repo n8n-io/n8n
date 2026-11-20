@@ -69,7 +69,7 @@ export function findProjectLimitChanges(
 		after.map(({ projectId, maxExecutions }) => [projectId, maxExecutions]),
 	);
 
-	return projectIds
+	return [...new Set(projectIds)]
 		.map(
 			(projectId): ExecutionLimitChange => ({
 				projectId,

@@ -86,7 +86,7 @@ describe('findSettingsChanges', () => {
 });
 
 describe('findProjectLimitChanges', () => {
-	it('returns the set, changed and removed limits and leaves out the equal ones', () => {
+	it('returns each set, changed and removed limit one time and leaves out the equal ones', () => {
 		const before = [
 			{ projectId: 'changed', maxExecutions: 10 },
 			{ projectId: 'equal', maxExecutions: 10 },
@@ -101,7 +101,7 @@ describe('findProjectLimitChanges', () => {
 		expect(
 			findProjectLimitChanges(
 				before,
-				['set', 'changed', 'equal', 'removed', 'never-limited'],
+				['set', 'changed', 'equal', 'removed', 'removed', 'never-limited'],
 				after,
 			),
 		).toEqual([
