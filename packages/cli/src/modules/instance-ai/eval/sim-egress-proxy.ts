@@ -27,16 +27,29 @@ export function parseSimGateway(value: string): SimGateway | undefined {
  * (`*.myshopify.com`, `{subdomain}.zendesk.com`, `*-aiplatform.googleapis.com`).
  */
 export function isSimHost(host: string, patterns: readonly string[]): boolean {
-	const h = host.toLowerCase();
-	return patterns.some((raw) => {
+	return compileSimHosts(patterns)(host);
+}
+
+/** {@link isSimHost} with the patterns compiled once. */
+export function compileSimHosts(patterns: readonly string[]): (host: string) => boolean {
+	const exact = new Set<string>();
+	const templates: RegExp[] = [];
+	for (const raw of patterns) {
 		const pattern = raw.toLowerCase();
-		if (!pattern.includes('.') || !/[*{]/.test(pattern)) return h === pattern;
+		if (!pattern.includes('.') || !/[*{]/.test(pattern)) {
+			exact.add(pattern);
+			continue;
+		}
 		const source = pattern
 			.split(/(\*|\{[^{}.]+\})/)
 			.map((part, i) => (i % 2 === 1 ? '[a-z0-9-]+' : part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
 			.join('');
-		return new RegExp(`^${source}$`).test(h);
-	});
+		templates.push(new RegExp(`^${source}$`));
+	}
+	return (host) => {
+		const h = host.toLowerCase();
+		return exact.has(h) || templates.some((template) => template.test(h));
+	};
 }
 
 const LOOPBACK = new Set(['localhost', '127.0.0.1', '::1', '[::1]']);
@@ -62,13 +75,17 @@ export class SimEgressProxy {
 	/** Hosts the run tried to reach that the sim server does not serve. */
 	readonly refusedHosts = new Set<string>();
 
+	private readonly servesHost: (host: string) => boolean;
+
 	constructor(
 		private readonly gateway: SimGateway,
-		private readonly simHosts: readonly string[],
+		simHosts: readonly string[],
 		/** Loopback ports the run may reach directly: the instance's own. */
 		private readonly loopbackPorts: readonly number[],
 		private readonly logger: Logger,
-	) {}
+	) {
+		this.servesHost = compileSimHosts(simHosts);
+	}
 
 	async start(): Promise<string> {
 		const server = createServer((req, res) => this.handleRequest(req, res));
@@ -102,7 +119,7 @@ export class SimEgressProxy {
 			? this.loopbackPorts.includes(port)
 				? { host, port }
 				: undefined
-			: isSimHost(host, this.simHosts)
+			: this.servesHost(host)
 				? this.gateway
 				: undefined;
 		if (!target) {
@@ -110,7 +127,9 @@ export class SimEgressProxy {
 			client.end('HTTP/1.1 502 Not Served By The Simulation\r\n\r\n');
 			return;
 		}
+		let established = false;
 		const upstream = connect(target.port, target.host, () => {
+			established = true;
 			client.write('HTTP/1.1 200 Connection Established\r\n\r\n');
 			if (head.length > 0) upstream.write(head);
 			upstream.pipe(client);
@@ -120,7 +139,9 @@ export class SimEgressProxy {
 		upstream.on('close', () => this.sockets.delete(upstream));
 		upstream.on('error', (error) => {
 			this.logger.warn(`[EvalSim] Tunnel to ${host} failed: ${error.message}`);
-			client.end('HTTP/1.1 502 Bad Gateway\r\n\r\n');
+			// After the 200 the stream is the client's TLS: a status line would corrupt it.
+			if (established) client.destroy();
+			else client.end('HTTP/1.1 502 Bad Gateway\r\n\r\n');
 		});
 		client.on('error', () => upstream.destroy());
 	}
@@ -172,7 +193,7 @@ export class SimEgressProxy {
 		res: ServerResponse,
 	): void {
 		const [host] = splitHostPort(authority);
-		if (!isSimHost(host, this.simHosts)) {
+		if (!this.servesHost(host)) {
 			this.refuse(host);
 			res.writeHead(502).end(`${host} is not served by the simulated services`);
 			return;

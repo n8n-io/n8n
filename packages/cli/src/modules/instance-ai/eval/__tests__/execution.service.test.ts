@@ -2,7 +2,12 @@ import type { NodeTypesProxy, PostHogClient } from '@n8n/backend-services';
 import type { Mock } from 'vitest';
 import type { AgentJsonConfig, InstanceAiEvalSimExecutionRequest } from '@n8n/api-types';
 import type { Logger, ModuleRegistry } from '@n8n/backend-common';
-import type { ExecutionsConfig, GlobalConfig, InstanceAiConfig } from '@n8n/config';
+import type {
+	ExecutionsConfig,
+	GlobalConfig,
+	InstanceAiConfig,
+	SsrfProtectionConfig,
+} from '@n8n/config';
 import type { ProcessedDataRepository, User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 import type { BinaryDataService } from 'n8n-core';
@@ -271,6 +276,7 @@ describe('EvalExecutionService', () => {
 	const moduleRegistry = mock<ModuleRegistry>();
 	const credentialsService = mock<CredentialsService>();
 	const credentialTypes = mock<CredentialTypes>();
+	const ssrfProtectionConfig = { enabled: false } as SsrfProtectionConfig;
 
 	// Captured configureAdditionalData closure so tests can re-invoke it on a
 	// stub additionalData without booting the real runner.
@@ -313,6 +319,7 @@ describe('EvalExecutionService', () => {
 			credentialsService,
 			credentialTypes,
 			mock<GlobalConfig>({ port: 5678 }),
+			ssrfProtectionConfig,
 		);
 		// Reset to safe default — tests that flip queue mode reassign in-test.
 		Object.assign(executionsConfig, { mode: 'regular' });
@@ -2837,6 +2844,89 @@ describe('EvalExecutionService', () => {
 
 			expect(result.errors[0]).toContain('"HTTP Request" is not a start node');
 			expect(workflowRunner.run).not.toHaveBeenCalled();
+		});
+
+		it('refuses to run while SSRF protection is on, because it blocks the run proxy', async () => {
+			ssrfProtectionConfig.enabled = true;
+			try {
+				const result = await service.executeWithSim('wf-1', makeUser(), simRequest());
+
+				expect(result.errors[0]).toContain('N8N_SSRF_PROTECTION_ENABLED');
+				expect(credentialsService.createUnmanagedCredential).not.toHaveBeenCalled();
+			} finally {
+				ssrfProtectionConfig.enabled = false;
+			}
+		});
+
+		it("returns the trigger's own poll error without the framework prefix", async () => {
+			mockGetBase.mockResolvedValue({ credentialsHelper: { resolve: vi.fn() } });
+			nodeTypes.getByNameAndVersion.mockReturnValue({
+				description: { properties: [], group: ['trigger'] } as unknown as INodeTypeDescription,
+				poll: vi.fn(async () => {
+					await Promise.resolve();
+					throw new Error('400: invalid filter');
+				}),
+			} as never);
+
+			const result = await service.pollWithSim('wf-1', makeUser(), {
+				startNodeName: 'Webhook',
+				simHosts: ['gmail.googleapis.com'],
+			});
+
+			expect(result).toEqual({ pollState: {}, error: '400: invalid filter' });
+		});
+
+		it('refuses nodes the run proxy cannot cover, before it prepares any data table', async () => {
+			const stored = makeWorkflowEntity();
+			const extra = (name: string, type: string, more: Partial<INode> = {}) =>
+				({
+					id: name,
+					name,
+					type,
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+					...more,
+				}) as INode;
+			stored.nodes.push(
+				extra('Rows', 'n8n-nodes-base.dataTable', {
+					parameters: {
+						resource: 'row',
+						operation: 'get',
+						dataTableId: { __rl: true, mode: 'id', value: 'dt-1' },
+					},
+				}),
+				extra('MCP', '@n8n/n8n-nodes-langchain.mcpClientTool'),
+				extra('Ask Agent', 'n8n-nodes-base.messageAnAgent'),
+				extra('Model', '@n8n/n8n-nodes-langchain.lmChatOpenAi', {
+					parameters: { options: { baseURL: '={{ $json.url }}' } },
+				}),
+				extra('Embeddings', '@n8n/n8n-nodes-langchain.embeddingsOpenAi', {
+					credentials: { openAiApi: { id: 'real-2', name: 'OpenAI' } },
+				}),
+			);
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(stored as never);
+
+			const result = await service.executeWithSim('wf-1', makeUser(), simRequest());
+
+			expect(result.success).toBe(false);
+			expect(result.hints.warnings).toEqual([
+				expect.stringMatching(/^SIM NOT COVERED: .*"MCP"/),
+				expect.stringMatching(/^SIM NOT COVERED: .*"Ask Agent"/),
+				expect.stringMatching(/^SIM NOT COVERED: .*"Model".*base URL/),
+				expect.stringMatching(/^SIM NOT COVERED: .*"Embeddings".*openAiApi/),
+			]);
+			expect(dataTableService.findDataTablesByIds).not.toHaveBeenCalled();
+			expect(workflowRunner.run).not.toHaveBeenCalled();
+		});
+
+		it('deletes the issued credentials when the run throws', async () => {
+			workflowRunner.run.mockRejectedValue(new Error('runner down'));
+
+			const result = await service.executeWithSim('wf-1', makeUser(), simRequest());
+
+			expect(result.success).toBe(false);
+			expect(credentialsService.delete).toHaveBeenCalledWith(expect.anything(), 'cred-1');
 		});
 
 		it('runs the stored workflow with the issued credential, the bound parameters and the trigger items', async () => {

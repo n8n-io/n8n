@@ -128,8 +128,11 @@ instance:
   `SIM NOT COVERED`.
 - Vendor SDKs (AI sub-nodes) do not use the request helpers. A credential whose
   base URL the sim server serves points at the proxy for the run
-  (`sim-credentials-helper.ts`). An AI sub-node whose credential has no base URL
-  is refused before the run.
+  (`sim-credentials-helper.ts`). An AI sub-node whose credential has no base URL,
+  whose stored credential the sim server did not issue, or whose own base URL is
+  not an absolute URL is refused before the run, as `SIM NOT COVERED`.
+- MCP nodes and Message an Agent open their own connections, which the proxy never
+  sees. A workflow with one is refused before the run, as `SIM NOT COVERED`.
 - Data Tables, static data, Remove Duplicates history and time-based waits are
   prepared as in mock mode.
 - A polling trigger polls as a published workflow does (`trigger` mode).
@@ -137,10 +140,19 @@ instance:
   workflow's static data. The caller adds the records that arrive, then passes
   that state as `pollState`: the trigger polls again before the run, its output
   starts the run, and its poll time is the trigger's first entry in
-  `runTimes`. Otherwise the run starts from the caller's trigger items.
+  `runTimes`. Otherwise the run starts from the caller's trigger items. An error
+  the poll itself throws comes back without the `FRAMEWORK ISSUE:` prefix: it is
+  the built workflow's error, judged as one.
 
 The instance trusts the sim server's CA through `NODE_EXTRA_CA_CERTS`, because
 the requests keep their real hostnames.
+
+Sim runs refuse to start with `N8N_SSRF_PROTECTION_ENABLED=true`: the SSRF guard
+blocks loopback, and the run proxy listens on loopback.
+
+If the instance stops while a run lasts, the run's credentials stay behind. Their
+names start with `[eval-sim]` and they hold simulator secrets only. Delete them,
+or recreate the eval instance.
 
 ## The rule
 

@@ -102,6 +102,37 @@ describe('SimEgressProxy', () => {
 		expect(proxy.refusedHosts.size).toBe(0);
 	});
 
+	it('closes an established tunnel when the gateway resets it, without writing into the TLS stream', async () => {
+		const gateway = createServer((socket) => {
+			socket.once('data', () => socket.resetAndDestroy());
+		});
+		await new Promise<void>((resolve) => gateway.listen(0, '127.0.0.1', resolve));
+		servers.push(gateway);
+		proxy = new SimEgressProxy(
+			{ host: '127.0.0.1', port: (gateway.address() as AddressInfo).port },
+			['slack.com'],
+			[],
+			mock<Logger>(),
+		);
+		const { port } = new URL(await proxy.start());
+
+		const received = await new Promise<string>((resolve) => {
+			let all = '';
+			const socket = connect(Number(port), '127.0.0.1', () => {
+				socket.write('CONNECT slack.com:443 HTTP/1.1\r\nHost: slack.com:443\r\n\r\n');
+			});
+			socket.on('data', (chunk) => {
+				if (all === '') socket.write('tls-client-hello');
+				all += chunk.toString();
+			});
+			socket.on('error', () => {});
+			socket.on('close', () => resolve(all));
+		});
+
+		expect(received).toContain(' 200 ');
+		expect(received).not.toContain('502');
+	});
+
 	it("reaches the instance's own loopback port directly", async () => {
 		const local = await startRecorder();
 		servers.push(local.server);

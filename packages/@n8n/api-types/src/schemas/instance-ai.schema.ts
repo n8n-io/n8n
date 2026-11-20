@@ -3103,7 +3103,8 @@ export class InstanceAiEvalExecutionRequest extends Z.class({
 const simRunFields = {
 	/** The trigger node the scenario starts from. */
 	startNodeName: z.string().min(1).max(256),
-	/** Node name → the parameters to run with (setup fields bound to simulated resources). */
+	/** Node name → the node's complete parameters for the run (setup fields bound to simulated
+	 *  resources included). They replace the stored parameters; they are not merged. */
 	nodeParameters: z.record(z.string(), z.record(z.string(), z.unknown())).optional(),
 	/** The credentials the sim server issued for this run; the server stores them only while it runs. */
 	credentials: z
