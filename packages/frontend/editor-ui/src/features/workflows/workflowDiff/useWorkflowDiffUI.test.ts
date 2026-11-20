@@ -237,7 +237,7 @@ describe('useWorkflowDiffUI', () => {
 			{ missing: 'source', source: false, target: true },
 			{ missing: 'target', source: true, target: false },
 		])('shows no engine change when the $missing workflow is missing', ({ source, target }) => {
-			const workflow = createMockWorkflow({ settings: { engineType: 'v2' } });
+			const workflow = createMockWorkflow({ settings: { engineType: 'v2', executionOrder: 'v1' } });
 
 			const { settingsDiff } = useWorkflowDiffUI({
 				sourceWorkflow: computed(() => (source ? workflow : undefined)),
