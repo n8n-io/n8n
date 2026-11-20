@@ -237,6 +237,7 @@ type EntityName =
 	| 'TrustedSourceIdentityEntity'
 	| 'WorkflowStatisticsDelta'
 	| 'ExecutionLedgerEntity'
+	| 'ExecutionLedgerParkedEntity'
 	| 'ExecutionLimitAudit';
 
 /**
