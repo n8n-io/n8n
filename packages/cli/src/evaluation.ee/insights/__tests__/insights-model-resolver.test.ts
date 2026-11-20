@@ -28,7 +28,7 @@ function configWithJudge(over: { provider?: string; model?: string; credentialId
 					preset: 'correctness',
 					provider: over.provider ?? '@n8n/n8n-nodes-langchain.lmChatAnthropic',
 					credentialId: over.credentialId ?? 'cred-1',
-					model: over.model ?? 'claude-sonnet-4-5',
+					model: over.model ?? 'claude-sonnet-5-5',
 				},
 			},
 		],
@@ -59,8 +59,8 @@ describe('InsightsModelResolver', () => {
 		const result = await resolver.resolve(user, 'wf-1', 'cfg-1');
 
 		expect(result).toEqual({
-			modelId: 'anthropic/claude-sonnet-4-5',
-			modelConfig: { id: 'anthropic/claude-sonnet-4-5', apiKey: 'sk-test', url: 'https://host' },
+			modelId: 'anthropic/claude-sonnet-5-5',
+			modelConfig: { id: 'anthropic/claude-sonnet-5-5', apiKey: 'sk-test', url: 'https://host' },
 		});
 	});
 

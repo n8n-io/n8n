@@ -141,7 +141,7 @@ vi.mock('../json-config/from-json-config', async () => {
 function makeAgentEntity(tools: AgentJsonToolConfig[]): AgentRunSource {
 	const schema: AgentJsonConfig = {
 		name: 'Test Agent',
-		model: 'anthropic/claude-sonnet-4-5',
+		model: 'anthropic/claude-sonnet-5-5',
 		instructions: 'Be helpful',
 		tools,
 	};
@@ -265,7 +265,7 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 			];
 			const baseConfig = {
 				name: 'Test Agent',
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 				instructions: 'Be helpful',
 			};
 			const agent = {
@@ -330,7 +330,7 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 		const patternOnly = makeAgentEntity([]);
 		(patternOnly.agent as ProjectAgent).schema = storedAgentConfig({
 			name: 'Test Agent',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			instructions: 'Be helpful',
 			credential: AI_GATEWAY_MANAGED_TAG,
 			config: {
@@ -353,7 +353,7 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 		const withModelKind = makeAgentEntity([]);
 		(withModelKind.agent as ProjectAgent).schema = storedAgentConfig({
 			name: 'Test Agent',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			instructions: 'Be helpful',
 			credential: AI_GATEWAY_MANAGED_TAG,
 			config: {
@@ -868,7 +868,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromResolvedSource — pe
 	function makeResolvedSourceConfig(tools: AgentJsonToolConfig[]): AgentJsonConfig {
 		return {
 			name: 'Child Agent',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			instructions: 'Be helpful',
 			tools,
 		};
