@@ -19,7 +19,7 @@ import { AgentMessageQueueService } from './agent-message-queue.service';
 import { AgentQueuedTestStreamService } from './agent-queued-test-stream.service';
 import { type FlushableResponse, initSseStream, toChatErrorEvent } from './agent-sse-stream';
 import type { AgentChatAttachment } from './entities/agent-chat-attachment.entity';
-import { busyEvent } from './queue/agent-remote-turn.service';
+import { busyEvent } from './queue/agent-busy-event';
 import { AgentTurnGate } from './queue/agent-turn-gate.service';
 import { AgentTurnPlacement } from './queue/agent-turn-placement.service';
 import type { StoredAttachmentRef } from './types/agent-chat-attachment';

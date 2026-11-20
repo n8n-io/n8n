@@ -11,7 +11,7 @@ import { AgentExecutionOrchestratorService } from '@/modules/agents/agent-execut
 import { AgentPublishService } from '@/modules/agents/agent-publish.service';
 import { AgentsService } from '@/modules/agents/agents.service';
 import { N8NCheckpointStorage } from '@/modules/agents/integrations/n8n-checkpoint-storage';
-import type { AgentRemoteTurnService } from '@/modules/agents/queue/agent-remote-turn.service';
+import { testTurns } from '@/modules/agents/__tests__/test-utils/turns';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
 import { AppAgentAdapter } from '../app-agent.adapter';
@@ -55,14 +55,14 @@ function setup({ active = true, published = true } = {}) {
 	Container.set(AgentsService, agents);
 	Container.set(AgentExecutionOrchestratorService, orchestrator);
 	Container.set(N8NCheckpointStorage, checkpoints);
-	const remoteTurns = mock<AgentRemoteTurnService>();
-	remoteTurns.canDispatch.mockResolvedValue(false);
+	const turns = testTurns();
 	Container.set(
 		AgentAppTurnService,
 		new AgentAppTurnService(
 			mock<Logger>({ scoped: () => mock<Logger>() }),
 			orchestrator,
-			remoteTurns,
+			turns.dispatcher,
+			turns.handlers,
 		),
 	);
 	const moduleRegistry = mock<ModuleRegistry>();

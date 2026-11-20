@@ -29,7 +29,8 @@ import {
 } from './integrations/integration-message-context';
 import { IntegrationMessageContextService } from './integrations/integration-message-context.service';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
-import { AgentRemoteTurnService } from './queue/agent-remote-turn.service';
+import { AgentTurnDispatcher } from './queue/agent-turn-dispatcher.service';
+import { AgentTurnHandlers } from './queue/agent-turn-handlers.service';
 import { AgentTurnPlacement } from './queue/agent-turn-placement.service';
 
 /**
@@ -55,10 +56,11 @@ export class AgentWorkflowToolResumeService {
 		private readonly agentRepository: AgentRepository,
 		private readonly cluster: AgentClusterService,
 		private readonly placement: AgentTurnPlacement,
-		private readonly remoteTurns: AgentRemoteTurnService,
+		private readonly dispatcher: AgentTurnDispatcher,
+		handlers: AgentTurnHandlers,
 	) {
 		this.logger = this.logger.scoped('agents');
-		this.remoteTurns.handle('workflow-tool-resume', {
+		handlers.handle('workflow-tool-resume', {
 			mode: 'detached',
 			run: async ({ agentRun, status }) => await this.resumeSafely(agentRun, status),
 		});
@@ -87,21 +89,24 @@ export class AgentWorkflowToolResumeService {
 		const checkpoint = await this.checkpointStorage.getStatus(agentRun.runId, agentRun.agentId);
 		if (checkpoint.status !== 'active' || checkpoint.checkpoint?.status !== 'suspended') return;
 
-		// In agent queue mode, an agent worker runs the resume. The process that
-		// sent it runs it when no worker takes it in time.
-		const runHere = async () => await this.resumeSafely(agentRun, ctx.runData.status);
-		if (await this.sendToWorker(agentRun, ctx.runData.status, runHere)) return;
+		// In agent queue mode, an agent worker runs the resume.
+		const status = ctx.runData.status;
+		const workerCapable = this.canRunOnWorker(agentRun);
+		if (workerCapable && (await this.dispatcher.goesToWorker())) {
+			await this.startResume(agentRun, status, true);
+			return;
+		}
 
 		// In queue mode this runs on a worker, which holds no chat connections.
 		if (this.instanceSettings.isWorker) {
 			await this.publisher.publishCommand({
 				command: 'resume-agent-workflow-tool',
-				payload: { agentRun, status: ctx.runData.status },
+				payload: { agentRun, status },
 			});
 			return;
 		}
 
-		await this.resumeSafely(agentRun, ctx.runData.status);
+		await this.startResume(agentRun, status, false);
 	}
 
 	@OnPubSubEvent('resume-agent-workflow-tool', { instanceType: 'main' })
@@ -112,30 +117,31 @@ export class AgentWorkflowToolResumeService {
 		agentRun: RelatedAgentRun;
 		status: string;
 	}): Promise<void> {
-		if (this.placement.dispatchEnabled && this.canRunOnWorker(agentRun)) {
-			// Every main gets this command. Only the leader sends the job, so the
-			// resume runs once.
-			if (!this.cluster.isLeader) return;
-			const runHere = async () => await this.resumeSafely(agentRun, status);
-			if (await this.sendToWorker(agentRun, status, runHere)) return;
-		}
-		// A resume is never rejected: the turn already started. It waits until this process has room.
-		await this.remoteTurns.admitHere('workflow-tool-resume');
-		await this.resumeSafely(agentRun, status);
+		const workerCapable = this.placement.dispatchEnabled && this.canRunOnWorker(agentRun);
+		// Every main gets this command. Only the leader sends the job, so the
+		// resume runs once.
+		if (workerCapable && !this.cluster.isLeader) return;
+		await this.startResume(agentRun, status, workerCapable);
 	}
 
-	/** Returns `true` when an agent worker runs the resume, or this process runs it later. */
-	private async sendToWorker(
+	/**
+	 * Start the resume on an agent worker or in this process. A resume is never
+	 * rejected: the turn already started. In this process it waits until there
+	 * is room.
+	 */
+	private async startResume(
 		agentRun: RelatedAgentRun,
 		status: string,
-		runHere: () => Promise<void>,
-	): Promise<boolean> {
-		// `detached` reads the worker registry only on processes that send jobs.
-		if (!this.canRunOnWorker(agentRun)) return false;
-		return await this.remoteTurns.detached(
-			{ kind: 'workflow-tool-resume', agentRun, status },
-			runHere,
-		);
+		workerCapable: boolean,
+	): Promise<void> {
+		await this.dispatcher
+			.detached({ kind: 'workflow-tool-resume', agentRun, status }, { workerCapable })
+			.catch((error: unknown) => {
+				this.logger.warn('Failed to start the resume of an agent workflow tool', {
+					runId: agentRun.runId,
+					error,
+				});
+			});
 	}
 
 	/** Chat platforms that need a live ingress connection stay on mains. */

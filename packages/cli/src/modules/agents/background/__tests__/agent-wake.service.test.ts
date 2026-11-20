@@ -35,6 +35,7 @@ import {
 	REPLACED_PAUSE_GROUP_NOTICE,
 	WAKE_RESULT_TEXT_MAX_CHARS,
 } from '../background-job-messages';
+import { testTurns } from '../../__tests__/test-utils/turns';
 
 vi.mock('@/permissions.ee/check-access', () => ({
 	userHasScopes: vi.fn().mockResolvedValue(true),
@@ -108,6 +109,7 @@ function setup(options: { worker?: boolean; enabled?: boolean } = {}) {
 
 	const cancellations = mock<AgentExecutionThreadRepository>();
 	cancellations.findPendingStopReports.mockResolvedValue([]);
+	const turns = testTurns();
 	const service = new AgentWakeService(
 		cancellations,
 		jobRepository,
@@ -125,7 +127,8 @@ function setup(options: { worker?: boolean; enabled?: boolean } = {}) {
 		planService,
 		mock(),
 		mock({ dispatchEnabled: false }),
-		mock(),
+		turns.dispatcher,
+		turns.handlers,
 	);
 
 	return {

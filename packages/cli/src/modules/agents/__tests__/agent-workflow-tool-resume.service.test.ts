@@ -22,12 +22,9 @@ import type { ChatIntegrationService } from '../integrations/chat-integration.se
 import type { IntegrationMessageContextService } from '../integrations/integration-message-context.service';
 import { encodeIntegrationMessageContext } from '../integrations/integration-message-context';
 import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
-import type {
-	AgentDetachedTurnHandler,
-	AgentRemoteTurnService,
-} from '../queue/agent-remote-turn.service';
 import { AgentTurnPlacement } from '../queue/agent-turn-placement.service';
 import { testCluster, type TestClusterOptions } from './test-utils/cluster';
+import { testTurns } from './test-utils/turns';
 
 const agentRun: RelatedAgentRun = {
 	agentId: 'agent-1',
@@ -47,6 +44,8 @@ const previewRun: RelatedAgentRun = {
 interface SetupOptions {
 	cluster?: TestClusterOptions;
 	placement?: { dispatchEnabled?: boolean; runsTurnsOnWorker?: boolean };
+	/** Whether an agent worker is up. Defaults to `placement.dispatchEnabled`. */
+	workers?: boolean;
 }
 
 function setup(options: SetupOptions = {}) {
@@ -91,9 +90,12 @@ function setup(options: SetupOptions = {}) {
 	placement.isWorkerKind.mockImplementation((kind, platform) =>
 		AgentTurnPlacement.prototype.isWorkerKind.call(placement, kind, platform),
 	);
-	const remoteTurns = mock<AgentRemoteTurnService>();
-	// Like the real service: only a process that sends jobs hands a turn to a worker.
-	remoteTurns.detached.mockImplementation(async () => placement.sendsJobs);
+	const workers = options.workers ?? options.placement?.dispatchEnabled ?? false;
+	placement.workersAvailable.mockResolvedValue(workers);
+	placement.retryAfterSeconds.mockResolvedValue(15);
+	const turns = testTurns({ cluster, placement });
+	// The job reaches the queue. The worker side is tested in the remote turn tests.
+	const sentToWorker = vi.spyOn(turns.remote, 'detached').mockResolvedValue(true);
 	const service = new AgentWorkflowToolResumeService(
 		logger,
 		userRepository,
@@ -109,13 +111,21 @@ function setup(options: SetupOptions = {}) {
 		agentRepository,
 		cluster,
 		placement,
-		remoteTurns,
+		turns.dispatcher,
+		turns.handlers,
 	);
-	const [kind, handler] = remoteTurns.handle.mock.calls[0] ?? [];
+	/** Run the registered handler, as the runner of a worker does. */
+	const runHandler = async (status: string, run: RelatedAgentRun = agentRun) =>
+		await turns.handlers.run(
+			{ kind: 'workflow-tool-resume', agentRun: run, status },
+			{ turnId: 'turn-1', abortSignal: new AbortController().signal },
+			() => {},
+		);
 	return {
-		remoteTurns,
-		registeredKind: kind,
-		detachedHandler: handler as AgentDetachedTurnHandler<'workflow-tool-resume'> | undefined,
+		sentToWorker,
+		registeredMode: turns.handlers.modeOf('workflow-tool-resume'),
+		runHandler,
+		inProcess: turns.inProcess,
 		service,
 		logger,
 		bridge,
@@ -284,27 +294,24 @@ describe('AgentWorkflowToolResumeService → agent queue mode', () => {
 	const discordRun: RelatedAgentRun = { ...agentRun, integrationType: 'discord' };
 
 	it('registers a detached handler that runs the resume', async () => {
-		const { registeredKind, detachedHandler, chatIntegrationService, bridge } = setup();
+		const { registeredMode, runHandler, chatIntegrationService, bridge } = setup();
 		chatIntegrationService.getBridge.mockReturnValue(bridge);
 
-		expect(registeredKind).toBe('workflow-tool-resume');
-		await detachedHandler?.run(
-			{ kind: 'workflow-tool-resume', agentRun, status: 'success' },
-			{ requestId: 'request-1', abortSignal: new AbortController().signal },
-		);
+		expect(registeredMode).toBe('detached');
+		await expect(runHandler('success')).resolves.toEqual({ outcome: 'done' });
 
 		expect(bridge.resumeInAgentThread).toHaveBeenCalled();
 	});
 
 	it('sends the resume to a worker from a main that dispatches', async () => {
-		const { service, remoteTurns, chatIntegrationService } = setup({
+		const { service, sentToWorker, chatIntegrationService } = setup({
 			cluster: { queue: true },
 			placement: { dispatchEnabled: true },
 		});
 
 		await service.handleWorkflowExecuteAfter(afterContext('success', agentRun));
 
-		expect(remoteTurns.detached).toHaveBeenCalledWith(
+		expect(sentToWorker).toHaveBeenCalledWith(
 			{ kind: 'workflow-tool-resume', agentRun, status: 'success' },
 			expect.any(Function),
 		);
@@ -312,20 +319,22 @@ describe('AgentWorkflowToolResumeService → agent queue mode', () => {
 	});
 
 	it('runs the resume here when no worker is up', async () => {
-		const { service, remoteTurns, chatIntegrationService, bridge } = setup({
+		const { service, sentToWorker, inProcess, chatIntegrationService, bridge } = setup({
 			cluster: { queue: true },
 			placement: { dispatchEnabled: true },
+			workers: false,
 		});
-		remoteTurns.detached.mockResolvedValue(false);
 		chatIntegrationService.getBridge.mockReturnValue(bridge);
 
 		await service.handleWorkflowExecuteAfter(afterContext('success', agentRun));
+		await inProcess.whenIdle();
 
+		expect(sentToWorker).not.toHaveBeenCalled();
 		expect(bridge.resumeInAgentThread).toHaveBeenCalled();
 	});
 
 	it('keeps a main-only platform on the mains', async () => {
-		const { service, remoteTurns, publisher, instanceSettings } = setup({
+		const { service, sentToWorker, publisher, instanceSettings } = setup({
 			cluster: { queue: true, instanceType: 'worker' },
 			placement: { runsTurnsOnWorker: true },
 		});
@@ -333,7 +342,7 @@ describe('AgentWorkflowToolResumeService → agent queue mode', () => {
 
 		await service.handleWorkflowExecuteAfter(afterContext('success', discordRun));
 
-		expect(remoteTurns.detached).not.toHaveBeenCalled();
+		expect(sentToWorker).not.toHaveBeenCalled();
 		expect(publisher.publishCommand).toHaveBeenCalledWith({
 			command: 'resume-agent-workflow-tool',
 			payload: { agentRun: discordRun, status: 'success' },
@@ -350,13 +359,13 @@ describe('AgentWorkflowToolResumeService → agent queue mode', () => {
 		await leader.service.handleResumeRelay({ agentRun, status: 'success' });
 		await follower.service.handleResumeRelay({ agentRun, status: 'success' });
 
-		expect(leader.remoteTurns.detached).toHaveBeenCalledTimes(1);
-		expect(follower.remoteTurns.detached).not.toHaveBeenCalled();
+		expect(leader.sentToWorker).toHaveBeenCalledTimes(1);
+		expect(follower.sentToWorker).not.toHaveBeenCalled();
 		expect(follower.chatIntegrationService.getBridge).not.toHaveBeenCalled();
 	});
 
 	it('resumes a chat platform turn on a worker over a leased bridge', async () => {
-		const { detachedHandler, chatIntegrationService, messageContextService, bridge } = setup({
+		const { runHandler, chatIntegrationService, messageContextService, bridge } = setup({
 			cluster: { queue: true, instanceType: 'worker' },
 			placement: { runsTurnsOnWorker: true },
 		});
@@ -367,10 +376,7 @@ describe('AgentWorkflowToolResumeService → agent queue mode', () => {
 		const release = vi.fn();
 		chatIntegrationService.leaseReplyBridge.mockResolvedValue({ bridge, release });
 
-		await detachedHandler?.run(
-			{ kind: 'workflow-tool-resume', agentRun, status: 'success' },
-			{ requestId: 'request-1', abortSignal: new AbortController().signal },
-		);
+		await runHandler('success');
 
 		expect(chatIntegrationService.leaseReplyBridge).toHaveBeenCalledWith(
 			'agent-1',

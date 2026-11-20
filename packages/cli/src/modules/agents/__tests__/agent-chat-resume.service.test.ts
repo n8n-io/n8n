@@ -1,17 +1,11 @@
-import { mockLogger } from '@n8n/backend-test-utils';
-import type { AgentsConfig } from '@n8n/config';
 import type { User, UserRepository } from '@n8n/db';
 import { jsonParse } from 'n8n-workflow';
 import { EventEmitter } from 'node:events';
 import { mock } from 'vitest-mock-extended';
 
-import type { Publisher, Subscriber } from '@n8n/backend-services';
-
 import { AgentChatResumeService } from '../agent-chat-resume.service';
 import type { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
-import { AgentQueuedTestStreamService } from '../agent-queued-test-stream.service';
 import type { FlushableResponse } from '../agent-sse-stream';
-import type { AgentStreamChannel } from '../queue/agent-stream-channel.service';
 import type { AgentTestRunService } from '../agent-test-run.service';
 import { AgentRemoteTurnService } from '../queue/agent-remote-turn.service';
 import type { AgentTurnGate } from '../queue/agent-turn-gate.service';
@@ -21,9 +15,8 @@ import type {
 	AgentChatResumeRequest,
 	AgentTurnRequestPayload,
 } from '../queue/agent-turn-request.types';
-import type { AgentMessageQueueRepository } from '../repositories/agent-message-queue.repository';
 import type { AgentTurnRequestRepository } from '../repositories/agent-turn-request.repository';
-import { testCluster } from './test-utils/cluster';
+import { testTurns } from './test-utils/turns';
 
 // The main polls a remote resume with `sleep`. A virtual clock lets the tests
 // step through the fallback and the lost-worker timeouts without waiting.
@@ -107,29 +100,19 @@ describe('AgentChatResumeService', () => {
 		});
 		// One process plays both the main and the worker: without relay across
 		// processes, a sender delivers straight to the local listener.
-		const streams = new AgentQueuedTestStreamService(
-			mock<Publisher>(),
-			testCluster(),
-			mock<AgentMessageQueueRepository>(),
-			mockLogger(),
-			mock<Subscriber>(),
-			mock<AgentStreamChannel>({ enabled: false }),
-		);
-		remoteTurns = new AgentRemoteTurnService(
-			mockLogger(),
-			mock<AgentsConfig>({ queueMaxWaitSeconds: 0 }),
-			testCluster({ instanceKey: 'instance-a' }),
+		const turns = testTurns({
 			placement,
-			mock<AgentTurnGate>({ waitForRoom: async () => ({ admitted: true }) }),
+			gate: mock<AgentTurnGate>({ waitForRoom: async () => ({ admitted: true }) }),
 			turnQueue,
 			requests,
-			streams,
-		);
+		});
+		remoteTurns = turns.remote;
 		service = new AgentChatResumeService(
 			userRepository,
 			testRuns,
 			mock<AgentExecutionOrchestratorService>(),
-			remoteTurns,
+			turns.dispatcher,
+			turns.handlers,
 		);
 	}
 
@@ -147,7 +130,7 @@ describe('AgentChatResumeService', () => {
 		const writes: string[] = [];
 		const res = makeSseResponse(writes);
 
-		await service.relay(res, request, user);
+		await service.relay(res, request);
 
 		expect(requests.createPending).not.toHaveBeenCalled();
 		expect(testRuns.resumePreparedDraftRun).toHaveBeenCalledOnce();
@@ -175,7 +158,7 @@ describe('AgentChatResumeService', () => {
 		});
 		const writes: string[] = [];
 
-		await service.relay(makeSseResponse(writes), request, user);
+		await service.relay(makeSseResponse(writes), request);
 
 		expect(testRuns.resumePreparedDraftRun).toHaveBeenCalledOnce();
 		expect(userRepository.findByIdWithRole).toHaveBeenCalledWith('user-1');
@@ -190,7 +173,7 @@ describe('AgentChatResumeService', () => {
 		requests.claim.mockResolvedValue(request);
 		const writes: string[] = [];
 
-		await service.relay(makeSseResponse(writes), request, user);
+		await service.relay(makeSseResponse(writes), request);
 
 		expect(turnQueue.enqueueRequest).toHaveBeenCalledOnce();
 		expect(now - 1_000_000).toBeGreaterThanOrEqual(AgentTurnPlacement.FALLBACK_WAIT_MS);
@@ -204,7 +187,7 @@ describe('AgentChatResumeService', () => {
 		turnQueue.enqueueRequest.mockRejectedValue(new Error('Redis unavailable'));
 		requests.claim.mockResolvedValue(request);
 
-		await service.relay(makeSseResponse([]), request, user);
+		await service.relay(makeSseResponse([]), request);
 
 		expect(testRuns.resumePreparedDraftRun).toHaveBeenCalledOnce();
 	});
@@ -215,7 +198,7 @@ describe('AgentChatResumeService', () => {
 		requests.isPending.mockResolvedValue(false);
 		const writes: string[] = [];
 
-		await service.relay(makeSseResponse(writes), request, user);
+		await service.relay(makeSseResponse(writes), request);
 
 		expect(testRuns.resumePreparedDraftRun).not.toHaveBeenCalled();
 		expect(requests.claim).not.toHaveBeenCalled();

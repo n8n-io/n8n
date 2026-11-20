@@ -6,7 +6,8 @@ import { UserError } from '@n8n/errors';
 import { AgentExecutionOrchestratorService } from './agent-execution-orchestrator.service';
 import { hashAgentSandboxPrincipal } from './agent-sandbox-principal';
 import { emitChunkEvents } from './agent-sse-stream';
-import { AgentRemoteTurnService } from './queue/agent-remote-turn.service';
+import { AgentTurnDispatcher } from './queue/agent-turn-dispatcher.service';
+import { AgentTurnHandlers } from './queue/agent-turn-handlers.service';
 import type { AgentAppChatRequest, AgentAppResumeRequest } from './queue/agent-turn-request.types';
 import type { AgentExecutionStreamChunk } from './types/agent-steering';
 
@@ -31,11 +32,12 @@ export class AgentAppTurnService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly orchestrator: AgentExecutionOrchestratorService,
-		private readonly remoteTurns: AgentRemoteTurnService,
+		private readonly dispatcher: AgentTurnDispatcher,
+		handlers: AgentTurnHandlers,
 	) {
 		this.logger = this.logger.scoped('agents');
 		for (const kind of ['app-chat', 'app-resume'] as const) {
-			this.remoteTurns.handle(kind, {
+			handlers.handle(kind, {
 				mode: 'stream',
 				run: async (payload, { abortSignal, send }) => {
 					for await (const event of this.runHere(payload, abortSignal)) send(event);
@@ -48,31 +50,28 @@ export class AgentAppTurnService {
 	/** The events of one turn. A visitor that leaves stops the turn. */
 	async *events(request: AppTurnRequest, signal: AbortSignal): AsyncGenerator<AgentSseEvent> {
 		const relayed = new EventBuffer<AgentSseEvent>();
-		// Settles without rejecting, so a failure while the relay runs is not an unhandled rejection.
-		const remote = this.remoteTurns
+		// Settles without rejecting, so a failure while the turn runs is not an unhandled rejection.
+		const turn = this.dispatcher
 			.stream(
 				request,
 				{ send: (event) => relayed.push(event), abortSignal: signal },
-				{
-					stopOnLeave: true,
-				},
+				{ stopOnLeave: true },
 			)
 			.then(
-				(ranRemotely) => ({ ranRemotely, error: undefined }),
-				(error: unknown) => ({ ranRemotely: true, error }),
+				() => undefined,
+				(error: unknown) => error ?? new Error('The agent turn failed'),
 			)
 			.finally(() => relayed.end());
 		yield* relayed;
-		const { ranRemotely, error } = await remote;
-		if (error !== undefined) {
-			yield { type: 'error', message: this.messageForVisitor(error) };
-			return;
-		}
-		if (!ranRemotely) yield* this.runHere(request, signal);
+		const error = await turn;
+		if (error !== undefined) yield { type: 'error', message: this.messageForVisitor(error) };
 	}
 
-	/** Runs the turn in this process. */
-	async *runHere(request: AppTurnRequest, signal: AbortSignal): AsyncGenerator<AgentSseEvent> {
+	/** Runs the turn in this process. The handler of `app-chat` and `app-resume` turns. */
+	private async *runHere(
+		request: AppTurnRequest,
+		signal: AbortSignal,
+	): AsyncGenerator<AgentSseEvent> {
 		const stream =
 			request.kind === 'app-chat'
 				? this.orchestrator.executeForChatPublished({

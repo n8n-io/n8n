@@ -488,7 +488,7 @@ describe('AgentRepository', () => {
 				transactionRunner,
 				Container.get(AgentSkillRefsService),
 				definitionService,
-				mock({ dispatchEnabled: false }),
+				mock(),
 				mock(),
 			);
 			const readTask = taskRepo.findByIdAndAgentId.bind(taskRepo);

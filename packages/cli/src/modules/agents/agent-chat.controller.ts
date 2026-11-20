@@ -219,20 +219,16 @@ export class AgentChatController {
 		@Param('agentId') agentId: string,
 		@Body payload: AgentChatResumeDto,
 	) {
-		await this.chatResumeService.relay(
-			res,
-			{
-				kind: 'chat-resume',
-				surface: 'n8n-chat',
-				agentId,
-				projectId: req.params.projectId,
-				userId: req.user.id,
-				runId: payload.runId,
-				toolCallId: payload.toolCallId,
-				resumeData: toResumeJson(payload.resumeData),
-			},
-			req.user,
-		);
+		await this.chatResumeService.relay(res, {
+			kind: 'chat-resume',
+			surface: 'n8n-chat',
+			agentId,
+			projectId: req.params.projectId,
+			userId: req.user.id,
+			runId: payload.runId,
+			toolCallId: payload.toolCallId,
+			resumeData: toResumeJson(payload.resumeData),
+		});
 	}
 
 	@Post('/:agentId/chat', { usesTemplates: true })
@@ -297,20 +293,16 @@ export class AgentChatController {
 		@Param('agentId') agentId: string,
 		@Body payload: AgentChatResumeDto,
 	) {
-		await this.chatResumeService.relay(
-			res,
-			{
-				kind: 'chat-resume',
-				surface: 'preview',
-				agentId,
-				projectId: req.params.projectId,
-				userId: req.user.id,
-				runId: payload.runId,
-				toolCallId: payload.toolCallId,
-				resumeData: toResumeJson(payload.resumeData),
-			},
-			req.user,
-		);
+		await this.chatResumeService.relay(res, {
+			kind: 'chat-resume',
+			surface: 'preview',
+			agentId,
+			projectId: req.params.projectId,
+			userId: req.user.id,
+			runId: payload.runId,
+			toolCallId: payload.toolCallId,
+			resumeData: toResumeJson(payload.resumeData),
+		});
 	}
 
 	@Delete('/:agentId/chat/:threadId/executions/:executionId')

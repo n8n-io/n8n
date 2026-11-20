@@ -5,6 +5,7 @@ import { mock } from 'vitest-mock-extended';
 import type { AgentQueuedTestStreamService } from '../agent-queued-test-stream.service';
 import { AgentRemoteTurnService } from '../queue/agent-remote-turn.service';
 import type { AgentTurnGate } from '../queue/agent-turn-gate.service';
+import { AgentTurnHandlers } from '../queue/agent-turn-handlers.service';
 import { AgentTurnPlacement } from '../queue/agent-turn-placement.service';
 import type { AgentTurnQueue } from '../queue/agent-turn-queue.service';
 import type {
@@ -64,6 +65,9 @@ function fakeRequests() {
 	return { requests, rows };
 }
 
+/** The handler registry of each process that a test made. */
+const handlersOf = new Map<AgentRemoteTurnService, AgentTurnHandlers>();
+
 describe('AgentRemoteTurnService', () => {
 	let turnQueue: ReturnType<typeof mock<AgentTurnQueue>>;
 	let requests: ReturnType<typeof mock<AgentTurnRequestRepository>>;
@@ -85,7 +89,8 @@ describe('AgentRemoteTurnService', () => {
 		roomHere?: boolean;
 		queueFull?: boolean;
 	} = {}) {
-		return new AgentRemoteTurnService(
+		const handlers = new AgentTurnHandlers(mockLogger());
+		const service = new AgentRemoteTurnService(
 			mockLogger(),
 			mock<AgentsConfig>({ queueMaxWaitSeconds }),
 			testCluster({ instanceKey, activeInstanceKeys }),
@@ -105,7 +110,10 @@ describe('AgentRemoteTurnService', () => {
 			turnQueue,
 			requests,
 			mock<AgentQueuedTestStreamService>(),
+			handlers,
 		);
+		handlersOf.set(service, handlers);
+		return service;
 	}
 
 	beforeEach(() => {
@@ -120,25 +128,6 @@ describe('AgentRemoteTurnService', () => {
 	});
 
 	describe('result', () => {
-		it('runs the turn here when no agent worker is up', async () => {
-			const service = setup({ workers: false });
-
-			await expect(service.result(payload, new AbortController().signal)).resolves.toEqual({
-				outcome: 'local',
-			});
-			expect(requests.createPending).not.toHaveBeenCalled();
-		});
-
-		it('rejects the turn as busy when no worker is up and this main is full', async () => {
-			const service = setup({ workers: false, roomHere: false });
-
-			await expect(service.result(payload, new AbortController().signal)).resolves.toEqual({
-				outcome: 'busy',
-				retryAfterSeconds: RETRY_AFTER,
-			});
-			expect(requests.createPending).not.toHaveBeenCalled();
-		});
-
 		it('rejects the turn as busy without a row when too many turns wait', async () => {
 			const service = setup({ queueFull: true });
 
@@ -154,7 +143,7 @@ describe('AgentRemoteTurnService', () => {
 			const main = setup();
 			const worker = setup({ instanceKey: 'worker-a' });
 			const run = vi.fn(async () => ({ status: 200, body: { ok: true } }));
-			worker.handle('webhook-respond', { mode: 'result', run });
+			handlersOf.get(worker)!.handle('webhook-respond', { mode: 'result', run });
 			turnQueue.enqueueRequest.mockImplementation(async (requestId) => {
 				setImmediate(() => {
 					worker.runRequest(requestId).catch(() => {});
@@ -166,7 +155,7 @@ describe('AgentRemoteTurnService', () => {
 			expect(outcome).toEqual({ outcome: 'done', result: { status: 200, body: { ok: true } } });
 			expect(run).toHaveBeenCalledWith(
 				payload,
-				expect.objectContaining({ requestId: expect.any(String) }),
+				expect.objectContaining({ turnId: expect.any(String) }),
 			);
 			expect(rows.size).toBe(0);
 		});
@@ -249,7 +238,10 @@ describe('AgentRemoteTurnService', () => {
 	describe('runRequest', () => {
 		it('removes the row when it cannot store the result, so the main sees a lost turn', async () => {
 			const service = setup({ instanceKey: 'worker-a' });
-			service.handle('webhook-respond', { mode: 'result', run: async () => ({ ok: true }) });
+			handlersOf.get(service)!.handle('webhook-respond', {
+				mode: 'result',
+				run: async () => ({ ok: true }),
+			});
 			requests.complete.mockRejectedValue(new Error('database unavailable'));
 			await requests.createPending('request-1', payload);
 
@@ -260,7 +252,10 @@ describe('AgentRemoteTurnService', () => {
 
 		it('keeps the row of a stored result for the main to read', async () => {
 			const service = setup({ instanceKey: 'worker-a' });
-			service.handle('webhook-respond', { mode: 'result', run: async () => ({ ok: true }) });
+			handlersOf.get(service)!.handle('webhook-respond', {
+				mode: 'result',
+				run: async () => ({ ok: true }),
+			});
 			await requests.createPending('request-1', payload);
 
 			await service.runRequest('request-1');
@@ -271,7 +266,7 @@ describe('AgentRemoteTurnService', () => {
 		it('does nothing when another process claimed the request', async () => {
 			const service = setup({ instanceKey: 'worker-a' });
 			const run = vi.fn();
-			service.handle('webhook-respond', { mode: 'result', run });
+			handlersOf.get(service)!.handle('webhook-respond', { mode: 'result', run });
 			await requests.createPending('request-1', payload);
 			await requests.claim('request-1', 'main-a');
 
@@ -294,7 +289,7 @@ describe('AgentRemoteTurnService', () => {
 			try {
 				const service = setup({ instanceKey: 'worker-a' });
 				let signal: AbortSignal | undefined;
-				service.handle('webhook-respond', {
+				handlersOf.get(service)!.handle('webhook-respond', {
 					mode: 'result',
 					run: async (_, context) => {
 						signal = context.abortSignal;

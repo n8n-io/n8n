@@ -39,10 +39,8 @@ import { AgentChatRelayService } from '../agent-chat-relay.service';
 import { AgentChatResumeService } from '../agent-chat-resume.service';
 import type { AgentTurnGate } from '../queue/agent-turn-gate.service';
 import type { AgentTurnPlacement } from '../queue/agent-turn-placement.service';
-import { AgentRemoteTurnService } from '../queue/agent-remote-turn.service';
-import type { AgentTurnQueue } from '../queue/agent-turn-queue.service';
-import type { AgentTurnRequestRepository } from '../repositories/agent-turn-request.repository';
-import type { UserRepository } from '@n8n/db';
+import type { User, UserRepository } from '@n8n/db';
+import { testTurns } from './test-utils/turns';
 import type { AgentsService } from '../agents.service';
 import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import {
@@ -117,6 +115,12 @@ function makeController() {
 
 	const taskCancellation = mock<AgentTaskCancellationService>();
 	const plans = mock<AgentPlanService>();
+	// The resume handler reads the user again before it runs the turn.
+	const userRepository = mock<UserRepository>();
+	userRepository.findByIdWithRole.mockImplementation(
+		async (id) => ({ id, disabled: false }) as unknown as User,
+	);
+	const turns = testTurns({ agentsConfig, streams: previewStreams });
 	const controller = new AgentChatController(
 		taskCancellation,
 		agentExecutionOrchestratorService,
@@ -142,19 +146,11 @@ function makeController() {
 		),
 		plans,
 		new AgentChatResumeService(
-			mock<UserRepository>(),
+			userRepository,
 			agentTestRunService,
 			agentExecutionOrchestratorService,
-			new AgentRemoteTurnService(
-				mockLogger(),
-				agentsConfig,
-				testCluster(),
-				mock<AgentTurnPlacement>({ dispatchEnabled: false }),
-				mock<AgentTurnGate>({ waitForRoom: async () => ({ admitted: true }) }),
-				mock<AgentTurnQueue>(),
-				mock<AgentTurnRequestRepository>(),
-				previewStreams,
-			),
+			turns.dispatcher,
+			turns.handlers,
 		),
 	);
 

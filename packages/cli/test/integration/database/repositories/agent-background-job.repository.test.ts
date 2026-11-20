@@ -40,6 +40,7 @@ import { AgentCheckpointRepository } from '@/modules/agents/repositories/agent-c
 import { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
 import type { AgentFileBridge } from '@/modules/agents/agent-file-bridge.service';
 import { AgentExecution } from '@/modules/agents/entities/agent-execution.entity';
+import { testTurns } from '@/modules/agents/__tests__/test-utils/turns';
 
 import { createOwner } from '../../shared/db/users';
 
@@ -939,6 +940,7 @@ describe('AgentBackgroundJobRepository', () => {
 		);
 		const logger = mock<Logger>();
 		logger.scoped.mockReturnValue(logger);
+		const turns = testTurns();
 		const wakeService = new AgentWakeService(
 			Container.get(AgentExecutionThreadRepository),
 			repository,
@@ -956,7 +958,8 @@ describe('AgentBackgroundJobRepository', () => {
 			mock<AgentPlanService>(),
 			mock(),
 			mock({ dispatchEnabled: false }),
-			mock(),
+			turns.dispatcher,
+			turns.handlers,
 		);
 
 		await wakeService.attemptWake('thread-1');
@@ -1027,6 +1030,7 @@ describe('AgentBackgroundJobRepository', () => {
 			const planService = mock<AgentPlanService>();
 			planService.findActivePlan.mockResolvedValue(null);
 
+			const turns = testTurns();
 			const wakeService = new AgentWakeService(
 				Container.get(AgentExecutionThreadRepository),
 				repository,
@@ -1044,7 +1048,8 @@ describe('AgentBackgroundJobRepository', () => {
 				planService,
 				mock(),
 				mock({ dispatchEnabled: false }),
-				mock(),
+				turns.dispatcher,
+				turns.handlers,
 			);
 			Container.set(AgentWakeService, wakeService);
 

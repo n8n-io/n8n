@@ -17,7 +17,7 @@ import type { AgentsSettingsService } from '../../agents-settings.service';
 import type { AgentExecution } from '../../entities/agent-execution.entity';
 import type { AgentExecutionThread } from '../../entities/agent-execution-thread.entity';
 import type { ProjectAgent } from '../../entities/agent.entity';
-import type { AgentRemoteTurnService } from '../../queue/agent-remote-turn.service';
+import { testTurns } from '../../__tests__/test-utils/turns';
 import type { AgentRepository } from '../../repositories/agent.repository';
 import type { AgentCredentialLookupService } from '../agent-credential-lookup.service';
 import type { N8NCheckpointStorage } from '../n8n-checkpoint-storage';
@@ -78,8 +78,9 @@ function makeService(agent: ProjectAgent | null = makeAgent()) {
 		(agentId) => `https://n8n.example.com/agent-webhook/${agentId}`,
 	);
 	const logger = mock<Logger>();
-	const remoteTurns = mock<AgentRemoteTurnService>();
-	remoteTurns.result.mockResolvedValue({ outcome: 'local' });
+	const turns = testTurns();
+	// Runs the turn in this process unless a test sets what the dispatcher returns.
+	const dispatchResult = vi.spyOn(turns.dispatcher, 'result');
 	const service = new WebhookChannelService(
 		agentRepository,
 		settings,
@@ -91,7 +92,8 @@ function makeService(agent: ProjectAgent | null = makeAgent()) {
 		checkpointStorage,
 		urlService,
 		logger,
-		remoteTurns,
+		turns.dispatcher,
+		turns.handlers,
 	);
 	const respond = async (
 		body: unknown = { input: 'Hi' },
@@ -118,7 +120,8 @@ function makeService(agent: ProjectAgent | null = makeAgent()) {
 		credentials,
 		checkpointStorage,
 		logger,
-		remoteTurns,
+		dispatchResult,
+		handlers: turns.handlers,
 	};
 }
 
@@ -801,8 +804,8 @@ describe('WebhookChannelService', () => {
 
 	describe('in agent queue mode', () => {
 		it('sends the checked message to a worker and returns its reply', async () => {
-			const { respond, remoteTurns, orchestrator } = makeService();
-			remoteTurns.result.mockResolvedValue({
+			const { respond, dispatchResult, orchestrator } = makeService();
+			dispatchResult.mockResolvedValue({
 				outcome: 'done',
 				result: { status: 200, body: { id: 'resp-1' } },
 			});
@@ -811,7 +814,7 @@ describe('WebhookChannelService', () => {
 				status: 200,
 				body: { id: 'resp-1' },
 			});
-			expect(remoteTurns.result).toHaveBeenCalledWith(
+			expect(dispatchResult).toHaveBeenCalledWith(
 				{
 					kind: 'webhook-respond',
 					agentId: 'agent-1',
@@ -825,7 +828,7 @@ describe('WebhookChannelService', () => {
 		});
 
 		it('sends nothing to a worker when the caller fails authentication', async () => {
-			const { respond, credentials, remoteTurns } = makeService(
+			const { respond, credentials, dispatchResult } = makeService(
 				makeAgent({ integrations: [webhook('headerAuth')] }),
 			);
 			credentials.decryptForProject.mockResolvedValue({ name: 'X-Api-Key', value: 'key-1' });
@@ -833,12 +836,12 @@ describe('WebhookChannelService', () => {
 			await expect(respond({ input: 'Hi' }, { 'x-api-key': 'key-2' })).resolves.toMatchObject({
 				status: 403,
 			});
-			expect(remoteTurns.result).not.toHaveBeenCalled();
+			expect(dispatchResult).not.toHaveBeenCalled();
 		});
 
 		it('returns 503 and does not run the turn again when the worker is lost', async () => {
-			const { respond, remoteTurns, orchestrator } = makeService();
-			remoteTurns.result.mockResolvedValue({ outcome: 'lost' });
+			const { respond, dispatchResult, orchestrator } = makeService();
+			dispatchResult.mockResolvedValue({ outcome: 'lost' });
 
 			const reply = await respond();
 
@@ -848,12 +851,12 @@ describe('WebhookChannelService', () => {
 		});
 
 		it('sends the decision to a worker', async () => {
-			const { decide, remoteTurns } = makeService();
-			remoteTurns.result.mockResolvedValue({ outcome: 'done', result: { status: 200, body: {} } });
+			const { decide, dispatchResult } = makeService();
+			dispatchResult.mockResolvedValue({ outcome: 'done', result: { status: 200, body: {} } });
 
 			await decide({ approved: true });
 
-			expect(remoteTurns.result).toHaveBeenCalledWith(
+			expect(dispatchResult).toHaveBeenCalledWith(
 				expect.objectContaining({
 					kind: 'webhook-decide',
 					conversationId: 'c-1',
@@ -866,25 +869,23 @@ describe('WebhookChannelService', () => {
 		});
 
 		it('runs a message on the worker and stores the reply as JSON', async () => {
-			const { remoteTurns, orchestrator } = makeService();
-			const handler = remoteTurns.handle.mock.calls.find(
-				([kind]) => kind === 'webhook-respond',
-			)?.[1];
-			if (handler?.mode !== 'result') throw new Error('No result handler');
+			const { handlers, orchestrator } = makeService();
 
-			const result = await handler.run(
+			const end = await handlers.run(
 				{
 					kind: 'webhook-respond',
 					agentId: 'agent-1',
 					input: 'Hi',
 					approvalBaseUrl: 'https://n8n.example.com/agent-webhook/agent-1',
 				} as never,
-				{ requestId: 'request-1', abortSignal: new AbortController().signal },
+				{ turnId: 'turn-1', abortSignal: new AbortController().signal },
+				() => {},
 			);
 
 			expect(orchestrator.executeForChatPublished).toHaveBeenCalledOnce();
-			expect(result).toMatchObject({ status: 200 });
-			expect(JSON.stringify(result.body)).toContain('"text":"Hello"');
+			if (end.outcome !== 'done' || !end.result) throw new Error('No result');
+			expect(end.result).toMatchObject({ status: 200 });
+			expect(JSON.stringify(end.result.body)).toContain('"text":"Hello"');
 		});
 	});
 });

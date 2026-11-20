@@ -25,7 +25,8 @@ import { hashAgentSandboxPrincipal } from '../../../agent-sandbox-principal';
 import { AgentTurnAlreadyRunningError } from '../../../agent-turn-already-running.error';
 import { AgentsSettingsService } from '../../../agents-settings.service';
 import type { ProjectAgent } from '../../../entities/agent.entity';
-import { AgentRemoteTurnService } from '../../../queue/agent-remote-turn.service';
+import { AgentTurnDispatcher } from '../../../queue/agent-turn-dispatcher.service';
+import { AgentTurnHandlers } from '../../../queue/agent-turn-handlers.service';
 import {
 	toResumeJson,
 	type AgentWebhookDecideRequest,
@@ -118,14 +119,15 @@ export class WebhookChannelService {
 		private readonly checkpointStorage: N8NCheckpointStorage,
 		private readonly urlService: UrlService,
 		private readonly logger: Logger,
-		private readonly remoteTurns: AgentRemoteTurnService,
+		private readonly dispatcher: AgentTurnDispatcher,
+		handlers: AgentTurnHandlers,
 	) {
-		this.remoteTurns.handle('webhook-respond', {
+		handlers.handle('webhook-respond', {
 			mode: 'result',
 			run: async (payload, { abortSignal }) =>
 				toResultJson(await this.runRespond(payload, abortSignal)),
 		});
-		this.remoteTurns.handle('webhook-decide', {
+		handlers.handle('webhook-decide', {
 			mode: 'result',
 			run: async (payload, { abortSignal }) =>
 				toResultJson(await this.runDecide(payload, abortSignal)),
@@ -153,11 +155,7 @@ export class WebhookChannelService {
 		} catch (error) {
 			return this.errorReply(request.abortSignal, error);
 		}
-		return await this.dispatch(
-			payload,
-			request.abortSignal,
-			async () => await this.runRespond(payload, request.abortSignal),
-		);
+		return await this.dispatch(payload, request.abortSignal);
 	}
 
 	/** Runs one webhook message in this process. The caller is already authenticated. */
@@ -235,11 +233,7 @@ export class WebhookChannelService {
 		} catch (error) {
 			return this.errorReply(request.abortSignal, error);
 		}
-		return await this.dispatch(
-			payload,
-			request.abortSignal,
-			async () => await this.runDecide(payload, request.abortSignal),
-		);
+		return await this.dispatch(payload, request.abortSignal);
 	}
 
 	/** Runs one approval decision in this process. The caller is already authenticated. */
@@ -300,12 +294,9 @@ export class WebhookChannelService {
 	private async dispatch(
 		payload: AgentWebhookRespondRequest | AgentWebhookDecideRequest,
 		abortSignal: AbortSignal,
-		runHere: () => Promise<WebhookChannelReply>,
 	): Promise<WebhookChannelReply> {
-		const remote = await this.remoteTurns.result(payload, abortSignal);
+		const remote = await this.dispatcher.result(payload, abortSignal);
 		switch (remote.outcome) {
-			case 'local':
-				return await runHere();
 			case 'done':
 				return { status: Number(remote.result.status), body: remote.result.body ?? null };
 			case 'left':

@@ -1,4 +1,4 @@
-import { AGENT_CHAT_ERROR_CODES, type AgentSseEvent } from '@n8n/api-types';
+import type { AgentSseEvent } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
@@ -9,13 +9,9 @@ import { setTimeout as sleep } from 'node:timers/promises';
 import { AgentClusterService } from '../agent-cluster.service';
 import { AgentQueuedTestStreamService } from '../agent-queued-test-stream.service';
 import { AgentTurnRequestRepository } from '../repositories/agent-turn-request.repository';
-import type { AgentTurnRejectReason } from './agent-queue-metrics';
-import {
-	AgentTurnGate,
-	type AgentTurnAdmission,
-	requestTurnClass,
-	TURN_PRIORITY,
-} from './agent-turn-gate.service';
+import { busyEvent } from './agent-busy-event';
+import { AgentTurnGate, requestTurnClass, TURN_PRIORITY } from './agent-turn-gate.service';
+import { AgentTurnHandlers } from './agent-turn-handlers.service';
 import { AgentTurnPlacement } from './agent-turn-placement.service';
 import { AgentTurnQueue } from './agent-turn-queue.service';
 import type { AgentTurnRequestPayload } from './agent-turn-request.types';
@@ -24,7 +20,6 @@ import type { AgentTurnRequestPayload } from './agent-turn-request.types';
 export const requestStreamKey = (requestId: string) => `request:${requestId}`;
 
 type Kind = AgentTurnRequestPayload['kind'];
-type PayloadOf<K extends Kind> = Extract<AgentTurnRequestPayload, { kind: K }>;
 
 /** Where the main that holds the connection receives the events of a turn. */
 export interface AgentRemoteDelivery {
@@ -32,41 +27,6 @@ export interface AgentRemoteDelivery {
 	/** Aborts when the caller leaves. */
 	abortSignal: AbortSignal;
 }
-
-/** What a handler gets when it runs a request on this process. */
-export interface AgentRemoteTurnContext {
-	requestId: string;
-	/** Aborts when the main that holds the connection stops waiting for the turn. */
-	abortSignal: AbortSignal;
-}
-
-/** A turn that streams events to the caller, such as a chat resume. */
-export interface AgentStreamTurnHandler<K extends Kind> {
-	mode: 'stream';
-	run: (
-		payload: PayloadOf<K>,
-		context: AgentRemoteTurnContext & { send: (event: AgentSseEvent) => void },
-	) => Promise<void>;
-	/** Sends the error of a turn that failed before it could report it. */
-	onError: (error: unknown, send: (event: AgentSseEvent) => void) => void;
-}
-
-/** A turn whose caller waits for one reply, such as a webhook call. */
-export interface AgentResultTurnHandler<K extends Kind> {
-	mode: 'result';
-	run: (payload: PayloadOf<K>, context: AgentRemoteTurnContext) => Promise<JsonObject>;
-}
-
-/** A turn that no caller waits for, such as the resume of a workflow tool. */
-export interface AgentDetachedTurnHandler<K extends Kind> {
-	mode: 'detached';
-	run: (payload: PayloadOf<K>, context: AgentRemoteTurnContext) => Promise<void>;
-}
-
-export type AgentTurnHandler<K extends Kind> =
-	| AgentStreamTurnHandler<K>
-	| AgentResultTurnHandler<K>
-	| AgentDetachedTurnHandler<K>;
 
 /**
  * - `local`: no worker took the turn. The caller runs it in this process.
@@ -82,31 +42,6 @@ export type AgentRemoteResult =
 	| { outcome: 'lost' }
 	| { outcome: 'left' }
 	| { outcome: 'busy'; retryAfterSeconds: number };
-
-/** Kinds of work that already started and that no caller waits for. n8n never rejects them. */
-const UNREJECTABLE_KINDS: ReadonlySet<Kind> = new Set(['wake', 'workflow-tool-resume']);
-
-/** The chat event of a turn that n8n rejected because it has no room now. */
-export const busyEvent = (
-	reason: AgentTurnRejectReason,
-	retryAfterSeconds: number,
-): AgentSseEvent => {
-	if (reason === 'main-memory-high') {
-		return {
-			type: 'error',
-			message: 'The server is low on memory right now. Try again in a moment.',
-			errorCode: AGENT_CHAT_ERROR_CODES.lowMemory,
-			retryAfterSeconds,
-		};
-	}
-	return {
-		type: 'error',
-		message: 'n8n is busy right now. Try again in a moment.',
-		errorCode:
-			reason === 'queue-full' ? AGENT_CHAT_ERROR_CODES.queueFull : AGENT_CHAT_ERROR_CODES.mainBusy,
-		retryAfterSeconds,
-	};
-};
 
 /**
  * Runs an agent turn on an agent worker while a main holds the connection of
@@ -143,8 +78,6 @@ export class AgentRemoteTurnService {
 	/** Requests older than this are left over from a crash. */
 	static readonly STALE_REQUEST_MS = 60 * 60 * 1_000;
 
-	private readonly handlers = new Map<Kind, AgentTurnHandler<Kind>>();
-
 	constructor(
 		private readonly logger: Logger,
 		private readonly agentsConfig: AgentsConfig,
@@ -154,33 +87,9 @@ export class AgentRemoteTurnService {
 		private readonly turnQueue: AgentTurnQueue,
 		private readonly requests: AgentTurnRequestRepository,
 		private readonly streams: AgentQueuedTestStreamService,
+		private readonly handlers: AgentTurnHandlers,
 	) {
 		this.logger = this.logger.scoped('agents');
-	}
-
-	/** Register how this process runs one kind of request. */
-	handle<K extends Kind>(kind: K, handler: AgentTurnHandler<K>): void {
-		// Each handler only receives the payload of its own kind, see `runRequest`.
-		this.handlers.set(kind, handler);
-	}
-
-	/** Whether this main can send turns to agent workers now. */
-	async canDispatch(): Promise<boolean> {
-		return this.placement.dispatchEnabled && (await this.placement.workersAvailable());
-	}
-
-	/**
-	 * Wait until this process has room to run a turn of this kind itself. See
-	 * `AgentTurnGate.waitForRoom`. An agent worker has its own job limit, so
-	 * the gate does not apply there. n8n never rejects a wake or the resume of
-	 * a workflow tool: they wait for room for as long as it takes.
-	 */
-	async admitHere(kind: Kind, abortSignal?: AbortSignal): Promise<AgentTurnAdmission> {
-		if (this.cluster.isWorker) return { admitted: true };
-		return await this.gate.waitForRoom(requestTurnClass(kind), {
-			abortSignal,
-			untilRoom: UNREJECTABLE_KINDS.has(kind),
-		});
 	}
 
 	/** Whether too many turns wait for agent workers. Gives the busy result when they do. */
@@ -193,13 +102,12 @@ export class AgentRemoteTurnService {
 
 	/**
 	 * Send a streamed turn to a worker and relay its events. Returns `false`
-	 * when this main must run the turn itself: no worker is up and the gate of
-	 * this main admitted the turn, the job could not be sent, or no worker
-	 * claimed the request in time.
+	 * when this main must run the turn itself: the job could not be sent, or
+	 * no worker claimed the request in time.
 	 *
 	 * Returns `true` after it sends a busy error when n8n has no room for the
-	 * turn: too many turns wait, no process started the turn within
-	 * `N8N_AGENTS_QUEUE_MAX_WAIT`, or no worker is up and this main is full.
+	 * turn: too many turns wait, or no process started the turn within
+	 * `N8N_AGENTS_QUEUE_MAX_WAIT`.
 	 *
 	 * With `stopOnLeave`, a caller that leaves stops the turn. Without it, the
 	 * turn runs to its end, as a local turn does.
@@ -209,14 +117,6 @@ export class AgentRemoteTurnService {
 		delivery: AgentRemoteDelivery,
 		options: { stopOnLeave: boolean },
 	): Promise<boolean> {
-		if (!(await this.canDispatch())) {
-			const admission = await this.admitHere(payload.kind, delivery.abortSignal);
-			if (admission.admitted) return false;
-			if (admission.reason !== 'left') {
-				delivery.send(busyEvent(admission.reason, admission.retryAfterSeconds));
-			}
-			return true;
-		}
 		const full = await this.workerQueueFull();
 		if (full) {
 			delivery.send(busyEvent('queue-full', full.retryAfterSeconds));
@@ -285,12 +185,6 @@ export class AgentRemoteTurnService {
 		payload: AgentTurnRequestPayload,
 		abortSignal: AbortSignal,
 	): Promise<AgentRemoteResult> {
-		if (!(await this.canDispatch())) {
-			const admission = await this.admitHere(payload.kind, abortSignal);
-			if (admission.admitted) return { outcome: 'local' };
-			if (admission.reason === 'left') return { outcome: 'left' };
-			return { outcome: 'busy', retryAfterSeconds: admission.retryAfterSeconds };
-		}
 		const full = await this.workerQueueFull();
 		if (full) return full;
 
@@ -387,58 +281,37 @@ export class AgentRemoteTurnService {
 		if (!claimant) return;
 		const payload = await this.requests.claim(requestId, claimant);
 		if (!payload) return;
-		const handler = this.handlers.get(payload.kind);
-		if (!handler) {
-			this.logger.warn('No handler for an agent turn request on this process', {
-				requestId,
-				kind: payload.kind,
-			});
-			await this.removeQuietly(requestId);
-			return;
-		}
 
 		const abort = new AbortController();
 		const stopWatch = this.watchWanted(requestId, abort);
-		const context = { requestId, abortSignal: abort.signal };
+		// Only a stream turn has a main that listens. Its sender also sends heartbeats.
+		const sender =
+			this.handlers.modeOf(payload.kind) === 'stream'
+				? this.streams.createSender(requestStreamKey(requestId))
+				: undefined;
 		// The main removes the row of a result turn once it reads the result.
 		let resultStored = false;
 		try {
-			if (handler.mode === 'result') {
-				await this.requests.complete(requestId, await handler.run(payload, context));
+			const end = await this.handlers.run(
+				payload,
+				{ turnId: requestId, abortSignal: abort.signal },
+				(event) => sender?.send(event),
+			);
+			if (end.outcome === 'done' && end.result) {
+				await this.requests.complete(requestId, end.result);
 				resultStored = true;
-			} else if (handler.mode === 'detached') {
-				await handler.run(payload, context);
-			} else {
-				await this.runStream(requestId, handler, payload, context);
 			}
 		} catch (error) {
-			// A result turn reports its own errors. This is a failure to store the
-			// result, or a failed detached turn.
-			this.logger.warn('Failed to finish an agent turn request', {
+			this.logger.warn('Failed to store the result of an agent turn request', {
 				requestId,
 				kind: payload.kind,
 				error,
 			});
 		} finally {
 			stopWatch();
+			await sender?.close();
 			// Without a stored result, a removed row tells the main that the turn is lost.
 			if (!resultStored) await this.removeQuietly(requestId);
-		}
-	}
-
-	private async runStream(
-		requestId: string,
-		handler: AgentStreamTurnHandler<Kind>,
-		payload: AgentTurnRequestPayload,
-		context: AgentRemoteTurnContext,
-	): Promise<void> {
-		const sender = this.streams.createSender(requestStreamKey(requestId));
-		try {
-			await handler.run(payload, { ...context, send: sender.send });
-		} catch (error) {
-			handler.onError(error, sender.send);
-		} finally {
-			await sender.close();
 		}
 	}
 

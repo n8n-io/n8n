@@ -11,7 +11,8 @@ import {
 	toChatErrorEvent,
 } from './agent-sse-stream';
 import { AgentTestRunService } from './agent-test-run.service';
-import { AgentRemoteTurnService } from './queue/agent-remote-turn.service';
+import { AgentTurnDispatcher } from './queue/agent-turn-dispatcher.service';
+import { AgentTurnHandlers } from './queue/agent-turn-handlers.service';
 import type { AgentChatResumeRequest } from './queue/agent-turn-request.types';
 import type { AgentExecutionStreamChunk } from './types/agent-steering';
 import { productionChatMemoryResourceId } from './utils/agent-memory-scope';
@@ -33,7 +34,7 @@ const toResumeStream = (send: (event: AgentSseEvent) => void): AgentResumeStream
 
 /**
  * Runs the answer to a suspended tool call in the chat of an agent. In agent
- * queue mode an agent worker runs it, see `AgentRemoteTurnService`.
+ * queue mode an agent worker runs it, see `AgentTurnDispatcher`.
  */
 @Service()
 export class AgentChatResumeService {
@@ -41,9 +42,10 @@ export class AgentChatResumeService {
 		private readonly userRepository: UserRepository,
 		private readonly testRuns: AgentTestRunService,
 		private readonly orchestrator: AgentExecutionOrchestratorService,
-		private readonly remoteTurns: AgentRemoteTurnService,
+		private readonly dispatcher: AgentTurnDispatcher,
+		handlers: AgentTurnHandlers,
 	) {
-		this.remoteTurns.handle('chat-resume', {
+		handlers.handle('chat-resume', {
 			mode: 'stream',
 			run: async (request, { send }) => {
 				const user = await this.userRepository.findByIdWithRole(request.userId);
@@ -54,17 +56,16 @@ export class AgentChatResumeService {
 		});
 	}
 
-	/** Stream a resume to the browser. A worker runs it when agent queue mode is on. */
-	async relay(res: FlushableResponse, request: AgentChatResumeRequest, user: User): Promise<void> {
+	/**
+	 * Stream a resume to the browser. A worker runs it when agent queue mode is
+	 * on. The handler reads the user again, so a user that was disabled since
+	 * the request cannot resume.
+	 */
+	async relay(res: FlushableResponse, request: AgentChatResumeRequest): Promise<void> {
 		const delivery = initSseStream(res);
 		try {
-			// A browser that leaves does not stop a local resume, so it does not stop a remote one.
-			const ranRemotely = await this.remoteTurns.stream(request, delivery, { stopOnLeave: false });
-			if (!ranRemotely)
-				await this.run(request, user, {
-					...toResumeStream(delivery.send),
-					onChunk: delivery.onChunk,
-				});
+			// A resume already started, so a browser that leaves does not stop it.
+			await this.dispatcher.stream(request, delivery, { stopOnLeave: false });
 		} catch (error) {
 			delivery.send(toChatErrorEvent(error, 'Resume failed'));
 		} finally {
