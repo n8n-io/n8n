@@ -123,6 +123,9 @@ function parseDefaultValue(
 ): string | number | boolean | Record<string, unknown> | undefined {
 	if (value === undefined) return value;
 
+	// A blank default means "no default". Coercing it with Number() would turn '' into 0.
+	if (value.trim() === '') return value;
+
 	const lowerValue = value.toLowerCase();
 	if (type === 'string') {
 		return value.toString();
