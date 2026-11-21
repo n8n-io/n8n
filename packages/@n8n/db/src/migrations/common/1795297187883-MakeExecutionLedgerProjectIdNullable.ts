@@ -7,7 +7,7 @@ const comment = 'Project at the time of the event. No foreign key: rows outlive 
 const nullableComment = `${comment}. Null when the workflow has no owner project`;
 
 /** A run of a workflow with no owner project gets a ledger row with no project. */
-export class MakeExecutionLedgerProjectIdNullable1795184628167 implements ReversibleMigration {
+export class MakeExecutionLedgerProjectIdNullable1795297187883 implements ReversibleMigration {
 	async up(context: MigrationContext) {
 		await context.schemaBuilder.dropNotNull(tableName, columnName, { recreatesOnSqlite: true });
 		await this.setComment(context, nullableComment);
