@@ -156,6 +156,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		webhooks = 0,
 		postgres: usePostgresConfig = false,
 		engine,
+		sharedStorage,
 		env = {},
 		unsetEnv,
 		files: stackFiles,
@@ -386,10 +387,8 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			return meta?.n8nFilesToMount ?? [];
 		});
 
-		// The main and the engine container share one binary data store, so a
-		// file one plane stores is read by the other. Deleted with the stack.
 		let binaryDataHostDir: string | undefined;
-		if (engine === 'container') {
+		if (sharedStorage || engine === 'container') {
 			binaryDataHostDir = mkdtempSync(join(tmpdir(), `${uniqueProjectName}-binary-data-`));
 			resources.trackPath(binaryDataHostDir);
 		}
@@ -683,7 +682,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 						startupDeadline: replacementDeadline,
 						image: options.image,
 						userHomeHostDir,
-						// The kept engine container still writes here.
+						// Keep the storage directory across the swap.
 						binaryDataHostDir,
 						user,
 						startupTimeoutMs,
