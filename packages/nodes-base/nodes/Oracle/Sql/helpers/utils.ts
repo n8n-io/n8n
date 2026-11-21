@@ -13,6 +13,11 @@ import { UserError } from '@n8n/errors';
 import oracledb from 'oracledb';
 
 import { routeBinaryProperties } from '@utils/binary';
+import {
+	assertCursorColumnNotNull,
+	assertCursorColumnType,
+	assertUniqueCursorColumn,
+} from '@utils/sql-keyset-paging';
 import { generatePairedItemData, wrapData } from '@utils/utilities';
 
 import type {
@@ -177,7 +182,7 @@ function getExecuteManyOptions(
 	return execOptions;
 }
 
-function addBindParam(
+export function addBindParam(
 	colInfo: ColumnDefinition,
 	value: any,
 	bindParameters: oracledb.BindParameter[],
@@ -377,6 +382,70 @@ ORDER BY atc.COLUMN_NAME`;
 		if (conn) {
 			await conn.close();
 		}
+	}
+}
+
+// Reads all_indexes, not constraint_types from getColumnMetaData: that field is aggregated per column
+// and marks every member of a composite constraint as unique.
+export async function getUniqueKeyColumns(
+	pool: oracledb.Pool,
+	schema: string,
+	table: string,
+): Promise<string[]> {
+	const conn = await pool.getConnection();
+	try {
+		const result = await conn.execute<{ COLUMN_NAME: string }>(
+			`SELECT MIN(aic.column_name) AS column_name
+			 FROM all_indexes ai
+			 JOIN all_ind_columns aic ON aic.index_owner = ai.owner AND aic.index_name = ai.index_name
+			 WHERE ai.table_owner = :schema_name AND ai.table_name = :table_name
+			   AND ai.uniqueness = 'UNIQUE' AND ai.index_type IN ('NORMAL', 'IOT - TOP')
+			 GROUP BY ai.owner, ai.index_name HAVING COUNT(*) = 1`,
+			{ schema_name: schema, table_name: table },
+			{ outFormat: oracledb.OUT_FORMAT_OBJECT },
+		);
+		return (result.rows ?? []).map((row) => row.COLUMN_NAME);
+	} finally {
+		await conn.close();
+	}
+}
+
+// n8n outputs the other types as objects, or with less precision
+const START_AFTER_TYPE = /^(NUMBER|N?VARCHAR2|N?CHAR)$/;
+
+/**
+ * Throws if Start After cannot page by the column without skipped or repeated rows.
+ * `uniqueColumns` comes from getUniqueKeyColumns.
+ */
+export function checkStartAfterColumn(
+	node: INode,
+	itemIndex: number,
+	table: string,
+	column: string,
+	columnInfo: ColumnDefinition | undefined,
+	uniqueColumns: string[],
+	value?: string,
+) {
+	if (!columnInfo) {
+		throw new NodeOperationError(node, `Column "${column}" was not found in table "${table}"`, {
+			itemIndex,
+		});
+	}
+	assertUniqueCursorColumn(node, itemIndex, uniqueColumns, column);
+	assertCursorColumnType(node, itemIndex, column, columnInfo.type, START_AFTER_TYPE);
+	assertCursorColumnNotNull(node, itemIndex, column, columnInfo.nullable);
+	// The value of a NUMBER column is bound as a number, which cannot keep all digits of a bigger integer
+	if (
+		columnInfo.type === 'NUMBER' &&
+		value !== undefined &&
+		/^\s*[+-]?\d+\s*$/.test(value) &&
+		!Number.isSafeInteger(Number(value))
+	) {
+		throw new NodeOperationError(node, 'The Start After value is too big to be exact', {
+			itemIndex,
+			description:
+				'n8n cannot keep all digits of a number above 9007199254740991, so the next page can skip rows.',
+		});
 	}
 }
 
