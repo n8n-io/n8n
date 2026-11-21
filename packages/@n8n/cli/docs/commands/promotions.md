@@ -637,8 +637,9 @@ n8n-cli promotion-review get <reviewId> --json
 
 `reviewState` is `open`, `changes_requested`, `merged` or `closed`. The approver
 is set only for a merged review. `title`, `webUrl` and `headCommitSha` come from
-the Git host. When the host does not answer, they are empty and `remoteError`
-tells why. A review that your Inbox does not show returns "not found".
+the Git host. When the host does not answer, they are `null`, `hasConflicts` is
+`false`, and `remoteError` tells why. A review that your Inbox does not show
+returns "not found".
 
 ## `promotion-settings get` / `update`
 
