@@ -9,8 +9,13 @@ import { PromotionReview } from '../entities/promotion-review.entity';
 /** The caller supplies the id, so the review link can exist before the row does. */
 export type NewPromotionReview = Pick<
 	PromotionReview,
-	'id' | 'environmentId' | 'type' | 'remoteReviewId' | 'createdById'
+	'id' | 'environmentId' | 'projectId' | 'type' | 'remoteReviewId' | 'createdById'
 >;
+
+/** The reviews a user can read: all of them, or the reviews of some projects. */
+export type PromotionReviewVisibility =
+	| { scope: 'all' }
+	| { scope: 'projects'; projectIds: string[] };
 
 /** One admin's approval in progress. The time tells it apart from a later claim by the same admin. */
 export type ApprovalClaim = Readonly<{ reviewId: string; approvedById: string; approvedAt: Date }>;
@@ -22,12 +27,15 @@ const TERMINAL_STATES: PromotionReviewState[] = ['merged', 'closed'];
 // The Inbox orders every source by its latest activity. A review has no updatedAt column.
 const activityAt = 'COALESCE(review.lastStateChangeAt, review.createdAt)';
 
-/** The newest run carries the branch and the commit. Loaded only for one review. */
+/**
+ * Loaded only for one review. The newest run carries the branch, the commit, and the environment
+ * name. The run creators decide who can approve.
+ */
 const DETAIL_RELATIONS = {
 	environment: true,
 	createdBy: true,
 	approvedBy: true,
-	runs: { createdBy: true },
+	runs: { createdBy: true, environment: true },
 } as const;
 
 @Service()
@@ -130,7 +138,11 @@ export class PromotionReviewRepository extends BaseRepository<PromotionReview> {
 		return await this.findOne({ where: { id }, relations: DETAIL_RELATIONS });
 	}
 
-	async findForInbox({ state, limit, boundary }: InboxSourceQuery): Promise<PromotionReview[]> {
+	/** The caller returns early for a `projects` visibility without projects. */
+	async findForInbox(
+		{ state, limit, boundary }: InboxSourceQuery,
+		visibility: PromotionReviewVisibility,
+	): Promise<PromotionReview[]> {
 		const query = this.createQueryBuilder('review')
 			.leftJoinAndSelect('review.environment', 'environment')
 			.leftJoinAndSelect('review.createdBy', 'createdBy')
@@ -144,6 +156,11 @@ export class PromotionReviewRepository extends BaseRepository<PromotionReview> {
 			.orderBy(activityAt, 'DESC')
 			.addOrderBy('review.id', 'ASC')
 			.limit(limit);
+		if (visibility.scope === 'projects') {
+			query.andWhere('review.projectId IN (:...projectIds)', {
+				projectIds: visibility.projectIds,
+			});
+		}
 		if (boundary?.mode === 'afterItem') {
 			query.andWhere(`(${activityAt} < :at OR (${activityAt} = :at AND review.id > :id))`, {
 				at: boundary.updatedAt,
@@ -156,10 +173,12 @@ export class PromotionReviewRepository extends BaseRepository<PromotionReview> {
 		return await query.getMany();
 	}
 
-	async countForInbox(): Promise<InboxCounts> {
+	/** The caller returns early for a `projects` visibility without projects. */
+	async countForInbox(visibility: PromotionReviewVisibility): Promise<InboxCounts> {
+		const projectId = visibility.scope === 'projects' ? In(visibility.projectIds) : undefined;
 		const [open, closed] = await Promise.all([
-			this.countBy({ state: In(OPEN_STATES) }),
-			this.countBy({ state: In(TERMINAL_STATES) }),
+			this.countBy({ state: In(OPEN_STATES), projectId }),
+			this.countBy({ state: In(TERMINAL_STATES), projectId }),
 		]);
 		return { open, closed };
 	}

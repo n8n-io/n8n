@@ -33,6 +33,7 @@ describe('PromotionReviewInboxService.refreshState', () => {
 		mock<EventService>(),
 		logger,
 		mock(),
+		mock(),
 	);
 
 	const review = (overrides: Partial<PromotionReview> = {}) =>

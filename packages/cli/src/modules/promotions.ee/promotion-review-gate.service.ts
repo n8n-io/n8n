@@ -4,6 +4,7 @@ import {
 	type PromotionReviewState,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
 import type { PromotionReview } from './database/entities/promotion-review.entity';
@@ -35,8 +36,8 @@ export const reviewCoversProject = (runs: PromotionRun[], projectId: string) => 
 
 /**
  * Finds the open review that already holds the promote changes of a project. The stored state
- * can be old, so each candidate gets one live read. Every failure lets the promote through:
- * a review that n8n cannot read must never block a project for good.
+ * can be old, so each candidate gets one live read. A failed review or host read lets the promote
+ * through: a review that n8n cannot read must never block a project for good.
  */
 @Service()
 export class PromotionReviewGateService {
@@ -50,10 +51,25 @@ export class PromotionReviewGateService {
 	}
 
 	async findPromoteBlocker(
+		user: User,
 		projectId: string,
 		environmentId: string,
 	): Promise<PromotionBlocker | null> {
 		if (!this.inbox.isEnabled()) return null;
+		const blocking = await this.findBlockingReview(projectId, environmentId);
+		if (!blocking) return null;
+		// Outside the lenient lookup: a failed role read must not let the promote through.
+		return {
+			code: 'reviewOpen',
+			reviewId: blocking.id,
+			viewerCanRead: await this.inbox.canOpenReview(user, blocking),
+		};
+	}
+
+	private async findBlockingReview(
+		projectId: string,
+		environmentId: string,
+	): Promise<PromotionReview | null> {
 		try {
 			const open = await this.reviewRepository.findOpenByEnvironmentId(environmentId);
 			if (open.length === 0) return null;
@@ -63,8 +79,7 @@ export class PromotionReviewGateService {
 			const states = await Promise.all(
 				covering.map(async (review) => await this.readState(review, runsOf(review))),
 			);
-			const blocking = covering.find((_, index) => states[index]);
-			return blocking ? { code: 'reviewOpen', reviewId: blocking.id } : null;
+			return covering.find((_, index) => states[index]) ?? null;
 		} catch (error) {
 			this.logger.warn('Could not check for an open promotion review', { environmentId, error });
 			return null;

@@ -5,7 +5,6 @@ import { createComponentRenderer } from '@n8n/frontend-test-utils';
 import { defineComponent } from 'vue';
 import { onTestFinished } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
-import { useRBACStore } from '@n8n/stores/rbac.store';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
@@ -36,6 +35,8 @@ const item = (props: Partial<InboxPromotionReviewItem> = {}): InboxPromotionRevi
 	hasConflicts: false,
 	createdAt: '2026-01-01T00:00:00.000Z',
 	updatedAt: '2026-01-01T00:00:00.000Z',
+	viewerApproval: 'allowed',
+	viewerCanClose: true,
 	...props,
 });
 
@@ -168,6 +169,11 @@ it.each([
 		{ headCommitSha: null },
 		"GitLab didn't report the latest commit of this merge request. Reload the Inbox and try again.",
 	],
+	[
+		'the viewer made a promotion run in the review',
+		{ viewerApproval: 'madeRun' as const },
+		'You made a promotion run in this review, so another approver must approve it.',
+	],
 ])('disables approve with the reason when %s', (_case, props, reason) => {
 	const { getByTestId } = renderComponent({ props: { item: item(props), onItemChange } });
 
@@ -269,15 +275,15 @@ describe('close', () => {
 		);
 	};
 
-	beforeEach(() => {
-		vi.mocked(useRBACStore().hasScope).mockReturnValue(true);
-	});
+	it.each([
+		['the requester', { viewerApproval: 'notAllowed' as const, viewerCanClose: true }],
+		['a reader', { viewerApproval: 'notAllowed' as const, viewerCanClose: false }],
+	])('shows %s only the actions that the server allows', (_viewer, viewer) => {
+		const { queryByTestId } = renderComponent({ props: { item: item(viewer), onItemChange } });
 
-	it('hides Close from a user without the approve scope', () => {
-		vi.mocked(useRBACStore().hasScope).mockReturnValue(false);
-		const { queryByTestId } = renderComponent({ props: { item: item(), onItemChange } });
-
-		expect(queryByTestId('inbox-promotion-review-close')).not.toBeInTheDocument();
+		expect(queryByTestId('inbox-promotion-review-approve')).not.toBeInTheDocument();
+		expect(queryByTestId('inbox-promotion-review-approve-reason')).not.toBeInTheDocument();
+		expect(!!queryByTestId('inbox-promotion-review-close')).toBe(viewer.viewerCanClose);
 	});
 
 	it('hides Close on a review that already ended', () => {

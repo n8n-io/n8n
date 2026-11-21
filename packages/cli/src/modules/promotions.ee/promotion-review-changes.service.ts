@@ -10,7 +10,7 @@ import {
 import type { User } from '@n8n/db';
 import { accountSummary } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
+import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { hasGlobalScope } from '@n8n/permissions';
 
 import { gitBlobSha } from '@/modules/n8n-packages/io/hashing-package-writer';
@@ -20,14 +20,13 @@ import type { PackageManifest } from '@/modules/n8n-packages/spec/manifest.schem
 import { PACKAGE_SUBFOLDER } from './constants';
 import type { PromotionEnvironment } from './database/entities/promotion-environment.entity';
 import type { PromotionReview } from './database/entities/promotion-review.entity';
-import { PromotionReviewRepository } from './database/repositories/promotion-review.repository';
 import {
 	GitLabMergeRequestClient,
 	gitLabReviewHeadRef,
 	parseGitLabReviewId,
 } from './git-hosts/gitlab-merge-request.client';
 import type { GitLabMergeRequest, MergeRequestRef } from './git-hosts/gitlab-merge-request.types';
-import { toDetail, type DetailSide } from './promotion-change.service';
+import { toDetail, unreadableCredentialKeys, type DetailSide } from './promotion-change.service';
 import {
 	buildPreview,
 	indexProjects,
@@ -59,7 +58,6 @@ type ReviewTarget = {
 @Service()
 export class PromotionReviewChangesService {
 	constructor(
-		private readonly reviewRepository: PromotionReviewRepository,
 		private readonly reviewInbox: PromotionReviewInboxService,
 		private readonly hostResolver: PromotionReviewHostResolver,
 		private readonly mergeRequests: GitLabMergeRequestClient,
@@ -67,8 +65,8 @@ export class PromotionReviewChangesService {
 	) {}
 
 	/** Reads the head from the host, so the summary shows the review as it is now. */
-	async getChanges(reviewId: string): Promise<PromotionReviewChanges> {
-		const target = await this.findReview(reviewId);
+	async getChanges(user: User, reviewId: string): Promise<PromotionReviewChanges> {
+		const target = await this.findReview(user, reviewId);
 		const mergeRequest = await this.readMergeRequest(target);
 		const headCommitSha = mergeRequest.sha ?? mergeRequest.diff_refs?.head_sha;
 		if (!headCommitSha) {
@@ -108,7 +106,7 @@ export class PromotionReviewChangesService {
 		// Without a manifest, every resource of the other side looks added or deleted.
 		if (warnings.length > 0) return { ...commitShas, resources: [], dependencies: [], warnings };
 
-		const projectIds = projectIdsOf(base.side.manifest, head.side.manifest);
+		const projectIds = reviewProjectIds(target.review, base.side.manifest, head.side.manifest);
 		const { resources, dependencies } = buildPreview({
 			operation: null,
 			projectIds,
@@ -124,7 +122,7 @@ export class PromotionReviewChangesService {
 		reviewId: string,
 		{ baselineCommitSha, headCommitSha, keys }: PromotionReviewDetailsRequestDto,
 	): Promise<PromotionResourceDetails> {
-		const target = await this.findReview(reviewId);
+		const target = await this.findReview(user, reviewId);
 		const commits = await this.promotionsService.readReviewCommits(target.environment.id, {
 			headRef: target.headRef,
 			headCommitSha,
@@ -132,18 +130,20 @@ export class PromotionReviewChangesService {
 		});
 		const baseManifest = await readManifest(commits.baseline);
 		const headManifest = await readManifest(commits.head);
-		const projectIds = projectIdsOf(baseManifest, headManifest);
+		const projectIds = reviewProjectIds(target.review, baseManifest, headManifest);
 		const baseIndex = indexProjects({ manifest: baseManifest, blobByPath: new Map() }, projectIds);
 		const headIndex = indexProjects({ manifest: headManifest, blobByPath: new Map() }, projectIds);
+		const hiddenKeys = await unreadableCredentialKeys(user, keys, headIndex, baseIndex);
+		const readableKeys = keys.filter((key) => !hiddenKeys.has(key));
 		const baseContents = await commits.baseline.readFiles(
-			keys.flatMap((key) => baseIndex.get(key)?.path ?? []),
+			readableKeys.flatMap((key) => baseIndex.get(key)?.path ?? []),
 		);
 		const headContents = await commits.head.readFiles(
-			keys.flatMap((key) => headIndex.get(key)?.path ?? []),
+			readableKeys.flatMap((key) => headIndex.get(key)?.path ?? []),
 		);
 		const canSeeVariableValues = hasGlobalScope(user, 'variable:list');
 
-		const details = keys.flatMap((key): PromotionResourceDetail[] => {
+		const details = readableKeys.flatMap((key): PromotionResourceDetail[] => {
 			const before = baseIndex.get(key);
 			const after = headIndex.get(key);
 			const resource = after ?? before;
@@ -158,16 +158,14 @@ export class PromotionReviewChangesService {
 				}),
 			];
 		});
-		const missingKeys = keys.filter((key) => !baseIndex.has(key) && !headIndex.has(key));
+		const missingKeys = keys.filter(
+			(key) => hiddenKeys.has(key) || (!baseIndex.has(key) && !headIndex.has(key)),
+		);
 		return { details, missingKeys };
 	}
 
-	private async findReview(reviewId: string): Promise<ReviewTarget> {
-		if (!this.reviewInbox.isEnabled()) {
-			throw new ForbiddenError('Promotion reviews are not enabled.');
-		}
-		const review = await this.reviewRepository.findByIdWithRelations(reviewId);
-		if (!review) throw new NotFoundError('Promotion review not found.');
+	private async findReview(user: User, reviewId: string): Promise<ReviewTarget> {
+		const { review } = await this.reviewInbox.findReadableReview(user, reviewId);
 		const { environment, remoteReviewId } = review;
 		if (!environment || !remoteReviewId) {
 			throw new BadRequestError('The environment of this promotion review was deleted.');
@@ -281,7 +279,18 @@ async function readSide(commit: PackageCommit): Promise<ReviewSide> {
 	return { side: { manifest, blobByPath }, manifestUnreadable: !manifest && blobByPath.size > 0 };
 }
 
-/** A full promotion writes every team project, so the review can span several of them. */
+/**
+ * A project review shows only its project. In a repository that several projects share, the
+ * other projects are not the approver's to see, and the target branch can hold their newer changes.
+ * A review of the whole instance spans every team project that its commits hold.
+ */
+function reviewProjectIds(
+	review: PromotionReview,
+	...manifests: Array<PackageManifest | null>
+): string[] {
+	return review.projectId ? [review.projectId] : projectIdsOf(...manifests);
+}
+
 function projectIdsOf(...manifests: Array<PackageManifest | null>): string[] {
 	return [
 		...new Set(manifests.flatMap((manifest) => manifest?.projects?.map(({ id }) => id) ?? [])),

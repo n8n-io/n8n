@@ -33,7 +33,10 @@ Requires the Promotions feature to be licensed. The API key scopes are:
   owners and admins can promote all team projects
 - `promotions:apply`: preview, apply and continue
 - `promotions:readReviews`: list and get promotion reviews. Every member can
-  add it to a key. The key reads the reviews that the Inbox of its owner shows
+  add it to a key. The key reads the reviews that the Inbox of its owner shows:
+  instance owners and admins see every review, other users see the reviews of
+  the projects where their project role can read reviews. Only instance owners
+  and admins see a review of a whole-instance promotion
 - `securitySettings:manage`: get and update the promotion settings
 
 A scope lets the key start the operation. The role of the key owner still

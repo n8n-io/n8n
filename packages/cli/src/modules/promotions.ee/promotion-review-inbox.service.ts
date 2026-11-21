@@ -4,6 +4,7 @@ import {
 	type InboxCounts,
 	type InboxPromotionReviewItem,
 	type ListPromotionReviewsQueryDto,
+	type PromotionReviewViewerApproval,
 	type PromotionReviewItem,
 	type PromotionReviewRemoteError,
 	type PromotionReviewState,
@@ -23,11 +24,12 @@ import {
 	ServiceUnavailableError,
 	TooManyRequestsError,
 } from '@n8n/errors';
-import { hasGlobalScope } from '@n8n/permissions';
+import { GLOBAL_ADMIN_ROLE_SLUG, GLOBAL_OWNER_ROLE_SLUG, hasGlobalScope } from '@n8n/permissions';
 import { singleFlight } from '@n8n/utils/promise/single-flight';
 import { z } from 'zod';
 
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
+import { ProjectService } from '@/services/project.service.ee';
 
 import type { InboxSourceQuery } from '../inbox/inbox-source.registry';
 import type { PromotionReview } from './database/entities/promotion-review.entity';
@@ -35,6 +37,7 @@ import type { PromotionRun } from './database/entities/promotion-run.entity';
 import {
 	PromotionReviewRepository,
 	type ApprovalClaim,
+	type PromotionReviewVisibility,
 } from './database/repositories/promotion-review.repository';
 import { PromotionRunRepository } from './database/repositories/promotion-run.repository';
 import type { GitHostAccess } from './git-hosts/git-host.types';
@@ -56,6 +59,20 @@ export type LiveReviewState =
 type RemoteView = Readonly<{
 	mergeRequest: GitLabMergeRequest | null;
 	remoteError: PromotionReviewRemoteError | null;
+}>;
+
+/**
+ * What one user can do with promotion reviews, read once for each request. The instance role
+ * covers every review. A project role covers the reviews of its project.
+ */
+type ReviewAccess = Readonly<{
+	userId: string;
+	/** Instance owners and admins can approve a review that holds their own promotion run. */
+	isInstanceAdmin: boolean;
+	instanceRead: boolean;
+	instanceApprove: boolean;
+	readProjectIds: ReadonlySet<string>;
+	approveProjectIds: ReadonlySet<string>;
 }>;
 
 /** Host access for each environment and review type, shared by one batch of reads. */
@@ -91,6 +108,7 @@ export class PromotionReviewInboxService {
 		private readonly eventService: EventService,
 		private readonly logger: Logger,
 		private readonly sourceControlPreferences: SourceControlPreferencesService,
+		private readonly projectService: ProjectService,
 	) {
 		this.logger = this.logger.scoped('promotions');
 	}
@@ -107,11 +125,13 @@ export class PromotionReviewInboxService {
 	}
 
 	async listForInbox(user: User, query: InboxSourceQuery): Promise<InboxPromotionReviewItem[]> {
-		if (!canRead(user)) return [];
+		const access = await this.accessOf(user);
+		const visibility = visibilityOf(access);
+		if (!visibility) return [];
 		// A sync during "Load more" could move a review above the cursor, where the user never sees it.
 		const synced = query.boundary ? new Map<string, RemoteView>() : await this.syncOnce();
-		const reviews = await this.reviewRepository.findForInbox(query);
-		const runs = await this.newestRuns(reviews);
+		const reviews = await this.reviewRepository.findForInbox(query, visibility);
+		const runs = await this.runsOf(reviews);
 		const read = await this.readRemote(
 			reviews.filter(({ id }) => !synced.has(id)),
 			runs,
@@ -120,8 +140,9 @@ export class PromotionReviewInboxService {
 		return reviews.map((review) =>
 			toItem(
 				review,
-				runs.get(review.id),
+				runs.get(review.id) ?? [],
 				synced.get(review.id) ?? read.get(review.id) ?? { mergeRequest: null, remoteError: null },
+				access,
 			),
 		);
 	}
@@ -141,7 +162,7 @@ export class PromotionReviewInboxService {
 			limit: limit + 1,
 			boundary: after && { mode: 'afterItem', updatedAt: new Date(after.updatedAt), id: after.id },
 		});
-		const data = items.slice(0, limit).map(withoutType);
+		const data = items.slice(0, limit).map(toPublicItem);
 		const last = data.at(-1);
 		return {
 			data,
@@ -154,23 +175,63 @@ export class PromotionReviewInboxService {
 
 	/** One review that the Inbox of the user shows. Reads the host now, as the Inbox sync does. */
 	async getForUser(user: User, reviewId: string): Promise<PromotionReviewItem> {
-		this.assertEnabled();
-		// A review that the Inbox hides reads as missing, as in the list.
-		const review = canRead(user)
-			? await this.reviewRepository.findByIdWithRelations(reviewId)
-			: null;
-		if (!review) throw new NotFoundError('Promotion review not found.');
-
-		const run = (await this.newestRuns([review])).get(review.id);
-		const view = await this.readOne(review, run, new Map());
+		const { review, access } = await this.findReadableReview(user, reviewId);
+		const runs = newestFirst(review.runs);
+		const view = await this.readOne(review, runs[0], new Map());
 		if (view.mergeRequest) await this.applyHostState(review, view.mergeRequest);
-		return withoutType(toItem(review, run, view));
+		return toPublicItem(toItem(review, runs, view, access));
 	}
 
 	async countForInbox(user: User): Promise<InboxCounts> {
-		if (!canRead(user)) return { open: 0, closed: 0 };
+		const visibility = visibilityOf(await this.accessOf(user));
+		if (!visibility) return { open: 0, closed: 0 };
 		await this.syncOnce();
-		return await this.reviewRepository.countForInbox();
+		return await this.reviewRepository.countForInbox(visibility);
+	}
+
+	/**
+	 * Loads one review that the Inbox of the user shows. A review that the Inbox hides reads as
+	 * missing, as in the list, so its id tells nothing.
+	 */
+	async findReadableReview(
+		user: User,
+		reviewId: string,
+	): Promise<{ review: PromotionReview; access: ReviewAccess }> {
+		this.assertEnabled();
+		const access = await this.accessOf(user);
+		const review = await this.reviewRepository.findByIdWithRelations(reviewId);
+		if (!review || !canReadReview(access, review)) {
+			throw new NotFoundError('Promotion review not found.');
+		}
+		return { review, access };
+	}
+
+	/** Whether the user can open the review in the Inbox. The preview blocker links to it. */
+	async canOpenReview(user: User, review: PromotionReview): Promise<boolean> {
+		return canReadReview(await this.accessOf(user), review);
+	}
+
+	private async accessOf(user: User): Promise<ReviewAccess> {
+		const instanceRead = hasGlobalScope(user, 'promotions:readReviews');
+		const instanceApprove = hasGlobalScope(user, 'promotions:approveReviews');
+		// With the scope in the instance role, the project lookup would return every project.
+		const [readProjectIds, approveProjectIds] = await Promise.all([
+			instanceRead
+				? []
+				: this.projectService.getProjectIdsWithScope(user, ['promotions:readReviews']),
+			instanceApprove
+				? []
+				: this.projectService.getProjectIdsWithScope(user, ['promotions:approveReviews']),
+		]);
+		return {
+			userId: user.id,
+			isInstanceAdmin:
+				user.role.slug === GLOBAL_OWNER_ROLE_SLUG || user.role.slug === GLOBAL_ADMIN_ROLE_SLUG,
+			instanceRead,
+			instanceApprove,
+			readProjectIds: new Set(readProjectIds),
+			approveProjectIds: new Set(approveProjectIds),
+		};
 	}
 
 	/**
@@ -218,12 +279,21 @@ export class PromotionReviewInboxService {
 		reviewId: string,
 		{ headCommitSha }: ApprovePromotionReviewDto,
 	): Promise<InboxPromotionReviewItem> {
-		this.assertEnabled();
-		const review = await this.reviewRepository.findByIdWithRelations(reviewId);
-		if (!review) throw new NotFoundError('Promotion review not found.');
+		const { review, access } = await this.findReadableReview(user, reviewId);
+		// Before the event and the host call, so a refused approval sends neither. The state is
+		// checked later, so an ended review answers with a conflict.
+		const eligibility = eligibilityOf(access, review, review.runs);
+		if (eligibility === 'notAllowed') {
+			throw new ForbiddenError("You can't approve the promotion reviews of this project.");
+		}
+		if (eligibility === 'madeRun') {
+			throw new ForbiddenError(
+				"You made a promotion run in this review, so you can't approve it. Ask another approver.",
+			);
+		}
 
 		return await observePromotion(
-			async () => await this.approveReview(user, review, headCommitSha),
+			async () => await this.approveReview(user, review, headCommitSha, access),
 			(observed) =>
 				this.eventService.emit('promotion-review-approved', {
 					user,
@@ -244,14 +314,15 @@ export class PromotionReviewInboxService {
 	 * absent. Refuses transient host failures.
 	 */
 	async close(user: User, reviewId: string): Promise<InboxPromotionReviewItem> {
-		this.assertEnabled();
-		const review = await this.reviewRepository.findByIdWithRelations(reviewId);
-		if (!review) throw new NotFoundError('Promotion review not found.');
+		const { review, access } = await this.findReadableReview(user, reviewId);
+		if (!canClose(access, review)) {
+			throw new ForbiddenError('Only the requester and the approvers of this review can close it.');
+		}
 
 		// Stays null when the close fails before n8n asks the host.
 		let hostStatus: ClosedHostStatus | null = null;
 		return await observePromotion(
-			async () => await this.closeReview(review, (status) => (hostStatus = status)),
+			async () => await this.closeReview(review, access, (status) => (hostStatus = status)),
 			(observed) =>
 				this.eventService.emit('promotion-review-closed', {
 					user,
@@ -269,6 +340,7 @@ export class PromotionReviewInboxService {
 
 	private async closeReview(
 		review: PromotionReview,
+		access: ReviewAccess,
 		onHostStatus: (status: ClosedHostStatus) => void,
 	): Promise<InboxPromotionReviewItem> {
 		if (review.state === 'merged' || review.state === 'closed') {
@@ -277,10 +349,10 @@ export class PromotionReviewInboxService {
 			);
 		}
 
-		const run = (await this.newestRuns([review])).get(review.id);
+		const runs = newestFirst(review.runs);
 		let view: RemoteView = failed('no_connection');
 		try {
-			const host = await this.readMergeRequest(review, run);
+			const host = await this.readMergeRequest(review, runs[0]);
 			if (host) view = { mergeRequest: host.mergeRequest, remoteError: null };
 		} catch (error) {
 			// An unexpected error, such as an invalid GitLab response, is a bug and must not read as a host outage.
@@ -320,21 +392,22 @@ export class PromotionReviewInboxService {
 		}
 		review.state = 'closed';
 		review.lastStateChangeAt = at;
-		return toItem(review, run, view);
+		return toItem(review, runs, view, access);
 	}
 
 	private async approveReview(
 		user: User,
 		review: PromotionReview,
 		headCommitSha: string,
+		viewer: ReviewAccess,
 	): Promise<InboxPromotionReviewItem> {
 		const reviewId = review.id;
 		if (review.state === 'merged' || review.state === 'closed') {
 			throw new ConflictError(`This promotion review is already ${review.state}.`);
 		}
 
-		const run = (await this.newestRuns([review])).get(review.id);
-		const host = await this.readMergeRequest(review, run);
+		const runs = newestFirst(review.runs);
+		const host = await this.readMergeRequest(review, runs[0]);
 		if (!host) {
 			throw new BadRequestError(
 				'The environment of this promotion review was deleted, or it no longer uses GitLab.',
@@ -384,7 +457,7 @@ export class PromotionReviewInboxService {
 				error: error instanceof Error ? error.constructor.name : typeof error,
 			});
 		});
-		return toItem(review, run, { mergeRequest: merged, remoteError: null });
+		return toItem(review, runs, { mergeRequest: merged, remoteError: null }, viewer);
 	}
 
 	/**
@@ -425,7 +498,7 @@ export class PromotionReviewInboxService {
 
 	private async syncOpenReviews(): Promise<Map<string, RemoteView>> {
 		const reviews = await this.reviewRepository.findOpenReviews();
-		const views = await this.readRemote(reviews, await this.newestRuns(reviews));
+		const views = await this.readRemote(reviews, await this.runsOf(reviews));
 		for (const review of reviews) {
 			const view = views.get(review.id);
 			if (view?.mergeRequest) await this.applyHostState(review, view.mergeRequest);
@@ -434,23 +507,30 @@ export class PromotionReviewInboxService {
 		return views;
 	}
 
-	private async newestRuns(reviews: PromotionReview[]): Promise<Map<string, PromotionRun>> {
+	/**
+	 * The runs of each review in a list, newest first. The newest run carries the branch and the
+	 * commit. A single review loads its runs with the review.
+	 */
+	private async runsOf(reviews: PromotionReview[]): Promise<Map<string, PromotionRun[]>> {
 		const runs = await this.runRepository.findByReviewIds(reviews.map(({ id }) => id));
-		const newest = new Map<string, PromotionRun>();
+		const byReview = new Map<string, PromotionRun[]>();
 		for (const run of newestFirst(runs)) {
-			if (run.reviewId && !newest.has(run.reviewId)) newest.set(run.reviewId, run);
+			if (!run.reviewId) continue;
+			byReview.set(run.reviewId, [...(byReview.get(run.reviewId) ?? []), run]);
 		}
-		return newest;
+		return byReview;
 	}
 
 	private async readRemote(
 		reviews: PromotionReview[],
-		runs: Map<string, PromotionRun>,
+		runs: Map<string, PromotionRun[]>,
 	): Promise<Map<string, RemoteView>> {
 		// Most reviews share one environment, so a batch reads and decrypts each provider once.
 		const accessCache: AccessCache = new Map();
 		const views = await Promise.all(
-			reviews.map(async (review) => await this.readOne(review, runs.get(review.id), accessCache)),
+			reviews.map(
+				async (review) => await this.readOne(review, runs.get(review.id)?.[0], accessCache),
+			),
 		);
 		return new Map(reviews.map(({ id }, index) => [id, views[index]]));
 	}
@@ -524,10 +604,56 @@ export class PromotionReviewInboxService {
 	}
 }
 
-const canRead = (user: User) => hasGlobalScope(user, 'promotions:readReviews');
+/** NULL when the user can read no review. */
+const visibilityOf = (access: ReviewAccess): PromotionReviewVisibility | null => {
+	if (access.instanceRead) return { scope: 'all' };
+	if (access.readProjectIds.size === 0) return null;
+	return { scope: 'projects', projectIds: [...access.readProjectIds] };
+};
 
-const withoutType = ({ type: _, ...review }: InboxPromotionReviewItem): PromotionReviewItem =>
-	review;
+/** A review without a project holds a promotion of the whole instance. It needs the instance role. */
+const coversReview = (
+	instance: boolean,
+	projectIds: ReadonlySet<string>,
+	review: PromotionReview,
+) => instance || (review.projectId !== null && projectIds.has(review.projectId));
+
+const canReadReview = (access: ReviewAccess, review: PromotionReview) =>
+	coversReview(access.instanceRead, access.readProjectIds, review);
+
+const isApprover = (access: ReviewAccess, review: PromotionReview) =>
+	coversReview(access.instanceApprove, access.approveProjectIds, review);
+
+const isFinished = (review: PromotionReview) =>
+	review.state === 'merged' || review.state === 'closed';
+
+/**
+ * Whether the user may approve the review, whatever its state. Nobody who made a run in a
+ * review can approve it, except instance owners and admins.
+ */
+const eligibilityOf = (
+	access: ReviewAccess,
+	review: PromotionReview,
+	runs: PromotionRun[],
+): PromotionReviewViewerApproval => {
+	if (!isApprover(access, review)) return 'notAllowed';
+	const madeRun = runs.some((run) => run.createdById === access.userId);
+	return madeRun && !access.isInstanceAdmin ? 'madeRun' : 'allowed';
+};
+
+/** What the Inbox shows. An ended review has nothing left to approve. */
+const approvalOf = (access: ReviewAccess, review: PromotionReview, runs: PromotionRun[]) =>
+	isFinished(review) ? 'notAllowed' : eligibilityOf(access, review, runs);
+
+const canClose = (access: ReviewAccess, review: PromotionReview) =>
+	review.createdById === access.userId || isApprover(access, review);
+
+const toPublicItem = ({
+	type: _,
+	viewerApproval: __,
+	viewerCanClose: ___,
+	...review
+}: InboxPromotionReviewItem): PromotionReviewItem => review;
 
 /** The last review of a page. The next page starts after it in the Inbox order. */
 const cursorSchema = z
@@ -603,14 +729,19 @@ const detailsOf = (run: PromotionRun | undefined) => {
 	return parsed.success ? parsed.data : null;
 };
 
+/** `runs` are newest first. */
 const toItem = (
 	review: PromotionReview,
-	run: PromotionRun | undefined,
+	runs: PromotionRun[],
 	{ mergeRequest, remoteError }: RemoteView,
+	access: ReviewAccess,
 ): InboxPromotionReviewItem => {
+	const run = runs[0];
 	const details = detailsOf(run);
 	return {
 		type: 'promotion_review',
+		viewerApproval: approvalOf(access, review, runs),
+		viewerCanClose: !isFinished(review) && canClose(access, review),
 		id: review.id,
 		state: review.state === 'merged' || review.state === 'closed' ? 'closed' : 'open',
 		reviewState: review.state,

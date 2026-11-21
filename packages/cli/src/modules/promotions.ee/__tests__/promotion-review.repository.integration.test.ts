@@ -62,6 +62,8 @@ beforeEach(async () => {
 	environmentId = environment.id;
 });
 
+const ALL = { scope: 'all' } as const;
+
 let reviewCount = 0;
 
 async function insertReview(over: { id?: string; remoteReviewId?: string } = {}) {
@@ -69,6 +71,7 @@ async function insertReview(over: { id?: string; remoteReviewId?: string } = {})
 	const review = await reviewRepository.insertReview({
 		id: over.id ?? uuidv7(),
 		environmentId,
+		projectId: null,
 		type: 'gitlab',
 		remoteReviewId: over.remoteReviewId ?? `7!${reviewCount}`,
 		createdById: owner.id,
@@ -122,6 +125,7 @@ describe('PromotionReviewRepository', () => {
 		const review = await reviewRepository.insertReview({
 			id: uuidv7(),
 			environmentId,
+			projectId: null,
 			type: 'gitlab',
 			remoteReviewId: '9!1',
 			createdById: owner.id,
@@ -202,13 +206,13 @@ describe('PromotionReviewRepository', () => {
 			},
 		);
 
-		const openRows = await reviewRepository.findForInbox({ state: 'open', limit: 10 });
-		const closedRows = await reviewRepository.findForInbox({ state: 'closed', limit: 10 });
+		const openRows = await reviewRepository.findForInbox({ state: 'open', limit: 10 }, ALL);
+		const closedRows = await reviewRepository.findForInbox({ state: 'closed', limit: 10 }, ALL);
 
 		expect(openRows.map((r) => r.id)).toEqual([open.id]);
 		expect(openRows[0]?.environment?.id).toBe(environmentId);
 		expect(closedRows.map((r) => r.id)).toEqual([merged.id, closed.id]);
-		expect(await reviewRepository.countForInbox()).toEqual({ open: 1, closed: 2 });
+		expect(await reviewRepository.countForInbox(ALL)).toEqual({ open: 1, closed: 2 });
 	});
 
 	it('pages from each Inbox boundary when reviews share a timestamp', async () => {
@@ -220,7 +224,7 @@ describe('PromotionReviewRepository', () => {
 		await reviewRepository.update({ id: firstReviewId }, { createdAt: updatedAt });
 		await reviewRepository.update({ id: secondReviewId }, { createdAt: updatedAt });
 		const page = async (boundary?: InboxSourceBoundary) =>
-			(await reviewRepository.findForInbox({ state: 'open', limit: 10, boundary })).map(
+			(await reviewRepository.findForInbox({ state: 'open', limit: 10, boundary }, ALL)).map(
 				(r) => r.id,
 			);
 
@@ -322,6 +326,7 @@ describe('PromotionReviewRepository', () => {
 		const review = await reviewRepository.insertReview({
 			id: uuidv7(),
 			environmentId: other.id,
+			projectId: null,
 			type: 'gitlab',
 			remoteReviewId: '7!1',
 			createdById: owner.id,
@@ -334,6 +339,7 @@ describe('PromotionReviewRepository', () => {
 		await reviewRepository.insertReview({
 			id: uuidv7(),
 			environmentId,
+			projectId: null,
 			type: 'gitlab',
 			remoteReviewId: null,
 			createdById: owner.id,
@@ -341,11 +347,12 @@ describe('PromotionReviewRepository', () => {
 		await reviewRepository.insertReview({
 			id: uuidv7(),
 			environmentId,
+			projectId: null,
 			type: 'gitlab',
 			remoteReviewId: null,
 			createdById: owner.id,
 		});
 
-		expect(await reviewRepository.countForInbox()).toEqual({ open: 2, closed: 0 });
+		expect(await reviewRepository.countForInbox(ALL)).toEqual({ open: 2, closed: 0 });
 	});
 });

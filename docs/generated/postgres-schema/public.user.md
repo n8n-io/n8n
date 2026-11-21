@@ -438,6 +438,7 @@ erDiagram
   uuid environmentId FK
   uuid id
   timestamp_3__with_time_zone lastStateChangeAt
+  varchar_36_ projectId FK
   varchar_255_ remoteReviewId
   varchar_32_ state
   varchar_16_ type

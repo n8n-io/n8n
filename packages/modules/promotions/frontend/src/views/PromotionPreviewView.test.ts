@@ -8,7 +8,6 @@ import {
 } from '@n8n/frontend-module-sdk';
 import { createComponentRenderer, mockedStore, waitAllPromises } from '@n8n/frontend-test-utils';
 import { ResponseError } from '@n8n/rest-api-client';
-import { useRBACStore } from '@n8n/stores/rbac.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { createTestingPinia } from '@pinia/testing';
 import { mock } from 'vitest-mock-extended';
@@ -546,17 +545,17 @@ describe('PromotionPreviewView', () => {
 	});
 
 	describe('with an open review', () => {
-		const blocked = () =>
+		const blocked = (viewerCanRead: boolean) =>
 			billingPreview({
 				resources: [],
-				blocker: { code: 'reviewOpen', reviewId: 'review-1' },
+				blocker: { code: 'reviewOpen', reviewId: 'review-1', viewerCanRead },
 			});
 
-		async function renderBlocked(canReadReviews: boolean, inboxEnabled = true) {
-			vi.mocked(api.getPromotionPreview).mockResolvedValue(blocked());
+		/** The server says whether the user can read the review, from their role in its project. */
+		async function renderBlocked(canReadReview: boolean, inboxEnabled = true) {
+			vi.mocked(api.getPromotionPreview).mockResolvedValue(blocked(canReadReview));
 			await router.push('/projects/p1/promotions/promote');
 			const pinia = createTestingPinia();
-			mockedStore(useRBACStore).hasScope.mockReturnValue(canReadReviews);
 			const settingsStore = mockedStore(useSettingsStore);
 			settingsStore.settings = {
 				...settingsStore.settings,
@@ -579,7 +578,7 @@ describe('PromotionPreviewView', () => {
 			await waitFor(() => expect(router.currentRoute.value.name).toBe(INBOX_VIEW));
 		});
 
-		it('should ask for an admin when the user cannot read reviews', async () => {
+		it('should ask for an admin when the user cannot read the review', async () => {
 			const { getByTestId, queryByText } = await renderBlocked(false);
 
 			expect(getByTestId('promotion-review-blocker')).toHaveTextContent(

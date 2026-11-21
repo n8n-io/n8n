@@ -50,7 +50,7 @@ export class PromotePreviewService {
 		// when an older review of the environment is still open.
 		const blocker =
 			input.config.direction === 'promote' && input.config.settings.createBranchOnPromotion
-				? await this.reviewGate.findPromoteBlocker(projectId, input.environmentId)
+				? await this.reviewGate.findPromoteBlocker(user, projectId, input.environmentId)
 				: null;
 		if (blocker) {
 			const source = previewSource(input);

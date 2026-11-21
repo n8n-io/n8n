@@ -100,6 +100,11 @@
 			"reason": "Promotion configuration for the project (which environment it uses for each direction), not user data. Dropped via the projectId FK cascade when the source project is deleted, as in ownership-transfer flows."
 		},
 		{
+			"name": "PromotionReview",
+			"path": "packages/cli/src/modules/promotions.ee/database/entities/promotion-review.entity.ts",
+			"reason": "A review holds the changes of the source project on the Git host. Moving it would let the approvers of another project approve those changes. When the source project is deleted, the projectId FK sets NULL, so only instance owners and admins can see, approve, or close the review."
+		},
+		{
 			"name": "Skill",
 			"path": "packages/cli/src/modules/skills/database/entities/skill.entity.ts",
 			"reason": "Project-scoped skills belong to the project's agents, which are not transferred either (see Agent); both are dropped via FK cascade. Instance skills carry no projectId."

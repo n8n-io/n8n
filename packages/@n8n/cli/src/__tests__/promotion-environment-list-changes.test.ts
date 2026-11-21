@@ -141,7 +141,7 @@ describe('promotion-environment list-changes command', () => {
 				...PREVIEW,
 				resources: [],
 				dependencies: [],
-				blocker: { code: 'reviewOpen', reviewId: 'review-1' },
+				blocker: { code: 'reviewOpen', reviewId: 'review-1', viewerCanRead: true },
 			},
 		);
 

@@ -130,7 +130,7 @@ describe('PromotionPreviewBadges', () => {
 				direction === 'promote'
 					? billingPreview({
 							resources: [],
-							blocker: { code: 'reviewOpen', reviewId: 'review-1' },
+							blocker: { code: 'reviewOpen', reviewId: 'review-1', viewerCanRead: true },
 						})
 					: billingPreview({ resources: [] }),
 		);

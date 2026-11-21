@@ -79,6 +79,7 @@ erDiagram
   varchar environmentId FK
   varchar id PK
   datetime_3_ lastStateChangeAt
+  varchar_36_ projectId FK
   varchar_255_ remoteReviewId
   varchar_32_ state
   varchar_16_ type

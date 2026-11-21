@@ -1,5 +1,11 @@
 import type { PromotionResource } from '@n8n/api-types';
-import { createTeamProject, createWorkflow, mockInstance, testDb } from '@n8n/backend-test-utils';
+import {
+	createTeamProject,
+	createWorkflow,
+	linkUserToProject,
+	mockInstance,
+	testDb,
+} from '@n8n/backend-test-utils';
 import type { Person } from '@n8n/db';
 import {
 	GLOBAL_OWNER_ROLE,
@@ -14,13 +20,14 @@ import { mkdtempSync } from 'node:fs';
 import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { onTestFinished } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { buildWorkflowReferencingCredential } from '@/modules/n8n-packages/__tests__/utils/test-builders';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { saveCredential } from '@test-integration/db/credentials';
-import { createOwner, createUserShell } from '@test-integration/db/users';
+import { createMember, createOwner, createUserShell } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 
 import { PromotionEnvironmentRepository } from '../database/repositories/promotion-environment.repository';
@@ -30,6 +37,7 @@ import { PromotionRunRepository } from '../database/repositories/promotion-run.r
 import { GitLabMergeRequestClient } from '../git-hosts/gitlab-merge-request.client';
 import type { GitLabMergeRequest } from '../git-hosts/gitlab-merge-request.types';
 import { PromotionReviewHostResolver } from '../promotion-review-host.resolver';
+import { PromotionSettingsService } from '../promotion-settings.service';
 import { PromotionWorkingDirectoryService } from '../promotion-working-directory.service';
 import { PromotionsService } from '../promotions.service';
 
@@ -214,8 +222,8 @@ async function rebaseOnHost({ iid, branchName }: { iid: number; branchName: stri
 	}
 }
 
-const changesOf = async (reviewId: string) =>
-	(await server.authAgentFor(owner).get(`/promotions/reviews/${reviewId}/changes`).expect(200)).body
+const changesOf = async (reviewId: string, user: Person = owner) =>
+	(await server.authAgentFor(user).get(`/promotions/reviews/${reviewId}/changes`).expect(200)).body
 		.data;
 
 const changed = (resources: PromotionResource[]) =>
@@ -281,6 +289,35 @@ it('lists the workflows and dependencies that an open review changes in several 
 			before: expect.objectContaining({ name: 'Quote' }),
 			after: expect.objectContaining({ name: 'Send quote' }),
 		}),
+	]);
+
+	// A review of one project shows only that project, also in a repository that projects share.
+	// A project admin reads it: "Who can promote" gives them the reviews of their project.
+	await Container.get(PromotionReviewRepository).update(second.reviewId, { projectId: sales.id });
+	const settings = Container.get(PromotionSettingsService);
+	onTestFinished(async () => {
+		await settings.update(owner, { whoCanPromote: 'instanceAdmins' });
+	});
+	await settings.update(owner, { whoCanPromote: 'projectAdmins' });
+	const salesAdmin = await createMember();
+	await linkUserToProject(salesAdmin, sales, 'project:admin');
+	const salesChanges = await changesOf(second.reviewId, salesAdmin);
+	expect(changed(salesChanges.resources)).toEqual([[`workflow:${quote.id}`, 'modified']]);
+	expect(salesChanges.resources).not.toContainEqual(
+		expect.objectContaining({ key: `project:${support.id}` }),
+	);
+	const { body: salesDetails } = await server
+		.authAgentFor(salesAdmin)
+		.post(`/promotions/reviews/${second.reviewId}/changes/details`)
+		.send({
+			baselineCommitSha: salesChanges.baselineCommitSha,
+			headCommitSha: salesChanges.headCommitSha,
+			keys: [`workflow:${quote.id}`, `workflow:${ticket.id}`],
+		})
+		.expect(200);
+	expect(salesDetails.data.missingKeys).toEqual([`workflow:${ticket.id}`]);
+	expect(salesDetails.data.details).toEqual([
+		expect.objectContaining({ key: `workflow:${quote.id}` }),
 	]);
 }, 60_000);
 
