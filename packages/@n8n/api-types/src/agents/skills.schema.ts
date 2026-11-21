@@ -10,7 +10,7 @@ import {
 import type { SkillSyncedFrom, SkillSyncState } from '../skills/skill-sources.schema';
 import type { AgentSkill } from './types';
 import type { ProjectIcon, ProjectType } from '../schemas/project.schema';
-import { paginationSchema } from '../dto/pagination/pagination.dto';
+import { paginationSchema, publicApiPaginationSchema } from '../dto/pagination/pagination.dto';
 import { Z } from '../zod-class';
 
 export const SKILLS_MAX_PAGE_SIZE = 100;
@@ -37,9 +37,10 @@ export type SkillScope = z.infer<typeof skillScopeSchema>;
 /**
  * How a skill was created: `ui` on the skills settings page, `agent` from the agent builder or the
  * migration, `mcp` from an MCP client, `assistant` from n8n Assistant, `import` from an
- * n8n package import, `github` by Skill Sync from a GitHub source. A synced skill is read-only.
+ * n8n package import, `github` by Skill Sync from a GitHub source, `api` from the public API.
+ * A synced skill is read-only.
  */
-export type SkillSource = 'ui' | 'agent' | 'mcp' | 'assistant' | 'import' | 'github';
+export type SkillSource = 'ui' | 'agent' | 'mcp' | 'assistant' | 'import' | 'github' | 'api';
 
 /** The user who created a skill, as the settings list names them. */
 export type SkillUserDto = {
@@ -309,4 +310,68 @@ export class SaveSkillDto extends Z.class({
 	/** Required when `scope` is `project`, absent otherwise. */
 	projectId: z.string().max(36).optional(),
 	availableToMCP: z.boolean().optional(),
+}) {}
+
+export class CreateSkillPublicDto extends Z.class(
+	{
+		name: skillNameSchema,
+		description: agentSkillShape.description,
+		instructions: agentSkillShape.instructions,
+		references: agentSkillShape.references,
+		scope: skillScopeSchema,
+		projectId: z.string().min(1).max(36).nullable().optional(),
+		availableToAssistant: z.boolean().optional(),
+		availableToMCP: z.boolean().optional(),
+	},
+	{ strict: true },
+) {}
+
+export class UpdateSkillPublicDto extends Z.class(
+	{
+		name: skillNameSchema,
+		description: agentSkillShape.description,
+		instructions: agentSkillShape.instructions,
+		references: agentSkillShape.references.unwrap(),
+		scope: skillScopeSchema,
+		projectId: z.string().min(1).max(36).nullable(),
+		availableToAssistant: z.boolean(),
+		availableToMCP: z.boolean(),
+		skillHash: z.string().min(1),
+		id: z.string().optional(),
+		latestVersion: z.number().optional(),
+		createdAt: z.string().optional(),
+		updatedAt: z.string().optional(),
+	},
+	{ strict: true },
+) {}
+
+export class ListSkillsPublicQueryDto extends Z.class({
+	cursor: z.string().optional(),
+	limit: publicApiPaginationSchema.limit,
+	projectId: z.string().min(1).optional(),
+}) {}
+
+const skillListPublicItemShape = {
+	id: z.string(),
+	name: z.string(),
+	description: z.string(),
+	scope: skillScopeSchema,
+	projectId: z.string().nullable(),
+	latestVersion: z.number(),
+	availableToAssistant: z.boolean(),
+	availableToMCP: z.boolean(),
+	createdAt: z.string(),
+	updatedAt: z.string(),
+};
+
+export class SkillListPublicDto extends Z.class({
+	data: z.array(z.object(skillListPublicItemShape)),
+	nextCursor: z.string().nullable(),
+}) {}
+
+export class SkillPublicDto extends Z.class({
+	...skillListPublicItemShape,
+	instructions: z.string(),
+	references: z.array(z.object({ path: z.string(), content: z.string() })),
+	skillHash: z.string(),
 }) {}

@@ -1,0 +1,109 @@
+operationId: updateSkill
+tags:
+  - Skill
+summary: Update a skill
+description: |-
+  Replace the skill and save it as the next version. Send the whole skill: the body of the retrieve endpoint is a valid body. Keep the skillHash you read: a save based on an older version fails with 409. The server ignores id, latestVersion, createdAt and updatedAt. Change scope and projectId to move the skill: a move needs the skill:create and skill:delete scopes too.
+
+  Requires the `skill:update` API key scope.
+x-required-scope: skill:update
+parameters:
+  - schema:
+      type: string
+    required: true
+    description: The ID of the skill.
+    name: skillId
+    in: path
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          name:
+            type: string
+            minLength: 1
+            maxLength: 128
+          description:
+            type: string
+            minLength: 1
+            maxLength: 1024
+          instructions:
+            type: string
+            maxLength: 65536
+          references:
+            type: array
+            items:
+              type: object
+              properties:
+                path:
+                  type: string
+                  minLength: 1
+                  maxLength: 512
+                content:
+                  type: string
+                  minLength: 1
+                  maxLength: 65536
+              required:
+                - path
+                - content
+              additionalProperties: false
+            maxItems: 20
+          scope:
+            type: string
+            enum:
+              - project
+              - instance
+          projectId:
+            type: string
+            nullable: true
+            minLength: 1
+            maxLength: 36
+          availableToAssistant:
+            type: boolean
+          availableToMCP:
+            type: boolean
+          skillHash:
+            type: string
+            minLength: 1
+          id:
+            type: string
+          latestVersion:
+            type: number
+          createdAt:
+            type: string
+          updatedAt:
+            type: string
+        required:
+          - name
+          - description
+          - instructions
+          - references
+          - scope
+          - projectId
+          - availableToAssistant
+          - availableToMCP
+          - skillHash
+        additionalProperties: false
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          $ref: ../../../../shared/spec/schemas/skillPublicDto.generated.yml
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
+  '409':
+    $ref: ../../../../shared/spec/responses/conflict.yml
+  '415':
+    $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml

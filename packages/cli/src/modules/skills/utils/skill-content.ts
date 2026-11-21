@@ -152,6 +152,7 @@ const SYNCED_SOURCE_LABELS: Record<SkillSource, string | null> = {
 	assistant: null,
 	import: null,
 	github: 'GitHub',
+	api: null,
 };
 
 /** The name of the source of a synced skill. Undefined for a skill that n8n owns. */

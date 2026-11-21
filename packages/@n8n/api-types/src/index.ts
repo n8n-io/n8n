@@ -165,6 +165,7 @@ export { n8nIdSchema } from './schemas/id.schema';
 export {
 	agentIdParamSchema,
 	aiPreferenceIdParamSchema,
+	skillIdParamSchema,
 	columnIdParamSchema,
 	communityPackageNameParamSchema,
 	credentialIdParamSchema,

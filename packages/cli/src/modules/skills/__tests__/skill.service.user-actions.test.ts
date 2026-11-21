@@ -640,6 +640,19 @@ describe('SkillService user actions', () => {
 			);
 		});
 
+		it('reports a create from the public API with its own method', async () => {
+			vi.mocked(hasGlobalScope).mockReturnValue(true);
+
+			await service.create(user, payload({}), 'api');
+
+			expect(skillsTelemetry.created).toHaveBeenCalledWith(
+				user.id,
+				[{ id: 'skill_new', projectId: null }],
+				'api',
+				'api',
+			);
+		});
+
 		it('reports a create without a method as manual', async () => {
 			vi.mocked(hasGlobalScope).mockReturnValue(true);
 
@@ -686,6 +699,15 @@ describe('SkillService user actions', () => {
 				UserError,
 			);
 			expect(createTrusted).not.toHaveBeenCalled();
+		});
+
+		it('accepts an Assistant availability of false when the Assistant flag is off', async () => {
+			vi.mocked(hasGlobalScope).mockReturnValue(true);
+			rollout.isEnabled.mockResolvedValue(false);
+
+			await service.create(user, payload({ availableToAssistant: false }));
+
+			expect(createTrusted).toHaveBeenCalled();
 		});
 
 		it('stores the source the caller passed', async () => {

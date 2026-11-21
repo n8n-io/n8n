@@ -41,6 +41,7 @@ const EXPECTED_GROUPS: Record<string, string[]> = {
 		'Evaluation',
 		'Executions',
 		'Folders',
+		'Skill',
 		'Tags',
 		'Variables',
 		'Workflow',
