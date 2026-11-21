@@ -1,7 +1,10 @@
 import { SchemaRegistry } from '@kafkajs/confluent-schema-registry';
 import { passthroughEgressFilter } from '@n8n/backend-network';
 import type * as _kafkajs from 'kafkajs';
+import { Kafka as apacheKafka } from 'kafkajs';
 import type {
+	ICredentialDataDecryptedObject,
+	ICredentialTestFunctions,
 	IDataObject,
 	IExecuteFunctions,
 	INode,
@@ -114,11 +117,16 @@ function createExecuteFunctions(
 	params: IDataObject,
 	items: INodeExecutionData[],
 	options: {
+		kafkaCredential?: IDataObject;
 		schemaRegistryCredential?: IDataObject;
 		continueOnFail?: boolean;
 	} = {},
 ) {
-	const { schemaRegistryCredential, continueOnFail = false } = options;
+	const {
+		kafkaCredential = defaultKafkaCredentials,
+		schemaRegistryCredential,
+		continueOnFail = false,
+	} = options;
 
 	const node = mock<INode>({
 		name: 'Kafka',
@@ -137,7 +145,7 @@ function createExecuteFunctions(
 		getCredentials: (async (type: string) =>
 			type === 'schemaRegistryApi'
 				? schemaRegistryCredential
-				: defaultKafkaCredentials) as IExecuteFunctions['getCredentials'],
+				: kafkaCredential) as IExecuteFunctions['getCredentials'],
 		continueOnFail: () => continueOnFail,
 		helpers: {
 			returnJsonArray: (data: IDataObject | IDataObject[]) =>
@@ -419,6 +427,56 @@ describe('Kafka Node', () => {
 				}),
 			],
 		]);
+	});
+
+	describe('with an AWS MSK IAM credential', () => {
+		const mskIamCredentials: ICredentialDataDecryptedObject = {
+			brokers: 'b-1.example.kafka.eu-central-1.amazonaws.com:9098',
+			clientId: 'test-client',
+			ssl: true,
+			authentication: true,
+			saslMechanism: 'aws-msk-iam',
+			awsRegion: 'eu-central-1',
+			awsAccessKeyId: 'AKIDEXAMPLE',
+			awsSecretAccessKey: 'secret',
+		};
+
+		const params: IDataObject = {
+			options: {},
+			sendInputData: true,
+			useSchemaRegistry: false,
+			topic: 'test-topic',
+			jsonParameters: false,
+			useKey: false,
+			headersUi: {},
+		};
+
+		test('rejects the credential in version 1 with a clear message', async () => {
+			const ctx = createExecuteFunctions(params, [{ json: { name: 'item' } }], {
+				kafkaCredential: mskIamCredentials,
+			});
+
+			await expect(new KafkaV1(baseDescription).execute.call(ctx)).rejects.toThrow(
+				'AWS MSK IAM authentication needs version 2 of this node',
+			);
+			expect(mockProducerConnect).not.toHaveBeenCalled();
+		});
+
+		test('tests the credential through the version 2 client', async () => {
+			const testCredential = new KafkaV1(baseDescription).methods.credentialTest
+				.kafkaConnectionTest;
+
+			const result = await testCredential.call(mock<ICredentialTestFunctions>(), {
+				id: '1',
+				name: 'MSK',
+				type: 'kafka',
+				data: mskIamCredentials,
+			});
+
+			expect(result).toStrictEqual({ status: 'OK', message: 'Authentication successful' });
+			expect(getConfluentKafkaAccessCount()).toBeGreaterThan(0);
+			expect(vi.mocked(apacheKafka)).not.toHaveBeenCalled();
+		});
 	});
 });
 

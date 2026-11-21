@@ -18,7 +18,14 @@ import { UserError } from '@n8n/errors';
 
 import { generatePairedItemData } from '@utils/utilities';
 
-import { createSchemaRegistry, resolveKafkaSsl, type KafkaCredentials } from '../utils';
+import {
+	assertNotMskIamOnV1,
+	createSchemaRegistry,
+	resolveKafkaSsl,
+	usesMskIam,
+	type KafkaCredentials,
+} from '../utils';
+import { testKafkaConnection } from '../v2/transport/admin';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Kafka',
@@ -237,6 +244,15 @@ export class KafkaV1 implements INodeType {
 			): Promise<INodeCredentialTestResult> {
 				const credentials = credential.data as ICredentialDataDecryptedObject;
 				try {
+					// The credential test is shared with v2, and only v2 supports MSK IAM.
+					if (usesMskIam(credentials)) {
+						await testKafkaConnection(credentials as unknown as KafkaCredentials);
+						return {
+							status: 'OK',
+							message: 'Authentication successful',
+						};
+					}
+
 					const brokers = ((credentials.brokers as string) || '')
 						.split(',')
 						.map((item) => item.trim());
@@ -318,6 +334,7 @@ export class KafkaV1 implements INodeType {
 			};
 
 			if (credentials.authentication) {
+				assertNotMskIamOnV1(credentials);
 				if (!(credentials.username && credentials.password)) {
 					throw new NodeOperationError(
 						this.getNode(),

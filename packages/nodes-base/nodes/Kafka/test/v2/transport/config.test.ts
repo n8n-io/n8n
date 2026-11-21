@@ -3,7 +3,12 @@ import { UserError } from '@n8n/errors';
 import type { KafkaCredentials } from '../../../utils';
 import { toKafkaJSConfig } from '../../../v2/transport/config';
 
-const { kafkajsLoadCount } = vi.hoisted(() => ({ kafkajsLoadCount: { value: 0 } }));
+const { kafkajsLoadCount, generateMskIamToken } = vi.hoisted(() => ({
+	kafkajsLoadCount: { value: 0 },
+	generateMskIamToken: vi.fn(),
+}));
+
+vi.mock('../../../v2/transport/msk-iam', () => ({ generateMskIamToken }));
 
 // Counts module loads rather than property reads: this file's import graph reaches
 // `utils.ts` for a value (the shared PEM validator), which only stays free of v1's
@@ -198,5 +203,148 @@ describe('toKafkaJSConfig', () => {
 		toKafkaJSConfig(creds({ ssl: true, ca: CA_PEM }));
 
 		expect(kafkajsLoadCount.value).toBe(0);
+	});
+});
+
+describe('toKafkaJSConfig with AWS MSK IAM', () => {
+	const iam = (overrides: Partial<KafkaCredentials> = {}): KafkaCredentials =>
+		creds({
+			ssl: true,
+			authentication: true,
+			saslMechanism: 'aws-msk-iam',
+			awsRegion: 'eu-central-1',
+			awsAccessKeyId: 'AKIDEXAMPLE',
+			awsSecretAccessKey: 'secret',
+			...overrides,
+		});
+
+	beforeEach(() => {
+		generateMskIamToken.mockReset();
+	});
+
+	it('uses OAUTHBEARER with a token provider instead of a username and password', () => {
+		const result = toKafkaJSConfig(iam());
+
+		expect(result.kafkaJS.sasl).toStrictEqual({
+			mechanism: 'oauthbearer',
+			oauthBearerProvider: expect.any(Function),
+		});
+		expect(result.kafkaJS.ssl).toBe(true);
+	});
+
+	it('does not sign a token until the library asks for one', () => {
+		toKafkaJSConfig(iam());
+
+		expect(generateMskIamToken).not.toHaveBeenCalled();
+	});
+
+	it('returns a token signed from the credential each time the library asks', async () => {
+		const token = { value: 'token', principal: 'aws-msk-iam', lifetime: 1 };
+		generateMskIamToken.mockResolvedValue(token);
+		const credentials = iam();
+		const { sasl } = toKafkaJSConfig(credentials).kafkaJS;
+		if (sasl?.mechanism !== 'oauthbearer') throw new Error('expected an OAUTHBEARER config');
+
+		await expect(sasl.oauthBearerProvider()).resolves.toBe(token);
+		await sasl.oauthBearerProvider();
+
+		expect(generateMskIamToken).toHaveBeenCalledTimes(2);
+		expect(generateMskIamToken).toHaveBeenCalledWith(credentials);
+	});
+
+	it('keeps mTLS material alongside MSK IAM', () => {
+		const result = toKafkaJSConfig(iam({ ca: CA_PEM }));
+
+		expect(result['ssl.ca.pem']).toBe(CA_PEM);
+	});
+
+	describe('with system credentials', () => {
+		const systemIam = (brokers: string, overrides: Partial<KafkaCredentials> = {}) =>
+			iam({
+				brokers,
+				awsUseSystemCredentials: true,
+				awsAccessKeyId: undefined,
+				awsSecretAccessKey: undefined,
+				...overrides,
+			});
+
+		it('accepts Amazon MSK broker hosts without an access key', () => {
+			const result = toKafkaJSConfig(
+				systemIam(
+					'b-1.demo.abc123.c2.kafka.eu-central-1.amazonaws.com:9098, b-2.demo.abc123.c2.kafka.eu-central-1.amazonaws.com:9098',
+				),
+			);
+
+			expect(result.kafkaJS.sasl?.mechanism).toBe('oauthbearer');
+		});
+
+		it.each([
+			['MSK Serverless', 'boot-abc123.c1.kafka-serverless.eu-central-1.amazonaws.com:9098', {}],
+			['a host without a port', 'B-1.Demo.abc123.c2.Kafka.eu-central-1.amazonaws.com', {}],
+			[
+				'a China region',
+				'b-1.demo.abc123.c2.kafka.cn-north-1.amazonaws.com.cn:9098',
+				{ awsRegion: 'cn-north-1' as const },
+			],
+		])('accepts %s', (_, brokers, overrides) => {
+			expect(() => toKafkaJSConfig(systemIam(brokers, overrides))).not.toThrow();
+		});
+
+		it.each([
+			['a host that is not MSK', 'kafka.example.com:9098'],
+			[
+				'an MSK host in a different region',
+				'b-1.demo.abc123.c2.kafka.us-east-1.amazonaws.com:9098',
+			],
+			[
+				'a host that only contains the MSK suffix',
+				'kafka.eu-central-1.amazonaws.com.example.com:9098',
+			],
+			[
+				'a list with one host that is not MSK',
+				'b-1.demo.abc123.c2.kafka.eu-central-1.amazonaws.com:9098,attacker.example.com:9098',
+			],
+		])('rejects %s, so the host identity token stays with MSK', (_, brokers) => {
+			expect(() => toKafkaJSConfig(systemIam(brokers))).toThrow(
+				'AWS MSK IAM with system credentials connects only to Amazon MSK broker hosts',
+			);
+		});
+
+		it('names the rejected brokers in the error description', () => {
+			expect(() => toKafkaJSConfig(systemIam('kafka.example.com:9098'))).toThrow(
+				expect.objectContaining({
+					description: expect.stringContaining('kafka.example.com:9098'),
+				}),
+			);
+		});
+	});
+
+	it('accepts any broker host with an access key, which belongs to the credential owner', () => {
+		const result = toKafkaJSConfig(iam({ brokers: 'kafka.internal.example.com:9098' }));
+
+		expect(result.kafkaJS.sasl?.mechanism).toBe('oauthbearer');
+	});
+
+	it('throws when SSL is off', () => {
+		expect(() => toKafkaJSConfig(iam({ ssl: false }))).toThrow(
+			'AWS MSK IAM authentication needs SSL',
+		);
+	});
+
+	it('throws without an AWS Region', () => {
+		expect(() => toKafkaJSConfig(iam({ awsRegion: undefined }))).toThrow(UserError);
+	});
+
+	it.each([
+		['access key ID', { awsAccessKeyId: '' }],
+		['secret access key', { awsSecretAccessKey: '  ' }],
+	])('throws without an %s', (_, overrides) => {
+		expect(() => toKafkaJSConfig(iam(overrides))).toThrow(UserError);
+	});
+
+	it('ignores the MSK IAM mechanism when authentication is off', () => {
+		const result = toKafkaJSConfig(iam({ authentication: false }));
+
+		expect(result.kafkaJS.sasl).toBeUndefined();
 	});
 });

@@ -1,7 +1,8 @@
 import type { KafkaJS as KafkaJSNamespace } from '@confluentinc/kafka-javascript';
 
 import { toKafkaJSConfig } from './config';
-import type { KafkaCredentials } from '../../utils';
+import { generateMskIamToken } from './msk-iam';
+import { usesMskIam, type KafkaCredentials } from '../../utils';
 
 let _kafkaJS: typeof KafkaJSNamespace | null = null;
 
@@ -32,6 +33,11 @@ export async function createKafkaClient(
 ): Promise<KafkaJSNamespace.Kafka> {
 	const { Kafka, logLevel } = await getKafkaLibrary();
 	const config = toKafkaJSConfig(credentials);
+	if (usesMskIam(credentials)) {
+		// The library reports a failed token callback only as "Broker transport failure",
+		// so sign one token first to surface AWS credential errors with their own message.
+		await generateMskIamToken(credentials);
+	}
 	// Without an explicit level the library's own logger writes broker host:port to
 	// process stdout on every execution, outside n8n's logger.
 	return new Kafka({ ...config, kafkaJS: { ...config.kafkaJS, logLevel: logLevel.ERROR } });
