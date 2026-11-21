@@ -25,10 +25,8 @@ const INSTANCE_KEY = ['day', 'entityType'] as const;
 /** Keeps one statement far below the bind parameter limit of both databases. */
 const ROWS_PER_STATEMENT = 1000;
 
-/** Agent runs have rows too, but only workflow runs count toward a limit. */
-const COUNTED_ENTITY_TYPE = 'workflow';
-
-const COUNTED_DAYS = 'u."day" >= $1 AND u."day" <= $2 AND u."entityType" = $3';
+// Agent runs have rows too, but only workflow runs count toward a limit.
+const COUNTED_DAYS = 'u."day" >= $1 AND u."day" <= $2 AND u."entityType" = \'workflow\'';
 
 const TOTALS =
 	'COALESCE(SUM(u."startedCount"), 0) AS "startedCount", COALESCE(SUM(u."blockedCount"), 0) AS "blockedCount", MAX(u."updatedAt") AS "lastFoldAt"';
@@ -90,7 +88,7 @@ export class ExecutionLimitUsageRepository {
 		ctx: OperationContext,
 	): Promise<UsageTotals> {
 		const [totals] = await this.sumRows<TotalsRow>(
-			`SELECT ${TOTALS} FROM ${this.escapedName(ExecutionLimitUsage)} u WHERE ${COUNTED_DAYS} AND u."projectId" = $4`,
+			`SELECT ${TOTALS} FROM ${this.escapedName(ExecutionLimitUsage)} u WHERE ${COUNTED_DAYS} AND u."projectId" = $3`,
 			[firstDay, lastDay, projectId],
 			ctx,
 		);
@@ -142,15 +140,10 @@ export class ExecutionLimitUsageRepository {
 		params: readonly [firstDay: string, lastDay: string, ...rest: string[]],
 		ctx: OperationContext,
 	): Promise<Row[]> {
-		const [firstDay, lastDay, ...rest] = params;
+		const [firstDay, lastDay] = params;
 		if (firstDay > lastDay) return [];
 
-		const query = toDialectQuery(this.isPostgres, sql, [
-			firstDay,
-			lastDay,
-			COUNTED_ENTITY_TYPE,
-			...rest,
-		]);
+		const query = toDialectQuery(this.isPostgres, sql, params);
 		const rows: Row[] = await this.projectTable.managerFor(ctx).query(query.sql, query.params);
 		return rows;
 	}
