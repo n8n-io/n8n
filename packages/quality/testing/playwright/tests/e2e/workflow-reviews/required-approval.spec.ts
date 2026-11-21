@@ -64,7 +64,7 @@ test.describe(
 			const reviewerN8n = await n8n.start.withUser(reviewer);
 			await reviewerN8n.workflowReviews.goto();
 			await reviewerN8n.workflowReviews.openRequest(reviewTitle);
-			await reviewerN8n.workflowReviews.approve('Looks good');
+			await reviewerN8n.workflowReviews.approve();
 			await expect(reviewerN8n.workflowReviews.getClosedCallout()).toBeVisible();
 
 			await authorN8n.page.reload();
