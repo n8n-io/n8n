@@ -14,6 +14,7 @@ import {
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { getProject, type Project } from '@n8n/rest-api-client/api/projects';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
@@ -22,6 +23,7 @@ import { listApps } from '../apps.api';
 import { APP_DETAIL_VIEW, PROJECT_APPS, type AppViewTab } from '../apps.constants';
 import AppActions from './AppActions.vue';
 import AppPublishButton from './AppPublishButton.vue';
+import AppFeedbackDialog from './feedback/AppFeedbackDialog.vue';
 import AppSharePopover from './publish/AppSharePopover.vue';
 
 const PERSONAL_PROJECT_ICON: IconOrEmoji = { type: 'icon', value: 'user' };
@@ -50,11 +52,15 @@ const tab = defineModel<AppViewTab>('tab', { required: true });
 const i18n = useI18n();
 const router = useRouter();
 const rootStore = useRootStore();
+const settingsStore = useSettingsStore();
 const latestProjectFetch = useLatestFetch();
 const latestAppsFetch = useLatestFetch();
 
 const project = ref<Project | null>(null);
 const projectApps = ref<AppResponse[]>([]);
+const feedbackOpen = ref(false);
+
+const feedbackEnabled = computed(() => settingsStore.moduleSettings.apps?.feedbackEnabled === true);
 
 const tabOptions = computed(() => [
 	{ value: 'preview' as const, label: i18n.baseText('apps.detail.tabs.preview') },
@@ -169,6 +175,20 @@ watch(
 			data-test-id="app-header-tabs"
 		/>
 		<div :class="$style.right">
+			<N8nButton
+				v-if="app && feedbackEnabled"
+				variant="ghost"
+				size="small"
+				icon="message-circle"
+				:aria-label="i18n.baseText('apps.feedback.button')"
+				:title="i18n.baseText('apps.feedback.button')"
+				data-test-id="app-header-feedback"
+				data-attr="app-header-feedback"
+				@click="feedbackOpen = true"
+			>
+				<span :class="$style.feedbackLabel">{{ i18n.baseText('apps.feedback.button') }}</span>
+			</N8nButton>
+			<AppFeedbackDialog v-if="app && feedbackEnabled" v-model:open="feedbackOpen" :app="app" />
 			<AppSharePopover
 				v-if="app?.publishedUrl"
 				:app="app"
@@ -199,6 +219,13 @@ watch(
 	height: var(--height--4xl);
 	container-type: inline-size;
 	container-name: app-header;
+}
+
+// The feedback label is the first thing to go, so the right-hand buttons fit next to the tabs.
+@container app-header (max-width: 640px) {
+	.feedbackLabel {
+		display: none;
+	}
 }
 
 @container app-header (max-width: 560px) {
@@ -237,7 +264,8 @@ watch(
 
 .right {
 	grid-column: 3;
-	justify-content: flex-end;
+	// `safe` keeps overflowing buttons from spilling left over the tabs.
+	justify-content: safe flex-end;
 }
 
 .separator {

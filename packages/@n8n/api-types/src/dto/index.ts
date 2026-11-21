@@ -6,6 +6,12 @@ export { ListAppsQueryDto } from './app/list-apps-query.dto';
 export { PublishAppDto } from './app/publish-app.dto';
 export { RestoreAppVersionDto } from './app/restore-app-version.dto';
 export { SetAppBindingsDto } from './app/set-app-bindings.dto';
+export {
+	SendAppFeedbackDto,
+	APP_FEEDBACK_MAX_LENGTH,
+	appFeedbackCategorySchema,
+	type AppFeedbackCategory,
+} from './app/send-app-feedback.dto';
 
 export { AiAskRequestDto } from './ai/ai-ask-request.dto';
 export { AiChatRequestDto } from './ai/ai-chat-request.dto';
