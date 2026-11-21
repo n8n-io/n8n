@@ -69,10 +69,25 @@ describe('Test YouTube Node', () => {
 		beforeAll(() => {
 			youtubeNock
 				.post('/v3/playlists', {
-					snippet: { title: 'Playlist 1', privacyStatus: 'public', defaultLanguage: 'en' },
+					snippet: {
+						title: 'Playlist 1',
+						description: 'Description for Playlist 1.',
+						defaultLanguage: 'en',
+					},
+					status: { privacyStatus: 'public' },
+				})
+				.query({ part: 'snippet, status' })
+				.reply(200, playlists[0]);
+			youtubeNock
+				.post('/v3/playlists', {
+					snippet: { title: 'Playlist 2' },
 				})
 				.query({ part: 'snippet' })
-				.reply(200, playlists[0]);
+				.reply(200, {
+					kind: 'youtube#playlist',
+					id: 'playlist_id_2',
+					snippet: { title: 'Playlist 2' },
+				});
 			youtubeNock
 				.put('/v3/playlists', {
 					id: 'playlist_id_1',
