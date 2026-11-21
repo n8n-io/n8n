@@ -1,34 +1,19 @@
-import type { INodeType, ISupplyDataFunctions, INode } from 'n8n-workflow';
+import { toJsonSchema } from '@langchain/core/utils/json_schema';
+import type {
+	INode,
+	INodeType,
+	INodeTypes,
+	ISupplyDataFunctions,
+	IWorkflowExecuteAdditionalData,
+} from 'n8n-workflow';
+import { createRunExecutionData, NodeConnectionTypes, Workflow } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 import { z } from 'zod';
 
+import { SupplyDataContext } from '../../supply-data-context';
 import { createNodeAsTool } from '../create-node-as-tool';
-
-vi.mock('@langchain/core/tools', () => ({
-	DynamicStructuredTool: vi.fn().mockImplementation(function (
-		this: {
-			name: string;
-			description: string;
-			schema: unknown;
-			func: unknown;
-			metadata: unknown;
-		},
-		config: {
-			name: string;
-			description: string;
-			schema: unknown;
-			func: unknown;
-			metadata: unknown;
-		},
-	) {
-		this.name = config.name;
-		this.description = config.description;
-		this.schema = config.schema;
-		this.func = config.func;
-		this.metadata = config.metadata;
-	}),
-}));
+import { makeHandleToolInvocation } from '../get-input-connection-data';
 
 describe('createNodeAsTool', () => {
 	const context = mock<ISupplyDataFunctions>({
@@ -265,6 +250,83 @@ describe('createNodeAsTool', () => {
 				expect(fullParseResult.data.requiredParam).toBe('test');
 				expect(fullParseResult.data.optionalParam).toBe('custom value');
 			}
+		});
+
+		it.each([
+			{ blank: '', nodeDefault: 50, expected: '[{"limit":50}]' },
+			{ blank: '   ', nodeDefault: 50, expected: '[{"limit":50}]' },
+			{ blank: '', nodeDefault: '', expected: '[{}]' },
+		])('handles blank default $blank with node default $nodeDefault', async (testCase) => {
+			const { blank, nodeDefault, expected } = testCase;
+			const toolNode: INode = {
+				id: 'tool',
+				name: 'Test Tool',
+				type: 'test.tool',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {
+					limit: `={{ $fromAI('count', 'Maximum results', 'number', '${blank}') }}`,
+				},
+			};
+			const toolNodeType = mock<INodeType>({
+				description: {
+					...nodeType.description,
+					properties: [
+						{ name: 'limit', displayName: 'Limit', type: 'number', default: nodeDefault },
+					],
+				},
+				async execute() {
+					return [[{ json: { limit: this.getNodeParameter('limit', 0) } }]];
+				},
+			});
+			const nodeTypes = mock<INodeTypes>();
+			nodeTypes.getByNameAndVersion.mockReturnValue(toolNodeType);
+			const workflow = new Workflow({
+				nodes: [toolNode],
+				connections: {},
+				active: false,
+				nodeTypes,
+			});
+			const runExecutionData = createRunExecutionData();
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				currentNodeExecutionIndex: 0,
+				webhookWaitingBaseUrl: 'http://localhost:5678/webhook-waiting',
+				formWaitingBaseUrl: 'http://localhost:5678/form-waiting',
+			});
+			const tool = createNodeAsTool({
+				node: toolNode,
+				nodeType: toolNodeType,
+				handleToolInvocation: makeHandleToolInvocation(
+					(runIndex) =>
+						new SupplyDataContext(
+							workflow,
+							toolNode,
+							additionalData,
+							'manual',
+							runExecutionData,
+							runIndex,
+							[],
+							{},
+							NodeConnectionTypes.AiTool,
+							{ node: toolNode, data: {}, source: null },
+							[],
+						),
+					toolNode,
+					toolNodeType,
+					runExecutionData,
+				),
+			}).response;
+
+			await expect(tool.invoke({})).resolves.toBe(expected);
+			await expect(tool.invoke({ count: 0 })).resolves.toBe('[{"limit":0}]');
+			await expect(tool.invoke({ count: 5 })).resolves.toBe('[{"limit":5}]');
+			await expect(tool.invoke({ count: '5' })).rejects.toThrow('did not match expected schema');
+			const schema = toJsonSchema(tool.schema);
+			expect(schema).toMatchObject({
+				properties: { count: { type: 'number', description: 'Maximum results' } },
+			});
+			expect(schema).not.toHaveProperty('properties.count.default');
+			expect(schema).not.toMatchObject({ required: expect.arrayContaining(['count']) });
 		});
 
 		it('should handle nested parameters correctly', () => {

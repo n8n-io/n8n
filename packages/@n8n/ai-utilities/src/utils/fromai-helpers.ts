@@ -38,5 +38,5 @@ export function createZodSchemaFromArgs(args: FromAIArgument[]): z.ZodObject<z.Z
 		return acc;
 	}, {});
 
-	return z.object(schemaObj).required();
+	return z.object(schemaObj);
 }

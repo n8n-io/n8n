@@ -10,6 +10,7 @@ import { AGENT_LANGCHAIN_NODE_TYPE, SCRIPTING_NODE_TYPES, BINARY_MODE_COMBINED }
 import { UnexpectedError, UserError } from './errors';
 import { ExpressionError, type ExpressionErrorOptions } from './errors/expression.error';
 import { isExpression } from './expressions/expression-helpers';
+import { isBlankFromAINumberDefault } from './from-ai-parse-utils';
 import { getGlobalState } from './global-state';
 import { NodeConnectionTypes } from './interfaces';
 import type {
@@ -1238,7 +1239,7 @@ export class WorkflowDataProxy {
 		const handleFromAi = (
 			name: string,
 			_description?: string,
-			_type: string = 'string',
+			type: string = 'string',
 			defaultValue?: unknown,
 		) => {
 			const { itemIndex, runIndex } = that;
@@ -1295,7 +1296,7 @@ export class WorkflowDataProxy {
 			return (
 				readOwnKey(readOwnKey(placeholdersDataInputData, 'query'), name) ??
 				readOwnKey(placeholdersDataInputData, name) ??
-				defaultValue
+				(isBlankFromAINumberDefault(type, defaultValue) ? undefined : defaultValue)
 			);
 		};
 		const handleTool = (throwOnError = true) => {
