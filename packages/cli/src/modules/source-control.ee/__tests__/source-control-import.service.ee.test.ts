@@ -3286,8 +3286,12 @@ describe('SourceControlImportService', () => {
 			// The local instance created VAR1 independently (id local1, real value set);
 			// Git tracks it under the upstream id remote1 with the sync placeholder value ''.
 			variablesRepository.find.mockResolvedValue([mock<Variables>({ id: 'local1', key: 'VAR1' })]);
-			variablesRepository.upsert.mockRejectedValue(
-				new QueryFailedError('insert', [], Object.assign(new Error('duplicate key'), { code: '23505' })),
+			variablesRepository.upsert.mockRejectedValueOnce(
+				new QueryFailedError(
+					'insert',
+					[],
+					Object.assign(new Error('duplicate key'), { code: '23505' }),
+				),
 			);
 			fsReadFile.mockResolvedValue(
 				JSON.stringify([{ id: 'remote1', key: 'VAR1', value: '', type: 'string' }]),
