@@ -119,7 +119,7 @@ export async function createInstanceAgent(
 	// with this call (not shared mutable state) — concurrent runs with different
 	// configs can't read each other's failures.
 	const { tools: mcpTools, connectionFailures: managerMcpFailures } =
-		await mcpManager.getRegularTools(mcpServers, context.logger, context.permissions, {
+		await mcpManager.getRegularTools(mcpServers, context.logger, {
 			enforceAdminPermissions: context.enforceAdminMcpPermissions === true,
 		});
 	// Map manager-reported connection failures to the generic SDK event type so

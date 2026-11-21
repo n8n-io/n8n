@@ -21,3 +21,8 @@ export const mcpToolPermissionsSchema = z
 export type McpToolCategory = z.infer<typeof mcpToolCategorySchema>;
 export type McpToolPermission = z.infer<typeof mcpToolPermissionSchema>;
 export type McpToolPermissions = z.infer<typeof mcpToolPermissionsSchema>;
+
+/** Permissions for a new MCP connection. Users change them for each connection. */
+export const DEFAULT_MCP_TOOL_PERMISSIONS: McpToolPermissions = {
+	categories: { read: 'always_allow', write: 'require_approval' },
+};
