@@ -112,13 +112,22 @@ export const tryToParseDateTime = (value: unknown, defaultZone?: string): DateTi
 };
 
 export const tryToParseTime = (value: unknown): string => {
-	const isTimeInput = /^\d{2}:\d{2}(:\d{2})?((\-|\+)\d{4})?((\-|\+)\d{1,2}(:\d{2})?)?$/s.test(
-		String(value),
-	);
-	if (!isTimeInput) {
+	const timeString = String(value);
+	const match =
+		/^(\d{2}):(\d{2})(?::(\d{2}))?((\-|\+)\d{4})?((\-|\+)\d{1,2}(:\d{2})?)?$/s.exec(timeString);
+	if (!match) {
 		throw new UserError('Value is not a valid time', { extra: { value } });
 	}
-	return String(value);
+
+	const hours = Number(match[1]);
+	const minutes = Number(match[2]);
+	const seconds = match[3] !== undefined ? Number(match[3]) : 0;
+
+	if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59 || seconds < 0 || seconds > 59) {
+		throw new UserError('Value is not a valid time', { extra: { value } });
+	}
+
+	return timeString;
 };
 
 export const tryToParseArray = (value: unknown): unknown[] => {

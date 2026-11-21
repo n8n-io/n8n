@@ -4,6 +4,7 @@ import {
 	getValueDescription,
 	tryToParseDateTime,
 	tryToParseJsonToFormFields,
+	tryToParseTime,
 	tryToParseUrl,
 	validateFieldType,
 } from '../src/type-validation';
@@ -288,10 +289,40 @@ describe('Type Validation', () => {
 			}),
 		);
 
-		const INVALID_TIMES = ['23:23:23:23', '23', 'foo', '23:23:', '23::23::23'];
+		const INVALID_TIMES = [
+			'23:23:23:23',
+			'23',
+			'foo',
+			'23:23:',
+			'23::23::23',
+			'24:00',
+			'24:00:00',
+			'12:60',
+			'12:60:00',
+			'12:00:60',
+			'12:00:61',
+		];
 		INVALID_TIMES.forEach((value) =>
 			expect(validateFieldType('time', value, 'time').valid).toEqual(false),
 		);
+	});
+
+	describe('tryToParseTime', () => {
+		it('should accept valid time strings within range', () => {
+			expect(tryToParseTime('00:00')).toBe('00:00');
+			expect(tryToParseTime('00:00:00')).toBe('00:00:00');
+			expect(tryToParseTime('23:59:59')).toBe('23:59:59');
+		});
+
+		it('should reject out-of-range hours, minutes and seconds', () => {
+			expect(() => tryToParseTime('24:00')).toThrow('Value is not a valid time');
+			expect(() => tryToParseTime('24:00:00')).toThrow('Value is not a valid time');
+			expect(() => tryToParseTime('99:00:00')).toThrow('Value is not a valid time');
+			expect(() => tryToParseTime('12:60')).toThrow('Value is not a valid time');
+			expect(() => tryToParseTime('12:60:00')).toThrow('Value is not a valid time');
+			expect(() => tryToParseTime('12:00:60')).toThrow('Value is not a valid time');
+			expect(() => tryToParseTime('12:00:61')).toThrow('Value is not a valid time');
+		});
 	});
 
 	describe('options', () => {
