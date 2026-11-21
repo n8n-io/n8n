@@ -101,6 +101,52 @@ describe('Agent thread repository queries for system agents', () => {
 
 	const ids = (threads: AgentExecutionThread[]) => threads.map(({ id }) => id);
 
+	it('accepts a legacy timestamp cursor and returns an empty final page', async () => {
+		const updatedAt = '2025-01-02T00:00:00.000Z';
+		await createThread({}, updatedAt);
+		const older = await createThread({}, '2025-01-01T00:00:00.000Z');
+		const page = await threadRepo.findByProjectIdPaginated(
+			projectId,
+			agentId,
+			ownerId,
+			1,
+			updatedAt,
+		);
+		expect(ids(page.threads)).toEqual([older.id]);
+		expect(page.nextCursor).toBeNull();
+		expect(
+			await threadRepo.findByProjectIdPaginated(
+				projectId,
+				agentId,
+				ownerId,
+				1,
+				`${older.updatedAt.toISOString()}|${older.id}`,
+			),
+		).toEqual({ threads: [], nextCursor: null });
+	});
+
+	it.each(['2025-01-02T00:00:00.000Z', '2025-01-02T00:00:00.123Z'])(
+		'pages through tied timestamps exactly once (%s)',
+		async (updatedAt) => {
+			const first = await createThread({}, updatedAt);
+			const second = await createThread({}, updatedAt);
+			const page = await threadRepo.findByProjectIdPaginated(projectId, agentId, ownerId, 1);
+			expect(page.threads).toHaveLength(1);
+			expect(page.nextCursor).not.toBeNull();
+			const nextPage = await threadRepo.findByProjectIdPaginated(
+				projectId,
+				agentId,
+				ownerId,
+				1,
+				page.nextCursor!,
+			);
+			expect([...ids(page.threads), ...ids(nextPage.threads)]).toEqual(
+				[first.id, second.id].sort().reverse(),
+			);
+			expect(nextPage.nextCursor).toBeNull();
+		},
+	);
+
 	describe('findAccessibleById', () => {
 		it.each(['project', 'user'] as const)('finds an accessible %s session', async (accessScope) => {
 			const thread = await createThread({ accessScope });

@@ -273,9 +273,7 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 	}
 
 	/**
-	 * Paginated thread listing sorted by updatedAt DESC.
-	 * Uses cursor-based pagination where the cursor is the updatedAt ISO string
-	 * of the last item on the previous page.
+	 * Paginated thread listing sorted by updatedAt DESC, id DESC.
 	 */
 	async findByProjectIdPaginated(
 		projectId: string,
@@ -416,17 +414,28 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		limit: number,
 		cursor?: string,
 	): Promise<AgentExecutionThreadPage> {
-		query.orderBy('thread.updatedAt', 'DESC').take(limit + 1);
+		query
+			.orderBy('thread.updatedAt', 'DESC')
+			.addOrderBy('thread.id', 'DESC')
+			.take(limit + 1);
 		if (cursor) {
-			query.andWhere(`${this.updatedAtExpression()} < :cursor`, { cursor: new Date(cursor) });
+			const [updatedAt, id] = cursor.split('|');
+			const timestamp = this.updatedAtExpression();
+			query.andWhere(
+				id
+					? `(${timestamp} < :cursor OR (${timestamp} = :cursor AND thread.id < :cursorId))`
+					: `${timestamp} < :cursor`,
+				{ cursor: new Date(updatedAt), cursorId: id },
+			);
 		}
 		const threads = await query.getMany();
 		const hasMore = threads.length > limit;
 		if (hasMore) threads.pop();
+		const last = threads[threads.length - 1];
 
 		return {
 			threads,
-			nextCursor: hasMore ? threads[threads.length - 1].updatedAt.toISOString() : null,
+			nextCursor: hasMore ? `${last.updatedAt.toISOString()}|${last.id}` : null,
 		};
 	}
 
