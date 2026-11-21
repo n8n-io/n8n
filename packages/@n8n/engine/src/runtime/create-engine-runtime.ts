@@ -11,6 +11,7 @@ import type { ExternalDependencies } from '../dependencies';
 import {
 	assertValidStalenessThresholds,
 	CancelExecutionService,
+	ExecutionFileCleanup,
 	ExecutionQueryService,
 	ExecutionStartHandler,
 	OrchestrationWorker,
@@ -42,6 +43,8 @@ import {
 	RunningStepRepair,
 } from '../reconciliation';
 import type { ExecutionResponseSender } from '../response-channel';
+import { RetentionSweeper } from '../retention';
+import type { ExecutionRetentionPolicy } from '../retention';
 import { createEngineServer } from '../server';
 
 export interface EngineRuntimeOptions {
@@ -86,6 +89,11 @@ export interface EngineRuntimeOptions {
 	 * starts and stops them. The host closes their connections.
 	 */
 	queues: EngineWorkQueues;
+	/**
+	 * Which ended executions the engine deletes, with their files. No default:
+	 * absent, the engine deletes nothing, so no host deletes data by omission.
+	 */
+	retention?: ExecutionRetentionPolicy;
 }
 
 /** A built engine, ready for a host to serve. */
@@ -118,6 +126,7 @@ export function createEngineRuntime({
 	queues,
 	staleness,
 	reconciliationIntervalMs = DEFAULT_RECONCILIATION_INTERVAL_MS,
+	retention,
 }: EngineRuntimeOptions): EngineRuntime {
 	// An empty value is how an unset environment variable usually arrives.
 	const resumeSecret = givenResumeSecret || undefined;
@@ -202,6 +211,15 @@ export function createEngineRuntime({
 		},
 		logger,
 	);
+	const retentionSweeper =
+		retention === undefined
+			? undefined
+			: new RetentionSweeper(
+					executionStore,
+					new ExecutionFileCleanup(dependencies.deleteExecutionFiles, logger),
+					retention,
+					logger,
+				);
 	// One start path for every execution: the API and a step's sub-execution both admit
 	// and validate here, and only this path can set a parent link.
 	const startExecution = new StartExecutionService(
@@ -245,6 +263,7 @@ export function createEngineRuntime({
 			stepWorker.start();
 			waitSweeper.start();
 			reconciliationSweeper.start();
+			retentionSweeper?.start();
 		},
 
 		stop: async () => {
@@ -253,9 +272,13 @@ export function createEngineRuntime({
 			// dropped from an in-memory queue, and stays in a Redis queue for the
 			// next consumer.
 
-			// The sweepers stop first: they feed the queues, so nothing lands
-			// there after the workers have drained.
-			await Promise.all([waitSweeper.stop(), reconciliationSweeper.stop()]);
+			// The sweepers stop first: the wait and reconciliation sweepers feed the
+			// queues, and a retention pass must end before the host closes the database.
+			await Promise.all([
+				waitSweeper.stop(),
+				reconciliationSweeper.stop(),
+				retentionSweeper?.stop(),
+			]);
 			await Promise.all([orchestrationWorker.stop(), stepWorker.stop()]);
 			// After the workers are quiet, so the last events still reach the host.
 			await lifecycleEventPublisher.stop();
