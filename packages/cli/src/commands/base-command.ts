@@ -396,11 +396,35 @@ export abstract class BaseCommand<F = never> {
 		this.logger.error(error.stack!);
 	}
 
+	/**
+	 * The license only gates writing new data to Azure. On n8n Cloud the platform sets the
+	 * mode and the user cannot change it, so instead of exiting, return and let the caller
+	 * write new data to `fallbackMode`. Existing Azure data stays readable while the
+	 * container is configured.
+	 */
+	private onUnlicensedAzureStorage(
+		kind: 'binary data' | 'execution data',
+		modeEnvVar: string,
+		fallbackMode: string,
+	) {
+		if (this.globalConfig.deployment.type === 'cloud') {
+			this.logger.warn(
+				`The license does not cover Azure Blob ${kind} storage. Storing new ${kind} in \`${fallbackMode}\` mode because this is an n8n Cloud deployment. Existing ${kind} in Azure stays readable.`,
+			);
+			return;
+		}
+
+		this.logger.error(
+			`Azure Blob ${kind} storage requires a valid license. Either set \`${modeEnvVar}\` to something else, or upgrade to a license that supports this feature.`,
+		);
+		process.exit(1);
+	}
+
 	async initBinaryDataService() {
 		const binaryDataConfig = Container.get(BinaryDataConfig);
 		const binaryDataService = Container.get(BinaryDataService);
 		const isS3WriteMode = binaryDataConfig.mode === 's3';
-		const isAzureWriteMode = binaryDataConfig.mode === 'azure';
+		let isAzureWriteMode = binaryDataConfig.mode === 'azure';
 
 		const { DatabaseManager } = await import('@/binary-data/database.manager.js');
 		binaryDataService.setManager('database', Container.get(DatabaseManager));
@@ -418,12 +442,13 @@ export abstract class BaseCommand<F = never> {
 		if (isAzureWriteMode) {
 			const isLicensed = Container.get(LicenseState).isBinaryDataAzureLicensed();
 			if (!isLicensed) {
-				this.logger.error(
-					'Azure Blob binary data storage requires a valid license. Either set `N8N_DEFAULT_BINARY_DATA_MODE` to something else, or upgrade to a license that supports this feature.',
-				);
-				process.exit(1);
-			}
-			if (Container.get(AzureBlobConfig).containerName === '') {
+				// Same default as BinaryDataConfig when the mode is unset
+				const fallbackMode =
+					this.globalConfig.executions.mode === 'queue' ? 'database' : 'filesystem';
+				this.onUnlicensedAzureStorage('binary data', 'N8N_DEFAULT_BINARY_DATA_MODE', fallbackMode);
+				binaryDataConfig.mode = fallbackMode;
+				isAzureWriteMode = false;
+			} else if (Container.get(AzureBlobConfig).containerName === '') {
 				this.logger.error(
 					'Azure Blob binary data storage requires `N8N_EXTERNAL_STORAGE_AZURE_CONTAINER_NAME` to be set.',
 				);
@@ -431,11 +456,12 @@ export abstract class BaseCommand<F = never> {
 			}
 		}
 
-		const executionDataMode = Container.get(StorageConfig).mode;
+		const storageConfig = Container.get(StorageConfig);
+		const executionDataMode = storageConfig.mode;
 		const isS3Configured = Container.get(ObjectStoreConfig).bucket.name !== '';
 		const isAzureConfigured = Container.get(AzureBlobConfig).containerName !== '';
 		const isExecutionDataS3Mode = executionDataMode === 's3';
-		const isExecutionDataAzureMode = executionDataMode === 'azure';
+		let isExecutionDataAzureMode = executionDataMode === 'azure';
 		const isExecutionDataS3Licensed = Container.get(LicenseState).isExecutionDataS3Licensed();
 		const isExecutionDataAzureLicensed = Container.get(LicenseState).isExecutionDataAzureLicensed();
 
@@ -456,12 +482,14 @@ export abstract class BaseCommand<F = never> {
 
 		if (isExecutionDataAzureMode) {
 			if (!isExecutionDataAzureLicensed) {
-				this.logger.error(
-					'Azure Blob execution data storage requires a valid license. Either set `N8N_EXECUTION_DATA_STORAGE_MODE` to something else, or upgrade to a license that supports this feature.',
+				this.onUnlicensedAzureStorage(
+					'execution data',
+					'N8N_EXECUTION_DATA_STORAGE_MODE',
+					'database',
 				);
-				process.exit(1);
-			}
-			if (!isAzureConfigured) {
+				storageConfig.mode = 'database';
+				isExecutionDataAzureMode = false;
+			} else if (!isAzureConfigured) {
 				this.logger.error(
 					'Azure Blob execution data storage requires `N8N_EXTERNAL_STORAGE_AZURE_CONTAINER_NAME` to be set.',
 				);
