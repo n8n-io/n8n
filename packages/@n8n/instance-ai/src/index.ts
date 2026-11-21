@@ -754,6 +754,7 @@ export const WorkflowLoopRuntime: typeof WorkflowLoopRuntimeMod.WorkflowLoopRunt
 export type {
 	InstanceAiChangedArtifact,
 	InstanceAiContext,
+	InstanceAiEngineSetup,
 	InstanceAiToolRegistry,
 	InstanceAiWorkflowService,
 	InstanceAiExecutionService,
