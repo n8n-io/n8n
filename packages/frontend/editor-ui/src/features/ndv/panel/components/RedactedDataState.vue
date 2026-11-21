@@ -34,6 +34,13 @@ const i18n = useI18n();
 		<template v-else-if="reason === 'sub_workflow_redaction_policy'">
 			{{ i18n.baseText('ndv.redacted.subWorkflow.description') }}
 		</template>
+		<template v-else-if="reason === 'credential_deleted'">
+			{{ i18n.baseText('ndv.redacted.credentialDeleted.description') }}
+			<template v-if="!canReveal">
+				<br />
+				{{ i18n.baseText('ndv.redacted.credentialDeleted.noPermission') }}
+			</template>
+		</template>
 		<template v-else-if="canReveal">
 			{{ i18n.baseText('ndv.redacted.description.sentence1') }}<br />
 			<I18nT keypath="ndv.redacted.description.sentence2" tag="span" scope="global">
