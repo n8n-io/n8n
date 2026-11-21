@@ -3,7 +3,7 @@ import { InstanceRegistryProxyService } from '@n8n/backend-services';
 import type { AgentsConfig } from '@n8n/config';
 
 import type { AgentMainMemory } from '../queue/agent-main-memory.service';
-import type { AgentQueueMetricEvent } from '../queue/agent-queue-metrics';
+import { AgentQueueMetrics, type AgentQueueMetricEvent } from '../queue/agent-queue-metrics';
 import { AgentTurnGate } from '../queue/agent-turn-gate.service';
 import { AgentTurnPlacement } from '../queue/agent-turn-placement.service';
 import type { AgentTurnQueue } from '../queue/agent-turn-queue.service';
@@ -55,17 +55,18 @@ function setup({
 		queueMaxWaitSeconds: 60,
 	} as AgentsConfig;
 	const agentCluster = testCluster(cluster);
-	agentCluster.metrics.registerGauges({ localTurns: () => localTurns });
+	const metrics = new AgentQueueMetrics();
+	metrics.registerGauges({ localTurns: () => localTurns });
 	const events: AgentQueueMetricEvent[] = [];
-	agentCluster.metrics.onEvent((event) => events.push(event));
+	metrics.onEvent((event) => events.push(event));
 	const turnQueue = {
 		lastProgressAt,
 		waitingCount: async () => waitingInQueue,
 	} as AgentTurnQueue;
 	const memory = { isHigh: () => memoryHigh } as AgentMainMemory;
-	const gate = new AgentTurnGate(config, agentCluster.metrics, memory);
+	const gate = new AgentTurnGate(config, metrics, memory);
 	return {
-		placement: new AgentTurnPlacement(config, agentCluster, registry, turnQueue, gate),
+		placement: new AgentTurnPlacement(config, agentCluster, registry, turnQueue, gate, metrics),
 		gate,
 		getAllInstances,
 		events,
@@ -95,6 +96,61 @@ describe('AgentTurnPlacement', () => {
 			false,
 		);
 		expect(setup().placement.runsTurnsOnWorker).toBe(false);
+	});
+
+	describe('ingress and public turns', () => {
+		const webhookProcess = { queue: true, instanceType: 'webhook' as const };
+
+		it('makes a webhook process in agent queue mode ingress only', async () => {
+			const { placement } = setup({ cluster: webhookProcess, instances: [agentWorker] });
+			expect(placement.ingressOnly).toBe(true);
+			expect(placement.dispatchEnabled).toBe(false);
+			expect(placement.sendsJobs).toBe(true);
+			expect(await placement.workersAvailable()).toBe(true);
+			expect(
+				setup({ cluster: webhookProcess, queueModeEnabled: false }).placement.ingressOnly,
+			).toBe(false);
+			expect(setup().placement.ingressOnly).toBe(false);
+		});
+
+		it('runs no kind on a webhook process in agent queue mode', () => {
+			const { placement } = setup({ cluster: webhookProcess });
+			for (const kind of ['webhook-respond', 'app-chat', 'chat-resume', 'wake'] as const) {
+				expect(placement.mayRunHere(kind)).toBe(false);
+			}
+		});
+
+		it('runs public kinds only on agent workers in agent queue mode', () => {
+			const { placement } = setup();
+			for (const kind of ['webhook-respond', 'webhook-decide', 'app-chat', 'app-resume'] as const) {
+				expect(placement.mayRunHere(kind)).toBe(false);
+			}
+			expect(placement.mayRunHere('chat-resume')).toBe(true);
+			expect(placement.mayRunHere('task-run')).toBe(true);
+		});
+
+		it('runs every kind here without agent queue mode', () => {
+			expect(setup({ queueModeEnabled: false }).placement.mayRunHere('webhook-respond')).toBe(true);
+			expect(setup({ cluster: { queue: false } }).placement.mayRunHere('app-chat')).toBe(true);
+		});
+
+		it('never falls back for public kinds or on a webhook process', async () => {
+			const { placement } = setup({ mainFallbackTurns: 5 });
+			expect(await placement.mayFallBack(old().getTime(), 'request', 'webhook-respond')).toBe(
+				false,
+			);
+			expect(await placement.mayFallBack(old().getTime(), 'request', 'chat-resume')).toBe(true);
+
+			const ingress = setup({ cluster: webhookProcess }).placement;
+			expect(await ingress.mayFallBack(old().getTime(), 'request', 'wake')).toBe(false);
+			expect(await ingress.mayClaim('preview', old())).toBe(false);
+		});
+
+		it('counts a no-worker rejection and returns a retry time', () => {
+			const { placement, events } = setup();
+			expect(placement.rejectNoWorker()).toBeGreaterThan(0);
+			expect(events).toContainEqual({ type: 'turn-rejected', reason: 'no-worker' });
+		});
 	});
 
 	it('finds workers only by the agent-turns capability', async () => {

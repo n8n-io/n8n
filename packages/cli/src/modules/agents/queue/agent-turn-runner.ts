@@ -1,4 +1,5 @@
 import type { AgentSseEvent } from '@n8n/api-types';
+import { OperationalError } from '@n8n/errors';
 import type { JsonObject } from 'n8n-workflow';
 
 import type { AgentTurnRejectReason } from './agent-queue-metrics';
@@ -50,13 +51,22 @@ export interface AgentTurnSubscription {
  * Thrown by `start` when n8n has no room for the turn now. Nothing ran.
  * `left` means that `cancel` stopped the turn while it waited for room.
  */
-export class AgentTurnNotAdmittedError extends Error {
+export class AgentTurnNotAdmittedError extends OperationalError {
 	constructor(
 		readonly reason: AgentTurnRejectReason | 'left',
 		readonly retryAfterSeconds: number,
 	) {
-		super(`The agent turn was not admitted: ${reason}`);
-		this.name = 'AgentTurnNotAdmittedError';
+		super(`The agent turn was not admitted: ${reason}`, { level: 'info' });
+	}
+}
+
+/**
+ * Thrown by `start` when a turn with the same ID waits or runs already. A
+ * caller that derives the ID from a platform delivery uses it to drop a retry.
+ */
+export class AgentTurnDuplicateError extends OperationalError {
+	constructor(readonly turnId: string) {
+		super('An agent turn with this ID already started', { level: 'info', extra: { turnId } });
 	}
 }
 

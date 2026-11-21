@@ -58,7 +58,7 @@ export class PrometheusAgentQueueMetricsService implements PrometheusMetricsColl
 
 		const turnsRejected = new promClient.Counter({
 			name: `${prefix}agent_turns_rejected_total`,
-			help: 'Agent turns that a main rejected with a busy error, by reason: queue-full (N8N_AGENTS_QUEUE_MAX_WAITING reached), wait-too-long (not started within N8N_AGENTS_QUEUE_MAX_WAIT), main-at-limit (no agent worker, and the main had no room) or main-memory-high (not started within N8N_AGENTS_QUEUE_MAX_WAIT while above N8N_AGENTS_MAIN_MEMORY_HOLD_LEVEL) or queue-unavailable (the database or Redis failed).',
+			help: 'Agent turns that a main or webhook process rejected with a busy error, by reason: queue-full (N8N_AGENTS_QUEUE_MAX_WAITING reached), agent-queue-full (N8N_AGENTS_QUEUE_MAX_WAITING_PER_AGENT reached for one agent), no-worker (a public turn and no agent worker), wait-too-long (not started within N8N_AGENTS_QUEUE_MAX_WAIT), main-at-limit (no agent worker, and the main had no room), main-memory-high (not started within N8N_AGENTS_QUEUE_MAX_WAIT while above N8N_AGENTS_MAIN_MEMORY_HOLD_LEVEL) or queue-unavailable (the database or Redis failed).',
 			labelNames: ['reason'],
 		});
 
@@ -73,6 +73,18 @@ export class PrometheusAgentQueueMetricsService implements PrometheusMetricsColl
 			help: 'Agent turns stopped because they ran longer than N8N_AGENTS_TURN_TIMEOUT.',
 		});
 		turnsTimedOut.inc(0);
+
+		const turnsExpired = new promClient.Counter({
+			name: `${prefix}agent_turns_expired_total`,
+			help: 'Stored chat platform events that n8n removed, because no agent worker took them within 24 hours. n8n acknowledged these events, so the platform does not send them again.',
+		});
+		turnsExpired.inc(0);
+
+		const channelWebhooks = new promClient.Counter({
+			name: `${prefix}agent_channel_webhooks_total`,
+			help: 'Chat platform webhooks that reached agent ingress, by route (legacy: /rest/projects/.../webhooks/:platform, agent-hook: /agent-hook/:agentId/:platform), platform and outcome (accepted, duplicate, busy, rejected, answered, not-found). When the legacy route stays at 0, no platform uses the old URL.',
+			labelNames: ['route', 'platform', 'outcome'],
+		});
 
 		this.agentMetrics.onEvent((event) => {
 			switch (event.type) {
@@ -99,6 +111,16 @@ export class PrometheusAgentQueueMetricsService implements PrometheusMetricsColl
 					break;
 				case 'turn-timed-out':
 					turnsTimedOut.inc();
+					break;
+				case 'turns-expired':
+					turnsExpired.inc(event.count);
+					break;
+				case 'channel-webhook':
+					channelWebhooks.inc({
+						route: event.route,
+						platform: event.platform,
+						outcome: event.outcome,
+					});
 					break;
 			}
 		});

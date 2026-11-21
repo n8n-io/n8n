@@ -2,6 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { HIGHEST_SHUTDOWN_PRIORITY, OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
+import { OperationalError } from '@n8n/errors';
 import type Bull from 'bull';
 
 /** Bull queue for agent turns. It is separate from the workflow jobs queue. */
@@ -122,9 +123,15 @@ export class AgentTurnQueue {
 		);
 	}
 
-	/** Ask a worker to run the turn stored in an `agent_turn_request` row. */
+	/**
+	 * Ask a worker to run the turn stored in an `agent_turn_request` row.
+	 * Throws when the queue is not open, so that the caller rejects the turn
+	 * at once instead of waiting for a job that never went out.
+	 */
 	async enqueueRequest(requestId: string, priority: number): Promise<void> {
-		if (!this.queue) return;
+		if (!this.queue) {
+			throw new OperationalError('The agent turn queue is not open', { extra: { requestId } });
+		}
 		await this.queue.add(
 			REQUEST_JOB,
 			{ requestId },
@@ -136,6 +143,22 @@ export class AgentTurnQueue {
 				removeOnFail: true,
 			},
 		);
+	}
+
+	/**
+	 * Remove the request job of a turn that this main claimed, so that it does
+	 * not count as a waiting job. A worker that takes the job finds no row.
+	 * Never throws.
+	 */
+	async removeRequest(requestId: string): Promise<void> {
+		if (!this.queue) return;
+		try {
+			const job = await this.queue.getJob(`request:${requestId}`);
+			await job?.remove();
+		} catch (error) {
+			// An active job is locked and cannot be removed. It ends at once without a row.
+			this.logger.debug('Failed to remove an agent request job', { requestId, error });
+		}
 	}
 
 	/**
@@ -190,7 +213,7 @@ export class AgentTurnQueue {
 		return await this.waiting.count;
 	}
 
-	/** Waiting and active drain jobs, for metrics. */
+	/** Waiting and active jobs of each kind, for metrics. */
 	async counts(): Promise<{ waiting: number; active: number } | null> {
 		if (!this.queue) return null;
 		const { waiting, active } = await this.queue.getJobCounts();

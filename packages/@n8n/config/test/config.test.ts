@@ -807,6 +807,7 @@ describe('GlobalConfig', () => {
 			mainMaxIntake: 20,
 			mainMaxStreams: 200,
 			queueMaxWaiting: 200,
+			queueMaxWaitingPerAgent: 50,
 			queueMaxWaitSeconds: 60,
 			turnTimeoutSeconds: 0,
 		},
@@ -1325,6 +1326,33 @@ describe('GlobalConfig', () => {
 		expect(config.maxTotalMb).toEqual(1536);
 		expect(config.maxImportMb).toEqual(200);
 		expect(config.maxGeneratedFileCount).toEqual(20);
+	});
+
+	it('accepts 0 for N8N_AGENTS_MAIN_MAX_TURNS to turn off the limit', () => {
+		process.env = { N8N_AGENTS_MAIN_MAX_TURNS: '0' };
+
+		expect(Container.get(AgentsConfig).mainMaxTurns).toEqual(0);
+	});
+
+	it('falls back to the default for a negative N8N_AGENTS_MAIN_MAX_TURNS', () => {
+		process.env = { N8N_AGENTS_MAIN_MAX_TURNS: '-1' };
+
+		expect(Container.get(AgentsConfig).mainMaxTurns).toEqual(20);
+	});
+
+	it('parses N8N_AGENTS_QUEUE_MAX_WAITING_PER_AGENT, with 0 for no limit', () => {
+		process.env = { N8N_AGENTS_QUEUE_MAX_WAITING_PER_AGENT: '10' };
+		expect(Container.get(AgentsConfig).queueMaxWaitingPerAgent).toEqual(10);
+
+		Container.reset();
+		process.env = { N8N_AGENTS_QUEUE_MAX_WAITING_PER_AGENT: '0' };
+		expect(Container.get(AgentsConfig).queueMaxWaitingPerAgent).toEqual(0);
+	});
+
+	it('falls back to the default for a negative N8N_AGENTS_QUEUE_MAX_WAITING_PER_AGENT', () => {
+		process.env = { N8N_AGENTS_QUEUE_MAX_WAITING_PER_AGENT: '-1' };
+
+		expect(Container.get(AgentsConfig).queueMaxWaitingPerAgent).toEqual(50);
 	});
 
 	describe('health endpoint transformation', () => {

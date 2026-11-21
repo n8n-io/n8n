@@ -198,7 +198,7 @@
 		const end = t.finishedAt ?? now;
 		const tpm = t.result?.turnsPerMinute ?? (t0 && done ? done / ((end - t0) / 60000) : null);
 		const shape = c
-			? `${c.mains} main · ${c.workers} worker${c.workers === 1 ? '' : 's'}${c.agentQueue && c.slotsPerWorker ? ` × ${c.slotsPerWorker} slots` : ''} · agent turns on ${c.agentQueue ? 'workers' : 'main'}`
+			? `${c.mains} main · ${c.webhooks ? `${c.webhooks} webhook · ` : ''}${c.workers} worker${c.workers === 1 ? '' : 's'}${c.agentQueue && c.slotsPerWorker ? ` × ${c.slotsPerWorker} slots` : ''} · agent turns on ${c.agentQueue ? 'workers' : 'main'}`
 			: '';
 		const head = `<div class="run-head">
 			<b>${esc(t.name)}</b><span class="pill ${t.status}">${t.status}</span>
@@ -334,16 +334,17 @@
 			: 'none';
 
 	const CONFIG_ROWS = [
-			['Mains', (c) => c.mains],
-			['Workers', (c) => c.workers],
-			['Agent turns run on', (c) => (c.agentQueue ? 'workers (agent queue on)' : 'main')],
-			['Slots per worker', (c) => (c.agentQueue ? (c.slotsPerWorker ?? '–') : '–')],
-			['Measured turns', (c) => c.turns],
-			['Turns at once', (c) => c.concurrency],
-			['Warmup turns', (c) => c.warmup],
-			['Main limit', (c) => limitText(c.limits?.main)],
-			['Worker limit', (c) => (c.workers ? limitText(c.limits?.worker) : '–')],
-		];
+		['Mains', (c) => c.mains],
+		['Webhook processes', (c) => c.webhooks ?? 0],
+		['Workers', (c) => c.workers],
+		['Agent turns run on', (c) => (c.agentQueue ? 'workers (agent queue on)' : 'main')],
+		['Slots per worker', (c) => (c.agentQueue ? (c.slotsPerWorker ?? '–') : '–')],
+		['Measured turns', (c) => c.turns],
+		['Turns at once', (c) => c.concurrency],
+		['Warmup turns', (c) => c.warmup],
+		['Main limit', (c) => limitText(c.limits?.main)],
+		['Worker limit', (c) => (c.workers ? limitText(c.limits?.worker) : '–')],
+	];
 
 	/** One run's settings as label rows; shared by section 3 and the button on each run. */
 	function configRows(t) {
@@ -357,11 +358,12 @@
 		if (!runs.length) return '';
 		// Runs are setups × load steps. Show each setup once, with the loads it ran at.
 		const setupKey = (c) =>
-			JSON.stringify([c.mains, c.workers, c.agentQueue, c.slotsPerWorker, c.limits]);
+			JSON.stringify([c.mains, c.webhooks, c.workers, c.agentQueue, c.slotsPerWorker, c.limits]);
 		const setups = new Map();
 		for (const t of runs) {
 			const key = setupKey(t.config);
-			if (!setups.has(key)) setups.set(key, { name: t.name.replace(/-\d+$/, ''), c: t.config, runs: [] });
+			if (!setups.has(key))
+				setups.set(key, { name: t.name.replace(/-\d+$/, ''), c: t.config, runs: [] });
 			setups.get(key).runs.push(t);
 		}
 		const proc = (n, word, limit) =>
@@ -369,9 +371,13 @@
 		const card = ({ name, c, runs: rs }) => `<div class="block setup">
 			<div class="setup-head"><b>${esc(name)}</b><span class="pill">agent turns on ${c.agentQueue ? 'workers' : 'main'}</span></div>
 			${proc(c.mains, 'main', c.limits?.main)}
+			${c.webhooks ? proc(c.webhooks, 'webhook process', c.limits?.main) : ''}
 			${c.workers ? proc(c.workers, 'worker', c.limits?.worker) + `<div class="proc-line"><b>${c.agentQueue ? (c.slotsPerWorker ?? '–') : '–'}</b> slots per worker</div>` : ''}
 			<div class="loads"><span class="muted">Chats at once</span>${rs
-				.map((t) => `<span class="load ${t.status}" title="${esc(`${t.name} · ${t.config.turns} turns`)}">${t.config.concurrency}</span>`)
+				.map(
+					(t) =>
+						`<span class="load ${t.status}" title="${esc(`${t.name} · ${t.config.turns} turns`)}">${t.config.concurrency}</span>`,
+				)
 				.join('')}</div>
 		</div>`;
 		const c0 = runs[0].config;

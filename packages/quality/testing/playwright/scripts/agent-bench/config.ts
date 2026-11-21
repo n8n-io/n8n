@@ -28,6 +28,11 @@ export interface Topology {
 	name: string;
 	mains?: number;
 	workers?: number;
+	/**
+	 * Dedicated webhook processes. With agent queue mode they also take the public
+	 * agent routes (Responses API, chat platform webhooks) off the main.
+	 */
+	webhooks?: number;
 	/** Run agent turns on workers. False keeps them on the mains, also with workers. */
 	agentQueue?: boolean;
 	/** Agent slots on each worker. Default: `workerConcurrency` of the config. */
@@ -232,6 +237,7 @@ export function topologyLoad(topology: Topology, config: BenchConfig) {
 export function stackConfig(topology: Topology, config: BenchConfig): N8NConfig {
 	const mains = topology.mains ?? 1;
 	const workers = topology.workers ?? 0;
+	const webhooks = topology.webhooks ?? 0;
 	const agentQueue = topology.agentQueue ?? workers > 0;
 	const env: Record<string, string> = {
 		N8N_ENABLED_MODULES: 'agents',
@@ -265,6 +271,7 @@ export function stackConfig(topology: Topology, config: BenchConfig): N8NConfig 
 			: {}),
 		mains,
 		workers,
+		...(webhooks > 0 ? { webhooks } : {}),
 		env,
 		projectName: `agent-bench-${topology.name}`,
 		...(mains > 1 ? { lbPolicy: 'round_robin' as const } : {}),
@@ -415,7 +422,8 @@ export function loadConfig(argv: string[]): BenchConfig {
 	config.keep = values.keep ?? config.keep;
 	config.observability = values.observability ?? config.observability;
 	config.probeMs = int(values['probe-ms'], 'probe-ms') ?? config.probeMs;
-	config.scheduleEverySec = int(values['schedule-every'], 'schedule-every') ?? config.scheduleEverySec;
+	config.scheduleEverySec =
+		int(values['schedule-every'], 'schedule-every') ?? config.scheduleEverySec;
 	if (values.cockpit !== undefined) {
 		config.cockpit = values.cockpit === 'off' ? 'off' : (int(values.cockpit, 'cockpit') ?? 4790);
 	}

@@ -27,14 +27,50 @@ export type AgentStreamSkipReason = 'main-memory-high' | 'main-at-stream-limit';
  * - `main-memory-high`: the turn waited too long while the memory of this
  *   process was above `N8N_AGENTS_MAIN_MEMORY_HOLD_LEVEL`. Low memory on the
  *   server, not agent load alone, can cause this.
+ * - `queue-unavailable`: the main could not store the turn or send its job,
+ *   because the database or Redis failed.
+ * - `agent-queue-full`: `N8N_AGENTS_QUEUE_MAX_WAITING_PER_AGENT` public turns
+ *   of the same agent already wait for a worker.
+ * - `no-worker`: a public turn must run on an agent worker, and no agent
+ *   worker is registered.
  */
 export type AgentTurnRejectReason =
 	| 'queue-full'
+	| 'agent-queue-full'
+	| 'no-worker'
 	| 'wait-too-long'
 	| 'main-at-limit'
-	| 'main-memory-high';
+	| 'main-memory-high'
+	| 'queue-unavailable';
+
+/**
+ * What the ingress did with a chat platform webhook:
+ * - `accepted`: stored as a turn.
+ * - `duplicate`: a retry of an event that waits or runs already.
+ * - `busy`: rejected with 503, so that the platform retries.
+ * - `rejected`: the signature or the request was not valid.
+ * - `answered`: a handshake, such as a URL check.
+ * - `not-found`: no published channel for the agent and platform.
+ */
+export type ChannelWebhookOutcome =
+	| 'accepted'
+	| 'duplicate'
+	| 'busy'
+	| 'rejected'
+	| 'answered'
+	| 'not-found';
 
 export type AgentQueueMetricEvent =
+	/**
+	 * A chat platform webhook reached the ingress. `route` tells the legacy
+	 * `/rest/.../webhooks/:platform` URL from the `/agent-hook/...` URL.
+	 */
+	| {
+			type: 'channel-webhook';
+			route: 'legacy' | 'agent-hook';
+			platform: string;
+			outcome: ChannelWebhookOutcome;
+	  }
 	| { type: 'turn-started'; location: AgentTurnLocation }
 	| { type: 'fallback'; path: 'queued-message' | 'request' }
 	/** A main left a turn in the queue. Counts each check, not each turn. */
@@ -46,7 +82,12 @@ export type AgentQueueMetricEvent =
 	/** A main rejected an agent turn with a busy error. */
 	| { type: 'turn-rejected'; reason: AgentTurnRejectReason }
 	| { type: 'relay-dropped'; channel: 'execution-update' | 'agent-update' | 'stream' }
-	| { type: 'turn-timed-out' };
+	| { type: 'turn-timed-out' }
+	/**
+	 * The leader removed stored chat platform events that no agent worker
+	 * claimed within `QueuedTurnRunner.DURABLE_REQUEST_MS`.
+	 */
+	| { type: 'turns-expired'; count: number };
 
 export interface AgentQueueGauges {
 	/** Agent turns that run in this process now. */

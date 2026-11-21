@@ -373,8 +373,6 @@ export async function executeWorkflow(
 	if (instanceSettings.instanceType === 'worker') {
 		runData.runInCurrentProcess = true;
 	}
-	const mayWaitInQueue =
-		!runData.runInCurrentProcess && Container.get(GlobalConfig).executions.mode === 'queue';
 
 	const instrument = context.instrumentToolAdditionalData;
 	if (instrument && instrumentedToolName) {
@@ -382,6 +380,11 @@ export async function executeWorkflow(
 			instrument(additionalData, { toolName: instrumentedToolName, toolKind: 'workflow' });
 		};
 	}
+	// Same rule as `WorkflowRunner`: a run with either setting stays in this process.
+	const mayWaitInQueue =
+		!runData.runInCurrentProcess &&
+		runData.configureAdditionalData === undefined &&
+		Container.get(GlobalConfig).executions.mode === 'queue';
 
 	const responsePromise = createDeferredPromise<IExecuteResponsePromiseData>();
 	let webhookResponse: IExecuteResponsePromiseData | undefined;
@@ -485,10 +488,14 @@ export async function executeWorkflow(
 	});
 }
 
-/** The foreground tool owns cancellation until it hands the workflow to a background job. */
-/** A queued execution stays `new` until a worker or a concurrency slot picks it up. */
-class QueueStartTimeoutError extends Error {}
+/** Ends the wait for a queued tool run that no worker started in time. */
+class QueueStartTimeoutError extends OperationalError {
+	constructor() {
+		super('The workflow execution did not start in time');
+	}
+}
 
+/** A queued execution stays `new` until a worker or a concurrency slot picks it up. */
 async function hasNotStarted(executionId: string): Promise<boolean> {
 	try {
 		const execution = await Container.get(ExecutionPersistence).findSingleExecution(executionId);
@@ -498,6 +505,7 @@ async function hasNotStarted(executionId: string): Promise<boolean> {
 	}
 }
 
+/** The foreground tool owns cancellation until it hands the workflow to a background job. */
 async function withWorkflowCancellation<T>(
 	executionId: string,
 	workflowId: string | undefined,

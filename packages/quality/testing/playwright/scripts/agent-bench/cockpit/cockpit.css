@@ -152,15 +152,6 @@ section h2 .hint {
 	background: var(--surface);
 }
 
-.block-head {
-	padding-bottom: 10px;
-	margin-bottom: 4px;
-	border-bottom: 1px solid var(--line);
-	color: var(--ink);
-	font-size: 13px;
-	font-weight: 600;
-}
-
 .cards {
 	display: grid;
 	grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
@@ -191,24 +182,6 @@ section h2 .hint {
 
 .rows .row > div {
 	color: var(--ink);
-}
-
-.tiles {
-	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-	gap: 16px;
-}
-
-.tiles > div {
-	display: flex;
-	flex-direction: column;
-	gap: 4px;
-	align-items: flex-start;
-	min-width: 0;
-}
-
-.tiles code {
-	word-break: break-all;
 }
 
 .env {
@@ -250,12 +223,6 @@ section h2 .hint {
 .flow i {
 	color: var(--muted);
 	font-style: normal;
-}
-
-.stack {
-	display: flex;
-	flex-direction: column;
-	gap: 12px;
 }
 
 .scenario-total {
@@ -327,16 +294,6 @@ section h2 .hint {
 	color: var(--body);
 	font-size: 13px;
 	line-height: 1.7;
-}
-
-.kind {
-	display: inline-block;
-	padding: 0 8px;
-	border-radius: 4px;
-	color: #fff;
-	font-size: 12px;
-	font-weight: 600;
-	background: var(--c);
 }
 
 .pill {

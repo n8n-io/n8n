@@ -163,9 +163,10 @@ export class AgentsConfig {
 	channelReconcileIntervalSeconds: number = 60;
 
 	/**
-	 * Most requests that one IP address can send to the agent webhook channel in 5 minutes.
-	 * Each main instance counts its requests separately. Set to 0 to turn off the limit, for
-	 * example when one backend sends the requests of all your users.
+	 * Maximum number of requests that one IP address can send to the agent webhook channel in
+	 * five minutes. Over the limit, callers get a `429` response with a `Retry-After` header. In
+	 * queue mode, all main instances and webhook processes share the count. Set to 0 to turn off
+	 * the limit, for example when one backend sends the requests of all your users.
 	 */
 	@Env('N8N_AGENTS_WEBHOOK_CHANNEL_RATE_LIMIT', nonnegativeIntSchema)
 	webhookChannelRateLimit: number = 300;
@@ -180,12 +181,10 @@ export class AgentsConfig {
 
 	/**
 	 * In queue mode, lets main instances send agent turns to workers that have
-	 * `N8N_AGENTS_WORKER_ENABLED` set. Use the same value on every main instance.
-	 * When no agent worker is running, main instances run the turns themselves.
-	 *
-	 * Turns from n8n Assistant, Discord, and WhatsApp always run on main
-	 * instances. Use database or S3 binary data storage so that workers can read
-	 * agent files.
+	 * `N8N_AGENTS_WORKER_ENABLED` set, and run the turns themselves when no agent
+	 * worker is running. Use the same value on every main instance, and use
+	 * database or S3 binary data storage so that workers can read agent files.
+	 * Turns from n8n Assistant, Discord, and WhatsApp always run on main instances.
 	 */
 	@Env('N8N_AGENTS_QUEUE_MODE_ENABLED')
 	queueModeEnabled: boolean = false;
@@ -199,51 +198,50 @@ export class AgentsConfig {
 	workerEnabled: boolean = false;
 
 	/**
-	 * Maximum number of agent turns that one worker runs at the same time.
-	 * Background sub-agents that run on the worker count toward this limit. A
-	 * turn spends most of its time waiting for the model, so a worker with one
-	 * CPU core and 1 GB of memory runs 30 turns with room to spare for tools.
-	 * Raise it when your workers have more CPU. Only applies
-	 * when `N8N_AGENTS_WORKER_ENABLED` is set.
+	 * Maximum number of agent turns that one worker runs at the same time,
+	 * including background sub-agents. A turn spends most of its time waiting for
+	 * the model, so raise it when your workers have spare CPU and memory. Only
+	 * applies when `N8N_AGENTS_WORKER_ENABLED` is set.
 	 */
 	@Env('N8N_AGENTS_WORKER_CONCURRENCY', positiveIntSchema)
 	workerConcurrency: number = 30;
 
 	/**
-	 * Maximum number of agent turns that one main instance takes over from
-	 * agent workers that stopped making progress. Busy workers still make
-	 * progress, so a main never takes over from them. With 0, main instances
-	 * never run worker turns while an agent worker is running, and turns wait
-	 * or get a busy error instead. Only applies when
-	 * `N8N_AGENTS_QUEUE_MODE_ENABLED` is set.
+	 * In agent queue mode, a main instance takes over a turn from agent workers
+	 * that stopped making progress only while it runs fewer agent turns than
+	 * this number. All agent turns on the main instance count, not only the ones
+	 * it took over. Set to 0 so that main instances never take over while an
+	 * agent worker is running, and turns wait or get a busy error instead.
 	 */
 	@Env('N8N_AGENTS_MAIN_FALLBACK_TURNS', nonnegativeIntSchema)
 	mainFallbackTurns: number = 0;
 
 	/**
-	 * Maximum number of agent turns that one main instance runs at the same time.
-	 * Turns over the limit wait until the main instance has room. When they wait
-	 * longer than `N8N_AGENTS_QUEUE_MAX_WAIT`, n8n rejects them with a busy
-	 * error. Turns that run on agent workers don't count.
+	 * Maximum number of agent turns that one main instance runs at the same time,
+	 * not counting turns on agent workers. Chat and chat platform messages over
+	 * the limit wait in the message queue until there's room, and other turns,
+	 * such as app chats and webhook channel requests, wait up to
+	 * `N8N_AGENTS_QUEUE_MAX_WAIT` before n8n rejects them with a busy error. Set
+	 * to 0 for no limit.
 	 */
-	@Env('N8N_AGENTS_MAIN_MAX_TURNS', positiveIntSchema)
+	@Env('N8N_AGENTS_MAIN_MAX_TURNS', nonnegativeIntSchema)
 	mainMaxTurns: number = 20;
 
 	/**
-	 * Memory use of a main instance, as a share of its memory limit from 0 to 1,
-	 * above which it starts no new agent turns and opens no new live chat
-	 * streams. Turns wait or run on agent workers, and the chat loads the reply
-	 * when it's ready. Set to 1 to turn off this check.
+	 * Memory use of a main instance, as a share of its memory limit, above which
+	 * it starts no new agent turns and opens no new live chat streams. Turns wait
+	 * or run on agent workers, and the chat loads the reply when it's ready. Use
+	 * a number above 0 and up to 1, and set it to 1 to turn off this check.
 	 */
 	@Env('N8N_AGENTS_MAIN_MEMORY_HOLD_LEVEL', memoryLevelSchema)
 	mainMemoryHoldLevel: number = 0.8;
 
 	/**
 	 * Maximum number of chat messages that one main instance accepts at the same
-	 * time. Accepting a message includes the permission checks, the agent and
-	 * credential checks, and adding the message to the queue. Messages over the
-	 * limit wait up to 10 seconds. After that, n8n rejects the message and the
-	 * user sees that n8n is busy. Set to 0 for no limit.
+	 * time, which covers the permission, agent, and credential checks and adding
+	 * the message to the queue. Messages over the limit wait up to 10 seconds,
+	 * then n8n rejects them and the user sees that n8n is busy. Set to 0 for no
+	 * limit.
 	 */
 	@Env('N8N_AGENTS_MAIN_MAX_INTAKE', nonnegativeIntSchema)
 	mainMaxIntake: number = 20;
@@ -258,22 +256,35 @@ export class AgentsConfig {
 	mainMaxStreams: number = 200;
 
 	/**
-	 * Maximum number of agent turns that can wait to start. Turns for agent
-	 * workers count across all instances. Turns for one main instance count on
-	 * that instance. When this many turns wait, n8n rejects new chat messages,
-	 * app chats, and webhook channel requests with a busy error, and webhook
-	 * callers get a `503` with a `Retry-After` header. Messages from chat
-	 * platforms such as Slack still queue. Set to 0 for no limit.
+	 * Maximum number of agent turns that can wait to start, across all instances
+	 * for agent workers, or on one main instance for its own turns. When this
+	 * many turns wait, n8n rejects new chat messages, app chats, webhook channel
+	 * requests, and chat platform events with a busy error. Chat platforms such
+	 * as Slack get a `503` and send the event again later. Set to 0 for no limit.
 	 */
 	@Env('N8N_AGENTS_QUEUE_MAX_WAITING', nonnegativeIntSchema)
 	queueMaxWaiting: number = 200;
 
 	/**
-	 * Maximum time, in seconds, that a chat or a webhook channel request waits
-	 * for an agent turn to start. After that, n8n rejects the request with a
-	 * busy error, and webhook callers get a `503` with a `Retry-After` header.
-	 * Scheduled tasks and workflow runs wait up to five minutes. Set to 0 to
-	 * wait without a limit.
+	 * In agent queue mode, the maximum number of webhook channel requests, app
+	 * chats, and chat platform events of one agent that can wait for an agent
+	 * worker. When this many wait, n8n rejects new ones for that agent with a
+	 * busy error, so that one busy public agent can't fill the queue for all
+	 * others. A chat platform event counts until an agent worker takes it,
+	 * because it doesn't time out. Set to 0 for no limit.
+	 */
+	@Env('N8N_AGENTS_QUEUE_MAX_WAITING_PER_AGENT', nonnegativeIntSchema)
+	queueMaxWaitingPerAgent: number = 50;
+
+	/**
+	 * Maximum time, in seconds, that an app chat, a tool approval reply, or a
+	 * webhook channel request waits for its agent turn to start before n8n
+	 * rejects it with a busy error, which webhook callers get as a `503` with a
+	 * `Retry-After` header. Accepted chat messages wait in the message queue
+	 * without this limit, and scheduled tasks and workflow runs wait up to five
+	 * minutes. In agent queue mode, accepted chat platform events also wait
+	 * without this limit, for up to 24 hours, even while no agent worker runs.
+	 * Set to 0 to wait without a limit.
 	 */
 	@Env('N8N_AGENTS_QUEUE_MAX_WAIT', nonnegativeIntSchema)
 	queueMaxWaitSeconds: number = 60;

@@ -223,11 +223,13 @@ export const AGENT_CHAT_ERROR_CODES = {
 	agentUnavailable: 'agent_unavailable',
 	/** The agent misses required config. `missing` lists the config slots. */
 	agentMisconfigured: 'agent_misconfigured',
-	/** The server has no room for the turn now. The message was not saved. */
+	// The server sends a busy code before or after it accepts the message. Only a
+	// rejection before acceptance leaves the message unsaved.
+	/** The server has no room for the turn now. The agent did not run. */
 	mainBusy: 'main_busy',
-	/** Too many agent turns wait. The message was not saved. */
+	/** Too many agent turns wait. The agent did not run. */
 	queueFull: 'queue_full',
-	/** The server is low on memory, so it starts no new agent turn now. The message was not saved. */
+	/** The server is low on memory, so it starts no new agent turn now. The agent did not run. */
 	lowMemory: 'low_memory',
 } as const;
 
