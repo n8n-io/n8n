@@ -200,7 +200,7 @@ function withBearerAuth(fetch: FetchFn | undefined, tokenProvider: () => Promise
  * Shared builder for OpenAI-compatible HTTP providers. Prefer this over
  * `@ai-sdk/<provider>` packages that pull optional NAPI binaries or v4-only types.
  */
-function buildOpenAiCompatible(
+export function buildOpenAiCompatible(
 	name: string,
 	defaultBaseURL: string | undefined,
 	creds: OpenAiCompatibleCreds,
@@ -292,7 +292,7 @@ function buildOpenAiCompatibleChat(
  * the SDK sends full items, asks for encrypted reasoning, and drops replayed
  * reasoning that has no encrypted content, so broken sessions recover.
  */
-function statelessResponses(
+export function statelessResponses(
 	model: Parameters<typeof AiSdk.wrapLanguageModel>[0]['model'],
 ): ReturnType<typeof AiSdk.wrapLanguageModel> {
 	const { wrapLanguageModel, defaultSettingsMiddleware } = loadAi();

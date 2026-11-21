@@ -2,7 +2,8 @@ import * as openai from '@langchain/openai';
 import type { ISupplyDataFunctions } from 'n8n-workflow';
 
 import * as langchainChatModelAdapter from 'src/adapters/langchain-chat-model';
-import { supplyModel } from 'src/suppliers/supplyModel';
+import { BaseChatModel } from 'src/chat-model/base';
+import { isOpenAiModel, supplyModel } from 'src/suppliers/supplyModel';
 import * as failedAttemptHandler from 'src/utils/failed-attempt-handler/n8nLlmFailedAttemptHandler';
 import * as httpProxyAgent from 'src/utils/http-proxy-agent';
 import * as n8nLlmTracing from 'src/utils/n8n-llm-tracing';
@@ -262,5 +263,39 @@ describe('supplyModel', () => {
 			expect(LangchainChatModelAdapter).toHaveBeenCalledWith(modelWithoutType, mockCtx);
 			expect(ChatOpenAI).not.toHaveBeenCalled();
 		});
+	});
+});
+
+describe('isOpenAiModel', () => {
+	class OpenAiTypedChatModel extends BaseChatModel {
+		readonly type = 'openai';
+
+		async generate(): Promise<never> {
+			throw new Error('not used');
+		}
+
+		// eslint-disable-next-line require-yield
+		async *stream(): AsyncGenerator<never> {
+			throw new Error('not used');
+		}
+	}
+
+	it('accepts an OpenAI-compatible config', () => {
+		expect(
+			isOpenAiModel({ type: 'openai', baseUrl: 'https://llm.test/v1', apiKey: 'k', model: 'm' }),
+		).toBe(true);
+	});
+
+	it('rejects a ChatModel, even one with type "openai"', () => {
+		expect(isOpenAiModel(new OpenAiTypedChatModel('vendor', 'm'))).toBe(false);
+		expect(
+			isOpenAiModel({
+				provider: 'vendor',
+				modelId: 'm',
+				generate: vi.fn(),
+				stream: vi.fn(),
+				withTools: vi.fn(),
+			}),
+		).toBe(false);
 	});
 });
