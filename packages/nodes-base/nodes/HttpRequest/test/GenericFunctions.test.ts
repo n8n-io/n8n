@@ -132,6 +132,19 @@ describe('getOAuth2AdditionalParameters', () => {
 		const result = getOAuth2AdditionalParameters('microsoftDynamicsOAuth2Api');
 		expect(result).toBeUndefined();
 	});
+
+	it('should leave Microsoft OAuth2 on 401 for callers that do not opt in', () => {
+		const result = getOAuth2AdditionalParameters('microsoftOAuth2Api');
+		expect(result).toBeUndefined();
+	});
+
+	it('should refresh Microsoft OAuth2 tokens on 401 and 403 only while expired when requested', () => {
+		const result = getOAuth2AdditionalParameters('microsoftOAuth2Api', true);
+		expect(result).toEqual({
+			tokenExpiredStatusCode: [401, 403],
+			skipRefreshWhileTokenIsFresh: true,
+		});
+	});
 });
 
 describe('isStream', () => {
