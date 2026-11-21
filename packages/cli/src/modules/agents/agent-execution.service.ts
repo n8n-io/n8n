@@ -756,9 +756,8 @@ export class AgentExecutionService {
 	}
 
 	/**
-	 * Delete a thread and all its associated runs. The FK on agent_execution
-	 * cascades, so deleting the thread removes the runs in one statement.
-	 * The transaction removes all database rows. External data is deleted after commit.
+	 * Delete a session and its descendants in one database transaction.
+	 * Clean up external data and recipient bindings after commit.
 	 */
 	async deleteThread(
 		projectId: string,
@@ -777,23 +776,32 @@ export class AgentExecutionService {
 			if (!deletion) return null;
 			if (deletion.status === 'busy') return deletion;
 
-			// The memory delete removes the row that lists the bound threads, so read it first.
-			const boundThreadIds = await this.integrationMessageContext.findBoundThreadIds(threadId, ctx);
-			await this.n8nMemory.getImplementation(agentId).deleteThread(threadId, ctx);
-			return { ...deletion, boundThreadIds };
+			const refs = [];
+			for (const session of deletion.refs) {
+				// Memory deletion removes the list of bound threads.
+				const boundThreadIds = await this.integrationMessageContext.findBoundThreadIds(
+					session.threadId,
+					ctx,
+				);
+				await this.n8nMemory.getImplementation(session.agentId).deleteThread(session.threadId, ctx);
+				refs.push({ ...session, boundThreadIds });
+			}
+			return { ...deletion, refs };
 		});
 		if (!result) return false;
 		if (result.status === 'busy') {
 			throw new ConflictError('The session has active work and cannot be deleted');
 		}
-		const { refs, boundThreadIds } = result;
-
-		// The thread is already deleted, so a failed cleanup here only leaves stale data.
-		await Promise.all([
-			this.agentChatAttachmentService.deleteStoredData(refs.attachmentBinaryDataIds, { threadId }),
-			this.deleteThreadExecutionLogs(agentId, threadId, refs.executionLogs),
-			this.clearSessionBindings(threadId, boundThreadIds),
-		]);
+		// The sessions are already deleted, so a failed cleanup here only leaves stale data.
+		await Promise.all(
+			result.refs.flatMap(
+				({ agentId, threadId, attachmentBinaryDataIds, executionLogs, boundThreadIds }) => [
+					this.agentChatAttachmentService.deleteStoredData(attachmentBinaryDataIds, { threadId }),
+					this.deleteThreadExecutionLogs(agentId, threadId, executionLogs),
+					this.clearSessionBindings(threadId, boundThreadIds),
+				],
+			),
+		);
 		return true;
 	}
 
