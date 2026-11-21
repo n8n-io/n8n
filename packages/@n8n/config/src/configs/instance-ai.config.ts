@@ -106,7 +106,7 @@ export class InstanceAiConfig {
 
 	/**
 	 * Token threshold for the Reflector to condense observations.
-	 * When unset, the threshold is a share of the model's window or of the max window, whichever is smaller.
+	 * When unset, the threshold is 15% of the model's window or of the max window, whichever is smaller.
 	 * When set, this fixed value replaces that share.
 	 */
 	@Env('N8N_INSTANCE_AI_REFLECTOR_OBSERVATION_TOKENS')
