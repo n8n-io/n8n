@@ -168,7 +168,14 @@ function isNotEmpty(value: string): boolean {
 }
 
 function length(value: string): number {
-	return value.length;
+	let count = 0;
+	// Iterating a string yields one Unicode code point at a time without
+	// allocating an array holding every code point, which keeps large inputs
+	// within the expression VM's memory budget.
+	for (const _character of value) {
+		count++;
+	}
+	return count;
 }
 
 export function toJsonString(value: string): string {
