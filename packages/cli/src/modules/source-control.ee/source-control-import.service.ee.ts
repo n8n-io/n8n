@@ -1972,14 +1972,23 @@ export class SourceControlImportService {
 			importedProjects.flatMap((p) => p.variableStubs.map((vs) => vs.id)),
 		);
 		for (const { id, variableStubs } of importedProjects) {
-			const currentProjectVariables = await this.variablesRepository.find({
-				where: { project: { id } },
-				relations: ['project'],
-			});
-			const deletedVariables = currentProjectVariables.filter(
-				(v) => !variableStubs.some((vs) => vs.id === v.id) && !stubIdsAcrossImports.has(v.id),
-			);
-			await this.variablesService.deleteByIds(deletedVariables.map((v) => v.id));
+			// Isolate prune failures per project, like the import loop above: one project's
+			// failing prune must not abort the pull or skip the other projects' prunes.
+			try {
+				const currentProjectVariables = await this.variablesRepository.find({
+					where: { project: { id } },
+					relations: ['project'],
+				});
+				const deletedVariables = currentProjectVariables.filter(
+					(v) => !variableStubs.some((vs) => vs.id === v.id) && !stubIdsAcrossImports.has(v.id),
+				);
+				await this.variablesService.deleteByIds(deletedVariables.map((v) => v.id));
+			} catch (error) {
+				const errorMessage = ensureError(error);
+				this.logger.error(`Failed to prune variables of project ${id}`, {
+					error: errorMessage,
+				});
+			}
 		}
 
 		return importResults;
