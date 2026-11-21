@@ -1,0 +1,8 @@
+{
+  "submodule": "skills/recursive-decomposition/evals/files/mortgage-doc-rag",
+  "source": "https://github.com/tccao/mortgage-doc-rag",
+  "license": "MIT",
+  "min_pdfs": 131,
+  "min_bytes": 60000000,
+  "largest_suffix": "urar_form_1004_epa_scan.pdf"
+}

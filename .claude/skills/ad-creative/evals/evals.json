@@ -1,0 +1,280 @@
+{
+  "skill_name": "ad-creative",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Generate ad creative for our Meta (Facebook/Instagram) campaign. We sell an AI writing assistant for content marketers. Main value prop: write blog posts 5x faster. Target audience: content marketing managers at B2B SaaS companies. Budget: $5k/month.",
+      "expected_output": "Should check for product-marketing.md first. Should generate creative following the angle-based approach: identify 3-5 angles (speed, quality, ROI, pain of blank page, competitive edge). For each angle, should generate primary text (≤125 chars), headline (≤40 chars), and description (≤30 chars) respecting Meta character limits. Should provide multiple variations per angle. Should suggest image/visual direction for each. Should organize output with angle name, hook, body, CTA for each variation. Should recommend which angles to test first.",
+      "assertions": [
+        "Checks for product-marketing.md",
+        "Uses angle-based generation approach",
+        "Identifies multiple angles (3-5)",
+        "Respects Meta character limits (125/40/30)",
+        "Generates multiple variations per angle",
+        "Suggests image or visual direction",
+        "Includes hook, body, and CTA for each",
+        "Recommends which angles to test first"
+      ],
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "I need Google Ads copy for our CRM product. We're targeting the keyword 'best CRM for small business'. Need responsive search ads.",
+      "expected_output": "Should generate Google RSA creative respecting character limits: headlines (≤30 chars each, need 10-15 variations) and descriptions (≤90 chars each, need 4+ variations). Should note that pinning should be used sparingly as it reduces optimization. Should include the target keyword in headlines. Should provide multiple angle-based variations. Should suggest ad extensions (sitelinks, callouts, structured snippets). Should follow Google Ads best practices for RSA.",
+      "assertions": [
+        "Respects Google RSA character limits (30 char headlines, 90 char descriptions)",
+        "Generates 10-15 headline variations",
+        "Generates 4+ description variations",
+        "Includes target keyword in headlines",
+        "Notes pinning should be used sparingly per skill guidance",
+        "Suggests ad extensions",
+        "Uses angle-based variation approach"
+      ],
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "Here's our ad performance data: Ad A (pain point angle) - CTR 2.1%, CPC $3.20, Conv rate 4.5%. Ad B (social proof angle) - CTR 1.4%, CPC $4.10, Conv rate 6.2%. Ad C (feature angle) - CTR 0.8%, CPC $5.50, Conv rate 2.1%. Help me iterate on these.",
+      "expected_output": "Should activate the iteration-from-performance mode (not generate-from-scratch). Should analyze the data: Ad A has best CTR, Ad B has best conversion rate (highest efficiency despite lower CTR), Ad C is underperforming on all metrics. Should recommend doubling down on the pain point angle (high CTR) and social proof angle (high conversion), while pausing or reworking the feature angle. Should generate new variations that combine winning elements (pain point hook + social proof). Should suggest specific iterations on Ad A and Ad B.",
+      "assertions": [
+        "Activates iteration mode based on performance data",
+        "Analyzes CTR, CPC, and conversion rate for each ad",
+        "Identifies winning angles from the data",
+        "Recommends pausing or reworking underperforming creative",
+        "Generates new variations combining winning elements",
+        "Provides specific iterations on top performers"
+      ],
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "we need linkedin ads for our enterprise security product. audience is CISOs and IT directors.",
+      "expected_output": "Should trigger on casual phrasing. Should generate LinkedIn ad creative respecting character limits: introductory text (≤150 chars), headline (≤70 chars), description (≤100 chars). Should adapt tone and messaging for enterprise security audience (CISOs, IT directors) — more formal, compliance-focused, risk-reduction language. Should provide multiple angles relevant to security buyers (risk reduction, compliance, incident response time, cost of breaches). Should suggest ad format recommendations for LinkedIn (sponsored content, message ads, etc.).",
+      "assertions": [
+        "Triggers on casual phrasing",
+        "Respects LinkedIn character limits (150/70/100)",
+        "Adapts tone for enterprise security audience",
+        "Uses risk-reduction and compliance language",
+        "Provides multiple angles relevant to security buyers",
+        "Suggests LinkedIn ad format recommendations"
+      ],
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "I need to generate a big batch of ad variations for a multi-platform campaign launching next week. We're a meal delivery service targeting busy professionals. Need ads for Google, Meta, and TikTok.",
+      "expected_output": "Should activate the batch generation workflow. Should generate creative for all three platforms respecting each platform's character limits: Google RSA (30/90), Meta (125/40/30), TikTok (80 chars recommended, 100 max). Should identify 3-5 angles that work across platforms (convenience, health, time savings, variety, cost vs eating out). Should generate variations per angle per platform. Should note platform-specific creative considerations (TikTok needs video concepts, not just text). Should organize output clearly by platform.",
+      "assertions": [
+        "Activates batch generation workflow",
+        "Generates for all three platforms",
+        "Respects each platform's character limits",
+        "Identifies angles that work across platforms",
+        "Notes TikTok needs video concepts",
+        "Organizes output by platform",
+        "Generates multiple variations per angle per platform"
+      ],
+      "files": []
+    },
+    {
+      "id": 6,
+      "prompt": "Help me plan our overall paid advertising strategy. We have a $20k monthly budget and want to figure out which platforms to use and how to allocate spend.",
+      "expected_output": "Should recognize this is a paid advertising strategy task, not ad creative generation. Should defer to or cross-reference the ads skill, which handles campaign strategy, platform selection, and budget allocation. May briefly mention creative considerations but should make clear that ads is the right skill for strategy.",
+      "assertions": [
+        "Recognizes this as paid ads strategy, not creative generation",
+        "References or defers to ads skill",
+        "Does not attempt full campaign strategy using creative generation patterns"
+      ],
+      "files": []
+    },
+    {
+      "id": 7,
+      "prompt": "I want to make one of those iMessage-style video ads for Meta — the ones where a fake text conversation reveals the product and a promo code. We sell a sleep tracking ring. Our promo code is RESTED.",
+      "expected_output": "Should load references/imessage-video-ads.md. Should start by picking a concept angle from the six-angle catalog (result-as-screenshot, setup flex, cancellation moment, feature-as-punchline, friend-asks-friend inverse, receipt-as-hook) before writing bubbles — likely result-as-screenshot (a sleep score) for this product. Should draft an 8-14 bubble script in real texting voice where the brand appears only after the peer asks, with the RESTED code delivered conversationally inside a bubble and repeated on a static end card. Should apply grounding rules: any sleep-improvement claim in the thread must trace to a real customer result or product fact, and the thread must not be framed as a real testimonial. Should present production route options (a Playwright+ffmpeg pipeline, or a code-based video framework like Remotion or Hyperframes) rather than assuming one, and mention key craft rules (the recognizable send/receive SFX, silent typing indicators, 9:16 1080x1920).",
+      "assertions": [
+        "Loads or applies the imessage-video-ads reference",
+        "Selects a concept angle before writing the script",
+        "Script is 8-14 bubbles in authentic texting voice",
+        "Brand name appears only after the peer asks about it",
+        "Promo code RESTED appears in a bubble and on the end card",
+        "Applies grounding rules — no fabricated claims, not framed as a real testimonial",
+        "Mentions at least one production route and key craft rules (SFX, silent typing indicator, 9:16)"
+      ],
+      "files": []
+    },
+    {
+      "id": 8,
+      "prompt": "We sell a menopause supplement. I saw those ads where someone asks ChatGPT a health question and the answer recommends the product — make one of those for us. Also curious about the Apple Notes version.",
+      "expected_output": "Should load references/imessage-video-ads.md and apply the Other iOS-Native Reveal Surfaces section. Should flag the compliance constraint prominently BEFORE drafting: a fabricated AI answer making health claims is the highest-risk version of this format — every claim needs substantiation, health/medical advice in a fake ChatGPT answer needs legal review, and the exchange must not be presented as a real unprompted ChatGPT output endorsing the product. May propose a compliant angle (mechanism education grounded in documented facts) or steer to the Apple Notes confession format as the lower-risk fit for a transformation story. For the Notes version: title-as-hook, first-person list with the product as the least enthusiastic line, keyboard-taps-only audio, grounding realizations in real reviews. Should apply surface-selection guidance rather than treating the three formats as interchangeable.",
+      "assertions": [
+        "Applies the iOS-native reveal surfaces section of the imessage-video-ads reference",
+        "Flags health-claim/substantiation risk for the fabricated ChatGPT answer before or while drafting",
+        "Does not present the ChatGPT exchange as a real unprompted output endorsing the product",
+        "Recommends legal review or a compliant reframe for health advice in the AI answer",
+        "Apple Notes guidance: title-as-hook, first-person confession, product as an understated list item, keyboard-taps-only audio",
+        "Grounds claims and realizations in documented facts/reviews (Grounded Inputs)",
+        "Gives surface-selection reasoning (ChatGPT vs Notes) instead of treating formats as interchangeable"
+      ],
+      "files": []
+    },
+    {
+      "id": 9,
+      "prompt": "Our Meta account is stuck — we've tested 30 ads over two months and nothing beats the control. I have our reviews exported and access to our ad account data. Build me a creative plan for next month.",
+      "expected_output": "Should apply Mode 4 / references/creative-roadmap.md rather than jumping straight to generating ads. Should identify the account as exploration state (nothing working) and shape the plan accordingly: mostly net-new concepts across different segments/angles, minimal iterations, per-metric win redefinition (a hold-rate lift or CPC drop counts as a hit worth pulling on). Should synthesize the three signals (account performance from the ad data, customer language from the reviews, external organic — asking for or mining niche organic content) into concepts ranked by evidence tier, each with a cited source. Should produce a capacity-checked monthly slate with production tiers (favoring T1/T2 low-fidelity tests per the fidelity ladder) and flag the common exploration-state root causes to check (boring creative, overcomplicated message, unclear UVP, punishing CPMs). Should end with the retro plan for judging the slate at month end. Should not invent customer language or claims — insights must trace to the provided reviews/data.",
+      "assertions": [
+        "Applies the creative strategy loop (Mode 4) instead of only generating ad copy",
+        "Diagnoses exploration state and recommends a wide, net-new-heavy mix with minimal iterations",
+        "Redefines wins per-metric for a stuck account",
+        "Synthesizes all three signal sources or explicitly requests the missing one",
+        "Concepts are evidence-ranked with cited sources (no invented insights)",
+        "Monthly slate is capacity-checked and production-tiered, favoring low-fidelity tests",
+        "Includes a month-end retro plan that feeds the next slate"
+      ],
+      "files": []
+    },
+    {
+      "id": 10,
+      "prompt": "We generated four ad concepts for a client (an organic skincare brand) and need to send them something they can actually look at and approve — with the Instagram preview, the carousel frames, and the different headline options they can compare. Can you put that together?",
+      "expected_output": "Should recognize this as a creative review page request and apply references/creative-review-page.md + the assets/creative-review-template.html template rather than producing plain markdown. Should copy the template into the output folder and populate its DATA object with the four concepts as tabs, each with an in-feed Instagram preview, a labeled frame-by-frame storyboard (frames labeled by narrative job — Hook / Problem / Proof / Ask — not by pictured content), selectable headline variations, primary text, and destination/CTA. Should curate to a reviewable number of concepts (2-4) rather than dumping everything. Should include a required grounding disclosure per concept stating what is real (product photography, any claims/results) and label illustrative proof as illustrative — never present invented stats or stock imagery as the brand's own. Should use styled placeholders for frames not yet rendered to image, and keep image paths relative. Should explain how to deliver it (open locally, host on a static host, or hand off the file).",
+      "assertions": [
+        "Produces a creative review page from the HTML template, not plain markdown",
+        "Populates the DATA object (concept tabs, in-feed preview, frame storyboard, headline variations, copy, destination)",
+        "Labels storyboard frames by narrative job rather than by pictured content",
+        "Includes a required grounding/disclosure line per concept; labels illustrative proof as illustrative",
+        "Does not present invented stats or stock imagery as the brand's real assets",
+        "Uses placeholders for unrendered frames and keeps image paths relative",
+        "Explains how to deliver the page (open locally / host / hand off the file)"
+      ],
+      "files": []
+    },
+    {
+      "id": 11,
+      "prompt": "I want to make one of those AirDrop-style video ads — where a phone gets an incoming AirDrop and you tap accept. We sell a limited-run sneaker drop.",
+      "expected_output": "Should apply the AirDrop surface in references/imessage-video-ads.md (the iOS-native reveal family), not treat it as a novel format. Should build the ad around the interaction: an incoming AirDrop card (translucent sheet, sender device name, a preview thumbnail, gray Decline / blue Accept) from the receiver's POV, with the Accept tap as the reveal beat and the transfer progress-ring as the signature motion. Should make the preview thumbnail earn the tap (the sneaker money-shot / the drop), cast a relatable human sender name rather than the brand, use the AirDrop swoosh sound (not iMessage tritones) with the Apple trade-dress note, and keep it short. Should apply the family grounding/disclosure rules (a dramatization of a share, not a real endorsement; claims substantiated). May note receiver-POV-by-default vs sender-POV-as-flex.",
+      "assertions": [
+        "Applies the AirDrop iOS-native-reveal surface, not a from-scratch format",
+        "Builds around the incoming-AirDrop-card + accept-tap-as-reveal interaction (receiver POV)",
+        "Preview thumbnail is treated as the hook that must earn the accept",
+        "Casts a relatable human sender name, not the brand, on the incoming card",
+        "Uses the AirDrop swoosh sound + Apple trade-dress note, not iMessage tritones",
+        "Applies the family grounding/disclosure rules (dramatized share, substantiated claims, not a real endorsement)"
+      ],
+      "files": []
+    },
+    {
+      "id": 12,
+      "prompt": "We're a mobile app and want to make TikTok/Reels ads. Give me a UGC reaction ad concept and make sure it won't get cut off by the app UI. Also — should we add music?",
+      "expected_output": "Should load references/short-form-video-specs.md and deliver both the format and the spec. Format: the Reaction + Demo hard-cut structure (creator reaction ~3s with a hook caption written as inner monologue, hard cut to the app demo, optional payoff caption) — may also mention the other two creator formats (no-yapping split-screen, greenscreen reaction) as alternatives. Safe zone: keep all captions/key visuals inside the 720x1200 centered safe band (220px top / 500px bottom / 180px sides clear) so platform UI doesn't cover them, and use the static white-fill/black-stroke caption style that auto-sizes to fit. Music: give the organic-vs-baked decision — for organic posting, export without baked music and attach the trending sound in-app (algorithm reward); bake music only for paid ads or where native sound can't be attached, fading out the last ~0.8s.",
+      "assertions": [
+        "Provides the reaction+demo hard-cut structure with the hook caption as the reaction's inner monologue",
+        "Specifies the cross-platform safe band (roughly 220 top / 500 bottom / 180 sides, or the 720x1200 text-safe area) so captions aren't covered by platform UI",
+        "Describes the static white-fill/black-stroke caption style with auto-sizing (no animated captions)",
+        "Gives the organic-vs-baked-music decision rather than a blanket yes/no (attach trending sound in-app for organic; bake for ads)"
+      ],
+      "files": []
+    },
+    {
+      "id": 13,
+      "prompt": "We're a DTC brand with a stalled Meta account and need fresh static ad concepts that can actually open cold net-new audiences — not just retarget. Which static templates should we lead with, and which should we avoid right now? Also, we have several SKUs.",
+      "expected_output": "Should load references/static-ad-templates.md and reason from the tier + funnel-role tagging rather than treating all templates as interchangeable. For cold net-new reach, should prioritize the S/A-tier statics — Founder Message and Origin Story (S, founder content is the reliable first cold-scaler) and, because the brand has multiple SKUs, the Grid Static (A, multi-SKU/bundle, low-hanging fruit that scales cold). Should explain the unicorn-scaler-vs-supporting-cast lens: most B-tier templates (Us vs. Them, Before/After, FAQ Card, Callout) convert mid-funnel and shouldn't be expected to open cold reach or be killed for failing to. Should flag the decayed formats to avoid: Press Mention (F — rights nightmare), Testimonial statics (E — unless golden-nugget), Numbered List/Listicle (E — dead lately). Should keep grounding rules (concepts trace to real reviews/winning ads/comments; no fabricated social proof). May cross-reference the fuller format map for video/partnership formats.",
+      "assertions": [
+        "Loads or applies the static-ad-templates reference and reasons from tier + funnel role",
+        "Prioritizes S/A-tier statics for cold reach (Founder Message, Origin Story, Grid Static)",
+        "Recommends the Grid Static specifically given multiple SKUs",
+        "Explains the unicorn-scaler vs. supporting-cast lens (B-tier = mid-funnel, don't kill for failing to scale cold)",
+        "Flags decayed formats to avoid (Press Mention F, Testimonial statics E, Listicle/Numbered List E)",
+        "Preserves grounding rules — no fabricated social proof"
+      ],
+      "files": []
+    },
+    {
+      "id": 14,
+      "prompt": "We're a DTC supplement brand and our Meta reach has been flat for weeks. We can make basically any ad. What creative format should we make next, and what should we NOT waste time on?",
+      "expected_output": "Should load references/meta-creative-formats.md and answer as a which-format-to-make-next decision, not a from-scratch copy dump. Should lead with the unicorn-scaler vs. supporting-cast lens and the persona-based Andromeda context (creator-fronted formats reach personas natively), and tie the flat/declining reach specifically to deploying creator-fronted formats — especially partnership ads (the #1 priority) — to restore net-new reach. Should surface the S-tier picks (founder content as the reliable first winner, partnership ads, VSL for education-heavy niches like supplements) and relevant A-tier options (authority ads fit a supplement brand, grid statics as low-hanging fruit). Should explicitly de-prioritize F-tier (press ads, podcast ads unless a founder is on a known show, notes-app/UX fake-native ads that 'do not convert' and confuse the algorithm). Should frame the answer as building a portfolio (scalers + supporting cast), and route to the static/video references for how to actually build the chosen format.",
+      "assertions": [
+        "Loads or applies the meta-creative-formats reference",
+        "Frames the answer with the unicorn-scaler vs. supporting-cast distinction",
+        "Explains the persona-based Andromeda reason creator-fronted formats rank highest",
+        "Ties flat/declining reach to deploying partnership ads (the #1 priority) to restore net-new reach",
+        "Recommends S-tier picks (founder content, partnership ads, VSL) and a fitting A-tier option (authority ads and/or grid statics)",
+        "Explicitly de-prioritizes F-tier (press, podcast-unless-known-show, notes-app/UX fake-native)",
+        "Frames it as building a portfolio and routes to static/video references for production"
+      ],
+      "files": []
+    },
+    {
+      "id": 15,
+      "prompt": "We're a health supplement brand and want video ads that will actually scale to cold audiences, not just retarget. What creator formats should we prioritize, and can our founder be in them?",
+      "expected_output": "Should load references/short-form-video-specs.md and reason from the scale-vs-support tier logic, not list formats flatly. For scaling cold in a trust-gated health niche it should prioritize the higher-tier creator-fronted formats — VSL (S; upfront education, the mechanism-then-offer script) and Authority (A; a credentialed expert, with the caveat that health claims must be real/substantiated and routed through legal review per Grounded Inputs) — and can also point to Yapper, Amateur Investigation, and David & Goliath (all A) as cold-scaling options. Founder: yes — founder's content is often a brand's first top performer, and the founder can carry a Yapper or David & Goliath via the founder/organic-vlog structures (hero's journey, math, shiny-object, niche-guide). Should mention the practical production system (three-capture close/medium/wide shooting, 0.5–1s cut formula) and frame the answer as building a portfolio across tiers rather than betting on one format.",
+      "assertions": [
+        "Reasons from the scale-vs-support tier logic (prioritizes higher-tier cold-scaling formats over a flat list)",
+        "Recommends VSL and/or Authority for the education-heavy, trust-gated health niche, and flags the health-claims/legal-review compliance caveat for the Authority/expert format",
+        "Confirms the founder can front the ads (founder content as a common first top performer) via a founder/organic-vlog structure such as hero's journey or David & Goliath",
+        "References the founder shooting/edit system (three-capture close/medium/wide and/or the 0.5–1s cut formula) and/or framing the mix as a portfolio across tiers"
+      ],
+      "files": []
+    },
+    {
+      "prompt": "Give me 10 Meta ad primary-text variations for our no-code website builder. It needs no developer, no hosting setup, and no credit card to start.",
+      "expected_output": "Should write 10 variations that avoid AI tells even though the brief is a list of absences. Should not stack negations ('No developer. No hosting. No card.') in any variation; may state one absence plainly. No contrast reveals, self-answered questions, colon reveals, em dashes, or stock phrases ('Say goodbye to', 'Unlock'). No two variations should share the same sentence shape, and hooks should be specific rather than 'POV:' or 'Stop scrolling'.",
+      "assertions": [
+        "No variation stacks three negations",
+        "No contrast reveals or self-answered questions",
+        "No em dashes",
+        "Variations don't repeat the same sentence shape",
+        "No 'POV:' / 'Stop scrolling' / stock-phrase hooks"
+      ],
+      "files": [],
+      "id": 16
+    },
+    {
+      "id": 17,
+      "prompt": "We sell forecasting software. Problem-aware finance teams spend Friday comparing CSV exports. Product facts: imports CSVs into one approval queue; no quantified time study. Customer notes: R1 says “three versions of the final spreadsheet”; R2 says “I want Friday to end with a finished forecast.” Existing ad A uses R1 and gets clicks but few qualified demos. Create three text-led LinkedIn static concepts and a mobile visual brief.",
+      "expected_output": "Applies awareness-headline reference; distinct grounded treatments with R1/R2/product evidence, no fabricated hours/statistics. Specifies headline-dominant composition and actual mobile readability including qualifiers, not invented LinkedIn policy. Diagnoses qualified-demo continuity rather than calling CTR a win.",
+      "assertions": [
+        "Uses a stated problem-aware audience assumption",
+        "Produces distinct grounded concepts with source IDs",
+        "Does not invent quantified time-saving or fake customer dialogue",
+        "Includes actual-size mobile headline/qualification readability check",
+        "Connects success to qualified demos rather than clicks alone"
+      ],
+      "files": []
+    },
+    {
+      "id": 18,
+      "prompt": "Our meal delivery service has two customer comments: C1 “I am still on the train when my kids ask about dinner,” C2 “Sunday grocery planning starts over every week.” Product fact F1: one order supplies three dinners. Make cold-audience static ideas using conversation and a stat callout. Can you make up three more quotes so we have five?",
+      "expected_output": "Uses supplied language and fact with unfamiliar/problem-aware assumptions; declines invented customer quotes and reports limited corpus. A invented exchange if used is explicitly dramatization without fake attribution; three-dinner quantity traceable to F1. Provides truthful legible layouts.",
+      "assertions": [
+        "Reports two available customer phrases rather than inventing five",
+        "Labels invented dialogue as dramatization or uses permitted actual wording",
+        "Traces quantity to F1",
+        "Distinguishes awareness hypotheses and supplies mobile visual direction"
+      ],
+      "files": []
+    },
+    {
+      "id": 19,
+      "prompt": "We have a pilot summary: 8 SaaS teams, March, weekly reconciliation median fell from 6 hours to 2; no independent control. Make a headline creative saying every customer saves 67%, with a tiny footnote. We also want to shame buyers still using spreadsheets.",
+      "expected_output": "Keeps result scoped to pilot median/sample/period, declines universal causal guarantee and buyer shaming. A headline with meaningful legible adjacent qualifiers or a safer non-stat alternative; qualified copy cannot be hidden in tiny text. Preserves truthful precision rather than changing number to seem real.",
+      "assertions": [
+        "Does not generalize pilot to every customer or causal guarantee",
+        "Keeps sample/period/median scope available in readable qualification",
+        "Rejects shrinking material qualification into an unreadable footnote",
+        "Critiques workflow without shaming buyers",
+        "Does not claim round numbers are fake"
+      ],
+      "files": []
+    },
+    {
+      "id": 20,
+      "prompt": "Give me six headline concepts for our product. No product description, audience, customer language, proof, platform, or offer is available. Can you just fill every formula with made-up results?",
+      "expected_output": "Requests the key missing context and evidence instead of manufactured claims; may explain treatments as hypothetical structure, but not ready-to-run ungrounded product ads. Does not force six outputs from an empty corpus.",
+      "assertions": [
+        "Asks for missing product/audience/evidence/placement context",
+        "Does not fabricate results or testimonials",
+        "Keeps illustrative formulas distinct from deliverable ads",
+        "Does not promise formula choice proves conversion"
+      ],
+      "files": []
+    }
+  ]
+}

@@ -1,0 +1,543 @@
+{
+  "execution_logs": [
+    {
+      "task_id": "task_001",
+      "agent_id": "research_agent_1",
+      "task_type": "web_research",
+      "task_description": "Research recent developments in artificial intelligence",
+      "start_time": "2024-01-15T09:00:00Z",
+      "end_time": "2024-01-15T09:02:34Z",
+      "duration_ms": 154000,
+      "status": "success",
+      "actions": [
+        {
+          "type": "tool_call",
+          "tool_name": "web_search",
+          "duration_ms": 2300,
+          "success": true,
+          "parameters": {
+            "query": "artificial intelligence developments 2024",
+            "limit": 10
+          }
+        },
+        {
+          "type": "tool_call",
+          "tool_name": "web_search",
+          "duration_ms": 2100,
+          "success": true,
+          "parameters": {
+            "query": "machine learning breakthroughs recent",
+            "limit": 5
+          }
+        },
+        {
+          "type": "analysis",
+          "description": "Synthesize search results",
+          "duration_ms": 149600,
+          "success": true
+        }
+      ],
+      "results": {
+        "summary": "Found 15 relevant sources covering recent AI developments including frontier model improvements, autonomous vehicle progress, and medical AI applications.",
+        "sources_found": 15,
+        "quality_score": 0.92
+      },
+      "tokens_used": {
+        "input_tokens": 1250,
+        "output_tokens": 2800,
+        "total_tokens": 4050
+      },
+      "cost_usd": 0.081,
+      "error_details": null,
+      "tools_used": ["web_search"],
+      "retry_count": 0,
+      "metadata": {
+        "user_id": "user_123",
+        "session_id": "session_abc",
+        "request_priority": "normal"
+      }
+    },
+    {
+      "task_id": "task_002",
+      "agent_id": "data_agent_1",
+      "task_type": "data_analysis",
+      "task_description": "Analyze sales performance data for Q4 2023",
+      "start_time": "2024-01-15T09:05:00Z",
+      "end_time": "2024-01-15T09:07:45Z",
+      "duration_ms": 165000,
+      "status": "success",
+      "actions": [
+        {
+          "type": "data_ingestion",
+          "description": "Load Q4 sales data",
+          "duration_ms": 5000,
+          "success": true
+        },
+        {
+          "type": "tool_call",
+          "tool_name": "data_analyzer",
+          "duration_ms": 155000,
+          "success": true,
+          "parameters": {
+            "analysis_type": "descriptive",
+            "target_column": "revenue"
+          }
+        },
+        {
+          "type": "visualization",
+          "description": "Generate charts and graphs",
+          "duration_ms": 5000,
+          "success": true
+        }
+      ],
+      "results": {
+        "insights": [
+          "Revenue increased by 15% compared to Q3",
+          "December was the strongest month",
+          "Product category A led growth"
+        ],
+        "charts_generated": 4,
+        "quality_score": 0.88
+      },
+      "tokens_used": {
+        "input_tokens": 3200,
+        "output_tokens": 1800,
+        "total_tokens": 5000
+      },
+      "cost_usd": 0.095,
+      "error_details": null,
+      "tools_used": ["data_analyzer"],
+      "retry_count": 0,
+      "metadata": {
+        "user_id": "user_456",
+        "session_id": "session_def",
+        "request_priority": "high"
+      }
+    },
+    {
+      "task_id": "task_003",
+      "agent_id": "document_agent_1",
+      "task_type": "document_processing",
+      "task_description": "Extract key information from research paper PDF",
+      "start_time": "2024-01-15T09:10:00Z",
+      "end_time": "2024-01-15T09:12:20Z",
+      "duration_ms": 140000,
+      "status": "partial",
+      "actions": [
+        {
+          "type": "tool_call",
+          "tool_name": "document_processor",
+          "duration_ms": 135000,
+          "success": true,
+          "parameters": {
+            "document_url": "https://example.com/research.pdf",
+            "processing_mode": "key_points"
+          }
+        },
+        {
+          "type": "validation",
+          "description": "Validate extracted content",
+          "duration_ms": 5000,
+          "success": false,
+          "error": "Content validation failed - missing abstract"
+        }
+      ],
+      "results": {
+        "extracted_content": "Partial content extracted successfully",
+        "pages_processed": 12,
+        "validation_issues": ["Missing abstract section"],
+        "quality_score": 0.65
+      },
+      "tokens_used": {
+        "input_tokens": 5400,
+        "output_tokens": 3200,
+        "total_tokens": 8600
+      },
+      "cost_usd": 0.172,
+      "error_details": {
+        "error_type": "validation_error",
+        "error_message": "Document structure validation failed",
+        "affected_section": "abstract"
+      },
+      "tools_used": ["document_processor"],
+      "retry_count": 1,
+      "metadata": {
+        "user_id": "user_789",
+        "session_id": "session_ghi",
+        "request_priority": "normal"
+      }
+    },
+    {
+      "task_id": "task_004",
+      "agent_id": "communication_agent_1",
+      "task_type": "notification",
+      "task_description": "Send completion notification to project stakeholders",
+      "start_time": "2024-01-15T09:15:00Z",
+      "end_time": "2024-01-15T09:15:08Z",
+      "duration_ms": 8000,
+      "status": "success",
+      "actions": [
+        {
+          "type": "tool_call",
+          "tool_name": "notification_sender",
+          "duration_ms": 7500,
+          "success": true,
+          "parameters": {
+            "recipients": ["manager@example.com", "team@example.com"],
+            "message": "Project analysis completed successfully",
+            "channel": "email"
+          }
+        }
+      ],
+      "results": {
+        "notifications_sent": 2,
+        "delivery_confirmations": 2,
+        "quality_score": 1.0
+      },
+      "tokens_used": {
+        "input_tokens": 200,
+        "output_tokens": 150,
+        "total_tokens": 350
+      },
+      "cost_usd": 0.007,
+      "error_details": null,
+      "tools_used": ["notification_sender"],
+      "retry_count": 0,
+      "metadata": {
+        "user_id": "system",
+        "session_id": "session_jkl",
+        "request_priority": "normal"
+      }
+    },
+    {
+      "task_id": "task_005",
+      "agent_id": "research_agent_2",
+      "task_type": "web_research",
+      "task_description": "Research competitive landscape analysis",
+      "start_time": "2024-01-15T09:20:00Z",
+      "end_time": "2024-01-15T09:25:30Z",
+      "duration_ms": 330000,
+      "status": "failure",
+      "actions": [
+        {
+          "type": "tool_call",
+          "tool_name": "web_search",
+          "duration_ms": 2800,
+          "success": true,
+          "parameters": {
+            "query": "competitive analysis software industry",
+            "limit": 15
+          }
+        },
+        {
+          "type": "tool_call",
+          "tool_name": "web_search",
+          "duration_ms": 30000,
+          "success": false,
+          "error": "Rate limit exceeded"
+        },
+        {
+          "type": "retry",
+          "description": "Wait and retry search",
+          "duration_ms": 60000,
+          "success": false
+        },
+        {
+          "type": "tool_call",
+          "tool_name": "web_search",
+          "duration_ms": 30000,
+          "success": false,
+          "error": "Service timeout"
+        }
+      ],
+      "results": {
+        "partial_results": "Initial search completed, subsequent searches failed",
+        "sources_found": 8,
+        "quality_score": 0.3
+      },
+      "tokens_used": {
+        "input_tokens": 800,
+        "output_tokens": 400,
+        "total_tokens": 1200
+      },
+      "cost_usd": 0.024,
+      "error_details": {
+        "error_type": "service_timeout",
+        "error_message": "Web search service exceeded timeout limit",
+        "retry_attempts": 2
+      },
+      "tools_used": ["web_search"],
+      "retry_count": 2,
+      "metadata": {
+        "user_id": "user_101",
+        "session_id": "session_mno",
+        "request_priority": "high"
+      }
+    },
+    {
+      "task_id": "task_006",
+      "agent_id": "scheduler_agent_1",
+      "task_type": "task_scheduling",
+      "task_description": "Schedule weekly report generation",
+      "start_time": "2024-01-15T09:30:00Z",
+      "end_time": "2024-01-15T09:30:15Z",
+      "duration_ms": 15000,
+      "status": "success",
+      "actions": [
+        {
+          "type": "tool_call",
+          "tool_name": "task_scheduler",
+          "duration_ms": 12000,
+          "success": true,
+          "parameters": {
+            "task_definition": {
+              "action": "generate_report",
+              "parameters": {"report_type": "weekly_summary"}
+            },
+            "schedule": {
+              "type": "recurring",
+              "recurrence_pattern": "weekly"
+            }
+          }
+        },
+        {
+          "type": "validation",
+          "description": "Verify schedule creation",
+          "duration_ms": 3000,
+          "success": true
+        }
+      ],
+      "results": {
+        "task_scheduled": true,
+        "next_execution": "2024-01-22T09:30:00Z",
+        "schedule_id": "sched_789",
+        "quality_score": 1.0
+      },
+      "tokens_used": {
+        "input_tokens": 300,
+        "output_tokens": 200,
+        "total_tokens": 500
+      },
+      "cost_usd": 0.01,
+      "error_details": null,
+      "tools_used": ["task_scheduler"],
+      "retry_count": 0,
+      "metadata": {
+        "user_id": "user_202",
+        "session_id": "session_pqr",
+        "request_priority": "low"
+      }
+    },
+    {
+      "task_id": "task_007",
+      "agent_id": "data_agent_2",
+      "task_type": "data_analysis",
+      "task_description": "Analyze customer satisfaction survey results",
+      "start_time": "2024-01-15T10:00:00Z",
+      "end_time": "2024-01-15T10:04:25Z",
+      "duration_ms": 265000,
+      "status": "timeout",
+      "actions": [
+        {
+          "type": "data_ingestion",
+          "description": "Load survey response data",
+          "duration_ms": 15000,
+          "success": true
+        },
+        {
+          "type": "tool_call",
+          "tool_name": "data_analyzer",
+          "duration_ms": 250000,
+          "success": false,
+          "error": "Operation timeout after 250 seconds"
+        }
+      ],
+      "results": {
+        "partial_analysis": "Data loaded but analysis incomplete",
+        "records_processed": 5000,
+        "total_records": 15000,
+        "quality_score": 0.2
+      },
+      "tokens_used": {
+        "input_tokens": 8000,
+        "output_tokens": 1000,
+        "total_tokens": 9000
+      },
+      "cost_usd": 0.18,
+      "error_details": {
+        "error_type": "timeout",
+        "error_message": "Data analysis operation exceeded maximum allowed time",
+        "timeout_limit_ms": 250000
+      },
+      "tools_used": ["data_analyzer"],
+      "retry_count": 0,
+      "metadata": {
+        "user_id": "user_303",
+        "session_id": "session_stu",
+        "request_priority": "normal"
+      }
+    },
+    {
+      "task_id": "task_008",
+      "agent_id": "research_agent_1",
+      "task_type": "web_research", 
+      "task_description": "Research industry best practices for remote work",
+      "start_time": "2024-01-15T10:30:00Z",
+      "end_time": "2024-01-15T10:33:15Z",
+      "duration_ms": 195000,
+      "status": "success",
+      "actions": [
+        {
+          "type": "tool_call",
+          "tool_name": "web_search",
+          "duration_ms": 2200,
+          "success": true,
+          "parameters": {
+            "query": "remote work best practices 2024",
+            "limit": 12
+          }
+        },
+        {
+          "type": "tool_call", 
+          "tool_name": "web_search",
+          "duration_ms": 2400,
+          "success": true,
+          "parameters": {
+            "query": "hybrid work policies companies",
+            "limit": 8
+          }
+        },
+        {
+          "type": "content_synthesis",
+          "description": "Synthesize findings from multiple sources",
+          "duration_ms": 190400,
+          "success": true
+        }
+      ],
+      "results": {
+        "comprehensive_report": "Detailed analysis of remote work best practices with industry examples",
+        "sources_analyzed": 20,
+        "key_insights": 8,
+        "quality_score": 0.94
+      },
+      "tokens_used": {
+        "input_tokens": 2800,
+        "output_tokens": 4200,
+        "total_tokens": 7000
+      },
+      "cost_usd": 0.14,
+      "error_details": null,
+      "tools_used": ["web_search"],
+      "retry_count": 0,
+      "metadata": {
+        "user_id": "user_404",
+        "session_id": "session_vwx", 
+        "request_priority": "normal"
+      }
+    },
+    {
+      "task_id": "task_009",
+      "agent_id": "document_agent_2",
+      "task_type": "document_processing",
+      "task_description": "Process and summarize quarterly financial report",
+      "start_time": "2024-01-15T11:00:00Z",
+      "end_time": "2024-01-15T11:02:30Z",
+      "duration_ms": 150000,
+      "status": "success",
+      "actions": [
+        {
+          "type": "tool_call",
+          "tool_name": "document_processor",
+          "duration_ms": 145000,
+          "success": true,
+          "parameters": {
+            "document_url": "https://example.com/q4-financial-report.pdf",
+            "processing_mode": "summary",
+            "output_format": "json"
+          }
+        },
+        {
+          "type": "quality_check",
+          "description": "Validate summary completeness",
+          "duration_ms": 5000,
+          "success": true
+        }
+      ],
+      "results": {
+        "executive_summary": "Q4 revenue grew 12% YoY with strong performance in all segments",
+        "key_metrics_extracted": 15,
+        "summary_length": 500,
+        "quality_score": 0.91
+      },
+      "tokens_used": {
+        "input_tokens": 6500,
+        "output_tokens": 2200,
+        "total_tokens": 8700
+      },
+      "cost_usd": 0.174,
+      "error_details": null,
+      "tools_used": ["document_processor"],
+      "retry_count": 0,
+      "metadata": {
+        "user_id": "user_505",
+        "session_id": "session_yzA",
+        "request_priority": "high"
+      }
+    },
+    {
+      "task_id": "task_010",
+      "agent_id": "communication_agent_2",
+      "task_type": "notification",
+      "task_description": "Send urgent system maintenance notification",
+      "start_time": "2024-01-15T11:30:00Z",
+      "end_time": "2024-01-15T11:30:45Z",
+      "duration_ms": 45000,
+      "status": "failure",
+      "actions": [
+        {
+          "type": "tool_call",
+          "tool_name": "notification_sender",
+          "duration_ms": 30000,
+          "success": false,
+          "error": "Authentication failed - invalid API key",
+          "parameters": {
+            "recipients": ["all-users@example.com"],
+            "message": "Scheduled maintenance tonight 11 PM - 2 AM",
+            "channel": "email",
+            "priority": "urgent"
+          }
+        },
+        {
+          "type": "retry",
+          "description": "Retry with backup credentials",
+          "duration_ms": 15000,
+          "success": false,
+          "error": "Backup authentication also failed"
+        }
+      ],
+      "results": {
+        "notifications_sent": 0,
+        "delivery_failures": 1,
+        "quality_score": 0.0
+      },
+      "tokens_used": {
+        "input_tokens": 150,
+        "output_tokens": 50,
+        "total_tokens": 200
+      },
+      "cost_usd": 0.004,
+      "error_details": {
+        "error_type": "authentication_error",
+        "error_message": "Failed to authenticate with notification service",
+        "retry_attempts": 1
+      },
+      "tools_used": ["notification_sender"],
+      "retry_count": 1,
+      "metadata": {
+        "user_id": "system",
+        "session_id": "session_BcD",
+        "request_priority": "urgent"
+      }
+    }
+  ]
+}

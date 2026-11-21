@@ -1,0 +1,16 @@
+- https://x.com/MengTo/status/2088894846429765755
+- https://x.com/GoogleDesign/status/2087195277094695096
+- https://www.youtube.com/watch?v=M4DNgmI7MIM
+- https://impeccable.style/slop
+- https://getdesign.md/
+- https://github.com/Leonxlnx/taste-skill
+- https://github.com/petergyang/no-ai-slop
+- https://github.com/MengTo/Skills
+- https://www.w3.org/WAI/WCAG22/quickref/
+- https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html
+- https://www.w3.org/WAI/WCAG22/Understanding/reflow.html
+- https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum.html
+- https://www.nngroup.com/articles/ten-usability-heuristics/
+- https://m3.material.io/foundations/accessible-design/overview
+- https://developer.apple.com/design/human-interface-guidelines/typography
+- https://design-system.service.gov.uk/styles/typography/

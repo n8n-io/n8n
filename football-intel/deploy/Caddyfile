@@ -1,0 +1,31 @@
+# HTTPS access to the dashboard from a phone or another computer.
+# Caddy gets and renews the certificate by itself (Let's Encrypt).
+# Replace the three values marked CHANGE_ME, then:
+#   sudo cp deploy/Caddyfile /etc/caddy/Caddyfile && sudo systemctl reload caddy
+#
+# 1. CHANGE_ME_DOMAIN: a name that points to the VPS IP address (DNS "A" record),
+#    for example foot.example.com or a free name such as monfoot.duckdns.org.
+# 2. CHANGE_ME_USER: the login you will type in the browser.
+# 3. CHANGE_ME_PASSWORD_HASH: the output of `caddy hash-password` (never the
+#    password itself).
+#
+# The password protects every page: the dashboard shows predictions and logs.
+# Actions (pick, cycle, rollback) also need the ADMIN_TOKEN typed in the page.
+
+CHANGE_ME_DOMAIN {
+	encode gzip
+
+	basic_auth {
+		CHANGE_ME_USER CHANGE_ME_PASSWORD_HASH
+	}
+
+	reverse_proxy 127.0.0.1:8000
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "no-referrer"
+		-Server
+	}
+}

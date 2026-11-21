@@ -6,6 +6,10 @@ on:
       - master
     paths-ignore:
       - packages/@n8n/task-runner-python/**
+      # Fork (benkas418-alt): football-intel changes do not need the n8n build.
+      - 'football-intel/**'
+      - '.claude/**'
+      - '.github/workflows/util-football-intel-*.yml'
 
 permissions:
   contents: read

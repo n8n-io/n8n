@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="icon" href="data:,">
+<title>Video To Superprompt · Workflow Demo</title><style>:root{--bg:#080a0f;--panel:rgba(18,21,29,.72);--ink:#f2f5f7;--muted:#929aa7;--line:rgba(255,255,255,.14);--accent:hsl(111 92% 68%);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--ink);background:var(--bg)}*{box-sizing:border-box}body{min-width:320px;margin:0;background:radial-gradient(circle at 80% 0,color-mix(in srgb,var(--accent) 18%,transparent),transparent 34%),var(--bg);color:var(--ink)}main{width:min(1220px,calc(100% - 40px));margin:auto;padding:22px 0 48px}nav{display:flex;align-items:center;justify-content:space-between;padding:12px 0 28px;border-bottom:1px solid var(--line);font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase}nav span:first-child{display:flex;gap:9px;align-items:center}nav i{width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 18px var(--accent)}header{display:grid;grid-template-columns:1.1fr .9fr;gap:48px;align-items:end;padding:clamp(52px,8vw,100px) 0 40px}h1{max-width:11ch;margin:0;font-size:clamp(46px,7vw,88px);line-height:.9;letter-spacing:-.065em}header p{max-width:52ch;margin:0;color:var(--muted);line-height:1.65}.scenario{padding:18px 22px;border:1px solid var(--line);border-bottom:0;border-radius:18px 18px 0 0;background:var(--panel);color:var(--muted);font-size:12px}.scenario b{color:var(--ink)}.handoff{display:grid;grid-template-columns:1fr 1fr;gap:1px;overflow:hidden;border:1px solid var(--line);border-radius:0 0 18px 18px;background:var(--line)}article{min-width:0;padding:26px;background:var(--panel)}article>span{display:block;margin-bottom:20px;color:var(--accent);font-size:9px;font-weight:800;letter-spacing:.15em;text-transform:uppercase}pre{min-height:330px;margin:0;overflow:auto;white-space:pre-wrap;color:var(--ink);font:12px/1.65 ui-monospace,SFMono-Regular,Menlo,monospace}.links{display:flex;justify-content:space-between;padding:18px 2px;color:var(--muted);font-size:11px}.links a{color:var(--ink)}@media(max-width:760px){header,.handoff{grid-template-columns:1fr}header{gap:24px}h1{font-size:52px}pre{min-height:0}.links{flex-direction:column;gap:10px}}</style></head>
+<body><main>
+<nav><span><i></i>Video To Superprompt</span><span>Workflow reference · 01</span></nav>
+<header><h1>Video To Superprompt</h1><p>Turn a reference video into a super detailed recreation or inspiration prompt. Use when the user provides, mentions, uploads, links, or points to a video and asks to analyze the design, UI, animations, transitions, scroll interactions, typography, colors, assets, WebGL/Three.js, storytelling, section-by-section behavior, or to create a prompt/article that recreates the page, app, interaction, or motion system.</p></header>
+<div class="scenario"><b>Scenario:</b> Translate a 20-second reference video into an implementation-ready recreation prompt.</div>
+<section class="handoff" aria-label="Example input and expected output">
+<article><span>Example input</span><pre># Video observations
+
+0–4s: quiet editorial hero
+4–10s: title splits while the image scales
+10–16s: three cards pin and stack
+16–20s: footer is uncovered by the final card</pre></article>
+<article><span>Expected output</span><pre># Superprompt outline
+
+- visual system and typography
+- section-by-section structure
+- exact motion chronology
+- likely implementation primitives
+- responsive and reduced-motion behavior
+- asset list and acceptance checks</pre></article>
+</section>
+<footer class="links"><span>Portable fictional example. No live account or customer data.</span><span><a href="PROMPT.md">Prompt</a> · <a href="input.md">Input</a> · <a href="expected-output.md">Output</a></span></footer>
+</main></body></html>

@@ -1,0 +1,154 @@
+/* HTML Reel's stage (reel-clock.js): a scene drawn at a fixed size in
+   CSS pixels (540 × 960 for 9:16; the shape's own size for 4:5, 1:1 or
+   16:9, which scene() sets as --reel-w and --reel-h) and fitted to the
+   window by one scale, --k (1 when rendered at its size and 2×, which
+   makes 1080 × 1920).
+
+   The type is three roles, each set by variables, so a reel takes its
+   look from its source (Look.md): the setup line, the payoff word, and
+   labels. The defaults are the look that shipped in the HTML Demo reel: a
+   cinematic serif sets up, then the key word lands heavy with an accent
+   dot, each word rising through its own mask on its word of the voice.
+   Set the variables in the page's own :root rule, after this file. */
+
+:root {
+  --reel-bg: #060607;
+  --reel-ink: #f3f4f5;
+  --reel-accent: #ff8a3d;
+  --reel-setup-font: 'Instrument Serif', Georgia, serif;
+  --reel-setup-size: 52px;
+  --reel-setup-weight: 400;
+  --reel-setup-case: none;
+  --reel-setup-track: -0.008em;
+  --reel-setup-leading: 1.1;
+  --reel-payoff-font: Anton, Impact, sans-serif;
+  --reel-payoff-size: 100px;
+  --reel-payoff-weight: 400;
+  --reel-payoff-case: uppercase;
+  --reel-payoff-track: 0.005em;
+  --reel-payoff-leading: 1.04;
+  --reel-label-font: 'Geist Mono', ui-monospace, monospace;
+  --reel-label-size: 15px;
+  --reel-label-weight: 500;
+  --reel-label-case: none;
+  --reel-label-track: 0;
+  --reel-text-shadow: 0 2px 24px rgba(0, 0, 0, 0.55);
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--reel-bg);
+  color: var(--reel-ink);
+  -webkit-font-smoothing: antialiased;
+}
+#stage {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: var(--reel-w, 540px);
+  height: var(--reel-h, 960px);
+  overflow: hidden;
+  transform: translate(-50%, -50%) scale(var(--k, 1));
+  font-family: Geist, system-ui, sans-serif;
+}
+/* Every drawn part is placed from t: nothing animates by itself. */
+#stage,
+#stage * {
+  transition: none !important;
+  animation: none !important;
+}
+
+/* The titles: the setup line, then the payoff word lands. */
+.reel-setup,
+.reel-serif {
+  font-family: var(--reel-setup-font);
+  font-size: var(--reel-setup-size);
+  font-weight: var(--reel-setup-weight);
+  line-height: var(--reel-setup-leading);
+  letter-spacing: var(--reel-setup-track);
+  text-transform: var(--reel-setup-case);
+  white-space: nowrap;
+  text-shadow: var(--reel-text-shadow);
+}
+.reel-payoff,
+.reel-heavy {
+  font-family: var(--reel-payoff-font);
+  font-size: var(--reel-payoff-size);
+  font-weight: var(--reel-payoff-weight);
+  line-height: var(--reel-payoff-leading);
+  letter-spacing: var(--reel-payoff-track);
+  text-transform: var(--reel-payoff-case);
+  white-space: nowrap;
+  text-shadow: var(--reel-text-shadow);
+}
+/* Labels: tags, figures, numbers, the small words around a picture. */
+.reel-label {
+  font-family: var(--reel-label-font);
+  font-size: var(--reel-label-size);
+  font-weight: var(--reel-label-weight);
+  letter-spacing: var(--reel-label-track);
+  text-transform: var(--reel-label-case);
+  white-space: nowrap;
+}
+/* A word's mask: room above and below so a glyph at rest is never cut. */
+.reel-mask {
+  display: inline-block;
+  overflow: hidden;
+  vertical-align: bottom;
+  padding: 0.14em 0.05em 0.2em;
+  margin: -0.14em -0.05em -0.2em;
+}
+.reel-mask > * {
+  display: inline-block;
+  will-change: transform;
+}
+/* A payoff can end on one accent dot. */
+.reel-dot {
+  display: inline-block;
+  width: 0.17em;
+  height: 0.17em;
+  border-radius: 50%;
+  background: var(--reel-accent);
+  margin-left: 0.04em;
+  vertical-align: baseline;
+}
+
+/* ?controls: a quiet bar over the bottom, for previews only. */
+.reel-controls {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: rgba(16, 16, 20, 0.82);
+  backdrop-filter: blur(10px);
+  color: #f3f4f5;
+  font: 500 12px/1 'Geist Mono', ui-monospace, monospace;
+  z-index: 2147483647;
+}
+.reel-controls button {
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  color: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+.reel-controls input {
+  flex: 1;
+  accent-color: var(--reel-accent);
+}
+.reel-controls output {
+  min-width: 52px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}

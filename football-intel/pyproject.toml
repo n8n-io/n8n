@@ -1,0 +1,44 @@
+[project]
+name = "footintel"
+version = "0.1.0"
+description = "Personal football data, prediction and evaluation platform"
+requires-python = ">=3.12"
+dependencies = [
+    "sqlalchemy>=2.0,<3",
+    "alembic>=1.13",
+    "psycopg[binary]>=3.2",
+    "pandas>=2.2",
+    "numpy>=2.0",
+    "scipy>=1.13",
+    "scikit-learn>=1.5",
+    "xgboost>=2.1",
+    "fastapi>=0.115",
+    "uvicorn>=0.30",
+    "pydantic>=2.8",
+    "pydantic-settings>=2.4",
+    "httpx>=0.27",
+    "jinja2>=3.1",
+    "apscheduler>=3.10,<4",
+    "python-dotenv>=1.0",
+    "joblib>=1.4",
+    "anthropic>=2.0",  # D77: lecture du jour (Claude Haiku), off without ANTHROPIC_API_KEY
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[project.scripts]
+footintel = "footintel.cli:main"
+
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "live: calls a real external source over the network (deselect with -m 'not live')",
+]

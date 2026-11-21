@@ -1,0 +1,85 @@
+{
+ "project": "pitup-clubdenuit",
+ "bpm": 113.0,
+ "song": "Tiakola_-_Cleopatre_Paroles_Lyrics.mp3",
+ "song_off": 17.085,
+ "gap": 0.5,
+ "intro_vo": "cdn_0",
+ "outro_vo": "cdnout_0",
+ "intro_word": "PARFUM",
+ "intro_l1": "Club de Nuit.",
+ "intro_l2": "6 parfums.",
+ "recap_l1": "Chez Natty",
+ "recap_l2": "boutique.",
+ "intro_minis": [
+  [
+   "untold",
+   80,
+   820,
+   -6
+  ],
+  [
+   "milestone",
+   400,
+   900,
+   4
+  ],
+  [
+   "woman",
+   690,
+   820,
+   -4
+  ]
+ ],
+ "shots": [
+  [
+   "untold",
+   "cdnfix_1",
+   "Untold.",
+   "CLUB DE NUIT",
+   "INK",
+   135
+  ],
+  [
+   "urban",
+   "cdn_2",
+   "Urban Man.",
+   "CLUB DE NUIT",
+   "SAND",
+   135
+  ],
+  [
+   "milestone",
+   "cdn_3",
+   "Milestone.",
+   "CLUB DE NUIT",
+   "CREAM",
+   135
+  ],
+  [
+   "elixir",
+   "cdn_4",
+   "Urban Man Elixir.",
+   "CLUB DE NUIT",
+   "INK",
+   135
+  ],
+  [
+   "woman",
+   "cdn_5",
+   "Woman.",
+   "CLUB DE NUIT",
+   "ROSE",
+   135
+  ],
+  [
+   "night",
+   "cdnfix_3",
+   "Club Night Woman.",
+   "CLUB DE NUIT",
+   "CREAM",
+   135
+  ]
+ ],
+ "extra_css": ".shot .prod { left: 50px; right: 50px; top: 470px; height: 1120px; } .shot .giant { top: 1640px; }"
+}

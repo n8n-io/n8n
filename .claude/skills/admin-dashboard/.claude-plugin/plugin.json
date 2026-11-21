@@ -1,0 +1,4 @@
+{
+  "name": "admin-dashboard",
+  "description": "Extend and modify the admin dashboard, developer portal, and operations console. Use when adding new admin tabs, metrics, monitoring features, or internal tools. Activates for dashboard development, analytics, user management, and internal tooling."
+}

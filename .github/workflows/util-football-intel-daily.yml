@@ -1,0 +1,209 @@
+name: 'football-intel: daily cycle and site export'
+
+# Private site (football-intel/docs/DEPLOYMENT_PLAN.md section 10, D57).
+# The full database lives only in an encrypted Actions cache. The site receives only
+# the dashboard answers, through football-intel export-supabase.
+# Scheduled runs start only from the default branch.
+
+# D79: started each day at 05:23 Lubumbashi (03:23 UTC) by a pg_cron job in Supabase
+# (ops.dispatch_daily_cycle), which calls workflow_dispatch with a fine-grained token kept in
+# Supabase Vault. GitHub stopped every scheduled run of this repository on 2026-11-07.
+on:
+  workflow_dispatch:
+    inputs:
+      weekly:
+        description: 'Also retrain the model (weekly cycle)'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: football-intel-state
+  cancel-in-progress: false
+
+jobs:
+  cycle:
+    if: github.repository == 'benkas418-alt/n8n'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 340
+    permissions:
+      contents: read
+      actions: write # read the state backup of an earlier run
+      models: read # D78: lecture du jour with GitHub Models (free, rate-limited)
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: footintel
+          POSTGRES_PASSWORD: footintel_ci
+          POSTGRES_DB: footintel
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U footintel" --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      DATABASE_URL: postgresql+psycopg://footintel:footintel_ci@localhost:5432/footintel
+      PGPASSWORD: footintel_ci
+      # Inside football-intel/state: the Save state step archives that folder.
+      DATA_DIR: ${{ github.workspace }}/football-intel/state/data
+      ARTIFACTS_DIR: ${{ github.workspace }}/football-intel/state/artifacts
+      REPORTS_DIR: ${{ github.workspace }}/football-intel/state/reports
+      FOOTBALL_DATA_ORG_KEY: ${{ secrets.FOOTBALL_DATA_ORG_KEY }}
+      ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}  # D77: lecture du jour, optional
+      SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+      STATE_KEY: ${{ secrets.FOOTINTEL_STATE_KEY }}
+      # Weekly report by e-mail (PDF printed by the runner's Chrome); skipped when unset.
+      SMTP_HOST: ${{ vars.SMTP_HOST }}
+      SMTP_PORT: ${{ vars.SMTP_PORT || '587' }}
+      SMTP_USER: ${{ vars.SMTP_USER }}
+      SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+      REPORT_TO: ${{ vars.REPORT_TO }}
+    defaults:
+      run:
+        working-directory: football-intel
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: football-intel
+
+      - name: Check secrets
+        run: |
+          missing=""
+          for v in STATE_KEY SUPABASE_URL SUPABASE_SECRET_KEY; do [ -n "${!v}" ] || missing="$missing $v"; done
+          if [ -n "$missing" ]; then echo "::error::Missing:$missing (see football-intel/web/README.md)"; exit 1; fi
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: football-intel/pyproject.toml
+
+      - name: Install
+        run: pip install -q -e .
+
+      # The cache is encrypted: pull requests from forks can read caches of the base branch.
+      - name: Restore state
+        id: restore
+        uses: actions/cache/restore@v4
+        with:
+          path: football-intel/state.tar.enc
+          key: footintel-state-${{ github.run_id }}
+          restore-keys: footintel-state-
+
+      # GitHub deletes a cache that is not used for 7 days. The backup artifact stays 90 days.
+      - name: Restore state from the backup artifact
+        if: hashFiles('football-intel/state.tar.enc') == ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for id in $(gh run list -R "$GITHUB_REPOSITORY" -w util-football-intel-daily.yml \
+                        --status success -L 20 --json databaseId -q '.[].databaseId'); do
+            if gh run download "$id" -R "$GITHUB_REPOSITORY" -n footintel-state -D backup 2>/dev/null; then
+              mv backup/state.tar.enc state.tar.enc
+              echo "::notice::State restored from the backup of run $id"
+              exit 0
+            fi
+          done
+          echo "::warning::No state backup found: the first data load runs"
+
+      - name: Load state
+        id: load
+        run: |
+          mkdir -p state
+          if [ -f state.tar.enc ]; then
+            openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -pass env:STATE_KEY -in state.tar.enc | tar -xf - -C state
+            footintel db upgrade
+            pg_restore --no-owner --clean --if-exists -h localhost -U footintel -d footintel state/db.dump
+            footintel db upgrade
+            echo "fresh=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "fresh=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: First data load
+        id: first
+        if: steps.load.outputs.fresh == 'true'
+        run: |
+          set -u
+          footintel db upgrade
+          footintel db seed
+          footintel ingest history --first 2005
+          for a in "context --first 2005" european openligadb football-data-org fixtures odds-api; do
+            footintel ingest $a || echo "::warning::ingest $a failed"
+          done
+          footintel run weekly
+
+      - name: Daily cycle
+        if: steps.load.outputs.fresh == 'false'
+        run: |
+          footintel db seed  # new competitions and target flags from the catalog
+          footintel run nightly
+          footintel run evening
+          if [ "$(date -u +%u)" = "1" ] || [ "${{ inputs.weekly }}" = "true" ]; then footintel run weekly; fi
+          # D72: weights learnt each Monday; first learnt here when the file is missing.
+          [ -f "$ARTIFACTS_DIR/scenario_weights.json" ] || footintel scenario-weights || echo "::warning::scenario-weights failed"
+
+      - name: Predictions
+        id: predict
+        env:
+          GITHUB_TOKEN: ${{ github.token }} # D78: GitHub Models when ANTHROPIC_API_KEY is not set
+        run: |
+          footintel run morning | tee morning.json
+          footintel archive-tickets || echo "::warning::archive-tickets failed"  # D76: before Save state
+          footintel write-lectures || echo "::warning::write-lectures failed"  # D77/D78
+          if grep -q '"predict": "failed' morning.json; then
+            echo "::error::No prediction was computed (see the predict step above)"
+            echo "failed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Save state
+        if: always() && steps.load.outcome == 'success' && steps.first.outcome != 'failure'
+        run: |
+          set -o pipefail  # a missing folder must fail the step, not save a partial state
+          mkdir -p state/artifacts state/reports
+          pg_dump --format=custom -h localhost -U footintel -f state/db.dump footintel
+          rm -f state.tar.enc
+          tar -cf - -C state db.dump artifacts reports \
+            | openssl enc -aes-256-cbc -pbkdf2 -iter 200000 -salt -pass env:STATE_KEY -out state.tar.enc
+          ls -lh state.tar.enc
+
+      - uses: actions/cache/save@v4
+        if: always() && steps.load.outcome == 'success' && steps.first.outcome != 'failure'
+        with:
+          path: football-intel/state.tar.enc
+          key: footintel-state-${{ github.run_id }}-${{ github.run_attempt }}
+
+      # Same encrypted file as the cache; anyone can download it from this public repo,
+      # but only STATE_KEY opens it.
+      - uses: actions/upload-artifact@v4
+        if: always() && steps.load.outcome == 'success' && steps.first.outcome != 'failure'
+        with:
+          name: footintel-state
+          path: football-intel/state.tar.enc
+          retention-days: 90
+          compression-level: 0
+
+      - name: Export to the private site
+        run: footintel export-supabase
+
+      # D71: the Tickets du jour by e-mail (skipped when SMTP is not configured).
+      - name: E-mail the Tickets du jour
+        continue-on-error: true
+        run: footintel email-tickets
+
+      # D68: betPawa prices recorded by hand, against the market's fair price and the results.
+      - name: betPawa price journal
+        continue-on-error: true
+        run: |
+          { echo '### betPawa price journal'; echo '```'
+            python scripts/betpawa_value.py 2>&1 | tail -n 60; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+
+      # The export still runs, so the site keeps its other data; the run is then marked red.
+      - name: Report failed predictions
+        if: steps.predict.outputs.failed == 'true'
+        run: exit 1

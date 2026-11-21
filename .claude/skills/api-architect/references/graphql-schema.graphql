@@ -1,0 +1,110 @@
+# GraphQL Schema Reference
+# Complete schema with queries, mutations, subscriptions, and Relay connections
+
+type Query {
+  user(id: ID!): User
+  users(
+    first: Int = 20
+    after: String
+    filter: UserFilter
+  ): UserConnection!
+  me: User
+}
+
+type Mutation {
+  createUser(input: CreateUserInput!): CreateUserPayload!
+  updateUser(id: ID!, input: UpdateUserInput!): UpdateUserPayload!
+  deleteUser(id: ID!): DeleteUserPayload!
+}
+
+type Subscription {
+  userCreated: User!
+  userUpdated(id: ID): User!
+}
+
+type User {
+  id: ID!
+  email: String!
+  name: String
+  posts(first: Int = 10): PostConnection!
+  createdAt: DateTime!
+  updatedAt: DateTime
+}
+
+# Relay-style connections for pagination
+type UserConnection {
+  edges: [UserEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type UserEdge {
+  cursor: String!
+  node: User!
+}
+
+type PageInfo {
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  startCursor: String
+  endCursor: String
+}
+
+# Filters
+input UserFilter {
+  email: StringFilter
+  createdAt: DateTimeFilter
+}
+
+input StringFilter {
+  eq: String
+  contains: String
+  startsWith: String
+}
+
+input DateTimeFilter {
+  after: DateTime
+  before: DateTime
+}
+
+# Mutation inputs
+input CreateUserInput {
+  email: String!
+  name: String
+}
+
+input UpdateUserInput {
+  name: String
+  email: String
+}
+
+# Mutation payloads with errors
+type CreateUserPayload {
+  user: User
+  errors: [UserError!]
+}
+
+type UpdateUserPayload {
+  user: User
+  errors: [UserError!]
+}
+
+type DeleteUserPayload {
+  deletedId: ID
+  errors: [UserError!]
+}
+
+type UserError {
+  field: String
+  message: String!
+  code: ErrorCode!
+}
+
+enum ErrorCode {
+  VALIDATION_ERROR
+  DUPLICATE_EMAIL
+  NOT_FOUND
+  UNAUTHORIZED
+}
+
+scalar DateTime

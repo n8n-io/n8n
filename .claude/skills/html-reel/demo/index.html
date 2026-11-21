@@ -1,0 +1,1903 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>HTML Reel · Vanilla JavaScript · HTML/CSS</title>
+    <meta
+      name="description"
+      content="A reel's hook drawn in HTML from one clock: every frame is draw(t) on the scratch voice's seconds, retimed to the creator's real take by word anchors, t = W(τ)."
+    />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='5' fill='%23ff8a3d'/%3E%3C/svg%3E"
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Anton&family=Instrument+Serif&family=Geist:wght@400;500;600&family=Geist+Mono:wght@500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../scripts/reel-clock.css" />
+    <script>
+      // ?frame: the 540 × 960 stage alone, for scripts/render-frames.mjs.
+      // ?embed: the phone, the switch and the controls, for an iframe.
+      (function (q, c) {
+        if (/[?&]frame\b/.test(q)) c.add('frame');
+        else if (/[?&]embed\b/.test(q)) c.add('embed');
+      })(location.search, document.documentElement.classList);
+    </script>
+    <style>
+      :root {
+        --bg: #060607;
+        --fg: #f3f4f5;
+        --fg-2: #c3c6cc;
+        --fg-3: #8a8e96;
+        --fg-4: #5c6067;
+        --line: rgba(255, 255, 255, 0.09);
+        --accent: #ff8a3d;
+        --font: 'Geist', ui-sans-serif, system-ui, sans-serif;
+        --mono: 'Geist Mono', ui-monospace, monospace;
+        color-scheme: dark;
+      }
+
+      /* ---------- the page (reel-clock.css is written for a stage that fills the window) ---------- */
+      html:not(.frame),
+      html:not(.frame) body {
+        height: auto;
+        overflow: visible;
+      }
+      html:not(.frame) body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--fg-2);
+        font: 400 15px/1.55 var(--font);
+        -webkit-font-smoothing: antialiased;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      main {
+        width: min(1120px, 100% - 32px);
+        margin: 0 auto;
+        padding: 64px 0 72px;
+      }
+      .kicker {
+        margin: 0 0 14px;
+        font: 500 12px/1 var(--mono);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--fg-3);
+      }
+      h1 {
+        margin: 0;
+        font-size: clamp(40px, 7vw, 64px);
+        font-weight: 600;
+        line-height: 1;
+        letter-spacing: -0.035em;
+        color: var(--fg);
+      }
+      .lede {
+        max-width: 620px;
+        margin: 18px 0 0;
+        font-size: 17px;
+      }
+      .lede b {
+        font-weight: 500;
+        color: var(--fg);
+      }
+      code {
+        font: 500 0.88em/1 var(--mono);
+        color: var(--fg);
+      }
+
+      /* The switch: which clock the scene plays on. */
+      .switch {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        margin: 36px 0 14px;
+        font-size: 13px;
+        color: var(--fg-3);
+      }
+      .seg {
+        display: inline-flex;
+        padding: 3px;
+        border-radius: 11px;
+        background: rgba(255, 255, 255, 0.05);
+        box-shadow: inset 0 0 0 0.5px var(--line);
+      }
+      .seg label {
+        position: relative;
+        cursor: pointer;
+      }
+      .seg input {
+        position: absolute;
+        inset: 0;
+        margin: 0;
+        opacity: 0;
+        cursor: pointer;
+      }
+      .seg span {
+        display: block;
+        padding: 7px 13px;
+        border-radius: 8px;
+        font: 500 13px/1 var(--font);
+        color: var(--fg-3);
+        white-space: nowrap;
+      }
+      .seg input:checked + span {
+        background: rgba(255, 255, 255, 0.11);
+        color: var(--fg);
+        box-shadow: inset 0 0 0 0.5px rgba(255, 255, 255, 0.08);
+      }
+      .seg input:focus-visible + span {
+        outline: 2px solid var(--accent);
+        outline-offset: 1px;
+      }
+
+      /* The phone: the 540 × 960 stage, scaled to its screen by one number (--pk). */
+      .rig {
+        --bz: 9px;
+        --sw: min(calc(100vw - 32px - 2 * var(--bz)), 342px);
+      }
+      .phone {
+        width: fit-content;
+        margin: 0 auto;
+        padding: var(--bz);
+        border-radius: 47px;
+        background: linear-gradient(180deg, #1d1e22, #0c0d0f);
+        box-shadow:
+          inset 0 0 0 1px rgba(255, 255, 255, 0.1),
+          inset 0 1px 0 rgba(255, 255, 255, 0.12),
+          0 0 0 1px rgba(0, 0, 0, 0.7),
+          0 50px 90px -40px rgba(0, 0, 0, 0.95);
+      }
+      .screen {
+        position: relative;
+        width: var(--sw);
+        aspect-ratio: 9 / 16;
+        border-radius: 38px;
+        overflow: hidden;
+        background: #060607;
+        isolation: isolate;
+      }
+      .screen #stage {
+        transform: translate(-50%, -50%) scale(var(--pk, 0.6333));
+      }
+      .island {
+        position: absolute;
+        z-index: 2;
+        top: 2.2%;
+        left: 50%;
+        width: 29%;
+        height: 3.6%;
+        border-radius: 99px;
+        background: #000;
+        transform: translateX(-50%);
+      }
+      /* HTMLReel.controls, under the phone instead of over the window. */
+      .bar.reel-controls {
+        position: static;
+        width: calc(var(--sw) + 2 * var(--bz));
+        max-width: 100%;
+        margin: 14px auto 0;
+        padding: 6px 12px 6px 6px;
+        background: rgba(255, 255, 255, 0.045);
+        box-shadow: inset 0 0 0 0.5px var(--line);
+        backdrop-filter: none;
+        color: var(--fg-2);
+      }
+      .bar.reel-controls button {
+        width: 34px;
+        height: 30px;
+        color: var(--fg);
+      }
+      .bar.reel-controls button:hover {
+        background: rgba(255, 255, 255, 0.15);
+      }
+      :is(button, input[type='range']):focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+
+      /* The words on both clocks. */
+      .strip {
+        margin: 32px 0 0;
+        padding: 14px 0 12px;
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.025);
+        box-shadow: inset 0 0 0 0.5px var(--line);
+        min-width: 0;
+      }
+      .strip-head {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 0 16px;
+        font: 500 12px/1.2 var(--mono);
+        color: var(--fg-3);
+      }
+      .strip-head b {
+        font-weight: 500;
+        color: var(--fg-2);
+      }
+      .strip-head output {
+        font-variant-numeric: tabular-nums;
+        color: var(--fg-2);
+        white-space: nowrap;
+      }
+      .strip-head .drive {
+        display: inline-block;
+        width: 6px;
+        height: 6px;
+        margin-right: 7px;
+        border-radius: 50%;
+        background: var(--fg-4);
+        vertical-align: 1px;
+      }
+      .strip[data-mode='scratch'] [data-row='scratch'] .drive,
+      .strip[data-mode='take'] [data-row='take'] .drive {
+        background: var(--accent);
+      }
+      .strip[data-mode='scratch'] [data-row='scratch'] b,
+      .strip[data-mode='take'] [data-row='take'] b {
+        color: var(--fg);
+      }
+      .strip-view {
+        position: relative;
+        overflow: hidden;
+        margin: 6px 0;
+      }
+      .strip-view svg {
+        display: block;
+        font: 500 11px var(--font);
+      }
+      .strip .ax {
+        stroke: rgba(255, 255, 255, 0.1);
+        stroke-width: 1;
+      }
+      .strip .bar-w {
+        fill: rgba(255, 255, 255, 0.16);
+      }
+      .strip .dot-w {
+        fill: rgba(255, 255, 255, 0.4);
+      }
+      .strip .stem {
+        stroke: rgba(255, 255, 255, 0.07);
+        stroke-width: 1;
+      }
+      .strip text {
+        fill: var(--fg-4);
+      }
+      .strip text.said {
+        fill: var(--fg-2);
+      }
+      .strip text.now {
+        fill: var(--accent);
+      }
+      .strip text.odd {
+        font-style: italic;
+      }
+      .strip .past {
+        opacity: 0.45;
+      }
+      .strip .ln {
+        fill: none;
+        stroke: rgba(255, 255, 255, 0.13);
+        stroke-width: 1;
+      }
+      .strip .ln.said {
+        stroke: rgba(255, 170, 110, 0.38);
+      }
+      .strip .end {
+        fill: none;
+        stroke: rgba(255, 255, 255, 0.35);
+        stroke-width: 1;
+        stroke-dasharray: 3 3;
+      }
+      .strip .head {
+        fill: none;
+        stroke: var(--accent);
+        stroke-width: 1.6;
+      }
+      .strip .head-dot {
+        fill: var(--accent);
+      }
+      .strip figcaption {
+        padding: 2px 16px 0;
+        font-size: 13px;
+        color: var(--fg-3);
+      }
+
+      .made {
+        margin-top: 64px;
+        max-width: 760px;
+      }
+      .made h2 {
+        margin: 0 0 14px;
+        font: 500 12px/1 var(--mono);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--fg-3);
+      }
+      .made ol {
+        margin: 0;
+        padding-left: 1.3em;
+      }
+      .made li {
+        margin: 0 0 8px;
+        padding-left: 4px;
+      }
+      .made li::marker {
+        font: 500 12px var(--mono);
+        color: var(--fg-4);
+      }
+
+      /* Wide: the words beside the phone. */
+      @media (min-width: 980px) {
+        main {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) auto;
+          grid-template-areas:
+            'intro rig'
+            'switch rig'
+            'strip rig'
+            'made made';
+          grid-template-rows: auto auto 1fr auto;
+          column-gap: 72px;
+          padding-top: 56px;
+        }
+        .player {
+          display: contents;
+        }
+        .intro {
+          grid-area: intro;
+        }
+        .switch {
+          grid-area: switch;
+          justify-content: flex-start;
+          margin: 28px 0 0;
+        }
+        .rig {
+          grid-area: rig;
+          --sw: calc(clamp(480px, 100svh - 136px, 640px) * 9 / 16);
+        }
+        .strip {
+          grid-area: strip;
+          align-self: end;
+          margin-top: 24px;
+        }
+        .made {
+          grid-area: made;
+        }
+      }
+
+      /* ?embed: the phone, the switch and the controls; about 360 × 760 of iframe. */
+      .embed,
+      .embed body {
+        height: 100%;
+        overflow: hidden;
+        background: transparent !important;
+      }
+      .embed main {
+        display: block;
+        width: 100%;
+        padding: 10px 0 0;
+      }
+      .embed .player {
+        display: block;
+      }
+      .embed :is(.intro, .strip, .made) {
+        display: none;
+      }
+      .embed .switch {
+        margin: 0 0 10px;
+      }
+      .embed .rig {
+        --sw: min(calc(100vw - 24px - 2 * var(--bz)), calc((100svh - 124px) * 9 / 16));
+      }
+      .embed .bar.reel-controls {
+        margin-top: 10px;
+      }
+
+      /* ---------- the stage: 540 × 960, every part set from t in draw(t) ---------- */
+      #stage {
+        background: #060607;
+        color: #f3f4f5;
+      }
+      #stage .bg,
+      #stage .shot,
+      #stage .band,
+      #stage .titles {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 540px;
+        height: 960px;
+      }
+      #stage svg.threads,
+      #stage svg.leads {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 540px;
+        height: 960px;
+        overflow: visible;
+      }
+      #stage .band {
+        background: linear-gradient(
+          180deg,
+          rgba(6, 6, 7, 0) 40%,
+          rgba(6, 6, 7, 0.22) 54%,
+          rgba(6, 6, 7, 0.5) 70%,
+          rgba(6, 6, 7, 0.62) 100%
+        );
+        opacity: 0;
+      }
+
+      /* The app window, 468 × 300, in its own coordinates. */
+      #stage .cam {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 468px;
+        height: 300px;
+        transform-origin: 0 0;
+      }
+      #stage .tilt,
+      #stage .win,
+      #stage .pl {
+        position: absolute;
+        inset: 0;
+      }
+      #stage .tilt {
+        transform-origin: 0 0;
+      }
+      #stage .tilt.d3,
+      #stage .tilt.d3 .win {
+        transform-style: preserve-3d;
+      }
+      #stage .win {
+        font: 500 6.5px/1 Geist, system-ui, sans-serif;
+        letter-spacing: -0.005em;
+        color: #c3c6cc;
+      }
+      #stage .anc {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+      }
+      /* Each plane's boxes, outlined when it lifts: --ol per plane. */
+      #stage [data-ol]::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border: 1.25px solid rgba(255, 170, 100, 0.95);
+        background: rgba(255, 138, 61, 0.07);
+        border-radius: inherit;
+        opacity: var(--ol, 0);
+        pointer-events: none;
+      }
+      #stage .w-frame {
+        position: absolute;
+        inset: 0;
+        border-radius: 12px;
+        background: #0e0f11;
+        box-shadow:
+          0 0 0 0.75px rgba(255, 255, 255, 0.11),
+          0 60px 100px -36px rgba(0, 0, 0, 0.9),
+          0 20px 44px -20px rgba(0, 0, 0, 0.75);
+      }
+      #stage .w-bar {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 0;
+        height: 28px;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        padding: 0 10px;
+        border-bottom: 0.5px solid rgba(255, 255, 255, 0.07);
+      }
+      #stage .tl {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+      }
+      #stage .tl.r {
+        background: #ff5f57;
+      }
+      #stage .tl.y {
+        background: #febc2e;
+      }
+      #stage .tl.g {
+        background: #28c840;
+      }
+      #stage .w-tab {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        height: 17px;
+        margin-left: 12px;
+        padding: 0 7px;
+        border-radius: 6px;
+        background: rgba(255, 255, 255, 0.07);
+        color: #f3f4f5;
+        font-size: 7px;
+      }
+      #stage .w-tab .fav {
+        width: 8px;
+        height: 8px;
+        border-radius: 2.5px;
+        background: #ff8a3d;
+      }
+      #stage .w-tab .x {
+        margin-left: 6px;
+        color: #8a8e96;
+      }
+      #stage .w-av {
+        width: 12px;
+        height: 12px;
+        margin-left: auto;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #82c1ee, #5d6fd8);
+        box-shadow: 0 0 0 1.5px #0e0f11;
+      }
+      #stage .w-av + .w-av {
+        margin-left: -4px;
+        background: linear-gradient(135deg, #efb36c, #e0695a);
+      }
+      #stage .w-pub {
+        display: flex;
+        align-items: center;
+        height: 16px;
+        margin-left: 6px;
+        padding: 0 8px;
+        border-radius: 5px;
+        background: #f3f4f5;
+        color: #0e0f11;
+        font-weight: 600;
+      }
+      #stage .w-left,
+      #stage .w-right {
+        position: absolute;
+        top: 28px;
+        height: 272px;
+        background: #0e0f11;
+      }
+      #stage .w-left {
+        left: 0;
+        width: 104px;
+        padding: 8px 6px;
+        border-radius: 0 0 0 12px;
+        box-shadow: inset -0.5px 0 0 rgba(255, 255, 255, 0.07);
+      }
+      #stage .lh {
+        display: flex;
+        align-items: center;
+        height: 12px;
+        padding: 0 4px;
+        color: #8a8e96;
+        font-weight: 600;
+        font-size: 6px;
+      }
+      #stage .lrow {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        height: 12px;
+        padding: 0 4px;
+        border-radius: 4px;
+      }
+      #stage .lrow i {
+        width: 6px;
+        height: 6px;
+        border-radius: 1.5px;
+        border: 0.6px solid currentColor;
+        opacity: 0.7;
+      }
+      #stage .lrow.d1 {
+        padding-left: 10px;
+      }
+      #stage .lrow.d2 {
+        padding-left: 16px;
+      }
+      #stage .lrow.on {
+        background: rgba(255, 255, 255, 0.07);
+        color: #f3f4f5;
+      }
+      #stage .lrow.sel {
+        position: relative;
+        background: rgba(91, 140, 255, 0.24);
+        color: #e3ecff;
+      }
+      #stage .lsep {
+        height: 0.5px;
+        margin: 6px 0;
+        background: rgba(255, 255, 255, 0.07);
+      }
+      #stage .w-right {
+        left: 352px;
+        width: 116px;
+        padding: 0 8px;
+        border-radius: 0 0 12px 0;
+        box-shadow: inset 0.5px 0 0 rgba(255, 255, 255, 0.07);
+      }
+      #stage .ins-tabs {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        height: 22px;
+        margin: 0 -8px;
+        padding: 0 8px;
+        box-shadow: inset 0 -0.5px 0 rgba(255, 255, 255, 0.07);
+        color: #8a8e96;
+      }
+      #stage .ins-tabs b {
+        color: #f3f4f5;
+        font-weight: 600;
+      }
+      #stage .ins-sec {
+        margin: 0 -8px;
+        padding: 8px 8px;
+        box-shadow: inset 0 -0.5px 0 rgba(255, 255, 255, 0.07);
+      }
+      #stage .ins-h {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 6px;
+        color: #f3f4f5;
+        font-weight: 600;
+      }
+      #stage .ins-h span {
+        color: #8a8e96;
+        font-weight: 500;
+      }
+      #stage .ins-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 4px;
+        margin-top: 4px;
+      }
+      #stage .fld {
+        position: relative;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        height: 15px;
+        padding: 0 5px;
+        border-radius: 4px;
+        background: rgba(255, 255, 255, 0.055);
+        color: #f3f4f5;
+        white-space: nowrap;
+      }
+      #stage .fld em {
+        font-style: normal;
+        font-size: 5.5px;
+        color: #8a8e96;
+      }
+      #stage .fld .chev {
+        width: 4px;
+        height: 4px;
+        margin: -2px 0 0 auto;
+        border: solid #8a8e96;
+        border-width: 0 0.7px 0.7px 0;
+        transform: rotate(45deg);
+      }
+      #stage .fld .sw {
+        width: 7px;
+        height: 7px;
+        border-radius: 1.5px;
+        background: #fff;
+      }
+      #stage .fld .pc {
+        margin-left: auto;
+        color: #8a8e96;
+      }
+      #stage .fld.ls.focus {
+        box-shadow:
+          inset 0 0 0 0.75px #5b8cff,
+          0 0 0 1.5px rgba(91, 140, 255, 0.28);
+      }
+      #stage .fld .val {
+        padding: 1px 0.5px;
+        border-radius: 1px;
+      }
+      #stage .fld .val.sel {
+        background: rgba(91, 140, 255, 0.5);
+      }
+      #stage .fld .caret {
+        width: 0.6px;
+        height: 8px;
+        margin-left: -3.4px;
+        background: #f3f4f5;
+        opacity: 0;
+      }
+      #stage .ins-align {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 4px;
+        margin-top: 6px;
+      }
+      #stage .ins-align i {
+        height: 10px;
+        border-radius: 3px;
+        background: linear-gradient(#8a8e96, #8a8e96) center 3px / 9px 0.7px no-repeat,
+          linear-gradient(#8a8e96, #8a8e96) center 5px / 6px 0.7px no-repeat,
+          linear-gradient(#8a8e96, #8a8e96) center 7px / 8px 0.7px no-repeat;
+      }
+      #stage .ins-align i:nth-child(2) {
+        background-color: rgba(255, 255, 255, 0.07);
+      }
+      #stage .w-canvas {
+        position: absolute;
+        left: 104px;
+        top: 28px;
+        width: 248px;
+        height: 272px;
+        overflow: hidden;
+        background-color: #141517;
+        background-image: radial-gradient(rgba(255, 255, 255, 0.075) 0.6px, transparent 0.9px);
+        background-size: 9px 9px;
+      }
+      #stage .cv-label {
+        position: absolute;
+        left: 14px;
+        top: 6px;
+        font-size: 5.5px;
+        color: #8a8e96;
+      }
+      #stage .artboard {
+        position: absolute;
+        left: 14px;
+        top: 16px;
+        width: 220px;
+        height: 300px;
+        border-radius: 2px;
+        background: #f2eee6;
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.45);
+        overflow: hidden;
+      }
+      #stage .ab-nav {
+        position: absolute;
+        left: 9px;
+        right: 9px;
+        top: 5px;
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        height: 9px;
+        color: #2a2724;
+        font: 400 7.5px/1 'Instrument Serif', Georgia, serif;
+        letter-spacing: 0.06em;
+      }
+      #stage .ab-nav i {
+        width: 13px;
+        height: 1.6px;
+        border-radius: 1px;
+        background: #b9b2a5;
+      }
+      #stage .ab-nav i:first-of-type {
+        margin-left: auto;
+      }
+      #stage .ab-slot {
+        position: absolute;
+        left: 6px;
+        top: 18px;
+        width: 208px;
+        height: 118px;
+        border-radius: 3px;
+        background: #e0d9cc;
+      }
+      #stage .ab-h2 {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 146px;
+        text-align: center;
+        font: 400 13px/1.05 'Instrument Serif', Georgia, serif;
+        color: #24211d;
+      }
+      #stage .ab-p {
+        position: absolute;
+        left: 74px;
+        right: 74px;
+        height: 1.6px;
+        border-radius: 1px;
+        background: #c9c2b5;
+      }
+      #stage .ab-row {
+        position: absolute;
+        left: 10px;
+        right: 10px;
+        top: 196px;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 6px;
+      }
+      #stage .prod {
+        position: relative;
+        display: block;
+        height: 64px;
+        border-radius: 2px;
+      }
+      #stage .prod.p1 {
+        background: radial-gradient(circle at 50% 62%, #f7f1e6 0 11px, transparent 12px), linear-gradient(160deg, #b98e64, #7c5a3d);
+      }
+      #stage .prod.p2 {
+        background: radial-gradient(ellipse 8px 14px at 50% 58%, #2f3b33 0 98%, transparent), linear-gradient(160deg, #c9c2a8, #9aa08a);
+      }
+      #stage .prod.p3 {
+        background: radial-gradient(ellipse 10px 12px at 50% 60%, #efe6d6 0 98%, transparent), linear-gradient(160deg, #6f7f86, #3e4a52);
+      }
+      #stage .hero {
+        position: absolute;
+        left: 124px;
+        top: 62px;
+        width: 208px;
+        height: 118px;
+        border-radius: 3px;
+        overflow: hidden;
+        background: linear-gradient(180deg, #24333b 0%, #55606a 40%, #b98f6c 70%, #e4c398 100%);
+      }
+      #stage .hero::before {
+        content: '';
+        position: absolute;
+        left: 58%;
+        top: 58%;
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        background: radial-gradient(circle, #ffe2b0 0 40%, rgba(255, 210, 150, 0) 72%);
+      }
+      #stage .hero-m1,
+      #stage .hero-m2,
+      #stage .hero-mist {
+        position: absolute;
+        inset: 0;
+      }
+      #stage .hero-m1 {
+        background: #4c5552;
+        clip-path: polygon(0 74%, 12% 62%, 24% 68%, 38% 52%, 50% 63%, 64% 55%, 78% 66%, 90% 58%, 100% 63%, 100% 100%, 0 100%);
+        opacity: 0.85;
+      }
+      #stage .hero-m2 {
+        background: #262d2c;
+        clip-path: polygon(0 86%, 16% 78%, 30% 84%, 46% 74%, 60% 82%, 74% 76%, 88% 84%, 100% 79%, 100% 100%, 0 100%);
+      }
+      #stage .hero-mist {
+        background: linear-gradient(180deg, transparent 55%, rgba(245, 225, 200, 0.22) 80%, transparent 100%);
+      }
+      #stage .hero-h1w {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 30px;
+        text-align: center;
+      }
+      #stage .hero-h1 {
+        position: relative;
+        display: inline-block;
+        padding: 0 2px 0 calc(2px + var(--ls, 0.02em));
+        font: 400 27px/1 'Instrument Serif', Georgia, serif;
+        letter-spacing: var(--ls, 0.02em);
+        color: #fff;
+        text-shadow: 0 1px 8px rgba(0, 0, 0, 0.25);
+      }
+      #stage .hero-h1[data-ol]::after {
+        border-color: rgba(160, 200, 255, 1);
+        background: rgba(111, 168, 255, 0.24);
+        opacity: var(--hl, 0);
+      }
+      #stage .sel-box {
+        position: absolute;
+        inset: -3px -3px -2px;
+        border: 0.75px solid #5b8cff;
+      }
+      #stage .sel-box i {
+        position: absolute;
+        width: 3.5px;
+        height: 3.5px;
+        margin: -2.1px;
+        border: 0.6px solid #5b8cff;
+        background: #fff;
+      }
+      #stage .sel-box i:nth-child(2) {
+        right: 0;
+      }
+      #stage .sel-box i:nth-child(3) {
+        bottom: 0;
+      }
+      #stage .sel-box i:nth-child(4) {
+        right: 0;
+        bottom: 0;
+      }
+      #stage .sel-box span {
+        position: absolute;
+        left: -0.75px;
+        bottom: calc(100% + 2px);
+        padding: 1.5px 3px;
+        border-radius: 2px;
+        background: #5b8cff;
+        color: #fff;
+        font: 600 5px/1 Geist, sans-serif;
+        letter-spacing: 0;
+        text-shadow: none;
+      }
+      #stage .hero-sub {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 64px;
+        text-align: center;
+        font-size: 5.5px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: rgba(255, 255, 255, 0.85);
+      }
+      #stage .hero-btnw {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 77px;
+        text-align: center;
+      }
+      #stage .hero-btn {
+        position: relative;
+        display: inline-block;
+        height: 13px;
+        padding: 0 9px;
+        border-radius: 7px;
+        background: #fff;
+        color: #1c1a17;
+        font: 600 5.5px/13px Geist, sans-serif;
+      }
+      #stage .ptr {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 11px;
+        height: 16px;
+        transform-origin: 1px 1px;
+        overflow: visible;
+        filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.4));
+      }
+
+      /* Tags: orange, Geist Mono; flat ones on the stage, the rest on the hero's plane. */
+      #stage .tag {
+        position: absolute;
+        left: 0;
+        top: 0;
+        white-space: nowrap;
+        font: 600 15px/1 'Geist Mono', ui-monospace, monospace;
+        letter-spacing: -0.01em;
+        color: #170b03;
+        background: #ff8a3d;
+        padding: 7px 10px;
+        border-radius: 8px;
+        box-shadow: 0 10px 26px rgba(0, 0, 0, 0.45);
+        opacity: 0;
+      }
+      #stage .tag b {
+        margin-right: 6px;
+        font-weight: 700;
+        color: #3a1702;
+      }
+      #stage .tag.in {
+        font-size: 14px;
+        padding: 6px 9px;
+      }
+      #stage .leads path {
+        fill: none;
+        stroke: #ff8a3d;
+        stroke-width: 1.4;
+        stroke-linecap: round;
+      }
+      #stage .leads circle {
+        fill: #ff8a3d;
+      }
+
+      /* The titles (reel-clock.css): the serif sets up, the heavy word lands. */
+      #stage .ph {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 214px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        color: #fff;
+        visibility: hidden;
+      }
+      #stage .reel-heavy .reel-mask {
+        padding-bottom: 0.06em;
+        margin-bottom: -0.06em;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        html {
+          scroll-behavior: auto;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header class="intro">
+        <p class="kicker">Vanilla JavaScript · HTML/CSS</p>
+        <h1>HTML Reel</h1>
+        <p class="lede">
+          The hook of a talking-head reel, drawn in HTML from one clock.
+          <b>Every frame is <code>draw(t)</code></b>, with t the scratch voice's
+          seconds, so each word rises on its word and the zoom lands on “in.”
+          When the real take comes in, the same scene re-renders at
+          <b>t&nbsp;=&nbsp;W(τ)</b>, straight lines between the words both takes
+          share, and follows the creator's delivery frame for frame. Animate it
+          with CSS timelines or timers and it can't follow: every new take means
+          animating it again, and stretching the render to fit judders.
+        </p>
+      </header>
+
+      <div class="player">
+        <div class="switch" role="radiogroup" aria-labelledby="timed">
+          <span id="timed">Timed to</span>
+          <span class="seg">
+            <label><input type="radio" name="clock" value="scratch" checked /><span>Scratch voice</span></label>
+            <label><input type="radio" name="clock" value="take" /><span>Your take</span></label>
+          </span>
+        </div>
+
+        <div class="rig">
+          <div
+            class="phone"
+            role="img"
+            aria-label="A 9:16 reel’s hook: “This looks like a screen recording. Watch what happens when I zoom in. Still sharp. Because it’s not a video, it’s HTML.” over an app window the camera zooms into, which then comes apart into outlined layers."
+          >
+            <div class="screen">
+              <div id="stage" aria-hidden="true">
+                <div class="bg"></div>
+                <svg class="threads" viewBox="0 0 540 960">
+                  <defs>
+                    <linearGradient id="thread-ink" gradientUnits="userSpaceOnUse" x1="0" y1="400" x2="0" y2="980">
+                      <stop offset="0" stop-color="#ffb877" stop-opacity="0" />
+                      <stop offset="0.3" stop-color="#ffb877" stop-opacity="0.9" />
+                      <stop offset="0.75" stop-color="#ff9a52" stop-opacity="0.35" />
+                      <stop offset="1" stop-color="#ff8a3d" stop-opacity="0" />
+                    </linearGradient>
+                  </defs>
+                  <g class="thr"></g>
+                </svg>
+
+                <div class="shot">
+                  <div class="cam">
+                    <div class="tilt">
+                      <div class="win">
+                        <div class="pl" data-pl="frame">
+                          <div class="w-frame" data-ol>
+                            <div class="w-bar">
+                              <i class="tl r"></i><i class="tl y"></i><i class="tl g"></i>
+                              <span class="w-tab"><i class="fav"></i>Mossa<span class="x">×</span></span>
+                              <i class="w-av"></i><i class="w-av"></i>
+                              <span class="w-pub">Publish</span>
+                            </div>
+                          </div>
+                          <i class="anc" data-anc="fig" style="left: 0; top: 0"></i>
+                        </div>
+
+                        <div class="pl" data-pl="panels">
+                          <aside class="w-left" data-ol>
+                            <div class="lh">Pages</div>
+                            <div class="lrow on"><i></i>Home</div>
+                            <div class="lrow"><i></i>Shop</div>
+                            <div class="lrow"><i></i>Journal</div>
+                            <div class="lsep"></div>
+                            <div class="lh">Layers</div>
+                            <div class="lrow"><i></i>Page</div>
+                            <div class="lrow d1"><i></i>Nav</div>
+                            <div class="lrow d1"><i></i>Hero</div>
+                            <div class="lrow d2 sel" data-ol><i></i>Heading</div>
+                            <div class="lrow d2"><i></i>Subtitle</div>
+                            <div class="lrow d2"><i></i>Button</div>
+                            <div class="lrow d1"><i></i>Products</div>
+                            <div class="lrow d1"><i></i>Footer</div>
+                          </aside>
+                          <aside class="w-right" data-ol>
+                            <div class="ins-tabs"><b>Design</b><span>Prototype</span></div>
+                            <div class="ins-sec">
+                              <div class="ins-h">Position <span>Auto</span></div>
+                              <div class="ins-row">
+                                <div class="fld"><em>X</em>0</div>
+                                <div class="fld"><em>Y</em>0</div>
+                              </div>
+                            </div>
+                            <div class="ins-sec">
+                              <div class="ins-h">Text</div>
+                              <div class="fld" data-ol>Instrument Serif<i class="chev"></i></div>
+                              <div class="ins-row">
+                                <div class="fld">Regular<i class="chev"></i></div>
+                                <div class="fld"><em>Size</em>208</div>
+                              </div>
+                              <div class="ins-row">
+                                <div class="fld"><em>Line</em>1.1</div>
+                                <div class="fld ls" data-ol><em>Letter</em><span class="val">0.02em</span><i class="caret"></i></div>
+                              </div>
+                              <div class="ins-align"><i></i><i></i><i></i><i></i></div>
+                            </div>
+                            <div class="ins-sec">
+                              <div class="ins-h">Fill</div>
+                              <div class="fld"><i class="sw"></i>FFFFFF<span class="pc">100%</span></div>
+                            </div>
+                            <div class="ins-sec"><div class="ins-h">Effects <span>+</span></div></div>
+                            <div class="ins-sec"><div class="ins-h">Export <span>+</span></div></div>
+                          </aside>
+                          <i class="anc" data-anc="aside" style="left: 0; top: 300px"></i>
+                        </div>
+
+                        <div class="pl" data-pl="canvas">
+                          <div class="w-canvas" data-ol>
+                            <div class="cv-label">Home · Desktop</div>
+                            <div class="artboard" data-ol>
+                              <div class="ab-nav">MOSSA<i></i><i></i><i></i></div>
+                              <div class="ab-slot"></div>
+                              <div class="ab-h2">Serums &amp; creams,<br />simply made</div>
+                              <i class="ab-p" style="top: 179px"></i>
+                              <i class="ab-p" style="top: 184px; left: 84px; right: 84px"></i>
+                              <div class="ab-row">
+                                <i class="prod p1" data-ol></i><i class="prod p2" data-ol></i><i class="prod p3" data-ol></i>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div class="pl" data-pl="hero">
+                          <div class="hero" data-ol>
+                            <div class="hero-m1"></div>
+                            <div class="hero-m2"></div>
+                            <div class="hero-mist"></div>
+                            <div class="hero-h1w">
+                              <span class="hero-h1" data-ol
+                                >MOSSA<span class="sel-box"><i></i><i></i><i></i><i></i><span>Heading</span></span></span
+                              >
+                            </div>
+                            <div class="hero-sub">Botanical skincare</div>
+                            <div class="hero-btnw"><span class="hero-btn" data-ol>Shop now</span></div>
+                          </div>
+                          <div class="tag in" data-safe data-tag="h1"><b>&lt;h1&gt;</b>MOSSA</div>
+                          <div class="tag in" data-safe data-tag="btn"><b>&lt;a&gt;</b>Shop now</div>
+                        </div>
+
+                        <svg class="ptr" viewBox="0 0 11 16">
+                          <path
+                            d="M1 1v12.6l3-2.9 2.1 4.8 1.9-.8-2.1-4.7h4.1z"
+                            fill="#111"
+                            stroke="#fff"
+                            stroke-width="0.9"
+                            stroke-linejoin="round"
+                          />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="band"></div>
+                <svg class="leads" viewBox="0 0 540 960">
+                  <path data-lead="fig" /><circle data-lead="fig" r="3" />
+                  <path data-lead="aside" /><circle data-lead="aside" r="3" />
+                </svg>
+                <div class="tag" data-safe data-tag="fig">figure.app</div>
+                <div class="tag" data-safe data-tag="aside"><b>&lt;aside&gt;</b>Layers</div>
+                <div class="titles"></div>
+              </div>
+              <div class="island" aria-hidden="true"></div>
+            </div>
+          </div>
+          <div class="bar" id="bar"></div>
+        </div>
+
+        <figure class="strip" data-mode="scratch">
+          <div class="strip-head" data-row="scratch">
+            <span><i class="drive"></i><b>Scratch voice</b> · t</span>
+            <output data-o="scratch">0.00 s</output>
+          </div>
+          <div class="strip-view"><svg aria-hidden="true"></svg></div>
+          <div class="strip-head" data-row="take">
+            <span><i class="drive"></i><b>Your take</b> · τ</span>
+            <output data-o="take">0.00 s</output>
+          </div>
+          <figcaption>
+            Lines join each word the takes share (“but” has none). Orange: the
+            playhead, t&nbsp;=&nbsp;W(τ). Dashes: the end.
+          </figcaption>
+        </figure>
+      </div>
+
+      <section class="made" aria-labelledby="made">
+        <h2 id="made">How it was made</h2>
+        <ol>
+          <li>
+            A scratch voice read the script (ElevenLabs). Its word times are the
+            constants at the top of the scene, and the scene is animated to them.
+          </li>
+          <li>
+            One <code>draw(t)</code> sets every part from t: each word through its
+            mask, the camera, the window's layers, the tags and the light.
+            <code>HTMLReel.scene({ dur: 8.6, draw })</code> puts it on
+            <code>window.__frame</code>.
+          </li>
+          <li>
+            Its first 0.2 s are the reel's cover: <code>cover</code> holds the
+            hook's best moment, “This looks like a screen RECORDING.” landed, as
+            the first frame the grid, the feed and Fil's canvas show.
+          </li>
+          <li>
+            The creator recorded the lines. Their words were matched to the
+            scratch's: 23 anchors, <code>[τ, t]</code>. <code>anchors</code> turns
+            them into W, straight lines between them, and the hook plays 7.77 s
+            instead of 8.6 s.
+          </li>
+          <li>
+            The renderer opens <code>?frame</code> (or <code>?frame&amp;take</code>),
+            calls <code>__frame(τ)</code> once a frame at 540 × 960 and screenshots;
+            <code>__bounds()</code> keeps the <code>data-safe</code> titles inside
+            the 3:4 safe area.
+          </li>
+          <li>
+            No video, canvas or WebGL: the window is HTML, so the 4.4× zoom is drawn
+            at that size, not enlarged.
+          </li>
+        </ol>
+      </section>
+    </main>
+
+    <script src="../scripts/reel-clock.js"></script>
+    <script>
+      (() => {
+        'use strict';
+        const { scene, controls, ease, out, back, pulse, typed, clamp } = HTMLReel;
+        const Q = new URLSearchParams(location.search);
+        const FRAME = Q.has('frame');
+        const stage = document.getElementById('stage');
+        // ?frame: nothing but the stage, centred and fitted by reel-clock.css.
+        if (FRAME) document.body.replaceChildren(stage);
+        const $ = (s) => stage.querySelector(s);
+        const $$ = (s) => [...stage.querySelectorAll(s)];
+        const lerp = (a, b, k) => a + (b - a) * k;
+        /** 0 → 1 between a and b, eased in and out (quartic: quick through the middle). */
+        const quart = (t, a, b) => {
+          const x = clamp((t - a) / (b - a));
+          return x < 0.5 ? 8 * x ** 4 : 1 - Math.pow(-2 * x + 2, 4) / 2;
+        };
+
+        // ---------- The scratch voice (vo/full-words.json): [word, start, end], s ----------
+        const VOICE = [
+          ['This', 0.0, 0.221],
+          ['looks', 0.267, 0.453],
+          ['like', 0.488, 0.639],
+          ['a', 0.662, 0.685],
+          ['screen', 0.743, 1.057],
+          ['recording.', 1.103, 1.73],
+          ['Watch', 2.241, 2.473],
+          ['what', 2.496, 2.601],
+          ['happens', 2.647, 2.949],
+          ['when', 2.984, 3.1],
+          ['I', 3.146, 3.17],
+          ['zoom', 3.251, 3.413],
+          ['in.', 3.506, 3.831],
+          ['Still', 4.214, 4.481],
+          ['sharp.', 4.54, 5.004],
+          ['Because', 5.387, 5.642],
+          ['it’s', 5.666, 5.782],
+          ['not', 5.817, 5.909],
+          ['a', 5.944, 5.968],
+          ['video,', 6.002, 6.618],
+          ['it’s', 6.861, 7.105],
+          ['HTML.', 7.221, 8.139],
+        ];
+        const [THIS, LOOKS, LIKE, A1, SCREEN, RECORDING, WATCH, WHAT, HAPPENS, WHEN, I, ZOOM, IN, STILL, SHARP, BECAUSE, ITS, NOT, A2, VIDEO, ITS2, HTML] =
+          VOICE.map((w) => w[1]);
+        /** The hook, on the scratch voice's clock: “HTML.” and a breath. */
+        const DUR = 8.6;
+        /** Its cover, the reel's first frame: “This looks like a screen RECORDING.” landed. */
+        const COVER = RECORDING + 0.6;
+        /** The voice's next word, past the hook: it places the hook's end on the take. */
+        const NEXT = ['I', 8.742, 8.812];
+
+        // ---------- Your take: the creator's words (cut/master-words.txt) ----------
+        const TAKE_WORDS = [
+          ['This', 0.3], ['looks', 0.48], ['like', 0.66], ['a', 0.8], ['screen', 0.94], ['recording,', 1.18],
+          ['but', 1.9], ['watch', 2.04], ['what', 2.26], ['happen', 2.44], ['when', 2.8], ['I', 2.92],
+          ['zoom', 3.1], ['in.', 3.32], ['Still', 4.0], ['sharp', 4.24], ['because', 4.74], ['it’s', 4.98],
+          ['not', 5.18], ['a', 5.34], ['video,', 5.48], ['it’s', 5.78], ['HTML.', 6.14], ['I', 7.94],
+        ];
+        // The word anchors (cut/anchors.json): [scratch t, real τ, word], the words both share.
+        const ANCHORS = [
+          [0, 0.3, 'This'], [0.267, 0.48, 'looks'], [0.488, 0.66, 'like'], [0.662, 0.8, 'a'],
+          [0.743, 0.94, 'screen'], [1.103, 1.18, 'recording.'], [2.241, 2.04, 'Watch'], [2.496, 2.26, 'what'],
+          [2.65, 2.44, 'happens'], [2.984, 2.8, 'when'], [3.146, 2.92, 'I'], [3.251, 3.1, 'zoom'],
+          [3.506, 3.32, 'in.'], [4.214, 4.0, 'Still'], [4.54, 4.24, 'sharp.'], [5.387, 4.74, 'Because'],
+          [5.666, 4.98, 'it’s'], [5.817, 5.18, 'not'], [5.944, 5.34, 'a'], [6.002, 5.48, 'video,'],
+          [6.861, 5.78, 'it’s'], [7.221, 6.14, 'HTML.'], [8.742, 7.94, 'I'],
+        ];
+        // Local to the scene: the hook opens the cut, so it starts at 0 on both
+        // clocks ("This" is 0.3 s into the take, at 0 in the voice).
+        const SCENE_AT = { scratch: 0, take: 0 };
+        /** [[τ, t], …]: the take's time, the same word's time in the voice. */
+        const TAKE = ANCHORS.map(([t, tau]) => [tau - SCENE_AT.take, t - SCENE_AT.scratch]);
+
+        // ---------- The beats, from the words ----------
+        const LEAD = 0.03; // a word starts to rise a moment before it's said
+        const PHRASES = [
+          { serif: [[THIS, 'This'], [LOOKS, 'looks'], [LIKE, 'like'], [A1, 'a'], [SCREEN, 'screen']], heavy: [[RECORDING, 'Recording']], dot: RECORDING + 0.5, out: WATCH - 0.04 },
+          { serif: [[WATCH, 'Watch'], [WHAT, 'what'], [HAPPENS, 'happens'], [WHEN, 'when'], [I, 'I']], heavy: [[ZOOM, 'Zoom'], [IN, 'in']], dot: IN + 0.21, out: STILL - 0.04 },
+          { serif: [[STILL, 'Still']], heavy: [[SHARP, 'Sharp']], dot: SHARP + 0.32, out: BECAUSE - 0.02 },
+          { serif: [[BECAUSE, 'Because'], [ITS, 'it’s'], [NOT, 'not'], [A2, 'a'], [VIDEO, 'video,']], heavy: [[ITS2, 'It’s'], [HTML, 'HTML']], dot: HTML + 0.4, out: Infinity },
+        ];
+        const PUSH = [WATCH - 0.04, IN + 0.24]; // into the inspector, landing after “in.”
+        const BACK = [SHARP + 0.66, SHARP + 1.41]; // and out, as “Because” starts
+        const GLIDE = [RECORDING, WATCH + 0.1]; // the pointer to the letter-spacing field
+        const CLICK = WATCH + 0.31;
+        const TYPE = [STILL + 0.1, STILL + 0.5]; // “0.12em”, typed in close
+        const AWAY = [BACK[0] + 0.1, BACK[1] + 0.3]; // the pointer leaves
+        const TILT = [ITS2 - 0.06, ITS2 + 0.49]; // “it’s HTML”: the window turns…
+        const LIFT = [ITS2 + 0.09, ITS2 + 0.74]; // …and comes apart into its layers
+        const SETTLE = [TILT[1], TILT[1] + 0.9];
+        const TAGS = { fig: ITS2 + 0.14, h1: HTML, aside: HTML + 0.22, btn: HTML + 0.44 };
+
+        // ---------- The window's geometry ----------
+        const WIN = { x: 36, y: 140, w: 468, h: 300 }; // at rest on the stage
+        const WC = [WIN.w / 2, WIN.h / 2];
+        const S = 4.4; // the zoom
+        const ZC = [270, 330]; // where the focus lands on the stage, in close
+        const PLANES = [
+          { name: 'frame', z: 0 },
+          { name: 'panels', z: 46 },
+          { name: 'canvas', z: 92 },
+          { name: 'hero', z: 140 },
+        ];
+        let FOCUS = [410, 140]; // window-local; measured in setup
+        let FIELD = [440, 156];
+        const P = {}; // the parts draw(t) sets
+
+        // ---------- Setup: measure, build the titles and the threads ----------
+        const off = (el, root) => {
+          let x = 0, y = 0;
+          for (let e = el; e && e !== root; e = e.offsetParent) {
+            x += e.offsetLeft;
+            y += e.offsetTop;
+          }
+          return { x, y, w: el.offsetWidth, h: el.offsetHeight };
+        };
+        let built = null;
+        const setup = () => built || (built = build());
+        async function build() {
+          await Promise.all(
+            ['400 52px "Instrument Serif"', '400 100px Anton', '500 12px Geist', '600 15px "Geist Mono"'].map((f) =>
+              document.fonts.load(f).catch(() => null),
+            ),
+          );
+          Object.assign(P, {
+            bg: $('.bg'),
+            shot: $('.shot'),
+            cam: $('.cam'),
+            tilt: $('.tilt'),
+            win: $('.win'),
+            band: $('.band'),
+            planes: PLANES.map((p) => ({ ...p, el: $(`[data-pl="${p.name}"]`) })),
+            ptr: $('.ptr'),
+            ls: $('.fld.ls'),
+            val: $('.fld.ls .val'),
+            caret: $('.fld.ls .caret'),
+            h1: $('.hero-h1'),
+            sel: $('.sel-box'),
+            btn: $('.hero-btn'),
+            hero: $('.hero'),
+            tags: Object.fromEntries($$('.tag').map((g) => [g.dataset.tag, g])),
+            leads: Object.fromEntries(['fig', 'aside'].map((k) => [k, { path: $(`path[data-lead="${k}"]`), dot: $(`circle[data-lead="${k}"]`), anc: $(`[data-anc="${k}"]`) }])),
+          });
+          const ls = off(P.ls, P.win);
+          const panel = off($('.w-right'), P.win);
+          FOCUS = [panel.x + panel.w / 2, ls.y + ls.h / 2 - 12];
+          FIELD = [ls.x + ls.w * 0.8, ls.y + ls.h * 0.72];
+          buildTitles();
+          buildThreads();
+        }
+
+        const WORDS = [];
+        function buildTitles() {
+          const root = $('.titles');
+          const probe = document.createElement('div');
+          probe.className = 'ph';
+          root.append(probe);
+          const width = (cls, text) => {
+            const d = document.createElement('div');
+            d.className = cls;
+            d.style.display = 'inline-block';
+            d.textContent = text;
+            probe.append(d);
+            const w = d.scrollWidth;
+            d.remove();
+            return w;
+          };
+          const MAXW = 470; // 35 px each side of 540
+          // One heavy size for every phrase: the largest that keeps the widest line in.
+          let heavy = 100;
+          for (const ph of PHRASES) {
+            const w = width('reel-heavy', ph.heavy.map((x) => x[1]).join(' ')) + 0.22 * 100;
+            heavy = Math.min(heavy, (100 * MAXW) / w);
+          }
+          probe.remove();
+          const mask = (text, at, dot) => {
+            const m = document.createElement('span');
+            m.className = 'reel-mask';
+            const inn = document.createElement('span');
+            inn.textContent = text;
+            m.append(inn);
+            const w = { inn, at: Math.max(0, at - LEAD) };
+            if (dot) {
+              w.dot = document.createElement('i');
+              w.dot.className = 'reel-dot';
+              inn.append(w.dot);
+            }
+            return [m, w];
+          };
+          for (const ph of PHRASES) {
+            const box = document.createElement('div');
+            box.className = 'ph';
+            box.setAttribute('data-safe', '');
+            root.append(box);
+            // The serif on one line if it fits, else two balanced ones.
+            const words = ph.serif.map((x) => x[1]);
+            let lines = [ph.serif];
+            const probe2 = document.createElement('div');
+            probe2.className = 'ph';
+            root.append(probe2);
+            const w2 = (list) => {
+              const d = document.createElement('div');
+              d.className = 'reel-serif';
+              d.style.display = 'inline-block';
+              d.textContent = list.map((x) => x[1]).join(' ');
+              probe2.append(d);
+              const w = d.scrollWidth;
+              d.remove();
+              return w;
+            };
+            if (w2(ph.serif) > MAXW) {
+              let best = null;
+              for (let i = 1; i < words.length; i++) {
+                const m = Math.max(w2(ph.serif.slice(0, i)), w2(ph.serif.slice(i)));
+                if (!best || m < best.m) best = { i, m };
+              }
+              lines = [ph.serif.slice(0, best.i), ph.serif.slice(best.i)];
+            }
+            probe2.remove();
+            ph.words = [];
+            for (const line of lines) {
+              const el = document.createElement('div');
+              el.className = 'reel-serif';
+              line.forEach(([at, text], i) => {
+                if (i) el.append(' ');
+                const [m, w] = mask(text, at);
+                el.append(m);
+                ph.words.push(w);
+              });
+              box.append(el);
+            }
+            const hl = document.createElement('div');
+            hl.className = 'reel-heavy';
+            hl.style.fontSize = heavy.toFixed(2) + 'px';
+            ph.heavy.forEach(([at, text], i) => {
+              if (i) hl.append(' ');
+              const [m, w] = mask(text, at, i === ph.heavy.length - 1);
+              hl.append(m);
+              ph.words.push(w);
+            });
+            box.append(hl);
+            ph.box = box;
+            ph.first = Math.min(...ph.words.map((w) => w.at));
+          }
+        }
+
+        // A few threads of light, fanning down from under the window.
+        const THREADS = [
+          { x0: 238, x1: -60, ph: 0.4, w: 1.1, sp: 0.11 },
+          { x0: 252, x1: 70, ph: 2.1, w: 0.8, sp: 0.08 },
+          { x0: 262, x1: 190, ph: 4.0, w: 1.3, sp: 0.13 },
+          { x0: 272, x1: 300, ph: 1.2, w: 0.9, sp: 0.1 },
+          { x0: 282, x1: 410, ph: 3.3, w: 1.2, sp: 0.09 },
+          { x0: 294, x1: 540, ph: 5.1, w: 0.8, sp: 0.12 },
+          { x0: 302, x1: 620, ph: 2.7, w: 1.0, sp: 0.1 },
+        ];
+        function buildThreads() {
+          const g = $('.thr');
+          const NS = 'http://www.w3.org/2000/svg';
+          for (const th of THREADS) {
+            for (const kind of ['glow', 'line', 'glint']) {
+              const p = document.createElementNS(NS, 'path');
+              p.setAttribute('fill', 'none');
+              p.setAttribute('stroke', kind === 'glint' ? '#ffd2a6' : 'url(#thread-ink)');
+              p.setAttribute('stroke-linecap', 'round');
+              p.setAttribute('stroke-width', kind === 'glow' ? th.w * 7 : kind === 'glint' ? th.w * 1.6 : th.w);
+              if (kind === 'glint') {
+                p.setAttribute('pathLength', '1000');
+                p.setAttribute('stroke-dasharray', '70 930');
+              }
+              g.append(p);
+              th[kind] = p;
+            }
+          }
+        }
+
+        // ---------- draw(t): every part, from t alone ----------
+        function draw(t) {
+          // The camera: a slow push at rest, into the field on “Watch…in.”, a creeping hold,
+          // out on “Because”, then smaller for the exploded view and a slow push to the end.
+          const e = t < PUSH[0] ? 0 : t < PUSH[1] ? quart(t, PUSH[0], PUSH[1]) : t < BACK[0] ? 1 : 1 - ease(t, BACK[0], BACK[1]);
+          const ti = ease(t, TILT[0], TILT[1]);
+          const se = ease(t, SETTLE[0], SETTLE[1]);
+          const lift = out(t, LIFT[0], LIFT[1]);
+          const late = clamp((t - SETTLE[0]) / (DUR - SETTLE[0]));
+          const hold = ease(t, PUSH[1], BACK[0]) * e;
+          const open = 0.96 + 0.04 * ease(t, 0, PUSH[0]) + 0.02 * ease(t, BACK[1], TILT[0]) * (1 - ti);
+          const s = open * (1 + (S - 1) * e) * (1 + 0.05 * hold) * (1 - 0.18 * ti + 0.05 * late);
+          // The pivot leaves the window's centre for the field early in the push, so the
+          // window grows around the field rather than sweeping across.
+          const b = ease(e, 0, 0.35);
+          const qx = lerp(WC[0], FOCUS[0], b), qy = lerp(WC[1], FOCUS[1], b);
+          const rx = WIN.x + qx, ry = WIN.y + qy;
+          const px = lerp(rx, ZC[0], e) - 5 * hold;
+          const py = lerp(ry, ZC[1], e) + 10 * ti - 10 * late;
+          P.cam.style.transform = `translate(${(px - s * qx).toFixed(2)}px, ${(py - s * qy).toFixed(2)}px) scale(${s.toFixed(4)})`;
+
+          // In close, the window's lower part dissolves into the background, clear of the titles.
+          if (e > 0.001) {
+            const k = ease(e, 0.05, 0.55);
+            const al = [1, 0.8, 0.5, 0.2, 0].map((v) => lerp(1, v, k).toFixed(3));
+            const ys = [380, 425, 470, 515, 560];
+            const m = `linear-gradient(180deg, rgba(0,0,0,${al[0]}) ${ys[0]}px, ${ys
+              .slice(1)
+              .map((y, i) => `rgba(0,0,0,${al[i + 1]}) ${y}px`)
+              .join(', ')})`;
+            P.shot.style.maskImage = P.shot.style.webkitMaskImage = m;
+          } else P.shot.style.maskImage = P.shot.style.webkitMaskImage = 'none';
+          P.band.style.opacity = (0.35 + 0.65 * ease(e, 0.1, 0.6)).toFixed(3);
+
+          // “It’s HTML”: the window turns about its centre and its layers lift apart.
+          P.tilt.classList.toggle('d3', ti > 0);
+          if (ti > 0) {
+            const ax = ti * (lerp(24, 18, se) - 3 * late), ay = ti * (lerp(-30, -23, se) + 6 * late);
+            P.tilt.style.transform = `translate(${WC[0]}px, ${WC[1]}px) perspective(1100px) rotateX(${ax.toFixed(3)}deg) rotateY(${ay.toFixed(3)}deg) translate(${-WC[0]}px, ${-WC[1]}px)`;
+          } else P.tilt.style.transform = 'none';
+          P.planes.forEach((p, i) => {
+            p.el.style.transform = ti > 0 ? `translateZ(${(p.z * lift + i * 0.5).toFixed(2)}px)` : 'none';
+            const at = TILT[0] + 0.04 + i * 0.09;
+            p.el.style.setProperty('--ol', ease(t, at, at + 0.2).toFixed(3));
+          });
+          P.h1.style.setProperty('--hl', ease(t, TAGS.h1 - 0.12, TAGS.h1 + 0.13).toFixed(3));
+
+          // The app at work: the pointer clicks the field, “0.12em” is typed in close,
+          // and the heading's letter spacing follows.
+          const g = ease(t, GLIDE[0], GLIDE[1]);
+          const idle = [228 + 8 * Math.sin(t * 1.3), 112 + 5 * Math.sin(t * 0.9 + 1)];
+          const away = ease(t, AWAY[0], AWAY[1]);
+          let x = lerp(idle[0], FIELD[0], g), y = lerp(idle[1], FIELD[1], g);
+          x = lerp(x, x - 70, away);
+          y = lerp(y, y + 60, away);
+          const press = 1 - 0.14 * pulse(t, CLICK, 0.05, 0.12);
+          P.ptr.style.transform = `translate(${(x - 1).toFixed(2)}px, ${(y - 1).toFixed(2)}px) scale(${press.toFixed(3)})`;
+          P.ptr.style.opacity = (1 - ease(t, AWAY[1] - 0.3, AWAY[1])).toFixed(3);
+          const focused = t >= CLICK && t < BACK[1] + 0.2;
+          P.ls.classList.toggle('focus', focused);
+          P.val.classList.toggle('sel', t >= CLICK && t < TYPE[0]);
+          P.val.textContent = t < TYPE[0] ? '0.02em' : typed('0.12em', t, TYPE[0], TYPE[1]);
+          const typing = t >= TYPE[0] && t < TYPE[1] + 0.1;
+          P.caret.style.opacity = focused && t >= TYPE[0] && (typing || Math.floor((t - TYPE[1]) / 0.5) % 2 === 1) ? 1 : 0;
+          P.h1.style.setProperty('--ls', (0.02 + 0.1 * ease(t, TYPE[1], TYPE[1] + 0.35)).toFixed(4) + 'em');
+          P.sel.style.opacity = (1 - ease(t, AWAY[1], AWAY[1] + 0.3)).toFixed(3);
+
+          // Tags: on the hero's own plane for its elements, flat with a leader for the rest.
+          const sr = stage.getBoundingClientRect();
+          const k = sr.width / 540 || 1;
+          const toStage = (el) => {
+            const r = el.getBoundingClientRect();
+            return [(r.left - sr.left) / k, (r.top - sr.top) / k];
+          };
+          const h1 = off(P.h1, P.win), bt = off(P.btn, P.win);
+          const tin = (g2, x2, y2, at) => {
+            g2.style.opacity = ease(t, at, at + 0.12).toFixed(3);
+            g2.style.left = x2.toFixed(1) + 'px';
+            g2.style.top = (y2 + 6 * (1 - out(t, at, at + 0.3))).toFixed(1) + 'px';
+          };
+          tin(P.tags.h1, h1.x, h1.y - 30, TAGS.h1);
+          tin(P.tags.btn, bt.x + bt.w + 8, bt.y + bt.h / 2 - 13, TAGS.btn);
+          const SLOT = { fig: [22, 150, 'top'], aside: [22, 486, 'bottom'] };
+          for (const key of ['fig', 'aside']) {
+            const tg = P.tags[key], ld = P.leads[key], at = TAGS[key];
+            const vis = ease(t, at, at + 0.12);
+            const [sx, sy, side] = SLOT[key];
+            const y2 = sy + 6 * (1 - out(t, at, at + 0.28));
+            tg.style.opacity = vis.toFixed(3);
+            tg.style.left = sx + 'px';
+            tg.style.top = y2.toFixed(1) + 'px';
+            if (vis <= 0) {
+              ld.path.setAttribute('d', '');
+              ld.dot.setAttribute('opacity', 0);
+              continue;
+            }
+            const [ax, ay] = toStage(ld.anc);
+            const ex = clamp(ax, sx, sx + tg.offsetWidth), ey = side === 'top' ? y2 + tg.offsetHeight : y2;
+            const kk = out(t, at + 0.05, at + 0.35);
+            ld.path.setAttribute('d', `M${ex.toFixed(1)},${ey.toFixed(1)} L${lerp(ex, ax, kk).toFixed(1)},${lerp(ey, ay, kk).toFixed(1)}`);
+            ld.path.setAttribute('opacity', vis.toFixed(3));
+            ld.dot.setAttribute('cx', ax.toFixed(1));
+            ld.dot.setAttribute('cy', ay.toFixed(1));
+            ld.dot.setAttribute('opacity', kk > 0.98 ? 1 : 0);
+          }
+
+          // The titles: each word up through its own mask on its word; a phrase leaves
+          // up through the same masks just before the next one starts. Never a fade.
+          for (const ph of PHRASES) {
+            const leaving = ease(t, ph.out - 0.16, ph.out);
+            ph.box.style.visibility = t >= ph.first && t < ph.out ? 'visible' : 'hidden';
+            for (const w of ph.words) {
+              const y2 = t < ph.out - 0.16 ? 120 * (1 - out(t, w.at, w.at + 0.3)) : -120 * leaving;
+              w.inn.style.transform = `translateY(${y2.toFixed(2)}%)`;
+              if (w.dot) w.dot.style.transform = `scale(${back(t, ph.dot, ph.dot + 0.3).toFixed(3)})`;
+            }
+          }
+
+          // The light: a warm glow under the window, a beat on “HTML”, threads that drift.
+          const beat = pulse(t, HTML, 0.08, 0.7) + 0.35 * pulse(t, SHARP, 0.06, 0.5);
+          const gy = lerp(300, 360, e);
+          P.bg.style.background =
+            `radial-gradient(ellipse ${(320 + 40 * beat).toFixed(0)}px ${(250 + 30 * beat).toFixed(0)}px at 50% ${gy.toFixed(0)}px, rgba(255,150,80,${(0.22 + 0.05 * e + 0.12 * beat).toFixed(3)}), rgba(255,138,61,0) 70%),` +
+            `radial-gradient(ellipse 380px 240px at ${(46 + 8 * Math.sin(t * 0.17)).toFixed(2)}% -40px, rgba(255,170,110,0.07), rgba(255,170,110,0) 70%),` +
+            `radial-gradient(ellipse 420px 300px at 50% 1010px, rgba(255,122,52,${(0.13 + 0.05 * beat).toFixed(3)}), rgba(255,122,52,0) 70%),` +
+            `radial-gradient(ellipse 360px 520px at ${(50 + 6 * Math.sin(t * 0.21)).toFixed(2)}% 50%, rgba(28,26,30,0.6), rgba(6,6,7,0) 75%), #060607`;
+          const gain = 0.42 + 0.18 * e + 0.5 * beat;
+          for (const th of THREADS) {
+            const sway = Math.sin(t * 0.33 + th.ph), sway2 = Math.sin(t * 0.21 + th.ph * 1.7);
+            const x0 = th.x0 + 4 * sway2, y0 = 420;
+            const x1 = th.x1 + 26 * sway, y1 = 990;
+            const c1x = x0 + (x1 - x0) * 0.12 + 22 * sway2, c2x = x1 - (x1 - x0) * 0.3 + 30 * sway;
+            const d = `M${x0.toFixed(1)},${y0} C${c1x.toFixed(1)},620 ${c2x.toFixed(1)},760 ${x1.toFixed(1)},${y1}`;
+            th.glow.setAttribute('d', d);
+            th.line.setAttribute('d', d);
+            th.glint.setAttribute('d', d);
+            th.glow.setAttribute('opacity', (0.07 * gain).toFixed(3));
+            th.line.setAttribute('opacity', (gain * (0.7 + 0.3 * Math.sin(t * 0.5 + th.ph))).toFixed(3));
+            th.glint.setAttribute('stroke-dashoffset', (-((t * th.sp * 1000 + th.ph * 160) % 1000)).toFixed(1));
+            th.glint.setAttribute('opacity', (0.55 * gain).toFixed(3));
+          }
+        }
+
+        // ---------- Two clocks for one scene ----------
+        // The same draw, on the scratch voice's seconds and on the take's (t = W(τ)).
+        // Each scene() puts __frame on the window; keep both, expose the one asked for.
+        const scratch = scene({ dur: DUR, draw, setup, cover: COVER });
+        const F = { scratch: [window.__frame, window.__dur, window.__ready] };
+        const take = scene({ dur: DUR, draw, setup, anchors: TAKE, cover: COVER });
+        F.take = [window.__frame, window.__dur, window.__ready];
+        const CLOCKS = { scratch, take };
+        const first = Q.has('take') ? 'take' : 'scratch';
+        let active = CLOCKS[first];
+        const other = (c) => (c === scratch ? take : scratch);
+        other(active).pause();
+        const [frame0, dur0, ready0] = F[first];
+        window.__dur = dur0;
+        window.__ready = ready0;
+        window.__frame = (tau) => {
+          // From outside, the caller owns the clock: stop both live plays.
+          scratch.pause();
+          take.pause();
+          return frame0(tau);
+        };
+        if (FRAME) return;
+
+        const tOf = (c, tau) => clamp(c.W(tau), 0, DUR);
+        const tauOf = (c, t) => (c.W.inverse ? c.W.inverse(t) : t);
+        const RM = matchMedia('(prefers-reduced-motion: reduce)');
+        // Reduced motion: the complete end frame, still; the scrubber moves it.
+        if (RM.matches) active.seek(active.length);
+
+        // The controls (HTMLReel.controls) drive whichever clock the switch picks.
+        let autoPaused = false;
+        const player = {
+          get length() {
+            return active.length;
+          },
+          get paused() {
+            return active.paused;
+          },
+          get time() {
+            return active.time;
+          },
+          play() {
+            autoPaused = false;
+            active.play();
+          },
+          pause() {
+            autoPaused = false;
+            hold();
+          },
+          seek: (tau) => active.seek(tau),
+        };
+        // pause() stops the clock without drawing it: show the frame it stopped on.
+        const hold = () => {
+          active.pause();
+          active.seek(active.time);
+          range.value = String(Math.min(active.time, active.length));
+        };
+        const bar = controls(player, document.getElementById('bar'));
+        const btn = bar.querySelector('button');
+        const range = bar.querySelector('input');
+        const showButton = () => {
+          btn.textContent = player.paused ? '▶' : '❚❚';
+          btn.setAttribute('aria-label', player.paused ? 'Play' : 'Pause');
+        };
+        range.max = String(active.length);
+        range.value = String(Math.min(active.time, active.length));
+
+        // The switch: the same frame on the other clock, then on from there.
+        const strip = document.querySelector('.strip');
+        function setClock(name) {
+          const next = CLOCKS[name];
+          strip.dataset.mode = name;
+          if (next === active) return;
+          const playing = !active.paused;
+          const t = tOf(active, Math.min(active.time, active.length));
+          active.pause();
+          const tau = clamp(tauOf(next, t), 0, next.length);
+          next.seek(tau);
+          if (playing) next.play();
+          active = next;
+          range.max = String(next.length);
+          range.value = String(tau);
+          showButton();
+        }
+        for (const r of document.querySelectorAll('input[name="clock"]')) {
+          r.checked = r.value === first;
+          r.addEventListener('change', () => r.checked && setClock(r.value));
+        }
+        setClock(first);
+        RM.addEventListener('change', () => {
+          if (!RM.matches) return;
+          active.seek(active.length);
+          range.value = String(active.length);
+          showButton();
+        });
+
+        // Plays only while the phone is on screen.
+        new IntersectionObserver(([en]) => {
+          if (!en.isIntersecting && !active.paused) {
+            hold();
+            autoPaused = true;
+          } else if (en.isIntersecting && autoPaused) {
+            autoPaused = false;
+            active.play();
+          }
+          showButton();
+        }).observe(document.querySelector('.phone'));
+
+        // The phone's screen: one scale for the stage.
+        const screen = document.querySelector('.screen');
+        new ResizeObserver(() => stage.style.setProperty('--pk', (screen.clientWidth / 540).toFixed(5))).observe(screen);
+
+        // ---------- The strip: both clocks' words, the anchors and the playhead ----------
+        const view = strip.querySelector('.strip-view');
+        const svg = view.querySelector('svg');
+        const say = { scratch: strip.querySelector('[data-o="scratch"]'), take: strip.querySelector('[data-o="take"]') };
+        const SPAN = 9.1, PAD = 16, MIN = 64;
+        const AX = { s: 64, r: 120 };
+        const ROWS = { s: [54, 42, 30, 18], r: [136, 148, 160, 172] }; // four rows of labels a side
+        const HEIGHT = 178;
+        const ctx = document.createElement('canvas').getContext('2d');
+        let pxs = MIN, cw = 0, vw = 0, el = null, lastS = -1, lastR = -1;
+        const X = (s) => PAD + s * pxs;
+        const LEN = take.length;
+        const TW = TAKE_WORDS.map(([w, tau]) => [w, tau, ANCHORS.some((a) => Math.abs(a[1] - tau) < 1e-6)]);
+        const SW = [...VOICE, NEXT];
+        function layout(list, at) {
+          ctx.font = '500 11px Geist, system-ui, sans-serif';
+          const ends = [-1e9, -1e9, -1e9, -1e9];
+          return list.map((w) => {
+            const x0 = X(at(w));
+            let r = ends.findIndex((e2) => x0 >= e2 + 4);
+            if (r < 0) r = ends.indexOf(Math.min(...ends));
+            ends[r] = x0 + ctx.measureText(w[0]).width;
+            return r;
+          });
+        }
+        function buildStrip() {
+          vw = view.clientWidth;
+          if (!vw) return;
+          pxs = Math.max(MIN, (vw - 2 * PAD) / SPAN);
+          cw = Math.ceil(2 * PAD + SPAN * pxs);
+          svg.setAttribute('width', cw);
+          svg.setAttribute('height', HEIGHT);
+          svg.setAttribute('viewBox', `0 0 ${cw} ${HEIGHT}`);
+          const rs = layout(SW, (w) => w[1]);
+          const rr = layout(TW, (w) => w[1]);
+          const curve = (a, b) => `M${X(a).toFixed(1)},${AX.s + 4} C${X(a).toFixed(1)},${AX.s + 30} ${X(b).toFixed(1)},${AX.r - 30} ${X(b).toFixed(1)},${AX.r - 4}`;
+          let h = `<line class="ax" x1="${X(0)}" x2="${X(SPAN)}" y1="${AX.s}" y2="${AX.s}"/><line class="ax" x1="${X(0)}" x2="${X(SPAN)}" y1="${AX.r}" y2="${AX.r}"/>`;
+          ANCHORS.forEach(([t, tau], i) => (h += `<path class="ln${t > DUR ? ' past' : ''}" data-i="${i}" d="${curve(t, tau)}"/>`));
+          h += `<path class="end" d="M${X(DUR)},${AX.s - 9} V${AX.s + 4} ${curve(DUR, LEN).slice(curve(DUR, LEN).indexOf('C'))} V${AX.r + 9}"/>`;
+          SW.forEach(([w, a, z], i) => {
+            const y = ROWS.s[rs[i]];
+            const past = a > DUR ? ' past' : '';
+            h += `<line class="stem${past}" x1="${X(a)}" x2="${X(a)}" y1="${y + 3}" y2="${AX.s - 3}"/>`;
+            h += `<rect class="bar-w${past}" x="${X(a)}" y="${AX.s - 2}" width="${Math.max(2, (z - a) * pxs)}" height="4" rx="2"/>`;
+            h += `<text class="${past}" data-s="${i}" x="${X(a)}" y="${y}">${w}</text>`;
+          });
+          TW.forEach(([w, a, paired], i) => {
+            const y = ROWS.r[rr[i]];
+            const past = a > LEN ? ' past' : '';
+            h += `<line class="stem${past}" x1="${X(a)}" x2="${X(a)}" y1="${AX.r + 3}" y2="${y - 10}"/>`;
+            h += `<circle class="dot-w${past}" cx="${X(a)}" cy="${AX.r}" r="${paired ? 2.5 : 2}"${paired ? '' : ' fill="none" stroke="rgba(255,255,255,.5)"'}/>`;
+            h += `<text class="${past}${paired ? '' : ' odd'}" data-r="${i}" x="${X(a)}" y="${y}">${w}</text>`;
+          });
+          h += `<path class="head" d=""/><circle class="head-dot" r="3.5"/><circle class="head-dot" r="3.5"/>`;
+          svg.innerHTML = h;
+          el = {
+            s: [...svg.querySelectorAll('text[data-s]')],
+            r: [...svg.querySelectorAll('text[data-r]')],
+            ln: [...svg.querySelectorAll('.ln')],
+            head: svg.querySelector('.head'),
+            dots: [...svg.querySelectorAll('.head-dot')],
+          };
+          lastS = lastR = -2;
+        }
+        const nowIndex = (list, x) => {
+          let n = -1;
+          for (let i = 0; i < list.length; i++) if (list[i][1] <= x + 1e-6) n = i;
+          return n;
+        };
+        function drawStrip(t, tau) {
+          if (!el) return;
+          const xs = X(t), xr = X(tau);
+          el.head.setAttribute('d', `M${xs.toFixed(1)},4 V${AX.s} C${xs.toFixed(1)},${AX.s + 28} ${xr.toFixed(1)},${AX.r - 28} ${xr.toFixed(1)},${AX.r} V${HEIGHT - 2}`);
+          el.dots[0].setAttribute('cx', xs.toFixed(1));
+          el.dots[0].setAttribute('cy', AX.s);
+          el.dots[1].setAttribute('cx', xr.toFixed(1));
+          el.dots[1].setAttribute('cy', AX.r);
+          // The current word is lit while it's being said (and just after); then it's said.
+          const light = (els, i0, lit) =>
+            els.forEach((x2, i) => {
+              x2.classList.toggle('now', i === i0 && lit);
+              x2.classList.toggle('said', i < i0 || (i === i0 && !lit));
+            });
+          const ns = nowIndex(SW, t), nr = nowIndex(TW, tau);
+          light(el.s, ns, ns >= 0 && t < SW[ns][2] + 0.35);
+          light(el.r, nr, nr >= 0 && tau < (TW[nr + 1] ? Math.min(TW[nr + 1][1], TW[nr][1] + 0.6) : TW[nr][1] + 0.6));
+          if (ns !== lastS) {
+            el.ln.forEach((x2, i) => x2.classList.toggle('said', ANCHORS[i][0] <= t + 1e-6));
+            lastS = ns;
+          }
+          if (cw > vw) {
+            const o = clamp((xs + xr) / 2 - vw / 2, 0, cw - vw);
+            svg.style.transform = `translateX(${(-o).toFixed(1)}px)`;
+          } else svg.style.transform = 'none';
+          say.scratch.textContent = t.toFixed(2) + ' s';
+          say.take.textContent = tau.toFixed(2) + ' s';
+        }
+        new ResizeObserver(() => {
+          if (view.clientWidth !== vw) buildStrip();
+        }).observe(view);
+        // Lay the labels out again once Geist is in (measureText falls back until then).
+        document.fonts.load('500 11px Geist').catch(() => null).then(buildStrip);
+
+        const loop = () => {
+          const tau = Math.min(active.time, active.length);
+          const t = tOf(active, tau);
+          drawStrip(t, active === take ? tau : clamp(tauOf(take, t), 0, LEN));
+          requestAnimationFrame(loop);
+        };
+        requestAnimationFrame(loop);
+      })();
+    </script>
+  </body>
+</html>

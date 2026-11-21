@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="assets/gsap.min.js"></script>
+    <style>
+      @font-face { font-family: "Poppins"; font-weight: 600; src: url(assets/fonts/poppins-600.woff2) format("woff2"); }
+      @font-face { font-family: "Poppins"; font-weight: 800; src: url(assets/fonts/poppins-800.woff2) format("woff2"); }
+      @font-face { font-family: "Caveat"; font-weight: 700; src: url(assets/fonts/Caveat-700-latin.woff2) format("woff2"); }
+      :root { --blue: #1f88c9; --ink: #15171b; --hw-ink: #1f88c9; }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1080px; height: 1920px; overflow: hidden; background: #f6f3ec; }
+      #root { position: relative; width: 100%; height: 100%; overflow: hidden; font-family: "Poppins", sans-serif; color: var(--ink); }
+      .layer { position: absolute; inset: 0; }
+      .sheet { position: absolute; inset: 0; overflow: hidden; }
+      .paper { position: absolute; inset: 0; background: url(assets/paper.jpg) center / cover; }
+      .blue { position: absolute; inset: 0; background: var(--blue); }
+      .blue::after { content: ""; position: absolute; inset: 0; background: url(assets/paper.jpg) center / cover; mix-blend-mode: multiply; opacity: 0.55; }
+      .rim { position: absolute; inset: 0; background: #fbfaf8; }
+
+      .h { position: absolute; left: 76px; display: block; font-weight: 800; letter-spacing: -3px; line-height: 1.04; white-space: nowrap; }
+      .h span { display: block; }
+      .b { color: var(--blue); }
+      .note { position: absolute; display: block; font-family: "Caveat", cursive; font-weight: 700; color: var(--blue); white-space: nowrap; line-height: 1; }
+
+      /* polaroid stickers */
+      #world { position: absolute; inset: 0; }
+      .pol { position: absolute; background: #fff; padding: 12px 12px 46px; box-shadow: 0 2px 2px rgba(0,0,0,0.08), 0 14px 26px rgba(40,30,10,0.18); }
+      .pol img { display: block; width: 100%; height: 100%; object-fit: cover; }
+      .pol .cap { position: absolute; left: 0; right: 0; bottom: 6px; text-align: center; font-family: "Caveat", cursive; font-weight: 700; font-size: 30px; color: #2a2a2a; white-space: nowrap; }
+      .tape { position: absolute; width: 120px; height: 34px; background: rgba(236, 226, 196, 0.82); box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+        clip-path: polygon(0% 8%, 6% 0%, 12% 10%, 20% 2%, 30% 8%, 42% 0%, 55% 6%, 68% 0%, 80% 9%, 90% 1%, 100% 8%, 97% 50%, 100% 92%, 90% 100%, 78% 92%, 64% 100%, 50% 93%, 36% 100%, 22% 92%, 10% 100%, 0% 92%, 3% 50%); }
+      #slot { position: absolute; border: 6px dashed var(--blue); background: rgba(31,136,201,0.06); display: flex; align-items: center; justify-content: center; }
+      #slot span { font-family: "Caveat", cursive; font-weight: 700; font-size: 54px; color: var(--blue); text-align: center; line-height: 0.95; }
+
+      /* hand-drawn primitives (HyperFrames registry: hw-arrow, hw-underline, hw-boil) */
+      .hw-arrow, .hw-mark { position: absolute; pointer-events: none; }
+      .hw-arrow svg, .hw-mark svg { width: 100%; height: 100%; overflow: visible; }
+      .hw-arrow path, .hw-mark path { fill: none; stroke: var(--hw-ink); stroke-width: 7; stroke-linecap: round; stroke-linejoin: round; }
+
+      #plus100 { position: absolute; left: 0; right: 0; top: 560px; display: block; text-align: center; font-weight: 800; font-size: 380px; letter-spacing: -16px; line-height: 1; color: #fff; }
+      #sub100 { position: absolute; left: 0; right: 0; top: 1000px; display: block; text-align: center; font-family: "Caveat", cursive; font-weight: 700; font-size: 92px; line-height: 1; color: #fff; white-space: nowrap; }
+
+      #end .icon { position: absolute; left: 395px; top: 380px; width: 290px; display: block; }
+      #join { position: absolute; left: 0; right: 0; top: 850px; display: block; text-align: center; font-weight: 800; font-size: 124px; letter-spacing: -4px; color: #fff; white-space: nowrap; }
+      #creates { position: absolute; left: 0; right: 0; top: 1030px; display: block; text-align: center; font-family: "Caveat", cursive; font-weight: 700; font-size: 66px; color: #fff; white-space: nowrap; }
+      #ctaWrap { position: absolute; left: 0; right: 0; top: 1130px; display: flex; justify-content: center; }
+      #cta { display: block; padding: 30px 70px; border-radius: 999px; background: #fff; color: var(--blue); font-weight: 800; font-size: 58px; white-space: nowrap; }
+      #fine { position: absolute; left: 0; right: 0; top: 1320px; display: block; text-align: center; font-weight: 600; font-size: 34px; color: rgba(255,255,255,0.9); white-space: nowrap; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="30.6" data-width="1080" data-height="1920">
+      <audio id="bgm" src="assets/bgm.wav" data-start="0" data-duration="30.6" data-track-index="11"></audio>
+      <div id="scene" class="clip layer" data-start="0" data-duration="30.6" data-track-index="0">
+
+        <!-- END sheet (bottom of the stack) -->
+        <div class="sheet" id="end">
+          <div class="blue"></div>
+          <img class="icon" src="assets/icon_white.png" alt="" />
+          <div id="join">Rejoins PitUp.</div>
+          <div id="creates">Crée ta boutique sur</div>
+          <div id="ctaWrap"><div id="cta">pi-tup.com</div></div>
+          <div id="fine">+100 boutiques partenaires · Lubumbashi</div>
+        </div>
+
+        <!-- C: message sheet (white) — revealed by the 2nd tear, torn away by the 3rd -->
+        <div class="sheet" id="msgWrap"><div class="rim" id="msgRim"></div><div class="sheet" id="msg">
+          <div class="paper"></div>
+          <div id="world2"></div>
+          <div class="h" id="m1" style="top: 360px; font-size: 74px"><span>Elles ne vendent plus</span><span>seulement <span style="display:inline" id="rue">dans leur rue.</span></span></div>
+          <div class="hw-mark" id="strike" style="left: 400px; top: 430px; width: 540px; height: 40px"><svg viewBox="0 0 540 40"><path></path></svg></div>
+          <div class="note" id="ville" style="left: 300px; top: 560px; font-size: 120px">toute la ville !</div>
+          <div class="hw-arrow" id="arVille" style="left: 150px; top: 520px; width: 150px; height: 120px"><svg viewBox="0 0 150 120"></svg></div>
+          <div class="h" id="m2" style="top: 360px; font-size: 66px"><span>Le commerce de Lubumbashi</span><span>passe au <span style="display:inline" class="b" id="dig">digital.</span></span></div>
+          <div class="hw-mark" id="ring" style="left: 330px; top: 425px; width: 360px; height: 120px"><svg viewBox="0 0 360 120"><path></path></svg></div>
+          <div class="note" id="ens" style="left: 120px; top: 600px; font-size: 104px; color: var(--ink)">et on l'écrit ensemble.</div>
+          <div class="hw-mark" id="ensU" style="left: 120px; top: 708px; width: 820px; height: 34px"><svg viewBox="0 0 820 34"><path></path></svg></div>
+          <div class="h" id="m3" style="top: 300px; font-size: 104px"><span>À ton tour</span><span>d'écrire <span style="display:inline" class="b">l'histoire.</span></span></div>
+          <div id="slot"><span>ta<br />boutique</span></div>
+          <div class="note" id="toi" style="left: 70px; top: 700px; font-size: 96px">toi ?</div>
+          <div class="hw-arrow" id="arToi" style="left: 110px; top: 800px; width: 180px; height: 110px"><svg viewBox="0 0 180 110"></svg></div>
+        </div></div>
+
+        <!-- B: blue +100 sheet — revealed by the 1st tear, torn away by the 2nd -->
+        <div class="sheet" id="cntWrap"><div class="rim" id="cntRim"></div><div class="sheet" id="cnt">
+          <div class="blue"></div>
+          <div id="plus100">+100</div>
+          <div id="sub100">boutiques partenaires</div>
+          <div class="hw-mark" id="u100" style="left: 250px; top: 1105px; width: 580px; height: 34px; --hw-ink: #fff"><svg viewBox="0 0 580 34"><path></path></svg></div>
+          <div class="note" id="lshi" style="left: 0; right: 0; top: 1180px; text-align: center; font-size: 92px; color: #fff">à Lubumbashi.</div>
+        </div></div>
+
+        <!-- A: collage sheet (top of the stack) -->
+        <div class="sheet" id="colWrap"><div class="rim" id="colRim"></div><div class="sheet" id="col">
+          <div class="paper"></div>
+          <div id="world"></div>
+          <div class="h" id="hA" style="top: 260px; font-size: 92px"><span>Ça a commencé par</span><span class="b">une boutique.</span></div>
+          <div class="h" id="hB" style="top: 260px; font-size: 104px"><span>Puis deux.</span></div>
+          <div class="h" id="hC" style="top: 260px; font-size: 104px"><span>Puis dix.</span></div>
+          <div class="h" id="hD" style="top: 260px; font-size: 104px"><span>Puis <span style="display:inline" class="b">plus de cent.</span></span></div>
+          <div class="note" id="nDon" style="left: 560px; top: 1500px; font-size: 76px; color: var(--ink); transform: rotate(-4deg)">la toute première.</div>
+          
+        </div></div>
+      </div>
+    </div>
+
+    <script src="assets/hw.js"></script>
+    <script>
+     document.fonts.ready.then(() => {
+      // Anchors: track seconds of "PitUp Rise" (audiomap) minus 6.0 (cut-in). Voice lines sit at 0.35 / 2.75 / 8.4 / 13.4 / 17.5 / 22.2 / 25.2.
+      const M = (t) => t - 6.0;
+      const tl = gsap.timeline({ paused: true });
+      const SHOP = ["Le Don Divin","Chris Gold","The Buttcha","Light Shopping","MaLingerie","MekorStore","Magloire","Hussein Fashion","Pracce Business","Lucianna","Mungu ni Mungu","Maella Shopping","B.white","Gracien","Pèlerin Joyce","L’stars","Tout est grâce","La race Juive","Stylistique","Natty","Marcia","Don Divin","John boutique","Jose collection"];
+
+      // ---------- seeded helpers (no Math.random) ----------
+      let seed = 0x51f2;
+      const rnd = () => { seed = (Math.imul(1664525, seed) + 1013904223) >>> 0; return seed / 4294967296; };
+
+      // ---------- torn paper (ported from registry: torn-paper-rip) ----------
+      function makeTear(clipEl, rimEl, wrapEl, s) {
+        let st = s >>> 0;
+        const r = () => { st = (Math.imul(1664525, st) + 1013904223) >>> 0; return st / 4294967296; };
+        const noise = (k) => { const a = []; for (let i = 0; i <= k; i++) a.push(r() * 2 - 1); return (v) => { const f = v * k, i = Math.min(k - 1, Math.floor(f)); let u = f - i; u = u * u * (3 - 2 * u); return a[i] + (a[i + 1] - a[i]) * u; }; };
+        const ROWS = 160, PX = 100 / 1080, wander = noise(6), core = noise(14), edge = [];
+        for (let i = 0; i <= ROWS; i++) {
+          const v = i / ROWS;
+          const rim = Math.min(16, Math.max(7, 7 + 9 * (core(v) * 0.5 + 0.5) + (r() * 2 - 1) * 3));
+          edge.push({ y: (v * 100).toFixed(2) + "%", o: (v - 0.5) * 4 + (wander(v) * 46 + (r() * 2 - 1) * 3.5) * PX, rim: rim * PX });
+        }
+        const MARGIN = 12;
+        const ease = (p) => (p < 0.3 ? 0.2 * Math.pow(p / 0.3, 2) : 0.2 + 0.8 * (1 - Math.pow(1 - (p - 0.3) / 0.7, 3)));
+        return (p) => {
+          const e = ease(Math.max(0, Math.min(1, p)));
+          const bx = -MARGIN + (100 + 2 * MARGIN) * e;  // tear runs left -> right, the sheet keeps the right part
+          let a = "100% 0%, 100% 100%", b = a;
+          for (let i = ROWS; i >= 0; i--) { const x = bx + edge[i].o; a += `, ${x.toFixed(2)}% ${edge[i].y}`; b += `, ${(x - edge[i].rim).toFixed(2)}% ${edge[i].y}`; }
+          clipEl.style.clipPath = `polygon(${a})`; rimEl.style.clipPath = `polygon(${b})`;
+          wrapEl.style.transform = `translateX(${(3 * e).toFixed(3)}%) rotate(${(1.5 * e).toFixed(3)}deg)`;
+          wrapEl.style.filter = `drop-shadow(0 ${(12 * e).toFixed(1)}px ${(24 * e).toFixed(1)}px rgba(0,0,0,0.25))`;
+          wrapEl.style.opacity = e >= 0.999 ? 0 : 1;
+        };
+      }
+      const tear = (id, s, at, dur) => {
+        const paint = makeTear(document.getElementById(id), document.getElementById(id + "Rim"), document.getElementById(id + "Wrap"), s);
+        paint(0);
+        const pr = { p: 0 };
+        tl.fromTo(pr, { p: 0 }, { p: 1, duration: dur, ease: "none", onUpdate: () => paint(pr.p) }, at);
+      };
+      // initial full clip so the rim stays hidden before each tear
+      ["col", "cnt", "msg"].forEach((id) => { document.getElementById(id + "Rim").style.clipPath = "polygon(100% 0%, 100% 100%, 101% 100%, 101% 0%)"; });
+
+      // place hand-drawn marks on the measured words (fonts are loaded here)
+      const box = (sel) => { const r = document.querySelector(sel).getBoundingClientRect(); return r; };
+      gsap.set(["#m1", "#m2"], { opacity: 1 });
+      { const r = box("#rue"); Object.assign(document.getElementById("strike").style, { left: r.left - 10 + "px", top: r.top + r.height * 0.42 + "px", width: r.width + 20 + "px", height: "40px" }); }
+      { const r = box("#dig"); Object.assign(document.getElementById("ring").style, { left: r.left - 30 + "px", top: r.top - 18 + "px", width: r.width + 60 + "px", height: r.height + 36 + "px" });
+        document.querySelector("#ring svg").setAttribute("viewBox", `0 0 ${r.width + 60} ${r.height + 36}`); }
+      { const r = box("#ville"); Object.assign(document.getElementById("arVille").style, { left: r.left - 170 + "px", top: r.top - 40 + "px" }); }
+      { const r = box("#ens"); Object.assign(document.getElementById("ensU").style, { left: r.left + "px", top: r.bottom - 6 + "px", width: r.width + "px" });
+        document.querySelector("#ensU svg").setAttribute("viewBox", `0 0 ${r.width} 34`); window.__ensW = r.width; }
+      gsap.set(["#m1", "#m2"], { opacity: 0 });
+      // ---------- A: polaroid collage ----------
+      const world = document.getElementById("world");
+      const P = [];
+      // hub first, then a jittered 4x5 grid around it (closest cells first)
+      P.push({ x: 300, y: 820, w: 420, rot: -4 });
+      const cells = [];
+      for (let r = 0; r < 7; r++) for (let c = 0; c < 5; c++) {
+        const x = 10 + c * 208 + (rnd() - 0.5) * 36, y = 560 + r * 182 + (rnd() - 0.5) * 30;
+        if (x > 160 && x < 700 && y > 660 && y < 1250) continue;  // keep the hub area for the first polaroid
+        cells.push({ x, y, d: Math.hypot(x - 410, y - 1000) });
+      }
+      cells.sort((a, b) => a.d - b.d);
+      for (let i = 1; i < SHOP.length; i++) { const c = cells[i - 1]; P.push({ x: c.x, y: c.y, w: i < 3 ? 230 : 172 + Math.round(rnd() * 30), rot: (rnd() - 0.5) * 16 }); }
+      P.forEach((p, i) => {
+        const d = document.createElement("div"); d.className = "pol"; d.id = "p" + i;
+        d.style.left = p.x + "px"; d.style.top = p.y + "px"; d.style.width = p.w + "px"; d.style.height = p.w + 34 + "px";
+        d.innerHTML = `<img src="assets/shops/${String(i).padStart(2, "0")}.jpg" alt=""><div class="cap">${i < 3 ? SHOP[i] : ""}</div>` +
+          `<div class="tape" style="left:${p.w / 2 - 60}px; top:-18px; transform: rotate(${((i * 37) % 13) - 6}deg)"></div>`;
+        world.appendChild(d);
+      });
+      // drop-in schedule: hub at 0, #2 on the 8.66 downbeat, #3 on 10.31, then beats, then an accelerating cascade into 18.48
+      const at = [0, M(8.66), M(10.31)];
+      [11.94, 12.35, 12.75, 13.17, 13.56, 13.98, 14.4].forEach((t) => at.push(M(t)));
+      let t = M(14.81), g = 0.3;
+      while (at.length < SHOP.length) { at.push(t); t += g; g = Math.max(0.1, g * 0.86); }
+      P.forEach((p, i) => {
+        const a = Math.max(0, at[i]);
+        if (i === 0) { tl.set("#p0", { opacity: 1, rotation: p.rot, y: 0, scale: 1 }, 0); return; }
+        // a sticker slapped onto the page: drops from above with a little overshoot, lands on its angle
+        tl.fromTo("#p" + i, { opacity: 0, y: -60, scale: 1.25, rotation: p.rot - 14 },
+          { opacity: 1, y: 0, scale: 1, rotation: p.rot, duration: i < 10 ? 0.38 : 0.26, ease: "back.out(1.6)" }, a - 0.12);
+      });
+      // camera: tight on the first shop, pulls back as the collage fills (one move for the whole build)
+      tl.fromTo("#world", { scale: 1.75, transformOrigin: "47% 50%" }, { scale: 1, duration: M(18.48), ease: "power2.inOut" }, 0);
+
+      // handwritten callout on the first shop
+      tl.fromTo("#nDon", { opacity: 0 }, { opacity: 1, duration: 0.3 }, 0.9);
+      tl.to("#nDon", { opacity: 0, duration: 0.2 }, M(8.66) - 0.1);
+
+      // headlines (masked swaps)
+      const swap = (out, inn, a) => {
+        if (out) tl.to(out, { opacity: 0, y: -24, duration: 0.16, ease: "power2.in" }, a - 0.16);
+        tl.fromTo(inn, { opacity: 0, y: 28 }, { opacity: 1, y: 0, duration: 0.28, ease: "power3.out" }, a);
+      };
+      ["#hB", "#hC", "#hD", "#m1", "#m2", "#m3", "#ville", "#ens", "#toi", "#slot", "#lshi", "#sub100"].forEach((h) => gsap.set(h, { opacity: 0 }));
+      tl.set("#hA", { opacity: 1 }, 0);
+      swap("#hA", "#hB", M(8.66));
+      swap("#hB", "#hC", M(10.31));
+      swap("#hC", "#hD", M(15.21));
+
+      // ---------- tear 1 at the 18.48 impact: collage rips away to the blue +100 page ----------
+      tear("col", 0x7a9e11cf, M(18.48) - 0.25, 0.75);
+      tl.fromTo("#plus100", { scale: 1.15, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.35, ease: "expo.out" }, M(18.48));
+      tl.fromTo("#sub100", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.3 }, M(18.7));
+      document.querySelector("#u100 path").setAttribute("d", hwMarkPath(580, 34, "underline", 3));
+      hwMarkOn(tl, "#u100", M(19.0), 0.45);
+      tl.fromTo("#lshi", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.3 }, M(19.2));
+
+      // ---------- tear 2: blue page rips away to the white message page ----------
+      tear("cnt", 0x2c41f00d, 13.95, 0.65);
+      swap(null, "#m1", 14.2);
+      { const w = parseFloat(document.getElementById("strike").style.width); document.querySelector("#strike svg").setAttribute("viewBox", `0 0 ${w} 40`); document.querySelector("#strike path").setAttribute("d", hwMarkPath(w, 40, "strike", 6)); }
+      hwMarkOn(tl, "#strike", 15.7, 0.4);
+      tl.fromTo("#ville", { opacity: 0, scale: 0.85, rotation: -4 }, { opacity: 1, scale: 1, rotation: -4, duration: 0.3, ease: "back.out(2)" }, 16.6);
+      hwArrowBuild("#arVille", { arrowStyle: "gentle", strokeType: "plain", boil: "calm" });
+      hwArrowOn(tl, "#arVille", 16.5);
+      tl.to(["#m1", "#strike", "#ville", "#arVille"], { opacity: 0, y: -20, duration: 0.18 }, 17.8);
+
+      swap(null, "#m2", 18.0);
+      { const el = document.getElementById("ring"), w = parseFloat(el.style.width), h = parseFloat(el.style.height); document.querySelector("#ring path").setAttribute("d", hwWobbleEllipse(w / 2, h / 2, w / 2 - 4, h / 2 - 4, 9, 0.06)); }
+      hwMarkOn(tl, "#ring", 19.6, 0.6);
+      tl.fromTo("#ens", { opacity: 0, x: -20 }, { opacity: 1, x: 0, duration: 0.3 }, 20.6);
+      document.querySelector("#ensU path").setAttribute("d", hwMarkPath(window.__ensW, 34, "underline", 8));
+      hwMarkOn(tl, "#ensU", 21.0, 0.5);
+      tl.to(["#m2", "#ring", "#ens", "#ensU"], { opacity: 0, y: -20, duration: 0.18 }, 22.35);
+
+      // "À ton tour": the stickers come back around an empty taped slot
+      const world2 = document.getElementById("world2");
+      const keep = [0, 1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 13];
+      keep.forEach((i, k) => {
+        const p = P[i], d = document.getElementById("p" + i).cloneNode(true);
+        d.id = "q" + k; const cx = 40 + (k % 4) * 250, cy = 1020 + Math.floor(k / 4) * 260;
+        d.style.left = cx + (rnd() - 0.5) * 30 + "px"; d.style.top = cy + "px"; d.style.width = "200px"; d.style.height = "234px";
+        d.querySelector(".cap").textContent = ""; d.querySelector(".tape").style.left = "40px";
+        world2.appendChild(d);
+        tl.fromTo(d, { opacity: 0, y: -50, scale: 1.2, rotation: p.rot - 12 }, { opacity: 1, y: 0, scale: 1, rotation: p.rot, duration: 0.26, ease: "back.out(1.6)" }, 22.6 + k * 0.07);
+      });
+      gsap.set("#slot", { left: 300, top: 640, width: 280, height: 314, rotation: -3 });
+      swap(null, "#m3", 22.6);
+      tl.fromTo("#slot", { opacity: 0, scale: 0.6 }, { opacity: 1, scale: 1, duration: 0.4, ease: "back.out(2)" }, 23.3);
+      tl.fromTo("#toi", { opacity: 0, rotation: 6 }, { opacity: 1, rotation: -6, duration: 0.3 }, 23.6);
+      hwArrowBuild("#arToi", { arrowStyle: "gentle", strokeType: "plain", boil: "calm" });
+      hwArrowOn(tl, "#arToi", 23.7);
+
+      // ---------- tear 3 on the 30.63 downbeat: to the blue end card ----------
+      tear("msg", 0x13579bdf, M(30.63) - 0.3, 0.75);
+      tl.fromTo("#end .icon", { scale: 0.8, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.35, ease: "back.out(2)" }, M(30.63));
+      tl.fromTo("#join", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.35, ease: "power3.out" }, M(31.05));
+      tl.fromTo("#creates", { opacity: 0 }, { opacity: 1, duration: 0.3 }, M(32.39));
+      tl.fromTo("#cta", { scale: 0.7, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.42, ease: "back.out(2)" }, M(32.39) + 0.1);
+      tl.fromTo("#fine", { opacity: 0 }, { opacity: 1, duration: 0.4 }, M(34.16));
+
+      // hand-drawn marks boil a little (registry hw-boil), like ink on paper
+      hwBoil(tl, [".hw-mark", ".note"], { amp: 1.2, rot: 0.35, frameDrop: 3, seed: 5 });
+
+      window.__timelines["main"] = tl;
+      tl.seek(0);
+     });
+    </script>
+  </body>
+</html>

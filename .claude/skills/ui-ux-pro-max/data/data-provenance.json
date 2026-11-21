@@ -1,0 +1,1348 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-13T00:00:00Z",
+  "freshnessPolicy": {
+    "manual-verifiedDays": 365,
+    "needs-reviewDays": 90
+  },
+  "records": [
+    {
+      "entityKind": "reasoning",
+      "entityId": "academic-journal-scholarly-publishing",
+      "sourceFile": "ui-reasoning.csv",
+      "sourceKey": {
+        "UI_Category": "Academic Journal / Scholarly Publishing"
+      },
+      "status": "active",
+      "verifiedAt": "2026-08-12",
+      "sla": "needs-review",
+      "appliesTo": [
+        "design-system"
+      ],
+      "confidence": 0.88,
+      "sources": [
+        {
+          "type": "derived",
+          "ref": "products.csv#Product Type=Academic Journal / Scholarly Publishing"
+        },
+        {
+          "type": "derived",
+          "ref": "colors.csv#Product Type=Academic Journal / Scholarly Publishing"
+        }
+      ]
+    },
+    {
+      "entityKind": "reasoning",
+      "entityId": "api-developer-portal",
+      "sourceFile": "ui-reasoning.csv",
+      "sourceKey": {
+        "UI_Category": "API Developer Portal"
+      },
+      "status": "active",
+      "verifiedAt": "2026-08-12",
+      "sla": "needs-review",
+      "appliesTo": [
+        "design-system"
+      ],
+      "confidence": 0.92,
+      "sources": [
+        {
+          "type": "derived",
+          "ref": "products.csv#Product Type=API Developer Portal"
+        },
+        {
+          "type": "derived",
+          "ref": "colors.csv#Product Type=API Developer Portal"
+        }
+      ]
+    },
+    {
+      "entityKind": "reasoning",
+      "entityId": "forum-discussion-board",
+      "sourceFile": "ui-reasoning.csv",
+      "sourceKey": {
+        "UI_Category": "Forum / Discussion Board"
+      },
+      "status": "active",
+      "verifiedAt": "2026-08-12",
+      "sla": "needs-review",
+      "appliesTo": [
+        "design-system"
+      ],
+      "confidence": 0.93,
+      "sources": [
+        {
+          "type": "derived",
+          "ref": "products.csv#Product Type=Forum / Discussion Board"
+        },
+        {
+          "type": "derived",
+          "ref": "colors.csv#Product Type=Forum / Discussion Board"
+        }
+      ]
+    },
+    {
+      "entityKind": "reasoning",
+      "entityId": "directory-listing-site",
+      "sourceFile": "ui-reasoning.csv",
+      "sourceKey": {
+        "UI_Category": "Directory / Listing Site"
+      },
+      "status": "active",
+      "verifiedAt": "2026-08-12",
+      "sla": "needs-review",
+      "appliesTo": [
+        "design-system"
+      ],
+      "confidence": 0.93,
+      "sources": [
+        {
+          "type": "derived",
+          "ref": "products.csv#Product Type=Directory / Listing Site"
+        },
+        {
+          "type": "derived",
+          "ref": "colors.csv#Product Type=Directory / Listing Site"
+        }
+      ]
+    },
+    {
+      "entityKind": "reasoning",
+      "entityId": "status-page-incident-management",
+      "sourceFile": "ui-reasoning.csv",
+      "sourceKey": {
+        "UI_Category": "Status Page / Incident Management"
+      },
+      "status": "active",
+      "verifiedAt": "2026-08-12",
+      "sla": "needs-review",
+      "appliesTo": [
+        "design-system"
+      ],
+      "confidence": 0.94,
+      "sources": [
+        {
+          "type": "derived",
+          "ref": "products.csv#Product Type=Status Page / Incident Management"
+        },
+        {
+          "type": "derived",
+          "ref": "colors.csv#Product Type=Status Page / Incident Management"
+        }
+      ]
+    },
+    {
+      "entityKind": "reasoning",
+      "entityId": "wiki-encyclopedia",
+      "sourceFile": "ui-reasoning.csv",
+      "sourceKey": {
+        "UI_Category": "Wiki / Encyclopedia"
+      },
+      "status": "active",
+      "verifiedAt": "2026-08-12",
+      "sla": "needs-review",
+      "appliesTo": [
+        "design-system"
+      ],
+      "confidence": 0.91,
+      "sources": [
+        {
+          "type": "derived",
+          "ref": "products.csv#Product Type=Wiki / Encyclopedia"
+        },
+        {
+          "type": "derived",
+          "ref": "colors.csv#Product Type=Wiki / Encyclopedia"
+        }
+      ]
+    },
+    {
+      "entityKind": "reasoning",
+      "entityId": "auction-platform",
+      "sourceFile": "ui-reasoning.csv",
+      "sourceKey": {
+        "UI_Category": "Auction Platform"
+      },
+      "status": "active",
+      "verifiedAt": "2026-08-12",
+      "sla": "needs-review",
+      "appliesTo": [
+        "design-system"
+      ],
+      "confidence": 0.93,
+      "sources": [
+        {
+          "type": "derived",
+          "ref": "products.csv#Product Type=Auction Platform"
+        },
+        {
+          "type": "derived",
+          "ref": "colors.csv#Product Type=Auction Platform"
+        }
+      ]
+    },
+    {
+      "entityKind": "reasoning",
+      "entityId": "changelog-release-notes",
+      "sourceFile": "ui-reasoning.csv",
+      "sourceKey": {
+        "UI_Category": "Changelog / Release Notes"
+      },
+      "status": "active",
+      "verifiedAt": "2026-08-12",
+      "sla": "needs-review",
+      "appliesTo": [
+        "design-system"
+      ],
+      "confidence": 0.9,
+      "sources": [
+        {
+          "type": "derived",
+          "ref": "products.csv#Product Type=Changelog / Release Notes"
+        },
+        {
+          "type": "derived",
+          "ref": "colors.csv#Product Type=Changelog / Release Notes"
+        }
+      ]
+    },
+    {
+      "entityKind": "reasoning",
+      "entityId": "citizen-science-platform",
+      "sourceFile": "ui-reasoning.csv",
+      "sourceKey": {
+        "UI_Category": "Citizen Science Platform"
+      },
+      "status": "active",
+      "verifiedAt": "2026-08-12",
+      "sla": "needs-review",
+      "appliesTo": [
+        "design-system"
+      ],
+      "confidence": 0.89,
+      "sources": [
+        {
+          "type": "derived",
+          "ref": "products.csv#Product Type=Citizen Science Platform"
+        },
+        {
+          "type": "derived",
+          "ref": "colors.csv#Product Type=Citizen Science Platform"
+        }
+      ]
+    },
+    {
+      "entityKind": "reasoning",
+      "entityId": "classifieds-buy-sell",
+      "sourceFile": "ui-reasoning.csv",
+      "sourceKey": {
+        "UI_Category": "Classifieds / Buy-Sell"
+      },
+      "status": "active",
+      "verifiedAt": "2026-08-12",
+      "sla": "needs-review",
+      "appliesTo": [
+        "design-system"
+      ],
+      "confidence": 0.93,
+      "sources": [
+        {
+          "type": "derived",
+          "ref": "products.csv#Product Type=Classifieds / Buy-Sell"
+        },
+        {
+          "type": "derived",
+          "ref": "colors.csv#Product Type=Classifieds / Buy-Sell"
+        }
+      ]
+    },
+    {
+      "entityKind": "reasoning",
+      "entityId": "conference-symposium-landing-page",
+      "sourceFile": "ui-reasoning.csv",
+      "sourceKey": {
+        "UI_Category": "Conference / Symposium Landing Page"
+      },
+      "status": "active",
+      "verifiedAt": "2026-08-12",
+      "sla": "needs-review",
+      "appliesTo": [
+        "design-system"
+      ],
+      "confidence": 0.9,
+      "sources": [
+        {
+          "type": "derived",
+          "ref": "products.csv#Product Type=Conference / Symposium Landing Page"
+        },
+        {
+          "type": "derived",
+          "ref": "colors.csv#Product Type=Conference / Symposium Landing Page"
+        }
+      ]
+    },
+    {
+      "entityKind": "reasoning",
+      "entityId": "crowdfunding-platform",
+      "sourceFile": "ui-reasoning.csv",
+      "sourceKey": {
+        "UI_Category": "Crowdfunding Platform"
+      },
+      "status": "active",
+      "verifiedAt": "2026-08-12",
+      "sla": "needs-review",
+      "appliesTo": [
+        "design-system"
+      ],
+      "confidence": 0.92,
+      "sources": [
+        {
+          "type": "derived",
+          "ref": "products.csv#Product Type=Crowdfunding Platform"
+        },
+        {
+          "type": "derived",
+          "ref": "colors.csv#Product Type=Crowdfunding Platform"
+        }
+      ]
+    },
+    {
+      "entityKind": "reasoning",
+      "entityId": "digital-signage-kiosk",
+      "sourceFile": "ui-reasoning.csv",
+      "sourceKey": {
+        "UI_Category": "Digital Signage / Kiosk"
+      },
+      "status": "active",
+      "verifiedAt": "2026-08-12",
+      "sla": "needs-review",
+      "appliesTo": [
+        "design-system"
+      ],
+      "confidence": 0.88,
+      "sources": [
+        {
+          "type": "derived",
+          "ref": "products.csv#Product Type=Digital Signage / Kiosk"
+        },
+        {
+          "type": "derived",
+          "ref": "colors.csv#Product Type=Digital Signage / Kiosk"
+        }
+      ]
+    },
+    {
+      "entityKind": "reasoning",
+      "entityId": "e-signature-document-workflow",
+      "sourceFile": "ui-reasoning.csv",
+      "sourceKey": {
+        "UI_Category": "E-signature / Document Workflow"
+      },
+      "status": "active",
+      "verifiedAt": "2026-08-12",
+      "sla": "needs-review",
+      "appliesTo": [
+        "design-system"
+      ],
+      "confidence": 0.93,
+      "sources": [
+        {
+          "type": "derived",
+          "ref": "products.csv#Product Type=E-signature / Document Workflow"
+        },
+        {
+          "type": "derived",
+          "ref": "colors.csv#Product Type=E-signature / Document Workflow"
+        }
+      ]
+    },
+    {
+      "entityKind": "reasoning",
+      "entityId": "feature-flag-config-management",
+      "sourceFile": "ui-reasoning.csv",
+      "sourceKey": {
+        "UI_Category": "Feature Flag / Config Management"
+      },
+      "status": "active",
+      "verifiedAt": "2026-08-12",
+      "sla": "needs-review",
+      "appliesTo": [
+        "design-system"
+      ],
+      "confidence": 0.91,
+      "sources": [
+        {
+          "type": "derived",
+          "ref": "products.csv#Product Type=Feature Flag / Config Management"
+        },
+        {
+          "type": "derived",
+          "ref": "colors.csv#Product Type=Feature Flag / Config Management"
+        }
+      ]
+    },
+    {
+      "entityKind": "reasoning",
+      "entityId": "government-portal-civic-services",
+      "sourceFile": "ui-reasoning.csv",
+      "sourceKey": {
+        "UI_Category": "Government Portal / Civic Services"
+      },
+      "status": "active",
+      "verifiedAt": "2026-08-12",
+      "sla": "needs-review",
+      "appliesTo": [
+        "design-system"
+      ],
+      "confidence": 0.95,
+      "sources": [
+        {
+          "type": "derived",
+          "ref": "products.csv#Product Type=Government Portal / Civic Services"
+        },
+        {
+          "type": "derived",
+          "ref": "colors.csv#Product Type=Government Portal / Civic Services"
+        }
+      ]
+    },
+    {
+      "entityKind": "reasoning",
+      "entityId": "grant-funding-portal",
+      "sourceFile": "ui-reasoning.csv",
+      "sourceKey": {
+        "UI_Category": "Grant / Funding Portal"
+      },
+      "status": "active",
+      "verifiedAt": "2026-08-12",
+      "sla": "needs-review",
+      "appliesTo": [
+        "design-system"
+      ],
+      "confidence": 0.92,
+      "sources": [
+        {
+          "type": "derived",
+          "ref": "products.csv#Product Type=Grant / Funding Portal"
+        },
+        {
+          "type": "derived",
+          "ref": "colors.csv#Product Type=Grant / Funding Portal"
+        }
+      ]
+    },
+    {
+      "entityKind": "reasoning",
+      "entityId": "lms-learning-management-system",
+      "sourceFile": "ui-reasoning.csv",
+      "sourceKey": {
+        "UI_Category": "LMS (Learning Management System)"
+      },
+      "status": "active",
+      "verifiedAt": "2026-08-12",
+      "sla": "needs-review",
+      "appliesTo": [
+        "design-system"
+      ],
+      "confidence": 0.93,
+      "sources": [
+        {
+          "type": "derived",
+          "ref": "products.csv#Product Type=LMS (Learning Management System)"
+        },
+        {
+          "type": "derived",
+          "ref": "colors.csv#Product Type=LMS (Learning Management System)"
+        }
+      ]
+    },
+    {
+      "entityKind": "reasoning",
+      "entityId": "no-code-low-code-builder",
+      "sourceFile": "ui-reasoning.csv",
+      "sourceKey": {
+        "UI_Category": "No-code / Low-code Builder"
+      },
+      "status": "active",
+      "verifiedAt": "2026-08-12",
+      "sla": "needs-review",
+      "appliesTo": [
+        "design-system"
+      ],
+      "confidence": 0.89,
+      "sources": [
+        {
+          "type": "derived",
+          "ref": "products.csv#Product Type=No-code / Low-code Builder"
+        },
+        {
+          "type": "derived",
+          "ref": "colors.csv#Product Type=No-code / Low-code Builder"
+        }
+      ]
+    },
+    {
+      "entityKind": "reasoning",
+      "entityId": "open-source-project-landing",
+      "sourceFile": "ui-reasoning.csv",
+      "sourceKey": {
+        "UI_Category": "Open Source Project Landing"
+      },
+      "status": "active",
+      "verifiedAt": "2026-08-12",
+      "sla": "needs-review",
+      "appliesTo": [
+        "design-system"
+      ],
+      "confidence": 0.9,
+      "sources": [
+        {
+          "type": "derived",
+          "ref": "products.csv#Product Type=Open Source Project Landing"
+        },
+        {
+          "type": "derived",
+          "ref": "colors.csv#Product Type=Open Source Project Landing"
+        }
+      ]
+    },
+    {
+      "entityKind": "reasoning",
+      "entityId": "patient-portal-health-records",
+      "sourceFile": "ui-reasoning.csv",
+      "sourceKey": {
+        "UI_Category": "Patient Portal / Health Records"
+      },
+      "status": "active",
+      "verifiedAt": "2026-08-12",
+      "sla": "needs-review",
+      "appliesTo": [
+        "design-system"
+      ],
+      "confidence": 0.94,
+      "sources": [
+        {
+          "type": "derived",
+          "ref": "products.csv#Product Type=Patient Portal / Health Records"
+        },
+        {
+          "type": "derived",
+          "ref": "colors.csv#Product Type=Patient Portal / Health Records"
+        }
+      ]
+    },
+    {
+      "entityKind": "reasoning",
+      "entityId": "patent-ip-database",
+      "sourceFile": "ui-reasoning.csv",
+      "sourceKey": {
+        "UI_Category": "Patent / IP Database"
+      },
+      "status": "active",
+      "verifiedAt": "2026-08-12",
+      "sla": "needs-review",
+      "appliesTo": [
+        "design-system"
+      ],
+      "confidence": 0.89,
+      "sources": [
+        {
+          "type": "derived",
+          "ref": "products.csv#Product Type=Patent / IP Database"
+        },
+        {
+          "type": "derived",
+          "ref": "colors.csv#Product Type=Patent / IP Database"
+        }
+      ]
+    },
+    {
+      "entityKind": "reasoning",
+      "entityId": "q-and-a-community-platform",
+      "sourceFile": "ui-reasoning.csv",
+      "sourceKey": {
+        "UI_Category": "Q&A Community Platform"
+      },
+      "status": "active",
+      "verifiedAt": "2026-08-12",
+      "sla": "needs-review",
+      "appliesTo": [
+        "design-system"
+      ],
+      "confidence": 0.93,
+      "sources": [
+        {
+          "type": "derived",
+          "ref": "products.csv#Product Type=Q&A Community Platform"
+        },
+        {
+          "type": "derived",
+          "ref": "colors.csv#Product Type=Q&A Community Platform"
+        }
+      ]
+    },
+    {
+      "entityKind": "reasoning",
+      "entityId": "research-lab-university-department",
+      "sourceFile": "ui-reasoning.csv",
+      "sourceKey": {
+        "UI_Category": "Research Lab / University Department"
+      },
+      "status": "active",
+      "verifiedAt": "2026-08-12",
+      "sla": "needs-review",
+      "appliesTo": [
+        "design-system"
+      ],
+      "confidence": 0.91,
+      "sources": [
+        {
+          "type": "derived",
+          "ref": "products.csv#Product Type=Research Lab / University Department"
+        },
+        {
+          "type": "derived",
+          "ref": "colors.csv#Product Type=Research Lab / University Department"
+        }
+      ]
+    },
+    {
+      "entityKind": "reasoning",
+      "entityId": "resume-cv-builder",
+      "sourceFile": "ui-reasoning.csv",
+      "sourceKey": {
+        "UI_Category": "Resume / CV Builder"
+      },
+      "status": "active",
+      "verifiedAt": "2026-08-12",
+      "sla": "needs-review",
+      "appliesTo": [
+        "design-system"
+      ],
+      "confidence": 0.92,
+      "sources": [
+        {
+          "type": "derived",
+          "ref": "products.csv#Product Type=Resume / CV Builder"
+        },
+        {
+          "type": "derived",
+          "ref": "colors.csv#Product Type=Resume / CV Builder"
+        }
+      ]
+    },
+    {
+      "entityKind": "reasoning",
+      "entityId": "review-platform",
+      "sourceFile": "ui-reasoning.csv",
+      "sourceKey": {
+        "UI_Category": "Review Platform"
+      },
+      "status": "active",
+      "verifiedAt": "2026-08-12",
+      "sla": "needs-review",
+      "appliesTo": [
+        "design-system"
+      ],
+      "confidence": 0.94,
+      "sources": [
+        {
+          "type": "derived",
+          "ref": "products.csv#Product Type=Review Platform"
+        },
+        {
+          "type": "derived",
+          "ref": "colors.csv#Product Type=Review Platform"
+        }
+      ]
+    },
+    {
+      "entityKind": "reasoning",
+      "entityId": "rpa-automation-dashboard",
+      "sourceFile": "ui-reasoning.csv",
+      "sourceKey": {
+        "UI_Category": "RPA / Automation Dashboard"
+      },
+      "status": "active",
+      "verifiedAt": "2026-08-12",
+      "sla": "needs-review",
+      "appliesTo": [
+        "design-system"
+      ],
+      "confidence": 0.93,
+      "sources": [
+        {
+          "type": "derived",
+          "ref": "products.csv#Product Type=RPA / Automation Dashboard"
+        },
+        {
+          "type": "derived",
+          "ref": "colors.csv#Product Type=RPA / Automation Dashboard"
+        }
+      ]
+    },
+    {
+      "entityKind": "reasoning",
+      "entityId": "survey-form-builder",
+      "sourceFile": "ui-reasoning.csv",
+      "sourceKey": {
+        "UI_Category": "Survey / Form Builder"
+      },
+      "status": "active",
+      "verifiedAt": "2026-08-12",
+      "sla": "needs-review",
+      "appliesTo": [
+        "design-system"
+      ],
+      "confidence": 0.92,
+      "sources": [
+        {
+          "type": "derived",
+          "ref": "products.csv#Product Type=Survey / Form Builder"
+        },
+        {
+          "type": "derived",
+          "ref": "colors.csv#Product Type=Survey / Form Builder"
+        }
+      ]
+    },
+    {
+      "entityKind": "reasoning",
+      "entityId": "telemedicine-platform",
+      "sourceFile": "ui-reasoning.csv",
+      "sourceKey": {
+        "UI_Category": "Telemedicine Platform"
+      },
+      "status": "active",
+      "verifiedAt": "2026-08-12",
+      "sla": "needs-review",
+      "appliesTo": [
+        "design-system"
+      ],
+      "confidence": 0.88,
+      "sources": [
+        {
+          "type": "derived",
+          "ref": "products.csv#Product Type=Telemedicine Platform"
+        },
+        {
+          "type": "derived",
+          "ref": "colors.csv#Product Type=Telemedicine Platform"
+        }
+      ]
+    },
+    {
+      "entityKind": "reasoning",
+      "entityId": "testimonial-and-social-proof-widget",
+      "sourceFile": "ui-reasoning.csv",
+      "sourceKey": {
+        "UI_Category": "Testimonial & Social Proof Widget"
+      },
+      "status": "active",
+      "verifiedAt": "2026-08-12",
+      "sla": "needs-review",
+      "appliesTo": [
+        "design-system"
+      ],
+      "confidence": 0.91,
+      "sources": [
+        {
+          "type": "derived",
+          "ref": "products.csv#Product Type=Testimonial & Social Proof Widget"
+        },
+        {
+          "type": "derived",
+          "ref": "colors.csv#Product Type=Testimonial & Social Proof Widget"
+        }
+      ]
+    },
+    {
+      "entityKind": "reasoning",
+      "entityId": "ticketing-box-office",
+      "sourceFile": "ui-reasoning.csv",
+      "sourceKey": {
+        "UI_Category": "Ticketing / Box Office"
+      },
+      "status": "active",
+      "verifiedAt": "2026-08-12",
+      "sla": "needs-review",
+      "appliesTo": [
+        "design-system"
+      ],
+      "confidence": 0.93,
+      "sources": [
+        {
+          "type": "derived",
+          "ref": "products.csv#Product Type=Ticketing / Box Office"
+        },
+        {
+          "type": "derived",
+          "ref": "colors.csv#Product Type=Ticketing / Box Office"
+        }
+      ]
+    },
+    {
+      "entityKind": "style",
+      "entityId": "liquid-glass",
+      "sourceFile": "styles.csv",
+      "sourceKey": {
+        "Style ID": "liquid-glass"
+      },
+      "status": "active",
+      "verifiedAt": "2026-08-13",
+      "sla": "manual-verified",
+      "appliesTo": [
+        "style-search",
+        "gallery"
+      ],
+      "confidence": 0.94,
+      "sources": [
+        {
+          "type": "official",
+          "ref": "https://developer.apple.com/documentation/TechnologyOverviews/liquid-glass"
+        }
+      ]
+    },
+    {
+      "entityKind": "style",
+      "entityId": "material-you-md3-mobile",
+      "sourceFile": "styles.csv",
+      "sourceKey": {
+        "Style ID": "material-you-md3-mobile"
+      },
+      "status": "active",
+      "verifiedAt": "2026-08-13",
+      "sla": "manual-verified",
+      "appliesTo": [
+        "style-search",
+        "gallery"
+      ],
+      "confidence": 0.94,
+      "sources": [
+        {
+          "type": "official",
+          "ref": "https://m3.material.io/"
+        }
+      ]
+    },
+    {
+      "entityKind": "style",
+      "entityId": "fluent-2",
+      "sourceFile": "styles.csv",
+      "sourceKey": {
+        "Style ID": "fluent-2"
+      },
+      "status": "active",
+      "verifiedAt": "2026-08-13",
+      "sla": "manual-verified",
+      "appliesTo": [
+        "style-search",
+        "gallery"
+      ],
+      "confidence": 0.94,
+      "sources": [
+        {
+          "type": "official",
+          "ref": "https://fluent2.microsoft.design/"
+        }
+      ]
+    },
+    {
+      "entityKind": "style",
+      "entityId": "shopify-polaris",
+      "sourceFile": "styles.csv",
+      "sourceKey": {
+        "Style ID": "shopify-polaris"
+      },
+      "status": "active",
+      "verifiedAt": "2026-08-13",
+      "sla": "manual-verified",
+      "appliesTo": [
+        "style-search",
+        "gallery"
+      ],
+      "confidence": 0.94,
+      "sources": [
+        {
+          "type": "official",
+          "ref": "https://shopify.dev/docs/api/polaris/index"
+        }
+      ]
+    },
+    {
+      "entityKind": "style",
+      "entityId": "spectrum-design-system",
+      "sourceFile": "styles.csv",
+      "sourceKey": {
+        "Style ID": "spectrum-design-system"
+      },
+      "status": "active",
+      "verifiedAt": "2026-08-13",
+      "sla": "manual-verified",
+      "appliesTo": [
+        "style-search",
+        "gallery"
+      ],
+      "confidence": 0.94,
+      "sources": [
+        {
+          "type": "official",
+          "ref": "https://opensource.adobe.com/spectrum-design-data/"
+        }
+      ]
+    },
+    {
+      "entityKind": "style",
+      "entityId": "spectrum-2",
+      "sourceFile": "styles.csv",
+      "sourceKey": {
+        "Style ID": "spectrum-2"
+      },
+      "status": "supplemental",
+      "verifiedAt": "2026-08-13",
+      "sla": "manual-verified",
+      "appliesTo": [
+        "style-search",
+        "gallery"
+      ],
+      "confidence": 0.94,
+      "sources": [
+        {
+          "type": "official",
+          "ref": "https://s2.spectrum.adobe.com/index.html"
+        }
+      ]
+    },
+    {
+      "entityKind": "dataset-contract",
+      "entityId": "core-colors-accessibility",
+      "sourceFile": "colors.csv",
+      "sourceKey": {
+        "Scope": "No 1-192; contrast-threshold wording in Notes only",
+        "Boundary": "Does not attest that every palette pair was measured"
+      },
+      "status": "active",
+      "verifiedAt": "2026-08-13",
+      "sla": "manual-verified",
+      "appliesTo": [
+        "search",
+        "design-guidance"
+      ],
+      "sources": [
+        {
+          "type": "official",
+          "ref": "https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum"
+        },
+        {
+          "type": "official",
+          "ref": "https://www.w3.org/WAI/WCAG22/Understanding/non-text-contrast"
+        }
+      ]
+    },
+    {
+      "entityKind": "dataset-contract",
+      "entityId": "core-charts-accessibility",
+      "sourceFile": "charts.csv",
+      "sourceKey": {
+        "Scope": "No 1-25; Color Guidance, Accessibility Notes, and A11y Fallback fields",
+        "Boundary": "Does not claim that a named chart library enforces the guidance"
+      },
+      "status": "active",
+      "verifiedAt": "2026-08-13",
+      "sla": "manual-verified",
+      "appliesTo": [
+        "search",
+        "design-guidance"
+      ],
+      "sources": [
+        {
+          "type": "official",
+          "ref": "https://www.w3.org/WAI/WCAG22/Understanding/use-of-color"
+        },
+        {
+          "type": "official",
+          "ref": "https://carbondesignsystem.com/data-visualization/chart-anatomy/"
+        }
+      ]
+    },
+    {
+      "entityKind": "dataset-contract",
+      "entityId": "core-landing-accessibility",
+      "sourceFile": "landing.csv",
+      "sourceKey": {
+        "Scope": "No 1, 2, 9, 15, 21, 22, 24, 25, 29, and 33; Color Strategy and Conversion Optimization accessibility text"
+      },
+      "status": "active",
+      "verifiedAt": "2026-08-13",
+      "sla": "manual-verified",
+      "appliesTo": [
+        "search",
+        "design-guidance"
+      ],
+      "sources": [
+        {
+          "type": "official",
+          "ref": "https://www.w3.org/WAI/tutorials/carousels/"
+        },
+        {
+          "type": "official",
+          "ref": "https://www.w3.org/WAI/WCAG22/Understanding/dragging-movements.html"
+        },
+        {
+          "type": "official",
+          "ref": "https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum"
+        }
+      ]
+    },
+    {
+      "entityKind": "dataset-contract",
+      "entityId": "core-wcag-22-guidance",
+      "sourceFile": "ux-guidelines.csv",
+      "sourceKey": {
+        "Scope": "No 100-107; Issue, Description, Do, Don't, and code-example fields",
+        "ConformanceBoundary": "Rows 100, 103, 104, and 107 are AA; rows 101-102 are AAA; rows 105-106 are A. Accessible Authentication (Enhanced) AAA is not represented."
+      },
+      "status": "active",
+      "verifiedAt": "2026-08-13",
+      "sla": "manual-verified",
+      "appliesTo": [
+        "search",
+        "design-guidance"
+      ],
+      "sources": [
+        {
+          "type": "official",
+          "ref": "https://www.w3.org/WAI/standards-guidelines/wcag/new-in-22/"
+        },
+        {
+          "type": "official",
+          "ref": "https://www.w3.org/WAI/WCAG22/Understanding/accessible-authentication-minimum.html"
+        }
+      ]
+    },
+    {
+      "entityKind": "dataset-contract",
+      "entityId": "core-typography-imports",
+      "sourceFile": "typography.csv",
+      "sourceKey": {
+        "Scope": "No 20, 39, 59, 63, 66-68, 70, and 71; named families, Google Fonts URL, CSS Import, Tailwind Config, and stated weight/style availability"
+      },
+      "status": "active",
+      "verifiedAt": "2026-08-13",
+      "sla": "manual-verified",
+      "appliesTo": [
+        "search",
+        "design-guidance"
+      ],
+      "sources": [
+        {
+          "type": "official",
+          "ref": "https://developers.google.com/fonts/docs/css2"
+        }
+      ]
+    },
+    {
+      "entityKind": "dataset-contract",
+      "entityId": "core-icon-semantics",
+      "sourceFile": "icons.csv",
+      "sourceKey": {
+        "Scope": "No 1-105; Allowed Contexts and contextual accessibility guidance in Usage; No 105 library/import examples",
+        "Compatibility": "Semantic Role remains a legacy recommended-default field, not an immutable semantic classification"
+      },
+      "status": "active",
+      "verifiedAt": "2026-08-13",
+      "sla": "manual-verified",
+      "appliesTo": [
+        "search",
+        "design-guidance"
+      ],
+      "sources": [
+        {
+          "type": "official",
+          "ref": "https://www.w3.org/WAI/tutorials/images/decorative/"
+        },
+        {
+          "type": "official",
+          "ref": "https://www.w3.org/WAI/ARIA/apg/practices/names-and-descriptions/"
+        },
+        {
+          "type": "official",
+          "ref": "https://www.w3.org/WAI/ARIA/apg/patterns/button/"
+        },
+        {
+          "type": "official",
+          "ref": "https://github.com/phosphor-icons/react"
+        }
+      ]
+    },
+    {
+      "entityKind": "dataset-contract",
+      "entityId": "core-motion-accessibility",
+      "sourceFile": "motion.csv",
+      "sourceKey": {
+        "Scope": "No 1-17; GSAP API identifiers in GSAP Snippet/Framework Notes and reduced-motion handling in Framework Notes",
+        "Boundary": "Does not verify product-specific duration, count, or performance recommendations"
+      },
+      "status": "active",
+      "verifiedAt": "2026-08-13",
+      "sla": "manual-verified",
+      "appliesTo": [
+        "search",
+        "design-guidance"
+      ],
+      "sources": [
+        {
+          "type": "official",
+          "ref": "https://gsap.com/docs/v3/GSAP/"
+        },
+        {
+          "type": "official",
+          "ref": "https://gsap.com/docs/v3/Plugins/ScrollTrigger/"
+        },
+        {
+          "type": "official",
+          "ref": "https://www.w3.org/WAI/WCAG22/Techniques/css/C39.html"
+        },
+        {
+          "type": "official",
+          "ref": "https://www.w3.org/WAI/tutorials/carousels/animations/"
+        }
+      ]
+    },
+    {
+      "entityKind": "dataset-contract",
+      "entityId": "core-native-input",
+      "sourceFile": "app-interface.csv",
+      "sourceKey": {
+        "Scope": "No 6, 31, and 32; Description, Do, Don't, and code-example fields"
+      },
+      "status": "active",
+      "verifiedAt": "2026-08-13",
+      "sla": "manual-verified",
+      "appliesTo": [
+        "search",
+        "design-guidance"
+      ],
+      "sources": [
+        {
+          "type": "official",
+          "ref": "https://developer.apple.com/design/human-interface-guidelines/accessibility"
+        },
+        {
+          "type": "official",
+          "ref": "https://developer.android.com/guide/topics/ui/accessibility/apps"
+        }
+      ]
+    },
+    {
+      "entityKind": "dataset-contract",
+      "entityId": "core-react-effects",
+      "sourceFile": "react-performance.csv",
+      "sourceKey": {
+        "Scope": "No 43-44; Description, Do, Don't, and code-example fields"
+      },
+      "status": "active",
+      "verifiedAt": "2026-08-13",
+      "sla": "manual-verified",
+      "appliesTo": [
+        "search",
+        "design-guidance"
+      ],
+      "sources": [
+        {
+          "type": "official",
+          "ref": "https://react.dev/reference/react/useEffectEvent"
+        },
+        {
+          "type": "official",
+          "ref": "https://react.dev/learn/referencing-values-with-refs"
+        },
+        {
+          "type": "official",
+          "ref": "https://react.dev/reference/react/useEffect"
+        }
+      ]
+    },
+    {
+      "entityKind": "dataset-contract",
+      "entityId": "core-form-validation-errors",
+      "sourceFile": "ux-guidelines.csv",
+      "sourceKey": {
+        "Scope": "No 55 and 109; Description, Do, Don't, and code-example fields"
+      },
+      "status": "active",
+      "verifiedAt": "2026-08-13",
+      "sla": "manual-verified",
+      "appliesTo": [
+        "search",
+        "design-guidance"
+      ],
+      "sources": [
+        {
+          "type": "official",
+          "ref": "https://design-system.service.gov.uk/components/error-summary/"
+        },
+        {
+          "type": "official",
+          "ref": "https://design-system.service.gov.uk/components/error-message/"
+        },
+        {
+          "type": "official",
+          "ref": "https://www.w3.org/WAI/tutorials/forms/notifications/"
+        }
+      ]
+    },
+    {
+      "entityKind": "dataset-contract",
+      "entityId": "core-text-layout-resilience",
+      "sourceFile": "ux-guidelines.csv",
+      "sourceKey": {
+        "Scope": "No 8, 14, 19, 78, and 110-119; Issue, Platform, Description, Do, Don't, code-example, and Severity fields",
+        "Boundary": "Heading balance is a progressive browser-controlled heuristic and does not guarantee an orphan-free or exact line break; timing and loading choices remain platform- and component-specific; compact-label guidance does not authorize blanket nonbreaking spaces, hardcoded line breaks, inaccessible truncation, or status announced by color alone"
+      },
+      "status": "active",
+      "verifiedAt": "2026-08-13",
+      "sla": "manual-verified",
+      "appliesTo": [
+        "search",
+        "design-guidance"
+      ],
+      "sources": [
+        {
+          "type": "official",
+          "ref": "https://www.w3.org/TR/css-text-4/"
+        },
+        {
+          "type": "official",
+          "ref": "https://www.w3.org/WAI/WCAG22/Understanding/reflow.html"
+        },
+        {
+          "type": "official",
+          "ref": "https://www.w3.org/WAI/WCAG22/Understanding/text-spacing.html"
+        },
+        {
+          "type": "official",
+          "ref": "https://www.w3.org/WAI/WCAG22/Understanding/status-messages.html"
+        },
+        {
+          "type": "official",
+          "ref": "https://fluent2.microsoft.design/components/web/react/core/tag/usage"
+        },
+        {
+          "type": "official",
+          "ref": "https://fluent2.microsoft.design/components/web/react/core/skeleton/usage"
+        },
+        {
+          "type": "official",
+          "ref": "https://fluent2.microsoft.design/motion"
+        },
+        {
+          "type": "official",
+          "ref": "https://fluent2.microsoft.design/wait-ux"
+        },
+        {
+          "type": "official",
+          "ref": "https://m3.material.io/foundations/interaction/states/overview"
+        },
+        {
+          "type": "official",
+          "ref": "https://www.w3.org/TR/web-animations-1/"
+        },
+        {
+          "type": "official",
+          "ref": "https://www.w3.org/TR/css-animations-1/"
+        }
+      ]
+    },
+    {
+      "entityKind": "dataset-contract",
+      "entityId": "html-tailwind-text-layout-resilience",
+      "sourceFile": "stacks/html-tailwind.csv",
+      "sourceKey": {
+        "Scope": "No 57-59; Guideline, Description, Do, Don't, Code Good, Code Bad, Docs URL, Applies To, Status, and Verified At fields",
+        "Boundary": "Balanced wrapping is progressive enhancement; wrap-anywhere is limited to unpredictable long tokens; compact-label truncation is a last resort after collection reflow and requires a bounded shrink path"
+      },
+      "status": "active",
+      "verifiedAt": "2026-08-13",
+      "sla": "manual-verified",
+      "appliesTo": [
+        "search",
+        "design-guidance"
+      ],
+      "sources": [
+        {
+          "type": "official",
+          "ref": "https://tailwindcss.com/docs/text-wrap"
+        },
+        {
+          "type": "official",
+          "ref": "https://tailwindcss.com/docs/overflow-wrap"
+        },
+        {
+          "type": "official",
+          "ref": "https://tailwindcss.com/docs/flex-wrap"
+        },
+        {
+          "type": "official",
+          "ref": "https://tailwindcss.com/docs/min-width"
+        },
+        {
+          "type": "official",
+          "ref": "https://tailwindcss.com/docs/white-space"
+        }
+      ]
+    },
+    {
+      "entityKind": "catalog-snapshot",
+      "entityId": "google-fonts-catalog-2026-08-13",
+      "sourceFile": "google-fonts.csv",
+      "sourceKey": {
+        "Snapshot": "catalog-summary.json",
+        "Count": 1934
+      },
+      "status": "active",
+      "verifiedAt": "2026-08-13",
+      "sla": "manual-verified",
+      "appliesTo": [
+        "search",
+        "design-guidance"
+      ],
+      "sources": [
+        {
+          "type": "official",
+          "ref": "https://developers.google.com/fonts/docs/developer_api"
+        },
+        {
+          "type": "official",
+          "ref": "https://github.com/google/fonts"
+        }
+      ]
+    },
+    {
+      "entityKind": "catalog-snapshot",
+      "entityId": "phosphor-icons-catalog-2.1.1",
+      "sourceFile": "phosphor-icons-upstream.json",
+      "sourceKey": {
+        "Snapshot": "catalog-summary.json",
+        "Count": 1512
+      },
+      "status": "active",
+      "verifiedAt": "2026-08-13",
+      "sla": "manual-verified",
+      "appliesTo": [
+        "search",
+        "design-guidance"
+      ],
+      "sources": [
+        {
+          "type": "official",
+          "ref": "https://github.com/phosphor-icons/core"
+        },
+        {
+          "type": "official",
+          "ref": "https://github.com/phosphor-icons/react"
+        }
+      ]
+    }
+  ]
+}

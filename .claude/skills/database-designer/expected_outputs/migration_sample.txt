@@ -1,0 +1,124 @@
+DATABASE MIGRATION PLAN
+==================================================
+Migration ID: a7b3c9d2
+Created: 2024-02-16T15:30:00Z
+Zero Downtime: false
+
+MIGRATION SUMMARY
+-----------------
+Total Steps: 12
+Tables Added: 1
+Tables Dropped: 0
+Tables Renamed: 0
+Columns Added: 3
+Columns Dropped: 1
+Columns Modified: 2
+Constraints Added: 4
+Constraints Dropped: 1
+Indexes Added: 2
+Indexes Dropped: 1
+
+RISK ASSESSMENT
+---------------
+High Risk Steps: 3
+Medium Risk Steps: 4
+Low Risk Steps: 5
+
+MIGRATION STEPS
+---------------
+1. Create table brands with 4 columns (LOW risk)
+   Type: CREATE_TABLE
+   Forward SQL: CREATE TABLE brands (
+       id INTEGER PRIMARY KEY,
+       name VARCHAR(100) NOT NULL,
+       description TEXT,
+       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+   );
+   Rollback SQL: DROP TABLE IF EXISTS brands;
+
+2. Add column brand_id to products (LOW risk)
+   Type: ADD_COLUMN
+   Forward SQL: ALTER TABLE products ADD COLUMN brand_id INTEGER;
+   Rollback SQL: ALTER TABLE products DROP COLUMN brand_id;
+
+3. Add column email_verified to users (LOW risk)
+   Type: ADD_COLUMN
+   Forward SQL: ALTER TABLE users ADD COLUMN email_verified BOOLEAN DEFAULT false;
+   Rollback SQL: ALTER TABLE users DROP COLUMN email_verified;
+
+4. Add column last_login to users (LOW risk)
+   Type: ADD_COLUMN
+   Forward SQL: ALTER TABLE users ADD COLUMN last_login TIMESTAMP;
+   Rollback SQL: ALTER TABLE users DROP COLUMN last_login;
+
+5. Modify column price: type: DECIMAL(10,2) -> DECIMAL(12,2) (LOW risk)
+   Type: MODIFY_COLUMN
+   Forward SQL: ALTER TABLE products
+       ALTER COLUMN price TYPE DECIMAL(12,2);
+   Rollback SQL: ALTER TABLE products
+       ALTER COLUMN price TYPE DECIMAL(10,2);
+
+6. Modify column inventory_count: nullable: true -> false (HIGH risk)
+   Type: MODIFY_COLUMN
+   Forward SQL: ALTER TABLE products
+       ALTER COLUMN inventory_count SET NOT NULL;
+   Rollback SQL: ALTER TABLE products
+       ALTER COLUMN inventory_count DROP NOT NULL;
+
+7. Add primary key on id (MEDIUM risk)
+   Type: ADD_CONSTRAINT
+   Forward SQL: ALTER TABLE brands ADD CONSTRAINT pk_brands PRIMARY KEY (id);
+   Rollback SQL: ALTER TABLE brands DROP CONSTRAINT pk_brands;
+
+8. Add foreign key constraint on brand_id (MEDIUM risk)
+   Type: ADD_CONSTRAINT
+   Forward SQL: ALTER TABLE products ADD CONSTRAINT fk_products_brand_id FOREIGN KEY (brand_id) REFERENCES brands(id);
+   Rollback SQL: ALTER TABLE products DROP CONSTRAINT fk_products_brand_id;
+
+9. Add unique constraint on name (MEDIUM risk)
+   Type: ADD_CONSTRAINT
+   Forward SQL: ALTER TABLE brands ADD CONSTRAINT uq_brands_name UNIQUE (name);
+   Rollback SQL: ALTER TABLE brands DROP CONSTRAINT uq_brands_name;
+
+10. Add check constraint: price > 0 (MEDIUM risk)
+    Type: ADD_CONSTRAINT
+    Forward SQL: ALTER TABLE products ADD CONSTRAINT chk_products_price_positive CHECK (price > 0);
+    Rollback SQL: ALTER TABLE products DROP CONSTRAINT chk_products_price_positive;
+
+11. Create index idx_products_brand_id on (brand_id) (LOW risk)
+    Type: ADD_INDEX
+    Forward SQL: CREATE INDEX idx_products_brand_id ON products (brand_id);
+    Rollback SQL: DROP INDEX idx_products_brand_id;
+    Estimated Time: 1-5 minutes depending on table size
+
+12. Create index idx_users_email_verified on (email_verified) (LOW risk)
+    Type: ADD_INDEX
+    Forward SQL: CREATE INDEX idx_users_email_verified ON users (email_verified);
+    Rollback SQL: DROP INDEX idx_users_email_verified;
+    Estimated Time: 1-5 minutes depending on table size
+
+VALIDATION CHECKS
+-----------------
+• Verify table brands exists
+  SQL: SELECT COUNT(*) FROM information_schema.tables WHERE table_name = 'brands';
+  Expected: 1
+
+• Verify column brand_id exists in products
+  SQL: SELECT COUNT(*) FROM information_schema.columns WHERE table_name = 'products' AND column_name = 'brand_id';
+  Expected: 1
+
+• Verify column email_verified exists in users
+  SQL: SELECT COUNT(*) FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'email_verified';
+  Expected: 1
+
+• Verify column modification in products
+  SQL: SELECT data_type, is_nullable FROM information_schema.columns WHERE table_name = 'products' AND column_name = 'price';
+  Expected: 1
+
+• Verify index idx_products_brand_id exists
+  SQL: SELECT COUNT(*) FROM information_schema.statistics WHERE index_name = 'idx_products_brand_id';
+  Expected: 1
+
+• Verify index idx_users_email_verified exists
+  SQL: SELECT COUNT(*) FROM information_schema.statistics WHERE index_name = 'idx_users_email_verified';
+  Expected: 1

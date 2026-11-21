@@ -9,6 +9,11 @@ on:
       - synchronize
       - labeled
       - unlabeled
+    # Fork (benkas418-alt): skip changes that only touch the football-intel project.
+    paths-ignore:
+      - 'football-intel/**'
+      - '.claude/**'
+      - '.github/workflows/util-football-intel-*.yml'
   issue_comment:
     types:
       - created

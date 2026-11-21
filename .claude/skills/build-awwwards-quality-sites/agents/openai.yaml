@@ -1,0 +1,4 @@
+interface:
+  display_name: "Build Awwwards-Quality Sites"
+  short_description: "Art-direct distinctive, motion-rich Sites builds"
+  default_prompt: "Use $build-awwwards-quality-sites to create an art-directed, motion-rich website with original assets and robust fallbacks."

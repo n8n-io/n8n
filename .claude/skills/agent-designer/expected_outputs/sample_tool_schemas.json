@@ -1,0 +1,416 @@
+{
+  "tool_schemas": [
+    {
+      "name": "web_search",
+      "description": "Search the web for information on specified topics with customizable filters and result limits",
+      "openai_schema": {
+        "name": "web_search",
+        "description": "Search the web for information on specified topics with customizable filters and result limits",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "description": "Search query string to find relevant information",
+              "minLength": 1,
+              "maxLength": 500,
+              "examples": [
+                "artificial intelligence trends",
+                "climate change impact",
+                "python programming tutorial"
+              ]
+            },
+            "limit": {
+              "type": "integer",
+              "description": "Maximum number of search results to return",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 10
+            },
+            "language": {
+              "type": "string",
+              "description": "Language code for search results",
+              "enum": [
+                "en",
+                "es",
+                "fr",
+                "de",
+                "it",
+                "pt",
+                "zh",
+                "ja"
+              ],
+              "default": "en"
+            },
+            "time_range": {
+              "type": "string",
+              "description": "Time range filter for search results",
+              "enum": [
+                "any",
+                "day",
+                "week",
+                "month",
+                "year"
+              ]
+            }
+          },
+          "required": [
+            "query"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "anthropic_schema": {
+        "name": "web_search",
+        "description": "Search the web for information on specified topics with customizable filters and result limits",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "description": "Search query string to find relevant information",
+              "minLength": 1,
+              "maxLength": 500
+            },
+            "limit": {
+              "type": "integer",
+              "description": "Maximum number of search results to return",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "language": {
+              "type": "string",
+              "description": "Language code for search results",
+              "enum": [
+                "en",
+                "es",
+                "fr",
+                "de",
+                "it",
+                "pt",
+                "zh",
+                "ja"
+              ]
+            },
+            "time_range": {
+              "type": "string",
+              "description": "Time range filter for search results",
+              "enum": [
+                "any",
+                "day",
+                "week",
+                "month",
+                "year"
+              ]
+            }
+          },
+          "required": [
+            "query"
+          ]
+        }
+      },
+      "validation_rules": [
+        {
+          "parameter": "query",
+          "rules": {
+            "minLength": 1,
+            "maxLength": 500
+          }
+        },
+        {
+          "parameter": "limit",
+          "rules": {
+            "minimum": 1,
+            "maximum": 100
+          }
+        }
+      ],
+      "error_responses": [
+        {
+          "error_code": "invalid_input",
+          "error_message": "Invalid input parameters provided",
+          "http_status": 400,
+          "retry_after": null,
+          "details": {
+            "validation_errors": []
+          }
+        },
+        {
+          "error_code": "authentication_required",
+          "error_message": "Authentication required to access this tool",
+          "http_status": 401,
+          "retry_after": null,
+          "details": null
+        },
+        {
+          "error_code": "rate_limit_exceeded",
+          "error_message": "Rate limit exceeded. Please try again later",
+          "http_status": 429,
+          "retry_after": 60,
+          "details": null
+        }
+      ],
+      "rate_limits": {
+        "requests_per_minute": 60,
+        "requests_per_hour": 1000,
+        "requests_per_day": 10000,
+        "burst_limit": 10,
+        "cooldown_period": 60,
+        "rate_limit_key": "user_id"
+      },
+      "examples": [
+        {
+          "description": "Basic web search",
+          "input": {
+            "query": "machine learning algorithms",
+            "limit": 5
+          },
+          "expected_output": {
+            "results": [
+              {
+                "title": "Introduction to Machine Learning Algorithms",
+                "url": "https://example.com/ml-intro",
+                "snippet": "Machine learning algorithms are computational methods...",
+                "relevance_score": 0.95
+              }
+            ],
+            "total_found": 1250
+          }
+        }
+      ],
+      "metadata": {
+        "category": "search",
+        "idempotent": true,
+        "side_effects": [
+          "Logs search query for analytics",
+          "May cache results temporarily"
+        ],
+        "dependencies": [
+          "search_api_service",
+          "content_filter_service"
+        ],
+        "security_requirements": [
+          "Query sanitization",
+          "Rate limiting by user",
+          "Content filtering"
+        ],
+        "generated_at": "2024-01-15T10:30:00Z",
+        "schema_version": "1.0",
+        "input_parameters": 4,
+        "output_parameters": 2,
+        "required_parameters": 1,
+        "optional_parameters": 3
+      }
+    },
+    {
+      "name": "data_analyzer",
+      "description": "Analyze structured data and generate statistical insights, trends, and visualizations",
+      "openai_schema": {
+        "name": "data_analyzer",
+        "description": "Analyze structured data and generate statistical insights, trends, and visualizations",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "data": {
+              "type": "object",
+              "description": "Structured data to analyze in JSON format",
+              "properties": {
+                "columns": {
+                  "type": "array"
+                },
+                "rows": {
+                  "type": "array"
+                }
+              },
+              "additionalProperties": false
+            },
+            "analysis_type": {
+              "type": "string",
+              "description": "Type of analysis to perform",
+              "enum": [
+                "descriptive",
+                "correlation",
+                "trend",
+                "distribution",
+                "outlier_detection"
+              ]
+            },
+            "target_column": {
+              "type": "string",
+              "description": "Primary column to focus analysis on",
+              "maxLength": 1000
+            },
+            "include_visualization": {
+              "type": "boolean",
+              "description": "Whether to generate visualization data",
+              "default": true
+            }
+          },
+          "required": [
+            "data",
+            "analysis_type"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "anthropic_schema": {
+        "name": "data_analyzer",
+        "description": "Analyze structured data and generate statistical insights, trends, and visualizations",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "data": {
+              "type": "object",
+              "description": "Structured data to analyze in JSON format"
+            },
+            "analysis_type": {
+              "type": "string",
+              "description": "Type of analysis to perform",
+              "enum": [
+                "descriptive",
+                "correlation",
+                "trend",
+                "distribution",
+                "outlier_detection"
+              ]
+            },
+            "target_column": {
+              "type": "string",
+              "description": "Primary column to focus analysis on",
+              "maxLength": 1000
+            },
+            "include_visualization": {
+              "type": "boolean",
+              "description": "Whether to generate visualization data"
+            }
+          },
+          "required": [
+            "data",
+            "analysis_type"
+          ]
+        }
+      },
+      "validation_rules": [
+        {
+          "parameter": "target_column",
+          "rules": {
+            "maxLength": 1000
+          }
+        }
+      ],
+      "error_responses": [
+        {
+          "error_code": "invalid_input",
+          "error_message": "Invalid input parameters provided",
+          "http_status": 400,
+          "retry_after": null,
+          "details": {
+            "validation_errors": []
+          }
+        },
+        {
+          "error_code": "authentication_required",
+          "error_message": "Authentication required to access this tool",
+          "http_status": 401,
+          "retry_after": null,
+          "details": null
+        },
+        {
+          "error_code": "rate_limit_exceeded",
+          "error_message": "Rate limit exceeded. Please try again later",
+          "http_status": 429,
+          "retry_after": 60,
+          "details": null
+        }
+      ],
+      "rate_limits": {
+        "requests_per_minute": 30,
+        "requests_per_hour": 500,
+        "requests_per_day": 5000,
+        "burst_limit": 5,
+        "cooldown_period": 60,
+        "rate_limit_key": "user_id"
+      },
+      "examples": [
+        {
+          "description": "Basic descriptive analysis",
+          "input": {
+            "data": {
+              "columns": [
+                "age",
+                "salary",
+                "department"
+              ],
+              "rows": [
+                [
+                  25,
+                  50000,
+                  "engineering"
+                ],
+                [
+                  30,
+                  60000,
+                  "engineering"
+                ],
+                [
+                  28,
+                  55000,
+                  "marketing"
+                ]
+              ]
+            },
+            "analysis_type": "descriptive",
+            "target_column": "salary"
+          },
+          "expected_output": {
+            "insights": [
+              "Average salary is $55,000",
+              "Salary range: $50,000 - $60,000",
+              "Engineering department has higher average salary"
+            ],
+            "statistics": {
+              "mean": 55000,
+              "median": 55000,
+              "std_dev": 5000
+            }
+          }
+        }
+      ],
+      "metadata": {
+        "category": "data",
+        "idempotent": true,
+        "side_effects": [
+          "May create temporary analysis files",
+          "Logs analysis parameters for optimization"
+        ],
+        "dependencies": [
+          "statistics_engine",
+          "visualization_service"
+        ],
+        "security_requirements": [
+          "Data anonymization",
+          "Access control validation"
+        ],
+        "generated_at": "2024-01-15T10:30:00Z",
+        "schema_version": "1.0",
+        "input_parameters": 4,
+        "output_parameters": 3,
+        "required_parameters": 2,
+        "optional_parameters": 2
+      }
+    }
+  ],
+  "metadata": {
+    "generated_by": "tool_schema_generator.py",
+    "input_file": "sample_tool_descriptions.json",
+    "tool_count": 2,
+    "generation_timestamp": "2024-01-15T10:30:00Z",
+    "schema_version": "1.0"
+  },
+  "validation_summary": {
+    "total_tools": 2,
+    "total_parameters": 8,
+    "total_validation_rules": 3,
+    "total_examples": 2
+  }
+}

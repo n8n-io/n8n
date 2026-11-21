@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="assets/gsap.min.js"></script>
+    <style>
+      @font-face { font-family: "Poppins"; font-weight: 600; src: url(assets/fonts/poppins-600.woff2) format("woff2"); }
+      @font-face { font-family: "Poppins"; font-weight: 700; src: url(assets/fonts/poppins-700.woff2) format("woff2"); }
+      @font-face { font-family: "Poppins"; font-weight: 800; src: url(assets/fonts/poppins-800.woff2) format("woff2"); }
+      :root { --blue: #1f88c9; --ink: #0b0d11; }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1080px; height: 1920px; overflow: hidden; background: var(--ink); }
+      #root { position: relative; width: 100%; height: 100%; overflow: hidden; font-family: "Poppins", sans-serif; color: #fff; }
+      .layer { position: absolute; inset: 0; }
+      #bg { position: absolute; inset: 0; background: radial-gradient(1100px 1400px at 50% 60%, #151a22 0%, #0b0d11 70%); }
+      #city { position: absolute; inset: 0; z-index: 1; }
+
+      .line { position: absolute; z-index: 5; left: 76px; display: block; font-weight: 800; letter-spacing: -4px; line-height: 1; white-space: nowrap; }
+      #l1, #l2, #l3 { font-size: 112px; }
+      .echo { position: absolute; z-index: 5; left: 76px; display: block; font-weight: 800; font-size: 74px; letter-spacing: -2px; line-height: 1; white-space: nowrap; color: rgba(255,255,255,0.22); }
+
+      #front { position: absolute; left: 230px; top: 760px; width: 620px; height: 620px; border-radius: 48px; overflow: hidden; box-shadow: 0 40px 80px rgba(0,0,0,0.6); }
+      #front img { width: 100%; height: 100%; object-fit: cover; display: block; }
+      #frontTag { position: absolute; left: 260px; top: 1410px; display: block; font-weight: 600; font-size: 34px; color: rgba(255,255,255,0.7); white-space: nowrap; }
+
+      .dot { position: absolute; border-radius: 50%; overflow: hidden; border: 6px solid #fff; box-shadow: 0 24px 50px rgba(0,0,0,0.55); background: #000; }
+      .dot img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+      #stop { position: absolute; z-index: 10; inset: 0; background: #000; opacity: 0; display: flex; align-items: center; justify-content: center; }
+      #stopW { display: block; font-weight: 800; font-size: 330px; letter-spacing: -14px; color: #fff; line-height: 1; }
+
+      #end { position: absolute; z-index: 11; inset: 0; background: var(--blue); opacity: 0; }
+      #ring { position: absolute; left: 340px; top: 300px; width: 400px; height: 400px; border-radius: 50%; border: 10px solid #fff; opacity: 0; }
+      #icon { position: absolute; left: 395px; top: 360px; width: 290px; display: block; }
+      #e1, #e2 { position: absolute; left: 0; right: 0; display: block; text-align: center; font-weight: 800; font-size: 86px; letter-spacing: -3px; line-height: 1; white-space: nowrap; }
+      #e2 { color: #0b0d11; }
+      #lock { position: absolute; inset: 0; opacity: 0; }
+      #word { position: absolute; left: 305px; top: 820px; width: 470px; display: block; }
+      #tag { position: absolute; left: 260px; top: 1050px; width: 560px; display: block; }
+      #count { position: absolute; left: 0; right: 0; top: 1180px; display: block; text-align: center; font-weight: 800; font-size: 56px; letter-spacing: -1px; color: #fff; white-space: nowrap; }
+      #ctaWrap { position: absolute; left: 0; right: 0; top: 1320px; display: flex; justify-content: center; }
+      #cta { display: block; padding: 30px 70px; border-radius: 999px; background: #fff; color: var(--blue); font-weight: 800; font-size: 58px; white-space: nowrap; }
+      #stores { position: absolute; left: 0; right: 0; top: 1500px; display: block; text-align: center; font-weight: 600; font-size: 36px; color: rgba(255,255,255,0.85); white-space: nowrap; }
+
+      #flash { position: absolute; z-index: 12; inset: 0; background: #fff; opacity: 0; }
+      #grain { position: absolute; z-index: 14; inset: -64px; background-image: url(assets/grain.png); background-size: 512px 512px; mix-blend-mode: overlay; opacity: 0.18; pointer-events: none; }
+      #vignette { position: absolute; z-index: 13; inset: 0; pointer-events: none; background: radial-gradient(1300px 1700px at 50% 48%, rgba(0,0,0,0) 55%, rgba(0,0,0,0.3) 100%); }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="18" data-width="1080" data-height="1920">
+      <audio id="bgm" src="assets/bgm.wav" data-start="0" data-duration="18" data-track-index="11"></audio>
+      <div id="scene" class="clip layer" data-start="0" data-duration="18" data-track-index="0">
+        <div id="bg"></div>
+        <div id="city">
+          <div id="front"><img src="assets/logos/11.jpg" alt="" /></div>
+          <div id="frontTag">Le Don Divin · Lubumbashi</div>
+          <div id="dots"></div>
+        </div>
+        <div class="line" id="l1" style="top: 250px">Une boutique.</div>
+        <div class="line" id="l2" style="top: 380px">Puis une autre.</div>
+        <div class="line" id="l3" style="top: 510px">Et encore une.</div>
+        <div id="echoes"></div>
+        <div id="stop"><div id="stopW">Stop.</div></div>
+        <div id="end">
+          <div id="ring"></div>
+          <img id="icon" src="assets/icon_white.png" alt="" />
+          <div id="e1" style="top: 880px">Toutes ces boutiques.</div>
+          <div id="e2" style="top: 1010px">Une seule app.</div>
+          <div id="lock">
+            <img id="word" src="assets/logo_word_white.png" alt="" />
+            <img id="tag" src="assets/logo_tag_white.png" alt="" />
+            <div id="count">+100 boutiques à Lubumbashi</div>
+            <div id="ctaWrap"><div id="cta">pi-tup.com</div></div>
+            <div id="stores">Aussi sur App Store et Google Play</div>
+          </div>
+        </div>
+        <div id="flash"></div>
+        <div id="vignette"></div>
+        <div id="grain"></div>
+      </div>
+    </div>
+
+    <script>
+      // Times are track seconds of GET RICH OR DIE minus 46.0 (the cut-in point), from audiomap.json.
+      const M = (t) => t - 46.0;
+      const tl = gsap.timeline({ paused: true });
+
+      // ---------- hook: one shopfront, then the others (one line per hit) ----------
+      tl.set("#l1", { opacity: 1 }, 0);
+      tl.fromTo("#front", { scale: 1.06 }, { scale: 1, duration: 0.5, ease: "power3.out" }, 0);
+      tl.fromTo("#l2", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.2, ease: "power3.out" }, M(47.51));
+      tl.fromTo("#l3", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.2, ease: "power3.out" }, M(48.27));
+      tl.to(["#l1", "#l2"], { color: "rgba(255,255,255,0.32)", duration: 0.15 }, M(48.27));
+      tl.to("#frontTag", { opacity: 0, duration: 0.2 }, M(47.51));
+
+      // ---------- logo dots: accumulate on beats, then an accelerating flurry ----------
+      let seed = 11;
+      const rnd = () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
+      const pops = [];
+      [M(47.51), M(48.27), M(49.737), M(50.155), M(50.527), M(50.921)].forEach((t) => pops.push({ t, size: 250 }));
+      // flurry: half-beats from the surge (51.04) to just before the silence, shrinking gaps
+      let t = M(51.04), gap = 0.2;
+      while (t < M(55.75)) { pops.push({ t, size: 150 + Math.round(rnd() * 120) }); t += gap; gap = Math.max(0.09, gap * 0.97); }
+      const dotsEl = document.getElementById("dots");
+      pops.forEach((p, i) => {
+        const d = document.createElement("div");
+        d.className = "dot"; d.id = "dot" + i;
+        d.innerHTML = `<img src="assets/logos/${String(i % 11).padStart(2, "0")}.jpg" alt="">`;
+        d.style.width = p.size + "px"; d.style.height = p.size + "px";
+        dotsEl.appendChild(d);
+        // first six circle the shopfront; the flurry fills the whole frame
+        let x, y;
+        if (i < 6) {
+          const a = [[60, 700], [770, 760], [40, 1240], [800, 1260], [400, 1520], [700, 600]][i]; x = a[0]; y = a[1];
+        } else { x = -40 + rnd() * (1080 - p.size + 80); y = 560 + rnd() * (1450 - p.size); }
+        gsap.set(d, { left: x, top: y, opacity: 0 });
+        tl.fromTo(d, { scale: 0.2, opacity: 0, rotation: (rnd() - 0.5) * 30 },
+          { scale: 1, opacity: 1, rotation: (rnd() - 0.5) * 10, duration: 0.24, ease: "back.out(2.2)" }, p.t);
+      });
+      // the shopfront gets buried as the flurry starts
+      tl.to("#front", { scale: 0.86, opacity: 0.5, duration: 0.6, ease: "power2.out" }, M(51.04));
+
+      // echoes: "Encore une." stacks on the downbeats of the flurry
+      const echoes = document.getElementById("echoes");
+      [51.339, 52.941, 54.544, 55.333].forEach((tt, k) => {
+        const e = document.createElement("div"); e.className = "echo"; e.id = "echo" + k;
+        e.textContent = "Encore une."; e.style.top = 650 + k * 92 + "px"; echoes.appendChild(e);
+        tl.fromTo(e, { opacity: 0, x: -30 }, { opacity: 1, x: 0, duration: 0.15, ease: "power3.out" }, M(tt));
+      });
+
+      // one camera move for the whole build: a slow push that tightens into the crowd
+      tl.fromTo("#city", { scale: 1, transformOrigin: "50% 60%" }, { scale: 1.14, duration: M(55.9), ease: "power1.in" }, 0);
+      // nervous micro-shake on the two rolls (bounded, seek-safe)
+      [[51.5, 52.48], [52.73, 54.43]].forEach(([a, b]) => {
+        tl.fromTo("#city", { x: 0 }, { x: 5, duration: 0.05, ease: "none", yoyo: true, repeat: Math.round((b - a) / 0.05) - 1 }, M(a));
+        tl.set("#city", { x: 0 }, M(b));
+      });
+
+      // ---------- STOP: dead cut to black on the silence (55.9) ----------
+      tl.set("#stop", { opacity: 1 }, M(55.9));
+      tl.fromTo("#stopW", { scale: 1.12 }, { scale: 1, duration: 0.18, ease: "expo.out" }, M(55.9));
+
+      // ---------- impact: brand ----------
+      tl.set("#end", { opacity: 1 }, M(56.89));
+      tl.set("#stop", { opacity: 0 }, M(56.89));
+      tl.fromTo("#icon", { scale: 1.15, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.3, ease: "expo.out" }, M(56.89));
+      tl.set("#flash", { opacity: 1 }, M(57.28));
+      tl.set("#flash", { opacity: 0 }, M(57.28) + 1 / 30);
+      tl.fromTo("#ring", { scale: 0.7, opacity: 0.9 }, { scale: 1.5, opacity: 0, duration: 0.7, ease: "power2.out" }, M(57.28));
+      tl.fromTo("#e1", { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: 0.3, ease: "power3.out" }, M(57.7));
+      tl.fromTo("#e2", { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: 0.3, ease: "power3.out" }, M(59.07));
+      // lockup on the 60.26 hit: statements clear, icon rises, wordmark lands
+      tl.to(["#e1", "#e2"], { opacity: 0, y: -30, duration: 0.18, ease: "power2.in" }, M(60.26) - 0.18);
+      tl.to("#icon", { y: 60, duration: 0.4, ease: "power3.out" }, M(60.26));
+      tl.set("#lock", { opacity: 1 }, M(60.26));
+      tl.fromTo("#word", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.35, ease: "power3.out" }, M(60.26));
+      tl.fromTo("#tag", { opacity: 0 }, { opacity: 1, duration: 0.35 }, M(60.534));
+      tl.fromTo("#count", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.35, ease: "power3.out" }, M(60.929));
+      tl.fromTo("#cta", { scale: 0.7, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.42, ease: "back.out(2)" }, M(62.555) - 0.06);
+      tl.fromTo("#stores", { opacity: 0 }, { opacity: 1, duration: 0.4 }, M(62.949));
+
+      // grain re-seeds 12x per second, deterministic
+      for (let f = 0; f < 18 * 12; f++) tl.set("#grain", { x: (((f * 137) % 512) - 256) / 8, y: (((f * 251) % 512) - 256) / 8 }, f / 12);
+
+      window.__timelines["main"] = tl;
+      tl.seek(0);
+    </script>
+  </body>
+</html>

@@ -1,0 +1,78 @@
+{
+  "schemaVersion": 1,
+  "verifiedAt": "2026-11-01",
+  "counts": {
+    "styles": {
+      "total": 88,
+      "searchable": 79,
+      "active": 50,
+      "supplemental": 29,
+      "deprecated": 9
+    },
+    "products": 192,
+    "palettes": 192,
+    "reasoningProfiles": 192,
+    "fontPairings": 74,
+    "googleFonts": 1934,
+    "curatedIcons": 105,
+    "upstreamPhosphorIcons": 1512,
+    "uxGuidelines": 119,
+    "motionPresets": 17,
+    "chartTypes": 25,
+    "stacks": 22,
+    "stackGuidelines": 1278
+  },
+  "snapshots": {
+    "google-fonts.csv": {
+      "sha256": "1c8c3b2ea1faf6a1012da463756def8b3889db33f2226f0343bb4daa80307d03"
+    },
+    "google-font-licenses.json": {
+      "sha256": "35688523f2955795caa1a47c53b83099e60c1708461476f9cc3a050cf3b0148a"
+    },
+    "icons.csv": {
+      "sha256": "50816c6012030178195a16ee481ebf58b47bd985d70e8ec58886cc83f6eddafc"
+    },
+    "phosphor-icons-upstream.json": {
+      "sha256": "2399325233b277b5c97a80e6a5e8941154f5d057beee4e7613db87c87d700236"
+    }
+  },
+  "promotionPolicy": {
+    "changedFamilySetRequiresExplicitApproval": true,
+    "relevanceGateRequired": true,
+    "unlicensedFamiliesExcluded": true
+  },
+  "pendingCandidates": [
+    {
+      "family": "Edu NSW ACT Cursive",
+      "reason": "No exact-family METADATA.pb entry in the official google/fonts repository snapshot"
+    },
+    {
+      "family": "Edu NSW ACT Hand Pre",
+      "reason": "No exact-family METADATA.pb entry in the official google/fonts repository snapshot"
+    },
+    {
+      "family": "Edu QLD Hand",
+      "reason": "No exact-family METADATA.pb entry in the official google/fonts repository snapshot"
+    },
+    {
+      "family": "Edu SA Hand",
+      "reason": "No exact-family METADATA.pb entry in the official google/fonts repository snapshot"
+    },
+    {
+      "family": "Edu VIC WA NT Hand",
+      "reason": "No exact-family METADATA.pb entry in the official google/fonts repository snapshot"
+    },
+    {
+      "family": "Edu VIC WA NT Hand Pre",
+      "reason": "No exact-family METADATA.pb entry in the official google/fonts repository snapshot"
+    },
+    {
+      "family": "Google Sans",
+      "reason": "No exact-family METADATA.pb entry in the official google/fonts repository snapshot"
+    },
+    {
+      "family": "Google Sans Flex",
+      "reason": "No exact-family METADATA.pb entry in the official google/fonts repository snapshot"
+    }
+  ]
+}

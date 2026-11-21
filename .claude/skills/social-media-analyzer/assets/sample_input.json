@@ -1,0 +1,42 @@
+{
+  "platform": "instagram",
+  "total_spend": 500,
+  "posts": [
+    {
+      "post_id": "post_001",
+      "content_type": "image",
+      "likes": 342,
+      "comments": 28,
+      "shares": 15,
+      "saves": 45,
+      "reach": 5200,
+      "impressions": 8500,
+      "clicks": 120,
+      "posted_at": "2025-10-15T14:30:00Z"
+    },
+    {
+      "post_id": "post_002",
+      "content_type": "video",
+      "likes": 587,
+      "comments": 42,
+      "shares": 31,
+      "saves": 68,
+      "reach": 8900,
+      "impressions": 12400,
+      "clicks": 215,
+      "posted_at": "2025-10-16T18:45:00Z"
+    },
+    {
+      "post_id": "post_003",
+      "content_type": "carousel",
+      "likes": 298,
+      "comments": 19,
+      "shares": 12,
+      "saves": 34,
+      "reach": 4100,
+      "impressions": 6800,
+      "clicks": 95,
+      "posted_at": "2025-10-18T12:15:00Z"
+    }
+  ]
+}

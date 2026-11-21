@@ -1,0 +1,30 @@
+{
+  "request_type": "keyword_research",
+  "app_info": {
+    "name": "TaskFlow Pro",
+    "category": "Productivity",
+    "target_audience": "Professionals aged 25-45 working in teams",
+    "key_features": [
+      "AI-powered task prioritization",
+      "Team collaboration tools",
+      "Calendar integration",
+      "Cross-platform sync"
+    ],
+    "unique_value": "AI automatically prioritizes your tasks based on deadlines and importance"
+  },
+  "target_keywords": [
+    "task manager",
+    "productivity app",
+    "todo list",
+    "team collaboration",
+    "project management"
+  ],
+  "competitors": [
+    "Todoist",
+    "Any.do",
+    "Microsoft To Do",
+    "Things 3"
+  ],
+  "platform": "both",
+  "language": "en-US"
+}

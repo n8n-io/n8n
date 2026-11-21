@@ -1,0 +1,50 @@
+name: 'football-intel: e-mail test'
+
+# Sends one short e-mail with the SMTP settings of the daily workflow.
+# Use it after a change to SMTP_PASSWORD, without a full cycle.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  send:
+    if: github.repository == 'benkas418-alt/n8n'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      SMTP_HOST: ${{ vars.SMTP_HOST }}
+      SMTP_PORT: ${{ vars.SMTP_PORT || '587' }}
+      SMTP_USER: ${{ vars.SMTP_USER }}
+      SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+      REPORT_TO: ${{ vars.REPORT_TO }}
+    defaults:
+      run:
+        working-directory: football-intel
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: football-intel
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: football-intel/pyproject.toml
+
+      - name: Install
+        run: pip install -q -e .
+
+      - name: Send a test e-mail
+        run: |
+          python - <<'EOF'
+          import logging, sys
+          from footintel.config import get_settings
+          from footintel.notify.email import send_report
+          logging.basicConfig(level=logging.INFO)
+          ok = send_report(get_settings(), "Football Intel — test d'envoi",
+                           "Test de la configuration SMTP du cycle quotidien.", [])
+          sys.exit(0 if ok else 1)
+          EOF

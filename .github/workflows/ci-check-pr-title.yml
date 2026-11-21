@@ -9,6 +9,11 @@ on:
     branches:
       - 'master'
       - '1.x'
+    # Fork (benkas418-alt): skip changes that only touch the football-intel project.
+    paths-ignore:
+      - 'football-intel/**'
+      - '.claude/**'
+      - '.github/workflows/util-football-intel-*.yml'
 
 jobs:
   check-pr-title:

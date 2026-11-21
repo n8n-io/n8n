@@ -1,0 +1,96 @@
+{
+  "version": 1,
+  "provider": "Neuform",
+  "synced_at": "2026-07-18T06:41:09.677Z",
+  "skill": {
+    "id": "webgl-3d-object",
+    "label": "WebGL 3D Object",
+    "usage_count": 528,
+    "url": "https://neuform.ai/skill/webgl-3d-object"
+  },
+  "ranking": {
+    "position": 1,
+    "order": [
+      "view_count desc",
+      "community_favorite_count desc",
+      "relation_created_at desc"
+    ],
+    "visible_design_count": 1
+  },
+  "design": {
+    "id": "1db44695-2581-463a-9950-ed804447cb81",
+    "slug": "pulsoapps-tu-app-lista-en-5-d-as-3",
+    "title": "PulsoApps | Tu app lista en 5 días.",
+    "url": "https://neuform.ai/pages/pulsoapps-tu-app-lista-en-5-d-as-3/index.html",
+    "view_count": 405,
+    "favorite_count": 20,
+    "remix_count": 10
+  },
+  "html": {
+    "original_sha256": "dbf4e385163657aa7647902679ea45fb3bdce587c79d296a0fa11748e955107a",
+    "bundled_sha256": "58b961bf953f907232c53d3a2ded35ad44f96e7aa176081542bbc851160fcb4e",
+    "runtime_dependencies": [],
+    "hardened_sha256": "935d80975c69b412fe87064c906aa845082567084ebdde53247c39e46950010e",
+    "sandboxed_sha256": "0918702673c1dedc00cf5d20e8f3abd6488a80344f82928a67919088e4669118",
+    "security_profile": "sandboxed-srcdoc-v1"
+  },
+  "assets": {
+    "preview": "assets/source-preview.jpg",
+    "bundled": [
+      {
+        "bytes": 44753,
+        "file": "assets/page-01-4734259a-bad7-422f-981e-ce01e79184f2-1600w.jpg",
+        "original_url": "https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/4734259a-bad7-422f-981e-ce01e79184f2_1600w.jpg"
+      },
+      {
+        "bytes": 989406,
+        "file": "assets/page-02-724142aa-44a6-48d3-9cf3-761e00d05b78-1600w.jpg",
+        "original_url": "https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/724142aa-44a6-48d3-9cf3-761e00d05b78_1600w.jpg"
+      },
+      {
+        "bytes": 47486,
+        "file": "assets/page-03-fa51902b-c2a4-4c33-a96e-a8f1ef67edc6-1600w.jpg",
+        "original_url": "https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/fa51902b-c2a4-4c33-a96e-a8f1ef67edc6_1600w.jpg"
+      },
+      {
+        "bytes": 728581,
+        "file": "assets/page-04-005600e5-f6ab-4e59-bc86-eaeb02797dfa-1600w.jpg",
+        "original_url": "https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/005600e5-f6ab-4e59-bc86-eaeb02797dfa_1600w.jpg"
+      },
+      {
+        "bytes": 531939,
+        "file": "assets/page-05-5ee0a38a-b5d3-4531-8793-98beed4af162-1600w.jpg",
+        "original_url": "https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/5ee0a38a-b5d3-4531-8793-98beed4af162_1600w.jpg"
+      },
+      {
+        "bytes": 407279,
+        "file": "../../../../assets/runtime/runtime-ccc8894b3418-runtime.js",
+        "original_url": "https://cdn.tailwindcss.com/",
+        "kind": "runtime-script",
+        "sha256": "176e894661aa9cdc9a5cba6c720044cbbf7b8bd80d1c9a142a7c24b1b6c50d15"
+      },
+      {
+        "bytes": 42667,
+        "file": "../../../../assets/runtime/runtime-689ca8dda44c-scrolltrigger-min.js",
+        "original_url": "https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js",
+        "kind": "runtime-script",
+        "sha256": "65f6c13748b0c8d8f9eabd0373a130ac293b3f16bf34aaa946d953980372b932"
+      },
+      {
+        "bytes": 71520,
+        "file": "../../../../assets/runtime/runtime-027051effa47-gsap-min.js",
+        "original_url": "https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js",
+        "kind": "runtime-script",
+        "sha256": "efc85c7eb141819717cda0033484a84b1c890d13b02e355a2fec79d424b20e7a"
+      },
+      {
+        "bytes": 22003,
+        "file": "../../../../assets/runtime/runtime-163ebd087cfc-iconify-icon-min.js",
+        "original_url": "https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js",
+        "kind": "runtime-script",
+        "sha256": "851bed7af266f96a0be3edf9918daab48d8da4ce17c46040511bae450caf3dd6"
+      }
+    ],
+    "skipped": []
+  }
+}

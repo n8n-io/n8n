@@ -1,0 +1,42 @@
+name: 'football-intel: OddsPapi probe'
+
+# Lists the betPawa markets that OddsPapi provides, on a few finished matches.
+# Spends 4 of the 250 monthly requests. Run it after the ODDS_PAPI_KEY secret is set.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    if: github.repository == 'benkas418-alt/n8n'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      ODDS_PAPI_KEY: ${{ secrets.ODDS_PAPI_KEY }}
+      OUT_DIR: oddspapi-probe
+    defaults:
+      run:
+        working-directory: football-intel
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: football-intel
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Probe
+        run: |
+          pip install -q httpx
+          python scripts/oddspapi_probe.py
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: oddspapi-probe
+          path: football-intel/oddspapi-probe
+          retention-days: 7

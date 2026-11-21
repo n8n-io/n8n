@@ -1,0 +1,1327 @@
+{
+  "version": 1,
+  "about": "App-screen library for tasteskill: styles (directions), shells and screen patterns, distilled from the study of 23 desktop product screens (17 light, 6 dark, 17 products) chosen by the owner. Every number is a measurement from the study or a median over it, except where a note says a value was moved for contrast or for the house palette bans. Reference products are not named; the screenshots stay private.",
+  "styles": [
+    {
+      "id": "achromatic-ledger",
+      "name": "Achromatic ledger",
+      "theme": "light",
+      "basis": "4 screens: a seller home, a per-agent insights page, a generated report, a settings page with usage numbers",
+      "suits": [
+        "finance",
+        "commerce",
+        "devtools",
+        "support",
+        "report",
+        "workspace",
+        "builder"
+      ],
+      "idea": "The chrome holds no colour at all; money and counts are set in ink, the one chart hue marks the screen's main data element, and the only other hue is a small signal where a figure changed.",
+      "colourBudget": "under 1% coloured pixels; the chrome is ink, the one chart hue goes on the main data element, and the only other hue is a small change signal",
+      "tokens": {
+        "ground": "#f8f8f8",
+        "surface": "#ffffff",
+        "raised": "#eeeeee",
+        "border": "#e6e6e6",
+        "rule": "#f0f0f0",
+        "control": "#d4d4d4",
+        "text": "#0a0a0a",
+        "muted": "#6b6b6b",
+        "accent": "#141414",
+        "positive": "#2e7d32",
+        "negative": "#c4242a",
+        "warning": "#92400e",
+        "chart": [
+          "#141414",
+          "#8a8a8a",
+          "#1d5fbf"
+        ],
+        "pills": {
+          "positive": [
+            "#dcfae5",
+            "#04250e"
+          ],
+          "negative": [
+            "#ffedea",
+            "#831c1e"
+          ],
+          "warning": [
+            "#fffbeb",
+            "#92400e"
+          ],
+          "neutral": [
+            "#eeeeee",
+            "#3d3d3d"
+          ]
+        },
+        "radius": {
+          "card": 8,
+          "control": 6
+        },
+        "font": {
+          "family": "Geist",
+          "second": "Geist Mono, for IDs and keys only",
+          "fallback": "Inter, system-ui, sans-serif",
+          "sizes": {
+            "title": 24,
+            "section": 16,
+            "kpi": 30,
+            "body": 14,
+            "small": 12
+          },
+          "weights": [
+            400,
+            500,
+            700
+          ],
+          "note": "700 is for money figures only; every other number is 400-500."
+        },
+        "density": "sparse",
+        "rowHeight": 44,
+        "sidebarWidth": 256,
+        "gap": 12,
+        "pad": 24,
+        "controlHeight": 36
+      },
+      "shell": "open-plane",
+      "shellAlternatives": [
+        "icon-rail",
+        "no-sidebar"
+      ],
+      "signature": "No brand colour anywhere in the chrome: the one primary action is near-black (a grey pill, #e5e5e5, is the secondary), the main data element (today's series, the booked bars, the current period) takes the one chart hue, #1d5fbf, and everything else is drawn in ink with the comparison or the part after the cursor in grey, zero balances are set in grey, and the only hue on the screen is a small triangle or a short coloured number where a figure changed.",
+      "identity": [
+        "A ground from the product's world in place of #f8f8f8, one level off white and low in chroma: a stone (#f4f3f1) for a bakery or a shop, a sage (#f2f5f2) for a garden or a greenhouse, a blue-grey (#f2f4f7) for a ledger or a meter. Cards stay white; a warm tint stays under the cream check (saturation under about 15%).",
+        "The one chart hue (#1d5fbf, or the brand's own hue at 3:1 or more on white) on the screen's main data element: today's line, the booked bars, the current period's column, the margin that breaks. The chrome stays ink and the hue stays under 1% of the screen.",
+        "Every figure in Geist Mono, as the style's decision, so money and counts read as a ledger's columns while the text stays Geist. Lint and the inspector flag mono; give the reason in the report."
+      ],
+      "avoid": [
+        "a brand-coloured primary button",
+        "tinted cards or tinted KPI tiles",
+        "a coloured chart where one series in ink says it",
+        "bold on anything but money",
+        "a chart with no y-scale (the study's one example of this look hid magnitude behind hover and was flagged)",
+        "a grey pill as the only button for the screen's main job: in testing an Approve repeated in grey on every row left the screen without a primary"
+      ],
+      "notes": "The studied screens of this kind used 11-12px card radii, which §9.4 counts among the rare middle values; the library sets the tight pair (8 and 6) so the style lands on the bimodal rule. After testing, the chart hue moved from an unused third series colour onto the main data element: a screen whose only hue was a delta read as a kit."
+    },
+    {
+      "id": "framed-sheet",
+      "name": "Framed sheet",
+      "theme": "light",
+      "basis": "6 screens: a developer platform overview, an analytics overview, an events analytics tab, a list detail, a reports dashboard, a flow builder",
+      "suits": [
+        "analytics",
+        "devtools",
+        "builder",
+        "smb-admin",
+        "support",
+        "commerce",
+        "report"
+      ],
+      "idea": "The app chrome is one tinted L-shaped frame; the work sits on a white sheet with a hairline edge and soft corners, so depth comes from a single tone step and no shadow.",
+      "colourBudget": "under 3%; the brand shrinks to the logo and a 2px tab underline, the data carries the chroma",
+      "tokens": {
+        "ground": "#f9fbfc",
+        "surface": "#ffffff",
+        "raised": "#f4f6f8",
+        "active": "#ebedee",
+        "border": "#e8eaec",
+        "rule": "#f0f1f2",
+        "control": "#cdced1",
+        "text": "#131416",
+        "muted": "#5d5f60",
+        "accent": "#1b6c80",
+        "positive": "#1e7b4f",
+        "negative": "#c4242a",
+        "warning": "#92400e",
+        "chart": [
+          "#1b6c80",
+          "#2f70bb",
+          "#a86f0c"
+        ],
+        "pills": {
+          "positive": [
+            "#dcfae5",
+            "#04250e"
+          ],
+          "negative": [
+            "#ffedea",
+            "#831c1e"
+          ],
+          "warning": [
+            "#fffbeb",
+            "#92400e"
+          ],
+          "neutral": [
+            "#ebedee",
+            "#353736"
+          ]
+        },
+        "radius": {
+          "card": 8,
+          "control": 6,
+          "sheet": 16
+        },
+        "sheetInset": 8,
+        "font": {
+          "family": "IBM Plex Sans",
+          "second": "IBM Plex Mono, for IDs and keys only",
+          "fallback": "Inter, system-ui, sans-serif",
+          "sizes": {
+            "title": 22,
+            "section": 16,
+            "kpi": 28,
+            "body": 14,
+            "small": 12
+          },
+          "weights": [
+            400,
+            500,
+            600
+          ],
+          "note": "KPI values at 400; the semibold goes on the label and the active tab."
+        },
+        "density": "medium",
+        "rowHeight": 48,
+        "sidebarWidth": 228,
+        "gap": 24,
+        "pad": 24,
+        "controlHeight": 32
+      },
+      "shell": "framed-sheet",
+      "shellAlternatives": [],
+      "signature": "One tinted frame holds the sidebar and the 48px top bar with no rule between them; the page is a white sheet inset 8px from the window's right and bottom edges, with a 1px edge, 16px corners and no shadow. The active tab is a 2px underline in ink or the accent; everything else in the chrome is grey.",
+      "identity": [
+        "The frame tinted from the product's colour in place of #f9fbfc: one low-chroma step of its hue (a green-grey for a climate or farm tool, a blue-grey for an observability tool, a stone for a print shop). The sheet stays white.",
+        "The brand's own hue from the brief as --chart-1 in place of the dealt teal, on the main series and the one selected state, at 3:1 or more on white, never violet or indigo.",
+        "IBM Plex Mono for IDs, keys and the figures in tables (one job): its figures have their own drawing, and a developer reads them as the product's."
+      ],
+      "avoid": [
+        "a border between the sidebar and the top bar",
+        "a shadow under the sheet",
+        "cards whose border is heavier than the sheet's (#cdcfcf on cards read as heavy in the study)",
+        "a fourth nesting level: frame, sheet and card are enough",
+        "different gutters for the KPI row and the chart row (20 against 24 was flagged)"
+      ],
+      "notes": "The study's second data hue in this style was an orange (#e88e46) that falls inside the house terracotta range; the third chart colour here is an amber moved out of that range and darkened to 3:1 on white."
+    },
+    {
+      "id": "accent-ladder",
+      "name": "Accent ladder",
+      "theme": "light",
+      "basis": "3 screens: a newsletter home, a network analytics overview, a cap-table company home",
+      "suits": [
+        "creator",
+        "smb-admin",
+        "community",
+        "analytics"
+      ],
+      "idea": "One brand hue at full strength only on small marks, and its pale tints doing all the area work: the active nav row, a plan card, badges and progress tracks.",
+      "colourBudget": "3-10%, nearly all of it as pale tints of the one hue",
+      "tokens": {
+        "ground": "#f9fafb",
+        "surface": "#ffffff",
+        "raised": "#f3f4f6",
+        "border": "#e5e7eb",
+        "rule": "#f2f2f2",
+        "control": "#d1d5db",
+        "text": "#111827",
+        "muted": "#5f6672",
+        "accent": "#b8336a",
+        "accentSoft": "#fdf2f7",
+        "accentTrack": "#f8dbe8",
+        "accentInk": "#6b1d3e",
+        "positive": "#247b50",
+        "negative": "#c4242a",
+        "warning": "#92400e",
+        "chart": [
+          "#b8336a",
+          "#6b7280",
+          "#d4618f"
+        ],
+        "pills": {
+          "positive": [
+            "#dcfce7",
+            "#14532d"
+          ],
+          "negative": [
+            "#ffedea",
+            "#831c1e"
+          ],
+          "warning": [
+            "#fffbeb",
+            "#92400e"
+          ],
+          "neutral": [
+            "#f3f4f6",
+            "#374151"
+          ],
+          "accent": [
+            "#fdf2f7",
+            "#6b1d3e"
+          ]
+        },
+        "radius": {
+          "card": 8,
+          "control": 6
+        },
+        "font": {
+          "family": "DM Sans",
+          "second": null,
+          "fallback": "Inter, system-ui, sans-serif",
+          "sizes": {
+            "title": 32,
+            "section": 18,
+            "kpi": 24,
+            "body": 14,
+            "small": 12
+          },
+          "weights": [
+            400,
+            500,
+            600,
+            700
+          ],
+          "note": "700 for the page title only."
+        },
+        "density": "sparse",
+        "rowHeight": 45,
+        "sidebarWidth": 230,
+        "gap": 24,
+        "pad": 24,
+        "controlHeight": 32
+      },
+      "shell": "open-plane",
+      "shellAlternatives": [
+        "ruled-t-frame"
+      ],
+      "signature": "The full hue goes only on small marks: the one filled-button style, the data series and the active nav icon. Its 50-200 tints carry every area: the active nav row (tint fill with the dark ink of the hue), the plan or trial card, badges and progress tracks. The primary action may instead be near-black, as on the study's newsletter home.",
+      "identity": [
+        "The ladder built from the brand's own hue (its logo, the brief's object) in place of the dealt raspberry: the full hue on small marks, its pale tints on areas, never violet or indigo.",
+        "The product's objects in the lead block: the newsletter's latest issue as its cover, the shop's products as 40px thumbnails, the course's lessons with their own art.",
+        "A ground one level toward the hue's palest tint (#fbf7f8 for the raspberry) in place of #f9fafb, so the page and the tints read as one family."
+      ],
+      "avoid": [
+        "the full hue on large areas",
+        "a second accent family (four families on one screen was flagged in the study)",
+        "a gradient on the trial chip or upgrade button",
+        "a left accent bar on the active nav row on top of the tint (seen once in 23 screens)",
+        "violet or indigo"
+      ],
+      "notes": "All three studied screens of this kind used violet, purple or pink as the one hue. The move does not depend on the hue, so the house's violet and indigo ban holds and the library deals a raspberry instead."
+    },
+    {
+      "id": "editorial-greeting",
+      "name": "Editorial greeting",
+      "theme": "light",
+      "basis": "2 screens: a team workspace home and a personal insights home",
+      "suits": [
+        "workspace",
+        "creator"
+      ],
+      "idea": "A personal or team home that opens with a typeset greeting in a centred column; every number below it is set at regular weight on tonal panels.",
+      "colourBudget": "under 2% for the accent; tonal panels carry the structure",
+      "tokens": {
+        "ground": "#ffffff",
+        "surface": "#f9f9f9",
+        "raised": "#ffffff",
+        "border": "#eaeaea",
+        "rule": "#f3f3f3",
+        "control": "#d9d9d6",
+        "text": "#1f201d",
+        "muted": "#636361",
+        "accent": "#1b6e66",
+        "positive": "#2e7d32",
+        "negative": "#b42318",
+        "warning": "#92400e",
+        "chart": [
+          "#1f201d",
+          "#1b6e66",
+          "#8c8c88"
+        ],
+        "pills": {
+          "positive": [
+            "#dcfae5",
+            "#04250e"
+          ],
+          "negative": [
+            "#fdecea",
+            "#7a1d14"
+          ],
+          "warning": [
+            "#fffbeb",
+            "#92400e"
+          ],
+          "neutral": [
+            "#f3f3f3",
+            "#3d3d3a"
+          ]
+        },
+        "radius": {
+          "card": 22,
+          "control": 999
+        },
+        "font": {
+          "family": "Instrument Sans",
+          "second": "Instrument Serif, for the greeting only",
+          "fallback": "Inter, system-ui, sans-serif",
+          "sizes": {
+            "title": 48,
+            "section": 14,
+            "kpi": 32,
+            "body": 14,
+            "small": 12
+          },
+          "weights": [
+            400,
+            500,
+            600
+          ],
+          "note": "The 48px title is the serif greeting; set in the sans it is 24/400. Every figure is 400."
+        },
+        "density": "sparse",
+        "rowHeight": 63,
+        "sidebarWidth": 224,
+        "gap": 16,
+        "pad": 20,
+        "controlHeight": 38
+      },
+      "shell": "open-plane",
+      "shellAlternatives": [
+        "framed-sheet"
+      ],
+      "signature": "The greeting is the h1, in a centred 1100px column on a real 12-column grid (77px columns, 16px gutters), with spans that change by row but share column lines (3/3/3/3, then 9/3, then 6/6, so every internal edge meets one above it). Every figure below is set at regular weight on tonal panels, one layer each: a panel one step off white holds its title and its content directly; a white inner card is used once, for the main chart.",
+      "identity": [
+        "The greeting names this team or household and today's one fact, set from the data (\"Morning, Okoro house. The car is ready by 06:10.\"), never \"Welcome back\".",
+        "Each person's stable hue as a pale tint on their avatar and their own lane or column (a couple and their joint account as three lanes): identity, not data, so it stays out of the chart legends.",
+        "A surface from the product's world in place of #f9f9f9, one level toward its material (a sage for a garden, a stone for a kitchen, a blue-grey for a studio), with the page white kept."
+      ],
+      "avoid": [
+        "an emoji in the greeting",
+        "a tracked uppercase date above the greeting (put the date after it or in the grey line below)",
+        "a 624-864px column on a desktop screen (both were flagged as wasted width)",
+        "a tray around every card (a grey panel with a white card 6px inside it, on every block, read as a bento template in testing)",
+        "red as the accent: in testing red marked a record week of upgrades and read as an alarm; red is for the failing fact only"
+      ],
+      "notes": "One studied screen set its greeting in a serif at 48/700 and its counts in a mono; the other set the greeting at 24/400 in the sans. The red is the second screen's chart red moved two degrees of hue out of the house terracotta range. After testing, the studied red accent was replaced by a deep teal: red on good news read as an alarm."
+    },
+    {
+      "id": "pastel-consumer",
+      "name": "Pastel consumer",
+      "theme": "light",
+      "basis": "2 screens: a wallet home and a personal finance home",
+      "suits": [
+        "wallet",
+        "finance"
+      ],
+      "idea": "Categories are coded by pale tints whose ink is the dark of the same hue, all under one large radius, and each headline sum sits inside the card that explains it.",
+      "colourBudget": "5-8%, as pale tiles and data marks",
+      "tokens": {
+        "ground": "#f3f5f7",
+        "surface": "#ffffff",
+        "raised": "#f2f8fd",
+        "border": "#e6e6e6",
+        "rule": "#f4f4f4",
+        "control": "#d6d9dd",
+        "text": "#1b1d1f",
+        "muted": "#5c6064",
+        "accent": "#1d5fd6",
+        "accentSoft": "#dcf1ff",
+        "accentInk": "#0a3a80",
+        "positive": "#2f7a45",
+        "negative": "#c41c29",
+        "warning": "#92400e",
+        "chart": [
+          "#1d5fd6",
+          "#b45309",
+          "#2a8798"
+        ],
+        "pills": {
+          "positive": [
+            "#dcfae5",
+            "#04250e"
+          ],
+          "negative": [
+            "#ffedea",
+            "#831c1e"
+          ],
+          "warning": [
+            "#fffbeb",
+            "#92400e"
+          ],
+          "neutral": [
+            "#eef1f4",
+            "#3a3d40"
+          ],
+          "accent": [
+            "#dcf1ff",
+            "#0a3a80"
+          ]
+        },
+        "radius": {
+          "card": 20,
+          "control": 10
+        },
+        "font": {
+          "family": "Manrope",
+          "second": null,
+          "fallback": "Inter, system-ui, sans-serif",
+          "sizes": {
+            "title": 28,
+            "section": 20,
+            "kpi": 32,
+            "body": 16,
+            "small": 14
+          },
+          "weights": [
+            400,
+            500,
+            600
+          ],
+          "note": "Money at 24-32px; card titles regular; semibold for net worth, bill amounts and actions."
+        },
+        "density": "medium",
+        "rowHeight": 72,
+        "sidebarWidth": 240,
+        "gap": 24,
+        "pad": 24,
+        "controlHeight": 40
+      },
+      "shell": "open-plane",
+      "shellAlternatives": [
+        "icon-rail"
+      ],
+      "signature": "Pale category tiles with the dark of their own hue as ink (#dcf1ff with #0a3a80), one large radius (20px on cards, stepping down to 10, 8 and 5 inside), and quiet money polarity: income green with a plus sign, spending in ink, no red on ordinary outgoings. Tints go on small tiles, avatars and chips; a panel that holds a list stays white. When the product has people (two partners, a family), each gets one hue, at least 60 degrees from the next.",
+      "identity": [
+        "The tile hues from the account's own colours (the card's colour, each pot's colour in the app) in place of the dealt cobalt, each tile pale with the dark of its own hue as ink.",
+        "The money's own objects: the card art at its real ratio, merchant marks at 24px in the rows, the goal's picture on its pot.",
+        "Manrope's figures carry the balance: 30-36px at 600 with tabular figures and the pence in a smaller grey, so the number itself is the face."
+      ],
+      "avoid": [
+        "a gradient balance card",
+        "two data palettes on one page (flagged in the study)",
+        "red on every outgoing amount",
+        "a 624px phone-width column on a desktop screen (flagged as a stretched phone screen)",
+        "a KPI strip on top: the sums belong in their cards",
+        "whole panels tinted per person or category beside white cards (two surface languages on one screen)"
+      ],
+      "notes": "The two studied screens used a pure #0000ff and an indigo #4723f5 as their brand colour, and pastels such as #7cbecf that fall under 3:1 on white. The library uses a cobalt that reads as blue rather than indigo, and data colours darkened to at least 3:1 on the card."
+    },
+    {
+      "id": "true-black-flat",
+      "name": "True-black flat",
+      "theme": "dark",
+      "basis": "5 screens: an events back office, an event analytics tab, a community overview, an artist studio home, an artist insights page",
+      "suits": [
+        "community",
+        "creator",
+        "markets"
+      ],
+      "idea": "Night mode on true black: sidebar, top bar and page share one ground, elevation is a lightness step alone, and colour is confined to data marks.",
+      "colourBudget": "at or under 3%; the accent never touches buttons, tabs or nav",
+      "tokens": {
+        "ground": "#000000",
+        "surface": "#111111",
+        "raised": "#2a2a2a",
+        "border": "#1a1a1a",
+        "rule": "#161616",
+        "control": "#444444",
+        "text": "#ffffff",
+        "muted": "#b4b4b4",
+        "faint": "#949494",
+        "accent": "#c6f24e",
+        "positive": "#c6f24e",
+        "negative": "#e5484d",
+        "warning": "#e5a93b",
+        "chart": [
+          "#c6f24e",
+          "#e6e6e6",
+          "#6b6b6b"
+        ],
+        "pills": {
+          "positive": [
+            "#222a10",
+            "#c6f24e"
+          ],
+          "negative": [
+            "#2c1a20",
+            "#e5566f"
+          ],
+          "warning": [
+            "#2b2414",
+            "#e5a93b"
+          ],
+          "neutral": [
+            "#222222",
+            "#ffffff"
+          ]
+        },
+        "radius": {
+          "card": 20,
+          "control": 999
+        },
+        "font": {
+          "family": "Inter",
+          "second": null,
+          "fallback": "system-ui, sans-serif",
+          "sizes": {
+            "title": 20,
+            "section": 16,
+            "kpi": 24,
+            "body": 14,
+            "small": 12
+          },
+          "weights": [
+            400,
+            500,
+            600
+          ],
+          "note": "Nothing above 600; inactive nav labels #bbb, active #fff."
+        },
+        "density": "medium",
+        "rowHeight": 80,
+        "sidebarWidth": 210,
+        "gap": 14,
+        "pad": 22,
+        "controlHeight": 36
+      },
+      "shell": "ruled-t-frame",
+      "shellAlternatives": [
+        "no-sidebar"
+      ],
+      "signature": "Elevation by lightness alone (#000 ground, #111 card, #2a2a2a nested panel) with no borders or shadows on cards; the active nav item is marked only by its label going from #bbb to #fff; the primary control is made primary by inversion, a white 36px pill with black text.",
+      "identity": [
+        "The one data hue from the product's world in place of the dealt lime: a solar amber (#f2b33d) for an energy home, a sky blue (#4cb3f0) for water or weather, a lime only for sport. It is still the only hue on data and never touches buttons, tabs or nav. A green or yellow-green hue is also --positive; an amber that sits beside --warning leaves the warning to its pill pair.",
+        "A ground with the product's temperature: the studied #000 for media and events, a warm near-black (#0e0d0c) for a home, a cool one (#0c0d0f) for a monitor, with cards one lightness step above it (#181716, #15171a). Never navy or slate.",
+        "A signature element from the product's world as the lead: the energy home's power flow (sun, house, battery and grid with their live kW), an event's doors against capacity, an artist's release with its cover."
+      ],
+      "avoid": [
+        "a navy or slate dark theme",
+        "glow, neon borders or shadows",
+        "a hue per chart (five hues across four charts was flagged)",
+        "the accent on buttons, tabs or nav",
+        "a 64px top bar left empty across most of its width (flagged twice)"
+      ],
+      "notes": "The studied screens of this kind used a violet-magenta (#dd6cff) and an orange (#ff5500) as their one data hue. The library deals a lime, which keeps the move and stays clear of the violet ban; because the lime is a yellow-green, it is also the positive colour (a second, mint green beside it read as two greens). The greys are #b4b4b4 for secondary text and #949494 for meta, 32 levels apart rather than the 20 of the measured #aaa and #969696, which read as one grey; #949494 still holds 4.5:1 on the #2a2a2a nested panel."
+    },
+    {
+      "id": "data-terminal",
+      "name": "Data terminal",
+      "theme": "dark",
+      "basis": "1 screen: a stock research view. Keep it narrow.",
+      "suits": [
+        "markets",
+        "devtools"
+      ],
+      "idea": "A research or monitoring screen read in long sessions: cards darker than the ground, tabular digits that stack, signs instead of colour, and every selection marked by the same 1px accent line.",
+      "colourBudget": "under 3%; the accent is never more than a 1px line",
+      "tokens": {
+        "ground": "#171719",
+        "surface": "#131217",
+        "raised": "#212023",
+        "border": "#222224",
+        "rule": "#1b1a1f",
+        "control": "#3a3a3e",
+        "text": "#ffffff",
+        "muted": "#8a8c92",
+        "accent": "#4a8ad6",
+        "positive": "#44a282",
+        "negative": "#e5566f",
+        "warning": "#d9a441",
+        "chart": [
+          "#f2f2f3",
+          "#e5566f",
+          "#4a8ad6"
+        ],
+        "pills": {
+          "positive": [
+            "#1b2828",
+            "#5fc39c"
+          ],
+          "negative": [
+            "#2c1a20",
+            "#e5566f"
+          ],
+          "warning": [
+            "#2a2416",
+            "#d9a441"
+          ],
+          "neutral": [
+            "#212023",
+            "#bdbdc0"
+          ]
+        },
+        "shadow": "0 12px 28px rgba(0,0,0,.2)",
+        "radius": {
+          "card": 6,
+          "control": 999
+        },
+        "font": {
+          "family": "Public Sans",
+          "second": null,
+          "fallback": "Inter, system-ui, sans-serif",
+          "sizes": {
+            "title": 26,
+            "section": 20,
+            "kpi": 20,
+            "body": 13,
+            "small": 12
+          },
+          "weights": [
+            400,
+            500,
+            600,
+            700
+          ],
+          "note": "Section titles 20/400 in the muted grey; card titles 16/600; tabular figures everywhere."
+        },
+        "density": "dense",
+        "rowHeight": 42,
+        "sidebarWidth": 50,
+        "gap": 24,
+        "pad": 32,
+        "controlHeight": 34
+      },
+      "shell": "icon-rail",
+      "shellAlternatives": [],
+      "signature": "Every selection (tab, toggle, range, nav item) is a 1px accent line exactly as wide as its label, placed on the nearest existing edge; numbers stay white or grey and carry their sign in the text ('+$24,000,000').",
+      "identity": [
+        "Every figure in a monospace as the style's decision (IBM Plex Mono or JetBrains Mono for each price, count and time, digits that stack), with the text in Public Sans. Lint and the inspector flag mono; give the reason in the report.",
+        "The one accent line from the product's world in place of the dealt blue (the exchange's or the team's hue): still the only selection mark, never violet or indigo.",
+        "A signature of the market or the system as the lead: an order book's depth as two mirrored bar lists, an incident as a minute-by-minute strip, a region map with the list beside it."
+      ],
+      "avoid": [
+        "filled pill tabs or a coloured segmented control",
+        "a chart with no scale and no dates (the studied screen had none and was flagged)",
+        "tertiary text under 4.5:1 (#4c4c4f read at about 2:1 in the study)",
+        "lighter cards with borders and a glow",
+        "green and red on every number; the one column whose job is \"what moved today\" and a negative headline figure may carry the polarity colours"
+      ],
+      "notes": "The studied screen's muted grey #82848a and red #d4405d were lifted to #8a8c92 and #e5566f so text passes 4.5:1 on the card. Its card list rows sit on a 28px pitch and its table rows on 42px."
+    }
+  ],
+  "shells": [
+    {
+      "id": "open-plane",
+      "name": "Open plane",
+      "basis": "5 of 23 screens",
+      "suits": [
+        "finance",
+        "wallet",
+        "workspace",
+        "creator",
+        "analytics"
+      ],
+      "numbers": {
+        "sidebarWidth": "230-256 (230, 240, 256 in the study; 280 and 292 with a built-in icon rail)",
+        "separation": "none, or one 1px hairline; the sidebar sits on the page ground or within 1-2% of it",
+        "navPitch": 34,
+        "navRowHeight": 32,
+        "navIcon": "16px outline, about 1.5px stroke",
+        "navLabel": "14px, 400, grey or ink",
+        "activeItem": "neutral grey pill, radius 6-12, inset 8-12px from the sidebar edges (#e9e9e9-#ededed)",
+        "topBar": "none",
+        "canvas": "fluid with a 24-64px gutter, or a centred 1100px column"
+      },
+      "blueprint": "The labelled sidebar sits on the page ground with nothing or one hairline between it and the canvas; there is no top bar, and the page header and cards sit straight on the ground about 32-36px from the top. Workspace or account switcher at the top of the sidebar, primary nav on a 34px pitch, groups under 12-13px sentence-case grey labels with 22-56px of air above, utilities and the user row pushed to the bottom. Cards are white on the off-white ground (or the sidebar is white with a 1px border on a #f9fafb canvas). The canvas is fluid with one gutter value, or a centred column for personal homes.",
+      "phone": "The sidebar folds into a 48px top bar holding the screen's name, a menu button that opens a full-screen sheet with the nav and the switcher, and at most one action. Content takes the full width with 16px margins."
+    },
+    {
+      "id": "framed-sheet",
+      "name": "Tinted frame, white sheet",
+      "basis": "8 of 23 screens, in three variants",
+      "suits": [
+        "analytics",
+        "devtools",
+        "builder",
+        "smb-admin",
+        "support"
+      ],
+      "numbers": {
+        "chrome": "#f6f6f6-#f9fbfc (a warm #f7f6f2 once)",
+        "sheetInset": "8px from the window's right and bottom edges (12 and 16 once each)",
+        "sheetRadius": "10-16, median 16",
+        "sheetEdge": "1px #eaeaea-#ededed, no shadow",
+        "sidebarWidth": "220-263 (228 on two screens)",
+        "topBar": "48px on the chrome ground with no rule; search 548x32 centred on the window with a shortcut hint",
+        "contentPadding": 24,
+        "floatingVariant": "both panels inset 12px with a 12px gutter, radius 10"
+      },
+      "blueprint": "Sidebar and top bar share one tinted ground with no rule between them, forming an L; the page lives on a white sheet. Variant one: the sheet butts against the sidebar and the top bar and is inset 8px from the right and bottom edges, 16px radius, 1px edge. Variant two: a flush L-frame with no inset, the frame marked by one rule. Variant three: sidebar and content are two floating panels inset 12px from every edge with a 12px gutter. The top bar, when present, is 48px and holds a centred search, the account button and a help or AI icon. Inside the sheet the content has 24px padding and starts with the breadcrumb or title row.",
+      "phone": "The frame disappears: the sheet becomes the screen, with a 48px top bar (menu button, title, one action) on the chrome tint. The search moves into the menu sheet or behind an icon."
+    },
+    {
+      "id": "ruled-t-frame",
+      "name": "Ruled T-frame",
+      "basis": "4 of 23 screens (3 dark, 1 light)",
+      "suits": [
+        "community",
+        "creator",
+        "smb-admin"
+      ],
+      "numbers": {
+        "sidebarWidth": "210-240",
+        "topBar": "64px with a 1px bottom rule",
+        "rules": "1px; #1a1a1a on #000, #f2f2f2 on white",
+        "navPitch": "34 (dark) or 40 (light)",
+        "switcher": "at the top bar's right end, behind a full-height 1px divider",
+        "contentGutter": "29px from the sidebar rule and the window edge"
+      },
+      "blueprint": "A 210-240px sidebar and a 64px top bar share one ground, divided only by 1px rules. The workspace or community switcher sits at the right end of the top bar behind a full-height divider; the sidebar holds the wordmark and the nav on a 34px pitch with sentence-case group labels. On dark, the active item is its label going from #bbb to #fff. The top bar must carry something real (search, the back link and object name, the switcher): two studied screens left about 1070px of it blank and were flagged.",
+      "phone": "The top bar stays at 48-56px with the switcher reduced to its mark; the sidebar becomes a full-screen menu sheet or a bottom bar of four or five destinations."
+    },
+    {
+      "id": "icon-rail",
+      "name": "Icon rail",
+      "basis": "3 of 23 screens",
+      "suits": [
+        "markets",
+        "devtools",
+        "finance",
+        "wallet"
+      ],
+      "numbers": {
+        "railWidth": "50-60, median 55",
+        "icon": "15-18px outline",
+        "pitch": "34-49",
+        "active": "icon colour alone, or a full-bleed 50px band at a 2% tint, or a 1px accent bar on the rail's border",
+        "groups": "short 20px hairlines, no labels",
+        "utilities": "pushed to the bottom after a gap of about 200px"
+      },
+      "blueprint": "An unlabelled rail of 50-60px carries the brand mark at the top and 15-18px outline icons on a 34-49px pitch; groups are split by 20px hairlines, utilities sit at the bottom. The rail sits on the page ground with a 1px edge, or is white with a faint 4px shadow on a grey ground. It saves about 180px of width against a labelled sidebar, so it suits products with few destinations and screens that need the width. Icons need tooltips and an accessible name.",
+      "phone": "The rail becomes a bottom bar with the same four or five icons, each with a short label under it."
+    },
+    {
+      "id": "no-sidebar",
+      "name": "No sidebar",
+      "basis": "3 of 23 screens",
+      "suits": [
+        "report",
+        "creator",
+        "community"
+      ],
+      "numbers": {
+        "topBar": "46-48px on the page ground, no border",
+        "column": "centred, 1088-1208px",
+        "gutters": "152-212px at a 1512px window",
+        "logo": "on the column's left edge",
+        "links": "14-15px semibold grey"
+      },
+      "blueprint": "A 46-48px top bar on the page ground over a centred 1088-1208px column; the logo sits exactly on the column's left edge and the bar's right cluster ends near its right edge, so header and content share one column. Three to five text links, a 36px search, the account. Use it for generated reports, viewers and products with few destinations; with a sticky bar on the same ground, give it a 1px rule when content scrolls under it (the studied bar without one sliced content off).",
+      "phone": "The bar keeps the logo, a search icon and a menu button; the links move into the menu sheet. The column becomes the full width with 16px margins."
+    }
+  ],
+  "patterns": [
+    {
+      "id": "kpi-strip-chart-rail",
+      "name": "KPI strip, main chart and a side rail",
+      "screen": "overview",
+      "kinds": [
+        "creator",
+        "smb-admin",
+        "community",
+        "analytics"
+      ],
+      "basis": "a newsletter home; a community overview",
+      "blueprint": "Title row: a 24px noun or the product's name at 600-700, an optional 14-16px grey line under it, and the one primary action on the right, bottom-aligned with that line. 16-24px below, the scope row: section tabs and the date range in one row of 32-36px controls, or a 48px segmented track with the range select inside its right end. Then a grid of 1fr and a fixed 384px rail with a 24px gap. Main column: one KPI container split by 1px dividers into 3-5 equal cells (14px grey label, 24px value at 400-600, a 12px caption naming the baseline and window), then the main chart card, which is the largest thing on the screen, then the next card, all 16px apart. Rail: 16px headings outside their cards, 8px above each and 16px after the previous card; a recent-items list of 3-5 rows on a 45px pitch with 1px rules, closed by a 30px outlined 'View all' button instead of pagination. The rail starts level with the first card, not with the title.",
+      "phone": "The rail moves below the main column; the KPI container becomes a 2-column grid; tabs scroll inside their own row."
+    },
+    {
+      "id": "kpi-tabs-chart",
+      "name": "KPIs as the chart's tabs",
+      "screen": "overview",
+      "kinds": [
+        "finance",
+        "commerce"
+      ],
+      "basis": "a seller home",
+      "blueprint": "One card per subject, 8-16px apart: the main chart card runs full width, and any card holding a table of five columns or fewer, or a short list, pairs with its neighbour in two columns, the page header indented by the card padding so the title, the card titles, the numbers and the plot share one left edge. Balances that do not change during the day go first, in one container split by 1px dividers into equal columns; a zero balance is grey and its caption becomes the next step. In the main card, 2-4 KPIs sit in a row and act as the chart's series tabs: the selected one carries a 2px rule and an ink label, the others keep a grey label and their value in ink at a lighter weight (a grey value reads as disabled); when the tabs are the per-entity breakdown the brief asks for (takings by shop), nothing is greyed and the rule alone marks the selection. Choosing one swaps the series. Under them, one line chart as wide as the card's content (about 1136x220 in the study): 3-4 solid 1px gridlines, 4-6 round y ticks at 12px, a 2-3px line in ink with straight segments and no fill, an 8px hover dot with a 1px dashed guide and the line after the cursor in pale grey. Close with a 2-3 row comparison table on a 36px pitch, value and change columns right-aligned under a 14px grey header such as 'vs prior Monday'.",
+      "phone": "KPI tabs become a 2-up grid above the chart, with the selected cell marked by a fill (never an underline floating inside the grid) or a row of tabs that scrolls sideways; the chart is full width, 160-200px tall, with 4 x labels; the comparison table keeps its two right-aligned columns."
+    },
+    {
+      "id": "chart-pairs",
+      "name": "Per-period and running-total pairs",
+      "screen": "analytics",
+      "kinds": [
+        "community",
+        "smb-admin",
+        "analytics"
+      ],
+      "basis": "a network analytics overview",
+      "blueprint": "Title at 24-32px with one sentence under it saying what the filters do, then one filter row of 36-38px controls (one filled or near-black, the rest borderless or text, a reset link last) and 16-24px to the KPIs. KPI row: 3 equal cards in the content column (3 x 372 + 2 x 17 = 1152 in the study) or one divided container; a 16px label over the value with the change written as a phrase on the value's baseline ('+8 in the last 90 days'), grey when it is zero. Then one row per metric: the per-period column chart on the left and its cumulative line on the right, at equal width (2 x 568 + 16 = 1152) and with the same x ticks; square bars, a 2px straight line, integer ticks from zero, no legend because each chart has one series. One gap value horizontally and vertically.",
+      "phone": "Pairs stack, the cumulative chart directly under its per-period chart; KPI cards become a single column of label-value rows."
+    },
+    {
+      "id": "insights-share-tables",
+      "name": "Insights with share tables",
+      "screen": "analytics",
+      "kinds": [
+        "analytics",
+        "devtools",
+        "builder"
+      ],
+      "basis": "a per-agent insights page",
+      "blueprint": "No cards: sections are carried by whitespace and a 16/500 heading with one 14px grey sentence under it saying what the section shows. A row of up to 6 KPIs on a fixed pitch (12px grey label over a 30px tabular value, no boxes, no dividers), then one full-width time chart (about 218px plot, 5 hairline gridlines, 11-12px grey ticks, a dot legend under the title, a 'Compare to previous period' text button on the right). Then a 2 x 2 grid of small tables with a 24px gutter whose rows align across the two columns. Each table: a header of 12px grey labels with no fill and no rule, 44px rows with 2px gaps whose rounded fill (#f5f7f9, radius 8) is the data bar, its width the row's share divided by the largest share; Share in 12px grey and Count in 14px ink, both right-aligned. An empty table keeps its header and shows one dashed 1px box about 38px tall with one sentence ('No Slack channel usage in this range.').",
+      "phone": "KPIs become a 2 x 3 grid; the chart is full width; the share tables stack in one column and keep their row bars."
+    },
+    {
+      "id": "table-filter-bar",
+      "name": "Table with tabs and a filter bar",
+      "screen": "list",
+      "kinds": [
+        "community",
+        "devtools",
+        "commerce",
+        "support",
+        "smb-admin"
+      ],
+      "basis": "an events back office, a tracks studio, a sessions overview",
+      "blueprint": "Title row: an 18-24px title on the left, at most an outlined secondary and the one primary (36px) on the right. Underline tabs for the list's states on a full-width 1px rule with a 2px indicator as wide as the label; 22-32px below, the toolbar: a search of about 252-316 x 32-36 on the left, the count ('7 events') and the sort on the right. The table sits on the panel or page ground with no card around it: a header of 12-13px grey sentence-case labels with no fill and no rule, rows on a 48-56px pitch for one line or 72-92px with a thumbnail (media height plus 24-32px), 1px rules 3-7% darker than the ground or no rules at all, the identity column given the most width, numbers right-aligned in tabular figures with the unit muted ('5 /10'), one status mark per row and one kebab at the far right. Drop a column that is empty in every row (a blank co-host column left a 300px dead band). On an overview, cap the rows and link to the full list; on the full list, state the total and load more at the end.",
+      "phone": "Rows become two-line items: identity and the key number on line 1, the secondary fields in 13px grey on line 2, the kebab at the right. Tabs scroll in their own row; the search becomes a full-width field."
+    },
+    {
+      "id": "count-cards-filter",
+      "name": "Count cards that filter",
+      "screen": "list",
+      "kinds": [
+        "community",
+        "commerce",
+        "support"
+      ],
+      "basis": "an events back office",
+      "blueprint": "Above a list, 3-5 equal count cards (61px tall, 12px padding, a 13px grey label over a 16/600 value, 8px gap) are the type filter: the selected card gets a 1.5px accent border and a pale accent fill, and the list below shows that type only. Zero counts print as '0' in the same style; no deltas, no icons. This is one place where a row of identical small cards is right: the cards are peers and each one does work.",
+      "phone": "The count cards become a horizontally scrolling row of chips with the count inside each, or a select above the list."
+    },
+    {
+      "id": "settings-two-column",
+      "name": "Settings in two columns",
+      "screen": "settings",
+      "kinds": [
+        "devtools",
+        "smb-admin",
+        "support",
+        "workspace",
+        "commerce",
+        "analytics",
+        "finance",
+        "wallet",
+        "creator",
+        "community",
+        "builder",
+        "markets",
+        "report"
+      ],
+      "basis": "one settings page; stacking from a narrow rail card. The basis is thin.",
+      "blueprint": "A centred column of about 1152px. Each section is one row: a label column of about 450px (16/500 title, 14px grey description; the title's cap top 6-8px below the panel top, level with the panel's first line) beside a panel of about 700px with a #fafafa fill, 16px radius, 16px padding, no border and no shadow. Sections are split by a full-width 1px rule with 32px above and below. Inside a panel: field labels 14/500 above 40px white inputs (1px #e8e8e8, radius 10), 8px from label to field, 16px between fields, 24px from the description to the first label, 16px to the Save button; switch rows with a 14/500 title, a 20px status badge 8px after it, a 14px grey description and a 28x16 toggle 16px from the right edge, centred on the title line. A plan-gated feature shows a 48px tinted strip with a 32px button directly above its panel, and the panel stays readable. When a panel runs much taller than its label, put the section's help or a summary of the current values in the label column rather than 250px of nothing.",
+      "phone": "Each section stacks: title and description, then the panel at full width. Inside, label, 8-10px, field, 16-26px to the next pair; toggles stay on the right of their title."
+    },
+    {
+      "id": "settings-with-usage",
+      "name": "Settings with usage on top",
+      "screen": "settings",
+      "kinds": [
+        "devtools",
+        "smb-admin",
+        "support"
+      ],
+      "basis": "one settings page",
+      "blueprint": "Use this only when usage is the question of the view (a plan, billing or quota view), and show only numbers no section below repeats, at a size below the h1. When a settings screen also reports usage, put 3-4 usage numbers in one row on top (a 14px grey label, a 30px regular value, a 12px change pinned to the card bottom with its window in words, a grey dash where there is no comparison) and link out to the analytics screen ('View more') instead of drawing a chart. Below, the two-column settings rows. One dark primary per screen. Keep upsell to one surface: the studied settings page carried three nags (a top banner, a setup button and a gated strip) and was flagged for it.",
+      "phone": "The usage row becomes a 2-column grid of label-value pairs; settings rows stack."
+    },
+    {
+      "id": "wallet-balance-actions-assets",
+      "name": "Balance, actions and assets",
+      "screen": "wallet",
+      "kinds": [
+        "wallet",
+        "finance"
+      ],
+      "basis": "a wallet home",
+      "blueprint": "One column whose every element snaps to its two edges. A balance card (1px border, 16px radius, about 134px tall) holding one 32px figure and one line under it in which only the change is coloured ('-$0.09 in the last 30 days'); the title says what the figure is, so it needs no label. 32px below, 4 equal action tiles in a pale tint with dark same-hue icon and 12-14px label (4 x 144 + 3 x 16 = 624 in the study; scale the column and keep the arithmetic). 32-40px below, text tabs for the asset kinds on a 1px rule with a 2px ink indicator as wide as the word, a network or account select on the right of the same row. Then the asset table: 72px rows (48px round icon plus 24px), no dividers, two-line cells pairing a 16px value with a 14px grey unit amount, numeric columns right-aligned to shared edges, change as a small solid triangle and a coloured percentage, zero change grey, a missing share a grey em dash. On a desktop do not leave the column at phone width: the study's 624px column was flagged as a stretched phone screen; widen it to 864-1100 or give it a second column.",
+      "phone": "This pattern is phone-first: the same column at full width with 16px margins, the 4 tiles in one row, the table as two-line rows with the value right-aligned."
+    },
+    {
+      "id": "finance-home-pinned-rail",
+      "name": "Finance home with a pinned accounts column",
+      "screen": "overview",
+      "kinds": [
+        "finance",
+        "wallet"
+      ],
+      "basis": "a personal finance home",
+      "blueprint": "No page header and no KPI strip: cards start 36px from the top and each headline sum sits in the card that explains it. On the left, a 306px accounts card pinned at the viewport height minus the 36px margins opens with net worth (16/600 label left, value right) and holds the account tree with no dividers: groups 16px ink, categories 14px ink, leaves 14px grey indented 8px, values right-aligned, a 30px pitch and about 45px between groups; an empty group is a bordered box with an '+ Add account' link instead of $0.00. On the right, a 2-column grid with 24px gaps of cards that answer this month's questions, each with its own period caption: the plan (spanning both columns; a ring with an empty hole, a dot legend, the available figure beside it with a per-day line), recent spending as 61px two-line rows (payee over category, amount over date, right-aligned) and upcoming bills. Income is green with a plus sign; spending stays in ink.",
+      "phone": "Net worth becomes the first card; the account tree collapses to its groups with totals; the month cards stack."
+    },
+    {
+      "id": "builder-canvas",
+      "name": "Builder canvas",
+      "screen": "builder",
+      "kinds": [
+        "builder"
+      ],
+      "basis": "a flow builder in analytics mode",
+      "blueprint": "No global navigation: a 44px top bar on the window ground with no rule (an exit arrow, the object's name at 16/600 with a status pill, and on the right 16px icon buttons on a 40px pitch, a secondary and a near-black primary, split by 1px dividers). Below, two panels on the ground with 8px outer margins and a 12px gap, both with a 1px border, 16px radius and no shadow: a 232px palette (16px padding, groups under 14px labels, items on a 40px pitch with a small type tile, a label and a drag grip) and the canvas, a flat well one step darker than the ground (#f4f6f8 on #f9fbfc) with no dot grid. Nodes share one width (338px in the study), 12px radius, a 1px hairline, padding 16 on top and 12 at the sides, a type tile and a 16/600 title, and their metrics in a well as key-value rows on a 32px pitch with right-aligned tabular or mono values ('0% (0)'). Nodes stack on one spine 64px apart with a 38px round insert button centred in each gap; connectors are 1px orthogonal lines with 6px rounded elbows. Overlays (date range, zoom, minimap) are small white controls pinned 16px inside the canvas corners. Canvas content is one size larger than the chrome (16 against 14). Node-type tiles may be tinted, one pastel per type, the same in the palette and on the canvas: pass --allow icon-chips to the inspector and say why.",
+      "phone": "Editing a graph on a phone is rarely the job: show the flow read-only as a vertical list of nodes with their metrics, and the palette as a bottom sheet if editing is kept."
+    },
+    {
+      "id": "inbox-triage",
+      "name": "Inbox triage",
+      "screen": "inbox",
+      "kinds": [
+        "support",
+        "workspace"
+      ],
+      "basis": "assembled from the study's list, feed and rail measurements; no inbox screen was in the study",
+      "blueprint": "Three regions on one ground: the navigation (a 230px sidebar or a 55px rail), the list, and the open item with its details. The list column has a fixed width (the study's fixed columns are 306 and 384px) and its own toolbar: saved views as underline tabs or a select, a 32px search, the count. Rows are two-line, 64-80px: line 1 is who (14/600) with the time in words right-aligned in grey ('9 min', 'Yesterday'); line 2 is the subject or last message in 13-14px grey, truncated to one line with an ellipsis. Unread rows set the name at 600 and add a 6px dot or a 16px count circle; read rows keep the name and subject in ink at 400 (grey is for meta only, never for a row's identity: faded urgent rows were the top complaint in testing). One status mark per row (priority or SLA, as a pale pill or words, not both). The selected row takes the --active fill of the nav pill (optionally a 2px accent bar inside its left edge), so it is never confused with a hover or a focus ring; never a saturated fill. The row's meta sits in fixed right-aligned slots (assignee 20px, channel 14px, priority 14px) so it lines up as columns; priority is printed only above normal. The open item fills the remaining width; its details (customer, plan, history) sit in a fixed column of 306-384px as key-value rows on a 28-32px pitch.",
+      "phone": "One region at a time: the list fills the screen; choosing a row pushes the conversation; the details open from a button in its header; back returns to the list at the same scroll position."
+    },
+    {
+      "id": "workspace-home-greeting",
+      "name": "Workspace home with a greeting",
+      "screen": "home",
+      "kinds": [
+        "workspace",
+        "creator"
+      ],
+      "basis": "a team workspace home; a personal insights home",
+      "blueprint": "A centred column on a real 12-column grid (77px columns, 16px gutters, 1100px), about 72px from the top. The greeting is the h1 (48/700 in a serif, or 24/400 in the sans), with the date after it or in a grey line under it, never as a tracked eyebrow, and no emoji. 50px below, 4 count tiles spanning 3 columns each (128px tall, 16px padding): label, value at regular weight in tabular or mono figures, a plain caption ('Ready when you are'), no deltas. Then spans that change by row but share column lines (9 + 3, then 6 + 6, so each internal edge meets one above it) for the main objects: panels with 20px padding, a 14/600 title, a count chip and a 'View all' link, holding row cards 63px tall with 8px gaps, one step lighter than the panel with a border one step darker. Pale tints may code the panels, each in the hue of the tile that counts it. Only a floating composer, if there is one, carries a shadow, and it must not cover the last rows.",
+      "phone": "Greeting at 24-28px; tiles in a 2 x 2 grid; panels stack in reading order."
+    },
+    {
+      "id": "object-detail-header-grid",
+      "name": "Object header and a six-column grid",
+      "screen": "detail",
+      "kinds": [
+        "community",
+        "commerce",
+        "analytics"
+      ],
+      "basis": "an event's analytics tab",
+      "blueprint": "The page header is the object itself: one card (88px, 14px padding) holding a 50x62 cover, the 18/600 name with 28px icon buttons beside it (open, copy, share), a 13px grey meta line (date, time, place) and outlined 36px actions on the right. Under it, underline tabs on a full-width 1px rule, then a 36px row with a segmented time range on the left and a refresh button on the right. The body is one 6-column grid with one gutter (14px) in both directions whose spans change by row while every edge lands on the same lines: 3 KPI tiles of 2 columns, the main chart in 4 columns beside a side chart in 2, two progress cards of 3, a full-width trend of 6. Give the widest card to the screen's question, and do not give 824px to one ring and one legend row (flagged).",
+      "phone": "The header card keeps cover, name and meta, with actions in a kebab; every grid item takes the full width in the same order."
+    },
+    {
+      "id": "generated-report",
+      "name": "Generated report",
+      "screen": "report",
+      "kinds": [
+        "report",
+        "analytics"
+      ],
+      "basis": "a report generated from a CSV",
+      "blueprint": "No sidebar; the only chrome is a 47-48px viewer bar with a 1px rule. A centred 1088px column 33px below it: a 24/600 title, a 12px grey line 4px under it naming the source and the load time, one outlined 30px action on the right ('Refresh view'). If the data is a snapshot, one quiet notice (#fffbeb fill, 1px #fde68a, 12px #92400e text, 34px tall). Then 4 stat cards with a 12px gap (4 x 263 + 3 x 12 = 1088), a 12px grey label over an 18/600 tabular value; put the date range in the subtitle, not in a lone fifth card. Two charts side by side at the same 12px gap so their edges meet the stat columns: a time chart on a real time axis with flat labels, and a histogram with equal bins and square bottoms. Then the records table in a card: a 256x30 search in its header, a 14/600 grey header row over a 1px #e5e7eb rule, 37px rows over lighter #f3f4f6 rules, numbers right-aligned, a sort glyph on the active column only.",
+      "phone": "Stats in a 2 x 2 grid; charts stacked; the table as two-line rows, or scrolling inside its own frame with the first column fixed."
+    },
+    {
+      "id": "tabbed-object-detail",
+      "name": "Tabbed object detail in a sheet",
+      "screen": "detail",
+      "kinds": [
+        "analytics",
+        "smb-admin",
+        "builder",
+        "support"
+      ],
+      "basis": "a list's engagement tab; a reports dashboard",
+      "blueprint": "Inside the sheet: a breadcrumb row at 16/600 (the parent in grey, the current page as the h1, a 24px grey type chip after it) with its actions on the right (a text button and an outlined 32px dropdown). Under it, the object's tabs at 14px with a 2px ink underline that runs 8px past the label, on a 1px rule that spans the sheet. 30px below, the filter row: a label above a 300x32 select on the left; the freshness stamp ('Last updated July 21, 2026') and a 40px refresh button on the right, centred on the select's line. Then 3 KPI cards (value 36/400, its label at 16/600 under it, the period in words) and 2 chart cards, all on one 24px gutter so the rows share column lines. Do not stretch a short card to its neighbour's height (it left 250px of dead white) and do not list legend series that have no data.",
+      "phone": "Breadcrumb shortens to a back link and the h1; tabs scroll; KPI cards stack as label-value rows; charts full width."
+    },
+    {
+      "id": "report-card-legend-table",
+      "name": "Report card with a legend table",
+      "screen": "analytics",
+      "kinds": [
+        "analytics",
+        "smb-admin"
+      ],
+      "basis": "a campaign overview",
+      "blueprint": "A report card (20/600 title, a kebab top right, a 32px select for the scope) whose body splits into a 390px left block and the chart. Left: the hero number at 24/400 with its label under it and one change pill with its window ('vs. previous period'), then the legend as a mini table of 2-4 metric rows on a 57px pitch: dot, name at 15/600, a benchmark pill, the value right-aligned, the change right-aligned. Right: the line chart with 4 gridlines at round values, a 2px baseline with ticks, y labels on the right and axis text no larger than the data (12-14px; 16px ticks were flagged as louder than the numbers). Under it, a detail table whose rate cells stack the count over a 12px grey percentage on one right edge. Use the same colour for a series in the legend dot and in the line.",
+      "phone": "The legend table goes above the chart; the detail table becomes two-line rows."
+    },
+    {
+      "id": "research-lists-table",
+      "name": "Research lists and a long table",
+      "screen": "analytics",
+      "kinds": [
+        "markets",
+        "devtools"
+      ],
+      "basis": "a stock research view",
+      "blueprint": "Header: a 26/700 title over a 20px grey date, quiet pill buttons on the right; a 1px rule about 44px below, with the tabs just under it and the active tab marked by a 1px accent line as wide as its label lying on that rule. 64px below, a 2-column row of cards at about 43/57 with a 24px gap: a ranked list on a 28px pitch (16px logo, bold ticker, grey name truncated, a right-aligned grey percentage and a white value, signs in the text) and a chart card with its legend in the header (5px dots, 13px grey labels), a text range selector under the baseline (1M 3M 6M YTD All, the active one marked by the same 1px accent segment) and 'Updated daily' in 11-12px grey. Then a 20/400 grey section title and a full-width table: a 38px header of 11-12px grey labels, 42px rows over 1px rules, ISO dates and every figure right-aligned in tabular numerals, white only for the identity and the total. Give the chart a y-scale and dates (the studied chart had neither and was flagged).",
+      "phone": "Cards stack; the range selector stays as text under the chart; the table becomes two-line rows with the total on the right."
+    },
+    {
+      "id": "platform-overview-tray",
+      "name": "Platform overview with a usage tray",
+      "screen": "overview",
+      "kinds": [
+        "devtools",
+        "analytics"
+      ],
+      "basis": "a developer platform project overview",
+      "blueprint": "Sections stacked in one column about 48px apart, each with an 18/500 title on the left and a quiet action on the right ('View all', an outlined Refresh, a date-range button), and freshness in 14px grey after the title with a small status dot. First, a getting-started strip: one container split by 1px dividers into 4 equal cells (16/500 title, a 14px description, a grey arrow top right), shown until setup is done. Then the recent items table, capped at 4-5 rows on a 49px pitch: IDs in mono truncated to 8 characters plus an ellipsis with a copy icon, relative expiry in grey, rules that bleed 8px past the text column. Then usage: a #fafafa tray with 6px padding holding a KPI strip of 5 equal cells (a 14/500 label over a 24/400 value with a 14px unit suffix, '5 mins') and, 6px below, a chart card whose metric is chosen by the KPI cells themselves (the selected cell marked by a 2px rule or the active fill), never a second control repeating the KPI labels; the chart takes two-thirds of the width when its line is flat for most of the window, with the next answer beside it. Durations and timestamps in tabular figures. A missing value is a grey dash at label size, not '--' at value size.",
+      "phone": "The getting-started strip becomes a 2 x 2 grid or a list; the table becomes two-line rows; the KPI strip a 2-column grid."
+    },
+    {
+      "id": "bar-list-ranking",
+      "name": "Bar list and ranking",
+      "screen": "analytics",
+      "kinds": [
+        "analytics",
+        "smb-admin"
+      ],
+      "basis": "an AI-search visibility overview",
+      "blueprint": "A 24/700 title with one factual stat chip beside the actions on the right; underline tabs on a 1px rule; a filter row of compound outlined groups that read as a sentence ('Date | Jun 14 - Jul 13 | Daily', 'Region | United States'), 28px tall and 8px apart. KPIs: as many equal columns as there are KPIs (four across, not four in a three-column grid that orphans one), tabular or mono values with fixed decimals. Then two equal panels, each with a 73px header (14/600 title, a 13px grey description, a dropdown that switches the panel's metric) over a full-bleed 1px rule: a sorted bar list (rows on a 64px pitch, a label line, then a 10px pill bar in one colour with no track, the value 5px after the bar's end, the longest bar about 88% of the width) and a ranking table (53px rows, rules inset to the padding, a rank, a 16px logo, a soft chip on the user's own row, values right-aligned). Do not fix a panel's height so its last row is cut off (flagged).",
+      "phone": "KPIs in a 2 x 2 grid; panels stack; the bar list keeps its bars at full width."
+    },
+    {
+      "id": "deploy-health-lead",
+      "name": "Current deploy and health lead",
+      "screen": "overview",
+      "kinds": [
+        "devtools"
+      ],
+      "basis": "house pattern from testing: built after a flat 24-hour chart filled a whole first screen and lost to a richer layout",
+      "blueprint": "Title row: the project's name as the h1 with a status pill (Healthy, Degraded) and a breadcrumb of team and product above it; repository, branch and a freshness stamp in a 14px grey line under it; the one primary action (Redeploy, or View logs when the latest deploy failed) on the right. Then a full-width card for what is live now: the production deployment's commit message at 16/600, its branch, short SHA in mono, author and age on the left, and three or four facts in divided cells on the right (domain, live since, build time, regions). Then the health strip: three or four KPIs in one divided container, each with its change in words and in the polarity colour when it moved the wrong way. Then a two-column row: the 24-hour chart at two-thirds (deploy markers as 1px ticks with their short SHA, the budget or SLO as a dashed reference line) and, at one-third, the block that explains the worst number (the spike and what reverted it, the status codes behind the error rate). Then the deployments table capped at 6 rows, a failed row carrying its failing step and a View logs action, a building row its elapsed time.",
+      "phone": "The live deployment card becomes a stack of label-value rows; the KPIs a 2x2 grid; the chart full width with its markers; the explanation under it; deployments as two-line rows with region and duration on line 2."
+    },
+    {
+      "id": "power-flow",
+      "name": "Power flow summary",
+      "signature": true,
+      "cues": [
+        "energy",
+        "solar",
+        "battery",
+        "kwh",
+        "tariff",
+        "heat pump",
+        "electric car",
+        "ev charger",
+        "home charger"
+      ],
+      "basis": "house pattern from round-4 testing: a home-energy overview without it read as the stock dark dashboard; real energy apps lead with this flow",
+      "blueprint": "A strip under the title row that answers \"where is the power going now?\": four nodes in one row (Sun, House, Battery, Grid), each a 14px label over its live figure at 20-24px with the unit as a grey suffix (2.4 kW), the battery's charge under its figure (88%). Between neighbours, a 2px connector only where power flows now, with its direction and amount in words above it (\"to battery 1.7 kW\"); an idle link is a 1px dashed rule in the grid colour. Solar and export carry the one data hue, import from the grid is grey, the house is ink. The flows balance and are built from one live-state object that also feeds the top bar and the charts: sun + grid import + battery out = house + battery in + export. A freshness stamp at the strip's right (\"Live · 20:34\").",
+      "phone": "The four nodes become a 2x2 grid in the same order (Sun, House / Battery, Grid) with the flow sentence under it (\"Sun 2.4 kW: house 0.7, battery 1.7\"), no connectors."
+    },
+    {
+      "id": "leave-timeline",
+      "name": "Team timeline with kind encoding",
+      "signature": true,
+      "cues": [
+        "leave",
+        "holiday",
+        "time off",
+        "absence",
+        "pto",
+        "vacation",
+        "rota",
+        "roster",
+        "shift",
+        "booking"
+      ],
+      "basis": "house pattern from round-4 testing: a leave calendar that drew every booking in the same pale grey read as a loading state",
+      "blueprint": "People down the left on a 160-220px column, grouped under 12px team subheaders; days across with weekends one tone step darker, faint 1px day lines, and today as a 1px line in the one data hue with its date in ink in the header. Each kind of booking has its own mark, drawn with `Charts.timeline(el, rows, kinds)`: holiday a pale fill, off sick a 1px diagonal hatch, long leave a darker grey step, working away an outline, a pending request a dashed outline. Full colour only for what needs a decision: a request that breaks cover is outlined and labelled in the negative colour. Bars 20-24px tall at radius 4; the label inside the bar, the kind's code when the bar is too short, then the label after the bar's end, never over the days before it. One-line names on a 32px pitch; a name with a subline (team, office) on 40-44px. A public holiday is a small dot under its date whose tooltip names the office. The legend is the one the helper returns, so each swatch is its mark scaled down and only kinds on screen are listed.",
+      "phone": "One week at a time, with the week switch in the same control row as any office filter; names shorten to first name and initial; the legend sits in a 2-column grid."
+    },
+    {
+      "id": "cover-matrix",
+      "name": "Cover against the minimum",
+      "signature": true,
+      "cues": [
+        "team cover",
+        "cover by",
+        "staffing",
+        "rota",
+        "roster",
+        "shift",
+        "coverage",
+        "on call",
+        "leave"
+      ],
+      "basis": "house pattern from round-4 testing: a grid of 120 absolute headcounts made the reader subtract each team's minimum in their head",
+      "blueprint": "A team-by-day matrix of slack against each team's minimum (+2, +1, 0, −1) rather than headcounts, drawn with `Charts.matrix(el, rows, { cols, comfort })`: the team and its rule (\"needs 7 of 10\") in a 160-220px label column on a 40-44px pitch, one cell per working day with the signed slack in 12px tabular figures. Cells with room to spare stay plain; one hue ramps toward the negative colour as the slack runs out (tight a pale tint, at the minimum a stronger tint, short the full negative with white figures), and the headcount sits in the tooltip (\"6 in of 9, needs 7\"). Today's column has its date in ink. The days that go short are the finding in the title row, beside the request that causes them.",
+      "phone": "The lowest slack per team for each week (four columns), with the days behind a tap; or one team at a time."
+    },
+    {
+      "id": "sell-out-strip",
+      "name": "Sell-out time strip",
+      "signature": true,
+      "cues": [
+        "bakery",
+        "cafe",
+        "café",
+        "kitchen",
+        "restaurant",
+        "sell-out",
+        "sell out",
+        "sold out",
+        "deli",
+        "menu",
+        "bake"
+      ],
+      "basis": "house pattern from round-4 testing: six 4px black bars for sell-out times were the loudest marks on a bakery screen and drew no comparison",
+      "blueprint": "One row per line that sold out, earliest first: the line and its shop on the left; a 2px grey track on a shared opening-to-closing axis with an ink dot at today's sell-out time and a hollow tick at the comparison day's (last Sunday), drawn with `Charts.timeStrip(el, rows, { open, close, compareLabel })`; the time on the right in ink with the gap under it in 12px grey, its baseline named (\"3 h 40 m before close\", \"45 m earlier than last Sunday\"). The lines that did not sell out are counted in one closing sentence, not drawn. Axis labels on one hourly step from opening; the legend (Today, Last Sunday) is the one the helper returns.",
+      "phone": "The rows keep the full width with axis labels every two hours; the gap moves under the line's name."
+    }
+  ],
+  "kinds": {
+    "finance": {
+      "note": "money homes, budgeting, accounting, seller balances",
+      "styles": [
+        "achromatic-ledger",
+        "pastel-consumer"
+      ],
+      "screens": [
+        "overview",
+        "list",
+        "settings"
+      ]
+    },
+    "wallet": {
+      "note": "consumer wallets, crypto, personal finance on the go",
+      "styles": [
+        "pastel-consumer",
+        "achromatic-ledger"
+      ],
+      "screens": [
+        "wallet",
+        "list",
+        "settings"
+      ]
+    },
+    "commerce": {
+      "note": "seller and shop back offices: orders, payouts, products",
+      "styles": [
+        "achromatic-ledger",
+        "framed-sheet"
+      ],
+      "screens": [
+        "overview",
+        "list",
+        "detail"
+      ]
+    },
+    "analytics": {
+      "note": "B2B analytics, marketing and growth reporting",
+      "styles": [
+        "framed-sheet",
+        "achromatic-ledger",
+        "accent-ladder"
+      ],
+      "screens": [
+        "analytics",
+        "list",
+        "detail"
+      ]
+    },
+    "devtools": {
+      "note": "developer platforms: deploys, sessions, API keys, usage",
+      "styles": [
+        "framed-sheet",
+        "data-terminal",
+        "achromatic-ledger"
+      ],
+      "screens": [
+        "overview",
+        "list",
+        "settings"
+      ]
+    },
+    "builder": {
+      "note": "flow, form, page and automation builders",
+      "styles": [
+        "framed-sheet",
+        "achromatic-ledger"
+      ],
+      "screens": [
+        "builder",
+        "list",
+        "settings"
+      ]
+    },
+    "creator": {
+      "note": "newsletters, creator studios, audience insights",
+      "styles": [
+        "accent-ladder",
+        "editorial-greeting",
+        "true-black-flat"
+      ],
+      "screens": [
+        "overview",
+        "analytics",
+        "list"
+      ]
+    },
+    "smb-admin": {
+      "note": "small-business and SaaS admin with plans, onboarding and growth nudges",
+      "styles": [
+        "accent-ladder",
+        "framed-sheet"
+      ],
+      "screens": [
+        "overview",
+        "list",
+        "settings"
+      ]
+    },
+    "workspace": {
+      "note": "team hubs and personal homes",
+      "styles": [
+        "editorial-greeting",
+        "achromatic-ledger"
+      ],
+      "screens": [
+        "home",
+        "inbox",
+        "settings"
+      ]
+    },
+    "community": {
+      "note": "community, events and media back offices",
+      "styles": [
+        "true-black-flat",
+        "accent-ladder"
+      ],
+      "screens": [
+        "overview",
+        "list",
+        "detail"
+      ]
+    },
+    "support": {
+      "note": "support inboxes, queues, helpdesks",
+      "styles": [
+        "achromatic-ledger",
+        "framed-sheet"
+      ],
+      "screens": [
+        "inbox",
+        "list",
+        "settings"
+      ]
+    },
+    "markets": {
+      "note": "trading, research and monitoring read in long sessions",
+      "styles": [
+        "data-terminal",
+        "true-black-flat"
+      ],
+      "screens": [
+        "analytics",
+        "list",
+        "detail"
+      ]
+    },
+    "report": {
+      "note": "generated or exported reports with no app around them",
+      "styles": [
+        "achromatic-ledger",
+        "framed-sheet"
+      ],
+      "screens": [
+        "report"
+      ]
+    }
+  }
+}

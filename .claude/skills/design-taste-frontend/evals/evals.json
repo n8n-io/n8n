@@ -1,0 +1,76 @@
+{
+  "skill_name": "design-taste-frontend",
+  "how_to_run": "For each eval, give the prompt to a fresh agent that has this skill, and to a second fresh agent without it (the baseline). Render both with scripts/inspect.mjs and have a judge who does not know which is which score the screenshots with references/critique.md. Record inspector FAIL counts for both. Evals 7 to 10 are app screens: inspect them with --app (a sheet dealt by draw.mjs --app switches it on by itself) and judge them with the app-screen passes in references/critique.md.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "saas-invoicing",
+      "prompt": "Build a landing page for Ledgerly, an invoicing tool for freelance designers. What it does: you write an invoice in under a minute, the client pays by card or bank transfer, and it sends polite reminders by itself when an invoice is overdue. It costs 9 euros a month flat, with a 14-day free trial and no card needed. Include pricing and a short FAQ. There is no existing brand and no screenshots; the product name is all we have. Plain static HTML, CSS and JS in one folder.",
+      "expected_output": "A static landing page with a clear idea drawn from invoicing itself, headlines of two lines or fewer at 1440/768/390, no eyebrow labels, no monospace, no index numbering, no thin rules, no gradients or shadows, a non-default palette and type system, a pricing section that is not three cards, and no invented customers or statistics.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "restaurant-osteria",
+      "prompt": "Make a one-page website for Osteria Nove, a 38-seat Italian restaurant in Alfama, Lisbon. Handmade pasta, a short natural wine list, dinner only, Tuesday to Saturday from 19:00. Address: Rua dos Remédios 9. Reservations by phone (+351 21 000 0009) or email (mesa@osterianove.pt). The page needs the menu (invent a believable short one: antipasti, pasta, dolci, with prices in euros), hours, address and how to book. We have no photographs yet. Static HTML/CSS/JS.",
+      "expected_output": "A one-page restaurant site with a specific idea (for example the page as the menu itself), the menu set typographically without divider lines, practical information easy to find, bundled photographs used only as atmosphere and listed for replacement, and all house rules met.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "portfolio-designer",
+      "prompt": "I'm Mara Lindqvist, a product designer in Stockholm with eight years in fintech and health apps. I need a portfolio homepage: six selected projects (make up plausible names, clients, years and one-line descriptions), a short about paragraph, and a way to contact me (mara@lindqvist.studio). I don't have project images ready, so design it so it still looks finished without them, or use placeholders that I can swap. Static HTML/CSS/JS.",
+      "expected_output": "A portfolio page that looks finished without project imagery (a typographic index, a name-led hero, or atmosphere photographs clearly marked for replacement), with a designed footer, a phone layout that is its own composition, and all house rules met.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "name": "product-ceramics",
+      "prompt": "Launch page for Kiln, a ceramic pour-over coffee set (dripper, carafe and two cups) that is hand-glazed in small batches in Porto. It costs 84 euros and ships across the EU within a week. The glaze is mixed by hand so no two sets are identical. We have not shot product photos yet, so there are no images of the set. One page, with a way to buy (a button is enough). Static HTML/CSS/JS.",
+      "expected_output": "A product page that does not fake product photography: it either commits to type and colour, uses one shape from the object as a motif, or uses atmosphere photographs honestly, with the price and purchase action clear, and all house rules met.",
+      "files": []
+    },
+    {
+      "id": 5,
+      "name": "guesthouse-ericeira",
+      "prompt": "Website for Casa Mirante, a six-room guesthouse on the cliffs above Ericeira, Portugal. Rooms from 140 euros a night with breakfast included; ten minutes' walk to the surf at Ribeira d'Ilhas; open March to November. One page: what it is, the rooms, what's nearby, and how to book (email reservas@casamirante.pt). We have no photographs yet. Static HTML/CSS/JS.",
+      "expected_output": "A calm, photograph-led or type-led one-pager whose hero is one clear thing, with rooms and booking information easy to find, bundled coast photographs used as atmosphere and listed for replacement, and all house rules met.",
+      "files": []
+    },
+    {
+      "id": 6,
+      "name": "conference-format",
+      "prompt": "Landing page for Format, a two-day design conference in Rotterdam on 14 and 15 May 2027. Twelve speakers (invent plausible names and talk titles), 400 seats, tickets at 390 euros, venue: Maassilo. Sections: what it is, the line-up, the schedule in brief, tickets, and a short FAQ. No brand exists yet beyond the name. Static HTML/CSS/JS.",
+      "expected_output": "An event page with a strong typographic or colour idea, the line-up and schedule set as structured text without divider lines or index numbers, a ticket section that is not three cards, and all house rules met.",
+      "files": []
+    },
+    {
+      "id": 7,
+      "name": "app-budget-overview",
+      "prompt": "Build the main screen of Ledgerly, a budgeting app for couples who share money: the October overview with their accounts and balances, the spending plan (planned against spent by category), bills due in the next 14 days and recent transactions. Two people use it, Mia and Tom. Desktop first, and it must work on a phone. Static HTML/CSS/JS.",
+      "expected_output": "An app screen, not a landing page: a quiet shell (sidebar or rail), a clear screen title, numbers that add up and are right-aligned with tabular figures, one chart per question, colour spent on data and status only, no icons in tinted squares, no gradients or glows, no placeholder names, and a phone layout where the navigation folds away. inspect.mjs --app passes.",
+      "files": []
+    },
+    {
+      "id": 8,
+      "name": "app-deploy-dashboard",
+      "prompt": "Dashboard for Relay, an edge deployment platform for web teams: one project's overview with recent deployments (status, branch, commit message, author, duration, region), requests and p95 latency over the last 24 hours, the error rate, and usage against the plan's limits. Dark theme. Static HTML/CSS/JS.",
+      "expected_output": "A dense, readable dark screen on a neutral (not navy) ground: one surface step or one hairline between regions, a deployments table with honest statuses and aligned numbers, charts with few gridlines and one series each, IDs in monospace at most, no rainbow series, no glow, and app inspector checks passing.",
+      "files": []
+    },
+    {
+      "id": 9,
+      "name": "app-settings-billing",
+      "prompt": "Workspace settings for Proofline, a design-review tool: general settings, members and roles (a members table with an invite form), billing (current plan, seats, invoices) and notifications. Static HTML/CSS/JS, desktop and phone.",
+      "expected_output": "A settings screen with a label column beside its fields (or stacked fields on a phone), labels above inputs, one control height, quiet borders, honest disabled states, a members table with right-aligned figures and one status pill per row, and no decorative icons or gradients.",
+      "files": []
+    },
+    {
+      "id": 10,
+      "name": "app-support-queue",
+      "prompt": "The queue screen of Hearth, a support inbox for a six-person SaaS team: the list of conversations with assignee, priority, channel and time to the SLA, the open conversation with the customer's details beside it, plus filters and saved views. Static HTML/CSS/JS.",
+      "expected_output": "A three-region work screen (navigation, list, conversation) that stays readable at 1440 and folds to one region at a time on a phone, with status shown once per row, times in words, no tinted icon squares or emoji, and app inspector checks passing.",
+      "files": []
+    }
+  ]
+}

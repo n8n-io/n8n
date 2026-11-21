@@ -12,6 +12,11 @@ run-name: "${{ github.event_name == 'workflow_dispatch' && format('CI: Owners Re
 on:
   pull_request_target:
     types: [opened, synchronize, reopened, ready_for_review, edited, labeled, unlabeled]
+    # Fork (benkas418-alt): skip changes that only touch the football-intel project.
+    paths-ignore:
+      - 'football-intel/**'
+      - '.claude/**'
+      - '.github/workflows/util-football-intel-*.yml'
   pull_request_review:
     types: [submitted, dismissed]
   workflow_run:

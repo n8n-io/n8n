@@ -1,0 +1,118 @@
+{
+  "skill_name": "sms",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "We're a Shopify DTC brand doing $5M/year in skincare. We have 80K email subscribers but no SMS program yet. Where do we start?",
+      "expected_output": "Should check for product-marketing.md first. Should run Phase 0 compliance check: are they US-based, is A2P 10DLC registration started, is the opt-in mechanism planned. Should recommend Klaviyo SMS or Postscript given Shopify + DTC ecom (Klaviyo if already on Klaviyo email, Postscript for SMS-first depth). Should rank flows by ROI for skincare: (1) abandoned cart sequence first (highest-ROI flow), (2) post-purchase + replenishment (skincare has predictable cycles), (3) welcome opt-in flow with capture incentive, (4) win-back at 60-90 days. Should warn about treating SMS like email (frequency cap, relevance bar, real per-send cost ~$0.0075-$0.04). Should reference compliance.md for opt-in disclosure language and quiet hours.",
+      "assertions": [
+        "Checks for product-marketing.md",
+        "Runs compliance/A2P 10DLC readiness check",
+        "Recommends Klaviyo SMS or Postscript with rationale",
+        "Prioritizes abandoned cart as highest-ROI flow",
+        "Mentions replenishment for skincare specifically",
+        "Warns about treating SMS like email",
+        "References compliance.md or opt-in disclosure requirements",
+        "Mentions per-send cost economics"
+      ],
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Write me an abandoned cart SMS sequence. We sell custom apparel, average order $80.",
+      "expected_output": "Should output a 3-message sequence following references/sequence-templates.md pattern. Should specify timing: Send 1 at 30 min after abandon (no discount, gentle reminder), Send 2 at 4 hours (soft urgency, no discount), Send 3 at 24 hours (discount allowed). Should include actual SMS copy with character counts (target 160 GSM-7 for 1 segment). Each message must start with sender ID 'From [Brand]:', have a single CTA + short link, and the first message should include 'Reply STOP to opt out' compliance footer. Should warn against discount on first send (trains customers to abandon). Should mention exclusion rules: stop sequence on purchase, opt-out, or 48 hours elapsed. Should recommend UTM tagging for attribution and cross-reference analytics skill for measurement.",
+      "assertions": [
+        "Outputs 3-message sequence with timing",
+        "Send 1 at 30 min, Send 2 at 4 hours, Send 3 at 24 hours",
+        "No discount on Send 1",
+        "Each message has sender ID + single CTA + short link",
+        "Character counts shown, target ~160 GSM-7",
+        "Compliance footer on first send (STOP to opt out)",
+        "Warns about discount on first send",
+        "Mentions exclusion rules",
+        "Mentions UTM tagging or attribution"
+      ],
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "Can I just send SMS without any opt-in if customers gave me their phone number at checkout?",
+      "expected_output": "Should refuse and explain TCPA requires express written consent for marketing SMS. Should distinguish marketing SMS (requires express written consent) from transactional/account SMS (order updates, auth — implied consent during transaction OK if directly related). Should explain the express written consent requirements: clear disclosure adjacent to the phone field, frequency expectation, msg & data rates notice, STOP/HELP instructions, terms link, electronically captured with timestamp. Should mention penalty exposure: $500-$1,500 per message, class actions reach 7-8 figures. Should recommend implementing a compliant opt-in flow: checkbox + disclosure text, double opt-in optional but cleaner. Should reference compliance.md for the full disclosure template. Should warn that 'customers gave their number at checkout' is NOT sufficient for marketing SMS — it's only sufficient for the specific transaction's communications.",
+      "assertions": [
+        "Refuses the no-opt-in approach",
+        "Distinguishes marketing SMS from transactional SMS",
+        "Lists express written consent requirements",
+        "Mentions TCPA penalty exposure ($500-$1,500 per message)",
+        "Mentions class action risk",
+        "Recommends compliant opt-in flow",
+        "References compliance.md",
+        "Clarifies checkout phone capture is not marketing consent"
+      ],
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "Our SMS list is 50K subscribers. We send 3 promotional messages per week. Opt-out rate has crept up to 4% per send. What's wrong?",
+      "expected_output": "Should diagnose this as audience fatigue from over-sending. Should reference healthy benchmarks: opt-out rate should be <2% per send and <0.5% for promotional sends — 4% is significantly elevated. Should review send frequency: 3 promotional sends/week is on the high side; recommend reducing to 1-2/week, especially for newer subscribers. Should audit relevance: are sends segmented or going to entire list? Generic blasts to a 50K list will burn out the inactive 30K. Should recommend segmenting by engagement (recently engaged vs cold), purchase recency, and opt-in source. Should suggest reactivating cold subscribers with a re-engagement flow before sending more promos. Should warn that 4% opt-out per send means the list is being destroyed at the rate of ~2K/week. Should cross-reference analytics for proper measurement and the principle 'every send must justify itself.'",
+      "assertions": [
+        "Diagnoses as over-sending / audience fatigue",
+        "Cites healthy benchmark (<2% opt-out per send, <0.5% promotional)",
+        "Recommends reducing send frequency",
+        "Recommends segmentation by engagement",
+        "Suggests reactivation flow for cold subscribers",
+        "Calculates list erosion impact",
+        "Mentions 'every send must justify itself' principle"
+      ],
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "We just submitted our A2P 10DLC registration and our sends are working. Can we start scaling to 100K+ messages per day?",
+      "expected_output": "Should ask about phone number type currently in use: 10DLC, toll-free, or short code. Should explain throughput limits: 10DLC standard brand ~4-10 msg/sec, verified brand ~75-100+ msg/sec, toll-free ~3 msg/sec, short code 100+ msg/sec. Should calculate: 100K msgs at 10 msg/sec = ~2.8 hours of continuous send time, may run into quiet hour cutoff. Should recommend short code lease for 100K+/day sustained volume. Should warn about carrier filtering on burst sends — use platform throttling. Should mention that sample message text from A2P registration must match actual sends or carriers will flag. Should recommend monitoring trust score and deliverability dashboards. Should reference platforms.md for short code provisioning details.",
+      "assertions": [
+        "Asks about phone number type (10DLC vs toll-free vs short code)",
+        "Explains throughput limits with specific msg/sec numbers",
+        "Calculates time-to-send for 100K volume",
+        "Mentions quiet hour considerations",
+        "Recommends short code for high sustained volume",
+        "Warns about carrier filtering / throttling",
+        "Mentions A2P sample text alignment requirement",
+        "References platforms.md or trust score monitoring"
+      ],
+      "files": []
+    },
+    {
+      "id": 6,
+      "prompt": "Should we put emojis in our SMS messages? Other brands seem to use them a lot.",
+      "expected_output": "Should explain the cost trade-off: emojis force UCS-2 encoding, which cuts segment size from 160 GSM-7 chars to 70 chars. A 100-char message with one emoji becomes 2 segments billed instead of 1 — effectively doubling the per-send cost. Should advise: 1 emoji per message max, situationally relevant, only when the emoji genuinely earns its segment cost (high-energy promotional, brand-personality fit, etc.). Should warn against emoji clutter — it signals 'mass send' rather than personal. Should note that some accented characters (curly quotes, em dashes) also force UCS-2 — copy-pasting from Word/Google Docs is a common silent cause of doubled costs. Should recommend testing in the platform's preview to verify segment count before scheduling. Should remind that segment count matters at scale: 100K sends at 2 segments instead of 1 = $750-$4,000 in extra cost per campaign.",
+      "assertions": [
+        "Explains UCS-2 encoding cost",
+        "Specifies 160 GSM-7 vs 70 UCS-2 segment sizes",
+        "Recommends max 1 emoji per message",
+        "Warns about doubled per-send cost",
+        "Mentions accented characters / curly quotes also trigger UCS-2",
+        "Recommends previewing segment count",
+        "Calculates cost impact at scale"
+      ],
+      "files": []
+    },
+    {
+      "id": 7,
+      "prompt": "We sell fashion accessories in Brazil and Mexico and get about 1,500 abandoned carts a week. Most customers use WhatsApp, not SMS. Can we send cart reminders on WhatsApp an hour after they leave, and what will it cost?",
+      "expected_output": "Should check for product-marketing.md first. Should confirm WhatsApp fits better than SMS for Brazil and Mexico and reference references/whatsapp.md. Should explain that a reminder 1 hour after abandonment falls outside the 24-hour customer service window, so it must be a Meta-approved template, and that cart reminders are classified as marketing templates (submitting as utility gets recategorized). Should require WhatsApp-specific opt-in that names the business, captured at checkout or in chat, plus an opt-out button or STOP footer on every marketing template. Should explain current per-message pricing (since July 1, 2025): every delivered marketing template is charged at a per-country rate, with no free window unless the customer recently messaged for these reminders, and recommend modeling cost per recovered order using current Meta or BSP rate cards rather than old per-conversation pricing. Should warn that blocks and reports lower the quality rating, can flag the number and cut the messaging limit, and recommend warming up a new number, business verification, and limiting to 1-2 cart touches with exit on purchase or opt-out. Should design the template with name, product, and checkout URL button, holding any discount for a later touch.",
+      "assertions": [
+        "Checks for product-marketing.md",
+        "Checks whether a 24-hour service window (or a click-to-WhatsApp free window) is open from the customer's messaging history, and uses an approved template when it isn't",
+        "Classifies cart reminders as marketing templates",
+        "Requires opt-in that names the business (and ideally WhatsApp), compliant with local law",
+        "Includes an opt-out button or STOP footer",
+        "Explains per-message pricing with marketing templates charged per delivery",
+        "Does not quote per-conversation pricing as current",
+        "Warns about quality rating, flagging, and messaging limit risk from blocks",
+        "Recommends number warm-up or business verification",
+        "References references/whatsapp.md"
+      ],
+      "files": []
+    }
+  ]
+}

@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="assets/gsap.min.js"></script>
+    <style>
+      @font-face { font-family: "Poppins"; font-weight: 500; src: url(assets/fonts/poppins-500.woff2) format("woff2"); }
+      @font-face { font-family: "Poppins"; font-weight: 600; src: url(assets/fonts/poppins-600.woff2) format("woff2"); }
+      @font-face { font-family: "Poppins"; font-weight: 800; src: url(assets/fonts/poppins-800.woff2) format("woff2"); }
+      :root { --blue: #1f88c9; --sky: #5fb6ee; --ink: #0a0c10; }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1080px; height: 1920px; overflow: hidden; background: var(--ink); }
+      #root { position: relative; width: 100%; height: 100%; overflow: hidden; font-family: "Poppins", sans-serif; color: #fff; }
+      .layer { position: absolute; inset: 0; }
+      #bg { position: absolute; inset: 0; background: radial-gradient(1000px 1100px at 50% 58%, #10233a 0%, #0a0c10 68%); }
+
+      #net { position: absolute; inset: 0; z-index: 1; }
+      #links { position: absolute; left: 0; top: 0; width: 1080px; height: 1920px; }
+      .node { position: absolute; border-radius: 50%; overflow: hidden; border: 5px solid #fff; background: #000; box-shadow: 0 0 0 0 rgba(95,182,238,0.0), 0 20px 40px rgba(0,0,0,0.5); }
+      .node img { width: 100%; height: 100%; object-fit: cover; display: block; }
+      .lbl { position: absolute; display: block; width: 360px; text-align: center; font-weight: 600; font-size: 26px; color: rgba(255,255,255,0.85); white-space: nowrap; }
+      #slot { position: absolute; border-radius: 50%; border: 6px dashed var(--sky); display: flex; align-items: center; justify-content: center; opacity: 0; }
+      #slotTxt { display: block; text-align: center; font-weight: 800; font-size: 34px; line-height: 1.1; color: var(--sky); }
+
+      .h { position: absolute; z-index: 5; left: 76px; right: 60px; display: block; font-weight: 800; letter-spacing: -3px; line-height: 1.04; }
+      .h .b { color: var(--sky); }
+      .h span { display: block; white-space: nowrap; }
+
+      #count { position: absolute; z-index: 6; left: 0; right: 0; top: 700px; display: flex; justify-content: center; align-items: flex-start; opacity: 0; }
+      #plus { display: block; font-weight: 800; font-size: 200px; line-height: 1; color: var(--sky); margin-top: 30px; }
+      #num { display: block; font-weight: 800; font-size: 360px; letter-spacing: -14px; line-height: 1; }
+      #countSub { position: absolute; z-index: 6; left: 0; right: 0; top: 1110px; display: block; text-align: center; font-weight: 800; font-size: 60px; letter-spacing: -1px; line-height: 1.15; opacity: 0; }
+      #countSub span { display: block; }
+
+      #end { position: absolute; z-index: 9; inset: 0; background: var(--blue); opacity: 0; }
+      #ring { position: absolute; left: 340px; top: 330px; width: 400px; height: 400px; border-radius: 50%; border: 10px solid #fff; opacity: 0; }
+      #icon { position: absolute; left: 395px; top: 390px; width: 290px; display: block; }
+      #join { position: absolute; left: 0; right: 0; top: 860px; display: block; text-align: center; font-weight: 800; font-size: 120px; letter-spacing: -4px; line-height: 1; }
+      #creates { position: absolute; left: 0; right: 0; top: 1030px; display: block; text-align: center; font-weight: 600; font-size: 44px; color: rgba(255,255,255,0.9); }
+      #ctaWrap { position: absolute; left: 0; right: 0; top: 1130px; display: flex; justify-content: center; }
+      #cta { display: block; padding: 30px 70px; border-radius: 999px; background: #fff; color: var(--blue); font-weight: 800; font-size: 58px; white-space: nowrap; }
+      #fine { position: absolute; left: 0; right: 0; top: 1320px; display: block; text-align: center; font-weight: 600; font-size: 34px; color: rgba(255,255,255,0.8); }
+
+      #flash { position: absolute; z-index: 12; inset: 0; background: #fff; opacity: 0; }
+      #vignette { position: absolute; z-index: 13; inset: 0; pointer-events: none; background: radial-gradient(1300px 1700px at 50% 48%, rgba(0,0,0,0) 55%, rgba(0,0,0,0.32) 100%); }
+      #grain { position: absolute; z-index: 14; inset: -64px; background-image: url(assets/grain.png); background-size: 512px 512px; mix-blend-mode: overlay; opacity: 0.16; pointer-events: none; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="30.6" data-width="1080" data-height="1920">
+      <audio id="bgm" src="assets/bgm.wav" data-start="0" data-duration="30.6" data-track-index="11"></audio>
+      <div id="scene" class="clip layer" data-start="0" data-duration="30.6" data-track-index="0">
+        <div id="bg"></div>
+        <div id="net">
+          <svg id="links" viewBox="0 0 1080 1920"></svg>
+          <div id="nodes"></div>
+          <div id="slot"><div id="slotTxt"><span style="display:block">Ta</span><span style="display:block">boutique</span></div></div>
+        </div>
+
+        <div class="h" id="hA" style="top: 250px; font-size: 96px"><span>Ça commence</span><span>par <b class="b">une boutique.</b></span></div>
+        <div class="h" id="hB" style="top: 250px; font-size: 110px"><span>Puis deux.</span></div>
+        <div class="h" id="hC" style="top: 250px; font-size: 110px"><span>Puis dix.</span></div>
+        <div class="h" id="hD" style="top: 250px; font-size: 110px"><span>Puis <b class="b">plus de cent.</b></span></div>
+
+        <div id="count"><span id="plus">+</span><span id="num">0</span></div>
+        <div id="countSub"><span>boutiques partenaires</span><span style="color: #5fb6ee">à Lubumbashi.</span></div>
+
+        <div class="h" id="hE" style="top: 300px; font-size: 80px"><span>Elles ne vendent plus</span><span>seulement dans leur rue.</span></div>
+        <div class="h" id="hF" style="top: 300px; font-size: 104px"><span>Elles touchent</span><span class="b">toute la ville.</span></div>
+        <div class="h" id="hG" style="top: 300px; font-size: 80px"><span>Le commerce de Lubumbashi</span><span class="b">passe au digital.</span></div>
+        <div class="h" id="hH" style="top: 300px; font-size: 104px"><span>Et on l'écrit</span><span class="b">ensemble.</span></div>
+        <div class="h" id="hI" style="top: 280px; font-size: 100px"><span>À ton tour</span><span>d'écrire <b class="b">l'histoire.</b></span></div>
+
+        <div id="end">
+          <div id="ring"></div>
+          <img id="icon" src="assets/icon_white.png" alt="" />
+          <div id="join">Rejoins PitUp.</div>
+          <div id="creates">Crée ta boutique sur</div>
+          <div id="ctaWrap"><div id="cta">pi-tup.com</div></div>
+          <div id="fine">+100 boutiques partenaires · Lubumbashi</div>
+        </div>
+        <div id="flash"></div>
+        <div id="vignette"></div>
+        <div id="grain"></div>
+      </div>
+    </div>
+
+    <script>
+      // Anchors are track seconds of "PitUp Rise" (audiomap.json); the clip starts at 6.0s of the track.
+      const M = (t) => t - 6.0;
+      const tl = gsap.timeline({ paused: true });
+      const NAMES = ["Le Don Divin","Chris Gold","The Buttcha","Light Shopping","MaLingerie","MekorStore","Magloire","Hussein Fashion","Pracce Business","Lucianna Collection","Mungu ni Mungu","Maella Shopping","B.white","Gracien","Pèlerin Joyce","L’stars","Boutique tout est grâce","La race Juive","Stylistique fashion","Natty boutique","Marcia boutique","Le Don Divin Habillement","John boutique","Jose collection"];
+      const N = NAMES.length;
+
+      // ---------- constellation layout: golden-angle spiral around a hub ----------
+      const CX = 540, CY = 1230, GA = 2.39996;
+      const nodes = [];
+      for (let i = 0; i < N; i++) {
+        const r = i === 0 ? 0 : 150 + 92 * Math.sqrt(i) * 1.55;
+        const a = i * GA - 1.2;
+        const size = i === 0 ? 280 : Math.max(110, 210 - i * 5);
+        const x = Math.min(1080 - 30 - size / 2, Math.max(30 + size / 2, CX + Math.cos(a) * r * 0.74));
+        const y = Math.min(1700 - size / 2, Math.max(700 + size / 2, CY + Math.sin(a) * r * 0.6));
+        nodes.push({ x, y, size });
+      }
+      // each node links to its nearest earlier node (a growing tree), plus a few cross links
+      const links = [];
+      for (let i = 1; i < N; i++) {
+        let best = 0, bd = 1e9;
+        for (let j = 0; j < i; j++) { const d = Math.hypot(nodes[i].x - nodes[j].x, nodes[i].y - nodes[j].y); if (d < bd) { bd = d; best = j; } }
+        links.push([best, i]);
+        if (i > 6 && i % 3 === 0) links.push([i - 4, i]);
+      }
+      const svg = document.getElementById("links");
+      links.forEach(([a, b], k) => {
+        const l = document.createElementNS("http://www.w3.org/2000/svg", "line");
+        l.setAttribute("x1", nodes[a].x); l.setAttribute("y1", nodes[a].y);
+        l.setAttribute("x2", nodes[b].x); l.setAttribute("y2", nodes[b].y);
+        l.setAttribute("stroke", "#5fb6ee"); l.setAttribute("stroke-width", "3"); l.setAttribute("stroke-linecap", "round");
+        const len = Math.hypot(nodes[a].x - nodes[b].x, nodes[a].y - nodes[b].y);
+        l.setAttribute("stroke-dasharray", len); l.setAttribute("stroke-dashoffset", len);
+        l.setAttribute("opacity", "0.55"); l.id = "lk" + k; svg.appendChild(l);
+        nodes[b].link = { id: "#lk" + k, len };
+      });
+      const nodesEl = document.getElementById("nodes");
+      nodes.forEach((n, i) => {
+        const d = document.createElement("div"); d.className = "node"; d.id = "n" + i;
+        d.style.width = n.size + "px"; d.style.height = n.size + "px"; d.style.left = n.x - n.size / 2 + "px"; d.style.top = n.y - n.size / 2 + "px";
+        d.innerHTML = `<img src="assets/shops/${String(i).padStart(2, "0")}.jpg" alt="">`;
+        nodesEl.appendChild(d);
+        if (i < 3) {
+          const t = document.createElement("div"); t.className = "lbl"; t.id = "lb" + i; t.textContent = NAMES[i];
+          t.style.left = n.x - 180 + "px"; t.style.top = n.y + n.size / 2 + 14 + "px"; nodesEl.appendChild(t);
+        }
+      });
+
+      // node appearance schedule (track time): 1 on the downbeat, 2 and 3 on the next downbeats,
+      // then one per beat, then an accelerating cascade that completes before the 18.48 impact
+      const appear = [6.0, 8.66, 10.31];
+      [11.94, 12.35, 12.75, 13.17, 13.56, 13.98, 14.4].forEach((t) => appear.push(t));
+      let t = 14.81, g = 0.3;
+      while (appear.length < N) { appear.push(t); t += g; g = Math.max(0.1, g * 0.86); }
+      nodes.forEach((n, i) => {
+        const at = i === 0 ? 0 : M(appear[i]);
+        if (n.link) tl.to(n.link.id, { attr: { "stroke-dashoffset": 0 }, duration: i < 3 ? 0.6 : 0.3, ease: "power2.out" }, at - (i < 3 ? 0.45 : 0.22));
+        if (i === 0) tl.set("#n0", { scale: 1, opacity: 1 }, 0);
+        else tl.fromTo("#n" + i, { scale: 0, opacity: 0 }, { scale: 1, opacity: 1, duration: i < 10 ? 0.45 : 0.28, ease: "back.out(2)" }, at);
+        if (i < 3) tl.fromTo("#lb" + i, { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.3 }, at + 0.15);
+      });
+      tl.to(["#lb0", "#lb1", "#lb2"], { opacity: 0, duration: 0.3 }, M(11.94));
+      // hub glow pulse on the first three downbeats
+      [6.0, 8.66, 10.31].forEach((tt) => tl.fromTo("#n0", { boxShadow: "0 0 0 0px rgba(95,182,238,0.65), 0 20px 40px rgba(0,0,0,0.5)" },
+        { boxShadow: "0 0 0 46px rgba(95,182,238,0), 0 20px 40px rgba(0,0,0,0.5)", duration: 1.2, ease: "power2.out" }, Math.max(0, M(tt))));
+      // one camera move for the build: start tight on the hub, pull back to reveal the network
+      tl.fromTo("#net", { scale: 1.9, transformOrigin: "50% 58%" }, { scale: 1, duration: M(18.48), ease: "power2.inOut" }, 0);
+
+      // ---------- headlines of the build ----------
+      const swap = (out, inn, at) => {
+        if (out) tl.to(out, { opacity: 0, y: -24, duration: 0.16, ease: "power2.in" }, at - 0.16);
+        tl.fromTo(inn, { opacity: 0, y: 28 }, { opacity: 1, y: 0, duration: 0.28, ease: "power3.out" }, at);
+      };
+      tl.set("#hA", { opacity: 1 }, 0);
+      ["#hB", "#hC", "#hD", "#hE", "#hF", "#hG", "#hH", "#hI"].forEach((h) => gsap.set(h, { opacity: 0 }));
+      swap("#hA", "#hB", M(8.66));
+      swap("#hB", "#hC", M(11.94));
+      swap("#hC", "#hD", M(15.21));
+
+      // ---------- impact 18.48: counter locks, network steps back ----------
+      tl.set("#count", { opacity: 1 }, M(16.86));
+      tl.to("#hD", { opacity: 0, duration: 0.2 }, M(16.86) - 0.01);
+      const cnt = { v: 0 };
+      tl.fromTo(cnt, { v: 0 }, { v: 100, duration: M(18.48) - M(16.86), ease: "power2.in",
+        onUpdate: () => { document.getElementById("num").textContent = Math.round(cnt.v); } }, M(16.86));
+      tl.set("#flash", { opacity: 0.85 }, M(18.48));
+      tl.to("#flash", { opacity: 0, duration: 0.25, ease: "power2.out" }, M(18.48) + 1 / 30);
+      tl.fromTo("#count", { scale: 1.12 }, { scale: 1, duration: 0.35, ease: "expo.out" }, M(18.48));
+      tl.fromTo("#countSub", { opacity: 0, y: 26 }, { opacity: 1, y: 0, duration: 0.35, ease: "power3.out" }, M(18.88));
+      tl.to("#net", { opacity: 0.22, duration: 0.4 }, M(16.86));
+      // the dimmed network breathes on the downbeats while the message plays
+      [20.25, 21.9, 23.66, 25.43, 27.19, 28.95].forEach((tt) => tl.fromTo("#net", { scale: 1.025 }, { scale: 1, duration: 0.5, ease: "power2.out" }, M(tt)));
+      tl.to(["#count", "#countSub"], { opacity: 0, y: -30, duration: 0.2, ease: "power2.in" }, M(21.9) - 0.2);
+
+      // ---------- the message ----------
+      swap(null, "#hE", M(21.9));
+      swap("#hE", "#hF", M(23.66));
+      swap("#hF", "#hG", M(25.43));
+      swap("#hG", "#hH", M(27.19));
+      // "À ton tour": the network comes back with one empty slot waiting
+      swap("#hH", "#hI", M(28.95));
+      tl.to("#net", { opacity: 1, duration: 0.4 }, M(28.95));
+      gsap.set("#slot", { left: 540 - 105, top: 640 - 105, width: 210, height: 210, zIndex: 3 });
+      { // a link from the hub up to the empty slot, drawn as the slot appears
+        const l = document.createElementNS("http://www.w3.org/2000/svg", "line");
+        const y0 = nodes[0].y - nodes[0].size / 2, len = y0 - 745;
+        l.setAttribute("x1", 540); l.setAttribute("y1", y0); l.setAttribute("x2", 540); l.setAttribute("y2", 840);
+        l.setAttribute("stroke", "#5fb6ee"); l.setAttribute("stroke-width", "4"); l.setAttribute("stroke-dasharray", len); l.setAttribute("stroke-dashoffset", len);
+        l.id = "slotLink"; svg.appendChild(l);
+        tl.to("#slotLink", { attr: { "stroke-dashoffset": 0 }, duration: 0.5, ease: "power2.out" }, M(29.1)); }
+      tl.fromTo("#slot", { opacity: 0, scale: 0.5 }, { opacity: 1, scale: 1, duration: 0.5, ease: "back.out(2)" }, M(29.3));
+      tl.to("#slot", { scale: 1.06, duration: 0.42, ease: "sine.inOut", yoyo: true, repeat: 2 }, M(29.8));
+
+      // ---------- end card on the last downbeat ----------
+      tl.set("#end", { opacity: 1 }, M(30.63));
+      tl.fromTo("#icon", { scale: 1.15, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.3, ease: "expo.out" }, M(30.63));
+      tl.fromTo("#ring", { scale: 0.7, opacity: 0.9 }, { scale: 1.5, opacity: 0, duration: 0.7, ease: "power2.out" }, M(30.63) + 0.05);
+      tl.fromTo("#join", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.35, ease: "power3.out" }, M(31.05));
+      tl.fromTo("#creates", { opacity: 0 }, { opacity: 1, duration: 0.3 }, M(32.39));
+      tl.fromTo("#cta", { scale: 0.7, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.42, ease: "back.out(2)" }, M(32.39) + 0.1);
+      tl.fromTo("#fine", { opacity: 0 }, { opacity: 1, duration: 0.4 }, M(34.16));
+
+      for (let f = 0; f < 31 * 12; f++) tl.set("#grain", { x: (((f * 137) % 512) - 256) / 8, y: (((f * 251) % 512) - 256) / 8 }, f / 12);
+      window.__timelines["main"] = tl;
+      tl.seek(0);
+    </script>
+  </body>
+</html>

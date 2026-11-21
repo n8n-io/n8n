@@ -1,0 +1,28 @@
+/* tasteskill / scenes / stage.css — the held stage under every scroll scene (references/scenes.md).
+   Without .is-live (no script, a failed CDN, reduced motion, a phone set to 'rest') a scene is an ordinary
+   section showing its finished composition. With it, the section is (hold + 1) screens tall and the
+   stage sticks to the viewport for the hold. */
+
+.scene { position: relative; }
+.scene > .scene-stage { position: relative; }
+
+html.js .scene.is-live { height: calc((var(--hold, 2) + 1) * 100svh); }
+html.js .scene.is-live > .scene-stage {
+  position: sticky;
+  top: 0;
+  height: 100svh;
+  overflow: clip;       /* clip, not hidden: hidden would make the stage a scroll container */
+  contain: layout paint;
+}
+
+/* Everything a scene moves is composited; nothing it moves is laid out again. */
+.scene.is-live [data-move] { will-change: transform, opacity; }
+
+/* Lenis */
+html.is-smooth { scroll-behavior: auto; }
+html.is-smooth body { overscroll-behavior: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  html.js .scene.is-live { height: auto; }
+  html.js .scene.is-live > .scene-stage { position: relative; height: auto; }
+}

@@ -1,0 +1,88 @@
+{
+  "skill_name": "marketing-psychology",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "How can I use psychology to increase conversions on our pricing page? We sell a B2B SaaS tool with three tiers ($29, $79, $199/month).",
+      "expected_output": "Should check for product-marketing.md first. Should apply relevant pricing psychology models: anchoring (show the highest plan first or use a decoy), charm pricing (consider $29 vs $30), Rule of 100 (percentage vs dollar discounts), Good-Better-Best framing, loss aversion (show what they miss on lower tiers). Should also apply broader persuasion models: social proof near pricing, scarcity for limited-time offers, default effect (pre-select recommended plan). Should provide specific, actionable recommendations tied to their price points.",
+      "assertions": [
+        "Checks for product-marketing.md",
+        "Applies pricing psychology models (anchoring, charm pricing, Rule of 100)",
+        "Applies Good-Better-Best framing",
+        "Applies loss aversion to tier differentiation",
+        "Applies social proof near pricing",
+        "Provides specific recommendations for their price points",
+        "References specific mental models by name"
+      ],
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Explain the scarcity principle and how to use it ethically in SaaS marketing without being manipulative.",
+      "expected_output": "Should explain scarcity as a mental model (limited availability increases perceived value). Should provide legitimate SaaS applications: limited beta spots, early-bird pricing with real deadlines, limited-time feature access, cohort-based launches. Should distinguish ethical scarcity (real constraints) from manufactured urgency (fake countdown timers, artificial limits). Should provide specific examples and implementation guidance. Should reference related models (urgency, FOMO, loss aversion).",
+      "assertions": [
+        "Explains scarcity principle clearly",
+        "Provides legitimate SaaS applications",
+        "Distinguishes ethical from manipulative use",
+        "Provides specific examples",
+        "References related mental models",
+        "Addresses ethical considerations directly"
+      ],
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "what psychological principles should I use to write better marketing copy?",
+      "expected_output": "Should trigger on casual phrasing. Should recommend copy-relevant mental models from the skill's taxonomy: social proof, reciprocity, loss aversion, anchoring, scarcity, IKEA Effect, Endowment Effect, Commitment & Consistency. For each principle, should explain what it is and provide a specific copywriting application. Should reference the quick reference table by challenge. Should organize by where in the copy each principle applies (headlines, body, CTAs, testimonials).",
+      "assertions": [
+        "Triggers on casual phrasing",
+        "Recommends copy-relevant mental models",
+        "Explains each principle briefly",
+        "Provides specific copywriting application per principle",
+        "Organizes by where each applies in copy",
+        "References multiple model categories"
+      ],
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "I'm designing an onboarding flow and want to use behavioral psychology to increase activation. What models should I apply?",
+      "expected_output": "Should apply design and behavioral models from the skill's taxonomy: Goal-Gradient Effect (motivation increases near goal), Hick's Law (reduce choices), IKEA Effect (let users build something), Endowment Effect (let them experience ownership), Zeigarnik Effect (incomplete tasks drive completion), Commitment & Consistency (small asks first). Should explain how each applies to onboarding specifically. Should provide actionable recommendations for each model.",
+      "assertions": [
+        "Applies Goal-Gradient Effect",
+        "Applies Hick's Law",
+        "Applies IKEA Effect or Endowment Effect",
+        "Applies Zeigarnik Effect or commitment principles",
+        "Explains how each applies to onboarding",
+        "Provides actionable recommendations per model"
+      ],
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "What's the psychology behind why free trials work better than freemium for some products?",
+      "expected_output": "Should apply relevant mental models: loss aversion (trial users fear losing access), endowment effect (they feel ownership after using), sunk cost (time invested during trial), Zero-Price Effect (free removes psychological barrier to start), status quo bias (inertia to keep what they have). Should explain how these models interact in trial vs freemium contexts. Should note when each model works best (trial for products with high activation effort, freemium for products with network effects).",
+      "assertions": [
+        "Applies loss aversion to trial context",
+        "Applies endowment effect",
+        "Applies Zero-Price Effect",
+        "Explains how models interact in trial vs freemium",
+        "Notes when each approach works best",
+        "Provides clear, educational explanation"
+      ],
+      "files": []
+    },
+    {
+      "id": 6,
+      "prompt": "Help me run an A/B test on which psychological principle works better for our CTA — scarcity vs social proof.",
+      "expected_output": "Should recognize this is an A/B test setup task, not a psychology task. Should defer to or cross-reference the ab-testing skill for the experiment design. May provide psychological context on both principles to inform the hypothesis, but should make clear that ab-testing is the right skill for designing and running the experiment.",
+      "assertions": [
+        "Recognizes this as an A/B test setup task",
+        "References or defers to ab-testing skill",
+        "May provide psychological context for hypothesis",
+        "Does not attempt full test design using psychology patterns"
+      ],
+      "files": []
+    }
+  ]
+}

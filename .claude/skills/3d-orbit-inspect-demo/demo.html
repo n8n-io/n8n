@@ -1,0 +1,608 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>3D Orbit &amp; Inspect — KIBORI 木彫</title>
+<meta name="description" content="A joinery piece that leans around on hover and lifts into the hand on click. Three.js, WebGL, no OrbitControls.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='3' y='3' width='26' height='26' rx='3' fill='%239d382c'/%3E%3Cpath d='M16 7v18M8 12h16' stroke='%23f2ece2' stroke-width='2'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&amp;family=Inter:wght@400&amp;display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0a0806;
+    --ink:#f2ece2;
+    --ink-2:rgba(242,236,226,.76);
+    --ink-3:rgba(242,236,226,.5);
+    --hair:rgba(242,236,226,.16);
+    --ember:#dbad64;
+    --ember-glow:rgba(230,171,85,.7);
+    --sans:"Inter",-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;
+    --serif:"Instrument Serif",Georgia,"Times New Roman",serif;
+    --mincho:"Shippori Mincho","Hiragino Mincho ProN","Yu Mincho",serif;
+    --pad:clamp(20px,4.4vw,64px);
+  }
+  *,*::before,*::after{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);overflow:hidden;
+    font:normal 16px/1.5 var(--sans);-webkit-font-smoothing:antialiased}
+  #stage{position:fixed;inset:0;z-index:0}
+  #stage canvas{display:block;width:100%;height:100%;touch-action:manipulation;outline:none}
+  #stage.inspecting canvas{touch-action:none}
+  .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+  /* legibility scrim under the words, as the source page has one */
+  .scrim{position:fixed;inset:0;z-index:1;pointer-events:none;
+    background:linear-gradient(to right,rgba(9,7,5,.62),rgba(9,7,5,.18) 42%,rgba(9,7,5,0) 62%),
+               linear-gradient(to top,rgba(9,7,5,.50),rgba(9,7,5,.18) 22%,rgba(9,7,5,0) 40%)}
+
+  .chrome{position:fixed;inset:0;z-index:5;pointer-events:none}
+  .chrome a,.chrome button{pointer-events:auto}
+  .bar{position:absolute;left:var(--pad);right:var(--pad);top:clamp(16px,2.6vh,28px);height:36px;
+    display:flex;align-items:center;justify-content:space-between;
+    font:normal 11px/1 var(--sans);letter-spacing:.24em;text-transform:uppercase;color:var(--ink-2)}
+  .brand{display:flex;align-items:center;gap:12px;color:var(--ink)}
+  .brand i{font-style:normal;font-family:var(--mincho);letter-spacing:.1em;font-size:13px;color:var(--ink-2)}
+  .issue{color:var(--ink-3)}
+  .bar :is(.brand,.issue){transition:filter .5s ease}
+  .chrome.inspecting .bar :is(.brand,.issue){filter:opacity(.55)}
+
+  .copy{position:absolute;left:var(--pad);bottom:clamp(28px,7vh,84px);max-width:min(470px,calc(100vw - 2*var(--pad)));
+    transition:filter .5s ease,opacity .5s ease}
+  .chrome.inspecting .copy{filter:opacity(0) blur(3px);visibility:hidden;transition:filter .06s linear,visibility 0s .06s}
+  .kicker{margin:0 0 20px;font:normal 11px/1.7 var(--sans);letter-spacing:.2em;text-transform:uppercase;color:var(--ember)}
+  .kicker b{font-weight:400;color:var(--ink-3)}
+  h1{margin:0;font:normal clamp(52px,7.4vw,112px)/.92 var(--serif);letter-spacing:-.012em;color:var(--ink)}
+  h1 em{font-style:italic;color:var(--ink-2)}
+  .lede{margin:22px 0 0;font:normal 16px/1.55 var(--sans);color:var(--ink-2);text-wrap:pretty;max-width:44ch}
+  .lede s{text-decoration:none;color:var(--ink)}
+  .row{display:flex;flex-wrap:wrap;align-items:center;gap:14px 22px;margin-top:26px;
+    font:normal 11px/1 var(--sans);letter-spacing:.2em;text-transform:uppercase;color:var(--ink-3)}
+  .row span{display:inline-flex;align-items:center;gap:9px;white-space:nowrap}
+  .row span::before{content:'';width:5px;height:5px;border:1px solid var(--ember);border-radius:50%;box-shadow:0 0 8px var(--ember-glow)}
+  .btn{pointer-events:auto;cursor:pointer;background:rgba(27,19,12,.83);color:#f3dfbd;
+    border:1px solid rgba(224,189,128,.52);padding:11px 14px;font:normal 11px/1 var(--sans);
+    letter-spacing:.14em;text-transform:uppercase;transition:background .2s ease,border-color .2s ease}
+  .btn:hover{background:rgba(52,36,20,.9);border-color:rgba(224,189,128,.85)}
+  .btn:focus-visible{outline:1px solid var(--ink);outline-offset:5px}
+  html[data-pointer=touch] .hover-only{display:none}
+  html:not([data-pointer=touch]) .touch-only{display:none}
+  .inspect .h > .hover-only + .touch-only{}
+
+  /* the cue that follows a hover: beside the piece, never over it */
+  .cue{position:fixed;left:0;top:0;z-index:6;display:flex;align-items:center;gap:9px;
+    padding:7px 10px;border:1px solid rgba(224,189,128,.52);background:rgba(27,19,12,.83);
+    box-shadow:0 5px 18px rgba(0,0,0,.28);color:#f3dfbd;font:normal 11px/1 var(--sans);
+    letter-spacing:.14em;text-transform:uppercase;white-space:nowrap;pointer-events:none;
+    opacity:0;transform:translate(-100px,-100px);transition:opacity .16s ease}
+  .cue.on{opacity:1}
+  .cue::before{content:'';width:5px;height:5px;flex:none;border:1px solid var(--ember);border-radius:50%;box-shadow:0 0 8px var(--ember-glow)}
+
+  /* the caption that arrives with the lifted piece */
+  .inspect{position:fixed;left:50%;bottom:clamp(24px,4.6vh,48px);z-index:7;width:min(560px,calc(100vw - 32px));
+    display:flex;flex-direction:column;align-items:center;gap:9px;text-align:center;
+    pointer-events:none;opacity:0;transform:translate(-50%,14px);
+    transition:opacity .35s ease,transform .6s cubic-bezier(.2,.75,.2,1)}
+  .inspect.on{opacity:1;transform:translate(-50%,0);transition-delay:.18s}
+  .inspect .t{font:normal clamp(26px,2.5vw,40px)/1 var(--serif);color:var(--ink);letter-spacing:.005em}
+  .inspect .t i{font-style:normal;font-family:var(--mincho);font-size:.52em;margin-left:.55em;color:rgba(242,236,226,.78);vertical-align:.18em}
+  .inspect .n{font:italic normal clamp(16px,1.25vw,20px)/1.3 var(--serif);color:var(--ink-2);text-wrap:balance}
+  .inspect .h{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:8px 14px;margin-top:6px;
+    font:normal 11px/1 var(--sans);letter-spacing:.24em;text-transform:uppercase;color:var(--ink-3)}
+  .inspect .h s{width:22px;height:1px;background:var(--hair);text-decoration:none}
+  .inspect .h > *{white-space:nowrap}
+  .inspect .x{pointer-events:auto;cursor:pointer;background:none;border:0;padding:6px 0;font:inherit;
+    letter-spacing:inherit;text-transform:inherit;color:var(--ink-2)}
+  .inspect .x:hover{color:var(--ink)}
+  .inspect .x:focus-visible{color:var(--ink);outline:1px solid var(--ink);outline-offset:5px}
+  html[data-pointer=touch] .inspect .x span{display:none}
+  .inspect[inert]{visibility:hidden}
+
+  @media (max-width:899px){
+    .copy{bottom:auto;top:clamp(64px,10vh,96px)}
+    h1{font-size:clamp(48px,15vw,72px)}
+    .lede{font-size:15px;margin-top:16px}
+    .row{margin-top:18px}
+    .kicker{margin-bottom:14px}
+    .scrim{background:linear-gradient(to bottom,rgba(9,7,5,.66),rgba(9,7,5,.3) 40%,rgba(9,7,5,0) 60%),
+                      linear-gradient(to top,rgba(9,7,5,.5),rgba(9,7,5,0) 26%)}
+  }
+  @media (max-width:899px) and (max-height:760px){ .lede{display:none} }
+  @media (prefers-reduced-motion:reduce){
+    .chrome .copy,.inspect,.cue{transition-duration:.001s!important;transition-delay:0s!important}
+  }
+</style>
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.169.0/build/three.module.min.js"}}
+</script>
+</head>
+<body>
+<div id="stage"><canvas id="gl" role="img" aria-label="A wedged through-tenon joint on a dark workbench: two timbers, one wedge. Hover to lean around it, click to lift it into view."></canvas></div>
+<div class="scrim" aria-hidden="true"></div>
+
+<div class="chrome" id="chrome">
+  <div class="bar">
+    <div class="brand">KIBORI <i lang="ja">木彫</i></div>
+    <div class="issue">Joinery · No. 02</div>
+  </div>
+  <section class="copy" aria-labelledby="h">
+    <p class="kicker">Three.js · WebGL · <b>MeshPhysicalMaterial. No OrbitControls, no shaders</b></p>
+    <h1 id="h">Orbit <em>&amp;</em> Inspect</h1>
+    <p class="lede">Hover leans the camera a few degrees around the joint, <s>damped and bounded</s>, so the piece never slides out from under a click. Click, and it is lifted into the hand.</p>
+    <div class="row">
+      <span class="hover-only">Hover to lean</span>
+      <span class="hover-only">Click to lift</span>
+      <span class="touch-only">Tap to lift</span>
+      <button class="btn" id="open" type="button" aria-haspopup="dialog">Inspect the joint</button>
+    </div>
+  </section>
+</div>
+
+<div class="cue" id="cue" aria-hidden="true">Look closer</div>
+
+<div class="inspect" id="inspect" role="dialog" aria-modal="false" aria-label="Inspecting the joint" inert>
+  <div class="t">Wedged through-tenon<i lang="ja">込栓</i></div>
+  <div class="n">Two timbers and a wedge — no glue, no steel</div>
+  <div class="h"><span>Drag to turn</span><s></s><span class="hover-only">Wheel to move closer</span><span class="touch-only">Pinch to move closer</span><s></s><button class="x" id="close" type="button">Close <span>· Esc</span></button></div>
+</div>
+<div class="sr" id="status" role="status" aria-live="polite"></div>
+
+<script type="module">
+import * as THREE from 'three';
+
+/* ------------------------------------------------------------------ *
+ *  Constants. Every number here was settled by looking, then measuring.
+ * ------------------------------------------------------------------ */
+const BS = 1.15;                   // the piece is built in true millimetres, then shown 1.15x on the bench
+const FOV = 34;                    // the source page's lens
+const EL0 = 0.40, R0 = 1.50;       // rest camera: elevation (rad) and distance (m)
+const AZ_MAX = 0.30, EL_MAX = 0.09;// hover lean, rad: 17 deg round, 5 deg up/down. Never more.
+const LEAN_TAU = 4.5;              // 1/s damping of the lean
+const GAIN_TAU = 0.30;             // s for the hover gain to rise or fall
+const HAND_D = 1.0;                // m from the eye to the lifted piece
+const OPEN_S = 1.0, CLOSE_S = 0.60, CLOSE_FAST_S = 0.28;
+const PITCH0 = 0.72, PITCH_LO = 0.25, PITCH_HI = 1.30;
+const YAW_PX = 0.0085, PITCH_PX = 0.0065;   // rad per dragged pixel
+const SPIN_DAMP = 2.4, IDLE_AFTER = 2.2, IDLE_SPIN = 0.26;
+const ZOOM_LO = 0.7, ZOOM_HI = 1.45;
+const CLICK_PX = 6, CLICK_MS = 600;
+const DT_MAX = 1/30, DPR_MAX = 2;
+const insOut = k => 1 - Math.pow(1 - k, 4.4);        // out of its place quickly, then eases into the hand
+const sstep = (a, b, x) => { const u = Math.min(1, Math.max(0, (x - a)/(b - a))); return u*u*(3 - 2*u); };
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+
+const mqReduced = matchMedia('(prefers-reduced-motion: reduce)');
+let reduced = mqReduced.matches;
+mqReduced.addEventListener('change', e => { reduced = e.matches; dirty = 3; });
+/* hover is decided by the last pointer that moved, not by a media query: hybrid laptops have both, and headless Chrome reports none */
+let CAN_HOVER = matchMedia('(any-hover:hover)').matches;
+const setPointerKind = t => { const m = t !== 'touch'; if (m !== CAN_HOVER){ CAN_HOVER = m; if (!m){ ptr.valid = false; hoverHit = false; } } document.documentElement.dataset.pointer = m ? 'mouse' : 'touch'; };
+
+const stageEl = document.getElementById('stage'), canvas = document.getElementById('gl');
+const chromeEl = document.getElementById('chrome'), cueEl = document.getElementById('cue');
+const inspectEl = document.getElementById('inspect'), openBtn = document.getElementById('open');
+const closeBtn = document.getElementById('close'), statusEl = document.getElementById('status');
+
+/* ------------------------------------------------------------------ *
+ *  Renderer: the dark room
+ * ------------------------------------------------------------------ */
+const renderer = new THREE.WebGLRenderer({canvas, antialias:true, powerPreference:'high-performance'});
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.0;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.autoUpdate = false;       // nothing that casts a shadow ever moves at the bench
+renderer.setClearColor(0x0a0806, 1);
+renderer.autoClear = false;                  // the lifted piece is a second pass over a dimmed first
+
+const scene = new THREE.Scene();             // background stays null: a scene background would re-clear pass two
+scene.fog = new THREE.FogExp2(0x0a0806, 0.42);
+const camera = new THREE.PerspectiveCamera(FOV, 1, 0.05, 30);
+
+/* a small room to reflect: one warm softbox, one cool strip, one rim card, all else black */
+{
+  const env = new THREE.Scene(), add = (w, h, x, y, z, col, s) => {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({color:new THREE.Color(col).multiplyScalar(s), side:THREE.DoubleSide}));
+    m.position.set(x, y, z); m.lookAt(0, 0, 0); env.add(m);
+  };
+  env.background = new THREE.Color(0x060403);
+  add(2.2, 1.4, -2.6, 2.6, 2.4, 0xffd9a4, 8);
+  add(0.5, 2.0, 3.2, 1.0, 1.2, 0xaec7df, 2.4);
+  add(1.2, 0.5, 1.0, 0.8, -3.2, 0xffdeb4, 3.2);
+  const pm = new THREE.PMREMGenerator(renderer);
+  scene.environment = pm.fromScene(env, 0.04).texture;
+  scene.environmentIntensity = 0.55;
+  pm.dispose();
+}
+
+const key = new THREE.DirectionalLight(0xfff2df, 2.0);
+key.position.set(-0.9, 1.5, 1.0); key.castShadow = true;
+key.shadow.mapSize.set(2048, 2048);
+Object.assign(key.shadow.camera, {near:0.1, far:4, left:-0.7, right:0.7, top:0.7, bottom:-0.7});
+key.shadow.bias = -0.0002; key.shadow.normalBias = 0.002; key.shadow.radius = 3;
+const fill = new THREE.DirectionalLight(0xaec7df, 0.76); fill.position.set(1.5, 0.4, 1.0);
+const rim = new THREE.DirectionalLight(0xffdeb4, 0.72);  rim.position.set(0.6, 0.3, -1.5);
+const hemi = new THREE.HemisphereLight(0xb5c5d7, 0x35281c, 0.19);
+const ember = new THREE.PointLight(0xffb46a, 0.03, 2.5, 2); ember.position.set(0.3, 0.09, 0.45);
+scene.add(key, key.target, fill, rim, hemi, ember);
+/* lights light layer 1 as well, or the lifted piece goes black */
+scene.traverse(o => { if (o.isLight) o.layers.enable(1); });
+/* the lamp that comes up on the piece only while it is in the hand */
+const propLight = new THREE.PointLight(0xffb56a, 0, 7, 2); propLight.layers.set(1); scene.add(propLight);
+
+/* ------------------------------------------------------------------ *
+ *  Materials: real grain on real timber
+ * ------------------------------------------------------------------ */
+function rng(s){ return () => (s = (s*1664525 + 1013904223) >>> 0)/4294967296; }
+function grainTex(seed, n = 1100, wmax = 2.0, contrast = 1){
+  const c = document.createElement('canvas'); c.width = c.height = 512;
+  const g = c.getContext('2d'), r = rng(seed);
+  g.fillStyle = '#d9d2c6'; g.fillRect(0, 0, 512, 512);
+  for (let i = 0; i < n; i++){
+    const y = r()*512, a = (0.04 + r()*0.2)*contrast, w = 0.5 + r()*wmax, amp = r()*4, ph = r()*6.28, fr = 0.004 + r()*0.012;
+    g.strokeStyle = `rgba(70,46,24,${a})`; g.lineWidth = w; g.beginPath();
+    for (let x = 0; x <= 512; x += 16) g.lineTo(x, y + Math.sin(x*fr + ph)*amp);
+    g.stroke();
+  }
+  for (let i = 0; i < 7; i++){                                  /* the wider late-wood bands */
+    const y = r()*512, h = 6 + r()*18; const gr = g.createLinearGradient(0, y - h, 0, y + h);
+    gr.addColorStop(0, 'rgba(60,40,20,0)'); gr.addColorStop(.5, `rgba(60,40,20,${(.10 + r()*.12)*contrast})`); gr.addColorStop(1, 'rgba(60,40,20,0)');
+    g.fillStyle = gr; g.fillRect(0, y - h, 512, h*2);
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+  return t;
+}
+/* grain runs along `axis`; every face is projected by its dominant normal so end grain and sides differ */
+function grainUV(geo, axis, s, off){
+  geo = geo.index ? geo.toNonIndexed() : geo; geo.computeVertexNormals();
+  const P = geo.attributes.position, N = geo.attributes.normal, uv = new Float32Array(P.count*2), a = [P.getX, P.getY, P.getZ];
+  const get = (i, k) => k === 0 ? P.getX(i) : k === 1 ? P.getY(i) : P.getZ(i);
+  const nrm = (i, k) => Math.abs(k === 0 ? N.getX(i) : k === 1 ? N.getY(i) : N.getZ(i));
+  for (let i = 0; i < P.count; i++){
+    let d = 0; if (nrm(i, 1) > nrm(i, d)) d = 1; if (nrm(i, 2) > nrm(i, d)) d = 2;
+    let cross = [0, 1, 2].find(k => k !== axis && k !== d); if (d === axis) cross = [0, 1, 2].filter(k => k !== axis)[1];
+    uv[i*2] = get(i, axis)*s + off; uv[i*2 + 1] = get(i, d === axis ? [0,1,2].filter(k => k !== axis)[0] : cross)*s*1.7 + off*.7;
+  }
+  geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); return geo;
+}
+const wood = (seed, color, rough) => new THREE.MeshPhysicalMaterial({
+  map:grainTex(seed), color, roughness:rough, metalness:0, clearcoat:0.08, clearcoatRoughness:0.6,
+  bumpMap:null, fog:false });
+
+/* ------------------------------------------------------------------ *
+ *  The bench and the joint. Millimetres matter: every gap is a number.
+ * ------------------------------------------------------------------ */
+const plank = new THREE.Mesh(grainUV(new THREE.BoxGeometry(8, 0.06, 6), 0, 1.1, 0.3),
+  new THREE.MeshStandardMaterial({map:grainTex(31, 900, 1.4, 0.38), color:0x6a4c36, roughness:0.72, metalness:0}));
+plank.position.set(0, -0.03, -2.3); plank.receiveShadow = true; scene.add(plank);
+
+const B = 0.0012, GAP = 0.0004;           // bevel and clearance, metres
+const BH = 0.07, BD = 0.09, TW = 0.06;    // timber height, beam depth, tenon width (extruded)
+const TH = 0.02, PR = 0.05;               // tenon half-height, and how far it stands proud of the beam
+const SW = 0.016, SHY = 0.011;            // the wedge slot: width along the tenon, half-height
+const bev = {bevelEnabled:true, bevelThickness:B, bevelSize:B, bevelSegments:2, curveSegments:1};
+const box = (x0, x1, y0, y1) => { const p = new THREE.Path(); p.moveTo(x0, y0); p.lineTo(x1, y0); p.lineTo(x1, y1); p.lineTo(x0, y1); p.closePath(); return p; };
+const HX = (TW + 2*B)/2 + GAP + B, HY = TH + B + GAP + B;   // mortise half-sizes before the bevel closes them in by B
+const YC = BH/2;
+
+/* beam: a hinoki timber with a rectangular mortise straight through its depth */
+const beamShape = new THREE.Shape(box(-0.18, 0.18, 0, BH).getPoints());
+beamShape.holes.push(box(-HX, HX, YC - HY, YC + HY));
+const beamG = new THREE.ExtrudeGeometry(beamShape, {...bev, depth:BD});
+beamG.translate(0, B, -BD/2);
+/* post: a sugi timber, stepped down to the tenon, with a slot through the tenon for the wedge */
+const SH = -(BD/2 + 2*B), TE = BD/2 + PR;                    // shoulder sits exactly on the beam's back face
+const postShape = new THREE.Shape();
+[[-0.26,0],[SH,0],[SH,YC-TH],[TE,YC-TH],[TE,YC+TH],[SH,YC+TH],[SH,BH],[-0.26,BH]].forEach(([z, y], i) => i ? postShape.lineTo(z, y) : postShape.moveTo(z, y));
+const Z0 = BD/2 + 0.001, HHY = SHY + B;                      // slot's inner face 1 mm clear of the beam's front face
+postShape.holes.push(box(Z0, Z0 + SW + 2*B, YC - HHY, YC + HHY));
+const postG = new THREE.ExtrudeGeometry(postShape, {...bev, depth:TW});
+postG.rotateY(-Math.PI/2); postG.computeBoundingBox(); postG.translate(-(postG.boundingBox.min.x + postG.boundingBox.max.x)/2, B, 0);
+/* wedge: a tapered keyaki key, flat on the slot's beam side, sized under the slot at its fat end */
+const wedgeG = (() => {
+  const g = new THREE.BoxGeometry(0.08, 2*(SHY - GAP), 1, 1, 1, 1).toNonIndexed(), P = g.attributes.position, zb = BD/2 + B + 0.0013;
+  for (let i = 0; i < P.count; i++){
+    const x = P.getX(i), zt = P.getZ(i) > 0;                  // fat end at +x, 0.0163 thick; thin end 0.0085
+    const th = 0.0085 + (x + 0.04)/0.08*(0.01625 - 0.0085);
+    P.setZ(i, (zt ? 0.5 : -0.5)*th + zb + th/2);              // flat back face on the beam side
+  }
+  P.needsUpdate = true; g.translate(0, YC + B, 0); return g;
+})();
+const beam = new THREE.Mesh(grainUV(beamG, 0, 3.2, 0.10), wood(11, 0xf2dcb0, 0.55));
+const post = new THREE.Mesh(grainUV(postG, 2, 3.2, 0.55), wood(23, 0xc4956a, 0.6));
+const wedge = new THREE.Mesh(grainUV(wedgeG, 0, 9, 0.2), wood(47, 0x8a5230, 0.5));
+const joint = new THREE.Group(); joint.add(beam, post, wedge);
+let cy = 0, RR = 0.23;
+{ /* pivot at the box's middle so it turns about what you see; the underside stays on the bench */
+  const bb = new THREE.Box3(); for (const m of joint.children) bb.union(new THREE.Box3().setFromObject(m));
+  const c = bb.getCenter(new THREE.Vector3()); cy = c.y;
+  for (const m of joint.children){ m.position.sub(c); m.castShadow = true; m.receiveShadow = true; }
+  RR = 0; for (const m of joint.children){ const P = m.geometry.attributes.position; for (let i = 0; i < P.count; i += 3) RR = Math.max(RR, Math.hypot(P.getX(i) + m.position.x, P.getY(i) + m.position.y, P.getZ(i) + m.position.z)); }
+}
+const Q_BENCH = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), 0.55);
+const FROM = new THREE.Vector3(0, cy*BS, 0);     // underside on the bench at y = 0, after scaling about the middle
+joint.position.copy(FROM); joint.quaternion.copy(Q_BENCH); joint.scale.setScalar(BS);
+scene.add(joint);
+
+/* the fullscreen dim that goes between the room and the lifted piece */
+const dimScene = new THREE.Scene(), dimCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+const dimMat = new THREE.MeshBasicMaterial({color:0x0a0806, transparent:true, opacity:0, depthTest:false, depthWrite:false, toneMapped:false, fog:false});
+dimScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), dimMat));
+
+/* ------------------------------------------------------------------ *
+ *  Size, view offset, band
+ * ------------------------------------------------------------------ */
+let W = 1, H = 1, DPR = 1, camR = R0;
+function resize(){
+  W = Math.max(1, innerWidth); H = Math.max(1, innerHeight);
+  DPR = Math.min(devicePixelRatio || 1, DPR_MAX);
+  renderer.setPixelRatio(DPR); renderer.setSize(W, H, false);
+  camera.aspect = W/H;
+  camR = Math.max(R0, 0.92/camera.aspect);                    // a portrait phone backs off until the beam fits
+  /* desktop: the piece sits right of the words; phone: below them */
+  if (W >= 900) camera.setViewOffset(W, H, -W*0.17, 0, W, H); else camera.setViewOffset(W, H, 0, -H*0.13, W, H);
+  camera.updateProjectionMatrix();
+  if (H_.open) measureBand();
+  dirty = 3;
+}
+new ResizeObserver(resize).observe(document.body); addEventListener('resize', resize);
+
+/* ------------------------------------------------------------------ *
+ *  Hover: a bounded, damped lean of the camera around the piece
+ * ------------------------------------------------------------------ */
+let dirty = 3, time = 0;
+const ptr = {x:-1, y:-1, valid:false, type:'mouse'};
+const O = {az:0, el:0, g:0};                    // lean state; hover gain g rises and falls with the raycast
+let hoverHit = false, hold = false;             // hold: between pointerdown and pointerup, and while the piece is in the hand
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2(), _v = new THREE.Vector3();
+function pick(x, y, layer){
+  ndc.set(x/W*2 - 1, 1 - y/H*2); ray.setFromCamera(ndc, camera); ray.layers.set(layer);
+  return ray.intersectObject(joint, true).length > 0;
+}
+function placeCamera(){
+  const el = EL0 + O.el, az = O.az, t = _v.copy(FROM);
+  camera.position.set(t.x + camR*Math.sin(az)*Math.cos(el), t.y + camR*Math.sin(el), t.z + camR*Math.cos(az)*Math.cos(el));
+  camera.lookAt(t); camera.updateMatrixWorld();
+}
+function updateLean(dt){
+  if (hold) return;
+  let tx = 0, ty = 0, tg = 0;
+  if (!reduced){
+    if (CAN_HOVER){
+      tg = ptr.valid && hoverHit ? 1 : 0;
+      _v.copy(FROM).project(camera);
+      const cx = (_v.x + 1)/2*W, cyp = (1 - _v.y)/2*H;
+      tx = clamp((ptr.x - cx)/(W*0.18), -1, 1)*AZ_MAX;    // relative to the piece: no lean when the pointer is on its middle
+      ty = clamp((cyp - ptr.y)/(H*0.18), -1, 1)*EL_MAX;
+    } else {                                              // touch has no hover: a slow sway shows the same depth
+      tg = 1; tx = Math.sin(time*0.55)*AZ_MAX*0.6; ty = Math.sin(time*0.37 + 1)*EL_MAX*0.5;
+    }
+  }
+  const before = O.az + O.el + O.g;
+  O.g += (tg - O.g)*(1 - Math.exp(-dt/GAIN_TAU));
+  const k = 1 - Math.exp(-dt*LEAN_TAU);
+  O.az += (tx*O.g - O.az)*k; O.el += (ty*O.g - O.el)*k;
+  if (Math.abs(O.az + O.el + O.g - before) > 1e-6 || !CAN_HOVER) dirty = 2;
+}
+
+/* ------------------------------------------------------------------ *
+ *  Inspect: the piece is lifted into the hand, turned, and put back
+ * ------------------------------------------------------------------ */
+const H_ = {open:false, k:0, fast:false, e:0, e0:1, r0:1, span:1, yaw:0, pitch:PITCH0, vy:0, vp:0, idle:0,
+  zoom:1, zoomT:1, fitS:1, band:[70, 700], drag:null, opener:null, out:false};
+const _T = new THREE.Vector3(), _R2 = new THREE.Vector3(), _to = new THREE.Vector3(), _up = new THREE.Vector3(0, 1, 0), _rt = new THREE.Vector3(),
+      _q1 = new THREE.Quaternion(), _q2 = new THREE.Quaternion(), _qh = new THREE.Quaternion();
+const tanH = Math.tan(FOV*Math.PI/360);
+
+function measureBand(){
+  const bar = document.querySelector('.bar').getBoundingClientRect().bottom + 10;
+  const top = inspectEl.getBoundingClientRect().top - 14 - 40;   /* where the caption will settle, and 40px clear of it */
+  H_.band = [bar, Math.max(bar + 160, top)];
+  const bandH = H_.band[1] - H_.band[0], ppu = H/(2*HAND_D*tanH);
+  H_.fitS = Math.min(bandH*0.92, W*0.88)/(2*RR*ppu);
+}
+function announce(msg){ statusEl.textContent = ''; setTimeout(() => statusEl.textContent = msg, 30); }
+
+function openInspect(byKey){
+  if (H_.open) return;
+  H_.opener = byKey ? document.activeElement : null;
+  measureBand();
+  Object.assign(H_, {open:true, fast:false, yaw:0, pitch:PITCH0, vy:0.55, vp:0, idle:0, zoom:1, zoomT:1, drag:null});
+  if (H_.k <= 0) H_.k = 0;
+  hold = true; hoverHit = false; setCue(false);
+  inspectEl.inert = false; inspectEl.classList.add('on'); chromeEl.classList.add('inspecting'); stageEl.classList.add('inspecting');
+  canvas.style.cursor = 'grab';
+  closeBtn.focus({preventScroll:true});
+  announce('Inspecting the wedged through-tenon. Arrow keys turn it, plus and minus move closer, Escape puts it back.');
+  dirty = 3;
+}
+function returnFocus(){ if (H_.back){ H_.back.focus({preventScroll:true}); H_.back = null; } }
+function closeInspect(fast){
+  if (!H_.open) return;
+  const e = H_.k > 0 ? insOut(H_.k) : 0;                      // the way home runs its own clock from wherever the way in had got to
+  H_.e0 = H_.r0 = e; H_.k = e > 0 ? 1 : 0; H_.vy = H_.vp = 0; H_.zoomT = 1;
+  H_.span = Math.max(0.35, e)*(1 + 0.5*Math.min(1, e*H_.turn/Math.PI));   // a piece turned further takes a little longer to straighten
+  H_.open = false; H_.fast = !!fast; H_.drag = null;
+  inspectEl.classList.remove('on'); inspectEl.inert = true; stageEl.classList.remove('inspecting');
+  if (fast){ chromeEl.classList.remove('inspecting'); returnFocus(); }
+  canvas.style.cursor = '';
+  /* focus goes back to whatever opened it, once the page copy is visible and focusable again */
+  H_.back = H_.opener && document.contains(H_.opener) ? H_.opener : (document.activeElement === closeBtn ? openBtn : null);
+  announce('Back on the bench.');
+  dirty = 3;
+}
+H_.turn = 0;
+
+function updateHand(dt){
+  const h = H_;
+  if (!h.open && h.k <= 0 && !h.out) return;
+  if (h.open && !h.drag){
+    const damp = Math.exp(-dt*SPIN_DAMP);
+    h.vy *= damp; h.vp *= damp; h.idle += dt;
+    if (!reduced && h.idle > IDLE_AFTER) h.vy += (IDLE_SPIN - h.vy)*Math.min(1, dt*0.7);   // left alone it keeps turning, like something on a wheel
+    h.yaw += h.vy*dt; h.pitch = clamp(h.pitch + h.vp*dt, PITCH_LO, PITCH_HI);
+    h.pitch += (PITCH0 - h.pitch)*(1 - Math.exp(-dt*0.35));
+  }
+  h.zoom += (h.zoomT - h.zoom)*(1 - Math.exp(-dt*8));
+  const rate = reduced ? 1e3 : h.open ? 1/OPEN_S : (h.fast ? 1/CLOSE_FAST_S : 1/CLOSE_S)/(h.span || 1);
+  h.k = h.open ? Math.min(1, h.k + dt*rate) : Math.max(0, h.k - dt*rate);
+  /* way in: one ease. Way home: it straightens first, still up in the light, then comes down already the way it sat */
+  let e, eR;
+  if (h.open) e = eR = insOut(h.k); else { const c = 1 - h.k; eR = h.r0*(1 - sstep(0, 0.36, c)); e = h.e0*(1 - sstep(0.24, 1, c)); }
+  h.e = e;
+  /* to: on the eye's ray through the middle of the free band, HAND_D out */
+  camera.updateMatrixWorld();
+  _to.set(0, 1 - (h.band[0] + h.band[1])/H, 0.5).unproject(camera).sub(camera.position).normalize().multiplyScalar(HAND_D).add(camera.position);
+  /* toward you along a perspective-true line: in step on screen with the lift, not sliding in depth */
+  _T.copy(FROM).applyMatrix4(camera.matrixWorldInverse); _R2.copy(_to).applyMatrix4(camera.matrixWorldInverse);
+  const zf = -_T.z, zt = -_R2.z, z = zf + (zt - zf)*e;
+  joint.position.set((_T.x/zf + (_R2.x/zt - _T.x/zf)*e)*z, (_T.y/zf + (_R2.y/zt - _T.y/zf)*e)*z, -z).applyMatrix4(camera.matrixWorld);
+  joint.position.addScaledVector(_up, Math.sin(Math.PI*e)*0.06);         // lifted, not slid
+  _rt.set(1, 0, 0).applyQuaternion(camera.quaternion);
+  _qh.setFromAxisAngle(_rt, h.pitch).multiply(_q1.setFromAxisAngle(_up, h.yaw)).multiply(Q_BENCH);
+  h.turn = 2*Math.acos(Math.min(1, Math.abs(_qh.dot(Q_BENCH))));
+  joint.quaternion.copy(Q_BENCH).slerp(_qh, h.open ? e : eR);
+  joint.scale.setScalar(BS + (h.fitS*h.zoom - BS)*e);
+  /* a lamp from above and left of the eye, on the piece only */
+  propLight.position.copy(_to).addScaledVector(_up, 0.5).addScaledVector(_rt, -0.6).addScaledVector(_v.subVectors(camera.position, _to).normalize(), 0.35);
+  propLight.intensity = 3.0*e;
+  dimMat.opacity = 0.80*e;
+  /* on the piece's own layer once it has left the bench, back on the room's once it is home */
+  const out = e > 0.03 || (h.open && h.k > 0);
+  if (out !== h.out){ h.out = out; joint.traverse(o => o.layers.set(out ? 1 : 0)); renderer.shadowMap.needsUpdate = true; }
+  if (!h.open && h.k <= 0){ h.out = false; hold = false; joint.traverse(o => o.layers.set(0)); joint.position.copy(FROM); joint.quaternion.copy(Q_BENCH); joint.scale.setScalar(BS);
+    propLight.intensity = 0; dimMat.opacity = 0; chromeEl.classList.remove('inspecting'); returnFocus(); renderer.shadowMap.needsUpdate = true; }
+  if (!h.open && h.k < 0.10 && chromeEl.classList.contains('inspecting')){ chromeEl.classList.remove('inspecting'); returnFocus(); }
+  dirty = 2;
+}
+
+/* the cue sits beside the piece at the pointer's height, to its left near the frame edge */
+let cueBox = null;
+function screenRect(){
+  const bb = new THREE.Box3().setFromObject(joint); let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
+  for (let i = 0; i < 8; i++){ _v.set(i & 1 ? bb.max.x : bb.min.x, i & 2 ? bb.max.y : bb.min.y, i & 4 ? bb.max.z : bb.min.z).project(camera);
+    const X = (_v.x + 1)/2*W, Y = (1 - _v.y)/2*H; x0 = Math.min(x0, X); x1 = Math.max(x1, X); y0 = Math.min(y0, Y); y1 = Math.max(y1, Y); }
+  return [x0, y0, x1, y1];
+}
+function setCue(on){
+  cueEl.classList.toggle('on', on); canvas.style.cursor = on ? 'zoom-in' : H_.open ? 'grab' : '';
+  if (!on) return;
+  const r = cueBox = screenRect(), cw = cueEl.offsetWidth || 110, ch = cueEl.offsetHeight || 28;
+  let x = r[2] + 14; if (x + cw > W - 16) x = r[0] - 14 - cw;
+  const y = clamp(ptr.y - ch/2, 16, H - ch - 16);
+  cueEl.style.transform = `translate(${x.toFixed(0)}px,${y.toFixed(0)}px)`;
+}
+
+/* ------------------------------------------------------------------ *
+ *  Pointer, keyboard: click and drag never mistake each other
+ * ------------------------------------------------------------------ */
+addEventListener('pointermove', e => {
+  ptr.x = e.clientX; ptr.y = e.clientY; ptr.type = e.pointerType; setPointerKind(e.pointerType);
+  ptr.valid = !(e.target && e.target.closest && e.target.closest('button,a,.inspect'));
+  const d = H_.drag;
+  if (d && pointers.size < 2 && e.pointerId === d.id){
+    const dx = e.clientX - d.x, dy = e.clientY - d.y, dtm = Math.max(1, e.timeStamp - d.t);
+    d.moved += Math.abs(dx) + Math.abs(dy);
+    H_.yaw += dx*YAW_PX; H_.pitch = clamp(H_.pitch + dy*PITCH_PX, PITCH_LO, PITCH_HI);
+    H_.vy = dx*YAW_PX/(dtm/1000); H_.vp = dy*PITCH_PX/(dtm/1000);
+    d.x = e.clientX; d.y = e.clientY; d.t = e.timeStamp; H_.idle = 0; dirty = 2;
+  }
+  if (pointers.has(e.pointerId)) pointers.set(e.pointerId, [e.clientX, e.clientY]);
+  if (pointers.size === 2 && H_.open){                                        // pinch: dolly
+    const [a, b] = [...pointers.values()], dist = Math.hypot(a[0] - b[0], a[1] - b[1]);
+    if (H_.pinch) H_.zoomT = clamp(H_.zoomT*dist/H_.pinch, ZOOM_LO, ZOOM_HI); H_.pinch = dist;
+  }
+}, {passive:true});
+document.addEventListener('pointerleave', () => { ptr.valid = false; });
+const pointers = new Map(); let down = null;
+canvas.addEventListener('pointerdown', e => {
+  pointers.set(e.pointerId, [e.clientX, e.clientY]);
+  if (H_.open){
+    if (pointers.size === 1) H_.drag = {id:e.pointerId, x:e.clientX, y:e.clientY, t:e.timeStamp, moved:0};
+    H_.vy = H_.vp = 0; H_.pinch = 0;
+    try { canvas.setPointerCapture(e.pointerId); } catch (_) {}
+    canvas.style.cursor = 'grabbing'; return;
+  }
+  hold = true;                                         // the lean freezes for the length of a press, so the piece stays where it was aimed at
+  down = {x:e.clientX, y:e.clientY, t:e.timeStamp};
+});
+addEventListener('pointerup', e => {
+  pointers.delete(e.pointerId); H_.pinch = 0;
+  const d = H_.drag;
+  if (d && e.pointerId === d.id){
+    H_.drag = null; canvas.style.cursor = 'grab';
+    if (d.moved < CLICK_PX && !pick(e.clientX, e.clientY, 1)) closeInspect();     // a click that did not turn it, off the piece, puts it back
+    return;
+  }
+  const dn = down; down = null;
+  if (dn){
+    hold = H_.open || H_.k > 0;
+    if (!H_.open && Math.hypot(e.clientX - dn.x, e.clientY - dn.y) < CLICK_PX && e.timeStamp - dn.t < CLICK_MS && pick(e.clientX, e.clientY, 0)) openInspect(false);
+  }
+});
+addEventListener('pointercancel', e => { pointers.delete(e.pointerId); if (down){ down = null; hold = H_.open || H_.k > 0; } H_.drag = null; });
+canvas.addEventListener('wheel', e => {
+  if (!H_.open) return; e.preventDefault();
+  H_.zoomT = clamp(H_.zoomT*Math.exp(-e.deltaY*0.0012), ZOOM_LO, ZOOM_HI); dirty = 2;
+}, {passive:false});
+openBtn.addEventListener('click', () => openInspect(true));
+closeBtn.addEventListener('click', () => closeInspect());
+addEventListener('keydown', e => {
+  if (!H_.open) return;
+  const s = 0.14;
+  if (e.key === 'Escape'){ e.preventDefault(); closeInspect(); }
+  else if (e.key === 'Tab'){ e.preventDefault(); closeBtn.focus(); }
+  else if (e.key === 'ArrowLeft'){ H_.yaw -= s; H_.idle = 0; H_.vy = 0; e.preventDefault(); }
+  else if (e.key === 'ArrowRight'){ H_.yaw += s; H_.idle = 0; H_.vy = 0; e.preventDefault(); }
+  else if (e.key === 'ArrowUp'){ H_.pitch = clamp(H_.pitch - s, PITCH_LO, PITCH_HI); H_.idle = 0; e.preventDefault(); }
+  else if (e.key === 'ArrowDown'){ H_.pitch = clamp(H_.pitch + s, PITCH_LO, PITCH_HI); H_.idle = 0; e.preventDefault(); }
+  else if (e.key === '+' || e.key === '='){ H_.zoomT = clamp(H_.zoomT*1.15, ZOOM_LO, ZOOM_HI); }
+  else if (e.key === '-'){ H_.zoomT = clamp(H_.zoomT/1.15, ZOOM_LO, ZOOM_HI); }
+  dirty = 2;
+});
+
+/* ------------------------------------------------------------------ *
+ *  Frame: render only what moved
+ * ------------------------------------------------------------------ */
+function draw(){
+  renderer.clear();
+  if (H_.out){                                         // two passes: the room, the dim, then the piece alone in front of it
+    camera.layers.set(0); renderer.render(scene, camera);
+    dimScene.visible = true; renderer.render(dimScene, dimCam);
+    renderer.clearDepth();
+    camera.layers.set(1); renderer.render(scene, camera);
+    camera.layers.set(0);
+  } else renderer.render(scene, camera);
+}
+let last = 0, raf = 0;
+const perf = {n:0, ms:0, max:0};
+window.__perf = perf;
+function frame(now){
+  raf = requestAnimationFrame(frame);
+  if (!last){ last = now; return; }
+  const dt = Math.min(DT_MAX, (now - last)/1000); last = now; time += dt;
+  const t0 = performance.now();
+  if (CAN_HOVER && ptr.valid && !hold && !H_.out) { const h = pick(ptr.x, ptr.y, 0); if (h !== hoverHit){ hoverHit = h; setCue(h); } if (h) setCue(true); }
+  else if (hoverHit && (!ptr.valid || hold)){ hoverHit = false; setCue(false); }
+  updateLean(dt);
+  placeCamera();
+  updateHand(dt);
+  if (dirty > 0){ dirty--; draw(); perf.n++; const m = performance.now() - t0; perf.ms += m; perf.max = Math.max(perf.max, m); }
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden){ cancelAnimationFrame(raf); raf = 0; }
+  else if (!raf){ last = 0; dirty = 3; raf = requestAnimationFrame(frame); }
+});
+
+document.documentElement.dataset.pointer = CAN_HOVER ? 'mouse' : 'touch';
+/* warm both light states (room-only, and with the lamp on the piece) so the first click does not compile */
+resize(); placeCamera();
+key.shadow.needsUpdate = true; renderer.shadowMap.needsUpdate = true;
+{ H_.out = true; joint.traverse(o => o.layers.set(1)); draw(); H_.out = false; joint.traverse(o => o.layers.set(0)); renderer.shadowMap.needsUpdate = true; draw(); }
+requestAnimationFrame(frame); raf = 1;
+window.__demo = {H_, O, joint, camera, ptr, get hover(){ return hoverHit; }, openInspect, closeInspect, renderer};
+</script>
+</body>
+</html>

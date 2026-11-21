@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="assets/gsap.min.js"></script>
+    <script src="assets/three.min.js"></script>
+    <style>
+      @font-face { font-family: "Poppins"; font-weight: 500; src: url(assets/fonts/poppins-500.woff2) format("woff2"); }
+      @font-face { font-family: "Poppins"; font-weight: 600; src: url(assets/fonts/poppins-600.woff2) format("woff2"); }
+      @font-face { font-family: "Poppins"; font-weight: 700; src: url(assets/fonts/poppins-700.woff2) format("woff2"); }
+      @font-face { font-family: "Poppins"; font-weight: 800; src: url(assets/fonts/poppins-800.woff2) format("woff2"); }
+      :root { --blue: #1f88c9; }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1080px; height: 1920px; overflow: hidden; background: #07080a; }
+      #root { position: relative; width: 100%; height: 100%; overflow: hidden; font-family: "Poppins", sans-serif; }
+      .layer { position: absolute; inset: 0; }
+      #bg { position: absolute; inset: 0; background: #07080a; }
+      #stripes { position: absolute; inset: 0; opacity: 0;
+        background: linear-gradient(118deg, #ff14a8 0%, #ff14a8 30%, #f5f6f8 30.2%, #f5f6f8 52%, #a6cee4 52.2%, #a6cee4 70%, #0b0c10 70.2%, #0b0c10 100%); }
+      #gl { position: absolute; inset: 0; width: 1080px; height: 1920px; display: block; }
+      .lbl { position: absolute; font-weight: 600; font-size: 24px; letter-spacing: 6px; color: #7d8792; white-space: nowrap; opacity: 0; }
+      #kvTitle { position: absolute; left: 0; right: 0; top: 230px; text-align: center; font-weight: 800; font-size: 56px; letter-spacing: 10px; color: #0b0c10; opacity: 0; }
+      #kvSub { position: absolute; left: 0; right: 0; top: 310px; text-align: center; font-weight: 600; font-size: 32px; letter-spacing: 6px; color: #3a3f47; opacity: 0; }
+      #price { position: absolute; left: 0; right: 0; top: 1500px; display: flex; justify-content: center; opacity: 0; }
+      #price div { background: #0b0c10; color: #fff; border-radius: 28px; padding: 26px 46px; text-align: center; box-shadow: 0 20px 40px rgba(0,0,0,.25); }
+      #price b { display: block; font-weight: 800; font-size: 76px; letter-spacing: -1px; line-height: 1; }
+      #price small { display: block; margin-top: 10px; font-weight: 600; font-size: 34px; color: #ffb3dc; }
+      #kvNames { position: absolute; left: 50px; right: 50px; top: 1760px; display: flex; justify-content: space-between; font-weight: 700; font-size: 22px; letter-spacing: 3px; color: #0b0c10; opacity: 0; }
+      #kvNames span { background: rgba(255,255,255,.88); padding: 10px 14px; border-radius: 999px; }
+      #end { position: absolute; inset: 0; opacity: 0; background: var(--blue); color: #fff; }
+      #icon { position: absolute; left: 395px; top: 470px; width: 290px; display: block; }
+      #word { position: absolute; left: 305px; top: 860px; width: 470px; display: block; }
+      #avail { position: absolute; left: 0; right: 0; top: 1110px; text-align: center; font-weight: 700; font-size: 50px; }
+      #ctaWrap { position: absolute; left: 0; right: 0; top: 1300px; display: flex; justify-content: center; }
+      #cta { display: block; padding: 28px 66px; border-radius: 999px; background: #fff; color: var(--blue); font-weight: 800; font-size: 56px; white-space: nowrap; }
+      #stores { position: absolute; left: 0; right: 0; top: 1490px; display: flex; justify-content: center; gap: 24px; }
+      .bdg { display: flex; align-items: center; gap: 14px; height: 96px; padding: 0 28px 0 20px; border-radius: 18px; background: #000; border: 2px solid #a6a6a6; color: #fff; }
+      .bdg svg { width: 52px; height: 52px; display: block; }
+      .bdg span { display: flex; flex-direction: column; line-height: 1; }
+      .bdg small { font-weight: 500; font-size: 20px; letter-spacing: 0.5px; }
+      .bdg b { font-weight: 600; font-size: 38px; letter-spacing: -0.5px; margin-top: 4px; white-space: nowrap; }
+      #flash { position: absolute; inset: 0; background: #fff; opacity: 0; }
+      #grain { position: absolute; inset: -64px; background-image: url(assets/grain.png); background-size: 512px 512px; mix-blend-mode: overlay; opacity: 0.07; pointer-events: none; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="29.8" data-width="1080" data-height="1920">
+      <audio id="bgm" src="assets/bgm.wav" data-start="0" data-duration="29.8" data-track-index="11"></audio>
+      <div id="scene" class="clip layer" data-start="0" data-duration="29.8" data-track-index="0">
+        <div id="bg"></div>
+        <div id="stripes"></div>
+        <canvas id="gl" width="1080" height="1920"></canvas>
+        <div class="lbl" id="l1" style="left:90px;top:520px">COUVERCLE</div>
+        <div class="lbl" id="l2" style="right:90px;top:820px">POIGNÉE</div>
+        <div class="lbl" id="l3" style="left:90px;top:1300px">CORPS</div>
+        <div id="kvTitle">COLLECTION GOURDES</div>
+        <div id="kvSub">5 COLORIS · SUR PITUP</div>
+                <div id="kvNames"><span>FUCHSIA</span><span>ROSE</span><span>BLEU CIEL</span><span>BLEU ROI</span><span>NOIR</span></div>
+        <div id="end">
+          <img id="icon" src="assets/icon_white.png" alt="" />
+          <img id="word" src="assets/logo_word_white.png" alt="" />
+          <div id="avail">Disponible sur PitUp</div>
+          <div id="ctaWrap"><div id="cta">pi-tup.com</div></div>
+          <div id="stores">
+              <div class="bdg"><svg viewBox="0 0 24 24"><path fill="#fff" d="M16.4 1.4c0 1.1-.5 2.3-1.2 3.1-.7.9-2 1.6-3 1.6-.1 0-.2 0-.3-.1 0-.1 0-.2 0-.4 0-1.1.6-2.3 1.2-3 .8-.9 2.1-1.6 3.2-1.7.1.2.1.3.1.5zm4.6 15.7c0 .1-.5 1.6-1.5 3.1-.9 1.3-1.9 2.7-3.4 2.7s-1.9-.9-3.6-.9c-1.7 0-2.3.9-3.7.9-1.4 0-2.3-1.3-3.4-2.8C4.1 18.3 3 15.5 3 12.8c0-4.3 2.8-6.5 5.6-6.5 1.4 0 2.7.9 3.6.9.9 0 2.2-1 3.9-1 .6 0 2.9.1 4.4 2.2-.1.1-2.4 1.4-2.4 4.2 0 3.3 2.9 4.4 2.9 4.5z"/></svg><span><small>Disponible sur</small><b>App Store</b></span></div>
+              <div class="bdg"><svg viewBox="0 0 24 24"><path fill="#00d7fe" d="M3.6 1.8 13.6 12 3.6 22.2c-.4-.2-.6-.6-.6-1.1V2.9c0-.5.2-.9.6-1.1z"/><path fill="#00f076" d="M3.6 1.8 16.9 9.4 13.6 12z"/><path fill="#f8384b" d="M3.6 22.2 13.6 12l3.3 2.6z"/><path fill="#fdbd00" d="M16.9 9.4 21 11.7c.5.3.5.9 0 1.2l-4.1 1.7-3.3-2.6z"/></svg><span><small>Disponible sur</small><b>Google Play</b></span></div>
+        </div>
+        <div id="flash"></div>
+        <div id="grain"></div>
+      </div>
+    </div>
+
+    <script>
+      const B = 0.6209;              // one beat of "SUPRACELL" (96.6 BPM, film 0 = song 5.077 s; the full beat lands on b16)
+      const T = (b) => b * B;
+      const DUR = 29.8;
+
+      // ---------- 3D: a tumbler modelled from the product photos (units ~ cm) ----------
+      const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById("gl"), antialias: true, alpha: true, preserveDrawingBuffer: true });
+      renderer.setPixelRatio(1);
+      renderer.setSize(1080, 1920, false);
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.05;
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(30, 1080 / 1920, 0.1, 400);
+
+      // studio environment: soft boxes in a white room, prefiltered for reflections
+      const envScene = new THREE.Scene();
+      envScene.background = new THREE.Color(0x222428);
+      const box = (w, h, d, x, y, z, i) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshBasicMaterial({ color: new THREE.Color(i, i, i) })); m.position.set(x, y, z); envScene.add(m); };
+      box(30, 1, 30, 0, 18, 0, 3.0); box(1, 16, 22, -16, 6, 0, 2.2); box(1, 16, 22, 16, 6, 0, 1.4); box(22, 16, 1, 0, 6, -16, 0.9); box(22, 16, 1, 0, 6, 16, 1.8);
+      const pmrem = new THREE.PMREMGenerator(renderer);
+      scene.environment = pmrem.fromScene(envScene, 0.04).texture;
+
+      const key = new THREE.DirectionalLight(0xffffff, 1.6); key.position.set(-10, 22, 14); scene.add(key);
+      const rimA = new THREE.PointLight(0x6aa8ff, 0, 60, 1.5); rimA.position.set(10, 18, -8); scene.add(rimA);
+      const rimB = new THREE.PointLight(0xff3aa8, 0, 60, 1.5); rimB.position.set(-10, 10, -8); scene.add(rimB);
+
+      // lathe profile (radius, height): narrow cup-holder base, flared body, steel collar
+      const prof = [[0, 0], [3.3, 0], [3.55, 0.25], [3.6, 8.2], [3.75, 8.8], [4.35, 9.6], [4.55, 10.4], [4.95, 23.6], [4.95, 23.7], [0, 23.7]].map(([r, y]) => new THREE.Vector2(r, y));
+      const bodyGeo = new THREE.LatheGeometry(prof, 96);
+      const collarGeo = new THREE.CylinderGeometry(4.98, 4.96, 1.6, 96, 1, true); collarGeo.translate(0, 24.5, 0);
+      const lidGeo = new THREE.LatheGeometry([[0, 25.3], [5.05, 25.3], [5.15, 25.6], [5.15, 27.2], [4.9, 27.7], [0, 27.8]].map(([r, y]) => new THREE.Vector2(r, y)), 96);
+      const togGeo = new THREE.BoxGeometry(3.6, 0.7, 1.4); togGeo.translate(0, 28.1, 1.2);
+      const strawGeo = new THREE.CylinderGeometry(0.42, 0.42, 1.6, 24); strawGeo.translate(-1.6, 28.4, -0.6);
+      const handleCurve = new THREE.CatmullRomCurve3([new THREE.Vector3(4.6, 21.5, 0), new THREE.Vector3(7.6, 21.8, 0), new THREE.Vector3(9.2, 20.4, 0), new THREE.Vector3(9.4, 15.5, 0), new THREE.Vector3(9.0, 12.4, 0), new THREE.Vector3(7.4, 11.4, 0), new THREE.Vector3(4.2, 11.6, 0)]);
+      const handleGeo = new THREE.TubeGeometry(handleCurve, 64, 0.85, 20, false); handleGeo.scale(1, 1, 1.35);
+
+      const steel = new THREE.MeshPhysicalMaterial({ color: 0xd9dde2, metalness: 1, roughness: 0.22 });
+      const lidMat = new THREE.MeshPhysicalMaterial({ color: 0xf4f6f8, roughness: 0.35, clearcoat: 0.4, transmission: 0.15, thickness: 0.6 });
+      const COL = { fuchsia: 0xff14a8, rose: 0xf4becc, ciel: 0xa6cee4, roi: 0x2c55e6, noir: 0x0d1114 };
+      const makeTumbler = (hex) => {
+        const g = new THREE.Group();
+        const paint = new THREE.MeshPhysicalMaterial({ color: hex, roughness: 0.48, clearcoat: 0.35, clearcoatRoughness: 0.4, sheen: 0.2 });
+        const accent = new THREE.MeshPhysicalMaterial({ color: hex, roughness: 0.3, clearcoat: 0.6 });
+        g.add(new THREE.Mesh(bodyGeo, paint), new THREE.Mesh(handleGeo, paint), new THREE.Mesh(collarGeo, steel), new THREE.Mesh(lidGeo, lidMat), new THREE.Mesh(togGeo, accent), new THREE.Mesh(strawGeo, accent));
+        g.userData.mats = [paint, accent];
+        return g;
+      };
+      // wireframe twin for the x-ray / blueprint shots
+      const wireGeos = [new THREE.LatheGeometry(prof, 20), new THREE.TubeGeometry(handleCurve, 16, 0.85, 8, false), new THREE.LatheGeometry([[0, 25.3], [5.05, 25.3], [5.15, 25.6], [5.15, 27.2], [4.9, 27.7], [0, 27.8]].map(([r, y]) => new THREE.Vector2(r, y)), 20)];
+      const makeWire = (hex) => {
+        const g = new THREE.Group(), m = new THREE.LineBasicMaterial({ color: hex, transparent: true, opacity: 1 });
+        wireGeos.forEach((geo) => g.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo, 1), m)));
+        g.userData.mat = m; return g;
+      };
+
+      const T_ = {}; Object.keys(COL).forEach((k) => { T_[k] = makeTumbler(COL[k]); scene.add(T_[k]); });
+      const wireW = makeWire(0xffffff); scene.add(wireW);
+      const wires = [makeWire(0x8d96a1), makeWire(0x8d96a1), makeWire(0x8d96a1)]; wires.forEach((w) => scene.add(w));
+      // mirrored clones under a glossy translucent floor give the studio reflection
+      const refl = {}; ["fuchsia", "ciel", "noir"].forEach((k) => { refl[k] = makeTumbler(COL[k]); refl[k].scale.y = -1; scene.add(refl[k]); });
+      const floor = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), new THREE.MeshPhysicalMaterial({ color: 0xeef0f3, roughness: 0.25, transparent: true, opacity: 0.86 }));
+      floor.rotation.x = -Math.PI / 2; scene.add(floor);
+      const grid = new THREE.GridHelper(200, 100, 0xb4bbc3, 0xd2d7dc); grid.position.y = 0.02; scene.add(grid);
+
+      const all = [...Object.values(T_), wireW, ...wires, ...Object.values(refl), floor, grid];
+      const only = (...vis) => all.forEach((o) => { o.visible = vis.includes(o); });
+      const place = (o, x, y, z, ry, s = 1) => { o.position.set(x, y, z); o.rotation.set(0, ry, 0); o.scale.set(s, o.scale.y < 0 ? -s : s, s); };
+      const look = (px, py, pz, tx, ty, tz, fov = 30) => { camera.position.set(px, py, pz); camera.fov = fov; camera.updateProjectionMatrix(); camera.lookAt(tx, ty, tz); };
+      const bgCol = (c) => { scene.background = c === null ? null : new THREE.Color(c); };
+      const ease = (x) => x * x * (3 - 2 * x);
+      const seg = (t, a, b) => Math.min(1, Math.max(0, (t - a) / (b - a)));
+
+      // everything on screen is a pure function of film time t
+      function frame(t) {
+        const b = t / B;
+        rimA.intensity = 0; rimB.intensity = 0; key.intensity = 1.6;
+        Object.values(T_).forEach((g) => g.userData.mats.forEach((m) => { m.transparent = false; m.opacity = 1; }));
+        if (b < 4) {                                   // x-ray line drawing turning on black
+          bgCol(0x07080a); only(wireW);
+          const p = ease(seg(b, 0, 4));
+          place(wireW, 0, 0, 0, -0.6 + b * 0.35); wireW.userData.mat.opacity = Math.min(1, b / 1.2);
+          look(0, 18 - p * 3, 80 - p * 12, 0, 14, 0);
+        } else if (b < 8) {                            // blueprint studio: three outlines become solid
+          bgCol(0xeef0f3); const m = seg(b, 5.5, 8);
+          only(floor, grid, ...wires, T_.fuchsia, T_.ciel, T_.noir);
+          [["fuchsia", -11.5], ["ciel", 0], ["noir", 11.5]].forEach(([k, x], i) => {
+            place(T_[k], x, 0, 0, 0.5); place(wires[i], x, 0, 0, 0.5);
+            T_[k].userData.mats.forEach((mm) => { mm.transparent = true; mm.opacity = m; });
+            wires[i].userData.mat.opacity = 1 - m * 0.8;
+          });
+          const p = seg(b, 4, 8); look(0, 20, 130 - p * 14, 0, 13, 0, 28);
+        } else if (b < 12) {                           // macro on the fuchsia lid and handle
+          bgCol(0xeef0f3); only(T_.fuchsia, floor);
+          place(T_.fuchsia, 0, 0, 0, -0.9 + seg(b, 8, 12) * 0.5);
+          const p = ease(seg(b, 8, 12)); look(20 - p * 5, 28 - p * 2, 24 + p * 2, 3, 21.5, 0, 32);
+        } else if (b < 12.5) {                         // colour flash
+          bgCol(0xff14a8); only(wireW); wireW.userData.mat.opacity = 0.5; place(wireW, 0, 0, 0, 0.8); look(0, 16, 76, 0, 14, 0);
+        } else if (b < 16) {                           // bleu ciel hero spin
+          bgCol(0xeef0f3); only(T_.ciel, floor, grid); rimA.intensity = 30;
+          place(T_.ciel, 0, 0, 0, (b - 12.5) * 0.9);
+          const p = seg(b, 12.5, 16); look(0, 10 + p * 5, 76 - p * 8, 0, 14, 0);
+        } else if (b < 24) {                           // the drop: six angles, one per 4/3 beat
+          const k = Math.floor((b - 16) / (4 / 3)), p = seg(b, 16 + k * 4 / 3, 16 + (k + 1) * 4 / 3);
+          if (k === 0) { bgCol(0x07080a); only(T_.noir); rimA.intensity = 90; key.intensity = 0.6; place(T_.noir, 0, 0, 0, 0.6 + p * 0.6); look(10, 18, 72 - p * 6, 0, 14, 0); }
+          if (k === 1) { bgCol(0xeef0f3); only(T_.fuchsia); place(T_.fuchsia, 0, 0, 0, -1.4 + p * 0.4); look(30, 22, 30, 4, 16, 0, 32); }
+          if (k === 2) { bgCol(0xa6cee4); only(T_.ciel); place(T_.ciel, 0, 0, 0, p * 0.8); look(6, 2, 52, 0, 15, 0, 40); }
+          if (k === 3) { bgCol(0x07080a); only(T_.noir); rimB.intensity = 90; key.intensity = 0.5; place(T_.noir, 0, 0, 0, 2.2 + p * 0.5); look(0, 62, 22, 0, 18, 0, 34); }
+          if (k === 4) { bgCol(0xff14a8); only(T_.fuchsia); place(T_.fuchsia, 0, 0, 0, 0.4 + p * 1.2); look(0, 16, 78 - p * 10, 0, 14, 0); }
+          if (k >= 5) { bgCol(0xeef0f3); only(T_.ciel); place(T_.ciel, 0, 0, 0, -0.7 + p * 0.5); look(-22, 28, 22, 0, 22, 0, 32); }
+        } else if (b < 32) {                           // turntable line-up with floor reflections
+          bgCol(0xeef0f3); only(floor, grid, T_.fuchsia, T_.ciel, T_.noir, refl.fuchsia, refl.ciel, refl.noir);
+          const r = (b - 24) * 0.45;
+          [["fuchsia", -11.5], ["ciel", 0], ["noir", 11.5]].forEach(([k, x], i) => { place(T_[k], x, 0, 0, r + i * 0.7); place(refl[k], x, 0, 0, r + i * 0.7); });
+          const p = ease(seg(b, 24, 32)); look(-24 + p * 48, 9 + p * 4, 128 - p * 14, 0, 11, 0, 28);
+        } else {                                       // key visual: all five in a diagonal, on the stripes
+          bgCol(null); only(...Object.values(T_));
+          const r = (b - 32) * 0.35;
+          [["fuchsia", -12, 10], ["rose", -6, 5], ["ciel", 0, 0], ["roi", 6, -5], ["noir", 12, -10]].forEach(([k, x, y], i) => {
+            const e = ease(seg(b, 32 + i * 0.5, 33.2 + i * 0.5));
+            place(T_[k], x * 1.25 + (1 - e) * 24, y * 1.2 - 13, -Math.abs(x) * 0.2, r + i * 0.5, 0.9);
+          });
+          look(0, 4, 150, 0, 4, 0, 30);
+        }
+        renderer.render(scene, camera);
+      }
+
+      const tl = gsap.timeline({ paused: true });
+      const clock = { t: 0 };
+      tl.fromTo(clock, { t: 0 }, { t: DUR, duration: DUR, ease: "none", onUpdate: () => frame(clock.t) }, 0);
+
+      // overlays
+      tl.fromTo(["#l1", "#l2", "#l3"], { opacity: 0 }, { opacity: 1, duration: 0.4, stagger: 0.2 }, T(5));
+      tl.to(["#l1", "#l2", "#l3"], { opacity: 0, duration: 0.2 }, T(8) - 0.2);
+      tl.set("#bg", { background: "#f5f6f8" }, T(32));
+      tl.set("#stripes", { opacity: 1 }, T(32));
+      tl.fromTo(["#kvTitle", "#kvSub"], { opacity: 0, y: -20 }, { opacity: 1, y: 0, duration: 0.5, stagger: 0.15 }, T(34));
+      tl.fromTo("#kvNames", { opacity: 0 }, { opacity: 1, duration: 0.4 }, T(36.5));
+      tl.set(["#flash"], { opacity: 0.9 }, T(16)); tl.to("#flash", { opacity: 0, duration: 0.25 }, T(16));
+      tl.set("#end", { opacity: 1 }, T(40));
+      tl.fromTo("#icon", { scale: 1.15, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.32, ease: "expo.out" }, T(40));
+      tl.fromTo("#word", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.4, ease: "power3.out" }, T(41));
+      tl.fromTo("#avail", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.4, ease: "power3.out" }, T(42));
+      tl.fromTo("#cta", { scale: 0.7, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.42, ease: "back.out(2)" }, T(43));
+      tl.fromTo("#stores .bdg", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.35, stagger: 0.12, ease: "back.out(1.6)" }, T(44));
+      for (let f = 0; f < DUR * 12; f++) { const ox = ((f * 137) % 512) - 256, oy = ((f * 251) % 512) - 256; tl.set("#grain", { x: ox / 8, y: oy / 8 }, f / 12); }
+      tl.set({}, {}, DUR);
+      frame(0);
+      window.__timelines["main"] = tl;
+      tl.seek(0);
+    </script>
+  </body>
+</html>

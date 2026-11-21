@@ -1,0 +1,176 @@
+{
+  "skill_name": "customer-research",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I have 20 customer interview transcripts. Help me analyze them.",
+      "expected_output": "Should check for product-marketing.md first. Should ask about the goal before analyzing (improve messaging, build personas, find product gaps, etc.). Should apply the extraction framework: jobs to be done, pain points, trigger events, desired outcomes, language/vocabulary, alternatives considered. Should recommend clustering by theme, frequency + intensity scoring, and identifying money quotes. Should ask which deliverable is needed.",
+      "assertions": [
+        "Checks for product-marketing.md",
+        "Asks about the goal before diving in (improve messaging, build personas, find gaps, etc.)",
+        "Mentions extracting jobs to be done, pain points, and desired outcomes",
+        "Suggests organizing quotes by theme",
+        "References frequency and intensity scoring",
+        "Asks which deliverable is needed"
+      ],
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "I want to do ICP research but I don't have any customer interviews yet.",
+      "expected_output": "Should check for product-marketing.md first. Should recommend digital watering hole research as a starting point. Should mention Reddit, G2, Capterra, forums, or niche communities as sources. Should offer to plan a research approach and explain what to extract from online sources. Should note this is Mode 2 and ask what product/category to research.",
+      "assertions": [
+        "Checks for product-marketing.md",
+        "Recommends digital watering hole research as an alternative",
+        "Mentions Reddit, G2, or review sites as starting points",
+        "Asks what product or category to research",
+        "Offers to help extract insights from online sources"
+      ],
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "Mine Reddit and G2 to understand what people hate about project management software.",
+      "expected_output": "Should check for product-marketing.md first. Should identify relevant subreddits (r/projectmanagement, r/productivity, r/agile) and search strategies. Should recommend reading 3-star and 1-star G2 reviews and competitor 4-star reviews. Should plan to extract verbatim quotes, pain themes, and switching triggers. Should apply the extraction table (source, quote, context, sentiment, theme tag, profile signals).",
+      "assertions": [
+        "Checks for product-marketing.md",
+        "Identifies relevant subreddits or search strategies for project management",
+        "Suggests reading 3-star and 1-star G2 reviews",
+        "Recommends competitor 4-star reviews for buried complaints",
+        "Plans to extract verbatim quotes and pain themes",
+        "Mentions what to look for: complaints, workarounds, switching triggers"
+      ],
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "Build me a customer persona for a marketing manager at a B2B SaaS company.",
+      "expected_output": "Should check for product-marketing.md first. Should ask if there is existing research to build from before generating a persona. Should warn against inventing details without data. Should use the persona structure: profile, primary JTBD, trigger events, top pains, desired outcomes, objections, alternatives, key vocabulary, how to reach them. Should note that personas should be built from at least 5-10 data points.",
+      "assertions": [
+        "Checks for product-marketing.md",
+        "Asks if there is existing research to build from before inventing details",
+        "Warns against creating personas without data",
+        "Includes jobs to be done, pains, triggers, and desired outcomes in persona structure",
+        "Mentions the need to capture actual customer vocabulary",
+        "Notes minimum data threshold (5-10 data points)"
+      ],
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "I have 6 months of customer support tickets. What insights can I pull from them?",
+      "expected_output": "Should check for product-marketing.md first. Should recommend categorizing tickets before analyzing (bugs vs. confusion vs. feature requests vs. expectation mismatches). Should warn against treating all tickets as equal signal. Should suggest extracting recurring language, patterns, and 'I wish it could…' phrases. Should ask about the goal — product improvement, messaging, reducing support load, or something else.",
+      "assertions": [
+        "Checks for product-marketing.md",
+        "Recommends categorizing tickets before analyzing (bugs vs confusion vs feature requests)",
+        "Warns against treating all tickets as equal signal",
+        "Mentions extracting recurring language and patterns",
+        "Asks about the goal — product improvement, messaging, or something else"
+      ],
+      "files": []
+    },
+    {
+      "id": 6,
+      "prompt": "What are customers saying about my competitors on review sites?",
+      "expected_output": "Should check for product-marketing.md first. Should ask which competitors to research. Should recommend G2 and Capterra as primary sources. Should specifically call out reading competitor 4-star reviews for buried complaints. Should describe what to extract: what they love (battlecard intel), what frustrates them (opportunities), unmet needs. Should use the review mining template.",
+      "assertions": [
+        "Checks for product-marketing.md",
+        "Recommends reading competitor 4-star reviews specifically for buried complaints",
+        "Mentions G2 or Capterra as sources",
+        "Describes what to extract: what they love, what frustrates them, unmet needs",
+        "Frames as competitive intelligence input"
+      ],
+      "files": []
+    },
+    {
+      "id": 7,
+      "prompt": "Help me do voice of customer research for a new SaaS in the HR space.",
+      "expected_output": "Should check for product-marketing.md first. Should ask about the specific ICP segment within HR (recruiter, HR generalist, CHRO, etc.). Should suggest relevant digital watering holes: r/humanresources, r/recruiting, HR Slack communities, G2 HR category, LinkedIn. Should plan to extract verbatim language for copy use. Should offer to produce a VOC quote bank as a deliverable.",
+      "assertions": [
+        "Checks for product-marketing.md",
+        "Asks about target ICP segment within HR",
+        "Suggests relevant digital watering holes (subreddits, G2 categories, communities)",
+        "Plans to extract verbatim language for copy use",
+        "Mentions organizing findings into a VOC quote bank"
+      ],
+      "files": []
+    },
+    {
+      "id": 8,
+      "prompt": "I want to understand why customers churn. I have exit survey results.",
+      "expected_output": "Should check for product-marketing.md first. Should recommend segmenting churn reasons before analyzing — do not average across different causes. Should suggest pairing open-ended responses with quantitative data. Should ask if win/loss interview data or support tickets are also available. Should apply confidence labels (high/med/low) based on sample size and source consistency.",
+      "assertions": [
+        "Checks for product-marketing.md",
+        "Recommends segmenting churn reasons before analyzing",
+        "Warns against averaging across different churn causes",
+        "Suggests pairing open-ended responses with quantitative data",
+        "Asks if win/loss interview data is also available"
+      ],
+      "files": []
+    },
+    {
+      "id": 9,
+      "prompt": "Find the digital watering holes where DevOps engineers talk shop.",
+      "expected_output": "Should check for product-marketing.md first. Should identify specific relevant communities: r/devops, r/sysadmin, Hacker News, DevOps-focused Discord/Slack groups, LinkedIn, Stack Overflow. Should suggest what to search for in those communities. Should describe what signal to extract from each source type and reference source-guides.md for detailed playbooks.",
+      "assertions": [
+        "Checks for product-marketing.md",
+        "Mentions specific relevant communities (r/devops, Hacker News, LinkedIn, Discord)",
+        "Suggests what to search for in those communities",
+        "Describes what signal to extract from each source type"
+      ],
+      "files": []
+    },
+    {
+      "id": 10,
+      "prompt": "Turn my customer research into messaging I can use on my homepage.",
+      "expected_output": "Should check for product-marketing.md first. Should extract VOC language and top themes before moving to copy. Should identify the highest-signal quotes and language patterns. Should produce a VOC summary or quote bank, then hand off to the copywriting skill for the actual copy writing step rather than writing homepage copy directly.",
+      "assertions": [
+        "Checks for product-marketing.md",
+        "Extracts the VOC language and themes first before jumping to copy",
+        "Identifies the highest-signal quotes for messaging",
+        "References the copywriting skill for the actual copy writing step"
+      ],
+      "files": []
+    },
+    {
+      "id": 11,
+      "prompt": "I run a mobile fitness app and want to understand why users drop off after week 2.",
+      "expected_output": "Should check for product-marketing.md first. Should recognize this as a B2C research scenario. Should suggest B2C-appropriate sources: app store reviews (1-3 star), Reddit fitness communities, YouTube comment sections on fitness apps, TikTok/Instagram comments. Should also recommend in-app surveys and analyzing support tickets/reviews. Should frame around activation and habit formation research.",
+      "assertions": [
+        "Checks for product-marketing.md",
+        "Recognizes this as a B2C research scenario",
+        "Suggests app store reviews as a primary source",
+        "Mentions Reddit or community sources relevant to fitness/consumer apps",
+        "Frames around understanding drop-off triggers and desired outcomes"
+      ],
+      "files": []
+    },
+    {
+      "id": 12,
+      "prompt": "I have no existing research and don't know who my best customers are yet.",
+      "expected_output": "Should check for product-marketing.md first. Should treat this as a bootstrap research scenario. Should recommend starting with hypothesis formation before gathering data. Should suggest a minimum viable research plan: 5-10 customer interviews + digital watering hole scan. Should provide interview recruiting tips and what questions to ask. Should warn against building personas before collecting any data.",
+      "assertions": [
+        "Checks for product-marketing.md",
+        "Recognizes this as a zero-research bootstrap scenario",
+        "Recommends forming hypotheses before gathering data",
+        "Suggests a minimum viable research plan (interviews + online sources)",
+        "Warns against building personas without any data"
+      ],
+      "files": []
+    },
+    {
+      "id": 13,
+      "prompt": "I want to interview and survey my customers to understand product/market fit. How should I run this?",
+      "expected_output": "Should check for product-marketing.md first. Should route to the primary-research playbook (references/interviews-and-surveys.md). Should recommend the Sean Ellis / Superhuman PMF survey question ('How would you feel if you could no longer use [product]?') and cite the 40% 'very disappointed' benchmark (Superhuman reached 58%). Should recommend recruiting best customers (high deal size, short sales cycle, low churn) and closing every call with 'who else should we talk to?'. Should mention incentives ($50/call, $5/survey; aim for 10 calls, be happy with 5). Should keep it casual ('you do not talk about customer research') and aim to prove yourself wrong, not right. Should mention 5-why laddering (Keep Asking Why) and provide an outreach email approach.",
+      "assertions": [
+        "Checks for product-marketing.md",
+        "Recommends the PMF survey question and cites the 40% 'very disappointed' benchmark (Superhuman 58%)",
+        "Recommends recruiting best customers by deal size / short sales cycle / low churn and asking 'who else should we talk to?'",
+        "Mentions incentives ($50/call, $5/survey) and aiming for 10 calls / happy with 5",
+        "Frames research as casual and disconfirming (prove yourself wrong, not right)",
+        "Mentions 5-why laddering (Keep Asking Why) or an outreach email template"
+      ],
+      "files": []
+    }
+  ]
+}

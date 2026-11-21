@@ -1,0 +1,23 @@
+{
+  "skill_name": "n8n-agent-builder",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Je veux un bot Telegram pour PitUp qui répond aux clients sur les produits disponibles et qui enregistre leurs commandes dans un Google Sheet.",
+      "expected_output": "Un workflow Telegram → AI Agent (Claude, mémoire par chat, outils Google Sheets lecture et ajout) → réponse Telegram, validé par le script, avec la liste des identifiants à créer.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "chaque matin a 7h envoie moi sur telegram un resume de mes mails non lus de la veille",
+      "expected_output": "Un workflow planifié : déclencheur à 7 h → Gmail (non lus) → étape IA qui résume en un seul appel (données regroupées) → message Telegram.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "Fais-moi un agent que je peux tester directement dans n8n, qui m'aide à rédiger des messages WhatsApp pour relancer mes boutiques partenaires.",
+      "expected_output": "Un agent avec déclencheur de chat n8n, modèle Claude, mémoire, prompt système précis sur le ton et le format WhatsApp.",
+      "files": []
+    }
+  ]
+}

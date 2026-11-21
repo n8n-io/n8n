@@ -1,0 +1,116 @@
+{
+  "skill_name": "content-strategy",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Help me build a content strategy for our B2B SaaS product. We sell expense management software to finance teams at companies with 50-500 employees. We currently have no blog and want to start from scratch.",
+      "expected_output": "Should check for product-marketing.md first. Should establish content pillars (3-5 core topic areas). Should map content types by buyer stage (awareness → consideration → decision → implementation). Should identify keyword research opportunities by buyer stage. Should recommend a mix of searchable (SEO-driven) and shareable (thought leadership, data) content. Should use the prioritization scoring framework (customer impact 40%, content-market fit 30%, search potential 20%, resources 10%). Should provide an initial content calendar or publishing cadence. Should recommend content types appropriate for starting from scratch.",
+      "assertions": [
+        "Checks for product-marketing.md",
+        "Establishes 3-5 content pillars",
+        "Maps content by buyer stage (awareness through implementation)",
+        "Includes keyword research by buyer stage",
+        "Recommends mix of searchable and shareable content",
+        "Uses prioritization scoring framework",
+        "Provides publishing cadence or calendar",
+        "Recommends appropriate starting content types"
+      ],
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "We have 200+ blog posts but traffic has been flat for a year. Our content feels random — no clear strategy. How do we fix this?",
+      "expected_output": "Should diagnose the 'random content' problem. Should recommend a content audit process to evaluate existing posts. Should introduce content pillars and topical clustering to organize the existing library. Should identify hub-and-spoke opportunities from existing content. Should recommend which posts to update, consolidate, or retire. Should use the prioritization framework to plan next steps. Should address topical authority building through clusters.",
+      "assertions": [
+        "Diagnoses the 'random content' problem",
+        "Recommends content audit for existing posts",
+        "Introduces content pillars and topical clustering",
+        "Identifies hub-and-spoke opportunities",
+        "Recommends update, consolidate, or retire decisions",
+        "Uses prioritization framework",
+        "Addresses topical authority building"
+      ],
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "what kind of content should we be creating? we're a developer tool (API testing platform) and our audience is backend developers and QA engineers",
+      "expected_output": "Should trigger on casual phrasing. Should recommend content types appropriate for a developer audience: technical tutorials, documentation-style guides, use-case content, template/example libraries, data-driven benchmarks. Should note that developer audiences prefer depth, accuracy, and practical value over marketing fluff. Should suggest content pillars aligned with developer interests. Should use the ideation sources framework (keyword data, community forums like Stack Overflow/Reddit, competitor gaps).",
+      "assertions": [
+        "Triggers on casual phrasing",
+        "Recommends content types for developer audience",
+        "Emphasizes technical depth and practical value",
+        "Notes developers prefer substance over marketing",
+        "Suggests content pillars for developer tool",
+        "Uses ideation sources framework",
+        "Mentions developer community channels"
+      ],
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "How should we prioritize which content to create first? We have a list of 50 blog post ideas but limited resources — one content marketer writing 2 posts per week.",
+      "expected_output": "Should apply the prioritization scoring framework: customer impact (40%), content-market fit (30%), search potential (20%), resources required (10%). Should help score or rank the content ideas using this framework. Should recommend focusing on high-impact, lower-effort content first. Should consider the buyer stage distribution (don't write only top-of-funnel). Should provide a practical workflow for the single content marketer to use going forward.",
+      "assertions": [
+        "Applies prioritization scoring framework with weights",
+        "Explains each scoring dimension",
+        "Recommends focusing on high-impact, lower-effort first",
+        "Considers buyer stage distribution",
+        "Provides practical workflow for limited resources"
+      ],
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "We want to build topical authority in 'employee engagement.' What does a content cluster look like for this topic?",
+      "expected_output": "Should apply the hub-and-spoke content cluster model. Should design a pillar page for 'employee engagement' (comprehensive, 3000+ word guide). Should identify 8-15 supporting spoke articles targeting long-tail keywords related to employee engagement. Should map the internal linking structure between hub and spokes. Should address keyword research for the cluster. Should recommend content types for each piece (guide, how-to, template, data-driven, etc.).",
+      "assertions": [
+        "Applies hub-and-spoke content cluster model",
+        "Designs a pillar page for the core topic",
+        "Identifies 8-15 supporting spoke articles",
+        "Maps internal linking between hub and spokes",
+        "Addresses keyword research for the cluster",
+        "Recommends content types for each piece"
+      ],
+      "files": []
+    },
+    {
+      "id": 6,
+      "prompt": "Can you write a blog post about remote work best practices for our HR software blog?",
+      "expected_output": "Should recognize this is a copywriting/content creation task, not a content strategy task. Should defer to or cross-reference the copywriting skill for writing individual pieces of content. May provide strategic context (where this fits in the content strategy, keyword targeting, audience) but should make clear that copywriting is the right skill for writing the actual content.",
+      "assertions": [
+        "Recognizes this as content creation, not strategy",
+        "References or defers to copywriting skill",
+        "Does not attempt to write the full blog post",
+        "May provide strategic context for the piece"
+      ],
+      "files": []
+    },
+    {
+      "id": 7,
+      "prompt": "Our #1 content goal this quarter is earning backlinks for domain authority. I'm deciding between commissioning an original research report, writing another ultimate guide, or building out a statistics roundup page for our category. Which should we prioritize and why?",
+      "expected_output": "Should apply the Link-Earning Formats data: statistics/data roundups earn ~4.25x their page share of backlinks while original research earns ~0.80x and ultimate guides ~0.77x, so for a backlinks-specific goal the stats roundup wins. Should label the data as a single vendor study (Foundation Inc., 2026, B2B SaaS) and treat it as directional. Should explain the mechanism — writers cite whatever makes citation easiest, and original research is often cited via roundups that aggregate it — and recommend that if they do run original research later, they pair it with their own stat-roundup page of citable one-liners. Should note stat pages are also an AI-citation play (ai-seo) and that guides/research still earn their keep on other jobs (rankings, conversions, brand).",
+      "assertions": [
+        "Recommends the statistics roundup page for the backlink-specific goal, citing the format multipliers",
+        "Labels the Foundation data as a single vendor study and directional, not a law",
+        "Explains the citation-ease mechanism and the pairing move (research + own stat-roundup of its findings)",
+        "Notes the other formats are judged by different jobs rather than calling them worthless"
+      ],
+      "files": []
+    },
+    {
+      "id": 8,
+      "prompt": "We publish one good blog post a week but nobody reads it — we just post the link once on Twitter and LinkedIn and move on. How should we think about getting our content actually seen, and how should we balance what we produce?",
+      "expected_output": "Should reframe content as brand surface area and each piece as its own launch — creating is only half the job, distribution is the other half. Should introduce 'Create Once, Distribute Twice': one flagship piece repurposed/atomized across channels rather than a single link-drop, with distribution hooks (standalone subheads, modular sections, pull quotes) designed in at creation time. Should diagnose the failure modes at play — spray-and-pray / posting once with no repurposing, and the risk of platform dependency and the ownership paradox (over-investing in rented channels vs owned). Should present the ORB framework as a discovery->engagement->conversion funnel (borrowed -> rented -> owned) routing attention back to owned assets, and reference the launch skill (ORB playbook) and social skill (atomization execution) rather than re-deriving them. Should recommend a calendar balance (60% searchable / 30% shareable / 10% experimental) as a starting ratio. May reference the Content Distribution Flywheel and per-format execution discipline (e.g., 10 titles, ~5 editing passes for a blog post).",
+      "assertions": [
+        "Reframes content as brand surface area / each piece as its own launch and names distribution as the missing half",
+        "Introduces Create Once, Distribute Twice with atomization and creation-time distribution hooks",
+        "Names failure modes: spray-and-pray, platform dependency, ownership paradox",
+        "Presents ORB (borrowed/rented/owned) as a discovery-to-conversion funnel routing back to owned, cross-linking launch and social",
+        "Recommends the 60/30/10 calendar split as a starting ratio",
+        "May reference the Content Distribution Flywheel or per-format execution discipline"
+      ],
+      "files": []
+    }
+  ]
+}

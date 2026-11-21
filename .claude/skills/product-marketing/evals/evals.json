@@ -1,0 +1,98 @@
+{
+  "skill_name": "product-marketing",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I want to set up my product marketing context. We're a B2B SaaS company that sells a customer feedback platform to product teams.",
+      "expected_output": "Should check if .agents/product-marketing.md already exists. If not, should offer two options: (1) Auto-draft from codebase (recommended) or (2) Start from scratch. If user chooses start from scratch, should walk through sections conversationally one at a time. Should cover all applicable sections: Product Overview, Target Audience, Personas, Problems You Solve, Competitive Landscape, Differentiation, Objections, Switching Dynamics, Customer Language, Brand Voice, Proof Points, and Goals. Should create the file at .agents/product-marketing.md when complete.",
+      "assertions": [
+        "Checks for existing product-marketing.md",
+        "Offers two options: auto-draft or start from scratch",
+        "Covers applicable sections",
+        "Walks through sections conversationally one at a time",
+        "Creates file at .agents/product-marketing.md"
+      ],
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Update our product marketing context. We just added a new enterprise tier and our target audience has expanded to include VP of Engineering, not just Product Managers.",
+      "expected_output": "Should check for existing .agents/product-marketing.md and read it. Should identify which sections need updating based on the changes: Target Audience (add VP of Engineering), Personas (add new persona), Product Overview (new enterprise tier, including pricing updates within that section), Objections (enterprise-specific), and Competitive Landscape (enterprise competitors). Should update only the relevant sections, preserving existing content that hasn't changed.",
+      "assertions": [
+        "Reads existing product-marketing.md",
+        "Identifies sections that need updating",
+        "Updates Target Audience with VP of Engineering",
+        "Adds new persona for the expanded audience",
+        "Updates Product Overview for enterprise tier",
+        "Preserves unchanged sections"
+      ],
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "create a product context doc for my app. it's a mobile app that helps people find hiking trails. we're just getting started.",
+      "expected_output": "Should trigger on casual phrasing. Should check for existing context doc. Should offer auto-draft or start-from-scratch options. Should adapt questions for an early-stage B2C mobile app (outdoor/fitness niche). Should note that some sections may be sparse for an early-stage product and that's okay — they can be filled in as the business matures. Should skip non-applicable sections (e.g., Personas section is B2B-focused) rather than forcing all 12. Should accept lighter answers for sections like Proof Points or Competitive Landscape if the company is new.",
+      "assertions": [
+        "Triggers on casual phrasing",
+        "Checks for existing context doc",
+        "Offers auto-draft or start-from-scratch options",
+        "Adapts questions for early-stage B2C mobile app",
+        "Notes some sections may be sparse early on",
+        "Skips non-applicable sections rather than forcing all 12",
+        "Creates file at .agents/product-marketing.md"
+      ],
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "Can you auto-draft our product marketing context from our existing codebase and marketing materials?",
+      "expected_output": "Should activate the auto-draft workflow mode. Should scan the codebase for existing marketing context: README, landing page copy, pricing page, about page, meta descriptions, any existing documentation. Should draft the product-marketing.md from what it finds, filling in sections where information is available and flagging sections that need manual input. Should present the draft for review before saving.",
+      "assertions": [
+        "Activates auto-draft workflow mode",
+        "Scans codebase for existing marketing materials",
+        "Drafts context from found information",
+        "Flags sections needing manual input",
+        "Presents draft for review before saving"
+      ],
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "Do we have a product marketing context set up? I want to make sure the other marketing skills have context about our product.",
+      "expected_output": "Should check for .agents/product-marketing.md (and the older .claude/product-marketing.md location). Should report whether it exists and summarize its contents if found. If it doesn't exist, should offer to create one and explain why it's valuable (other skills like copywriting, cro, seo-audit check for it first). Should explain how other skills use this context document.",
+      "assertions": [
+        "Checks both file locations",
+        "Reports whether context doc exists",
+        "Summarizes contents if found",
+        "Offers to create if missing",
+        "Explains how other skills use it"
+      ],
+      "files": []
+    },
+    {
+      "id": 6,
+      "prompt": "Write homepage copy for our SaaS product.",
+      "expected_output": "Should recognize this is a copywriting task, not a product marketing context task. Should check for product-marketing.md (as other skills do), and if it doesn't exist, may suggest creating one first. But should defer to the copywriting skill for actually writing the homepage copy.",
+      "assertions": [
+        "Recognizes this as a copywriting task",
+        "May check for or suggest creating product-marketing.md",
+        "References or defers to copywriting skill for the actual copy",
+        "Does not attempt to write homepage copy using context creation patterns"
+      ],
+      "files": []
+    },
+    {
+      "id": 7,
+      "prompt": "We just repositioned — we're no longer an 'email tool,' we're a 'deliverability platform,' and our ICP now includes RevOps teams. Update our product marketing context.",
+      "expected_output": "Should recognize an existing .agents/product-marketing.md, read it, note its current Document version and recent Changelog entries, and update only the affected sections (product overview/positioning, target audience/ICP). On save, should bump the Document version (e.g. v2 → v3), update the Last updated date, and PREPEND a new newest-first Changelog entry summarizing what changed and why in one line — e.g. 'Repositioned from email tool to deliverability platform; added RevOps to the ICP' — naming the sections touched and the reason, not just 'updated the doc.' Should not rewrite or reorder past changelog entries. Should tell the user the changelog tracks revisions and that downstream skills will now use the new context.",
+      "assertions": [
+        "Reads the existing doc and surfaces its current version + recent changelog",
+        "Updates only the affected sections (positioning + ICP)",
+        "Bumps the Document version and updates Last updated",
+        "Prepends a newest-first changelog entry naming what changed and why",
+        "Preserves prior changelog entries unchanged"
+      ],
+      "files": []
+    }
+  ]
+}

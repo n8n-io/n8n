@@ -1,0 +1,117 @@
+{
+  "skill_name": "analytics",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Help me set up analytics tracking for our B2B SaaS product. We use GA4 and GTM. We need to track signups, feature usage, and upgrade events.",
+      "expected_output": "Should check for product-marketing.md first. Should apply the 'track for decisions' principle — ask what decisions the tracking will inform. Should use the event naming convention (object_action, lowercase with underscores). Should define essential events for SaaS: signup_completed, trial_started, feature_used, plan_upgraded, etc. Should provide GA4 implementation details with proper event parameters. Should include GTM data layer push examples. Should organize output as a tracking plan with event name, trigger, parameters, and purpose for each event.",
+      "assertions": [
+        "Checks for product-marketing.md",
+        "Applies 'track for decisions' principle",
+        "Uses object_action naming convention",
+        "Defines essential SaaS events (signup, feature usage, upgrade)",
+        "Provides GA4 implementation details",
+        "Includes GTM data layer examples",
+        "Output follows tracking plan format"
+      ],
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "What UTM parameters should we use? We run ads on Google, Meta, and LinkedIn, plus send a weekly newsletter and post on LinkedIn organically.",
+      "expected_output": "Should apply the UTM parameter strategy framework. Should define consistent UTM conventions: source (google, meta, linkedin, newsletter), medium (cpc, paid-social, email, organic-social), campaign (naming convention with date or identifier). Should provide specific UTM examples for each channel mentioned. Should warn about common UTM mistakes (inconsistent casing, redundant parameters, missing medium). Should recommend a UTM tracking spreadsheet or naming convention document.",
+      "assertions": [
+        "Applies UTM parameter strategy",
+        "Defines source, medium, and campaign conventions",
+        "Provides specific UTM examples for each channel",
+        "Uses consistent naming conventions (lowercase)",
+        "Warns about common UTM mistakes",
+        "Recommends tracking documentation"
+      ],
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "our tracking seems broken — we're seeing duplicate events and our conversion numbers in GA4 don't match what our database shows. help?",
+      "expected_output": "Should trigger on casual phrasing. Should apply the debugging and validation framework. Should systematically check for common issues: duplicate GTM tags firing, missing event deduplication, incorrect trigger conditions, cross-domain tracking issues, consent mode filtering. Should provide specific debugging steps: use GA4 DebugView, GTM Preview mode, browser developer tools. Should address the GA4 vs database discrepancy (common causes: consent mode, ad blockers, client-side vs server-side tracking, session timeout differences).",
+      "assertions": [
+        "Triggers on casual phrasing",
+        "Applies debugging and validation framework",
+        "Checks for duplicate tag firing",
+        "Provides specific debugging tools (GA4 DebugView, GTM Preview)",
+        "Addresses GA4 vs database discrepancy",
+        "Lists common causes of data mismatches",
+        "Provides systematic troubleshooting steps"
+      ],
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "We're launching an e-commerce store and need to set up tracking from scratch. What events do we absolutely need?",
+      "expected_output": "Should reference the essential events by site type, specifically e-commerce. Should define the e-commerce event taxonomy: product_viewed, product_added_to_cart, cart_viewed, checkout_started, checkout_step_completed, purchase_completed, product_removed_from_cart. Should include enhanced e-commerce parameters (item_id, item_name, price, quantity, etc.). Should follow object_action naming convention. Should organize as a tracking plan with priorities (must-have vs nice-to-have).",
+      "assertions": [
+        "References essential events for e-commerce site type",
+        "Defines full e-commerce event taxonomy",
+        "Includes enhanced e-commerce parameters",
+        "Follows object_action naming convention",
+        "Organizes by priority (must-have vs nice-to-have)",
+        "Provides tracking plan format output"
+      ],
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "We need to make sure our tracking is GDPR compliant. We have European users and we're using GA4, Hotjar, and Facebook Pixel.",
+      "expected_output": "Should apply the privacy and compliance framework. Should address GDPR requirements for each tool: consent before tracking, consent management platform (CMP) setup, GA4 consent mode configuration, conditional loading of Hotjar and Facebook Pixel. Should recommend a consent hierarchy (necessary, analytics, marketing). Should provide GTM implementation for consent-based tag firing. Should mention data retention settings in GA4. Should address cookie banner requirements.",
+      "assertions": [
+        "Applies privacy and compliance framework",
+        "Addresses GDPR requirements specifically",
+        "Recommends consent management platform",
+        "Covers GA4 consent mode configuration",
+        "Addresses conditional loading for each tool",
+        "Provides consent hierarchy",
+        "Mentions data retention settings"
+      ],
+      "files": []
+    },
+    {
+      "id": 6,
+      "prompt": "Help me set up tracking for our A/B test. We want to measure which version of our pricing page converts better.",
+      "expected_output": "Should recognize this overlaps with A/B test setup, not just analytics tracking. Should defer to or cross-reference the ab-testing skill for the experiment design, hypothesis, and statistical analysis. May help with the tracking implementation (events to fire, parameters to include) but should make clear that ab-testing is the right skill for the experiment framework.",
+      "assertions": [
+        "Recognizes overlap with A/B test setup",
+        "References or defers to ab-testing skill",
+        "May help with tracking implementation specifics",
+        "Does not attempt to design the full experiment"
+      ],
+      "files": []
+    },
+    {
+      "id": 7,
+      "prompt": "GA4 enhanced measurement is enabled. I filtered outbound_click, site_search and video_engagement and got zero, but DebugView shows 12 click events with outbound=true, 7 view_search_results, 6 video_start, 4 video_progress and 2 video_complete. Which reports should I build? Do I need to add custom events?",
+      "expected_output": "Identify the mismatched option labels/event names. Use click with outbound=true for the 12 outbound clicks, view_search_results for the 7 searches, and separate video_start/video_progress/video_complete reports for 6/4/2. Do not add custom duplicate events to fix a filter mismatch or sum all video events as unique views. Check enabled options, configured search query parameters, YouTube JS API support and DebugView; cross-domain measurement destinations do not produce outbound clicks.",
+      "assertions": [
+        "Uses actual enhanced-measurement event names instead of option labels",
+        "Filters click by outbound=true and reports 12 outbound clicks",
+        "Uses view_search_results and reports 7 searches",
+        "Separates 6 video starts, 4 progress events and 2 completions",
+        "Does not count all video events as unique views or create duplicate custom events",
+        "Mentions relevant enhanced-measurement configuration and DebugView checks"
+      ],
+      "files": []
+    },
+    {
+      "id": 8,
+      "prompt": "Our GTM Custom JavaScript price variable parses .product-price text. USD $1,234.56 is tracked as 1, a European 1.234,56 display as 1.234, and missing prices become zero. How should we fix this without changing real free items?",
+      "expected_output": "Use the application numeric amount and explicit currency or a machine-readable unformatted decimal data-price attribute. Do not strip symbols or guess locale separators. Return null for missing/malformed/nonfinite values and skip or diagnose the monetary event; preserve canonical zero for free items. Test grouped US and localized European display strings, ordinary decimals and missing/invalid values.",
+      "assertions": [
+        "Uses numeric application data or canonical machine-readable decimal",
+        "Does not parse localized display strings or guess currency",
+        "Preserves explicit zero for free items",
+        "Missing or invalid amount is not converted to zero",
+        "Tests grouped and localized display controls"
+      ],
+      "files": []
+    }
+  ]
+}

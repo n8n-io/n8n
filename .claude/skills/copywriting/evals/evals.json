@@ -1,0 +1,154 @@
+{
+  "skill_name": "copywriting",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Write homepage copy for a SaaS tool that automates employee onboarding. Target audience is HR directors at mid-size companies (200-2000 employees). Main differentiator is that it integrates with all major HRIS systems and cuts onboarding time from 2 weeks to 2 days.",
+      "expected_output": "Should check for product-marketing.md first. Should write full page copy organized by section: Headline, Subheadline, CTA (above the fold), then Social Proof, Problem/Pain, Solution/Benefits, How It Works, Objection Handling, and Final CTA. Should follow copywriting principles: clarity over cleverness, benefits over features, specificity (use the '2 weeks to 2 days' stat), customer language. Headline should communicate core value proposition. CTAs should be action-oriented ('Start Free Trial' not 'Submit'). Should provide 2-3 headline alternatives with rationale. Should include annotations explaining key copy choices. Should include meta content (SEO page title and meta description).",
+      "assertions": [
+        "Checks for product-marketing.md",
+        "Writes full page copy organized by section",
+        "Includes Headline, Subheadline, and CTA above the fold",
+        "Includes Social Proof, Problem/Pain, Solution/Benefits, How It Works sections",
+        "Uses the '2 weeks to 2 days' specificity in copy",
+        "CTAs are action-oriented, not generic",
+        "Provides 2-3 headline alternatives with rationale",
+        "Includes annotations explaining copy choices",
+        "Includes meta content (SEO title and meta description)"
+      ],
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Rewrite this headline: 'An Innovative AI-Powered Platform for Streamlined Business Operations' — it's for a B2B SaaS tool that helps small businesses manage invoicing and payments.",
+      "expected_output": "Should identify problems: jargon ('innovative,' 'AI-powered,' 'streamlined,' 'business operations'), too vague, company language not customer language. Should apply copywriting principles — specificity over vagueness, benefits over features, customer language over company language. Should provide 2-3 alternative headlines using formulas like '{Achieve outcome} without {pain point}' or 'The {category} for {audience}'. Each alternative should include rationale. Should also suggest a subheadline that adds specificity.",
+      "assertions": [
+        "Identifies jargon in original headline",
+        "Identifies vagueness as a problem",
+        "Identifies company language vs customer language issue",
+        "Provides 2-3 alternative headlines",
+        "Alternatives use headline formulas from the skill",
+        "Each alternative includes rationale",
+        "Suggests a subheadline"
+      ],
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "i need copy for my pricing page. we have three plans: starter ($29/mo), pro ($79/mo), business ($199/mo). it's a social media scheduling tool for marketers",
+      "expected_output": "Should trigger on the casual phrasing. Should ask or infer audience context. Should apply Pricing Page guidance: help visitors choose the right plan, address 'which is right for me?' anxiety, make recommended plan obvious. Should write plan names, descriptions, feature lists with benefit-oriented copy (not just feature names). Should include a page headline that addresses the pricing decision. CTAs should be specific per plan. Should handle objection handling (FAQ copy). Should provide alternatives for key elements.",
+      "assertions": [
+        "Triggers on casual phrasing",
+        "Applies Pricing Page guidance",
+        "Addresses 'which plan is right for me' anxiety",
+        "Makes recommended plan obvious",
+        "Writes benefit-oriented feature copy, not just feature names",
+        "Includes page headline",
+        "CTAs are specific per plan",
+        "Includes FAQ or objection handling copy",
+        "Provides alternatives for key elements"
+      ],
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "Write copy for our About page. We're a 3-person startup that built a developer tool for database migrations. Founded because we kept losing data during migrations at our last jobs. Tone should be professional but human.",
+      "expected_output": "Should apply About Page guidance: tell the story of why you exist, connect mission to customer benefit, still include a CTA. Should adapt voice and tone to 'professional but human' as specified. Should tell the founder origin story authentically. Should connect the personal pain to the customer's pain. Should include a CTA even on the About page. Copy should follow style rules: active voice, confident, specific. Should NOT be overly corporate or generic.",
+      "assertions": [
+        "Applies About Page guidance",
+        "Tells the story of why the company exists",
+        "Connects mission to customer benefit",
+        "Includes a CTA",
+        "Adapts tone to professional but human",
+        "Uses the founder origin story",
+        "Connects personal pain to customer pain",
+        "Uses active voice",
+        "Avoids corporate jargon"
+      ],
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "Can you improve this CTA? We currently have 'Learn More' on our feature page for our analytics dashboard product.",
+      "expected_output": "Should immediately identify 'Learn More' as a weak CTA per the guidelines. Should apply the CTA formula: [Action Verb] + [What They Get] + [Qualifier]. Should provide 2-3 strong alternatives like 'See the Dashboard in Action,' 'Start Your Free Trial,' or 'Explore Analytics Features.' Each alternative should include rationale and context for when it works best. Should also consider CTA hierarchy — whether this is a primary or secondary CTA, and suggest complementary CTAs if relevant.",
+      "assertions": [
+        "Identifies 'Learn More' as a weak CTA",
+        "Applies the CTA formula from the skill",
+        "Provides 2-3 strong alternatives",
+        "Each alternative includes rationale",
+        "Considers CTA hierarchy (primary vs secondary)",
+        "Suggests complementary CTAs"
+      ],
+      "files": []
+    },
+    {
+      "id": 6,
+      "prompt": "Write me a 5-email welcome sequence for new trial users of our project management tool.",
+      "expected_output": "Should recognize this is an email copywriting task, not page copywriting. Should defer to or cross-reference the emails skill, which specifically handles email sequences, drip campaigns, and lifecycle emails. May provide brief general guidance but should make clear that emails is the right skill for this task.",
+      "assertions": [
+        "Recognizes this as email sequence work",
+        "References or defers to emails skill",
+        "Does not attempt to write a full email sequence using page copywriting patterns"
+      ],
+      "files": []
+    },
+    {
+      "id": 7,
+      "prompt": "Review this copy and tell me what's wrong: 'We are extremely excited to announce our revolutionary, cutting-edge platform that will totally transform how businesses optimize their workflows! Sign up now!!'",
+      "expected_output": "Should apply the Quick Quality Check. Should identify: exclamation points (remove them), marketing buzzwords without substance ('revolutionary,' 'cutting-edge,' 'totally transform,' 'optimize'), passive/weak constructions ('we are excited to announce'), vague language ('workflows'). Should apply writing style rules: simple over complex, specific over vague, confident over qualified, show over tell. Should rewrite the copy following these principles. Should provide 2-3 alternatives.",
+      "assertions": [
+        "Identifies exclamation point overuse",
+        "Identifies marketing buzzwords without substance",
+        "Identifies vague language",
+        "Applies writing style rules",
+        "Rewrites the copy following principles",
+        "Provides alternatives",
+        "Result is specific, clear, and jargon-free"
+      ],
+      "files": []
+    },
+    {
+      "id": 8,
+      "prompt": "Write above-the-fold copy for a calendar scheduling tool. Our differentiator is that the recipient gets to overlay their own calendar on the invite, so picking a time feels fair to both people instead of one-sided. Same product needs to work for indie founders AND for enterprise ops teams.",
+      "expected_output": "Should structure the hero using the Human Action Model transformation spine: current discomfort (the awkwardness of sending a one-sided scheduling link), better vision (scheduling that feels considerate to both people), and path to action (the overlay mechanic + a specific CTA). Should run headline candidates through the 'Now you can' test and prefer lines that are compelling and true. Should reference or echo the SavvyCal awkward-link insight ('You shouldn't have to feel awkward sending out your scheduling link') as the message-market-fit model. Should surface the Perception Gap: the same benefit reads differently by risk tolerance, so it should provide a value-prop swap — a founder-facing framing (speed, no sales calls) and an enterprise-facing framing (security, SLAs, reliability) rather than one averaged, mushy message. Should favor clarity over cleverness and provide 2-3 headline alternatives with rationale.",
+      "assertions": [
+        "Structures the hero as discomfort -> vision -> path (Human Action Model)",
+        "Applies the 'Now you can' test to headline candidates",
+        "References the SavvyCal awkward-link message-market-fit insight",
+        "Surfaces the Perception Gap between segments",
+        "Provides a value-prop swap: founder framing vs enterprise framing",
+        "Favors clarity over cleverness",
+        "Provides 2-3 headline alternatives with rationale"
+      ],
+      "files": []
+    },
+    {
+      "prompt": "Write a homepage hero (headline, subhead, CTA) and a short launch post for X for our Shopify inventory app. It installs from the Shopify App Store in one click, needs no signup form or credit card, and runs low-stock alerts, reorder emails, and supplier purchase orders off the product and sales data the store already has, so there's nothing to import.",
+      "expected_output": "Should write the hero and post without AI tells despite a brief that invites them. Should not use 'it's not X, it's Y' or 'not because X, because Y' reveals, 'no X, no Y, no Z' negation lists, or sentences that state the claim and then trail extra comma clauses ('..., no imports, no spreadsheets'). Should describe what happens (one-click install; alerts, reorder emails, and purchase orders run off existing Shopify data) and state a key absence at most once, plainly, near the CTA ('No card required'). Should use no em dashes in the hero or the post, no self-answered questions or colon reveals, and no stock phrases ('Say goodbye to', 'X, reimagined', 'seamless'). Should run the self-check before delivering.",
+      "assertions": [
+        "No contrast reveal ('not X, Y' / 'not because X, because Y')",
+        "No 'no X, no Y, no Z' negation list; any absence stated once",
+        "No sentence that trails extra comma clauses after the main claim",
+        "No em dashes in the hero or the post",
+        "No self-answered questions, colon reveals, or stock phrases",
+        "Describes the mechanism concretely (one-click install, runs off existing Shopify data)"
+      ],
+      "files": [],
+      "id": 9
+    },
+    {
+      "id": 10,
+      "prompt": "Can you make this homepage hero better? I wrote it myself and it feels rough.\n\nHeadline: Your agency doesn't need another dashboard. It needs to get paid.\nSubhead: We got sick of chasing clients for money, so we built the thing that does it for us. Invoices go out when the work ships. Late payers get nagged. You get your evenings back.\nCTA: Try it free",
+      "expected_output": "Should diagnose this as Situation B (a real voice: founder first person, blunt anti-dashboard angle, casual words like 'nagged') and restore it. Should keep the anti-dashboard angle and the founder voice, keep the author's vocabulary, and fix only what's weak: the 'doesn't need X. It needs Y.' contrast reveal in the headline, the vague 'you get your evenings back,' and the generic CTA. Should not replace the angle with a new positioning, upgrade the vocabulary to corporate terms, or invent stats or customers; missing proof is flagged with [NEED: ...].",
+      "assertions": [
+        "Identifies the input as having a real voice to preserve, before rewriting",
+        "Keeps the anti-dashboard/getting-paid angle",
+        "Keeps casual first-person founder voice (does not switch to corporate vocabulary)",
+        "Removes the 'doesn't need X. It needs Y.' contrast reveal",
+        "Rewrites the CTA to say what the reader gets",
+        "Invents no statistics or customers"
+      ],
+      "files": []
+    }
+  ]
+}

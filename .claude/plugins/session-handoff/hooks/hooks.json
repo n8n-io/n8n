@@ -1,0 +1,20 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      { "hooks": [
+        { "type": "command", "command": "\"$(command -v python || command -v python3)\" \"${CLAUDE_PLUGIN_ROOT}/hooks/context-threshold-warn.py\"" }
+      ] }
+    ],
+    "PreToolUse": [
+      { "matcher": "Agent", "hooks": [
+        { "type": "command", "command": "\"$(command -v python || command -v python3)\" \"${CLAUDE_PLUGIN_ROOT}/hooks/context-threshold-handoff-task.py\"" }
+      ] }
+    ],
+    "Stop": [
+      { "hooks": [
+        { "type": "command", "command": "\"$(command -v python || command -v python3)\" \"${CLAUDE_PLUGIN_ROOT}/hooks/handoff-save.py\"" },
+        { "type": "command", "command": "\"$(command -v python || command -v python3)\" \"${CLAUDE_PLUGIN_ROOT}/hooks/chapters.py\" record" }
+      ] }
+    ]
+  }
+}

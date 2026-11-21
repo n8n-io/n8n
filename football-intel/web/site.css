@@ -1,0 +1,32 @@
+/* Sign-in screen and accounts page of the private site. Uses the dashboard tokens. */
+html.fi-locked, html.fi-locked body { overflow: hidden; }
+#fi-gate { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; padding: 16px;
+  background: var(--bg); color: var(--text); font-family: var(--font); overflow-y: auto; }
+#fi-gate[hidden] { display: none; }
+.fi-card { width: 100%; max-width: 420px; background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius, 20px); padding: 28px; }
+.fi-card h1 { font-family: var(--display); font-size: 1.8rem; margin: 12px 0 16px; }
+.fi-brand { display: flex; align-items: center; gap: 10px; font-weight: 600; }
+.fi-tabs { display: flex; gap: 6px; margin-bottom: 16px; }
+.fi-tabs button { flex: 1; padding: 10px; border-radius: var(--radius-s, 12px); border: 1px solid var(--line);
+  background: transparent; color: var(--muted); font: inherit; cursor: pointer; }
+.fi-tabs button[aria-selected="true"] { color: var(--text); border-color: var(--accent); }
+.fi-form { display: flex; flex-direction: column; gap: 12px; }
+.fi-form label { display: flex; flex-direction: column; gap: 6px; font-size: .9rem; color: var(--muted); }
+.fi-form input { padding: 11px 12px; border-radius: var(--radius-s, 12px); border: 1px solid var(--line);
+  background: var(--bg); color: var(--text); font: inherit; }
+.fi-form input:focus-visible, .fi-tabs button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.fi-card .btn { width: 100%; }
+.fi-link { background: none; border: 0; color: var(--muted); text-decoration: underline; cursor: pointer; font: inherit; padding: 4px; }
+.fi-note { color: var(--muted); font-size: .88rem; }
+.fi-msg { min-height: 1.2em; margin: 4px 0 0; color: var(--bad, #e5484d); font-size: .9rem; }
+.fi-msg.ok { color: var(--muted); }
+.fi-actions { white-space: nowrap; }
+.btn.fi-small { padding: 6px 10px; font-size: .82rem; margin: 2px; width: auto; }
+/* value.html does not load style.css: the gate styles its own buttons and mark. */
+#fi-gate .btn { display: inline-flex; justify-content: center; align-items: center; height: 40px; border: 0;
+  border-radius: 999px; background: var(--accent); color: #000; font: inherit; font-weight: 600; cursor: pointer; }
+#fi-gate .brand-mark { display: inline-flex; gap: 2px; }
+#fi-gate .brand-mark i { display: block; width: 5px; height: 16px; border-radius: 2px; background: var(--accent); }
+#fi-gate .brand-mark i:nth-child(2) { background: var(--muted); }
+#fi-gate .brand-mark i:nth-child(3) { background: var(--text); }

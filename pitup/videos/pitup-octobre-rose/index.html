@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="assets/gsap.min.js"></script>
+    <style>
+      @font-face { font-family: "Poppins"; font-weight: 500; src: url(assets/fonts/poppins-500.woff2) format("woff2"); }
+      @font-face { font-family: "Poppins"; font-weight: 600; src: url(assets/fonts/poppins-600.woff2) format("woff2"); }
+      @font-face { font-family: "Poppins"; font-weight: 700; src: url(assets/fonts/poppins-700.woff2) format("woff2"); }
+      @font-face { font-family: "Poppins"; font-weight: 800; src: url(assets/fonts/poppins-800.woff2) format("woff2"); }
+      /* Octobre Rose palette: blush ground, ribbon pink, deep raspberry for emphasis */
+      :root { --blush: #fdebf2; --petal: #f9c9da; --rose: #e8558a; --berry: #b8235a; --plum: #4a1730; }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1080px; height: 1920px; overflow: hidden; background: var(--blush); }
+      #root { position: relative; width: 100%; height: 100%; overflow: hidden; font-family: "Poppins", sans-serif; color: var(--plum); }
+      .layer { position: absolute; inset: 0; }
+      .scene { position: absolute; inset: 0; opacity: 0; }
+      .t { position: absolute; left: 90px; right: 90px; display: block; font-weight: 800; line-height: 1.05; letter-spacing: -2px; white-space: nowrap; }
+      .t.c { text-align: center; }
+      .rose { color: var(--rose); }
+      .berry { color: var(--berry); }
+      .small { font-weight: 600; letter-spacing: 0; }
+
+      #bgRib { position: absolute; left: 140px; top: 260px; width: 800px; height: 1060px; opacity: 0.09; }
+      #rib { position: absolute; left: 240px; top: 300px; width: 600px; height: 800px; }
+
+      /* self-exam motif: a soft circle with a dot tracing slow rings */
+      #exam { position: absolute; left: 290px; top: 1060px; width: 500px; height: 500px; }
+      #examDisk { position: absolute; inset: 0; border-radius: 50%; background: radial-gradient(circle at 40% 35%, #fff 0%, var(--petal) 70%, #f3a9c4 100%); }
+      #examRing1, #examRing2, #examRing3 { position: absolute; border-radius: 50%; border: 4px dashed rgba(184, 35, 90, 0.35); }
+      #examRing1 { inset: 60px; } #examRing2 { inset: 130px; } #examRing3 { inset: 200px; }
+      #examOrbit { position: absolute; inset: 0; }
+      #examDot { position: absolute; left: 228px; top: 36px; width: 44px; height: 44px; border-radius: 50%; background: var(--berry); box-shadow: 0 0 0 12px rgba(184, 35, 90, 0.18); }
+
+      /* signs list on the raspberry scene */
+      #sc4 { background: var(--rose); color: #fff; }
+      .sign { position: absolute; left: 90px; right: 70px; height: 210px; display: flex; align-items: center; gap: 40px; }
+      .sign .ic { flex: 0 0 150px; height: 150px; border-radius: 50%; background: rgba(255, 255, 255, 0.18); display: flex; align-items: center; justify-content: center; }
+      .sign .ic svg { width: 96px; height: 96px; display: block; }
+      .sign span { display: block; font-weight: 700; font-size: 54px; line-height: 1.12; letter-spacing: -1px; }
+
+      #sc5 { background: var(--berry); color: #fff; }
+
+      #end { position: absolute; inset: 0; opacity: 0; background: var(--rose); color: #fff; }
+      #endRib { position: absolute; left: 420px; top: 250px; width: 240px; height: 320px; }
+      #icon { position: absolute; left: 455px; top: 640px; width: 170px; display: block; }
+      #word { position: absolute; left: 340px; top: 860px; width: 400px; display: block; }
+      #support { position: absolute; left: 0; right: 0; top: 1080px; display: block; text-align: center; font-weight: 800; font-size: 60px; letter-spacing: -1px; line-height: 1.1; }
+      #ctaWrap { position: absolute; left: 0; right: 0; top: 1330px; display: flex; justify-content: center; }
+      #cta { display: block; padding: 28px 66px; border-radius: 999px; background: #fff; color: var(--berry); font-weight: 800; font-size: 56px; white-space: nowrap; }
+      #stores { position: absolute; left: 0; right: 0; top: 1520px; display: flex; justify-content: center; gap: 24px; }
+      .bdg { display: flex; align-items: center; gap: 14px; height: 96px; padding: 0 28px 0 20px; border-radius: 18px; background: #000; border: 2px solid #a6a6a6; color: #fff; }
+      .bdg svg { width: 52px; height: 52px; display: block; }
+      .bdg span { display: flex; flex-direction: column; line-height: 1; }
+      .bdg small { font-weight: 500; font-size: 20px; letter-spacing: 0.5px; }
+      .bdg b { font-weight: 600; font-size: 38px; letter-spacing: -0.5px; margin-top: 4px; white-space: nowrap; }
+
+      #grain { position: absolute; inset: -64px; background-image: url(assets/grain.png); background-size: 512px 512px; mix-blend-mode: overlay; opacity: 0.07; pointer-events: none; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="44.377" data-width="1080" data-height="1920">
+      <audio id="bgm" src="assets/bgm.wav" data-start="0" data-duration="44.377" data-track-index="11"></audio>
+
+      <div id="scene" class="clip layer" data-start="0" data-duration="44.377" data-track-index="0">
+        <svg id="bgRib" viewBox="150 100 500 700"><path d="M 250 760 C 330 620, 470 470, 470 330 C 470 200, 430 140, 400 140 C 370 140, 330 200, 330 330 C 330 470, 470 620, 550 760" fill="none" stroke="#e8558a" stroke-width="70" /></svg>
+
+        <div class="scene" id="sc1">
+          <svg id="rib" viewBox="150 100 500 700">
+            <path id="ribA" d="M 250 760 C 330 620, 470 470, 470 330 C 470 200, 430 140, 400 140 C 370 140, 330 200, 330 330 C 330 470, 470 620, 550 760" fill="none" stroke="#e8558a" stroke-width="78" stroke-linejoin="round" />
+            <path id="ribB" d="M 250 760 C 330 620, 470 470, 470 330 C 470 200, 430 140, 400 140 C 370 140, 330 200, 330 330 C 330 470, 470 620, 550 760" fill="none" stroke="#f7a3c2" stroke-width="22" stroke-linejoin="round" opacity="0.7" />
+          </svg>
+          <div class="t c" id="s1a" style="top: 1180px; font-size: 128px">Octobre <span class="rose">Rose</span></div>
+          <div class="t c small" id="s1b" style="top: 1350px; font-size: 46px">Mois de sensibilisation<br />au cancer du sein</div>
+        </div>
+
+        <div class="scene" id="sc2">
+          <div class="t" id="s2a" style="top: 640px; font-size: 104px">Détecté tôt,</div>
+          <div class="t" id="s2b" style="top: 770px; font-size: 104px">le cancer du sein</div>
+          <div class="t rose" id="s2c" style="top: 900px; font-size: 118px">se soigne mieux.</div>
+        </div>
+
+        <div class="scene" id="sc3">
+          <div class="t" id="s3a" style="top: 400px; font-size: 84px">Un geste simple :</div>
+          <div class="t rose" id="s3b" style="top: 510px; font-size: 112px">l'autopalpation,</div>
+          <div class="t berry" id="s3c" style="top: 650px; font-size: 96px">chaque mois.</div>
+          <div class="t small" id="s3d" style="top: 800px; font-size: 40px; color: #7a3a55">Quelques jours après les règles.</div>
+          <div id="exam"><div id="examDisk"></div><div id="examRing1"></div><div id="examRing2"></div><div id="examRing3"></div><div id="examOrbit"><div id="examDot"></div></div></div>
+        </div>
+
+        <div class="scene" id="sc4">
+          <div class="t" id="s4h" style="top: 300px; font-size: 76px; letter-spacing: -1px">Consulte si tu remarques :</div>
+          <div class="sign" id="g1" style="top: 560px"><div class="ic"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="36" fill="none" stroke="#fff" stroke-width="6"/><circle cx="62" cy="42" r="11" fill="#fff"/></svg></div><span>Une boule dans le sein<br />ou sous l'aisselle</span></div>
+          <div class="sign" id="g2" style="top: 820px"><div class="ic"><svg viewBox="0 0 100 100"><circle cx="38" cy="52" r="26" fill="none" stroke="#fff" stroke-width="6"/><ellipse cx="64" cy="48" rx="22" ry="30" fill="none" stroke="#fff" stroke-width="6" stroke-dasharray="7 7"/></svg></div><span>Un changement de forme<br />ou de taille</span></div>
+          <div class="sign" id="g3" style="top: 1080px"><div class="ic"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="36" fill="none" stroke="#fff" stroke-width="6"/><g fill="#fff"><circle cx="38" cy="40" r="4"/><circle cx="56" cy="36" r="4"/><circle cx="66" cy="54" r="4"/><circle cx="46" cy="60" r="4"/><circle cx="34" cy="56" r="3"/><circle cx="58" cy="68" r="3"/></g></svg></div><span>Une peau qui rougit,<br />se creuse ou épaissit</span></div>
+          <div class="sign" id="g4" style="top: 1340px"><div class="ic"><svg viewBox="0 0 100 100"><path d="M50 14 C 50 14, 26 46, 26 62 a24 24 0 0 0 48 0 C 74 46, 50 14, 50 14 Z" fill="#fff"/></svg></div><span>Un écoulement ou un<br />mamelon qui se rétracte</span></div>
+        </div>
+
+        <div class="scene" id="sc5">
+          <div class="t c" id="s5a" style="top: 720px; font-size: 96px">Au moindre doute,</div>
+          <div class="t c" id="s5b" style="top: 850px; font-size: 112px">consulte un médecin.</div>
+          <div class="t c small" id="s5c" style="top: 1060px; font-size: 44px; color: #ffd3e3">Ce n'est pas forcément grave.<br />Mais il faut vérifier.</div>
+        </div>
+
+        <div class="scene" id="sc6">
+          <div class="t" id="s6a" style="top: 640px; font-size: 100px">Parle du <span class="rose">dépistage</span></div>
+          <div class="t berry" id="s6b" style="top: 770px; font-size: 84px">(mammographie)</div>
+          <div class="t" id="s6c" style="top: 880px; font-size: 100px">avec ton médecin.</div>
+        </div>
+
+        <div class="scene" id="sc7">
+          <div class="t" id="s7a" style="top: 600px; font-size: 104px">Partage ce message</div>
+          <div class="t rose" id="s7b" style="top: 740px; font-size: 88px">à ta mère, ta sœur,<br />tes amies.</div>
+          <div class="t small" id="s7c" style="top: 1010px; font-size: 44px; color: #7a3a55">Les hommes aussi peuvent être touchés.</div>
+        </div>
+
+        <div id="end">
+          <svg id="endRib" viewBox="150 100 500 700"><path d="M 250 760 C 330 620, 470 470, 470 330 C 470 200, 430 140, 400 140 C 370 140, 330 200, 330 330 C 330 470, 470 620, 550 760" fill="none" stroke="#ffffff" stroke-width="78" /></svg>
+          <img id="icon" src="assets/icon_white.png" alt="" />
+          <img id="word" src="assets/logo_word_white.png" alt="" />
+          <div id="support">PitUp soutient<br />Octobre Rose</div>
+          <div id="ctaWrap"><div id="cta">pi-tup.com</div></div>
+          <div id="stores">
+              <div class="bdg"><svg viewBox="0 0 24 24"><path fill="#fff" d="M16.4 1.4c0 1.1-.5 2.3-1.2 3.1-.7.9-2 1.6-3 1.6-.1 0-.2 0-.3-.1 0-.1 0-.2 0-.4 0-1.1.6-2.3 1.2-3 .8-.9 2.1-1.6 3.2-1.7.1.2.1.3.1.5zm4.6 15.7c0 .1-.5 1.6-1.5 3.1-.9 1.3-1.9 2.7-3.4 2.7s-1.9-.9-3.6-.9c-1.7 0-2.3.9-3.7.9-1.4 0-2.3-1.3-3.4-2.8C4.1 18.3 3 15.5 3 12.8c0-4.3 2.8-6.5 5.6-6.5 1.4 0 2.7.9 3.6.9.9 0 2.2-1 3.9-1 .6 0 2.9.1 4.4 2.2-.1.1-2.4 1.4-2.4 4.2 0 3.3 2.9 4.4 2.9 4.5z"/></svg><span><small>Disponible sur</small><b>App Store</b></span></div>
+              <div class="bdg"><svg viewBox="0 0 24 24"><path fill="#00d7fe" d="M3.6 1.8 13.6 12 3.6 22.2c-.4-.2-.6-.6-.6-1.1V2.9c0-.5.2-.9.6-1.1z"/><path fill="#00f076" d="M3.6 1.8 16.9 9.4 13.6 12z"/><path fill="#f8384b" d="M3.6 22.2 13.6 12l3.3 2.6z"/><path fill="#fdbd00" d="M16.9 9.4 21 11.7c.5.3.5.9 0 1.2l-4.1 1.7-3.3-2.6z"/></svg><span><small>Disponible sur</small><b>Google Play</b></span></div>
+        </div>
+        <div id="grain"></div>
+      </div>
+    </div>
+
+    <script>
+      // all cues are seconds, laid out from the voice-over word timings (Vivienne); the music drop lands on scene 4
+      const S = {"1": 0.0, "2": 4.849, "3": 8.258, "4": 13.333, "5": 23.175, "6": 28.705, "7": 32.724, "8": 38.267};
+      const Q = {"s1a": 0.969, "s1b": 2.338, "s2a": 5.116, "s2b": 6.176, "s2c": 6.902, "s3a": 8.538, "s3b": 9.716, "s3c": 10.728, "s3d": 11.466, "s4h": 13.652, "g1": 15.045, "g2": 16.628, "g3": 18.271, "g4": 20.521, "s5a": 23.445, "s5b": 24.493, "s5c": 25.706, "s6a": 28.975, "s6b": 30.356, "s6c": 31.309, "s7a": 33.004, "s7b": 33.956, "s7c": 36.316, "sup": 39.147};
+      const tl = gsap.timeline({ paused: true });
+      // shrink any headline line that would overflow its column, so nothing wraps onto the next line
+      document.querySelectorAll(".t").forEach((el) => {
+        let fs = parseFloat(getComputedStyle(el).fontSize);
+        while (el.scrollWidth > el.clientWidth + 1 && fs > 30) { fs -= 2; el.style.fontSize = fs + "px"; }
+      });
+      const rise = (sel, at, d = 0.5) => tl.fromTo(sel, { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: d, ease: "power3.out" }, at);
+      const show = (sc, a, b) => { tl.set(sc, { opacity: 1 }, a); tl.to(sc, { opacity: 0, duration: 0.3, ease: "power2.in" }, b - 0.3); };
+
+      tl.fromTo("#bgRib", { scale: 1, rotation: -4 }, { scale: 1.08, rotation: 3, duration: 44.377, ease: "none" }, 0);
+
+      // 1 — ribbon draws itself, title
+      const len = document.getElementById("ribA").getTotalLength();
+      ["#ribA", "#ribB"].forEach((id) => gsap.set(id, { attr: { "stroke-dasharray": len, "stroke-dashoffset": len } }));
+      show("#sc1", 0, S[2]);
+      tl.to("#ribA", { attr: { "stroke-dashoffset": 0 }, duration: 2.2, ease: "power2.inOut" }, 0.1);
+      tl.to("#ribB", { attr: { "stroke-dashoffset": 0 }, duration: 2.2, ease: "power2.inOut" }, 0.3);
+      tl.fromTo("#rib", { scale: 0.92 }, { scale: 1, duration: S[2], ease: "none" }, 0);
+      rise("#s1a", Q.s1a); rise("#s1b", Q.s1b);
+
+      // 2 — early detection
+      show("#sc2", S[2], S[3]);
+      rise("#s2a", Q.s2a); rise("#s2b", Q.s2b); rise("#s2c", Q.s2c);
+
+      // 3 — self-exam
+      show("#sc3", S[3], S[4]);
+      rise("#s3a", Q.s3a); rise("#s3b", Q.s3b); rise("#s3c", Q.s3c); rise("#s3d", Q.s3d);
+      tl.fromTo("#exam", { scale: 0.6, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.6, ease: "back.out(1.5)" }, Q.s3b);
+      tl.fromTo("#examOrbit", { rotation: 0 }, { rotation: 720, duration: S[4] - Q.s3b, ease: "none" }, Q.s3b);
+      tl.fromTo("#examDot", { y: 0 }, { y: 140, duration: S[4] - Q.s3b, ease: "none" }, Q.s3b);
+
+      // 4 — signs, on the music drop
+      show("#sc4", S[4], S[5]);
+      rise("#s4h", Q.s4h, 0.4);
+      [["#g1", Q.g1], ["#g2", Q.g2], ["#g3", Q.g3], ["#g4", Q.g4]].forEach(([g, t]) => {
+        tl.fromTo(g, { opacity: 0, x: -60 }, { opacity: 1, x: 0, duration: 0.45, ease: "power3.out" }, t);
+        tl.fromTo(g + " .ic", { scale: 0.4 }, { scale: 1, duration: 0.5, ease: "back.out(2)" }, t);
+      });
+
+      // 5 — see a doctor
+      show("#sc5", S[5], S[6]);
+      rise("#s5a", Q.s5a); rise("#s5b", Q.s5b); rise("#s5c", Q.s5c);
+
+      // 6 — screening
+      show("#sc6", S[6], S[7]);
+      rise("#s6a", Q.s6a); rise("#s6b", Q.s6b); rise("#s6c", Q.s6c);
+
+      // 7 — share
+      show("#sc7", S[7], S[8]);
+      rise("#s7a", Q.s7a); rise("#s7b", Q.s7b); rise("#s7c", Q.s7c);
+
+      // 8 — end card
+      tl.set("#end", { opacity: 1 }, S[8]);
+      tl.fromTo("#end", { clipPath: "circle(0% at 50% 50%)" }, { clipPath: "circle(80% at 50% 50%)", duration: 0.7, ease: "power3.inOut" }, S[8]);
+      const elen = document.querySelector("#endRib path").getTotalLength();
+      gsap.set("#endRib path", { attr: { "stroke-dasharray": elen, "stroke-dashoffset": elen } });
+      tl.to("#endRib path", { attr: { "stroke-dashoffset": 0 }, duration: 1.2, ease: "power2.inOut" }, S[8] + 0.2);
+      tl.fromTo("#icon", { scale: 0.8, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.4, ease: "back.out(1.8)" }, S[8] + 0.5);
+      tl.fromTo("#word", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.4, ease: "power3.out" }, S[8] + 0.7);
+      rise("#support", Q.sup, 0.45);
+      tl.fromTo("#cta", { scale: 0.7, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.42, ease: "back.out(2)" }, Q.sup + 1.6);
+      tl.fromTo("#stores .bdg", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.35, stagger: 0.12, ease: "back.out(1.6)" }, Q.sup + 2.0);
+
+      for (let f = 0; f < 44.377 * 12; f++) {
+        const ox = ((f * 137) % 512) - 256, oy = ((f * 251) % 512) - 256;
+        tl.set("#grain", { x: ox / 8, y: oy / 8 }, f / 12);
+      }
+      tl.set({}, {}, 44.377);
+
+      window.__timelines["main"] = tl;
+      tl.seek(0);
+    </script>
+  </body>
+</html>

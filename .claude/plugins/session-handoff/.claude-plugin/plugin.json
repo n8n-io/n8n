@@ -1,0 +1,8 @@
+{
+  "name": "session-handoff",
+  "description": "End-of-session handoffs saved to project memory, plus a local chapter index for looking up earlier work.",
+  "author": { "name": "David Kay", "url": "https://github.com/David-E-Kay" },
+  "repository": "https://github.com/David-E-Kay/claude-session-handoff",
+  "license": "MIT",
+  "keywords": ["handoff", "memory", "resume", "context"]
+}
