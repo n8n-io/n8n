@@ -63,12 +63,6 @@ export const engineRefusals: EngineRefusal[] = [
 		check: { code: 'RETRY_ON_FAIL' },
 	},
 	{
-		name: 'a node has Always Output Data on',
-		workflow: fromTrigger('Node', [{ ...noOp('Node'), alwaysOutputData: true }]),
-		engineError: 'Always Output Data',
-		check: { code: 'ALWAYS_OUTPUT_DATA' },
-	},
-	{
 		name: 'a node has Execute Once on',
 		workflow: fromTrigger('Node', [{ ...noOp('Node'), executeOnce: true }]),
 		engineError: 'Execute Once',
@@ -109,6 +103,12 @@ export const engineRefusals: EngineRefusal[] = [
 		workflow: batchNode({ batchSize: '={{ 1 }}' }),
 		engineError: /sets its batch size from an expression\. .*Use a fixed batch size\./,
 		check: { code: 'SPLIT_IN_BATCHES_BATCH_SIZE' },
+	},
+	{
+		name: 'a Split In Batches node has Always Output Data on',
+		workflow: fromTrigger('Loop', [{ ...splitInBatches('Loop'), alwaysOutputData: true }]),
+		engineError: 'Split In Batches node with Always Output Data',
+		check: { code: 'SPLIT_IN_BATCHES_NODE_SETTING' },
 	},
 	{
 		name: 'a Split In Batches node has a batch size below 1',

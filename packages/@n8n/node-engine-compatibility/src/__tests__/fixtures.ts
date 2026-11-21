@@ -122,6 +122,24 @@ class NewStyleEcho extends Node {
 	}
 }
 
+class ReturnsNothing implements INodeType {
+	description = {
+		displayName: 'Returns Nothing',
+		name: 'returnsNothing',
+		group: ['transform'],
+		version: 1,
+		description: 'Emits no items whatever it receives',
+		defaults: { name: 'Returns Nothing' },
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
+		properties: [],
+	} as unknown as INodeType['description'];
+
+	async execute(): Promise<INodeExecutionData[][]> {
+		return await Promise.resolve([[]]);
+	}
+}
+
 class TwoOutputs implements INodeType {
 	description = {
 		displayName: 'Two Outputs',
@@ -457,6 +475,7 @@ const registry = new Map<string, INodeType>([
 	['test.noExecute', new NoExecute()],
 	['test.newStyleEcho', new NewStyleEcho() as unknown as INodeType],
 	['test.twoOutputs', new TwoOutputs()],
+	['test.returnsNothing', new ReturnsNothing()],
 	['test.succeedsWithFailingCleanup', new SucceedsWithFailingCleanup()],
 	['test.failsWithFailingCleanup', new FailsWithFailingCleanup()],
 	['test.returnsEngineRequest', new ReturnsEngineRequest() as unknown as INodeType],
