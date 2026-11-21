@@ -193,6 +193,7 @@ describe('Start - AuthRolesService initialization', () => {
 			multiMainSetup: { enabled: false },
 			endpoints: { disableUi: true, metrics: { enable: false }, health: '/health' },
 			database: { type: 'sqlite' },
+			security: { disablePrototypeHardening: false },
 			sentry: {
 				backendDsn: '',
 				environment: 'test',
@@ -291,6 +292,7 @@ describe('Start - AuthRolesService initialization', () => {
 				license: { autoRenewalEnabled: true },
 				endpoints: { disableUi: true, metrics: { enable: false }, health: '/health' },
 				database: { type: 'sqlite' },
+				security: { disablePrototypeHardening: false },
 				sentry: {
 					backendDsn: '',
 					environment: 'test',
@@ -331,6 +333,7 @@ describe('Start - AuthRolesService initialization', () => {
 				license: { autoRenewalEnabled: true },
 				endpoints: { disableUi: true, metrics: { enable: false }, health: '/health' },
 				database: { type: 'sqlite' },
+				security: { disablePrototypeHardening: false },
 				sentry: {
 					backendDsn: '',
 					environment: 'test',
@@ -383,6 +386,7 @@ describe('Start - AuthRolesService initialization', () => {
 			license: { autoRenewalEnabled: true },
 			endpoints: { disableUi: true, metrics: { enable: false }, health: '/health' },
 			database: { type: 'sqlite' },
+			security: { disablePrototypeHardening: false },
 			sentry: {
 				backendDsn: '',
 				environment: 'test',

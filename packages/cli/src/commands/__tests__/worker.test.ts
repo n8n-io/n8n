@@ -107,6 +107,7 @@ describe('Worker', () => {
 			multiMainSetup: { enabled: false },
 			endpoints: { metrics: { enable: false }, health: '/health' },
 			database: { type: 'sqlite' },
+			security: { disablePrototypeHardening: false },
 			sentry: { backendDsn: '' },
 			cache: { backend: 'memory' },
 			taskRunners: {},

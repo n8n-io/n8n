@@ -49,6 +49,9 @@ if (process.env.E2E_TESTS !== 'true') {
 // `GlobalConfig.database.type` to decide on column types and timestamp syntax.
 require('../dist/config');
 
+// Needs the loaded config for its opt-out, and must run before any command code.
+require('../dist/prototype-hardening').applyPrototypeHardening();
+
 if (process.env.NODEJS_PREFER_IPV4 === 'true') {
 	require('dns').setDefaultResultOrder('ipv4first');
 }
