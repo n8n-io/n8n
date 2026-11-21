@@ -1411,12 +1411,13 @@ export class OauthService {
 			? withOfflineAccess(discoveredResourceScopes, scopes_supported)
 			: scopes_supported;
 		// A credential type's own scope is what its nodes need. `scopes_supported` can be far broader.
+		// Otherwise a nonblank configured scope is used as given; a blank one falls back to discovery.
 		const scope =
-			declaredScope ?? (effectiveScopes?.length ? effectiveScopes.join(' ') : undefined);
-		if (scope) {
-			oauthCredentials.scope = scope;
-			toUpdate.scope = scope;
-		}
+			declaredScope ??
+			(oauthCredentials.scope?.trim() ||
+				(effectiveScopes?.length ? effectiveScopes.join(' ') : undefined));
+		oauthCredentials.scope = scope ?? '';
+		toUpdate.scope = scope ?? '';
 
 		const clientMetadataUrl = this.selectClientMetadataUrl(metadata, oauthCredentials);
 		registration.serverSupportsCimd = metadata.client_id_metadata_document_supported === true;
