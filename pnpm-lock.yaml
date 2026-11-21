@@ -5160,6 +5160,9 @@ importers:
       '@n8n/backend-module-data-table':
         specifier: workspace:*
         version: link:../modules/data-table/backend
+      '@n8n/backend-module-durable-leases':
+        specifier: workspace:*
+        version: link:../modules/durable-leases/backend
       '@n8n/backend-module-execution-ledger':
         specifier: workspace:*
         version: link:../modules/execution-ledger/backend
@@ -7875,6 +7878,28 @@ importers:
       vitest-mock-extended:
         specifier: 'catalog:'
         version: 3.1.0(typescript@7.0.2)(vitest@5.0.1)
+
+  packages/modules/durable-leases/backend:
+    dependencies:
+      '@n8n/decorators':
+        specifier: workspace:*
+        version: link:../../../@n8n/decorators
+    devDependencies:
+      '@n8n/oxlint-config':
+        specifier: workspace:*
+        version: link:../../../@n8n/oxlint-config
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../../../@n8n/typescript-config
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 7.0.2007
+      typescript:
+        specifier: catalog:typescript
+        version: 7.0.2
 
   packages/modules/execution-ledger/backend:
     dependencies:
