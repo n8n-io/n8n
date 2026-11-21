@@ -16,7 +16,7 @@ import type { LifecycleEventPublisherFactory } from '../lifecycle-events';
 import { createResponseEmitter, type ExecutionResponseSender } from '../response-channel';
 import { runBatchStep, type BatchStepResult } from './batch-step';
 import type { OrchestrationMessage, StepReadyEvent, WorkQueue } from '../queue';
-import type { ExecutionRecord, ExecutionStore } from './execution-store';
+import { isMissingExecution, type ExecutionRecord, type ExecutionStore } from './execution-store';
 import {
 	stepKeyId,
 	isLiveExecutionStatus,
@@ -92,7 +92,17 @@ export class StepReadyHandler {
 
 		// Read after the claim, so an execution that ended in between is seen
 		// here and the step is not run.
-		const execution = await this.executionStore.loadExecution(event.executionId);
+		let execution: ExecutionRecord;
+		try {
+			execution = await this.executionStore.loadExecution(event.executionId);
+		} catch (error) {
+			// The deletion of the execution also deleted the step row, so nothing is left to cancel.
+			// A step of another execution means a wrong message, which must still fail.
+			if (isMissingExecution(error, event.executionId) && step.executionId === event.executionId) {
+				return;
+			}
+			throw error;
+		}
 		const node = validateStepContext(step, execution);
 
 		if (!isLiveExecutionStatus(execution.status)) {

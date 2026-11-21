@@ -9,7 +9,11 @@ import {
 } from '../../lifecycle-events';
 import { noopExecutionResponseSender, type ExecutionResponseSender } from '../../response-channel';
 import type { OrchestrationMessage, WorkQueue } from '../../queue';
-import type { ExecutionRecord, ExecutionStore } from '../execution-store';
+import {
+	ExecutionNotFoundError,
+	type ExecutionRecord,
+	type ExecutionStore,
+} from '../execution-store';
 import {
 	stepKeyId,
 	type StepSlots,
@@ -591,6 +595,49 @@ describe('StepReadyHandler', () => {
 		expect(stepStore.completeStep).not.toHaveBeenCalled();
 		expect(stepStore.failStep).not.toHaveBeenCalled();
 		expect(queue.publish).not.toHaveBeenCalled();
+	});
+
+	it('does nothing and does not reject when the execution has no row after the claim', async () => {
+		const stepStore = makeStepStore();
+		const queue = makeQueue();
+		const executor = makeExecutor();
+		const executionStore = makeExecutionStore();
+		vi.mocked(executionStore.loadExecution).mockRejectedValue(new ExecutionNotFoundError('exec-1'));
+		const lifecycleEventPublisher = makeLifecycleEventPublisher();
+		const handler = makeHandler(
+			executionStore,
+			stepStore,
+			queue,
+			{ v1StepExecutor: executor },
+			lifecycleEventPublisher,
+		);
+
+		await expect(handler.handle(event)).resolves.toBeUndefined();
+
+		expect(executor.execute).not.toHaveBeenCalled();
+		expect(stepStore.cancelStep).not.toHaveBeenCalled();
+		expect(stepStore.completeStep).not.toHaveBeenCalled();
+		expect(queue.publish).not.toHaveBeenCalled();
+		expect(lifecycleEventPublisher.publish).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		{ reason: 'the missing execution is another one', step: {}, missingExecutionId: 'exec-2' },
+		{
+			reason: 'the claimed step belongs to another execution',
+			step: { executionId: 'exec-other' },
+			missingExecutionId: 'exec-1',
+		},
+	])('rejects when $reason', async ({ step, missingExecutionId }) => {
+		const executionStore = makeExecutionStore();
+		vi.mocked(executionStore.loadExecution).mockRejectedValue(
+			new ExecutionNotFoundError(missingExecutionId),
+		);
+		const handler = makeHandler(executionStore, makeStepStore(step), makeQueue(), {
+			v1StepExecutor: makeExecutor(),
+		});
+
+		await expect(handler.handle(event)).rejects.toBeInstanceOf(ExecutionNotFoundError);
 	});
 
 	it('settles a claimed step as cancelled when its execution has ended, announcing nothing', async () => {
