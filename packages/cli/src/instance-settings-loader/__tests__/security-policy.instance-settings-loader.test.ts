@@ -8,6 +8,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { MfaService } from '@/mfa/mfa.service';
 import type { SecuritySettingsService } from '@/services/security-settings.service';
+import type { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 
 import { SecurityPolicyInstanceSettingsLoader } from '../loaders/security-policy.instance-settings-loader';
 
@@ -15,6 +16,7 @@ describe('SecurityPolicyInstanceSettingsLoader', () => {
 	const logger = mock<Logger>({ scoped: vi.fn().mockReturnThis() });
 	const mfaService = mock<MfaService>();
 	const securitySettingsService = mock<SecuritySettingsService>();
+	const workflowReviewPolicyService = mock<WorkflowReviewPolicyService>();
 
 	const createLoader = (configOverrides: Partial<InstanceSettingsLoaderConfig> = {}) => {
 		const config = {
@@ -22,6 +24,8 @@ describe('SecurityPolicyInstanceSettingsLoader', () => {
 			mfaEnforcedEnabled: false,
 			personalSpacePublishingEnabled: true,
 			personalSpaceSharingEnabled: true,
+			workflowReviewsEnabled: false,
+			workflowReviewsAlwaysRequired: false,
 			...configOverrides,
 		} as InstanceSettingsLoaderConfig;
 
@@ -29,6 +33,7 @@ describe('SecurityPolicyInstanceSettingsLoader', () => {
 			config,
 			securitySettingsService,
 			mfaService,
+			workflowReviewPolicyService,
 			logger,
 		);
 	};
@@ -47,6 +52,7 @@ describe('SecurityPolicyInstanceSettingsLoader', () => {
 			expect(result).toBe('skipped');
 			expect(mfaService.enforceMFA).not.toHaveBeenCalled();
 			expect(securitySettingsService.setPersonalSpaceSetting).not.toHaveBeenCalled();
+			expect(workflowReviewPolicyService.update).not.toHaveBeenCalled();
 			expect(logger.debug).toHaveBeenCalledWith(
 				expect.stringContaining('not managed by environment variables'),
 			);
@@ -166,6 +172,33 @@ describe('SecurityPolicyInstanceSettingsLoader', () => {
 				PERSONAL_SPACE_SHARING_SETTING,
 				false,
 			);
+		});
+
+		it('should require approval for every workflow version when both workflow review vars are true', async () => {
+			const loader = createLoader({
+				securityPolicyManagedByEnv: true,
+				workflowReviewsEnabled: true,
+				workflowReviewsAlwaysRequired: true,
+			});
+
+			const result = await loader.run();
+
+			expect(result).toBe('created');
+			expect(workflowReviewPolicyService.update).toHaveBeenCalledWith({
+				enabled: true,
+				alwaysRequired: true,
+			});
+		});
+
+		it('should turn off workflow reviews when the workflow review vars are unset', async () => {
+			const loader = createLoader({ securityPolicyManagedByEnv: true });
+
+			await loader.run();
+
+			expect(workflowReviewPolicyService.update).toHaveBeenCalledWith({
+				enabled: false,
+				alwaysRequired: false,
+			});
 		});
 
 		it('should log info message about override being enabled', async () => {

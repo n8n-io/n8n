@@ -8,6 +8,7 @@ import {
 
 import { MfaService } from '@/mfa/mfa.service';
 import { SecuritySettingsService } from '@/services/security-settings.service';
+import { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 
 @Service()
 export class SecurityPolicyInstanceSettingsLoader {
@@ -15,6 +16,7 @@ export class SecurityPolicyInstanceSettingsLoader {
 		private readonly instanceSettingsLoaderConfig: InstanceSettingsLoaderConfig,
 		private readonly securitySettingsService: SecuritySettingsService,
 		private readonly mfaService: MfaService,
+		private readonly workflowReviewPolicyService: WorkflowReviewPolicyService,
 		private logger: Logger,
 	) {
 		this.logger = this.logger.scoped('instance-settings-loader');
@@ -26,6 +28,8 @@ export class SecurityPolicyInstanceSettingsLoader {
 			mfaEnforcedEnabled,
 			personalSpacePublishingEnabled,
 			personalSpaceSharingEnabled,
+			workflowReviewsEnabled,
+			workflowReviewsAlwaysRequired,
 		} = this.instanceSettingsLoaderConfig;
 
 		if (!securityPolicyManagedByEnv) {
@@ -48,6 +52,11 @@ export class SecurityPolicyInstanceSettingsLoader {
 			PERSONAL_SPACE_SHARING_SETTING,
 			personalSpaceSharingEnabled,
 		);
+
+		await this.workflowReviewPolicyService.update({
+			enabled: workflowReviewsEnabled,
+			alwaysRequired: workflowReviewsAlwaysRequired,
+		});
 
 		return 'created';
 	}

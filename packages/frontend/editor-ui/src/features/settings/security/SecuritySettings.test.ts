@@ -1135,11 +1135,11 @@ describe('SecuritySettings', () => {
 			);
 		});
 
-		it('should disable workflow reviews toggle when managed by env', async () => {
+		it('should disable workflow reviews controls when managed by env', async () => {
 			getSecuritySettings.mockResolvedValue({
 				...defaultSettings,
 				managedByEnv: true,
-				workflowReviews: { enabled: true },
+				workflowReviews: { enabled: true, alwaysRequired: true },
 			});
 
 			const { getByTestId } = renderView();
@@ -1149,6 +1149,9 @@ describe('SecuritySettings', () => {
 			});
 
 			expect(getByTestId('security-workflow-reviews-toggle')).toHaveAttribute('data-disabled');
+			expect(getByTestId('security-workflow-reviews-require-approval-select')).toHaveAttribute(
+				'data-disabled',
+			);
 		});
 
 		it('should show alert dialog and proceed when confirming disable workflow reviews', async () => {
