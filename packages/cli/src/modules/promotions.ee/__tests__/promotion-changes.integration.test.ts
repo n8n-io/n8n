@@ -199,16 +199,24 @@ function changedResources({ resources }: { resources: PromotionResource[] }) {
 	return resources.filter(({ change }) => change !== 'unchanged');
 }
 
-/** A member who administers the project, while "Who can promote" allows project admins. */
-async function createPromotingProjectAdmin(owner: User, project: Project) {
+/** A member with `role` in the project, while the given project access settings apply. */
+async function createProjectMemberWithAccess(
+	owner: User,
+	project: Project,
+	role: 'project:admin' | 'project:editor',
+	access: Parameters<PromotionSettingsService['update']>[1],
+) {
 	const settings = Container.get(PromotionSettingsService);
 	onTestFinished(async () => {
-		await settings.update(owner, { whoCanPromote: 'instanceAdmins' });
+		await settings.update(owner, {
+			whoCanPromote: 'instanceAdmins',
+			whoCanApply: 'instanceAdmins',
+		});
 	});
-	await settings.update(owner, { whoCanPromote: 'projectAdmins' });
-	const projectAdmin = await createMember();
-	await linkUserToProject(projectAdmin, project, 'project:admin');
-	return projectAdmin;
+	await settings.update(owner, access);
+	const member = await createMember();
+	await linkUserToProject(member, project, role);
+	return member;
 }
 
 function changedWorkflows(preview: { resources: PromotionResource[] }) {
@@ -941,16 +949,23 @@ describe('resources in the preview', () => {
 		]);
 	}, 30_000);
 
-	it('stops Apply when this instance changed after the preview, then applies what the preview shows', async () => {
+	it('lets a project editor apply into their project, stops Apply when this instance changed after the preview, then applies what the preview shows with the project details of the branch', async () => {
 		const owner = await createOwner();
 		const project = await createTeamProject('Billing', owner);
+		const projects = Container.get(ProjectRepository);
+		await projects.update(project.id, { description: 'Invoices and payments' });
 		const workflow = await createWorkflow({ name: 'Invoice', nodes: [], connections: {} }, project);
 		const environments = await createInstanceEnvironments(['apply']);
 		await exportPreviewBaseline(environments.apply, owner);
 		const workflowRepository = Container.get(WorkflowRepository);
 		await workflowRepository.update(workflow.id, { name: 'Invoice (local)' });
+		// Project editors do not hold project:update, which the project details need otherwise.
+		await projects.update(project.id, { name: 'Billing (local)', description: 'Local notes' });
+		const editor = await createProjectMemberWithAccess(owner, project, 'project:editor', {
+			whoCanApply: 'projectAdminsAndEditors',
+		});
 
-		const agent = server.publicApiAgentWithCookie(owner);
+		const agent = server.publicApiAgentWithCookie(editor);
 		const endpoint = `/promotions/projects/${project.id}/changes/apply`;
 		const loadPreview = async () => (await agent.get(endpoint).expect(200)).body;
 		const applyShown = async (preview: {
@@ -958,13 +973,27 @@ describe('resources in the preview', () => {
 			commitSha: string;
 			revision: string;
 		}) =>
-			await Container.get(PromotionsService).applyProjectSelection(project.id, owner, {
-				workflowIds: [workflow.id],
-				expectedSource: { ...preview.source, commitSha: preview.commitSha },
-				expectedPreviewRevision: preview.revision,
-			});
+			(
+				await agent
+					.post(`/promotions/projects/${project.id}/apply`)
+					.send({
+						workflowIds: [workflow.id],
+						expectedSource: { ...preview.source, commitSha: preview.commitSha },
+						expectedPreviewRevision: preview.revision,
+					})
+					.expect(200)
+			).body;
 
 		const stale = await loadPreview();
+		const { details } = (
+			await agent
+				.post(`${endpoint}/details`)
+				.send({ commitSha: stale.commitSha, keys: [`workflow:${workflow.id}`] })
+				.expect(200)
+		).body;
+		expect(details).toEqual([
+			expect.objectContaining({ after: expect.objectContaining({ name: 'Invoice' }) }),
+		]);
 		await workflowRepository.update(workflow.id, { name: 'Invoice (edited again)' });
 		expect(await applyShown(stale)).toMatchObject({ status: 'preview-changed' });
 		expect(await workflowRepository.findOneByOrFail({ id: workflow.id })).toMatchObject({
@@ -972,6 +1001,10 @@ describe('resources in the preview', () => {
 		});
 
 		expect(await applyShown(await loadPreview())).toMatchObject({ status: 'applied' });
+		expect(await projects.findOneByOrFail({ id: project.id })).toMatchObject({
+			name: 'Billing',
+			description: 'Invoices and payments',
+		});
 		expect(changedResources(await loadPreview())).toEqual([]);
 	}, 60_000);
 
@@ -988,7 +1021,9 @@ describe('resources in the preview', () => {
 		const workflowRepository = Container.get(WorkflowRepository);
 		await workflowRepository.update(invoice.id, { name: 'Invoice (local)' });
 		await workflowRepository.update(reminder.id, { name: 'Reminder (local)' });
-		const projectAdmin = await createPromotingProjectAdmin(owner, project);
+		const projectAdmin = await createProjectMemberWithAccess(owner, project, 'project:admin', {
+			whoCanPromote: 'projectAdmins',
+		});
 
 		const agent = server.publicApiAgentWithCookie(projectAdmin);
 		const loadPreview = async () =>
@@ -1332,12 +1367,16 @@ describe('resources in the preview', () => {
 		expect(body.missingKeys).toEqual([draftKey]);
 	}, 30_000);
 
-	it("leaves out a credential on the branch that the project admin can't read", async () => {
+	it("leaves out a credential on the branch that the project admin can't read, on Promote and Apply", async () => {
 		const owner = await createOwner();
 		const project = await createTeamProject('Billing', owner);
 		const payments = await createTeamProject('Payments', owner);
 		const credential = await saveCredential(
-			{ name: 'Payments API', type: 'httpHeaderAuth', data: {} },
+			{
+				name: 'Payments API',
+				type: 'httpHeaderAuth',
+				data: { name: 'Authorization', value: '={{ $json.token }}' },
+			},
 			{ project: payments, role: 'credential:owner' },
 		);
 		// The owner can use every credential, so the branch holds one that Billing can't read.
@@ -1346,32 +1385,67 @@ describe('resources in the preview', () => {
 			project,
 			credential,
 		});
-		const environments = await createInstanceEnvironments();
+		// Both environments read the same branch.
+		const environments = await createInstanceEnvironments(['promote', 'apply']);
 		await exportPreviewBaseline(environments.promote, owner);
-		const projectAdmin = await createPromotingProjectAdmin(owner, project);
+		const projectAdmin = await createProjectMemberWithAccess(owner, project, 'project:admin', {
+			whoCanPromote: 'projectAdmins',
+			whoCanApply: 'projectAdmins',
+		});
 		const agent = server.publicApiAgentWithCookie(projectAdmin);
-		const endpoint = `/promotions/projects/${project.id}/changes/promote`;
-		const { commitSha } = (await agent.get(endpoint).expect(200)).body;
 		const credentialKey = `credential:${credential.id}`;
 		const workflowKey = `workflow:${charge.id}`;
 
-		const loadDetails = async () =>
-			(
+		const loadDetails = async (direction: PromotionDirection) => {
+			const endpoint = `/promotions/projects/${project.id}/changes/${direction}`;
+			const { commitSha } = (await agent.get(endpoint).expect(200)).body;
+			return (
 				await agent
 					.post(`${endpoint}/details`)
 					.send({ commitSha, keys: [credentialKey, workflowKey] })
 					.expect(200)
 			).body;
+		};
 
 		const expected = {
 			missingKeys: [credentialKey],
 			details: [expect.objectContaining({ key: workflowKey })],
 		};
-		expect(await loadDetails()).toEqual(expected);
+		for (const direction of ['promote', 'apply'] as const) {
+			expect(await loadDetails(direction)).toEqual(expected);
+		}
+
 		// The branch still holds the credential after its deletion on this instance.
 		await Container.get(CredentialsRepository).delete(credential.id);
-		expect(await loadDetails()).toEqual(expected);
-	}, 30_000);
+		for (const direction of ['promote', 'apply'] as const) {
+			expect(await loadDetails(direction)).toEqual(expected);
+		}
+
+		// Apply now blocks on the missing credential. Its expressions fill the editor of the user who
+		// can create it in Payments. Billing's admin can't, so their blocker leaves them out.
+		await Container.get(WorkflowRepository).update(charge.id, { name: 'Charge customers (local)' });
+		const missingCredential = async (user: User, operation: 'preview' | 'apply') => {
+			const userAgent = server.publicApiAgentWithCookie(user);
+			const { body } =
+				operation === 'preview'
+					? await userAgent.get(`/promotions/projects/${project.id}/changes/apply`).expect(200)
+					: await userAgent
+							.post(`/promotions/projects/${project.id}/apply`)
+							.send({ workflowIds: [charge.id] })
+							.expect(200);
+			return body.check.missingBindings.find(
+				(binding: { sourceId?: string }) => binding.sourceId === credential.id,
+			);
+		};
+		expect(await missingCredential(owner, 'preview')).toMatchObject({
+			expressionData: { value: '={{ $json.token }}' },
+		});
+		for (const operation of ['preview', 'apply'] as const) {
+			const binding = await missingCredential(projectAdmin, operation);
+			expect(binding).toMatchObject({ kind: 'credential' });
+			expect(binding).not.toHaveProperty('expressionData');
+		}
+	}, 60_000);
 
 	it('returns both sides of a project whose id has a colon', async () => {
 		const owner = await createOwner();

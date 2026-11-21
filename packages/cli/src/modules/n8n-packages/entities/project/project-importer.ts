@@ -31,6 +31,7 @@ export class ProjectImporter {
 		user: User,
 		projects: PreparedProject[],
 		policy: ProjectConflictPolicy,
+		writeScope: 'project:update' | 'promotions:apply',
 	): Promise<ProjectImportPlan> {
 		const items: ProjectPlanItem[] = [];
 		const conflicts: ProjectConflict[] = [];
@@ -48,7 +49,7 @@ export class ProjectImporter {
 				}
 				// Required for `merge` too: the package's contents are still written into the project.
 				const authorized = await this.projectService.getProjectWithScope(user, existing.id, [
-					'project:update',
+					writeScope,
 				]);
 				if (!authorized) {
 					conflicts.push({ kind: 'update-forbidden', ...conflict });

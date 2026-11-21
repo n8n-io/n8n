@@ -34,12 +34,13 @@ const projectScopes = (projectId: string) => {
 };
 
 // Users who cannot promote or apply see no promotions UI, so a direct link leads home.
-// Apply from a project role ships with LIGO-1476. Until then only the instance role counts.
+// The whole-instance Apply has no project, so only the instance role counts there.
 const requireOperationScope = (direction: PromotionDirection) => (to: RouteLocationNormalized) => {
+	const scope = `promotions:${direction}` as const;
 	const canOperate =
-		direction === 'promote'
-			? projectScopes(String(to.params.projectId)).includes('promotions:promote')
-			: useRBACStore().hasScope('promotions:apply');
+		to.params.projectId === undefined
+			? useRBACStore().hasScope(scope)
+			: projectScopes(String(to.params.projectId)).includes(scope);
 	return (isPromotionsEnabled() && canOperate) || { name: VIEWS.HOMEPAGE };
 };
 

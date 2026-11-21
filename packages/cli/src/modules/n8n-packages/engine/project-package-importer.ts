@@ -124,6 +124,7 @@ export class ProjectPackageImporter {
 			request.user,
 			projects,
 			request.projectConflictPolicy,
+			request.projectWriteScope ?? 'project:update',
 		);
 		assertProjectWritesAllowed(request.apiKeyScopes, projectPlan.items);
 		// A refused project decides the whole import, so report it before reading any project's

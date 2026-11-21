@@ -69,6 +69,7 @@ import {
 	applySelectionRequest,
 	ApplyPreviewService,
 	instanceApplyRequest,
+	withCreatableExpressions,
 } from './apply-preview.service';
 import { PromotePreviewService } from './promote-preview.service';
 import { previewSource } from './promotion-preview';
@@ -1071,10 +1072,13 @@ export class PromotionsService {
 		// every selection, so the user moves it back first.
 		const requestedWorkflowIds = new Set(requested.workflowIds);
 		const check = blockingCheck(
-			this.applyPreviewService.check(plan, inventory, selection, {
-				...moves,
-				workflows: moves.workflows.filter(({ id }) => requestedWorkflowIds.has(id)),
-			}),
+			await withCreatableExpressions(
+				actor,
+				this.applyPreviewService.check(plan, inventory, selection, {
+					...moves,
+					workflows: moves.workflows.filter(({ id }) => requestedWorkflowIds.has(id)),
+				}),
+			),
 		);
 		if (this.isBlocked(check, confirmDestructiveChanges, identity)) {
 			return { status: 'blocked', ...identity, check };

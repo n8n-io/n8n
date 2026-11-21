@@ -405,6 +405,11 @@ export type PromotionLayoutProperties = {
 	layoutConflictPolicy?: LayoutConflictPolicy;
 	/** Omitted means `allow`. */
 	credentialPersonalRoute?: CredentialPersonalRoute;
+	/**
+	 * The scope that an import into an existing project needs. Omitted means `project:update`.
+	 * A project Apply uses `promotions:apply`, so that the "Who can apply" setting decides.
+	 */
+	projectWriteScope?: 'project:update' | 'promotions:apply';
 };
 
 export type ResolvedImportRequest = ImportRequest & ResolvedImportFolderProperties;

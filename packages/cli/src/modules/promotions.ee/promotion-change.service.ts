@@ -177,6 +177,7 @@ export class PromotionChangeService {
 			instance,
 			readBranch,
 			canSeeVariableValues,
+			tableProjectId: projectId,
 		});
 		return { details, missingKeys };
 	}
@@ -235,11 +236,13 @@ export class PromotionChangeService {
 				instance,
 				readBranch,
 				canSeeVariableValues,
+				tableProjectId: null,
 			}),
 			this.localEntities.dataTables(
 				unindexed.flatMap((key) =>
 					key.startsWith(tablePrefix) ? [key.slice(tablePrefix.length)] : [],
 				),
+				null,
 			),
 		]);
 		const found = new Set<string>();
@@ -268,6 +271,7 @@ export class PromotionChangeService {
 		instance,
 		readBranch,
 		canSeeVariableValues,
+		tableProjectId,
 	}: {
 		keys: readonly string[];
 		direction: PromotionDirection;
@@ -276,6 +280,8 @@ export class PromotionChangeService {
 		instance: InstancePackage;
 		readBranch: (paths: readonly string[]) => Promise<Map<string, string>>;
 		canSeeVariableValues: boolean;
+		/** The project whose local data tables a project Apply reuses. `null` for the whole instance. */
+		tableProjectId: string | null;
 	}): Promise<PromotionResourceDetail[]> {
 		const branchContents = await readBranch(
 			keys.flatMap((key) => branchIndex.get(key)?.path ?? []),
@@ -288,6 +294,7 @@ export class PromotionChangeService {
 							const resource = branchIndex.get(key);
 							return resource?.type === 'dataTable' && !instanceIndex.has(key) ? [resource.id] : [];
 						}),
+						tableProjectId,
 					)
 				: new Map<string, LocalDataTable>();
 		// Apply also reuses a tag that exists on this instance, by ID or by name.
@@ -343,9 +350,7 @@ export class PromotionChangeService {
 	/** One route serves both directions, so the per-direction scope is checked here, not on the decorator. */
 	private async assertCanPreview(user: User, projectId: string, direction: PromotionDirection) {
 		const scope = PROMOTION_SCOPES[direction];
-		// Promote reads the role in the project. Apply from a project role ships with LIGO-1476.
-		const instanceRoleOnly = direction === 'apply';
-		if (!(await userHasScopes(user, [scope], instanceRoleOnly, { projectId }))) {
+		if (!(await userHasScopes(user, [scope], false, { projectId }))) {
 			throw new ForbiddenError(
 				`Change preview requires the ${scope} scope. Ask an administrator for access.`,
 			);

@@ -162,31 +162,34 @@ describe('PromotionsModule preview routes', () => {
 		},
 	);
 
-	it('opens the promote preview only for projects where the role can promote', async () => {
-		// The project list loaded before an admin let the role of p3 promote. The open p3 knows it.
-		setup({
-			scopes: [],
-			projectScopes: { p1: ['promotions:promote'] },
-			openProject: { id: 'p3', scopes: ['promotions:promote'] },
-		});
+	it.each(['promote', 'apply'] as const)(
+		'opens the %s preview only for projects where the role allows it',
+		async (direction) => {
+			// The project list loaded before an admin changed the role of p3. The open p3 knows it.
+			setup({
+				scopes: [],
+				projectScopes: { p1: [`promotions:${direction}`] },
+				openProject: { id: 'p3', scopes: [`promotions:${direction}`] },
+			});
+			const router = createTestRouter();
+
+			await router.push(`/projects/p2/promotions/${direction}`);
+			expect(router.currentRoute.value.name).toBe(VIEWS.HOMEPAGE);
+
+			await router.push(`/projects/p1/promotions/${direction}`);
+			expect(router.currentRoute.value.name).toBe(PROMOTION_PREVIEW_VIEWS[direction]);
+
+			await router.push('/home');
+			await router.push(`/projects/p3/promotions/${direction}`);
+			expect(router.currentRoute.value.name).toBe(PROMOTION_PREVIEW_VIEWS[direction]);
+		},
+	);
+
+	it('leads a project role home from the whole-instance Apply', async () => {
+		setup({ scopes: [], projectScopes: { p1: ['promotions:apply'] } });
 		const router = createTestRouter();
 
-		await router.push('/projects/p2/promotions/promote');
-		expect(router.currentRoute.value.name).toBe(VIEWS.HOMEPAGE);
-
-		await router.push('/projects/p1/promotions/promote');
-		expect(router.currentRoute.value.name).toBe(PROMOTION_PREVIEW_VIEWS.promote);
-
-		await router.push('/home');
-		await router.push('/projects/p3/promotions/promote');
-		expect(router.currentRoute.value.name).toBe(PROMOTION_PREVIEW_VIEWS.promote);
-	});
-
-	it('leads users who cannot apply changes home', async () => {
-		setup({ scopes: ['promotions:promote'] });
-		const router = createTestRouter();
-
-		await router.push('/projects/p1/promotions/apply');
+		await router.push('/promotions/apply');
 
 		expect(router.currentRoute.value.name).toBe(VIEWS.HOMEPAGE);
 	});

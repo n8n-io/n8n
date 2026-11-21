@@ -19,6 +19,7 @@ import {
 import { gitBlobSha } from '@/modules/n8n-packages/io/hashing-package-writer';
 import { entityFilePath } from '@/modules/n8n-packages/io/manifest-entry';
 import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
+import { userHasScopes } from '@/permissions.ee/check-access';
 import type { PublicApiCaller } from '@/public-api/public-api-client';
 import { FolderService } from '@/services/folder.service';
 import {
@@ -89,9 +90,31 @@ export function applySelectionRequest(
 		layoutConflictPolicy: LayoutConflictPolicy.FollowPackage,
 		// A credential must be usable by the project, not only by the user who applies.
 		credentialPersonalRoute: CredentialPersonalRoute.Exclude,
+		// Project editors may apply without `project:update`. The project details come from the branch.
+		projectWriteScope: 'promotions:apply',
 		// No `apiKeyScopes`: an Apply key needs only `promotions:apply`, and the role of the user
 		// checks each write. The content comes from the configured branch, not from the caller.
 	};
+}
+
+/**
+ * Leaves out the expressions of a missing credential unless the user can create it in its owner
+ * project. They fill the editor of that create action, and nobody else should read them.
+ */
+export async function withCreatableExpressions(
+	user: User,
+	check: PromotionPreviewCheck,
+): Promise<PromotionPreviewCheck> {
+	const missingBindings = await Promise.all(
+		check.missingBindings.map(async (binding) => {
+			if (binding.kind !== 'credential' || binding.expressionData === undefined) return binding;
+			const projectId = binding.ownerProject.id;
+			if (await userHasScopes(user, ['credential:create'], false, { projectId })) return binding;
+			const { expressionData: _, ...rest } = binding;
+			return rest;
+		}),
+	);
+	return { ...check, missingBindings };
 }
 
 // A whole-instance Apply treats the package as source of truth. Callers cannot override this
@@ -127,6 +150,8 @@ export function instanceApplyRequest(
 	return {
 		...INSTANCE_IMPORT_POLICY,
 		...applySelectionRequest(user, publicApi, confirmDestructiveChanges),
+		// The whole instance stays with instance owners and admins.
+		projectWriteScope: 'project:update',
 	};
 }
 
@@ -193,7 +218,12 @@ export class ApplyPreviewService {
 			manifest: plan?.manifest ?? (await reader.readManifest()),
 			tagsDisabled: this.globalConfig.tags.disabled,
 		});
-		return await this.finish(resources, dependencies, check);
+		return await this.finish(
+			resources,
+			dependencies,
+			await withCreatableExpressions(user, check),
+			projectId,
+		);
 	}
 
 	/**
@@ -248,7 +278,7 @@ export class ApplyPreviewService {
 		for (const resource of owned) if (!listed.has(resource.key)) resources.push(resource);
 		// Apply applies the whole package, so nothing can be selected.
 		for (const resource of resources) resource.selectable = false;
-		return await this.finish(resources, dependencies, check);
+		return await this.finish(resources, dependencies, check, null);
 	}
 
 	/** A whole-instance Apply deletes the team projects that the package does not hold. */
@@ -286,13 +316,18 @@ export class ApplyPreviewService {
 		return { reader, inventory: await this.inventoryReader.read(reader) };
 	}
 
-	/** Adds the local state of resources that the export lacks, then identifies the preview. */
+	/**
+	 * Adds the local state of resources that the export lacks, then identifies the preview.
+	 * A project preview reads only the data tables of its project. `null` reads the whole instance,
+	 * which only instance admins preview.
+	 */
 	private async finish(
 		resources: PromotionResource[],
 		dependencies: PromotionResourceDependency[],
 		check: PromotionPreviewCheck,
+		tableProjectId: string | null,
 	): Promise<ApplyPreview> {
-		await this.addLocalState(resources);
+		await this.addLocalState(resources, tableProjectId);
 		return { resources, dependencies, check, revision: previewRevision({ resources, check }) };
 	}
 
@@ -306,12 +341,18 @@ export class ApplyPreviewService {
 	 * Apply reuses it. Its revision is read here as the detail endpoint reads it, so the two compare,
 	 * and a bound credential shows its local name.
 	 */
-	private async addLocalState(resources: PromotionResource[]): Promise<void> {
+	private async addLocalState(
+		resources: PromotionResource[],
+		tableProjectId: string | null,
+	): Promise<void> {
 		const unexported = (type: PromotionResource['type']) =>
 			resources.filter((resource) => resource.type === type && resource.revision.before === null);
 		const [tags, tables, credentialNames] = await Promise.all([
 			this.localEntities.tags(unexported('tag')),
-			this.localEntities.dataTables(unexported('dataTable').map(({ id }) => id)),
+			this.localEntities.dataTables(
+				unexported('dataTable').map(({ id }) => id),
+				tableProjectId,
+			),
 			this.localEntities.credentialNames(
 				unexported('credential')
 					.filter(({ change }) => change === 'unchanged')

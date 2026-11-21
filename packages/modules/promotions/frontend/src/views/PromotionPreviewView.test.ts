@@ -62,7 +62,11 @@ vi.mock('@n8n/rest-api-client', async (importOriginal) => ({
 }));
 // The editors are modals of the app. The test answers for them.
 vi.mock('../composables/usePromotionBindingCreation', () => ({
-	usePromotionBindingCreation: () => ({ createBinding, updateCheck: vi.fn() }),
+	usePromotionBindingCreation: () => ({
+		canCreate: () => true,
+		createBinding,
+		updateCheck: vi.fn(),
+	}),
 }));
 vi.mock('@n8n/design-system', async () => ({
 	...(await vi.importActual<object>('@n8n/design-system')),

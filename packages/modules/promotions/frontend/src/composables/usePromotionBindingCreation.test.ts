@@ -9,6 +9,7 @@ import {
 	capabilityRegistry,
 	type CredentialEditorOptions,
 	type ProjectContext,
+	type ProjectPermissions,
 	type ResourceEditors,
 	type VariableEditorOptions,
 } from '@n8n/frontend-module-sdk';
@@ -41,7 +42,10 @@ vi.mock('@n8n/rest-api-client', async (importOriginal) => ({
 	createPublicProject: vi.fn(),
 	createPublicCredential: vi.fn(),
 }));
-vi.mock('@n8n/stores/rbac.store', () => ({ useRBACStore: () => ({ hasScope: () => true }) }));
+const rbac = vi.hoisted(() => ({ denied: new Set<string>() }));
+vi.mock('@n8n/stores/rbac.store', () => ({
+	useRBACStore: () => ({ hasScope: (scope: string) => !rbac.denied.has(scope) }),
+}));
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({ publicApiContext: { baseUrl: '/custom/api/v1' }, restApiContext: {} }),
 }));
@@ -104,6 +108,24 @@ beforeEach(() => {
 afterEach(() => {
 	scopes.splice(0).forEach((scope) => scope.stop());
 	capabilityRegistry.clear();
+	rbac.denied.clear();
+});
+
+it.each([
+	{ user: 'a project role outside the owner project', ownerScopes: [], allowed: false },
+	{ user: 'an instance admin', ownerScopes: ['credential:create'], allowed: true },
+] as const)('lets $user add a missing binding only when the role can create it', (testCase) => {
+	if (!testCase.allowed) rbac.denied.add('variable:create');
+	capabilityRegistry.provide(
+		capabilities.projectPermissions,
+		mock<ProjectPermissions>({
+			scopesFor: (id) => (id === credential.ownerProject.id ? [...testCase.ownerScopes] : []),
+		}),
+	);
+	const adapter = setup();
+
+	expect(adapter.canCreate(credential)).toBe(testCase.allowed);
+	expect(adapter.canCreate(variable)).toBe(testCase.allowed);
 });
 
 it('keeps a created project after a failed credential save and resolves on closure', async () => {

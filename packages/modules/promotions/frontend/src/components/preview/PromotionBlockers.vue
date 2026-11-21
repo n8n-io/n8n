@@ -168,18 +168,25 @@ function movedRow(
 const blockerRows = computed<BlockerRow[]>(() => {
 	const { accessRequirements, movedWorkflows, movedFolders } = props.check;
 	return [
-		...bindings.rows.value.map(({ key, binding, status: bindingStatus }) => ({
-			key,
-			icon: resourceIcon(binding.kind),
-			name: binding.name,
-			type: binding.kind,
-			usedBy: usedBy(binding.consumers),
-			status: status(bindingStatus === 'resolved' ? 'resolved' : 'missing'),
-			createLabel:
-				bindingStatus === 'missing'
+		...bindings.rows.value.map(({ key, binding, status: bindingStatus }) => {
+			const missing = bindingStatus === 'missing';
+			const canCreate = missing && creation.canCreate(binding);
+			return {
+				key,
+				icon: resourceIcon(binding.kind),
+				name: binding.name,
+				type: binding.kind,
+				usedBy: usedBy(binding.consumers),
+				status: status(bindingStatus === 'resolved' ? 'resolved' : 'missing'),
+				createLabel: canCreate
 					? i18n.baseText(`promotions.preview.blockers.create.${binding.kind}`)
 					: undefined,
-		})),
+				detail:
+					missing && !canCreate
+						? i18n.baseText(`promotions.preview.blockers.createDenied.${binding.kind}`)
+						: undefined,
+			};
+		}),
 		...accessRequirements.map((access) => ({
 			key: `access:${access.sourceId}`,
 			icon: resourceIcon('credential'),
