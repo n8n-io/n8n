@@ -209,7 +209,14 @@ export class ImportService {
 			try {
 				cleared = await this.policyEnforcementService.enforceContentImport(
 					{
-						workflow: { id: workflow.id ?? null, name: workflow.name, nodes: workflow.nodes },
+						workflow: {
+							id: workflow.id ?? null,
+							name: workflow.name,
+							nodes: workflow.nodes,
+							connections: workflow.connections ?? null,
+							settings: workflow.settings ?? null,
+							description: workflow.description ?? null,
+						},
 						projectId: policyProjectId,
 						transport: 'cli',
 					},

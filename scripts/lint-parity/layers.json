@@ -19,6 +19,7 @@
 		"packages/@n8n/tournament",
 		"packages/@n8n/utils",
 		"packages/@n8n/workflow-engine-check",
+		"packages/@n8n/workflow-rules",
 		"packages/workflow"
 	],
 	"backend": [

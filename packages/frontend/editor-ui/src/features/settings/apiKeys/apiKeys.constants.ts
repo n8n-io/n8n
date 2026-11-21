@@ -23,6 +23,7 @@ export const API_KEY_SCOPE_GROUPS: Array<{ key: string; resources: ApiKeyResourc
 			'insights',
 			'nodeTypePolicy',
 			'credentialTypePolicy',
+			'workflowRules',
 		],
 	},
 ];

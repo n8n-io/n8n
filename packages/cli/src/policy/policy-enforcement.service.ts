@@ -39,9 +39,11 @@ export const hasCheckErrors = (decision: PolicyDecision): boolean =>
 	(decision.checkErrors?.length ?? 0) > 0;
 
 /** What the checks see. The clearance binds to the host's own subject, never the added nodes. */
-function expanded(workflow: PolicedWorkflow): PolicedWorkflow {
+function expanded<W extends PolicedWorkflow>(workflow: W): W {
 	const nodes = withInlineAgentToolNodes(workflow.nodes);
-	return nodes === workflow.nodes ? workflow : { ...workflow, nodes };
+	return nodes === workflow.nodes
+		? workflow
+		: { ...workflow, nodes, hostNodeCount: workflow.hostNodeCount ?? workflow.nodes.length };
 }
 
 function expandedSave(context: WorkflowSaveContext): WorkflowSaveContext {

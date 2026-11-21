@@ -56,6 +56,7 @@ const EXPECTED_GROUPS: Record<string, string[]> = {
 		'SettingsRateLimits',
 		'SettingsSsoOidc',
 		'SettingsSsoSaml',
+		'WorkflowRules',
 	],
 	InstanceOperations: [
 		'Audit',

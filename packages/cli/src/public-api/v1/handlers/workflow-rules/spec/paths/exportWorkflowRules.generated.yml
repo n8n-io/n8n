@@ -1,0 +1,358 @@
+operationId: exportWorkflowRules
+tags:
+  - WorkflowRules
+summary: 'Preview: Export the Workflow Rules for offline checks'
+description: |-
+  **Preview** — breaking changes may still occur without major version bump. Needs `N8N_ENABLED_MODULES=workflow-rules`.
+
+  Returns the instance rules, every project's rules, the exemptions and the instance defaults. Save it as a file and pass it to `n8n-cli workflow-rules check --rules`.
+
+  Requires the `workflowRules:read` API key scope.
+x-required-scope: workflowRules:read
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            version:
+              type: number
+              enum:
+                - 1
+            exportedAt:
+              type: string
+            defaults:
+              type: object
+              properties:
+                callerPolicy:
+                  type: string
+                executionTimeout:
+                  type: number
+                maxExecutionTimeout:
+                  type: number
+              default: {}
+            instance:
+              type: object
+              properties:
+                rules:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      ruleId:
+                        type: string
+                        minLength: 1
+                        maxLength: 80
+                      severity:
+                        type: string
+                        enum:
+                          - off
+                          - warn
+                          - block
+                      options:
+                        type: object
+                        additionalProperties: {}
+                      adjustable:
+                        type: boolean
+                    required:
+                      - ruleId
+                      - severity
+                  maxItems: 100
+                  default: []
+                customRules:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        pattern: ^custom-[a-z0-9-]{1,60}$
+                      name:
+                        type: string
+                        minLength: 1
+                        maxLength: 80
+                      description:
+                        type: string
+                        maxLength: 500
+                      severity:
+                        type: string
+                        enum:
+                          - off
+                          - warn
+                          - block
+                      adjustable:
+                        type: boolean
+                      target:
+                        oneOf:
+                          - type: object
+                            properties:
+                              kind:
+                                type: string
+                                enum:
+                                  - workflow
+                            required:
+                              - kind
+                          - type: object
+                            properties:
+                              kind:
+                                type: string
+                                enum:
+                                  - nodes
+                              nodeTypes:
+                                type: array
+                                items:
+                                  type: string
+                                  maxLength: 200
+                                maxItems: 100
+                                default: []
+                            required:
+                              - kind
+                        type: object
+                      require:
+                        type: object
+                        properties:
+                          subject:
+                            type: string
+                            enum:
+                              - parameter
+                              - nodeName
+                              - nodeType
+                              - credentialType
+                              - disabled
+                              - retryOnFail
+                              - workflowName
+                              - description
+                              - setting
+                              - nodeCount
+                          path:
+                            type: string
+                            maxLength: 200
+                          operator:
+                            type: string
+                            enum:
+                              - isSet
+                              - isNotSet
+                              - equals
+                              - notEquals
+                              - oneOf
+                              - notOneOf
+                              - contains
+                              - notContains
+                              - matches
+                              - notMatches
+                              - lessThan
+                              - greaterThan
+                              - isExpression
+                              - isNotExpression
+                          value:
+                            anyOf:
+                              - type: string
+                                maxLength: 1000
+                              - type: number
+                              - type: boolean
+                              - type: array
+                                items:
+                                  type: string
+                                  maxLength: 200
+                                maxItems: 200
+                          flags:
+                            type: string
+                            maxLength: 4
+                        required:
+                          - subject
+                          - operator
+                      message:
+                        type: string
+                        maxLength: 300
+                    required:
+                      - id
+                      - name
+                      - severity
+                      - target
+                      - require
+                  maxItems: 100
+                  default: []
+            projects:
+              type: array
+              items:
+                type: object
+                properties:
+                  projectId:
+                    type: string
+                  projectName:
+                    type: string
+                  ruleSet:
+                    type: object
+                    properties:
+                      rules:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            ruleId:
+                              type: string
+                              minLength: 1
+                              maxLength: 80
+                            severity:
+                              type: string
+                              enum:
+                                - off
+                                - warn
+                                - block
+                            options:
+                              type: object
+                              additionalProperties: {}
+                            adjustable:
+                              type: boolean
+                          required:
+                            - ruleId
+                            - severity
+                        maxItems: 100
+                        default: []
+                      customRules:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                              pattern: ^custom-[a-z0-9-]{1,60}$
+                            name:
+                              type: string
+                              minLength: 1
+                              maxLength: 80
+                            description:
+                              type: string
+                              maxLength: 500
+                            severity:
+                              type: string
+                              enum:
+                                - off
+                                - warn
+                                - block
+                            adjustable:
+                              type: boolean
+                            target:
+                              oneOf:
+                                - type: object
+                                  properties:
+                                    kind:
+                                      type: string
+                                      enum:
+                                        - workflow
+                                  required:
+                                    - kind
+                                - type: object
+                                  properties:
+                                    kind:
+                                      type: string
+                                      enum:
+                                        - nodes
+                                    nodeTypes:
+                                      type: array
+                                      items:
+                                        type: string
+                                        maxLength: 200
+                                      maxItems: 100
+                                      default: []
+                                  required:
+                                    - kind
+                              type: object
+                            require:
+                              type: object
+                              properties:
+                                subject:
+                                  type: string
+                                  enum:
+                                    - parameter
+                                    - nodeName
+                                    - nodeType
+                                    - credentialType
+                                    - disabled
+                                    - retryOnFail
+                                    - workflowName
+                                    - description
+                                    - setting
+                                    - nodeCount
+                                path:
+                                  type: string
+                                  maxLength: 200
+                                operator:
+                                  type: string
+                                  enum:
+                                    - isSet
+                                    - isNotSet
+                                    - equals
+                                    - notEquals
+                                    - oneOf
+                                    - notOneOf
+                                    - contains
+                                    - notContains
+                                    - matches
+                                    - notMatches
+                                    - lessThan
+                                    - greaterThan
+                                    - isExpression
+                                    - isNotExpression
+                                value:
+                                  anyOf:
+                                    - type: string
+                                      maxLength: 1000
+                                    - type: number
+                                    - type: boolean
+                                    - type: array
+                                      items:
+                                        type: string
+                                        maxLength: 200
+                                      maxItems: 200
+                                flags:
+                                  type: string
+                                  maxLength: 4
+                              required:
+                                - subject
+                                - operator
+                            message:
+                              type: string
+                              maxLength: 300
+                          required:
+                            - id
+                            - name
+                            - severity
+                            - target
+                            - require
+                        maxItems: 100
+                        default: []
+                required:
+                  - projectId
+                  - ruleSet
+              default: []
+            exemptions:
+              type: array
+              items:
+                type: object
+                properties:
+                  workflowId:
+                    type: string
+                    minLength: 1
+                  ruleId:
+                    type: string
+                    minLength: 1
+                    maxLength: 80
+                required:
+                  - workflowId
+                  - ruleId
+              default: []
+          required:
+            - version
+            - exportedAt
+            - instance
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml
+  '503':
+    $ref: ../../../../shared/spec/responses/serviceUnavailable.yml

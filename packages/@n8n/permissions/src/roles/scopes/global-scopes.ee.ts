@@ -62,6 +62,8 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'license:manage',
 	'logStreaming:manage',
 	'nodeTypePolicy:manage',
+	'workflowRules:read',
+	'workflowRules:manage',
 	'orchestration:read',
 	'orchestration:manage',
 	'saml:manage',

@@ -1,0 +1,26 @@
+operationId: getInstanceWorkflowRules
+tags:
+  - WorkflowRules
+summary: 'Preview: Retrieve the instance Workflow Rules'
+description: |-
+  **Preview** — breaking changes may still occur without major version bump. Needs `N8N_ENABLED_MODULES=workflow-rules`.
+
+  Returns the instance rule set. An instance that never saved one returns no rules and `version: 0`.
+
+  Requires the `workflowRules:read` API key scope.
+x-required-scope: workflowRules:read
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          $ref: ../../../../shared/spec/schemas/workflowRuleSetPublicDto.generated.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml
+  '503':
+    $ref: ../../../../shared/spec/responses/serviceUnavailable.yml

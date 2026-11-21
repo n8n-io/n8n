@@ -3,6 +3,7 @@ import type {
 	ContentImportTransport,
 	CredentialDecryptContext,
 	PolicedWorkflow,
+	PolicedWorkflowContent,
 } from '@n8n/decorators';
 import type { INode } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
@@ -53,7 +54,13 @@ const node = (
 		}),
 	}) as INode;
 
-const workflow = (nodes: INode[], id: string | null = 'wf-1'): PolicedWorkflow => ({
+const workflow = (
+	nodes: INode[],
+	id: string | null = 'wf-1',
+): PolicedWorkflow & PolicedWorkflowContent => ({
+	settings: null,
+	connections: null,
+	description: null,
 	id,
 	name: 'My workflow',
 	nodes,
@@ -479,6 +486,7 @@ describe('CredentialTypePolicyCheck', () => {
 			const result = await check.onWorkflowPublish({
 				workflow: workflow(nodes),
 				projectId: 'project-1',
+				republish: false,
 			});
 
 			expect(result.violations.map((violation) => violation.subject)).toEqual([

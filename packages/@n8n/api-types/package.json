@@ -48,7 +48,8 @@
     "xss": "catalog:",
     "@n8n/permissions": "workspace:*",
     "@n8n/inbound-auth": "workspace:*",
-    "@n8n/utils": "workspace:*"
+    "@n8n/utils": "workspace:*",
+    "@n8n/workflow-rules": "workspace:*"
   },
   "peerDependencies": {
     "zod": "catalog:"

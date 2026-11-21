@@ -1,0 +1,210 @@
+operationId: checkWorkflowRules
+tags:
+  - WorkflowRules
+summary: 'Preview: Check workflows against the Workflow Rules'
+description: |-
+  **Preview** — breaking changes may still occur without major version bump. Needs `N8N_ENABLED_MODULES=workflow-rules`.
+
+  Evaluates workflow JSON against the live rules and returns every finding. Nothing is saved. `summary.passed` is false when a finding blocks publishing. Accepts the source control and n8n package file formats.
+
+  Requires the `workflowRules:read` API key scope.
+x-required-scope: workflowRules:read
+parameters:
+  - $ref: ../../../../shared/spec/parameters/idempotencyKey.yml
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          workflows:
+            type: array
+            items:
+              type: object
+              properties:
+                workflow:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      nullable: true
+                    name:
+                      type: string
+                    description:
+                      type: string
+                      nullable: true
+                    nodes:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                          name:
+                            type: string
+                          type:
+                            type: string
+                          typeVersion:
+                            type: number
+                          parameters:
+                            type: object
+                            additionalProperties: {}
+                          credentials:
+                            type: object
+                            nullable: true
+                            additionalProperties: {}
+                          disabled:
+                            type: boolean
+                          retryOnFail:
+                            type: boolean
+                        required:
+                          - name
+                          - type
+                      maxItems: 2000
+                    connections:
+                      type: object
+                      nullable: true
+                      additionalProperties: {}
+                    settings:
+                      type: object
+                      nullable: true
+                      additionalProperties: {}
+                  required:
+                    - name
+                    - nodes
+                projectId:
+                  type: string
+                  minLength: 1
+                source:
+                  type: string
+                  maxLength: 1000
+              required:
+                - workflow
+            minItems: 1
+            maxItems: 500
+        required:
+          - workflows
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            results:
+              type: array
+              items:
+                type: object
+                properties:
+                  source:
+                    type: string
+                    nullable: true
+                  workflowId:
+                    type: string
+                    nullable: true
+                  workflowName:
+                    type: string
+                  projectId:
+                    type: string
+                    nullable: true
+                  findings:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        ruleId:
+                          type: string
+                        ruleKind:
+                          type: string
+                          enum:
+                            - catalogue
+                            - custom
+                        scope:
+                          type: string
+                          enum:
+                            - instance
+                            - project
+                        severity:
+                          type: string
+                          enum:
+                            - warn
+                            - block
+                        message:
+                          type: string
+                        params:
+                          type: object
+                          additionalProperties:
+                            type: string
+                        nodeId:
+                          type: string
+                        nodeName:
+                          type: string
+                        parameterPath:
+                          type: string
+                        exempted:
+                          type: boolean
+                        projectCanExempt:
+                          type: boolean
+                      required:
+                        - ruleId
+                        - ruleKind
+                        - scope
+                        - severity
+                        - message
+                        - params
+                        - exempted
+                        - projectCanExempt
+                  blocking:
+                    type: integer
+                    minimum: 0
+                  warnings:
+                    type: integer
+                    minimum: 0
+                required:
+                  - source
+                  - workflowId
+                  - workflowName
+                  - projectId
+                  - findings
+                  - blocking
+                  - warnings
+            summary:
+              type: object
+              properties:
+                workflows:
+                  type: integer
+                  minimum: 0
+                blocking:
+                  type: integer
+                  minimum: 0
+                warnings:
+                  type: integer
+                  minimum: 0
+                passed:
+                  type: boolean
+              required:
+                - workflows
+                - blocking
+                - warnings
+                - passed
+          required:
+            - results
+            - summary
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '409':
+    $ref: ../../../../shared/spec/responses/conflict.yml
+  '415':
+    $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
+  '422':
+    $ref: ../../../../shared/spec/responses/unprocessableEntity.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml
+  '503':
+    $ref: ../../../../shared/spec/responses/serviceUnavailable.yml

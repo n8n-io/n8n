@@ -741,7 +741,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 
 	/**
 	 * Every workflow in the given folders, with its owner sharing. `withNodes` adds the nodes of
-	 * the draft and of the published version, for policy checks.
+	 * the draft and of the published version, and the settings and description, for policy checks.
 	 */
 	async findInFoldersForTransfer(
 		folderIds: string[],
@@ -757,7 +757,9 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 							'id',
 							'name',
 							'activeVersionId',
-							...(withNodes ? (['nodes', 'activeVersion'] as const) : []),
+							...(withNodes
+								? (['nodes', 'activeVersion', 'settings', 'description'] as const)
+								: []),
 						],
 						relations: { activeVersion: withNodes },
 						where: { parentFolder: { id: In(chunk) } },
@@ -831,6 +833,29 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 				afterId === undefined
 					? { isArchived: false }
 					: { isArchived: false, id: MoreThan(afterId) },
+			take,
+			order: { id: 'ASC' },
+		});
+	}
+
+	/**
+	 * One page of unarchived workflows for the Workflow Rules report, keyset-paged by id. It
+	 * returns the draft, which is what the next publish sends.
+	 */
+	async findWorkflowRulesScanPage(
+		afterId: string | undefined,
+		take: number,
+		workflowIds?: string[],
+	): Promise<WorkflowEntity[]> {
+		const idFilter =
+			workflowIds === undefined
+				? afterId === undefined
+					? {}
+					: { id: MoreThan(afterId) }
+				: { id: In(workflowIds) };
+		return await this.find({
+			select: ['id', 'name', 'description', 'nodes', 'connections', 'settings', 'activeVersionId'],
+			where: { isArchived: false, ...idFilter },
 			take,
 			order: { id: 'ASC' },
 		});

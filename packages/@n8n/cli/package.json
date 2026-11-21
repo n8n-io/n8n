@@ -77,11 +77,15 @@
       },
       "skill": {
         "description": "Install n8n CLI skills for AI coding agents"
+      },
+      "workflow-rules": {
+        "description": "Check workflow files against the Workflow Rules, online or offline"
       }
     }
   },
   "dependencies": {
-    "@oclif/core": "^4.5.2"
+    "@oclif/core": "^4.5.2",
+    "@n8n/workflow-rules": "workspace:*"
   },
   "devDependencies": {
     "@n8n/api-types": "workspace:*",

@@ -31,6 +31,7 @@ describe('permissions', () => {
 			license: {},
 			logStreaming: {},
 			nodeTypePolicy: {},
+			workflowRules: {},
 			oidc: {},
 			orchestration: {},
 			project: {},
@@ -138,6 +139,7 @@ describe('permissions', () => {
 			license: {},
 			logStreaming: {},
 			nodeTypePolicy: {},
+			workflowRules: {},
 			orchestration: {},
 			project: {
 				list: true,

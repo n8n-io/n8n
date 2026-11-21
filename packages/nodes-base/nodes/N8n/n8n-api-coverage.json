@@ -164,6 +164,24 @@
 		"PUT /tags/{tagId}": {
 			"status": "gap"
 		},
+		"GET /workflow-rules": {
+			"status": "gap"
+		},
+		"PUT /workflow-rules": {
+			"status": "gap"
+		},
+		"GET /workflow-rules/projects/{projectId}": {
+			"status": "gap"
+		},
+		"PUT /workflow-rules/projects/{projectId}": {
+			"status": "gap"
+		},
+		"GET /workflow-rules/export": {
+			"status": "gap"
+		},
+		"POST /workflow-rules/check": {
+			"status": "gap"
+		},
 		"POST /workflows": {
 			"status": "covered",
 			"nodeOperation": "workflow:create"

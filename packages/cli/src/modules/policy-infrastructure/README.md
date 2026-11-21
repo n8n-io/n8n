@@ -108,8 +108,9 @@ A one-off CLI command registers no check unless it calls
 `BaseCommand.initPolicyEnforcement()`. `import:workflow`, `import:credentials`,
 `execute` and `execute-batch` call it.
 
-Known gaps: `import:entities`, `publish:workflow` and `update:workflow` run no
-check. `import:entities` restores the policy tables in the same run, so a check
+Known gaps: `import:entities` and `update:workflow` run no check.
+`publish:workflow` publishes through `WorkflowService.activateWorkflow`, so it
+runs the `workflowPublish` check. `import:entities` restores the policy tables in the same run, so a check
 against the stored rules would judge the content by the wrong policy. The
 `workflowStart` check still refuses to run a blocked workflow that one of these
 commands wrote.
@@ -122,16 +123,24 @@ Each point hands its check a different context. The types are in
 | Point               | Context type               | Fields                                                                                   |
 | ------------------- | -------------------------- | ---------------------------------------------------------------------------------------- |
 | `workflowSave`      | `WorkflowSaveContext`      | `workflow`, `storedWorkflow` (`null` for a create), `projectId`                          |
-| `workflowPublish`   | `WorkflowPublishContext`   | `workflow`, `projectId`                                                                  |
+| `workflowPublish`   | `WorkflowPublishContext`   | `workflow` with content, `projectId`, `republish`                                        |
 | `workflowStart`     | `WorkflowStartContext`     | `workflow`, `projectId`                                                                  |
 | `workflowTransfer`  | `WorkflowTransferContext`  | `workflow`, `targetProjectId` — the project it moves _into_, whose policy applies        |
 | `credentialSave`    | `CredentialSaveContext`    | `credential`, `storedCredential` (`null` for a create), `projectId`                      |
 | `credentialTransfer` | `CredentialTransferContext` | `credential`, `targetProjectId` — the project it moves _into_, whose policy applies   |
-| `contentImport`     | `ContentImportContext`     | `workflow`, `projectId`, `transport`                                                     |
+| `contentImport`     | `ContentImportContext`     | `workflow` with content, `projectId`, `transport`                                        |
 | `credentialDecrypt` | `CredentialDecryptContext` | `credentialType`, `credentialId`, `consumer` (`null` for a credential test), `projectId` |
 
 `workflow` is a `PolicedWorkflow`: `id` (`null` before the first save), `name`,
-`nodes`. Nothing else, so a check cannot start to depend on unrelated fields.
+`nodes`, and `hostNodeCount` when inline agent tool nodes were appended. Publish
+and import also carry `PolicedWorkflowContent`: `settings`, `connections` and
+`description`, each `null` when the host has none. The fields are required, so a
+new host cannot leave them out. Nothing else reaches a check.
+
+`republish` is `true` when the version is already the published one: a restart,
+a leader change, a re-add after a transfer, or a settings-only save. A refusal
+there unregisters a live workflow without a visible error. A check that must not
+stop running workflows, such as Workflow Rules, returns no violations for it.
 `credential` is a `PolicedCredential`: `id` (`null` before the first save) and
 `type`. The name and the data never reach a check.
 Every field is `readonly` — a check reads, it never writes.

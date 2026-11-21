@@ -299,8 +299,15 @@ describe('ActiveWorkflowManager', () => {
 
 			expect(policyEnforcementService.enforceWorkflowPublish).toHaveBeenCalledExactlyOnceWith(
 				{
-					workflow: { id: 'wf-1', name: 'My workflow', nodes: dbWorkflow.activeVersion!.nodes },
+					workflow: expect.objectContaining({
+						id: 'wf-1',
+						name: 'My workflow',
+						nodes: dbWorkflow.activeVersion!.nodes,
+						connections: dbWorkflow.activeVersion!.connections,
+					}),
 					projectId: 'project-1',
+					// The version is already published here, so rule checks judge it as a republish.
+					republish: true,
 				},
 				{ kind: 'system', reason: 'activation' },
 			);

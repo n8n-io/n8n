@@ -11,6 +11,9 @@ import type {
 	PromotionPreview,
 } from '@n8n/api-types/dist/dto/promotions/promotion-preview.dto';
 import type { CreateProjectPublicDto } from '@n8n/api-types/dist/dto/project/project-public.dto';
+import type { RulesExportBundle } from '@n8n/workflow-rules';
+
+import type { CheckReport } from './workflow-rules/evaluate-offline';
 
 export interface PaginatedResponse<T> {
 	data: T[];
@@ -871,6 +874,16 @@ export class N8nClient {
 	}
 
 	// ─── Audit ─────────────────────────────────────────────────────
+
+	async exportWorkflowRules() {
+		return await this.get<RulesExportBundle>('/workflow-rules/export');
+	}
+
+	async checkWorkflowRules(
+		workflows: Array<{ workflow: unknown; projectId?: string; source?: string }>,
+	) {
+		return await this.post<CheckReport>('/workflow-rules/check', { workflows });
+	}
 
 	async audit(categories?: string[]) {
 		const body: Record<string, unknown> = {};
