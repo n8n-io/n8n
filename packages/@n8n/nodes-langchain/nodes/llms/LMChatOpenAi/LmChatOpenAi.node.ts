@@ -109,6 +109,34 @@ const jsonSchemaExample = `{
   "required": ["message"]
 }`;
 
+const openAiModel: INodeProperties = {
+	displayName: 'Model',
+	name: 'model',
+	type: 'resourceLocator',
+	default: { mode: 'list', value: 'gpt-5.4-mini' },
+	builderHint: OPENAI_MODEL_BUILDER_HINT,
+	required: true,
+	modes: [
+		{
+			displayName: 'From List',
+			name: 'list',
+			type: 'list',
+			placeholder: 'Select a model...',
+			typeOptions: {
+				searchListMethod: 'searchModels',
+				searchable: true,
+			},
+		},
+		{
+			displayName: 'ID',
+			name: 'id',
+			type: 'string',
+			placeholder: 'Enter a model ID...',
+		},
+	],
+	description: 'The model. Choose from the list, or specify an ID.',
+};
+
 export class LmChatOpenAi implements INodeType {
 	methods = {
 		listSearch: {
@@ -122,7 +150,7 @@ export class LmChatOpenAi implements INodeType {
 		name: 'lmChatOpenAi',
 		icon: { light: 'file:openAiLight.svg', dark: 'file:openAiLight.dark.svg' },
 		group: ['transform'],
-		version: [1, 1.1, 1.2, 1.3],
+		version: [1, 1.1, 1.2, 1.3, 1.4],
 		description:
 			'Run GPT models, with optional Responses API for web search, file search, and code execution',
 		defaults: {
@@ -244,36 +272,13 @@ export class LmChatOpenAi implements INodeType {
 				},
 			},
 			{
-				displayName: 'Model',
-				name: 'model',
-				type: 'resourceLocator',
+				...openAiModel,
+				displayOptions: { show: { '@version': [1.2, 1.3] } },
 				default: { mode: 'list', value: 'gpt-5-mini' },
-				builderHint: OPENAI_MODEL_BUILDER_HINT,
-				required: true,
-				modes: [
-					{
-						displayName: 'From List',
-						name: 'list',
-						type: 'list',
-						placeholder: 'Select a model...',
-						typeOptions: {
-							searchListMethod: 'searchModels',
-							searchable: true,
-						},
-					},
-					{
-						displayName: 'ID',
-						name: 'id',
-						type: 'string',
-						placeholder: 'gpt-5-mini',
-					},
-				],
-				description: 'The model. Choose from the list, or specify an ID.',
-				displayOptions: {
-					hide: {
-						'@version': [{ _cnd: { lte: 1.1 } }],
-					},
-				},
+			},
+			{
+				...openAiModel,
+				displayOptions: { show: { '@version': [{ _cnd: { gte: 1.4 } }] } },
 			},
 			{
 				displayName:
