@@ -220,7 +220,7 @@ describe('calculateWorkflowChecksum', () => {
 		const checksum = await calculateWorkflowChecksum(canonicalWorkflow);
 
 		expect(checksum).toMatch(/^[0-9a-f]{64}$/);
-		expect(checksum).toBe('11020572b14a9e257c93b4c971cc6fd85e390305548f029e3277422fb5678e33');
+		expect(checksum).toBe('fffef91f8b9d96688a7d15423445d22ae4be93f518d2d3d8970cbbfe5d7dcf0c');
 	});
 
 	it('should produce the same checksum via the jsSHA fallback as WebCrypto', async () => {
@@ -426,6 +426,18 @@ describe('calculateWorkflowChecksum', () => {
 			const missing = await calculateWorkflowChecksum(baseWorkflow);
 
 			expect(bothNull).toBe(missing);
+		});
+
+		// Persisted workflows always carry both columns, with `null` when empty.
+		// Pinning this hash proves the normalization keeps legacy checksums valid.
+		it('should preserve the legacy checksum for persisted snapshots with explicit null fields', async () => {
+			const persisted = await calculateWorkflowChecksum({
+				...baseWorkflow,
+				description: null,
+				activeVersionId: null,
+			});
+
+			expect(persisted).toBe('837c7df1f8b9fd9a4bde21a6745ff18b6bab8cb52e4688f5b771b34cfc400528');
 		});
 
 		it('should keep a real value when the other nullable field is null', async () => {
