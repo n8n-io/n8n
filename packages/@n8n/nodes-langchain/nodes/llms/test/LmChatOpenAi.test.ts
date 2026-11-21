@@ -18,6 +18,7 @@ import {
 	type INode,
 	type INodeParameters,
 	type INodeProperties,
+	type INodePropertyOptions,
 	type ISupplyDataFunctions,
 } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
@@ -25,11 +26,19 @@ import type { Mocked } from 'vitest';
 import { wrapChatModelMessageInput } from '@utils/chatModelMessageWrapper';
 
 import * as common from '../LMChatOpenAi/common';
+import { isNoneReasoningSupported } from '../LMChatOpenAi/common';
 import { LmChatOpenAi } from '../LMChatOpenAi/LmChatOpenAi.node';
 
 vi.mock('@langchain/openai');
 vi.mock('@n8n/ai-utilities');
-vi.mock('../LMChatOpenAi/common');
+vi.mock('../LMChatOpenAi/common', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('../LMChatOpenAi/common')>();
+	return {
+		...actual,
+		formatBuiltInTools: vi.fn(),
+		prepareAdditionalResponsesParams: vi.fn(),
+	};
+});
 vi.mock('@utils/chatModelMessageWrapper', () => ({
 	wrapChatModelMessageInput: vi.fn((model) => model),
 }));
@@ -152,6 +161,34 @@ describe('LmChatOpenAi', () => {
 					.map((option) => option.name);
 			};
 
+			// Reads the option values of the single visible Reasoning Effort field, so a
+			// swap of the two dropdown variants fails the tests below.
+			const visibleReasoningEffortValues = (
+				model: string,
+				optionValues: INodeParameters = {},
+			): Array<string | number | boolean> => {
+				const { description } = new LmChatOpenAi();
+				const properties = description.properties.find((p) => p?.name === 'options')
+					?.options as INodeProperties[];
+				const nodeValues = {
+					model: { __rl: true, mode: 'id', value: model },
+					options: optionValues,
+				};
+				const visible = properties.filter((option) =>
+					NodeHelpers.displayParameterPath(
+						nodeValues,
+						option,
+						'options',
+						{ typeVersion: 1.3 },
+						description,
+					),
+				);
+				const effort = visible.find((option) => option.name === 'reasoningEffort');
+				expect(effort).toBeDefined();
+				const optionList = effort?.options as INodePropertyOptions[] | undefined;
+				return (optionList ?? []).map((option) => option.value);
+			};
+
 			it.each(['o1', 'o3-mini', 'gpt-5-mini'])(
 				'shows it for the OpenAI reasoning model %s',
 				(model) => {
@@ -170,6 +207,29 @@ describe('LmChatOpenAi', () => {
 			it('shows it for a model on a custom endpoint when the user turns on reasoning support', () => {
 				const visible = visibleOptions('claude-sonnet-4-5', { modelSupportsReasoning: true });
 				expect(visible.filter((name) => name === 'reasoningEffort')).toHaveLength(1);
+			});
+
+			it.each(['gpt-5.4', 'gpt-6-sol'])('offers none for the verified model %s', (model) => {
+				expect(visibleReasoningEffortValues(model)).toEqual(['none', 'low', 'medium', 'high']);
+			});
+
+			it.each(['gpt-5-mini', 'gpt-5.1-codex', 'o3-mini'])(
+				'does not offer none for the reasoning model %s',
+				(model) => {
+					expect(visibleReasoningEffortValues(model)).toEqual(['low', 'medium', 'high']);
+				},
+			);
+
+			it('does not offer none on a custom endpoint, even when reasoning support is on', () => {
+				expect(
+					visibleReasoningEffortValues('claude-sonnet-4-5', { modelSupportsReasoning: true }),
+				).toEqual(['low', 'medium', 'high']);
+			});
+
+			it.each(['gpt-5.4', 'gpt-6-sol'])('hides modelSupportsReasoning for %s', (model) => {
+				const visible = visibleOptions(model);
+				expect(visible.filter((name) => name === 'reasoningEffort')).toHaveLength(1);
+				expect(visible).not.toContain('modelSupportsReasoning');
 			});
 		});
 	});
@@ -415,7 +475,7 @@ describe('LmChatOpenAi', () => {
 		it('should only add valid reasoning effort to modelKwargs', async () => {
 			const mockContext = setupMockContext();
 			const options = {
-				reasoningEffort: 'invalid' as 'low' | 'medium' | 'high',
+				reasoningEffort: 'invalid' as 'none' | 'low' | 'medium' | 'high',
 			};
 
 			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
@@ -774,6 +834,189 @@ describe('LmChatOpenAi', () => {
 
 			expect(mockedWrapChatModelMessageInput).not.toHaveBeenCalled();
 			expect(result.response).toBe(MockedChatOpenAI.mock.instances[0]);
+		});
+
+		describe('reasoning_effort: none', () => {
+			describe('map unit tests', () => {
+				// Uses the exported predicate — not a reimplementation.
+				// If the internal regex changes, these tests automatically reflect it.
+				it.each([
+					// gpt-5 base tier
+					['gpt-5.1', true],
+					['gpt-5.2', true],
+					['gpt-5.4', true],
+					['gpt-5.5', true],
+					['gpt-5.6', true],
+					// gpt-5 extra tiers
+					['gpt-5.4-mini', true],
+					['gpt-5.4-nano', true],
+					['gpt-5.6-sol', true],
+					['gpt-5.6-terra', true],
+					['gpt-5.6-luna', true],
+					// gpt-6 named variants
+					['gpt-6-sol', true],
+					['gpt-6-luna', true],
+					['gpt-6.1-terra', true],
+					// date suffixes
+					['gpt-5.4-2025-10-01', true],
+					['gpt-6-sol-2025-11-01', true],
+					// unsupported — base gpt-5 and gpt-5-* without a numeric minor version
+					['gpt-5', false],
+					['gpt-5-mini', false],
+					['gpt-5-nano', false],
+					['gpt-5-pro', false],
+					// unsupported — pro and codex variants
+					['gpt-5.4-pro', false],
+					['gpt-5.5-pro', false],
+					['gpt-5.1-codex', false],
+					['gpt-5.1-codex-max', false],
+					['gpt-5.1-codex-mini', false],
+					['gpt-5.2-codex', false],
+					['gpt-5.3-codex', false],
+					// unsupported — chat-latest and other compound suffixes
+					['gpt-5.4-chat-latest', false],
+					// unsupported — gpt-6 models not in the map
+					['gpt-6-astra', false],
+					['gpt-6.1-sol', false],
+					['gpt-6', false],
+					// unsupported — unverified minor versions
+					['gpt-5.1-mini', false],
+					['gpt-5.3', false],
+					// unsupported — typos / partial matches
+					['gpt-5.4x', false],
+				] as Array<[string, boolean]>)('isNoneReasoningSupported(%s) → %s', (model, expected) => {
+					expect(isNoneReasoningSupported(model)).toBe(expected);
+				});
+			});
+
+			describe('Chat Completions pass-through', () => {
+				it('forwards reasoning_effort: none for model gpt-5.4', async () => {
+					const mockContext = setupMockContext({ typeVersion: 1.2 });
+
+					mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+						if (paramName === 'model.value') return 'gpt-5.4';
+						if (paramName === 'options') return { reasoningEffort: 'none' };
+						return undefined;
+					});
+
+					await lmChatOpenAi.supplyData.call(mockContext, 0);
+
+					expect(MockedChatOpenAI).toHaveBeenCalledWith(
+						expect.objectContaining({
+							model: 'gpt-5.4',
+							modelKwargs: { reasoning_effort: 'none' },
+						}),
+					);
+				});
+			});
+
+			describe('Responses API pass-through', () => {
+				it('maps none to reasoning: { effort: none } for model gpt-5.4', async () => {
+					const mockContext = setupMockContext({ typeVersion: 1.3 });
+
+					mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+						if (paramName === 'responsesApiEnabled') return true;
+						if (paramName === 'model.value') return 'gpt-5.4';
+						if (paramName === 'options') return { reasoningEffort: 'none' };
+						if (paramName === 'builtInTools') return {};
+						return undefined;
+					});
+
+					// Run the real mapping so this test fails on a regression, not on a stub.
+					const actualCommon = await vi.importActual<typeof common>('../LMChatOpenAi/common');
+					mockedCommon.prepareAdditionalResponsesParams = vi.fn(
+						actualCommon.prepareAdditionalResponsesParams,
+					);
+					//@ts-expect-error - Mocking
+					mockedCommon.formatBuiltInTools = vi.fn().mockReturnValue([]);
+
+					await lmChatOpenAi.supplyData.call(mockContext, 0);
+
+					expect(MockedChatOpenAI).toHaveBeenCalledWith(
+						expect.objectContaining({
+							model: 'gpt-5.4',
+							modelKwargs: expect.objectContaining({ reasoning: { effort: 'none' } }),
+						}),
+					);
+				});
+			});
+
+			describe('runtime guard', () => {
+				it.each(['gpt-5', 'gpt-5.4-pro', 'gpt-5.1-codex', 'gpt-6-astra'])(
+					'throws NodeOperationError when reasoningEffort: none is used with unsupported model %s',
+					async (model) => {
+						const mockContext = setupMockContext({ typeVersion: 1.2 });
+
+						mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+							if (paramName === 'model.value') return model;
+							if (paramName === 'options') return { reasoningEffort: 'none' as const };
+							return undefined;
+						});
+
+						const result = lmChatOpenAi.supplyData.call(mockContext, 0);
+						await expect(result).rejects.toThrow(NodeOperationError);
+						await expect(result).rejects.toThrow(
+							`Reasoning effort 'none' is not supported by model "${model}"`,
+						);
+					},
+				);
+
+				it('does not throw when reasoningEffort: none is used with gpt-6-sol', async () => {
+					const mockContext = setupMockContext({ typeVersion: 1.2 });
+
+					mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+						if (paramName === 'model.value') return 'gpt-6-sol';
+						if (paramName === 'options') return { reasoningEffort: 'none' as const };
+						return undefined;
+					});
+
+					await expect(lmChatOpenAi.supplyData.call(mockContext, 0)).resolves.toBeDefined();
+				});
+
+				it('applies the guard on the Responses API path', async () => {
+					const mockContext = setupMockContext({ typeVersion: 1.3 });
+
+					mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+						if (paramName === 'responsesApiEnabled') return true;
+						if (paramName === 'model.value') return 'gpt-5';
+						if (paramName === 'options') return { reasoningEffort: 'none' as const };
+						return undefined;
+					});
+
+					await expect(lmChatOpenAi.supplyData.call(mockContext, 0)).rejects.toThrow(
+						NodeOperationError,
+					);
+				});
+
+				it('applies the guard for typeVersion 1.1, where the model is a plain string', async () => {
+					const mockContext = setupMockContext({ typeVersion: 1.1 });
+
+					mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+						if (paramName === 'model') return 'gpt-5';
+						if (paramName === 'options') return { reasoningEffort: 'none' as const };
+						return undefined;
+					});
+
+					await expect(lmChatOpenAi.supplyData.call(mockContext, 0)).rejects.toThrow(
+						'Reasoning effort \'none\' is not supported by model "gpt-5"',
+					);
+				});
+
+				it('skips the guard when a custom base URL is configured', async () => {
+					const mockContext = setupMockContext({ typeVersion: 1.2 });
+					mockContext.getCredentials = vi
+						.fn()
+						.mockResolvedValue({ apiKey: 'test-api-key', url: 'https://example.com/v1' });
+
+					mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+						if (paramName === 'model.value') return 'gpt-5';
+						if (paramName === 'options') return { reasoningEffort: 'none' as const };
+						return undefined;
+					});
+
+					await expect(lmChatOpenAi.supplyData.call(mockContext, 0)).resolves.toBeDefined();
+				});
+			});
 		});
 	});
 
