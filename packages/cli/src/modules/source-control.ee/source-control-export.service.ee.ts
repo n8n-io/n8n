@@ -217,14 +217,6 @@ export class SourceControlExportService {
 		try {
 			sourceControlFoldersExistCheck([this.gitFolder]);
 			const variables = await this.variablesService.getAllCached({ globalOnly: true });
-			// do not export empty variables
-			if (variables.length === 0) {
-				return {
-					count: 0,
-					folder: this.gitFolder,
-					files: [],
-				};
-			}
 			const fileName = getVariablesPath(this.gitFolder);
 			const sanitizedVariables: ExportableVariable[] = variables.map((e) => ({
 				id: e.id,
@@ -364,14 +356,6 @@ export class SourceControlExportService {
 				},
 				where: this.sourceControlScopedService.getFoldersInAdminProjectsFromContextFilter(context),
 			});
-
-			if (folders.length === 0) {
-				return {
-					count: 0,
-					folder: this.gitFolder,
-					files: [],
-				};
-			}
 
 			const fileName = getFoldersPath(this.gitFolder);
 
