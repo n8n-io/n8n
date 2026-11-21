@@ -121,6 +121,9 @@ describe('SourceControlExportService', () => {
 			// Assert
 			expect(result.count).toBe(1);
 			expect(result.files).toHaveLength(1);
+			// The reported file must be the file actually written: keyed by the credential id.
+			expect(result.files[0]?.id).toBe('cred1');
+			expect(result.files[0]?.name?.endsWith('cred1.json')).toBe(true);
 
 			const dataCaptor = captor<string>();
 			expect(fsWriteFile).toHaveBeenCalledWith(
@@ -786,6 +789,9 @@ describe('SourceControlExportService', () => {
 			// Assert
 			expect(result.count).toBe(1);
 			expect(result.files).toHaveLength(1);
+			// The reported file must be the file actually written: keyed by the workflow id.
+			expect(result.files[0]?.id).toBe(workflowId);
+			expect(result.files[0]?.name?.endsWith(`${workflowId}.json`)).toBe(true);
 
 			const dataCaptor = captor<string>();
 			expect(fsWriteFile).toHaveBeenCalledWith(expect.stringContaining(workflowId), dataCaptor);
