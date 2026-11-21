@@ -59,6 +59,7 @@ export const MISSING_PROTOCOL_VERSION_ERROR_MESSAGE =
  * Tool name constants
  */
 export const LIST_N8N_GATEWAY_SERVICES_TOOL_NAME = 'list_n8n_gateway_services';
+export const GET_N8N_GATEWAY_ACCESS_TOOL_NAME = 'get_n8n_gateway_access';
 export const MCP_GET_USER_PREFERENCES_TOOL_NAME = 'get_user_preferences';
 export const MCP_SAVE_USER_PREFERENCE_TOOL_NAME = 'save_user_preference';
 export const MCP_UPDATE_USER_PREFERENCE_TOOL_NAME = 'update_user_preference';
