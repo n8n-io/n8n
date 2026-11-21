@@ -237,6 +237,8 @@ export class Snowflake implements INodeType {
 			logFilePath: 'STDOUT',
 			logLevel: 'OFF',
 			jsonColumnVariantParser: JSON.parse,
+			// Preserve the fail-open OCSP behavior from Snowflake SDK 3.3.
+			ocspFailOpen: true,
 		});
 
 		const authMethod = this.getNodeParameter('authentication', 0, 'credentials') as string;

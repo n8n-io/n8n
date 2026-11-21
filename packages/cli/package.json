@@ -205,7 +205,7 @@
     "@opentelemetry/core": "2.10.0",
     "@opentelemetry/exporter-trace-otlp-grpc": "^0.221.0",
     "@opentelemetry/exporter-trace-otlp-proto": "^0.221.0",
-    "@opentelemetry/resources": "2.10.0",
+    "@opentelemetry/resources": "2.12.1",
     "@opentelemetry/sdk-node": "0.221.0",
     "@opentelemetry/sdk-trace-base": "catalog:",
     "@opentelemetry/sdk-trace-node": "2.10.0",
