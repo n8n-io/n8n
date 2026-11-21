@@ -254,6 +254,21 @@ describe('AgentJsonConfigSchema — memory.observationalMemory', () => {
 		});
 	});
 
+	it.each([1.5, Number.MAX_SAFE_INTEGER + 1, Number.POSITIVE_INFINITY, '64000'])(
+		'rejects invalid memory window cap %j',
+		(maxContextWindowTokens) => {
+			expect(
+				AgentJsonConfigSchema.safeParse({
+					...baseConfig,
+					memory: {
+						...memoryBase,
+						observationalMemory: { windowShares: { maxContextWindowTokens } },
+					},
+				}).success,
+			).toBe(false);
+		},
+	);
+
 	it('rejects a negative memory window cap', () => {
 		const parsed = AgentJsonConfigSchema.safeParse({
 			...baseConfig,
