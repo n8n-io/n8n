@@ -56,6 +56,8 @@ const savedContextSchema = z.object({
 	lastUsedAt: z.string().datetime().pipe(z.coerce.date()),
 });
 
+const savedContextsSchema = z.object({ contexts: z.array(savedContextSchema) });
+
 /** Errors from the gateway itself carry a message written for the user. */
 const gatewayErrorSchema = z.object({
 	error: z.object({
@@ -63,6 +65,15 @@ const gatewayErrorSchema = z.object({
 		type: z.string().startsWith('ai_gateway_'),
 	}),
 });
+
+/** The details of a failed gateway request that are safe to log. */
+export type GatewayErrorDetails = {
+	statusCode: number;
+	/** The gateway's own error type, for example "ai_gateway_request_error". */
+	gatewayErrorType?: string;
+	/** The gateway's own message. The gateway writes these itself, so they hold no upstream data. */
+	gatewayErrorMessage?: string;
+};
 
 /** A browser session. `connectUrl` carries a signing key, so it must never be logged. */
 export type AiGatewayBrowserSession = z.infer<typeof createdSessionSchema>;
@@ -271,6 +282,34 @@ export class AiGatewayBrowserUseService {
 	}
 
 	/**
+	 * The user's saved logins, most recently used first, only for `domain` when it is given. This
+	 * request is free and is not part of a task, so it has no attribution.
+	 */
+	async listSavedContexts({
+		userId,
+		domain,
+	}: {
+		userId: string;
+		/** A registrable domain, as sent to `saveContext`. */
+		domain?: string;
+	}): Promise<AiGatewaySavedBrowserContext[]> {
+		const body = await this.aiGatewayService.sendProviderRequest<unknown>({
+			provider: BROWSERBASE_BROWSER_USE_PROVIDER,
+			authHeaderKey: BROWSERBASE_API_KEY_HEADER,
+			method: 'GET',
+			path: domain ? `/v1/contexts?domain=${encodeURIComponent(domain)}` : '/v1/contexts',
+			userId,
+			mapErrorResponse: toGatewayError,
+			timeoutMs: REQUEST_TIMEOUT_MS,
+		});
+		const parsed = savedContextsSchema.safeParse(body);
+		if (!parsed.success) {
+			throw new OperationalError('Could not read the saved logins. Try again later.');
+		}
+		return parsed.data.contexts;
+	}
+
+	/**
 	 * Deletes a context, saved or not. This request is free and is not part of a task, so it
 	 * has no attribution.
 	 */
@@ -296,8 +335,16 @@ export function toGatewayError(response: AiGatewayErrorResponse): UserError | Op
 	const message = gatewayError.success
 		? gatewayError.data.error.message
 		: `Failed to complete the browser session request (HTTP ${response.statusCode}).`;
+	// For the logs. The rest of the body is not kept, because an upstream body can contain IDs.
+	const details: GatewayErrorDetails = {
+		statusCode: response.statusCode,
+		...(gatewayError.success && {
+			gatewayErrorType: gatewayError.data.error.type,
+			gatewayErrorMessage: gatewayError.data.error.message,
+		}),
+	};
 
 	return response.statusCode >= 400 && response.statusCode < 500
-		? new UserError(message)
-		: new OperationalError(message);
+		? new UserError(message, { extra: details })
+		: new OperationalError(message, { extra: details });
 }

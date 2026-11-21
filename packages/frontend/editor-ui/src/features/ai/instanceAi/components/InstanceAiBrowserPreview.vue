@@ -6,11 +6,14 @@
  * user, they already have control; otherwise the agent's calls wait from now on. "I'm done" gives
  * control back. After a takeover the agent did not ask for, it first asks what the user changed.
  */
-import { FocusScope, N8nButton, N8nIcon, N8nInput, N8nText } from '@n8n/design-system';
+import { FocusScope, N8nButton, N8nIcon, N8nInput, N8nLink, N8nText } from '@n8n/design-system';
 import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, inject, ref, watch } from 'vue';
+
+import { VIEWS } from '@/app/constants';
+import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 
 import {
 	CloudBrowserLiveViewRefreshKey,
@@ -18,6 +21,7 @@ import {
 	embeddedLiveViewUrl,
 } from '../composables/useCloudBrowserLiveViews';
 import { postCloudBrowserReturnControl, postCloudBrowserTakeOver } from '../instanceAi.api';
+import { SAVED_LOGINS_QUERY } from '../constants';
 import { useThread } from '../instanceAi.store';
 
 const props = defineProps<{
@@ -51,6 +55,16 @@ const frames = computed(() => {
 const loginProfile = computed(() =>
 	liveView.value?.status === 'live' ? liveView.value.loginProfile : undefined,
 );
+
+/** The date the user saved the login this session uses, or nothing when it uses none. */
+const savedLoginDate = computed(() => {
+	const savedAt = loginProfile.value?.savedAt;
+	if (!savedAt) return undefined;
+	const isToday = new Date(savedAt).toDateString() === new Date().toDateString();
+	return isToday
+		? i18n.baseText('instanceAi.cloudBrowser.savedLoginToday')
+		: convertToDisplayDate(savedAt).date;
+});
 
 /** The domain to save a login for. Decides whether the save dialog is shown. */
 const loginDomainToSave = computed(() => {
@@ -207,7 +221,7 @@ function showSaveLoginResult(loginWillBeSaved: boolean, domain: string | undefin
 <template>
 	<div :class="$style.container" data-test-id="instance-ai-browser-preview">
 		<div
-			v-if="userAction || hasControl"
+			v-if="userAction || hasControl || savedLoginDate"
 			:class="$style.banner"
 			data-test-id="instance-ai-browser-preview-banner"
 		>
@@ -216,15 +230,35 @@ function showSaveLoginResult(loginWillBeSaved: boolean, domain: string | undefin
 					{{
 						hasControl
 							? i18n.baseText('instanceAi.cloudBrowser.youHaveControl')
-							: i18n.baseText('instanceAi.cloudBrowser.needsInput')
+							: userAction
+								? i18n.baseText('instanceAi.cloudBrowser.needsInput')
+								: i18n.baseText('instanceAi.cloudBrowser.agentWorking')
 					}}
 				</N8nText>
-				<N8nText tag="div" size="medium">
+				<N8nText v-if="userAction || hasControl" tag="div" size="medium">
 					{{
 						hasControl
 							? i18n.baseText('instanceAi.cloudBrowser.returnControlHint')
 							: userAction?.reason
 					}}
+				</N8nText>
+				<N8nText
+					v-if="savedLoginDate"
+					tag="div"
+					size="medium"
+					data-test-id="instance-ai-browser-preview-saved-login"
+				>
+					{{
+						i18n.baseText('instanceAi.cloudBrowser.savedLoginNotice', {
+							interpolate: { date: savedLoginDate },
+						})
+					}}
+					<N8nLink
+						:to="{ name: VIEWS.PERSONAL_SETTINGS, query: { [SAVED_LOGINS_QUERY]: 'open' } }"
+						size="medium"
+					>
+						{{ i18n.baseText('instanceAi.cloudBrowser.manageSavedLogins') }}
+					</N8nLink>
 				</N8nText>
 			</div>
 			<N8nButton

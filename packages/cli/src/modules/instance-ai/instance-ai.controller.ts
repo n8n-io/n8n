@@ -17,6 +17,7 @@ import {
 import type {
 	InstanceAiCloudBrowserLiveViewResponse,
 	InstanceAiCloudBrowserReturnControlResponse,
+	InstanceAiSavedLoginsResponse,
 	InstanceAiEvent,
 	AssistantThreadTabsResponse,
 } from '@n8n/api-types';
@@ -698,6 +699,27 @@ export class InstanceAiController {
 			ok: true,
 			loginWillBeSaved: result.loginWillBeSaved,
 		} satisfies InstanceAiCloudBrowserReturnControlResponse;
+	}
+
+	/** The user's saved cloud browser logins, for the personal settings. */
+	@Get('/cloud-browser/saved-logins')
+	@GlobalScope('instanceAi:message')
+	async listSavedLogins(req: AuthenticatedRequest): Promise<InstanceAiSavedLoginsResponse> {
+		this.requireInstanceAiEnabled();
+		return { savedLogins: await this.cloudBrowserService.listSavedLogins(req.user.id) };
+	}
+
+	/** Deletes one of the user's saved cloud browser logins. */
+	@Delete('/cloud-browser/saved-logins/:savedLoginId')
+	@GlobalScope('instanceAi:message')
+	async deleteSavedLogin(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('savedLoginId') savedLoginId: string,
+	) {
+		this.requireInstanceAiEnabled();
+		await this.cloudBrowserService.deleteSavedLogin(req.user.id, savedLoginId);
+		return { ok: true };
 	}
 
 	@Post('/chat/:threadId/tasks/:taskId/correct')

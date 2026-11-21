@@ -1943,6 +1943,19 @@ export interface InstanceAiCloudBrowserReturnControlResponse {
 	loginWillBeSaved: boolean;
 }
 
+/** A login the user saved in the cloud browser, for one site. Dates are ISO strings. */
+export interface InstanceAiSavedLogin {
+	id: string;
+	/** The registrable domain the login is for, for example "linkedin.com". */
+	domain: string;
+	savedAt: string;
+	lastUsedAt: string;
+}
+
+export interface InstanceAiSavedLoginsResponse {
+	savedLogins: InstanceAiSavedLogin[];
+}
+
 /**
  * Entry-point taxonomy for Instance AI thread creation. Every new entry point
  * must register a value here — `InstanceAiEnsureThreadRequest.source` requires

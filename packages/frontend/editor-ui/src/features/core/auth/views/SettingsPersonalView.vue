@@ -27,6 +27,7 @@ import type {
 } from '../auth.eventBus';
 import { confirmPasswordEventBus, promptMfaCodeBus } from '../auth.eventBus';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
+import SavedLoginsSettingsSection from '@/features/ai/instanceAi/components/SavedLoginsSettingsSection.vue';
 
 import type { SelectOptionBase, SelectValue } from '@n8n/design-system';
 import {
@@ -624,6 +625,8 @@ onBeforeUnmount(() => {
 				</N8nSettingsRow>
 			</N8nSettingsRowGroup>
 		</N8nSettingsSection>
+
+		<SavedLoginsSettingsSection />
 	</N8nSettingsLayout>
 </template>
 

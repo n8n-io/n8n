@@ -18,6 +18,7 @@ import type {
 	ToolContext,
 	ToolDefinition,
 } from '@n8n/mcp-browser';
+import { BaseError } from '@n8n/errors';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { createDeferredPromise, type IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { isIP } from 'node:net';
@@ -563,8 +564,7 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 			const result = await this.executeBrowserToolOnSession(session, navigate, {
 				url: args.data.url,
 			});
-			const { regionCountry, proxyCountry } = session.location;
-			return withBrowserLocationContext(result, regionCountry, proxyCountry);
+			return withSessionContext(result, session);
 		});
 	}
 
@@ -706,23 +706,34 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 		requestedLocation: Partial<CloudBrowserSessionLocation>,
 	): Promise<ActiveSession> {
 		const { scope, sessionProvider, enableLoginProfiles, createToolkit, logger } = this.options;
-		const loginProfile = enableLoginProfiles ? await this.createLoginProfile(host) : undefined;
+		const loginProfile = enableLoginProfiles ? await this.resolveLoginProfile(host) : undefined;
+		// A saved login must open where it was saved, regardless of what the agent asked for.
+		const locationToOpen = loginProfile?.savedLocation ?? requestedLocation;
 		let createdSession: CloudBrowserSession;
 		try {
 			createdSession = await sessionProvider.createSession(scope, {
-				...requestedLocation,
+				...locationToOpen,
 				loginProfileId: loginProfile?.id,
 			});
 		} catch (error) {
-			await this.deleteLoginProfile(loginProfile);
+			logger.warn('Failed to create a cloud browser session', {
+				taskId: scope.taskId,
+				usesSavedLogin: !!loginProfile?.savedAt,
+				regionId: locationToOpen.regionId,
+				proxyCountry: locationToOpen.proxyCountry,
+				...safeErrorDetails(error),
+			});
+			// Session creation failed, so the login profile is not used and can be deleted.
+			// Unless it is an existing saved login, in which case we do nothing.
+			if (!loginProfile?.savedAt) await this.deleteLoginProfile(loginProfile);
 			throw error;
 		}
 		const { id, connectUrl, regionCountry, regionId } = createdSession;
 		const location: SessionLocation = {
 			regionId,
 			regionCountry,
-			proxyCountry: requestedLocation.proxyCountry,
-			proxyCity: requestedLocation.proxyCity,
+			proxyCountry: locationToOpen.proxyCountry,
+			proxyCity: locationToOpen.proxyCity,
 		};
 
 		let toolkit: BrowserToolkit;
@@ -730,8 +741,16 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 			toolkit = createToolkit(connectUrl);
 			await toolkit.connection.connect();
 		} catch (error) {
+			logger.warn('Failed to connect to a cloud browser session', {
+				taskId: scope.taskId,
+				sessionId: id,
+				usesSavedLogin: !!loginProfile?.savedAt,
+				...safeErrorDetails(error),
+			});
 			await this.releaseSessionById(id);
-			await this.deleteLoginProfile(loginProfile);
+			// The tools could not connect, so the login profile is not used and can be deleted.
+			// Unless it is an existing saved login, in which case we do nothing.
+			if (!loginProfile?.savedAt) await this.deleteLoginProfile(loginProfile);
 			throw error;
 		}
 
@@ -758,15 +777,41 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 	}
 
 	/**
-	 * A new login profile for a session on `host`. Returns nothing when the host has no registrable
-	 * domain, for example an IP address, or when no login profile could be created. The session
-	 * then opens without one: a failure here must not stop the task from browsing.
+	 * The login profile for a session on `host`: the user's saved login for the site, or else a new
+	 * login profile. Returns nothing when the host has no registrable domain, for example an IP
+	 * address, or when no login profile could be created. The session then opens without one: a
+	 * failure here must not stop the task from browsing.
 	 */
-	private async createLoginProfile(host: string): Promise<CloudBrowserLoginProfile | undefined> {
-		const { scope, sessionProvider, logger } = this.options;
+	private async resolveLoginProfile(host: string): Promise<CloudBrowserLoginProfile | undefined> {
 		const domain = await registrableDomainOf(host);
 		if (!domain) return undefined;
+		const savedLoginProfile = await this.findSavedLoginProfileForDomain(domain);
+		if (savedLoginProfile) return savedLoginProfile;
+		return await this.createLoginProfile(domain);
+	}
 
+	/**
+	 * The user's most recently used saved login for `domain`. A failed lookup is only logged, so the
+	 * session opens with a new login profile instead.
+	 */
+	private async findSavedLoginProfileForDomain(
+		domain: string,
+	): Promise<CloudBrowserLoginProfile | undefined> {
+		const { scope, sessionProvider, logger } = this.options;
+		try {
+			return await sessionProvider.findSavedLoginProfileForDomain(scope, domain);
+		} catch (error) {
+			logger.warn('Failed to find a saved cloud browser login, opening the session without one', {
+				taskId: scope.taskId,
+				...safeErrorDetails(error),
+			});
+			return undefined;
+		}
+	}
+
+	/** A new login profile for `domain`. Returns nothing when it could not be created. */
+	private async createLoginProfile(domain: string): Promise<CloudBrowserLoginProfile | undefined> {
+		const { scope, sessionProvider, logger } = this.options;
 		try {
 			const id = await sessionProvider.createLoginProfile(scope);
 			return { id, domain };
@@ -775,7 +820,7 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 				'Failed to create a login profile, opening the cloud browser session without one',
 				{
 					taskId: scope.taskId,
-					error: ensureError(error).message,
+					...safeErrorDetails(error),
 				},
 			);
 			return undefined;
@@ -816,17 +861,17 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 	private async releaseSessionAndLoginProfile(session: ActiveSession): Promise<void> {
 		const { id: sessionId, location, loginProfile } = session;
 
-		const shouldSaveLoginProfile = await this.shouldSaveLoginProfile(session);
+		const shouldKeepLoginProfile = await this.shouldKeepLoginProfile(session);
 
 		await session.connection.disconnect();
 		await this.releaseSessionById(sessionId);
 
-		const isLoginSaved =
-			shouldSaveLoginProfile && !!loginProfile
-				? await this.saveLoginProfile(loginProfile, location)
+		const isLoginKept =
+			shouldKeepLoginProfile && !!loginProfile
+				? await this.keepLoginProfile(loginProfile, location)
 				: false;
 
-		if (!isLoginSaved) {
+		if (!isLoginKept) {
 			await this.deleteLoginProfile(loginProfile);
 		}
 	}
@@ -840,19 +885,22 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 			logger.warn('Failed to release cloud browser session', {
 				taskId: scope.taskId,
 				sessionId,
-				error: ensureError(error).message,
+				...safeErrorDetails(error),
 			});
 		}
 	}
 
 	/**
-	 * Whether to save the login profile when its session ends: the user chose to save it. The login
-	 * profile keeps the browser state of its session, so the other sites are cleared from it first.
-	 * When they cannot be cleared, for example after the connection dropped, it is not saved.
+	 * Whether to keep the login profile when its session ends: a saved login the session used, or a
+	 * login the user chose to save. The login profile keeps the browser state of its session, so the
+	 * other sites are cleared from it first. When they cannot be cleared, for example after the
+	 * connection dropped, it is deleted. This also applies to an existing saved login, because it may now
+	 * hold the data of other sites.
 	 */
-	private async shouldSaveLoginProfile(session: ActiveSession): Promise<boolean> {
+	private async shouldKeepLoginProfile(session: ActiveSession): Promise<boolean> {
 		const { loginProfile } = session;
-		if (!loginProfile || !session.saveLoginProfileOnSessionEnd) return false;
+		if (!loginProfile) return false;
+		if (!loginProfile.savedAt && !session.saveLoginProfileOnSessionEnd) return false;
 		if (!session.connection.isConnected) return false;
 		return await this.clearOtherSiteData(session, loginProfile);
 	}
@@ -871,10 +919,23 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 		} catch (error) {
 			logger.warn('Failed to clear other sites from a cloud browser login', {
 				taskId: scope.taskId,
-				error: ensureError(error).message,
+				...safeErrorDetails(error),
 			});
 			return false;
 		}
+	}
+
+	/**
+	 * Keeps a login profile after its session ended. A saved login is already kept: the session
+	 * provider wrote the cleared browser state into it when the session was released. Any other
+	 * login profile is saved. Returns whether it is kept.
+	 */
+	private async keepLoginProfile(
+		loginProfile: CloudBrowserLoginProfile,
+		location: SessionLocation,
+	): Promise<boolean> {
+		if (loginProfile.savedAt) return true;
+		return await this.saveLoginProfile(loginProfile, location);
 	}
 
 	/** Saves a login profile after its session ended. Returns whether it did. */
@@ -893,7 +954,7 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 		} catch (error) {
 			logger.warn('Failed to save a cloud browser login', {
 				taskId: scope.taskId,
-				error: ensureError(error).message,
+				...safeErrorDetails(error),
 			});
 			return false;
 		}
@@ -911,7 +972,8 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 		} catch (error) {
 			logger.warn('Failed to delete a cloud browser login profile', {
 				taskId: scope.taskId,
-				error: ensureError(error).message,
+				isSaved: !!loginProfile.savedAt,
+				...safeErrorDetails(error),
 			});
 		}
 	}
@@ -972,26 +1034,31 @@ function isNoHostResource(resource: AffectedResource): boolean {
 }
 
 /**
- * Adds where sites see the browser to a successful result, as `browserLocation.regionCountry`
- * and `browserLocation.proxyCountry`. The model reads structuredContent when there is one, so
- * it goes there.
+ * Adds what the agent needs to know about a new session to a successful result:
+ * - `browserLocation.regionCountry` and `browserLocation.proxyCountry`: where sites see the browser.
+ * - `savedLoginProfile.domain`: set when the session uses the user's saved login for the site. The
+ *   agent never learns which logins exist, only that this session uses one.
+ * The model reads structuredContent when there is one, so they go there.
  */
-function withBrowserLocationContext(
-	result: McpToolCallResult,
-	regionCountry: string | undefined,
-	proxyCountry: string | undefined,
-): McpToolCallResult {
-	if (result.isError || !result.structuredContent || (!regionCountry && !proxyCountry))
-		return result;
+function withSessionContext(result: McpToolCallResult, session: ActiveSession): McpToolCallResult {
+	if (result.isError || !result.structuredContent) return result;
 
+	const { regionCountry, proxyCountry } = session.location;
 	const browserLocation = {
 		...(regionCountry && { regionCountry }),
 		...(proxyCountry && { proxyCountry }),
 	};
-	// First, so it stays visible when a large page result is cut down for the model.
+	const savedLoginProfile = session.loginProfile?.savedAt && {
+		domain: session.loginProfile.domain,
+	};
+	// First, so they stay visible when a large page result is cut down for the model.
 	return {
 		...result,
-		structuredContent: { browserLocation, ...result.structuredContent },
+		structuredContent: {
+			...((regionCountry || proxyCountry) && { browserLocation }),
+			...(savedLoginProfile && { savedLoginProfile }),
+			...result.structuredContent,
+		},
 	};
 }
 
@@ -1076,4 +1143,29 @@ async function registrableDomainOf(host: string | undefined): Promise<string | u
 	if (!host || isIP(host)) return undefined;
 	const { get: getRegistrableDomain } = await import('psl');
 	return getRegistrableDomain(host) ?? undefined;
+}
+
+/**
+ * The details of an error that are safe to log: its class, and for a failed gateway request the
+ * status code and the gateway's own error type and message. Any other message is never logged: a
+ * browser error can contain the session's connect URL, which holds a signing key, or the sites
+ * the user visited, and an upstream message can contain IDs.
+ */
+function safeErrorDetails(error: unknown): {
+	errorName: string;
+	statusCode?: number;
+	gatewayErrorType?: string;
+	gatewayErrorMessage?: string;
+} {
+	const { extra } = error instanceof BaseError ? error : {};
+	return {
+		errorName: ensureError(error).name,
+		...(typeof extra?.statusCode === 'number' && { statusCode: extra.statusCode }),
+		...(typeof extra?.gatewayErrorType === 'string' && {
+			gatewayErrorType: extra.gatewayErrorType,
+		}),
+		...(typeof extra?.gatewayErrorMessage === 'string' && {
+			gatewayErrorMessage: extra.gatewayErrorMessage,
+		}),
+	};
 }

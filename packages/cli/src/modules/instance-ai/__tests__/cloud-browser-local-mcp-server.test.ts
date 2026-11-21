@@ -8,6 +8,7 @@ import {
 	type PageChangeDetails,
 	type ToolDefinition,
 } from '@n8n/mcp-browser';
+import { OperationalError } from '@n8n/errors';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 import { z } from 'zod';
@@ -762,7 +763,7 @@ describe('CloudBrowserLocalMcpServer', () => {
 
 			expect(logger.warn).toHaveBeenCalledWith(
 				'Failed to release cloud browser session',
-				expect.objectContaining({ sessionId: 'sess-1', error: 'HTTP 502' }),
+				expect.objectContaining({ sessionId: 'sess-1', errorName: 'Error' }),
 			);
 		});
 
@@ -802,6 +803,89 @@ describe('CloudBrowserLocalMcpServer', () => {
 				isError: true,
 			});
 			expect(toolkits).toHaveLength(0);
+		});
+	});
+
+	describe('logging a session that does not open', () => {
+		it("logs the status code and the gateway's own error, and nothing else from it", async () => {
+			const { sessionProvider, logger, start } = setup();
+			sessionProvider.createSession.mockRejectedValue(
+				new OperationalError('Something went wrong while processing your request.', {
+					extra: {
+						statusCode: 500,
+						gatewayErrorType: 'ai_gateway_internal_error',
+						gatewayErrorMessage: 'Something went wrong while processing your request.',
+						body: 'proj_123',
+					},
+				}),
+			);
+
+			await start({ url: 'https://example.com', proxyCountry: 'US' });
+
+			expect(logger.warn).toHaveBeenCalledWith('Failed to create a cloud browser session', {
+				taskId: scope.taskId,
+				usesSavedLogin: false,
+				regionId: undefined,
+				proxyCountry: 'US',
+				errorName: 'OperationalError',
+				statusCode: 500,
+				gatewayErrorType: 'ai_gateway_internal_error',
+				gatewayErrorMessage: 'Something went wrong while processing your request.',
+			});
+		});
+
+		it('does not log the message of an error that did not come from the gateway', async () => {
+			const { sessionProvider, logger, start } = setup();
+			sessionProvider.createSession.mockRejectedValue(
+				new OperationalError('Invalid project id proj_123', { extra: { statusCode: 400 } }),
+			);
+
+			await start({ url: 'https://example.com' });
+
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to create a cloud browser session',
+				expect.objectContaining({ statusCode: 400 }),
+			);
+			expect(JSON.stringify(vi.mocked(logger.warn).mock.calls)).not.toContain('proj_123');
+		});
+
+		it('logs that the session used a saved login, and the region it was saved in', async () => {
+			const { sessionProvider, logger, start } = setup();
+			sessionProvider.findSavedLoginProfileForDomain.mockResolvedValue({
+				id: 'saved-login-1',
+				domain: 'example.com',
+				savedAt: new Date('2026-11-01T10:00:00Z'),
+				savedLocation: { regionId: 'eu-central-1' },
+			});
+			sessionProvider.createSession.mockRejectedValue(new Error('HTTP 500'));
+
+			await start({ url: 'https://example.com' });
+
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to create a cloud browser session',
+				expect.objectContaining({ usesSavedLogin: true, regionId: 'eu-central-1' }),
+			);
+		});
+
+		it('does not log the connect error, which can contain the signing key', async () => {
+			const { createToolkit, logger, start } = setup();
+			createToolkit.mockImplementationOnce(() => {
+				const toolkit = fakeToolkit();
+				toolkit.connection.connect.mockRejectedValue(
+					new Error('connect failed: wss://connect.example.com/?signingKey=secret-key'),
+				);
+				return toolkit;
+			});
+
+			await start({ url: 'https://example.com' });
+
+			expect(logger.warn).toHaveBeenCalledWith('Failed to connect to a cloud browser session', {
+				taskId: scope.taskId,
+				sessionId: 'sess-1',
+				usesSavedLogin: false,
+				errorName: 'Error',
+			});
+			expect(JSON.stringify(vi.mocked(logger.warn).mock.calls)).not.toContain('secret-key');
 		});
 	});
 
@@ -2232,7 +2316,7 @@ describe('CloudBrowserLocalMcpServer', () => {
 				});
 				expect(logger.warn).toHaveBeenCalledWith(
 					'Failed to create a login profile, opening the cloud browser session without one',
-					expect.objectContaining({ error: 'HTTP 502' }),
+					expect.objectContaining({ errorName: 'Error' }),
 				);
 			});
 
@@ -2424,7 +2508,7 @@ describe('CloudBrowserLocalMcpServer', () => {
 
 				expect(logger.warn).toHaveBeenCalledWith(
 					'Failed to save a cloud browser login',
-					expect.objectContaining({ error: 'HTTP 502' }),
+					expect.objectContaining({ errorName: 'Error' }),
 				);
 				expect(sessionProvider.deleteLoginProfile).toHaveBeenCalledWith(scope, 'login-profile-1');
 			});
@@ -2517,7 +2601,7 @@ describe('CloudBrowserLocalMcpServer', () => {
 
 				expect(logger.warn).toHaveBeenCalledWith(
 					'Failed to delete a cloud browser login profile',
-					expect.objectContaining({ error: 'HTTP 502' }),
+					expect.objectContaining({ errorName: 'Error' }),
 				);
 			});
 
@@ -2546,7 +2630,7 @@ describe('CloudBrowserLocalMcpServer', () => {
 
 				expect(logger.warn).toHaveBeenCalledWith(
 					'Failed to clear other sites from a cloud browser login',
-					expect.objectContaining({ error: 'CDP error' }),
+					expect.objectContaining({ errorName: 'Error' }),
 				);
 				expect(sessionProvider.releaseSession).toHaveBeenCalledWith(scope, 'sess-1');
 				expect(sessionProvider.saveLoginProfile).not.toHaveBeenCalled();

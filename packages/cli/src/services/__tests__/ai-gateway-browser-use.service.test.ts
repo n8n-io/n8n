@@ -383,6 +383,40 @@ describe('AiGatewayBrowserUseService', () => {
 		});
 	});
 
+	describe('listSavedContexts()', () => {
+		const listRequest = {
+			provider: 'browserbaseBrowserUse',
+			authHeaderKey: 'X-BB-API-Key',
+			method: 'GET',
+			userId: 'user-1',
+			mapErrorResponse: toGatewayError,
+			timeoutMs: 30_000,
+		};
+
+		it('lists the saved contexts without attribution', async () => {
+			aiGatewayService.sendProviderRequest.mockResolvedValue({ contexts: [savedContext] });
+
+			const contexts = await service.listSavedContexts({ userId: 'user-1' });
+
+			expect(contexts).toEqual([parsedSavedContext]);
+			expect(aiGatewayService.sendProviderRequest).toHaveBeenCalledWith({
+				...listRequest,
+				path: '/v1/contexts',
+			});
+		});
+
+		it.each([
+			['no context list', {}],
+			['a context it cannot read', { contexts: [{ ...savedContext, savedAt: 'yesterday' }] }],
+		])('throws when the response has %s', async (_, response) => {
+			aiGatewayService.sendProviderRequest.mockResolvedValue(response);
+
+			await expect(service.listSavedContexts({ userId: 'user-1' })).rejects.toThrow(
+				'Could not read the saved logins. Try again later.',
+			);
+		});
+	});
+
 	describe('deleteContext()', () => {
 		it('deletes the context without attribution', async () => {
 			aiGatewayService.sendProviderRequest.mockResolvedValue({});
@@ -446,6 +480,24 @@ describe('toGatewayError()', () => {
 		});
 
 		expect(error.message).toBe('Failed to complete the browser session request (HTTP 402).');
+	});
+
+	it("keeps only the status code and the gateway's own error for the logs", () => {
+		const gatewayError = toGatewayError({
+			statusCode: 402,
+			body: { error: { message: 'Top up your credits.', type: 'ai_gateway_request_error' } },
+		});
+		const upstreamError = toGatewayError({
+			statusCode: 500,
+			body: { error: { message: 'Invalid project id proj_123', type: 'upstream_error' } },
+		});
+
+		expect(gatewayError.extra).toEqual({
+			statusCode: 402,
+			gatewayErrorType: 'ai_gateway_request_error',
+			gatewayErrorMessage: 'Top up your credits.',
+		});
+		expect(upstreamError.extra).toEqual({ statusCode: 500 });
 	});
 
 	it('gives an OperationalError when the gateway fails', () => {
