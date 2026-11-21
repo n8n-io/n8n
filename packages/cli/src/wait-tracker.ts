@@ -51,6 +51,11 @@ export class WaitTracker {
 
 	private readonly resuming = new Set<string>();
 
+	/** Parents a sweep is only inspecting, not necessarily resuming. */
+	private readonly inspecting = new Set<string>();
+
+	private readonly inspectionWaiters = new Map<string, Set<() => void>>();
+
 	private resumingParkedParents = false;
 
 	constructor(
@@ -151,7 +156,9 @@ export class WaitTracker {
 
 		// A poll can find the row still `waiting` while this process resumes it. A second
 		// resume would double the memory in use and consume a second attempt.
-		if (this.resuming.has(executionId)) throw new ExecutionAlreadyResumingError(executionId);
+		if (this.resuming.has(executionId)) {
+			throw new ExecutionAlreadyResumingError(executionId, { local: true });
+		}
 		this.resuming.add(executionId);
 		try {
 			await this.resumeExecution(executionId);
@@ -318,9 +325,10 @@ export class WaitTracker {
 	}
 
 	/**
-	 * Claim the parent so it resumes. When the claim fails the parent is either already
-	 * claimed by a sibling, or not parked yet; in the latter case
-	 * `resumeParentsOfFinishedSubExecutions` picks it up on the next tick.
+	 * Claim the parent so it resumes. A local sweep inspection can hold the parent
+	 * without claiming it, for example when its child row was already pruned, so wait
+	 * for that inspection to release and retry. An `ExecutionAlreadyResumingError` from
+	 * another process is not retried: that process owns the resume.
 	 */
 	private async claimParent(
 		parentExecutionId: string,
@@ -328,10 +336,15 @@ export class WaitTracker {
 	): Promise<void> {
 		try {
 			await this.withRetry(
-				async () => await this.startExecution(parentExecutionId),
+				async () => {
+					await this.waitForInspectionRelease(parentExecutionId);
+					await this.startExecution(parentExecutionId);
+				},
 				MAX_PARENT_RESUME_ATTEMPTS,
 				(error) =>
-					!(error instanceof ExecutionAlreadyResumingError) && isRetryableResumeError(error),
+					error instanceof ExecutionAlreadyResumingError
+						? error.local
+						: isRetryableResumeError(error),
 			);
 		} catch (error) {
 			if (error instanceof ExecutionAlreadyResumingError) {
@@ -343,6 +356,27 @@ export class WaitTracker {
 			}
 			throw error;
 		}
+	}
+
+	/** Wait for a sweep inspection of this parent to end, if one is running. */
+	private async waitForInspectionRelease(executionId: string): Promise<void> {
+		if (!this.inspecting.has(executionId)) return;
+
+		await new Promise<void>((resolve) => {
+			const waiters = this.inspectionWaiters.get(executionId) ?? new Set<() => void>();
+			waiters.add(resolve);
+			this.inspectionWaiters.set(executionId, waiters);
+		});
+	}
+
+	private finishInspection(executionId: string) {
+		this.inspecting.delete(executionId);
+
+		const waiters = this.inspectionWaiters.get(executionId);
+		if (!waiters) return;
+
+		this.inspectionWaiters.delete(executionId);
+		for (const resolve of waiters) resolve();
 	}
 
 	/**
@@ -391,6 +425,7 @@ export class WaitTracker {
 		// the inspection must not count a second attempt on top of that resume.
 		if (this.resuming.has(parentId)) return;
 		this.resuming.add(parentId);
+		this.inspecting.add(parentId);
 
 		let childExecution: RelatedExecution | undefined;
 		try {
@@ -406,6 +441,7 @@ export class WaitTracker {
 			}
 		} finally {
 			this.resuming.delete(parentId);
+			this.finishInspection(parentId);
 		}
 
 		if (childExecution) await this.claimParent(parentId, childExecution);

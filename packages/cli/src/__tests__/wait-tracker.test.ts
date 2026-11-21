@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/unbound-method */
 import type { Logger } from '@n8n/backend-common';
 import { mockLogger, mockInstance } from '@n8n/backend-test-utils';
 import type { Project, IExecutionResponse, ExecutionRepository } from '@n8n/db';
@@ -994,6 +993,55 @@ describe('WaitTracker', () => {
 					}),
 				);
 				expect(logger.error).not.toHaveBeenCalled();
+			});
+
+			it('waits for a local sweep inspection and resumes the parent it patched', async () => {
+				const { parentExecution, postExecutePromise, subworkflowResults } =
+					setupParentExecutionTest(true);
+				parentExecution.data.executionData!.nodeExecutionStack[0].metadata = {
+					waitingChildExecutionIds: [execution.id],
+				};
+				executionPersistence.updateExistingExecution.mockResolvedValue(true);
+				ownershipService.getWorkflowProjectCached.mockResolvedValue(project);
+				workflowRunner.run
+					.mockResolvedValueOnce(execution.id)
+					.mockResolvedValueOnce(parentExecution.id);
+
+				// The sweep inspects the same parent and finds the child row already pruned.
+				executionRepository.findParkedOnSubExecution.mockResolvedValue([parentExecution.id]);
+				const statuses =
+					createDeferredPromise<Awaited<ReturnType<ExecutionRepository['findStatusesByIds']>>>();
+				executionRepository.findStatusesByIds.mockReturnValue(statuses.promise);
+
+				await waitTracker.startExecution(execution.id);
+
+				const sweep = waitTracker.resumeParentsOfFinishedSubExecutions();
+				await vi.waitFor(() => expect(executionRepository.findStatusesByIds).toHaveBeenCalled());
+
+				// The child finishes and patches the parent while the sweep still holds it. The
+				// claim must wait for the inspection instead of logging "not claimable".
+				postExecutePromise.resolve(subworkflowResults);
+				await vi.advanceTimersByTimeAsync(1000);
+
+				expect(logger.info).not.toHaveBeenCalledWith(
+					expect.stringContaining('not claimable'),
+					expect.anything(),
+				);
+
+				// The sweep releases the parent without claiming it.
+				statuses.resolve([]);
+				await sweep;
+				await vi.advanceTimersByTimeAsync(1000);
+
+				expect(workflowRunner.run).toHaveBeenCalledWith(expect.any(Object), false, false, {
+					executionId: parentExecution.id,
+					expectedStatus: 'waiting',
+					storedAt: 'fs',
+				});
+				expect(logger.info).not.toHaveBeenCalledWith(
+					expect.stringContaining('not claimable'),
+					expect.anything(),
+				);
 			});
 		});
 	});
