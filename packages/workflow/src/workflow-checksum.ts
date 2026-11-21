@@ -39,6 +39,18 @@ export const WORKFLOW_CHECKSUM_FIELDS = [
 	'nodeGroups',
 ] as const satisfies ReadonlyArray<keyof WorkflowSnapshot>;
 
+type WorkflowChecksumField = (typeof WORKFLOW_CHECKSUM_FIELDS)[number];
+
+/**
+ * Fields that are nullable on `WorkflowSnapshot`. For these fields `null` has
+ * the same meaning as `undefined`: the value is absent. For all other fields
+ * `null` is a meaningful value and must stay in the checksum payload.
+ */
+const NULLABLE_CHECKSUM_FIELDS: ReadonlySet<WorkflowChecksumField> = new Set([
+	'description',
+	'activeVersionId',
+]);
+
 /**
  * Recursively sorts object keys alphabetically for consistent serialization.
  * Arrays keep their order; their elements are normalized recursively.
@@ -73,9 +85,11 @@ export async function calculateWorkflowChecksum(workflow: WorkflowSnapshot): Pro
 
 	for (const field of WORKFLOW_CHECKSUM_FIELDS) {
 		const value = workflow[field];
-		if (value !== undefined) {
-			checksumPayload[field] = value;
-		}
+
+		const isAbsent = value === undefined || (value === null && NULLABLE_CHECKSUM_FIELDS.has(field));
+		if (isAbsent) continue;
+
+		checksumPayload[field] = value;
 	}
 
 	const normalizedPayload = sortObjectKeys(checksumPayload);
