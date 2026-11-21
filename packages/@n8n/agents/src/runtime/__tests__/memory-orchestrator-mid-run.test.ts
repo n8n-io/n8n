@@ -3,6 +3,8 @@ import type { ExecutionOptions, RunOptions } from '../../types/sdk/agent';
 import type { AgentMessage } from '../../types/sdk/message';
 import type { ObservationLogObserverInput } from '../../types/sdk/observation-log';
 import type { AgentRuntimeConfig } from '../loop/agent-runtime';
+import { historyToolCallRef } from '../memory/compacted-tool-calls';
+import { createReadHistoryTool } from '../memory/history-recall-tool';
 import { MemoryOrchestrator } from '../memory/memory-orchestrator';
 import { InMemoryMemory } from '../memory/memory-store';
 import type { ScopedMemoryTaskEvent } from '../memory/scoped-memory-task-runner';
@@ -79,6 +81,64 @@ function buildOrchestrator(
 }
 
 describe('MemoryOrchestrator.maybeObserveMidRun', () => {
+	it.each(['NO_OBSERVATIONS', '* IMPORTANT (14:30) Attachment review started.'])(
+		'can recover an omitted tool result after observing %s',
+		async (summary) => {
+			const store = new InMemoryMemory();
+			const { orchestrator } = buildOrchestrator(store, {
+				historyRecall: true,
+				observerThresholdTokens: 10,
+				observe: async () => await Promise.resolve(summary),
+			});
+			const options = runOptions();
+			const list = new AgentMessageList();
+			await orchestrator.loadInto(list, options);
+			list.addInput([userMsg('Check the attachment for device details.')]);
+			list.addResponse([
+				{
+					role: 'assistant',
+					content: [
+						{
+							type: 'tool-call',
+							toolName: 'inspect_attachment',
+							toolCallId: 'inspect-1',
+							input: { file: 'attachment-xyz' },
+							state: 'resolved',
+							output: 'No device details found.',
+						},
+					],
+				},
+			]);
+			await orchestrator.maybeObserveMidRun(list, options);
+			expect(await store.getCursor(THREAD_ID)).not.toBeNull();
+
+			const nextRun = new AgentMessageList();
+			const nextOrchestrator = buildOrchestrator(store, { historyRecall: true }).orchestrator;
+			await nextOrchestrator.loadInto(nextRun, options);
+			const checkpoint = JSON.stringify(nextRun.serialize());
+			const resumed = AgentMessageList.deserialize(JSON.parse(checkpoint));
+			const getMessages = vi.spyOn(store, 'getMessages');
+			await nextOrchestrator.applyObservationMask(resumed, options.persistence);
+			expect(getMessages).not.toHaveBeenCalled();
+
+			const ref = historyToolCallRef(list.responseDelta()[0].id, 0);
+			for (const view of [list, nextRun, resumed]) {
+				const prompt = JSON.stringify(view.forLlm('base'));
+				expect(prompt).toContain(`inspect_attachment ${ref} returned`);
+				expect(prompt).not.toContain('attachment-xyz');
+				expect(prompt).not.toContain('No device details found.');
+			}
+
+			const tool = createReadHistoryTool({
+				memory: store,
+				persistence: { threadId: THREAD_ID, resourceId: RESOURCE_ID },
+			});
+			await expect(tool.handler?.({ toolCallRef: ref }, {} as never)).resolves.toMatchObject({
+				messages: [{ text: '"No device details found."' }],
+			});
+		},
+	);
+
 	it('does nothing below the soft threshold', async () => {
 		const store = new InMemoryMemory();
 		const observe = vi.fn(

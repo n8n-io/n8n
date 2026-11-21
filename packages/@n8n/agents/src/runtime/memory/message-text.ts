@@ -1,7 +1,11 @@
 import { isRecord } from '@n8n/utils/is-record';
 
 import { filterLlmMessages } from '../../sdk/message';
-import { stripHydratedFileData, type AgentDbMessage } from '../../types/sdk/message';
+import {
+	stripHydratedFileData,
+	type AgentDbMessage,
+	type ContentToolCall,
+} from '../../types/sdk/message';
 
 /** Drop inline file bytes: base64 in a tool output is not model-facing text. */
 function omitFileData(_key: string, value: unknown): unknown {
@@ -20,6 +24,12 @@ function stringifySafe(value: unknown): string {
 	}
 }
 
+export function toolResultToText(call: ContentToolCall): string {
+	if (call.state === 'resolved') return stringifySafe(call.output);
+	if (call.state === 'rejected') return call.error;
+	return '';
+}
+
 /**
  * Model-facing text of a message: text parts plus tool names, inputs and
  * outputs. File bytes are not text tokens, so only the text around them counts.
@@ -33,8 +43,7 @@ export function messageToText(message: AgentDbMessage): string {
 			parts.push(content.text);
 		} else if (content.type === 'tool-call') {
 			parts.push(content.toolName, stringifySafe(content.input));
-			if (content.state === 'resolved') parts.push(stringifySafe(content.output));
-			else if (content.state === 'rejected') parts.push(content.error);
+			if (content.state !== 'pending') parts.push(toolResultToText(content));
 		}
 	}
 	return parts.join('\n');
