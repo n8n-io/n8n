@@ -858,12 +858,9 @@ export class Expression {
 		} else if (DateTime.isDateTime(value)) {
 			result = value.toString();
 		} else {
-			result = JSON.stringify(value);
+			// Keep the preview on one line. JSON.stringify escapes line breaks inside strings.
+			result = JSON.stringify(value, null, 1).replace(/,\n +/g, ', ').replace(/\n */g, '');
 		}
-
-		result = result
-			.replace(/,"/g, ', "') // spacing for
-			.replace(/":/g, '": '); // readability
 
 		return `[${typeName}: ${result}]`;
 	}
