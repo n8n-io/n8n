@@ -34,7 +34,7 @@ import {
 
 import { getAdjustedDateRange, getTimeRangeLabels, timeRangeMappings } from '../insights.utils';
 import InsightsDataRangePicker from './InsightsDataRangePicker.vue';
-import InsightsTabs from './InsightsTabs.vue';
+import InsightsHeader from './InsightsHeader.vue';
 
 type SortBy = TableOptions['sortBy'];
 
@@ -356,10 +356,7 @@ onMounted(async () => {
 			data-test-id="insights-assistant-usage"
 		>
 			<header :class="$style.header">
-				<N8nHeading bold tag="h2" size="xlarge">
-					{{ i18n.baseText('insights.dashboard.title') }}
-				</N8nHeading>
-				<InsightsTabs />
+				<InsightsHeader />
 				<div :class="$style.filters">
 					<component
 						:is="projectFilter"

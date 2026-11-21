@@ -17,7 +17,7 @@ import { INSIGHT_TYPES } from '../insights.constants';
 import { getAdjustedDateRange, getTimeRangeLabels, timeRangeMappings } from '../insights.utils';
 import InsightsDataRangePicker from './InsightsDataRangePicker.vue';
 import InsightsDateRangeAlert from './InsightsDateRangeAlert.vue';
-import InsightsTabs from './InsightsTabs.vue';
+import InsightsHeader from './InsightsHeader.vue';
 
 const InsightsPaywall = defineAsyncComponent(async () => await import('./InsightsPaywall.vue'));
 const InsightsChartTotal = defineAsyncComponent(
@@ -211,10 +211,7 @@ onMounted(() => {
 <template>
 	<div :class="$style.insightsView">
 		<div :class="$style.insightsContainer">
-			<N8nHeading bold tag="h2" size="xlarge">
-				{{ i18n.baseText('insights.dashboard.title') }}
-			</N8nHeading>
-			<InsightsTabs class="mt-s" />
+			<InsightsHeader />
 
 			<div class="mt-s" style="display: flex; gap: 12px; align-items: center">
 				<component
