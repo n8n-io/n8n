@@ -377,11 +377,7 @@ export const useExpressionEditor = ({
 	});
 
 	const expressionExtensionNames = computed<Set<string>>(() => {
-		return new Set(
-			ExpressionExtensions.reduce<string[]>((acc, cur) => {
-				return [...acc, ...Object.keys(cur.functions)];
-			}, []),
-		);
+		return new Set(ExpressionExtensions.flatMap((cur) => Object.keys(cur.functions)));
 	});
 
 	function isUncalledExpressionExtension(resolvable: string) {

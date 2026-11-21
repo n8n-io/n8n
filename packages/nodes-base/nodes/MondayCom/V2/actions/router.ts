@@ -651,9 +651,9 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 					const { query, variables } = buildUpdateGroupMutation(updates);
 					const data = await client.execute(query, i, { boardId, groupId, ...variables });
 					// Aliases run in order, so merging in order leaves the final state.
-					for (let u = 0; u < updates.length; u++) {
-						group = { ...group, ...((data[`u${u}`] ?? {}) as IDataObject) };
-					}
+					group = Object.fromEntries(
+						updates.flatMap((_, u) => Object.entries((data[`u${u}`] ?? {}) as IDataObject)),
+					);
 				} else {
 					const data = await client.execute(
 						`query ($ids: [ID!], $groupIds: [String]) {

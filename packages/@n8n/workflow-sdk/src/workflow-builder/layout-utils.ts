@@ -921,7 +921,7 @@ function separateFrom(placed: BoundingBox[], box: BoundingBox): BoundingBox {
 		const collision = placed.find((placedBox) => boxesOverlap(placedBox, separated));
 		if (!collision) break;
 		separated = {
-			...separated,
+			...box,
 			y: snapToGrid(collision.y + collision.height + NODE_Y_SPACING),
 		};
 	}

@@ -220,15 +220,15 @@ function appendInteractivePayloads(
 	existing: InteractivePayload[],
 	next: InteractivePayload[],
 ): InteractivePayload[] {
-	let merged = existing;
+	const merged = [...existing];
 	for (const payload of next) {
 		const index = merged.findIndex(
 			(existingPayload) => existingPayload.toolCallId === payload.toolCallId,
 		);
 		if (index === -1) {
-			merged = [...merged, payload];
+			merged.push(payload);
 		} else {
-			merged = merged.map((existingPayload, i) => (i === index ? payload : existingPayload));
+			merged[index] = payload;
 		}
 	}
 	return merged;

@@ -12,21 +12,17 @@ export type PermissionsRecord = {
 };
 
 export const getResourcePermissions = (resourceScopes: readonly Scope[] = []): PermissionsRecord =>
-	Object.keys(RESOURCES).reduce(
-		(permissions, key) => ({
-			...permissions,
-			[key]: resourceScopes.reduce((resourcePermissions, scope) => {
+	Object.fromEntries(
+		Object.keys(RESOURCES).map((key) => [
+			key,
+			resourceScopes.reduce<Record<string, true>>((resourcePermissions, scope) => {
 				const [prefix, suffix] = scope.split(':') as ExtractScopePrefixSuffix<Scope>;
 
 				if (prefix === key) {
-					return {
-						...resourcePermissions,
-						[suffix]: true,
-					};
+					resourcePermissions[suffix] = true;
 				}
 
 				return resourcePermissions;
 			}, {}),
-		}),
-		{} as PermissionsRecord,
-	);
+		]),
+	) as PermissionsRecord;

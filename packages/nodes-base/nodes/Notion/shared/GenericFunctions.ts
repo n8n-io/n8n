@@ -372,7 +372,8 @@ function getPropertyKeyValue(
 						return relation && typeof relation === 'string';
 					})
 					.reduce((acc: string[], cur: string) => {
-						return acc.concat(cur.split(',').map((relation: string) => relation.trim()));
+						acc.push(...cur.split(',').map((relation: string) => relation.trim()));
+						return acc;
 					}, [])
 					.filter((relation: string) => {
 						return uuidValidateWithoutDashes.call(this, relation);

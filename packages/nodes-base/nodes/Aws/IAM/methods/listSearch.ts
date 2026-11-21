@@ -91,7 +91,7 @@ export async function searchGroupsForUser(
 	filter?: string,
 ): Promise<INodeListSearchResult> {
 	const userName = this.getNodeParameter('user', undefined, { extractValue: true });
-	let allGroups: IDataObject[] = [];
+	const allGroups: IDataObject[] = [];
 	let nextMarkerGroups: string | undefined;
 	do {
 		const options: IHttpRequestOptions = {
@@ -111,7 +111,7 @@ export async function searchGroupsForUser(
 			? groupsData.ListGroupsResponse?.ListGroupsResult?.Marker
 			: undefined;
 
-		allGroups = [...allGroups, ...groups];
+		allGroups.push(...groups);
 	} while (nextMarkerGroups);
 
 	if (allGroups.length === 0) {

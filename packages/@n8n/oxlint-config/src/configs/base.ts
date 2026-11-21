@@ -23,6 +23,7 @@ export const baseConfig = defineConfig({
 		'@stylistic/eslint-plugin',
 		'eslint-plugin-unused-imports',
 		'eslint-plugin-lodash',
+		'@n8n/oxlint-config/anti-slop',
 	],
 	categories: { correctness: 'off' },
 	ignorePatterns: [
@@ -232,6 +233,15 @@ export const baseConfig = defineConfig({
 		'n8n-local-rules/no-unneeded-backticks': 'error',
 		'n8n-local-rules/no-unused-param-in-catch-clause': 'error',
 		'n8n-local-rules/no-useless-catch-throw': 'error',
+
+		// ----------------------------------
+		//        anti-slop (vendored)
+		// ----------------------------------
+		// Rules from github.com/dmmulroy/anti-slop, enabled a few at a time.
+		'oxc/no-accumulating-spread': 'error',
+		'anti-slop/no-reduce-accumulator-copy': 'error',
+		'anti-slop/no-reflect-apply': 'error',
+		'anti-slop/no-widen-then-assert': 'error',
 	},
 	overrides: [
 		{

@@ -65,10 +65,11 @@ function findAllMatches(
 			}
 		}
 
-		return acc.concat({
+		acc.push({
 			entry: entry2,
 			index: i,
 		});
+		return acc;
 	}, [] as IDataObject[]);
 }
 

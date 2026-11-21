@@ -685,7 +685,7 @@ describe('activateWorkflow()', () => {
 		});
 
 		expect(webhookServiceMock.findWebhookConflicts.mock.calls[0][0].nodes).toEqual(
-			oldNodes.reduce((res, node) => ({ ...res, [node.name]: node }), {}),
+			Object.fromEntries(oldNodes.map((node) => [node.name, node])),
 		);
 	});
 
@@ -741,7 +741,7 @@ describe('activateWorkflow()', () => {
 		await workflowService.activateWorkflow(owner, workflow.id, {});
 
 		expect(webhookServiceMock.findWebhookConflicts.mock.calls[0][0].nodes).toEqual(
-			newNodes.reduce((res, node) => ({ ...res, [node.name]: node }), {}),
+			Object.fromEntries(newNodes.map((node) => [node.name, node])),
 		);
 	});
 

@@ -524,8 +524,7 @@ export class TestRunnerService {
 		const metricsData = metricsRunData
 			.reverse()
 			.map((data) => data.data?.main?.[0]?.[0]?.json ?? {});
-		const metricsResult = metricsData.reduce((acc, curr) => ({ ...acc, ...curr }), {});
-		return metricsResult;
+		return Object.fromEntries(metricsData.flatMap((data) => Object.entries(data)));
 	}
 
 	/** Extracts predefined metrics (token usage and execution time). */

@@ -52,7 +52,7 @@ function mockEntitlements(license: License, entitlements: TEntitlement[]) {
 	const merged = [...entitlements]
 		.sort((a, b) => a.validFrom.getTime() - b.validFrom.getTime())
 		.reduce<Record<string, unknown>>(
-			(features, e) => ({ ...features, ...e.features, ...e.featureOverrides }),
+			(features, e) => Object.assign(features, e.features, e.featureOverrides),
 			{},
 		);
 	vi.spyOn(license, 'getValue').mockImplementation(
