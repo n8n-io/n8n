@@ -335,6 +335,32 @@ than the counts show:
 
 The counts are only as current as the index.
 
+### Usage counts of each node type
+
+`GET /node-type-policies/usage` and `GET /projects/:projectId/node-type-policies/usage` return
+Uses, Workflows, Active workflows and Projects for each node type in use. A type that no workflow
+uses has no entry. The counts come from the `nodeType` rows of the workflow dependency index. The
+index writes one row for each node, so Uses is the number of nodes.
+
+- Each workflow counts in one version: the published version if it is active, the draft if not.
+  Archived workflows do not count.
+- A workflow counts only in the project that owns it, as for the credential types.
+- A disabled node counts, as in [Grandfathering](#grandfathering).
+- The entry of a node type also counts its generated tool variants, because a `name` rule on the
+  node type also matches them. The entry of `n8n-nodes-base.gmail` counts the `gmail`, `gmailTool`
+  and `gmailHitlTool` nodes, and a workflow with more than one of them counts once. Each variant
+  also has an entry of its own, for the row that the Nodes tab shows when a different rule decides
+  the variant. A real node whose name ends in `Tool` is not a variant, and only its own entry
+  counts it.
+
+When a different rule decides a variant, the entry of the base type still counts the nodes of the
+variant. A deny on the base type then blocks fewer nodes than its counts show.
+
+The check also reads nodes that the counts leave out. A tool of an inline agent is not in the
+index, so a deny can block more workflows than the counts show.
+
+The counts are only as current as the index.
+
 ## The write seal
 
 This is the first check that can deny anything, so the clearance token is now exercised end to

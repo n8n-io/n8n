@@ -694,10 +694,15 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 }
 
 .sourceStatus {
-	display: flex;
+	display: grid;
+	grid-template-columns: auto 1fr;
 	align-items: center;
-	flex-wrap: wrap;
 	gap: var(--spacing--5xs) var(--spacing--2xs);
 	padding-block: var(--spacing--5xs);
+
+	> button {
+		grid-column: 2;
+		justify-self: start;
+	}
 }
 </style>

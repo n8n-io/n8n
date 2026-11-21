@@ -130,10 +130,33 @@ describe('Agent version history', () => {
 			isActive: false,
 		});
 		expect(summary).not.toHaveProperty('schema');
+		expect(summary.includesN8nChat).toBe(false);
 		await service.updateVersionMetadata(agentId, projectId, versionId, { name: null });
 		expect(await history.findByVersionAndAgentId(versionId, agentId, {})).toMatchObject({
 			name: null,
 			description: 'Ready for support',
+		});
+	});
+
+	it('reports whether a version carries n8n Chat', async () => {
+		const chatVersionId = randomUUID();
+		await history.saveVersion(
+			{
+				agentId,
+				versionId: chatVersionId,
+				schema: { ...schema, integrations: [{ type: 'n8n_chat', credentialId: '' }] },
+				tools: {},
+				savedBy: owner,
+			},
+			{},
+		);
+
+		expect(await service.getVersionSummary(agentId, projectId, chatVersionId)).toMatchObject({
+			versionId: chatVersionId,
+			includesN8nChat: true,
+		});
+		expect(await service.getVersionSummary(agentId, projectId, versionId)).toMatchObject({
+			includesN8nChat: false,
 		});
 	});
 

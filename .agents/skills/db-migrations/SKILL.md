@@ -5,7 +5,7 @@ description: Authors n8n database migrations. Use when creating or modifying fil
 
 # n8n Migration Guidelines
 
-**Rule of thumb:** the `@n8n-io/migrations-review` team gates every migration PR. The fixes they ask for are predictable — work through the [Pre-flight checklist](#pre-flight-checklist) before requesting review. The rest of this document explains the *why* for each item and covers deeper topics.
+**Rule of thumb:** a migration PR needs an approval from the `@n8n-io/migrations-review` team, unless a member of that team wrote it. The fixes they ask for are predictable — work through the [Pre-flight checklist](#pre-flight-checklist) before requesting review. The rest of this document explains the *why* for each item and covers deeper topics.
 
 ---
 
@@ -94,6 +94,7 @@ Source of truth: `packages/@n8n/db/src/migrations/dsl/column.ts`.
 | `bool` | `boolean` | `boolean` |
 | `double` | `double precision` | `real` |
 | `binary` | `bytea` | `blob` |
+| `date` | `date` | `date` |
 | `timestampTimezone` | `timestamptz` | `datetime` |
 | `timestampNoTimezone` | `timestamp` | `datetime` |
 | `timestamp` *(deprecated)* | `timestamp` | `datetime` |

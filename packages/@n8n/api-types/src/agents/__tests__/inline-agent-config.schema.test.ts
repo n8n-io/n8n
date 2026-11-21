@@ -6,7 +6,7 @@ import {
 
 const baseConfig = {
 	name: 'Inline Agent',
-	model: 'anthropic/claude-sonnet-4-5',
+	model: 'anthropic/claude-sonnet-5-5',
 	credential: 'cred-1',
 	instructions: 'Help users',
 };

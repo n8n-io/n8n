@@ -102,7 +102,7 @@ function parseArgs(argv: string[]): PairwiseArgs {
 		timeoutMs:
 			parsePositiveNumber(get('--timeout-ms'), '--timeout-ms') ?? Number(DEFAULTS.TIMEOUT_MS),
 		outputDir: get('--output-dir') ?? defaultOutputDir,
-		judgeModel: get('--judge-model') ?? 'claude-sonnet-4-5-20250929',
+		judgeModel: get('--judge-model') ?? 'claude-sonnet-4-6',
 		experimentName: get('--experiment-name') ?? 'pairwise-evals-instance-ai',
 		verbose: has('--verbose'),
 		baseUrl: get('--base-url') ?? process.env.N8N_EVAL_BASE_URL ?? 'http://localhost:5678',

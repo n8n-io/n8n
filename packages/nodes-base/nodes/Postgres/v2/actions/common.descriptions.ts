@@ -80,6 +80,19 @@ export const optionsCollection: INodeProperties = {
 			},
 		},
 		{
+			displayName: 'Load Rows With COPY',
+			name: 'useCopy',
+			type: 'boolean',
+			default: false,
+			description:
+				'Whether to send all rows in one COPY statement, which is faster for many rows. All rows are inserted, or none. The output is one item with the number of inserted rows.',
+			displayOptions: {
+				show: {
+					'/operation': ['insert'],
+				},
+			},
+		},
+		{
 			displayName: 'Query Batching',
 			name: 'queryBatching',
 			type: 'options',
@@ -104,6 +117,11 @@ export const optionsCollection: INodeProperties = {
 			],
 			default: 'single',
 			description: 'The way queries should be sent to the database',
+			displayOptions: {
+				hide: {
+					useCopy: [true],
+				},
+			},
 		},
 		{
 			displayName: 'Query Parameters',
@@ -157,6 +175,7 @@ export const optionsCollection: INodeProperties = {
 			default: [],
 			displayOptions: {
 				show: { '/operation': ['select', 'insert', 'update', 'upsert'] },
+				hide: { useCopy: [true] },
 			},
 		},
 		{
@@ -188,6 +207,9 @@ export const optionsCollection: INodeProperties = {
 			displayOptions: {
 				show: {
 					'/operation': ['insert'],
+				},
+				hide: {
+					useCopy: [true],
 				},
 			},
 		},

@@ -13,7 +13,7 @@ import {
 
 const base: AgentJsonConfig = {
 	name: 'Agent',
-	model: 'anthropic/claude-sonnet-4-5',
+	model: 'anthropic/claude-sonnet-5-5',
 	instructions: 'Help the user.',
 };
 
@@ -66,7 +66,7 @@ describe('reconcileNativeWebSearch', () => {
 	it('swaps native tools when the provider changes', () => {
 		const result = reconcileNativeWebSearch({
 			...base,
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			config: { webSearch: { enabled: true } },
 			providerTools: { 'openai.web_search': { externalWebAccess: true } },
 		});
