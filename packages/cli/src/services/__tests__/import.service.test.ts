@@ -648,7 +648,7 @@ describe('ImportService', () => {
 			await importService.disableForeignKeyConstraints(mockEntityManager);
 
 			expect(mockEntityManager.query).toHaveBeenCalledWith(
-				'SET session_replication_role = replica;',
+				'SET LOCAL session_replication_role = replica;',
 			);
 		});
 	});
@@ -670,7 +670,7 @@ describe('ImportService', () => {
 			await importService.enableForeignKeyConstraints(mockEntityManager);
 
 			expect(mockEntityManager.query).toHaveBeenCalledWith(
-				'SET session_replication_role = ORIGIN;',
+				'SET LOCAL session_replication_role = ORIGIN;',
 			);
 		});
 	});

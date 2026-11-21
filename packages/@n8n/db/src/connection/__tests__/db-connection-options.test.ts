@@ -88,6 +88,7 @@ describe('DbConnectionOptions', () => {
 					destroyTimeoutMs: 10_000,
 					idleTimeoutMs: 25_000,
 					statementTimeoutMs: 60_000,
+					applySessionSettingsOnce: true,
 					maxConnectionLifetimeMs: 1_800_000,
 					keepAlive: false,
 					keepAliveInitialDelayMs: 5_000,
@@ -117,6 +118,7 @@ describe('DbConnectionOptions', () => {
 					migrations: postgresMigrations,
 					connectTimeoutMS: 15_000,
 					statementTimeout: 60_000,
+					applySessionSettingsOnce: true,
 					ssl: false,
 					extra: {
 						idleTimeoutMillis: 25_000,

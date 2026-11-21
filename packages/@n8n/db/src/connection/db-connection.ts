@@ -14,6 +14,7 @@ import { DbConnectionMetrics } from './db-connection-metrics';
 import { DbConnectionMonitor } from './db-connection-monitor';
 import { DbConnectionOptions } from './db-connection-options';
 import { readPoolStats, type DbPoolStats } from './db-pool-stats';
+import { getMissingRoleDefaultsWarning } from './postgres-session-defaults';
 import { getPostgresVersionWarning } from './postgres-version-policy';
 import { wrapMigration } from '../migrations/migration-helpers';
 import type { Migration } from '../migrations/migration-types';
@@ -139,6 +140,7 @@ export class DbConnection {
 
 		connectionState.connected = true;
 		await this.warnOnUnsupportedPostgresVersion();
+		await this.warnOnMissingRoleDefaults();
 		this.monitor = new DbConnectionMonitor(
 			this.dataSource,
 			(connected) => (this.connectionState.connected = connected),
@@ -167,6 +169,38 @@ export class DbConnection {
 			if (warning) this.logger.warn(warning);
 		} catch (e) {
 			this.logger.warn(`Could not check database version: ${ensureError(e).message}`);
+		}
+	}
+
+	/**
+	 * With session settings applied once per pooled connection, warns when the database
+	 * role lacks matching defaults. Behind a transaction-mode pooler, those defaults are
+	 * the only way every server connection gets the schema and statement timeout.
+	 */
+	private async warnOnMissingRoleDefaults() {
+		const { options } = this;
+		if (options.type !== 'postgres' || !options.applySessionSettingsOnce) return;
+
+		try {
+			const rows = await this.dataSource.query<Array<{ name: string; reset_val: string }>>(
+				"SELECT name, reset_val FROM pg_settings WHERE name IN ('search_path', 'statement_timeout')",
+			);
+			const resetValue = (name: string) => rows.find((row) => row.name === name)?.reset_val ?? null;
+
+			const warning = getMissingRoleDefaultsWarning(
+				{
+					database: options.database ?? '',
+					schema: options.schema ?? 'public',
+					statementTimeoutMs: options.statementTimeout ?? 0,
+				},
+				{
+					searchPath: resetValue('search_path'),
+					statementTimeout: resetValue('statement_timeout'),
+				},
+			);
+			if (warning) this.logger.warn(warning);
+		} catch (e) {
+			this.logger.warn(`Could not check the database role defaults: ${ensureError(e).message}`);
 		}
 	}
 

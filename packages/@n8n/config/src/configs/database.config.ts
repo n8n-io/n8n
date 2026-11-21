@@ -102,6 +102,15 @@ class PostgresConfig {
 	@Env('DB_POSTGRESDB_STATEMENT_TIMEOUT')
 	statementTimeoutMs: number = DEFAULT_STATEMENT_TIMEOUT_MS;
 
+	/**
+	 * Whether n8n sends the schema and statement timeout settings once for each pooled Postgres
+	 * connection, instead of before every query. This removes two round trips from every query.
+	 * If n8n connects through a pooler in transaction mode, such as PgBouncer, first set
+	 * `search_path` and `statement_timeout` as defaults on the database role, then reconnect the pooler.
+	 */
+	@Env('DB_POSTGRESDB_APPLY_SESSION_SETTINGS_ONCE')
+	applySessionSettingsOnce: boolean = false;
+
 	/** Maximum lifetime in milliseconds of a pooled Postgres connection before it is recycled. Set to 0 to disable. */
 	@Env('DB_POSTGRESDB_MAX_CONNECTION_LIFETIME_MS')
 	maxConnectionLifetimeMs: number = 1 * Time.hours.toMilliseconds;

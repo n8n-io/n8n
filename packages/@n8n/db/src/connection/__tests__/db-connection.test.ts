@@ -160,6 +160,80 @@ describe('DbConnection', () => {
 			expect(logger.warn).not.toHaveBeenCalledWith(expect.stringContaining('Postgres'));
 		});
 
+		describe('role defaults check', () => {
+			const createConnection = (options: Partial<DataSourceOptions>) => {
+				connectionOptions.getOptions.mockReturnValue({
+					...postgresOptions,
+					...options,
+				} as DataSourceOptions);
+				// options are @Memoized and read in the constructor — re-instantiate
+				return new DbConnection(
+					errorReporter,
+					connectionOptions,
+					databaseConfig,
+					logger,
+					dbConnectionMetrics,
+				);
+			};
+
+			beforeEach(() => {
+				dataSource.initialize.mockResolvedValue(dataSource);
+			});
+
+			it('should not check the role defaults when the setting is off', async () => {
+				await createConnection({ statementTimeout: 300_000 }).init();
+
+				expect(dataSource.query).not.toHaveBeenCalled();
+			});
+
+			it('should warn with the missing statements when the setting is on', async () => {
+				dataSource.query.mockResolvedValue([
+					{ name: 'search_path', reset_val: '"$user", public' },
+					{ name: 'statement_timeout', reset_val: '0' },
+				]);
+
+				await createConnection({
+					schema: 'n8n',
+					statementTimeout: 300_000,
+					applySessionSettingsOnce: true,
+				}).init();
+
+				expect(logger.warn).toHaveBeenCalledWith(
+					expect.stringContaining('SET search_path = "n8n", public;'),
+				);
+				expect(logger.warn).toHaveBeenCalledWith(
+					expect.stringContaining('SET statement_timeout = 300000;'),
+				);
+			});
+
+			it('should not warn when the role defaults match', async () => {
+				dataSource.query.mockResolvedValue([
+					{ name: 'search_path', reset_val: 'n8n, public' },
+					{ name: 'statement_timeout', reset_val: '300000' },
+				]);
+
+				await createConnection({
+					schema: 'n8n',
+					statementTimeout: 300_000,
+					applySessionSettingsOnce: true,
+				}).init();
+
+				expect(logger.warn).not.toHaveBeenCalled();
+			});
+
+			it('should complete startup when the check fails', async () => {
+				dataSource.query.mockRejectedValue(new Error('boom'));
+				const connection = createConnection({ applySessionSettingsOnce: true });
+
+				await connection.init();
+
+				expect(connection.connectionState.connected).toBe(true);
+				expect(logger.warn).toHaveBeenCalledWith(
+					'Could not check the database role defaults: boom',
+				);
+			});
+		});
+
 		it('should not reinitialize if already connected', async () => {
 			dataSource.initialize.mockResolvedValue(dataSource);
 			dbConnection.connectionState.connected = true;

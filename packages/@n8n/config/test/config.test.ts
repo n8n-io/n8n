@@ -113,6 +113,7 @@ describe('GlobalConfig', () => {
 				destroyTimeoutMs: 10_000,
 				idleTimeoutMs: 30_000,
 				statementTimeoutMs: 5 * 60 * 1000,
+				applySessionSettingsOnce: false,
 				maxConnectionLifetimeMs: 60 * 60 * 1000,
 				keepAlive: true,
 				keepAliveInitialDelayMs: 10_000,

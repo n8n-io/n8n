@@ -27,10 +27,29 @@ function createDriver(options: Partial<PostgresConnectionOptions>, clients: Fake
 }
 
 describe('PostgresDriver session settings', () => {
-	it('applies session settings once per pooled client', async () => {
+	it('applies session settings on every checkout by default', async () => {
+		const client = new FakeClient();
+		const driver = createDriver({ statementTimeout: 5000 }, [client, client]);
+
+		await driver.obtainMasterConnection();
+		await driver.obtainMasterConnection();
+
+		expect(client.queries).to.deep.equal([
+			'SET search_path TO public',
+			'SET statement_timeout = 5000',
+			'SET search_path TO public',
+			'SET statement_timeout = 5000',
+		]);
+	});
+
+	it('applies session settings once per pooled client with applySessionSettingsOnce', async () => {
 		const first = new FakeClient();
 		const second = new FakeClient();
-		const driver = createDriver({ statementTimeout: 5000 }, [first, first, second]);
+		const driver = createDriver({ statementTimeout: 5000, applySessionSettingsOnce: true }, [
+			first,
+			first,
+			second,
+		]);
 
 		await driver.obtainMasterConnection();
 		await driver.obtainMasterConnection();
@@ -62,7 +81,11 @@ describe('PostgresDriver session settings', () => {
 	it('retries the session settings on the next checkout when a SET fails', async () => {
 		const client = new FakeClient();
 		client.failOn = 'SET statement_timeout';
-		const driver = createDriver({ statementTimeout: 5000 }, [client, client, client]);
+		const driver = createDriver({ statementTimeout: 5000, applySessionSettingsOnce: true }, [
+			client,
+			client,
+			client,
+		]);
 
 		await expect(driver.obtainMasterConnection()).to.be.rejectedWith('query failed');
 
