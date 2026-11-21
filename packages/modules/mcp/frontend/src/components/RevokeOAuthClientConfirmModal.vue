@@ -3,6 +3,7 @@ import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import type { OAuthClientResponseDto } from '@n8n/api-types';
 import { N8nAlertDialog } from '@n8n/design-system';
+import { getClientDisplayName } from '../clients.utils';
 
 const props = defineProps<{
 	client: OAuthClientResponseDto | null;
@@ -23,7 +24,7 @@ const i18n = useI18n();
 const title = computed(() =>
 	props.client
 		? i18n.baseText('settings.mcp.oAuthClients.revoke.title', {
-				interpolate: { name: props.client.name },
+				interpolate: { name: getClientDisplayName(props.client) },
 			})
 		: '',
 );

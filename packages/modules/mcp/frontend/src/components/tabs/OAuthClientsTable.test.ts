@@ -1,13 +1,14 @@
-import { waitFor, within } from '@testing-library/vue';
+import { fireEvent, waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@n8n/frontend-test-utils';
 import OAuthClientsTable from './OAuthClientsTable.vue';
 import { createOAuthClient } from '../../mcp.test.utils';
 
-const { mockMcpStore, mockHasScope } = vi.hoisted(() => ({
+const { mockMcpStore, mockHasScope, mockShowMessage, mockShowError } = vi.hoisted(() => ({
 	mockMcpStore: {
 		openConnectPopover: vi.fn(),
+		updateOAuthClientDetails: vi.fn(),
 		oauthClientsOwnership: 'mine' as 'mine' | 'all',
 		oauthClientTotals: { mine: 0 } as { mine: number; all?: number },
 		oauthClientsPage: 0,
@@ -21,10 +22,16 @@ const { mockMcpStore, mockHasScope } = vi.hoisted(() => ({
 		}>,
 	},
 	mockHasScope: vi.fn().mockReturnValue(false),
+	mockShowMessage: vi.fn(),
+	mockShowError: vi.fn(),
 }));
 
 vi.mock('../../mcp.store', () => ({
 	useMCPStore: () => mockMcpStore,
+}));
+
+vi.mock('@n8n/composables/useToast', () => ({
+	useToast: () => ({ showMessage: mockShowMessage, showError: mockShowError }),
 }));
 
 vi.mock('@n8n/stores/rbac.store', () => ({
@@ -389,6 +396,297 @@ describe('OAuthClientsTable', () => {
 
 			expect(emitted('revokeClient')).toBeTruthy();
 			expect(emitted('revokeClient')[0]).toEqual([client]);
+		});
+
+		const getModal = () =>
+			document.querySelector('[data-test-id="mcp-client-details-modal"]') as HTMLElement;
+
+		it('should let a manager edit and save the display name and description', async () => {
+			mockHasScope.mockReturnValue(true);
+			const client = createOAuthClient({ name: 'Claude', description: null });
+			mockMcpStore.updateOAuthClientDetails.mockResolvedValue({
+				...client,
+				displayName: 'Marketing assistant',
+				description: 'Used by the marketing team',
+			});
+
+			const { getByTestId } = createComponent({
+				props: { clients: [client], loading: false },
+			});
+
+			await userEvent.click(getByTestId('mcp-client-name'));
+			const modal = within(getModal());
+			const saveButton = modal.getByTestId('mcp-client-details-save');
+			expect(saveButton).toBeDisabled();
+
+			const nameInput = modal.getByTestId('mcp-client-details-name-input');
+			expect(nameInput).toHaveValue('Claude');
+			await userEvent.clear(nameInput);
+			await userEvent.type(nameInput, '  Marketing assistant ');
+			await userEvent.type(
+				modal.getByTestId('mcp-client-details-description-input'),
+				'Used by the marketing team',
+			);
+			await userEvent.click(saveButton);
+
+			expect(mockMcpStore.updateOAuthClientDetails).toHaveBeenCalledWith(
+				client,
+				{
+					displayName: 'Marketing assistant',
+					description: 'Used by the marketing team',
+				},
+				{ refreshList: true },
+			);
+			expect(mockShowMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
+			await waitFor(() => {
+				expect(getModal()).toHaveTextContent('Marketing assistant');
+			});
+			expect(modal.getByTestId('mcp-client-details-registered-name')).toHaveTextContent('Claude');
+			expect(modal.getByTestId('mcp-client-details-description-input')).toHaveValue(
+				'Used by the marketing team',
+			);
+		});
+
+		it('should send only the changed fields and clear an emptied description', async () => {
+			mockHasScope.mockReturnValue(true);
+			const client = createOAuthClient({ name: 'Claude', description: 'Old note' });
+			mockMcpStore.updateOAuthClientDetails.mockResolvedValue({ ...client, description: null });
+
+			const { getByTestId } = createComponent({
+				props: { clients: [client], loading: false },
+			});
+
+			await userEvent.click(getByTestId('mcp-client-name'));
+			const modal = within(getModal());
+			await userEvent.clear(modal.getByTestId('mcp-client-details-description-input'));
+			await userEvent.click(modal.getByTestId('mcp-client-details-save'));
+
+			expect(mockMcpStore.updateOAuthClientDetails).toHaveBeenCalledWith(
+				client,
+				{ description: null },
+				{ refreshList: true },
+			);
+		});
+
+		it('should keep showing another client opened while an earlier save was in flight', async () => {
+			mockHasScope.mockReturnValue(true);
+			const claude = createOAuthClient({ id: 'client-1', name: 'Claude' });
+			const cursor = createOAuthClient({ id: 'client-2', name: 'Cursor' });
+			let resolveSave!: (value: typeof claude) => void;
+			mockMcpStore.updateOAuthClientDetails.mockReturnValue(
+				new Promise((resolve) => {
+					resolveSave = resolve;
+				}),
+			);
+
+			const { getAllByTestId } = createComponent({
+				props: { clients: [claude, cursor], loading: false },
+			});
+
+			await userEvent.click(getAllByTestId('mcp-client-name')[0]);
+			const nameInput = within(getModal()).getByTestId('mcp-client-details-name-input');
+			await userEvent.type(nameInput, ' 2');
+			await userEvent.click(within(getModal()).getByTestId('mcp-client-details-save'));
+
+			// Close the modal and open the other client before the save finishes.
+			await userEvent.keyboard('{Escape}');
+			await userEvent.click(getAllByTestId('mcp-client-name')[1]);
+			await waitFor(() => {
+				expect(within(getModal()).getByTestId('mcp-client-details-name-input')).toHaveValue(
+					'Cursor',
+				);
+			});
+
+			resolveSave({ ...claude, displayName: 'Claude 2' });
+			await waitFor(() => {
+				expect(mockShowMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
+			});
+
+			expect(within(getModal()).getByTestId('mcp-client-details-name-input')).toHaveValue('Cursor');
+			expect(getModal()).not.toHaveTextContent('Claude 2');
+		});
+
+		it('should lock the name and description inputs while a save is in flight', async () => {
+			mockHasScope.mockReturnValue(true);
+			const client = createOAuthClient({ name: 'Claude', description: null });
+			let resolveSave!: (value: typeof client) => void;
+			mockMcpStore.updateOAuthClientDetails.mockReturnValue(
+				new Promise((resolve) => {
+					resolveSave = resolve;
+				}),
+			);
+
+			const { getByTestId } = createComponent({
+				props: { clients: [client], loading: false },
+			});
+
+			await userEvent.click(getByTestId('mcp-client-name'));
+			const modal = within(getModal());
+			const nameInput = modal.getByTestId('mcp-client-details-name-input');
+			const descriptionInput = modal.getByTestId('mcp-client-details-description-input');
+			await userEvent.type(nameInput, ' 2');
+			await userEvent.click(modal.getByTestId('mcp-client-details-save'));
+
+			await waitFor(() => {
+				expect(nameInput).toBeDisabled();
+			});
+			expect(descriptionInput).toBeDisabled();
+
+			resolveSave({ ...client, displayName: 'Claude 2' });
+			await waitFor(() => {
+				expect(nameInput).toBeEnabled();
+			});
+			expect(descriptionInput).toBeEnabled();
+			expect(nameInput).toHaveValue('Claude 2');
+		});
+
+		it('should not save on the Enter that commits an IME composition', async () => {
+			mockHasScope.mockReturnValue(true);
+			const client = createOAuthClient({ name: 'Claude' });
+			mockMcpStore.updateOAuthClientDetails.mockResolvedValue({ ...client, displayName: '名前' });
+
+			const { getByTestId } = createComponent({
+				props: { clients: [client], loading: false },
+			});
+
+			await userEvent.click(getByTestId('mcp-client-name'));
+			const nameInput = within(getModal()).getByTestId('mcp-client-details-name-input');
+			await userEvent.clear(nameInput);
+			await userEvent.type(nameInput, '名前');
+
+			await fireEvent.keyDown(nameInput, { key: 'Enter', isComposing: true });
+			await fireEvent.keyDown(nameInput, { key: 'Enter', keyCode: 229 });
+			expect(mockMcpStore.updateOAuthClientDetails).not.toHaveBeenCalled();
+
+			await fireEvent.keyDown(nameInput, { key: 'Enter' });
+			expect(mockMcpStore.updateOAuthClientDetails).toHaveBeenCalledWith(
+				client,
+				{ displayName: '名前' },
+				{ refreshList: true },
+			);
+		});
+
+		it('should reset to the registered name when the name is cleared', async () => {
+			mockHasScope.mockReturnValue(true);
+			const client = createOAuthClient({ name: 'Claude', displayName: 'Marketing assistant' });
+			mockMcpStore.updateOAuthClientDetails.mockResolvedValue({ ...client, displayName: null });
+
+			const { getByTestId } = createComponent({
+				props: { clients: [client], loading: false },
+			});
+
+			await userEvent.click(getByTestId('mcp-client-name'));
+			const modal = within(getModal());
+			const nameInput = modal.getByTestId('mcp-client-details-name-input');
+			expect(nameInput).toHaveValue('Marketing assistant');
+			await userEvent.clear(nameInput);
+			await userEvent.click(modal.getByTestId('mcp-client-details-save'));
+
+			expect(mockMcpStore.updateOAuthClientDetails).toHaveBeenCalledWith(
+				client,
+				{ displayName: null },
+				{ refreshList: true },
+			);
+			await waitFor(() => {
+				expect(nameInput).toHaveValue('Claude');
+			});
+			expect(getModal()).not.toHaveTextContent('Marketing assistant');
+			expect(modal.queryByTestId('mcp-client-details-registered-name')).not.toBeInTheDocument();
+		});
+
+		it('should count the name length in code points, like the registered name', async () => {
+			mockHasScope.mockReturnValue(true);
+			const client = createOAuthClient({ name: 'Claude' });
+
+			const { getByTestId } = createComponent({
+				props: { clients: [client], loading: false },
+			});
+
+			await userEvent.click(getByTestId('mcp-client-name'));
+			const modal = within(getModal());
+			const nameInput = modal.getByTestId('mcp-client-details-name-input');
+			const saveButton = modal.getByTestId('mcp-client-details-save');
+
+			// Each rocket is one code point but two UTF-16 code units.
+			await userEvent.clear(nameInput);
+			await userEvent.click(nameInput);
+			await userEvent.paste('🚀'.repeat(255));
+			expect(nameInput).toHaveValue('🚀'.repeat(255));
+			expect(saveButton).toBeEnabled();
+			expect(modal.queryByTestId('mcp-client-details-name-too-long')).not.toBeInTheDocument();
+
+			await userEvent.paste('🚀');
+			expect(saveButton).toBeDisabled();
+			expect(modal.getByTestId('mcp-client-details-name-too-long')).toBeInTheDocument();
+		});
+
+		it('should not allow saving the registered name as a display name', async () => {
+			mockHasScope.mockReturnValue(true);
+			const client = createOAuthClient({ name: 'Claude' });
+
+			const { getByTestId } = createComponent({
+				props: { clients: [client], loading: false },
+			});
+
+			await userEvent.click(getByTestId('mcp-client-name'));
+			const modal = within(getModal());
+			const nameInput = modal.getByTestId('mcp-client-details-name-input');
+			await userEvent.clear(nameInput);
+			await userEvent.type(nameInput, ' Claude ');
+
+			expect(modal.getByTestId('mcp-client-details-save')).toBeDisabled();
+		});
+
+		it('should show the display name and keep the brand of the registered name', async () => {
+			const client = createOAuthClient({ name: 'Claude Code', displayName: 'Release bot' });
+
+			const { getByTestId } = createComponent({
+				props: { clients: [client], loading: false },
+			});
+
+			expect(getByTestId('mcp-client-name')).toHaveTextContent('Release bot');
+			expect(getByTestId('mcp-client-type')).toBeInTheDocument();
+		});
+
+		it('should show an error and keep the edits when saving fails', async () => {
+			mockHasScope.mockReturnValue(true);
+			const client = createOAuthClient({ name: 'Claude' });
+			const error = new Error('network');
+			mockMcpStore.updateOAuthClientDetails.mockRejectedValue(error);
+
+			const { getByTestId } = createComponent({
+				props: { clients: [client], loading: false },
+			});
+
+			await userEvent.click(getByTestId('mcp-client-name'));
+			const modal = within(getModal());
+			const nameInput = modal.getByTestId('mcp-client-details-name-input');
+			await userEvent.type(nameInput, ' 2');
+			await userEvent.click(modal.getByTestId('mcp-client-details-save'));
+
+			expect(mockShowError).toHaveBeenCalledWith(error, expect.any(String));
+			expect(nameInput).toHaveValue('Claude 2');
+		});
+
+		it('should show the description read-only to users without mcp:manage', async () => {
+			const client = createOAuthClient({ name: 'Claude', description: 'Used by the team' });
+
+			const { getByTestId } = createComponent({
+				props: { clients: [client], loading: false },
+			});
+
+			// The description is shown in the modal only, not in the table.
+			expect(getByTestId('oauth-clients-data-table')).not.toHaveTextContent('Used by the team');
+
+			await userEvent.click(getByTestId('mcp-client-name'));
+			const modal = within(getModal());
+
+			expect(modal.getByTestId('mcp-client-details-description')).toHaveTextContent(
+				'Used by the team',
+			);
+			expect(modal.queryByTestId('mcp-client-details-name-input')).not.toBeInTheDocument();
+			expect(modal.queryByTestId('mcp-client-details-description-input')).not.toBeInTheDocument();
+			expect(modal.queryByTestId('mcp-client-details-save')).not.toBeInTheDocument();
 		});
 	});
 });

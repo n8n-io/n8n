@@ -13,7 +13,12 @@ import type {
 	OAuthTokens,
 	OAuthTokenRevocationRequest,
 } from '@modelcontextprotocol/sdk/shared/auth.js';
-import type { McpClientConnectedPeriod, McpClientTypeFilter } from '@n8n/api-types';
+import type {
+	McpClientConnectedPeriod,
+	McpClientTypeFilter,
+	UpdateOAuthClientDto,
+	UpdateOAuthClientResponseDto,
+} from '@n8n/api-types';
 import { getMcpClientType, MCP_CLIENT_TYPE_FILTER_BUCKETS } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { EventService, UrlService } from '@n8n/backend-services';
@@ -26,7 +31,7 @@ import { hasGlobalScope } from '@n8n/permissions';
 import type { Response } from 'express';
 
 import { AuthService } from '@/auth/auth.service';
-import { ForbiddenError } from '@n8n/errors';
+import { ForbiddenError, NotFoundError } from '@n8n/errors';
 import { UserManagementMailer } from '@/user-management/email';
 
 import type { OAuthClient } from './database/entities/oauth-client.entity';
@@ -815,6 +820,37 @@ export class OAuthServerService implements OAuthServerProvider {
 	/** Tool names each scope unlocks on this instance, for the clients list UI. */
 	async getInstanceScopeTools(): Promise<Record<string, string[]> | undefined> {
 		return await this.resourceRegistry.getDefaultResource()?.getScopeTools?.();
+	}
+
+	/**
+	 * Update the display name and description of a registered client. The client
+	 * registration is shared by every consent, so the change shows for all
+	 * users connected through it. First-party (virtual) clients are not editable.
+	 */
+	async updateClientDetails(
+		clientId: string,
+		details: UpdateOAuthClientDto,
+	): Promise<UpdateOAuthClientResponseDto> {
+		const changes: Partial<Pick<OAuthClient, 'displayName' | 'description'>> = {};
+		if (details.displayName !== undefined) changes.displayName = details.displayName;
+		if (details.description !== undefined) changes.description = details.description;
+
+		const client = await this.oauthClientRepository.updateDetails(clientId, changes, {});
+		if (!client) {
+			throw new NotFoundError(`OAuth client with ID ${clientId} not found`);
+		}
+
+		this.logger.info('OAuth client details updated', {
+			clientId,
+			updatedFields: Object.keys(changes),
+		});
+
+		return {
+			id: client.id,
+			name: client.name,
+			displayName: client.displayName,
+			description: client.description,
+		};
 	}
 
 	/**

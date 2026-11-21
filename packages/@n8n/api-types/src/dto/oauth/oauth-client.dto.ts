@@ -14,6 +14,9 @@ const oauthClientOwnerShape = z.object({
 const oauthClientShape = {
 	id: z.string(),
 	name: z.string(),
+	displayName: z.string().nullable(),
+	/** Admin-supplied note about the client. Shown only in the client details view. */
+	description: z.string().nullable(),
 	redirectUris: z.array(z.string()),
 	grantTypes: z.array(z.string()),
 	tokenEndpointAuthMethod: z.string(),
@@ -39,7 +42,7 @@ export class ListOAuthClientsQueryDto extends Z.class({
 	...paginationSchema,
 	/** 'all' requires mcp:manage; defaults to 'mine'. */
 	ownership: z.enum(['mine', 'all']).optional(),
-	/** Case-insensitive substring match against the client's name. */
+	/** Case-insensitive substring match against the client's display name, else its registered name. */
 	name: z.string().trim().min(1).max(100).optional(),
 	/** Narrow the `all` view to consents of this user. Ignored without mcp:manage. */
 	ownerId: z.string().max(36).optional(),
@@ -78,6 +81,51 @@ export class DeleteOAuthClientQueryDto extends Z.class({
 export class DeleteOAuthClientResponseDto extends Z.class({
 	success: z.boolean(),
 	message: z.string(),
+}) {}
+
+/**
+ * Matches the `oauth_clients.displayName` column size. Counted in code points, like the
+ * registered client name, so that a name accepted at registration is also a valid display name.
+ */
+export const OAUTH_CLIENT_DISPLAY_NAME_MAX_LENGTH = 255;
+export const OAUTH_CLIENT_DESCRIPTION_MAX_LENGTH = 512;
+
+/** Counts code points, so a supplementary-plane character such as an emoji counts once. */
+export function isOAuthClientDisplayNameTooLong(value: string): boolean {
+	return Array.from(value).length > OAUTH_CLIENT_DISPLAY_NAME_MAX_LENGTH;
+}
+
+/**
+ * DTO to update the display name and description of a connected OAuth client.
+ * An empty value clears the field.
+ */
+export class UpdateOAuthClientDto extends Z.class({
+	displayName: z
+		.string()
+		.trim()
+		.refine((value) => !isOAuthClientDisplayNameTooLong(value), {
+			message: `Display name must contain at most ${OAUTH_CLIENT_DISPLAY_NAME_MAX_LENGTH} characters`,
+		})
+		.nullable()
+		.optional()
+		.transform((value) => (value === '' ? null : value)),
+	description: z
+		.string()
+		.trim()
+		.max(OAUTH_CLIENT_DESCRIPTION_MAX_LENGTH)
+		.nullable()
+		.optional()
+		.transform((value) => (value === '' ? null : value)),
+}) {}
+
+/**
+ * DTO for the updated OAuth client response
+ */
+export class UpdateOAuthClientResponseDto extends Z.class({
+	id: z.string(),
+	name: z.string(),
+	displayName: z.string().nullable(),
+	description: z.string().nullable(),
 }) {}
 
 /**
