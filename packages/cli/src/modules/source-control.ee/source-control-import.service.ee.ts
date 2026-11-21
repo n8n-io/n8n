@@ -385,12 +385,16 @@ export class SourceControlImportService {
 		const remoteCredentialFilesRead = await mapInBatches(
 			remoteCredentialFiles,
 			SOURCE_CONTROL_READ_FILE_BATCH_SIZE,
-			async (file) => {
+			async (file): Promise<ExportableCredential | undefined> => {
 				this.logger.debug(`Parsing credential file ${file}`);
-				const remote = jsonParse<ExportableCredential>(
-					await fsReadFile(file, { encoding: 'utf8' }),
-				);
-				return remote;
+				const fileContent = await fsReadFile(file, { encoding: 'utf8' });
+				try {
+					return jsonParse<ExportableCredential>(fileContent);
+				} catch (error) {
+					const reason = error instanceof Error ? error.message : String(error);
+					this.logger.warn(`Failed to parse credential from file ${file}: ${reason}`);
+					return undefined;
+				}
 			},
 		);
 
@@ -1172,9 +1176,22 @@ export class SourceControlImportService {
 		});
 
 		await mapInBatches(credentials, SOURCE_CONTROL_READ_FILE_BATCH_SIZE, async (file) => {
-			const { id, type, ownedBy } = jsonParse<ExportableCredential>(
-				await fsReadFile(file.file, { encoding: 'utf8' }),
-			);
+			let credential: ExportableCredential;
+			try {
+				credential = jsonParse<ExportableCredential>(
+					await fsReadFile(file.file, { encoding: 'utf8' }),
+				);
+			} catch (error) {
+				const reason = error instanceof Error ? error.message : String(error);
+				this.logger.warn(`Failed to parse credential from file ${file.file}: ${reason}`);
+				return;
+			}
+			if (!credential?.id) {
+				this.logger.warn(`Skipping credential file ${file.file} without a credential id`);
+				return;
+			}
+
+			const { id, type, ownedBy } = credential;
 
 			const projectId = await targetProjectId(ownedBy);
 			await evaluate(file, credentialImportPolicyContext({ id: id ?? null, type }, projectId));
@@ -1204,9 +1221,20 @@ export class SourceControlImportService {
 		const importCredentialsResult: Array<CredentialImportResult | undefined> = await Promise.all(
 			candidates.map(async (candidate) => {
 				this.logger.debug(`Importing credentials file ${candidate.file}`);
-				const credential = jsonParse<ExportableCredential>(
-					await fsReadFile(candidate.file, { encoding: 'utf8' }),
-				);
+				let credential: ExportableCredential;
+				try {
+					credential = jsonParse<ExportableCredential>(
+						await fsReadFile(candidate.file, { encoding: 'utf8' }),
+					);
+				} catch (error) {
+					const reason = error instanceof Error ? error.message : String(error);
+					this.logger.warn(`Failed to parse credential from file ${candidate.file}: ${reason}`);
+					return undefined;
+				}
+				if (!credential?.id) {
+					this.logger.warn(`Skipping credential file ${candidate.file} without a credential id`);
+					return undefined;
+				}
 				const existingCredentialById = existingCredentialsById.get(credential.id);
 
 				// Instance credentials (provider connections) are instance-local and never synced
