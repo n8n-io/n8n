@@ -82,6 +82,37 @@ describe('V1WorkflowConverter', () => {
 		expect(graph.nodes.map(({ name }) => name)).toEqual([manualTrigger.name, 'A', 'B', 'C']);
 	});
 
+	describe('idempotent nodes', () => {
+		const twoNodes = workflow({
+			nodes: [manualTrigger, node('a-uuid', 'A'), node('b-uuid', 'B')],
+			connections: {
+				[manualTrigger.name]: { main: [[main('A')]] },
+				A: { main: [[main('B')]] },
+			},
+		});
+
+		it('writes the flag on each node that the caller reports as idempotent', () => {
+			const graph = converter.convert(twoNodes, undefined, {
+				isIdempotent: ({ name }) => name === 'A',
+			});
+
+			expect(graph.nodes.find(({ name }) => name === 'A')).toMatchObject({ idempotent: true });
+			expect(graph.nodes.find(({ name }) => name === 'B')).not.toHaveProperty('idempotent');
+		});
+
+		it('writes no flag when the caller gives no answer', () => {
+			const graph = converter.convert(twoNodes);
+
+			for (const graphNode of graph.nodes) expect(graphNode).not.toHaveProperty('idempotent');
+		});
+
+		it('does not ask about the trigger, which the engine never runs', () => {
+			const graph = converter.convert(twoNodes, undefined, { isIdempotent: () => true });
+
+			expect(graph.nodes.find(({ type }) => type === 'trigger')).not.toHaveProperty('idempotent');
+		});
+	});
+
 	describe('trigger nodes', () => {
 		const trigger = (id: string, name: string, type: string, extra: Partial<INode> = {}): INode =>
 			node(id, name, { type, ...extra });

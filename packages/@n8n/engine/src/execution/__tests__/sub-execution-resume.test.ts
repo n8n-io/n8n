@@ -21,6 +21,7 @@ function row(
 		outputSources: null,
 		waitDeclaration: null,
 		resumeCause: null,
+		attempt: 1,
 	};
 }
 

@@ -72,6 +72,7 @@ type ClaimedStepRow = {
 	iteration: number;
 	wait_declaration: WaitDeclaration | null;
 	resume_cause: ResumeCause | null;
+	attempt: number;
 };
 type DueStepRow = { id: string; execution_id: string };
 
@@ -211,7 +212,15 @@ export class TypeOrmStepStore implements StepStore {
 					)`,
 					{ executionId: execution.id },
 				)
-				.returning(['id', 'executionId', 'nodeId', 'iteration', 'waitDeclaration', 'resumeCause'])
+				.returning([
+					'id',
+					'executionId',
+					'nodeId',
+					'iteration',
+					'waitDeclaration',
+					'resumeCause',
+					'attempt',
+				])
 				.execute();
 
 			const [row] = result.raw as ClaimedStepRow[];
@@ -227,19 +236,31 @@ export class TypeOrmStepStore implements StepStore {
 				outputSources: null,
 				waitDeclaration: row.wait_declaration,
 				resumeCause: row.resume_cause,
+				attempt: row.attempt,
 			};
 		});
 	}
 
 	async completeStep(
 		id: string,
+		attempt: number,
 		outputs: StepSlots,
 		outputSources: StepOutputSources | null,
 	): Promise<boolean> {
-		return await this.transition(id, 'running', 'completed', { outputs, outputSources });
+		return await this.transition(
+			id,
+			'running',
+			'completed',
+			{ outputs, outputSources },
+			{ attempt },
+		);
 	}
 
-	async suspendStep(id: string, waitDeclaration: WaitDeclaration): Promise<boolean> {
+	async suspendStep(
+		id: string,
+		attempt: number,
+		waitDeclaration: WaitDeclaration,
+	): Promise<boolean> {
 		// `wait_till` is derived from the declaration in the same statement that
 		// writes it, so the column the sweep reads can never disagree with the
 		// declaration it fires.
@@ -259,7 +280,7 @@ export class TypeOrmStepStore implements StepStore {
 			if (!execution) return false;
 
 			if (!isLiveExecutionStatus(execution.status)) {
-				await this.transition(id, 'running', 'cancelled', {}, manager);
+				await this.transition(id, 'running', 'cancelled', {}, { attempt, manager });
 				return false;
 			}
 
@@ -272,7 +293,7 @@ export class TypeOrmStepStore implements StepStore {
 					waitTill:
 						waitDeclaration.resumeAt === undefined ? null : new Date(waitDeclaration.resumeAt),
 				},
-				manager,
+				{ attempt, manager },
 			);
 		});
 	}
@@ -366,7 +387,35 @@ export class TypeOrmStepStore implements StepStore {
 	}
 
 	async failStaleRunningStep(id: string, staleAfter: Date, error: StepError): Promise<boolean> {
-		return await this.failStepFrom('running', id, error, staleAfter);
+		return await this.failStepFrom('running', id, error, { staleAfter });
+	}
+
+	async requeueStaleRunningStep(id: string, staleAfter: Date): Promise<boolean> {
+		// The execution-row lock orders the requeue with the write that ends the
+		// execution, as in `suspendStep`. A requeue that is first is cancelled by
+		// `cancelPendingSteps`, which runs after the end. A requeue after the end
+		// would leave a `queued` step that nothing cancels, so it is refused.
+		return await this.repo.manager.transaction(async (manager) => {
+			const [execution] = await manager.query<Array<{ status: ExecutionStatus }>>(
+				`SELECT status FROM workflow_execution
+				 WHERE id = (SELECT execution_id FROM workflow_step_execution WHERE id = $1)
+				 FOR SHARE`,
+				[id],
+			);
+			if (!execution || !isLiveExecutionStatus(execution.status)) return false;
+
+			const result = await manager
+				.createQueryBuilder()
+				.update(WorkflowStepExecution)
+				.set({
+					status: 'queued',
+					attempt: () => 'attempt + 1',
+					staleAfter: this.staleAfterFor('queued'),
+				})
+				.where({ id, status: 'running', staleAfter })
+				.execute();
+			return result.affected === 1;
+		});
 	}
 
 	async findStaleSettledSteps(at: Date, limit: number): Promise<StaleSettledStep[]> {
@@ -406,24 +455,24 @@ export class TypeOrmStepStore implements StepStore {
 		);
 	}
 
-	async cancelStep(id: string): Promise<boolean> {
-		return await this.transition(id, 'running', 'cancelled');
+	async cancelStep(id: string, attempt: number): Promise<boolean> {
+		return await this.transition(id, 'running', 'cancelled', {}, { attempt });
 	}
 
-	async failStep(id: string, error: StepError): Promise<boolean> {
-		return await this.failStepFrom('running', id, error);
+	async failStep(id: string, attempt: number, error: StepError): Promise<boolean> {
+		return await this.failStepFrom('running', id, error, { attempt });
 	}
 
 	async failWaitingStep(id: string, error: StepError): Promise<boolean> {
 		return await this.failStepFrom('waiting', id, error);
 	}
 
-	/** `observedStaleAfter` adds a test on the `stale_after` value that the caller read. */
+	/** `observed` adds a test on the values that the caller read or holds. */
 	private async failStepFrom(
 		from: StepStatus,
 		id: string,
 		error: StepError,
-		observedStaleAfter?: Date,
+		observed: { staleAfter?: Date; attempt?: number } = {},
 	): Promise<boolean> {
 		// Locking the execution row makes concurrent claims and planning inserts
 		// wait for this failure to commit (see `claimStep` and `createSteps`).
@@ -437,7 +486,7 @@ export class TypeOrmStepStore implements StepStore {
 			);
 			const result = await manager.update(
 				WorkflowStepExecution,
-				{ id, status: from, ...(observedStaleAfter ? { staleAfter: observedStaleAfter } : {}) },
+				{ id, status: from, ...observed },
 				{ error, status: 'failed', staleAfter: this.staleAfterFor('failed') },
 			);
 			return result.affected === 1;
@@ -447,7 +496,8 @@ export class TypeOrmStepStore implements StepStore {
 	/**
 	 * Compare-and-set on `status`, writing any result columns in the same
 	 * statement so a step's status and its outcome can't be observed apart.
-	 * The same statement writes `stale_after` for the new status.
+	 * The same statement writes `stale_after` for the new status. `attempt` adds
+	 * a test on the attempt that the caller holds.
 	 */
 	private async transition(
 		id: string,
@@ -461,11 +511,11 @@ export class TypeOrmStepStore implements StepStore {
 			waitTill?: Date | null;
 			resumeCause?: ResumeCause;
 		} = {},
-		manager: EntityManager = this.repo.manager,
+		{ attempt, manager = this.repo.manager }: { attempt?: number; manager?: EntityManager } = {},
 	): Promise<boolean> {
 		const result = await manager.update(
 			WorkflowStepExecution,
-			{ id, status: from },
+			{ id, status: from, ...(attempt === undefined ? {} : { attempt }) },
 			{ ...fields, status: to, staleAfter: this.staleAfterFor(to) },
 		);
 		return result.affected === 1;

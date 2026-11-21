@@ -62,6 +62,26 @@ class ReportsExecutionId implements INodeType {
 	}
 }
 
+/** A stand-in for the Set node whose type declares that a second run is safe. */
+class IdempotentSet implements INodeType {
+	description = {
+		displayName: 'Idempotent Set',
+		name: 'set',
+		group: ['input'],
+		version: 3.4,
+		description: 'Declares the idempotent annotation',
+		defaults: { name: 'Set' },
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
+		properties: [],
+		annotations: { effect: 'read', destructive: false, idempotent: true },
+	} as unknown as INodeType['description'];
+
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		return await Promise.resolve([this.getInputData()]);
+	}
+}
+
 const connections: IConnections = {
 	[TRIGGER_NAME]: { main: [[{ node: 'Set', type: 'main', index: 0 }]] },
 };
@@ -164,6 +184,32 @@ describe('Engine v2 sub-workflow resolve (integration)', () => {
 			const result = await resolve(request(workflow.id));
 
 			expect(result.triggerOutputs).toEqual([[{ json: { executionId: SUB_EXECUTION_ID } }]]);
+		} finally {
+			await initNodeTypes({
+				...buildDefaultNodes(),
+				[TRIGGER_TYPE]: { type: new ExecuteWorkflowTrigger(), sourcePath: '' },
+			});
+		}
+	});
+
+	it('marks a node of the sub-workflow as idempotent when its node type declares that annotation', async () => {
+		await initNodeTypes({
+			...buildDefaultNodes(),
+			[TRIGGER_TYPE]: { type: new ExecuteWorkflowTrigger(), sourcePath: '' },
+			[setNode.type]: { type: new IdempotentSet(), sourcePath: '' },
+		});
+		try {
+			const workflow = await subWorkflow({});
+
+			// Through the real client, so the flag also passes the response schema.
+			const result = await resolve(request(workflow.id));
+
+			expect(result.graph.nodes.find(({ id }) => id === setNode.id)).toMatchObject({
+				idempotent: true,
+			});
+			expect(result.graph.nodes.find(({ id }) => id === triggerNode.id)).not.toHaveProperty(
+				'idempotent',
+			);
 		} finally {
 			await initNodeTypes({
 				...buildDefaultNodes(),

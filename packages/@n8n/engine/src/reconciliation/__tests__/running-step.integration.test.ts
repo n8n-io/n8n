@@ -7,6 +7,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { AllowAllAdmittance } from '../../admittance';
 import { mintIdentityToken, SharedSecretIdentityVerifier } from '../../auth';
 import { createDataSource, createStores } from '../../database';
+import { WorkflowStepExecution } from '../../database/entities';
 import { generateId } from '../../database/generate-id';
 import type { IStepExecutor } from '../../dependencies';
 import type { StartExecutionResult } from '../../execution';
@@ -27,6 +28,12 @@ const graph: WorkflowGraph = {
 	edges: [{ from: 'trigger', to: 'node-a', outputIndex: 0, inputIndex: 0 }],
 };
 
+/** The same graph, with node A marked as safe to run a second time. */
+const idempotentGraph: WorkflowGraph = {
+	...graph,
+	nodes: graph.nodes.map((node) => (node.id === 'node-a' ? { ...node, idempotent: true } : node)),
+};
+
 describe('running step with no worker (integration)', () => {
 	let container: StartedPostgreSqlContainer;
 	let dataSource: DataSource;
@@ -43,7 +50,7 @@ describe('running step with no worker (integration)', () => {
 		if (container) await container.stop();
 	});
 
-	function createRuntime(executor: IStepExecutor) {
+	function createRuntime(executor: IStepExecutor, stepConcurrency = 1) {
 		return createEngineRuntime({
 			dataSource,
 			admittance: new AllowAllAdmittance(),
@@ -51,9 +58,17 @@ describe('running step with no worker (integration)', () => {
 			responseSender: noopExecutionResponseSender,
 			staleness,
 			reconciliationIntervalMs: 20,
-			queues: createInMemoryWorkQueues(),
+			queues: createInMemoryWorkQueues({ concurrency: { step: stepConcurrency } }),
 			externalDependencies: () => ({ v1StepExecutor: executor }),
 		});
+	}
+
+	async function waitForCompletion(executionId: string): Promise<void> {
+		const { executionStore } = createStores(dataSource, staleness);
+		await vi.waitFor(
+			async () => expect(await executionStore.loadExecutionStatus(executionId)).toBe('completed'),
+			{ timeout: 5_000, interval: 20 },
+		);
 	}
 
 	async function waitForFailure(executionId: string): Promise<void> {
@@ -74,7 +89,10 @@ describe('running step with no worker (integration)', () => {
 	 * Creates an execution whose step of node A is `running` and that no worker
 	 * runs, as after a crash of the worker that claimed it.
 	 */
-	async function createExecutionWithOrphanStep(): Promise<string> {
+	async function createExecutionWithOrphanStep(
+		executionGraph: WorkflowGraph = graph,
+		attempt = 1,
+	): Promise<string> {
 		const { executionStore, stepStore } = createStores(dataSource, staleness);
 		const executionId = generateId();
 		await executionStore.createExecution({
@@ -82,7 +100,7 @@ describe('running step with no worker (integration)', () => {
 			workflowId: 'wf-1',
 			status: 'running',
 			mode: 'production',
-			graph: { ...graph, seeded: [] },
+			graph: { ...executionGraph, seeded: [] },
 			workflow: {},
 			triggerOutputs: [{}],
 			callerContext: { hostMode: 'trigger' },
@@ -94,6 +112,8 @@ describe('running step with no worker (integration)', () => {
 			{ nodeId: 'node-a', iteration: 0, status: 'queued' },
 		]);
 		const stepId = created.find(({ nodeId }) => nodeId === 'node-a')?.id ?? '';
+		// An attempt above 1 is the state after the engine queued the step again.
+		await dataSource.getRepository(WorkflowStepExecution).update({ id: stepId }, { attempt });
 		await stepStore.claimStep(stepId);
 		return executionId;
 	}
@@ -191,6 +211,104 @@ describe('running step with no worker (integration)', () => {
 			status: 'failed',
 			outputs: null,
 			error: { name: STALE_RUNNING_STEP_ERROR_NAME },
+		});
+	});
+
+	describe('a step of an idempotent node', () => {
+		it('runs the step again when no worker runs it, and completes the execution', async () => {
+			const executionId = await createExecutionWithOrphanStep(idempotentGraph);
+			const execute = vi
+				.fn<IStepExecutor['execute']>()
+				.mockResolvedValue({ outputs: [[{ json: { ran: true } }]] });
+			const runtime = createRuntime({ execute });
+
+			runtime.start();
+			try {
+				await waitForCompletion(executionId);
+			} finally {
+				await runtime.stop();
+			}
+
+			// The worker of the first attempt never ran the node.
+			expect(execute).toHaveBeenCalledTimes(1);
+			expect(await loadStepOfNodeA(executionId)).toMatchObject({
+				status: 'completed',
+				attempt: 2,
+				outputs: [[{ json: { ran: true } }]],
+			});
+		});
+
+		it('fails the step and its execution when the step has no attempt left', async () => {
+			const executionId = await createExecutionWithOrphanStep(idempotentGraph, 3);
+			const execute = vi.fn<IStepExecutor['execute']>();
+			const runtime = createRuntime({ execute });
+
+			runtime.start();
+			try {
+				await waitForFailure(executionId);
+			} finally {
+				await runtime.stop();
+			}
+
+			expect(execute).not.toHaveBeenCalled();
+			expect(await loadStepOfNodeA(executionId)).toMatchObject({
+				status: 'failed',
+				attempt: 3,
+				error: {
+					name: STALE_RUNNING_STEP_ERROR_NAME,
+					message: expect.stringContaining('attempt 3') as string,
+				},
+			});
+		});
+
+		it('keeps the outcome of the second run when the slow first run returns later', async () => {
+			let release!: () => void;
+			const held = new Promise<void>((resolve) => (release = resolve));
+			let runs = 0;
+			const execute = vi.fn<IStepExecutor['execute']>().mockImplementation(async () => {
+				const run = ++runs;
+				// Only the first run is slow.
+				if (run === 1) await held;
+				return { outputs: [[{ json: { run } }]] };
+			});
+			// Two handlers: the first run holds one, and the second run needs the other.
+			const runtime = createRuntime({ execute }, 2);
+
+			runtime.start();
+			let executionId = '';
+			try {
+				const response = await request(runtime.app)
+					.post('/api/workflow-executions')
+					.set({
+						authorization: `Bearer ${mintIdentityToken(secret, { cpId: 'cp-1', tenantId: 'tenant-1' })}`,
+					})
+					.send({
+						workflowId: 'wf-1',
+						graph: idempotentGraph,
+						workflow: {},
+						triggerOutputs: [{}],
+						executionId: generateId(),
+						callerContext: { hostMode: 'trigger' },
+					})
+					.expect(201);
+				({ executionId } = response.body as StartExecutionResult);
+
+				await waitForCompletion(executionId);
+				release();
+			} finally {
+				release();
+				// `stop` waits for the handler, so the late outcome write is done after it.
+				await runtime.stop();
+			}
+
+			expect(execute).toHaveBeenCalledTimes(2);
+			const { executionStore } = createStores(dataSource, staleness);
+			expect(await executionStore.loadExecutionStatus(executionId)).toBe('completed');
+			expect(await loadStepOfNodeA(executionId)).toMatchObject({
+				status: 'completed',
+				attempt: 2,
+				outputs: [[{ json: { run: 2 } }]],
+			});
 		});
 	});
 });

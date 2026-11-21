@@ -6,7 +6,7 @@ export type {
 	StartExecutionRequest,
 	StartExecutionResult,
 } from './start-execution.service';
-export { stepKeyId } from './execution.types';
+export { isLiveExecutionStatus, stepKeyId } from './execution.types';
 export type {
 	CallerContext,
 	SubExecutionOutcome,
