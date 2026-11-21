@@ -1,3 +1,4 @@
+import { Memoized } from '@n8n/decorators';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import get from 'lodash/get';
 import type {
@@ -13,6 +14,7 @@ import type {
 	ITaskData,
 	ITaskDataConnections,
 	ITaskMetadata,
+	IWorkflowDataProxyAdditionalKeys,
 	IWorkflowExecuteAdditionalData,
 	Workflow,
 	WorkflowExecuteMode,
@@ -34,6 +36,7 @@ import { copyInputItems } from './utils/copy-input-items';
 import { getDataTableHelperFunctions } from './utils/data-table-helper-functions';
 import { getDeduplicationHelperFunctions } from './utils/deduplication-helper-functions';
 import { getFileSystemHelperFunctions } from './utils/file-system-helper-functions';
+import { getAdditionalKeys } from './utils/get-additional-keys';
 import { getInputConnectionData } from './utils/get-input-connection-data';
 import { normalizeItems } from './utils/normalize-items';
 import { getRequestHelperFunctions } from './utils/request-helper-functions';
@@ -74,6 +77,7 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 		private readonly closeFunctions: CloseFunction[],
 		abortSignal?: AbortSignal,
 		parentNode?: INode,
+		private readonly expressionVariables?: IWorkflowDataProxyAdditionalKeys,
 	) {
 		super(
 			workflow,
@@ -137,9 +141,18 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 			)) as ISupplyDataFunctions['getNodeParameter'];
 	}
 
+	@Memoized
+	protected override get additionalKeys(): IWorkflowDataProxyAdditionalKeys {
+		return {
+			...this.expressionVariables,
+			...getAdditionalKeys(this.additionalData, this.mode, this.runExecutionData),
+		};
+	}
+
 	cloneWith(replacements: {
 		runIndex: number;
 		inputData: INodeExecutionData[][];
+		expressionVariables?: IWorkflowDataProxyAdditionalKeys;
 	}): SupplyDataContext {
 		const context = new SupplyDataContext(
 			this.workflow,
@@ -155,6 +168,7 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 			this.closeFunctions,
 			this.abortSignal,
 			this.parentNode,
+			replacements.expressionVariables,
 		);
 		void context
 			.addExecutionDataFunctions(

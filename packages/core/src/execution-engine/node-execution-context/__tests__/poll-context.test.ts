@@ -3,6 +3,7 @@ import type {
 	ICredentialsHelper,
 	IExecutionContext,
 	IDataObject,
+	IExecuteFunctions,
 	INode,
 	INodeType,
 	INodeTypes,
@@ -13,6 +14,7 @@ import type {
 	WorkflowExecuteMode,
 	WorkflowExpression,
 } from 'n8n-workflow';
+import { NodeConnectionTypes, Workflow as WorkflowClass } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { PollContext } from '../poll-context';
@@ -168,6 +170,174 @@ describe('PollContext', () => {
 			const parameter = pollContext.getNodeParameter('otherParameter', 'fallback');
 
 			expect(parameter).toBe('fallback');
+		});
+	});
+
+	describe('getNodeParameter with expression context options', () => {
+		const pollNode: INode = {
+			id: 'poll-node-id',
+			name: 'Poll',
+			type: 'test.pollTrigger',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {
+				itemId: '={{ $json.id }}',
+				next: '={{ $response.body.x }}',
+				executionMode: '={{ $execution.mode }}',
+			},
+		};
+		const realNodeTypes = mock<INodeTypes>();
+		realNodeTypes.getByNameAndVersion.mockReturnValue({
+			description: {
+				properties: ['itemId', 'next', 'executionMode'].map((name) => ({
+					displayName: name,
+					name,
+					type: 'string',
+					default: '',
+				})),
+			},
+		} as unknown as INodeType);
+		const realWorkflow = new WorkflowClass({
+			nodes: [pollNode],
+			connections: {},
+			active: false,
+			nodeTypes: realNodeTypes,
+		});
+		const context = new PollContext(
+			realWorkflow,
+			pollNode,
+			mock<IWorkflowExecuteAdditionalData>({ executionContext: undefined, variables: {} }),
+			'trigger',
+			'init',
+		);
+
+		it('resolves $json against the given input data', () => {
+			const value = context.getNodeParameter('itemId', undefined, {
+				inputData: [{ json: { id: 42 } }],
+			});
+
+			expect(value).toBe(42);
+		});
+
+		it('resolves keys from the given additional keys', () => {
+			const value = context.getNodeParameter('next', undefined, {
+				additionalKeys: { $response: { body: { x: 'cursor-2' } } },
+			});
+
+			expect(value).toBe('cursor-2');
+		});
+
+		it('keeps resolving the memoised additional keys when extra keys are given', () => {
+			const value = context.getNodeParameter('executionMode', undefined, {
+				additionalKeys: { $response: { body: { x: 'cursor-2' } } },
+			});
+
+			expect(value).toBe('production');
+		});
+
+		it('resolves without the context options as before', () => {
+			expect(() => context.getNodeParameter('itemId')).toThrow("Node 'Poll' hasn't been executed");
+			expect(context.getNodeParameter('executionMode')).toBe('production');
+		});
+	});
+
+	describe('getInputConnectionData', () => {
+		const pollNode: INode = {
+			id: 'poll-node-id',
+			name: 'Poll',
+			type: 'test.pollTrigger',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+		};
+		const toolNode: INode = {
+			id: 'tool-node-id',
+			name: 'Fetch Page',
+			type: 'test.fetchTool',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: { url: "={{ 'https://example.com/?page=' + $fromAI('page_number') }}" },
+		};
+		const pollNodeType = {
+			description: {
+				inputs: [{ type: NodeConnectionTypes.AiTool, maxConnections: 1, required: false }],
+				outputs: [NodeConnectionTypes.Main],
+				properties: [],
+			},
+		} as unknown as INodeType;
+		const toolNodeType = {
+			description: {
+				name: 'fetchTool',
+				description: 'Fetches a page',
+				inputs: [],
+				outputs: [NodeConnectionTypes.AiTool],
+				properties: [{ displayName: 'URL', name: 'url', type: 'string', default: '' }],
+			},
+			async execute(this: IExecuteFunctions) {
+				return [[{ json: { url: this.getNodeParameter('url', 0) } }]];
+			},
+		} as unknown as INodeType;
+		const toolNodeTypes = mock<INodeTypes>();
+		toolNodeTypes.getByNameAndVersion.mockImplementation((type) =>
+			type === toolNode.type ? toolNodeType : pollNodeType,
+		);
+		const buildContext = (connected: boolean) =>
+			new PollContext(
+				new WorkflowClass({
+					nodes: [pollNode, toolNode],
+					connections: connected
+						? {
+								[toolNode.name]: {
+									[NodeConnectionTypes.AiTool]: [
+										[{ node: pollNode.name, type: NodeConnectionTypes.AiTool, index: 0 }],
+									],
+								},
+							}
+						: {},
+					active: false,
+					nodeTypes: toolNodeTypes,
+				}),
+				pollNode,
+				mock<IWorkflowExecuteAdditionalData>({ executionContext: undefined, variables: {} }),
+				'trigger',
+				'init',
+			);
+
+		it('returns the connected node as a tool that resolves $fromAI from its arguments', async () => {
+			const tool = (await buildContext(true).getInputConnectionData(
+				NodeConnectionTypes.AiTool,
+				0,
+			)) as { invoke: (args: IDataObject) => Promise<string> };
+
+			const output = await tool.invoke({ page_number: '3' });
+
+			expect(JSON.parse(output)).toEqual([{ url: 'https://example.com/?page=3' }]);
+		});
+
+		it('returns undefined when no tool is connected', async () => {
+			await expect(
+				buildContext(false).getInputConnectionData(NodeConnectionTypes.AiTool, 0),
+			).resolves.toBeUndefined();
+		});
+
+		it('runs the close functions of supplied sub-nodes once on __closeConnections', async () => {
+			const closeFunction = vi.fn(async () => {});
+			const suppliedNodeType = {
+				description: { ...toolNodeType.description },
+				async supplyData() {
+					return { response: { name: 'supplied' }, closeFunction };
+				},
+			} as unknown as INodeType;
+			toolNodeTypes.getByNameAndVersion.mockImplementation((type) =>
+				type === toolNode.type ? suppliedNodeType : pollNodeType,
+			);
+			const context = buildContext(true);
+
+			await context.getInputConnectionData(NodeConnectionTypes.AiTool, 0);
+			await context.__closeConnections();
+			await context.__closeConnections();
+
+			expect(closeFunction).toHaveBeenCalledTimes(1);
 		});
 	});
 

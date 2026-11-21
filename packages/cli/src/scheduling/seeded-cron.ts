@@ -29,6 +29,8 @@ export function seededCron(item: TriggerTime, seed: string): CronExpression {
 
 	switch (item.mode) {
 		case 'everyMinute':
+			// DEMO ONLY, not for merge: poll every 5 seconds instead of every minute.
+			if (process.env.N8N_DEMO_FAST_POLL === 'true') return '*/5 * * * * *' as CronExpression;
 			return `${second} * * * * *`;
 		case 'everyHour':
 			return `${second} ${item.minute} * * * *`;

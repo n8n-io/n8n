@@ -778,9 +778,9 @@ describe('makeHandleToolInvocation', () => {
 		);
 		await handleToolInvocation(toolArgs);
 
-		expect(contextFactory).toHaveBeenCalledWith(0);
-		expect(contextFactory).toHaveBeenCalledWith(1);
-		expect(contextFactory).toHaveBeenCalledWith(2);
+		expect(contextFactory).toHaveBeenCalledWith(0, undefined);
+		expect(contextFactory).toHaveBeenCalledWith(1, undefined);
+		expect(contextFactory).toHaveBeenCalledWith(2, undefined);
 	});
 
 	describe('retry functionality', () => {

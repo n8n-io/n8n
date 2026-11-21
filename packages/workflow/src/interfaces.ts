@@ -790,6 +790,10 @@ export interface IGetNodeParameterOptions {
 	rawExpressions?: boolean;
 	// skip validation of parameter
 	skipValidation?: boolean;
+	// resolve expressions against these items instead of the context's input data
+	inputData?: INodeExecutionData[];
+	// extra keys merged over the context's additional keys, e.g. `$response`
+	additionalKeys?: IWorkflowDataProxyAdditionalKeys;
 }
 
 namespace ExecuteFunctions {
@@ -1567,6 +1571,7 @@ export type ISupplyDataFunctions = ExecuteFunctions.GetNodeParameterFn &
 		cloneWith(replacements: {
 			runIndex: number;
 			inputData: INodeExecutionData[][];
+			expressionVariables?: IWorkflowDataProxyAdditionalKeys;
 		}): ISupplyDataFunctions;
 	};
 
@@ -1628,6 +1633,7 @@ export interface IPollFunctions
 	 */
 	getPollBudgetMs(): number;
 	__emitError(error: Error, responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>): void;
+	getInputConnectionData(connectionType: AINodeConnectionType, itemIndex: number): Promise<unknown>;
 	getNodeParameter(
 		parameterName: string,
 		fallbackValue?: any,
@@ -1641,6 +1647,8 @@ export interface IPollFunctions
 	 * never by a node.
 	 */
 	__runPoll?<T>(poll: () => Promise<T>): Promise<T>;
+	/** Runs and clears the close functions of sub-nodes the poll connected to. Called by the tick engines, never by a node. */
+	__closeConnections?(): Promise<void>;
 	helpers: RequestHelperFunctions &
 		BaseHelperFunctions &
 		BinaryHelperFunctions &
@@ -3277,6 +3285,7 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	credentials?: INodeCredentialDescription[];
 	maxNodes?: number; // How many nodes of that type can be created in a workflow
 	polling?: true | undefined;
+	persistActivationCursor?: boolean;
 	supportsCORS?: true | undefined;
 	requestDefaults?: DeclarativeRestApiSettings.HttpRequestOptions;
 	requestOperations?: IN8nRequestOperations;

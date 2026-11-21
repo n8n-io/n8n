@@ -548,7 +548,10 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 			return value;
 		}
 
-		const { additionalKeys } = this;
+		const additionalKeys = options?.additionalKeys
+			? { ...this.additionalKeys, ...options.additionalKeys }
+			: this.additionalKeys;
+		const inputData = options?.inputData ?? connectionInputData;
 
 		let returnData;
 
@@ -560,7 +563,7 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 				runIndex,
 				itemIndex,
 				node.name,
-				connectionInputData,
+				inputData,
 				mode,
 				additionalKeys,
 				executeData,
