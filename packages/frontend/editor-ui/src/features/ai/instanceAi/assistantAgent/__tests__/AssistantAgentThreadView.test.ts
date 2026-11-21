@@ -527,6 +527,7 @@ describe('AssistantAgentThreadView', () => {
 		expect(panelProps.current['interaction-extensions']).toEqual([
 			expect.objectContaining({ key: 'assistant_confirmation' }),
 			expect.objectContaining({ key: 'assistant_auto_approval' }),
+			expect.objectContaining({ key: 'assistant_preference_card' }),
 			expect.objectContaining({ key: 'assistant_instance_context' }),
 			expect.objectContaining({ key: 'assistant_status' }),
 			expect.objectContaining({ key: 'assistant_tool_result_table' }),

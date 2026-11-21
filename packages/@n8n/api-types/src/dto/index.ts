@@ -51,6 +51,10 @@ export { TrackPageHideEventRequestDto } from './telemetry/track-page-hide-event-
 export { AssistantThreadTabsRequestDto } from './assistant/assistant-thread-tabs-request.dto';
 export { AssistantAgentTargetRequestDto } from './assistant/assistant-agent-target-request.dto';
 export {
+	AssistantPreferenceCardUndoRequestDto,
+	AssistantPreferenceCardEditRequestDto,
+} from './assistant/assistant-preference-card-request.dto';
+export {
 	InstanceAiPreferenceCardUndoRequestDto,
 	InstanceAiPreferenceCardEditRequestDto,
 } from './instance-ai/instance-ai-preference-card-request.dto';

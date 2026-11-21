@@ -102,6 +102,11 @@ import { assistantAutoApprovalExtension } from './assistantAutoApproval';
 import { assistantConfirmationExtension } from './assistantConfirmation';
 import { assistantHostEventExtensions } from './assistantHostEvents';
 import { assistantCodeToolResultExtension } from './assistantCodeToolResults';
+import {
+	ASSISTANT_PREFERENCE_CARDS,
+	assistantPreferenceCardExtension,
+	useAssistantPreferenceCards,
+} from './assistantPreferenceCards';
 import { assistantSharedFilesExtension } from './assistantSharedFiles';
 import { assistantToolResultTableExtension } from './assistantToolResultTables';
 import { useAssistantAgentThreadsStore } from './assistantAgentThreads.store';
@@ -262,6 +267,7 @@ function onMessageAccepted({ clientContext }: { clientContext?: Record<string, u
 const interactionExtensions = [
 	assistantConfirmationExtension,
 	assistantAutoApprovalExtension,
+	assistantPreferenceCardExtension,
 	...assistantHostEventExtensions,
 	assistantToolResultTableExtension,
 	assistantCodeToolResultExtension,
@@ -269,6 +275,15 @@ const interactionExtensions = [
 ];
 
 const panel = useTemplateRef<InstanceType<typeof AgentChatPanel>>('panel');
+
+provide(
+	ASSISTANT_PREFERENCE_CARDS,
+	useAssistantPreferenceCards({
+		threadId: props.threadId,
+		projectId: props.projectId,
+		messages: () => panel.value?.messages ?? [],
+	}),
+);
 
 // --- Credits ---
 // The InstanceAiView parent loads the balance, and a push event keeps it current.
