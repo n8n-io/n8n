@@ -340,6 +340,19 @@ const getChatResponseMode = (
 	return undefined;
 };
 
+export function shouldUseLastNodeForChatHistory(
+	nodeType: string,
+	body: unknown,
+	responseMode: WebhookResponseMode,
+): boolean {
+	return (
+		nodeType === CHAT_TRIGGER_NODE_TYPE &&
+		isRecord(body) &&
+		body.action === 'loadPreviousSession' &&
+		(responseMode === 'lastNode' || responseMode === 'streaming' || responseMode === 'hostedChat')
+	);
+}
+
 /** Returns whether the node is an enabled Form node or form-resuming Wait node. */
 function isEnabledFormPageNode(node: INode): boolean {
 	if (node.disabled) return false;
@@ -1078,7 +1091,7 @@ export async function executeWebhook(
 	});
 
 	const {
-		responseMode,
+		responseMode: configuredResponseMode,
 		responseCode,
 		responseData,
 		checkAllMainOutputs,
@@ -1086,6 +1099,7 @@ export async function executeWebhook(
 		responseContentType,
 		responseBinaryPropertyName,
 	} = evaluateResponseOptions(context, req);
+	let responseMode = configuredResponseMode;
 
 	if (!SUPPORTED_RESPONSE_MODES.has(responseMode)) {
 		// If the mode is not known we error. Is probably best like that instead of using
@@ -1143,6 +1157,14 @@ export async function executeWebhook(
 			executionMode,
 			additionalKeys,
 		);
+
+		// The widget loads history from one JSON response.
+		const useLastNodeForChatHistory = shouldUseLastNodeForChatHistory(
+			workflowStartNode.type,
+			req.body,
+			responseMode,
+		);
+		if (useLastNodeForChatHistory) responseMode = 'lastNode';
 
 		// TODO: remove this hack, and make sure that execution data is properly created before the MCP trigger is executed
 		if (
@@ -1256,6 +1278,8 @@ export async function executeWebhook(
 			userId: webhookData.userId,
 			encryptedRunnerIdentity: additionalData.encryptedRunnerIdentity,
 			callerAwaitsOutcome: IMMEDIATE_RESPONSE_MODES.has(responseMode) ? 'none' : 'response',
+			// A queue worker can finish before this handler registers the response mode.
+			forceFullExecutionData: useLastNodeForChatHistory,
 			// v1 reads this from `executionData.startData`, which `prepareExecutionData`
 			// sets, so carrying it here changes nothing for v1. Engine v2 has no way to
 			// stop at a node, and its dispatcher refuses the run on this field.
