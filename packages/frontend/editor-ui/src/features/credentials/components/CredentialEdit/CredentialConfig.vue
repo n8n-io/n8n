@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeMount, watch } from 'vue';
+import { getRuntimeCredentialReferences, isExpression } from '@/app/utils/expressions';
 
 import { getAppNameFromCredType } from '@/app/utils/nodeTypesUtils';
 import type {
@@ -25,6 +26,7 @@ import {
 import type { PermissionsRecord } from '@n8n/permissions';
 import { useCredentialsStore } from '../../credentials.store';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/app/stores/ui.store';
 import Banner from '@/app/components/Banner.vue';
@@ -180,6 +182,39 @@ const isHomeTeamProject = computed(
 		credentialsStore.getCredentialById(`${props.credentialId}`)?.homeProject?.type ===
 		ProjectTypes.Team,
 );
+/** What the credential fields read from `$runtimeCredentials`, nested fields included. */
+const runtimeCredentialUse = computed(() => {
+	const aliases = new Set<string>();
+	let computedAlias = false;
+	const visit = (value: unknown) => {
+		if (typeof value === 'string') {
+			if (!isExpression(value)) return;
+			for (const alias of getRuntimeCredentialReferences(value)) {
+				if (alias) aliases.add(alias);
+				else computedAlias = true;
+			}
+		} else if (typeof value === 'object' && value !== null) {
+			Object.values(value).forEach(visit);
+		}
+	};
+	visit(props.credentialData);
+	return { aliases: [...aliases], computedAlias };
+});
+
+const runtimeCredentialCalloutText = computed(() => {
+	if (!useSettingsStore().moduleSettings['runtime-credentials']?.enabled) return '';
+	const { aliases, computedAlias } = runtimeCredentialUse.value;
+	if (aliases.length === 0 && !computedAlias) return '';
+	return i18n.baseText('credentialEdit.credentialConfig.runtimeValues', {
+		interpolate: {
+			aliases:
+				aliases.length > 0
+					? aliases.join(', ')
+					: i18n.baseText('credentialEdit.credentialConfig.runtimeValues.computed'),
+		},
+	});
+});
+
 const documentationUrl = computed(() => {
 	const type = props.credentialType;
 	const activeNode = ndvStore.value.activeNode;
@@ -499,6 +534,14 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 							{{ i18n.baseText('credentialEdit.credentialConfig.openDocs') }}
 						</N8nLink>
 					</template>
+				</N8nCallout>
+
+				<N8nCallout
+					v-if="runtimeCredentialCalloutText"
+					theme="info"
+					data-test-id="credential-runtime-values-callout"
+				>
+					{{ runtimeCredentialCalloutText }}
 				</N8nCallout>
 
 				<template v-if="canWrite">

@@ -3469,6 +3469,8 @@ export type IWorkflowDataProxyAdditionalKeys = IDataObject & {
 	$evaluation?: { runId: string };
 	$vars?: IDataObject;
 	$secrets?: IDataObject;
+	/** Values a trigger request carried, resolvable only inside admin-managed credentials. */
+	$runtimeCredentials?: IDataObject;
 	$pageCount?: number;
 	$tool?: { name: string; parameters: string };
 	/** @deprecated */
@@ -4143,6 +4145,8 @@ export interface IWorkflowExecuteAdditionalData {
 		runExecutionData: IRunExecutionData,
 		alias: string,
 	): Promise<IDataObject[string] | undefined>;
+	/** Every runtime credential value of the execution, keyed by alias. Empty when there are none. */
+	getRuntimeCredentials?(runExecutionData: IRunExecutionData): Promise<Record<string, unknown>>;
 	/**
 	 * Backing implementations for the trigger identity pipeline exposed to nodes on
 	 * `IWebhookFunctions` (see the docs there). Optional here because they are only

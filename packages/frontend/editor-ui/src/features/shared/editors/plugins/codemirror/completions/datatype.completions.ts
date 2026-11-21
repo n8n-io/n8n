@@ -101,6 +101,8 @@ export async function datatypeCompletions(
 		options = secretOptions(base).map(stripExcessParens(context));
 	} else if (base === '$secrets' && isCredential) {
 		options = secretProvidersOptions();
+	} else if (base === '$runtimeCredentials' && isCredential) {
+		options = runtimeCredentialOptions();
 	} else {
 		let resolved: Resolved | null = null;
 		try {
@@ -1290,6 +1292,26 @@ export const secretOptions = (base: string) => {
 	} catch {
 		return [];
 	}
+};
+
+/** Aliases come from the admin rules, through the runtime-credentials module settings. */
+export const runtimeCredentialOptions = () => {
+	const aliases = useSettingsStore().moduleSettings['runtime-credentials']?.aliases ?? [];
+
+	return aliases.map((alias) => {
+		const option = createCompletionOption({
+			name: alias,
+			doc: {
+				name: alias,
+				returnType: 'string',
+				description: i18n.baseText('codeNodeEditor.completer.$runtimeCredentials.alias'),
+			},
+		});
+		if (!isValidJavascriptIdentifier(alias)) {
+			option.apply = applyBracketAccessCompletion;
+		}
+		return option;
+	});
 };
 
 export const secretProvidersOptions = () => {

@@ -51,6 +51,7 @@ import { AiGatewayService } from '@/services/ai-gateway.service';
 
 import { DynamicCredentialsProxy } from './credentials/dynamic-credentials-proxy';
 import { createMockNodeTypes } from './credentials/mock-node-types';
+import { RuntimeCredentialsResolver } from './credentials/runtime-credentials-resolver';
 import { CredentialMissingIdError } from './errors/credential-missing-id.error';
 import { CredentialNotFoundError } from './errors/credential-not-found.error';
 import { UnsupportedEndUserCredentialTriggerError } from './errors/unsupported-end-user-credential-trigger.error';
@@ -130,6 +131,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		private readonly externalSecretsConfig: ExternalSecretsConfig,
 		private readonly aiGatewayService: AiGatewayService,
 		private readonly policyEnforcementService: PolicyEnforcementService,
+		private readonly runtimeCredentialsResolver: RuntimeCredentialsResolver,
 	) {
 		super();
 	}
@@ -708,6 +710,15 @@ export class CredentialsHelper extends ICredentialsHelper {
 			);
 		}
 
+		const runtimeCredentials = await this.runtimeCredentialsResolver.resolve({
+			credential: credentialsEntity,
+			data: decryptedDataOriginal,
+			consumerNode,
+			executionContext: additionalData.executionContext,
+			workflowId: additionalData.workflowId,
+			executionId: additionalData.executionId,
+		});
+
 		const decryptedData = await this.applyDefaultsAndOverwrites(
 			additionalData,
 			decryptedDataOriginal,
@@ -716,6 +727,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 			executeData,
 			expressionResolveValues,
 			options?.managedVersion,
+			runtimeCredentials,
 		);
 		return this.trackStoredData(decryptedData, credentialsEntity);
 	}
@@ -750,6 +762,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 	 * Applies credential default data and overwrites
 	 *
 	 * @param managedVersion the managed app version to use. By default it is the version of the credential.
+	 * @param runtimeCredentials the `$runtimeCredentials` key, built by `RuntimeCredentialsResolver`.
 	 */
 	async applyDefaultsAndOverwrites(
 		additionalData: IWorkflowExecuteAdditionalData,
@@ -759,6 +772,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		executeData?: IExecuteData,
 		expressionResolveValues?: ICredentialsExpressionResolveValues,
 		managedVersion?: number,
+		runtimeCredentials?: IDataObject,
 	): Promise<ICredentialDataDecryptedObject> {
 		const credentialsProperties = this.getCredentialsProperties(type);
 		const dynamicClientRegistration = this.supportsDynamicClientRegistration(type);
@@ -826,6 +840,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		const additionalKeys = getAdditionalKeys(additionalData, mode, null, {
 			isCredential: true,
 		});
+		if (runtimeCredentials) additionalKeys.$runtimeCredentials = runtimeCredentials;
 
 		// Secret values supplied by an instance overwrite stay out of `$self`.
 		const selfData = { ...decryptedData };

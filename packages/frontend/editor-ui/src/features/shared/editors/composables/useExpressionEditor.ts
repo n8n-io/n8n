@@ -40,7 +40,7 @@ import type {
 } from '@/app/types/expressions';
 import {
 	getExpressionErrorMessage,
-	getExternalSecretPreview,
+	getCredentialValuePreview,
 	getResolvableState,
 	referencesExecutionData,
 } from '@/app/utils/expressions';
@@ -459,7 +459,7 @@ export const useExpressionEditor = ({
 
 		if (result.resolved === undefined) {
 			const secretPreview = isCredentialModal
-				? getExternalSecretPreview(resolvable, toValue(additionalData).$secrets)
+				? getCredentialValuePreview(resolvable, toValue(additionalData).$secrets)
 				: undefined;
 
 			if (secretPreview) {

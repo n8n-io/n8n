@@ -1,11 +1,23 @@
 import { Service } from '@n8n/di';
-import type { IDataObject, IRunExecutionData } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IExecutionContext,
+	IRunExecutionData,
+	ISecureArtifactsV1,
+} from 'n8n-workflow';
+
+export type RuntimeCredentialValues = ISecureArtifactsV1['artifacts'];
 
 export interface RuntimeCredentialProvider {
 	getRuntimeCredential(
 		runExecutionData: IRunExecutionData,
 		alias: string,
 	): Promise<IDataObject[string] | undefined>;
+
+	/** All values the trigger stored for this execution, keyed by alias. Empty when there are none. */
+	getRuntimeCredentials(
+		executionContext: IExecutionContext | undefined,
+	): Promise<RuntimeCredentialValues>;
 }
 
 @Service()
@@ -16,6 +28,11 @@ export class RuntimeCredentialProxyService implements RuntimeCredentialProvider 
 		this.provider = provider;
 	}
 
+	/** The provider is registered only while the runtime-credentials module is enabled. */
+	isEnabled(): boolean {
+		return this.provider !== null;
+	}
+
 	async getRuntimeCredential(
 		runExecutionData: IRunExecutionData,
 		alias: string,
@@ -24,5 +41,14 @@ export class RuntimeCredentialProxyService implements RuntimeCredentialProvider 
 			return await this.provider.getRuntimeCredential(runExecutionData, alias);
 		}
 		return undefined;
+	}
+
+	async getRuntimeCredentials(
+		executionContext: IExecutionContext | undefined,
+	): Promise<RuntimeCredentialValues> {
+		if (this.provider) {
+			return await this.provider.getRuntimeCredentials(executionContext);
+		}
+		return {};
 	}
 }
