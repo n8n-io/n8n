@@ -41,8 +41,7 @@ type ListFilesOutput = z.infer<typeof listFilesOutputSchema>;
 const DESCRIPTION =
 	'List the files of this conversation, newest first: the files that the user attached in any turn ' +
 	'(`origin: "upload"`) and the files from `outputs/` of your sandbox (`origin: "sandbox"`). ' +
-	'Use it to find the fileId of a file from an earlier turn, for example to import it again with `import-files` ' +
-	'or to read it with `parse-file`. ' +
+	'Use it to find the fileId of a file from an earlier turn, for example to read or import it again. ' +
 	`Returns up to ${MAX_LISTED_FILES} files.`;
 
 function toListedFile({
