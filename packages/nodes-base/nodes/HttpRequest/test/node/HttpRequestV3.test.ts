@@ -1,5 +1,6 @@
 import FormData from 'form-data';
 import { IncomingMessage } from 'http';
+import { Readable } from 'stream';
 import {
 	NodeApiError,
 	NodeHelpers,
@@ -942,6 +943,76 @@ describe('HttpRequestV3', () => {
 			const result = await node.execute.call(executeFunctions);
 
 			expect(result).toEqual([[{ json: {}, pairedItem: { item: 0 } }]]);
+		});
+
+		it('should request the raw response stream when the response format is text', async () => {
+			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'GET';
+					case 'url':
+						return baseUrl;
+					case 'authentication':
+						return 'none';
+					case 'options':
+						return { ...options, response: { response: { responseFormat: 'text' } } };
+					case 'options.response.response.responseFormat':
+						return 'text';
+					default:
+						return undefined;
+				}
+			});
+			(executeFunctions.helpers.request as Mock).mockResolvedValue({
+				headers: { 'content-type': 'application/json' },
+				body: '{"id": 9518930001498675}',
+			});
+
+			await node.execute.call(executeFunctions);
+
+			const requestArgs = (executeFunctions.helpers.request as Mock).mock.calls[0][0] as {
+				json?: boolean;
+				useStream?: boolean;
+			};
+			expect(requestArgs.json).toBe(false);
+			expect(requestArgs.useStream).toBe(true);
+		});
+
+		it('should pass a JSON response body through verbatim when the response format is text', async () => {
+			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'GET';
+					case 'url':
+						return baseUrl;
+					case 'authentication':
+						return 'none';
+					case 'options':
+						return { ...options, response: { response: { responseFormat: 'text' } } };
+					case 'options.response.response.responseFormat':
+						return 'text';
+					case 'options.response.response.outputPropertyName':
+						return 'data';
+					default:
+						return undefined;
+				}
+			});
+			executeFunctions.helpers.binaryToBuffer = vi.fn(async (stream: Readable) => {
+				const chunks: Buffer[] = [];
+				for await (const chunk of stream) chunks.push(Buffer.from(chunk));
+				return Buffer.concat(chunks);
+			});
+			(executeFunctions.helpers.request as Mock).mockResolvedValue({
+				headers: { 'content-type': 'application/json' },
+				body: Readable.from([Buffer.from('{"id": 9518930001498675}')]),
+			});
+
+			const result = await node.execute.call(executeFunctions);
+
+			expect(result).toEqual([
+				[{ json: { data: '{"id": 9518930001498675}' }, pairedItem: { item: 0 } }],
+			]);
 		});
 
 		it('should return an empty object for a paginated JSON response with no body', async () => {
