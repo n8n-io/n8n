@@ -23,7 +23,7 @@ import {
 	type ObservationLogTaskLockHandle,
 	type ObservationResumeState,
 } from '@n8n/agents';
-import { Equal, In, IsNull, MoreThan, type FindOptionsWhere } from '@n8n/typeorm';
+import { In, IsNull, type FindOptionsWhere } from '@n8n/typeorm';
 
 import type { InstanceAiMessage } from '../entities/instance-ai-message.entity';
 import { InstanceAiObservation } from '../entities/instance-ai-observation.entity';
@@ -115,25 +115,11 @@ export class TypeORMObservationLogStore
 		observationScopeId: string,
 		opts?: { since?: { sinceCreatedAt: Date; sinceMessageId: string } },
 	): Promise<AgentDbMessage[]> {
-		const baseWhere: FindOptionsWhere<InstanceAiMessage> = {
-			threadId: observationScopeId,
-		};
-
-		const where: Array<FindOptionsWhere<InstanceAiMessage>> = opts?.since
-			? [
-					{ ...baseWhere, createdAt: MoreThan(opts.since.sinceCreatedAt) },
-					{
-						...baseWhere,
-						createdAt: Equal(opts.since.sinceCreatedAt),
-						id: MoreThan(opts.since.sinceMessageId),
-					},
-				]
-			: [baseWhere];
-
-		const entities = await this.messageRepo.find({
-			where,
-			order: { createdAt: 'ASC', id: 'ASC' },
-		});
+		const entities = await this.messageRepo.findForObservationScope(
+			observationScopeId,
+			opts?.since,
+			{},
+		);
 
 		return entities.flatMap((entity) => {
 			const message = this.toAgentMessage(entity);

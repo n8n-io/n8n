@@ -225,7 +225,7 @@ describe('TypeORMObservationLogStore', () => {
 	it('returns observation-scope messages after the cursor keyset', async () => {
 		const messageRepo = mock<InstanceAiMessageRepository>();
 		const sinceCreatedAt = new Date('2026-01-01T00:00:00.000Z');
-		messageRepo.find.mockResolvedValueOnce([
+		messageRepo.findForObservationScope.mockResolvedValueOnce([
 			makeMessageRow({
 				id: 'message-2',
 				content: JSON.stringify({ role: 'user', content: [{ type: 'text', text: 'hello' }] }),
@@ -241,6 +241,11 @@ describe('TypeORMObservationLogStore', () => {
 			since: { sinceCreatedAt, sinceMessageId: 'message-1' },
 		});
 
+		expect(messageRepo.findForObservationScope).toHaveBeenCalledWith(
+			'thread-1',
+			{ sinceCreatedAt, sinceMessageId: 'message-1' },
+			{},
+		);
 		expect(messages).toEqual([
 			expect.objectContaining({
 				id: 'message-2',
