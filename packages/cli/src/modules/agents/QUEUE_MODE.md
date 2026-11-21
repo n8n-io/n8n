@@ -26,7 +26,8 @@ Set these variables to run agent turns on workers:
 | `N8N_AGENTS_TURN_TIMEOUT` | all | `0` | Maximum seconds for one turn. `0` means no limit. |
 | `N8N_AGENTS_QUEUE_MAX_WAITING` | every main | `200` | Maximum turns that wait for a worker. Over the limit, mains reject new turns as busy. `0` means no limit. |
 | `N8N_AGENTS_QUEUE_MAX_WAIT` | every main | `60` | Maximum seconds that an app chat or webhook channel request waits for a worker. Then the main rejects it as busy. `0` means no limit. |
-| `N8N_AGENTS_MAIN_MAX_TURNS` | every main | `20` | Maximum agent turns that one main runs at the same time. |
+| `N8N_AGENTS_MAIN_MAX_TURNS` | every main | `20` | Maximum agent turns that one main runs at the same time. `0` means no limit. |
+| `N8N_AGENTS_MAIN_FALLBACK_TURNS` | every main | `0` | A main takes over turns from stuck workers only while it runs fewer agent turns than this. All turns on the main count. `0` turns off the takeover. |
 | `N8N_AGENTS_MAIN_MAX_INTAKE` | every main | `20` | Maximum chat messages that one main accepts at the same time. |
 | `N8N_AGENTS_MAIN_MAX_STREAMS` | every main | `200` | Maximum live chat streams on one main. Over the limit, the chat loads the reply when it is ready. |
 | `N8N_AGENTS_MAIN_MEMORY_HOLD_LEVEL` | every main | `0.8` | Share of the memory limit above which a main starts no new turns or streams. |
@@ -69,8 +70,10 @@ closures only on mains.
 - While an agent worker is registered, a main does not run worker turns.
   Turns wait in the agent queue. When no worker starts a turn in
   `N8N_AGENTS_QUEUE_MAX_WAIT`, the main rejects it as busy.
-  `N8N_AGENTS_MAIN_FALLBACK_TURNS` lets a main take over queued chat messages
-  from workers that stopped making progress. The default of 0 turns this off.
+  `N8N_AGENTS_MAIN_FALLBACK_TURNS` lets a main take over turns from workers
+  that stopped making progress. The default of 0 turns this off. Accepted chat
+  messages wait in the message queue and `N8N_AGENTS_QUEUE_MAX_WAIT` does not
+  apply to them.
 - Each turn is claimed once in the database, so it runs at most once.
 - A worker sends the events of a turn to the main over a Redis channel. When a
   started turn sends nothing for 30 seconds, the main ends it as lost.
@@ -267,8 +270,8 @@ pnpm --filter n8n-playwright bench:agents -- \
   --config scripts/agent-bench/qm-overload.config.json --image n8nio/n8n:local
 ```
 
-Set `ANTHROPIC_API_KEY` in the environment first. Each config costs about
-100 USD in Haiku tokens.
+Set `ANTHROPIC_API_KEY` in the environment first. Each config sends real
+turns to Haiku, so check the turn count in the config before you run it.
 
 ## Metrics
 
@@ -276,13 +279,21 @@ With Prometheus metrics on, each process exports these metrics. Each name
 starts with `N8N_METRICS_PREFIX` (default `n8n_`).
 
 - `agent_turns_started_total{location}`: turns started on `main` or `worker`.
-- `agent_turn_fallbacks_total{path}`: queued chat messages that a main took
-  over from stuck workers.
+- `agent_turn_fallbacks_total{path}`: turns that a main took over because no
+  worker started them in time, by `queued-message` or `request`.
+- `agent_turns_held_total{reason}`: checks in which a main left a turn in the
+  queue, by `workers-progressing`, `main-at-limit`, or `main-memory-high`.
+- `agent_streams_skipped_total{reason}`: chat messages accepted without a live
+  stream, by `main-memory-high` or `main-at-stream-limit`.
+- `agent_messages_rejected_total`: chat messages rejected because
+  `N8N_AGENTS_MAIN_MAX_INTAKE` stayed full for too long.
 - `agent_relays_dropped_total{channel}`: updates too large to relay.
 - `agent_turns_timed_out_total`: turns stopped by `N8N_AGENTS_TURN_TIMEOUT`.
 - `agent_active_turns` and `agent_active_background_runs`: work in this process.
 - `agent_turn_queue_jobs{state}`: waiting and active jobs in the agent queue.
 - `agent_turns_rejected_total{reason}`: turns rejected as busy, by
-  `queue-full`, `wait-too-long`, `main-at-limit`, or `main-memory-high`.
+  `queue-full`, `wait-too-long`, `main-at-limit`, `main-memory-high`, or
+  `queue-unavailable` (the database or Redis failed). `main-memory-high` can
+  come from low memory on the server, not only from agent load.
 
 Telemetry adds `worker_turn_count` to agent session metrics.

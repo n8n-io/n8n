@@ -58,7 +58,7 @@ export class PrometheusAgentQueueMetricsService implements PrometheusMetricsColl
 
 		const turnsRejected = new promClient.Counter({
 			name: `${prefix}agent_turns_rejected_total`,
-			help: 'Agent turns that a main rejected with a busy error, by reason: queue-full (N8N_AGENTS_QUEUE_MAX_WAITING reached), wait-too-long (not started within N8N_AGENTS_QUEUE_MAX_WAIT) or main-at-limit (no agent worker, and the main had no room).',
+			help: 'Agent turns that a main rejected with a busy error, by reason: queue-full (N8N_AGENTS_QUEUE_MAX_WAITING reached), wait-too-long (not started within N8N_AGENTS_QUEUE_MAX_WAIT), main-at-limit (no agent worker, and the main had no room) or main-memory-high (not started within N8N_AGENTS_QUEUE_MAX_WAIT while above N8N_AGENTS_MAIN_MEMORY_HOLD_LEVEL) or queue-unavailable (the database or Redis failed).',
 			labelNames: ['reason'],
 		});
 
