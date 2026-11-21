@@ -1939,6 +1939,21 @@ describe('SourceControlImportService', () => {
 			);
 		});
 
+		it('should skip credential files with invalid JSON', async () => {
+			globMock.mockResolvedValue(['/mock/credential_good.json', '/mock/credential_bad.json']);
+			fsReadFile.mockImplementation(async (file: string) =>
+				file.includes('bad')
+					? 'not json'
+					: JSON.stringify({ id: 'cred1', name: 'Good', type: 'oauth2' }),
+			);
+
+			const result = await service.getRemoteCredentialsFromFiles(globalAdminContext);
+
+			expect(result).toHaveLength(1);
+			expect(result[0]).toEqual(expect.objectContaining({ id: 'cred1' }));
+			expect(mockLogger.warn).toHaveBeenCalledWith(expect.stringContaining('credential_bad.json'));
+		});
+
 		it('should skip credentials that are instance credentials locally, for any caller', async () => {
 			globMock.mockResolvedValue(['/mock/credential1.json']);
 			fsReadFile.mockResolvedValue(

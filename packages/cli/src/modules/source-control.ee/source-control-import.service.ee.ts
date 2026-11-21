@@ -385,12 +385,16 @@ export class SourceControlImportService {
 		const remoteCredentialFilesRead = await mapInBatches(
 			remoteCredentialFiles,
 			SOURCE_CONTROL_READ_FILE_BATCH_SIZE,
-			async (file) => {
+			async (file): Promise<ExportableCredential | undefined> => {
 				this.logger.debug(`Parsing credential file ${file}`);
-				const remote = jsonParse<ExportableCredential>(
-					await fsReadFile(file, { encoding: 'utf8' }),
-				);
-				return remote;
+				const fileContent = await fsReadFile(file, { encoding: 'utf8' });
+				try {
+					return jsonParse<ExportableCredential>(fileContent);
+				} catch (error) {
+					const reason = error instanceof Error ? error.message : String(error);
+					this.logger.warn(`Failed to parse credential from file ${file}: ${reason}`);
+					return undefined;
+				}
 			},
 		);
 
@@ -1182,8 +1186,8 @@ export class SourceControlImportService {
 				this.logger.warn(`Failed to parse credential from file ${file.file}: ${reason}`);
 				return;
 			}
-			if (!credential) {
-				this.logger.warn(`Skipping credential file ${file.file} without a parsable credential`);
+			if (!credential?.id) {
+				this.logger.warn(`Skipping credential file ${file.file} without a credential id`);
 				return;
 			}
 
