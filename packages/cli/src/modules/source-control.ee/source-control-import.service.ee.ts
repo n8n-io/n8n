@@ -1886,6 +1886,7 @@ export class SourceControlImportService {
 		pullingUserId: string,
 	) {
 		const importResults = [];
+		const importedProjects: { id: string; variableStubs: ExportableVariable[] }[] = [];
 
 		for (const candidate of candidates) {
 			try {
@@ -1942,18 +1943,12 @@ export class SourceControlImportService {
 					project.variableStubs?.map((v) => ({ ...v, projectId: project.id })) ?? [],
 				);
 
-				// Delete this project's variables that are no longer present in the imported project.
-				// Read them fresh per project instead of a loop-wide snapshot: an earlier candidate
-				// may have moved a variable into another project, and a stale snapshot would
-				// delete it there too.
-				const currentProjectVariables = await this.variablesRepository.find({
-					where: { project: { id: project.id } },
-					relations: ['project'],
+				// Record the import for the prune pass below; a failed project is never
+				// recorded, so its variables are not pruned based on a file that did not land.
+				importedProjects.push({
+					id: project.id,
+					variableStubs: project.variableStubs ?? [],
 				});
-				const deletedVariables = currentProjectVariables.filter(
-					(v) => !project.variableStubs?.some((vs) => vs.id === v.id),
-				);
-				await this.variablesService.deleteByIds(deletedVariables.map((v) => v.id));
 
 				this.logger.info(`Imported team project: ${project.name}`);
 				importResults.push({
@@ -1966,6 +1961,25 @@ export class SourceControlImportService {
 					error: errorMessage,
 				});
 			}
+		}
+
+		// Prune once after every project has imported. A variable whose id appears in ANY
+		// imported project's stubs was moved, not deleted, so it must survive regardless of
+		// the order the files were processed in: pruning per project inside the loop would
+		// delete a moved variable when its source project is processed before its target
+		// project, and the target import would then recreate it with an empty value.
+		const stubIdsAcrossImports = new Set(
+			importedProjects.flatMap((p) => p.variableStubs.map((vs) => vs.id)),
+		);
+		for (const { id, variableStubs } of importedProjects) {
+			const currentProjectVariables = await this.variablesRepository.find({
+				where: { project: { id } },
+				relations: ['project'],
+			});
+			const deletedVariables = currentProjectVariables.filter(
+				(v) => !variableStubs.some((vs) => vs.id === v.id) && !stubIdsAcrossImports.has(v.id),
+			);
+			await this.variablesService.deleteByIds(deletedVariables.map((v) => v.id));
 		}
 
 		return importResults;
