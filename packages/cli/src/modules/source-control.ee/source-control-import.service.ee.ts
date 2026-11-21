@@ -1878,9 +1878,7 @@ export class SourceControlImportService {
 		pullingUserId: string,
 	) {
 		const importResults = [];
-		const existingProjectVariables = (await this.variablesService.getAllCached()).filter(
-			(v) => v.project,
-		);
+		const importedProjects: { id: string; variableStubs: ExportableVariable[] }[] = [];
 
 		for (const candidate of candidates) {
 			try {
@@ -1937,12 +1935,12 @@ export class SourceControlImportService {
 					project.variableStubs?.map((v) => ({ ...v, projectId: project.id })) ?? [],
 				);
 
-				// Delete variables that existed before but are no longer present in the imported project
-				const deletedVariables = existingProjectVariables.filter(
-					(v) =>
-						v.project!.id === project.id && !project.variableStubs?.some((vs) => vs.id === v.id),
-				);
-				await this.variablesService.deleteByIds(deletedVariables.map((v) => v.id));
+				// Record the import for the prune pass below; a failed project is never
+				// recorded, so its variables are not pruned based on a file that did not land.
+				importedProjects.push({
+					id: project.id,
+					variableStubs: project.variableStubs ?? [],
+				});
 
 				this.logger.info(`Imported team project: ${project.name}`);
 				importResults.push({
@@ -1952,6 +1950,34 @@ export class SourceControlImportService {
 			} catch (error) {
 				const errorMessage = ensureError(error);
 				this.logger.error(`Failed to import project from file ${candidate.file}`, {
+					error: errorMessage,
+				});
+			}
+		}
+
+		// Prune once after every project has imported. A variable whose id appears in ANY
+		// imported project's stubs was moved, not deleted, so it must survive regardless of
+		// the order the files were processed in: pruning per project inside the loop would
+		// delete a moved variable when its source project is processed before its target
+		// project, and the target import would then recreate it with an empty value.
+		const stubIdsAcrossImports = new Set(
+			importedProjects.flatMap((p) => p.variableStubs.map((vs) => vs.id)),
+		);
+		for (const { id, variableStubs } of importedProjects) {
+			// Isolate prune failures per project, like the import loop above: one project's
+			// failing prune must not abort the pull or skip the other projects' prunes.
+			try {
+				const currentProjectVariables = await this.variablesRepository.find({
+					where: { project: { id } },
+					relations: ['project'],
+				});
+				const deletedVariables = currentProjectVariables.filter(
+					(v) => !variableStubs.some((vs) => vs.id === v.id) && !stubIdsAcrossImports.has(v.id),
+				);
+				await this.variablesService.deleteByIds(deletedVariables.map((v) => v.id));
+			} catch (error) {
+				const errorMessage = ensureError(error);
+				this.logger.error(`Failed to prune variables of project ${id}`, {
 					error: errorMessage,
 				});
 			}
