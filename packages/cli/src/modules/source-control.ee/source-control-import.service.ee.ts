@@ -413,7 +413,7 @@ export class SourceControlImportService {
 		);
 
 		const remoteCredentialFilesParsed = remoteCredentialFilesRead
-			.filter((remote) => {
+			.filter((remote): remote is NonNullable<typeof remote> => {
 				if (!remote?.id) {
 					return false;
 				}
@@ -423,7 +423,9 @@ export class SourceControlImportService {
 				}
 				const owner = remote.ownedBy;
 				return (
-					!owner || context.hasAccessToAllProjects() || context.findAuthorizedProjectByOwner(owner)
+					!owner ||
+					context.hasAccessToAllProjects() ||
+					!!context.findAuthorizedProjectByOwner(owner)
 				);
 			})
 			.map((remote) => {
@@ -765,7 +767,8 @@ export class SourceControlImportService {
 		);
 
 		const remoteProjectsParsed = remoteProjects.filter(
-			(remoteProject): remoteProject is ExportableProjectWithFileName => remoteProject !== undefined,
+			(remoteProject): remoteProject is ExportableProjectWithFileName =>
+				remoteProject !== undefined,
 		);
 		if (context.hasAccessToAllProjects()) {
 			return remoteProjectsParsed;
