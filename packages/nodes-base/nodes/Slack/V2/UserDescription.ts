@@ -1,4 +1,5 @@
 import type { INodeProperties } from 'n8n-workflow';
+import { READ_ONLY_ANNOTATIONS } from 'n8n-workflow';
 
 export const userOperations: INodeProperties[] = [
 	{
@@ -15,36 +16,42 @@ export const userOperations: INodeProperties[] = [
 			{
 				name: 'Get',
 				value: 'info',
+				annotations: READ_ONLY_ANNOTATIONS,
 				description: 'Get information about a user',
 				action: 'Get information about a user',
 			},
 			{
 				name: 'Get Many',
 				value: 'getAll',
+				annotations: READ_ONLY_ANNOTATIONS,
 				description: 'Get a list of many users',
 				action: 'Get many users',
 			},
 			{
 				name: "Get User's Profile",
 				value: 'getProfile',
+				annotations: READ_ONLY_ANNOTATIONS,
 				description: "Get a user's profile",
 				action: "Get a user's profile",
 			},
 			{
 				name: "Get User's Status",
 				value: 'getPresence',
+				annotations: READ_ONLY_ANNOTATIONS,
 				description: 'Get online status of a user',
 				action: "Get a user's presence status",
 			},
 			{
 				name: 'Look Up by Email',
 				value: 'lookupByEmail',
+				annotations: READ_ONLY_ANNOTATIONS,
 				description: 'Find a user by their email address',
 				action: 'Look up a user by email',
 			},
 			{
 				name: "Update User's Profile",
 				value: 'updateProfile',
+				annotations: { effect: 'write', destructive: true, idempotent: false },
 				description: "Update a user's profile",
 				action: "Update a user's profile",
 			},

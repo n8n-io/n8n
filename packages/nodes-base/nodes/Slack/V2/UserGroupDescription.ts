@@ -1,4 +1,5 @@
 import type { INodeProperties } from 'n8n-workflow';
+import { READ_ONLY_ANNOTATIONS } from 'n8n-workflow';
 
 export const userGroupOperations: INodeProperties[] = [
 	{
@@ -15,36 +16,43 @@ export const userGroupOperations: INodeProperties[] = [
 			{
 				name: 'Add Users',
 				value: 'updateUsers',
+				annotations: { effect: 'write', destructive: true, idempotent: false },
 				action: 'Add users to a user group',
 			},
 			{
 				name: 'Create',
 				value: 'create',
+				annotations: { effect: 'write', destructive: false, idempotent: false },
 				action: 'Create a user group',
 			},
 			{
 				name: 'Disable',
 				value: 'disable',
+				annotations: { effect: 'write', destructive: true, idempotent: false },
 				action: 'Disable a user group',
 			},
 			{
 				name: 'Enable',
 				value: 'enable',
+				annotations: { effect: 'write', destructive: true, idempotent: false },
 				action: 'Enable a user group',
 			},
 			{
 				name: 'Get Many',
 				value: 'getAll',
+				annotations: READ_ONLY_ANNOTATIONS,
 				action: 'Get many user groups',
 			},
 			{
 				name: 'Get Users',
 				value: 'getUsers',
+				annotations: READ_ONLY_ANNOTATIONS,
 				action: 'Get users from a user group',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				annotations: { effect: 'write', destructive: true, idempotent: false },
 				action: 'Update a user group',
 			},
 		],
