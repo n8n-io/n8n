@@ -1446,8 +1446,12 @@ describe('workflow_step_execution table (integration)', () => {
 				iteration: 0,
 				status: 'queued',
 			});
-			const observed = await loadStaleAfter(id);
-			if (!observed) throw new Error('expected a stale_after value');
+			// Repair renews only a time that has passed. A past value also keeps the
+			// renewed time different when the test runs within one millisecond.
+			const observed = new Date('2020-01-01T00:00:00.000Z');
+			await dataSource
+				.getRepository(WorkflowStepExecution)
+				.update({ id }, { staleAfter: observed });
 
 			const before = Date.now();
 			expect(await store.renewQueuedStep(id, observed)).toBe(true);
