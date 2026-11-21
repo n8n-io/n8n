@@ -24,6 +24,7 @@ import {
 	fileUrl,
 	getPropertyName,
 	materializeRichMessageLineBreaks,
+	PLAIN_TEXT_PARSE_MODE,
 } from './GenericFunctions';
 import { telegramHitlProperties } from './hitl/descriptions';
 import { prepareChatApproval } from './hitl/setup';
@@ -1755,6 +1756,10 @@ export class Telegram implements INodeType {
 								name: 'HTML',
 								value: 'HTML',
 							},
+							{
+								name: 'Plain Text',
+								value: PLAIN_TEXT_PARSE_MODE,
+							},
 						],
 						displayOptions: {
 							show: {
@@ -2062,6 +2067,25 @@ export class Telegram implements INodeType {
 					noButtonStyle: true,
 					defaultApproveLabel: '✅ Approve',
 					defaultDisapproveLabel: '❌ Decline',
+					extraOptions: [
+						{
+							displayName: 'Parse Mode',
+							name: 'parse_mode',
+							type: 'options',
+							options: [
+								{
+									name: 'Markdown (Legacy)',
+									value: 'Markdown',
+								},
+								{
+									name: 'Plain Text',
+									value: PLAIN_TEXT_PARSE_MODE,
+								},
+							],
+							default: 'Markdown',
+							description: 'How to parse the text',
+						},
+					],
 				},
 			).filter((p) => p.name !== 'subject'),
 		],
