@@ -138,10 +138,11 @@ export interface StackConfig {
 	user?: string;
 	/** Container settings for the main, worker, and webhook processes. */
 	n8nContainer?: {
+		/** Make the root filesystem read-only. Incompatible with copied files. */
 		readOnlyRootfs?: boolean;
-		/** Map from container paths to Docker tmpfs mount options. */
+		/** Map from container paths to Docker tmpfs options. Keep copied files outside these paths. */
 		tmpfs?: Record<string, string>;
-		/** Docker image platform, for example `linux/arm64`. */
+		/** Docker platform, for example `linux/arm64`. Requires a matching local image. */
 		platform?: string;
 	};
 }

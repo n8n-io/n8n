@@ -1,7 +1,7 @@
 import { chmodSync, mkdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, posix } from 'node:path';
 import type { PortWithOptionalBinding, StartedNetwork, StartedTestContainer } from 'testcontainers';
-import { GenericContainer } from 'testcontainers';
+import { GenericContainer, getContainerRuntimeClient } from 'testcontainers';
 
 import { DockerImageNotFoundError } from '../docker-image-not-found-error';
 import {
@@ -260,6 +260,21 @@ class N8NContainer extends GenericContainer {
 		this.hostConfig.ReadonlyRootfs = readOnly;
 		return this;
 	}
+
+	override async start(): Promise<StartedTestContainer> {
+		const { platform } = this.createOpts;
+		if (platform) {
+			// Testcontainers pulls missing images. A platform-specific pull can change a shared tag.
+			const { image } = await getContainerRuntimeClient();
+			if (!(await image.exists(this.imageName))) {
+				throw new Error(
+					`Docker image '${this.imageName.string}' must be present locally for n8nContainer.platform '${platform}'. ` +
+						'Build or pull a platform-specific image and set the stack image to that reference.',
+				);
+			}
+		}
+		return await super.start();
+	}
 }
 
 async function createContainer(
@@ -285,6 +300,26 @@ async function createContainer(
 		n8nContainer: { readOnlyRootfs, tmpfs, platform } = {},
 		startupTimeoutMs,
 	} = shared;
+	const filesToCopy = [...stackFiles, ...filesToMount];
+	if (filesToCopy.length > 0) {
+		if (readOnlyRootfs) {
+			throw new Error(
+				`Container "${name}" cannot copy "${filesToCopy[0].target}" with n8nContainer.readOnlyRootfs enabled. Use a writable root filesystem to copy files.`,
+			);
+		}
+		for (const mountPath of Object.keys(tmpfs ?? {})) {
+			const mount = posix.resolve('/', mountPath);
+			const hidden = filesToCopy.find(({ target }) => {
+				const relative = posix.relative(mount, posix.resolve('/', target));
+				return relative !== '..' && !relative.startsWith('../');
+			});
+			if (hidden) {
+				throw new Error(
+					`Container "${name}" cannot copy "${hidden.target}": the tmpfs mount at "${mountPath}" hides this path.`,
+				);
+			}
+		}
+	}
 	const { consumer, throwWithLogs, getLogs } = createSilentLogConsumer();
 	// The engine serves no REST API; its health route lives on the engine port,
 	// over TLS in `container` mode.
@@ -384,8 +419,8 @@ async function createContainer(
 		container = container.withReuse();
 	}
 
-	if (stackFiles.length || filesToMount.length) {
-		container = container.withCopyContentToContainer([...stackFiles, ...filesToMount]);
+	if (filesToCopy.length > 0) {
+		container = container.withCopyContentToContainer(filesToCopy);
 	}
 
 	if (resourceQuota) {
@@ -422,11 +457,8 @@ async function createContainer(
 		diagnostics.logs[name] = getLogs();
 		diagnostics.readinessPayloads[name] = getLastReadinessBody();
 
-		if (error instanceof Error && 'statusCode' in error) {
-			const statusCode = (error as Error & { statusCode: number }).statusCode;
-			if (statusCode === 404) {
-				throw new DockerImageNotFoundError(name, error);
-			}
+		if (!platform && error instanceof Error && 'statusCode' in error && error.statusCode === 404) {
+			throw new DockerImageNotFoundError(name, error);
 		}
 		console.error(`Container "${name}" failed to start:`, error);
 		return throwWithLogs(error);

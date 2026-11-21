@@ -2,8 +2,8 @@ import { mkdtemp, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
+	GenericContainer,
 	Network,
-	type GenericContainer,
 	type StartedNetwork,
 	type StartedTestContainer,
 } from 'testcontainers';
@@ -38,6 +38,7 @@ const built = new Map<
 >();
 let stack: N8NStack | undefined;
 const started = new Map<string, StartedTestContainer>();
+const imageExists = vi.fn();
 
 function startedContainer(name: string): StartedTestContainer {
 	const container = {
@@ -77,7 +78,11 @@ vi.mock('testcontainers', async (importOriginal) => {
 			return startedContainer(name);
 		}
 	}
-	return { ...actual, GenericContainer };
+	return {
+		...actual,
+		GenericContainer,
+		getContainerRuntimeClient: async () => ({ image: { exists: imageExists } }),
+	};
 });
 
 vi.mock('get-port', () => ({ default: vi.fn().mockResolvedValue(5678) }));
@@ -103,6 +108,7 @@ vi.mock('../services/registry', () => ({
 beforeEach(() => {
 	built.clear();
 	started.clear();
+	imageExists.mockReset().mockResolvedValue(true);
 	vi.stubEnv('QA_METRICS_WEBHOOK_URL', '');
 	vi.stubEnv('CONTAINER_TELEMETRY_VERBOSE', '0');
 	vi.stubEnv('N8N_CONTAINERS_KEEPALIVE', 'false');
@@ -172,6 +178,7 @@ test('keeps the defaults when the stack sets no overrides', async () => {
 		expect(n8nContainer).toEqual({});
 		expect(reuse).toBe(true);
 	}
+	expect(imageExists).not.toHaveBeenCalled();
 });
 
 test.each([
@@ -184,7 +191,7 @@ test.each([
 		reuse: true,
 	},
 ])('applies container settings to every queue role: $scenario', async ({ n8nContainer, reuse }) => {
-	await startStack({ ...queue, n8nContainer });
+	await startStack({ ...queue, services: [], n8nContainer });
 
 	for (const name of queueNames) {
 		expect(built.get(name)).toMatchObject({ n8nContainer, reuse });
@@ -192,12 +199,75 @@ test.each([
 });
 
 test('keeps the container settings when replacing the main', async () => {
-	const { replaceN8N } = await startStack({ n8nContainer: hardeningOptions });
+	const { replaceN8N } = await startStack({ services: [], n8nContainer: hardeningOptions });
 	built.clear();
 
 	await replaceN8N({ image: 'n8nio/n8n:next' });
 
 	expect(built.get(main)).toMatchObject({ n8nContainer: hardeningOptions, reuse: false });
+});
+
+test.each([
+	{ source: 'stack', config: { services: [], files: [keyFile] }, target: keyFile.target },
+	{ source: 'service', config: {}, target: serviceFile.target },
+])('rejects copied $source files with a read-only root filesystem', async ({ config, target }) => {
+	await expect(startStack({ ...config, n8nContainer: { readOnlyRootfs: true } })).rejects.toThrow(
+		`cannot copy "${target}" with n8nContainer.readOnlyRootfs enabled`,
+	);
+	expect(built.size).toBe(0);
+});
+
+test.each([
+	{
+		source: 'stack file below the mount',
+		config: { services: [], files: [keyFile] },
+		target: keyFile.target,
+		mountPath: '/tmp/./',
+	},
+	{
+		source: 'service file at the mount',
+		config: {},
+		target: serviceFile.target,
+		mountPath: serviceFile.target,
+	},
+])('rejects a tmpfs mount that hides a $source', async ({ config, target, mountPath }) => {
+	await expect(
+		startStack({ ...config, n8nContainer: { tmpfs: { [mountPath]: 'rw' } } }),
+	).rejects.toThrow(`cannot copy "${target}": the tmpfs mount at "${mountPath}" hides this path`);
+	expect(built.size).toBe(0);
+});
+
+test('copies files outside tmpfs mounts', async () => {
+	const file = { ...keyFile, target: '/tmp-config/encryption-key' };
+	await startStack({
+		services: [],
+		files: [file],
+		n8nContainer: { tmpfs: hardeningOptions.tmpfs },
+	});
+
+	expect(built.get(main)?.files).toEqual([file]);
+});
+
+test('requires a local image before starting a container with a platform', async () => {
+	const image = 'ghcr.io/n8n-io/n8n:missing-platform';
+	const { platform } = hardeningOptions;
+	imageExists.mockResolvedValue(false);
+
+	await expect(startStack({ image, n8nContainer: { platform } })).rejects.toThrow(
+		`Docker image '${image}' must be present locally for n8nContainer.platform '${platform}'`,
+	);
+	expect(built.size).toBe(0);
+});
+
+test('preserves the Docker error when the local image platform does not match', async () => {
+	const message =
+		'image platform (linux/amd64) does not match the requested platform (linux/arm64)';
+	const error = Object.assign(new Error(message), { statusCode: 404 });
+	vi.spyOn(GenericContainer.prototype, 'start').mockRejectedValueOnce(error);
+
+	await expect(
+		startStack({ n8nContainer: { platform: hardeningOptions.platform } }),
+	).rejects.toMatchObject({ message, cause: error });
 });
 
 test.each([
