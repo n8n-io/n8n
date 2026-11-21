@@ -18,9 +18,22 @@ function values(value: object): unknown[] {
 	return Object.values(value);
 }
 
+function isInheritedProperty(value: object, name: string): boolean {
+	let prototype = Object.getPrototypeOf(value) as object | null;
+	while (prototype !== null) {
+		if (Object.hasOwn(prototype, name)) {
+			return true;
+		}
+		prototype = Object.getPrototypeOf(prototype) as object | null;
+	}
+	return false;
+}
+
 function hasField(value: object, extraArgs: string[]): boolean {
 	const [name] = extraArgs;
-	return name in value;
+	// Only own fields count. The `in` fallback keeps the Proxy has/get trap case
+	// working, but an inherited field must not be reported as present.
+	return Object.hasOwn(value, name) || (!isInheritedProperty(value, name) && name in value);
 }
 
 function removeField(value: object, extraArgs: string[]): object {

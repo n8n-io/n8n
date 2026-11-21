@@ -22,6 +22,20 @@ describe('hasField', () => {
 
 		expect(hasField(proxy, ['test2'])).toBe(true);
 	});
+
+	it('should not treat Object.prototype names as fields', () => {
+		expect(hasField({}, ['toString'])).toBe(false);
+		expect(hasField({}, ['constructor'])).toBe(false);
+		expect(hasField({}, ['hasOwnProperty'])).toBe(false);
+	});
+
+	it('should return true for an own field named like a prototype property', () => {
+		expect(hasField({ toString: 'custom' }, ['toString'])).toBe(true);
+	});
+
+	it('should not treat fields inherited from a custom prototype as fields', () => {
+		expect(hasField(Object.create({ customerId: 1 }), ['customerId'])).toBe(false);
+	});
 });
 
 describe('compact', () => {
