@@ -43,7 +43,7 @@
 				"incremental_commits": {
 					"type": "boolean",
 					"default": true,
-					"description": "If true, reviews new commits pushed to open PRs (only new issues are posted). If false, reviews only when the PR is first opened."
+					"description": "If true, reviews new commits pushed to open PRs (only new issues are posted). If false, reviews only when the PR is first opened, plus cubic's own pushes while auto-fix is on."
 				},
 				"check_drafts": {
 					"type": "boolean",
@@ -182,12 +182,14 @@
 				},
 				"fix_commits_to_pr": {
 					"type": "boolean",
-					"description": "When true, fix commits are pushed directly to the PR branch instead of opening a new PR."
+					"deprecated": true,
+					"description": "No longer used. Fixes on a pull request commit to its branch unless you ask cubic to \"open a fix PR\"."
 				},
 				"auto_fix_sign_commits": {
 					"type": "boolean",
 					"default": false,
-					"description": "When true, cubic signs the commits it pushes so GitHub marks them as verified. This applies only to the 'cubic' coding agent; the Cursor agent always signs its commits."
+					"deprecated": true,
+					"description": "Deprecated and ignored: cubic signs the commits it pushes whenever it can. Retained so existing cubic.yaml files continue to validate."
 				},
 				"coding_agent_provider": {
 					"type": "string",
@@ -196,6 +198,24 @@
 						"cursor_cloud_agent"
 					],
 					"description": "Which coding agent applies automatic fixes. 'cubic' uses cubic's built-in agent; 'cursor_cloud_agent' dispatches a Cursor cloud agent (requires Cursor configuration)."
+				},
+				"auto_fix": {
+					"type": "string",
+					"enum": [
+						"off",
+						"on_demand",
+						"on"
+					],
+					"default": "on_demand",
+					"description": "When auto-fix runs. 'off' turns it off, 'on_demand' lets someone turn it on for each pull request, and 'on' turns it on for every pull request that matches auto_fix_rules. Needs coding_agent_provider 'cubic' and fix_with_cubic_buttons."
+				},
+				"auto_fix_rules": {
+					"$ref": "#/$defs/autoFixRules",
+					"description": "Which pull requests auto_fix 'on' turns auto-fix on for. A whitespace-only list item, a value longer than 256 characters after trimming, or an empty only_ list makes cubic ignore all the rules and keep auto-fix on demand (or off, with auto_fix 'off'). An empty-string item invalidates the entire YAML file and falls back to UI settings, which may still have auto-fix On."
+				},
+				"coding_agent_instructions": {
+					"type": "string",
+					"description": "Instructions cubic's coding agent follows in this repository when it fixes issues (Fix with cubic, auto-fix, and @cubic requests). Applies only to the 'cubic' coding agent. Leading/trailing whitespace is trimmed; an empty string clears the value."
 				}
 			}
 		}
@@ -273,45 +293,101 @@
 					"description": "Open cubic findings that don't block auto-approval, by priority. none blocks on any open finding; p3, p2_and_p3, and p1_to_p3 allow that range; all allows every open finding. A finding without a recorded priority blocks unless this is all. Every other auto-approval rule still applies."
 				},
 				"exclude_authors": {
-					"$ref": "#/$defs/globList",
+					"$ref": "#/$defs/prAttributeFilterList",
 					"description": "PRs from a matching author are never auto-approved. Logins match case-insensitively and brackets are literal, so `renovate[bot]` and `*[bot]` both work."
 				},
 				"only_authors": {
-					"$ref": "#/$defs/globList",
+					"$ref": "#/$defs/prAttributeFilterList",
 					"description": "Only PRs from a matching author can be auto-approved."
 				},
 				"exclude_head_branches": {
-					"$ref": "#/$defs/globList",
+					"$ref": "#/$defs/prAttributeFilterList",
 					"description": "PRs whose source branch matches are never auto-approved."
 				},
 				"only_head_branches": {
-					"$ref": "#/$defs/globList",
+					"$ref": "#/$defs/prAttributeFilterList",
 					"description": "Only PRs whose source branch matches can be auto-approved."
 				},
 				"exclude_base_branches": {
-					"$ref": "#/$defs/globList",
+					"$ref": "#/$defs/prAttributeFilterList",
 					"description": "PRs targeting a matching base branch are never auto-approved."
 				},
 				"only_base_branches": {
-					"$ref": "#/$defs/globList",
+					"$ref": "#/$defs/prAttributeFilterList",
 					"description": "Only PRs targeting a matching base branch can be auto-approved."
 				},
 				"exclude_labels": {
-					"$ref": "#/$defs/globList",
+					"$ref": "#/$defs/prAttributeFilterList",
 					"description": "PRs carrying a matching label are never auto-approved. Labels match exactly, case-insensitively."
 				},
 				"only_labels": {
-					"$ref": "#/$defs/globList",
+					"$ref": "#/$defs/prAttributeFilterList",
 					"description": "Only PRs carrying a matching label can be auto-approved. Labels match exactly, case-insensitively."
 				},
 				"exclude_titles": {
-					"$ref": "#/$defs/globList",
+					"$ref": "#/$defs/prAttributeFilterList",
 					"description": "PRs whose title matches are never auto-approved."
 				},
 				"only_titles": {
-					"$ref": "#/$defs/globList",
+					"$ref": "#/$defs/prAttributeFilterList",
 					"description": "Only PRs whose title matches can be auto-approved."
 				}
+			}
+		},
+		"autoFixRules": {
+			"type": "object",
+			"description": "Rules that pick which pull requests auto_fix 'on' turns auto-fix on for. exclude_ keys skip a pull request on any match; only_ keys are an allowlist the pull request must match for that attribute. People can still turn auto-fix on or off on any pull request.",
+			"additionalProperties": false,
+			"properties": {
+				"exclude_authors": {
+					"$ref": "#/$defs/prAttributeFilterList",
+					"description": "Auto-fix doesn't turn on by itself for PRs from a matching author. Logins match case-insensitively and brackets are literal, so `renovate[bot]` and `*[bot]` both work."
+				},
+				"only_authors": {
+					"$ref": "#/$defs/prAttributeFilterList",
+					"description": "Auto-fix turns on by itself only for PRs from a matching author."
+				},
+				"exclude_head_branches": {
+					"$ref": "#/$defs/prAttributeFilterList",
+					"description": "Auto-fix doesn't turn on by itself for PRs whose source branch matches."
+				},
+				"only_head_branches": {
+					"$ref": "#/$defs/prAttributeFilterList",
+					"description": "Auto-fix turns on by itself only for PRs whose source branch matches."
+				},
+				"exclude_base_branches": {
+					"$ref": "#/$defs/prAttributeFilterList",
+					"description": "Auto-fix doesn't turn on by itself for PRs targeting a matching base branch."
+				},
+				"only_base_branches": {
+					"$ref": "#/$defs/prAttributeFilterList",
+					"description": "Auto-fix turns on by itself only for PRs targeting a matching base branch."
+				},
+				"exclude_labels": {
+					"$ref": "#/$defs/prAttributeFilterList",
+					"description": "Auto-fix doesn't turn on by itself for PRs carrying a matching label. Labels match exactly, case-insensitively."
+				},
+				"only_labels": {
+					"$ref": "#/$defs/prAttributeFilterList",
+					"description": "Auto-fix turns on by itself only for PRs carrying a matching label. Labels match exactly, case-insensitively."
+				},
+				"exclude_titles": {
+					"$ref": "#/$defs/prAttributeFilterList",
+					"description": "Auto-fix doesn't turn on by itself for PRs whose title matches."
+				},
+				"only_titles": {
+					"$ref": "#/$defs/prAttributeFilterList",
+					"description": "Auto-fix turns on by itself only for PRs whose title matches."
+				}
+			}
+		},
+		"prAttributeFilterList": {
+			"type": "array",
+			"description": "PR attribute filter values, each between 1 and 256 characters after trimming surrounding whitespace.",
+			"items": {
+				"type": "string",
+				"minLength": 1,
+				"pattern": "^\\s*\\S(?:[\\s\\S]{0,254}\\S)?\\s*$"
 			}
 		},
 		"customRule": {
@@ -362,6 +438,14 @@
 				"exclude": {
 					"$ref": "#/$defs/globList",
 					"description": "Optional exclude globs that override includes."
+				},
+				"only_repositories": {
+					"$ref": "#/$defs/globList",
+					"description": "Run this agent only on matching repositories. Each value is a repository name, an owner/name, or a pattern such as web-*, where * matches any characters and ? matches one. Matching ignores case. Mainly useful in the organization config."
+				},
+				"exclude_repositories": {
+					"$ref": "#/$defs/globList",
+					"description": "Never run this agent on matching repositories, even when only_repositories matches them. Takes the same values as only_repositories."
 				}
 			}
 		}
