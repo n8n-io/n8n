@@ -1,5 +1,6 @@
 import {
 	appBindingsSchema,
+	appNodeOperationBindingSchema,
 	appRuntimeDeleteRowsSchema,
 	appRuntimeInsertRowsSchema,
 	MAX_APP_BINDINGS,
@@ -13,6 +14,11 @@ describe('appBindingsSchema', () => {
 			table,
 			{ key: 'submitLead', kind: 'workflow', workflowId: 'w1' },
 			{ key: 'support', kind: 'agent', agentId: 'a1', permissions: ['chat', 'history'] },
+			{
+				key: 'availability',
+				kind: 'nodeOperation',
+				node: { nodeType: 'n8n-nodes-base.googleCalendar', nodeTypeVersion: 1, nodeParameters: {} },
+			},
 		]);
 		expect(result.success).toBe(true);
 	});
@@ -71,5 +77,43 @@ describe('app runtime row schemas', () => {
 				filter: { filters: [{ columnName: 'done', value: true }] },
 			}).success,
 		).toBe(true);
+	});
+});
+
+describe('appNodeOperationBindingSchema', () => {
+	const binding = {
+		key: 'availability',
+		kind: 'nodeOperation',
+		node: {
+			nodeType: 'n8n-nodes-base.googleCalendar',
+			nodeTypeVersion: 1.3,
+			nodeParameters: {
+				resource: 'calendar',
+				operation: 'availability',
+				timeMin: "={{ $fromAI('from', 'Start of the range', 'string') }}",
+			},
+			credentials: { googleCalendarOAuth2Api: { id: 'c1', name: 'Team calendar' } },
+		},
+	};
+
+	it('accepts a node with fixed parameters and a credential reference', () => {
+		expect(appNodeOperationBindingSchema.safeParse(binding).success).toBe(true);
+	});
+
+	it('accepts a node that needs no credential', () => {
+		const { credentials: _, ...node } = binding.node;
+		expect(appNodeOperationBindingSchema.safeParse({ ...binding, node }).success).toBe(true);
+	});
+
+	it.each([
+		['an empty node type', { nodeType: '' }],
+		['a zero version', { nodeTypeVersion: 0 }],
+		['a credential without an id', { credentials: { googleCalendarOAuth2Api: { name: 'x' } } }],
+	])('rejects %s', (_, change) => {
+		const result = appNodeOperationBindingSchema.safeParse({
+			...binding,
+			node: { ...binding.node, ...change },
+		});
+		expect(result.success).toBe(false);
 	});
 });

@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import type { AppVisibility } from './app.schema';
 import { dataTableFilterSchema } from './data-table-filter.schema';
+import { jsonValueSchema } from './json-value.schema';
 import { dataTableColumnNameSchema, dataTableColumnValueSchema } from './data-table.schema';
 
 /** The key is a JS identifier, so the SDK can expose it as `n8n.tables.<key>`. */
@@ -48,10 +49,29 @@ export const appAgentBindingSchema = z.object({
 	permissions: uniquePermissions(appAgentPermissionSchema),
 });
 
+/**
+ * One configured node that the app runs without a workflow. The parameters are fixed.
+ * A `$fromAI('name', …)` placeholder in a parameter is an input that the app sets.
+ */
+export const appNodeOperationBindingSchema = z.object({
+	key: appBindingKeySchema,
+	kind: z.literal('nodeOperation'),
+	node: z.object({
+		nodeType: z.string().min(1),
+		nodeTypeVersion: z.number().positive(),
+		nodeParameters: z.record(jsonValueSchema),
+		/** Keyed by credential type. The binding holds only the reference, never the secret. */
+		credentials: z.record(z.object({ id: resourceIdSchema, name: z.string().min(1) })).optional(),
+	}),
+});
+
+export type AppNodeOperationBinding = z.infer<typeof appNodeOperationBindingSchema>;
+
 export const appBindingSchema = z.discriminatedUnion('kind', [
 	appWorkflowBindingSchema,
 	appDataTableBindingSchema,
 	appAgentBindingSchema,
+	appNodeOperationBindingSchema,
 ]);
 
 export const MAX_APP_BINDINGS = 50;
@@ -97,6 +117,14 @@ export type AppDescribedAgentBinding = AppAgentBinding & {
 	missing?: false;
 };
 
+export type AppDescribedNodeOperationBinding = AppNodeOperationBinding & {
+	/** For example "Google Calendar: Availability". */
+	name: string;
+	/** The `$fromAI` inputs that the app sets. */
+	input: AppJsonSchema;
+	missing?: false;
+};
+
 /** The bound resource no longer exists in the app project. */
 export type AppDescribedMissingBinding = AppBinding & { name: string; missing: true };
 
@@ -104,6 +132,7 @@ export type AppDescribedBinding =
 	| AppDescribedWorkflowBinding
 	| AppDescribedDataTableBinding
 	| AppDescribedAgentBinding
+	| AppDescribedNodeOperationBinding
 	| AppDescribedMissingBinding;
 
 export type AppBindingWarning = {
@@ -137,7 +166,8 @@ export type AppPublishPreviewResponse = {
 export type AppRuntimeBinding =
 	| { key: string; kind: 'workflow' }
 	| { key: string; kind: 'dataTable'; permissions: AppDataTablePermission[] }
-	| { key: string; kind: 'agent'; permissions: AppAgentPermission[] };
+	| { key: string; kind: 'agent'; permissions: AppAgentPermission[] }
+	| { key: string; kind: 'nodeOperation' };
 
 export type AppRuntimeMeResponse = {
 	user: {

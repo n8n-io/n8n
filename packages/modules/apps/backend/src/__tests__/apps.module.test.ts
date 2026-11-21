@@ -9,6 +9,7 @@ import { AppsConfig } from '../apps.config';
 import { AppProtectedResource } from '../auth/app-protected-resource';
 import {
 	AppAgentPort,
+	AppNodeOperationPort,
 	AppBindingAdapters,
 	AppDataTablePort,
 	AppWorkflowPort,
@@ -55,7 +56,8 @@ describe('AppsModule', () => {
 		const dataTables = mock<AppDataTablePort>();
 		const workflows = mock<AppWorkflowPort>();
 		const agents = mock<AppAgentPort>();
-		const resolve = vi.fn(() => ({ dataTables, workflows, agents }));
+		const nodeOperations = mock<AppNodeOperationPort>();
+		const resolve = vi.fn(() => ({ dataTables, workflows, agents, nodeOperations }));
 		Container.set(AppBindingAdapters, { resolve });
 		const module = new AppsModule();
 		expect((await module.entities()).map((entity) => entity.name)).toEqual([
@@ -68,6 +70,7 @@ describe('AppsModule', () => {
 		expect(Container.get(AppDataTablePort)).toBe(dataTables);
 		expect(Container.get(AppWorkflowPort)).toBe(workflows);
 		expect(Container.get(AppAgentPort)).toBe(agents);
+		expect(Container.get(AppNodeOperationPort)).toBe(nodeOperations);
 		expect(blobs.init).toHaveBeenCalledOnce();
 		expect(Container.get(AppSourceVersionStore)).toBe(sourceVersions);
 		expect(Container.get(AppBuildResultStore)).toBe(buildResults);

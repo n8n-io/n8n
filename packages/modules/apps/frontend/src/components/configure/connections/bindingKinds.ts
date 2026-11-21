@@ -7,6 +7,7 @@ import {
 	type AppBindingKind,
 	type AppBindingWarning,
 	type AppDataTablePermission,
+	type AppDescribedBinding,
 } from '@n8n/api-types';
 import type { IconName } from '@n8n/design-system';
 import { AGENT_VIEW } from '@n8n/frontend-constants/agents';
@@ -15,7 +16,19 @@ import { VIEWS } from '@n8n/frontend-constants/views';
 import type { BaseTextKey } from '@n8n/i18n';
 import type { RouteLocationRaw } from 'vue-router';
 
+import type { BindableResourceKind } from '../../../apps.api';
+
 export type BindingPermission = AppDataTablePermission | AppAgentPermission;
+
+/** A binding to one existing resource. The connections card manages only these. */
+export type ResourceBinding = Extract<AppBinding, { kind: BindableResourceKind }>;
+export type DescribedResourceBinding = Extract<AppDescribedBinding, { kind: BindableResourceKind }>;
+
+export function isResourceBinding<B extends { kind: AppBindingKind }>(
+	binding: B,
+): binding is Extract<B, { kind: BindableResourceKind }> {
+	return binding.kind !== 'nodeOperation';
+}
 
 type BindingKindConfig = {
 	icon: IconName;
@@ -26,9 +39,13 @@ type BindingKindConfig = {
 	route: (projectId: string, resourceId: string) => RouteLocationRaw;
 };
 
-export const BINDING_KIND_ORDER: readonly AppBindingKind[] = ['workflow', 'dataTable', 'agent'];
+export const BINDING_KIND_ORDER: readonly BindableResourceKind[] = [
+	'workflow',
+	'dataTable',
+	'agent',
+];
 
-export const BINDING_KINDS: Record<AppBindingKind, BindingKindConfig> = {
+export const BINDING_KINDS: Record<BindableResourceKind, BindingKindConfig> = {
 	workflow: {
 		icon: 'workflow',
 		label: 'apps.configure.connections.workflows',
@@ -73,9 +90,9 @@ const RESOURCE_ID_FIELD = {
 	workflow: 'workflowId',
 	dataTable: 'dataTableId',
 	agent: 'agentId',
-} as const satisfies Record<AppBindingKind, string>;
+} as const satisfies Record<BindableResourceKind, string>;
 
-export function resourceIdOf(binding: AppBinding): string {
+export function resourceIdOf(binding: ResourceBinding): string {
 	switch (binding.kind) {
 		case 'workflow':
 			return binding.workflowId;
@@ -86,12 +103,12 @@ export function resourceIdOf(binding: AppBinding): string {
 	}
 }
 
-export function permissionsOf(binding: AppBinding): readonly BindingPermission[] {
+export function permissionsOf(binding: ResourceBinding): readonly BindingPermission[] {
 	return binding.kind === 'workflow' ? [] : binding.permissions;
 }
 
 export function togglePermission(
-	kind: AppBindingKind,
+	kind: BindableResourceKind,
 	current: readonly BindingPermission[],
 	permission: BindingPermission,
 	checked: boolean,
@@ -102,7 +119,7 @@ export function togglePermission(
 }
 
 export function createBinding(
-	kind: AppBindingKind,
+	kind: BindableResourceKind,
 	key: string,
 	resourceId: string,
 	permissions: readonly BindingPermission[],
@@ -116,7 +133,7 @@ export function createBinding(
 }
 
 export function withPermissions(
-	binding: AppBinding,
+	binding: ResourceBinding,
 	permissions: readonly BindingPermission[],
 ): AppBinding {
 	return createBinding(binding.kind, binding.key, resourceIdOf(binding), permissions);

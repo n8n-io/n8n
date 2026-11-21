@@ -283,6 +283,38 @@ describe('AppConnectionsCard', () => {
 		);
 	});
 
+	it('keeps a node operation binding that it does not list when it saves', async () => {
+		const nodeOperation = {
+			key: 'availability',
+			kind: 'nodeOperation',
+			node: {
+				nodeType: 'n8n-nodes-base.googleCalendar',
+				nodeTypeVersion: 1.3,
+				nodeParameters: { operation: 'availability' },
+			},
+		} satisfies AppBinding;
+		vi.mocked(getAppBindings).mockResolvedValue({
+			...loaded,
+			bindings: [
+				...loaded.bindings,
+				{ ...nodeOperation, name: 'Google Calendar: Availability', input: {} },
+			],
+		});
+		providePermissions(['app:update']);
+		const { findByTestId, queryByTestId } = renderComponent();
+
+		await userEvent.click(await findByTestId('app-binding-syncSocialStats'));
+		expect(queryByTestId('app-binding-availability')).not.toBeInTheDocument();
+		await userEvent.click(await findByTestId('app-binding-syncSocialStats-remove'));
+
+		await waitFor(() =>
+			expect(setAppBindings).toHaveBeenCalledWith(expect.anything(), 'project-1', 'app-1', 'v1', [
+				table,
+				nodeOperation,
+			]),
+		);
+	});
+
 	it.each([
 		['without app:update', [] as Scope[], false],
 		['in read-only mode', ['app:update'] as Scope[], true],

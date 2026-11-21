@@ -13,6 +13,7 @@ export {
 	AppAgentPort,
 	AppBindingAdapters,
 	AppDataTablePort,
+	AppNodeOperationPort,
 	AppWorkflowPort,
 	type AppAgentTurn,
 	type AppCallContext,

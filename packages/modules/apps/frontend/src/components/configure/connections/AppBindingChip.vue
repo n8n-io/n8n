@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { AppBindingWarning, AppDescribedBinding } from '@n8n/api-types';
+import type { AppBindingWarning } from '@n8n/api-types';
 import {
 	N8nButton,
 	N8nCheckbox,
@@ -21,10 +21,11 @@ import {
 	resourceIdOf,
 	togglePermission,
 	type BindingPermission,
+	type DescribedResourceBinding,
 } from './bindingKinds';
 
 const props = defineProps<{
-	binding: AppDescribedBinding;
+	binding: DescribedResourceBinding;
 	projectId: string;
 	warning?: AppBindingWarning;
 	canUpdate: boolean;

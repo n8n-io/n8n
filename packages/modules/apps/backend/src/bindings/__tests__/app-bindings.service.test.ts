@@ -10,8 +10,13 @@ import type { AppRepository } from '../../app.repository';
 import type { AppVersion } from '../../versions/app-version.entity';
 import type { AppVersionRepository } from '../../versions/app-version.repository';
 import type { AppChangeService } from '../../versions/app-change.service';
-import type { AppAgentPort, AppDataTablePort, AppWorkflowPort } from '../app-binding-ports';
-import { AppBindingsService } from '../app-bindings.service';
+import type {
+	AppAgentPort,
+	AppDataTablePort,
+	AppNodeOperationPort,
+	AppWorkflowPort,
+} from '../app-binding-ports';
+import { AppBindingsService, toRuntimeBinding } from '../app-bindings.service';
 
 const APP_ID = '0190a8d6-4a2e-7000-8000-000000000001';
 const user = mock<User>({ id: 'user-1' });
@@ -28,6 +33,16 @@ const agentChat: AppBinding = {
 	kind: 'agent',
 	agentId: 'a1',
 	permissions: ['chat', 'history'],
+};
+const nodeOperation: AppBinding = {
+	key: 'availability',
+	kind: 'nodeOperation',
+	node: {
+		nodeType: 'n8n-nodes-base.googleCalendar',
+		nodeTypeVersion: 1.3,
+		nodeParameters: { operation: 'availability', timeMin: "={{ $fromAI('from') }}" },
+		credentials: { googleCalendarOAuth2Api: { id: 'c1', name: 'Team calendar' } },
+	},
 };
 
 const DRAFT_ID = '0190a8d6-4a2e-7000-8000-0000000000d1';
@@ -72,6 +87,12 @@ function setup({ bindings = [], ...app }: Partial<App> & { bindings?: AppBinding
 		name: 'Support',
 		published: true,
 	}));
+	const nodeOperations = mock<AppNodeOperationPort>();
+	nodeOperations.describe.mockImplementation(async (_p, binding) => ({
+		...binding,
+		name: 'Google Calendar: Availability',
+		input: {},
+	}));
 	const changes = mock<AppChangeService>();
 	changes.saveBindings.mockImplementation(async (_p, _a, _v, next) => ({
 		version: { id: NEW_ID, appId: APP_ID, bindings: next } as AppVersion,
@@ -85,10 +106,21 @@ function setup({ bindings = [], ...app }: Partial<App> & { bindings?: AppBinding
 		dataTables,
 		workflows,
 		agents,
+		nodeOperations,
 		mock<Logger>(),
 		events,
 	);
-	return { service, apps, versions, changes, dataTables, workflows, agents, events };
+	return {
+		service,
+		apps,
+		versions,
+		changes,
+		dataTables,
+		workflows,
+		agents,
+		nodeOperations,
+		events,
+	};
 }
 
 describe('AppBindingsService', () => {
@@ -259,6 +291,37 @@ describe('AppBindingsService', () => {
 		expect(bindings).toEqual([expect.objectContaining({ key: 'support', name: 'Support' })]);
 	});
 
+	it('checks and describes a node operation binding through the node operation port', async () => {
+		const { service, nodeOperations } = setup({ bindings: [nodeOperation] });
+
+		await service.setBindings(user, 'p1', APP_ID, DRAFT_ID, [nodeOperation]);
+		expect(nodeOperations.assertCanBind).toHaveBeenCalledWith(user, 'p1', nodeOperation);
+
+		const { bindings, warnings } = await service.getBindings('p1', APP_ID);
+		expect(nodeOperations.describe).toHaveBeenCalledWith('p1', nodeOperation);
+		expect(bindings).toEqual([
+			expect.objectContaining({ key: 'availability', name: 'Google Calendar: Availability' }),
+		]);
+		expect(warnings).toEqual([]);
+	});
+
+	it('marks a node operation missing when its node or credential is not usable', async () => {
+		const { service, nodeOperations } = setup({ bindings: [nodeOperation] });
+		nodeOperations.describe.mockResolvedValue(null);
+
+		const { bindings, warnings } = await service.getBindings('p1', APP_ID);
+
+		expect(bindings).toEqual([expect.objectContaining({ key: 'availability', missing: true })]);
+		expect(warnings).toEqual([expect.objectContaining({ code: 'resource_missing' })]);
+	});
+
+	it('gives the app only the key and kind of a node operation', () => {
+		expect(toRuntimeBinding(nodeOperation)).toEqual({
+			key: 'availability',
+			kind: 'nodeOperation',
+		});
+	});
+
 	it('warns about an unpublished workflow', async () => {
 		const { service, workflows } = setup({ bindings: [workflow] });
 		workflows.describe.mockResolvedValue({
@@ -280,7 +343,7 @@ describe('AppBindingsService', () => {
 		type State = { published: boolean; hasChanges?: boolean };
 
 		function setupPublish(workflowState: State, agentState: State) {
-			const context = setup({ bindings: [tableRead, workflow, agentChat] });
+			const context = setup({ bindings: [tableRead, workflow, agentChat, nodeOperation] });
 			context.workflows.getPublishState.mockResolvedValue({
 				name: 'Flow',
 				hasChanges: false,
@@ -300,7 +363,7 @@ describe('AppBindingsService', () => {
 		const published: State = { published: true };
 		const changed: State = { published: true, hasChanges: true };
 
-		it('previews the workflows and agents of the version and skips data tables', async () => {
+		it('previews the workflows and agents of the version and skips data tables and node operations', async () => {
 			const { service, versions, dataTables } = setupPublish(unpublished, published);
 
 			const preview = await service.getPublishPreview(user, 'p1', APP_ID, DRAFT_ID);

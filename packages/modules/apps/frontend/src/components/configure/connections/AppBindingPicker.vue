@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { AppBindingKind } from '@n8n/api-types';
 import { useDebounce } from '@n8n/composables/useDebounce';
 import { useLatestFetch } from '@n8n/composables/useLatestFetch';
 import { useToast } from '@n8n/composables/useToast';
@@ -17,7 +16,11 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { DEBOUNCE_TIME } from '@n8n/frontend-constants/durations';
 import { computed, onScopeDispose, ref } from 'vue';
 
-import { listBindableResources, type BindableResource } from '../../../apps.api';
+import {
+	listBindableResources,
+	type BindableResource,
+	type BindableResourceKind,
+} from '../../../apps.api';
 import {
 	BINDING_KINDS,
 	PERMISSION_LABELS,
@@ -26,7 +29,7 @@ import {
 } from './bindingKinds';
 
 const props = defineProps<{
-	kind: AppBindingKind;
+	kind: BindableResourceKind;
 	projectId: string;
 	boundIds: ReadonlySet<string>;
 }>();

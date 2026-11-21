@@ -209,19 +209,22 @@ async function listBindableAgents(context: IRestApiContext, projectId: string, q
 	);
 }
 
+/** The kinds that bind one existing resource. A node operation binding holds a node configuration. */
+export type BindableResourceKind = Exclude<AppBindingKind, 'nodeOperation'>;
+
 const BINDABLE_RESOURCE_LISTS = {
 	workflow: listBindableWorkflows,
 	dataTable: listBindableDataTables,
 	agent: listBindableAgents,
 } satisfies Record<
-	AppBindingKind,
+	BindableResourceKind,
 	(context: IRestApiContext, projectId: string, query?: string) => Promise<BindableResourceList>
 >;
 
 export async function listBindableResources(
 	context: IRestApiContext,
 	projectId: string,
-	kind: AppBindingKind,
+	kind: BindableResourceKind,
 	query?: string,
 ): Promise<BindableResourceList> {
 	const { data, count } = await BINDABLE_RESOURCE_LISTS[kind](
