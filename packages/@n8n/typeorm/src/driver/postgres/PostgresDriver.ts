@@ -59,6 +59,11 @@ export class PostgresDriver implements Driver {
 	slaves: any[] = [];
 
 	/**
+	 * Pooled clients whose session settings (search_path, statement_timeout) are already applied.
+	 */
+	private sessionInitializedClients = new WeakSet<object>();
+
+	/**
 	 * We store all created query runners because we need to release them.
 	 */
 	connectedQueryRunners: QueryRunner[] = [];
@@ -1053,15 +1058,20 @@ export class PostgresDriver implements Driver {
 		}
 
 		const connection = await this.master.connect();
-		// Apply per-connection session settings (schema creation moved to afterConnect)
-		const { schema, statementTimeout } = this.options;
-		if (schema && schema !== 'public') {
-			await connection.query(`SET search_path TO "${schema}",public`);
-		} else {
-			await connection.query('SET search_path TO public');
-		}
-		if (statementTimeout) {
-			await connection.query(`SET statement_timeout = ${statementTimeout}`);
+		// Session settings persist on the physical connection, so apply them once per
+		// pooled client instead of on every checkout (two extra round trips per query).
+		// Schema creation moved to afterConnect.
+		if (!this.sessionInitializedClients.has(connection)) {
+			const { schema, statementTimeout } = this.options;
+			if (schema && schema !== 'public') {
+				await connection.query(`SET search_path TO "${schema}",public`);
+			} else {
+				await connection.query('SET search_path TO public');
+			}
+			if (statementTimeout) {
+				await connection.query(`SET statement_timeout = ${statementTimeout}`);
+			}
+			this.sessionInitializedClients.add(connection);
 		}
 
 		return [connection, () => connection.release()];
