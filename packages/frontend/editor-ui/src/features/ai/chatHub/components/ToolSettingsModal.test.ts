@@ -177,6 +177,36 @@ describe('ToolSettingsModal', () => {
 		expect(onConfirmMock).not.toHaveBeenCalled();
 	});
 
+	it('should pass syncNodeToNdv: true and readOnly to NodeToolSettingsContent', () => {
+		let capturedProps: Record<string, unknown> = {};
+		const ToolSettingsContentStub = defineComponent({
+			props: ['initialNode', 'existingToolNames', 'syncNodeToNdv', 'readOnly'],
+			setup(props) {
+				capturedProps = props;
+				return () => null;
+			},
+		});
+
+		renderComponent(ToolSettingsModal, {
+			props: {
+				modalName: MODAL_NAME,
+				data: {
+					node: createMockNode(),
+					existingToolNames: [],
+					onConfirm: onConfirmMock,
+				},
+			},
+			global: {
+				stubs: {
+					...sharedStubs,
+					NodeToolSettingsContent: ToolSettingsContentStub,
+				},
+			},
+		});
+
+		expect(capturedProps.syncNodeToNdv).toBe(true);
+	});
+
 	describe('restricted node types', () => {
 		const PERSONAL_PROJECT_ID = 'personal-project-1';
 
