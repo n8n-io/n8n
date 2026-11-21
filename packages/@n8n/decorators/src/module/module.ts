@@ -21,9 +21,10 @@ export interface BaseEntity {
 export interface CreatedAtEntity {
 	createdAt: Date;
 }
-export interface TimestampedEntity extends CreatedAtEntity {
+export interface UpdatedAtEntity {
 	updatedAt: Date;
 }
+export interface TimestampedEntity extends CreatedAtEntity, UpdatedAtEntity {}
 
 export interface TimestampedIdEntity extends TimestampedEntity {
 	id: string;
@@ -33,7 +34,8 @@ export type EntityClass = new () =>
 	| BaseEntity
 	| TimestampedIdEntity
 	| TimestampedEntity
-	| CreatedAtEntity;
+	| CreatedAtEntity
+	| UpdatedAtEntity;
 
 export type ModuleSettings = Record<string, unknown>;
 export type ModuleContext = Record<string, unknown>;

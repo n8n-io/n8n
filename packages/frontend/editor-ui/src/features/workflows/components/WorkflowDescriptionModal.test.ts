@@ -452,6 +452,7 @@ describe('WorkflowDescriptionModal', () => {
 				mcpAccessEnabled: false,
 				mcpManagedByEnv: false,
 				autoExposeNewWorkflows: false,
+				preferencesEnabled: true,
 			};
 
 			const { getByTestId } = renderModal({
@@ -483,6 +484,7 @@ describe('WorkflowDescriptionModal', () => {
 				mcpAccessEnabled: true,
 				mcpManagedByEnv: false,
 				autoExposeNewWorkflows: false,
+				preferencesEnabled: true,
 			};
 
 			const { getByTestId } = renderModal({

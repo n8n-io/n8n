@@ -10,8 +10,6 @@ export class ExecutionEndedHandler {
 	@OnLifecycleEvent('workflowExecuteAfter')
 	async handleWorkflowExecuteAfter(ctx: WorkflowExecuteAfterContext) {
 		if (!ctx.executedInThisProcess || !ctx.endedByThisSave) return;
-		// Canceled runs are not counted yet, so they get no `ended` row.
-		if (ctx.runData.status === 'canceled') return;
 
 		const facts = toEndedFactsFromRun({
 			executionId: ctx.executionId,

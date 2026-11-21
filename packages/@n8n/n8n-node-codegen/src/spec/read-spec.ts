@@ -29,11 +29,14 @@ const schemaSchema: z.ZodType<Schema> = z.lazy(() =>
 			format: z.string().optional(),
 			enum: z.array(z.unknown()).optional(),
 			default: z.unknown().optional(),
+			minimum: z.number().optional(),
+			maximum: z.number().optional(),
 			description: z.string().optional(),
 			readOnly: z.boolean().optional(),
 			deprecated: z.boolean().optional(),
 			items: schemaSchema.optional(),
 			properties: z.record(schemaSchema).optional(),
+			anyOf: z.array(schemaSchema).optional(),
 			required: z.array(z.string()).optional(),
 		})
 		.passthrough(),
@@ -152,9 +155,7 @@ function readParameters(operation: Operation, options: SpecOptions) {
 			}
 			continue;
 		}
-		if (paginated && (name === options.cursorParameter || name === options.limitParameter)) {
-			continue;
-		}
+		if (name === options.cursorParameter) continue;
 		const { schema } = parameter;
 		parameters.push({
 			name,
@@ -168,14 +169,18 @@ function readParameters(operation: Operation, options: SpecOptions) {
 
 	parameters.push(...readBodyParameters(operation, blockers));
 
-	const successfulResponseTypes = Object.entries(operation.responses)
-		.filter(([status]) => status.startsWith('2'))
-		.flatMap(([, response]) => Object.keys(response.content ?? {}));
+	const successfulResponses = Object.entries(operation.responses).filter(([status]) =>
+		status.startsWith('2'),
+	);
+	const successfulResponseTypes = successfulResponses.flatMap(([, response]) =>
+		Object.keys(response.content ?? {}),
+	);
 	if (successfulResponseTypes.length > 0 && !successfulResponseTypes.includes(JSON_MEDIA_TYPE)) {
 		blockers.push(`${successfulResponseTypes[0]} response`);
 	}
 
-	return { parameters, paginated, blockers };
+	const emptyResponse = successfulResponses.length > 0 && successfulResponseTypes.length === 0;
+	return { parameters, paginated, emptyResponse, blockers };
 }
 
 interface SpecDocuments {
@@ -220,6 +225,8 @@ export function readSpec(documents: SpecDocuments, options: SpecOptions): Spec {
 	}
 
 	return {
-		operations: [...operations.values()].sort((a, b) => a.operationId.localeCompare(b.operationId)),
+		operations: [...operations.values()].sort((a, b) =>
+			a.operationId.localeCompare(b.operationId, 'en'),
+		),
 	};
 }

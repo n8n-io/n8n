@@ -242,7 +242,7 @@ export class Telemetry implements TelemetryTracker {
 			branchName: sourceControlPreferences.branchName,
 			read_only_instance: sourceControlPreferences.branchReadOnly,
 			team_projects: (await Container.get(ProjectRepository).getProjectCounts()).team,
-			project_role_count: await Container.get(ProjectRelationRepository).countUsersByRole(),
+			project_role_count: await Container.get(ProjectRelationRepository).countPeopleByRole(),
 			...summarizeFootprint(await Container.get(InstanceRegistryProxyService).getAllInstances()),
 		};
 
