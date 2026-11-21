@@ -883,8 +883,8 @@ export class InstanceAiAdapterService {
 				INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
 			approvalModesEnabled: flags[INSTANCE_AI_APPROVAL_MODES_FLAG] === true,
 			// PROTOTYPE (Code Mode study). No PostHog flag has this name: only N8N_FEATURE_FLAG_OVERRIDES sets it.
-			codeModeEnabled: flags.prototype_instance_ai_code_mode === true,
-			alwaysLoadedReadTools: flags.prototype_instance_ai_read_tools_in_full === true,
+			codeModeEnabled: flags['999_instance_ai_code_mode_prototype'] === true,
+			alwaysLoadedReadTools: flags['998_instance_ai_read_tools_in_full_prototype'] === true,
 			instanceContextEnabled,
 			assistantSkillsEnabled,
 			...(skillSourcesEnabled ? { skillSourcesEnabled } : {}),
