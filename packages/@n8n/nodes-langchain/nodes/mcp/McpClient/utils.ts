@@ -1,10 +1,15 @@
+import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import type { RequestOptions } from '@modelcontextprotocol/sdk/shared/protocol.js';
+import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js';
 import type { JSONSchema7, JSONSchema7Definition } from 'json-schema';
 import type {
 	ResourceMapperField,
 	FieldType,
 	INodePropertyOptions,
 	IDataObject,
+	INode,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 function pickFirstSchema(schema: JSONSchema7Definition): JSONSchema7Definition {
 	if (typeof schema === 'object' && (schema?.anyOf || schema?.oneOf)) {
@@ -278,4 +283,225 @@ export function convertJsonSchemaToResourceMapperFields(
 	}
 
 	return fields;
+}
+
+export const MCP_MAX_LIST_PAGES = 100;
+
+/** Overall budget for one list operation, so a slow server cannot stack 100 timeouts. */
+export const MCP_LIST_DEADLINE_MS = 300_000;
+
+type ListPage<T> = {
+	items: T[];
+	nextCursor?: string;
+};
+
+export type ListAllResult<T> = {
+	items: T[];
+	truncated: boolean;
+};
+
+type McpResource = Awaited<ReturnType<Client['listResources']>>['resources'][number];
+type McpResourceTemplate = Awaited<
+	ReturnType<Client['listResourceTemplates']>
+>['resourceTemplates'][number];
+type McpPrompt = Awaited<ReturnType<Client['listPrompts']>>['prompts'][number];
+
+async function getAllPages<T>(
+	options: RequestOptions,
+	node: INode,
+	itemIndex: number,
+	listPage: (cursor: string | undefined, options: RequestOptions) => Promise<ListPage<T>>,
+): Promise<ListAllResult<T>> {
+	const seenCursors = new Set<string>();
+	let cursor: string | undefined;
+	let pages = 0;
+	const items: T[] = [];
+	const deadline = Date.now() + MCP_LIST_DEADLINE_MS;
+
+	while (true) {
+		if (options.signal?.aborted) {
+			throw new NodeOperationError(node, 'Execution was cancelled', { itemIndex });
+		}
+
+		const remaining = deadline - Date.now();
+		if (remaining <= 0) {
+			return { items, truncated: true };
+		}
+
+		// Cap the request at the remaining budget so one slow page cannot run
+		// past the deadline.
+		const pageOptions: RequestOptions = {
+			...options,
+			timeout: options.timeout === undefined ? remaining : Math.min(options.timeout, remaining),
+		};
+
+		let page: ListPage<T>;
+		try {
+			page = await listPage(cursor, pageOptions);
+		} catch (error) {
+			// The capped request can fail once the deadline is reached. Return the
+			// data we have instead of an error.
+			if (Date.now() >= deadline) {
+				return { items, truncated: true };
+			}
+			throw error;
+		}
+
+		pages += 1;
+		items.push(...page.items);
+
+		const nextCursor = page.nextCursor;
+		if (!nextCursor) {
+			return { items, truncated: false };
+		}
+
+		// Stop when the server repeats a cursor. The page above is the first
+		// response for that cursor, so keep its items. Also stop at the page cap
+		// and return the data we have instead of discarding it.
+		if (seenCursors.has(nextCursor) || pages >= MCP_MAX_LIST_PAGES) {
+			return { items, truncated: true };
+		}
+
+		seenCursors.add(nextCursor);
+		cursor = nextCursor;
+	}
+}
+
+/**
+ * Lists every resource, following pagination until the server stops or the page cap is hit.
+ *
+ * @param client - The connected MCP client.
+ * @param options - Per-request options, including the abort signal and timeout.
+ * @param node - The node that runs the operation, used for error reporting.
+ * @param itemIndex - The index of the item that is running.
+ * @returns The collected resources and whether the page cap truncated the result.
+ */
+export async function getAllResources(
+	client: Client,
+	options: RequestOptions,
+	node: INode,
+	itemIndex: number,
+): Promise<ListAllResult<McpResource>> {
+	return await getAllPages(options, node, itemIndex, async (cursor, pageOptions) => {
+		const { resources, nextCursor } = await client.listResources({ cursor }, pageOptions);
+		return { items: resources, nextCursor };
+	});
+}
+
+/**
+ * Lists every resource template, following pagination until the server stops or the page cap is hit.
+ *
+ * @param client - The connected MCP client.
+ * @param options - Per-request options, including the abort signal and timeout.
+ * @param node - The node that runs the operation, used for error reporting.
+ * @param itemIndex - The index of the item that is running.
+ * @returns The collected resource templates and whether the page cap truncated the result.
+ */
+export async function getAllResourceTemplates(
+	client: Client,
+	options: RequestOptions,
+	node: INode,
+	itemIndex: number,
+): Promise<ListAllResult<McpResourceTemplate>> {
+	return await getAllPages(options, node, itemIndex, async (cursor, pageOptions) => {
+		const { resourceTemplates, nextCursor } = await client.listResourceTemplates(
+			{ cursor },
+			pageOptions,
+		);
+		return { items: resourceTemplates, nextCursor };
+	});
+}
+
+/**
+ * Lists every prompt, following pagination until the server stops or the page cap is hit.
+ *
+ * @param client - The connected MCP client.
+ * @param options - Per-request options, including the abort signal and timeout.
+ * @param node - The node that runs the operation, used for error reporting.
+ * @param itemIndex - The index of the item that is running.
+ * @returns The collected prompts and whether the page cap truncated the result.
+ */
+export async function getAllPrompts(
+	client: Client,
+	options: RequestOptions,
+	node: INode,
+	itemIndex: number,
+): Promise<ListAllResult<McpPrompt>> {
+	return await getAllPages(options, node, itemIndex, async (cursor, pageOptions) => {
+		const { prompts, nextCursor } = await client.listPrompts({ cursor }, pageOptions);
+		return { items: prompts, nextCursor };
+	});
+}
+
+/**
+ * Turns only the JSON-RPC "method not found" error into a capability-named
+ * NodeOperationError. Other errors pass through unchanged so the caller's
+ * existing error handling still applies.
+ *
+ * @param node - The node that runs the operation, used for error reporting.
+ * @param itemIndex - The index of the item that is running.
+ * @param capability - The missing server capability, `resources` or `prompts`.
+ * @param method - The MCP method that needs the capability, such as `resources/list`.
+ * @param error - The error thrown by the MCP call.
+ * @returns A capability-named NodeOperationError, or the original error.
+ */
+export function mapCapabilityError(
+	node: INode,
+	itemIndex: number,
+	capability: 'resources' | 'prompts',
+	method: string,
+	error: unknown,
+): Error {
+	if (error instanceof McpError && error.code === Number(ErrorCode.MethodNotFound)) {
+		return new NodeOperationError(
+			node,
+			`This MCP server does not support ${capability} (required for "${method}").`,
+			{ itemIndex, description: error.message },
+		);
+	}
+
+	return error instanceof Error ? error : new Error(String(error));
+}
+
+/**
+ * Converts the fixedCollection value into the string map the MCP SDK expects.
+ * Argument names are user input, so the accumulator uses a null prototype.
+ * The value is never included in an error message.
+ *
+ * @param raw - The raw `promptArguments` parameter value.
+ * @param node - The node that runs the operation, used for error reporting.
+ * @param itemIndex - The index of the item that is running.
+ * @returns A `Record<string, string>` when entries exist, otherwise `undefined`.
+ */
+export function buildPromptArguments(
+	raw: IDataObject,
+	node: INode,
+	itemIndex: number,
+): Record<string, string> | undefined {
+	const entries = raw.arguments;
+	if (!Array.isArray(entries) || entries.length === 0) {
+		return undefined;
+	}
+
+	const isRecord = (value: unknown): value is Record<string, unknown> =>
+		typeof value === 'object' && value !== null && !Array.isArray(value);
+
+	// Null-prototype accumulator: safe against __proto__/constructor writes
+	// without a denylist.
+	const result: Record<string, string> = Object.create(null);
+
+	for (const entry of entries) {
+		if (!isRecord(entry)) continue;
+
+		const name = entry.name;
+		if (typeof name !== 'string' || name.length === 0) {
+			throw new NodeOperationError(node, 'Prompt argument name must be a non-empty string.', {
+				itemIndex,
+			});
+		}
+
+		result[name] = String(entry.value ?? '');
+	}
+
+	return result;
 }
