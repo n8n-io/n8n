@@ -1,4 +1,4 @@
-import { BaseRepository, dbNowLiteral, TransactionRunner, type OperationContext } from '@n8n/db';
+import { BaseRepository, dbTxNowLiteral, TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, In, type EntityManager } from '@n8n/typeorm';
 import { isRecord } from '@n8n/utils/is-record';
@@ -101,7 +101,7 @@ export class AgentBudgetSpendRepository {
 		const table = this.quote(manager, this.tableName(manager, AgentBudgetAppliedCall));
 		const callIdColumn = this.quote(manager, 'callId');
 		const createdAtColumn = this.quote(manager, 'createdAt');
-		const now = dbNowLiteral(this.isPostgres(manager));
+		const now = dbTxNowLiteral(this.isPostgres(manager));
 		const sql =
 			`INSERT INTO ${table} (${callIdColumn}, ${createdAtColumn}) VALUES (:callId, ${now}) ` +
 			`ON CONFLICT (${callIdColumn}) DO NOTHING`;
@@ -125,7 +125,7 @@ export class AgentBudgetSpendRepository {
 		const totalColumn = this.quote(manager, 'totalUsd');
 		const createdAtColumn = this.quote(manager, 'createdAt');
 		const updatedAtColumn = this.quote(manager, 'updatedAt');
-		const now = dbNowLiteral(this.isPostgres(manager));
+		const now = dbTxNowLiteral(this.isPostgres(manager));
 		// Coalesce repeated keys: Postgres rejects two rows with the same conflict
 		// target in one statement. Sort so concurrent writers lock rows in one order.
 		const byKey = new Map<string, number>();
