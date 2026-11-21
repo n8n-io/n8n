@@ -1,0 +1,25 @@
+packages/modules/inbox/frontend/src/reviews/components/WorkflowReviewDecisionPopover.vue
+  s_419bed5e9fbd75::t_8ba90d5d5b28d1 5-9,26,46,83,87-91,171-200
+packages/modules/inbox/frontend/src/reviews/components/WorkflowReviewDecisionPopover.test.ts
+  s_419bed5e9fbd75::t_0019af5d38383c 21,93,97-100,106-114
+packages/modules/inbox/frontend/src/reviews/components/WorkflowReviewDetailTabs.vue
+  s_419bed5e9fbd75::t_8ba90d5d5b28d1 140
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_419bed5e9fbd75::t_8ba90d5d5b28d1 7184-7186
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "60995649cb82ae757b65ba919ccf17f9b1b4a183",
+  "prompts": {},
+  "sessions": {
+    "s_419bed5e9fbd75": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "152a2e1a-fb2a-4e99-b693-ebe21d600421",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}
