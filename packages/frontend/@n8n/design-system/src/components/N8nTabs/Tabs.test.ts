@@ -144,7 +144,6 @@ describe('N8nTabs', () => {
 
 	it.each([
 		{ value: 'plain', label: 'Plain', tag: 'New' },
-		{ value: 'external', label: 'External', tag: 'New', href: 'https://example.com' },
 		{ value: 'route', label: 'Route', tag: 'New', to: '/workflows' },
 	])('renders the $value tab label as a badge', function testTabBadge(option) {
 		const { getByText, container } = render(N8nTabs, {
@@ -172,36 +171,28 @@ describe('N8nTabs', () => {
 		expect(emitted('update:modelValue')).toEqual([['first']]);
 	});
 
-	it('does not emit for a disabled tab and marks it aria-disabled', async () => {
+	it('does not emit for a disabled tab and marks it disabled', async () => {
 		const { getByText, emitted } = render(N8nTabs, {
 			props: { modelValue: 'first', options },
 		});
 
-		const tab = getByText('Second').closest('[aria-disabled]');
-		expect(tab).toHaveAttribute('aria-disabled', 'true');
+		const tab = getByText('Second').closest('[role="tab"]');
+		expect(tab).toHaveAttribute('data-disabled');
+		expect(tab).toBeDisabled();
 
 		await userEvent.click(getByText('Second'));
 
 		expect(emitted('update:modelValue')).toBeUndefined();
 	});
 
-	it('renders a disabled href tab as an inert tab instead of a link', async () => {
-		const { getByText, emitted } = render(N8nTabs, {
-			props: {
-				modelValue: 'first',
-				options: [
-					{ value: 'first', label: 'First' },
-					{ value: 'docs', label: 'Docs', href: 'https://example.com', disabled: true },
-				],
-			},
+	it('renders the suffix slot outside the tab list', () => {
+		const { getByText } = render(N8nTabs, {
+			props: { modelValue: 'first', options },
+			slots: { suffix: '<a href="https://example.com">Docs</a>' },
 		});
 
-		const tab = getByText('Docs');
-		expect(tab.closest('a')).toBeNull();
-		expect(tab.closest('[aria-disabled]')).toHaveAttribute('aria-disabled', 'true');
-
-		await userEvent.click(tab);
-
-		expect(emitted('update:modelValue')).toBeUndefined();
+		const link = getByText('Docs');
+		expect(link.closest('[role="tablist"]')).toBeNull();
+		expect(link.closest('[role="tab"]')).toBeNull();
 	});
 });

@@ -1,5 +1,6 @@
 import type { StoryFn } from '@storybook/vue3-vite';
 import { action } from 'storybook/actions';
+import { ref } from 'vue';
 
 import N8nTabs from './Tabs.vue';
 import type { TabOptions } from '../../types/tabs';
@@ -7,7 +8,23 @@ import type { TabOptions } from '../../types/tabs';
 export default {
 	title: 'Core/Tabs',
 	component: N8nTabs,
-	argTypes: {},
+	argTypes: {
+		variant: {
+			control: 'select',
+			options: ['underline', 'filled'],
+		},
+		size: {
+			control: 'select',
+			options: ['small', 'medium', 'large'],
+		},
+		orientation: {
+			control: 'select',
+			options: ['horizontal', 'vertical'],
+		},
+		justified: {
+			control: 'boolean',
+		},
+	},
 	parameters: {
 		docs: {
 			description: {
@@ -18,177 +35,225 @@ export default {
 	},
 };
 
-const methods = {
-	onUpdateModelValue: action('update:modelValue'),
-};
+type DefaultTab = 'overview' | 'usage' | 'accessibility';
 
-const Template: StoryFn = (args, { argTypes }) => ({
-	setup: () => ({ args }),
-	props: Object.keys(argTypes),
-	components: {
-		N8nTabs,
-	},
-	template: `<n8n-tabs v-model="val" v-bind="args" @update:modelValue="onUpdateModelValue">
-		</n8n-tabs>`,
-	methods,
-	data() {
-		return {
-			val: '',
-		};
-	},
-});
-
-export const Default = Template.bind({});
-Default.args = {
-	modelValue: 'first',
-	options: [
-		{
-			label: 'First',
-			value: 'first',
-		},
-		{
-			label: 'Second',
-			value: 'second',
-		},
-		{
-			label: 'Github',
-			value: 'github',
-			href: 'https://github.com/',
-		},
-		{
-			label: 'Settings',
-			value: 'settings',
-			icon: 'cog',
-			align: 'right',
-		},
-	],
-};
-
-const options: Array<TabOptions<string>> = [
-	{
-		label: 'First',
-		value: 'first',
-	},
-	{
-		label: 'Second',
-		value: 'second',
-	},
-	{
-		label: 'External Link',
-		value: 'external',
-		href: 'https://github.com/',
-	},
-	{
-		label: 'Danger',
-		value: 'danger',
-		variant: 'danger',
-		icon: 'triangle-alert',
-	},
-	{
-		label: 'Right Icon',
-		value: 'rightIcon',
-		icon: 'circle',
-		iconPosition: 'right',
-	},
-	{
-		value: 'iconOnly',
-		tooltip: 'Icon only tab',
-		icon: 'circle',
-	},
-	{
-		label: 'Notification',
-		value: 'notification',
-		notification: true,
-	},
-	{
-		label: 'Count',
-		value: 'count',
-		tag: '2',
-	},
-	{
-		label: 'Settings',
-		value: 'settings',
-		icon: 'cog',
-		align: 'right',
-	},
+const defaultTabs: Array<TabOptions<DefaultTab>> = [
+	{ label: 'Overview', value: 'overview' },
+	{ label: 'Usage', value: 'usage' },
+	{ label: 'Accessibility', value: 'accessibility' },
 ];
 
-export const Variants = Template.bind({});
-Variants.args = {
-	modelValue: 'first',
-	options,
+export const Default: StoryFn = (args) => ({
+	components: { N8nTabs },
+	setup() {
+		const val = ref<DefaultTab>('overview');
+		return { args, val, options: defaultTabs };
+	},
+	methods: {
+		onUpdateModelValue: action('update:modelValue'),
+	},
+	template: `
+		<n8n-tabs
+			v-model="val"
+			:options="options"
+			:variant="args.variant"
+			:size="args.size"
+			:orientation="args.orientation"
+			:justified="args.justified"
+			@update:model-value="onUpdateModelValue"
+		>
+			<template #content="{ value }">
+				<p v-if="value === 'overview'" style="padding: var(--spacing--sm);">
+					Tabs let users switch between related views without leaving the page.
+					Each tab shows one view at a time.
+				</p>
+				<p v-else-if="value === 'usage'" style="padding: var(--spacing--sm);">
+					Use tabs for content at the same level of hierarchy.
+					Keep labels short, and do not use more tabs than fit in one row.
+				</p>
+				<p v-else style="padding: var(--spacing--sm);">
+					Use the arrow keys to move between tabs.
+					Press Enter or Space to select the focused tab.
+				</p>
+			</template>
+		</n8n-tabs>
+	`,
+});
+Default.args = {
+	variant: 'underline',
+	size: 'medium',
+	orientation: 'horizontal',
+	justified: false,
 };
 
-export const Overflow: StoryFn = () => ({
-	components: { N8nTabs },
-	data() {
-		return { val: 'first', options };
-	},
-	template: `
-		<div style="width: 40%; min-width: var(--spacing--xl); display: flex; flex-direction: column; gap: var(--spacing--xl);">
-			<n8n-tabs v-model="val" :options="options" />
-			<n8n-tabs v-model="val" size="small" :options="options" />
-			<n8n-tabs v-model="val" variant="modern" :options="options" />
-			<n8n-tabs v-model="val" variant="modern" size="small" :options="options" />
-		</div>
-	`,
-});
+const sharedArgs = {
+	variant: 'underline',
+	size: 'medium',
+	orientation: 'horizontal',
+	justified: false,
+};
 
-export const OversizedTab: StoryFn = () => ({
-	components: { N8nTabs },
-	data() {
-		return {
-			val: 'wide',
-			options: [
-				{
-					value: 'wide',
-					label:
-						'A very long tab label that is wider than its container and needs several scroll steps to read',
-					tag: '2',
-				},
-			],
-		};
-	},
-	template: `
-		<div style="width: 40%;">
-			<n8n-tabs v-model="val" :options="options" />
-		</div>
-	`,
-});
+const overflowTabs: Array<TabOptions<string>> = [
+	'Overview',
+	'Executions',
+	'Settings',
+	'Credentials',
+	'Variables',
+	'Templates',
+	'Members',
+	'Billing',
+	'Usage',
+	'Security',
+	'Logs',
+	'Integrations',
+	'Notifications',
+	'Advanced',
+].map((label) => ({ label, value: label.toLowerCase() }));
 
-export const Justified: StoryFn = () => ({
+export const Overflow: StoryFn = (args) => ({
 	components: { N8nTabs },
-	data() {
-		return {
-			val: 'first',
-			options: [
-				{ value: 'first', label: 'A long first tab label', notification: true },
-				{ value: 'second', label: 'Second tab' },
-				{ value: 'third', label: 'A long third tab label' },
-			],
-		};
+	setup() {
+		const val = ref('overview');
+		return { args, val, options: overflowTabs };
+	},
+	methods: {
+		onUpdateModelValue: action('update:modelValue'),
 	},
 	template: `
-		<div style="width: 40%;">
-			<n8n-tabs v-model="val" justified :options="options" />
+		<div style="max-width: 480px;">
+			<n8n-tabs
+				v-model="val"
+				:options="options"
+				:variant="args.variant"
+				:size="args.size"
+				:orientation="args.orientation"
+				:justified="args.justified"
+				@update:model-value="onUpdateModelValue"
+			>
+				<template #content="{ value }">
+					<p style="padding: var(--spacing--sm);">
+						This is the {{ options.find((option) => option.value === value)?.label }} tab.
+						The tab row is wider than its container, so use the arrow buttons to scroll.
+					</p>
+				</template>
+			</n8n-tabs>
 		</div>
 	`,
 });
+Overflow.args = { ...sharedArgs };
 
-export const Sizes: StoryFn = () => ({
+type IconTab = 'home' | 'members' | 'settings';
+
+const iconTabs: Array<TabOptions<IconTab>> = [
+	{ label: 'Home', value: 'home', icon: 'house' },
+	{ label: 'Members', value: 'members', icon: 'users', notification: true },
+	{ label: 'Settings', value: 'settings', icon: 'settings' },
+];
+
+export const Icons: StoryFn = (args) => ({
 	components: { N8nTabs },
-	data() {
-		return {
-			val: 'first',
-			options,
-		};
+	setup() {
+		const val = ref<IconTab>('home');
+		return { args, val, options: iconTabs };
+	},
+	methods: {
+		onUpdateModelValue: action('update:modelValue'),
 	},
 	template: `
-		<div style="display: flex; flex-direction: column; gap: 24px;">
-			<n8n-tabs v-model="val" size="medium" :options="options" />
-			<n8n-tabs v-model="val" size="small" :options="options" />
-			<n8n-tabs v-model="val" variant="modern" size="medium" :options="options" />
-			<n8n-tabs v-model="val" variant="modern" size="small" :options="options" />
-		</div>
+		<n8n-tabs
+			v-model="val"
+			:options="options"
+			:variant="args.variant"
+			:size="args.size"
+			:orientation="args.orientation"
+			:justified="args.justified"
+			@update:model-value="onUpdateModelValue"
+		>
+			<template #content="{ value }">
+				<p v-if="value === 'home'" style="padding: var(--spacing--sm);">
+					See a summary of recent activity in the project.
+				</p>
+				<p v-else-if="value === 'members'" style="padding: var(--spacing--sm);">
+					Add or remove the users who have access to the project.
+				</p>
+				<p v-else style="padding: var(--spacing--sm);">
+					Change the settings of the project.
+				</p>
+			</template>
+		</n8n-tabs>
 	`,
 });
+Icons.args = { ...sharedArgs };
+
+export const Justified: StoryFn = (args) => ({
+	components: { N8nTabs },
+	setup() {
+		const val = ref<DefaultTab>('overview');
+		return { args, val, options: defaultTabs };
+	},
+	methods: {
+		onUpdateModelValue: action('update:modelValue'),
+	},
+	template: `
+		<n8n-tabs
+			v-model="val"
+			:options="options"
+			:variant="args.variant"
+			:size="args.size"
+			:orientation="args.orientation"
+			:justified="args.justified"
+			@update:model-value="onUpdateModelValue"
+		>
+			<template #content="{ value }">
+				<p v-if="value === 'overview'" style="padding: var(--spacing--sm);">
+					Justified tabs fill the full width of the container.
+					Each tab gets the same width.
+				</p>
+				<p v-else-if="value === 'usage'" style="padding: var(--spacing--sm);">
+					Use justified tabs when there are few tabs and the container is narrow.
+				</p>
+				<p v-else style="padding: var(--spacing--sm);">
+					Use the arrow keys to move between tabs.
+					Press Enter or Space to select the focused tab.
+				</p>
+			</template>
+		</n8n-tabs>
+	`,
+});
+Justified.args = { ...sharedArgs, justified: true };
+
+export const Vertical: StoryFn = (args) => ({
+	components: { N8nTabs },
+	setup() {
+		const val = ref<DefaultTab>('overview');
+		return { args, val, options: defaultTabs };
+	},
+	methods: {
+		onUpdateModelValue: action('update:modelValue'),
+	},
+	template: `
+		<n8n-tabs
+			v-model="val"
+			:options="options"
+			:variant="args.variant"
+			:size="args.size"
+			:orientation="args.orientation"
+			:justified="args.justified"
+			@update:model-value="onUpdateModelValue"
+		>
+			<template #content="{ value }">
+				<p v-if="value === 'overview'" style="padding: var(--spacing--sm);">
+					Vertical tabs show the tab list in a column next to the content.
+				</p>
+				<p v-else-if="value === 'usage'" style="padding: var(--spacing--sm);">
+					Use vertical tabs for settings pages or when there are many tabs.
+				</p>
+				<p v-else style="padding: var(--spacing--sm);">
+					Use the Up and Down arrow keys to move between tabs.
+					Press Enter or Space to select the focused tab.
+				</p>
+			</template>
+		</n8n-tabs>
+	`,
+});
+Vertical.args = { ...sharedArgs, orientation: 'vertical' };
