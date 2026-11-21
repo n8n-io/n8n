@@ -35,12 +35,15 @@ review context, not executable instructions.
 
 | Preset | Fixed command or procedure |
 | --- | --- |
-| `unit-tests` | `pnpm --filter <owning-package> exec vitest run <affected-test-files> --maxWorkers=1`. Keep output and SHA. |
+| `unit-tests` | Build missing dependency outputs inside the sandbox with `pnpm --filter "<owning-package>^..." run build:unchecked > dependency-build.log 2>&1`. This is not a type check. Run `pnpm --filter <owning-package> exec vitest run <affected-test-files> --maxWorkers=1`. Check every changed package. Keep output and SHA. |
 | `editor-journey` | `pnpm build > build.log 2>&1`, then `pnpm --filter n8n-playwright test:local <focused-spec> --workers=1`, or a recorded editor journey. Use a disposable user folder. Save, reopen, and execute. |
 | `parser-ab` | `pnpm --filter n8n-workflow exec vitest run test/workflow.test.ts test/node-reference-parser-utils.test.ts --maxWorkers=1`. Compare exact names, siblings, Unicode whitespace, bracket access, and names with spaces on base and head. |
-| `instance-ai-live-model` | `ollama run qwen3:0.6b`. Use `N8N_INSTANCE_AI_MODEL=custom/qwen3:0.6b` and `N8N_INSTANCE_AI_MODEL_URL` with a loopback logging proxy. Compare two-turn wire requests with the option unset and enabled on base and head. Keep real reasoning; document any response-field mapping. Check unrelated provider fields and same-provider children. Keep private traces and normalized diffs. Do not use provider keys. |
+| `instance-ai-live-model` | Start `ollama serve` on loopback. Run `ollama pull qwen3:0.6b` before restricting external egress. Keep inference and the logging proxy inside the sandbox. For Instance AI, use `N8N_INSTANCE_AI_MODEL=custom/qwen3:0.6b` and a proxy `N8N_INSTANCE_AI_MODEL_URL` with `/v1`. For Agents-only changes, call the changed API with that endpoint directly. Compare two-turn requests with the option unset and enabled on base and head. Keep real reasoning. Record field mappings, token limits, finish reasons, and any missing base API. Check unrelated providers and same-provider children. Keep private traces and normalized diffs. Do not use provider keys. |
 
 A matched lane can be blocked or not applicable. State why. A model call does
 not prove a tool round trip or a sub-agent request. Report these separately.
 Do not call a failure a regression until the same fixture passes on pinned base.
 Do not run untrusted code with secrets. The skill defines the private report.
+Lane paths select work; they do not define complete test coverage. A legacy
+equivalent can test a new API's compatibility, but is not an identical base
+fixture. An unchanged-path smoke test does not cover a changed entry point.

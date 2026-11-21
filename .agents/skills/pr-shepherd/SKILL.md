@@ -20,7 +20,9 @@ and redact secrets. If isolation is unavailable, mark execution blocked.
 
 1. Read the PR metadata and diff through read-only GitHub operations. Record
    the problem, intended behavior, and scope. Pin base, head, and trusted policy
-   to full SHAs. Use the current trusted `origin/master` SHA for policy.
+   to full SHAs. Use the current trusted `origin/master` SHA for policy unless
+   the operator supplies another trusted revision. Record an override and its
+   reason. Save the PR metadata, diff, and read-only selection command.
 2. Run `node .github/scripts/pr-shepherd/pr-shepherd.mjs plan --base <sha>
    --head <sha> --policy-ref <trusted-sha>`. Save JSON with `--json` too.
    Read every matched cubic rule, team rule, and package guide from the policy
@@ -32,13 +34,21 @@ and redact secrets. If isolation is unavailable, mark execution blocked.
    ranking a cause. Team routing does not grant merge authority.
 4. Run matched lanes with the fixed preset instructions. Select focused tests
    and a product journey when it applies. Record exact commands and SHAs.
+   Prepare workspace dependencies inside the sandbox. Build missing dependency
+   outputs before tests. Keep setup logs separate from product results.
+   Check every changed package, not only files matched by a profile.
    Mark each lane passed, failed, blocked, or not applicable, with a reason.
+   Mark incomplete subchecks not verified. State which changed entry point each
+   probe exercises. An unchanged-path smoke test does not cover a new adapter.
    No matched lane does not mean verification is complete; select a focused
    check from the diff. Do not claim replay or mocks are live dependencies.
 5. Make at least one PR-specific break attempt. State the input, expected
    result, actual result, and limits. Run the same failing fixture on pinned
    base before calling it a regression. Separate pre-existing failures from
-   new defects. A setup failure is blocked, not a product failure.
+   new defects. If a new API does not exist on base, record that limit. A legacy
+   equivalent can test compatibility, but is not an identical base fixture.
+   A setup failure is blocked, not a product failure. Separate model token-limit
+   failures from request-adapter defects. Keep raw traces before normalization.
 6. Write the private report below. Include evidence paths. Do not post it.
 
 ## Private report

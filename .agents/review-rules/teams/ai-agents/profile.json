@@ -2,7 +2,7 @@
   "lanes": [
     {
       "preset": "unit-tests",
-      "paths": ["packages/@n8n/agents/"],
+      "paths": ["packages/@n8n/agents/", "packages/@n8n/ai-utilities/"],
       "evidence": ["Affected test output and pinned SHA"]
     },
     {

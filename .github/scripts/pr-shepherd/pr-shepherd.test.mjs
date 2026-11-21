@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
@@ -66,6 +66,28 @@ test('empty diff has no routing, lanes, agents or guidance', () => {
 	const result = plan([]);
 	for (const key of ['teams', 'lanes', 'agents', 'guidance', 'policyChanges'])
 		assert.deepEqual(result[key], []);
+});
+
+test('AI Agents unit lane covers changed AI utilities with trusted profile policy', () => {
+	const source = {
+		...policy,
+		OWNERS: `${policy.OWNERS}\npackages/@n8n/ai-utilities/ @n8n-io/ai-agents`,
+		[`${prefix}profile.json`]: readFileSync(
+			new URL('../../../.agents/review-rules/teams/ai-agents/profile.json', import.meta.url),
+			'utf8',
+		),
+	};
+	const changed = [
+		'packages/@n8n/agents/src/runtime/model/openai-config-model.ts',
+		'packages/@n8n/ai-utilities/src/suppliers/supplyModel.ts',
+		'packages/@n8n/ai-utilities/src/__tests__/suppliers/supplyModel.test.ts',
+	];
+	assert.deepEqual(
+		plan(changed, source).lanes.find((lane) => lane.preset === 'unit-tests').files,
+		changed,
+	);
+	assert.equal(plan([], source).lanes.length, 0);
+	assert.equal(plan(['outside.ts'], source).lanes.length, 0);
 });
 
 test('lists policy edits without changing policy', () => {
