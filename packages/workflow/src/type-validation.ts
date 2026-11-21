@@ -150,7 +150,7 @@ export const tryToParseObject = (value: unknown): object => {
 	try {
 		const o = jsonParse<object>(String(value), { acceptJSObject: true });
 
-		if (typeof o !== 'object' || Array.isArray(o)) {
+		if (typeof o !== 'object' || o === null || Array.isArray(o)) {
 			throw new UserError('Value is not a valid object', { extra: { value } });
 		}
 		return o;
