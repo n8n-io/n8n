@@ -5,6 +5,8 @@ const extractUrlPath = stringExtensions.functions.extractUrlPath as (
 	value: string,
 ) => string | undefined;
 
+const extractUrl = stringExtensions.functions.extractUrl as (value: string) => string | undefined;
+
 const toSentenceCase = stringExtensions.functions.toSentenceCase as (value: string) => string;
 
 const toFloat = stringExtensions.functions.toFloat as (value: string) => number;
@@ -35,6 +37,19 @@ describe('extractUrlPath (imperative parser, no URL constructor)', () => {
 		['ht tp://example.com/path'],
 	])('should return undefined for malformed input: %s', (input) => {
 		expect(extractUrlPath(input)).toBeUndefined();
+	});
+});
+
+describe('extractUrl', () => {
+	it.each([
+		['Docs: https://docs.n8n.io.', 'https://docs.n8n.io'],
+		['See (https://example.com) for details', 'https://example.com'],
+		['Visit https://example.com, then come back', 'https://example.com'],
+		['File at https://example.com/data.csv;', 'https://example.com/data.csv'],
+		['Wiki (https://example.com/C_(lang)) and more', 'https://example.com/C_(lang)'],
+		['Search https://example.com/search?q=n8n!', 'https://example.com/search?q=n8n'],
+	])('should extract %s without surrounding sentence punctuation', (input, expected) => {
+		expect(extractUrl(input)).toBe(expected);
 	});
 });
 
