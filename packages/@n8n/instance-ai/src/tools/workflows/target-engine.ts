@@ -82,6 +82,12 @@ export function resolveTargetEngine(workflow: WorkflowJSON, fallback: TargetEngi
 	return engine ? { engine, source: 'workflow-settings' } : fallback;
 }
 
+/** Tells if the `targetEngine` field of a build result names engine v2. */
+export function namesEngineV2(targetEngine: unknown): boolean {
+	const parsed = targetEngineSchema.safeParse(targetEngine);
+	return parsed.success && parsed.data.engine === 'v2';
+}
+
 /**
  * Tells if the build result names the engine. Without the `engine-v2` module, every
  * workflow runs on v1, so the result stays the same as before unless the code asks for v2.
