@@ -70,11 +70,17 @@ export class MultiMainSetup extends TypedEmitter<MultiMainEvents> {
 		clearInterval(this.leaderCheckInterval);
 
 		if (this.instanceSettings.isLeader) {
-			// TODO: We should guard here that we only remove the key the key in Redis matches
-			// our host ID.
+			// Our lease may have expired without us noticing (e.g. Redis was unreachable
+			// for longer than the TTL), and another instance may have taken over since.
+			// `clearLeader` only deletes the key if it still holds our host ID, so we
+			// never remove the new leader's key.
 			const result = await this.client.clearLeader();
 			if (!result.ok) {
 				this.logger.warn('Failed to clear leader key from Redis', { error: result.error });
+			} else if (!result.result) {
+				this.logger.warn(
+					'Leader key no longer held by this instance at shutdown, leaving it in place',
+				);
 			}
 		}
 
