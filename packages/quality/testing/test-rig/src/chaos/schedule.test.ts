@@ -65,6 +65,19 @@ describe('generateSchedule', () => {
 		expect(new Set(hooks.map((s) => s.fault.target))).toEqual(new Set(['worker-1']));
 	});
 
+	it('cuts or delays each target only towards its listed upstreams', () => {
+		const upstreams = { main: ['postgres', 'engine'], 'worker-1': ['redis'] } as const;
+		const network = generateSchedule(17, { ...menu, upstreams }, 60, 900_000).flatMap((s) =>
+			s.fault.kind === 'delay' || s.fault.kind === 'cut' ? [s.fault] : [],
+		);
+		for (const fault of network) {
+			expect(upstreams[fault.target as keyof typeof upstreams] ?? ['postgres', 'redis']).toContain(
+				fault.to,
+			);
+		}
+		expect(network.some((f) => f.to === 'engine')).toBe(true);
+	});
+
 	it('leaves hook faults out when no hook point is declared', () => {
 		const kinds = generateSchedule(3, { ...menu, hookPoints: [] }, 40, 600_000).map(
 			(s) => s.fault.kind,

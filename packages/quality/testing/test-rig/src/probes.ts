@@ -4,6 +4,7 @@ import { sleep } from '@n8n/utils/sleep';
 type Exec = (command: string[]) => Promise<string>;
 
 export const FINAL_STATUSES: readonly string[] = ['success', 'error', 'crashed', 'canceled'];
+export const ENGINE_FINAL_STATUSES: readonly string[] = ['completed', 'failed', 'cancelled'];
 const PENDING_STATUSES = ['', 'new', 'running', 'waiting'];
 
 export interface ExecutionState {
@@ -85,6 +86,15 @@ export class PostgresProbe {
 			if (done(execution.status) || Date.now() > deadline) return execution;
 			await sleep(250);
 		}
+	}
+}
+
+/** Postgres probe for the engine v2 database, `n8n_engine`. */
+export class EngineProbe {
+	constructor(private readonly query: (sql: string) => Promise<string>) {}
+
+	async sql(query: string): Promise<string> {
+		return await this.query(query);
 	}
 }
 

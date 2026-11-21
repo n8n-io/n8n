@@ -1,4 +1,4 @@
-import { FILES, hookSpecSchema, parseHookSpecs } from './spec';
+import { FILES, hookSpecSchema, parseHookSpecs, setHookSpecSchema } from './spec';
 
 const base = { file: FILES.jobProcessor, target: 'JobProcessor.prototype', method: 'processJob' };
 
@@ -71,5 +71,54 @@ describe('parseHookSpecs', () => {
 				{ ...base, point: 'a' },
 			]),
 		).toThrow('hook a: duplicate point');
+	});
+});
+
+describe('setHookSpecSchema', () => {
+	const set = { point: 'timers', kind: 'set', file: FILES.engineStaleness, target: '' };
+
+	it('accepts a full spec', () => {
+		const spec = {
+			...set,
+			values: { a: 1, b: { c: true } },
+			roles: ['engine'],
+			lazy: false,
+			optional: true,
+		};
+		expect(setHookSpecSchema.parse(spec)).toEqual(spec);
+	});
+
+	it('rejects a spec with no values', () => {
+		expect(setHookSpecSchema.safeParse({ ...set, values: {} }).success).toBe(false);
+		expect(setHookSpecSchema.safeParse(set).success).toBe(false);
+	});
+});
+
+describe('parseHookSpecs with set hooks', () => {
+	const set = {
+		point: 'timers',
+		kind: 'set',
+		file: FILES.engineStaleness,
+		target: '',
+		values: { a: 1 },
+	};
+
+	it('returns set hooks next to method hooks', () => {
+		const specs = [set, { ...base, point: 'b' }];
+		expect(parseHookSpecs(specs)).toEqual(specs);
+	});
+
+	it.each([
+		['method', 'run', /^hook timers: spec: .*method/],
+		['phase', 'after', /^hook timers: spec: .*phase/],
+		['where', [], /^hook timers: spec: .*where/],
+	])('rejects the method hook field %s on a set hook', (field, value, error) => {
+		expect(() => parseHookSpecs([{ ...set, [field]: value }])).toThrow(error);
+	});
+
+	it('names the values field', () => {
+		expect(() => parseHookSpecs([{ ...set, values: {} }])).toThrow(
+			'hook timers: values: set at least one value',
+		);
 	});
 });

@@ -125,26 +125,28 @@ TEST_IMAGE_N8N=n8nio/n8n:2.42.2 pnpm chaos                       # random seed
 TEST_IMAGE_N8N=n8nio/n8n:2.42.2 pnpm chaos --seed 1234 --shrink  # replay a seed and shrink it
 ```
 
+`pnpm chaos --engine in-process` or `--engine remote` runs the same workload on engine v2 instead. The stack has one main and no workers; in remote mode it also has the `n8n engine` container with its own Postgres, and Redis. Hook faults fail an engine store call (the execution load in the start handler, the step claim in the ready handler, or the step load in the settled handler), or kill the process that runs the engine just after a step completes. Kill, stop and freeze faults hit the main and, in remote mode, the engine container. Network faults slow or cut the links between the main, the engine, their Postgres databases and Redis. After the schedule, the run reads the `n8n_engine` database and checks that every accepted request started exactly one execution, every execution reached a final status, no execution is `running` with no queued, running or waiting step, and no run wrote its row twice. The profile divides the engine reconciliation interval, its stale thresholds for queued and running work, and its wait sweep interval by 30, with `set` hooks. The engine then checks for stale work every 2 s, repairs a queued execution or step after 2 s, and fails a step left `running` by a crash after 20 s. So `--settle` defaults to 60 s here. Only an image that has the running-step repair (CAT-2938) repairs a step left `running`. On an older image such a step stays `running`, and a kill that lands while a step runs stays a violation.
+
 The run prints its seed and the schedule first, so you can replay a failing schedule with `--seed`. The command exits with a non-zero code when an invariant fails or a fault could not be applied. The run also lists each hook fault that no call hit while it was armed. Such a fault does not fail the run, but the run did not test it. With `--shrink`, a failing run removes faults one at a time while the schedule still fails. It stops when no single removal keeps the schedule failing, or when the budget runs out. The result is locally minimal, not always the smallest failing schedule, and it can be the empty schedule. A candidate fails only when it breaks an invariant that the first run broke. A seed fixes the schedule but not the outcome, because Docker timing still varies. So the shrinker runs each candidate up to `--repeats` times, stops early when the outcome is certain, and keeps the candidate only when it fails at least `--min-failures` times. The first run writes its logs and a `record.json` to `test-rig-chaos/` under your system temporary directory, or to `--out`. The shrink runs write no logs and no record. Run `pnpm chaos --help` for the other options.
 
 ## How it works
 
 The rig builds on the `n8n-containers` stacks. It loads a preload script into every n8n process through `NODE_OPTIONS`. The preload wraps the methods named in the hook specs as their files load. The test arms and releases hooks by writing files inside the container. It reads hits from `[test-rig]` lines in the container log. Signals, freezes and restarts use `docker kill`, `docker pause` and `docker start`. Network faults run `tc netem` in a short-lived sidecar that shares the network of the sender container. The rig builds the `n8n-test-rig/netem` image on first use.
 
-`RigStack.start` starts a stack with its hooks. The stack has a REST client (`rig.api`), a Postgres probe (`rig.db`) and a Redis probe (`rig.redis`). The `scale` option divides the Bull lock, lock renewal and stall timeouts and the graceful shutdown window. A test that waits for a stalled job then takes seconds, not minutes. `scale` must be 1 or more. `env` can override any single value. `chain(name, nodes)` builds a workflow that runs the nodes in order, from `nodes.webhook` and `nodes.code`.
+`RigStack.start` starts a stack with its hooks. The stack has a REST client (`rig.api`), a Postgres probe (`rig.db`) and a Redis probe (`rig.redis`). The `engine` option runs engine v2 in the main (`in-process`) or in its own container (`container`, reached with `rig.engine()`), and `rig.engineDb` reads the engine database. `chain(name, nodes, ENGINE_V2_SETTINGS)` builds a workflow that runs on engine v2. The `scale` option divides the Bull lock, lock renewal and stall timeouts and the graceful shutdown window. A test that waits for a stalled job then takes seconds, not minutes. `scale` must be 1 or more. `env` can override any single value. `chain(name, nodes)` builds a workflow that runs the nodes in order, from `nodes.webhook` and `nodes.code`.
 
 Single-main stacks start with an empty licence, so a licence in your shell cannot change their results. A licence that the test sets in `env` still applies.
 
 ### Hook specs
 
-A hook wraps one method in a compiled n8n file. By default it pauses the call until the test releases it. It can also only log the call, make it fail, or skip it. The test arms a hook with `hook(containers, point).arm()`, waits for it with `waitHit`, and lets the call continue with `release`. `RigStack.start` fails at once if a hook did not install, so a wrong file or method name fails before the test starts.
+A hook wraps one method in a compiled n8n file. By default it pauses the call until the test releases it. It can also only log the call, make it fail, or skip it. A `set` hook wraps no method: it writes fixed values into the module when the file loads, before n8n reads them. The test arms a hook with `hook(containers, point).arm()`, waits for it with `waitHit`, and lets the call continue with `release`. `RigStack.start` fails at once if a hook did not install, so a wrong file or method name fails before the test starts.
 
 | Field | Meaning |
 |---|---|
 | `point` | Name of the hook, used to arm it and to match its hits |
 | `file` | Path suffix of the compiled file; `FILES` lists the known ones |
-| `target`, `method` | Where the method lives inside the module exports, such as `JobProcessor.prototype`, `prototype` for a class export, or `''` for the exports object, and the method name |
-| `kind` | `pause` (default: wait for release, then call through), `observe` (log a hit only), `fault` (fail the call), or `drop` (return `returns` without calling) |
+| `target`, `method` | Where the method lives inside the module exports, such as `JobProcessor.prototype`, `prototype` for a class export, or `''` for the exports object, and the method name. A `set` hook has a `target` and no `method` |
+| `kind` | `pause` (default: wait for release, then call through), `observe` (log a hit only), `fault` (fail the call), `drop` (return `returns` without calling), or `set` (write `values`) |
 | `arm` | `file` (default: the test arms it) or `always` (default for `observe`) |
 | `once` | Fire once each time the hook is armed; default for every kind except `drop`. An `observe` hook ignores it and logs every matching call |
 | `scope` | Another method (`file`, `target`, `method`); fire only inside a call of it, at most once per call. An `observe` hook logs every matching call inside it |
@@ -153,7 +155,9 @@ A hook wraps one method in a compiled n8n file. By default it pauses the call un
 | `phase` | `before` the call or `after` it resolves, when `where` and `detail` can also read `result`; default `before`, except `fault`, which calls through and then rejects |
 | `returns` | Value that a `drop` resolves with |
 | `preserve` | For a `fault` after the call: methods to copy from the original return value onto the rejected promise |
-| `roles`, `lazy` | Containers that must show the hook installed before the test starts (default `worker`); `lazy` skips that check for a file that loads only on first use |
+| `values` | For a `set` hook: JSON values to write onto the `target` object, such as `{ runningStepMs: 20000 }`. Each key must already be a writable data property of the target, so write a constant on the module that defines it, not on an `index.js` that re-exports it through a getter. Otherwise the hook logs `missing` and writes nothing. The only other fields a `set` hook takes are `point`, `file`, `roles`, `lazy` and `optional` |
+| `roles`, `lazy` | Containers that must show the hook installed before the test starts (`main`, `worker` or `engine`; default `worker`); `lazy` skips that check for a file that loads only on first use |
+| `optional` | For a file that older images do not have: the install check passes when the file never loads, and still fails when it loads without the method or keys |
 
 Paths in `where` and `detail` start at `args`, `this`, `scope.args` or `result`. A paused call continues by itself after two minutes if the test never releases it.
 

@@ -15,8 +15,11 @@ class Service {
 	async failing() { calls += 1; return calls; }
 	cancellable() { calls += 1; const p = Promise.resolve('done'); p.cancel = () => 'cancelled'; return p; }
 	calls() { return calls; }
+	settings() { return { high: LIMITS.high, low: LIMITS.low, interval: module.exports.INTERVAL }; }
 }
-module.exports = { Service };
+const LIMITS = { low: 1, high: 2 };
+module.exports = { Service, LIMITS, INTERVAL: 10 };
+Object.defineProperty(module.exports, 'ALIAS', { enumerable: true, get: () => module.exports.INTERVAL });
 `;
 
 const FILE = 'fake-pkg/dist/service.js';
@@ -326,5 +329,44 @@ describe('preload', () => {
 			twoCalls,
 		);
 		expect(events(r.lines, 'hit').map((e) => e?.detail)).toEqual([{ out: 2 }]);
+	});
+
+	it('writes set values onto an exported object and onto the exports before the module is used', async () => {
+		const r = await run(
+			[
+				{ point: 'limits', kind: 'set', file: FILE, target: 'LIMITS', values: { high: 20 } },
+				{ point: 'interval', kind: 'set', file: FILE, target: '', values: { INTERVAL: 5 } },
+			],
+			"report('settings', s.settings());",
+		);
+		expect(result(r, 'settings')).toEqual({ high: 20, low: 1, interval: 5 });
+		expect(events(r.lines, 'installed').map((e) => [e?.point, e?.detail])).toEqual([
+			['limits', { file: FILE, target: 'LIMITS', values: { high: 20 } }],
+			['interval', { file: FILE, target: '', values: { INTERVAL: 5 } }],
+		]);
+	});
+
+	it('logs a set hook as missing and writes nothing when a key is absent or not writable', async () => {
+		const r = await run(
+			[
+				{
+					point: 'absent',
+					kind: 'set',
+					file: FILE,
+					target: 'LIMITS',
+					values: { high: 20, mid: 3 },
+				},
+				{ point: 'getter', kind: 'set', file: FILE, target: '', values: { ALIAS: 5 } },
+				{ point: 'nowhere', kind: 'set', file: FILE, target: 'NONE', values: { a: 1 } },
+			],
+			"report('settings', s.settings());",
+		);
+		expect(result(r, 'settings')).toEqual({ high: 2, low: 1, interval: 10 });
+		expect(events(r.lines, 'installed')).toEqual([]);
+		expect(events(r.lines, 'missing').map((e) => [e?.point, e?.detail.keys])).toEqual([
+			['absent', ['mid']],
+			['getter', ['ALIAS']],
+			['nowhere', ['a']],
+		]);
 	});
 });
