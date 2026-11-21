@@ -1033,7 +1033,8 @@ describe('WaitTracker', () => {
 				await sweep;
 				await vi.advanceTimersByTimeAsync(1000);
 
-				expect(workflowRunner.run).toHaveBeenCalledWith(expect.any(Object), false, false, {
+				expect(workflowRunner.run).toHaveBeenCalledTimes(2);
+				expect(workflowRunner.run).toHaveBeenNthCalledWith(2, expect.any(Object), false, false, {
 					executionId: parentExecution.id,
 					expectedStatus: 'waiting',
 					storedAt: 'fs',
