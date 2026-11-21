@@ -17,7 +17,7 @@ const prefix = '.agents/review-rules/teams/ai-agents/';
 const policy = {
 	OWNERS: '* @n8n-io/fallback\npackages/@n8n/agents/ @n8n-io/ai-agents required(2)',
 	'cubic.yaml':
-		'reviews:\n  custom_rules:\n    - name: Backend\n      include: ["packages/**"]\n      exclude: ["**/*.test.ts"]\n      file_paths: ["shared.md"]\n',
+		'version: 1\nreviews:\n  custom_rules:\n    - name: Backend\n      include: ["packages/**"]\n      exclude: ["**/*.test.ts"]\n      file_paths: ["shared.md"]\n',
 	[`${prefix}provider.md`]: 'Applies to: model requests.\nCheck provider boundaries.',
 	[`${prefix}profile.json`]: JSON.stringify({
 		lanes: [{ preset: 'unit-tests', paths: ['packages/@n8n/agents/'] }],
@@ -98,14 +98,14 @@ test('rejects arbitrary commands, unknown presets, keys and invalid patterns', (
 	);
 });
 
-test('validates all team rules and profiles, including nested rules', () => {
+test('validates all team rules and profiles and rejects nested rules', () => {
 	const entries = [{ team: '@n8n-io/ai-agents' }];
 	assert.deepEqual(
 		validateTeams(Object.keys(policy), (path) => policy[path], entries),
 		[],
 	);
 	for (const [path, content, expected] of [
-		[`${prefix}nested/bad.md`, '# Missing scope', /Applies to/],
+		[`${prefix}nested/bad.md`, '# Missing scope', /nested directories/],
 		['.agents/review-rules/teams/unknown/rule.md', 'Applies to: x', /unknown OWNERS/],
 		[`${prefix}profile.json`, '{', /JSON/],
 	]) {

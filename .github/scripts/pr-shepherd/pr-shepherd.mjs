@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { readFileSync, readdirSync } from 'node:fs';
+import { lstatSync, readFileSync, readdirSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { minimatch } from 'minimatch';
@@ -12,6 +12,7 @@ import {
 	resolveRequiredTeams,
 	teamHandleToSlug,
 } from '../owners/owners.mjs';
+import { schemaErrors } from '../quality/check-cubic-config.mjs';
 
 const ROOT = resolve(import.meta.dirname, '../../..');
 const TEAMS = '.agents/review-rules/teams/';
@@ -61,12 +62,30 @@ export function validateProfile(profile) {
 	return profile;
 }
 
-export function validateTeams(files, read, entries) {
+export function validateTeams(files, read, entries, modeFor = () => '100644') {
 	const slugs = new Set(entries.map((entry) => teamHandleToSlug(entry.team)));
 	const errors = [];
-	for (const path of files.filter((path) => path.startsWith(TEAMS))) {
+	for (const path of files.filter(
+		(path) => path.startsWith(TEAMS) || path === TEAMS.slice(0, -1),
+	)) {
+		const mode = modeFor(path);
+		if (!['100644', '100755', '040000'].includes(mode)) {
+			errors.push(
+				`${path}: team policy must use regular files and directories; symlinks are not allowed`,
+			);
+			continue;
+		}
+		if (path === TEAMS.slice(0, -1) || path === TEAMS) continue;
 		const slug = path.slice(TEAMS.length).split('/')[0];
 		if (!slugs.has(slug)) errors.push(`${path}: unknown OWNERS team ${slug}`);
+		const parts = path.slice(TEAMS.length).split('/');
+		if (path.endsWith('/') && parts.length === 2) continue;
+		if (parts.length !== 2 || (!path.endsWith('.md') && parts[1] !== 'profile.json')) {
+			errors.push(
+				`${path}: use only <team-slug>/*.md or <team-slug>/profile.json; nested directories are not allowed`,
+			);
+			continue;
+		}
 		try {
 			if (path.endsWith('.md') && !/^Applies to:\s*\S/.test(read(path)))
 				throw new Error('rule must open with Applies to:');
@@ -76,6 +95,30 @@ export function validateTeams(files, read, entries) {
 		}
 	}
 	return [...new Set(errors)];
+}
+
+export function checkLocalTeams(root = ROOT) {
+	const modes = new Map();
+	const walk = (dir) => {
+		const stat = lstatSync(join(root, dir), { throwIfNoEntry: false });
+		if (!stat) return [];
+		const path = stat.isDirectory() ? `${dir}/` : dir;
+		modes.set(path, stat.isDirectory() ? '040000' : stat.isFile() ? '100644' : '120000');
+		return [
+			path,
+			...(stat.isDirectory() &&
+			(dir === TEAMS.slice(0, -1) || dir.slice(TEAMS.length).split('/').length === 1)
+				? readdirSync(join(root, dir)).flatMap((name) => walk(`${dir}/${name}`))
+				: []),
+		];
+	};
+	for (const path of ['.agents', '.agents/review-rules']) {
+		if (lstatSync(join(root, path), { throwIfNoEntry: false })?.isSymbolicLink())
+			return [`${path}: symlinks are not allowed`];
+	}
+	const files = walk(TEAMS.slice(0, -1));
+	const read = (path) => readFileSync(join(root, path), 'utf8');
+	return validateTeams(files, read, parseOwnersContent(read('OWNERS')), (path) => modes.get(path));
 }
 
 export function changedPaths(output) {
@@ -92,9 +135,9 @@ export function changedPaths(output) {
 	return files;
 }
 
-export function buildPlan({ files, policyFiles, read, base, head, policy }) {
+export function buildPlan({ files, policyFiles, read, base, head, policy, modeFor }) {
 	const entries = parseOwnersContent(read('OWNERS'));
-	const errors = validateTeams(policyFiles, read, entries);
+	const errors = validateTeams(policyFiles, read, entries, modeFor);
 	if (errors.length) throw new Error(errors.join('\n'));
 	const required = resolveRequiredTeams(files, entries);
 	const teams = [...assignOwnership(files, entries)].map(([team, owned]) => {
@@ -111,7 +154,22 @@ export function buildPlan({ files, policyFiles, read, base, head, policy }) {
 			gap: !policyFiles.some((path) => path.startsWith(prefix)),
 		};
 	});
-	const agents = (parse(read('cubic.yaml')).reviews?.custom_rules ?? [])
+	let cubic;
+	try {
+		cubic = parse(read('cubic.yaml'));
+		const errors = schemaErrors(
+			cubic,
+			JSON.parse(
+				readFileSync(new URL('../quality/cubic-config.schema.json', import.meta.url), 'utf8'),
+			),
+		);
+		if (errors.length) throw new Error(errors.join('; '));
+		if (!Array.isArray(cubic.reviews?.custom_rules))
+			throw new Error('reviews.custom_rules must be an array');
+	} catch (error) {
+		throw new Error(`cubic.yaml: ${error.message}`);
+	}
+	const agents = cubic.reviews.custom_rules
 		.filter((agent) => agent.enabled !== false)
 		.map((agent) => ({
 			name: agent.name,
@@ -218,29 +276,57 @@ export function markdown(plan) {
 
 export function planRefs({ base, head, policyRef, cwd = ROOT }) {
 	const git = (...args) =>
-		execFileSync('git', args, { cwd, encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 });
-	const sha = (ref) => git('rev-parse', '--verify', `${ref}^{commit}`).trim();
+		execFileSync('git', args, {
+			cwd,
+			encoding: 'utf8',
+			maxBuffer: 32 * 1024 * 1024,
+			stdio: ['ignore', 'pipe', 'pipe'],
+		});
+	const sha = (ref) => {
+		if (typeof ref !== 'string' || !ref || ref.startsWith('-'))
+			throw new Error(`Invalid Git ref: ${ref}`);
+		try {
+			return git('rev-parse', '--verify', '--end-of-options', `${ref}^{commit}`).trim();
+		} catch {
+			throw new Error(`Cannot resolve Git ref: ${ref}`);
+		}
+	};
 	base = sha(base);
 	head = sha(head);
-	const mergeBase = git('merge-base', base, head).trim();
+	let mergeBase;
+	try {
+		mergeBase = git('merge-base', base, head).trim();
+	} catch {
+		throw new Error('Base and head have no merge base (unrelated histories).');
+	}
 	const policy = sha(policyRef ?? mergeBase);
-	const policyFiles = git('ls-tree', '-r', '--name-only', '-z', policy).split('\0').filter(Boolean);
+	const modes = new Map(
+		git('ls-tree', '-r', '-t', '-z', policy)
+			.split('\0')
+			.filter(Boolean)
+			.map((entry) => {
+				const tab = entry.indexOf('\t');
+				const [mode, type] = entry.slice(0, tab).split(' ');
+				return [entry.slice(tab + 1) + (type === 'tree' ? '/' : ''), mode];
+			}),
+	);
+	const policyFiles = [...modes.keys()];
 	const read = (path) => git('show', `${policy}:${path}`);
 	const files = changedPaths(git('diff', '--name-status', '-z', '-M', `${base}...${head}`, '--'));
-	return buildPlan({ files, policyFiles, read, base, head, policy });
+	return buildPlan({
+		files,
+		policyFiles,
+		read,
+		base,
+		head,
+		policy,
+		modeFor: (path) => modes.get(path),
+	});
 }
 
 function main(args) {
 	if (args.length === 1 && args[0] === '--check') {
-		const walk = (dir) =>
-			readdirSync(join(ROOT, dir), { withFileTypes: true }).flatMap((entry) =>
-				entry.isDirectory()
-					? [`${dir}/${entry.name}/`, ...walk(`${dir}/${entry.name}`)]
-					: [`${dir}/${entry.name}`],
-			);
-		const files = walk(TEAMS.slice(0, -1));
-		const read = (path) => readFileSync(join(ROOT, path), 'utf8');
-		const errors = validateTeams(files, read, parseOwnersContent(read('OWNERS')));
+		const errors = checkLocalTeams();
 		if (errors.length) throw new Error(errors.join('\n'));
 		console.log('PR shepherd team policy is valid.');
 		return;

@@ -18,6 +18,12 @@ DevHub and GitHub remain the approval authorities. An empty diff has no lanes.
 
 `--check` validates local team files so a team can check policy before merge.
 It does not change the trusted policy used by `plan`.
+Team folders can contain only rule Markdown files and `profile.json`.
+Nested directories, other files, and symlinks fail validation. The planner
+checks Git tree modes before it reads team policy. The local check does not
+follow symlinks. Invalid Cubic policy fails with a `cubic.yaml` error.
+Refs that start with `-` are not allowed. Diverged branches use the merge base;
+unrelated histories fail with an explicit error.
 
 ## Fixed verification presets
 
