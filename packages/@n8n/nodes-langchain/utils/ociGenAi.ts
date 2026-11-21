@@ -559,6 +559,9 @@ function normalizeOciSdkError(error: unknown): Error {
 			'requestEndpoint',
 			'apiReferenceLink',
 			'troubleshootingPage',
+			'troubleshootingTips',
+			'clientVersion',
+			'loggingTips',
 		] as const) {
 			if (details[key] !== undefined) {
 				Object.defineProperty(normalizedError, key, {
