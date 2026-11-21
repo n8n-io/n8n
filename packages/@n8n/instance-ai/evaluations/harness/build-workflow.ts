@@ -1086,11 +1086,6 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 						seedWorkflows: seedWorkflowsBySeedId,
 						logger,
 						laneTag: config.laneTag,
-						// PROTOTYPE (Code Mode study): the study cases fill their tables with a
-						// seeded loader workflow, so the staged runs must not reset them.
-						keepDataTableIds: config.seed.priorRuns.every((run) => run.workflow.startsWith('cm'))
-							? restoredDataTableIds
-							: undefined,
 					});
 					// A staged run that never produced an execution record leaves the case's
 					// premise missing, so the graded turn answers a question the instance cannot

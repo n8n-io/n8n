@@ -442,8 +442,13 @@ export class EvalExecutionService {
 		scenarioHints?: string,
 		seededDataTableIds?: string[],
 	): Promise<void> {
+		// PROTOTYPE (Code Mode study): a study case fills its tables with a seeded
+		// loader workflow, and marks the nodes whose tables must keep those rows.
 		const nodes = workflowEntity.nodes.filter(
-			(node) => !node.disabled && DATA_TABLE_NODE_TYPES.has(node.type),
+			(node) =>
+				!node.disabled &&
+				DATA_TABLE_NODE_TYPES.has(node.type) &&
+				!node.notes?.includes('eval:keep-rows'),
 		);
 		if (nodes.length === 0) return;
 

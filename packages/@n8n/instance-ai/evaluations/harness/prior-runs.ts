@@ -45,8 +45,6 @@ export interface PriorRunsOptions {
 	seedWorkflows: Map<string, { id: string; name: string }>;
 	logger: EvalLogger;
 	laneTag?: string;
-	/** PROTOTYPE (Code Mode study): tables that keep their rows across the staged runs. */
-	keepDataTableIds?: string[];
 	/** Injectable for tests. */
 	sleep?: (ms: number) => Promise<void>;
 }
@@ -84,15 +82,7 @@ export async function executePriorRuns(options: PriorRunsOptions): Promise<Prior
 		}
 
 		const label = `${restored.name} (${priorRun.workflow})`;
-		const outcome = await runOnce(
-			client,
-			priorRun,
-			restored.id,
-			label,
-			logger,
-			delay,
-			options.keepDataTableIds,
-		);
+		const outcome = await runOnce(client, priorRun, restored.id, label, logger, delay);
 		outcomes.push(outcome);
 		logger.info(
 			`  Prior run "${label}": ${
@@ -141,7 +131,6 @@ async function runOnce(
 	label: string,
 	logger: EvalLogger,
 	delay: (ms: number) => Promise<void>,
-	keepDataTableIds?: string[],
 ): Promise<PriorRunOutcome> {
 	const base = { workflow: priorRun.workflow, workflowId };
 	let lastErrors: string[] = [];
@@ -153,8 +142,6 @@ async function runOnce(
 				workflowId,
 				priorRun.hints,
 				STAGING_TIMEOUT_MS,
-				undefined,
-				keepDataTableIds,
 			);
 			// A run the server stopped for exceeding its budget comes back in-band. Recording
 			// it as a staged failure would put HARNESS text in the execution record the graded
