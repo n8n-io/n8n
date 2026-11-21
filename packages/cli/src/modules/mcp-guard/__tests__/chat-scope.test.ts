@@ -1,6 +1,6 @@
 import { Container } from '@n8n/di';
 
-import { withChatScope } from '../chat-scope';
+import { currentAgentId, currentChatId, withChatScope } from '../chat-scope';
 import { McpGuardService } from '../mcp-guard.service';
 import { GUARDED_CALL_TIMEOUT_MS, isGuardedUrl, withMcpGuard } from '../mcp-guard-fetch';
 
@@ -44,5 +44,31 @@ describe('guarded call timeout', () => {
 		expect(isGuardedUrl('https://mcp.example.com/mcp')).toBe(false);
 		expect(isGuardedUrl('not a url')).toBe(false);
 		expect(GUARDED_CALL_TIMEOUT_MS).toBeGreaterThan(60_000);
+	});
+});
+
+describe('chat scope agent id', () => {
+	it('holds the agent id of the turn for the work that the turn starts', async () => {
+		const seen = await withChatScope(
+			'chatA',
+			async () => {
+				await new Promise((r) => setTimeout(r, 1));
+				return { chat: currentChatId(), agent: currentAgentId() };
+			},
+			'agent1',
+		);
+
+		expect(seen).toEqual({ chat: 'chatA', agent: 'agent1' });
+	});
+
+	it('has no agent id when the turn gave none, or outside a scope', async () => {
+		expect(await withChatScope('chatA', async () => currentAgentId())).toBeUndefined();
+		expect(currentAgentId()).toBeUndefined();
+	});
+});
+
+describe('chat scope without a chat', () => {
+	it('runs the function without a scope when there is no chat id', () => {
+		expect(withChatScope(undefined, () => currentChatId())).toBeUndefined();
 	});
 });

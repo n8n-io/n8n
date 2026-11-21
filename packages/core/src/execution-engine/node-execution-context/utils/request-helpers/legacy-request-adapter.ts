@@ -11,6 +11,8 @@ import type {
 } from 'n8n-workflow';
 
 import { getEvalEgressProxy } from '@/execution-engine/eval-mock-helpers';
+
+import { answerWithRequestGuard } from './request-guard';
 import { addTraceHeaders } from './trace-headers';
 
 /**
@@ -30,6 +32,13 @@ export async function proxyRequestToAxios(
 	if (evalEgressProxy) configObject.proxy = evalEgressProxy;
 
 	if (additionalData && node) addTraceHeaders(configObject, additionalData, node);
+
+	// The guard of an agent test chat answers the request, or leaves it to the network.
+	const guarded = await answerWithRequestGuard(additionalData, node, {
+		library: 'legacy',
+		options: configObject,
+	});
+	if (guarded !== undefined) return guarded;
 
 	const client = Container.get(OutboundHttp).requests();
 

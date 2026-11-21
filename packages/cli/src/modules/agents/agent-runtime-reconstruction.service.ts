@@ -20,6 +20,7 @@ import {
 	isMcpGuardActive,
 	withMcpGuard,
 } from '../mcp-guard/mcp-guard-fetch';
+import type { HydrationModel } from '../mcp-guard/hydration-llm';
 import { getProviderPrefix } from '@n8n/ai-utilities/agent-config';
 import type { LanguageModel } from 'ai';
 import {
@@ -270,6 +271,8 @@ interface ToolRunIdentity {
 	delegatingAgentId?: string;
 	supportsHitl: boolean;
 	backgroundTasksEnabled: boolean;
+	/** The model of the agent, for the guard of its node tools. Set for a guarded test chat only. */
+	guardModel?: HydrationModel;
 }
 
 /**
@@ -297,7 +300,7 @@ async function getChatIntegrationToolServices() {
 	const { IntegrationMessageContextService } = await import(
 		'./integrations/integration-message-context.service.js'
 	);
-	// eslint-disable-next-line import-x/no-cycle
+
 	const { ChatIntegrationActionExecutor } = await import(
 		'./integrations/integration-action-executor.js'
 	);
@@ -945,7 +948,10 @@ export class AgentRuntimeReconstructionService {
 			supportsHitl,
 			runtimeProfile,
 			instrumentation,
+			credentialProvider,
 		} = options;
+		// Test chat only, when enabled: the network calls of node tools go through the guard.
+		const guardActive = isMcpGuardActive(runType, instrumentation?.mcpFetch !== undefined);
 		const canResume = supportsHitl ?? runtimeProfile === 'top-level';
 		return this.makeToolResolver(
 			{
@@ -972,6 +978,13 @@ export class AgentRuntimeReconstructionService {
 				// interactive turn to hand a receipt to. Everyone else handles waits
 				// the legacy way.
 				backgroundTasksEnabled: backgroundTasksEnabled && canResume,
+				guardModel: guardActive
+					? {
+							// The hydration uses the model of the agent under test.
+							resolve: async () => await resolveModelConfig(options.config, credentialProvider),
+							fetch: createAiProxyFetch(this.outboundHttp),
+						}
+					: undefined,
 			},
 			instrumentation,
 			unavailable,
@@ -1125,6 +1138,7 @@ export class AgentRuntimeReconstructionService {
 					projectId: runIdentity.projectId,
 					agentId: runIdentity.agentId,
 					instrumentToolAdditionalData,
+					guardModel: runIdentity.guardModel,
 				});
 			}
 			return null;
