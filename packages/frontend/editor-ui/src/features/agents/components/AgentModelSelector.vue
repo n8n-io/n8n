@@ -232,16 +232,15 @@ function getCredentialTypeDisplayName(credentialType: string): string {
 }
 
 function getCredentialsForProvider(provider: AgentModelProvider) {
-	const credentialsById = new Map<
-		string,
-		ReturnType<typeof credentialsStore.getUsableCredentialByType>[number]
-	>();
+	// Read the agent scope by key, so a fetch for another scope does not empty the list.
+	const credentials =
+		credentialsStore.getUsableCredentialsForScope({ projectId, forAgent: true }) ?? [];
+	const credentialTypes = new Set(getProviderCredentialTypes(provider));
+	const credentialsById = new Map<string, (typeof credentials)[number]>();
 
-	for (const credentialType of getProviderCredentialTypes(provider)) {
-		for (const credential of credentialsStore.getUsableCredentialByType(credentialType)) {
-			if (!credentialsById.has(credential.id)) {
-				credentialsById.set(credential.id, credential);
-			}
+	for (const credential of credentials) {
+		if (credentialTypes.has(credential.type) && !credentialsById.has(credential.id)) {
+			credentialsById.set(credential.id, credential);
 		}
 	}
 

@@ -73,6 +73,26 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 	const usableCredentialsScope = ref<CredentialFetchScope | null>(null);
 	/** Bumped per scoped fetch, so only the most recent one publishes its response. */
 	let usableCredentialsRequestId = 0;
+	/**
+	 * The last response for each scope, newest scope last. The slice above holds one
+	 * scope at a time, so a surface that stays mounted while another surface fetches a
+	 * different scope (the agent model picker under the tools modal) reads its own
+	 * scope from here instead of losing it.
+	 */
+	const usableCredentialsByScope = ref<Record<string, ICredentialsResponse[]>>({});
+	/** Newest request per scope, so an older response cannot overwrite a newer one. */
+	const usableCredentialsRequestIdByScope = new Map<string, number>();
+	const MAX_CACHED_USABLE_CREDENTIAL_SCOPES = 10;
+
+	const cacheUsableCredentials = (key: string, credentials: ICredentialsResponse[]) => {
+		const entries = Object.entries(usableCredentialsByScope.value).filter(
+			([cachedKey]) => cachedKey !== key,
+		);
+		const kept = entries.slice(
+			Math.max(0, entries.length - (MAX_CACHED_USABLE_CREDENTIAL_SCOPES - 1)),
+		);
+		usableCredentialsByScope.value = { ...Object.fromEntries(kept), [key]: credentials };
+	};
 
 	const clearUsableCredentials = () => {
 		usableCredentials.value = {};
@@ -383,11 +403,15 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 			clearUsableCredentials();
 		}
 		const requestId = ++usableCredentialsRequestId;
+		usableCredentialsRequestIdByScope.set(requestedScope, requestId);
 
 		const credentials = await credentialsApi.getUsableCredentials(
 			rootStore.restApiContext,
 			options,
 		);
+		if (usableCredentialsRequestIdByScope.get(requestedScope) === requestId) {
+			cacheUsableCredentials(requestedScope, credentials);
+		}
 		// Only the newest request publishes. Several scoped fetches can be in flight at
 		// once — a mount racing the refresh a quick connect triggers, say — and an older
 		// response landing last would reinstate a list we already know is out of date,
@@ -431,6 +455,16 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 			hasFetchedUsableCredentials.value &&
 			usableCredentialsScope.value !== null &&
 			scopeKey(usableCredentialsScope.value) === scopeKey(scope);
+	});
+
+	/**
+	 * The usable credentials last fetched for the given scope, or `undefined` when that
+	 * scope was not fetched yet. Unlike the slice, a fetch for another scope does not
+	 * replace them.
+	 */
+	const getUsableCredentialsForScope = computed(() => {
+		return (scope: CredentialFetchScope): ICredentialsResponse[] | undefined =>
+			usableCredentialsByScope.value[scopeKey(scope)];
 	});
 
 	const getCredentialData = async ({
@@ -546,6 +580,14 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		const usable = usableCredentials.value[id];
 		if (usable)
 			usableCredentials.value[id] = { ...usable, connectedByMe, connectedAccountIdentifier };
+		for (const [key, credentials] of Object.entries(usableCredentialsByScope.value)) {
+			if (!credentials.some((credential) => credential.id === id)) continue;
+			usableCredentialsByScope.value[key] = credentials.map((credential) =>
+				credential.id === id
+					? { ...credential, connectedByMe, connectedAccountIdentifier }
+					: credential,
+			);
+		}
 		const existing = state.value.credentials[id];
 		if (existing) {
 			state.value.credentials = {
@@ -660,6 +702,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		usableCredentials,
 		hasFetchedUsableCredentials,
 		hasUsableCredentialsForScope,
+		getUsableCredentialsForScope,
 		refreshUsableCredentials,
 		credentialTestResults,
 		isCredentialTestedOk,
