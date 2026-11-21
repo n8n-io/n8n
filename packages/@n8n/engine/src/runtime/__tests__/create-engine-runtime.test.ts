@@ -282,6 +282,10 @@ describe('createEngineRuntime', () => {
 			.spyOn(TypeOrmExecutionStore.prototype, 'findPrunableExecutions')
 			.mockResolvedValueOnce([{ id: 'exec-1', workflowId: 'wf-1', finishedAt: new Date(0) }])
 			.mockResolvedValue([]);
+		const countCutoff = { id: 'exec-0', finishedAt: new Date(0) };
+		const findCutoff = vi
+			.spyOn(TypeOrmExecutionStore.prototype, 'findRetentionCountCutoff')
+			.mockResolvedValue(countCutoff);
 		vi.spyOn(TypeOrmExecutionStore.prototype, 'deleteEndedExecutions').mockResolvedValue(1);
 		const deleteExecutionFiles = vi.fn(async () => {});
 		const engine = createEngineRuntime({
@@ -291,7 +295,7 @@ describe('createEngineRuntime', () => {
 			responseSender,
 			externalDependencies: () => ({ deleteExecutionFiles }),
 			queues: createInMemoryWorkQueues(),
-			retention: { maxAgeMs: 1_000, intervalMs: 1 },
+			retention: { maxAgeMs: 1_000, intervalMs: 1, maxCount: 5 },
 		});
 		engine.start();
 
@@ -301,7 +305,8 @@ describe('createEngineRuntime', () => {
 				executionId: 'exec-1',
 			}),
 		);
-		expect(findPrunable).toHaveBeenCalledWith({ maxAgeMs: 1_000, limit: 100 });
+		expect(findCutoff).toHaveBeenCalledWith(5);
+		expect(findPrunable).toHaveBeenCalledWith({ maxAgeMs: 1_000, limit: 100, countCutoff });
 		await engine.stop();
 	});
 
@@ -313,6 +318,8 @@ describe('createEngineRuntime', () => {
 		{ maxAgeMs: 0, intervalMs: 2 ** 31 },
 		{ maxAgeMs: 0, batchSize: 0 },
 		{ maxAgeMs: 0, batchSize: 1.5 },
+		{ maxAgeMs: 0, maxCount: -1 },
+		{ maxAgeMs: 0, maxCount: 1.5 },
 	])('refuses the retention policy %o', (retention) => {
 		expect(() =>
 			createEngineRuntime({
