@@ -167,24 +167,6 @@ describe('AgentMessageQueueConsumer', () => {
 			expect(chatExecutions.register).not.toHaveBeenCalled();
 		});
 
-		it('tells placement when an admitted claim settled, and not for a held message', async () => {
-			const item = claim('session');
-			repository.findThreadIds.mockResolvedValue(['session']);
-			placement.mayClaim.mockResolvedValueOnce(false).mockResolvedValue(true);
-			let attempts = 0;
-			queue.claimNext.mockImplementation(async (_threadId, canConsume) => {
-				await canConsume(item.item, item.thread, {});
-				attempts++;
-				return null;
-			});
-			consumer.start();
-			await vi.waitFor(() => expect(attempts).toBe(1));
-			expect(gate.claimSettled).not.toHaveBeenCalled();
-
-			consumer.handleQueueAvailable({ threadId: 'session' });
-			await vi.waitFor(() => expect(gate.claimSettled).toHaveBeenCalledOnce());
-		});
-
 		it('scans the queue when a turn ends on a main that holds turns', async () => {
 			Object.assign(gate, { hasHeldTurns: true });
 			const item = claim('session');

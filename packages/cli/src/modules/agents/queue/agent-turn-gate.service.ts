@@ -109,9 +109,11 @@ function once(fn: () => void): () => void {
 @Service()
 export class AgentTurnGate {
 	/**
-	 * A turn that this process took counts toward its limits for this long, even
-	 * before it shows as a running turn. Many checks run at once after a scan,
-	 * so without this they would all see the same free room.
+	 * A turn that this process took counts toward its limits until it shows as
+	 * a running turn, for at most this long. Many checks run at once after a
+	 * scan, so without this they would all see the same free room. A taken
+	 * turn that never starts, for example because its claim failed, stops
+	 * counting after this time.
 	 */
 	static readonly CLAIM_START_MS = 5_000;
 
@@ -154,7 +156,13 @@ export class AgentTurnGate {
 		private readonly agentsConfig: AgentsConfig,
 		private readonly metrics: AgentQueueMetrics,
 		private readonly memory: AgentMainMemory,
-	) {}
+	) {
+		// A started turn counts as a running turn from now on, so stop counting its claim.
+		// Without this, each turn counted twice for `CLAIM_START_MS`.
+		this.metrics.onEvent((event) => {
+			if (event.type === 'turn-started') this.recentClaims.shift();
+		});
+	}
 
 	/**
 	 * Wait for room for a turn that runs in this process, such as an app chat,
@@ -208,7 +216,7 @@ export class AgentTurnGate {
 
 	/**
 	 * Whether this process may start a queued message now. A true result counts
-	 * as a taken turn, so call it only right before a claim. See `claimSettled`.
+	 * as a taken turn, so call it only right before a claim.
 	 *
 	 * Queued messages wait in the durable message queue, not here. A held
 	 * message keeps its place: a message queued at `queuedAt` also waits while
@@ -227,14 +235,6 @@ export class AgentTurnGate {
 	 */
 	tryTake(): boolean {
 		return this.waiters.length === 0 && this.admit(Date.now());
-	}
-
-	/**
-	 * Tell that the claim after a true `mayStartQueued` ended. A claimed turn
-	 * now shows as a running turn, so it must not count twice.
-	 */
-	claimSettled(): void {
-		this.recentClaims.shift();
 	}
 
 	/** True while a queued message waits for room. The caller then checks the queue when a turn ends. */

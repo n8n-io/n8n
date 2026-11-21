@@ -46,7 +46,7 @@ Alongside the main, processes that run the CLI command `n8n worker` are called *
 
 Processes that run the CLI command `n8n webhook` are called **webhook processes**. A webhook process only receives production webhook calls and adds their jobs to the queue. Busy instances run several of them behind a load balancer. This setup takes in more webhook calls and keeps that load off the main that serves the editor.
 
-In queue mode, workers run only workflow executions, and agent turns still run on the main.
+In queue mode, workers run workflow executions. By default, agent turns run on the main. When you set `N8N_AGENTS_QUEUE_MODE_ENABLED` on the mains and `N8N_AGENTS_WORKER_ENABLED` on the workers, workers also run agent turns, and the main sends them to the `agent-turns` queue. In every mode, a main limits the agent turns that it accepts and rejects the others as busy. See [Agents in queue mode](../../packages/cli/src/modules/agents/QUEUE_MODE.md).
 
 | Work | Regular mode:<br>main | Queue mode:<br>main | Queue mode:<br>worker | Queue mode:<br>webhook process |
 |---|---|---|---|---|
@@ -54,7 +54,7 @@ In queue mode, workers run only workflow executions, and agent turns still run o
 | Receive production webhooks | yes | yes | no | yes |
 | Run workflow executions | yes | no | yes | no |
 | Fire schedules and poll other services | yes | yes | no | no |
-| Run agent turns | yes | yes | no | no |
+| Run agent turns | yes | yes, without agent workers | yes, with `N8N_AGENTS_WORKER_ENABLED` | no |
 
 ## Multi-main
 

@@ -9,6 +9,11 @@ Main instances run every agent turn. Workers run no agent turns. Pub/sub
 relays stops, config changes, and chat streams between main instances. A turn
 whose process stops is marked interrupted. n8n does not run it again.
 
+The same limits apply in regular mode and in queue mode without agent
+workers. A main runs at most `N8N_AGENTS_MAIN_MAX_TURNS` turns at the same
+time. Other turns wait for room. When a turn waits too long, or when too many
+turns wait, the main rejects it as busy. See [Overload](#overload).
+
 ## With agent workers
 
 Set these variables to run agent turns on workers:
@@ -59,31 +64,49 @@ closures only on mains.
 
 ### Fallback and failure rules
 
-- When no agent worker is registered, mains run the turns.
-- When no worker claims a turn in 30 seconds, a main runs it.
+- When no agent worker is registered, mains run the turns, within the limits
+  of the main.
+- While an agent worker is registered, a main does not run worker turns.
+  Turns wait in the agent queue. When no worker starts a turn in
+  `N8N_AGENTS_QUEUE_MAX_WAIT`, the main rejects it as busy.
+  `N8N_AGENTS_MAIN_FALLBACK_TURNS` lets a main take over queued chat messages
+  from workers that stopped making progress. The default of 0 turns this off.
 - Each turn is claimed once in the database, so it runs at most once.
+- A worker sends the events of a turn to the main over a Redis channel. When a
+  started turn sends nothing for 30 seconds, the main ends it as lost.
 - When a worker stops, its turns are marked interrupted. Chat platforms get a
   notice. n8n does not run the turn again.
 - On shutdown, a process lets turns finish for 70% of
-  `N8N_GRACEFUL_SHUTDOWN_TIMEOUT`. Then it fails its background sub-agents and
-  marks its turns interrupted.
+  `N8N_GRACEFUL_SHUTDOWN_TIMEOUT`. This includes turns that have no execution
+  yet. Then it fails its background sub-agents and marks its turns
+  interrupted.
 - A cluster check reports an error when mains use different values of
   `N8N_AGENTS_QUEUE_MODE_ENABLED`.
 
 ## Overload
 
-When too many turns wait, a main rejects new turns instead of queuing them
+When too many turns wait, n8n rejects new turns instead of queuing them
 without limit. This keeps waiting times bounded and keeps the main responsive.
+These rules apply in every mode. Without agent workers, "queue" means the
+turns that wait for room on this main.
 
 | Entry point | Reject when | Caller gets |
 |---|---|---|
-| Preview chat and n8n chat | queue full, or main intake full for 10 seconds | chat error `queue_full` or `main_busy` |
-| App agent chat | queue full, no worker starts it in `N8N_AGENTS_QUEUE_MAX_WAIT`, or no worker and main at `N8N_AGENTS_MAIN_MAX_TURNS` | chat error `queue_full` or `main_busy` |
-| Responses API webhook channel | queue full, or no worker starts it in `N8N_AGENTS_QUEUE_MAX_WAIT` | `503` `server_busy` with `Retry-After: 15` |
+| Preview chat and n8n chat | queue full, main intake full for 10 seconds, or main memory high | chat error `queue_full`, `main_busy`, or `low_memory` |
+| App agent chat | queue full, or the turn does not start in `N8N_AGENTS_QUEUE_MAX_WAIT` | chat error `queue_full` or `main_busy` |
+| Responses API webhook channel | queue full, or the turn does not start in `N8N_AGENTS_QUEUE_MAX_WAIT` | `503` `server_busy` with `Retry-After` |
+| Scheduled tasks | queue full, or no room for 5 minutes | the run is skipped and logged |
+| Wakes and workflow-tool resumes | never | the turn waits for room |
 | Slack, Teams, Telegram, Linear | never | the turn queues |
 
 Chat platforms always queue. They retry deliveries that fail, and a rejected
-message would be lost to the user.
+message would be lost to the user. A wake or a workflow-tool resume continues
+work that already started, so n8n does not drop it.
+
+The `Retry-After` time is between 5 and 120 seconds. It grows with the number
+of waiting turns, with a random spread of 20%. The chat shows it as a
+countdown. When n8n rejected the message before it accepted it, the message
+stays in the chat box.
 
 Clients of the webhook channel must respect `Retry-After`. A client that
 retries at once makes the overload worse.
@@ -171,6 +194,57 @@ other worker took all new turns, and throughput fell from about 600 to about
 "Stream ended without a reply". The main ran no turns, and the probe stayed
 under its limits.
 
+### Regular mode: 1 main and no workers
+
+The main runs every turn. The bench ramped the load from 10 to 160 turns in
+flight, then back to 10. The table compares n8n before the turn gate (no turn
+limit) with n8n after it (`N8N_AGENTS_MAIN_MAX_TURNS=20`, the default):
+
+| In flight | No limit: turns/min | No limit: turn p50 / p95 | Limit 20: turns/min | Limit 20: turn p50 / p95 |
+|---|---|---|---|---|
+| 10 | 165 | 2.8 s / 12.6 s | 170 | 2.6 s / 12.2 s |
+| 20 | 311 | 2.9 s / 12.2 s | 273 | 3.5 s / 12.9 s |
+| 40 | 388 | 5.1 s / 16.6 s | 193 | 12.3 s / 35.7 s |
+| 80 | 389 | 11.6 s / 31.3 s | 221 | 26.5 s / 83.1 s |
+| 160 | 390 | 23.7 s / 44.6 s | 240 | 55.3 s / 81.3 s |
+
+| Whole run | No limit | Limit 20 |
+|---|---|---|
+| Main CPU p50 / p95 | 94% / 105% | 63% / 89% |
+| Main memory max | 729 MB | 629 MB |
+| Main REST probe p95 | 2,464 ms | 348 ms |
+| Main webhook probe p95 | 3,458 ms | 418 ms |
+
+Without a limit, the main runs every turn at once. It uses all of its CPU,
+and other requests to the main, such as the editor and webhooks, wait for
+seconds. With the limit, the main stays responsive, but it runs fewer turns
+a minute, and turns over the limit wait longer. Raise
+`N8N_AGENTS_MAIN_MAX_TURNS` when the main CPU p50 stays under 70%. For more
+throughput, add agent workers.
+
+The main rejected no turns in this run. A chat message that the main accepted
+waits in the message queue, and `N8N_AGENTS_QUEUE_MAX_WAIT` does not apply to
+it. The main rejects new chat messages only when
+`N8N_AGENTS_QUEUE_MAX_WAITING` messages wait. At 160 turns in flight, fewer
+than 200 messages waited.
+
+### Before and after the turn gate, with agent workers
+
+The turn gate and the queued runner do not change the throughput of the
+workers. The differences between the two runs are in the range of the run to
+run spread of the bench host:
+
+| Slots per worker | Before: turns/min | After: turns/min | Before: turn p50 / p95 | After: turn p50 / p95 |
+|---|---|---|---|---|
+| 20 | 657 | 676 | 4.1 s / 13.5 s | 3.4 s / 12.2 s |
+| 30 | 1,002 | 913 | 4.0 s / 13.4 s | 3.9 s / 12.8 s |
+| 40 | 1,298 | 1,066 | 4.1 s / 13.6 s | 5.0 s / 14.3 s |
+
+In the overload run after the change, at 400 turns in flight with the limits
+on, the main rejected 310 of 1,117 turns. Accepted turns had a p50 of 5.8 s
+and a p95 of 40.5 s. When the bench killed a worker, the main ran no turns,
+and the probe stayed under its limits.
+
 ### Run the bench
 
 ```bash
@@ -190,12 +264,13 @@ With Prometheus metrics on, each process exports these metrics. Each name
 starts with `N8N_METRICS_PREFIX` (default `n8n_`).
 
 - `agent_turns_started_total{location}`: turns started on `main` or `worker`.
-- `agent_turn_fallbacks_total{path}`: worker turns that a main ran.
+- `agent_turn_fallbacks_total{path}`: queued chat messages that a main took
+  over from stuck workers.
 - `agent_relays_dropped_total{channel}`: updates too large to relay.
 - `agent_turns_timed_out_total`: turns stopped by `N8N_AGENTS_TURN_TIMEOUT`.
 - `agent_active_turns` and `agent_active_background_runs`: work in this process.
 - `agent_turn_queue_jobs{state}`: waiting and active jobs in the agent queue.
 - `agent_turns_rejected_total{reason}`: turns rejected as busy, by
-  `queue-full`, `wait-too-long`, or `main-at-limit`.
+  `queue-full`, `wait-too-long`, `main-at-limit`, or `main-memory-high`.
 
 Telemetry adds `worker_turn_count` to agent session metrics.

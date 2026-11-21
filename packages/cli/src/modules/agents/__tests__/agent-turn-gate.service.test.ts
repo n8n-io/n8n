@@ -37,7 +37,9 @@ function setup({
 	const gate = new AgentTurnGate(config, metrics, {
 		isHigh: () => memory.high,
 	} as AgentMainMemory);
-	return { gate, events, running, memory };
+	/** A taken turn starts and ends again, so it no longer counts. */
+	const turnStartedAndEnded = () => metrics.record({ type: 'turn-started', location: 'main' });
+	return { gate, events, running, memory, turnStartedAndEnded };
 }
 
 const signal = () => new AbortController().signal;
@@ -68,7 +70,7 @@ describe('AgentTurnGate', () => {
 
 		it('starts waiting turns in priority order', async () => {
 			vi.useFakeTimers();
-			const { gate, running } = setup({ mainMaxTurns: 1, localTurns: 1 });
+			const { gate, running, turnStartedAndEnded } = setup({ mainMaxTurns: 1, localTurns: 1 });
 			const order: string[] = [];
 			const background = gate.waitForRoom('background').then(() => order.push('background'));
 			const chat = gate.waitForRoom('chat').then(() => order.push('chat'));
@@ -78,11 +80,11 @@ describe('AgentTurnGate', () => {
 			await vi.advanceTimersByTimeAsync(AgentTurnGate.RECHECK_MS);
 			expect(order).toEqual(['resume']);
 
-			gate.claimSettled();
+			turnStartedAndEnded();
 			await vi.advanceTimersByTimeAsync(AgentTurnGate.RECHECK_MS);
 			expect(order).toEqual(['resume', 'chat']);
 
-			gate.claimSettled();
+			turnStartedAndEnded();
 			await vi.advanceTimersByTimeAsync(AgentTurnGate.RECHECK_MS);
 			await Promise.all([background, chat, resume]);
 			expect(order).toEqual(['resume', 'chat', 'background']);
@@ -150,29 +152,41 @@ describe('AgentTurnGate', () => {
 			expect(gate.mayStartQueued(queuedAt)).toBe(true);
 		});
 
-		it('stops counting a claim once the caller reports that it settled', () => {
-			const { gate } = setup({ mainMaxTurns: 1 });
+		it('counts a claimed turn once when it starts to run', () => {
+			const { gate, running, turnStartedAndEnded } = setup({ mainMaxTurns: 2 });
+			expect(gate.mayStartQueued(Date.now())).toBe(true);
+			expect(gate.turnsHere()).toBe(1);
+			// The turn shows as running, and its claim stops counting.
+			running.turns = 1;
+			turnStartedAndEnded();
+			expect(gate.turnsHere()).toBe(1);
 			expect(gate.mayStartQueued(Date.now())).toBe(true);
 			expect(gate.mayStartQueued(Date.now())).toBe(false);
-			gate.claimSettled();
-			expect(gate.mayStartQueued(Date.now())).toBe(true);
+		});
+
+		it('counts a turn that waitForRoom admitted once when it starts to run', async () => {
+			const { gate, running, turnStartedAndEnded } = setup({ mainMaxTurns: 2 });
+			await gate.waitForRoom('channel');
+			running.turns = 1;
+			turnStartedAndEnded();
+			expect(gate.turnsHere()).toBe(1);
 		});
 
 		it('lets a held message go before a newer message when room frees up', () => {
 			vi.useFakeTimers();
-			const { gate } = setup({ mainMaxTurns: 1 });
+			const { gate, turnStartedAndEnded } = setup({ mainMaxTurns: 1 });
 			const older = Date.now() - 2_000;
 			const newer = Date.now() - 1_000;
 			expect(gate.mayStartQueued(Date.now())).toBe(true);
 			expect(gate.mayStartQueued(older)).toBe(false);
 			expect(gate.hasHeldTurns).toBe(true);
 
-			gate.claimSettled();
+			turnStartedAndEnded();
 			expect(gate.mayStartQueued(newer)).toBe(false);
 			expect(gate.mayStartQueued(older)).toBe(true);
 
 			// A held message that nobody checks again, for example a cancelled one, loses its place.
-			gate.claimSettled();
+			turnStartedAndEnded();
 			vi.advanceTimersByTime(AgentTurnGate.HELD_TTL_MS);
 			expect(gate.hasHeldTurns).toBe(false);
 			expect(gate.mayStartQueued(Date.now())).toBe(true);

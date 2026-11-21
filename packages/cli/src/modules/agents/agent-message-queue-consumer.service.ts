@@ -188,8 +188,7 @@ export class AgentMessageQueueConsumer {
 			const claim = await this.chatExecutionService.withTurnLock(threadId, async (signal) => {
 				signal.throwIfAborted();
 
-				let admitted = false;
-				const claimNext = this.queue.claimNext(threadId, async (item, thread, ctx) => {
+				const claimed = await this.queue.claimNext(threadId, async (item, thread, ctx) => {
 					if (this.stopped) return false;
 					// An integration message stores its chat platform as the origin source.
 					const platform =
@@ -199,7 +198,6 @@ export class AgentMessageQueueConsumer {
 					if (!(await this.placement.mayClaim(item.payload.kind, item.createdAt, platform))) {
 						return false;
 					}
-					admitted = true;
 					if (item.payload.kind !== 'integration') return true;
 
 					const source = item.message.origin?.source;
@@ -223,10 +221,6 @@ export class AgentMessageQueueConsumer {
 					lease = await this.integrations.leaseBridge(thread.agentId, thread.projectId, connection);
 
 					return lease !== undefined;
-				});
-				// A claimed turn shows as a running turn from here on. Stop counting the claim itself.
-				const claimed = await claimNext.finally(() => {
-					if (admitted && this.cluster.isMain) this.gate.claimSettled();
 				});
 
 				if (!claimed) return null;

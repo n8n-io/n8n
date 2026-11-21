@@ -132,7 +132,7 @@ export class AgentTurnPlacement {
 
 	/**
 	 * Whether this process may claim a queued message now. A true result on a
-	 * main counts as a taken turn, see `AgentTurnGate.claimSettled`.
+	 * main counts as a taken turn until the turn starts, see `AgentTurnGate.CLAIM_START_MS`.
 	 */
 	async mayClaim(kind: QueuedTurnKind, queuedAt: Date, platform?: string): Promise<boolean> {
 		if (this.cluster.isWorker) return this.runsTurnsOnWorker && this.isWorkerKind(kind, platform);
