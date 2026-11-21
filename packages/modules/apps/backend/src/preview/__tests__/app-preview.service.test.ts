@@ -1,23 +1,29 @@
 import { CacheService, JwtService, UrlService } from '@n8n/backend-services';
+import { OAuth2FlowProxy } from '@n8n/backend-services/auth';
 import { GlobalConfig } from '@n8n/config';
-import type { User } from '@n8n/db';
-import { UserRepository } from '@n8n/db';
+import type { SecurityContext } from '@n8n/permissions';
 import type { Response } from 'express';
+import { createHash } from 'node:crypto';
 import { mock } from 'vitest-mock-extended';
 
 import { AppPreviewService } from '../app-preview.service';
 import type { App } from '../../app.entity';
 import { AppRepository } from '../../app.repository';
 import { AppsConfig } from '../../apps.config';
-import type { AppRequest } from '../../auth/app-auth.service';
-import { AppProtectedResource } from '../../auth/app-protected-resource';
+import { AppAuthService, type AppRequest } from '../../auth/app-auth.service';
 import { AppHostService } from '../../serving/app-host.service';
 import type { AppVersion } from '../../versions/app-version.entity';
 import { AppVersionRepository } from '../../versions/app-version.repository';
 
 const appId = '11111111-1111-4111-8111-111111111111';
 const versionId = '22222222-2222-4222-8222-222222222222';
-const now = Math.floor(Date.now() / 1000);
+const previewCallbackUrl = `https://sales--preview.apps.example.com/_n8n/auth/${appId}/callback`;
+const sessionCookie = '__Host-n8n-app-session';
+const versionCookie = '__Host-n8n-app-preview';
+const hash = (value: string) => createHash('sha256').update(value).digest('hex');
+const versionClaims = (overrides: Record<string, string> = {}) =>
+	JSON.stringify({ appId, versionId, tokenHash: hash('preview-token'), ...overrides });
+const security = mock<SecurityContext>({ subject: { id: 'user-1' } });
 
 function setup(baseUrl = 'https://apps.example.com') {
 	const app = mock<App>({ id: appId, namespace: 'sales', projectId: 'project-1' });
@@ -36,30 +42,34 @@ function setup(baseUrl = 'https://apps.example.com') {
 			getWebhookBaseUrl: () => 'https://hooks.example.net',
 		}),
 	);
-	const resources = mock<AppProtectedResource>();
-	resources.canRead.mockResolvedValue(true);
-	const users = mock<UserRepository>();
-	users.findByIdWithRole.mockResolvedValue(mock<User>({ id: 'user-1', disabled: false }));
+	const auth = mock<AppAuthService>();
+	auth.admit.mockResolvedValue({ ok: true, app, security, token: 'preview-token' });
+	const flow = mock<OAuth2FlowProxy>();
+	flow.issue.mockResolvedValue({
+		valid: true,
+		token: 'preview-token',
+		expiresIn: 3600,
+		user: { id: 'user-1', email: '', firstName: '', lastName: '' },
+	});
 	const store = new Map<string, unknown>();
 	const cache = mock<CacheService>();
 	cache.set.mockImplementation(async (key, value) => {
 		store.set(key, value);
 	});
+	cache.get.mockImplementation(async (key) => store.get(key) as never);
 	cache.take.mockImplementation(async (key) => {
 		const value = store.get(key);
 		store.delete(key);
 		return value as never;
 	});
 	const jwt = mock<JwtService>();
-	jwt.sign.mockImplementation((_purpose, payload) =>
-		JSON.stringify({ ...payload, exp: now + 3600 }),
-	);
+	jwt.sign.mockImplementation((_purpose, payload) => JSON.stringify(payload));
 	jwt.verify.mockImplementation((_purpose, token) => JSON.parse(token) as never);
-	const service = new AppPreviewService(apps, versions, hosts, resources, users, cache, jwt);
+	const service = new AppPreviewService(apps, versions, hosts, auth, flow, cache, jwt);
 	const res = mock<Response>();
 	res.set.mockReturnValue(res);
 	res.status.mockReturnValue(res);
-	return { service, app, apps, versions, resources, users, store, cache, jwt, res };
+	return { service, app, apps, versions, auth, flow, store, cache, jwt, res };
 }
 
 function previewRequest(query: Record<string, string> = {}, cookies: Record<string, string> = {}) {
@@ -77,7 +87,7 @@ async function grantCode(service: AppPreviewService) {
 describe('AppPreviewService', () => {
 	describe('createGrant', () => {
 		it('returns a preview host URL with a code that is stored for one minute', async () => {
-			const { service, store, cache } = setup();
+			const { service, store, cache, flow } = setup();
 
 			const { url } = await service.createGrant('user-1', 'project-1', appId, versionId);
 
@@ -94,6 +104,7 @@ describe('AppPreviewService', () => {
 				appId,
 				versionId,
 			});
+			expect(flow.issue).not.toHaveBeenCalled();
 		});
 
 		it.each([
@@ -137,24 +148,29 @@ describe('AppPreviewService', () => {
 	});
 
 	describe('exchange', () => {
-		it('sets a partitioned session cookie and redirects to a clean URL', async () => {
-			const { service, res, jwt } = setup();
+		it('signs the editor in with a token and a version bound to it', async () => {
+			const { service, res, flow, store, jwt } = setup();
 			const code = await grantCode(service);
 
 			await service.exchange(previewRequest({ code }), res);
 
-			expect(jwt.sign).toHaveBeenCalledWith(
-				'appPreview',
-				{ sub: 'user-1', appId, versionId },
-				{ expiresIn: 3600 },
-			);
-			expect(res.cookie).toHaveBeenCalledWith('__Host-n8n-app-preview', expect.any(String), {
+			const cookieOptions = {
 				httpOnly: true,
 				secure: true,
 				sameSite: 'none',
 				partitioned: true,
 				path: '/',
-			});
+				maxAge: 3_600_000,
+			};
+			expect(flow.issue).toHaveBeenCalledExactlyOnceWith(previewCallbackUrl, 'user-1');
+			expect(jwt.sign).toHaveBeenCalledExactlyOnceWith(
+				'appPreview',
+				{ appId, versionId, tokenHash: hash('preview-token') },
+				{ expiresIn: 3600 },
+			);
+			expect(res.cookie).toHaveBeenCalledWith(sessionCookie, 'preview-token', cookieOptions);
+			expect(res.cookie).toHaveBeenCalledWith(versionCookie, versionClaims(), cookieOptions);
+			expect(store.size).toBe(0);
 			expect(res.set).toHaveBeenCalledWith({
 				'Cache-Control': 'no-store',
 				'Referrer-Policy': 'no-referrer',
@@ -170,11 +186,12 @@ describe('AppPreviewService', () => {
 
 			await service.exchange(req, res);
 
-			expect(res.cookie).toHaveBeenCalledWith('n8n-app-preview', expect.any(String), {
+			expect(res.cookie).toHaveBeenCalledWith('n8n-app-session', 'preview-token', {
 				httpOnly: true,
 				secure: false,
 				sameSite: 'lax',
 				path: '/',
+				maxAge: 3_600_000,
 			});
 		});
 
@@ -191,22 +208,36 @@ describe('AppPreviewService', () => {
 		it.each<Record<string, string>>([{}, { code: 'unknown' }])(
 			'rejects a missing or unknown code: %j',
 			async (query) => {
-				const { service, res } = setup();
+				const { service, res, flow } = setup();
 				await expect(service.exchange(previewRequest(query), res)).rejects.toThrow(
 					'no longer valid',
 				);
+				expect(flow.issue).not.toHaveBeenCalled();
 				expect(res.cookie).not.toHaveBeenCalled();
 			},
 		);
 
 		it('rejects a code for another app', async () => {
-			const { service, apps, res } = setup();
+			const { service, apps, res, flow } = setup();
 			const code = await grantCode(service);
 			apps.findByNamespace.mockResolvedValue(mock<App>({ id: 'other-app' }));
 
 			await expect(service.exchange(previewRequest({ code }), res)).rejects.toThrow(
 				'no longer valid',
 			);
+			expect(flow.issue).not.toHaveBeenCalled();
+		});
+
+		it('rejects the exchange when no token is issued', async () => {
+			const { service, res, flow, store } = setup();
+			const code = await grantCode(service);
+			flow.issue.mockResolvedValue({ valid: false, reason: 'insufficient_scope' });
+
+			await expect(service.exchange(previewRequest({ code }), res)).rejects.toThrow(
+				'no longer valid',
+			);
+			expect(store.size).toBe(0);
+			expect(res.cookie).not.toHaveBeenCalled();
 		});
 
 		it('rejects the exchange on a published app host', async () => {
@@ -220,17 +251,17 @@ describe('AppPreviewService', () => {
 	});
 
 	describe('authenticate', () => {
-		const session = (fields: Record<string, unknown> = {}) =>
-			JSON.stringify({ sub: 'user-1', appId, versionId, exp: now + 3600, ...fields });
-
-		async function authenticate(ctx: ReturnType<typeof setup>, cookie = session()) {
-			const req = previewRequest({}, cookie ? { '__Host-n8n-app-preview': cookie } : {});
+		async function authenticate(
+			ctx: ReturnType<typeof setup>,
+			cookies: Record<string, string> = { [versionCookie]: versionClaims() },
+		) {
+			const req = previewRequest({}, cookies);
 			const next = vi.fn();
 			await ctx.service.authenticate(req, ctx.res, next);
 			return { req, next };
 		}
 
-		it('serves the session version', async () => {
+		it('serves the version bound to the token without server-side state', async () => {
 			const ctx = setup();
 
 			const { req, next } = await authenticate(ctx);
@@ -242,53 +273,44 @@ describe('AppPreviewService', () => {
 				preview: true,
 				previewUserId: 'user-1',
 			});
-			expect(ctx.res.cookie).not.toHaveBeenCalled();
+			expect(ctx.auth.admit).toHaveBeenCalledExactlyOnceWith(req, 'preview');
 		});
 
-		it('keeps the session expiry close to its end', async () => {
+		it.each<[string, Record<string, string>, (ctx: ReturnType<typeof setup>) => void]>([
+			['a session without a version cookie', {}, () => {}],
+			[
+				'a version cookie for another token',
+				{ [versionCookie]: versionClaims({ tokenHash: hash('other-token') }) },
+				() => {},
+			],
+			[
+				'a version cookie for another app',
+				{ [versionCookie]: versionClaims({ appId: '33333333-3333-4333-8333-333333333333' }) },
+				() => {},
+			],
+			[
+				'a version cookie that does not verify',
+				{ [versionCookie]: versionClaims() },
+				(ctx) =>
+					ctx.jwt.verify.mockImplementation(() => {
+						throw new Error('jwt expired');
+					}),
+			],
+			[
+				'a session that is not admitted',
+				{ [versionCookie]: versionClaims() },
+				(ctx) =>
+					ctx.auth.admit.mockResolvedValue({
+						ok: false,
+						app: ctx.app,
+						reason: 'unauthenticated',
+					}),
+			],
+		])('rejects %s', async (_case, cookies, arrange) => {
 			const ctx = setup();
+			arrange(ctx);
 
-			await authenticate(ctx, session({ exp: now + 1000 }));
-
-			expect(ctx.res.cookie).not.toHaveBeenCalled();
-		});
-
-		it.each<[string, (ctx: ReturnType<typeof setup>) => string]>([
-			['no cookie', () => ''],
-			['an invalid token', () => 'invalid'],
-			['an incomplete token', () => JSON.stringify({ sub: 'user-1' })],
-			[
-				'a token for another app',
-				(ctx) => {
-					ctx.apps.findByNamespace.mockResolvedValue(mock<App>({ id: 'other-app' }));
-					return session();
-				},
-			],
-			[
-				'an unknown user',
-				(ctx) => {
-					ctx.users.findByIdWithRole.mockResolvedValue(null);
-					return session();
-				},
-			],
-			[
-				'a disabled user',
-				(ctx) => {
-					ctx.users.findByIdWithRole.mockResolvedValue(mock<User>({ disabled: true }));
-					return session();
-				},
-			],
-			[
-				'a user without read access',
-				(ctx) => {
-					ctx.resources.canRead.mockResolvedValue(false);
-					return session();
-				},
-			],
-		])('rejects %s', async (_case, arrange) => {
-			const ctx = setup();
-
-			const { req, next } = await authenticate(ctx, arrange(ctx));
+			const { req, next } = await authenticate(ctx, cookies);
 
 			expect(next).not.toHaveBeenCalled();
 			expect(req.appContext).toBeUndefined();
