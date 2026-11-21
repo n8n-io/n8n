@@ -1,5 +1,6 @@
 import type {
 	Agent as RuntimeAgent,
+	AgentMessage,
 	CheckpointStore,
 	ExecutionOptions,
 	JSONObject,
@@ -369,6 +370,13 @@ export interface SystemAgentProvider<TLease = unknown> {
 	): Promise<SystemAgentTurnOptions>;
 	/** Convert a resume payload from a client into the tool's resume data. */
 	normalizeResumeData?(resumeData: unknown): unknown;
+	/**
+	 * The resources that a stored user message sent, such as mentioned
+	 * workflows. The chat history returns them as the `references` of the
+	 * message. `modelInput` is the stored model input of the message, that is
+	 * the `input` of the turn handle. Return an empty list when there are none.
+	 */
+	readMessageReferences?(modelInput: AgentMessage): unknown[];
 	/**
 	 * Called before a user deletes a thread of this agent, while the thread
 	 * state can still be read. Do not change data here: the deletion can still

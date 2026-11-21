@@ -1320,7 +1320,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				prefill_type: null,
 				prefill_id: null,
 				prompt_modified: null,
-				mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
+				mention_counts: { total: 0, workflow: 0, node: 0, group: 0, agent: 0 },
 				attachment_count: 0,
 				selected_element_count: 0,
 				approval_mode: 'unavailable',
@@ -1337,7 +1337,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				prefill_type: null,
 				prefill_id: null,
 				prompt_modified: null,
-				mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
+				mention_counts: { total: 0, workflow: 0, node: 0, group: 0, agent: 0 },
 				attachment_count: 0,
 				selected_element_count: 0,
 				approval_mode: 'unavailable',
@@ -1418,7 +1418,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 					prefill_type: 'handoff_setup_panel_execute',
 					prefill_id: null,
 					prompt_modified: false,
-					mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
+					mention_counts: { total: 0, workflow: 0, node: 0, group: 0, agent: 0 },
 					attachment_count: 0,
 					selected_element_count: 0,
 					approval_mode: 'unavailable',
@@ -1471,13 +1471,14 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				workflow: 1,
 				node: 1,
 				group: 1,
+				agent: 0,
 			},
 		});
 
 		expect(mockTelemetryTrack).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE,
 			expect.objectContaining({
-				mention_counts: { total: 3, workflow: 1, node: 1, group: 1 },
+				mention_counts: { total: 3, workflow: 1, node: 1, group: 1, agent: 0 },
 				attachment_count: 3,
 				selected_element_count: 1,
 			}),
@@ -1499,7 +1500,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				{ type: 'workflow', id: 'workflow-mentioned', name: 'Orders' },
 				{ type: 'workflow', id: 'workflow-handoff', name: 'Canvas' },
 			],
-			mentionCounts: { total: 1, workflow: 1, node: 0, group: 0 },
+			mentionCounts: { total: 1, workflow: 1, node: 0, group: 0, agent: 0 },
 			mentionedWorkflowIds: ['workflow-mentioned'],
 		});
 		await nextTick();
@@ -1516,7 +1517,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 		const sent = await runtime.sendMessage('Look at this', {
 			authorship: USER_TYPED_MESSAGE,
 			attachments: [{ type: 'workflow', id: 'workflow-mentioned', name: 'Orders' }],
-			mentionCounts: { total: 1, workflow: 1, node: 0, group: 0 },
+			mentionCounts: { total: 1, workflow: 1, node: 0, group: 0, agent: 0 },
 			mentionedWorkflowIds: ['workflow-mentioned'],
 		});
 		await nextTick();
@@ -1548,7 +1549,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				prefill_type: null,
 				prefill_id: null,
 				prompt_modified: null,
-				mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
+				mention_counts: { total: 0, workflow: 0, node: 0, group: 0, agent: 0 },
 				attachment_count: 0,
 				selected_element_count: 0,
 				approval_mode: 'unavailable',
@@ -1610,7 +1611,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				prefill_type: null,
 				prefill_id: null,
 				prompt_modified: null,
-				mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
+				mention_counts: { total: 0, workflow: 0, node: 0, group: 0, agent: 0 },
 				attachment_count: 0,
 				selected_element_count: 0,
 				approval_mode: 'unavailable',
@@ -1647,7 +1648,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				prefill_type: 'suggestion_catalog',
 				prefill_id: 'v4-engineering-data-management-1',
 				prompt_modified: true,
-				mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
+				mention_counts: { total: 0, workflow: 0, node: 0, group: 0, agent: 0 },
 				attachment_count: 0,
 				selected_element_count: 0,
 				approval_mode: 'unavailable',
@@ -1965,7 +1966,7 @@ describe('createThreadRuntime - response timing telemetry', () => {
 					response_kind: 'completed',
 					action_source: INSTANCE_AI_THREAD_SOURCE_FALLBACK,
 					tab_visible: false,
-					mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
+					mention_counts: { total: 0, workflow: 0, node: 0, group: 0, agent: 0 },
 					attachment_count: 0,
 					selected_element_count: 0,
 				},
@@ -1981,7 +1982,7 @@ describe('createThreadRuntime - response timing telemetry', () => {
 					response_kind: 'completed',
 					action_source: INSTANCE_AI_THREAD_SOURCE_FALLBACK,
 					tab_visible: false,
-					mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
+					mention_counts: { total: 0, workflow: 0, node: 0, group: 0, agent: 0 },
 					attachment_count: 0,
 					selected_element_count: 0,
 				},
@@ -2008,6 +2009,7 @@ describe('createThreadRuntime - response timing telemetry', () => {
 				workflow: 1,
 				node: 1,
 				group: 1,
+				agent: 0,
 			},
 		});
 		finishRun('run-with-context', 'completed');
@@ -2015,7 +2017,7 @@ describe('createThreadRuntime - response timing telemetry', () => {
 
 		expect(responseMetricCalls()[0][1]).toMatchObject({
 			run_id: 'run-with-context',
-			mention_counts: { total: 3, workflow: 1, node: 1, group: 1 },
+			mention_counts: { total: 3, workflow: 1, node: 1, group: 1, agent: 0 },
 			attachment_count: 3,
 			selected_element_count: 1,
 		});
