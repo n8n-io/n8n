@@ -4,8 +4,11 @@ import { ref, computed, watch } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
 import {
 	AGENT_REASONING_LEVELS,
+	AGENT_SERVICE_TIERS,
 	getModelPromptCachingCapability,
+	getModelServiceTierCapability,
 	type AgentReasoningLevel,
+	type AgentServiceTier,
 } from '@n8n/api-types';
 import { N8nInputNumber, N8nOption, N8nSelect, N8nSwitch2, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -54,6 +57,12 @@ const reasoningHintKey = computed(() => {
 });
 const promptCachingCapability = computed(() =>
 	getModelPromptCachingCapability(modelToString(props.config?.model)),
+);
+const serviceTierSupported = computed(() =>
+	getModelServiceTierCapability(modelToString(props.config?.model)),
+);
+const serviceTier = computed<AgentServiceTier>(
+	() => props.config?.config?.serviceTier ?? 'default',
 );
 
 watch(
@@ -228,6 +237,14 @@ function emitPromptCaching(enabled: boolean) {
 	});
 }
 
+function onServiceTierChange(value: AgentServiceTier) {
+	const cfg = { ...(props.config?.config ?? {}) };
+	// The default tier is not stored, so saved configs stay unchanged for users who never touch it.
+	if (value === 'default') delete cfg.serviceTier;
+	else cfg.serviceTier = value;
+	emit('update:config', { config: cfg });
+}
+
 function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 	anthropicTtl.value = value;
 	emit('update:config', {
@@ -353,6 +370,27 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 							</N8nSelect>
 						</div>
 					</div>
+				</div>
+
+				<div v-if="serviceTierSupported" :class="shared.settingRow">
+					<div :class="shared.settingLabel">
+						<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
+							i18n.baseText('agents.builder.advanced.serviceTier.label')
+						}}</N8nText>
+						<N8nText size="small" :class="shared.dataEntrySubLabel">
+							{{ i18n.baseText('agents.builder.advanced.serviceTier.hint') }}
+						</N8nText>
+					</div>
+					<N8nSelect
+						:model-value="serviceTier"
+						size="small"
+						:disabled="props.disabled"
+						:class="shared.settingControlShort"
+						data-testid="agent-service-tier-select"
+						@update:model-value="(v) => onServiceTierChange(v as AgentServiceTier)"
+					>
+						<N8nOption v-for="opt in AGENT_SERVICE_TIERS" :key="opt" :value="opt" :label="opt" />
+					</N8nSelect>
 				</div>
 
 				<div :class="shared.settingRow">
