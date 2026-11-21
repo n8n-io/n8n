@@ -110,6 +110,50 @@ The lookup still checks that the user can use the stored credential in the proje
 It does not decrypt the placeholder credential or contact the model provider.
 Production sessions continue to use live model catalogs.
 
+## Simulated services — `execute-with-sim`
+
+`POST /eval/execute-with-sim/:workflowId` runs a workflow against a sim server
+instead of the LLM mock (the eval CLI's `--mocking sim`). The run is a normal
+execution of the stored workflow, with the caller's node parameters, on this
+instance:
+
+- The sim server issues the credentials. The run stores them in the workflow's
+  project and deletes them afterwards, so credential ids, OAuth2 refresh and
+  permission checks work as in production.
+- A per-run egress proxy (`sim-egress-proxy.ts`) receives every node request:
+  core sets it on the final request, after auth and signing
+  (`evalEgressProxy`). The proxy tunnels a host the sim server serves to its
+  HTTPS listener (`N8N_INSTANCE_AI_EVAL_SIM_GATEWAY`), sends loopback traffic
+  direct, and refuses any other host. The result reports a refused host as
+  `SIM NOT COVERED`.
+- Vendor SDKs (AI sub-nodes) do not use the request helpers. A credential whose
+  base URL the sim server serves points at the proxy for the run
+  (`sim-credentials-helper.ts`). An AI sub-node whose credential has no base URL,
+  whose stored credential the sim server did not issue, or whose own base URL is
+  not an absolute URL is refused before the run, as `SIM NOT COVERED`.
+- MCP nodes and Message an Agent open their own connections, which the proxy never
+  sees. A workflow with one is refused before the run, as `SIM NOT COVERED`.
+- Data Tables, static data, Remove Duplicates history and time-based waits are
+  prepared as in mock mode.
+- A polling trigger polls as a published workflow does (`trigger` mode).
+  `POST /eval/poll-with-sim/:workflowId` runs its first poll and returns the
+  workflow's static data. The caller adds the records that arrive, then passes
+  that state as `pollState`: the trigger polls again before the run, its output
+  starts the run, and its poll time is the trigger's first entry in
+  `runTimes`. Otherwise the run starts from the caller's trigger items. An error
+  the poll itself throws comes back without the `FRAMEWORK ISSUE:` prefix: it is
+  the built workflow's error, judged as one.
+
+The instance trusts the sim server's CA through `NODE_EXTRA_CA_CERTS`, because
+the requests keep their real hostnames.
+
+Sim runs refuse to start with `N8N_SSRF_PROTECTION_ENABLED=true`: the SSRF guard
+blocks loopback, and the run proxy listens on loopback.
+
+If the instance stops while a run lasts, the run's credentials stay behind. Their
+names start with `[eval-sim]` and they hold simulator secrets only. Delete them,
+or recreate the eval instance.
+
 ## The rule
 
 `__schema__` describes a node's **output**, not the service's wire format —

@@ -392,6 +392,7 @@ describe('GlobalConfig', () => {
 			sandboxNamePrefix: '',
 			sandboxEphemeral: false,
 			evalInstance: false,
+			evalSimGateway: '',
 			sandboxAutoStopMinutes: 15,
 			sandboxAutoArchiveMinutes: 60,
 			sandboxAutoDeleteMinutes: 10_080,
