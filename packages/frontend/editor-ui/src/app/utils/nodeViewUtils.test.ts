@@ -311,6 +311,28 @@ describe('getNextNodeSlot', () => {
 
 		expect(slot).toEqual([224, 0]);
 	});
+
+	it('should put the main input handle on the line of a downstream node at or right of the slot', () => {
+		const slot = getNextNodeSlot({
+			source: { position: [0, 0], width: 96, handleOffset: 48 },
+			target: { height: 128, handleOffset: 64 },
+			fan: { index: 0, count: 2 },
+			downstream: { x: 224, handleLine: 144 },
+		});
+
+		expect(slot).toEqual([224, 80]);
+	});
+
+	it('should keep the fan row when the downstream node is left of the slot', () => {
+		const slot = getNextNodeSlot({
+			source: { position: [0, 0], width: 96, handleOffset: 48 },
+			target: { height: 96, handleOffset: 48 },
+			fan: { index: 1, count: 2 },
+			downstream: { x: 208, handleLine: 400 },
+		});
+
+		expect(slot).toEqual([224, 96]);
+	});
 });
 
 describe('snapPositionToGrid', () => {
