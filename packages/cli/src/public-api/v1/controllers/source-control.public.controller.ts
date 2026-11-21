@@ -92,7 +92,10 @@ export class SourceControlPublicController {
 	@ApiErrorResponse(409, {
 		dto: SourceControlPushConflictErrorPublicDto,
 		description:
-			'The push includes files with unresolved conflicts. Retry with `force: true` to push anyway.',
+			'The push includes files with unresolved conflicts, or the remote branch has commits that ' +
+			'the instance has not pulled. To keep those remote commits, pull first. Retry with ' +
+			'`force: true` to push anyway. A forced push overwrites remote commits that the instance ' +
+			'has not pulled.',
 	})
 	async pushSourceControl(
 		req: PublicApiRequest,

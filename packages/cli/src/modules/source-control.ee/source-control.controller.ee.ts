@@ -16,6 +16,7 @@ import { sourceControlEnabledMiddleware } from './middleware/source-control-enab
 import { SourceControlContextFactory } from './source-control-context.factory';
 import { getRepoType } from './source-control-helper.ee';
 import { SourceControlPreferencesService } from './source-control-preferences.service.ee';
+import { SourceControlRemoteAheadError } from './source-control-remote-ahead.error';
 import { SourceControlScopedService } from './source-control-scoped.service';
 import { SourceControlService } from './source-control.service.ee';
 import type { ImportResult } from './types/import-result';
@@ -239,6 +240,7 @@ export class SourceControlController {
 				commit: commitInfo,
 			};
 		} catch (error) {
+			if (error instanceof SourceControlRemoteAheadError) throw error;
 			throw new BadRequestError((error as { message: string }).message);
 		}
 	}

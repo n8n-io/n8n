@@ -552,4 +552,138 @@ describe('SourceControlPreferencesService', () => {
 			expect(instanceWriteAccess.isReadOnly()).toBe(false);
 		});
 	});
+	describe('last synced commit', () => {
+		const commit = 'a'.repeat(40);
+
+		const build = (isMultiMain = false) => {
+			const repository = mock<SettingsRepository>();
+			const publisher = mock<Publisher>();
+			vi.spyOn(Container, 'get').mockReturnValue(publisher);
+			const preferences = new SourceControlPreferencesService(
+				mock<InstanceSettings>({ n8nFolder: '', isMultiMain }),
+				mock(),
+				mock(),
+				repository,
+				mock(),
+				mock(),
+			);
+			const generateKeyPair = vi.spyOn(preferences as any, 'generateAndSaveKeyPair');
+			return { preferences, repository, publisher, generateKeyPair };
+		};
+
+		afterEach(() => {
+			vi.restoreAllMocks();
+		});
+
+		describe('setLastSyncedCommit', () => {
+			it.each([commit, 'f0'.repeat(32)])(
+				'stores the hash in a row of its own: %s',
+				async (hash) => {
+					const { preferences, repository, generateKeyPair } = build();
+
+					await preferences.setLastSyncedCommit(hash);
+
+					expect(repository.upsertByKey).toHaveBeenCalledWith(
+						'features.sourceControl.lastSyncedCommit',
+						hash,
+						false,
+						{},
+					);
+					expect(generateKeyPair).not.toHaveBeenCalled();
+				},
+			);
+
+			it('does not touch the preferences row', async () => {
+				const { preferences, repository } = build();
+
+				await preferences.setLastSyncedCommit(commit);
+
+				expect(repository.upsertByKey).toHaveBeenCalledTimes(1);
+				expect(repository.upsertByKey).not.toHaveBeenCalledWith(
+					'features.sourceControl',
+					expect.anything(),
+					expect.anything(),
+					expect.anything(),
+				);
+			});
+
+			it('does not tell the other main instances to reload, also in multi-main mode', async () => {
+				// A reload resets the git service of the other mains, which can break a sync running there.
+				const { preferences, publisher } = build(true);
+
+				await preferences.setLastSyncedCommit(commit);
+
+				expect(publisher.publishCommand).not.toHaveBeenCalled();
+			});
+
+			it.each(['', '--output=/tmp/x', 'HEAD', 'abc123', 'A'.repeat(40), `${commit}^{commit}`])(
+				'rejects a value that is not a full lowercase commit hash: "%s"',
+				async (value) => {
+					const { preferences, repository } = build();
+
+					await expect(preferences.setLastSyncedCommit(value)).rejects.toThrow(
+						'must be a full commit hash',
+					);
+					expect(repository.upsertByKey).not.toHaveBeenCalled();
+				},
+			);
+
+			it('fails when the commit cannot be saved', async () => {
+				const { preferences, repository } = build();
+				repository.upsertByKey.mockRejectedValueOnce(new Error('db down'));
+
+				await expect(preferences.setLastSyncedCommit(commit)).rejects.toThrow(
+					'Failed to save the last synced commit',
+				);
+			});
+		});
+
+		describe('getLastSyncedCommit', () => {
+			it('returns the stored hash', async () => {
+				const { preferences, repository } = build();
+				repository.findByKey.mockResolvedValueOnce({ value: commit } as never);
+
+				expect(await preferences.getLastSyncedCommit()).toBe(commit);
+				expect(repository.findByKey).toHaveBeenCalledWith(
+					'features.sourceControl.lastSyncedCommit',
+				);
+			});
+
+			it.each([null, { value: '' }])(
+				'returns undefined when nothing is stored: %j',
+				async (row) => {
+					const { preferences, repository } = build();
+					repository.findByKey.mockResolvedValueOnce(row as never);
+
+					expect(await preferences.getLastSyncedCommit()).toBeUndefined();
+				},
+			);
+
+			it('throws when the stored value cannot be read, so that the caller refuses the push', async () => {
+				const { preferences, repository } = build();
+				repository.findByKey.mockRejectedValueOnce(new Error('db down'));
+
+				await expect(preferences.getLastSyncedCommit()).rejects.toThrow('db down');
+			});
+
+			it('throws when the stored value is not a commit hash', async () => {
+				const { preferences, repository } = build();
+				repository.findByKey.mockResolvedValueOnce({ value: '--output=/tmp/x' } as never);
+
+				await expect(preferences.getLastSyncedCommit()).rejects.toThrow('not a commit hash');
+			});
+		});
+
+		describe('clearLastSyncedCommit', () => {
+			it('deletes the row', async () => {
+				const { preferences, repository } = build();
+
+				await preferences.clearLastSyncedCommit();
+
+				expect(repository.delete).toHaveBeenCalledWith({
+					key: 'features.sourceControl.lastSyncedCommit',
+				});
+			});
+		});
+	});
 });

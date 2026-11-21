@@ -24,6 +24,7 @@ import {
 	getPushPriorityByStatus,
 	getStatusText,
 	getStatusTheme,
+	isRemoteAheadError,
 } from '../sourceControl.utils';
 import type { SourceControlTreeRow } from '../sourceControl.types';
 import type { SourceControlledFile, SourceControlledFileStatus } from '@n8n/api-types';
@@ -626,7 +627,7 @@ async function commitAndPush() {
 
 	try {
 		await sourceControlStore.pushWorkfolder({
-			force: true,
+			acceptConflicts: true,
 			commitMessage: commitMessage.value,
 			fileNames: files,
 		});
@@ -637,7 +638,15 @@ async function commitAndPush() {
 			type: 'success',
 		});
 	} catch (error) {
-		toast.showError(error, i18n.baseText('error'));
+		if (isRemoteAheadError(error)) {
+			toast.showMessage({
+				title: i18n.baseText('settings.sourceControl.modals.push.remoteAhead.title'),
+				message: i18n.baseText('settings.sourceControl.modals.push.remoteAhead.message'),
+				type: 'error',
+			});
+		} else {
+			toast.showError(error, i18n.baseText('error'));
+		}
 	} finally {
 		loadingService.stopLoading();
 	}
