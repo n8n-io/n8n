@@ -2,6 +2,8 @@ import { Logger } from '@n8n/backend-common';
 import { EventService, type EventMap } from '@n8n/backend-services';
 import {
 	type AfterFoldCommit,
+	type ExecutionLedgerFoldStep,
+	type OperationContext,
 	DbLock,
 	DbLockService,
 	DbLockUnavailableError,
@@ -10,10 +12,13 @@ import {
 	withSavepoint,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { sleep } from '@n8n/utils/sleep';
 import { ErrorReporter } from 'n8n-core';
 
+import { FoldFailureStreaks } from './fold-failure-streaks';
 import { FoldStepFailedError } from './fold-step-failed.error';
+import { ExecutionLedgerParkedRepository } from '../database/repositories/execution-ledger-parked.repository';
 import { ExecutionLedgerRepository } from '../database/repositories/execution-ledger.repository';
 import type { ExecutionLedgerMetricsEventMap } from '../execution-ledger-metrics.events';
 
@@ -25,17 +30,23 @@ const BATCH_DELAY_MS = 250;
 /** Consecutive lock skips after which the fold warns that something else holds the lock. */
 const SKIP_WARN_THRESHOLD = 5;
 
+/** Failures in a row on the same batch after which the fold parks the batch for the step. */
 export const FOLD_FAILURE_ALERT_THRESHOLD = 3;
+
+type FoldedBatch = {
+	readable: number;
+	unreadable: number;
+	afterCommit: AfterFoldCommit[];
+	parked: FoldStepFailedError[];
+};
 
 /**
  * Moves claimed ledger rows into the tables of every registered fold step, in one transaction
- * with a savepoint for each step. A failing step rolls the whole batch back into the ledger.
+ * with a savepoint for each step. A failing step rolls the whole batch back into the ledger,
+ * until its third failure in a row: then the fold parks the batch for that step and goes on.
  */
 @Service()
 export class ExecutionLedgerFoldService {
-	/** Last failed step and batch (by first ledger id). A handover resets it. */
-	private failedBatch: { key: string; step: string; failures: number } | undefined;
-
 	private consecutiveLockSkips = 0;
 
 	constructor(
@@ -45,6 +56,8 @@ export class ExecutionLedgerFoldService {
 		private readonly repository: ExecutionLedgerRepository,
 		private readonly stepRegistry: FoldStepRegistry,
 		private readonly eventService: EventService,
+		private readonly parkedRepository: ExecutionLedgerParkedRepository,
+		private readonly failureStreaks: FoldFailureStreaks,
 	) {
 		this.logger = this.logger.scoped('execution-ledger');
 	}
@@ -72,7 +85,7 @@ export class ExecutionLedgerFoldService {
 
 	/**
 	 * Folds one batch and runs the after-commit work of its steps.
-	 * Returns the number of rows folded, or 0 when another fold holds the lock.
+	 * Returns the number of rows claimed, or 0 when another fold holds the lock.
 	 * @throws FoldStepFailedError or FoldTransactionLostError, after the batch rolled back
 	 */
 	async foldBatch(): Promise<number> {
@@ -80,49 +93,24 @@ export class ExecutionLedgerFoldService {
 		// With no step, the claim would delete rows that no feature ever counted.
 		if (steps.length === 0) return 0;
 
-		let folded: { claimed: number; afterCommit: AfterFoldCommit[] };
+		let folded: FoldedBatch;
 		try {
 			folded = await this.dbLockService.tryWithLockContext(
 				DbLock.EXECUTION_LEDGER_FOLD,
-				async (ctx) => {
-					const afterCommit: AfterFoldCommit[] = [];
-					const rows = await this.repository.claimBatch(FOLD_BATCH_SIZE, ctx);
-					if (rows.length === 0) return { claimed: 0, afterCommit };
-
-					for (const step of steps) {
-						try {
-							const stepWork = await withSavepoint(
-								ctx,
-								step.name,
-								async (stepCtx) => await step.fold(rows, stepCtx),
-							);
-							if (stepWork) afterCommit.push(stepWork);
-						} catch (error) {
-							if (error instanceof FoldTransactionLostError) throw error;
-							const firstLedgerId = rows[0].id;
-							throw new FoldStepFailedError(
-								step.name,
-								this.recordFailure(firstLedgerId, step.name),
-								firstLedgerId,
-								error,
-							);
-						}
-					}
-					return { claimed: rows.length, afterCommit };
-				},
+				async (ctx) => await this.foldClaimedBatch(steps, ctx),
 			);
 		} catch (error) {
 			if (error instanceof DbLockUnavailableError) {
 				this.registerLockSkip();
 				return 0;
 			}
-			if (error instanceof FoldStepFailedError) this.reportStepFailure(error);
 			throw error;
 		}
 
 		this.consecutiveLockSkips = 0;
-		if (folded.claimed > 0) this.failedBatch = undefined;
-		this.emitMetric('execution-ledger-fold-succeeded', { rows: folded.claimed });
+		const claimed = folded.readable + folded.unreadable;
+		this.emitMetric('execution-ledger-fold-succeeded', { rows: claimed });
+		this.reportParkedRows(folded);
 
 		for (const work of folded.afterCommit) {
 			try {
@@ -132,28 +120,69 @@ export class ExecutionLedgerFoldService {
 			}
 		}
 
-		return folded.claimed;
+		return claimed;
 	}
 
-	/** Returns how many times in a row this step has failed on this batch, this one included. */
-	private recordFailure(batchKey: string, step: string): number {
-		const { failedBatch } = this;
-		const isSameStreak = failedBatch?.key === batchKey && failedBatch.step === step;
-		const failures = isSameStreak ? failedBatch.failures + 1 : 1;
-		this.failedBatch = { key: batchKey, step, failures };
-		return failures;
+	private async foldClaimedBatch(
+		steps: readonly ExecutionLedgerFoldStep[],
+		ctx: OperationContext,
+	): Promise<FoldedBatch> {
+		const { rows, unreadable } = await this.repository.claimBatch(FOLD_BATCH_SIZE, ctx);
+		const folded: FoldedBatch = {
+			readable: rows.length,
+			unreadable: unreadable.length,
+			afterCommit: [],
+			parked: [],
+		};
+
+		if (unreadable.length > 0) await this.parkedRepository.parkUnreadable(unreadable, ctx);
+		if (rows.length === 0) return folded;
+
+		const firstLedgerId = rows[0].id;
+		for (const step of steps) {
+			try {
+				const stepWork = await withSavepoint(
+					ctx,
+					step.name,
+					async (stepCtx) => await step.fold(rows, stepCtx),
+				);
+				if (stepWork) folded.afterCommit.push(stepWork);
+			} catch (error) {
+				if (error instanceof FoldTransactionLostError) throw error;
+				this.emitMetric('execution-ledger-fold-step-failed', { step: step.name });
+
+				const attempt = (await this.failureStreaks.get(step.name, firstLedgerId)) + 1;
+				const failure = new FoldStepFailedError(step.name, attempt, firstLedgerId, error);
+				if (attempt < FOLD_FAILURE_ALERT_THRESHOLD) {
+					await this.failureStreaks.set(step.name, firstLedgerId, attempt);
+					throw failure;
+				}
+
+				// The count is not saved here: if a later step rolls the batch back, this step parks again.
+				await this.parkedRepository.park(step.name, rows, getErrorMessage(error), ctx);
+				folded.parked.push(failure);
+			}
+		}
+		return folded;
 	}
 
-	private reportStepFailure({ step, attempt, firstLedgerId }: FoldStepFailedError) {
-		this.emitMetric('execution-ledger-fold-step-failed', { step });
-		// Logged once per streak, since the task runner already logs every failed run.
-		if (attempt !== FOLD_FAILURE_ALERT_THRESHOLD) return;
-
-		this.logger.error('Execution ledger fold step keeps failing on the same batch', {
-			step,
-			attempt,
-			firstLedgerId,
-		});
+	/** Runs after the commit, so it never reports rows that a rollback put back. */
+	private reportParkedRows({ readable, unreadable, parked }: FoldedBatch) {
+		if (unreadable > 0) {
+			this.logger.error('Execution ledger fold parked rows that it could not read', {
+				rows: unreadable,
+			});
+		}
+		for (const failure of parked) {
+			const { step, attempt, firstLedgerId } = failure;
+			this.logger.error('Execution ledger fold parked a batch for a failing step', {
+				step,
+				attempt,
+				firstLedgerId,
+				rows: readable,
+			});
+			this.errorReporter.error(failure, { shouldBeLogged: false });
+		}
 	}
 
 	/** A throwing listener must not fail a fold that already committed. */
