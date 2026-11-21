@@ -7,6 +7,7 @@ import { NodeApiError } from 'n8n-workflow';
 
 import {
 	agentErrorPostReceive,
+	decisionsErrorPostReceive,
 	embeddingsErrorPostReceive,
 	searchErrorPostReceive,
 	sendErrorPostReceive,
@@ -238,6 +239,50 @@ describe('Generic Functions', () => {
 						'https://docs.perplexity.ai/api-reference/agent-post',
 					),
 				}),
+			);
+		});
+	});
+
+	describe('decisionsErrorPostReceive', () => {
+		const testData: INodeExecutionData[] = [{ json: {} }];
+
+		it('should return data if status code is not 4xx or 5xx', async () => {
+			const result = await decisionsErrorPostReceive.call(mockExecuteSingleFunctions, testData, {
+				statusCode: 200,
+				headers: {},
+				body: {},
+			});
+			expect(result).toEqual(testData);
+		});
+
+		it('should throw the API error message with a link to the Decisions API documentation', async () => {
+			await expect(
+				decisionsErrorPostReceive.call(mockExecuteSingleFunctions, testData, {
+					statusCode: 400,
+					headers: {},
+					body: { error: { message: 'Each request needs at least one question' } },
+				}),
+			).rejects.toThrow(
+				expect.objectContaining({
+					name: 'NodeApiError',
+					message: 'Each request needs at least one question',
+					description: expect.stringContaining(
+						'https://docs.perplexity.ai/api-reference/decisions-post',
+					),
+				}),
+			);
+		});
+
+		it('should use statusMessage as fallback when the body has no error message', async () => {
+			await expect(
+				decisionsErrorPostReceive.call(mockExecuteSingleFunctions, testData, {
+					statusCode: 503,
+					statusMessage: 'Service Unavailable',
+					headers: {},
+					body: {},
+				}),
+			).rejects.toThrow(
+				expect.objectContaining({ name: 'NodeApiError', message: 'Service Unavailable' }),
 			);
 		});
 	});

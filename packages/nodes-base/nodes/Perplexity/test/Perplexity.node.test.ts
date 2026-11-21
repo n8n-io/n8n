@@ -107,6 +107,15 @@ describe('Perplexity Node', () => {
 			expect(values).not.toContain('chat');
 		});
 
+		it('should include the Decision resource', () => {
+			const resource = v3.description.properties.find(
+				(p) => p.name === 'resource' && p.type === 'options',
+			);
+			const values = (resource?.options ?? []).map((o) => (o as { value: string }).value);
+
+			expect(values).toContain('decision');
+		});
+
 		it('should not include a Chat deprecation notice', () => {
 			const chatDeprecationNotice = v3.description.properties.find(
 				(p) => p.name === 'chatDeprecationNotice',
