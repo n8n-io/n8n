@@ -8,7 +8,6 @@ import TableRow from '@tiptap/extension-table-row';
 import TaskItem from '@tiptap/extension-task-item';
 import TaskList from '@tiptap/extension-task-list';
 import Underline from '@tiptap/extension-underline';
-import { Markdown } from '@tiptap/markdown';
 import type { EditorState } from '@tiptap/pm/state';
 import type { EditorView } from '@tiptap/pm/view';
 import StarterKit from '@tiptap/starter-kit';
@@ -17,6 +16,7 @@ import { watch } from 'vue';
 import type { SetupContext } from 'vue';
 
 import type { N8nMarkdownEditorEmits, N8nMarkdownEditorProps } from '../MarkdownEditor.types';
+import { MarkdownWithMinimalEscapes } from '../markdownExtension';
 import {
 	copyMarkdown,
 	getEditorContent,
@@ -65,7 +65,7 @@ export const useMarkdownEditor = (
 			nested: true,
 		}),
 		Underline,
-		Markdown.configure({
+		MarkdownWithMinimalEscapes.configure({
 			markedOptions: {
 				gfm: true,
 				breaks: false,

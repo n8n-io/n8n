@@ -13,6 +13,10 @@ import AgentTaskModal from '../components/AgentTaskModal.vue';
 import { formatScheduleDateTime } from '../utils/scheduleBuilder';
 import { AgentModalTestStub } from './utils/AgentModalTestStub';
 
+vi.mock('@tiptap/vue-3/menus', () => ({
+	BubbleMenu: { template: '<div><slot /></div>' },
+}));
+
 // Components use `data-testid`; the global setup configures `data-test-id`.
 configure({ testIdAttribute: 'data-testid' });
 
@@ -164,9 +168,11 @@ const stubs = {
 	Option: { props: ['value', 'label'], template: '<option :value="value">{{ label }}</option>' },
 };
 
-function renderModal(dataOverrides: Record<string, unknown> = {}) {
+function renderModal(dataOverrides: Record<string, unknown> = {}, { realEditor = false } = {}) {
 	const onSaved = vi.fn();
-	const renderComponent = createComponentRenderer(AgentTaskModal, { global: { stubs } });
+	const renderComponent = createComponentRenderer(AgentTaskModal, {
+		global: { stubs: { ...stubs, MarkdownEditor: realEditor ? false : stubs.MarkdownEditor } },
+	});
 	const result = renderComponent({
 		props: {
 			modalName: MODAL_NAME,
@@ -373,6 +379,31 @@ describe('AgentTaskModal', () => {
 			'a1',
 			'task-9',
 			expect.objectContaining({ name: 'Renamed' }),
+		);
+	});
+
+	it('saves an edited objective without changing identifiers or placeholders', async () => {
+		const objective =
+			'Call detect_anomalies(as_of) for github_* and custom:<metric_id> & report results';
+		updateAgentTaskSpy.mockResolvedValue({});
+		const { getByTestId } = renderModal({ task: makeTask({ objective }) }, { realEditor: true });
+		await waitFor(() => {
+			expect(getByTestId('agent-task-objective-input').querySelector('p')).toHaveTextContent(
+				objective,
+			);
+		});
+		const paragraph = getByTestId('agent-task-objective-input').querySelector('p')!;
+		paragraph.textContent = `${objective}.`;
+		await fireEvent.input(paragraph);
+		await fireEvent.click(getByTestId('agent-task-save'));
+
+		await waitFor(() => expect(updateAgentTaskSpy).toHaveBeenCalled());
+		expect(updateAgentTaskSpy).toHaveBeenCalledWith(
+			{},
+			'p1',
+			'a1',
+			'task-9',
+			expect.objectContaining({ objective: `${objective}.` }),
 		);
 	});
 
