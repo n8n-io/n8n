@@ -537,6 +537,20 @@ export class N8nClient {
 		});
 	}
 
+	// ─── Promotion reviews ─────────────────────────────────────────
+
+	async listPromotionReviews(state?: 'open' | 'closed', limit?: number) {
+		return await this.paginate<Record<string, unknown>>(
+			'/promotions/reviews',
+			state ? { state } : {},
+			limit,
+		);
+	}
+
+	async getPromotionReview(id: string) {
+		return await this.get<Record<string, unknown>>(`/promotions/reviews/${id}`);
+	}
+
 	// ─── Workflows ─────────────────────────────────────────────────
 
 	async listWorkflows(query: Record<string, string> = {}, limit?: number) {

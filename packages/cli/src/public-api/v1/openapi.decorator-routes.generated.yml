@@ -349,6 +349,12 @@ paths:
   /promotions/projects/{projectId}/apply/continue:
     post:
       $ref: ./handlers/promotions/spec/paths/continueApplyProjectSelection.generated.yml
+  /promotions/reviews:
+    get:
+      $ref: ./handlers/promotions/spec/paths/getPromotionReviews.generated.yml
+  /promotions/reviews/{promotionReviewId}:
+    get:
+      $ref: ./handlers/promotions/spec/paths/getPromotionReview.generated.yml
   /settings/rate-limits:
     get:
       $ref: ./handlers/settings/spec/paths/getRateLimitSettings.generated.yml

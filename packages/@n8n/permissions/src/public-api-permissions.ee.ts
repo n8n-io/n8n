@@ -32,6 +32,7 @@ export const OWNER_API_KEY_SCOPES: ApiKeyScope[] = [
 	'promotions:readEnvironments',
 	'promotions:promote',
 	'promotions:apply',
+	'promotions:readReviews',
 	'securityAudit:generate',
 	'securitySettings:manage',
 	'saml:manage',
@@ -170,6 +171,7 @@ export const MEMBER_API_KEY_SCOPES: ApiKeyScope[] = [
 	'variable:list',
 	'variable:update',
 	'promotions:promote',
+	'promotions:readReviews',
 	'dataTable:create',
 	'dataTable:read',
 	'dataTable:update',
@@ -251,6 +253,8 @@ export const API_KEY_SCOPES_FOR_IMPLICIT_PERSONAL_PROJECT: ApiKeyScope[] = [
 	// Each request checks the role in the target project. "Who can promote" decides which
 	// project roles hold the scope.
 	'promotions:promote',
+	// Each request checks the role. The key reads the reviews that the Inbox of its owner shows.
+	'promotions:readReviews',
 	'dataTable:create',
 	'dataTable:read',
 	'dataTable:update',

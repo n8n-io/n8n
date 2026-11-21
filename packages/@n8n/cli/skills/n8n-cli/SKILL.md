@@ -280,6 +280,13 @@ n8n-cli promotion-environment apply-selection <projectId> -w <workflowId> \
 # Exit 3: the source or the preview changed since the review. Review again.
 ```
 
+Read the promotion reviews of your Inbox (key scope `promotions:readReviews`):
+
+```bash
+n8n-cli promotion-review list --state=open          # webUrl is the merge request link
+n8n-cli promotion-review get <reviewId> --json      # reviewState, branchName, requester, approver
+```
+
 Environment JSON for step 2 (`promote.json`; `apply.json` uses `"direction":"apply"`
 and `"settings":{"schemaVersion":1,"branchName":"main"}`):
 

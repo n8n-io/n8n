@@ -72,6 +72,9 @@
       "promotion-settings": {
         "description": "Get and update who can promote, approve, and apply in their own projects"
       },
+      "promotion-review": {
+        "description": "List and read promotion reviews"
+      },
       "source-control": {
         "description": "Pull changes from the configured source control provider"
       },
