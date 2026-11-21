@@ -10,6 +10,7 @@
 | lastObservedMessageId | varchar(36) |  | false |  |  |  |
 | observationScopeId | varchar(255) |  | false |  | [public.agents_threads](public.agents_threads.md) | agents_threads.id source stream checkpointed by this cursor |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
+| workingSet | text |  | true |  |  | Plan checklist and working commands the Observer last wrote; each write replaces it |
 
 ## Constraints
 
@@ -47,6 +48,7 @@ erDiagram
   varchar_36_ lastObservedMessageId
   varchar_255_ observationScopeId FK
   timestamp_3__with_time_zone updatedAt
+  text workingSet
 }
 "public.agents" {
   varchar_36_ activeVersionId FK

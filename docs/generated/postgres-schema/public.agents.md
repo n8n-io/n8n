@@ -332,6 +332,7 @@ erDiagram
   varchar_36_ lastObservedMessageId
   varchar_255_ observationScopeId FK
   timestamp_3__with_time_zone updatedAt
+  text workingSet
 }
 "public.agents_observation_locks" {
   varchar_36_ agentId FK

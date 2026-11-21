@@ -229,6 +229,7 @@ export class TypeORMObservationLogStore
 			lastObservedMessageId: entity.lastObservedMessageId,
 			lastObservedAt: entity.lastObservedAt,
 			updatedAt: entity.updatedAt,
+			...(entity.workingSet !== null && { workingSet: entity.workingSet }),
 		};
 	}
 
@@ -239,6 +240,8 @@ export class TypeORMObservationLogStore
 				lastObservedMessageId: cursor.lastObservedMessageId,
 				lastObservedAt: cursor.lastObservedAt,
 				updatedAt: cursor.updatedAt,
+				// Leave the stored working set alone when the caller did not write one.
+				...(cursor.workingSet !== undefined && { workingSet: cursor.workingSet }),
 			},
 			{
 				conflictPaths: ['observationScopeId'],

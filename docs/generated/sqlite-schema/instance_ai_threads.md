@@ -109,6 +109,7 @@ erDiagram
   varchar_36_ lastObservedMessageId
   varchar observationScopeId PK
   datetime_3_ updatedAt
+  TEXT workingSet
 }
 "instance_ai_observation_locks" {
   datetime_3_ createdAt

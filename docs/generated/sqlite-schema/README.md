@@ -44,7 +44,11 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [agents_memory_entry_locks](agents_memory_entry_locks.md) | 6 |  | table |
 | [agents_memory_entry_sources](agents_memory_entry_sources.md) | 10 |  | table |
 | [agents_messages](agents_messages.md) | 12 |  | table |
+<<<<<<< HEAD
 | [agents_observation_cursors](agents_observation_cursors.md) | 6 |  | table |
+=======
+| [agents_observation_cursors](agents_observation_cursors.md) | 12 |  | table |
+>>>>>>> b4c6e51b (feat(core): Cap the observation log at 15% of the memory window (no-changelog) (#44298))
 | [agents_observation_locks](agents_observation_locks.md) | 7 |  | table |
 | [agents_observations](agents_observations.md) | 11 |  | table |
 | [agents_resources](agents_resources.md) | 4 |  | table |
@@ -93,7 +97,11 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [instance_ai_events](instance_ai_events.md) | 7 |  | table |
 | [instance_ai_mcp_registry_connections](instance_ai_mcp_registry_connections.md) | 7 |  | table |
 | [instance_ai_messages](instance_ai_messages.md) | 8 |  | table |
+<<<<<<< HEAD
 | [instance_ai_observation_cursors](instance_ai_observation_cursors.md) | 5 |  | table |
+=======
+| [instance_ai_observation_cursors](instance_ai_observation_cursors.md) | 11 |  | table |
+>>>>>>> b4c6e51b (feat(core): Cap the observation log at 15% of the memory window (no-changelog) (#44298))
 | [instance_ai_observation_locks](instance_ai_observation_locks.md) | 6 |  | table |
 | [instance_ai_observational_memory](instance_ai_observational_memory.md) | 32 |  | table |
 | [instance_ai_observations](instance_ai_observations.md) | 10 |  | table |
@@ -903,6 +911,7 @@ erDiagram
   varchar_36_ lastObservedMessageId
   varchar_255_ observationScopeId PK
   datetime_3_ updatedAt
+  TEXT workingSet
 }
 "agents_observation_locks" {
   varchar_36_ agentId PK
@@ -1367,6 +1376,7 @@ erDiagram
   varchar_36_ lastObservedMessageId
   varchar observationScopeId PK
   datetime_3_ updatedAt
+  TEXT workingSet
 }
 "instance_ai_observation_locks" {
   datetime_3_ createdAt

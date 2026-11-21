@@ -9,6 +9,7 @@
 | lastObservedMessageId | varchar(36) |  | false |  |  |  |
 | observationScopeId | uuid |  | false |  | [public.instance_ai_threads](public.instance_ai_threads.md) | instance_ai_threads.id source stream checkpointed by this cursor |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
+| workingSet | text |  | true |  |  | Plan checklist and working commands the Observer last wrote; each write replaces it |
 
 ## Constraints
 
@@ -41,6 +42,7 @@ erDiagram
   varchar_36_ lastObservedMessageId
   uuid observationScopeId FK
   timestamp_3__with_time_zone updatedAt
+  text workingSet
 }
 "public.instance_ai_threads" {
   timestamp_3__with_time_zone createdAt

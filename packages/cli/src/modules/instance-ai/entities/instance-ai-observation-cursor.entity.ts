@@ -11,4 +11,27 @@ export class InstanceAiObservationCursor extends WithTimestamps {
 
 	@DateTimeColumn()
 	lastObservedAt: Date;
+<<<<<<< HEAD
+=======
+
+	/** Last message replaced by `resumeNotes`; later requests start after it. */
+	@Column({ type: 'varchar', length: 36, nullable: true })
+	resumeFromMessageId: string | null;
+
+	@DateTimeColumn({ nullable: true })
+	resumeFromAt: Date | null;
+
+	@Column({ type: 'text', nullable: true })
+	resumeNotes: string | null;
+
+	@Column({ type: 'int', nullable: true })
+	lastRequestTokens: number | null;
+
+	@Column({ type: 'varchar', length: 255, nullable: true })
+	lastModelId: string | null;
+
+	/** Plan checklist and working commands the Observer last wrote. Each write replaces it. */
+	@Column({ type: 'text', nullable: true })
+	workingSet: string | null;
+>>>>>>> b4c6e51b (feat(core): Cap the observation log at 15% of the memory window (no-changelog) (#44298))
 }

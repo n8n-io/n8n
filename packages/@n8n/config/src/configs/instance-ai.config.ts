@@ -87,7 +87,23 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_MEMORY_MODEL')
 	memoryModel: string = '';
 
+<<<<<<< HEAD
 	/** Token threshold for Reflector to condense observations. */
+=======
+	/**
+	 * Model that checks actions in the n8n Assistant's Auto approval mode, in the same `provider/model` format as `N8N_INSTANCE_AI_MODEL`, for example `anthropic/claude-haiku-5-5`.
+	 * It uses the same provider and credentials as the main model, so set a fast model that provider offers.
+	 * When unset, or when n8n can't use this model, Auto mode uses the same model as `N8N_INSTANCE_AI_UTILITY_MODEL`.
+	 */
+	@Env('N8N_INSTANCE_AI_APPROVAL_JUDGE_MODEL')
+	approvalJudgeModel: string = '';
+
+	/**
+	 * Token threshold for the Reflector to condense observations.
+	 * When unset, the threshold is 15% of the model's window or of the max window, whichever is smaller.
+	 * When set, this fixed value replaces that share.
+	 */
+>>>>>>> b4c6e51b (feat(core): Cap the observation log at 15% of the memory window (no-changelog) (#44298))
 	@Env('N8N_INSTANCE_AI_REFLECTOR_OBSERVATION_TOKENS')
 	reflectorObservationTokens: number = 40_000;
 

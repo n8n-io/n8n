@@ -11,7 +11,10 @@ import {
 	type ObservationLogObserverMemory,
 	type RunObservationLogObserverResult,
 } from './observation-log-observer';
-import { runObservationLogReflector } from './observation-log-reflector';
+import {
+	runObservationLogReflector,
+	type RunObservationLogReflectorResult,
+} from './observation-log-reflector';
 import { renderObservationLog } from './observation-log-renderer';
 import { hasObservationLogStore, hasObservationLogTaskLockStore } from './observation-log-store';
 import {
@@ -20,7 +23,23 @@ import {
 	type ScopedMemoryTaskResult,
 } from './scoped-memory-task-runner';
 import { settleOrphanedToolMessagesWithChanges } from './strip-orphaned-tool-messages';
+<<<<<<< HEAD
 import { filterLlmMessages, getCreatedAt } from '../../sdk/message';
+=======
+import { messageToText } from './message-text';
+import {
+	DEFAULT_MEMORY_POLICY,
+	MemoryBudget,
+	decideResume,
+	shouldStopObserving,
+	type ObservationThresholds,
+} from './observation-policy';
+import { isAfterPoint, ResumeStateStore, resumeView, type ObservationPoint } from './resume-state';
+import { getModelContextWindow } from '../../sdk/catalog';
+import { getCreatedAt } from '../../sdk/message';
+import { detectLoadedSkills } from '../../skills/loaded-skills';
+import { getCatalogModelId, getModelIdString } from '../../utils/model';
+>>>>>>> b4c6e51b (feat(core): Cap the observation log at 15% of the memory window (no-changelog) (#44298))
 import type {
 	AgentExecutionCounter,
 	BuiltMemory,
@@ -38,8 +57,14 @@ import type {
 	SideCallUsageReport,
 	TokenUsage,
 } from '../../types/sdk/agent';
+<<<<<<< HEAD
 import { stripHydratedFileData, type AgentDbMessage } from '../../types/sdk/message';
 import type { ObservationLogScope, ObservationLogTaskKind } from '../../types/sdk/observation-log';
+=======
+import type { AgentDbMessage } from '../../types/sdk/message';
+import type { ObservationLogScope } from '../../types/sdk/observation-log';
+import type { ObservationResumeState } from '../../types/sdk/observation';
+>>>>>>> b4c6e51b (feat(core): Cap the observation log at 15% of the memory window (no-changelog) (#44298))
 import type { AgentRuntimeConfig } from '../../types/runtime/agent-runtime';
 import { computeSideCallCost } from '../loop/side-call-cost';
 import type { AgentMessageList } from '../model/message-list';
@@ -299,6 +324,53 @@ export class MemoryOrchestrator {
 		);
 	}
 
+<<<<<<< HEAD
+=======
+	/** Current observation log, rendered for the prompt. */
+	private async renderLiveNotes(options: AgentPersistenceOptions): Promise<string | undefined> {
+		const memory = this.config.memory;
+		if (!memory || !hasObservationLogStore(memory)) return undefined;
+		const observations = await memory.getActiveObservationLog({
+			...this.getObservationLogScope(options),
+			order: 'asc',
+		});
+		const cursor = hasObservationLogObserverMemory(memory)
+			? await memory.getCursor(this.getObservationLogScope(options).observationScopeId)
+			: null;
+		return this.renderNotes(observations, cursor?.workingSet);
+	}
+
+	/** The log, then the working set, which the Reflector never shortens. */
+	private renderNotes(
+		observations: Parameters<typeof renderObservationLog>[0],
+		workingSet: string | null | undefined,
+	) {
+		const { renderTokenBudget } = this.config.observationLog ?? {};
+		const parts = [renderObservationLog(observations, { renderTokenBudget })];
+		if (workingSet?.trim()) {
+			parts.push(
+				`The plan you are carrying out and the commands found to work, as of the observations:\n<working-set>\n${workingSet.trim()}\n</working-set>`,
+			);
+		}
+		return parts.filter(Boolean).join('\n\n') || undefined;
+	}
+
+	/** The one place notes enter the list, so placement is set the same way on every path. */
+	private setListNotes(
+		list: AgentMessageList,
+		observationalMemory: AgentRuntimeConfig['observationalMemory'],
+		notes: string | undefined,
+	): void {
+		list.observationLogPlacement =
+			observationalMemory?.logPlacement ?? DEFAULT_MEMORY_POLICY.logPlacement;
+		list.observationLogMemory = notes;
+	}
+
+	/**
+	 * Put notes into the list. `notes: LIVE_NOTES` (the default) renders the
+	 * current log; a string or `undefined` is used as is. Returns the notes set.
+	 */
+>>>>>>> b4c6e51b (feat(core): Cap the observation log at 15% of the memory window (no-changelog) (#44298))
 	async setListObservationLogMemory(
 		list: AgentMessageList,
 		options: AgentPersistenceOptions | undefined,
@@ -310,18 +382,31 @@ export class MemoryOrchestrator {
 			...scope,
 			order: 'asc',
 		});
+<<<<<<< HEAD
 		list.observationLogMemory =
 			renderObservationLog(observations, {
 				renderTokenBudget: this.config.observationLog?.renderTokenBudget,
 			}) ?? undefined;
+=======
+		const cursor = hasObservationLogObserverMemory(memory)
+			? await memory.getCursor(options.threadId)
+			: null;
+		const rendered =
+			notes === LIVE_NOTES ? this.renderNotes(observations, cursor?.workingSet) : notes;
+		this.setListNotes(list, this.config.observationalMemory, rendered);
+>>>>>>> b4c6e51b (feat(core): Cap the observation log at 15% of the memory window (no-changelog) (#44298))
 		// Empty batches can move the cursor beyond the latest observation.
 		// Seed both timestamps to keep new messages after the trusted cursor.
 		if (observations.length > 0) {
 			list.seedLastCreatedAt(observations[observations.length - 1].createdAt.getTime());
+<<<<<<< HEAD
 			if (hasObservationLogObserverMemory(memory)) {
 				const cursor = await memory.getCursor(options.threadId);
 				if (cursor) list.seedLastCreatedAt(new Date(cursor.lastObservedAt).getTime());
 			}
+=======
+			if (cursor) list.seedLastCreatedAt(new Date(cursor.lastObservedAt).getTime());
+>>>>>>> b4c6e51b (feat(core): Cap the observation log at 15% of the memory window (no-changelog) (#44298))
 		}
 	}
 
@@ -739,8 +824,13 @@ export class MemoryOrchestrator {
 
 		const scope = this.getObservationLogScope(persistence);
 		const runner = this.getMemoryTaskRunner(memory, observationalMemory.lockTtlMs);
+		// Shorten a log that is already over the threshold before the Observer
+		// adds to it, so an oversized log shrinks first. Tasks for one scope run
+		// in order, so the Observer starts after it. It skips when under.
+		this.scheduleReflectorTask(persistence, executionCounter, telemetry, onSideCallUsage);
 		const handle = runner.schedule<RunObservationLogObserverResult>(
 			{ ...scope, taskKind: 'observer' },
+<<<<<<< HEAD
 			async () => {
 				if (run.disabled) return { status: 'skipped', reason: 'run-disabled' };
 				const result = await runObservationLogObserver({
@@ -765,6 +855,35 @@ export class MemoryOrchestrator {
 				if (result.status === 'ran' && !result.cursorAdvanced) run.disabled = true;
 				return result;
 			},
+=======
+			async () =>
+				await this.observeInBatches(
+					run,
+					maxBatches,
+					async (thresholds) =>
+						await runObservationLogObserver({
+							memory,
+							...scope,
+							observationLogTailLimit: observationalMemory.observationLogTailLimit ?? 0,
+							observe,
+							maxBatchTokens: thresholds?.observerBatch,
+							maxWorkingSetTokens: thresholds?.workingSet,
+							tokenCounter: this.tokenCounter,
+							executionCounter,
+							telemetry,
+							modelFetch: this.config.modelFetch,
+							functionId: this.config.functionId,
+							// Usage is forwarded inside the observer right after the model
+							// call (before persistence), so a billed observer turn is
+							// priced even when post-processing throws.
+							onUsage: onSideCallUsage
+								? (model, usage) => {
+										void this.forwardSideCallUsage(onSideCallUsage, 'observer', model, usage);
+									}
+								: undefined,
+						}),
+				),
+>>>>>>> b4c6e51b (feat(core): Cap the observation log at 15% of the memory window (no-changelog) (#44298))
 		);
 		void handle.done.then((result) => {
 			if (result.status === 'failed') run.disabled = true;
@@ -772,6 +891,36 @@ export class MemoryOrchestrator {
 		return handle;
 	}
 
+<<<<<<< HEAD
+=======
+	/**
+	 * Read the backlog one batch per Observer call, each sized to fit the
+	 * memory model, until it is read, `maxBatches` is reached, or a call does
+	 * not advance the cursor. Returns the last advancing result, so callers
+	 * see that the cursor moved.
+	 */
+	private async observeInBatches(
+		run: ObserverRunState,
+		maxBatches: number,
+		observeBatch: (
+			thresholds: ObservationThresholds | undefined,
+		) => Promise<RunObservationLogObserverResult>,
+	): Promise<RunObservationLogObserverResult> {
+		const thresholds = (await this.resolveBudget())?.thresholds;
+		let outcome: RunObservationLogObserverResult | undefined;
+		for (let batch = 0; batch < maxBatches && !run.stopped; batch++) {
+			const result = await observeBatch(thresholds);
+			const ran = result.status === 'ran';
+			const advanced = ran && result.cursorAdvanced;
+			if (advanced) run.consecutiveFailures = 0;
+			else if (ran) this.noteObserverFailure(run);
+			if (!outcome || advanced || !didAdvanceObserver(outcome)) outcome = result;
+			if (!advanced || !(ran && result.moreToObserve)) break;
+		}
+		return outcome ?? { status: 'skipped', reason: 'run-disabled' };
+	}
+
+>>>>>>> b4c6e51b (feat(core): Cap the observation log at 15% of the memory window (no-changelog) (#44298))
 	private async scheduleObservationLogJobs(
 		list: AgentMessageList,
 		persistence: AgentPersistenceOptions,
@@ -783,7 +932,6 @@ export class MemoryOrchestrator {
 		if (!memory || !observationalMemory || !hasObservationLogStore(memory)) return;
 
 		const scope = this.getObservationLogScope(persistence);
-		const runner = this.getMemoryTaskRunner(memory, observationalMemory.lockTtlMs);
 		const midRunTask = this.midRunObserverTask;
 		if (midRunTask?.result) this.midRunObserverTask = undefined;
 		if (
@@ -810,6 +958,7 @@ export class MemoryOrchestrator {
 			this.scheduleObserverTask(persistence, executionCounter, telemetry, onSideCallUsage);
 		}
 
+<<<<<<< HEAD
 		const reflect = observationalMemory.reflect;
 		const reflectorThresholdTokens = observationalMemory.reflectorThresholdTokens;
 		if (reflect && reflectorThresholdTokens !== undefined) {
@@ -841,6 +990,85 @@ export class MemoryOrchestrator {
 	private async shouldScheduleObserver(list: AgentMessageList, threadId: string): Promise<boolean> {
 		const observerThresholdTokens = this.config.observationalMemory?.observerThresholdTokens;
 		if (observerThresholdTokens === undefined) return false;
+=======
+		const thresholds = (await this.resolveBudget())?.thresholds;
+		if (observationalMemory.reflect && thresholds?.reflect !== undefined) {
+			const scheduleReflector = async () =>
+				await this.scheduleReflectorTask(persistence, executionCounter, telemetry, onSideCallUsage)
+					?.done;
+			if (observationalMemory.reflectionMode !== 'afterObserve') {
+				void scheduleReflector();
+			} else {
+				// Reflect only when this run added observations; otherwise the log is
+				// unchanged. A mid-run Observer counts too, even when the tail Observer
+				// does not advance. Chained, so the end of the turn never waits on it.
+				const advancedMidRun = this.cursorAdvancedThisRun;
+				const pending = [midRunTask?.handle, observerHandle].filter(
+					(handle): handle is ScopedMemoryTaskHandle<RunObservationLogObserverResult> =>
+						handle !== undefined,
+				);
+				if (advancedMidRun || pending.length > 0) {
+					void Promise.all(pending.map(async (handle) => await handle.done)).then(
+						async (results) => {
+							if (advancedMidRun || results.some(didAdvanceCursor)) await scheduleReflector();
+						},
+					);
+				}
+			}
+		}
+	}
+
+	/**
+	 * Queue a Reflector task on the scoped task runner, or return `undefined`
+	 * when reflection is not configured. The task skips cheaply when the log is
+	 * under the threshold.
+	 */
+	private scheduleReflectorTask(
+		persistence: AgentPersistenceOptions,
+		executionCounter?: AgentExecutionCounter,
+		telemetry?: BuiltTelemetry,
+		onSideCallUsage?: OnSideCallUsage,
+	): ScopedMemoryTaskHandle<RunObservationLogReflectorResult | undefined> | undefined {
+		const { memory, observationalMemory } = this.config;
+		if (!memory || !observationalMemory || !hasObservationLogStore(memory)) return undefined;
+		const reflect = observationalMemory.reflect;
+		if (!reflect) return undefined;
+		const scope = this.getObservationLogScope(persistence);
+		const runner = this.getMemoryTaskRunner(memory, observationalMemory.lockTtlMs);
+		return runner.schedule<RunObservationLogReflectorResult | undefined>(
+			{ ...scope, taskKind: 'reflector' },
+			async () => {
+				const thresholds = (await this.resolveBudget())?.thresholds;
+				if (thresholds?.reflect === undefined) return undefined;
+				return await runObservationLogReflector({
+					memory,
+					...scope,
+					reflectorThresholdTokens: thresholds.reflect,
+					reflectorTargetTokens: thresholds.reflectTo,
+					reflect,
+					tokenCounter: this.tokenCounter,
+					executionCounter,
+					telemetry,
+					modelFetch: this.config.modelFetch,
+					functionId: this.config.functionId,
+					// Usage is forwarded inside the reflector right after the model
+					// call (before persistence), so a billed reflector turn is
+					// priced even when post-processing throws.
+					onUsage: onSideCallUsage
+						? (model, usage) => {
+								void this.forwardSideCallUsage(onSideCallUsage, 'reflector', model, usage);
+							}
+						: undefined,
+				});
+			},
+		);
+	}
+
+	private async shouldScheduleObserver(
+		list: AgentMessageList,
+		threadId: string,
+	): Promise<'full' | 'batches' | false> {
+>>>>>>> b4c6e51b (feat(core): Cap the observation log at 15% of the memory window (no-changelog) (#44298))
 		try {
 			return (await this.estimateVisibleBudget(list)) >= observerThresholdTokens;
 		} catch (error) {
@@ -958,15 +1186,6 @@ export class MemoryOrchestrator {
 		} catch (error) {
 			logger.warn('Episodic memory processing lock release failed', { error, ...scope });
 		}
-	}
-
-	private async scheduleMemoryTask<T>(
-		runner: ScopedMemoryTaskRunner,
-		scope: ObservationLogScope,
-		taskKind: ObservationLogTaskKind,
-		task: () => Promise<T>,
-	): Promise<unknown> {
-		return await runner.schedule({ ...scope, taskKind }, task).done;
 	}
 
 	private getMemoryTaskRunner(memory: BuiltMemory, lockTtlMs?: number): ScopedMemoryTaskRunner {
