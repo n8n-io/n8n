@@ -20,7 +20,10 @@ import {
 import { postCloudBrowserReturnControl, postCloudBrowserTakeOver } from '../instanceAi.api';
 import { useThread } from '../instanceAi.store';
 
-const props = defineProps<{ taskId: string; userAction?: { reason: string } }>();
+const props = defineProps<{
+	taskId: string;
+	userAction?: { reason: string; isLoginRequest?: boolean };
+}>();
 
 const i18n = useI18n();
 const toast = useToast();
@@ -42,6 +45,21 @@ const frames = computed(() => {
 	if (view?.status !== 'live') return [];
 	const current = { windowId: view.windowId, liveViewUrl: view.liveViewUrl, isCurrent: true };
 	return view.background ? [{ ...view.background, isCurrent: false }, current] : [current];
+});
+
+/** Where the session keeps its sign-ins, and whether the user saved it. */
+const loginProfile = computed(() =>
+	liveView.value?.status === 'live' ? liveView.value.loginProfile : undefined,
+);
+
+/** The domain to save a login for. Decides whether the save dialog is shown. */
+const loginDomainToSave = computed(() => {
+	const profile = loginProfile.value;
+	// The agent did not ask the user to sign in, or the session has no login profile.
+	if (!props.userAction?.isLoginRequest || !profile) return undefined;
+	// The login is saved, or the user already chose to save it.
+	if (profile.savedAt || profile.willBeSavedOnSessionEnd) return undefined;
+	return profile.domain;
 });
 
 const isDisconnected = computed(
@@ -80,6 +98,7 @@ const showsPlaceholder = computed(
 const hasControl = ref(false);
 const isBusy = ref(false);
 const isNoteDialogOpen = ref(false);
+const isSaveLoginDialogOpen = ref(false);
 const note = ref('');
 /** The user took over without the agent asking, so the agent does not know what they changed. */
 const isUserTakeover = computed(() => hasControl.value && !props.userAction);
@@ -103,10 +122,11 @@ watch(
 	},
 );
 
-// Control ended, so the question about what changed no longer applies.
+// Control ended, so the questions about what changed and about the login no longer apply.
 watch(hasControl, (inControl) => {
 	if (inControl) return;
 	isNoteDialogOpen.value = false;
+	isSaveLoginDialogOpen.value = false;
 	note.value = '';
 });
 
@@ -137,26 +157,50 @@ function onDone() {
 		isNoteDialogOpen.value = true;
 		return;
 	}
+	if (loginDomainToSave.value) {
+		isSaveLoginDialogOpen.value = true;
+		return;
+	}
 	void returnControl();
 }
 
-async function returnControl(userNote?: string) {
+async function returnControl(userNote?: string, shouldSaveLogin = false) {
 	if (isBusy.value) return;
 	isBusy.value = true;
+	const domain = loginDomainToSave.value;
 	try {
-		await postCloudBrowserReturnControl(
+		const { loginWillBeSaved } = await postCloudBrowserReturnControl(
 			rootStore.restApiContext,
 			thread.id,
 			props.taskId,
-			userNote,
+			{ note: userNote, shouldSaveLogin },
 		);
 		hasControl.value = false;
 		refreshLiveView?.(props.taskId);
+		if (shouldSaveLogin) showSaveLoginResult(loginWillBeSaved, domain);
 	} catch (error) {
 		toast.showError(error, i18n.baseText('instanceAi.cloudBrowser.returnControlFailed'));
 	} finally {
 		isBusy.value = false;
 	}
+}
+
+function showSaveLoginResult(loginWillBeSaved: boolean, domain: string | undefined) {
+	if (loginWillBeSaved) {
+		toast.showMessage({
+			type: 'success',
+			title: i18n.baseText('instanceAi.cloudBrowser.loginSavedTitle'),
+			message: i18n.baseText('instanceAi.cloudBrowser.loginSavedMessage'),
+		});
+		return;
+	}
+	toast.showMessage({
+		type: 'warning',
+		title: i18n.baseText('instanceAi.cloudBrowser.loginNotSavedTitle'),
+		message: i18n.baseText('instanceAi.cloudBrowser.loginNotSavedMessage', {
+			interpolate: { domain: domain ?? '' },
+		}),
+	});
 }
 </script>
 
@@ -303,6 +347,52 @@ async function returnControl(userNote?: string) {
 									@click="returnControl(note.trim())"
 								>
 									{{ i18n.baseText('instanceAi.cloudBrowser.noteSubmit') }}
+								</N8nButton>
+							</div>
+						</div>
+					</FocusScope>
+				</div>
+				<div
+					v-if="isSaveLoginDialogOpen && loginDomainToSave"
+					:class="$style.noteBackdrop"
+					data-test-id="instance-ai-browser-preview-save-login-dialog"
+				>
+					<FocusScope trapped loop as-child>
+						<div
+							:class="$style.noteDialog"
+							role="dialog"
+							aria-modal="true"
+							aria-labelledby="instance-ai-browser-save-login-title"
+							@keydown.esc="isSaveLoginDialogOpen = false"
+						>
+							<N8nText id="instance-ai-browser-save-login-title" tag="h3" size="large" bold>
+								{{ i18n.baseText('instanceAi.cloudBrowser.saveLoginTitle') }}
+							</N8nText>
+							<N8nText tag="p" size="small" :class="$style.noteDescription">
+								{{
+									i18n.baseText('instanceAi.cloudBrowser.saveLoginDescription', {
+										interpolate: { domain: loginDomainToSave },
+									})
+								}}
+							</N8nText>
+							<div :class="$style.noteActions">
+								<N8nButton
+									variant="outline"
+									size="medium"
+									:disabled="isBusy"
+									data-test-id="instance-ai-browser-preview-save-login-skip"
+									@click="returnControl()"
+								>
+									{{ i18n.baseText('instanceAi.cloudBrowser.saveLoginSkip') }}
+								</N8nButton>
+								<N8nButton
+									variant="brand"
+									size="medium"
+									:loading="isBusy"
+									data-test-id="instance-ai-browser-preview-save-login-submit"
+									@click="returnControl(undefined, true)"
+								>
+									{{ i18n.baseText('instanceAi.cloudBrowser.saveLoginSubmit') }}
 								</N8nButton>
 							</div>
 						</div>

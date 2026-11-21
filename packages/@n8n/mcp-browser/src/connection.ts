@@ -41,6 +41,8 @@ export interface BrowserConnectionOptions {
 	maxPageEventEntries?: number;
 	/** Remote mode only. Releases console argument handles after the message text is read. */
 	releaseConsoleHandles?: boolean;
+	/** Remote mode only. Records the origins the browser loads, for `clearSiteDataExcept`. */
+	trackVisitedOrigins?: boolean;
 }
 
 export class BrowserConnection {
@@ -55,6 +57,7 @@ export class BrowserConnection {
 	private readonly cdpConnectHeaders?: Record<string, string>;
 	private readonly maxPageEventEntries?: number;
 	private readonly releaseConsoleHandles?: boolean;
+	private readonly trackVisitedOrigins?: boolean;
 	/** Adapter kept alive after an extension-connect timeout so its relay URL remains valid. */
 	private pendingAdapter: Adapter | null = null;
 
@@ -65,6 +68,7 @@ export class BrowserConnection {
 		this.cdpConnectHeaders = options?.cdpConnectHeaders;
 		this.maxPageEventEntries = options?.maxPageEventEntries;
 		this.releaseConsoleHandles = options?.releaseConsoleHandles;
+		this.trackVisitedOrigins = options?.trackVisitedOrigins;
 
 		// Merge auto-discovery with programmatic overrides
 		const discovery = getDefaultDiscovery().discover();
@@ -276,6 +280,7 @@ export class BrowserConnection {
 				cdpConnectHeaders: this.cdpConnectHeaders,
 				maxPageEventEntries: this.maxPageEventEntries,
 				releaseConsoleHandles: this.releaseConsoleHandles,
+				trackVisitedOrigins: this.trackVisitedOrigins,
 			});
 		}
 		if (this.config.adapter === 'agent-browser') {

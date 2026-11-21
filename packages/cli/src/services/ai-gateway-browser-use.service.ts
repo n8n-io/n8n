@@ -24,7 +24,7 @@ const REQUEST_TIMEOUT_MS = 30 * Time.seconds.toMilliseconds;
 const createdSessionSchema = z.object({
 	id: z.string().min(1),
 	connectUrl: z.string().min(1),
-	region: z.string().optional(),
+	region: z.string().min(1),
 });
 
 /**
@@ -37,6 +37,23 @@ const liveViewSchema = z.object({
 		.array(z.object({ id: z.string().min(1), debuggerFullscreenUrl: z.string().min(1) }))
 		.default([])
 		.catch([]),
+});
+
+/** A context id is the gateway's own id. The gateway never returns Browserbase's. */
+const createdContextSchema = z.object({ id: z.string().min(1) });
+
+const savedContextSchema = z.object({
+	id: z.string().min(1),
+	/** The registrable domain the login is for, for example "linkedin.com". */
+	domain: z.string().min(1),
+	/** The region of the session the login was made in. */
+	region: z.string().min(1),
+	proxyCountry: z.string().optional(),
+	proxyCity: z.string().optional(),
+	/** When the login was last saved. */
+	savedAt: z.string().datetime().pipe(z.coerce.date()),
+	/** When a session last used the login. */
+	lastUsedAt: z.string().datetime().pipe(z.coerce.date()),
 });
 
 /** Errors from the gateway itself carry a message written for the user. */
@@ -57,6 +74,12 @@ export type AiGatewayBrowserSession = z.infer<typeof createdSessionSchema>;
 export type AiGatewayBrowserLiveView = z.infer<typeof liveViewSchema>;
 
 /**
+ * A saved login: a Browserbase context that the user saved for one site. A session that uses
+ * it must run in the same region and through the same proxy, or some sites end the login.
+ */
+export type AiGatewaySavedBrowserContext = z.infer<typeof savedContextSchema>;
+
+/**
  * Manages Browserbase browser sessions through the gateway for a user. The
  * caller drives the browser itself over CDP with the session's `connectUrl`.
  */
@@ -75,10 +98,19 @@ export class AiGatewayBrowserUseService {
 		userId,
 		attribution,
 		proxyCountry,
+		proxyCity,
+		region,
+		contextId,
 	}: {
 		userId: string;
 		attribution: AiGatewayRequestAttribution;
 		proxyCountry?: string;
+		/** A city in `proxyCountry`. Ignored without a country. */
+		proxyCity?: string;
+		/** The Browserbase region. The gateway picks one when it is not given. */
+		region?: string;
+		/** A context from `createContext`. The session saves its browser state to it when it ends. */
+		contextId?: string;
 	}): Promise<AiGatewayBrowserSession> {
 		// Without keepAlive, Browserbase ends the session when the CDP connection
 		// drops, so a crashed or restarted instance cannot leave one running.
@@ -89,12 +121,16 @@ export class AiGatewayBrowserUseService {
 			path: '/v1/sessions',
 			body: {
 				keepAlive: false,
-				browserSettings: { viewport: BROWSER_VIEWPORT },
+				...(region && { region }),
+				browserSettings: {
+					viewport: BROWSER_VIEWPORT,
+					...(contextId && { context: { id: contextId } }),
+				},
 				...(proxyCountry && {
 					proxies: [
 						{
 							type: 'browserbase',
-							geolocation: { country: proxyCountry },
+							geolocation: { country: proxyCountry, ...(proxyCity && { city: proxyCity }) },
 						},
 					],
 				}),
@@ -154,6 +190,97 @@ export class AiGatewayBrowserUseService {
 			body: { status: 'REQUEST_RELEASE' },
 			userId,
 			attribution,
+			mapErrorResponse: toGatewayError,
+			timeoutMs: REQUEST_TIMEOUT_MS,
+		});
+	}
+
+	/**
+	 * Creates an empty context for a new session, so that the login made in the session can be
+	 * saved afterwards. The gateway deletes the context a few hours after its last use, unless
+	 * `saveContext` saves it.
+	 */
+	async createContext({
+		userId,
+		attribution,
+	}: {
+		userId: string;
+		attribution: AiGatewayRequestAttribution;
+	}): Promise<{ id: string }> {
+		const body = await this.aiGatewayService.sendProviderRequest<unknown>({
+			provider: BROWSERBASE_BROWSER_USE_PROVIDER,
+			authHeaderKey: BROWSERBASE_API_KEY_HEADER,
+			method: 'POST',
+			path: '/v1/contexts',
+			body: {},
+			userId,
+			attribution,
+			mapErrorResponse: toGatewayError,
+			timeoutMs: REQUEST_TIMEOUT_MS,
+		});
+		const parsed = createdContextSchema.safeParse(body);
+		if (!parsed.success) {
+			throw new OperationalError('Could not read the new browser login. Try again later.');
+		}
+		return parsed.data;
+	}
+
+	/**
+	 * Saves a context as the user's login for `domain`, and returns it as saved. `region` and the
+	 * proxy location are where the login was made. A later session that uses the context must send
+	 * them again.
+	 */
+	async saveContext({
+		userId,
+		attribution,
+		contextId,
+		domain,
+		region,
+		proxyCountry,
+		proxyCity,
+	}: {
+		userId: string;
+		attribution: AiGatewayRequestAttribution;
+		contextId: string;
+		domain: string;
+		region: string;
+		proxyCountry?: string;
+		proxyCity?: string;
+	}): Promise<AiGatewaySavedBrowserContext> {
+		const body = await this.aiGatewayService.sendProviderRequest<unknown>({
+			provider: BROWSERBASE_BROWSER_USE_PROVIDER,
+			authHeaderKey: BROWSERBASE_API_KEY_HEADER,
+			method: 'POST',
+			path: `/v1/contexts/${encodeURIComponent(contextId)}/save`,
+			body: {
+				domain,
+				region,
+				...(proxyCountry && { proxyCountry }),
+				...(proxyCountry && proxyCity && { proxyCity }),
+			},
+			userId,
+			attribution,
+			mapErrorResponse: toGatewayError,
+			timeoutMs: REQUEST_TIMEOUT_MS,
+		});
+		const parsed = savedContextSchema.safeParse(body);
+		if (!parsed.success) {
+			throw new OperationalError('Could not read the saved login. Try again later.');
+		}
+		return parsed.data;
+	}
+
+	/**
+	 * Deletes a context, saved or not. This request is free and is not part of a task, so it
+	 * has no attribution.
+	 */
+	async deleteContext({ userId, contextId }: { userId: string; contextId: string }): Promise<void> {
+		await this.aiGatewayService.sendProviderRequest({
+			provider: BROWSERBASE_BROWSER_USE_PROVIDER,
+			authHeaderKey: BROWSERBASE_API_KEY_HEADER,
+			method: 'DELETE',
+			path: `/v1/contexts/${encodeURIComponent(contextId)}`,
+			userId,
 			mapErrorResponse: toGatewayError,
 			timeoutMs: REQUEST_TIMEOUT_MS,
 		});

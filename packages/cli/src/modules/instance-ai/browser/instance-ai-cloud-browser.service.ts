@@ -12,15 +12,24 @@ import { InstanceSettings } from 'n8n-core';
 import { tmpdir } from 'node:os';
 
 import { CredentialsService } from '@/credentials/credentials.service';
-import { AiGatewayBrowserUseService } from '@/services/ai-gateway-browser-use.service';
+import {
+	AiGatewayBrowserUseService,
+	type AiGatewaySavedBrowserContext,
+} from '@/services/ai-gateway-browser-use.service';
 
 import {
 	createBrowserCredential,
 	createInMemorySecretsBuffer,
 	type BrowserDomainGate,
 } from './browser.helpers';
-import { CloudBrowserLocalMcpServer } from './cloud-browser-local-mcp-server';
-import type { CloudBrowserSessionProvider } from './cloud-browser-session-provider';
+import {
+	CloudBrowserLocalMcpServer,
+	type CloudBrowserReturnControlResult,
+} from './cloud-browser-local-mcp-server';
+import type {
+	CloudBrowserLoginProfile,
+	CloudBrowserSessionProvider,
+} from './cloud-browser-session-provider';
 
 const TASK_NOT_RUNNING_MESSAGE = 'This browser task is not running.';
 
@@ -101,7 +110,8 @@ export class InstanceAiCloudBrowserService {
 
 		const server = new CloudBrowserLocalMcpServer({
 			scope: { userId, threadId, taskId },
-			sessionProvider: this.getSessionProvider(taskId),
+			sessionProvider: this.getSessionProvider(),
+			enableLoginProfiles: true,
 			createToolkit: (connectUrl) =>
 				createBrowserTools(
 					{ mode: 'remote' },
@@ -109,6 +119,7 @@ export class InstanceAiCloudBrowserService {
 						cdpEndpoint: connectUrl,
 						maxPageEventEntries: MAX_PAGE_EVENT_ENTRIES,
 						releaseConsoleHandles: true,
+						trackVisitedOrigins: true,
 					},
 				),
 			toolContext: {
@@ -160,16 +171,21 @@ export class InstanceAiCloudBrowserService {
 		return entry.server.giveControlToUser();
 	}
 
-	/** Gives control of the task's browser back to its agent, for its owner only. */
-	returnControlToAgent(
+	/**
+	 * Gives control of the task's browser back to its agent, for its owner only. With
+	 * `shouldSaveLogin`, first saves the login the user made.
+	 */
+	async returnControlToAgent(
 		userId: string,
 		threadId: string,
 		taskId: string,
-		note?: string,
-	): string | undefined {
+		{ note, shouldSaveLogin }: { note?: string; shouldSaveLogin?: boolean } = {},
+	): Promise<CloudBrowserReturnControlResult> {
 		const entry = this.serversByTaskId.get(taskId);
-		if (entry?.userId !== userId || entry.threadId !== threadId) return TASK_NOT_RUNNING_MESSAGE;
-		return entry.server.returnControlToAgent(note);
+		if (entry?.userId !== userId || entry.threadId !== threadId) {
+			return { returned: false, error: TASK_NOT_RUNNING_MESSAGE };
+		}
+		return await entry.server.returnControlToAgent(note, shouldSaveLogin);
 	}
 
 	/** Ends the task's browser and forgets its server. Called when the task ends. */
@@ -188,11 +204,11 @@ export class InstanceAiCloudBrowserService {
 		await Promise.allSettled(entries.map(async ({ server }) => await server.release()));
 	}
 
-	private getSessionProvider(taskId: string): CloudBrowserSessionProvider {
+	private getSessionProvider(): CloudBrowserSessionProvider {
 		if (this.aiGatewayBrowserUseService.isGatewayBrowserUseEnabled()) {
 			return this.buildGatewaySessionProvider();
 		}
-		throw new UnexpectedError('Cloud browser use is not enabled', { extra: { taskId } });
+		throw new UnexpectedError('Cloud browser use is not enabled');
 	}
 
 	private buildGatewaySessionProvider(): CloudBrowserSessionProvider {
@@ -202,9 +218,12 @@ export class InstanceAiCloudBrowserService {
 					userId,
 					attribution: { instanceAiThreadId: threadId, instanceAiTaskId: taskId },
 					proxyCountry: options?.proxyCountry,
+					proxyCity: options?.proxyCity,
+					region: options?.regionId,
+					contextId: options?.loginProfileId,
 				});
-				const regionCountry = region ? BROWSERBASE_REGION_COUNTRIES.get(region) : undefined;
-				return { id, connectUrl, ...(regionCountry ? { regionCountry } : {}) };
+				const regionCountry = BROWSERBASE_REGION_COUNTRIES.get(region);
+				return { id, connectUrl, regionId: region, ...(regionCountry ? { regionCountry } : {}) };
 			},
 			releaseSession: async ({ userId, threadId, taskId }, sessionId) =>
 				await this.aiGatewayBrowserUseService.releaseSession({
@@ -231,6 +250,50 @@ export class InstanceAiCloudBrowserService {
 				}
 				return page?.debuggerFullscreenUrl ?? debuggerFullscreenUrl;
 			},
+			createLoginProfile: async ({ userId, threadId, taskId }) => {
+				const { id } = await this.aiGatewayBrowserUseService.createContext({
+					userId,
+					attribution: { instanceAiThreadId: threadId, instanceAiTaskId: taskId },
+				});
+				return id;
+			},
+			saveLoginProfile: async ({ userId, threadId, taskId }, { id, domain, location }) => {
+				const context = await this.aiGatewayBrowserUseService.saveContext({
+					userId,
+					attribution: { instanceAiThreadId: threadId, instanceAiTaskId: taskId },
+					contextId: id,
+					domain,
+					region: location.regionId,
+					proxyCountry: location.proxyCountry,
+					proxyCity: location.proxyCity,
+				});
+				return toLoginProfile(context);
+			},
+			deleteLoginProfile: async ({ userId }, id) =>
+				await this.aiGatewayBrowserUseService.deleteContext({ userId, contextId: id }),
 		};
 	}
+}
+
+/** A saved Browserbase context, as the login profile the browser tools use. */
+function toLoginProfile({
+	id,
+	domain,
+	region,
+	proxyCountry,
+	proxyCity,
+	savedAt,
+	lastUsedAt,
+}: AiGatewaySavedBrowserContext): CloudBrowserLoginProfile {
+	return {
+		id,
+		domain,
+		savedAt,
+		lastUsedAt,
+		savedLocation: {
+			regionId: region,
+			...(proxyCountry && { proxyCountry }),
+			...(proxyCity && { proxyCity }),
+		},
+	};
 }

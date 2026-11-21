@@ -16,6 +16,7 @@ import {
 } from '@n8n/api-types';
 import type {
 	InstanceAiCloudBrowserLiveViewResponse,
+	InstanceAiCloudBrowserReturnControlResponse,
 	InstanceAiEvent,
 	AssistantThreadTabsResponse,
 } from '@n8n/api-types';
@@ -686,14 +687,17 @@ export class InstanceAiController {
 	) {
 		this.requireInstanceAiEnabled();
 		await this.assertThreadAccess(req.user.id, threadId);
-		const error = this.cloudBrowserService.returnControlToAgent(
+		const result = await this.cloudBrowserService.returnControlToAgent(
 			req.user.id,
 			threadId,
 			taskId,
-			payload.note || undefined,
+			{ note: payload.note || undefined, shouldSaveLogin: payload.shouldSaveLogin },
 		);
-		if (error) throw new ConflictError(error);
-		return { ok: true };
+		if (!result.returned) throw new ConflictError(result.error);
+		return {
+			ok: true,
+			loginWillBeSaved: result.loginWillBeSaved,
+		} satisfies InstanceAiCloudBrowserReturnControlResponse;
 	}
 
 	@Post('/chat/:threadId/tasks/:taskId/correct')

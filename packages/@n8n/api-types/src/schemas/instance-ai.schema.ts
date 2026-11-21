@@ -1234,7 +1234,9 @@ export interface InstanceAiBrowserCreateLinkResponse {
  * - `live`: a session is open. The link lets anyone who has it control the browser, so the
  *   client keeps it in memory only. `windowId` names the window the link shows, so the client
  *   can tell a new window from a new link to the same one. `userHasTakenOver` is set after the
- *   user clicked "Take over", until they give control back.
+ *   user clicked "Take over", until they give control back. `loginProfile` is where the session
+ *   keeps its sign-ins: `domain` is its site, and `savedAt`, an ISO date, is set once it is saved.
+ *   `willBeSavedOnSessionEnd` is set once the user chose to save it.
  * - `starting`: a session is opening.
  * - `no-session`: the task runs, but the agent has not opened a session yet.
  * - `disconnected`: the session closed while the task runs. The agent can open a new one.
@@ -1242,7 +1244,13 @@ export interface InstanceAiBrowserCreateLinkResponse {
  *   task runs on another main, or it is not the user's.
  */
 export type InstanceAiCloudBrowserLiveViewResponse =
-	| { status: 'live'; liveViewUrl: string; windowId: string; userHasTakenOver?: boolean }
+	| {
+			status: 'live';
+			liveViewUrl: string;
+			windowId: string;
+			userHasTakenOver?: boolean;
+			loginProfile?: { domain: string; savedAt?: string; willBeSavedOnSessionEnd?: boolean };
+	  }
 	| { status: 'starting' }
 	| { status: 'no-session' }
 	| { status: 'disconnected'; reason: 'connectionLost' | 'idleTimeout' | 'userControlTimeout' }
@@ -1917,10 +1925,23 @@ export class InstanceAiCorrectTaskRequest extends Z.class({
 	message: z.string().min(1),
 }) {}
 
-/** The user hands a cloud browser back to its agent, with what they changed. */
+/**
+ * The user hands a cloud browser back to its agent, with what they changed. `shouldSaveLogin`
+ * determines whether the login should be saved, after asking the user.
+ */
 export class InstanceAiCloudBrowserReturnControlRequest extends Z.class({
 	note: z.string().trim().max(2000).optional(),
+	shouldSaveLogin: z.boolean().optional(),
 }) {}
+
+/**
+ * The browser is back with its agent. `loginWillBeSaved` is false when the user did not ask to
+ * save the login, or when the server could not tell where they signed in.
+ */
+export interface InstanceAiCloudBrowserReturnControlResponse {
+	ok: true;
+	loginWillBeSaved: boolean;
+}
 
 /**
  * Entry-point taxonomy for Instance AI thread creation. Every new entry point
