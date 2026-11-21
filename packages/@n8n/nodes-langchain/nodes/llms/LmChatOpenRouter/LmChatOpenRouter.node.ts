@@ -395,6 +395,42 @@ export class LmChatOpenRouter implements INodeType {
 							},
 						],
 					},
+					{
+						displayName: 'App Attribution',
+						name: 'appAttribution',
+						type: 'collection',
+						default: {},
+						description:
+							'Attribute requests to an app in OpenRouter, for example one app for each workflow. OpenRouter identifies the app from the request headers, not from the API key.',
+						placeholder: 'Add App Attribution Option',
+						options: [
+							{
+								displayName: 'App URL',
+								name: 'appUrl',
+								type: 'string',
+								default: '',
+								placeholder: 'https://my-workflow.n8n.example.com',
+								description:
+									'URL that identifies the app, sent as the HTTP-Referer header. Use a different subdomain for each app. The URL does not need to load. Other headers are only sent when this is set.',
+							},
+							{
+								displayName: 'App Title',
+								name: 'appTitle',
+								type: 'string',
+								default: '',
+								placeholder: 'n8n: My Workflow',
+								description: 'Name of the app in OpenRouter, sent as the X-OpenRouter-Title header',
+							},
+							{
+								displayName: 'Hide From Public Rankings',
+								name: 'hideFromRankings',
+								type: 'boolean',
+								default: true,
+								description:
+									"Whether to keep the app out of OpenRouter's public rankings and app pages. OpenRouter only applies this on the first request that creates the app.",
+							},
+						],
+					},
 				],
 			},
 		],
@@ -425,6 +461,11 @@ export class LmChatOpenRouter implements INodeType {
 				ignore?: string;
 				sort?: 'price' | 'throughput' | 'latency';
 			};
+			appAttribution?: {
+				appUrl?: string;
+				appTitle?: string;
+				hideFromRankings?: boolean;
+			};
 		};
 
 		const timeout = options.timeout;
@@ -443,7 +484,19 @@ export class LmChatOpenRouter implements INodeType {
 			},
 		};
 
-		const { reasoningEffort, providerRouting, responseFormat, ...modelOptions } = options;
+		const { reasoningEffort, providerRouting, responseFormat, appAttribution, ...modelOptions } =
+			options;
+
+		const { appUrl, appTitle, hideFromRankings = true } = appAttribution ?? {};
+		// OpenRouter ignores the title and visibility headers without a referer
+		if (appUrl) {
+			configuration.defaultHeaders = {
+				'HTTP-Referer': appUrl,
+				...(appTitle && { 'X-OpenRouter-Title': appTitle }),
+				...(hideFromRankings && { 'X-OpenRouter-App-Visibility': 'hidden' }),
+			};
+		}
+
 		// Build provider routing object
 		const provider: Record<string, unknown> = {};
 		if (providerRouting) {
