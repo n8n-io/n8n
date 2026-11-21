@@ -1,4 +1,4 @@
-import { EventService } from '@n8n/backend-services';
+import { EventService, ExecutionLedger } from '@n8n/backend-services';
 import type { Mock } from 'vitest';
 import {
 	getPersonalProject,
@@ -480,6 +480,7 @@ describe('WorkflowStatisticsService', () => {
 				settingsRepository,
 				workflowRepositoryNoErrorWorkflows,
 				Container.get(DatabaseConfig),
+				Container.get(ExecutionLedger),
 			);
 			const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
 
@@ -523,6 +524,7 @@ describe('WorkflowStatisticsService', () => {
 				settingsRepository,
 				workflowRepositoryNoErrorWorkflows,
 				Container.get(DatabaseConfig),
+				Container.get(ExecutionLedger),
 			);
 
 			// First failure - this will set the instance.firstProductionFailure setting
@@ -564,6 +566,7 @@ describe('WorkflowStatisticsService', () => {
 				settingsRepository,
 				workflowRepositoryWithErrorWorkflows,
 				Container.get(DatabaseConfig),
+				Container.get(ExecutionLedger),
 			);
 			const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
 
@@ -682,6 +685,7 @@ describe('WorkflowStatisticsService', () => {
 				settingsRepository,
 				workflowRepositoryNoErrorWorkflows,
 				Container.get(DatabaseConfig),
+				Container.get(ExecutionLedger),
 			);
 			const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
 
@@ -718,6 +722,7 @@ describe('WorkflowStatisticsService', () => {
 					Container.get(SettingsRepository),
 					workflowRepositoryNoErrorWorkflows,
 					Container.get(DatabaseConfig),
+					Container.get(ExecutionLedger),
 				);
 			};
 
@@ -1040,6 +1045,7 @@ describe('WorkflowStatisticsService', () => {
 				settingsRepository,
 				workflowRepository,
 				databaseConfig,
+				Container.get(ExecutionLedger),
 			);
 			globalConfig.diagnostics.enabled = true;
 			globalConfig.deployment.type = 'n8n-testing';

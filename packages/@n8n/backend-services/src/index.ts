@@ -10,12 +10,14 @@ export {
 	savesTime,
 	toLedgerFact,
 	toLedgerOutcome,
+	toWorkflowStatisticsCount,
 	type CompletedRun,
 	type LedgerEntityType,
 	type LedgerEvent,
 	type LedgerFact,
 	type LedgerOutcome,
 	type LedgerSource,
+	type WorkflowStatisticsCount,
 } from './executions/counting-rules';
 export { computeTimeSavedMinutes, sumNodeTimeSavedMinutes } from './executions/time-saved';
 export {
