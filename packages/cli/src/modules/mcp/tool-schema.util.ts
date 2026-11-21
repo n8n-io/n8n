@@ -2,6 +2,11 @@ import type { StandardSchemaWithJSON } from '@modelcontextprotocol/server';
 import { zodToDraft202012 } from '@n8n/ai-utilities/json-schema';
 import { z } from 'zod';
 
+// The MCP server is rebuilt on every request, and most tool shapes are module-level
+// constants. Caching by shape identity skips the costly zod-to-JSON-Schema
+// conversion on each `tools/list`. The `WeakMap` frees an entry with its shape.
+const standardSchemaCache = new WeakMap<object, unknown>();
+
 /**
  * Bridges a classic-zod raw shape to the Standard Schema interface the v2 MCP
  * SDK requires. The SDK only uses `~standard.validate` (argument checking) and
@@ -15,6 +20,14 @@ export function shapeToStandardSchema<Shape extends z.ZodRawShape>(
 	z.objectInputType<Shape, z.ZodTypeAny>,
 	z.objectOutputType<Shape, z.ZodTypeAny>
 > {
+	type Result = StandardSchemaWithJSON<
+		z.objectInputType<Shape, z.ZodTypeAny>,
+		z.objectOutputType<Shape, z.ZodTypeAny>
+	>;
+
+	const cached = standardSchemaCache.get(shape);
+	if (cached) return cached as Result;
+
 	const schema = z.object(shape);
 	// `$refStrategy: 'none'` inlines schema instances that are reused across the
 	// shape. The default strategy dedupes a reused instance into a `$ref` to an
@@ -24,7 +37,7 @@ export function shapeToStandardSchema<Shape extends z.ZodRawShape>(
 	// default (`reused: 'inline'`), the migration target for this bridge.
 	const jsonSchema = zodToDraft202012(schema, { $refStrategy: 'none' });
 
-	return {
+	const standardSchema: Result = {
 		'~standard': {
 			version: 1,
 			vendor: 'n8n-zod-classic',
@@ -45,4 +58,7 @@ export function shapeToStandardSchema<Shape extends z.ZodRawShape>(
 			},
 		},
 	};
+
+	standardSchemaCache.set(shape, standardSchema);
+	return standardSchema;
 }
