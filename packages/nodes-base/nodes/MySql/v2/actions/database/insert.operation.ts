@@ -17,6 +17,8 @@ import type {
 import { AUTO_MAP, BATCH_MODE, DATA_MODE } from '../../helpers/interfaces';
 import {
 	escapeSqlIdentifier,
+	getTableName,
+	isDatabaseExpression,
 	prepareErrorItem,
 	replaceEmptyStringsByNulls,
 } from '../../helpers/utils';
@@ -86,7 +88,7 @@ const properties: INodeProperties[] = [
 							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/" target="_blank">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getColumns',
-							loadOptionsDependsOn: ['table.value'],
+							loadOptionsDependsOn: ['database.value', 'table.value'],
 						},
 						default: [],
 					},
@@ -124,7 +126,9 @@ export async function execute(
 	let returnData: INodeExecutionData[] = [];
 	const items = replaceEmptyStringsByNulls(inputItems, nodeOptions.replaceEmptyStrings as boolean);
 
-	const table = this.getNodeParameter('table', 0, '', { extractValue: true }) as string;
+	// The read at index 0 stays for compatibility with saved workflows.
+	const table = getTableName(this, 0);
+	const databasePerItem = isDatabaseExpression(this);
 
 	const dataMode = this.getNodeParameter('dataMode', 0) as string;
 	const queryBatching = (nodeOptions.queryBatching as QueryMode) || BATCH_MODE.SINGLE;
@@ -132,6 +136,22 @@ export async function execute(
 	const queries: QueryWithValues[] = [];
 
 	if (queryBatching === BATCH_MODE.SINGLE) {
+		if (databasePerItem) {
+			for (let i = 1; i < items.length; i++) {
+				if (getTableName(this, i) !== table) {
+					throw new NodeOperationError(
+						this.getNode(),
+						'The Database or Table value is not the same for all items',
+						{
+							itemIndex: i,
+							description:
+								'Set Options > Query Batching to Independent or Transaction to insert each item into its own table',
+						},
+					);
+				}
+			}
+		}
+
 		let columns: string[] = [];
 		let insertItems: IDataObject[] = [];
 
@@ -191,6 +211,7 @@ export async function execute(
 	} else {
 		for (let i = 0; i < items.length; i++) {
 			try {
+				const itemTable = databasePerItem ? getTableName(this, i) : table;
 				let columns: string[] = [];
 				let insertItem: IDataObject = {};
 
@@ -224,7 +245,7 @@ export async function execute(
 				const placeholder = `(${columns.map(() => '?').join(',')})`;
 
 				const query = `INSERT ${priority} ${ignore} INTO ${escapeSqlIdentifier(
-					table,
+					itemTable,
 				)} (${escapedColumns}) VALUES ${placeholder};`;
 
 				const values = Object.values(insertItem) as QueryValues;

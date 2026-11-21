@@ -16,11 +16,12 @@ export async function getColumns(this: ILoadOptionsFunctions): Promise<INodeProp
 		const table = this.getNodeParameter('table', 0, {
 			extractValue: true,
 		}) as string;
+		const database = this.getNodeParameter('database', '', { extractValue: true });
 
 		const columns = (
 			await connection.query(
 				`SHOW COLUMNS FROM ${escapeSqlIdentifier(table)} FROM ${escapeSqlIdentifier(
-					credentials.database,
+					(typeof database === 'string' && database) || credentials.database,
 				)}`,
 			)
 		)[0] as IDataObject[];
