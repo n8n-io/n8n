@@ -199,22 +199,114 @@ describe('applyOperations', () => {
 			expect(result.success).toBe(false);
 		});
 
-		test('rejects path that does not start with /', () => {
-			const ops: PartialUpdateOperation[] = [
-				{ type: 'setNodeParameter', nodeName: 'B', path: 'url', value: 'x' },
-			];
-			const result = applyOperations(baseWorkflow(), ops);
-			expect(result.success).toBe(false);
+		test('accepts a single key without a leading slash', () => {
+			const result = applyOperations(baseWorkflow(), [
+				{ type: 'setNodeParameter', nodeName: 'B', path: 'url', value: 'https://new' },
+			]);
+			expect(result.success).toBe(true);
+			if (!result.success) return;
+			expect(result.workflow.nodes.find((n) => n.name === 'B')!.parameters).toEqual({
+				url: 'https://new',
+			});
 		});
 
-		test('rejects unsafe segment in path', () => {
-			const ops: PartialUpdateOperation[] = [
-				{ type: 'setNodeParameter', nodeName: 'B', path: '/__proto__/polluted', value: true },
-			];
-			const result = applyOperations(baseWorkflow(), ops);
-			expect(result.success).toBe(false);
-			expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+		test('schema accepts a one-character key without a leading slash', () => {
+			const parsed = partialUpdateOperationSchema.safeParse({
+				type: 'setNodeParameter',
+				nodeName: 'B',
+				path: 'n',
+				value: 2,
+			});
+			expect(parsed.success).toBe(true);
 		});
+
+		test('accepts a slash-separated path without a leading slash', () => {
+			const wf = baseWorkflow();
+			wf.nodes[1].parameters = { assignments: { assignments: [{ name: 'a', value: 1 }] } };
+			const result = applyOperations(wf, [
+				{
+					type: 'setNodeParameter',
+					nodeName: 'B',
+					path: 'assignments/assignments/0/value',
+					value: 2,
+				},
+			]);
+			expect(result.success).toBe(true);
+			if (!result.success) return;
+			expect(result.workflow.nodes.find((n) => n.name === 'B')!.parameters).toEqual({
+				assignments: { assignments: [{ name: 'a', value: 2 }] },
+			});
+		});
+
+		test.each(['parameters.url', 'parameters/url', '/parameters/url'])(
+			'removes a leading parameters segment in %s',
+			(path) => {
+				const result = applyOperations(baseWorkflow(), [
+					{ type: 'setNodeParameter', nodeName: 'B', path, value: 'https://new' },
+				]);
+				expect(result.success).toBe(true);
+				if (!result.success) return;
+				expect(result.workflow.nodes.find((n) => n.name === 'B')!.parameters).toEqual({
+					url: 'https://new',
+				});
+			},
+		);
+
+		test('removes a leading parameters segment before a nested path', () => {
+			const wf = baseWorkflow();
+			wf.nodes[1].parameters = { options: { mode: 'manual' } };
+			const result = applyOperations(wf, [
+				{ type: 'setNodeParameter', nodeName: 'B', path: '/parameters/options/timeout', value: 60 },
+			]);
+			expect(result.success).toBe(true);
+			if (!result.success) return;
+			expect(result.workflow.nodes.find((n) => n.name === 'B')!.parameters).toEqual({
+				options: { mode: 'manual', timeout: 60 },
+			});
+		});
+
+		test.each(['parameters.url', 'parameters/url', '/parameters/url'])(
+			'keeps the leading parameters segment in %s when the node has a parameters key',
+			(path) => {
+				const wf = baseWorkflow();
+				wf.nodes[1].parameters = { parameters: { url: 'https://old' } };
+				const result = applyOperations(wf, [
+					{ type: 'setNodeParameter', nodeName: 'B', path, value: 'https://new' },
+				]);
+				expect(result.success).toBe(true);
+				if (!result.success) return;
+				expect(result.workflow.nodes.find((n) => n.name === 'B')!.parameters).toEqual({
+					parameters: { url: 'https://new' },
+				});
+			},
+		);
+
+		test.each(['options.timeout', 'parameters.options.timeout', 'parameters.options/timeout'])(
+			'rejects the dotted path %s with the JSON Pointer format',
+			(path) => {
+				const result = applyOperations(baseWorkflow(), [
+					{ type: 'setNodeParameter', nodeName: 'B', path, value: 1 },
+				]);
+				expect(result.success).toBe(false);
+				if (result.success) return;
+				expect(result.error).toContain(
+					`path '${path}' is not a valid JSON Pointer. Use a JSON Pointer that starts with "/", such as "/jsCode" or "/options/timeout"`,
+				);
+			},
+		);
+
+		test.each(['/__proto__/polluted', '__proto__/polluted', 'constructor', 'parameters.__proto__'])(
+			'rejects the unsafe segment in %s',
+			(path) => {
+				const result = applyOperations(baseWorkflow(), [
+					{ type: 'setNodeParameter', nodeName: 'B', path, value: true },
+				]);
+				expect(result.success).toBe(false);
+				if (result.success) return;
+				expect(result.error).toContain(`path '${path}' contains an unsafe segment`);
+				expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+			},
+		);
 
 		test('sanitizes unsafe keys inside the value', () => {
 			const ops: PartialUpdateOperation[] = [
@@ -288,7 +380,7 @@ describe('applyOperations', () => {
 				]);
 				expect(result.success).toBe(false);
 				if (result.success) continue;
-				expect(result.error).toContain('invalid');
+				expect(result.error).toContain('is not a valid JSON Pointer');
 			}
 		});
 
@@ -299,7 +391,7 @@ describe('applyOperations', () => {
 				]);
 				expect(result.success).toBe(false);
 				if (result.success) continue;
-				expect(result.error).toContain('invalid');
+				expect(result.error).toContain('is not a valid JSON Pointer');
 			}
 		});
 
