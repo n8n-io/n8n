@@ -34,8 +34,9 @@ function processSchema(schema: Schema): string {
 			const properties = schema.value
 				.map((prop) => {
 					const key = prop.key ?? 'unknown';
+					const propertyName = /^[$A-Z_a-z][$A-Z_a-z0-9]*$/.test(key) ? key : JSON.stringify(key);
 					const type = processSchema(prop);
-					return `  ${key}: ${type};`;
+					return `  ${propertyName}: ${type};`;
 				})
 				.join('\n');
 
