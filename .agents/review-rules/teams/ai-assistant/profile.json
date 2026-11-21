@@ -1,0 +1,15 @@
+{
+  "lanes": [
+    {
+      "preset": "unit-tests",
+      "paths": ["packages/@n8n/instance-ai/"],
+      "evidence": ["Parser boundary cases and affected test output with pinned SHA"]
+    },
+    {
+      "preset": "instance-ai-live-model",
+      "paths": ["packages/@n8n/instance-ai/src/"],
+      "evidence": ["Unset/enabled and base/head request bodies", "Provider/model, proxy mapping, repetitions, and dependency modes"],
+      "notes": "Use this lane for model-behavior changes. Use a two-turn thread. Report tool round trips and sub-agent coverage separately. Mark unrelated changes not applicable."
+    }
+  ]
+}
