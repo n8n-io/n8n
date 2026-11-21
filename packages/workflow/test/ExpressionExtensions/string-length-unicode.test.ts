@@ -33,4 +33,11 @@ describe('string .length() character count', () => {
 			expect(length('')).toBe(0);
 		});
 	});
+
+	describe('large inputs', () => {
+		test('counts a long string without materialising a per-code-point array', () => {
+			const value = `${emoji}a`.repeat(100_000);
+			expect(length(value)).toBe(200_000);
+		});
+	});
 });
