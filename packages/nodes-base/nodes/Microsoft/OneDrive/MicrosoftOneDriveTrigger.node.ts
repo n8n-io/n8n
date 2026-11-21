@@ -242,7 +242,7 @@ export class MicrosoftOneDriveTrigger implements INodeType {
 			}
 			const workflow = this.getWorkflow();
 			const node = this.getNode();
-			this.logger.error(
+			this.logger.debug(
 				`There was a problem in '${node.name}' node in workflow '${workflow.id}': '${error.description}'`,
 				{
 					node: node.name,

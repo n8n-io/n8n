@@ -69,6 +69,27 @@ describe('MicrosoftOneDriveTrigger', () => {
 		);
 	});
 
+	it('should not log a scheduled poll failure at error level', async () => {
+		pollFunctions.getMode.mockReturnValue('trigger');
+		pollFunctions.getWorkflowStaticData.mockReturnValue({
+			lastTimeChecked: '2020-01-01T00:00:00.000Z',
+		});
+		pollFunctions.getWorkflow.mockReturnValue({ id: 'test-workflow' } as never);
+		const testError = new Error('API Error');
+		vi.mocked(microsoftApiRequestAllItemsDelta).mockRejectedValue(testError);
+
+		await expect(trigger.poll.call(pollFunctions)).rejects.toThrow('API Error');
+		expect(pollFunctions.logger.error).not.toHaveBeenCalled();
+		expect(pollFunctions.logger.debug).toHaveBeenCalledWith(
+			expect.stringContaining('There was a problem in'),
+			expect.objectContaining({
+				node: 'OneDrive Trigger',
+				workflowId: 'test-workflow',
+				error: testError,
+			}),
+		);
+	});
+
 	it('should use the microsoftOneDriveOAuth2Api credential when selected', async () => {
 		params.authentication = 'microsoftOneDriveOAuth2Api';
 

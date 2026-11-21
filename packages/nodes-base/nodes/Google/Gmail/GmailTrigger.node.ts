@@ -472,7 +472,7 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 				if (this.getMode() === 'manual' || !nodeStaticData.lastTimeChecked) {
 					throw error;
 				}
-				this.logger.error(
+				this.logger.warn(
 					`Gmail Trigger could not simplify the output of '${node.name}': '${error.description}'`,
 					{ node: node.name, error },
 				);
@@ -807,7 +807,7 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 				throw error;
 			}
 			const workflow = this.getWorkflow();
-			this.logger.error(
+			this.logger.warn(
 				`There was a problem in '${node.name}' node in workflow '${workflow.id}': '${error.description}'`,
 				{
 					node: node.name,
