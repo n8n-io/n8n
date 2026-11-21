@@ -1,6 +1,8 @@
 import { rm } from 'node:fs/promises';
 import type { StartedNetwork, StartedTestContainer } from 'testcontainers';
 
+const DEFAULT_BEFORE_STOP_TIMEOUT_MS = 10_000;
+
 export interface CleanupFailure {
 	resource: string;
 	error: Error;
@@ -21,7 +23,7 @@ export class ResourceTracker {
 
 	private readonly paths = new Set<string>();
 
-	private readonly beforeStopSteps: Array<() => Promise<void>> = [];
+	private readonly beforeStopSteps: Array<(signal: AbortSignal) => Promise<void>> = [];
 
 	private network: StartedNetwork | undefined;
 
@@ -45,8 +47,8 @@ export class ResourceTracker {
 		this.paths.add(path);
 	}
 
-	/** Runs before the containers stop. A failed step is ignored: a resource it could not prepare is reported when its removal fails. */
-	beforeStop(step: () => Promise<void>): void {
+	/** Runs before the containers stop. If the step fails or times out, cleanup still tries to remove each resource. */
+	beforeStop(step: (signal: AbortSignal) => Promise<void>): void {
 		this.beforeStopSteps.push(step);
 	}
 
@@ -75,9 +77,21 @@ export class ResourceTracker {
 		}
 
 		for (const step of this.beforeStopSteps) {
+			const controller = new AbortController();
+			let timer: NodeJS.Timeout | undefined;
 			try {
-				await step();
-			} catch {}
+				const timedOut = new Promise<void>((resolve) => {
+					timer = setTimeout(() => {
+						controller.abort();
+						resolve();
+					}, options?.timeout ?? DEFAULT_BEFORE_STOP_TIMEOUT_MS);
+				});
+				await Promise.race([step(controller.signal), timedOut]);
+			} catch {
+				// Report any failure to remove the resource below.
+			} finally {
+				clearTimeout(timer);
+			}
 		}
 
 		const failures: CleanupFailure[] = [];

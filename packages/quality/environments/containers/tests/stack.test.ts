@@ -36,7 +36,7 @@ const started = new Map<string, StartedTestContainer>();
 function startedContainer(name: string): StartedTestContainer {
 	const container = {
 		getId: () => name,
-		getName: () => name,
+		getName: () => `/${name}`,
 		getMappedPort: () => 5678,
 		exec: vi.fn().mockResolvedValue({ exitCode: 0, output: '' }),
 		stop: vi.fn().mockResolvedValue(undefined),
@@ -80,6 +80,10 @@ vi.mock('../services/registry', () => ({
 				meta: { n8nFilesToMount: [serviceFile] },
 			}),
 			env: () => ({ SERVICE_ENV: 'set-by-service' }),
+		},
+		tracing: {
+			description: 'Tracing',
+			start: async () => ({ container: startedContainer(`${projectName}-n8n-tracer`) }),
 		},
 	},
 	helperFactories: {},
@@ -196,8 +200,8 @@ test.each([
 	},
 );
 
-test('opens the shared storage tree through the first n8n container that answers', async () => {
-	const { stop } = await startStack({ ...queue, sharedStorage: true });
+test('prepares nested storage directories through a container with the mount', async () => {
+	const { stop } = await startStack({ ...queue, sharedStorage: true, services: ['tracing'] });
 	const [mainContainer, workerContainer, webhookContainer] = queueNames.map(
 		(name) => started.get(name)!,
 	);
@@ -205,15 +209,27 @@ test('opens the shared storage tree through the first n8n container that answers
 
 	await stop();
 
-	const chmod = ['chmod', '-R', 'a+rwX', ENGINE_SHARED_STORAGE_PATH];
-	expect(mainContainer.exec).toHaveBeenCalledWith(chmod);
+	const prepareStorage = [
+		'find',
+		ENGINE_SHARED_STORAGE_PATH,
+		'-mindepth',
+		'1',
+		'-type',
+		'd',
+		'-exec',
+		'chmod',
+		'a+rwx',
+		'{}',
+		'+',
+	];
+	expect(mainContainer.exec).toHaveBeenCalledWith(prepareStorage);
 	// Worker and webhook start in parallel, so either one may answer next. Only one is asked.
 	const answered = [workerContainer, webhookContainer].filter(
 		(c) => vi.mocked(c.exec).mock.calls.length > 0,
 	);
 	expect(answered).toHaveLength(1);
-	expect(answered[0].exec).toHaveBeenCalledWith(chmod);
-	expect(started.get(`${projectName}-mailpit`)!.exec).not.toHaveBeenCalled();
+	expect(answered[0].exec).toHaveBeenCalledWith(prepareStorage);
+	expect(started.get(`${projectName}-n8n-tracer`)!.exec).not.toHaveBeenCalled();
 	expect(vi.mocked(answered[0].exec).mock.invocationCallOrder[0]).toBeLessThan(
 		vi.mocked(answered[0].stop).mock.invocationCallOrder[0],
 	);

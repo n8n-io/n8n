@@ -153,15 +153,27 @@ function groupByDependencyLevel(serviceNames: ServiceName[]): ServiceName[][] {
 	return levels;
 }
 
-/** Makes the shared storage tree writable for everyone, through the first n8n container that answers. */
-async function openSharedStorage(storageContainers: StartedTestContainer[]): Promise<void> {
+/** Lets the host remove nested directories that n8n wrote. */
+async function openSharedStorage(
+	storageContainers: Iterable<StartedTestContainer>,
+	signal: AbortSignal,
+): Promise<void> {
 	for (const container of storageContainers) {
+		if (signal.aborted) return;
 		try {
+			// The mount root is already writable and can belong to a different user.
 			const { exitCode } = await container.exec([
-				'chmod',
-				'-R',
-				'a+rwX',
+				'find',
 				ENGINE_SHARED_STORAGE_PATH,
+				'-mindepth',
+				'1',
+				'-type',
+				'd',
+				'-exec',
+				'chmod',
+				'a+rwx',
+				'{}',
+				'+',
 			]);
 			if (exitCode === 0) return;
 		} catch {
@@ -236,6 +248,10 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 	}
 
 	const containers: StartedTestContainer[] = [];
+	const registerContainer = (container: StartedTestContainer) => {
+		resources.trackContainer(container);
+		if (!containers.includes(container)) containers.push(container);
+	};
 	const serviceResults: Record<string, ServiceResult> = {};
 	const hostedServiceEnv: Partial<Record<ServiceName, Record<string, string>>> = {};
 	let environment: Record<string, string> = {};
@@ -297,10 +313,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 				main: allocatedMainPort,
 				loadBalancer: allocatedLbPort,
 			},
-			registerContainer: (container) => {
-				resources.trackContainer(container);
-				if (!containers.includes(container)) containers.push(container);
-			},
+			registerContainer,
 			registerPath: (path) => resources.trackPath(path),
 		};
 
@@ -358,8 +371,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 						? (result.containers as StartedTestContainer[])
 						: [result.container];
 				for (const container of serviceContainers) {
-					resources.trackContainer(container);
-					if (!containers.includes(container)) containers.push(container);
+					registerContainer(container);
 				}
 				telemetry.recordService(name, Math.round(performance.now() - serviceStart));
 				telemetry.finishStage();
@@ -409,18 +421,16 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		});
 
 		let binaryDataHostDir: string | undefined;
+		const storageContainers = new Set<StartedTestContainer>();
 		if (sharedStorage || engine === 'container') {
 			binaryDataHostDir = mkdtempSync(join(tmpdir(), `${uniqueProjectName}-binary-data-`));
 			resources.trackPath(binaryDataHostDir);
-			// n8n creates the nested storage directories as the container user with mode 0755.
-			// On a Linux host, a test user with another uid cannot delete them, so open them up first.
-			resources.beforeStop(
-				async () =>
-					await openSharedStorage(
-						containers.filter((c) => c.getName().startsWith(`${uniqueProjectName}-n8n`)),
-					),
-			);
+			resources.beforeStop(async (signal) => await openSharedStorage(storageContainers, signal));
 		}
+		const registerN8NContainer = (container: StartedTestContainer) => {
+			registerContainer(container);
+			if (binaryDataHostDir) storageContainers.add(container);
+		};
 
 		// Earliest log line the readiness gate below may accept
 		const n8nStartedAtSeconds = Math.floor(Date.now() / 1000);
@@ -451,10 +461,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 				filesToMount,
 				stackFiles,
 				coverageHostDir,
-				registerContainer: (container) => {
-					resources.trackContainer(container);
-					if (!containers.includes(container)) containers.push(container);
-				},
+				registerContainer: registerN8NContainer,
 				startupDeadline,
 				image,
 				userHomeHostDir,
@@ -676,6 +683,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 				if (current) {
 					await current.stop();
 					containers.splice(containers.indexOf(current), 1);
+					storageContainers.delete(current);
 				}
 				const endAcquisition = resources.beginAcquisition();
 				const replacementDeadline = new StartupDeadline(startupDeadlineMs);
@@ -704,10 +712,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 						filesToMount,
 						stackFiles,
 						coverageHostDir,
-						registerContainer: (container) => {
-							resources.trackContainer(container);
-							if (!containers.includes(container)) containers.push(container);
-						},
+						registerContainer: registerN8NContainer,
 						startupDeadline: replacementDeadline,
 						image: options.image,
 						userHomeHostDir,

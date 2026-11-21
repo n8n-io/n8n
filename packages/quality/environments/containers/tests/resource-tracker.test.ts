@@ -59,4 +59,33 @@ describe('ResourceTracker', () => {
 		await expect(tracker.dispose()).resolves.toEqual({ failures: [], remaining: [] });
 		expect(order).toEqual(['failing step', 'step', 'stop']);
 	});
+
+	test.each([undefined, { timeout: 25 }])(
+		'continues cleanup when a before-stop step stalls (options: %j)',
+		async (options) => {
+			const tracker = new ResourceTracker();
+			const started = container('n8n');
+			const step = vi.fn(async (_signal: AbortSignal) => await new Promise<void>(() => {}));
+			tracker.trackContainer(started as never);
+			tracker.beforeStop(step);
+
+			vi.useFakeTimers();
+			try {
+				const cleanup = tracker.dispose(options);
+				expect(started.stop).not.toHaveBeenCalled();
+				if (options) {
+					await vi.advanceTimersByTimeAsync(options.timeout - 1);
+					expect(started.stop).not.toHaveBeenCalled();
+					await vi.advanceTimersByTimeAsync(1);
+				} else {
+					await vi.runAllTimersAsync();
+				}
+				expect(started.stop).toHaveBeenCalledOnce();
+				await expect(cleanup).resolves.toEqual({ failures: [], remaining: [] });
+				expect(step.mock.calls[0][0].aborted).toBe(true);
+			} finally {
+				vi.useRealTimers();
+			}
+		},
+	);
 });
