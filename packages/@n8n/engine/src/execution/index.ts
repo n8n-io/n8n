@@ -22,7 +22,7 @@ export type {
 	ResumeBinding,
 	ResumeCause,
 	StepSlots,
-	StepOutputSource,
+	ItemSource,
 	StepOutputSources,
 	StepStatus,
 	SeededSteps,
